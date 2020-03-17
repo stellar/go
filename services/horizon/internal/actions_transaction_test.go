@@ -31,7 +31,7 @@ func TestTransactionActions_Show(t *testing.T) {
 
 	// missing tx
 	w = ht.Get("/transactions/not_real")
-	ht.Assert.Equal(404, w.Code)
+	ht.Assert.Equal(400, w.Code)
 }
 
 func TestTransactionActions_Show_Failed(t *testing.T) {
