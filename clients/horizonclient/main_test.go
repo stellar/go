@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stellar/go/keypair"
+	"github.com/stellar/go/network"
 	hProtocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/protocols/horizon/effects"
 	"github.com/stellar/go/protocols/horizon/operations"
@@ -725,7 +727,7 @@ func TestOperationsRequest(t *testing.T) {
 
 }
 
-func TestSubmitRequest(t *testing.T) {
+func TestSubmitTransactionXDRRequest(t *testing.T) {
 	hmock := httptest.NewClient()
 	client := &Client{
 		HorizonURL: "https://localhost/",
@@ -775,6 +777,70 @@ func TestSubmitRequest(t *testing.T) {
 		assert.Equal(t, resp.Result, "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAA=")
 		assert.Equal(t, resp.Meta, `AAAAAQAAAAIAAAADAAVp+wAAAAAAAAAAEH3Rayw4M0iCLoEe96rPFNGYim8AVHJU0z4ebYZW4JwACBP/TuycHAAABD0AAuV+AAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAVp+wAAAAAAAAAAEH3Rayw4M0iCLoEe96rPFNGYim8AVHJU0z4ebYZW4JwACBP/TuycHAAABD0AAuV/AAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAAwAAAAMABWn7AAAAAAAAAAAQfdFrLDgzSIIugR73qs8U0ZiKbwBUclTTPh5thlbgnAAIE/9O7JwcAAAEPQAC5X8AAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEABWn7AAAAAAAAAAAQfdFrLDgzSIIugR73qs8U0ZiKbwBUclTTPh5thlbgnAAIE+gGdbQcAAAEPQAC5X8AAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAABWn7AAAAAAAAAADJMEbE6B9ICmmmxOdv9hGvqA5HxZPQtk2uEuHjLcUKCgAAABdIdugAAAVp+wAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA==`)
 	}
+}
+
+func TestSubmitTransactionRequest(t *testing.T) {
+	hmock := httptest.NewClient()
+	client := &Client{
+		HorizonURL: "https://localhost/",
+		HTTP:       hmock,
+	}
+
+	kp := keypair.MustParseFull("SA26PHIKZM6CXDGR472SSGUQQRYXM6S437ZNHZGRM6QA4FOPLLLFRGDX")
+	sourceAccount := txnbuild.NewSimpleAccount(kp.Address(), int64(0))
+
+	payment := txnbuild.Payment{
+		Destination: kp.Address(),
+		Amount:      "10",
+		Asset:       txnbuild.NativeAsset{},
+	}
+
+	tx := txnbuild.Transaction{
+		SourceAccount: &sourceAccount,
+		Operations:    []txnbuild.Operation{&payment},
+		Timebounds:    txnbuild.NewTimebounds(0, 10),
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	err := tx.Build()
+	assert.NoError(t, err)
+
+	err = tx.Sign(kp)
+	assert.NoError(t, err)
+
+	hmock.
+		On("POST", "https://localhost/transactions").
+		ReturnString(400, transactionFailure)
+
+	_, err = client.SubmitTransaction(tx)
+
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "horizon error")
+		horizonError, ok := errors.Cause(err).(*Error)
+		assert.Equal(t, ok, true)
+		assert.Equal(t, horizonError.Problem.Title, "Transaction Failed")
+	}
+
+	// connection error
+	hmock.
+		On("POST", "https://localhost/transactions").
+		ReturnError("http.Client error")
+
+	_, err = client.SubmitTransaction(tx)
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "http.Client error")
+		_, ok := err.(*Error)
+		assert.Equal(t, ok, false)
+	}
+
+	// successful tx
+	hmock.On(
+		"POST",
+		"https://localhost/transactions?tx=AAAAAAU08yUQ8sHqhY8j9mXWwERfHC%2F3cKFSe%2FspAr0rGtO2AAAAZAAAAAAAAAABAAAAAQAAAAAAAAAAAAAAAAAAAAoAAAAAAAAAAQAAAAAAAAABAAAAAAU08yUQ8sHqhY8j9mXWwERfHC%2F3cKFSe%2FspAr0rGtO2AAAAAAAAAAAF9eEAAAAAAAAAAAErGtO2AAAAQKZUywjRbomZ8k14vOAf4%2Bx5kDYCBgZmXzNoeCQ6%2BFnDrkeP05oJ3DrKywbnmq7tfaxq4kDB%2FFqhMviDBuYf3gc%3D",
+	).ReturnString(200, txSuccess)
+
+	_, err = client.SubmitTransaction(tx)
+	assert.NoError(t, err)
 }
 
 func TestTransactionsRequest(t *testing.T) {
