@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/historyarchive"
@@ -256,6 +257,97 @@ func (s *SingleLedgerStateReaderTestSuite) TestMalformedProtocol11BucketNoMeta()
 	_, err := s.reader.Read()
 	s.Require().NotNil(err)
 	s.Assert().Equal("Error while reading from buckets: Read INITENTRY from version <11 bucket: 0@517bea4c6627a688a8ce501febd8c562e737e3d86b29689d9956217640f3c74b", err.Error())
+}
+
+func TestBucketExistsTestSuite(t *testing.T) {
+	suite.Run(t, new(BucketExistsTestSuite))
+}
+
+type BucketExistsTestSuite struct {
+	suite.Suite
+	mockArchive    *historyarchive.MockArchive
+	reader         *SingleLedgerStateReader
+	cancel         context.CancelFunc
+	expectedSleeps []time.Duration
+}
+
+func (s *BucketExistsTestSuite) SetupTest() {
+	s.mockArchive = &historyarchive.MockArchive{}
+
+	ledgerSeq := uint32(24123007)
+	s.mockArchive.
+		On("GetCheckpointHAS", ledgerSeq).
+		Return(historyarchive.HistoryArchiveState{}, nil)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	var err error
+	s.reader, err = MakeSingleLedgerStateReader(
+		ctx,
+		s.mockArchive,
+		ledgerSeq,
+		4,
+	)
+	s.cancel = cancel
+	s.Require().NoError(err)
+	s.reader.sleep = func(d time.Duration) {
+		if len(s.expectedSleeps) == 0 {
+			s.Assert().Fail("unexpected call to sleep()")
+			return
+		}
+		s.Assert().Equal(s.expectedSleeps[0], d)
+		s.expectedSleeps = s.expectedSleeps[1:]
+	}
+}
+
+func (s *BucketExistsTestSuite) TearDownTest() {
+	s.mockArchive.AssertExpectations(s.T())
+}
+
+func (s *BucketExistsTestSuite) testBucketExists(
+	numErrors int, expectedSleeps []time.Duration,
+) {
+	for _, expected := range []bool{true, false} {
+		hash := historyarchive.Hash{1, 2, 3}
+		if numErrors > 0 {
+			s.mockArchive.On("BucketExists", hash).
+				Return(true, errors.New("transient error")).Times(numErrors)
+		}
+		s.mockArchive.On("BucketExists", hash).
+			Return(expected, nil).Once()
+		s.expectedSleeps = expectedSleeps
+		exists, err := s.reader.bucketExists(hash)
+		s.Assert().Equal(expected, exists)
+		s.Assert().NoError(err)
+		s.Assert().Empty(s.expectedSleeps)
+	}
+}
+
+func (s *BucketExistsTestSuite) TestSucceedsFirstTime() {
+	s.testBucketExists(0, []time.Duration{})
+}
+
+func (s *BucketExistsTestSuite) TestSucceedsSecondTime() {
+	s.testBucketExists(1, []time.Duration{time.Second})
+}
+
+func (s *BucketExistsTestSuite) TestSucceedsThirdime() {
+	s.testBucketExists(2, []time.Duration{time.Second, 2 * time.Second})
+}
+
+func (s *BucketExistsTestSuite) TestSucceedsFourthTime() {
+	s.testBucketExists(3, []time.Duration{time.Second, 2 * time.Second, 4 * time.Second})
+}
+
+func (s *BucketExistsTestSuite) TestFailsAfterFourthTime() {
+	hash := historyarchive.Hash{1, 2, 3}
+	s.mockArchive.On("BucketExists", hash).
+		Return(true, errors.New("transient error")).Times(5)
+	s.expectedSleeps = []time.Duration{
+		time.Second, 2 * time.Second, 4 * time.Second, 8 * time.Second,
+	}
+	_, err := s.reader.bucketExists(hash)
+	s.Assert().EqualError(err, "transient error")
+	s.Assert().Empty(s.expectedSleeps)
 }
 
 func TestReadBucketEntryTestSuite(t *testing.T) {
