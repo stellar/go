@@ -467,17 +467,26 @@ func (c *Client) SubmitTransactionXDR(transactionXdr string) (txSuccess hProtoco
 	return
 }
 
-// SubmitTransaction submits a transaction to the network. err can be either error object or horizon.Error object.
+// SubmitTransaction submits a transaction to the network. err can be either
+// error object or horizon.Error object.
+//
+// This function will always check if the destination account requires a memo in
+// the transaction (as defined in https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0029.md)
+// if you want to skip this check, use `SubmitTransactionWithOptions{tx, SubmitTxOpts{SkipMemoRequiredCheck: true})`
+//
 // See https://www.stellar.org/developers/horizon/reference/endpoints/transactions-create.html
-func (c *Client) SubmitTransaction(transaction txnbuild.Transaction, opts ...SubmitTxOpt) (txSuccess hProtocol.TransactionSuccess, err error) {
-	skipMemoRequired := false
-	for _, opt := range opts {
-		if opt == SkipMemoRequiredCheck {
-			skipMemoRequired = true
-		}
-	}
+func (c *Client) SubmitTransaction(transaction txnbuild.Transaction) (txSuccess hProtocol.TransactionSuccess, err error) {
+	return c.SubmitTransactionWithOptions(transaction, SubmitTxOpts{SkipMemoRequiredCheck: false})
+}
 
-	if !skipMemoRequired && transaction.Memo == nil {
+// SubmitTransactionWithOptions submits a transaction to the network, allowing
+// you to pass SubmitTxOpts. err can be either error object or horizon.Error object.
+//
+// See https://www.stellar.org/developers/horizon/reference/endpoints/transactions-create.html
+func (c *Client) SubmitTransactionWithOptions(transaction txnbuild.Transaction, opts SubmitTxOpts) (txSuccess hProtocol.TransactionSuccess, err error) {
+	// only check if memo is required if skip is false and the transaction
+	// doesn't have a memo.
+	if !opts.SkipMemoRequiredCheck && transaction.Memo == nil {
 		err = c.checkMemoRequired(transaction)
 		if err != nil {
 			return

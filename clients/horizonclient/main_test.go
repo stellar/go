@@ -948,40 +948,6 @@ func TestSubmitTransactionRequest(t *testing.T) {
 	err = tx.Sign(kp)
 	assert.NoError(t, err)
 
-	hmock.
-		On("POST", "https://localhost/transactions").
-		ReturnString(400, transactionFailure)
-
-	_, err = client.SubmitTransaction(tx, SkipMemoRequiredCheck)
-
-	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), "horizon error")
-		horizonError, ok := errors.Cause(err).(*Error)
-		assert.Equal(t, ok, true)
-		assert.Equal(t, horizonError.Problem.Title, "Transaction Failed")
-	}
-
-	// connection error
-	hmock.
-		On("POST", "https://localhost/transactions").
-		ReturnError("http.Client error")
-
-	_, err = client.SubmitTransaction(tx, SkipMemoRequiredCheck)
-	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), "http.Client error")
-		_, ok := err.(*Error)
-		assert.Equal(t, ok, false)
-	}
-
-	// successful tx
-	hmock.On(
-		"POST",
-		"https://localhost/transactions?tx=AAAAAAU08yUQ8sHqhY8j9mXWwERfHC%2F3cKFSe%2FspAr0rGtO2AAAAZAAAAAAAAAABAAAAAQAAAAAAAAAAAAAAAAAAAAoAAAAAAAAAAQAAAAAAAAABAAAAAAU08yUQ8sHqhY8j9mXWwERfHC%2F3cKFSe%2FspAr0rGtO2AAAAAAAAAAAF9eEAAAAAAAAAAAErGtO2AAAAQKZUywjRbomZ8k14vOAf4%2Bx5kDYCBgZmXzNoeCQ6%2BFnDrkeP05oJ3DrKywbnmq7tfaxq4kDB%2FFqhMviDBuYf3gc%3D",
-	).ReturnString(200, txSuccess)
-
-	_, err = client.SubmitTransaction(tx, SkipMemoRequiredCheck)
-	assert.NoError(t, err)
-
 	// successful tx with config.memo_required not found
 	hmock.On(
 		"POST",
@@ -1005,6 +971,94 @@ func TestSubmitTransactionRequest(t *testing.T) {
 	_, err = client.SubmitTransaction(tx)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "MemoRequired:Operation[0](Payment) - Destination: GACTJ4ZFCDZMD2UFR4R7MZOWYBCF6HBP65YKCUT37MUQFPJLDLJ3N5D2 requires a memo in the transaction")
+}
+
+func TestSubmitTransactionWithOptionsRequest(t *testing.T) {
+	hmock := httptest.NewClient()
+	client := &Client{
+		HorizonURL: "https://localhost/",
+		HTTP:       hmock,
+	}
+
+	kp := keypair.MustParseFull("SA26PHIKZM6CXDGR472SSGUQQRYXM6S437ZNHZGRM6QA4FOPLLLFRGDX")
+	sourceAccount := txnbuild.NewSimpleAccount(kp.Address(), int64(0))
+
+	payment := txnbuild.Payment{
+		Destination: kp.Address(),
+		Amount:      "10",
+		Asset:       txnbuild.NativeAsset{},
+	}
+
+	tx := txnbuild.Transaction{
+		SourceAccount: &sourceAccount,
+		Operations:    []txnbuild.Operation{&payment},
+		Timebounds:    txnbuild.NewTimebounds(0, 10),
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	err := tx.Build()
+	assert.NoError(t, err)
+
+	err = tx.Sign(kp)
+	assert.NoError(t, err)
+
+	hmock.
+		On("POST", "https://localhost/transactions").
+		ReturnString(400, transactionFailure)
+
+	_, err = client.SubmitTransactionWithOptions(tx, SubmitTxOpts{SkipMemoRequiredCheck: true})
+
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "horizon error")
+		horizonError, ok := errors.Cause(err).(*Error)
+		assert.Equal(t, ok, true)
+		assert.Equal(t, horizonError.Problem.Title, "Transaction Failed")
+	}
+
+	// connection error
+	hmock.
+		On("POST", "https://localhost/transactions").
+		ReturnError("http.Client error")
+
+	_, err = client.SubmitTransactionWithOptions(tx, SubmitTxOpts{SkipMemoRequiredCheck: true})
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "http.Client error")
+		_, ok := err.(*Error)
+		assert.Equal(t, ok, false)
+	}
+
+	// successful tx
+	hmock.On(
+		"POST",
+		"https://localhost/transactions?tx=AAAAAAU08yUQ8sHqhY8j9mXWwERfHC%2F3cKFSe%2FspAr0rGtO2AAAAZAAAAAAAAAABAAAAAQAAAAAAAAAAAAAAAAAAAAoAAAAAAAAAAQAAAAAAAAABAAAAAAU08yUQ8sHqhY8j9mXWwERfHC%2F3cKFSe%2FspAr0rGtO2AAAAAAAAAAAF9eEAAAAAAAAAAAErGtO2AAAAQKZUywjRbomZ8k14vOAf4%2Bx5kDYCBgZmXzNoeCQ6%2BFnDrkeP05oJ3DrKywbnmq7tfaxq4kDB%2FFqhMviDBuYf3gc%3D",
+	).ReturnString(200, txSuccess)
+
+	_, err = client.SubmitTransactionWithOptions(tx, SubmitTxOpts{SkipMemoRequiredCheck: true})
+	assert.NoError(t, err)
+
+	// successful tx with config.memo_required not found
+	hmock.On(
+		"POST",
+		"https://localhost/transactions?tx=AAAAAAU08yUQ8sHqhY8j9mXWwERfHC%2F3cKFSe%2FspAr0rGtO2AAAAZAAAAAAAAAABAAAAAQAAAAAAAAAAAAAAAAAAAAoAAAAAAAAAAQAAAAAAAAABAAAAAAU08yUQ8sHqhY8j9mXWwERfHC%2F3cKFSe%2FspAr0rGtO2AAAAAAAAAAAF9eEAAAAAAAAAAAErGtO2AAAAQKZUywjRbomZ8k14vOAf4%2Bx5kDYCBgZmXzNoeCQ6%2BFnDrkeP05oJ3DrKywbnmq7tfaxq4kDB%2FFqhMviDBuYf3gc%3D",
+	).ReturnString(200, txSuccess)
+
+	hmock.On(
+		"GET",
+		"https://localhost/accounts/GACTJ4ZFCDZMD2UFR4R7MZOWYBCF6HBP65YKCUT37MUQFPJLDLJ3N5D2/data/config.memo_required",
+	).ReturnString(404, notFoundResponse)
+
+	_, err = client.SubmitTransactionWithOptions(tx, SubmitTxOpts{SkipMemoRequiredCheck: false})
+	assert.NoError(t, err)
+
+	// memo required - does not submit transaction
+	hmock.On(
+		"GET",
+		"https://localhost/accounts/GACTJ4ZFCDZMD2UFR4R7MZOWYBCF6HBP65YKCUT37MUQFPJLDLJ3N5D2/data/config.memo_required",
+	).ReturnJSON(200, memoRequiredResponse)
+
+	_, err = client.SubmitTransactionWithOptions(tx, SubmitTxOpts{SkipMemoRequiredCheck: false})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "MemoRequired:Operation[0](Payment) - Destination: GACTJ4ZFCDZMD2UFR4R7MZOWYBCF6HBP65YKCUT37MUQFPJLDLJ3N5D2 requires a memo in the transaction")
 
 	// skips memo check if tx includes a memo
 	hmock.On(
@@ -1025,7 +1079,7 @@ func TestSubmitTransactionRequest(t *testing.T) {
 
 	err = tx.Sign(kp)
 	assert.NoError(t, err)
-	_, err = client.SubmitTransaction(tx)
+	_, err = client.SubmitTransactionWithOptions(tx, SubmitTxOpts{SkipMemoRequiredCheck: false})
 	assert.NoError(t, err)
 }
 
