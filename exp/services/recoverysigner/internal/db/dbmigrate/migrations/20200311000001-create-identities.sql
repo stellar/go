@@ -2,8 +2,8 @@
 
 CREATE TABLE identities (
   id UUID NOT NULL PRIMARY KEY,
-  created_at TIMESTAMP NOT NULL,
-  deleted_at TIMESTAMP,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL,
+  deleted_at TIMESTAMP WITH TIME ZONE,
 
   account_id UUID NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
   role TEXT NOT NULL
