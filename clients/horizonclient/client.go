@@ -42,7 +42,7 @@ func (c *Client) checkMemoRequired(transaction txnbuild.Transaction) error {
 	destinations := map[string]bool{}
 
 	for i, op := range transaction.Operations {
-		var destination, operationFormatted string
+		var destination string
 
 		if err := op.Validate(); err != nil {
 			return err
@@ -51,16 +51,12 @@ func (c *Client) checkMemoRequired(transaction txnbuild.Transaction) error {
 		switch p := op.(type) {
 		case *txnbuild.Payment:
 			destination = p.Destination
-			operationFormatted = "Payment"
 		case *txnbuild.PathPaymentStrictReceive:
 			destination = p.Destination
-			operationFormatted = "PathPaymentStrictReceive"
 		case *txnbuild.PathPaymentStrictSend:
 			destination = p.Destination
-			operationFormatted = "PathPaymentStrictSend"
 		case *txnbuild.AccountMerge:
 			destination = p.Destination
-			operationFormatted = "AccountMerge"
 		default:
 			continue
 		}
@@ -87,7 +83,10 @@ func (c *Client) checkMemoRequired(transaction txnbuild.Transaction) error {
 		}
 
 		if data.Value == AccountRequiresMemo {
-			return errors.New(fmt.Sprintf("MemoRequired:Operation[%d](%s) - Destination: %s requires a memo in the transaction", i, operationFormatted, destination))
+			return errors.Wrap(
+				ErrAccountRequiresMemo,
+				fmt.Sprintf("operation[%d]", i),
+			)
 		}
 	}
 

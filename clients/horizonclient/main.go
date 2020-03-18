@@ -88,6 +88,10 @@ var (
 	// "result_xdr" extra field populated when it is expected to be.
 	ErrResultNotPopulated = errors.New("result_xdr not populated")
 
+	// ErrAccountRequiresMemo is the error returned from a call to checkMemoRequired
+	// when any of the destination accounts required a memo in the transaction.
+	ErrAccountRequiresMemo = errors.New("destination account requires a memo in the transaction")
+
 	// HorizonTimeOut is the default number of seconds before a request to horizon times out.
 	HorizonTimeOut = time.Duration(60)
 

@@ -87,7 +87,7 @@ func TestCheckMemoRequired(t *testing.T) {
 		{
 			desc:        "payment operation",
 			destination: "GAYHAAKPAQLMGIJYMIWPDWCGUCQ5LAWY4Q7Q3IKSP57O7GUPD3NEOSEA",
-			expected:    "MemoRequired:Operation[0](Payment) - Destination: GAYHAAKPAQLMGIJYMIWPDWCGUCQ5LAWY4Q7Q3IKSP57O7GUPD3NEOSEA requires a memo in the transaction",
+			expected:    "operation[0]: destination account requires a memo in the transaction",
 			operations: []txnbuild.Operation{
 				&paymentMemoRequired,
 				&pathPaymentStrictReceive,
@@ -98,7 +98,7 @@ func TestCheckMemoRequired(t *testing.T) {
 		{
 			desc:        "strict receive operation",
 			destination: "GD2JTIDP2JJKNIDXW4L6AU2RYFXZIUH3YFIS43PJT2467AP46CWBHSCN",
-			expected:    "MemoRequired:Operation[1](PathPaymentStrictReceive) - Destination: GD2JTIDP2JJKNIDXW4L6AU2RYFXZIUH3YFIS43PJT2467AP46CWBHSCN requires a memo in the transaction",
+			expected:    "operation[1]: destination account requires a memo in the transaction",
 			operations: []txnbuild.Operation{
 				&paymentNoMemo,
 				&pathPaymentStrictReceive,
@@ -108,7 +108,7 @@ func TestCheckMemoRequired(t *testing.T) {
 		{
 			desc:        "strict send operation",
 			destination: "GDYM6SBBGDF6ZDRM2SKGVIWM257Q4V63V3IYNDQQWPKNV4QDERS4YTLX",
-			expected:    "MemoRequired:Operation[1](PathPaymentStrictSend) - Destination: GDYM6SBBGDF6ZDRM2SKGVIWM257Q4V63V3IYNDQQWPKNV4QDERS4YTLX requires a memo in the transaction",
+			expected:    "operation[1]: destination account requires a memo in the transaction",
 			operations: []txnbuild.Operation{
 				&paymentNoMemo,
 				&pathPaymentStrictSend,
@@ -118,7 +118,7 @@ func TestCheckMemoRequired(t *testing.T) {
 		{
 			desc:        "merge account operation",
 			destination: "GBVZZ5XPHECNGA5SENAJP4C6ZJ7FGZ55ZZUCTFTHREZM73LKUGCQDRHR",
-			expected:    "MemoRequired:Operation[1](AccountMerge) - Destination: GBVZZ5XPHECNGA5SENAJP4C6ZJ7FGZ55ZZUCTFTHREZM73LKUGCQDRHR requires a memo in the transaction",
+			expected:    "operation[1]: destination account requires a memo in the transaction",
 			operations: []txnbuild.Operation{
 				&paymentNoMemo,
 				&accountMerge,
@@ -162,6 +162,7 @@ func TestCheckMemoRequired(t *testing.T) {
 			if len(tc.expected) > 0 {
 				tt.Error(err)
 				tt.Contains(err.Error(), tc.expected)
+				tt.Equal(ErrAccountRequiresMemo, errors.Cause(err))
 			} else {
 				tt.NoError(err)
 			}
@@ -970,7 +971,7 @@ func TestSubmitTransactionRequest(t *testing.T) {
 
 	_, err = client.SubmitTransaction(tx)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "MemoRequired:Operation[0](Payment) - Destination: GACTJ4ZFCDZMD2UFR4R7MZOWYBCF6HBP65YKCUT37MUQFPJLDLJ3N5D2 requires a memo in the transaction")
+	assert.Equal(t, ErrAccountRequiresMemo, errors.Cause(err))
 }
 
 func TestSubmitTransactionWithOptionsRequest(t *testing.T) {
@@ -1058,7 +1059,7 @@ func TestSubmitTransactionWithOptionsRequest(t *testing.T) {
 
 	_, err = client.SubmitTransactionWithOptions(tx, SubmitTxOpts{SkipMemoRequiredCheck: false})
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "MemoRequired:Operation[0](Payment) - Destination: GACTJ4ZFCDZMD2UFR4R7MZOWYBCF6HBP65YKCUT37MUQFPJLDLJ3N5D2 requires a memo in the transaction")
+	assert.Equal(t, ErrAccountRequiresMemo, errors.Cause(err))
 
 	// skips memo check if tx includes a memo
 	hmock.On(
