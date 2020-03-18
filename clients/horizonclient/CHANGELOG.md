@@ -13,7 +13,7 @@ file.  This project adheres to [Semantic Versioning](http://semver.org/).
     `mergeAccount`, then the SDK will load the destination account from Horizon and check if
     `config.memo_required` is set to `1` as defined in SEP0029.
 
-    This behavior is the default. You can pass skip the check providing the
+    This behavior is the default. For performance reasons, you may choose to skip the check by providing the
     optional parameter  `horizonclient.SkipMemoRequiredCheck` to
     `client.SubmitTransaction`:
 
@@ -21,7 +21,7 @@ file.  This project adheres to [Semantic Versioning](http://semver.org/).
 		client.SubmitTransaction(tx, horizonclient.SkipMemoRequiredCheck)
 	```
 
-	The check is also skipped if the transaction includes a memo.
+	Additionally, the check will be skipped automatically if the transaction includes a memo.
 
 ## [v2.1.0](https://github.com/stellar/go/releases/tag/horizonclient-v2.1.0) - 2020-02-24
 
