@@ -5,7 +5,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"database/sql"
-	"encoding/hex"
 	"encoding/json"
 	"net/http"
 	"strings"
@@ -251,12 +250,7 @@ func getAccountID(r *http.Request, key string, required bool) (string, error) {
 
 // getShowActionQueryParams gets the available query params for all non-indexable endpoints.
 func getShowActionQueryParams(r *http.Request, requireAccountID bool) (*showActionQueryParams, error) {
-	txHash, err := hchi.GetStringFromURL(r, "tx_id")
-	if err == nil {
-		if _, err = hex.DecodeString(txHash); err != nil || len(txHash) != 64 || strings.ToLower(txHash) != txHash {
-			err = problem.MakeInvalidFieldProblem("tx_id", errors.New("invalid hash format"))
-		}
-	}
+	txHash, err := actions.GetTransactionID(r, "tx_id")
 	if err != nil {
 		return nil, errors.Wrap(err, "getting tx id")
 	}

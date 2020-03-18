@@ -131,7 +131,7 @@ func (action *OperationIndexAction) loadParams() {
 	action.ValidateCursorAsDefault()
 	action.AccountFilter = action.GetAddress("account_id")
 	action.LedgerFilter = action.GetInt32("ledger_id")
-	action.TransactionFilter = action.GetStringFromURLParam("tx_id")
+	action.TransactionFilter = action.GetTransactionID("tx_id")
 	action.PagingParams = action.GetPageQuery()
 	action.IncludeFailed = action.GetBool("include_failed")
 	parsed, err := parseJoinField(&action.Action.Base)
