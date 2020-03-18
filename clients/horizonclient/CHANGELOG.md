@@ -10,7 +10,7 @@ file.  This project adheres to [Semantic Versioning](http://semver.org/).
 - Add [SEP0029](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0029.md) memo required check in `client.SubmitTransaction`.
     If any of the operations included in `client.SubmitTransaction` is of type
     `payment`, `pathPaymentStrictReceive`, `pathPaymentStrictSend`, or
-    `mergeAccount`, then the SDK will load the destination account and check if
+    `mergeAccount`, then the SDK will load the destination account from Horizon and check if
     `config.memo_required` is set to `1` as defined in SEP0029.
 
     This behavior is the default. You can pass skip the check providing the
