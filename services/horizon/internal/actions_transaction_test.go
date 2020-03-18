@@ -30,8 +30,16 @@ func TestTransactionActions_Show(t *testing.T) {
 	}
 
 	// missing tx
-	w = ht.Get("/transactions/not_real")
+	w = ht.Get("/transactions/ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")
 	ht.Assert.Equal(404, w.Code)
+
+	// uppercase tx hash not accepted
+	w = ht.Get("/transactions/2374E99349B9EF7DBA9A5DB3339B78FDA8F34777B1AF33BA468AD5C0DF946D4D")
+	ht.Assert.Equal(400, w.Code)
+
+	// badly formated tx hash not accepted
+	w = ht.Get("/transactions/%00%1E4%5E%EF%BF%BD%EF%BF%BD%EF%BF%BDpVP%EF%BF%BDI&R%0BK%EF%BF%BD%1D%EF%BF%BD%EF%BF%BD=%EF%BF%BD%3F%23%EF%BF%BD%EF%BF%BDl%EF%BF%BD%1El%EF%BF%BD%EF%BF%BD")
+	ht.Assert.Equal(400, w.Code)
 }
 
 func TestTransactionActions_Show_Failed(t *testing.T) {
