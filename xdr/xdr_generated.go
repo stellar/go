@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/stellar/go-xdr/xdr3"
+	xdr "github.com/stellar/go-xdr/xdr3"
 )
 
 // Unmarshal reads an xdr element from `r` into `v`.
@@ -1716,17 +1716,22 @@ var (
 //   enum TrustLineFlags
 //    {
 //        // issuer has authorized account to perform transactions with its credit
-//        AUTHORIZED_FLAG = 1
+//        AUTHORIZED_FLAG = 1,
+//        // issuer has authorized account to maintain and reduce liabilities for its
+//        // credit
+//        AUTHORIZED_TO_MAINTAIN_LIABILITIES_FLAG = 2
 //    };
 //
 type TrustLineFlags int32
 
 const (
-	TrustLineFlagsAuthorizedFlag TrustLineFlags = 1
+	TrustLineFlagsAuthorizedFlag                      TrustLineFlags = 1
+	TrustLineFlagsAuthorizedToMaintainLiabilitiesFlag TrustLineFlags = 2
 )
 
 var trustLineFlagsMap = map[int32]string{
 	1: "TrustLineFlagsAuthorizedFlag",
+	2: "TrustLineFlagsAuthorizedToMaintainLiabilitiesFlag",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
@@ -1765,6 +1770,12 @@ var (
 //   const MASK_TRUSTLINE_FLAGS = 1;
 //
 const MaskTrustlineFlags = 1
+
+// MaskTrustlineFlagsV13 is an XDR Const defines as:
+//
+//   const MASK_TRUSTLINE_FLAGS_V13 = 3;
+//
+const MaskTrustlineFlagsV13 = 3
 
 // TrustLineEntryV1Ext is an XDR NestedUnion defines as:
 //
@@ -2597,26 +2608,32 @@ var (
 //
 //   enum EnvelopeType
 //    {
+//        ENVELOPE_TYPE_TX_V0 = 0,
 //        ENVELOPE_TYPE_SCP = 1,
 //        ENVELOPE_TYPE_TX = 2,
 //        ENVELOPE_TYPE_AUTH = 3,
-//        ENVELOPE_TYPE_SCPVALUE = 4
+//        ENVELOPE_TYPE_SCPVALUE = 4,
+//        ENVELOPE_TYPE_TX_FEE_BUMP = 5
 //    };
 //
 type EnvelopeType int32
 
 const (
-	EnvelopeTypeEnvelopeTypeScp      EnvelopeType = 1
-	EnvelopeTypeEnvelopeTypeTx       EnvelopeType = 2
-	EnvelopeTypeEnvelopeTypeAuth     EnvelopeType = 3
-	EnvelopeTypeEnvelopeTypeScpvalue EnvelopeType = 4
+	EnvelopeTypeEnvelopeTypeTxV0      EnvelopeType = 0
+	EnvelopeTypeEnvelopeTypeScp       EnvelopeType = 1
+	EnvelopeTypeEnvelopeTypeTx        EnvelopeType = 2
+	EnvelopeTypeEnvelopeTypeAuth      EnvelopeType = 3
+	EnvelopeTypeEnvelopeTypeScpvalue  EnvelopeType = 4
+	EnvelopeTypeEnvelopeTypeTxFeeBump EnvelopeType = 5
 )
 
 var envelopeTypeMap = map[int32]string{
+	0: "EnvelopeTypeEnvelopeTypeTxV0",
 	1: "EnvelopeTypeEnvelopeTypeScp",
 	2: "EnvelopeTypeEnvelopeTypeTx",
 	3: "EnvelopeTypeEnvelopeTypeAuth",
 	4: "EnvelopeTypeEnvelopeTypeScpvalue",
+	5: "EnvelopeTypeEnvelopeTypeTxFeeBump",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
@@ -7501,13 +7518,14 @@ var (
 //        }
 //        asset;
 //
-//        bool authorize;
+//        // 0, or any bitwise combination of TrustLineFlags
+//        uint32 authorize;
 //    };
 //
 type AllowTrustOp struct {
 	Trustor   AccountId
 	Asset     AllowTrustOpAsset
-	Authorize bool
+	Authorize Uint32
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
@@ -8492,6 +8510,138 @@ var (
 //
 const MaxOpsPerTx = 100
 
+// TransactionV0Ext is an XDR NestedUnion defines as:
+//
+//   union switch (int v) {
+//        case 0:
+//            void;
+//        }
+//
+type TransactionV0Ext struct {
+	V int32
+}
+
+// SwitchFieldName returns the field name in which this union's
+// discriminant is stored
+func (u TransactionV0Ext) SwitchFieldName() string {
+	return "V"
+}
+
+// ArmForSwitch returns which field name should be used for storing
+// the value for an instance of TransactionV0Ext
+func (u TransactionV0Ext) ArmForSwitch(sw int32) (string, bool) {
+	switch int32(sw) {
+	case 0:
+		return "", true
+	}
+	return "-", false
+}
+
+// NewTransactionV0Ext creates a new  TransactionV0Ext.
+func NewTransactionV0Ext(v int32, value interface{}) (result TransactionV0Ext, err error) {
+	result.V = v
+	switch int32(v) {
+	case 0:
+		// void
+	}
+	return
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s TransactionV0Ext) MarshalBinary() ([]byte, error) {
+	b := new(bytes.Buffer)
+	_, err := Marshal(b, s)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *TransactionV0Ext) UnmarshalBinary(inp []byte) error {
+	_, err := Unmarshal(bytes.NewReader(inp), s)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*TransactionV0Ext)(nil)
+	_ encoding.BinaryUnmarshaler = (*TransactionV0Ext)(nil)
+)
+
+// TransactionV0 is an XDR Struct defines as:
+//
+//   struct TransactionV0
+//    {
+//        uint256 sourceAccountEd25519;
+//        uint32 fee;
+//        SequenceNumber seqNum;
+//        TimeBounds* timeBounds;
+//        Memo memo;
+//        Operation operations<MAX_OPS_PER_TX>;
+//        union switch (int v) {
+//        case 0:
+//            void;
+//        } ext;
+//    };
+//
+type TransactionV0 struct {
+	SourceAccountEd25519 Uint256
+	Fee                  Uint32
+	SeqNum               SequenceNumber
+	TimeBounds           *TimeBounds
+	Memo                 Memo
+	Operations           []Operation `xdrmaxsize:"100"`
+	Ext                  TransactionV0Ext
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s TransactionV0) MarshalBinary() ([]byte, error) {
+	b := new(bytes.Buffer)
+	_, err := Marshal(b, s)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *TransactionV0) UnmarshalBinary(inp []byte) error {
+	_, err := Unmarshal(bytes.NewReader(inp), s)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*TransactionV0)(nil)
+	_ encoding.BinaryUnmarshaler = (*TransactionV0)(nil)
+)
+
+// TransactionV0Envelope is an XDR Struct defines as:
+//
+//   struct TransactionV0Envelope
+//    {
+//        TransactionV0 tx;
+//        /* Each decorated signature is a signature over the SHA256 hash of
+//         * a TransactionSignaturePayload */
+//        DecoratedSignature signatures<20>;
+//    };
+//
+type TransactionV0Envelope struct {
+	Tx         TransactionV0
+	Signatures []DecoratedSignature `xdrmaxsize:"20"`
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s TransactionV0Envelope) MarshalBinary() ([]byte, error) {
+	b := new(bytes.Buffer)
+	_, err := Marshal(b, s)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *TransactionV0Envelope) UnmarshalBinary(inp []byte) error {
+	_, err := Unmarshal(bytes.NewReader(inp), s)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*TransactionV0Envelope)(nil)
+	_ encoding.BinaryUnmarshaler = (*TransactionV0Envelope)(nil)
+)
+
 // TransactionExt is an XDR NestedUnion defines as:
 //
 //   union switch (int v)
@@ -8605,18 +8755,431 @@ var (
 	_ encoding.BinaryUnmarshaler = (*Transaction)(nil)
 )
 
-// TransactionSignaturePayloadTaggedTransaction is an XDR NestedUnion defines as:
+// TransactionV1Envelope is an XDR Struct defines as:
+//
+//   struct TransactionV1Envelope
+//    {
+//        Transaction tx;
+//        /* Each decorated signature is a signature over the SHA256 hash of
+//         * a TransactionSignaturePayload */
+//        DecoratedSignature signatures<20>;
+//    };
+//
+type TransactionV1Envelope struct {
+	Tx         Transaction
+	Signatures []DecoratedSignature `xdrmaxsize:"20"`
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s TransactionV1Envelope) MarshalBinary() ([]byte, error) {
+	b := new(bytes.Buffer)
+	_, err := Marshal(b, s)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *TransactionV1Envelope) UnmarshalBinary(inp []byte) error {
+	_, err := Unmarshal(bytes.NewReader(inp), s)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*TransactionV1Envelope)(nil)
+	_ encoding.BinaryUnmarshaler = (*TransactionV1Envelope)(nil)
+)
+
+// FeeBumpTransactionInnerTx is an XDR NestedUnion defines as:
 //
 //   union switch (EnvelopeType type)
 //        {
 //        case ENVELOPE_TYPE_TX:
+//            TransactionV1Envelope v1;
+//        }
+//
+type FeeBumpTransactionInnerTx struct {
+	Type EnvelopeType
+	V1   *TransactionV1Envelope
+}
+
+// SwitchFieldName returns the field name in which this union's
+// discriminant is stored
+func (u FeeBumpTransactionInnerTx) SwitchFieldName() string {
+	return "Type"
+}
+
+// ArmForSwitch returns which field name should be used for storing
+// the value for an instance of FeeBumpTransactionInnerTx
+func (u FeeBumpTransactionInnerTx) ArmForSwitch(sw int32) (string, bool) {
+	switch EnvelopeType(sw) {
+	case EnvelopeTypeEnvelopeTypeTx:
+		return "V1", true
+	}
+	return "-", false
+}
+
+// NewFeeBumpTransactionInnerTx creates a new  FeeBumpTransactionInnerTx.
+func NewFeeBumpTransactionInnerTx(aType EnvelopeType, value interface{}) (result FeeBumpTransactionInnerTx, err error) {
+	result.Type = aType
+	switch EnvelopeType(aType) {
+	case EnvelopeTypeEnvelopeTypeTx:
+		tv, ok := value.(TransactionV1Envelope)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be TransactionV1Envelope")
+			return
+		}
+		result.V1 = &tv
+	}
+	return
+}
+
+// MustV1 retrieves the V1 value from the union,
+// panicing if the value is not set.
+func (u FeeBumpTransactionInnerTx) MustV1() TransactionV1Envelope {
+	val, ok := u.GetV1()
+
+	if !ok {
+		panic("arm V1 is not set")
+	}
+
+	return val
+}
+
+// GetV1 retrieves the V1 value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u FeeBumpTransactionInnerTx) GetV1() (result TransactionV1Envelope, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "V1" {
+		result = *u.V1
+		ok = true
+	}
+
+	return
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s FeeBumpTransactionInnerTx) MarshalBinary() ([]byte, error) {
+	b := new(bytes.Buffer)
+	_, err := Marshal(b, s)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *FeeBumpTransactionInnerTx) UnmarshalBinary(inp []byte) error {
+	_, err := Unmarshal(bytes.NewReader(inp), s)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*FeeBumpTransactionInnerTx)(nil)
+	_ encoding.BinaryUnmarshaler = (*FeeBumpTransactionInnerTx)(nil)
+)
+
+// FeeBumpTransactionExt is an XDR NestedUnion defines as:
+//
+//   union switch (int v) {
+//        case 0:
+//            void;
+//        }
+//
+type FeeBumpTransactionExt struct {
+	V int32
+}
+
+// SwitchFieldName returns the field name in which this union's
+// discriminant is stored
+func (u FeeBumpTransactionExt) SwitchFieldName() string {
+	return "V"
+}
+
+// ArmForSwitch returns which field name should be used for storing
+// the value for an instance of FeeBumpTransactionExt
+func (u FeeBumpTransactionExt) ArmForSwitch(sw int32) (string, bool) {
+	switch int32(sw) {
+	case 0:
+		return "", true
+	}
+	return "-", false
+}
+
+// NewFeeBumpTransactionExt creates a new  FeeBumpTransactionExt.
+func NewFeeBumpTransactionExt(v int32, value interface{}) (result FeeBumpTransactionExt, err error) {
+	result.V = v
+	switch int32(v) {
+	case 0:
+		// void
+	}
+	return
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s FeeBumpTransactionExt) MarshalBinary() ([]byte, error) {
+	b := new(bytes.Buffer)
+	_, err := Marshal(b, s)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *FeeBumpTransactionExt) UnmarshalBinary(inp []byte) error {
+	_, err := Unmarshal(bytes.NewReader(inp), s)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*FeeBumpTransactionExt)(nil)
+	_ encoding.BinaryUnmarshaler = (*FeeBumpTransactionExt)(nil)
+)
+
+// FeeBumpTransaction is an XDR Struct defines as:
+//
+//   struct FeeBumpTransaction
+//    {
+//        AccountID feeSource;
+//        int64 fee;
+//        union switch (EnvelopeType type)
+//        {
+//        case ENVELOPE_TYPE_TX:
+//            TransactionV1Envelope v1;
+//        } innerTx;
+//        union switch (int v) {
+//        case 0:
+//            void;
+//        } ext;
+//    };
+//
+type FeeBumpTransaction struct {
+	FeeSource AccountId
+	Fee       Int64
+	InnerTx   FeeBumpTransactionInnerTx
+	Ext       FeeBumpTransactionExt
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s FeeBumpTransaction) MarshalBinary() ([]byte, error) {
+	b := new(bytes.Buffer)
+	_, err := Marshal(b, s)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *FeeBumpTransaction) UnmarshalBinary(inp []byte) error {
+	_, err := Unmarshal(bytes.NewReader(inp), s)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*FeeBumpTransaction)(nil)
+	_ encoding.BinaryUnmarshaler = (*FeeBumpTransaction)(nil)
+)
+
+// FeeBumpTransactionEnvelope is an XDR Struct defines as:
+//
+//   struct FeeBumpTransactionEnvelope
+//    {
+//        FeeBumpTransaction tx;
+//        /* Each decorated signature is a signature over the SHA256 hash of
+//         * a TransactionSignaturePayload */
+//        DecoratedSignature signatures<20>;
+//    };
+//
+type FeeBumpTransactionEnvelope struct {
+	Tx         FeeBumpTransaction
+	Signatures []DecoratedSignature `xdrmaxsize:"20"`
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s FeeBumpTransactionEnvelope) MarshalBinary() ([]byte, error) {
+	b := new(bytes.Buffer)
+	_, err := Marshal(b, s)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *FeeBumpTransactionEnvelope) UnmarshalBinary(inp []byte) error {
+	_, err := Unmarshal(bytes.NewReader(inp), s)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*FeeBumpTransactionEnvelope)(nil)
+	_ encoding.BinaryUnmarshaler = (*FeeBumpTransactionEnvelope)(nil)
+)
+
+// TransactionEnvelope is an XDR Union defines as:
+//
+//   union TransactionEnvelope switch (EnvelopeType type) {
+//    case ENVELOPE_TYPE_TX_V0:
+//        TransactionV0Envelope v0;
+//    case ENVELOPE_TYPE_TX:
+//        TransactionV1Envelope v1;
+//    case ENVELOPE_TYPE_TX_FEE_BUMP:
+//        FeeBumpTransactionEnvelope feeBump;
+//    };
+//
+type TransactionEnvelope struct {
+	Type    EnvelopeType
+	V0      *TransactionV0Envelope
+	V1      *TransactionV1Envelope
+	FeeBump *FeeBumpTransactionEnvelope
+}
+
+// SwitchFieldName returns the field name in which this union's
+// discriminant is stored
+func (u TransactionEnvelope) SwitchFieldName() string {
+	return "Type"
+}
+
+// ArmForSwitch returns which field name should be used for storing
+// the value for an instance of TransactionEnvelope
+func (u TransactionEnvelope) ArmForSwitch(sw int32) (string, bool) {
+	switch EnvelopeType(sw) {
+	case EnvelopeTypeEnvelopeTypeTxV0:
+		return "V0", true
+	case EnvelopeTypeEnvelopeTypeTx:
+		return "V1", true
+	case EnvelopeTypeEnvelopeTypeTxFeeBump:
+		return "FeeBump", true
+	}
+	return "-", false
+}
+
+// NewTransactionEnvelope creates a new  TransactionEnvelope.
+func NewTransactionEnvelope(aType EnvelopeType, value interface{}) (result TransactionEnvelope, err error) {
+	result.Type = aType
+	switch EnvelopeType(aType) {
+	case EnvelopeTypeEnvelopeTypeTxV0:
+		tv, ok := value.(TransactionV0Envelope)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be TransactionV0Envelope")
+			return
+		}
+		result.V0 = &tv
+	case EnvelopeTypeEnvelopeTypeTx:
+		tv, ok := value.(TransactionV1Envelope)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be TransactionV1Envelope")
+			return
+		}
+		result.V1 = &tv
+	case EnvelopeTypeEnvelopeTypeTxFeeBump:
+		tv, ok := value.(FeeBumpTransactionEnvelope)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be FeeBumpTransactionEnvelope")
+			return
+		}
+		result.FeeBump = &tv
+	}
+	return
+}
+
+// MustV0 retrieves the V0 value from the union,
+// panicing if the value is not set.
+func (u TransactionEnvelope) MustV0() TransactionV0Envelope {
+	val, ok := u.GetV0()
+
+	if !ok {
+		panic("arm V0 is not set")
+	}
+
+	return val
+}
+
+// GetV0 retrieves the V0 value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u TransactionEnvelope) GetV0() (result TransactionV0Envelope, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "V0" {
+		result = *u.V0
+		ok = true
+	}
+
+	return
+}
+
+// MustV1 retrieves the V1 value from the union,
+// panicing if the value is not set.
+func (u TransactionEnvelope) MustV1() TransactionV1Envelope {
+	val, ok := u.GetV1()
+
+	if !ok {
+		panic("arm V1 is not set")
+	}
+
+	return val
+}
+
+// GetV1 retrieves the V1 value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u TransactionEnvelope) GetV1() (result TransactionV1Envelope, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "V1" {
+		result = *u.V1
+		ok = true
+	}
+
+	return
+}
+
+// MustFeeBump retrieves the FeeBump value from the union,
+// panicing if the value is not set.
+func (u TransactionEnvelope) MustFeeBump() FeeBumpTransactionEnvelope {
+	val, ok := u.GetFeeBump()
+
+	if !ok {
+		panic("arm FeeBump is not set")
+	}
+
+	return val
+}
+
+// GetFeeBump retrieves the FeeBump value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u TransactionEnvelope) GetFeeBump() (result FeeBumpTransactionEnvelope, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "FeeBump" {
+		result = *u.FeeBump
+		ok = true
+	}
+
+	return
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s TransactionEnvelope) MarshalBinary() ([]byte, error) {
+	b := new(bytes.Buffer)
+	_, err := Marshal(b, s)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *TransactionEnvelope) UnmarshalBinary(inp []byte) error {
+	_, err := Unmarshal(bytes.NewReader(inp), s)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*TransactionEnvelope)(nil)
+	_ encoding.BinaryUnmarshaler = (*TransactionEnvelope)(nil)
+)
+
+// TransactionSignaturePayloadTaggedTransaction is an XDR NestedUnion defines as:
+//
+//   union switch (EnvelopeType type)
+//        {
+//        // Backwards Compatibility: Use ENVELOPE_TYPE_TX to sign ENVELOPE_TYPE_TX_V0
+//        case ENVELOPE_TYPE_TX:
 //            Transaction tx;
-//            /* All other values of type are invalid */
+//        case ENVELOPE_TYPE_TX_FEE_BUMP:
+//            FeeBumpTransaction feeBump;
 //        }
 //
 type TransactionSignaturePayloadTaggedTransaction struct {
-	Type EnvelopeType
-	Tx   *Transaction
+	Type    EnvelopeType
+	Tx      *Transaction
+	FeeBump *FeeBumpTransaction
 }
 
 // SwitchFieldName returns the field name in which this union's
@@ -8631,6 +9194,8 @@ func (u TransactionSignaturePayloadTaggedTransaction) ArmForSwitch(sw int32) (st
 	switch EnvelopeType(sw) {
 	case EnvelopeTypeEnvelopeTypeTx:
 		return "Tx", true
+	case EnvelopeTypeEnvelopeTypeTxFeeBump:
+		return "FeeBump", true
 	}
 	return "-", false
 }
@@ -8646,6 +9211,13 @@ func NewTransactionSignaturePayloadTaggedTransaction(aType EnvelopeType, value i
 			return
 		}
 		result.Tx = &tv
+	case EnvelopeTypeEnvelopeTypeTxFeeBump:
+		tv, ok := value.(FeeBumpTransaction)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be FeeBumpTransaction")
+			return
+		}
+		result.FeeBump = &tv
 	}
 	return
 }
@@ -8669,6 +9241,31 @@ func (u TransactionSignaturePayloadTaggedTransaction) GetTx() (result Transactio
 
 	if armName == "Tx" {
 		result = *u.Tx
+		ok = true
+	}
+
+	return
+}
+
+// MustFeeBump retrieves the FeeBump value from the union,
+// panicing if the value is not set.
+func (u TransactionSignaturePayloadTaggedTransaction) MustFeeBump() FeeBumpTransaction {
+	val, ok := u.GetFeeBump()
+
+	if !ok {
+		panic("arm FeeBump is not set")
+	}
+
+	return val
+}
+
+// GetFeeBump retrieves the FeeBump value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u TransactionSignaturePayloadTaggedTransaction) GetFeeBump() (result FeeBumpTransaction, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "FeeBump" {
+		result = *u.FeeBump
 		ok = true
 	}
 
@@ -8700,9 +9297,11 @@ var (
 //        Hash networkId;
 //        union switch (EnvelopeType type)
 //        {
+//        // Backwards Compatibility: Use ENVELOPE_TYPE_TX to sign ENVELOPE_TYPE_TX_V0
 //        case ENVELOPE_TYPE_TX:
 //            Transaction tx;
-//            /* All other values of type are invalid */
+//        case ENVELOPE_TYPE_TX_FEE_BUMP:
+//            FeeBumpTransaction feeBump;
 //        }
 //        taggedTransaction;
 //    };
@@ -8728,39 +9327,6 @@ func (s *TransactionSignaturePayload) UnmarshalBinary(inp []byte) error {
 var (
 	_ encoding.BinaryMarshaler   = (*TransactionSignaturePayload)(nil)
 	_ encoding.BinaryUnmarshaler = (*TransactionSignaturePayload)(nil)
-)
-
-// TransactionEnvelope is an XDR Struct defines as:
-//
-//   struct TransactionEnvelope
-//    {
-//        Transaction tx;
-//        /* Each decorated signature is a signature over the SHA256 hash of
-//         * a TransactionSignaturePayload */
-//        DecoratedSignature signatures<20>;
-//    };
-//
-type TransactionEnvelope struct {
-	Tx         Transaction
-	Signatures []DecoratedSignature `xdrmaxsize:"20"`
-}
-
-// MarshalBinary implements encoding.BinaryMarshaler.
-func (s TransactionEnvelope) MarshalBinary() ([]byte, error) {
-	b := new(bytes.Buffer)
-	_, err := Marshal(b, s)
-	return b.Bytes(), err
-}
-
-// UnmarshalBinary implements encoding.BinaryUnmarshaler.
-func (s *TransactionEnvelope) UnmarshalBinary(inp []byte) error {
-	_, err := Unmarshal(bytes.NewReader(inp), s)
-	return err
-}
-
-var (
-	_ encoding.BinaryMarshaler   = (*TransactionEnvelope)(nil)
-	_ encoding.BinaryUnmarshaler = (*TransactionEnvelope)(nil)
 )
 
 // ClaimOfferAtom is an XDR Struct defines as:
@@ -11895,6 +12461,7 @@ var (
 //
 //   enum TransactionResultCode
 //    {
+//        txFEE_BUMP_INNER_SUCCESS = 1, // fee bump inner transaction succeeded
 //        txSUCCESS = 0, // all operations succeeded
 //
 //        txFAILED = -1, // one of the operations failed (none were applied)
@@ -11909,12 +12476,16 @@ var (
 //        txNO_ACCOUNT = -8,           // source account not found
 //        txINSUFFICIENT_FEE = -9,     // fee is too small
 //        txBAD_AUTH_EXTRA = -10,      // unused signatures attached to transaction
-//        txINTERNAL_ERROR = -11       // an unknown error occured
+//        txINTERNAL_ERROR = -11,      // an unknown error occured
+//
+//        txNOT_SUPPORTED = -12,        // transaction type not supported
+//        txFEE_BUMP_INNER_FAILED = -13 // fee bump inner transaction failed
 //    };
 //
 type TransactionResultCode int32
 
 const (
+	TransactionResultCodeTxFeeBumpInnerSuccess TransactionResultCode = 1
 	TransactionResultCodeTxSuccess             TransactionResultCode = 0
 	TransactionResultCodeTxFailed              TransactionResultCode = -1
 	TransactionResultCodeTxTooEarly            TransactionResultCode = -2
@@ -11927,9 +12498,12 @@ const (
 	TransactionResultCodeTxInsufficientFee     TransactionResultCode = -9
 	TransactionResultCodeTxBadAuthExtra        TransactionResultCode = -10
 	TransactionResultCodeTxInternalError       TransactionResultCode = -11
+	TransactionResultCodeTxNotSupported        TransactionResultCode = -12
+	TransactionResultCodeTxFeeBumpInnerFailed  TransactionResultCode = -13
 )
 
 var transactionResultCodeMap = map[int32]string{
+	1:   "TransactionResultCodeTxFeeBumpInnerSuccess",
 	0:   "TransactionResultCodeTxSuccess",
 	-1:  "TransactionResultCodeTxFailed",
 	-2:  "TransactionResultCodeTxTooEarly",
@@ -11942,6 +12516,8 @@ var transactionResultCodeMap = map[int32]string{
 	-9:  "TransactionResultCodeTxInsufficientFee",
 	-10: "TransactionResultCodeTxBadAuthExtra",
 	-11: "TransactionResultCodeTxInternalError",
+	-12: "TransactionResultCodeTxNotSupported",
+	-13: "TransactionResultCodeTxFeeBumpInnerFailed",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
@@ -11975,10 +12551,316 @@ var (
 	_ encoding.BinaryUnmarshaler = (*TransactionResultCode)(nil)
 )
 
+// InnerTransactionResultResult is an XDR NestedUnion defines as:
+//
+//   union switch (TransactionResultCode code)
+//        {
+//        // txFEE_BUMP_INNER_SUCCESS is not included
+//        case txSUCCESS:
+//        case txFAILED:
+//            OperationResult results<>;
+//        case txTOO_EARLY:
+//        case txTOO_LATE:
+//        case txMISSING_OPERATION:
+//        case txBAD_SEQ:
+//        case txBAD_AUTH:
+//        case txINSUFFICIENT_BALANCE:
+//        case txNO_ACCOUNT:
+//        case txINSUFFICIENT_FEE:
+//        case txBAD_AUTH_EXTRA:
+//        case txINTERNAL_ERROR:
+//        case txNOT_SUPPORTED:
+//        // txFEE_BUMP_INNER_FAILED is not included
+//            void;
+//        }
+//
+type InnerTransactionResultResult struct {
+	Code    TransactionResultCode
+	Results *[]OperationResult
+}
+
+// SwitchFieldName returns the field name in which this union's
+// discriminant is stored
+func (u InnerTransactionResultResult) SwitchFieldName() string {
+	return "Code"
+}
+
+// ArmForSwitch returns which field name should be used for storing
+// the value for an instance of InnerTransactionResultResult
+func (u InnerTransactionResultResult) ArmForSwitch(sw int32) (string, bool) {
+	switch TransactionResultCode(sw) {
+	case TransactionResultCodeTxSuccess:
+		return "Results", true
+	case TransactionResultCodeTxFailed:
+		return "Results", true
+	case TransactionResultCodeTxTooEarly:
+		return "", true
+	case TransactionResultCodeTxTooLate:
+		return "", true
+	case TransactionResultCodeTxMissingOperation:
+		return "", true
+	case TransactionResultCodeTxBadSeq:
+		return "", true
+	case TransactionResultCodeTxBadAuth:
+		return "", true
+	case TransactionResultCodeTxInsufficientBalance:
+		return "", true
+	case TransactionResultCodeTxNoAccount:
+		return "", true
+	case TransactionResultCodeTxInsufficientFee:
+		return "", true
+	case TransactionResultCodeTxBadAuthExtra:
+		return "", true
+	case TransactionResultCodeTxInternalError:
+		return "", true
+	case TransactionResultCodeTxNotSupported:
+		return "", true
+	}
+	return "-", false
+}
+
+// NewInnerTransactionResultResult creates a new  InnerTransactionResultResult.
+func NewInnerTransactionResultResult(code TransactionResultCode, value interface{}) (result InnerTransactionResultResult, err error) {
+	result.Code = code
+	switch TransactionResultCode(code) {
+	case TransactionResultCodeTxSuccess:
+		tv, ok := value.([]OperationResult)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be []OperationResult")
+			return
+		}
+		result.Results = &tv
+	case TransactionResultCodeTxFailed:
+		tv, ok := value.([]OperationResult)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be []OperationResult")
+			return
+		}
+		result.Results = &tv
+	case TransactionResultCodeTxTooEarly:
+		// void
+	case TransactionResultCodeTxTooLate:
+		// void
+	case TransactionResultCodeTxMissingOperation:
+		// void
+	case TransactionResultCodeTxBadSeq:
+		// void
+	case TransactionResultCodeTxBadAuth:
+		// void
+	case TransactionResultCodeTxInsufficientBalance:
+		// void
+	case TransactionResultCodeTxNoAccount:
+		// void
+	case TransactionResultCodeTxInsufficientFee:
+		// void
+	case TransactionResultCodeTxBadAuthExtra:
+		// void
+	case TransactionResultCodeTxInternalError:
+		// void
+	case TransactionResultCodeTxNotSupported:
+		// void
+	}
+	return
+}
+
+// MustResults retrieves the Results value from the union,
+// panicing if the value is not set.
+func (u InnerTransactionResultResult) MustResults() []OperationResult {
+	val, ok := u.GetResults()
+
+	if !ok {
+		panic("arm Results is not set")
+	}
+
+	return val
+}
+
+// GetResults retrieves the Results value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u InnerTransactionResultResult) GetResults() (result []OperationResult, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Code))
+
+	if armName == "Results" {
+		result = *u.Results
+		ok = true
+	}
+
+	return
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s InnerTransactionResultResult) MarshalBinary() ([]byte, error) {
+	b := new(bytes.Buffer)
+	_, err := Marshal(b, s)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *InnerTransactionResultResult) UnmarshalBinary(inp []byte) error {
+	_, err := Unmarshal(bytes.NewReader(inp), s)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*InnerTransactionResultResult)(nil)
+	_ encoding.BinaryUnmarshaler = (*InnerTransactionResultResult)(nil)
+)
+
+// InnerTransactionResultExt is an XDR NestedUnion defines as:
+//
+//   union switch (int v)
+//        {
+//        case 0:
+//            void;
+//        }
+//
+type InnerTransactionResultExt struct {
+	V int32
+}
+
+// SwitchFieldName returns the field name in which this union's
+// discriminant is stored
+func (u InnerTransactionResultExt) SwitchFieldName() string {
+	return "V"
+}
+
+// ArmForSwitch returns which field name should be used for storing
+// the value for an instance of InnerTransactionResultExt
+func (u InnerTransactionResultExt) ArmForSwitch(sw int32) (string, bool) {
+	switch int32(sw) {
+	case 0:
+		return "", true
+	}
+	return "-", false
+}
+
+// NewInnerTransactionResultExt creates a new  InnerTransactionResultExt.
+func NewInnerTransactionResultExt(v int32, value interface{}) (result InnerTransactionResultExt, err error) {
+	result.V = v
+	switch int32(v) {
+	case 0:
+		// void
+	}
+	return
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s InnerTransactionResultExt) MarshalBinary() ([]byte, error) {
+	b := new(bytes.Buffer)
+	_, err := Marshal(b, s)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *InnerTransactionResultExt) UnmarshalBinary(inp []byte) error {
+	_, err := Unmarshal(bytes.NewReader(inp), s)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*InnerTransactionResultExt)(nil)
+	_ encoding.BinaryUnmarshaler = (*InnerTransactionResultExt)(nil)
+)
+
+// InnerTransactionResult is an XDR Struct defines as:
+//
+//   struct InnerTransactionResult
+//    {
+//        int64 feeCharged;
+//
+//        union switch (TransactionResultCode code)
+//        {
+//        // txFEE_BUMP_INNER_SUCCESS is not included
+//        case txSUCCESS:
+//        case txFAILED:
+//            OperationResult results<>;
+//        case txTOO_EARLY:
+//        case txTOO_LATE:
+//        case txMISSING_OPERATION:
+//        case txBAD_SEQ:
+//        case txBAD_AUTH:
+//        case txINSUFFICIENT_BALANCE:
+//        case txNO_ACCOUNT:
+//        case txINSUFFICIENT_FEE:
+//        case txBAD_AUTH_EXTRA:
+//        case txINTERNAL_ERROR:
+//        case txNOT_SUPPORTED:
+//        // txFEE_BUMP_INNER_FAILED is not included
+//            void;
+//        }
+//        result;
+//
+//        // reserved for future use
+//        union switch (int v)
+//        {
+//        case 0:
+//            void;
+//        }
+//        ext;
+//    };
+//
+type InnerTransactionResult struct {
+	FeeCharged Int64
+	Result     InnerTransactionResultResult
+	Ext        InnerTransactionResultExt
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s InnerTransactionResult) MarshalBinary() ([]byte, error) {
+	b := new(bytes.Buffer)
+	_, err := Marshal(b, s)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *InnerTransactionResult) UnmarshalBinary(inp []byte) error {
+	_, err := Unmarshal(bytes.NewReader(inp), s)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*InnerTransactionResult)(nil)
+	_ encoding.BinaryUnmarshaler = (*InnerTransactionResult)(nil)
+)
+
+// InnerTransactionResultPair is an XDR Struct defines as:
+//
+//   struct InnerTransactionResultPair
+//    {
+//        Hash transactionHash;          // hash of the inner transaction
+//        InnerTransactionResult result; // result for the inner transaction
+//    };
+//
+type InnerTransactionResultPair struct {
+	TransactionHash Hash
+	Result          InnerTransactionResult
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s InnerTransactionResultPair) MarshalBinary() ([]byte, error) {
+	b := new(bytes.Buffer)
+	_, err := Marshal(b, s)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *InnerTransactionResultPair) UnmarshalBinary(inp []byte) error {
+	_, err := Unmarshal(bytes.NewReader(inp), s)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*InnerTransactionResultPair)(nil)
+	_ encoding.BinaryUnmarshaler = (*InnerTransactionResultPair)(nil)
+)
+
 // TransactionResultResult is an XDR NestedUnion defines as:
 //
 //   union switch (TransactionResultCode code)
 //        {
+//        case txFEE_BUMP_INNER_SUCCESS:
+//        case txFEE_BUMP_INNER_FAILED:
+//            InnerTransactionResultPair innerResultPair;
 //        case txSUCCESS:
 //        case txFAILED:
 //            OperationResult results<>;
@@ -11987,8 +12869,9 @@ var (
 //        }
 //
 type TransactionResultResult struct {
-	Code    TransactionResultCode
-	Results *[]OperationResult
+	Code            TransactionResultCode
+	InnerResultPair *InnerTransactionResultPair
+	Results         *[]OperationResult
 }
 
 // SwitchFieldName returns the field name in which this union's
@@ -12001,6 +12884,10 @@ func (u TransactionResultResult) SwitchFieldName() string {
 // the value for an instance of TransactionResultResult
 func (u TransactionResultResult) ArmForSwitch(sw int32) (string, bool) {
 	switch TransactionResultCode(sw) {
+	case TransactionResultCodeTxFeeBumpInnerSuccess:
+		return "InnerResultPair", true
+	case TransactionResultCodeTxFeeBumpInnerFailed:
+		return "InnerResultPair", true
 	case TransactionResultCodeTxSuccess:
 		return "Results", true
 	case TransactionResultCodeTxFailed:
@@ -12014,6 +12901,20 @@ func (u TransactionResultResult) ArmForSwitch(sw int32) (string, bool) {
 func NewTransactionResultResult(code TransactionResultCode, value interface{}) (result TransactionResultResult, err error) {
 	result.Code = code
 	switch TransactionResultCode(code) {
+	case TransactionResultCodeTxFeeBumpInnerSuccess:
+		tv, ok := value.(InnerTransactionResultPair)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be InnerTransactionResultPair")
+			return
+		}
+		result.InnerResultPair = &tv
+	case TransactionResultCodeTxFeeBumpInnerFailed:
+		tv, ok := value.(InnerTransactionResultPair)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be InnerTransactionResultPair")
+			return
+		}
+		result.InnerResultPair = &tv
 	case TransactionResultCodeTxSuccess:
 		tv, ok := value.([]OperationResult)
 		if !ok {
@@ -12031,6 +12932,31 @@ func NewTransactionResultResult(code TransactionResultCode, value interface{}) (
 	default:
 		// void
 	}
+	return
+}
+
+// MustInnerResultPair retrieves the InnerResultPair value from the union,
+// panicing if the value is not set.
+func (u TransactionResultResult) MustInnerResultPair() InnerTransactionResultPair {
+	val, ok := u.GetInnerResultPair()
+
+	if !ok {
+		panic("arm InnerResultPair is not set")
+	}
+
+	return val
+}
+
+// GetInnerResultPair retrieves the InnerResultPair value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u TransactionResultResult) GetInnerResultPair() (result InnerTransactionResultPair, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Code))
+
+	if armName == "InnerResultPair" {
+		result = *u.InnerResultPair
+		ok = true
+	}
+
 	return
 }
 
@@ -12141,6 +13067,9 @@ var (
 //
 //        union switch (TransactionResultCode code)
 //        {
+//        case txFEE_BUMP_INNER_SUCCESS:
+//        case txFEE_BUMP_INNER_FAILED:
+//            InnerTransactionResultPair innerResultPair;
 //        case txSUCCESS:
 //        case txFAILED:
 //            OperationResult results<>;
