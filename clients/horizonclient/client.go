@@ -86,7 +86,7 @@ func (c *Client) checkMemoRequired(transaction txnbuild.Transaction) error {
 			continue
 		}
 
-		if data.Value == "MQ==" {
+		if data.Value == AccountRequiresMemo {
 			return errors.New(fmt.Sprintf("MemoRequired:Operation[%d](%s) - Destination: %s requires a memo in the transaction", i, operationFormatted, destination))
 		}
 	}
