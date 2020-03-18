@@ -39,20 +39,18 @@ func TestGetTransactionID(t *testing.T) {
 	defer tt.Finish()
 	action := makeTestAction()
 
-	txID := action.GetTransactionID("valid_tx_id")
-	tt.Assert.NoError(action.Err)
+	txID, err := GetTransactionID(action.R, "valid_tx_id")
+	tt.Assert.NoError(err)
 	tt.Assert.Equal(
 		"aa168f12124b7c196c0adaee7c73a64d37f99428cacb59a91ff389626845e7cf",
 		txID,
 	)
 
-	txID = action.GetTransactionID("invalid_uppercase_tx_id")
-	tt.Assert.Error(action.Err)
+	txID, err = GetTransactionID(action.R, "invalid_uppercase_tx_id")
+	tt.Assert.Error(err)
 
-	action.Err = nil
-	txID = action.GetTransactionID("invalid_too_short_tx_id")
-	tt.Assert.Error(action.Err)
-
+	txID, err = GetTransactionID(action.R, "invalid_too_short_tx_id")
+	tt.Assert.Error(err)
 }
 
 func TestGetAsset(t *testing.T) {

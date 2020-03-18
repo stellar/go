@@ -395,18 +395,6 @@ func GetTransactionID(r *http.Request, name string) (string, error) {
 	return value, nil
 }
 
-// GetTransactionID retireves  a transaction identifier by attempting to decode an hex-encoded,
-// 64-digit lowercase string at the provided name.
-func (base *Base) GetTransactionID(name string) string {
-	if base.Err != nil {
-		return ""
-	}
-
-	var res string
-	res, base.Err = GetTransactionID(base.R, name)
-	return res
-}
-
 // GetAccountID retireves an xdr.AccountID by attempting to decode a stellar
 // address at the provided name.
 func GetAccountID(r *http.Request, name string) (xdr.AccountId, error) {
