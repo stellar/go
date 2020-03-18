@@ -62,6 +62,15 @@ func TestOperationActions_Index(t *testing.T) {
 	if ht.Assert.Equal(200, w.Code) {
 		ht.Assert.PageOf(1, w.Body)
 	}
+	// missing tx
+	w = ht.Get("/transactions/ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff/operations")
+	ht.Assert.Equal(404, w.Code)
+	// uppercase tx hash not accepted
+	w = ht.Get("/transactions/2374E99349B9EF7DBA9A5DB3339B78FDA8F34777B1AF33BA468AD5C0DF946D4D/operations")
+	ht.Assert.Equal(400, w.Code)
+	// badly formated tx hash not accepted
+	w = ht.Get("/transactions/%00%1E4%5E%EF%BF%BD%EF%BF%BD%EF%BF%BDpVP%EF%BF%BDI&R%0BK%EF%BF%BD%1D%EF%BF%BD%EF%BF%BD=%EF%BF%BD%3F%23%EF%BF%BD%EF%BF%BDl%EF%BF%BD%1El%EF%BF%BD%EF%BF%BD/operations")
+	ht.Assert.Equal(400, w.Code)
 
 	w = ht.Get("/transactions/164a5064eba64f2cdbadb856bf3448485fc626247ada3ed39cddf0f6902133b6/operations")
 	if ht.Assert.Equal(200, w.Code) {

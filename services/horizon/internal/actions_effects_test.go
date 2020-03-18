@@ -73,6 +73,20 @@ func TestEffectActions_Index(t *testing.T) {
 		if ht.Assert.Equal(200, w.Code) {
 			ht.Assert.PageOf(3, w.Body)
 		}
+		// missing tx
+		w = ht.Get("/transactions/ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff/effects")
+		ht.Assert.Equal(404, w.Code)
+		// uppercase tx hash not accepted
+		w = ht.Get("/transactions/2374E99349B9EF7DBA9A5DB3339B78FDA8F34777B1AF33BA468AD5C0DF946D4D/effects")
+		ht.Assert.Equal(400, w.Code)
+		// badly formated tx hash not accepted
+		w = ht.Get("/transactions/%00%1E4%5E%EF%BF%BD%EF%BF%BD%EF%BF%BDpVP%EF%BF%BDI&R%0BK%EF%BF%BD%1D%EF%BF%BD%EF%BF%BD=%EF%BF%BD%3F%23%EF%BF%BD%EF%BF%BDl%EF%BF%BD%1El%EF%BF%BD%EF%BF%BD/effects")
+		ht.Assert.Equal(400, w.Code)
+
+		w = ht.Get("/transactions/2374e99349b9ef7dba9a5db3339b78fda8f34777b1af33ba468ad5c0df946d4d/effects")
+		if ht.Assert.Equal(200, w.Code) {
+			ht.Assert.PageOf(3, w.Body)
+		}
 
 		// filtered by operation
 		w = ht.Get("/operations/8589938689/effects")
