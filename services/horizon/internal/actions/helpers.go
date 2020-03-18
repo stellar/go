@@ -386,8 +386,10 @@ func GetTransactionID(r *http.Request, name string) (string, error) {
 		return "", err
 	}
 
-	if _, err = hex.DecodeString(value); err != nil || len(value) != 64 || strings.ToLower(value) != value {
-		return "", problem.MakeInvalidFieldProblem(name, errors.New("invalid hash format"))
+	if value != "" {
+		if _, err = hex.DecodeString(value); err != nil || len(value) != 64 || strings.ToLower(value) != value {
+			return "", problem.MakeInvalidFieldProblem(name, errors.New("invalid hash format"))
+		}
 	}
 
 	return value, nil
