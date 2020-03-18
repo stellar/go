@@ -38,6 +38,7 @@ func (c *Client) sendRequest(hr HorizonRequest, resp interface{}) (err error) {
 	return c.sendRequestURL(c.HorizonURL+endpoint, "get", resp)
 }
 
+// checkMemoRequired implements a memo required check as defined in https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0029.md
 func (c *Client) checkMemoRequired(transaction txnbuild.Transaction) error {
 	destinations := map[string]bool{}
 
