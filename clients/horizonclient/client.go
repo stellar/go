@@ -471,9 +471,10 @@ func (c *Client) SubmitTransactionXDR(transactionXdr string) (txSuccess hProtoco
 // SubmitTransaction submits a transaction to the network. err can be either
 // error object or horizon.Error object.
 //
-// This function will always check if the destination account requires a memo in
-// the transaction (as defined in https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0029.md)
-// if you want to skip this check, use `SubmitTransactionWithOptions{tx, SubmitTxOpts{SkipMemoRequiredCheck: true})`
+// This function will always check if the destination account requires a memo in the transaction as
+// defined in SEP0029: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0029.md
+//
+// If you want to skip this check, use SubmitTransactionWithOptions.
 //
 // See https://www.stellar.org/developers/horizon/reference/endpoints/transactions-create.html
 func (c *Client) SubmitTransaction(transaction txnbuild.Transaction) (txSuccess hProtocol.TransactionSuccess, err error) {
