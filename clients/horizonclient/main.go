@@ -61,6 +61,9 @@ const (
 	AssetType12 AssetType = "credit_alphanum12"
 	// AssetTypeNative represents the asset type for Stellar Lumens (XLM)
 	AssetTypeNative AssetType = "native"
+	// accountRequiresMemo is the base64 encoding of "1".
+	// SEP 29 uses this value to define transaction memo requirements for incoming payments.
+	accountRequiresMemo = "MQ=="
 )
 
 // Error struct contains the problem returned by Horizon
@@ -85,7 +88,11 @@ var (
 	// "result_xdr" extra field populated when it is expected to be.
 	ErrResultNotPopulated = errors.New("result_xdr not populated")
 
-	// HorizonTimeOut is the default number of seconds before a request to horizon times out.
+	// ErrAccountRequiresMemo is the error returned from a call to checkMemoRequired
+	// when any of the destination accounts required a memo in the transaction.
+	ErrAccountRequiresMemo = errors.New("destination account requires a memo in the transaction")
+
+	// HorizonTimeOut is the default number of nanoseconds before a request to horizon times out.
 	HorizonTimeOut = time.Duration(60)
 
 	// MinuteResolution represents 1 minute used as `resolution` parameter in trade aggregation
@@ -139,6 +146,11 @@ type Client struct {
 	clock *clock.Clock
 }
 
+// SubmitTxOpts represents the submit transaction options
+type SubmitTxOpts struct {
+	SkipMemoRequiredCheck bool
+}
+
 // ClientInterface contains methods implemented by the horizon client
 type ClientInterface interface {
 	Accounts(request AccountsRequest) (hProtocol.AccountsPage, error)
@@ -156,6 +168,7 @@ type ClientInterface interface {
 	OperationDetail(id string) (operations.Operation, error)
 	SubmitTransactionXDR(transactionXdr string) (hProtocol.TransactionSuccess, error)
 	SubmitTransaction(transactionXdr txnbuild.Transaction) (hProtocol.TransactionSuccess, error)
+	SubmitTransactionWithOptions(transactionXdr txnbuild.Transaction, opts SubmitTxOpts) (hProtocol.TransactionSuccess, error)
 	Transactions(request TransactionRequest) (hProtocol.TransactionsPage, error)
 	TransactionDetail(txHash string) (hProtocol.Transaction, error)
 	OrderBook(request OrderBookRequest) (hProtocol.OrderBookSummary, error)

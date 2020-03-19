@@ -8,9 +8,30 @@ file.  This project adheres to [Semantic Versioning](http://semver.org/).
 - Add `IsNotFoundError`
 * Dropped support for Go 1.12.
 
-## [v2.1.0](https://github.com/stellar/go/releases/tag/horizonclient-v2.1.0) - 2020-02-21
+### Added
 
-### Add
+- Add `client.SubmitTransactionWithOptions` with support for [SEP0029](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0029.md).
+    If any of the operations included in `client.SubmitTransactionWithOptions` is of type
+    `payment`, `pathPaymentStrictReceive`, `pathPaymentStrictSend`, or
+    `mergeAccount`, then the SDK will load the destination account from Horizon and check if
+    `config.memo_required` is set to `1` as defined in [SEP0029](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0029.md).
+
+    For performance reasons, you may choose to skip the check by setting the `SkipMemoRequiredCheck` to `true`:
+
+	```
+		client.SubmitTransactionWithOptions(tx, horizonclient.SubmitTxOpts{SkipMemoRequiredCheck: true})
+	```
+
+	Additionally, the check will be skipped automatically if the transaction includes a memo.
+
+## Changed
+
+-  Change `client.SubmitTransaction` to always check if memo is required.
+	If you want to skip the check, call `client.SubmitTransactionWithOptions` instead.
+
+## [v2.1.0](https://github.com/stellar/go/releases/tag/horizonclient-v2.1.0) - 2020-02-24
+
+### Added
 
 - Add `client.StrictReceivePaths` and  `client.StrictSendPaths` ([#2237](https://github.com/stellar/go/pull/2237)).
 
@@ -95,7 +116,7 @@ This feature allows account retrieval filtering by signer or by a trustline to a
 
 - Add `IsNotFoundError` ([#2197](https://github.com/stellar/go/pull/2197)).
 
-### Deprecate
+### Deprecated
 
 - Make `hProtocol.FeeStats` backwards compatible with Horizon `0.24.1` and `1.0` deprecating usage of `*_accepted_fee` ([#2290](https://github.com/stellar/go/pull/2290)).
 

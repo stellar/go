@@ -38,6 +38,63 @@ func (c *Client) sendRequest(hr HorizonRequest, resp interface{}) (err error) {
 	return c.sendRequestURL(c.HorizonURL+endpoint, "get", resp)
 }
 
+// checkMemoRequired implements a memo required check as defined in
+// https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0029.md
+func (c *Client) checkMemoRequired(transaction txnbuild.Transaction) error {
+	destinations := map[string]bool{}
+
+	for i, op := range transaction.Operations {
+		var destination string
+
+		if err := op.Validate(); err != nil {
+			return err
+		}
+
+		switch p := op.(type) {
+		case *txnbuild.Payment:
+			destination = p.Destination
+		case *txnbuild.PathPaymentStrictReceive:
+			destination = p.Destination
+		case *txnbuild.PathPaymentStrictSend:
+			destination = p.Destination
+		case *txnbuild.AccountMerge:
+			destination = p.Destination
+		default:
+			continue
+		}
+
+		if destinations[destination] {
+			continue
+		}
+		destinations[destination] = true
+
+		request := AccountRequest{
+			AccountID: destination,
+			DataKey:   "config.memo_required",
+		}
+
+		data, err := c.AccountData(request)
+		if err != nil {
+			horizonError := GetError(err)
+
+			if horizonError == nil || horizonError.Response.StatusCode != 404 {
+				return err
+			}
+
+			continue
+		}
+
+		if data.Value == accountRequiresMemo {
+			return errors.Wrap(
+				ErrAccountRequiresMemo,
+				fmt.Sprintf("operation[%d]", i),
+			)
+		}
+	}
+
+	return nil
+}
+
 // sendRequestURL sends a url to a horizon server.
 // It can be used for requests that do not implement the HorizonRequest interface.
 func (c *Client) sendRequestURL(requestURL string, method string, a interface{}) (err error) {
@@ -390,10 +447,33 @@ func (c *Client) SubmitTransactionXDR(transactionXdr string) (txSuccess hProtoco
 	return
 }
 
-// SubmitTransaction submits a transaction to the network. err can be either error object or horizon.Error object.
+// SubmitTransaction submits a transaction to the network. err can be either
+// error object or horizon.Error object.
+//
+// This function will always check if the destination account requires a memo in the transaction as
+// defined in SEP0029: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0029.md
+//
+// If you want to skip this check, use SubmitTransactionWithOptions.
+//
 // See https://www.stellar.org/developers/horizon/reference/endpoints/transactions-create.html
-func (c *Client) SubmitTransaction(transaction txnbuild.Transaction) (txSuccess hProtocol.TransactionSuccess,
-	err error) {
+func (c *Client) SubmitTransaction(transaction txnbuild.Transaction) (txSuccess hProtocol.TransactionSuccess, err error) {
+	return c.SubmitTransactionWithOptions(transaction, SubmitTxOpts{})
+}
+
+// SubmitTransactionWithOptions submits a transaction to the network, allowing
+// you to pass SubmitTxOpts. err can be either error object or horizon.Error object.
+//
+// See https://www.stellar.org/developers/horizon/reference/endpoints/transactions-create.html
+func (c *Client) SubmitTransactionWithOptions(transaction txnbuild.Transaction, opts SubmitTxOpts) (txSuccess hProtocol.TransactionSuccess, err error) {
+	// only check if memo is required if skip is false and the transaction
+	// doesn't have a memo.
+	if !opts.SkipMemoRequiredCheck && transaction.Memo == nil {
+		err = c.checkMemoRequired(transaction)
+		if err != nil {
+			return
+		}
+	}
+
 	txeBase64, err := transaction.Base64()
 	if err != nil {
 		err = errors.Wrap(err, "Unable to convert transaction object to base64 string")

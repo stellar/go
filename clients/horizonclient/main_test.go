@@ -1,10 +1,13 @@
 package horizonclient
 
 import (
+	"fmt"
 	"net/http"
 	"testing"
 	"time"
 
+	"github.com/stellar/go/keypair"
+	"github.com/stellar/go/network"
 	hProtocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/protocols/horizon/effects"
 	"github.com/stellar/go/protocols/horizon/operations"
@@ -25,6 +28,146 @@ func TestFixHTTP(t *testing.T) {
 	client.Root()
 	// When a request is made, default HTTP client is set
 	assert.IsType(t, client.HTTP, &http.Client{})
+}
+
+func TestCheckMemoRequired(t *testing.T) {
+	tt := assert.New(t)
+
+	hmock := httptest.NewClient()
+	client := &Client{
+		HorizonURL: "https://localhost/",
+		HTTP:       hmock,
+	}
+
+	kp := keypair.MustParseFull("SA26PHIKZM6CXDGR472SSGUQQRYXM6S437ZNHZGRM6QA4FOPLLLFRGDX")
+	sourceAccount := txnbuild.NewSimpleAccount(kp.Address(), int64(0))
+
+	paymentMemoRequired := txnbuild.Payment{
+		Destination: "GAYHAAKPAQLMGIJYMIWPDWCGUCQ5LAWY4Q7Q3IKSP57O7GUPD3NEOSEA",
+		Amount:      "10",
+		Asset:       txnbuild.NativeAsset{},
+	}
+
+	paymentNoMemo := txnbuild.Payment{
+		Destination: "GDWIRURRED6SQSZVQVVMK46PE2MOZEKHV6ZU54JG3NPVRDIF4XCXYYW4",
+		Amount:      "10",
+		Asset:       txnbuild.NativeAsset{},
+	}
+
+	asset := txnbuild.CreditAsset{"ABCD", kp.Address()}
+	pathPaymentStrictSend := txnbuild.PathPaymentStrictSend{
+		SendAsset:   asset,
+		SendAmount:  "10",
+		Destination: "GDYM6SBBGDF6ZDRM2SKGVIWM257Q4V63V3IYNDQQWPKNV4QDERS4YTLX",
+		DestAsset:   txnbuild.NativeAsset{},
+		DestMin:     "1",
+		Path:        []txnbuild.Asset{asset},
+	}
+
+	pathPaymentStrictReceive := txnbuild.PathPaymentStrictReceive{
+		SendAsset:   asset,
+		SendMax:     "10",
+		Destination: "GD2JTIDP2JJKNIDXW4L6AU2RYFXZIUH3YFIS43PJT2467AP46CWBHSCN",
+		DestAsset:   txnbuild.NativeAsset{},
+		DestAmount:  "1",
+		Path:        []txnbuild.Asset{asset},
+	}
+
+	accountMerge := txnbuild.AccountMerge{
+		Destination: "GBVZZ5XPHECNGA5SENAJP4C6ZJ7FGZ55ZZUCTFTHREZM73LKUGCQDRHR",
+	}
+
+	testCases := []struct {
+		desc         string
+		destination  string
+		expected     string
+		operations   []txnbuild.Operation
+		mockNotFound bool
+	}{
+		{
+			desc:        "payment operation",
+			destination: "GAYHAAKPAQLMGIJYMIWPDWCGUCQ5LAWY4Q7Q3IKSP57O7GUPD3NEOSEA",
+			expected:    "operation[0]: destination account requires a memo in the transaction",
+			operations: []txnbuild.Operation{
+				&paymentMemoRequired,
+				&pathPaymentStrictReceive,
+				&pathPaymentStrictSend,
+				&accountMerge,
+			},
+		},
+		{
+			desc:        "strict receive operation",
+			destination: "GD2JTIDP2JJKNIDXW4L6AU2RYFXZIUH3YFIS43PJT2467AP46CWBHSCN",
+			expected:    "operation[1]: destination account requires a memo in the transaction",
+			operations: []txnbuild.Operation{
+				&paymentNoMemo,
+				&pathPaymentStrictReceive,
+			},
+			mockNotFound: true,
+		},
+		{
+			desc:        "strict send operation",
+			destination: "GDYM6SBBGDF6ZDRM2SKGVIWM257Q4V63V3IYNDQQWPKNV4QDERS4YTLX",
+			expected:    "operation[1]: destination account requires a memo in the transaction",
+			operations: []txnbuild.Operation{
+				&paymentNoMemo,
+				&pathPaymentStrictSend,
+			},
+			mockNotFound: true,
+		},
+		{
+			desc:        "merge account operation",
+			destination: "GBVZZ5XPHECNGA5SENAJP4C6ZJ7FGZ55ZZUCTFTHREZM73LKUGCQDRHR",
+			expected:    "operation[1]: destination account requires a memo in the transaction",
+			operations: []txnbuild.Operation{
+				&paymentNoMemo,
+				&accountMerge,
+			},
+			mockNotFound: true,
+		},
+		{
+			desc: "two operations with same destination",
+			operations: []txnbuild.Operation{
+				&paymentNoMemo,
+				&paymentNoMemo,
+			},
+			mockNotFound: true,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.desc, func(t *testing.T) {
+			tx := txnbuild.Transaction{
+				SourceAccount: &sourceAccount,
+				Operations:    tc.operations,
+				Timebounds:    txnbuild.NewTimebounds(0, 10),
+				Network:       network.TestNetworkPassphrase,
+			}
+
+			if len(tc.destination) > 0 {
+				hmock.On(
+					"GET",
+					fmt.Sprintf("https://localhost/accounts/%s/data/config.memo_required", tc.destination),
+				).ReturnJSON(200, memoRequiredResponse)
+			}
+
+			if tc.mockNotFound {
+				hmock.On(
+					"GET",
+					"https://localhost/accounts/GDWIRURRED6SQSZVQVVMK46PE2MOZEKHV6ZU54JG3NPVRDIF4XCXYYW4/data/config.memo_required",
+				).ReturnString(404, notFoundResponse)
+			}
+
+			err := client.checkMemoRequired(tx)
+
+			if len(tc.expected) > 0 {
+				tt.Error(err)
+				tt.Contains(err.Error(), tc.expected)
+				tt.Equal(ErrAccountRequiresMemo, errors.Cause(err))
+			} else {
+				tt.NoError(err)
+			}
+		})
+	}
 }
 
 func TestAccounts(t *testing.T) {
@@ -712,7 +855,7 @@ func TestOperationsRequest(t *testing.T) {
 
 }
 
-func TestSubmitRequest(t *testing.T) {
+func TestSubmitTransactionXDRRequest(t *testing.T) {
 	hmock := httptest.NewClient()
 	client := &Client{
 		HorizonURL: "https://localhost/",
@@ -762,6 +905,170 @@ func TestSubmitRequest(t *testing.T) {
 		assert.Equal(t, resp.Result, "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAA=")
 		assert.Equal(t, resp.Meta, `AAAAAQAAAAIAAAADAAVp+wAAAAAAAAAAEH3Rayw4M0iCLoEe96rPFNGYim8AVHJU0z4ebYZW4JwACBP/TuycHAAABD0AAuV+AAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAVp+wAAAAAAAAAAEH3Rayw4M0iCLoEe96rPFNGYim8AVHJU0z4ebYZW4JwACBP/TuycHAAABD0AAuV/AAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAAwAAAAMABWn7AAAAAAAAAAAQfdFrLDgzSIIugR73qs8U0ZiKbwBUclTTPh5thlbgnAAIE/9O7JwcAAAEPQAC5X8AAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEABWn7AAAAAAAAAAAQfdFrLDgzSIIugR73qs8U0ZiKbwBUclTTPh5thlbgnAAIE+gGdbQcAAAEPQAC5X8AAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAABWn7AAAAAAAAAADJMEbE6B9ICmmmxOdv9hGvqA5HxZPQtk2uEuHjLcUKCgAAABdIdugAAAVp+wAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA==`)
 	}
+}
+
+func TestSubmitTransactionRequest(t *testing.T) {
+	hmock := httptest.NewClient()
+	client := &Client{
+		HorizonURL: "https://localhost/",
+		HTTP:       hmock,
+	}
+
+	kp := keypair.MustParseFull("SA26PHIKZM6CXDGR472SSGUQQRYXM6S437ZNHZGRM6QA4FOPLLLFRGDX")
+	sourceAccount := txnbuild.NewSimpleAccount(kp.Address(), int64(0))
+
+	payment := txnbuild.Payment{
+		Destination: kp.Address(),
+		Amount:      "10",
+		Asset:       txnbuild.NativeAsset{},
+	}
+
+	tx := txnbuild.Transaction{
+		SourceAccount: &sourceAccount,
+		Operations:    []txnbuild.Operation{&payment},
+		Timebounds:    txnbuild.NewTimebounds(0, 10),
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	err := tx.Build()
+	assert.NoError(t, err)
+
+	err = tx.Sign(kp)
+	assert.NoError(t, err)
+
+	// successful tx with config.memo_required not found
+	hmock.On(
+		"POST",
+		"https://localhost/transactions?tx=AAAAAAU08yUQ8sHqhY8j9mXWwERfHC%2F3cKFSe%2FspAr0rGtO2AAAAZAAAAAAAAAABAAAAAQAAAAAAAAAAAAAAAAAAAAoAAAAAAAAAAQAAAAAAAAABAAAAAAU08yUQ8sHqhY8j9mXWwERfHC%2F3cKFSe%2FspAr0rGtO2AAAAAAAAAAAF9eEAAAAAAAAAAAErGtO2AAAAQKZUywjRbomZ8k14vOAf4%2Bx5kDYCBgZmXzNoeCQ6%2BFnDrkeP05oJ3DrKywbnmq7tfaxq4kDB%2FFqhMviDBuYf3gc%3D",
+	).ReturnString(200, txSuccess)
+
+	hmock.On(
+		"GET",
+		"https://localhost/accounts/GACTJ4ZFCDZMD2UFR4R7MZOWYBCF6HBP65YKCUT37MUQFPJLDLJ3N5D2/data/config.memo_required",
+	).ReturnString(404, notFoundResponse)
+
+	_, err = client.SubmitTransaction(tx)
+	assert.NoError(t, err)
+
+	// memo required - does not submit transaction
+	hmock.On(
+		"GET",
+		"https://localhost/accounts/GACTJ4ZFCDZMD2UFR4R7MZOWYBCF6HBP65YKCUT37MUQFPJLDLJ3N5D2/data/config.memo_required",
+	).ReturnJSON(200, memoRequiredResponse)
+
+	_, err = client.SubmitTransaction(tx)
+	assert.Error(t, err)
+	assert.Equal(t, ErrAccountRequiresMemo, errors.Cause(err))
+}
+
+func TestSubmitTransactionWithOptionsRequest(t *testing.T) {
+	hmock := httptest.NewClient()
+	client := &Client{
+		HorizonURL: "https://localhost/",
+		HTTP:       hmock,
+	}
+
+	kp := keypair.MustParseFull("SA26PHIKZM6CXDGR472SSGUQQRYXM6S437ZNHZGRM6QA4FOPLLLFRGDX")
+	sourceAccount := txnbuild.NewSimpleAccount(kp.Address(), int64(0))
+
+	payment := txnbuild.Payment{
+		Destination: kp.Address(),
+		Amount:      "10",
+		Asset:       txnbuild.NativeAsset{},
+	}
+
+	tx := txnbuild.Transaction{
+		SourceAccount: &sourceAccount,
+		Operations:    []txnbuild.Operation{&payment},
+		Timebounds:    txnbuild.NewTimebounds(0, 10),
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	err := tx.Build()
+	assert.NoError(t, err)
+
+	err = tx.Sign(kp)
+	assert.NoError(t, err)
+
+	hmock.
+		On("POST", "https://localhost/transactions").
+		ReturnString(400, transactionFailure)
+
+	_, err = client.SubmitTransactionWithOptions(tx, SubmitTxOpts{SkipMemoRequiredCheck: true})
+
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "horizon error")
+		horizonError, ok := errors.Cause(err).(*Error)
+		assert.Equal(t, ok, true)
+		assert.Equal(t, horizonError.Problem.Title, "Transaction Failed")
+	}
+
+	// connection error
+	hmock.
+		On("POST", "https://localhost/transactions").
+		ReturnError("http.Client error")
+
+	_, err = client.SubmitTransactionWithOptions(tx, SubmitTxOpts{SkipMemoRequiredCheck: true})
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "http.Client error")
+		_, ok := err.(*Error)
+		assert.Equal(t, ok, false)
+	}
+
+	// successful tx
+	hmock.On(
+		"POST",
+		"https://localhost/transactions?tx=AAAAAAU08yUQ8sHqhY8j9mXWwERfHC%2F3cKFSe%2FspAr0rGtO2AAAAZAAAAAAAAAABAAAAAQAAAAAAAAAAAAAAAAAAAAoAAAAAAAAAAQAAAAAAAAABAAAAAAU08yUQ8sHqhY8j9mXWwERfHC%2F3cKFSe%2FspAr0rGtO2AAAAAAAAAAAF9eEAAAAAAAAAAAErGtO2AAAAQKZUywjRbomZ8k14vOAf4%2Bx5kDYCBgZmXzNoeCQ6%2BFnDrkeP05oJ3DrKywbnmq7tfaxq4kDB%2FFqhMviDBuYf3gc%3D",
+	).ReturnString(200, txSuccess)
+
+	_, err = client.SubmitTransactionWithOptions(tx, SubmitTxOpts{SkipMemoRequiredCheck: true})
+	assert.NoError(t, err)
+
+	// successful tx with config.memo_required not found
+	hmock.On(
+		"POST",
+		"https://localhost/transactions?tx=AAAAAAU08yUQ8sHqhY8j9mXWwERfHC%2F3cKFSe%2FspAr0rGtO2AAAAZAAAAAAAAAABAAAAAQAAAAAAAAAAAAAAAAAAAAoAAAAAAAAAAQAAAAAAAAABAAAAAAU08yUQ8sHqhY8j9mXWwERfHC%2F3cKFSe%2FspAr0rGtO2AAAAAAAAAAAF9eEAAAAAAAAAAAErGtO2AAAAQKZUywjRbomZ8k14vOAf4%2Bx5kDYCBgZmXzNoeCQ6%2BFnDrkeP05oJ3DrKywbnmq7tfaxq4kDB%2FFqhMviDBuYf3gc%3D",
+	).ReturnString(200, txSuccess)
+
+	hmock.On(
+		"GET",
+		"https://localhost/accounts/GACTJ4ZFCDZMD2UFR4R7MZOWYBCF6HBP65YKCUT37MUQFPJLDLJ3N5D2/data/config.memo_required",
+	).ReturnString(404, notFoundResponse)
+
+	_, err = client.SubmitTransactionWithOptions(tx, SubmitTxOpts{SkipMemoRequiredCheck: false})
+	assert.NoError(t, err)
+
+	// memo required - does not submit transaction
+	hmock.On(
+		"GET",
+		"https://localhost/accounts/GACTJ4ZFCDZMD2UFR4R7MZOWYBCF6HBP65YKCUT37MUQFPJLDLJ3N5D2/data/config.memo_required",
+	).ReturnJSON(200, memoRequiredResponse)
+
+	_, err = client.SubmitTransactionWithOptions(tx, SubmitTxOpts{SkipMemoRequiredCheck: false})
+	assert.Error(t, err)
+	assert.Equal(t, ErrAccountRequiresMemo, errors.Cause(err))
+
+	// skips memo check if tx includes a memo
+	hmock.On(
+		"POST",
+		"https://localhost/transactions?tx=AAAAAAU08yUQ8sHqhY8j9mXWwERfHC%2F3cKFSe%2FspAr0rGtO2AAAAZAAAAAAAAAACAAAAAQAAAAAAAAAAAAAAAAAAAAoAAAABAAAACkhlbGxvV29ybGQAAAAAAAEAAAAAAAAAAQAAAAAFNPMlEPLB6oWPI%2FZl1sBEXxwv93ChUnv7KQK9KxrTtgAAAAAAAAAABfXhAAAAAAAAAAABKxrTtgAAAEDusMdn4dwEhBtYHIxkvdpPbfVa7CM6HG9vRzWLe8%2FMCtQIT4d0IgleroyT%2FF2EmPpAQQmuDXm4DGR7c%2FeTa9YL",
+	).ReturnString(200, txSuccess)
+
+	tx = txnbuild.Transaction{
+		Memo:          txnbuild.MemoText("HelloWorld"),
+		SourceAccount: &sourceAccount,
+		Operations:    []txnbuild.Operation{&payment},
+		Timebounds:    txnbuild.NewTimebounds(0, 10),
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	err = tx.Build()
+	assert.NoError(t, err)
+
+	err = tx.Sign(kp)
+	assert.NoError(t, err)
+	_, err = client.SubmitTransactionWithOptions(tx, SubmitTxOpts{SkipMemoRequiredCheck: false})
+	assert.NoError(t, err)
 }
 
 func TestTransactionsRequest(t *testing.T) {
@@ -1093,6 +1400,10 @@ var accountResponse = `{
     "test": "dGVzdA=="
   }
 }`
+
+var memoRequiredResponse = map[string]string{
+	"value": "MQ==",
+}
 
 var notFoundResponse = `{
   "type": "https://stellar.org/horizon-errors/not_found",
