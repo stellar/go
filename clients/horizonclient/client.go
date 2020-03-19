@@ -477,7 +477,7 @@ func (c *Client) SubmitTransactionXDR(transactionXdr string) (txSuccess hProtoco
 //
 // See https://www.stellar.org/developers/horizon/reference/endpoints/transactions-create.html
 func (c *Client) SubmitTransaction(transaction txnbuild.Transaction) (txSuccess hProtocol.TransactionSuccess, err error) {
-	return c.SubmitTransactionWithOptions(transaction, SubmitTxOpts{SkipMemoRequiredCheck: false})
+	return c.SubmitTransactionWithOptions(transaction, SubmitTxOpts{})
 }
 
 // SubmitTransactionWithOptions submits a transaction to the network, allowing
