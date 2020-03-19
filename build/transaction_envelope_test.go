@@ -24,7 +24,7 @@ var _ = Describe("TransactionEnvelope Mutators:", func() {
 				Expect(err2).NotTo(HaveOccurred())
 			})
 			It("succeeds", func() { Expect(err).NotTo(HaveOccurred()) })
-			It("sets the TX", func() { Expect(subject.E.Tx.SeqNum).To(BeEquivalentTo(10)) })
+			It("sets the TX", func() { Expect(subject.E.V1.Tx.SeqNum).To(BeEquivalentTo(10)) })
 		})
 	})
 
@@ -37,7 +37,7 @@ var _ = Describe("TransactionEnvelope Mutators:", func() {
 
 			It("succeeds", func() { Expect(err).NotTo(HaveOccurred()) })
 			It("adds a signature to the envelope", func() {
-				Expect(subject.E.Signatures).To(HaveLen(1))
+				Expect(subject.E.V1.Signatures).To(HaveLen(1))
 			})
 		})
 
