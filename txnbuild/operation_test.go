@@ -15,7 +15,7 @@ func TestCreateAccountFromXDR(t *testing.T) {
 	xdrEnv, err := unmarshalBase64(txeB64)
 	if assert.NoError(t, err) {
 		var ca CreateAccount
-		err = ca.FromXDR(xdrEnv.Tx.Operations[0])
+		err = ca.FromXDR(xdrEnv.Operations()[0])
 		if assert.NoError(t, err) {
 			assert.Equal(t, "GAIH3ULLFQ4DGSECF2AR555KZ4KNDGEKN4AFI4SU2M7B43MGK3QJZNSR", ca.SourceAccount.GetAccountID(), "source accounts should match")
 			assert.Equal(t, "GCPHE7DYMAUAY4UWA6OIYDFGLKRXGLLEMT6MVETC36L7LW4Z3A37EJW5", ca.Destination, "destination should match")
@@ -27,7 +27,7 @@ func TestCreateAccountFromXDR(t *testing.T) {
 	xdrEnv, err = unmarshalBase64(txeB64NoSource)
 	if assert.NoError(t, err) {
 		var ca CreateAccount
-		err = ca.FromXDR(xdrEnv.Tx.Operations[0])
+		err = ca.FromXDR(xdrEnv.Operations()[0])
 		if assert.NoError(t, err) {
 			assert.Equal(t, nil, ca.SourceAccount, "source accounts should match")
 			assert.Equal(t, "GAIH3ULLFQ4DGSECF2AR555KZ4KNDGEKN4AFI4SU2M7B43MGK3QJZNSR", ca.Destination, "destination should match")
@@ -43,7 +43,7 @@ func TestPaymentFromXDR(t *testing.T) {
 	xdrEnv, err := unmarshalBase64(txeB64)
 	if assert.NoError(t, err) {
 		var p Payment
-		err = p.FromXDR(xdrEnv.Tx.Operations[0])
+		err = p.FromXDR(xdrEnv.Operations()[0])
 		if assert.NoError(t, err) {
 			assert.Equal(t, "GBUKBCG5VLRKAVYAIREJRUJHOKLIADZJOICRW43WVJCLES52BDOTCQZU", p.SourceAccount.GetAccountID(), "source accounts should match")
 			assert.Equal(t, "GAIH3ULLFQ4DGSECF2AR555KZ4KNDGEKN4AFI4SU2M7B43MGK3QJZNSR", p.Destination, "destination should match")
@@ -51,7 +51,7 @@ func TestPaymentFromXDR(t *testing.T) {
 			assert.Equal(t, true, p.Asset.IsNative(), "Asset should be native")
 		}
 
-		err = p.FromXDR(xdrEnv.Tx.Operations[1])
+		err = p.FromXDR(xdrEnv.Operations()[1])
 		if assert.NoError(t, err) {
 			assert.Equal(t, nil, p.SourceAccount, "source accounts should match")
 			assert.Equal(t, "GAIH3ULLFQ4DGSECF2AR555KZ4KNDGEKN4AFI4SU2M7B43MGK3QJZNSR", p.Destination, "destination should match")
@@ -71,7 +71,7 @@ func TestPathPaymentFromXDR(t *testing.T) {
 	xdrEnv, err := unmarshalBase64(txeB64)
 	if assert.NoError(t, err) {
 		var pp PathPayment
-		err = pp.FromXDR(xdrEnv.Tx.Operations[0])
+		err = pp.FromXDR(xdrEnv.Operations()[0])
 		if assert.NoError(t, err) {
 			assert.Equal(t, nil, pp.SourceAccount, "source accounts should match")
 			assert.Equal(t, "GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H", pp.Destination, "destination should match")
@@ -94,7 +94,7 @@ func TestManageSellOfferFromXDR(t *testing.T) {
 	xdrEnv, err := unmarshalBase64(txeB64)
 	if assert.NoError(t, err) {
 		var mso ManageSellOffer
-		err = mso.FromXDR(xdrEnv.Tx.Operations[0])
+		err = mso.FromXDR(xdrEnv.Operations()[0])
 		if assert.NoError(t, err) {
 			assert.Equal(t, "GBUKBCG5VLRKAVYAIREJRUJHOKLIADZJOICRW43WVJCLES52BDOTCQZU", mso.SourceAccount.GetAccountID(), "source accounts should match")
 			assert.Equal(t, int64(0), mso.OfferID, "OfferID should match")
@@ -108,7 +108,7 @@ func TestManageSellOfferFromXDR(t *testing.T) {
 			assert.Equal(t, "GBUKBCG5VLRKAVYAIREJRUJHOKLIADZJOICRW43WVJCLES52BDOTCQZU", mso.Buying.GetIssuer(), "Asset issuer should match")
 		}
 
-		err = mso.FromXDR(xdrEnv.Tx.Operations[1])
+		err = mso.FromXDR(xdrEnv.Operations()[1])
 		if assert.NoError(t, err) {
 			assert.Equal(t, nil, mso.SourceAccount, "source accounts should match")
 			assert.Equal(t, int64(0), mso.OfferID, "OfferID should match")
@@ -131,7 +131,7 @@ func TestManageBuyOfferFromXDR(t *testing.T) {
 	xdrEnv, err := unmarshalBase64(txeB64)
 	if assert.NoError(t, err) {
 		var mbo ManageBuyOffer
-		err = mbo.FromXDR(xdrEnv.Tx.Operations[0])
+		err = mbo.FromXDR(xdrEnv.Operations()[0])
 		if assert.NoError(t, err) {
 			assert.Equal(t, "GBUKBCG5VLRKAVYAIREJRUJHOKLIADZJOICRW43WVJCLES52BDOTCQZU", mbo.SourceAccount.GetAccountID(), "source accounts should match")
 			assert.Equal(t, int64(0), mbo.OfferID, "OfferID should match")
@@ -145,7 +145,7 @@ func TestManageBuyOfferFromXDR(t *testing.T) {
 			assert.Equal(t, "GBUKBCG5VLRKAVYAIREJRUJHOKLIADZJOICRW43WVJCLES52BDOTCQZU", mbo.Buying.GetIssuer(), "Asset issuer should match")
 		}
 
-		err = mbo.FromXDR(xdrEnv.Tx.Operations[1])
+		err = mbo.FromXDR(xdrEnv.Operations()[1])
 		if assert.NoError(t, err) {
 			assert.Equal(t, nil, mbo.SourceAccount, "source accounts should match")
 			assert.Equal(t, int64(0), mbo.OfferID, "OfferID should match")
@@ -168,7 +168,7 @@ func TestCreatePassiveSellOfferFromXDR(t *testing.T) {
 	xdrEnv, err := unmarshalBase64(txeB64)
 	if assert.NoError(t, err) {
 		var cpo CreatePassiveSellOffer
-		err = cpo.FromXDR(xdrEnv.Tx.Operations[0])
+		err = cpo.FromXDR(xdrEnv.Operations()[0])
 		if assert.NoError(t, err) {
 			assert.Equal(t, nil, cpo.SourceAccount, "source accounts should match")
 			assert.Equal(t, "10.0000000", cpo.Amount, "Amount should match")
@@ -295,7 +295,7 @@ func TestAllowTrustFromXDR(t *testing.T) {
 	allowTrustOp := xdr.AllowTrustOp{
 		Trustor:   trustor,
 		Asset:     allowTrustAsset,
-		Authorize: true,
+		Authorize: xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag),
 	}
 
 	xdrOp := xdr.Operation{

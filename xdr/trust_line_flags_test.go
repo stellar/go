@@ -19,3 +19,16 @@ func TestIsAuthorized(t *testing.T) {
 	flag = xdr.TrustLineFlags(2)
 	tt.False(flag.IsAuthorized())
 }
+
+func TestIsAuthorizedToMaintainLiabilitiesFlag(t *testing.T) {
+	tt := assert.New(t)
+
+	flag := xdr.TrustLineFlags(1)
+	tt.False(flag.IsAuthorizedToMaintainLiabilitiesFlag())
+
+	flag = xdr.TrustLineFlags(0)
+	tt.False(flag.IsAuthorizedToMaintainLiabilitiesFlag())
+
+	flag = xdr.TrustLineFlags(2)
+	tt.True(flag.IsAuthorizedToMaintainLiabilitiesFlag())
+}

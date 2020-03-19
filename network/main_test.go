@@ -15,6 +15,18 @@ func TestHashTransaction(t *testing.T) {
 
 	require.NoError(t, err)
 
+	txe.V1 = &xdr.TransactionV1Envelope{
+		Tx: xdr.Transaction{
+			SourceAccount: txe.SourceAccount(),
+			Fee:           xdr.Uint32(txe.Fee()),
+			Memo:          txe.Memo(),
+			Operations:    txe.Operations(),
+			SeqNum:        xdr.SequenceNumber(txe.SeqNum()),
+			TimeBounds:    txe.TimeBounds(),
+		},
+	}
+	txe.V0 = nil
+
 	expected := [32]byte{
 		0xc4, 0x92, 0xd8, 0x7c, 0x46, 0x42, 0x81, 0x5d,
 		0xfb, 0x3c, 0x7d, 0xcc, 0xe0, 0x1a, 0xf4, 0xef,
@@ -22,13 +34,13 @@ func TestHashTransaction(t *testing.T) {
 		0x0d, 0x78, 0x6b, 0x6e, 0x0a, 0x00, 0xfd, 0x74,
 	}
 
-	actual, err := HashTransaction(&txe.Tx, TestNetworkPassphrase)
+	actual, err := HashTransaction(&txe.V1.Tx, TestNetworkPassphrase)
 	if assert.NoError(t, err) {
 		assert.Equal(t, expected, actual)
 	}
 
 	// sadpath: empty passphrase
-	_, err = HashTransaction(&txe.Tx, "")
+	_, err = HashTransaction(&txe.V1.Tx, "")
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "empty network passphrase")
 	}

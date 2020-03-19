@@ -46,7 +46,7 @@ type Transaction struct {
 	Timebounds     Timebounds
 	Network        string
 	xdrTransaction xdr.Transaction
-	xdrEnvelope    *xdr.TransactionEnvelope
+	xdrEnvelope    *xdr.TransactionV1Envelope
 }
 
 // Hash provides a signable object representing the Transaction on the specified network.
@@ -57,7 +57,7 @@ func (tx *Transaction) Hash() ([32]byte, error) {
 // MarshalBinary returns the binary XDR representation of the transaction envelope.
 func (tx *Transaction) MarshalBinary() ([]byte, error) {
 	var txBytes bytes.Buffer
-	_, err := xdr.Marshal(&txBytes, tx.xdrEnvelope)
+	_, err := xdr.Marshal(&txBytes, tx.TxEnvelope())
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to marshal XDR")
 	}
@@ -97,12 +97,11 @@ func (tx *Transaction) SetDefaultFee() {
 func (tx *Transaction) Build() error {
 	// If transaction envelope has been signed, don't build transaction
 	if tx.xdrEnvelope != nil {
-		if tx.xdrEnvelope.Signatures != nil {
+		if len(tx.xdrEnvelope.Signatures) > 0 {
 			return errors.New("transaction has already been signed, so cannot be rebuilt.")
 		}
 		// clear the existing XDR so we don't append to any existing fields
-		tx.xdrEnvelope = &xdr.TransactionEnvelope{}
-		tx.xdrEnvelope.Tx = xdr.Transaction{}
+		tx.xdrEnvelope = &xdr.TransactionV1Envelope{}
 	}
 
 	// reset tx.xdrTransaction
@@ -164,9 +163,9 @@ func (tx *Transaction) Build() error {
 	tx.SetDefaultFee()
 
 	// Initialise transaction envelope
-	tx.xdrEnvelope = &xdr.TransactionEnvelope{}
-	tx.xdrEnvelope.Tx = tx.xdrTransaction
-
+	tx.xdrEnvelope = &xdr.TransactionV1Envelope{
+		Tx: tx.xdrTransaction,
+	}
 	return nil
 }
 
@@ -305,7 +304,10 @@ func (tx *Transaction) HashHex() (string, error) {
 
 // TxEnvelope returns the TransactionEnvelope XDR struct.
 func (tx *Transaction) TxEnvelope() *xdr.TransactionEnvelope {
-	return tx.xdrEnvelope
+	return &xdr.TransactionEnvelope{
+		Type: xdr.EnvelopeTypeEnvelopeTypeTx,
+		V1:   tx.xdrEnvelope,
+	}
 }
 
 func (tx *Transaction) setTransactionFee() error {
@@ -331,7 +333,7 @@ func (tx *Transaction) TransactionFee() int {
 // See description here: https://www.stellar.org/developers/guides/concepts/multi-sig.html#hashx.
 func (tx *Transaction) SignHashX(preimage []byte) error {
 	if tx.xdrEnvelope == nil {
-		tx.xdrEnvelope = &xdr.TransactionEnvelope{}
+		tx.xdrEnvelope = &xdr.TransactionV1Envelope{}
 		tx.xdrEnvelope.Tx = tx.xdrTransaction
 	}
 
@@ -362,29 +364,46 @@ func TransactionFromXDR(txeB64 string) (Transaction, error) {
 		return Transaction{}, errors.Wrap(err, "unable to unmarshal transaction envelope")
 	}
 
+	if xdrEnv.IsFeeBump() {
+		return Transaction{}, errors.New("fee bump transactions are not supported")
+	}
 	var newTx Transaction
-	newTx.xdrTransaction = xdrEnv.Tx
-	newTx.xdrEnvelope = &xdrEnv
-
-	if len(xdrEnv.Tx.Operations) > 0 {
-		newTx.BaseFee = uint32(xdrEnv.Tx.Fee) / uint32(len(xdrEnv.Tx.Operations))
+	newTx.xdrTransaction = xdr.Transaction{
+		SourceAccount: xdrEnv.SourceAccount(),
+		Fee:           xdr.Uint32(xdrEnv.Fee()),
+		Memo:          xdrEnv.Memo(),
+		Operations:    xdrEnv.Operations(),
+		SeqNum:        xdr.SequenceNumber(xdrEnv.SeqNum()),
+		TimeBounds:    xdrEnv.TimeBounds(),
+	}
+	newTx.xdrEnvelope = &xdr.TransactionV1Envelope{
+		Tx: newTx.xdrTransaction,
+	}
+	// only include signatures if the transaction is a V1 transaction
+	// fee bump and V0 transactions have different hashes from V1 transactions
+	if xdrEnv.Type == xdr.EnvelopeTypeEnvelopeTypeTx {
+		newTx.xdrEnvelope.Signatures = xdrEnv.Signatures()
+	}
+	if numOps := len(xdrEnv.Operations()); numOps > 0 {
+		newTx.BaseFee = xdrEnv.Fee() / uint32(numOps)
 	}
 
+	sourceAccount := xdrEnv.SourceAccount()
 	newTx.SourceAccount = &SimpleAccount{
-		AccountID: xdrEnv.Tx.SourceAccount.Address(),
-		Sequence:  int64(xdrEnv.Tx.SeqNum),
+		AccountID: sourceAccount.Address(),
+		Sequence:  xdrEnv.SeqNum(),
 	}
 
-	if xdrEnv.Tx.TimeBounds != nil {
-		newTx.Timebounds = NewTimebounds(int64(xdrEnv.Tx.TimeBounds.MinTime), int64(xdrEnv.Tx.TimeBounds.MaxTime))
+	if timeBounds := xdrEnv.TimeBounds(); timeBounds != nil {
+		newTx.Timebounds = NewTimebounds(int64(timeBounds.MinTime), int64(timeBounds.MaxTime))
 	}
 
-	newTx.Memo, err = memoFromXDR(xdrEnv.Tx.Memo)
+	newTx.Memo, err = memoFromXDR(xdrEnv.Memo())
 	if err != nil {
 		return Transaction{}, errors.Wrap(err, "unable to parse memo")
 	}
 
-	for _, op := range xdrEnv.Tx.Operations {
+	for _, op := range xdrEnv.Operations() {
 		newOp, err := operationFromXDR(op)
 		if err != nil {
 			return Transaction{}, err

@@ -52,7 +52,7 @@ func checkChallengeTx(txeBase64, anchorName string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	op := txXDR.Tx.Operations[0]
+	op := txXDR.Operations()[0]
 	if (xdr.OperationTypeManageData == op.Body.Type) && (op.Body.ManageDataOp.DataName == xdr.String64(anchorName+" auth")) {
 		return true, nil
 	}

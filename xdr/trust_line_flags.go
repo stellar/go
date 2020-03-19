@@ -5,3 +5,9 @@ package xdr
 func (e TrustLineFlags) IsAuthorized() bool {
 	return (e & TrustLineFlagsAuthorizedFlag) != 0
 }
+
+// IsAuthorizedToMaintainLiabilitiesFlag returns true if the issuer has authorized
+// the account to maintain and reduce liabilities for its credit
+func (e TrustLineFlags) IsAuthorizedToMaintainLiabilitiesFlag() bool {
+	return (e & TrustLineFlagsAuthorizedToMaintainLiabilitiesFlag) != 0
+}

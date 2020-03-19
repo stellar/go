@@ -400,32 +400,32 @@ func printHorizonError(hError *horizonclient.Error) error {
 		return errors.Wrap(err, "Couldn't read Envelope")
 	}
 
-	txe := envelope.Tx
-	aid := txe.SourceAccount.MustEd25519()
+	aid := envelope.SourceAccount().MustEd25519()
 	decodedAID, err := strkey.Encode(strkey.VersionByteAccountID, aid[:])
 	if err != nil {
 		log.Println("Couldn't decode account ID:", err)
 	} else {
-		log.Printf("SourceAccount (%s): %s", txe.SourceAccount.Type, decodedAID)
+		log.Printf("SourceAccount (%s): %s", envelope.SourceAccount().Type, decodedAID)
 	}
-	log.Println("Fee:", txe.Fee)
-	log.Println("SequenceNumber:", txe.SeqNum)
-	log.Println("TimeBounds:", txe.TimeBounds)
-	log.Println("Memo:", txe.Memo)
-	log.Println("Memo.Type:", txe.Memo.Type)
-	if txe.Memo.Type != xdr.MemoTypeMemoNone {
-		log.Println("Memo.Text:", txe.Memo.Text)
-		log.Println("Memo.Id:", txe.Memo.Id)
-		log.Println("Memo.Hash:", txe.Memo.Hash)
-		log.Println("Memo.RetHash:", txe.Memo.RetHash)
+	log.Println("Fee:", envelope.Fee())
+	log.Println("SequenceNumber:", envelope.SeqNum())
+	log.Println("TimeBounds:", envelope.TimeBounds())
+	log.Println("Memo:", envelope.Memo())
+	log.Println("Memo.Type:", envelope.Memo().Type)
+	if envelope.Memo().Type != xdr.MemoTypeMemoNone {
+		log.Println("Memo.Text:", envelope.Memo().Text)
+		log.Println("Memo.Id:", envelope.Memo().Id)
+		log.Println("Memo.Hash:", envelope.Memo().Hash)
+		log.Println("Memo.RetHash:", envelope.Memo().RetHash)
 	}
-	log.Println("Operations:", txe.Operations)
+	log.Println("Operations:", envelope.Operations())
 
-	for _, op := range txe.Operations {
+	for _, op := range envelope.Operations() {
 		log.Println("Operations.SourceAccount:", op.SourceAccount)
 		log.Println("Operations.Body.Type:", op.Body.Type)
 	}
-	log.Println("Ext:", txe.Ext)
+	// TODO is Ext a useful field which we should print?
+	// log.Println("Ext:", txe.Ext)
 
 	return nil
 }

@@ -27,7 +27,9 @@ func ExampleUnmarshal() {
 		log.Fatal(err)
 	}
 
-	fmt.Printf("This tx has %d operations\n", len(tx.Tx.Operations))
+	// TODO update example to use v1 tx
+	operations := tx.MustV0().Tx.Operations
+	fmt.Printf("This tx has %d operations\n", len(operations))
 	// Output: read 192 bytes
 	// This tx has 1 operations
 }
