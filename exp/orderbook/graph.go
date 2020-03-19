@@ -177,7 +177,8 @@ func (graph *OrderBookGraph) findOffers(
 	}
 
 	for _, offer := range offers {
-		if len(results) == 0 || results[len(results)-1].Price != offer.Price {
+		// Offers are sorted by price, so, equal prices will always be contiguous.
+		if len(results) == 0 || !results[len(results)-1].Price.Equal(offer.Price) {
 			maxPriceLevels--
 		}
 		if maxPriceLevels < 0 {

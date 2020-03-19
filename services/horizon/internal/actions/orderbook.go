@@ -85,17 +85,24 @@ type GetOrderbookHandler struct {
 func offersToPriceLevels(offers []xdr.OfferEntry, invert bool) ([]protocol.PriceLevel, error) {
 	result := []protocol.PriceLevel{}
 
+	offersWithNormalizedPrices := []xdr.OfferEntry{}
 	amountForPrice := map[xdr.Price]*big.Int{}
+
+	// normalize offer prices and accumulate per-price amounts
 	for _, offer := range offers {
+		offer.Price.Normalize()
 		offerAmount := big.NewInt(int64(offer.Amount))
 		if amount, ok := amountForPrice[offer.Price]; ok {
 			amount.Add(amount, offerAmount)
 		} else {
 			amountForPrice[offer.Price] = offerAmount
 		}
+		offersWithNormalizedPrices = append(offersWithNormalizedPrices, offer)
 	}
-	for _, offer := range offers {
+
+	for _, offer := range offersWithNormalizedPrices {
 		total, ok := amountForPrice[offer.Price]
+		// make we don't duplicate price-levels
 		if !ok {
 			continue
 		}
