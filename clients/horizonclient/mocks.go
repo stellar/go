@@ -105,6 +105,12 @@ func (m *MockClient) SubmitTransaction(transaction txnbuild.Transaction) (hProto
 	return a.Get(0).(hProtocol.TransactionSuccess), a.Error(1)
 }
 
+// SubmitTransactionWithOptions is a mocking method
+func (m *MockClient) SubmitTransactionWithOptions(transaction txnbuild.Transaction, opts SubmitTxOpts) (hProtocol.TransactionSuccess, error) {
+	a := m.Called(transaction, opts)
+	return a.Get(0).(hProtocol.TransactionSuccess), a.Error(1)
+}
+
 // Transactions is a mocking method
 func (m *MockClient) Transactions(request TransactionRequest) (hProtocol.TransactionsPage, error) {
 	a := m.Called(request)
