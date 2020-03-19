@@ -1105,6 +1105,92 @@ func ExampleClient_SubmitTransaction() {
 	// Output: {{{https://horizon-testnet.stellar.org/transactions/18579b08fafee2f419162bc81bd0ed2c0f7794af0a8273b38cac345f44dfbb09 false}} 18579b08fafee2f419162bc81bd0ed2c0f7794af0a8273b38cac345f44dfbb09 796431 AAAAAOIsdOn4jYriIzwg+Cv6o8gA5sWfwESHkAvj0qTuT8PsAAAAZAAMJu4AAAACAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAABAAAAAOIsdOn4jYriIzwg+Cv6o8gA5sWfwESHkAvj0qTuT8PsAAAAAAAAAAAAmJaAAAAAAAAAAAHuT8PsAAAAQBxXNGWfBc7xTmFaoefwjD+zc8Ux5RziO2odQosfUzB/2fH/y50WU8ahYsKKTyOihM64VlUES7BYqAdbnLJebwY= AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAA= AAAAAQAAAAIAAAADAAwnDwAAAAAAAAAA4ix06fiNiuIjPCD4K/qjyADmxZ/ARIeQC+PSpO5Pw+wAAAAXSHbnOAAMJu4AAAABAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAwnDwAAAAAAAAAA4ix06fiNiuIjPCD4K/qjyADmxZ/ARIeQC+PSpO5Pw+wAAAAXSHbnOAAMJu4AAAACAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAAA==}
 }
 
+func ExampleClient_SubmitTransactionWithOptions() {
+	kp := keypair.MustParseFull("SDQQUZMIPUP5TSDWH3UJYAKUOP55IJ4KTBXTY7RCOMEFRQGYA6GIR3OD")
+	client := horizonclient.DefaultTestNetClient
+	ar := horizonclient.AccountRequest{AccountID: kp.Address()}
+	sourceAccount, err := client.AccountDetail(ar)
+	if err != nil {
+		return
+	}
+
+	op := txnbuild.Payment{
+		Destination: kp.Address(),
+		Amount:      "1",
+		Asset:       txnbuild.NativeAsset{},
+	}
+
+	tx := txnbuild.Transaction{
+		SourceAccount: &sourceAccount,
+		Operations:    []txnbuild.Operation{&op},
+		Timebounds:    txnbuild.NewInfiniteTimeout(), // Use a real timeout in production!
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	err = tx.Build()
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	err = tx.Sign(kp)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	result, err := client.SubmitTransactionWithOptions(tx, horizonclient.SubmitTxOpts{})
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	fmt.Println(result)
+	// Output: {{{https://horizon-testnet.stellar.org/transactions/18579b08fafee2f419162bc81bd0ed2c0f7794af0a8273b38cac345f44dfbb09 false}} 18579b08fafee2f419162bc81bd0ed2c0f7794af0a8273b38cac345f44dfbb09 796431 AAAAAOIsdOn4jYriIzwg+Cv6o8gA5sWfwESHkAvj0qTuT8PsAAAAZAAMJu4AAAACAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAABAAAAAOIsdOn4jYriIzwg+Cv6o8gA5sWfwESHkAvj0qTuT8PsAAAAAAAAAAAAmJaAAAAAAAAAAAHuT8PsAAAAQBxXNGWfBc7xTmFaoefwjD+zc8Ux5RziO2odQosfUzB/2fH/y50WU8ahYsKKTyOihM64VlUES7BYqAdbnLJebwY= AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAA= AAAAAQAAAAIAAAADAAwnDwAAAAAAAAAA4ix06fiNiuIjPCD4K/qjyADmxZ/ARIeQC+PSpO5Pw+wAAAAXSHbnOAAMJu4AAAABAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAwnDwAAAAAAAAAA4ix06fiNiuIjPCD4K/qjyADmxZ/ARIeQC+PSpO5Pw+wAAAAXSHbnOAAMJu4AAAACAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAAA==}
+}
+
+func ExampleClient_SubmitTransactionWithOptions_skip_memo_required_check() {
+	kp := keypair.MustParseFull("SDQQUZMIPUP5TSDWH3UJYAKUOP55IJ4KTBXTY7RCOMEFRQGYA6GIR3OD")
+	client := horizonclient.DefaultTestNetClient
+	ar := horizonclient.AccountRequest{AccountID: kp.Address()}
+	sourceAccount, err := client.AccountDetail(ar)
+	if err != nil {
+		return
+	}
+
+	op := txnbuild.Payment{
+		Destination: kp.Address(),
+		Amount:      "1",
+		Asset:       txnbuild.NativeAsset{},
+	}
+
+	tx := txnbuild.Transaction{
+		SourceAccount: &sourceAccount,
+		Operations:    []txnbuild.Operation{&op},
+		Timebounds:    txnbuild.NewInfiniteTimeout(), // Use a real timeout in production!
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	err = tx.Build()
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	err = tx.Sign(kp)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	result, err := client.SubmitTransactionWithOptions(tx, horizonclient.SubmitTxOpts{
+		SkipMemoRequiredCheck: true,
+	})
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	fmt.Println(result)
+	// Output: {{{https://horizon-testnet.stellar.org/transactions/18579b08fafee2f419162bc81bd0ed2c0f7794af0a8273b38cac345f44dfbb09 false}} 18579b08fafee2f419162bc81bd0ed2c0f7794af0a8273b38cac345f44dfbb09 796431 AAAAAOIsdOn4jYriIzwg+Cv6o8gA5sWfwESHkAvj0qTuT8PsAAAAZAAMJu4AAAACAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAABAAAAAOIsdOn4jYriIzwg+Cv6o8gA5sWfwESHkAvj0qTuT8PsAAAAAAAAAAAAmJaAAAAAAAAAAAHuT8PsAAAAQBxXNGWfBc7xTmFaoefwjD+zc8Ux5RziO2odQosfUzB/2fH/y50WU8ahYsKKTyOihM64VlUES7BYqAdbnLJebwY= AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAA= AAAAAQAAAAIAAAADAAwnDwAAAAAAAAAA4ix06fiNiuIjPCD4K/qjyADmxZ/ARIeQC+PSpO5Pw+wAAAAXSHbnOAAMJu4AAAABAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAwnDwAAAAAAAAAA4ix06fiNiuIjPCD4K/qjyADmxZ/ARIeQC+PSpO5Pw+wAAAAXSHbnOAAMJu4AAAACAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAAA==}
+}
+
 func ExampleClient_SubmitTransactionXDR() {
 	client := horizonclient.DefaultPublicNetClient
 	// https://www.stellar.org/laboratory/#xdr-viewer?input=AAAAAOoS%2F5V%2BBiCPXRiVcz8YsnkDdODufq%2Bg7xdqTdIXN8vyAAAE4gFiW0YAAALxAAAAAQAAAAAAAAAAAAAAAFyuBUcAAAABAAAABzIyMjgyNDUAAAAAAQAAAAEAAAAALhsY%2FFdAHXllTmb025DtCVBw06WDSQjq6I9NrCQHOV8AAAABAAAAAHT8zKV7bRQzuGTpk9AO3gjWJ9jVxBXTgguFORkxHVIKAAAAAAAAAAAAOnDwAAAAAAAAAAIkBzlfAAAAQPefqlsOvni6xX1g3AqddvOp1GOM88JYzayGZodbzTfV5toyhxZvL1ZggY3prFsvrereugEpj1kyPJ67z6gcRg0XN8vyAAAAQGwmoTssW49gaze8iQkz%2FUA2E2N%2BBOo%2B6v7YdOSsvIcZnMc37KmXH920nLosKpDLqkNChVztSZFcbVUlHhjbQgA%3D&type=TransactionEnvelope&network=public
