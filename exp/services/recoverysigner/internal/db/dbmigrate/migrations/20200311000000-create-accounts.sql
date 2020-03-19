@@ -1,7 +1,10 @@
 -- +migrate Up
 
 CREATE TABLE accounts (
-  id UUID NOT NULL PRIMARY KEY,
+  id UUID NOT NULL,
+
+  PRIMARY KEY (id),
+
   created_at TIMESTAMP WITH TIME ZONE NOT NULL,
   deleted_at TIMESTAMP WITH TIME ZONE,
 

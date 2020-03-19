@@ -1,11 +1,15 @@
 -- +migrate Up
 
 CREATE TABLE identities (
-  id UUID NOT NULL PRIMARY KEY,
+  account_id UUID NOT NULL,
+  id UUID NOT NULL,
+
+  FOREIGN KEY (account_id) REFERENCES accounts (id) ON DELETE CASCADE,
+  PRIMARY KEY (account_id, id),
+
   created_at TIMESTAMP WITH TIME ZONE NOT NULL,
   deleted_at TIMESTAMP WITH TIME ZONE,
 
-  account_id UUID NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
   role TEXT NOT NULL
 );
 
