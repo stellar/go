@@ -6,9 +6,12 @@ import (
 	"time"
 
 	"github.com/stellar/go/clients/horizonclient"
+	"github.com/stellar/go/keypair"
+	"github.com/stellar/go/network"
 	hProtocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/protocols/horizon/effects"
 	"github.com/stellar/go/protocols/horizon/operations"
+	"github.com/stellar/go/txnbuild"
 )
 
 func ExampleClient_Accounts() {
@@ -1058,6 +1061,48 @@ func ExampleClient_StreamTransactions() {
 	if err != nil {
 		fmt.Println(err)
 	}
+}
+
+func ExampleClient_SubmitTransaction() {
+	kp := keypair.MustParseFull("SDQQUZMIPUP5TSDWH3UJYAKUOP55IJ4KTBXTY7RCOMEFRQGYA6GIR3OD")
+	client := horizonclient.DefaultTestNetClient
+	ar := horizonclient.AccountRequest{AccountID: kp.Address()}
+	sourceAccount, err := client.AccountDetail(ar)
+	if err != nil {
+		return
+	}
+
+	op := txnbuild.Payment{
+		Destination: kp.Address(),
+		Amount:      "1",
+		Asset:       txnbuild.NativeAsset{},
+	}
+
+	tx := txnbuild.Transaction{
+		SourceAccount: &sourceAccount,
+		Operations:    []txnbuild.Operation{&op},
+		Timebounds:    txnbuild.NewInfiniteTimeout(), // Use a real timeout in production!
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	err = tx.Build()
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	err = tx.Sign(kp)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	result, err := client.SubmitTransaction(tx)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	fmt.Println(result)
+	// Output: {{{https://horizon-testnet.stellar.org/transactions/18579b08fafee2f419162bc81bd0ed2c0f7794af0a8273b38cac345f44dfbb09 false}} 18579b08fafee2f419162bc81bd0ed2c0f7794af0a8273b38cac345f44dfbb09 796431 AAAAAOIsdOn4jYriIzwg+Cv6o8gA5sWfwESHkAvj0qTuT8PsAAAAZAAMJu4AAAACAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAABAAAAAOIsdOn4jYriIzwg+Cv6o8gA5sWfwESHkAvj0qTuT8PsAAAAAAAAAAAAmJaAAAAAAAAAAAHuT8PsAAAAQBxXNGWfBc7xTmFaoefwjD+zc8Ux5RziO2odQosfUzB/2fH/y50WU8ahYsKKTyOihM64VlUES7BYqAdbnLJebwY= AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAA= AAAAAQAAAAIAAAADAAwnDwAAAAAAAAAA4ix06fiNiuIjPCD4K/qjyADmxZ/ARIeQC+PSpO5Pw+wAAAAXSHbnOAAMJu4AAAABAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAwnDwAAAAAAAAAA4ix06fiNiuIjPCD4K/qjyADmxZ/ARIeQC+PSpO5Pw+wAAAAXSHbnOAAMJu4AAAACAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAAA==}
 }
 
 func ExampleClient_SubmitTransactionXDR() {
