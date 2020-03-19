@@ -13,7 +13,7 @@ CREATE TABLE identities (
   role TEXT NOT NULL
 );
 
-CREATE INDEX identities_account_id ON identities (account_id) WHERE deleted_at IS NULL;
+CREATE INDEX identities_accountid ON identities (account_id) WHERE deleted_at IS NULL;
 
 -- +migrate Down
 
