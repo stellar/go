@@ -84,7 +84,7 @@ func (c *Client) checkMemoRequired(transaction txnbuild.Transaction) error {
 			continue
 		}
 
-		if data.Value == AccountRequiresMemo {
+		if data.Value == accountRequiresMemo {
 			return errors.Wrap(
 				ErrAccountRequiresMemo,
 				fmt.Sprintf("operation[%d]", i),

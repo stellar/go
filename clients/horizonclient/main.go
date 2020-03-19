@@ -61,9 +61,9 @@ const (
 	AssetType12 AssetType = "credit_alphanum12"
 	// AssetTypeNative represents the asset type for Stellar Lumens (XLM)
 	AssetTypeNative AssetType = "native"
-	// AccountRequiresMemo is the base64 encoding of "1".
+	// accountRequiresMemo is the base64 encoding of "1".
 	// SEP 29 uses this value to define transaction memo requirements for incoming payments.
-	AccountRequiresMemo = "MQ=="
+	accountRequiresMemo = "MQ=="
 )
 
 // Error struct contains the problem returned by Horizon
