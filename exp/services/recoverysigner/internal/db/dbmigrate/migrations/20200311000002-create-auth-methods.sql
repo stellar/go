@@ -1,6 +1,10 @@
 -- +migrate Up
 
-CREATE TYPE auth_method_type AS ENUM ('stellar_address', 'phone_number', 'email');
+CREATE TYPE auth_method_type AS ENUM (
+  'stellar_address',
+  'phone_number',
+  'email'
+);
 
 CREATE TABLE auth_methods (
   account_id BIGINT NOT NULL,
