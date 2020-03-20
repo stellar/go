@@ -922,7 +922,7 @@ func TestOperationEffects(t *testing.T) {
 			operation := transactionOperationWrapper{
 				index:          tc.index,
 				transaction:    transaction,
-				operation:      transaction.Envelope.Tx.Operations[tc.index],
+				operation:      transaction.Envelope.Operations()[tc.index],
 				ledgerSequence: tc.sequence,
 			}
 
@@ -995,7 +995,12 @@ func TestOperationEffectsSetOptionsSignersOrder(t *testing.T) {
 		}),
 	}
 	transaction.Index = 1
-	transaction.Envelope.Tx.SourceAccount = xdr.MustAddress("GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV")
+	transaction.Envelope.Type = xdr.EnvelopeTypeEnvelopeTypeTx
+	transaction.Envelope.V1 = &xdr.TransactionV1Envelope{
+		Tx: xdr.Transaction{
+			SourceAccount: xdr.MustAddress("GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV"),
+		},
+	}
 
 	operation := transactionOperationWrapper{
 		index:       0,
@@ -1120,7 +1125,12 @@ func TestOperationEffectsSetOptionsSignersNoUpdated(t *testing.T) {
 		}),
 	}
 	transaction.Index = 1
-	transaction.Envelope.Tx.SourceAccount = xdr.MustAddress("GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV")
+	transaction.Envelope.Type = xdr.EnvelopeTypeEnvelopeTypeTx
+	transaction.Envelope.V1 = &xdr.TransactionV1Envelope{
+		Tx: xdr.Transaction{
+			SourceAccount: xdr.MustAddress("GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV"),
+		},
+	}
 
 	operation := transactionOperationWrapper{
 		index:       0,
@@ -1178,8 +1188,12 @@ func TestOperationRegressionAccountTrustItself(t *testing.T) {
 		Meta: createTransactionMeta([]xdr.OperationMeta{}),
 	}
 	transaction.Index = 1
-	transaction.Envelope.Tx.SourceAccount = xdr.MustAddress("GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV")
-
+	transaction.Envelope.Type = xdr.EnvelopeTypeEnvelopeTypeTx
+	transaction.Envelope.V1 = &xdr.TransactionV1Envelope{
+		Tx: xdr.Transaction{
+			SourceAccount: xdr.MustAddress("GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV"),
+		},
+	}
 	operation := transactionOperationWrapper{
 		index:       0,
 		transaction: transaction,

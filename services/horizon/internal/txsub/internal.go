@@ -2,9 +2,10 @@ package txsub
 
 import (
 	"context"
+	"encoding/hex"
 
-	"github.com/stellar/go/build"
-	"github.com/stellar/go/strkey"
+	"github.com/stellar/go/network"
+	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
 
@@ -14,28 +15,32 @@ type envelopeInfo struct {
 	SourceAddress string
 }
 
-func extractEnvelopeInfo(ctx context.Context, env string, passphrase string) (result envelopeInfo, err error) {
+func extractEnvelopeInfo(ctx context.Context, env string, passphrase string) (envelopeInfo, error) {
+	var result envelopeInfo
 	var tx xdr.TransactionEnvelope
-
-	err = xdr.SafeUnmarshalBase64(env, &tx)
-
+	err := xdr.SafeUnmarshalBase64(env, &tx)
 	if err != nil {
-		err = &MalformedTransactionError{env}
-		return
+		return result, &MalformedTransactionError{env}
 	}
 
-	txb := build.TransactionBuilder{TX: &tx.Tx}
-	txb.Mutate(build.Network{passphrase})
-
-	result.Hash, err = txb.HashHex()
+	var hash [32]byte
+	switch tx.Type {
+	case xdr.EnvelopeTypeEnvelopeTypeTx:
+		hash, err = network.HashTransaction(&tx.V1.Tx, passphrase)
+	case xdr.EnvelopeTypeEnvelopeTypeTxV0:
+		hash, err = network.HashTransactionV0(&tx.V0.Tx, passphrase)
+	case xdr.EnvelopeTypeEnvelopeTypeTxFeeBump:
+		hash, err = network.HashFeeBumpTransaction(&tx.FeeBump.Tx, passphrase)
+	default:
+		return result, errors.New("invalid transaction type")
+	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	result.Sequence = uint64(tx.Tx.SeqNum)
-
-	aid := tx.Tx.SourceAccount.MustEd25519()
-	result.SourceAddress, err = strkey.Encode(strkey.VersionByteAccountID, aid[:])
-
-	return
+	result.Hash = hex.EncodeToString(hash[:])
+	result.Sequence = uint64(tx.SeqNum())
+	sourceAccount := tx.SourceAccount()
+	result.SourceAddress = sourceAccount.Address()
+	return result, nil
 }

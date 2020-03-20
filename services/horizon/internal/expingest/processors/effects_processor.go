@@ -55,7 +55,7 @@ func (p *EffectProcessor) loadAccountIDs(accountSet map[string]int64) error {
 func operationsEffects(transaction io.LedgerTransaction, sequence uint32) ([]effect, error) {
 	effects := []effect{}
 
-	for opi, op := range transaction.Envelope.Tx.Operations {
+	for opi, op := range transaction.Envelope.Operations() {
 		operation := transactionOperationWrapper{
 			index:          uint32(opi),
 			transaction:    transaction,
@@ -549,7 +549,7 @@ func (operation *transactionOperationWrapper) allowTrustEffects() []effect {
 	}
 	assetDetails(details, asset, "")
 
-	if op.Authorize {
+	if xdr.TrustLineFlags(op.Authorize).IsAuthorized() {
 		effects.add(source.Address(), history.EffectTrustlineAuthorized, details)
 	} else {
 		effects.add(source.Address(), history.EffectTrustlineDeauthorized, details)

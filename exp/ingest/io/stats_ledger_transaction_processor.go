@@ -40,7 +40,7 @@ type StatsLedgerTransactionProcessorResults struct {
 
 func (p *StatsLedgerTransactionProcessor) ProcessTransaction(transaction LedgerTransaction) error {
 	p.results.Transactions++
-	ops := int64(len(transaction.Envelope.Tx.Operations))
+	ops := int64(len(transaction.Envelope.Operations()))
 	p.results.Operations += ops
 
 	if transaction.Successful() {
@@ -52,7 +52,7 @@ func (p *StatsLedgerTransactionProcessor) ProcessTransaction(transaction LedgerT
 		p.results.OperationsInFailed += ops
 	}
 
-	for _, op := range transaction.Envelope.Tx.Operations {
+	for _, op := range transaction.Envelope.Operations() {
 		switch op.Body.Type {
 		case xdr.OperationTypeCreateAccount:
 			p.results.OperationsCreateAccount++

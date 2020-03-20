@@ -31,7 +31,7 @@ func NewOperationProcessor(operationsQ history.QOperations, sequence uint32) *Op
 
 // ProcessTransaction process the given transaction
 func (p *OperationProcessor) ProcessTransaction(transaction io.LedgerTransaction) (err error) {
-	for i, op := range transaction.Envelope.Tx.Operations {
+	for i, op := range transaction.Envelope.Operations() {
 		operation := transactionOperationWrapper{
 			index:          uint32(i),
 			transaction:    transaction,
@@ -97,7 +97,8 @@ func (operation *transactionOperationWrapper) SourceAccount() *xdr.AccountId {
 		return sourceAccount
 	}
 
-	return &operation.transaction.Envelope.Tx.SourceAccount
+	sa := operation.transaction.Envelope.SourceAccount()
+	return &sa
 }
 
 // OperationType returns the operation type.
@@ -261,7 +262,7 @@ func (operation *transactionOperationWrapper) Details() map[string]interface{} {
 		assetDetails(details, op.Asset.ToAsset(*source), "")
 		details["trustee"] = source.Address()
 		details["trustor"] = op.Trustor.Address()
-		details["authorize"] = op.Authorize
+		details["authorize"] = xdr.TrustLineFlags(op.Authorize).IsAuthorized()
 	case xdr.OperationTypeAccountMerge:
 		aid := operation.operation.Body.MustDestination()
 		details["account"] = source.Address()
@@ -395,7 +396,7 @@ func dedupe(in []xdr.AccountId) (out []xdr.AccountId) {
 func operationsParticipants(transaction io.LedgerTransaction, sequence uint32) (map[int64][]xdr.AccountId, error) {
 	participants := map[int64][]xdr.AccountId{}
 
-	for opi, op := range transaction.Envelope.Tx.Operations {
+	for opi, op := range transaction.Envelope.Operations() {
 		operation := transactionOperationWrapper{
 			index:          uint32(opi),
 			transaction:    transaction,
