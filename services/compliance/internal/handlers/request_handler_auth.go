@@ -15,6 +15,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	baseAmount "github.com/stellar/go/amount"
+	"github.com/stellar/go/network"
 	"github.com/stellar/go/protocols/compliance"
 	"github.com/stellar/go/services/compliance/internal/db"
 	shared "github.com/stellar/go/services/internal/bridge-compliance-shared"
@@ -135,7 +136,7 @@ func (rh *RequestHandler) HandlerAuth(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	transactionHash, err := shared.TransactionHash(&tx, rh.Config.NetworkPassphrase)
+	transactionHash, err := network.HashTransaction(&tx, rh.Config.NetworkPassphrase)
 	if err != nil {
 		log.WithFields(log.Fields{"err": err}).Warn("Error calculating tx hash")
 		httpHelpers.Write(w, httpHelpers.InternalServerError)

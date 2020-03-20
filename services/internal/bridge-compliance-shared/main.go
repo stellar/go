@@ -1,9 +1,6 @@
 package shared
 
 import (
-	"bytes"
-
-	"github.com/stellar/go/hash"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/txnbuild"
@@ -42,35 +39,12 @@ func BuildTransaction(accountID, networkPassphrase string, operation []txnbuild.
 	if err != nil {
 		return "", errors.Wrap(err, "unable to decode transaction envelope")
 	}
-	txB64, err := xdr.MarshalBase64(txXDR.Tx)
+	txB64, err := xdr.MarshalBase64(txXDR.V1.Tx)
 	if err != nil {
 		return "", errors.Wrap(err, "unable to encode transaction")
 	}
 
 	return txB64, err
-}
-
-// TransactionHash returns transaction hash for a given Transaction based on the network
-func TransactionHash(tx *xdr.Transaction, networkPassphrase string) ([32]byte, error) {
-	var txBytes bytes.Buffer
-
-	h := hash.Hash([]byte(networkPassphrase))
-	_, err := txBytes.Write(h[:])
-	if err != nil {
-		return [32]byte{}, err
-	}
-
-	_, err = xdr.Marshal(&txBytes, xdr.EnvelopeTypeEnvelopeTypeTx)
-	if err != nil {
-		return [32]byte{}, err
-	}
-
-	_, err = xdr.Marshal(&txBytes, tx)
-	if err != nil {
-		return [32]byte{}, err
-	}
-
-	return hash.Hash(txBytes.Bytes()), nil
 }
 
 // IsValidAccountID returns true if account ID is valid

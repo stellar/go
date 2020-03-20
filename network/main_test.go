@@ -8,24 +8,21 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TODO add test for hash fee bump transaction
 func TestHashTransaction(t *testing.T) {
 	var txe xdr.TransactionEnvelope
-
 	err := xdr.SafeUnmarshalBase64("AAAAAGL8HQvQkbK2HA3WVjRrKmjX00fG8sLI7m0ERwJW/AX3AAAACgAAAAAAAAABAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAArqN6LeOagjxMaUP96Bzfs9e0corNZXzBWJkFoK7kvkwAAAAAO5rKAAAAAAAAAAABVvwF9wAAAEAKZ7IPj/46PuWU6ZOtyMosctNAkXRNX9WCAI5RnfRk+AyxDLoDZP/9l3NvsxQtWj9juQOuoBlFLnWu8intgxQA", &txe)
 
 	require.NoError(t, err)
 
-	txe.V1 = &xdr.TransactionV1Envelope{
-		Tx: xdr.Transaction{
-			SourceAccount: txe.SourceAccount(),
-			Fee:           xdr.Uint32(txe.Fee()),
-			Memo:          txe.Memo(),
-			Operations:    txe.Operations(),
-			SeqNum:        xdr.SequenceNumber(txe.SeqNum()),
-			TimeBounds:    txe.TimeBounds(),
-		},
+	tx := xdr.Transaction{
+		SourceAccount: txe.SourceAccount(),
+		Fee:           xdr.Uint32(txe.Fee()),
+		Memo:          txe.Memo(),
+		Operations:    txe.Operations(),
+		SeqNum:        xdr.SequenceNumber(txe.SeqNum()),
+		TimeBounds:    txe.TimeBounds(),
 	}
-	txe.V0 = nil
 
 	expected := [32]byte{
 		0xc4, 0x92, 0xd8, 0x7c, 0x46, 0x42, 0x81, 0x5d,
@@ -34,13 +31,13 @@ func TestHashTransaction(t *testing.T) {
 		0x0d, 0x78, 0x6b, 0x6e, 0x0a, 0x00, 0xfd, 0x74,
 	}
 
-	actual, err := HashTransaction(&txe.V1.Tx, TestNetworkPassphrase)
+	actual, err := HashTransaction(&tx, TestNetworkPassphrase)
 	if assert.NoError(t, err) {
 		assert.Equal(t, expected, actual)
 	}
 
 	// sadpath: empty passphrase
-	_, err = HashTransaction(&txe.V1.Tx, "")
+	_, err = HashTransaction(&tx, "")
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "empty network passphrase")
 	}
