@@ -402,7 +402,7 @@ func TestAddOfferOrderBook(t *testing.T) {
 
 	expectedGraph := &OrderBookGraph{
 		edgesForSellingAsset: map[string]edgeSet{
-			nativeAsset.String(): edgeSet{
+			nativeAsset.String(): {
 				usdAsset.String(): []xdr.OfferEntry{
 					quarterOffer,
 					fiftyCentsOffer,
@@ -414,52 +414,52 @@ func TestAddOfferOrderBook(t *testing.T) {
 					threeEurOffer,
 				},
 			},
-			usdAsset.String(): edgeSet{
+			usdAsset.String(): {
 				eurAsset.String(): []xdr.OfferEntry{
 					eurUsdOffer,
 					otherEurUsdOffer,
 				},
 			},
-			eurAsset.String(): edgeSet{
+			eurAsset.String(): {
 				usdAsset.String(): []xdr.OfferEntry{
 					usdEurOffer,
 				},
 			},
 		},
 		tradingPairForOffer: map[xdr.Int64]tradingPair{
-			quarterOffer.OfferId: tradingPair{
+			quarterOffer.OfferId: {
 				buyingAsset:  usdAsset.String(),
 				sellingAsset: nativeAsset.String(),
 			},
-			fiftyCentsOffer.OfferId: tradingPair{
+			fiftyCentsOffer.OfferId: {
 				buyingAsset:  usdAsset.String(),
 				sellingAsset: nativeAsset.String(),
 			},
-			dollarOffer.OfferId: tradingPair{
+			dollarOffer.OfferId: {
 				buyingAsset:  usdAsset.String(),
 				sellingAsset: nativeAsset.String(),
 			},
-			eurOffer.OfferId: tradingPair{
+			eurOffer.OfferId: {
 				buyingAsset:  eurAsset.String(),
 				sellingAsset: nativeAsset.String(),
 			},
-			twoEurOffer.OfferId: tradingPair{
+			twoEurOffer.OfferId: {
 				buyingAsset:  eurAsset.String(),
 				sellingAsset: nativeAsset.String(),
 			},
-			threeEurOffer.OfferId: tradingPair{
+			threeEurOffer.OfferId: {
 				buyingAsset:  eurAsset.String(),
 				sellingAsset: nativeAsset.String(),
 			},
-			eurUsdOffer.OfferId: tradingPair{
+			eurUsdOffer.OfferId: {
 				buyingAsset:  eurAsset.String(),
 				sellingAsset: usdAsset.String(),
 			},
-			otherEurUsdOffer.OfferId: tradingPair{
+			otherEurUsdOffer.OfferId: {
 				buyingAsset:  eurAsset.String(),
 				sellingAsset: usdAsset.String(),
 			},
-			usdEurOffer.OfferId: tradingPair{
+			usdEurOffer.OfferId: {
 				buyingAsset:  usdAsset.String(),
 				sellingAsset: eurAsset.String(),
 			},
@@ -574,7 +574,7 @@ func TestUpdateOfferOrderBook(t *testing.T) {
 
 	expectedGraph := &OrderBookGraph{
 		edgesForSellingAsset: map[string]edgeSet{
-			nativeAsset.String(): edgeSet{
+			nativeAsset.String(): {
 				usdAsset.String(): []xdr.OfferEntry{
 					quarterOffer,
 					fiftyCentsOffer,
@@ -586,52 +586,52 @@ func TestUpdateOfferOrderBook(t *testing.T) {
 					threeEurOffer,
 				},
 			},
-			usdAsset.String(): edgeSet{
+			usdAsset.String(): {
 				eurAsset.String(): []xdr.OfferEntry{
 					otherEurUsdOffer,
 					eurUsdOffer,
 				},
 			},
-			eurAsset.String(): edgeSet{
+			eurAsset.String(): {
 				usdAsset.String(): []xdr.OfferEntry{
 					usdEurOffer,
 				},
 			},
 		},
 		tradingPairForOffer: map[xdr.Int64]tradingPair{
-			quarterOffer.OfferId: tradingPair{
+			quarterOffer.OfferId: {
 				buyingAsset:  usdAsset.String(),
 				sellingAsset: nativeAsset.String(),
 			},
-			fiftyCentsOffer.OfferId: tradingPair{
+			fiftyCentsOffer.OfferId: {
 				buyingAsset:  usdAsset.String(),
 				sellingAsset: nativeAsset.String(),
 			},
-			dollarOffer.OfferId: tradingPair{
+			dollarOffer.OfferId: {
 				buyingAsset:  usdAsset.String(),
 				sellingAsset: nativeAsset.String(),
 			},
-			eurOffer.OfferId: tradingPair{
+			eurOffer.OfferId: {
 				buyingAsset:  eurAsset.String(),
 				sellingAsset: nativeAsset.String(),
 			},
-			twoEurOffer.OfferId: tradingPair{
+			twoEurOffer.OfferId: {
 				buyingAsset:  eurAsset.String(),
 				sellingAsset: nativeAsset.String(),
 			},
-			threeEurOffer.OfferId: tradingPair{
+			threeEurOffer.OfferId: {
 				buyingAsset:  eurAsset.String(),
 				sellingAsset: nativeAsset.String(),
 			},
-			eurUsdOffer.OfferId: tradingPair{
+			eurUsdOffer.OfferId: {
 				buyingAsset:  eurAsset.String(),
 				sellingAsset: usdAsset.String(),
 			},
-			otherEurUsdOffer.OfferId: tradingPair{
+			otherEurUsdOffer.OfferId: {
 				buyingAsset:  eurAsset.String(),
 				sellingAsset: usdAsset.String(),
 			},
-			usdEurOffer.OfferId: tradingPair{
+			usdEurOffer.OfferId: {
 				buyingAsset:  usdAsset.String(),
 				sellingAsset: eurAsset.String(),
 			},
@@ -753,7 +753,7 @@ func TestRemoveOfferOrderBook(t *testing.T) {
 
 	expectedGraph := &OrderBookGraph{
 		edgesForSellingAsset: map[string]edgeSet{
-			nativeAsset.String(): edgeSet{
+			nativeAsset.String(): {
 				usdAsset.String(): []xdr.OfferEntry{
 					quarterOffer,
 					fiftyCentsOffer,
@@ -764,34 +764,34 @@ func TestRemoveOfferOrderBook(t *testing.T) {
 					threeEurOffer,
 				},
 			},
-			usdAsset.String(): edgeSet{
+			usdAsset.String(): {
 				eurAsset.String(): []xdr.OfferEntry{
 					eurUsdOffer,
 				},
 			},
 		},
 		tradingPairForOffer: map[xdr.Int64]tradingPair{
-			quarterOffer.OfferId: tradingPair{
+			quarterOffer.OfferId: {
 				buyingAsset:  usdAsset.String(),
 				sellingAsset: nativeAsset.String(),
 			},
-			fiftyCentsOffer.OfferId: tradingPair{
+			fiftyCentsOffer.OfferId: {
 				buyingAsset:  usdAsset.String(),
 				sellingAsset: nativeAsset.String(),
 			},
-			eurOffer.OfferId: tradingPair{
+			eurOffer.OfferId: {
 				buyingAsset:  eurAsset.String(),
 				sellingAsset: nativeAsset.String(),
 			},
-			twoEurOffer.OfferId: tradingPair{
+			twoEurOffer.OfferId: {
 				buyingAsset:  eurAsset.String(),
 				sellingAsset: nativeAsset.String(),
 			},
-			threeEurOffer.OfferId: tradingPair{
+			threeEurOffer.OfferId: {
 				buyingAsset:  eurAsset.String(),
 				sellingAsset: nativeAsset.String(),
 			},
-			eurUsdOffer.OfferId: tradingPair{
+			eurUsdOffer.OfferId: {
 				buyingAsset:  eurAsset.String(),
 				sellingAsset: usdAsset.String(),
 			},
@@ -940,6 +940,9 @@ func TestFindAsksAndBids(t *testing.T) {
 	extraTwoEurOffers := []xdr.OfferEntry{}
 	for i := 0; i < 4; i++ {
 		otherTwoEurOffer := twoEurOffer
+		// make sure de-normalized prices are dealt with properly
+		otherTwoEurOffer.Price.N *= xdr.Int32(i + 1)
+		otherTwoEurOffer.Price.D *= xdr.Int32(i + 1)
 		otherTwoEurOffer.OfferId += xdr.Int64(i + 17)
 		graph.AddOffer(otherTwoEurOffer)
 		extraTwoEurOffers = append(extraTwoEurOffers, otherTwoEurOffer)
@@ -1204,7 +1207,7 @@ func TestConsumeOffersForBuyingAsset(t *testing.T) {
 
 func TestSortAndFilterPathsBySourceAsset(t *testing.T) {
 	allPaths := []Path{
-		Path{
+		{
 			SourceAmount:      3,
 			SourceAsset:       eurAsset,
 			sourceAssetString: eurAsset.String(),
@@ -1212,7 +1215,7 @@ func TestSortAndFilterPathsBySourceAsset(t *testing.T) {
 			DestinationAsset:  yenAsset,
 			DestinationAmount: 1000,
 		},
-		Path{
+		{
 			SourceAmount:      4,
 			SourceAsset:       eurAsset,
 			sourceAssetString: eurAsset.String(),
@@ -1220,7 +1223,7 @@ func TestSortAndFilterPathsBySourceAsset(t *testing.T) {
 			DestinationAsset:  yenAsset,
 			DestinationAmount: 1000,
 		},
-		Path{
+		{
 			SourceAmount:      1,
 			SourceAsset:       usdAsset,
 			sourceAssetString: usdAsset.String(),
@@ -1228,7 +1231,7 @@ func TestSortAndFilterPathsBySourceAsset(t *testing.T) {
 			DestinationAsset:  yenAsset,
 			DestinationAmount: 1000,
 		},
-		Path{
+		{
 			SourceAmount:      2,
 			SourceAsset:       eurAsset,
 			sourceAssetString: eurAsset.String(),
@@ -1236,7 +1239,7 @@ func TestSortAndFilterPathsBySourceAsset(t *testing.T) {
 			DestinationAsset:  yenAsset,
 			DestinationAmount: 1000,
 		},
-		Path{
+		{
 			SourceAmount:      2,
 			SourceAsset:       eurAsset,
 			sourceAssetString: eurAsset.String(),
@@ -1246,7 +1249,7 @@ func TestSortAndFilterPathsBySourceAsset(t *testing.T) {
 			DestinationAsset:  yenAsset,
 			DestinationAmount: 1000,
 		},
-		Path{
+		{
 			SourceAmount:      10,
 			SourceAsset:       nativeAsset,
 			sourceAssetString: nativeAsset.String(),
@@ -1264,14 +1267,14 @@ func TestSortAndFilterPathsBySourceAsset(t *testing.T) {
 		t.Fatalf("unexpected error %v", err)
 	}
 	expectedPaths := []Path{
-		Path{
+		{
 			SourceAmount:      2,
 			SourceAsset:       eurAsset,
 			InteriorNodes:     []xdr.Asset{},
 			DestinationAsset:  yenAsset,
 			DestinationAmount: 1000,
 		},
-		Path{
+		{
 			SourceAmount: 2,
 			SourceAsset:  eurAsset,
 			InteriorNodes: []xdr.Asset{
@@ -1280,21 +1283,21 @@ func TestSortAndFilterPathsBySourceAsset(t *testing.T) {
 			DestinationAsset:  yenAsset,
 			DestinationAmount: 1000,
 		},
-		Path{
+		{
 			SourceAmount:      3,
 			SourceAsset:       eurAsset,
 			InteriorNodes:     []xdr.Asset{},
 			DestinationAsset:  yenAsset,
 			DestinationAmount: 1000,
 		},
-		Path{
+		{
 			SourceAmount:      1,
 			SourceAsset:       usdAsset,
 			InteriorNodes:     []xdr.Asset{},
 			DestinationAsset:  yenAsset,
 			DestinationAmount: 1000,
 		},
-		Path{
+		{
 			SourceAmount:      10,
 			SourceAsset:       nativeAsset,
 			InteriorNodes:     []xdr.Asset{},
@@ -1308,7 +1311,7 @@ func TestSortAndFilterPathsBySourceAsset(t *testing.T) {
 
 func TestSortAndFilterPathsByDestinationAsset(t *testing.T) {
 	allPaths := []Path{
-		Path{
+		{
 			SourceAmount:           1000,
 			SourceAsset:            yenAsset,
 			InteriorNodes:          []xdr.Asset{},
@@ -1316,7 +1319,7 @@ func TestSortAndFilterPathsByDestinationAsset(t *testing.T) {
 			destinationAssetString: eurAsset.String(),
 			DestinationAmount:      3,
 		},
-		Path{
+		{
 			SourceAmount:           1000,
 			SourceAsset:            yenAsset,
 			InteriorNodes:          []xdr.Asset{},
@@ -1324,7 +1327,7 @@ func TestSortAndFilterPathsByDestinationAsset(t *testing.T) {
 			destinationAssetString: eurAsset.String(),
 			DestinationAmount:      4,
 		},
-		Path{
+		{
 			SourceAmount:           1000,
 			SourceAsset:            yenAsset,
 			InteriorNodes:          []xdr.Asset{},
@@ -1332,7 +1335,7 @@ func TestSortAndFilterPathsByDestinationAsset(t *testing.T) {
 			destinationAssetString: usdAsset.String(),
 			DestinationAmount:      1,
 		},
-		Path{
+		{
 			SourceAmount:           1000,
 			SourceAsset:            yenAsset,
 			sourceAssetString:      eurAsset.String(),
@@ -1341,7 +1344,7 @@ func TestSortAndFilterPathsByDestinationAsset(t *testing.T) {
 			destinationAssetString: eurAsset.String(),
 			DestinationAmount:      2,
 		},
-		Path{
+		{
 			SourceAmount: 1000,
 			SourceAsset:  yenAsset,
 			InteriorNodes: []xdr.Asset{
@@ -1351,7 +1354,7 @@ func TestSortAndFilterPathsByDestinationAsset(t *testing.T) {
 			destinationAssetString: eurAsset.String(),
 			DestinationAmount:      2,
 		},
-		Path{
+		{
 			SourceAmount:           1000,
 			SourceAsset:            yenAsset,
 			InteriorNodes:          []xdr.Asset{},
@@ -1369,35 +1372,35 @@ func TestSortAndFilterPathsByDestinationAsset(t *testing.T) {
 		t.Fatalf("unexpected error %v", err)
 	}
 	expectedPaths := []Path{
-		Path{
+		{
 			SourceAmount:      1000,
 			SourceAsset:       yenAsset,
 			InteriorNodes:     []xdr.Asset{},
 			DestinationAsset:  eurAsset,
 			DestinationAmount: 4,
 		},
-		Path{
+		{
 			SourceAmount:      1000,
 			SourceAsset:       yenAsset,
 			InteriorNodes:     []xdr.Asset{},
 			DestinationAsset:  eurAsset,
 			DestinationAmount: 3,
 		},
-		Path{
+		{
 			SourceAmount:      1000,
 			SourceAsset:       yenAsset,
 			InteriorNodes:     []xdr.Asset{},
 			DestinationAsset:  eurAsset,
 			DestinationAmount: 2,
 		},
-		Path{
+		{
 			SourceAmount:      1000,
 			SourceAsset:       yenAsset,
 			InteriorNodes:     []xdr.Asset{},
 			DestinationAsset:  usdAsset,
 			DestinationAmount: 1,
 		},
-		Path{
+		{
 			SourceAmount:      1000,
 			SourceAsset:       yenAsset,
 			InteriorNodes:     []xdr.Asset{},
@@ -1546,14 +1549,14 @@ func TestFindPaths(t *testing.T) {
 	}
 
 	expectedPaths := []Path{
-		Path{
+		{
 			SourceAmount:      5,
 			SourceAsset:       usdAsset,
 			InteriorNodes:     []xdr.Asset{},
 			DestinationAsset:  nativeAsset,
 			DestinationAmount: 20,
 		},
-		Path{
+		{
 			SourceAmount: 7,
 			SourceAsset:  usdAsset,
 			InteriorNodes: []xdr.Asset{
@@ -1562,7 +1565,7 @@ func TestFindPaths(t *testing.T) {
 			DestinationAsset:  nativeAsset,
 			DestinationAmount: 20,
 		},
-		Path{
+		{
 			SourceAmount: 5,
 			SourceAsset:  yenAsset,
 			InteriorNodes: []xdr.Asset{
@@ -1621,14 +1624,14 @@ func TestFindPaths(t *testing.T) {
 	}
 
 	expectedPaths = []Path{
-		Path{
+		{
 			SourceAmount:      5,
 			SourceAsset:       usdAsset,
 			InteriorNodes:     []xdr.Asset{},
 			DestinationAsset:  nativeAsset,
 			DestinationAmount: 20,
 		},
-		Path{
+		{
 			SourceAmount: 7,
 			SourceAsset:  usdAsset,
 			InteriorNodes: []xdr.Asset{
@@ -1637,7 +1640,7 @@ func TestFindPaths(t *testing.T) {
 			DestinationAsset:  nativeAsset,
 			DestinationAmount: 20,
 		},
-		Path{
+		{
 			SourceAmount: 2,
 			SourceAsset:  yenAsset,
 			InteriorNodes: []xdr.Asset{
@@ -1648,7 +1651,7 @@ func TestFindPaths(t *testing.T) {
 			DestinationAsset:  nativeAsset,
 			DestinationAmount: 20,
 		},
-		Path{
+		{
 			SourceAmount: 5,
 			SourceAsset:  yenAsset,
 			InteriorNodes: []xdr.Asset{
@@ -1687,14 +1690,14 @@ func TestFindPaths(t *testing.T) {
 	}
 
 	expectedPaths = []Path{
-		Path{
+		{
 			SourceAmount:      5,
 			SourceAsset:       usdAsset,
 			InteriorNodes:     []xdr.Asset{},
 			DestinationAsset:  nativeAsset,
 			DestinationAmount: 20,
 		},
-		Path{
+		{
 			SourceAmount: 7,
 			SourceAsset:  usdAsset,
 			InteriorNodes: []xdr.Asset{
@@ -1703,7 +1706,7 @@ func TestFindPaths(t *testing.T) {
 			DestinationAsset:  nativeAsset,
 			DestinationAmount: 20,
 		},
-		Path{
+		{
 			SourceAmount: 2,
 			SourceAsset:  yenAsset,
 			InteriorNodes: []xdr.Asset{
@@ -1714,7 +1717,7 @@ func TestFindPaths(t *testing.T) {
 			DestinationAsset:  nativeAsset,
 			DestinationAmount: 20,
 		},
-		Path{
+		{
 			SourceAmount: 5,
 			SourceAsset:  yenAsset,
 			InteriorNodes: []xdr.Asset{
@@ -1832,14 +1835,14 @@ func TestFindPathsStartingAt(t *testing.T) {
 	}
 
 	expectedPaths := []Path{
-		Path{
+		{
 			SourceAmount:      5,
 			SourceAsset:       usdAsset,
 			InteriorNodes:     []xdr.Asset{},
 			DestinationAsset:  nativeAsset,
 			DestinationAmount: 20,
 		},
-		Path{
+		{
 			SourceAmount: 5,
 			SourceAsset:  usdAsset,
 			InteriorNodes: []xdr.Asset{
@@ -1885,7 +1888,7 @@ func TestFindPathsStartingAt(t *testing.T) {
 	}
 
 	expectedPaths = []Path{
-		Path{
+		{
 			SourceAmount: 5,
 			SourceAsset:  yenAsset,
 			InteriorNodes: []xdr.Asset{
@@ -1914,7 +1917,7 @@ func TestFindPathsStartingAt(t *testing.T) {
 	}
 
 	expectedPaths = []Path{
-		Path{
+		{
 			SourceAmount: 5,
 			SourceAsset:  yenAsset,
 			InteriorNodes: []xdr.Asset{
@@ -1925,7 +1928,7 @@ func TestFindPathsStartingAt(t *testing.T) {
 			DestinationAsset:  nativeAsset,
 			DestinationAmount: 80,
 		},
-		Path{
+		{
 			SourceAmount: 5,
 			SourceAsset:  yenAsset,
 			InteriorNodes: []xdr.Asset{
@@ -1954,7 +1957,7 @@ func TestFindPathsStartingAt(t *testing.T) {
 	}
 
 	expectedPaths = []Path{
-		Path{
+		{
 			SourceAmount: 5,
 			SourceAsset:  yenAsset,
 			InteriorNodes: []xdr.Asset{
@@ -1964,7 +1967,7 @@ func TestFindPathsStartingAt(t *testing.T) {
 			DestinationAsset:  usdAsset,
 			DestinationAmount: 20,
 		},
-		Path{
+		{
 			SourceAmount: 5,
 			SourceAsset:  yenAsset,
 			InteriorNodes: []xdr.Asset{
@@ -1975,7 +1978,7 @@ func TestFindPathsStartingAt(t *testing.T) {
 			DestinationAsset:  nativeAsset,
 			DestinationAmount: 80,
 		},
-		Path{
+		{
 			SourceAmount: 5,
 			SourceAsset:  yenAsset,
 			InteriorNodes: []xdr.Asset{
