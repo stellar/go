@@ -106,7 +106,6 @@ type System struct {
 	historyQ history.IngestionQ
 	runner   ProcessorRunnerInterface
 
-	historyArchive *historyarchive.Archive
 	ledgerBackend  ledgerbackend.LedgerBackend
 	historyAdapter adapters.HistoryArchiveAdapterInterface
 
@@ -155,7 +154,6 @@ func NewSystem(config Config) (*System, error) {
 	system := &System{
 		ctx:                      ctx,
 		cancel:                   cancel,
-		historyArchive:           archive,
 		historyAdapter:           historyAdapter,
 		ledgerBackend:            ledgerBackend,
 		config:                   config,
