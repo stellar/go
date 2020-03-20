@@ -5,7 +5,7 @@ CREATE TABLE identities (
   id BIGSERIAL NOT NULL,
 
   FOREIGN KEY (account_id) REFERENCES accounts (id),
-  PRIMARY KEY (account_id, id),
+  PRIMARY KEY (id),
 
   created_at TIMESTAMP WITH TIME ZONE NOT NULL,
   deleted_at TIMESTAMP WITH TIME ZONE,

@@ -12,8 +12,8 @@ CREATE TABLE auth_methods (
   id BIGSERIAL NOT NULL,
 
   FOREIGN KEY (account_id) REFERENCES accounts (id),
-  FOREIGN KEY (account_id, identity_id) REFERENCES identities (account_id, id),
-  PRIMARY KEY (account_id, identity_id, id),
+  FOREIGN KEY (identity_id) REFERENCES identities (id),
+  PRIMARY KEY (id),
 
   created_at TIMESTAMP WITH TIME ZONE NOT NULL,
   deleted_at TIMESTAMP WITH TIME ZONE,
