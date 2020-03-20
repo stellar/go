@@ -48,6 +48,7 @@ func (statsLedgerTransactionProcessor) Commit() error {
 
 type ProcessorRunnerInterface interface {
 	SetLedgerBackend(ledgerBackend ledgerbackend.LedgerBackend)
+	SetHistoryAdapter(historyAdapter adapters.HistoryArchiveAdapterInterface)
 	EnableMemoryStatsLogging()
 	DisableMemoryStatsLogging()
 	RunHistoryArchiveIngestion(checkpointLedger uint32) (io.StatsChangeProcessorResults, error)
@@ -75,6 +76,10 @@ type ProcessorRunner struct {
 
 func (s *ProcessorRunner) SetLedgerBackend(ledgerBackend ledgerbackend.LedgerBackend) {
 	s.ledgerBackend = ledgerBackend
+}
+
+func (s *ProcessorRunner) SetHistoryAdapter(historyAdapter adapters.HistoryArchiveAdapterInterface) {
+	s.historyAdapter = historyAdapter
 }
 
 func (s *ProcessorRunner) EnableMemoryStatsLogging() {
