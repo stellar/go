@@ -18,7 +18,7 @@ CREATE TABLE auth_methods (
   value text NOT NULL
 );
 
-CREATE INDEX auth_methods_accountid ON identities (account_id) WHERE deleted_at IS NULL;
+CREATE INDEX auth_methods_accountid ON auth_methods (account_id) WHERE deleted_at IS NULL;
 CREATE INDEX auth_methods_accountid_identityid ON auth_methods (account_id, identity_id) WHERE deleted_at IS NULL;
 CREATE INDEX auth_methods_type_value ON auth_methods ("type", value) WHERE deleted_at IS NULL;
 
