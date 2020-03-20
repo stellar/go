@@ -31,7 +31,7 @@ func NewLedgerProcessor(
 func (p *LedgersProcessor) ProcessTransaction(transaction io.LedgerTransaction) (err error) {
 	if transaction.Successful() {
 		p.successTxCount++
-		p.opCount += len(transaction.Envelope.Tx.Operations)
+		p.opCount += len(transaction.Envelope.Operations())
 	} else {
 		p.failedTxCount++
 	}

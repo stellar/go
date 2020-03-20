@@ -127,7 +127,7 @@ func (p *TradeProcessor) extractTrades(
 	closeTime := time.Unix(int64(ledger.Header.ScpValue.CloseTime), 0).UTC()
 
 	opResults := transaction.Result.Result.Result.MustResults()
-	for opidx, op := range transaction.Envelope.Tx.Operations {
+	for opidx, op := range transaction.Envelope.Operations() {
 		var trades []xdr.ClaimOfferAtom
 		var buyOfferExists bool
 		var buyOffer xdr.OfferEntry
@@ -205,7 +205,8 @@ func (p *TradeProcessor) extractTrades(
 			if buyer := op.SourceAccount; buyer != nil {
 				buyerAddress = buyer.Address()
 			} else {
-				buyerAddress = transaction.Envelope.Tx.SourceAccount.Address()
+				sa := transaction.Envelope.SourceAccount()
+				buyerAddress = sa.Address()
 			}
 			buyerAccounts = append(buyerAccounts, buyerAddress)
 		}

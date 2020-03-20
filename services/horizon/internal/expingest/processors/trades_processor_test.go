@@ -410,9 +410,12 @@ func (s *TradeProcessorTestSuiteLedger) mockReadTradeTransactions(
 			},
 		},
 		Envelope: xdr.TransactionEnvelope{
-			Tx: xdr.Transaction{
-				SourceAccount: s.sourceAccount,
-				Operations:    operations,
+			Type: xdr.EnvelopeTypeEnvelopeTypeTx,
+			V1: &xdr.TransactionV1Envelope{
+				Tx: xdr.Transaction{
+					SourceAccount: s.sourceAccount,
+					Operations:    operations,
+				},
 			},
 		},
 		Index:      1,

@@ -50,6 +50,25 @@ func HashFeeBumpTransaction(tx *xdr.FeeBumpTransaction, passphrase string) ([32]
 	return hashTx(taggedTx, passphrase)
 }
 
+// HashTransactionV0 derives the network specific hash for the provided
+// legacy transaction using the network identified by the supplied passphrase.  The
+// resulting hash is the value that can be signed by stellar secret key to
+// authorize the transaction identified by the hash to stellar validators.
+func HashTransactionV0(tx *xdr.TransactionV0, passphrase string) ([32]byte, error) {
+	v1Tx := &xdr.Transaction{
+		SourceAccount: xdr.AccountId{
+			Type:    xdr.PublicKeyTypePublicKeyTypeEd25519,
+			Ed25519: &tx.SourceAccountEd25519,
+		},
+		Fee:        tx.Fee,
+		Memo:       tx.Memo,
+		Operations: tx.Operations,
+		SeqNum:     tx.SeqNum,
+		TimeBounds: tx.TimeBounds,
+	}
+	return HashTransaction(v1Tx, passphrase)
+}
+
 func hashTx(
 	tx xdr.TransactionSignaturePayloadTaggedTransaction,
 	passphrase string,

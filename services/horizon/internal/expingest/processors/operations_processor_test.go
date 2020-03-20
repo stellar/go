@@ -42,7 +42,7 @@ func (s *OperationsProcessorTestSuiteLedger) TearDownTest() {
 
 func (s *OperationsProcessorTestSuiteLedger) mockBatchInsertAdds(txs []io.LedgerTransaction, sequence uint32) error {
 	for _, t := range txs {
-		for i, op := range t.Envelope.Tx.Operations {
+		for i, op := range t.Envelope.Operations() {
 			expected := transactionOperationWrapper{
 				index:          uint32(i),
 				transaction:    t,

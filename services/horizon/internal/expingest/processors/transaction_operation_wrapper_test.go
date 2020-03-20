@@ -31,7 +31,7 @@ func TestTransactionOperationID(t *testing.T) {
 	operation := transactionOperationWrapper{
 		index:          0,
 		transaction:    transaction,
-		operation:      transaction.Envelope.Tx.Operations[0],
+		operation:      transaction.Envelope.Operations()[0],
 		ledgerSequence: 56,
 	}
 
@@ -55,7 +55,7 @@ func TestTransactionOperationOrder(t *testing.T) {
 	operation := transactionOperationWrapper{
 		index:          0,
 		transaction:    transaction,
-		operation:      transaction.Envelope.Tx.Operations[0],
+		operation:      transaction.Envelope.Operations()[0],
 		ledgerSequence: 1,
 	}
 
@@ -78,7 +78,7 @@ func TestTransactionOperationTransactionID(t *testing.T) {
 	operation := transactionOperationWrapper{
 		index:          0,
 		transaction:    transaction,
-		operation:      transaction.Envelope.Tx.Operations[0],
+		operation:      transaction.Envelope.Operations()[0],
 		ledgerSequence: 56,
 	}
 
@@ -116,7 +116,7 @@ func TestOperationTransactionSourceAccount(t *testing.T) {
 					Hash:          "2a805712c6d10f9e74bb0ccf54ae92a2b4b1e586451fe8133a2433816f6b567c",
 				},
 			)
-			op := transaction.Envelope.Tx.Operations[0]
+			op := transaction.Envelope.Operations()[0]
 			if len(tc.sourceAccount) > 0 {
 				sourceAccount := xdr.MustAddress(tc.sourceAccount)
 				op.SourceAccount = &sourceAccount
@@ -151,7 +151,7 @@ func TestTransactionOperationType(t *testing.T) {
 	operation := transactionOperationWrapper{
 		index:          1,
 		transaction:    transaction,
-		operation:      transaction.Envelope.Tx.Operations[0],
+		operation:      transaction.Envelope.Operations()[0],
 		ledgerSequence: 1,
 	}
 
@@ -560,7 +560,7 @@ func TestTransactionOperationDetails(t *testing.T) {
 			operation := transactionOperationWrapper{
 				index:          tc.index,
 				transaction:    transaction,
-				operation:      transaction.Envelope.Tx.Operations[tc.index],
+				operation:      transaction.Envelope.Operations()[tc.index],
 				ledgerSequence: 1,
 			}
 
@@ -799,7 +799,7 @@ func TestTransactionOperationParticipants(t *testing.T) {
 			operation := transactionOperationWrapper{
 				index:          tc.index,
 				transaction:    transaction,
-				operation:      transaction.Envelope.Tx.Operations[tc.index],
+				operation:      transaction.Envelope.Operations()[tc.index],
 				ledgerSequence: 1,
 			}
 
