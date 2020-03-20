@@ -3,9 +3,9 @@
 CREATE TYPE auth_method_type AS ENUM ('stellar_address', 'phone_number', 'email');
 
 CREATE TABLE auth_methods (
-  account_id UUID NOT NULL,
-  identity_id UUID NOT NULL,
-  id UUID NOT NULL,
+  account_id BIGINT NOT NULL,
+  identity_id BIGINT NOT NULL,
+  id BIGSERIAL NOT NULL,
 
   FOREIGN KEY (account_id) REFERENCES accounts (id) ON DELETE CASCADE,
   FOREIGN KEY (account_id, identity_id) REFERENCES identities (account_id, id) ON DELETE CASCADE,

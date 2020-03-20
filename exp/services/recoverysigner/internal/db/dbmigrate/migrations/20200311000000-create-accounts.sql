@@ -1,7 +1,7 @@
 -- +migrate Up
 
 CREATE TABLE accounts (
-  id UUID NOT NULL,
+  id BIGSERIAL NOT NULL,
 
   PRIMARY KEY (id),
 

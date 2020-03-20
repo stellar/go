@@ -1,8 +1,8 @@
 -- +migrate Up
 
 CREATE TABLE identities (
-  account_id UUID NOT NULL,
-  id UUID NOT NULL,
+  account_id BIGINT NOT NULL,
+  id BIGSERIAL NOT NULL,
 
   FOREIGN KEY (account_id) REFERENCES accounts (id) ON DELETE CASCADE,
   PRIMARY KEY (account_id, id),
