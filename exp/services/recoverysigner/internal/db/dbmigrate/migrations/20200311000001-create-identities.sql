@@ -4,7 +4,7 @@ CREATE TABLE identities (
   account_id BIGINT NOT NULL,
   id BIGSERIAL NOT NULL,
 
-  FOREIGN KEY (account_id) REFERENCES accounts (id) ON DELETE CASCADE,
+  FOREIGN KEY (account_id) REFERENCES accounts (id),
   PRIMARY KEY (account_id, id),
 
   created_at TIMESTAMP WITH TIME ZONE NOT NULL,
