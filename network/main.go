@@ -54,7 +54,6 @@ func hashTx(
 	tx xdr.TransactionSignaturePayloadTaggedTransaction,
 	passphrase string,
 ) ([32]byte, error) {
-
 	if strings.TrimSpace(passphrase) == "" {
 		return [32]byte{}, errors.New("empty network passphrase")
 	}
