@@ -15,7 +15,7 @@ CREATE TABLE auth_methods (
   FOREIGN KEY (identity_id) REFERENCES identities (id) ON DELETE CASCADE,
   PRIMARY KEY (id),
 
-  created_at TIMESTAMP WITH TIME ZONE NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
 
   "type" auth_method_type NOT NULL,
   value text NOT NULL

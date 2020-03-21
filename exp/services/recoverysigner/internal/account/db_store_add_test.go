@@ -2,11 +2,8 @@ package account
 
 import (
 	"testing"
-	"time"
 
 	"github.com/stellar/go/exp/services/recoverysigner/internal/db/dbtest"
-	"github.com/stellar/go/support/clock"
-	"github.com/stellar/go/support/clock/clocktest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -15,14 +12,8 @@ func TestAdd(t *testing.T) {
 	db := dbtest.Open(t)
 	session := db.Open()
 
-	createdAt := time.Now().UTC()
-
-	clock := clock.Clock{
-		Source: clocktest.FixedSource(createdAt),
-	}
 	store := DBStore{
-		DB:    session,
-		Clock: &clock,
+		DB: session,
 	}
 
 	a := Account{
@@ -52,18 +43,16 @@ func TestAdd(t *testing.T) {
 	// Check the account row has been added.
 	{
 		type row struct {
-			ID        int64     `db:"id"`
-			CreatedAt time.Time `db:"created_at"`
-			Address   string    `db:"address"`
+			ID      int64  `db:"id"`
+			Address string `db:"address"`
 		}
 		rows := []row{}
-		err = session.Select(&rows, `SELECT * FROM accounts`)
+		err = session.Select(&rows, `SELECT id, address FROM accounts`)
 		require.NoError(t, err)
 		wantRows := []row{
 			{
-				ID:        1,
-				CreatedAt: createdAt.Round(time.Microsecond),
-				Address:   "GCLLT3VG4F6EZAHZEBKWBWV5JGVPCVIKUCGTY3QEOAIZU5IJGMWCT2TT",
+				ID:      1,
+				Address: "GCLLT3VG4F6EZAHZEBKWBWV5JGVPCVIKUCGTY3QEOAIZU5IJGMWCT2TT",
 			},
 		}
 		assert.Equal(t, wantRows, rows)
@@ -72,25 +61,22 @@ func TestAdd(t *testing.T) {
 	// Check the identity rows have been added.
 	{
 		type row struct {
-			AccountID int64     `db:"account_id"`
-			ID        int64     `db:"id"`
-			CreatedAt time.Time `db:"created_at"`
-			Role      string    `db:"role"`
+			AccountID int64  `db:"account_id"`
+			ID        int64  `db:"id"`
+			Role      string `db:"role"`
 		}
 		rows := []row{}
-		err = session.Select(&rows, `SELECT * FROM identities`)
+		err = session.Select(&rows, `SELECT account_id, id, role FROM identities`)
 		require.NoError(t, err)
 		wantRows := []row{
 			{
 				AccountID: 1,
 				ID:        1,
-				CreatedAt: createdAt.Round(time.Microsecond),
 				Role:      "sender",
 			},
 			{
 				AccountID: 1,
 				ID:        2,
-				CreatedAt: createdAt.Round(time.Microsecond),
 				Role:      "receiver",
 			},
 		}
@@ -100,22 +86,20 @@ func TestAdd(t *testing.T) {
 	// Check the auth method rows have been added.
 	{
 		type row struct {
-			AccountID  int64     `db:"account_id"`
-			IdentityID int64     `db:"identity_id"`
-			ID         int64     `db:"id"`
-			CreatedAt  time.Time `db:"created_at"`
-			Type       string    `db:"type"`
-			Value      string    `db:"value"`
+			AccountID  int64  `db:"account_id"`
+			IdentityID int64  `db:"identity_id"`
+			ID         int64  `db:"id"`
+			Type       string `db:"type"`
+			Value      string `db:"value"`
 		}
 		rows := []row{}
-		err = session.Select(&rows, `SELECT * FROM auth_methods`)
+		err = session.Select(&rows, `SELECT account_id, identity_id, id, "type", value FROM auth_methods`)
 		require.NoError(t, err)
 		wantRows := []row{
 			{
 				AccountID:  1,
 				IdentityID: 1,
 				ID:         1,
-				CreatedAt:  createdAt.Round(time.Microsecond),
 				Type:       "stellar_address",
 				Value:      "GD4NGMOTV4QOXWA6PGPIGVWZYMRCJAKLQJKZIP55C5DGB3GBHHET3YC6",
 			},
@@ -123,7 +107,6 @@ func TestAdd(t *testing.T) {
 				AccountID:  1,
 				IdentityID: 1,
 				ID:         2,
-				CreatedAt:  createdAt.Round(time.Microsecond),
 				Type:       "phone_number",
 				Value:      "+10000000000",
 			},
@@ -131,7 +114,6 @@ func TestAdd(t *testing.T) {
 				AccountID:  1,
 				IdentityID: 1,
 				ID:         3,
-				CreatedAt:  createdAt.Round(time.Microsecond),
 				Type:       "email",
 				Value:      "user1@example.com",
 			},
@@ -139,7 +121,6 @@ func TestAdd(t *testing.T) {
 				AccountID:  1,
 				IdentityID: 2,
 				ID:         4,
-				CreatedAt:  createdAt.Round(time.Microsecond),
 				Type:       "stellar_address",
 				Value:      "GBJCOYGKIJYX3VUEOZ6GVMFP522UO4OEBI5KB5HHWZAZ2DEJTHS6VOHP",
 			},
@@ -147,7 +128,6 @@ func TestAdd(t *testing.T) {
 				AccountID:  1,
 				IdentityID: 2,
 				ID:         5,
-				CreatedAt:  createdAt.Round(time.Microsecond),
 				Type:       "phone_number",
 				Value:      "+20000000000",
 			},
@@ -155,7 +135,6 @@ func TestAdd(t *testing.T) {
 				AccountID:  1,
 				IdentityID: 2,
 				ID:         6,
-				CreatedAt:  createdAt.Round(time.Microsecond),
 				Type:       "email",
 				Value:      "user2@example.com",
 			},

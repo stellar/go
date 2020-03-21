@@ -8,13 +8,12 @@ func (s *DBStore) Add(a Account) error {
 		return err
 	}
 
-	createdAt := s.Clock.Now().UTC()
 	accountID := int64(0)
 	err = tx.Get(&accountID, `
-		INSERT INTO accounts (created_at, address)
-		VALUES ($1, $2)
+		INSERT INTO accounts (address)
+		VALUES ($1)
 		RETURNING id
-	`, createdAt, a.Address)
+	`, a.Address)
 	if err != nil {
 		// 23505 is the PostgreSQL error for Unique Violation.
 		// See https://www.postgresql.org/docs/9.2/errcodes-appendix.html.
@@ -27,10 +26,10 @@ func (s *DBStore) Add(a Account) error {
 	for _, i := range a.Identities {
 		identityID := int64(0)
 		err = tx.Get(&identityID, `
-			INSERT INTO identities (account_id, created_at, role)
-			VALUES ($1, $2, $3)
+			INSERT INTO identities (account_id, role)
+			VALUES ($1, $2)
 			RETURNING id
-		`, accountID, createdAt, i.Role)
+		`, accountID, i.Role)
 		if err != nil {
 			return err
 		}
@@ -38,10 +37,10 @@ func (s *DBStore) Add(a Account) error {
 		for _, m := range i.AuthMethods {
 			authMethodID := int64(0)
 			err = tx.Get(&authMethodID, `
-				INSERT INTO auth_methods (account_id, identity_id, created_at, type, value)
-				VALUES ($1, $2, $3, $4, $5)
+				INSERT INTO auth_methods (account_id, identity_id, type, value)
+				VALUES ($1, $2, $3, $4)
 				RETURNING id
-			`, accountID, identityID, createdAt, m.Type, m.Value)
+			`, accountID, identityID, m.Type, m.Value)
 			if err != nil {
 				return err
 			}

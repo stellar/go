@@ -5,7 +5,7 @@ CREATE TABLE accounts (
 
   PRIMARY KEY (id),
 
-  created_at TIMESTAMP WITH TIME ZONE NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
 
   address TEXT NOT NULL
 );
