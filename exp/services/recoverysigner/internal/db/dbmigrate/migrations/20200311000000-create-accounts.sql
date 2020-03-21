@@ -11,7 +11,7 @@ CREATE TABLE accounts (
   address TEXT NOT NULL
 );
 
-CREATE UNIQUE INDEX accounts_address ON accounts (UPPER(address)) WHERE deleted_at IS NULL;
+CREATE UNIQUE INDEX ON accounts (UPPER(address)) WHERE deleted_at IS NULL;
 
 -- +migrate Down
 
