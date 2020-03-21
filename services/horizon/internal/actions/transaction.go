@@ -79,7 +79,7 @@ func loadTransactionRecords(hq *history.Q, accountID string, ledgerID int32, inc
 				return nil, errors.Wrap(err, "unmarshalling tx result")
 			}
 
-			if resultXDR.Result.Code != xdr.TransactionResultCodeTxSuccess {
+			if !resultXDR.Successful() {
 				return nil, errors.Errorf("Corrupted data! `include_failed=false` but returned transaction is failed: %s %s", t.TransactionHash, t.TxResult)
 			}
 		}

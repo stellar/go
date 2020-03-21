@@ -109,7 +109,7 @@ func (p *EffectProcessor) insertDBOperationsEffects(effects []effect, accountSet
 
 func (p *EffectProcessor) ProcessTransaction(transaction io.LedgerTransaction) (err error) {
 	// Failed transactions don't have operation effects
-	if !transaction.Successful() {
+	if !transaction.Result.Successful() {
 		return nil
 	}
 
@@ -168,7 +168,7 @@ func (e *effectsWrapper) add(address string, effectType history.EffectType, deta
 
 // Effects returns the operation effects
 func (operation *transactionOperationWrapper) effects() (effects []effect, err error) {
-	if !operation.transaction.Successful() {
+	if !operation.transaction.Result.Successful() {
 		return []effect{}, err
 	}
 

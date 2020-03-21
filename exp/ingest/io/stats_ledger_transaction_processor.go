@@ -43,7 +43,7 @@ func (p *StatsLedgerTransactionProcessor) ProcessTransaction(transaction LedgerT
 	ops := int64(len(transaction.Envelope.Operations()))
 	p.results.Operations += ops
 
-	if transaction.Successful() {
+	if transaction.Result.Successful() {
 		p.results.TransactionsSuccessful++
 		p.results.OperationsInSuccessful += ops
 

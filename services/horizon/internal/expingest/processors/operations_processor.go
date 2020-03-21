@@ -108,14 +108,9 @@ func (operation *transactionOperationWrapper) OperationType() xdr.OperationType 
 
 // OperationResult returns the operation's result record
 func (operation *transactionOperationWrapper) OperationResult() *xdr.OperationResultTr {
-	txr := operation.transaction.Result.Result
-	tr := txr.Result.MustResults()[operation.index].MustTr()
+	results, _ := operation.transaction.Result.OperationResults()
+	tr := results[operation.index].MustTr()
 	return &tr
-}
-
-// IsSuccessful returns whether the operation was successful or not
-func (operation *transactionOperationWrapper) IsSuccessful() bool {
-	return operation.transaction.Result.Result.Result.Code == xdr.TransactionResultCodeTxSuccess
 }
 
 // Details returns the operation details as a map which can be stored as JSON.
@@ -146,7 +141,7 @@ func (operation *transactionOperationWrapper) Details() map[string]interface{} {
 		assetDetails(details, op.DestAsset, "")
 		assetDetails(details, op.SendAsset, "source_")
 
-		if operation.IsSuccessful() {
+		if operation.transaction.Result.Successful() {
 			result := operation.OperationResult().MustPathPaymentStrictReceiveResult()
 			details["source_amount"] = amount.String(result.SendAmount())
 		}
@@ -169,7 +164,7 @@ func (operation *transactionOperationWrapper) Details() map[string]interface{} {
 		assetDetails(details, op.DestAsset, "")
 		assetDetails(details, op.SendAsset, "source_")
 
-		if operation.IsSuccessful() {
+		if operation.transaction.Result.Successful() {
 			result := operation.OperationResult().MustPathPaymentStrictSendResult()
 			details["amount"] = amount.String(result.DestAmount())
 		}

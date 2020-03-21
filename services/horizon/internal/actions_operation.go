@@ -260,7 +260,7 @@ func (action *OperationIndexAction) loadRecords() {
 				return
 			}
 
-			if resultXDR.Result.Code != xdr.TransactionResultCodeTxSuccess {
+			if !resultXDR.Successful() {
 				action.Err = errors.Errorf("Corrupted data! `include_failed=false` but returned transaction /operations is failed: %s %s", o.TransactionHash, o.TxResult)
 				return
 			}
