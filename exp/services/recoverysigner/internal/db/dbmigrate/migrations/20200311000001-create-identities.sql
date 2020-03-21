@@ -1,11 +1,8 @@
 -- +migrate Up
 
 CREATE TABLE identities (
-  account_id BIGINT NOT NULL,
-  id BIGSERIAL NOT NULL,
-
-  FOREIGN KEY (account_id) REFERENCES accounts (id) ON DELETE CASCADE,
-  PRIMARY KEY (id),
+  account_id BIGINT NOT NULL REFERENCES accounts (id) ON DELETE CASCADE,
+  id BIGSERIAL NOT NULL PRIMARY KEY,
 
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
 

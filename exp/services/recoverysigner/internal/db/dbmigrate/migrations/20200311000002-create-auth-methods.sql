@@ -7,13 +7,9 @@ CREATE TYPE auth_method_type AS ENUM (
 );
 
 CREATE TABLE auth_methods (
-  account_id BIGINT NOT NULL,
-  identity_id BIGINT NOT NULL,
-  id BIGSERIAL NOT NULL,
-
-  FOREIGN KEY (account_id) REFERENCES accounts (id) ON DELETE CASCADE,
-  FOREIGN KEY (identity_id) REFERENCES identities (id) ON DELETE CASCADE,
-  PRIMARY KEY (id),
+  account_id BIGINT NOT NULL REFERENCES accounts (id) ON DELETE CASCADE,
+  identity_id BIGINT NOT NULL REFERENCES identities (id) ON DELETE CASCADE,
+  id BIGSERIAL NOT NULL PRIMARY KEY,
 
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
 
