@@ -89,6 +89,7 @@ func getHandlerDeps(opts Options) (handlerDeps, error) {
 
 	var accountStore account.Store
 	if opts.DatabaseURL == "" {
+		opts.Logger.Warn("USING MEMORY STORE, DATA IS EPHEMERAL.")
 		accountStore = account.NewMemoryStore()
 	} else {
 		db, dbErr := db.Open(opts.DatabaseURL)
