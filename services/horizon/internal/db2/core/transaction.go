@@ -45,7 +45,7 @@ func (tx *Transaction) FeeCharged() int32 {
 
 // IsSuccessful returns true when the transaction was successful.
 func (tx *Transaction) IsSuccessful() bool {
-	return tx.Result.Result.Result.Code == xdr.TransactionResultCodeTxSuccess
+	return tx.Result.Successful()
 }
 
 // Memo returns the memo for this transaction, if there is one.

@@ -72,7 +72,7 @@ func txResultFromHistory(tx history.Transaction) txsub.Result {
 	var txResult xdr.TransactionResult
 	err := xdr.SafeUnmarshalBase64(tx.TxResult, &txResult)
 	if err == nil {
-		if txResult.Result.Code != xdr.TransactionResultCodeTxSuccess {
+		if !txResult.Successful() {
 			err = &txsub.FailedTransactionError{
 				ResultXDR: tx.TxResult,
 			}
@@ -101,7 +101,7 @@ func txResultFromCore(tx core.Transaction) txsub.Result {
 	trx := base64.StdEncoding.EncodeToString(raw.Bytes())
 
 	// if result is success, send a normal resposne
-	if tx.Result.Result.Result.Code == xdr.TransactionResultCodeTxSuccess {
+	if tx.Result.Successful() {
 		return txsub.Result{
 			Hash:           tx.TransactionHash,
 			LedgerSequence: tx.LedgerSequence,

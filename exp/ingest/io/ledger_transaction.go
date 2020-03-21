@@ -17,18 +17,8 @@ type LedgerTransaction struct {
 	Meta       xdr.TransactionMeta
 }
 
-// TxResultCode returns the transaction result code
-func (t *LedgerTransaction) TxResultCode() xdr.TransactionResultCode {
-	return t.Result.Result.Result.Code
-}
-
-// Successful returns true if the transaction succeeded
-func (t *LedgerTransaction) Successful() bool {
-	return t.TxResultCode() == xdr.TransactionResultCodeTxSuccess
-}
-
 func (t *LedgerTransaction) txInternalError() bool {
-	return t.TxResultCode() == xdr.TransactionResultCodeTxInternalError
+	return t.Result.Result.Result.Code == xdr.TransactionResultCodeTxInternalError
 }
 
 // GetFeeChanges returns a developer friendly representation of LedgerEntryChanges
