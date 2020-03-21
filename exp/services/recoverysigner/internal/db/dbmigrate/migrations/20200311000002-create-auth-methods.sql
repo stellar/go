@@ -11,20 +11,19 @@ CREATE TABLE auth_methods (
   identity_id BIGINT NOT NULL,
   id BIGSERIAL NOT NULL,
 
-  FOREIGN KEY (account_id) REFERENCES accounts (id),
-  FOREIGN KEY (identity_id) REFERENCES identities (id),
+  FOREIGN KEY (account_id) REFERENCES accounts (id) ON DELETE CASCADE,
+  FOREIGN KEY (identity_id) REFERENCES identities (id) ON DELETE CASCADE,
   PRIMARY KEY (id),
 
   created_at TIMESTAMP WITH TIME ZONE NOT NULL,
-  deleted_at TIMESTAMP WITH TIME ZONE,
 
   "type" auth_method_type NOT NULL,
   value text NOT NULL
 );
 
-CREATE INDEX ON auth_methods (account_id) WHERE deleted_at IS NULL;
-CREATE INDEX ON auth_methods (identity_id) WHERE deleted_at IS NULL;
-CREATE INDEX ON auth_methods ("type", value) WHERE deleted_at IS NULL;
+CREATE INDEX ON auth_methods (account_id);
+CREATE INDEX ON auth_methods (identity_id);
+CREATE INDEX ON auth_methods ("type", value);
 
 -- +migrate Down
 

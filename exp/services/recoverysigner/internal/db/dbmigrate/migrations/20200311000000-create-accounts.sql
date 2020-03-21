@@ -6,12 +6,11 @@ CREATE TABLE accounts (
   PRIMARY KEY (id),
 
   created_at TIMESTAMP WITH TIME ZONE NOT NULL,
-  deleted_at TIMESTAMP WITH TIME ZONE,
 
   address TEXT NOT NULL
 );
 
-CREATE UNIQUE INDEX ON accounts (UPPER(address)) WHERE deleted_at IS NULL;
+CREATE UNIQUE INDEX ON accounts (UPPER(address));
 
 -- +migrate Down
 

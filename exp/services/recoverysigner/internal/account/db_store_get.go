@@ -7,8 +7,7 @@ func (s *DBStore) Get(address string) (Account, error) {
 	}
 
 	// There should only ever be at most one account due to the database
-	// constraint where an address must be unique for all accounts that do not
-	// have a deleted_at set so return the first from this list.
+	// constraint where an address must be unique.
 
 	if len(accounts) == 0 {
 		return Account{}, ErrNotFound
@@ -29,9 +28,6 @@ func (s *DBStore) getAccounts(where string, args ...interface{}) ([]Account, err
 		LEFT JOIN identities ON identities.account_id = accounts.id
 		LEFT JOIN auth_methods ON auth_methods.identity_id = identities.id
 		WHERE ` + where + `
-		AND accounts.deleted_at IS NULL
-		AND identities.deleted_at IS NULL
-		AND auth_methods.deleted_at IS NULL
 		ORDER BY accounts.id, identities.id, auth_methods.id`
 
 	rows, err := s.DB.Queryx(query, args...)

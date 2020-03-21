@@ -6,8 +6,7 @@ func (s *DBStore) FindWithIdentityAuthMethod(t AuthMethodType, value string) ([]
 	query := `SELECT account_id
 		FROM auth_methods
 		WHERE "type" = $1
-		AND value = $2
-		AND deleted_at IS NULL`
+		AND value = $2`
 	accountIDs := []int64{}
 	err := s.DB.Select(&accountIDs, query, t, value)
 	if err != nil {

@@ -2,11 +2,8 @@ package account
 
 import (
 	"testing"
-	"time"
 
 	"github.com/stellar/go/exp/services/recoverysigner/internal/db/dbtest"
-	"github.com/stellar/go/support/clock"
-	"github.com/stellar/go/support/clock/clocktest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -63,17 +60,6 @@ func TestDelete(t *testing.T) {
 	err = store.Add(a2)
 	require.NoError(t, err)
 
-	// Use a fixed time for deletions
-	deletedAt := time.Now().UTC()
-	deletedAtMicroseconds := deletedAt.Round(time.Microsecond)
-	clock := clock.Clock{
-		Source: clocktest.FixedSource(deletedAt),
-	}
-	store = DBStore{
-		DB:    session,
-		Clock: &clock,
-	}
-
 	// Get account 1 to check it exists
 	a1Got, err := store.Get(a1Address)
 	require.NoError(t, err)
@@ -97,62 +83,48 @@ func TestDelete(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, a2, a2Got)
 
-	// Check that the deleted_at is set for account 1 and not account 2
+	// Check that account 1 is gone and account 2 remains
 	{
 		type row struct {
-			Address   string     `db:"address"`
-			DeletedAt *time.Time `db:"deleted_at"`
+			Address string `db:"address"`
 		}
 		rows := []row{}
-		err = session.Select(&rows, `SELECT address, deleted_at FROM accounts`)
+		err = session.Select(&rows, `SELECT address FROM accounts`)
 		require.NoError(t, err)
 		wantRows := []row{
-			{Address: a1Address, DeletedAt: &deletedAtMicroseconds},
-			{Address: a2Address, DeletedAt: nil},
+			{Address: a2Address},
 		}
 		assert.ElementsMatch(t, wantRows, rows)
 	}
 
-	// Check that the deleted_at is set for account 1 identities and not account 2
+	// Check that account 1's identities are gone and account 2's remain
 	{
 		type row struct {
-			Role      string     `db:"role"`
-			DeletedAt *time.Time `db:"deleted_at"`
+			Role string `db:"role"`
 		}
 		rows := []row{}
-		err = session.Select(&rows, `SELECT role, deleted_at FROM identities`)
+		err = session.Select(&rows, `SELECT role FROM identities`)
 		require.NoError(t, err)
 		wantRows := []row{
-			// Identities for account 1
-			{Role: "sender", DeletedAt: &deletedAtMicroseconds},
-			{Role: "receiver", DeletedAt: &deletedAtMicroseconds},
 			// Identities for account 2
-			{Role: "owner", DeletedAt: nil},
+			{Role: "owner"},
 		}
 		assert.ElementsMatch(t, wantRows, rows)
 	}
 
-	// Check that the deleted_at is set for account 1 auth methods and not account 2
+	// Check that account 1's auth methods are gone and account 2's remain
 	{
 		type row struct {
-			Value     string     `db:"value"`
-			DeletedAt *time.Time `db:"deleted_at"`
+			Value string `db:"value"`
 		}
 		rows := []row{}
-		err = session.Select(&rows, `SELECT value, deleted_at FROM auth_methods`)
+		err = session.Select(&rows, `SELECT value FROM auth_methods`)
 		require.NoError(t, err)
 		wantRows := []row{
-			// Auth methods for account 1
-			{Value: "GD4NGMOTV4QOXWA6PGPIGVWZYMRCJAKLQJKZIP55C5DGB3GBHHET3YC6", DeletedAt: &deletedAtMicroseconds},
-			{Value: "+10000000000", DeletedAt: &deletedAtMicroseconds},
-			{Value: "user1@example.com", DeletedAt: &deletedAtMicroseconds},
-			{Value: "GBJCOYGKIJYX3VUEOZ6GVMFP522UO4OEBI5KB5HHWZAZ2DEJTHS6VOHP", DeletedAt: &deletedAtMicroseconds},
-			{Value: "+20000000000", DeletedAt: &deletedAtMicroseconds},
-			{Value: "user2@example.com", DeletedAt: &deletedAtMicroseconds},
 			// Auth methods for account 2
-			{Value: "GAA5TI5BXVNJTA6UEDF7UTMA5FXHR2TFRCJ2G7QT6FJCJ7WD5ITIKQNE", DeletedAt: nil},
-			{Value: "+30000000000", DeletedAt: nil},
-			{Value: "user3@example.com", DeletedAt: nil},
+			{Value: "GAA5TI5BXVNJTA6UEDF7UTMA5FXHR2TFRCJ2G7QT6FJCJ7WD5ITIKQNE"},
+			{Value: "+30000000000"},
+			{Value: "user3@example.com"},
 		}
 		assert.ElementsMatch(t, wantRows, rows)
 	}
