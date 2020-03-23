@@ -28,6 +28,4 @@ func (s *DBStore) Delete(address string) error {
 	}
 
 	return nil
-
-	return nil
 }
