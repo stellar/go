@@ -26,7 +26,7 @@ func TestPopulateOperation_Successful(t *testing.T) {
 	dest = operations.Base{}
 	row = history.Operation{TransactionSuccessful: nil}
 
-	PopulateBaseOperation(ctx, &dest, row, nil, ledger)
+	PopulateBaseOperation(ctx, &dest, row, "", nil, ledger)
 	assert.True(t, dest.TransactionSuccessful)
 	assert.Nil(t, dest.Transaction)
 
@@ -34,7 +34,7 @@ func TestPopulateOperation_Successful(t *testing.T) {
 	val = true
 	row = history.Operation{TransactionSuccessful: &val}
 
-	PopulateBaseOperation(ctx, &dest, row, nil, ledger)
+	PopulateBaseOperation(ctx, &dest, row, "", nil, ledger)
 	assert.True(t, dest.TransactionSuccessful)
 	assert.Nil(t, dest.Transaction)
 
@@ -42,7 +42,7 @@ func TestPopulateOperation_Successful(t *testing.T) {
 	val = false
 	row = history.Operation{TransactionSuccessful: &val}
 
-	PopulateBaseOperation(ctx, &dest, row, nil, ledger)
+	PopulateBaseOperation(ctx, &dest, row, "", nil, ledger)
 	assert.False(t, dest.TransactionSuccessful)
 	assert.Nil(t, dest.Transaction)
 }
@@ -64,7 +64,14 @@ func TestPopulateOperation_WithTransaction(t *testing.T) {
 	operationsRow = history.Operation{TransactionSuccessful: &val}
 	transactionRow = history.Transaction{Successful: &val, MaxFee: 10000, FeeCharged: 100}
 
-	PopulateBaseOperation(ctx, &dest, operationsRow, &transactionRow, ledger)
+	PopulateBaseOperation(
+		ctx,
+		&dest,
+		operationsRow,
+		transactionRow.TransactionHash,
+		&transactionRow,
+		ledger,
+	)
 	assert.True(t, dest.TransactionSuccessful)
 	assert.True(t, dest.Transaction.Successful)
 	assert.Equal(t, int32(100), dest.Transaction.FeeCharged)

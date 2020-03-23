@@ -22,21 +22,21 @@ func TestPopulateTransaction_Successful(t *testing.T) {
 	dest = Transaction{}
 	row = history.Transaction{Successful: nil}
 
-	PopulateTransaction(ctx, &dest, row)
+	PopulateTransaction(ctx, row.TransactionHash, &dest, row)
 	assert.True(t, dest.Successful)
 
 	dest = Transaction{}
 	val = true
 	row = history.Transaction{Successful: &val}
 
-	PopulateTransaction(ctx, &dest, row)
+	PopulateTransaction(ctx, row.TransactionHash, &dest, row)
 	assert.True(t, dest.Successful)
 
 	dest = Transaction{}
 	val = false
 	row = history.Transaction{Successful: &val}
 
-	PopulateTransaction(ctx, &dest, row)
+	PopulateTransaction(ctx, row.TransactionHash, &dest, row)
 	assert.False(t, dest.Successful)
 }
 
@@ -52,7 +52,7 @@ func TestPopulateTransaction_Fee(t *testing.T) {
 	dest = Transaction{}
 	row = history.Transaction{MaxFee: 10000, FeeCharged: 100}
 
-	PopulateTransaction(ctx, &dest, row)
+	PopulateTransaction(ctx, row.TransactionHash, &dest, row)
 	assert.Equal(t, int32(100), dest.FeeCharged)
 	assert.Equal(t, int32(10000), dest.MaxFee)
 }
