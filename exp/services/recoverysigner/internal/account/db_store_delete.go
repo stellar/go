@@ -1,12 +1,7 @@
 package account
 
 func (s *DBStore) Delete(address string) error {
-	tx, err := s.DB.Beginx()
-	if err != nil {
-		return err
-	}
-
-	result, err := tx.Exec(
+	result, err := s.DB.Exec(
 		`DELETE FROM accounts
 		WHERE address = $1`,
 		address,
@@ -20,11 +15,6 @@ func (s *DBStore) Delete(address string) error {
 	}
 	if rowsAffected == 0 {
 		return ErrNotFound
-	}
-
-	err = tx.Commit()
-	if err != nil {
-		return err
 	}
 
 	return nil
