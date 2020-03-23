@@ -70,7 +70,12 @@ func (action *TransactionCreateAction) loadResource() {
 	switch err := action.Result.Err.(type) {
 	case *txsub.FailedTransactionError:
 		rcr := horizon.TransactionResultCodes{}
-		resourceadapter.PopulateTransactionResultCodes(action.R.Context(), &rcr, err)
+		resourceadapter.PopulateTransactionResultCodes(
+			action.R.Context(),
+			action.Result.Hash,
+			&rcr,
+			err,
+		)
 
 		action.Err = &problem.P{
 			Type:   "transaction_failed",

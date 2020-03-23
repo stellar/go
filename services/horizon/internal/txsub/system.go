@@ -82,6 +82,7 @@ func (sys *System) Submit(ctx context.Context, env string) (result <-chan Result
 
 	if r.Err != ErrNoResults {
 		sys.Log.Ctx(ctx).WithField("hash", info.Hash).Info("Error getting submission result from a DB")
+		r.Hash = info.Hash
 		sys.finish(ctx, response, r)
 		return
 	}
@@ -90,14 +91,14 @@ func (sys *System) Submit(ctx context.Context, env string) (result <-chan Result
 
 	curSeq, err := sys.Sequences.Get([]string{info.SourceAddress})
 	if err != nil {
-		sys.finish(ctx, response, Result{Err: err, EnvelopeXDR: env})
+		sys.finish(ctx, response, Result{Err: err, Hash: info.Hash, EnvelopeXDR: env})
 		return
 	}
 
 	// If account's sequence cannot be found, abort with tx_NO_ACCOUNT
 	// error code
 	if _, ok := curSeq[info.SourceAddress]; !ok {
-		sys.finish(ctx, response, Result{Err: ErrNoAccount, EnvelopeXDR: env})
+		sys.finish(ctx, response, Result{Err: ErrNoAccount, Hash: info.Hash, EnvelopeXDR: env})
 		return
 	}
 
@@ -117,7 +118,7 @@ func (sys *System) Submit(ctx context.Context, env string) (result <-chan Result
 		}
 
 		if err != nil {
-			sys.finish(ctx, response, Result{Err: err, EnvelopeXDR: env})
+			sys.finish(ctx, response, Result{Err: err, Hash: info.Hash, EnvelopeXDR: env})
 			return
 		}
 
@@ -135,12 +136,12 @@ func (sys *System) Submit(ctx context.Context, env string) (result <-chan Result
 		// any error other than "txBAD_SEQ" is a failure
 		isBad, err := sr.IsBadSeq()
 		if err != nil {
-			sys.finish(ctx, response, Result{Err: err, EnvelopeXDR: env})
+			sys.finish(ctx, response, Result{Err: err, Hash: info.Hash, EnvelopeXDR: env})
 			return
 		}
 
 		if !isBad {
-			sys.finish(ctx, response, Result{Err: sr.Err, EnvelopeXDR: env})
+			sys.finish(ctx, response, Result{Err: sr.Err, Hash: info.Hash, EnvelopeXDR: env})
 			return
 		}
 
@@ -152,11 +153,11 @@ func (sys *System) Submit(ctx context.Context, env string) (result <-chan Result
 			sys.finish(ctx, response, r)
 		} else {
 			// finally, return the bad_seq error if no result was found on 2nd attempt
-			sys.finish(ctx, response, Result{Err: sr.Err, EnvelopeXDR: env})
+			sys.finish(ctx, response, Result{Err: sr.Err, Hash: info.Hash, EnvelopeXDR: env})
 		}
 
 	case <-ctx.Done():
-		sys.finish(ctx, response, Result{Err: ErrCanceled, EnvelopeXDR: env})
+		sys.finish(ctx, response, Result{Err: ErrCanceled, Hash: info.Hash, EnvelopeXDR: env})
 	}
 
 	return
@@ -242,6 +243,7 @@ func (sys *System) Tick(ctx context.Context) {
 
 		if ok {
 			logger.WithField("hash", hash).Debug("finishing open submission")
+			r.Hash = hash
 			sys.Pending.Finish(ctx, r)
 			continue
 		}
