@@ -12,6 +12,7 @@ CREATE TABLE auth_methods (
   id BIGSERIAL NOT NULL PRIMARY KEY,
 
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE,
 
   "type" auth_method_type NOT NULL,
   value text NOT NULL
