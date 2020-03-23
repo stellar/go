@@ -298,13 +298,22 @@ type Root struct {
 		Accounts            *hal.Link `json:"accounts,omitempty"`
 		AccountTransactions hal.Link  `json:"account_transactions"`
 		Assets              hal.Link  `json:"assets"`
+		Effects             hal.Link  `json:"effects"`
+		FeeStats            hal.Link  `json:"fee_stats"`
 		Friendbot           *hal.Link `json:"friendbot,omitempty"`
+		Ledger              hal.Link  `json:"ledger"`
+		Ledgers             hal.Link  `json:"ledgers"`
 		Offer               *hal.Link `json:"offer,omitempty"`
 		Offers              *hal.Link `json:"offers,omitempty"`
+		Operation           hal.Link  `json:"operation"`
+		Operations          hal.Link  `json:"operations"`
 		OrderBook           hal.Link  `json:"order_book"`
+		Payments            hal.Link  `json:"payments"`
 		Self                hal.Link  `json:"self"`
 		StrictReceivePaths  *hal.Link `json:"strict_receive_paths"`
 		StrictSendPaths     *hal.Link `json:"strict_send_paths"`
+		TradeAggregations   hal.Link  `json:"trade_aggregations"`
+		Trades              hal.Link  `json:"trades"`
 		Transaction         hal.Link  `json:"transaction"`
 		Transactions        hal.Link  `json:"transactions"`
 	} `json:"_links"`
