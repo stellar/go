@@ -142,6 +142,9 @@ func participantsForTransaction(
 	participants := []xdr.AccountId{
 		transaction.Envelope.SourceAccount(),
 	}
+	if transaction.Envelope.IsFeeBump() {
+		participants = append(participants, transaction.Envelope.FeeBumpAccount())
+	}
 
 	p, err := participantsForMeta(transaction.Meta)
 	if err != nil {

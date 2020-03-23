@@ -21,7 +21,7 @@ func (t *Transaction) IsSuccessful() bool {
 func (q *Q) TransactionByHash(dest interface{}, hash string) error {
 	sql := selectTransaction.
 		Limit(1).
-		Where("ht.transaction_hash = ?", hash)
+		Where("ht.transaction_hash = ? OR ht.inner_transaction_hash = ?", hash, hash)
 
 	return q.Get(dest, sql)
 }
@@ -192,6 +192,10 @@ var selectTransaction = sq.Select(
 		"ht.memo, " +
 		"lower(ht.time_bounds) AS valid_after, " +
 		"upper(ht.time_bounds) AS valid_before, " +
-		"hl.closed_at AS ledger_close_time").
+		"hl.closed_at AS ledger_close_time, " +
+		"ht.inner_transaction_hash, " +
+		"ht.fee_account, " +
+		"ht.inner_max_fee, " +
+		"array_to_string(ht.inner_signatures, ',') AS inner_signatures").
 	From("history_transactions ht").
 	LeftJoin("history_ledgers hl ON ht.ledger_sequence = hl.sequence")
