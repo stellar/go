@@ -5,7 +5,7 @@ import "github.com/lib/pq"
 func (s *DBStore) FindWithIdentityAuthMethod(t AuthMethodType, value string) ([]Account, error) {
 	query := `SELECT account_id
 		FROM auth_methods
-		WHERE "type" = $1
+		WHERE type_ = $1
 		AND value = $2`
 	accountIDs := []int64{}
 	err := s.DB.Select(&accountIDs, query, t, value)

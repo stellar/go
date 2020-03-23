@@ -89,11 +89,11 @@ func TestAdd(t *testing.T) {
 			AccountID  int64  `db:"account_id"`
 			IdentityID int64  `db:"identity_id"`
 			ID         int64  `db:"id"`
-			Type       string `db:"type"`
+			Type       string `db:"type_"`
 			Value      string `db:"value"`
 		}
 		rows := []row{}
-		err = session.Select(&rows, `SELECT account_id, identity_id, id, "type", value FROM auth_methods`)
+		err = session.Select(&rows, `SELECT account_id, identity_id, id, type_, value FROM auth_methods`)
 		require.NoError(t, err)
 		wantRows := []row{
 			{

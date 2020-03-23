@@ -14,13 +14,13 @@ CREATE TABLE auth_methods (
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE,
 
-  "type" auth_method_type NOT NULL,
+  type_ auth_method_type NOT NULL,
   value text NOT NULL
 );
 
 CREATE INDEX ON auth_methods (account_id);
 CREATE INDEX ON auth_methods (identity_id);
-CREATE INDEX ON auth_methods ("type", value);
+CREATE INDEX ON auth_methods (type_, value);
 
 -- +migrate Down
 

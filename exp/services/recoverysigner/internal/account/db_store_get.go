@@ -22,7 +22,7 @@ func (s *DBStore) getAccounts(where string, args ...interface{}) ([]Account, err
 			accounts.address AS account_address,
 			identities.id AS identity_id,
 			identities.role AS identity_role,
-			auth_methods."type" AS auth_method_type,
+			auth_methods.type_ AS auth_method_type,
 			auth_methods.value AS auth_method_value
 		FROM accounts
 		LEFT JOIN identities ON identities.account_id = accounts.id

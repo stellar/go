@@ -36,7 +36,7 @@ func (s *DBStore) Add(a Account) error {
 
 		for _, m := range i.AuthMethods {
 			_, err = tx.Exec(`
-				INSERT INTO auth_methods (account_id, identity_id, type, value)
+				INSERT INTO auth_methods (account_id, identity_id, type_, value)
 				VALUES ($1, $2, $3, $4)
 			`, accountID, identityID, m.Type, m.Value)
 			if err != nil {
