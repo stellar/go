@@ -62,20 +62,31 @@ func (s *DBStore) getAccounts(where string, args ...interface{}) ([]Account, err
 		}
 		a := accounts[accountIndex]
 
-		if r.IdentityID != nil || r.IdentityRole != nil {
-			identityIndex, ok := identityIndexByIdentityID[*r.IdentityID]
+		// IdentityID and IdentityRole will be nil if the LEFT JOIN results in
+		// an account row that joins to no identities.
+		if r.IdentityID != nil && r.IdentityRole != nil {
+			identityID := *r.IdentityID
+			identityRole := *r.IdentityRole
+
+			identityIndex, ok := identityIndexByIdentityID[identityID]
 			if !ok {
-				i := Identity{Role: *r.IdentityRole}
+				i := Identity{Role: identityRole}
 				a.Identities = append(a.Identities, i)
 				identityIndex = len(a.Identities) - 1
-				identityIndexByIdentityID[*r.IdentityID] = identityIndex
+				identityIndexByIdentityID[identityID] = identityIndex
 			}
 			i := a.Identities[identityIndex]
 
+			// AuthMethodType and AuthMethodValue will be nil if the LEFT JOIN
+			// results in an account/identity row that joins to no auth
+			// methods.
 			if r.AuthMethodType != nil && r.AuthMethodValue != nil {
+				authMethodType := *r.AuthMethodType
+				authMethodValue := *r.AuthMethodValue
+
 				m := AuthMethod{
-					Type:  AuthMethodType(*r.AuthMethodType),
-					Value: *r.AuthMethodValue,
+					Type:  AuthMethodType(authMethodType),
+					Value: authMethodValue,
 				}
 				i.AuthMethods = append(i.AuthMethods, m)
 			}
