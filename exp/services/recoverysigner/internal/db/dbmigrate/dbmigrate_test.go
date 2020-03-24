@@ -154,6 +154,9 @@ func TestMigrate_upApplyAll(t *testing.T) {
 		"20200311000000-create-accounts.sql",
 		"20200311000001-create-identities.sql",
 		"20200311000002-create-auth-methods.sql",
+		"20200320000000-create-accounts-audit.sql",
+		"20200320000001-create-identities-audit.sql",
+		"20200320000002-create-auth-methods-audit.sql",
 	}
 	assert.Equal(t, wantIDs, ids)
 }
@@ -180,6 +183,9 @@ func TestMigrate_upApplyNone(t *testing.T) {
 		"20200311000000-create-accounts.sql",
 		"20200311000001-create-identities.sql",
 		"20200311000002-create-auth-methods.sql",
+		"20200320000000-create-accounts-audit.sql",
+		"20200320000001-create-identities-audit.sql",
+		"20200320000002-create-auth-methods-audit.sql",
 	}
 	assert.Equal(t, wantIDs, ids)
 }
