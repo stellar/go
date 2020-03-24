@@ -122,36 +122,6 @@ func TestRateLimitMiddlewareTestSuite(t *testing.T) {
 	suite.Run(t, new(RateLimitMiddlewareTestSuite))
 }
 
-// Rate Limiting works with redis
-func TestRateLimit_Redis(t *testing.T) {
-	ht := StartHTTPTest(t, "base")
-	defer ht.Finish()
-	c := NewTestConfig()
-	c.RateQuota = &throttled.RateQuota{
-		MaxRate:  throttled.PerHour(10),
-		MaxBurst: 9,
-	}
-	c.RedisURL = "redis://127.0.0.1:6379/"
-	app := NewApp(c)
-	defer app.Close()
-	rh := NewRequestHelper(app)
-
-	redis := app.redis.Get()
-	_, err := redis.Do("FLUSHDB")
-	assert.Nil(t, err)
-
-	for i := 0; i < 10; i++ {
-		w := rh.Get("/")
-		assert.Equal(t, 200, w.Code)
-	}
-
-	w := rh.Get("/")
-	assert.Equal(t, 429, w.Code)
-
-	w = rh.Get("/", test.RequestHelperRemoteAddr("127.0.0.2"))
-	assert.Equal(t, 200, w.Code)
-}
-
 func TestStateMiddleware(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
