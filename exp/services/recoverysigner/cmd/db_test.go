@@ -6,14 +6,14 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	dbpkg "github.com/stellar/go/exp/services/recoverysigner/internal/db"
-	"github.com/stellar/go/support/db/dbtest"
+	"github.com/stellar/go/exp/services/recoverysigner/internal/db/dbtest"
 	"github.com/stellar/go/support/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestDBCommand_Migrate_upDownAll(t *testing.T) {
-	db := dbtest.Postgres(t)
+	db := dbtest.OpenWithoutMigrations(t)
 	log := log.New()
 
 	dbCommand := DBCommand{
@@ -80,7 +80,7 @@ func TestDBCommand_Migrate_upDownAll(t *testing.T) {
 }
 
 func TestDBCommand_Migrate_upTwoDownOne(t *testing.T) {
-	db := dbtest.Postgres(t)
+	db := dbtest.OpenWithoutMigrations(t)
 	log := log.New()
 
 	dbCommand := DBCommand{
@@ -147,7 +147,7 @@ func TestDBCommand_Migrate_upTwoDownOne(t *testing.T) {
 }
 
 func TestDBCommand_Migrate_invalidDirection(t *testing.T) {
-	db := dbtest.Postgres(t)
+	db := dbtest.OpenWithoutMigrations(t)
 	log := log.New()
 
 	dbCommand := DBCommand{
@@ -178,7 +178,7 @@ func TestDBCommand_Migrate_invalidDirection(t *testing.T) {
 }
 
 func TestDBCommand_Migrate_invalidCount(t *testing.T) {
-	db := dbtest.Postgres(t)
+	db := dbtest.OpenWithoutMigrations(t)
 	log := log.New()
 
 	dbCommand := DBCommand{
@@ -211,7 +211,7 @@ func TestDBCommand_Migrate_invalidCount(t *testing.T) {
 }
 
 func TestDBCommand_Migrate_zeroCount(t *testing.T) {
-	db := dbtest.Postgres(t)
+	db := dbtest.OpenWithoutMigrations(t)
 	log := log.New()
 
 	dbCommand := DBCommand{

@@ -10,7 +10,7 @@ import (
 	migrate "github.com/rubenv/sql-migrate"
 	"github.com/shurcooL/httpfs/filter"
 	dbpkg "github.com/stellar/go/exp/services/recoverysigner/internal/db"
-	"github.com/stellar/go/support/db/dbtest"
+	"github.com/stellar/go/exp/services/recoverysigner/internal/db/dbtest"
 	supportHttp "github.com/stellar/go/support/http"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -28,7 +28,7 @@ func TestGeneratedAssets(t *testing.T) {
 }
 
 func TestPlanMigration_upApplyOne(t *testing.T) {
-	db := dbtest.Postgres(t)
+	db := dbtest.OpenWithoutMigrations(t)
 	session, err := dbpkg.Open(db.DSN)
 	require.NoError(t, err)
 
@@ -39,7 +39,7 @@ func TestPlanMigration_upApplyOne(t *testing.T) {
 }
 
 func TestPlanMigration_upApplyAll(t *testing.T) {
-	db := dbtest.Postgres(t)
+	db := dbtest.OpenWithoutMigrations(t)
 	session, err := dbpkg.Open(db.DSN)
 	require.NoError(t, err)
 
@@ -54,7 +54,7 @@ func TestPlanMigration_upApplyAll(t *testing.T) {
 }
 
 func TestPlanMigration_upApplyNone(t *testing.T) {
-	db := dbtest.Postgres(t)
+	db := dbtest.OpenWithoutMigrations(t)
 	session, err := dbpkg.Open(db.DSN)
 	require.NoError(t, err)
 
@@ -68,7 +68,7 @@ func TestPlanMigration_upApplyNone(t *testing.T) {
 }
 
 func TestPlanMigration_downApplyOne(t *testing.T) {
-	db := dbtest.Postgres(t)
+	db := dbtest.OpenWithoutMigrations(t)
 	session, err := dbpkg.Open(db.DSN)
 	require.NoError(t, err)
 
@@ -83,7 +83,7 @@ func TestPlanMigration_downApplyOne(t *testing.T) {
 }
 
 func TestPlanMigration_downApplyAll(t *testing.T) {
-	db := dbtest.Postgres(t)
+	db := dbtest.OpenWithoutMigrations(t)
 	session, err := dbpkg.Open(db.DSN)
 	require.NoError(t, err)
 
@@ -101,7 +101,7 @@ func TestPlanMigration_downApplyAll(t *testing.T) {
 }
 
 func TestPlanMigration_downApplyNone(t *testing.T) {
-	db := dbtest.Postgres(t)
+	db := dbtest.OpenWithoutMigrations(t)
 	session, err := dbpkg.Open(db.DSN)
 	require.NoError(t, err)
 
@@ -119,7 +119,7 @@ func TestPlanMigration_downApplyNone(t *testing.T) {
 }
 
 func TestMigrate_upApplyOne(t *testing.T) {
-	db := dbtest.Postgres(t)
+	db := dbtest.OpenWithoutMigrations(t)
 	session, err := dbpkg.Open(db.DSN)
 	require.NoError(t, err)
 
@@ -137,7 +137,7 @@ func TestMigrate_upApplyOne(t *testing.T) {
 }
 
 func TestMigrate_upApplyAll(t *testing.T) {
-	db := dbtest.Postgres(t)
+	db := dbtest.OpenWithoutMigrations(t)
 	session, err := dbpkg.Open(db.DSN)
 	require.NoError(t, err)
 
@@ -159,7 +159,7 @@ func TestMigrate_upApplyAll(t *testing.T) {
 }
 
 func TestMigrate_upApplyNone(t *testing.T) {
-	db := dbtest.Postgres(t)
+	db := dbtest.OpenWithoutMigrations(t)
 	session, err := dbpkg.Open(db.DSN)
 	require.NoError(t, err)
 
@@ -185,7 +185,7 @@ func TestMigrate_upApplyNone(t *testing.T) {
 }
 
 func TestMigrate_downApplyOne(t *testing.T) {
-	db := dbtest.Postgres(t)
+	db := dbtest.OpenWithoutMigrations(t)
 	session, err := dbpkg.Open(db.DSN)
 	require.NoError(t, err)
 
@@ -207,7 +207,7 @@ func TestMigrate_downApplyOne(t *testing.T) {
 }
 
 func TestMigrate_downApplyAll(t *testing.T) {
-	db := dbtest.Postgres(t)
+	db := dbtest.OpenWithoutMigrations(t)
 	session, err := dbpkg.Open(db.DSN)
 	require.NoError(t, err)
 
@@ -226,7 +226,7 @@ func TestMigrate_downApplyAll(t *testing.T) {
 }
 
 func TestMigrate_downApplyNone(t *testing.T) {
-	db := dbtest.Postgres(t)
+	db := dbtest.OpenWithoutMigrations(t)
 	session, err := dbpkg.Open(db.DSN)
 	require.NoError(t, err)
 
