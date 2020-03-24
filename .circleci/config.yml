@@ -322,7 +322,9 @@ workflows:
     jobs:
       - check_code_1_14
       - test_code_1_13
+      - test_code_1_13_postgres10
       - test_code_1_14
+      - test_code_1_14_postgres10
       - publish_state_diff_docker_image:
           filters:
               branches:
