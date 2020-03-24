@@ -23,6 +23,7 @@ func PopulateBalance(dest *protocol.Balance, row core.Trustline) (err error) {
 	dest.Issuer = row.Issuer
 	dest.Code = row.Assetcode
 	dest.LastModifiedLedger = row.LastModified
+	dest.Flags = uint32(row.Flags)
 	isAuthorized := row.IsAuthorized()
 	dest.IsAuthorized = &isAuthorized
 	return
@@ -41,6 +42,7 @@ func PopulateHistoryBalance(dest *protocol.Balance, row history.TrustLine) (err 
 	dest.Issuer = row.AssetIssuer
 	dest.Code = row.AssetCode
 	dest.LastModifiedLedger = row.LastModifiedLedger
+	dest.Flags = uint32(row.Flags)
 	isAuthorized := row.IsAuthorized()
 	dest.IsAuthorized = &isAuthorized
 	return

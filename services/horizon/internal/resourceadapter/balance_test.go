@@ -41,6 +41,7 @@ func TestPopulateBalance(t *testing.T) {
 	assert.Equal(t, "", want.Issuer)
 	assert.Equal(t, testAssetCode1, want.Code)
 	assert.Equal(t, true, *want.IsAuthorized)
+	assert.Equal(t, uint32(1), want.Flags)
 
 	want = Balance{}
 	err = PopulateBalance(&want, unauthorizedTrustline)
@@ -51,6 +52,7 @@ func TestPopulateBalance(t *testing.T) {
 	assert.Equal(t, "", want.Issuer)
 	assert.Equal(t, testAssetCode2, want.Code)
 	assert.Equal(t, false, *want.IsAuthorized)
+	assert.Equal(t, uint32(2), want.Flags)
 }
 
 func TestPopulateHistoryBalance(t *testing.T) {
@@ -84,6 +86,7 @@ func TestPopulateHistoryBalance(t *testing.T) {
 	assert.Equal(t, "", want.Issuer)
 	assert.Equal(t, testAssetCode1, want.Code)
 	assert.Equal(t, true, *want.IsAuthorized)
+	assert.Equal(t, uint32(1), want.Flags)
 
 	want = Balance{}
 	err = PopulateHistoryBalance(&want, unauthorizedTrustline)
@@ -94,6 +97,7 @@ func TestPopulateHistoryBalance(t *testing.T) {
 	assert.Equal(t, "", want.Issuer)
 	assert.Equal(t, testAssetCode2, want.Code)
 	assert.Equal(t, false, *want.IsAuthorized)
+	assert.Equal(t, uint32(2), want.Flags)
 }
 
 func TestPopulateNativeBalance(t *testing.T) {

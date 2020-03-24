@@ -197,7 +197,10 @@ type Balance struct {
 	BuyingLiabilities  string `json:"buying_liabilities"`
 	SellingLiabilities string `json:"selling_liabilities"`
 	LastModifiedLedger uint32 `json:"last_modified_ledger,omitempty"`
-	IsAuthorized       *bool  `json:"is_authorized,omitempty"`
+	// Action needed in release: horizon-v2.0.0
+	// remove IsAuthorized in favor of Flags
+	IsAuthorized *bool  `json:"is_authorized,omitempty"`
+	Flags        uint32 `json:"flags"`
 	base.Asset
 }
 
