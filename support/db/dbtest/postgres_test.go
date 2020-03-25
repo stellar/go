@@ -41,3 +41,9 @@ func TestPostgres_clientTimezone(t *testing.T) {
 	wantTimestamp := time.Date(2020, 3, 19, 16, 56, 0, 0, time.UTC)
 	assert.Equal(t, wantTimestamp, timestamp)
 }
+
+func TestPostgres_Version(t *testing.T) {
+	db := Postgres(t)
+	majorVersion := db.Version()
+	assert.GreaterOrEqual(t, majorVersion, 9)
+}

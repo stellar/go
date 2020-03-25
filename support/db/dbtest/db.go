@@ -5,6 +5,8 @@ import (
 	"encoding/hex"
 	"fmt"
 	"os"
+	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/jmoiron/sqlx"
@@ -81,6 +83,22 @@ func (db *DB) Open() *sqlx.DB {
 	require.NoError(db.t, err)
 
 	return conn
+}
+
+func (db *DB) Version() (major int) {
+	conn := db.Open()
+	defer conn.Close()
+
+	versionFull := ""
+	err := conn.Get(&versionFull, "SHOW server_version")
+	require.NoError(db.t, err)
+
+	version := strings.Fields(versionFull)
+	parts := strings.Split(version[0], ".")
+	major, err = strconv.Atoi(parts[0])
+	require.NoError(db.t, err)
+
+	return major
 }
 
 func execStatement(t *testing.T, pguser, query string) {
