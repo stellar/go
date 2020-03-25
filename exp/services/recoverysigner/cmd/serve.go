@@ -29,6 +29,14 @@ func (c *ServeCommand) Command() *cobra.Command {
 			Required:    true,
 		},
 		{
+			Name:        "db-url",
+			Usage:       "Database URL",
+			OptType:     types.String,
+			ConfigKey:   &opts.DatabaseURL,
+			FlagDefault: "",
+			Required:    false,
+		},
+		{
 			Name:        "horizon-url",
 			Usage:       "Horizon URL used for looking up account details",
 			OptType:     types.String,

@@ -2,6 +2,9 @@
 // sources:
 // migrations/20200309000000-initial-1.sql (162B)
 // migrations/20200309000001-initial-2.sql (162B)
+// migrations/20200311000000-create-accounts.sql (324B)
+// migrations/20200311000001-create-identities.sql (389B)
+// migrations/20200311000002-create-auth-methods.sql (716B)
 
 package dbmigrate
 
@@ -110,6 +113,66 @@ func migrations20200309000001Initial2Sql() (*asset, error) {
 	return a, nil
 }
 
+var _migrations20200311000000CreateAccountsSql = []byte("\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff\x84\x90\xc1\x4e\xc3\x30\x10\x44\xef\xfb\x15\x73\x4c\x44\xfb\x05\x3d\xb9\x78\x29\x16\x8e\x63\x9c\xb5\xd2\x70\x41\x56\x1c\xa1\x1e\x68\xab\x24\x15\xbf\x8f\x5a\x21\x1a\x71\xe1\xb8\x87\x99\xd9\xf7\xd6\x6b\x3c\x7c\x1e\x3e\xc6\x34\x0f\x88\x67\xa2\xc7\xc0\x4a\x18\xa2\xb6\x96\x91\xfa\xfe\x74\x39\xce\x13\x0a\x02\x0e\x19\x5b\xb3\x33\x4e\xe0\x6a\x81\x8b\xd6\xc2\x07\x53\xa9\xd0\xe1\x85\x3b\xec\xd8\x71\x50\xc2\x1a\xca\xb6\xaa\x6b\xa0\x1a\x18\xcd\x4e\x8c\x74\x2b\x22\xa0\x1f\x87\x34\x0f\xf9\x3d\xcd\x10\x53\x71\x23\xaa\xf2\x68\x8d\x3c\xdf\x4e\xbc\xd5\x8e\xef\xcd\x9a\x9f\x54\xb4\xd7\xa9\xb6\x28\x57\x04\x5c\xce\xf9\xbf\xf4\x6d\x25\xe5\x3c\x0e\xd3\x04\xe1\xfd\xfd\x51\x2a\x37\xbf\x64\xd1\x99\xd7\xc8\x30\x4e\xf3\x1e\xb5\x5b\x30\x46\xef\x39\x14\x3f\x05\xe5\x35\xb2\x94\xa3\x4f\x5f\x47\x22\x1d\x6a\xff\x47\xce\x86\xbe\x03\x00\x00\xff\xff\x35\x11\xef\x05\x44\x01\x00\x00")
+
+func migrations20200311000000CreateAccountsSqlBytes() ([]byte, error) {
+	return bindataRead(
+		_migrations20200311000000CreateAccountsSql,
+		"migrations/20200311000000-create-accounts.sql",
+	)
+}
+
+func migrations20200311000000CreateAccountsSql() (*asset, error) {
+	bytes, err := migrations20200311000000CreateAccountsSqlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "migrations/20200311000000-create-accounts.sql", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0x1c, 0xd6, 0x9b, 0xfd, 0xbd, 0x53, 0x3b, 0xf0, 0x35, 0xd5, 0xf9, 0x9a, 0xde, 0x85, 0xe, 0xe3, 0xb4, 0x94, 0xa6, 0xe7, 0xf6, 0xaf, 0xf2, 0x54, 0xb2, 0x6f, 0xfd, 0xce, 0x61, 0xda, 0xb, 0x20}}
+	return a, nil
+}
+
+var _migrations20200311000001CreateIdentitiesSql = []byte("\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff\x84\x90\xc1\x6a\x83\x40\x10\x86\xef\xfb\x14\xff\x51\x69\xf2\x04\x39\x6d\xdc\x49\xba\x74\x5d\x65\x1d\x31\xf6\x12\x44\x97\xb2\xd0\x6a\x30\x1b\xfa\xfa\xc5\x40\x6b\xa0\x85\x1e\x07\xfe\xf9\xbf\x99\x6f\xbb\xc5\xd3\x47\x78\x9b\xbb\xe8\x51\x5f\x84\xc8\x1c\x49\x26\xb0\xdc\x1b\x42\x18\xfc\x18\x43\x0c\xfe\x8a\x44\x00\x5d\xdf\x4f\xb7\x31\x9e\xc3\x80\xbd\x3e\x6a\xcb\xb0\x05\xc3\xd6\xc6\xc0\xd1\x81\x1c\xd9\x8c\xaa\xef\xd4\x15\x49\x18\x52\x14\x16\x8a\x0c\x31\x21\x93\x55\x26\x15\x6d\x04\xf0\x47\x41\xe9\x74\x2e\x5d\x8b\x17\x6a\x71\x24\x4b\x4e\x32\x29\x48\xd3\xc8\xb6\x82\xac\xa0\x15\x59\xd6\xdc\x6e\x84\x00\xfa\xd9\x77\xd1\x0f\xe7\x2e\x82\x75\x4e\x15\xcb\xbc\x44\xa3\xf9\xf9\x3e\xe2\xb5\xb0\xb4\x36\x2b\x3a\xc8\xda\x2c\xa8\x26\x49\x17\xfa\xed\x32\xfc\xb7\x7d\xa7\xcc\xd3\xbb\x07\xd3\x69\xbd\x52\xa4\xbb\x1f\x43\xda\x2a\x3a\x2d\xef\x3d\x4a\x5a\x0d\x2d\xc9\x47\xb7\x6a\xfa\x1c\x85\x50\xae\x28\x7f\xb9\xdd\x89\xaf\x00\x00\x00\xff\xff\xb1\x1a\x5c\x4b\x85\x01\x00\x00")
+
+func migrations20200311000001CreateIdentitiesSqlBytes() ([]byte, error) {
+	return bindataRead(
+		_migrations20200311000001CreateIdentitiesSql,
+		"migrations/20200311000001-create-identities.sql",
+	)
+}
+
+func migrations20200311000001CreateIdentitiesSql() (*asset, error) {
+	bytes, err := migrations20200311000001CreateIdentitiesSqlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "migrations/20200311000001-create-identities.sql", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0xaa, 0xcb, 0x82, 0x87, 0xcb, 0xd7, 0x70, 0xb9, 0xd, 0x73, 0xfa, 0xbe, 0xc1, 0x8c, 0xc5, 0x4c, 0xa4, 0x3b, 0x72, 0xd8, 0x8e, 0x82, 0x13, 0xc2, 0x89, 0xfc, 0x9b, 0x48, 0x4a, 0x28, 0x34, 0x52}}
+	return a, nil
+}
+
+var _migrations20200311000002CreateAuthMethodsSql = []byte("\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff\x84\x92\xcf\xce\x9b\x30\x10\xc4\xef\x7e\x8a\xbd\x25\xa8\xf9\x9e\x80\x93\x83\x37\xa9\x55\x30\x08\x8c\x52\x7a\x41\x6e\x6c\x35\x48\xfc\x13\x98\xb6\x79\xfb\xca\x24\x69\x12\x25\xfa\x38\xb2\x8c\x7f\xb3\xda\x99\x8f\x0f\xf8\xd2\x54\xbf\x06\x65\x0d\xe4\x3d\x21\x41\x8a\x54\x22\xc8\x22\x41\x50\x93\x3d\x95\x8d\xb1\xa7\x4e\x97\xf6\xdc\x1b\xa0\x19\xa0\xc8\x23\x58\x13\x80\xd5\x68\x4d\x5d\xab\xa1\x54\x5a\x0f\x66\x1c\x57\x1b\x37\xec\x4f\x5d\x6b\xca\x76\x6a\x7e\x9a\xe1\x32\x31\x8d\xaa\xea\x15\xf1\xfc\x3b\x9b\x6e\xc3\x27\xf8\x38\x03\xd5\xf1\xd8\x4d\xad\x2d\x2b\x0d\x5b\xbe\xe7\x42\x82\x88\x25\x88\x3c\x0c\x21\xc5\x1d\xa6\x28\x02\xcc\x6e\xaa\x11\xd6\x95\xf6\x20\x16\xc0\x30\x44\x89\x10\xd0\x2c\xa0\x0c\x9d\x65\xa5\x4d\x6b\x2b\x7b\x5e\x20\x5d\x65\x95\xf9\x9c\xf5\x82\x48\x52\x1e\xd1\xb4\x80\x6f\x58\xc0\x1e\x05\xa6\x54\x22\x03\x1a\x1e\x68\x91\xb9\x0b\x71\x86\x42\x72\x59\x6c\x08\x01\x38\x0e\x46\x59\xa3\x4b\x65\x41\xf2\x08\x33\x49\xa3\x04\x0e\x5c\x7e\x9d\x3f\xe1\x47\x2c\xf0\x4e\x66\xb8\xa3\x79\xe8\xac\x0e\x6b\xcf\xb9\x4f\xbd\x5e\x7a\x3d\xbb\xb8\x70\xca\xd7\xb8\x6e\x60\x87\xfa\xad\xea\xc9\x80\x35\x7f\xed\xff\xf1\x63\x26\x5c\x30\xfc\xee\x4e\xf0\x1c\xcb\x3d\x13\xcf\x5f\x90\x3e\x5c\x7d\x51\x3b\xef\xbb\xb9\xec\xe4\x96\x78\x2c\x21\xeb\xfe\xb4\x84\xb0\x34\x4e\xde\x14\xc5\xbf\xfe\x78\xd7\x4e\x9f\xfc\x0b\x00\x00\xff\xff\x81\xdc\x93\xfc\xcc\x02\x00\x00")
+
+func migrations20200311000002CreateAuthMethodsSqlBytes() ([]byte, error) {
+	return bindataRead(
+		_migrations20200311000002CreateAuthMethodsSql,
+		"migrations/20200311000002-create-auth-methods.sql",
+	)
+}
+
+func migrations20200311000002CreateAuthMethodsSql() (*asset, error) {
+	bytes, err := migrations20200311000002CreateAuthMethodsSqlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "migrations/20200311000002-create-auth-methods.sql", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0x14, 0x3a, 0x39, 0x59, 0xd, 0x9, 0x9d, 0x68, 0x45, 0xbc, 0x3a, 0xdf, 0xf5, 0x8c, 0x4, 0x29, 0x60, 0xda, 0x7, 0xf9, 0x8b, 0xfa, 0x57, 0x49, 0xfa, 0x41, 0xb3, 0xb0, 0x94, 0x6d, 0xdd, 0x1e}}
+	return a, nil
+}
+
 // Asset loads and returns the asset for the given name.
 // It returns an error if the asset could not be found or
 // could not be loaded.
@@ -201,8 +264,11 @@ func AssetNames() []string {
 
 // _bindata is a table, holding each asset generator, mapped to its name.
 var _bindata = map[string]func() (*asset, error){
-	"migrations/20200309000000-initial-1.sql": migrations20200309000000Initial1Sql,
-	"migrations/20200309000001-initial-2.sql": migrations20200309000001Initial2Sql,
+	"migrations/20200309000000-initial-1.sql":           migrations20200309000000Initial1Sql,
+	"migrations/20200309000001-initial-2.sql":           migrations20200309000001Initial2Sql,
+	"migrations/20200311000000-create-accounts.sql":     migrations20200311000000CreateAccountsSql,
+	"migrations/20200311000001-create-identities.sql":   migrations20200311000001CreateIdentitiesSql,
+	"migrations/20200311000002-create-auth-methods.sql": migrations20200311000002CreateAuthMethodsSql,
 }
 
 // AssetDir returns the file names below a certain
@@ -247,8 +313,11 @@ type bintree struct {
 
 var _bintree = &bintree{nil, map[string]*bintree{
 	"migrations": &bintree{nil, map[string]*bintree{
-		"20200309000000-initial-1.sql": &bintree{migrations20200309000000Initial1Sql, map[string]*bintree{}},
-		"20200309000001-initial-2.sql": &bintree{migrations20200309000001Initial2Sql, map[string]*bintree{}},
+		"20200309000000-initial-1.sql":           &bintree{migrations20200309000000Initial1Sql, map[string]*bintree{}},
+		"20200309000001-initial-2.sql":           &bintree{migrations20200309000001Initial2Sql, map[string]*bintree{}},
+		"20200311000000-create-accounts.sql":     &bintree{migrations20200311000000CreateAccountsSql, map[string]*bintree{}},
+		"20200311000001-create-identities.sql":   &bintree{migrations20200311000001CreateIdentitiesSql, map[string]*bintree{}},
+		"20200311000002-create-auth-methods.sql": &bintree{migrations20200311000002CreateAuthMethodsSql, map[string]*bintree{}},
 	}},
 }}
 

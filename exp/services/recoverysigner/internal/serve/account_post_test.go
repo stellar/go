@@ -11,6 +11,7 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/stellar/go/exp/services/recoverysigner/internal/account"
+	"github.com/stellar/go/exp/services/recoverysigner/internal/db/dbtest"
 	"github.com/stellar/go/exp/services/recoverysigner/internal/serve/auth"
 	"github.com/stellar/go/keypair"
 	supportlog "github.com/stellar/go/support/log"
@@ -19,7 +20,7 @@ import (
 )
 
 func TestAccountPost_newWithRoleOwnerContentTypeJSON(t *testing.T) {
-	s := account.NewMemoryStore()
+	s := &account.DBStore{DB: dbtest.Open(t).Open()}
 	h := accountPostHandler{
 		Logger:         supportlog.DefaultLogger,
 		AccountStore:   s,
@@ -84,7 +85,7 @@ func TestAccountPost_newWithRoleOwnerContentTypeJSON(t *testing.T) {
 }
 
 func TestAccountPost_newWithRoleOwnerContentTypeForm(t *testing.T) {
-	s := account.NewMemoryStore()
+	s := &account.DBStore{DB: dbtest.Open(t).Open()}
 	h := accountPostHandler{
 		Logger:         supportlog.DefaultLogger,
 		AccountStore:   s,
@@ -147,7 +148,7 @@ func TestAccountPost_newWithRoleOwnerContentTypeForm(t *testing.T) {
 }
 
 func TestAccountPost_newWithRolesSenderReceiverContentTypeJSON(t *testing.T) {
-	s := account.NewMemoryStore()
+	s := &account.DBStore{DB: dbtest.Open(t).Open()}
 	h := accountPostHandler{
 		Logger:         supportlog.DefaultLogger,
 		AccountStore:   s,
@@ -229,7 +230,7 @@ func TestAccountPost_newWithRolesSenderReceiverContentTypeJSON(t *testing.T) {
 }
 
 func TestAccountPost_newWithRolesSenderReceiverContentTypeForm(t *testing.T) {
-	s := account.NewMemoryStore()
+	s := &account.DBStore{DB: dbtest.Open(t).Open()}
 	h := accountPostHandler{
 		Logger:         supportlog.DefaultLogger,
 		AccountStore:   s,
@@ -308,7 +309,7 @@ func TestAccountPost_newWithRolesSenderReceiverContentTypeForm(t *testing.T) {
 }
 
 func TestAccountPost_accountAddressInvalid(t *testing.T) {
-	s := account.NewMemoryStore()
+	s := &account.DBStore{DB: dbtest.Open(t).Open()}
 	s.Add(account.Account{
 		Address: "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N",
 	})
@@ -346,7 +347,7 @@ func TestAccountPost_accountAddressInvalid(t *testing.T) {
 }
 
 func TestAccountPost_accountAlreadyExists(t *testing.T) {
-	s := account.NewMemoryStore()
+	s := &account.DBStore{DB: dbtest.Open(t).Open()}
 	s.Add(account.Account{
 		Address: "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N",
 	})
@@ -397,7 +398,7 @@ func TestAccountPost_accountAlreadyExists(t *testing.T) {
 }
 
 func TestAccountPost_identitiesNotProvided(t *testing.T) {
-	s := account.NewMemoryStore()
+	s := &account.DBStore{DB: dbtest.Open(t).Open()}
 	h := accountPostHandler{
 		Logger:         supportlog.DefaultLogger,
 		AccountStore:   s,
@@ -432,7 +433,7 @@ func TestAccountPost_identitiesNotProvided(t *testing.T) {
 }
 
 func TestAccountPost_roleNotProvided(t *testing.T) {
-	s := account.NewMemoryStore()
+	s := &account.DBStore{DB: dbtest.Open(t).Open()}
 	h := accountPostHandler{
 		Logger:         supportlog.DefaultLogger,
 		AccountStore:   s,
@@ -477,7 +478,7 @@ func TestAccountPost_roleNotProvided(t *testing.T) {
 }
 
 func TestAccountPost_authMethodsNotProvided(t *testing.T) {
-	s := account.NewMemoryStore()
+	s := &account.DBStore{DB: dbtest.Open(t).Open()}
 	h := accountPostHandler{
 		Logger:         supportlog.DefaultLogger,
 		AccountStore:   s,
@@ -518,7 +519,7 @@ func TestAccountPost_authMethodsNotProvided(t *testing.T) {
 }
 
 func TestAccountPost_authMethodTypeUnrecognized(t *testing.T) {
-	s := account.NewMemoryStore()
+	s := &account.DBStore{DB: dbtest.Open(t).Open()}
 	s.Add(account.Account{
 		Address: "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N",
 	})
@@ -573,7 +574,7 @@ func TestAccountPost_authMethodTypeUnrecognized(t *testing.T) {
 }
 
 func TestAccountPost_notAuthenticatedForAccount(t *testing.T) {
-	s := account.NewMemoryStore()
+	s := &account.DBStore{DB: dbtest.Open(t).Open()}
 	h := accountPostHandler{
 		Logger:         supportlog.DefaultLogger,
 		AccountStore:   s,

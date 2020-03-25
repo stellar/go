@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/stellar/go/exp/services/recoverysigner/internal/account"
+	"github.com/stellar/go/exp/services/recoverysigner/internal/db/dbtest"
 	"github.com/stellar/go/exp/services/recoverysigner/internal/serve/auth"
 	"github.com/stellar/go/keypair"
 	supportlog "github.com/stellar/go/support/log"
@@ -18,7 +19,7 @@ import (
 // Test that when authenticated with an account, but no matching accounts,
 // empty list is returned.
 func TestAccountList_authenticatedButNonePermitted(t *testing.T) {
-	s := account.NewMemoryStore()
+	s := &account.DBStore{DB: dbtest.Open(t).Open()}
 	s.Add(account.Account{
 		Address: "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N",
 	})
@@ -72,7 +73,7 @@ func TestAccountList_authenticatedButNonePermitted(t *testing.T) {
 }
 
 func TestAccountList_authenticatedByPhoneNumber(t *testing.T) {
-	s := account.NewMemoryStore()
+	s := &account.DBStore{DB: dbtest.Open(t).Open()}
 	s.Add(account.Account{
 		Address: "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N",
 		Identities: []account.Identity{
@@ -149,7 +150,7 @@ func TestAccountList_authenticatedByPhoneNumber(t *testing.T) {
 }
 
 func TestAccountList_authenticatedByEmail(t *testing.T) {
-	s := account.NewMemoryStore()
+	s := &account.DBStore{DB: dbtest.Open(t).Open()}
 	s.Add(account.Account{
 		Address: "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N",
 		Identities: []account.Identity{
@@ -226,7 +227,7 @@ func TestAccountList_authenticatedByEmail(t *testing.T) {
 }
 
 func TestAccountList_notAuthenticated(t *testing.T) {
-	s := account.NewMemoryStore()
+	s := &account.DBStore{DB: dbtest.Open(t).Open()}
 	s.Add(account.Account{
 		Address: "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N",
 		Identities: []account.Identity{

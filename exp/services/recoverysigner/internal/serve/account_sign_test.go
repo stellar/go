@@ -11,6 +11,7 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/stellar/go/exp/services/recoverysigner/internal/account"
+	"github.com/stellar/go/exp/services/recoverysigner/internal/db/dbtest"
 	"github.com/stellar/go/exp/services/recoverysigner/internal/serve/auth"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/network"
@@ -22,7 +23,7 @@ import (
 
 // Test that when the account does not exist it returns not found.
 func TestAccountSign_authenticatedButNotFound(t *testing.T) {
-	s := account.NewMemoryStore()
+	s := &account.DBStore{DB: dbtest.Open(t).Open()}
 	h := accountSignHandler{
 		Logger:            supportlog.DefaultLogger,
 		AccountStore:      s,
@@ -59,7 +60,7 @@ func TestAccountSign_authenticatedButNotFound(t *testing.T) {
 // Test that when the account exists but the authenticated client does not have
 // permission to access it returns not found.
 func TestAccountSign_accountAuthenticatedButNotPermitted(t *testing.T) {
-	s := account.NewMemoryStore()
+	s := &account.DBStore{DB: dbtest.Open(t).Open()}
 	s.Add(account.Account{
 		Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4",
 	})
@@ -100,7 +101,7 @@ func TestAccountSign_accountAuthenticatedButNotPermitted(t *testing.T) {
 }
 
 func TestAccountSign_accountAuthenticatedButInvalidAddress(t *testing.T) {
-	s := account.NewMemoryStore()
+	s := &account.DBStore{DB: dbtest.Open(t).Open()}
 	h := accountSignHandler{
 		Logger:            supportlog.DefaultLogger,
 		AccountStore:      s,
@@ -130,7 +131,7 @@ func TestAccountSign_accountAuthenticatedButInvalidAddress(t *testing.T) {
 }
 
 func TestAccountSign_accountAuthenticatedButEmptyAddress(t *testing.T) {
-	s := account.NewMemoryStore()
+	s := &account.DBStore{DB: dbtest.Open(t).Open()}
 	h := accountSignHandler{
 		Logger:            supportlog.DefaultLogger,
 		AccountStore:      s,
@@ -162,7 +163,7 @@ func TestAccountSign_accountAuthenticatedButEmptyAddress(t *testing.T) {
 // Test that when the account exists but the authenticated client does not have
 // permission to access it returns not found.
 func TestAccountSign_phoneNumberAuthenticatedButNotPermitted(t *testing.T) {
-	s := account.NewMemoryStore()
+	s := &account.DBStore{DB: dbtest.Open(t).Open()}
 	s.Add(account.Account{
 		Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4",
 		Identities: []account.Identity{
@@ -233,7 +234,7 @@ func TestAccountSign_phoneNumberAuthenticatedButNotPermitted(t *testing.T) {
 // Test that when the account exists but the authenticated client does not have
 // permission to access it returns not found.
 func TestAccountSign_emailAuthenticatedButNotPermitted(t *testing.T) {
-	s := account.NewMemoryStore()
+	s := &account.DBStore{DB: dbtest.Open(t).Open()}
 	s.Add(account.Account{
 		Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4",
 		Identities: []account.Identity{
@@ -305,7 +306,7 @@ func TestAccountSign_emailAuthenticatedButNotPermitted(t *testing.T) {
 // request is for, that the transaction is signed and a signature is returned.
 // The operation source account does not need to be set.
 func TestAccountSign_accountAuthenticatedTxSourceAccountValid(t *testing.T) {
-	s := account.NewMemoryStore()
+	s := &account.DBStore{DB: dbtest.Open(t).Open()}
 	s.Add(account.Account{
 		Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4",
 	})
@@ -367,7 +368,7 @@ func TestAccountSign_accountAuthenticatedTxSourceAccountValid(t *testing.T) {
 // set to values that match the account the request is for, that the
 // transaction is signed and a signature is returned.
 func TestAccountSign_accountAuthenticatedTxAndOpSourceAccountValid(t *testing.T) {
-	s := account.NewMemoryStore()
+	s := &account.DBStore{DB: dbtest.Open(t).Open()}
 	s.Add(account.Account{
 		Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4",
 	})
@@ -429,7 +430,7 @@ func TestAccountSign_accountAuthenticatedTxAndOpSourceAccountValid(t *testing.T)
 // Test that when the source account of the transaction is not the account sign
 // the request is calling sign on a bad request response is returned.
 func TestAccountSign_accountAuthenticatedTxSourceAccountInvalid(t *testing.T) {
-	s := account.NewMemoryStore()
+	s := &account.DBStore{DB: dbtest.Open(t).Open()}
 	s.Add(account.Account{
 		Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4",
 	})
@@ -487,7 +488,7 @@ func TestAccountSign_accountAuthenticatedTxSourceAccountInvalid(t *testing.T) {
 // Test that when the source account of the operation is not the account sign
 // the request is calling sign on a bad request response is returned.
 func TestAccountSign_accountAuthenticatedOpSourceAccountInvalid(t *testing.T) {
-	s := account.NewMemoryStore()
+	s := &account.DBStore{DB: dbtest.Open(t).Open()}
 	s.Add(account.Account{
 		Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4",
 	})
@@ -546,7 +547,7 @@ func TestAccountSign_accountAuthenticatedOpSourceAccountInvalid(t *testing.T) {
 // the account sign the request is calling sign on a bad request response is
 // returned.
 func TestAccountSign_accountAuthenticatedTxAndOpSourceAccountInvalid(t *testing.T) {
-	s := account.NewMemoryStore()
+	s := &account.DBStore{DB: dbtest.Open(t).Open()}
 	s.Add(account.Account{
 		Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4",
 	})
@@ -603,7 +604,7 @@ func TestAccountSign_accountAuthenticatedTxAndOpSourceAccountInvalid(t *testing.
 
 // Test that when authenticated with a phone number signing is possible.
 func TestAccountSign_phoneNumberOwnerAuthenticated(t *testing.T) {
-	s := account.NewMemoryStore()
+	s := &account.DBStore{DB: dbtest.Open(t).Open()}
 	s.Add(account.Account{
 		Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4",
 		Identities: []account.Identity{
@@ -671,7 +672,7 @@ func TestAccountSign_phoneNumberOwnerAuthenticated(t *testing.T) {
 
 // Test that when authenticated with a phone number signing is possible.
 func TestAccountSign_phoneNumberOtherAuthenticated(t *testing.T) {
-	s := account.NewMemoryStore()
+	s := &account.DBStore{DB: dbtest.Open(t).Open()}
 	s.Add(account.Account{
 		Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4",
 		Identities: []account.Identity{
@@ -739,7 +740,7 @@ func TestAccountSign_phoneNumberOtherAuthenticated(t *testing.T) {
 
 // Test that when authenticated with a email signing is possible.
 func TestAccountSign_emailOwnerAuthenticated(t *testing.T) {
-	s := account.NewMemoryStore()
+	s := &account.DBStore{DB: dbtest.Open(t).Open()}
 	s.Add(account.Account{
 		Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4",
 		Identities: []account.Identity{
@@ -807,7 +808,7 @@ func TestAccountSign_emailOwnerAuthenticated(t *testing.T) {
 
 // Test that when authenticated with a email signing is possible.
 func TestAccountSign_emailOtherAuthenticated(t *testing.T) {
-	s := account.NewMemoryStore()
+	s := &account.DBStore{DB: dbtest.Open(t).Open()}
 	s.Add(account.Account{
 		Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4",
 		Identities: []account.Identity{
@@ -875,7 +876,7 @@ func TestAccountSign_emailOtherAuthenticated(t *testing.T) {
 
 // Test that when the transaction cannot be parsed it errors.
 func TestAccountSign_cannotParseTransaction(t *testing.T) {
-	s := account.NewMemoryStore()
+	s := &account.DBStore{DB: dbtest.Open(t).Open()}
 	s.Add(account.Account{
 		Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4",
 	})
@@ -914,7 +915,7 @@ func TestAccountSign_cannotParseTransaction(t *testing.T) {
 
 // Test that the request can be made as content-text form instead of JSON.
 func TestAccountSign_validContentTypeForm(t *testing.T) {
-	s := account.NewMemoryStore()
+	s := &account.DBStore{DB: dbtest.Open(t).Open()}
 	s.Add(account.Account{
 		Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4",
 	})
