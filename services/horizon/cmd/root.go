@@ -218,12 +218,14 @@ var configOpts = support.ConfigOptions{
 		},
 		Usage: "max count of requests allowed in a one hour period, by remote ip address",
 	},
-	&support.ConfigOption{ // To be removed in Horizon 2.0.0
+	&support.ConfigOption{ // Action needed in release: horizon-v2.0.0
+		// remove deprecated flag
 		Name:    "rate-limit-redis-key",
 		OptType: types.String,
 		Usage:   "deprecated, do not use",
 	},
-	&support.ConfigOption{ // To be removed in horizon 2.0.0
+	&support.ConfigOption{ // Action needed in release: horizon-v2.0.0
+		// remove deprecated flag
 		Name:    "redis-url",
 		OptType: types.String,
 		Usage:   "deprecated, do not use",
