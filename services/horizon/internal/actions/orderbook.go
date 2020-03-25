@@ -161,6 +161,9 @@ func (handler GetOrderbookHandler) GetResource(w HeaderWriter, r *http.Request) 
 		return nil, err
 	}
 
+	// To make the Last-Ledger header consistent with the response content,
+	// we need to extract it from the orderbook graph and not the DB.
+	// Thus, we overwrite the header if it was previously set.
 	SetLastLedgerHeader(w, lastLedger)
 	return OrderBookResponse{summary}, nil
 }
