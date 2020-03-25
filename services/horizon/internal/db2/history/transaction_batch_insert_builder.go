@@ -162,7 +162,6 @@ func transactionToMap(transaction io.LedgerTransaction, sequence uint32) (map[st
 		"tx_result":         resultBase64,
 		"tx_meta":           metaBase64,
 		"tx_fee_meta":       feeMetaBase64,
-		"signatures":        sqx.StringArray(signatures(transaction.Envelope.Signatures())),
 		"time_bounds":       formatTimeBounds(transaction),
 		"memo_type":         memoType(transaction),
 		"memo":              memo(transaction),
@@ -177,9 +176,11 @@ func transactionToMap(transaction io.LedgerTransaction, sequence uint32) (map[st
 		m["fee_account"] = feeAccount.Address()
 		m["max_fee"] = transaction.Envelope.FeeBumpFee()
 		m["inner_max_fee"] = transaction.Envelope.Fee()
-		m["inner_signatures"] = sqx.StringArray(signatures(transaction.Envelope.FeeBumpSignatures()))
+		m["inner_signatures"] = sqx.StringArray(signatures(transaction.Envelope.Signatures()))
+		m["signatures"] = sqx.StringArray(signatures(transaction.Envelope.FeeBumpSignatures()))
 	} else {
 		m["max_fee"] = transaction.Envelope.Fee()
+		m["signatures"] = sqx.StringArray(signatures(transaction.Envelope.Signatures()))
 	}
 
 	return m, nil

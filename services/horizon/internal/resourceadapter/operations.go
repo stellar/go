@@ -124,7 +124,7 @@ func PopulateBaseOperation(
 	dest.SourceAccount = operationRow.SourceAccount
 	populateOperationType(dest, operationRow)
 	dest.LedgerCloseTime = ledger.ClosedAt
-	dest.TransactionHash = operationRow.TransactionHash
+	dest.TransactionHash = transactionHash
 
 	lb := hal.LinkBuilder{Base: httpx.BaseURL(ctx)}
 	self := fmt.Sprintf("/operations/%d", operationRow.ID)

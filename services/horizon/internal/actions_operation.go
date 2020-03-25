@@ -93,8 +93,8 @@ func (action *OperationIndexAction) SSE(stream *sse.Stream) error {
 				}
 
 				transactionHash := action.TransactionFilter
-				if len(transactionHash) == 0 && transactionRecord != nil {
-					transactionHash = transactionRecord.TransactionHash
+				if len(transactionHash) == 0 {
+					transactionHash = operationRecord.TransactionHash
 				}
 				res, err := resourceadapter.NewOperation(
 					action.R.Context(),
@@ -310,8 +310,8 @@ func (action *OperationIndexAction) loadPage() {
 
 		var res hal.Pageable
 		transactionHash := action.TransactionFilter
-		if len(transactionHash) == 0 && transactionRecord != nil {
-			transactionHash = transactionRecord.TransactionHash
+		if len(transactionHash) == 0 {
+			transactionHash = operationRecord.TransactionHash
 		}
 		res, action.Err = resourceadapter.NewOperation(
 			action.R.Context(),
@@ -379,14 +379,10 @@ func (action *OperationShowAction) loadLedger() {
 }
 
 func (action *OperationShowAction) loadResource() {
-	var transactionHash string
-	if action.TransactionRecord != nil {
-		transactionHash = action.TransactionRecord.TransactionHash
-	}
 	action.Resource, action.Err = resourceadapter.NewOperation(
 		action.R.Context(),
 		action.OperationRecord,
-		transactionHash,
+		action.OperationRecord.TransactionHash,
 		action.TransactionRecord,
 		action.Ledger,
 	)

@@ -23,13 +23,17 @@ type SystemTestSuite struct {
 	system    *System
 	noResults Result
 	successTx Result
+	feeBumpTx Result
 	badSeq    SubmissionResult
 }
 
 func (suite *SystemTestSuite) SetupTest() {
 	suite.ctx = test.Context()
 	suite.submitter = &MockSubmitter{}
-	suite.results = &MockResultProvider{}
+	suite.results = &MockResultProvider{
+		Results:            []Result{},
+		ResultForInnerHash: map[string]Result{},
+	}
 	suite.sequences = &MockSequenceProvider{}
 
 	suite.system = &System{
@@ -47,6 +51,13 @@ func (suite *SystemTestSuite) SetupTest() {
 		LedgerSequence: 2,
 		EnvelopeXDR:    "AAAAAGL8HQvQkbK2HA3WVjRrKmjX00fG8sLI7m0ERwJW/AX3AAAAZAAAAAAAAAABAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAArqN6LeOagjxMaUP96Bzfs9e0corNZXzBWJkFoK7kvkwAAAAAO5rKAAAAAAAAAAABVvwF9wAAAECDzqvkQBQoNAJifPRXDoLhvtycT3lFPCQ51gkdsFHaBNWw05S/VhW0Xgkr0CBPE4NaFV2Kmcs3ZwLmib4TRrML",
 		ResultXDR:      "I3Tpk0m57326ml2zM5t4/ajzR3exrzO6RorVwN+UbU0AAAAAAAAAZAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAA==",
+	}
+	suite.feeBumpTx = Result{
+		Hash:           "3dfef7d7226995b504f2827cc63d45ad41e9687bb0a8abcf08ba755fedca0352",
+		LedgerSequence: 123,
+		EnvelopeXDR:    "AAAABQAAAAACAgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMIAAAAAgAAAAADAwMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGMAAAAAAAAAYQAAAAEAAAAAAAAAAgAAAAAAAAAEAAAAAAAAAAEAAAAAAAAACwAAAAAAAABiAAAAAAAAAAECAgICAAAAAxQUFAAAAAAAAAAAAQMDAwMAAAADHh4eAA==",
+		ResultXDR:      "AAAAAAAAAHsAAAAB6Yhpu6i84IwQt4QGICEn84iMJUVM03sCYAhiRSdR9SYAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAsAAAAAAAAAAAAAAAA=",
+		ResultMetaXDR:  "AAAAAQAAAAAAAAAA",
 	}
 
 	suite.badSeq = SubmissionResult{
@@ -173,6 +184,29 @@ func (suite *SystemTestSuite) TestTick_FinishesTransactions() {
 
 	assert.Equal(suite.T(), 1, len(l))
 	assert.Equal(suite.T(), 0, len(suite.system.Pending.Pending(suite.ctx)))
+}
+
+func (suite *SystemTestSuite) TestTickFinishFeeBumpTransaction() {
+	suite.sequences = &MockSequenceProvider{}
+	suite.sequences.On("Get", []string{"GABQGAYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB2MX"}).
+		Return(map[string]uint64{"GABQGAYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB2MX": 96}, nil).
+		Once()
+	suite.system.Sequences = suite.sequences
+
+	innerTxEnvelope := "AAAAAAMDAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAYwAAAAAAAABhAAAAAQAAAAAAAAACAAAAAAAAAAQAAAAAAAAAAQAAAAAAAAALAAAAAAAAAGIAAAAAAAAAAQICAgIAAAADFBQUAA=="
+	innerHash := "e98869bba8bce08c10b78406202127f3888c25454cd37b02600862452751f526"
+	l := suite.system.Submit(suite.ctx, innerTxEnvelope)
+	assert.Equal(suite.T(), 0, len(l))
+	assert.Equal(suite.T(), 1, len(suite.system.Pending.Pending(suite.ctx)))
+
+	suite.results.ResultForInnerHash[innerHash] = suite.feeBumpTx
+	suite.system.Tick(suite.ctx)
+
+	assert.Equal(suite.T(), 1, len(l))
+	assert.Equal(suite.T(), 0, len(suite.system.Pending.Pending(suite.ctx)))
+	r := <-l
+	assert.Equal(suite.T(), innerHash, r.Hash)
+	assert.Equal(suite.T(), suite.feeBumpTx.EnvelopeXDR, r.EnvelopeXDR)
 }
 
 // Test that Tick removes old submissions that have timed out.

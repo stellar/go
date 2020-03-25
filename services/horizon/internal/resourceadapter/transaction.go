@@ -47,7 +47,6 @@ func PopulateTransaction(
 	dest.Signatures = strings.Split(row.SignatureString, ",")
 	dest.ValidBefore = timeString(dest, row.ValidBefore)
 	dest.ValidAfter = timeString(dest, row.ValidAfter)
-	dest.FeeAccount = row.Account
 
 	if len(row.InnerTransactionHash) > 0 {
 		dest.FeeAccount = row.FeeAccount
@@ -63,6 +62,8 @@ func PopulateTransaction(
 		if transactionHash != row.TransactionHash {
 			dest.Signatures = dest.InnerTransaction.Signatures
 		}
+	} else {
+		dest.FeeAccount = row.Account
 	}
 
 	lb := hal.LinkBuilder{Base: httpx.BaseURL(ctx)}

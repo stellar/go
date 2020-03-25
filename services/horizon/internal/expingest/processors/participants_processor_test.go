@@ -127,6 +127,66 @@ func (s *ParticipantsProcessorTestSuiteLedger) TestEmptyParticipants() {
 	s.Assert().NoError(err)
 }
 
+func (s *ParticipantsProcessorTestSuiteLedger) TestFeeBumptransaction() {
+	feeBumpTx := createTransaction(true, 0)
+	feeBumpTx.Index = 1
+	feeBumpTx.Envelope.V1.Tx.SourceAccount = xdr.MustAddress(s.addresses[0])
+	feeBumpTx.Envelope.FeeBump = &xdr.FeeBumpTransactionEnvelope{
+		Tx: xdr.FeeBumpTransaction{
+			FeeSource: xdr.MustAddress(s.addresses[1]),
+			Fee:       100,
+			InnerTx: xdr.FeeBumpTransactionInnerTx{
+				Type: xdr.EnvelopeTypeEnvelopeTypeTx,
+				V1:   feeBumpTx.Envelope.V1,
+			},
+		},
+	}
+	feeBumpTx.Envelope.V1 = nil
+	feeBumpTx.Envelope.Type = xdr.EnvelopeTypeEnvelopeTypeTxFeeBump
+	feeBumpTx.Result.Result.Result.Code = xdr.TransactionResultCodeTxFeeBumpInnerSuccess
+	feeBumpTx.Result.Result.Result.InnerResultPair = &xdr.InnerTransactionResultPair{
+		Result: xdr.InnerTransactionResult{
+			Result: xdr.InnerTransactionResultResult{
+				Code:    xdr.TransactionResultCodeTxSuccess,
+				Results: &[]xdr.OperationResult{},
+			},
+		},
+	}
+	feeBumpTx.Result.Result.Result.Results = nil
+	feeBumpTxID := toid.New(20, 1, 0).ToInt64()
+
+	addresses := s.addresses[:2]
+	addressToID := map[string]int64{
+		addresses[0]: s.addressToID[addresses[0]],
+		addresses[1]: s.addressToID[addresses[1]],
+	}
+	s.mockQ.On("CreateAccounts", mock.AnythingOfType("[]string"), maxBatchSize).
+		Run(func(args mock.Arguments) {
+			arg := args.Get(0).([]string)
+			s.Assert().ElementsMatch(
+				addresses,
+				arg,
+			)
+		}).Return(addressToID, nil).Once()
+	s.mockQ.On("NewTransactionParticipantsBatchInsertBuilder", maxBatchSize).
+		Return(s.mockBatchInsertBuilder).Once()
+	s.mockQ.On("NewOperationParticipantBatchInsertBuilder", maxBatchSize).
+		Return(s.mockOperationsBatchInsertBuilder).Once()
+
+	s.mockBatchInsertBuilder.On(
+		"Add", feeBumpTxID, addressToID[addresses[0]],
+	).Return(nil).Once()
+	s.mockBatchInsertBuilder.On(
+		"Add", feeBumpTxID, addressToID[addresses[1]],
+	).Return(nil).Once()
+
+	s.mockBatchInsertBuilder.On("Exec").Return(nil).Once()
+	s.mockOperationsBatchInsertBuilder.On("Exec").Return(nil).Once()
+
+	s.Assert().NoError(s.processor.ProcessTransaction(feeBumpTx))
+	s.Assert().NoError(s.processor.Commit())
+}
+
 func (s *ParticipantsProcessorTestSuiteLedger) TestIngestParticipantsSucceeds() {
 	s.mockQ.On("CreateAccounts", mock.AnythingOfType("[]string"), maxBatchSize).
 		Run(func(args mock.Arguments) {

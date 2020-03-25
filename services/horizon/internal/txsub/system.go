@@ -73,6 +73,7 @@ func (sys *System) Submit(ctx context.Context, env string) (result <-chan Result
 
 	// check the configured result provider for an existing result
 	r := sys.Results.ResultByHash(ctx, info.Hash)
+	r.Hash = info.Hash
 
 	if r.Err == nil {
 		sys.Log.Ctx(ctx).WithField("hash", info.Hash).Info("Found submission result in a DB")
@@ -82,7 +83,6 @@ func (sys *System) Submit(ctx context.Context, env string) (result <-chan Result
 
 	if r.Err != ErrNoResults {
 		sys.Log.Ctx(ctx).WithField("hash", info.Hash).Info("Error getting submission result from a DB")
-		r.Hash = info.Hash
 		sys.finish(ctx, response, r)
 		return
 	}
@@ -147,6 +147,7 @@ func (sys *System) Submit(ctx context.Context, env string) (result <-chan Result
 
 		// If error is txBAD_SEQ, check for the result again
 		r = sys.Results.ResultByHash(ctx, info.Hash)
+		r.Hash = info.Hash
 
 		if r.Err == nil {
 			// If the found use it as the result
@@ -232,6 +233,7 @@ func (sys *System) Tick(ctx context.Context) {
 
 	for _, hash := range sys.Pending.Pending(ctx) {
 		r := sys.Results.ResultByHash(ctx, hash)
+		r.Hash = hash
 
 		if r.Err == nil {
 			logger.WithField("hash", hash).Debug("finishing open submission")
@@ -243,7 +245,6 @@ func (sys *System) Tick(ctx context.Context) {
 
 		if ok {
 			logger.WithField("hash", hash).Debug("finishing open submission")
-			r.Hash = hash
 			sys.Pending.Finish(ctx, r)
 			continue
 		}

@@ -2,7 +2,6 @@ package history
 
 import (
 	"database/sql"
-	"encoding/hex"
 	"testing"
 	"time"
 
@@ -11,8 +10,6 @@ import (
 	"github.com/stellar/go/exp/ingest/io"
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/services/horizon/internal/toid"
-	"github.com/stellar/go/xdr"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestTransactionQueries(t *testing.T) {
@@ -134,41 +131,6 @@ func TestExtraChecksTransactionSuccessfulFalseResultTrue(t *testing.T) {
 	err = query.Select(&transactions)
 	tt.Assert.Error(err)
 	tt.Assert.Contains(err.Error(), "Corrupted data! `successful=false` but returned transaction is success")
-}
-
-type testTransaction struct {
-	index         uint32
-	envelopeXDR   string
-	resultXDR     string
-	feeChangesXDR string
-	metaXDR       string
-	hash          string
-}
-
-func buildLedgerTransaction(t *testing.T, tx testTransaction) io.LedgerTransaction {
-	transaction := io.LedgerTransaction{
-		Index:      tx.index,
-		Envelope:   xdr.TransactionEnvelope{},
-		Result:     xdr.TransactionResultPair{},
-		FeeChanges: xdr.LedgerEntryChanges{},
-		Meta:       xdr.TransactionMeta{},
-	}
-
-	tt := assert.New(t)
-
-	err := xdr.SafeUnmarshalBase64(tx.envelopeXDR, &transaction.Envelope)
-	tt.NoError(err)
-	err = xdr.SafeUnmarshalBase64(tx.resultXDR, &transaction.Result.Result)
-	tt.NoError(err)
-	err = xdr.SafeUnmarshalBase64(tx.metaXDR, &transaction.Meta)
-	tt.NoError(err)
-	err = xdr.SafeUnmarshalBase64(tx.feeChangesXDR, &transaction.FeeChanges)
-	tt.NoError(err)
-
-	_, err = hex.Decode(transaction.Result.TransactionHash[:], []byte(tx.hash))
-	tt.NoError(err)
-
-	return transaction
 }
 
 func TestInsertTransactionDoesNotAllowDuplicateIndex(t *testing.T) {
@@ -670,4 +632,49 @@ func TestInsertTransaction(t *testing.T) {
 			tt.Assert.NoError(err)
 		})
 	}
+}
+
+func TestFetchFeeBumpTransaction(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	test.ResetHorizonDB(t, tt.HorizonDB)
+	q := &Q{tt.HorizonSession()}
+
+	fixture := FeeBumpScenario(tt, q, true)
+
+	var byOuterhash, byInnerHash Transaction
+	tt.Assert.NoError(q.TransactionByHash(&byOuterhash, fixture.OuterHash))
+	tt.Assert.NoError(q.TransactionByHash(&byInnerHash, fixture.InnerHash))
+
+	tt.Assert.Equal(byOuterhash, byInnerHash)
+	tt.Assert.Equal(byOuterhash, fixture.Transaction)
+
+	outerOps, outerTransactions, err := q.Operations().IncludeTransactions().
+		ForTransaction(fixture.OuterHash).Fetch()
+	tt.Assert.NoError(err)
+	tt.Assert.Len(outerTransactions, 1)
+	tt.Assert.Len(outerOps, 1)
+
+	innerOps, innerTransactions, err := q.Operations().IncludeTransactions().
+		ForTransaction(fixture.InnerHash).Fetch()
+	tt.Assert.NoError(err)
+	tt.Assert.Len(innerTransactions, 1)
+	tt.Assert.Equal(innerOps, outerOps)
+
+	for _, tx := range append(outerTransactions, innerTransactions...) {
+		tt.Assert.True(byOuterhash.CreatedAt.Equal(tx.CreatedAt))
+		tt.Assert.True(byOuterhash.LedgerCloseTime.Equal(tx.LedgerCloseTime))
+		byOuterhash.CreatedAt = tx.CreatedAt
+		byOuterhash.LedgerCloseTime = tx.LedgerCloseTime
+		tt.Assert.Equal(byOuterhash, byInnerHash)
+	}
+
+	var outerEffects, innerEffects []Effect
+	err = q.Effects().ForTransaction(fixture.OuterHash).Select(&outerEffects)
+	tt.Assert.NoError(err)
+	tt.Assert.Len(outerEffects, 1)
+
+	err = q.Effects().ForTransaction(fixture.InnerHash).Select(&innerEffects)
+	tt.Assert.NoError(err)
+	tt.Assert.Equal(outerEffects, innerEffects)
 }

@@ -128,3 +128,25 @@ func TestEffectActions_Index(t *testing.T) {
 		}
 	})
 }
+
+func TestEffectsForFeeBumpTransaction(t *testing.T) {
+	ht := StartHTTPTestWithoutScenario(t)
+	defer ht.Finish()
+	test.ResetHorizonDB(t, ht.HorizonDB)
+	q := &history.Q{ht.HorizonSession()}
+	fixture := history.FeeBumpScenario(ht.T, q, true)
+
+	w := ht.Get("/transactions/" + fixture.OuterHash + "/effects")
+	ht.Assert.Equal(200, w.Code)
+	var byOuterHash []effects.Base
+	ht.UnmarshalPage(w.Body, &byOuterHash)
+	ht.Assert.Len(byOuterHash, 1)
+
+	w = ht.Get("/transactions/" + fixture.InnerHash + "/effects")
+	ht.Assert.Equal(200, w.Code)
+	var byInnerHash []effects.Base
+	ht.UnmarshalPage(w.Body, &byInnerHash)
+	ht.Assert.Len(byInnerHash, 1)
+
+	ht.Assert.Equal(byOuterHash, byInnerHash)
+}
