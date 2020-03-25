@@ -277,7 +277,7 @@ func ingestionStatus(q *history.Q) (uint32, bool, error) {
 	return lastIngestedLedger, ready, nil
 }
 
-// Wrap executes the middleware on a given http handler
+// Wrap executes the middleware on a given HTTP handler
 func (m *StateMiddleware) Wrap(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		session := m.HorizonSession.Clone()
@@ -349,4 +349,37 @@ func (m *StateMiddleware) Wrap(h http.Handler) http.Handler {
 			),
 		))
 	})
+}
+
+// LatestLedgerMiddleware is a middleware that sets the Latest-Ledger HTTP header.
+type LatestLedgerMiddleware struct {
+	HorizonSession *db.Session
+}
+
+// Wrap executes the middleware on a given http handler
+// If the latest ledger cannot be reliably obtained, the header won't be set
+// and the nested http handler will be executed normally
+func (m *LatestLedgerMiddleware) Wrap(f http.Handler) http.Handler {
+	return m.WrapFunc(f.ServeHTTP)
+}
+
+// WrapFunc executes the middleware on a given HTTP handler function
+// If the latest ledger cannot be reliably obtained, the header won't be set
+// and the nested http handler will be executed normally
+func (m *LatestLedgerMiddleware) WrapFunc(f http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		defer f(w, r)
+		q := &history.Q{m.HorizonSession}
+		stateInvalid, err := q.GetExpStateInvalid()
+		if stateInvalid || err != nil {
+			log.Errorf("failed to set Last-Ledger header: invalid key-value state %t: error: %s", stateInvalid, err)
+			return
+		}
+		lastIngestedLedger, ready, err := ingestionStatus(q)
+		if err != nil || !ready {
+			log.Errorf("failed to set Last-Ledger header: cannot obtain ingestion status: ready %t: error: %s", ready, err)
+			return
+		}
+		actions.SetLastLedgerHeader(w, lastIngestedLedger)
+	}
 }

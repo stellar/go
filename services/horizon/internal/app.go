@@ -478,11 +478,14 @@ func (a *App) init() {
 	// This parameter will be removed soon.
 	a.web.mustInstallMiddlewares(a, a.config.ConnectionTimeout)
 
-	requiresExperimentalIngestion := &StateMiddleware{
+	stateMiddleware := &StateMiddleware{
+		HorizonSession: a.historyQ.Session,
+	}
+	latestLedgerMiddleware := &LatestLedgerMiddleware{
 		HorizonSession: a.historyQ.Session,
 	}
 	// web.actions
-	a.web.mustInstallActions(a.config, a.paths, orderBookGraph, requiresExperimentalIngestion)
+	a.web.mustInstallActions(a.config, a.paths, orderBookGraph, stateMiddleware, latestLedgerMiddleware)
 
 	// metrics and log.metrics
 	a.metrics = metrics.NewRegistry()

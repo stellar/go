@@ -138,11 +138,13 @@ func (w *web) mustInstallActions(
 	pathFinder paths.Finder,
 	orderBookGraph *orderbook.OrderBookGraph,
 	stateMiddleware *StateMiddleware,
+	latestLedgerMiddleware *LatestLedgerMiddleware,
 ) {
 	if w == nil {
 		log.Fatal("missing web instance for installing web actions")
 	}
 
+	latestLedger := latestLedgerMiddleware.WrapFunc
 	r := w.router
 	r.Get("/", RootAction{}.Handle)
 
@@ -210,18 +212,20 @@ func (w *web) mustInstallActions(
 	// account actions - /accounts/{account_id} has been created above so we
 	// need to use absolute routes here. Make sure we use regexp check here for
 	// emptiness. Without it, requesting `/accounts//payments` return all payments!
-	r.Get("/accounts/{account_id:\\w+}/transactions", w.streamIndexActionHandler(w.getTransactionPage, w.streamTransactions))
-	r.Get("/accounts/{account_id:\\w+}/operations", OperationIndexAction{}.Handle)
-	r.Get("/accounts/{account_id:\\w+}/payments", OperationIndexAction{OnlyPayments: true}.Handle)
-	r.Get("/accounts/{account_id:\\w+}/effects", EffectIndexAction{}.Handle)
-	r.Get("/accounts/{account_id:\\w+}/trades", TradeIndexAction{}.Handle)
-
+	r.Group(func(r chi.Router) {
+		r.Use(latestLedgerMiddleware.Wrap)
+		r.Get("/accounts/{account_id:\\w+}/transactions", w.streamIndexActionHandler(w.getTransactionPage, w.streamTransactions))
+		r.Get("/accounts/{account_id:\\w+}/operations", OperationIndexAction{}.Handle)
+		r.Get("/accounts/{account_id:\\w+}/payments", OperationIndexAction{OnlyPayments: true}.Handle)
+		r.Get("/accounts/{account_id:\\w+}/effects", EffectIndexAction{}.Handle)
+		r.Get("/accounts/{account_id:\\w+}/trades", TradeIndexAction{}.Handle)
+	})
 	// ledger actions
 	r.Route("/ledgers", func(r chi.Router) {
-		r.Get("/", LedgerIndexAction{}.Handle)
+		r.Get("/", latestLedger(LedgerIndexAction{}.Handle))
 		r.Route("/{ledger_id}", func(r chi.Router) {
 			r.Get("/", LedgerShowAction{}.Handle)
-			r.Get("/transactions", w.streamIndexActionHandler(w.getTransactionPage, w.streamTransactions))
+			r.Get("/transactions", latestLedger(w.streamIndexActionHandler(w.getTransactionPage, w.streamTransactions)))
 			r.Get("/operations", OperationIndexAction{}.Handle)
 			r.Get("/payments", OperationIndexAction{OnlyPayments: true}.Handle)
 			r.Get("/effects", EffectIndexAction{}.Handle)
@@ -230,7 +234,7 @@ func (w *web) mustInstallActions(
 
 	// transaction history actions
 	r.Route("/transactions", func(r chi.Router) {
-		r.Get("/", w.streamIndexActionHandler(w.getTransactionPage, w.streamTransactions))
+		r.Get("/", latestLedger(w.streamIndexActionHandler(w.getTransactionPage, w.streamTransactions)))
 		r.Route("/{tx_id}", func(r chi.Router) {
 			r.Get("/", showActionHandler(w.getTransactionResource))
 			r.Get("/operations", OperationIndexAction{}.Handle)
@@ -241,20 +245,25 @@ func (w *web) mustInstallActions(
 
 	// operation actions
 	r.Route("/operations", func(r chi.Router) {
-		r.Get("/", OperationIndexAction{}.Handle)
+		r.Get("/", latestLedger(OperationIndexAction{}.Handle))
 		r.Get("/{id}", OperationShowAction{}.Handle)
 		r.Get("/{op_id}/effects", EffectIndexAction{}.Handle)
 	})
 
-	// payment actions
-	r.Get("/payments", OperationIndexAction{OnlyPayments: true}.Handle)
+	r.Group(func(r chi.Router) {
+		r.Use(latestLedgerMiddleware.Wrap)
 
-	// effect actions
-	r.Get("/effects", EffectIndexAction{}.Handle)
+		// payment actions
+		r.Get("/payments", OperationIndexAction{OnlyPayments: true}.Handle)
 
-	// trading related endpoints
-	r.Get("/trades", TradeIndexAction{}.Handle)
-	r.Get("/trade_aggregations", TradeAggregateIndexAction{}.Handle)
+		// effect actions
+		r.Get("/effects", EffectIndexAction{}.Handle)
+
+		// trading related endpoints
+		r.Get("/trades", TradeIndexAction{}.Handle)
+		r.Get("/trade_aggregations", TradeAggregateIndexAction{}.Handle)
+	})
+
 	// /offers/{offer_id} has been created above so we need to use absolute
 	// routes here.
 	r.Get("/offers/{offer_id}/trades", TradeIndexAction{}.Handle)
