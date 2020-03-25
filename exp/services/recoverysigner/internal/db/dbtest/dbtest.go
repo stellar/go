@@ -14,8 +14,9 @@ func OpenWithoutMigrations(t *testing.T) *dbtest.DB {
 
 	// Recoverysigner requires at least Postgres v10 because it uses IDENTITYs
 	// instead of SERIAL/BIGSERIAL, which are recommended against.
-	if db.Version() < 10 {
-		t.Skip()
+	dbVersion := db.Version()
+	if dbVersion < 10 {
+		t.Skipf("Skipping test becuase Postgres v%d found, and Postgres v10+ required for this test.", dbVersion)
 	}
 
 	return db
