@@ -9,13 +9,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var auditHeaderCols = []string{
-	"audit_id",
-	"audit_at",
-	"audit_user",
-	"audit_op",
-}
-
 // TestAccountsAudit confirms that the columns for accounts_audit match those
 // in the accounts table, except for the header columns.
 func TestAccountsAudit(t *testing.T) {
@@ -50,11 +43,15 @@ func TestAuthMethodsAudit(t *testing.T) {
 // table has the same columns as the given table.
 func assertAuditColsEqualTableCols(t *testing.T, db *sqlx.DB, tableName, auditTableName string) {
 	cols := tableCols(t, db, tableName)
-	wantAuditCols := append(append([]string{}, auditHeaderCols...), cols...)
+
+	wantAuditHeaderCols := []string{"audit_id", "audit_at", "audit_user", "audit_op"}
+	wantAuditCols := append(append([]string{}, wantAuditHeaderCols...), cols...)
+
 	auditCols := tableCols(t, db, auditTableName)
 	assert.Equal(t, wantAuditCols, auditCols)
 }
 
+// tableCols returns the column names for the table.
 func tableCols(t *testing.T, db *sqlx.DB, tableName string) []string {
 	cols := []string{}
 	err := db.Select(
