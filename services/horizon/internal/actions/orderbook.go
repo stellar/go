@@ -4,7 +4,6 @@ import (
 	"context"
 	"math/big"
 	"net/http"
-	"strconv"
 
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/exp/orderbook"
@@ -13,19 +12,6 @@ import (
 	"github.com/stellar/go/support/render/problem"
 	"github.com/stellar/go/xdr"
 )
-
-// LastLedgerHeaderName is the header which is set on all endpoints
-const LastLedgerHeaderName = "Latest-Ledger"
-
-// HeaderWriter is an interface for setting HTTP response headers
-type HeaderWriter interface {
-	Header() http.Header
-}
-
-// SetLastLedgerHeader sets the Latest-Ledger header
-func SetLastLedgerHeader(w HeaderWriter, lastLedger uint32) {
-	w.Header().Set(LastLedgerHeaderName, strconv.FormatUint(uint64(lastLedger), 10))
-}
 
 // StreamableObjectResponse is an interface for objects returned by streamable object endpoints
 // A streamable object endpoint is an SSE endpoint which returns a single JSON object response

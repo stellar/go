@@ -39,6 +39,8 @@ const (
 	ParamOrder = "order"
 	// ParamLimit is a query string param name
 	ParamLimit = "limit"
+	// LastLedgerHeaderName is the header which is set on all endpoints
+	LastLedgerHeaderName = "Latest-Ledger"
 )
 
 type Opt int
@@ -51,6 +53,16 @@ const (
 	RequiredParam
 	maxAssetCodeLength = 12
 )
+
+// HeaderWriter is an interface for setting HTTP response headers
+type HeaderWriter interface {
+	Header() http.Header
+}
+
+// SetLastLedgerHeader sets the Latest-Ledger header
+func SetLastLedgerHeader(w HeaderWriter, lastLedger uint32) {
+	w.Header().Set(LastLedgerHeaderName, strconv.FormatUint(uint64(lastLedger), 10))
+}
 
 // GetCursor retrieves a string from either the URLParams, form or query string.
 // This method uses the priority (URLParams, Form, Query).
