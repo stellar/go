@@ -5,6 +5,8 @@ file.  This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+## [v2.2.0](https://github.com/stellar/go/releases/tag/horizonclient-v2.2.0) - 2020-03-26
+
 ### Added
 
 - Add `client.SubmitTransactionWithOptions` with support for [SEP0029](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0029.md).
