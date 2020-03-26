@@ -16,7 +16,7 @@ func TestAccountsAudit(t *testing.T) {
 	conn, err := Open(db.DSN)
 	require.NoError(t, err)
 
-	assertAuditColsEqualTableCols(t, conn, "accounts", "accounts_audit")
+	assertAuditColsContainTableCols(t, conn, "accounts", "accounts_audit")
 }
 
 // TestIdentitiesAudit confirms that the columns for identities_audit match
@@ -26,7 +26,7 @@ func TestIdentitiesAudit(t *testing.T) {
 	conn, err := Open(db.DSN)
 	require.NoError(t, err)
 
-	assertAuditColsEqualTableCols(t, conn, "identities", "identities_audit")
+	assertAuditColsContainTableCols(t, conn, "identities", "identities_audit")
 }
 
 // TestAuthMethodsAudit confirms that the columns for auth_methods_audit match
@@ -36,13 +36,13 @@ func TestAuthMethodsAudit(t *testing.T) {
 	conn, err := Open(db.DSN)
 	require.NoError(t, err)
 
-	assertAuditColsEqualTableCols(t, conn, "auth_methods", "auth_methods_audit")
+	assertAuditColsContainTableCols(t, conn, "auth_methods", "auth_methods_audit")
 }
 
 // assertAuditColsContainsTableCols checks that the audit table for the given
 // table has the same columns as the given table, as well as the header
 // columns.
-func assertAuditColsContainsTableCols(t *testing.T, db *sqlx.DB, tableName, auditTableName string) {
+func assertAuditColsContainTableCols(t *testing.T, db *sqlx.DB, tableName, auditTableName string) {
 	cols := tableCols(t, db, tableName)
 
 	wantAuditHeaderCols := []string{"audit_id", "audit_at", "audit_user", "audit_op"}
