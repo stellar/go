@@ -72,7 +72,7 @@ require (
 	github.com/spf13/viper v0.0.0-20150621231900-db7ff930a189
 	github.com/stellar/go-xdr v0.0.0-20180917104419-0bc96f33a18e
 	github.com/stellar/throttled v2.2.3-0.20190823235211-89d75816f59d+incompatible
-	github.com/stretchr/testify v1.4.0
+	github.com/stretchr/testify v1.5.1
 	github.com/tyler-smith/go-bip39 v0.0.0-20180618194314-52158e4697b8
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasthttp v0.0.0-20170109085056-0a7f0a797cd6 // indirect

@@ -10,6 +10,7 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/exp/services/recoverysigner/internal/account"
+	"github.com/stellar/go/exp/services/recoverysigner/internal/db"
 	"github.com/stellar/go/exp/services/recoverysigner/internal/serve/auth"
 	"github.com/stellar/go/exp/support/jwtkey"
 	"github.com/stellar/go/keypair"
@@ -21,6 +22,7 @@ import (
 
 type Options struct {
 	Logger            *supportlog.Entry
+	DatabaseURL       string
 	HorizonURL        string
 	Port              int
 	NetworkPassphrase string
@@ -85,8 +87,23 @@ func getHandlerDeps(opts Options) (handlerDeps, error) {
 	}
 	horizonClient.SetHorizonTimeOut(uint(horizonTimeout / time.Second))
 
-	// TODO: Replace this in-memory store with Postgres.
-	accountStore := account.NewMemoryStore()
+	var accountStore account.Store
+	if opts.DatabaseURL == "" {
+		opts.Logger.Warn("USING MEMORY STORE, DATA IS EPHEMERAL.")
+		accountStore = account.NewMemoryStore()
+	} else {
+		db, dbErr := db.Open(opts.DatabaseURL)
+		if dbErr != nil {
+			return handlerDeps{}, errors.Wrap(err, "error parsing database url")
+		}
+
+		dbErr = db.Ping()
+		if dbErr != nil {
+			opts.Logger.Warn("Error pinging to Database: ", err)
+		}
+
+		accountStore = &account.DBStore{DB: db}
+	}
 
 	firebaseAuthClient, err := auth.NewFirebaseAuthClient(opts.FirebaseProjectID)
 	if err != nil {

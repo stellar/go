@@ -5,6 +5,8 @@ import (
 	"encoding/hex"
 	"fmt"
 	"os"
+	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/jmoiron/sqlx"
@@ -83,6 +85,22 @@ func (db *DB) Open() *sqlx.DB {
 	return conn
 }
 
+func (db *DB) Version() (major int) {
+	conn := db.Open()
+	defer conn.Close()
+
+	versionFull := ""
+	err := conn.Get(&versionFull, "SHOW server_version")
+	require.NoError(db.t, err)
+
+	version := strings.Fields(versionFull)
+	parts := strings.Split(version[0], ".")
+	major, err = strconv.Atoi(parts[0])
+	require.NoError(db.t, err)
+
+	return major
+}
+
 func execStatement(t *testing.T, pguser, query string) {
 	db, err := sqlx.Open("postgres", fmt.Sprintf("postgres://%s@localhost/?sslmode=disable", pguser))
 	require.NoError(t, err)
@@ -111,7 +129,7 @@ func Postgres(t *testing.T) *DB {
 	// create the db
 	execStatement(t, pgUser, "CREATE DATABASE "+pq.QuoteIdentifier(result.dbName))
 
-	result.DSN = fmt.Sprintf("postgres://%s@localhost/%s?sslmode=disable", pgUser, result.dbName)
+	result.DSN = fmt.Sprintf("postgres://%s@localhost/%s?sslmode=disable&timezone=UTC", pgUser, result.dbName)
 
 	result.closer = func() {
 		execStatement(t, pgUser, "DROP DATABASE "+pq.QuoteIdentifier(result.dbName))
