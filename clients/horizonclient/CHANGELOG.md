@@ -6,7 +6,12 @@ file.  This project adheres to [Semantic Versioning](http://semver.org/).
 ## Unreleased
 
 - Add `IsNotFoundError`
-* Dropped support for Go 1.12.
+- Dropped support for Go 1.12.
+- Fixed a bug where HorizonTimeOut has misleading units of time by:
+  - Removed HorizonTimeOut (seconds)
+  - Added HorizonTimeout (nanoseconds)
+
+## [v2.2.0](https://github.com/stellar/go/releases/tag/horizonclient-v2.2.0) - 2020-03-26
 
 ### Added
 
