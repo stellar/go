@@ -39,9 +39,10 @@ func TestAuthMethodsAudit(t *testing.T) {
 	assertAuditColsEqualTableCols(t, conn, "auth_methods", "auth_methods_audit")
 }
 
-// assertAuditColsEqualTableCols checks that the audit table for the given
-// table has the same columns as the given table, except for the header columns.
-func assertAuditColsEqualTableCols(t *testing.T, db *sqlx.DB, tableName, auditTableName string) {
+// assertAuditColsContainsTableCols checks that the audit table for the given
+// table has the same columns as the given table, as well as the header
+// columns.
+func assertAuditColsContainsTableCols(t *testing.T, db *sqlx.DB, tableName, auditTableName string) {
 	cols := tableCols(t, db, tableName)
 
 	wantAuditHeaderCols := []string{"audit_id", "audit_at", "audit_user", "audit_op"}
