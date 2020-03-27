@@ -192,12 +192,13 @@ func (res AssetStat) PagingToken() string {
 
 // Balance represents an account's holdings for a single currency type
 type Balance struct {
-	Balance            string `json:"balance"`
-	Limit              string `json:"limit,omitempty"`
-	BuyingLiabilities  string `json:"buying_liabilities"`
-	SellingLiabilities string `json:"selling_liabilities"`
-	LastModifiedLedger uint32 `json:"last_modified_ledger,omitempty"`
-	IsAuthorized       *bool  `json:"is_authorized,omitempty"`
+	Balance                           string `json:"balance"`
+	Limit                             string `json:"limit,omitempty"`
+	BuyingLiabilities                 string `json:"buying_liabilities"`
+	SellingLiabilities                string `json:"selling_liabilities"`
+	LastModifiedLedger                uint32 `json:"last_modified_ledger,omitempty"`
+	IsAuthorized                      *bool  `json:"is_authorized,omitempty"`
+	IsAuthorizedToMaintainLiabilities *bool  `json:"is_authorized_to_maintain_liabilities,omitempty"`
 	base.Asset
 }
 
