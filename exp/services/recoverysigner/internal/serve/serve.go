@@ -99,7 +99,7 @@ func getHandlerDeps(opts Options) (handlerDeps, error) {
 
 		dbErr = db.Ping()
 		if dbErr != nil {
-			opts.Logger.Warn("Error pinging to Database: ", err)
+			opts.Logger.Warn("Error pinging to Database: ", dbErr)
 		}
 
 		accountStore = &account.DBStore{DB: db}
