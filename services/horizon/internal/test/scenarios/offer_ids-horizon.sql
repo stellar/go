@@ -496,6 +496,7 @@ INSERT INTO gorp_migrations VALUES ('14_fix_asset_toml_field.sql', '2019-06-03 1
 INSERT INTO gorp_migrations VALUES ('15_ledger_failed_txs.sql', '2019-06-03 18:28:47.116796+02');
 INSERT INTO gorp_migrations VALUES ('16_ingest_failed_transactions.sql', '2019-06-03 18:28:47.117989+02');
 INSERT INTO gorp_migrations VALUES ('17_transaction_fee_paid.sql', '2019-06-03 18:28:47.120034+02');
+INSERT INTO gorp_migrations VALUES ('18_account_for_signers.sql', '2019-10-31 14:19:49.123835+01');
 
 
 --
@@ -1049,6 +1050,14 @@ CREATE TABLE key_value_store (
 INSERT INTO key_value_store VALUES ('exp_ingest_last_ledger', '0');
 ALTER TABLE ONLY key_value_store
     ADD CONSTRAINT key_value_store_pkey PRIMARY KEY (key);
+
+CREATE TABLE accounts_signers (
+                                  account character varying(64),
+                                  signer character varying(64),
+                                  weight integer NOT NULL,
+    -- we will query by signer so that is why signer is the first item in the composite key
+                                  PRIMARY KEY (signer, account)
+);
 
 --
 -- PostgreSQL database dump complete
