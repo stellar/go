@@ -2,7 +2,6 @@ package horizon
 
 import (
 	"encoding/json"
-	"fmt"
 	"testing"
 	"time"
 
@@ -10,14 +9,11 @@ import (
 	"github.com/stellar/go/protocols/horizon/operations"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/expingest"
-	"github.com/stellar/go/services/horizon/internal/test/db"
 )
 
 func TestPaymentActions(t *testing.T) {
-	fmt.Println("Horizon URL:", db.HorizonURL())
 	ht := StartHTTPTest(t, "base")
 	defer ht.Finish()
-	fmt.Println("Horizon URL:", db.HorizonURL())
 
 	w := ht.Get("/payments")
 	if ht.Assert.Equal(200, w.Code) {
