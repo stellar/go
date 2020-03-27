@@ -176,4 +176,6 @@ func TestFeeBumpTransactionResource(t *testing.T) {
 	byInnerHash.Hash = byOuterHash.Hash
 	byInnerHash.ID = byOuterHash.ID
 	byInnerHash.Signatures = byOuterHash.Signatures
+	byInnerHash.Links = byOuterHash.Links
+	tt.Assert.Equal(byOuterHash, byInnerHash)
 }
