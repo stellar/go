@@ -7,6 +7,8 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 * Validate transaction hash IDs as 64 lowercase hex chars. As such, wrongly-formatted parameters which used to cause 404 (`Not found`) errors will now cause 400 (`Bad request`) HTTP errors.
 * Fix ask and bid price levels of GET /order_book when encountering non-canonical price values. The `limit` parameter is now respected and levels are coallesced properly. Also, `price_r` is now in canonical form.
+* Remove duplicate indexes: index_history_transactions_on_id, index_history_ledgers_on_id, exp_asset_stats_by_code, and asset_by_code
+* Remove asset_stats table which is no longer necessary
 
 ## v1.0.1
 
