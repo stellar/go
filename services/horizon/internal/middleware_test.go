@@ -148,6 +148,7 @@ func TestStateMiddleware(t *testing.T) {
 
 	for i, testCase := range []struct {
 		name                string
+		noStateVerification bool
 		stateInvalid        bool
 		latestHistoryLedger xdr.Uint32
 		lastIngestedLedger  uint32
@@ -226,8 +227,31 @@ func TestStateMiddleware(t *testing.T) {
 			expectedStatus:      http.StatusOK,
 			expectTransaction:   false,
 		},
+		{
+			name:                "succeeds without state verification",
+			noStateVerification: true,
+			stateInvalid:        false,
+			latestHistoryLedger: 8,
+			lastIngestedLedger:  8,
+			ingestionVersion:    expingest.CurrentVersion,
+			sseRequest:          false,
+			expectedStatus:      http.StatusOK,
+			expectTransaction:   true,
+		},
+		{
+			name:                "succeeds without state verification and invalid state",
+			noStateVerification: true,
+			stateInvalid:        true,
+			latestHistoryLedger: 9,
+			lastIngestedLedger:  9,
+			ingestionVersion:    expingest.CurrentVersion,
+			sseRequest:          false,
+			expectedStatus:      http.StatusOK,
+			expectTransaction:   true,
+		},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
+			stateMiddleware.NoStateVerification = testCase.noStateVerification
 			tt.Assert.NoError(q.UpdateExpStateInvalid(testCase.stateInvalid))
 			_, err = q.InsertLedger(xdr.LedgerHeaderHistoryEntry{
 				Hash: xdr.Hash{byte(i)},
@@ -259,37 +283,4 @@ func TestStateMiddleware(t *testing.T) {
 			}
 		})
 	}
-}
-
-func TestLatestLedgerMiddleware(t *testing.T) {
-	tt := test.Start(t)
-	defer tt.Finish()
-	test.ResetHorizonDB(t, tt.HorizonDB)
-
-	q := &history.Q{tt.HorizonSession()}
-	request, err := http.NewRequest("GET", "http://localhost", nil)
-	tt.Assert.NoError(err)
-	endpoint := func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	}
-	latestLedgerMiddleware := &LatestLedgerMiddleware{
-		HorizonSession: tt.HorizonSession(),
-	}
-	handler := latestLedgerMiddleware.Wrap(http.HandlerFunc(endpoint))
-	_, err = q.InsertLedger(xdr.LedgerHeaderHistoryEntry{
-		Hash: xdr.Hash{0x32},
-		Header: xdr.LedgerHeader{
-			LedgerSeq:          6,
-			PreviousLedgerHash: xdr.Hash{0x32},
-		},
-	}, 0, 0, 0, 0)
-	tt.Assert.NoError(err)
-	tt.Assert.NoError(q.UpdateLastLedgerExpIngest(6))
-	tt.Assert.NoError(q.UpdateExpIngestVersion(expingest.CurrentVersion))
-	w := httptest.NewRecorder()
-	handler.ServeHTTP(w, request)
-	tt.Assert.Equal(200, w.Code)
-	tt.Assert.Equal(
-		w.Header().Get(actions.LastLedgerHeaderName),
-		strconv.FormatInt(int64(6), 10))
 }

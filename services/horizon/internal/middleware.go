@@ -242,11 +242,12 @@ func requestMetricsMiddleware(h http.Handler) http.Handler {
 
 // StateMiddleware is a middleware which enables a state handler if the state
 // has been initialized.
-// It also ensures that state (ledger entries) has been verified and are
-// correct. Otherwise returns `500 Internal Server Error` to prevent
-// returning invalid data to the user.
+// Unless NoStateVerification is set, it ensures that the state (ledger entries)
+// has been verified and is correct (Otherwise returns `500 Internal Server Error` to prevent
+// returning invalid data to the user)
 type StateMiddleware struct {
-	HorizonSession *db.Session
+	HorizonSession      *db.Session
+	NoStateVerification bool
 }
 
 func ingestionStatus(q *history.Q) (uint32, bool, error) {
@@ -277,9 +278,9 @@ func ingestionStatus(q *history.Q) (uint32, bool, error) {
 	return lastIngestedLedger, ready, nil
 }
 
-// Wrap executes the middleware on a given HTTP handler
-func (m *StateMiddleware) Wrap(h http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+// WrapFunc executes the middleware on a given HTTP handler function
+func (m *StateMiddleware) WrapFunc(h http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
 		session := m.HorizonSession.Clone()
 		q := &history.Q{session}
 		sseRequest := render.Negotiate(r) == render.MimeEventStream
@@ -301,15 +302,17 @@ func (m *StateMiddleware) Wrap(h http.Handler) http.Handler {
 		}
 		defer session.Rollback()
 
-		stateInvalid, err := q.GetExpStateInvalid()
-		if err != nil {
-			err = supportErrors.Wrap(err, "Error running GetExpStateInvalid")
-			problem.Render(r.Context(), w, err)
-			return
-		}
-		if stateInvalid {
-			problem.Render(r.Context(), w, problem.ServerError)
-			return
+		if !m.NoStateVerification {
+			stateInvalid, err := q.GetExpStateInvalid()
+			if err != nil {
+				err = supportErrors.Wrap(err, "Error running GetExpStateInvalid")
+				problem.Render(r.Context(), w, err)
+				return
+			}
+			if stateInvalid {
+				problem.Render(r.Context(), w, problem.ServerError)
+				return
+			}
 		}
 
 		lastIngestedLedger, ready, err := ingestionStatus(q)
@@ -317,7 +320,7 @@ func (m *StateMiddleware) Wrap(h http.Handler) http.Handler {
 			problem.Render(r.Context(), w, err)
 			return
 		}
-		if !ready {
+		if !m.NoStateVerification && !ready {
 			problem.Render(r.Context(), w, hProblem.StillIngesting)
 			return
 		}
@@ -348,38 +351,10 @@ func (m *StateMiddleware) Wrap(h http.Handler) http.Handler {
 				session,
 			),
 		))
-	})
-}
-
-// LatestLedgerMiddleware is a middleware that sets the Latest-Ledger HTTP header.
-type LatestLedgerMiddleware struct {
-	HorizonSession *db.Session
-}
-
-// Wrap executes the middleware on a given http handler
-// If the latest ledger cannot be reliably obtained, the header won't be set
-// and the nested http handler will be executed normally
-func (m *LatestLedgerMiddleware) Wrap(f http.Handler) http.Handler {
-	return m.WrapFunc(f.ServeHTTP)
+	}
 }
 
 // WrapFunc executes the middleware on a given HTTP handler function
-// If the latest ledger cannot be reliably obtained, the header won't be set
-// and the nested http handler will be executed normally
-func (m *LatestLedgerMiddleware) WrapFunc(f http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		defer f(w, r)
-		q := &history.Q{m.HorizonSession}
-		stateInvalid, err := q.GetExpStateInvalid()
-		if stateInvalid || err != nil {
-			log.Errorf("failed to set Last-Ledger header: invalid key-value state %t: error: %s", stateInvalid, err)
-			return
-		}
-		lastIngestedLedger, ready, err := ingestionStatus(q)
-		if err != nil || !ready {
-			log.Errorf("failed to set Last-Ledger header: cannot obtain ingestion status: ready %t: error: %s", ready, err)
-			return
-		}
-		actions.SetLastLedgerHeader(w, lastIngestedLedger)
-	}
+func (m *StateMiddleware) Wrap(h http.Handler) http.Handler {
+	return m.WrapFunc(h.ServeHTTP)
 }
