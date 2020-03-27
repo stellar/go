@@ -3,6 +3,7 @@ package processors
 import (
 	"testing"
 
+	"github.com/stellar/go/exp/ingest/io"
 	. "github.com/stellar/go/services/horizon/internal/test/transactions"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
@@ -856,4 +857,41 @@ func TestOperationParticipants(t *testing.T) {
 	}
 
 	tt.Empty(result)
+}
+func TestTransactionOperationAllowTrustAuthorizedToMaintainLiabilitiesDetails(t *testing.T) {
+	tt := assert.New(t)
+	asset := xdr.Asset{}
+	allowTrustAsset, err := asset.ToAllowTrustOpAsset("COP")
+	tt.NoError(err)
+
+	source := xdr.MustAddress("GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD")
+	op := xdr.Operation{
+		SourceAccount: &source,
+		Body: xdr.OperationBody{
+			Type: xdr.OperationTypeAllowTrust,
+			AllowTrustOp: &xdr.AllowTrustOp{
+				Trustor:   xdr.MustAddress("GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3"),
+				Asset:     allowTrustAsset,
+				Authorize: xdr.Uint32(xdr.TrustLineFlagsAuthorizedToMaintainLiabilitiesFlag),
+			},
+		},
+	}
+
+	operation := transactionOperationWrapper{
+		index:          0,
+		transaction:    io.LedgerTransaction{},
+		operation:      op,
+		ledgerSequence: 1,
+	}
+
+	expected := map[string]interface{}{
+		"asset_code":                        "COP",
+		"asset_issuer":                      "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
+		"asset_type":                        "credit_alphanum4",
+		"authorize_to_maintain_liabilities": true,
+		"trustee":                           "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
+		"trustor":                           "GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3",
+	}
+
+	tt.Equal(expected, operation.Details())
 }
