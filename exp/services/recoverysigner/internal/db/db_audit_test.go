@@ -16,7 +16,7 @@ func TestAccountsAudit(t *testing.T) {
 	conn, err := Open(db.DSN)
 	require.NoError(t, err)
 
-	assertAuditColsContainTableCols(t, conn, "accounts", "accounts_audit")
+	assertAuditTableCols(t, conn, "accounts", "accounts_audit")
 }
 
 // TestIdentitiesAudit confirms that the columns for identities_audit match
@@ -26,7 +26,7 @@ func TestIdentitiesAudit(t *testing.T) {
 	conn, err := Open(db.DSN)
 	require.NoError(t, err)
 
-	assertAuditColsContainTableCols(t, conn, "identities", "identities_audit")
+	assertAuditTableCols(t, conn, "identities", "identities_audit")
 }
 
 // TestAuthMethodsAudit confirms that the columns for auth_methods_audit match
@@ -36,30 +36,48 @@ func TestAuthMethodsAudit(t *testing.T) {
 	conn, err := Open(db.DSN)
 	require.NoError(t, err)
 
-	assertAuditColsContainTableCols(t, conn, "auth_methods", "auth_methods_audit")
+	assertAuditTableCols(t, conn, "auth_methods", "auth_methods_audit")
 }
 
-// assertAuditColsContainsTableCols checks that the audit table for the given
+// assertAuditTableCols checks that the audit table for the given
 // table has the same columns as the given table, as well as the header
-// columns.
-func assertAuditColsContainTableCols(t *testing.T, db *sqlx.DB, tableName, auditTableName string) {
+// columns, that all the types and columns are as we expect.
+func assertAuditTableCols(t *testing.T, db *sqlx.DB, tableName, auditTableName string) {
 	cols := tableCols(t, db, tableName)
 
-	wantAuditHeaderCols := []string{"audit_id", "audit_at", "audit_user", "audit_op"}
-	wantAuditCols := append(append([]string{}, wantAuditHeaderCols...), cols...)
+	wantAuditHeaderCols := []tableCol{
+		{Name: "audit_id", DataType: "bigint", UDTName: "int8", IsNullable: "NO"},
+		{Name: "audit_at", DataType: "timestamp with time zone", UDTName: "timestamptz", IsNullable: "NO"},
+		{Name: "audit_user", DataType: "text", UDTName: "text", IsNullable: "NO"},
+		{Name: "audit_op", DataType: "USER-DEFINED", UDTName: "audit_op", IsNullable: "NO"},
+	}
+	wantAuditCols := append(append([]tableCol{}, wantAuditHeaderCols...), cols...)
 
 	auditCols := tableCols(t, db, auditTableName)
 	assert.Equal(t, wantAuditCols, auditCols)
 }
 
+type tableCol struct {
+	Name       string
+	DataType   string
+	UDTName    string
+	IsNullable string
+}
+
 // tableCols returns the column names for the table.
-func tableCols(t *testing.T, db *sqlx.DB, tableName string) []string {
-	cols := []string{}
+func tableCols(t *testing.T, db *sqlx.DB, tableName string) []tableCol {
+	cols := []tableCol{}
 	err := db.Select(
 		&cols,
-		`SELECT column_name
+		`SELECT
+			column_name as Name,
+			data_type as DataType,
+			udt_name as UDTName,
+			is_nullable as IsNullable
 		FROM INFORMATION_SCHEMA.COLUMNS
-		WHERE TABLE_NAME = $1;`,
+		WHERE table_schema = 'public'
+		AND table_name = $1
+		ORDER BY ordinal_position ASC;`,
 		tableName,
 	)
 	require.NoError(t, err)

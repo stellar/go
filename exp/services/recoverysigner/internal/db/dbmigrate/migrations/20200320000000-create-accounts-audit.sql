@@ -9,7 +9,7 @@ CREATE TYPE audit_op AS ENUM (
 CREATE TABLE accounts_audit (
   audit_id BIGINT NOT NULL PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
   audit_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-  audit_user TEXT DEFAULT USER,
+  audit_user TEXT NOT NULL DEFAULT USER,
   audit_op audit_op NOT NULL,
   LIKE accounts
 );
