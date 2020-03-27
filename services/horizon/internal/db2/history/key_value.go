@@ -122,7 +122,7 @@ func (q *Q) GetExpStateInvalid() (bool, error) {
 	}
 }
 
-// UpdateExpIngestVersion upsets the state invalid value.
+// UpdateExpStateInvalid upsets the state invalid value.
 func (q *Q) UpdateExpStateInvalid(val bool) error {
 	return q.updateValueInStore(
 		stateInvalid,

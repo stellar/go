@@ -32,11 +32,14 @@ func TestPaymentActions(t *testing.T) {
 	}
 
 	// Makes StateMiddleware happy
-	q := history.Q{ht.HorizonSession()}
-	err := q.UpdateLastLedgerExpIngest(3)
-	ht.Assert.NoError(err)
-	err = q.UpdateExpIngestVersion(expingest.CurrentVersion)
-	ht.Assert.NoError(err)
+	initializeStateMiddleware := func() {
+		q := history.Q{ht.HorizonSession()}
+		err := q.UpdateLastLedgerExpIngest(3)
+		ht.Assert.NoError(err)
+		err = q.UpdateExpIngestVersion(expingest.CurrentVersion)
+		ht.Assert.NoError(err)
+	}
+	initializeStateMiddleware()
 
 	// checks if empty param returns 404 instead of all payments
 	w = ht.Get("/accounts//payments")
@@ -89,6 +92,7 @@ func TestPaymentActions(t *testing.T) {
 		ht.Assert.Equal("10.0000000", records[0]["source_amount"])
 	}
 
+	initializeStateMiddleware()
 	// Regression: negative cursor
 	w = ht.Get("/accounts/GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2/payments?cursor=-23667108046966785&order=asc&limit=100")
 	ht.Assert.Equal(400, w.Code)
@@ -96,6 +100,7 @@ func TestPaymentActions(t *testing.T) {
 
 func TestPaymentActions_Includetransactions(t *testing.T) {
 	ht := StartHTTPTest(t, "base")
+
 	defer ht.Finish()
 
 	w := ht.Get("/payments")
