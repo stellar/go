@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/strutils"
@@ -52,6 +53,7 @@ type ConfigOption struct {
 	Usage          string              // Help text
 	CustomSetValue func(*ConfigOption) // Optional function for custom validation/transformation
 	ConfigKey      interface{}         // Pointer to the final key in the linked Config struct
+	flag           *pflag.Flag         // The persistent flag that the config option is attached to
 }
 
 // Init handles initialisation steps, including configuring and binding the env variable name.
@@ -92,6 +94,9 @@ func (co *ConfigOption) UsageText() string {
 
 // setSimpleValue sets the value of a ConfigOption's configKey, based on the ConfigOption's default type.
 func (co *ConfigOption) setSimpleValue() {
+	viper.BindPFlag(co.Name, co.flag)
+	viper.BindEnv(co.Name, co.EnvVar)
+
 	if co.ConfigKey != nil {
 		switch co.OptType {
 		case types.String:
@@ -129,13 +134,8 @@ func (co *ConfigOption) setFlag(cmd *cobra.Command) error {
 		return errors.New("Unexpected OptType")
 	}
 
-	if err := viper.BindPFlag(co.Name, cmd.PersistentFlags().Lookup(co.Name)); err != nil {
-		return err
-	}
+	co.flag = cmd.PersistentFlags().Lookup(co.Name)
 
-	if err := viper.BindEnv(co.Name, co.EnvVar); err != nil {
-		return err
-	}
 	return nil
 }
 
