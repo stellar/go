@@ -78,6 +78,10 @@ const (
 	// it issues.
 	EffectTrustlineDeauthorized EffectType = 24 // from allow_trust
 
+	// EffectTrustlineAuthorizedToMaintainLiabilities occurs when an anchor has AUTH_REQUIRED flag set
+	// to true and it authorizes another account's trustline to maintain liabilities
+	EffectTrustlineAuthorizedToMaintainLiabilities EffectType = 25 // from allow_trust
+
 	// trading effects
 
 	// EffectOfferCreated occurs when an account offers to trade an asset
@@ -114,30 +118,31 @@ const (
 
 // EffectTypeNames stores a map of effect type ID and names
 var EffectTypeNames = map[EffectType]string{
-	EffectAccountCreated:                     "account_created",
-	EffectAccountRemoved:                     "account_removed",
-	EffectAccountCredited:                    "account_credited",
-	EffectAccountDebited:                     "account_debited",
-	EffectAccountThresholdsUpdated:           "account_thresholds_updated",
-	EffectAccountHomeDomainUpdated:           "account_home_domain_updated",
-	EffectAccountFlagsUpdated:                "account_flags_updated",
-	EffectAccountInflationDestinationUpdated: "account_inflation_destination_updated",
-	EffectSignerCreated:                      "signer_created",
-	EffectSignerRemoved:                      "signer_removed",
-	EffectSignerUpdated:                      "signer_updated",
-	EffectTrustlineCreated:                   "trustline_created",
-	EffectTrustlineRemoved:                   "trustline_removed",
-	EffectTrustlineUpdated:                   "trustline_updated",
-	EffectTrustlineAuthorized:                "trustline_authorized",
-	EffectTrustlineDeauthorized:              "trustline_deauthorized",
-	EffectOfferCreated:                       "offer_created",
-	EffectOfferRemoved:                       "offer_removed",
-	EffectOfferUpdated:                       "offer_updated",
-	EffectTrade:                              "trade",
-	EffectDataCreated:                        "data_created",
-	EffectDataRemoved:                        "data_removed",
-	EffectDataUpdated:                        "data_updated",
-	EffectSequenceBumped:                     "sequence_bumped",
+	EffectAccountCreated:                           "account_created",
+	EffectAccountRemoved:                           "account_removed",
+	EffectAccountCredited:                          "account_credited",
+	EffectAccountDebited:                           "account_debited",
+	EffectAccountThresholdsUpdated:                 "account_thresholds_updated",
+	EffectAccountHomeDomainUpdated:                 "account_home_domain_updated",
+	EffectAccountFlagsUpdated:                      "account_flags_updated",
+	EffectAccountInflationDestinationUpdated:       "account_inflation_destination_updated",
+	EffectSignerCreated:                            "signer_created",
+	EffectSignerRemoved:                            "signer_removed",
+	EffectSignerUpdated:                            "signer_updated",
+	EffectTrustlineCreated:                         "trustline_created",
+	EffectTrustlineRemoved:                         "trustline_removed",
+	EffectTrustlineUpdated:                         "trustline_updated",
+	EffectTrustlineAuthorized:                      "trustline_authorized",
+	EffectTrustlineAuthorizedToMaintainLiabilities: "trustline_authorized_to_maintain_liabilities",
+	EffectTrustlineDeauthorized:                    "trustline_deauthorized",
+	EffectOfferCreated:                             "offer_created",
+	EffectOfferRemoved:                             "offer_removed",
+	EffectOfferUpdated:                             "offer_updated",
+	EffectTrade:                                    "trade",
+	EffectDataCreated:                              "data_created",
+	EffectDataRemoved:                              "data_removed",
+	EffectDataUpdated:                              "data_updated",
+	EffectSequenceBumped:                           "sequence_bumped",
 }
 
 // Base provides the common structure for any effect resource effect.
@@ -241,6 +246,13 @@ type TrustlineUpdated struct {
 }
 
 type TrustlineAuthorized struct {
+	Base
+	Trustor   string `json:"trustor"`
+	AssetType string `json:"asset_type"`
+	AssetCode string `json:"asset_code,omitempty"`
+}
+
+type TrustlineAuthorizedToMaintainLiabilities struct {
 	Base
 	Trustor   string `json:"trustor"`
 	AssetType string `json:"asset_type"`
@@ -397,7 +409,7 @@ func UnmarshalEffect(effectType string, dataString []byte) (effects Effect, err 
 			return
 		}
 		effects = effect
-	case EffectTypeNames[EffectTrustlineAuthorized]:
+	case EffectTypeNames[EffectTrustlineAuthorized], EffectTypeNames[EffectTrustlineAuthorizedToMaintainLiabilities]:
 		var effect TrustlineAuthorized
 		if err = json.Unmarshal(dataString, &effect); err != nil {
 			return
