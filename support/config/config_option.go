@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/strutils"
@@ -52,6 +53,7 @@ type ConfigOption struct {
 	Usage          string              // Help text
 	CustomSetValue func(*ConfigOption) // Optional function for custom validation/transformation
 	ConfigKey      interface{}         // Pointer to the final key in the linked Config struct
+	flag           *pflag.Flag         // The persistent flag that the config option is attached to
 }
 
 // Init handles initialisation steps, including configuring and binding the env variable name.
@@ -65,8 +67,15 @@ func (co *ConfigOption) Init(cmd *cobra.Command) error {
 	return co.setFlag(cmd)
 }
 
+// Bind binds the config option to viper.
+func (co *ConfigOption) Bind() {
+	viper.BindPFlag(co.Name, co.flag)
+	viper.BindEnv(co.Name, co.EnvVar)
+}
+
 // Require checks that a required string configuration option is not empty, raising a user error if it is.
 func (co *ConfigOption) Require() {
+	co.Bind()
 	if co.Required && viper.GetString(co.Name) == "" {
 		stdLog.Fatalf("Invalid config: %s is blank. Please specify --%s on the command line or set the %s environment variable.", co.Name, co.Name, co.EnvVar)
 	}
@@ -74,6 +83,8 @@ func (co *ConfigOption) Require() {
 
 // SetValue sets a value in the global config, using a custom function, if one was provided.
 func (co *ConfigOption) SetValue() {
+	co.Bind()
+
 	// Use a custom setting function, if one is provided
 	if co.CustomSetValue != nil {
 		co.CustomSetValue(co)
@@ -129,13 +140,8 @@ func (co *ConfigOption) setFlag(cmd *cobra.Command) error {
 		return errors.New("Unexpected OptType")
 	}
 
-	if err := viper.BindPFlag(co.Name, cmd.PersistentFlags().Lookup(co.Name)); err != nil {
-		return err
-	}
+	co.flag = cmd.PersistentFlags().Lookup(co.Name)
 
-	if err := viper.BindEnv(co.Name, co.EnvVar); err != nil {
-		return err
-	}
 	return nil
 }
 

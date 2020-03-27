@@ -28,6 +28,9 @@ var dbInitCmd = &cobra.Command{
 	Short: "install schema",
 	Long:  "init initializes the postgres database used by horizon.",
 	Run: func(cmd *cobra.Command, args []string) {
+		dbURLConfigOption.Require()
+		dbURLConfigOption.SetValue()
+
 		db, err := sql.Open("postgres", viper.GetString("db-url"))
 		if err != nil {
 			log.Fatal(err)
@@ -71,6 +74,9 @@ var dbMigrateCmd = &cobra.Command{
 				os.Exit(1)
 			}
 		}
+
+		dbURLConfigOption.Require()
+		dbURLConfigOption.SetValue()
 
 		db, err := sql.Open("postgres", viper.GetString("db-url"))
 		if err != nil {
