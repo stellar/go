@@ -67,8 +67,15 @@ func (co *ConfigOption) Init(cmd *cobra.Command) error {
 	return co.setFlag(cmd)
 }
 
+// Bind binds the config option to viper.
+func (co *ConfigOption) Bind() {
+	viper.BindPFlag(co.Name, co.flag)
+	viper.BindEnv(co.Name, co.EnvVar)
+}
+
 // Require checks that a required string configuration option is not empty, raising a user error if it is.
 func (co *ConfigOption) Require() {
+	co.Bind()
 	if co.Required && viper.GetString(co.Name) == "" {
 		stdLog.Fatalf("Invalid config: %s is blank. Please specify --%s on the command line or set the %s environment variable.", co.Name, co.Name, co.EnvVar)
 	}
@@ -76,6 +83,8 @@ func (co *ConfigOption) Require() {
 
 // SetValue sets a value in the global config, using a custom function, if one was provided.
 func (co *ConfigOption) SetValue() {
+	co.Bind()
+
 	// Use a custom setting function, if one is provided
 	if co.CustomSetValue != nil {
 		co.CustomSetValue(co)
@@ -94,9 +103,6 @@ func (co *ConfigOption) UsageText() string {
 
 // setSimpleValue sets the value of a ConfigOption's configKey, based on the ConfigOption's default type.
 func (co *ConfigOption) setSimpleValue() {
-	viper.BindPFlag(co.Name, co.flag)
-	viper.BindEnv(co.Name, co.EnvVar)
-
 	if co.ConfigKey != nil {
 		switch co.OptType {
 		case types.String:
