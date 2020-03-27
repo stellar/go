@@ -74,7 +74,7 @@ func tableCols(t *testing.T, db *sqlx.DB, tableName string) []tableCol {
 			data_type as DataType,
 			udt_name as UDTName,
 			is_nullable as IsNullable
-		FROM INFORMATION_SCHEMA.COLUMNS
+		FROM information_schema.columns
 		WHERE table_schema = 'public'
 		AND table_name = $1
 		ORDER BY ordinal_position ASC;`,
