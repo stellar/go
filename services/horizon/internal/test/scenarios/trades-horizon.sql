@@ -1040,6 +1040,18 @@ ALTER TABLE ONLY history_trades
     ADD CONSTRAINT history_trades_counter_asset_id_fkey FOREIGN KEY (counter_asset_id) REFERENCES history_assets(id);
 
 
+-- added manually
+ALTER TABLE IF EXISTS ONLY public.key_value_store DROP CONSTRAINT IF EXISTS key_value_store_pkey;
+DROP TABLE IF EXISTS public.key_value_store;
+CREATE TABLE key_value_store (
+                                 key character varying(255) NOT NULL,
+                                 value character varying(255) NOT NULL
+);
+INSERT INTO key_value_store VALUES ('exp_ingest_last_ledger', '0');
+ALTER TABLE ONLY key_value_store
+    ADD CONSTRAINT key_value_store_pkey PRIMARY KEY (key);
+
+
 --
 -- PostgreSQL database dump complete
 --
