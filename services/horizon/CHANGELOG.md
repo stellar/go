@@ -9,7 +9,64 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 * Fix ask and bid price levels of GET /order_book when encountering non-canonical price values. The `limit` parameter is now respected and levels are coallesced properly. Also, `price_r` is now in canonical form.
 * Remove duplicate indexes: index_history_transactions_on_id, index_history_ledgers_on_id, exp_asset_stats_by_code, and asset_by_code
 * Remove asset_stats table which is no longer necessary
-
+* Add support for CAP0018: Fine-Grained Control of Authorization ([#2423](https://github.com/stellar/go/pull/2423)).
+  - Add `is_authorized_to_maintain_liabilities` to `Balance`.
+    <pre>
+    "balances": [
+      {
+        "is_authorized": true,
+        <b>"is_authorized_to_maintain_liabilities": true,</b>
+        "balance": "27.1374422",
+        "limit": "922337203685.4775807",
+        "buying_liabilities": "0.0000000",
+        "selling_liabilities": "0.0000000",
+        "last_modified_ledger": 28893780,
+        "asset_type": "credit_alphanum4",
+        "asset_code": "USD",
+        "asset_issuer": "GBSTRUSD7IRX73RQZBL3RQUH6KS3O4NYFY3QCALDLZD77XMZOPWAVTUK"
+      },
+      {
+        "balance": "1.5000000",
+        "buying_liabilities": "0.0000000",
+        "selling_liabilities": "0.0000000",
+        "asset_type": "native"
+      }
+    ]
+    </pre>
+  - Add `authorize_to_maintain_liabilities` to `AllowTrust` operation.
+    <pre>
+    {
+      "id": "124042211741474817",
+      "paging_token": "124042211741474817",
+      "transaction_successful": true,
+      "source_account": "GBSTRUSD7IRX73RQZBL3RQUH6KS3O4NYFY3QCALDLZD77XMZOPWAVTUK",
+      "type": "allow_trust",
+      "type_i": 7,
+      "created_at": "2020-03-27T03:40:10Z",
+      "transaction_hash": "a77d4ee5346d55fb8026cdcdad6e4b5e0c440c96b4627e3727f4ccfa6d199e94",
+      "asset_type": "credit_alphanum4",
+      "asset_code": "USD",
+      "asset_issuer": "GBSTRUSD7IRX73RQZBL3RQUH6KS3O4NYFY3QCALDLZD77XMZOPWAVTUK",
+      "trustee": "GBSTRUSD7IRX73RQZBL3RQUH6KS3O4NYFY3QCALDLZD77XMZOPWAVTUK",
+      "trustor": "GA332TXN6BX2DYKGYB7FW5BWV2JLQKERNX4T7EUJT4MHWOW2TSGC2SPM",
+      "authorize": true,
+      <b>"authorize_to_maintain_liabilities": true,</b>
+    }
+    </pre>
+  - Add effect `trustline_authorized_to_maintain_liabilities`.
+    <pre>
+    {
+      "id": "0124042211741474817-0000000001",
+      "paging_token": "124042211741474817-1",
+      "account": "GBSTRUSD7IRX73RQZBL3RQUH6KS3O4NYFY3QCALDLZD77XMZOPWAVTUK",
+      <b>"type": "trustline_authorized_to_maintain_liabilities",</b>
+      <b>"type_i": 25,</b>
+      "created_at": "2020-03-27T03:40:10Z",
+      "trustor": "GA332TXN6BX2DYKGYB7FW5BWV2JLQKERNX4T7EUJT4MHWOW2TSGC2SPM",
+      "asset_type": "credit_alphanum4",
+      "asset_code": "USD"
+    }    
+    </pre>
 ## v1.0.1
 
 ### Fixed

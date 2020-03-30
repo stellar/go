@@ -3,6 +3,7 @@ package processors
 import (
 	"testing"
 
+	"github.com/stellar/go/exp/ingest/io"
 	. "github.com/stellar/go/services/horizon/internal/test/transactions"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
@@ -442,12 +443,13 @@ func TestTransactionOperationDetails(t *testing.T) {
 			hash:          "6d2e30fd57492bf2e2b132e1bc91a548a369189bebf77eb2b3d829121a9d2c50",
 			index:         0,
 			expected: map[string]interface{}{
-				"asset_code":   "USD",
-				"asset_issuer": "GD4SMOE3VPSF7ZR3CTEQ3P5UNTBMEJDA2GLXTHR7MMARANKKJDZ7RPGF",
-				"asset_type":   "credit_alphanum4",
-				"authorize":    true,
-				"trustee":      "GD4SMOE3VPSF7ZR3CTEQ3P5UNTBMEJDA2GLXTHR7MMARANKKJDZ7RPGF",
-				"trustor":      "GCVW5LCRZFP7PENXTAGOVIQXADDNUXXZJCNKF4VQB2IK7W2LPJWF73UG",
+				"asset_code":                        "USD",
+				"asset_issuer":                      "GD4SMOE3VPSF7ZR3CTEQ3P5UNTBMEJDA2GLXTHR7MMARANKKJDZ7RPGF",
+				"asset_type":                        "credit_alphanum4",
+				"authorize":                         true,
+				"authorize_to_maintain_liabilities": true,
+				"trustee":                           "GD4SMOE3VPSF7ZR3CTEQ3P5UNTBMEJDA2GLXTHR7MMARANKKJDZ7RPGF",
+				"trustor":                           "GCVW5LCRZFP7PENXTAGOVIQXADDNUXXZJCNKF4VQB2IK7W2LPJWF73UG",
 			},
 		},
 		{
@@ -856,4 +858,100 @@ func TestOperationParticipants(t *testing.T) {
 	}
 
 	tt.Empty(result)
+}
+func TestTransactionOperationAllowTrustDetails(t *testing.T) {
+	tt := assert.New(t)
+	asset := xdr.Asset{}
+	allowTrustAsset, err := asset.ToAllowTrustOpAsset("COP")
+	tt.NoError(err)
+
+	source := xdr.MustAddress("GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD")
+
+	testCases := []struct {
+		desc     string
+		op       xdr.Operation
+		expected map[string]interface{}
+	}{
+		{
+			desc: "authorize",
+			op: xdr.Operation{
+				SourceAccount: &source,
+				Body: xdr.OperationBody{
+					Type: xdr.OperationTypeAllowTrust,
+					AllowTrustOp: &xdr.AllowTrustOp{
+						Trustor:   xdr.MustAddress("GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3"),
+						Asset:     allowTrustAsset,
+						Authorize: xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag),
+					},
+				},
+			},
+			expected: map[string]interface{}{
+				"asset_code":                        "COP",
+				"asset_issuer":                      "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
+				"asset_type":                        "credit_alphanum4",
+				"authorize":                         true,
+				"authorize_to_maintain_liabilities": true,
+				"trustee":                           "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
+				"trustor":                           "GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3",
+			},
+		},
+		{
+			desc: "authorize maintain liabilities",
+			op: xdr.Operation{
+				SourceAccount: &source,
+				Body: xdr.OperationBody{
+					Type: xdr.OperationTypeAllowTrust,
+					AllowTrustOp: &xdr.AllowTrustOp{
+						Trustor:   xdr.MustAddress("GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3"),
+						Asset:     allowTrustAsset,
+						Authorize: xdr.Uint32(xdr.TrustLineFlagsAuthorizedToMaintainLiabilitiesFlag),
+					},
+				},
+			},
+			expected: map[string]interface{}{
+				"asset_code":                        "COP",
+				"asset_issuer":                      "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
+				"asset_type":                        "credit_alphanum4",
+				"authorize":                         false,
+				"authorize_to_maintain_liabilities": true,
+				"trustee":                           "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
+				"trustor":                           "GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3",
+			},
+		},
+		{
+			desc: "deauthorize",
+			op: xdr.Operation{
+				SourceAccount: &source,
+				Body: xdr.OperationBody{
+					Type: xdr.OperationTypeAllowTrust,
+					AllowTrustOp: &xdr.AllowTrustOp{
+						Trustor:   xdr.MustAddress("GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3"),
+						Asset:     allowTrustAsset,
+						Authorize: xdr.Uint32(0),
+					},
+				},
+			},
+			expected: map[string]interface{}{
+				"asset_code":                        "COP",
+				"asset_issuer":                      "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
+				"asset_type":                        "credit_alphanum4",
+				"authorize":                         false,
+				"authorize_to_maintain_liabilities": false,
+				"trustee":                           "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
+				"trustor":                           "GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3",
+			},
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.desc, func(t *testing.T) {
+			operation := transactionOperationWrapper{
+				index:          0,
+				transaction:    io.LedgerTransaction{},
+				operation:      tc.op,
+				ledgerSequence: 1,
+			}
+
+			tt.Equal(tc.expected, operation.Details())
+		})
+	}
 }

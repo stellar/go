@@ -549,9 +549,16 @@ func (operation *transactionOperationWrapper) allowTrustEffects() []effect {
 	}
 	assetDetails(details, asset, "")
 
-	if xdr.TrustLineFlags(op.Authorize).IsAuthorized() {
+	switch {
+	case xdr.TrustLineFlags(op.Authorize).IsAuthorized():
 		effects.add(source.Address(), history.EffectTrustlineAuthorized, details)
-	} else {
+	case xdr.TrustLineFlags(op.Authorize).IsAuthorizedToMaintainLiabilitiesFlag():
+		effects.add(
+			source.Address(),
+			history.EffectTrustlineAuthorizedToMaintainLiabilities,
+			details,
+		)
+	default:
 		effects.add(source.Address(), history.EffectTrustlineDeauthorized, details)
 	}
 

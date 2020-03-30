@@ -1213,3 +1213,48 @@ func TestOperationRegressionAccountTrustItself(t *testing.T) {
 	tt.NoError(err)
 	tt.Equal([]effect{}, effects)
 }
+
+func TestOperationEffectsAllowTrustAuthorizedToMaintainLiabilities(t *testing.T) {
+	tt := assert.New(t)
+	asset := xdr.Asset{}
+	allowTrustAsset, err := asset.ToAllowTrustOpAsset("COP")
+	tt.NoError(err)
+	source := xdr.MustAddress("GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD")
+	op := xdr.Operation{
+		SourceAccount: &source,
+		Body: xdr.OperationBody{
+			Type: xdr.OperationTypeAllowTrust,
+			AllowTrustOp: &xdr.AllowTrustOp{
+				Trustor:   xdr.MustAddress("GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3"),
+				Asset:     allowTrustAsset,
+				Authorize: xdr.Uint32(xdr.TrustLineFlagsAuthorizedToMaintainLiabilitiesFlag),
+			},
+		},
+	}
+
+	operation := transactionOperationWrapper{
+		index:          0,
+		transaction:    io.LedgerTransaction{},
+		operation:      op,
+		ledgerSequence: 1,
+	}
+
+	effects, err := operation.effects()
+	tt.NoError(err)
+
+	expected := []effect{
+		effect{
+			address:     "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
+			operationID: 4294967297,
+			details: map[string]interface{}{
+				"asset_code":   "COP",
+				"asset_issuer": "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
+				"asset_type":   "credit_alphanum4",
+				"trustor":      "GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3",
+			},
+			effectType: history.EffectTrustlineAuthorizedToMaintainLiabilities,
+			order:      uint32(1),
+		},
+	}
+	tt.Equal(expected, effects)
+}
