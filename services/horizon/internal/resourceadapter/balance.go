@@ -25,6 +25,11 @@ func PopulateBalance(dest *protocol.Balance, row core.Trustline) (err error) {
 	dest.LastModifiedLedger = row.LastModified
 	isAuthorized := row.IsAuthorized()
 	dest.IsAuthorized = &isAuthorized
+	dest.IsAuthorizedToMaintainLiabilities = &isAuthorized
+	isAuthorizedToMaintainLiabilities := row.IsAuthorizedToMaintainLiabilities()
+	if isAuthorizedToMaintainLiabilities {
+		dest.IsAuthorizedToMaintainLiabilities = &isAuthorizedToMaintainLiabilities
+	}
 	return
 }
 
@@ -43,6 +48,11 @@ func PopulateHistoryBalance(dest *protocol.Balance, row history.TrustLine) (err 
 	dest.LastModifiedLedger = row.LastModifiedLedger
 	isAuthorized := row.IsAuthorized()
 	dest.IsAuthorized = &isAuthorized
+	dest.IsAuthorizedToMaintainLiabilities = &isAuthorized
+	isAuthorizedToMaintainLiabilities := row.IsAuthorizedToMaintainLiabilities()
+	if isAuthorizedToMaintainLiabilities {
+		dest.IsAuthorizedToMaintainLiabilities = &isAuthorizedToMaintainLiabilities
+	}
 	return
 }
 

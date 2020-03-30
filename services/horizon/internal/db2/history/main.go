@@ -81,6 +81,10 @@ const (
 	// it issues.
 	EffectTrustlineDeauthorized EffectType = 24 // from allow_trust
 
+	// EffectTrustlineAuthorizedToMaintainLiabilities occurs when an anchor has AUTH_REQUIRED flag set
+	// to true and it authorizes another account's trustline to maintain liabilities
+	EffectTrustlineAuthorizedToMaintainLiabilities EffectType = 25 // from allow_trust
+
 	// trading effects
 
 	// EffectOfferCreated occurs when an account offers to trade an asset
