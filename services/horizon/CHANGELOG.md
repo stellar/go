@@ -5,6 +5,9 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+* Make `GET /trades` generate an empty response instead of a 404 when no
+ trades are found.
+
 ## v1.0.1
 
 ### Fixed
