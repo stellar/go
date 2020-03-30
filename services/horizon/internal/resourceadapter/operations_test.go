@@ -94,6 +94,7 @@ func TestPopulateOperation_AllowTrust(t *testing.T) {
 		"asset_issuer":                      "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
 		"asset_type":                        "credit_alphanum4",
 		"authorize":                         true,
+		"authorize_to_maintain_liabilities": true,
 		"trustee":                           "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
 		"trustor":                           "GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3"
 	}`
@@ -101,13 +102,14 @@ func TestPopulateOperation_AllowTrust(t *testing.T) {
 	rsp, err = getJSONResponse(details)
 	tt.NoError(err)
 	tt.Equal(true, rsp["authorize"])
-	tt.NotContains(rsp, "authorize_to_maintain_liabilities")
+	tt.Equal(true, rsp["authorize_to_maintain_liabilities"])
 
 	details = `{
 		"asset_code":                        "COP",
 		"asset_issuer":                      "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
 		"asset_type":                        "credit_alphanum4",
 		"authorize":                         false,
+		"authorize_to_maintain_liabilities": false,
 		"trustee":                           "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
 		"trustor":                           "GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3"
 	}`
@@ -115,7 +117,7 @@ func TestPopulateOperation_AllowTrust(t *testing.T) {
 	rsp, err = getJSONResponse(details)
 	tt.NoError(err)
 	tt.Equal(false, rsp["authorize"])
-	tt.NotContains(rsp, "authorize_to_maintain_liabilities")
+	tt.Equal(false, rsp["authorize_to_maintain_liabilities"])
 }
 
 func getJSONResponse(details string) (rsp map[string]interface{}, err error) {

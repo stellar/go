@@ -194,7 +194,7 @@ type AllowTrust struct {
 	Trustee                        string `json:"trustee"`
 	Trustor                        string `json:"trustor"`
 	Authorize                      bool   `json:"authorize"`
-	AuthorizeToMaintainLiabilities bool   `json:"authorize_to_maintain_liabilities,omitempty"`
+	AuthorizeToMaintainLiabilities bool   `json:"authorize_to_maintain_liabilities"`
 }
 
 // AccountMerge is the json resource representing a single operation whose type
