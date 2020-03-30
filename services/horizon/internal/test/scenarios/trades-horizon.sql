@@ -522,7 +522,7 @@ SELECT pg_catalog.setval('history_accounts_id_seq', 5, true);
 
 INSERT INTO history_assets VALUES (1, 'credit_alphanum4', 'USD', 'GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4');
 INSERT INTO history_assets VALUES (2, 'credit_alphanum4', 'EUR', 'GCQPYGH4K57XBDENKKX55KDTWOTK5WDWRQOH2LHEDX3EKVIQRLMESGBG');
-
+INSERT INTO history_assets VALUES (3, 'credit_alphanum4', 'SEK', 'GCQPYGH4K57XBDENKKX55KDTWOTK5WDWRQOH2LHEDX3EKVIQRLMESGBG');
 
 --
 -- Name: history_assets_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -

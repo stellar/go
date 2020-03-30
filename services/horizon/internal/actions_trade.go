@@ -1,6 +1,7 @@
 package horizon
 
 import (
+	"database/sql"
 	"strconv"
 	gTime "time"
 
@@ -120,7 +121,10 @@ func (action *TradeIndexAction) loadRecords() {
 		trades = trades.ForOffer(action.OfferFilter)
 	}
 
-	action.Err = trades.Page(action.PagingParams).Select(&action.Records)
+	err := trades.Page(action.PagingParams).Select(&action.Records)
+	if err != sql.ErrNoRows {
+		action.Err = err
+	}
 }
 
 // loadPage populates action.Page
