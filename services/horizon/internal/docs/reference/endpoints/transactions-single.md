@@ -88,6 +88,7 @@ This endpoint responds with a single Transaction.  See [transaction resource](..
   "ledger": 697121,
   "created_at": "2019-04-09T20:14:25Z",
   "source_account": "GAIH3ULLFQ4DGSECF2AR555KZ4KNDGEKN4AFI4SU2M7B43MGK3QJZNSR",
+  "fee_account": "GAIH3ULLFQ4DGSECF2AR555KZ4KNDGEKN4AFI4SU2M7B43MGK3QJZNSR",
   "source_account_sequence": "4660039994869",
   "fee_charged": 100,
   "max_fee": 100,
