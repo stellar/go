@@ -87,23 +87,15 @@ func getHandlerDeps(opts Options) (handlerDeps, error) {
 	}
 	horizonClient.SetHorizonTimeOut(uint(horizonTimeout / time.Second))
 
-	var accountStore account.Store
-	if opts.DatabaseURL == "" {
-		opts.Logger.Warn("USING MEMORY STORE, DATA IS EPHEMERAL.")
-		accountStore = account.NewMemoryStore()
-	} else {
-		db, dbErr := db.Open(opts.DatabaseURL)
-		if dbErr != nil {
-			return handlerDeps{}, errors.Wrap(err, "error parsing database url")
-		}
-
-		dbErr = db.Ping()
-		if dbErr != nil {
-			opts.Logger.Warn("Error pinging to Database: ", dbErr)
-		}
-
-		accountStore = &account.DBStore{DB: db}
+	db, dbErr := db.Open(opts.DatabaseURL)
+	if dbErr != nil {
+		return handlerDeps{}, errors.Wrap(err, "error parsing database url")
 	}
+	dbErr = db.Ping()
+	if dbErr != nil {
+		opts.Logger.Warn("Error pinging to Database: ", dbErr)
+	}
+	accountStore := &account.DBStore{DB: db}
 
 	firebaseAuthClient, err := auth.NewFirebaseAuthClient(opts.FirebaseProjectID)
 	if err != nil {
