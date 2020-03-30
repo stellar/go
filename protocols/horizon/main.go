@@ -502,6 +502,9 @@ type TransactionResultCodes struct {
 
 // TransactionSuccess represents the result of a successful transaction
 // submission.
+// Action needed in release: horizonclient-v3.0.0
+// Remove TransactionSuccess because the submit transaction endpoint now responds with
+// a full Transaction resource
 type TransactionSuccess struct {
 	Links struct {
 		Transaction hal.Link `json:"transaction"`

@@ -75,13 +75,3 @@ func (fte *FailedTransactionError) OperationResultCodes() (result []string, err 
 
 	return
 }
-
-// MalformedTransactionError represent an error that occurred because
-// a TransactionEnvelope could not be decoded from the provided data.
-type MalformedTransactionError struct {
-	EnvelopeXDR string
-}
-
-func (err *MalformedTransactionError) Error() string {
-	return "tx malformed"
-}

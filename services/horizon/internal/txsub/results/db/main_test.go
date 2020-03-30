@@ -24,7 +24,7 @@ func TestResultProvider(t *testing.T) {
 	ret := rp.ResultByHash(tt.Ctx, hash)
 
 	tt.Require.NoError(ret.Err)
-	tt.Assert.Equal(hash, ret.Hash)
+	tt.Assert.Equal(hash, ret.Transaction.TransactionHash)
 }
 
 func TestResultProviderHorizonOnly(t *testing.T) {
@@ -44,7 +44,6 @@ func TestResultProviderHorizonOnly(t *testing.T) {
 	ret := rp.ResultByHash(tt.Ctx, hash)
 
 	tt.Require.Equal(ret.Err, txsub.ErrNoResults)
-	tt.Assert.Empty(ret.Hash)
 }
 
 func TestResultFailed(t *testing.T) {
@@ -69,5 +68,29 @@ func TestResultFailed(t *testing.T) {
 
 	tt.Require.Error(ret.Err)
 	tt.Assert.Equal("AAAAAAAAAGT/////AAAAAQAAAAAAAAAB/////gAAAAA=", ret.Err.(*txsub.FailedTransactionError).ResultXDR)
-	tt.Assert.Equal(hash, ret.Hash)
+}
+
+func TestResultFailedNotInHorizonDB(t *testing.T) {
+	tt := test.Start(t).Scenario("failed_transactions")
+	defer tt.Finish()
+
+	rp := &DB{
+		Core:           &core.Q{Session: tt.CoreSession()},
+		History:        &history.Q{Session: tt.HorizonSession()},
+		SkipCoreChecks: false,
+	}
+
+	hash := "aa168f12124b7c196c0adaee7c73a64d37f99428cacb59a91ff389626845e7cf"
+
+	// remove tx from horizon db
+	_, err := tt.HorizonSession().ExecRaw(
+		`DELETE FROM history_transactions WHERE transaction_hash = ?`,
+		hash,
+	)
+	tt.Require.NoError(err)
+
+	ret := rp.ResultByHash(tt.Ctx, hash)
+
+	tt.Require.Error(ret.Err)
+	tt.Assert.Equal("AAAAAAAAAGT/////AAAAAQAAAAAAAAAB/////gAAAAA=", ret.Err.(*txsub.FailedTransactionError).ResultXDR)
 }
