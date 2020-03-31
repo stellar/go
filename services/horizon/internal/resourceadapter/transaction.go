@@ -16,10 +16,11 @@ import (
 // Populate fills out the details
 func PopulateTransaction(
 	ctx context.Context,
+	transactionHash string,
 	dest *protocol.Transaction,
 	row history.Transaction,
 ) {
-	dest.ID = row.TransactionHash
+	dest.ID = transactionHash
 	dest.PT = row.PagingToken()
 	// Check db2/history.Transaction.Successful field comment for more information.
 	if row.Successful == nil {
@@ -27,7 +28,7 @@ func PopulateTransaction(
 	} else {
 		dest.Successful = *row.Successful
 	}
-	dest.Hash = row.TransactionHash
+	dest.Hash = transactionHash
 	dest.Ledger = row.LedgerSequence
 	dest.LedgerCloseTime = row.LedgerCloseTime
 	dest.Account = row.Account
@@ -46,6 +47,24 @@ func PopulateTransaction(
 	dest.Signatures = strings.Split(row.SignatureString, ",")
 	dest.ValidBefore = timeString(dest, row.ValidBefore)
 	dest.ValidAfter = timeString(dest, row.ValidAfter)
+
+	if len(row.InnerTransactionHash) > 0 {
+		dest.FeeAccount = row.FeeAccount
+		dest.FeeBumpTransaction = &protocol.FeeBumpTransaction{
+			Hash:       row.TransactionHash,
+			Signatures: dest.Signatures,
+		}
+		dest.InnerTransaction = &protocol.InnerTransaction{
+			Hash:       row.InnerTransactionHash,
+			MaxFee:     row.InnerMaxFee,
+			Signatures: strings.Split(row.InnerSignatureString, ","),
+		}
+		if transactionHash != row.TransactionHash {
+			dest.Signatures = dest.InnerTransaction.Signatures
+		}
+	} else {
+		dest.FeeAccount = row.Account
+	}
 
 	lb := hal.LinkBuilder{Base: httpx.BaseURL(ctx)}
 	dest.Links.Account = lb.Link("/accounts", dest.Account)

@@ -589,7 +589,11 @@ type Transaction struct {
 	// non-null value. We need `NULL` to indicate successful transaction because
 	// otherwise all existing transactions would be interpreted as failed until
 	// ledger is reingested.
-	Successful *bool `db:"successful"`
+	Successful           *bool  `db:"successful"`
+	FeeAccount           string `db:"fee_account"`
+	InnerTransactionHash string `db:"inner_transaction_hash"`
+	InnerMaxFee          int32  `db:"inner_max_fee"`
+	InnerSignatureString string `db:"inner_signatures"`
 }
 
 // TransactionsQ is a helper struct to aid in configuring queries that loads

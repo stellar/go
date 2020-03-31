@@ -441,7 +441,11 @@ CREATE TABLE history_transactions (
     memo character varying,
     time_bounds int8range,
     successful boolean,
-    fee_charged integer
+    fee_charged integer,
+    inner_transaction_hash character varying(64) DEFAULT ''::character varying NOT NULL,
+    fee_account character varying(64) DEFAULT ''::character varying NOT NULL,
+    inner_signatures character varying(96)[] DEFAULT '{}'::character varying[] NOT NULL,
+    inner_max_fee integer DEFAULT 0 NOT NULL
 );
 
 
@@ -723,10 +727,24 @@ CREATE INDEX by_account ON history_transactions USING btree (account, account_se
 
 
 --
--- Name: by_hash; Type: INDEX; Schema: public; Owner: -
+-- Name: by_fee_account; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX by_fee_account ON history_transactions USING btree (fee_account);
+
+
+--
+-- Name: by_hash; Type: INDEX; Schema: public; Owner: postgres
 --
 
 CREATE INDEX by_hash ON history_transactions USING btree (transaction_hash);
+
+
+--
+-- Name: by_inner_hash; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX by_inner_hash ON history_transactions USING btree (inner_transaction_hash);
 
 
 --

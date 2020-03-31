@@ -67,6 +67,9 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
       "asset_code": "USD"
     }    
     </pre>
+* Full transaction details are included in the `POST /transactions` response. If you submit a transaction and it succeeds, the response will match the `GET /transactions/{hash}` response ([#2406](https://github.com/stellar/go/pull/2406)).
+* The following attributes are now included in the transaction resource: `fee_account` (the account which paid the transaction fees), `fee_bump_transaction` (only present in fee bump transactions),  `inner_transaction` (only present in fee bump transactions) ([#2406](https://github.com/stellar/go/pull/2406)).
+
 ## v1.0.1
 
 ### Fixed

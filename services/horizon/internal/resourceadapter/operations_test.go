@@ -26,7 +26,7 @@ func TestPopulateOperation_Successful(t *testing.T) {
 	dest = operations.Base{}
 	row = history.Operation{TransactionSuccessful: nil}
 
-	PopulateBaseOperation(ctx, &dest, row, nil, ledger)
+	PopulateBaseOperation(ctx, &dest, row, "", nil, ledger)
 	assert.True(t, dest.TransactionSuccessful)
 	assert.Nil(t, dest.Transaction)
 
@@ -34,7 +34,7 @@ func TestPopulateOperation_Successful(t *testing.T) {
 	val = true
 	row = history.Operation{TransactionSuccessful: &val}
 
-	PopulateBaseOperation(ctx, &dest, row, nil, ledger)
+	PopulateBaseOperation(ctx, &dest, row, "", nil, ledger)
 	assert.True(t, dest.TransactionSuccessful)
 	assert.Nil(t, dest.Transaction)
 
@@ -42,7 +42,7 @@ func TestPopulateOperation_Successful(t *testing.T) {
 	val = false
 	row = history.Operation{TransactionSuccessful: &val}
 
-	PopulateBaseOperation(ctx, &dest, row, nil, ledger)
+	PopulateBaseOperation(ctx, &dest, row, "", nil, ledger)
 	assert.False(t, dest.TransactionSuccessful)
 	assert.Nil(t, dest.Transaction)
 }
@@ -64,7 +64,14 @@ func TestPopulateOperation_WithTransaction(t *testing.T) {
 	operationsRow = history.Operation{TransactionSuccessful: &val}
 	transactionRow = history.Transaction{Successful: &val, MaxFee: 10000, FeeCharged: 100}
 
-	PopulateBaseOperation(ctx, &dest, operationsRow, &transactionRow, ledger)
+	PopulateBaseOperation(
+		ctx,
+		&dest,
+		operationsRow,
+		transactionRow.TransactionHash,
+		&transactionRow,
+		ledger,
+	)
 	assert.True(t, dest.TransactionSuccessful)
 	assert.True(t, dest.Transaction.Successful)
 	assert.Equal(t, int32(100), dest.Transaction.FeeCharged)
@@ -129,7 +136,7 @@ func getJSONResponse(details string) (rsp map[string]interface{}, err error) {
 		Type:                  xdr.OperationTypeAllowTrust,
 		DetailsString:         null.StringFrom(details),
 	}
-	resource, err := NewOperation(ctx, operationsRow, &transactionRow, history.Ledger{})
+	resource, err := NewOperation(ctx, operationsRow, "", &transactionRow, history.Ledger{})
 	if err != nil {
 		return
 	}
@@ -140,4 +147,86 @@ func getJSONResponse(details string) (rsp map[string]interface{}, err error) {
 	}
 	err = json.Unmarshal(data, &rsp)
 	return
+}
+
+func TestFeeBumpOperation(t *testing.T) {
+	ctx, _ := test.ContextWithLogBuffer()
+	dest := operations.Base{}
+	val := true
+	operationsRow := history.Operation{TransactionSuccessful: &val}
+	transactionRow := history.Transaction{
+		MaxFee:               10000,
+		FeeCharged:           100,
+		TransactionHash:      "cebb875a00ff6e1383aef0fd251a76f22c1f9ab2a2dffcb077855736ade2659a",
+		SignatureString:      "a,b,c",
+		FeeAccount:           "GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU",
+		Account:              "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+		InnerMaxFee:          123,
+		InnerSignatureString: "d,e,f",
+		InnerTransactionHash: "2374e99349b9ef7dba9a5db3339b78fda8f34777b1af33ba468ad5c0df946d4d",
+	}
+
+	PopulateBaseOperation(
+		ctx,
+		&dest,
+		operationsRow,
+		transactionRow.TransactionHash,
+		nil,
+		history.Ledger{},
+	)
+	assert.Equal(t, transactionRow.TransactionHash, dest.TransactionHash)
+
+	PopulateBaseOperation(
+		ctx,
+		&dest,
+		operationsRow,
+		transactionRow.InnerTransactionHash,
+		nil,
+		history.Ledger{},
+	)
+	assert.Equal(t, transactionRow.InnerTransactionHash, dest.TransactionHash)
+
+	PopulateBaseOperation(
+		ctx,
+		&dest,
+		operationsRow,
+		transactionRow.TransactionHash,
+		&transactionRow,
+		history.Ledger{},
+	)
+	assert.Equal(t, transactionRow.TransactionHash, dest.TransactionHash)
+	assert.Equal(t, transactionRow.TransactionHash, dest.Transaction.Hash)
+	assert.Equal(t, transactionRow.TransactionHash, dest.Transaction.ID)
+	assert.Equal(t, transactionRow.FeeAccount, dest.Transaction.FeeAccount)
+	assert.Equal(t, transactionRow.Account, dest.Transaction.Account)
+	assert.Equal(t, transactionRow.FeeCharged, dest.Transaction.FeeCharged)
+	assert.Equal(t, transactionRow.MaxFee, dest.Transaction.MaxFee)
+	assert.Equal(t, []string{"a", "b", "c"}, dest.Transaction.Signatures)
+	assert.Equal(t, transactionRow.InnerTransactionHash, dest.Transaction.InnerTransaction.Hash)
+	assert.Equal(t, transactionRow.InnerMaxFee, dest.Transaction.InnerTransaction.MaxFee)
+	assert.Equal(t, []string{"d", "e", "f"}, dest.Transaction.InnerTransaction.Signatures)
+	assert.Equal(t, transactionRow.TransactionHash, dest.Transaction.FeeBumpTransaction.Hash)
+	assert.Equal(t, []string{"a", "b", "c"}, dest.Transaction.FeeBumpTransaction.Signatures)
+
+	PopulateBaseOperation(
+		ctx,
+		&dest,
+		operationsRow,
+		transactionRow.InnerTransactionHash,
+		&transactionRow,
+		history.Ledger{},
+	)
+	assert.Equal(t, transactionRow.InnerTransactionHash, dest.TransactionHash)
+	assert.Equal(t, transactionRow.InnerTransactionHash, dest.Transaction.Hash)
+	assert.Equal(t, transactionRow.InnerTransactionHash, dest.Transaction.ID)
+	assert.Equal(t, transactionRow.FeeAccount, dest.Transaction.FeeAccount)
+	assert.Equal(t, transactionRow.Account, dest.Transaction.Account)
+	assert.Equal(t, transactionRow.FeeCharged, dest.Transaction.FeeCharged)
+	assert.Equal(t, transactionRow.MaxFee, dest.Transaction.MaxFee)
+	assert.Equal(t, []string{"d", "e", "f"}, dest.Transaction.Signatures)
+	assert.Equal(t, transactionRow.InnerTransactionHash, dest.Transaction.InnerTransaction.Hash)
+	assert.Equal(t, transactionRow.InnerMaxFee, dest.Transaction.InnerTransaction.MaxFee)
+	assert.Equal(t, []string{"d", "e", "f"}, dest.Transaction.InnerTransaction.Signatures)
+	assert.Equal(t, transactionRow.TransactionHash, dest.Transaction.FeeBumpTransaction.Hash)
+	assert.Equal(t, []string{"a", "b", "c"}, dest.Transaction.FeeBumpTransaction.Signatures)
 }

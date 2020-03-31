@@ -73,9 +73,9 @@ func formatTimeBounds(transaction io.LedgerTransaction) interface{} {
 	return sq.Expr("int8range(?,?)", timeBounds.MinTime, maxTime)
 }
 
-func signatures(transaction io.LedgerTransaction) []string {
-	signatures := make([]string, len(transaction.Envelope.Signatures()))
-	for i, sig := range transaction.Envelope.Signatures() {
+func signatures(xdrSignatures []xdr.DecoratedSignature) []string {
+	signatures := make([]string, len(xdrSignatures))
+	for i, sig := range xdrSignatures {
 		signatures[i] = base64.StdEncoding.EncodeToString(sig.Signature)
 	}
 	return signatures
@@ -149,26 +149,39 @@ func transactionToMap(transaction io.LedgerTransaction, sequence uint32) (map[st
 	}
 
 	sourceAccount := transaction.Envelope.SourceAccount()
-	return map[string]interface{}{
+	m := map[string]interface{}{
 		"id":                toid.New(int32(sequence), int32(transaction.Index), 0).ToInt64(),
 		"transaction_hash":  hex.EncodeToString(transaction.Result.TransactionHash[:]),
 		"ledger_sequence":   sequence,
 		"application_order": int32(transaction.Index),
 		"account":           sourceAccount.Address(),
 		"account_sequence":  strconv.FormatInt(transaction.Envelope.SeqNum(), 10),
-		"max_fee":           int32(transaction.Envelope.Fee()),
 		"fee_charged":       int32(transaction.Result.Result.FeeCharged),
 		"operation_count":   int32(len(transaction.Envelope.Operations())),
 		"tx_envelope":       envelopeBase64,
 		"tx_result":         resultBase64,
 		"tx_meta":           metaBase64,
 		"tx_fee_meta":       feeMetaBase64,
-		"signatures":        sqx.StringArray(signatures(transaction)),
 		"time_bounds":       formatTimeBounds(transaction),
 		"memo_type":         memoType(transaction),
 		"memo":              memo(transaction),
 		"created_at":        time.Now().UTC(),
 		"updated_at":        time.Now().UTC(),
 		"successful":        transaction.Result.Successful(),
-	}, nil
+	}
+	if transaction.Envelope.IsFeeBump() {
+		innerHash := transaction.Result.InnerHash()
+		m["inner_transaction_hash"] = hex.EncodeToString(innerHash[:])
+		feeAccount := transaction.Envelope.FeeBumpAccount()
+		m["fee_account"] = feeAccount.Address()
+		m["max_fee"] = transaction.Envelope.FeeBumpFee()
+		m["inner_max_fee"] = transaction.Envelope.Fee()
+		m["inner_signatures"] = sqx.StringArray(signatures(transaction.Envelope.Signatures()))
+		m["signatures"] = sqx.StringArray(signatures(transaction.Envelope.FeeBumpSignatures()))
+	} else {
+		m["max_fee"] = transaction.Envelope.Fee()
+		m["signatures"] = sqx.StringArray(signatures(transaction.Envelope.Signatures()))
+	}
+
+	return m, nil
 }

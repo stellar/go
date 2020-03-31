@@ -3,6 +3,7 @@ package txsub
 import (
 	"context"
 	"fmt"
+	"github.com/stellar/go/xdr"
 	"sync"
 	"time"
 
@@ -25,7 +26,6 @@ type System struct {
 	Sequences         SequenceProvider
 	Submitter         Submitter
 	SubmissionQueue   *sequence.Manager
-	NetworkPassphrase string
 	SubmissionTimeout time.Duration
 	Log               *log.Entry
 
@@ -54,56 +54,55 @@ type System struct {
 
 // Submit submits the provided base64 encoded transaction envelope to the
 // network using this submission system.
-func (sys *System) Submit(ctx context.Context, env string) (result <-chan Result) {
+func (sys *System) Submit(
+	ctx context.Context,
+	rawTx string,
+	envelope xdr.TransactionEnvelope,
+	hash string,
+) (result <-chan Result) {
 	sys.Init()
 	response := make(chan Result, 1)
 	result = response
 
-	// calculate hash of transaction
-	info, err := extractEnvelopeInfo(ctx, env, sys.NetworkPassphrase)
-	if err != nil {
-		sys.finish(ctx, response, Result{Err: err, EnvelopeXDR: env})
-		return
-	}
-
 	sys.Log.Ctx(ctx).WithFields(log.F{
-		"hash": info.Hash,
-		"tx":   env,
+		"hash": hash,
+		"tx":   rawTx,
 	}).Info("Processing transaction")
 
 	// check the configured result provider for an existing result
-	r := sys.Results.ResultByHash(ctx, info.Hash)
+	r := sys.Results.ResultByHash(ctx, hash)
 
 	if r.Err == nil {
-		sys.Log.Ctx(ctx).WithField("hash", info.Hash).Info("Found submission result in a DB")
-		sys.finish(ctx, response, r)
+		sys.Log.Ctx(ctx).WithField("hash", hash).Info("Found submission result in a DB")
+		sys.finish(ctx, hash, response, r)
 		return
 	}
 
 	if r.Err != ErrNoResults {
-		sys.Log.Ctx(ctx).WithField("hash", info.Hash).Info("Error getting submission result from a DB")
-		sys.finish(ctx, response, r)
+		sys.Log.Ctx(ctx).WithField("hash", hash).Info("Error getting submission result from a DB")
+		sys.finish(ctx, hash, response, r)
 		return
 	}
 
 	// From now: r.Err == ErrNoResults
-
-	curSeq, err := sys.Sequences.Get([]string{info.SourceAddress})
+	sourceAccount := envelope.SourceAccount()
+	sourceAddress := sourceAccount.Address()
+	curSeq, err := sys.Sequences.Get([]string{sourceAddress})
 	if err != nil {
-		sys.finish(ctx, response, Result{Err: err, EnvelopeXDR: env})
+		sys.finish(ctx, hash, response, Result{Err: err})
 		return
 	}
 
 	// If account's sequence cannot be found, abort with tx_NO_ACCOUNT
 	// error code
-	if _, ok := curSeq[info.SourceAddress]; !ok {
-		sys.finish(ctx, response, Result{Err: ErrNoAccount, EnvelopeXDR: env})
+	if _, ok := curSeq[sourceAddress]; !ok {
+		sys.finish(ctx, hash, response, Result{Err: ErrNoAccount})
 		return
 	}
 
 	// queue the submission and get the channel that will emit when
 	// submission is valid
-	seq := sys.SubmissionQueue.Push(info.SourceAddress, info.Sequence)
+	seq := sys.SubmissionQueue.Push(sourceAddress, uint64(envelope.SeqNum()))
 
 	// update the submission queue with the source accounts current sequence value
 	// which will cause the channel returned by Push() to emit if possible.
@@ -117,46 +116,48 @@ func (sys *System) Submit(ctx context.Context, env string) (result <-chan Result
 		}
 
 		if err != nil {
-			sys.finish(ctx, response, Result{Err: err, EnvelopeXDR: env})
+			sys.finish(ctx, hash, response, Result{Err: err})
 			return
 		}
 
-		sr := sys.submitOnce(ctx, env)
+		sr := sys.submitOnce(ctx, rawTx)
 
 		// if submission succeeded
 		if sr.Err == nil {
 			// add transactions to open list
-			sys.Pending.Add(ctx, info.Hash, response)
+			sys.Pending.Add(ctx, hash, response)
 			// update the submission queue, allowing the next submission to proceed
-			sys.SubmissionQueue.Update(map[string]uint64{info.SourceAddress: info.Sequence})
+			sys.SubmissionQueue.Update(map[string]uint64{
+				sourceAddress: uint64(envelope.SeqNum()),
+			})
 			return
 		}
 
 		// any error other than "txBAD_SEQ" is a failure
 		isBad, err := sr.IsBadSeq()
 		if err != nil {
-			sys.finish(ctx, response, Result{Err: err, EnvelopeXDR: env})
+			sys.finish(ctx, hash, response, Result{Err: err})
 			return
 		}
 
 		if !isBad {
-			sys.finish(ctx, response, Result{Err: sr.Err, EnvelopeXDR: env})
+			sys.finish(ctx, hash, response, Result{Err: sr.Err})
 			return
 		}
 
 		// If error is txBAD_SEQ, check for the result again
-		r = sys.Results.ResultByHash(ctx, info.Hash)
+		r = sys.Results.ResultByHash(ctx, hash)
 
 		if r.Err == nil {
 			// If the found use it as the result
-			sys.finish(ctx, response, r)
+			sys.finish(ctx, hash, response, r)
 		} else {
 			// finally, return the bad_seq error if no result was found on 2nd attempt
-			sys.finish(ctx, response, Result{Err: sr.Err, EnvelopeXDR: env})
+			sys.finish(ctx, hash, response, Result{Err: sr.Err})
 		}
 
 	case <-ctx.Done():
-		sys.finish(ctx, response, Result{Err: ErrCanceled, EnvelopeXDR: env})
+		sys.finish(ctx, hash, response, Result{Err: ErrCanceled})
 	}
 
 	return
@@ -234,7 +235,7 @@ func (sys *System) Tick(ctx context.Context) {
 
 		if r.Err == nil {
 			logger.WithField("hash", hash).Debug("finishing open submission")
-			sys.Pending.Finish(ctx, r)
+			sys.Pending.Finish(ctx, hash, r)
 			continue
 		}
 
@@ -242,7 +243,7 @@ func (sys *System) Tick(ctx context.Context) {
 
 		if ok {
 			logger.WithField("hash", hash).Debug("finishing open submission")
-			sys.Pending.Finish(ctx, r)
+			sys.Pending.Finish(ctx, hash, r)
 			continue
 		}
 
@@ -284,8 +285,11 @@ func (sys *System) Init() {
 	})
 }
 
-func (sys *System) finish(ctx context.Context, response chan<- Result, r Result) {
-	sys.Log.Ctx(ctx).WithField("result", fmt.Sprintf("%+v", r)).WithField("hash", r.Hash).Info("Submission system result")
+func (sys *System) finish(ctx context.Context, hash string, response chan<- Result, r Result) {
+	sys.Log.Ctx(ctx).
+		WithField("result", fmt.Sprintf("%+v", r)).
+		WithField("hash", hash).
+		Info("Submission system result")
 	response <- r
 	close(response)
 }
