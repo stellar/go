@@ -33,7 +33,7 @@ func (c *ServeCommand) Command() *cobra.Command {
 			Usage:       "Database URL",
 			OptType:     types.String,
 			ConfigKey:   &opts.DatabaseURL,
-			FlagDefault: "",
+			FlagDefault: "postgres://localhost:5432/?sslmode=disable",
 			Required:    false,
 		},
 		{
