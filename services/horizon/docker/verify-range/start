@@ -59,7 +59,6 @@ export NETWORK_PASSPHRASE="Public Global Stellar Network ; September 2015"
 export HISTORY_ARCHIVE_URLS="https://s3-eu-west-1.amazonaws.com/history.stellar.org/prd/core-live/core_live_001"
 export DATABASE_URL="postgres://postgres:postgres@localhost:5432/horizon?sslmode=disable"
 export INGEST="false"
-export ENABLE_EXPERIMENTAL_INGESTION="true"
 export INGEST_FAILED_TRANSACTIONS=true
 export STELLAR_CORE_URL="http://localhost:11626"
 export STELLAR_CORE_DATABASE_URL="postgres://postgres:postgres@localhost:5432/core?sslmode=disable"
@@ -86,19 +85,12 @@ if [ ! -z "$VERIFY_HISTORY" ]; then
 	# sudo -u postgres dropdb horizon
 	# sudo -u postgres createdb horizon
 
-	git checkout h_0.24.1_v2_meta
+	git checkout verify_range_base_horizon_v1.0.0
 
 	/usr/local/go/bin/go build -v ./services/horizon
 
-	export INGEST="true"
-	export ENABLE_EXPERIMENTAL_INGESTION="false"
-
 	./horizon db migrate up
-	# We ignore the first ledger when reingesting using legacy ingestion because
-	# verify range doesn't ingest history for the first ledger. $FROM ledger from
-	# this job will be checked because it's $TO of the previous job.
-	export FROM_LEGACY=`expr "$FROM" + "1"`
-	./horizon db reingest range $FROM_LEGACY $TO
+	./horizon expingest verify-range --from $FROM --to $TO --verify-state
 
 	dump_horizon_db "legacy_history"
 	echo "Done dump_horizon_db legacy_history"
