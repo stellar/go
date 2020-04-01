@@ -258,7 +258,9 @@ func (operation *transactionOperationWrapper) Details() map[string]interface{} {
 		details["trustee"] = source.Address()
 		details["trustor"] = op.Trustor.Address()
 		details["authorize"] = xdr.TrustLineFlags(op.Authorize).IsAuthorized()
-		details["authorize_to_maintain_liabilities"] = xdr.TrustLineFlags(op.Authorize).IsAuthorized() || xdr.TrustLineFlags(op.Authorize).IsAuthorizedToMaintainLiabilitiesFlag()
+		if xdr.TrustLineFlags(op.Authorize).IsAuthorizedToMaintainLiabilitiesFlag() {
+			details["authorize_to_maintain_liabilities"] = xdr.TrustLineFlags(op.Authorize).IsAuthorizedToMaintainLiabilitiesFlag()
+		}
 	case xdr.OperationTypeAccountMerge:
 		aid := operation.operation.Body.MustDestination()
 		details["account"] = source.Address()

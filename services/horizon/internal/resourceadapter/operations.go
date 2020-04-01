@@ -79,6 +79,12 @@ func NewOperation(
 	case xdr.OperationTypeAllowTrust:
 		e := operations.AllowTrust{Base: base}
 		err = operationRow.UnmarshalDetails(&e)
+		// if the trustline is authorized, we want to reflect that it implies
+		// authorized_to_maintain_liabilities to true, otherwise, we use the
+		// value from details
+		if e.Authorize {
+			e.AuthorizeToMaintainLiabilities = e.Authorize
+		}
 		result = e
 	case xdr.OperationTypeAccountMerge:
 		e := operations.AccountMerge{Base: base}
