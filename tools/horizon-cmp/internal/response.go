@@ -62,7 +62,7 @@ var replaceRegexps = []replace{
 	},
 }
 
-var newAccountDetailsPathWithLastestLedger = regexp.MustCompile(`^/accounts/[A-Z]+/(transactions|operations|payments|effects|trades)/?`)
+var newAccountDetailsPathWithLastestLedger = regexp.MustCompile(`^/accounts/[A-Z0-9]+/(transactions|operations|payments|effects|trades)/?`)
 
 type Response struct {
 	Domain string
