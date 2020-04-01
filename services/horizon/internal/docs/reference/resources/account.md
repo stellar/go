@@ -57,7 +57,7 @@ When horizon returns information about an account it uses the following format:
 | Attribute      | Type   |                                                                                                                                                                                                                                                                                                                                                                           |
 |----------------|--------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | low_threshold  | number | The weight required for a valid transaction including the [Allow Trust][allow_trust] and [Bump Sequence][bump_seq] operations.                                                                                                                                                                                                                                            |
-| med_threshold  | number | The weight required for a valid transaction including the [Create Account][create_acc], [Payment][payment], [Path Payment][path_payment], [Manage Buy Offer][manage_buy_offer], [Manage Sell Offer][manage_sell_offer], [Create Passive Sell Offer][passive_sell_offer], [Change Trust][change_trust], [Inflation][inflation], and [Manage Data][manage_data] operations. |
+| med_threshold  | number | The weight required for a valid transaction including the [Create Account][create_acc], [Payment][payment], [Path Payment Strict Send][path_payment_send], [Path Payment Strict Receive][path_payment_receive], [Manage Buy Offer][manage_buy_offer], [Manage Sell Offer][manage_sell_offer], [Create Passive Sell Offer][passive_sell_offer], [Change Trust][change_trust], [Inflation][inflation], and [Manage Data][manage_data] operations. |
 | high_threshold | number | The weight required for a valid transaction including the [Account Merge][account_merge] and [Set Options]() operations.                                                                                                                                                                                                                                                  |
 
 [account_merge]: https://www.stellar.org/developers/guides/concepts/list-of-operations.html#account-merge
@@ -70,7 +70,8 @@ When horizon returns information about an account it uses the following format:
 [manage_buy_offer]: https://www.stellar.org/developers/guides/concepts/list-of-operations.html#manage-buy-offer
 [manage_sell_offer]: https://www.stellar.org/developers/guides/concepts/list-of-operations.html#manage-sell-offer
 [passive_sell_offer]: https://www.stellar.org/developers/guides/concepts/list-of-operations.html#create-passive-sell-offer
-[path_payment]: https://www.stellar.org/developers/guides/concepts/list-of-operations.html#path-payment
+[path_payment_receive]: https://www.stellar.org/developers/guides/concepts/list-of-operations.html#path-payment-strict-receive
+[path_payment_send]: https://www.stellar.org/developers/guides/concepts/list-of-operations.html#path-payment-strict-send
 [payment]: https://www.stellar.org/developers/guides/concepts/list-of-operations.html#payment
 [set_options]: https://www.stellar.org/developers/guides/concepts/list-of-operations.html#set-options
 
