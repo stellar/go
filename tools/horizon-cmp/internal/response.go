@@ -35,6 +35,10 @@ var removeRegexps = []*regexp.Regexp{
 	// regexp.MustCompile(`\s*"public_key": "G.*",`),
 	// regexp.MustCompile(`,\s*"paging_token": ?""`),
 	regexp.MustCompile(`\s*"fee_paid": ?[0-9]+,`),
+	// Removes fields added in Horizon 1.1.0.
+	regexp.MustCompile(`\s*"is_authorized_to_maintain_liabilities": ?(true|false),`),
+	regexp.MustCompile(`\s*"authorize_to_maintain_liabilities": ?(true|false),`),
+	regexp.MustCompile(`\s*"fee_account": ?"G\w{55}",`),
 }
 
 type replace struct {
@@ -58,7 +62,7 @@ var replaceRegexps = []replace{
 	},
 }
 
-var accountDetailsPathRegexp = regexp.MustCompile(`^/accounts/[A-Z]+[^/]+$`)
+var newAccountDetailsPathWithLastestLedger = regexp.MustCompile(`^/accounts/[A-Z0-9]+/(transactions|operations|payments|effects|trades)/?`)
 
 type Response struct {
 	Domain string
@@ -143,8 +147,15 @@ func NewResponse(domain, path string, stream bool) *Response {
 		normalizedBody = reg.regexp.ReplaceAllString(normalizedBody, reg.repl)
 	}
 
-	// 1.0.0-alpha - skip Latest-Ledger in /accounts/{id}
-	if !accountDetailsPathRegexp.Match([]byte(path)) {
+	// 1.1.0 - skip Latest-Ledger header in newly incorporated endpoints
+	if !(newAccountDetailsPathWithLastestLedger.Match([]byte(path)) ||
+		strings.HasPrefix(path, "/ledgers") ||
+		strings.HasPrefix(path, "/transactions") ||
+		strings.HasPrefix(path, "/operations") ||
+		strings.HasPrefix(path, "/payments") ||
+		strings.HasPrefix(path, "/effects") ||
+		strings.HasPrefix(path, "/transactions") ||
+		strings.Contains(path, "/trade")) {
 		response.NormalizedBody = fmt.Sprintf("Latest-Ledger: %s\n%s", resp.Header.Get("Latest-Ledger"), normalizedBody)
 	}
 	return response
