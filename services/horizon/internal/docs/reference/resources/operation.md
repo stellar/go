@@ -832,8 +832,8 @@ Bumps forward the sequence number of the source account of the operation, allowi
 
 | Resource                                           | Type       | Resource URI Template                           |
 |----------------------------------------------------|------------|-------------------------------------------------|
-| [All Operations](../operations-all.md)             | Collection | `/operations`                                   |
-| [Operations Details](../operations-single.md)      | Single     | `/operations/:id`                               |
-| [Ledger Operations](../operations-for-ledger.md)   | Collection | `/ledgers/{id}/operations{?cursor,limit,order}` |
-| [Account Operations](../operations-for-account.md) | Collection | `/accounts/:account_id/operations`              |
-| [Account Payments](../payments-for-account.md)     | Collection | `/accounts/:account_id/payments`                |
+| [All Operations](../endpoints/operations-all.md)             | Collection | `/operations`                                   |
+| [Operations Details](../endpoints/operations-single.md)      | Single     | `/operations/:id`                               |
+| [Ledger Operations](../endpoints/operations-for-ledger.md)   | Collection | `/ledgers/{id}/operations{?cursor,limit,order}` |
+| [Account Operations](../endpoints/operations-for-account.md) | Collection | `/accounts/:account_id/operations`              |
+| [Account Payments](../endpoints/payments-for-account.md)     | Collection | `/accounts/:account_id/payments`                |

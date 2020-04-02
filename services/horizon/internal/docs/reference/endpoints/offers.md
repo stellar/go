@@ -88,7 +88,7 @@ The list of offers.
             "href": "https://horizon-testnet.stellar.org/offers/5443256"
           },
           "offer_maker": {
-            "href": "https://horizon-testnet.stellar.org/
+            "href": "https://horizon-testnet.stellar.org/"
           }
         },
         "id": "5443256",
@@ -118,4 +118,4 @@ The list of offers.
 
 ## Possible Errors
 
-- The [standard errors](../errors.md#Standard_Errors).
+- The [standard errors](../errors.md#standard-errors).

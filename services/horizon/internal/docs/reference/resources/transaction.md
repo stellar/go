@@ -15,7 +15,7 @@ To learn more about the concept of transactions in the Stellar network, take a l
 | id                      | string                   | The canonical id of this transaction, suitable for use as the :id parameter for url templates that require a transaction's ID. |
 | paging_token            | string                   | A [paging token](./page.md) suitable for use as the `cursor` parameter to transaction collection resources.                    |
 | successful              | bool                     | Indicates if transaction was successful or not.                                                                                |
-| hash                    | string                   | A hex-encoded SHA-256 hash of the transaction's [XDR](../../learn/xdr.md)-encoded form.                                        |
+| hash                    | string                   | A hex-encoded SHA-256 hash of the transaction's [XDR](../xdr.md)-encoded form.                                        |
 | ledger                  | number                   | Sequence number of the ledger in which this transaction was applied.                                                           |
 | created_at              | ISO8601 string           |                                                                                                                                |
 | source_account          | string                   |                                                                                                                                |
@@ -38,10 +38,10 @@ To learn more about the concept of transactions in the Stellar network, take a l
 | rel        | Example                                                                                                                                              | Description                                                                                |
 |------------|------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------|
 | self       | `https://horizon-testnet.stellar.org/transactions/cb9a25394acb6fe0d1d9bdea5afc01cafe2c6fde59a96ddceb2564a65780a81f`                                  |                                                                                            |
-| account    | `https://horizon-testnet.stellar.org/accounts/GCDLRUXOD6KA53G5ILL435TZAISNLPS4EKIHSOVY3MVD3DVJ333NO4DT`                                              | The source [account](../accounts-single.md) for this transaction.                          |
-| ledger     | `https://horizon-testnet.stellar.org/ledgers/2352988`                                                                                                | The [ledger](../ledgers-single.md) in which this transaction was applied.                  |
-| operations | `https://horizon-testnet.stellar.org/transactions/cb9a25394acb6fe0d1d9bdea5afc01cafe2c6fde59a96ddceb2564a65780a81f/operations{?cursor,limit,order}"` | [Operations](../operations-for-transaction.md) included in this transaction.               |
-| effects    | `https://horizon-testnet.stellar.org/transactions/cb9a25394acb6fe0d1d9bdea5afc01cafe2c6fde59a96ddceb2564a65780a81f/effects{?cursor,limit,order}"`    | [Effects](../effects-for-transaction.md) which resulted by operations in this transaction. |
+| account    | `https://horizon-testnet.stellar.org/accounts/GCDLRUXOD6KA53G5ILL435TZAISNLPS4EKIHSOVY3MVD3DVJ333NO4DT`                                              | The source [account](../endpoints/accounts-single.md) for this transaction.                          |
+| ledger     | `https://horizon-testnet.stellar.org/ledgers/2352988`                                                                                                | The [ledger](../endpoints/ledgers-single.md) in which this transaction was applied.                  |
+| operations | `https://horizon-testnet.stellar.org/transactions/cb9a25394acb6fe0d1d9bdea5afc01cafe2c6fde59a96ddceb2564a65780a81f/operations{?cursor,limit,order}"` | [Operations](../endpoints/operations-for-transaction.md) included in this transaction.               |
+| effects    | `https://horizon-testnet.stellar.org/transactions/cb9a25394acb6fe0d1d9bdea5afc01cafe2c6fde59a96ddceb2564a65780a81f/effects{?cursor,limit,order}"`    | [Effects](../endpoints/effects-for-transaction.md) which resulted by operations in this transaction. |
 | precedes   | `https://horizon-testnet.stellar.org/transactions?order=asc&cursor=10106006507900928`                                                                | A collection of transactions that occur after this transaction.                            |
 | succeeds   | `https://horizon-testnet.stellar.org/transactions?order=desc&cursor=10106006507900928`                                                               | A collection of transactions that occur before this transaction.                           |
 
@@ -102,12 +102,12 @@ To learn more about the concept of transactions in the Stellar network, take a l
 
 | Resource                                               | Type       | Resource URI Template                |
 |--------------------------------------------------------|------------|--------------------------------------|
-| [All Transactions](../transactions-all.md)             | Collection | `/transactions` (`GET`)              |
-| [Post Transaction](../transactions-create.md)          | Action     | `/transactions`  (`POST`)            |
-| [Transaction Details](../transactions-single.md)       | Single     | `/transactions/:id`                  |
-| [Account Transactions](../transactions-for-account.md) | Collection | `/accounts/:account_id/transactions` |
-| [Ledger Transactions](../transactions-for-ledger.md)   | Collection | `/ledgers/:ledger_id/transactions`   |
+| [All Transactions](../endpoints/transactions-all.md)             | Collection | `/transactions` (`GET`)              |
+| [Post Transaction](../endpoints/transactions-create.md)          | Action     | `/transactions`  (`POST`)            |
+| [Transaction Details](../endpoints/transactions-single.md)       | Single     | `/transactions/:id`                  |
+| [Account Transactions](../endpoints/transactions-for-account.md) | Collection | `/accounts/:account_id/transactions` |
+| [Ledger Transactions](../endpoints/transactions-for-ledger.md)   | Collection | `/ledgers/:ledger_id/transactions`   |
 
 
 ## Submitting transactions
-To submit a new transaction to Stellar network, it must first be built and signed locally. Then you can submit a hex representation of your transaction’s [XDR](../../learn/xdr.md) to the `/transactions` endpoint. Read more about submitting transactions in [Post Transaction](../transactions-create.md) doc.
+To submit a new transaction to Stellar network, it must first be built and signed locally. Then you can submit a hex representation of your transaction’s [XDR](../xdr.md) to the `/transactions` endpoint. Read more about submitting transactions in [Post Transaction](../endpoints/transactions-create.md) doc.
