@@ -62,7 +62,7 @@ Then you can start the server:
 
 ### POST :external_port/ (Auth endpoint)
 
-Process auth request from external organization sent before sending a payment. Check [Compliance protocol](https://www.stellar.org/developers/learn/integration-guides/compliance-protocol.html) for more info. It also saves memo preimage to the database.
+Process auth request from external organization sent before sending a payment. Check [Compliance protocol](https://www.stellar.org/developers/guides/compliance-protocol.html) for more info. It also saves memo preimage to the database.
 
 #### Request Parameters
 
@@ -71,11 +71,11 @@ name |  | description
 `data` | required | Auth data.
 `sig` | required | Signature.
 
-Read more in [Compliance protocol](https://www.stellar.org/developers/learn/integration-guides/compliance-protocol.html#auth_server) doc.
+Read more in [Compliance protocol](https://www.stellar.org/developers/guides/compliance-protocol.html#auth-server) doc.
 
 #### Response
 
-Returns [Auth response](https://www.stellar.org/developers/learn/integration-guides/compliance-protocol.html#reply).
+Returns [Auth response](https://www.stellar.org/developers/guides/compliance-protocol.html#server-response).
 
 ### POST :internal_port/send
 

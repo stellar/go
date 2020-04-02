@@ -143,7 +143,7 @@ Please migrate your `bridge` DB before running a new version using: `bridge --mi
 
 ## 0.0.8
 
-* [Compliance protocol](https://www.stellar.org/developers/learn/integration-guides/compliance-protocol.html) support.
+* [Compliance protocol](https://www.stellar.org/developers/guides/compliance-protocol.html) support.
 * Saving and reading memo preimage.
 * This repo will now contain two apps: `bridge` (for building, submitting and monitoring transactions) and `compliance` (for Compliance protocol). Both are built in a single build process. Each app has it's own README file.
 * Dependency injection is now done using [facebookgo/inject](https://godoc.org/github.com/facebookgo/inject).

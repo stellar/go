@@ -12,7 +12,7 @@ To learn more about the concept of ledgers in the Stellar network, take a look a
 |------------------------------|--------|------------------------------------------------------------------------------------------------------------------------------|
 | id                           | string | The id is a unique identifier for this ledger.                                                                               |
 | paging_token                 | number | A [paging token](./page.md) suitable for use as a `cursor` parameter.                                                        |
-| hash                         | string | A hex-encoded SHA-256 hash of the ledger's [XDR](../../learn/xdr.md)-encoded form.                                           |
+| hash                         | string | A hex-encoded SHA-256 hash of the ledger's [XDR](../xdr.md)-encoded form.                                           |
 | prev_hash                    | string | The hash of the ledger that chronologically came before this one.                                                            |
 | sequence                     | number | Sequence number of this ledger, suitable for use as the as the :id parameter for url templates that require a ledger number. |
 | successful_transaction_count | number | The number of successful transactions in this ledger.                                                                        |
@@ -77,19 +77,19 @@ To learn more about the concept of ledgers in the Stellar network, take a look a
   "protocol_version": 8,
   "header_xdr": "...",
   "base_fee_in_stroops": 100,
-  "base_reserve_in_stroops": 100000000,
+  "base_reserve_in_stroops": 100000000
 }
 ```
 
 ## Endpoints
 | Resource                | Type       | Resource URI Template              |
 |-------------------------|------------|------------------------------------|
-| [All ledgers](../ledgers-all.md)         | Collection | `/ledgers`                         |
-| [Single Ledger](../ledgers-single.md)       | Single     | `/ledgers/:id`                     |
-| [Ledger Transactions](../transactions-for-ledger.md) | Collection | `/ledgers/:ledger_id/transactions` |
-| [Ledger Operations](../operations-for-ledger.md)   | Collection | `/ledgers/:ledger_id/operations`   |
-| [Ledger Payments](../payments-for-ledger.md)     | Collection | `/ledgers/:ledger_id/payments`     |
-| [Ledger Effects](../effects-for-ledger.md)      | Collection | `/ledgers/:ledger_id/effects`      |
+| [All ledgers](../endpoints/ledgers-all.md)         | Collection | `/ledgers`                         |
+| [Single Ledger](../endpoints/ledgers-single.md)       | Single     | `/ledgers/:id`                     |
+| [Ledger Transactions](../endpoints/transactions-for-ledger.md) | Collection | `/ledgers/:ledger_id/transactions` |
+| [Ledger Operations](../endpoints/operations-for-ledger.md)   | Collection | `/ledgers/:ledger_id/operations`   |
+| [Ledger Payments](../endpoints/payments-for-ledger.md)     | Collection | `/ledgers/:ledger_id/payments`     |
+| [Ledger Effects](../endpoints/effects-for-ledger.md)      | Collection | `/ledgers/:ledger_id/effects`      |
 
 
 
