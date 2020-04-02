@@ -7,9 +7,12 @@ require (
 	firebase.google.com/go v3.12.0+incompatible
 	github.com/BurntSushi/toml v0.3.1
 	github.com/Masterminds/squirrel v0.0.0-20161115235646-20f192218cf5
+	github.com/aaronarduino/goqrsvg v0.0.0-20170617203649-603647895681
 	github.com/ajg/form v0.0.0-20160822230020-523a5da1a92f // indirect
+	github.com/ajstarks/svgo v0.0.0-20200320125537-f189e35d30ca
 	github.com/asaskevich/govalidator v0.0.0-20180319081651-7d2e70ef918f
 	github.com/aws/aws-sdk-go v1.25.25
+	github.com/boombuler/barcode v1.0.0
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/elazarl/go-bindata-assetfs v1.0.0
 	github.com/facebookgo/ensure v0.0.0-20160127193407-b4ab57deab51 // indirect
