@@ -96,19 +96,19 @@ func checkOuterHashResponse(
 ) {
 	tt.Assert.Equal(fixture.Transaction.Account, transactionResponse.Account)
 	tt.Assert.Equal(fixture.Transaction.AccountSequence, transactionResponse.AccountSequence)
-	tt.Assert.Equal(fixture.Transaction.FeeAccount, transactionResponse.FeeAccount)
+	tt.Assert.Equal(fixture.Transaction.FeeAccount.String, transactionResponse.FeeAccount)
 	tt.Assert.Equal(fixture.Transaction.FeeCharged, transactionResponse.FeeCharged)
 	tt.Assert.Equal(fixture.Transaction.TransactionHash, transactionResponse.ID)
-	tt.Assert.Equal(fixture.Transaction.InnerMaxFee, transactionResponse.InnerTransaction.MaxFee)
+	tt.Assert.Equal(fixture.Transaction.MaxFee, transactionResponse.InnerTransaction.MaxFee)
 	tt.Assert.Equal(
-		strings.Split(fixture.Transaction.InnerSignatureString, ","),
+		strings.Split(fixture.Transaction.InnerSignatureString.String, ","),
 		transactionResponse.InnerTransaction.Signatures,
 	)
 	tt.Assert.Equal(
-		fixture.Transaction.InnerTransactionHash,
+		fixture.Transaction.InnerTransactionHash.String,
 		transactionResponse.InnerTransaction.Hash,
 	)
-	tt.Assert.Equal(fixture.Transaction.MaxFee, transactionResponse.MaxFee)
+	tt.Assert.Equal(fixture.Transaction.NewMaxFee.Int64, transactionResponse.MaxFee)
 	tt.Assert.Equal(fixture.Transaction.Memo.String, transactionResponse.Memo)
 	tt.Assert.Equal(fixture.Transaction.MemoType, transactionResponse.MemoType)
 	tt.Assert.Equal(fixture.Transaction.OperationCount, transactionResponse.OperationCount)
@@ -116,7 +116,7 @@ func checkOuterHashResponse(
 		strings.Split(fixture.Transaction.SignatureString, ","),
 		transactionResponse.Signatures,
 	)
-	tt.Assert.Equal(*fixture.Transaction.Successful, transactionResponse.Successful)
+	tt.Assert.Equal(fixture.Transaction.Successful, transactionResponse.Successful)
 	tt.Assert.Equal(fixture.Transaction.TotalOrderID.PagingToken(), transactionResponse.PT)
 	tt.Assert.Equal(fixture.Transaction.TransactionHash, transactionResponse.Hash)
 	tt.Assert.Equal(fixture.Transaction.TxEnvelope, transactionResponse.EnvelopeXdr)
@@ -169,7 +169,7 @@ func TestFeeBumpTransactionResource(t *testing.T) {
 	tt.Assert.Equal(fixture.InnerHash, byInnerHash.Hash)
 	tt.Assert.Equal(fixture.InnerHash, byInnerHash.ID)
 	tt.Assert.Equal(
-		strings.Split(fixture.Transaction.InnerSignatureString, ","),
+		strings.Split(fixture.Transaction.InnerSignatureString.String, ","),
 		byInnerHash.Signatures,
 	)
 

@@ -311,7 +311,7 @@ func TestPostFeeBumpTransaction(t *testing.T) {
 
 	ht.Assert.Equal(fixture.Transaction.TxResult, response.Result)
 	ht.Assert.Equal(fixture.Transaction.TxMeta, response.Meta)
-	ht.Assert.Equal(fixture.Transaction.InnerTransactionHash, response.Hash)
+	ht.Assert.Equal(fixture.InnerHash, response.Hash)
 	ht.Assert.Equal(fixture.Transaction.TxEnvelope, response.Env)
 	ht.Assert.Equal(fixture.Transaction.LedgerSequence, response.Ledger)
 }

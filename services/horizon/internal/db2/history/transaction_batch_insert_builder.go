@@ -156,6 +156,7 @@ func transactionToMap(transaction io.LedgerTransaction, sequence uint32) (map[st
 		"application_order": int32(transaction.Index),
 		"account":           sourceAccount.Address(),
 		"account_sequence":  strconv.FormatInt(transaction.Envelope.SeqNum(), 10),
+		"max_fee":           transaction.Envelope.Fee(),
 		"fee_charged":       int32(transaction.Result.Result.FeeCharged),
 		"operation_count":   int32(len(transaction.Envelope.Operations())),
 		"tx_envelope":       envelopeBase64,
@@ -174,12 +175,10 @@ func transactionToMap(transaction io.LedgerTransaction, sequence uint32) (map[st
 		m["inner_transaction_hash"] = hex.EncodeToString(innerHash[:])
 		feeAccount := transaction.Envelope.FeeBumpAccount()
 		m["fee_account"] = feeAccount.Address()
-		m["max_fee"] = transaction.Envelope.FeeBumpFee()
-		m["inner_max_fee"] = transaction.Envelope.Fee()
+		m["new_max_fee"] = transaction.Envelope.FeeBumpFee()
 		m["inner_signatures"] = sqx.StringArray(signatures(transaction.Envelope.Signatures()))
 		m["signatures"] = sqx.StringArray(signatures(transaction.Envelope.FeeBumpSignatures()))
 	} else {
-		m["max_fee"] = transaction.Envelope.Fee()
 		m["signatures"] = sqx.StringArray(signatures(transaction.Envelope.Signatures()))
 	}
 

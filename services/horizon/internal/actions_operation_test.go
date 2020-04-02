@@ -472,7 +472,7 @@ func TestOperationsForFeeBumpTransaction(t *testing.T) {
 	ht.Assert.Equal(fixture.InnerHash, tx.Hash)
 	ht.Assert.Equal(fixture.InnerHash, tx.ID)
 	ht.Assert.Equal(
-		strings.Split(fixture.Transaction.InnerSignatureString, ","),
+		strings.Split(fixture.Transaction.InnerSignatureString.String, ","),
 		tx.Signatures,
 	)
 

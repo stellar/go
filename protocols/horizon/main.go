@@ -432,17 +432,20 @@ type Transaction struct {
 		Precedes   hal.Link `json:"precedes"`
 		Succeeds   hal.Link `json:"succeeds"`
 	} `json:"_links"`
-	ID                 string              `json:"id"`
-	PT                 string              `json:"paging_token"`
-	Successful         bool                `json:"successful"`
-	Hash               string              `json:"hash"`
-	Ledger             int32               `json:"ledger"`
-	LedgerCloseTime    time.Time           `json:"created_at"`
-	Account            string              `json:"source_account"`
-	AccountSequence    string              `json:"source_account_sequence"`
-	FeeAccount         string              `json:"fee_account"`
-	FeeCharged         int32               `json:"fee_charged"`
-	MaxFee             int32               `json:"max_fee"`
+	ID              string    `json:"id"`
+	PT              string    `json:"paging_token"`
+	Successful      bool      `json:"successful"`
+	Hash            string    `json:"hash"`
+	Ledger          int32     `json:"ledger"`
+	LedgerCloseTime time.Time `json:"created_at"`
+	Account         string    `json:"source_account"`
+	AccountSequence string    `json:"source_account_sequence"`
+	FeeAccount      string    `json:"fee_account"`
+	// Action needed in release: horizonclient-v3.0.0
+	// Change FeeCharged and MaxFee types to string
+	// because JSON doesn't support 64 bit integers
+	FeeCharged         int64               `json:"fee_charged"`
+	MaxFee             int64               `json:"max_fee"`
 	OperationCount     int32               `json:"operation_count"`
 	EnvelopeXdr        string              `json:"envelope_xdr"`
 	ResultXdr          string              `json:"result_xdr"`

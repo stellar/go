@@ -22,12 +22,7 @@ func PopulateTransaction(
 ) {
 	dest.ID = transactionHash
 	dest.PT = row.PagingToken()
-	// Check db2/history.Transaction.Successful field comment for more information.
-	if row.Successful == nil {
-		dest.Successful = true
-	} else {
-		dest.Successful = *row.Successful
-	}
+	dest.Successful = row.Successful
 	dest.Hash = transactionHash
 	dest.Ledger = row.LedgerSequence
 	dest.LedgerCloseTime = row.LedgerCloseTime
@@ -35,7 +30,6 @@ func PopulateTransaction(
 	dest.AccountSequence = row.AccountSequence
 
 	dest.FeeCharged = row.FeeCharged
-	dest.MaxFee = row.MaxFee
 
 	dest.OperationCount = row.OperationCount
 	dest.EnvelopeXdr = row.TxEnvelope
@@ -48,22 +42,24 @@ func PopulateTransaction(
 	dest.ValidBefore = timeString(dest, row.ValidBefore)
 	dest.ValidAfter = timeString(dest, row.ValidAfter)
 
-	if len(row.InnerTransactionHash) > 0 {
-		dest.FeeAccount = row.FeeAccount
+	if row.InnerTransactionHash.Valid {
+		dest.FeeAccount = row.FeeAccount.String
+		dest.MaxFee = row.NewMaxFee.Int64
 		dest.FeeBumpTransaction = &protocol.FeeBumpTransaction{
 			Hash:       row.TransactionHash,
 			Signatures: dest.Signatures,
 		}
 		dest.InnerTransaction = &protocol.InnerTransaction{
-			Hash:       row.InnerTransactionHash,
-			MaxFee:     row.InnerMaxFee,
-			Signatures: strings.Split(row.InnerSignatureString, ","),
+			Hash:       row.InnerTransactionHash.String,
+			MaxFee:     row.MaxFee,
+			Signatures: strings.Split(row.InnerSignatureString.String, ","),
 		}
 		if transactionHash != row.TransactionHash {
 			dest.Signatures = dest.InnerTransaction.Signatures
 		}
 	} else {
 		dest.FeeAccount = row.Account
+		dest.MaxFee = int64(row.MaxFee)
 	}
 
 	lb := hal.LinkBuilder{Base: httpx.BaseURL(ctx)}

@@ -69,7 +69,7 @@ func loadTransactionRecords(hq *history.Q, accountID string, ledgerID int32, inc
 
 	for _, t := range records {
 		if !includeFailedTx {
-			if !t.IsSuccessful() {
+			if !t.Successful {
 				return nil, errors.Errorf("Corrupted data! `include_failed=false` but returned transaction is failed: %s", t.TransactionHash)
 			}
 

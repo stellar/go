@@ -208,11 +208,11 @@ func validateTransactionForOperation(transaction history.Transaction, operation 
 			operation.TxResult,
 		)
 	}
-	if transaction.IsSuccessful() != operation.IsTransactionSuccessful() {
+	if transaction.Successful != operation.TransactionSuccessful {
 		return errors.Errorf(
 			"transaction successful flag %v does not match transaction successful flag in operation %v",
-			transaction.IsSuccessful(),
-			operation.IsTransactionSuccessful(),
+			transaction.Successful,
+			operation.TransactionSuccessful,
 		)
 	}
 
@@ -259,7 +259,7 @@ func (action *OperationIndexAction) loadRecords() {
 
 	for i, o := range action.OperationRecords {
 		if !action.IncludeFailed && action.TransactionFilter == "" {
-			if !o.IsTransactionSuccessful() {
+			if !o.TransactionSuccessful {
 				action.Err = errors.Errorf("Corrupted data! `include_failed=false` but returned transaction in /operations is failed: %s", o.TransactionHash)
 				return
 			}

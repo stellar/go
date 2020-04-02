@@ -274,8 +274,6 @@ func FeeBumpScenario(tt *test.T, q *Q, successful bool) FeeBumpFixture {
 	tt.Assert.NoError(err)
 	tt.Assert.NoError(effectBuilder.Exec())
 
-	success := new(bool)
-	*success = successful
 	fixture.Transaction = Transaction{
 		TotalOrderID:     TotalOrderID{528280981504},
 		TransactionHash:  fixture.OuterHash,
@@ -283,8 +281,8 @@ func FeeBumpScenario(tt *test.T, q *Q, successful bool) FeeBumpFixture {
 		ApplicationOrder: 1,
 		Account:          account.Address(),
 		AccountSequence:  "97",
-		MaxFee:           int32(fixture.Envelope.FeeBumpFee()),
-		FeeCharged:       int32(resultPair.Result.FeeCharged),
+		MaxFee:           int32(fixture.Envelope.Fee()),
+		FeeCharged:       int64(resultPair.Result.FeeCharged),
 		OperationCount:   1,
 		TxEnvelope:       envelopeXDR,
 		TxResult:         resultXDR,
@@ -292,18 +290,18 @@ func FeeBumpScenario(tt *test.T, q *Q, successful bool) FeeBumpFixture {
 		TxMeta:           "AAAAAQAAAAAAAAAA",
 		MemoType:         "none",
 		Memo:             null.NewString("", false),
-		ValidAfter:       null.NewInt(2, true),
-		ValidBefore:      null.NewInt(4, true),
-		Successful:       success,
+		ValidAfter:       null.IntFrom(2),
+		ValidBefore:      null.IntFrom(4),
+		Successful:       successful,
 		SignatureString: strings.Join(
 			signatures(fixture.Envelope.FeeBumpSignatures()), ",",
 		),
-		InnerSignatureString: strings.Join(
+		InnerSignatureString: null.StringFrom(strings.Join(
 			signatures(fixture.Envelope.Signatures()), ",",
-		),
-		InnerMaxFee:          int32(fixture.Envelope.Fee()),
-		InnerTransactionHash: fixture.InnerHash,
-		FeeAccount:           feeBumpAccount.Address(),
+		)),
+		NewMaxFee:            null.IntFrom(int64(fixture.Envelope.FeeBumpFee())),
+		InnerTransactionHash: null.StringFrom(fixture.InnerHash),
+		FeeAccount:           null.StringFrom(feeBumpAccount.Address()),
 	}
 
 	results, err := q.TransactionsByIDs(fixture.Transaction.ID)

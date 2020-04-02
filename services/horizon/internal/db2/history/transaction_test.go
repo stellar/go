@@ -49,7 +49,7 @@ func TestTransactionSuccessfulOnly(t *testing.T) {
 	tt.Assert.Equal(3, len(transactions))
 
 	for _, transaction := range transactions {
-		tt.Assert.True(*transaction.Successful)
+		tt.Assert.True(transaction.Successful)
 	}
 
 	sql, _, err := query.sql.ToSql()
@@ -75,7 +75,7 @@ func TestTransactionIncludeFailed(t *testing.T) {
 
 	var failed, successful int
 	for _, transaction := range transactions {
-		if *transaction.Successful {
+		if transaction.Successful {
 			successful++
 		} else {
 			failed++
@@ -87,7 +87,7 @@ func TestTransactionIncludeFailed(t *testing.T) {
 
 	sql, _, err := query.sql.ToSql()
 	tt.Assert.NoError(err)
-	tt.Assert.Equal("SELECT ht.id, ht.transaction_hash, ht.ledger_sequence, ht.application_order, ht.account, ht.account_sequence, ht.max_fee, COALESCE(ht.fee_charged, ht.max_fee) as fee_charged, ht.operation_count, ht.tx_envelope, ht.tx_result, ht.tx_meta, ht.tx_fee_meta, ht.created_at, ht.updated_at, ht.successful, array_to_string(ht.signatures, ',') AS signatures, ht.memo_type, ht.memo, lower(ht.time_bounds) AS valid_after, upper(ht.time_bounds) AS valid_before, hl.closed_at AS ledger_close_time, ht.inner_transaction_hash, ht.fee_account, ht.inner_max_fee, array_to_string(ht.inner_signatures, ',') AS inner_signatures FROM history_transactions ht LEFT JOIN history_ledgers hl ON ht.ledger_sequence = hl.sequence JOIN history_transaction_participants htp ON htp.history_transaction_id = ht.id WHERE htp.history_account_id = ?", sql)
+	tt.Assert.Equal("SELECT ht.id, ht.transaction_hash, ht.ledger_sequence, ht.application_order, ht.account, ht.account_sequence, ht.max_fee, COALESCE(ht.fee_charged, ht.max_fee) as fee_charged, ht.operation_count, ht.tx_envelope, ht.tx_result, ht.tx_meta, ht.tx_fee_meta, ht.created_at, ht.updated_at, COALESCE(ht.successful, true) as successful, array_to_string(ht.signatures, ',') AS signatures, ht.memo_type, ht.memo, lower(ht.time_bounds) AS valid_after, upper(ht.time_bounds) AS valid_before, hl.closed_at AS ledger_close_time, ht.inner_transaction_hash, ht.fee_account, ht.new_max_fee, array_to_string(ht.inner_signatures, ',') AS inner_signatures FROM history_transactions ht LEFT JOIN history_ledgers hl ON ht.ledger_sequence = hl.sequence JOIN history_transaction_participants htp ON htp.history_transaction_id = ht.id WHERE htp.history_account_id = ?", sql)
 }
 
 func TestExtraChecksTransactionSuccessfulTrueResultFalse(t *testing.T) {
@@ -236,8 +236,7 @@ func TestInsertTransaction(t *testing.T) {
 	tt.Assert.NoError(err)
 
 	insertBuilder := q.NewTransactionBatchInsertBuilder(0)
-	success := new(bool)
-	*success = true
+	success := true
 
 	for _, testCase := range []struct {
 		name     string
@@ -340,7 +339,7 @@ func TestInsertTransaction(t *testing.T) {
 				Memo:             null.NewString("", false),
 				ValidAfter:       null.NewInt(0, false),
 				ValidBefore:      null.NewInt(0, false),
-				Successful:       new(bool),
+				Successful:       false,
 			},
 		},
 		{
