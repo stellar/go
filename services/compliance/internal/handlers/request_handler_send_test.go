@@ -235,7 +235,7 @@ func TestRequestHandlerSendValidParams(t *testing.T) {
 	var txXDR xdr.TransactionEnvelope
 	err = xdr.SafeUnmarshalBase64(txeB64, &txXDR)
 	require.NoError(t, err)
-	txB64, err := xdr.MarshalBase64(txXDR.Tx)
+	txB64, err := xdr.MarshalBase64(txXDR.V1.Tx)
 	require.NoError(t, err)
 
 	authData := compliance.AuthData{
@@ -381,7 +381,7 @@ func TestRequestHandlerSendValidParams(t *testing.T) {
 
 	err = xdr.SafeUnmarshalBase64(txeB64, &txXDR)
 	require.NoError(t, err)
-	txB64, err = xdr.MarshalBase64(txXDR.Tx)
+	txB64, err = xdr.MarshalBase64(txXDR.V1.Tx)
 	require.NoError(t, err)
 
 	authData = compliance.AuthData{
@@ -534,7 +534,7 @@ func TestRequestHandlerSendValidParams(t *testing.T) {
 
 	err = xdr.SafeUnmarshalBase64(txeB64, &txXDR)
 	require.NoError(t, err)
-	txB64, err = xdr.MarshalBase64(txXDR.Tx)
+	txB64, err = xdr.MarshalBase64(txXDR.V1.Tx)
 	require.NoError(t, err)
 
 	authData = compliance.AuthData{

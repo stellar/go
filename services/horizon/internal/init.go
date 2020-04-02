@@ -187,7 +187,6 @@ func initSubmissionSystem(app *App) {
 			History:        &history.Q{Session: app.HorizonSession(context.Background())},
 			SkipCoreChecks: app.config.IngestFailedTransactions,
 		},
-		Sequences:         cq.SequenceProvider(),
-		NetworkPassphrase: app.config.NetworkPassphrase,
+		Sequences: cq.SequenceProvider(),
 	}
 }

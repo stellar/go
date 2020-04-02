@@ -63,9 +63,10 @@ func main() {
 
 	fmt.Println("")
 	fmt.Println("Transaction Summary:")
-	fmt.Printf("  source: %s\n", txe.Tx.SourceAccount.Address())
-	fmt.Printf("  ops: %d\n", len(txe.Tx.Operations))
-	fmt.Printf("  sigs: %d\n", len(txe.Signatures))
+	sourceAccount := txe.SourceAccount()
+	fmt.Printf("  source: %s\n", sourceAccount.Address())
+	fmt.Printf("  ops: %d\n", len(txe.Operations()))
+	fmt.Printf("  sigs: %d\n", len(txe.Signatures()))
 	fmt.Println("")
 
 	// TODO: add operation details

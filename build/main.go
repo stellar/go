@@ -60,7 +60,7 @@ type AllowTrustAsset struct {
 
 // Authorize is a mutator capable of setting the `authorize` flag
 type Authorize struct {
-	Value bool
+	Value uint32
 }
 
 // AutoSequence loads the sequence to use for the transaction from an external

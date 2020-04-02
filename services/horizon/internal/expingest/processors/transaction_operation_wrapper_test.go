@@ -3,6 +3,7 @@ package processors
 import (
 	"testing"
 
+	"github.com/stellar/go/exp/ingest/io"
 	. "github.com/stellar/go/services/horizon/internal/test/transactions"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
@@ -31,7 +32,7 @@ func TestTransactionOperationID(t *testing.T) {
 	operation := transactionOperationWrapper{
 		index:          0,
 		transaction:    transaction,
-		operation:      transaction.Envelope.Tx.Operations[0],
+		operation:      transaction.Envelope.Operations()[0],
 		ledgerSequence: 56,
 	}
 
@@ -55,7 +56,7 @@ func TestTransactionOperationOrder(t *testing.T) {
 	operation := transactionOperationWrapper{
 		index:          0,
 		transaction:    transaction,
-		operation:      transaction.Envelope.Tx.Operations[0],
+		operation:      transaction.Envelope.Operations()[0],
 		ledgerSequence: 1,
 	}
 
@@ -78,7 +79,7 @@ func TestTransactionOperationTransactionID(t *testing.T) {
 	operation := transactionOperationWrapper{
 		index:          0,
 		transaction:    transaction,
-		operation:      transaction.Envelope.Tx.Operations[0],
+		operation:      transaction.Envelope.Operations()[0],
 		ledgerSequence: 56,
 	}
 
@@ -116,7 +117,7 @@ func TestOperationTransactionSourceAccount(t *testing.T) {
 					Hash:          "2a805712c6d10f9e74bb0ccf54ae92a2b4b1e586451fe8133a2433816f6b567c",
 				},
 			)
-			op := transaction.Envelope.Tx.Operations[0]
+			op := transaction.Envelope.Operations()[0]
 			if len(tc.sourceAccount) > 0 {
 				sourceAccount := xdr.MustAddress(tc.sourceAccount)
 				op.SourceAccount = &sourceAccount
@@ -151,7 +152,7 @@ func TestTransactionOperationType(t *testing.T) {
 	operation := transactionOperationWrapper{
 		index:          1,
 		transaction:    transaction,
-		operation:      transaction.Envelope.Tx.Operations[0],
+		operation:      transaction.Envelope.Operations()[0],
 		ledgerSequence: 1,
 	}
 
@@ -560,7 +561,7 @@ func TestTransactionOperationDetails(t *testing.T) {
 			operation := transactionOperationWrapper{
 				index:          tc.index,
 				transaction:    transaction,
-				operation:      transaction.Envelope.Tx.Operations[tc.index],
+				operation:      transaction.Envelope.Operations()[tc.index],
 				ledgerSequence: 1,
 			}
 
@@ -799,7 +800,7 @@ func TestTransactionOperationParticipants(t *testing.T) {
 			operation := transactionOperationWrapper{
 				index:          tc.index,
 				transaction:    transaction,
-				operation:      transaction.Envelope.Tx.Operations[tc.index],
+				operation:      transaction.Envelope.Operations()[tc.index],
 				ledgerSequence: 1,
 			}
 
@@ -856,4 +857,98 @@ func TestOperationParticipants(t *testing.T) {
 	}
 
 	tt.Empty(result)
+}
+func TestTransactionOperationAllowTrustDetails(t *testing.T) {
+	tt := assert.New(t)
+	asset := xdr.Asset{}
+	allowTrustAsset, err := asset.ToAllowTrustOpAsset("COP")
+	tt.NoError(err)
+
+	source := xdr.MustAddress("GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD")
+
+	testCases := []struct {
+		desc     string
+		op       xdr.Operation
+		expected map[string]interface{}
+	}{
+		{
+			desc: "authorize",
+			op: xdr.Operation{
+				SourceAccount: &source,
+				Body: xdr.OperationBody{
+					Type: xdr.OperationTypeAllowTrust,
+					AllowTrustOp: &xdr.AllowTrustOp{
+						Trustor:   xdr.MustAddress("GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3"),
+						Asset:     allowTrustAsset,
+						Authorize: xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag),
+					},
+				},
+			},
+			expected: map[string]interface{}{
+				"asset_code":   "COP",
+				"asset_issuer": "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
+				"asset_type":   "credit_alphanum4",
+				"authorize":    true,
+				"trustee":      "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
+				"trustor":      "GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3",
+			},
+		},
+		{
+			desc: "authorize maintain liabilities",
+			op: xdr.Operation{
+				SourceAccount: &source,
+				Body: xdr.OperationBody{
+					Type: xdr.OperationTypeAllowTrust,
+					AllowTrustOp: &xdr.AllowTrustOp{
+						Trustor:   xdr.MustAddress("GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3"),
+						Asset:     allowTrustAsset,
+						Authorize: xdr.Uint32(xdr.TrustLineFlagsAuthorizedToMaintainLiabilitiesFlag),
+					},
+				},
+			},
+			expected: map[string]interface{}{
+				"asset_code":                        "COP",
+				"asset_issuer":                      "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
+				"asset_type":                        "credit_alphanum4",
+				"authorize":                         false,
+				"authorize_to_maintain_liabilities": true,
+				"trustee":                           "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
+				"trustor":                           "GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3",
+			},
+		},
+		{
+			desc: "deauthorize",
+			op: xdr.Operation{
+				SourceAccount: &source,
+				Body: xdr.OperationBody{
+					Type: xdr.OperationTypeAllowTrust,
+					AllowTrustOp: &xdr.AllowTrustOp{
+						Trustor:   xdr.MustAddress("GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3"),
+						Asset:     allowTrustAsset,
+						Authorize: xdr.Uint32(0),
+					},
+				},
+			},
+			expected: map[string]interface{}{
+				"asset_code":   "COP",
+				"asset_issuer": "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
+				"asset_type":   "credit_alphanum4",
+				"authorize":    false,
+				"trustee":      "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
+				"trustor":      "GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3",
+			},
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.desc, func(t *testing.T) {
+			operation := transactionOperationWrapper{
+				index:          0,
+				transaction:    io.LedgerTransaction{},
+				operation:      tc.op,
+				ledgerSequence: 1,
+			}
+
+			tt.Equal(tc.expected, operation.Details())
+		})
+	}
 }

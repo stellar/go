@@ -10,9 +10,9 @@ import (
 	"github.com/sirupsen/logrus"
 	hc "github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
+	"github.com/stellar/go/network"
 	hProtocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/bridge/internal/db"
-	shared "github.com/stellar/go/services/internal/bridge-compliance-shared"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stellar/go/xdr"
@@ -128,7 +128,7 @@ func (ts *TransactionSubmitter) SignAndSubmitRawTransaction(paymentID *string, s
 	tx.SeqNum = xdr.SequenceNumber(account.SequenceNumber)
 	account.Mutex.Unlock()
 
-	hash, err := shared.TransactionHash(tx, ts.Network)
+	hash, err := network.HashTransaction(tx, ts.Network)
 	if err != nil {
 		ts.log.WithFields(logrus.Fields{"err": err}).Error("Error calculating transaction hash")
 		return
@@ -141,8 +141,11 @@ func (ts *TransactionSubmitter) SignAndSubmitRawTransaction(paymentID *string, s
 	}
 
 	envelopeXdr := xdr.TransactionEnvelope{
-		Tx:         *tx,
-		Signatures: []xdr.DecoratedSignature{sig},
+		Type: xdr.EnvelopeTypeEnvelopeTypeTx,
+		V1: &xdr.TransactionV1Envelope{
+			Tx:         *tx,
+			Signatures: []xdr.DecoratedSignature{sig},
+		},
 	}
 
 	txeB64, err := xdr.MarshalBase64(envelopeXdr)
@@ -151,7 +154,7 @@ func (ts *TransactionSubmitter) SignAndSubmitRawTransaction(paymentID *string, s
 		return
 	}
 
-	transactionHashBytes, err := shared.TransactionHash(tx, ts.Network)
+	transactionHashBytes, err := network.HashTransaction(tx, ts.Network)
 	if err != nil {
 		ts.log.WithFields(logrus.Fields{"err": err}).Warn("Error calculating tx hash")
 		return

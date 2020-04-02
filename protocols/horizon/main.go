@@ -192,12 +192,13 @@ func (res AssetStat) PagingToken() string {
 
 // Balance represents an account's holdings for a single currency type
 type Balance struct {
-	Balance            string `json:"balance"`
-	Limit              string `json:"limit,omitempty"`
-	BuyingLiabilities  string `json:"buying_liabilities"`
-	SellingLiabilities string `json:"selling_liabilities"`
-	LastModifiedLedger uint32 `json:"last_modified_ledger,omitempty"`
-	IsAuthorized       *bool  `json:"is_authorized,omitempty"`
+	Balance                           string `json:"balance"`
+	Limit                             string `json:"limit,omitempty"`
+	BuyingLiabilities                 string `json:"buying_liabilities"`
+	SellingLiabilities                string `json:"selling_liabilities"`
+	LastModifiedLedger                uint32 `json:"last_modified_ledger,omitempty"`
+	IsAuthorized                      *bool  `json:"is_authorized,omitempty"`
+	IsAuthorizedToMaintainLiabilities *bool  `json:"is_authorized_to_maintain_liabilities,omitempty"`
 	base.Asset
 }
 
@@ -439,18 +440,38 @@ type Transaction struct {
 	LedgerCloseTime time.Time `json:"created_at"`
 	Account         string    `json:"source_account"`
 	AccountSequence string    `json:"source_account_sequence"`
-	FeeCharged      int32     `json:"fee_charged"`
-	MaxFee          int32     `json:"max_fee"`
-	OperationCount  int32     `json:"operation_count"`
-	EnvelopeXdr     string    `json:"envelope_xdr"`
-	ResultXdr       string    `json:"result_xdr"`
-	ResultMetaXdr   string    `json:"result_meta_xdr"`
-	FeeMetaXdr      string    `json:"fee_meta_xdr"`
-	MemoType        string    `json:"memo_type"`
-	Memo            string    `json:"memo,omitempty"`
-	Signatures      []string  `json:"signatures"`
-	ValidAfter      string    `json:"valid_after,omitempty"`
-	ValidBefore     string    `json:"valid_before,omitempty"`
+	FeeAccount      string    `json:"fee_account"`
+	// Action needed in release: horizonclient-v3.0.0
+	// Change FeeCharged and MaxFee types to string
+	// because JSON doesn't support 64 bit integers
+	FeeCharged         int64               `json:"fee_charged"`
+	MaxFee             int64               `json:"max_fee"`
+	OperationCount     int32               `json:"operation_count"`
+	EnvelopeXdr        string              `json:"envelope_xdr"`
+	ResultXdr          string              `json:"result_xdr"`
+	ResultMetaXdr      string              `json:"result_meta_xdr"`
+	FeeMetaXdr         string              `json:"fee_meta_xdr"`
+	MemoType           string              `json:"memo_type"`
+	Memo               string              `json:"memo,omitempty"`
+	Signatures         []string            `json:"signatures"`
+	ValidAfter         string              `json:"valid_after,omitempty"`
+	ValidBefore        string              `json:"valid_before,omitempty"`
+	FeeBumpTransaction *FeeBumpTransaction `json:"fee_bump_transaction,omitempty"`
+	InnerTransaction   *InnerTransaction   `json:"inner_transaction,omitempty"`
+}
+
+// FeeBumpTransaction contains information about a fee bump transaction
+type FeeBumpTransaction struct {
+	Hash       string   `json:"hash"`
+	Signatures []string `json:"signatures"`
+}
+
+// InnerTransaction contains information about the inner transaction contained
+// within a fee bump transaction
+type InnerTransaction struct {
+	Hash       string   `json:"hash"`
+	Signatures []string `json:"signatures"`
+	MaxFee     int32    `json:"max_fee"`
 }
 
 // MarshalJSON implements a custom marshaler for Transaction.
@@ -484,6 +505,9 @@ type TransactionResultCodes struct {
 
 // TransactionSuccess represents the result of a successful transaction
 // submission.
+// Action needed in release: horizonclient-v3.0.0
+// Remove TransactionSuccess because the submit transaction endpoint now responds with
+// a full Transaction resource
 type TransactionSuccess struct {
 	Links struct {
 		Transaction hal.Link `json:"transaction"`

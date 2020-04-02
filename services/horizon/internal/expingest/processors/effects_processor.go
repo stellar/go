@@ -55,7 +55,7 @@ func (p *EffectProcessor) loadAccountIDs(accountSet map[string]int64) error {
 func operationsEffects(transaction io.LedgerTransaction, sequence uint32) ([]effect, error) {
 	effects := []effect{}
 
-	for opi, op := range transaction.Envelope.Tx.Operations {
+	for opi, op := range transaction.Envelope.Operations() {
 		operation := transactionOperationWrapper{
 			index:          uint32(opi),
 			transaction:    transaction,
@@ -109,7 +109,7 @@ func (p *EffectProcessor) insertDBOperationsEffects(effects []effect, accountSet
 
 func (p *EffectProcessor) ProcessTransaction(transaction io.LedgerTransaction) (err error) {
 	// Failed transactions don't have operation effects
-	if !transaction.Successful() {
+	if !transaction.Result.Successful() {
 		return nil
 	}
 
@@ -168,7 +168,7 @@ func (e *effectsWrapper) add(address string, effectType history.EffectType, deta
 
 // Effects returns the operation effects
 func (operation *transactionOperationWrapper) effects() (effects []effect, err error) {
-	if !operation.transaction.Successful() {
+	if !operation.transaction.Result.Successful() {
 		return []effect{}, err
 	}
 
@@ -549,9 +549,16 @@ func (operation *transactionOperationWrapper) allowTrustEffects() []effect {
 	}
 	assetDetails(details, asset, "")
 
-	if op.Authorize {
+	switch {
+	case xdr.TrustLineFlags(op.Authorize).IsAuthorized():
 		effects.add(source.Address(), history.EffectTrustlineAuthorized, details)
-	} else {
+	case xdr.TrustLineFlags(op.Authorize).IsAuthorizedToMaintainLiabilitiesFlag():
+		effects.add(
+			source.Address(),
+			history.EffectTrustlineAuthorizedToMaintainLiabilities,
+			details,
+		)
+	default:
 		effects.add(source.Address(), history.EffectTrustlineDeauthorized, details)
 	}
 

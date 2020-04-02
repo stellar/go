@@ -30,7 +30,7 @@ func ExampleDecodeTransaction() {
 		log.Fatal(err)
 	}
 
-	fmt.Printf("This tx has %d operations\n", len(tx.Tx.Operations))
+	fmt.Printf("This tx has %d operations\n", len(tx.V0.Tx.Operations))
 	// Output: read 192 bytes
 	// This tx has 1 operations
 }
@@ -131,8 +131,11 @@ func ExampleLowLevelTransaction() {
 	}
 
 	txe := xdr.TransactionEnvelope{
-		Tx:         tx,
-		Signatures: []xdr.DecoratedSignature{ds},
+		Type: xdr.EnvelopeTypeEnvelopeTypeTx,
+		V1: &xdr.TransactionV1Envelope{
+			Tx:         tx,
+			Signatures: []xdr.DecoratedSignature{ds},
+		},
 	}
 
 	var txeBytes bytes.Buffer
@@ -143,5 +146,5 @@ func ExampleLowLevelTransaction() {
 	txeB64 := base64.StdEncoding.EncodeToString(txeBytes.Bytes())
 
 	fmt.Printf("tx base64: %s", txeB64)
-	// Output: tx base64: AAAAAAU08yUQ8sHqhY8j9mXWwERfHC/3cKFSe/spAr0rGtO2AAAACgAAAAAAAAABAAAAAAAAAAAAAAABAAAAAAAAAAEAAAAA+fnTe7/v4whpBUx96oj92jfZPz7S00l3O2xeyeqWIA0AAAAAAAAAAB3NZQAAAAAAAAAAASsa07YAAABAieruUIGcQH6RlQ+prYflPFU3nED2NvWhtaC+tgnKsqgiKURK4xo/W7EgH0+I6aQok52awbE+ksOxEQ5MLJ9eAw==
+	// Output: tx base64: AAAAAgAAAAAFNPMlEPLB6oWPI/Zl1sBEXxwv93ChUnv7KQK9KxrTtgAAAAoAAAAAAAAAAQAAAAAAAAAAAAAAAQAAAAAAAAABAAAAAPn503u/7+MIaQVMfeqI/do32T8+0tNJdztsXsnqliANAAAAAAAAAAAdzWUAAAAAAAAAAAErGtO2AAAAQInq7lCBnEB+kZUPqa2H5TxVN5xA9jb1obWgvrYJyrKoIilESuMaP1uxIB9PiOmkKJOdmsGxPpLDsREOTCyfXgM=
 }

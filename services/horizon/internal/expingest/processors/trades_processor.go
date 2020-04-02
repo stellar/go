@@ -30,7 +30,7 @@ func NewTradeProcessor(tradesQ history.QTrades, ledger xdr.LedgerHeaderHistoryEn
 
 // ProcessTransaction process the given transaction
 func (p *TradeProcessor) ProcessTransaction(transaction io.LedgerTransaction) (err error) {
-	if !transaction.Successful() {
+	if !transaction.Result.Successful() {
 		return nil
 	}
 
@@ -126,8 +126,11 @@ func (p *TradeProcessor) extractTrades(
 
 	closeTime := time.Unix(int64(ledger.Header.ScpValue.CloseTime), 0).UTC()
 
-	opResults := transaction.Result.Result.Result.MustResults()
-	for opidx, op := range transaction.Envelope.Tx.Operations {
+	opResults, ok := transaction.Result.OperationResults()
+	if !ok {
+		return nil, nil, errors.New("transaction has no operation results")
+	}
+	for opidx, op := range transaction.Envelope.Operations() {
 		var trades []xdr.ClaimOfferAtom
 		var buyOfferExists bool
 		var buyOffer xdr.OfferEntry
@@ -205,7 +208,8 @@ func (p *TradeProcessor) extractTrades(
 			if buyer := op.SourceAccount; buyer != nil {
 				buyerAddress = buyer.Address()
 			} else {
-				buyerAddress = transaction.Envelope.Tx.SourceAccount.Address()
+				sa := transaction.Envelope.SourceAccount()
+				buyerAddress = sa.Address()
 			}
 			buyerAccounts = append(buyerAccounts, buyerAddress)
 		}

@@ -8,20 +8,12 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-func (t *Transaction) IsSuccessful() bool {
-	if t.Successful == nil {
-		return true
-	}
-
-	return *t.Successful
-}
-
 // TransactionByHash is a query that loads a single row from the
 // `history_transactions` table based upon the provided hash.
 func (q *Q) TransactionByHash(dest interface{}, hash string) error {
 	sql := selectTransaction.
 		Limit(1).
-		Where("ht.transaction_hash = ?", hash)
+		Where("ht.transaction_hash = ? OR ht.inner_transaction_hash = ?", hash, hash)
 
 	return q.Get(dest, sql)
 }
@@ -141,21 +133,21 @@ func (q *TransactionsQ) Select(dest interface{}) error {
 		}
 
 		if !q.includeFailed {
-			if !t.IsSuccessful() {
+			if !t.Successful {
 				return errors.Errorf("Corrupted data! `include_failed=false` but returned transaction is failed: %s", t.TransactionHash)
 			}
 
-			if resultXDR.Result.Code != xdr.TransactionResultCodeTxSuccess {
+			if !resultXDR.Successful() {
 				return errors.Errorf("Corrupted data! `include_failed=false` but returned transaction is failed: %s %s", t.TransactionHash, t.TxResult)
 			}
 		}
 
 		// Check if `successful` equals resultXDR
-		if t.IsSuccessful() && resultXDR.Result.Code != xdr.TransactionResultCodeTxSuccess {
+		if t.Successful && !resultXDR.Successful() {
 			return errors.Errorf("Corrupted data! `successful=true` but returned transaction is not success: %s %s", t.TransactionHash, t.TxResult)
 		}
 
-		if !t.IsSuccessful() && resultXDR.Result.Code == xdr.TransactionResultCodeTxSuccess {
+		if !t.Successful && resultXDR.Successful() {
 			return errors.Errorf("Corrupted data! `successful=false` but returned transaction is success: %s %s", t.TransactionHash, t.TxResult)
 		}
 	}
@@ -186,12 +178,16 @@ var selectTransaction = sq.Select(
 		"ht.tx_fee_meta, " +
 		"ht.created_at, " +
 		"ht.updated_at, " +
-		"ht.successful, " +
+		"COALESCE(ht.successful, true) as successful, " +
 		"array_to_string(ht.signatures, ',') AS signatures, " +
 		"ht.memo_type, " +
 		"ht.memo, " +
 		"lower(ht.time_bounds) AS valid_after, " +
 		"upper(ht.time_bounds) AS valid_before, " +
-		"hl.closed_at AS ledger_close_time").
+		"hl.closed_at AS ledger_close_time, " +
+		"ht.inner_transaction_hash, " +
+		"ht.fee_account, " +
+		"ht.new_max_fee, " +
+		"array_to_string(ht.inner_signatures, ',') AS inner_signatures").
 	From("history_transactions ht").
 	LeftJoin("history_ledgers hl ON ht.ledger_sequence = hl.sequence")

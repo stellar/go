@@ -31,7 +31,7 @@ func NewOperationProcessor(operationsQ history.QOperations, sequence uint32) *Op
 
 // ProcessTransaction process the given transaction
 func (p *OperationProcessor) ProcessTransaction(transaction io.LedgerTransaction) (err error) {
-	for i, op := range transaction.Envelope.Tx.Operations {
+	for i, op := range transaction.Envelope.Operations() {
 		operation := transactionOperationWrapper{
 			index:          uint32(i),
 			transaction:    transaction,
@@ -97,7 +97,8 @@ func (operation *transactionOperationWrapper) SourceAccount() *xdr.AccountId {
 		return sourceAccount
 	}
 
-	return &operation.transaction.Envelope.Tx.SourceAccount
+	sa := operation.transaction.Envelope.SourceAccount()
+	return &sa
 }
 
 // OperationType returns the operation type.
@@ -107,14 +108,9 @@ func (operation *transactionOperationWrapper) OperationType() xdr.OperationType 
 
 // OperationResult returns the operation's result record
 func (operation *transactionOperationWrapper) OperationResult() *xdr.OperationResultTr {
-	txr := operation.transaction.Result.Result
-	tr := txr.Result.MustResults()[operation.index].MustTr()
+	results, _ := operation.transaction.Result.OperationResults()
+	tr := results[operation.index].MustTr()
 	return &tr
-}
-
-// IsSuccessful returns whether the operation was successful or not
-func (operation *transactionOperationWrapper) IsSuccessful() bool {
-	return operation.transaction.Result.Result.Result.Code == xdr.TransactionResultCodeTxSuccess
 }
 
 // Details returns the operation details as a map which can be stored as JSON.
@@ -145,7 +141,7 @@ func (operation *transactionOperationWrapper) Details() map[string]interface{} {
 		assetDetails(details, op.DestAsset, "")
 		assetDetails(details, op.SendAsset, "source_")
 
-		if operation.IsSuccessful() {
+		if operation.transaction.Result.Successful() {
 			result := operation.OperationResult().MustPathPaymentStrictReceiveResult()
 			details["source_amount"] = amount.String(result.SendAmount())
 		}
@@ -168,7 +164,7 @@ func (operation *transactionOperationWrapper) Details() map[string]interface{} {
 		assetDetails(details, op.DestAsset, "")
 		assetDetails(details, op.SendAsset, "source_")
 
-		if operation.IsSuccessful() {
+		if operation.transaction.Result.Successful() {
 			result := operation.OperationResult().MustPathPaymentStrictSendResult()
 			details["amount"] = amount.String(result.DestAmount())
 		}
@@ -261,7 +257,10 @@ func (operation *transactionOperationWrapper) Details() map[string]interface{} {
 		assetDetails(details, op.Asset.ToAsset(*source), "")
 		details["trustee"] = source.Address()
 		details["trustor"] = op.Trustor.Address()
-		details["authorize"] = op.Authorize
+		details["authorize"] = xdr.TrustLineFlags(op.Authorize).IsAuthorized()
+		if xdr.TrustLineFlags(op.Authorize).IsAuthorizedToMaintainLiabilitiesFlag() {
+			details["authorize_to_maintain_liabilities"] = xdr.TrustLineFlags(op.Authorize).IsAuthorizedToMaintainLiabilitiesFlag()
+		}
 	case xdr.OperationTypeAccountMerge:
 		aid := operation.operation.Body.MustDestination()
 		details["account"] = source.Address()
@@ -395,7 +394,7 @@ func dedupe(in []xdr.AccountId) (out []xdr.AccountId) {
 func operationsParticipants(transaction io.LedgerTransaction, sequence uint32) (map[int64][]xdr.AccountId, error) {
 	participants := map[int64][]xdr.AccountId{}
 
-	for opi, op := range transaction.Envelope.Tx.Operations {
+	for opi, op := range transaction.Envelope.Operations() {
 		operation := transactionOperationWrapper{
 			index:          uint32(opi),
 			transaction:    transaction,

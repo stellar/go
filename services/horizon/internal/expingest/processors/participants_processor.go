@@ -140,7 +140,10 @@ func participantsForTransaction(
 	transaction io.LedgerTransaction,
 ) ([]xdr.AccountId, error) {
 	participants := []xdr.AccountId{
-		transaction.Envelope.Tx.SourceAccount,
+		transaction.Envelope.SourceAccount(),
+	}
+	if transaction.Envelope.IsFeeBump() {
+		participants = append(participants, transaction.Envelope.FeeBumpAccount())
 	}
 
 	p, err := participantsForMeta(transaction.Meta)
@@ -155,7 +158,7 @@ func participantsForTransaction(
 	}
 	participants = append(participants, p...)
 
-	for opi, op := range transaction.Envelope.Tx.Operations {
+	for opi, op := range transaction.Envelope.Operations() {
 		operation := transactionOperationWrapper{
 			index:          uint32(opi),
 			transaction:    transaction,

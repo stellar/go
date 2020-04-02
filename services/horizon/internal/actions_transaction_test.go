@@ -8,8 +8,10 @@ import (
 	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/expingest"
+	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/services/horizon/internal/txsub"
 	"github.com/stellar/go/services/horizon/internal/txsub/sequence"
+	"github.com/stellar/go/xdr"
 )
 
 func TestTransactionActions_Show(t *testing.T) {
@@ -277,4 +279,61 @@ func TestTransactionActions_PostFailed(t *testing.T) {
 	ht.Assert.Equal(400, w.Code)
 	ht.Assert.Contains(string(w.Body.Bytes()), "op_underfunded")
 	ht.Assert.Contains(string(w.Body.Bytes()), `"result_xdr": "AAAAAAAAAGT/////AAAAAQAAAAAAAAAB/////gAAAAA="`)
+}
+
+func TestPostFeeBumpTransaction(t *testing.T) {
+	ht := StartHTTPTestWithoutScenario(t)
+	defer ht.Finish()
+	test.ResetHorizonDB(t, ht.HorizonDB)
+	q := &history.Q{ht.HorizonSession()}
+	fixture := history.FeeBumpScenario(ht.T, q, true)
+
+	form := url.Values{"tx": []string{fixture.Transaction.TxEnvelope}}
+	w := ht.Post("/transactions", form)
+	ht.Assert.Equal(200, w.Code)
+	var response horizon.TransactionSuccess
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	ht.Assert.NoError(err)
+
+	ht.Assert.Equal(fixture.Transaction.TxResult, response.Result)
+	ht.Assert.Equal(fixture.Transaction.TxMeta, response.Meta)
+	ht.Assert.Equal(fixture.Transaction.TransactionHash, response.Hash)
+	ht.Assert.Equal(fixture.Transaction.TxEnvelope, response.Env)
+	ht.Assert.Equal(fixture.Transaction.LedgerSequence, response.Ledger)
+
+	innerTxEnvelope, err := xdr.MarshalBase64(fixture.Envelope.FeeBump.Tx.InnerTx.V1)
+	ht.Assert.NoError(err)
+	form = url.Values{"tx": []string{innerTxEnvelope}}
+	w = ht.Post("/transactions", form)
+	ht.Assert.Equal(200, w.Code)
+	err = json.Unmarshal(w.Body.Bytes(), &response)
+	ht.Assert.NoError(err)
+
+	ht.Assert.Equal(fixture.Transaction.TxResult, response.Result)
+	ht.Assert.Equal(fixture.Transaction.TxMeta, response.Meta)
+	ht.Assert.Equal(fixture.InnerHash, response.Hash)
+	ht.Assert.Equal(fixture.Transaction.TxEnvelope, response.Env)
+	ht.Assert.Equal(fixture.Transaction.LedgerSequence, response.Ledger)
+}
+
+func TestPostFailedFeeBumpTransaction(t *testing.T) {
+	ht := StartHTTPTestWithoutScenario(t)
+	defer ht.Finish()
+	test.ResetHorizonDB(t, ht.HorizonDB)
+	q := &history.Q{ht.HorizonSession()}
+	fixture := history.FeeBumpScenario(ht.T, q, false)
+
+	form := url.Values{"tx": []string{fixture.Transaction.TxEnvelope}}
+	w := ht.Post("/transactions", form)
+	ht.Assert.Equal(400, w.Code)
+	ht.Assert.Contains(string(w.Body.Bytes()), "tx_fee_bump_inner_failed")
+	ht.Assert.NotContains(string(w.Body.Bytes()), "tx_bad_auth")
+
+	innerTxEnvelope, err := xdr.MarshalBase64(fixture.Envelope.FeeBump.Tx.InnerTx.V1)
+	ht.Assert.NoError(err)
+	form = url.Values{"tx": []string{innerTxEnvelope}}
+	w = ht.Post("/transactions", form)
+	ht.Assert.Equal(400, w.Code)
+	ht.Assert.Contains(string(w.Body.Bytes()), "tx_bad_auth")
+	ht.Assert.NotContains(string(w.Body.Bytes()), "tx_fee_bump_inner_failed")
 }

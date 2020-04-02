@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -423,4 +424,60 @@ func TestOperationActions_Show_Extra_TxID(t *testing.T) {
 		ht.Assert.Equal(3, successful)
 		ht.Assert.Equal(0, failed)
 	}
+}
+
+func TestOperationsForFeeBumpTransaction(t *testing.T) {
+	ht := StartHTTPTestWithoutScenario(t)
+	defer ht.Finish()
+	test.ResetHorizonDB(t, ht.HorizonDB)
+	q := &history.Q{ht.HorizonSession()}
+	fixture := history.FeeBumpScenario(ht.T, q, true)
+
+	w := ht.Get("/transactions/" + fixture.OuterHash + "/operations")
+	ht.Assert.Equal(200, w.Code)
+	var byOuterHash []operations.Base
+	ht.UnmarshalPage(w.Body, &byOuterHash)
+	ht.Assert.Len(byOuterHash, 1)
+	ht.Assert.Equal(fixture.OuterHash, byOuterHash[0].TransactionHash)
+
+	w = ht.Get("/transactions/" + fixture.InnerHash + "/operations")
+	ht.Assert.Equal(200, w.Code)
+	var byInnerHash []operations.Base
+	ht.UnmarshalPage(w.Body, &byInnerHash)
+	ht.Assert.Len(byInnerHash, 1)
+	ht.Assert.Equal(fixture.InnerHash, byInnerHash[0].TransactionHash)
+
+	byInnerHash[0].TransactionHash = byOuterHash[0].TransactionHash
+	ht.Assert.Equal(byOuterHash, byInnerHash)
+
+	w = ht.Get("/transactions/" + fixture.OuterHash + "/operations?join=transactions")
+	ht.Assert.Equal(200, w.Code)
+	ht.UnmarshalPage(w.Body, &byOuterHash)
+	ht.Assert.Len(byOuterHash, 1)
+	ht.Assert.Equal(fixture.OuterHash, byOuterHash[0].TransactionHash)
+	tx := byOuterHash[0].Transaction
+	ht.Assert.Equal(fixture.OuterHash, tx.Hash)
+	ht.Assert.Equal(fixture.OuterHash, tx.ID)
+	ht.Assert.Equal(
+		strings.Split(fixture.Transaction.SignatureString, ","),
+		tx.Signatures,
+	)
+
+	w = ht.Get("/transactions/" + fixture.InnerHash + "/operations?join=transactions")
+	ht.Assert.Equal(200, w.Code)
+	ht.UnmarshalPage(w.Body, &byInnerHash)
+	ht.Assert.Len(byInnerHash, 1)
+	ht.Assert.Equal(fixture.InnerHash, byInnerHash[0].TransactionHash)
+	tx = byInnerHash[0].Transaction
+	ht.Assert.Equal(fixture.InnerHash, tx.Hash)
+	ht.Assert.Equal(fixture.InnerHash, tx.ID)
+	ht.Assert.Equal(
+		strings.Split(fixture.Transaction.InnerSignatureString.String, ","),
+		tx.Signatures,
+	)
+
+	ht.Assert.Equal(byInnerHash[0].ID, byOuterHash[0].ID)
+	ht.Assert.Equal(byInnerHash[0].SourceAccount, byOuterHash[0].SourceAccount)
+	ht.Assert.Equal(byInnerHash[0].TransactionSuccessful, byOuterHash[0].TransactionSuccessful)
+	ht.Assert.Equal(byInnerHash[0].Type, byOuterHash[0].Type)
 }
