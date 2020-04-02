@@ -3,7 +3,18 @@
 All notable changes to this project will be documented in this
 file. This project adheres to [Semantic Versioning](http://semver.org/).
 
-## Unreleased
+## v1.1.0
+
+### Database migration notes
+
+This version includes a database migration which changes the column type of `fee_charged` in the `history_transactions` table from `integer` to `bigint`.
+This migration will run for a long time, especially if you have a horizon database with full history.
+It took 20 hours to complete this migration on a AWS db.r4.xlarge instance with full transaction history.
+
+To execute the migration run `horizon db migrate up` using the Horizon v1.1.0 binary.
+Note that Horizon should not be serving requests or ingesting while the migration is running.
+
+### Changes
 
 * Validate transaction hash IDs as 64 lowercase hex chars. As such, wrongly-formatted parameters which used to cause 404 (`Not found`) errors will now cause 400 (`Bad request`) HTTP errors.
 * Fix ask and bid price levels of GET /order_book when encountering non-canonical price values. The `limit` parameter is now respected and levels are coallesced properly. Also, `price_r` is now in canonical form.
@@ -69,6 +80,9 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
     </pre>
 * Full transaction details are included in the `POST /transactions` response. If you submit a transaction and it succeeds, the response will match the `GET /transactions/{hash}` response ([#2406](https://github.com/stellar/go/pull/2406)).
 * The following attributes are now included in the transaction resource: `fee_account` (the account which paid the transaction fees), `fee_bump_transaction` (only present in fee bump transactions),  `inner_transaction` (only present in fee bump transactions) ([#2406](https://github.com/stellar/go/pull/2406)).
+* It is no longer possible to use Redis as mechanism for rate limiting requests ([#2409](https://github.com/stellar/go/pull/2409))
+* Added missing top-level HAL links to the `GET /` response ([#2407](https://github.com/stellar/go/pull/2407))
+* Add Last-Ledger header to GET endpoints which are not immutable ([#2416](https://github.com/stellar/go/pull/2416))
 
 ## v1.0.1
 
