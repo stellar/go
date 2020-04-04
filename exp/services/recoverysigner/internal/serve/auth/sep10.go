@@ -26,6 +26,17 @@ func SEP10Middleware(k *ecdsa.PublicKey) func(http.Handler) http.Handler {
 	}
 }
 
+type sep10JWTClaims struct {
+	jwt.Claims
+}
+
+func (c sep10JWTClaims) Validate() error {
+	// TODO: Verify that iat and exp are present.
+	// TODO: Verify that sub is a G... strkey.
+	// TODO: Verify that iss is as expected.
+	return c.Claims.Validate(jwt.Expected{Time: time.Now()})
+}
+
 func sep10ClaimsFromRequest(r *http.Request, k *ecdsa.PublicKey) (address string, ok bool) {
 	authHeader := r.Header.Get("Authorization")
 	tokenEncoded := httpauthz.ParseBearerToken(authHeader)
@@ -36,16 +47,16 @@ func sep10ClaimsFromRequest(r *http.Request, k *ecdsa.PublicKey) (address string
 	if err != nil {
 		return "", false
 	}
-	cl := jwt.Claims{}
-	err = token.Claims(k, &cl)
+	tokenClaims := sep10JWTClaims{}
+	err = token.Claims(k, &tokenClaims)
 	if err != nil {
 		return "", false
 	}
-	err = cl.Validate(jwt.Expected{Time: time.Now()})
+	err = tokenClaims.Validate()
 	if err != nil {
 		return "", false
 	}
-	address = cl.Subject
+	address = tokenClaims.Subject
 	_, err = keypair.ParseAddress(address)
 	if err != nil {
 		return "", false
