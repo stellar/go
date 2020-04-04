@@ -11,11 +11,18 @@ import (
 // TransactionByHash is a query that loads a single row from the
 // `history_transactions` table based upon the provided hash.
 func (q *Q) TransactionByHash(dest interface{}, hash string) error {
-	sql := selectTransaction.
-		Limit(1).
-		Where("ht.transaction_hash = ? OR ht.inner_transaction_hash = ?", hash, hash)
+	byHash := selectTransaction.
+		Where("ht.transaction_hash = ?", hash)
+	byInnerHash := selectTransaction.
+		Where("ht.inner_transaction_hash = ?", hash)
 
-	return q.Get(dest, sql)
+	byInnerHashString, args, err := byInnerHash.ToSql()
+	if err != nil {
+		return errors.Wrap(err, "could not get string for inner hash sql query")
+	}
+	union := byHash.Suffix("UNION ALL "+byInnerHashString, args...)
+
+	return q.Get(dest, union)
 }
 
 // TransactionsByIDs fetches transactions from the `history_transactions` table

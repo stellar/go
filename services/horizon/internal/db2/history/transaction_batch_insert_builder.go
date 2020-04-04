@@ -157,7 +157,7 @@ func transactionToMap(transaction io.LedgerTransaction, sequence uint32) (map[st
 		"account":           sourceAccount.Address(),
 		"account_sequence":  strconv.FormatInt(transaction.Envelope.SeqNum(), 10),
 		"max_fee":           transaction.Envelope.Fee(),
-		"fee_charged":       int32(transaction.Result.Result.FeeCharged),
+		"fee_charged":       int64(transaction.Result.Result.FeeCharged),
 		"operation_count":   int32(len(transaction.Envelope.Operations())),
 		"tx_envelope":       envelopeBase64,
 		"tx_result":         resultBase64,
