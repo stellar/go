@@ -1,9 +1,12 @@
 package cmd
 
 import (
+	"encoding/json"
+
 	"github.com/spf13/cobra"
 	"github.com/stellar/go/exp/support/jwtkey"
 	supportlog "github.com/stellar/go/support/log"
+	"gopkg.in/square/go-jose.v2"
 )
 
 type GenJWTKeyCommand struct {
@@ -27,15 +30,25 @@ func (c *GenJWTKeyCommand) Run() {
 		c.Logger.Fatal(err)
 	}
 
-	if public, err := jwtkey.PublicKeyToString(&k.PublicKey); err == nil {
-		c.Logger.Print("Public:", public)
-	} else {
-		c.Logger.Print("Public:", err)
+	alg := jose.ES256
+
+	{
+		jwk := jose.JSONWebKey{Key: &k.PublicKey, Algorithm: string(alg)}
+		bytes, err := json.Marshal(jwk)
+		if err == nil {
+			c.Logger.Print("Public:", string(bytes))
+		} else {
+			c.Logger.Print("Public:", err)
+		}
 	}
 
-	if private, err := jwtkey.PrivateKeyToString(k); err == nil {
-		c.Logger.Print("Private:", private)
-	} else {
-		c.Logger.Print("Private:", err)
+	{
+		jwk := jose.JSONWebKey{Key: k, Algorithm: string(alg)}
+		bytes, err := json.Marshal(jwk)
+		if err == nil {
+			c.Logger.Print("Private:", string(bytes))
+		} else {
+			c.Logger.Print("Private:", err)
+		}
 	}
 }
