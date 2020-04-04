@@ -60,10 +60,10 @@ func (c *ServeCommand) Command() *cobra.Command {
 			Required:  true,
 		},
 		{
-			Name:      "sep10-jwt-public-key",
-			Usage:     "Base64 encoded ECDSA public key used to validate SEP-10 JWTs",
+			Name:      "sep10-jwks",
+			Usage:     "JSON Web Key Set (JWKS) containing one public key used to validate SEP-10 JWTs",
 			OptType:   types.String,
-			ConfigKey: &opts.SEP10JWTPublicKey,
+			ConfigKey: &opts.SEP10JWKS,
 			Required:  true,
 		},
 		{

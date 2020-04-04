@@ -12,17 +12,19 @@ import (
 	"github.com/dgrijalva/jwt-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/square/go-jose.v2"
 )
 
 func TestSEP10_addsAddressToClaimIfJWTValid(t *testing.T) {
 	k, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	require.NoError(t, err)
+	jwk := jose.JSONWebKey{Key: &k.PublicKey}
 
 	ctx := context.Context(nil)
 	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx = r.Context()
 	})
-	middleware := SEP10Middleware(&k.PublicKey)
+	middleware := SEP10Middleware(jwk)
 	handler := middleware(next)
 
 	r := httptest.NewRequest("GET", "/", nil)
@@ -47,12 +49,13 @@ func TestSEP10_addsAddressToClaimIfJWTValid(t *testing.T) {
 func TestSEP10_doesNotAddAddressToClaimIfJWTNotPresent(t *testing.T) {
 	k, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	require.NoError(t, err)
+	jwk := jose.JSONWebKey{Key: &k.PublicKey}
 
 	ctx := context.Context(nil)
 	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx = r.Context()
 	})
-	middleware := SEP10Middleware(&k.PublicKey)
+	middleware := SEP10Middleware(jwk)
 	handler := middleware(next)
 
 	r := httptest.NewRequest("GET", "/", nil)
@@ -69,12 +72,13 @@ func TestSEP10_doesNotAddAddressToClaimIfJWTNotPresent(t *testing.T) {
 func TestSEP10_doesNotAddAddressToClaimIfJWTNoSignature(t *testing.T) {
 	k, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	require.NoError(t, err)
+	jwk := jose.JSONWebKey{Key: &k.PublicKey}
 
 	ctx := context.Context(nil)
 	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx = r.Context()
 	})
-	middleware := SEP10Middleware(&k.PublicKey)
+	middleware := SEP10Middleware(jwk)
 	handler := middleware(next)
 
 	r := httptest.NewRequest("GET", "/", nil)
@@ -97,12 +101,13 @@ func TestSEP10_doesNotAddAddressToClaimIfJWTNoSignature(t *testing.T) {
 func TestSEP10_doesNotAddAddressToClaimIfJWTWrongAlg(t *testing.T) {
 	k, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	require.NoError(t, err)
+	jwk := jose.JSONWebKey{Key: &k.PublicKey}
 
 	ctx := context.Context(nil)
 	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx = r.Context()
 	})
-	middleware := SEP10Middleware(&k.PublicKey)
+	middleware := SEP10Middleware(jwk)
 	handler := middleware(next)
 
 	r := httptest.NewRequest("GET", "/", nil)
@@ -125,6 +130,7 @@ func TestSEP10_doesNotAddAddressToClaimIfJWTWrongAlg(t *testing.T) {
 func TestSEP10_doesNotAddAddressToClaimIfJWTInvalidSignature(t *testing.T) {
 	k, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	require.NoError(t, err)
+	jwk := jose.JSONWebKey{Key: &k.PublicKey}
 
 	k2, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	require.NoError(t, err)
@@ -133,7 +139,7 @@ func TestSEP10_doesNotAddAddressToClaimIfJWTInvalidSignature(t *testing.T) {
 	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx = r.Context()
 	})
-	middleware := SEP10Middleware(&k.PublicKey)
+	middleware := SEP10Middleware(jwk)
 	handler := middleware(next)
 
 	r := httptest.NewRequest("GET", "/", nil)
@@ -156,12 +162,13 @@ func TestSEP10_doesNotAddAddressToClaimIfJWTInvalidSignature(t *testing.T) {
 func TestSEP10_doesNotAddAddressToClaimIfJWTExpired(t *testing.T) {
 	k, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	require.NoError(t, err)
+	jwk := jose.JSONWebKey{Key: &k.PublicKey}
 
 	ctx := context.Context(nil)
 	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx = r.Context()
 	})
-	middleware := SEP10Middleware(&k.PublicKey)
+	middleware := SEP10Middleware(jwk)
 	handler := middleware(next)
 
 	r := httptest.NewRequest("GET", "/", nil)
