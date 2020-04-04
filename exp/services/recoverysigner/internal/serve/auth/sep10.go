@@ -3,11 +3,11 @@ package auth
 import (
 	"crypto/ecdsa"
 	"net/http"
+	"time"
 
-	"github.com/lestrrat-go/jwx/jwa"
-	"github.com/lestrrat-go/jwx/jwt"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/support/http/httpauthz"
+	"gopkg.in/square/go-jose.v2/jwt"
 )
 
 // SEP10Middleware provides middleware for handling an authentication SEP-10 JWT.
@@ -32,18 +32,20 @@ func sep10ClaimsFromRequest(r *http.Request, k *ecdsa.PublicKey) (address string
 	if tokenEncoded == "" {
 		return "", false
 	}
-	token, err := jwt.ParseString(
-		tokenEncoded,
-		jwt.WithVerify(jwa.ES256, k),
-	)
+	token, err := jwt.ParseSigned(tokenEncoded)
 	if err != nil {
 		return "", false
 	}
-	err = token.Verify()
+	cl := jwt.Claims{}
+	err = token.Claims(k, &cl)
 	if err != nil {
 		return "", false
 	}
-	address = token.Subject()
+	err = cl.Validate(jwt.Expected{Time: time.Now()})
+	if err != nil {
+		return "", false
+	}
+	address = cl.Subject
 	_, err = keypair.ParseAddress(address)
 	if err != nil {
 		return "", false

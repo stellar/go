@@ -43,7 +43,6 @@ require (
 	github.com/kr/pretty v0.0.0-20150520163514-e6ac2fc51e89 // indirect
 	github.com/kr/text v0.0.0-20150520163712-e373e137fafd // indirect
 	github.com/lann/builder v0.0.0-20140829050551-c603884a2c1f // indirect
-	github.com/lestrrat-go/jwx v0.9.1
 	github.com/lib/pq v1.2.0
 	github.com/magiconair/properties v1.5.4 // indirect
 	github.com/manucorporat/sse v0.0.0-20160126180136-ee05b128a739
@@ -94,5 +93,6 @@ require (
 	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
 	gopkg.in/gavv/httpexpect.v1 v1.0.0-20170111145843-40724cf1e4a0
 	gopkg.in/gorp.v1 v1.7.1 // indirect
+	gopkg.in/square/go-jose.v2 v2.4.1
 	gopkg.in/tylerb/graceful.v1 v1.2.13
 )
