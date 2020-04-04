@@ -4,9 +4,9 @@ import (
 	"crypto/ecdsa"
 	"net/http"
 
-	"github.com/dgrijalva/jwt-go"
+	"github.com/lestrrat-go/jwx/jwa"
+	"github.com/lestrrat-go/jwx/jwt"
 	"github.com/stellar/go/keypair"
-	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/http/httpauthz"
 )
 
@@ -26,37 +26,24 @@ func SEP10Middleware(k *ecdsa.PublicKey) func(http.Handler) http.Handler {
 	}
 }
 
-type sep10JWTClaims struct {
-	jwt.StandardClaims
-}
-
-func (c sep10JWTClaims) Valid() error {
-	// TODO: Verify that iat and exp are present.
-	// TODO: Verify that sub is a G... strkey.
-	// TODO: Verify that iss is as expected.
-	return c.StandardClaims.Valid()
-}
-
 func sep10ClaimsFromRequest(r *http.Request, k *ecdsa.PublicKey) (address string, ok bool) {
 	authHeader := r.Header.Get("Authorization")
 	tokenEncoded := httpauthz.ParseBearerToken(authHeader)
 	if tokenEncoded == "" {
 		return "", false
 	}
-	tokenClaims := sep10JWTClaims{}
-	token, err := jwt.ParseWithClaims(tokenEncoded, &tokenClaims, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodECDSA); !ok {
-			return nil, errors.Errorf("unexpected signing method: %v", token.Header["alg"])
-		}
-		return k, nil
-	})
+	token, err := jwt.ParseString(
+		tokenEncoded,
+		jwt.WithVerify(jwa.ES256, k),
+	)
 	if err != nil {
 		return "", false
 	}
-	if !token.Valid {
+	err = token.Verify()
+	if err != nil {
 		return "", false
 	}
-	address = tokenClaims.Subject
+	address = token.Subject()
 	_, err = keypair.ParseAddress(address)
 	if err != nil {
 		return "", false
