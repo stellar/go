@@ -122,7 +122,7 @@ func Decode(r *http.Request, v interface{}) error {
 
 	// A nil body means the request has no body, such as a GET request.
 	// Calling DecodeJSON when receiving GET requests will result in EOF.
-	if r.Body != nil {
+	if r.Body != nil && r.Body != http.NoBody {
 		return DecodeJSON(r, v)
 	}
 
