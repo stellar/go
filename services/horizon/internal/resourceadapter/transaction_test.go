@@ -77,6 +77,7 @@ func TestFeeBumpTransaction(t *testing.T) {
 	assert.Equal(t, []string{"d", "e", "f"}, dest.InnerTransaction.Signatures)
 	assert.Equal(t, row.TransactionHash, dest.FeeBumpTransaction.Hash)
 	assert.Equal(t, []string{"a", "b", "c"}, dest.FeeBumpTransaction.Signatures)
+	assert.Equal(t, "/transactions/"+row.TransactionHash, dest.Links.Transaction.Href)
 
 	PopulateTransaction(ctx, row.InnerTransactionHash.String, &dest, row)
 	assert.Equal(t, row.InnerTransactionHash.String, dest.Hash)
@@ -91,4 +92,5 @@ func TestFeeBumpTransaction(t *testing.T) {
 	assert.Equal(t, []string{"d", "e", "f"}, dest.InnerTransaction.Signatures)
 	assert.Equal(t, row.TransactionHash, dest.FeeBumpTransaction.Hash)
 	assert.Equal(t, []string{"a", "b", "c"}, dest.FeeBumpTransaction.Signatures)
+	assert.Equal(t, "/transactions/"+row.InnerTransactionHash.String, dest.Links.Transaction.Href)
 }
