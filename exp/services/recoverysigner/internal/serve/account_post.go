@@ -3,7 +3,6 @@ package serve
 import (
 	"net/http"
 
-	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/exp/services/recoverysigner/internal/account"
 	"github.com/stellar/go/exp/services/recoverysigner/internal/serve/auth"
 	"github.com/stellar/go/keypair"
@@ -17,7 +16,6 @@ type accountPostHandler struct {
 	Logger         *supportlog.Entry
 	SigningAddress *keypair.FromAddress
 	AccountStore   account.Store
-	HorizonClient  horizonclient.ClientInterface
 }
 
 type accountPostRequest struct {
