@@ -59,7 +59,7 @@ func PopulateTransaction(
 		}
 	} else {
 		dest.FeeAccount = row.Account
-		dest.MaxFee = int64(row.MaxFee)
+		dest.MaxFee = row.MaxFee
 	}
 
 	lb := hal.LinkBuilder{Base: httpx.BaseURL(ctx)}
@@ -68,6 +68,7 @@ func PopulateTransaction(
 	dest.Links.Operations = lb.PagedLink("/transactions", dest.ID, "operations")
 	dest.Links.Effects = lb.PagedLink("/transactions", dest.ID, "effects")
 	dest.Links.Self = lb.Link("/transactions", dest.ID)
+	dest.Links.Transaction = dest.Links.Self
 	dest.Links.Succeeds = lb.Linkf("/transactions?order=desc&cursor=%s", dest.PT)
 	dest.Links.Precedes = lb.Linkf("/transactions?order=asc&cursor=%s", dest.PT)
 }

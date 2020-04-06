@@ -431,6 +431,10 @@ type Transaction struct {
 		Effects    hal.Link `json:"effects"`
 		Precedes   hal.Link `json:"precedes"`
 		Succeeds   hal.Link `json:"succeeds"`
+		// Temporarily include Transaction as a link so that Transaction
+		// can be fully compatible with TransactionSuccess
+		// When TransactionSuccess is removed from the SDKs we can remove this HAL link
+		Transaction hal.Link `json:"transaction"`
 	} `json:"_links"`
 	ID              string    `json:"id"`
 	PT              string    `json:"paging_token"`
@@ -471,7 +475,7 @@ type FeeBumpTransaction struct {
 type InnerTransaction struct {
 	Hash       string   `json:"hash"`
 	Signatures []string `json:"signatures"`
-	MaxFee     int32    `json:"max_fee"`
+	MaxFee     int64    `json:"max_fee,string"`
 }
 
 // MarshalJSON implements a custom marshaler for Transaction.
