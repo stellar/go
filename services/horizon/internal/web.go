@@ -146,11 +146,6 @@ func (w *web) mustInstallActions(
 	stateMiddleware := StateMiddleware{
 		HorizonSession: session,
 	}
-	stateMiddlewareNoVerification := StateMiddleware{
-		HorizonSession:      session,
-		NoStateVerification: true,
-	}
-	stateNoVerfication := stateMiddlewareNoVerification.WrapFunc
 
 	r := w.router
 	r.Get("/", RootAction{}.Handle)
@@ -220,7 +215,6 @@ func (w *web) mustInstallActions(
 	// need to use absolute routes here. Make sure we use regexp check here for
 	// emptiness. Without it, requesting `/accounts//payments` return all payments!
 	r.Group(func(r chi.Router) {
-		r.Use(stateMiddlewareNoVerification.Wrap)
 		r.Get("/accounts/{account_id:\\w+}/transactions", w.streamIndexActionHandler(w.getTransactionPage, w.streamTransactions))
 		r.Get("/accounts/{account_id:\\w+}/operations", OperationIndexAction{}.Handle)
 		r.Get("/accounts/{account_id:\\w+}/payments", OperationIndexAction{OnlyPayments: true}.Handle)
@@ -229,7 +223,7 @@ func (w *web) mustInstallActions(
 	})
 	// ledger actions
 	r.Route("/ledgers", func(r chi.Router) {
-		r.Get("/", stateNoVerfication(LedgerIndexAction{}.Handle))
+		r.Get("/", LedgerIndexAction{}.Handle)
 		r.Route("/{ledger_id}", func(r chi.Router) {
 			r.Get("/", LedgerShowAction{}.Handle)
 			r.Get("/transactions", w.streamIndexActionHandler(w.getTransactionPage, w.streamTransactions))
@@ -241,7 +235,7 @@ func (w *web) mustInstallActions(
 
 	// transaction history actions
 	r.Route("/transactions", func(r chi.Router) {
-		r.Get("/", stateNoVerfication(w.streamIndexActionHandler(w.getTransactionPage, w.streamTransactions)))
+		r.Get("/", w.streamIndexActionHandler(w.getTransactionPage, w.streamTransactions))
 		r.Route("/{tx_id}", func(r chi.Router) {
 			r.Get("/", showActionHandler(w.getTransactionResource))
 			r.Get("/operations", OperationIndexAction{}.Handle)
@@ -252,14 +246,12 @@ func (w *web) mustInstallActions(
 
 	// operation actions
 	r.Route("/operations", func(r chi.Router) {
-		r.Get("/", stateNoVerfication(OperationIndexAction{}.Handle))
+		r.Get("/", OperationIndexAction{}.Handle)
 		r.Get("/{id}", OperationShowAction{}.Handle)
 		r.Get("/{op_id}/effects", EffectIndexAction{}.Handle)
 	})
 
 	r.Group(func(r chi.Router) {
-		r.Use(stateMiddlewareNoVerification.Wrap)
-
 		// payment actions
 		r.Get("/payments", OperationIndexAction{OnlyPayments: true}.Handle)
 
