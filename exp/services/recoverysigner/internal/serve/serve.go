@@ -122,7 +122,7 @@ func handler(deps handlerDeps) http.Handler {
 				AccountStore:   deps.AccountStore,
 			}.ServeHTTP)
 			// TODO: mux.Put("/", accountPutHandler{}.ServeHTTP)
-			// TODO: mux.Get("/", accountGetHandler{}.ServeHTTP)
+			mux.Get("/", accountGetHandler{}.ServeHTTP)
 			// TODO: mux.Delete("/", accountDeleteHandler{}.ServeHTTP)
 			mux.Post("/sign", accountSignHandler{
 				Logger:            deps.Logger,
