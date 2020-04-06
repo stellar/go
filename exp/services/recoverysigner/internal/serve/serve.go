@@ -4,11 +4,9 @@ import (
 	"crypto/ecdsa"
 	"fmt"
 	"net/http"
-	"time"
 
 	firebaseauth "firebase.google.com/go/auth"
 	"github.com/go-chi/chi"
-	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/exp/services/recoverysigner/internal/account"
 	"github.com/stellar/go/exp/services/recoverysigner/internal/db"
 	"github.com/stellar/go/exp/services/recoverysigner/internal/serve/auth"
@@ -23,7 +21,6 @@ import (
 type Options struct {
 	Logger            *supportlog.Entry
 	DatabaseURL       string
-	HorizonURL        string
 	Port              int
 	NetworkPassphrase string
 	SigningKey        string
@@ -53,7 +50,6 @@ func Serve(opts Options) {
 
 type handlerDeps struct {
 	Logger             *supportlog.Entry
-	HorizonClient      horizonclient.ClientInterface
 	NetworkPassphrase  string
 	SigningKey         *keypair.Full
 	AccountStore       account.Store
@@ -77,16 +73,6 @@ func getHandlerDeps(opts Options) (handlerDeps, error) {
 	}
 	opts.Logger.Info("SEP-10 JWT Public key: ", sep10JWTPublicKey)
 
-	horizonTimeout := 1 * time.Minute
-	httpClient := &http.Client{
-		Timeout: horizonTimeout,
-	}
-	horizonClient := &horizonclient.Client{
-		HorizonURL: opts.HorizonURL,
-		HTTP:       httpClient,
-	}
-	horizonClient.SetHorizonTimeOut(uint(horizonTimeout / time.Second))
-
 	db, dbErr := db.Open(opts.DatabaseURL)
 	if dbErr != nil {
 		return handlerDeps{}, errors.Wrap(err, "error parsing database url")
@@ -104,7 +90,6 @@ func getHandlerDeps(opts Options) (handlerDeps, error) {
 
 	deps := handlerDeps{
 		Logger:             opts.Logger,
-		HorizonClient:      horizonClient,
 		NetworkPassphrase:  opts.NetworkPassphrase,
 		SigningKey:         signingKey,
 		AccountStore:       accountStore,
@@ -135,7 +120,6 @@ func handler(deps handlerDeps) http.Handler {
 				Logger:         deps.Logger,
 				SigningAddress: deps.SigningKey.FromAddress(),
 				AccountStore:   deps.AccountStore,
-				HorizonClient:  deps.HorizonClient,
 			}.ServeHTTP)
 			// TODO: mux.Put("/", accountPutHandler{}.ServeHTTP)
 			// TODO: mux.Get("/", accountGetHandler{}.ServeHTTP)

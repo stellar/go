@@ -4,7 +4,6 @@ import (
 	"go/types"
 
 	"github.com/spf13/cobra"
-	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/exp/services/recoverysigner/internal/serve"
 	"github.com/stellar/go/network"
 	"github.com/stellar/go/support/config"
@@ -35,14 +34,6 @@ func (c *ServeCommand) Command() *cobra.Command {
 			ConfigKey:   &opts.DatabaseURL,
 			FlagDefault: "postgres://localhost:5432/?sslmode=disable",
 			Required:    false,
-		},
-		{
-			Name:        "horizon-url",
-			Usage:       "Horizon URL used for looking up account details",
-			OptType:     types.String,
-			ConfigKey:   &opts.HorizonURL,
-			FlagDefault: horizonclient.DefaultTestNetClient.HorizonURL,
-			Required:    true,
 		},
 		{
 			Name:        "network-passphrase",
