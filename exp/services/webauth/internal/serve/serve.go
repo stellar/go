@@ -53,7 +53,7 @@ func handler(opts Options) (http.Handler, error) {
 	}
 
 	jwk := jose.JSONWebKey{}
-	err = json.Unmarshal([]byte(opts.JWK), jwk)
+	err = json.Unmarshal([]byte(opts.JWK), &jwk)
 	if err != nil {
 		return nil, errors.Wrap(err, "parsing JSON Web Key (JWK)")
 	}
