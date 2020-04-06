@@ -1,7 +1,9 @@
 package serve
 
 import (
+	"fmt"
 	"net/http"
+	"os"
 
 	"github.com/stellar/go/exp/services/recoverysigner/internal/account"
 	"github.com/stellar/go/exp/services/recoverysigner/internal/serve/auth"
@@ -33,6 +35,7 @@ func (h accountGetHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	req := accountGetRequest{}
 	err := httpdecode.Decode(r, &req)
 	if err != nil || req.Address == nil {
+		fmt.Fprintf(os.Stderr, "bad request: %v\n", err)
 		badRequest.Render(w)
 		return
 	}
@@ -52,7 +55,7 @@ func (h accountGetHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Signer:  h.SigningAddress.Address(),
 	}
 
-	authenticated := false
+	authorized := false
 	for _, i := range acc.Identities {
 		respIdentity := accountResponseIdentity{
 			Role: i.Role,
@@ -62,15 +65,15 @@ func (h accountGetHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				(m.Type == account.AuthMethodTypePhoneNumber && m.Value == claims.PhoneNumber) ||
 				(m.Type == account.AuthMethodTypeEmail && m.Value == claims.Email) {
 				respIdentity.Authenticated = true
-				authenticated = true
+				authorized = true
 				break
 			}
 		}
 
 		resp.Identities = append(resp.Identities, respIdentity)
 	}
-	if !authenticated {
-		unauthorized.Render(w)
+	if !authorized {
+		notPermitted.Render(w)
 		return
 	}
 	httpjson.Render(w, resp, httpjson.JSON)
