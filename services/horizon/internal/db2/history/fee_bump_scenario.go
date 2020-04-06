@@ -281,7 +281,7 @@ func FeeBumpScenario(tt *test.T, q *Q, successful bool) FeeBumpFixture {
 		ApplicationOrder: 1,
 		Account:          account.Address(),
 		AccountSequence:  "97",
-		MaxFee:           int32(fixture.Envelope.Fee()),
+		MaxFee:           int64(fixture.Envelope.Fee()),
 		FeeCharged:       int64(resultPair.Result.FeeCharged),
 		OperationCount:   1,
 		TxEnvelope:       envelopeXDR,
