@@ -2,6 +2,7 @@
 
 ALTER TABLE history_transactions
     ALTER COLUMN fee_charged TYPE bigint,
+    ALTER COLUMN max_fee TYPE bigint,
     ADD inner_transaction_hash character varying(64),
     ADD fee_account character varying(64),
     ADD inner_signatures character varying(96)[],
@@ -17,6 +18,7 @@ DROP INDEX by_fee_account;
 
 ALTER TABLE history_transactions
     ALTER COLUMN fee_charged TYPE integer,
+    ALTER COLUMN max_fee TYPE integer,
     DROP COLUMN inner_transaction_hash,
     DROP COLUMN fee_account,
     DROP COLUMN inner_signatures,

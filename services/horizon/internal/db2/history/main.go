@@ -569,7 +569,7 @@ type Transaction struct {
 	ApplicationOrder     int32       `db:"application_order"`
 	Account              string      `db:"account"`
 	AccountSequence      string      `db:"account_sequence"`
-	MaxFee               int32       `db:"max_fee"`
+	MaxFee               int64       `db:"max_fee"`
 	FeeCharged           int64       `db:"fee_charged"`
 	OperationCount       int32       `db:"operation_count"`
 	TxEnvelope           string      `db:"tx_envelope"`

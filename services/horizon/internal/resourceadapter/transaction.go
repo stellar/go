@@ -59,7 +59,7 @@ func PopulateTransaction(
 		}
 	} else {
 		dest.FeeAccount = row.Account
-		dest.MaxFee = int64(row.MaxFee)
+		dest.MaxFee = row.MaxFee
 	}
 
 	lb := hal.LinkBuilder{Base: httpx.BaseURL(ctx)}

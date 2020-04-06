@@ -471,7 +471,7 @@ type FeeBumpTransaction struct {
 type InnerTransaction struct {
 	Hash       string   `json:"hash"`
 	Signatures []string `json:"signatures"`
-	MaxFee     int32    `json:"max_fee"`
+	MaxFee     int64    `json:"max_fee,string"`
 }
 
 // MarshalJSON implements a custom marshaler for Transaction.

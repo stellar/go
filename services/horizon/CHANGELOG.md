@@ -7,7 +7,7 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Database migration notes
 
-This version includes a database migration which changes the column type of `fee_charged` in the `history_transactions` table from `integer` to `bigint`.
+This version includes a database migration which changes the column type of `fee_charged` and `max_fee` in the `history_transactions` table from `integer` to `bigint`.
 This migration will run for a long time, especially if you have a horizon database with full history.
 It took 20 hours to complete this migration on a AWS db.r4.xlarge instance with full transaction history.
 
