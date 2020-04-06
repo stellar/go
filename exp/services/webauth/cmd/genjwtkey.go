@@ -16,7 +16,7 @@ type GenJWTKeyCommand struct {
 func (c *GenJWTKeyCommand) Command() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "genjwtkey",
-		Short: "Generate a JWT ECDSA key",
+		Short: "Generate a JSON Web Key (ECDSA/ES256) for JWT issuing",
 		Run: func(_ *cobra.Command, _ []string) {
 			c.Run()
 		},
