@@ -135,7 +135,6 @@ func handler(deps handlerDeps) http.Handler {
 				Logger:         deps.Logger,
 				SigningAddress: deps.SigningKey.FromAddress(),
 				AccountStore:   deps.AccountStore,
-				HorizonClient:  deps.HorizonClient,
 			}.ServeHTTP)
 			// TODO: mux.Put("/", accountPutHandler{}.ServeHTTP)
 			// TODO: mux.Get("/", accountGetHandler{}.ServeHTTP)
