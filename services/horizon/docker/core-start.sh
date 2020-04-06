@@ -10,7 +10,7 @@ cat stellar-core.cfg
 # initialize new db
 stellar-core new-db
 
-if [ $1 = "standalone" ]; then
+if [ "$1" = "standalone" ]; then
   # start a network from scratch
   stellar-core force-scp
 

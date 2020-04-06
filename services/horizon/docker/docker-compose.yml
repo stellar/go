@@ -18,7 +18,7 @@ services:
     image: stellar/stellar-core
     depends_on:
       - core-postgres
-    restart: always
+    restart: on-failure
     ports:
       - "11625:11625"
       - "11626:11626"
