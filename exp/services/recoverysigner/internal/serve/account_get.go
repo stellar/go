@@ -58,9 +58,9 @@ func (h accountGetHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			Role: i.Role,
 		}
 		for _, m := range i.AuthMethods {
-			if (m.Type == account.AuthMethodTypeAddress && m.Value == claims.Address) ||
+			if m.Value != "" && ((m.Type == account.AuthMethodTypeAddress && m.Value == claims.Address) ||
 				(m.Type == account.AuthMethodTypePhoneNumber && m.Value == claims.PhoneNumber) ||
-				(m.Type == account.AuthMethodTypeEmail && m.Value == claims.Email) {
+				(m.Type == account.AuthMethodTypeEmail && m.Value == claims.Email)) {
 				respIdentity.Authenticated = true
 				authorized = true
 				break
