@@ -73,7 +73,7 @@ func (h accountGetHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		resp.Identities = append(resp.Identities, respIdentity)
 	}
 	if !authorized {
-		notPermitted.Render(w)
+		notAuthorized.Render(w)
 		return
 	}
 	httpjson.Render(w, resp, httpjson.JSON)

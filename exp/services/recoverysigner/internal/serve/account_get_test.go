@@ -56,7 +56,7 @@ func TestAccountGet_authenticatedNotAuthorized(t *testing.T) {
 	require.NoError(t, err)
 
 	wantBody := `{
-	"error": "The request was not authorized to access the resource."
+	"error": "The request was not authorized to perform the action."
 }`
 
 	assert.JSONEq(t, wantBody, string(body))

@@ -30,10 +30,9 @@ var unauthorized = errorResponse{
 	Status: http.StatusUnauthorized,
 	Error:  "The request could not be authenticated.",
 }
-
-var notPermitted = errorResponse{
+var notAuthorized = errorResponse{
 	Status: http.StatusForbidden,
-	Error:  "The request was not authorized to access the resource.",
+	Error:  "The request was not authorized to perform the action.",
 }
 
 type errorResponse struct {
