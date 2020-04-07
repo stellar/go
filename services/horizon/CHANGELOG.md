@@ -5,22 +5,28 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## v1.1.0
 
-### Database migration notes
+### **IMPORTANT**: Database migration
 
-This version includes a database migration which changes the column type of `fee_charged` and `max_fee` in the `history_transactions` table from `integer` to `bigint`.
-This migration will run for a long time, especially if you have a horizon database with full history.
-It took 20 hours to complete this migration on a AWS db.r4.xlarge instance with full transaction history.
+This version includes a significant database migration which changes the column types of `fee_charged` and `max_fee` in the `history_transactions` table from `integer` to `bigint`. This essential change paves the way for fee bump transactions ([CAP 15](https://github.com/stellar/stellar-protocol/blob/master/core/cap-0015.md)), a major improvement that will be released soon in Stellar Protocol 13.
+
+This migration will run for a long time, especially if you have a Horizon database with full history. For reference, it took 20 hours to complete this migration on a AWS db.r4.xlarge instance with full transaction history.
 
 To execute the migration run `horizon db migrate up` using the Horizon v1.1.0 binary.
-Note that Horizon should not be serving requests or ingesting while the migration is running.
+
+**Important Note**: Horizon should not be serving requests or ingesting while the migration is running. For service continuity, if you run a production Horizon deployment it is recommended that you perform the migration on a second instance and then switch over.
 
 ### Changes
-
-* Validate transaction hash IDs as 64 lowercase hex chars. As such, wrongly-formatted parameters which used to cause 404 (`Not found`) errors will now cause 400 (`Bad request`) HTTP errors.
-* Fix ask and bid price levels of GET /order_book when encountering non-canonical price values. The `limit` parameter is now respected and levels are coallesced properly. Also, `price_r` is now in canonical form.
-* Remove duplicate indexes: index_history_transactions_on_id, index_history_ledgers_on_id, exp_asset_stats_by_code, and asset_by_code
-* Remove asset_stats table which is no longer necessary
-* Add support for CAP0018: Fine-Grained Control of Authorization ([#2423](https://github.com/stellar/go/pull/2423)).
+* DB: Remove unnecessary duplicate indexes: `index_history_transactions_on_id`, `index_history_ledgers_on_id`, `exp_asset_stats_by_code`, and `asset_by_code` ([#2419](https://github.com/stellar/go/pull/2419)).
+* DB: Remove asset_stats table which is no longer necessary ([#2419](https://github.com/stellar/go/pull/2419)).
+* Validate transaction hash IDs as 64 lowercase hex chars. As such, wrongly-formatted parameters which used to cause 404 (`Not found`) errors will now cause 400 (`Bad request`) HTTP errors ([#2394](https://github.com/stellar/go/pull/2394)).
+* Fix ask and bid price levels of `GET /order_book` when encountering non-canonical price values. The `limit` parameter is now respected and levels are coallesced properly. Also, `price_r` is now in canonical form ([#2400](https://github.com/stellar/go/pull/2400)).
+* Added missing top-level HAL links to the `GET /` response ([#2407](https://github.com/stellar/go/pull/2407)).
+* Full transaction details are now included in the `POST /transactions` response. If you submit a transaction and it succeeds, the response will match the `GET /transactions/{hash}` response ([#2406](https://github.com/stellar/go/pull/2406)).
+* The following attributes are now included in the transaction resource:
+    * `fee_account` (the account which paid the transaction fee)
+    * `fee_bump_transaction` (only present in Protocol 13 fee bump transactions)
+    * `inner_transaction` (only present in Protocol 13 fee bump transactions) ([#2406](https://github.com/stellar/go/pull/2406)).
+* Add support for [CAP0018](https://github.com/stellar/stellar-protocol/blob/master/core/cap-0018.md): Fine-Grained Control of Authorization (Protocol 13) ([#2423](https://github.com/stellar/go/pull/2423)).
   - Add `is_authorized_to_maintain_liabilities` to `Balance`.
     <pre>
     "balances": [
@@ -78,10 +84,7 @@ Note that Horizon should not be serving requests or ingesting while the migratio
       "asset_code": "USD"
     }    
     </pre>
-* Full transaction details are included in the `POST /transactions` response. If you submit a transaction and it succeeds, the response will match the `GET /transactions/{hash}` response ([#2406](https://github.com/stellar/go/pull/2406)).
-* The following attributes are now included in the transaction resource: `fee_account` (the account which paid the transaction fees), `fee_bump_transaction` (only present in fee bump transactions),  `inner_transaction` (only present in fee bump transactions) ([#2406](https://github.com/stellar/go/pull/2406)).
-* It is no longer possible to use Redis as mechanism for rate limiting requests ([#2409](https://github.com/stellar/go/pull/2409))
-* Added missing top-level HAL links to the `GET /` response ([#2407](https://github.com/stellar/go/pull/2407))
+* It is no longer possible to use Redis as a mechanism for rate-limiting requests ([#2409](https://github.com/stellar/go/pull/2409)).
 
 ## v1.0.1
 
