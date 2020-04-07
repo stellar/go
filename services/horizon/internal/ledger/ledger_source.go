@@ -1,7 +1,6 @@
 package ledger
 
 import (
-	"context"
 	"sync"
 	"time"
 )
@@ -86,27 +85,6 @@ func (source *TestingSource) CurrentLedger() uint32 {
 // will block until the new sequence is read
 func (source *TestingSource) AddLedger(nextSequence uint32) {
 	source.newLedgers <- nextSequence
-}
-
-// TryAddLedger sends a new sequence to the newLedgers channel. TryAddLedger()
-// will block until whichever of the following events occur first:
-// * the given ctx terminates
-// * timeout has elapsed
-// * the new sequence is read from the newLedgers channel
-// TryAddLedger() returns true if the new sequence was read from the newLedgers channel
-func (source *TestingSource) TryAddLedger(
-	ctx context.Context,
-	nextSequence uint32,
-	timeout time.Duration,
-) bool {
-	ctx, cancel := context.WithDeadline(ctx, time.Now().Add(timeout))
-	defer cancel()
-	select {
-	case source.newLedgers <- nextSequence:
-		return true
-	case <-ctx.Done():
-		return false
-	}
 }
 
 // NextLedger returns a channel which yields every time there is a new ledger.
