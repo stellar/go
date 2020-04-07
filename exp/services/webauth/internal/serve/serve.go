@@ -57,6 +57,9 @@ func handler(opts Options) (http.Handler, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "parsing JSON Web Key (JWK)")
 	}
+	if jwk.Algorithm == "" {
+		return nil, errors.New("algorithm (alg) field must be set")
+	}
 
 	horizonTimeout := 1 * time.Minute
 	httpClient := &http.Client{
