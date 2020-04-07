@@ -327,7 +327,7 @@ func TestDecode_invalidJSON(t *testing.T) {
 	assert.Equal(t, "", bodyDecoded.FooName)
 }
 
-func TestDecode_emptyBody(t *testing.T) {
+func TestDecode_clientReqNoBody(t *testing.T) {
 	pathDecoded := struct {
 		Foo string `path:"foo"`
 	}{}
@@ -338,6 +338,22 @@ func TestDecode_emptyBody(t *testing.T) {
 	})
 	w := httptest.NewRecorder()
 	r, _ := http.NewRequest("GET", "/path/bar/path", nil)
+	mux.ServeHTTP(w, r)
+
+	assert.Equal(t, "bar", pathDecoded.Foo)
+}
+
+func TestDecode_serverReqNoBody(t *testing.T) {
+	pathDecoded := struct {
+		Foo string `path:"foo"`
+	}{}
+	mux := chi.NewMux()
+	mux.Get("/path/{foo}/path", func(w http.ResponseWriter, r *http.Request) {
+		err := Decode(r, &pathDecoded)
+		require.NoError(t, err)
+	})
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest("GET", "/path/bar/path", nil)
 	mux.ServeHTTP(w, r)
 
 	assert.Equal(t, "bar", pathDecoded.Foo)
