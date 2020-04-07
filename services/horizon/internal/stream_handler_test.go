@@ -11,7 +11,6 @@ import (
 	"strings"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/go-chi/chi"
 	"github.com/stellar/go/services/horizon/internal/actions"
@@ -56,7 +55,7 @@ func newStreamTest(
 	return s
 }
 
-// NewstreamableObjectTest tests the SSE functionality of a pageAction
+// NewStreamablePageTest tests the SSE functionality of a pageAction
 func NewStreamablePageTest(
 	action *testPageAction,
 	currentLedger uint32,
@@ -76,17 +75,18 @@ func NewStreamablePageTest(
 	)
 }
 
-// NewstreamableObjectTest tests the SSE functionality of a streamableObjectAction
-func NewstreamableObjectTest(
+// NewStreamableObjectTest tests the SSE functionality of a streamableObjectAction
+func NewStreamableObjectTest(
 	action *testObjectAction,
 	currentLedger uint32,
 	request *http.Request,
+	limit int,
 	checkResponse func(w *httptest.ResponseRecorder),
 ) *StreamTest {
 	ledgerSource := ledger.NewTestingSource(currentLedger)
 	action.ledgerSource = ledgerSource
 	streamHandler := sse.StreamHandler{LedgerSource: ledgerSource}
-	handler := streamableObjectActionHandler{action, streamHandler}
+	handler := streamableObjectActionHandler{action: action, limit: limit, streamHandler: streamHandler}
 
 	return newStreamTest(
 		handler.renderStream,
@@ -99,27 +99,18 @@ func NewstreamableObjectTest(
 // AddLedger pushes a new ledger to the stream handler. AddLedger() will block until
 // the new ledger has been read by the stream handler
 func (s *StreamTest) AddLedger(sequence uint32) {
-	s.wg.Add(1)
-	defer s.wg.Done()
 	s.ledgerSource.AddLedger(sequence)
 }
 
-// TryAddLedger pushes a new ledger to the stream handler. TryAddLedger() will block for at
-// most 1 second until the new ledger has been read by the stream handler
-func (s *StreamTest) TryAddLedger(sequence uint32) {
-	s.wg.Add(1)
-	defer s.wg.Done()
-	s.ledgerSource.TryAddLedger(s.ctx, sequence, 2*time.Second)
+// Stop ends the stream request and checks the response
+func (s *StreamTest) Stop() {
+	s.cancel()
+	s.wg.Wait()
+	s.checkResponse(s.w)
 }
 
-// Wait blocks testing until the stream test has finished running.
-func (s *StreamTest) Wait(expectLimitReached bool) {
-	if !expectLimitReached {
-		// first send a ledger to the stream handler so we can ensure that at least one
-		// iteration of the stream loop has been executed
-		s.TryAddLedger(s.ledgerSource.CurrentLedger() + 1)
-		s.cancel()
-	}
+// Wait blocks testing until the stream test has finished running and checks the response
+func (s *StreamTest) Wait() {
 	s.wg.Wait()
 	s.checkResponse(s.w)
 }
@@ -258,8 +249,9 @@ func TestPageStream(t *testing.T) {
 
 		st.AddLedger(4)
 		st.AddLedger(6)
+		st.AddLedger(7)
 
-		st.Wait(false)
+		st.Stop()
 	})
 
 	t.Run("with offset", func(t *testing.T) {
@@ -281,8 +273,9 @@ func TestPageStream(t *testing.T) {
 
 		st.AddLedger(4)
 		st.AddLedger(6)
+		st.AddLedger(7)
 
-		st.Wait(false)
+		st.Stop()
 	})
 
 	t.Run("with limit", func(t *testing.T) {
@@ -299,7 +292,7 @@ func TestPageStream(t *testing.T) {
 			expectResponse(t, unmarashalPage, []string{"a", "b"}),
 		)
 
-		st.Wait(true)
+		st.Wait()
 	})
 
 	t.Run("with limit and offset", func(t *testing.T) {
@@ -316,7 +309,7 @@ func TestPageStream(t *testing.T) {
 			expectResponse(t, unmarashalPage, []string{"b", "c"}),
 		)
 
-		st.Wait(true)
+		st.Wait()
 	})
 
 	t.Run("reach limit after multiple iterations", func(t *testing.T) {
@@ -338,7 +331,7 @@ func TestPageStream(t *testing.T) {
 		st.AddLedger(4)
 		st.AddLedger(5)
 
-		st.Wait(true)
+		st.Wait()
 	})
 }
 
@@ -370,7 +363,7 @@ func (action *testObjectAction) GetResource(
 	ledger := action.ledgerSource.CurrentLedger()
 	object, ok := action.objects[ledger]
 	if !ok {
-		return nil, fmt.Errorf("unexpected ledger")
+		return nil, fmt.Errorf("unexpected ledger: %v", ledger)
 	}
 
 	return object, nil
@@ -388,16 +381,18 @@ func TestObjectStream(t *testing.T) {
 			},
 		}
 
-		st := NewstreamableObjectTest(
+		st := NewStreamableObjectTest(
 			action,
 			3,
 			request,
+			10,
 			expectResponse(t, unmarashalString, []string{"a", "b", "c"}),
 		)
 
 		st.AddLedger(4)
 		st.AddLedger(5)
-		st.Wait(false)
+		st.AddLedger(6)
+		st.Stop()
 	})
 
 	t.Run("with interior duplicates", func(t *testing.T) {
@@ -412,57 +407,54 @@ func TestObjectStream(t *testing.T) {
 			},
 		}
 
-		st := NewstreamableObjectTest(
+		st := NewStreamableObjectTest(
 			action,
 			3,
 			request,
+			10,
 			expectResponse(t, unmarashalString, []string{"a", "b", "c"}),
 		)
 
 		st.AddLedger(4)
 		st.AddLedger(5)
 		st.AddLedger(6)
+		st.AddLedger(7)
 
-		st.Wait(false)
+		st.Stop()
 	})
 
 	t.Run("limit reached", func(t *testing.T) {
 		request := streamRequest(t, "")
 		action := &testObjectAction{
 			objects: map[uint32]stringObject{
-				1:  "a",
-				2:  "b",
-				3:  "b",
-				4:  "c",
-				5:  "d",
-				6:  "e",
-				7:  "f",
-				8:  "g",
-				9:  "h",
-				10: "i",
-				11: "j",
-				12: "k",
+				1: "a",
+				2: "b",
+				3: "b",
+				4: "c",
+				5: "d",
 			},
 		}
 
-		st := NewstreamableObjectTest(
+		st := NewStreamableObjectTest(
 			action,
 			1,
 			request,
+			4,
 			expectResponse(
 				t,
 				unmarashalString,
 				[]string{
-					"a", "b", "c", "d", "e", "f", "g", "h", "i", "j",
+					"a", "b", "c", "d",
 				},
 			),
 		)
 
-		for i := uint32(1); i <= 11; i++ {
-			st.AddLedger(i)
-		}
+		st.AddLedger(2)
+		st.AddLedger(3)
+		st.AddLedger(4)
+		st.AddLedger(5)
 
-		st.Wait(true)
+		st.Wait()
 	})
 }
 
@@ -470,8 +462,8 @@ func TestRepeatableReadStream(t *testing.T) {
 	t.Run("page stream creates repeatable read tx", func(t *testing.T) {
 		action := &testPageAction{
 			objects: map[uint32][]string{
-				3: []string{"a", "b", "c"},
-				4: []string{"a", "b", "c", "d", "e"},
+				3: []string{"a"},
+				4: []string{"a", "b"},
 			},
 		}
 
@@ -488,7 +480,7 @@ func TestRepeatableReadStream(t *testing.T) {
 		}).Return(nil).Once()
 		session.On("Rollback").Return(nil).Once()
 
-		request := streamRequest(t, "")
+		request := streamRequest(t, "limit=2")
 		request = request.WithContext(context.WithValue(
 			request.Context(),
 			&horizonContext.SessionContextKey,
@@ -499,9 +491,11 @@ func TestRepeatableReadStream(t *testing.T) {
 			action,
 			3,
 			request,
-			expectResponse(t, unmarashalPage, []string{"a", "b", "c", "d", "e"}),
+			expectResponse(t, unmarashalPage, []string{"a", "b"}),
 		)
-		st.Wait(false)
+		st.AddLedger(4)
+		st.Wait()
+		session.AssertExpectations(t)
 	})
 
 	t.Run("object stream creates repeatable read tx", func(t *testing.T) {
@@ -532,12 +526,15 @@ func TestRepeatableReadStream(t *testing.T) {
 			session,
 		))
 
-		st := NewstreamableObjectTest(
+		st := NewStreamableObjectTest(
 			action,
 			3,
 			request,
+			2,
 			expectResponse(t, unmarashalString, []string{"a", "b"}),
 		)
-		st.Wait(false)
+		st.AddLedger(4)
+		st.Wait()
+		session.AssertExpectations(t)
 	})
 }
