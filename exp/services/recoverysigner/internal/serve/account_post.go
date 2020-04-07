@@ -75,7 +75,7 @@ func (h accountPostHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	claims, _ := auth.FromContext(ctx)
 	if claims.Address == "" {
-		unauthorized.Render(w)
+		notAuthenticated.Render(w)
 		return
 	}
 
@@ -87,7 +87,7 @@ func (h accountPostHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if req.Address.Address() != claims.Address {
-		unauthorized.Render(w)
+		notAuthorized.Render(w)
 		return
 	}
 

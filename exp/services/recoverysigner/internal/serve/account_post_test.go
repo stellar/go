@@ -573,7 +573,7 @@ func TestAccountPost_authMethodTypeUnrecognized(t *testing.T) {
 	assert.Equal(t, wantAcc, acc)
 }
 
-func TestAccountPost_notAuthenticatedForAccount(t *testing.T) {
+func TestAccountPost_notAuthorizedForAccount(t *testing.T) {
 	s := &account.DBStore{DB: dbtest.Open(t).Open()}
 	h := accountPostHandler{
 		Logger:         supportlog.DefaultLogger,
@@ -593,14 +593,14 @@ func TestAccountPost_notAuthenticatedForAccount(t *testing.T) {
 	m.ServeHTTP(w, r)
 	resp := w.Result()
 
-	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+	assert.Equal(t, http.StatusForbidden, resp.StatusCode)
 	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
 
 	body, err := ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 
 	wantBody := `{
-	"error": "The request could not be authenticated."
+	"error": "The request was not authorized to perform the action."
 }`
 	assert.JSONEq(t, wantBody, string(body))
 

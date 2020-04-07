@@ -36,7 +36,7 @@ func (h accountSignHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Check that the client is authenticated in some bare minimum way.
 	claims, _ := auth.FromContext(ctx)
 	if claims.Address == "" && claims.PhoneNumber == "" && claims.Email == "" {
-		unauthorized.Render(w)
+		notAuthenticated.Render(w)
 		return
 	}
 

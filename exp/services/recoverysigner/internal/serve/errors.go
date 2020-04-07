@@ -26,9 +26,13 @@ var conflict = errorResponse{
 	Status: http.StatusConflict,
 	Error:  "The request could not be completed because the resource already exists.",
 }
-var unauthorized = errorResponse{
+var notAuthenticated = errorResponse{
 	Status: http.StatusUnauthorized,
 	Error:  "The request could not be authenticated.",
+}
+var notAuthorized = errorResponse{
+	Status: http.StatusForbidden,
+	Error:  "The request was not authorized to perform the action.",
 }
 
 type errorResponse struct {

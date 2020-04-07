@@ -25,7 +25,7 @@ func (h accountListHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	claims, _ := auth.FromContext(ctx)
 	if claims.Address == "" && claims.PhoneNumber == "" && claims.Email == "" {
-		unauthorized.Render(w)
+		notAuthenticated.Render(w)
 		return
 	}
 
