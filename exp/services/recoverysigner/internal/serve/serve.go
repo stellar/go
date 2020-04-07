@@ -73,10 +73,10 @@ func getHandlerDeps(opts Options) (handlerDeps, error) {
 		return handlerDeps{}, errors.Wrap(err, "parsing SEP-10 JSON Web Key (JWK) Set")
 	}
 	if len(sep10JWKS.Keys) == 0 {
-		return handlerDeps{}, errors.Wrap(err, "no keys included in SEP-10 JSON Web Key (JWK) Set")
+		return handlerDeps{}, errors.New("no keys included in SEP-10 JSON Web Key (JWK) Set")
 	}
 	if len(sep10JWKS.Keys) > 1 {
-		return handlerDeps{}, errors.Wrap(err, "more than one key included in SEP-10 JSON Web Key (JWK) Set only one supported")
+		return handlerDeps{}, errors.New("more than one key included in SEP-10 JSON Web Key (JWK) Set only one supported")
 	}
 	sep10JWK := sep10JWKS.Keys[0]
 
