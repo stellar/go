@@ -49,14 +49,14 @@ func TestAccountGet_authenticatedNotAuthorized(t *testing.T) {
 	m.ServeHTTP(w, r)
 	resp := w.Result()
 
-	require.Equal(t, http.StatusForbidden, resp.StatusCode)
+	require.Equal(t, http.StatusNotFound, resp.StatusCode)
 	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
 
 	body, err := ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 
 	wantBody := `{
-	"error": "The request was not authorized to perform the action."
+	"error": "The resource at the url requested was not found."
 }`
 
 	assert.JSONEq(t, wantBody, string(body))
