@@ -52,7 +52,7 @@ func (h accountGetHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Signer:  h.SigningAddress.Address(),
 	}
 
-	authorized := false
+	authorizedIdentity := false
 	for _, i := range acc.Identities {
 		respIdentity := accountResponseIdentity{
 			Role: i.Role,
@@ -62,16 +62,17 @@ func (h accountGetHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				(m.Type == account.AuthMethodTypePhoneNumber && m.Value == claims.PhoneNumber) ||
 				(m.Type == account.AuthMethodTypeEmail && m.Value == claims.Email)) {
 				respIdentity.Authenticated = true
-				authorized = true
+				authorizedIdentity = true
 				break
 			}
 		}
 
 		resp.Identities = append(resp.Identities, respIdentity)
 	}
-	if !authorized {
+	if claims.Address != req.Address.Address() && !authorizedIdentity {
 		notFound.Render(w)
 		return
 	}
+
 	httpjson.Render(w, resp, httpjson.JSON)
 }
