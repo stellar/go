@@ -1,9 +1,7 @@
 package serve
 
 import (
-	"fmt"
 	"net/http"
-	"os"
 
 	"github.com/stellar/go/exp/services/recoverysigner/internal/account"
 	"github.com/stellar/go/exp/services/recoverysigner/internal/serve/auth"
@@ -35,7 +33,6 @@ func (h accountGetHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	req := accountGetRequest{}
 	err := httpdecode.Decode(r, &req)
 	if err != nil || req.Address == nil {
-		fmt.Fprintf(os.Stderr, "bad request: %v\n", err)
 		badRequest.Render(w)
 		return
 	}
