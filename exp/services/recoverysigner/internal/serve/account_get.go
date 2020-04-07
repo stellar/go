@@ -52,7 +52,10 @@ func (h accountGetHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Signer:  h.SigningAddress.Address(),
 	}
 
-	authorizedIdentity := false
+	// Authorized if authenticated as the account.
+	authorized := claims.Address == req.Address.Address()
+
+	// Authorized if authenticated as an identity registered with the account.
 	for _, i := range acc.Identities {
 		respIdentity := accountResponseIdentity{
 			Role: i.Role,
@@ -62,14 +65,14 @@ func (h accountGetHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				(m.Type == account.AuthMethodTypePhoneNumber && m.Value == claims.PhoneNumber) ||
 				(m.Type == account.AuthMethodTypeEmail && m.Value == claims.Email)) {
 				respIdentity.Authenticated = true
-				authorizedIdentity = true
+				authorized = true
 				break
 			}
 		}
 
 		resp.Identities = append(resp.Identities, respIdentity)
 	}
-	if claims.Address != req.Address.Address() && !authorizedIdentity {
+	if !authorized {
 		notFound.Render(w)
 		return
 	}
