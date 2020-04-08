@@ -62,7 +62,7 @@ func (c *ServeCommand) Command() *cobra.Command {
 		},
 		{
 			Name:      "jwk",
-			Usage:     "JSON Web Key (JWK) used for signing JWTs",
+			Usage:     "JSON Web Key (JWK) used for signing JWTs (if the key is an asymmetric key that has separate public and private key, the JWK must contain the private key)",
 			OptType:   types.String,
 			ConfigKey: &opts.JWK,
 			Required:  true,
