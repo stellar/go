@@ -19,8 +19,8 @@ type TradeProcessorTestSuiteLedger struct {
 	mockQ                  *history.MockQTrades
 	mockBatchInsertBuilder *history.MockTradeBatchInsertBuilder
 
-	sourceAccount              xdr.AccountId
-	opSourceAccount            xdr.AccountId
+	sourceAccount              xdr.MuxedAccount
+	opSourceAccount            xdr.MuxedAccount
 	strictReceiveTrade         xdr.ClaimOfferAtom
 	strictSendTrade            xdr.ClaimOfferAtom
 	buyOfferTrade              xdr.ClaimOfferAtom
@@ -46,8 +46,8 @@ func (s *TradeProcessorTestSuiteLedger) SetupTest() {
 	s.mockQ = &history.MockQTrades{}
 	s.mockBatchInsertBuilder = &history.MockTradeBatchInsertBuilder{}
 
-	s.sourceAccount = xdr.MustAddress("GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY")
-	s.opSourceAccount = xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML")
+	s.sourceAccount = xdr.MustMuxedAccountAddress("GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY")
+	s.opSourceAccount = xdr.MustMuxedAccountAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML")
 	s.strictReceiveTrade = xdr.ClaimOfferAtom{
 		SellerId:     xdr.MustAddress("GA2YS6YBWIBUMUJCNYROC5TXYTTUA4TCZF7A4MJ2O4TTGT3LFNWIOMY4"),
 		OfferId:      11,
@@ -150,7 +150,7 @@ func (s *TradeProcessorTestSuiteLedger) mockReadTradeTransactions(
 ) []history.InsertTrade {
 	closeTime := time.Unix(int64(ledger.Header.ScpValue.CloseTime), 0).UTC()
 	inserts := []history.InsertTrade{
-		history.InsertTrade{
+		{
 			HistoryOperationID: toid.New(int32(ledger.Header.LedgerSeq), 1, 2).ToInt64(),
 			Order:              1,
 			LedgerCloseTime:    closeTime,
@@ -163,7 +163,7 @@ func (s *TradeProcessorTestSuiteLedger) mockReadTradeTransactions(
 			BoughtAssetID:      s.assetToID[s.strictReceiveTrade.AssetBought.String()].ID,
 			SellPrice:          s.sellPrices[0],
 		},
-		history.InsertTrade{
+		{
 			HistoryOperationID: toid.New(int32(ledger.Header.LedgerSeq), 1, 3).ToInt64(),
 			Order:              0,
 			LedgerCloseTime:    closeTime,
@@ -176,7 +176,7 @@ func (s *TradeProcessorTestSuiteLedger) mockReadTradeTransactions(
 			BoughtAssetID:      s.assetToID[s.strictSendTrade.AssetBought.String()].ID,
 			SellPrice:          s.sellPrices[1],
 		},
-		history.InsertTrade{
+		{
 			HistoryOperationID: toid.New(int32(ledger.Header.LedgerSeq), 1, 4).ToInt64(),
 			Order:              1,
 			LedgerCloseTime:    closeTime,
@@ -189,7 +189,7 @@ func (s *TradeProcessorTestSuiteLedger) mockReadTradeTransactions(
 			BoughtAssetID:      s.assetToID[s.buyOfferTrade.AssetBought.String()].ID,
 			SellPrice:          s.sellPrices[2],
 		},
-		history.InsertTrade{
+		{
 			HistoryOperationID: toid.New(int32(ledger.Header.LedgerSeq), 1, 5).ToInt64(),
 			Order:              2,
 			LedgerCloseTime:    closeTime,
@@ -202,7 +202,7 @@ func (s *TradeProcessorTestSuiteLedger) mockReadTradeTransactions(
 			BoughtAssetID:      s.assetToID[s.sellOfferTrade.AssetBought.String()].ID,
 			SellPrice:          s.sellPrices[3],
 		},
-		history.InsertTrade{
+		{
 			HistoryOperationID: toid.New(int32(ledger.Header.LedgerSeq), 1, 6).ToInt64(),
 			Order:              0,
 			LedgerCloseTime:    closeTime,
@@ -215,7 +215,7 @@ func (s *TradeProcessorTestSuiteLedger) mockReadTradeTransactions(
 			BoughtAssetID:      s.assetToID[s.passiveSellOfferTrade.AssetBought.String()].ID,
 			SellPrice:          s.sellPrices[4],
 		},
-		history.InsertTrade{
+		{
 			HistoryOperationID: toid.New(int32(ledger.Header.LedgerSeq), 1, 7).ToInt64(),
 			Order:              0,
 			LedgerCloseTime:    closeTime,
@@ -231,7 +231,7 @@ func (s *TradeProcessorTestSuiteLedger) mockReadTradeTransactions(
 	}
 
 	emptyTrade := xdr.ClaimOfferAtom{
-		SellerId:     s.sourceAccount,
+		SellerId:     s.sourceAccount.ToAccountId(),
 		OfferId:      123,
 		AssetSold:    xdr.MustNewNativeAsset(),
 		AmountSold:   0,
@@ -240,7 +240,7 @@ func (s *TradeProcessorTestSuiteLedger) mockReadTradeTransactions(
 	}
 
 	operationResults := []xdr.OperationResult{
-		xdr.OperationResult{
+		{
 			Tr: &xdr.OperationResultTr{
 				Type: xdr.OperationTypeBumpSequence,
 				BumpSeqResult: &xdr.BumpSequenceResult{
@@ -248,7 +248,7 @@ func (s *TradeProcessorTestSuiteLedger) mockReadTradeTransactions(
 				},
 			},
 		},
-		xdr.OperationResult{
+		{
 			Tr: &xdr.OperationResultTr{
 				Type: xdr.OperationTypePathPaymentStrictReceive,
 				PathPaymentStrictReceiveResult: &xdr.PathPaymentStrictReceiveResult{
@@ -262,7 +262,7 @@ func (s *TradeProcessorTestSuiteLedger) mockReadTradeTransactions(
 				},
 			},
 		},
-		xdr.OperationResult{
+		{
 			Tr: &xdr.OperationResultTr{
 				Type: xdr.OperationTypePathPaymentStrictSend,
 				PathPaymentStrictSendResult: &xdr.PathPaymentStrictSendResult{
@@ -276,7 +276,7 @@ func (s *TradeProcessorTestSuiteLedger) mockReadTradeTransactions(
 				},
 			},
 		},
-		xdr.OperationResult{
+		{
 			Tr: &xdr.OperationResultTr{
 				Type: xdr.OperationTypeManageBuyOffer,
 				ManageBuyOfferResult: &xdr.ManageBuyOfferResult{
@@ -296,7 +296,7 @@ func (s *TradeProcessorTestSuiteLedger) mockReadTradeTransactions(
 				},
 			},
 		},
-		xdr.OperationResult{
+		{
 			Tr: &xdr.OperationResultTr{
 				Type: xdr.OperationTypeManageSellOffer,
 				ManageSellOfferResult: &xdr.ManageSellOfferResult{
@@ -314,7 +314,7 @@ func (s *TradeProcessorTestSuiteLedger) mockReadTradeTransactions(
 				},
 			},
 		},
-		xdr.OperationResult{
+		{
 			Tr: &xdr.OperationResultTr{
 				Type: xdr.OperationTypeManageSellOffer,
 				ManageSellOfferResult: &xdr.ManageSellOfferResult{
@@ -332,7 +332,7 @@ func (s *TradeProcessorTestSuiteLedger) mockReadTradeTransactions(
 				},
 			},
 		},
-		xdr.OperationResult{
+		{
 			Tr: &xdr.OperationResultTr{
 				Type: xdr.OperationTypeCreatePassiveSellOffer,
 				CreatePassiveSellOfferResult: &xdr.ManageSellOfferResult{
@@ -351,47 +351,47 @@ func (s *TradeProcessorTestSuiteLedger) mockReadTradeTransactions(
 	}
 
 	operations := []xdr.Operation{
-		xdr.Operation{
+		{
 			Body: xdr.OperationBody{
 				Type:           xdr.OperationTypeBumpSequence,
 				BumpSequenceOp: &xdr.BumpSequenceOp{BumpTo: 30000},
 			},
 		},
-		xdr.Operation{
+		{
 			Body: xdr.OperationBody{
 				Type:                       xdr.OperationTypePathPaymentStrictReceive,
 				PathPaymentStrictReceiveOp: &xdr.PathPaymentStrictReceiveOp{},
 			},
 			SourceAccount: &s.opSourceAccount,
 		},
-		xdr.Operation{
+		{
 			Body: xdr.OperationBody{
 				Type:                    xdr.OperationTypePathPaymentStrictSend,
 				PathPaymentStrictSendOp: &xdr.PathPaymentStrictSendOp{},
 			},
 			SourceAccount: &s.opSourceAccount,
 		},
-		xdr.Operation{
+		{
 			Body: xdr.OperationBody{
 				Type:             xdr.OperationTypeManageBuyOffer,
 				ManageBuyOfferOp: &xdr.ManageBuyOfferOp{},
 			},
 			SourceAccount: &s.opSourceAccount,
 		},
-		xdr.Operation{
+		{
 			Body: xdr.OperationBody{
 				Type:              xdr.OperationTypeManageSellOffer,
 				ManageSellOfferOp: &xdr.ManageSellOfferOp{},
 			},
 			SourceAccount: &s.opSourceAccount,
 		},
-		xdr.Operation{
+		{
 			Body: xdr.OperationBody{
 				Type:                     xdr.OperationTypeCreatePassiveSellOffer,
 				CreatePassiveSellOfferOp: &xdr.CreatePassiveSellOfferOp{},
 			},
 		},
-		xdr.Operation{
+		{
 			Body: xdr.OperationBody{
 				Type:                     xdr.OperationTypeCreatePassiveSellOffer,
 				CreatePassiveSellOfferOp: &xdr.CreatePassiveSellOfferOp{},
@@ -424,7 +424,7 @@ func (s *TradeProcessorTestSuiteLedger) mockReadTradeTransactions(
 			V: 2,
 			V2: &xdr.TransactionMetaV2{
 				Operations: []xdr.OperationMeta{
-					xdr.OperationMeta{
+					{
 						Changes: xdr.LedgerEntryChanges{},
 					},
 				},

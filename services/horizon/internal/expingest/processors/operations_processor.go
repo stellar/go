@@ -91,7 +91,7 @@ func (operation *transactionOperationWrapper) TransactionID() int64 {
 }
 
 // SourceAccount returns the operation's source account.
-func (operation *transactionOperationWrapper) SourceAccount() *xdr.AccountId {
+func (operation *transactionOperationWrapper) SourceAccount() *xdr.MuxedAccount {
 	sourceAccount := operation.operation.SourceAccount
 	if sourceAccount != nil {
 		return sourceAccount
@@ -254,7 +254,7 @@ func (operation *transactionOperationWrapper) Details() map[string]interface{} {
 		details["limit"] = amount.String(op.Limit)
 	case xdr.OperationTypeAllowTrust:
 		op := operation.operation.Body.MustAllowTrustOp()
-		assetDetails(details, op.Asset.ToAsset(*source), "")
+		assetDetails(details, op.Asset.ToAsset(source.ToAccountId()), "")
 		details["trustee"] = source.Address()
 		details["trustor"] = op.Trustor.Address()
 		details["authorize"] = xdr.TrustLineFlags(op.Authorize).IsAuthorized()
@@ -337,7 +337,7 @@ func operationFlagDetails(result map[string]interface{}, f int32, prefix string)
 // Participants returns the accounts taking part in the operation.
 func (operation *transactionOperationWrapper) Participants() ([]xdr.AccountId, error) {
 	participants := []xdr.AccountId{}
-	participants = append(participants, *operation.SourceAccount())
+	participants = append(participants, operation.SourceAccount().ToAccountId())
 
 	op := operation.operation
 
@@ -345,11 +345,11 @@ func (operation *transactionOperationWrapper) Participants() ([]xdr.AccountId, e
 	case xdr.OperationTypeCreateAccount:
 		participants = append(participants, op.Body.MustCreateAccountOp().Destination)
 	case xdr.OperationTypePayment:
-		participants = append(participants, op.Body.MustPaymentOp().Destination)
+		participants = append(participants, op.Body.MustPaymentOp().Destination.ToAccountId())
 	case xdr.OperationTypePathPaymentStrictReceive:
-		participants = append(participants, op.Body.MustPathPaymentStrictReceiveOp().Destination)
+		participants = append(participants, op.Body.MustPathPaymentStrictReceiveOp().Destination.ToAccountId())
 	case xdr.OperationTypePathPaymentStrictSend:
-		participants = append(participants, op.Body.MustPathPaymentStrictSendOp().Destination)
+		participants = append(participants, op.Body.MustPathPaymentStrictSendOp().Destination.ToAccountId())
 	case xdr.OperationTypeManageBuyOffer:
 		// the only direct participant is the source_account
 	case xdr.OperationTypeManageSellOffer:
@@ -363,7 +363,7 @@ func (operation *transactionOperationWrapper) Participants() ([]xdr.AccountId, e
 	case xdr.OperationTypeAllowTrust:
 		participants = append(participants, op.Body.MustAllowTrustOp().Trustor)
 	case xdr.OperationTypeAccountMerge:
-		participants = append(participants, op.Body.MustDestination())
+		participants = append(participants, op.Body.MustDestination().ToAccountId())
 	case xdr.OperationTypeInflation:
 		// the only direct participant is the source_account
 	case xdr.OperationTypeManageData:

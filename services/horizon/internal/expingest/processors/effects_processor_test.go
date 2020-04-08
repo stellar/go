@@ -266,7 +266,7 @@ func TestOperationEffects(t *testing.T) {
 			index:         0,
 			sequence:      57,
 			expected: []effect{
-				effect{
+				{
 					address:     "GCQZP3IU7XU6EJ63JZXKCQOYT2RNXN3HB5CNHENNUEUHSMA4VUJJJSEN",
 					operationID: int64(244813139969),
 					details: map[string]interface{}{
@@ -275,7 +275,7 @@ func TestOperationEffects(t *testing.T) {
 					effectType: history.EffectAccountCreated,
 					order:      uint32(1),
 				},
-				effect{
+				{
 					address:     "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
 					operationID: int64(244813139969),
 					details: map[string]interface{}{
@@ -285,7 +285,7 @@ func TestOperationEffects(t *testing.T) {
 					effectType: history.EffectAccountDebited,
 					order:      uint32(2),
 				},
-				effect{
+				{
 					address:     "GCQZP3IU7XU6EJ63JZXKCQOYT2RNXN3HB5CNHENNUEUHSMA4VUJJJSEN",
 					operationID: int64(244813139969),
 					details: map[string]interface{}{
@@ -307,7 +307,7 @@ func TestOperationEffects(t *testing.T) {
 			index:         0,
 			sequence:      56,
 			expected: []effect{
-				effect{
+				{
 					address: "GANFZDRBCNTUXIODCJEYMACPMCSZEVE4WZGZ3CZDZ3P2SXK4KH75IK6Y",
 					details: map[string]interface{}{
 						"amount":     "10.0000000",
@@ -317,7 +317,7 @@ func TestOperationEffects(t *testing.T) {
 					operationID: int64(240518172673),
 					order:       uint32(1),
 				},
-				effect{
+				{
 					address: "GANFZDRBCNTUXIODCJEYMACPMCSZEVE4WZGZ3CZDZ3P2SXK4KH75IK6Y",
 					details: map[string]interface{}{
 						"amount":     "10.0000000",
@@ -339,7 +339,7 @@ func TestOperationEffects(t *testing.T) {
 			index:         0,
 			sequence:      20,
 			expected: []effect{
-				effect{
+				{
 					address: "GDEOVUDLCYTO46D6GD6WH7BFESPBV5RACC6F6NUFCIRU7PL2XONQHVGJ",
 					details: map[string]interface{}{
 						"amount":       "1.0000000",
@@ -351,7 +351,7 @@ func TestOperationEffects(t *testing.T) {
 					operationID: int64(85899350017),
 					order:       uint32(1),
 				},
-				effect{
+				{
 					address: "GD3MMHD2YZWL5RAUWG6O3RMA5HTZYM7S3JLSZ2Z35JNJAWTDIKXY737V",
 					details: map[string]interface{}{
 						"amount":       "0.0300000",
@@ -363,7 +363,7 @@ func TestOperationEffects(t *testing.T) {
 					operationID: int64(85899350017),
 					order:       uint32(2),
 				},
-				effect{
+				{
 					address: "GD3MMHD2YZWL5RAUWG6O3RMA5HTZYM7S3JLSZ2Z35JNJAWTDIKXY737V",
 					details: map[string]interface{}{
 						"seller":              "GDEOVUDLCYTO46D6GD6WH7BFESPBV5RACC6F6NUFCIRU7PL2XONQHVGJ",
@@ -381,7 +381,7 @@ func TestOperationEffects(t *testing.T) {
 					operationID: int64(85899350017),
 					order:       uint32(3),
 				},
-				effect{
+				{
 					address: "GDEOVUDLCYTO46D6GD6WH7BFESPBV5RACC6F6NUFCIRU7PL2XONQHVGJ",
 					details: map[string]interface{}{
 						"seller":              "GD3MMHD2YZWL5RAUWG6O3RMA5HTZYM7S3JLSZ2Z35JNJAWTDIKXY737V",
@@ -422,7 +422,7 @@ func TestOperationEffects(t *testing.T) {
 			index:         0,
 			sequence:      56,
 			expected: []effect{
-				effect{
+				{
 					address: "GD5OGQTZZ2PYI2RSMOJA6BQ7CDCW2JXAXBKR6XZK6PPRFUZ3BUXNLFKP",
 					details: map[string]interface{}{
 						"seller":              "GAHEPWQ2B5ZOPI2NB647QCIXFPQR4H56FPYADQY54GNMFG4IYB5ZAJ5H",
@@ -438,7 +438,7 @@ func TestOperationEffects(t *testing.T) {
 					operationID: int64(240518172673),
 					order:       uint32(1),
 				},
-				effect{
+				{
 					address: "GAHEPWQ2B5ZOPI2NB647QCIXFPQR4H56FPYADQY54GNMFG4IYB5ZAJ5H",
 					details: map[string]interface{}{
 						"seller":            "GD5OGQTZZ2PYI2RSMOJA6BQ7CDCW2JXAXBKR6XZK6PPRFUZ3BUXNLFKP",
@@ -466,7 +466,7 @@ func TestOperationEffects(t *testing.T) {
 			index:         0,
 			sequence:      56,
 			expected: []effect{
-				effect{
+				{
 					address: "GBFC3KATHWQOZ3TWJEOLMBBFMPZ4OS2KYVZRKWVRMQKZ2LFNRLQEIRCV",
 					details: map[string]interface{}{
 						"seller":              "GCA3EPMNR26H3BO55PQPAMOGKBAIMARLQHWCRK7KTUPGR62SDVLIL7D6",
@@ -482,7 +482,7 @@ func TestOperationEffects(t *testing.T) {
 					operationID: int64(240518172673),
 					order:       uint32(1),
 				},
-				effect{
+				{
 					address: "GCA3EPMNR26H3BO55PQPAMOGKBAIMARLQHWCRK7KTUPGR62SDVLIL7D6",
 					details: map[string]interface{}{
 						"seller":            "GBFC3KATHWQOZ3TWJEOLMBBFMPZ4OS2KYVZRKWVRMQKZ2LFNRLQEIRCV",
@@ -510,7 +510,7 @@ func TestOperationEffects(t *testing.T) {
 			index:         0,
 			sequence:      56,
 			expected: []effect{
-				effect{
+				{
 					address: "GAA7AZYCJ65VJSMFAGQLBNCXA43QQ6ZEUR4GL4YSVB2FXUAHLLYUHIO5",
 					details: map[string]interface{}{
 						"bought_amount":       "100000.0000000",
@@ -526,7 +526,7 @@ func TestOperationEffects(t *testing.T) {
 					operationID: int64(240518172673),
 					order:       uint32(1),
 				},
-				effect{
+				{
 					address: "GAZAIOXF7GBHGPHOYJSTPIIC4K6AJM55S5Q44OCJHEHIF6YU2IHO6VHU",
 					details: map[string]interface{}{
 						"bought_amount":     "100.0000000",
@@ -554,7 +554,7 @@ func TestOperationEffects(t *testing.T) {
 			index:         0,
 			sequence:      56,
 			expected: []effect{
-				effect{
+				{
 					address: "GC4XF7RE3R4P77GY5XNGICM56IOKUURWAAANPXHFC7G5H6FCNQVVH3OH",
 					details: map[string]interface{}{
 						"home_domain": "https://www.home.org/",
@@ -563,7 +563,7 @@ func TestOperationEffects(t *testing.T) {
 					operationID: int64(240518172673),
 					order:       uint32(1),
 				},
-				effect{
+				{
 					address: "GC4XF7RE3R4P77GY5XNGICM56IOKUURWAAANPXHFC7G5H6FCNQVVH3OH",
 					details: map[string]interface{}{
 						"high_threshold": xdr.Uint32(3),
@@ -574,7 +574,7 @@ func TestOperationEffects(t *testing.T) {
 					operationID: int64(240518172673),
 					order:       uint32(2),
 				},
-				effect{
+				{
 					address: "GC4XF7RE3R4P77GY5XNGICM56IOKUURWAAANPXHFC7G5H6FCNQVVH3OH",
 					details: map[string]interface{}{
 						"auth_required_flag":  true,
@@ -584,7 +584,7 @@ func TestOperationEffects(t *testing.T) {
 					operationID: int64(240518172673),
 					order:       uint32(3),
 				},
-				effect{
+				{
 					address: "GC4XF7RE3R4P77GY5XNGICM56IOKUURWAAANPXHFC7G5H6FCNQVVH3OH",
 					details: map[string]interface{}{
 						"inflation_destination": "GAQHWQYBBW272OOXNQMMLCA5WY2XAZPODGB7Q3S5OKKIXVESKO55ZQ7C",
@@ -593,7 +593,7 @@ func TestOperationEffects(t *testing.T) {
 					operationID: int64(240518172673),
 					order:       uint32(4),
 				},
-				effect{
+				{
 					address: "GC4XF7RE3R4P77GY5XNGICM56IOKUURWAAANPXHFC7G5H6FCNQVVH3OH",
 					details: map[string]interface{}{
 						"public_key": "GC4XF7RE3R4P77GY5XNGICM56IOKUURWAAANPXHFC7G5H6FCNQVVH3OH",
@@ -603,7 +603,7 @@ func TestOperationEffects(t *testing.T) {
 					operationID: int64(240518172673),
 					order:       uint32(5),
 				},
-				effect{
+				{
 					address: "GC4XF7RE3R4P77GY5XNGICM56IOKUURWAAANPXHFC7G5H6FCNQVVH3OH",
 					details: map[string]interface{}{
 						"public_key": "GAQHWQYBBW272OOXNQMMLCA5WY2XAZPODGB7Q3S5OKKIXVESKO55ZQ7C",
@@ -625,7 +625,7 @@ func TestOperationEffects(t *testing.T) {
 			index:         0,
 			sequence:      40,
 			expected: []effect{
-				effect{
+				{
 					address:     "GCVW5LCRZFP7PENXTAGOVIQXADDNUXXZJCNKF4VQB2IK7W2LPJWF73UG",
 					effectType:  history.EffectTrustlineCreated,
 					operationID: int64(171798695937),
@@ -649,7 +649,7 @@ func TestOperationEffects(t *testing.T) {
 			index:         0,
 			sequence:      40,
 			expected: []effect{
-				effect{
+				{
 					address:     "GAOAGSP3JOOTKQA6SKKBTA6ZPUZGX2VSE3SZ4SFIGHKQIW4TEN5ZX3WW",
 					effectType:  history.EffectTrustlineRemoved,
 					operationID: int64(171798695937),
@@ -673,7 +673,7 @@ func TestOperationEffects(t *testing.T) {
 			index:         0,
 			sequence:      40,
 			expected: []effect{
-				effect{
+				{
 					address:     "GBY5WEQVMKTSM5UTQ3ZMQJTEJNIF3PUY7N62AQUG4YUPCL6RW7HVJARI",
 					effectType:  history.EffectTrustlineUpdated,
 					operationID: int64(171798695937),
@@ -697,7 +697,7 @@ func TestOperationEffects(t *testing.T) {
 			index:         0,
 			sequence:      41,
 			expected: []effect{
-				effect{
+				{
 					address:     "GD4SMOE3VPSF7ZR3CTEQ3P5UNTBMEJDA2GLXTHR7MMARANKKJDZ7RPGF",
 					effectType:  history.EffectTrustlineAuthorized,
 					operationID: int64(176093663233),
@@ -721,7 +721,7 @@ func TestOperationEffects(t *testing.T) {
 			index:         0,
 			sequence:      44,
 			expected: []effect{
-				effect{
+				{
 					address:     "GCHPXGVDKPF5KT4CNAT7X77OXYZ7YVE4JHKFDUHCGCVWCL4K4PQ67KKZ",
 					effectType:  history.EffectAccountDebited,
 					operationID: int64(188978565121),
@@ -731,7 +731,7 @@ func TestOperationEffects(t *testing.T) {
 						"asset_type": "native",
 					},
 				},
-				effect{
+				{
 					address:     "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
 					effectType:  history.EffectAccountCredited,
 					operationID: int64(188978565121),
@@ -741,7 +741,7 @@ func TestOperationEffects(t *testing.T) {
 						"asset_type": "native",
 					},
 				},
-				effect{
+				{
 					address:     "GCHPXGVDKPF5KT4CNAT7X77OXYZ7YVE4JHKFDUHCGCVWCL4K4PQ67KKZ",
 					effectType:  history.EffectAccountRemoved,
 					operationID: int64(188978565121),
@@ -760,7 +760,7 @@ func TestOperationEffects(t *testing.T) {
 			index:         0,
 			sequence:      47,
 			expected: []effect{
-				effect{
+				{
 					address:     "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
 					effectType:  history.EffectAccountCredited,
 					operationID: int64(201863467009),
@@ -770,7 +770,7 @@ func TestOperationEffects(t *testing.T) {
 						"asset_type": "native",
 					},
 				},
-				effect{
+				{
 					address:     "GDR53WAEIKOU3ZKN34CSHAWH7HV6K63CBJRUTWUDBFSMY7RRQK3SPKOS",
 					effectType:  history.EffectAccountCredited,
 					operationID: int64(201863467009),
@@ -792,7 +792,7 @@ func TestOperationEffects(t *testing.T) {
 			index:         0,
 			sequence:      49,
 			expected: []effect{
-				effect{
+				{
 					address:     "GAYSCMKQY6EYLXOPTT6JPPOXDMVNBWITPTSZIVWW4LWARVBOTH5RTLAD",
 					effectType:  history.EffectDataCreated,
 					operationID: int64(210453401601),
@@ -814,7 +814,7 @@ func TestOperationEffects(t *testing.T) {
 			index:         0,
 			sequence:      49,
 			expected: []effect{
-				effect{
+				{
 					address:     "GC4XF7RE3R4P77GY5XNGICM56IOKUURWAAANPXHFC7G5H6FCNQVVH3OH",
 					effectType:  history.EffectDataRemoved,
 					operationID: int64(210453401601),
@@ -835,7 +835,7 @@ func TestOperationEffects(t *testing.T) {
 			index:         0,
 			sequence:      49,
 			expected: []effect{
-				effect{
+				{
 					address:     "GA4O5DLUUTLCTMM2UOWOYPNIH2FTD4NLO6KDZOFQRUISQ3FYKABGJLPC",
 					effectType:  history.EffectDataUpdated,
 					operationID: int64(210453401601),
@@ -881,7 +881,7 @@ func TestOperationEffects(t *testing.T) {
 			index:         0,
 			sequence:      58,
 			expected: []effect{
-				effect{
+				{
 					address:     "GCQZP3IU7XU6EJ63JZXKCQOYT2RNXN3HB5CNHENNUEUHSMA4VUJJJSEN",
 					effectType:  history.EffectSequenceBumped,
 					operationID: int64(249108107265),
@@ -936,10 +936,10 @@ func TestOperationEffectsSetOptionsSignersOrder(t *testing.T) {
 	tt := assert.New(t)
 	transaction := io.LedgerTransaction{
 		Meta: createTransactionMeta([]xdr.OperationMeta{
-			xdr.OperationMeta{
+			{
 				Changes: []xdr.LedgerEntryChange{
 					// State
-					xdr.LedgerEntryChange{
+					{
 						Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
 						State: &xdr.LedgerEntry{
 							Data: xdr.LedgerEntryData{
@@ -947,11 +947,11 @@ func TestOperationEffectsSetOptionsSignersOrder(t *testing.T) {
 								Account: &xdr.AccountEntry{
 									AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
 									Signers: []xdr.Signer{
-										xdr.Signer{
+										{
 											Key:    xdr.MustSigner("GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV"),
 											Weight: 10,
 										},
-										xdr.Signer{
+										{
 											Key:    xdr.MustSigner("GCAHY6JSXQFKWKP6R7U5JPXDVNV4DJWOWRFLY3Y6YPBF64QRL4BPFDNS"),
 											Weight: 10,
 										},
@@ -961,7 +961,7 @@ func TestOperationEffectsSetOptionsSignersOrder(t *testing.T) {
 						},
 					},
 					// Updated
-					xdr.LedgerEntryChange{
+					{
 						Type: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
 						Updated: &xdr.LedgerEntry{
 							Data: xdr.LedgerEntryData{
@@ -969,19 +969,19 @@ func TestOperationEffectsSetOptionsSignersOrder(t *testing.T) {
 								Account: &xdr.AccountEntry{
 									AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
 									Signers: []xdr.Signer{
-										xdr.Signer{
+										{
 											Key:    xdr.MustSigner("GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV"),
 											Weight: 16,
 										},
-										xdr.Signer{
+										{
 											Key:    xdr.MustSigner("GCAHY6JSXQFKWKP6R7U5JPXDVNV4DJWOWRFLY3Y6YPBF64QRL4BPFDNS"),
 											Weight: 15,
 										},
-										xdr.Signer{
+										{
 											Key:    xdr.MustSigner("GCR3TQ2TVH3QRI7GQMC3IJGUUBR32YQHWBIKIMTYRQ2YH4XUTDB75UKE"),
 											Weight: 14,
 										},
-										xdr.Signer{
+										{
 											Key:    xdr.MustSigner("GA4O5DLUUTLCTMM2UOWOYPNIH2FTD4NLO6KDZOFQRUISQ3FYKABGJLPC"),
 											Weight: 17,
 										},
@@ -998,7 +998,7 @@ func TestOperationEffectsSetOptionsSignersOrder(t *testing.T) {
 	transaction.Envelope.Type = xdr.EnvelopeTypeEnvelopeTypeTx
 	transaction.Envelope.V1 = &xdr.TransactionV1Envelope{
 		Tx: xdr.Transaction{
-			SourceAccount: xdr.MustAddress("GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV"),
+			SourceAccount: xdr.MustMuxedAccountAddress("GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV"),
 		},
 	}
 
@@ -1017,7 +1017,7 @@ func TestOperationEffectsSetOptionsSignersOrder(t *testing.T) {
 	effects, err := operation.effects()
 	tt.NoError(err)
 	expected := []effect{
-		effect{
+		{
 			address:     "GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV",
 			operationID: int64(197568499713),
 			details: map[string]interface{}{
@@ -1027,7 +1027,7 @@ func TestOperationEffectsSetOptionsSignersOrder(t *testing.T) {
 			effectType: history.EffectSignerUpdated,
 			order:      uint32(1),
 		},
-		effect{
+		{
 			address:     "GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV",
 			operationID: int64(197568499713),
 			details: map[string]interface{}{
@@ -1037,7 +1037,7 @@ func TestOperationEffectsSetOptionsSignersOrder(t *testing.T) {
 			effectType: history.EffectSignerUpdated,
 			order:      uint32(2),
 		},
-		effect{
+		{
 			address:     "GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV",
 			operationID: int64(197568499713),
 			details: map[string]interface{}{
@@ -1047,7 +1047,7 @@ func TestOperationEffectsSetOptionsSignersOrder(t *testing.T) {
 			effectType: history.EffectSignerCreated,
 			order:      uint32(3),
 		},
-		effect{
+		{
 			address:     "GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV",
 			operationID: int64(197568499713),
 			details: map[string]interface{}{
@@ -1066,10 +1066,10 @@ func TestOperationEffectsSetOptionsSignersNoUpdated(t *testing.T) {
 	tt := assert.New(t)
 	transaction := io.LedgerTransaction{
 		Meta: createTransactionMeta([]xdr.OperationMeta{
-			xdr.OperationMeta{
+			{
 				Changes: []xdr.LedgerEntryChange{
 					// State
-					xdr.LedgerEntryChange{
+					{
 						Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
 						State: &xdr.LedgerEntry{
 							Data: xdr.LedgerEntryData{
@@ -1077,15 +1077,15 @@ func TestOperationEffectsSetOptionsSignersNoUpdated(t *testing.T) {
 								Account: &xdr.AccountEntry{
 									AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
 									Signers: []xdr.Signer{
-										xdr.Signer{
+										{
 											Key:    xdr.MustSigner("GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV"),
 											Weight: 10,
 										},
-										xdr.Signer{
+										{
 											Key:    xdr.MustSigner("GCAHY6JSXQFKWKP6R7U5JPXDVNV4DJWOWRFLY3Y6YPBF64QRL4BPFDNS"),
 											Weight: 10,
 										},
-										xdr.Signer{
+										{
 											Key:    xdr.MustSigner("GA4O5DLUUTLCTMM2UOWOYPNIH2FTD4NLO6KDZOFQRUISQ3FYKABGJLPC"),
 											Weight: 17,
 										},
@@ -1095,7 +1095,7 @@ func TestOperationEffectsSetOptionsSignersNoUpdated(t *testing.T) {
 						},
 					},
 					// Updated
-					xdr.LedgerEntryChange{
+					{
 						Type: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
 						Updated: &xdr.LedgerEntry{
 							Data: xdr.LedgerEntryData{
@@ -1103,15 +1103,15 @@ func TestOperationEffectsSetOptionsSignersNoUpdated(t *testing.T) {
 								Account: &xdr.AccountEntry{
 									AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
 									Signers: []xdr.Signer{
-										xdr.Signer{
+										{
 											Key:    xdr.MustSigner("GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV"),
 											Weight: 16,
 										},
-										xdr.Signer{
+										{
 											Key:    xdr.MustSigner("GCAHY6JSXQFKWKP6R7U5JPXDVNV4DJWOWRFLY3Y6YPBF64QRL4BPFDNS"),
 											Weight: 10,
 										},
-										xdr.Signer{
+										{
 											Key:    xdr.MustSigner("GCR3TQ2TVH3QRI7GQMC3IJGUUBR32YQHWBIKIMTYRQ2YH4XUTDB75UKE"),
 											Weight: 14,
 										},
@@ -1128,7 +1128,7 @@ func TestOperationEffectsSetOptionsSignersNoUpdated(t *testing.T) {
 	transaction.Envelope.Type = xdr.EnvelopeTypeEnvelopeTypeTx
 	transaction.Envelope.V1 = &xdr.TransactionV1Envelope{
 		Tx: xdr.Transaction{
-			SourceAccount: xdr.MustAddress("GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV"),
+			SourceAccount: xdr.MustMuxedAccountAddress("GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV"),
 		},
 	}
 
@@ -1147,7 +1147,7 @@ func TestOperationEffectsSetOptionsSignersNoUpdated(t *testing.T) {
 	effects, err := operation.effects()
 	tt.NoError(err)
 	expected := []effect{
-		effect{
+		{
 			address:     "GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV",
 			operationID: int64(197568499713),
 			details: map[string]interface{}{
@@ -1156,7 +1156,7 @@ func TestOperationEffectsSetOptionsSignersNoUpdated(t *testing.T) {
 			effectType: history.EffectSignerRemoved,
 			order:      uint32(1),
 		},
-		effect{
+		{
 			address:     "GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV",
 			operationID: int64(197568499713),
 			details: map[string]interface{}{
@@ -1166,7 +1166,7 @@ func TestOperationEffectsSetOptionsSignersNoUpdated(t *testing.T) {
 			effectType: history.EffectSignerUpdated,
 			order:      uint32(2),
 		},
-		effect{
+		{
 			address:     "GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV",
 			operationID: int64(197568499713),
 			details: map[string]interface{}{
@@ -1191,7 +1191,7 @@ func TestOperationRegressionAccountTrustItself(t *testing.T) {
 	transaction.Envelope.Type = xdr.EnvelopeTypeEnvelopeTypeTx
 	transaction.Envelope.V1 = &xdr.TransactionV1Envelope{
 		Tx: xdr.Transaction{
-			SourceAccount: xdr.MustAddress("GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV"),
+			SourceAccount: xdr.MustMuxedAccountAddress("GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV"),
 		},
 	}
 	operation := transactionOperationWrapper{
@@ -1219,7 +1219,7 @@ func TestOperationEffectsAllowTrustAuthorizedToMaintainLiabilities(t *testing.T)
 	asset := xdr.Asset{}
 	allowTrustAsset, err := asset.ToAllowTrustOpAsset("COP")
 	tt.NoError(err)
-	source := xdr.MustAddress("GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD")
+	source := xdr.MustMuxedAccountAddress("GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD")
 	op := xdr.Operation{
 		SourceAccount: &source,
 		Body: xdr.OperationBody{
@@ -1243,7 +1243,7 @@ func TestOperationEffectsAllowTrustAuthorizedToMaintainLiabilities(t *testing.T)
 	tt.NoError(err)
 
 	expected := []effect{
-		effect{
+		{
 			address:     "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
 			operationID: 4294967297,
 			details: map[string]interface{}{

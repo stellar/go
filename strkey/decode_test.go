@@ -25,6 +25,18 @@ func TestDecode(t *testing.T) {
 			},
 		},
 		{
+			Name:                "MuxedAccount",
+			Address:             "MCAAAAAAAAAAAAB7BQ2L7E5NBWMXDUCMZSIPOBKRDSBYVLMXGSSKF6YNPIB7Y77ITKNOG",
+			ExpectedVersionByte: VersionByteMuxedAccount,
+			ExpectedPayload: []byte{
+				0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+				0x3f, 0x0c, 0x34, 0xbf, 0x93, 0xad, 0x0d, 0x99,
+				0x71, 0xd0, 0x4c, 0xcc, 0x90, 0xf7, 0x05, 0x51,
+				0x1c, 0x83, 0x8a, 0xad, 0x97, 0x34, 0xa4, 0xa2,
+				0xfb, 0x0d, 0x7a, 0x03, 0xfc, 0x7f, 0xe8, 0x9a,
+			},
+		},
+		{
 			Name:                "Seed",
 			Address:             "SBU2RRGLXH3E5CQHTD3ODLDF2BWDCYUSSBLLZ5GNW7JXHDIYKXZWHOKR",
 			ExpectedVersionByte: VersionByteSeed,
@@ -85,4 +97,40 @@ func TestDecode(t *testing.T) {
 	// corrupted payload
 	_, err = Decode(VersionByteAccountID, "GA3D5KRYM6CB7OWOOOORR3Z4T7GNZLKERYNZGGA5SOAOPIFY6YQHES5")
 	assert.Error(t, err)
+
+	// non-canonical representation due to extra character
+	_, err = Decode(VersionByteMuxedAccount, "MCAAAAAAAAAAAAB7BQ2L7E5NBWMXDUCMZSIPOBKRDSBYVLMXGSSKF6YNPIB7Y77ITKNOGA")
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "unused leftover character")
+	}
+
+	// non-canonical representation due to leftover bits set to 1 (some of the test strkeys are too short for a muxed account
+	// but they comply with the test's purpose all the same)
+
+	// 1 unused bit (length 69)
+	_, err = Decode(VersionByteMuxedAccount, "MCAAAAAAAAAAAAB7BQ2L7E5NBWMXDUCMZSIPOBKRDSBYVLMXGSSKF6YNPIB7Y77ITKNOH")
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "unused bits should be set to 0")
+	}
+
+	// 4 unused bits (length 68)
+	_, err = Decode(VersionByteMuxedAccount, "MCAAAAAAAAAAAAB7BQ2L7E5NBWMXDUCMZSIPOBKRDSBYVLMXGSSKF6YNPIB7Y77ITKN7")
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "unused bits should be set to 0")
+	}
+	_, err = Decode(VersionByteMuxedAccount, "MCAAAAAAAAAAAAB7BQ2L7E5NBWMXDUCMZSIPOBKRDSBYVLMXGSSKF6YNPIB7Y77ITKN6")
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "unused bits should be set to 0")
+	}
+	_, err = Decode(VersionByteMuxedAccount, "MCAAAAAAAAAAAAB7BQ2L7E5NBWMXDUCMZSIPOBKRDSBYVLMXGSSKF6YNPIB7Y77ITKN4")
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "unused bits should be set to 0")
+	}
+	_, err = Decode(VersionByteMuxedAccount, "MCAAAAAAAAAAAAB7BQ2L7E5NBWMXDUCMZSIPOBKRDSBYVLMXGSSKF6YNPIB7Y77ITKNY")
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "unused bits should be set to 0")
+	}
+	_, err = Decode(VersionByteMuxedAccount, "MCAAAAAAAAAAAAB7BQ2L7E5NBWMXDUCMZSIPOBKRDSBYVLMXGSSKF6YNPIB7Y77ITKNQ")
+	// 'Q' is equivalent to 0b10000, so there should be no error
+	assert.NotContains(t, err.Error(), "unused bits should be set to 0")
 }

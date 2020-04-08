@@ -14,6 +14,6 @@ type OperationMutator interface {
 // MutateOperation for SourceAccount sets the operation's SourceAccount
 // to the pubilic key for the address provided
 func (m SourceAccount) MutateOperation(o *xdr.Operation) error {
-	o.SourceAccount = &xdr.AccountId{}
-	return setAccountId(m.AddressOrSeed, o.SourceAccount)
+	o.SourceAccount = &xdr.MuxedAccount{}
+	return setMuxedAccount(m.AddressOrSeed, o.SourceAccount)
 }

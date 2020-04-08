@@ -543,7 +543,7 @@ func (operation *transactionOperationWrapper) allowTrustEffects() []effect {
 		operation: operation,
 	}
 	op := operation.operation.Body.MustAllowTrustOp()
-	asset := op.Asset.ToAsset(*source)
+	asset := op.Asset.ToAsset(source.ToAccountId())
 	details := map[string]interface{}{
 		"trustor": op.Trustor.Address(),
 	}
@@ -699,7 +699,7 @@ func effectFlagDetails(flagDetails map[string]interface{}, flagPtr *xdr.Uint32, 
 	}
 }
 
-func ingestTradeEffects(effects *effectsWrapper, buyer xdr.AccountId, claims []xdr.ClaimOfferAtom) {
+func ingestTradeEffects(effects *effectsWrapper, buyer xdr.MuxedAccount, claims []xdr.ClaimOfferAtom) {
 	for _, claim := range claims {
 		if claim.AmountSold == 0 && claim.AmountBought == 0 {
 			continue
@@ -722,7 +722,7 @@ func ingestTradeEffects(effects *effectsWrapper, buyer xdr.AccountId, claims []x
 	}
 }
 
-func tradeDetails(buyer, seller xdr.AccountId, claim xdr.ClaimOfferAtom) (bd map[string]interface{}, sd map[string]interface{}) {
+func tradeDetails(buyer xdr.MuxedAccount, seller xdr.AccountId, claim xdr.ClaimOfferAtom) (bd map[string]interface{}, sd map[string]interface{}) {
 	bd = map[string]interface{}{
 		"offer_id":      claim.OfferId,
 		"seller":        seller.Address(),

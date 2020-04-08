@@ -19,6 +19,19 @@ func setAccountId(addressOrSeed string, aid *xdr.AccountId) error {
 	return aid.SetAddress(kp.Address())
 }
 
+func setMuxedAccount(addressOrSeed string, m *xdr.MuxedAccount) error {
+	kp, err := keypair.Parse(addressOrSeed)
+	if err != nil {
+		return err
+	}
+
+	if m == nil {
+		return errors.New("aid is nil in setAccountId")
+	}
+
+	return m.SetAddress(kp.Address())
+}
+
 func createAlphaNumAsset(code, issuerAccountId string) (xdr.Asset, error) {
 	var issuer xdr.AccountId
 	err := setAccountId(issuerAccountId, &issuer)
