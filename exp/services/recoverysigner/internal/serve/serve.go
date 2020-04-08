@@ -73,13 +73,13 @@ func getHandlerDeps(opts Options) (handlerDeps, error) {
 	}
 	opts.Logger.Info("SEP-10 JWT Public key: ", sep10JWTPublicKey)
 
-	db, dbErr := db.Open(opts.DatabaseURL)
-	if dbErr != nil {
+	db, err := db.Open(opts.DatabaseURL)
+	if err != nil {
 		return handlerDeps{}, errors.Wrap(err, "error parsing database url")
 	}
-	dbErr = db.Ping()
-	if dbErr != nil {
-		opts.Logger.Warn("Error pinging to Database: ", dbErr)
+	err = db.Ping()
+	if err != nil {
+		opts.Logger.Warn("Error pinging to Database: ", err)
 	}
 	accountStore := &account.DBStore{DB: db}
 
