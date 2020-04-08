@@ -24,6 +24,7 @@ import (
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/square/go-jose.v2"
 )
 
 func TestToken_formInputSuccess(t *testing.T) {
@@ -32,6 +33,7 @@ func TestToken_formInputSuccess(t *testing.T) {
 
 	jwtPrivateKey, err := jwtkey.GenerateKey()
 	require.NoError(t, err)
+	jwk := jose.JSONWebKey{Key: jwtPrivateKey, Algorithm: string(jose.ES256)}
 
 	account := keypair.MustRandom()
 	t.Logf("Client account: %s", account.Address())
@@ -82,7 +84,7 @@ func TestToken_formInputSuccess(t *testing.T) {
 		HorizonClient:     horizonClient,
 		NetworkPassphrase: network.TestNetworkPassphrase,
 		SigningAddress:    serverKey.FromAddress(),
-		JWTPrivateKey:     jwtPrivateKey,
+		JWK:               jwk,
 		JWTIssuer:         "https://example.com",
 		JWTExpiresIn:      time.Minute,
 	}
@@ -132,6 +134,7 @@ func TestToken_jsonInputSuccess(t *testing.T) {
 
 	jwtPrivateKey, err := jwtkey.GenerateKey()
 	require.NoError(t, err)
+	jwk := jose.JSONWebKey{Key: jwtPrivateKey, Algorithm: string(jose.ES256)}
 
 	account := keypair.MustRandom()
 	t.Logf("Client account: %s", account.Address())
@@ -182,7 +185,7 @@ func TestToken_jsonInputSuccess(t *testing.T) {
 		HorizonClient:     horizonClient,
 		NetworkPassphrase: network.TestNetworkPassphrase,
 		SigningAddress:    serverKey.FromAddress(),
-		JWTPrivateKey:     jwtPrivateKey,
+		JWK:               jwk,
 		JWTIssuer:         "https://example.com",
 		JWTExpiresIn:      time.Minute,
 	}
@@ -237,6 +240,7 @@ func TestToken_jsonInputValidMultipleSigners(t *testing.T) {
 
 	jwtPrivateKey, err := jwtkey.GenerateKey()
 	require.NoError(t, err)
+	jwk := jose.JSONWebKey{Key: jwtPrivateKey, Algorithm: string(jose.ES256)}
 
 	account := keypair.MustRandom()
 	t.Logf("Client account: %s", account.Address())
@@ -300,7 +304,7 @@ func TestToken_jsonInputValidMultipleSigners(t *testing.T) {
 		HorizonClient:     horizonClient,
 		NetworkPassphrase: network.TestNetworkPassphrase,
 		SigningAddress:    serverKey.FromAddress(),
-		JWTPrivateKey:     jwtPrivateKey,
+		JWK:               jwk,
 		JWTIssuer:         "https://example.com",
 		JWTExpiresIn:      time.Minute,
 	}
@@ -354,6 +358,7 @@ func TestToken_jsonInputNotEnoughWeight(t *testing.T) {
 
 	jwtPrivateKey, err := jwtkey.GenerateKey()
 	require.NoError(t, err)
+	jwk := jose.JSONWebKey{Key: jwtPrivateKey, Algorithm: string(jose.ES256)}
 
 	account := keypair.MustRandom()
 	t.Logf("Client account: %s", account.Address())
@@ -404,7 +409,7 @@ func TestToken_jsonInputNotEnoughWeight(t *testing.T) {
 		HorizonClient:     horizonClient,
 		NetworkPassphrase: network.TestNetworkPassphrase,
 		SigningAddress:    serverKey.FromAddress(),
-		JWTPrivateKey:     jwtPrivateKey,
+		JWK:               jwk,
 		JWTIssuer:         "https://example.com",
 		JWTExpiresIn:      time.Minute,
 	}
@@ -437,6 +442,7 @@ func TestToken_jsonInputUnrecognizedSigner(t *testing.T) {
 
 	jwtPrivateKey, err := jwtkey.GenerateKey()
 	require.NoError(t, err)
+	jwk := jose.JSONWebKey{Key: jwtPrivateKey, Algorithm: string(jose.ES256)}
 
 	account := keypair.MustRandom()
 	t.Logf("Client account: %s", account.Address())
@@ -487,7 +493,7 @@ func TestToken_jsonInputUnrecognizedSigner(t *testing.T) {
 		HorizonClient:     horizonClient,
 		NetworkPassphrase: network.TestNetworkPassphrase,
 		SigningAddress:    serverKey.FromAddress(),
-		JWTPrivateKey:     jwtPrivateKey,
+		JWK:               jwk,
 		JWTIssuer:         "https://example.com",
 		JWTExpiresIn:      time.Minute,
 	}
@@ -520,6 +526,7 @@ func TestToken_jsonInputAccountNotExistSuccess(t *testing.T) {
 
 	jwtPrivateKey, err := jwtkey.GenerateKey()
 	require.NoError(t, err)
+	jwk := jose.JSONWebKey{Key: jwtPrivateKey, Algorithm: string(jose.ES256)}
 
 	account := keypair.MustRandom()
 	t.Logf("Client account: %s", account.Address())
@@ -565,7 +572,7 @@ func TestToken_jsonInputAccountNotExistSuccess(t *testing.T) {
 		HorizonClient:               horizonClient,
 		NetworkPassphrase:           network.TestNetworkPassphrase,
 		SigningAddress:              serverKey.FromAddress(),
-		JWTPrivateKey:               jwtPrivateKey,
+		JWK:                         jwk,
 		JWTIssuer:                   "https://example.com",
 		JWTExpiresIn:                time.Minute,
 		AllowAccountsThatDoNotExist: true,
@@ -621,6 +628,7 @@ func TestToken_jsonInputAccountNotExistFail(t *testing.T) {
 
 	jwtPrivateKey, err := jwtkey.GenerateKey()
 	require.NoError(t, err)
+	jwk := jose.JSONWebKey{Key: jwtPrivateKey, Algorithm: string(jose.ES256)}
 
 	account := keypair.MustRandom()
 	t.Logf("Client account: %s", account.Address())
@@ -669,7 +677,7 @@ func TestToken_jsonInputAccountNotExistFail(t *testing.T) {
 		HorizonClient:               horizonClient,
 		NetworkPassphrase:           network.TestNetworkPassphrase,
 		SigningAddress:              serverKey.FromAddress(),
-		JWTPrivateKey:               jwtPrivateKey,
+		JWK:                         jwk,
 		JWTIssuer:                   "https://example.com",
 		JWTExpiresIn:                time.Minute,
 		AllowAccountsThatDoNotExist: true,
@@ -703,6 +711,7 @@ func TestToken_jsonInputAccountNotExistNotAllowed(t *testing.T) {
 
 	jwtPrivateKey, err := jwtkey.GenerateKey()
 	require.NoError(t, err)
+	jwk := jose.JSONWebKey{Key: jwtPrivateKey, Algorithm: string(jose.ES256)}
 
 	account := keypair.MustRandom()
 	t.Logf("Client account: %s", account.Address())
@@ -748,7 +757,7 @@ func TestToken_jsonInputAccountNotExistNotAllowed(t *testing.T) {
 		HorizonClient:               horizonClient,
 		NetworkPassphrase:           network.TestNetworkPassphrase,
 		SigningAddress:              serverKey.FromAddress(),
-		JWTPrivateKey:               jwtPrivateKey,
+		JWK:                         jwk,
 		JWTIssuer:                   "https://example.com",
 		JWTExpiresIn:                time.Minute,
 		AllowAccountsThatDoNotExist: false,
