@@ -1,18 +1,17 @@
 package serve
 
 import (
-	"crypto/ecdsa"
 	"net/http"
 	"time"
 
-	"github.com/dgrijalva/jwt-go"
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/support/http/httpdecode"
 	supportlog "github.com/stellar/go/support/log"
-
 	"github.com/stellar/go/support/render/httpjson"
 	"github.com/stellar/go/txnbuild"
+	"gopkg.in/square/go-jose.v2"
+	"gopkg.in/square/go-jose.v2/jwt"
 )
 
 type tokenHandler struct {
@@ -20,7 +19,7 @@ type tokenHandler struct {
 	HorizonClient               horizonclient.ClientInterface
 	NetworkPassphrase           string
 	SigningAddress              *keypair.FromAddress
-	JWTPrivateKey               *ecdsa.PrivateKey
+	JWK                         jose.JSONWebKey
 	JWTIssuer                   string
 	JWTExpiresIn                time.Duration
 	AllowAccountsThatDoNotExist bool
@@ -83,14 +82,23 @@ func (h tokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	jwsOptions := &jose.SignerOptions{}
+	jwsOptions.WithType("JWT")
+	jws, err := jose.NewSigner(jose.SigningKey{Algorithm: jose.SignatureAlgorithm(h.JWK.Algorithm), Key: h.JWK.Key}, jwsOptions)
+	if err != nil {
+		h.Logger.Ctx(ctx).WithStack(err).Error(err)
+		serverError.Render(w)
+		return
+	}
+
 	now := time.Now().UTC()
-	token := jwt.NewWithClaims(jwt.SigningMethodES256, jwt.MapClaims{
-		"iss": h.JWTIssuer,
-		"sub": clientAccountID,
-		"iat": now.Unix(),
-		"exp": now.Add(h.JWTExpiresIn).Unix(),
-	})
-	tokenStr, err := token.SignedString(h.JWTPrivateKey)
+	claims := jwt.Claims{
+		Issuer:   h.JWTIssuer,
+		Subject:  clientAccountID,
+		IssuedAt: jwt.NewNumericDate(now),
+		Expiry:   jwt.NewNumericDate(now.Add(h.JWTExpiresIn)),
+	}
+	tokenStr, err := jwt.Signed(jws).Claims(claims).CompactSerialize()
 	if err != nil {
 		h.Logger.Ctx(ctx).WithStack(err).Error(err)
 		serverError.Render(w)
