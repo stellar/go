@@ -2,14 +2,18 @@ package expingest
 
 import (
 	"database/sql"
+	"io"
 	"testing"
 
-	"github.com/stellar/go/exp/ingest/adapters"
-	"github.com/stellar/go/exp/ingest/io"
-	"github.com/stellar/go/support/errors"
-	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/stellar/go/exp/ingest/adapters"
+	ingestio "github.com/stellar/go/exp/ingest/io"
+	"github.com/stellar/go/services/horizon/internal/db2"
+	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/xdr"
 )
 
 func TestVerifyRangeStateTestSuite(t *testing.T) {
@@ -133,7 +137,7 @@ func (s *VerifyRangeStateTestSuite) TestRunHistoryArchiveIngestionReturnsError()
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
 
-	s.runner.On("RunHistoryArchiveIngestion", uint32(100)).Return(io.StatsChangeProcessorResults{}, errors.New("my error")).Once()
+	s.runner.On("RunHistoryArchiveIngestion", uint32(100)).Return(ingestio.StatsChangeProcessorResults{}, errors.New("my error")).Once()
 
 	next, err := verifyRangeState{fromLedger: 100, toLedger: 200}.run(s.system)
 	s.Assert().Error(err)
@@ -147,14 +151,15 @@ func (s *VerifyRangeStateTestSuite) TestRunHistoryArchiveIngestionReturnsError()
 func (s *VerifyRangeStateTestSuite) TestSuccess() {
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
-	s.runner.On("RunHistoryArchiveIngestion", uint32(100)).Return(io.StatsChangeProcessorResults{}, nil).Once()
+	s.runner.On("RunHistoryArchiveIngestion", uint32(100)).Return(ingestio.StatsChangeProcessorResults{}, nil).Once()
 	s.historyQ.On("UpdateLastLedgerExpIngest", uint32(100)).Return(nil).Once()
 	s.historyQ.On("Commit").Return(nil).Once()
 	s.graph.On("Apply", uint32(100)).Return(nil).Once()
 
 	for i := uint32(101); i <= 200; i++ {
 		s.historyQ.On("Begin").Return(nil).Once()
-		s.runner.On("RunAllProcessorsOnLedger", i).Return(io.StatsChangeProcessorResults{}, io.StatsLedgerTransactionProcessorResults{}, nil).Once()
+		s.runner.On("RunAllProcessorsOnLedger", i).Return(ingestio.StatsChangeProcessorResults{},
+			ingestio.StatsLedgerTransactionProcessorResults{}, nil).Once()
 		s.historyQ.On("UpdateLastLedgerExpIngest", i).Return(nil).Once()
 		s.historyQ.On("Commit").Return(nil).Once()
 		s.graph.On("Apply", i).Return(nil).Once()
@@ -171,44 +176,22 @@ func (s *VerifyRangeStateTestSuite) TestSuccess() {
 func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
-	s.runner.On("RunHistoryArchiveIngestion", uint32(100)).Return(io.StatsChangeProcessorResults{}, nil).Once()
+	s.runner.On("RunHistoryArchiveIngestion", uint32(100)).Return(ingestio.StatsChangeProcessorResults{}, nil).Once()
 	s.historyQ.On("UpdateLastLedgerExpIngest", uint32(100)).Return(nil).Once()
 	s.historyQ.On("Commit").Return(nil).Once()
 	s.graph.On("Apply", uint32(100)).Return(nil).Once()
 
 	for i := uint32(101); i <= 110; i++ {
 		s.historyQ.On("Begin").Return(nil).Once()
-		s.runner.On("RunAllProcessorsOnLedger", i).Return(io.StatsChangeProcessorResults{}, io.StatsLedgerTransactionProcessorResults{}, nil).Once()
+		s.runner.On("RunAllProcessorsOnLedger", i).Return(ingestio.StatsChangeProcessorResults{},
+			ingestio.StatsLedgerTransactionProcessorResults{}, nil).Once()
 		s.historyQ.On("UpdateLastLedgerExpIngest", i).Return(nil).Once()
 		s.historyQ.On("Commit").Return(nil).Once()
 		s.graph.On("Apply", i).Return(nil).Once()
 	}
 
 	s.graph.On("OffersMap").Return(map[xdr.Int64]xdr.OfferEntry{
-		eurOffer.OfferId: xdr.OfferEntry{
-			SellerId: eurOffer.SellerId,
-			OfferId:  eurOffer.OfferId,
-			Selling:  eurOffer.Selling,
-			Buying:   eurOffer.Buying,
-			Amount:   eurOffer.Amount,
-			Price: xdr.Price{
-				N: xdr.Int32(eurOffer.Price.N),
-				D: xdr.Int32(eurOffer.Price.D),
-			},
-			Flags: xdr.Uint32(eurOffer.Flags),
-		},
-		twoEurOffer.OfferId: xdr.OfferEntry{
-			SellerId: twoEurOffer.SellerId,
-			OfferId:  twoEurOffer.OfferId,
-			Selling:  twoEurOffer.Selling,
-			Buying:   twoEurOffer.Buying,
-			Amount:   twoEurOffer.Amount,
-			Price: xdr.Price{
-				N: xdr.Int32(twoEurOffer.Price.N),
-				D: xdr.Int32(twoEurOffer.Price.D),
-			},
-			Flags: xdr.Uint32(twoEurOffer.Flags),
-		},
+		eurOffer.OfferId: eurOffer,
 	}).Once()
 
 	clonedQ := &mockDBQ{}
@@ -218,14 +201,83 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 		arg := args.Get(0).(*sql.TxOptions)
 		s.Assert().Equal(sql.LevelRepeatableRead, arg.Isolation)
 		s.Assert().True(arg.ReadOnly)
-	}).Return(errors.New("my error")).Once()
+	}).Return(nil).Once()
 	clonedQ.On("Rollback").Return(nil).Once()
+	clonedQ.On("GetLastLedgerExpIngestNonBlocking").Return(uint32(63), nil).Once()
+	mockChangeReader := &ingestio.MockChangeReader{}
+	mockChangeReader.On("Close").Return(nil).Once()
+	mockAccountID := "GACMZD5VJXTRLKVET72CETCYKELPNCOTTBDC6DHFEUPLG5DHEK534JQX"
+	accountChange := ingestio.Change{
+		Type: xdr.LedgerEntryTypeAccount,
+		Pre:  nil,
+		Post: &xdr.LedgerEntry{
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeAccount,
+				Account: &xdr.AccountEntry{
+					AccountId:  xdr.MustAddress(mockAccountID),
+					Balance:    xdr.Int64(600),
+					Thresholds: [4]byte{1, 0, 0, 0},
+				},
+			},
+			LastModifiedLedgerSeq: xdr.Uint32(62),
+		},
+	}
+	offerChange := ingestio.Change{
+		Type: xdr.LedgerEntryTypeOffer,
+		Pre:  nil,
+		Post: &xdr.LedgerEntry{
+			Data: xdr.LedgerEntryData{
+				Type:  xdr.LedgerEntryTypeOffer,
+				Offer: &eurOffer,
+			},
+			LastModifiedLedgerSeq: xdr.Uint32(62),
+		},
+	}
+	mockChangeReader.On("Read").Return(accountChange, nil).Once()
+	mockChangeReader.On("Read").Return(offerChange, nil).Once()
+	mockChangeReader.On("Read").Return(ingestio.Change{}, io.EOF).Once()
+	mockChangeReader.On("Read").Return(ingestio.Change{}, io.EOF).Once()
+	s.historyAdapter.On("GetState", nil, uint32(63), 0).Return(mockChangeReader, nil).Once()
+	mockAccount := history.AccountEntry{
+		AccountID:          mockAccountID,
+		Balance:            600,
+		LastModifiedLedger: 62,
+		MasterWeight:       1,
+	}
+	clonedQ.MockQAccounts.On("GetAccountsByIDs", []string{mockAccountID}).Return([]history.AccountEntry{mockAccount}, nil).Once()
+	mockSigner := history.AccountSigner{
+		Account: mockAccountID,
+		Signer:  mockAccountID,
+		Weight:  1,
+	}
+	clonedQ.MockQSigners.On("SignersForAccounts", []string{mockAccountID}).Return([]history.AccountSigner{mockSigner}, nil).Once()
+	clonedQ.MockQSigners.On("CountAccounts").Return(1, nil).Once()
+	mockOffer := history.Offer{
+		SellerID:           eurOffer.SellerId.Address(),
+		OfferID:            eurOffer.OfferId,
+		SellingAsset:       eurOffer.Selling,
+		BuyingAsset:        eurOffer.Buying,
+		Amount:             eurOffer.Amount,
+		Pricen:             int32(eurOffer.Price.N),
+		Priced:             int32(eurOffer.Price.D),
+		Price:              float64(eurOffer.Price.N) / float64(eurOffer.Price.N),
+		Flags:              uint32(eurOffer.Flags),
+		LastModifiedLedger: 62,
+	}
+	clonedQ.MockQOffers.On("GetOffersByIDs", []int64{int64(eurOffer.OfferId)}).Return([]history.Offer{mockOffer}, nil).Once()
+	clonedQ.MockQOffers.On("CountOffers").Return(1, nil).Once()
+	// TODO: add accounts data, trustlines and asset stats
+	clonedQ.MockQData.On("CountAccountsData").Return(0, nil).Once()
+	clonedQ.MockQAssetStats.On("CountTrustLines").Return(0, nil).Once()
+	clonedQ.MockQAssetStats.On("GetAssetStats", "", "", db2.PageQuery{
+		Order: "asc",
+		Limit: assetStatsBatchSize,
+	}).Return([]history.ExpAssetStat{}, nil).Once()
 
 	next, err := verifyRangeState{
 		fromLedger: 100, toLedger: 110, verifyState: true,
 	}.run(s.system)
-	s.Assert().Error(err)
-	s.Assert().EqualError(err, "Error starting transaction: my error")
+	s.Assert().NoError(err)
 	s.Assert().Equal(
 		transition{node: stopState{}, sleepDuration: 0},
 		next,
