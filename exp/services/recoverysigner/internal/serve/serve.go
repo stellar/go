@@ -1,7 +1,7 @@
 package serve
 
 import (
-	"crypto/ecdsa"
+	"encoding/json"
 	"fmt"
 	"net/http"
 
@@ -10,12 +10,12 @@ import (
 	"github.com/stellar/go/exp/services/recoverysigner/internal/account"
 	"github.com/stellar/go/exp/services/recoverysigner/internal/db"
 	"github.com/stellar/go/exp/services/recoverysigner/internal/serve/auth"
-	"github.com/stellar/go/exp/support/jwtkey"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/support/errors"
 	supporthttp "github.com/stellar/go/support/http"
 	supportlog "github.com/stellar/go/support/log"
 	"github.com/stellar/go/support/render/health"
+	"gopkg.in/square/go-jose.v2"
 )
 
 type Options struct {
@@ -24,7 +24,7 @@ type Options struct {
 	Port              int
 	NetworkPassphrase string
 	SigningKey        string
-	SEP10JWTPublicKey string
+	SEP10JWKS         string
 	FirebaseProjectID string
 }
 
@@ -53,7 +53,7 @@ type handlerDeps struct {
 	NetworkPassphrase  string
 	SigningKey         *keypair.Full
 	AccountStore       account.Store
-	SEP10JWTPublicKey  *ecdsa.PublicKey
+	SEP10JWK           jose.JSONWebKey
 	FirebaseAuthClient *firebaseauth.Client
 }
 
@@ -67,11 +67,18 @@ func getHandlerDeps(opts Options) (handlerDeps, error) {
 	}
 	opts.Logger.Info("Signing key: ", signingKey.Address())
 
-	sep10JWTPublicKey, err := jwtkey.PublicKeyFromString(opts.SEP10JWTPublicKey)
+	sep10JWKS := &jose.JSONWebKeySet{}
+	err = json.Unmarshal([]byte(opts.SEP10JWKS), sep10JWKS)
 	if err != nil {
-		return handlerDeps{}, errors.Wrap(err, "parsing SEP-10 JWT public key")
+		return handlerDeps{}, errors.Wrap(err, "parsing SEP-10 JSON Web Key (JWK) Set")
 	}
-	opts.Logger.Info("SEP-10 JWT Public key: ", sep10JWTPublicKey)
+	if len(sep10JWKS.Keys) == 0 {
+		return handlerDeps{}, errors.New("no keys included in SEP-10 JSON Web Key (JWK) Set")
+	}
+	if len(sep10JWKS.Keys) > 1 {
+		return handlerDeps{}, errors.New("more than one key included in SEP-10 JSON Web Key (JWK) Set only one supported")
+	}
+	sep10JWK := sep10JWKS.Keys[0]
 
 	db, err := db.Open(opts.DatabaseURL)
 	if err != nil {
@@ -93,7 +100,7 @@ func getHandlerDeps(opts Options) (handlerDeps, error) {
 		NetworkPassphrase:  opts.NetworkPassphrase,
 		SigningKey:         signingKey,
 		AccountStore:       accountStore,
-		SEP10JWTPublicKey:  sep10JWTPublicKey,
+		SEP10JWK:           sep10JWK,
 		FirebaseAuthClient: firebaseAuthClient,
 	}
 
@@ -108,7 +115,7 @@ func handler(deps handlerDeps) http.Handler {
 
 	mux.Get("/health", health.PassHandler{}.ServeHTTP)
 	mux.Route("/accounts", func(mux chi.Router) {
-		mux.Use(auth.SEP10Middleware(deps.SEP10JWTPublicKey))
+		mux.Use(auth.SEP10Middleware(deps.SEP10JWK))
 		mux.Use(auth.FirebaseMiddleware(auth.FirebaseTokenVerifierLive{AuthClient: deps.FirebaseAuthClient}))
 		mux.Get("/", accountListHandler{
 			Logger:         deps.Logger,
