@@ -9,14 +9,14 @@ import (
 	"gopkg.in/square/go-jose.v2"
 )
 
-type ConvJWTKeyCommand struct {
+type ConvJWTKeyToJWKCommand struct {
 	Logger *supportlog.Entry
 }
 
-func (c *ConvJWTKeyCommand) Command() *cobra.Command {
+func (c *ConvJWTKeyToJWKCommand) Command() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "convjwtkey [key]",
-		Short: "Convert a JWT ECDSA key ASN.1 DER Base64 encoded to a JSON Web Key",
+		Use:   "convjwtkey2jwk [jwt-key]",
+		Short: "Convert a JWT ECDSA private key ASN.1 DER Base64 encoded that was generated with the old genjwtkey command to a JSON Web Key",
 		Run: func(_ *cobra.Command, args []string) {
 			c.Run(args)
 		},
@@ -24,7 +24,7 @@ func (c *ConvJWTKeyCommand) Command() *cobra.Command {
 	return cmd
 }
 
-func (c *ConvJWTKeyCommand) Run(args []string) {
+func (c *ConvJWTKeyToJWKCommand) Run(args []string) {
 	if len(args) != 1 {
 		c.Logger.Fatal("One key (ASN.1 DER Base64 encoded) must be provided.")
 	}

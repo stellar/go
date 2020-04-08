@@ -9,13 +9,13 @@ import (
 	"gopkg.in/square/go-jose.v2"
 )
 
-type GenJWTKeyCommand struct {
+type GenJWKCommand struct {
 	Logger *supportlog.Entry
 }
 
-func (c *GenJWTKeyCommand) Command() *cobra.Command {
+func (c *GenJWKCommand) Command() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "genjwtkey",
+		Use:   "genjwk",
 		Short: "Generate a JSON Web Key (ECDSA/ES256) for JWT issuing",
 		Run: func(_ *cobra.Command, _ []string) {
 			c.Run()
@@ -24,7 +24,7 @@ func (c *GenJWTKeyCommand) Command() *cobra.Command {
 	return cmd
 }
 
-func (c *GenJWTKeyCommand) Run() {
+func (c *GenJWKCommand) Run() {
 	k, err := jwtkey.GenerateKey()
 	if err != nil {
 		c.Logger.Fatal(err)
