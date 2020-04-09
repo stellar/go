@@ -39,12 +39,12 @@ Usage:
   recoverysigner serve [flags]
 
 Flags:
-      --firebase-project-id string    Firebase project ID to use for validating Firebase JWTs (FIREBASE_PROJECT_ID)
-      --horizon-url string            Horizon URL used for looking up account details (HORIZON_URL) (default "https://horizon-testnet.stellar.org/")
-      --network-passphrase string     Network passphrase of the Stellar network transactions should be signed for (NETWORK_PASSPHRASE) (default "Test SDF Network ; September 2015")
-      --port int                      Port to listen and serve on (PORT) (default 8000)
-      --sep10-jwt-public-key string   Base64 encoded ECDSA public key used to validate SEP-10 JWTs (SEP10_JWT_PUBLIC_KEY)
-      --signing-key string            Stellar signing key used for signing transactions (will be deprecated with per-account keys in the future) (SIGNING_KEY)
+      --db-url string                Database URL (DB_URL) (default "postgres://localhost:5432/?sslmode=disable")
+      --firebase-project-id string   Firebase project ID to use for validating Firebase JWTs (FIREBASE_PROJECT_ID)
+      --network-passphrase string    Network passphrase of the Stellar network transactions should be signed for (NETWORK_PASSPHRASE) (default "Test SDF Network ; September 2015")
+      --port int                     Port to listen and serve on (PORT) (default 8000)
+      --sep10-jwks string            JSON Web Key Set (JWKS) containing exactly one key, which will be used to validate SEP-10 JWTs (if the key is an asymmetric key that has separate public and private key, the JWK need only be the public key) (SEP10_JWKS)
+      --signing-key string           Stellar signing key used for signing transactions (will be deprecated with per-account keys in the future) (SIGNING_KEY)
 ```
 
 [SEP-30]: https://github.com/stellar/stellar-protocol/blob/600c326b210d71ee031d7f3a40ca88191b4cdf9c/ecosystem/sep-0030.md

@@ -20,7 +20,8 @@ func main() {
 	}
 
 	rootCmd.AddCommand((&cmd.ServeCommand{Logger: logger}).Command())
-	rootCmd.AddCommand((&cmd.GenJWTKeyCommand{Logger: logger}).Command())
+	rootCmd.AddCommand((&cmd.GenJWKCommand{Logger: logger}).Command())
+	rootCmd.AddCommand((&cmd.ConvJWTKeyToJWKCommand{Logger: logger}).Command())
 
 	err := rootCmd.Execute()
 	if err != nil {
