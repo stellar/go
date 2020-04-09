@@ -134,7 +134,11 @@ func handler(deps handlerDeps) http.Handler {
 				SigningAddress: deps.SigningKey.FromAddress(),
 				AccountStore:   deps.AccountStore,
 			}.ServeHTTP)
-			// TODO: mux.Delete("/", accountDeleteHandler{}.ServeHTTP)
+			mux.Delete("/", accountDeleteHandler{
+				Logger:         deps.Logger,
+				SigningAddress: deps.SigningKey.FromAddress(),
+				AccountStore:   deps.AccountStore,
+			}.ServeHTTP)
 			mux.Post("/sign", accountSignHandler{
 				Logger:            deps.Logger,
 				SigningKey:        deps.SigningKey,
