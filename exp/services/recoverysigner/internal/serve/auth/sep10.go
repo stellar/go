@@ -32,7 +32,6 @@ type sep10JWTClaims struct {
 
 func (c sep10JWTClaims) Validate() error {
 	// TODO: Verify that iat and exp are present.
-	// TODO: Verify that sub is a G... strkey.
 	// TODO: Verify that iss is as expected.
 	return c.Claims.Validate(jwt.Expected{Time: time.Now()})
 }
