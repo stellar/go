@@ -448,7 +448,10 @@ type Transaction struct {
 	// Action needed in release: horizonclient-v3.0.0
 	// Change FeeCharged and MaxFee types to string
 	// because JSON doesn't support 64 bit integers
-	FeeCharged         int64               `json:"fee_charged"`
+	FeeCharged int64 `json:"fee_charged"`
+	// Action needed in release: horizon-v1.3.0
+	// set json tag to `json:"max_fee,string"` so max_fee can be marshalled
+	// as a string in the JSON response
 	MaxFee             int64               `json:"max_fee"`
 	OperationCount     int32               `json:"operation_count"`
 	EnvelopeXdr        string              `json:"envelope_xdr"`
@@ -495,9 +498,31 @@ func (t Transaction) MarshalJSON() ([]byte, error) {
 	return json.Marshal(v)
 }
 
+// UnmarshalJSON implements a custom unmarshaler for Transaction
+// which can handle a max_fee field which can be a string of int
+func (t *Transaction) UnmarshalJSON(data []byte) error {
+	type Alias Transaction // we define Alias to avoid infinite recursion when calling UnmarshalJSON()
+	v := &struct {
+		MaxFee json.Number `json:"max_fee"`
+		*Alias
+	}{
+		Alias: (*Alias)(t),
+	}
+	err := json.Unmarshal(data, &v)
+	if err != nil {
+		return err
+	}
+
+	t.MaxFee, err = v.MaxFee.Int64()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // PagingToken implementation for hal.Pageable
-func (res Transaction) PagingToken() string {
-	return res.PT
+func (t Transaction) PagingToken() string {
+	return t.PT
 }
 
 // TransactionResultCodes represent a summary of result codes returned from
