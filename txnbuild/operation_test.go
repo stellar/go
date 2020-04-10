@@ -215,8 +215,9 @@ func TestSetOptionsFromXDR(t *testing.T) {
 		Signer:        &signer,
 	}
 
+	muxSource := xdr.MustMuxedAccountAddress(opSource.Address())
 	xdrOp := xdr.Operation{
-		SourceAccount: &opSource,
+		SourceAccount: &muxSource,
 		Body: xdr.OperationBody{
 			Type:         xdr.OperationTypeSetOptions,
 			SetOptionsOp: &xdrSetOptions,
@@ -254,7 +255,7 @@ func TestChangeTrustFromXDR(t *testing.T) {
 		Limit: xdrLimit,
 	}
 
-	var opSource xdr.AccountId
+	var opSource xdr.MuxedAccount
 	err = opSource.SetAddress("GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H")
 	assert.NoError(t, err)
 	xdrOp := xdr.Operation{
@@ -284,7 +285,7 @@ func TestAllowTrustFromXDR(t *testing.T) {
 	allowTrustAsset, err := xdrAsset.ToAllowTrustOpAsset("ABCXYZ")
 	assert.NoError(t, err)
 
-	var opSource xdr.AccountId
+	var opSource xdr.MuxedAccount
 	err = opSource.SetAddress("GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H")
 	assert.NoError(t, err)
 
@@ -321,11 +322,11 @@ func TestAllowTrustFromXDR(t *testing.T) {
 }
 
 func TestAccountMergeFromXDR(t *testing.T) {
-	var opSource xdr.AccountId
+	var opSource xdr.MuxedAccount
 	err := opSource.SetAddress("GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H")
 	assert.NoError(t, err)
 
-	var destination xdr.AccountId
+	var destination xdr.MuxedAccount
 	err = destination.SetAddress("GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3")
 	assert.NoError(t, err)
 
@@ -346,7 +347,7 @@ func TestAccountMergeFromXDR(t *testing.T) {
 }
 
 func TestInflationFromXDR(t *testing.T) {
-	var opSource xdr.AccountId
+	var opSource xdr.MuxedAccount
 	err := opSource.SetAddress("GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H")
 	assert.NoError(t, err)
 
@@ -363,7 +364,7 @@ func TestInflationFromXDR(t *testing.T) {
 }
 
 func TestManageDataFromXDR(t *testing.T) {
-	var opSource xdr.AccountId
+	var opSource xdr.MuxedAccount
 	err := opSource.SetAddress("GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H")
 	assert.NoError(t, err)
 
@@ -392,7 +393,7 @@ func TestManageDataFromXDR(t *testing.T) {
 }
 
 func TestBumpSequenceFromXDR(t *testing.T) {
-	var opSource xdr.AccountId
+	var opSource xdr.MuxedAccount
 	err := opSource.SetAddress("GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H")
 	assert.NoError(t, err)
 

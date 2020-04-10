@@ -99,6 +99,6 @@ func TestBadIssuer(t *testing.T) {
 	var xdrAssetCode [4]byte
 	copy(xdrAssetCode[:], asset.Code)
 	var xdrIssuer xdr.AccountId
-	expectedErrMsg := "base32 decode failed: illegal base32 data at input byte 16"
+	expectedErrMsg := "invalid version byte"
 	require.EqualError(t, xdrIssuer.SetAddress(asset.Issuer), expectedErrMsg, "Issuer address should be validated")
 }
