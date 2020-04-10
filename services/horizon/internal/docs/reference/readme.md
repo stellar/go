@@ -17,10 +17,10 @@ SDF maintained libraries:<br />
 - [Go](https://github.com/stellar/go/tree/master/clients/horizonclient)
 - [Java](https://github.com/stellar/java-stellar-sdk)
 
-Community maintained libraries (in various states of completeness) for interacting with Horizon in other languages:<br>
+Community maintained libraries for interacting with Horizon in other languages:<br>
 - [Python](https://github.com/StellarCN/py-stellar-base)
 - [C# .NET Core 2.x](https://github.com/elucidsoft/dotnetcore-stellar-sdk)
-- [Ruby](https://github.com/bloom-solutions/ruby-stellar-sdk)
+- [Ruby](https://github.com/astroband/ruby-stellar-sdk)
 - [iOS and macOS](https://github.com/Soneso/stellar-ios-mac-sdk)
 - [Scala SDK](https://github.com/synesso/scala-stellar-sdk)
 - [C++ SDK](https://github.com/bnogalm/StellarQtSDK)
