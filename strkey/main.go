@@ -184,14 +184,14 @@ func checkValidVersionByte(version VersionByte) error {
 var decodingTable = initDecodingTable()
 
 func initDecodingTable() [256]byte {
-	var decodingTable [256]byte
-	for i := range decodingTable {
-		decodingTable[i] = 0xff
+	var localDecodingTable [256]byte
+	for i := range localDecodingTable {
+		localDecodingTable[i] = 0xff
 	}
 	for i, ch := range []byte("ABCDEFGHIJKLMNOPQRSTUVWXYZ234567") {
-		decodingTable[ch] = byte(i)
+		localDecodingTable[ch] = byte(i)
 	}
-	return decodingTable
+	return localDecodingTable
 }
 
 // decodeString decodes a base32 string into the raw bytes, and ensures it could
