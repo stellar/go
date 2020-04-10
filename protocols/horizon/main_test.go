@@ -93,7 +93,7 @@ func TestTransactionMemoTypeNone(t *testing.T) {
 }
 
 func TestTransactionUnmarshalJSON(t *testing.T) {
-	const maxFeeInt64 = `{
+	const feesAsInt64s = `{
         "memo": "MzUyODFmNThmZjkxMGNiMTVhYWQ1NjM2ZGIyNzUzZTA=",
         "_links": {
           "self": {
@@ -132,7 +132,7 @@ func TestTransactionUnmarshalJSON(t *testing.T) {
         "source_account": "GBUYDJH3AOPFFND3L54DUDWIHOMYKUONDV4RAHOHDBNN2D5N4BPPWDQ3",
         "source_account_sequence": "113942901088600162",
         "fee_account": "GBUYDJH3AOPFFND3L54DUDWIHOMYKUONDV4RAHOHDBNN2D5N4BPPWDQ3",
-        "fee_charged": 100,
+        "fee_charged": 3000000000,
         "max_fee": 2500000000,
         "operation_count": 1,
         "envelope_xdr": "AAAAAGmBpPsDnlK0e194Og7IO5mFUc0deRAdxxha3Q+t4F77AAAAZAGUzncAEEBiAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAADMzUyODFmNThmZjkxMGNiMTVhYWQ1NjM2ZGIyNzUzZTAAAAABAAAAAQAAAADhZHiqD/Q3uSTgjYEWGVRfCCHYvFmeqJU12G9SkzJYEQAAAAEAAAAAP29uBulc9ouSoH62BRypPhD6zcLWoS5sj7CHf5SJ15MAAAABTk9ETAAAAAB1jYLXrFzNBOWCoPnZSHI3PJAhHtc1TrCaiPuZwSf5pgAAAAAAAAABAAAAAAAAAALw9Tl2AAAAQOknEHs7ZaPNVlXMU0uOtT+0TVo9kW/jDuNxN40FdJDic0p23V4lxOfPGCgQwBgTehqCIEzCMQ4LkbfzkdgkFAut4F77AAAAQKtFmT73srS8RHeQgWWia8mb+TrLCr1CJbK+MAKGdUnb4s4JBOKUjHhqQLrs7GCkJ3wOpgTbtW8VpwNedCJhFQ0=",
@@ -147,7 +147,7 @@ func TestTransactionUnmarshalJSON(t *testing.T) {
         "valid_after": "1970-01-01T00:00:00Z"
       }`
 
-	const maxFeeString = `{
+	const feesAsStrings = `{
         "memo": "MzUyODFmNThmZjkxMGNiMTVhYWQ1NjM2ZGIyNzUzZTA=",
         "_links": {
           "self": {
@@ -186,7 +186,7 @@ func TestTransactionUnmarshalJSON(t *testing.T) {
         "source_account": "GBUYDJH3AOPFFND3L54DUDWIHOMYKUONDV4RAHOHDBNN2D5N4BPPWDQ3",
         "source_account_sequence": "113942901088600162",
         "fee_account": "GBUYDJH3AOPFFND3L54DUDWIHOMYKUONDV4RAHOHDBNN2D5N4BPPWDQ3",
-        "fee_charged": 100,
+        "fee_charged": "3000000000",
         "max_fee": "2500000000",
         "operation_count": 1,
         "envelope_xdr": "AAAAAGmBpPsDnlK0e194Og7IO5mFUc0deRAdxxha3Q+t4F77AAAAZAGUzncAEEBiAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAADMzUyODFmNThmZjkxMGNiMTVhYWQ1NjM2ZGIyNzUzZTAAAAABAAAAAQAAAADhZHiqD/Q3uSTgjYEWGVRfCCHYvFmeqJU12G9SkzJYEQAAAAEAAAAAP29uBulc9ouSoH62BRypPhD6zcLWoS5sj7CHf5SJ15MAAAABTk9ETAAAAAB1jYLXrFzNBOWCoPnZSHI3PJAhHtc1TrCaiPuZwSf5pgAAAAAAAAABAAAAAAAAAALw9Tl2AAAAQOknEHs7ZaPNVlXMU0uOtT+0TVo9kW/jDuNxN40FdJDic0p23V4lxOfPGCgQwBgTehqCIEzCMQ4LkbfzkdgkFAut4F77AAAAQKtFmT73srS8RHeQgWWia8mb+TrLCr1CJbK+MAKGdUnb4s4JBOKUjHhqQLrs7GCkJ3wOpgTbtW8VpwNedCJhFQ0=",
@@ -201,9 +201,10 @@ func TestTransactionUnmarshalJSON(t *testing.T) {
         "valid_after": "1970-01-01T00:00:00Z"
       }`
 
-	var parsedMaxFeeInt, parsedMaxFeeString Transaction
-	assert.NoError(t, json.Unmarshal([]byte(maxFeeInt64), &parsedMaxFeeInt))
-	assert.NoError(t, json.Unmarshal([]byte(maxFeeString), &parsedMaxFeeString))
-	assert.Equal(t, parsedMaxFeeInt, parsedMaxFeeString)
-	assert.Equal(t, int64(2500000000), parsedMaxFeeInt.MaxFee)
+	var parsedFeesAsInts, parsedFeesAsStrings Transaction
+	assert.NoError(t, json.Unmarshal([]byte(feesAsInt64s), &parsedFeesAsInts))
+	assert.NoError(t, json.Unmarshal([]byte(feesAsStrings), &parsedFeesAsStrings))
+	assert.Equal(t, parsedFeesAsInts, parsedFeesAsStrings)
+	assert.Equal(t, int64(2500000000), parsedFeesAsInts.MaxFee)
+	assert.Equal(t, int64(3000000000), parsedFeesAsInts.FeeCharged)
 }

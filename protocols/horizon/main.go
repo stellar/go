@@ -445,9 +445,9 @@ type Transaction struct {
 	Account         string    `json:"source_account"`
 	AccountSequence string    `json:"source_account_sequence"`
 	FeeAccount      string    `json:"fee_account"`
-	// Action needed in release: horizonclient-v3.0.0
-	// Change FeeCharged and MaxFee types to string
-	// because JSON doesn't support 64 bit integers
+	// Action needed in release: horizon-v1.3.0
+	// set json tag to `json:"max_fee,fee_charged"` so max_fee can be marshalled
+	// as a string in the JSON response
 	FeeCharged int64 `json:"fee_charged"`
 	// Action needed in release: horizon-v1.3.0
 	// set json tag to `json:"max_fee,string"` so max_fee can be marshalled
@@ -503,7 +503,8 @@ func (t Transaction) MarshalJSON() ([]byte, error) {
 func (t *Transaction) UnmarshalJSON(data []byte) error {
 	type Alias Transaction // we define Alias to avoid infinite recursion when calling UnmarshalJSON()
 	v := &struct {
-		MaxFee json.Number `json:"max_fee"`
+		FeeCharged json.Number `json:"fee_charged"`
+		MaxFee     json.Number `json:"max_fee"`
 		*Alias
 	}{
 		Alias: (*Alias)(t),
@@ -513,6 +514,10 @@ func (t *Transaction) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
+	t.FeeCharged, err = v.FeeCharged.Int64()
+	if err != nil {
+		return err
+	}
 	t.MaxFee, err = v.MaxFee.Int64()
 	if err != nil {
 		return err
