@@ -1222,6 +1222,84 @@ func TestReadChallengeTx_validSignedByServer(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestReadChallengeTx_invalidFeeBump(t *testing.T) {
+	serverKP := newKeypair0()
+	clientKP := newKeypair1()
+	txSource := NewSimpleAccount(serverKP.Address(), -1)
+	opSource := NewSimpleAccount(clientKP.Address(), 0)
+	op := ManageData{
+		SourceAccount: &opSource,
+		Name:          "testserver auth",
+		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
+	}
+	tx := Transaction{
+		SourceAccount: &txSource,
+		Operations:    []Operation{&op},
+		Timebounds:    NewTimeout(1000),
+		Network:       network.TestNetworkPassphrase,
+	}
+
+	err := tx.Build()
+	require.NoError(t, err)
+	err = tx.Sign(serverKP)
+	assert.NoError(t, err)
+	tx64, err := tx.Base64()
+	require.NoError(t, err)
+	readTx, readClientAccountID, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase)
+	require.NoError(t, err)
+
+	var v0TxEnvelope xdr.TransactionEnvelope
+	require.NoError(t, xdr.SafeUnmarshalBase64(tx64, &v0TxEnvelope))
+	require.NotNil(t, v0TxEnvelope.V0)
+	require.Nil(t, v0TxEnvelope.V1)
+
+	v1TxEnvelope := &xdr.TransactionV1Envelope{
+		Tx: xdr.Transaction{
+			SourceAccount: v0TxEnvelope.SourceAccount(),
+			Fee:           xdr.Uint32(v0TxEnvelope.Fee()),
+			SeqNum:        xdr.SequenceNumber(v0TxEnvelope.SeqNum()),
+			TimeBounds:    v0TxEnvelope.TimeBounds(),
+			Memo:          v0TxEnvelope.Memo(),
+			Operations:    v0TxEnvelope.Operations(),
+		},
+	}
+	v1Hash, err := network.HashTransaction(&v1TxEnvelope.Tx, network.TestNetworkPassphrase)
+	require.NoError(t, err)
+	v1Sig, err := serverKP.SignDecorated(v1Hash[:])
+	require.NoError(t, err)
+	v1TxEnvelope.Signatures = append(v1TxEnvelope.Signatures, v1Sig)
+	v1Base64, err := xdr.MarshalBase64(v1TxEnvelope)
+	require.NoError(t, err)
+	v1ReadTx, v1ClientAccountID, err := ReadChallengeTx(v1Base64, serverKP.Address(), network.TestNetworkPassphrase)
+	require.NoError(t, err)
+	require.Equal(t, readTx, v1ReadTx)
+	require.Equal(t, readClientAccountID, v1ClientAccountID)
+
+	feeBump := xdr.TransactionEnvelope{
+		Type: xdr.EnvelopeTypeEnvelopeTypeTxFeeBump,
+		FeeBump: &xdr.FeeBumpTransactionEnvelope{
+			Tx: xdr.FeeBumpTransaction{
+				FeeSource: xdr.MustAddress(txSource.AccountID),
+				Fee:       100,
+				InnerTx: xdr.FeeBumpTransactionInnerTx{
+					Type: xdr.EnvelopeTypeEnvelopeTypeTx,
+					V1:   v1TxEnvelope,
+				},
+			},
+		},
+	}
+	feeBumHash, err := network.HashFeeBumpTransaction(&feeBump.FeeBump.Tx, network.TestNetworkPassphrase)
+	require.NoError(t, err)
+	sig, err := serverKP.SignDecorated(feeBumHash[:])
+	require.NoError(t, err)
+	feeBump.FeeBump.Signatures = append(feeBump.FeeBump.Signatures, sig)
+	feeBump64, err := xdr.MarshalBase64(feeBump)
+	require.NoError(t, err)
+
+	_, _, err = ReadChallengeTx(feeBump64, serverKP.Address(), network.TestNetworkPassphrase)
+	assert.EqualError(t, err, "challenge cannot be a fee bump transaction")
+}
+
 func TestReadChallengeTx_invalidNotSignedByServer(t *testing.T) {
 	serverKP := newKeypair0()
 	clientKP := newKeypair1()
