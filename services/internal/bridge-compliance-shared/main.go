@@ -39,7 +39,7 @@ func BuildTransaction(accountID, networkPassphrase string, operation []txnbuild.
 	if err != nil {
 		return "", errors.Wrap(err, "unable to decode transaction envelope")
 	}
-	txB64, err := xdr.MarshalBase64(txXDR.V1.Tx)
+	txB64, err := xdr.MarshalBase64(txXDR.V0.Tx)
 	if err != nil {
 		return "", errors.Wrap(err, "unable to encode transaction")
 	}
