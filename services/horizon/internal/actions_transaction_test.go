@@ -326,11 +326,6 @@ func TestTransactionActions_PostSuccessful(t *testing.T) {
 			},
 		},
 	}
-	//dmp := diffmatchpatch.New()
-
-	//diffs := dmp.DiffMain(litter.Sdump(tx), litter.Sdump(tx2), false)
-
-	//fmt.Println(dmp.DiffPrettyText(diffs))
 
 	txStr, err := xdr.MarshalBase64(tx2)
 	assert.NoError(t, err)
