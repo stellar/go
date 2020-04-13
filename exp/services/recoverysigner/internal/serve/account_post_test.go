@@ -30,7 +30,6 @@ func TestAccountPost_newWithRoleOwnerContentTypeJSON(t *testing.T) {
 	ctx := context.Background()
 	ctx = auth.NewContext(ctx, auth.Auth{Address: "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N"})
 	req := `{
-	"type": "share",
 	"identities": [
 		{
 			"role": "owner",
@@ -158,7 +157,6 @@ func TestAccountPost_newWithRolesSenderReceiverContentTypeJSON(t *testing.T) {
 	ctx := context.Background()
 	ctx = auth.NewContext(ctx, auth.Auth{Address: "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N"})
 	req := `{
-	"type": "share",
 	"identities": [
 		{
 			"role": "sender",
@@ -532,7 +530,6 @@ func TestAccountPost_authMethodTypeUnrecognized(t *testing.T) {
 	ctx := context.Background()
 	ctx = auth.NewContext(ctx, auth.Auth{Address: "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N"})
 	req := `{
-	"type": "share",
 	"identities": [
 		{
 			"role": "owner",
