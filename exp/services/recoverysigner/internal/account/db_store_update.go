@@ -13,6 +13,8 @@ func (s *DBStore) Update(a Account) error {
 	}
 
 	var accountID int64
+	// Delete an identity will delete the associated auth methods because of the ON DELETE CASCADE reference.
+	// https://github.com/stellar/go/blob/b3e0a353a901ce0babad5b4953330e55f2c674a1/exp/services/recoverysigner/internal/db/dbmigrate/migrations/20200311000002-create-auth-methods.sql#L11
 	err = tx.Get(&accountID, `
 		WITH deleted_identities AS (
 			DELETE FROM identities
