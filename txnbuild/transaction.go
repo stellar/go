@@ -370,7 +370,6 @@ func TransactionFromXDR(txeB64 string) (Transaction, error) {
 }
 
 func transactionFromParsedXDR(xdrEnv xdr.TransactionEnvelope) (Transaction, error) {
-
 	sourceAccountID, ok := xdrEnv.SourceAccount().GetEd25519()
 	if !ok {
 		return Transaction{}, errors.New("invalid source account id")
@@ -394,9 +393,9 @@ func transactionFromParsedXDR(xdrEnv xdr.TransactionEnvelope) (Transaction, erro
 	}
 	if numOps := len(xdrEnv.Operations()); numOps > 0 {
 		if xdrEnv.IsFeeBump() {
-			newTx.BaseFee = uint32(xdrEnv.FeeBumpFee() / int64(numOps))
+			newTx.BaseFee = uint32(xdrEnv.FeeBumpFee() / int64(numOps+1))
 		} else {
-			newTx.BaseFee = uint32(xdrEnv.Fee() / uint32(numOps))
+			newTx.BaseFee = xdrEnv.Fee() / uint32(numOps)
 		}
 	}
 
