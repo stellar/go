@@ -216,6 +216,72 @@ func TestSEP10_doesNotAddAddressToClaimIfJWTExpired(t *testing.T) {
 	assert.Equal(t, wantClaims, claims)
 }
 
+func TestSEP10_doesNotAddAddressToClaimIfJWTMissingIAT(t *testing.T) {
+	issuer := "https://webauth.example.com"
+
+	k, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, err)
+	jwk := jose.JSONWebKey{Key: &k.PublicKey}
+
+	ctx := context.Context(nil)
+	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx = r.Context()
+	})
+	middleware := SEP10Middleware(issuer, jwk)
+	handler := middleware(next)
+
+	r := httptest.NewRequest("GET", "/", nil)
+	jwtClaims := jwt.MapClaims{
+		"iss": "https://webauth.example.com",
+		"sub": "GDKABHI4LTLG7UCE6O7Y4D6REHJVS4DLXTVVXTE3BPRRLXPASHSOKG2D",
+		"exp": time.Now().Add(time.Hour).Unix(),
+	}
+	jwtToken, err := jwt.NewWithClaims(jwt.SigningMethodES256, jwtClaims).SignedString(k)
+	require.NoError(t, err)
+	r.Header.Set("Authorization", "Bearer "+jwtToken)
+	handler.ServeHTTP(nil, r)
+
+	assert.NotNil(t, ctx)
+	claims, ok := FromContext(ctx)
+	assert.Equal(t, false, ok)
+
+	wantClaims := Auth{}
+	assert.Equal(t, wantClaims, claims)
+}
+
+func TestSEP10_doesNotAddAddressToClaimIfJWTMissingEXP(t *testing.T) {
+	issuer := "https://webauth.example.com"
+
+	k, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, err)
+	jwk := jose.JSONWebKey{Key: &k.PublicKey}
+
+	ctx := context.Context(nil)
+	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx = r.Context()
+	})
+	middleware := SEP10Middleware(issuer, jwk)
+	handler := middleware(next)
+
+	r := httptest.NewRequest("GET", "/", nil)
+	jwtClaims := jwt.MapClaims{
+		"iss": "https://webauth.example.com",
+		"iat": time.Now().Unix(),
+		"sub": "GDKABHI4LTLG7UCE6O7Y4D6REHJVS4DLXTVVXTE3BPRRLXPASHSOKG2D",
+	}
+	jwtToken, err := jwt.NewWithClaims(jwt.SigningMethodES256, jwtClaims).SignedString(k)
+	require.NoError(t, err)
+	r.Header.Set("Authorization", "Bearer "+jwtToken)
+	handler.ServeHTTP(nil, r)
+
+	assert.NotNil(t, ctx)
+	claims, ok := FromContext(ctx)
+	assert.Equal(t, false, ok)
+
+	wantClaims := Auth{}
+	assert.Equal(t, wantClaims, claims)
+}
+
 func TestSEP10_doesNotAddAddressToClaimIfJWTMissingSUB(t *testing.T) {
 	issuer := "https://webauth.example.com"
 
