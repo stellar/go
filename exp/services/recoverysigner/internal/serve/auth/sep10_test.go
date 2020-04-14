@@ -416,7 +416,7 @@ func TestSEP10_doesNotAddAddressToClaimIfJWTHasISSButUnexpectedValue(t *testing.
 	assert.Equal(t, wantClaims, claims)
 }
 
-func TestSEP10_doesNotAddAddressToClaimIfJWTMissingISSButNotRequired(t *testing.T) {
+func TestSEP10_addAddressToClaimIfJWTMissingISSButNotRequired(t *testing.T) {
 	issuer := ""
 
 	k, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
@@ -451,7 +451,7 @@ func TestSEP10_doesNotAddAddressToClaimIfJWTMissingISSButNotRequired(t *testing.
 	assert.Equal(t, wantClaims, claims)
 }
 
-func TestSEP10_doesNotAddAddressToClaimIfJWTHasISSButNotRequired(t *testing.T) {
+func TestSEP10_addAddressToClaimIfJWTHasISSButNotRequired(t *testing.T) {
 	issuer := ""
 
 	k, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
