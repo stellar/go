@@ -266,8 +266,8 @@ func TestSEP10_doesNotAddAddressToClaimIfJWTMissingEXP(t *testing.T) {
 	r := httptest.NewRequest("GET", "/", nil)
 	jwtClaims := jwt.MapClaims{
 		"iss": "https://webauth.example.com",
-		"iat": time.Now().Unix(),
 		"sub": "GDKABHI4LTLG7UCE6O7Y4D6REHJVS4DLXTVVXTE3BPRRLXPASHSOKG2D",
+		"iat": time.Now().Unix(),
 	}
 	jwtToken, err := jwt.NewWithClaims(jwt.SigningMethodES256, jwtClaims).SignedString(k)
 	require.NoError(t, err)
