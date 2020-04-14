@@ -572,7 +572,7 @@ func (operation *transactionOperationWrapper) accountMergeEffects() []effect {
 		operation: operation,
 	}
 
-	dest := operation.operation.Body.MustDestination()
+	dest := operation.operation.Body.MustDestination().ToAccountId()
 	result := operation.OperationResult().MustAccountMergeResult()
 	details := map[string]interface{}{
 		"amount":     amount.String(result.MustSourceAccountBalance()),
@@ -580,7 +580,7 @@ func (operation *transactionOperationWrapper) accountMergeEffects() []effect {
 	}
 
 	effects.add(*source, history.EffectAccountDebited, details)
-	effects.add(dest.ToAccountId(), history.EffectAccountCredited, details)
+	effects.add(dest, history.EffectAccountCredited, details)
 	effects.add(*source, history.EffectAccountRemoved, map[string]interface{}{})
 
 	return effects.effects

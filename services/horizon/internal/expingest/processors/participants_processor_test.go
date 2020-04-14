@@ -72,7 +72,7 @@ func (s *ParticipantsProcessorTestSuiteLedger) SetupTest() {
 			Amount:      100,
 		},
 	}
-	s.firstTx.Envelope.V1.Tx.SourceAccount = xdr.MustMuxedAccountAddress(s.addresses[0])
+	s.firstTx.Envelope.V1.Tx.SourceAccount = muxed
 	s.firstTxID = toid.New(int32(sequence), 1, 0).ToInt64()
 
 	s.secondTx = createTransaction(true, 1)

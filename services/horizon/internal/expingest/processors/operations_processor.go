@@ -129,13 +129,15 @@ func (operation *transactionOperationWrapper) Details() map[string]interface{} {
 	case xdr.OperationTypePayment:
 		op := operation.operation.Body.MustPaymentOp()
 		details["from"] = source.Address()
-		details["to"] = op.Destination.Address()
+		accid := op.Destination.ToAccountId()
+		details["to"] = accid.Address()
 		details["amount"] = amount.String(op.Amount)
 		assetDetails(details, op.Asset, "")
 	case xdr.OperationTypePathPaymentStrictReceive:
 		op := operation.operation.Body.MustPathPaymentStrictReceiveOp()
 		details["from"] = source.Address()
-		details["to"] = op.Destination.Address()
+		accid := op.Destination.ToAccountId()
+		details["to"] = accid.Address()
 
 		details["amount"] = amount.String(op.DestAmount)
 		details["source_amount"] = amount.String(0)
@@ -158,7 +160,8 @@ func (operation *transactionOperationWrapper) Details() map[string]interface{} {
 	case xdr.OperationTypePathPaymentStrictSend:
 		op := operation.operation.Body.MustPathPaymentStrictSendOp()
 		details["from"] = source.Address()
-		details["to"] = op.Destination.Address()
+		accid := op.Destination.ToAccountId()
+		details["to"] = accid.Address()
 
 		details["amount"] = amount.String(0)
 		details["source_amount"] = amount.String(op.SendAmount)
@@ -264,7 +267,7 @@ func (operation *transactionOperationWrapper) Details() map[string]interface{} {
 			details["authorize_to_maintain_liabilities"] = xdr.TrustLineFlags(op.Authorize).IsAuthorizedToMaintainLiabilitiesFlag()
 		}
 	case xdr.OperationTypeAccountMerge:
-		aid := operation.operation.Body.MustDestination()
+		aid := operation.operation.Body.MustDestination().ToAccountId()
 		details["account"] = source.Address()
 		details["into"] = aid.Address()
 	case xdr.OperationTypeInflation:
