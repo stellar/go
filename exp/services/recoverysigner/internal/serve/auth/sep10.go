@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"errors"
 	"net/http"
 	"time"
 
@@ -31,8 +32,12 @@ type sep10JWTClaims struct {
 }
 
 func (c sep10JWTClaims) Validate(issuer string) error {
-	// TODO: Verify that iat and exp are present.
-	// TODO: Verify that sub is a G... strkey.
+	if c.Claims.IssuedAt == nil {
+		return errors.New("validation failed, no issued at (iat) in token")
+	}
+	if c.Claims.Expiry == nil {
+		return errors.New("validation failed, no expiry (exp) in token")
+	}
 	expectedClaims := jwt.Expected{
 		Issuer: issuer,
 		Time:   time.Now(),
