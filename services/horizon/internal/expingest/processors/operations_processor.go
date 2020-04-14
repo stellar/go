@@ -91,13 +91,15 @@ func (operation *transactionOperationWrapper) TransactionID() int64 {
 }
 
 // SourceAccount returns the operation's source account.
-func (operation *transactionOperationWrapper) SourceAccount() *xdr.MuxedAccount {
+func (operation *transactionOperationWrapper) SourceAccount() *xdr.AccountId {
 	sourceAccount := operation.operation.SourceAccount
+	var sa xdr.AccountId
 	if sourceAccount != nil {
-		return sourceAccount
+		sa = sourceAccount.ToAccountId()
+	} else {
+		sa = operation.transaction.Envelope.SourceAccount().ToAccountId()
 	}
 
-	sa := operation.transaction.Envelope.SourceAccount()
 	return &sa
 }
 
@@ -254,7 +256,7 @@ func (operation *transactionOperationWrapper) Details() map[string]interface{} {
 		details["limit"] = amount.String(op.Limit)
 	case xdr.OperationTypeAllowTrust:
 		op := operation.operation.Body.MustAllowTrustOp()
-		assetDetails(details, op.Asset.ToAsset(source.ToAccountId()), "")
+		assetDetails(details, op.Asset.ToAsset(*source), "")
 		details["trustee"] = source.Address()
 		details["trustor"] = op.Trustor.Address()
 		details["authorize"] = xdr.TrustLineFlags(op.Authorize).IsAuthorized()
@@ -337,7 +339,7 @@ func operationFlagDetails(result map[string]interface{}, f int32, prefix string)
 // Participants returns the accounts taking part in the operation.
 func (operation *transactionOperationWrapper) Participants() ([]xdr.AccountId, error) {
 	participants := []xdr.AccountId{}
-	participants = append(participants, operation.SourceAccount().ToAccountId())
+	participants = append(participants, *operation.SourceAccount())
 
 	op := operation.operation
 
