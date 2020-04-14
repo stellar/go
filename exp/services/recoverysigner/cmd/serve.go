@@ -58,6 +58,13 @@ func (c *ServeCommand) Command() *cobra.Command {
 			Required:  true,
 		},
 		{
+			Name:      "sep10-jwt-issuer",
+			Usage:     "JWT issuer to verify is in the SEP-10 JWT iss field (not checked if empty)",
+			OptType:   types.String,
+			ConfigKey: &opts.SEP10JWTIssuer,
+			Required:  false,
+		},
+		{
 			Name:      "firebase-project-id",
 			Usage:     "Firebase project ID to use for validating Firebase JWTs",
 			OptType:   types.String,

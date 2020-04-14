@@ -25,6 +25,7 @@ type Options struct {
 	NetworkPassphrase string
 	SigningKey        string
 	SEP10JWKS         string
+	SEP10JWTIssuer    string
 	FirebaseProjectID string
 }
 
@@ -54,6 +55,7 @@ type handlerDeps struct {
 	SigningKey         *keypair.Full
 	AccountStore       account.Store
 	SEP10JWK           jose.JSONWebKey
+	SEP10JWTIssuer     string
 	FirebaseAuthClient *firebaseauth.Client
 }
 
@@ -101,6 +103,7 @@ func getHandlerDeps(opts Options) (handlerDeps, error) {
 		SigningKey:         signingKey,
 		AccountStore:       accountStore,
 		SEP10JWK:           sep10JWK,
+		SEP10JWTIssuer:     opts.SEP10JWTIssuer,
 		FirebaseAuthClient: firebaseAuthClient,
 	}
 
@@ -115,7 +118,7 @@ func handler(deps handlerDeps) http.Handler {
 
 	mux.Get("/health", health.PassHandler{}.ServeHTTP)
 	mux.Route("/accounts", func(mux chi.Router) {
-		mux.Use(auth.SEP10Middleware(deps.SEP10JWK))
+		mux.Use(auth.SEP10Middleware(deps.SEP10JWTIssuer, deps.SEP10JWK))
 		mux.Use(auth.FirebaseMiddleware(auth.FirebaseTokenVerifierLive{AuthClient: deps.FirebaseAuthClient}))
 		mux.Get("/", accountListHandler{
 			Logger:         deps.Logger,
