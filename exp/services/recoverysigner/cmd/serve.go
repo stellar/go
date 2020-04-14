@@ -74,7 +74,7 @@ func (c *ServeCommand) Command() *cobra.Command {
 	}
 	cmd := &cobra.Command{
 		Use:   "serve",
-		Short: "Run the SEP-XX Recover Signer server",
+		Short: "Run the SEP-30 Recover Signer server",
 		Run: func(_ *cobra.Command, _ []string) {
 			configOpts.Require()
 			configOpts.SetValues()

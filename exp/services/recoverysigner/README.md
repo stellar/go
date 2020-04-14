@@ -17,14 +17,14 @@ Running this implementation in production is not recommended.
 
 ```
 $ recoverysigner --help
-SEP-XX Recovery Signer server
+SEP-30 Recovery Signer server
 
 Usage:
   recoverysigner [command] [flags]
   recoverysigner [command]
 
 Available Commands:
-  serve       Run the SEP-XX Recover Signer server
+  serve       Run the SEP-30 Recover Signer server
 
 Use "recoverysigner [command] --help" for more information about a command.
 ```
@@ -33,7 +33,7 @@ Use "recoverysigner [command] --help" for more information about a command.
 
 ```
 $ recoverysigner serve --help
-Run the SEP-XX Recover Signer server
+Run the SEP-30 Recover Signer server
 
 Usage:
   recoverysigner serve [flags]
