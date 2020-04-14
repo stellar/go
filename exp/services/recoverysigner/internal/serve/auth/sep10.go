@@ -38,7 +38,6 @@ func (c sep10JWTClaims) Validate() error {
 	if c.Claims.Expiry == nil {
 		return errors.New("validation failed, no expiry (exp) in token")
 	}
-	// TODO: Verify that sub is a G... strkey.
 	// TODO: Verify that iss is as expected.
 	return c.Claims.Validate(jwt.Expected{Time: time.Now()})
 }

@@ -258,3 +258,64 @@ func TestSEP10_doesNotAddAddressToClaimIfJWTMissingEXP(t *testing.T) {
 	wantClaims := Auth{}
 	assert.Equal(t, wantClaims, claims)
 }
+
+func TestSEP10_doesNotAddAddressToClaimIfJWTMissingSUB(t *testing.T) {
+	k, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, err)
+	jwk := jose.JSONWebKey{Key: &k.PublicKey}
+
+	ctx := context.Context(nil)
+	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx = r.Context()
+	})
+	middleware := SEP10Middleware(jwk)
+	handler := middleware(next)
+
+	r := httptest.NewRequest("GET", "/", nil)
+	jwtClaims := jwt.MapClaims{
+		"iat": time.Now().Unix(),
+		"exp": time.Now().Add(time.Hour).Unix(),
+	}
+	jwtToken, err := jwt.NewWithClaims(jwt.SigningMethodES256, jwtClaims).SignedString(k)
+	require.NoError(t, err)
+	r.Header.Set("Authorization", "Bearer "+jwtToken)
+	handler.ServeHTTP(nil, r)
+
+	assert.NotNil(t, ctx)
+	claims, ok := FromContext(ctx)
+	assert.Equal(t, false, ok)
+
+	wantClaims := Auth{}
+	assert.Equal(t, wantClaims, claims)
+}
+
+func TestSEP10_doesNotAddAddressToClaimIfJWTHasSUBNotContainingGStrkey(t *testing.T) {
+	k, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, err)
+	jwk := jose.JSONWebKey{Key: &k.PublicKey}
+
+	ctx := context.Context(nil)
+	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx = r.Context()
+	})
+	middleware := SEP10Middleware(jwk)
+	handler := middleware(next)
+
+	r := httptest.NewRequest("GET", "/", nil)
+	jwtClaims := jwt.MapClaims{
+		"sub": "SBAZWVXOQ5LWT5PJSVOA62PVIYZIV3T3HQ3GFC2RUZ6K43QFNF5BLLDE",
+		"iat": time.Now().Unix(),
+		"exp": time.Now().Add(time.Hour).Unix(),
+	}
+	jwtToken, err := jwt.NewWithClaims(jwt.SigningMethodES256, jwtClaims).SignedString(k)
+	require.NoError(t, err)
+	r.Header.Set("Authorization", "Bearer "+jwtToken)
+	handler.ServeHTTP(nil, r)
+
+	assert.NotNil(t, ctx)
+	claims, ok := FromContext(ctx)
+	assert.Equal(t, false, ok)
+
+	wantClaims := Auth{}
+	assert.Equal(t, wantClaims, claims)
+}
