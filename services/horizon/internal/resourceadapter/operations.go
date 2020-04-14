@@ -23,7 +23,12 @@ func NewOperation(
 ) (result hal.Pageable, err error) {
 
 	base := operations.Base{}
-	PopulateBaseOperation(ctx, &base, operationRow, transactionHash, transactionRow, ledger)
+	err = PopulateBaseOperation(
+		ctx, &base, operationRow, transactionHash, transactionRow, ledger,
+	)
+	if err != nil {
+		return
+	}
 
 	switch operationRow.Type {
 	case xdr.OperationTypeBumpSequence:
@@ -118,7 +123,7 @@ func PopulateBaseOperation(
 	transactionHash string,
 	transactionRow *history.Transaction,
 	ledger history.Ledger,
-) {
+) error {
 	dest.ID = fmt.Sprintf("%d", operationRow.ID)
 	dest.PT = operationRow.PagingToken()
 	dest.TransactionSuccessful = operationRow.TransactionSuccessful
@@ -137,8 +142,9 @@ func PopulateBaseOperation(
 
 	if transactionRow != nil {
 		dest.Transaction = new(horizon.Transaction)
-		PopulateTransaction(ctx, transactionHash, dest.Transaction, *transactionRow)
+		return PopulateTransaction(ctx, transactionHash, dest.Transaction, *transactionRow)
 	}
+	return nil
 }
 
 func populateOperationType(dest *operations.Base, row history.Operation) {

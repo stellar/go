@@ -25,14 +25,20 @@ func TestPopulateOperation_Successful(t *testing.T) {
 	dest = operations.Base{}
 	row = history.Operation{TransactionSuccessful: true}
 
-	PopulateBaseOperation(ctx, &dest, row, "", nil, ledger)
+	assert.NoError(
+		t,
+		PopulateBaseOperation(ctx, &dest, row, "", nil, ledger),
+	)
 	assert.True(t, dest.TransactionSuccessful)
 	assert.Nil(t, dest.Transaction)
 
 	dest = operations.Base{}
 	row = history.Operation{TransactionSuccessful: false}
 
-	PopulateBaseOperation(ctx, &dest, row, "", nil, ledger)
+	assert.NoError(
+		t,
+		PopulateBaseOperation(ctx, &dest, row, "", nil, ledger),
+	)
 	assert.False(t, dest.TransactionSuccessful)
 	assert.Nil(t, dest.Transaction)
 }
@@ -52,13 +58,16 @@ func TestPopulateOperation_WithTransaction(t *testing.T) {
 	operationsRow = history.Operation{TransactionSuccessful: true}
 	transactionRow = history.Transaction{Successful: true, MaxFee: 10000, FeeCharged: 100}
 
-	PopulateBaseOperation(
-		ctx,
-		&dest,
-		operationsRow,
-		transactionRow.TransactionHash,
-		&transactionRow,
-		ledger,
+	assert.NoError(
+		t,
+		PopulateBaseOperation(
+			ctx,
+			&dest,
+			operationsRow,
+			transactionRow.TransactionHash,
+			&transactionRow,
+			ledger,
+		),
 	)
 	assert.True(t, dest.TransactionSuccessful)
 	assert.True(t, dest.Transaction.Successful)
@@ -152,34 +161,44 @@ func TestFeeBumpOperation(t *testing.T) {
 		InnerTransactionHash: null.StringFrom("2374e99349b9ef7dba9a5db3339b78fda8f34777b1af33ba468ad5c0df946d4d"),
 	}
 
-	PopulateBaseOperation(
-		ctx,
-		&dest,
-		operationsRow,
-		transactionRow.TransactionHash,
-		nil,
-		history.Ledger{},
+	assert.NoError(
+		t,
+		PopulateBaseOperation(
+			ctx,
+			&dest,
+			operationsRow,
+			transactionRow.TransactionHash,
+			nil,
+			history.Ledger{},
+		),
 	)
 	assert.Equal(t, transactionRow.TransactionHash, dest.TransactionHash)
 
-	PopulateBaseOperation(
-		ctx,
-		&dest,
-		operationsRow,
-		transactionRow.InnerTransactionHash.String,
-		nil,
-		history.Ledger{},
+	assert.NoError(
+		t,
+		PopulateBaseOperation(
+			ctx,
+			&dest,
+			operationsRow,
+			transactionRow.InnerTransactionHash.String,
+			nil,
+			history.Ledger{},
+		),
 	)
 	assert.Equal(t, transactionRow.InnerTransactionHash.String, dest.TransactionHash)
 
-	PopulateBaseOperation(
-		ctx,
-		&dest,
-		operationsRow,
-		transactionRow.TransactionHash,
-		&transactionRow,
-		history.Ledger{},
+	assert.NoError(
+		t,
+		PopulateBaseOperation(
+			ctx,
+			&dest,
+			operationsRow,
+			transactionRow.TransactionHash,
+			&transactionRow,
+			history.Ledger{},
+		),
 	)
+
 	assert.Equal(t, transactionRow.TransactionHash, dest.TransactionHash)
 	assert.Equal(t, transactionRow.TransactionHash, dest.Transaction.Hash)
 	assert.Equal(t, transactionRow.TransactionHash, dest.Transaction.ID)
@@ -194,13 +213,16 @@ func TestFeeBumpOperation(t *testing.T) {
 	assert.Equal(t, transactionRow.TransactionHash, dest.Transaction.FeeBumpTransaction.Hash)
 	assert.Equal(t, []string{"a", "b", "c"}, dest.Transaction.FeeBumpTransaction.Signatures)
 
-	PopulateBaseOperation(
-		ctx,
-		&dest,
-		operationsRow,
-		transactionRow.InnerTransactionHash.String,
-		&transactionRow,
-		history.Ledger{},
+	assert.NoError(
+		t,
+		PopulateBaseOperation(
+			ctx,
+			&dest,
+			operationsRow,
+			transactionRow.InnerTransactionHash.String,
+			&transactionRow,
+			history.Ledger{},
+		),
 	)
 	assert.Equal(t, transactionRow.InnerTransactionHash.String, dest.TransactionHash)
 	assert.Equal(t, transactionRow.InnerTransactionHash.String, dest.Transaction.Hash)

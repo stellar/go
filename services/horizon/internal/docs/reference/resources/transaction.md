@@ -30,6 +30,7 @@ To learn more about the concept of transactions in the Stellar network, take a l
 | fee_meta_xdr            | string                   | A base64 encoded string of the raw `LedgerEntryChanges` xdr struct produced by taking fees for this transaction.               |
 | memo_type               | string                   |                                                                                                                                |
 | memo                    | string                   |                                                                                                                                |
+| memo_bytes              | string                   | A base64 encoded string of the memo bytes set in the transaction's xdr envelope. Note this field is only present if `memo_type` is `text`. |
 | signatures              | string[]                 | An array of signatures used to sign this transaction                                                                           |
 | valid_after             | RFC3339 date-time string |                                                                                                                                |
 | valid_before            | RFC3339 date-time string |                                                                                                                                |

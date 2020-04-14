@@ -2,7 +2,9 @@ package resourceadapter
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
+	"github.com/stellar/go/xdr"
 	"strings"
 	"time"
 
@@ -19,7 +21,7 @@ func PopulateTransaction(
 	transactionHash string,
 	dest *protocol.Transaction,
 	row history.Transaction,
-) {
+) error {
 	dest.ID = transactionHash
 	dest.PT = row.PagingToken()
 	dest.Successful = row.Successful
@@ -38,6 +40,13 @@ func PopulateTransaction(
 	dest.FeeMetaXdr = row.TxFeeMeta
 	dest.MemoType = row.MemoType
 	dest.Memo = row.Memo.String
+	if row.MemoType == "text" {
+		if memoBytes, err := memoBytes(row.TxEnvelope); err != nil {
+			return err
+		} else {
+			dest.MemoBytes = memoBytes
+		}
+	}
 	dest.Signatures = strings.Split(row.SignatureString, ",")
 	dest.ValidBefore = timeString(dest, row.ValidBefore)
 	dest.ValidAfter = timeString(dest, row.ValidAfter)
@@ -71,6 +80,18 @@ func PopulateTransaction(
 	dest.Links.Transaction = dest.Links.Self
 	dest.Links.Succeeds = lb.Linkf("/transactions?order=desc&cursor=%s", dest.PT)
 	dest.Links.Precedes = lb.Linkf("/transactions?order=asc&cursor=%s", dest.PT)
+
+	return nil
+}
+
+func memoBytes(envelopeXDR string) (string, error) {
+	var parsedEnvelope xdr.TransactionEnvelope
+	if err := xdr.SafeUnmarshalBase64(envelopeXDR, &parsedEnvelope); err != nil {
+		return "", err
+	}
+
+	memo := *parsedEnvelope.Memo().Text
+	return base64.StdEncoding.EncodeToString([]byte(memo)), nil
 }
 
 func timeString(res *protocol.Transaction, in null.Int) string {
