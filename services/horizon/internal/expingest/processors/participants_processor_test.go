@@ -3,13 +3,14 @@ package processors
 import (
 	"testing"
 
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/suite"
+
 	"github.com/stellar/go/exp/ingest/io"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
-	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/suite"
 )
 
 type ParticipantsProcessorTestSuiteLedger struct {
@@ -42,16 +43,8 @@ func (s *ParticipantsProcessorTestSuiteLedger) SetupTest() {
 	s.mockOperationsBatchInsertBuilder = &history.MockOperationParticipantBatchInsertBuilder{}
 	sequence := uint32(20)
 
-	unmuxed := xdr.MustAddress("GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2")
-	muxed := xdr.MuxedAccount{
-		Type: xdr.CryptoKeyTypeKeyTypeMuxedEd25519,
-		Med25519: &xdr.MuxedAccountMed25519{
-			Id:      0xdeadbeefdeadbeef,
-			Ed25519: *unmuxed.Ed25519,
-		},
-	}
 	s.addresses = []string{
-		muxed.Address(),
+		"MDPK3PXP32W353Z3MC7QB3RZMAIPPNDVIU5VI5YDIMPJB7YJI6U43VAPLZNCO4RC2WIDK",
 		"GAXI33UCLQTCKM2NMRBS7XYBR535LLEVAHL5YBN4FTCB4HZHT7ZA5CVK",
 		"GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
 	}
@@ -67,12 +60,12 @@ func (s *ParticipantsProcessorTestSuiteLedger) SetupTest() {
 	s.firstTx.Envelope.Operations()[0].Body = xdr.OperationBody{
 		Type: xdr.OperationTypePayment,
 		PaymentOp: &xdr.PaymentOp{
-			Destination: muxed,
+			Destination: xdr.MustMuxedAccountAddress(s.addresses[0]),
 			Asset:       xdr.Asset{Type: xdr.AssetTypeAssetTypeNative},
 			Amount:      100,
 		},
 	}
-	s.firstTx.Envelope.V1.Tx.SourceAccount = muxed
+	s.firstTx.Envelope.V1.Tx.SourceAccount = xdr.MustMuxedAccountAddress(s.addresses[0])
 	s.firstTxID = toid.New(int32(sequence), 1, 0).ToInt64()
 
 	s.secondTx = createTransaction(true, 1)
