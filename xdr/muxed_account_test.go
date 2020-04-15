@@ -108,6 +108,7 @@ var _ = Describe("xdr.MuxedAccountd#Equals()", func() {
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(l.Equals(r)).To(BeFalse())
 
+		// Same key but different memo ids
 		err = l.SetAddress("MCAAAAAAAAAAAAB7BQ2L7E5NBWMXDUCMZSIPOBKRDSBYVLMXGSSKF6YNPIB7Y77ITKNOG")
 		Expect(err).ShouldNot(HaveOccurred())
 		err = r.SetAddress("MAAAAAAAAAAAAAB7BQ2L7E5NBWMXDUCMZSIPOBKRDSBYVLMXGSSKF6YNPIB7Y77ITLVL6")
