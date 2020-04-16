@@ -3,6 +3,8 @@ package core
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/xdr"
 )
@@ -60,4 +62,32 @@ func TestSignatures(t *testing.T) {
 	tt.Assert.Equal(2, len(signatures))
 	tt.Assert.Equal("8qkkeKaKfsbgInyIkzXJhqJE5/Ufxri2LdxmyKkgkT6I3sPmvrs5cPWQSzEQyhV750IW2ds97xTHqTpOfuZCAg==", signatures[0])
 	tt.Assert.Equal("", signatures[1])
+}
+
+func TestTransaction_SourceAddress_MuxedAccount(t *testing.T) {
+	muxed := xdr.MustMuxedAccountAddress("MCAAAAAAAAAAAAB7BQ2L7E5NBWMXDUCMZSIPOBKRDSBYVLMXGSSKF6YNPIB7Y77ITKNOG")
+	var tx Transaction
+	tx.Envelope = xdr.TransactionEnvelope{
+		Type: xdr.EnvelopeTypeEnvelopeTypeTx,
+		V1: &xdr.TransactionV1Envelope{
+			Tx: xdr.Transaction{
+				SourceAccount: muxed,
+				Operations: []xdr.Operation{
+					{
+						SourceAccount: &muxed,
+						Body: xdr.OperationBody{
+							Type: xdr.OperationTypePayment,
+							PaymentOp: &xdr.PaymentOp{
+								Destination: muxed,
+								Asset:       xdr.Asset{Type: xdr.AssetTypeAssetTypeNative},
+								Amount:      100,
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	assert.Equal(t, "GA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVSGZ", tx.SourceAddress())
 }
