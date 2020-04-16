@@ -49,7 +49,7 @@ func TestToken_formInputSuccess(t *testing.T) {
 	var tx xdr.TransactionEnvelope
 	err = xdr.SafeUnmarshalBase64(chTx, &tx)
 	require.NoError(t, err)
-	hash, err := network.HashTransaction(&tx.V1.Tx, network.TestNetworkPassphrase)
+	hash, err := network.HashTransactionInEnvelope(tx, network.TestNetworkPassphrase)
 	require.NoError(t, err)
 	sigDec, err := account.SignDecorated(hash[:])
 	require.NoError(t, err)
@@ -149,7 +149,7 @@ func TestToken_jsonInputSuccess(t *testing.T) {
 	var tx xdr.TransactionEnvelope
 	err = xdr.SafeUnmarshalBase64(chTx, &tx)
 	require.NoError(t, err)
-	hash, err := network.HashTransaction(&tx.V1.Tx, network.TestNetworkPassphrase)
+	hash, err := network.HashTransactionInEnvelope(tx, network.TestNetworkPassphrase)
 	require.NoError(t, err)
 	sigDec, err := account.SignDecorated(hash[:])
 	require.NoError(t, err)
@@ -260,7 +260,7 @@ func TestToken_jsonInputValidMultipleSigners(t *testing.T) {
 	var tx xdr.TransactionEnvelope
 	err = xdr.SafeUnmarshalBase64(chTx, &tx)
 	require.NoError(t, err)
-	hash, err := network.HashTransaction(&tx.V1.Tx, network.TestNetworkPassphrase)
+	hash, err := network.HashTransactionInEnvelope(tx, network.TestNetworkPassphrase)
 	require.NoError(t, err)
 	sigDec1, err := accountSigner1.SignDecorated(hash[:])
 	require.NoError(t, err)
@@ -371,7 +371,7 @@ func TestToken_jsonInputNotEnoughWeight(t *testing.T) {
 	var tx xdr.TransactionEnvelope
 	err = xdr.SafeUnmarshalBase64(chTx, &tx)
 	require.NoError(t, err)
-	hash, err := network.HashTransaction(&tx.V1.Tx, network.TestNetworkPassphrase)
+	hash, err := network.HashTransactionInEnvelope(tx, network.TestNetworkPassphrase)
 	require.NoError(t, err)
 	sigDec, err := account.SignDecorated(hash[:])
 	require.NoError(t, err)
@@ -454,7 +454,7 @@ func TestToken_jsonInputUnrecognizedSigner(t *testing.T) {
 	var tx xdr.TransactionEnvelope
 	err = xdr.SafeUnmarshalBase64(chTx, &tx)
 	require.NoError(t, err)
-	hash, err := network.HashTransaction(&tx.V1.Tx, network.TestNetworkPassphrase)
+	hash, err := network.HashTransactionInEnvelope(tx, network.TestNetworkPassphrase)
 	require.NoError(t, err)
 	sigDec, err := account.SignDecorated(hash[:])
 	require.NoError(t, err)
@@ -537,7 +537,7 @@ func TestToken_jsonInputAccountNotExistSuccess(t *testing.T) {
 	var tx xdr.TransactionEnvelope
 	err = xdr.SafeUnmarshalBase64(chTx, &tx)
 	require.NoError(t, err)
-	hash, err := network.HashTransaction(&tx.V1.Tx, network.TestNetworkPassphrase)
+	hash, err := network.HashTransactionInEnvelope(tx, network.TestNetworkPassphrase)
 	require.NoError(t, err)
 	sigDec, err := account.SignDecorated(hash[:])
 	require.NoError(t, err)
@@ -641,7 +641,7 @@ func TestToken_jsonInputAccountNotExistFail(t *testing.T) {
 	var tx xdr.TransactionEnvelope
 	err = xdr.SafeUnmarshalBase64(chTx, &tx)
 	require.NoError(t, err)
-	hash, err := network.HashTransaction(&tx.V1.Tx, network.TestNetworkPassphrase)
+	hash, err := network.HashTransactionInEnvelope(tx, network.TestNetworkPassphrase)
 	require.NoError(t, err)
 	sigDec, err := otherSigner.SignDecorated(hash[:])
 	require.NoError(t, err)
@@ -720,7 +720,7 @@ func TestToken_jsonInputAccountNotExistNotAllowed(t *testing.T) {
 	var tx xdr.TransactionEnvelope
 	err = xdr.SafeUnmarshalBase64(chTx, &tx)
 	require.NoError(t, err)
-	hash, err := network.HashTransaction(&tx.V1.Tx, network.TestNetworkPassphrase)
+	hash, err := network.HashTransactionInEnvelope(tx, network.TestNetworkPassphrase)
 	require.NoError(t, err)
 	sigDec, err := account.SignDecorated(hash[:])
 	require.NoError(t, err)

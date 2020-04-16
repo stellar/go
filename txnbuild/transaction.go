@@ -51,7 +51,7 @@ type Transaction struct {
 
 // Hash provides a signable object representing the Transaction on the specified network.
 func (tx *Transaction) Hash() ([32]byte, error) {
-	return network.HashTransaction(&tx.xdrTransaction, tx.Network)
+	return network.HashTransaction(tx.xdrTransaction, tx.Network)
 }
 
 // MarshalBinary returns the binary XDR representation of the transaction envelope.

@@ -57,7 +57,7 @@ func TestChallenge(t *testing.T) {
 	assert.Equal(t, xdr.OperationTypeManageData, tx.Operations()[0].Body.Type)
 	assert.Regexp(t, "^testserver auth", tx.Operations()[0].Body.ManageDataOp.DataName)
 
-	hash, err := network.HashTransaction(&tx.V1.Tx, res.NetworkPassphrase)
+	hash, err := network.HashTransactionInEnvelope(tx, res.NetworkPassphrase)
 	require.NoError(t, err)
 	assert.NoError(t, serverKey.FromAddress().Verify(hash[:], tx.V1.Signatures[0].Signature))
 
