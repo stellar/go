@@ -26,7 +26,7 @@ func setMuxedAccount(addressOrSeed string, m *xdr.MuxedAccount) error {
 	}
 
 	if m == nil {
-		return errors.New("aid is nil in setAccountId")
+		return errors.New("m is nil in setMuxedAccount")
 	}
 
 	return m.SetAddress(kp.Address())
