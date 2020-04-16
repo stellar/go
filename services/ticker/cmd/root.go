@@ -23,6 +23,7 @@ var rootCmd = &cobra.Command{
 
 func init() {
 	cobra.OnInitialize(initConfig)
+	// TODO: Eliminate db-url flag.
 	rootCmd.PersistentFlags().StringVarP(
 		&DatabaseURL,
 		"db-url",

@@ -15,11 +15,13 @@ var cmdMigrate = &cobra.Command{
 	Short: "Updates the database to the latest schema version.",
 	Run: func(cmd *cobra.Command, args []string) {
 		Logger.Info("Refreshing the asset database")
+		// TODO: Eliminate ParseURL call.
 		dbInfo, err := pq.ParseURL(DatabaseURL)
 		if err != nil {
 			Logger.Fatal("could not parse db-url:", err)
 		}
 
+		// TODO: Replace dbInfo with env var.
 		session, err := tickerdb.CreateSession("postgres", dbInfo)
 		if err != nil {
 			Logger.Fatal("could not connect to db:", err)

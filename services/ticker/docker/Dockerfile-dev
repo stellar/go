@@ -13,6 +13,7 @@ RUN /dependencies
 COPY docker/setup /
 RUN ["chmod", "+x", "/setup"]
 RUN /setup
+RUN go build -o /opt/stellar/bin/ticker ./services/ticker
 
 COPY docker/conf /opt/stellar/conf
 RUN crontab -u stellar /opt/stellar/conf/crontab.txt

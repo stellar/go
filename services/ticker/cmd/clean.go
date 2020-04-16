@@ -32,11 +32,13 @@ var cmdCleanTrades = &cobra.Command{
 	Use:   "trades",
 	Short: "Cleans up old trades from the database",
 	Run: func(cmd *cobra.Command, args []string) {
+		// TODO: Eliminate ParseURL call.
 		dbInfo, err := pq.ParseURL(DatabaseURL)
 		if err != nil {
 			Logger.Fatal("could not parse db-url:", err)
 		}
 
+		// TODO: Replace dbInfo with env var.
 		session, err := tickerdb.CreateSession("postgres", dbInfo)
 		if err != nil {
 			Logger.Fatal("could not connect to db:", err)

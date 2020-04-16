@@ -41,11 +41,13 @@ var cmdGenerateMarketData = &cobra.Command{
 	Use:   "market-data",
 	Short: "Generate the aggregated market data (for 24h and 7d) and outputs to a file.",
 	Run: func(cmd *cobra.Command, args []string) {
+		// TODO: Eliminate ParseURL call.
 		dbInfo, err := pq.ParseURL(DatabaseURL)
 		if err != nil {
 			Logger.Fatal("could not parse db-url:", err)
 		}
 
+		// TODO: Replace dbInfo with env var.
 		session, err := tickerdb.CreateSession("postgres", dbInfo)
 		if err != nil {
 			Logger.Fatal("could not connect to db:", err)
