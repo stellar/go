@@ -1,7 +1,9 @@
 package resourceadapter
 
 import (
+	"encoding/base64"
 	"github.com/guregu/null"
+	"github.com/stellar/go/xdr"
 	"testing"
 
 	. "github.com/stellar/go/protocols/horizon"
@@ -22,14 +24,86 @@ func TestPopulateTransaction_Successful(t *testing.T) {
 	dest = Transaction{}
 	row = history.Transaction{Successful: true}
 
-	PopulateTransaction(ctx, row.TransactionHash, &dest, row)
+	assert.NoError(t, PopulateTransaction(ctx, row.TransactionHash, &dest, row))
 	assert.True(t, dest.Successful)
 
 	dest = Transaction{}
 	row = history.Transaction{Successful: false}
 
-	PopulateTransaction(ctx, row.TransactionHash, &dest, row)
+	assert.NoError(t, PopulateTransaction(ctx, row.TransactionHash, &dest, row))
 	assert.False(t, dest.Successful)
+}
+
+func TestPopulateTransaction_HashMemo(t *testing.T) {
+	ctx, _ := test.ContextWithLogBuffer()
+	dest := Transaction{}
+	row := history.Transaction{MemoType: "hash", Memo: null.StringFrom("abcdef")}
+	assert.NoError(t, PopulateTransaction(ctx, row.TransactionHash, &dest, row))
+	assert.Equal(t, "hash", dest.MemoType)
+	assert.Equal(t, "abcdef", dest.Memo)
+	assert.Equal(t, "", dest.MemoBytes)
+}
+
+func TestPopulateTransaction_TextMemo(t *testing.T) {
+	ctx, _ := test.ContextWithLogBuffer()
+	rawMemo := []byte{0, 0, 1, 1, 0, 0, 3, 3}
+	rawMemoString := string(rawMemo)
+
+	for _, envelope := range []xdr.TransactionEnvelope{
+		{
+			Type: xdr.EnvelopeTypeEnvelopeTypeTxV0,
+			V0: &xdr.TransactionV0Envelope{
+				Tx: xdr.TransactionV0{
+					Memo: xdr.Memo{
+						Type: xdr.MemoTypeMemoText,
+						Text: &rawMemoString,
+					},
+				},
+			},
+		},
+		{
+			Type: xdr.EnvelopeTypeEnvelopeTypeTx,
+			V1: &xdr.TransactionV1Envelope{
+				Tx: xdr.Transaction{
+					SourceAccount: xdr.MustMuxedAccountAddress("GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H"),
+					Memo: xdr.Memo{
+						Type: xdr.MemoTypeMemoText,
+						Text: &rawMemoString,
+					},
+				},
+			},
+		},
+		xdr.TransactionEnvelope{
+			Type: xdr.EnvelopeTypeEnvelopeTypeTxFeeBump,
+			FeeBump: &xdr.FeeBumpTransactionEnvelope{
+				Tx: xdr.FeeBumpTransaction{
+					InnerTx: xdr.FeeBumpTransactionInnerTx{
+						Type: xdr.EnvelopeTypeEnvelopeTypeTx,
+						V1: &xdr.TransactionV1Envelope{
+							Tx: xdr.Transaction{
+								SourceAccount: xdr.MustMuxedAccountAddress("GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H"),
+								Memo: xdr.Memo{
+									Type: xdr.MemoTypeMemoText,
+									Text: &rawMemoString,
+								},
+							},
+						},
+					},
+					FeeSource: xdr.MustAddress("GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU"),
+				},
+			},
+		},
+	} {
+		envelopeXDR, err := xdr.MarshalBase64(envelope)
+		assert.NoError(t, err)
+		row := history.Transaction{MemoType: "text", TxEnvelope: envelopeXDR, Memo: null.StringFrom("sample")}
+		var dest Transaction
+		assert.NoError(t, PopulateTransaction(ctx, row.TransactionHash, &dest, row))
+
+		assert.Equal(t, "text", dest.MemoType)
+		assert.Equal(t, "sample", dest.Memo)
+		assert.Equal(t, base64.StdEncoding.EncodeToString(rawMemo), dest.MemoBytes)
+	}
 }
 
 // TestPopulateTransaction_Fee tests transaction object population.
@@ -44,7 +118,7 @@ func TestPopulateTransaction_Fee(t *testing.T) {
 	dest = Transaction{}
 	row = history.Transaction{MaxFee: 10000, FeeCharged: 100}
 
-	PopulateTransaction(ctx, row.TransactionHash, &dest, row)
+	assert.NoError(t, PopulateTransaction(ctx, row.TransactionHash, &dest, row))
 	assert.Equal(t, int64(100), dest.FeeCharged)
 	assert.Equal(t, int64(10000), dest.MaxFee)
 }
@@ -64,7 +138,7 @@ func TestFeeBumpTransaction(t *testing.T) {
 		InnerTransactionHash: null.StringFrom("2374e99349b9ef7dba9a5db3339b78fda8f34777b1af33ba468ad5c0df946d4d"),
 	}
 
-	PopulateTransaction(ctx, row.TransactionHash, &dest, row)
+	assert.NoError(t, PopulateTransaction(ctx, row.TransactionHash, &dest, row))
 	assert.Equal(t, row.TransactionHash, dest.Hash)
 	assert.Equal(t, row.TransactionHash, dest.ID)
 	assert.Equal(t, row.FeeAccount.String, dest.FeeAccount)
@@ -79,7 +153,7 @@ func TestFeeBumpTransaction(t *testing.T) {
 	assert.Equal(t, []string{"a", "b", "c"}, dest.FeeBumpTransaction.Signatures)
 	assert.Equal(t, "/transactions/"+row.TransactionHash, dest.Links.Transaction.Href)
 
-	PopulateTransaction(ctx, row.InnerTransactionHash.String, &dest, row)
+	assert.NoError(t, PopulateTransaction(ctx, row.InnerTransactionHash.String, &dest, row))
 	assert.Equal(t, row.InnerTransactionHash.String, dest.Hash)
 	assert.Equal(t, row.InnerTransactionHash.String, dest.ID)
 	assert.Equal(t, row.FeeAccount.String, dest.FeeAccount)
