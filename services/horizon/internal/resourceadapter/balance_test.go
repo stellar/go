@@ -22,6 +22,15 @@ func TestPopulateBalance(t *testing.T) {
 		Balance:   10,
 		Flags:     1,
 	}
+	authorizedToMaintainLiabilitiesTrustline := core.Trustline{
+		Accountid: "testID",
+		Assettype: xdr.AssetTypeAssetTypeCreditAlphanum12,
+		Issuer:    "",
+		Assetcode: testAssetCode1,
+		Tlimit:    100,
+		Balance:   10,
+		Flags:     2,
+	}
 	unauthorizedTrustline := core.Trustline{
 		Accountid: "testID",
 		Assettype: xdr.AssetTypeAssetTypeCreditAlphanum12,
@@ -29,7 +38,7 @@ func TestPopulateBalance(t *testing.T) {
 		Assetcode: testAssetCode2,
 		Tlimit:    100,
 		Balance:   10,
-		Flags:     2,
+		Flags:     0,
 	}
 
 	want := Balance{}
@@ -41,6 +50,18 @@ func TestPopulateBalance(t *testing.T) {
 	assert.Equal(t, "", want.Issuer)
 	assert.Equal(t, testAssetCode1, want.Code)
 	assert.Equal(t, true, *want.IsAuthorized)
+	assert.Equal(t, true, *want.IsAuthorizedToMaintainLiabilities)
+
+	want = Balance{}
+	err = PopulateBalance(&want, authorizedToMaintainLiabilitiesTrustline)
+	assert.NoError(t, err)
+	assert.Equal(t, "credit_alphanum12", want.Type)
+	assert.Equal(t, "0.0000010", want.Balance)
+	assert.Equal(t, "0.0000100", want.Limit)
+	assert.Equal(t, "", want.Issuer)
+	assert.Equal(t, testAssetCode1, want.Code)
+	assert.Equal(t, false, *want.IsAuthorized)
+	assert.Equal(t, true, *want.IsAuthorizedToMaintainLiabilities)
 
 	want = Balance{}
 	err = PopulateBalance(&want, unauthorizedTrustline)
@@ -51,6 +72,7 @@ func TestPopulateBalance(t *testing.T) {
 	assert.Equal(t, "", want.Issuer)
 	assert.Equal(t, testAssetCode2, want.Code)
 	assert.Equal(t, false, *want.IsAuthorized)
+	assert.Equal(t, false, *want.IsAuthorizedToMaintainLiabilities)
 }
 
 func TestPopulateHistoryBalance(t *testing.T) {
@@ -65,6 +87,15 @@ func TestPopulateHistoryBalance(t *testing.T) {
 		Balance:     10,
 		Flags:       1,
 	}
+	authorizedToMaintainLiabilitiesTrustline := history.TrustLine{
+		AccountID:   "testID",
+		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum12,
+		AssetIssuer: "",
+		AssetCode:   testAssetCode1,
+		Limit:       100,
+		Balance:     10,
+		Flags:       2,
+	}
 	unauthorizedTrustline := history.TrustLine{
 		AccountID:   "testID",
 		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum12,
@@ -72,7 +103,7 @@ func TestPopulateHistoryBalance(t *testing.T) {
 		AssetCode:   testAssetCode2,
 		Limit:       100,
 		Balance:     10,
-		Flags:       2,
+		Flags:       0,
 	}
 
 	want := Balance{}
@@ -84,6 +115,18 @@ func TestPopulateHistoryBalance(t *testing.T) {
 	assert.Equal(t, "", want.Issuer)
 	assert.Equal(t, testAssetCode1, want.Code)
 	assert.Equal(t, true, *want.IsAuthorized)
+	assert.Equal(t, true, *want.IsAuthorizedToMaintainLiabilities)
+
+	want = Balance{}
+	err = PopulateHistoryBalance(&want, authorizedToMaintainLiabilitiesTrustline)
+	assert.NoError(t, err)
+	assert.Equal(t, "credit_alphanum12", want.Type)
+	assert.Equal(t, "0.0000010", want.Balance)
+	assert.Equal(t, "0.0000100", want.Limit)
+	assert.Equal(t, "", want.Issuer)
+	assert.Equal(t, testAssetCode1, want.Code)
+	assert.Equal(t, false, *want.IsAuthorized)
+	assert.Equal(t, true, *want.IsAuthorizedToMaintainLiabilities)
 
 	want = Balance{}
 	err = PopulateHistoryBalance(&want, unauthorizedTrustline)
@@ -94,6 +137,7 @@ func TestPopulateHistoryBalance(t *testing.T) {
 	assert.Equal(t, "", want.Issuer)
 	assert.Equal(t, testAssetCode2, want.Code)
 	assert.Equal(t, false, *want.IsAuthorized)
+	assert.Equal(t, false, *want.IsAuthorizedToMaintainLiabilities)
 }
 
 func TestPopulateNativeBalance(t *testing.T) {

@@ -17,12 +17,13 @@ import (
 func NewOperation(
 	ctx context.Context,
 	operationRow history.Operation,
+	transactionHash string,
 	transactionRow *history.Transaction,
 	ledger history.Ledger,
 ) (result hal.Pageable, err error) {
 
 	base := operations.Base{}
-	PopulateBaseOperation(ctx, &base, operationRow, transactionRow, ledger)
+	PopulateBaseOperation(ctx, &base, operationRow, transactionHash, transactionRow, ledger)
 
 	switch operationRow.Type {
 	case xdr.OperationTypeBumpSequence:
@@ -78,6 +79,12 @@ func NewOperation(
 	case xdr.OperationTypeAllowTrust:
 		e := operations.AllowTrust{Base: base}
 		err = operationRow.UnmarshalDetails(&e)
+		// if the trustline is authorized, we want to reflect that it implies
+		// authorized_to_maintain_liabilities to true, otherwise, we use the
+		// value from details
+		if e.Authorize {
+			e.AuthorizeToMaintainLiabilities = e.Authorize
+		}
 		result = e
 	case xdr.OperationTypeAccountMerge:
 		e := operations.AccountMerge{Base: base}
@@ -108,21 +115,17 @@ func PopulateBaseOperation(
 	ctx context.Context,
 	dest *operations.Base,
 	operationRow history.Operation,
+	transactionHash string,
 	transactionRow *history.Transaction,
 	ledger history.Ledger,
 ) {
 	dest.ID = fmt.Sprintf("%d", operationRow.ID)
 	dest.PT = operationRow.PagingToken()
-	// Check db2/history.Transaction.Successful field comment for more information.
-	if operationRow.TransactionSuccessful == nil {
-		dest.TransactionSuccessful = true
-	} else {
-		dest.TransactionSuccessful = *operationRow.TransactionSuccessful
-	}
+	dest.TransactionSuccessful = operationRow.TransactionSuccessful
 	dest.SourceAccount = operationRow.SourceAccount
 	populateOperationType(dest, operationRow)
 	dest.LedgerCloseTime = ledger.ClosedAt
-	dest.TransactionHash = operationRow.TransactionHash
+	dest.TransactionHash = transactionHash
 
 	lb := hal.LinkBuilder{Base: httpx.BaseURL(ctx)}
 	self := fmt.Sprintf("/operations/%d", operationRow.ID)
@@ -134,7 +137,7 @@ func PopulateBaseOperation(
 
 	if transactionRow != nil {
 		dest.Transaction = new(horizon.Transaction)
-		PopulateTransaction(ctx, dest.Transaction, *transactionRow)
+		PopulateTransaction(ctx, transactionHash, dest.Transaction, *transactionRow)
 	}
 }
 

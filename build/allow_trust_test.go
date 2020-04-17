@@ -114,22 +114,22 @@ var _ = Describe("AllowTrustBuilder Mutators", func() {
 	Describe("Authorize", func() {
 		Context("when equal true", func() {
 			BeforeEach(func() {
-				mut = Authorize{true}
+				mut = Authorize{uint32(xdr.TrustLineFlagsAuthorizedFlag)}
 			})
 
 			It("sets authorize flag properly", func() {
-				Expect(subject.AT.Authorize).To(Equal(true))
+				Expect(subject.AT.Authorize).To(Equal(xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag)))
 			})
 		})
 
 		Context("when equal false", func() {
 			BeforeEach(func() {
-				subject.AT.Authorize = true
-				mut = Authorize{false}
+				subject.AT.Authorize = 0
+				mut = Authorize{0}
 			})
 
 			It("sets authorize flag properly", func() {
-				Expect(subject.AT.Authorize).To(Equal(false))
+				Expect(subject.AT.Authorize).To(Equal(xdr.Uint32(0)))
 			})
 		})
 	})

@@ -16,25 +16,20 @@ import (
 // Populate fills out the details
 func PopulateTransaction(
 	ctx context.Context,
+	transactionHash string,
 	dest *protocol.Transaction,
 	row history.Transaction,
 ) {
-	dest.ID = row.TransactionHash
+	dest.ID = transactionHash
 	dest.PT = row.PagingToken()
-	// Check db2/history.Transaction.Successful field comment for more information.
-	if row.Successful == nil {
-		dest.Successful = true
-	} else {
-		dest.Successful = *row.Successful
-	}
-	dest.Hash = row.TransactionHash
+	dest.Successful = row.Successful
+	dest.Hash = transactionHash
 	dest.Ledger = row.LedgerSequence
 	dest.LedgerCloseTime = row.LedgerCloseTime
 	dest.Account = row.Account
 	dest.AccountSequence = row.AccountSequence
 
 	dest.FeeCharged = row.FeeCharged
-	dest.MaxFee = row.MaxFee
 
 	dest.OperationCount = row.OperationCount
 	dest.EnvelopeXdr = row.TxEnvelope
@@ -47,12 +42,33 @@ func PopulateTransaction(
 	dest.ValidBefore = timeString(dest, row.ValidBefore)
 	dest.ValidAfter = timeString(dest, row.ValidAfter)
 
+	if row.InnerTransactionHash.Valid {
+		dest.FeeAccount = row.FeeAccount.String
+		dest.MaxFee = row.NewMaxFee.Int64
+		dest.FeeBumpTransaction = &protocol.FeeBumpTransaction{
+			Hash:       row.TransactionHash,
+			Signatures: dest.Signatures,
+		}
+		dest.InnerTransaction = &protocol.InnerTransaction{
+			Hash:       row.InnerTransactionHash.String,
+			MaxFee:     row.MaxFee,
+			Signatures: strings.Split(row.InnerSignatureString.String, ","),
+		}
+		if transactionHash != row.TransactionHash {
+			dest.Signatures = dest.InnerTransaction.Signatures
+		}
+	} else {
+		dest.FeeAccount = row.Account
+		dest.MaxFee = row.MaxFee
+	}
+
 	lb := hal.LinkBuilder{Base: httpx.BaseURL(ctx)}
 	dest.Links.Account = lb.Link("/accounts", dest.Account)
 	dest.Links.Ledger = lb.Link("/ledgers", fmt.Sprintf("%d", dest.Ledger))
 	dest.Links.Operations = lb.PagedLink("/transactions", dest.ID, "operations")
 	dest.Links.Effects = lb.PagedLink("/transactions", dest.ID, "effects")
 	dest.Links.Self = lb.Link("/transactions", dest.ID)
+	dest.Links.Transaction = dest.Links.Self
 	dest.Links.Succeeds = lb.Linkf("/transactions?order=desc&cursor=%s", dest.PT)
 	dest.Links.Precedes = lb.Linkf("/transactions?order=asc&cursor=%s", dest.PT)
 }

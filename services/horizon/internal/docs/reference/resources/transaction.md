@@ -15,13 +15,14 @@ To learn more about the concept of transactions in the Stellar network, take a l
 | id                      | string                   | The canonical id of this transaction, suitable for use as the :id parameter for url templates that require a transaction's ID. |
 | paging_token            | string                   | A [paging token](./page.md) suitable for use as the `cursor` parameter to transaction collection resources.                    |
 | successful              | bool                     | Indicates if transaction was successful or not.                                                                                |
-| hash                    | string                   | A hex-encoded SHA-256 hash of the transaction's [XDR](../xdr.md)-encoded form.                                        |
+| hash                    | string                   | A hex-encoded, lowercase SHA-256 hash of the transaction's [XDR](../../learn/xdr.md)-encoded form.                             |
 | ledger                  | number                   | Sequence number of the ledger in which this transaction was applied.                                                           |
 | created_at              | ISO8601 string           |                                                                                                                                |
+| fee_account             | string                   | The account which paid for the transaction fees                                                                                |
 | source_account          | string                   |                                                                                                                                |
 | source_account_sequence | string                   |                                                                                                                                |
-| max_fee                 | number                   | The the maximum fee the source account was willing to pay.                                                                     |
-| fee_charged             | number                   | The fee paid by the source account of this transaction when the transaction was applied to the ledger.                         |
+| max_fee                 | number                   | The the maximum fee the fee account was willing to pay.                                                                        |
+| fee_charged             | number                   | The fee paid by the fee account of this transaction when the transaction was applied to the ledger.                            |
 | operation_count         | number                   | The number of operations that are contained within this transaction.                                                           |
 | envelope_xdr            | string                   | A base64 encoded string of the raw `TransactionEnvelope` xdr struct for this transaction                                       |
 | result_xdr              | string                   | A base64 encoded string of the raw `TransactionResult` xdr struct for this transaction                                         |
@@ -32,6 +33,8 @@ To learn more about the concept of transactions in the Stellar network, take a l
 | signatures              | string[]                 | An array of signatures used to sign this transaction                                                                           |
 | valid_after             | RFC3339 date-time string |                                                                                                                                |
 | valid_before            | RFC3339 date-time string |                                                                                                                                |
+| fee_bump_transaction    | object                   | This object is only present if the transaction is a fee bump transaction or is wrapped by a fee bump transaction. The object has two fields: `hash` (the hash of the fee bump transaction) and `signatures` (the signatures present in the fee bump transaction envelope)                                                                                                                               |
+| inner_transaction       | object                   | This object is only present if the transaction is a fee bump transaction or is wrapped by a fee bump transaction. The object has three fields: `hash` (the hash of the inner transaction wrapped by the fee bump transaction), `max_fee` (the max fee set in the inner transaction), and `signatures` (the signatures present in the inner transaction envelope)                                                                                                                               |
 
 ## Links
 
@@ -81,6 +84,7 @@ To learn more about the concept of transactions in the Stellar network, take a l
   "ledger": 2352988,
   "created_at": "2019-02-21T21:44:13Z",
   "source_account": "GCDLRUXOD6KA53G5ILL435TZAISNLPS4EKIHSOVY3MVD3DVJ333NO4DT",
+  "fee_account": "GCDLRUXOD6KA53G5ILL435TZAISNLPS4EKIHSOVY3MVD3DVJ333NO4DT",
   "source_account_sequence": "10105916313567234",
   "max_fee": 100,
   "fee_charged":100,

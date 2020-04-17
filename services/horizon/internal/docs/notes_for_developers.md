@@ -85,13 +85,7 @@ Check existing tests for more examples.
 
 ## <a name="tests"></a> Running Tests
 
-start a redis server on port `6379`
-
-```bash
-redis-server
-```
-
-then, run the all the Go monorepo tests like so (assuming you are at stellar/go, or run from stellar/go/services/horizon for just the Horizon subset):
+run the all the Go monorepo tests like so (assuming you are at stellar/go, or run from stellar/go/services/horizon for just the Horizon subset):
 
 ```bash
 go test ./...

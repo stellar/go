@@ -7,6 +7,17 @@
 namespace stellar
 {
 
+// Source or destination of a payment operation
+union MuxedAccount switch (CryptoKeyType type) {
+ case KEY_TYPE_ED25519:
+     uint256 ed25519;
+ case KEY_TYPE_MUXED_ED25519:
+     struct {
+         uint64 id;
+         uint256 ed25519;
+     } med25519;
+};
+
 struct DecoratedSignature
 {
     SignatureHint hint;  // last 4 bytes of the public key, used as a hint
@@ -55,9 +66,9 @@ struct CreateAccountOp
 */
 struct PaymentOp
 {
-    AccountID destination; // recipient of the payment
-    Asset asset;           // what they end up with
-    int64 amount;          // amount they end up with
+    MuxedAccount destination; // recipient of the payment
+    Asset asset;              // what they end up with
+    int64 amount;             // amount they end up with
 };
 
 /* PathPaymentStrictReceive
@@ -78,9 +89,9 @@ struct PathPaymentStrictReceiveOp
                      // send (excluding fees).
                      // The operation will fail if can't be met
 
-    AccountID destination; // recipient of the payment
-    Asset destAsset;       // what they end up with
-    int64 destAmount;      // amount they end up with
+    MuxedAccount destination; // recipient of the payment
+    Asset destAsset;          // what they end up with
+    int64 destAmount;         // amount they end up with
 
     Asset path<5>; // additional hops it must go through to get there
 };
@@ -101,11 +112,11 @@ struct PathPaymentStrictSendOp
     Asset sendAsset;  // asset we pay with
     int64 sendAmount; // amount of sendAsset to send (excluding fees)
 
-    AccountID destination; // recipient of the payment
-    Asset destAsset;       // what they end up with
-    int64 destMin;         // the minimum amount of dest asset to
-                           // be received
-                           // The operation will fail if it can't be met
+    MuxedAccount destination; // recipient of the payment
+    Asset destAsset;          // what they end up with
+    int64 destMin;            // the minimum amount of dest asset to
+                              // be received
+                              // The operation will fail if it can't be met
 
     Asset path<5>; // additional hops it must go through to get there
 };
@@ -232,7 +243,8 @@ struct AllowTrustOp
     }
     asset;
 
-    bool authorize;
+    // 0, or any bitwise combination of TrustLineFlags
+    uint32 authorize;
 };
 
 /* Inflation
@@ -285,7 +297,7 @@ struct Operation
     // sourceAccount is the account used to run the operation
     // if not set, the runtime defaults to "sourceAccount" specified at
     // the transaction level
-    AccountID* sourceAccount;
+    MuxedAccount* sourceAccount;
 
     union switch (OperationType type)
     {
@@ -306,7 +318,7 @@ struct Operation
     case ALLOW_TRUST:
         AllowTrustOp allowTrustOp;
     case ACCOUNT_MERGE:
-        AccountID destination;
+        MuxedAccount destination;
     case INFLATION:
         void;
     case MANAGE_DATA:
@@ -353,6 +365,34 @@ struct TimeBounds
 // maximum number of operations per transaction
 const MAX_OPS_PER_TX = 100;
 
+// TransactionV0 is a transaction with the AccountID discriminant stripped off,
+// leaving a raw ed25519 public key to identify the source account. This is used
+// for backwards compatibility starting from the protocol 12/13 boundary. If an
+// "old-style" TransactionEnvelope containing a Transaction is parsed with this
+// XDR definition, it will be parsed as a "new-style" TransactionEnvelope
+// containing a TransactionV0.
+struct TransactionV0
+{
+    uint256 sourceAccountEd25519;
+    uint32 fee;
+    SequenceNumber seqNum;
+    TimeBounds* timeBounds;
+    Memo memo;
+    Operation operations<MAX_OPS_PER_TX>;
+    union switch (int v) {
+    case 0:
+        void;
+    } ext;
+};
+
+struct TransactionV0Envelope
+{
+    TransactionV0 tx;
+    /* Each decorated signature is a signature over the SHA256 hash of
+     * a TransactionSignaturePayload */
+    DecoratedSignature signatures<20>;
+};
+
 /* a transaction is a container for a set of operations
     - is executed by an account
     - fees are collected from the account
@@ -363,7 +403,7 @@ const MAX_OPS_PER_TX = 100;
 struct Transaction
 {
     // account used to run the transaction
-    AccountID sourceAccount;
+    MuxedAccount sourceAccount;
 
     // the fee the sourceAccount will pay
     uint32 fee;
@@ -387,25 +427,59 @@ struct Transaction
     ext;
 };
 
-struct TransactionSignaturePayload
-{
-    Hash networkId;
-    union switch (EnvelopeType type)
-    {
-    case ENVELOPE_TYPE_TX:
-        Transaction tx;
-        /* All other values of type are invalid */
-    }
-    taggedTransaction;
-};
-
-/* A TransactionEnvelope wraps a transaction with signatures. */
-struct TransactionEnvelope
+struct TransactionV1Envelope
 {
     Transaction tx;
     /* Each decorated signature is a signature over the SHA256 hash of
      * a TransactionSignaturePayload */
     DecoratedSignature signatures<20>;
+};
+
+struct FeeBumpTransaction
+{
+    AccountID feeSource;
+    int64 fee;
+    union switch (EnvelopeType type)
+    {
+    case ENVELOPE_TYPE_TX:
+        TransactionV1Envelope v1;
+    } innerTx;
+    union switch (int v) {
+    case 0:
+        void;
+    } ext;
+};
+
+struct FeeBumpTransactionEnvelope
+{
+    FeeBumpTransaction tx;
+    /* Each decorated signature is a signature over the SHA256 hash of
+     * a TransactionSignaturePayload */
+    DecoratedSignature signatures<20>;
+};
+
+/* A TransactionEnvelope wraps a transaction with signatures. */
+union TransactionEnvelope switch (EnvelopeType type) {
+case ENVELOPE_TYPE_TX_V0:
+    TransactionV0Envelope v0;
+case ENVELOPE_TYPE_TX:
+    TransactionV1Envelope v1;
+case ENVELOPE_TYPE_TX_FEE_BUMP:
+    FeeBumpTransactionEnvelope feeBump;
+};
+
+struct TransactionSignaturePayload
+{
+    Hash networkId;
+    union switch (EnvelopeType type)
+    {
+    // Backwards Compatibility: Use ENVELOPE_TYPE_TX to sign ENVELOPE_TYPE_TX_V0
+    case ENVELOPE_TYPE_TX:
+        Transaction tx;
+    case ENVELOPE_TYPE_TX_FEE_BUMP:
+        FeeBumpTransaction feeBump;
+    }
+    taggedTransaction;
 };
 
 /* Operation Results section */
@@ -500,7 +574,7 @@ enum PathPaymentStrictReceiveResultCode
 
 struct SimplePaymentResult
 {
-    AccountID destination;
+    MuxedAccount destination;
     Asset asset;
     int64 amount;
 };
@@ -859,6 +933,7 @@ default:
 
 enum TransactionResultCode
 {
+    txFEE_BUMP_INNER_SUCCESS = 1, // fee bump inner transaction succeeded
     txSUCCESS = 0, // all operations succeeded
 
     txFAILED = -1, // one of the operations failed (none were applied)
@@ -873,7 +948,54 @@ enum TransactionResultCode
     txNO_ACCOUNT = -8,           // source account not found
     txINSUFFICIENT_FEE = -9,     // fee is too small
     txBAD_AUTH_EXTRA = -10,      // unused signatures attached to transaction
-    txINTERNAL_ERROR = -11       // an unknown error occured
+    txINTERNAL_ERROR = -11,      // an unknown error occured
+
+    txNOT_SUPPORTED = -12,        // transaction type not supported
+    txFEE_BUMP_INNER_FAILED = -13 // fee bump inner transaction failed
+};
+
+// InnerTransactionResult must be binary compatible with TransactionResult
+// because it is be used to represent the result of a Transaction.
+struct InnerTransactionResult
+{
+    // Always 0. Here for binary compatibility.
+    int64 feeCharged;
+
+    union switch (TransactionResultCode code)
+    {
+    // txFEE_BUMP_INNER_SUCCESS is not included
+    case txSUCCESS:
+    case txFAILED:
+        OperationResult results<>;
+    case txTOO_EARLY:
+    case txTOO_LATE:
+    case txMISSING_OPERATION:
+    case txBAD_SEQ:
+    case txBAD_AUTH:
+    case txINSUFFICIENT_BALANCE:
+    case txNO_ACCOUNT:
+    case txINSUFFICIENT_FEE:
+    case txBAD_AUTH_EXTRA:
+    case txINTERNAL_ERROR:
+    case txNOT_SUPPORTED:
+    // txFEE_BUMP_INNER_FAILED is not included
+        void;
+    }
+    result;
+
+    // reserved for future use
+    union switch (int v)
+    {
+    case 0:
+        void;
+    }
+    ext;
+};
+
+struct InnerTransactionResultPair
+{
+    Hash transactionHash;          // hash of the inner transaction
+    InnerTransactionResult result; // result for the inner transaction
 };
 
 struct TransactionResult
@@ -882,6 +1004,9 @@ struct TransactionResult
 
     union switch (TransactionResultCode code)
     {
+    case txFEE_BUMP_INNER_SUCCESS:
+    case txFEE_BUMP_INNER_FAILED:
+        InnerTransactionResultPair innerResultPair;
     case txSUCCESS:
     case txFAILED:
         OperationResult results<>;

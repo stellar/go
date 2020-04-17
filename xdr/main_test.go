@@ -13,7 +13,7 @@ import (
 // ExampleUnmarshal shows the lowest-level process to decode a base64
 // envelope encoded in base64.
 func ExampleUnmarshal() {
-	data := "AAAAAGL8HQvQkbK2HA3WVjRrKmjX00fG8sLI7m0ERwJW/AX3AAAACgAAAAAAAAABAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAArqN6LeOagjxMaUP96Bzfs9e0corNZXzBWJkFoK7kvkwAAAAAO5rKAAAAAAAAAAABVvwF9wAAAEAKZ7IPj/46PuWU6ZOtyMosctNAkXRNX9WCAI5RnfRk+AyxDLoDZP/9l3NvsxQtWj9juQOuoBlFLnWu8intgxQA"
+	data := "AAAAAgAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9wAAAAoAAAAAAAAAAQAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAK6jei3jmoI8TGlD/egc37PXtHKKzWV8wViZBaCu5L5MAAAAADuaygAAAAAAAAAAAVb8BfcAAABACmeyD4/+Oj7llOmTrcjKLHLTQJF0TV/VggCOUZ30ZPgMsQy6A2T//Zdzb7MULVo/Y7kDrqAZRS51rvIp7YMUAA=="
 
 	rawr := strings.NewReader(data)
 	b64r := base64.NewDecoder(base64.StdEncoding, rawr)
@@ -27,8 +27,9 @@ func ExampleUnmarshal() {
 		log.Fatal(err)
 	}
 
-	fmt.Printf("This tx has %d operations\n", len(tx.Tx.Operations))
-	// Output: read 192 bytes
+	operations := tx.Operations()
+	fmt.Printf("This tx has %d operations\n", len(operations))
+	// Output: read 196 bytes
 	// This tx has 1 operations
 }
 

@@ -10,7 +10,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gomodule/redigo/redis"
 	metrics "github.com/rcrowley/go-metrics"
 	"github.com/stellar/go/clients/stellarcore"
 	"github.com/stellar/go/exp/orderbook"
@@ -40,7 +39,6 @@ type App struct {
 	coreQ                        *core.Q
 	ctx                          context.Context
 	cancel                       func()
-	redis                        *redis.Pool
 	coreVersion                  string
 	horizonVersion               string
 	currentProtocolVersion       int32
@@ -480,11 +478,8 @@ func (a *App) init() {
 	// This parameter will be removed soon.
 	a.web.mustInstallMiddlewares(a, a.config.ConnectionTimeout)
 
-	requiresExperimentalIngestion := &StateMiddleware{
-		HorizonSession: a.historyQ.Session,
-	}
 	// web.actions
-	a.web.mustInstallActions(a.config, a.paths, orderBookGraph, requiresExperimentalIngestion)
+	a.web.mustInstallActions(a.config, a.paths, orderBookGraph, a.historyQ.Session)
 
 	// metrics and log.metrics
 	a.metrics = metrics.NewRegistry()
@@ -503,9 +498,6 @@ func (a *App) init() {
 
 	// txsub.metrics
 	initTxSubMetrics(a)
-
-	// redis
-	initRedis(a)
 }
 
 // run is the function that runs in the background that triggers Tick each

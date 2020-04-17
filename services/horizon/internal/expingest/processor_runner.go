@@ -113,7 +113,7 @@ type skipFailedTransactions struct {
 }
 
 func (p skipFailedTransactions) ProcessTransaction(tx io.LedgerTransaction) error {
-	if !tx.Successful() {
+	if !tx.Result.Successful() {
 		return nil
 	}
 	return p.horizonTransactionProcessor.ProcessTransaction(tx)

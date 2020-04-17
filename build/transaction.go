@@ -57,7 +57,7 @@ func (b *TransactionBuilder) Mutate(muts ...TransactionMutator) error {
 
 // Hash returns the hash of this builder's transaction.
 func (b *TransactionBuilder) Hash() ([32]byte, error) {
-	return network.HashTransaction(b.TX, b.NetworkPassphrase)
+	return network.HashTransaction(*b.TX, b.NetworkPassphrase)
 }
 
 // HashHex returns the hex-encoded hash of this builder's transaction
@@ -139,7 +139,7 @@ func (m AllowTrustBuilder) MutateTransaction(o *TransactionBuilder) error {
 func (m AutoSequence) MutateTransaction(o *TransactionBuilder) error {
 	source := o.TX.SourceAccount
 
-	if source == (xdr.AccountId{}) {
+	if source == (xdr.MuxedAccount{}) {
 		return errors.New("auto sequence used prior to setting source account")
 	}
 
@@ -334,7 +334,7 @@ func (m Sequence) MutateTransaction(o *TransactionBuilder) error {
 // MutateTransaction for SourceAccount sets the transaction's SourceAccount
 // to the pubilic key for the address provided
 func (m SourceAccount) MutateTransaction(o *TransactionBuilder) error {
-	return setAccountId(m.AddressOrSeed, &o.TX.SourceAccount)
+	return setMuxedAccount(m.AddressOrSeed, &o.TX.SourceAccount)
 }
 
 // MutateTransaction for BaseFee sets the base fee
