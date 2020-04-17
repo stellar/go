@@ -23,15 +23,15 @@ func (e TransactionEnvelope) FeeBumpSignatures() []DecoratedSignature {
 // SourceAccount returns the source account for the transaction
 // If the transaction envelope is for a fee bump transaction, SourceAccount()
 // returns the source account of the inner transaction
-func (e TransactionEnvelope) SourceAccount() AccountId {
+func (e TransactionEnvelope) SourceAccount() MuxedAccount {
 	switch e.Type {
 	case EnvelopeTypeEnvelopeTypeTxFeeBump:
 		return e.FeeBump.Tx.InnerTx.V1.Tx.SourceAccount
 	case EnvelopeTypeEnvelopeTypeTx:
 		return e.V1.Tx.SourceAccount
 	case EnvelopeTypeEnvelopeTypeTxV0:
-		return AccountId{
-			Type:    PublicKeyTypePublicKeyTypeEd25519,
+		return MuxedAccount{
+			Type:    CryptoKeyTypeKeyTypeEd25519,
 			Ed25519: &e.V0.Tx.SourceAccountEd25519,
 		}
 	default:

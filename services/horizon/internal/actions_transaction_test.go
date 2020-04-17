@@ -5,6 +5,8 @@ import (
 	"net/url"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/expingest"
@@ -240,7 +242,37 @@ func TestTransactionActions_Post(t *testing.T) {
 	ht := StartHTTPTest(t, "base")
 	defer ht.Finish()
 
-	form := url.Values{"tx": []string{"AAAAAGL8HQvQkbK2HA3WVjRrKmjX00fG8sLI7m0ERwJW/AX3AAAAZAAAAAAAAAABAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAArqN6LeOagjxMaUP96Bzfs9e0corNZXzBWJkFoK7kvkwAAAAAO5rKAAAAAAAAAAABVvwF9wAAAECDzqvkQBQoNAJifPRXDoLhvtycT3lFPCQ51gkdsFHaBNWw05S/VhW0Xgkr0CBPE4NaFV2Kmcs3ZwLmib4TRrML"}}
+	tx := xdr.TransactionEnvelope{
+		Type: xdr.EnvelopeTypeEnvelopeTypeTxV0,
+		V0: &xdr.TransactionV0Envelope{
+			Tx: xdr.TransactionV0{
+				SourceAccountEd25519: *xdr.MustAddress("GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H").Ed25519,
+				Fee:                  100,
+				SeqNum:               1,
+				Operations: []xdr.Operation{
+					{
+						Body: xdr.OperationBody{
+							Type: xdr.OperationTypeCreateAccount,
+							CreateAccountOp: &xdr.CreateAccountOp{
+								Destination:     xdr.MustAddress("GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU"),
+								StartingBalance: 1000000000,
+							},
+						},
+					},
+				},
+			},
+			Signatures: []xdr.DecoratedSignature{
+				{
+					Hint:      xdr.SignatureHint{86, 252, 5, 247},
+					Signature: xdr.Signature{131, 206, 171, 228, 64, 20, 40, 52, 2, 98, 124, 244, 87, 14, 130, 225, 190, 220, 156, 79, 121, 69, 60, 36, 57, 214, 9, 29, 176, 81, 218, 4, 213, 176, 211, 148, 191, 86, 21, 180, 94, 9, 43, 208, 32, 79, 19, 131, 90, 21, 93, 138, 153, 203, 55, 103, 2, 230, 137, 190, 19, 70, 179, 11},
+				},
+			},
+		},
+	}
+
+	txStr, err := xdr.MarshalBase64(tx)
+	assert.NoError(t, err)
+	form := url.Values{"tx": []string{txStr}}
 
 	// existing transaction
 	w := ht.Post("/transactions", form)
@@ -260,8 +292,46 @@ func TestTransactionActions_PostSuccessful(t *testing.T) {
 	ht := StartHTTPTest(t, "failed_transactions")
 	defer ht.Finish()
 
+	tx2 := xdr.TransactionEnvelope{
+		Type: xdr.EnvelopeTypeEnvelopeTypeTxV0,
+		V0: &xdr.TransactionV0Envelope{
+			Tx: xdr.TransactionV0{
+				SourceAccountEd25519: *xdr.MustAddress("GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU").Ed25519,
+				Fee:                  100,
+				SeqNum:               8589934593,
+				Operations: []xdr.Operation{
+					{
+						Body: xdr.OperationBody{
+							Type: xdr.OperationTypePayment,
+							PaymentOp: &xdr.PaymentOp{
+								Destination: xdr.MustMuxedAccountAddress("GBXGQJWVLWOYHFLVTKWV5FGHA3LNYY2JQKM7OAJAUEQFU6LPCSEFVXON"),
+								Asset: xdr.Asset{
+									Type: xdr.AssetTypeAssetTypeCreditAlphanum4,
+									AlphaNum4: &xdr.AssetAlphaNum4{
+										AssetCode: xdr.AssetCode4{85, 83, 68, 0},
+										Issuer:    xdr.MustAddress("GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU"),
+									},
+								},
+								Amount: 1000000000,
+							},
+						},
+					},
+				},
+			},
+			Signatures: []xdr.DecoratedSignature{
+				{
+					Hint:      xdr.SignatureHint{174, 228, 190, 76},
+					Signature: xdr.Signature{73, 202, 13, 176, 216, 188, 169, 9, 141, 130, 180, 106, 187, 225, 22, 89, 254, 24, 173, 62, 236, 12, 186, 131, 70, 190, 214, 24, 209, 69, 233, 68, 1, 238, 48, 154, 55, 170, 53, 196, 96, 218, 110, 2, 159, 187, 120, 2, 50, 115, 2, 192, 208, 35, 72, 151, 106, 17, 155, 160, 147, 200, 52, 12},
+				},
+			},
+		},
+	}
+
+	txStr, err := xdr.MarshalBase64(tx2)
+	assert.NoError(t, err)
+
 	// 56e3216045d579bea40f2d35a09406de3a894ecb5be70dbda5ec9c0427a0d5a1
-	form := url.Values{"tx": []string{"AAAAAK6jei3jmoI8TGlD/egc37PXtHKKzWV8wViZBaCu5L5MAAAAZAAAAAIAAAABAAAAAAAAAAAAAAABAAAAAAAAAAEAAAAAbmgm1V2dg5V1mq1elMcG1txjSYKZ9wEgoSBaeW8UiFoAAAABVVNEAAAAAACuo3ot45qCPExpQ/3oHN+z17Ryis1lfMFYmQWgruS+TAAAAAA7msoAAAAAAAAAAAGu5L5MAAAAQEnKDbDYvKkJjYK0arvhFln+GK0+7Ay6g0a+1hjRRelEAe4wmjeqNcRg2m4Cn7t4AjJzAsDQI0iXahGboJPINAw="}}
+	form := url.Values{"tx": []string{txStr}}
 
 	w := ht.Post("/transactions", form)
 	ht.Assert.Equal(200, w.Code)

@@ -23,7 +23,7 @@ type AccountMergeMutator interface {
 // Deprecated use txnbuild.AccountMerge instead
 type AccountMergeBuilder struct {
 	O           xdr.Operation
-	Destination xdr.AccountId
+	Destination xdr.MuxedAccount
 	Err         error
 }
 
@@ -49,5 +49,5 @@ func (b *AccountMergeBuilder) Mutate(muts ...interface{}) {
 
 // MutateAccountMerge for Destination sets the AccountMergeBuilder's Destination field
 func (m Destination) MutateAccountMerge(o *AccountMergeBuilder) error {
-	return setAccountId(m.AddressOrSeed, &o.Destination)
+	return setMuxedAccount(m.AddressOrSeed, &o.Destination)
 }

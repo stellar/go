@@ -55,7 +55,7 @@ func TestAsset_ToXDR(t *testing.T) {
 		{
 			Name:        "bad issuer",
 			Asset:       CreditAsset("USD", "FUNK"),
-			ExpectedErr: "base32 decode failed: illegal base32 data at input byte 0",
+			ExpectedErr: "strkey is 4 bytes long; minimum valid length is 5",
 		},
 		{
 			Name:        "bad code",

@@ -42,7 +42,7 @@ func (pp *PathPaymentStrictReceive) BuildXDR() (xdr.Operation, error) {
 	}
 
 	// Set XDR destination
-	var xdrDestination xdr.AccountId
+	var xdrDestination xdr.MuxedAccount
 	err = xdrDestination.SetAddress(pp.Destination)
 	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "failed to set destination address")

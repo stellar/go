@@ -140,7 +140,7 @@ func participantsForTransaction(
 	transaction io.LedgerTransaction,
 ) ([]xdr.AccountId, error) {
 	participants := []xdr.AccountId{
-		transaction.Envelope.SourceAccount(),
+		transaction.Envelope.SourceAccount().ToAccountId(),
 	}
 	if transaction.Envelope.IsFeeBump() {
 		participants = append(participants, transaction.Envelope.FeeBumpAccount())
