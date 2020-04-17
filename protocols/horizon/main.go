@@ -446,7 +446,7 @@ type Transaction struct {
 	AccountSequence string    `json:"source_account_sequence"`
 	FeeAccount      string    `json:"fee_account"`
 	// Action needed in release: horizon-v1.3.0
-	// set json tag to `json:"max_fee,fee_charged"` so max_fee can be marshalled
+	// set json tag to `json:"fee_charged,string"` so max_fee can be marshalled
 	// as a string in the JSON response
 	FeeCharged int64 `json:"fee_charged"`
 	// Action needed in release: horizon-v1.3.0
