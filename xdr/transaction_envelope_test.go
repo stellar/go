@@ -22,7 +22,7 @@ func createLegacyTx() TransactionEnvelope {
 					MaxTime: 2,
 				},
 				Operations: []Operation{
-					Operation{
+					{
 						Body: OperationBody{
 							BumpSequenceOp: &BumpSequenceOp{
 								BumpTo: 34,
@@ -32,7 +32,7 @@ func createLegacyTx() TransactionEnvelope {
 				},
 			},
 			Signatures: []DecoratedSignature{
-				DecoratedSignature{
+				{
 					Hint:      SignatureHint{1, 1, 1, 1},
 					Signature: Signature{10, 10, 10},
 				},
@@ -46,8 +46,8 @@ func createTx() TransactionEnvelope {
 		Type: EnvelopeTypeEnvelopeTypeTx,
 		V1: &TransactionV1Envelope{
 			Tx: Transaction{
-				SourceAccount: AccountId{
-					Type: PublicKeyTypePublicKeyTypeEd25519,
+				SourceAccount: MuxedAccount{
+					Type: CryptoKeyTypeKeyTypeEd25519,
 					Ed25519: &Uint256{
 						3, 3, 3,
 					},
@@ -63,7 +63,7 @@ func createTx() TransactionEnvelope {
 					MaxTime: 4,
 				},
 				Operations: []Operation{
-					Operation{
+					{
 						Body: OperationBody{
 							BumpSequenceOp: &BumpSequenceOp{
 								BumpTo: 98,
@@ -73,7 +73,7 @@ func createTx() TransactionEnvelope {
 				},
 			},
 			Signatures: []DecoratedSignature{
-				DecoratedSignature{
+				{
 					Hint:      SignatureHint{2, 2, 2, 2},
 					Signature: Signature{20, 20, 20},
 				},
@@ -98,7 +98,7 @@ func createFeeBumpTx() TransactionEnvelope {
 				},
 			},
 			Signatures: []DecoratedSignature{
-				DecoratedSignature{
+				{
 					Hint:      SignatureHint{3, 3, 3, 3},
 					Signature: Signature{30, 30, 30},
 				},
@@ -173,7 +173,7 @@ func TestSourceAccount(t *testing.T) {
 
 	assert.Equal(
 		t,
-		PublicKeyTypePublicKeyTypeEd25519,
+		CryptoKeyTypeKeyTypeEd25519,
 		legacyTx.SourceAccount().Type,
 	)
 	assert.Equal(

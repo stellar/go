@@ -148,7 +148,7 @@ func transactionToMap(transaction io.LedgerTransaction, sequence uint32) (map[st
 		return nil, err
 	}
 
-	sourceAccount := transaction.Envelope.SourceAccount()
+	sourceAccount := transaction.Envelope.SourceAccount().ToAccountId()
 	m := map[string]interface{}{
 		"id":                toid.New(int32(sequence), int32(transaction.Index), 0).ToInt64(),
 		"transaction_hash":  hex.EncodeToString(transaction.Result.TransactionHash[:]),

@@ -6905,6 +6905,162 @@ var (
 	_ encoding.BinaryUnmarshaler = (*AuthenticatedMessage)(nil)
 )
 
+// MuxedAccountMed25519 is an XDR NestedStruct defines as:
+//
+//   struct {
+//             uint64 id;
+//             uint256 ed25519;
+//         }
+//
+type MuxedAccountMed25519 struct {
+	Id      Uint64
+	Ed25519 Uint256
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s MuxedAccountMed25519) MarshalBinary() ([]byte, error) {
+	b := new(bytes.Buffer)
+	_, err := Marshal(b, s)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *MuxedAccountMed25519) UnmarshalBinary(inp []byte) error {
+	_, err := Unmarshal(bytes.NewReader(inp), s)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*MuxedAccountMed25519)(nil)
+	_ encoding.BinaryUnmarshaler = (*MuxedAccountMed25519)(nil)
+)
+
+// MuxedAccount is an XDR Union defines as:
+//
+//   union MuxedAccount switch (CryptoKeyType type) {
+//     case KEY_TYPE_ED25519:
+//         uint256 ed25519;
+//     case KEY_TYPE_MUXED_ED25519:
+//         struct {
+//             uint64 id;
+//             uint256 ed25519;
+//         } med25519;
+//    };
+//
+type MuxedAccount struct {
+	Type     CryptoKeyType
+	Ed25519  *Uint256
+	Med25519 *MuxedAccountMed25519
+}
+
+// SwitchFieldName returns the field name in which this union's
+// discriminant is stored
+func (u MuxedAccount) SwitchFieldName() string {
+	return "Type"
+}
+
+// ArmForSwitch returns which field name should be used for storing
+// the value for an instance of MuxedAccount
+func (u MuxedAccount) ArmForSwitch(sw int32) (string, bool) {
+	switch CryptoKeyType(sw) {
+	case CryptoKeyTypeKeyTypeEd25519:
+		return "Ed25519", true
+	case CryptoKeyTypeKeyTypeMuxedEd25519:
+		return "Med25519", true
+	}
+	return "-", false
+}
+
+// NewMuxedAccount creates a new  MuxedAccount.
+func NewMuxedAccount(aType CryptoKeyType, value interface{}) (result MuxedAccount, err error) {
+	result.Type = aType
+	switch CryptoKeyType(aType) {
+	case CryptoKeyTypeKeyTypeEd25519:
+		tv, ok := value.(Uint256)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be Uint256")
+			return
+		}
+		result.Ed25519 = &tv
+	case CryptoKeyTypeKeyTypeMuxedEd25519:
+		tv, ok := value.(MuxedAccountMed25519)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be MuxedAccountMed25519")
+			return
+		}
+		result.Med25519 = &tv
+	}
+	return
+}
+
+// MustEd25519 retrieves the Ed25519 value from the union,
+// panicing if the value is not set.
+func (u MuxedAccount) MustEd25519() Uint256 {
+	val, ok := u.GetEd25519()
+
+	if !ok {
+		panic("arm Ed25519 is not set")
+	}
+
+	return val
+}
+
+// GetEd25519 retrieves the Ed25519 value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u MuxedAccount) GetEd25519() (result Uint256, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "Ed25519" {
+		result = *u.Ed25519
+		ok = true
+	}
+
+	return
+}
+
+// MustMed25519 retrieves the Med25519 value from the union,
+// panicing if the value is not set.
+func (u MuxedAccount) MustMed25519() MuxedAccountMed25519 {
+	val, ok := u.GetMed25519()
+
+	if !ok {
+		panic("arm Med25519 is not set")
+	}
+
+	return val
+}
+
+// GetMed25519 retrieves the Med25519 value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u MuxedAccount) GetMed25519() (result MuxedAccountMed25519, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "Med25519" {
+		result = *u.Med25519
+		ok = true
+	}
+
+	return
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s MuxedAccount) MarshalBinary() ([]byte, error) {
+	b := new(bytes.Buffer)
+	_, err := Marshal(b, s)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *MuxedAccount) UnmarshalBinary(inp []byte) error {
+	_, err := Unmarshal(bytes.NewReader(inp), s)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*MuxedAccount)(nil)
+	_ encoding.BinaryUnmarshaler = (*MuxedAccount)(nil)
+)
+
 // DecoratedSignature is an XDR Struct defines as:
 //
 //   struct DecoratedSignature
@@ -7058,13 +7214,13 @@ var (
 //
 //   struct PaymentOp
 //    {
-//        AccountID destination; // recipient of the payment
-//        Asset asset;           // what they end up with
-//        int64 amount;          // amount they end up with
+//        MuxedAccount destination; // recipient of the payment
+//        Asset asset;              // what they end up with
+//        int64 amount;             // amount they end up with
 //    };
 //
 type PaymentOp struct {
-	Destination AccountId
+	Destination MuxedAccount
 	Asset       Asset
 	Amount      Int64
 }
@@ -7096,9 +7252,9 @@ var (
 //                         // send (excluding fees).
 //                         // The operation will fail if can't be met
 //
-//        AccountID destination; // recipient of the payment
-//        Asset destAsset;       // what they end up with
-//        int64 destAmount;      // amount they end up with
+//        MuxedAccount destination; // recipient of the payment
+//        Asset destAsset;          // what they end up with
+//        int64 destAmount;         // amount they end up with
 //
 //        Asset path<5>; // additional hops it must go through to get there
 //    };
@@ -7106,7 +7262,7 @@ var (
 type PathPaymentStrictReceiveOp struct {
 	SendAsset   Asset
 	SendMax     Int64
-	Destination AccountId
+	Destination MuxedAccount
 	DestAsset   Asset
 	DestAmount  Int64
 	Path        []Asset `xdrmaxsize:"5"`
@@ -7137,11 +7293,11 @@ var (
 //        Asset sendAsset;  // asset we pay with
 //        int64 sendAmount; // amount of sendAsset to send (excluding fees)
 //
-//        AccountID destination; // recipient of the payment
-//        Asset destAsset;       // what they end up with
-//        int64 destMin;         // the minimum amount of dest asset to
-//                               // be received
-//                               // The operation will fail if it can't be met
+//        MuxedAccount destination; // recipient of the payment
+//        Asset destAsset;          // what they end up with
+//        int64 destMin;            // the minimum amount of dest asset to
+//                                  // be received
+//                                  // The operation will fail if it can't be met
 //
 //        Asset path<5>; // additional hops it must go through to get there
 //    };
@@ -7149,7 +7305,7 @@ var (
 type PathPaymentStrictSendOp struct {
 	SendAsset   Asset
 	SendAmount  Int64
-	Destination AccountId
+	Destination MuxedAccount
 	DestAsset   Asset
 	DestMin     Int64
 	Path        []Asset `xdrmaxsize:"5"`
@@ -7627,7 +7783,7 @@ var (
 //        case ALLOW_TRUST:
 //            AllowTrustOp allowTrustOp;
 //        case ACCOUNT_MERGE:
-//            AccountID destination;
+//            MuxedAccount destination;
 //        case INFLATION:
 //            void;
 //        case MANAGE_DATA:
@@ -7650,7 +7806,7 @@ type OperationBody struct {
 	SetOptionsOp               *SetOptionsOp
 	ChangeTrustOp              *ChangeTrustOp
 	AllowTrustOp               *AllowTrustOp
-	Destination                *AccountId
+	Destination                *MuxedAccount
 	ManageDataOp               *ManageDataOp
 	BumpSequenceOp             *BumpSequenceOp
 	ManageBuyOfferOp           *ManageBuyOfferOp
@@ -7760,9 +7916,9 @@ func NewOperationBody(aType OperationType, value interface{}) (result OperationB
 		}
 		result.AllowTrustOp = &tv
 	case OperationTypeAccountMerge:
-		tv, ok := value.(AccountId)
+		tv, ok := value.(MuxedAccount)
 		if !ok {
-			err = fmt.Errorf("invalid value, must be AccountId")
+			err = fmt.Errorf("invalid value, must be MuxedAccount")
 			return
 		}
 		result.Destination = &tv
@@ -8002,7 +8158,7 @@ func (u OperationBody) GetAllowTrustOp() (result AllowTrustOp, ok bool) {
 
 // MustDestination retrieves the Destination value from the union,
 // panicing if the value is not set.
-func (u OperationBody) MustDestination() AccountId {
+func (u OperationBody) MustDestination() MuxedAccount {
 	val, ok := u.GetDestination()
 
 	if !ok {
@@ -8014,7 +8170,7 @@ func (u OperationBody) MustDestination() AccountId {
 
 // GetDestination retrieves the Destination value from the union,
 // returning ok if the union's switch indicated the value is valid.
-func (u OperationBody) GetDestination() (result AccountId, ok bool) {
+func (u OperationBody) GetDestination() (result MuxedAccount, ok bool) {
 	armName, _ := u.ArmForSwitch(int32(u.Type))
 
 	if armName == "Destination" {
@@ -8150,7 +8306,7 @@ var (
 //        // sourceAccount is the account used to run the operation
 //        // if not set, the runtime defaults to "sourceAccount" specified at
 //        // the transaction level
-//        AccountID* sourceAccount;
+//        MuxedAccount* sourceAccount;
 //
 //        union switch (OperationType type)
 //        {
@@ -8171,7 +8327,7 @@ var (
 //        case ALLOW_TRUST:
 //            AllowTrustOp allowTrustOp;
 //        case ACCOUNT_MERGE:
-//            AccountID destination;
+//            MuxedAccount destination;
 //        case INFLATION:
 //            void;
 //        case MANAGE_DATA:
@@ -8187,7 +8343,7 @@ var (
 //    };
 //
 type Operation struct {
-	SourceAccount *AccountId
+	SourceAccount *MuxedAccount
 	Body          OperationBody
 }
 
@@ -8703,7 +8859,7 @@ var (
 //   struct Transaction
 //    {
 //        // account used to run the transaction
-//        AccountID sourceAccount;
+//        MuxedAccount sourceAccount;
 //
 //        // the fee the sourceAccount will pay
 //        uint32 fee;
@@ -8728,7 +8884,7 @@ var (
 //    };
 //
 type Transaction struct {
-	SourceAccount AccountId
+	SourceAccount MuxedAccount
 	Fee           Uint32
 	SeqNum        SequenceNumber
 	TimeBounds    *TimeBounds
@@ -9728,13 +9884,13 @@ var (
 //
 //   struct SimplePaymentResult
 //    {
-//        AccountID destination;
+//        MuxedAccount destination;
 //        Asset asset;
 //        int64 amount;
 //    };
 //
 type SimplePaymentResult struct {
-	Destination AccountId
+	Destination MuxedAccount
 	Asset       Asset
 	Amount      Int64
 }
@@ -12766,6 +12922,7 @@ var (
 //
 //   struct InnerTransactionResult
 //    {
+//        // Always 0. Here for binary compatibility.
 //        int64 feeCharged;
 //
 //        union switch (TransactionResultCode code)
@@ -13270,6 +13427,7 @@ var (
 //   enum CryptoKeyType
 //    {
 //        KEY_TYPE_ED25519 = 0,
+//        KEY_TYPE_MUXED_ED25519 = 256,
 //        KEY_TYPE_PRE_AUTH_TX = 1,
 //        KEY_TYPE_HASH_X = 2
 //    };
@@ -13277,15 +13435,17 @@ var (
 type CryptoKeyType int32
 
 const (
-	CryptoKeyTypeKeyTypeEd25519   CryptoKeyType = 0
-	CryptoKeyTypeKeyTypePreAuthTx CryptoKeyType = 1
-	CryptoKeyTypeKeyTypeHashX     CryptoKeyType = 2
+	CryptoKeyTypeKeyTypeEd25519      CryptoKeyType = 0
+	CryptoKeyTypeKeyTypeMuxedEd25519 CryptoKeyType = 256
+	CryptoKeyTypeKeyTypePreAuthTx    CryptoKeyType = 1
+	CryptoKeyTypeKeyTypeHashX        CryptoKeyType = 2
 )
 
 var cryptoKeyTypeMap = map[int32]string{
-	0: "CryptoKeyTypeKeyTypeEd25519",
-	1: "CryptoKeyTypeKeyTypePreAuthTx",
-	2: "CryptoKeyTypeKeyTypeHashX",
+	0:   "CryptoKeyTypeKeyTypeEd25519",
+	256: "CryptoKeyTypeKeyTypeMuxedEd25519",
+	1:   "CryptoKeyTypeKeyTypePreAuthTx",
+	2:   "CryptoKeyTypeKeyTypeHashX",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
