@@ -4,29 +4,32 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/guregu/null"
 	"testing"
 	"time"
+
+	"github.com/guregu/null"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/services/horizon/internal/txsub/sequence"
 	"github.com/stellar/go/xdr"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/suite"
 )
 
 type SystemTestSuite struct {
 	suite.Suite
-	ctx        context.Context
-	submitter  *MockSubmitter
-	results    *MockResultProvider
-	sequences  *MockSequenceProvider
-	system     *System
-	noResults  Result
-	successTx  Result
-	successXDR xdr.TransactionEnvelope
-	badSeq     SubmissionResult
+	ctx           context.Context
+	submitter     *MockSubmitter
+	results       *MockResultProvider
+	sequences     *MockSequenceProvider
+	system        *System
+	noResults     Result
+	successTx     Result
+	successXDR    xdr.TransactionEnvelope
+	badSeq        SubmissionResult
+	unmuxedSource xdr.AccountId
 }
 
 func (suite *SystemTestSuite) SetupTest() {
@@ -46,12 +49,49 @@ func (suite *SystemTestSuite) SetupTest() {
 		SubmissionQueue: sequence.NewManager(),
 	}
 
+	suite.unmuxedSource = xdr.MustAddress("GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
+	source := xdr.MuxedAccount{
+		Type: xdr.CryptoKeyTypeKeyTypeMuxedEd25519,
+		Med25519: &xdr.MuxedAccountMed25519{
+			Id:      0xcafebabe,
+			Ed25519: *suite.unmuxedSource.Ed25519,
+		},
+	}
+
+	tx := xdr.TransactionEnvelope{
+		Type: xdr.EnvelopeTypeEnvelopeTypeTx,
+		V1: &xdr.TransactionV1Envelope{
+			Tx: xdr.Transaction{
+				SourceAccount: source,
+				Fee:           100,
+				SeqNum:        1,
+				Operations: []xdr.Operation{
+					{
+						Body: xdr.OperationBody{
+							CreateAccountOp: &xdr.CreateAccountOp{
+								Destination:     xdr.MustAddress("GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU"),
+								StartingBalance: 1000000000,
+							},
+						},
+					},
+				},
+			},
+			Signatures: []xdr.DecoratedSignature{
+				{
+					Hint:      xdr.SignatureHint{86, 252, 5, 247},
+					Signature: xdr.Signature{131, 206, 171, 228, 64, 20, 40, 52, 2, 98, 124, 244, 87, 14, 130, 225, 190, 220, 156, 79, 121, 69, 60, 36, 57, 214, 9, 29, 176, 81, 218, 4, 213, 176, 211, 148, 191, 86, 21, 180, 94, 9, 43, 208, 32, 79, 19, 131, 90, 21, 93, 138, 153, 203, 55, 103, 2, 230, 137, 190, 19, 70, 179, 11},
+				},
+			},
+		},
+	}
+
 	suite.noResults = Result{Err: ErrNoResults}
+	envelopeBase64, _ := xdr.MarshalBase64(tx)
 	suite.successTx = Result{
 		Transaction: history.Transaction{
 			TransactionHash: "2374e99349b9ef7dba9a5db3339b78fda8f34777b1af33ba468ad5c0df946d4d",
 			LedgerSequence:  2,
-			TxEnvelope:      "AAAAAGL8HQvQkbK2HA3WVjRrKmjX00fG8sLI7m0ERwJW/AX3AAAAZAAAAAAAAAABAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAArqN6LeOagjxMaUP96Bzfs9e0corNZXzBWJkFoK7kvkwAAAAAO5rKAAAAAAAAAAABVvwF9wAAAECDzqvkQBQoNAJifPRXDoLhvtycT3lFPCQ51gkdsFHaBNWw05S/VhW0Xgkr0CBPE4NaFV2Kmcs3ZwLmib4TRrML",
+			TxEnvelope:      envelopeBase64,
 			TxResult:        "I3Tpk0m57326ml2zM5t4/ajzR3exrzO6RorVwN+UbU0AAAAAAAAAZAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAA==",
 		},
 	}
@@ -61,8 +101,8 @@ func (suite *SystemTestSuite) SetupTest() {
 		Err: ErrBadSequence,
 	}
 
-	suite.sequences.On("Get", []string{"GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H"}).
-		Return(map[string]uint64{"GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H": 0}, nil).
+	suite.sequences.On("Get", []string{suite.unmuxedSource.Address()}).
+		Return(map[string]uint64{suite.unmuxedSource.Address(): 0}, nil).
 		Once()
 }
 

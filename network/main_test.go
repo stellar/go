@@ -20,11 +20,17 @@ func TestHashTransaction(t *testing.T) {
 		0xfd, 0x16, 0x2b, 0x03, 0x10, 0x64, 0x09, 0x8a,
 		0x0d, 0x78, 0x6b, 0x6e, 0x0a, 0x00, 0xfd, 0x74,
 	}
-	actual, err := HashTransactionV0(&txe.V0.Tx, TestNetworkPassphrase)
+	actual, err := HashTransactionV0(txe.V0.Tx, TestNetworkPassphrase)
 	assert.NoError(t, err)
 	assert.Equal(t, expected, actual)
 
-	_, err = HashTransactionV0(&txe.V0.Tx, "")
+	actual, err = HashTransactionInEnvelope(txe, TestNetworkPassphrase)
+	assert.NoError(t, err)
+	assert.Equal(t, expected, actual)
+
+	_, err = HashTransactionV0(txe.V0.Tx, "")
+	assert.Contains(t, err.Error(), "empty network passphrase")
+	_, err = HashTransactionInEnvelope(txe, "")
 	assert.Contains(t, err.Error(), "empty network passphrase")
 
 	tx := xdr.Transaction{
@@ -35,12 +41,23 @@ func TestHashTransaction(t *testing.T) {
 		SeqNum:        xdr.SequenceNumber(txe.SeqNum()),
 		TimeBounds:    txe.TimeBounds(),
 	}
-	actual, err = HashTransaction(&tx, TestNetworkPassphrase)
+	actual, err = HashTransaction(tx, TestNetworkPassphrase)
+	assert.NoError(t, err)
+	assert.Equal(t, expected, actual)
+
+	txe.Type = xdr.EnvelopeTypeEnvelopeTypeTx
+	txe.V0 = nil
+	txe.V1 = &xdr.TransactionV1Envelope{
+		Tx: tx,
+	}
+	actual, err = HashTransactionInEnvelope(txe, TestNetworkPassphrase)
 	assert.NoError(t, err)
 	assert.Equal(t, expected, actual)
 
 	// sadpath: empty passphrase
-	_, err = HashTransaction(&tx, "")
+	_, err = HashTransaction(tx, "")
+	assert.Contains(t, err.Error(), "empty network passphrase")
+	_, err = HashTransactionInEnvelope(txe, "")
 	assert.Contains(t, err.Error(), "empty network passphrase")
 
 	feeBumpTx := xdr.FeeBumpTransaction{
@@ -61,10 +78,21 @@ func TestHashTransaction(t *testing.T) {
 		0x32, 0x51, 0x72, 0x46, 0xd9, 0xfc, 0x23, 0xff,
 		0x8b, 0x7a, 0x85, 0xdd, 0x4b, 0xbc, 0xef, 0x5f,
 	}
-	actual, err = HashFeeBumpTransaction(&feeBumpTx, TestNetworkPassphrase)
+	actual, err = HashFeeBumpTransaction(feeBumpTx, TestNetworkPassphrase)
 	assert.NoError(t, err)
 	assert.Equal(t, expected, actual)
 
-	_, err = HashFeeBumpTransaction(&feeBumpTx, "")
+	txe.Type = xdr.EnvelopeTypeEnvelopeTypeTxFeeBump
+	txe.V1 = nil
+	txe.FeeBump = &xdr.FeeBumpTransactionEnvelope{
+		Tx: feeBumpTx,
+	}
+	actual, err = HashTransactionInEnvelope(txe, TestNetworkPassphrase)
+	assert.NoError(t, err)
+	assert.Equal(t, expected, actual)
+
+	_, err = HashFeeBumpTransaction(feeBumpTx, "")
+	assert.Contains(t, err.Error(), "empty network passphrase")
+	_, err = HashTransactionInEnvelope(txe, "")
 	assert.Contains(t, err.Error(), "empty network passphrase")
 }

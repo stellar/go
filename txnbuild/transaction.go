@@ -51,7 +51,7 @@ type Transaction struct {
 
 // Hash provides a signable object representing the Transaction on the specified network.
 func (tx *Transaction) Hash() ([32]byte, error) {
-	return network.HashTransaction(&tx.xdrTransaction, tx.Network)
+	return network.HashTransaction(tx.xdrTransaction, tx.Network)
 }
 
 // MarshalBinary returns the binary XDR representation of the transaction envelope.
@@ -449,6 +449,18 @@ func ReadChallengeTx(challengeTx, serverAccountID, network string) (tx Transacti
 	if err != nil {
 		return tx, clientAccountID, err
 	}
+
+	// Enforce no muxed accounts (at least until we understand their impact)
+	muxedAccountErr := errors.New("muxed accounts are not allowed in challenge transactions")
+	if tx.xdrTransaction.SourceAccount.Type != xdr.CryptoKeyTypeKeyTypeEd25519 {
+		return tx, clientAccountID, muxedAccountErr
+	}
+	for _, op := range tx.xdrTransaction.Operations {
+		if op.SourceAccount != nil && op.SourceAccount.Type != xdr.CryptoKeyTypeKeyTypeEd25519 {
+			return tx, clientAccountID, muxedAccountErr
+		}
+	}
+
 	tx.Network = network
 
 	// verify transaction source
