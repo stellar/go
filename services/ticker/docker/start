@@ -96,7 +96,6 @@ function generate_assets_file() {
 	echo ""
 	echo "Creating assets.json file"
 	echo ""
-	# sudo -u stellar $STELLAR_BIN/ticker generate asset-data --db-url=$PGURL -o $WWW_HOME/assets.json
 	$STELLAR_BIN/ticker generate asset-data --db-url=$DB_URL -o $WWW_HOME/assets.json
 }
 
@@ -109,7 +108,6 @@ function generate_markets_file() {
 	echo ""
 	echo "Creating markets.json file"
 	echo ""
-	# sudo -u stellar $STELLAR_BIN/ticker generate market-data --db-url=$PGURL -o $WWW_HOME/markets.json
 	$STELLAR_BIN/ticker generate market-data --db-url=$DB_URL -o $WWW_HOME/markets.json
 }
 
@@ -142,22 +140,8 @@ function run_silent() {
 }
 
 
-function set_pg_password() {
-	read -s -p "Enter New Postgresql Password: " PGPASS
-	echo ""
-	read -s -p "Confirm: " PGPASS_CONFIRMATION
-	echo ""
-
-	if [ -z "$PGPASS" ]; then
-		echo "Password empty" >&2
-		exit 1
-	fi
-
-	if [ "$PGPASS" != "$PGPASS_CONFIRMATION" ]; then
-		echo "Password mistmach" >&2
-		exit 1
-	fi
-
+function set_db_url() {
+	PGPASS="stellar"
 	DB_URL="postgres://stellar:${PGPASS}@127.0.0.1:5432/ticker"
 	echo "Setting db url: $DB_URL"
 	echo DB_URL="${DB_URL}" >> /etc/environment
@@ -179,7 +163,7 @@ function init_db() {
 
 	echo "postgres user: $PGUSER"
 
-	set_pg_password
+	set_db_url
 
 	run_silent "finalize-pgpass" sed -ri "s/__PGPASS__/$PGPASS/g" $CONF_HOME/.pgpass
 
