@@ -55,16 +55,17 @@ func HashFeeBumpTransaction(tx *xdr.FeeBumpTransaction, passphrase string) ([32]
 // resulting hash is the value that can be signed by stellar secret key to
 // authorize the transaction identified by the hash to stellar validators.
 func HashTransactionV0(tx *xdr.TransactionV0, passphrase string) ([32]byte, error) {
+	sa, err := xdr.NewMuxedAccount(xdr.CryptoKeyTypeKeyTypeEd25519, tx.SourceAccountEd25519)
+	if err != nil {
+		return [32]byte{}, err
+	}
 	v1Tx := &xdr.Transaction{
-		SourceAccount: xdr.AccountId{
-			Type:    xdr.PublicKeyTypePublicKeyTypeEd25519,
-			Ed25519: &tx.SourceAccountEd25519,
-		},
-		Fee:        tx.Fee,
-		Memo:       tx.Memo,
-		Operations: tx.Operations,
-		SeqNum:     tx.SeqNum,
-		TimeBounds: tx.TimeBounds,
+		SourceAccount: sa,
+		Fee:           tx.Fee,
+		Memo:          tx.Memo,
+		Operations:    tx.Operations,
+		SeqNum:        tx.SeqNum,
+		TimeBounds:    tx.TimeBounds,
 	}
 	return HashTransaction(v1Tx, passphrase)
 }

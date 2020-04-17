@@ -206,9 +206,10 @@ func (p *TradeProcessor) extractTrades(
 
 			var buyerAddress string
 			if buyer := op.SourceAccount; buyer != nil {
-				buyerAddress = buyer.Address()
+				accid := buyer.ToAccountId()
+				buyerAddress = accid.Address()
 			} else {
-				sa := transaction.Envelope.SourceAccount()
+				sa := transaction.Envelope.SourceAccount().ToAccountId()
 				buyerAddress = sa.Address()
 			}
 			buyerAccounts = append(buyerAccounts, buyerAddress)

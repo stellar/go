@@ -14,7 +14,7 @@ type AccountMerge struct {
 
 // BuildXDR for AccountMerge returns a fully configured XDR Operation.
 func (am *AccountMerge) BuildXDR() (xdr.Operation, error) {
-	var xdrOp xdr.AccountId
+	var xdrOp xdr.MuxedAccount
 
 	err := xdrOp.SetAddress(am.Destination)
 	if err != nil {

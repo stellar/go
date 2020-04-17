@@ -119,7 +119,7 @@ func TestOperationTransactionSourceAccount(t *testing.T) {
 			)
 			op := transaction.Envelope.Operations()[0]
 			if len(tc.sourceAccount) > 0 {
-				sourceAccount := xdr.MustAddress(tc.sourceAccount)
+				sourceAccount := xdr.MustMuxedAccountAddress(tc.sourceAccount)
 				op.SourceAccount = &sourceAccount
 			}
 
@@ -536,7 +536,7 @@ func TestTransactionOperationDetails(t *testing.T) {
 				"asset_type":        "native",
 				"destination_min":   "10.0000000",
 				"from":              "GDVQFXKLSASXPCK2L3UNSD2WP5SG6ZRB4IOKPUTO2DG3C6JH3TJSEA7R",
-				"path":              []map[string]interface{}{map[string]interface{}{"asset_type": "native"}},
+				"path":              []map[string]interface{}{{"asset_type": "native"}},
 				"source_amount":     "10.0000000",
 				"source_asset_type": "native",
 				"to":                "GDQVLGCJPJ57SALDJPH3YWZVGYUJJTRUUIEJGYKHLTSFY3ZOBKU3QIO3",
@@ -864,7 +864,7 @@ func TestTransactionOperationAllowTrustDetails(t *testing.T) {
 	allowTrustAsset, err := asset.ToAllowTrustOpAsset("COP")
 	tt.NoError(err)
 
-	source := xdr.MustAddress("GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD")
+	source := xdr.MustMuxedAccountAddress("GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD")
 
 	testCases := []struct {
 		desc     string

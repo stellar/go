@@ -78,7 +78,7 @@ func ExampleLowLevelTransaction() {
 		panic(err)
 	}
 
-	var destination xdr.AccountId
+	var destination xdr.MuxedAccount
 	err = destination.SetAddress(dkp.Address())
 	if err != nil {
 		panic(err)
@@ -92,7 +92,7 @@ func ExampleLowLevelTransaction() {
 
 	memo, err := xdr.NewMemo(xdr.MemoTypeMemoNone, nil)
 
-	var source xdr.AccountId
+	var source xdr.MuxedAccount
 	err = source.SetAddress(skp.Address())
 	if err != nil {
 		panic(err)

@@ -56,7 +56,7 @@ func createTransaction(successful bool, numOps int) io.LedgerTransaction {
 			Type: xdr.EnvelopeTypeEnvelopeTypeTx,
 			V1: &xdr.TransactionV1Envelope{
 				Tx: xdr.Transaction{
-					SourceAccount: xdr.MustAddress("GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY"),
+					SourceAccount: xdr.MustMuxedAccountAddress("GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY"),
 					Operations:    operations,
 				},
 			},

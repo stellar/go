@@ -35,7 +35,7 @@ func TestSetOptions_Signer(t *testing.T) {
 			Name:    "Bad",
 			Address: "foo",
 			Weight:  1,
-			Error:   "base32 decode failed",
+			Error:   "minimum valid length is 5",
 		},
 	}
 

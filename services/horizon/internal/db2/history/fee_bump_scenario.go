@@ -128,8 +128,8 @@ func FeeBumpScenario(tt *test.T, q *Q, successful bool) FeeBumpFixture {
 					Type: xdr.EnvelopeTypeEnvelopeTypeTx,
 					V1: &xdr.TransactionV1Envelope{
 						Tx: xdr.Transaction{
-							SourceAccount: xdr.AccountId{
-								Type: xdr.PublicKeyTypePublicKeyTypeEd25519,
+							SourceAccount: xdr.MuxedAccount{
+								Type: xdr.CryptoKeyTypeKeyTypeEd25519,
 								Ed25519: &xdr.Uint256{
 									3, 3, 3,
 								},
@@ -144,7 +144,7 @@ func FeeBumpScenario(tt *test.T, q *Q, successful bool) FeeBumpFixture {
 								MaxTime: 4,
 							},
 							Operations: []xdr.Operation{
-								xdr.Operation{
+								{
 									Body: xdr.OperationBody{
 										Type: xdr.OperationTypeBumpSequence,
 										BumpSequenceOp: &xdr.BumpSequenceOp{
@@ -155,7 +155,7 @@ func FeeBumpScenario(tt *test.T, q *Q, successful bool) FeeBumpFixture {
 							},
 						},
 						Signatures: []xdr.DecoratedSignature{
-							xdr.DecoratedSignature{
+							{
 								Hint:      xdr.SignatureHint{2, 2, 2, 2},
 								Signature: xdr.Signature{20, 20, 20},
 							},
@@ -164,7 +164,7 @@ func FeeBumpScenario(tt *test.T, q *Q, successful bool) FeeBumpFixture {
 				},
 			},
 			Signatures: []xdr.DecoratedSignature{
-				xdr.DecoratedSignature{
+				{
 					Hint:      xdr.SignatureHint{3, 3, 3, 3},
 					Signature: xdr.Signature{30, 30, 30},
 				},
@@ -202,7 +202,7 @@ func FeeBumpScenario(tt *test.T, q *Q, successful bool) FeeBumpFixture {
 						Result: xdr.InnerTransactionResultResult{
 							Code: xdr.TransactionResultCodeTxSuccess,
 							Results: &[]xdr.OperationResult{
-								xdr.OperationResult{
+								{
 									Tr: &xdr.OperationResultTr{
 										Type: xdr.OperationTypeBumpSequence,
 										BumpSeqResult: &xdr.BumpSequenceResult{

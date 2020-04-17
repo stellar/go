@@ -125,7 +125,7 @@ func (tx *Transaction) Sequence() int64 {
 // SourceAddress returns the strkey-encoded account id that paid the fee for
 // `tx`.
 func (tx *Transaction) SourceAddress() string {
-	sa := tx.Envelope.SourceAccount()
+	sa := tx.Envelope.SourceAccount().ToAccountId()
 	return sa.Address()
 }
 

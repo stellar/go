@@ -86,7 +86,10 @@ func (sys *System) Submit(
 
 	// From now: r.Err == ErrNoResults
 	sourceAccount := envelope.SourceAccount()
-	sourceAddress := sourceAccount.Address()
+	// The database doesn't (yet) store muxed accounts, so we query
+	// the corresponding AccountId
+	accid := sourceAccount.ToAccountId()
+	sourceAddress := accid.Address()
 	curSeq, err := sys.Sequences.Get([]string{sourceAddress})
 	if err != nil {
 		sys.finish(ctx, hash, response, Result{Err: err})
