@@ -57,7 +57,7 @@ func (b *TransactionBuilder) Mutate(muts ...TransactionMutator) error {
 
 // Hash returns the hash of this builder's transaction.
 func (b *TransactionBuilder) Hash() ([32]byte, error) {
-	return network.HashTransaction(b.TX, b.NetworkPassphrase)
+	return network.HashTransaction(*b.TX, b.NetworkPassphrase)
 }
 
 // HashHex returns the hex-encoded hash of this builder's transaction

@@ -136,7 +136,7 @@ func (rh *RequestHandler) HandlerAuth(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	transactionHash, err := network.HashTransaction(&tx, rh.Config.NetworkPassphrase)
+	transactionHash, err := network.HashTransaction(tx, rh.Config.NetworkPassphrase)
 	if err != nil {
 		log.WithFields(log.Fields{"err": err}).Warn("Error calculating tx hash")
 		httpHelpers.Write(w, httpHelpers.InternalServerError)

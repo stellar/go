@@ -26,14 +26,34 @@ func ID(passphrase string) [32]byte {
 	return hash.Hash([]byte(passphrase))
 }
 
+// HashTransactionInEnvelope derives the network specific hash for the transaction
+// contained in the provided envelope using the network identified by the supplied passphrase.
+// The resulting hash is the value that can be signed by stellar secret key to
+// authorize the transaction identified by the hash to stellar validators.
+func HashTransactionInEnvelope(envelope xdr.TransactionEnvelope, passphrase string) ([32]byte, error) {
+	var hash [32]byte
+	var err error
+	switch envelope.Type {
+	case xdr.EnvelopeTypeEnvelopeTypeTx:
+		hash, err = HashTransaction(envelope.V1.Tx, passphrase)
+	case xdr.EnvelopeTypeEnvelopeTypeTxV0:
+		hash, err = HashTransactionV0(envelope.V0.Tx, passphrase)
+	case xdr.EnvelopeTypeEnvelopeTypeTxFeeBump:
+		hash, err = HashFeeBumpTransaction(envelope.FeeBump.Tx, passphrase)
+	default:
+		err = errors.New("invalid transaction type")
+	}
+	return hash, err
+}
+
 // HashTransaction derives the network specific hash for the provided
 // transaction using the network identified by the supplied passphrase.  The
 // resulting hash is the value that can be signed by stellar secret key to
 // authorize the transaction identified by the hash to stellar validators.
-func HashTransaction(tx *xdr.Transaction, passphrase string) ([32]byte, error) {
+func HashTransaction(tx xdr.Transaction, passphrase string) ([32]byte, error) {
 	taggedTx := xdr.TransactionSignaturePayloadTaggedTransaction{
 		Type: xdr.EnvelopeTypeEnvelopeTypeTx,
-		Tx:   tx,
+		Tx:   &tx,
 	}
 	return hashTx(taggedTx, passphrase)
 }
@@ -42,10 +62,10 @@ func HashTransaction(tx *xdr.Transaction, passphrase string) ([32]byte, error) {
 // fee bump transaction using the network identified by the supplied passphrase.  The
 // resulting hash is the value that can be signed by stellar secret key to
 // authorize the transaction identified by the hash to stellar validators.
-func HashFeeBumpTransaction(tx *xdr.FeeBumpTransaction, passphrase string) ([32]byte, error) {
+func HashFeeBumpTransaction(tx xdr.FeeBumpTransaction, passphrase string) ([32]byte, error) {
 	taggedTx := xdr.TransactionSignaturePayloadTaggedTransaction{
 		Type:    xdr.EnvelopeTypeEnvelopeTypeTxFeeBump,
-		FeeBump: tx,
+		FeeBump: &tx,
 	}
 	return hashTx(taggedTx, passphrase)
 }
@@ -54,12 +74,12 @@ func HashFeeBumpTransaction(tx *xdr.FeeBumpTransaction, passphrase string) ([32]
 // legacy transaction using the network identified by the supplied passphrase.  The
 // resulting hash is the value that can be signed by stellar secret key to
 // authorize the transaction identified by the hash to stellar validators.
-func HashTransactionV0(tx *xdr.TransactionV0, passphrase string) ([32]byte, error) {
+func HashTransactionV0(tx xdr.TransactionV0, passphrase string) ([32]byte, error) {
 	sa, err := xdr.NewMuxedAccount(xdr.CryptoKeyTypeKeyTypeEd25519, tx.SourceAccountEd25519)
 	if err != nil {
 		return [32]byte{}, err
 	}
-	v1Tx := &xdr.Transaction{
+	v1Tx := xdr.Transaction{
 		SourceAccount: sa,
 		Fee:           tx.Fee,
 		Memo:          tx.Memo,

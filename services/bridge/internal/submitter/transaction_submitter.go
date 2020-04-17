@@ -128,7 +128,7 @@ func (ts *TransactionSubmitter) SignAndSubmitRawTransaction(paymentID *string, s
 	tx.SeqNum = xdr.SequenceNumber(account.SequenceNumber)
 	account.Mutex.Unlock()
 
-	hash, err := network.HashTransaction(tx, ts.Network)
+	hash, err := network.HashTransaction(*tx, ts.Network)
 	if err != nil {
 		ts.log.WithFields(logrus.Fields{"err": err}).Error("Error calculating transaction hash")
 		return
@@ -154,7 +154,7 @@ func (ts *TransactionSubmitter) SignAndSubmitRawTransaction(paymentID *string, s
 		return
 	}
 
-	transactionHashBytes, err := network.HashTransaction(tx, ts.Network)
+	transactionHashBytes, err := network.HashTransaction(*tx, ts.Network)
 	if err != nil {
 		ts.log.WithFields(logrus.Fields{"err": err}).Warn("Error calculating tx hash")
 		return

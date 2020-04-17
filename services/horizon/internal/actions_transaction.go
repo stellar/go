@@ -10,7 +10,6 @@ import (
 	hProblem "github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/resourceadapter"
 	"github.com/stellar/go/services/horizon/internal/txsub"
-	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/render/hal"
 	"github.com/stellar/go/support/render/problem"
 	"github.com/stellar/go/xdr"
@@ -33,20 +32,10 @@ func extractEnvelopeInfo(raw string, passphrase string) (envelopeInfo, error) {
 	}
 
 	var hash [32]byte
-	switch result.parsed.Type {
-	case xdr.EnvelopeTypeEnvelopeTypeTx:
-		hash, err = network.HashTransaction(&result.parsed.V1.Tx, passphrase)
-	case xdr.EnvelopeTypeEnvelopeTypeTxV0:
-		hash, err = network.HashTransactionV0(&result.parsed.V0.Tx, passphrase)
-	case xdr.EnvelopeTypeEnvelopeTypeTxFeeBump:
-		hash, err = network.HashFeeBumpTransaction(&result.parsed.FeeBump.Tx, passphrase)
-	default:
-		return result, errors.New("invalid transaction type")
-	}
+	hash, err = network.HashTransactionInEnvelope(result.parsed, passphrase)
 	if err != nil {
 		return result, err
 	}
-
 	result.hash = hex.EncodeToString(hash[:])
 	return result, nil
 }

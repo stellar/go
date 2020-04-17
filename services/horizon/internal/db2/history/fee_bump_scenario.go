@@ -175,14 +175,14 @@ func FeeBumpScenario(tt *test.T, q *Q, successful bool) FeeBumpFixture {
 	tt.Assert.NoError(err)
 
 	innerHash, err := network.HashTransaction(
-		&fixture.Envelope.FeeBump.Tx.InnerTx.V1.Tx,
+		fixture.Envelope.FeeBump.Tx.InnerTx.V1.Tx,
 		"Test SDF Network ; September 2015",
 	)
 	tt.Assert.NoError(err)
 	fixture.InnerHash = hex.EncodeToString(innerHash[:])
 
 	outerHash, err := network.HashFeeBumpTransaction(
-		&fixture.Envelope.FeeBump.Tx,
+		fixture.Envelope.FeeBump.Tx,
 		"Test SDF Network ; September 2015",
 	)
 	tt.Assert.NoError(err)
