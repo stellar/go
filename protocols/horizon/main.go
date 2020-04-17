@@ -459,6 +459,7 @@ type Transaction struct {
 	ResultMetaXdr      string              `json:"result_meta_xdr"`
 	FeeMetaXdr         string              `json:"fee_meta_xdr"`
 	MemoType           string              `json:"memo_type"`
+	MemoBytes          string              `json:"memo_bytes,omitempty"`
 	Memo               string              `json:"memo,omitempty"`
 	Signatures         []string            `json:"signatures"`
 	ValidAfter         string              `json:"valid_after,omitempty"`

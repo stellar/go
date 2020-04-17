@@ -102,7 +102,7 @@ func (action *TransactionCreateAction) loadResult() {
 
 func (action *TransactionCreateAction) loadResource() {
 	if action.Result.Err == nil {
-		resourceadapter.PopulateTransaction(
+		action.Err = resourceadapter.PopulateTransaction(
 			action.R.Context(),
 			action.TX.hash,
 			&action.Resource,
