@@ -79,7 +79,7 @@ func HashTransactionV0(tx xdr.TransactionV0, passphrase string) ([32]byte, error
 	if err != nil {
 		return [32]byte{}, err
 	}
-	v1Tx := &xdr.Transaction{
+	v1Tx := xdr.Transaction{
 		SourceAccount: sa,
 		Fee:           tx.Fee,
 		Memo:          tx.Memo,
