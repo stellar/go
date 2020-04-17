@@ -65,7 +65,7 @@ func TestPopulateTransaction_TextMemo(t *testing.T) {
 			Type: xdr.EnvelopeTypeEnvelopeTypeTx,
 			V1: &xdr.TransactionV1Envelope{
 				Tx: xdr.Transaction{
-					SourceAccount: xdr.MustAddress("GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H"),
+					SourceAccount: xdr.MustMuxedAccountAddress("GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H"),
 					Memo: xdr.Memo{
 						Type: xdr.MemoTypeMemoText,
 						Text: &rawMemoString,
@@ -81,7 +81,7 @@ func TestPopulateTransaction_TextMemo(t *testing.T) {
 						Type: xdr.EnvelopeTypeEnvelopeTypeTx,
 						V1: &xdr.TransactionV1Envelope{
 							Tx: xdr.Transaction{
-								SourceAccount: xdr.MustAddress("GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H"),
+								SourceAccount: xdr.MustMuxedAccountAddress("GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H"),
 								Memo: xdr.Memo{
 									Type: xdr.MemoTypeMemoText,
 									Text: &rawMemoString,
