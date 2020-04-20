@@ -1100,8 +1100,8 @@ func TestTransactionsRequest(t *testing.T) {
 		assert.IsType(t, tx, hProtocol.Transaction{})
 		assert.Equal(t, tx.ID, "3274f131af56ecb6d8668acf6eb0b31b5f8faeca785cbce0a911a5a81308a599")
 		assert.Equal(t, tx.Ledger, int32(438134))
-		assert.Equal(t, tx.FeeCharged, int32(100))
-		assert.Equal(t, tx.MaxFee, int32(100))
+		assert.Equal(t, tx.FeeCharged, int64(100))
+		assert.Equal(t, tx.MaxFee, int64(100))
 		assert.Equal(t, tx.Hash, "3274f131af56ecb6d8668acf6eb0b31b5f8faeca785cbce0a911a5a81308a599")
 	}
 

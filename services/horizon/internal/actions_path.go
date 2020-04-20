@@ -180,7 +180,9 @@ func (handler FindPathsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 		}
 
 		if handler.setLastLedgerHeader {
-			// only set the last ingested ledger header if
+			// To make the Last-Ledger header consistent with the response content,
+			// we need to extract it from the ledger and not the DB.
+			// Thus, we overwrite the header if it was previously set.
 			actions.SetLastLedgerHeader(w, lastIngestedLedger)
 		}
 	}
@@ -348,7 +350,9 @@ func (handler FindFixedPathsHandler) ServeHTTP(w http.ResponseWriter, r *http.Re
 		}
 
 		if handler.setLastLedgerHeader {
-			// only set the last ingested ledger header if
+			// To make the Last-Ledger header consistent with the response content,
+			// we need to extract it from the ledger and not the DB.
+			// Thus, we overwrite the header if it was previously set.
 			actions.SetLastLedgerHeader(w, lastIngestedLedger)
 		}
 	}

@@ -45,19 +45,19 @@ type Transaction struct {
 	Memo           Memo
 	Timebounds     Timebounds
 	Network        string
-	xdrTransaction xdr.Transaction
-	xdrEnvelope    *xdr.TransactionEnvelope
+	xdrTransaction xdr.TransactionV0
+	xdrEnvelope    *xdr.TransactionV0Envelope
 }
 
 // Hash provides a signable object representing the Transaction on the specified network.
 func (tx *Transaction) Hash() ([32]byte, error) {
-	return network.HashTransaction(&tx.xdrTransaction, tx.Network)
+	return network.HashTransactionV0(tx.xdrTransaction, tx.Network)
 }
 
 // MarshalBinary returns the binary XDR representation of the transaction envelope.
 func (tx *Transaction) MarshalBinary() ([]byte, error) {
 	var txBytes bytes.Buffer
-	_, err := xdr.Marshal(&txBytes, tx.xdrEnvelope)
+	_, err := xdr.Marshal(&txBytes, tx.TxEnvelope())
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to marshal XDR")
 	}
@@ -97,29 +97,32 @@ func (tx *Transaction) SetDefaultFee() {
 func (tx *Transaction) Build() error {
 	// If transaction envelope has been signed, don't build transaction
 	if tx.xdrEnvelope != nil {
-		if tx.xdrEnvelope.Signatures != nil {
+		if len(tx.xdrEnvelope.Signatures) > 0 {
 			return errors.New("transaction has already been signed, so cannot be rebuilt.")
 		}
 		// clear the existing XDR so we don't append to any existing fields
-		tx.xdrEnvelope = &xdr.TransactionEnvelope{}
-		tx.xdrEnvelope.Tx = xdr.Transaction{}
+		tx.xdrEnvelope = &xdr.TransactionV0Envelope{}
 	}
 
 	// reset tx.xdrTransaction
-	tx.xdrTransaction = xdr.Transaction{}
+	tx.xdrTransaction = xdr.TransactionV0{}
 
-	accountID := tx.SourceAccount.GetAccountID()
+	address := tx.SourceAccount.GetAccountID()
 	// Public keys start with 'G'
-	if accountID[0] != 'G' {
+	if address[0] != 'G' {
 		return errors.New("invalid public key for transaction source account")
 	}
-	_, err := keypair.Parse(accountID)
+	accountID, err := xdr.AddressToAccountId(address)
 	if err != nil {
 		return err
 	}
 
+	sourceAccountEd25519, ok := accountID.GetEd25519()
+	if !ok {
+		return errors.New("invalid account id")
+	}
 	// Set account ID in XDR
-	tx.xdrTransaction.SourceAccount.SetAddress(accountID)
+	tx.xdrTransaction.SourceAccountEd25519 = sourceAccountEd25519
 
 	// Action needed in release: horizonclient-v2.0.0
 	// Validate Seq Num is present in struct. Requires Account.GetSequenceNumber (v.2.0.0)
@@ -164,9 +167,9 @@ func (tx *Transaction) Build() error {
 	tx.SetDefaultFee()
 
 	// Initialise transaction envelope
-	tx.xdrEnvelope = &xdr.TransactionEnvelope{}
-	tx.xdrEnvelope.Tx = tx.xdrTransaction
-
+	tx.xdrEnvelope = &xdr.TransactionV0Envelope{
+		Tx: tx.xdrTransaction,
+	}
 	return nil
 }
 
@@ -305,7 +308,10 @@ func (tx *Transaction) HashHex() (string, error) {
 
 // TxEnvelope returns the TransactionEnvelope XDR struct.
 func (tx *Transaction) TxEnvelope() *xdr.TransactionEnvelope {
-	return tx.xdrEnvelope
+	return &xdr.TransactionEnvelope{
+		Type: xdr.EnvelopeTypeEnvelopeTypeTxV0,
+		V0:   tx.xdrEnvelope,
+	}
 }
 
 func (tx *Transaction) setTransactionFee() error {
@@ -331,7 +337,7 @@ func (tx *Transaction) TransactionFee() int {
 // See description here: https://www.stellar.org/developers/guides/concepts/multi-sig.html#hashx.
 func (tx *Transaction) SignHashX(preimage []byte) error {
 	if tx.xdrEnvelope == nil {
-		tx.xdrEnvelope = &xdr.TransactionEnvelope{}
+		tx.xdrEnvelope = &xdr.TransactionV0Envelope{}
 		tx.xdrEnvelope.Tx = tx.xdrTransaction
 	}
 
@@ -362,29 +368,55 @@ func TransactionFromXDR(txeB64 string) (Transaction, error) {
 		return Transaction{}, errors.Wrap(err, "unable to unmarshal transaction envelope")
 	}
 
+	sourceAccountID, ok := xdrEnv.SourceAccount().GetEd25519()
+	if !ok {
+		return Transaction{}, errors.New("invalid source account id")
+	}
+
+	if xdrEnv.IsFeeBump() {
+		return Transaction{}, errors.New("fee bump transactions are not supported")
+	}
 	var newTx Transaction
-	newTx.xdrTransaction = xdrEnv.Tx
-	newTx.xdrEnvelope = &xdrEnv
-
-	if len(xdrEnv.Tx.Operations) > 0 {
-		newTx.BaseFee = uint32(xdrEnv.Tx.Fee) / uint32(len(xdrEnv.Tx.Operations))
+	newTx.xdrTransaction = xdr.TransactionV0{
+		SourceAccountEd25519: sourceAccountID,
+		Fee:                  xdr.Uint32(xdrEnv.Fee()),
+		Memo:                 xdrEnv.Memo(),
+		Operations:           xdrEnv.Operations(),
+		SeqNum:               xdr.SequenceNumber(xdrEnv.SeqNum()),
+		TimeBounds:           xdrEnv.TimeBounds(),
+	}
+	newTx.xdrEnvelope = &xdr.TransactionV0Envelope{
+		Tx: newTx.xdrTransaction,
+	}
+	// only include signatures if the transaction is a V0 transaction
+	// fee bump and V1 transactions have different hashes from V1 transactions
+	if xdrEnv.Type == xdr.EnvelopeTypeEnvelopeTypeTxV0 {
+		newTx.xdrEnvelope.Signatures = xdrEnv.Signatures()
+	}
+	if numOps := len(xdrEnv.Operations()); numOps > 0 {
+		if xdrEnv.IsFeeBump() {
+			newTx.BaseFee = uint32(xdrEnv.FeeBumpFee() / int64(numOps))
+		} else {
+			newTx.BaseFee = uint32(xdrEnv.Fee() / uint32(numOps))
+		}
 	}
 
+	sourceAccount := xdrEnv.SourceAccount()
 	newTx.SourceAccount = &SimpleAccount{
-		AccountID: xdrEnv.Tx.SourceAccount.Address(),
-		Sequence:  int64(xdrEnv.Tx.SeqNum),
+		AccountID: sourceAccount.Address(),
+		Sequence:  xdrEnv.SeqNum(),
 	}
 
-	if xdrEnv.Tx.TimeBounds != nil {
-		newTx.Timebounds = NewTimebounds(int64(xdrEnv.Tx.TimeBounds.MinTime), int64(xdrEnv.Tx.TimeBounds.MaxTime))
+	if timeBounds := xdrEnv.TimeBounds(); timeBounds != nil {
+		newTx.Timebounds = NewTimebounds(int64(timeBounds.MinTime), int64(timeBounds.MaxTime))
 	}
 
-	newTx.Memo, err = memoFromXDR(xdrEnv.Tx.Memo)
+	newTx.Memo, err = memoFromXDR(xdrEnv.Memo())
 	if err != nil {
 		return Transaction{}, errors.Wrap(err, "unable to parse memo")
 	}
 
-	for _, op := range xdrEnv.Tx.Operations {
+	for _, op := range xdrEnv.Operations() {
 		newOp, err := operationFromXDR(op)
 		if err != nil {
 			return Transaction{}, err
@@ -430,6 +462,15 @@ func ReadChallengeTx(challengeTx, serverAccountID, network string) (tx Transacti
 	if err != nil {
 		return tx, clientAccountID, err
 	}
+
+	// Enforce no muxed accounts (at least until we understand their impact)
+	muxedAccountErr := errors.New("muxed accounts are not allowed in challenge transactions")
+	for _, op := range tx.xdrTransaction.Operations {
+		if op.SourceAccount != nil && op.SourceAccount.Type != xdr.CryptoKeyTypeKeyTypeEd25519 {
+			return tx, clientAccountID, muxedAccountErr
+		}
+	}
+
 	tx.Network = network
 
 	// verify transaction source

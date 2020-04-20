@@ -743,41 +743,46 @@ func TestManageBuyOfferUpdateOffer(t *testing.T) {
 func TestBuildChallengeTx(t *testing.T) {
 	kp0 := newKeypair0()
 
-	// 1 minute timebound
-	txeBase64, err := BuildChallengeTx(kp0.Seed(), kp0.Address(), "SDF", network.TestNetworkPassphrase, time.Minute)
-	assert.NoError(t, err)
-	var txXDR xdr.TransactionEnvelope
-	err = xdr.SafeUnmarshalBase64(txeBase64, &txXDR)
-	assert.NoError(t, err)
-	assert.Equal(t, xdr.SequenceNumber(0), txXDR.Tx.SeqNum, "sequence number should be 0")
-	assert.Equal(t, xdr.Uint32(100), txXDR.Tx.Fee, "Fee should be 100")
-	assert.Equal(t, 1, len(txXDR.Tx.Operations), "number operations should be 1")
-	timeDiff := txXDR.Tx.TimeBounds.MaxTime - txXDR.Tx.TimeBounds.MinTime
-	assert.Equal(t, int64(60), int64(timeDiff), "time difference should be 300 seconds")
-	op := txXDR.Tx.Operations[0]
-	assert.Equal(t, xdr.OperationTypeManageData, op.Body.Type, "operation type should be manage data")
-	assert.Equal(t, xdr.String64("SDF auth"), op.Body.ManageDataOp.DataName, "DataName should be 'SDF auth'")
-	assert.Equal(t, 64, len(*op.Body.ManageDataOp.DataValue), "DataValue should be 64 bytes")
+	{
+		// 1 minute timebound
+		txeBase64, err := BuildChallengeTx(kp0.Seed(), kp0.Address(), "SDF", network.TestNetworkPassphrase, time.Minute)
+		assert.NoError(t, err)
+		var txXDR xdr.TransactionEnvelope
+		err = xdr.SafeUnmarshalBase64(txeBase64, &txXDR)
+		assert.NoError(t, err)
+		assert.Equal(t, int64(0), txXDR.SeqNum(), "sequence number should be 0")
+		assert.Equal(t, uint32(100), txXDR.Fee(), "Fee should be 100")
+		assert.Equal(t, 1, len(txXDR.Operations()), "number operations should be 1")
+		timeDiff := txXDR.TimeBounds().MaxTime - txXDR.TimeBounds().MinTime
+		assert.Equal(t, int64(60), int64(timeDiff), "time difference should be 300 seconds")
+		op := txXDR.Operations()[0]
+		assert.Equal(t, xdr.OperationTypeManageData, op.Body.Type, "operation type should be manage data")
+		assert.Equal(t, xdr.String64("SDF auth"), op.Body.ManageDataOp.DataName, "DataName should be 'SDF auth'")
+		assert.Equal(t, 64, len(*op.Body.ManageDataOp.DataValue), "DataValue should be 64 bytes")
 
-	// 5 minutes timebound
-	txeBase64, err = BuildChallengeTx(kp0.Seed(), kp0.Address(), "SDF1", network.TestNetworkPassphrase, time.Duration(5*time.Minute))
-	assert.NoError(t, err)
-	var txXDR1 xdr.TransactionEnvelope
-	err = xdr.SafeUnmarshalBase64(txeBase64, &txXDR1)
-	assert.NoError(t, err)
-	assert.Equal(t, xdr.SequenceNumber(0), txXDR1.Tx.SeqNum, "sequence number should be 0")
-	assert.Equal(t, xdr.Uint32(100), txXDR1.Tx.Fee, "Fee should be 100")
-	assert.Equal(t, 1, len(txXDR1.Tx.Operations), "number operations should be 1")
+	}
 
-	timeDiff = txXDR1.Tx.TimeBounds.MaxTime - txXDR1.Tx.TimeBounds.MinTime
-	assert.Equal(t, int64(300), int64(timeDiff), "time difference should be 300 seconds")
-	op1 := txXDR1.Tx.Operations[0]
-	assert.Equal(t, xdr.OperationTypeManageData, op1.Body.Type, "operation type should be manage data")
-	assert.Equal(t, xdr.String64("SDF1 auth"), op1.Body.ManageDataOp.DataName, "DataName should be 'SDF1 auth'")
-	assert.Equal(t, 64, len(*op1.Body.ManageDataOp.DataValue), "DataValue should be 64 bytes")
+	{
+		// 5 minutes timebound
+		txeBase64, err := BuildChallengeTx(kp0.Seed(), kp0.Address(), "SDF1", network.TestNetworkPassphrase, time.Duration(5*time.Minute))
+		assert.NoError(t, err)
+		var txXDR1 xdr.TransactionEnvelope
+		err = xdr.SafeUnmarshalBase64(txeBase64, &txXDR1)
+		assert.NoError(t, err)
+		assert.Equal(t, int64(0), txXDR1.SeqNum(), "sequence number should be 0")
+		assert.Equal(t, uint32(100), txXDR1.Fee(), "Fee should be 100")
+		assert.Equal(t, 1, len(txXDR1.Operations()), "number operations should be 1")
+
+		timeDiff := txXDR1.TimeBounds().MaxTime - txXDR1.TimeBounds().MinTime
+		assert.Equal(t, int64(300), int64(timeDiff), "time difference should be 300 seconds")
+		op1 := txXDR1.Operations()[0]
+		assert.Equal(t, xdr.OperationTypeManageData, op1.Body.Type, "operation type should be manage data")
+		assert.Equal(t, xdr.String64("SDF1 auth"), op1.Body.ManageDataOp.DataName, "DataName should be 'SDF1 auth'")
+		assert.Equal(t, 64, len(*op1.Body.ManageDataOp.DataValue), "DataValue should be 64 bytes")
+	}
 
 	//transaction with infinite timebound
-	_, err = BuildChallengeTx(kp0.Seed(), kp0.Address(), "sdf", network.TestNetworkPassphrase, 0)
+	_, err := BuildChallengeTx(kp0.Seed(), kp0.Address(), "sdf", network.TestNetworkPassphrase, 0)
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "provided timebound must be at least 1s (300s is recommended)")
 	}

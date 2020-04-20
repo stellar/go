@@ -311,8 +311,8 @@ func TestLoadTransaction(t *testing.T) {
 		assert.Equal(t, transaction.Hash, "a4ca51d09610154409890763e2c8ecbaa36688c957dea1df0578bdbc1f65d312")
 		assert.Equal(t, transaction.Ledger, int32(17425656))
 		assert.Equal(t, transaction.Account, "GBQ352ACDO6DEGI42SOI4DCB654N7B7DANO4RSBGA5CZLM4475CQNID4")
-		assert.Equal(t, transaction.FeeCharged, int32(100))
-		assert.Equal(t, transaction.MaxFee, int32(100))
+		assert.Equal(t, transaction.FeeCharged, int64(100))
+		assert.Equal(t, transaction.MaxFee, int64(100))
 		assert.Equal(t, transaction.ResultXdr, "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAA=")
 	}
 

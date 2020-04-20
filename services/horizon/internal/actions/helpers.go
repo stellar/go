@@ -2,12 +2,14 @@ package actions
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 	"mime"
 	"net/http"
 	"net/url"
 	"reflect"
 	"strconv"
+	"strings"
 	"unicode/utf8"
 
 	"github.com/asaskevich/govalidator"
@@ -37,6 +39,8 @@ const (
 	ParamOrder = "order"
 	// ParamLimit is a query string param name
 	ParamLimit = "limit"
+	// LastLedgerHeaderName is the header which is set on all endpoints
+	LastLedgerHeaderName = "Latest-Ledger"
 )
 
 type Opt int
@@ -49,6 +53,16 @@ const (
 	RequiredParam
 	maxAssetCodeLength = 12
 )
+
+// HeaderWriter is an interface for setting HTTP response headers
+type HeaderWriter interface {
+	Header() http.Header
+}
+
+// SetLastLedgerHeader sets the Latest-Ledger header
+func SetLastLedgerHeader(w HeaderWriter, lastLedger uint32) {
+	w.Header().Set(LastLedgerHeaderName, strconv.FormatUint(uint64(lastLedger), 10))
+}
 
 // GetCursor retrieves a string from either the URLParams, form or query string.
 // This method uses the priority (URLParams, Form, Query).
@@ -94,14 +108,6 @@ func GetCursor(r *http.Request, name string) (string, error) {
 	return cursor, nil
 }
 
-// checkUTF8 checks if value is a valid UTF-8 string, otherwise sets
-// error to `action.Err`.
-func (base *Base) checkUTF8(name, value string) {
-	if err := checkUTF8(name, value); err != nil {
-		base.SetInvalidField(name, err)
-	}
-}
-
 func checkUTF8(name, value string) error {
 	if !utf8.ValidString(value) {
 		return problem.MakeInvalidFieldProblem(name, errors.New("invalid value"))
@@ -110,24 +116,32 @@ func checkUTF8(name, value string) error {
 }
 
 // GetStringFromURLParam retrieves a string from the URLParams.
+func GetStringFromURLParam(r *http.Request, name string) (string, error) {
+	fromURL, ok := GetURLParam(r, name)
+	if ok {
+		ret, err := url.PathUnescape(fromURL)
+		if err != nil {
+			return "", problem.MakeInvalidFieldProblem(name, err)
+		}
+
+		if err := checkUTF8(name, ret); err != nil {
+			return "", err
+		}
+		return ret, nil
+	}
+
+	return "", nil
+}
+
+// GetStringFromURLParam retrieves a string from the URLParams.
 func (base *Base) GetStringFromURLParam(name string) string {
 	if base.Err != nil {
 		return ""
 	}
 
-	fromURL, ok := base.GetURLParam(name)
-	if ok {
-		ret, err := url.PathUnescape(fromURL)
-		if err != nil {
-			base.SetInvalidField(name, err)
-			return ""
-		}
-
-		base.checkUTF8(name, ret)
-		return ret
-	}
-
-	return ""
+	var ret string
+	ret, base.Err = GetString(base.R, name)
+	return ret
 }
 
 // GetString retrieves a string from either the URLParams, form or query string.
@@ -374,6 +388,23 @@ func (base *Base) GetAddress(name string, opts ...Opt) (result string) {
 	}
 
 	return result
+}
+
+// GetTransactionID retireves a transaction identifier by attempting to decode an hex-encoded,
+// 64-digit lowercase string at the provided name.
+func GetTransactionID(r *http.Request, name string) (string, error) {
+	value, err := GetStringFromURLParam(r, name)
+	if err != nil {
+		return "", err
+	}
+
+	if value != "" {
+		if _, err = hex.DecodeString(value); err != nil || len(value) != 64 || strings.ToLower(value) != value {
+			return "", problem.MakeInvalidFieldProblem(name, errors.New("invalid hash format"))
+		}
+	}
+
+	return value, nil
 }
 
 // GetAccountID retireves an xdr.AccountID by attempting to decode a stellar

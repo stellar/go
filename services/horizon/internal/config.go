@@ -28,8 +28,6 @@ type Config struct {
 	SSEUpdateFrequency time.Duration
 	ConnectionTimeout  time.Duration
 	RateQuota          *throttled.RateQuota
-	RateLimitRedisKey  string
-	RedisURL           string
 	FriendbotURL       *url.URL
 	LogLevel           logrus.Level
 	LogFile            string
