@@ -156,7 +156,7 @@ func (s *ParticipantsProcessorTestSuiteLedger) TestFeeBumptransaction() {
 	feeBumpTx.Envelope.V1.Tx.SourceAccount = xdr.MustMuxedAccountAddress(s.addresses[0])
 	feeBumpTx.Envelope.FeeBump = &xdr.FeeBumpTransactionEnvelope{
 		Tx: xdr.FeeBumpTransaction{
-			FeeSource: xdr.MustAddress(s.addresses[1]),
+			FeeSource: xdr.MustMuxedAccountAddress(s.addresses[1]),
 			Fee:       100,
 			InnerTx: xdr.FeeBumpTransactionInnerTx{
 				Type: xdr.EnvelopeTypeEnvelopeTypeTx,

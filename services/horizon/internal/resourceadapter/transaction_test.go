@@ -89,7 +89,7 @@ func TestPopulateTransaction_TextMemo(t *testing.T) {
 							},
 						},
 					},
-					FeeSource: xdr.MustAddress("GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU"),
+					FeeSource: xdr.MustMuxedAccountAddress("GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU"),
 				},
 			},
 		},
