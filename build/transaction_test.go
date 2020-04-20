@@ -141,7 +141,7 @@ var _ = Describe("Transaction Mutators:", func() {
 			It("sets the AccountId correctly", func() {
 				var aid xdr.AccountId
 				aid.SetAddress(address)
-				Expect(subject.TX.SourceAccount.MustEd25519()).To(Equal(aid.MustEd25519()))
+				Expect(subject.TX.SourceAccountEd25519).To(Equal(aid.MustEd25519()))
 			})
 		})
 

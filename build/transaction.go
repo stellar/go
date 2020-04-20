@@ -34,7 +34,7 @@ type TransactionMutator interface {
 // TransactionBuilder represents a Transaction that is being constructed.
 // Deprecated use txnbuild.Transaction instead
 type TransactionBuilder struct {
-	TX                *xdr.Transaction
+	TX                *xdr.TransactionV0
 	NetworkPassphrase string
 	BaseFee           uint64
 }
@@ -42,7 +42,7 @@ type TransactionBuilder struct {
 // Mutate applies the provided TransactionMutators to this builder's transaction
 func (b *TransactionBuilder) Mutate(muts ...TransactionMutator) error {
 	if b.TX == nil {
-		b.TX = &xdr.Transaction{}
+		b.TX = &xdr.TransactionV0{}
 	}
 
 	for i, m := range muts {
@@ -57,7 +57,7 @@ func (b *TransactionBuilder) Mutate(muts ...TransactionMutator) error {
 
 // Hash returns the hash of this builder's transaction.
 func (b *TransactionBuilder) Hash() ([32]byte, error) {
-	return network.HashTransaction(*b.TX, b.NetworkPassphrase)
+	return network.HashTransactionV0(*b.TX, b.NetworkPassphrase)
 }
 
 // HashHex returns the hex-encoded hash of this builder's transaction
@@ -137,9 +137,12 @@ func (m AllowTrustBuilder) MutateTransaction(o *TransactionBuilder) error {
 // NOTE:  this mutator assumes that the source account has already been set on
 // the transaction and will error if that has not occurred.
 func (m AutoSequence) MutateTransaction(o *TransactionBuilder) error {
-	source := o.TX.SourceAccount
+	source := xdr.AccountId{
+		Type:    xdr.PublicKeyTypePublicKeyTypeEd25519,
+		Ed25519: &o.TX.SourceAccountEd25519,
+	}
 
-	if source == (xdr.MuxedAccount{}) {
+	if source == (xdr.AccountId{}) {
 		return errors.New("auto sequence used prior to setting source account")
 	}
 
@@ -334,7 +337,17 @@ func (m Sequence) MutateTransaction(o *TransactionBuilder) error {
 // MutateTransaction for SourceAccount sets the transaction's SourceAccount
 // to the pubilic key for the address provided
 func (m SourceAccount) MutateTransaction(o *TransactionBuilder) error {
-	return setMuxedAccount(m.AddressOrSeed, &o.TX.SourceAccount)
+	source := xdr.AccountId{}
+	err := setAccountId(m.AddressOrSeed, &source)
+	if err != nil {
+		return err
+	}
+	id, ok := source.GetEd25519()
+	if !ok {
+		return errors.New("invalid account id")
+	}
+	o.TX.SourceAccountEd25519 = id
+	return nil
 }
 
 // MutateTransaction for BaseFee sets the base fee

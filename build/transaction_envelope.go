@@ -28,14 +28,14 @@ type TransactionEnvelopeBuilder struct {
 func (b *TransactionEnvelopeBuilder) Init() {
 	if b.E == nil {
 		b.E = &xdr.TransactionEnvelope{
-			Type: xdr.EnvelopeTypeEnvelopeTypeTx,
-			V1:   &xdr.TransactionV1Envelope{},
+			Type: xdr.EnvelopeTypeEnvelopeTypeTxV0,
+			V0:   &xdr.TransactionV0Envelope{},
 		}
 	}
 
 	if b.child == nil {
 		// TODO support fee bump transactions
-		b.child = &TransactionBuilder{TX: &b.E.V1.Tx}
+		b.child = &TransactionBuilder{TX: &b.E.V0.Tx}
 	}
 }
 
@@ -112,7 +112,7 @@ func (m Sign) MutateTransactionEnvelope(txe *TransactionEnvelopeBuilder) error {
 		return errors.Wrap(err, "sign tx failed")
 	}
 
-	txe.E.V1.Signatures = append(txe.E.V1.Signatures, sig)
+	txe.E.V0.Signatures = append(txe.E.V0.Signatures, sig)
 	return nil
 }
 
@@ -120,9 +120,9 @@ func (m Sign) MutateTransactionEnvelope(txe *TransactionEnvelopeBuilder) error {
 // transaction to be set as the provided envelope's Tx field
 func (m *TransactionBuilder) MutateTransactionEnvelope(txe *TransactionEnvelopeBuilder) error {
 	// TODO support fee bump transactions
-	txe.E.V1.Tx = *m.TX
+	txe.E.V0.Tx = *m.TX
 	newChild := *m
 	txe.child = &newChild
-	m.TX = &txe.E.V1.Tx
+	m.TX = &txe.E.V0.Tx
 	return nil
 }
