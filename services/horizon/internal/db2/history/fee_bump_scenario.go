@@ -119,8 +119,8 @@ func FeeBumpScenario(tt *test.T, q *Q, successful bool) FeeBumpFixture {
 		Type: xdr.EnvelopeTypeEnvelopeTypeTxFeeBump,
 		FeeBump: &xdr.FeeBumpTransactionEnvelope{
 			Tx: xdr.FeeBumpTransaction{
-				FeeSource: xdr.AccountId{
-					Type:    xdr.PublicKeyTypePublicKeyTypeEd25519,
+				FeeSource: xdr.MuxedAccount{
+					Type:    xdr.CryptoKeyTypeKeyTypeEd25519,
 					Ed25519: &xdr.Uint256{2, 2, 2},
 				},
 				Fee: 776,
