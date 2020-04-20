@@ -173,7 +173,7 @@ func transactionToMap(transaction io.LedgerTransaction, sequence uint32) (map[st
 	if transaction.Envelope.IsFeeBump() {
 		innerHash := transaction.Result.InnerHash()
 		m["inner_transaction_hash"] = hex.EncodeToString(innerHash[:])
-		feeAccount := transaction.Envelope.FeeBumpAccount()
+		feeAccount := transaction.Envelope.FeeBumpAccount().ToAccountId()
 		m["fee_account"] = feeAccount.Address()
 		m["new_max_fee"] = transaction.Envelope.FeeBumpFee()
 		m["inner_signatures"] = sqx.StringArray(signatures(transaction.Envelope.Signatures()))

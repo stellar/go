@@ -6,7 +6,7 @@ func (e TransactionEnvelope) IsFeeBump() bool {
 }
 
 // FeeBumpAccount returns the account paying for the fee bump transaction
-func (e TransactionEnvelope) FeeBumpAccount() AccountId {
+func (e TransactionEnvelope) FeeBumpAccount() MuxedAccount {
 	return e.MustFeeBump().Tx.FeeSource
 }
 

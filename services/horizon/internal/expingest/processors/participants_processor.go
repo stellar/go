@@ -143,7 +143,7 @@ func participantsForTransaction(
 		transaction.Envelope.SourceAccount().ToAccountId(),
 	}
 	if transaction.Envelope.IsFeeBump() {
-		participants = append(participants, transaction.Envelope.FeeBumpAccount())
+		participants = append(participants, transaction.Envelope.FeeBumpAccount().ToAccountId())
 	}
 
 	p, err := participantsForMeta(transaction.Meta)

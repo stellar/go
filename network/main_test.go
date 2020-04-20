@@ -62,7 +62,7 @@ func TestHashTransaction(t *testing.T) {
 
 	feeBumpTx := xdr.FeeBumpTransaction{
 		Fee:       123456,
-		FeeSource: xdr.MustAddress("GCLOMB72ODBFUGK4E2BK7VMR3RNZ5WSTMEOGNA2YUVHFR3WMH2XBAB6H"),
+		FeeSource: xdr.MustMuxedAccountAddress("GCLOMB72ODBFUGK4E2BK7VMR3RNZ5WSTMEOGNA2YUVHFR3WMH2XBAB6H"),
 		InnerTx: xdr.FeeBumpTransactionInnerTx{
 			Type: xdr.EnvelopeTypeEnvelopeTypeTx,
 			V1: &xdr.TransactionV1Envelope{

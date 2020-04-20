@@ -87,8 +87,8 @@ func createFeeBumpTx() TransactionEnvelope {
 		Type: EnvelopeTypeEnvelopeTypeTxFeeBump,
 		FeeBump: &FeeBumpTransactionEnvelope{
 			Tx: FeeBumpTransaction{
-				FeeSource: AccountId{
-					Type:    PublicKeyTypePublicKeyTypeEd25519,
+				FeeSource: MuxedAccount{
+					Type:    CryptoKeyTypeKeyTypeEd25519,
 					Ed25519: &Uint256{2, 2, 2},
 				},
 				Fee: 776,
