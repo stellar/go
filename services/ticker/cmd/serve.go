@@ -25,13 +25,11 @@ var cmdServe = &cobra.Command{
 	Short: "Runs a GraphQL interface to get Ticker data",
 	Run: func(cmd *cobra.Command, args []string) {
 		Logger.Info("Starting GraphQL Server")
-		// TODO: Eliminate db-url flag.
 		dbInfo, err := pq.ParseURL(DatabaseURL)
 		if err != nil {
 			Logger.Fatal("could not parse db-url:", err)
 		}
 
-		// TODO: Read dbInfo from env var.
 		session, err := tickerdb.CreateSession("postgres", dbInfo)
 		if err != nil {
 			Logger.Fatal("could not connect to db:", err)
