@@ -71,7 +71,7 @@ func TestFirebase_tokenWithEmailVerifiedTrue(t *testing.T) {
 
 // Test that if the token verifier says there is a Firebase token that contains
 // an email claim and email_verified=false, the claims stored in the context
-// shouldn't contain it.
+// should not contain the email.
 func TestFirebase_tokenWithEmailVerifiedFalse(t *testing.T) {
 	tokenVerifier := FirebaseTokenVerifierFunc(func(_ *http.Request) (*firebaseauth.Token, bool) {
 		token := &firebaseauth.Token{
