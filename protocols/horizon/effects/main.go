@@ -409,8 +409,14 @@ func UnmarshalEffect(effectType string, dataString []byte) (effects Effect, err 
 			return
 		}
 		effects = effect
-	case EffectTypeNames[EffectTrustlineAuthorized], EffectTypeNames[EffectTrustlineAuthorizedToMaintainLiabilities]:
+	case EffectTypeNames[EffectTrustlineAuthorized]:
 		var effect TrustlineAuthorized
+		if err = json.Unmarshal(dataString, &effect); err != nil {
+			return
+		}
+		effects = effect
+	case EffectTypeNames[EffectTrustlineAuthorizedToMaintainLiabilities]:
+		var effect TrustlineAuthorizedToMaintainLiabilities
 		if err = json.Unmarshal(dataString, &effect); err != nil {
 			return
 		}

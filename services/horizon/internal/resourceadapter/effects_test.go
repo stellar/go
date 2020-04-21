@@ -1,11 +1,13 @@
 package resourceadapter
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/guregu/null"
 	"github.com/stellar/go/protocols/horizon/effects"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/support/render/hal"
 	"github.com/stellar/go/support/test"
 	"github.com/stretchr/testify/assert"
 )
@@ -31,7 +33,18 @@ func TestNewEffect_EffectTrustlineAuthorizedToMaintainLiabilities(t *testing.T) 
 	resource, err := NewEffect(ctx, hEffect, history.Ledger{})
 	tt.NoError(err)
 
+	var resourcePage hal.Page
+	resourcePage.Add(resource)
+
 	effect, ok := resource.(effects.TrustlineAuthorizedToMaintainLiabilities)
 	tt.True(ok)
 	tt.Equal("trustline_authorized_to_maintain_liabilities", effect.Type)
+
+	binary, err := json.Marshal(resourcePage)
+	tt.NoError(err)
+
+	var page effects.EffectsPage
+	tt.NoError(json.Unmarshal(binary, &page))
+	tt.Len(page.Embedded.Records, 1)
+	tt.Equal(effect, page.Embedded.Records[0].(effects.TrustlineAuthorizedToMaintainLiabilities))
 }
