@@ -10,6 +10,10 @@ that any user proving access to a phone number or email address can have
 transactions signed. A user who has registered their account with two or more
 Recovery Signers can recover the account with their help.
 
+This implementation uses Firebase to authenticate a user with an email address
+or phone number. To configure a Firebase project for use with recoverysigner
+see [README-Firebase.md](README-Firebase.md).
+
 This implementation is not polished and is still experimental.
 Running this implementation in production is not recommended.
 
@@ -48,3 +52,4 @@ Flags:
 ```
 
 [SEP-30]: https://github.com/stellar/stellar-protocol/blob/600c326b210d71ee031d7f3a40ca88191b4cdf9c/ecosystem/sep-0030.md
+[README-Firebase.md]: README-Firebase.md
