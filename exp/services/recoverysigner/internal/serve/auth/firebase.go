@@ -28,7 +28,9 @@ func FirebaseMiddleware(v FirebaseTokenVerifier) func(http.Handler) http.Handler
 				ctx := r.Context()
 				auth, _ := FromContext(ctx)
 				auth.PhoneNumber, _ = token.Claims["phone_number"].(string)
-				auth.Email, _ = token.Claims["email"].(string)
+				if emailVerified, _ := token.Claims["email_verified"].(bool); emailVerified {
+					auth.Email, _ = token.Claims["email"].(string)
+				}
 				ctx = NewContext(ctx, auth)
 				r = r.WithContext(ctx)
 			}

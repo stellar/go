@@ -39,12 +39,14 @@ func TestFirebase_tokenWithPhoneNumber(t *testing.T) {
 }
 
 // Test that if the token verifier says there is a Firebase token that contains
-// an email claim, the claims stored in the context should contain it.
-func TestFirebase_tokenWithEmail(t *testing.T) {
+// an email and email_verified=true claim, the claims stored in the context
+// should contain it.
+func TestFirebase_tokenWithEmailVerifiedTrue(t *testing.T) {
 	tokenVerifier := FirebaseTokenVerifierFunc(func(_ *http.Request) (*firebaseauth.Token, bool) {
 		token := &firebaseauth.Token{
 			Claims: map[string]interface{}{
-				"email": "user@example.com",
+				"email":          "user@example.com",
+				"email_verified": true,
 			},
 		}
 		return token, true
@@ -67,6 +69,63 @@ func TestFirebase_tokenWithEmail(t *testing.T) {
 	assert.Equal(t, true, claimsOK)
 }
 
+// Test that if the token verifier says there is a Firebase token that contains
+// an email claim and email_verified=false, the claims stored in the context
+// should not contain the email.
+func TestFirebase_tokenWithEmailVerifiedFalse(t *testing.T) {
+	tokenVerifier := FirebaseTokenVerifierFunc(func(_ *http.Request) (*firebaseauth.Token, bool) {
+		token := &firebaseauth.Token{
+			Claims: map[string]interface{}{
+				"email":          "user@example.com",
+				"email_verified": false,
+			},
+		}
+		return token, true
+	})
+
+	claims := Auth{}
+	claimsOK := false
+	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		claims, claimsOK = FromContext(r.Context())
+	})
+
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest("GET", "/", nil)
+	FirebaseMiddleware(tokenVerifier)(next).ServeHTTP(w, r)
+
+	wantClaims := Auth{}
+	assert.Equal(t, wantClaims, claims)
+	assert.Equal(t, true, claimsOK)
+}
+
+// Test that if the token verifier says there is a Firebase token that contains
+// an email claim without email_verified, the claims stored in the context
+// should not contain the email.
+func TestFirebase_tokenWithEmail(t *testing.T) {
+	tokenVerifier := FirebaseTokenVerifierFunc(func(_ *http.Request) (*firebaseauth.Token, bool) {
+		token := &firebaseauth.Token{
+			Claims: map[string]interface{}{
+				"email": "user@example.com",
+			},
+		}
+		return token, true
+	})
+
+	claims := Auth{}
+	claimsOK := false
+	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		claims, claimsOK = FromContext(r.Context())
+	})
+
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest("GET", "/", nil)
+	FirebaseMiddleware(tokenVerifier)(next).ServeHTTP(w, r)
+
+	wantClaims := Auth{}
+	assert.Equal(t, wantClaims, claims)
+	assert.Equal(t, true, claimsOK)
+}
+
 // Test that if the token verifier says there is a Firebase token that
 // contains a phone number and an email claim, the claims stored in the
 // context should contain both.
@@ -74,8 +133,9 @@ func TestFirebase_tokenWithPhoneNumberAndEmail(t *testing.T) {
 	tokenVerifier := FirebaseTokenVerifierFunc(func(_ *http.Request) (*firebaseauth.Token, bool) {
 		token := &firebaseauth.Token{
 			Claims: map[string]interface{}{
-				"phone_number": "+10000000000",
-				"email":        "user@example.com",
+				"phone_number":   "+10000000000",
+				"email":          "user@example.com",
+				"email_verified": true,
 			},
 		}
 		return token, true
@@ -106,8 +166,9 @@ func TestFirebase_tokenWithPhoneNumberAndEmailAppendsToOtherClaims(t *testing.T)
 	tokenVerifier := FirebaseTokenVerifierFunc(func(_ *http.Request) (*firebaseauth.Token, bool) {
 		token := &firebaseauth.Token{
 			Claims: map[string]interface{}{
-				"phone_number": "+10000000000",
-				"email":        "user@example.com",
+				"phone_number":   "+10000000000",
+				"email":          "user@example.com",
+				"email_verified": true,
 			},
 		}
 		return token, true
