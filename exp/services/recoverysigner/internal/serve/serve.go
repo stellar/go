@@ -131,7 +131,11 @@ func handler(deps handlerDeps) http.Handler {
 				SigningAddress: deps.SigningKey.FromAddress(),
 				AccountStore:   deps.AccountStore,
 			}.ServeHTTP)
-			// TODO: mux.Put("/", accountPutHandler{}.ServeHTTP)
+			mux.Put("/", accountPutHandler{
+				Logger:         deps.Logger,
+				SigningAddress: deps.SigningKey.FromAddress(),
+				AccountStore:   deps.AccountStore,
+			}.ServeHTTP)
 			mux.Get("/", accountGetHandler{
 				Logger:         deps.Logger,
 				SigningAddress: deps.SigningKey.FromAddress(),
