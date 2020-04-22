@@ -41,7 +41,7 @@ function migrate_db() {
 	echo ""
 	echo "Upgrading database to latest version"
 	echo ""
-	sudo -u stellar $STELLAR_BIN/ticker migrate --db-url=$DB_URL
+	sudo -E -u stellar $STELLAR_BIN/ticker migrate
 }
 
 
@@ -53,7 +53,7 @@ function populate_assets() {
 	echo ""
 	echo "Populating initial asset database"
 	echo ""
-	sudo -u stellar $STELLAR_BIN/ticker ingest assets --db-url=$DB_URL
+	sudo -E -u stellar $STELLAR_BIN/ticker ingest assets
 	touch $PGHOME/.assets-populated
 }
 
@@ -66,7 +66,7 @@ function populate_trades() {
 	echo ""
 	echo "Populating initial trade database"
 	echo ""
-	sudo -u stellar $STELLAR_BIN/ticker ingest trades --db-url=$DB_URL
+	sudo -E -u stellar $STELLAR_BIN/ticker ingest trades
 	touch $PGHOME/.trades-populated
 }
 
@@ -79,7 +79,7 @@ function populate_orderbooks() {
 	echo ""
 	echo "Populating initial orderbook database"
 	echo ""
-	sudo -u stellar $STELLAR_BIN/ticker ingest orderbooks --db-url=$DB_URL
+	sudo -E -u stellar $STELLAR_BIN/ticker ingest orderbooks
 	touch $PGHOME/.orderbooks-populated
 }
 
@@ -92,7 +92,7 @@ function generate_assets_file() {
 	echo ""
 	echo "Creating assets.json file"
 	echo ""
-	sudo -u stellar $STELLAR_BIN/ticker generate asset-data --db-url=$DB_URL -o $WWW_HOME/assets.json
+	sudo -E -u stellar $STELLAR_BIN/ticker generate asset-data -o $WWW_HOME/assets.json
 }
 
 
@@ -104,7 +104,7 @@ function generate_markets_file() {
 	echo ""
 	echo "Creating markets.json file"
 	echo ""
-	sudo -u stellar $STELLAR_BIN/ticker generate market-data --db-url=$DB_URL -o $WWW_HOME/markets.json
+	sudo -E -u stellar $STELLAR_BIN/ticker generate market-data -o $WWW_HOME/markets.json
 }
 
 
@@ -138,7 +138,7 @@ function run_silent() {
 
 function set_db_url() {
 	PGPASS="stellar"
-	DB_URL="postgres://stellar:${PGPASS}@127.0.0.1:5432/ticker"
+	export DB_URL="postgres://stellar:${PGPASS}@127.0.0.1:5432/ticker"
 	echo "Setting db url: $DB_URL"
 	echo DB_URL="${DB_URL}" >> /etc/environment
 }
