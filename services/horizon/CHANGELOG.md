@@ -5,14 +5,23 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## v1.2.0
 
+### Scheduled Breaking Changes
+
+* The type for the following attributes will be changed from `int64` to `string` in 1.3.0:
+  - Attribute `fee_charged` in [Transaction](https://www.stellar.org/developers/horizon/reference/resources/transaction.html) resource.
+  - Attribute `max_fee` in [Transaction](https://www.stellar.org/developers/horizon/reference/resources/transaction.html) resource.
+
+The changes are required by [CAP-15](https://github.com/stellar/stellar-protocol/blob/master/core/cap-0015.md).
+
 ### Changes
+
+* Added support for [CAP-27](https://github.com/stellar/stellar-protocol/blob/master/core/cap-0027.md) and [SEP-23](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0023.md) [#2491](https://github.com/stellar/go/pull/2491).
 * The XDR definition of a transaction memo is a string.
 However, XDR strings are actually binary blobs with no enforced encoding. 
 It is possible to set the memo in a transaction envelope to a binary sequence which is not valid ASCII or unicode. 
 Previously, if you wanted to recover the original binary sequence for a transaction memo, you would have to decode the transaction's envelope.
 In this release, we have added a `memo_bytes` field to the Horizon transaction response for transactions with `memo_type` equal `text`.
-`memo_bytes` stores the base 64 encoding of the memo bytes set in the transaction envelope.
-
+`memo_bytes` stores the base 64 encoding of the memo bytes set in the transaction envelope [#2485](https://github.com/stellar/go/pull/2485).
 
 ## v1.1.0
 
