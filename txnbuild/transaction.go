@@ -16,7 +16,6 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
-	"math"
 	"strings"
 	"time"
 
@@ -27,195 +26,38 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-// MinBaseFee is the minimum base for the Stellar network
-const MinBaseFee = 100
-
 // Account represents the aspects of a Stellar account necessary to construct transactions. See
 // https://www.stellar.org/developers/guides/concepts/accounts.html
 type Account interface {
 	GetAccountID() string
 	IncrementSequenceNumber() (xdr.SequenceNumber, error)
-	GetSequenceNumber() (xdr.SequenceNumber, error)
+	// Action needed in release: horizonclient-v2.0.0
+	// add GetSequenceNumber method
+	// GetSequenceNumber() (xdr.SequenceNumber, error)
 }
 
+// Transaction represents a Stellar transaction. See
+// https://www.stellar.org/developers/guides/concepts/transactions.html
 type Transaction struct {
-	envelope      xdr.TransactionEnvelope
-	baseFee       int64
-	totalFee      int64
-	isFeeBump     bool
-	feeSource     string
-	innerTx       *Transaction
-	sourceAccount SimpleAccount
-	operations    []Operation
-	memo          Memo
-	timebounds    Timebounds
-	signatures    []xdr.DecoratedSignature
+	SourceAccount  Account
+	Operations     []Operation
+	BaseFee        uint32
+	Memo           Memo
+	Timebounds     Timebounds
+	Network        string
+	xdrTransaction xdr.TransactionV0
+	xdrEnvelope    *xdr.TransactionV0Envelope
 }
 
-func (t *Transaction) BaseFee() int64 {
-	return t.baseFee
-}
-
-func (t *Transaction) TotalFee() int64 {
-	return t.totalFee
-}
-
-func (t *Transaction) IsFeeBump() bool {
-	return t.isFeeBump
-}
-
-func (t *Transaction) FeeSource() string {
-	return t.feeSource
-}
-
-func (t *Transaction) InnerTransaction() *Transaction {
-	if t.isFeeBump {
-		innerCopy := new(Transaction)
-		*innerCopy = *t.innerTx
-		return innerCopy
-	}
-	return nil
-}
-
-func (t *Transaction) SourceAccount() SimpleAccount {
-	return t.sourceAccount
-}
-
-func (t *Transaction) Operations() []Operation {
-	operations := make([]Operation, len(t.operations))
-	copy(operations, t.operations)
-	return operations
-}
-
-func (t *Transaction) Memo() Memo {
-	return t.memo
-}
-
-func (t *Transaction) Timebounds() Timebounds {
-	return t.timebounds
-}
-
-func (t *Transaction) Signatures() []xdr.DecoratedSignature {
-	signatures := make([]xdr.DecoratedSignature, len(t.signatures))
-	copy(signatures, t.signatures)
-	return signatures
-}
-
-func (t *Transaction) Hash(networkStr string) ([32]byte, error) {
-	return network.HashTransactionInEnvelope(t.envelope, networkStr)
-}
-
-func (t *Transaction) HashHex(network string) (string, error) {
-	hash, err := t.Hash(network)
-	if err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(hash[:]), nil
-}
-
-func (t *Transaction) Sign(network string, kps ...*keypair.Full) (*Transaction, error) {
-	// Hash the transaction
-	hash, err := t.Hash(network)
-	if err != nil {
-		return t, errors.Wrap(err, "failed to hash transaction")
-	}
-
-	newTx := new(Transaction)
-	*newTx = *t
-	newTx.signatures = make(
-		[]xdr.DecoratedSignature,
-		len(t.signatures),
-		len(t.signatures)+len(kps),
-	)
-	copy(newTx.signatures, t.signatures)
-
-	// Sign the hash
-	for _, kp := range kps {
-		sig, err := kp.SignDecorated(hash[:])
-		if err != nil {
-			return newTx, errors.Wrap(err, "failed to sign transaction")
-		}
-		newTx.signatures = append(newTx.signatures, sig)
-	}
-
-	return newTx, nil
-}
-
-func (t *Transaction) SignWithKeyString(network string, keys ...string) (*Transaction, error) {
-	var signers []*keypair.Full
-	for _, k := range keys {
-		kp, err := keypair.Parse(k)
-		if err != nil {
-			return t, errors.Wrapf(err, "provided string %s is not a valid Stellar key", k)
-		}
-		kpf, ok := kp.(*keypair.Full)
-		if !ok {
-			return t, errors.New("provided string %s is not a valid Stellar secret key")
-		}
-		signers = append(signers, kpf)
-	}
-
-	return t.Sign(network, signers...)
-}
-
-// SignHashX signs a transaction with HashX signature type.
-// See description here: https://www.stellar.org/developers/guides/concepts/multi-sig.html#hashx.
-func (t *Transaction) SignHashX(preimage []byte) (*Transaction, error) {
-	if len(preimage) > xdr.Signature(preimage).XDRMaxSize() {
-		return t, errors.New("preimage cannnot be more than 64 bytes")
-	}
-
-	preimageHash := sha256.Sum256(preimage)
-	var hint [4]byte
-	// copy the last 4-bytes of the signer public key to be used as hint
-	copy(hint[:], preimageHash[28:])
-
-	sig := xdr.DecoratedSignature{
-		Hint:      xdr.SignatureHint(hint),
-		Signature: xdr.Signature(preimage),
-	}
-
-	newTx := new(Transaction)
-	*newTx = *t
-	newTx.signatures = make(
-		[]xdr.DecoratedSignature,
-		len(t.signatures),
-		len(t.signatures)+1,
-	)
-	copy(newTx.signatures, t.signatures)
-	newTx.signatures = append(newTx.signatures, sig)
-
-	return newTx, nil
-}
-
-func (t *Transaction) TxEnvelope() (xdr.TransactionEnvelope, error) {
-	var env xdr.TransactionEnvelope
-	serialized, err := t.MarshalBinary()
-	if err != nil {
-		return env, errors.Wrap(err, "could not marshall envelope")
-	}
-
-	if err = xdr.SafeUnmarshal(serialized, &env); err != nil {
-		return env, err
-	}
-	return env, nil
+// Hash provides a signable object representing the Transaction on the specified network.
+func (tx *Transaction) Hash() ([32]byte, error) {
+	return network.HashTransactionV0(tx.xdrTransaction, tx.Network)
 }
 
 // MarshalBinary returns the binary XDR representation of the transaction envelope.
-func (t *Transaction) MarshalBinary() ([]byte, error) {
-	switch t.envelope.Type {
-	case xdr.EnvelopeTypeEnvelopeTypeTx:
-		t.envelope.V1.Signatures = t.signatures
-	case xdr.EnvelopeTypeEnvelopeTypeTxV0:
-		t.envelope.V0.Signatures = t.signatures
-	case xdr.EnvelopeTypeEnvelopeTypeTxFeeBump:
-		t.envelope.FeeBump.Signatures = t.signatures
-	default:
-		panic("invalid transaction type: " + t.envelope.Type.String())
-	}
-
+func (tx *Transaction) MarshalBinary() ([]byte, error) {
 	var txBytes bytes.Buffer
-	_, err := xdr.Marshal(&txBytes, t.envelope)
+	_, err := xdr.Marshal(&txBytes, tx.TxEnvelope())
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to marshal XDR")
 	}
@@ -224,8 +66,8 @@ func (t *Transaction) MarshalBinary() ([]byte, error) {
 }
 
 // Base64 returns the base 64 XDR representation of the transaction envelope.
-func (t *Transaction) Base64() (string, error) {
-	bs, err := t.MarshalBinary()
+func (tx *Transaction) Base64() (string, error) {
+	bs, err := tx.MarshalBinary()
 	if err != nil {
 		return "", errors.Wrap(err, "failed to get XDR bytestring")
 	}
@@ -233,280 +75,138 @@ func (t *Transaction) Base64() (string, error) {
 	return base64.StdEncoding.EncodeToString(bs), nil
 }
 
-// TransactionFromXDR parses the supplied transaction envelope in base64 XDR and returns a Transaction object.
-func TransactionFromXDR(txeB64 string) (*Transaction, error) {
-	var xdrEnv xdr.TransactionEnvelope
-	err := xdr.SafeUnmarshalBase64(txeB64, &xdrEnv)
-	if err != nil {
-		return nil, errors.Wrap(err, "unable to unmarshal transaction envelope")
+// SetDefaultFee sets a sensible minimum default for the Transaction fee, if one has not
+// already been set. It is a linear function of the number of Operations in the Transaction.
+// Deprecated: This will be removed in v2.0.0 and setting `Transaction.BaseFee` will be mandatory.
+// Action needed in release: horizonclient-v2.0.0
+func (tx *Transaction) SetDefaultFee() {
+	// TODO: Generalise to pull this from a client call
+	var DefaultBaseFee uint32 = 100
+	if tx.BaseFee == 0 {
+		tx.BaseFee = DefaultBaseFee
 	}
-	return transactionFromParsedXDR(xdrEnv)
+
+	err := tx.setTransactionFee()
+	if err != nil {
+		panic(err)
+	}
 }
 
-func transactionFromParsedXDR(xdrEnv xdr.TransactionEnvelope) (*Transaction, error) {
-	var err error
-	newTx := &Transaction{}
-
-	newTx.envelope = xdrEnv
-	for _, signature := range xdrEnv.Signatures() {
-		newTx.signatures = append(newTx.signatures, signature)
-	}
-	sourceAccount := xdrEnv.SourceAccount()
-	newTx.sourceAccount = SimpleAccount{
-		AccountID: sourceAccount.Address(),
-		Sequence:  xdrEnv.SeqNum(),
-	}
-	newTx.feeSource = newTx.sourceAccount.AccountID
-
-	numOps := len(xdrEnv.Operations())
-	if xdrEnv.IsFeeBump() {
-		feeBumpAccount := xdrEnv.FeeBumpAccount()
-		newTx.feeSource = feeBumpAccount.Address()
-		newTx.totalFee = xdrEnv.FeeBumpFee()
-		newTx.baseFee = newTx.totalFee
-		newTx.isFeeBump = true
-		if numOps > 0 {
-			newTx.baseFee = newTx.baseFee / int64(numOps+1)
+// Build for Transaction completely configures the Transaction. After calling Build,
+// the Transaction is ready to be serialised or signed.
+func (tx *Transaction) Build() error {
+	// If transaction envelope has been signed, don't build transaction
+	if tx.xdrEnvelope != nil {
+		if len(tx.xdrEnvelope.Signatures) > 0 {
+			return errors.New("transaction has already been signed, so cannot be rebuilt.")
 		}
-
-		newTx.innerTx, err = transactionFromParsedXDR(xdr.TransactionEnvelope{
-			Type: xdr.EnvelopeTypeEnvelopeTypeTx,
-			V1:   xdrEnv.FeeBump.Tx.InnerTx.V1,
-		})
-		if err != nil {
-			return nil, errors.New("could not parse inner transaction")
-		}
-	} else {
-		newTx.totalFee = int64(xdrEnv.Fee())
-		newTx.baseFee = newTx.totalFee
-		if numOps > 0 {
-			newTx.baseFee = newTx.baseFee / int64(numOps)
-		}
+		// clear the existing XDR so we don't append to any existing fields
+		tx.xdrEnvelope = &xdr.TransactionV0Envelope{}
 	}
 
-	if timeBounds := xdrEnv.TimeBounds(); timeBounds != nil {
-		newTx.timebounds = NewTimebounds(int64(timeBounds.MinTime), int64(timeBounds.MaxTime))
-	}
+	// reset tx.xdrTransaction
+	tx.xdrTransaction = xdr.TransactionV0{}
 
-	newTx.memo, err = memoFromXDR(xdrEnv.Memo())
+	address := tx.SourceAccount.GetAccountID()
+	// Public keys start with 'G'
+	if address[0] != 'G' {
+		return errors.New("invalid public key for transaction source account")
+	}
+	accountID, err := xdr.AddressToAccountId(address)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to parse memo")
-	}
-
-	operations := xdrEnv.Operations()
-	newTx.operations = make([]Operation, len(operations), len(operations))
-	for i, op := range operations {
-		newOp, err := operationFromXDR(op)
-		if err != nil {
-			return nil, err
-		}
-		newTx.operations[i] = newOp
-	}
-
-	return newTx, nil
-}
-
-// TransactionConfig is a container for configuration options
-// which are used to construct new Transaction instances
-type TransactionConfig struct {
-	SourceAccount        Account
-	IncrementSequenceNum bool
-	Operations           []Operation
-	BaseFee              int64
-	Memo                 Memo
-	Timebounds           Timebounds
-}
-
-// NewTransaction returns a new Transaction instance
-func NewTransaction(config TransactionConfig) (*Transaction, error) {
-	var sequence xdr.SequenceNumber
-	var err error
-	if config.IncrementSequenceNum {
-		sequence, err = config.SourceAccount.IncrementSequenceNumber()
-	} else {
-		sequence, err = config.SourceAccount.GetSequenceNumber()
-	}
-	if err != nil {
-		return nil, errors.Wrap(err, "could not obtain account sequence")
-	}
-	tx := &Transaction{
-		baseFee:   config.BaseFee,
-		totalFee:  config.BaseFee * int64(len(config.Operations)),
-		isFeeBump: false,
-		feeSource: config.SourceAccount.GetAccountID(),
-		innerTx:   nil,
-		sourceAccount: SimpleAccount{
-			AccountID: config.SourceAccount.GetAccountID(),
-			Sequence:  int64(sequence),
-		},
-		operations: config.Operations,
-		memo:       config.Memo,
-		timebounds: config.Timebounds,
-		signatures: nil,
-	}
-
-	accountID, err := xdr.AddressToAccountId(tx.sourceAccount.AccountID)
-	if err != nil {
-		return tx, errors.Wrap(err, "account id is not valid")
+		return err
 	}
 
 	sourceAccountEd25519, ok := accountID.GetEd25519()
 	if !ok {
-		return tx, errors.New("invalid account id")
+		return errors.New("invalid account id")
 	}
-	// check if totalFee fits in a uint32
-	// 64 bit fees are only available in fee bump transactions
-	if tx.totalFee > math.MaxUint32 {
-		return tx, errors.New("fee overflows uint32")
-	}
-	if tx.baseFee < MinBaseFee {
-		return tx, errors.New("base fee is lower than network minimum")
-	}
+	// Set account ID in XDR
+	tx.xdrTransaction.SourceAccountEd25519 = sourceAccountEd25519
 
-	// Check and set the timebounds
-	err = tx.timebounds.Validate()
+	// Action needed in release: horizonclient-v2.0.0
+	// Validate Seq Num is present in struct. Requires Account.GetSequenceNumber (v.2.0.0)
+	seqnum, err := tx.SourceAccount.IncrementSequenceNumber()
 	if err != nil {
-		return tx, errors.Wrap(err, "invalid time bounds")
+		return errors.Wrap(err, "failed to parse sequence number")
 	}
+	tx.xdrTransaction.SeqNum = seqnum
 
-	tx.envelope = xdr.TransactionEnvelope{
-		Type: xdr.EnvelopeTypeEnvelopeTypeTxV0,
-		V0: &xdr.TransactionV0Envelope{
-			Tx: xdr.TransactionV0{
-				SourceAccountEd25519: sourceAccountEd25519,
-				Fee:                  xdr.Uint32(tx.totalFee),
-				SeqNum:               sequence,
-				TimeBounds: &xdr.TimeBounds{
-					MinTime: xdr.TimePoint(tx.timebounds.MinTime),
-					MaxTime: xdr.TimePoint(tx.timebounds.MaxTime),
-				},
-			},
-			Signatures: nil,
-		},
-	}
-
-	// Handle the memo, if one is present
-	if tx.memo != nil {
-		xdrMemo, err := tx.memo.ToXDR()
-		if err != nil {
-			return tx, errors.Wrap(err, "couldn't build memo XDR")
-		}
-		tx.envelope.V0.Tx.Memo = xdrMemo
-	}
-
-	for _, op := range tx.operations {
+	for _, op := range tx.Operations {
 		if verr := op.Validate(); verr != nil {
-			return tx, errors.Wrap(verr, fmt.Sprintf("validation failed for %T operation", op))
+			return errors.Wrap(verr, fmt.Sprintf("validation failed for %T operation", op))
 		}
 
 		xdrOperation, err2 := op.BuildXDR()
 		if err2 != nil {
-			return tx, errors.Wrap(err2, fmt.Sprintf("failed to build operation %T", op))
+			return errors.Wrap(err2, fmt.Sprintf("failed to build operation %T", op))
 		}
-		tx.envelope.V0.Tx.Operations = append(tx.envelope.V0.Tx.Operations, xdrOperation)
+		tx.xdrTransaction.Operations = append(tx.xdrTransaction.Operations, xdrOperation)
 	}
 
-	return tx, nil
+	// Check and set the timebounds
+	err = tx.Timebounds.Validate()
+	if err != nil {
+		return err
+	}
+	tx.xdrTransaction.TimeBounds = &xdr.TimeBounds{MinTime: xdr.TimePoint(tx.Timebounds.MinTime),
+		MaxTime: xdr.TimePoint(tx.Timebounds.MaxTime)}
+
+	// Handle the memo, if one is present
+	if tx.Memo != nil {
+		xdrMemo, err := tx.Memo.ToXDR()
+		if err != nil {
+			return errors.Wrap(err, "couldn't build memo XDR")
+		}
+		tx.xdrTransaction.Memo = xdrMemo
+	}
+
+	// Set a default fee, if it hasn't been set yet
+	// Action needed in release: horizonclient-v2.0.0
+	// replace with tx.setTransactionfee
+	tx.SetDefaultFee()
+
+	// Initialise transaction envelope
+	tx.xdrEnvelope = &xdr.TransactionV0Envelope{
+		Tx: tx.xdrTransaction,
+	}
+	return nil
 }
 
-// NewSignedTransaction performs all the steps to produce a final transaction suitable
+// Sign for Transaction signs a previously built transaction. A signed transaction may be
+// submitted to the network.
+func (tx *Transaction) Sign(kps ...*keypair.Full) error {
+	// TODO: Only sign if Transaction has been previously built
+	// TODO: Validate network set before sign
+
+	// Hash the transaction
+	hash, err := tx.Hash()
+	if err != nil {
+		return errors.Wrap(err, "failed to hash transaction")
+	}
+
+	// Sign the hash
+	for _, kp := range kps {
+		sig, err := kp.SignDecorated(hash[:])
+		if err != nil {
+			return errors.Wrap(err, "failed to sign transaction")
+		}
+		// Append the signature to the envelope
+		tx.xdrEnvelope.Signatures = append(tx.xdrEnvelope.Signatures, sig)
+	}
+
+	return nil
+}
+
+// BuildSignEncode performs all the steps to produce a final transaction suitable
 // for submitting to the network.
-func NewSignedTransaction(
-	config TransactionConfig,
-	network string,
-	keypairs ...*keypair.Full,
-) (string, error) {
-	tx, err := NewTransaction(config)
+func (tx *Transaction) BuildSignEncode(keypairs ...*keypair.Full) (string, error) {
+	err := tx.Build()
 	if err != nil {
-		return "", errors.Wrap(err, "couldn't create transaction")
+		return "", errors.Wrap(err, "couldn't build transaction")
 	}
 
-	tx, err = tx.Sign(network, keypairs...)
-	if err != nil {
-		return "", errors.Wrap(err, "couldn't sign transaction")
-	}
-
-	txeBase64, err := tx.Base64()
-	if err != nil {
-		return "", errors.Wrap(err, "couldn't encode transaction")
-	}
-
-	return txeBase64, err
-}
-
-// FeeBumpTransactionConfig is a container for configuration options
-// which are used to construct new fee bump Transaction instances
-type FeeBumpTransactionConfig struct {
-	Inner     *Transaction
-	FeeSource string
-	BaseFee   int64
-}
-
-// NewFeeBumpTransaction returns a new fee bump Transaction instance
-func NewFeeBumpTransaction(config FeeBumpTransactionConfig) (*Transaction, error) {
-	tx := &Transaction{
-		baseFee:       config.BaseFee,
-		totalFee:      config.BaseFee * int64(len(config.Inner.operations)+1),
-		isFeeBump:     true,
-		feeSource:     config.FeeSource,
-		innerTx:       config.Inner,
-		sourceAccount: config.Inner.sourceAccount,
-		operations:    config.Inner.operations,
-		memo:          config.Inner.memo,
-		timebounds:    config.Inner.timebounds,
-		signatures:    nil,
-	}
-
-	if tx.baseFee < tx.innerTx.baseFee {
-		return tx, errors.New("base fee is lower than inner transaction")
-	}
-	if tx.baseFee < MinBaseFee {
-		return tx, errors.New("base fee is lower than network minimum")
-	}
-
-	accountID, err := xdr.AddressToMuxedAccount(tx.feeSource)
-	if err != nil {
-		return tx, errors.Wrap(err, "fee source is not a valid")
-	}
-
-	innerEnv, err := tx.innerTx.TxEnvelope()
-	if err != nil {
-		return tx, errors.Wrap(err, "could not get inner transaction envelope")
-	}
-	if innerEnv.Type != xdr.EnvelopeTypeEnvelopeTypeTx {
-		return tx, errors.Errorf("%v transactions cannot be fee bumped", innerEnv.Type.String())
-	}
-
-	tx.envelope = xdr.TransactionEnvelope{
-		Type: xdr.EnvelopeTypeEnvelopeTypeTxFeeBump,
-		FeeBump: &xdr.FeeBumpTransactionEnvelope{
-			Tx: xdr.FeeBumpTransaction{
-				FeeSource: accountID,
-				Fee:       xdr.Int64(tx.totalFee),
-				InnerTx: xdr.FeeBumpTransactionInnerTx{
-					Type: xdr.EnvelopeTypeEnvelopeTypeTx,
-					V1:   tx.innerTx.envelope.V1,
-				},
-			},
-		},
-	}
-
-	return tx, nil
-}
-
-// NewSignedFeeBumpTransaction performs all the steps to produce a final
-// fee bump transaction suitable for submitting to the network.
-func NewSignedFeeBumpTransaction(
-	config FeeBumpTransactionConfig,
-	network string,
-	keypairs ...*keypair.Full,
-) (string, error) {
-	tx, err := NewFeeBumpTransaction(config)
-	if err != nil {
-		return "", errors.Wrap(err, "couldn't create transaction")
-	}
-
-	tx, err = tx.Sign(network, keypairs...)
+	err = tx.Sign(keypairs...)
 	if err != nil {
 		return "", errors.Wrap(err, "couldn't sign transaction")
 	}
@@ -547,7 +247,10 @@ func BuildChallengeTx(serverSignerSecret, clientAccountID, anchorName, network s
 	// represent server signing account as SimpleAccount
 	sa := SimpleAccount{
 		AccountID: serverKP.Address(),
-		Sequence:  0,
+		// Action needed in release: v2.0.0
+		// TODO: remove this and use "Sequence: 0" and build transaction with optional argument
+		//  (https://github.com/stellar/go/issues/1259)
+		Sequence: int64(-1),
 	}
 
 	// represent client account as SimpleAccount
@@ -557,27 +260,29 @@ func BuildChallengeTx(serverSignerSecret, clientAccountID, anchorName, network s
 
 	currentTime := time.Now().UTC()
 	maxTime := currentTime.Add(timebound)
+	txTimebound := NewTimebounds(currentTime.Unix(), maxTime.Unix())
 
 	// Create a SEP 10 compatible response. See
 	// https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0010.md#response
-	return NewSignedTransaction(
-		TransactionConfig{
-			SourceAccount:        &sa,
-			IncrementSequenceNum: false,
-			Operations: []Operation{
-				&ManageData{
-					SourceAccount: &ca,
-					Name:          anchorName + " auth",
-					Value:         []byte(randomNonceToString),
-				},
+	tx := Transaction{
+		SourceAccount: &sa,
+		Operations: []Operation{
+			&ManageData{
+				SourceAccount: &ca,
+				Name:          anchorName + " auth",
+				Value:         []byte(randomNonceToString),
 			},
-			BaseFee:    100,
-			Memo:       nil,
-			Timebounds: NewTimebounds(currentTime.Unix(), maxTime.Unix()),
 		},
-		network,
-		serverKP.(*keypair.Full),
-	)
+		Timebounds: txTimebound,
+		Network:    network,
+		BaseFee:    uint32(100),
+	}
+
+	txeB64, err := tx.BuildSignEncode(serverKP.(*keypair.Full))
+	if err != nil {
+		return "", err
+	}
+	return txeB64, nil
 }
 
 // generateRandomNonce creates a cryptographically secure random slice of `n` bytes.
@@ -592,9 +297,154 @@ func generateRandomNonce(n int) ([]byte, error) {
 	return bytes, err
 }
 
-func validAccountId(address string) error {
-	var account xdr.AccountId
-	return account.SetAddress(address)
+// HashHex returns the hex-encoded hash of the transaction.
+func (tx *Transaction) HashHex() (string, error) {
+	hashByte, err := tx.Hash()
+	if err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(hashByte[:]), nil
+}
+
+// TxEnvelope returns the TransactionEnvelope XDR struct.
+func (tx *Transaction) TxEnvelope() *xdr.TransactionEnvelope {
+	return &xdr.TransactionEnvelope{
+		Type: xdr.EnvelopeTypeEnvelopeTypeTxV0,
+		V0:   tx.xdrEnvelope,
+	}
+}
+
+func (tx *Transaction) setTransactionFee() error {
+	if tx.BaseFee == 0 {
+		return errors.New("base fee can not be zero")
+	}
+
+	tx.xdrTransaction.Fee = xdr.Uint32(int(tx.BaseFee) * len(tx.xdrTransaction.Operations))
+	return nil
+}
+
+// TransactionFee returns the fee to be paid for a transaction.
+func (tx *Transaction) TransactionFee() int {
+	err := tx.setTransactionFee()
+	// error is returned when BaseFee is zero
+	if err != nil {
+		return 0
+	}
+	return int(tx.xdrTransaction.Fee)
+}
+
+// SignHashX signs a transaction with HashX signature type.
+// See description here: https://www.stellar.org/developers/guides/concepts/multi-sig.html#hashx.
+func (tx *Transaction) SignHashX(preimage []byte) error {
+	if tx.xdrEnvelope == nil {
+		tx.xdrEnvelope = &xdr.TransactionV0Envelope{}
+		tx.xdrEnvelope.Tx = tx.xdrTransaction
+	}
+
+	if len(preimage) > xdr.Signature(preimage).XDRMaxSize() {
+		return errors.New("preimage cannnot be more than 64 bytes")
+	}
+
+	preimageHash := sha256.Sum256(preimage)
+	var hint [4]byte
+	// copy the last 4-bytes of the signer public key to be used as hint
+	copy(hint[:], preimageHash[28:])
+
+	sig := xdr.DecoratedSignature{
+		Hint:      xdr.SignatureHint(hint),
+		Signature: xdr.Signature(preimage),
+	}
+
+	tx.xdrEnvelope.Signatures = append(tx.xdrEnvelope.Signatures, sig)
+
+	return nil
+}
+
+// TransactionFromXDR parses the supplied transaction envelope in base64 XDR and returns a Transaction object.
+func TransactionFromXDR(txeB64 string) (Transaction, error) {
+	var xdrEnv xdr.TransactionEnvelope
+	err := xdr.SafeUnmarshalBase64(txeB64, &xdrEnv)
+	if err != nil {
+		return Transaction{}, errors.Wrap(err, "unable to unmarshal transaction envelope")
+	}
+
+	sourceAccountID, ok := xdrEnv.SourceAccount().GetEd25519()
+	if !ok {
+		return Transaction{}, errors.New("invalid source account id")
+	}
+
+	if xdrEnv.IsFeeBump() {
+		return Transaction{}, errors.New("fee bump transactions are not supported")
+	}
+	var newTx Transaction
+	newTx.xdrTransaction = xdr.TransactionV0{
+		SourceAccountEd25519: sourceAccountID,
+		Fee:                  xdr.Uint32(xdrEnv.Fee()),
+		Memo:                 xdrEnv.Memo(),
+		Operations:           xdrEnv.Operations(),
+		SeqNum:               xdr.SequenceNumber(xdrEnv.SeqNum()),
+		TimeBounds:           xdrEnv.TimeBounds(),
+	}
+	newTx.xdrEnvelope = &xdr.TransactionV0Envelope{
+		Tx: newTx.xdrTransaction,
+	}
+	// only include signatures if the transaction is a V0 transaction
+	// fee bump and V1 transactions have different hashes from V1 transactions
+	if xdrEnv.Type == xdr.EnvelopeTypeEnvelopeTypeTxV0 {
+		newTx.xdrEnvelope.Signatures = xdrEnv.Signatures()
+	}
+	if numOps := len(xdrEnv.Operations()); numOps > 0 {
+		if xdrEnv.IsFeeBump() {
+			newTx.BaseFee = uint32(xdrEnv.FeeBumpFee() / int64(numOps))
+		} else {
+			newTx.BaseFee = uint32(xdrEnv.Fee() / uint32(numOps))
+		}
+	}
+
+	sourceAccount := xdrEnv.SourceAccount()
+	newTx.SourceAccount = &SimpleAccount{
+		AccountID: sourceAccount.Address(),
+		Sequence:  xdrEnv.SeqNum(),
+	}
+
+	if timeBounds := xdrEnv.TimeBounds(); timeBounds != nil {
+		newTx.Timebounds = NewTimebounds(int64(timeBounds.MinTime), int64(timeBounds.MaxTime))
+	}
+
+	newTx.Memo, err = memoFromXDR(xdrEnv.Memo())
+	if err != nil {
+		return Transaction{}, errors.Wrap(err, "unable to parse memo")
+	}
+
+	for _, op := range xdrEnv.Operations() {
+		newOp, err := operationFromXDR(op)
+		if err != nil {
+			return Transaction{}, err
+		}
+		newTx.Operations = append(newTx.Operations, newOp)
+	}
+
+	return newTx, nil
+}
+
+// SignWithKeyString for Transaction signs a previously built transaction with the secret key
+// as a string. This can be used when you don't have access to a Stellar keypair.
+// A signed transaction may be submitted to the network.
+func (tx *Transaction) SignWithKeyString(keys ...string) error {
+	signers := []*keypair.Full{}
+	for _, k := range keys {
+		kp, err := keypair.Parse(k)
+		if err != nil {
+			return errors.Wrapf(err, "provided string %s is not a valid Stellar key", k)
+		}
+		kpf, ok := kp.(*keypair.Full)
+		if !ok {
+			return errors.New("provided string %s is not a valid Stellar secret key")
+		}
+		signers = append(signers, kpf)
+	}
+
+	return tx.Sign(signers...)
 }
 
 // ReadChallengeTx reads a SEP 10 challenge transaction and returns the decoded
@@ -607,57 +457,54 @@ func validAccountId(address string) error {
 // one of the following functions to completely verify the transaction:
 // - VerifyChallengeTxThreshold
 // - VerifyChallengeTxSigners
-func ReadChallengeTx(challengeTx, serverAccountID, network string) (tx *Transaction, clientAccountID string, err error) {
+func ReadChallengeTx(challengeTx, serverAccountID, network string) (tx Transaction, clientAccountID string, err error) {
 	tx, err = TransactionFromXDR(challengeTx)
 	if err != nil {
-		return tx, clientAccountID, errors.Wrap(err, "could not parse challenge")
+		return tx, clientAccountID, err
 	}
 
 	// Enforce no muxed accounts (at least until we understand their impact)
-	if err = validAccountId(tx.sourceAccount.AccountID); err != nil {
-		err = errors.Wrap(err, "only valid Ed25519 accounts are allowed in challenge transactions")
-		return tx, clientAccountID, err
-	}
-	for _, op := range tx.operations {
-		sourceAccount := op.GetSourceAccount()
-		address := sourceAccount.GetAccountID()
-
-		if err = validAccountId(address); err != nil {
-			err = errors.Wrap(err, "only valid Ed25519 accounts are allowed in challenge transactions")
-			return tx, clientAccountID, err
+	muxedAccountErr := errors.New("muxed accounts are not allowed in challenge transactions")
+	for _, op := range tx.xdrTransaction.Operations {
+		if op.SourceAccount != nil && op.SourceAccount.Type != xdr.CryptoKeyTypeKeyTypeEd25519 {
+			return tx, clientAccountID, muxedAccountErr
 		}
 	}
 
-	if tx.IsFeeBump() {
-		return tx, clientAccountID, errors.New("challenge is a fee bump transaction")
-	}
+	tx.Network = network
 
 	// verify transaction source
-	if tx.SourceAccount().AccountID != serverAccountID {
+	if tx.SourceAccount == nil {
+		return tx, clientAccountID, errors.New("transaction requires a source account")
+	}
+	if tx.SourceAccount.GetAccountID() != serverAccountID {
 		return tx, clientAccountID, errors.New("transaction source account is not equal to server's account")
 	}
 
 	// verify sequence number
-	if tx.SourceAccount().Sequence != 0 {
+	txSourceAccount, ok := tx.SourceAccount.(*SimpleAccount)
+	if !ok {
+		return tx, clientAccountID, errors.New("source account is not of type SimpleAccount unable to verify sequence number")
+	}
+	if txSourceAccount.Sequence != 0 {
 		return tx, clientAccountID, errors.New("transaction sequence number must be 0")
 	}
 
 	// verify timebounds
-	if tx.Timebounds().MaxTime == TimeoutInfinite {
+	if tx.Timebounds.MaxTime == TimeoutInfinite {
 		return tx, clientAccountID, errors.New("transaction requires non-infinite timebounds")
 	}
 	currentTime := time.Now().UTC().Unix()
-	if currentTime < tx.Timebounds().MinTime || currentTime > tx.Timebounds().MaxTime {
+	if currentTime < tx.Timebounds.MinTime || currentTime > tx.Timebounds.MaxTime {
 		return tx, clientAccountID, errors.Errorf("transaction is not within range of the specified timebounds (currentTime=%d, MinTime=%d, MaxTime=%d)",
-			currentTime, tx.Timebounds().MinTime, tx.Timebounds().MaxTime)
+			currentTime, tx.Timebounds.MinTime, tx.Timebounds.MaxTime)
 	}
 
 	// verify operation
-	operations := tx.Operations()
-	if len(operations) != 1 {
+	if len(tx.Operations) != 1 {
 		return tx, clientAccountID, errors.New("transaction requires a single manage_data operation")
 	}
-	op, ok := operations[0].(*ManageData)
+	op, ok := tx.Operations[0].(*ManageData)
 	if !ok {
 		return tx, clientAccountID, errors.New("operation type should be manage_data")
 	}
@@ -794,7 +641,7 @@ func VerifyChallengeTxSigners(challengeTx, serverAccountID, network string, sign
 	// checked in the ReadChallengeTx to ensure that every signature and signer
 	// are consumed only once on the transaction.
 	allSigners := append([]string{serverKP.Address()}, clientSigners...)
-	allSignersFound, err := verifyTxSignatures(tx, network, allSigners...)
+	allSignersFound, err := verifyTxSignatures(tx, allSigners...)
 	if err != nil {
 		return nil, err
 	}
@@ -821,7 +668,7 @@ func VerifyChallengeTxSigners(challengeTx, serverAccountID, network string, sign
 	}
 
 	// Confirm all signatures were consumed by a signer.
-	if len(allSignersFound) != len(tx.Signatures()) {
+	if len(allSignersFound) != len(tx.xdrEnvelope.Signatures) {
 		return signersFound, errors.Errorf("transaction has unrecognized signatures")
 	}
 
@@ -849,7 +696,7 @@ func VerifyChallengeTx(challengeTx, serverAccountID, network string) (bool, erro
 }
 
 // verifyTxSignature checks if a transaction has been signed by the provided Stellar account.
-func verifyTxSignature(tx *Transaction, signer string) error {
+func verifyTxSignature(tx Transaction, signer string) error {
 	signersFound, err := verifyTxSignatures(tx, signer)
 	if len(signersFound) == 0 {
 		return errors.Errorf("transaction not signed by %s", signer)
@@ -860,8 +707,12 @@ func verifyTxSignature(tx *Transaction, signer string) error {
 // verifyTxSignature checks if a transaction has been signed by one or more of
 // the signers, returning a list of signers that were found to have signed the
 // transaction.
-func verifyTxSignatures(tx *Transaction, network string, signers ...string) ([]string, error) {
-	txHash, err := tx.Hash(network)
+func verifyTxSignatures(tx Transaction, signers ...string) ([]string, error) {
+	if tx.xdrEnvelope == nil {
+		return nil, errors.New("transaction has no signatures")
+	}
+
+	txHash, err := tx.Hash()
 	if err != nil {
 		return nil, err
 	}
@@ -875,7 +726,7 @@ func verifyTxSignatures(tx *Transaction, network string, signers ...string) ([]s
 			return nil, errors.Wrap(err, "signer not address")
 		}
 
-		for i, decSig := range tx.Signatures() {
+		for i, decSig := range tx.xdrEnvelope.Signatures {
 			if signatureUsed[i] {
 				continue
 			}
