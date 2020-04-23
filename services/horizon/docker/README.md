@@ -82,8 +82,11 @@ Stellar public network, run `docker-compose -f docker-compose.yml -f docker-comp
 
 To run the containers on a private stand alone network, run `docker-compose -f docker-compose.yml -f docker-compose.standalone.yml up -d --build`.
 When you run Stellar Core on a private stand alone network, an account will be created which will hold 100 billion Lumens.
-The seed for the account can be found in [stellar-core-standalone.cfg](./stellar-core-standalone.cfg) (see `NODE_SEED` parameter). 
-The seed is also emitted in the Stellar Core logs.
+The seed for the account will be emitted in the Stellar Core logs:
+
+```
+2020-04-22T18:39:19.248 GD5KD [Ledger INFO] Root account seed: SC5O7VZUXDJ6JBDSZ74DSERXL7W3Y5LTOAMRF7RQRL3TAGAPS7LUVG3L
+```
 
 When you switch between different networks you will need to clear the Stellar Core and Stellar Horizon databases. You can wipe out the databases by running `docker-compose down -v`.
 
