@@ -20,7 +20,7 @@ In this release, we have added a `memo_bytes` field to the Horizon transaction r
 
 This version includes a significant database migration which changes the column types of `fee_charged` and `max_fee` in the `history_transactions` table from `integer` to `bigint`. This essential change paves the way for fee bump transactions ([CAP 15](https://github.com/stellar/stellar-protocol/blob/master/core/cap-0015.md)), a major improvement that will be released soon in Stellar Protocol 13.
 
-This migration will run for a long time, especially if you have a Horizon database with full history. For reference, it took 20 hours to complete this migration on a AWS db.r4.xlarge instance with full transaction history.
+This migration will run for a long time, especially if you have a Horizon database with full history. For reference, it took around 8 hours and 42 minutes to complete this migration on a AWS db.r4.8xlarge instance with full transaction history.
 
 To execute the migration run `horizon db migrate up` using the Horizon v1.1.0 binary.
 
