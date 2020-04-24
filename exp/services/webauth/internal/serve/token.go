@@ -44,20 +44,36 @@ func (h tokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, clientAccountID, err := txnbuild.ReadChallengeTx(req.Transaction, h.SigningAddress.Address(), h.NetworkPassphrase)
+	tx, clientAccountID, err := txnbuild.ReadChallengeTx(req.Transaction, h.SigningAddress.Address(), h.NetworkPassphrase)
 	if err != nil {
 		badRequest.Render(w)
 		return
 	}
+
+	hash, err := tx.HashHex()
+	if err != nil {
+		h.Logger.Ctx(ctx).WithStack(err).Error(err)
+		serverError.Render(w)
+		return
+	}
+
+	l := h.Logger.Ctx(ctx).
+		WithField("hash", hash).
+		WithField("account", clientAccountID)
+
+	l.Infof("Verifying challenge transaction.", hash, clientAccountID)
 
 	var clientAccountExists bool
 	clientAccount, err := h.HorizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: clientAccountID})
 	switch {
 	case err == nil:
 		clientAccountExists = true
+		l.Infof("Account exists.")
 	case horizonclient.IsNotFoundError(err):
 		clientAccountExists = false
+		l.Infof("Account does not exist.")
 	default:
+		l.WithStack(err).Error(err)
 		serverError.Render(w)
 		return
 	}
@@ -67,26 +83,31 @@ func (h tokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		clientSignerSummary := clientAccount.SignerSummary()
 		_, err = txnbuild.VerifyChallengeTxThreshold(req.Transaction, h.SigningAddress.Address(), h.NetworkPassphrase, requiredThreshold, clientSignerSummary)
 		if err != nil {
+			l.Infof("Verification failed with %d signers that do not meet threshold %d.", len(clientSignerSummary), requiredThreshold)
 			unauthorized.Render(w)
 			return
 		}
 	} else {
 		if !h.AllowAccountsThatDoNotExist {
+			l.Infof("Accounts that do not exist are not allowed.")
 			unauthorized.Render(w)
 			return
 		}
 		_, err = txnbuild.VerifyChallengeTxSigners(req.Transaction, h.SigningAddress.Address(), h.NetworkPassphrase, clientAccountID)
 		if err != nil {
+			l.Infof("Verification failed with account master key as signer.")
 			unauthorized.Render(w)
 			return
 		}
 	}
 
+	h.Logger.Ctx(ctx).Infof("Verified challenge transaction.")
+
 	jwsOptions := &jose.SignerOptions{}
 	jwsOptions.WithType("JWT")
 	jws, err := jose.NewSigner(jose.SigningKey{Algorithm: jose.SignatureAlgorithm(h.JWK.Algorithm), Key: h.JWK.Key}, jwsOptions)
 	if err != nil {
-		h.Logger.Ctx(ctx).WithStack(err).Error(err)
+		l.WithStack(err).Error(err)
 		serverError.Render(w)
 		return
 	}
@@ -100,7 +121,7 @@ func (h tokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	tokenStr, err := jwt.Signed(jws).Claims(claims).CompactSerialize()
 	if err != nil {
-		h.Logger.Ctx(ctx).WithStack(err).Error(err)
+		l.WithStack(err).Error(err)
 		serverError.Render(w)
 		return
 	}

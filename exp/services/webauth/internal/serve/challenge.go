@@ -48,6 +48,19 @@ func (h challengeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	hash, err := tx.HashHex()
+	if err != nil {
+		h.Logger.Ctx(ctx).WithStack(err).Error(err)
+		serverError.Render(w)
+		return
+	}
+
+	l := h.Logger.Ctx(ctx).
+		WithField("hash", hash).
+		WithField("account", account)
+
+	l.Infof("Generated challenge transaction %s for account %s.", hash, account)
+
 	res := challengeResponse{
 		Transaction:       tx,
 		NetworkPassphrase: h.NetworkPassphrase,
