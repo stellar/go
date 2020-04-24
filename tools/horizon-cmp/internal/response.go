@@ -34,6 +34,8 @@ var removeRegexps = []*regexp.Regexp{
 	// regexp.MustCompile(`\s*"last_modified_ledger": [0-9]+,`),
 	// regexp.MustCompile(`\s*"public_key": "G.*",`),
 	// regexp.MustCompile(`,\s*"paging_token": ?""`),
+	// Removes memo_bytes field, introduced in horizon 1.2.0
+	regexp.MustCompile(`\s*"memo_bytes": ?"[^"]*",`),
 	regexp.MustCompile(`\s*"fee_paid": ?[0-9]+,`),
 }
 
