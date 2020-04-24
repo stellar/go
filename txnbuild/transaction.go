@@ -1024,26 +1024,6 @@ func VerifyChallengeTxSigners(challengeTx, serverAccountID, network string, sign
 	return signersFound, nil
 }
 
-// VerifyChallengeTx is a factory method that verifies a SEP 10 challenge transaction,
-// for use in web authentication. It can be used by a server to verify that the challenge
-// has been signed by the client account's master key.
-// More details on SEP 10: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0010.md
-//
-// Deprecated: Use VerifyChallengeTxThreshold or VerifyChallengeTxSigners.
-func VerifyChallengeTx(challengeTx, serverAccountID, network string) (bool, error) {
-	tx, clientAccountID, err := ReadChallengeTx(challengeTx, serverAccountID, network)
-	if err != nil {
-		return false, err
-	}
-
-	err = verifyTxSignature(tx, network, clientAccountID)
-	if err != nil {
-		return false, err
-	}
-
-	return true, nil
-}
-
 // verifyTxSignature checks if a transaction has been signed by the provided Stellar account.
 func verifyTxSignature(tx *Transaction, network string, signer string) error {
 	signersFound, err := verifyTxSignatures(tx, network, signer)
