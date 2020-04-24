@@ -210,7 +210,7 @@ func bumpSequence(source *hProtocol.Account, seqNum int64, signer Account) (stri
 	tx, err := txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount:        source,
-			IncrementSequenceNum: false,
+			IncrementSequenceNum: true,
 			Operations:           []txnbuild.Operation{&bumpSequenceOp},
 			BaseFee:              txnbuild.MinBaseFee,
 			Timebounds:           txnbuild.NewTimeout(300),
@@ -240,7 +240,7 @@ func createAccount(source *hProtocol.Account, dest string, signer Account) (stri
 	tx, err := txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount:        source,
-			IncrementSequenceNum: false,
+			IncrementSequenceNum: true,
 			Operations:           []txnbuild.Operation{&createAccountOp},
 			BaseFee:              txnbuild.MinBaseFee,
 			Timebounds:           txnbuild.NewTimeout(300),
@@ -269,7 +269,7 @@ func deleteData(source *hProtocol.Account, dataKey string, signer Account) (stri
 	tx, err := txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount:        source,
-			IncrementSequenceNum: false,
+			IncrementSequenceNum: true,
 			Operations:           []txnbuild.Operation{&manageDataOp},
 			BaseFee:              txnbuild.MinBaseFee,
 			Timebounds:           txnbuild.NewTimeout(300),
@@ -300,7 +300,7 @@ func payment(source *hProtocol.Account, dest, amount string, asset txnbuild.Asse
 	tx, err := txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount:        source,
-			IncrementSequenceNum: false,
+			IncrementSequenceNum: true,
 			Operations:           []txnbuild.Operation{&paymentOp},
 			BaseFee:              txnbuild.MinBaseFee,
 			Timebounds:           txnbuild.NewTimeout(300),
@@ -327,7 +327,7 @@ func deleteTrustline(source *hProtocol.Account, asset txnbuild.Asset, signer Acc
 	tx, err := txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount:        source,
-			IncrementSequenceNum: false,
+			IncrementSequenceNum: true,
 			Operations:           []txnbuild.Operation{&deleteTrustline},
 			BaseFee:              txnbuild.MinBaseFee,
 			Timebounds:           txnbuild.NewTimeout(300),
@@ -357,7 +357,7 @@ func deleteOffer(source *hProtocol.Account, offerID int64, signer Account) (stri
 	tx, err := txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount:        source,
-			IncrementSequenceNum: false,
+			IncrementSequenceNum: true,
 			Operations:           []txnbuild.Operation{&deleteOffer},
 			BaseFee:              txnbuild.MinBaseFee,
 			Timebounds:           txnbuild.NewTimeout(300),
@@ -386,7 +386,7 @@ func mergeAccount(source *hProtocol.Account, destAddress string, signer Account)
 	tx, err := txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount:        source,
-			IncrementSequenceNum: false,
+			IncrementSequenceNum: true,
 			Operations:           []txnbuild.Operation{&accountMerge},
 			BaseFee:              txnbuild.MinBaseFee,
 			Timebounds:           txnbuild.NewTimeout(300),
