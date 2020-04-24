@@ -1097,7 +1097,7 @@ func ExampleClient_SubmitTransaction() {
 		return
 	}
 
-	result, err := client.SubmitTransaction(tx)
+	result, err := client.SubmitTransaction(tx, horizonclient.SubmitTxOpts{})
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -1139,7 +1139,7 @@ func ExampleClient_SubmitTransactionWithOptions() {
 		return
 	}
 
-	result, err := client.SubmitTransactionWithOptions(tx, horizonclient.SubmitTxOpts{})
+	result, err := client.SubmitTransaction(tx, horizonclient.SubmitTxOpts{})
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -1182,7 +1182,7 @@ func ExampleClient_SubmitTransactionWithOptions_skip_memo_required_check() {
 		return
 	}
 
-	result, err := client.SubmitTransactionWithOptions(tx, horizonclient.SubmitTxOpts{
+	result, err := client.SubmitTransaction(tx, horizonclient.SubmitTxOpts{
 		SkipMemoRequiredCheck: true,
 	})
 	if err != nil {

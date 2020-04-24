@@ -952,7 +952,7 @@ func TestSubmitTransactionRequest(t *testing.T) {
 		"https://localhost/accounts/GACTJ4ZFCDZMD2UFR4R7MZOWYBCF6HBP65YKCUT37MUQFPJLDLJ3N5D2/data/config.memo_required",
 	).ReturnString(404, notFoundResponse)
 
-	_, err = client.SubmitTransaction(tx)
+	_, err = client.SubmitTransaction(tx, SubmitTxOpts{})
 	assert.NoError(t, err)
 
 	// memo required - does not submit transaction
@@ -961,7 +961,7 @@ func TestSubmitTransactionRequest(t *testing.T) {
 		"https://localhost/accounts/GACTJ4ZFCDZMD2UFR4R7MZOWYBCF6HBP65YKCUT37MUQFPJLDLJ3N5D2/data/config.memo_required",
 	).ReturnJSON(200, memoRequiredResponse)
 
-	_, err = client.SubmitTransaction(tx)
+	_, err = client.SubmitTransaction(tx, SubmitTxOpts{})
 	assert.Error(t, err)
 	assert.Equal(t, ErrAccountRequiresMemo, errors.Cause(err))
 }
@@ -1000,7 +1000,7 @@ func TestSubmitTransactionWithOptionsRequest(t *testing.T) {
 		On("POST", "https://localhost/transactions").
 		ReturnString(400, transactionFailure)
 
-	_, err = client.SubmitTransactionWithOptions(tx, SubmitTxOpts{SkipMemoRequiredCheck: true})
+	_, err = client.SubmitTransaction(tx, SubmitTxOpts{SkipMemoRequiredCheck: true})
 
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "horizon error")
@@ -1014,7 +1014,7 @@ func TestSubmitTransactionWithOptionsRequest(t *testing.T) {
 		On("POST", "https://localhost/transactions").
 		ReturnError("http.Client error")
 
-	_, err = client.SubmitTransactionWithOptions(tx, SubmitTxOpts{SkipMemoRequiredCheck: true})
+	_, err = client.SubmitTransaction(tx, SubmitTxOpts{SkipMemoRequiredCheck: true})
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "http.Client error")
 		_, ok := err.(*Error)
@@ -1027,7 +1027,7 @@ func TestSubmitTransactionWithOptionsRequest(t *testing.T) {
 		"https://localhost/transactions?tx=AAAAAAU08yUQ8sHqhY8j9mXWwERfHC%2F3cKFSe%2FspAr0rGtO2AAAAZAAAAAAAAAABAAAAAQAAAAAAAAAAAAAAAAAAAAoAAAAAAAAAAQAAAAAAAAABAAAAAAU08yUQ8sHqhY8j9mXWwERfHC%2F3cKFSe%2FspAr0rGtO2AAAAAAAAAAAF9eEAAAAAAAAAAAErGtO2AAAAQKZUywjRbomZ8k14vOAf4%2Bx5kDYCBgZmXzNoeCQ6%2BFnDrkeP05oJ3DrKywbnmq7tfaxq4kDB%2FFqhMviDBuYf3gc%3D",
 	).ReturnString(200, txSuccess)
 
-	_, err = client.SubmitTransactionWithOptions(tx, SubmitTxOpts{SkipMemoRequiredCheck: true})
+	_, err = client.SubmitTransaction(tx, SubmitTxOpts{SkipMemoRequiredCheck: true})
 	assert.NoError(t, err)
 
 	// successful tx with config.memo_required not found
@@ -1041,7 +1041,7 @@ func TestSubmitTransactionWithOptionsRequest(t *testing.T) {
 		"https://localhost/accounts/GACTJ4ZFCDZMD2UFR4R7MZOWYBCF6HBP65YKCUT37MUQFPJLDLJ3N5D2/data/config.memo_required",
 	).ReturnString(404, notFoundResponse)
 
-	_, err = client.SubmitTransactionWithOptions(tx, SubmitTxOpts{SkipMemoRequiredCheck: false})
+	_, err = client.SubmitTransaction(tx, SubmitTxOpts{SkipMemoRequiredCheck: false})
 	assert.NoError(t, err)
 
 	// memo required - does not submit transaction
@@ -1050,7 +1050,7 @@ func TestSubmitTransactionWithOptionsRequest(t *testing.T) {
 		"https://localhost/accounts/GACTJ4ZFCDZMD2UFR4R7MZOWYBCF6HBP65YKCUT37MUQFPJLDLJ3N5D2/data/config.memo_required",
 	).ReturnJSON(200, memoRequiredResponse)
 
-	_, err = client.SubmitTransactionWithOptions(tx, SubmitTxOpts{SkipMemoRequiredCheck: false})
+	_, err = client.SubmitTransaction(tx, SubmitTxOpts{SkipMemoRequiredCheck: false})
 	assert.Error(t, err)
 	assert.Equal(t, ErrAccountRequiresMemo, errors.Cause(err))
 
@@ -1075,7 +1075,7 @@ func TestSubmitTransactionWithOptionsRequest(t *testing.T) {
 	tx, err = tx.Sign(network.TestNetworkPassphrase, kp)
 	assert.NoError(t, err)
 
-	_, err = client.SubmitTransactionWithOptions(tx, SubmitTxOpts{SkipMemoRequiredCheck: false})
+	_, err = client.SubmitTransaction(tx, SubmitTxOpts{SkipMemoRequiredCheck: false})
 	assert.NoError(t, err)
 }
 

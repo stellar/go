@@ -448,24 +448,26 @@ func (c *Client) SubmitTransactionXDR(transactionXdr string) (txSuccess hProtoco
 	return
 }
 
-// SubmitTransaction submits a transaction to the network. err can be either
-// error object or horizon.Error object.
+// SubmitTransaction submits a transaction to the network, allowing
+// you to pass SubmitTxOpts err can be either error object or horizon.Error object.
 //
-// This function will always check if the destination account requires a memo in the transaction as
-// defined in SEP0029: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0029.md
-//
-// If you want to skip this check, use SubmitTransactionWithOptions.
 //
 // See https://www.stellar.org/developers/horizon/reference/endpoints/transactions-create.html
-func (c *Client) SubmitTransaction(transaction *txnbuild.Transaction) (txSuccess hProtocol.TransactionSuccess, err error) {
-	return c.SubmitTransactionWithOptions(transaction, SubmitTxOpts{})
+func (c *Client) SubmitFeeBumpTransaction(transaction *txnbuild.FeeBumpTransaction, opts SubmitTxOpts) (txSuccess hProtocol.TransactionSuccess, err error) {
+	txeBase64, err := transaction.Base64()
+	if err != nil {
+		err = errors.Wrap(err, "Unable to convert transaction object to base64 string")
+		return
+	}
+
+	return c.SubmitTransactionXDR(txeBase64)
 }
 
-// SubmitTransactionWithOptions submits a transaction to the network, allowing
+// SubmitTransaction submits a transaction to the network, allowing
 // you to pass SubmitTxOpts. err can be either error object or horizon.Error object.
 //
 // See https://www.stellar.org/developers/horizon/reference/endpoints/transactions-create.html
-func (c *Client) SubmitTransactionWithOptions(transaction *txnbuild.Transaction, opts SubmitTxOpts) (txSuccess hProtocol.TransactionSuccess, err error) {
+func (c *Client) SubmitTransaction(transaction *txnbuild.Transaction, opts SubmitTxOpts) (txSuccess hProtocol.TransactionSuccess, err error) {
 	// only check if memo is required if skip is false and the transaction
 	// doesn't have a memo.
 	if !opts.SkipMemoRequiredCheck && transaction.Memo() == nil {
