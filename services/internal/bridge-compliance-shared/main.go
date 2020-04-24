@@ -10,8 +10,7 @@ import (
 // BuildTransaction is used in compliance server. The sequence number in built transaction will be equal 0!
 func BuildTransaction(accountID, networkPassphrase string, operation []txnbuild.Operation, memo txnbuild.Memo) (string, error) {
 
-	// Sequence number is set to -1 here because txnbuild auto increments by 1.
-	txeB64, err := txnbuild.NewSignedTransaction(
+	tx, err := txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount:        &txnbuild.SimpleAccount{AccountID: accountID, Sequence: 0},
 			IncrementSequenceNum: false,
@@ -20,10 +19,13 @@ func BuildTransaction(accountID, networkPassphrase string, operation []txnbuild.
 			Memo:                 memo,
 			Timebounds:           txnbuild.NewInfiniteTimeout(),
 		},
-		networkPassphrase,
 	)
 	if err != nil {
 		return "", errors.Wrap(err, "unable to build transaction")
+	}
+	txeB64, err := tx.Base64()
+	if err != nil {
+		return "", errors.Wrap(err, "unable to serialize transaction")
 	}
 
 	var txXDR xdr.TransactionEnvelope

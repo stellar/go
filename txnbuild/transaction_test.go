@@ -21,7 +21,7 @@ func TestInflation(t *testing.T) {
 
 	inflation := Inflation{}
 
-	received, err := NewSignedTransaction(
+	received, err := newSignedTransaction(
 		TransactionParams{
 			SourceAccount:        &sourceAccount,
 			IncrementSequenceNum: true,
@@ -48,7 +48,7 @@ func TestCreateAccount(t *testing.T) {
 		Amount:      "10",
 	}
 
-	received, err := NewSignedTransaction(
+	received, err := newSignedTransaction(
 		TransactionParams{
 			SourceAccount:        &sourceAccount,
 			IncrementSequenceNum: true,
@@ -75,7 +75,7 @@ func TestPayment(t *testing.T) {
 		Asset:       NativeAsset{},
 	}
 
-	received, err := NewSignedTransaction(
+	received, err := newSignedTransaction(
 		TransactionParams{
 			SourceAccount:        &sourceAccount,
 			IncrementSequenceNum: true,
@@ -122,7 +122,7 @@ func TestBumpSequence(t *testing.T) {
 		BumpTo: 9606132444168300,
 	}
 
-	received, err := NewSignedTransaction(
+	received, err := newSignedTransaction(
 		TransactionParams{
 			SourceAccount:        &sourceAccount,
 			IncrementSequenceNum: true,
@@ -147,7 +147,7 @@ func TestAccountMerge(t *testing.T) {
 		Destination: "GAS4V4O2B7DW5T7IQRPEEVCRXMDZESKISR7DVIGKZQYYV3OSQ5SH5LVP",
 	}
 
-	received, err := NewSignedTransaction(
+	received, err := newSignedTransaction(
 		TransactionParams{
 			SourceAccount:        &sourceAccount,
 			IncrementSequenceNum: true,
@@ -173,7 +173,7 @@ func TestManageData(t *testing.T) {
 		Value: []byte("Apple"),
 	}
 
-	received, err := NewSignedTransaction(
+	received, err := newSignedTransaction(
 		TransactionParams{
 			SourceAccount:        &sourceAccount,
 			IncrementSequenceNum: true,
@@ -199,7 +199,7 @@ func TestManageDataRemoveDataEntry(t *testing.T) {
 		Name: "Fruit preference",
 	}
 
-	received, err := NewSignedTransaction(
+	received, err := newSignedTransaction(
 		TransactionParams{
 			SourceAccount:        &sourceAccount,
 			IncrementSequenceNum: true,
@@ -225,7 +225,7 @@ func TestSetOptionsInflationDestination(t *testing.T) {
 		InflationDestination: NewInflationDestination(kp1.Address()),
 	}
 
-	received, err := NewSignedTransaction(
+	received, err := newSignedTransaction(
 		TransactionParams{
 			SourceAccount:        &sourceAccount,
 			IncrementSequenceNum: true,
@@ -250,7 +250,7 @@ func TestSetOptionsSetFlags(t *testing.T) {
 		SetFlags: []AccountFlag{AuthRequired, AuthRevocable},
 	}
 
-	received, err := NewSignedTransaction(
+	received, err := newSignedTransaction(
 		TransactionParams{
 			SourceAccount:        &sourceAccount,
 			IncrementSequenceNum: true,
@@ -275,7 +275,7 @@ func TestSetOptionsClearFlags(t *testing.T) {
 		ClearFlags: []AccountFlag{AuthRequired, AuthRevocable},
 	}
 
-	received, err := NewSignedTransaction(
+	received, err := newSignedTransaction(
 		TransactionParams{
 			SourceAccount:        &sourceAccount,
 			IncrementSequenceNum: true,
@@ -300,7 +300,7 @@ func TestSetOptionsMasterWeight(t *testing.T) {
 		MasterWeight: NewThreshold(10),
 	}
 
-	received, err := NewSignedTransaction(
+	received, err := newSignedTransaction(
 		TransactionParams{
 			SourceAccount:        &sourceAccount,
 			IncrementSequenceNum: true,
@@ -327,7 +327,7 @@ func TestSetOptionsThresholds(t *testing.T) {
 		HighThreshold:   NewThreshold(2),
 	}
 
-	received, err := NewSignedTransaction(
+	received, err := newSignedTransaction(
 		TransactionParams{
 			SourceAccount:        &sourceAccount,
 			IncrementSequenceNum: true,
@@ -352,7 +352,7 @@ func TestSetOptionsHomeDomain(t *testing.T) {
 		HomeDomain: NewHomeDomain("LovelyLumensLookLuminous.com"),
 	}
 
-	received, err := NewSignedTransaction(
+	received, err := newSignedTransaction(
 		TransactionParams{
 			SourceAccount:        &sourceAccount,
 			IncrementSequenceNum: true,
@@ -399,7 +399,7 @@ func TestSetOptionsSigner(t *testing.T) {
 		Signer: &Signer{Address: kp1.Address(), Weight: Threshold(4)},
 	}
 
-	received, err := NewSignedTransaction(
+	received, err := newSignedTransaction(
 		TransactionParams{
 			SourceAccount:        &sourceAccount,
 			IncrementSequenceNum: true,
@@ -425,7 +425,7 @@ func TestMultipleOperations(t *testing.T) {
 		BumpTo: 9606132444168300,
 	}
 
-	received, err := NewSignedTransaction(
+	received, err := newSignedTransaction(
 		TransactionParams{
 			SourceAccount:        &sourceAccount,
 			IncrementSequenceNum: true,
@@ -452,7 +452,7 @@ func TestChangeTrust(t *testing.T) {
 		Limit: "10",
 	}
 
-	received, err := NewSignedTransaction(
+	received, err := newSignedTransaction(
 		TransactionParams{
 			SourceAccount:        &sourceAccount,
 			IncrementSequenceNum: true,
@@ -500,7 +500,7 @@ func TestChangeTrustDeleteTrustline(t *testing.T) {
 	issuedAsset := CreditAsset{"ABCD", kp1.Address()}
 	removeTrust := RemoveTrustlineOp(issuedAsset)
 
-	received, err := NewSignedTransaction(
+	received, err := newSignedTransaction(
 		TransactionParams{
 			SourceAccount:        &sourceAccount,
 			IncrementSequenceNum: true,
@@ -529,7 +529,7 @@ func TestAllowTrust(t *testing.T) {
 		Authorize: true,
 	}
 
-	received, err := NewSignedTransaction(
+	received, err := newSignedTransaction(
 		TransactionParams{
 			SourceAccount:        &sourceAccount,
 			IncrementSequenceNum: true,
@@ -558,7 +558,7 @@ func TestAllowTrustNoIssuer(t *testing.T) {
 		Authorize: true,
 	}
 
-	received, err := NewSignedTransaction(
+	received, err := newSignedTransaction(
 		TransactionParams{
 			SourceAccount:        &sourceAccount,
 			IncrementSequenceNum: true,
@@ -587,7 +587,7 @@ func TestManageSellOfferNewOffer(t *testing.T) {
 	createOffer, err := CreateOfferOp(selling, buying, sellAmount, price)
 	check(err)
 
-	received, err := NewSignedTransaction(
+	received, err := newSignedTransaction(
 		TransactionParams{
 			SourceAccount:        &sourceAccount,
 			IncrementSequenceNum: true,
@@ -612,7 +612,7 @@ func TestManageSellOfferDeleteOffer(t *testing.T) {
 	deleteOffer, err := DeleteOfferOp(offerID)
 	check(err)
 
-	received, err := NewSignedTransaction(
+	received, err := newSignedTransaction(
 		TransactionParams{
 			SourceAccount:        &sourceAccount,
 			IncrementSequenceNum: true,
@@ -642,7 +642,7 @@ func TestManageSellOfferUpdateOffer(t *testing.T) {
 	updateOffer, err := UpdateOfferOp(selling, buying, sellAmount, price, offerID)
 	check(err)
 
-	received, err := NewSignedTransaction(
+	received, err := newSignedTransaction(
 		TransactionParams{
 			SourceAccount:        &sourceAccount,
 			IncrementSequenceNum: true,
@@ -671,7 +671,7 @@ func TestCreatePassiveSellOffer(t *testing.T) {
 		Price:   "1.0",
 	}
 
-	received, err := NewSignedTransaction(
+	received, err := newSignedTransaction(
 		TransactionParams{
 			SourceAccount:        &sourceAccount,
 			IncrementSequenceNum: true,
@@ -703,7 +703,7 @@ func TestPathPayment(t *testing.T) {
 		Path:        []Asset{abcdAsset},
 	}
 
-	received, err := NewSignedTransaction(
+	received, err := newSignedTransaction(
 		TransactionParams{
 			SourceAccount:        &sourceAccount,
 			IncrementSequenceNum: true,
@@ -724,7 +724,7 @@ func TestMemoText(t *testing.T) {
 	kp2 := newKeypair2()
 	sourceAccount := NewSimpleAccount(kp2.Address(), int64(3556099777101824))
 
-	received, err := NewSignedTransaction(
+	received, err := newSignedTransaction(
 		TransactionParams{
 			SourceAccount:        &sourceAccount,
 			IncrementSequenceNum: true,
@@ -747,7 +747,7 @@ func TestMemoID(t *testing.T) {
 	kp2 := newKeypair2()
 	sourceAccount := NewSimpleAccount(kp2.Address(), int64(3428320205078528))
 
-	received, err := NewSignedTransaction(
+	received, err := newSignedTransaction(
 		TransactionParams{
 			SourceAccount:        &sourceAccount,
 			IncrementSequenceNum: true,
@@ -769,7 +769,7 @@ func TestMemoHash(t *testing.T) {
 	kp2 := newKeypair2()
 	sourceAccount := NewSimpleAccount(kp2.Address(), int64(3428320205078528))
 
-	received, err := NewSignedTransaction(
+	received, err := newSignedTransaction(
 		TransactionParams{
 			SourceAccount:        &sourceAccount,
 			IncrementSequenceNum: true,
@@ -791,7 +791,7 @@ func TestMemoReturn(t *testing.T) {
 	kp2 := newKeypair2()
 	sourceAccount := NewSimpleAccount(kp2.Address(), int64(3428320205078528))
 
-	received, err := NewSignedTransaction(
+	received, err := newSignedTransaction(
 		TransactionParams{
 			SourceAccount:        &sourceAccount,
 			IncrementSequenceNum: true,
@@ -822,7 +822,7 @@ func TestManageBuyOfferNewOffer(t *testing.T) {
 		OfferID: 0,
 	}
 
-	received, err := NewSignedTransaction(
+	received, err := newSignedTransaction(
 		TransactionParams{
 			SourceAccount:        &sourceAccount,
 			IncrementSequenceNum: true,
@@ -852,7 +852,7 @@ func TestManageBuyOfferDeleteOffer(t *testing.T) {
 		OfferID: int64(2921622),
 	}
 
-	received, err := NewSignedTransaction(
+	received, err := newSignedTransaction(
 		TransactionParams{
 			SourceAccount:        &sourceAccount,
 			IncrementSequenceNum: true,
@@ -882,7 +882,7 @@ func TestManageBuyOfferUpdateOffer(t *testing.T) {
 		OfferID: int64(2921622),
 	}
 
-	received, err := NewSignedTransaction(
+	received, err := newSignedTransaction(
 		TransactionParams{
 			SourceAccount:        &sourceAccount,
 			IncrementSequenceNum: true,
@@ -1302,7 +1302,7 @@ func TestFromXDRBuildSignEncode(t *testing.T) {
 	_, ok = tx.FeeBump()
 	assert.False(t, ok)
 
-	txeB64, err = NewSignedTransaction(
+	txeB64, err = newSignedTransaction(
 		TransactionParams{
 			SourceAccount: &SimpleAccount{
 				AccountID: newTx.SourceAccount().AccountID,
@@ -1333,7 +1333,7 @@ func TestSignWithSecretKey(t *testing.T) {
 		SourceAccount: &opSource,
 	}
 
-	expected, err := NewSignedTransaction(
+	expected, err := newSignedTransaction(
 		TransactionParams{
 			SourceAccount:        &txSource,
 			IncrementSequenceNum: true,
@@ -1813,7 +1813,7 @@ func TestVerifyChallengeTxThreshold_invalidServer(t *testing.T) {
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
 
-	tx64, err := NewSignedTransaction(
+	tx64, err := newSignedTransaction(
 		TransactionParams{
 			SourceAccount:        &txSource,
 			IncrementSequenceNum: true,
@@ -1845,7 +1845,7 @@ func TestVerifyChallengeTxThreshold_validServerAndClientKeyMeetingThreshold(t *t
 		Name:          "testserver auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
-	tx64, err := NewSignedTransaction(
+	tx64, err := newSignedTransaction(
 		TransactionParams{
 			SourceAccount:        &txSource,
 			IncrementSequenceNum: true,
@@ -1882,7 +1882,7 @@ func TestVerifyChallengeTxThreshold_validServerAndMultipleClientKeyMeetingThresh
 		Name:          "testserver auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
-	tx64, err := NewSignedTransaction(
+	tx64, err := newSignedTransaction(
 		TransactionParams{
 			SourceAccount:        &txSource,
 			IncrementSequenceNum: true,
@@ -1933,7 +1933,7 @@ func TestVerifyChallengeTxThreshold_validServerAndMultipleClientKeyMeetingThresh
 		clientKP2.Address(),
 	}
 
-	tx64, err := NewSignedTransaction(
+	tx64, err := newSignedTransaction(
 		TransactionParams{
 			SourceAccount:        &txSource,
 			IncrementSequenceNum: true,
@@ -1980,7 +1980,7 @@ func TestVerifyChallengeTxThreshold_validServerAndMultipleClientKeyMeetingThresh
 		clientKP2.Address(),
 	}
 
-	tx64, err := NewSignedTransaction(
+	tx64, err := newSignedTransaction(
 		TransactionParams{
 			SourceAccount:        &txSource,
 			IncrementSequenceNum: true,
@@ -2017,7 +2017,7 @@ func TestVerifyChallengeTxThreshold_invalidServerAndMultipleClientKeyNotMeetingT
 		clientKP3.Address(): 2,
 	}
 
-	tx64, err := NewSignedTransaction(
+	tx64, err := newSignedTransaction(
 		TransactionParams{
 			SourceAccount:        &txSource,
 			IncrementSequenceNum: true,
@@ -2052,7 +2052,7 @@ func TestVerifyChallengeTxThreshold_invalidClientKeyUnrecognized(t *testing.T) {
 		clientKP2.Address(): 2,
 	}
 
-	tx64, err := NewSignedTransaction(
+	tx64, err := newSignedTransaction(
 		TransactionParams{
 			SourceAccount:        &txSource,
 			IncrementSequenceNum: true,
@@ -2084,7 +2084,7 @@ func TestVerifyChallengeTxThreshold_invalidNoSigners(t *testing.T) {
 	threshold := Threshold(10)
 	signerSummary := SignerSummary{}
 
-	tx64, err := NewSignedTransaction(
+	tx64, err := newSignedTransaction(
 		TransactionParams{
 			SourceAccount:        &txSource,
 			IncrementSequenceNum: true,
@@ -2112,7 +2112,7 @@ func TestVerifyChallengeTxThreshold_weightsAddToMoreThan8Bits(t *testing.T) {
 		Name:          "testserver auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
-	tx64, err := NewSignedTransaction(
+	tx64, err := newSignedTransaction(
 		TransactionParams{
 			SourceAccount:        &txSource,
 			IncrementSequenceNum: true,
@@ -2150,7 +2150,7 @@ func TestVerifyChallengeTxSigners_invalidServer(t *testing.T) {
 		Name:          "testserver auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
-	tx64, err := NewSignedTransaction(
+	tx64, err := newSignedTransaction(
 		TransactionParams{
 			SourceAccount:        &txSource,
 			IncrementSequenceNum: true,
@@ -2178,7 +2178,7 @@ func TestVerifyChallengeTxSigners_validServerAndClientMasterKey(t *testing.T) {
 		Name:          "testserver auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
-	tx64, err := NewSignedTransaction(
+	tx64, err := newSignedTransaction(
 		TransactionParams{
 			SourceAccount:        &txSource,
 			IncrementSequenceNum: true,
@@ -2206,7 +2206,7 @@ func TestVerifyChallengeTxSigners_invalidServerAndNoClient(t *testing.T) {
 		Name:          "testserver auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
-	tx64, err := NewSignedTransaction(
+	tx64, err := newSignedTransaction(
 		TransactionParams{
 			SourceAccount:        &txSource,
 			IncrementSequenceNum: true,
@@ -2235,7 +2235,7 @@ func TestVerifyChallengeTxSigners_invalidServerAndUnrecognizedClient(t *testing.
 		Name:          "testserver auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
-	tx64, err := NewSignedTransaction(
+	tx64, err := newSignedTransaction(
 		TransactionParams{
 			SourceAccount:        &txSource,
 			IncrementSequenceNum: true,
@@ -2264,7 +2264,7 @@ func TestVerifyChallengeTxSigners_validServerAndMultipleClientSigners(t *testing
 		Name:          "testserver auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
-	tx64, err := NewSignedTransaction(
+	tx64, err := newSignedTransaction(
 		TransactionParams{
 			SourceAccount:        &txSource,
 			IncrementSequenceNum: true,
@@ -2293,7 +2293,7 @@ func TestVerifyChallengeTxSigners_validServerAndMultipleClientSignersReverseOrde
 		Name:          "testserver auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
-	tx64, err := NewSignedTransaction(
+	tx64, err := newSignedTransaction(
 		TransactionParams{
 			SourceAccount:        &txSource,
 			IncrementSequenceNum: true,
@@ -2322,7 +2322,7 @@ func TestVerifyChallengeTxSigners_validServerAndClientSignersNotMasterKey(t *tes
 		Name:          "testserver auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
-	tx64, err := NewSignedTransaction(
+	tx64, err := newSignedTransaction(
 		TransactionParams{
 			SourceAccount:        &txSource,
 			IncrementSequenceNum: true,
@@ -2351,7 +2351,7 @@ func TestVerifyChallengeTxSigners_validServerAndClientSignersIgnoresServerSigner
 		Name:          "testserver auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
-	tx64, err := NewSignedTransaction(
+	tx64, err := newSignedTransaction(
 		TransactionParams{
 			SourceAccount:        &txSource,
 			IncrementSequenceNum: true,
@@ -2380,7 +2380,7 @@ func TestVerifyChallengeTxSigners_invalidServerNoClientSignersIgnoresServerSigne
 		Name:          "testserver auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
-	tx64, err := NewSignedTransaction(
+	tx64, err := newSignedTransaction(
 		TransactionParams{
 			SourceAccount:        &txSource,
 			IncrementSequenceNum: true,
@@ -2409,7 +2409,7 @@ func TestVerifyChallengeTxSigners_validServerAndClientSignersIgnoresDuplicateSig
 		Name:          "testserver auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
-	tx64, err := NewSignedTransaction(
+	tx64, err := newSignedTransaction(
 		TransactionParams{
 			SourceAccount:        &txSource,
 			IncrementSequenceNum: true,
@@ -2441,7 +2441,7 @@ func TestVerifyChallengeTxSigners_validIgnorePreauthTxHashAndXHash(t *testing.T)
 		Name:          "testserver auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
-	tx64, err := NewSignedTransaction(
+	tx64, err := newSignedTransaction(
 		TransactionParams{
 			SourceAccount:        &txSource,
 			IncrementSequenceNum: true,
@@ -2470,7 +2470,7 @@ func TestVerifyChallengeTxSigners_invalidServerAndClientSignersIgnoresDuplicateS
 		Name:          "testserver auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
-	tx64, err := NewSignedTransaction(
+	tx64, err := newSignedTransaction(
 		TransactionParams{
 			SourceAccount:        &txSource,
 			IncrementSequenceNum: true,
@@ -2499,7 +2499,7 @@ func TestVerifyChallengeTxSigners_invalidServerAndClientSignersFailsDuplicateSig
 		Name:          "testserver auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
-	tx64, err := NewSignedTransaction(
+	tx64, err := newSignedTransaction(
 		TransactionParams{
 			SourceAccount:        &txSource,
 			IncrementSequenceNum: true,
@@ -2528,7 +2528,7 @@ func TestVerifyChallengeTxSigners_invalidServerAndClientSignersFailsSignerSeed(t
 		Name:          "testserver auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
-	tx64, err := NewSignedTransaction(
+	tx64, err := newSignedTransaction(
 		TransactionParams{
 			SourceAccount:        &txSource,
 			IncrementSequenceNum: true,
@@ -2556,7 +2556,7 @@ func TestVerifyChallengeTxSigners_invalidNoSigners(t *testing.T) {
 		Name:          "testserver auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
-	tx64, err := NewSignedTransaction(
+	tx64, err := newSignedTransaction(
 		TransactionParams{
 			SourceAccount:        &txSource,
 			IncrementSequenceNum: true,

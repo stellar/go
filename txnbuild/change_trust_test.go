@@ -15,7 +15,7 @@ func TestChangeTrustMaxLimit(t *testing.T) {
 		Line: CreditAsset{"ABCD", kp0.Address()},
 	}
 
-	received, err := NewSignedTransaction(
+	received, err := newSignedTransaction(
 		TransactionParams{
 			SourceAccount:        &txSourceAccount,
 			IncrementSequenceNum: true,

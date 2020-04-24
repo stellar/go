@@ -55,6 +55,29 @@ func unmarshalBase64(txeB64 string) (xdr.TransactionEnvelope, error) {
 	return xdrEnv, err
 }
 
+func newSignedTransaction(
+	params TransactionParams,
+	network string,
+	keypairs ...*keypair.Full,
+) (string, error) {
+	tx, err := NewTransaction(params)
+	if err != nil {
+		return "", errors.Wrap(err, "couldn't create transaction")
+	}
+
+	tx, err = tx.Sign(network, keypairs...)
+	if err != nil {
+		return "", errors.Wrap(err, "couldn't sign transaction")
+	}
+
+	txeBase64, err := tx.Base64()
+	if err != nil {
+		return "", errors.Wrap(err, "couldn't encode transaction")
+	}
+
+	return txeBase64, err
+}
+
 func TestValidateStellarPublicKey(t *testing.T) {
 	validKey := "GDWZCOEQRODFCH6ISYQPWY67L3ULLWS5ISXYYL5GH43W7YFMTLB65PYM"
 	err := validateStellarPublicKey(validKey)

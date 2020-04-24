@@ -105,7 +105,7 @@ func TestRequestHandlerAuthInvalidParams(t *testing.T) {
 		SourceAccount: &txnbuild.SimpleAccount{AccountID: "GAW77Z6GPWXSODJOMF5L5BMX6VMYGEJRKUNBC2CZ725JTQZORK74HQQD"},
 	}
 
-	txeB64, err := txnbuild.NewSignedTransaction(
+	tx, err := txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount: &txnbuild.SimpleAccount{
 				AccountID: "GAW77Z6GPWXSODJOMF5L5BMX6VMYGEJRKUNBC2CZ725JTQZORK74HQQD",
@@ -117,8 +117,10 @@ func TestRequestHandlerAuthInvalidParams(t *testing.T) {
 			Memo:                 txnbuild.MemoHash(attachHash),
 			Timebounds:           txnbuild.NewInfiniteTimeout(),
 		},
-		rhconfig.NetworkPassphrase,
 	)
+	require.NoError(t, err)
+
+	txeB64, err := tx.Base64()
 	require.NoError(t, err)
 
 	var txXDR xdr.TransactionEnvelope
@@ -175,7 +177,7 @@ func TestRequestHandlerAuthInvalidParams(t *testing.T) {
 		SourceAccount: &txnbuild.SimpleAccount{AccountID: "GAW77Z6GPWXSODJOMF5L5BMX6VMYGEJRKUNBC2CZ725JTQZORK74HQQD"},
 	}
 
-	txeB64, err = txnbuild.NewSignedTransaction(
+	tx, err = txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount: &txnbuild.SimpleAccount{
 				AccountID: "GAW77Z6GPWXSODJOMF5L5BMX6VMYGEJRKUNBC2CZ725JTQZORK74HQQD",
@@ -187,8 +189,10 @@ func TestRequestHandlerAuthInvalidParams(t *testing.T) {
 			Memo:                 txnbuild.MemoHash(attachHash),
 			Timebounds:           txnbuild.NewInfiniteTimeout(),
 		},
-		rhconfig.NetworkPassphrase,
 	)
+	require.NoError(t, err)
+
+	txeB64, err = tx.Base64()
 	require.NoError(t, err)
 
 	err = xdr.SafeUnmarshalBase64(txeB64, &txXDR)

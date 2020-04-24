@@ -105,7 +105,7 @@ func (minion *Minion) makeTx(destAddress string) (string, error) {
 		SourceAccount: minion.BotAccount,
 		Amount:        minion.StartingBalance,
 	}
-	txe, err := txnbuild.NewSignedTransaction(
+	tx, err := txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount:        minion.Account,
 			IncrementSequenceNum: true,
@@ -113,12 +113,21 @@ func (minion *Minion) makeTx(destAddress string) (string, error) {
 			BaseFee:              minion.BaseFee,
 			Timebounds:           txnbuild.NewInfiniteTimeout(),
 		},
-		minion.Network,
-		minion.Keypair, minion.BotKeypair,
 	)
 	if err != nil {
-		return "", errors.Wrap(err, "making account payment tx")
+		return "", errors.Wrap(err, "unable to build tx")
 	}
+
+	tx, err = tx.Sign(minion.Network, minion.Keypair, minion.BotKeypair)
+	if err != nil {
+		return "", errors.Wrap(err, "unable to sign tx")
+	}
+
+	txe, err := tx.Base64()
+	if err != nil {
+		return "", errors.Wrap(err, "unable to serialize")
+	}
+
 	// Increment the in-memory sequence number, since the tx will be submitted.
 	_, err = minion.Account.IncrementSequenceNumber()
 	if err != nil {

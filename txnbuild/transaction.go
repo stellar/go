@@ -606,31 +606,6 @@ func NewTransaction(params TransactionParams) (*Transaction, error) {
 	return tx, nil
 }
 
-// NewSignedTransaction performs all the steps to produce a final transaction suitable
-// for submitting to the network.
-func NewSignedTransaction(
-	params TransactionParams,
-	network string,
-	keypairs ...*keypair.Full,
-) (string, error) {
-	tx, err := NewTransaction(params)
-	if err != nil {
-		return "", errors.Wrap(err, "couldn't create transaction")
-	}
-
-	tx, err = tx.Sign(network, keypairs...)
-	if err != nil {
-		return "", errors.Wrap(err, "couldn't sign transaction")
-	}
-
-	txeBase64, err := tx.Base64()
-	if err != nil {
-		return "", errors.Wrap(err, "couldn't encode transaction")
-	}
-
-	return txeBase64, err
-}
-
 // FeeBumTransactionParams is a container for parameters
 // which are used to construct new FeeBumpTransaction instances
 type FeeBumTransactionParams struct {
@@ -693,31 +668,6 @@ func NewFeeBumpTransaction(params FeeBumTransactionParams) (*FeeBumpTransaction,
 	return tx, nil
 }
 
-// NewSignedFeeBumpTransaction performs all the steps to produce a final
-// fee bump transaction suitable for submitting to the network.
-func NewSignedFeeBumpTransaction(
-	params FeeBumTransactionParams,
-	network string,
-	keypairs ...*keypair.Full,
-) (string, error) {
-	tx, err := NewFeeBumpTransaction(params)
-	if err != nil {
-		return "", errors.Wrap(err, "couldn't create transaction")
-	}
-
-	tx, err = tx.Sign(network, keypairs...)
-	if err != nil {
-		return "", errors.Wrap(err, "couldn't sign transaction")
-	}
-
-	txeBase64, err := tx.Base64()
-	if err != nil {
-		return "", errors.Wrap(err, "couldn't encode transaction")
-	}
-
-	return txeBase64, err
-}
-
 // BuildChallengeTx is a factory method that creates a valid SEP 10 challenge, for use in web authentication.
 // "timebound" is the time duration the transaction should be valid for, and must be greater than 1s (300s is recommended).
 // More details on SEP 10: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0010.md
@@ -759,7 +709,7 @@ func BuildChallengeTx(serverSignerSecret, clientAccountID, anchorName, network s
 
 	// Create a SEP 10 compatible response. See
 	// https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0010.md#response
-	return NewSignedTransaction(
+	tx, err := NewTransaction(
 		TransactionParams{
 			SourceAccount:        &sa,
 			IncrementSequenceNum: false,
@@ -774,9 +724,16 @@ func BuildChallengeTx(serverSignerSecret, clientAccountID, anchorName, network s
 			Memo:       nil,
 			Timebounds: NewTimebounds(currentTime.Unix(), maxTime.Unix()),
 		},
-		network,
-		serverKP.(*keypair.Full),
 	)
+	if err != nil {
+		return "", err
+	}
+	tx, err = tx.Sign(network, serverKP.(*keypair.Full))
+	if err != nil {
+		return "", err
+	}
+
+	return tx.Base64()
 }
 
 // generateRandomNonce creates a cryptographically secure random slice of `n` bytes.

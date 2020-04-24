@@ -100,7 +100,7 @@ func createMinionAccounts(botAccount internal.Account, botKeypair *keypair.Full,
 		}
 
 		// Build and submit batched account creation tx.
-		txe, err := txnbuild.NewSignedTransaction(
+		tx, err := txnbuild.NewTransaction(
 			txnbuild.TransactionParams{
 				SourceAccount:        botAccount,
 				IncrementSequenceNum: true,
@@ -108,12 +108,21 @@ func createMinionAccounts(botAccount internal.Account, botKeypair *keypair.Full,
 				BaseFee:              txnbuild.MinBaseFee,
 				Timebounds:           txnbuild.NewTimeout(300),
 			},
-			networkPassphrase,
-			botKeypair,
 		)
 		if err != nil {
-			return minions, errors.Wrap(err, "making create accounts tx")
+			return minions, errors.Wrap(err, "unable to build tx")
 		}
+
+		tx, err = tx.Sign(networkPassphrase, botKeypair)
+		if err != nil {
+			return minions, errors.Wrap(err, "unable to sign tx")
+		}
+
+		txe, err := tx.Base64()
+		if err != nil {
+			return minions, errors.Wrap(err, "unable to serialize tx")
+		}
+
 		resp, err := hclient.SubmitTransactionXDR(txe)
 		if err != nil {
 			log.Println(resp)

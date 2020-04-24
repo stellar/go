@@ -19,7 +19,7 @@ func TestAccountMergeMultSigners(t *testing.T) {
 		SourceAccount: &opSourceAccount,
 	}
 
-	received, err := NewSignedTransaction(
+	received, err := newSignedTransaction(
 		TransactionParams{
 			SourceAccount:        &txSourceAccount,
 			IncrementSequenceNum: true,
@@ -51,7 +51,7 @@ func TestAllowTrustMultSigners(t *testing.T) {
 		SourceAccount: &opSourceAccount,
 	}
 
-	received, err := NewSignedTransaction(
+	received, err := newSignedTransaction(
 		TransactionParams{
 			SourceAccount:        &txSourceAccount,
 			IncrementSequenceNum: true,
@@ -80,7 +80,7 @@ func TestBumpSequenceMultSigners(t *testing.T) {
 		SourceAccount: &opSourceAccount,
 	}
 
-	received, err := NewSignedTransaction(
+	received, err := newSignedTransaction(
 		TransactionParams{
 			SourceAccount:        &txSourceAccount,
 			IncrementSequenceNum: true,
@@ -110,7 +110,7 @@ func TestChangeTrustMultSigners(t *testing.T) {
 		SourceAccount: &opSourceAccount,
 	}
 
-	received, err := NewSignedTransaction(
+	received, err := newSignedTransaction(
 		TransactionParams{
 			SourceAccount:        &txSourceAccount,
 			IncrementSequenceNum: true,
@@ -140,7 +140,7 @@ func TestCreateAccountMultSigners(t *testing.T) {
 		SourceAccount: &opSourceAccount,
 	}
 
-	received, err := NewSignedTransaction(
+	received, err := newSignedTransaction(
 		TransactionParams{
 			SourceAccount:        &txSourceAccount,
 			IncrementSequenceNum: true,
@@ -172,7 +172,7 @@ func TestCreatePassiveSellOfferMultSigners(t *testing.T) {
 		SourceAccount: &opSourceAccount,
 	}
 
-	received, err := NewSignedTransaction(
+	received, err := newSignedTransaction(
 		TransactionParams{
 			SourceAccount:        &txSourceAccount,
 			IncrementSequenceNum: true,
@@ -200,7 +200,7 @@ func TestInflationMultSigners(t *testing.T) {
 		SourceAccount: &opSourceAccount,
 	}
 
-	received, err := NewSignedTransaction(
+	received, err := newSignedTransaction(
 		TransactionParams{
 			SourceAccount:        &txSourceAccount,
 			IncrementSequenceNum: true,
@@ -230,7 +230,7 @@ func TestManageDataMultSigners(t *testing.T) {
 		SourceAccount: &opSourceAccount,
 	}
 
-	received, err := NewSignedTransaction(
+	received, err := newSignedTransaction(
 		TransactionParams{
 			SourceAccount:        &txSourceAccount,
 			IncrementSequenceNum: true,
@@ -261,7 +261,7 @@ func TestManageOfferCreateMultSigners(t *testing.T) {
 	createOffer, err := CreateOfferOp(selling, buying, sellAmount, price, &opSourceAccount)
 	check(err)
 
-	received, err := NewSignedTransaction(
+	received, err := newSignedTransaction(
 		TransactionParams{
 			SourceAccount:        &txSourceAccount,
 			IncrementSequenceNum: true,
@@ -289,7 +289,7 @@ func TestManageOfferDeleteMultSigners(t *testing.T) {
 	deleteOffer, err := DeleteOfferOp(offerID, &opSourceAccount)
 	check(err)
 
-	received, err := NewSignedTransaction(
+	received, err := newSignedTransaction(
 		TransactionParams{
 			SourceAccount:        &txSourceAccount,
 			IncrementSequenceNum: true,
@@ -321,7 +321,7 @@ func TestManageOfferUpdateMultSigners(t *testing.T) {
 	updateOffer, err := UpdateOfferOp(selling, buying, sellAmount, price, offerID, &opSourceAccount)
 	check(err)
 
-	received, err := NewSignedTransaction(
+	received, err := newSignedTransaction(
 		TransactionParams{
 			SourceAccount:        &txSourceAccount,
 			IncrementSequenceNum: true,
@@ -356,7 +356,7 @@ func TestPathPaymentMultSigners(t *testing.T) {
 		SourceAccount: &opSourceAccount,
 	}
 
-	received, err := NewSignedTransaction(
+	received, err := newSignedTransaction(
 		TransactionParams{
 			SourceAccount:        &txSourceAccount,
 			IncrementSequenceNum: true,
@@ -388,7 +388,7 @@ func TestPaymentMultSigners(t *testing.T) {
 		SourceAccount: &opSourceAccount,
 	}
 
-	received, err := NewSignedTransaction(
+	received, err := newSignedTransaction(
 		TransactionParams{
 			SourceAccount:        &txSourceAccount,
 			IncrementSequenceNum: true,
@@ -417,7 +417,7 @@ func TestSetOptionsMultSigners(t *testing.T) {
 		SourceAccount: &opSourceAccount,
 	}
 
-	received, err := NewSignedTransaction(
+	received, err := newSignedTransaction(
 		TransactionParams{
 			SourceAccount:        &txSourceAccount,
 			IncrementSequenceNum: true,

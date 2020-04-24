@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"github.com/stellar/go/network"
 	"github.com/stellar/go/xdr"
 	"net/http"
 	"net/url"
@@ -216,7 +215,7 @@ func TestRequestHandlerSendValidParams(t *testing.T) {
 		SourceAccount: &txnbuild.SimpleAccount{AccountID: "GAW77Z6GPWXSODJOMF5L5BMX6VMYGEJRKUNBC2CZ725JTQZORK74HQQD"},
 	}
 
-	txeB64, err := txnbuild.NewSignedTransaction(
+	tx, err := txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount: &txnbuild.SimpleAccount{
 				AccountID: "GAW77Z6GPWXSODJOMF5L5BMX6VMYGEJRKUNBC2CZ725JTQZORK74HQQD",
@@ -228,8 +227,10 @@ func TestRequestHandlerSendValidParams(t *testing.T) {
 			Memo:                 txnbuild.MemoHash(attachHash),
 			Timebounds:           txnbuild.NewInfiniteTimeout(),
 		},
-		network.TestNetworkPassphrase,
 	)
+	require.NoError(t, err)
+
+	txeB64, err := tx.Base64()
 	require.NoError(t, err)
 
 	var txXDR xdr.TransactionEnvelope
@@ -361,7 +362,7 @@ func TestRequestHandlerSendValidParams(t *testing.T) {
 		Path:          []txnbuild.Asset{txnbuild.NativeAsset{}, txnbuild.CreditAsset{Code: "EUR", Issuer: "GAF3PBFQLH57KPECN4GRGHU5NUZ3XXKYYWLOTBIRJMBYHPUBWANIUCZU"}},
 	}
 
-	txeB64, err = txnbuild.NewSignedTransaction(
+	tx, err = txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount: &txnbuild.SimpleAccount{
 				AccountID: "GAW77Z6GPWXSODJOMF5L5BMX6VMYGEJRKUNBC2CZ725JTQZORK74HQQD",
@@ -373,8 +374,10 @@ func TestRequestHandlerSendValidParams(t *testing.T) {
 			Memo:                 txnbuild.MemoHash(attachHash),
 			Timebounds:           txnbuild.NewInfiniteTimeout(),
 		},
-		network.TestNetworkPassphrase,
 	)
+	require.NoError(t, err)
+
+	txeB64, err = tx.Base64()
 	require.NoError(t, err)
 
 	err = xdr.SafeUnmarshalBase64(txeB64, &txXDR)
@@ -512,7 +515,7 @@ func TestRequestHandlerSendValidParams(t *testing.T) {
 		SourceAccount: &txnbuild.SimpleAccount{AccountID: "GAW77Z6GPWXSODJOMF5L5BMX6VMYGEJRKUNBC2CZ725JTQZORK74HQQD"},
 	}
 
-	txeB64, err = txnbuild.NewSignedTransaction(
+	tx, err = txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount: &txnbuild.SimpleAccount{
 				AccountID: "GAW77Z6GPWXSODJOMF5L5BMX6VMYGEJRKUNBC2CZ725JTQZORK74HQQD",
@@ -524,8 +527,10 @@ func TestRequestHandlerSendValidParams(t *testing.T) {
 			Memo:                 txnbuild.MemoHash(attachHash),
 			Timebounds:           txnbuild.NewInfiniteTimeout(),
 		},
-		network.TestNetworkPassphrase,
 	)
+	require.NoError(t, err)
+
+	txeB64, err = tx.Base64()
 	require.NoError(t, err)
 
 	err = xdr.SafeUnmarshalBase64(txeB64, &txXDR)
