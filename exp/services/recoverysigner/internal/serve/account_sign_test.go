@@ -320,7 +320,7 @@ func TestAccountSign_accountAuthenticatedTxSourceAccountValid(t *testing.T) {
 	tx, err := txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount:        &txnbuild.SimpleAccount{AccountID: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4"},
-			IncrementSequenceNum: false,
+			IncrementSequenceNum: true,
 			Operations: []txnbuild.Operation{
 				&txnbuild.SetOptions{
 					Signer: &txnbuild.Signer{
@@ -384,7 +384,7 @@ func TestAccountSign_accountAuthenticatedTxAndOpSourceAccountValid(t *testing.T)
 	tx, err := txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount:        &txnbuild.SimpleAccount{AccountID: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4"},
-			IncrementSequenceNum: false,
+			IncrementSequenceNum: true,
 			Operations: []txnbuild.Operation{
 				&txnbuild.SetOptions{
 					SourceAccount: &txnbuild.SimpleAccount{AccountID: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4"},
@@ -448,7 +448,7 @@ func TestAccountSign_accountAuthenticatedTxSourceAccountInvalid(t *testing.T) {
 	tx, err := txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount:        &txnbuild.SimpleAccount{AccountID: "GA47G3ZQBUR5NF2ZECG774O3QGKFMAW75XLXSCDICFDDV5GKGRFGFSOI"},
-			IncrementSequenceNum: false,
+			IncrementSequenceNum: true,
 			Operations: []txnbuild.Operation{
 				&txnbuild.SetOptions{
 					SourceAccount: &txnbuild.SimpleAccount{AccountID: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4"},
@@ -508,7 +508,7 @@ func TestAccountSign_accountAuthenticatedOpSourceAccountInvalid(t *testing.T) {
 	tx, err := txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount:        &txnbuild.SimpleAccount{AccountID: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4"},
-			IncrementSequenceNum: false,
+			IncrementSequenceNum: true,
 			Operations: []txnbuild.Operation{
 				&txnbuild.SetOptions{
 					SourceAccount: &txnbuild.SimpleAccount{AccountID: "GA47G3ZQBUR5NF2ZECG774O3QGKFMAW75XLXSCDICFDDV5GKGRFGFSOI"},
@@ -569,7 +569,7 @@ func TestAccountSign_accountAuthenticatedTxAndOpSourceAccountInvalid(t *testing.
 	tx, err := txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount:        &txnbuild.SimpleAccount{AccountID: "GA47G3ZQBUR5NF2ZECG774O3QGKFMAW75XLXSCDICFDDV5GKGRFGFSOI"},
-			IncrementSequenceNum: false,
+			IncrementSequenceNum: true,
 			Operations: []txnbuild.Operation{
 				&txnbuild.SetOptions{
 					SourceAccount: &txnbuild.SimpleAccount{AccountID: "GA47G3ZQBUR5NF2ZECG774O3QGKFMAW75XLXSCDICFDDV5GKGRFGFSOI"},
@@ -636,7 +636,7 @@ func TestAccountSign_phoneNumberOwnerAuthenticated(t *testing.T) {
 	tx, err := txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount:        &txnbuild.SimpleAccount{AccountID: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4"},
-			IncrementSequenceNum: false,
+			IncrementSequenceNum: true,
 			Operations: []txnbuild.Operation{
 				&txnbuild.SetOptions{
 					Signer: &txnbuild.Signer{
@@ -706,7 +706,7 @@ func TestAccountSign_phoneNumberOtherAuthenticated(t *testing.T) {
 	tx, err := txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount:        &txnbuild.SimpleAccount{AccountID: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4"},
-			IncrementSequenceNum: false,
+			IncrementSequenceNum: true,
 			Operations: []txnbuild.Operation{
 				&txnbuild.SetOptions{
 					Signer: &txnbuild.Signer{
@@ -776,7 +776,7 @@ func TestAccountSign_emailOwnerAuthenticated(t *testing.T) {
 	tx, err := txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount:        &txnbuild.SimpleAccount{AccountID: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4"},
-			IncrementSequenceNum: false,
+			IncrementSequenceNum: true,
 			Operations: []txnbuild.Operation{
 				&txnbuild.SetOptions{
 					Signer: &txnbuild.Signer{
@@ -846,7 +846,7 @@ func TestAccountSign_emailOtherAuthenticated(t *testing.T) {
 	tx, err := txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount:        &txnbuild.SimpleAccount{AccountID: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4"},
-			IncrementSequenceNum: false,
+			IncrementSequenceNum: true,
 			Operations: []txnbuild.Operation{
 				&txnbuild.SetOptions{
 					Signer: &txnbuild.Signer{
@@ -947,7 +947,7 @@ func TestAccountSign_validContentTypeForm(t *testing.T) {
 	tx, err := txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount:        &txnbuild.SimpleAccount{AccountID: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4"},
-			IncrementSequenceNum: false,
+			IncrementSequenceNum: true,
 			Operations: []txnbuild.Operation{
 				&txnbuild.SetOptions{
 					Signer: &txnbuild.Signer{
