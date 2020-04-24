@@ -24,7 +24,7 @@ type Minion struct {
 	Network           string
 	StartingBalance   string
 	SubmitTransaction func(minion *Minion, hclient *horizonclient.Client, tx string) (*hProtocol.TransactionSuccess, error)
-	BaseFee           uint32
+	BaseFee           int64
 
 	// Uninitialized.
 	forceRefreshSequence bool
@@ -105,15 +105,17 @@ func (minion *Minion) makeTx(destAddress string) (string, error) {
 		SourceAccount: minion.BotAccount,
 		Amount:        minion.StartingBalance,
 	}
-	txn := txnbuild.Transaction{
-		SourceAccount: minion.Account,
-		Operations:    []txnbuild.Operation{&createAccountOp},
-		Network:       minion.Network,
-		Timebounds:    txnbuild.NewInfiniteTimeout(),
-		BaseFee:       minion.BaseFee,
-	}
-
-	txe, err := txn.BuildSignEncode(minion.Keypair, minion.BotKeypair)
+	txe, err := txnbuild.NewSignedTransaction(
+		txnbuild.TransactionParams{
+			SourceAccount:        minion.Account,
+			IncrementSequenceNum: true,
+			Operations:           []txnbuild.Operation{&createAccountOp},
+			BaseFee:              minion.BaseFee,
+			Timebounds:           txnbuild.NewInfiniteTimeout(),
+		},
+		minion.Network,
+		minion.Keypair, minion.BotKeypair,
+	)
 	if err != nil {
 		return "", errors.Wrap(err, "making account payment tx")
 	}

@@ -40,10 +40,10 @@ func (c *Client) sendRequest(hr HorizonRequest, resp interface{}) (err error) {
 
 // checkMemoRequired implements a memo required check as defined in
 // https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0029.md
-func (c *Client) checkMemoRequired(transaction txnbuild.Transaction) error {
+func (c *Client) checkMemoRequired(transaction *txnbuild.Transaction) error {
 	destinations := map[string]bool{}
 
-	for i, op := range transaction.Operations {
+	for i, op := range transaction.Operations() {
 		var destination string
 
 		if err := op.Validate(); err != nil {
@@ -457,7 +457,7 @@ func (c *Client) SubmitTransactionXDR(transactionXdr string) (txSuccess hProtoco
 // If you want to skip this check, use SubmitTransactionWithOptions.
 //
 // See https://www.stellar.org/developers/horizon/reference/endpoints/transactions-create.html
-func (c *Client) SubmitTransaction(transaction txnbuild.Transaction) (txSuccess hProtocol.TransactionSuccess, err error) {
+func (c *Client) SubmitTransaction(transaction *txnbuild.Transaction) (txSuccess hProtocol.TransactionSuccess, err error) {
 	return c.SubmitTransactionWithOptions(transaction, SubmitTxOpts{})
 }
 
@@ -465,10 +465,10 @@ func (c *Client) SubmitTransaction(transaction txnbuild.Transaction) (txSuccess 
 // you to pass SubmitTxOpts. err can be either error object or horizon.Error object.
 //
 // See https://www.stellar.org/developers/horizon/reference/endpoints/transactions-create.html
-func (c *Client) SubmitTransactionWithOptions(transaction txnbuild.Transaction, opts SubmitTxOpts) (txSuccess hProtocol.TransactionSuccess, err error) {
+func (c *Client) SubmitTransactionWithOptions(transaction *txnbuild.Transaction, opts SubmitTxOpts) (txSuccess hProtocol.TransactionSuccess, err error) {
 	// only check if memo is required if skip is false and the transaction
 	// doesn't have a memo.
-	if !opts.SkipMemoRequiredCheck && transaction.Memo == nil {
+	if !opts.SkipMemoRequiredCheck && transaction.Memo() == nil {
 		err = c.checkMemoRequired(transaction)
 		if err != nil {
 			return

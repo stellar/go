@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"github.com/stellar/go/network"
+	"github.com/stellar/go/xdr"
 	"net/http"
 	"net/url"
 	"strings"
@@ -10,7 +12,6 @@ import (
 	"github.com/stellar/go/protocols/compliance"
 	"github.com/stellar/go/protocols/federation"
 	"github.com/stellar/go/support/http/httptest"
-	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -215,28 +216,26 @@ func TestRequestHandlerSendValidParams(t *testing.T) {
 		SourceAccount: &txnbuild.SimpleAccount{AccountID: "GAW77Z6GPWXSODJOMF5L5BMX6VMYGEJRKUNBC2CZ725JTQZORK74HQQD"},
 	}
 
-	tx := txnbuild.Transaction{
-		SourceAccount: &txnbuild.SimpleAccount{AccountID: "GAW77Z6GPWXSODJOMF5L5BMX6VMYGEJRKUNBC2CZ725JTQZORK74HQQD", Sequence: int64(-1)},
-		Operations:    []txnbuild.Operation{txnOp},
-		Timebounds:    txnbuild.NewInfiniteTimeout(),
-		Network:       rhconfig.NetworkPassphrase,
-		Memo:          txnbuild.MemoHash(attachHash),
-	}
-
-	err = tx.Build()
-	require.NoError(t, err)
-
-	err = tx.Sign()
-	require.NoError(t, err)
-
-	txeB64, err := tx.Base64()
+	txeB64, err := txnbuild.NewSignedTransaction(
+		txnbuild.TransactionParams{
+			SourceAccount: &txnbuild.SimpleAccount{
+				AccountID: "GAW77Z6GPWXSODJOMF5L5BMX6VMYGEJRKUNBC2CZ725JTQZORK74HQQD",
+				Sequence:  0,
+			},
+			IncrementSequenceNum: false,
+			Operations:           []txnbuild.Operation{txnOp},
+			BaseFee:              txnbuild.MinBaseFee,
+			Memo:                 txnbuild.MemoHash(attachHash),
+			Timebounds:           txnbuild.NewInfiniteTimeout(),
+		},
+		network.TestNetworkPassphrase,
+	)
 	require.NoError(t, err)
 
 	var txXDR xdr.TransactionEnvelope
 	err = xdr.SafeUnmarshalBase64(txeB64, &txXDR)
 	require.NoError(t, err)
 	txB64, err := xdr.MarshalBase64(txXDR.V0.Tx)
-	require.NoError(t, err)
 
 	authData := compliance.AuthData{
 		Sender:         "alice*stellar.org",
@@ -362,27 +361,25 @@ func TestRequestHandlerSendValidParams(t *testing.T) {
 		Path:          []txnbuild.Asset{txnbuild.NativeAsset{}, txnbuild.CreditAsset{Code: "EUR", Issuer: "GAF3PBFQLH57KPECN4GRGHU5NUZ3XXKYYWLOTBIRJMBYHPUBWANIUCZU"}},
 	}
 
-	tx = txnbuild.Transaction{
-		SourceAccount: &txnbuild.SimpleAccount{AccountID: "GAW77Z6GPWXSODJOMF5L5BMX6VMYGEJRKUNBC2CZ725JTQZORK74HQQD", Sequence: int64(-1)},
-		Operations:    []txnbuild.Operation{pathPaymentOp},
-		Timebounds:    txnbuild.NewInfiniteTimeout(),
-		Network:       rhconfig.NetworkPassphrase,
-		Memo:          txnbuild.MemoHash(attachHash),
-	}
-
-	err = tx.Build()
-	require.NoError(t, err)
-
-	err = tx.Sign()
-	require.NoError(t, err)
-
-	txeB64, err = tx.Base64()
+	txeB64, err = txnbuild.NewSignedTransaction(
+		txnbuild.TransactionParams{
+			SourceAccount: &txnbuild.SimpleAccount{
+				AccountID: "GAW77Z6GPWXSODJOMF5L5BMX6VMYGEJRKUNBC2CZ725JTQZORK74HQQD",
+				Sequence:  0,
+			},
+			IncrementSequenceNum: false,
+			Operations:           []txnbuild.Operation{pathPaymentOp},
+			BaseFee:              txnbuild.MinBaseFee,
+			Memo:                 txnbuild.MemoHash(attachHash),
+			Timebounds:           txnbuild.NewInfiniteTimeout(),
+		},
+		network.TestNetworkPassphrase,
+	)
 	require.NoError(t, err)
 
 	err = xdr.SafeUnmarshalBase64(txeB64, &txXDR)
 	require.NoError(t, err)
 	txB64, err = xdr.MarshalBase64(txXDR.V0.Tx)
-	require.NoError(t, err)
 
 	authData = compliance.AuthData{
 		Sender:         "alice*stellar.org",
@@ -515,27 +512,25 @@ func TestRequestHandlerSendValidParams(t *testing.T) {
 		SourceAccount: &txnbuild.SimpleAccount{AccountID: "GAW77Z6GPWXSODJOMF5L5BMX6VMYGEJRKUNBC2CZ725JTQZORK74HQQD"},
 	}
 
-	tx = txnbuild.Transaction{
-		SourceAccount: &txnbuild.SimpleAccount{AccountID: "GAW77Z6GPWXSODJOMF5L5BMX6VMYGEJRKUNBC2CZ725JTQZORK74HQQD", Sequence: int64(-1)},
-		Operations:    []txnbuild.Operation{txnOp},
-		Timebounds:    txnbuild.NewInfiniteTimeout(),
-		Network:       rhconfig.NetworkPassphrase,
-		Memo:          txnbuild.MemoHash(attachHash),
-	}
-
-	err = tx.Build()
-	require.NoError(t, err)
-
-	err = tx.Sign()
-	require.NoError(t, err)
-
-	txeB64, err = tx.Base64()
+	txeB64, err = txnbuild.NewSignedTransaction(
+		txnbuild.TransactionParams{
+			SourceAccount: &txnbuild.SimpleAccount{
+				AccountID: "GAW77Z6GPWXSODJOMF5L5BMX6VMYGEJRKUNBC2CZ725JTQZORK74HQQD",
+				Sequence:  0,
+			},
+			IncrementSequenceNum: false,
+			Operations:           []txnbuild.Operation{txnOp},
+			BaseFee:              txnbuild.MinBaseFee,
+			Memo:                 txnbuild.MemoHash(attachHash),
+			Timebounds:           txnbuild.NewInfiniteTimeout(),
+		},
+		network.TestNetworkPassphrase,
+	)
 	require.NoError(t, err)
 
 	err = xdr.SafeUnmarshalBase64(txeB64, &txXDR)
 	require.NoError(t, err)
 	txB64, err = xdr.MarshalBase64(txXDR.V0.Tx)
-	require.NoError(t, err)
 
 	authData = compliance.AuthData{
 		Sender:         "alice*stellar.org",

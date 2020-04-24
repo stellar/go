@@ -317,20 +317,22 @@ func TestAccountSign_accountAuthenticatedTxSourceAccountValid(t *testing.T) {
 		NetworkPassphrase: network.TestNetworkPassphrase,
 	}
 
-	tx := txnbuild.Transaction{
-		Network:       network.TestNetworkPassphrase,
-		SourceAccount: &txnbuild.SimpleAccount{AccountID: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4"},
-		Timebounds:    txnbuild.NewTimebounds(0, 1),
-		Operations: []txnbuild.Operation{
-			&txnbuild.SetOptions{
-				Signer: &txnbuild.Signer{
-					Address: "GD7CGJSJ5OBOU5KOP2UQDH3MPY75UTEY27HVV5XPSL2X6DJ2VGTOSXEU",
-					Weight:  20,
+	tx, err := txnbuild.NewTransaction(
+		txnbuild.TransactionParams{
+			SourceAccount:        &txnbuild.SimpleAccount{AccountID: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4"},
+			IncrementSequenceNum: false,
+			Operations: []txnbuild.Operation{
+				&txnbuild.SetOptions{
+					Signer: &txnbuild.Signer{
+						Address: "GD7CGJSJ5OBOU5KOP2UQDH3MPY75UTEY27HVV5XPSL2X6DJ2VGTOSXEU",
+						Weight:  20,
+					},
 				},
 			},
+			BaseFee:    txnbuild.MinBaseFee,
+			Timebounds: txnbuild.NewTimebounds(0, 1),
 		},
-	}
-	err := tx.Build()
+	)
 	require.NoError(t, err)
 	txEnc, err := tx.Base64()
 	require.NoError(t, err)
@@ -379,21 +381,23 @@ func TestAccountSign_accountAuthenticatedTxAndOpSourceAccountValid(t *testing.T)
 		NetworkPassphrase: network.TestNetworkPassphrase,
 	}
 
-	tx := txnbuild.Transaction{
-		Network:       network.TestNetworkPassphrase,
-		SourceAccount: &txnbuild.SimpleAccount{AccountID: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4"},
-		Timebounds:    txnbuild.NewTimebounds(0, 1),
-		Operations: []txnbuild.Operation{
-			&txnbuild.SetOptions{
-				SourceAccount: &txnbuild.SimpleAccount{AccountID: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4"},
-				Signer: &txnbuild.Signer{
-					Address: "GD7CGJSJ5OBOU5KOP2UQDH3MPY75UTEY27HVV5XPSL2X6DJ2VGTOSXEU",
-					Weight:  20,
+	tx, err := txnbuild.NewTransaction(
+		txnbuild.TransactionParams{
+			SourceAccount:        &txnbuild.SimpleAccount{AccountID: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4"},
+			IncrementSequenceNum: false,
+			Operations: []txnbuild.Operation{
+				&txnbuild.SetOptions{
+					SourceAccount: &txnbuild.SimpleAccount{AccountID: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4"},
+					Signer: &txnbuild.Signer{
+						Address: "GD7CGJSJ5OBOU5KOP2UQDH3MPY75UTEY27HVV5XPSL2X6DJ2VGTOSXEU",
+						Weight:  20,
+					},
 				},
 			},
+			BaseFee:    txnbuild.MinBaseFee,
+			Timebounds: txnbuild.NewTimebounds(0, 1),
 		},
-	}
-	err := tx.Build()
+	)
 	require.NoError(t, err)
 	txEnc, err := tx.Base64()
 	require.NoError(t, err)
@@ -441,21 +445,23 @@ func TestAccountSign_accountAuthenticatedTxSourceAccountInvalid(t *testing.T) {
 		NetworkPassphrase: network.TestNetworkPassphrase,
 	}
 
-	tx := txnbuild.Transaction{
-		Network:       network.TestNetworkPassphrase,
-		SourceAccount: &txnbuild.SimpleAccount{AccountID: "GA47G3ZQBUR5NF2ZECG774O3QGKFMAW75XLXSCDICFDDV5GKGRFGFSOI"},
-		Timebounds:    txnbuild.NewTimebounds(0, 1),
-		Operations: []txnbuild.Operation{
-			&txnbuild.SetOptions{
-				SourceAccount: &txnbuild.SimpleAccount{AccountID: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4"},
-				Signer: &txnbuild.Signer{
-					Address: "GD7CGJSJ5OBOU5KOP2UQDH3MPY75UTEY27HVV5XPSL2X6DJ2VGTOSXEU",
-					Weight:  20,
+	tx, err := txnbuild.NewTransaction(
+		txnbuild.TransactionParams{
+			SourceAccount:        &txnbuild.SimpleAccount{AccountID: "GA47G3ZQBUR5NF2ZECG774O3QGKFMAW75XLXSCDICFDDV5GKGRFGFSOI"},
+			IncrementSequenceNum: false,
+			Operations: []txnbuild.Operation{
+				&txnbuild.SetOptions{
+					SourceAccount: &txnbuild.SimpleAccount{AccountID: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4"},
+					Signer: &txnbuild.Signer{
+						Address: "GD7CGJSJ5OBOU5KOP2UQDH3MPY75UTEY27HVV5XPSL2X6DJ2VGTOSXEU",
+						Weight:  20,
+					},
 				},
 			},
+			BaseFee:    txnbuild.MinBaseFee,
+			Timebounds: txnbuild.NewTimebounds(0, 1),
 		},
-	}
-	err := tx.Build()
+	)
 	require.NoError(t, err)
 	txEnc, err := tx.Base64()
 	require.NoError(t, err)
@@ -499,21 +505,23 @@ func TestAccountSign_accountAuthenticatedOpSourceAccountInvalid(t *testing.T) {
 		NetworkPassphrase: network.TestNetworkPassphrase,
 	}
 
-	tx := txnbuild.Transaction{
-		Network:       network.TestNetworkPassphrase,
-		SourceAccount: &txnbuild.SimpleAccount{AccountID: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4"},
-		Timebounds:    txnbuild.NewTimebounds(0, 1),
-		Operations: []txnbuild.Operation{
-			&txnbuild.SetOptions{
-				SourceAccount: &txnbuild.SimpleAccount{AccountID: "GA47G3ZQBUR5NF2ZECG774O3QGKFMAW75XLXSCDICFDDV5GKGRFGFSOI"},
-				Signer: &txnbuild.Signer{
-					Address: "GD7CGJSJ5OBOU5KOP2UQDH3MPY75UTEY27HVV5XPSL2X6DJ2VGTOSXEU",
-					Weight:  20,
+	tx, err := txnbuild.NewTransaction(
+		txnbuild.TransactionParams{
+			SourceAccount:        &txnbuild.SimpleAccount{AccountID: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4"},
+			IncrementSequenceNum: false,
+			Operations: []txnbuild.Operation{
+				&txnbuild.SetOptions{
+					SourceAccount: &txnbuild.SimpleAccount{AccountID: "GA47G3ZQBUR5NF2ZECG774O3QGKFMAW75XLXSCDICFDDV5GKGRFGFSOI"},
+					Signer: &txnbuild.Signer{
+						Address: "GD7CGJSJ5OBOU5KOP2UQDH3MPY75UTEY27HVV5XPSL2X6DJ2VGTOSXEU",
+						Weight:  20,
+					},
 				},
 			},
+			BaseFee:    txnbuild.MinBaseFee,
+			Timebounds: txnbuild.NewTimebounds(0, 1),
 		},
-	}
-	err := tx.Build()
+	)
 	require.NoError(t, err)
 	txEnc, err := tx.Base64()
 	require.NoError(t, err)
@@ -558,21 +566,23 @@ func TestAccountSign_accountAuthenticatedTxAndOpSourceAccountInvalid(t *testing.
 		NetworkPassphrase: network.TestNetworkPassphrase,
 	}
 
-	tx := txnbuild.Transaction{
-		Network:       network.TestNetworkPassphrase,
-		SourceAccount: &txnbuild.SimpleAccount{AccountID: "GA47G3ZQBUR5NF2ZECG774O3QGKFMAW75XLXSCDICFDDV5GKGRFGFSOI"},
-		Timebounds:    txnbuild.NewTimebounds(0, 1),
-		Operations: []txnbuild.Operation{
-			&txnbuild.SetOptions{
-				SourceAccount: &txnbuild.SimpleAccount{AccountID: "GA47G3ZQBUR5NF2ZECG774O3QGKFMAW75XLXSCDICFDDV5GKGRFGFSOI"},
-				Signer: &txnbuild.Signer{
-					Address: "GD7CGJSJ5OBOU5KOP2UQDH3MPY75UTEY27HVV5XPSL2X6DJ2VGTOSXEU",
-					Weight:  20,
+	tx, err := txnbuild.NewTransaction(
+		txnbuild.TransactionParams{
+			SourceAccount:        &txnbuild.SimpleAccount{AccountID: "GA47G3ZQBUR5NF2ZECG774O3QGKFMAW75XLXSCDICFDDV5GKGRFGFSOI"},
+			IncrementSequenceNum: false,
+			Operations: []txnbuild.Operation{
+				&txnbuild.SetOptions{
+					SourceAccount: &txnbuild.SimpleAccount{AccountID: "GA47G3ZQBUR5NF2ZECG774O3QGKFMAW75XLXSCDICFDDV5GKGRFGFSOI"},
+					Signer: &txnbuild.Signer{
+						Address: "GD7CGJSJ5OBOU5KOP2UQDH3MPY75UTEY27HVV5XPSL2X6DJ2VGTOSXEU",
+						Weight:  20,
+					},
 				},
 			},
+			BaseFee:    txnbuild.MinBaseFee,
+			Timebounds: txnbuild.NewTimebounds(0, 1),
 		},
-	}
-	err := tx.Build()
+	)
 	require.NoError(t, err)
 	txEnc, err := tx.Base64()
 	require.NoError(t, err)
@@ -623,20 +633,22 @@ func TestAccountSign_phoneNumberOwnerAuthenticated(t *testing.T) {
 		NetworkPassphrase: network.TestNetworkPassphrase,
 	}
 
-	tx := txnbuild.Transaction{
-		Network:       network.TestNetworkPassphrase,
-		SourceAccount: &txnbuild.SimpleAccount{AccountID: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4"},
-		Timebounds:    txnbuild.NewTimebounds(0, 1),
-		Operations: []txnbuild.Operation{
-			&txnbuild.SetOptions{
-				Signer: &txnbuild.Signer{
-					Address: "GD7CGJSJ5OBOU5KOP2UQDH3MPY75UTEY27HVV5XPSL2X6DJ2VGTOSXEU",
-					Weight:  20,
+	tx, err := txnbuild.NewTransaction(
+		txnbuild.TransactionParams{
+			SourceAccount:        &txnbuild.SimpleAccount{AccountID: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4"},
+			IncrementSequenceNum: false,
+			Operations: []txnbuild.Operation{
+				&txnbuild.SetOptions{
+					Signer: &txnbuild.Signer{
+						Address: "GD7CGJSJ5OBOU5KOP2UQDH3MPY75UTEY27HVV5XPSL2X6DJ2VGTOSXEU",
+						Weight:  20,
+					},
 				},
 			},
+			BaseFee:    txnbuild.MinBaseFee,
+			Timebounds: txnbuild.NewTimebounds(0, 1),
 		},
-	}
-	err := tx.Build()
+	)
 	require.NoError(t, err)
 	txEnc, err := tx.Base64()
 	require.NoError(t, err)
@@ -691,20 +703,22 @@ func TestAccountSign_phoneNumberOtherAuthenticated(t *testing.T) {
 		NetworkPassphrase: network.TestNetworkPassphrase,
 	}
 
-	tx := txnbuild.Transaction{
-		Network:       network.TestNetworkPassphrase,
-		SourceAccount: &txnbuild.SimpleAccount{AccountID: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4"},
-		Timebounds:    txnbuild.NewTimebounds(0, 1),
-		Operations: []txnbuild.Operation{
-			&txnbuild.SetOptions{
-				Signer: &txnbuild.Signer{
-					Address: "GD7CGJSJ5OBOU5KOP2UQDH3MPY75UTEY27HVV5XPSL2X6DJ2VGTOSXEU",
-					Weight:  20,
+	tx, err := txnbuild.NewTransaction(
+		txnbuild.TransactionParams{
+			SourceAccount:        &txnbuild.SimpleAccount{AccountID: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4"},
+			IncrementSequenceNum: false,
+			Operations: []txnbuild.Operation{
+				&txnbuild.SetOptions{
+					Signer: &txnbuild.Signer{
+						Address: "GD7CGJSJ5OBOU5KOP2UQDH3MPY75UTEY27HVV5XPSL2X6DJ2VGTOSXEU",
+						Weight:  20,
+					},
 				},
 			},
+			BaseFee:    txnbuild.MinBaseFee,
+			Timebounds: txnbuild.NewTimebounds(0, 1),
 		},
-	}
-	err := tx.Build()
+	)
 	require.NoError(t, err)
 	txEnc, err := tx.Base64()
 	require.NoError(t, err)
@@ -759,20 +773,22 @@ func TestAccountSign_emailOwnerAuthenticated(t *testing.T) {
 		NetworkPassphrase: network.TestNetworkPassphrase,
 	}
 
-	tx := txnbuild.Transaction{
-		Network:       network.TestNetworkPassphrase,
-		SourceAccount: &txnbuild.SimpleAccount{AccountID: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4"},
-		Timebounds:    txnbuild.NewTimebounds(0, 1),
-		Operations: []txnbuild.Operation{
-			&txnbuild.SetOptions{
-				Signer: &txnbuild.Signer{
-					Address: "GD7CGJSJ5OBOU5KOP2UQDH3MPY75UTEY27HVV5XPSL2X6DJ2VGTOSXEU",
-					Weight:  20,
+	tx, err := txnbuild.NewTransaction(
+		txnbuild.TransactionParams{
+			SourceAccount:        &txnbuild.SimpleAccount{AccountID: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4"},
+			IncrementSequenceNum: false,
+			Operations: []txnbuild.Operation{
+				&txnbuild.SetOptions{
+					Signer: &txnbuild.Signer{
+						Address: "GD7CGJSJ5OBOU5KOP2UQDH3MPY75UTEY27HVV5XPSL2X6DJ2VGTOSXEU",
+						Weight:  20,
+					},
 				},
 			},
+			BaseFee:    txnbuild.MinBaseFee,
+			Timebounds: txnbuild.NewTimebounds(0, 1),
 		},
-	}
-	err := tx.Build()
+	)
 	require.NoError(t, err)
 	txEnc, err := tx.Base64()
 	require.NoError(t, err)
@@ -827,20 +843,22 @@ func TestAccountSign_emailOtherAuthenticated(t *testing.T) {
 		NetworkPassphrase: network.TestNetworkPassphrase,
 	}
 
-	tx := txnbuild.Transaction{
-		Network:       network.TestNetworkPassphrase,
-		SourceAccount: &txnbuild.SimpleAccount{AccountID: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4"},
-		Timebounds:    txnbuild.NewTimebounds(0, 1),
-		Operations: []txnbuild.Operation{
-			&txnbuild.SetOptions{
-				Signer: &txnbuild.Signer{
-					Address: "GD7CGJSJ5OBOU5KOP2UQDH3MPY75UTEY27HVV5XPSL2X6DJ2VGTOSXEU",
-					Weight:  20,
+	tx, err := txnbuild.NewTransaction(
+		txnbuild.TransactionParams{
+			SourceAccount:        &txnbuild.SimpleAccount{AccountID: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4"},
+			IncrementSequenceNum: false,
+			Operations: []txnbuild.Operation{
+				&txnbuild.SetOptions{
+					Signer: &txnbuild.Signer{
+						Address: "GD7CGJSJ5OBOU5KOP2UQDH3MPY75UTEY27HVV5XPSL2X6DJ2VGTOSXEU",
+						Weight:  20,
+					},
 				},
 			},
+			BaseFee:    txnbuild.MinBaseFee,
+			Timebounds: txnbuild.NewTimebounds(0, 1),
 		},
-	}
-	err := tx.Build()
+	)
 	require.NoError(t, err)
 	txEnc, err := tx.Base64()
 	require.NoError(t, err)
@@ -926,20 +944,22 @@ func TestAccountSign_validContentTypeForm(t *testing.T) {
 		NetworkPassphrase: network.TestNetworkPassphrase,
 	}
 
-	tx := txnbuild.Transaction{
-		Network:       network.TestNetworkPassphrase,
-		SourceAccount: &txnbuild.SimpleAccount{AccountID: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4"},
-		Timebounds:    txnbuild.NewTimebounds(0, 1),
-		Operations: []txnbuild.Operation{
-			&txnbuild.SetOptions{
-				Signer: &txnbuild.Signer{
-					Address: "GD7CGJSJ5OBOU5KOP2UQDH3MPY75UTEY27HVV5XPSL2X6DJ2VGTOSXEU",
-					Weight:  20,
+	tx, err := txnbuild.NewTransaction(
+		txnbuild.TransactionParams{
+			SourceAccount:        &txnbuild.SimpleAccount{AccountID: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4"},
+			IncrementSequenceNum: false,
+			Operations: []txnbuild.Operation{
+				&txnbuild.SetOptions{
+					Signer: &txnbuild.Signer{
+						Address: "GD7CGJSJ5OBOU5KOP2UQDH3MPY75UTEY27HVV5XPSL2X6DJ2VGTOSXEU",
+						Weight:  20,
+					},
 				},
 			},
+			BaseFee:    txnbuild.MinBaseFee,
+			Timebounds: txnbuild.NewTimebounds(0, 1),
 		},
-	}
-	err := tx.Build()
+	)
 	require.NoError(t, err)
 	txEnc, err := tx.Base64()
 	require.NoError(t, err)

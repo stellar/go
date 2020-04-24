@@ -26,6 +26,10 @@ func (a Account) IncrementSequenceNumber() (xdr.SequenceNumber, error) {
 	return a.Sequence, nil
 }
 
+func (a Account) GetSequenceNumber() (xdr.SequenceNumber, error) {
+	return a.Sequence, nil
+}
+
 // RefreshSequenceNumber gets an Account's correct in-memory sequence number from Horizon.
 func (a *Account) RefreshSequenceNumber(hclient *horizonclient.Client) error {
 	accountRequest := horizonclient.AccountRequest{AccountID: a.GetAccountID()}

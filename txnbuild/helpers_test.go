@@ -30,16 +30,6 @@ func newKeypair(seed string) *keypair.Full {
 	return myKeypair.(*keypair.Full)
 }
 
-func buildSignEncode(t *testing.T, tx Transaction, kps ...*keypair.Full) string {
-	assert.NoError(t, tx.Build())
-	assert.NoError(t, tx.Sign(kps...))
-
-	txeBase64, err := tx.Base64()
-	assert.NoError(t, err)
-
-	return txeBase64
-}
-
 func check(err error) {
 	if err != nil {
 		panic(err)

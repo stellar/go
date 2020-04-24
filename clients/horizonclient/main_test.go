@@ -136,12 +136,16 @@ func TestCheckMemoRequired(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.desc, func(t *testing.T) {
-			tx := txnbuild.Transaction{
-				SourceAccount: &sourceAccount,
-				Operations:    tc.operations,
-				Timebounds:    txnbuild.NewTimebounds(0, 10),
-				Network:       network.TestNetworkPassphrase,
-			}
+			tx, err := txnbuild.NewTransaction(
+				txnbuild.TransactionParams{
+					SourceAccount:        &sourceAccount,
+					IncrementSequenceNum: true,
+					Operations:           tc.operations,
+					BaseFee:              txnbuild.MinBaseFee,
+					Timebounds:           txnbuild.NewTimebounds(0, 10),
+				},
+			)
+			tt.NoError(err)
 
 			if len(tc.destination) > 0 {
 				hmock.On(
@@ -157,7 +161,7 @@ func TestCheckMemoRequired(t *testing.T) {
 				).ReturnString(404, notFoundResponse)
 			}
 
-			err := client.checkMemoRequired(tx)
+			err = client.checkMemoRequired(tx)
 
 			if len(tc.expected) > 0 {
 				tt.Error(err)
@@ -923,17 +927,18 @@ func TestSubmitTransactionRequest(t *testing.T) {
 		Asset:       txnbuild.NativeAsset{},
 	}
 
-	tx := txnbuild.Transaction{
-		SourceAccount: &sourceAccount,
-		Operations:    []txnbuild.Operation{&payment},
-		Timebounds:    txnbuild.NewTimebounds(0, 10),
-		Network:       network.TestNetworkPassphrase,
-	}
-
-	err := tx.Build()
+	tx, err := txnbuild.NewTransaction(
+		txnbuild.TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: true,
+			Operations:           []txnbuild.Operation{&payment},
+			BaseFee:              txnbuild.MinBaseFee,
+			Timebounds:           txnbuild.NewTimebounds(0, 10),
+		},
+	)
 	assert.NoError(t, err)
 
-	err = tx.Sign(kp)
+	tx, err = tx.Sign(network.TestNetworkPassphrase, kp)
 	assert.NoError(t, err)
 
 	// successful tx with config.memo_required not found
@@ -977,17 +982,18 @@ func TestSubmitTransactionWithOptionsRequest(t *testing.T) {
 		Asset:       txnbuild.NativeAsset{},
 	}
 
-	tx := txnbuild.Transaction{
-		SourceAccount: &sourceAccount,
-		Operations:    []txnbuild.Operation{&payment},
-		Timebounds:    txnbuild.NewTimebounds(0, 10),
-		Network:       network.TestNetworkPassphrase,
-	}
-
-	err := tx.Build()
+	tx, err := txnbuild.NewTransaction(
+		txnbuild.TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: true,
+			Operations:           []txnbuild.Operation{&payment},
+			BaseFee:              txnbuild.MinBaseFee,
+			Timebounds:           txnbuild.NewTimebounds(0, 10),
+		},
+	)
 	assert.NoError(t, err)
 
-	err = tx.Sign(kp)
+	tx, err = tx.Sign(network.TestNetworkPassphrase, kp)
 	assert.NoError(t, err)
 
 	hmock.
@@ -1054,19 +1060,21 @@ func TestSubmitTransactionWithOptionsRequest(t *testing.T) {
 		"https://localhost/transactions?tx=AAAAAAU08yUQ8sHqhY8j9mXWwERfHC%2F3cKFSe%2FspAr0rGtO2AAAAZAAAAAAAAAACAAAAAQAAAAAAAAAAAAAAAAAAAAoAAAABAAAACkhlbGxvV29ybGQAAAAAAAEAAAAAAAAAAQAAAAAFNPMlEPLB6oWPI%2FZl1sBEXxwv93ChUnv7KQK9KxrTtgAAAAAAAAAABfXhAAAAAAAAAAABKxrTtgAAAEDusMdn4dwEhBtYHIxkvdpPbfVa7CM6HG9vRzWLe8%2FMCtQIT4d0IgleroyT%2FF2EmPpAQQmuDXm4DGR7c%2FeTa9YL",
 	).ReturnString(200, txSuccess)
 
-	tx = txnbuild.Transaction{
-		Memo:          txnbuild.MemoText("HelloWorld"),
-		SourceAccount: &sourceAccount,
-		Operations:    []txnbuild.Operation{&payment},
-		Timebounds:    txnbuild.NewTimebounds(0, 10),
-		Network:       network.TestNetworkPassphrase,
-	}
-
-	err = tx.Build()
+	tx, err = txnbuild.NewTransaction(
+		txnbuild.TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: true,
+			Operations:           []txnbuild.Operation{&payment},
+			BaseFee:              txnbuild.MinBaseFee,
+			Memo:                 txnbuild.MemoText("HelloWorld"),
+			Timebounds:           txnbuild.NewTimebounds(0, 10),
+		},
+	)
 	assert.NoError(t, err)
 
-	err = tx.Sign(kp)
+	tx, err = tx.Sign(network.TestNetworkPassphrase, kp)
 	assert.NoError(t, err)
+
 	_, err = client.SubmitTransactionWithOptions(tx, SubmitTxOpts{SkipMemoRequiredCheck: false})
 	assert.NoError(t, err)
 }

@@ -18,14 +18,17 @@ func ExampleInflation() {
 
 	op := Inflation{}
 
-	tx := Transaction{
-		SourceAccount: &sourceAccount,
-		Operations:    []Operation{&op},
-		Timebounds:    NewInfiniteTimeout(), // Use a real timeout in production!
-		Network:       network.TestNetworkPassphrase,
-	}
-
-	txe, err := tx.BuildSignEncode(kp.(*keypair.Full))
+	txe, err := NewSignedTransaction(
+		TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&op},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(), // Use a real timeout in production!
+		},
+		network.TestNetworkPassphrase,
+		kp.(*keypair.Full),
+	)
 	check(err)
 	fmt.Println(txe)
 
@@ -44,14 +47,17 @@ func ExampleCreateAccount() {
 		Amount:      "10",
 	}
 
-	tx := Transaction{
-		SourceAccount: &sourceAccount,
-		Operations:    []Operation{&op},
-		Timebounds:    NewInfiniteTimeout(), // Use a real timeout in production!
-		Network:       network.TestNetworkPassphrase,
-	}
-
-	txe, err := tx.BuildSignEncode(kp.(*keypair.Full))
+	txe, err := NewSignedTransaction(
+		TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&op},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(), // Use a real timeout in production!
+		},
+		network.TestNetworkPassphrase,
+		kp.(*keypair.Full),
+	)
 	check(err)
 	fmt.Println(txe)
 
@@ -71,14 +77,17 @@ func ExamplePayment() {
 		Asset:       NativeAsset{},
 	}
 
-	tx := Transaction{
-		SourceAccount: &sourceAccount,
-		Operations:    []Operation{&op},
-		Timebounds:    NewInfiniteTimeout(), // Use a real timeout in production!
-		Network:       network.TestNetworkPassphrase,
-	}
-
-	txe, err := tx.BuildSignEncode(kp.(*keypair.Full))
+	txe, err := NewSignedTransaction(
+		TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&op},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(), // Use a real timeout in production!
+		},
+		network.TestNetworkPassphrase,
+		kp.(*keypair.Full),
+	)
 	check(err)
 	fmt.Println(txe)
 
@@ -108,15 +117,17 @@ func ExamplePayment_setBaseFee() {
 	feeStats, err := client.FeeStats()
 	check(err)
 
-	tx := Transaction{
-		SourceAccount: &sourceAccount,
-		Operations:    []Operation{&op1, &op2},
-		Timebounds:    NewInfiniteTimeout(), // Use a real timeout in production!
-		Network:       network.TestNetworkPassphrase,
-		BaseFee:       uint32(feeStats.MaxFee.P50),
-	}
-
-	txe, err := tx.BuildSignEncode(kp.(*keypair.Full))
+	txe, err := NewSignedTransaction(
+		TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&op1, &op2},
+			BaseFee:              feeStats.MaxFee.P50,
+			Timebounds:           NewInfiniteTimeout(), // Use a real timeout in production!
+		},
+		network.TestNetworkPassphrase,
+		kp.(*keypair.Full),
+	)
 	check(err)
 	fmt.Println(txe)
 
@@ -134,14 +145,17 @@ func ExampleBumpSequence() {
 		BumpTo: 9606132444168300,
 	}
 
-	tx := Transaction{
-		SourceAccount: &sourceAccount,
-		Operations:    []Operation{&op},
-		Timebounds:    NewInfiniteTimeout(), // Use a real timeout in production!
-		Network:       network.TestNetworkPassphrase,
-	}
-
-	txe, err := tx.BuildSignEncode(kp.(*keypair.Full))
+	txe, err := NewSignedTransaction(
+		TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&op},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(), // Use a real timeout in production!
+		},
+		network.TestNetworkPassphrase,
+		kp.(*keypair.Full),
+	)
 	check(err)
 	fmt.Println(txe)
 
@@ -159,14 +173,17 @@ func ExampleAccountMerge() {
 		Destination: "GCCOBXW2XQNUSL467IEILE6MMCNRR66SSVL4YQADUNYYNUVREF3FIV2Z",
 	}
 
-	tx := Transaction{
-		SourceAccount: &sourceAccount,
-		Operations:    []Operation{&op},
-		Timebounds:    NewInfiniteTimeout(), // Use a real timeout in production!
-		Network:       network.TestNetworkPassphrase,
-	}
-
-	txe, err := tx.BuildSignEncode(kp.(*keypair.Full))
+	txe, err := NewSignedTransaction(
+		TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&op},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(), // Use a real timeout in production!
+		},
+		network.TestNetworkPassphrase,
+		kp.(*keypair.Full),
+	)
 	check(err)
 	fmt.Println(txe)
 
@@ -185,14 +202,17 @@ func ExampleManageData() {
 		Value: []byte("Apple"),
 	}
 
-	tx := Transaction{
-		SourceAccount: &sourceAccount,
-		Operations:    []Operation{&op},
-		Timebounds:    NewInfiniteTimeout(), // Use a real timeout in production!
-		Network:       network.TestNetworkPassphrase,
-	}
-
-	txe, err := tx.BuildSignEncode(kp.(*keypair.Full))
+	txe, err := NewSignedTransaction(
+		TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&op},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(), // Use a real timeout in production!
+		},
+		network.TestNetworkPassphrase,
+		kp.(*keypair.Full),
+	)
 	check(err)
 	fmt.Println(txe)
 
@@ -210,14 +230,17 @@ func ExampleManageData_removeDataEntry() {
 		Name: "Fruit preference",
 	}
 
-	tx := Transaction{
-		SourceAccount: &sourceAccount,
-		Operations:    []Operation{&op},
-		Timebounds:    NewInfiniteTimeout(), // Use a real timeout in production!
-		Network:       network.TestNetworkPassphrase,
-	}
-
-	txe, err := tx.BuildSignEncode(kp.(*keypair.Full))
+	txe, err := NewSignedTransaction(
+		TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&op},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(), // Use a real timeout in production!
+		},
+		network.TestNetworkPassphrase,
+		kp.(*keypair.Full),
+	)
 	check(err)
 	fmt.Println(txe)
 
@@ -243,14 +266,17 @@ func ExampleSetOptions() {
 		Signer:               &Signer{Address: "GCCOBXW2XQNUSL467IEILE6MMCNRR66SSVL4YQADUNYYNUVREF3FIV2Z", Weight: Threshold(4)},
 	}
 
-	tx := Transaction{
-		SourceAccount: &sourceAccount,
-		Operations:    []Operation{&op},
-		Timebounds:    NewInfiniteTimeout(), // Use a real timeout in production!
-		Network:       network.TestNetworkPassphrase,
-	}
-
-	txe, err := tx.BuildSignEncode(kp.(*keypair.Full))
+	txe, err := NewSignedTransaction(
+		TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&op},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(), // Use a real timeout in production!
+		},
+		network.TestNetworkPassphrase,
+		kp.(*keypair.Full),
+	)
 	check(err)
 	fmt.Println(txe)
 
@@ -269,14 +295,17 @@ func ExampleChangeTrust() {
 		Limit: "10",
 	}
 
-	tx := Transaction{
-		SourceAccount: &sourceAccount,
-		Operations:    []Operation{&op},
-		Timebounds:    NewInfiniteTimeout(), // Use a real timeout in production!
-		Network:       network.TestNetworkPassphrase,
-	}
-
-	txe, err := tx.BuildSignEncode(kp.(*keypair.Full))
+	txe, err := NewSignedTransaction(
+		TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&op},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(), // Use a real timeout in production!
+		},
+		network.TestNetworkPassphrase,
+		kp.(*keypair.Full),
+	)
 	check(err)
 	fmt.Println(txe)
 
@@ -292,14 +321,17 @@ func ExampleChangeTrust_removeTrustline() {
 
 	op := RemoveTrustlineOp(CreditAsset{"ABCD", "GCCOBXW2XQNUSL467IEILE6MMCNRR66SSVL4YQADUNYYNUVREF3FIV2Z"})
 
-	tx := Transaction{
-		SourceAccount: &sourceAccount,
-		Operations:    []Operation{&op},
-		Timebounds:    NewInfiniteTimeout(), // Use a real timeout in production!
-		Network:       network.TestNetworkPassphrase,
-	}
-
-	txe, err := tx.BuildSignEncode(kp.(*keypair.Full))
+	txe, err := NewSignedTransaction(
+		TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&op},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(), // Use a real timeout in production!
+		},
+		network.TestNetworkPassphrase,
+		kp.(*keypair.Full),
+	)
 	check(err)
 	fmt.Println(txe)
 
@@ -319,14 +351,17 @@ func ExampleAllowTrust() {
 		Authorize: true,
 	}
 
-	tx := Transaction{
-		SourceAccount: &sourceAccount,
-		Operations:    []Operation{&op},
-		Timebounds:    NewInfiniteTimeout(), // Use a real timeout in production!
-		Network:       network.TestNetworkPassphrase,
-	}
-
-	txe, err := tx.BuildSignEncode(kp.(*keypair.Full))
+	txe, err := NewSignedTransaction(
+		TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&op},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(), // Use a real timeout in production!
+		},
+		network.TestNetworkPassphrase,
+		kp.(*keypair.Full),
+	)
 	check(err)
 	fmt.Println(txe)
 
@@ -347,14 +382,17 @@ func ExampleManageSellOffer() {
 	op, err := CreateOfferOp(selling, buying, sellAmount, price)
 	check(err)
 
-	tx := Transaction{
-		SourceAccount: &sourceAccount,
-		Operations:    []Operation{&op},
-		Timebounds:    NewInfiniteTimeout(), // Use a real timeout in production!
-		Network:       network.TestNetworkPassphrase,
-	}
-
-	txe, err := tx.BuildSignEncode(kp.(*keypair.Full))
+	txe, err := NewSignedTransaction(
+		TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&op},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(), // Use a real timeout in production!
+		},
+		network.TestNetworkPassphrase,
+		kp.(*keypair.Full),
+	)
 	check(err)
 	fmt.Println(txe)
 
@@ -372,14 +410,17 @@ func ExampleManageSellOffer_deleteOffer() {
 	op, err := DeleteOfferOp(offerID)
 	check(err)
 
-	tx := Transaction{
-		SourceAccount: &sourceAccount,
-		Operations:    []Operation{&op},
-		Timebounds:    NewInfiniteTimeout(), // Use a real timeout in production!
-		Network:       network.TestNetworkPassphrase,
-	}
-
-	txe, err := tx.BuildSignEncode(kp.(*keypair.Full))
+	txe, err := NewSignedTransaction(
+		TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&op},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(), // Use a real timeout in production!
+		},
+		network.TestNetworkPassphrase,
+		kp.(*keypair.Full),
+	)
 	check(err)
 	fmt.Println(txe)
 
@@ -401,14 +442,17 @@ func ExampleManageSellOffer_updateOffer() {
 	op, err := UpdateOfferOp(selling, buying, sellAmount, price, offerID)
 	check(err)
 
-	tx := Transaction{
-		SourceAccount: &sourceAccount,
-		Operations:    []Operation{&op},
-		Timebounds:    NewInfiniteTimeout(), // Use a real timeout in production!
-		Network:       network.TestNetworkPassphrase,
-	}
-
-	txe, err := tx.BuildSignEncode(kp.(*keypair.Full))
+	txe, err := NewSignedTransaction(
+		TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&op},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(), // Use a real timeout in production!
+		},
+		network.TestNetworkPassphrase,
+		kp.(*keypair.Full),
+	)
 	check(err)
 	fmt.Println(txe)
 
@@ -429,14 +473,17 @@ func ExampleCreatePassiveSellOffer() {
 		Price:   "1.0",
 	}
 
-	tx := Transaction{
-		SourceAccount: &sourceAccount,
-		Operations:    []Operation{&op},
-		Timebounds:    NewInfiniteTimeout(), // Use a real timeout in production!
-		Network:       network.TestNetworkPassphrase,
-	}
-
-	txe, err := tx.BuildSignEncode(kp.(*keypair.Full))
+	txe, err := NewSignedTransaction(
+		TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&op},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(), // Use a real timeout in production!
+		},
+		network.TestNetworkPassphrase,
+		kp.(*keypair.Full),
+	)
 	check(err)
 	fmt.Println(txe)
 
@@ -460,14 +507,17 @@ func ExamplePathPayment() {
 		Path:        []Asset{abcdAsset},
 	}
 
-	tx := Transaction{
-		SourceAccount: &sourceAccount,
-		Operations:    []Operation{&op},
-		Timebounds:    NewInfiniteTimeout(), // Use a real timeout in production!
-		Network:       network.TestNetworkPassphrase,
-	}
-
-	txe, err := tx.BuildSignEncode(kp.(*keypair.Full))
+	txe, err := NewSignedTransaction(
+		TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&op},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(), // Use a real timeout in production!
+		},
+		network.TestNetworkPassphrase,
+		kp.(*keypair.Full),
+	)
 	check(err)
 	fmt.Println(txe)
 
@@ -491,14 +541,17 @@ func ExamplePathPaymentStrictReceive() {
 		Path:        []Asset{abcdAsset},
 	}
 
-	tx := Transaction{
-		SourceAccount: &sourceAccount,
-		Operations:    []Operation{&op},
-		Timebounds:    NewInfiniteTimeout(), // Use a real timeout in production!
-		Network:       network.TestNetworkPassphrase,
-	}
-
-	txe, err := tx.BuildSignEncode(kp.(*keypair.Full))
+	txe, err := NewSignedTransaction(
+		TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&op},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(), // Use a real timeout in production!
+		},
+		network.TestNetworkPassphrase,
+		kp.(*keypair.Full),
+	)
 	check(err)
 	fmt.Println(txe)
 
@@ -522,14 +575,17 @@ func ExamplePathPaymentStrictSend() {
 		Path:        []Asset{abcdAsset},
 	}
 
-	tx := Transaction{
-		SourceAccount: &sourceAccount,
-		Operations:    []Operation{&op},
-		Timebounds:    NewInfiniteTimeout(), // Use a real timeout in production!
-		Network:       network.TestNetworkPassphrase,
-	}
-
-	txe, err := tx.BuildSignEncode(kp.(*keypair.Full))
+	txe, err := NewSignedTransaction(
+		TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&op},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(), // Use a real timeout in production!
+		},
+		network.TestNetworkPassphrase,
+		kp.(*keypair.Full),
+	)
 	check(err)
 	fmt.Println(txe)
 
@@ -551,14 +607,17 @@ func ExampleManageBuyOffer() {
 		OfferID: 0,
 	}
 
-	tx := Transaction{
-		SourceAccount: &sourceAccount,
-		Operations:    []Operation{&buyOffer},
-		Timebounds:    NewInfiniteTimeout(),
-		Network:       network.TestNetworkPassphrase,
-	}
-
-	txe, err := tx.BuildSignEncode(kp.(*keypair.Full))
+	txe, err := NewSignedTransaction(
+		TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&buyOffer},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(), // Use a real timeout in production!
+		},
+		network.TestNetworkPassphrase,
+		kp.(*keypair.Full),
+	)
 	check(err)
 	fmt.Println(txe)
 

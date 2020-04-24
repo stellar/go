@@ -207,15 +207,21 @@ func bumpSequence(source *hProtocol.Account, seqNum int64, signer Account) (stri
 		BumpTo: seqNum,
 	}
 
-	tx := txnbuild.Transaction{
-		SourceAccount: source,
-		Operations:    []txnbuild.Operation{&bumpSequenceOp},
-		Timebounds:    txnbuild.NewTimeout(300),
-		Network:       network.TestNetworkPassphrase,
+	txeBase64, err := txnbuild.NewSignedTransaction(
+		txnbuild.TransactionParams{
+			SourceAccount:        source,
+			IncrementSequenceNum: false,
+			Operations:           []txnbuild.Operation{&bumpSequenceOp},
+			BaseFee:              txnbuild.MinBaseFee,
+			Timebounds:           txnbuild.NewTimeout(300),
+		},
+		network.TestNetworkPassphrase,
+		signer.Keypair,
+	)
+	if err != nil {
+		return txeBase64, errors.Wrap(err, "couldn't serialise transaction")
 	}
-
-	txeBase64, err := tx.BuildSignEncode(signer.Keypair)
-	return txeBase64, errors.Wrap(err, "couldn't serialise transaction")
+	return txeBase64, nil
 }
 
 func createAccount(source *hProtocol.Account, dest string, signer Account) (string, error) {
@@ -224,15 +230,21 @@ func createAccount(source *hProtocol.Account, dest string, signer Account) (stri
 		Amount:      "100",
 	}
 
-	tx := txnbuild.Transaction{
-		SourceAccount: source,
-		Operations:    []txnbuild.Operation{&createAccountOp},
-		Timebounds:    txnbuild.NewTimeout(300),
-		Network:       network.TestNetworkPassphrase,
+	txeBase64, err := txnbuild.NewSignedTransaction(
+		txnbuild.TransactionParams{
+			SourceAccount:        source,
+			IncrementSequenceNum: false,
+			Operations:           []txnbuild.Operation{&createAccountOp},
+			BaseFee:              txnbuild.MinBaseFee,
+			Timebounds:           txnbuild.NewTimeout(300),
+		},
+		network.TestNetworkPassphrase,
+		signer.Keypair,
+	)
+	if err != nil {
+		return txeBase64, errors.Wrap(err, "couldn't serialise transaction")
 	}
-
-	txeBase64, err := tx.BuildSignEncode(signer.Keypair)
-	return txeBase64, errors.Wrap(err, "couldn't serialise transaction")
+	return txeBase64, nil
 }
 
 func deleteData(source *hProtocol.Account, dataKey string, signer Account) (string, error) {
@@ -240,15 +252,21 @@ func deleteData(source *hProtocol.Account, dataKey string, signer Account) (stri
 		Name: dataKey,
 	}
 
-	tx := txnbuild.Transaction{
-		SourceAccount: source,
-		Operations:    []txnbuild.Operation{&manageDataOp},
-		Timebounds:    txnbuild.NewTimeout(300),
-		Network:       network.TestNetworkPassphrase,
+	txeBase64, err := txnbuild.NewSignedTransaction(
+		txnbuild.TransactionParams{
+			SourceAccount:        source,
+			IncrementSequenceNum: false,
+			Operations:           []txnbuild.Operation{&manageDataOp},
+			BaseFee:              txnbuild.MinBaseFee,
+			Timebounds:           txnbuild.NewTimeout(300),
+		},
+		network.TestNetworkPassphrase,
+		signer.Keypair,
+	)
+	if err != nil {
+		return txeBase64, errors.Wrap(err, "couldn't serialise transaction")
 	}
-
-	txeBase64, err := tx.BuildSignEncode(signer.Keypair)
-	return txeBase64, errors.Wrap(err, "couldn't serialise transaction")
+	return txeBase64, nil
 }
 
 func payment(source *hProtocol.Account, dest, amount string, asset txnbuild.Asset, signer Account) (string, error) {
@@ -258,29 +276,41 @@ func payment(source *hProtocol.Account, dest, amount string, asset txnbuild.Asse
 		Asset:       asset,
 	}
 
-	tx := txnbuild.Transaction{
-		SourceAccount: source,
-		Operations:    []txnbuild.Operation{&paymentOp},
-		Timebounds:    txnbuild.NewTimeout(300),
-		Network:       network.TestNetworkPassphrase,
+	txeBase64, err := txnbuild.NewSignedTransaction(
+		txnbuild.TransactionParams{
+			SourceAccount:        source,
+			IncrementSequenceNum: false,
+			Operations:           []txnbuild.Operation{&paymentOp},
+			BaseFee:              txnbuild.MinBaseFee,
+			Timebounds:           txnbuild.NewTimeout(300),
+		},
+		network.TestNetworkPassphrase,
+		signer.Keypair,
+	)
+	if err != nil {
+		return txeBase64, errors.Wrap(err, "couldn't serialise transaction")
 	}
-
-	txeBase64, err := tx.BuildSignEncode(signer.Keypair)
-	return txeBase64, errors.Wrap(err, "couldn't serialise transaction")
+	return txeBase64, nil
 }
 
 func deleteTrustline(source *hProtocol.Account, asset txnbuild.Asset, signer Account) (string, error) {
 	deleteTrustline := txnbuild.RemoveTrustlineOp(asset)
 
-	tx := txnbuild.Transaction{
-		SourceAccount: source,
-		Operations:    []txnbuild.Operation{&deleteTrustline},
-		Timebounds:    txnbuild.NewTimeout(300),
-		Network:       network.TestNetworkPassphrase,
+	txeBase64, err := txnbuild.NewSignedTransaction(
+		txnbuild.TransactionParams{
+			SourceAccount:        source,
+			IncrementSequenceNum: false,
+			Operations:           []txnbuild.Operation{&deleteTrustline},
+			BaseFee:              txnbuild.MinBaseFee,
+			Timebounds:           txnbuild.NewTimeout(300),
+		},
+		network.TestNetworkPassphrase,
+		signer.Keypair,
+	)
+	if err != nil {
+		return txeBase64, errors.Wrap(err, "couldn't serialise transaction")
 	}
-
-	txeBase64, err := tx.BuildSignEncode(signer.Keypair)
-	return txeBase64, errors.Wrap(err, "couldn't serialise transaction")
+	return txeBase64, nil
 }
 
 func deleteOffer(source *hProtocol.Account, offerID int64, signer Account) (string, error) {
@@ -289,15 +319,21 @@ func deleteOffer(source *hProtocol.Account, offerID int64, signer Account) (stri
 		return "", errors.Wrap(err, "building offer")
 	}
 
-	tx := txnbuild.Transaction{
-		SourceAccount: source,
-		Operations:    []txnbuild.Operation{&deleteOffer},
-		Timebounds:    txnbuild.NewTimeout(300),
-		Network:       network.TestNetworkPassphrase,
+	txeBase64, err := txnbuild.NewSignedTransaction(
+		txnbuild.TransactionParams{
+			SourceAccount:        source,
+			IncrementSequenceNum: false,
+			Operations:           []txnbuild.Operation{&deleteOffer},
+			BaseFee:              txnbuild.MinBaseFee,
+			Timebounds:           txnbuild.NewTimeout(300),
+		},
+		network.TestNetworkPassphrase,
+		signer.Keypair,
+	)
+	if err != nil {
+		return txeBase64, errors.Wrap(err, "couldn't serialise transaction")
 	}
-
-	txeBase64, err := tx.BuildSignEncode(signer.Keypair)
-	return txeBase64, errors.Wrap(err, "couldn't serialise transaction")
+	return txeBase64, nil
 }
 
 func mergeAccount(source *hProtocol.Account, destAddress string, signer Account) (string, error) {
@@ -305,15 +341,21 @@ func mergeAccount(source *hProtocol.Account, destAddress string, signer Account)
 		Destination: destAddress,
 	}
 
-	tx := txnbuild.Transaction{
-		SourceAccount: source,
-		Operations:    []txnbuild.Operation{&accountMerge},
-		Timebounds:    txnbuild.NewTimeout(300),
-		Network:       network.TestNetworkPassphrase,
+	txeBase64, err := txnbuild.NewSignedTransaction(
+		txnbuild.TransactionParams{
+			SourceAccount:        source,
+			IncrementSequenceNum: false,
+			Operations:           []txnbuild.Operation{&accountMerge},
+			BaseFee:              txnbuild.MinBaseFee,
+			Timebounds:           txnbuild.NewTimeout(300),
+		},
+		network.TestNetworkPassphrase,
+		signer.Keypair,
+	)
+	if err != nil {
+		return txeBase64, errors.Wrap(err, "couldn't serialise transaction")
 	}
-
-	txeBase64, err := tx.BuildSignEncode(signer.Keypair)
-	return txeBase64, errors.Wrap(err, "couldn't serialise transaction")
+	return txeBase64, nil
 }
 
 // createKeypair constructs a new random keypair, and returns it in a DemoAccount.

@@ -206,15 +206,16 @@ func (ts *TransactionSubmitter) SubmitTransaction(paymentID *string, seed string
 		return hProtocol.TransactionSuccess{}, errors.Wrap(err, "Error loading an account")
 	}
 
-	tx := txnbuild.Transaction{
-		SourceAccount: &txnbuild.SimpleAccount{AccountID: account.Keypair.Address(), Sequence: int64(account.SequenceNumber)},
-		Operations:    operation,
-		Timebounds:    txnbuild.NewInfiniteTimeout(),
-		Network:       ts.Network,
-		Memo:          memo,
-	}
-
-	err = tx.Build()
+	tx, err := txnbuild.NewTransaction(
+		txnbuild.TransactionParams{
+			SourceAccount:        &txnbuild.SimpleAccount{AccountID: account.Keypair.Address(), Sequence: int64(account.SequenceNumber)},
+			IncrementSequenceNum: true,
+			Operations:           operation,
+			BaseFee:              txnbuild.MinBaseFee,
+			Memo:                 memo,
+			Timebounds:           txnbuild.NewInfiniteTimeout(),
+		},
+	)
 	if err != nil {
 		ts.log.Error("Unable to build transaction")
 		return hProtocol.TransactionSuccess{}, errors.Wrap(err, "unable to build transaction")
@@ -226,7 +227,7 @@ func (ts *TransactionSubmitter) SubmitTransaction(paymentID *string, seed string
 		return hProtocol.TransactionSuccess{}, errors.Wrap(err, "unable to convert seed to keypair")
 	}
 
-	err = tx.Sign(kp.(*keypair.Full))
+	tx, err = tx.Sign(ts.Network, kp.(*keypair.Full))
 	if err != nil {
 		ts.log.Error("Unable to sign transaction")
 		return hProtocol.TransactionSuccess{}, errors.Wrap(err, "unable to sign transaction")
@@ -238,13 +239,13 @@ func (ts *TransactionSubmitter) SubmitTransaction(paymentID *string, seed string
 		return hProtocol.TransactionSuccess{}, errors.Wrap(err, "unable to encode transaction")
 	}
 
-	txHashBytes, err := tx.Hash()
+	txHashBytes, err := tx.Hash(ts.Network)
 	if err != nil {
 		ts.log.Error("Unable to get transaction hash")
 		return hProtocol.TransactionSuccess{}, errors.Wrap(err, "unable to get transaction hash")
 	}
 
-	return ts.SubmitAndSave(paymentID, tx.SourceAccount.GetAccountID(), txe, hex.EncodeToString(txHashBytes[:]))
+	return ts.SubmitAndSave(paymentID, tx.SourceAccount().AccountID, txe, hex.EncodeToString(txHashBytes[:]))
 }
 
 // SubmitAndSave sumbits a transaction to horizon and saves the details in the bridge server database.

@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"github.com/stellar/go/txnbuild"
 	"sync"
 	"testing"
 
@@ -43,6 +44,7 @@ func TestFriendbot_Pay(t *testing.T) {
 		Network:           "Test SDF Network ; September 2015",
 		StartingBalance:   "10000.00",
 		SubmitTransaction: mockSubmitTransaction,
+		BaseFee:           txnbuild.MinBaseFee,
 	}
 	fb := &Bot{Minions: []Minion{minion}}
 

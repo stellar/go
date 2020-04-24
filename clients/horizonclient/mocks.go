@@ -100,13 +100,13 @@ func (m *MockClient) SubmitTransactionXDR(transactionXdr string) (hProtocol.Tran
 }
 
 // SubmitTransaction is a mocking method
-func (m *MockClient) SubmitTransaction(transaction txnbuild.Transaction) (hProtocol.TransactionSuccess, error) {
+func (m *MockClient) SubmitTransaction(transaction *txnbuild.Transaction) (hProtocol.TransactionSuccess, error) {
 	a := m.Called(transaction)
 	return a.Get(0).(hProtocol.TransactionSuccess), a.Error(1)
 }
 
 // SubmitTransactionWithOptions is a mocking method
-func (m *MockClient) SubmitTransactionWithOptions(transaction txnbuild.Transaction, opts SubmitTxOpts) (hProtocol.TransactionSuccess, error) {
+func (m *MockClient) SubmitTransactionWithOptions(transaction *txnbuild.Transaction, opts SubmitTxOpts) (hProtocol.TransactionSuccess, error) {
 	a := m.Called(transaction, opts)
 	return a.Get(0).(hProtocol.TransactionSuccess), a.Error(1)
 }

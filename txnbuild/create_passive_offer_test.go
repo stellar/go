@@ -3,7 +3,6 @@ package txnbuild
 import (
 	"testing"
 
-	"github.com/stellar/go/network"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -18,14 +17,15 @@ func TestCreatePassiveSellOfferValidateBuyingAsset(t *testing.T) {
 		Price:   "1.0",
 	}
 
-	tx := Transaction{
-		SourceAccount: &sourceAccount,
-		Operations:    []Operation{&createPassiveOffer},
-		Timebounds:    NewInfiniteTimeout(),
-		Network:       network.TestNetworkPassphrase,
-	}
-
-	err := tx.Build()
+	_, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: false,
+			Operations:           []Operation{&createPassiveOffer},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(),
+		},
+	)
 	if assert.Error(t, err) {
 		expected := "validation failed for *txnbuild.CreatePassiveSellOffer operation: Field: Buying, Error: asset issuer: public key is undefined"
 		assert.Contains(t, err.Error(), expected)
@@ -44,14 +44,15 @@ func TestCreatePassiveSellOfferValidateSellingAsset(t *testing.T) {
 		Price:   "1.0",
 	}
 
-	tx := Transaction{
-		SourceAccount: &sourceAccount,
-		Operations:    []Operation{&createPassiveOffer},
-		Timebounds:    NewInfiniteTimeout(),
-		Network:       network.TestNetworkPassphrase,
-	}
-
-	err := tx.Build()
+	_, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: false,
+			Operations:           []Operation{&createPassiveOffer},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(),
+		},
+	)
 	if assert.Error(t, err) {
 		expected := `validation failed for *txnbuild.CreatePassiveSellOffer operation: Field: Selling, Error: asset code length must be between 1 and 12 characters`
 		assert.Contains(t, err.Error(), expected)
@@ -70,14 +71,15 @@ func TestCreatePassiveSellOfferValidateAmount(t *testing.T) {
 		Price:   "1.0",
 	}
 
-	tx := Transaction{
-		SourceAccount: &sourceAccount,
-		Operations:    []Operation{&createPassiveOffer},
-		Timebounds:    NewInfiniteTimeout(),
-		Network:       network.TestNetworkPassphrase,
-	}
-
-	err := tx.Build()
+	_, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: false,
+			Operations:           []Operation{&createPassiveOffer},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(),
+		},
+	)
 	if assert.Error(t, err) {
 		expected := `validation failed for *txnbuild.CreatePassiveSellOffer operation: Field: Amount, Error: amount can not be negative`
 		assert.Contains(t, err.Error(), expected)
@@ -96,14 +98,15 @@ func TestCreatePassiveSellOfferValidatePrice(t *testing.T) {
 		Price:   "-1.0",
 	}
 
-	tx := Transaction{
-		SourceAccount: &sourceAccount,
-		Operations:    []Operation{&createPassiveOffer},
-		Timebounds:    NewInfiniteTimeout(),
-		Network:       network.TestNetworkPassphrase,
-	}
-
-	err := tx.Build()
+	_, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: false,
+			Operations:           []Operation{&createPassiveOffer},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(),
+		},
+	)
 	if assert.Error(t, err) {
 		expected := `validation failed for *txnbuild.CreatePassiveSellOffer operation: Field: Price, Error: amount can not be negative`
 		assert.Contains(t, err.Error(), expected)

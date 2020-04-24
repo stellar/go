@@ -57,7 +57,7 @@ func ExampleVerifyChallengeTxThreshold() {
 			fmt.Println("Error: challenge tx is not for expected client account")
 			return
 		}
-		err = tx.Sign(clientSigner1, clientSigner2)
+		tx, err = tx.Sign(network.TestNetworkPassphrase, clientSigner1, clientSigner2)
 		if err != nil {
 			fmt.Println("Error:", err)
 			return

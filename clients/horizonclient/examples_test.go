@@ -1078,19 +1078,20 @@ func ExampleClient_SubmitTransaction() {
 		Asset:       txnbuild.NativeAsset{},
 	}
 
-	tx := txnbuild.Transaction{
-		SourceAccount: &sourceAccount,
-		Operations:    []txnbuild.Operation{&op},
-		Timebounds:    txnbuild.NewInfiniteTimeout(), // Use a real timeout in production!
-		Network:       network.TestNetworkPassphrase,
-	}
-
-	err = tx.Build()
+	tx, err := txnbuild.NewTransaction(
+		txnbuild.TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: false,
+			Operations:           []txnbuild.Operation{&op},
+			BaseFee:              txnbuild.MinBaseFee,
+			Timebounds:           txnbuild.NewInfiniteTimeout(), // Use a real timeout in production!
+		},
+	)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	err = tx.Sign(kp)
+	tx, err = tx.Sign(network.TestNetworkPassphrase, kp)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -1119,19 +1120,20 @@ func ExampleClient_SubmitTransactionWithOptions() {
 		Asset:       txnbuild.NativeAsset{},
 	}
 
-	tx := txnbuild.Transaction{
-		SourceAccount: &sourceAccount,
-		Operations:    []txnbuild.Operation{&op},
-		Timebounds:    txnbuild.NewInfiniteTimeout(), // Use a real timeout in production!
-		Network:       network.TestNetworkPassphrase,
-	}
-
-	err = tx.Build()
+	tx, err := txnbuild.NewTransaction(
+		txnbuild.TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: false,
+			Operations:           []txnbuild.Operation{&op},
+			BaseFee:              txnbuild.MinBaseFee,
+			Timebounds:           txnbuild.NewInfiniteTimeout(), // Use a real timeout in production!
+		},
+	)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	err = tx.Sign(kp)
+	tx, err = tx.Sign(network.TestNetworkPassphrase, kp)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -1160,19 +1162,21 @@ func ExampleClient_SubmitTransactionWithOptions_skip_memo_required_check() {
 		Asset:       txnbuild.NativeAsset{},
 	}
 
-	tx := txnbuild.Transaction{
-		SourceAccount: &sourceAccount,
-		Operations:    []txnbuild.Operation{&op},
-		Timebounds:    txnbuild.NewInfiniteTimeout(), // Use a real timeout in production!
-		Network:       network.TestNetworkPassphrase,
-	}
-
-	err = tx.Build()
+	tx, err := txnbuild.NewTransaction(
+		txnbuild.TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: false,
+			Operations:           []txnbuild.Operation{&op},
+			BaseFee:              txnbuild.MinBaseFee,
+			Timebounds:           txnbuild.NewInfiniteTimeout(), // Use a real timeout in production!
+		},
+	)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	err = tx.Sign(kp)
+
+	tx, err = tx.Sign(network.TestNetworkPassphrase, kp)
 	if err != nil {
 		fmt.Println(err)
 		return
