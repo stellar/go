@@ -34,8 +34,8 @@ const MinBaseFee = 100
 // https://www.stellar.org/developers/guides/concepts/accounts.html
 type Account interface {
 	GetAccountID() string
-	IncrementSequenceNumber() (xdr.SequenceNumber, error)
-	GetSequenceNumber() (xdr.SequenceNumber, error)
+	IncrementSequenceNumber() (int64, error)
+	GetSequenceNumber() (int64, error)
 }
 
 func hashHex(e xdr.TransactionEnvelope, networkStr string) (string, error) {
@@ -513,7 +513,7 @@ type TransactionParams struct {
 
 // NewTransaction returns a new Transaction instance
 func NewTransaction(params TransactionParams) (*Transaction, error) {
-	var sequence xdr.SequenceNumber
+	var sequence int64
 	var err error
 
 	if params.IncrementSequenceNum {
@@ -530,7 +530,7 @@ func NewTransaction(params TransactionParams) (*Transaction, error) {
 		maxFee:  params.BaseFee * int64(len(params.Operations)),
 		sourceAccount: SimpleAccount{
 			AccountID: params.SourceAccount.GetAccountID(),
-			Sequence:  int64(sequence),
+			Sequence:  sequence,
 		},
 		operations: params.Operations,
 		memo:       params.Memo,
@@ -571,7 +571,7 @@ func NewTransaction(params TransactionParams) (*Transaction, error) {
 			Tx: xdr.TransactionV0{
 				SourceAccountEd25519: sourceAccountEd25519,
 				Fee:                  xdr.Uint32(tx.maxFee),
-				SeqNum:               sequence,
+				SeqNum:               xdr.SequenceNumber(sequence),
 				TimeBounds: &xdr.TimeBounds{
 					MinTime: xdr.TimePoint(tx.timebounds.MinTime),
 					MaxTime: xdr.TimePoint(tx.timebounds.MaxTime),

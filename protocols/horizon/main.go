@@ -88,27 +88,27 @@ func (a Account) GetCreditBalance(code string, issuer string) string {
 
 // GetSequenceNumber returns the sequence number of the account,
 // and returns it as a 64-bit integer.
-func (a Account) GetSequenceNumber() (xdr.SequenceNumber, error) {
-	seqNum, err := strconv.ParseUint(a.Sequence, 10, 64)
+func (a Account) GetSequenceNumber() (int64, error) {
+	seqNum, err := strconv.ParseInt(a.Sequence, 10, 64)
 
 	if err != nil {
 		return 0, errors.Wrap(err, "Failed to parse account sequence number")
 	}
 
-	return xdr.SequenceNumber(seqNum), nil
+	return seqNum, nil
 }
 
 // IncrementSequenceNumber increments the internal record of the account's sequence
 // number by 1. This is typically used after a transaction build so that the next
 // transaction to be built will be valid.
-func (a *Account) IncrementSequenceNumber() (xdr.SequenceNumber, error) {
+func (a *Account) IncrementSequenceNumber() (int64, error) {
 	seqNum, err := a.GetSequenceNumber()
 	if err != nil {
-		return xdr.SequenceNumber(0), err
+		return 0, err
 	}
 	seqNum++
 	a.Sequence = strconv.FormatInt(int64(seqNum), 10)
-	return a.GetSequenceNumber()
+	return seqNum, nil
 }
 
 // MustGetData returns decoded value for a given key. If the key does
