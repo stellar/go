@@ -694,7 +694,7 @@ func BuildChallengeTx(serverSignerSecret, clientAccountID, anchorName, network s
 		return nil, errors.New("64 byte long random nonce required")
 	}
 
-	if _, err := xdr.AddressToAccountId(clientAccountID); err != nil {
+	if _, err = xdr.AddressToAccountId(clientAccountID); err != nil {
 		return nil, errors.Wrapf(err, "%s is not a valid account id", clientAccountID)
 	}
 
