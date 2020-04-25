@@ -448,8 +448,8 @@ func (c *Client) SubmitTransactionXDR(transactionXdr string) (txSuccess hProtoco
 	return
 }
 
-// SubmitTransaction submits a transaction to the network, allowing
-// you to pass SubmitTxOpts err can be either error object or horizon.Error object.
+// SubmitFeeBumpTransaction submits a fee bump transaction to the network, allowing
+// you to pass SubmitTxOpts. err can be either an error object or a horizon.Error object.
 //
 //
 // See https://www.stellar.org/developers/horizon/reference/endpoints/transactions-create.html
@@ -464,7 +464,7 @@ func (c *Client) SubmitFeeBumpTransaction(transaction *txnbuild.FeeBumpTransacti
 }
 
 // SubmitTransaction submits a transaction to the network, allowing
-// you to pass SubmitTxOpts. err can be either error object or horizon.Error object.
+// you to pass SubmitTxOpts. err can be either an error object or a horizon.Error object.
 //
 // See https://www.stellar.org/developers/horizon/reference/endpoints/transactions-create.html
 func (c *Client) SubmitTransaction(transaction *txnbuild.Transaction, opts SubmitTxOpts) (txSuccess hProtocol.TransactionSuccess, err error) {
