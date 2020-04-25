@@ -592,16 +592,16 @@ func NewTransaction(params TransactionParams) (*Transaction, error) {
 	return tx, nil
 }
 
-// FeeBumTransactionParams is a container for parameters
+// FeeBumpTransactionParams is a container for parameters
 // which are used to construct new FeeBumpTransaction instances
-type FeeBumTransactionParams struct {
+type FeeBumpTransactionParams struct {
 	Inner      *Transaction
 	FeeAccount string
 	BaseFee    int64
 }
 
 // NewFeeBumpTransaction returns a new FeeBumpTransaction instance
-func NewFeeBumpTransaction(params FeeBumTransactionParams) (*FeeBumpTransaction, error) {
+func NewFeeBumpTransaction(params FeeBumpTransactionParams) (*FeeBumpTransaction, error) {
 	tx := &FeeBumpTransaction{
 		baseFee:    params.BaseFee,
 		maxFee:     params.BaseFee * int64(len(params.Inner.operations)+1),
