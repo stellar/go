@@ -75,9 +75,7 @@ func concatSignatures(
 	return extended, nil
 }
 
-func stringsToKP(
-	keys ...string,
-) ([]*keypair.Full, error) {
+func stringsToKP(keys ...string) ([]*keypair.Full, error) {
 	var signers []*keypair.Full
 	for _, k := range keys {
 		kp, err := keypair.Parse(k)
@@ -94,10 +92,7 @@ func stringsToKP(
 	return signers, nil
 }
 
-func concatHashX(
-	signatures []xdr.DecoratedSignature,
-	preimage []byte,
-) ([]xdr.DecoratedSignature, error) {
+func concatHashX(signatures []xdr.DecoratedSignature, preimage []byte) ([]xdr.DecoratedSignature, error) {
 	if maxSize := xdr.Signature(preimage).XDRMaxSize(); len(preimage) > maxSize {
 		return nil, errors.Errorf(
 			"preimage cannnot be more than %d bytes", maxSize,
@@ -122,10 +117,7 @@ func concatHashX(
 	return append(extended, sig), nil
 }
 
-func marshallBinary(
-	e xdr.TransactionEnvelope,
-	signatures []xdr.DecoratedSignature,
-) ([]byte, error) {
+func marshallBinary(e xdr.TransactionEnvelope, signatures []xdr.DecoratedSignature) ([]byte, error) {
 	switch e.Type {
 	case xdr.EnvelopeTypeEnvelopeTypeTx:
 		e.V1.Signatures = signatures
@@ -145,10 +137,7 @@ func marshallBinary(
 	return txBytes.Bytes(), nil
 }
 
-func marshallBase64(
-	e xdr.TransactionEnvelope,
-	signatures []xdr.DecoratedSignature,
-) (string, error) {
+func marshallBase64(e xdr.TransactionEnvelope, signatures []xdr.DecoratedSignature) (string, error) {
 	binary, err := marshallBinary(e, signatures)
 	if err != nil {
 		return "", errors.Wrap(err, "failed to get XDR bytestring")
@@ -157,10 +146,7 @@ func marshallBase64(
 	return base64.StdEncoding.EncodeToString(binary), nil
 }
 
-func cloneEnvelope(
-	e xdr.TransactionEnvelope,
-	signatures []xdr.DecoratedSignature,
-) (xdr.TransactionEnvelope, error) {
+func cloneEnvelope(e xdr.TransactionEnvelope, signatures []xdr.DecoratedSignature) (xdr.TransactionEnvelope, error) {
 	var clone xdr.TransactionEnvelope
 	binary, err := marshallBinary(e, signatures)
 	if err != nil {
