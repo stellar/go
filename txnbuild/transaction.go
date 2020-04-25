@@ -433,7 +433,11 @@ func transactionFromParsedXDR(xdrEnv xdr.TransactionEnvelope) (*GenericTransacti
 		}
 		feeBumpAccount := xdrEnv.FeeBumpAccount()
 		newTx.feeBump = &FeeBumpTransaction{
-			envelope:   xdrEnv,
+			envelope: xdrEnv,
+			// A fee-bump transaction has an effective number of operations equal to one plus the
+			// number of operations in the inner transaction. Correspondingly, the minimum fee for
+			// the fee-bump transaction is one base fee more than the minimum fee for the inner
+			// transaction.
 			baseFee:    xdrEnv.FeeBumpFee() / int64(len(innerTx.simple.operations)+1),
 			maxFee:     xdrEnv.FeeBumpFee(),
 			inner:      innerTx.simple,
@@ -603,7 +607,11 @@ type FeeBumpTransactionParams struct {
 // NewFeeBumpTransaction returns a new FeeBumpTransaction instance
 func NewFeeBumpTransaction(params FeeBumpTransactionParams) (*FeeBumpTransaction, error) {
 	tx := &FeeBumpTransaction{
-		baseFee:    params.BaseFee,
+		baseFee: params.BaseFee,
+		// A fee-bump transaction has an effective number of operations equal to one plus the
+		// number of operations in the inner transaction. Correspondingly, the minimum fee for
+		// the fee-bump transaction is one base fee more than the minimum fee for the inner
+		// transaction.
 		maxFee:     params.BaseFee * int64(len(params.Inner.operations)+1),
 		feeAccount: params.FeeAccount,
 		inner:      new(Transaction),
