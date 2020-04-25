@@ -58,10 +58,10 @@ func (h tokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	l := h.Logger.Ctx(ctx).
-		WithField("hash", hash).
+		WithField("tx", hash).
 		WithField("account", clientAccountID)
 
-	l.Infof("Verifying challenge transaction.", hash, clientAccountID)
+	l.Info("Verifying challenge transaction.")
 
 	var clientAccountExists bool
 	clientAccount, err := h.HorizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: clientAccountID})

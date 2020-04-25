@@ -66,10 +66,10 @@ func (h challengeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	l := h.Logger.Ctx(ctx).
-		WithField("hash", hash).
+		WithField("tx", hash).
 		WithField("account", account)
 
-	l.Infof("Generated challenge transaction %s for account %s.", hash, account)
+	l.Info("Generated challenge transaction for account.")
 
 	res := challengeResponse{
 		Transaction:       tx,
