@@ -441,10 +441,10 @@ func (c *Client) OperationDetail(id string) (ops operations.Operation, err error
 
 // SubmitTransactionXDR submits a transaction represented as a base64 XDR string to the network. err can be either error object or horizon.Error object.
 // See https://www.stellar.org/developers/horizon/reference/endpoints/transactions-create.html
-func (c *Client) SubmitTransactionXDR(transactionXdr string) (txSuccess hProtocol.TransactionSuccess,
+func (c *Client) SubmitTransactionXDR(transactionXdr string) (tx hProtocol.Transaction,
 	err error) {
 	request := submitRequest{endpoint: "transactions", transactionXdr: transactionXdr}
-	err = c.sendRequest(request, &txSuccess)
+	err = c.sendRequest(request, &tx)
 	return
 }
 
@@ -453,7 +453,7 @@ func (c *Client) SubmitTransactionXDR(transactionXdr string) (txSuccess hProtoco
 //
 //
 // See https://www.stellar.org/developers/horizon/reference/endpoints/transactions-create.html
-func (c *Client) SubmitFeeBumpTransaction(transaction *txnbuild.FeeBumpTransaction, opts SubmitTxOpts) (txSuccess hProtocol.TransactionSuccess, err error) {
+func (c *Client) SubmitFeeBumpTransaction(transaction *txnbuild.FeeBumpTransaction, opts SubmitTxOpts) (tx hProtocol.Transaction, err error) {
 	// only check if memo is required if skip is false and the inner transaction
 	// doesn't have a memo.
 	if inner := transaction.InnerTransaction(); !opts.SkipMemoRequiredCheck && inner.Memo() == nil {
@@ -476,7 +476,7 @@ func (c *Client) SubmitFeeBumpTransaction(transaction *txnbuild.FeeBumpTransacti
 // you to pass SubmitTxOpts. err can be either an error object or a horizon.Error object.
 //
 // See https://www.stellar.org/developers/horizon/reference/endpoints/transactions-create.html
-func (c *Client) SubmitTransaction(transaction *txnbuild.Transaction, opts SubmitTxOpts) (txSuccess hProtocol.TransactionSuccess, err error) {
+func (c *Client) SubmitTransaction(transaction *txnbuild.Transaction, opts SubmitTxOpts) (tx hProtocol.Transaction, err error) {
 	// only check if memo is required if skip is false and the transaction
 	// doesn't have a memo.
 	if !opts.SkipMemoRequiredCheck && transaction.Memo() == nil {
@@ -555,12 +555,12 @@ func (c *Client) Trades(request TradeRequest) (tds hProtocol.TradesPage, err err
 
 // Fund creates a new account funded from friendbot. It only works on test networks. See
 // https://www.stellar.org/developers/guides/get-started/create-account.html for more information.
-func (c *Client) Fund(addr string) (txSuccess hProtocol.TransactionSuccess, err error) {
+func (c *Client) Fund(addr string) (tx hProtocol.Transaction, err error) {
 	if !c.isTestNet {
-		return txSuccess, errors.New("can't fund account from friendbot on production network")
+		return tx, errors.New("can't fund account from friendbot on production network")
 	}
 	friendbotURL := fmt.Sprintf("%sfriendbot?addr=%s", c.fixHorizonURL(), addr)
-	err = c.sendRequestURL(friendbotURL, "get", &txSuccess)
+	err = c.sendRequestURL(friendbotURL, "get", &tx)
 	return
 }
 

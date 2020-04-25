@@ -85,9 +85,6 @@ type Trade = hProtocol.Trade
 type OrderBookSummary = hProtocol.OrderBookSummary
 
 // Deprecated: use protocols/horizon instead
-type TransactionSuccess = hProtocol.TransactionSuccess
-
-// Deprecated: use protocols/horizon instead
 type TransactionResultCodes = hProtocol.TransactionResultCodes
 
 // Deprecated: use protocols/horizon instead

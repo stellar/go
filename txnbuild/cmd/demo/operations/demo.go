@@ -105,7 +105,7 @@ func Reset(client *horizonclient.Client, keys []Account) {
 			dieIfError("problem building deleteOffer op", err)
 			log.Infof("Deleting offer %d...", o.ID)
 			resp := submit(client, txe)
-			log.Debug(resp.TransactionSuccessToString())
+			log.Debug(resp)
 		}
 
 		// Find any authorised trustlines on this account...
@@ -127,14 +127,14 @@ func Reset(client *horizonclient.Client, keys []Account) {
 			txe, err := payment(k.HAccount, asset.Issuer, b.Balance, asset, k)
 			dieIfError("problem building payment op", err)
 			resp := submit(client, txe)
-			log.Debug(resp.TransactionSuccessToString())
+			log.Debug(resp)
 
 			// Delete the now-empty trustline...
 			log.Infof("Deleting trustline for asset %s:%s...", b.Code, b.Issuer)
 			txe, err = deleteTrustline(k.HAccount, asset, k)
 			dieIfError("problem building deleteTrustline op", err)
 			resp = submit(client, txe)
-			log.Debug(resp.TransactionSuccessToString())
+			log.Debug(resp)
 		}
 
 		// Find any data entries on this account...
@@ -145,7 +145,7 @@ func Reset(client *horizonclient.Client, keys []Account) {
 			txe, err := deleteData(k.HAccount, dataKey, k)
 			dieIfError("problem building manageData op", err)
 			resp := submit(client, txe)
-			log.Debug(resp.TransactionSuccessToString())
+			log.Debug(resp)
 		}
 	}
 
@@ -158,7 +158,7 @@ func Reset(client *horizonclient.Client, keys []Account) {
 		txe, err := mergeAccount(k.HAccount, friendbotAddress, k)
 		dieIfError("problem building mergeAccount op", err)
 		resp := submit(client, txe)
-		log.Debug(resp.TransactionSuccessToString())
+		log.Debug(resp)
 	}
 }
 
@@ -179,7 +179,7 @@ func Initialise(client *horizonclient.Client, keys []Account) {
 		txe, err := createAccount(keys[0].HAccount, keys[i].Address, keys[0])
 		dieIfError("problem building createAccount op", err)
 		resp := submit(client, txe)
-		log.Debug(resp.TransactionSuccessToString())
+		log.Debug(resp)
 	}
 }
 
@@ -197,7 +197,7 @@ func TXError(client *horizonclient.Client, keys []Account) {
 	resp := submit(client, txe)
 
 	// Inspect and print error
-	log.Info(resp.TransactionSuccessToString())
+	log.Info(resp)
 }
 
 /***** Examples of operation building follow *****/
@@ -444,7 +444,7 @@ func loadAccount(client *horizonclient.Client, address string) *hProtocol.Accoun
 	return &horizonSourceAccount
 }
 
-func submit(client *horizonclient.Client, txeBase64 string) (resp hProtocol.TransactionSuccess) {
+func submit(client *horizonclient.Client, txeBase64 string) (resp hProtocol.Transaction) {
 	resp, err := client.SubmitTransactionXDR(txeBase64)
 	if err != nil {
 		hError := err.(*horizonclient.Error)

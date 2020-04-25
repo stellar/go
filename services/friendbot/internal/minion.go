@@ -23,7 +23,7 @@ type Minion struct {
 	Horizon           *horizonclient.Client
 	Network           string
 	StartingBalance   string
-	SubmitTransaction func(minion *Minion, hclient *horizonclient.Client, tx string) (*hProtocol.TransactionSuccess, error)
+	SubmitTransaction func(minion *Minion, hclient *horizonclient.Client, tx string) (*hProtocol.Transaction, error)
 	BaseFee           int64
 
 	// Uninitialized.
@@ -55,7 +55,7 @@ func (minion *Minion) Run(destAddress string, resultChan chan SubmitResult) {
 }
 
 // SubmitTransaction should be passed to the Minion.
-func SubmitTransaction(minion *Minion, hclient *horizonclient.Client, tx string) (*hProtocol.TransactionSuccess, error) {
+func SubmitTransaction(minion *Minion, hclient *horizonclient.Client, tx string) (*hProtocol.Transaction, error) {
 	result, err := hclient.SubmitTransactionXDR(tx)
 	if err != nil {
 		errStr := "submitting tx to horizon"

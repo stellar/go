@@ -110,9 +110,9 @@ func TestTransactionSubmitter(t *testing.T) {
 	})
 
 	mockHorizon.On("SubmitTransactionXDR", txB64).Return(
-		hProtocol.TransactionSuccess{
-			Ledger: 0,
-			Result: "AAAAAAAAAGT/////AAAAAQAAAAAAAAAB////+wAAAAA=", // no_destination
+		hProtocol.Transaction{
+			Ledger:    0,
+			ResultXdr: "AAAAAAAAAGT/////AAAAAQAAAAAAAAAB////+wAAAAA=", // no_destination
 
 		},
 		errors.New("tx failed"),
@@ -175,9 +175,9 @@ func TestTransactionSubmitter(t *testing.T) {
 	})
 
 	mockHorizon.On("SubmitTransactionXDR", txB64).Return(
-		hProtocol.TransactionSuccess{
-			Ledger: int32(123),
-			Result: "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAA=",
+		hProtocol.Transaction{
+			Ledger:    int32(123),
+			ResultXdr: "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAA=",
 		},
 		nil,
 	).Once()

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/url"
 	"strings"
@@ -270,7 +271,7 @@ func TestRequestHandlerPaymentSuccessResponse(t *testing.T) {
 
 	var ledger int32
 	ledger = 1988728
-	horizonResponse := hProtocol.TransactionSuccess{
+	horizonResponse := hProtocol.Transaction{
 		Hash:   "6a0049b44e0d0341bd52f131c74383e6ccd2b74b92c829c990994d24bbfcfa7a",
 		Ledger: ledger,
 	}
@@ -284,14 +285,10 @@ func TestRequestHandlerPaymentSuccessResponse(t *testing.T) {
 	).Return(horizonResponse, nil).Once()
 
 	statusCode, response := mocks.GetResponse(testServer, params)
-	responseString := strings.TrimSpace(string(response))
-
+	var parsedResponse hProtocol.Transaction
 	assert.Equal(t, 200, statusCode)
-	expected := test.StringToJSONMap(`{
-					  "hash": "6a0049b44e0d0341bd52f131c74383e6ccd2b74b92c829c990994d24bbfcfa7a",
-						"ledger": 1988728
-					}`)
-	assert.Equal(t, expected, test.StringToJSONMap(responseString, "envelope_xdr", "_links", "result_meta_xdr", "result_xdr"))
+	assert.NoError(t, json.Unmarshal(response, &parsedResponse))
+	assert.Equal(t, horizonResponse, parsedResponse)
 
 	// When destination is a stellar address it should return success
 	params = url.Values{
@@ -323,13 +320,9 @@ func TestRequestHandlerPaymentSuccessResponse(t *testing.T) {
 	).Return(horizonResponse, nil).Once()
 
 	statusCode, response = mocks.GetResponse(testServer, params)
-	responseString = strings.TrimSpace(string(response))
 	assert.Equal(t, 200, statusCode)
-	expected = test.StringToJSONMap(`{
-					  "hash": "6a0049b44e0d0341bd52f131c74383e6ccd2b74b92c829c990994d24bbfcfa7a",
-						"ledger": 1988728
-					}`)
-	assert.Equal(t, expected, test.StringToJSONMap(responseString, "envelope_xdr", "_links", "result_meta_xdr", "result_xdr"))
+	assert.NoError(t, json.Unmarshal(response, &parsedResponse))
+	assert.Equal(t, horizonResponse, parsedResponse)
 
 	// When federation response has memo it should return success
 	mockFederationResolver.On(
@@ -351,7 +344,7 @@ func TestRequestHandlerPaymentSuccessResponse(t *testing.T) {
 	).Return(hProtocol.Account{}, nil).Once()
 
 	ledger = 1988728
-	horizonResponse = hProtocol.TransactionSuccess{
+	horizonResponse = hProtocol.Transaction{
 		Hash:   "ad71fc31bfae25b0bd14add4cc5306661edf84cdd73f1353d2906363899167e1",
 		Ledger: ledger,
 	}
@@ -365,14 +358,9 @@ func TestRequestHandlerPaymentSuccessResponse(t *testing.T) {
 	).Return(horizonResponse, nil).Once()
 
 	statusCode, response = mocks.GetResponse(testServer, params)
-	responseString = strings.TrimSpace(string(response))
-
 	assert.Equal(t, 200, statusCode)
-	expected = test.StringToJSONMap(`{
-					  "hash": "ad71fc31bfae25b0bd14add4cc5306661edf84cdd73f1353d2906363899167e1",
-						"ledger": 1988728
-					}`)
-	assert.Equal(t, expected, test.StringToJSONMap(responseString, "envelope_xdr", "_links", "result_meta_xdr", "result_xdr"))
+	assert.NoError(t, json.Unmarshal(response, &parsedResponse))
+	assert.Equal(t, horizonResponse, parsedResponse)
 
 	// When using foward destination with memo. It should return success
 	params = url.Values{
@@ -406,7 +394,7 @@ func TestRequestHandlerPaymentSuccessResponse(t *testing.T) {
 	).Return(hProtocol.Account{}, nil).Once()
 
 	ledger = 1988728
-	horizonResponse = hProtocol.TransactionSuccess{
+	horizonResponse = hProtocol.Transaction{
 		Hash:   "ad71fc31bfae25b0bd14add4cc5306661edf84cdd73f1353d2906363899167e1",
 		Ledger: ledger,
 	}
@@ -420,13 +408,9 @@ func TestRequestHandlerPaymentSuccessResponse(t *testing.T) {
 	).Return(horizonResponse, nil).Once()
 
 	statusCode, response = mocks.GetResponse(testServer, params)
-	responseString = strings.TrimSpace(string(response))
 	assert.Equal(t, 200, statusCode)
-	expected = test.StringToJSONMap(`{
-					  "hash": "ad71fc31bfae25b0bd14add4cc5306661edf84cdd73f1353d2906363899167e1",
-						"ledger": 1988728
-					}`)
-	assert.Equal(t, expected, test.StringToJSONMap(responseString, "envelope_xdr", "_links", "result_meta_xdr", "result_xdr"))
+	assert.NoError(t, json.Unmarshal(response, &parsedResponse))
+	assert.Equal(t, horizonResponse, parsedResponse)
 
 	// When using foward destination without memo. It should return success
 	mockFederationResolver.On(
@@ -449,7 +433,7 @@ func TestRequestHandlerPaymentSuccessResponse(t *testing.T) {
 	).Return(hProtocol.Account{}, nil).Once()
 
 	ledger = 1988728
-	horizonResponse = hProtocol.TransactionSuccess{
+	horizonResponse = hProtocol.Transaction{
 		Hash:   "6a0049b44e0d0341bd52f131c74383e6ccd2b74b92c829c990994d24bbfcfa7a",
 		Ledger: ledger,
 	}
@@ -463,14 +447,9 @@ func TestRequestHandlerPaymentSuccessResponse(t *testing.T) {
 	).Return(horizonResponse, nil).Once()
 
 	statusCode, response = mocks.GetResponse(testServer, params)
-	responseString = strings.TrimSpace(string(response))
-
 	assert.Equal(t, 200, statusCode)
-	expected = test.StringToJSONMap(`{
-					  "hash": "6a0049b44e0d0341bd52f131c74383e6ccd2b74b92c829c990994d24bbfcfa7a",
-						"ledger": 1988728
-					}`)
-	assert.Equal(t, expected, test.StringToJSONMap(responseString, "envelope_xdr", "_links", "result_meta_xdr", "result_xdr"))
+	assert.NoError(t, json.Unmarshal(response, &parsedResponse))
+	assert.Equal(t, horizonResponse, parsedResponse)
 
 	// When no source is specified, it should use the base seed
 	params = url.Values{
@@ -495,7 +474,7 @@ func TestRequestHandlerPaymentSuccessResponse(t *testing.T) {
 	).Return(hProtocol.Account{}, nil).Once()
 
 	ledger = 1988728
-	horizonResponse = hProtocol.TransactionSuccess{
+	horizonResponse = hProtocol.Transaction{
 		Hash:   "ad71fc31bfae25b0bd14add4cc5306661edf84cdd73f1353d2906363899167e1",
 		Ledger: ledger,
 	}
@@ -509,12 +488,7 @@ func TestRequestHandlerPaymentSuccessResponse(t *testing.T) {
 	).Return(horizonResponse, nil).Once()
 
 	statusCode, response = mocks.GetResponse(testServer, params)
-	responseString = strings.TrimSpace(string(response))
 	assert.Equal(t, 200, statusCode)
-	expected = test.StringToJSONMap(`{
-				  "hash": "ad71fc31bfae25b0bd14add4cc5306661edf84cdd73f1353d2906363899167e1",
-				  "ledger": 1988728
-				}`)
-	assert.Equal(t, expected, test.StringToJSONMap(responseString, "envelope_xdr", "_links", "result_meta_xdr", "result_xdr"))
-
+	assert.NoError(t, json.Unmarshal(response, &parsedResponse))
+	assert.Equal(t, horizonResponse, parsedResponse)
 }

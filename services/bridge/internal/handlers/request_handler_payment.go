@@ -300,7 +300,7 @@ func (rh *RequestHandler) standardPayment(w http.ResponseWriter, request *bridge
 	rh.handleTransactionSubmitResponse(w, submitResponse, err)
 }
 
-func (rh *RequestHandler) handleTransactionSubmitResponse(w http.ResponseWriter, submitResponse hProtocol.TransactionSuccess, err error) {
+func (rh *RequestHandler) handleTransactionSubmitResponse(w http.ResponseWriter, submitResponse hProtocol.Transaction, err error) {
 	jsonEncoder := json.NewEncoder(w)
 
 	if err != nil {

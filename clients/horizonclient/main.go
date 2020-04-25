@@ -166,9 +166,9 @@ type ClientInterface interface {
 	OfferDetails(offerID string) (offer hProtocol.Offer, err error)
 	Operations(request OperationRequest) (operations.OperationsPage, error)
 	OperationDetail(id string) (operations.Operation, error)
-	SubmitTransactionXDR(transactionXdr string) (hProtocol.TransactionSuccess, error)
-	SubmitFeeBumpTransaction(transaction *txnbuild.FeeBumpTransaction, opts SubmitTxOpts) (hProtocol.TransactionSuccess, error)
-	SubmitTransaction(transaction *txnbuild.Transaction, opts SubmitTxOpts) (hProtocol.TransactionSuccess, error)
+	SubmitTransactionXDR(transactionXdr string) (hProtocol.Transaction, error)
+	SubmitFeeBumpTransaction(transaction *txnbuild.FeeBumpTransaction, opts SubmitTxOpts) (hProtocol.Transaction, error)
+	SubmitTransaction(transaction *txnbuild.Transaction, opts SubmitTxOpts) (hProtocol.Transaction, error)
 	Transactions(request TransactionRequest) (hProtocol.TransactionsPage, error)
 	TransactionDetail(txHash string) (hProtocol.Transaction, error)
 	OrderBook(request OrderBookRequest) (hProtocol.OrderBookSummary, error)
@@ -176,7 +176,7 @@ type ClientInterface interface {
 	Payments(request OperationRequest) (operations.OperationsPage, error)
 	TradeAggregations(request TradeAggregationRequest) (hProtocol.TradeAggregationsPage, error)
 	Trades(request TradeRequest) (hProtocol.TradesPage, error)
-	Fund(addr string) (hProtocol.TransactionSuccess, error)
+	Fund(addr string) (hProtocol.Transaction, error)
 	StreamTransactions(ctx context.Context, request TransactionRequest, handler TransactionHandler) error
 	StreamTrades(ctx context.Context, request TradeRequest, handler TradeHandler) error
 	StreamEffects(ctx context.Context, request EffectRequest, handler EffectHandler) error

@@ -5,7 +5,6 @@ package horizon
 import (
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"strconv"
 	"time"
 
@@ -536,35 +535,6 @@ func (t Transaction) PagingToken() string {
 type TransactionResultCodes struct {
 	TransactionCode string   `json:"transaction"`
 	OperationCodes  []string `json:"operations,omitempty"`
-}
-
-// TransactionSuccess represents the result of a successful transaction
-// submission.
-// Action needed in release: horizonclient-v3.0.0
-// Remove TransactionSuccess because the submit transaction endpoint now responds with
-// a full Transaction resource
-type TransactionSuccess struct {
-	Links struct {
-		Transaction hal.Link `json:"transaction"`
-	} `json:"_links"`
-	Hash   string `json:"hash"`
-	Ledger int32  `json:"ledger"`
-	Env    string `json:"envelope_xdr"`
-	Result string `json:"result_xdr"`
-	Meta   string `json:"result_meta_xdr"`
-}
-
-// PrintTransactionSuccess prints the fields of a Horizon response.
-func (resp TransactionSuccess) TransactionSuccessToString() (s string) {
-	s += fmt.Sprintln("***TransactionSuccess dump***")
-	s += fmt.Sprintln("    Links:", resp.Links)
-	s += fmt.Sprintln("    Hash:", resp.Hash)
-	s += fmt.Sprintln("    Ledger:", resp.Ledger)
-	s += fmt.Sprintln("    Env:", resp.Env)
-	s += fmt.Sprintln("    Result:", resp.Result)
-	s += fmt.Sprintln("    Meta:", resp.Meta)
-
-	return
 }
 
 // KeyTypeFromAddress converts the version byte of the provided strkey encoded
