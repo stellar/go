@@ -905,7 +905,9 @@ func TestBuildChallengeTx(t *testing.T) {
 
 	{
 		// 1 minute timebound
-		txeBase64, err := BuildChallengeTx(kp0.Seed(), kp0.Address(), "SDF", network.TestNetworkPassphrase, time.Minute)
+		tx, err := BuildChallengeTx(kp0.Seed(), kp0.Address(), "SDF", network.TestNetworkPassphrase, time.Minute)
+		assert.NoError(t, err)
+		txeBase64, err := tx.Base64()
 		assert.NoError(t, err)
 		var txXDR xdr.TransactionEnvelope
 		err = xdr.SafeUnmarshalBase64(txeBase64, &txXDR)
@@ -924,7 +926,9 @@ func TestBuildChallengeTx(t *testing.T) {
 
 	{
 		// 5 minutes timebound
-		txeBase64, err := BuildChallengeTx(kp0.Seed(), kp0.Address(), "SDF1", network.TestNetworkPassphrase, time.Duration(5*time.Minute))
+		tx, err := BuildChallengeTx(kp0.Seed(), kp0.Address(), "SDF1", network.TestNetworkPassphrase, time.Duration(5*time.Minute))
+		assert.NoError(t, err)
+		txeBase64, err := tx.Base64()
 		assert.NoError(t, err)
 		var txXDR1 xdr.TransactionEnvelope
 		err = xdr.SafeUnmarshalBase64(txeBase64, &txXDR1)

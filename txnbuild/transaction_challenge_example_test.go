@@ -42,7 +42,11 @@ func ExampleVerifyChallengeTxThreshold() {
 			fmt.Println("Error:", err)
 			return
 		}
-		challengeTx = tx
+		challengeTx, err = tx.Base64()
+		if err != nil {
+			fmt.Println("Error:", err)
+			return
+		}
 	}
 
 	// Client reads and signs challenge transaction

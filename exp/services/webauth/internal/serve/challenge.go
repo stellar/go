@@ -48,8 +48,15 @@ func (h challengeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	txeBase64, err := tx.Base64()
+	if err != nil {
+		h.Logger.Ctx(ctx).WithStack(err).Error(err)
+		serverError.Render(w)
+		return
+	}
+
 	res := challengeResponse{
-		Transaction:       tx,
+		Transaction:       txeBase64,
 		NetworkPassphrase: h.NetworkPassphrase,
 	}
 	httpjson.Render(w, res, httpjson.JSON)

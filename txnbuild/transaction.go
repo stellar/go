@@ -665,26 +665,26 @@ func NewFeeBumpTransaction(params FeeBumpTransactionParams) (*FeeBumpTransaction
 // BuildChallengeTx is a factory method that creates a valid SEP 10 challenge, for use in web authentication.
 // "timebound" is the time duration the transaction should be valid for, and must be greater than 1s (300s is recommended).
 // More details on SEP 10: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0010.md
-func BuildChallengeTx(serverSignerSecret, clientAccountID, anchorName, network string, timebound time.Duration) (string, error) {
+func BuildChallengeTx(serverSignerSecret, clientAccountID, anchorName, network string, timebound time.Duration) (*Transaction, error) {
 
 	if timebound < time.Second {
-		return "", errors.New("provided timebound must be at least 1s (300s is recommended)")
+		return nil, errors.New("provided timebound must be at least 1s (300s is recommended)")
 	}
 
 	serverKP, err := keypair.Parse(serverSignerSecret)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	// SEP10 spec requires 48 byte cryptographic-quality random string
 	randomNonce, err := generateRandomNonce(48)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	// Encode 48-byte nonce to base64 for a total of 64-bytes
 	randomNonceToString := base64.StdEncoding.EncodeToString(randomNonce)
 	if len(randomNonceToString) != 64 {
-		return "", errors.New("64 byte long random nonce required")
+		return nil, errors.New("64 byte long random nonce required")
 	}
 
 	// represent server signing account as SimpleAccount
@@ -720,14 +720,14 @@ func BuildChallengeTx(serverSignerSecret, clientAccountID, anchorName, network s
 		},
 	)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	tx, err = tx.Sign(network, serverKP.(*keypair.Full))
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return tx.Base64()
+	return tx, nil
 }
 
 // generateRandomNonce creates a cryptographically secure random slice of `n` bytes.

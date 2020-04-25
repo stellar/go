@@ -713,7 +713,11 @@ func ExampleBuildChallengeTx() {
 	timebound := time.Duration(5 * time.Minute)
 
 	tx, err := BuildChallengeTx(serverSignerSeed, clientAccountID, anchorName, network.TestNetworkPassphrase, timebound)
-	_, err = checkChallengeTx(tx, anchorName)
+	check(err)
+
+	txeBase64, err := tx.Base64()
+	check(err)
+	_, err = checkChallengeTx(txeBase64, anchorName)
 
 	check(err)
 }
