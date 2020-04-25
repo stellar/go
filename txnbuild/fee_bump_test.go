@@ -9,6 +9,11 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestFeeBumpMissingInner(t *testing.T) {
+	_, err := NewFeeBumpTransaction(FeeBumpTransactionParams{})
+	assert.EqualError(t, err, "inner transaction is missing")
+}
+
 func TestFeeBumpInvalidFeeSource(t *testing.T) {
 	kp0 := newKeypair0()
 	sourceAccount := NewSimpleAccount(kp0.Address(), 1)

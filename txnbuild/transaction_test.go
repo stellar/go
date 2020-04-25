@@ -15,6 +15,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestMissingSourceAccount(t *testing.T) {
+	_, err := NewTransaction(TransactionParams{})
+	assert.EqualError(t, err, "transaction has no source account")
+}
+
 func TestIncrementSequenceNum(t *testing.T) {
 	kp0 := newKeypair0()
 	sourceAccount := NewSimpleAccount(kp0.Address(), 1)

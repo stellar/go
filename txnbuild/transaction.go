@@ -507,6 +507,10 @@ func NewTransaction(params TransactionParams) (*Transaction, error) {
 	var sequence int64
 	var err error
 
+	if params.SourceAccount == nil {
+		return nil, errors.New("transaction has no source account")
+	}
+
 	if params.IncrementSequenceNum {
 		sequence, err = params.SourceAccount.IncrementSequenceNumber()
 	} else {
@@ -613,6 +617,10 @@ type FeeBumpTransactionParams struct {
 
 // NewFeeBumpTransaction returns a new FeeBumpTransaction instance
 func NewFeeBumpTransaction(params FeeBumpTransactionParams) (*FeeBumpTransaction, error) {
+	if params.Inner == nil {
+		return nil, errors.New("inner transaction is missing")
+	}
+
 	tx := &FeeBumpTransaction{
 		baseFee: params.BaseFee,
 		// A fee-bump transaction has an effective number of operations equal to one plus the
