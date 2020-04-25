@@ -83,7 +83,11 @@ func (h tokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		clientSignerSummary := clientAccount.SignerSummary()
 		_, err = txnbuild.VerifyChallengeTxThreshold(req.Transaction, h.SigningAddress.Address(), h.NetworkPassphrase, requiredThreshold, clientSignerSummary)
 		if err != nil {
-			l.Infof("Verification failed with %d signers that do not meet threshold %d.", len(clientSignerSummary), requiredThreshold)
+			l.
+				WithField("signersCount", len(clientSignerSummary)).
+				WithField("signaturesCount", len(tx.TxEnvelope().Signatures)).
+				WithField("requiredThreshold", requiredThreshold).
+				Info("Verification failed with signers that do not meet threshold.")
 			unauthorized.Render(w)
 			return
 		}
