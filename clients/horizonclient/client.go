@@ -454,6 +454,15 @@ func (c *Client) SubmitTransactionXDR(transactionXdr string) (txSuccess hProtoco
 //
 // See https://www.stellar.org/developers/horizon/reference/endpoints/transactions-create.html
 func (c *Client) SubmitFeeBumpTransaction(transaction *txnbuild.FeeBumpTransaction, opts SubmitTxOpts) (txSuccess hProtocol.TransactionSuccess, err error) {
+	// only check if memo is required if skip is false and the inner transaction
+	// doesn't have a memo.
+	if inner := transaction.InnerTransaction(); !opts.SkipMemoRequiredCheck && inner.Memo() == nil {
+		err = c.checkMemoRequired(inner)
+		if err != nil {
+			return
+		}
+	}
+
 	txeBase64, err := transaction.Base64()
 	if err != nil {
 		err = errors.Wrap(err, "Unable to convert transaction object to base64 string")
