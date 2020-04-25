@@ -17,6 +17,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"math"
+	"math/bits"
 	"strings"
 	"time"
 
@@ -442,7 +443,7 @@ func transactionFromParsedXDR(xdrEnv xdr.TransactionEnvelope) (*GenericTransacti
 			maxFee:     xdrEnv.FeeBumpFee(),
 			inner:      innerTx.simple,
 			feeAccount: feeBumpAccount.Address(),
-			signatures: xdrEnv.Signatures(),
+			signatures: xdrEnv.FeeBumpSignatures(),
 		}
 		return newTx, nil
 	}
@@ -517,7 +518,6 @@ func NewTransaction(params TransactionParams) (*Transaction, error) {
 
 	tx := &Transaction{
 		baseFee: params.BaseFee,
-		maxFee:  params.BaseFee * int64(len(params.Operations)),
 		sourceAccount: SimpleAccount{
 			AccountID: params.SourceAccount.GetAccountID(),
 			Sequence:  sequence,
@@ -542,12 +542,19 @@ func NewTransaction(params TransactionParams) (*Transaction, error) {
 			"base fee cannot be lower than network minimum of %d", MinBaseFee,
 		)
 	}
+
+	if len(tx.operations) == 0 {
+		return nil, errors.New("transaction has no operations")
+	}
+
 	// check if maxFee fits in a uint32
 	// 64 bit fees are only available in fee bump transactions
 	// if maxFee is negative then there must have been an int overflow
-	if tx.maxFee > math.MaxUint32 || tx.maxFee < 0 {
-		return nil, errors.Errorf("fee %d overflows uint32", tx.maxFee)
+	hi, lo := bits.Mul64(uint64(params.BaseFee), uint64(len(params.Operations)))
+	if hi > 0 || lo > math.MaxUint32 {
+		return nil, errors.Errorf("base fee %d results in an overflow of max fee", params.BaseFee)
 	}
+	tx.maxFee = int64(lo)
 
 	// Check and set the timebounds
 	err = tx.timebounds.Validate()
@@ -618,6 +625,12 @@ func NewFeeBumpTransaction(params FeeBumpTransactionParams) (*FeeBumpTransaction
 	}
 	*tx.inner = *params.Inner
 
+	hi, lo := bits.Mul64(uint64(params.BaseFee), uint64(len(params.Inner.operations)+1))
+	if hi > 0 || lo > math.MaxInt64 {
+		return nil, errors.Errorf("base fee %d results in an overflow of max fee", params.BaseFee)
+	}
+	tx.maxFee = int64(lo)
+
 	if tx.baseFee < tx.inner.baseFee {
 		return tx, errors.New("base fee cannot be lower than provided inner transaction fee")
 	}
@@ -625,11 +638,6 @@ func NewFeeBumpTransaction(params FeeBumpTransactionParams) (*FeeBumpTransaction
 		return tx, errors.Errorf(
 			"base fee cannot be lower than network minimum of %d", MinBaseFee,
 		)
-	}
-	// if maxFee is negative then there must have been an int overflow
-	// maxFee also should not be 0 because maxFee is equal to at least one baseFee
-	if tx.maxFee <= 0 {
-		return nil, errors.Errorf("fee %d overflows int64", tx.maxFee)
 	}
 
 	accountID, err := xdr.AddressToMuxedAccount(tx.feeAccount)
@@ -666,7 +674,6 @@ func NewFeeBumpTransaction(params FeeBumpTransactionParams) (*FeeBumpTransaction
 // "timebound" is the time duration the transaction should be valid for, and must be greater than 1s (300s is recommended).
 // More details on SEP 10: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0010.md
 func BuildChallengeTx(serverSignerSecret, clientAccountID, anchorName, network string, timebound time.Duration) (*Transaction, error) {
-
 	if timebound < time.Second {
 		return nil, errors.New("provided timebound must be at least 1s (300s is recommended)")
 	}
@@ -685,6 +692,10 @@ func BuildChallengeTx(serverSignerSecret, clientAccountID, anchorName, network s
 	randomNonceToString := base64.StdEncoding.EncodeToString(randomNonce)
 	if len(randomNonceToString) != 64 {
 		return nil, errors.New("64 byte long random nonce required")
+	}
+
+	if _, err := xdr.AddressToAccountId(clientAccountID); err != nil {
+		return nil, errors.Wrapf(err, "%s is not a valid account id", clientAccountID)
 	}
 
 	// represent server signing account as SimpleAccount

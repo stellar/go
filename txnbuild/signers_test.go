@@ -1,6 +1,8 @@
 package txnbuild
 
 import (
+	"github.com/stellar/go/keypair"
+	"github.com/stellar/go/xdr"
 	"testing"
 
 	"github.com/stellar/go/network"
@@ -432,4 +434,125 @@ func TestSetOptionsMultSigners(t *testing.T) {
 
 	expected := "AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAiII0AAAAbAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAEAAAAAJcrx2g/Hbs/ohF5CVFG7B5JJSJR+OqDKzDGK7dKHZH4AAAAFAAAAAAAAAAAAAAABAAAAAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAC6i5yxQAAAEA7Wgrkr6q1o1Cf9rzfopqkIUQWD9Se3TagU2GhMn9OjGT75flGAaOdQ+kHLDGQjThDKMMdB8jCJGe8IGc/dIQP0odkfgAAAEDni8seENXmyh0QgHkLjM4EmhHmBr5NvU6VpJaVBfv631yaaHP7lONfg9x8DyHjz8uh03S7ipShHIrQDFN+L+cM"
 	assert.Equal(t, expected, received, "Base 64 XDR should match")
+}
+
+type SignatureList interface {
+	Signatures() []xdr.DecoratedSignature
+	Hash(networkStr string) ([32]byte, error)
+}
+
+func verifySignatures(t *testing.T, tx SignatureList, signers ...*keypair.Full) {
+	assert.Len(t, tx.Signatures(), len(signers))
+
+	hash, err := tx.Hash(network.TestNetworkPassphrase)
+	assert.NoError(t, err)
+	signatures := tx.Signatures()
+	for i, kp := range signers {
+		assert.NoError(t, kp.Verify(hash[:], signatures[i].Signature))
+	}
+}
+
+func TestSigningImmutability(t *testing.T) {
+	kp0, kp1, kp2 := newKeypair0(), newKeypair1(), newKeypair2()
+
+	sourceAccount := NewSimpleAccount(kp0.Address(), 1)
+	params := TransactionParams{
+		SourceAccount: &sourceAccount,
+		Operations:    []Operation{&Inflation{}},
+		BaseFee:       MinBaseFee,
+		Timebounds:    NewInfiniteTimeout(),
+	}
+	root, err := NewTransaction(params)
+	assert.NoError(t, err)
+	root, err = root.Sign(network.TestNetworkPassphrase, kp0)
+	assert.NoError(t, err)
+	rootB64, err := root.Base64()
+	assert.NoError(t, err)
+
+	left, err := root.Sign(network.TestNetworkPassphrase, kp1)
+	assert.NoError(t, err)
+	leftB64, err := left.Base64()
+	assert.NoError(t, err)
+
+	right, err := root.Sign(network.TestNetworkPassphrase, kp2)
+	assert.NoError(t, err)
+	rightB64, err := right.Base64()
+	assert.NoError(t, err)
+
+	expectedRootB64, err := newSignedTransaction(
+		params, network.TestNetworkPassphrase, kp0,
+	)
+	assert.NoError(t, err)
+	expectedLeftB64, err := newSignedTransaction(
+		params, network.TestNetworkPassphrase, kp0, kp1,
+	)
+	assert.NoError(t, err)
+	expectedRightB64, err := newSignedTransaction(
+		params, network.TestNetworkPassphrase, kp0, kp2,
+	)
+	assert.NoError(t, err)
+
+	assert.Equal(t, expectedRootB64, rootB64)
+	verifySignatures(t, root, kp0)
+	assert.Equal(t, expectedLeftB64, leftB64)
+	verifySignatures(t, left, kp0, kp1)
+	assert.Equal(t, expectedRightB64, rightB64)
+	verifySignatures(t, right, kp0, kp2)
+}
+
+func TestFeeBumpSigningImmutability(t *testing.T) {
+	kp0, kp1, kp2 := newKeypair0(), newKeypair1(), newKeypair2()
+
+	sourceAccount := NewSimpleAccount(kp0.Address(), 1)
+	innerParams := TransactionParams{
+		SourceAccount: &sourceAccount,
+		Operations:    []Operation{&Inflation{}},
+		BaseFee:       MinBaseFee,
+		Timebounds:    NewInfiniteTimeout(),
+	}
+	inner, err := NewTransaction(innerParams)
+	assert.NoError(t, err)
+	convertToV1Tx(inner)
+
+	params := FeeBumpTransactionParams{
+		Inner:      inner,
+		FeeAccount: kp1.Address(),
+		BaseFee:    MinBaseFee,
+	}
+	root, err := NewFeeBumpTransaction(params)
+	assert.NoError(t, err)
+	root, err = root.Sign(network.TestNetworkPassphrase, kp1)
+	rootB64, err := root.Base64()
+	assert.NoError(t, err)
+
+	left, err := root.Sign(network.TestNetworkPassphrase, kp0)
+	assert.NoError(t, err)
+	leftB64, err := left.Base64()
+	assert.NoError(t, err)
+
+	right, err := root.Sign(network.TestNetworkPassphrase, kp2)
+	assert.NoError(t, err)
+	rightB64, err := right.Base64()
+	assert.NoError(t, err)
+
+	expectedRootB64, err := newSignedFeeBumpTransaction(
+		params, network.TestNetworkPassphrase, kp1,
+	)
+	assert.NoError(t, err)
+
+	expectedLeftB64, err := newSignedFeeBumpTransaction(
+		params, network.TestNetworkPassphrase, kp1, kp0,
+	)
+	assert.NoError(t, err)
+	expectedRightB64, err := newSignedFeeBumpTransaction(
+		params, network.TestNetworkPassphrase, kp1, kp2,
+	)
+	assert.NoError(t, err)
+
+	assert.Equal(t, expectedRootB64, rootB64)
+	verifySignatures(t, root, kp1)
+	assert.Equal(t, expectedLeftB64, leftB64)
+	verifySignatures(t, left, kp1, kp0)
+	assert.Equal(t, expectedRightB64, rightB64)
+	verifySignatures(t, right, kp1, kp2)
 }

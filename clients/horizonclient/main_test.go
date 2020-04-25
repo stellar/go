@@ -3,6 +3,7 @@ package horizonclient
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 	"testing"
 	"time"
 
@@ -16,7 +17,9 @@ import (
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/http/httptest"
 	"github.com/stellar/go/txnbuild"
+	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestFixHTTP(t *testing.T) {
@@ -966,6 +969,98 @@ func TestSubmitTransactionRequest(t *testing.T) {
 	assert.Equal(t, ErrAccountRequiresMemo, errors.Cause(err))
 }
 
+func convertToV1Tx(t *testing.T, tx *txnbuild.Transaction) *txnbuild.Transaction {
+	// Action needed in release: horizonclient-v3.1.0
+	// remove manual envelope type configuration because
+	// once protocol 13 is enabled txnbuild will generate
+	// v1 transaction envelopes by default
+	innerTxEnvelope, err := tx.TxEnvelope()
+	require.NoError(t, err)
+	innerTxEnvelope.V1 = &xdr.TransactionV1Envelope{
+		Tx: xdr.Transaction{
+			SourceAccount: innerTxEnvelope.SourceAccount(),
+			Fee:           xdr.Uint32(innerTxEnvelope.Fee()),
+			SeqNum:        xdr.SequenceNumber(innerTxEnvelope.SeqNum()),
+			TimeBounds:    innerTxEnvelope.V0.Tx.TimeBounds,
+			Memo:          innerTxEnvelope.Memo(),
+			Operations:    innerTxEnvelope.Operations(),
+		},
+	}
+	innerTxEnvelope.Type = xdr.EnvelopeTypeEnvelopeTypeTx
+	innerTxEnvelope.V0 = nil
+	innerTxEnvelopeB64, err := xdr.MarshalBase64(innerTxEnvelope)
+	require.NoError(t, err)
+	parsed, err := txnbuild.TransactionFromXDR(innerTxEnvelopeB64)
+	tx, _ = parsed.Simple()
+	return tx
+}
+
+func TestSubmitFeeBumpTransaction(t *testing.T) {
+	hmock := httptest.NewClient()
+	client := &Client{
+		HorizonURL: "https://localhost/",
+		HTTP:       hmock,
+	}
+
+	kp := keypair.MustParseFull("SA26PHIKZM6CXDGR472SSGUQQRYXM6S437ZNHZGRM6QA4FOPLLLFRGDX")
+	sourceAccount := txnbuild.NewSimpleAccount(kp.Address(), int64(0))
+
+	payment := txnbuild.Payment{
+		Destination: kp.Address(),
+		Amount:      "10",
+		Asset:       txnbuild.NativeAsset{},
+	}
+
+	tx, err := txnbuild.NewTransaction(
+		txnbuild.TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: true,
+			Operations:           []txnbuild.Operation{&payment},
+			BaseFee:              txnbuild.MinBaseFee,
+			Timebounds:           txnbuild.NewTimebounds(0, 10),
+		},
+	)
+	assert.NoError(t, err)
+
+	tx, err = tx.Sign(network.TestNetworkPassphrase, kp)
+	assert.NoError(t, err)
+
+	tx = convertToV1Tx(t, tx)
+	feeBumpKP := keypair.MustParseFull("SA5ZEFDVFZ52GRU7YUGR6EDPBNRU2WLA6IQFQ7S2IH2DG3VFV3DOMV2Q")
+	feeBumpTx, err := txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
+		Inner:      tx,
+		FeeAccount: feeBumpKP.Address(),
+		BaseFee:    txnbuild.MinBaseFee * 2,
+	})
+	feeBumpTx, err = feeBumpTx.Sign(network.TestNetworkPassphrase, feeBumpKP)
+	feeBumpTxB64, err := feeBumpTx.Base64()
+	assert.NoError(t, err)
+
+	// successful tx with config.memo_required not found
+	hmock.On(
+		"POST",
+		"https://localhost/transactions?tx="+url.QueryEscape(feeBumpTxB64),
+	).ReturnString(200, txSuccess)
+
+	hmock.On(
+		"GET",
+		"https://localhost/accounts/GACTJ4ZFCDZMD2UFR4R7MZOWYBCF6HBP65YKCUT37MUQFPJLDLJ3N5D2/data/config.memo_required",
+	).ReturnString(404, notFoundResponse)
+
+	_, err = client.SubmitFeeBumpTransaction(feeBumpTx, SubmitTxOpts{})
+	assert.NoError(t, err)
+
+	// memo required - does not submit transaction
+	hmock.On(
+		"GET",
+		"https://localhost/accounts/GACTJ4ZFCDZMD2UFR4R7MZOWYBCF6HBP65YKCUT37MUQFPJLDLJ3N5D2/data/config.memo_required",
+	).ReturnJSON(200, memoRequiredResponse)
+
+	_, err = client.SubmitFeeBumpTransaction(feeBumpTx, SubmitTxOpts{})
+	assert.Error(t, err)
+	assert.Equal(t, ErrAccountRequiresMemo, errors.Cause(err))
+}
+
 func TestSubmitTransactionWithOptionsRequest(t *testing.T) {
 	hmock := httptest.NewClient()
 	client := &Client{
@@ -1076,6 +1171,141 @@ func TestSubmitTransactionWithOptionsRequest(t *testing.T) {
 	assert.NoError(t, err)
 
 	_, err = client.SubmitTransaction(tx, SubmitTxOpts{SkipMemoRequiredCheck: false})
+	assert.NoError(t, err)
+}
+
+func TestSubmitFeeBumpTransactionWithOptions(t *testing.T) {
+	hmock := httptest.NewClient()
+	client := &Client{
+		HorizonURL: "https://localhost/",
+		HTTP:       hmock,
+	}
+
+	kp := keypair.MustParseFull("SA26PHIKZM6CXDGR472SSGUQQRYXM6S437ZNHZGRM6QA4FOPLLLFRGDX")
+	sourceAccount := txnbuild.NewSimpleAccount(kp.Address(), int64(0))
+
+	payment := txnbuild.Payment{
+		Destination: kp.Address(),
+		Amount:      "10",
+		Asset:       txnbuild.NativeAsset{},
+	}
+
+	tx, err := txnbuild.NewTransaction(
+		txnbuild.TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: true,
+			Operations:           []txnbuild.Operation{&payment},
+			BaseFee:              txnbuild.MinBaseFee,
+			Timebounds:           txnbuild.NewTimebounds(0, 10),
+		},
+	)
+	assert.NoError(t, err)
+
+	tx, err = tx.Sign(network.TestNetworkPassphrase, kp)
+	assert.NoError(t, err)
+
+	tx = convertToV1Tx(t, tx)
+	feeBumpKP := keypair.MustParseFull("SA5ZEFDVFZ52GRU7YUGR6EDPBNRU2WLA6IQFQ7S2IH2DG3VFV3DOMV2Q")
+	feeBumpTx, err := txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
+		Inner:      tx,
+		FeeAccount: feeBumpKP.Address(),
+		BaseFee:    txnbuild.MinBaseFee * 2,
+	})
+	feeBumpTx, err = feeBumpTx.Sign(network.TestNetworkPassphrase, feeBumpKP)
+	feeBumpTxB64, err := feeBumpTx.Base64()
+	assert.NoError(t, err)
+
+	hmock.
+		On("POST", "https://localhost/transactions").
+		ReturnString(400, transactionFailure)
+
+	_, err = client.SubmitFeeBumpTransaction(feeBumpTx, SubmitTxOpts{SkipMemoRequiredCheck: true})
+
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "horizon error")
+		horizonError, ok := errors.Cause(err).(*Error)
+		assert.Equal(t, ok, true)
+		assert.Equal(t, horizonError.Problem.Title, "Transaction Failed")
+	}
+
+	// connection error
+	hmock.
+		On("POST", "https://localhost/transactions").
+		ReturnError("http.Client error")
+
+	_, err = client.SubmitFeeBumpTransaction(feeBumpTx, SubmitTxOpts{SkipMemoRequiredCheck: true})
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "http.Client error")
+		_, ok := err.(*Error)
+		assert.Equal(t, ok, false)
+	}
+
+	// successful tx
+	hmock.On(
+		"POST",
+		"https://localhost/transactions?tx="+url.QueryEscape(feeBumpTxB64),
+	).ReturnString(200, txSuccess)
+
+	_, err = client.SubmitFeeBumpTransaction(feeBumpTx, SubmitTxOpts{SkipMemoRequiredCheck: true})
+	assert.NoError(t, err)
+
+	// successful tx with config.memo_required not found
+	hmock.On(
+		"POST",
+		"https://localhost/transactions?tx="+url.QueryEscape(feeBumpTxB64),
+	).ReturnString(200, txSuccess)
+
+	hmock.On(
+		"GET",
+		"https://localhost/accounts/GACTJ4ZFCDZMD2UFR4R7MZOWYBCF6HBP65YKCUT37MUQFPJLDLJ3N5D2/data/config.memo_required",
+	).ReturnString(404, notFoundResponse)
+
+	_, err = client.SubmitFeeBumpTransaction(feeBumpTx, SubmitTxOpts{SkipMemoRequiredCheck: false})
+	assert.NoError(t, err)
+
+	// memo required - does not submit transaction
+	hmock.On(
+		"GET",
+		"https://localhost/accounts/GACTJ4ZFCDZMD2UFR4R7MZOWYBCF6HBP65YKCUT37MUQFPJLDLJ3N5D2/data/config.memo_required",
+	).ReturnJSON(200, memoRequiredResponse)
+
+	_, err = client.SubmitFeeBumpTransaction(feeBumpTx, SubmitTxOpts{SkipMemoRequiredCheck: false})
+	assert.Error(t, err)
+	assert.Equal(t, ErrAccountRequiresMemo, errors.Cause(err))
+
+	tx, err = txnbuild.NewTransaction(
+		txnbuild.TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: true,
+			Operations:           []txnbuild.Operation{&payment},
+			BaseFee:              txnbuild.MinBaseFee,
+			Memo:                 txnbuild.MemoText("HelloWorld"),
+			Timebounds:           txnbuild.NewTimebounds(0, 10),
+		},
+	)
+	assert.NoError(t, err)
+
+	tx = convertToV1Tx(t, tx)
+	feeBumpKP = keypair.MustParseFull("SA5ZEFDVFZ52GRU7YUGR6EDPBNRU2WLA6IQFQ7S2IH2DG3VFV3DOMV2Q")
+	feeBumpTx, err = txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
+		Inner:      tx,
+		FeeAccount: feeBumpKP.Address(),
+		BaseFee:    txnbuild.MinBaseFee * 2,
+	})
+	feeBumpTx, err = feeBumpTx.Sign(network.TestNetworkPassphrase, feeBumpKP)
+	feeBumpTxB64, err = feeBumpTx.Base64()
+	assert.NoError(t, err)
+
+	// skips memo check if tx includes a memo
+	hmock.On(
+		"POST",
+		"https://localhost/transactions?tx="+url.QueryEscape(feeBumpTxB64),
+	).ReturnString(200, txSuccess)
+
+	tx, err = tx.Sign(network.TestNetworkPassphrase, kp)
+	assert.NoError(t, err)
+
+	_, err = client.SubmitFeeBumpTransaction(feeBumpTx, SubmitTxOpts{SkipMemoRequiredCheck: false})
 	assert.NoError(t, err)
 }
 

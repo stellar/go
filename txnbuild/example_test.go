@@ -705,6 +705,52 @@ func ExampleManageBuyOffer() {
 
 }
 
+// Action needed in release: horizonclient-v3.1.0
+// Uncomment this example when protocol 13 is enabled
+//func ExampleFeeBumpTransaction() {
+//	kp, _ := keypair.Parse("SBPQUZ6G4FZNWFHKUWC5BEYWF6R52E3SEP7R3GWYSM2XTKGF5LNTWW4R")
+//	client := horizonclient.DefaultTestNetClient
+//	ar := horizonclient.AccountRequest{AccountID: kp.Address()}
+//	sourceAccount, err := client.AccountDetail(ar)
+//	check(err)
+//
+//	op := BumpSequence{
+//		BumpTo: 9606132444168300,
+//	}
+//
+//	tx, err := NewTransaction(
+//		TransactionParams{
+//			SourceAccount:        &sourceAccount,
+//			IncrementSequenceNum: true,
+//			Operations:           []Operation{&op},
+//			BaseFee:              MinBaseFee,
+//			Timebounds:           NewInfiniteTimeout(), // Use a real timeout in production!
+//		},
+//	)
+//	check(err)
+//	tx, err = tx.Sign(network.TestNetworkPassphrase, kp.(*keypair.Full))
+//	check(err)
+//
+//	feeBumpKP, _ := keypair.Parse("SBZVMB74Z76QZ3ZOY7UTDFYKMEGKW5XFJEB6PFKBF4UYSSWHG4EDH7PY")
+//	convertToV1Tx(tx)
+//	feeBumpTx, err := NewFeeBumpTransaction(
+//		FeeBumpTransactionParams{
+//			Inner:      tx,
+//			FeeAccount: feeBumpKP.Address(),
+//			BaseFee:    MinBaseFee,
+//		},
+//	)
+//	check(err)
+//	feeBumpTx, err = feeBumpTx.Sign(network.TestNetworkPassphrase, feeBumpKP.(*keypair.Full))
+//	check(err)
+//
+//	txe, err := feeBumpTx.Base64()
+//	check(err)
+//	fmt.Println(txe)
+//
+//	// Output: AAAABQAAAAB+Ecs01jX14asC1KAsPdWlpGbYCM2PEgFZCD3NLhVZmAAAAAAAAADIAAAAAgAAAADg3G3hclysZlFitS+s5zWyiiJD5B0STWy5LXCj6i5yxQAAAGQADKI/AAAABAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAACwAiILoAAABsAAAAAAAAAAHqLnLFAAAAQEIvyOHdPn82ckKXISGF6sR4YU5ox735ivKrC/wS4615j1AA42vbXSLqShJA5/7/DX56UUv+Lt7vlcu9M7jsRw4AAAAAAAAAAS4VWZgAAABAeD0gL6WpzSdGTzWd4c9yUu3r+W21hOTLT4ItHGBTHYPT20Wk3dytuqfP89EzlkZXvtG8/N0HH4w+oJCLOL/5Aw==
+//}
+
 func ExampleBuildChallengeTx() {
 	// Generate random nonce
 	serverSignerSeed := "SBZVMB74Z76QZ3ZOY7UTDFYKMEGKW5XFJEB6PFKBF4UYSSWHG4EDH7PY"

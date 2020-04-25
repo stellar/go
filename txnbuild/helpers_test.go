@@ -78,6 +78,48 @@ func newSignedTransaction(
 	return txeBase64, err
 }
 
+func newSignedFeeBumpTransaction(
+	params FeeBumpTransactionParams,
+	network string,
+	keypairs ...*keypair.Full,
+) (string, error) {
+	tx, err := NewFeeBumpTransaction(params)
+	if err != nil {
+		return "", errors.Wrap(err, "couldn't create transaction")
+	}
+
+	tx, err = tx.Sign(network, keypairs...)
+	if err != nil {
+		return "", errors.Wrap(err, "couldn't sign transaction")
+	}
+
+	txeBase64, err := tx.Base64()
+	if err != nil {
+		return "", errors.Wrap(err, "couldn't encode transaction")
+	}
+
+	return txeBase64, err
+}
+
+func convertToV1Tx(tx *Transaction) {
+	// Action needed in release: horizonclient-v3.1.0
+	// remove manual envelope type configuration because
+	// once protocol 13 is enabled txnbuild will generate
+	// v1 transaction envelopes by default
+	tx.envelope.V1 = &xdr.TransactionV1Envelope{
+		Tx: xdr.Transaction{
+			SourceAccount: tx.envelope.SourceAccount(),
+			Fee:           xdr.Uint32(tx.envelope.Fee()),
+			SeqNum:        xdr.SequenceNumber(tx.envelope.SeqNum()),
+			TimeBounds:    tx.envelope.V0.Tx.TimeBounds,
+			Memo:          tx.envelope.Memo(),
+			Operations:    tx.envelope.Operations(),
+		},
+	}
+	tx.envelope.Type = xdr.EnvelopeTypeEnvelopeTypeTx
+	tx.envelope.V0 = nil
+}
+
 func TestValidateStellarPublicKey(t *testing.T) {
 	validKey := "GDWZCOEQRODFCH6ISYQPWY67L3ULLWS5ISXYYL5GH43W7YFMTLB65PYM"
 	err := validateStellarPublicKey(validKey)

@@ -2,6 +2,7 @@ package serve
 
 import (
 	"context"
+	"github.com/stellar/go/xdr"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -911,6 +912,96 @@ func TestAccountSign_cannotParseTransaction(t *testing.T) {
 	ctx = auth.NewContext(ctx, auth.Auth{Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4"})
 	req := `{
 	"transaction": "` + txEnc + `"
+}`
+	r := httptest.NewRequest("POST", "/GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4/sign", strings.NewReader(req))
+	r = r.WithContext(ctx)
+
+	w := httptest.NewRecorder()
+	m := chi.NewMux()
+	m.Post("/{address}/sign", h.ServeHTTP)
+	m.ServeHTTP(w, r)
+	resp := w.Result()
+
+	require.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
+
+	body, err := ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	wantBody := `{"error": "The request was invalid in some way."}`
+	assert.JSONEq(t, wantBody, string(body))
+}
+
+// Test that the sign endpoint responds with an error when given a fee bump transaction.
+func TestAccountSign_rejectsFeeBumpTx(t *testing.T) {
+	s := &account.DBStore{DB: dbtest.Open(t).Open()}
+	s.Add(account.Account{
+		Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4",
+	})
+	h := accountSignHandler{
+		Logger:            supportlog.DefaultLogger,
+		AccountStore:      s,
+		SigningKey:        keypair.MustParseFull("SBIB72S6JMTGJRC6LMKLC5XMHZ2IOHZSZH4SASTN47LECEEJ7QEB6EYK"),
+		NetworkPassphrase: network.TestNetworkPassphrase,
+	}
+
+	tx, err := txnbuild.NewTransaction(
+		txnbuild.TransactionParams{
+			SourceAccount:        &txnbuild.SimpleAccount{AccountID: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4"},
+			IncrementSequenceNum: true,
+			Operations: []txnbuild.Operation{
+				&txnbuild.SetOptions{
+					Signer: &txnbuild.Signer{
+						Address: "GD7CGJSJ5OBOU5KOP2UQDH3MPY75UTEY27HVV5XPSL2X6DJ2VGTOSXEU",
+						Weight:  20,
+					},
+				},
+			},
+			BaseFee:    txnbuild.MinBaseFee,
+			Timebounds: txnbuild.NewTimebounds(0, 1),
+		},
+	)
+	require.NoError(t, err)
+
+	// Action needed in release: horizonclient-v3.1.0
+	// remove manual envelope type configuration because
+	// once protocol 13 is enabled txnbuild will generate
+	// v1 transaction envelopes by default
+	innerTxEnvelope, err := tx.TxEnvelope()
+	require.NoError(t, err)
+	innerTxEnvelope.V1 = &xdr.TransactionV1Envelope{
+		Tx: xdr.Transaction{
+			SourceAccount: innerTxEnvelope.SourceAccount(),
+			Fee:           xdr.Uint32(innerTxEnvelope.Fee()),
+			SeqNum:        xdr.SequenceNumber(innerTxEnvelope.SeqNum()),
+			TimeBounds:    innerTxEnvelope.V0.Tx.TimeBounds,
+			Memo:          innerTxEnvelope.Memo(),
+			Operations:    innerTxEnvelope.Operations(),
+		},
+	}
+	innerTxEnvelope.Type = xdr.EnvelopeTypeEnvelopeTypeTx
+	innerTxEnvelope.V0 = nil
+	innerTxEnvelopeB64, err := xdr.MarshalBase64(innerTxEnvelope)
+	require.NoError(t, err)
+	parsed, err := txnbuild.TransactionFromXDR(innerTxEnvelopeB64)
+	tx, _ = parsed.Simple()
+
+	feeBumpTx, err := txnbuild.NewFeeBumpTransaction(
+		txnbuild.FeeBumpTransactionParams{
+			Inner:      tx,
+			FeeAccount: "GD7CGJSJ5OBOU5KOP2UQDH3MPY75UTEY27HVV5XPSL2X6DJ2VGTOSXEU",
+			BaseFee:    2 * txnbuild.MinBaseFee,
+		},
+	)
+
+	feeBumpTxB64, err := feeBumpTx.Base64()
+	require.NoError(t, err)
+	t.Log("Tx:", feeBumpTxB64)
+
+	ctx := context.Background()
+	ctx = auth.NewContext(ctx, auth.Auth{Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4"})
+	req := `{
+	"transaction": "` + feeBumpTxB64 + `"
 }`
 	r := httptest.NewRequest("POST", "/GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4/sign", strings.NewReader(req))
 	r = r.WithContext(ctx)

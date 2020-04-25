@@ -15,6 +15,75 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestIncrementSequenceNum(t *testing.T) {
+	kp0 := newKeypair0()
+	sourceAccount := NewSimpleAccount(kp0.Address(), 1)
+	inflation := Inflation{}
+
+	_, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&inflation},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(),
+		},
+	)
+	assert.NoError(t, err)
+	assert.Equal(t, int64(2), sourceAccount.Sequence)
+
+	_, err = NewTransaction(
+		TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&inflation},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(),
+		},
+	)
+	assert.NoError(t, err)
+	assert.Equal(t, int64(3), sourceAccount.Sequence)
+
+	_, err = NewTransaction(
+		TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: false,
+			Operations:           []Operation{&inflation},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(),
+		},
+	)
+	assert.NoError(t, err)
+	assert.Equal(t, int64(3), sourceAccount.Sequence)
+
+	_, err = NewTransaction(
+		TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: false,
+			Operations:           []Operation{&inflation},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(),
+		},
+	)
+	assert.NoError(t, err)
+	assert.Equal(t, int64(3), sourceAccount.Sequence)
+}
+
+func TestFeeNoOperations(t *testing.T) {
+	kp0 := newKeypair0()
+	sourceAccount := NewSimpleAccount(kp0.Address(), 5938436531814403)
+
+	_, err := NewTransaction(
+		TransactionParams{
+			SourceAccount: &sourceAccount,
+			Operations:    []Operation{},
+			BaseFee:       MinBaseFee,
+			Timebounds:    NewInfiniteTimeout(),
+		},
+	)
+	assert.EqualError(t, err, "transaction has no operations")
+}
+
 func TestInflation(t *testing.T) {
 	kp0 := newKeypair0()
 	sourceAccount := NewSimpleAccount(kp0.Address(), int64(3556091187167235))
@@ -951,6 +1020,7 @@ func TestBuildChallengeTx(t *testing.T) {
 		assert.Contains(t, err.Error(), "provided timebound must be at least 1s (300s is recommended)")
 	}
 }
+
 func TestHashHex(t *testing.T) {
 	kp0 := newKeypair0()
 	sourceAccount := NewSimpleAccount(kp0.Address(), int64(9605939170639897))
@@ -1804,6 +1874,141 @@ func TestReadChallengeTx_invalidDataValueWrongByteLength(t *testing.T) {
 	assert.Equal(t, tx, readTx)
 	assert.Equal(t, clientKP.Address(), readClientAccountID)
 	assert.EqualError(t, err, "random nonce before encoding as base64 should be 48 bytes long")
+}
+
+func TestReadChallengeTx_acceptsV0AndV1Transactions(t *testing.T) {
+	kp0 := newKeypair0()
+	tx, err := BuildChallengeTx(
+		kp0.Seed(),
+		kp0.Address(),
+		"SDF",
+		network.TestNetworkPassphrase,
+		time.Hour,
+	)
+	assert.NoError(t, err)
+
+	originalHash, err := tx.HashHex(network.TestNetworkPassphrase)
+	assert.NoError(t, err)
+
+	tx.envelope.V1 = &xdr.TransactionV1Envelope{
+		Tx: xdr.Transaction{
+			SourceAccount: tx.envelope.SourceAccount(),
+			Fee:           xdr.Uint32(tx.envelope.Fee()),
+			SeqNum:        xdr.SequenceNumber(tx.envelope.SeqNum()),
+			TimeBounds:    tx.envelope.V0.Tx.TimeBounds,
+			Memo:          tx.envelope.Memo(),
+			Operations:    tx.envelope.Operations(),
+		},
+	}
+	tx.envelope.Type = xdr.EnvelopeTypeEnvelopeTypeTx
+	v1Challenge, err := marshallBase64(tx.envelope, tx.Signatures())
+	assert.NoError(t, err)
+
+	tx.envelope.V0 = &xdr.TransactionV0Envelope{
+		Tx: xdr.TransactionV0{
+			SourceAccountEd25519: *tx.envelope.SourceAccount().Ed25519,
+			Fee:                  xdr.Uint32(tx.envelope.Fee()),
+			SeqNum:               xdr.SequenceNumber(tx.envelope.SeqNum()),
+			TimeBounds:           tx.envelope.V0.Tx.TimeBounds,
+			Memo:                 tx.envelope.Memo(),
+			Operations:           tx.envelope.Operations(),
+		},
+	}
+	tx.envelope.Type = xdr.EnvelopeTypeEnvelopeTypeTxV0
+	v0Challenge, err := marshallBase64(tx.envelope, tx.Signatures())
+	assert.NoError(t, err)
+
+	for _, challenge := range []string{v1Challenge, v0Challenge} {
+		parsedTx, clientAccountID, err := ReadChallengeTx(
+			challenge,
+			kp0.Address(),
+			network.TestNetworkPassphrase,
+		)
+		assert.NoError(t, err)
+
+		assert.Equal(t, kp0.Address(), clientAccountID)
+
+		hash, err := parsedTx.HashHex(network.TestNetworkPassphrase)
+		assert.NoError(t, err)
+		assert.Equal(t, originalHash, hash)
+	}
+}
+
+func TestReadChallengeTx_forbidsFeeBumpTransactions(t *testing.T) {
+	kp0 := newKeypair0()
+	tx, err := BuildChallengeTx(
+		kp0.Seed(),
+		kp0.Address(),
+		"SDF",
+		network.TestNetworkPassphrase,
+		time.Hour,
+	)
+	assert.NoError(t, err)
+
+	convertToV1Tx(tx)
+	kp1 := newKeypair1()
+	feeBumpTx, err := NewFeeBumpTransaction(
+		FeeBumpTransactionParams{
+			Inner:      tx,
+			FeeAccount: kp1.Address(),
+			BaseFee:    3 * MinBaseFee,
+		},
+	)
+	assert.NoError(t, err)
+
+	feeBumpTx, err = feeBumpTx.Sign(network.TestNetworkPassphrase, kp1)
+	assert.NoError(t, err)
+
+	challenge, err := feeBumpTx.Base64()
+	assert.NoError(t, err)
+	_, _, err = ReadChallengeTx(
+		challenge,
+		kp0.Address(),
+		network.TestNetworkPassphrase,
+	)
+	assert.EqualError(t, err, "challenge cannot be a fee bump transaction")
+}
+
+func TestBuildChallengeTx_forbidsMuxedAccounts(t *testing.T) {
+	kp0 := newKeypair0()
+	_, err := BuildChallengeTx(
+		kp0.Seed(),
+		"MCAAAAAAAAAAAAB7BQ2L7E5NBWMXDUCMZSIPOBKRDSBYVLMXGSSKF6YNPIB7Y77ITKNOG",
+		"SDF",
+		network.TestNetworkPassphrase,
+		time.Hour,
+	)
+	errorMessage := "MCAAAAAAAAAAAAB7BQ2L7E5NBWMXDUCMZSIPOBKRDSBYVLMXGSSKF6YNPIB7Y77ITKNOG is " +
+		"not a valid account id: invalid version byte"
+	assert.EqualError(t, err, errorMessage)
+}
+
+func TestReadChallengeTx_forbidsMuxedAccounts(t *testing.T) {
+	kp0 := newKeypair0()
+	tx, err := BuildChallengeTx(
+		kp0.Seed(),
+		kp0.Address(),
+		"SDF",
+		network.TestNetworkPassphrase,
+		time.Hour,
+	)
+
+	muxedAccount := xdr.MustMuxedAccountAddress("MCAAAAAAAAAAAAB7BQ2L7E5NBWMXDUCMZSIPOBKRDSBYVLMXGSSKF6YNPIB7Y77ITKNOG")
+
+	env, err := tx.TxEnvelope()
+	assert.NoError(t, err)
+	*env.V0.Tx.Operations[0].SourceAccount = muxedAccount
+
+	challenge, err := marshallBase64(env, env.Signatures())
+	assert.NoError(t, err)
+
+	_, _, err = ReadChallengeTx(
+		challenge,
+		kp0.Address(),
+		network.TestNetworkPassphrase,
+	)
+	errorMessage := "only valid Ed25519 accounts are allowed in challenge transactions: invalid version byte"
+	assert.EqualError(t, err, errorMessage)
 }
 
 func TestVerifyChallengeTxThreshold_invalidServer(t *testing.T) {
