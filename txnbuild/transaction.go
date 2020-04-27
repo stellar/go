@@ -202,13 +202,13 @@ func (t *Transaction) Timebounds() Timebounds {
 }
 
 // Operations returns the list of operations included in this transaction.
-// The returned slice should not be modified.
+// The contents of the returned slice should not be modified.
 func (t *Transaction) Operations() []Operation {
 	return t.operations
 }
 
 // Signatures returns the list of signatures attached to this transaction.
-// The returned slice should not be modified.
+// The contents of the returned slice should not be modified.
 func (t *Transaction) Signatures() []xdr.DecoratedSignature {
 	return t.signatures
 }
@@ -307,7 +307,7 @@ func (t *FeeBumpTransaction) FeeAccount() string {
 }
 
 // Signatures returns the list of signatures attached to this transaction.
-// The returned slice should not be modified.
+// The contents of the returned slice should not be modified.
 func (t *FeeBumpTransaction) Signatures() []xdr.DecoratedSignature {
 	return t.signatures
 }
