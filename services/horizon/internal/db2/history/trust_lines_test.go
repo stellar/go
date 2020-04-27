@@ -160,14 +160,14 @@ func TestUpsertTrustLines(t *testing.T) {
 	assert.NoError(t, err)
 
 	ledgerEntries := []xdr.LedgerEntry{
-		xdr.LedgerEntry{
+		{
 			LastModifiedLedgerSeq: 1,
 			Data: xdr.LedgerEntryData{
 				Type:      xdr.LedgerEntryTypeTrustline,
 				TrustLine: &eurTrustLine,
 			},
 		},
-		xdr.LedgerEntry{
+		{
 			LastModifiedLedgerSeq: 2,
 			Data: xdr.LedgerEntryData{
 				Type:      xdr.LedgerEntryTypeTrustline,
@@ -197,7 +197,7 @@ func TestUpsertTrustLines(t *testing.T) {
 	modifiedTrustLine.Balance = 30000
 
 	ledgerEntries = []xdr.LedgerEntry{
-		xdr.LedgerEntry{
+		{
 			LastModifiedLedgerSeq: 1000,
 			Data: xdr.LedgerEntryData{
 				Type:      xdr.LedgerEntryTypeTrustline,
@@ -298,7 +298,7 @@ func TestRemoveTrustLine(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, int64(0), rows)
 }
-func TestGetTrustLinesByAccountsID(t *testing.T) {
+func TestGetSortedTrustLinesByAccountsID(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
 	test.ResetHorizonDB(t, tt.HorizonDB)
@@ -316,7 +316,7 @@ func TestGetTrustLinesByAccountsID(t *testing.T) {
 		usdTrustLine.AccountId.Address(),
 	}
 
-	records, err := q.GetTrustLinesByAccountsID(ids)
+	records, err := q.GetSortedTrustLinesByAccountIDs(ids)
 	tt.Assert.NoError(err)
 	tt.Assert.Len(records, 2)
 
@@ -325,7 +325,13 @@ func TestGetTrustLinesByAccountsID(t *testing.T) {
 		usdTrustLine.AccountId.Address(): usdTrustLine,
 	}
 
+	lastAssetCode := ""
+	lastIssuer := records[0].AssetIssuer
 	for _, record := range records {
+		tt.Assert.LessOrEqual(lastAssetCode, record.AssetCode)
+		lastAssetCode = record.AssetCode
+		tt.Assert.LessOrEqual(lastIssuer, record.AssetIssuer)
+		lastIssuer = record.AssetIssuer
 		xtl, ok := m[record.AccountID]
 		tt.Assert.True(ok)
 		asset := xdr.MustNewCreditAsset(record.AssetCode, record.AssetIssuer)

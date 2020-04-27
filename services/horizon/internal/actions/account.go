@@ -401,7 +401,7 @@ func (handler GetAccountsHandler) loadData(historyQ *history.Q, accounts []strin
 func (handler GetAccountsHandler) loadTrustlines(historyQ *history.Q, accounts []string) (map[string][]history.TrustLine, error) {
 	trustLines := make(map[string][]history.TrustLine)
 
-	records, err := historyQ.GetTrustLinesByAccountsID(accounts)
+	records, err := historyQ.GetSortedTrustLinesByAccountIDs(accounts)
 	if err != nil {
 		return trustLines, errors.Wrap(err, "loading trustline records by accounts")
 	}
