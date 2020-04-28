@@ -13,11 +13,11 @@ import (
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
-	"github.com/stellar/go/clients/horizon"
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/exp/support/jwtkey"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/network"
+	"github.com/stellar/go/protocols/horizon"
 	supportlog "github.com/stellar/go/support/log"
 	"github.com/stellar/go/support/render/problem"
 	"github.com/stellar/go/txnbuild"
