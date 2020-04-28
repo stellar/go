@@ -91,9 +91,36 @@ func TestPathPaymentStrictSendValidateDestination(t *testing.T) {
 		},
 	)
 	if assert.Error(t, err) {
-		expected := "validation failed for *txnbuild.PathPaymentStrictSend operation: Field: Destination, Error: SASND3NRUY5K43PN3H3HOP5JNTIDXJFLOKKNSCZQQAFBRSEIRD5OJKXZ is not a valid stellar public key"
+		expected := "validation failed for *txnbuild.PathPaymentStrictSend operation: Field: Destination"
 		assert.Contains(t, err.Error(), expected)
 	}
+}
+
+func TestPathPaymentStrictSendValidateDestinationAcceptsMuxedACcount(t *testing.T) {
+	kp0 := newKeypair0()
+	kp2 := newKeypair2()
+	sourceAccount := NewSimpleAccount(kp2.Address(), int64(187316408680450))
+
+	abcdAsset := CreditAsset{"ABCD", kp0.Address()}
+	pathPayment := PathPaymentStrictSend{
+		SendAsset:   NativeAsset{},
+		SendAmount:  "10",
+		Destination: "MCAAAAAAAAAAAAB7BQ2L7E5NBWMXDUCMZSIPOBKRDSBYVLMXGSSKF6YNPIB7Y77ITKNOG",
+		DestAsset:   CreditAsset{"ABCD", kp0.Address()},
+		DestMin:     "1",
+		Path:        []Asset{abcdAsset},
+	}
+
+	_, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: false,
+			Operations:           []Operation{&pathPayment},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(),
+		},
+	)
+	assert.NoError(t, err)
 }
 
 func TestPathPaymentStrictSendValidateSendMax(t *testing.T) {

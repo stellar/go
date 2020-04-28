@@ -914,6 +914,31 @@ func TestSubmitTransactionXDRRequest(t *testing.T) {
 	}
 }
 
+func TestCheckMemoRequiredSkipsMemoIDAddress(t *testing.T) {
+	client := &Client{HorizonURL: "https://localhost/"}
+
+	kp := keypair.MustParseFull("SA26PHIKZM6CXDGR472SSGUQQRYXM6S437ZNHZGRM6QA4FOPLLLFRGDX")
+	sourceAccount := txnbuild.NewSimpleAccount(kp.Address(), int64(0))
+
+	payment := txnbuild.Payment{
+		Destination: "MCAAAAAAAAAAAAB7BQ2L7E5NBWMXDUCMZSIPOBKRDSBYVLMXGSSKF6YNPIB7Y77ITKNOG",
+		Amount:      "10",
+		Asset:       txnbuild.NativeAsset{},
+	}
+
+	tx, err := txnbuild.NewTransaction(
+		txnbuild.TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: true,
+			Operations:           []txnbuild.Operation{&payment},
+			BaseFee:              txnbuild.MinBaseFee,
+			Timebounds:           txnbuild.NewTimebounds(0, 10),
+		},
+	)
+	assert.NoError(t, err)
+	assert.NoError(t, client.checkMemoRequired(tx))
+}
+
 func TestSubmitTransactionRequest(t *testing.T) {
 	hmock := httptest.NewClient()
 	client := &Client{
@@ -991,7 +1016,7 @@ func convertToV1Tx(t *testing.T, tx *txnbuild.Transaction) *txnbuild.Transaction
 	innerTxEnvelopeB64, err := xdr.MarshalBase64(innerTxEnvelope)
 	require.NoError(t, err)
 	parsed, err := txnbuild.TransactionFromXDR(innerTxEnvelopeB64)
-	tx, _ = parsed.Simple()
+	tx, _ = parsed.Transaction()
 	return tx
 }
 
