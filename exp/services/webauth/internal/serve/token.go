@@ -79,7 +79,7 @@ func (h tokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	signersVerified := []string(nil)
+	var signersVerified []string
 	if clientAccountExists {
 		requiredThreshold := txnbuild.Threshold(clientAccount.Thresholds.HighThreshold)
 		clientSignerSummary := clientAccount.SignerSummary()
