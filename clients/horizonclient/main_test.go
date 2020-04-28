@@ -991,7 +991,7 @@ func convertToV1Tx(t *testing.T, tx *txnbuild.Transaction) *txnbuild.Transaction
 	innerTxEnvelopeB64, err := xdr.MarshalBase64(innerTxEnvelope)
 	require.NoError(t, err)
 	parsed, err := txnbuild.TransactionFromXDR(innerTxEnvelopeB64)
-	tx, _ = parsed.Simple()
+	tx, _ = parsed.Transaction()
 	return tx
 }
 
