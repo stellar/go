@@ -100,13 +100,25 @@ func (m *MockClient) SubmitTransactionXDR(transactionXdr string) (hProtocol.Tran
 }
 
 // SubmitFeeBumpTransaction is a mocking method
-func (m *MockClient) SubmitFeeBumpTransaction(transaction *txnbuild.FeeBumpTransaction, opts SubmitTxOpts) (hProtocol.Transaction, error) {
+func (m *MockClient) SubmitFeeBumpTransaction(transaction *txnbuild.FeeBumpTransaction) (hProtocol.Transaction, error) {
 	a := m.Called(transaction)
 	return a.Get(0).(hProtocol.Transaction), a.Error(1)
 }
 
 // SubmitTransaction is a mocking method
-func (m *MockClient) SubmitTransaction(transaction *txnbuild.Transaction, opts SubmitTxOpts) (hProtocol.Transaction, error) {
+func (m *MockClient) SubmitTransaction(transaction *txnbuild.Transaction) (hProtocol.Transaction, error) {
+	a := m.Called(transaction)
+	return a.Get(0).(hProtocol.Transaction), a.Error(1)
+}
+
+// SubmitFeeBumpTransactionWithOptions is a mocking method
+func (m *MockClient) SubmitFeeBumpTransactionWithOptions(transaction *txnbuild.FeeBumpTransaction, opts SubmitTxOpts) (hProtocol.Transaction, error) {
+	a := m.Called(transaction, opts)
+	return a.Get(0).(hProtocol.Transaction), a.Error(1)
+}
+
+// SubmitTransactionWithOptions is a mocking method
+func (m *MockClient) SubmitTransactionWithOptions(transaction *txnbuild.Transaction, opts SubmitTxOpts) (hProtocol.Transaction, error) {
 	a := m.Called(transaction, opts)
 	return a.Get(0).(hProtocol.Transaction), a.Error(1)
 }
