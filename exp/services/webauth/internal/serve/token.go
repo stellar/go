@@ -61,7 +61,7 @@ func (h tokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		WithField("tx", hash).
 		WithField("account", clientAccountID)
 
-	l.Info("Verifying challenge transaction.")
+	l.Info("Start verifying challenge transaction.")
 
 	var clientAccountExists bool
 	clientAccount, err := h.HorizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: clientAccountID})
@@ -87,25 +87,25 @@ func (h tokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				WithField("signersCount", len(clientSignerSummary)).
 				WithField("signaturesCount", len(tx.TxEnvelope().Signatures)).
 				WithField("requiredThreshold", requiredThreshold).
-				Info("Verification failed with signers that do not meet threshold.")
+				Info("Failed to verify with signers that do not meet threshold.")
 			unauthorized.Render(w)
 			return
 		}
 	} else {
 		if !h.AllowAccountsThatDoNotExist {
-			l.Infof("Accounts that do not exist are not allowed.")
+			l.Infof("Failed to verify because accounts that do not exist are not allowed.")
 			unauthorized.Render(w)
 			return
 		}
 		_, err = txnbuild.VerifyChallengeTxSigners(req.Transaction, h.SigningAddress.Address(), h.NetworkPassphrase, clientAccountID)
 		if err != nil {
-			l.Infof("Verification failed with account master key as signer.")
+			l.Infof("Failed to verify with account master key as signer.")
 			unauthorized.Render(w)
 			return
 		}
 	}
 
-	h.Logger.Ctx(ctx).Infof("Verified challenge transaction.")
+	h.Logger.Ctx(ctx).Infof("Successfully verified challenge transaction.")
 
 	jwsOptions := &jose.SignerOptions{}
 	jwsOptions.WithType("JWT")
