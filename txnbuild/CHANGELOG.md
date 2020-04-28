@@ -12,7 +12,7 @@ file.  This project adheres to [Semantic Versioning](http://semver.org/).
 
 `Transaction` is now an opaque type which has accessor functions like `SourceAccount() SimpleAccount`, `Memo() Memo`, etc. The motivation behind this change is to make `Transaction` more immutable. Here is an example of how to use the new transaction type:
 ```go
-    kp := keypair.MustParse("SBPQUZ6G4FZNWFHKUWC5BEYWF6R52E3SEP7R3GWYSM2XTKGF5LNTWW4R")
+	kp := keypair.MustParse("SBPQUZ6G4FZNWFHKUWC5BEYWF6R52E3SEP7R3GWYSM2XTKGF5LNTWW4R")
 	client := horizonclient.DefaultTestNetClient
 	ar := horizonclient.AccountRequest{AccountID: kp.Address()}
 	sourceAccount, err := client.AccountDetail(ar)
