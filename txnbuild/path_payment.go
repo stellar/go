@@ -131,7 +131,7 @@ func (pp *PathPaymentStrictReceive) FromXDR(xdrOp xdr.Operation) error {
 // Validate for PathPaymentStrictReceive validates the required struct fields. It returns an error if any
 // of the fields are invalid. Otherwise, it returns nil.
 func (pp *PathPaymentStrictReceive) Validate() error {
-	err := validateStellarPublicKey(pp.Destination)
+	_, err := xdr.AddressToMuxedAccount(pp.Destination)
 	if err != nil {
 		return NewValidationError("Destination", err.Error())
 	}
