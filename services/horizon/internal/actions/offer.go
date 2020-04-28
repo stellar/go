@@ -26,7 +26,7 @@ func (handler GetOfferByID) GetResource(
 		return nil, err
 	}
 
-	historyQ, err := historyQFromRequest(r)
+	historyQ, err := HistoryQFromRequest(r)
 	if err != nil {
 		return nil, err
 	}
@@ -97,7 +97,7 @@ func (handler GetOffersHandler) GetResourcePage(
 		Buying:    qp.Buying(),
 	}
 
-	historyQ, err := historyQFromRequest(r)
+	historyQ, err := HistoryQFromRequest(r)
 	if err != nil {
 		return nil, err
 	}
@@ -151,7 +151,7 @@ func (handler GetAccountOffersHandler) GetResourcePage(
 		return nil, err
 	}
 
-	historyQ, err := historyQFromRequest(r)
+	historyQ, err := HistoryQFromRequest(r)
 	if err != nil {
 		return nil, err
 	}

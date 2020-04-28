@@ -3,7 +3,6 @@ package txnbuild
 import (
 	"testing"
 
-	"github.com/stellar/go/network"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -15,14 +14,14 @@ func TestBumpSequenceValidate(t *testing.T) {
 		BumpTo: -10,
 	}
 
-	tx := Transaction{
-		SourceAccount: &sourceAccount,
-		Operations:    []Operation{&bumpSequence},
-		Timebounds:    NewInfiniteTimeout(),
-		Network:       network.TestNetworkPassphrase,
-	}
-
-	err := tx.Build()
+	_, err := NewTransaction(
+		TransactionParams{
+			SourceAccount: &sourceAccount,
+			Operations:    []Operation{&bumpSequence},
+			Timebounds:    NewInfiniteTimeout(),
+			BaseFee:       MinBaseFee,
+		},
+	)
 	if assert.Error(t, err) {
 		expected := "validation failed for *txnbuild.BumpSequence operation: Field: BumpTo, Error: amount can not be negative"
 		assert.Contains(t, err.Error(), expected)

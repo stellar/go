@@ -122,36 +122,6 @@ func TestRateLimitMiddlewareTestSuite(t *testing.T) {
 	suite.Run(t, new(RateLimitMiddlewareTestSuite))
 }
 
-// Rate Limiting works with redis
-func TestRateLimit_Redis(t *testing.T) {
-	ht := StartHTTPTest(t, "base")
-	defer ht.Finish()
-	c := NewTestConfig()
-	c.RateQuota = &throttled.RateQuota{
-		MaxRate:  throttled.PerHour(10),
-		MaxBurst: 9,
-	}
-	c.RedisURL = "redis://127.0.0.1:6379/"
-	app := NewApp(c)
-	defer app.Close()
-	rh := NewRequestHelper(app)
-
-	redis := app.redis.Get()
-	_, err := redis.Do("FLUSHDB")
-	assert.Nil(t, err)
-
-	for i := 0; i < 10; i++ {
-		w := rh.Get("/")
-		assert.Equal(t, 200, w.Code)
-	}
-
-	w := rh.Get("/")
-	assert.Equal(t, 429, w.Code)
-
-	w = rh.Get("/", test.RequestHelperRemoteAddr("127.0.0.2"))
-	assert.Equal(t, 200, w.Code)
-}
-
 func TestStateMiddleware(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
@@ -160,9 +130,7 @@ func TestStateMiddleware(t *testing.T) {
 	q := &history.Q{tt.HorizonSession()}
 
 	request, err := http.NewRequest("GET", "http://localhost", nil)
-	if err != nil {
-		tt.Assert.NoError(err)
-	}
+	tt.Assert.NoError(err)
 
 	expectTransaction := true
 	endpoint := func(w http.ResponseWriter, r *http.Request) {
@@ -180,6 +148,7 @@ func TestStateMiddleware(t *testing.T) {
 
 	for i, testCase := range []struct {
 		name                string
+		noStateVerification bool
 		stateInvalid        bool
 		latestHistoryLedger xdr.Uint32
 		lastIngestedLedger  uint32
@@ -258,8 +227,31 @@ func TestStateMiddleware(t *testing.T) {
 			expectedStatus:      http.StatusOK,
 			expectTransaction:   false,
 		},
+		{
+			name:                "succeeds without state verification",
+			noStateVerification: true,
+			stateInvalid:        false,
+			latestHistoryLedger: 8,
+			lastIngestedLedger:  8,
+			ingestionVersion:    expingest.CurrentVersion,
+			sseRequest:          false,
+			expectedStatus:      http.StatusOK,
+			expectTransaction:   true,
+		},
+		{
+			name:                "succeeds without state verification and invalid state",
+			noStateVerification: true,
+			stateInvalid:        true,
+			latestHistoryLedger: 9,
+			lastIngestedLedger:  9,
+			ingestionVersion:    expingest.CurrentVersion,
+			sseRequest:          false,
+			expectedStatus:      http.StatusOK,
+			expectTransaction:   true,
+		},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
+			stateMiddleware.NoStateVerification = testCase.noStateVerification
 			tt.Assert.NoError(q.UpdateExpStateInvalid(testCase.stateInvalid))
 			_, err = q.InsertLedger(xdr.LedgerHeaderHistoryEntry{
 				Hash: xdr.Hash{byte(i)},

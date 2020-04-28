@@ -39,8 +39,11 @@ func MustNewNativeAsset() Asset {
 func MustNewCreditAsset(code string, issuer string) Asset {
 	a := Asset{}
 	accountID := AccountId{}
-	accountID.SetAddress(issuer)
-	err := a.SetCredit(code, accountID)
+	err := accountID.SetAddress(issuer)
+	if err != nil {
+		panic(err)
+	}
+	err = a.SetCredit(code, accountID)
 	if err != nil {
 		panic(err)
 	}

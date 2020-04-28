@@ -30,16 +30,6 @@ func newKeypair(seed string) *keypair.Full {
 	return myKeypair.(*keypair.Full)
 }
 
-func buildSignEncode(t *testing.T, tx Transaction, kps ...*keypair.Full) string {
-	assert.NoError(t, tx.Build())
-	assert.NoError(t, tx.Sign(kps...))
-
-	txeBase64, err := tx.Base64()
-	assert.NoError(t, err)
-
-	return txeBase64
-}
-
 func check(err error) {
 	if err != nil {
 		panic(err)
@@ -52,7 +42,7 @@ func checkChallengeTx(txeBase64, anchorName string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	op := txXDR.Tx.Operations[0]
+	op := txXDR.Operations()[0]
 	if (xdr.OperationTypeManageData == op.Body.Type) && (op.Body.ManageDataOp.DataName == xdr.String64(anchorName+" auth")) {
 		return true, nil
 	}
@@ -63,6 +53,71 @@ func unmarshalBase64(txeB64 string) (xdr.TransactionEnvelope, error) {
 	var xdrEnv xdr.TransactionEnvelope
 	err := xdr.SafeUnmarshalBase64(txeB64, &xdrEnv)
 	return xdrEnv, err
+}
+
+func newSignedTransaction(
+	params TransactionParams,
+	network string,
+	keypairs ...*keypair.Full,
+) (string, error) {
+	tx, err := NewTransaction(params)
+	if err != nil {
+		return "", errors.Wrap(err, "couldn't create transaction")
+	}
+
+	tx, err = tx.Sign(network, keypairs...)
+	if err != nil {
+		return "", errors.Wrap(err, "couldn't sign transaction")
+	}
+
+	txeBase64, err := tx.Base64()
+	if err != nil {
+		return "", errors.Wrap(err, "couldn't encode transaction")
+	}
+
+	return txeBase64, err
+}
+
+func newSignedFeeBumpTransaction(
+	params FeeBumpTransactionParams,
+	network string,
+	keypairs ...*keypair.Full,
+) (string, error) {
+	tx, err := NewFeeBumpTransaction(params)
+	if err != nil {
+		return "", errors.Wrap(err, "couldn't create transaction")
+	}
+
+	tx, err = tx.Sign(network, keypairs...)
+	if err != nil {
+		return "", errors.Wrap(err, "couldn't sign transaction")
+	}
+
+	txeBase64, err := tx.Base64()
+	if err != nil {
+		return "", errors.Wrap(err, "couldn't encode transaction")
+	}
+
+	return txeBase64, err
+}
+
+func convertToV1Tx(tx *Transaction) {
+	// Action needed in release: horizonclient-v3.1.0
+	// remove manual envelope type configuration because
+	// once protocol 13 is enabled txnbuild will generate
+	// v1 transaction envelopes by default
+	tx.envelope.V1 = &xdr.TransactionV1Envelope{
+		Tx: xdr.Transaction{
+			SourceAccount: tx.envelope.SourceAccount(),
+			Fee:           xdr.Uint32(tx.envelope.Fee()),
+			SeqNum:        xdr.SequenceNumber(tx.envelope.SeqNum()),
+			TimeBounds:    tx.envelope.V0.Tx.TimeBounds,
+			Memo:          tx.envelope.Memo(),
+			Operations:    tx.envelope.Operations(),
+		},
+	}
+	tx.envelope.Type = xdr.EnvelopeTypeEnvelopeTypeTx
+	tx.envelope.V0 = nil
 }
 
 func TestValidateStellarPublicKey(t *testing.T) {

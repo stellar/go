@@ -3,7 +3,60 @@
 All notable changes to this project will be documented in this
 file.  This project adheres to [Semantic Versioning](http://semver.org/).
 
-## Unreleased
+## [v3.0.0](https://github.com/stellar/go/releases/tag/horizonclient-v3.0.0) - 2020-04-28
+
+### Breaking changes
+
+* The `Account` interface has been extended to include `GetSequenceNumber() (int64, error)`. Also, `IncrementSequenceNumber()` now returns an `(int64, error)` pair instead of a `(xdr.SequenceNumber, error)` pair.
+* Refactor workflow for creating and signing transactions. Previously, you could create a transaction envelope by populating a `Transaction` instance and calling the `Build()` function on the `Transaction` instance.
+
+`Transaction` is now an opaque type which has accessor functions like `SourceAccount() SimpleAccount`, `Memo() Memo`, etc. The motivation behind this change is to make `Transaction` more immutable. Here is an example of how to use the new transaction type:
+```go
+	kp := keypair.MustParse("SBPQUZ6G4FZNWFHKUWC5BEYWF6R52E3SEP7R3GWYSM2XTKGF5LNTWW4R")
+	client := horizonclient.DefaultTestNetClient
+	ar := horizonclient.AccountRequest{AccountID: kp.Address()}
+	sourceAccount, err := client.AccountDetail(ar)
+	check(err)
+
+	op := txnbuild.Payment{
+		Destination: "GCCOBXW2XQNUSL467IEILE6MMCNRR66SSVL4YQADUNYYNUVREF3FIV2Z",
+		Amount:      "10",
+		Asset:       NativeAsset{},
+	}
+
+	tx, err := txnbuild.NewTransaction(
+		txnbuild.TransactionParams{
+			SourceAccount:        &sourceAccount,
+			// If IncrementSequenceNum is true, NewTransaction() will call `sourceAccount.IncrementSequenceNumber()`
+			// to obtain the sequence number for the transaction.
+			// If IncrementSequenceNum is false, NewTransaction() will call `sourceAccount.GetSequenceNumber()`
+			// to obtain the sequence number for the transaction.
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&op},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(),
+		},
+	)
+	check(err)
+
+	tx, err = tx.Sign(network.TestNetworkPassphrase, kp.(*keypair.Full))
+```
+
+* `TransactionFromXDR` now has the following signature `TransactionFromXDR(txeB64 string) (*GenericTransaction, error)`. A `GenericTransaction` is a container which can be unpacked into either a `Transaction` or a `FeeBumpTransaction`.
+* `BuildChallengeTx` now returns a `Transaction` instance instead of the base 64 string encoding of the SEP 10 challenge transaction.
+* `VerifyChallengeTx` has been removed. Use `VerifyChallengeTxThreshold` or `VerifyChallengeTxSigners` instead.
+
+### Add
+
+* Add `NewFeeBumpTransaction(params FeeBumpTransactionParams) (*FeeBumpTransaction, error)` function for creating [fee bump transactions](https://github.com/stellar/stellar-protocol/blob/master/core/cap-0015.md). Note that fee bump transactions will only be accepted by Stellar Core once Protocol 13 is enabled.
+
+### Updates
+
+* `AllowTrust` supports [CAP0018](https://github.com/stellar/stellar-protocol/blob/master/core/cap-0018.md) Fine-Grained Control of Authorization by exposing a `AuthorizeToMaintainLiabilities` boolean field.
+* `ReadChallengeTx` will reject any challenge transactions which are fee bump transactions.
+* `ReadChallengeTx` will reject any challenge transactions which contain a [MuxedAccount](https://github.com/stellar/stellar-protocol/blob/master/core/cap-0027.md) with a memo ID.
+
+### Remove
 
 * Dropped support for Go 1.12.
 

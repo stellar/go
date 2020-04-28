@@ -17,7 +17,7 @@ func SetOpSourceAccount(op *xdr.Operation, sourceAccount Account) {
 	if sourceAccount == nil {
 		return
 	}
-	var opSourceAccountID xdr.AccountId
+	var opSourceAccountID xdr.MuxedAccount
 	opSourceAccountID.SetAddress(sourceAccount.GetAccountID())
 	op.SourceAccount = &opSourceAccountID
 }
@@ -61,7 +61,7 @@ func operationFromXDR(xdrOp xdr.Operation) (Operation, error) {
 }
 
 // accountFromXDR returns a txnbuild Account from a XDR Account.
-func accountFromXDR(account *xdr.AccountId) Account {
+func accountFromXDR(account *xdr.MuxedAccount) Account {
 	if account != nil {
 		return &SimpleAccount{AccountID: account.Address()}
 	}

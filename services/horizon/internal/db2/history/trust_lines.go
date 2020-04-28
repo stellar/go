@@ -15,6 +15,12 @@ func (trustLine TrustLine) IsAuthorized() bool {
 	return xdr.TrustLineFlags(trustLine.Flags).IsAuthorized()
 }
 
+// IsAuthorizedToMaintainLiabilities returns true if issuer has authorized the account to maintain
+// liabilities with its credit
+func (trustLine TrustLine) IsAuthorizedToMaintainLiabilities() bool {
+	return xdr.TrustLineFlags(trustLine.Flags).IsAuthorizedToMaintainLiabilitiesFlag()
+}
+
 func (q *Q) CountTrustLines() (int, error) {
 	sql := sq.Select("count(*)").From("trust_lines")
 

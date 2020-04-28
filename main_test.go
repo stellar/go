@@ -1,14 +1,13 @@
 package stellargo
 
 import (
-	"bytes"
 	"encoding/base64"
 	"fmt"
+	"github.com/stellar/go/network"
 	"log"
 	"strings"
 
 	b "github.com/stellar/go/build"
-	"github.com/stellar/go/hash"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/xdr"
 )
@@ -30,7 +29,7 @@ func ExampleDecodeTransaction() {
 		log.Fatal(err)
 	}
 
-	fmt.Printf("This tx has %d operations\n", len(tx.Tx.Operations))
+	fmt.Printf("This tx has %d operations\n", len(tx.V0.Tx.Operations))
 	// Output: read 192 bytes
 	// This tx has 1 operations
 }
@@ -78,7 +77,7 @@ func ExampleLowLevelTransaction() {
 		panic(err)
 	}
 
-	var destination xdr.AccountId
+	var destination xdr.MuxedAccount
 	err = destination.SetAddress(dkp.Address())
 	if err != nil {
 		panic(err)
@@ -92,7 +91,7 @@ func ExampleLowLevelTransaction() {
 
 	memo, err := xdr.NewMemo(xdr.MemoTypeMemoNone, nil)
 
-	var source xdr.AccountId
+	var source xdr.MuxedAccount
 	err = source.SetAddress(skp.Address())
 	if err != nil {
 		panic(err)
@@ -103,23 +102,21 @@ func ExampleLowLevelTransaction() {
 		panic(err)
 	}
 
-	tx := xdr.Transaction{
-		SourceAccount: source,
-		Fee:           10,
-		SeqNum:        xdr.SequenceNumber(1),
-		Memo:          memo,
+	tx := xdr.TransactionV0{
+		SourceAccountEd25519: source.MustEd25519(),
+		Fee:                  10,
+		SeqNum:               xdr.SequenceNumber(1),
+		Memo:                 memo,
 		Operations: []xdr.Operation{
 			{Body: body},
 		},
 	}
 
-	var txBytes bytes.Buffer
-	_, err = xdr.Marshal(&txBytes, tx)
+	txHash, err := network.HashTransactionV0(tx, network.TestNetworkPassphrase)
 	if err != nil {
 		panic(err)
 	}
 
-	txHash := hash.Hash(txBytes.Bytes())
 	signature, err := skp.Sign(txHash[:])
 	if err != nil {
 		panic(err)
@@ -131,17 +128,24 @@ func ExampleLowLevelTransaction() {
 	}
 
 	txe := xdr.TransactionEnvelope{
-		Tx:         tx,
-		Signatures: []xdr.DecoratedSignature{ds},
+		Type: xdr.EnvelopeTypeEnvelopeTypeTxV0,
+		V0: &xdr.TransactionV0Envelope{
+			Tx:         tx,
+			Signatures: []xdr.DecoratedSignature{ds},
+		},
 	}
 
-	var txeBytes bytes.Buffer
-	_, err = xdr.Marshal(&txeBytes, txe)
+	txeB64, err := xdr.MarshalBase64(txe)
 	if err != nil {
 		panic(err)
 	}
-	txeB64 := base64.StdEncoding.EncodeToString(txeBytes.Bytes())
+
+	var inverse xdr.TransactionEnvelope
+	err = xdr.SafeUnmarshalBase64(txeB64, &inverse)
+	if err != nil {
+		panic(err)
+	}
 
 	fmt.Printf("tx base64: %s", txeB64)
-	// Output: tx base64: AAAAAAU08yUQ8sHqhY8j9mXWwERfHC/3cKFSe/spAr0rGtO2AAAACgAAAAAAAAABAAAAAAAAAAAAAAABAAAAAAAAAAEAAAAA+fnTe7/v4whpBUx96oj92jfZPz7S00l3O2xeyeqWIA0AAAAAAAAAAB3NZQAAAAAAAAAAASsa07YAAABAieruUIGcQH6RlQ+prYflPFU3nED2NvWhtaC+tgnKsqgiKURK4xo/W7EgH0+I6aQok52awbE+ksOxEQ5MLJ9eAw==
+	// Output: tx base64: AAAAAAU08yUQ8sHqhY8j9mXWwERfHC/3cKFSe/spAr0rGtO2AAAACgAAAAAAAAABAAAAAAAAAAAAAAABAAAAAAAAAAEAAAAA+fnTe7/v4whpBUx96oj92jfZPz7S00l3O2xeyeqWIA0AAAAAAAAAAB3NZQAAAAAAAAAAASsa07YAAABAAAdMJ5pjUjX4BUZc/DkC28QOJWe7SBF4Y2hDPHfQ7WMayugxbPDQ88JI4qpynqSsIMjzHHaKtH3TPqdvyADEDQ==
 }

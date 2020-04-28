@@ -5,10 +5,10 @@ import (
 	"sort"
 	"time"
 
-	"github.com/stellar/go/clients/horizon"
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/network"
+	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/txnbuild"
 )
 
@@ -42,7 +42,11 @@ func ExampleVerifyChallengeTxThreshold() {
 			fmt.Println("Error:", err)
 			return
 		}
-		challengeTx = tx
+		challengeTx, err = tx.Base64()
+		if err != nil {
+			fmt.Println("Error:", err)
+			return
+		}
 	}
 
 	// Client reads and signs challenge transaction
@@ -57,7 +61,7 @@ func ExampleVerifyChallengeTxThreshold() {
 			fmt.Println("Error: challenge tx is not for expected client account")
 			return
 		}
-		err = tx.Sign(clientSigner1, clientSigner2)
+		tx, err = tx.Sign(network.TestNetworkPassphrase, clientSigner1, clientSigner2)
 		if err != nil {
 			fmt.Println("Error:", err)
 			return

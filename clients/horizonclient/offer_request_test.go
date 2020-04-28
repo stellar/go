@@ -25,6 +25,12 @@ func TestOfferRequestBuildUrl(t *testing.T) {
 	// It should return valid offers endpoint and no errors
 	require.NoError(t, err)
 	assert.Equal(t, "accounts/GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU/offers?cursor=now&order=desc", endpoint)
+
+	er = OfferRequest{OfferID: "12345"}
+	endpoint, err = er.BuildURL()
+
+	require.NoError(t, err)
+	assert.Equal(t, "offers/12345", endpoint)
 }
 
 func TestNextOffersPage(t *testing.T) {

@@ -32,11 +32,14 @@ func TestPaymentActions(t *testing.T) {
 	}
 
 	// Makes StateMiddleware happy
-	q := history.Q{ht.HorizonSession()}
-	err := q.UpdateLastLedgerExpIngest(3)
-	ht.Assert.NoError(err)
-	err = q.UpdateExpIngestVersion(expingest.CurrentVersion)
-	ht.Assert.NoError(err)
+	initializeStateMiddleware := func() {
+		q := history.Q{ht.HorizonSession()}
+		err := q.UpdateLastLedgerExpIngest(3)
+		ht.Assert.NoError(err)
+		err = q.UpdateExpIngestVersion(expingest.CurrentVersion)
+		ht.Assert.NoError(err)
+	}
+	initializeStateMiddleware()
 
 	// checks if empty param returns 404 instead of all payments
 	w = ht.Get("/accounts//payments")
@@ -56,6 +59,15 @@ func TestPaymentActions(t *testing.T) {
 	if ht.Assert.Equal(200, w.Code) {
 		ht.Assert.PageOf(0, w.Body)
 	}
+	// missing tx
+	w = ht.Get("/transactions/ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff/payments")
+	ht.Assert.Equal(404, w.Code)
+	// uppercase tx hash not accepted
+	w = ht.Get("/transactions/2374E99349B9EF7DBA9A5DB3339B78FDA8F34777B1AF33BA468AD5C0DF946D4D/payments")
+	ht.Assert.Equal(400, w.Code)
+	// badly formated tx hash not accepted
+	w = ht.Get("/transactions/%00%1E4%5E%EF%BF%BD%EF%BF%BD%EF%BF%BDpVP%EF%BF%BDI&R%0BK%EF%BF%BD%1D%EF%BF%BD%EF%BF%BD=%EF%BF%BD%3F%23%EF%BF%BD%EF%BF%BDl%EF%BF%BD%1El%EF%BF%BD%EF%BF%BD/payments")
+	ht.Assert.Equal(400, w.Code)
 
 	// 400 for invalid tx hash
 	w = ht.Get("/transactions/ /payments")
@@ -80,6 +92,7 @@ func TestPaymentActions(t *testing.T) {
 		ht.Assert.Equal("10.0000000", records[0]["source_amount"])
 	}
 
+	initializeStateMiddleware()
 	// Regression: negative cursor
 	w = ht.Get("/accounts/GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2/payments?cursor=-23667108046966785&order=asc&limit=100")
 	ht.Assert.Equal(400, w.Code)
@@ -87,6 +100,7 @@ func TestPaymentActions(t *testing.T) {
 
 func TestPaymentActions_Includetransactions(t *testing.T) {
 	ht := StartHTTPTest(t, "base")
+
 	defer ht.Finish()
 
 	w := ht.Get("/payments")

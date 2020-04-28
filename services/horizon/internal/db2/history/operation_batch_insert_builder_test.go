@@ -76,6 +76,6 @@ func TestAddOperation(t *testing.T) {
 			op.DetailsString.String,
 		)
 		tt.Assert.Equal("GANFZDRBCNTUXIODCJEYMACPMCSZEVE4WZGZ3CZDZ3P2SXK4KH75IK6Y", op.SourceAccount)
-		tt.Assert.Equal(true, *op.TransactionSuccessful)
+		tt.Assert.Equal(true, op.TransactionSuccessful)
 	}
 }
