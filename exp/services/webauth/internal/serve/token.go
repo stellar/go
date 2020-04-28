@@ -51,7 +51,7 @@ func (h tokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	hash, err := tx.HashHex()
+	hash, err := tx.HashHex(h.NetworkPassphrase)
 	if err != nil {
 		h.Logger.Ctx(ctx).WithStack(err).Error(err)
 		serverError.Render(w)
@@ -87,7 +87,7 @@ func (h tokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			l.
 				WithField("signersCount", len(clientSignerSummary)).
-				WithField("signaturesCount", len(tx.TxEnvelope().Signatures)).
+				WithField("signaturesCount", len(tx.Signatures())).
 				WithField("requiredThreshold", requiredThreshold).
 				Info("Failed to verify with signers that do not meet threshold.")
 			unauthorized.Render(w)
