@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/stellar/go/xdr"
 	"io"
 	"net/http"
 	"net/url"
@@ -63,7 +64,16 @@ func (c *Client) checkMemoRequired(transaction *txnbuild.Transaction) error {
 			continue
 		}
 
-		if destinations[destination] {
+		xdr.MustMuxedAccountAddress(destination)
+		muxed, err := xdr.AddressToMuxedAccount(destination)
+		if err != nil {
+			return errors.Wrapf(err, "destination %v is not a valid address", destination)
+		}
+		// Skip destination addresses with a memo id because the address has a memo
+		// encoded within it
+		destinationHasMemoID := muxed.Type == xdr.CryptoKeyTypeKeyTypeMuxedEd25519
+
+		if destinations[destination] || destinationHasMemoID {
 			continue
 		}
 		destinations[destination] = true
