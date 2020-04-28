@@ -107,7 +107,7 @@ func (h accountSignHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		badRequest.Render(w)
 		return
 	}
-	tx, ok := parsed.Simple()
+	tx, ok := parsed.Transaction()
 	if !ok {
 		badRequest.Render(w)
 		return

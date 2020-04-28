@@ -394,10 +394,10 @@ type GenericTransaction struct {
 	feeBump *FeeBumpTransaction
 }
 
-// Simple unpacks the GenericTransaction instance into a Transaction.
+// Transaction unpacks the GenericTransaction instance into a Transaction.
 // The function also returns a boolean which is true if the GenericTransaction can be
 // unpacked into a Transaction.
-func (t GenericTransaction) Simple() (*Transaction, bool) {
+func (t GenericTransaction) Transaction() (*Transaction, bool) {
 	return t.simple, t.simple != nil
 }
 
@@ -783,7 +783,7 @@ func ReadChallengeTx(challengeTx, serverAccountID, network string) (tx *Transact
 	}
 
 	var isSimple bool
-	tx, isSimple = parsed.Simple()
+	tx, isSimple = parsed.Transaction()
 	if !isSimple {
 		return tx, clientAccountID, errors.New("challenge cannot be a fee bump transaction")
 	}

@@ -194,7 +194,7 @@ func TestFeeBumpRoundTrip(t *testing.T) {
 	assert.NoError(t, err)
 	parsedFeeBump, ok := parsed.FeeBump()
 	assert.True(t, ok)
-	_, ok = parsed.Simple()
+	_, ok = parsed.Transaction()
 	assert.False(t, ok)
 
 	assert.Equal(t, feeBumpTx.Signatures(), parsedFeeBump.Signatures())
