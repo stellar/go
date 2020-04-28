@@ -1,17 +1,18 @@
 package serve
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/stellar/go/clients/horizonclient"
-	"github.com/stellar/go/exp/support/jwtkey"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/support/errors"
 	supporthttp "github.com/stellar/go/support/http"
 	supportlog "github.com/stellar/go/support/log"
 	"github.com/stellar/go/support/render/health"
+	"gopkg.in/square/go-jose.v2"
 )
 
 type Options struct {
@@ -21,7 +22,7 @@ type Options struct {
 	NetworkPassphrase           string
 	SigningKey                  string
 	ChallengeExpiresIn          time.Duration
-	JWTPrivateKey               string
+	JWK                         string
 	JWTIssuer                   string
 	JWTExpiresIn                time.Duration
 	AllowAccountsThatDoNotExist bool
@@ -51,9 +52,13 @@ func handler(opts Options) (http.Handler, error) {
 		return nil, errors.Wrap(err, "parsing signing key seed")
 	}
 
-	jwtPrivateKey, err := jwtkey.PrivateKeyFromString(opts.JWTPrivateKey)
+	jwk := jose.JSONWebKey{}
+	err = json.Unmarshal([]byte(opts.JWK), &jwk)
 	if err != nil {
-		return nil, errors.Wrap(err, "parsing JWT private key")
+		return nil, errors.Wrap(err, "parsing JSON Web Key (JWK)")
+	}
+	if jwk.Algorithm == "" {
+		return nil, errors.New("algorithm (alg) field must be set")
 	}
 
 	horizonTimeout := horizonclient.HorizonTimeout
@@ -83,7 +88,7 @@ func handler(opts Options) (http.Handler, error) {
 		HorizonClient:               horizonClient,
 		NetworkPassphrase:           opts.NetworkPassphrase,
 		SigningAddress:              signingKey.FromAddress(),
-		JWTPrivateKey:               jwtPrivateKey,
+		JWK:                         jwk,
 		JWTIssuer:                   opts.JWTIssuer,
 		JWTExpiresIn:                opts.JWTExpiresIn,
 		AllowAccountsThatDoNotExist: opts.AllowAccountsThatDoNotExist,

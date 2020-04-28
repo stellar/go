@@ -25,8 +25,9 @@ Usage:
   webauth [command]
 
 Available Commands:
-  genjwtkey   Generate a JWT ECDSA key
-  serve       Run the SEP-10 Web Authentication server
+  convjwtkey2jwk Convert a JWT ECDSA private key ASN.1 DER Base64 encoded that was generated with the old genjwtkey command to a JSON Web Key
+  genjwk         Generate a JSON Web Key (ECDSA/ES256) for JWT issuing
+  serve          Run the SEP-10 Web Authentication server
 
 Flags:
   -h, --help   help for webauth
@@ -47,9 +48,9 @@ Flags:
       --allow-accounts-that-do-not-exist   Allow accounts that do not exist (ALLOW_ACCOUNTS_THAT_DO_NOT_EXIST)
       --challenge-expires-in int           The time period in seconds after which the challenge transaction expires (CHALLENGE_EXPIRES_IN) (default 300)
       --horizon-url string                 Horizon URL used for looking up account details (HORIZON_URL) (default "https://horizon-testnet.stellar.org/")
+      --jwk string                         JSON Web Key (JWK) used for signing JWTs (if the key is an asymmetric key that has separate public and private key, the JWK must contain the private key) (JWK)
       --jwt-expires-in int                 The time period in seconds after which the JWT expires (JWT_EXPIRES_IN) (default 300)
       --jwt-issuer string                  The issuer to set in the JWT iss claim (JWT_ISSUER)
-      --jwt-key string                     Base64 encoded ECDSA private key used for signing JWTs (JWT_KEY)
       --network-passphrase string          Network passphrase of the Stellar network transactions should be signed for (NETWORK_PASSPHRASE) (default "Test SDF Network ; September 2015")
       --port int                           Port to listen and serve on (PORT) (default 8000)
       --signing-key string                 Stellar signing key used for signing transactions (SIGNING_KEY)

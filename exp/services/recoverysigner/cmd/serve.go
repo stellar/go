@@ -51,11 +51,18 @@ func (c *ServeCommand) Command() *cobra.Command {
 			Required:  true,
 		},
 		{
-			Name:      "sep10-jwt-public-key",
-			Usage:     "Base64 encoded ECDSA public key used to validate SEP-10 JWTs",
+			Name:      "sep10-jwks",
+			Usage:     "JSON Web Key Set (JWKS) containing exactly one key used to validate SEP-10 JWTs (if the key is an asymmetric key that has separate public and private key, the JWK need only contain the public key)",
 			OptType:   types.String,
-			ConfigKey: &opts.SEP10JWTPublicKey,
+			ConfigKey: &opts.SEP10JWKS,
 			Required:  true,
+		},
+		{
+			Name:      "sep10-jwt-issuer",
+			Usage:     "JWT issuer to verify is in the SEP-10 JWT iss field (not checked if empty)",
+			OptType:   types.String,
+			ConfigKey: &opts.SEP10JWTIssuer,
+			Required:  false,
 		},
 		{
 			Name:      "firebase-project-id",
@@ -67,7 +74,7 @@ func (c *ServeCommand) Command() *cobra.Command {
 	}
 	cmd := &cobra.Command{
 		Use:   "serve",
-		Short: "Run the SEP-XX Recover Signer server",
+		Short: "Run the SEP-30 Recover Signer server",
 		Run: func(_ *cobra.Command, _ []string) {
 			configOpts.Require()
 			configOpts.SetValues()

@@ -146,6 +146,7 @@ gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127
 gopkg.in/fsnotify.v1 v1.4.7
 gopkg.in/gavv/httpexpect.v1 v1.0.0-20170111145843-40724cf1e4a0
 gopkg.in/gorp.v1 v1.7.1
+gopkg.in/square/go-jose.v2 v2.4.1
 gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7
 gopkg.in/tylerb/graceful.v1 v1.2.13
 gopkg.in/yaml.v2 v2.2.2
