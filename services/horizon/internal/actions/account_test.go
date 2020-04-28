@@ -128,27 +128,27 @@ var (
 	}
 
 	accountSigners = []history.AccountSigner{
-		history.AccountSigner{
+		{
 			Account: accountOne,
 			Signer:  accountOne,
 			Weight:  1,
 		},
-		history.AccountSigner{
+		{
 			Account: accountTwo,
 			Signer:  accountTwo,
 			Weight:  1,
 		},
-		history.AccountSigner{
+		{
 			Account: accountOne,
 			Signer:  signer,
 			Weight:  1,
 		},
-		history.AccountSigner{
+		{
 			Account: accountTwo,
 			Signer:  signer,
 			Weight:  2,
 		},
-		history.AccountSigner{
+		{
 			Account: signer,
 			Signer:  signer,
 			Weight:  3,
@@ -198,6 +198,18 @@ func TestAccountInfo(t *testing.T) {
 	}, 6)
 	assert.NoError(t, err)
 
+	_, err = q.InsertTrustLine(xdr.TrustLineEntry{
+		AccountId: accountID,
+		Asset: xdr.MustNewCreditAsset(
+			"EUR",
+			"GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4",
+		),
+		Balance: 0,
+		Limit:   9223372036854775807,
+		Flags:   1,
+	}, 6)
+	assert.NoError(t, err)
+
 	account, err := AccountInfo(
 		tt.Ctx,
 		&core.Q{tt.CoreSession()},
@@ -208,20 +220,17 @@ func TestAccountInfo(t *testing.T) {
 
 	tt.Assert.Equal("8589934593", account.Sequence)
 	tt.Assert.Equal(uint32(4), account.LastModifiedLedger)
-	tt.Assert.Len(account.Balances, 2)
+	tt.Assert.Len(account.Balances, 3)
 
-	for _, balance := range account.Balances {
-		if balance.Type == "native" {
-			tt.Assert.Equal(uint32(0), balance.LastModifiedLedger)
-		} else {
-			tt.Assert.Equal("USD", balance.Code)
-			tt.Assert.Equal(
-				"GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4",
-				balance.Issuer,
-			)
-			tt.Assert.NotEqual(uint32(0), balance.LastModifiedLedger)
-		}
-	}
+	tt.Assert.Equal(account.Balances[0].Code, "EUR")
+	tt.Assert.Equal(account.Balances[1].Code, "USD")
+	tt.Assert.Equal(
+		"GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4",
+		account.Balances[1].Issuer,
+	)
+	tt.Assert.NotEqual(uint32(0), account.Balances[1].LastModifiedLedger)
+	tt.Assert.Equal(account.Balances[2].Type, "native")
+	tt.Assert.Equal(uint32(0), account.Balances[2].LastModifiedLedger)
 
 	// core account and horizon ingestion account differ
 	// horizon ingestion account has a signer whereas core account
@@ -244,7 +253,7 @@ func TestAccountInfo(t *testing.T) {
 	// even though horizon ingestion account differs from core account,
 	// no error is returned because they have different last modified ledgers
 	err = q.UpsertAccounts([]xdr.LedgerEntry{
-		xdr.LedgerEntry{
+		{
 			LastModifiedLedgerSeq: 5,
 			Data: xdr.LedgerEntryData{
 				Type:    xdr.LedgerEntryTypeAccount,
