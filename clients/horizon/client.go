@@ -592,7 +592,7 @@ func (c *Client) StreamTransactions(
 // Deprecated: use horizonclient.SubmitTransactionXDR instead
 func (c *Client) SubmitTransaction(
 	transactionEnvelopeXdr string,
-) (response TransactionSuccess, err error) {
+) (response Transaction, err error) {
 	c.fixURLOnce.Do(c.fixURL)
 	v := url.Values{}
 	v.Set("tx", transactionEnvelopeXdr)

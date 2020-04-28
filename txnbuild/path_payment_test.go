@@ -3,7 +3,6 @@ package txnbuild
 import (
 	"testing"
 
-	"github.com/stellar/go/network"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -22,14 +21,16 @@ func TestPathPaymentValidateSendAsset(t *testing.T) {
 		Path:        []Asset{abcdAsset},
 	}
 
-	tx := Transaction{
-		SourceAccount: &sourceAccount,
-		Operations:    []Operation{&pathPayment},
-		Timebounds:    NewInfiniteTimeout(),
-		Network:       network.TestNetworkPassphrase,
-	}
+	_, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: false,
+			Operations:           []Operation{&pathPayment},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(),
+		},
+	)
 
-	err := tx.Build()
 	if assert.Error(t, err) {
 		expected := "validation failed for *txnbuild.PathPaymentStrictReceive operation: Field: SendAsset, Error: asset issuer: public key is undefined"
 		assert.Contains(t, err.Error(), expected)
@@ -51,14 +52,15 @@ func TestPathPaymentValidateDestAsset(t *testing.T) {
 		Path:        []Asset{abcdAsset},
 	}
 
-	tx := Transaction{
-		SourceAccount: &sourceAccount,
-		Operations:    []Operation{&pathPayment},
-		Timebounds:    NewInfiniteTimeout(),
-		Network:       network.TestNetworkPassphrase,
-	}
-
-	err := tx.Build()
+	_, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: false,
+			Operations:           []Operation{&pathPayment},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(),
+		},
+	)
 	if assert.Error(t, err) {
 		expected := "validation failed for *txnbuild.PathPaymentStrictReceive operation: Field: DestAsset, Error: asset code length must be between 1 and 12 characters"
 		assert.Contains(t, err.Error(), expected)
@@ -80,14 +82,15 @@ func TestPathPaymentValidateDestination(t *testing.T) {
 		Path:        []Asset{abcdAsset},
 	}
 
-	tx := Transaction{
-		SourceAccount: &sourceAccount,
-		Operations:    []Operation{&pathPayment},
-		Timebounds:    NewInfiniteTimeout(),
-		Network:       network.TestNetworkPassphrase,
-	}
-
-	err := tx.Build()
+	_, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: false,
+			Operations:           []Operation{&pathPayment},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(),
+		},
+	)
 	if assert.Error(t, err) {
 		expected := "validation failed for *txnbuild.PathPaymentStrictReceive operation: Field: Destination, Error: SASND3NRUY5K43PN3H3HOP5JNTIDXJFLOKKNSCZQQAFBRSEIRD5OJKXZ is not a valid stellar public key"
 		assert.Contains(t, err.Error(), expected)
@@ -109,14 +112,15 @@ func TestPathPaymentValidateSendMax(t *testing.T) {
 		Path:        []Asset{abcdAsset},
 	}
 
-	tx := Transaction{
-		SourceAccount: &sourceAccount,
-		Operations:    []Operation{&pathPayment},
-		Timebounds:    NewInfiniteTimeout(),
-		Network:       network.TestNetworkPassphrase,
-	}
-
-	err := tx.Build()
+	_, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: false,
+			Operations:           []Operation{&pathPayment},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(),
+		},
+	)
 	if assert.Error(t, err) {
 		expected := "validation failed for *txnbuild.PathPaymentStrictReceive operation: Field: SendMax, Error: invalid amount format: abc"
 		assert.Contains(t, err.Error(), expected)
@@ -138,14 +142,15 @@ func TestPathPaymentValidateDestAmount(t *testing.T) {
 		Path:        []Asset{abcdAsset},
 	}
 
-	tx := Transaction{
-		SourceAccount: &sourceAccount,
-		Operations:    []Operation{&pathPayment},
-		Timebounds:    NewInfiniteTimeout(),
-		Network:       network.TestNetworkPassphrase,
-	}
-
-	err := tx.Build()
+	_, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: false,
+			Operations:           []Operation{&pathPayment},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(),
+		},
+	)
 	if assert.Error(t, err) {
 		expected := "validation failed for *txnbuild.PathPaymentStrictReceive operation: Field: DestAmount, Error: amount can not be negative"
 		assert.Contains(t, err.Error(), expected)

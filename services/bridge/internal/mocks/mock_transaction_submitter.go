@@ -13,13 +13,13 @@ type MockTransactionSubmitter struct {
 }
 
 // SubmitTransaction is a mocking a method
-func (ts *MockTransactionSubmitter) SubmitTransaction(paymentID *string, seed string, operation []txnbuild.Operation, memo txnbuild.Memo) (hProtocol.TransactionSuccess, error) {
+func (ts *MockTransactionSubmitter) SubmitTransaction(paymentID *string, seed string, operation []txnbuild.Operation, memo txnbuild.Memo) (hProtocol.Transaction, error) {
 	a := ts.Called(paymentID, seed, operation, memo)
-	return a.Get(0).(hProtocol.TransactionSuccess), a.Error(1)
+	return a.Get(0).(hProtocol.Transaction), a.Error(1)
 }
 
 // SignAndSubmitRawTransaction is a mocking a method
-func (ts *MockTransactionSubmitter) SignAndSubmitRawTransaction(paymentID *string, seed string, tx *xdr.Transaction) (hProtocol.TransactionSuccess, error) {
+func (ts *MockTransactionSubmitter) SignAndSubmitRawTransaction(paymentID *string, seed string, tx *xdr.Transaction) (hProtocol.Transaction, error) {
 	a := ts.Called(paymentID, seed, tx)
-	return a.Get(0).(hProtocol.TransactionSuccess), a.Error(1)
+	return a.Get(0).(hProtocol.Transaction), a.Error(1)
 }

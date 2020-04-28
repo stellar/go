@@ -152,9 +152,9 @@ func (m *MockClient) StreamTransactions(
 // SubmitTransaction is a mocking a method
 func (m *MockClient) SubmitTransaction(
 	txeBase64 string,
-) (TransactionSuccess, error) {
+) (Transaction, error) {
 	a := m.Called(txeBase64)
-	return a.Get(0).(TransactionSuccess), a.Error(1)
+	return a.Get(0).(Transaction), a.Error(1)
 }
 
 // ensure that the MockClient implements ClientInterface

@@ -3,7 +3,6 @@ package txnbuild
 import (
 	"testing"
 
-	"github.com/stellar/go/network"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -15,14 +14,14 @@ func TestAccountMergeValidate(t *testing.T) {
 		Destination: "GBAV",
 	}
 
-	tx := Transaction{
-		SourceAccount: &sourceAccount,
-		Operations:    []Operation{&accountMerge},
-		Timebounds:    NewInfiniteTimeout(),
-		Network:       network.TestNetworkPassphrase,
-	}
-
-	err := tx.Build()
+	_, err := NewTransaction(
+		TransactionParams{
+			SourceAccount: &sourceAccount,
+			Operations:    []Operation{&accountMerge},
+			Timebounds:    NewInfiniteTimeout(),
+			BaseFee:       MinBaseFee,
+		},
+	)
 	if assert.Error(t, err) {
 		expected := "validation failed for *txnbuild.AccountMerge operation: Field: Destination, Error: GBAV is not a valid stellar public key"
 		assert.Contains(t, err.Error(), expected)

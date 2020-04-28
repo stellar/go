@@ -92,7 +92,7 @@ func TestRequestHandlerAuthorize(t *testing.T) {
 		config.Accounts.AuthorizingSeed,
 		[]txnbuild.Operation{operationBuilder},
 		nil,
-	).Return(hProtocol.TransactionSuccess{},
+	).Return(hProtocol.Transaction{},
 		errors.New("Error sending transaction"),
 	).Once()
 
@@ -109,7 +109,7 @@ func TestRequestHandlerAuthorize(t *testing.T) {
 
 	var ledger int32
 	ledger = 100
-	expectedSubmitResponse := hProtocol.TransactionSuccess{
+	expectedSubmitResponse := hProtocol.Transaction{
 		Ledger: ledger,
 	}
 
@@ -121,7 +121,7 @@ func TestRequestHandlerAuthorize(t *testing.T) {
 		nil,
 	).Return(expectedSubmitResponse, nil).Once()
 	statusCode, response = mocks.GetResponse(testServer, url.Values{"account_id": {accountID}, "asset_code": {assetCode}})
-	var actualSubmitTransactionResponse hProtocol.TransactionSuccess
+	var actualSubmitTransactionResponse hProtocol.Transaction
 	json.Unmarshal(response, &actualSubmitTransactionResponse)
 
 	assert.Equal(t, 200, statusCode)

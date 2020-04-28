@@ -5,7 +5,6 @@ package horizon
 import (
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"strconv"
 	"time"
 
@@ -88,27 +87,27 @@ func (a Account) GetCreditBalance(code string, issuer string) string {
 
 // GetSequenceNumber returns the sequence number of the account,
 // and returns it as a 64-bit integer.
-func (a Account) GetSequenceNumber() (xdr.SequenceNumber, error) {
-	seqNum, err := strconv.ParseUint(a.Sequence, 10, 64)
+func (a Account) GetSequenceNumber() (int64, error) {
+	seqNum, err := strconv.ParseInt(a.Sequence, 10, 64)
 
 	if err != nil {
 		return 0, errors.Wrap(err, "Failed to parse account sequence number")
 	}
 
-	return xdr.SequenceNumber(seqNum), nil
+	return seqNum, nil
 }
 
 // IncrementSequenceNumber increments the internal record of the account's sequence
 // number by 1. This is typically used after a transaction build so that the next
 // transaction to be built will be valid.
-func (a *Account) IncrementSequenceNumber() (xdr.SequenceNumber, error) {
+func (a *Account) IncrementSequenceNumber() (int64, error) {
 	seqNum, err := a.GetSequenceNumber()
 	if err != nil {
-		return xdr.SequenceNumber(0), err
+		return 0, err
 	}
 	seqNum++
 	a.Sequence = strconv.FormatInt(int64(seqNum), 10)
-	return a.GetSequenceNumber()
+	return seqNum, nil
 }
 
 // MustGetData returns decoded value for a given key. If the key does
@@ -536,35 +535,6 @@ func (t Transaction) PagingToken() string {
 type TransactionResultCodes struct {
 	TransactionCode string   `json:"transaction"`
 	OperationCodes  []string `json:"operations,omitempty"`
-}
-
-// TransactionSuccess represents the result of a successful transaction
-// submission.
-// Action needed in release: horizonclient-v3.0.0
-// Remove TransactionSuccess because the submit transaction endpoint now responds with
-// a full Transaction resource
-type TransactionSuccess struct {
-	Links struct {
-		Transaction hal.Link `json:"transaction"`
-	} `json:"_links"`
-	Hash   string `json:"hash"`
-	Ledger int32  `json:"ledger"`
-	Env    string `json:"envelope_xdr"`
-	Result string `json:"result_xdr"`
-	Meta   string `json:"result_meta_xdr"`
-}
-
-// PrintTransactionSuccess prints the fields of a Horizon response.
-func (resp TransactionSuccess) TransactionSuccessToString() (s string) {
-	s += fmt.Sprintln("***TransactionSuccess dump***")
-	s += fmt.Sprintln("    Links:", resp.Links)
-	s += fmt.Sprintln("    Hash:", resp.Hash)
-	s += fmt.Sprintln("    Ledger:", resp.Ledger)
-	s += fmt.Sprintln("    Env:", resp.Env)
-	s += fmt.Sprintln("    Result:", resp.Result)
-	s += fmt.Sprintln("    Meta:", resp.Meta)
-
-	return
 }
 
 // KeyTypeFromAddress converts the version byte of the provided strkey encoded

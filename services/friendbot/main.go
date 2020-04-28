@@ -26,7 +26,7 @@ type Config struct {
 	StartingBalance   string      `toml:"starting_balance" valid:"required"`
 	TLS               *config.TLS `valid:"optional"`
 	NumMinions        int         `toml:"num_minions" valid:"optional"`
-	BaseFee           uint32      `toml:"base_fee" valid:"optional"`
+	BaseFee           int64       `toml:"base_fee" valid:"optional"`
 }
 
 func main() {

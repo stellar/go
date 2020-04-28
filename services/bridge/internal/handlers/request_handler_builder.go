@@ -80,14 +80,15 @@ func (rh *RequestHandler) Builder(w http.ResponseWriter, r *http.Request) {
 		txOps = append(txOps, operation.Body.Build())
 	}
 
-	tx := txnbuild.Transaction{
-		SourceAccount: &txnbuild.SimpleAccount{AccountID: request.Source, Sequence: int64(sequenceNumber)},
-		Operations:    txOps,
-		Timebounds:    txnbuild.NewInfiniteTimeout(),
-		Network:       rh.Config.NetworkPassphrase,
-	}
-
-	err = tx.Build()
+	tx, err := txnbuild.NewTransaction(
+		txnbuild.TransactionParams{
+			SourceAccount:        &txnbuild.SimpleAccount{AccountID: request.Source, Sequence: int64(sequenceNumber)},
+			IncrementSequenceNum: true,
+			Operations:           txOps,
+			BaseFee:              txnbuild.MinBaseFee,
+			Timebounds:           txnbuild.NewInfiniteTimeout(), // Use a real timeout in production!
+		},
+	)
 	if err != nil {
 		log.WithFields(log.Fields{"err": err, "request": request}).Error("TransactionBuilder returned error")
 		helpers.Write(w, helpers.InternalServerError)
@@ -103,7 +104,7 @@ func (rh *RequestHandler) Builder(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		err = tx.Sign(kp.(*keypair.Full))
+		tx, err = tx.Sign(rh.Config.NetworkPassphrase, kp.(*keypair.Full))
 		if err != nil {
 			log.WithFields(log.Fields{"err": err, "request": request}).Error("Error signing transaction")
 			helpers.Write(w, helpers.InternalServerError)

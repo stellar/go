@@ -114,7 +114,7 @@ type ClientInterface interface {
 	StreamLedgers(ctx context.Context, cursor *Cursor, handler LedgerHandler) error
 	StreamPayments(ctx context.Context, accountID string, cursor *Cursor, handler PaymentHandler) error
 	StreamTransactions(ctx context.Context, accountID string, cursor *Cursor, handler TransactionHandler) error
-	SubmitTransaction(txeBase64 string) (TransactionSuccess, error)
+	SubmitTransaction(txeBase64 string) (Transaction, error)
 }
 
 // Error struct contains the problem returned by Horizon

@@ -20,8 +20,8 @@ import (
 
 // TransactionSubmitterInterface helps mocking TransactionSubmitter
 type TransactionSubmitterInterface interface {
-	SubmitTransaction(paymentID *string, seed string, operation []txnbuild.Operation, memo txnbuild.Memo) (response hProtocol.TransactionSuccess, err error)
-	SignAndSubmitRawTransaction(paymentID *string, seed string, tx *xdr.Transaction) (response hProtocol.TransactionSuccess, err error)
+	SubmitTransaction(paymentID *string, seed string, operation []txnbuild.Operation, memo txnbuild.Memo) (response hProtocol.Transaction, err error)
+	SignAndSubmitRawTransaction(paymentID *string, seed string, tx *xdr.Transaction) (response hProtocol.Transaction, err error)
 }
 
 // TransactionSubmitter submits transactions to Stellar Network
@@ -116,7 +116,7 @@ func (ts *TransactionSubmitter) InitAccount(seed string) (err error) {
 // - update sequence number of the transaction to the current one,
 // - sign it,
 // - submit it to the network.
-func (ts *TransactionSubmitter) SignAndSubmitRawTransaction(paymentID *string, seed string, tx *xdr.Transaction) (response hProtocol.TransactionSuccess, err error) {
+func (ts *TransactionSubmitter) SignAndSubmitRawTransaction(paymentID *string, seed string, tx *xdr.Transaction) (response hProtocol.Transaction, err error) {
 	account, err := ts.LoadAccount(seed)
 	if err != nil {
 		ts.log.WithFields(logrus.Fields{"err": err}).Error("Error loading account")
@@ -200,55 +200,56 @@ func (ts *TransactionSubmitter) SignAndSubmitRawTransaction(paymentID *string, s
 }
 
 // SubmitTransaction builds and submits transaction to Stellar network
-func (ts *TransactionSubmitter) SubmitTransaction(paymentID *string, seed string, operation []txnbuild.Operation, memo txnbuild.Memo) (hProtocol.TransactionSuccess, error) {
+func (ts *TransactionSubmitter) SubmitTransaction(paymentID *string, seed string, operation []txnbuild.Operation, memo txnbuild.Memo) (hProtocol.Transaction, error) {
 	account, err := ts.LoadAccount(seed)
 	if err != nil {
-		return hProtocol.TransactionSuccess{}, errors.Wrap(err, "Error loading an account")
+		return hProtocol.Transaction{}, errors.Wrap(err, "Error loading an account")
 	}
 
-	tx := txnbuild.Transaction{
-		SourceAccount: &txnbuild.SimpleAccount{AccountID: account.Keypair.Address(), Sequence: int64(account.SequenceNumber)},
-		Operations:    operation,
-		Timebounds:    txnbuild.NewInfiniteTimeout(),
-		Network:       ts.Network,
-		Memo:          memo,
-	}
-
-	err = tx.Build()
+	tx, err := txnbuild.NewTransaction(
+		txnbuild.TransactionParams{
+			SourceAccount:        &txnbuild.SimpleAccount{AccountID: account.Keypair.Address(), Sequence: int64(account.SequenceNumber)},
+			IncrementSequenceNum: true,
+			Operations:           operation,
+			BaseFee:              txnbuild.MinBaseFee,
+			Memo:                 memo,
+			Timebounds:           txnbuild.NewInfiniteTimeout(),
+		},
+	)
 	if err != nil {
 		ts.log.Error("Unable to build transaction")
-		return hProtocol.TransactionSuccess{}, errors.Wrap(err, "unable to build transaction")
+		return hProtocol.Transaction{}, errors.Wrap(err, "unable to build transaction")
 	}
 
 	kp, err := keypair.Parse(seed)
 	if err != nil {
 		ts.log.Error("Unable to convert seed to keypair")
-		return hProtocol.TransactionSuccess{}, errors.Wrap(err, "unable to convert seed to keypair")
+		return hProtocol.Transaction{}, errors.Wrap(err, "unable to convert seed to keypair")
 	}
 
-	err = tx.Sign(kp.(*keypair.Full))
+	tx, err = tx.Sign(ts.Network, kp.(*keypair.Full))
 	if err != nil {
 		ts.log.Error("Unable to sign transaction")
-		return hProtocol.TransactionSuccess{}, errors.Wrap(err, "unable to sign transaction")
+		return hProtocol.Transaction{}, errors.Wrap(err, "unable to sign transaction")
 	}
 
 	txe, err := tx.Base64()
 	if err != nil {
 		ts.log.Error("Unable to encode transaction")
-		return hProtocol.TransactionSuccess{}, errors.Wrap(err, "unable to encode transaction")
+		return hProtocol.Transaction{}, errors.Wrap(err, "unable to encode transaction")
 	}
 
-	txHashBytes, err := tx.Hash()
+	txHashBytes, err := tx.Hash(ts.Network)
 	if err != nil {
 		ts.log.Error("Unable to get transaction hash")
-		return hProtocol.TransactionSuccess{}, errors.Wrap(err, "unable to get transaction hash")
+		return hProtocol.Transaction{}, errors.Wrap(err, "unable to get transaction hash")
 	}
 
-	return ts.SubmitAndSave(paymentID, tx.SourceAccount.GetAccountID(), txe, hex.EncodeToString(txHashBytes[:]))
+	return ts.SubmitAndSave(paymentID, tx.SourceAccount().AccountID, txe, hex.EncodeToString(txHashBytes[:]))
 }
 
 // SubmitAndSave sumbits a transaction to horizon and saves the details in the bridge server database.
-func (ts *TransactionSubmitter) SubmitAndSave(paymentID *string, sourceAccount, txeB64, txHash string) (response hProtocol.TransactionSuccess, err error) {
+func (ts *TransactionSubmitter) SubmitAndSave(paymentID *string, sourceAccount, txeB64, txHash string) (response hProtocol.Transaction, err error) {
 	nullPaymentID := sql.NullString{Valid: false}
 	if paymentID != nil {
 		nullPaymentID = sql.NullString{
