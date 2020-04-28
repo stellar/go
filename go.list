@@ -20,11 +20,6 @@ github.com/eapache/go-resiliency v1.1.0
 github.com/eapache/go-xerial-snappy v0.0.0-20180814174437-776d5712da21
 github.com/eapache/queue v1.1.0
 github.com/elazarl/go-bindata-assetfs v1.0.0
-github.com/facebookgo/ensure v0.0.0-20160127193407-b4ab57deab51
-github.com/facebookgo/inject v0.0.0-20161006174721-cc1aa653e50f
-github.com/facebookgo/stack v0.0.0-20160209184415-751773369052
-github.com/facebookgo/structtag v0.0.0-20150214074306-217e25fb9691
-github.com/facebookgo/subset v0.0.0-20150612182917-8dac2c3c4870
 github.com/fatih/structs v1.0.0
 github.com/fsnotify/fsnotify v1.4.7
 github.com/gavv/monotime v0.0.0-20161010190848-47d58efa6955
@@ -37,7 +32,6 @@ github.com/go-sql-driver/mysql v1.4.0
 github.com/go-stack/stack v1.8.0
 github.com/gobuffalo/packr v1.12.1
 github.com/gogo/protobuf v1.2.0
-github.com/goji/httpauth v0.0.0-20160601135302-2da839ab0f4d
 github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
 github.com/golang/mock v1.1.1
 github.com/golang/protobuf v1.3.1
