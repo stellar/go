@@ -487,7 +487,8 @@ type InnerTransaction struct {
 func (t Transaction) MarshalJSON() ([]byte, error) {
 	type Alias Transaction
 	v := &struct {
-		Memo *string `json:"memo,omitempty"`
+		Memo      *string `json:"memo,omitempty"`
+		MemoBytes *string `json:"memo_bytes,omitempty"`
 		*Alias
 	}{
 		Alias: (*Alias)(&t),
@@ -495,6 +496,11 @@ func (t Transaction) MarshalJSON() ([]byte, error) {
 	if t.MemoType != "none" {
 		v.Memo = &t.Memo
 	}
+
+	if t.MemoType == "text" {
+		v.MemoBytes = &t.MemoBytes
+	}
+
 	return json.Marshal(v)
 }
 

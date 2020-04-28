@@ -152,4 +152,5 @@ func TestPopulateNativeBalance(t *testing.T) {
 	assert.Equal(t, "", want.Issuer)
 	assert.Equal(t, "", want.Code)
 	assert.Nil(t, want.IsAuthorized)
+	assert.Nil(t, want.IsAuthorizedToMaintainLiabilities)
 }

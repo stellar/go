@@ -70,5 +70,6 @@ func PopulateNativeBalance(dest *protocol.Balance, stroops, buyingLiabilities, s
 	dest.Issuer = ""
 	dest.Code = ""
 	dest.IsAuthorized = nil
+	dest.IsAuthorizedToMaintainLiabilities = nil
 	return
 }

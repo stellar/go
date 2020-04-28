@@ -66,16 +66,19 @@ func TestTransactionJSONMarshal(t *testing.T) {
 
 func TestTransactionEmptyMemoText(t *testing.T) {
 	transaction := Transaction{
-		MemoType: "text",
-		Memo:     "",
+		MemoType:  "text",
+		Memo:      "",
+		MemoBytes: "",
 	}
 	marshaledTransaction, marshalErr := json.Marshal(transaction)
 	assert.Nil(t, marshalErr)
 	var result struct {
-		Memo *string
+		Memo      *string
+		MemoBytes *string `json:"memo_bytes"`
 	}
 	json.Unmarshal(marshaledTransaction, &result)
 	assert.NotNil(t, result.Memo, "memo field is present even if input memo was empty string")
+	assert.NotNil(t, result.MemoBytes, "memo_bytes field is present even if input memo was empty string")
 }
 
 func TestTransactionMemoTypeNone(t *testing.T) {
