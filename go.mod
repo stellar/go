@@ -12,18 +12,12 @@ require (
 	github.com/aws/aws-sdk-go v1.25.25
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/elazarl/go-bindata-assetfs v1.0.0
-	github.com/facebookgo/ensure v0.0.0-20160127193407-b4ab57deab51 // indirect
-	github.com/facebookgo/inject v0.0.0-20161006174721-cc1aa653e50f
-	github.com/facebookgo/stack v0.0.0-20160209184415-751773369052 // indirect
-	github.com/facebookgo/structtag v0.0.0-20150214074306-217e25fb9691 // indirect
-	github.com/facebookgo/subset v0.0.0-20150612182917-8dac2c3c4870 // indirect
 	github.com/fatih/structs v1.0.0 // indirect
 	github.com/gavv/monotime v0.0.0-20161010190848-47d58efa6955 // indirect
 	github.com/getsentry/raven-go v0.0.0-20160805001729-c9d3cc542ad1
 	github.com/go-chi/chi v4.0.3+incompatible
 	github.com/go-errors/errors v0.0.0-20150906023321-a41850380601
 	github.com/gobuffalo/packr v1.12.1 // indirect
-	github.com/goji/httpauth v0.0.0-20160601135302-2da839ab0f4d
 	github.com/google/go-querystring v0.0.0-20160401233042-9235644dd9e5 // indirect
 	github.com/google/martian v2.1.0+incompatible // indirect
 	github.com/googleapis/gax-go v2.0.2+incompatible // indirect
