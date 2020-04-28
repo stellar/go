@@ -984,7 +984,7 @@ func TestAccountSign_rejectsFeeBumpTx(t *testing.T) {
 	innerTxEnvelopeB64, err := xdr.MarshalBase64(innerTxEnvelope)
 	require.NoError(t, err)
 	parsed, err := txnbuild.TransactionFromXDR(innerTxEnvelopeB64)
-	tx, _ = parsed.Simple()
+	tx, _ = parsed.Transaction()
 
 	feeBumpTx, err := txnbuild.NewFeeBumpTransaction(
 		txnbuild.FeeBumpTransactionParams{

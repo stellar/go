@@ -1096,7 +1096,7 @@ func ExampleClient_StreamTransactions() {
 //	if err != nil {
 //		return nil, err
 //	}
-//	tx, _ = parsed.Simple()
+//	tx, _ = parsed.Transaction()
 //	return tx, nil
 //}
 //

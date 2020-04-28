@@ -1263,7 +1263,7 @@ func TestFromXDR(t *testing.T) {
 
 	tx, err := TransactionFromXDR(txeB64)
 	assert.NoError(t, err)
-	newTx, ok := tx.Simple()
+	newTx, ok := tx.Transaction()
 	assert.True(t, ok)
 	_, ok = tx.FeeBump()
 	assert.False(t, ok)
@@ -1284,7 +1284,7 @@ func TestFromXDR(t *testing.T) {
 
 	tx2, err := TransactionFromXDR(txeB64)
 	assert.NoError(t, err)
-	newTx2, ok := tx2.Simple()
+	newTx2, ok := tx2.Transaction()
 	assert.True(t, ok)
 	_, ok = tx2.FeeBump()
 	assert.False(t, ok)
@@ -1360,7 +1360,7 @@ func TestFromXDRBuildSignEncode(t *testing.T) {
 	// test signing transaction  without modification
 	tx, err := TransactionFromXDR(expectedUnsigned)
 	assert.NoError(t, err)
-	newTx, ok := tx.Simple()
+	newTx, ok := tx.Transaction()
 	assert.True(t, ok)
 	_, ok = tx.FeeBump()
 	assert.False(t, ok)
@@ -1376,7 +1376,7 @@ func TestFromXDRBuildSignEncode(t *testing.T) {
 	expectedSigned2 := "AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAiII0AAAAbAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAABAAAABW5ld3R4AAAAAAAAAQAAAAAAAAAAAAAAAITg3tq8G0kvnvoIhZPMYJsY+9KVV8xAA6NxhtKxIXZUAAAAAAX14QAAAAAAAAAAAeoucsUAAABADPbbXNzpC408WyYGQszN3VA9e41sNpsyZ2HcS62RXvUDsN0A+IXMPRMaCb+Wgn1OM6Ikam9ol0MJYNeK0BPxCg=="
 	tx, err = TransactionFromXDR(expectedUnsigned)
 	assert.NoError(t, err)
-	newTx, ok = tx.Simple()
+	newTx, ok = tx.Transaction()
 	assert.True(t, ok)
 	_, ok = tx.FeeBump()
 	assert.False(t, ok)
