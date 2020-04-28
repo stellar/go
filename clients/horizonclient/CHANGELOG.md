@@ -3,13 +3,38 @@
 All notable changes to this project will be documented in this
 file.  This project adheres to [Semantic Versioning](http://semver.org/).
 
-## Unreleased
+## [v3.0.0](https://github.com/stellar/go/releases/tag/horizonclient-v3.0.0) - 2020-04-28
+
+### Breaking changes
+
+- The type for the following fields in the `Transaction` struct have changed from `int32` to `int64`:
+  - `FeeCharged`
+  - `MaxFee`
+- The `TransactionSuccess` Horizon response has been removed. Instead, all submit transaction functions return with a full Horizon `Transaction` response on success.
+- The `GetSequenceNumber()` and `IncrementSequenceNumber()` functions on the `Account` struct now return `int64` values instead of `xdr.SequenceNumber` values.
+
+### Add
 
 - Add `IsNotFoundError`
-- Dropped support for Go 1.12.
+- Add `client.SubmitFeeBumpTransaction` and `client.SubmitFeeBumpTransactionWithOptions` for submitting [fee bump transactions](https://github.com/stellar/stellar-protocol/blob/master/core/cap-0015.md). Note that fee bump transactions will only be accepted by Stellar Core once Protocol 13 is enabled.
+
+### Updates
+
+- To support [CAP0018](https://github.com/stellar/stellar-protocol/blob/master/core/cap-0018.md) Fine-Grained Control of Authorization:
+  - There is a new effect `TrustlineAuthorizedToMaintainLiabilities` which occurs when a trustline has been authorized to maintain liabilities.
+  - The `AuthorizeToMaintainLiabilities` boolean field was added to the `AllowTrust` operation struct.
+- These fields were added to the `Transaction` struct to support fee bump transactions:
+  - `FeeAccount` (the account which paid the transaction fee)
+  - `FeeBumpTransaction` (only present in Protocol 13 fee bump transactions)
+  - `InnerTransaction` (only present in Protocol 13 fee bump transactions).
+- `Transaction` has a new `MemoBytes` field which is populated when `MemoType` is equal to `text`. `MemoBytes` stores the base 64 encoding of the memo bytes set in the transaction envelope.
 - Fixed a bug where HorizonTimeOut has misleading units of time by:
   - Removed HorizonTimeOut (seconds)
   - Added HorizonTimeout (nanoseconds)
+
+### Remove
+
+- Dropped support for Go 1.12.
 
 ## [v2.2.0](https://github.com/stellar/go/releases/tag/horizonclient-v2.2.0) - 2020-03-26
 
