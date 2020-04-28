@@ -48,17 +48,7 @@ func (h challengeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Unfortunately BuildChallengeTx exposes a base64 encoded XDR string and
-	// not the transaction object, and to get the hash of the transaction it
-	// must be parsed back into the object. This can be improved, but it works.
-	txParsed, err := txnbuild.TransactionFromXDR(tx)
-	if err != nil {
-		h.Logger.Ctx(ctx).WithStack(err).Error(err)
-		serverError.Render(w)
-		return
-	}
-	txParsed.Network = h.NetworkPassphrase
-	hash, err := txParsed.HashHex()
+	hash, err := tx.HashHex(h.NetworkPassphrase)
 	if err != nil {
 		h.Logger.Ctx(ctx).WithStack(err).Error(err)
 		serverError.Render(w)
@@ -71,8 +61,15 @@ func (h challengeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	l.Info("Generated challenge transaction for account.")
 
+	txeBase64, err := tx.Base64()
+	if err != nil {
+		h.Logger.Ctx(ctx).WithStack(err).Error(err)
+		serverError.Render(w)
+		return
+	}
+
 	res := challengeResponse{
-		Transaction:       tx,
+		Transaction:       txeBase64,
 		NetworkPassphrase: h.NetworkPassphrase,
 	}
 	httpjson.Render(w, res, httpjson.JSON)

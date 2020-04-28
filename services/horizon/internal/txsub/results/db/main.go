@@ -56,10 +56,15 @@ func (rp *DB) ResultByHash(ctx context.Context, hash string) txsub.Result {
 		// If you are modifying the code here, please do not make this error again.
 		err = rp.Core.TransactionByHashAfterLedger(&cr, hash, historyLatest-120)
 		if err == nil {
-			return txResultFromCore(cr)
-		}
-
-		if !rp.Core.NoRows(err) {
+			if err = txSucceeded(cr); err == nil {
+				// The transaction succeeded and was found in Stellar Core. The transaction should also
+				// be present in Horizon's DB but it could be that horizon ingestion is behind Stellar Core.
+				// We return ErrNoResults so the txsub will retry the horizon db lookup
+				return txsub.Result{Err: txsub.ErrNoResults}
+			} else {
+				return txsub.Result{Err: err}
+			}
+		} else if !rp.Core.NoRows(err) {
 			return txsub.Result{Err: err}
 		}
 	}
@@ -72,54 +77,35 @@ func txResultFromHistory(tx history.Transaction) txsub.Result {
 	var txResult xdr.TransactionResult
 	err := xdr.SafeUnmarshalBase64(tx.TxResult, &txResult)
 	if err == nil {
-		if txResult.Result.Code != xdr.TransactionResultCodeTxSuccess {
+		if !txResult.Successful() {
 			err = &txsub.FailedTransactionError{
 				ResultXDR: tx.TxResult,
 			}
 		}
 	}
 
-	return txsub.Result{
-		Err:            err,
-		Hash:           tx.TransactionHash,
-		LedgerSequence: tx.LedgerSequence,
-		EnvelopeXDR:    tx.TxEnvelope,
-		ResultXDR:      tx.TxResult,
-		ResultMetaXDR:  tx.TxMeta,
-	}
+	return txsub.Result{Err: err, Transaction: tx}
 }
 
-func txResultFromCore(tx core.Transaction) txsub.Result {
+// txSucceeded returns nil if the the transaction succeeded
+// otherwise, it returns an error
+func txSucceeded(tx core.Transaction) error {
 	// re-encode result to base64
 	var raw bytes.Buffer
 	_, err := xdr.Marshal(&raw, tx.Result.Result)
-
 	if err != nil {
-		return txsub.Result{Err: err}
+		return err
 	}
 
 	trx := base64.StdEncoding.EncodeToString(raw.Bytes())
 
 	// if result is success, send a normal resposne
-	if tx.Result.Result.Result.Code == xdr.TransactionResultCodeTxSuccess {
-		return txsub.Result{
-			Hash:           tx.TransactionHash,
-			LedgerSequence: tx.LedgerSequence,
-			EnvelopeXDR:    tx.EnvelopeXDR(),
-			ResultXDR:      trx,
-			ResultMetaXDR:  tx.ResultMetaXDR(),
-		}
+	if tx.Result.Successful() {
+		return nil
 	}
 
 	// if failed, produce a FailedTransactionError
-	return txsub.Result{
-		Err: &txsub.FailedTransactionError{
-			ResultXDR: trx,
-		},
-		Hash:           tx.TransactionHash,
-		LedgerSequence: tx.LedgerSequence,
-		EnvelopeXDR:    tx.EnvelopeXDR(),
-		ResultXDR:      trx,
-		ResultMetaXDR:  tx.ResultMetaXDR(),
+	return &txsub.FailedTransactionError{
+		ResultXDR: trx,
 	}
 }

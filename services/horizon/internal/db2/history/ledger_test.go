@@ -133,27 +133,3 @@ func TestInsertLedger(t *testing.T) {
 
 	tt.Assert.Equal(expectedLedger, ledgerFromDB)
 }
-
-func ledgerToMap(ledger Ledger) map[string]interface{} {
-	return map[string]interface{}{
-		"importer_version":             ledger.ImporterVersion,
-		"id":                           ledger.TotalOrderID.ID,
-		"sequence":                     ledger.Sequence,
-		"ledger_hash":                  ledger.LedgerHash,
-		"previous_ledger_hash":         ledger.PreviousLedgerHash,
-		"total_coins":                  ledger.TotalCoins,
-		"fee_pool":                     ledger.FeePool,
-		"base_fee":                     ledger.BaseFee,
-		"base_reserve":                 ledger.BaseReserve,
-		"max_tx_set_size":              ledger.MaxTxSetSize,
-		"closed_at":                    ledger.ClosedAt,
-		"created_at":                   ledger.CreatedAt,
-		"updated_at":                   ledger.UpdatedAt,
-		"transaction_count":            ledger.SuccessfulTransactionCount,
-		"successful_transaction_count": ledger.SuccessfulTransactionCount,
-		"failed_transaction_count":     ledger.FailedTransactionCount,
-		"operation_count":              ledger.OperationCount,
-		"protocol_version":             ledger.ProtocolVersion,
-		"ledger_header":                ledger.LedgerHeaderXDR,
-	}
-}

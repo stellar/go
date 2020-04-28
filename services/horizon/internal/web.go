@@ -137,10 +137,14 @@ func (w *web) mustInstallActions(
 	config Config,
 	pathFinder paths.Finder,
 	orderBookGraph *orderbook.OrderBookGraph,
-	stateMiddleware *StateMiddleware,
+	session *db.Session,
 ) {
 	if w == nil {
 		log.Fatal("missing web instance for installing web actions")
+	}
+
+	stateMiddleware := StateMiddleware{
+		HorizonSession: session,
 	}
 
 	r := w.router
@@ -210,12 +214,13 @@ func (w *web) mustInstallActions(
 	// account actions - /accounts/{account_id} has been created above so we
 	// need to use absolute routes here. Make sure we use regexp check here for
 	// emptiness. Without it, requesting `/accounts//payments` return all payments!
-	r.Get("/accounts/{account_id:\\w+}/transactions", w.streamIndexActionHandler(w.getTransactionPage, w.streamTransactions))
-	r.Get("/accounts/{account_id:\\w+}/operations", OperationIndexAction{}.Handle)
-	r.Get("/accounts/{account_id:\\w+}/payments", OperationIndexAction{OnlyPayments: true}.Handle)
-	r.Get("/accounts/{account_id:\\w+}/effects", EffectIndexAction{}.Handle)
-	r.Get("/accounts/{account_id:\\w+}/trades", TradeIndexAction{}.Handle)
-
+	r.Group(func(r chi.Router) {
+		r.Get("/accounts/{account_id:\\w+}/transactions", w.streamIndexActionHandler(w.getTransactionPage, w.streamTransactions))
+		r.Get("/accounts/{account_id:\\w+}/operations", OperationIndexAction{}.Handle)
+		r.Get("/accounts/{account_id:\\w+}/payments", OperationIndexAction{OnlyPayments: true}.Handle)
+		r.Get("/accounts/{account_id:\\w+}/effects", EffectIndexAction{}.Handle)
+		r.Get("/accounts/{account_id:\\w+}/trades", TradeIndexAction{}.Handle)
+	})
 	// ledger actions
 	r.Route("/ledgers", func(r chi.Router) {
 		r.Get("/", LedgerIndexAction{}.Handle)
@@ -246,18 +251,20 @@ func (w *web) mustInstallActions(
 		r.Get("/{op_id}/effects", EffectIndexAction{}.Handle)
 	})
 
-	// payment actions
-	r.Get("/payments", OperationIndexAction{OnlyPayments: true}.Handle)
+	r.Group(func(r chi.Router) {
+		// payment actions
+		r.Get("/payments", OperationIndexAction{OnlyPayments: true}.Handle)
 
-	// effect actions
-	r.Get("/effects", EffectIndexAction{}.Handle)
+		// effect actions
+		r.Get("/effects", EffectIndexAction{}.Handle)
 
-	// trading related endpoints
-	r.Get("/trades", TradeIndexAction{}.Handle)
-	r.Get("/trade_aggregations", TradeAggregateIndexAction{}.Handle)
-	// /offers/{offer_id} has been created above so we need to use absolute
-	// routes here.
-	r.Get("/offers/{offer_id}/trades", TradeIndexAction{}.Handle)
+		// trading related endpoints
+		r.Get("/trades", TradeIndexAction{}.Handle)
+		r.Get("/trade_aggregations", TradeAggregateIndexAction{}.Handle)
+		// /offers/{offer_id} has been created above so we need to use absolute
+		// routes here.
+		r.Get("/offers/{offer_id}/trades", TradeIndexAction{}.Handle)
+	})
 
 	// Transaction submission API
 	r.Post("/transactions", TransactionCreateAction{}.Handle)

@@ -4,7 +4,6 @@ import (
 	"context"
 	"math/big"
 	"net/http"
-	"strconv"
 
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/exp/orderbook"
@@ -13,19 +12,6 @@ import (
 	"github.com/stellar/go/support/render/problem"
 	"github.com/stellar/go/xdr"
 )
-
-// LastLedgerHeaderName is the header which is set on all endpoints
-const LastLedgerHeaderName = "Latest-Ledger"
-
-// HeaderWriter is an interface for setting HTTP response headers
-type HeaderWriter interface {
-	Header() http.Header
-}
-
-// SetLastLedgerHeader sets the Latest-Ledger header
-func SetLastLedgerHeader(w HeaderWriter, lastLedger uint32) {
-	w.Header().Set(LastLedgerHeaderName, strconv.FormatUint(uint64(lastLedger), 10))
-}
 
 // StreamableObjectResponse is an interface for objects returned by streamable object endpoints
 // A streamable object endpoint is an SSE endpoint which returns a single JSON object response
@@ -85,17 +71,24 @@ type GetOrderbookHandler struct {
 func offersToPriceLevels(offers []xdr.OfferEntry, invert bool) ([]protocol.PriceLevel, error) {
 	result := []protocol.PriceLevel{}
 
+	offersWithNormalizedPrices := []xdr.OfferEntry{}
 	amountForPrice := map[xdr.Price]*big.Int{}
+
+	// normalize offer prices and accumulate per-price amounts
 	for _, offer := range offers {
+		offer.Price.Normalize()
 		offerAmount := big.NewInt(int64(offer.Amount))
 		if amount, ok := amountForPrice[offer.Price]; ok {
 			amount.Add(amount, offerAmount)
 		} else {
 			amountForPrice[offer.Price] = offerAmount
 		}
+		offersWithNormalizedPrices = append(offersWithNormalizedPrices, offer)
 	}
-	for _, offer := range offers {
+
+	for _, offer := range offersWithNormalizedPrices {
 		total, ok := amountForPrice[offer.Price]
+		// make we don't duplicate price-levels
 		if !ok {
 			continue
 		}
@@ -168,6 +161,9 @@ func (handler GetOrderbookHandler) GetResource(w HeaderWriter, r *http.Request) 
 		return nil, err
 	}
 
+	// To make the Last-Ledger header consistent with the response content,
+	// we need to extract it from the orderbook graph and not the DB.
+	// Thus, we overwrite the header if it was previously set.
 	SetLastLedgerHeader(w, lastLedger)
 	return OrderBookResponse{summary}, nil
 }

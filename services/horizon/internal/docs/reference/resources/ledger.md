@@ -12,7 +12,7 @@ To learn more about the concept of ledgers in the Stellar network, take a look a
 |------------------------------|--------|------------------------------------------------------------------------------------------------------------------------------|
 | id                           | string | The id is a unique identifier for this ledger.                                                                               |
 | paging_token                 | number | A [paging token](./page.md) suitable for use as a `cursor` parameter.                                                        |
-| hash                         | string | A hex-encoded SHA-256 hash of the ledger's [XDR](../xdr.md)-encoded form.                                           |
+| hash                         | string | A hex-encoded, lowercase SHA-256 hash of the ledger's [XDR](../../learn/xdr.md)-encoded form.                                |
 | prev_hash                    | string | The hash of the ledger that chronologically came before this one.                                                            |
 | sequence                     | number | Sequence number of this ledger, suitable for use as the as the :id parameter for url templates that require a ledger number. |
 | successful_transaction_count | number | The number of successful transactions in this ledger.                                                                        |

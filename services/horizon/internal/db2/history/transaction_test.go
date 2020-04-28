@@ -2,17 +2,15 @@ package history
 
 import (
 	"database/sql"
-	"encoding/hex"
 	"testing"
 	"time"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/guregu/null"
+
 	"github.com/stellar/go/exp/ingest/io"
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/services/horizon/internal/toid"
-	"github.com/stellar/go/xdr"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestTransactionQueries(t *testing.T) {
@@ -51,7 +49,7 @@ func TestTransactionSuccessfulOnly(t *testing.T) {
 	tt.Assert.Equal(3, len(transactions))
 
 	for _, transaction := range transactions {
-		tt.Assert.True(*transaction.Successful)
+		tt.Assert.True(transaction.Successful)
 	}
 
 	sql, _, err := query.sql.ToSql()
@@ -77,7 +75,7 @@ func TestTransactionIncludeFailed(t *testing.T) {
 
 	var failed, successful int
 	for _, transaction := range transactions {
-		if *transaction.Successful {
+		if transaction.Successful {
 			successful++
 		} else {
 			failed++
@@ -89,7 +87,7 @@ func TestTransactionIncludeFailed(t *testing.T) {
 
 	sql, _, err := query.sql.ToSql()
 	tt.Assert.NoError(err)
-	tt.Assert.Equal("SELECT ht.id, ht.transaction_hash, ht.ledger_sequence, ht.application_order, ht.account, ht.account_sequence, ht.max_fee, COALESCE(ht.fee_charged, ht.max_fee) as fee_charged, ht.operation_count, ht.tx_envelope, ht.tx_result, ht.tx_meta, ht.tx_fee_meta, ht.created_at, ht.updated_at, ht.successful, array_to_string(ht.signatures, ',') AS signatures, ht.memo_type, ht.memo, lower(ht.time_bounds) AS valid_after, upper(ht.time_bounds) AS valid_before, hl.closed_at AS ledger_close_time FROM history_transactions ht LEFT JOIN history_ledgers hl ON ht.ledger_sequence = hl.sequence JOIN history_transaction_participants htp ON htp.history_transaction_id = ht.id WHERE htp.history_account_id = ?", sql)
+	tt.Assert.Equal("SELECT ht.id, ht.transaction_hash, ht.ledger_sequence, ht.application_order, ht.account, ht.account_sequence, ht.max_fee, COALESCE(ht.fee_charged, ht.max_fee) as fee_charged, ht.operation_count, ht.tx_envelope, ht.tx_result, ht.tx_meta, ht.tx_fee_meta, ht.created_at, ht.updated_at, COALESCE(ht.successful, true) as successful, array_to_string(ht.signatures, ',') AS signatures, ht.memo_type, ht.memo, lower(ht.time_bounds) AS valid_after, upper(ht.time_bounds) AS valid_before, hl.closed_at AS ledger_close_time, ht.inner_transaction_hash, ht.fee_account, ht.new_max_fee, array_to_string(ht.inner_signatures, ',') AS inner_signatures FROM history_transactions ht LEFT JOIN history_ledgers hl ON ht.ledger_sequence = hl.sequence JOIN history_transaction_participants htp ON htp.history_transaction_id = ht.id WHERE htp.history_account_id = ?", sql)
 }
 
 func TestExtraChecksTransactionSuccessfulTrueResultFalse(t *testing.T) {
@@ -134,41 +132,6 @@ func TestExtraChecksTransactionSuccessfulFalseResultTrue(t *testing.T) {
 	err = query.Select(&transactions)
 	tt.Assert.Error(err)
 	tt.Assert.Contains(err.Error(), "Corrupted data! `successful=false` but returned transaction is success")
-}
-
-type testTransaction struct {
-	index         uint32
-	envelopeXDR   string
-	resultXDR     string
-	feeChangesXDR string
-	metaXDR       string
-	hash          string
-}
-
-func buildLedgerTransaction(t *testing.T, tx testTransaction) io.LedgerTransaction {
-	transaction := io.LedgerTransaction{
-		Index:      tx.index,
-		Envelope:   xdr.TransactionEnvelope{},
-		Result:     xdr.TransactionResultPair{},
-		FeeChanges: xdr.LedgerEntryChanges{},
-		Meta:       xdr.TransactionMeta{},
-	}
-
-	tt := assert.New(t)
-
-	err := xdr.SafeUnmarshalBase64(tx.envelopeXDR, &transaction.Envelope)
-	tt.NoError(err)
-	err = xdr.SafeUnmarshalBase64(tx.resultXDR, &transaction.Result.Result)
-	tt.NoError(err)
-	err = xdr.SafeUnmarshalBase64(tx.metaXDR, &transaction.Meta)
-	tt.NoError(err)
-	err = xdr.SafeUnmarshalBase64(tx.feeChangesXDR, &transaction.FeeChanges)
-	tt.NoError(err)
-
-	_, err = hex.Decode(transaction.Result.TransactionHash[:], []byte(tx.hash))
-	tt.NoError(err)
-
-	return transaction
 }
 
 func TestInsertTransactionDoesNotAllowDuplicateIndex(t *testing.T) {
@@ -273,8 +236,7 @@ func TestInsertTransaction(t *testing.T) {
 	tt.Assert.NoError(err)
 
 	insertBuilder := q.NewTransactionBatchInsertBuilder(0)
-	success := new(bool)
-	*success = true
+	success := true
 
 	for _, testCase := range []struct {
 		name     string
@@ -377,7 +339,41 @@ func TestInsertTransaction(t *testing.T) {
 				Memo:             null.NewString("", false),
 				ValidAfter:       null.NewInt(0, false),
 				ValidBefore:      null.NewInt(0, false),
-				Successful:       new(bool),
+				Successful:       false,
+			},
+		},
+		{
+			"transaction with 64 bit fee charged",
+			buildLedgerTransaction(tt.T, testTransaction{
+				index:         1,
+				envelopeXDR:   "AAAAACiSTRmpH6bHC6Ekna5e82oiGY5vKDEEUgkq9CB//t+rlQL5AAEXUhsAADDRAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAABAAAACXRlc3QgbWVtbwAAAAAAAAEAAAAAAAAACwEXUhsAAFfhAAAAAAAAAAA=",
+				resultXDR:     "AAAAAgAAAAAAAAAAAAAAAwAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAFAAAAAAAAAAA=",
+				feeChangesXDR: "AAAAAA==",
+				metaXDR:       "AAAAAQAAAAAAAAAA",
+				hash:          "edba3051b2f2d9b713e8a08709d631eccb72c59864ff3c564c68792271bb24a7",
+			}),
+			Transaction{
+				TotalOrderID:     TotalOrderID{528280981504},
+				TransactionHash:  "edba3051b2f2d9b713e8a08709d631eccb72c59864ff3c564c68792271bb24a7",
+				LedgerSequence:   ledger.Sequence,
+				LedgerCloseTime:  ledger.ClosedAt,
+				ApplicationOrder: 1,
+				Account:          "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+				AccountSequence:  "78621794419880145",
+				// set max fee to a value larger than MAX_INT32 but less than or equal to MAX_UINT32
+				MaxFee:          2500000000,
+				FeeCharged:      int64(1 << 33),
+				OperationCount:  1,
+				TxEnvelope:      "AAAAACiSTRmpH6bHC6Ekna5e82oiGY5vKDEEUgkq9CB//t+rlQL5AAEXUhsAADDRAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAABAAAACXRlc3QgbWVtbwAAAAAAAAEAAAAAAAAACwEXUhsAAFfhAAAAAAAAAAA=",
+				TxResult:        "AAAAAgAAAAAAAAAAAAAAAwAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAFAAAAAAAAAAA=",
+				TxFeeMeta:       "AAAAAA==",
+				TxMeta:          "AAAAAQAAAAAAAAAA",
+				SignatureString: "",
+				MemoType:        "text",
+				Memo:            null.NewString("test memo", true),
+				ValidAfter:      null.NewInt(0, true),
+				ValidBefore:     null.NewInt(0, false),
+				Successful:      success,
 			},
 		},
 		{
@@ -670,4 +666,49 @@ func TestInsertTransaction(t *testing.T) {
 			tt.Assert.NoError(err)
 		})
 	}
+}
+
+func TestFetchFeeBumpTransaction(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	test.ResetHorizonDB(t, tt.HorizonDB)
+	q := &Q{tt.HorizonSession()}
+
+	fixture := FeeBumpScenario(tt, q, true)
+
+	var byOuterhash, byInnerHash Transaction
+	tt.Assert.NoError(q.TransactionByHash(&byOuterhash, fixture.OuterHash))
+	tt.Assert.NoError(q.TransactionByHash(&byInnerHash, fixture.InnerHash))
+
+	tt.Assert.Equal(byOuterhash, byInnerHash)
+	tt.Assert.Equal(byOuterhash, fixture.Transaction)
+
+	outerOps, outerTransactions, err := q.Operations().IncludeTransactions().
+		ForTransaction(fixture.OuterHash).Fetch()
+	tt.Assert.NoError(err)
+	tt.Assert.Len(outerTransactions, 1)
+	tt.Assert.Len(outerOps, 1)
+
+	innerOps, innerTransactions, err := q.Operations().IncludeTransactions().
+		ForTransaction(fixture.InnerHash).Fetch()
+	tt.Assert.NoError(err)
+	tt.Assert.Len(innerTransactions, 1)
+	tt.Assert.Equal(innerOps, outerOps)
+
+	for _, tx := range append(outerTransactions, innerTransactions...) {
+		tt.Assert.True(byOuterhash.CreatedAt.Equal(tx.CreatedAt))
+		tt.Assert.True(byOuterhash.LedgerCloseTime.Equal(tx.LedgerCloseTime))
+		byOuterhash.CreatedAt = tx.CreatedAt
+		byOuterhash.LedgerCloseTime = tx.LedgerCloseTime
+		tt.Assert.Equal(byOuterhash, byInnerHash)
+	}
+
+	var outerEffects, innerEffects []Effect
+	err = q.Effects().ForTransaction(fixture.OuterHash).Select(&outerEffects)
+	tt.Assert.NoError(err)
+	tt.Assert.Len(outerEffects, 1)
+
+	err = q.Effects().ForTransaction(fixture.InnerHash).Select(&innerEffects)
+	tt.Assert.NoError(err)
+	tt.Assert.Equal(outerEffects, innerEffects)
 }

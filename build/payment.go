@@ -90,9 +90,9 @@ func (m Destination) MutatePayment(o interface{}) error {
 	default:
 		return errors.New("Unexpected operation type")
 	case *xdr.PaymentOp:
-		return setAccountId(m.AddressOrSeed, &o.Destination)
+		return setMuxedAccount(m.AddressOrSeed, &o.Destination)
 	case *xdr.PathPaymentStrictReceiveOp:
-		return setAccountId(m.AddressOrSeed, &o.Destination)
+		return setMuxedAccount(m.AddressOrSeed, &o.Destination)
 	}
 }
 

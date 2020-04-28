@@ -1,10 +1,14 @@
 package horizonclient
 
 import (
+	"fmt"
 	"net/http"
+	"net/url"
 	"testing"
 	"time"
 
+	"github.com/stellar/go/keypair"
+	"github.com/stellar/go/network"
 	hProtocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/protocols/horizon/effects"
 	"github.com/stellar/go/protocols/horizon/operations"
@@ -13,7 +17,9 @@ import (
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/http/httptest"
 	"github.com/stellar/go/txnbuild"
+	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestFixHTTP(t *testing.T) {
@@ -27,6 +33,230 @@ func TestFixHTTP(t *testing.T) {
 	assert.IsType(t, client.HTTP, &http.Client{})
 }
 
+func TestCheckMemoRequired(t *testing.T) {
+	tt := assert.New(t)
+
+	hmock := httptest.NewClient()
+	client := &Client{
+		HorizonURL: "https://localhost/",
+		HTTP:       hmock,
+	}
+
+	kp := keypair.MustParseFull("SA26PHIKZM6CXDGR472SSGUQQRYXM6S437ZNHZGRM6QA4FOPLLLFRGDX")
+	sourceAccount := txnbuild.NewSimpleAccount(kp.Address(), int64(0))
+
+	paymentMemoRequired := txnbuild.Payment{
+		Destination: "GAYHAAKPAQLMGIJYMIWPDWCGUCQ5LAWY4Q7Q3IKSP57O7GUPD3NEOSEA",
+		Amount:      "10",
+		Asset:       txnbuild.NativeAsset{},
+	}
+
+	paymentNoMemo := txnbuild.Payment{
+		Destination: "GDWIRURRED6SQSZVQVVMK46PE2MOZEKHV6ZU54JG3NPVRDIF4XCXYYW4",
+		Amount:      "10",
+		Asset:       txnbuild.NativeAsset{},
+	}
+
+	asset := txnbuild.CreditAsset{"ABCD", kp.Address()}
+	pathPaymentStrictSend := txnbuild.PathPaymentStrictSend{
+		SendAsset:   asset,
+		SendAmount:  "10",
+		Destination: "GDYM6SBBGDF6ZDRM2SKGVIWM257Q4V63V3IYNDQQWPKNV4QDERS4YTLX",
+		DestAsset:   txnbuild.NativeAsset{},
+		DestMin:     "1",
+		Path:        []txnbuild.Asset{asset},
+	}
+
+	pathPaymentStrictReceive := txnbuild.PathPaymentStrictReceive{
+		SendAsset:   asset,
+		SendMax:     "10",
+		Destination: "GD2JTIDP2JJKNIDXW4L6AU2RYFXZIUH3YFIS43PJT2467AP46CWBHSCN",
+		DestAsset:   txnbuild.NativeAsset{},
+		DestAmount:  "1",
+		Path:        []txnbuild.Asset{asset},
+	}
+
+	accountMerge := txnbuild.AccountMerge{
+		Destination: "GBVZZ5XPHECNGA5SENAJP4C6ZJ7FGZ55ZZUCTFTHREZM73LKUGCQDRHR",
+	}
+
+	testCases := []struct {
+		desc         string
+		destination  string
+		expected     string
+		operations   []txnbuild.Operation
+		mockNotFound bool
+	}{
+		{
+			desc:        "payment operation",
+			destination: "GAYHAAKPAQLMGIJYMIWPDWCGUCQ5LAWY4Q7Q3IKSP57O7GUPD3NEOSEA",
+			expected:    "operation[0]: destination account requires a memo in the transaction",
+			operations: []txnbuild.Operation{
+				&paymentMemoRequired,
+				&pathPaymentStrictReceive,
+				&pathPaymentStrictSend,
+				&accountMerge,
+			},
+		},
+		{
+			desc:        "strict receive operation",
+			destination: "GD2JTIDP2JJKNIDXW4L6AU2RYFXZIUH3YFIS43PJT2467AP46CWBHSCN",
+			expected:    "operation[1]: destination account requires a memo in the transaction",
+			operations: []txnbuild.Operation{
+				&paymentNoMemo,
+				&pathPaymentStrictReceive,
+			},
+			mockNotFound: true,
+		},
+		{
+			desc:        "strict send operation",
+			destination: "GDYM6SBBGDF6ZDRM2SKGVIWM257Q4V63V3IYNDQQWPKNV4QDERS4YTLX",
+			expected:    "operation[1]: destination account requires a memo in the transaction",
+			operations: []txnbuild.Operation{
+				&paymentNoMemo,
+				&pathPaymentStrictSend,
+			},
+			mockNotFound: true,
+		},
+		{
+			desc:        "merge account operation",
+			destination: "GBVZZ5XPHECNGA5SENAJP4C6ZJ7FGZ55ZZUCTFTHREZM73LKUGCQDRHR",
+			expected:    "operation[1]: destination account requires a memo in the transaction",
+			operations: []txnbuild.Operation{
+				&paymentNoMemo,
+				&accountMerge,
+			},
+			mockNotFound: true,
+		},
+		{
+			desc: "two operations with same destination",
+			operations: []txnbuild.Operation{
+				&paymentNoMemo,
+				&paymentNoMemo,
+			},
+			mockNotFound: true,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.desc, func(t *testing.T) {
+			tx, err := txnbuild.NewTransaction(
+				txnbuild.TransactionParams{
+					SourceAccount:        &sourceAccount,
+					IncrementSequenceNum: true,
+					Operations:           tc.operations,
+					BaseFee:              txnbuild.MinBaseFee,
+					Timebounds:           txnbuild.NewTimebounds(0, 10),
+				},
+			)
+			tt.NoError(err)
+
+			if len(tc.destination) > 0 {
+				hmock.On(
+					"GET",
+					fmt.Sprintf("https://localhost/accounts/%s/data/config.memo_required", tc.destination),
+				).ReturnJSON(200, memoRequiredResponse)
+			}
+
+			if tc.mockNotFound {
+				hmock.On(
+					"GET",
+					"https://localhost/accounts/GDWIRURRED6SQSZVQVVMK46PE2MOZEKHV6ZU54JG3NPVRDIF4XCXYYW4/data/config.memo_required",
+				).ReturnString(404, notFoundResponse)
+			}
+
+			err = client.checkMemoRequired(tx)
+
+			if len(tc.expected) > 0 {
+				tt.Error(err)
+				tt.Contains(err.Error(), tc.expected)
+				tt.Equal(ErrAccountRequiresMemo, errors.Cause(err))
+			} else {
+				tt.NoError(err)
+			}
+		})
+	}
+}
+
+func TestAccounts(t *testing.T) {
+	tt := assert.New(t)
+	hmock := httptest.NewClient()
+	client := &Client{
+		HorizonURL: "https://localhost/",
+		HTTP:       hmock,
+	}
+
+	accountRequest := AccountsRequest{}
+	_, err := client.Accounts(accountRequest)
+	if tt.Error(err) {
+		tt.Contains(err.Error(), "invalid request: no parameters - Signer or Asset must be provided")
+	}
+
+	accountRequest = AccountsRequest{
+		Signer: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU",
+		Asset:  "COP:GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU",
+	}
+	_, err = client.Accounts(accountRequest)
+	if tt.Error(err) {
+		tt.Contains(err.Error(), "invalid request: too many parameters - Signer and Asset provided, provide a single filter")
+	}
+
+	var accounts hProtocol.AccountsPage
+
+	hmock.On(
+		"GET",
+		"https://localhost/accounts?signer=GAI3SO3S4E67HAUZPZ2D3VBFXY4AT6N7WQI7K5WFGRXWENTZJG2B6CYP",
+	).ReturnString(200, accountsResponse)
+
+	accountRequest = AccountsRequest{
+		Signer: "GAI3SO3S4E67HAUZPZ2D3VBFXY4AT6N7WQI7K5WFGRXWENTZJG2B6CYP",
+	}
+	accounts, err = client.Accounts(accountRequest)
+	tt.NoError(err)
+	tt.Len(accounts.Embedded.Records, 1)
+
+	hmock.On(
+		"GET",
+		"https://localhost/accounts?asset=COP%3AGAI3SO3S4E67HAUZPZ2D3VBFXY4AT6N7WQI7K5WFGRXWENTZJG2B6CYP",
+	).ReturnString(200, accountsResponse)
+
+	accountRequest = AccountsRequest{
+		Asset: "COP:GAI3SO3S4E67HAUZPZ2D3VBFXY4AT6N7WQI7K5WFGRXWENTZJG2B6CYP",
+	}
+	accounts, err = client.Accounts(accountRequest)
+	tt.NoError(err)
+	tt.Len(accounts.Embedded.Records, 1)
+
+	hmock.On(
+		"GET",
+		"https://localhost/accounts?signer=GAI3SO3S4E67HAUZPZ2D3VBFXY4AT6N7WQI7K5WFGRXWENTZJG2B6CYP&cursor=GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H&limit=200&order=desc",
+	).ReturnString(200, accountsResponse)
+
+	accountRequest = AccountsRequest{
+		Signer: "GAI3SO3S4E67HAUZPZ2D3VBFXY4AT6N7WQI7K5WFGRXWENTZJG2B6CYP",
+		Order:  "desc",
+		Cursor: "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+		Limit:  200,
+	}
+	accounts, err = client.Accounts(accountRequest)
+	tt.NoError(err)
+	tt.Len(accounts.Embedded.Records, 1)
+
+	// connection error
+	hmock.On(
+		"GET",
+		"https://localhost/accounts?signer=GAI3SO3S4E67HAUZPZ2D3VBFXY4AT6N7WQI7K5WFGRXWENTZJG2B6CYP",
+	).ReturnError("http.Client error")
+
+	accountRequest = AccountsRequest{
+		Signer: "GAI3SO3S4E67HAUZPZ2D3VBFXY4AT6N7WQI7K5WFGRXWENTZJG2B6CYP",
+	}
+	accounts, err = client.Accounts(accountRequest)
+	if tt.Error(err) {
+		tt.Contains(err.Error(), "http.Client error")
+		_, ok := err.(*Error)
+		tt.Equal(ok, false)
+	}
+}
 func TestAccountDetail(t *testing.T) {
 	hmock := httptest.NewClient()
 	client := &Client{
@@ -397,6 +627,115 @@ func TestOfferRequest(t *testing.T) {
 		assert.Equal(t, record.Amount, "1999979.8700000")
 		assert.Equal(t, record.LastModifiedLedger, int32(103307))
 	}
+
+	hmock.On(
+		"GET",
+		"https://localhost/offers?seller=GDOJCPYIB66RY4XNDLRRHQQXB27YLNNAGAYV5HMHEYNYY4KUNV5FDV2F",
+	).ReturnString(200, offersResponse)
+
+	offersRequest = OfferRequest{
+		Seller: "GDOJCPYIB66RY4XNDLRRHQQXB27YLNNAGAYV5HMHEYNYY4KUNV5FDV2F",
+	}
+
+	offers, err = client.Offers(offersRequest)
+	if assert.NoError(t, err) {
+		assert.Len(t, offers.Embedded.Records, 1)
+	}
+
+	hmock.On(
+		"GET",
+		"https://localhost/offers?buying=COP%3AGDOJCPYIB66RY4XNDLRRHQQXB27YLNNAGAYV5HMHEYNYY4KUNV5FDV2F",
+	).ReturnString(200, offersResponse)
+
+	offersRequest = OfferRequest{
+		Buying: "COP:GDOJCPYIB66RY4XNDLRRHQQXB27YLNNAGAYV5HMHEYNYY4KUNV5FDV2F",
+	}
+
+	offers, err = client.Offers(offersRequest)
+	if assert.NoError(t, err) {
+		assert.Len(t, offers.Embedded.Records, 1)
+	}
+
+	hmock.On(
+		"GET",
+		"https://localhost/offers?selling=EUR%3AGDOJCPYIB66RY4XNDLRRHQQXB27YLNNAGAYV5HMHEYNYY4KUNV5FDV2F",
+	).ReturnString(200, offersResponse)
+
+	offersRequest = OfferRequest{
+		Selling: "EUR:GDOJCPYIB66RY4XNDLRRHQQXB27YLNNAGAYV5HMHEYNYY4KUNV5FDV2F",
+	}
+
+	offers, err = client.Offers(offersRequest)
+	if assert.NoError(t, err) {
+		assert.Len(t, offers.Embedded.Records, 1)
+	}
+
+	hmock.On(
+		"GET",
+		"https://localhost/offers?selling=EUR%3AGDOJCPYIB66RY4XNDLRRHQQXB27YLNNAGAYV5HMHEYNYY4KUNV5FDV2F",
+	).ReturnString(200, offersResponse)
+
+	offersRequest = OfferRequest{
+		Selling: "EUR:GDOJCPYIB66RY4XNDLRRHQQXB27YLNNAGAYV5HMHEYNYY4KUNV5FDV2F",
+	}
+
+	offers, err = client.Offers(offersRequest)
+	if assert.NoError(t, err) {
+		assert.Len(t, offers.Embedded.Records, 1)
+	}
+
+	hmock.On(
+		"GET",
+		"https://localhost/offers?buying=EUR%3AGDOJCPYIB66RY4XNDLRRHQQXB27YLNNAGAYV5HMHEYNYY4KUNV5FDV2F&seller=GDOJCPYIB66RY4XNDLRRHQQXB27YLNNAGAYV5HMHEYNYY4KUNV5FDV2F&selling=EUR%3AGDOJCPYIB66RY4XNDLRRHQQXB27YLNNAGAYV5HMHEYNYY4KUNV5FDV2F&cursor=30&limit=20&order=desc",
+	).ReturnString(200, offersResponse)
+
+	offersRequest = OfferRequest{
+		Seller:  "GDOJCPYIB66RY4XNDLRRHQQXB27YLNNAGAYV5HMHEYNYY4KUNV5FDV2F",
+		Buying:  "EUR:GDOJCPYIB66RY4XNDLRRHQQXB27YLNNAGAYV5HMHEYNYY4KUNV5FDV2F",
+		Selling: "EUR:GDOJCPYIB66RY4XNDLRRHQQXB27YLNNAGAYV5HMHEYNYY4KUNV5FDV2F",
+		Order:   "desc",
+		Limit:   20,
+		Cursor:  "30",
+	}
+
+	offers, err = client.Offers(offersRequest)
+	if assert.NoError(t, err) {
+		assert.Len(t, offers.Embedded.Records, 1)
+	}
+}
+func TestOfferDetailsRequest(t *testing.T) {
+	hmock := httptest.NewClient()
+	client := &Client{
+		HorizonURL: "https://localhost/",
+		HTTP:       hmock,
+	}
+
+	// account offers
+	hmock.On(
+		"GET",
+		"https://localhost/offers/5635",
+	).ReturnString(200, offerResponse)
+
+	record, err := client.OfferDetails("5635")
+	if assert.NoError(t, err) {
+		assert.IsType(t, record, hProtocol.Offer{})
+		assert.Equal(t, record.ID, int64(5635))
+		assert.Equal(t, record.Seller, "GD6UOZ3FGFI5L2X6F52YPJ6ICSW375BNBZIQC4PCLSEOO6SMX7CUS5MB")
+		assert.Equal(t, record.PT, "5635")
+		assert.Equal(t, record.Selling.Type, "native")
+		assert.Equal(t, record.Buying.Code, "AstroDollar")
+		assert.Equal(t, record.Buying.Issuer, "GDA2EHKPDEWZTAL6B66FO77HMOZL3RHZTIJO7KJJK5RQYSDUXEYMPJYY")
+		assert.Equal(t, record.Amount, "100.0000000")
+		assert.Equal(t, record.LastModifiedLedger, int32(356183))
+	}
+
+	_, err = client.OfferDetails("S6ES")
+	assert.Error(t, err)
+	assert.EqualError(t, err, "invalid offer ID provided")
+
+	_, err = client.OfferDetails("")
+	assert.Error(t, err)
+	assert.EqualError(t, err, "no offer ID provided")
 }
 
 func TestOperationsRequest(t *testing.T) {
@@ -523,7 +862,7 @@ func TestOperationsRequest(t *testing.T) {
 
 }
 
-func TestSubmitRequest(t *testing.T) {
+func TestSubmitTransactionXDRRequest(t *testing.T) {
 	hmock := httptest.NewClient()
 	client := &Client{
 		HorizonURL: "https://localhost/",
@@ -565,14 +904,434 @@ func TestSubmitRequest(t *testing.T) {
 
 	resp, err := client.SubmitTransactionXDR(txXdr)
 	if assert.NoError(t, err) {
-		assert.IsType(t, resp, hProtocol.TransactionSuccess{})
+		assert.IsType(t, resp, hProtocol.Transaction{})
 		assert.Equal(t, resp.Links.Transaction.Href, "https://horizon-testnet.stellar.org/transactions/bcc7a97264dca0a51a63f7ea971b5e7458e334489673078bb2a34eb0cce910ca")
 		assert.Equal(t, resp.Hash, "bcc7a97264dca0a51a63f7ea971b5e7458e334489673078bb2a34eb0cce910ca")
 		assert.Equal(t, resp.Ledger, int32(354811))
-		assert.Equal(t, resp.Env, `AAAAABB90WssODNIgi6BHveqzxTRmIpvAFRyVNM+Hm2GVuCcAAAAZAAABD0AAuV/AAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAyTBGxOgfSApppsTnb/YRr6gOR8WT0LZNrhLh4y3FCgoAAAAXSHboAAAAAAAAAAABhlbgnAAAAEAivKe977CQCxMOKTuj+cWTFqc2OOJU8qGr9afrgu2zDmQaX5Q0cNshc3PiBwe0qw/+D/qJk5QqM5dYeSUGeDQP`)
-		assert.Equal(t, resp.Result, "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAA=")
-		assert.Equal(t, resp.Meta, `AAAAAQAAAAIAAAADAAVp+wAAAAAAAAAAEH3Rayw4M0iCLoEe96rPFNGYim8AVHJU0z4ebYZW4JwACBP/TuycHAAABD0AAuV+AAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAVp+wAAAAAAAAAAEH3Rayw4M0iCLoEe96rPFNGYim8AVHJU0z4ebYZW4JwACBP/TuycHAAABD0AAuV/AAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAAwAAAAMABWn7AAAAAAAAAAAQfdFrLDgzSIIugR73qs8U0ZiKbwBUclTTPh5thlbgnAAIE/9O7JwcAAAEPQAC5X8AAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEABWn7AAAAAAAAAAAQfdFrLDgzSIIugR73qs8U0ZiKbwBUclTTPh5thlbgnAAIE+gGdbQcAAAEPQAC5X8AAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAABWn7AAAAAAAAAADJMEbE6B9ICmmmxOdv9hGvqA5HxZPQtk2uEuHjLcUKCgAAABdIdugAAAVp+wAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA==`)
+		assert.Equal(t, resp.EnvelopeXdr, `AAAAABB90WssODNIgi6BHveqzxTRmIpvAFRyVNM+Hm2GVuCcAAAAZAAABD0AAuV/AAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAyTBGxOgfSApppsTnb/YRr6gOR8WT0LZNrhLh4y3FCgoAAAAXSHboAAAAAAAAAAABhlbgnAAAAEAivKe977CQCxMOKTuj+cWTFqc2OOJU8qGr9afrgu2zDmQaX5Q0cNshc3PiBwe0qw/+D/qJk5QqM5dYeSUGeDQP`)
+		assert.Equal(t, resp.ResultXdr, "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAA=")
+		assert.Equal(t, resp.ResultMetaXdr, `AAAAAQAAAAIAAAADAAVp+wAAAAAAAAAAEH3Rayw4M0iCLoEe96rPFNGYim8AVHJU0z4ebYZW4JwACBP/TuycHAAABD0AAuV+AAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAVp+wAAAAAAAAAAEH3Rayw4M0iCLoEe96rPFNGYim8AVHJU0z4ebYZW4JwACBP/TuycHAAABD0AAuV/AAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAAwAAAAMABWn7AAAAAAAAAAAQfdFrLDgzSIIugR73qs8U0ZiKbwBUclTTPh5thlbgnAAIE/9O7JwcAAAEPQAC5X8AAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEABWn7AAAAAAAAAAAQfdFrLDgzSIIugR73qs8U0ZiKbwBUclTTPh5thlbgnAAIE+gGdbQcAAAEPQAC5X8AAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAABWn7AAAAAAAAAADJMEbE6B9ICmmmxOdv9hGvqA5HxZPQtk2uEuHjLcUKCgAAABdIdugAAAVp+wAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA==`)
 	}
+}
+
+func TestCheckMemoRequiredSkipsMemoIDAddress(t *testing.T) {
+	client := &Client{HorizonURL: "https://localhost/"}
+
+	kp := keypair.MustParseFull("SA26PHIKZM6CXDGR472SSGUQQRYXM6S437ZNHZGRM6QA4FOPLLLFRGDX")
+	sourceAccount := txnbuild.NewSimpleAccount(kp.Address(), int64(0))
+
+	payment := txnbuild.Payment{
+		Destination: "MCAAAAAAAAAAAAB7BQ2L7E5NBWMXDUCMZSIPOBKRDSBYVLMXGSSKF6YNPIB7Y77ITKNOG",
+		Amount:      "10",
+		Asset:       txnbuild.NativeAsset{},
+	}
+
+	tx, err := txnbuild.NewTransaction(
+		txnbuild.TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: true,
+			Operations:           []txnbuild.Operation{&payment},
+			BaseFee:              txnbuild.MinBaseFee,
+			Timebounds:           txnbuild.NewTimebounds(0, 10),
+		},
+	)
+	assert.NoError(t, err)
+	assert.NoError(t, client.checkMemoRequired(tx))
+}
+
+func TestSubmitTransactionRequest(t *testing.T) {
+	hmock := httptest.NewClient()
+	client := &Client{
+		HorizonURL: "https://localhost/",
+		HTTP:       hmock,
+	}
+
+	kp := keypair.MustParseFull("SA26PHIKZM6CXDGR472SSGUQQRYXM6S437ZNHZGRM6QA4FOPLLLFRGDX")
+	sourceAccount := txnbuild.NewSimpleAccount(kp.Address(), int64(0))
+
+	payment := txnbuild.Payment{
+		Destination: kp.Address(),
+		Amount:      "10",
+		Asset:       txnbuild.NativeAsset{},
+	}
+
+	tx, err := txnbuild.NewTransaction(
+		txnbuild.TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: true,
+			Operations:           []txnbuild.Operation{&payment},
+			BaseFee:              txnbuild.MinBaseFee,
+			Timebounds:           txnbuild.NewTimebounds(0, 10),
+		},
+	)
+	assert.NoError(t, err)
+
+	tx, err = tx.Sign(network.TestNetworkPassphrase, kp)
+	assert.NoError(t, err)
+
+	// successful tx with config.memo_required not found
+	hmock.On(
+		"POST",
+		"https://localhost/transactions?tx=AAAAAAU08yUQ8sHqhY8j9mXWwERfHC%2F3cKFSe%2FspAr0rGtO2AAAAZAAAAAAAAAABAAAAAQAAAAAAAAAAAAAAAAAAAAoAAAAAAAAAAQAAAAAAAAABAAAAAAU08yUQ8sHqhY8j9mXWwERfHC%2F3cKFSe%2FspAr0rGtO2AAAAAAAAAAAF9eEAAAAAAAAAAAErGtO2AAAAQKZUywjRbomZ8k14vOAf4%2Bx5kDYCBgZmXzNoeCQ6%2BFnDrkeP05oJ3DrKywbnmq7tfaxq4kDB%2FFqhMviDBuYf3gc%3D",
+	).ReturnString(200, txSuccess)
+
+	hmock.On(
+		"GET",
+		"https://localhost/accounts/GACTJ4ZFCDZMD2UFR4R7MZOWYBCF6HBP65YKCUT37MUQFPJLDLJ3N5D2/data/config.memo_required",
+	).ReturnString(404, notFoundResponse)
+
+	_, err = client.SubmitTransaction(tx)
+	assert.NoError(t, err)
+
+	// memo required - does not submit transaction
+	hmock.On(
+		"GET",
+		"https://localhost/accounts/GACTJ4ZFCDZMD2UFR4R7MZOWYBCF6HBP65YKCUT37MUQFPJLDLJ3N5D2/data/config.memo_required",
+	).ReturnJSON(200, memoRequiredResponse)
+
+	_, err = client.SubmitTransaction(tx)
+	assert.Error(t, err)
+	assert.Equal(t, ErrAccountRequiresMemo, errors.Cause(err))
+}
+
+func convertToV1Tx(t *testing.T, tx *txnbuild.Transaction) *txnbuild.Transaction {
+	// Action needed in release: horizonclient-v3.1.0
+	// remove manual envelope type configuration because
+	// once protocol 13 is enabled txnbuild will generate
+	// v1 transaction envelopes by default
+	innerTxEnvelope, err := tx.TxEnvelope()
+	require.NoError(t, err)
+	innerTxEnvelope.V1 = &xdr.TransactionV1Envelope{
+		Tx: xdr.Transaction{
+			SourceAccount: innerTxEnvelope.SourceAccount(),
+			Fee:           xdr.Uint32(innerTxEnvelope.Fee()),
+			SeqNum:        xdr.SequenceNumber(innerTxEnvelope.SeqNum()),
+			TimeBounds:    innerTxEnvelope.V0.Tx.TimeBounds,
+			Memo:          innerTxEnvelope.Memo(),
+			Operations:    innerTxEnvelope.Operations(),
+		},
+	}
+	innerTxEnvelope.Type = xdr.EnvelopeTypeEnvelopeTypeTx
+	innerTxEnvelope.V0 = nil
+	innerTxEnvelopeB64, err := xdr.MarshalBase64(innerTxEnvelope)
+	require.NoError(t, err)
+	parsed, err := txnbuild.TransactionFromXDR(innerTxEnvelopeB64)
+	tx, _ = parsed.Transaction()
+	return tx
+}
+
+func TestSubmitFeeBumpTransaction(t *testing.T) {
+	hmock := httptest.NewClient()
+	client := &Client{
+		HorizonURL: "https://localhost/",
+		HTTP:       hmock,
+	}
+
+	kp := keypair.MustParseFull("SA26PHIKZM6CXDGR472SSGUQQRYXM6S437ZNHZGRM6QA4FOPLLLFRGDX")
+	sourceAccount := txnbuild.NewSimpleAccount(kp.Address(), int64(0))
+
+	payment := txnbuild.Payment{
+		Destination: kp.Address(),
+		Amount:      "10",
+		Asset:       txnbuild.NativeAsset{},
+	}
+
+	tx, err := txnbuild.NewTransaction(
+		txnbuild.TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: true,
+			Operations:           []txnbuild.Operation{&payment},
+			BaseFee:              txnbuild.MinBaseFee,
+			Timebounds:           txnbuild.NewTimebounds(0, 10),
+		},
+	)
+	assert.NoError(t, err)
+
+	tx, err = tx.Sign(network.TestNetworkPassphrase, kp)
+	assert.NoError(t, err)
+
+	tx = convertToV1Tx(t, tx)
+	feeBumpKP := keypair.MustParseFull("SA5ZEFDVFZ52GRU7YUGR6EDPBNRU2WLA6IQFQ7S2IH2DG3VFV3DOMV2Q")
+	feeBumpTx, err := txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
+		Inner:      tx,
+		FeeAccount: feeBumpKP.Address(),
+		BaseFee:    txnbuild.MinBaseFee * 2,
+	})
+	feeBumpTx, err = feeBumpTx.Sign(network.TestNetworkPassphrase, feeBumpKP)
+	feeBumpTxB64, err := feeBumpTx.Base64()
+	assert.NoError(t, err)
+
+	// successful tx with config.memo_required not found
+	hmock.On(
+		"POST",
+		"https://localhost/transactions?tx="+url.QueryEscape(feeBumpTxB64),
+	).ReturnString(200, txSuccess)
+
+	hmock.On(
+		"GET",
+		"https://localhost/accounts/GACTJ4ZFCDZMD2UFR4R7MZOWYBCF6HBP65YKCUT37MUQFPJLDLJ3N5D2/data/config.memo_required",
+	).ReturnString(404, notFoundResponse)
+
+	_, err = client.SubmitFeeBumpTransaction(feeBumpTx)
+	assert.NoError(t, err)
+
+	// memo required - does not submit transaction
+	hmock.On(
+		"GET",
+		"https://localhost/accounts/GACTJ4ZFCDZMD2UFR4R7MZOWYBCF6HBP65YKCUT37MUQFPJLDLJ3N5D2/data/config.memo_required",
+	).ReturnJSON(200, memoRequiredResponse)
+
+	_, err = client.SubmitFeeBumpTransaction(feeBumpTx)
+	assert.Error(t, err)
+	assert.Equal(t, ErrAccountRequiresMemo, errors.Cause(err))
+}
+
+func TestSubmitTransactionWithOptionsRequest(t *testing.T) {
+	hmock := httptest.NewClient()
+	client := &Client{
+		HorizonURL: "https://localhost/",
+		HTTP:       hmock,
+	}
+
+	kp := keypair.MustParseFull("SA26PHIKZM6CXDGR472SSGUQQRYXM6S437ZNHZGRM6QA4FOPLLLFRGDX")
+	sourceAccount := txnbuild.NewSimpleAccount(kp.Address(), int64(0))
+
+	payment := txnbuild.Payment{
+		Destination: kp.Address(),
+		Amount:      "10",
+		Asset:       txnbuild.NativeAsset{},
+	}
+
+	tx, err := txnbuild.NewTransaction(
+		txnbuild.TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: true,
+			Operations:           []txnbuild.Operation{&payment},
+			BaseFee:              txnbuild.MinBaseFee,
+			Timebounds:           txnbuild.NewTimebounds(0, 10),
+		},
+	)
+	assert.NoError(t, err)
+
+	tx, err = tx.Sign(network.TestNetworkPassphrase, kp)
+	assert.NoError(t, err)
+
+	hmock.
+		On("POST", "https://localhost/transactions").
+		ReturnString(400, transactionFailure)
+
+	_, err = client.SubmitTransactionWithOptions(tx, SubmitTxOpts{SkipMemoRequiredCheck: true})
+
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "horizon error")
+		horizonError, ok := errors.Cause(err).(*Error)
+		assert.Equal(t, ok, true)
+		assert.Equal(t, horizonError.Problem.Title, "Transaction Failed")
+	}
+
+	// connection error
+	hmock.
+		On("POST", "https://localhost/transactions").
+		ReturnError("http.Client error")
+
+	_, err = client.SubmitTransactionWithOptions(tx, SubmitTxOpts{SkipMemoRequiredCheck: true})
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "http.Client error")
+		_, ok := err.(*Error)
+		assert.Equal(t, ok, false)
+	}
+
+	// successful tx
+	hmock.On(
+		"POST",
+		"https://localhost/transactions?tx=AAAAAAU08yUQ8sHqhY8j9mXWwERfHC%2F3cKFSe%2FspAr0rGtO2AAAAZAAAAAAAAAABAAAAAQAAAAAAAAAAAAAAAAAAAAoAAAAAAAAAAQAAAAAAAAABAAAAAAU08yUQ8sHqhY8j9mXWwERfHC%2F3cKFSe%2FspAr0rGtO2AAAAAAAAAAAF9eEAAAAAAAAAAAErGtO2AAAAQKZUywjRbomZ8k14vOAf4%2Bx5kDYCBgZmXzNoeCQ6%2BFnDrkeP05oJ3DrKywbnmq7tfaxq4kDB%2FFqhMviDBuYf3gc%3D",
+	).ReturnString(200, txSuccess)
+
+	_, err = client.SubmitTransactionWithOptions(tx, SubmitTxOpts{SkipMemoRequiredCheck: true})
+	assert.NoError(t, err)
+
+	// successful tx with config.memo_required not found
+	hmock.On(
+		"POST",
+		"https://localhost/transactions?tx=AAAAAAU08yUQ8sHqhY8j9mXWwERfHC%2F3cKFSe%2FspAr0rGtO2AAAAZAAAAAAAAAABAAAAAQAAAAAAAAAAAAAAAAAAAAoAAAAAAAAAAQAAAAAAAAABAAAAAAU08yUQ8sHqhY8j9mXWwERfHC%2F3cKFSe%2FspAr0rGtO2AAAAAAAAAAAF9eEAAAAAAAAAAAErGtO2AAAAQKZUywjRbomZ8k14vOAf4%2Bx5kDYCBgZmXzNoeCQ6%2BFnDrkeP05oJ3DrKywbnmq7tfaxq4kDB%2FFqhMviDBuYf3gc%3D",
+	).ReturnString(200, txSuccess)
+
+	hmock.On(
+		"GET",
+		"https://localhost/accounts/GACTJ4ZFCDZMD2UFR4R7MZOWYBCF6HBP65YKCUT37MUQFPJLDLJ3N5D2/data/config.memo_required",
+	).ReturnString(404, notFoundResponse)
+
+	_, err = client.SubmitTransactionWithOptions(tx, SubmitTxOpts{SkipMemoRequiredCheck: false})
+	assert.NoError(t, err)
+
+	// memo required - does not submit transaction
+	hmock.On(
+		"GET",
+		"https://localhost/accounts/GACTJ4ZFCDZMD2UFR4R7MZOWYBCF6HBP65YKCUT37MUQFPJLDLJ3N5D2/data/config.memo_required",
+	).ReturnJSON(200, memoRequiredResponse)
+
+	_, err = client.SubmitTransactionWithOptions(tx, SubmitTxOpts{SkipMemoRequiredCheck: false})
+	assert.Error(t, err)
+	assert.Equal(t, ErrAccountRequiresMemo, errors.Cause(err))
+
+	// skips memo check if tx includes a memo
+	hmock.On(
+		"POST",
+		"https://localhost/transactions?tx=AAAAAAU08yUQ8sHqhY8j9mXWwERfHC%2F3cKFSe%2FspAr0rGtO2AAAAZAAAAAAAAAACAAAAAQAAAAAAAAAAAAAAAAAAAAoAAAABAAAACkhlbGxvV29ybGQAAAAAAAEAAAAAAAAAAQAAAAAFNPMlEPLB6oWPI%2FZl1sBEXxwv93ChUnv7KQK9KxrTtgAAAAAAAAAABfXhAAAAAAAAAAABKxrTtgAAAEDusMdn4dwEhBtYHIxkvdpPbfVa7CM6HG9vRzWLe8%2FMCtQIT4d0IgleroyT%2FF2EmPpAQQmuDXm4DGR7c%2FeTa9YL",
+	).ReturnString(200, txSuccess)
+
+	tx, err = txnbuild.NewTransaction(
+		txnbuild.TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: true,
+			Operations:           []txnbuild.Operation{&payment},
+			BaseFee:              txnbuild.MinBaseFee,
+			Memo:                 txnbuild.MemoText("HelloWorld"),
+			Timebounds:           txnbuild.NewTimebounds(0, 10),
+		},
+	)
+	assert.NoError(t, err)
+
+	tx, err = tx.Sign(network.TestNetworkPassphrase, kp)
+	assert.NoError(t, err)
+
+	_, err = client.SubmitTransactionWithOptions(tx, SubmitTxOpts{SkipMemoRequiredCheck: false})
+	assert.NoError(t, err)
+}
+
+func TestSubmitFeeBumpTransactionWithOptions(t *testing.T) {
+	hmock := httptest.NewClient()
+	client := &Client{
+		HorizonURL: "https://localhost/",
+		HTTP:       hmock,
+	}
+
+	kp := keypair.MustParseFull("SA26PHIKZM6CXDGR472SSGUQQRYXM6S437ZNHZGRM6QA4FOPLLLFRGDX")
+	sourceAccount := txnbuild.NewSimpleAccount(kp.Address(), int64(0))
+
+	payment := txnbuild.Payment{
+		Destination: kp.Address(),
+		Amount:      "10",
+		Asset:       txnbuild.NativeAsset{},
+	}
+
+	tx, err := txnbuild.NewTransaction(
+		txnbuild.TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: true,
+			Operations:           []txnbuild.Operation{&payment},
+			BaseFee:              txnbuild.MinBaseFee,
+			Timebounds:           txnbuild.NewTimebounds(0, 10),
+		},
+	)
+	assert.NoError(t, err)
+
+	tx, err = tx.Sign(network.TestNetworkPassphrase, kp)
+	assert.NoError(t, err)
+
+	tx = convertToV1Tx(t, tx)
+	feeBumpKP := keypair.MustParseFull("SA5ZEFDVFZ52GRU7YUGR6EDPBNRU2WLA6IQFQ7S2IH2DG3VFV3DOMV2Q")
+	feeBumpTx, err := txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
+		Inner:      tx,
+		FeeAccount: feeBumpKP.Address(),
+		BaseFee:    txnbuild.MinBaseFee * 2,
+	})
+	feeBumpTx, err = feeBumpTx.Sign(network.TestNetworkPassphrase, feeBumpKP)
+	feeBumpTxB64, err := feeBumpTx.Base64()
+	assert.NoError(t, err)
+
+	hmock.
+		On("POST", "https://localhost/transactions").
+		ReturnString(400, transactionFailure)
+
+	_, err = client.SubmitFeeBumpTransactionWithOptions(feeBumpTx, SubmitTxOpts{SkipMemoRequiredCheck: true})
+
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "horizon error")
+		horizonError, ok := errors.Cause(err).(*Error)
+		assert.Equal(t, ok, true)
+		assert.Equal(t, horizonError.Problem.Title, "Transaction Failed")
+	}
+
+	// connection error
+	hmock.
+		On("POST", "https://localhost/transactions").
+		ReturnError("http.Client error")
+
+	_, err = client.SubmitFeeBumpTransactionWithOptions(feeBumpTx, SubmitTxOpts{SkipMemoRequiredCheck: true})
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "http.Client error")
+		_, ok := err.(*Error)
+		assert.Equal(t, ok, false)
+	}
+
+	// successful tx
+	hmock.On(
+		"POST",
+		"https://localhost/transactions?tx="+url.QueryEscape(feeBumpTxB64),
+	).ReturnString(200, txSuccess)
+
+	_, err = client.SubmitFeeBumpTransactionWithOptions(feeBumpTx, SubmitTxOpts{SkipMemoRequiredCheck: true})
+	assert.NoError(t, err)
+
+	// successful tx with config.memo_required not found
+	hmock.On(
+		"POST",
+		"https://localhost/transactions?tx="+url.QueryEscape(feeBumpTxB64),
+	).ReturnString(200, txSuccess)
+
+	hmock.On(
+		"GET",
+		"https://localhost/accounts/GACTJ4ZFCDZMD2UFR4R7MZOWYBCF6HBP65YKCUT37MUQFPJLDLJ3N5D2/data/config.memo_required",
+	).ReturnString(404, notFoundResponse)
+
+	_, err = client.SubmitFeeBumpTransactionWithOptions(feeBumpTx, SubmitTxOpts{SkipMemoRequiredCheck: false})
+	assert.NoError(t, err)
+
+	// memo required - does not submit transaction
+	hmock.On(
+		"GET",
+		"https://localhost/accounts/GACTJ4ZFCDZMD2UFR4R7MZOWYBCF6HBP65YKCUT37MUQFPJLDLJ3N5D2/data/config.memo_required",
+	).ReturnJSON(200, memoRequiredResponse)
+
+	_, err = client.SubmitFeeBumpTransactionWithOptions(feeBumpTx, SubmitTxOpts{SkipMemoRequiredCheck: false})
+	assert.Error(t, err)
+	assert.Equal(t, ErrAccountRequiresMemo, errors.Cause(err))
+
+	tx, err = txnbuild.NewTransaction(
+		txnbuild.TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: true,
+			Operations:           []txnbuild.Operation{&payment},
+			BaseFee:              txnbuild.MinBaseFee,
+			Memo:                 txnbuild.MemoText("HelloWorld"),
+			Timebounds:           txnbuild.NewTimebounds(0, 10),
+		},
+	)
+	assert.NoError(t, err)
+
+	tx = convertToV1Tx(t, tx)
+	feeBumpKP = keypair.MustParseFull("SA5ZEFDVFZ52GRU7YUGR6EDPBNRU2WLA6IQFQ7S2IH2DG3VFV3DOMV2Q")
+	feeBumpTx, err = txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
+		Inner:      tx,
+		FeeAccount: feeBumpKP.Address(),
+		BaseFee:    txnbuild.MinBaseFee * 2,
+	})
+	feeBumpTx, err = feeBumpTx.Sign(network.TestNetworkPassphrase, feeBumpKP)
+	feeBumpTxB64, err = feeBumpTx.Base64()
+	assert.NoError(t, err)
+
+	// skips memo check if tx includes a memo
+	hmock.On(
+		"POST",
+		"https://localhost/transactions?tx="+url.QueryEscape(feeBumpTxB64),
+	).ReturnString(200, txSuccess)
+
+	tx, err = tx.Sign(network.TestNetworkPassphrase, kp)
+	assert.NoError(t, err)
+
+	_, err = client.SubmitFeeBumpTransactionWithOptions(feeBumpTx, SubmitTxOpts{SkipMemoRequiredCheck: false})
+	assert.NoError(t, err)
 }
 
 func TestTransactionsRequest(t *testing.T) {
@@ -604,8 +1363,8 @@ func TestTransactionsRequest(t *testing.T) {
 		assert.IsType(t, tx, hProtocol.Transaction{})
 		assert.Equal(t, tx.ID, "3274f131af56ecb6d8668acf6eb0b31b5f8faeca785cbce0a911a5a81308a599")
 		assert.Equal(t, tx.Ledger, int32(438134))
-		assert.Equal(t, tx.FeeCharged, int32(100))
-		assert.Equal(t, tx.MaxFee, int32(100))
+		assert.Equal(t, tx.FeeCharged, int64(100))
+		assert.Equal(t, tx.MaxFee, int64(100))
 		assert.Equal(t, tx.Hash, "3274f131af56ecb6d8668acf6eb0b31b5f8faeca785cbce0a911a5a81308a599")
 	}
 
@@ -739,6 +1498,102 @@ func TestFetchTimebounds(t *testing.T) {
 	assert.Equal(t, st.MaxTime, int64(200))
 }
 
+func TestVersion(t *testing.T) {
+	hmock := httptest.NewClient()
+	client := &Client{
+		HorizonURL: "https://localhost/",
+		HTTP:       hmock,
+	}
+
+	assert.Equal(t, "2.1.0", client.Version())
+}
+
+var accountsResponse = `{
+  "_links": {
+    "self": {
+      "href": "https://horizon-testnet.stellar.org/accounts?cursor=\u0026limit=10\u0026order=asc\u0026signer=GAI3SO3S4E67HAUZPZ2D3VBFXY4AT6N7WQI7K5WFGRXWENTZJG2B6CYP"
+    },
+    "next": {
+      "href": "https://horizon-testnet.stellar.org/accounts?cursor=GAI3SO3S4E67HAUZPZ2D3VBFXY4AT6N7WQI7K5WFGRXWENTZJG2B6CYP\u0026limit=10\u0026order=asc\u0026signer=GAI3SO3S4E67HAUZPZ2D3VBFXY4AT6N7WQI7K5WFGRXWENTZJG2B6CYP"
+    },
+    "prev": {
+      "href": "https://horizon-testnet.stellar.org/accounts?cursor=GAI3SO3S4E67HAUZPZ2D3VBFXY4AT6N7WQI7K5WFGRXWENTZJG2B6CYP\u0026limit=10\u0026order=desc\u0026signer=GAI3SO3S4E67HAUZPZ2D3VBFXY4AT6N7WQI7K5WFGRXWENTZJG2B6CYP"
+    }
+  },
+  "_embedded": {
+    "records": [
+      {
+        "_links": {
+          "self": {
+            "href": "https://horizon-testnet.stellar.org/accounts/GAI3SO3S4E67HAUZPZ2D3VBFXY4AT6N7WQI7K5WFGRXWENTZJG2B6CYP"
+          },
+          "transactions": {
+            "href": "https://horizon-testnet.stellar.org/accounts/GAI3SO3S4E67HAUZPZ2D3VBFXY4AT6N7WQI7K5WFGRXWENTZJG2B6CYP/transactions{?cursor,limit,order}",
+            "templated": true
+          },
+          "operations": {
+            "href": "https://horizon-testnet.stellar.org/accounts/GAI3SO3S4E67HAUZPZ2D3VBFXY4AT6N7WQI7K5WFGRXWENTZJG2B6CYP/operations{?cursor,limit,order}",
+            "templated": true
+          },
+          "payments": {
+            "href": "https://horizon-testnet.stellar.org/accounts/GAI3SO3S4E67HAUZPZ2D3VBFXY4AT6N7WQI7K5WFGRXWENTZJG2B6CYP/payments{?cursor,limit,order}",
+            "templated": true
+          },
+          "effects": {
+            "href": "https://horizon-testnet.stellar.org/accounts/GAI3SO3S4E67HAUZPZ2D3VBFXY4AT6N7WQI7K5WFGRXWENTZJG2B6CYP/effects{?cursor,limit,order}",
+            "templated": true
+          },
+          "offers": {
+            "href": "https://horizon-testnet.stellar.org/accounts/GAI3SO3S4E67HAUZPZ2D3VBFXY4AT6N7WQI7K5WFGRXWENTZJG2B6CYP/offers{?cursor,limit,order}",
+            "templated": true
+          },
+          "trades": {
+            "href": "https://horizon-testnet.stellar.org/accounts/GAI3SO3S4E67HAUZPZ2D3VBFXY4AT6N7WQI7K5WFGRXWENTZJG2B6CYP/trades{?cursor,limit,order}",
+            "templated": true
+          },
+          "data": {
+            "href": "https://horizon-testnet.stellar.org/accounts/GAI3SO3S4E67HAUZPZ2D3VBFXY4AT6N7WQI7K5WFGRXWENTZJG2B6CYP/data/{key}",
+            "templated": true
+          }
+        },
+        "id": "GAI3SO3S4E67HAUZPZ2D3VBFXY4AT6N7WQI7K5WFGRXWENTZJG2B6CYP",
+        "account_id": "GAI3SO3S4E67HAUZPZ2D3VBFXY4AT6N7WQI7K5WFGRXWENTZJG2B6CYP",
+        "sequence": "47236050321450",
+        "subentry_count": 0,
+        "last_modified_ledger": 116787,
+        "thresholds": {
+          "low_threshold": 0,
+          "med_threshold": 0,
+          "high_threshold": 0
+        },
+        "flags": {
+          "auth_required": false,
+          "auth_revocable": false,
+          "auth_immutable": false
+        },
+        "balances": [
+          {
+            "balance": "100.8182300",
+            "buying_liabilities": "0.0000000",
+            "selling_liabilities": "0.0000000",
+            "asset_type": "native"
+          }
+        ],
+        "signers": [
+          {
+            "weight": 1,
+            "key": "GAI3SO3S4E67HAUZPZ2D3VBFXY4AT6N7WQI7K5WFGRXWENTZJG2B6CYP",
+            "type": "ed25519_public_key"
+          }
+        ],
+        "data": {},
+        "paging_token": "GAI3SO3S4E67HAUZPZ2D3VBFXY4AT6N7WQI7K5WFGRXWENTZJG2B6CYP"
+      }
+    ]
+  }
+}
+`
+
 var accountResponse = `{
   "_links": {
     "self": {
@@ -808,6 +1663,10 @@ var accountResponse = `{
     "test": "dGVzdA=="
   }
 }`
+
+var memoRequiredResponse = map[string]string{
+	"value": "MQ==",
+}
 
 var notFoundResponse = `{
   "type": "https://stellar.org/horizon-errors/not_found",
@@ -1236,6 +2095,38 @@ var offersResponse = `{
   }
 }`
 
+var offerResponse = `
+{
+  "_links": {
+    "self": {
+      "href": "https://horizon-testnet.stellar.org/offers/5635"
+    },
+    "offer_maker": {
+      "href": "https://horizon-testnet.stellar.org/accounts/GD6UOZ3FGFI5L2X6F52YPJ6ICSW375BNBZIQC4PCLSEOO6SMX7CUS5MB"
+    }
+  },
+  "id": "5635",
+  "paging_token": "5635",
+  "seller": "GD6UOZ3FGFI5L2X6F52YPJ6ICSW375BNBZIQC4PCLSEOO6SMX7CUS5MB",
+  "selling": {
+    "asset_type": "native"
+  },
+  "buying": {
+    "asset_type": "credit_alphanum12",
+    "asset_code": "AstroDollar",
+    "asset_issuer": "GDA2EHKPDEWZTAL6B66FO77HMOZL3RHZTIJO7KJJK5RQYSDUXEYMPJYY"
+  },
+  "amount": "100.0000000",
+  "price_r": {
+    "n": 10,
+    "d": 1
+  },
+  "price": "10.0000000",
+  "last_modified_ledger": 356183,
+  "last_modified_time": "2020-02-20T20:44:55Z"
+}
+`
+
 var multipleOpsResponse = `{
   "_links": {
     "self": {
@@ -1390,13 +2281,47 @@ var opsResponse = `{
 }`
 
 var txSuccess = `{
-    "_links": {
-        "transaction": {
-            "href": "https://horizon-testnet.stellar.org/transactions/bcc7a97264dca0a51a63f7ea971b5e7458e334489673078bb2a34eb0cce910ca"
-        }
-    },
+	"_links": {
+		"self": {
+		  "href": "https://horizon-testnet.stellar.org/transactions/5131aed266a639a6eb4802a92fba310454e711ded830ed899745b9e777d7110c"
+		},
+		"account": {
+		  "href": "https://horizon-testnet.stellar.org/accounts/GC3IMK2BSHNZZ4WAC3AXQYA7HQTZKUUDJ7UYSA2HTNCIX5S5A5NVD3FD"
+		},
+		"ledger": {
+		  "href": "https://horizon-testnet.stellar.org/ledgers/438134"
+		},
+		"operations": {
+		  "href": "https://horizon-testnet.stellar.org/transactions/5131aed266a639a6eb4802a92fba310454e711ded830ed899745b9e777d7110c/operations{?cursor,limit,order}",
+		  "templated": true
+		},
+		"effects": {
+		  "href": "https://horizon-testnet.stellar.org/transactions/5131aed266a639a6eb4802a92fba310454e711ded830ed899745b9e777d7110c/effects{?cursor,limit,order}",
+		  "templated": true
+		},
+		"precedes": {
+		  "href": "https://horizon-testnet.stellar.org/transactions?order=asc&cursor=1881771201282048"
+		},
+		"succeeds": {
+		  "href": "https://horizon-testnet.stellar.org/transactions?order=desc&cursor=1881771201282048"
+		},
+		"transaction": {
+          "href": "https://horizon-testnet.stellar.org/transactions/bcc7a97264dca0a51a63f7ea971b5e7458e334489673078bb2a34eb0cce910ca"
+		}
+	},
+	"id": "bcc7a97264dca0a51a63f7ea971b5e7458e334489673078bb2a34eb0cce910ca",
     "hash": "bcc7a97264dca0a51a63f7ea971b5e7458e334489673078bb2a34eb0cce910ca",
     "ledger": 354811,
+	"successful": true,
+	"created_at": "2019-03-25T10:27:53Z",
+	"source_account": "GC3IMK2BSHNZZ4WAC3AXQYA7HQTZKUUDJ7UYSA2HTNCIX5S5A5NVD3FD",
+	"source_account_sequence": "1881766906298369",
+	"fee_charged": 100,
+	"max_fee": 100,
+	"operation_count": 1,
+	"signatures": [
+	"kOZumR7L/Pxnf2kSdhDC7qyTMRcp0+ymw+dU+4A/dRqqf387ER4pUhqFUsOc7ZrSW9iz+6N20G4mcp0IiT5fAg=="
+	],
     "envelope_xdr": "AAAAABB90WssODNIgi6BHveqzxTRmIpvAFRyVNM+Hm2GVuCcAAAAZAAABD0AAuV/AAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAyTBGxOgfSApppsTnb/YRr6gOR8WT0LZNrhLh4y3FCgoAAAAXSHboAAAAAAAAAAABhlbgnAAAAEAivKe977CQCxMOKTuj+cWTFqc2OOJU8qGr9afrgu2zDmQaX5Q0cNshc3PiBwe0qw/+D/qJk5QqM5dYeSUGeDQP",
     "result_xdr": "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAA=",
     "result_meta_xdr": "AAAAAQAAAAIAAAADAAVp+wAAAAAAAAAAEH3Rayw4M0iCLoEe96rPFNGYim8AVHJU0z4ebYZW4JwACBP/TuycHAAABD0AAuV+AAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAVp+wAAAAAAAAAAEH3Rayw4M0iCLoEe96rPFNGYim8AVHJU0z4ebYZW4JwACBP/TuycHAAABD0AAuV/AAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAAwAAAAMABWn7AAAAAAAAAAAQfdFrLDgzSIIugR73qs8U0ZiKbwBUclTTPh5thlbgnAAIE/9O7JwcAAAEPQAC5X8AAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEABWn7AAAAAAAAAAAQfdFrLDgzSIIugR73qs8U0ZiKbwBUclTTPh5thlbgnAAIE+gGdbQcAAAEPQAC5X8AAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAABWn7AAAAAAAAAADJMEbE6B9ICmmmxOdv9hGvqA5HxZPQtk2uEuHjLcUKCgAAABdIdugAAAVp+wAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA=="

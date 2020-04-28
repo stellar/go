@@ -3,13 +3,14 @@ package processors
 import (
 	"testing"
 
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/suite"
+
 	"github.com/stellar/go/exp/ingest/io"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
-	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/suite"
 )
 
 type ParticipantsProcessorTestSuiteLedger struct {
@@ -19,15 +20,17 @@ type ParticipantsProcessorTestSuiteLedger struct {
 	mockBatchInsertBuilder           *history.MockTransactionParticipantsBatchInsertBuilder
 	mockOperationsBatchInsertBuilder *history.MockOperationParticipantBatchInsertBuilder
 
-	firstTx     io.LedgerTransaction
-	secondTx    io.LedgerTransaction
-	thirdTx     io.LedgerTransaction
-	firstTxID   int64
-	secondTxID  int64
-	thirdTxID   int64
-	addresses   []string
-	addressToID map[string]int64
-	txs         []io.LedgerTransaction
+	firstTx            io.LedgerTransaction
+	secondTx           io.LedgerTransaction
+	thirdTx            io.LedgerTransaction
+	firstTxID          int64
+	secondTxID         int64
+	thirdTxID          int64
+	addresses          []string
+	unmuxedAddresses   []string
+	addressToID        map[string]int64
+	unmuxedAddressToID map[string]int64
+	txs                []io.LedgerTransaction
 }
 
 func TestParticipantsProcessorTestSuiteLedger(t *testing.T) {
@@ -41,36 +44,56 @@ func (s *ParticipantsProcessorTestSuiteLedger) SetupTest() {
 	sequence := uint32(20)
 
 	s.addresses = []string{
-		"GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2",
+		"MDPK3PXP32W353Z3MC7QB3RZMAIPPNDVIU5VI5YDIMPJB7YJI6U43VAPLZNCO4RC2WIDK",
 		"GAXI33UCLQTCKM2NMRBS7XYBR535LLEVAHL5YBN4FTCB4HZHT7ZA5CVK",
 		"GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
 	}
 
+	s.unmuxedAddresses = make([]string, len(s.addresses))
+	for i := range s.addresses {
+		acid := xdr.MustMuxedAccountAddress(s.addresses[i]).ToAccountId()
+		s.unmuxedAddresses[i] = acid.Address()
+	}
+
 	s.firstTx = createTransaction(true, 1)
 	s.firstTx.Index = 1
-	s.firstTx.Envelope.Tx.SourceAccount = xdr.MustAddress(s.addresses[0])
+	s.firstTx.Envelope.Operations()[0].Body = xdr.OperationBody{
+		Type: xdr.OperationTypePayment,
+		PaymentOp: &xdr.PaymentOp{
+			Destination: xdr.MustMuxedAccountAddress(s.addresses[0]),
+			Asset:       xdr.Asset{Type: xdr.AssetTypeAssetTypeNative},
+			Amount:      100,
+		},
+	}
+	s.firstTx.Envelope.V1.Tx.SourceAccount = xdr.MustMuxedAccountAddress(s.addresses[0])
 	s.firstTxID = toid.New(int32(sequence), 1, 0).ToInt64()
 
 	s.secondTx = createTransaction(true, 1)
 	s.secondTx.Index = 2
-	s.secondTx.Envelope.Tx.Operations[0].Body = xdr.OperationBody{
+	s.secondTx.Envelope.Operations()[0].Body = xdr.OperationBody{
 		Type: xdr.OperationTypeCreateAccount,
 		CreateAccountOp: &xdr.CreateAccountOp{
 			Destination: xdr.MustAddress(s.addresses[1]),
 		},
 	}
-	s.secondTx.Envelope.Tx.SourceAccount = xdr.MustAddress(s.addresses[2])
+	s.secondTx.Envelope.V1.Tx.SourceAccount = xdr.MustMuxedAccountAddress(s.addresses[2])
 	s.secondTxID = toid.New(int32(sequence), 2, 0).ToInt64()
 
 	s.thirdTx = createTransaction(true, 1)
 	s.thirdTx.Index = 3
-	s.thirdTx.Envelope.Tx.SourceAccount = xdr.MustAddress(s.addresses[0])
+	s.thirdTx.Envelope.V1.Tx.SourceAccount = xdr.MustMuxedAccountAddress(s.addresses[0])
 	s.thirdTxID = toid.New(int32(sequence), 3, 0).ToInt64()
 
 	s.addressToID = map[string]int64{
 		s.addresses[0]: 2,
 		s.addresses[1]: 20,
 		s.addresses[2]: 200,
+	}
+
+	s.unmuxedAddressToID = map[string]int64{
+		s.unmuxedAddresses[0]: 2,
+		s.unmuxedAddresses[1]: 20,
+		s.unmuxedAddresses[2]: 200,
 	}
 
 	s.processor = NewParticipantsProcessor(
@@ -127,15 +150,75 @@ func (s *ParticipantsProcessorTestSuiteLedger) TestEmptyParticipants() {
 	s.Assert().NoError(err)
 }
 
+func (s *ParticipantsProcessorTestSuiteLedger) TestFeeBumptransaction() {
+	feeBumpTx := createTransaction(true, 0)
+	feeBumpTx.Index = 1
+	feeBumpTx.Envelope.V1.Tx.SourceAccount = xdr.MustMuxedAccountAddress(s.addresses[0])
+	feeBumpTx.Envelope.FeeBump = &xdr.FeeBumpTransactionEnvelope{
+		Tx: xdr.FeeBumpTransaction{
+			FeeSource: xdr.MustMuxedAccountAddress(s.addresses[1]),
+			Fee:       100,
+			InnerTx: xdr.FeeBumpTransactionInnerTx{
+				Type: xdr.EnvelopeTypeEnvelopeTypeTx,
+				V1:   feeBumpTx.Envelope.V1,
+			},
+		},
+	}
+	feeBumpTx.Envelope.V1 = nil
+	feeBumpTx.Envelope.Type = xdr.EnvelopeTypeEnvelopeTypeTxFeeBump
+	feeBumpTx.Result.Result.Result.Code = xdr.TransactionResultCodeTxFeeBumpInnerSuccess
+	feeBumpTx.Result.Result.Result.InnerResultPair = &xdr.InnerTransactionResultPair{
+		Result: xdr.InnerTransactionResult{
+			Result: xdr.InnerTransactionResultResult{
+				Code:    xdr.TransactionResultCodeTxSuccess,
+				Results: &[]xdr.OperationResult{},
+			},
+		},
+	}
+	feeBumpTx.Result.Result.Result.Results = nil
+	feeBumpTxID := toid.New(20, 1, 0).ToInt64()
+
+	unmuxedAddresses := s.unmuxedAddresses[:2]
+	unmuxedAddressToID := map[string]int64{
+		unmuxedAddresses[0]: s.unmuxedAddressToID[unmuxedAddresses[0]],
+		unmuxedAddresses[1]: s.unmuxedAddressToID[unmuxedAddresses[1]],
+	}
+	s.mockQ.On("CreateAccounts", mock.AnythingOfType("[]string"), maxBatchSize).
+		Run(func(args mock.Arguments) {
+			arg := args.Get(0).([]string)
+			s.Assert().ElementsMatch(
+				unmuxedAddresses,
+				arg,
+			)
+		}).Return(unmuxedAddressToID, nil).Once()
+	s.mockQ.On("NewTransactionParticipantsBatchInsertBuilder", maxBatchSize).
+		Return(s.mockBatchInsertBuilder).Once()
+	s.mockQ.On("NewOperationParticipantBatchInsertBuilder", maxBatchSize).
+		Return(s.mockOperationsBatchInsertBuilder).Once()
+
+	s.mockBatchInsertBuilder.On(
+		"Add", feeBumpTxID, unmuxedAddressToID[unmuxedAddresses[0]],
+	).Return(nil).Once()
+	s.mockBatchInsertBuilder.On(
+		"Add", feeBumpTxID, unmuxedAddressToID[unmuxedAddresses[1]],
+	).Return(nil).Once()
+
+	s.mockBatchInsertBuilder.On("Exec").Return(nil).Once()
+	s.mockOperationsBatchInsertBuilder.On("Exec").Return(nil).Once()
+
+	s.Assert().NoError(s.processor.ProcessTransaction(feeBumpTx))
+	s.Assert().NoError(s.processor.Commit())
+}
+
 func (s *ParticipantsProcessorTestSuiteLedger) TestIngestParticipantsSucceeds() {
 	s.mockQ.On("CreateAccounts", mock.AnythingOfType("[]string"), maxBatchSize).
 		Run(func(args mock.Arguments) {
 			arg := args.Get(0).([]string)
 			s.Assert().ElementsMatch(
-				s.addresses,
+				s.unmuxedAddresses,
 				arg,
 			)
-		}).Return(s.addressToID, nil).Once()
+		}).Return(s.unmuxedAddressToID, nil).Once()
 	s.mockQ.On("NewTransactionParticipantsBatchInsertBuilder", maxBatchSize).
 		Return(s.mockBatchInsertBuilder).Once()
 	s.mockQ.On("NewOperationParticipantBatchInsertBuilder", maxBatchSize).
@@ -171,10 +254,10 @@ func (s *ParticipantsProcessorTestSuiteLedger) TestBatchAddFails() {
 		Run(func(args mock.Arguments) {
 			arg := args.Get(0).([]string)
 			s.Assert().ElementsMatch(
-				s.addresses,
+				s.unmuxedAddresses,
 				arg,
 			)
-		}).Return(s.addressToID, nil).Once()
+		}).Return(s.unmuxedAddressToID, nil).Once()
 	s.mockQ.On("NewTransactionParticipantsBatchInsertBuilder", maxBatchSize).
 		Return(s.mockBatchInsertBuilder).Once()
 
@@ -205,10 +288,10 @@ func (s *ParticipantsProcessorTestSuiteLedger) TestOperationParticipantsBatchAdd
 		Run(func(args mock.Arguments) {
 			arg := args.Get(0).([]string)
 			s.Assert().ElementsMatch(
-				s.addresses,
+				s.unmuxedAddresses,
 				arg,
 			)
-		}).Return(s.addressToID, nil).Once()
+		}).Return(s.unmuxedAddressToID, nil).Once()
 	s.mockQ.On("NewTransactionParticipantsBatchInsertBuilder", maxBatchSize).
 		Return(s.mockBatchInsertBuilder).Once()
 	s.mockQ.On("NewOperationParticipantBatchInsertBuilder", maxBatchSize).
@@ -244,10 +327,10 @@ func (s *ParticipantsProcessorTestSuiteLedger) TestBatchAddExecFails() {
 		Run(func(args mock.Arguments) {
 			arg := args.Get(0).([]string)
 			s.Assert().ElementsMatch(
-				s.addresses,
+				s.unmuxedAddresses,
 				arg,
 			)
-		}).Return(s.addressToID, nil).Once()
+		}).Return(s.unmuxedAddressToID, nil).Once()
 	s.mockQ.On("NewTransactionParticipantsBatchInsertBuilder", maxBatchSize).
 		Return(s.mockBatchInsertBuilder).Once()
 
@@ -268,10 +351,10 @@ func (s *ParticipantsProcessorTestSuiteLedger) TestOpeartionBatchAddExecFails() 
 		Run(func(args mock.Arguments) {
 			arg := args.Get(0).([]string)
 			s.Assert().ElementsMatch(
-				s.addresses,
+				s.unmuxedAddresses,
 				arg,
 			)
-		}).Return(s.addressToID, nil).Once()
+		}).Return(s.unmuxedAddressToID, nil).Once()
 	s.mockQ.On("NewTransactionParticipantsBatchInsertBuilder", maxBatchSize).
 		Return(s.mockBatchInsertBuilder).Once()
 	s.mockQ.On("NewOperationParticipantBatchInsertBuilder", maxBatchSize).

@@ -507,7 +507,7 @@ ALTER SEQUENCE history_transaction_participants_id_seq OWNED BY history_transact
 -- Name: history_transactions; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE history_transactions (
+CREATE TABLE public.history_transactions (
     transaction_hash character varying(64) NOT NULL,
     ledger_sequence integer NOT NULL,
     application_order integer NOT NULL,
@@ -527,9 +527,12 @@ CREATE TABLE history_transactions (
     memo character varying,
     time_bounds int8range,
     successful boolean,
-    fee_charged integer
+    fee_charged bigint,
+    inner_transaction_hash character varying(64),
+    fee_account character varying(64),
+    inner_signatures character varying(96)[],
+    new_max_fee bigint
 );
-
 
 --
 -- Name: key_value_store; Type: TABLE; Schema: public; Owner: -
@@ -951,11 +954,23 @@ CREATE INDEX by_account ON history_transactions USING btree (account, account_se
 
 
 --
--- Name: by_hash; Type: INDEX; Schema: public; Owner: -
+-- Name: by_fee_account; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX by_hash ON history_transactions USING btree (transaction_hash);
+CREATE INDEX by_fee_account ON history_transactions USING btree (fee_account) WHERE fee_account IS NOT NULL;
 
+--
+-- Name: by_hash; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX by_hash ON public.history_transactions USING btree (transaction_hash);
+
+
+--
+-- Name: by_inner_hash; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX by_inner_hash ON history_transactions USING btree (inner_transaction_hash) WHERE inner_transaction_hash IS NOT NULL;
 
 --
 -- Name: by_ledger; Type: INDEX; Schema: public; Owner: -

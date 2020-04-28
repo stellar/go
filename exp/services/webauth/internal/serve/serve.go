@@ -61,7 +61,7 @@ func handler(opts Options) (http.Handler, error) {
 		return nil, errors.New("algorithm (alg) field must be set")
 	}
 
-	horizonTimeout := 1 * time.Minute
+	horizonTimeout := horizonclient.HorizonTimeout
 	httpClient := &http.Client{
 		Timeout: horizonTimeout,
 	}
@@ -69,7 +69,7 @@ func handler(opts Options) (http.Handler, error) {
 		HorizonURL: opts.HorizonURL,
 		HTTP:       httpClient,
 	}
-	horizonClient.SetHorizonTimeOut(uint(horizonTimeout / time.Second))
+	horizonClient.SetHorizonTimeout(horizonTimeout)
 
 	mux := supporthttp.NewAPIMux(opts.Logger)
 

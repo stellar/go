@@ -96,12 +96,12 @@ func TestOrderBookResponseEquals(t *testing.T) {
 					Type: "native",
 				},
 				Bids: []protocol.PriceLevel{
-					protocol.PriceLevel{
+					{
 						PriceR: protocol.Price{N: 1, D: 2},
 						Price:  "0.5",
 						Amount: "123",
 					},
-					protocol.PriceLevel{
+					{
 						PriceR: protocol.Price{N: 1, D: 1},
 						Price:  "1.0",
 						Amount: "123",
@@ -119,7 +119,7 @@ func TestOrderBookResponseEquals(t *testing.T) {
 						Type: "native",
 					},
 					Bids: []protocol.PriceLevel{
-						protocol.PriceLevel{
+						{
 							PriceR: protocol.Price{N: 1, D: 2},
 							Price:  "0.5",
 							Amount: "123",
@@ -141,12 +141,12 @@ func TestOrderBookResponseEquals(t *testing.T) {
 					Type: "native",
 				},
 				Asks: []protocol.PriceLevel{
-					protocol.PriceLevel{
+					{
 						PriceR: protocol.Price{N: 1, D: 2},
 						Price:  "0.5",
 						Amount: "123",
 					},
-					protocol.PriceLevel{
+					{
 						PriceR: protocol.Price{N: 1, D: 1},
 						Price:  "1.0",
 						Amount: "123",
@@ -164,7 +164,7 @@ func TestOrderBookResponseEquals(t *testing.T) {
 						Type: "native",
 					},
 					Asks: []protocol.PriceLevel{
-						protocol.PriceLevel{
+						{
 							PriceR: protocol.Price{N: 1, D: 2},
 							Price:  "0.5",
 							Amount: "123",
@@ -186,12 +186,12 @@ func TestOrderBookResponseEquals(t *testing.T) {
 					Type: "native",
 				},
 				Bids: []protocol.PriceLevel{
-					protocol.PriceLevel{
+					{
 						PriceR: protocol.Price{N: 1, D: 2},
 						Price:  "0.5",
 						Amount: "123",
 					},
-					protocol.PriceLevel{
+					{
 						PriceR: protocol.Price{N: 1, D: 1},
 						Price:  "1.0",
 						Amount: "123",
@@ -209,12 +209,12 @@ func TestOrderBookResponseEquals(t *testing.T) {
 						Type: "native",
 					},
 					Bids: []protocol.PriceLevel{
-						protocol.PriceLevel{
+						{
 							PriceR: protocol.Price{N: 1, D: 2},
 							Price:  "0.5",
 							Amount: "123",
 						},
-						protocol.PriceLevel{
+						{
 							PriceR: protocol.Price{N: 2, D: 1},
 							Price:  "2.0",
 							Amount: "123",
@@ -236,12 +236,12 @@ func TestOrderBookResponseEquals(t *testing.T) {
 					Type: "native",
 				},
 				Asks: []protocol.PriceLevel{
-					protocol.PriceLevel{
+					{
 						PriceR: protocol.Price{N: 1, D: 2},
 						Price:  "0.5",
 						Amount: "123",
 					},
-					protocol.PriceLevel{
+					{
 						PriceR: protocol.Price{N: 1, D: 1},
 						Price:  "1.0",
 						Amount: "123",
@@ -259,12 +259,12 @@ func TestOrderBookResponseEquals(t *testing.T) {
 						Type: "native",
 					},
 					Asks: []protocol.PriceLevel{
-						protocol.PriceLevel{
+						{
 							PriceR: protocol.Price{N: 1, D: 2},
 							Price:  "0.5",
 							Amount: "123",
 						},
-						protocol.PriceLevel{
+						{
 							PriceR: protocol.Price{N: 1, D: 1},
 							Price:  "1.0",
 							Amount: "12",
@@ -286,19 +286,19 @@ func TestOrderBookResponseEquals(t *testing.T) {
 					Type: "native",
 				},
 				Asks: []protocol.PriceLevel{
-					protocol.PriceLevel{
+					{
 						PriceR: protocol.Price{N: 1, D: 2},
 						Price:  "0.5",
 						Amount: "123",
 					},
-					protocol.PriceLevel{
+					{
 						PriceR: protocol.Price{N: 1, D: 1},
 						Price:  "1.0",
 						Amount: "123",
 					},
 				},
 				Bids: []protocol.PriceLevel{
-					protocol.PriceLevel{
+					{
 						PriceR: protocol.Price{N: 1, D: 3},
 						Price:  "0.33",
 						Amount: "13",
@@ -316,19 +316,19 @@ func TestOrderBookResponseEquals(t *testing.T) {
 						Type: "native",
 					},
 					Bids: []protocol.PriceLevel{
-						protocol.PriceLevel{
+						{
 							PriceR: protocol.Price{N: 1, D: 3},
 							Price:  "0.33",
 							Amount: "13",
 						},
 					},
 					Asks: []protocol.PriceLevel{
-						protocol.PriceLevel{
+						{
 							PriceR: protocol.Price{N: 1, D: 2},
 							Price:  "0.5",
 							Amount: "123",
 						},
-						protocol.PriceLevel{
+						{
 							PriceR: protocol.Price{N: 1, D: 1},
 							Price:  "1.0",
 							Amount: "123",
@@ -492,7 +492,7 @@ func TestOrderbookGetResource(t *testing.T) {
 	}
 	asksButNoBidsResponse := empty
 	asksButNoBidsResponse.Asks = []protocol.PriceLevel{
-		protocol.PriceLevel{
+		{
 			PriceR: protocol.Price{N: int32(twoEurOffer.Price.N), D: int32(twoEurOffer.Price.D)},
 			Price:  "2.0000000",
 			Amount: "0.0000500",
@@ -509,7 +509,7 @@ func TestOrderbookGetResource(t *testing.T) {
 	}
 	bidsButNoAsksResponse := empty
 	bidsButNoAsksResponse.Bids = []protocol.PriceLevel{
-		protocol.PriceLevel{
+		{
 			PriceR: protocol.Price{N: int32(sellEurOffer.Price.D), D: int32(sellEurOffer.Price.N)},
 			Price:  "0.5000000",
 			Amount: "0.0000500",
@@ -528,48 +528,61 @@ func TestOrderbookGetResource(t *testing.T) {
 	if err := fullGraph.Apply(4); err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
+	nonCanonicalPriceTwoEurOffer := twoEurOffer
+	nonCanonicalPriceTwoEurOffer.OfferId = 30
+	// Add a separate offer with the same price value, but
+	// using a non-canonical representation, to make sure
+	// they are coalesced into the same price level
+	nonCanonicalPriceTwoEurOffer.Price.N *= 15
+	nonCanonicalPriceTwoEurOffer.Price.D *= 15
+	fullGraph.AddOffer(nonCanonicalPriceTwoEurOffer)
+	if err := fullGraph.Apply(5); err != nil {
+		t.Fatalf("unexpected error %v", err)
+	}
 	threeEurOffer := twoEurOffer
 	threeEurOffer.Price.N = 3
 	threeEurOffer.OfferId = 20
 	fullGraph.AddOffer(threeEurOffer)
-	if err := fullGraph.Apply(5); err != nil {
+	if err := fullGraph.Apply(6); err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
 
 	sellEurOffer.Price.N = 9
 	sellEurOffer.Price.D = 10
 	fullGraph.AddOffer(sellEurOffer)
-	if err := fullGraph.Apply(6); err != nil {
+	if err := fullGraph.Apply(7); err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
 	otherSellEurOffer := sellEurOffer
 	otherSellEurOffer.OfferId = 17
-	otherSellEurOffer.Price.N *= 2
+	// sellEurOffer.Price * 2
+	otherSellEurOffer.Price.N = 9
+	otherSellEurOffer.Price.D = 5
 	fullGraph.AddOffer(otherSellEurOffer)
-	if err := fullGraph.Apply(7); err != nil {
+	if err := fullGraph.Apply(8); err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
 
 	fullResponse := empty
 	fullResponse.Asks = []protocol.PriceLevel{
-		protocol.PriceLevel{
+		{
 			PriceR: protocol.Price{N: int32(twoEurOffer.Price.N), D: int32(twoEurOffer.Price.D)},
 			Price:  "2.0000000",
-			Amount: "922337203685.4776307",
+			Amount: "922337203685.4776807",
 		},
-		protocol.PriceLevel{
+		{
 			PriceR: protocol.Price{N: int32(threeEurOffer.Price.N), D: int32(threeEurOffer.Price.D)},
 			Price:  "3.0000000",
 			Amount: "0.0000500",
 		},
 	}
 	fullResponse.Bids = []protocol.PriceLevel{
-		protocol.PriceLevel{
+		{
 			PriceR: protocol.Price{N: int32(sellEurOffer.Price.D), D: int32(sellEurOffer.Price.N)},
 			Price:  "1.1111111",
 			Amount: "0.0000500",
 		},
-		protocol.PriceLevel{
+		{
 			PriceR: protocol.Price{N: int32(otherSellEurOffer.Price.D), D: int32(otherSellEurOffer.Price.N)},
 			Price:  "0.5555556",
 			Amount: "0.0000500",
@@ -578,14 +591,14 @@ func TestOrderbookGetResource(t *testing.T) {
 
 	limitResponse := empty
 	limitResponse.Asks = []protocol.PriceLevel{
-		protocol.PriceLevel{
+		{
 			PriceR: protocol.Price{N: int32(twoEurOffer.Price.N), D: int32(twoEurOffer.Price.D)},
 			Price:  "2.0000000",
-			Amount: "922337203685.4776307",
+			Amount: "922337203685.4776807",
 		},
 	}
 	limitResponse.Bids = []protocol.PriceLevel{
-		protocol.PriceLevel{
+		{
 			PriceR: protocol.Price{N: int32(sellEurOffer.Price.D), D: int32(sellEurOffer.Price.N)},
 			Price:  "1.1111111",
 			Amount: "0.0000500",
@@ -625,14 +638,14 @@ func TestOrderbookGetResource(t *testing.T) {
 			fullGraph,
 			10,
 			fullResponse,
-			"7",
+			"8",
 		},
 		{
 			"limit request",
 			fullGraph,
 			1,
 			limitResponse,
-			"7",
+			"8",
 		},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {

@@ -71,7 +71,7 @@ func TestOperationQueryBuilder(t *testing.T) {
 	tt.Assert.NoError(err)
 
 	// Operations for account queries will use hopp.history_operation_id in their predicates.
-	want := "SELECT hop.id, hop.transaction_id, hop.application_order, hop.type, hop.details, hop.source_account, ht.transaction_hash, ht.tx_result, ht.successful as transaction_successful FROM history_operations hop LEFT JOIN history_transactions ht ON ht.id = hop.transaction_id JOIN history_operation_participants hopp ON hopp.history_operation_id = hop.id WHERE hopp.history_account_id = ? AND hopp.history_operation_id > ? ORDER BY hopp.history_operation_id asc LIMIT 10"
+	want := "SELECT hop.id, hop.transaction_id, hop.application_order, hop.type, hop.details, hop.source_account, ht.transaction_hash, ht.tx_result, COALESCE(ht.successful, true) as transaction_successful FROM history_operations hop LEFT JOIN history_transactions ht ON ht.id = hop.transaction_id JOIN history_operation_participants hopp ON hopp.history_operation_id = hop.id WHERE hopp.history_account_id = ? AND hopp.history_operation_id > ? ORDER BY hopp.history_operation_id asc LIMIT 10"
 	tt.Assert.EqualValues(want, got)
 
 	opsQ = q.Operations().ForLedger(2).Page(db2.PageQuery{Cursor: "8589938689", Order: "asc", Limit: 10})
@@ -80,7 +80,7 @@ func TestOperationQueryBuilder(t *testing.T) {
 	tt.Assert.NoError(err)
 
 	// Other operation queries will use hop.id in their predicates.
-	want = "SELECT hop.id, hop.transaction_id, hop.application_order, hop.type, hop.details, hop.source_account, ht.transaction_hash, ht.tx_result, ht.successful as transaction_successful FROM history_operations hop LEFT JOIN history_transactions ht ON ht.id = hop.transaction_id WHERE hop.id >= ? AND hop.id < ? AND hop.id > ? ORDER BY hop.id asc LIMIT 10"
+	want = "SELECT hop.id, hop.transaction_id, hop.application_order, hop.type, hop.details, hop.source_account, ht.transaction_hash, ht.tx_result, COALESCE(ht.successful, true) as transaction_successful FROM history_operations hop LEFT JOIN history_transactions ht ON ht.id = hop.transaction_id WHERE hop.id >= ? AND hop.id < ? AND hop.id > ? ORDER BY hop.id asc LIMIT 10"
 	tt.Assert.EqualValues(want, got)
 }
 
@@ -103,7 +103,7 @@ func TestOperationSuccessfulOnly(t *testing.T) {
 	tt.Assert.Equal(3, len(operations))
 
 	for _, operation := range operations {
-		tt.Assert.True(*operation.TransactionSuccessful)
+		tt.Assert.True(operation.TransactionSuccessful)
 	}
 
 	sql, _, err := query.sql.ToSql()
@@ -128,7 +128,7 @@ func TestOperationIncludeFailed(t *testing.T) {
 
 	var failed, successful int
 	for _, operation := range operations {
-		if *operation.TransactionSuccessful {
+		if operation.TransactionSuccessful {
 			successful++
 		} else {
 			failed++
@@ -140,7 +140,7 @@ func TestOperationIncludeFailed(t *testing.T) {
 
 	sql, _, err := query.sql.ToSql()
 	tt.Assert.NoError(err)
-	tt.Assert.Equal("SELECT hop.id, hop.transaction_id, hop.application_order, hop.type, hop.details, hop.source_account, ht.transaction_hash, ht.tx_result, ht.successful as transaction_successful FROM history_operations hop LEFT JOIN history_transactions ht ON ht.id = hop.transaction_id JOIN history_operation_participants hopp ON hopp.history_operation_id = hop.id WHERE hopp.history_account_id = ?", sql)
+	tt.Assert.Equal("SELECT hop.id, hop.transaction_id, hop.application_order, hop.type, hop.details, hop.source_account, ht.transaction_hash, ht.tx_result, COALESCE(ht.successful, true) as transaction_successful FROM history_operations hop LEFT JOIN history_transactions ht ON ht.id = hop.transaction_id JOIN history_operation_participants hopp ON hopp.history_operation_id = hop.id WHERE hopp.history_account_id = ?", sql)
 }
 
 // TestPaymentsSuccessfulOnly tests if default query returns payments in
@@ -163,7 +163,7 @@ func TestPaymentsSuccessfulOnly(t *testing.T) {
 	tt.Assert.Equal(2, len(operations))
 
 	for _, operation := range operations {
-		tt.Assert.True(*operation.TransactionSuccessful)
+		tt.Assert.True(operation.TransactionSuccessful)
 	}
 
 	sql, _, err := query.sql.ToSql()
@@ -189,7 +189,7 @@ func TestPaymentsIncludeFailed(t *testing.T) {
 
 	var failed, successful int
 	for _, operation := range operations {
-		if *operation.TransactionSuccessful {
+		if operation.TransactionSuccessful {
 			successful++
 		} else {
 			failed++
@@ -201,7 +201,7 @@ func TestPaymentsIncludeFailed(t *testing.T) {
 
 	sql, _, err := query.sql.ToSql()
 	tt.Assert.NoError(err)
-	tt.Assert.Equal("SELECT hop.id, hop.transaction_id, hop.application_order, hop.type, hop.details, hop.source_account, ht.transaction_hash, ht.tx_result, ht.successful as transaction_successful FROM history_operations hop LEFT JOIN history_transactions ht ON ht.id = hop.transaction_id JOIN history_operation_participants hopp ON hopp.history_operation_id = hop.id WHERE hop.type IN (?,?,?,?,?) AND hopp.history_account_id = ?", sql)
+	tt.Assert.Equal("SELECT hop.id, hop.transaction_id, hop.application_order, hop.type, hop.details, hop.source_account, ht.transaction_hash, ht.tx_result, COALESCE(ht.successful, true) as transaction_successful FROM history_operations hop LEFT JOIN history_transactions ht ON ht.id = hop.transaction_id JOIN history_operation_participants hopp ON hopp.history_operation_id = hop.id WHERE hop.type IN (?,?,?,?,?) AND hopp.history_account_id = ?", sql)
 }
 
 func TestExtraChecksOperationsTransactionSuccessfulTrueResultFalse(t *testing.T) {
@@ -248,7 +248,7 @@ func assertOperationMatchesTransaction(tt *test.T, operation Operation, transact
 	tt.Assert.Equal(operation.TransactionID, transaction.ID)
 	tt.Assert.Equal(operation.TransactionHash, transaction.TransactionHash)
 	tt.Assert.Equal(operation.TxResult, transaction.TxResult)
-	tt.Assert.Equal(operation.IsTransactionSuccessful(), transaction.IsSuccessful())
+	tt.Assert.Equal(operation.TransactionSuccessful, transaction.Successful)
 }
 
 // TestOperationIncludeTransactions tests that transactions are included when fetching records from the db.

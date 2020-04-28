@@ -48,7 +48,7 @@ func (b *AllowTrustBuilder) Mutate(muts ...interface{}) {
 
 // MutateAllowTrust for Authorize sets the AllowTrustOp's Authorize field
 func (m Authorize) MutateAllowTrust(o *xdr.AllowTrustOp) error {
-	o.Authorize = m.Value
+	o.Authorize = xdr.Uint32(m.Value)
 	return nil
 }
 

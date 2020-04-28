@@ -317,7 +317,7 @@ func (handler GetAccountsHandler) GetResourcePage(
 		return nil, err
 	}
 
-	historyQ, err := historyQFromRequest(r)
+	historyQ, err := HistoryQFromRequest(r)
 	if err != nil {
 		return nil, err
 	}

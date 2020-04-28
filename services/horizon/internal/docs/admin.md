@@ -19,8 +19,6 @@ The Stellar Development Foundation runs two Horizon servers, one for the public 
 
 Horizon is dependent upon a stellar-core server.  Horizon needs access to both the SQL database and the HTTP API that is published by stellar-core. See [the administration guide](https://www.stellar.org/developers/stellar-core/software/admin.html) to learn how to set up and administer a stellar-core server.  Secondly, Horizon is dependent upon a postgres server, which it uses to store processed core data for ease of use. Horizon requires postgres version >= 9.5.
 
-In addition to the two prerequisites above, you may optionally install a redis server to be used for rate limiting requests.
-
 ## Installing
 
 To install Horizon, you have a choice: either downloading a [prebuilt release for your target architecture](https://github.com/stellar/go/releases) and operation system, or [building Horizon yourself](#Building).  When either approach is complete, you will find yourself with a directory containing a file named `horizon`.  This file is a native binary.

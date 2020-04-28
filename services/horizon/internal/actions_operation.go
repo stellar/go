@@ -92,7 +92,17 @@ func (action *OperationIndexAction) SSE(stream *sse.Stream) error {
 					transactionRecord = &transactionRecords[i]
 				}
 
-				res, err := resourceadapter.NewOperation(action.R.Context(), operationRecord, transactionRecord, ledger)
+				transactionHash := action.TransactionFilter
+				if len(transactionHash) == 0 {
+					transactionHash = operationRecord.TransactionHash
+				}
+				res, err := resourceadapter.NewOperation(
+					action.R.Context(),
+					operationRecord,
+					transactionHash,
+					transactionRecord,
+					ledger,
+				)
 				if err != nil {
 					action.Err = err
 					return
@@ -131,7 +141,12 @@ func (action *OperationIndexAction) loadParams() {
 	action.ValidateCursorAsDefault()
 	action.AccountFilter = action.GetAddress("account_id")
 	action.LedgerFilter = action.GetInt32("ledger_id")
-	action.TransactionFilter = action.GetStringFromURLParam("tx_id")
+	var err error
+	action.TransactionFilter, err = actions.GetTransactionID(action.R, "tx_id")
+	if err != nil {
+		action.Err = err
+		return
+	}
 	action.PagingParams = action.GetPageQuery()
 	action.IncludeFailed = action.GetBool("include_failed")
 	parsed, err := parseJoinField(&action.Action.Base)
@@ -193,11 +208,11 @@ func validateTransactionForOperation(transaction history.Transaction, operation 
 			operation.TxResult,
 		)
 	}
-	if transaction.IsSuccessful() != operation.IsTransactionSuccessful() {
+	if transaction.Successful != operation.TransactionSuccessful {
 		return errors.Errorf(
 			"transaction successful flag %v does not match transaction successful flag in operation %v",
-			transaction.IsSuccessful(),
-			operation.IsTransactionSuccessful(),
+			transaction.Successful,
+			operation.TransactionSuccessful,
 		)
 	}
 
@@ -244,7 +259,7 @@ func (action *OperationIndexAction) loadRecords() {
 
 	for i, o := range action.OperationRecords {
 		if !action.IncludeFailed && action.TransactionFilter == "" {
-			if !o.IsTransactionSuccessful() {
+			if !o.TransactionSuccessful {
 				action.Err = errors.Errorf("Corrupted data! `include_failed=false` but returned transaction in /operations is failed: %s", o.TransactionHash)
 				return
 			}
@@ -255,7 +270,7 @@ func (action *OperationIndexAction) loadRecords() {
 				return
 			}
 
-			if resultXDR.Result.Code != xdr.TransactionResultCodeTxSuccess {
+			if !resultXDR.Successful() {
 				action.Err = errors.Errorf("Corrupted data! `include_failed=false` but returned transaction /operations is failed: %s %s", o.TransactionHash, o.TxResult)
 				return
 			}
@@ -294,7 +309,17 @@ func (action *OperationIndexAction) loadPage() {
 		}
 
 		var res hal.Pageable
-		res, action.Err = resourceadapter.NewOperation(action.R.Context(), operationRecord, transactionRecord, ledger)
+		transactionHash := action.TransactionFilter
+		if len(transactionHash) == 0 {
+			transactionHash = operationRecord.TransactionHash
+		}
+		res, action.Err = resourceadapter.NewOperation(
+			action.R.Context(),
+			operationRecord,
+			transactionHash,
+			transactionRecord,
+			ledger,
+		)
 		if action.Err != nil {
 			return
 		}
@@ -357,6 +382,7 @@ func (action *OperationShowAction) loadResource() {
 	action.Resource, action.Err = resourceadapter.NewOperation(
 		action.R.Context(),
 		action.OperationRecord,
+		action.OperationRecord.TransactionHash,
 		action.TransactionRecord,
 		action.Ledger,
 	)

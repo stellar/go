@@ -32,7 +32,7 @@ func (d AuthData) Validate() error {
 	}
 
 	// Check if Tx is a valid transaction
-	var tx xdr.Transaction
+	var tx xdr.TransactionV0
 	err = xdr.SafeUnmarshalBase64(d.Tx, &tx)
 	if err != nil {
 		return errors.Wrap(err, "Tx is invalid")

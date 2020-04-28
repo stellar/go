@@ -34,6 +34,25 @@ func TestGetAccountID(t *testing.T) {
 	)
 }
 
+func TestGetTransactionID(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	action := makeTestAction()
+
+	txID, err := GetTransactionID(action.R, "valid_tx_id")
+	tt.Assert.NoError(err)
+	tt.Assert.Equal(
+		"aa168f12124b7c196c0adaee7c73a64d37f99428cacb59a91ff389626845e7cf",
+		txID,
+	)
+
+	txID, err = GetTransactionID(action.R, "invalid_uppercase_tx_id")
+	tt.Assert.Error(err)
+
+	txID, err = GetTransactionID(action.R, "invalid_too_short_tx_id")
+	tt.Assert.Error(err)
+}
+
 func TestGetAsset(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
@@ -711,28 +730,31 @@ func makeAction(path string, body map[string]string) *Base {
 
 func testURLParams() map[string]string {
 	return map[string]string{
-		"blank":                "",
-		"minus_one":            "-1",
-		"zero":                 "0",
-		"two":                  "2",
-		"twenty":               "20",
-		"32min":                fmt.Sprint(math.MinInt32),
-		"32max":                fmt.Sprint(math.MaxInt32),
-		"64min":                fmt.Sprint(math.MinInt64),
-		"64max":                fmt.Sprint(math.MaxInt64),
-		"native_asset_type":    "native",
-		"4_asset_type":         "credit_alphanum4",
-		"4_asset_code":         "USD",
-		"4_asset_issuer":       "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
-		"12_asset_type":        "credit_alphanum12",
-		"12_asset_code":        "USD",
-		"12_asset_issuer":      "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
-		"long_4_asset_type":    "credit_alphanum4",
-		"long_4_asset_code":    "SPOOON",
-		"long_4_asset_issuer":  "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
-		"long_12_asset_type":   "credit_alphanum12",
-		"long_12_asset_code":   "OHMYGODITSSOLONG",
-		"long_12_asset_issuer": "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+		"blank":                   "",
+		"minus_one":               "-1",
+		"zero":                    "0",
+		"two":                     "2",
+		"twenty":                  "20",
+		"32min":                   fmt.Sprint(math.MinInt32),
+		"32max":                   fmt.Sprint(math.MaxInt32),
+		"64min":                   fmt.Sprint(math.MinInt64),
+		"64max":                   fmt.Sprint(math.MaxInt64),
+		"native_asset_type":       "native",
+		"4_asset_type":            "credit_alphanum4",
+		"4_asset_code":            "USD",
+		"4_asset_issuer":          "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+		"12_asset_type":           "credit_alphanum12",
+		"12_asset_code":           "USD",
+		"12_asset_issuer":         "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+		"long_4_asset_type":       "credit_alphanum4",
+		"long_4_asset_code":       "SPOOON",
+		"long_4_asset_issuer":     "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+		"long_12_asset_type":      "credit_alphanum12",
+		"long_12_asset_code":      "OHMYGODITSSOLONG",
+		"long_12_asset_issuer":    "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+		"valid_tx_id":             "aa168f12124b7c196c0adaee7c73a64d37f99428cacb59a91ff389626845e7cf",
+		"invalid_uppercase_tx_id": "AA168F12124B7C196C0ADAEE7C73A64D37F99428CACB59A91FF389626845E7CF",
+		"invalid_too_short_tx_id": "aa168f12124b7c196c0adaee7c73a64d37f99428cacb59a91ff389626845e7",
 	}
 }
 

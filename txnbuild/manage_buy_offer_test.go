@@ -3,7 +3,6 @@ package txnbuild
 import (
 	"testing"
 
-	"github.com/stellar/go/network"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -20,14 +19,15 @@ func TestManageBuyOfferValidateSellingAsset(t *testing.T) {
 		OfferID: 0,
 	}
 
-	tx := Transaction{
-		SourceAccount: &sourceAccount,
-		Operations:    []Operation{&buyOffer},
-		Timebounds:    NewInfiniteTimeout(),
-		Network:       network.TestNetworkPassphrase,
-	}
-
-	err := tx.Build()
+	_, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: false,
+			Operations:           []Operation{&buyOffer},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(),
+		},
+	)
 	if assert.Error(t, err) {
 		expected := "validation failed for *txnbuild.ManageBuyOffer operation: Field: Selling, Error: asset code length must be between 1 and 12 characters"
 		assert.Contains(t, err.Error(), expected)
@@ -47,14 +47,15 @@ func TestManageBuyOfferValidateBuyingAsset(t *testing.T) {
 		OfferID: 0,
 	}
 
-	tx := Transaction{
-		SourceAccount: &sourceAccount,
-		Operations:    []Operation{&buyOffer},
-		Timebounds:    NewInfiniteTimeout(),
-		Network:       network.TestNetworkPassphrase,
-	}
-
-	err := tx.Build()
+	_, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: false,
+			Operations:           []Operation{&buyOffer},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(),
+		},
+	)
 	if assert.Error(t, err) {
 		expected := "validation failed for *txnbuild.ManageBuyOffer operation: Field: Buying, Error: asset issuer: public key is undefined"
 		assert.Contains(t, err.Error(), expected)
@@ -74,14 +75,15 @@ func TestManageBuyOfferValidateAmount(t *testing.T) {
 		OfferID: 0,
 	}
 
-	tx := Transaction{
-		SourceAccount: &sourceAccount,
-		Operations:    []Operation{&buyOffer},
-		Timebounds:    NewInfiniteTimeout(),
-		Network:       network.TestNetworkPassphrase,
-	}
-
-	err := tx.Build()
+	_, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: false,
+			Operations:           []Operation{&buyOffer},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(),
+		},
+	)
 	if assert.Error(t, err) {
 		expected := "validation failed for *txnbuild.ManageBuyOffer operation: Field: Amount, Error: invalid amount format:"
 		assert.Contains(t, err.Error(), expected)
@@ -101,14 +103,15 @@ func TestManageBuyOfferValidatePrice(t *testing.T) {
 		OfferID: 0,
 	}
 
-	tx := Transaction{
-		SourceAccount: &sourceAccount,
-		Operations:    []Operation{&buyOffer},
-		Timebounds:    NewInfiniteTimeout(),
-		Network:       network.TestNetworkPassphrase,
-	}
-
-	err := tx.Build()
+	_, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: false,
+			Operations:           []Operation{&buyOffer},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(),
+		},
+	)
 	if assert.Error(t, err) {
 		expected := "validation failed for *txnbuild.ManageBuyOffer operation: Field: Price, Error: amount can not be negative"
 		assert.Contains(t, err.Error(), expected)
@@ -128,14 +131,15 @@ func TestManageBuyOfferValidateOfferID(t *testing.T) {
 		OfferID: -1,
 	}
 
-	tx := Transaction{
-		SourceAccount: &sourceAccount,
-		Operations:    []Operation{&buyOffer},
-		Timebounds:    NewInfiniteTimeout(),
-		Network:       network.TestNetworkPassphrase,
-	}
-
-	err := tx.Build()
+	_, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: false,
+			Operations:           []Operation{&buyOffer},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(),
+		},
+	)
 	if assert.Error(t, err) {
 		expected := "validation failed for *txnbuild.ManageBuyOffer operation: Field: OfferID, Error: amount can not be negative"
 		assert.Contains(t, err.Error(), expected)

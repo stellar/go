@@ -5,7 +5,6 @@ package horizon
 import (
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"strconv"
 	"time"
 
@@ -88,27 +87,27 @@ func (a Account) GetCreditBalance(code string, issuer string) string {
 
 // GetSequenceNumber returns the sequence number of the account,
 // and returns it as a 64-bit integer.
-func (a Account) GetSequenceNumber() (xdr.SequenceNumber, error) {
-	seqNum, err := strconv.ParseUint(a.Sequence, 10, 64)
+func (a Account) GetSequenceNumber() (int64, error) {
+	seqNum, err := strconv.ParseInt(a.Sequence, 10, 64)
 
 	if err != nil {
 		return 0, errors.Wrap(err, "Failed to parse account sequence number")
 	}
 
-	return xdr.SequenceNumber(seqNum), nil
+	return seqNum, nil
 }
 
 // IncrementSequenceNumber increments the internal record of the account's sequence
 // number by 1. This is typically used after a transaction build so that the next
 // transaction to be built will be valid.
-func (a *Account) IncrementSequenceNumber() (xdr.SequenceNumber, error) {
+func (a *Account) IncrementSequenceNumber() (int64, error) {
 	seqNum, err := a.GetSequenceNumber()
 	if err != nil {
-		return xdr.SequenceNumber(0), err
+		return 0, err
 	}
 	seqNum++
 	a.Sequence = strconv.FormatInt(int64(seqNum), 10)
-	return a.GetSequenceNumber()
+	return seqNum, nil
 }
 
 // MustGetData returns decoded value for a given key. If the key does
@@ -192,12 +191,13 @@ func (res AssetStat) PagingToken() string {
 
 // Balance represents an account's holdings for a single currency type
 type Balance struct {
-	Balance            string `json:"balance"`
-	Limit              string `json:"limit,omitempty"`
-	BuyingLiabilities  string `json:"buying_liabilities"`
-	SellingLiabilities string `json:"selling_liabilities"`
-	LastModifiedLedger uint32 `json:"last_modified_ledger,omitempty"`
-	IsAuthorized       *bool  `json:"is_authorized,omitempty"`
+	Balance                           string `json:"balance"`
+	Limit                             string `json:"limit,omitempty"`
+	BuyingLiabilities                 string `json:"buying_liabilities"`
+	SellingLiabilities                string `json:"selling_liabilities"`
+	LastModifiedLedger                uint32 `json:"last_modified_ledger,omitempty"`
+	IsAuthorized                      *bool  `json:"is_authorized,omitempty"`
+	IsAuthorizedToMaintainLiabilities *bool  `json:"is_authorized_to_maintain_liabilities,omitempty"`
 	base.Asset
 }
 
@@ -298,13 +298,22 @@ type Root struct {
 		Accounts            *hal.Link `json:"accounts,omitempty"`
 		AccountTransactions hal.Link  `json:"account_transactions"`
 		Assets              hal.Link  `json:"assets"`
+		Effects             hal.Link  `json:"effects"`
+		FeeStats            hal.Link  `json:"fee_stats"`
 		Friendbot           *hal.Link `json:"friendbot,omitempty"`
+		Ledger              hal.Link  `json:"ledger"`
+		Ledgers             hal.Link  `json:"ledgers"`
 		Offer               *hal.Link `json:"offer,omitempty"`
 		Offers              *hal.Link `json:"offers,omitempty"`
+		Operation           hal.Link  `json:"operation"`
+		Operations          hal.Link  `json:"operations"`
 		OrderBook           hal.Link  `json:"order_book"`
+		Payments            hal.Link  `json:"payments"`
 		Self                hal.Link  `json:"self"`
 		StrictReceivePaths  *hal.Link `json:"strict_receive_paths"`
 		StrictSendPaths     *hal.Link `json:"strict_send_paths"`
+		TradeAggregations   hal.Link  `json:"trade_aggregations"`
+		Trades              hal.Link  `json:"trades"`
 		Transaction         hal.Link  `json:"transaction"`
 		Transactions        hal.Link  `json:"transactions"`
 	} `json:"_links"`
@@ -421,6 +430,10 @@ type Transaction struct {
 		Effects    hal.Link `json:"effects"`
 		Precedes   hal.Link `json:"precedes"`
 		Succeeds   hal.Link `json:"succeeds"`
+		// Temporarily include Transaction as a link so that Transaction
+		// can be fully compatible with TransactionSuccess
+		// When TransactionSuccess is removed from the SDKs we can remove this HAL link
+		Transaction hal.Link `json:"transaction"`
 	} `json:"_links"`
 	ID              string    `json:"id"`
 	PT              string    `json:"paging_token"`
@@ -430,18 +443,42 @@ type Transaction struct {
 	LedgerCloseTime time.Time `json:"created_at"`
 	Account         string    `json:"source_account"`
 	AccountSequence string    `json:"source_account_sequence"`
-	FeeCharged      int32     `json:"fee_charged"`
-	MaxFee          int32     `json:"max_fee"`
-	OperationCount  int32     `json:"operation_count"`
-	EnvelopeXdr     string    `json:"envelope_xdr"`
-	ResultXdr       string    `json:"result_xdr"`
-	ResultMetaXdr   string    `json:"result_meta_xdr"`
-	FeeMetaXdr      string    `json:"fee_meta_xdr"`
-	MemoType        string    `json:"memo_type"`
-	Memo            string    `json:"memo,omitempty"`
-	Signatures      []string  `json:"signatures"`
-	ValidAfter      string    `json:"valid_after,omitempty"`
-	ValidBefore     string    `json:"valid_before,omitempty"`
+	FeeAccount      string    `json:"fee_account"`
+	// Action needed in release: horizon-v1.3.0
+	// set json tag to `json:"fee_charged,string"` so max_fee can be marshalled
+	// as a string in the JSON response
+	FeeCharged int64 `json:"fee_charged"`
+	// Action needed in release: horizon-v1.3.0
+	// set json tag to `json:"max_fee,string"` so max_fee can be marshalled
+	// as a string in the JSON response
+	MaxFee             int64               `json:"max_fee"`
+	OperationCount     int32               `json:"operation_count"`
+	EnvelopeXdr        string              `json:"envelope_xdr"`
+	ResultXdr          string              `json:"result_xdr"`
+	ResultMetaXdr      string              `json:"result_meta_xdr"`
+	FeeMetaXdr         string              `json:"fee_meta_xdr"`
+	MemoType           string              `json:"memo_type"`
+	MemoBytes          string              `json:"memo_bytes,omitempty"`
+	Memo               string              `json:"memo,omitempty"`
+	Signatures         []string            `json:"signatures"`
+	ValidAfter         string              `json:"valid_after,omitempty"`
+	ValidBefore        string              `json:"valid_before,omitempty"`
+	FeeBumpTransaction *FeeBumpTransaction `json:"fee_bump_transaction,omitempty"`
+	InnerTransaction   *InnerTransaction   `json:"inner_transaction,omitempty"`
+}
+
+// FeeBumpTransaction contains information about a fee bump transaction
+type FeeBumpTransaction struct {
+	Hash       string   `json:"hash"`
+	Signatures []string `json:"signatures"`
+}
+
+// InnerTransaction contains information about the inner transaction contained
+// within a fee bump transaction
+type InnerTransaction struct {
+	Hash       string   `json:"hash"`
+	Signatures []string `json:"signatures"`
+	MaxFee     int64    `json:"max_fee,string"`
 }
 
 // MarshalJSON implements a custom marshaler for Transaction.
@@ -450,7 +487,8 @@ type Transaction struct {
 func (t Transaction) MarshalJSON() ([]byte, error) {
 	type Alias Transaction
 	v := &struct {
-		Memo *string `json:"memo,omitempty"`
+		Memo      *string `json:"memo,omitempty"`
+		MemoBytes *string `json:"memo_bytes,omitempty"`
 		*Alias
 	}{
 		Alias: (*Alias)(&t),
@@ -458,12 +496,44 @@ func (t Transaction) MarshalJSON() ([]byte, error) {
 	if t.MemoType != "none" {
 		v.Memo = &t.Memo
 	}
+
+	if t.MemoType == "text" {
+		v.MemoBytes = &t.MemoBytes
+	}
+
 	return json.Marshal(v)
 }
 
+// UnmarshalJSON implements a custom unmarshaler for Transaction
+// which can handle a max_fee field which can be a string of int
+func (t *Transaction) UnmarshalJSON(data []byte) error {
+	type Alias Transaction // we define Alias to avoid infinite recursion when calling UnmarshalJSON()
+	v := &struct {
+		FeeCharged json.Number `json:"fee_charged"`
+		MaxFee     json.Number `json:"max_fee"`
+		*Alias
+	}{
+		Alias: (*Alias)(t),
+	}
+	err := json.Unmarshal(data, &v)
+	if err != nil {
+		return err
+	}
+
+	t.FeeCharged, err = v.FeeCharged.Int64()
+	if err != nil {
+		return err
+	}
+	t.MaxFee, err = v.MaxFee.Int64()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // PagingToken implementation for hal.Pageable
-func (res Transaction) PagingToken() string {
-	return res.PT
+func (t Transaction) PagingToken() string {
+	return t.PT
 }
 
 // TransactionResultCodes represent a summary of result codes returned from
@@ -471,32 +541,6 @@ func (res Transaction) PagingToken() string {
 type TransactionResultCodes struct {
 	TransactionCode string   `json:"transaction"`
 	OperationCodes  []string `json:"operations,omitempty"`
-}
-
-// TransactionSuccess represents the result of a successful transaction
-// submission.
-type TransactionSuccess struct {
-	Links struct {
-		Transaction hal.Link `json:"transaction"`
-	} `json:"_links"`
-	Hash   string `json:"hash"`
-	Ledger int32  `json:"ledger"`
-	Env    string `json:"envelope_xdr"`
-	Result string `json:"result_xdr"`
-	Meta   string `json:"result_meta_xdr"`
-}
-
-// PrintTransactionSuccess prints the fields of a Horizon response.
-func (resp TransactionSuccess) TransactionSuccessToString() (s string) {
-	s += fmt.Sprintln("***TransactionSuccess dump***")
-	s += fmt.Sprintln("    Links:", resp.Links)
-	s += fmt.Sprintln("    Hash:", resp.Hash)
-	s += fmt.Sprintln("    Ledger:", resp.Ledger)
-	s += fmt.Sprintln("    Env:", resp.Env)
-	s += fmt.Sprintln("    Result:", resp.Result)
-	s += fmt.Sprintln("    Meta:", resp.Meta)
-
-	return
 }
 
 // KeyTypeFromAddress converts the version byte of the provided strkey encoded
@@ -529,6 +573,14 @@ func MustKeyTypeFromAddress(address string) string {
 // AccountData represents a single data object stored on by an account
 type AccountData struct {
 	Value string `json:"value"`
+}
+
+// AccountsPage returns a list of account records
+type AccountsPage struct {
+	Links    hal.Links `json:"_links"`
+	Embedded struct {
+		Records []Account `json:"records"`
+	} `json:"_embedded"`
 }
 
 // TradeAggregationsPage returns a list of aggregated trade records, aggregated by resolution

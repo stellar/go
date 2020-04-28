@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -23,7 +22,7 @@ func TestAccount_IncrementSequenceNumber(t *testing.T) {
 
 	assert.Nil(t, err)
 	assert.Equal(t, "3002985298788354", exampleAccount.Sequence, "sequence number string was incremented")
-	assert.Equal(t, xdr.SequenceNumber(3002985298788354), seqNum, "incremented sequence number is correct value/type")
+	assert.Equal(t, int64(3002985298788354), seqNum, "incremented sequence number is correct value/type")
 }
 
 func TestAccount_GetData(t *testing.T) {
@@ -67,16 +66,19 @@ func TestTransactionJSONMarshal(t *testing.T) {
 
 func TestTransactionEmptyMemoText(t *testing.T) {
 	transaction := Transaction{
-		MemoType: "text",
-		Memo:     "",
+		MemoType:  "text",
+		Memo:      "",
+		MemoBytes: "",
 	}
 	marshaledTransaction, marshalErr := json.Marshal(transaction)
 	assert.Nil(t, marshalErr)
 	var result struct {
-		Memo *string
+		Memo      *string
+		MemoBytes *string `json:"memo_bytes"`
 	}
 	json.Unmarshal(marshaledTransaction, &result)
 	assert.NotNil(t, result.Memo, "memo field is present even if input memo was empty string")
+	assert.NotNil(t, result.MemoBytes, "memo_bytes field is present even if input memo was empty string")
 }
 
 func TestTransactionMemoTypeNone(t *testing.T) {
@@ -90,4 +92,121 @@ func TestTransactionMemoTypeNone(t *testing.T) {
 	}
 	json.Unmarshal(marshaledTransaction, &result)
 	assert.Nil(t, result.Memo, "no memo field is present when memo input type was `none`")
+}
+
+func TestTransactionUnmarshalJSON(t *testing.T) {
+	const feesAsInt64s = `{
+        "memo": "MzUyODFmNThmZjkxMGNiMTVhYWQ1NjM2ZGIyNzUzZTA=",
+        "_links": {
+          "self": {
+            "href": "https://horizon.stellar.org/transactions/998605ace4a0b89293cf729cf216405f29c1ce5d44d6a40232982a4bdccda033"
+          },
+          "account": {
+            "href": "https://horizon.stellar.org/accounts/GBUYDJH3AOPFFND3L54DUDWIHOMYKUONDV4RAHOHDBNN2D5N4BPPWDQ3"
+          },
+          "ledger": {
+            "href": "https://horizon.stellar.org/ledgers/29113108"
+          },
+          "operations": {
+            "href": "https://horizon.stellar.org/transactions/998605ace4a0b89293cf729cf216405f29c1ce5d44d6a40232982a4bdccda033/operations{?cursor,limit,order}",
+            "templated": true
+          },
+          "effects": {
+            "href": "https://horizon.stellar.org/transactions/998605ace4a0b89293cf729cf216405f29c1ce5d44d6a40232982a4bdccda033/effects{?cursor,limit,order}",
+            "templated": true
+          },
+          "precedes": {
+            "href": "https://horizon.stellar.org/transactions?order=asc\u0026cursor=125039846745419776"
+          },
+          "succeeds": {
+            "href": "https://horizon.stellar.org/transactions?order=desc\u0026cursor=125039846745419776"
+          },
+          "transaction": {
+            "href": "https://horizon.stellar.org/transactions/998605ace4a0b89293cf729cf216405f29c1ce5d44d6a40232982a4bdccda033"
+          }
+        },
+        "id": "998605ace4a0b89293cf729cf216405f29c1ce5d44d6a40232982a4bdccda033",
+        "paging_token": "125039846745419776",
+        "successful": true,
+        "hash": "998605ace4a0b89293cf729cf216405f29c1ce5d44d6a40232982a4bdccda033",
+        "ledger": 29113108,
+        "created_at": "2020-04-10T17:03:18Z",
+        "source_account": "GBUYDJH3AOPFFND3L54DUDWIHOMYKUONDV4RAHOHDBNN2D5N4BPPWDQ3",
+        "source_account_sequence": "113942901088600162",
+        "fee_account": "GBUYDJH3AOPFFND3L54DUDWIHOMYKUONDV4RAHOHDBNN2D5N4BPPWDQ3",
+        "fee_charged": 3000000000,
+        "max_fee": 2500000000,
+        "operation_count": 1,
+        "envelope_xdr": "AAAAAGmBpPsDnlK0e194Og7IO5mFUc0deRAdxxha3Q+t4F77AAAAZAGUzncAEEBiAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAADMzUyODFmNThmZjkxMGNiMTVhYWQ1NjM2ZGIyNzUzZTAAAAABAAAAAQAAAADhZHiqD/Q3uSTgjYEWGVRfCCHYvFmeqJU12G9SkzJYEQAAAAEAAAAAP29uBulc9ouSoH62BRypPhD6zcLWoS5sj7CHf5SJ15MAAAABTk9ETAAAAAB1jYLXrFzNBOWCoPnZSHI3PJAhHtc1TrCaiPuZwSf5pgAAAAAAAAABAAAAAAAAAALw9Tl2AAAAQOknEHs7ZaPNVlXMU0uOtT+0TVo9kW/jDuNxN40FdJDic0p23V4lxOfPGCgQwBgTehqCIEzCMQ4LkbfzkdgkFAut4F77AAAAQKtFmT73srS8RHeQgWWia8mb+TrLCr1CJbK+MAKGdUnb4s4JBOKUjHhqQLrs7GCkJ3wOpgTbtW8VpwNedCJhFQ0=",
+        "result_xdr": "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAA=",
+        "result_meta_xdr": "AAAAAQAAAAIAAAADAbw7FAAAAAAAAAAAaYGk+wOeUrR7X3g6Dsg7mYVRzR15EB3HGFrdD63gXvsAAAAA0gRBOAGUzncAEEBhAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAbw7FAAAAAAAAAAAaYGk+wOeUrR7X3g6Dsg7mYVRzR15EB3HGFrdD63gXvsAAAAA0gRBOAGUzncAEEBiAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAABAAAAAMBvDsUAAAAAQAAAAA/b24G6Vz2i5KgfrYFHKk+EPrNwtahLmyPsId/lInXkwAAAAFOT0RMAAAAAHWNgtesXM0E5YKg+dlIcjc8kCEe1zVOsJqI+5nBJ/mmAAAAAMUrlJIASptjhEiAAAAAAAEAAAAAAAAAAAAAAAEBvDsUAAAAAQAAAAA/b24G6Vz2i5KgfrYFHKk+EPrNwtahLmyPsId/lInXkwAAAAFOT0RMAAAAAHWNgtesXM0E5YKg+dlIcjc8kCEe1zVOsJqI+5nBJ/mmAAAAAMUrlJMASptjhEiAAAAAAAEAAAAAAAAAAAAAAAMBvDsUAAAAAQAAAADhZHiqD/Q3uSTgjYEWGVRfCCHYvFmeqJU12G9SkzJYEQAAAAFOT0RMAAAAAHWNgtesXM0E5YKg+dlIcjc8kCEe1zVOsJqI+5nBJ/mmAAAAKdrbU7B//////////wAAAAEAAAAAAAAAAAAAAAEBvDsUAAAAAQAAAADhZHiqD/Q3uSTgjYEWGVRfCCHYvFmeqJU12G9SkzJYEQAAAAFOT0RMAAAAAHWNgtesXM0E5YKg+dlIcjc8kCEe1zVOsJqI+5nBJ/mmAAAAKdrbU69//////////wAAAAEAAAAAAAAAAA==",
+        "fee_meta_xdr": "AAAAAgAAAAMBvDsTAAAAAAAAAABpgaT7A55StHtfeDoOyDuZhVHNHXkQHccYWt0PreBe+wAAAADSBEGcAZTOdwAQQGEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEBvDsUAAAAAAAAAABpgaT7A55StHtfeDoOyDuZhVHNHXkQHccYWt0PreBe+wAAAADSBEE4AZTOdwAQQGEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA==",
+        "memo_type": "hash",
+        "signatures": [
+          "6ScQeztlo81WVcxTS461P7RNWj2Rb+MO43E3jQV0kOJzSnbdXiXE588YKBDAGBN6GoIgTMIxDguRt/OR2CQUCw==",
+          "q0WZPveytLxEd5CBZaJryZv5OssKvUIlsr4wAoZ1SdvizgkE4pSMeGpAuuzsYKQnfA6mBNu1bxWnA150ImEVDQ=="
+        ],
+        "valid_after": "1970-01-01T00:00:00Z"
+      }`
+
+	const feesAsStrings = `{
+        "memo": "MzUyODFmNThmZjkxMGNiMTVhYWQ1NjM2ZGIyNzUzZTA=",
+        "_links": {
+          "self": {
+            "href": "https://horizon.stellar.org/transactions/998605ace4a0b89293cf729cf216405f29c1ce5d44d6a40232982a4bdccda033"
+          },
+          "account": {
+            "href": "https://horizon.stellar.org/accounts/GBUYDJH3AOPFFND3L54DUDWIHOMYKUONDV4RAHOHDBNN2D5N4BPPWDQ3"
+          },
+          "ledger": {
+            "href": "https://horizon.stellar.org/ledgers/29113108"
+          },
+          "operations": {
+            "href": "https://horizon.stellar.org/transactions/998605ace4a0b89293cf729cf216405f29c1ce5d44d6a40232982a4bdccda033/operations{?cursor,limit,order}",
+            "templated": true
+          },
+          "effects": {
+            "href": "https://horizon.stellar.org/transactions/998605ace4a0b89293cf729cf216405f29c1ce5d44d6a40232982a4bdccda033/effects{?cursor,limit,order}",
+            "templated": true
+          },
+          "precedes": {
+            "href": "https://horizon.stellar.org/transactions?order=asc\u0026cursor=125039846745419776"
+          },
+          "succeeds": {
+            "href": "https://horizon.stellar.org/transactions?order=desc\u0026cursor=125039846745419776"
+          },
+          "transaction": {
+            "href": "https://horizon.stellar.org/transactions/998605ace4a0b89293cf729cf216405f29c1ce5d44d6a40232982a4bdccda033"
+          }
+        },
+        "id": "998605ace4a0b89293cf729cf216405f29c1ce5d44d6a40232982a4bdccda033",
+        "paging_token": "125039846745419776",
+        "successful": true,
+        "hash": "998605ace4a0b89293cf729cf216405f29c1ce5d44d6a40232982a4bdccda033",
+        "ledger": 29113108,
+        "created_at": "2020-04-10T17:03:18Z",
+        "source_account": "GBUYDJH3AOPFFND3L54DUDWIHOMYKUONDV4RAHOHDBNN2D5N4BPPWDQ3",
+        "source_account_sequence": "113942901088600162",
+        "fee_account": "GBUYDJH3AOPFFND3L54DUDWIHOMYKUONDV4RAHOHDBNN2D5N4BPPWDQ3",
+        "fee_charged": "3000000000",
+        "max_fee": "2500000000",
+        "operation_count": 1,
+        "envelope_xdr": "AAAAAGmBpPsDnlK0e194Og7IO5mFUc0deRAdxxha3Q+t4F77AAAAZAGUzncAEEBiAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAADMzUyODFmNThmZjkxMGNiMTVhYWQ1NjM2ZGIyNzUzZTAAAAABAAAAAQAAAADhZHiqD/Q3uSTgjYEWGVRfCCHYvFmeqJU12G9SkzJYEQAAAAEAAAAAP29uBulc9ouSoH62BRypPhD6zcLWoS5sj7CHf5SJ15MAAAABTk9ETAAAAAB1jYLXrFzNBOWCoPnZSHI3PJAhHtc1TrCaiPuZwSf5pgAAAAAAAAABAAAAAAAAAALw9Tl2AAAAQOknEHs7ZaPNVlXMU0uOtT+0TVo9kW/jDuNxN40FdJDic0p23V4lxOfPGCgQwBgTehqCIEzCMQ4LkbfzkdgkFAut4F77AAAAQKtFmT73srS8RHeQgWWia8mb+TrLCr1CJbK+MAKGdUnb4s4JBOKUjHhqQLrs7GCkJ3wOpgTbtW8VpwNedCJhFQ0=",
+        "result_xdr": "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAA=",
+        "result_meta_xdr": "AAAAAQAAAAIAAAADAbw7FAAAAAAAAAAAaYGk+wOeUrR7X3g6Dsg7mYVRzR15EB3HGFrdD63gXvsAAAAA0gRBOAGUzncAEEBhAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAbw7FAAAAAAAAAAAaYGk+wOeUrR7X3g6Dsg7mYVRzR15EB3HGFrdD63gXvsAAAAA0gRBOAGUzncAEEBiAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAABAAAAAMBvDsUAAAAAQAAAAA/b24G6Vz2i5KgfrYFHKk+EPrNwtahLmyPsId/lInXkwAAAAFOT0RMAAAAAHWNgtesXM0E5YKg+dlIcjc8kCEe1zVOsJqI+5nBJ/mmAAAAAMUrlJIASptjhEiAAAAAAAEAAAAAAAAAAAAAAAEBvDsUAAAAAQAAAAA/b24G6Vz2i5KgfrYFHKk+EPrNwtahLmyPsId/lInXkwAAAAFOT0RMAAAAAHWNgtesXM0E5YKg+dlIcjc8kCEe1zVOsJqI+5nBJ/mmAAAAAMUrlJMASptjhEiAAAAAAAEAAAAAAAAAAAAAAAMBvDsUAAAAAQAAAADhZHiqD/Q3uSTgjYEWGVRfCCHYvFmeqJU12G9SkzJYEQAAAAFOT0RMAAAAAHWNgtesXM0E5YKg+dlIcjc8kCEe1zVOsJqI+5nBJ/mmAAAAKdrbU7B//////////wAAAAEAAAAAAAAAAAAAAAEBvDsUAAAAAQAAAADhZHiqD/Q3uSTgjYEWGVRfCCHYvFmeqJU12G9SkzJYEQAAAAFOT0RMAAAAAHWNgtesXM0E5YKg+dlIcjc8kCEe1zVOsJqI+5nBJ/mmAAAAKdrbU69//////////wAAAAEAAAAAAAAAAA==",
+        "fee_meta_xdr": "AAAAAgAAAAMBvDsTAAAAAAAAAABpgaT7A55StHtfeDoOyDuZhVHNHXkQHccYWt0PreBe+wAAAADSBEGcAZTOdwAQQGEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEBvDsUAAAAAAAAAABpgaT7A55StHtfeDoOyDuZhVHNHXkQHccYWt0PreBe+wAAAADSBEE4AZTOdwAQQGEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA==",
+        "memo_type": "hash",
+        "signatures": [
+          "6ScQeztlo81WVcxTS461P7RNWj2Rb+MO43E3jQV0kOJzSnbdXiXE588YKBDAGBN6GoIgTMIxDguRt/OR2CQUCw==",
+          "q0WZPveytLxEd5CBZaJryZv5OssKvUIlsr4wAoZ1SdvizgkE4pSMeGpAuuzsYKQnfA6mBNu1bxWnA150ImEVDQ=="
+        ],
+        "valid_after": "1970-01-01T00:00:00Z"
+      }`
+
+	var parsedFeesAsInts, parsedFeesAsStrings Transaction
+	assert.NoError(t, json.Unmarshal([]byte(feesAsInt64s), &parsedFeesAsInts))
+	assert.NoError(t, json.Unmarshal([]byte(feesAsStrings), &parsedFeesAsStrings))
+	assert.Equal(t, parsedFeesAsInts, parsedFeesAsStrings)
+	assert.Equal(t, int64(2500000000), parsedFeesAsInts.MaxFee)
+	assert.Equal(t, int64(3000000000), parsedFeesAsInts.FeeCharged)
 }

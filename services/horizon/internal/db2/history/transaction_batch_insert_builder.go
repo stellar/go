@@ -56,32 +56,33 @@ func (i *transactionBatchInsertBuilder) Exec() error {
 }
 
 func formatTimeBounds(transaction io.LedgerTransaction) interface{} {
-	if transaction.Envelope.Tx.TimeBounds == nil {
+	timeBounds := transaction.Envelope.TimeBounds()
+	if timeBounds == nil {
 		return nil
 	}
 
-	if transaction.Envelope.Tx.TimeBounds.MaxTime == 0 {
-		return sq.Expr("int8range(?,?)", transaction.Envelope.Tx.TimeBounds.MinTime, nil)
+	if timeBounds.MaxTime == 0 {
+		return sq.Expr("int8range(?,?)", timeBounds.MinTime, nil)
 	}
 
-	maxTime := transaction.Envelope.Tx.TimeBounds.MaxTime
+	maxTime := timeBounds.MaxTime
 	if maxTime > math.MaxInt64 {
 		maxTime = math.MaxInt64
 	}
 
-	return sq.Expr("int8range(?,?)", transaction.Envelope.Tx.TimeBounds.MinTime, maxTime)
+	return sq.Expr("int8range(?,?)", timeBounds.MinTime, maxTime)
 }
 
-func signatures(transaction io.LedgerTransaction) []string {
-	signatures := make([]string, len(transaction.Envelope.Signatures))
-	for i, sig := range transaction.Envelope.Signatures {
+func signatures(xdrSignatures []xdr.DecoratedSignature) []string {
+	signatures := make([]string, len(xdrSignatures))
+	for i, sig := range xdrSignatures {
 		signatures[i] = base64.StdEncoding.EncodeToString(sig.Signature)
 	}
 	return signatures
 }
 
 func memoType(transaction io.LedgerTransaction) string {
-	switch transaction.Envelope.Tx.Memo.Type {
+	switch transaction.Envelope.Memo().Type {
 	case xdr.MemoTypeMemoNone:
 		return "none"
 	case xdr.MemoTypeMemoText:
@@ -93,7 +94,7 @@ func memoType(transaction io.LedgerTransaction) string {
 	case xdr.MemoTypeMemoReturn:
 		return "return"
 	default:
-		panic(fmt.Errorf("invalid memo type: %v", transaction.Envelope.Tx.Memo.Type))
+		panic(fmt.Errorf("invalid memo type: %v", transaction.Envelope.Memo().Type))
 	}
 }
 
@@ -102,27 +103,28 @@ func memo(transaction io.LedgerTransaction) null.String {
 		value string
 		valid bool
 	)
-	switch transaction.Envelope.Tx.Memo.Type {
+	memo := transaction.Envelope.Memo()
+	switch memo.Type {
 	case xdr.MemoTypeMemoNone:
 		value, valid = "", false
 	case xdr.MemoTypeMemoText:
-		scrubbed := utf8.Scrub(transaction.Envelope.Tx.Memo.MustText())
+		scrubbed := utf8.Scrub(memo.MustText())
 		notnull := strings.Join(strings.Split(scrubbed, "\x00"), "")
 		value, valid = notnull, true
 	case xdr.MemoTypeMemoId:
-		value, valid = fmt.Sprintf("%d", transaction.Envelope.Tx.Memo.MustId()), true
+		value, valid = fmt.Sprintf("%d", memo.MustId()), true
 	case xdr.MemoTypeMemoHash:
-		hash := transaction.Envelope.Tx.Memo.MustHash()
+		hash := memo.MustHash()
 		value, valid =
 			base64.StdEncoding.EncodeToString(hash[:]),
 			true
 	case xdr.MemoTypeMemoReturn:
-		hash := transaction.Envelope.Tx.Memo.MustRetHash()
+		hash := memo.MustRetHash()
 		value, valid =
 			base64.StdEncoding.EncodeToString(hash[:]),
 			true
 	default:
-		panic(fmt.Errorf("invalid memo type: %v", transaction.Envelope.Tx.Memo.Type))
+		panic(fmt.Errorf("invalid memo type: %v", memo.Type))
 	}
 
 	return null.NewString(value, valid)
@@ -146,26 +148,39 @@ func transactionToMap(transaction io.LedgerTransaction, sequence uint32) (map[st
 		return nil, err
 	}
 
-	return map[string]interface{}{
+	sourceAccount := transaction.Envelope.SourceAccount().ToAccountId()
+	m := map[string]interface{}{
 		"id":                toid.New(int32(sequence), int32(transaction.Index), 0).ToInt64(),
 		"transaction_hash":  hex.EncodeToString(transaction.Result.TransactionHash[:]),
 		"ledger_sequence":   sequence,
 		"application_order": int32(transaction.Index),
-		"account":           transaction.Envelope.Tx.SourceAccount.Address(),
-		"account_sequence":  strconv.FormatInt(int64(transaction.Envelope.Tx.SeqNum), 10),
-		"max_fee":           int32(transaction.Envelope.Tx.Fee),
-		"fee_charged":       int32(transaction.Result.Result.FeeCharged),
-		"operation_count":   int32(len(transaction.Envelope.Tx.Operations)),
+		"account":           sourceAccount.Address(),
+		"account_sequence":  strconv.FormatInt(transaction.Envelope.SeqNum(), 10),
+		"max_fee":           int64(transaction.Envelope.Fee()),
+		"fee_charged":       int64(transaction.Result.Result.FeeCharged),
+		"operation_count":   int32(len(transaction.Envelope.Operations())),
 		"tx_envelope":       envelopeBase64,
 		"tx_result":         resultBase64,
 		"tx_meta":           metaBase64,
 		"tx_fee_meta":       feeMetaBase64,
-		"signatures":        sqx.StringArray(signatures(transaction)),
 		"time_bounds":       formatTimeBounds(transaction),
 		"memo_type":         memoType(transaction),
 		"memo":              memo(transaction),
 		"created_at":        time.Now().UTC(),
 		"updated_at":        time.Now().UTC(),
-		"successful":        transaction.Successful(),
-	}, nil
+		"successful":        transaction.Result.Successful(),
+	}
+	if transaction.Envelope.IsFeeBump() {
+		innerHash := transaction.Result.InnerHash()
+		m["inner_transaction_hash"] = hex.EncodeToString(innerHash[:])
+		feeAccount := transaction.Envelope.FeeBumpAccount().ToAccountId()
+		m["fee_account"] = feeAccount.Address()
+		m["new_max_fee"] = transaction.Envelope.FeeBumpFee()
+		m["inner_signatures"] = sqx.StringArray(signatures(transaction.Envelope.Signatures()))
+		m["signatures"] = sqx.StringArray(signatures(transaction.Envelope.FeeBumpSignatures()))
+	} else {
+		m["signatures"] = sqx.StringArray(signatures(transaction.Envelope.Signatures()))
+	}
+
+	return m, nil
 }

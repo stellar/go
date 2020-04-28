@@ -34,11 +34,8 @@ var removeRegexps = []*regexp.Regexp{
 	// regexp.MustCompile(`\s*"last_modified_ledger": [0-9]+,`),
 	// regexp.MustCompile(`\s*"public_key": "G.*",`),
 	// regexp.MustCompile(`,\s*"paging_token": ?""`),
-	regexp.MustCompile(`\s*"fee_paid": ?[0-9]+,`),
-	// Removes fields added in Horizon 1.1.0.
-	regexp.MustCompile(`\s*"is_authorized_to_maintain_liabilities": ?(true|false),`),
-	regexp.MustCompile(`\s*"authorize_to_maintain_liabilities": ?(true|false),`),
-	regexp.MustCompile(`\s*"fee_account": ?"G\w{55}",`),
+	// Removes memo_bytes field, introduced in horizon 1.2.0
+	regexp.MustCompile(`\s*"memo_bytes": ?"[^"]*",`),
 }
 
 type replace struct {

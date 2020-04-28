@@ -9,7 +9,7 @@ import (
 	"github.com/stellar/go/support/errors"
 )
 
-func historyQFromRequest(request *http.Request) (*history.Q, error) {
+func HistoryQFromRequest(request *http.Request) (*history.Q, error) {
 	ctx := request.Context()
 	session, ok := ctx.Value(&horizonContext.SessionContextKey).(*db.Session)
 	if !ok {
