@@ -21,6 +21,7 @@ func PopulateAccountEntry(
 	accountData []history.Data,
 	accountSigners []history.AccountSigner,
 	trustLines []history.TrustLine,
+	ledger *history.Ledger,
 ) error {
 	dest.ID = account.AccountID
 	dest.PT = account.AccountID
@@ -30,6 +31,9 @@ func PopulateAccountEntry(
 	dest.InflationDestination = account.InflationDestination
 	dest.HomeDomain = account.HomeDomain
 	dest.LastModifiedLedger = account.LastModifiedLedger
+	if ledger != nil {
+		dest.LastModifiedTime = &ledger.ClosedAt
+	}
 
 	dest.Flags.AuthRequired = account.IsAuthRequired()
 	dest.Flags.AuthRevocable = account.IsAuthRevocable()
