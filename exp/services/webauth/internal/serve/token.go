@@ -2,6 +2,7 @@ package serve
 
 import (
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/stellar/go/clients/horizonclient"
@@ -44,49 +45,77 @@ func (h tokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, clientAccountID, err := txnbuild.ReadChallengeTx(req.Transaction, h.SigningAddress.Address(), h.NetworkPassphrase)
+	tx, clientAccountID, err := txnbuild.ReadChallengeTx(req.Transaction, h.SigningAddress.Address(), h.NetworkPassphrase)
 	if err != nil {
 		badRequest.Render(w)
 		return
 	}
+
+	hash, err := tx.HashHex(h.NetworkPassphrase)
+	if err != nil {
+		h.Logger.Ctx(ctx).WithStack(err).Error(err)
+		serverError.Render(w)
+		return
+	}
+
+	l := h.Logger.Ctx(ctx).
+		WithField("tx", hash).
+		WithField("account", clientAccountID)
+
+	l.Info("Start verifying challenge transaction.")
 
 	var clientAccountExists bool
 	clientAccount, err := h.HorizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: clientAccountID})
 	switch {
 	case err == nil:
 		clientAccountExists = true
+		l.Infof("Account exists.")
 	case horizonclient.IsNotFoundError(err):
 		clientAccountExists = false
+		l.Infof("Account does not exist.")
 	default:
+		l.WithStack(err).Error(err)
 		serverError.Render(w)
 		return
 	}
 
+	var signersVerified []string
 	if clientAccountExists {
 		requiredThreshold := txnbuild.Threshold(clientAccount.Thresholds.HighThreshold)
 		clientSignerSummary := clientAccount.SignerSummary()
-		_, err = txnbuild.VerifyChallengeTxThreshold(req.Transaction, h.SigningAddress.Address(), h.NetworkPassphrase, requiredThreshold, clientSignerSummary)
+		signersVerified, err = txnbuild.VerifyChallengeTxThreshold(req.Transaction, h.SigningAddress.Address(), h.NetworkPassphrase, requiredThreshold, clientSignerSummary)
 		if err != nil {
+			l.
+				WithField("signersCount", len(clientSignerSummary)).
+				WithField("signaturesCount", len(tx.Signatures())).
+				WithField("requiredThreshold", requiredThreshold).
+				Info("Failed to verify with signers that do not meet threshold.")
 			unauthorized.Render(w)
 			return
 		}
 	} else {
 		if !h.AllowAccountsThatDoNotExist {
+			l.Infof("Failed to verify because accounts that do not exist are not allowed.")
 			unauthorized.Render(w)
 			return
 		}
-		_, err = txnbuild.VerifyChallengeTxSigners(req.Transaction, h.SigningAddress.Address(), h.NetworkPassphrase, clientAccountID)
+		signersVerified, err = txnbuild.VerifyChallengeTxSigners(req.Transaction, h.SigningAddress.Address(), h.NetworkPassphrase, clientAccountID)
 		if err != nil {
+			l.Infof("Failed to verify with account master key as signer.")
 			unauthorized.Render(w)
 			return
 		}
 	}
 
+	l.
+		WithField("signers", strings.Join(signersVerified, ",")).
+		Infof("Successfully verified challenge transaction.")
+
 	jwsOptions := &jose.SignerOptions{}
 	jwsOptions.WithType("JWT")
 	jws, err := jose.NewSigner(jose.SigningKey{Algorithm: jose.SignatureAlgorithm(h.JWK.Algorithm), Key: h.JWK.Key}, jwsOptions)
 	if err != nil {
-		h.Logger.Ctx(ctx).WithStack(err).Error(err)
+		l.WithStack(err).Error(err)
 		serverError.Render(w)
 		return
 	}
@@ -100,7 +129,7 @@ func (h tokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	tokenStr, err := jwt.Signed(jws).Claims(claims).CompactSerialize()
 	if err != nil {
-		h.Logger.Ctx(ctx).WithStack(err).Error(err)
+		l.WithStack(err).Error(err)
 		serverError.Render(w)
 		return
 	}
