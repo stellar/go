@@ -186,14 +186,23 @@ func (handler GetAccountsHandler) GetResourcePage(
 		return nil, err
 	}
 
+	ledgerCache := history.LedgerCache{}
+	for _, record := range records {
+		ledgerCache.Queue(int32(record.LastModifiedLedger))
+	}
+
+	if err := ledgerCache.Load(historyQ); err != nil {
+		return nil, errors.Wrap(err, "failed to load ledger batch")
+	}
+
 	for _, record := range records {
 		var res protocol.Account
 		s := signers[record.AccountID]
 		t := trustlines[record.AccountID]
 		d := data[record.AccountID]
-		ledger, err := getLedgerBySequence(historyQ, int32(record.LastModifiedLedger))
-		if err != nil {
-			return nil, err
+		var ledger *history.Ledger
+		if l, ok := ledgerCache.Records[int32(record.LastModifiedLedger)]; ok {
+			ledger = &l
 		}
 		resourceadapter.PopulateAccountEntry(ctx, &res, record, d, s, t, ledger)
 

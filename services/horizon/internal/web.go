@@ -333,12 +333,6 @@ func (w *web) horizonSession(ctx context.Context) (*db.Session, error) {
 	return &db.Session{DB: w.historyQ.Session.DB, Ctx: ctx}, nil
 }
 
-// coreSession returns a new session that loads data from the stellar core
-// database. The returned session is bound to `ctx`.
-func (w *web) coreSession(ctx context.Context) *db.Session {
-	return &db.Session{DB: w.coreQ.Session.DB, Ctx: ctx}
-}
-
 // isHistoryStale returns true if the latest history ledger is more than
 // `StaleThreshold` ledgers behind the latest core ledger
 func (w *web) isHistoryStale() bool {
