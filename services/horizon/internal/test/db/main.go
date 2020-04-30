@@ -28,7 +28,6 @@ func Horizon(t *testing.T) *sqlx.DB {
 	}
 	postgres := db.Postgres(t)
 	horizonUrl = &postgres.DSN
-	fmt.Println("Horizon URL", *horizonUrl)
 	horizonDB = postgres.Open()
 
 	return horizonDB
