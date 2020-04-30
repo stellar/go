@@ -44,6 +44,7 @@ type Account struct {
 	InflationDestination string            `json:"inflation_destination,omitempty"`
 	HomeDomain           string            `json:"home_domain,omitempty"`
 	LastModifiedLedger   uint32            `json:"last_modified_ledger"`
+	LastModifiedTime     *time.Time        `json:"last_modified_time"`
 	Thresholds           AccountThresholds `json:"thresholds"`
 	Flags                AccountFlags      `json:"flags"`
 	Balances             []Balance         `json:"balances"`

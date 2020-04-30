@@ -3,6 +3,11 @@
 All notable changes to this project will be documented in this
 file. This project adheres to [Semantic Versioning](http://semver.org/).
 
+## unreleased
+
+* Add `last_modified_time` to account responses. `last_modified_time` is the
+ closing time of the most recent ledger in which the account was modified.
+
 ## v1.2.0
 
 ### Scheduled Breaking Changes

@@ -3,11 +3,11 @@ package actions
 import (
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
 	protocol "github.com/stellar/go/protocols/horizon"
-	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/support/errors"
@@ -157,7 +157,7 @@ var (
 )
 
 func TestAccountInfo(t *testing.T) {
-	tt := test.Start(t).Scenario("allow_trust")
+	tt := test.Start(t)
 	defer tt.Finish()
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &history.Q{tt.HorizonSession()}
@@ -210,16 +210,24 @@ func TestAccountInfo(t *testing.T) {
 	}, 6)
 	assert.NoError(t, err)
 
-	account, err := AccountInfo(
-		tt.Ctx,
-		&core.Q{tt.CoreSession()},
-		&history.Q{tt.HorizonSession()},
-		accountID.Address(),
-	)
+	ledgerFourCloseTime := time.Now().Unix()
+	_, err = q.InsertLedger(xdr.LedgerHeaderHistoryEntry{
+		Header: xdr.LedgerHeader{
+			LedgerSeq: 4,
+			ScpValue: xdr.StellarValue{
+				CloseTime: xdr.TimePoint(ledgerFourCloseTime),
+			},
+		},
+	}, 0, 0, 0, 0)
+	assert.NoError(t, err)
+
+	account, err := AccountInfo(tt.Ctx, &history.Q{tt.HorizonSession()}, accountID.Address())
 	tt.Assert.NoError(err)
 
 	tt.Assert.Equal("8589934593", account.Sequence)
 	tt.Assert.Equal(uint32(4), account.LastModifiedLedger)
+	tt.Assert.NotNil(account.LastModifiedTime)
+	tt.Assert.Equal(ledgerFourCloseTime, account.LastModifiedTime.Unix())
 	tt.Assert.Len(account.Balances, 3)
 
 	tt.Assert.Equal(account.Balances[0].Code, "EUR")
@@ -231,49 +239,7 @@ func TestAccountInfo(t *testing.T) {
 	tt.Assert.NotEqual(uint32(0), account.Balances[1].LastModifiedLedger)
 	tt.Assert.Equal(account.Balances[2].Type, "native")
 	tt.Assert.Equal(uint32(0), account.Balances[2].LastModifiedLedger)
-
-	// core account and horizon ingestion account differ
-	// horizon ingestion account has a signer whereas core account
-	// has no signers
-	_, err = q.CreateAccountSigner(
-		accountID.Address(),
-		"GBXGQJWVLWOYHFLVTKWV5FGHA3LNYY2JQKM7OAJAUEQFU6LPCSEFVXON",
-		100,
-	)
-	tt.Assert.NoError(err)
-
-	_, err = AccountInfo(
-		tt.Ctx,
-		&core.Q{tt.CoreSession()},
-		&history.Q{tt.HorizonSession()},
-		accountID.Address(),
-	)
-	tt.Assert.EqualError(err, "Signer is different")
-
-	// even though horizon ingestion account differs from core account,
-	// no error is returned because they have different last modified ledgers
-	err = q.UpsertAccounts([]xdr.LedgerEntry{
-		{
-			LastModifiedLedgerSeq: 5,
-			Data: xdr.LedgerEntryData{
-				Type:    xdr.LedgerEntryTypeAccount,
-				Account: &accountEntry,
-			},
-		},
-	})
-	tt.Assert.NoError(err)
-
-	account, err = AccountInfo(
-		tt.Ctx,
-		&core.Q{tt.CoreSession()},
-		&history.Q{tt.HorizonSession()},
-		accountID.Address(),
-	)
-	tt.Assert.NoError(err)
-
-	tt.Assert.Equal("8589934593", account.Sequence)
-	tt.Assert.Equal(uint32(5), account.LastModifiedLedger)
-	tt.Assert.Len(account.Signers, 2)
+	tt.Assert.Len(account.Signers, 1)
 
 	// Regression: no trades link
 	tt.Assert.Contains(account.Links.Trades.Href, "/trades")
@@ -282,12 +248,7 @@ func TestAccountInfo(t *testing.T) {
 	tt.Assert.True(account.Links.Data.Templated)
 
 	// try to fetch account which does not exist
-	_, err = AccountInfo(
-		tt.Ctx,
-		&core.Q{tt.CoreSession()},
-		&history.Q{tt.HorizonSession()},
-		"GDBAPLDCAEJV6LSEDFEAUDAVFYSNFRUYZ4X75YYJJMMX5KFVUOHX46SQ",
-	)
+	_, err = AccountInfo(tt.Ctx, &history.Q{tt.HorizonSession()}, "GDBAPLDCAEJV6LSEDFEAUDAVFYSNFRUYZ4X75YYJJMMX5KFVUOHX46SQ")
 	tt.Assert.True(q.NoRows(errors.Cause(err)))
 }
 
@@ -407,6 +368,16 @@ func TestGetAccountsHandlerPageResultsByAsset(t *testing.T) {
 	err = batch.Add(account2, 1234)
 	assert.NoError(t, err)
 	assert.NoError(t, batch.Exec())
+	ledgerCloseTime := time.Now().Unix()
+	_, err = q.InsertLedger(xdr.LedgerHeaderHistoryEntry{
+		Header: xdr.LedgerHeader{
+			LedgerSeq: 1234,
+			ScpValue: xdr.StellarValue{
+				CloseTime: xdr.TimePoint(ledgerCloseTime),
+			},
+		},
+	}, 0, 0, 0, 0)
+	assert.NoError(t, err)
 
 	for _, row := range accountSigners {
 		_, err = q.CreateAccountSigner(row.Account, row.Signer, row.Weight)
@@ -456,6 +427,8 @@ func TestGetAccountsHandlerPageResultsByAsset(t *testing.T) {
 	tt.Assert.Equal(1, len(records))
 	result := records[0].(protocol.Account)
 	tt.Assert.Equal(accountTwo, result.AccountID)
+	tt.Assert.NotNil(result.LastModifiedTime)
+	tt.Assert.Equal(ledgerCloseTime, result.LastModifiedTime.Unix())
 	tt.Assert.Len(result.Balances, 2)
 	tt.Assert.Len(result.Signers, 2)
 
