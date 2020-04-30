@@ -39,7 +39,7 @@ func TestHTTPMiddleware(t *testing.T) {
 		req1 := logged[0].Data["req"]
 
 		assert.Equal(t, "handler log line", logged[1].Message)
-		assert.Equal(t, req1, logged[0].Data["req"])
+		assert.Equal(t, req1, logged[1].Data["req"])
 
 		assert.Equal(t, "finished request", logged[2].Message)
 		assert.Equal(t, "http", logged[2].Data["subsys"])
@@ -92,7 +92,7 @@ func TestHTTPMiddlewareWithLoggerSet(t *testing.T) {
 		req1 := logged[0].Data["req"]
 
 		assert.Equal(t, "handler log line", logged[1].Message)
-		assert.Equal(t, req1, logged[0].Data["req"])
+		assert.Equal(t, req1, logged[1].Data["req"])
 
 		assert.Equal(t, "finished request", logged[2].Message)
 		assert.Equal(t, "http", logged[2].Data["subsys"])
