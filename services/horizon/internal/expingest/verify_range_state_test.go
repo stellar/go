@@ -154,9 +154,6 @@ func (s *VerifyRangeStateTestSuite) TestSuccess() {
 	s.runner.On("RunHistoryArchiveIngestion", uint32(100)).Return(ingestio.StatsChangeProcessorResults{}, nil).Once()
 	s.historyQ.On("UpdateLastLedgerExpIngest", uint32(100)).Return(nil).Once()
 	s.historyQ.On("Commit").Return(nil).Once()
-	s.historyQ.On("UpdateLastLedgerOrderBook", uint32(100)).
-		Return(nil).
-		Once()
 	s.graph.On("Apply", uint32(100)).Return(nil).Once()
 
 	for i := uint32(101); i <= 200; i++ {
@@ -165,9 +162,6 @@ func (s *VerifyRangeStateTestSuite) TestSuccess() {
 			ingestio.StatsLedgerTransactionProcessorResults{}, nil).Once()
 		s.historyQ.On("UpdateLastLedgerExpIngest", i).Return(nil).Once()
 		s.historyQ.On("Commit").Return(nil).Once()
-		s.historyQ.On("UpdateLastLedgerOrderBook", i).
-			Return(nil).
-			Once()
 		s.graph.On("Apply", i).Return(nil).Once()
 	}
 
@@ -185,9 +179,6 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 	s.runner.On("RunHistoryArchiveIngestion", uint32(100)).Return(ingestio.StatsChangeProcessorResults{}, nil).Once()
 	s.historyQ.On("UpdateLastLedgerExpIngest", uint32(100)).Return(nil).Once()
 	s.historyQ.On("Commit").Return(nil).Once()
-	s.historyQ.On("UpdateLastLedgerOrderBook", uint32(100)).
-		Return(nil).
-		Once()
 	s.graph.On("Apply", uint32(100)).Return(nil).Once()
 
 	for i := uint32(101); i <= 110; i++ {
@@ -196,9 +187,6 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 			ingestio.StatsLedgerTransactionProcessorResults{}, nil).Once()
 		s.historyQ.On("UpdateLastLedgerExpIngest", i).Return(nil).Once()
 		s.historyQ.On("Commit").Return(nil).Once()
-		s.historyQ.On("UpdateLastLedgerOrderBook", i).
-			Return(nil).
-			Once()
 		s.graph.On("Apply", i).Return(nil).Once()
 	}
 

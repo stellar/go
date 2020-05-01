@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/rcrowley/go-metrics"
+	metrics "github.com/rcrowley/go-metrics"
 	"github.com/stellar/go/services/horizon/internal/actions"
 	"github.com/stellar/go/support/render/hal"
 )

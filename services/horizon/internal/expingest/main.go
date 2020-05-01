@@ -71,12 +71,11 @@ type Config struct {
 }
 
 const (
-	getLastIngestedErrMsg            string = "Error getting last ingested ledger"
-	getExpIngestVersionErrMsg        string = "Error getting exp ingest version"
-	updateLastLedgerExpIngestErrMsg  string = "Error updating last ingested ledger"
-	updateLastLedgerOrderBooktErrMsg string = "Error updating last order book ledger"
-	commitErrMsg                     string = "Error committing db transaction"
-	updateExpStateInvalidErrMsg      string = "Error updating state invalid value"
+	getLastIngestedErrMsg           string = "Error getting last ingested ledger"
+	getExpIngestVersionErrMsg       string = "Error getting exp ingest version"
+	updateLastLedgerExpIngestErrMsg string = "Error updating last ingested ledger"
+	commitErrMsg                    string = "Error committing db transaction"
+	updateExpStateInvalidErrMsg     string = "Error updating state invalid value"
 )
 
 type stellarCoreClient interface {
@@ -96,6 +95,10 @@ type System struct {
 		// StateVerifyTimer exposes timing metrics about the rate and
 		// duration of state verification.
 		StateVerifyTimer metrics.Timer
+
+		// LocalLatestLedgerGauge exposes the local (order book graph)
+		// latest processed ledger
+		LocalLatestLedgerGauge metrics.Gauge
 	}
 
 	ctx    context.Context
@@ -183,6 +186,7 @@ func (s *System) initMetrics() {
 	s.Metrics.LedgerIngestionTimer = metrics.NewTimer()
 	s.Metrics.LedgerInMemoryIngestionTimer = metrics.NewTimer()
 	s.Metrics.StateVerifyTimer = metrics.NewTimer()
+	s.Metrics.LocalLatestLedgerGauge = metrics.NewGauge()
 }
 
 // Run starts ingestion system. Ingestion system supports distributed ingestion

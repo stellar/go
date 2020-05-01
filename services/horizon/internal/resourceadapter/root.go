@@ -23,7 +23,6 @@ func PopulateRoot(
 	templates map[string]string,
 ) {
 	dest.IngestSequence = ledgerState.ExpHistoryLatest
-	dest.OrderBookSequence = ledgerState.OrderBookLatest
 	dest.HorizonSequence = ledgerState.HistoryLatest
 	dest.HistoryElderSequence = ledgerState.HistoryElder
 	dest.CoreSequence = ledgerState.CoreLatest

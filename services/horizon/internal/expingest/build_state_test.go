@@ -282,13 +282,13 @@ func (s *BuildStateTestSuite) TestOBGraphApplyReturnsError() {
 		On("RunHistoryArchiveIngestion", s.checkpointLedger).
 		Return(io.StatsChangeProcessorResults{}, nil).
 		Once()
+	s.historyQ.On("UpdateLastLedgerExpIngest", s.checkpointLedger).
+		Return(nil).
+		Once()
 	s.historyQ.On("UpdateExpIngestVersion", CurrentVersion).
 		Return(nil).
 		Once()
 	s.historyQ.On("Commit").
-		Return(nil).
-		Once()
-	s.historyQ.On("UpdateLastLedgerExpIngest", s.checkpointLedger).
 		Return(nil).
 		Once()
 
@@ -319,9 +319,6 @@ func (s *BuildStateTestSuite) TestBuildStateSucceeds() {
 
 	s.graph.On("Clear").Return(nil).Once()
 	s.graph.On("Apply", s.checkpointLedger).Return(nil).Once()
-	s.historyQ.On("UpdateLastLedgerOrderBook", s.checkpointLedger).
-		Return(nil).
-		Once()
 	next, err := buildState{checkpointLedger: s.checkpointLedger}.run(s.system)
 
 	s.Assert().NoError(err)

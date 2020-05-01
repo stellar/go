@@ -892,11 +892,7 @@ func (s *System) completeIngestion(ledger uint32) error {
 		err = errors.Wrap(err, "Error applying order book changes")
 		return err
 	}
-
-	if err := s.historyQ.UpdateLastLedgerOrderBook(ledger); err != nil {
-		err = errors.Wrap(err, updateLastLedgerOrderBooktErrMsg)
-		return err
-	}
+	s.Metrics.LocalLatestLedgerGauge.Update(int64(ledger))
 
 	return nil
 }
