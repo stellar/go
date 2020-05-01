@@ -8,6 +8,10 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 * Add `last_modified_time` to account responses. `last_modified_time` is the
  closing time of the most recent ledger in which the account was modified.
 
+## v1.2.1
+
+* Remove `id` columns from `history_operation_participants` and `history_transaction_participants` to prevent possible integer overflow [#2532](https://github.com/stellar/go/pull/2532).
+
 ## v1.2.0
 
 ### Scheduled Breaking Changes
