@@ -10,8 +10,13 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## v1.2.1
 
-* Remove `id` columns from `history_operation_participants` and `history_transaction_participants` to prevent possible integer overflow [#2532](https://github.com/stellar/go/pull/2532).
+### Database migration notes
 
+This version removes two unused columns that could overflow in catchup complete deployments. If your Horizon database contains entire public network history, you should upgrade to this version as soon as possible and run `horizon db migrate up`.
+
+### Changes
+
+* Remove `id` columns from `history_operation_participants` and `history_transaction_participants` to prevent possible integer overflow [#2532](https://github.com/stellar/go/pull/2532).
 ## v1.2.0
 
 ### Scheduled Breaking Changes
