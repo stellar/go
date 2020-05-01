@@ -81,23 +81,36 @@ func (h accountPutHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	req := accountPutRequest{}
 	err := httpdecode.Decode(r, &req)
-	if err != nil || req.Address == nil || req.Validate() != nil {
+	if err != nil || req.Address == nil {
+		badRequest.Render(w)
+		return
+	}
+
+	l := h.Logger.Ctx(ctx).
+		WithField("account", req.Address.Address())
+
+	l.Info("Request to update account.")
+
+	if req.Validate() != nil {
+		l.Info("Request validation failed.")
 		badRequest.Render(w)
 		return
 	}
 
 	acc, err := h.AccountStore.Get(req.Address.Address())
 	if err == account.ErrNotFound {
+		l.Info("Account not found.")
 		notFound.Render(w)
 		return
 	} else if err != nil {
-		h.Logger.Error(err)
+		l.Error(err)
 		serverError.Render(w)
 		return
 	}
 
 	// Authorized if authenticated as the account.
 	authorized := claims.Address == req.Address.Address()
+	l.Infof("Authorized with self: %v.", authorized)
 
 	// Authorized if authenticated as an identity registered with the account.
 	for _, i := range acc.Identities {
@@ -106,6 +119,7 @@ func (h accountPutHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				(m.Type == account.AuthMethodTypePhoneNumber && m.Value == claims.PhoneNumber) ||
 				(m.Type == account.AuthMethodTypeEmail && m.Value == claims.Email)) {
 				authorized = true
+				l.Infof("Authorized with %s.", m.Type)
 				break
 			}
 		}
@@ -115,6 +129,7 @@ func (h accountPutHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	authMethodCount := 0
 	accWithNewIdentiies := account.Account{
 		Address:    req.Address.Address(),
 		Identities: []account.Identity{},
@@ -128,13 +143,18 @@ func (h accountPutHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				Type:  account.AuthMethodType(m.Type),
 				Value: m.Value,
 			})
+			authMethodCount++
 		}
 		accWithNewIdentiies.Identities = append(accWithNewIdentiies.Identities, accIdentity)
 	}
+	l = l.
+		WithField("identities_count", len(accWithNewIdentiies.Identities)).
+		WithField("auth_methods_count", authMethodCount)
 
 	err = h.AccountStore.Update(accWithNewIdentiies)
 	if err == account.ErrNotFound {
 		// It can happen if another authorized user is trying to delete the account at the same time.
+		l.Info("Account not found.")
 		notFound.Render(w)
 		return
 	} else if err != nil {
@@ -142,6 +162,8 @@ func (h accountPutHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		serverError.Render(w)
 		return
 	}
+
+	l.Info("Account updated.")
 
 	resp := accountResponse{
 		Address: accWithNewIdentiies.Address,
