@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"github.com/stellar/go/txnbuild"
 	"sync"
 	"testing"
 
@@ -11,9 +12,9 @@ import (
 )
 
 func TestFriendbot_Pay(t *testing.T) {
-	mockSubmitTransaction := func(minion *Minion, hclient *horizonclient.Client, tx string) (*hProtocol.TransactionSuccess, error) {
+	mockSubmitTransaction := func(minion *Minion, hclient *horizonclient.Client, tx string) (*hProtocol.Transaction, error) {
 		// Instead of submitting the tx, we emulate a success.
-		txSuccess := hProtocol.TransactionSuccess{Env: tx}
+		txSuccess := hProtocol.Transaction{EnvelopeXdr: tx, Successful: true}
 		return &txSuccess, nil
 	}
 
@@ -43,6 +44,7 @@ func TestFriendbot_Pay(t *testing.T) {
 		Network:           "Test SDF Network ; September 2015",
 		StartingBalance:   "10000.00",
 		SubmitTransaction: mockSubmitTransaction,
+		BaseFee:           txnbuild.MinBaseFee,
 	}
 	fb := &Bot{Minions: []Minion{minion}}
 
@@ -51,8 +53,8 @@ func TestFriendbot_Pay(t *testing.T) {
 	if !assert.NoError(t, err) {
 		return
 	}
-	expectedTxn := "AAAAAgAAAAD4Az3jKU6lbzq/L5HG9/GzBT+FYusOz71oyYMbZkP+GAAAAGQAAAAAAAAAAgAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAABAAAAAPXQ8gjyrVHa47a6JDPkVHwPPDKxNRE2QBcamA4JvlOGAAAAAAAAAADShvreeub1LWzv6W93J+BROl6MxA6GAyXFy86/NQWGFAAAABdIdugAAAAAAAAAAAJmQ/4YAAAAQDRLEljDVYALnTk9mDceQEd5PrjQyE3LUAjstIyTWH5t/TP909F66TgEfBFKMxSKF6fka7ZuPcSs40ix4AomEgoJvlOGAAAAQPSGs88OwXubz7UT6nFhvhF47EQfaOsmiIsOkjgzUrmBoypJQTmMMbgeix0kdbfHqS75+iefJpdXLNFDreGnxgE="
-	assert.Equal(t, expectedTxn, txSuccess.Env)
+	expectedTxn := "AAAAAPgDPeMpTqVvOr8vkcb38bMFP4Vi6w7PvWjJgxtmQ/4YAAAAZAAAAAAAAAACAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAEAAAAA9dDyCPKtUdrjtrokM+RUfA88MrE1ETZAFxqYDgm+U4YAAAAAAAAAANKG+t565vUtbO/pb3cn4FE6XozEDoYDJcXLzr81BYYUAAAAF0h26AAAAAAAAAAAAmZD/hgAAABANEsSWMNVgAudOT2YNx5AR3k+uNDITctQCOy0jJNYfm39M/3T0XrpOAR8EUozFIoXp+Rrtm49xKzjSLHgCiYSCgm+U4YAAABA9Iazzw7Be5vPtRPqcWG+EXjsRB9o6yaIiw6SODNSuYGjKklBOYwxuB6LHSR1t8epLvn6J58ml1cs0UOt4afGAQ=="
+	assert.Equal(t, expectedTxn, txSuccess.EnvelopeXdr)
 
 	// Don't assert on tx values below, since the completion order is unknown.
 	var wg sync.WaitGroup

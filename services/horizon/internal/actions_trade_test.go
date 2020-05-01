@@ -89,6 +89,20 @@ func TestTradeActions_Index(t *testing.T) {
 		ht.Assert.Contains(records[0], "counter_amount")
 	}
 
+	// empty response when assets exist but there are no trades
+	q = make(url.Values)
+	q.Add("base_asset_type", "credit_alphanum4")
+	q.Add("base_asset_code", "EUR")
+	q.Add("base_asset_issuer", "GCQPYGH4K57XBDENKKX55KDTWOTK5WDWRQOH2LHEDX3EKVIQRLMESGBG")
+	q.Add("counter_asset_type", "credit_alphanum4")
+	q.Add("counter_asset_code", "SEK")
+	q.Add("counter_asset_issuer", "GCQPYGH4K57XBDENKKX55KDTWOTK5WDWRQOH2LHEDX3EKVIQRLMESGBG")
+
+	w = ht.GetWithParams("/trades", q)
+	if ht.Assert.Equal(200, w.Code) {
+		ht.Assert.PageOf(0, w.Body)
+	}
+
 	// For offer
 	w = ht.Get("/offers/1/trades")
 	if ht.Assert.Equal(200, w.Code) {

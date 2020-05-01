@@ -12,7 +12,7 @@ type MockQAccounts struct {
 }
 
 func (m *MockQAccounts) GetAccountsByIDs(ids []string) ([]AccountEntry, error) {
-	a := m.Called()
+	a := m.Called(ids)
 	return a.Get(0).([]AccountEntry), a.Error(1)
 }
 

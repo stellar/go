@@ -3,6 +3,11 @@
 All notable changes to this project will be documented in this
 file. This project adheres to [Semantic Versioning](http://semver.org/).
 
+## unreleased
+
+* Add `last_modified_time` to account responses. `last_modified_time` is the
+ closing time of the most recent ledger in which the account was modified.
+
 ## v1.2.1
 
 * Remove `id` columns from `history_operation_participants` and `history_transaction_participants` to prevent possible integer overflow [#2532](https://github.com/stellar/go/pull/2532).
@@ -109,6 +114,9 @@ To execute the migration run `horizon db migrate up` using the Horizon v1.1.0 bi
     }    
     </pre>
 * It is no longer possible to use Redis as a mechanism for rate-limiting requests ([#2409](https://github.com/stellar/go/pull/2409)).
+
+* Make `GET /trades` generate an empty response instead of a 404 when no
+ trades are found.
 
 ## v1.0.1
 

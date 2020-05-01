@@ -1,20 +1,21 @@
 package auth
 
 import (
-	"crypto/ecdsa"
+	"errors"
 	"net/http"
+	"time"
 
-	"github.com/dgrijalva/jwt-go"
 	"github.com/stellar/go/keypair"
-	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/http/httpauthz"
+	"gopkg.in/square/go-jose.v2"
+	"gopkg.in/square/go-jose.v2/jwt"
 )
 
 // SEP10Middleware provides middleware for handling an authentication SEP-10 JWT.
-func SEP10Middleware(k *ecdsa.PublicKey) func(http.Handler) http.Handler {
+func SEP10Middleware(issuer string, k jose.JSONWebKey) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if address, ok := sep10ClaimsFromRequest(r, k); ok {
+			if address, ok := sep10ClaimsFromRequest(r, issuer, k); ok {
 				ctx := r.Context()
 				auth, _ := FromContext(ctx)
 				auth.Address = address
@@ -27,33 +28,40 @@ func SEP10Middleware(k *ecdsa.PublicKey) func(http.Handler) http.Handler {
 }
 
 type sep10JWTClaims struct {
-	jwt.StandardClaims
+	jwt.Claims
 }
 
-func (c sep10JWTClaims) Valid() error {
-	// TODO: Verify that iat and exp are present.
-	// TODO: Verify that sub is a G... strkey.
-	// TODO: Verify that iss is as expected.
-	return c.StandardClaims.Valid()
+func (c sep10JWTClaims) Validate(issuer string) error {
+	if c.Claims.IssuedAt == nil {
+		return errors.New("validation failed, no issued at (iat) in token")
+	}
+	if c.Claims.Expiry == nil {
+		return errors.New("validation failed, no expiry (exp) in token")
+	}
+	expectedClaims := jwt.Expected{
+		Issuer: issuer,
+		Time:   time.Now(),
+	}
+	return c.Claims.Validate(expectedClaims)
 }
 
-func sep10ClaimsFromRequest(r *http.Request, k *ecdsa.PublicKey) (address string, ok bool) {
+func sep10ClaimsFromRequest(r *http.Request, issuer string, k jose.JSONWebKey) (address string, ok bool) {
 	authHeader := r.Header.Get("Authorization")
 	tokenEncoded := httpauthz.ParseBearerToken(authHeader)
 	if tokenEncoded == "" {
 		return "", false
 	}
-	tokenClaims := sep10JWTClaims{}
-	token, err := jwt.ParseWithClaims(tokenEncoded, &tokenClaims, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodECDSA); !ok {
-			return nil, errors.Errorf("unexpected signing method: %v", token.Header["alg"])
-		}
-		return k, nil
-	})
+	token, err := jwt.ParseSigned(tokenEncoded)
 	if err != nil {
 		return "", false
 	}
-	if !token.Valid {
+	tokenClaims := sep10JWTClaims{}
+	err = token.Claims(k, &tokenClaims)
+	if err != nil {
+		return "", false
+	}
+	err = tokenClaims.Validate(issuer)
+	if err != nil {
 		return "", false
 	}
 	address = tokenClaims.Subject

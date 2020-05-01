@@ -95,17 +95,19 @@ func checkMigrations() {
 	}
 }
 
+var dbURLConfigOption = &support.ConfigOption{
+	Name:      "db-url",
+	EnvVar:    "DATABASE_URL",
+	ConfigKey: &config.DatabaseURL,
+	OptType:   types.String,
+	Required:  true,
+	Usage:     "horizon postgres database to connect with",
+}
+
 // configOpts defines the complete flag configuration for horizon.
 // Add a new entry here to connect a new field in the horizon.Config struct
 var configOpts = support.ConfigOptions{
-	&support.ConfigOption{
-		Name:      "db-url",
-		EnvVar:    "DATABASE_URL",
-		ConfigKey: &config.DatabaseURL,
-		OptType:   types.String,
-		Required:  true,
-		Usage:     "horizon postgres database to connect with",
-	},
+	dbURLConfigOption,
 	&support.ConfigOption{
 		Name:      "stellar-core-db-url",
 		EnvVar:    "STELLAR_CORE_DATABASE_URL",

@@ -18,18 +18,25 @@ func ExampleInflation() {
 
 	op := Inflation{}
 
-	tx := Transaction{
-		SourceAccount: &sourceAccount,
-		Operations:    []Operation{&op},
-		Timebounds:    NewInfiniteTimeout(), // Use a real timeout in production!
-		Network:       network.TestNetworkPassphrase,
-	}
+	tx, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&op},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(), // Use a real timeout in production!
+		},
+	)
+	check(err)
 
-	txe, err := tx.BuildSignEncode(kp.(*keypair.Full))
+	tx, err = tx.Sign(network.TestNetworkPassphrase, kp.(*keypair.Full))
+	check(err)
+
+	txe, err := tx.Base64()
 	check(err)
 	fmt.Println(txe)
 
-	// Output: AAAAAgAAAADg3G3hclysZlFitS+s5zWyiiJD5B0STWy5LXCj6i5yxQAAAGQADKI/AAAABAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAACQAAAAAAAAAB6i5yxQAAAED9zR1l78yiBwd/o44RyE3XP7QT57VmI90qE46TjfncYyqlOaIRWpkh3qouTjV5IRPVGo6+bFWV40H1HE087FgA
+	// Output: AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAMoj8AAAAEAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAJAAAAAAAAAAHqLnLFAAAAQP3NHWXvzKIHB3+jjhHITdc/tBPntWYj3SoTjpON+dxjKqU5ohFamSHeqi5ONXkhE9Uajr5sVZXjQfUcTTzsWAA=
 }
 
 func ExampleCreateAccount() {
@@ -44,18 +51,25 @@ func ExampleCreateAccount() {
 		Amount:      "10",
 	}
 
-	tx := Transaction{
-		SourceAccount: &sourceAccount,
-		Operations:    []Operation{&op},
-		Timebounds:    NewInfiniteTimeout(), // Use a real timeout in production!
-		Network:       network.TestNetworkPassphrase,
-	}
+	tx, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&op},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(), // Use a real timeout in production!
+		},
+	)
+	check(err)
 
-	txe, err := tx.BuildSignEncode(kp.(*keypair.Full))
+	tx, err = tx.Sign(network.TestNetworkPassphrase, kp.(*keypair.Full))
+	check(err)
+
+	txe, err := tx.Base64()
 	check(err)
 	fmt.Println(txe)
 
-	// Output: AAAAAgAAAADg3G3hclysZlFitS+s5zWyiiJD5B0STWy5LXCj6i5yxQAAAGQADKI/AAAABAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAACE4N7avBtJL576CIWTzGCbGPvSlVfMQAOjcYbSsSF2VAAAAAAF9eEAAAAAAAAAAAHqLnLFAAAAQKsrlxt6Ri/WuDGcK1+Tk1hdYHdPeK7KMIds10mcwzw6BpQFZYxP8o6O6ejJFGO06TAGt2PolwuWnpeiVQ9Kcg0=
+	// Output: AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAMoj8AAAAEAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAITg3tq8G0kvnvoIhZPMYJsY+9KVV8xAA6NxhtKxIXZUAAAAAAX14QAAAAAAAAAAAeoucsUAAABAqyuXG3pGL9a4MZwrX5OTWF1gd094rsowh2zXSZzDPDoGlAVljE/yjo7p6MkUY7TpMAa3Y+iXC5ael6JVD0pyDQ==
 }
 
 func ExamplePayment() {
@@ -71,18 +85,25 @@ func ExamplePayment() {
 		Asset:       NativeAsset{},
 	}
 
-	tx := Transaction{
-		SourceAccount: &sourceAccount,
-		Operations:    []Operation{&op},
-		Timebounds:    NewInfiniteTimeout(), // Use a real timeout in production!
-		Network:       network.TestNetworkPassphrase,
-	}
+	tx, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&op},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(), // Use a real timeout in production!
+		},
+	)
+	check(err)
 
-	txe, err := tx.BuildSignEncode(kp.(*keypair.Full))
+	tx, err = tx.Sign(network.TestNetworkPassphrase, kp.(*keypair.Full))
+	check(err)
+
+	txe, err := tx.Base64()
 	check(err)
 	fmt.Println(txe)
 
-	// Output: AAAAAgAAAADg3G3hclysZlFitS+s5zWyiiJD5B0STWy5LXCj6i5yxQAAAGQADKI/AAAABAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAQAAAACE4N7avBtJL576CIWTzGCbGPvSlVfMQAOjcYbSsSF2VAAAAAAAAAAABfXhAAAAAAAAAAAB6i5yxQAAAEB2/C066OEFac3Bszk6FtvKd+NKOeCl+f8caHQATPos8HkJW1Sm/WyEkVDrvrDX4udMHl3gHhlS/qE0EuWEeJYC
+	// Output: AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAMoj8AAAAEAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAABAAAAAITg3tq8G0kvnvoIhZPMYJsY+9KVV8xAA6NxhtKxIXZUAAAAAAAAAAAF9eEAAAAAAAAAAAHqLnLFAAAAQHb8LTro4QVpzcGzOToW28p340o54KX5/xxodABM+izweQlbVKb9bISRUOu+sNfi50weXeAeGVL+oTQS5YR4lgI=
 }
 
 func ExamplePayment_setBaseFee() {
@@ -108,19 +129,25 @@ func ExamplePayment_setBaseFee() {
 	feeStats, err := client.FeeStats()
 	check(err)
 
-	tx := Transaction{
-		SourceAccount: &sourceAccount,
-		Operations:    []Operation{&op1, &op2},
-		Timebounds:    NewInfiniteTimeout(), // Use a real timeout in production!
-		Network:       network.TestNetworkPassphrase,
-		BaseFee:       uint32(feeStats.MaxFee.P50),
-	}
+	tx, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&op1, &op2},
+			BaseFee:              feeStats.MaxFee.P50,
+			Timebounds:           NewInfiniteTimeout(), // Use a real timeout in production!
+		},
+	)
+	check(err)
 
-	txe, err := tx.BuildSignEncode(kp.(*keypair.Full))
+	tx, err = tx.Sign(network.TestNetworkPassphrase, kp.(*keypair.Full))
+	check(err)
+
+	txe, err := tx.Base64()
 	check(err)
 	fmt.Println(txe)
 
-	// Output: AAAAAgAAAADg3G3hclysZlFitS+s5zWyiiJD5B0STWy5LXCj6i5yxQAABLAADKI/AAAABAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAQAAAACE4N7avBtJL576CIWTzGCbGPvSlVfMQAOjcYbSsSF2VAAAAAAAAAAABfXhAAAAAAAAAAABAAAAAITg3tq8G0kvnvoIhZPMYJsY+9KVV8xAA6NxhtKxIXZUAAAAAAAAAAA7msoAAAAAAAAAAAHqLnLFAAAAQMmOXP+k93ENYtu7evNTu2h63UkNrQnF6ci49Oh1XufQ3rhzS4Dd1+6AXqgWa4FbcvlTVRjxCurkflI4Rov2xgQ=
+	// Output: AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAEsAAMoj8AAAAEAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAAAAAAABAAAAAITg3tq8G0kvnvoIhZPMYJsY+9KVV8xAA6NxhtKxIXZUAAAAAAAAAAAF9eEAAAAAAAAAAAEAAAAAhODe2rwbSS+e+giFk8xgmxj70pVXzEADo3GG0rEhdlQAAAAAAAAAADuaygAAAAAAAAAAAeoucsUAAABAyY5c/6T3cQ1i27t681O7aHrdSQ2tCcXpyLj06HVe59DeuHNLgN3X7oBeqBZrgVty+VNVGPEK6uR+UjhGi/bGBA==
 }
 
 func ExampleBumpSequence() {
@@ -134,18 +161,25 @@ func ExampleBumpSequence() {
 		BumpTo: 9606132444168300,
 	}
 
-	tx := Transaction{
-		SourceAccount: &sourceAccount,
-		Operations:    []Operation{&op},
-		Timebounds:    NewInfiniteTimeout(), // Use a real timeout in production!
-		Network:       network.TestNetworkPassphrase,
-	}
+	tx, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&op},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(), // Use a real timeout in production!
+		},
+	)
+	check(err)
 
-	txe, err := tx.BuildSignEncode(kp.(*keypair.Full))
+	tx, err = tx.Sign(network.TestNetworkPassphrase, kp.(*keypair.Full))
+	check(err)
+
+	txe, err := tx.Base64()
 	check(err)
 	fmt.Println(txe)
 
-	// Output: AAAAAgAAAADg3G3hclysZlFitS+s5zWyiiJD5B0STWy5LXCj6i5yxQAAAGQADKI/AAAABAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAACwAiILoAAABsAAAAAAAAAAHqLnLFAAAAQEIvyOHdPn82ckKXISGF6sR4YU5ox735ivKrC/wS4615j1AA42vbXSLqShJA5/7/DX56UUv+Lt7vlcu9M7jsRw4=
+	// Output: AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAMoj8AAAAEAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAALACIgugAAAGwAAAAAAAAAAeoucsUAAABAQi/I4d0+fzZyQpchIYXqxHhhTmjHvfmK8qsL/BLjrXmPUADja9tdIupKEkDn/v8NfnpRS/4u3u+Vy70zuOxHDg==
 }
 
 func ExampleAccountMerge() {
@@ -159,18 +193,25 @@ func ExampleAccountMerge() {
 		Destination: "GCCOBXW2XQNUSL467IEILE6MMCNRR66SSVL4YQADUNYYNUVREF3FIV2Z",
 	}
 
-	tx := Transaction{
-		SourceAccount: &sourceAccount,
-		Operations:    []Operation{&op},
-		Timebounds:    NewInfiniteTimeout(), // Use a real timeout in production!
-		Network:       network.TestNetworkPassphrase,
-	}
+	tx, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&op},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(), // Use a real timeout in production!
+		},
+	)
+	check(err)
 
-	txe, err := tx.BuildSignEncode(kp.(*keypair.Full))
+	tx, err = tx.Sign(network.TestNetworkPassphrase, kp.(*keypair.Full))
+	check(err)
+
+	txe, err := tx.Base64()
 	check(err)
 	fmt.Println(txe)
 
-	// Output: AAAAAgAAAADg3G3hclysZlFitS+s5zWyiiJD5B0STWy5LXCj6i5yxQAAAGQADKI/AAAABAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAACAAAAACE4N7avBtJL576CIWTzGCbGPvSlVfMQAOjcYbSsSF2VAAAAAAAAAAB6i5yxQAAAEAvOx3WHzmaTsf4rK+yRDsvXn9xh+dU6CkpAum+FCXQ5LZQqhxQg9HErbSfxeTFMdknEpMKXgJRFUfAetl+jf4O
+	// Output: AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAMoj8AAAAEAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAIAAAAAITg3tq8G0kvnvoIhZPMYJsY+9KVV8xAA6NxhtKxIXZUAAAAAAAAAAHqLnLFAAAAQC87HdYfOZpOx/isr7JEOy9ef3GH51ToKSkC6b4UJdDktlCqHFCD0cSttJ/F5MUx2ScSkwpeAlEVR8B62X6N/g4=
 }
 
 func ExampleManageData() {
@@ -185,18 +226,25 @@ func ExampleManageData() {
 		Value: []byte("Apple"),
 	}
 
-	tx := Transaction{
-		SourceAccount: &sourceAccount,
-		Operations:    []Operation{&op},
-		Timebounds:    NewInfiniteTimeout(), // Use a real timeout in production!
-		Network:       network.TestNetworkPassphrase,
-	}
+	tx, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&op},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(), // Use a real timeout in production!
+		},
+	)
+	check(err)
 
-	txe, err := tx.BuildSignEncode(kp.(*keypair.Full))
+	tx, err = tx.Sign(network.TestNetworkPassphrase, kp.(*keypair.Full))
+	check(err)
+
+	txe, err := tx.Base64()
 	check(err)
 	fmt.Println(txe)
 
-	// Output: AAAAAgAAAADg3G3hclysZlFitS+s5zWyiiJD5B0STWy5LXCj6i5yxQAAAGQADKI/AAAABAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAACgAAABBGcnVpdCBwcmVmZXJlbmNlAAAAAQAAAAVBcHBsZQAAAAAAAAAAAAAB6i5yxQAAAEDtRCyQRKKgQ8iLEu7kicHtSzoplfxPtPTMhdRv/sq8UoIBVTxIw+S13Jv+jzs3tyLDLiGCVNXreUNlbfX+980K
+	// Output: AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAMoj8AAAAEAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAKAAAAEEZydWl0IHByZWZlcmVuY2UAAAABAAAABUFwcGxlAAAAAAAAAAAAAAHqLnLFAAAAQO1ELJBEoqBDyIsS7uSJwe1LOimV/E+09MyF1G/+yrxSggFVPEjD5LXcm/6POze3IsMuIYJU1et5Q2Vt9f73zQo=
 }
 
 func ExampleManageData_removeDataEntry() {
@@ -210,18 +258,25 @@ func ExampleManageData_removeDataEntry() {
 		Name: "Fruit preference",
 	}
 
-	tx := Transaction{
-		SourceAccount: &sourceAccount,
-		Operations:    []Operation{&op},
-		Timebounds:    NewInfiniteTimeout(), // Use a real timeout in production!
-		Network:       network.TestNetworkPassphrase,
-	}
+	tx, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&op},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(), // Use a real timeout in production!
+		},
+	)
+	check(err)
 
-	txe, err := tx.BuildSignEncode(kp.(*keypair.Full))
+	tx, err = tx.Sign(network.TestNetworkPassphrase, kp.(*keypair.Full))
+	check(err)
+
+	txe, err := tx.Base64()
 	check(err)
 	fmt.Println(txe)
 
-	// Output: AAAAAgAAAADg3G3hclysZlFitS+s5zWyiiJD5B0STWy5LXCj6i5yxQAAAGQADKI/AAAABAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAACgAAABBGcnVpdCBwcmVmZXJlbmNlAAAAAAAAAAAAAAAB6i5yxQAAAEDFpI1vphzG8Dny4aVDA7tyOlP579d9kWO0U/vmq6pWTrNocd6+xTiU753W50ksEscA6f1WNwUsQf+DCwmZfqIA
+	// Output: AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAMoj8AAAAEAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAKAAAAEEZydWl0IHByZWZlcmVuY2UAAAAAAAAAAAAAAAHqLnLFAAAAQMWkjW+mHMbwOfLhpUMDu3I6U/nv132RY7RT++arqlZOs2hx3r7FOJTvndbnSSwSxwDp/VY3BSxB/4MLCZl+ogA=
 }
 
 func ExampleSetOptions() {
@@ -243,18 +298,25 @@ func ExampleSetOptions() {
 		Signer:               &Signer{Address: "GCCOBXW2XQNUSL467IEILE6MMCNRR66SSVL4YQADUNYYNUVREF3FIV2Z", Weight: Threshold(4)},
 	}
 
-	tx := Transaction{
-		SourceAccount: &sourceAccount,
-		Operations:    []Operation{&op},
-		Timebounds:    NewInfiniteTimeout(), // Use a real timeout in production!
-		Network:       network.TestNetworkPassphrase,
-	}
+	tx, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&op},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(), // Use a real timeout in production!
+		},
+	)
+	check(err)
 
-	txe, err := tx.BuildSignEncode(kp.(*keypair.Full))
+	tx, err = tx.Sign(network.TestNetworkPassphrase, kp.(*keypair.Full))
+	check(err)
+
+	txe, err := tx.Base64()
 	check(err)
 	fmt.Println(txe)
 
-	// Output: AAAAAgAAAADg3G3hclysZlFitS+s5zWyiiJD5B0STWy5LXCj6i5yxQAAAGQADKI/AAAABAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAABQAAAAEAAAAAhODe2rwbSS+e+giFk8xgmxj70pVXzEADo3GG0rEhdlQAAAABAAAAAgAAAAEAAAAFAAAAAQAAAAoAAAABAAAAAQAAAAEAAAACAAAAAQAAAAIAAAABAAAAHExvdmVseUx1bWVuc0xvb2tMdW1pbm91cy5jb20AAAABAAAAAITg3tq8G0kvnvoIhZPMYJsY+9KVV8xAA6NxhtKxIXZUAAAABAAAAAAAAAAB6i5yxQAAAEBxncRuLogeNQ8sG9TojUMB6QmKDWYmhF00Wz43UX90pAQnSNcJAQxur0RA7Fn6LjJLObqyjcdIc4P2DC02u08G
+	// Output: AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAMoj8AAAAEAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAFAAAAAQAAAACE4N7avBtJL576CIWTzGCbGPvSlVfMQAOjcYbSsSF2VAAAAAEAAAACAAAAAQAAAAUAAAABAAAACgAAAAEAAAABAAAAAQAAAAIAAAABAAAAAgAAAAEAAAAcTG92ZWx5THVtZW5zTG9va0x1bWlub3VzLmNvbQAAAAEAAAAAhODe2rwbSS+e+giFk8xgmxj70pVXzEADo3GG0rEhdlQAAAAEAAAAAAAAAAHqLnLFAAAAQHGdxG4uiB41Dywb1OiNQwHpCYoNZiaEXTRbPjdRf3SkBCdI1wkBDG6vREDsWfouMks5urKNx0hzg/YMLTa7TwY=
 }
 
 func ExampleChangeTrust() {
@@ -269,18 +331,25 @@ func ExampleChangeTrust() {
 		Limit: "10",
 	}
 
-	tx := Transaction{
-		SourceAccount: &sourceAccount,
-		Operations:    []Operation{&op},
-		Timebounds:    NewInfiniteTimeout(), // Use a real timeout in production!
-		Network:       network.TestNetworkPassphrase,
-	}
+	tx, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&op},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(), // Use a real timeout in production!
+		},
+	)
+	check(err)
 
-	txe, err := tx.BuildSignEncode(kp.(*keypair.Full))
+	tx, err = tx.Sign(network.TestNetworkPassphrase, kp.(*keypair.Full))
+	check(err)
+
+	txe, err := tx.Base64()
 	check(err)
 	fmt.Println(txe)
 
-	// Output: AAAAAgAAAADg3G3hclysZlFitS+s5zWyiiJD5B0STWy5LXCj6i5yxQAAAGQADKI/AAAABAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAABgAAAAFBQkNEAAAAAITg3tq8G0kvnvoIhZPMYJsY+9KVV8xAA6NxhtKxIXZUAAAAAAX14QAAAAAAAAAAAeoucsUAAABAqqUuIlFMrlElYnGSLHlaI/A41oGA3rdtc1EHhza9bXk35ZwlEvmsBUOZTasZfgBzwd+CczekWKBCEqBCHzaSBw==
+	// Output: AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAMoj8AAAAEAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAGAAAAAUFCQ0QAAAAAhODe2rwbSS+e+giFk8xgmxj70pVXzEADo3GG0rEhdlQAAAAABfXhAAAAAAAAAAAB6i5yxQAAAECqpS4iUUyuUSVicZIseVoj8DjWgYDet21zUQeHNr1teTflnCUS+awFQ5lNqxl+AHPB34JzN6RYoEISoEIfNpIH
 }
 
 func ExampleChangeTrust_removeTrustline() {
@@ -292,18 +361,25 @@ func ExampleChangeTrust_removeTrustline() {
 
 	op := RemoveTrustlineOp(CreditAsset{"ABCD", "GCCOBXW2XQNUSL467IEILE6MMCNRR66SSVL4YQADUNYYNUVREF3FIV2Z"})
 
-	tx := Transaction{
-		SourceAccount: &sourceAccount,
-		Operations:    []Operation{&op},
-		Timebounds:    NewInfiniteTimeout(), // Use a real timeout in production!
-		Network:       network.TestNetworkPassphrase,
-	}
+	tx, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&op},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(), // Use a real timeout in production!
+		},
+	)
+	check(err)
 
-	txe, err := tx.BuildSignEncode(kp.(*keypair.Full))
+	tx, err = tx.Sign(network.TestNetworkPassphrase, kp.(*keypair.Full))
+	check(err)
+
+	txe, err := tx.Base64()
 	check(err)
 	fmt.Println(txe)
 
-	// Output: AAAAAgAAAADg3G3hclysZlFitS+s5zWyiiJD5B0STWy5LXCj6i5yxQAAAGQADKI/AAAABAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAABgAAAAFBQkNEAAAAAITg3tq8G0kvnvoIhZPMYJsY+9KVV8xAA6NxhtKxIXZUAAAAAAAAAAAAAAAAAAAAAeoucsUAAABAKLmUWcLjxeY+vG8jEXMNprU6EupxbMRiXGYzuKBptnVlbFUtTBqhYa/ibyCZTEVCinT8bWQKDvZI0m6VLKVHAg==
+	// Output: AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAMoj8AAAAEAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAGAAAAAUFCQ0QAAAAAhODe2rwbSS+e+giFk8xgmxj70pVXzEADo3GG0rEhdlQAAAAAAAAAAAAAAAAAAAAB6i5yxQAAAEAouZRZwuPF5j68byMRcw2mtToS6nFsxGJcZjO4oGm2dWVsVS1MGqFhr+JvIJlMRUKKdPxtZAoO9kjSbpUspUcC
 }
 
 func ExampleAllowTrust() {
@@ -319,18 +395,25 @@ func ExampleAllowTrust() {
 		Authorize: true,
 	}
 
-	tx := Transaction{
-		SourceAccount: &sourceAccount,
-		Operations:    []Operation{&op},
-		Timebounds:    NewInfiniteTimeout(), // Use a real timeout in production!
-		Network:       network.TestNetworkPassphrase,
-	}
+	tx, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&op},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(), // Use a real timeout in production!
+		},
+	)
+	check(err)
 
-	txe, err := tx.BuildSignEncode(kp.(*keypair.Full))
+	tx, err = tx.Sign(network.TestNetworkPassphrase, kp.(*keypair.Full))
+	check(err)
+
+	txe, err := tx.Base64()
 	check(err)
 	fmt.Println(txe)
 
-	// Output: AAAAAgAAAADg3G3hclysZlFitS+s5zWyiiJD5B0STWy5LXCj6i5yxQAAAGQADKI/AAAABAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAABwAAAACE4N7avBtJL576CIWTzGCbGPvSlVfMQAOjcYbSsSF2VAAAAAFBQkNEAAAAAQAAAAAAAAAB6i5yxQAAAEAY3MnWiMcL18SxRITSuI5tZSXmEo0Q38UZg0jiJGU2U6kSnsCNTTJiGACGQlIrPfAMYt9koarrX11w7HLBosQN
+	// Output: AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAMoj8AAAAEAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAHAAAAAITg3tq8G0kvnvoIhZPMYJsY+9KVV8xAA6NxhtKxIXZUAAAAAUFCQ0QAAAABAAAAAAAAAAHqLnLFAAAAQBjcydaIxwvXxLFEhNK4jm1lJeYSjRDfxRmDSOIkZTZTqRKewI1NMmIYAIZCUis98Axi32ShqutfXXDscsGixA0=
 }
 
 func ExampleManageSellOffer() {
@@ -347,18 +430,25 @@ func ExampleManageSellOffer() {
 	op, err := CreateOfferOp(selling, buying, sellAmount, price)
 	check(err)
 
-	tx := Transaction{
-		SourceAccount: &sourceAccount,
-		Operations:    []Operation{&op},
-		Timebounds:    NewInfiniteTimeout(), // Use a real timeout in production!
-		Network:       network.TestNetworkPassphrase,
-	}
+	tx, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&op},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(), // Use a real timeout in production!
+		},
+	)
+	check(err)
 
-	txe, err := tx.BuildSignEncode(kp.(*keypair.Full))
+	tx, err = tx.Sign(network.TestNetworkPassphrase, kp.(*keypair.Full))
+	check(err)
+
+	txe, err := tx.Base64()
 	check(err)
 	fmt.Println(txe)
 
-	// Output: AAAAAgAAAADg3G3hclysZlFitS+s5zWyiiJD5B0STWy5LXCj6i5yxQAAAGQADKI/AAAABAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAwAAAAAAAAABQUJDRAAAAAAlyvHaD8duz+iEXkJUUbsHkklIlH46oMrMMYrt0odkfgAAAAA7msoAAAAAAQAAAGQAAAAAAAAAAAAAAAAAAAAB6i5yxQAAAEBtfrN+VUE7iCwBk0+rmg0/Ua4DItMWEy6naGWxoDBi4ksCIJSZPzkv79Q65rIaFyIcC/zuyJcnIcv73AP+HQEK
+	// Output: AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAMoj8AAAAEAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAADAAAAAAAAAAFBQkNEAAAAACXK8doPx27P6IReQlRRuweSSUiUfjqgyswxiu3Sh2R+AAAAADuaygAAAAABAAAAZAAAAAAAAAAAAAAAAAAAAAHqLnLFAAAAQG1+s35VQTuILAGTT6uaDT9RrgMi0xYTLqdoZbGgMGLiSwIglJk/OS/v1DrmshoXIhwL/O7Ilychy/vcA/4dAQo=
 }
 
 func ExampleManageSellOffer_deleteOffer() {
@@ -372,18 +462,25 @@ func ExampleManageSellOffer_deleteOffer() {
 	op, err := DeleteOfferOp(offerID)
 	check(err)
 
-	tx := Transaction{
-		SourceAccount: &sourceAccount,
-		Operations:    []Operation{&op},
-		Timebounds:    NewInfiniteTimeout(), // Use a real timeout in production!
-		Network:       network.TestNetworkPassphrase,
-	}
+	tx, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&op},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(), // Use a real timeout in production!
+		},
+	)
+	check(err)
 
-	txe, err := tx.BuildSignEncode(kp.(*keypair.Full))
+	tx, err = tx.Sign(network.TestNetworkPassphrase, kp.(*keypair.Full))
+	check(err)
+
+	txe, err := tx.Base64()
 	check(err)
 	fmt.Println(txe)
 
-	// Output: AAAAAgAAAADg3G3hclysZlFitS+s5zWyiiJD5B0STWy5LXCj6i5yxQAAAGQADKI/AAAABAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAwAAAAAAAAABRkFLRQAAAABBB4BkxJWGYvNgJBoiXUo2tjgWlNmhHMMKdwGN7RSdsQAAAAAAAAAAAAAAAQAAAAEAAAAAACyUlgAAAAAAAAAB6i5yxQAAAEBnE+oILauqt6m8fj7DIBNW/XBmKJ34SLvHdxP04vb26aI8q9i/2p9/pJMnWPeOoIw0f6jreR306qPJFhjMtl4G
+	// Output: AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAMoj8AAAAEAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAADAAAAAAAAAAFGQUtFAAAAAEEHgGTElYZi82AkGiJdSja2OBaU2aEcwwp3AY3tFJ2xAAAAAAAAAAAAAAABAAAAAQAAAAAALJSWAAAAAAAAAAHqLnLFAAAAQGcT6ggtq6q3qbx+PsMgE1b9cGYonfhIu8d3E/Ti9vbpojyr2L/an3+kkydY946gjDR/qOt5HfTqo8kWGMy2XgY=
 }
 
 func ExampleManageSellOffer_updateOffer() {
@@ -401,18 +498,25 @@ func ExampleManageSellOffer_updateOffer() {
 	op, err := UpdateOfferOp(selling, buying, sellAmount, price, offerID)
 	check(err)
 
-	tx := Transaction{
-		SourceAccount: &sourceAccount,
-		Operations:    []Operation{&op},
-		Timebounds:    NewInfiniteTimeout(), // Use a real timeout in production!
-		Network:       network.TestNetworkPassphrase,
-	}
+	tx, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&op},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(), // Use a real timeout in production!
+		},
+	)
+	check(err)
 
-	txe, err := tx.BuildSignEncode(kp.(*keypair.Full))
+	tx, err = tx.Sign(network.TestNetworkPassphrase, kp.(*keypair.Full))
+	check(err)
+
+	txe, err := tx.Base64()
 	check(err)
 	fmt.Println(txe)
 
-	// Output: AAAAAgAAAADg3G3hclysZlFitS+s5zWyiiJD5B0STWy5LXCj6i5yxQAAAGQADKI/AAAABAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAwAAAAAAAAABQUJDRAAAAAAlyvHaD8duz+iEXkJUUbsHkklIlH46oMrMMYrt0odkfgAAAAAdzWUAAAAAAQAAADIAAAAAACYcXAAAAAAAAAAB6i5yxQAAAECmO+4yukAuLRtR4IRWPVtoyZ2LJeaipPuec+/M1JGDoTFPULDl3kgugPwV3mr0jvMNArBdR8S3NUw31gtT5TcO
+	// Output: AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAMoj8AAAAEAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAADAAAAAAAAAAFBQkNEAAAAACXK8doPx27P6IReQlRRuweSSUiUfjqgyswxiu3Sh2R+AAAAAB3NZQAAAAABAAAAMgAAAAAAJhxcAAAAAAAAAAHqLnLFAAAAQKY77jK6QC4tG1HghFY9W2jJnYsl5qKk+55z78zUkYOhMU9QsOXeSC6A/BXeavSO8w0CsF1HxLc1TDfWC1PlNw4=
 }
 
 func ExampleCreatePassiveSellOffer() {
@@ -429,18 +533,25 @@ func ExampleCreatePassiveSellOffer() {
 		Price:   "1.0",
 	}
 
-	tx := Transaction{
-		SourceAccount: &sourceAccount,
-		Operations:    []Operation{&op},
-		Timebounds:    NewInfiniteTimeout(), // Use a real timeout in production!
-		Network:       network.TestNetworkPassphrase,
-	}
+	tx, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&op},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(), // Use a real timeout in production!
+		},
+	)
+	check(err)
 
-	txe, err := tx.BuildSignEncode(kp.(*keypair.Full))
+	tx, err = tx.Sign(network.TestNetworkPassphrase, kp.(*keypair.Full))
+	check(err)
+
+	txe, err := tx.Base64()
 	check(err)
 	fmt.Println(txe)
 
-	// Output: AAAAAgAAAADg3G3hclysZlFitS+s5zWyiiJD5B0STWy5LXCj6i5yxQAAAGQADKI/AAAABAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAABAAAAAAAAAABQUJDRAAAAAAlyvHaD8duz+iEXkJUUbsHkklIlH46oMrMMYrt0odkfgAAAAAF9eEAAAAAAQAAAAEAAAAAAAAAAeoucsUAAABAE4XbLdDVz1MwC9Bs84nkqK8hyHheVbYznNSiAP0hiP8auvcKAMnYz3HJvzM8H0q/K5MPvgBaehHZ/tQtaPSGBg==
+	// Output: AAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAMoj8AAAAEAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAEAAAAAAAAAAFBQkNEAAAAACXK8doPx27P6IReQlRRuweSSUiUfjqgyswxiu3Sh2R+AAAAAAX14QAAAAABAAAAAQAAAAAAAAAB6i5yxQAAAEAThdst0NXPUzAL0GzzieSoryHIeF5VtjOc1KIA/SGI/xq69woAydjPccm/MzwfSr8rkw++AFp6Edn+1C1o9IYG
 }
 
 func ExamplePathPayment() {
@@ -460,18 +571,25 @@ func ExamplePathPayment() {
 		Path:        []Asset{abcdAsset},
 	}
 
-	tx := Transaction{
-		SourceAccount: &sourceAccount,
-		Operations:    []Operation{&op},
-		Timebounds:    NewInfiniteTimeout(), // Use a real timeout in production!
-		Network:       network.TestNetworkPassphrase,
-	}
+	tx, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&op},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(), // Use a real timeout in production!
+		},
+	)
+	check(err)
 
-	txe, err := tx.BuildSignEncode(kp.(*keypair.Full))
+	tx, err = tx.Sign(network.TestNetworkPassphrase, kp.(*keypair.Full))
+	check(err)
+
+	txe, err := tx.Base64()
 	check(err)
 	fmt.Println(txe)
 
-	// Output: AAAAAgAAAAB+Ecs01jX14asC1KAsPdWlpGbYCM2PEgFZCD3NLhVZmAAAAGQADKI/AAAABAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAgAAAAAAAAAABfXhAAAAAAB+Ecs01jX14asC1KAsPdWlpGbYCM2PEgFZCD3NLhVZmAAAAAAAAAAAAJiWgAAAAAEAAAABQUJDRAAAAADg3G3hclysZlFitS+s5zWyiiJD5B0STWy5LXCj6i5yxQAAAAAAAAABLhVZmAAAAEDhhPsNm7yKfCUCDyBV1pOZDu+3DVDpT2cJSLQOVevP6pmU2yVqvMKnWbYxC5GbTXEEF+MfBE6EoW5+Z4rRt0QO
+	// Output: AAAAAH4RyzTWNfXhqwLUoCw91aWkZtgIzY8SAVkIPc0uFVmYAAAAZAAMoj8AAAAEAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAACAAAAAAAAAAAF9eEAAAAAAH4RyzTWNfXhqwLUoCw91aWkZtgIzY8SAVkIPc0uFVmYAAAAAAAAAAAAmJaAAAAAAQAAAAFBQkNEAAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAAAAAAAEuFVmYAAAAQOGE+w2bvIp8JQIPIFXWk5kO77cNUOlPZwlItA5V68/qmZTbJWq8wqdZtjELkZtNcQQX4x8EToShbn5nitG3RA4=
 }
 
 func ExamplePathPaymentStrictReceive() {
@@ -491,18 +609,25 @@ func ExamplePathPaymentStrictReceive() {
 		Path:        []Asset{abcdAsset},
 	}
 
-	tx := Transaction{
-		SourceAccount: &sourceAccount,
-		Operations:    []Operation{&op},
-		Timebounds:    NewInfiniteTimeout(), // Use a real timeout in production!
-		Network:       network.TestNetworkPassphrase,
-	}
+	tx, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&op},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(), // Use a real timeout in production!
+		},
+	)
+	check(err)
 
-	txe, err := tx.BuildSignEncode(kp.(*keypair.Full))
+	tx, err = tx.Sign(network.TestNetworkPassphrase, kp.(*keypair.Full))
+	check(err)
+
+	txe, err := tx.Base64()
 	check(err)
 	fmt.Println(txe)
 
-	// Output: AAAAAgAAAAB+Ecs01jX14asC1KAsPdWlpGbYCM2PEgFZCD3NLhVZmAAAAGQADKI/AAAABAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAgAAAAAAAAAABfXhAAAAAAB+Ecs01jX14asC1KAsPdWlpGbYCM2PEgFZCD3NLhVZmAAAAAAAAAAAAJiWgAAAAAEAAAABQUJDRAAAAADg3G3hclysZlFitS+s5zWyiiJD5B0STWy5LXCj6i5yxQAAAAAAAAABLhVZmAAAAEDhhPsNm7yKfCUCDyBV1pOZDu+3DVDpT2cJSLQOVevP6pmU2yVqvMKnWbYxC5GbTXEEF+MfBE6EoW5+Z4rRt0QO
+	// Output: AAAAAH4RyzTWNfXhqwLUoCw91aWkZtgIzY8SAVkIPc0uFVmYAAAAZAAMoj8AAAAEAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAACAAAAAAAAAAAF9eEAAAAAAH4RyzTWNfXhqwLUoCw91aWkZtgIzY8SAVkIPc0uFVmYAAAAAAAAAAAAmJaAAAAAAQAAAAFBQkNEAAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAAAAAAAEuFVmYAAAAQOGE+w2bvIp8JQIPIFXWk5kO77cNUOlPZwlItA5V68/qmZTbJWq8wqdZtjELkZtNcQQX4x8EToShbn5nitG3RA4=
 }
 
 func ExamplePathPaymentStrictSend() {
@@ -522,18 +647,25 @@ func ExamplePathPaymentStrictSend() {
 		Path:        []Asset{abcdAsset},
 	}
 
-	tx := Transaction{
-		SourceAccount: &sourceAccount,
-		Operations:    []Operation{&op},
-		Timebounds:    NewInfiniteTimeout(), // Use a real timeout in production!
-		Network:       network.TestNetworkPassphrase,
-	}
+	tx, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&op},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(), // Use a real timeout in production!
+		},
+	)
+	check(err)
 
-	txe, err := tx.BuildSignEncode(kp.(*keypair.Full))
+	tx, err = tx.Sign(network.TestNetworkPassphrase, kp.(*keypair.Full))
+	check(err)
+
+	txe, err := tx.Base64()
 	check(err)
 	fmt.Println(txe)
 
-	// Output: AAAAAgAAAAB+Ecs01jX14asC1KAsPdWlpGbYCM2PEgFZCD3NLhVZmAAAAGQADKI/AAAABAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAADQAAAAAAAAAAAJiWgAAAAAB+Ecs01jX14asC1KAsPdWlpGbYCM2PEgFZCD3NLhVZmAAAAAAAAAAABfXhAAAAAAEAAAABQUJDRAAAAADg3G3hclysZlFitS+s5zWyiiJD5B0STWy5LXCj6i5yxQAAAAAAAAABLhVZmAAAAEDV6CmR4ATvtm2qBzHE9UqqS95ZnIIHgpuU7hTZO38DHhf+oeZQ02DGvst4vYMMAIPGkMAsLlfAN/AFinz74DAD
+	// Output: AAAAAH4RyzTWNfXhqwLUoCw91aWkZtgIzY8SAVkIPc0uFVmYAAAAZAAMoj8AAAAEAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAANAAAAAAAAAAAAmJaAAAAAAH4RyzTWNfXhqwLUoCw91aWkZtgIzY8SAVkIPc0uFVmYAAAAAAAAAAAF9eEAAAAAAQAAAAFBQkNEAAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAAAAAAAEuFVmYAAAAQNXoKZHgBO+2baoHMcT1SqpL3lmcggeCm5TuFNk7fwMeF/6h5lDTYMa+y3i9gwwAg8aQwCwuV8A38AWKfPvgMAM=
 }
 
 func ExampleManageBuyOffer() {
@@ -551,20 +683,73 @@ func ExampleManageBuyOffer() {
 		OfferID: 0,
 	}
 
-	tx := Transaction{
-		SourceAccount: &sourceAccount,
-		Operations:    []Operation{&buyOffer},
-		Timebounds:    NewInfiniteTimeout(),
-		Network:       network.TestNetworkPassphrase,
-	}
+	tx, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&buyOffer},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(), // Use a real timeout in production!
+		},
+	)
+	check(err)
 
-	txe, err := tx.BuildSignEncode(kp.(*keypair.Full))
+	tx, err = tx.Sign(network.TestNetworkPassphrase, kp.(*keypair.Full))
+	check(err)
+
+	txe, err := tx.Base64()
 	check(err)
 	fmt.Println(txe)
 
-	// Output: AAAAAgAAAAB+Ecs01jX14asC1KAsPdWlpGbYCM2PEgFZCD3NLhVZmAAAAGQADKI/AAAABAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAADAAAAAAAAAABQUJDRAAAAADg3G3hclysZlFitS+s5zWyiiJD5B0STWy5LXCj6i5yxQAAAAA7msoAAAAAAQAAAGQAAAAAAAAAAAAAAAAAAAABLhVZmAAAAED4fIdU68w6XIMwf1RPFdF9qRRlfPycrmK8dCOW0XwSbiya9JfMi9YrD9cGY7zHV+3zYpLcEi7lLo++PZ1gOsAK
+	// Output: AAAAAH4RyzTWNfXhqwLUoCw91aWkZtgIzY8SAVkIPc0uFVmYAAAAZAAMoj8AAAAEAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAMAAAAAAAAAAFBQkNEAAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAADuaygAAAAABAAAAZAAAAAAAAAAAAAAAAAAAAAEuFVmYAAAAQPh8h1TrzDpcgzB/VE8V0X2pFGV8/JyuYrx0I5bRfBJuLJr0l8yL1isP1wZjvMdX7fNiktwSLuUuj749nWA6wAo=
 
 }
+
+// Action needed in release: horizonclient-v3.1.0
+// Uncomment this example when protocol 13 is enabled
+//func ExampleFeeBumpTransaction() {
+//	kp, _ := keypair.Parse("SBPQUZ6G4FZNWFHKUWC5BEYWF6R52E3SEP7R3GWYSM2XTKGF5LNTWW4R")
+//	client := horizonclient.DefaultTestNetClient
+//	ar := horizonclient.AccountRequest{AccountID: kp.Address()}
+//	sourceAccount, err := client.AccountDetail(ar)
+//	check(err)
+//
+//	op := BumpSequence{
+//		BumpTo: 9606132444168300,
+//	}
+//
+//	tx, err := NewTransaction(
+//		TransactionParams{
+//			SourceAccount:        &sourceAccount,
+//			IncrementSequenceNum: true,
+//			Operations:           []Operation{&op},
+//			BaseFee:              MinBaseFee,
+//			Timebounds:           NewInfiniteTimeout(), // Use a real timeout in production!
+//		},
+//	)
+//	check(err)
+//	tx, err = tx.Sign(network.TestNetworkPassphrase, kp.(*keypair.Full))
+//	check(err)
+//
+//	feeBumpKP, _ := keypair.Parse("SBZVMB74Z76QZ3ZOY7UTDFYKMEGKW5XFJEB6PFKBF4UYSSWHG4EDH7PY")
+//	convertToV1Tx(tx)
+//	feeBumpTx, err := NewFeeBumpTransaction(
+//		FeeBumpTransactionParams{
+//			Inner:      tx,
+//			FeeAccount: feeBumpKP.Address(),
+//			BaseFee:    MinBaseFee,
+//		},
+//	)
+//	check(err)
+//	feeBumpTx, err = feeBumpTx.Sign(network.TestNetworkPassphrase, feeBumpKP.(*keypair.Full))
+//	check(err)
+//
+//	txe, err := feeBumpTx.Base64()
+//	check(err)
+//	fmt.Println(txe)
+//
+//	// Output: AAAABQAAAAB+Ecs01jX14asC1KAsPdWlpGbYCM2PEgFZCD3NLhVZmAAAAAAAAADIAAAAAgAAAADg3G3hclysZlFitS+s5zWyiiJD5B0STWy5LXCj6i5yxQAAAGQADKI/AAAABAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAACwAiILoAAABsAAAAAAAAAAHqLnLFAAAAQEIvyOHdPn82ckKXISGF6sR4YU5ox735ivKrC/wS4615j1AA42vbXSLqShJA5/7/DX56UUv+Lt7vlcu9M7jsRw4AAAAAAAAAAS4VWZgAAABAeD0gL6WpzSdGTzWd4c9yUu3r+W21hOTLT4ItHGBTHYPT20Wk3dytuqfP89EzlkZXvtG8/N0HH4w+oJCLOL/5Aw==
+//}
 
 func ExampleBuildChallengeTx() {
 	// Generate random nonce
@@ -574,7 +759,11 @@ func ExampleBuildChallengeTx() {
 	timebound := time.Duration(5 * time.Minute)
 
 	tx, err := BuildChallengeTx(serverSignerSeed, clientAccountID, anchorName, network.TestNetworkPassphrase, timebound)
-	_, err = checkChallengeTx(tx, anchorName)
+	check(err)
+
+	txeBase64, err := tx.Base64()
+	check(err)
+	_, err = checkChallengeTx(txeBase64, anchorName)
 
 	check(err)
 }

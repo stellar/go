@@ -96,6 +96,22 @@ func TestDelete(t *testing.T) {
 		}
 		assert.ElementsMatch(t, wantRows, rows)
 	}
+	// Check that account 1 delete has been audited
+	{
+		type row struct {
+			AuditOp string `db:"audit_op"`
+			Address string `db:"address"`
+		}
+		rows := []row{}
+		err = session.Select(&rows, `SELECT audit_op, address FROM accounts_audit`)
+		require.NoError(t, err)
+		wantRows := []row{
+			{AuditOp: "INSERT", Address: a1Address},
+			{AuditOp: "INSERT", Address: a2Address},
+			{AuditOp: "DELETE", Address: a1Address},
+		}
+		assert.Equal(t, wantRows, rows)
+	}
 
 	// Check that account 1's identities are gone and account 2's remain
 	{
@@ -110,6 +126,24 @@ func TestDelete(t *testing.T) {
 			{Role: "owner"},
 		}
 		assert.ElementsMatch(t, wantRows, rows)
+	}
+	// Check that account 1's identity's deletes have been audited
+	{
+		type row struct {
+			AuditOp string `db:"audit_op"`
+			Role    string `db:"role"`
+		}
+		rows := []row{}
+		err = session.Select(&rows, `SELECT audit_op, role FROM identities_audit`)
+		require.NoError(t, err)
+		wantRows := []row{
+			{AuditOp: "INSERT", Role: "sender"},
+			{AuditOp: "INSERT", Role: "receiver"},
+			{AuditOp: "INSERT", Role: "owner"},
+			{AuditOp: "DELETE", Role: "sender"},
+			{AuditOp: "DELETE", Role: "receiver"},
+		}
+		assert.Equal(t, wantRows, rows)
 	}
 
 	// Check that account 1's auth methods are gone and account 2's remain
@@ -127,6 +161,34 @@ func TestDelete(t *testing.T) {
 			{Value: "user3@example.com"},
 		}
 		assert.ElementsMatch(t, wantRows, rows)
+	}
+	// Check that account 1's auth methods's deletes have been audited
+	{
+		type row struct {
+			AuditOp string `db:"audit_op"`
+			Value   string `db:"value"`
+		}
+		rows := []row{}
+		err = session.Select(&rows, `SELECT audit_op, value FROM auth_methods_audit`)
+		require.NoError(t, err)
+		wantRows := []row{
+			{AuditOp: "INSERT", Value: "GD4NGMOTV4QOXWA6PGPIGVWZYMRCJAKLQJKZIP55C5DGB3GBHHET3YC6"},
+			{AuditOp: "INSERT", Value: "+10000000000"},
+			{AuditOp: "INSERT", Value: "user1@example.com"},
+			{AuditOp: "INSERT", Value: "GBJCOYGKIJYX3VUEOZ6GVMFP522UO4OEBI5KB5HHWZAZ2DEJTHS6VOHP"},
+			{AuditOp: "INSERT", Value: "+20000000000"},
+			{AuditOp: "INSERT", Value: "user2@example.com"},
+			{AuditOp: "INSERT", Value: "GAA5TI5BXVNJTA6UEDF7UTMA5FXHR2TFRCJ2G7QT6FJCJ7WD5ITIKQNE"},
+			{AuditOp: "INSERT", Value: "+30000000000"},
+			{AuditOp: "INSERT", Value: "user3@example.com"},
+			{AuditOp: "DELETE", Value: "GD4NGMOTV4QOXWA6PGPIGVWZYMRCJAKLQJKZIP55C5DGB3GBHHET3YC6"},
+			{AuditOp: "DELETE", Value: "+10000000000"},
+			{AuditOp: "DELETE", Value: "user1@example.com"},
+			{AuditOp: "DELETE", Value: "GBJCOYGKIJYX3VUEOZ6GVMFP522UO4OEBI5KB5HHWZAZ2DEJTHS6VOHP"},
+			{AuditOp: "DELETE", Value: "+20000000000"},
+			{AuditOp: "DELETE", Value: "user2@example.com"},
+		}
+		assert.Equal(t, wantRows, rows)
 	}
 
 	// Store account 3 (same address as account 1)

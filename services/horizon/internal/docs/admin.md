@@ -17,8 +17,7 @@ The Stellar Development Foundation runs two Horizon servers, one for the public 
 
 ## Prerequisites
 
-Horizon is dependent upon a stellar-core server.  Horizon needs access to both the SQL database and the HTTP API that is published by stellar-core. See [the administration guide](https://www.stellar.org/developers/stellar-core/learn/admin.html
-) to learn how to set up and administer a stellar-core server.  Secondly, Horizon is dependent upon a postgres server, which it uses to store processed core data for ease of use. Horizon requires postgres version >= 9.5.
+Horizon is dependent upon a stellar-core server.  Horizon needs access to both the SQL database and the HTTP API that is published by stellar-core. See [the administration guide](https://www.stellar.org/developers/stellar-core/software/admin.html) to learn how to set up and administer a stellar-core server.  Secondly, Horizon is dependent upon a postgres server, which it uses to store processed core data for ease of use. Horizon requires postgres version >= 9.5.
 
 ## Installing
 
@@ -75,7 +74,7 @@ To prepare a database for Horizon's use, first you must ensure the database is b
 
 ### Postgres configuration
 
-It is recommended to set `random_page_cost=1` in Postgres configuration if you are using SSD storage. With this setting Query Planner will make a better use of indexes, expecially for `JOIN` queries. We have noticed a huge speed improvement for some queries.
+It is recommended to set `random_page_cost=1` in Postgres configuration if you are using SSD storage. With this setting Query Planner will make a better use of indexes, especially for `JOIN` queries. We have noticed a huge speed improvement for some queries.
 
 ## Running
 
@@ -210,7 +209,7 @@ INFO[2019-08-29T13:40:00.972+02:00] Finished processing ledger                  
 
 Horizon ingests ledger data from a connected instance of stellar-core.  In the event that stellar-core stops running (or if Horizon stops ingesting data for any other reason), the view provided by Horizon will start to lag behind reality.  For simpler applications, this may be fine, but in many cases this lag is unacceptable and the application should not continue operating until the lag is resolved.
 
-To help applications that cannot tolerate lag, Horizon provides a configurable "staleness" threshold.  Given that enough lag has accumulated to surpass this threshold (expressed in number of ledgers), Horizon will only respond with an error: [`stale_history`](./errors/stale-history.md).  To configure this option, use either the `--history-stale-threshold` command line flag or the `HISTORY_STALE_THRESHOLD` environment variable.  NOTE:  non-historical requests (such as submitting transactions or finding payment paths) will not error out when the staleness threshold is surpassed.
+To help applications that cannot tolerate lag, Horizon provides a configurable "staleness" threshold.  Given that enough lag has accumulated to surpass this threshold (expressed in number of ledgers), Horizon will only respond with an error: [`stale_history`](./reference/errors/stale-history.md).  To configure this option, use either the `--history-stale-threshold` command line flag or the `HISTORY_STALE_THRESHOLD` environment variable.  NOTE:  non-historical requests (such as submitting transactions or finding payment paths) will not error out when the staleness threshold is surpassed.
 
 ## Monitoring
 

@@ -1,7 +1,6 @@
 package http
 
 import (
-	"context"
 	stdhttp "net/http"
 	"time"
 
@@ -32,23 +31,24 @@ func LoggingMiddleware(next stdhttp.Handler) stdhttp.Handler {
 			})
 		})
 
-		logStartOfRequest(ctx, r)
+		r = r.WithContext(ctx)
+
+		logStartOfRequest(r)
 
 		then := time.Now()
 		next.ServeHTTP(mw, r)
 		duration := time.Since(then)
 
-		logEndOfRequest(ctx, r, duration, mw)
+		logEndOfRequest(r, duration, mw)
 	})
 }
 
 // logStartOfRequest emits the logline that reports that an http request is
 // beginning processing.
 func logStartOfRequest(
-	ctx context.Context,
 	r *stdhttp.Request,
 ) {
-	log.Ctx(ctx).WithFields(log.F{
+	log.Ctx(r.Context()).WithFields(log.F{
 		"subsys": "http",
 		"path":   r.URL.String(),
 		"method": r.Method,
@@ -59,12 +59,11 @@ func logStartOfRequest(
 
 // logEndOfRequest emits the logline for the end of the request
 func logEndOfRequest(
-	ctx context.Context,
 	r *stdhttp.Request,
 	duration time.Duration,
 	mw mutil.WriterProxy,
 ) {
-	log.Ctx(ctx).WithFields(log.F{
+	log.Ctx(r.Context()).WithFields(log.F{
 		"subsys":   "http",
 		"path":     r.URL.String(),
 		"method":   r.Method,

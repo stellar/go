@@ -120,4 +120,4 @@ Information about max fee bid for transactions over the last 5 ledgers.
 
 ## Possible Errors
 
-- The [standard errors](../errors.md#Standard_Errors).
+- The [standard errors](../errors.md#standard-errors).

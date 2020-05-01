@@ -66,5 +66,5 @@ This endpoint responds with the details of a single offer for a given ID. See [o
 
 ## Possible Errors
 
-- The [standard errors](../errors.md#Standard_Errors).
+- The [standard errors](../errors.md#standard-errors).
 - [not_found](../errors/not-found.md): A `not_found` error will be returned if there is no offer whose ID matches the `offer` argument.

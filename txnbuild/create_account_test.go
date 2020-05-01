@@ -3,7 +3,6 @@ package txnbuild
 import (
 	"testing"
 
-	"github.com/stellar/go/network"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -16,14 +15,15 @@ func TestCreateAccountValidateDestination(t *testing.T) {
 		Amount:      "43",
 	}
 
-	tx := Transaction{
-		SourceAccount: &sourceAccount,
-		Operations:    []Operation{&createAccount},
-		Timebounds:    NewInfiniteTimeout(),
-		Network:       network.TestNetworkPassphrase,
-	}
-
-	err := tx.Build()
+	_, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: false,
+			Operations:           []Operation{&createAccount},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(),
+		},
+	)
 	if assert.Error(t, err) {
 		expected := "validation failed for *txnbuild.CreateAccount operation: Field: Destination, Error: public key is undefined"
 		assert.Contains(t, err.Error(), expected)
@@ -39,14 +39,16 @@ func TestCreateAccountValidateAmount(t *testing.T) {
 		Amount:      "",
 	}
 
-	tx := Transaction{
-		SourceAccount: &sourceAccount,
-		Operations:    []Operation{&createAccount},
-		Timebounds:    NewInfiniteTimeout(),
-		Network:       network.TestNetworkPassphrase,
-	}
+	_, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: false,
+			Operations:           []Operation{&createAccount},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(),
+		},
+	)
 
-	err := tx.Build()
 	if assert.Error(t, err) {
 		expected := "validation failed for *txnbuild.CreateAccount operation: Field: Amount, Error: invalid amount format"
 		assert.Contains(t, err.Error(), expected)

@@ -6,10 +6,26 @@ import (
 	"time"
 
 	"github.com/stellar/go/clients/horizonclient"
+	"github.com/stellar/go/keypair"
+	"github.com/stellar/go/network"
 	hProtocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/protocols/horizon/effects"
 	"github.com/stellar/go/protocols/horizon/operations"
+	"github.com/stellar/go/txnbuild"
 )
+
+func ExampleClient_Accounts() {
+	client := horizonclient.DefaultPublicNetClient
+	accountsRequest := horizonclient.AccountsRequest{Signer: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"}
+
+	account, err := client.Accounts(accountsRequest)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	fmt.Print(account)
+}
 
 func ExampleClient_AccountDetail() {
 	client := horizonclient.DefaultPublicNetClient
@@ -250,7 +266,6 @@ func ExampleClient_NextOffersPage() {
 		fmt.Println(nextPage)
 	}
 }
-
 func ExampleClient_NextOperationsPage() {
 	client := horizonclient.DefaultPublicNetClient
 	// all operations
@@ -397,6 +412,17 @@ func ExampleClient_NextTransactionsPage() {
 	}
 }
 
+func ExampleClient_OfferDetails() {
+	client := horizonclient.DefaultPublicNetClient
+	offer, err := client.OfferDetails("2")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	fmt.Print(offer)
+}
+
 func ExampleClient_Offers() {
 	client := horizonclient.DefaultPublicNetClient
 	offerRequest := horizonclient.OfferRequest{
@@ -405,6 +431,20 @@ func ExampleClient_Offers() {
 		Order:      horizonclient.OrderDesc,
 	}
 	offers, err := client.Offers(offerRequest)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Print(offers)
+
+	offerRequest = horizonclient.OfferRequest{
+		Seller:  "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU",
+		Selling: "COP:GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU",
+		Buying:  "EUR:GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU",
+		Order:   horizonclient.OrderDesc,
+	}
+
+	offers, err = client.Offers(offerRequest)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -486,7 +526,25 @@ func ExampleClient_Paths() {
 		DestinationAssetType:   horizonclient.AssetType4,
 		SourceAccount:          "GDZST3XVCDTUJ76ZAV2HA72KYQODXXZ5PTMAPZGDHZ6CS7RO7MGG3DBM",
 	}
-	paths, err := client.Paths(pr)
+	paths, err := client.StrictReceivePaths(pr)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Print(paths)
+}
+
+func ExampleClient_StrictSendPaths() {
+	client := horizonclient.DefaultPublicNetClient
+	// Find paths for USD->EUR
+	pr := horizonclient.StrictSendPathsRequest{
+		SourceAmount:      "20",
+		SourceAssetCode:   "USD",
+		SourceAssetIssuer: "GDUKMGUGDZQK6YHYA5Z6AY2G4XDSZPSZ3SW5UN3ARVMO6QSRDWP5YLEX",
+		SourceAssetType:   horizonclient.AssetType4,
+		DestinationAssets: "EURT:GAP5LETOV6YIE62YAM56STDANPRDO7ZFDBGSNHJQIYGGKSMOZAHOOS2S",
+	}
+	paths, err := client.StrictSendPaths(pr)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -815,14 +873,14 @@ func ExampleClient_Root() {
 	fmt.Print(root)
 }
 
-func ExampleClient_SetHorizonTimeOut() {
+func ExampleClient_SetHorizonTimeout() {
 	client := horizonclient.DefaultTestNetClient
 
 	// https://www.stellar.org/laboratory/#xdr-viewer?input=AAAAABB90WssODNIgi6BHveqzxTRmIpvAFRyVNM%2BHm2GVuCcAAAAZAAABD0AAuV%2FAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAyTBGxOgfSApppsTnb%2FYRr6gOR8WT0LZNrhLh4y3FCgoAAAAXSHboAAAAAAAAAAABhlbgnAAAAEAivKe977CQCxMOKTuj%2BcWTFqc2OOJU8qGr9afrgu2zDmQaX5Q0cNshc3PiBwe0qw%2F%2BD%2FqJk5QqM5dYeSUGeDQP&type=TransactionEnvelope&network=test
 	txXdr := `AAAAABB90WssODNIgi6BHveqzxTRmIpvAFRyVNM+Hm2GVuCcAAAAZAAABD0AAuV/AAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAyTBGxOgfSApppsTnb/YRr6gOR8WT0LZNrhLh4y3FCgoAAAAXSHboAAAAAAAAAAABhlbgnAAAAEAivKe977CQCxMOKTuj+cWTFqc2OOJU8qGr9afrgu2zDmQaX5Q0cNshc3PiBwe0qw/+D/qJk5QqM5dYeSUGeDQP`
 
 	// test user timeout
-	client = client.SetHorizonTimeOut(30)
+	client = client.SetHorizonTimeout(30 * time.Second)
 	resp, err := client.SubmitTransactionXDR(txXdr)
 	if err != nil {
 		fmt.Println(err)
@@ -1005,6 +1063,287 @@ func ExampleClient_StreamTransactions() {
 	}
 }
 
+// Action needed in release: horizonclient-v3.1.0
+// Uncomment fee bump examples when protocol 13 is enabled
+//func convertToV1Tx(tx *txnbuild.Transaction) (*txnbuild.Transaction, error) {
+//	// Action needed in release: horizonclient-v3.1.0
+//	// remove manual envelope type configuration because
+//	// once protocol 13 is enabled txnbuild will generate
+//	// v1 transaction envelopes by default
+//	innerTxEnvelope, err := tx.TxEnvelope()
+//	if err != nil {
+//		return nil, err
+//	}
+//
+//	innerTxEnvelope.V1 = &xdr.TransactionV1Envelope{
+//		Tx: xdr.Transaction{
+//			SourceAccount: innerTxEnvelope.SourceAccount(),
+//			Fee:           xdr.Uint32(innerTxEnvelope.Fee()),
+//			SeqNum:        xdr.SequenceNumber(innerTxEnvelope.SeqNum()),
+//			TimeBounds:    innerTxEnvelope.V0.Tx.TimeBounds,
+//			Memo:          innerTxEnvelope.Memo(),
+//			Operations:    innerTxEnvelope.Operations(),
+//		},
+//	}
+//	innerTxEnvelope.Type = xdr.EnvelopeTypeEnvelopeTypeTx
+//	innerTxEnvelope.V0 = nil
+//	innerTxEnvelopeB64, err := xdr.MarshalBase64(innerTxEnvelope)
+//	if err != nil {
+//		return nil, err
+//	}
+//
+//	parsed, err := txnbuild.TransactionFromXDR(innerTxEnvelopeB64)
+//	if err != nil {
+//		return nil, err
+//	}
+//	tx, _ = parsed.Transaction()
+//	return tx, nil
+//}
+//
+//func ExampleClient_SubmitFeeBumpTransaction() {
+//	kp := keypair.MustParseFull("SDQQUZMIPUP5TSDWH3UJYAKUOP55IJ4KTBXTY7RCOMEFRQGYA6GIR3OD")
+//	client := horizonclient.DefaultTestNetClient
+//	ar := horizonclient.AccountRequest{AccountID: kp.Address()}
+//	sourceAccount, err := client.AccountDetail(ar)
+//	if err != nil {
+//		return
+//	}
+//
+//	op := txnbuild.Payment{
+//		Destination: kp.Address(),
+//		Amount:      "1",
+//		Asset:       txnbuild.NativeAsset{},
+//	}
+//
+//	tx, err := txnbuild.NewTransaction(
+//		txnbuild.TransactionParams{
+//			SourceAccount:        &sourceAccount,
+//			IncrementSequenceNum: false,
+//			Operations:           []txnbuild.Operation{&op},
+//			BaseFee:              txnbuild.MinBaseFee,
+//			Timebounds:           txnbuild.NewInfiniteTimeout(), // Use a real timeout in production!
+//		},
+//	)
+//	if err != nil {
+//		fmt.Println(err)
+//		return
+//	}
+//	tx, err = tx.Sign(network.TestNetworkPassphrase, kp)
+//	if err != nil {
+//		fmt.Println(err)
+//		return
+//	}
+//
+//	tx, err = convertToV1Tx(tx)
+//	if err != nil {
+//		fmt.Println(err)
+//		return
+//	}
+//
+//	feeBumpKP := keypair.MustParseFull("SA5ZEFDVFZ52GRU7YUGR6EDPBNRU2WLA6IQFQ7S2IH2DG3VFV3DOMV2Q")
+//	feeBumpTx, err := txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
+//		Inner:      tx,
+//		FeeAccount: feeBumpKP.Address(),
+//		BaseFee:    txnbuild.MinBaseFee * 2,
+//	})
+//	feeBumpTx, err = feeBumpTx.Sign(network.TestNetworkPassphrase, feeBumpKP)
+//
+//	result, err := client.SubmitFeeBumpTransaction(feeBumpTx, horizonclient.SubmitTxOpts{})
+//	if err != nil {
+//		fmt.Println(err)
+//	}
+//
+//	fmt.Println(result)
+//}
+//
+//func ExampleClient_SubmitFeeBumpTransactionWithOptions() {
+//	kp := keypair.MustParseFull("SDQQUZMIPUP5TSDWH3UJYAKUOP55IJ4KTBXTY7RCOMEFRQGYA6GIR3OD")
+//	client := horizonclient.DefaultTestNetClient
+//	ar := horizonclient.AccountRequest{AccountID: kp.Address()}
+//	sourceAccount, err := client.AccountDetail(ar)
+//	if err != nil {
+//		return
+//	}
+//
+//	op := txnbuild.Payment{
+//		Destination: kp.Address(),
+//		Amount:      "1",
+//		Asset:       txnbuild.NativeAsset{},
+//	}
+//
+//	tx, err := txnbuild.NewTransaction(
+//		txnbuild.TransactionParams{
+//			SourceAccount:        &sourceAccount,
+//			IncrementSequenceNum: false,
+//			Operations:           []txnbuild.Operation{&op},
+//			BaseFee:              txnbuild.MinBaseFee,
+//			Timebounds:           txnbuild.NewInfiniteTimeout(), // Use a real timeout in production!
+//		},
+//	)
+//	if err != nil {
+//		fmt.Println(err)
+//		return
+//	}
+//	tx, err = tx.Sign(network.TestNetworkPassphrase, kp)
+//	if err != nil {
+//		fmt.Println(err)
+//		return
+//	}
+//
+//	tx, err = convertToV1Tx(tx)
+//	if err != nil {
+//		fmt.Println(err)
+//		return
+//	}
+//
+//	feeBumpKP := keypair.MustParseFull("SA5ZEFDVFZ52GRU7YUGR6EDPBNRU2WLA6IQFQ7S2IH2DG3VFV3DOMV2Q")
+//	feeBumpTx, err := txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
+//		Inner:      tx,
+//		FeeAccount: feeBumpKP.Address(),
+//		BaseFee:    txnbuild.MinBaseFee * 2,
+//	})
+//	feeBumpTx, err = feeBumpTx.Sign(network.TestNetworkPassphrase, feeBumpKP)
+//
+//	result, err := client.SubmitFeeBumpTransaction(
+//		feeBumpTx,
+//		horizonclient.SubmitTxOpts{SkipMemoRequiredCheck: true},
+//	)
+//	if err != nil {
+//		fmt.Println(err)
+//	}
+//
+//	fmt.Println(result)
+//}
+
+func ExampleClient_SubmitTransaction() {
+	kp := keypair.MustParseFull("SDQQUZMIPUP5TSDWH3UJYAKUOP55IJ4KTBXTY7RCOMEFRQGYA6GIR3OD")
+	client := horizonclient.DefaultTestNetClient
+	ar := horizonclient.AccountRequest{AccountID: kp.Address()}
+	sourceAccount, err := client.AccountDetail(ar)
+	if err != nil {
+		return
+	}
+
+	op := txnbuild.Payment{
+		Destination: kp.Address(),
+		Amount:      "1",
+		Asset:       txnbuild.NativeAsset{},
+	}
+
+	tx, err := txnbuild.NewTransaction(
+		txnbuild.TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: false,
+			Operations:           []txnbuild.Operation{&op},
+			BaseFee:              txnbuild.MinBaseFee,
+			Timebounds:           txnbuild.NewInfiniteTimeout(), // Use a real timeout in production!
+		},
+	)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	tx, err = tx.Sign(network.TestNetworkPassphrase, kp)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	result, err := client.SubmitTransaction(tx)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	fmt.Println(result)
+}
+
+func ExampleClient_SubmitTransactionWithOptions() {
+	kp := keypair.MustParseFull("SDQQUZMIPUP5TSDWH3UJYAKUOP55IJ4KTBXTY7RCOMEFRQGYA6GIR3OD")
+	client := horizonclient.DefaultTestNetClient
+	ar := horizonclient.AccountRequest{AccountID: kp.Address()}
+	sourceAccount, err := client.AccountDetail(ar)
+	if err != nil {
+		return
+	}
+
+	op := txnbuild.Payment{
+		Destination: kp.Address(),
+		Amount:      "1",
+		Asset:       txnbuild.NativeAsset{},
+	}
+
+	tx, err := txnbuild.NewTransaction(
+		txnbuild.TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: false,
+			Operations:           []txnbuild.Operation{&op},
+			BaseFee:              txnbuild.MinBaseFee,
+			Timebounds:           txnbuild.NewInfiniteTimeout(), // Use a real timeout in production!
+		},
+	)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	tx, err = tx.Sign(network.TestNetworkPassphrase, kp)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	result, err := client.SubmitTransactionWithOptions(tx, horizonclient.SubmitTxOpts{SkipMemoRequiredCheck: true})
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	fmt.Println(result)
+}
+
+func ExampleClient_SubmitTransactionWithOptions_skip_memo_required_check() {
+	kp := keypair.MustParseFull("SDQQUZMIPUP5TSDWH3UJYAKUOP55IJ4KTBXTY7RCOMEFRQGYA6GIR3OD")
+	client := horizonclient.DefaultTestNetClient
+	ar := horizonclient.AccountRequest{AccountID: kp.Address()}
+	sourceAccount, err := client.AccountDetail(ar)
+	if err != nil {
+		return
+	}
+
+	op := txnbuild.Payment{
+		Destination: kp.Address(),
+		Amount:      "1",
+		Asset:       txnbuild.NativeAsset{},
+	}
+
+	tx, err := txnbuild.NewTransaction(
+		txnbuild.TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: false,
+			Operations:           []txnbuild.Operation{&op},
+			BaseFee:              txnbuild.MinBaseFee,
+			Timebounds:           txnbuild.NewInfiniteTimeout(), // Use a real timeout in production!
+		},
+	)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	tx, err = tx.Sign(network.TestNetworkPassphrase, kp)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	result, err := client.SubmitTransactionWithOptions(tx, horizonclient.SubmitTxOpts{
+		SkipMemoRequiredCheck: true,
+	})
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	fmt.Println(result)
+}
+
 func ExampleClient_SubmitTransactionXDR() {
 	client := horizonclient.DefaultPublicNetClient
 	// https://www.stellar.org/laboratory/#xdr-viewer?input=AAAAAOoS%2F5V%2BBiCPXRiVcz8YsnkDdODufq%2Bg7xdqTdIXN8vyAAAE4gFiW0YAAALxAAAAAQAAAAAAAAAAAAAAAFyuBUcAAAABAAAABzIyMjgyNDUAAAAAAQAAAAEAAAAALhsY%2FFdAHXllTmb025DtCVBw06WDSQjq6I9NrCQHOV8AAAABAAAAAHT8zKV7bRQzuGTpk9AO3gjWJ9jVxBXTgguFORkxHVIKAAAAAAAAAAAAOnDwAAAAAAAAAAIkBzlfAAAAQPefqlsOvni6xX1g3AqddvOp1GOM88JYzayGZodbzTfV5toyhxZvL1ZggY3prFsvrereugEpj1kyPJ67z6gcRg0XN8vyAAAAQGwmoTssW49gaze8iQkz%2FUA2E2N%2BBOo%2B6v7YdOSsvIcZnMc37KmXH920nLosKpDLqkNChVztSZFcbVUlHhjbQgA%3D&type=TransactionEnvelope&network=public
@@ -1018,7 +1357,6 @@ func ExampleClient_SubmitTransactionXDR() {
 	}
 
 	fmt.Print(resp)
-	// Output: {{{https://horizon.stellar.org/transactions/f8a09e8a17fc828a1b99814818ddc931876eec0fe9c203f5980d26d92641e1c2 false}} f8a09e8a17fc828a1b99814818ddc931876eec0fe9c203f5980d26d92641e1c2 23350654 AAAAAOoS/5V+BiCPXRiVcz8YsnkDdODufq+g7xdqTdIXN8vyAAAE4gFiW0YAAALxAAAAAQAAAAAAAAAAAAAAAFyuBUcAAAABAAAABzIyMjgyNDUAAAAAAQAAAAEAAAAALhsY/FdAHXllTmb025DtCVBw06WDSQjq6I9NrCQHOV8AAAABAAAAAHT8zKV7bRQzuGTpk9AO3gjWJ9jVxBXTgguFORkxHVIKAAAAAAAAAAAAOnDwAAAAAAAAAAIkBzlfAAAAQPefqlsOvni6xX1g3AqddvOp1GOM88JYzayGZodbzTfV5toyhxZvL1ZggY3prFsvrereugEpj1kyPJ67z6gcRg0XN8vyAAAAQGwmoTssW49gaze8iQkz/UA2E2N+BOo+6v7YdOSsvIcZnMc37KmXH920nLosKpDLqkNChVztSZFcbVUlHhjbQgA= AAAAAAAABOIAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAA= AAAAAQAAAAIAAAADAWRNfgAAAAAAAAAA6hL/lX4GII9dGJVzPxiyeQN04O5+r6DvF2pN0hc3y/IAAAAAAuyTvgFiW0YAAALwAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAWRNfgAAAAAAAAAA6hL/lX4GII9dGJVzPxiyeQN04O5+r6DvF2pN0hc3y/IAAAAAAuyTvgFiW0YAAALxAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAABAAAAAMBZE0IAAAAAAAAAAB0/Myle20UM7hk6ZPQDt4I1ifY1cQV04ILhTkZMR1SCgAAAbZToYkOAToKfwAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEBZE1+AAAAAAAAAAB0/Myle20UM7hk6ZPQDt4I1ifY1cQV04ILhTkZMR1SCgAAAbZT2/n+AToKfwAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAMBZE19AAAAAAAAAAAuGxj8V0AdeWVOZvTbkO0JUHDTpYNJCOroj02sJAc5XwAAAACrUfjvARGUKgAApRsAAAAAAAAAAAAAAAAAAAAObnlhbmRldi1pZC5vcmcAAAEAAAAAAAAAAAAAAAAAAAAAAAABAWRNfgAAAAAAAAAALhsY/FdAHXllTmb025DtCVBw06WDSQjq6I9NrCQHOV8AAAAAqxeH/wERlCoAAKUbAAAAAAAAAAAAAAAAAAAADm55YW5kZXYtaWQub3JnAAABAAAAAAAAAAAAAAAAAAAA}
 }
 
 func ExampleClient_TradeAggregations() {

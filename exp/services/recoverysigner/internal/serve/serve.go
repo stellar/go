@@ -1,33 +1,31 @@
 package serve
 
 import (
-	"crypto/ecdsa"
+	"encoding/json"
 	"fmt"
 	"net/http"
-	"time"
 
 	firebaseauth "firebase.google.com/go/auth"
 	"github.com/go-chi/chi"
-	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/exp/services/recoverysigner/internal/account"
 	"github.com/stellar/go/exp/services/recoverysigner/internal/db"
 	"github.com/stellar/go/exp/services/recoverysigner/internal/serve/auth"
-	"github.com/stellar/go/exp/support/jwtkey"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/support/errors"
 	supporthttp "github.com/stellar/go/support/http"
 	supportlog "github.com/stellar/go/support/log"
 	"github.com/stellar/go/support/render/health"
+	"gopkg.in/square/go-jose.v2"
 )
 
 type Options struct {
 	Logger            *supportlog.Entry
 	DatabaseURL       string
-	HorizonURL        string
 	Port              int
 	NetworkPassphrase string
 	SigningKey        string
-	SEP10JWTPublicKey string
+	SEP10JWKS         string
+	SEP10JWTIssuer    string
 	FirebaseProjectID string
 }
 
@@ -45,7 +43,7 @@ func Serve(opts Options) {
 		ListenAddr: addr,
 		Handler:    handler,
 		OnStarting: func() {
-			opts.Logger.Info("Starting SEP-XX Recover Signer server")
+			opts.Logger.Info("Starting SEP-30 Recover Signer server")
 			opts.Logger.Infof("Listening on %s", addr)
 		},
 	})
@@ -53,11 +51,11 @@ func Serve(opts Options) {
 
 type handlerDeps struct {
 	Logger             *supportlog.Entry
-	HorizonClient      horizonclient.ClientInterface
 	NetworkPassphrase  string
 	SigningKey         *keypair.Full
 	AccountStore       account.Store
-	SEP10JWTPublicKey  *ecdsa.PublicKey
+	SEP10JWK           jose.JSONWebKey
+	SEP10JWTIssuer     string
 	FirebaseAuthClient *firebaseauth.Client
 }
 
@@ -71,39 +69,28 @@ func getHandlerDeps(opts Options) (handlerDeps, error) {
 	}
 	opts.Logger.Info("Signing key: ", signingKey.Address())
 
-	sep10JWTPublicKey, err := jwtkey.PublicKeyFromString(opts.SEP10JWTPublicKey)
+	sep10JWKS := &jose.JSONWebKeySet{}
+	err = json.Unmarshal([]byte(opts.SEP10JWKS), sep10JWKS)
 	if err != nil {
-		return handlerDeps{}, errors.Wrap(err, "parsing SEP-10 JWT public key")
+		return handlerDeps{}, errors.Wrap(err, "parsing SEP-10 JSON Web Key (JWK) Set")
 	}
-	opts.Logger.Info("SEP-10 JWT Public key: ", sep10JWTPublicKey)
-
-	horizonTimeout := 1 * time.Minute
-	httpClient := &http.Client{
-		Timeout: horizonTimeout,
+	if len(sep10JWKS.Keys) == 0 {
+		return handlerDeps{}, errors.New("no keys included in SEP-10 JSON Web Key (JWK) Set")
 	}
-	horizonClient := &horizonclient.Client{
-		HorizonURL: opts.HorizonURL,
-		HTTP:       httpClient,
+	if len(sep10JWKS.Keys) > 1 {
+		return handlerDeps{}, errors.New("more than one key included in SEP-10 JSON Web Key (JWK) Set only one supported")
 	}
-	horizonClient.SetHorizonTimeOut(uint(horizonTimeout / time.Second))
+	sep10JWK := sep10JWKS.Keys[0]
 
-	var accountStore account.Store
-	if opts.DatabaseURL == "" {
-		opts.Logger.Warn("USING MEMORY STORE, DATA IS EPHEMERAL.")
-		accountStore = account.NewMemoryStore()
-	} else {
-		db, dbErr := db.Open(opts.DatabaseURL)
-		if dbErr != nil {
-			return handlerDeps{}, errors.Wrap(err, "error parsing database url")
-		}
-
-		dbErr = db.Ping()
-		if dbErr != nil {
-			opts.Logger.Warn("Error pinging to Database: ", err)
-		}
-
-		accountStore = &account.DBStore{DB: db}
+	db, err := db.Open(opts.DatabaseURL)
+	if err != nil {
+		return handlerDeps{}, errors.Wrap(err, "error parsing database url")
 	}
+	err = db.Ping()
+	if err != nil {
+		opts.Logger.Warn("Error pinging to Database: ", err)
+	}
+	accountStore := &account.DBStore{DB: db}
 
 	firebaseAuthClient, err := auth.NewFirebaseAuthClient(opts.FirebaseProjectID)
 	if err != nil {
@@ -112,11 +99,11 @@ func getHandlerDeps(opts Options) (handlerDeps, error) {
 
 	deps := handlerDeps{
 		Logger:             opts.Logger,
-		HorizonClient:      horizonClient,
 		NetworkPassphrase:  opts.NetworkPassphrase,
 		SigningKey:         signingKey,
 		AccountStore:       accountStore,
-		SEP10JWTPublicKey:  sep10JWTPublicKey,
+		SEP10JWK:           sep10JWK,
+		SEP10JWTIssuer:     opts.SEP10JWTIssuer,
 		FirebaseAuthClient: firebaseAuthClient,
 	}
 
@@ -131,7 +118,7 @@ func handler(deps handlerDeps) http.Handler {
 
 	mux.Get("/health", health.PassHandler{}.ServeHTTP)
 	mux.Route("/accounts", func(mux chi.Router) {
-		mux.Use(auth.SEP10Middleware(deps.SEP10JWTPublicKey))
+		mux.Use(auth.SEP10Middleware(deps.SEP10JWTIssuer, deps.SEP10JWK))
 		mux.Use(auth.FirebaseMiddleware(auth.FirebaseTokenVerifierLive{AuthClient: deps.FirebaseAuthClient}))
 		mux.Get("/", accountListHandler{
 			Logger:         deps.Logger,
@@ -143,11 +130,22 @@ func handler(deps handlerDeps) http.Handler {
 				Logger:         deps.Logger,
 				SigningAddress: deps.SigningKey.FromAddress(),
 				AccountStore:   deps.AccountStore,
-				HorizonClient:  deps.HorizonClient,
 			}.ServeHTTP)
-			// TODO: mux.Put("/", accountPutHandler{}.ServeHTTP)
-			// TODO: mux.Get("/", accountGetHandler{}.ServeHTTP)
-			// TODO: mux.Delete("/", accountDeleteHandler{}.ServeHTTP)
+			mux.Put("/", accountPutHandler{
+				Logger:         deps.Logger,
+				SigningAddress: deps.SigningKey.FromAddress(),
+				AccountStore:   deps.AccountStore,
+			}.ServeHTTP)
+			mux.Get("/", accountGetHandler{
+				Logger:         deps.Logger,
+				SigningAddress: deps.SigningKey.FromAddress(),
+				AccountStore:   deps.AccountStore,
+			}.ServeHTTP)
+			mux.Delete("/", accountDeleteHandler{
+				Logger:         deps.Logger,
+				SigningAddress: deps.SigningKey.FromAddress(),
+				AccountStore:   deps.AccountStore,
+			}.ServeHTTP)
 			mux.Post("/sign", accountSignHandler{
 				Logger:            deps.Logger,
 				SigningKey:        deps.SigningKey,

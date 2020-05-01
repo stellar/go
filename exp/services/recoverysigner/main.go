@@ -13,7 +13,7 @@ func main() {
 
 	rootCmd := &cobra.Command{
 		Use:   "recoverysigner [command]",
-		Short: "SEP-XX Recovery Signer server",
+		Short: "SEP-30 Recovery Signer server",
 		Run: func(cmd *cobra.Command, args []string) {
 			cmd.Help()
 		},

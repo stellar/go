@@ -13,17 +13,17 @@ import (
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
-	"github.com/stellar/go/clients/horizon"
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/exp/support/jwtkey"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/network"
+	"github.com/stellar/go/protocols/horizon"
 	supportlog "github.com/stellar/go/support/log"
 	"github.com/stellar/go/support/render/problem"
 	"github.com/stellar/go/txnbuild"
-	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/square/go-jose.v2"
 )
 
 func TestToken_formInputSuccess(t *testing.T) {
@@ -32,11 +32,12 @@ func TestToken_formInputSuccess(t *testing.T) {
 
 	jwtPrivateKey, err := jwtkey.GenerateKey()
 	require.NoError(t, err)
+	jwk := jose.JSONWebKey{Key: jwtPrivateKey, Algorithm: string(jose.ES256)}
 
 	account := keypair.MustRandom()
 	t.Logf("Client account: %s", account.Address())
 
-	chTx, err := txnbuild.BuildChallengeTx(
+	tx, err := txnbuild.BuildChallengeTx(
 		serverKey.Seed(),
 		account.Address(),
 		"testserver",
@@ -44,17 +45,14 @@ func TestToken_formInputSuccess(t *testing.T) {
 		time.Minute,
 	)
 	require.NoError(t, err)
+
+	chTx, err := tx.Base64()
+	require.NoError(t, err)
 	t.Logf("Tx: %s", chTx)
 
-	var tx xdr.TransactionEnvelope
-	err = xdr.SafeUnmarshalBase64(chTx, &tx)
+	tx, err = tx.Sign(network.TestNetworkPassphrase, account)
 	require.NoError(t, err)
-	hash, err := network.HashTransactionInEnvelope(tx, network.TestNetworkPassphrase)
-	require.NoError(t, err)
-	sigDec, err := account.SignDecorated(hash[:])
-	require.NoError(t, err)
-	tx.V1.Signatures = append(tx.V1.Signatures, sigDec)
-	txSigned, err := xdr.MarshalBase64(tx)
+	txSigned, err := tx.Base64()
 	require.NoError(t, err)
 	t.Logf("Signed: %s", txSigned)
 
@@ -82,7 +80,7 @@ func TestToken_formInputSuccess(t *testing.T) {
 		HorizonClient:     horizonClient,
 		NetworkPassphrase: network.TestNetworkPassphrase,
 		SigningAddress:    serverKey.FromAddress(),
-		JWTPrivateKey:     jwtPrivateKey,
+		JWK:               jwk,
 		JWTIssuer:         "https://example.com",
 		JWTExpiresIn:      time.Minute,
 	}
@@ -132,11 +130,12 @@ func TestToken_jsonInputSuccess(t *testing.T) {
 
 	jwtPrivateKey, err := jwtkey.GenerateKey()
 	require.NoError(t, err)
+	jwk := jose.JSONWebKey{Key: jwtPrivateKey, Algorithm: string(jose.ES256)}
 
 	account := keypair.MustRandom()
 	t.Logf("Client account: %s", account.Address())
 
-	chTx, err := txnbuild.BuildChallengeTx(
+	tx, err := txnbuild.BuildChallengeTx(
 		serverKey.Seed(),
 		account.Address(),
 		"testserver",
@@ -144,17 +143,14 @@ func TestToken_jsonInputSuccess(t *testing.T) {
 		time.Minute,
 	)
 	require.NoError(t, err)
+
+	chTx, err := tx.Base64()
+	require.NoError(t, err)
 	t.Logf("Tx: %s", chTx)
 
-	var tx xdr.TransactionEnvelope
-	err = xdr.SafeUnmarshalBase64(chTx, &tx)
+	tx, err = tx.Sign(network.TestNetworkPassphrase, account)
 	require.NoError(t, err)
-	hash, err := network.HashTransactionInEnvelope(tx, network.TestNetworkPassphrase)
-	require.NoError(t, err)
-	sigDec, err := account.SignDecorated(hash[:])
-	require.NoError(t, err)
-	tx.V1.Signatures = append(tx.V1.Signatures, sigDec)
-	txSigned, err := xdr.MarshalBase64(tx)
+	txSigned, err := tx.Base64()
 	require.NoError(t, err)
 	t.Logf("Signed: %s", txSigned)
 
@@ -182,7 +178,7 @@ func TestToken_jsonInputSuccess(t *testing.T) {
 		HorizonClient:     horizonClient,
 		NetworkPassphrase: network.TestNetworkPassphrase,
 		SigningAddress:    serverKey.FromAddress(),
-		JWTPrivateKey:     jwtPrivateKey,
+		JWK:               jwk,
 		JWTIssuer:         "https://example.com",
 		JWTExpiresIn:      time.Minute,
 	}
@@ -237,6 +233,7 @@ func TestToken_jsonInputValidMultipleSigners(t *testing.T) {
 
 	jwtPrivateKey, err := jwtkey.GenerateKey()
 	require.NoError(t, err)
+	jwk := jose.JSONWebKey{Key: jwtPrivateKey, Algorithm: string(jose.ES256)}
 
 	account := keypair.MustRandom()
 	t.Logf("Client account: %s", account.Address())
@@ -247,7 +244,7 @@ func TestToken_jsonInputValidMultipleSigners(t *testing.T) {
 	accountSigner2 := keypair.MustRandom()
 	t.Logf("Client account signer 2: %s", accountSigner2.Address())
 
-	chTx, err := txnbuild.BuildChallengeTx(
+	tx, err := txnbuild.BuildChallengeTx(
 		serverKey.Seed(),
 		account.Address(),
 		"testserver",
@@ -255,20 +252,14 @@ func TestToken_jsonInputValidMultipleSigners(t *testing.T) {
 		time.Minute,
 	)
 	require.NoError(t, err)
+
+	chTx, err := tx.Base64()
+	require.NoError(t, err)
 	t.Logf("Tx: %s", chTx)
 
-	var tx xdr.TransactionEnvelope
-	err = xdr.SafeUnmarshalBase64(chTx, &tx)
+	tx, err = tx.Sign(network.TestNetworkPassphrase, accountSigner1, accountSigner2)
 	require.NoError(t, err)
-	hash, err := network.HashTransactionInEnvelope(tx, network.TestNetworkPassphrase)
-	require.NoError(t, err)
-	sigDec1, err := accountSigner1.SignDecorated(hash[:])
-	require.NoError(t, err)
-	tx.V1.Signatures = append(tx.V1.Signatures, sigDec1)
-	sigDec2, err := accountSigner2.SignDecorated(hash[:])
-	require.NoError(t, err)
-	tx.V1.Signatures = append(tx.V1.Signatures, sigDec2)
-	txSigned, err := xdr.MarshalBase64(tx)
+	txSigned, err := tx.Base64()
 	require.NoError(t, err)
 	t.Logf("Signed: %s", txSigned)
 
@@ -300,7 +291,7 @@ func TestToken_jsonInputValidMultipleSigners(t *testing.T) {
 		HorizonClient:     horizonClient,
 		NetworkPassphrase: network.TestNetworkPassphrase,
 		SigningAddress:    serverKey.FromAddress(),
-		JWTPrivateKey:     jwtPrivateKey,
+		JWK:               jwk,
 		JWTIssuer:         "https://example.com",
 		JWTExpiresIn:      time.Minute,
 	}
@@ -354,11 +345,12 @@ func TestToken_jsonInputNotEnoughWeight(t *testing.T) {
 
 	jwtPrivateKey, err := jwtkey.GenerateKey()
 	require.NoError(t, err)
+	jwk := jose.JSONWebKey{Key: jwtPrivateKey, Algorithm: string(jose.ES256)}
 
 	account := keypair.MustRandom()
 	t.Logf("Client account: %s", account.Address())
 
-	chTx, err := txnbuild.BuildChallengeTx(
+	tx, err := txnbuild.BuildChallengeTx(
 		serverKey.Seed(),
 		account.Address(),
 		"testserver",
@@ -366,17 +358,14 @@ func TestToken_jsonInputNotEnoughWeight(t *testing.T) {
 		time.Minute,
 	)
 	require.NoError(t, err)
+
+	chTx, err := tx.Base64()
+	require.NoError(t, err)
 	t.Logf("Tx: %s", chTx)
 
-	var tx xdr.TransactionEnvelope
-	err = xdr.SafeUnmarshalBase64(chTx, &tx)
+	tx, err = tx.Sign(network.TestNetworkPassphrase, account)
 	require.NoError(t, err)
-	hash, err := network.HashTransactionInEnvelope(tx, network.TestNetworkPassphrase)
-	require.NoError(t, err)
-	sigDec, err := account.SignDecorated(hash[:])
-	require.NoError(t, err)
-	tx.V1.Signatures = append(tx.V1.Signatures, sigDec)
-	txSigned, err := xdr.MarshalBase64(tx)
+	txSigned, err := tx.Base64()
 	require.NoError(t, err)
 	t.Logf("Signed: %s", txSigned)
 
@@ -404,7 +393,7 @@ func TestToken_jsonInputNotEnoughWeight(t *testing.T) {
 		HorizonClient:     horizonClient,
 		NetworkPassphrase: network.TestNetworkPassphrase,
 		SigningAddress:    serverKey.FromAddress(),
-		JWTPrivateKey:     jwtPrivateKey,
+		JWK:               jwk,
 		JWTIssuer:         "https://example.com",
 		JWTExpiresIn:      time.Minute,
 	}
@@ -437,11 +426,12 @@ func TestToken_jsonInputUnrecognizedSigner(t *testing.T) {
 
 	jwtPrivateKey, err := jwtkey.GenerateKey()
 	require.NoError(t, err)
+	jwk := jose.JSONWebKey{Key: jwtPrivateKey, Algorithm: string(jose.ES256)}
 
 	account := keypair.MustRandom()
 	t.Logf("Client account: %s", account.Address())
 
-	chTx, err := txnbuild.BuildChallengeTx(
+	tx, err := txnbuild.BuildChallengeTx(
 		serverKey.Seed(),
 		account.Address(),
 		"testserver",
@@ -449,17 +439,14 @@ func TestToken_jsonInputUnrecognizedSigner(t *testing.T) {
 		time.Minute,
 	)
 	require.NoError(t, err)
+
+	chTx, err := tx.Base64()
+	require.NoError(t, err)
 	t.Logf("Tx: %s", chTx)
 
-	var tx xdr.TransactionEnvelope
-	err = xdr.SafeUnmarshalBase64(chTx, &tx)
+	tx, err = tx.Sign(network.TestNetworkPassphrase, account)
 	require.NoError(t, err)
-	hash, err := network.HashTransactionInEnvelope(tx, network.TestNetworkPassphrase)
-	require.NoError(t, err)
-	sigDec, err := account.SignDecorated(hash[:])
-	require.NoError(t, err)
-	tx.V1.Signatures = append(tx.V1.Signatures, sigDec)
-	txSigned, err := xdr.MarshalBase64(tx)
+	txSigned, err := tx.Base64()
 	require.NoError(t, err)
 	t.Logf("Signed: %s", txSigned)
 
@@ -487,7 +474,7 @@ func TestToken_jsonInputUnrecognizedSigner(t *testing.T) {
 		HorizonClient:     horizonClient,
 		NetworkPassphrase: network.TestNetworkPassphrase,
 		SigningAddress:    serverKey.FromAddress(),
-		JWTPrivateKey:     jwtPrivateKey,
+		JWK:               jwk,
 		JWTIssuer:         "https://example.com",
 		JWTExpiresIn:      time.Minute,
 	}
@@ -520,11 +507,12 @@ func TestToken_jsonInputAccountNotExistSuccess(t *testing.T) {
 
 	jwtPrivateKey, err := jwtkey.GenerateKey()
 	require.NoError(t, err)
+	jwk := jose.JSONWebKey{Key: jwtPrivateKey, Algorithm: string(jose.ES256)}
 
 	account := keypair.MustRandom()
 	t.Logf("Client account: %s", account.Address())
 
-	chTx, err := txnbuild.BuildChallengeTx(
+	tx, err := txnbuild.BuildChallengeTx(
 		serverKey.Seed(),
 		account.Address(),
 		"testserver",
@@ -532,17 +520,14 @@ func TestToken_jsonInputAccountNotExistSuccess(t *testing.T) {
 		time.Minute,
 	)
 	require.NoError(t, err)
+
+	chTx, err := tx.Base64()
+	require.NoError(t, err)
 	t.Logf("Tx: %s", chTx)
 
-	var tx xdr.TransactionEnvelope
-	err = xdr.SafeUnmarshalBase64(chTx, &tx)
+	tx, err = tx.Sign(network.TestNetworkPassphrase, account)
 	require.NoError(t, err)
-	hash, err := network.HashTransactionInEnvelope(tx, network.TestNetworkPassphrase)
-	require.NoError(t, err)
-	sigDec, err := account.SignDecorated(hash[:])
-	require.NoError(t, err)
-	tx.V1.Signatures = append(tx.V1.Signatures, sigDec)
-	txSigned, err := xdr.MarshalBase64(tx)
+	txSigned, err := tx.Base64()
 	require.NoError(t, err)
 	t.Logf("Signed: %s", txSigned)
 
@@ -565,7 +550,7 @@ func TestToken_jsonInputAccountNotExistSuccess(t *testing.T) {
 		HorizonClient:               horizonClient,
 		NetworkPassphrase:           network.TestNetworkPassphrase,
 		SigningAddress:              serverKey.FromAddress(),
-		JWTPrivateKey:               jwtPrivateKey,
+		JWK:                         jwk,
 		JWTIssuer:                   "https://example.com",
 		JWTExpiresIn:                time.Minute,
 		AllowAccountsThatDoNotExist: true,
@@ -621,6 +606,7 @@ func TestToken_jsonInputAccountNotExistFail(t *testing.T) {
 
 	jwtPrivateKey, err := jwtkey.GenerateKey()
 	require.NoError(t, err)
+	jwk := jose.JSONWebKey{Key: jwtPrivateKey, Algorithm: string(jose.ES256)}
 
 	account := keypair.MustRandom()
 	t.Logf("Client account: %s", account.Address())
@@ -628,7 +614,7 @@ func TestToken_jsonInputAccountNotExistFail(t *testing.T) {
 	otherSigner := keypair.MustRandom()
 	t.Logf("Other signer: %s", otherSigner.Address())
 
-	chTx, err := txnbuild.BuildChallengeTx(
+	tx, err := txnbuild.BuildChallengeTx(
 		serverKey.Seed(),
 		account.Address(),
 		"testserver",
@@ -636,17 +622,14 @@ func TestToken_jsonInputAccountNotExistFail(t *testing.T) {
 		time.Minute,
 	)
 	require.NoError(t, err)
+
+	chTx, err := tx.Base64()
+	require.NoError(t, err)
 	t.Logf("Tx: %s", chTx)
 
-	var tx xdr.TransactionEnvelope
-	err = xdr.SafeUnmarshalBase64(chTx, &tx)
+	tx, err = tx.Sign(network.TestNetworkPassphrase, otherSigner)
 	require.NoError(t, err)
-	hash, err := network.HashTransactionInEnvelope(tx, network.TestNetworkPassphrase)
-	require.NoError(t, err)
-	sigDec, err := otherSigner.SignDecorated(hash[:])
-	require.NoError(t, err)
-	tx.V1.Signatures = append(tx.V1.Signatures, sigDec)
-	txSigned, err := xdr.MarshalBase64(tx)
+	txSigned, err := tx.Base64()
 	require.NoError(t, err)
 	t.Logf("Signed: %s", txSigned)
 
@@ -669,7 +652,7 @@ func TestToken_jsonInputAccountNotExistFail(t *testing.T) {
 		HorizonClient:               horizonClient,
 		NetworkPassphrase:           network.TestNetworkPassphrase,
 		SigningAddress:              serverKey.FromAddress(),
-		JWTPrivateKey:               jwtPrivateKey,
+		JWK:                         jwk,
 		JWTIssuer:                   "https://example.com",
 		JWTExpiresIn:                time.Minute,
 		AllowAccountsThatDoNotExist: true,
@@ -703,11 +686,12 @@ func TestToken_jsonInputAccountNotExistNotAllowed(t *testing.T) {
 
 	jwtPrivateKey, err := jwtkey.GenerateKey()
 	require.NoError(t, err)
+	jwk := jose.JSONWebKey{Key: jwtPrivateKey, Algorithm: string(jose.ES256)}
 
 	account := keypair.MustRandom()
 	t.Logf("Client account: %s", account.Address())
 
-	chTx, err := txnbuild.BuildChallengeTx(
+	tx, err := txnbuild.BuildChallengeTx(
 		serverKey.Seed(),
 		account.Address(),
 		"testserver",
@@ -715,17 +699,14 @@ func TestToken_jsonInputAccountNotExistNotAllowed(t *testing.T) {
 		time.Minute,
 	)
 	require.NoError(t, err)
+
+	chTx, err := tx.Base64()
+	require.NoError(t, err)
 	t.Logf("Tx: %s", chTx)
 
-	var tx xdr.TransactionEnvelope
-	err = xdr.SafeUnmarshalBase64(chTx, &tx)
+	tx, err = tx.Sign(network.TestNetworkPassphrase, account)
 	require.NoError(t, err)
-	hash, err := network.HashTransactionInEnvelope(tx, network.TestNetworkPassphrase)
-	require.NoError(t, err)
-	sigDec, err := account.SignDecorated(hash[:])
-	require.NoError(t, err)
-	tx.V1.Signatures = append(tx.V1.Signatures, sigDec)
-	txSigned, err := xdr.MarshalBase64(tx)
+	txSigned, err := tx.Base64()
 	require.NoError(t, err)
 	t.Logf("Signed: %s", txSigned)
 
@@ -748,7 +729,7 @@ func TestToken_jsonInputAccountNotExistNotAllowed(t *testing.T) {
 		HorizonClient:               horizonClient,
 		NetworkPassphrase:           network.TestNetworkPassphrase,
 		SigningAddress:              serverKey.FromAddress(),
-		JWTPrivateKey:               jwtPrivateKey,
+		JWK:                         jwk,
 		JWTIssuer:                   "https://example.com",
 		JWTExpiresIn:                time.Minute,
 		AllowAccountsThatDoNotExist: false,

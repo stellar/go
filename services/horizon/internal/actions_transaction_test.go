@@ -361,14 +361,14 @@ func TestPostFeeBumpTransaction(t *testing.T) {
 	form := url.Values{"tx": []string{fixture.Transaction.TxEnvelope}}
 	w := ht.Post("/transactions", form)
 	ht.Assert.Equal(200, w.Code)
-	var response horizon.TransactionSuccess
+	var response horizon.Transaction
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	ht.Assert.NoError(err)
 
-	ht.Assert.Equal(fixture.Transaction.TxResult, response.Result)
-	ht.Assert.Equal(fixture.Transaction.TxMeta, response.Meta)
+	ht.Assert.Equal(fixture.Transaction.TxResult, response.ResultXdr)
+	ht.Assert.Equal(fixture.Transaction.TxMeta, response.ResultMetaXdr)
 	ht.Assert.Equal(fixture.Transaction.TransactionHash, response.Hash)
-	ht.Assert.Equal(fixture.Transaction.TxEnvelope, response.Env)
+	ht.Assert.Equal(fixture.Transaction.TxEnvelope, response.EnvelopeXdr)
 	ht.Assert.Equal(fixture.Transaction.LedgerSequence, response.Ledger)
 
 	innerTxEnvelope, err := xdr.MarshalBase64(fixture.Envelope.FeeBump.Tx.InnerTx.V1)
@@ -379,10 +379,10 @@ func TestPostFeeBumpTransaction(t *testing.T) {
 	err = json.Unmarshal(w.Body.Bytes(), &response)
 	ht.Assert.NoError(err)
 
-	ht.Assert.Equal(fixture.Transaction.TxResult, response.Result)
-	ht.Assert.Equal(fixture.Transaction.TxMeta, response.Meta)
+	ht.Assert.Equal(fixture.Transaction.TxResult, response.ResultXdr)
+	ht.Assert.Equal(fixture.Transaction.TxMeta, response.ResultMetaXdr)
 	ht.Assert.Equal(fixture.InnerHash, response.Hash)
-	ht.Assert.Equal(fixture.Transaction.TxEnvelope, response.Env)
+	ht.Assert.Equal(fixture.Transaction.TxEnvelope, response.EnvelopeXdr)
 	ht.Assert.Equal(fixture.Transaction.LedgerSequence, response.Ledger)
 }
 

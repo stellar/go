@@ -1,18 +1,18 @@
 package serve
 
 import (
-	"crypto/ecdsa"
 	"net/http"
+	"strings"
 	"time"
 
-	"github.com/dgrijalva/jwt-go"
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/support/http/httpdecode"
 	supportlog "github.com/stellar/go/support/log"
-
 	"github.com/stellar/go/support/render/httpjson"
 	"github.com/stellar/go/txnbuild"
+	"gopkg.in/square/go-jose.v2"
+	"gopkg.in/square/go-jose.v2/jwt"
 )
 
 type tokenHandler struct {
@@ -20,7 +20,7 @@ type tokenHandler struct {
 	HorizonClient               horizonclient.ClientInterface
 	NetworkPassphrase           string
 	SigningAddress              *keypair.FromAddress
-	JWTPrivateKey               *ecdsa.PrivateKey
+	JWK                         jose.JSONWebKey
 	JWTIssuer                   string
 	JWTExpiresIn                time.Duration
 	AllowAccountsThatDoNotExist bool
@@ -45,54 +45,91 @@ func (h tokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, clientAccountID, err := txnbuild.ReadChallengeTx(req.Transaction, h.SigningAddress.Address(), h.NetworkPassphrase)
+	tx, clientAccountID, err := txnbuild.ReadChallengeTx(req.Transaction, h.SigningAddress.Address(), h.NetworkPassphrase)
 	if err != nil {
 		badRequest.Render(w)
 		return
 	}
+
+	hash, err := tx.HashHex(h.NetworkPassphrase)
+	if err != nil {
+		h.Logger.Ctx(ctx).WithStack(err).Error(err)
+		serverError.Render(w)
+		return
+	}
+
+	l := h.Logger.Ctx(ctx).
+		WithField("tx", hash).
+		WithField("account", clientAccountID)
+
+	l.Info("Start verifying challenge transaction.")
 
 	var clientAccountExists bool
 	clientAccount, err := h.HorizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: clientAccountID})
 	switch {
 	case err == nil:
 		clientAccountExists = true
+		l.Infof("Account exists.")
 	case horizonclient.IsNotFoundError(err):
 		clientAccountExists = false
+		l.Infof("Account does not exist.")
 	default:
+		l.WithStack(err).Error(err)
 		serverError.Render(w)
 		return
 	}
 
+	var signersVerified []string
 	if clientAccountExists {
 		requiredThreshold := txnbuild.Threshold(clientAccount.Thresholds.HighThreshold)
 		clientSignerSummary := clientAccount.SignerSummary()
-		_, err = txnbuild.VerifyChallengeTxThreshold(req.Transaction, h.SigningAddress.Address(), h.NetworkPassphrase, requiredThreshold, clientSignerSummary)
+		signersVerified, err = txnbuild.VerifyChallengeTxThreshold(req.Transaction, h.SigningAddress.Address(), h.NetworkPassphrase, requiredThreshold, clientSignerSummary)
 		if err != nil {
+			l.
+				WithField("signersCount", len(clientSignerSummary)).
+				WithField("signaturesCount", len(tx.Signatures())).
+				WithField("requiredThreshold", requiredThreshold).
+				Info("Failed to verify with signers that do not meet threshold.")
 			unauthorized.Render(w)
 			return
 		}
 	} else {
 		if !h.AllowAccountsThatDoNotExist {
+			l.Infof("Failed to verify because accounts that do not exist are not allowed.")
 			unauthorized.Render(w)
 			return
 		}
-		_, err = txnbuild.VerifyChallengeTxSigners(req.Transaction, h.SigningAddress.Address(), h.NetworkPassphrase, clientAccountID)
+		signersVerified, err = txnbuild.VerifyChallengeTxSigners(req.Transaction, h.SigningAddress.Address(), h.NetworkPassphrase, clientAccountID)
 		if err != nil {
+			l.Infof("Failed to verify with account master key as signer.")
 			unauthorized.Render(w)
 			return
 		}
 	}
 
-	now := time.Now().UTC()
-	token := jwt.NewWithClaims(jwt.SigningMethodES256, jwt.MapClaims{
-		"iss": h.JWTIssuer,
-		"sub": clientAccountID,
-		"iat": now.Unix(),
-		"exp": now.Add(h.JWTExpiresIn).Unix(),
-	})
-	tokenStr, err := token.SignedString(h.JWTPrivateKey)
+	l.
+		WithField("signers", strings.Join(signersVerified, ",")).
+		Infof("Successfully verified challenge transaction.")
+
+	jwsOptions := &jose.SignerOptions{}
+	jwsOptions.WithType("JWT")
+	jws, err := jose.NewSigner(jose.SigningKey{Algorithm: jose.SignatureAlgorithm(h.JWK.Algorithm), Key: h.JWK.Key}, jwsOptions)
 	if err != nil {
-		h.Logger.Ctx(ctx).WithStack(err).Error(err)
+		l.WithStack(err).Error(err)
+		serverError.Render(w)
+		return
+	}
+
+	now := time.Now().UTC()
+	claims := jwt.Claims{
+		Issuer:   h.JWTIssuer,
+		Subject:  clientAccountID,
+		IssuedAt: jwt.NewNumericDate(now),
+		Expiry:   jwt.NewNumericDate(now.Add(h.JWTExpiresIn)),
+	}
+	tokenStr, err := jwt.Signed(jws).Claims(claims).CompactSerialize()
+	if err != nil {
+		l.WithStack(err).Error(err)
 		serverError.Render(w)
 		return
 	}

@@ -211,10 +211,10 @@ func (q *Q) RemoveTrustLine(ledgerKey xdr.LedgerKeyTrustLine) (int64, error) {
 	return result.RowsAffected()
 }
 
-// GetTrustLinesByAccountsID loads trust lines for a list of accounts ID
-func (q *Q) GetTrustLinesByAccountsID(id []string) ([]TrustLine, error) {
+// GetSortedTrustLinesByAccountIDs loads trust lines for a list of accounts ID, ordered by asset and issuer
+func (q *Q) GetSortedTrustLinesByAccountIDs(id []string) ([]TrustLine, error) {
 	var data []TrustLine
-	sql := selectTrustLines.Where(sq.Eq{"account_id": id})
+	sql := selectTrustLines.Where(sq.Eq{"account_id": id}).OrderBy("asset_code", "asset_issuer")
 	err := q.Select(&data, sql)
 	return data, err
 }

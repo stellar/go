@@ -102,20 +102,24 @@ func (h accountSignHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Decode the request transaction.
-	tx, err := txnbuild.TransactionFromXDR(req.Transaction)
+	parsed, err := txnbuild.TransactionFromXDR(req.Transaction)
 	if err != nil {
 		badRequest.Render(w)
 		return
 	}
-	tx.Network = h.NetworkPassphrase
-
-	// Check that the transaction's source account and any operations it
-	// contains references only to this account.
-	if tx.SourceAccount.GetAccountID() != req.Address.Address() {
+	tx, ok := parsed.Transaction()
+	if !ok {
 		badRequest.Render(w)
 		return
 	}
-	for _, op := range tx.Operations {
+
+	// Check that the transaction's source account and any operations it
+	// contains references only to this account.
+	if tx.SourceAccount().AccountID != req.Address.Address() {
+		badRequest.Render(w)
+		return
+	}
+	for _, op := range tx.Operations() {
 		opSourceAccount := op.GetSourceAccount()
 		if opSourceAccount == nil {
 			continue
@@ -127,7 +131,7 @@ func (h accountSignHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Sign the transaction.
-	hash, err := tx.Hash()
+	hash, err := tx.Hash(h.NetworkPassphrase)
 	if err != nil {
 		h.Logger.Error(err)
 		serverError.Render(w)

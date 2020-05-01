@@ -375,7 +375,7 @@ func (handler objectActionHandler) ServeHTTP(
 	problem.Render(r.Context(), w, hProblem.NotAcceptable)
 }
 
-const singleObjectStreamLimit = 10
+const defaultObjectStreamLimit = 10
 
 type streamableObjectAction interface {
 	GetResource(
@@ -387,6 +387,7 @@ type streamableObjectAction interface {
 type streamableObjectActionHandler struct {
 	action        streamableObjectAction
 	streamHandler sse.StreamHandler
+	limit         int
 }
 
 func (handler streamableObjectActionHandler) ServeHTTP(
@@ -445,11 +446,15 @@ func (handler streamableObjectActionHandler) renderStream(
 	r *http.Request,
 ) {
 	var lastResponse actions.StreamableObjectResponse
+	limit := handler.limit
+	if limit == 0 {
+		limit = defaultObjectStreamLimit
+	}
 
 	handler.streamHandler.ServeStream(
 		w,
 		r,
-		singleObjectStreamLimit,
+		limit,
 		repeatableReadStream(r, func() ([]sse.Event, error) {
 			response, err := handler.action.GetResource(w, r)
 			if err != nil {

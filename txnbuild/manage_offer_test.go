@@ -3,7 +3,6 @@ package txnbuild
 import (
 	"testing"
 
-	"github.com/stellar/go/network"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -19,14 +18,15 @@ func TestManageSellOfferValidateSellingAsset(t *testing.T) {
 	createOffer, err := CreateOfferOp(selling, buying, sellAmount, price)
 	check(err)
 
-	tx := Transaction{
-		SourceAccount: &sourceAccount,
-		Operations:    []Operation{&createOffer},
-		Timebounds:    NewInfiniteTimeout(),
-		Network:       network.TestNetworkPassphrase,
-	}
-
-	err = tx.Build()
+	_, err = NewTransaction(
+		TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: false,
+			Operations:           []Operation{&createOffer},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(),
+		},
+	)
 	if assert.Error(t, err) {
 		expected := "validation failed for *txnbuild.ManageSellOffer operation: Field: Selling, Error: asset code length must be between 1 and 12 characters"
 		assert.Contains(t, err.Error(), expected)
@@ -45,14 +45,15 @@ func TestManageSellOfferValidateBuyingAsset(t *testing.T) {
 	createOffer, err := CreateOfferOp(selling, buying, sellAmount, price)
 	check(err)
 
-	tx := Transaction{
-		SourceAccount: &sourceAccount,
-		Operations:    []Operation{&createOffer},
-		Timebounds:    NewInfiniteTimeout(),
-		Network:       network.TestNetworkPassphrase,
-	}
-
-	err = tx.Build()
+	_, err = NewTransaction(
+		TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: false,
+			Operations:           []Operation{&createOffer},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(),
+		},
+	)
 	if assert.Error(t, err) {
 		expected := "validation failed for *txnbuild.ManageSellOffer operation: Field: Buying, Error: asset code length must be between 1 and 12 characters"
 		assert.Contains(t, err.Error(), expected)
@@ -71,14 +72,15 @@ func TestManageSellOfferValidateAmount(t *testing.T) {
 	createOffer, err := CreateOfferOp(selling, buying, sellAmount, price)
 	check(err)
 
-	tx := Transaction{
-		SourceAccount: &sourceAccount,
-		Operations:    []Operation{&createOffer},
-		Timebounds:    NewInfiniteTimeout(),
-		Network:       network.TestNetworkPassphrase,
-	}
-
-	err = tx.Build()
+	_, err = NewTransaction(
+		TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: false,
+			Operations:           []Operation{&createOffer},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(),
+		},
+	)
 	if assert.Error(t, err) {
 		expected := "validation failed for *txnbuild.ManageSellOffer operation: Field: Amount, Error: amount can not be negative"
 		assert.Contains(t, err.Error(), expected)
@@ -97,14 +99,15 @@ func TestManageSellOfferValidatePrice(t *testing.T) {
 	createOffer, err := CreateOfferOp(selling, buying, sellAmount, price)
 	check(err)
 
-	tx := Transaction{
-		SourceAccount: &sourceAccount,
-		Operations:    []Operation{&createOffer},
-		Timebounds:    NewInfiniteTimeout(),
-		Network:       network.TestNetworkPassphrase,
-	}
-
-	err = tx.Build()
+	_, err = NewTransaction(
+		TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: false,
+			Operations:           []Operation{&createOffer},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(),
+		},
+	)
 	if assert.Error(t, err) {
 		expected := "validation failed for *txnbuild.ManageSellOffer operation: Field: Price, Error: amount can not be negative"
 		assert.Contains(t, err.Error(), expected)
@@ -124,14 +127,15 @@ func TestManageSellOfferValidateOfferID(t *testing.T) {
 		OfferID: -1,
 	}
 
-	tx := Transaction{
-		SourceAccount: &sourceAccount,
-		Operations:    []Operation{&mso},
-		Timebounds:    NewInfiniteTimeout(),
-		Network:       network.TestNetworkPassphrase,
-	}
-
-	err := tx.Build()
+	_, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: false,
+			Operations:           []Operation{&mso},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(),
+		},
+	)
 	if assert.Error(t, err) {
 		expected := "validation failed for *txnbuild.ManageSellOffer operation: Field: OfferID, Error: amount can not be negative"
 		assert.Contains(t, err.Error(), expected)

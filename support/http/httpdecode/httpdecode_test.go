@@ -327,6 +327,38 @@ func TestDecode_invalidJSON(t *testing.T) {
 	assert.Equal(t, "", bodyDecoded.FooName)
 }
 
+func TestDecode_clientReqNoBody(t *testing.T) {
+	pathDecoded := struct {
+		Foo string `path:"foo"`
+	}{}
+	mux := chi.NewMux()
+	mux.Get("/path/{foo}/path", func(w http.ResponseWriter, r *http.Request) {
+		err := Decode(r, &pathDecoded)
+		require.NoError(t, err)
+	})
+	w := httptest.NewRecorder()
+	r, _ := http.NewRequest("GET", "/path/bar/path", nil)
+	mux.ServeHTTP(w, r)
+
+	assert.Equal(t, "bar", pathDecoded.Foo)
+}
+
+func TestDecode_serverReqNoBody(t *testing.T) {
+	pathDecoded := struct {
+		Foo string `path:"foo"`
+	}{}
+	mux := chi.NewMux()
+	mux.Get("/path/{foo}/path", func(w http.ResponseWriter, r *http.Request) {
+		err := Decode(r, &pathDecoded)
+		require.NoError(t, err)
+	})
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest("GET", "/path/bar/path", nil)
+	mux.ServeHTTP(w, r)
+
+	assert.Equal(t, "bar", pathDecoded.Foo)
+}
+
 func TestDecode_invalidForm(t *testing.T) {
 	body := `foo=%=bar`
 	r, _ := http.NewRequest("POST", "/", strings.NewReader(body))
