@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this
 file. This project adheres to [Semantic Versioning](http://semver.org/).
 
+## v1.2.1
+
+* Remove `id` columns from `history_operation_participants` and `history_transaction_participants` to prevent possible integer overflow [#2532](https://github.com/stellar/go/pull/2532).
+
 ## v1.2.0
 
 ### Scheduled Breaking Changes
