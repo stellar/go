@@ -541,7 +541,9 @@ func TestRetrievePartialMarkets(t *testing.T) {
 
 	// Validating the aggregated data
 	assert.Equal(t, 150.0, btceth1Mkt.BaseVolume)
+	// TODO: Add check for BaseInverseVolume.
 	assert.Equal(t, 60.0, btceth1Mkt.CounterVolume)
+	// TODO: Add check for CounterInverseVolume.
 	assert.Equal(t, int32(2), btceth1Mkt.TradeCount)
 	assert.Equal(t, 1.0, btceth1Mkt.Open)
 	assert.Equal(t, 0.1, btceth1Mkt.Close)
@@ -551,7 +553,9 @@ func TestRetrievePartialMarkets(t *testing.T) {
 	assert.WithinDuration(t, oneHourAgo.Local(), btceth1Mkt.FirstLedgerCloseTime.Local(), 10*time.Millisecond)
 	assert.WithinDuration(t, tenMinutesAgo.Local(), btceth1Mkt.LastLedgerCloseTime.Local(), 10*time.Millisecond)
 	assert.Equal(t, 24.0, btceth2Mkt.BaseVolume)
+	// TODO: Add check for BaseInverseVolume.
 	assert.Equal(t, 26.0, btceth2Mkt.CounterVolume)
+	// TODO: Add check for CounterInverseVolume.
 	assert.Equal(t, int32(1), btceth2Mkt.TradeCount)
 	assert.Equal(t, 0.92, btceth2Mkt.Open)
 	assert.Equal(t, 0.92, btceth2Mkt.Close)
@@ -585,7 +589,9 @@ func TestRetrievePartialMarkets(t *testing.T) {
 
 	assert.Equal(t, "BTC_ETH", partialAggMkt.TradePairName)
 	assert.Equal(t, 174.0, partialAggMkt.BaseVolume)
+	// TODO: Add check for BaseInverseVolume.
 	assert.Equal(t, 86.0, partialAggMkt.CounterVolume)
+	// TODO: Add check for CounterInverseVolume.
 	assert.Equal(t, int32(3), partialAggMkt.TradeCount)
 	assert.Equal(t, 1.0, partialAggMkt.Open)
 	assert.Equal(t, 0.92, partialAggMkt.Close)

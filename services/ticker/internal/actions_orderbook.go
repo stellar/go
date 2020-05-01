@@ -43,6 +43,25 @@ func RefreshOrderbookEntries(s *tickerdb.TickerSession, c *horizonclient.Client,
 		if err != nil {
 			l.Error(errors.Wrap(err, "could not insert orderbook stats into db"))
 		}
+
+		// Compute the orderbook stats for the reverse market.
+		iob, err := sc.FetchOrderbookForAssets(
+			mkt.CounterAssetType,
+			mkt.CounterAssetCode,
+			mkt.CounterAssetIssuer,
+			mkt.BaseAssetType,
+			mkt.BaseAssetCode,
+			mkt.BaseAssetIssuer,
+		)
+		if err != nil {
+			l.Error(errors.Wrap(err, "could not fetch reverse orderbook for assets"))
+		}
+
+		dbIOS := orderbookStatsToDBOrderbookStats(iob, mkt.CounterAssetID, mkt.BaseAssetID)
+		err = s.InsertOrUpdateOrderbookStats(&dbIOS, []string{"base_asset_id", "counter_asset_id"})
+		if err != nil {
+			l.Error(errors.Wrap(err, "could not insert reverse orderbook stats into db"))
+		}
 	}
 
 	return nil

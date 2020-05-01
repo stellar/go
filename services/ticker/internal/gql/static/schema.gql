@@ -11,21 +11,27 @@ type Query {
 
 	# retrieve trade stats from the last <numHoursAgo> hours
 	# (default = 24 hours). optionally provide counter and
-	# base asset info for filtering.
+	# base asset info for filtering. optionally provide whether
+	# or not the query comes from the new version of the endpoint,
+	# as this affects how the base/counter are interpreted.
 	markets(
 		baseAssetCode: String
 		baseAssetIssuer: String
 		counterAssetCode: String
 		counterAssetIssuer: String
 		numHoursAgo: Int
+		isNewEndpoint: Boolean
 	): [Market]!
 
 	# retrieve aggregated trade stats for the last <numHoursAgo>
 	# hours. optionally provide the name of the trade pair (e.g.
-	# XLM_BTC) for filtering results.
+	# XLM_BTC) for filtering results. optionally provide whether
+	# or not the query comes from the new version of the endpoint,
+	# as this affects how the trade pair is interpreted.
 	ticker(
 		pairName: String
 		numHoursAgo: Int
+		isNewEndpoint: Boolean
 	): [AggregatedMarket]!
 }
 

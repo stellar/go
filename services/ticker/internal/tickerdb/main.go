@@ -143,7 +143,9 @@ type PartialMarket struct {
 	CounterAssetIssuer   string    `db:"counter_asset_issuer"`
 	CounterAssetType     string    `db:"counter_asset_type"`
 	BaseVolume           float64   `db:"base_volume"`
+	BaseVolumeReverse    float64   `db:"base_volume_reverse"`
 	CounterVolume        float64   `db:"counter_volume"`
+	CounterVolumeReverse float64   `db:"counter_volume_reverse"`
 	TradeCount           int32     `db:"trade_count"`
 	Open                 float64   `db:"open_price"`
 	Low                  float64   `db:"lowest_price"`
@@ -156,6 +158,12 @@ type PartialMarket struct {
 	NumAsks              int       `db:"num_asks"`
 	AskVolume            float64   `db:"ask_volume"`
 	LowestAsk            float64   `db:"lowest_ask"`
+	NumBidsReverse       int       `db:"num_bids_reverse"`
+	BidVolumeReverse     float64   `db:"bid_volume_reverse"`
+	HighestBidReverse    float64   `db:"highest_bid_reverse"`
+	NumAsksReverse       int       `db:"num_asks_reverse"`
+	AskVolumeReverse     float64   `db:"ask_volume_reverse"`
+	LowestAskReverse     float64   `db:"lowest_ask_reverse"`
 	IntervalStart        time.Time `db:"interval_start"`
 	FirstLedgerCloseTime time.Time `db:"first_ledger_close_time"`
 	LastLedgerCloseTime  time.Time `db:"last_ledger_close_time"`

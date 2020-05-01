@@ -203,7 +203,9 @@ SELECT
 	cAsset.issuer_account AS counter_asset_issuer,
 	cAsset.type as counter_asset_type,
 	sum(t.base_amount) AS base_volume,
+	sum(1/t.base_amount) AS base_volume_reverse,
 	sum(t.counter_amount) AS counter_volume,
+	sum(1/t.counter_amount) AS counter_volume_reverse,
 	count(t.base_amount) AS trade_count,
 	max(t.price) AS highest_price,
 	min(t.price) AS lowest_price,
@@ -218,9 +220,16 @@ SELECT
 	COALESCE((array_agg(os.highest_bid))[1], 0.0) AS highest_bid,
 	COALESCE((array_agg(os.num_asks))[1], 0) AS num_asks,
 	COALESCE((array_agg(os.ask_volume))[1], 0.0) AS ask_volume,
-	COALESCE((array_agg(os.lowest_ask))[1], 0.0) AS lowest_ask
+	COALESCE((array_agg(os.lowest_ask))[1], 0.0) AS lowest_ask,
+	COALESCE((array_agg(ios.num_bids))[1], 0) AS num_bids_reverse,
+	COALESCE((array_agg(ios.bid_volume))[1], 0.0) AS bid_volume_reverse,
+	COALESCE((array_agg(ios.highest_bid))[1], 0.0) AS highest_bid_reverse,
+	COALESCE((array_agg(ios.num_asks))[1], 0) AS num_asks_reverse,
+	COALESCE((array_agg(ios.ask_volume))[1], 0.0) AS ask_volume_reverse,
+	COALESCE((array_agg(ios.lowest_ask))[1], 0.0) AS lowest_ask_reverse
 FROM trades AS t
 	LEFT JOIN orderbook_stats AS os ON t.base_asset_id = os.base_asset_id AND t.counter_asset_id = os.counter_asset_id
+	LEFT JOIN orderbook_stats AS ios ON t.base_asset_id = ios.counter_asset_id AND t.counter_asset_id = ios.base_asset_id
 	JOIN assets AS bAsset ON t.base_asset_id = bAsset.id
 	JOIN assets AS cAsset on t.counter_asset_id = cAsset.id
 __WHERECLAUSE__
@@ -231,7 +240,9 @@ var aggMarketQuery = `
 SELECT
 	t1.trade_pair_name,
 	t1.base_volume,
+	t1.base_volume_reverse,
 	t1.counter_volume,
+	t1.counter_volume_reverse,
 	t1.trade_count,
 	t1.highest_price,
 	t1.lowest_price,
@@ -248,7 +259,13 @@ SELECT
 	COALESCE(aob.highest_bid, 0.0) AS highest_bid,
 	COALESCE(aob.num_asks, 0) AS num_asks,
 	COALESCE(aob.ask_volume, 0.0) AS ask_volume,
-	COALESCE(aob.lowest_ask, 0.0) AS lowest_ask
+	COALESCE(aob.lowest_ask, 0.0) AS lowest_ask,
+	COALESCE(iaob.num_bids, 0) AS num_bids_reverse,
+	COALESCE(iaob.bid_volume, 0.0) AS bid_volume_reverse,
+	COALESCE(iaob.highest_bid, 0.0) AS highest_bid_reverse,
+	COALESCE(iaob.num_asks, 0) AS num_asks_reverse,
+	COALESCE(iaob.ask_volume, 0.0) AS ask_volume_reverse,
+	COALESCE(iaob.lowest_ask, 0.0) AS lowest_ask_reverse
 FROM (
 	SELECT
 		concat(
@@ -256,8 +273,15 @@ FROM (
 			'_',
 			COALESCE(NULLIF(cAsset.anchor_asset_code, ''), cAsset.code)
 		) as trade_pair_name,
+		concat(
+			COALESCE(NULLIF(cAsset.anchor_asset_code, ''), cAsset.code),
+			'_',
+			COALESCE(NULLIF(bAsset.anchor_asset_code, ''), bAsset.code)
+		) as reverse_trade_pair_name,
 		sum(t.base_amount) AS base_volume,
+		sum(1/t.base_amount) AS base_volume_reverse,
 		sum(t.counter_amount) AS counter_volume,
+		sum(1/t.counter_amount) AS counter_volume_reverse,
 		count(t.base_amount) AS trade_count,
 		max(t.price) AS highest_price,
 		min(t.price) AS lowest_price,
@@ -272,5 +296,7 @@ FROM (
 		JOIN assets AS bAsset ON t.base_asset_id = bAsset.id
 		JOIN assets AS cAsset on t.counter_asset_id = cAsset.id
 	__WHERECLAUSE__
-	GROUP BY trade_pair_name
-) t1 LEFT JOIN aggregated_orderbook AS aob ON t1.trade_pair_name = aob.trade_pair_name;`
+	GROUP BY trade_pair_name, reverse_trade_pair_name
+) t1
+	LEFT JOIN aggregated_orderbook AS aob ON t1.trade_pair_name = aob.trade_pair_name
+	LEFT JOIN aggregated_orderbook AS iaob ON t1.reverse_trade_pair_name = iaob.trade_pair_name;`
