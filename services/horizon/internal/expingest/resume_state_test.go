@@ -301,6 +301,7 @@ func (s *ResumeTestTestSuite) TestIngestAllMasterNode() {
 
 	s.runner.On("RunAllProcessorsOnLedger", uint32(101)).Return(io.StatsChangeProcessorResults{}, io.StatsLedgerTransactionProcessorResults{}, nil).Once()
 	s.historyQ.On("UpdateLastLedgerExpIngest", uint32(101)).Return(nil).Once()
+	s.historyQ.On("UpdateLastLedgerOrderBook", uint32(101)).Return(nil).Once()
 	s.historyQ.On("Commit").Return(nil).Once()
 	s.graph.On("Apply", uint32(101)).Return(nil).Once()
 
@@ -335,6 +336,9 @@ func (s *ResumeTestTestSuite) TestErrorSettingCursorIgnored() {
 	s.runner.On("RunAllProcessorsOnLedger", uint32(101)).Return(io.StatsChangeProcessorResults{}, io.StatsLedgerTransactionProcessorResults{}, nil).Once()
 	s.historyQ.On("UpdateLastLedgerExpIngest", uint32(101)).Return(nil).Once()
 	s.historyQ.On("Commit").Return(nil).Once()
+	s.historyQ.On("UpdateLastLedgerOrderBook", uint32(101)).
+		Return(nil).
+		Once()
 	s.graph.On("Apply", uint32(101)).Return(nil).Once()
 
 	s.stellarCoreClient.On(

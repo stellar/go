@@ -103,12 +103,14 @@ func initLogglyLog(app *App) {
 
 func initDbMetrics(app *App) {
 	app.historyLatestLedgerGauge = metrics.NewGauge()
+	app.localLatestLedgerGauge = metrics.NewGauge()
 	app.historyElderLedgerGauge = metrics.NewGauge()
 	app.coreLatestLedgerGauge = metrics.NewGauge()
 	app.horizonConnGauge = metrics.NewGauge()
 	app.coreConnGauge = metrics.NewGauge()
 	app.goroutineGauge = metrics.NewGauge()
 	app.metrics.Register("history.latest_ledger", app.historyLatestLedgerGauge)
+	app.metrics.Register("history.local_latest_ledger", app.localLatestLedgerGauge)
 	app.metrics.Register("history.elder_ledger", app.historyElderLedgerGauge)
 	app.metrics.Register("stellar_core.latest_ledger", app.coreLatestLedgerGauge)
 	app.metrics.Register("history.open_connections", app.horizonConnGauge)

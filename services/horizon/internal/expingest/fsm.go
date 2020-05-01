@@ -893,5 +893,10 @@ func (s *System) completeIngestion(ledger uint32) error {
 		return err
 	}
 
+	if err := s.historyQ.UpdateLastLedgerOrderBook(ledger); err != nil {
+		err = errors.Wrap(err, updateLastLedgerOrderBooktErrMsg)
+		return err
+	}
+
 	return nil
 }

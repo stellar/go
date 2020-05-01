@@ -143,6 +143,7 @@ func (s *StressTestStateTestSuite) TestSucceeds() {
 	s.runner.On("RunAllProcessorsOnLedger", uint32(1)).Return(io.StatsChangeProcessorResults{}, io.StatsLedgerTransactionProcessorResults{}, nil).Once()
 	s.historyQ.On("UpdateLastLedgerExpIngest", uint32(1)).Return(nil).Once()
 	s.historyQ.On("Commit").Return(nil).Once()
+	s.historyQ.On("UpdateLastLedgerOrderBook", uint32(1)).Return(nil).Once()
 	s.graph.On("Apply", uint32(1)).Return(nil).Once()
 
 	err := s.system.StressTest(10, 4)

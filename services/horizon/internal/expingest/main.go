@@ -71,11 +71,12 @@ type Config struct {
 }
 
 const (
-	getLastIngestedErrMsg           string = "Error getting last ingested ledger"
-	getExpIngestVersionErrMsg       string = "Error getting exp ingest version"
-	updateLastLedgerExpIngestErrMsg string = "Error updating last ingested ledger"
-	commitErrMsg                    string = "Error committing db transaction"
-	updateExpStateInvalidErrMsg     string = "Error updating state invalid value"
+	getLastIngestedErrMsg            string = "Error getting last ingested ledger"
+	getExpIngestVersionErrMsg        string = "Error getting exp ingest version"
+	updateLastLedgerExpIngestErrMsg  string = "Error updating last ingested ledger"
+	updateLastLedgerOrderBooktErrMsg string = "Error updating last order book ledger"
+	commitErrMsg                     string = "Error committing db transaction"
+	updateExpStateInvalidErrMsg      string = "Error updating state invalid value"
 )
 
 type stellarCoreClient interface {

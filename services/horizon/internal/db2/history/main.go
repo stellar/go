@@ -495,6 +495,8 @@ type QSigners interface {
 	GetLastLedgerExpIngestNonBlocking() (uint32, error)
 	GetLastLedgerExpIngest() (uint32, error)
 	UpdateLastLedgerExpIngest(ledgerSequence uint32) error
+	GetLastLedgerOrderBook() (uint32, error)
+	UpdateLastLedgerOrderBook(ledgerSequence uint32) error
 	AccountsForSigner(signer string, page db2.PageQuery) ([]AccountSigner, error)
 	NewAccountSignersBatchInsertBuilder(maxBatchSize int) AccountSignersBatchInsertBuilder
 	CreateAccountSigner(account, signer string, weight int32) (int64, error)

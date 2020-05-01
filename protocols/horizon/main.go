@@ -322,6 +322,7 @@ type Root struct {
 	HorizonVersion               string `json:"horizon_version"`
 	StellarCoreVersion           string `json:"core_version"`
 	IngestSequence               uint32 `json:"ingest_latest_ledger"`
+	OrderBookSequence            uint32 `json:"local_latest_ledger"`
 	HorizonSequence              int32  `json:"history_latest_ledger"`
 	HistoryElderSequence         int32  `json:"history_elder_ledger"`
 	CoreSequence                 int32  `json:"core_latest_ledger"`

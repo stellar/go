@@ -13,8 +13,9 @@ const (
 	// Distributed ingestion in Horizon relies on this key and it is part
 	// of migration files. If you need to update the key name remember
 	// to upgrade it in migration files too!
-	lastLedgerKey = "exp_ingest_last_ledger"
-	stateInvalid  = "exp_state_invalid"
+	lastLedgerExpIngestKey = "exp_ingest_last_ledger"
+	lastLedgerOrderBookKey = "exp_ingest_last_ledger"
+	stateInvalid           = "exp_state_invalid"
 )
 
 // GetLastLedgerExpIngestNonBlocking works like GetLastLedgerExpIngest but
@@ -22,7 +23,7 @@ const (
 // has not been previously set.
 // This is used in status reporting (ex. in root resource of Horizon).
 func (q *Q) GetLastLedgerExpIngestNonBlocking() (uint32, error) {
-	lastIngestedLedger, err := q.getValueFromStore(lastLedgerKey, false)
+	lastIngestedLedger, err := q.getValueFromStore(lastLedgerExpIngestKey, false)
 	if err != nil {
 		return 0, err
 	}
@@ -46,7 +47,7 @@ func (q *Q) GetLastLedgerExpIngestNonBlocking() (uint32, error) {
 // it unless you know what you are doing.
 // The value can be set using UpdateLastLedgerExpIngest.
 func (q *Q) GetLastLedgerExpIngest() (uint32, error) {
-	lastIngestedLedger, err := q.getValueFromStore(lastLedgerKey, true)
+	lastIngestedLedger, err := q.getValueFromStore(lastLedgerExpIngestKey, true)
 	if err != nil {
 		return 0, err
 	}
@@ -69,7 +70,36 @@ func (q *Q) GetLastLedgerExpIngest() (uint32, error) {
 // Can be read using GetLastLedgerExpIngest.
 func (q *Q) UpdateLastLedgerExpIngest(ledgerSequence uint32) error {
 	return q.updateValueInStore(
-		lastLedgerKey,
+		lastLedgerExpIngestKey,
+		strconv.FormatUint(uint64(ledgerSequence), 10),
+	)
+}
+
+// GetLastLedgerExpIngest returns the last ledger ingested by tge order book
+// in Horizon. Returns ErrKeyNotFound error if no value has been previously set.
+func (q *Q) GetLastLedgerOrderBook() (uint32, error) {
+	lastOrderBookLedger, err := q.getValueFromStore(lastLedgerOrderBookKey, false)
+	if err != nil {
+		return 0, err
+	}
+
+	if lastOrderBookLedger == "" {
+		return 0, nil
+	} else {
+		ledgerSequence, err := strconv.ParseUint(lastOrderBookLedger, 10, 32)
+		if err != nil {
+			return 0, errors.Wrap(err, "Error converting lastOrderBookLedger value")
+		}
+
+		return uint32(ledgerSequence), nil
+	}
+}
+
+// UpdateLastLedgerOrderBook upsets the last ledger ingested in the order book graph.
+// Can be read using GetLastLedgerExpIngest.
+func (q *Q) UpdateLastLedgerOrderBook(ledgerSequence uint32) error {
+	return q.updateValueInStore(
+		lastLedgerOrderBookKey,
 		strconv.FormatUint(uint64(ledgerSequence), 10),
 	)
 }

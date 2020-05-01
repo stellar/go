@@ -16,6 +16,7 @@ type State struct {
 	HistoryLatest    int32  `db:"history_latest"`
 	HistoryElder     int32  `db:"history_elder"`
 	ExpHistoryLatest uint32 `db:"exp_history_latest"`
+	OrderBookLatest  uint32 `db:"order_book_latest"`
 }
 
 // CurrentState returns the cached snapshot of ledger state

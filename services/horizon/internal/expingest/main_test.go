@@ -302,6 +302,16 @@ func (m *mockDBQ) UpdateLastLedgerExpIngest(sequence uint32) error {
 	return args.Error(0)
 }
 
+func (m *mockDBQ) GetLastLedgerOrderBook() (uint32, error) {
+	a := m.Called()
+	return a.Get(0).(uint32), a.Error(1)
+}
+
+func (m *mockDBQ) UpdateLastLedgerOrderBook(ledgerSequence uint32) error {
+	a := m.Called(ledgerSequence)
+	return a.Error(0)
+}
+
 func (m *mockDBQ) UpdateExpStateInvalid(invalid bool) error {
 	args := m.Called(invalid)
 	return args.Error(0)

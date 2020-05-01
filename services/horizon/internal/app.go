@@ -52,6 +52,7 @@ type App struct {
 	// metrics
 	metrics                  metrics.Registry
 	historyLatestLedgerGauge metrics.Gauge
+	localLatestLedgerGauge   metrics.Gauge
 	historyElderLedgerGauge  metrics.Gauge
 	horizonConnGauge         metrics.Gauge
 	coreLatestLedgerGauge    metrics.Gauge
@@ -225,12 +226,16 @@ func (a *App) UpdateLedgerState() {
 		return
 	}
 
-	next.ExpHistoryLatest, err = a.HistoryQ().GetLastLedgerExpIngestNonBlocking()
 	if err != nil {
-		logErr(err, "failed to load the oldest known exp ledger state from history DB")
+		logErr(err, "failed to load the last ledger ingestion state from history DB")
 		return
 	}
 
+	next.OrderBookLatest, err = a.HistoryQ().GetLastLedgerOrderBook()
+	if err != nil {
+		logErr(err, "failed to load the last known order book ledger state from history DB")
+		return
+	}
 	ledger.SetState(next)
 }
 
