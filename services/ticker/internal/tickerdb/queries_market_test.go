@@ -488,6 +488,33 @@ func TestRetrievePartialMarkets(t *testing.T) {
 	require.NoError(t, err)
 
 	orderbookStats = OrderbookStats{
+		BaseAssetID:    ethAsset1.ID,
+		CounterAssetID: btcAsset.ID,
+		NumBids:        10,
+		BidVolume:      0.90,
+		HighestBid:     100.0,
+		NumAsks:        12,
+		AskVolume:      25.0,
+		LowestAsk:      0.2,
+		Spread:         0.55,
+		SpreadMidPoint: 0.85,
+	}
+	err = session.InsertOrUpdateOrderbookStats(
+		&orderbookStats,
+		[]string{"base_asset_id", "counter_asset_id"},
+	)
+	require.NoError(t, err)
+
+	var obETH1BTC OrderbookStats
+	err = session.GetRaw(&obETH1BTC, `
+		SELECT *
+		FROM orderbook_stats
+		ORDER BY id DESC
+		LIMIT 1`,
+	)
+	require.NoError(t, err)
+
+	orderbookStats = OrderbookStats{
 		BaseAssetID:    btcAsset.ID,
 		CounterAssetID: ethAsset2.ID,
 		NumBids:        1,
@@ -516,6 +543,33 @@ func TestRetrievePartialMarkets(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotEqual(t, obBTCETH1.ID, obBTCETH2.ID)
 
+	orderbookStats = OrderbookStats{
+		BaseAssetID:    ethAsset2.ID,
+		CounterAssetID: btcAsset.ID,
+		NumBids:        20,
+		BidVolume:      0.60,
+		HighestBid:     300.0,
+		NumAsks:        20,
+		AskVolume:      256.0,
+		LowestAsk:      0.70,
+		Spread:         150.0,
+		SpreadMidPoint: 200.0,
+	}
+	err = session.InsertOrUpdateOrderbookStats(
+		&orderbookStats,
+		[]string{"base_asset_id", "counter_asset_id"},
+	)
+	require.NoError(t, err)
+
+	var obETH2BTC OrderbookStats
+	err = session.GetRaw(&obETH2BTC, `
+		SELECT *
+		FROM orderbook_stats
+		ORDER BY id DESC
+		LIMIT 1`,
+	)
+	require.NoError(t, err)
+
 	partialMkts, err := session.RetrievePartialMarkets(
 		nil, nil, nil, nil, 12,
 	)
@@ -541,9 +595,9 @@ func TestRetrievePartialMarkets(t *testing.T) {
 
 	// Validating the aggregated data
 	assert.Equal(t, 150.0, btceth1Mkt.BaseVolume)
-	// TODO: Add check for BaseInverseVolume.
+	assert.Equal(t, float64(1/100.0)+float64(1/50.0), btceth1Mkt.BaseVolumeReverse)
 	assert.Equal(t, 60.0, btceth1Mkt.CounterVolume)
-	// TODO: Add check for CounterInverseVolume.
+	assert.Equal(t, float64(1/10.0)+float64(1/50.0), btceth1Mkt.CounterVolumeReverse)
 	assert.Equal(t, int32(2), btceth1Mkt.TradeCount)
 	assert.Equal(t, 1.0, btceth1Mkt.Open)
 	assert.Equal(t, 0.1, btceth1Mkt.Close)
@@ -553,9 +607,9 @@ func TestRetrievePartialMarkets(t *testing.T) {
 	assert.WithinDuration(t, oneHourAgo.Local(), btceth1Mkt.FirstLedgerCloseTime.Local(), 10*time.Millisecond)
 	assert.WithinDuration(t, tenMinutesAgo.Local(), btceth1Mkt.LastLedgerCloseTime.Local(), 10*time.Millisecond)
 	assert.Equal(t, 24.0, btceth2Mkt.BaseVolume)
-	// TODO: Add check for BaseInverseVolume.
+	assert.Equal(t, float64(1/24.0), btceth2Mkt.BaseVolumeReverse)
 	assert.Equal(t, 26.0, btceth2Mkt.CounterVolume)
-	// TODO: Add check for CounterInverseVolume.
+	assert.Equal(t, float64(1/26.0), btceth2Mkt.CounterVolumeReverse)
 	assert.Equal(t, int32(1), btceth2Mkt.TradeCount)
 	assert.Equal(t, 0.92, btceth2Mkt.Open)
 	assert.Equal(t, 0.92, btceth2Mkt.Close)
@@ -572,6 +626,12 @@ func TestRetrievePartialMarkets(t *testing.T) {
 	assert.Equal(t, 17, btceth1Mkt.NumAsks)
 	assert.Equal(t, 30.0, btceth1Mkt.AskVolume)
 	assert.Equal(t, 0.1, btceth1Mkt.LowestAsk)
+	assert.Equal(t, 10, btceth1Mkt.NumBidsReverse)
+	assert.Equal(t, 0.90, btceth1Mkt.BidVolumeReverse)
+	assert.Equal(t, 100.0, btceth1Mkt.HighestBidReverse)
+	assert.Equal(t, 12, btceth1Mkt.NumAsksReverse)
+	assert.Equal(t, 25.0, btceth1Mkt.AskVolumeReverse)
+	assert.Equal(t, 0.2, btceth1Mkt.LowestAskReverse)
 
 	assert.Equal(t, 1, btceth2Mkt.NumBids)
 	assert.Equal(t, 0.1, btceth2Mkt.BidVolume)
@@ -579,6 +639,12 @@ func TestRetrievePartialMarkets(t *testing.T) {
 	assert.Equal(t, 1, btceth2Mkt.NumAsks)
 	assert.Equal(t, 15.0, btceth2Mkt.AskVolume)
 	assert.Equal(t, 0.2, btceth2Mkt.LowestAsk)
+	assert.Equal(t, 20, btceth2Mkt.NumBidsReverse)
+	assert.Equal(t, 0.60, btceth2Mkt.BidVolumeReverse)
+	assert.Equal(t, 300.0, btceth2Mkt.HighestBidReverse)
+	assert.Equal(t, 20, btceth2Mkt.NumAsksReverse)
+	assert.Equal(t, 256.0, btceth2Mkt.AskVolumeReverse)
+	assert.Equal(t, 0.70, btceth2Mkt.LowestAskReverse)
 
 	// Now let's use the same data, but aggregating by asset pair
 	partialAggMkts, err := session.RetrievePartialAggMarkets(nil, 12)
@@ -589,9 +655,9 @@ func TestRetrievePartialMarkets(t *testing.T) {
 
 	assert.Equal(t, "BTC_ETH", partialAggMkt.TradePairName)
 	assert.Equal(t, 174.0, partialAggMkt.BaseVolume)
-	// TODO: Add check for BaseInverseVolume.
+	assert.Equal(t, (1/100.0 + 1/24.0 + 1/50.0), partialAggMkt.BaseVolumeReverse)
 	assert.Equal(t, 86.0, partialAggMkt.CounterVolume)
-	// TODO: Add check for CounterInverseVolume.
+	assert.Equal(t, (1/10.0 + 1/26.0 + 1/50.0), partialAggMkt.CounterVolumeReverse)
 	assert.Equal(t, int32(3), partialAggMkt.TradeCount)
 	assert.Equal(t, 1.0, partialAggMkt.Open)
 	assert.Equal(t, 0.92, partialAggMkt.Close)
@@ -621,6 +687,12 @@ func TestRetrievePartialMarkets(t *testing.T) {
 	assert.Equal(t, 18, partialAggMkt.NumAsks)
 	assert.Equal(t, 45.0, partialAggMkt.AskVolume)
 	assert.Equal(t, 0.1, partialAggMkt.LowestAsk)
+	assert.Equal(t, 30, partialAggMkt.NumBidsReverse)
+	assert.Equal(t, 1.50, partialAggMkt.BidVolumeReverse)
+	assert.Equal(t, 300.0, partialAggMkt.HighestBidReverse)
+	assert.Equal(t, 32, partialAggMkt.NumAsksReverse)
+	assert.Equal(t, 281.0, partialAggMkt.AskVolumeReverse)
+	assert.Equal(t, 0.2, partialAggMkt.LowestAskReverse)
 }
 
 func Test24hStatsFallback(t *testing.T) {

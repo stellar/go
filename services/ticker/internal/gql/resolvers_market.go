@@ -123,7 +123,6 @@ func dbMarketToPartialMarket(dbMarket tickerdb.PartialMarket) *partialMarket {
 	}
 }
 
-// TODO: Unit test this function.
 func postProcessPartialMarket(
 	dbMkt *partialMarket,
 	reverseOs orderbookStats,
@@ -138,8 +137,14 @@ func postProcessPartialMarket(
 		return
 	}
 
+	// If the user specifies the original endpoint, then
+	// we return the given market.
+	if *isNewEndpoint == false {
+		return
+	}
+
 	// If the user did not provide a trade pair name, then they
-	// want all markets. We return all markets, following the
+	// want all markets. We return the query result's market, following the
 	// convention of the original endpoint.
 	if oldPairName == nil {
 		return
