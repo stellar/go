@@ -125,6 +125,7 @@ func initIngestMetrics(app *App) {
 	app.metrics.Register("ingest.ledger_ingestion", app.expingester.Metrics.LedgerIngestionTimer)
 	app.metrics.Register("ingest.ledger_in_memory_ingestion", app.expingester.Metrics.LedgerInMemoryIngestionTimer)
 	app.metrics.Register("ingest.state_verify", app.expingester.Metrics.StateVerifyTimer)
+	app.metrics.Register("ingest.local_latest_ledger", app.expingester.Metrics.LocalLatestLedgerGauge)
 }
 
 func initTxSubMetrics(app *App) {
