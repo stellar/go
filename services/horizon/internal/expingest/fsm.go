@@ -417,7 +417,7 @@ func (r resumeState) run(s *System) (transition, error) {
 
 		}
 
-		if err = s.graph.Apply(ingestLedger); err != nil {
+		if err = s.graphApply(ingestLedger); err != nil {
 			return retryResume(r), errors.Wrap(err, "Error applying graph changes from ledger")
 		}
 
@@ -888,7 +888,7 @@ func (s *System) completeIngestion(ledger uint32) error {
 		return errors.Wrap(err, commitErrMsg)
 	}
 
-	if err := s.graph.Apply(ledger); err != nil {
+	if err := s.graphApply(ledger); err != nil {
 		err = errors.Wrap(err, "Error applying order book changes")
 		return err
 	}
