@@ -304,6 +304,14 @@ func (s *System) runStateMachine(cur stateMachineNode) error {
 	}
 }
 
+func (s *System) graphApply(sequence uint32) error {
+	if err := s.graph.Apply(sequence); err != nil {
+		return err
+	}
+	s.Metrics.LocalLatestLedgerGauge.Update(int64(sequence))
+	return nil
+}
+
 func (s *System) loadOffersIntoMemory(sequence uint32) error {
 	defer s.graph.Discard()
 
@@ -333,8 +341,7 @@ func (s *System) loadOffersIntoMemory(sequence uint32) error {
 		})
 	}
 
-	err = s.graph.Apply(sequence)
-	if err != nil {
+	if err := s.graphApply(sequence); err != nil {
 		return errors.Wrap(err, "Error running graph.Apply")
 	}
 
