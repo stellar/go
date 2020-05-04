@@ -131,6 +131,14 @@ func (w *web) mustInstallMiddlewares(app *App, connTimeout time.Duration) {
 	w.internalRouter.Use(loggerMiddleware)
 }
 
+type historyLedgerSourceFactory struct {
+	updateFrequency time.Duration
+}
+
+func (f historyLedgerSourceFactory) Get() ledger.Source {
+	return ledger.NewHistoryDBSource(f.updateFrequency)
+}
+
 // mustInstallActions installs the routing configuration of horizon onto the
 // provided app.  All route registration should be implemented here.
 func (w *web) mustInstallActions(
@@ -151,8 +159,8 @@ func (w *web) mustInstallActions(
 	r.Get("/", RootAction{}.Handle)
 
 	streamHandler := sse.StreamHandler{
-		RateLimiter:  w.rateLimiter,
-		LedgerSource: ledger.NewHistoryDBSource(w.sseUpdateFrequency),
+		RateLimiter:         w.rateLimiter,
+		LedgerSourceFactory: historyLedgerSourceFactory{updateFrequency: w.sseUpdateFrequency},
 	}
 
 	// State endpoints behind stateMiddleware
