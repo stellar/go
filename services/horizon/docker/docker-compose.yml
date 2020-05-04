@@ -58,6 +58,7 @@ services:
       - NETWORK_PASSPHRASE=Test SDF Network ; September 2015
       - STELLAR_CORE_URL=http://host.docker.internal:11626
       - INGEST=true
+      - PER_HOUR_RATE_LIMIT=0
     network_mode: '${NETWORK_MODE:-bridge}'
     command: ["--apply-migrations"]
 
