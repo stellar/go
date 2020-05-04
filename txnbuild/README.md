@@ -45,7 +45,7 @@ This project is maintained by the Stellar Development Foundation.
         log.Fatalln(err)
     )
     
-    // sign the transaction
+    // Sign the transaction
     tx, err = tx.Sign(network.TestNetworkPassphrase, kp.(*keypair.Full))
     if err != nil {
         log.Fatalln(err)
