@@ -49,6 +49,18 @@ type System struct {
 		// SuccessfulSubmissionsMeter tracks the rate of successful transactions that
 		// have been submitted to this process
 		SuccessfulSubmissionsMeter metrics.Meter
+
+		// V0TransactionsMeter tracks the rate of v0 transaction envelopes that
+		// have been submitted to this process
+		V0TransactionsMeter metrics.Meter
+
+		// V1TransactionsMeter tracks the rate of v1 transaction envelopes that
+		// have been submitted to this process
+		V1TransactionsMeter metrics.Meter
+
+		// FeeBumpTransactionsMeter tracks the rate of fee bump transaction envelopes that
+		// have been submitted to this process
+		FeeBumpTransactionsMeter metrics.Meter
 	}
 }
 
@@ -65,8 +77,9 @@ func (sys *System) Submit(
 	result = response
 
 	sys.Log.Ctx(ctx).WithFields(log.F{
-		"hash": hash,
-		"tx":   rawTx,
+		"hash":    hash,
+		"tx_type": envelope.Type.String(),
+		"tx":      rawTx,
 	}).Info("Processing transaction")
 
 	// check the configured result provider for an existing result
@@ -124,6 +137,7 @@ func (sys *System) Submit(
 		}
 
 		sr := sys.submitOnce(ctx, rawTx)
+		sys.updateTransactionTypeMetrics(envelope)
 
 		// if submission succeeded
 		if sr.Err == nil {
@@ -181,6 +195,17 @@ func (sys *System) submitOnce(ctx context.Context, env string) SubmissionResult 
 	}
 
 	return sr
+}
+
+func (sys *System) updateTransactionTypeMetrics(envelope xdr.TransactionEnvelope) {
+	switch envelope.Type {
+	case xdr.EnvelopeTypeEnvelopeTypeTxV0:
+		sys.Metrics.V0TransactionsMeter.Mark(1)
+	case xdr.EnvelopeTypeEnvelopeTypeTx:
+		sys.Metrics.V1TransactionsMeter.Mark(1)
+	case xdr.EnvelopeTypeEnvelopeTypeTxFeeBump:
+		sys.Metrics.FeeBumpTransactionsMeter.Mark(1)
+	}
 }
 
 // setTickInProgress sets `tickInProgress` to `true` if it's
@@ -275,6 +300,9 @@ func (sys *System) Init() {
 		sys.Metrics.SubmissionTimer = metrics.NewTimer()
 		sys.Metrics.OpenSubmissionsGauge = metrics.NewGauge()
 		sys.Metrics.BufferedSubmissionsGauge = metrics.NewGauge()
+		sys.Metrics.V0TransactionsMeter = metrics.NewMeter()
+		sys.Metrics.V1TransactionsMeter = metrics.NewMeter()
+		sys.Metrics.FeeBumpTransactionsMeter = metrics.NewMeter()
 
 		if sys.SubmissionTimeout == 0 {
 			// HTTP clients in SDKs usually timeout in 60 seconds. We want SubmissionTimeout
