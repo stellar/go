@@ -308,6 +308,9 @@ func TestAccountDetail(t *testing.T) {
 		balance, balanceErr := account.GetNativeBalance()
 		assert.Nil(t, balanceErr)
 		assert.Equal(t, balance, "9999.9999900")
+		assert.NotNil(t, account.LastModifiedTime)
+		assert.Equal(t, "2019-03-05 13:23:50 +0000 UTC", account.LastModifiedTime.String())
+		assert.Equal(t, uint32(103307), account.LastModifiedLedger)
 	}
 
 	// failure response
@@ -1661,7 +1664,9 @@ var accountResponse = `{
   ],
   "data": {
     "test": "dGVzdA=="
-  }
+  },
+  "last_modified_ledger": 103307,
+  "last_modified_time": "2019-03-05T13:23:50Z"
 }`
 
 var memoRequiredResponse = map[string]string{

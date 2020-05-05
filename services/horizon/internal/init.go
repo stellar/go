@@ -125,6 +125,7 @@ func initIngestMetrics(app *App) {
 	app.metrics.Register("ingest.ledger_ingestion", app.expingester.Metrics.LedgerIngestionTimer)
 	app.metrics.Register("ingest.ledger_in_memory_ingestion", app.expingester.Metrics.LedgerInMemoryIngestionTimer)
 	app.metrics.Register("ingest.state_verify", app.expingester.Metrics.StateVerifyTimer)
+	app.metrics.Register("ingest.local_latest_ledger", app.expingester.Metrics.LocalLatestLedgerGauge)
 }
 
 func initTxSubMetrics(app *App) {
@@ -133,6 +134,9 @@ func initTxSubMetrics(app *App) {
 	app.metrics.Register("txsub.open", app.submitter.Metrics.OpenSubmissionsGauge)
 	app.metrics.Register("txsub.succeeded", app.submitter.Metrics.SuccessfulSubmissionsMeter)
 	app.metrics.Register("txsub.failed", app.submitter.Metrics.FailedSubmissionsMeter)
+	app.metrics.Register("txsub.v0", app.submitter.Metrics.V0TransactionsMeter)
+	app.metrics.Register("txsub.v1", app.submitter.Metrics.V1TransactionsMeter)
+	app.metrics.Register("txsub.feebump", app.submitter.Metrics.FeeBumpTransactionsMeter)
 	app.metrics.Register("txsub.total", app.submitter.Metrics.SubmissionTimer)
 }
 

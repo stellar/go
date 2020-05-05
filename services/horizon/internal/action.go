@@ -195,7 +195,7 @@ func (w *web) getAccountInfo(ctx context.Context, qp *showActionQueryParams) (in
 	defer horizonSession.Rollback()
 	historyQ := &history.Q{horizonSession}
 
-	return actions.AccountInfo(ctx, &core.Q{w.coreSession(ctx)}, historyQ, qp.AccountID)
+	return actions.AccountInfo(ctx, historyQ, qp.AccountID)
 }
 
 // getTransactionPage returns a page containing the transaction records of an account or a ledger.

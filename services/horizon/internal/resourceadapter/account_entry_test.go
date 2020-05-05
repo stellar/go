@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/stellar/go/amount"
 	. "github.com/stellar/go/protocols/horizon"
@@ -20,13 +21,13 @@ var (
 	accountID = xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB")
 
 	data = []history.Data{
-		history.Data{
+		{
 			AccountID:          accountID.Address(),
 			Name:               "test",
 			Value:              []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
 			LastModifiedLedger: 1,
 		},
-		history.Data{
+		{
 			AccountID:          accountID.Address(),
 			Name:               "test2",
 			Value:              []byte{10, 11, 12, 13, 14, 15, 16, 17, 18, 19},
@@ -52,10 +53,20 @@ var (
 		LastModifiedLedger:   1000,
 	}
 
+	ledgerWithCloseTime = &history.Ledger{
+		ClosedAt: func() time.Time {
+			t, err := time.Parse(time.RFC3339, "2019-03-05T13:23:50Z")
+			if err != nil {
+				panic(err)
+			}
+			return t
+		}(),
+	}
+
 	trustLineIssuer = xdr.MustAddress("GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
 
 	trustLines = []history.TrustLine{
-		history.TrustLine{
+		{
 			AccountID:          accountID.Address(),
 			AssetCode:          "EUR",
 			AssetIssuer:        trustLineIssuer.Address(),
@@ -67,7 +78,7 @@ var (
 			BuyingLiabilities:  4,
 			LastModifiedLedger: 900,
 		},
-		history.TrustLine{
+		{
 			AccountID:          accountID.Address(),
 			AssetCode:          "USD",
 			AssetIssuer:        trustLineIssuer.Address(),
@@ -82,23 +93,23 @@ var (
 	}
 
 	signers = []history.AccountSigner{
-		history.AccountSigner{
+		{
 			Account: accountID.Address(),
 			Signer:  accountID.Address(),
 			Weight:  int32(3),
 		},
 
-		history.AccountSigner{
+		{
 			Account: accountID.Address(),
 			Signer:  "GCMQBJWOLTCSSMWNVDJAXL6E42SADH563IL5MN5B6RBBP4XP7TBRLJKE",
 			Weight:  int32(1),
 		},
-		history.AccountSigner{
+		{
 			Account: accountID.Address(),
 			Signer:  "GBXSGN5GX4PZOSBHB4JJF67CEGSGT56IN2N7LF3VGJ7WQ56BYWRVNNDX",
 			Weight:  int32(2),
 		},
-		history.AccountSigner{
+		{
 			Account: accountID.Address(),
 			Signer:  "GBPXUGDRAOU5QUNUAXX6LYPBIOXYG45GLTKIRWKOCQ6HXP5QE5OCPFBY",
 			Weight:  int32(3),
@@ -110,7 +121,7 @@ func TestPopulateAccountEntry(t *testing.T) {
 	tt := assert.New(t)
 	ctx, _ := test.ContextWithLogBuffer()
 	hAccount := Account{}
-	err := PopulateAccountEntry(ctx, &hAccount, account, data, signers, trustLines)
+	err := PopulateAccountEntry(ctx, &hAccount, account, data, signers, trustLines, ledgerWithCloseTime)
 	tt.NoError(err)
 
 	tt.Equal(account.AccountID, hAccount.ID)
@@ -121,6 +132,8 @@ func TestPopulateAccountEntry(t *testing.T) {
 	tt.Equal(account.InflationDestination, hAccount.InflationDestination)
 	tt.Equal(account.HomeDomain, hAccount.HomeDomain)
 	tt.Equal(account.LastModifiedLedger, hAccount.LastModifiedLedger)
+	tt.NotNil(hAccount.LastModifiedTime)
+	tt.Equal(ledgerWithCloseTime.ClosedAt, *hAccount.LastModifiedTime)
 
 	wantAccountThresholds := AccountThresholds{
 		LowThreshold:  account.ThresholdLow,
@@ -225,13 +238,13 @@ func TestPopulateAccountEntryMasterMissingInSigners(t *testing.T) {
 
 	account.MasterWeight = 0
 	signers = []history.AccountSigner{
-		history.AccountSigner{
+		{
 			Account: accountID.Address(),
 			Signer:  "GCMQBJWOLTCSSMWNVDJAXL6E42SADH563IL5MN5B6RBBP4XP7TBRLJKE",
 			Weight:  int32(3),
 		},
 	}
-	err := PopulateAccountEntry(ctx, &hAccount, account, data, signers, trustLines)
+	err := PopulateAccountEntry(ctx, &hAccount, account, data, signers, trustLines, nil)
 	tt.NoError(err)
 
 	tt.Len(hAccount.Signers, 2)
@@ -240,4 +253,5 @@ func TestPopulateAccountEntryMasterMissingInSigners(t *testing.T) {
 	tt.Equal(account.AccountID, signer.Key)
 	tt.Equal(int32(account.MasterWeight), signer.Weight)
 	tt.Equal(protocol.MustKeyTypeFromAddress(account.AccountID), signer.Type)
+	tt.Nil(hAccount.LastModifiedTime)
 }

@@ -131,6 +131,14 @@ func (w *web) mustInstallMiddlewares(app *App, connTimeout time.Duration) {
 	w.internalRouter.Use(loggerMiddleware)
 }
 
+type historyLedgerSourceFactory struct {
+	updateFrequency time.Duration
+}
+
+func (f historyLedgerSourceFactory) Get() ledger.Source {
+	return ledger.NewHistoryDBSource(f.updateFrequency)
+}
+
 // mustInstallActions installs the routing configuration of horizon onto the
 // provided app.  All route registration should be implemented here.
 func (w *web) mustInstallActions(
@@ -151,8 +159,8 @@ func (w *web) mustInstallActions(
 	r.Get("/", RootAction{}.Handle)
 
 	streamHandler := sse.StreamHandler{
-		RateLimiter:  w.rateLimiter,
-		LedgerSource: ledger.NewHistoryDBSource(w.sseUpdateFrequency),
+		RateLimiter:         w.rateLimiter,
+		LedgerSourceFactory: historyLedgerSourceFactory{updateFrequency: w.sseUpdateFrequency},
 	}
 
 	// State endpoints behind stateMiddleware
@@ -331,12 +339,6 @@ func (w *web) horizonSession(ctx context.Context) (*db.Session, error) {
 	}
 
 	return &db.Session{DB: w.historyQ.Session.DB, Ctx: ctx}, nil
-}
-
-// coreSession returns a new session that loads data from the stellar core
-// database. The returned session is bound to `ctx`.
-func (w *web) coreSession(ctx context.Context) *db.Session {
-	return &db.Session{DB: w.coreQ.Session.DB, Ctx: ctx}
 }
 
 // isHistoryStale returns true if the latest history ledger is more than
