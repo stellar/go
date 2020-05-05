@@ -38,7 +38,7 @@ func (r *resolver) Markets(args struct {
 	}
 	var pairName string
 	if args.BaseAssetCode != nil {
-		pairName = fmt.Sprintf("%s:%s/%s:%s", *args.BaseAssetCode, *args.BaseAssetIssuer, *args.CounterAssetCode, *args.CounterAssetIssuer)
+		pairName = fmt.Sprintf("%s:%s / %s:%s", *args.BaseAssetCode, *args.BaseAssetIssuer, *args.CounterAssetCode, *args.CounterAssetIssuer)
 	}
 	for _, dbMkt := range dbMarkets {
 		partialMarkets = append(partialMarkets, postProcessPartialMarket(dbMarketToPartialMarket(dbMkt), reverseOrderbook(dbMkt), &pairName, args.IsNewEndpoint))
@@ -152,7 +152,7 @@ func postProcessPartialMarket(
 
 	// If the user-requested trade pair already matches the name
 	// of the generated partial market, no post-processing is required.
-	if *oldPairName == dbMkt.TradePair {
+	if *oldPairName == dbMkt.TradePair || *oldPairName == "" {
 		return
 	}
 
