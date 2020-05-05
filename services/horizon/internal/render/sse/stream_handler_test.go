@@ -9,11 +9,17 @@ import (
 	"github.com/stellar/go/services/horizon/internal/ledger"
 )
 
+type testingFactory struct {
+	ledgerSource ledger.Source
+}
+
+func (f *testingFactory) Get() ledger.Source {
+	return f.ledgerSource
+}
+
 func TestSendByeByeOnContextDone(t *testing.T) {
 	ledgerSource := ledger.NewTestingSource(1)
-	handler := StreamHandler{
-		LedgerSource: ledgerSource,
-	}
+	handler := StreamHandler{LedgerSourceFactory: &testingFactory{ledgerSource}}
 
 	r, err := http.NewRequest("GET", "http://localhost", nil)
 	if err != nil {

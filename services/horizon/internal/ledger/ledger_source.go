@@ -6,10 +6,12 @@ import (
 )
 
 // Source exposes two helpers methods to help you find out the current
-// ledger and yield every time there is a new ledger.
+// ledger and yield every time there is a new ledger. Call `Close` when
+// source is no longer used.
 type Source interface {
 	CurrentLedger() uint32
 	NextLedger(currentSequence uint32) chan uint32
+	Close()
 }
 
 type currentStateFunc func() State
@@ -19,23 +21,27 @@ type currentStateFunc func() State
 type HistoryDBSource struct {
 	updateFrequency time.Duration
 	currentState    currentStateFunc
+
+	closedLock sync.Mutex
+	closed     bool
 }
 
 // NewHistoryDBSource constructs a new instance of HistoryDBSource
-func NewHistoryDBSource(updateFrequency time.Duration) HistoryDBSource {
-	return HistoryDBSource{
+func NewHistoryDBSource(updateFrequency time.Duration) *HistoryDBSource {
+	return &HistoryDBSource{
 		updateFrequency: updateFrequency,
 		currentState:    CurrentState,
+		closedLock:      sync.Mutex{},
 	}
 }
 
 // CurrentLedger returns the current ledger.
-func (source HistoryDBSource) CurrentLedger() uint32 {
+func (source *HistoryDBSource) CurrentLedger() uint32 {
 	return source.currentState().ExpHistoryLatest
 }
 
 // NextLedger returns a channel which yields every time there is a new ledger with a sequence number larger than currentSequence.
-func (source HistoryDBSource) NextLedger(currentSequence uint32) chan uint32 {
+func (source *HistoryDBSource) NextLedger(currentSequence uint32) chan uint32 {
 	// Make sure this is buffered channel of size 1. Otherwise, the go routine below
 	// will never return if `newLedgers` channel is not read. From Effective Go:
 	// > If the channel is unbuffered, the sender blocks until the receiver has received the value.
@@ -44,6 +50,13 @@ func (source HistoryDBSource) NextLedger(currentSequence uint32) chan uint32 {
 		for {
 			if source.updateFrequency > 0 {
 				time.Sleep(source.updateFrequency)
+			}
+
+			source.closedLock.Lock()
+			closed := source.closed
+			source.closedLock.Unlock()
+			if closed {
+				return
 			}
 
 			currentLedgerState := source.currentState()
@@ -55,6 +68,13 @@ func (source HistoryDBSource) NextLedger(currentSequence uint32) chan uint32 {
 	}()
 
 	return newLedgers
+}
+
+// Close closes the internal go routines.
+func (source *HistoryDBSource) Close() {
+	source.closedLock.Lock()
+	defer source.closedLock.Unlock()
+	source.closed = true
 }
 
 // TestingSource is helper struct which implements the LedgerSource
@@ -106,3 +126,5 @@ func (source *TestingSource) NextLedger(currentSequence uint32) chan uint32 {
 
 	return response
 }
+
+func (source *TestingSource) Close() {}
