@@ -17,14 +17,13 @@ func TestPostProcessPartialMarket(t *testing.T) {
 	tradePair := fmt.Sprintf("%s:%s / %s:%s", baseCode, baseIssuer, counterCode, counterIssuer)
 	now := time.Now()
 
-	dbMarket := tickerdb.PartialMarket{
+	dbMkt := tickerdb.PartialMarket{
 		TradePairName:        tradePair,
 		BaseAssetCode:        baseCode,
 		BaseAssetIssuer:      baseIssuer,
 		CounterAssetCode:     counterCode,
 		CounterAssetIssuer:   counterIssuer,
 		BaseVolume:           100.0,
-		BaseVolumeReverse:    0.04,
 		TradeCount:           2,
 		Open:                 20.0,
 		Low:                  10.0,
@@ -47,8 +46,8 @@ func TestPostProcessPartialMarket(t *testing.T) {
 		LastLedgerCloseTime:  now,
 	}
 
-	partialMarket := dbMarketToPartialMarket(dbMarket)
-	reverseOs := reverseOrderbook(dbMarket)
+	partialMarket := dbMarketToPartialMarket(dbMkt)
+	reverseOs := reverseOrderbook(dbMkt)
 
 	processedMkt := postProcessPartialMarket(partialMarket, reverseOs, nil, nil)
 	assert.Equal(t, partialMarket, processedMkt)
@@ -58,14 +57,33 @@ func TestPostProcessPartialMarket(t *testing.T) {
 	assert.Equal(t, partialMarket, processedMkt)
 
 	isNewEndpoint = true
+	// Confirm that a nil pair name with the new endpoint inverts prices.
 	processedMkt = postProcessPartialMarket(partialMarket, reverseOs, nil, &isNewEndpoint)
-	assert.Equal(t, partialMarket, processedMkt)
+	assert.Equal(t, 1/partialMarket.Open, processedMkt.Open)
+	assert.Equal(t, 1/partialMarket.High, processedMkt.Low)
+	assert.Equal(t, 1/partialMarket.Low, processedMkt.High)
+	assert.Equal(t, 1/partialMarket.Low-1/partialMarket.High, processedMkt.Change)
+	assert.Equal(t, 1/partialMarket.Close, processedMkt.Close)
 
-	oldPairName := fmt.Sprintf("%s:%s / %s:%s", baseCode, baseIssuer, counterCode, counterIssuer)
+	// Confirm that an empty pair name with the new endpoint inverts prices.
+	oldPairName := ""
 	processedMkt = postProcessPartialMarket(partialMarket, reverseOs, &oldPairName, &isNewEndpoint)
-	assert.Equal(t, partialMarket, processedMkt, &oldPairName, &isNewEndpoint)
+	assert.Equal(t, 1/partialMarket.Open, processedMkt.Open)
+	assert.Equal(t, 1/partialMarket.High, processedMkt.Low)
+	assert.Equal(t, 1/partialMarket.Low, processedMkt.High)
+	assert.Equal(t, 1/partialMarket.Low-1/partialMarket.High, processedMkt.Change)
+	assert.Equal(t, 1/partialMarket.Close, processedMkt.Close)
 
-	// Confirm that a swapped pair name has the desired result.
+	// Confirm that a matching pair name with the new endpoint inverts prices.
+	oldPairName = fmt.Sprintf("%s:%s / %s:%s", baseCode, baseIssuer, counterCode, counterIssuer)
+	processedMkt = postProcessPartialMarket(partialMarket, reverseOs, &oldPairName, &isNewEndpoint)
+	assert.Equal(t, 1/partialMarket.Open, processedMkt.Open)
+	assert.Equal(t, 1/partialMarket.High, processedMkt.Low)
+	assert.Equal(t, 1/partialMarket.Low, processedMkt.High)
+	assert.Equal(t, 1/partialMarket.Low-1/partialMarket.High, processedMkt.Change)
+	assert.Equal(t, 1/partialMarket.Close, processedMkt.Close)
+
+	// Confirm that a swapped pair name reverses counter and base assets and changes the orderbook.
 	oldPairName = fmt.Sprintf("%s:%s / %s:%s", counterCode, counterIssuer, baseCode, baseIssuer)
 	processedMkt = postProcessPartialMarket(partialMarket, reverseOs, &oldPairName, &isNewEndpoint)
 	assert.Equal(t, oldPairName, processedMkt.TradePair)
@@ -73,13 +91,7 @@ func TestPostProcessPartialMarket(t *testing.T) {
 	assert.Equal(t, partialMarket.CounterAssetIssuer, processedMkt.BaseAssetIssuer)
 	assert.Equal(t, partialMarket.BaseAssetCode, processedMkt.CounterAssetCode)
 	assert.Equal(t, partialMarket.BaseAssetIssuer, processedMkt.CounterAssetIssuer)
-	assert.Equal(t, partialMarket.BaseVolumeReverse, processedMkt.BaseVolume)
-	assert.Equal(t, partialMarket.CounterVolumeReverse, processedMkt.CounterVolume)
-	assert.Equal(t, partialMarket.TradeCount, processedMkt.TradeCount)
-	assert.Equal(t, 1/partialMarket.Open, processedMkt.Open)
-	assert.Equal(t, 1/partialMarket.High, processedMkt.Low)
-	assert.Equal(t, 1/partialMarket.Low, processedMkt.High)
-	assert.Equal(t, 1/partialMarket.Low-1/partialMarket.High, processedMkt.Change)
-	assert.Equal(t, 1/partialMarket.Close, processedMkt.Close)
+	assert.Equal(t, partialMarket.BaseVolume, processedMkt.CounterVolume)
+	assert.Equal(t, partialMarket.CounterVolume, processedMkt.BaseVolume)
 	assert.Equal(t, reverseOs, processedMkt.OrderbookStats)
 }

@@ -41,7 +41,8 @@ func (r *resolver) Markets(args struct {
 		pairName = fmt.Sprintf("%s:%s / %s:%s", *args.BaseAssetCode, *args.BaseAssetIssuer, *args.CounterAssetCode, *args.CounterAssetIssuer)
 	}
 	for _, dbMkt := range dbMarkets {
-		partialMarkets = append(partialMarkets, postProcessPartialMarket(dbMarketToPartialMarket(dbMkt), reverseOrderbook(dbMkt), &pairName, args.IsNewEndpoint))
+		processedMkt := postProcessPartialMarket(dbMarketToPartialMarket(dbMkt), reverseOrderbook(dbMkt), &pairName, args.IsNewEndpoint)
+		partialMarkets = append(partialMarkets, processedMkt)
 	}
 	return
 }
@@ -128,55 +129,63 @@ func postProcessPartialMarket(
 	reverseOs orderbookStats,
 	oldPairName *string,
 	isNewEndpoint *bool,
-) (processedDbMkt *partialMarket) {
+) *partialMarket {
+	// If a nil partial market was passed, return it.
+	if dbMkt == nil {
+		return dbMkt
+	}
+
 	// If the user does not provide the new endpoint flag,
 	// we assume they want the pre-existing behavior. (This also
 	// assures backwards compatibility.)
-	processedDbMkt = dbMkt
 	if isNewEndpoint == nil {
-		return
+		return dbMkt
 	}
 
 	// If the user specifies the original endpoint, then
 	// we return the given market.
 	if *isNewEndpoint == false {
-		return
+		return dbMkt
 	}
 
+	// Get the requested pair name from the user.
 	// If the user did not provide a trade pair name, then they
-	// want all markets. We return the query result's market, following the
-	// convention of the original endpoint.
-	if oldPairName == nil {
-		return
+	// want all markets. Note that the user requested the new endpoint
+	// behavior, meaning they expect an asset XLM_USD to represent XLM
+	// as base, USD as counter, and prices to be ratios of counter to base.
+	var oldPairNameStr string
+	if oldPairName != nil {
+		oldPairNameStr = *oldPairName
 	}
 
 	// If the user-requested trade pair already matches the name
-	// of the generated partial market, no post-processing is required.
-	if *oldPairName == dbMkt.TradePair || *oldPairName == "" {
-		return
+	// of the generated partial market, the base and counter assets and
+	// volume are as expected. Prices must be inverted to match the industry
+	// convention, rather than the original ticker implementation.
+	processedDbMkt := *dbMkt
+	if oldPairNameStr == dbMkt.TradePair || oldPairName == nil || oldPairNameStr == "" {
+		processedDbMkt.Open = 1 / dbMkt.Open
+		processedDbMkt.Low = 1 / dbMkt.High
+		processedDbMkt.High = 1 / dbMkt.Low
+		processedDbMkt.Change = 1/dbMkt.Low - 1/dbMkt.High
+		processedDbMkt.Close = 1 / dbMkt.Close
+		return &processedDbMkt
 	}
 
 	// We construct a partial market with the base and counter assets reversed.
-	processedDbMkt = &partialMarket{
-		TradePair:            *oldPairName,
-		BaseAssetCode:        dbMkt.CounterAssetCode,
-		BaseAssetIssuer:      dbMkt.CounterAssetIssuer,
-		CounterAssetCode:     dbMkt.BaseAssetCode,
-		CounterAssetIssuer:   dbMkt.BaseAssetIssuer,
-		BaseVolume:           dbMkt.BaseVolumeReverse,
-		CounterVolume:        dbMkt.CounterVolumeReverse,
-		TradeCount:           dbMkt.TradeCount,
-		Open:                 1 / dbMkt.Open,
-		Low:                  1 / dbMkt.High,
-		High:                 1 / dbMkt.Low,
-		Change:               1/dbMkt.Low - 1/dbMkt.High,
-		Close:                1 / dbMkt.Close,
-		IntervalStart:        dbMkt.IntervalStart,
-		FirstLedgerCloseTime: dbMkt.FirstLedgerCloseTime,
-		LastLedgerCloseTime:  dbMkt.LastLedgerCloseTime,
-		OrderbookStats:       reverseOs,
-	}
-	return
+	// Note that we don't need to recompute prices, because they had already
+	// been computed with respect to the original counter asset (now base).
+	processedDbMkt.TradePair = *oldPairName
+	processedDbMkt.BaseAssetCode = dbMkt.CounterAssetCode
+	processedDbMkt.BaseAssetIssuer = dbMkt.CounterAssetIssuer
+	processedDbMkt.BaseVolume = dbMkt.CounterVolume
+	processedDbMkt.CounterAssetCode = dbMkt.BaseAssetCode
+	processedDbMkt.CounterAssetIssuer = dbMkt.BaseAssetIssuer
+	processedDbMkt.CounterVolume = dbMkt.BaseVolume
+
+	// We have to reverse the orderbook, since we've reversed the trading pair.
+	processedDbMkt.OrderbookStats = reverseOs
+	return &processedDbMkt
 }
 
 func reverseOrderbook(dbMarket tickerdb.PartialMarket) orderbookStats {

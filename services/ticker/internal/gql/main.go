@@ -51,9 +51,7 @@ type partialMarket struct {
 	CounterAssetCode     string
 	CounterAssetIssuer   string
 	BaseVolume           float64
-	BaseVolumeReverse    float64
 	CounterVolume        float64
-	CounterVolumeReverse float64
 	TradeCount           int32
 	Open                 float64
 	Low                  float64

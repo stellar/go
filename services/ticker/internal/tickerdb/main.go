@@ -143,9 +143,7 @@ type PartialMarket struct {
 	CounterAssetIssuer   string    `db:"counter_asset_issuer"`
 	CounterAssetType     string    `db:"counter_asset_type"`
 	BaseVolume           float64   `db:"base_volume"`
-	BaseVolumeReverse    float64   `db:"base_volume_reverse"`
 	CounterVolume        float64   `db:"counter_volume"`
-	CounterVolumeReverse float64   `db:"counter_volume_reverse"`
 	TradeCount           int32     `db:"trade_count"`
 	Open                 float64   `db:"open_price"`
 	Low                  float64   `db:"lowest_price"`

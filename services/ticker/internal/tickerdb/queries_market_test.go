@@ -595,9 +595,7 @@ func TestRetrievePartialMarkets(t *testing.T) {
 
 	// Validating the aggregated data
 	assert.Equal(t, 150.0, btceth1Mkt.BaseVolume)
-	assert.Equal(t, float64(1/100.0)+float64(1/50.0), btceth1Mkt.BaseVolumeReverse)
 	assert.Equal(t, 60.0, btceth1Mkt.CounterVolume)
-	assert.Equal(t, float64(1/10.0)+float64(1/50.0), btceth1Mkt.CounterVolumeReverse)
 	assert.Equal(t, int32(2), btceth1Mkt.TradeCount)
 	assert.Equal(t, 1.0, btceth1Mkt.Open)
 	assert.Equal(t, 0.1, btceth1Mkt.Close)
@@ -607,9 +605,7 @@ func TestRetrievePartialMarkets(t *testing.T) {
 	assert.WithinDuration(t, oneHourAgo.Local(), btceth1Mkt.FirstLedgerCloseTime.Local(), 10*time.Millisecond)
 	assert.WithinDuration(t, tenMinutesAgo.Local(), btceth1Mkt.LastLedgerCloseTime.Local(), 10*time.Millisecond)
 	assert.Equal(t, 24.0, btceth2Mkt.BaseVolume)
-	assert.Equal(t, float64(1/24.0), btceth2Mkt.BaseVolumeReverse)
 	assert.Equal(t, 26.0, btceth2Mkt.CounterVolume)
-	assert.Equal(t, float64(1/26.0), btceth2Mkt.CounterVolumeReverse)
 	assert.Equal(t, int32(1), btceth2Mkt.TradeCount)
 	assert.Equal(t, 0.92, btceth2Mkt.Open)
 	assert.Equal(t, 0.92, btceth2Mkt.Close)
@@ -627,10 +623,8 @@ func TestRetrievePartialMarkets(t *testing.T) {
 	assert.Equal(t, 30.0, btceth1Mkt.AskVolume)
 	assert.Equal(t, 0.1, btceth1Mkt.LowestAsk)
 	assert.Equal(t, 10, btceth1Mkt.NumBidsReverse)
-	assert.Equal(t, 0.90, btceth1Mkt.BidVolumeReverse)
 	assert.Equal(t, 100.0, btceth1Mkt.HighestBidReverse)
 	assert.Equal(t, 12, btceth1Mkt.NumAsksReverse)
-	assert.Equal(t, 25.0, btceth1Mkt.AskVolumeReverse)
 	assert.Equal(t, 0.2, btceth1Mkt.LowestAskReverse)
 
 	assert.Equal(t, 1, btceth2Mkt.NumBids)
@@ -655,9 +649,7 @@ func TestRetrievePartialMarkets(t *testing.T) {
 
 	assert.Equal(t, "BTC_ETH", partialAggMkt.TradePairName)
 	assert.Equal(t, 174.0, partialAggMkt.BaseVolume)
-	assert.Equal(t, (1/100.0 + 1/24.0 + 1/50.0), partialAggMkt.BaseVolumeReverse)
 	assert.Equal(t, 86.0, partialAggMkt.CounterVolume)
-	assert.Equal(t, (1/10.0 + 1/26.0 + 1/50.0), partialAggMkt.CounterVolumeReverse)
 	assert.Equal(t, int32(3), partialAggMkt.TradeCount)
 	assert.Equal(t, 1.0, partialAggMkt.Open)
 	assert.Equal(t, 0.92, partialAggMkt.Close)
