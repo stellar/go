@@ -77,8 +77,9 @@ func (sys *System) Submit(
 	result = response
 
 	sys.Log.Ctx(ctx).WithFields(log.F{
-		"hash": hash,
-		"tx":   rawTx,
+		"hash":    hash,
+		"tx_type": envelope.Type.String(),
+		"tx":      rawTx,
 	}).Info("Processing transaction")
 
 	// check the configured result provider for an existing result
