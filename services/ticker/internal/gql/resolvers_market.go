@@ -144,7 +144,7 @@ func postProcessPartialMarket(
 
 	// If the user specifies the original endpoint, then
 	// we return the given market.
-	if *isNewEndpoint == false {
+	if !*isNewEndpoint {
 		return dbMkt
 	}
 
