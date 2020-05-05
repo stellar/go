@@ -21,7 +21,9 @@ type currentStateFunc func() State
 type HistoryDBSource struct {
 	updateFrequency time.Duration
 	currentState    currentStateFunc
-	closed          bool
+
+	closedLock sync.Mutex
+	closed     bool
 }
 
 // NewHistoryDBSource constructs a new instance of HistoryDBSource
@@ -29,6 +31,7 @@ func NewHistoryDBSource(updateFrequency time.Duration) *HistoryDBSource {
 	return &HistoryDBSource{
 		updateFrequency: updateFrequency,
 		currentState:    CurrentState,
+		closedLock:      sync.Mutex{},
 	}
 }
 
@@ -49,7 +52,10 @@ func (source *HistoryDBSource) NextLedger(currentSequence uint32) chan uint32 {
 				time.Sleep(source.updateFrequency)
 			}
 
-			if source.closed {
+			source.closedLock.Lock()
+			closed := source.closed
+			source.closedLock.Unlock()
+			if closed {
 				return
 			}
 
@@ -66,6 +72,8 @@ func (source *HistoryDBSource) NextLedger(currentSequence uint32) chan uint32 {
 
 // Close closes the internal go routines.
 func (source *HistoryDBSource) Close() {
+	source.closedLock.Lock()
+	defer source.closedLock.Unlock()
 	source.closed = true
 }
 
