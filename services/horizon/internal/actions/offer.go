@@ -36,7 +36,7 @@ func (handler GetOfferByID) GetResource(
 		return nil, err
 	}
 
-	ledger := new(history.Ledger)
+	ledger := &history.Ledger{}
 	err = historyQ.LedgerBySequence(
 		ledger,
 		int32(record.LastModifiedLedger),
@@ -183,13 +183,12 @@ func getOffersPage(ctx context.Context, historyQ *history.Q, query history.Offer
 	for _, record := range records {
 		var offerResponse horizon.Offer
 
-		ledger, found := ledgerCache.Records[int32(record.LastModifiedLedger)]
-		ledgerPtr := &ledger
-		if !found {
-			ledgerPtr = nil
+		var ledger *history.Ledger
+		if l, ok := ledgerCache.Records[int32(record.LastModifiedLedger)]; ok {
+			ledger = &l
 		}
 
-		resourceadapter.PopulateOffer(ctx, &offerResponse, record, ledgerPtr)
+		resourceadapter.PopulateOffer(ctx, &offerResponse, record, ledger)
 		offers = append(offers, offerResponse)
 	}
 

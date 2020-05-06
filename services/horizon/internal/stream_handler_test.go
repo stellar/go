@@ -21,6 +21,14 @@ import (
 	"github.com/stellar/go/support/render/hal"
 )
 
+type testingFactory struct {
+	ledgerSource ledger.Source
+}
+
+func (f *testingFactory) Get() ledger.Source {
+	return f.ledgerSource
+}
+
 // StreamTest utility struct to wrap SSE related tests.
 type StreamTest struct {
 	ledgerSource  *ledger.TestingSource
@@ -64,7 +72,7 @@ func NewStreamablePageTest(
 ) *StreamTest {
 	ledgerSource := ledger.NewTestingSource(currentLedger)
 	action.ledgerSource = ledgerSource
-	streamHandler := sse.StreamHandler{LedgerSource: ledgerSource}
+	streamHandler := sse.StreamHandler{LedgerSourceFactory: &testingFactory{ledgerSource}}
 	handler := streamablePageHandler(action, streamHandler)
 
 	return newStreamTest(
@@ -85,7 +93,7 @@ func NewStreamableObjectTest(
 ) *StreamTest {
 	ledgerSource := ledger.NewTestingSource(currentLedger)
 	action.ledgerSource = ledgerSource
-	streamHandler := sse.StreamHandler{LedgerSource: ledgerSource}
+	streamHandler := sse.StreamHandler{LedgerSourceFactory: &testingFactory{ledgerSource}}
 	handler := streamableObjectActionHandler{action: action, limit: limit, streamHandler: streamHandler}
 
 	return newStreamTest(
