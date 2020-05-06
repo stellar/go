@@ -11,12 +11,12 @@ import (
 
 // Markets resolves the markets() GraphQL query.
 func (r *resolver) Markets(args struct {
-	BaseAssetCode      *string
-	BaseAssetIssuer    *string
-	CounterAssetCode   *string
-	CounterAssetIssuer *string
-	NumHoursAgo        *int32
-	IsNewEndpoint      *bool
+	BaseAssetCode        *string
+	BaseAssetIssuer      *string
+	CounterAssetCode     *string
+	CounterAssetIssuer   *string
+	NumHoursAgo          *int32
+	ShouldReverseMarkets *bool
 }) (partialMarkets []*partialMarket, err error) {
 	numHours, err := validateNumHoursAgo(args.NumHoursAgo)
 	if err != nil {
@@ -41,7 +41,7 @@ func (r *resolver) Markets(args struct {
 		pairName = fmt.Sprintf("%s:%s / %s:%s", *args.BaseAssetCode, *args.BaseAssetIssuer, *args.CounterAssetCode, *args.CounterAssetIssuer)
 	}
 	for _, dbMkt := range dbMarkets {
-		processedMkt := postProcessPartialMarket(dbMarketToPartialMarket(dbMkt), reverseOrderbook(dbMkt), &pairName, args.IsNewEndpoint)
+		processedMkt := postProcessPartialMarket(dbMarketToPartialMarket(dbMkt), reverseOrderbook(dbMkt), &pairName, args.ShouldReverseMarkets)
 		partialMarkets = append(partialMarkets, processedMkt)
 	}
 	return
@@ -50,9 +50,9 @@ func (r *resolver) Markets(args struct {
 // Ticker resolves the ticker() GraphQL query (TODO)
 func (r *resolver) Ticker(
 	args struct {
-		PairName      *string
-		NumHoursAgo   *int32
-		IsNewEndpoint *bool
+		PairName             *string
+		NumHoursAgo          *int32
+		ShouldReverseMarkets *bool
 	},
 ) (partialMarkets []*partialMarket, err error) {
 	numHours, err := validateNumHoursAgo(args.NumHoursAgo)
@@ -69,7 +69,7 @@ func (r *resolver) Ticker(
 	}
 
 	for _, dbMkt := range dbMarkets {
-		partialMarkets = append(partialMarkets, postProcessPartialMarket(dbMarketToPartialMarket(dbMkt), reverseOrderbook(dbMkt), args.PairName, args.IsNewEndpoint))
+		partialMarkets = append(partialMarkets, postProcessPartialMarket(dbMarketToPartialMarket(dbMkt), reverseOrderbook(dbMkt), args.PairName, args.ShouldReverseMarkets))
 	}
 	return
 
@@ -128,7 +128,7 @@ func postProcessPartialMarket(
 	dbMkt *partialMarket,
 	reverseOs orderbookStats,
 	oldPairName *string,
-	isNewEndpoint *bool,
+	shouldReverseMarkets *bool,
 ) *partialMarket {
 	// If a nil partial market was passed, return it.
 	if dbMkt == nil {
@@ -138,13 +138,13 @@ func postProcessPartialMarket(
 	// If the user does not provide the new endpoint flag,
 	// we assume they want the pre-existing behavior. (This also
 	// assures backwards compatibility.)
-	if isNewEndpoint == nil {
+	if shouldReverseMarkets == nil {
 		return dbMkt
 	}
 
 	// If the user specifies the original endpoint, then
 	// we return the given market.
-	if !*isNewEndpoint {
+	if !*shouldReverseMarkets {
 		return dbMkt
 	}
 
@@ -164,11 +164,11 @@ func postProcessPartialMarket(
 	// convention, rather than the original ticker implementation.
 	processedDbMkt := *dbMkt
 	if oldPairNameStr == dbMkt.TradePair || oldPairName == nil || oldPairNameStr == "" {
-		processedDbMkt.Open = 1 / dbMkt.Open
-		processedDbMkt.Low = 1 / dbMkt.High
-		processedDbMkt.High = 1 / dbMkt.Low
-		processedDbMkt.Change = 1/dbMkt.Low - 1/dbMkt.High
-		processedDbMkt.Close = 1 / dbMkt.Close
+		processedDbMkt.Open = invertIfNonZero(dbMkt.Open)
+		processedDbMkt.Low = invertIfNonZero(dbMkt.High)
+		processedDbMkt.High = invertIfNonZero(dbMkt.Low)
+		processedDbMkt.Change = processedDbMkt.High - processedDbMkt.Low
+		processedDbMkt.Close = invertIfNonZero(dbMkt.Close)
 		return &processedDbMkt
 	}
 
@@ -201,4 +201,11 @@ func reverseOrderbook(dbMarket tickerdb.PartialMarket) orderbookStats {
 		SpreadMidPoint: spreadMidPoint,
 	}
 	return os
+}
+
+func invertIfNonZero(num float64) float64 {
+	if num != 0 {
+		return 1 / num
+	}
+	return num
 }
