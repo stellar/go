@@ -135,16 +135,16 @@ func postProcessPartialMarket(
 		return dbMkt
 	}
 
-	// If the user does not provide the new endpoint flag,
+	// If the user does not provide the reverse markets flag,
 	// we assume they want the pre-existing behavior. (This also
 	// assures backwards compatibility.)
 	if shouldReverseMarkets == nil {
 		return dbMkt
 	}
 
-	// If the user specifies the original endpoint, then
-	// we return the given market.
-	if !*shouldReverseMarkets {
+	// If the user asks to reverse the market pairs, then we return
+	// the given market, as per default Ticker behavior.
+	if *shouldReverseMarkets {
 		return dbMkt
 	}
 

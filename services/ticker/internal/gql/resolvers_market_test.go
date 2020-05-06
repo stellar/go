@@ -52,12 +52,12 @@ func TestPostProcessPartialMarket(t *testing.T) {
 	processedMkt := postProcessPartialMarket(partialMarket, reverseOs, nil, nil)
 	assert.Equal(t, partialMarket, processedMkt)
 
-	shouldReverseMarkets := false
+	shouldReverseMarkets := true
 	processedMkt = postProcessPartialMarket(partialMarket, reverseOs, nil, &shouldReverseMarkets)
 	assert.Equal(t, partialMarket, processedMkt)
 
-	shouldReverseMarkets = true
-	// Confirm that a nil pair name with the new endpoint inverts prices.
+	shouldReverseMarkets = false
+	// Confirm that a nil pair name without reversed pair inverts prices.
 	processedMkt = postProcessPartialMarket(partialMarket, reverseOs, nil, &shouldReverseMarkets)
 	assert.Equal(t, 1/partialMarket.Open, processedMkt.Open)
 	assert.Equal(t, 1/partialMarket.High, processedMkt.Low)
@@ -65,7 +65,7 @@ func TestPostProcessPartialMarket(t *testing.T) {
 	assert.Equal(t, 1/partialMarket.Low-1/partialMarket.High, processedMkt.Change)
 	assert.Equal(t, 1/partialMarket.Close, processedMkt.Close)
 
-	// Confirm that an empty pair name with the new endpoint inverts prices.
+	// Confirm that an empty pair name without reversed pair inverts prices.
 	oldPairName := ""
 	processedMkt = postProcessPartialMarket(partialMarket, reverseOs, &oldPairName, &shouldReverseMarkets)
 	assert.Equal(t, 1/partialMarket.Open, processedMkt.Open)
@@ -74,7 +74,7 @@ func TestPostProcessPartialMarket(t *testing.T) {
 	assert.Equal(t, 1/partialMarket.Low-1/partialMarket.High, processedMkt.Change)
 	assert.Equal(t, 1/partialMarket.Close, processedMkt.Close)
 
-	// Confirm that a matching pair name with the new endpoint inverts prices.
+	// Confirm that a matching pair name without reversed pair inverts prices.
 	oldPairName = fmt.Sprintf("%s:%s / %s:%s", baseCode, baseIssuer, counterCode, counterIssuer)
 	processedMkt = postProcessPartialMarket(partialMarket, reverseOs, &oldPairName, &shouldReverseMarkets)
 	assert.Equal(t, 1/partialMarket.Open, processedMkt.Open)

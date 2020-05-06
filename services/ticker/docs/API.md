@@ -17,7 +17,7 @@ Example:
 
 The pair `XLM_ZZZ` has the `XLM` as the counter currency and `ZZZ` as the base. For that pair if the API returns a `close` value of `2`, then the last trade for the pair was `2 XLM` exchanged for `1 ZZZ`.
 
-Note that if the `isNewEndpoint` `boolean` argument is passed as `true` to the `ticker` or `markets` queries, then trade pairs will be interpreted as `<Base>_<Counter>` (the opposite logic of the above).
+Note that if the `ShouldReverseMarkets` `boolean` argument is passed as `false` to the `ticker` or `markets` queries, then trade pairs will be interpreted as `<Base>_<Counter>` (the reverse logic of the above).
 
 ### Response Fields
 
