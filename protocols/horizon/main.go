@@ -436,23 +436,17 @@ type Transaction struct {
 		// When TransactionSuccess is removed from the SDKs we can remove this HAL link
 		Transaction hal.Link `json:"transaction"`
 	} `json:"_links"`
-	ID              string    `json:"id"`
-	PT              string    `json:"paging_token"`
-	Successful      bool      `json:"successful"`
-	Hash            string    `json:"hash"`
-	Ledger          int32     `json:"ledger"`
-	LedgerCloseTime time.Time `json:"created_at"`
-	Account         string    `json:"source_account"`
-	AccountSequence string    `json:"source_account_sequence"`
-	FeeAccount      string    `json:"fee_account"`
-	// Action needed in release: horizon-v1.3.0
-	// set json tag to `json:"fee_charged,string"` so max_fee can be marshalled
-	// as a string in the JSON response
-	FeeCharged int64 `json:"fee_charged"`
-	// Action needed in release: horizon-v1.3.0
-	// set json tag to `json:"max_fee,string"` so max_fee can be marshalled
-	// as a string in the JSON response
-	MaxFee             int64               `json:"max_fee"`
+	ID                 string              `json:"id"`
+	PT                 string              `json:"paging_token"`
+	Successful         bool                `json:"successful"`
+	Hash               string              `json:"hash"`
+	Ledger             int32               `json:"ledger"`
+	LedgerCloseTime    time.Time           `json:"created_at"`
+	Account            string              `json:"source_account"`
+	AccountSequence    string              `json:"source_account_sequence"`
+	FeeAccount         string              `json:"fee_account"`
+	FeeCharged         int64               `json:"fee_charged,string"`
+	MaxFee             int64               `json:"max_fee,string"`
 	OperationCount     int32               `json:"operation_count"`
 	EnvelopeXdr        string              `json:"envelope_xdr"`
 	ResultXdr          string              `json:"result_xdr"`
