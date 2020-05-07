@@ -179,6 +179,10 @@ func transactionToMap(transaction io.LedgerTransaction, sequence uint32) (map[st
 		m["inner_signatures"] = sqx.StringArray(signatures(transaction.Envelope.Signatures()))
 		m["signatures"] = sqx.StringArray(signatures(transaction.Envelope.FeeBumpSignatures()))
 	} else {
+		m["inner_transaction_hash"] = nil
+		m["fee_account"] = nil
+		m["new_max_fee"] = nil
+		m["inner_signatures"] = nil
 		m["signatures"] = sqx.StringArray(signatures(transaction.Envelope.Signatures()))
 	}
 
