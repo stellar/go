@@ -141,10 +141,13 @@ func TestFeeBumpTransactionPage(t *testing.T) {
 		db2.PageQuery{Cursor: "", Limit: 10, Order: db2.OrderAscending},
 	)
 	tt.Assert.NoError(err)
-	tt.Assert.Len(page.Embedded.Records, 1)
+	tt.Assert.Len(page.Embedded.Records, 2)
 
-	transactionResponse := page.Embedded.Records[0].(horizon.Transaction)
-	checkOuterHashResponse(tt, fixture, transactionResponse)
+	feeBumpResponse := page.Embedded.Records[0].(horizon.Transaction)
+	checkOuterHashResponse(tt, fixture, feeBumpResponse)
+
+	normalTxResponse := page.Embedded.Records[1].(horizon.Transaction)
+	tt.Assert.Equal(fixture.NormalTransaction.TransactionHash, normalTxResponse.ID)
 }
 
 func TestFeeBumpTransactionResource(t *testing.T) {
