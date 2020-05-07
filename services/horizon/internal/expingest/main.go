@@ -275,12 +275,19 @@ func (s *System) runStateMachine(cur stateMachineNode) error {
 		}
 
 		next, err := cur.run(s)
-		if err != nil && !isCancelledError(err) {
-			log.WithFields(logpkg.F{
+		if err != nil {
+			logger := log.WithFields(logpkg.F{
 				"error":         err,
 				"current_state": cur,
 				"next_state":    next.node,
-			}).Error("Error in ingestion state machine")
+			})
+			if isCancelledError(err) {
+				// We only expect context.Canceled errors to occur when horizon is shutting down
+				// so we log these errors using the info log level
+				logger.Info("Error in ingestion state machine")
+			} else {
+				logger.Error("Error in ingestion state machine")
+			}
 		}
 
 		// Exit after processing shutdownState
