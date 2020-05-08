@@ -388,6 +388,10 @@ func (r resumeState) run(s *System) (transition, error) {
 	}
 
 	if latestLedgerCore < ingestLedger {
+		log.WithFields(logpkg.F{
+			"ingest_sequence": ingestLedger,
+			"core_sequence":   latestLedgerCore,
+		}).Info("Waiting for ledger to be available in stellar-core")
 		// Go to the next state, machine will wait for 1s. before continuing.
 		return retryResume(r), nil
 	}
