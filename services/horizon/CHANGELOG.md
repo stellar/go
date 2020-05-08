@@ -10,6 +10,10 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 * Fix a memory leak in the code responsible for streaming [#2548](https://github.com/stellar/go/pull/2548).
 * Horizon encodes `fee_charged` and `max_fee` as strings when serializing transaction responses to JSON [#2555](https://github.com/stellar/go/pull/2555).
 
+## v1.2.2
+
+* Fix bug which occurs when ingesting ledgers containing both fee bump and normal transactions.
+
 ## v1.2.1
 
 ### Database migration notes
