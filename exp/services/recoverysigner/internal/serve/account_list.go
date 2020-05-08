@@ -2,7 +2,6 @@ package serve
 
 import (
 	"net/http"
-	"strings"
 
 	"github.com/stellar/go/exp/services/recoverysigner/internal/account"
 	"github.com/stellar/go/exp/services/recoverysigner/internal/serve/auth"
@@ -32,18 +31,7 @@ func (h accountListHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	l := h.Logger.Ctx(ctx)
 
-	authMethodTypes := []string{}
-	if claims.Address != "" {
-		authMethodTypes = append(authMethodTypes, string(account.AuthMethodTypeAddress))
-	}
-	if claims.PhoneNumber != "" {
-		authMethodTypes = append(authMethodTypes, string(account.AuthMethodTypePhoneNumber))
-	}
-	if claims.Email != "" {
-		authMethodTypes = append(authMethodTypes, string(account.AuthMethodTypeEmail))
-	}
-	l.WithField("auth_method_types", strings.Join(authMethodTypes, ", ")).
-		Info("Request to get accounts with auth methods.")
+	l.Info("Request to get accounts.")
 
 	resp := accountListResponse{
 		Accounts: []accountResponse{},
