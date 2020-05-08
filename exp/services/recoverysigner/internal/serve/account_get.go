@@ -87,7 +87,5 @@ func (h accountGetHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	l.Info("Getting account.")
-
 	httpjson.Render(w, resp, httpjson.JSON)
 }
