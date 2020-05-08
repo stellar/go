@@ -29,6 +29,10 @@ func (h accountListHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	l := h.Logger.Ctx(ctx)
+
+	l.Info("Request to get accounts.")
+
 	resp := accountListResponse{
 		Accounts: []accountResponse{},
 	}
@@ -40,7 +44,7 @@ func (h accountListHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if err == account.ErrNotFound {
 			// Do nothing.
 		} else if err != nil {
-			h.Logger.Error(err)
+			l.Error(err)
 			serverError.Render(w)
 			return
 		} else {
@@ -55,12 +59,15 @@ func (h accountListHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				accResp.Identities = append(accResp.Identities, accRespIdentity)
 			}
 			resp.Accounts = append(resp.Accounts, accResp)
+			l.WithField("account", acc.Address).
+				WithField("auth_method_type", account.AuthMethodTypeAddress).
+				Info("Found account with auth method type as self.")
 		}
 
 		// Find accounts that have the address listed as an owner or other identity.
 		accs, err := h.AccountStore.FindWithIdentityAddress(claims.Address)
 		if err != nil {
-			h.Logger.Error(err)
+			l.Error(err)
 			serverError.Render(w)
 			return
 		}
@@ -82,6 +89,9 @@ func (h accountListHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				accResp.Identities = append(accResp.Identities, accRespIdentity)
 			}
 			resp.Accounts = append(resp.Accounts, accResp)
+			l.WithField("account", acc.Address).
+				WithField("auth_method_type", account.AuthMethodTypeAddress).
+				Info("Found account with auth method type as identity.")
 		}
 	}
 
@@ -111,6 +121,9 @@ func (h accountListHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				accResp.Identities = append(accResp.Identities, accRespIdentity)
 			}
 			resp.Accounts = append(resp.Accounts, accResp)
+			l.WithField("account", acc.Address).
+				WithField("auth_method_type", account.AuthMethodTypePhoneNumber).
+				Info("Found account with auth method type as identity.")
 		}
 	}
 
@@ -140,6 +153,9 @@ func (h accountListHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				accResp.Identities = append(accResp.Identities, accRespIdentity)
 			}
 			resp.Accounts = append(resp.Accounts, accResp)
+			l.WithField("account", acc.Address).
+				WithField("auth_method_type", account.AuthMethodTypeEmail).
+				Info("Found account with auth method type as identity.")
 		}
 	}
 

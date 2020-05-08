@@ -7,6 +7,7 @@ import (
 
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/support/http/httpauthz"
+	"github.com/stellar/go/support/log"
 	"gopkg.in/square/go-jose.v2"
 	"gopkg.in/square/go-jose.v2/jwt"
 )
@@ -19,6 +20,11 @@ func SEP10Middleware(issuer string, k jose.JSONWebKey) func(http.Handler) http.H
 				ctx := r.Context()
 				auth, _ := FromContext(ctx)
 				auth.Address = address
+
+				log.Ctx(ctx).
+					WithField("address", address).
+					Info("SEP-10 JWT verified.")
+
 				ctx = NewContext(ctx, auth)
 				r = r.WithContext(ctx)
 			}

@@ -48,55 +48,42 @@ func (h accountSignHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	l := h.Logger.Ctx(ctx).
+		WithField("account", req.Address.Address())
+
+	l.Info("Request to sign transaction.")
+
 	// Find the account that the request is for.
 	acc, err := h.AccountStore.Get(req.Address.Address())
 	if err == account.ErrNotFound {
+		l.Info("Account not found.")
 		notFound.Render(w)
 		return
 	} else if err != nil {
+		l.Error(err)
 		serverError.Render(w)
 		return
 	}
 
-	// Verify that the authenticated client has access to the account.
-	addressAuthenticated := false
-	if claims.Address != "" {
-		if claims.Address == acc.Address {
-			addressAuthenticated = true
-		} else {
-			for _, i := range acc.Identities {
-				for _, m := range i.AuthMethods {
-					if m.Type == account.AuthMethodTypeAddress && m.Value == claims.Address {
-						addressAuthenticated = true
-						break
-					}
-				}
+	// Authorized if authenticated as the account.
+	authorized := claims.Address == req.Address.Address()
+	l.Infof("Authorized with self: %v.", authorized)
+
+	// Authorized if authenticated as an identity registered with the account.
+	for _, i := range acc.Identities {
+		for _, m := range i.AuthMethods {
+			if m.Value != "" && ((m.Type == account.AuthMethodTypeAddress && m.Value == claims.Address) ||
+				(m.Type == account.AuthMethodTypePhoneNumber && m.Value == claims.PhoneNumber) ||
+				(m.Type == account.AuthMethodTypeEmail && m.Value == claims.Email)) {
+				authorized = true
+				l.Infof("Authorized with %s.", m.Type)
+				break
 			}
 		}
 	}
-	phoneNumberAuthenticated := false
-	if claims.PhoneNumber != "" {
-		for _, i := range acc.Identities {
-			for _, m := range i.AuthMethods {
-				if m.Type == account.AuthMethodTypePhoneNumber && m.Value == claims.PhoneNumber {
-					phoneNumberAuthenticated = true
-					break
-				}
-			}
-		}
-	}
-	emailAuthenticated := false
-	if claims.Email != "" {
-		for _, i := range acc.Identities {
-			for _, m := range i.AuthMethods {
-				if m.Type == account.AuthMethodTypeEmail && m.Value == claims.Email {
-					emailAuthenticated = true
-					break
-				}
-			}
-		}
-	}
-	if !addressAuthenticated && !phoneNumberAuthenticated && !emailAuthenticated {
+
+	l.Infof("Authorized: %v.", authorized)
+	if !authorized {
 		notFound.Render(w)
 		return
 	}
@@ -104,18 +91,32 @@ func (h accountSignHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Decode the request transaction.
 	parsed, err := txnbuild.TransactionFromXDR(req.Transaction)
 	if err != nil {
+		l.WithField("transaction", req.Transaction).
+			Info("Parsing transaction failed.")
 		badRequest.Render(w)
 		return
 	}
 	tx, ok := parsed.Transaction()
 	if !ok {
+		l.Info("Transaction is not a simple transaction.")
 		badRequest.Render(w)
 		return
 	}
+	hashHex, err := tx.HashHex(h.NetworkPassphrase)
+	if err != nil {
+		l.Error("Error hashing transaction:", err)
+		serverError.Render(w)
+		return
+	}
+
+	l = l.WithField("transaction_hash", hashHex)
+
+	l.Info("Signing transaction.")
 
 	// Check that the transaction's source account and any operations it
 	// contains references only to this account.
 	if tx.SourceAccount().AccountID != req.Address.Address() {
+		l.Info("Transaction's source account is not the account in the request.")
 		badRequest.Render(w)
 		return
 	}
@@ -125,6 +126,7 @@ func (h accountSignHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		if op.GetSourceAccount().GetAccountID() != req.Address.Address() {
+			l.Info("Operation's source account is not the account.")
 			badRequest.Render(w)
 			return
 		}
@@ -133,16 +135,19 @@ func (h accountSignHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Sign the transaction.
 	hash, err := tx.Hash(h.NetworkPassphrase)
 	if err != nil {
-		h.Logger.Error(err)
+		l.Error("Error hashing transaction:", err)
 		serverError.Render(w)
 		return
 	}
 	sig, err := h.SigningKey.SignBase64(hash[:])
 	if err != nil {
-		h.Logger.Error(err)
+		l.Error("Error signing transaction:", err)
 		serverError.Render(w)
 		return
 	}
+
+	l.Info("Transaction signed.")
+
 	resp := accountSignResponse{
 		Signer:            h.SigningKey.Address(),
 		Signature:         sig,

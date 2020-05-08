@@ -3,11 +3,13 @@ package auth
 import (
 	"context"
 	"net/http"
+	"strings"
 
 	firebase "firebase.google.com/go"
 	firebaseauth "firebase.google.com/go/auth"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/http/httpauthz"
+	"github.com/stellar/go/support/log"
 	"google.golang.org/api/option"
 )
 
@@ -31,6 +33,18 @@ func FirebaseMiddleware(v FirebaseTokenVerifier) func(http.Handler) http.Handler
 				if emailVerified, _ := token.Claims["email_verified"].(bool); emailVerified {
 					auth.Email, _ = token.Claims["email"].(string)
 				}
+
+				authTypes := []string{}
+				if auth.PhoneNumber != "" {
+					authTypes = append(authTypes, "phone_number")
+				}
+				if auth.Email != "" {
+					authTypes = append(authTypes, "email")
+				}
+				log.Ctx(ctx).
+					WithField("auth_types", strings.Join(authTypes, ", ")).
+					Info("Firebase JWT verified.")
+
 				ctx = NewContext(ctx, auth)
 				r = r.WithContext(ctx)
 			}
