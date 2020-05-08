@@ -14,6 +14,7 @@ package db
 import (
 	"context"
 	"database/sql"
+	"time"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/jmoiron/sqlx"
@@ -100,6 +101,11 @@ type Session struct {
 
 	// Ctx is the context in which the repo is operating under.
 	Ctx context.Context
+
+	// Timeout is a timeout applied on all SQL Select queries and Exec statements.
+	// If Timeout is 0 then no timeout is applied. Note that the timeout is not
+	// applied on BEGIN, COMMIT, or ROLLBACK statements.
+	Timeout time.Duration
 
 	tx *sqlx.Tx
 }

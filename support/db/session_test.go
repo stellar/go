@@ -3,11 +3,24 @@ package db
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/stellar/go/support/db/dbtest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestClone(t *testing.T) {
+	session := &Session{Ctx: context.Background()}
+	sessionClone := session.Clone()
+	assert.Equal(t, time.Duration(0), sessionClone.Timeout)
+	assert.Equal(t, session.Ctx, sessionClone.Ctx)
+
+	session.Timeout = time.Second
+	sessionClone = session.Clone()
+	assert.Equal(t, session.Timeout, sessionClone.Timeout)
+	assert.Equal(t, session.Ctx, sessionClone.Ctx)
+}
 
 func TestSession(t *testing.T) {
 	db := dbtest.Postgres(t).Load(testSchema)

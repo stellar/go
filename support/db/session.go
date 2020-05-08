@@ -65,8 +65,9 @@ func (s *Session) GetTx() *sqlx.Tx {
 // source is currently within.
 func (s *Session) Clone() *Session {
 	return &Session{
-		DB:  s.DB,
-		Ctx: s.Ctx,
+		DB:      s.DB,
+		Ctx:     s.Ctx,
+		Timeout: s.Timeout,
 	}
 }
 
@@ -120,6 +121,17 @@ func (s *Session) Get(dest interface{}, query sq.Sqlizer) error {
 	return s.GetRaw(dest, sql, args...)
 }
 
+func noop() {
+
+}
+
+func (s *Session) contextWithTimeout() (context.Context, context.CancelFunc) {
+	if s.Timeout == 0 {
+		return s.Ctx, noop
+	}
+	return context.WithTimeout(s.Ctx, s.Timeout)
+}
+
 // GetRaw runs `query` with `args`, setting the first result found on
 // `dest`, if any.
 func (s *Session) GetRaw(dest interface{}, query string, args ...interface{}) error {
@@ -129,7 +141,9 @@ func (s *Session) GetRaw(dest interface{}, query string, args ...interface{}) er
 	}
 
 	start := time.Now()
-	err = s.conn().GetContext(s.Ctx, dest, query, args...)
+	ctx, cancel := s.contextWithTimeout()
+	defer cancel()
+	err = s.conn().GetContext(ctx, dest, query, args...)
 	s.log("get", start, query, args)
 
 	if err == nil {
@@ -198,7 +212,9 @@ func (s *Session) ExecRaw(query string, args ...interface{}) (sql.Result, error)
 	}
 
 	start := time.Now()
-	result, err := s.conn().ExecContext(s.Ctx, query, args...)
+	ctx, cancel := s.contextWithTimeout()
+	defer cancel()
+	result, err := s.conn().ExecContext(ctx, query, args...)
 	s.log("exec", start, query, args)
 
 	if err == nil {
@@ -244,7 +260,9 @@ func (s *Session) QueryRaw(query string, args ...interface{}) (*sqlx.Rows, error
 	}
 
 	start := time.Now()
-	result, err := s.conn().QueryxContext(s.Ctx, query, args...)
+	ctx, cancel := s.contextWithTimeout()
+	defer cancel()
+	result, err := s.conn().QueryxContext(ctx, query, args...)
 	s.log("query", start, query, args)
 
 	if err == nil {
@@ -308,7 +326,9 @@ func (s *Session) SelectRaw(
 	}
 
 	start := time.Now()
-	err = s.conn().SelectContext(s.Ctx, dest, query, args...)
+	ctx, cancel := s.contextWithTimeout()
+	defer cancel()
+	err = s.conn().SelectContext(ctx, dest, query, args...)
 	s.log("select", start, query, args)
 
 	if err == nil {

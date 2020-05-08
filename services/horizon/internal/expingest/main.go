@@ -47,6 +47,8 @@ const (
 	// MaxDBConnections is the size of the postgres connection pool dedicated to Horizon ingestion
 	MaxDBConnections = 2
 
+	dbSessionTimeout = 20 * time.Second
+
 	defaultCoreCursorName           = "HORIZON"
 	stateVerificationErrorThreshold = 3
 )
@@ -146,6 +148,7 @@ func NewSystem(config Config) (*System, error) {
 
 	coreSession := config.CoreSession.Clone()
 	coreSession.Ctx = ctx
+	coreSession.Timeout = dbSessionTimeout
 
 	ledgerBackend, err := ledgerbackend.NewDatabaseBackendFromSession(coreSession)
 	if err != nil {
@@ -155,6 +158,7 @@ func NewSystem(config Config) (*System, error) {
 
 	historyQ := &history.Q{config.HistorySession.Clone()}
 	historyQ.Ctx = ctx
+	historyQ.Timeout = dbSessionTimeout
 
 	historyAdapter := adapters.MakeHistoryArchiveAdapter(archive)
 
