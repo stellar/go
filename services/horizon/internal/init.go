@@ -19,33 +19,68 @@ import (
 	"github.com/stellar/go/support/log"
 )
 
-func mustInitHorizonDB(app *App) {
-	session, err := db.Open("postgres", app.config.DatabaseURL)
+func mustNewDBSession(databaseURL string, maxIdle, maxOpen int) *db.Session {
+	session, err := db.Open("postgres", databaseURL)
 	if err != nil {
 		log.Fatalf("cannot open Horizon DB: %v", err)
 	}
 
-	session.DB.SetMaxIdleConns(app.config.HorizonDBMaxIdleConnections)
-	session.DB.SetMaxOpenConns(app.config.HorizonDBMaxOpenConnections)
-	app.historyQ = &history.Q{session}
+	session.DB.SetMaxIdleConns(maxIdle)
+	session.DB.SetMaxOpenConns(maxOpen)
+	return session
+}
+
+func mustInitHorizonDB(app *App) {
+	maxIdle := app.config.HorizonDBMaxIdleConnections
+	maxOpen := app.config.HorizonDBMaxOpenConnections
+	if app.config.Ingest || app.config.IngestInMemoryOnly {
+		maxIdle -= expingest.MaxDBConnections
+		maxOpen -= expingest.MaxDBConnections
+		if maxIdle <= 0 {
+			log.Fatalf("max idle connections to horizon db must be greater than %d", expingest.MaxDBConnections)
+		}
+		if maxOpen <= 0 {
+			log.Fatalf("max open connections to horizon db must be greater than %d", expingest.MaxDBConnections)
+		}
+	}
+
+	app.historyQ = &history.Q{mustNewDBSession(
+		app.config.DatabaseURL,
+		maxIdle,
+		maxOpen,
+	)}
 }
 
 func mustInitCoreDB(app *App) {
-	session, err := db.Open("postgres", app.config.StellarCoreDatabaseURL)
-	if err != nil {
-		log.Fatalf("cannot open Core DB: %v", err)
+	maxIdle := app.config.CoreDBMaxIdleConnections
+	maxOpen := app.config.CoreDBMaxOpenConnections
+	if app.config.Ingest || app.config.IngestInMemoryOnly {
+		maxIdle -= expingest.MaxDBConnections
+		maxOpen -= expingest.MaxDBConnections
+		if maxIdle <= 0 {
+			log.Fatalf("max idle connections to stellar-core db must be greater than %d", expingest.MaxDBConnections)
+		}
+		if maxOpen <= 0 {
+			log.Fatalf("max open connections to stellar-core db must be greater than %d", expingest.MaxDBConnections)
+		}
 	}
 
-	session.DB.SetMaxIdleConns(app.config.CoreDBMaxIdleConnections)
-	session.DB.SetMaxOpenConns(app.config.CoreDBMaxOpenConnections)
-	app.coreQ = &core.Q{session}
+	app.coreQ = &core.Q{mustNewDBSession(
+		app.config.StellarCoreDatabaseURL,
+		maxIdle,
+		maxOpen,
+	)}
 }
 
 func initExpIngester(app *App, orderBookGraph *orderbook.OrderBookGraph) {
 	var err error
 	app.expingester, err = expingest.NewSystem(expingest.Config{
-		CoreSession:       app.CoreSession(context.Background()),
-		HistorySession:    app.HorizonSession(context.Background()),
+		CoreSession: mustNewDBSession(
+			app.config.StellarCoreDatabaseURL, expingest.MaxDBConnections, expingest.MaxDBConnections,
+		),
+		HistorySession: mustNewDBSession(
+			app.config.DatabaseURL, expingest.MaxDBConnections, expingest.MaxDBConnections,
+		),
 		NetworkPassphrase: app.config.NetworkPassphrase,
 		// TODO:
 		// Use the first archive for now. We don't have a mechanism to
