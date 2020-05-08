@@ -44,6 +44,9 @@ const (
 	//      everything else).
 	CurrentVersion = 10
 
+	// MaxDBConnections is the size of the postgres connection pool dedicated to Horizon ingestion
+	MaxDBConnections = 2
+
 	defaultCoreCursorName           = "HORIZON"
 	stateVerificationErrorThreshold = 3
 )
