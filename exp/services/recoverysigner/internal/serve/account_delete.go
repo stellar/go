@@ -92,13 +92,16 @@ func (h accountDeleteHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	err = h.AccountStore.Delete(req.Address.Address())
 	if err == account.ErrNotFound {
 		// It can happen if two authorized users are trying to delete the account at the same time.
+		l.Info("Account not found.")
 		notFound.Render(w)
 		return
 	} else if err != nil {
-		h.Logger.Error(err)
+		l.Error("Error deleting account:", err)
 		serverError.Render(w)
 		return
 	}
+
+	l.Info("Deleted account.")
 
 	httpjson.Render(w, resp, httpjson.JSON)
 }
