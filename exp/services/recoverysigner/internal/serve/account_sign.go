@@ -98,7 +98,7 @@ func (h accountSignHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	tx, ok := parsed.Transaction()
 	if !ok {
-		l.Info("Transaction is not at transaction.")
+		l.Info("Transaction is not a simple transaction.")
 		badRequest.Render(w)
 		return
 	}
