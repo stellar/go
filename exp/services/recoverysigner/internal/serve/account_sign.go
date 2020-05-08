@@ -116,7 +116,7 @@ func (h accountSignHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Check that the transaction's source account and any operations it
 	// contains references only to this account.
 	if tx.SourceAccount().AccountID != req.Address.Address() {
-		l.Info("Transaction's source account is not the account.")
+		l.Info("Transaction's source account is not the account in the request.")
 		badRequest.Render(w)
 		return
 	}
