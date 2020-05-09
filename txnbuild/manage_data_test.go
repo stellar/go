@@ -53,3 +53,40 @@ func TestManageDataValidateValue(t *testing.T) {
 		assert.Contains(t, err.Error(), expected)
 	}
 }
+
+func TestManageDataNilValue(t *testing.T) {
+	kp0 := newKeypair0()
+	sourceAccount := NewSimpleAccount(kp0.Address(), int64(3556091187167235))
+
+	manageData := ManageData{
+		Name:  "key",
+		Value: nil,
+	}
+
+	tx, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: false,
+			Operations:           []Operation{&manageData},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(),
+		},
+	)
+	assert.NoError(t, err)
+
+	envelope, err := tx.TxEnvelope()
+	assert.NoError(t, err)
+	assert.Len(t, envelope.Operations(), 1)
+	assert.Nil(t, envelope.Operations()[0].Body.ManageDataOp.DataValue)
+
+	txe, err := tx.Base64()
+	if err != nil {
+		assert.NoError(t, err)
+	}
+
+	parsed, err := TransactionFromXDR(txe)
+	assert.NoError(t, err)
+
+	tx, _ = parsed.Transaction()
+	assert.Equal(t, []Operation{&manageData}, tx.Operations())
+}
