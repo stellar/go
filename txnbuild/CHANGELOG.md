@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this
 file.  This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [v3.0.1](https://github.com/stellar/go/releases/tag/horizonclient-v3.0.1) - 2020-05-11
+
+* Fix bug which occurs when parsing transactions with manage data operations containing nil values ([#2573](https://github.com/stellar/go/pull/2573))
+
 ## [v3.0.0](https://github.com/stellar/go/releases/tag/horizonclient-v3.0.0) - 2020-04-28
 
 ### Breaking changes

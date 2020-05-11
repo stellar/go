@@ -44,7 +44,11 @@ func (md *ManageData) FromXDR(xdrOp xdr.Operation) error {
 
 	md.SourceAccount = accountFromXDR(xdrOp.SourceAccount)
 	md.Name = string(result.DataName)
-	md.Value = *result.DataValue
+	if result.DataValue != nil {
+		md.Value = *result.DataValue
+	} else {
+		md.Value = nil
+	}
 	return nil
 }
 
