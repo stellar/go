@@ -37,12 +37,18 @@ func (h accountDeleteHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	l := h.Logger.Ctx(ctx).
+		WithField("account", req.Address.Address())
+
+	l.Info("Request to delete account.")
+
 	acc, err := h.AccountStore.Get(req.Address.Address())
 	if err == account.ErrNotFound {
+		l.Info("Account not found.")
 		notFound.Render(w)
 		return
 	} else if err != nil {
-		h.Logger.Error(err)
+		l.Error(err)
 		serverError.Render(w)
 		return
 	}
@@ -54,6 +60,7 @@ func (h accountDeleteHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 
 	// Authorized if authenticated as the account.
 	authorized := claims.Address == req.Address.Address()
+	l.Infof("Authorized with self: %v.", authorized)
 
 	// Authorized if authenticated as an identity registered with the account.
 	for _, i := range acc.Identities {
@@ -66,27 +73,35 @@ func (h accountDeleteHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 				(m.Type == account.AuthMethodTypeEmail && m.Value == claims.Email)) {
 				respIdentity.Authenticated = true
 				authorized = true
+				l.Infof("Authorized with %s.", m.Type)
 				break
 			}
 		}
 
 		resp.Identities = append(resp.Identities, respIdentity)
 	}
+
+	l.Infof("Authorized: %v.", authorized)
 	if !authorized {
 		notFound.Render(w)
 		return
 	}
 
+	l.Info("Deleting account.")
+
 	err = h.AccountStore.Delete(req.Address.Address())
 	if err == account.ErrNotFound {
 		// It can happen if two authorized users are trying to delete the account at the same time.
+		l.Info("Account not found.")
 		notFound.Render(w)
 		return
 	} else if err != nil {
-		h.Logger.Error(err)
+		l.Error("Error deleting account:", err)
 		serverError.Render(w)
 		return
 	}
+
+	l.Info("Deleted account.")
 
 	httpjson.Render(w, resp, httpjson.JSON)
 }

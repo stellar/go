@@ -79,11 +79,12 @@ func buildLedgerTransaction(t *testing.T, tx testTransaction) io.LedgerTransacti
 // FeeBumpFixture contains the data inserted into the database
 // when running FeeBumpScenario
 type FeeBumpFixture struct {
-	Ledger      Ledger
-	Envelope    xdr.TransactionEnvelope
-	Transaction Transaction
-	OuterHash   string
-	InnerHash   string
+	Ledger            Ledger
+	Envelope          xdr.TransactionEnvelope
+	Transaction       Transaction
+	NormalTransaction Transaction
+	OuterHash         string
+	InnerHash         string
 }
 
 // FeeBumpScenario creates a ledger containing a fee bump transaction,
@@ -233,9 +234,19 @@ func FeeBumpScenario(tt *test.T, q *Q, successful bool) FeeBumpFixture {
 		metaXDR:       "AAAAAQAAAAAAAAAA",
 		hash:          fixture.OuterHash,
 	})
-
-	insertBuilder := q.NewTransactionBatchInsertBuilder(0)
+	normalTransaction := buildLedgerTransaction(tt.T, testTransaction{
+		index:         2,
+		envelopeXDR:   "AAAAACiSTRmpH6bHC6Ekna5e82oiGY5vKDEEUgkq9CB//t+rAAAAyAEXUhsAADDRAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAABAAAACXRlc3QgbWVtbwAAAAAAAAEAAAAAAAAACwEXUhsAAFfhAAAAAAAAAAA=",
+		resultXDR:     "AAAAAAAAASwAAAAAAAAAAwAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAFAAAAAAAAAAA=",
+		feeChangesXDR: "AAAAAA==",
+		metaXDR:       "AAAAAQAAAAAAAAAA",
+		hash:          "edba3051b2f2d9b713e8a08709d631eccb72c59864ff3c564c68792271bb24a7",
+	})
+	insertBuilder := q.NewTransactionBatchInsertBuilder(2)
+	// include both fee bump and normal transaction in the same batch
+	// to make sure both kinds of transactions can be inserted using a single exec statement
 	tt.Assert.NoError(insertBuilder.Add(feeBumpTransaction, sequence))
+	tt.Assert.NoError(insertBuilder.Add(normalTransaction, sequence))
 	tt.Assert.NoError(insertBuilder.Exec())
 
 	account := fixture.Envelope.SourceAccount()
@@ -304,12 +315,38 @@ func FeeBumpScenario(tt *test.T, q *Q, successful bool) FeeBumpFixture {
 		FeeAccount:           null.StringFrom(feeBumpAccount.Address()),
 	}
 
-	results, err := q.TransactionsByIDs(fixture.Transaction.ID)
+	fixture.NormalTransaction = Transaction{
+		TotalOrderID:     TotalOrderID{528280981504},
+		TransactionHash:  "edba3051b2f2d9b713e8a08709d631eccb72c59864ff3c564c68792271bb24a7",
+		LedgerSequence:   fixture.Ledger.Sequence,
+		ApplicationOrder: 1,
+		Account:          "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+		AccountSequence:  "78621794419880145",
+		MaxFee:           200,
+		FeeCharged:       300,
+		OperationCount:   1,
+		TxEnvelope:       "AAAAACiSTRmpH6bHC6Ekna5e82oiGY5vKDEEUgkq9CB//t+rAAAAyAEXUhsAADDRAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAABAAAACXRlc3QgbWVtbwAAAAAAAAEAAAAAAAAACwEXUhsAAFfhAAAAAAAAAAA=",
+		TxResult:         "AAAAAAAAASwAAAAAAAAAAwAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAFAAAAAAAAAAA=",
+		TxFeeMeta:        "AAAAAA==",
+		TxMeta:           "AAAAAQAAAAAAAAAA",
+		SignatureString:  "",
+		MemoType:         "text",
+		Memo:             null.NewString("test memo", true),
+		ValidAfter:       null.NewInt(0, true),
+		ValidBefore:      null.NewInt(0, false),
+		Successful:       successful,
+	}
+
+	results, err := q.TransactionsByIDs(fixture.Transaction.ID, fixture.NormalTransaction.ID)
 	tt.Assert.NoError(err)
-	dbTx := results[fixture.Transaction.ID]
-	fixture.Transaction.CreatedAt = dbTx.CreatedAt
-	fixture.Transaction.UpdatedAt = dbTx.UpdatedAt
-	fixture.Transaction.LedgerCloseTime = dbTx.LedgerCloseTime
+
+	fixture.Transaction.CreatedAt = results[fixture.Transaction.ID].CreatedAt
+	fixture.Transaction.UpdatedAt = results[fixture.Transaction.ID].UpdatedAt
+	fixture.Transaction.LedgerCloseTime = results[fixture.Transaction.ID].LedgerCloseTime
+
+	fixture.NormalTransaction.CreatedAt = results[fixture.NormalTransaction.ID].CreatedAt
+	fixture.NormalTransaction.UpdatedAt = results[fixture.NormalTransaction.ID].UpdatedAt
+	fixture.NormalTransaction.LedgerCloseTime = results[fixture.NormalTransaction.ID].LedgerCloseTime
 
 	return fixture
 }

@@ -86,16 +86,25 @@ func (h accountPostHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	l := h.Logger.Ctx(ctx).
+		WithField("account", req.Address.Address())
+
+	l.Info("Request to register account.")
+
 	if req.Address.Address() != claims.Address {
+		l.WithField("address", claims.Address).
+			Info("Not authorized as self, authorized as other address.")
 		unauthorized.Render(w)
 		return
 	}
 
 	if req.Validate() != nil {
+		l.Info("Request validation failed.")
 		badRequest.Render(w)
 		return
 	}
 
+	authMethodCount := 0
 	acc := account.Account{
 		Address:    req.Address.Address(),
 		Identities: []account.Identity{},
@@ -109,19 +118,26 @@ func (h accountPostHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				Type:  account.AuthMethodType(m.Type),
 				Value: m.Value,
 			})
+			authMethodCount++
 		}
 		acc.Identities = append(acc.Identities, accIdentity)
 	}
+	l = l.
+		WithField("identities_count", len(acc.Identities)).
+		WithField("auth_methods_count", authMethodCount)
 
 	err = h.AccountStore.Add(acc)
 	if err == account.ErrAlreadyExists {
+		l.Info("Account already registered.")
 		conflict.Render(w)
 		return
 	} else if err != nil {
-		h.Logger.Error(err)
+		l.Error(err)
 		serverError.Render(w)
 		return
 	}
+
+	l.Info("Account registered.")
 
 	resp := accountResponse{
 		Address: acc.Address,
