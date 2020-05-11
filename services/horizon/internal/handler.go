@@ -147,9 +147,9 @@ func (we *web) streamHandler(jfn interface{}, sfn streamFunc, params interface{}
 					time.Sleep(we.sseUpdateFrequency)
 
 					closedLock.Lock()
-					closed := closed
+					tmpClosed := closed
 					closedLock.Unlock()
-					if closed {
+					if tmpClosed {
 						return
 					}
 
