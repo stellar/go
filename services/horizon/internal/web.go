@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"net/http"
+	"net/http/pprof"
 	"strings"
 	"time"
 
@@ -294,6 +295,8 @@ func (w *web) mustInstallActions(
 
 	// internal
 	w.internalRouter.Get("/metrics", MetricsAction{}.Handle)
+	w.internalRouter.Get("/debug/pprof/heap", pprof.Index)
+	w.internalRouter.Get("/debug/pprof/profile", pprof.Profile)
 }
 
 func maybeInitWebRateLimiter(rateQuota *throttled.RateQuota) *throttled.HTTPRateLimiter {
