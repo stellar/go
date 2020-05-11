@@ -7,7 +7,7 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 * Add `last_modified_time` to account responses. `last_modified_time` is the
  closing time of the most recent ledger in which the account was modified.
-* Fix a memory leak in the code responsible for streaming [#2548](https://github.com/stellar/go/pull/2548) and [#2575](https://github.com/stellar/go/pull/2575).
+* Fix a memory leak in the code responsible for streaming [#2548](https://github.com/stellar/go/pull/2548), [#2575](https://github.com/stellar/go/pull/2575) and [#2576](https://github.com/stellar/go/pull/2576).
 * Horizon encodes `fee_charged` and `max_fee` as strings when serializing transaction responses to JSON [#2555](https://github.com/stellar/go/pull/2555).
 
 ## v1.2.2
