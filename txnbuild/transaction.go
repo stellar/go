@@ -76,7 +76,7 @@ func concatSignatures(
 	return extended, nil
 }
 
-func concatBase64Signature(e xdr.TransactionEnvelope, signatures []xdr.DecoratedSignature, networkStr, publicKey, signature string) ([]xdr.DecoratedSignature, error) {
+func concatSignatureBase64(e xdr.TransactionEnvelope, signatures []xdr.DecoratedSignature, networkStr, publicKey, signature string) ([]xdr.DecoratedSignature, error) {
 	if signature == "" {
 		return nil, errors.New("signature not presented")
 	}
@@ -302,7 +302,7 @@ func (t *Transaction) SignHashX(preimage []byte) (*Transaction, error) {
 // AddSignatureBase64 returns a new Transaction instance which extends the current instance
 // with an additional signature derived from the given base64-encoded signature.
 func (t *Transaction) AddSignatureBase64(network, publicKey, signature string) (*Transaction, error) {
-	extendedSignatures, err := concatBase64Signature(t.envelope, t.signatures, network, publicKey, signature)
+	extendedSignatures, err := concatSignatureBase64(t.envelope, t.signatures, network, publicKey, signature)
 	if err != nil {
 		return nil, err
 	}
@@ -415,7 +415,7 @@ func (t *FeeBumpTransaction) SignHashX(preimage []byte) (*FeeBumpTransaction, er
 // AddSignatureBase64 returns a new FeeBumpTransaction instance which extends the current instance
 // with an additional signature derived from the given base64-encoded signature.
 func (t *FeeBumpTransaction) AddSignatureBase64(network, publicKey, signature string) (*FeeBumpTransaction, error) {
-	extendedSignatures, err := concatBase64Signature(t.envelope, t.signatures, network, publicKey, signature)
+	extendedSignatures, err := concatSignatureBase64(t.envelope, t.signatures, network, publicKey, signature)
 	if err != nil {
 		return nil, err
 	}
