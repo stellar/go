@@ -1448,6 +1448,60 @@ func TestSignWithSecretKey(t *testing.T) {
 	assert.Equal(t, expected, actual, "base64 xdr should match")
 }
 
+func TestAddSignatureBase64(t *testing.T) {
+	kp0 := newKeypair0()
+	kp1 := newKeypair1()
+	txSource := NewSimpleAccount(kp0.Address(), int64(9605939170639897))
+	tx1Source := NewSimpleAccount(kp0.Address(), int64(9605939170639897))
+	opSource := NewSimpleAccount(kp1.Address(), 0)
+	createAccount := CreateAccount{
+		Destination:   "GCCOBXW2XQNUSL467IEILE6MMCNRR66SSVL4YQADUNYYNUVREF3FIV2Z",
+		Amount:        "10",
+		SourceAccount: &opSource,
+	}
+
+	expected, err := newSignedTransaction(
+		TransactionParams{
+			SourceAccount:        &txSource,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&createAccount},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(),
+		},
+		network.TestNetworkPassphrase,
+		kp0, kp1,
+	)
+	assert.NoError(t, err)
+
+	tx1, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &tx1Source,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&createAccount},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(),
+		},
+	)
+	assert.NoError(t, err)
+
+	tx1, err = tx1.AddSignatureBase64(
+		network.TestNetworkPassphrase,
+		"GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3",
+		"TVogR6tbrWLnOc1BsP/j+Qrxpja2NWNgeRIwujECYscRdMG7AMtnb3dkCT7sqlbSM0TTzlRh7G+BcVocYBtqBw==",
+	)
+	assert.NoError(t, err)
+
+	tx1, err = tx1.AddSignatureBase64(
+		network.TestNetworkPassphrase,
+		"GAS4V4O2B7DW5T7IQRPEEVCRXMDZESKISR7DVIGKZQYYV3OSQ5SH5LVP",
+		"Iy77JteoW/FbeiuViZpgTyvrHP4BnBOeyVOjrdb5O/MpEMwcSlYXAkCBqPt4tBDil4jIcDDLhm7TsN6aUBkIBg==",
+	)
+
+	actual, err := tx1.Base64()
+	assert.NoError(t, err)
+	assert.Equal(t, expected, actual, "base64 xdr should match")
+}
+
 func TestReadChallengeTx_validSignedByServerAndClient(t *testing.T) {
 	serverKP := newKeypair0()
 	clientKP := newKeypair1()

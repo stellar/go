@@ -226,7 +226,7 @@ func (t *Transaction) HashHex(network string) (string, error) {
 }
 
 // Sign returns a new Transaction instance which extends the current instance
-// with a additional signatures derived from the given list of keypair instances.
+// with additional signatures derived from the given list of keypair instances.
 func (t *Transaction) Sign(network string, kps ...*keypair.Full) (*Transaction, error) {
 	extendedSignatures, err := concatSignatures(t.envelope, network, t.signatures, kps...)
 	if err != nil {
@@ -240,7 +240,7 @@ func (t *Transaction) Sign(network string, kps ...*keypair.Full) (*Transaction, 
 }
 
 // SignWithKeyString returns a new Transaction instance which extends the current instance
-// with a additional signatures derived from the given list of private key strings.
+// with additional signatures derived from the given list of private key strings.
 func (t *Transaction) SignWithKeyString(network string, keys ...string) (*Transaction, error) {
 	kps, err := stringsToKP(keys...)
 	if err != nil {
@@ -261,6 +261,46 @@ func (t *Transaction) SignHashX(preimage []byte) (*Transaction, error) {
 	newTx := new(Transaction)
 	*newTx = *t
 	newTx.signatures = extendedSignatures
+	return newTx, nil
+}
+
+// AddSignatureBase64 returns a new Transaction instance which extends the current instance
+// with an additional signature derived from the given base64-encoded signature.
+func (t *Transaction) AddSignatureBase64(network, publicKey, signature string) (*Transaction, error) {
+	if signature == "" {
+		return nil, errors.New("signature not presented")
+	}
+
+	kp, err := keypair.ParseAddress(publicKey)
+	if err != nil {
+		return nil, errors.Wrapf(err, "unable to parse the public key %s", publicKey)
+	}
+
+	sigBytes, err := base64.StdEncoding.DecodeString(signature)
+	if err != nil {
+		return nil, errors.Wrapf(err, "unable to base64-decode the signature %s", signature)
+	}
+
+	txHash, err := t.Hash(network)
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to hash the transaction")
+	}
+
+	err = kp.Verify(txHash[:], sigBytes)
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to verify the signature")
+	}
+
+	extended := make([]xdr.DecoratedSignature, len(t.signatures), len(t.signatures)+1)
+	copy(extended, t.signatures)
+	extended = append(extended, xdr.DecoratedSignature{
+		Hint:      xdr.SignatureHint(kp.Hint()),
+		Signature: xdr.Signature(sigBytes),
+	})
+
+	newTx := new(Transaction)
+	*newTx = *t
+	newTx.signatures = extended
 	return newTx, nil
 }
 
