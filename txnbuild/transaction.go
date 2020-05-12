@@ -76,6 +76,41 @@ func concatSignatures(
 	return extended, nil
 }
 
+func concatBase64Signature(e xdr.TransactionEnvelope, signatures []xdr.DecoratedSignature, networkStr, publicKey, signature string) ([]xdr.DecoratedSignature, error) {
+	if signature == "" {
+		return nil, errors.New("signature not presented")
+	}
+
+	kp, err := keypair.ParseAddress(publicKey)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to parse the public key %s", publicKey)
+	}
+
+	sigBytes, err := base64.StdEncoding.DecodeString(signature)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to base64-decode the signature %s", signature)
+	}
+
+	h, err := network.HashTransactionInEnvelope(e, networkStr)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to hash transaction")
+	}
+
+	err = kp.Verify(h[:], sigBytes)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to verify the signature")
+	}
+
+	extended := make([]xdr.DecoratedSignature, len(signatures), len(signatures)+1)
+	copy(extended, signatures)
+	extended = append(extended, xdr.DecoratedSignature{
+		Hint:      xdr.SignatureHint(kp.Hint()),
+		Signature: xdr.Signature(sigBytes),
+	})
+
+	return extended, nil
+}
+
 func stringsToKP(keys ...string) ([]*keypair.Full, error) {
 	var signers []*keypair.Full
 	for _, k := range keys {
@@ -267,40 +302,14 @@ func (t *Transaction) SignHashX(preimage []byte) (*Transaction, error) {
 // AddSignatureBase64 returns a new Transaction instance which extends the current instance
 // with an additional signature derived from the given base64-encoded signature.
 func (t *Transaction) AddSignatureBase64(network, publicKey, signature string) (*Transaction, error) {
-	if signature == "" {
-		return nil, errors.New("signature not presented")
-	}
-
-	kp, err := keypair.ParseAddress(publicKey)
+	extendedSignatures, err := concatBase64Signature(t.envelope, t.signatures, network, publicKey, signature)
 	if err != nil {
-		return nil, errors.Wrapf(err, "unable to parse the public key %s", publicKey)
+		return nil, err
 	}
-
-	sigBytes, err := base64.StdEncoding.DecodeString(signature)
-	if err != nil {
-		return nil, errors.Wrapf(err, "unable to base64-decode the signature %s", signature)
-	}
-
-	txHash, err := t.Hash(network)
-	if err != nil {
-		return nil, errors.Wrap(err, "unable to hash the transaction")
-	}
-
-	err = kp.Verify(txHash[:], sigBytes)
-	if err != nil {
-		return nil, errors.Wrap(err, "unable to verify the signature")
-	}
-
-	extended := make([]xdr.DecoratedSignature, len(t.signatures), len(t.signatures)+1)
-	copy(extended, t.signatures)
-	extended = append(extended, xdr.DecoratedSignature{
-		Hint:      xdr.SignatureHint(kp.Hint()),
-		Signature: xdr.Signature(sigBytes),
-	})
 
 	newTx := new(Transaction)
 	*newTx = *t
-	newTx.signatures = extended
+	newTx.signatures = extendedSignatures
 	return newTx, nil
 }
 
@@ -365,7 +374,7 @@ func (t *FeeBumpTransaction) HashHex(network string) (string, error) {
 }
 
 // Sign returns a new FeeBumpTransaction instance which extends the current instance
-// with a additional signatures derived from the given list of keypair instances.
+// with additional signatures derived from the given list of keypair instances.
 func (t *FeeBumpTransaction) Sign(network string, kps ...*keypair.Full) (*FeeBumpTransaction, error) {
 	extendedSignatures, err := concatSignatures(t.envelope, network, t.signatures, kps...)
 	if err != nil {
@@ -379,7 +388,7 @@ func (t *FeeBumpTransaction) Sign(network string, kps ...*keypair.Full) (*FeeBum
 }
 
 // SignWithKeyString returns a new FeeBumpTransaction instance which extends the current instance
-// with a additional signatures derived from the given list of private key strings.
+// with additional signatures derived from the given list of private key strings.
 func (t *FeeBumpTransaction) SignWithKeyString(network string, keys ...string) (*FeeBumpTransaction, error) {
 	kps, err := stringsToKP(keys...)
 	if err != nil {
@@ -393,6 +402,20 @@ func (t *FeeBumpTransaction) SignWithKeyString(network string, keys ...string) (
 // See description here: https://www.stellar.org/developers/guides/concepts/multi-sig.html#hashx.
 func (t *FeeBumpTransaction) SignHashX(preimage []byte) (*FeeBumpTransaction, error) {
 	extendedSignatures, err := concatHashX(t.signatures, preimage)
+	if err != nil {
+		return nil, err
+	}
+
+	newTx := new(FeeBumpTransaction)
+	*newTx = *t
+	newTx.signatures = extendedSignatures
+	return newTx, nil
+}
+
+// AddSignatureBase64 returns a new FeeBumpTransaction instance which extends the current instance
+// with an additional signature derived from the given base64-encoded signature.
+func (t *FeeBumpTransaction) AddSignatureBase64(network, publicKey, signature string) (*FeeBumpTransaction, error) {
+	extendedSignatures, err := concatBase64Signature(t.envelope, t.signatures, network, publicKey, signature)
 	if err != nil {
 		return nil, err
 	}
