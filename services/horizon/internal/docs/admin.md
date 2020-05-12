@@ -99,10 +99,6 @@ Horizon provides most of its utility through ingested data.  Your Horizon server
 To enable ingestion, you must either pass `--ingest=true` on the command line or set the `INGEST`
 environment variable to "true". Since version 1.0.0 you can start multiple ingesting machines in your cluster.
 
-### Ingesting historical data
-
-To enable ingestion of historical data from stellar-core you need to run `horizon db backfill NUM_LEDGERS`. If you're running a full validator with published history archive, for example, you might want to ingest all of history. In this case your `NUM_LEDGERS` should be slightly higher than the current ledger id on the network. You can run this process in the background while your Horizon server is up. This continuously decrements the `history.elder_ledger` in your /metrics endpoint until `NUM_LEDGERS` is reached and the backfill is complete.
-
 ### Ingesting historical data and reingesting Ledgers
 
 To reingest older ledgers (due to a version upgrade) or to ingest ledgers closed by the network before you
