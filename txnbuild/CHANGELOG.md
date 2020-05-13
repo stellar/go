@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this
 file.  This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [v3.0.2](https://github.com/stellar/go/releases/tag/horizonclient-v3.0.2) - 2020-05-13
+
+* Fix bug which occurs when parsing xdr offers with prices that require more than 7 decimals of precision ([#2588](https://github.com/stellar/go/pull/2588))
+
 ## [v3.0.1](https://github.com/stellar/go/releases/tag/horizonclient-v3.0.1) - 2020-05-11
 
 * Fix bug which occurs when parsing transactions with manage data operations containing nil values ([#2573](https://github.com/stellar/go/pull/2573))
