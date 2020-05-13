@@ -5,7 +5,7 @@ file.  This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
-* Add `AddSignatureBase64` function to both `Transaction` and `FeeBumpTransaction` objects for adding a base64-encoded signature.
+* Add `AddSignatureBase64` function to both `Transaction` and `FeeBumpTransaction` objects for adding a base64-encoded signature. [#2586](https://github.com/stellar/go/pull/2586)
 
 ## [v3.0.1](https://github.com/stellar/go/releases/tag/horizonclient-v3.0.1) - 2020-05-11
 
