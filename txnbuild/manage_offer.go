@@ -5,6 +5,7 @@ import (
 	"github.com/stellar/go/price"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
+	"strconv"
 )
 
 //CreateOfferOp returns a ManageSellOffer operation to create a new offer, by
@@ -122,6 +123,13 @@ func (mo *ManageSellOffer) BuildXDR() (xdr.Operation, error) {
 	return op, nil
 }
 
+func priceToString(p xdr.Price) string {
+	v := float64(p.N) / float64(p.D)
+	// The special precision -1 uses the smallest number of digits
+	// necessary such that ParseFloat will return f exactly.
+	return strconv.FormatFloat(v, 'f', -1, 32)
+}
+
 // FromXDR for ManageSellOffer initialises the txnbuild struct from the corresponding xdr Operation.
 func (mo *ManageSellOffer) FromXDR(xdrOp xdr.Operation) error {
 	result, ok := xdrOp.Body.GetManageSellOfferOp()
@@ -133,7 +141,7 @@ func (mo *ManageSellOffer) FromXDR(xdrOp xdr.Operation) error {
 	mo.OfferID = int64(result.OfferId)
 	mo.Amount = amount.String(result.Amount)
 	if result.Price != (xdr.Price{}) {
-		mo.Price = price.StringFromFloat64(float64(result.Price.N) / float64(result.Price.D))
+		mo.Price = priceToString(result.Price)
 	}
 	buyingAsset, err := assetFromXDR(result.Buying)
 	if err != nil {
