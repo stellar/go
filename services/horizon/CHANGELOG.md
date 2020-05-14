@@ -15,8 +15,8 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 * Add `last_modified_time` to account responses. `last_modified_time` is the closing time of the most recent ledger in which the account was modified ([#2528](https://github.com/stellar/go/pull/2528)).
 * Balances in the Account resource are now sorted by asset code and asset issuer ([#2516](https://github.com/stellar/go/pull/2516)).
-* Ingestion system has it's dedicated DB connection pool ([#2560](https://github.com/stellar/go/pull/2560)).
-* A new metrics has been added to `/metrics` ([#2537](https://github.com/stellar/go/pull/2537) and [#2553](https://github.com/stellar/go/pull/2553)):
+* Ingestion system has its dedicated DB connection pool ([#2560](https://github.com/stellar/go/pull/2560)).
+* A new metric has been added to `/metrics` ([#2537](https://github.com/stellar/go/pull/2537) and [#2553](https://github.com/stellar/go/pull/2553)):
   - `ingest.local_latest_ledger`: a gauge with the local latest ledger,
   - `txsub.v0`: a meter counting `v0` transactions in `POST /transaction`,
   - `txsub.v1`: a meter counting `v1` transactions in `POST /transaction`,
