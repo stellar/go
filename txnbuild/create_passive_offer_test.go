@@ -130,8 +130,11 @@ func TestCreatePassiveSellOfferPrice(t *testing.T) {
 	assert.NoError(t, err)
 	expectedPrice := xdr.Price{N: 1, D: 1000000000}
 	assert.Equal(t, expectedPrice, xdrOp.Body.CreatePassiveSellOfferOp.Price)
+	assert.Equal(t, offer.Price, offer.price.string())
+	assert.Equal(t, expectedPrice, offer.price.toXDR())
 
 	parsed := CreatePassiveSellOffer{}
 	assert.NoError(t, parsed.FromXDR(xdrOp))
 	assert.Equal(t, offer.Price, parsed.Price)
+	assert.Equal(t, offer.price, parsed.price)
 }
