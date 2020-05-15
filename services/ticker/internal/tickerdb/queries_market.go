@@ -68,6 +68,12 @@ func (s *TickerSession) RetrievePartialMarkets(
 	sqlTrue := new(string)
 	*sqlTrue = "TRUE"
 
+	baseAssetCode, baseAssetIssuer, counterAssetCode, counterAssetIssuer = orderBaseAndCounter(
+		baseAssetCode,
+		baseAssetIssuer,
+		counterAssetCode,
+		counterAssetIssuer,
+	)
 	where, args := generateWhereClause([]optionalVar{
 		optionalVar{"bAsset.is_valid", sqlTrue},
 		optionalVar{"cAsset.is_valid", sqlTrue},

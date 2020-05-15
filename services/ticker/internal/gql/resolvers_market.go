@@ -22,6 +22,11 @@ func (r *resolver) Markets(args struct {
 		return
 	}
 
+	var pairName string
+	if args.BaseAssetCode != nil {
+		pairName = fmt.Sprintf("%s:%s / %s:%s", *args.BaseAssetCode, *args.BaseAssetIssuer, *args.CounterAssetCode, *args.CounterAssetIssuer)
+	}
+
 	dbMarkets, err := r.db.RetrievePartialMarkets(
 		args.BaseAssetCode,
 		args.BaseAssetIssuer,
@@ -36,10 +41,6 @@ func (r *resolver) Markets(args struct {
 		return
 	}
 
-	var pairName string
-	if args.BaseAssetCode != nil {
-		pairName = fmt.Sprintf("%s:%s / %s:%s", *args.BaseAssetCode, *args.BaseAssetIssuer, *args.CounterAssetCode, *args.CounterAssetIssuer)
-	}
 	for _, dbMkt := range dbMarkets {
 		processedMkt := postProcessPartialMarket(dbMarketToPartialMarket(dbMkt), reverseOrderbook(dbMkt), &pairName)
 		partialMarkets = append(partialMarkets, processedMkt)
@@ -149,7 +150,7 @@ func postProcessPartialMarket(
 	}
 
 	// We swap base code/issuer/volume with counter.
-	processedDbMkt.TradePair = *oldPairName
+	processedDbMkt.TradePair = oldPairNameStr
 	processedDbMkt.BaseAssetCode, processedDbMkt.CounterAssetCode = processedDbMkt.CounterAssetCode, processedDbMkt.BaseAssetCode
 	processedDbMkt.BaseAssetIssuer, processedDbMkt.CounterAssetIssuer = processedDbMkt.CounterAssetIssuer, processedDbMkt.BaseAssetIssuer
 	processedDbMkt.BaseVolume, processedDbMkt.CounterVolume = processedDbMkt.CounterVolume, processedDbMkt.BaseVolume

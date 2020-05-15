@@ -118,6 +118,27 @@ func getBaseAndCounterCodes(pairName string) (string, string, error) {
 	return assets[0], assets[1], nil
 }
 
+// normalizeBaseAndCounter takes the user-provided base and counter asset
+// and issuer, and orders them according to the following rules:
+// 1. XLM is always the base asset
+// 2. If XLM is not in the pair, the assets should be ordered alphabetically
+func orderBaseAndCounter(
+	baseCode *string,
+	baseIssuer *string,
+	counterCode *string,
+	counterIssuer *string,
+) (*string, *string, *string, *string) {
+	if baseCode == nil || counterCode == nil {
+		return baseCode, baseIssuer, counterCode, counterIssuer
+	}
+
+	if (*counterCode == "XLM") || (*baseCode != "XLM" && *baseCode > *counterCode) {
+		return counterCode, counterIssuer, baseCode, baseIssuer
+	}
+
+	return baseCode, baseIssuer, counterCode, counterIssuer
+}
+
 // performUpsertQuery introspects a dbStruct interface{} and performs an insert query
 // (if the conflictConstraint isn't broken), otherwise it updates the instance on the
 // db, preserving the old values for the fields in preserveFields
