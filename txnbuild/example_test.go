@@ -705,7 +705,7 @@ func ExampleManageBuyOffer() {
 
 }
 
-// Action needed in release: horizonclient-v3.1.0
+// Action needed in release: horizonclient-v3.2.0
 // Uncomment this example when protocol 13 is enabled
 //func ExampleFeeBumpTransaction() {
 //	kp, _ := keypair.Parse("SBPQUZ6G4FZNWFHKUWC5BEYWF6R52E3SEP7R3GWYSM2XTKGF5LNTWW4R")

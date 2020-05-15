@@ -1063,10 +1063,10 @@ func ExampleClient_StreamTransactions() {
 	}
 }
 
-// Action needed in release: horizonclient-v3.1.0
+// Action needed in release: horizonclient-v3.2.0
 // Uncomment fee bump examples when protocol 13 is enabled
 //func convertToV1Tx(tx *txnbuild.Transaction) (*txnbuild.Transaction, error) {
-//	// Action needed in release: horizonclient-v3.1.0
+//	// Action needed in release: horizonclient-v3.2.0
 //	// remove manual envelope type configuration because
 //	// once protocol 13 is enabled txnbuild will generate
 //	// v1 transaction envelopes by default
