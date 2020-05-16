@@ -24,7 +24,7 @@ type Query {
 	# hours. optionally provide the name of the trade pair (e.g.
 	# XLM_BTC) for filtering results.
 	ticker(
-		pairName: String
+		pairNames: [String]
 		numHoursAgo: Int
 	): [AggregatedMarket]!
 }

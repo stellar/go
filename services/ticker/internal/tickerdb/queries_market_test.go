@@ -601,9 +601,8 @@ func TestRetrievePartialMarkets(t *testing.T) {
 	assert.True(t, priceDiff < 0.0000000000001)
 
 	// Validate the pair name parsing:
-	pairName := new(string)
-	*pairName = "BTC_ETH"
-	partialAggMkts, err = session.RetrievePartialAggMarkets(pairName, 12)
+	pairNames := []string{"BTC_ETH"}
+	partialAggMkts, err = session.RetrievePartialAggMarkets(&pairNames, 12)
 	require.NoError(t, err)
 	assert.Equal(t, 1, len(partialAggMkts))
 	assert.Equal(t, int32(3), partialAggMkts[0].TradeCount)

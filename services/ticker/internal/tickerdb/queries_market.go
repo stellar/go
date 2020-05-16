@@ -15,30 +15,35 @@ func (s *TickerSession) RetrieveMarketData() (markets []Market, err error) {
 // RetrievePartialAggMarkets retrieves the aggregated market data for all
 // markets (or for a specific one if PairName != nil) for a given period.
 func (s *TickerSession) RetrievePartialAggMarkets(
-	pairName *string,
+	pairNames *[]string,
 	numHoursAgo int,
 ) (partialMkts []PartialMarket, err error) {
 	var bCode, cCode string
 	sqlTrue := new(string)
 	*sqlTrue = "TRUE"
-	optVars := []optionalVar{
-		optionalVar{"bAsset.is_valid", sqlTrue},
-		optionalVar{"cAsset.is_valid", sqlTrue},
-	}
 
+	optVarsSlice := [][]optionalVar{}
 	// parse base and asset codes and add them as SQL parameters
-	if pairName != nil {
-		bCode, cCode, err = getBaseAndCounterCodes(*pairName)
-		if err != nil {
-			return
+	if pairNames != nil {
+		pairNamesArr := *pairNames
+		for _, pairName := range pairNamesArr {
+			optVars := []optionalVar{
+				optionalVar{"bAsset.is_valid", sqlTrue},
+				optionalVar{"cAsset.is_valid", sqlTrue},
+			}
+			bCode, cCode, err = getBaseAndCounterCodes(pairName)
+			if err != nil {
+				return
+			}
+			optVars = append(optVars, []optionalVar{
+				optionalVar{"bAsset.code", &bCode},
+				optionalVar{"cAsset.code", &cCode},
+			}...)
+			optVarsSlice = append(optVarsSlice, optVars)
 		}
-		optVars = append(optVars, []optionalVar{
-			optionalVar{"bAsset.code", &bCode},
-			optionalVar{"cAsset.code", &cCode},
-		}...)
 	}
 
-	where, args := generateWhereClause(optVars)
+	where, args := generateWhereClauseWithOrs(optVarsSlice)
 	where += fmt.Sprintf(
 		" AND t.ledger_close_time > now() - interval '%d hours'",
 		numHoursAgo,
