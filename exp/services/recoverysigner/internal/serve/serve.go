@@ -27,9 +27,16 @@ type Options struct {
 	SEP10JWKS         string
 	SEP10JWTIssuer    string
 	FirebaseProjectID string
+
+	AdminPort        int
+	MetricsNamespace string
 }
 
 func Serve(opts Options) {
+	if opts.AdminPort != 0 {
+		go serveAdmin(opts)
+	}
+
 	deps, err := getHandlerDeps(opts)
 	if err != nil {
 		opts.Logger.Fatalf("Error: %v", err)
@@ -43,8 +50,7 @@ func Serve(opts Options) {
 		ListenAddr: addr,
 		Handler:    handler,
 		OnStarting: func() {
-			opts.Logger.Info("Starting SEP-30 Recover Signer server")
-			opts.Logger.Infof("Listening on %s", addr)
+			deps.Logger.Infof("Starting SEP-30 Recover Signer server on %s", addr)
 		},
 	})
 }
