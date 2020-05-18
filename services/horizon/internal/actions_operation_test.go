@@ -42,6 +42,8 @@ func TestOperationActions_Index(t *testing.T) {
 		ht.Assert.PageOf(1, w.Body)
 	}
 
+	// =============================
+	// Moved to TestGetOperationsFilterByAccountID
 	// filtered by account
 	w = ht.Get("/accounts/GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H/operations")
 	if ht.Assert.Equal(200, w.Code) {
@@ -57,7 +59,10 @@ func TestOperationActions_Index(t *testing.T) {
 	if ht.Assert.Equal(200, w.Code) {
 		ht.Assert.PageOf(2, w.Body)
 	}
+	// =============================
 
+	// =============================
+	// Moved to TestGetOperationsFilterByTxID
 	// filtered by transaction
 	w = ht.Get("/transactions/2374e99349b9ef7dba9a5db3339b78fda8f34777b1af33ba468ad5c0df946d4d/operations")
 	if ht.Assert.Equal(200, w.Code) {
@@ -77,6 +82,7 @@ func TestOperationActions_Index(t *testing.T) {
 	if ht.Assert.Equal(200, w.Code) {
 		ht.Assert.PageOf(1, w.Body)
 	}
+	// =============================
 
 	// 400 for invalid tx hash
 	w = ht.Get("/transactions/ /operations")
@@ -85,9 +91,11 @@ func TestOperationActions_Index(t *testing.T) {
 	w = ht.Get("/transactions/invalid/operations")
 	ht.Assert.Equal(400, w.Code)
 
+	// Moved to query param validator
 	w = ht.Get("/transactions/1d2a4be72470658f68db50eef29ea0af3f985ce18b5c218f03461d40c47dc29/operations")
 	ht.Assert.Equal(400, w.Code)
 
+	// Moved to query param validator
 	w = ht.Get("/transactions/1d2a4be72470658f68db50eef29ea0af3f985ce18b5c218f03461d40c47dc29222/operations")
 	ht.Assert.Equal(400, w.Code)
 

@@ -13,7 +13,8 @@ import (
 
 // OperationsQuery query struct for offers end-point
 type OperationsQuery struct {
-	AccountID string `schema:"account_id" valid:"accountID,optional"`
+	AccountID       string `schema:"account_id" valid:"accountID,optional"`
+	TransactionHash string `schema:"tx_id" valid:"transactionHash,optional"`
 }
 
 // GetOperationsHandler is the action handler for all end-points returning a list of operations.
@@ -44,6 +45,15 @@ func (handler GetOperationsHandler) GetResourcePage(w HeaderWriter, r *http.Requ
 
 	if qp.AccountID != "" {
 		query.ForAccount(qp.AccountID)
+		if query.Err != nil {
+			return nil, query.Err
+		}
+	}
+	if qp.TransactionHash != "" {
+		query.ForTransaction(qp.TransactionHash)
+		if query.Err != nil {
+			return nil, query.Err
+		}
 	}
 
 	ops, txs, err := query.Page(pq).Fetch()
