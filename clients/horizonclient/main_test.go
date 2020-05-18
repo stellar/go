@@ -998,7 +998,7 @@ func TestSubmitTransactionRequest(t *testing.T) {
 }
 
 func convertToV1Tx(t *testing.T, tx *txnbuild.Transaction) *txnbuild.Transaction {
-	// Action needed in release: horizonclient-v3.1.0
+	// Action needed in release: horizonclient-v3.2.0
 	// remove manual envelope type configuration because
 	// once protocol 13 is enabled txnbuild will generate
 	// v1 transaction envelopes by default
