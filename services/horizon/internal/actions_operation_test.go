@@ -26,6 +26,8 @@ func TestOperationActions_Index(t *testing.T) {
 		ht.Assert.PageOf(4, w.Body)
 	}
 
+	// =============================
+	// Moved to TestGetOperationsFilterByLedgerID
 	// filtered by ledger sequence
 	w = ht.Get("/ledgers/1/operations")
 	if ht.Assert.Equal(200, w.Code) {
@@ -41,6 +43,7 @@ func TestOperationActions_Index(t *testing.T) {
 	if ht.Assert.Equal(200, w.Code) {
 		ht.Assert.PageOf(1, w.Body)
 	}
+	// =============================
 
 	// =============================
 	// Moved to TestGetOperationsFilterByAccountID
@@ -84,10 +87,12 @@ func TestOperationActions_Index(t *testing.T) {
 	}
 	// =============================
 
+	// TODO
 	// 400 for invalid tx hash
 	w = ht.Get("/transactions/ /operations")
 	ht.Assert.Equal(400, w.Code)
 
+	// TODO
 	w = ht.Get("/transactions/invalid/operations")
 	ht.Assert.Equal(400, w.Code)
 
@@ -99,6 +104,7 @@ func TestOperationActions_Index(t *testing.T) {
 	w = ht.Get("/transactions/1d2a4be72470658f68db50eef29ea0af3f985ce18b5c218f03461d40c47dc29222/operations")
 	ht.Assert.Equal(400, w.Code)
 
+	// Done in TestGetOperationsFilterByLedgerID
 	// filtered by ledger
 	w = ht.Get("/ledgers/3/operations")
 	if ht.Assert.Equal(200, w.Code) {
@@ -106,6 +112,7 @@ func TestOperationActions_Index(t *testing.T) {
 	}
 
 	// missing ledger
+	// TODO: add test for 404, this should not be in the actions test
 	w = ht.Get("/ledgers/100/operations")
 	ht.Assert.Equal(404, w.Code)
 }

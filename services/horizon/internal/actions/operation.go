@@ -4,11 +4,13 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/resourceadapter"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/render/hal"
+	"github.com/stellar/go/support/render/problem"
 )
 
 // OperationsQuery query struct for offers end-point
@@ -16,6 +18,24 @@ type OperationsQuery struct {
 	AccountID       string `schema:"account_id" valid:"accountID,optional"`
 	TransactionHash string `schema:"tx_id" valid:"transactionHash,optional"`
 	IncludeFailed   bool   `schema:"include_failed"`
+	LedgerID        string `schema:"ledger_id" valid:"ledgerID,optional"`
+}
+
+// Ledger returns the ledger id from the query parameter as an integer
+func (qp OperationsQuery) Ledger() (int32, error) {
+	if qp.LedgerID == "" {
+		return 0, nil
+	}
+
+	ledger, err := strconv.ParseInt(qp.LedgerID, 10, 32)
+	if err != nil {
+		return 0, problem.MakeInvalidFieldProblem(
+			"ledger_id",
+			errors.Wrapf(err, "invalid ledger_id"),
+		)
+	}
+
+	return int32(ledger), nil
 }
 
 // GetOperationsHandler is the action handler for all end-points returning a list of operations.
@@ -62,6 +82,17 @@ func (handler GetOperationsHandler) GetResourcePage(w HeaderWriter, r *http.Requ
 	// this specific transactions, she knows it's status.
 	if qp.TransactionHash != "" || qp.IncludeFailed {
 		query.IncludeFailed()
+		if query.Err != nil {
+			return nil, query.Err
+		}
+	}
+
+	ledgerID, err := qp.Ledger()
+	if err != nil {
+		return nil, err
+	}
+	if ledgerID > 0 {
+		query.ForLedger(ledgerID)
 		if query.Err != nil {
 			return nil, query.Err
 		}

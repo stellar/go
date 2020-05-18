@@ -3,7 +3,9 @@ package actions
 import (
 	"fmt"
 	"net/http/httptest"
+
 	"testing"
+	"time"
 
 	"github.com/stellar/go/protocols/horizon/operations"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
@@ -95,7 +97,7 @@ func TestGetOperationsFilterByTxID(t *testing.T) {
 		},
 	}
 	for _, tc := range testCases {
-		t.Run(fmt.Sprintf(tc.transactionID), func(t *testing.T) {
+		t.Run(fmt.Sprintf(tc.desc), func(t *testing.T) {
 			records, err := handler.GetResourcePage(
 				httptest.NewRecorder(),
 				makeRequest(
@@ -245,6 +247,107 @@ func TestGetOperationsIncludeFailed(t *testing.T) {
 	// 	action.Err = supportProblem.MakeInvalidFieldProblem("include_failed", err)
 	// 	return
 	// }
+}
+
+func TestGetOperationsFilterByLedgerID(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	tt.Scenario("base")
+
+	q := &history.Q{tt.HorizonSession()}
+	handler := GetOperationsHandler{}
+
+	testCases := []struct {
+		ledgerID    string
+		expected    int
+		expectedErr string
+		notFound    bool
+	}{
+		{
+			ledgerID: "1",
+			expected: 0,
+		},
+		{
+			ledgerID: "2",
+			expected: 3,
+		},
+		{
+			ledgerID: "3",
+			expected: 1,
+		},
+		{
+			ledgerID:    "10000",
+			expectedErr: "sql: no rows in result set",
+			notFound:    true,
+		},
+		{
+			ledgerID:    "0",
+			expectedErr: "Ledger ID must be higher than 0",
+		},
+		{
+			ledgerID:    "-1",
+			expectedErr: "Ledger ID must be higher than 0",
+		},
+		{
+			ledgerID:    "one",
+			expectedErr: "Ledger ID must be higher than 0",
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(fmt.Sprintf("ledger %s operations", tc.ledgerID), func(t *testing.T) {
+			records, err := handler.GetResourcePage(
+				httptest.NewRecorder(),
+				makeRequest(
+					t, map[string]string{
+						"ledger_id": tc.ledgerID,
+					}, map[string]string{}, q.Session,
+				),
+			)
+			if tc.expectedErr == "" {
+				tt.Assert.NoError(err)
+				tt.Assert.Len(records, tc.expected)
+			} else {
+				if tc.notFound {
+					tt.Assert.EqualError(err, tc.expectedErr)
+				} else {
+					tt.Assert.IsType(&problem.P{}, err)
+					p := err.(*problem.P)
+					tt.Assert.Equal("bad_request", p.Type)
+					tt.Assert.Equal("ledger_id", p.Extras["invalid_field"])
+					tt.Assert.Equal(
+						tc.expectedErr,
+						p.Extras["reason"],
+					)
+				}
+			}
+		})
+	}
+}
+
+func TestOperation_CreatedAt(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	tt.Scenario("base")
+
+	q := &history.Q{tt.HorizonSession()}
+	handler := GetOperationsHandler{}
+
+	records, err := handler.GetResourcePage(
+		httptest.NewRecorder(),
+		makeRequest(
+			t, map[string]string{
+				"ledger_id": "3",
+			}, map[string]string{}, q.Session,
+		),
+	)
+	tt.Assert.NoError(err)
+
+	l := history.Ledger{}
+	tt.Assert.NoError(q.LedgerBySequence(&l, 3))
+
+	record := records[0].(operations.Payment)
+
+	tt.Assert.WithinDuration(l.ClosedAt, record.LedgerCloseTime, 1*time.Second)
 }
 
 func TestGetOperations(t *testing.T) {
