@@ -20,6 +20,7 @@ func TestOperationActions_Index(t *testing.T) {
 	ht := StartHTTPTest(t, "base")
 	defer ht.Finish()
 
+	// Moved to TestGetOperationsWithoutFilter
 	// no filter
 	w := ht.Get("/operations")
 	if ht.Assert.Equal(200, w.Code) {

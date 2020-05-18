@@ -13,6 +13,24 @@ import (
 	"github.com/stellar/go/support/render/problem"
 )
 
+func TestGetOperationsWithoutFilter(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	tt.Scenario("base")
+
+	q := &history.Q{tt.HorizonSession()}
+	handler := GetOperationsHandler{}
+
+	records, err := handler.GetResourcePage(
+		httptest.NewRecorder(),
+		makeRequest(
+			t, map[string]string{}, map[string]string{}, q.Session,
+		),
+	)
+	tt.Assert.NoError(err)
+	tt.Assert.Len(records, 4)
+}
+
 func TestGetOperationsFilterByAccountID(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
@@ -355,9 +373,7 @@ func TestGetOperations(t *testing.T) {
 	t.Run("Validates cursor within history", func(t *testing.T) {})
 	// should this be a middleware?
 	t.Run("EnsureHistoryFreshness", func(t *testing.T) {})
-	t.Run("No filter", func(t *testing.T) {})
 	t.Run("Pagination", func(t *testing.T) {})
-	t.Run("Filter by ledger_id", func(t *testing.T) {})
 	t.Run("With includes(join)", func(t *testing.T) {})
 	t.Run("Filter by payments only", func(t *testing.T) {})
 }
