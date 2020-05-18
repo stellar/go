@@ -43,7 +43,7 @@ func Serve(opts Options) {
 	if opts.AdminPort != 0 {
 		adminDeps := adminDeps{
 			Logger:          opts.Logger,
-			MetricsRegistry: deps.MetricsRegistry,
+			MetricsGatherer: deps.MetricsRegistry,
 		}
 		go serveAdmin(opts, adminDeps)
 	}
@@ -111,7 +111,7 @@ func getHandlerDeps(opts Options) (handlerDeps, error) {
 
 	metricsRegistry := prometheus.NewRegistry()
 
-	err = metricsRegistry.Register(prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{Namespace: opts.MetricsNamespace}))
+	err = metricsRegistry.Register(prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{}))
 	if err != nil {
 		opts.Logger.Warn("Error registering metric for process: ", err)
 	}
@@ -119,9 +119,14 @@ func getHandlerDeps(opts Options) (handlerDeps, error) {
 	if err != nil {
 		opts.Logger.Warn("Error registering metric for Go: ", err)
 	}
-	err = metricsRegistry.Register(metricAccountsCount{
+
+	metricsRegistryNamespaced := prometheus.Registerer(metricsRegistry)
+	if opts.MetricsNamespace != "" {
+		metricsRegistryNamespaced = prometheus.WrapRegistererWithPrefix(opts.MetricsNamespace+"_", metricsRegistry)
+	}
+
+	err = metricsRegistryNamespaced.Register(metricAccountsCount{
 		Logger:       opts.Logger,
-		Namespace:    opts.MetricsNamespace,
 		AccountStore: accountStore,
 	}.NewCollector())
 	if err != nil {

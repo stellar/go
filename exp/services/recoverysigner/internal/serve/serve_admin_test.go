@@ -20,13 +20,12 @@ func TestAdminHandler_metricsAccountsCountNone(t *testing.T) {
 	mr := prometheus.NewRegistry()
 	mr.MustRegister(metricAccountsCount{
 		Logger:       supportlog.DefaultLogger,
-		Namespace:    "recoverysigner",
 		AccountStore: s,
 	}.NewCollector())
 
 	deps := adminDeps{
 		Logger:          supportlog.DefaultLogger,
-		MetricsRegistry: mr,
+		MetricsGatherer: mr,
 	}
 	h := adminHandler(deps)
 
@@ -58,13 +57,12 @@ func TestAdminHandler_metricsAccountsCountSome(t *testing.T) {
 	mr := prometheus.NewRegistry()
 	mr.MustRegister(metricAccountsCount{
 		Logger:       supportlog.DefaultLogger,
-		Namespace:    "recoverysigner",
 		AccountStore: s,
 	}.NewCollector())
 
 	deps := adminDeps{
 		Logger:          supportlog.DefaultLogger,
-		MetricsRegistry: mr,
+		MetricsGatherer: mr,
 	}
 
 	h := adminHandler(deps)
@@ -98,13 +96,12 @@ func TestAdminHandler_metricsAccountsCountSomeDeleted(t *testing.T) {
 	mr := prometheus.NewRegistry()
 	mr.MustRegister(metricAccountsCount{
 		Logger:       supportlog.DefaultLogger,
-		Namespace:    "recoverysigner",
 		AccountStore: s,
 	}.NewCollector())
 
 	deps := adminDeps{
 		Logger:          supportlog.DefaultLogger,
-		MetricsRegistry: mr,
+		MetricsGatherer: mr,
 	}
 
 	h := adminHandler(deps)

@@ -25,11 +25,11 @@ func serveAdmin(opts Options, deps adminDeps) {
 
 type adminDeps struct {
 	Logger          *supportlog.Entry
-	MetricsRegistry *prometheus.Registry
+	MetricsGatherer prometheus.Gatherer
 }
 
 func adminHandler(deps adminDeps) http.Handler {
 	mux := supporthttp.NewMux(deps.Logger)
-	mux.Handle("/metrics", promhttp.HandlerFor(deps.MetricsRegistry, promhttp.HandlerOpts{}))
+	mux.Handle("/metrics", promhttp.HandlerFor(deps.MetricsGatherer, promhttp.HandlerOpts{}))
 	return mux
 }

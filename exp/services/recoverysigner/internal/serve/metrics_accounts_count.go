@@ -9,14 +9,12 @@ import (
 type metricAccountsCount struct {
 	Logger       *supportlog.Entry
 	AccountStore account.Store
-	Namespace    string
 }
 
 func (m metricAccountsCount) NewCollector() prometheus.Collector {
 	opts := prometheus.GaugeOpts{
-		Namespace: m.Namespace,
-		Name:      "accounts_count",
-		Help:      "Number of active accounts.",
+		Name: "accounts_count",
+		Help: "Number of active accounts.",
 	}
 	return prometheus.NewGaugeFunc(opts, m.gauge)
 }
