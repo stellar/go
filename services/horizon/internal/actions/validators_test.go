@@ -211,3 +211,52 @@ func TestAmountValidator(t *testing.T) {
 		})
 	}
 }
+
+func TestTransactionHashValidator(t *testing.T) {
+	type Query struct {
+		TransactionHash string `valid:"transactionHash,optional"`
+	}
+
+	for _, testCase := range []struct {
+		name          string
+		value         string
+		expectedError string
+	}{
+		{
+			"uppercase hash",
+			"2374E99349B9EF7DBA9A5DB3339B78FDA8F34777B1AF33BA468AD5C0DF946D4D",
+			"TransactionHash: 2374E99349B9EF7DBA9A5DB3339B78FDA8F34777B1AF33BA468AD5C0DF946D4D does not validate as transactionHash",
+		},
+		{
+			"badly formated tx hash",
+			"%00%1E4%5E%EF%BF%BD%EF%BF%BD%EF%BF%BDpVP%EF%BF%BDI&R%0BK%EF%BF%BD%1D%EF%BF%BD%EF%BF%BD=%EF%BF%BD%3F%23%EF%BF%BD%EF%BF%BDl%EF%BF%BD%1El%EF%BF%BD%EF%BF%BD",
+			"TransactionHash: %00%1E4%5E%EF%BF%BD%EF%BF%BD%EF%BF%BDpVP%EF%BF%BDI&R%0BK%EF%BF%BD%1D%EF%BF%BD%EF%BF%BD=%EF%BF%BD%3F%23%EF%BF%BD%EF%BF%BDl%EF%BF%BD%1El%EF%BF%BD%EF%BF%BD does not validate as transactionHash",
+		},
+		{
+			"valid tx hash",
+			"2374e99349b9ef7dba9a5db3339b78fda8f34777b1af33ba468ad5c0df946d4d",
+			"",
+		},
+		{
+			"empty transaction hash should not be validated",
+			"",
+			"",
+		},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			tt := assert.New(t)
+
+			q := Query{
+				TransactionHash: testCase.value,
+			}
+
+			result, err := govalidator.ValidateStruct(q)
+			if testCase.expectedError == "" {
+				tt.NoError(err)
+				tt.True(result)
+			} else {
+				tt.Equal(testCase.expectedError, err.Error())
+			}
+		})
+	}
+}
