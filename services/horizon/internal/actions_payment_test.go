@@ -11,6 +11,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/expingest"
 )
 
+// Moved to TestGetOperationsOnlyPayments
 func TestPaymentActions(t *testing.T) {
 	ht := StartHTTPTest(t, "base")
 	defer ht.Finish()

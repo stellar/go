@@ -40,6 +40,7 @@ func (qp OperationsQuery) Ledger() (int32, error) {
 
 // GetOperationsHandler is the action handler for all end-points returning a list of operations.
 type GetOperationsHandler struct {
+	OnlyPayments bool
 }
 
 // GetResourcePage returns a page of operations.
@@ -78,8 +79,8 @@ func (handler GetOperationsHandler) GetResourcePage(w HeaderWriter, r *http.Requ
 	}
 
 	// When querying operations for transaction return both successful
-	// and failed operations. We assume that because user is querying
-	// this specific transactions, she knows it's status.
+	// and failed operations. We assume that because the user is querying
+	// this specific transactions, they knows its status.
 	if qp.TransactionHash != "" || qp.IncludeFailed {
 		query.IncludeFailed()
 		if query.Err != nil {
@@ -96,6 +97,10 @@ func (handler GetOperationsHandler) GetResourcePage(w HeaderWriter, r *http.Requ
 		if query.Err != nil {
 			return nil, query.Err
 		}
+	}
+
+	if handler.OnlyPayments {
+		query.OnlyPayments()
 	}
 
 	ops, txs, err := query.Page(pq).Fetch()

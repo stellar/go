@@ -341,6 +341,85 @@ func TestGetOperationsFilterByLedgerID(t *testing.T) {
 		})
 	}
 }
+func TestGetOperationsOnlyPayments(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	tt.Scenario("base")
+
+	q := &history.Q{tt.HorizonSession()}
+	handler := GetOperationsHandler{
+		OnlyPayments: true,
+	}
+
+	records, err := handler.GetResourcePage(
+		httptest.NewRecorder(),
+		makeRequest(
+			t, map[string]string{}, map[string]string{}, q.Session,
+		),
+	)
+	tt.Assert.NoError(err)
+	tt.Assert.Len(records, 4)
+
+	records, err = handler.GetResourcePage(
+		httptest.NewRecorder(),
+		makeRequest(
+			t, map[string]string{
+				"ledger_id": "1",
+			}, map[string]string{}, q.Session,
+		),
+	)
+	tt.Assert.NoError(err)
+	tt.Assert.Len(records, 0)
+
+	records, err = handler.GetResourcePage(
+		httptest.NewRecorder(),
+		makeRequest(
+			t, map[string]string{
+				"ledger_id": "3",
+			}, map[string]string{}, q.Session,
+		),
+	)
+	tt.Assert.NoError(err)
+	tt.Assert.Len(records, 1)
+
+	records, err = handler.GetResourcePage(
+		httptest.NewRecorder(),
+		makeRequest(
+			t, map[string]string{
+				"account_id": "GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2",
+			}, map[string]string{}, q.Session,
+		),
+	)
+	tt.Assert.NoError(err)
+	tt.Assert.Len(records, 1)
+
+	tt.Scenario("pathed_payment")
+
+	records, err = handler.GetResourcePage(
+		httptest.NewRecorder(),
+		makeRequest(
+			t, map[string]string{
+				"tx_id": "b52f16ffb98c047e33b9c2ec30880330cde71f85b3443dae2c5cb86c7d4d8452",
+			}, map[string]string{}, q.Session,
+		),
+	)
+	tt.Assert.NoError(err)
+	tt.Assert.Len(records, 0)
+
+	records, err = handler.GetResourcePage(
+		httptest.NewRecorder(),
+		makeRequest(
+			t, map[string]string{
+				"tx_id": "1d2a4be72470658f68db50eef29ea0af3f985ce18b5c218f03461d40c47dc292",
+			}, map[string]string{}, q.Session,
+		),
+	)
+	tt.Assert.NoError(err)
+	tt.Assert.Len(records, 1)
+
+	record := records[0].(operations.PathPayment)
+	tt.Assert.Equal("10.0000000", record.SourceAmount)
+}
 
 func TestOperation_CreatedAt(t *testing.T) {
 	tt := test.Start(t)
@@ -375,5 +454,7 @@ func TestGetOperations(t *testing.T) {
 	t.Run("EnsureHistoryFreshness", func(t *testing.T) {})
 	t.Run("Pagination", func(t *testing.T) {})
 	t.Run("With includes(join)", func(t *testing.T) {})
-	t.Run("Filter by payments only", func(t *testing.T) {})
+	// // Regression: negative cursor
+	// w = ht.Get("/accounts/GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2/payments?cursor=-23667108046966785&order=asc&limit=100")
+	// ht.Assert.Equal(400, w.Code)
 }
