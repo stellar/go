@@ -110,6 +110,15 @@ func getHandlerDeps(opts Options) (handlerDeps, error) {
 	}
 
 	metricsRegistry := prometheus.NewRegistry()
+
+	err = metricsRegistry.Register(prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{Namespace: opts.MetricsNamespace}))
+	if err != nil {
+		opts.Logger.Warn("Error registering metric for process: ", err)
+	}
+	err = metricsRegistry.Register(prometheus.NewGoCollector())
+	if err != nil {
+		opts.Logger.Warn("Error registering metric for Go: ", err)
+	}
 	err = metricsRegistry.Register(metricAccountsCount{
 		Logger:       opts.Logger,
 		Namespace:    opts.MetricsNamespace,
