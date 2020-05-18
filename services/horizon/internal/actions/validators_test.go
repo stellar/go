@@ -1,6 +1,7 @@
 package actions
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/asaskevich/govalidator"
@@ -218,29 +219,39 @@ func TestTransactionHashValidator(t *testing.T) {
 	}
 
 	for _, testCase := range []struct {
-		name          string
-		value         string
-		expectedError string
+		name  string
+		value string
+		valid bool
 	}{
+		{
+			"length 63",
+			"1d2a4be72470658f68db50eef29ea0af3f985ce18b5c218f03461d40c47dc29",
+			false,
+		},
+		{
+			"length 66",
+			"1d2a4be72470658f68db50eef29ea0af3f985ce18b5c218f03461d40c47dc29222",
+			false,
+		},
 		{
 			"uppercase hash",
 			"2374E99349B9EF7DBA9A5DB3339B78FDA8F34777B1AF33BA468AD5C0DF946D4D",
-			"TransactionHash: 2374E99349B9EF7DBA9A5DB3339B78FDA8F34777B1AF33BA468AD5C0DF946D4D does not validate as transactionHash",
+			false,
 		},
 		{
 			"badly formated tx hash",
 			"%00%1E4%5E%EF%BF%BD%EF%BF%BD%EF%BF%BDpVP%EF%BF%BDI&R%0BK%EF%BF%BD%1D%EF%BF%BD%EF%BF%BD=%EF%BF%BD%3F%23%EF%BF%BD%EF%BF%BDl%EF%BF%BD%1El%EF%BF%BD%EF%BF%BD",
-			"TransactionHash: %00%1E4%5E%EF%BF%BD%EF%BF%BD%EF%BF%BDpVP%EF%BF%BDI&R%0BK%EF%BF%BD%1D%EF%BF%BD%EF%BF%BD=%EF%BF%BD%3F%23%EF%BF%BD%EF%BF%BDl%EF%BF%BD%1El%EF%BF%BD%EF%BF%BD does not validate as transactionHash",
+			false,
 		},
 		{
 			"valid tx hash",
 			"2374e99349b9ef7dba9a5db3339b78fda8f34777b1af33ba468ad5c0df946d4d",
-			"",
+			true,
 		},
 		{
 			"empty transaction hash should not be validated",
 			"",
-			"",
+			true,
 		},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
@@ -251,11 +262,12 @@ func TestTransactionHashValidator(t *testing.T) {
 			}
 
 			result, err := govalidator.ValidateStruct(q)
-			if testCase.expectedError == "" {
+			if testCase.valid {
 				tt.NoError(err)
 				tt.True(result)
 			} else {
-				tt.Equal(testCase.expectedError, err.Error())
+				expected := fmt.Sprintf("TransactionHash: %s does not validate as transactionHash", testCase.value)
+				tt.Equal(expected, err.Error())
 			}
 		})
 	}
