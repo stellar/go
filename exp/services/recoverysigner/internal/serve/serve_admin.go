@@ -4,21 +4,13 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/stellar/go/exp/services/recoverysigner/internal/account"
-	"github.com/stellar/go/exp/services/recoverysigner/internal/db"
-	"github.com/stellar/go/support/errors"
 	supporthttp "github.com/stellar/go/support/http"
 	supportlog "github.com/stellar/go/support/log"
 )
 
-func serveAdmin(opts Options) {
-	deps, err := getAdminHandlerDeps(opts)
-	if err != nil {
-		opts.Logger.Fatalf("Error: %v", err)
-		return
-	}
-
+func serveAdmin(opts Options, deps adminDeps) {
 	adminHandler := adminHandler(deps)
 
 	addr := fmt.Sprintf(":%d", opts.AdminPort)
@@ -31,37 +23,13 @@ func serveAdmin(opts Options) {
 	})
 }
 
-type adminHandlerDeps struct {
-	Logger           *supportlog.Entry
-	AccountStore     account.Store
-	MetricsNamespace string
+type adminDeps struct {
+	Logger          *supportlog.Entry
+	MetricsRegistry *prometheus.Registry
 }
 
-func getAdminHandlerDeps(opts Options) (adminHandlerDeps, error) {
-	db, err := db.Open(opts.DatabaseURL)
-	if err != nil {
-		return adminHandlerDeps{}, errors.Wrap(err, "error parsing database url")
-	}
-	err = db.Ping()
-	if err != nil {
-		opts.Logger.Warn("Error pinging to Database: ", err)
-	}
-	accountStore := &account.DBStore{DB: db}
-
-	deps := adminHandlerDeps{
-		Logger:           opts.Logger,
-		AccountStore:     accountStore,
-		MetricsNamespace: opts.MetricsNamespace,
-	}
-	return deps, nil
-}
-
-func adminHandler(deps adminHandlerDeps) http.Handler {
+func adminHandler(deps adminDeps) http.Handler {
 	mux := supporthttp.NewMux(deps.Logger)
-	mux.Handle("/metrics", promhttp.HandlerFor(metricsHandler{
-		Logger:       deps.Logger,
-		AccountStore: deps.AccountStore,
-		Namespace:    deps.MetricsNamespace,
-	}.Registry(), promhttp.HandlerOpts{}))
+	mux.Handle("/metrics", promhttp.HandlerFor(deps.MetricsRegistry, promhttp.HandlerOpts{}))
 	return mux
 }

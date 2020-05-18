@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stellar/go/exp/services/recoverysigner/internal/account"
 	"github.com/stellar/go/exp/services/recoverysigner/internal/db/dbtest"
 	supportlog "github.com/stellar/go/support/log"
@@ -16,12 +17,17 @@ import (
 func TestAdminHandler_metricsAccountsCountNone(t *testing.T) {
 	s := &account.DBStore{DB: dbtest.Open(t).Open()}
 
-	deps := adminHandlerDeps{
-		Logger:           supportlog.DefaultLogger,
-		AccountStore:     s,
-		MetricsNamespace: "recoverysigner",
-	}
+	mr := prometheus.NewRegistry()
+	mr.MustRegister(metricAccountsCount{
+		Logger:       supportlog.DefaultLogger,
+		Namespace:    "recoverysigner",
+		AccountStore: s,
+	}.NewCollector())
 
+	deps := adminDeps{
+		Logger:          supportlog.DefaultLogger,
+		MetricsRegistry: mr,
+	}
 	h := adminHandler(deps)
 
 	r := httptest.NewRequest("GET", "/metrics", nil)
@@ -49,10 +55,16 @@ func TestAdminHandler_metricsAccountsCountSome(t *testing.T) {
 		Identities: []account.Identity{{Role: "owner", AuthMethods: []account.AuthMethod{{Type: account.AuthMethodTypeAddress, Value: "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N"}}}},
 	})
 
-	deps := adminHandlerDeps{
-		Logger:           supportlog.DefaultLogger,
-		AccountStore:     s,
-		MetricsNamespace: "recoverysigner",
+	mr := prometheus.NewRegistry()
+	mr.MustRegister(metricAccountsCount{
+		Logger:       supportlog.DefaultLogger,
+		Namespace:    "recoverysigner",
+		AccountStore: s,
+	}.NewCollector())
+
+	deps := adminDeps{
+		Logger:          supportlog.DefaultLogger,
+		MetricsRegistry: mr,
 	}
 
 	h := adminHandler(deps)
@@ -83,10 +95,16 @@ func TestAdminHandler_metricsAccountsCountSomeDeleted(t *testing.T) {
 	})
 	s.Delete("GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N")
 
-	deps := adminHandlerDeps{
-		Logger:           supportlog.DefaultLogger,
-		AccountStore:     s,
-		MetricsNamespace: "recoverysigner",
+	mr := prometheus.NewRegistry()
+	mr.MustRegister(metricAccountsCount{
+		Logger:       supportlog.DefaultLogger,
+		Namespace:    "recoverysigner",
+		AccountStore: s,
+	}.NewCollector())
+
+	deps := adminDeps{
+		Logger:          supportlog.DefaultLogger,
+		MetricsRegistry: mr,
 	}
 
 	h := adminHandler(deps)

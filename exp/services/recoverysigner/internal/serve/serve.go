@@ -7,6 +7,7 @@ import (
 
 	firebaseauth "firebase.google.com/go/auth"
 	"github.com/go-chi/chi"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stellar/go/exp/services/recoverysigner/internal/account"
 	"github.com/stellar/go/exp/services/recoverysigner/internal/db"
 	"github.com/stellar/go/exp/services/recoverysigner/internal/serve/auth"
@@ -33,14 +34,18 @@ type Options struct {
 }
 
 func Serve(opts Options) {
-	if opts.AdminPort != 0 {
-		go serveAdmin(opts)
-	}
-
 	deps, err := getHandlerDeps(opts)
 	if err != nil {
 		opts.Logger.Fatalf("Error: %v", err)
 		return
+	}
+
+	if opts.AdminPort != 0 {
+		adminDeps := adminDeps{
+			Logger:          opts.Logger,
+			MetricsRegistry: deps.MetricsRegistry,
+		}
+		go serveAdmin(opts, adminDeps)
 	}
 
 	handler := handler(deps)
@@ -63,6 +68,7 @@ type handlerDeps struct {
 	SEP10JWK           jose.JSONWebKey
 	SEP10JWTIssuer     string
 	FirebaseAuthClient *firebaseauth.Client
+	MetricsRegistry    *prometheus.Registry
 }
 
 func getHandlerDeps(opts Options) (handlerDeps, error) {
@@ -103,6 +109,16 @@ func getHandlerDeps(opts Options) (handlerDeps, error) {
 		return handlerDeps{}, errors.Wrap(err, "error setting up firebase auth client")
 	}
 
+	metricsRegistry := prometheus.NewRegistry()
+	err = metricsRegistry.Register(metricAccountsCount{
+		Logger:       opts.Logger,
+		Namespace:    opts.MetricsNamespace,
+		AccountStore: accountStore,
+	}.NewCollector())
+	if err != nil {
+		opts.Logger.Warn("Error registering metric for accounts count: ", err)
+	}
+
 	deps := handlerDeps{
 		Logger:             opts.Logger,
 		NetworkPassphrase:  opts.NetworkPassphrase,
@@ -111,6 +127,7 @@ func getHandlerDeps(opts Options) (handlerDeps, error) {
 		SEP10JWK:           sep10JWK,
 		SEP10JWTIssuer:     opts.SEP10JWTIssuer,
 		FirebaseAuthClient: firebaseAuthClient,
+		MetricsRegistry:    metricsRegistry,
 	}
 
 	return deps, nil
