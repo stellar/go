@@ -2,6 +2,7 @@ package gql
 
 import (
 	"fmt"
+	"math"
 	"testing"
 	"time"
 
@@ -24,11 +25,12 @@ func TestPostProcessPartialMarket(t *testing.T) {
 		CounterAssetCode:     counterCode,
 		CounterAssetIssuer:   counterIssuer,
 		BaseVolume:           100.0,
+		CounterVolume:        200.0,
 		TradeCount:           2,
-		Open:                 20.0,
-		Low:                  10.0,
-		High:                 25.0,
-		Close:                20.0,
+		Open:                 10.0,
+		Low:                  5.0,
+		High:                 20.0,
+		Close:                10.0,
 		NumBids:              10,
 		BidVolume:            1000.0,
 		HighestBid:           250.0,
@@ -57,29 +59,35 @@ func TestPostProcessPartialMarket(t *testing.T) {
 	assert.Equal(t, partialMarket, processedMkt)
 
 	// Confirm that an empty pair name has no effect.
-	oldPairName := ""
-	processedMkt = postProcessPartialMarket(partialMarket, reverseOs, &oldPairName)
+	userPairName := ""
+	processedMkt = postProcessPartialMarket(partialMarket, reverseOs, &userPairName)
 	assert.Equal(t, partialMarket, processedMkt)
 
 	// Confirm that a matching pair name has no effect.
-	oldPairName = fmt.Sprintf("%s:%s / %s:%s", baseCode, baseIssuer, counterCode, counterIssuer)
-	processedMkt = postProcessPartialMarket(partialMarket, reverseOs, &oldPairName)
+	userPairName = fmt.Sprintf("%s:%s / %s:%s", baseCode, baseIssuer, counterCode, counterIssuer)
+	processedMkt = postProcessPartialMarket(partialMarket, reverseOs, &userPairName)
 	assert.Equal(t, partialMarket, processedMkt)
 
 	// Confirm that a swapped pair name reverses counter and base assets and changes the orderbook.
-	oldPairName = fmt.Sprintf("%s:%s / %s:%s", counterCode, counterIssuer, baseCode, baseIssuer)
-	processedMkt = postProcessPartialMarket(partialMarket, reverseOs, &oldPairName)
-	assert.Equal(t, oldPairName, processedMkt.TradePair)
-	assert.Equal(t, partialMarket.CounterAssetCode, processedMkt.BaseAssetCode)
-	assert.Equal(t, partialMarket.CounterAssetIssuer, processedMkt.BaseAssetIssuer)
-	assert.Equal(t, partialMarket.BaseAssetCode, processedMkt.CounterAssetCode)
-	assert.Equal(t, partialMarket.BaseAssetIssuer, processedMkt.CounterAssetIssuer)
-	assert.Equal(t, partialMarket.BaseVolume, processedMkt.CounterVolume)
-	assert.Equal(t, partialMarket.CounterVolume, processedMkt.BaseVolume)
-	assert.Equal(t, 1/partialMarket.Open, processedMkt.Open)
-	assert.Equal(t, 1/partialMarket.High, processedMkt.Low)
-	assert.Equal(t, 1/partialMarket.Low, processedMkt.High)
-	assert.Equal(t, 1/partialMarket.Low-1/partialMarket.High, processedMkt.Change)
-	assert.Equal(t, 1/partialMarket.Close, processedMkt.Close)
+	userPairName = fmt.Sprintf("%s:%s / %s:%s", counterCode, counterIssuer, baseCode, baseIssuer)
+	processedMkt = postProcessPartialMarket(partialMarket, reverseOs, &userPairName)
+	assert.Equal(t, userPairName, processedMkt.TradePair)
+	assert.Equal(t, counterCode, processedMkt.BaseAssetCode)
+	assert.Equal(t, counterIssuer, processedMkt.BaseAssetIssuer)
+	assert.Equal(t, baseCode, processedMkt.CounterAssetCode)
+	assert.Equal(t, baseIssuer, processedMkt.CounterAssetIssuer)
+	assert.Equal(t, 100.0, processedMkt.CounterVolume)
+	assert.Equal(t, 200.0, processedMkt.BaseVolume)
+	assert.Equal(t, 1/10.0, processedMkt.Open)
+	assert.Equal(t, 1/20.0, processedMkt.Low)
+	assert.Equal(t, 1/5.0, processedMkt.High)
+
+	// There might be some floating point rounding issues, so this test
+	// needs to be a bit more flexible. Since the change is 0.15, an error
+	// around 0.0000000000001 is acceptable:
+	changeDiff := math.Abs(0.15 - processedMkt.Change)
+	assert.True(t, changeDiff < 0.0000000000001)
+
+	assert.Equal(t, 1/10.0, processedMkt.Close)
 	assert.Equal(t, reverseOs, processedMkt.OrderbookStats)
 }
