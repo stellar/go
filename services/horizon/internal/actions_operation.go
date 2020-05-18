@@ -257,6 +257,7 @@ func (action *OperationIndexAction) loadRecords() {
 		return
 	}
 
+	// TODO: migrate this to new actions handler
 	for i, o := range action.OperationRecords {
 		if !action.IncludeFailed && action.TransactionFilter == "" {
 			if !o.TransactionSuccessful {

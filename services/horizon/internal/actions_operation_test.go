@@ -110,6 +110,7 @@ func TestOperationActions_Index(t *testing.T) {
 	ht.Assert.Equal(404, w.Code)
 }
 
+// Moved to TestGetOperationsIncludeFailed
 func TestOperationActions_Show_Failed(t *testing.T) {
 	ht := StartHTTPTest(t, "failed_transactions")
 	defer ht.Finish()

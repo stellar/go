@@ -15,6 +15,7 @@ import (
 type OperationsQuery struct {
 	AccountID       string `schema:"account_id" valid:"accountID,optional"`
 	TransactionHash string `schema:"tx_id" valid:"transactionHash,optional"`
+	IncludeFailed   bool   `schema:"include_failed"`
 }
 
 // GetOperationsHandler is the action handler for all end-points returning a list of operations.
@@ -51,6 +52,16 @@ func (handler GetOperationsHandler) GetResourcePage(w HeaderWriter, r *http.Requ
 	}
 	if qp.TransactionHash != "" {
 		query.ForTransaction(qp.TransactionHash)
+		if query.Err != nil {
+			return nil, query.Err
+		}
+	}
+
+	// When querying operations for transaction return both successful
+	// and failed operations. We assume that because user is querying
+	// this specific transactions, she knows it's status.
+	if qp.TransactionHash != "" || qp.IncludeFailed {
+		query.IncludeFailed()
 		if query.Err != nil {
 			return nil, query.Err
 		}
