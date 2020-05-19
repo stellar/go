@@ -187,10 +187,7 @@ func (action *OperationIndexAction) loadParams() {
 	}
 }
 
-// Maybe I'm missing something but I don't think this test makes sense, since
-// when we fetch operations we pull the transaction details for both tx and op
-// from the same table. Also the ID can't be different since we do some
-// validation while fetching the txs
+// This check has been moved to history/operation with unit test
 func validateTransactionForOperation(transaction history.Transaction, operation history.Operation) error {
 	if transaction.ID != operation.TransactionID {
 		return errors.Errorf(
@@ -265,6 +262,7 @@ func (action *OperationIndexAction) loadRecords() {
 	}
 
 	for i, o := range action.OperationRecords {
+		// This check for corrupted data is done already when loading the operations
 		if !action.IncludeFailed && action.TransactionFilter == "" {
 			if !o.TransactionSuccessful {
 				action.Err = errors.Errorf("Corrupted data! `include_failed=false` but returned transaction in /operations is failed: %s", o.TransactionHash)
