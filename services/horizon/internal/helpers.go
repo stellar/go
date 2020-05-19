@@ -31,7 +31,6 @@ func countNonEmpty(params ...interface{}) (int, error) {
 	return count, nil
 }
 
-// TODO: delete me
 func isValidTransactionHash(hash string) bool {
 	decoded, err := hex.DecodeString(hash)
 	if err != nil {
