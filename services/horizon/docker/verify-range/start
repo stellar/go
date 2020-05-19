@@ -74,6 +74,21 @@ git log -1
 ./horizon db migrate up
 ./horizon expingest verify-range --from $FROM --to $TO --verify-state
 
+function compare() {
+  local expected="$1"
+  local actual="$2"
+
+  # Files can be very large, leading to `diff` running out of memory.
+  # As a workaround, since files are expected to be identical,
+  # we compare the hashes first.
+  local hash=$(shasum -a 256 "$expected" | cut -f 1 -d ' ')
+  local check_command="$hash  $actual"
+
+  if ! ( echo "$check_command" | shasum -a 256 -c ); then
+    diff --speed-large-files "$expected" "$actual"
+  fi
+}
+
 if [ ! -z "$VERIFY_HISTORY" ]; then
 	dump_horizon_db "exp_history"
 
@@ -95,13 +110,13 @@ if [ ! -z "$VERIFY_HISTORY" ]; then
 	dump_horizon_db "legacy_history"
 	echo "Done dump_horizon_db legacy_history"
 
-	diff --speed-large-files legacy_history_effects exp_history_effects
-	diff --speed-large-files legacy_history_ledgers exp_history_ledgers
-	diff --speed-large-files legacy_history_operations exp_history_operations
-	diff --speed-large-files legacy_history_operation_participants exp_history_operation_participants
-	diff --speed-large-files legacy_history_trades exp_history_trades
-	diff --speed-large-files legacy_history_transactions exp_history_transactions
-	diff --speed-large-files legacy_history_transaction_participants exp_history_transaction_participants
+	compare legacy_history_effects exp_history_effects
+	compare legacy_history_ledgers exp_history_ledgers
+	compare legacy_history_operations exp_history_operations
+	compare legacy_history_operation_participants exp_history_operation_participants
+	compare legacy_history_trades exp_history_trades
+	compare legacy_history_transactions exp_history_transactions
+	compare legacy_history_transaction_participants exp_history_transaction_participants
 fi
 
 echo "OK"
