@@ -103,7 +103,7 @@ func (sys *System) Submit(
 	// the corresponding AccountId
 	accid := sourceAccount.ToAccountId()
 	sourceAddress := accid.Address()
-	curSeq, err := sys.Sequences.Get([]string{sourceAddress})
+	curSeq, err := sys.Sequences.GetSequenceNumbers([]string{sourceAddress})
 	if err != nil {
 		sys.finish(ctx, hash, response, Result{Err: err})
 		return
@@ -249,7 +249,7 @@ func (sys *System) Tick(ctx context.Context) {
 
 	addys := sys.SubmissionQueue.Addresses()
 	if len(addys) > 0 {
-		curSeq, err := sys.Sequences.Get(addys)
+		curSeq, err := sys.Sequences.GetSequenceNumbers(addys)
 		if err != nil {
 			logger.WithStack(err).Error(err)
 			return

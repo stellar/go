@@ -106,11 +106,6 @@ type PriceLevel struct {
 	Amount string  `db:"amount"`
 }
 
-// SequenceProvider implements `txsub.SequenceProvider`
-type SequenceProvider struct {
-	Q *Q
-}
-
 // Signer is a row of data from the `signers` table from stellar-core
 type Signer struct {
 	Accountid string

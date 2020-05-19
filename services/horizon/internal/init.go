@@ -215,7 +215,6 @@ func initSubmissionSystem(app *App) {
 	//
 	// To fix this skip checking Stellar-Core DB for transaction results if
 	// Horizon is ingesting failed transactions.
-	cq := &core.Q{Session: app.CoreSession(context.Background())}
 
 	app.submitter = &txsub.System{
 		Pending:         txsub.NewDefaultSubmissionList(),
@@ -226,6 +225,6 @@ func initSubmissionSystem(app *App) {
 			History:        &history.Q{Session: app.HorizonSession(context.Background())},
 			SkipCoreChecks: app.config.IngestFailedTransactions,
 		},
-		Sequences: cq.SequenceProvider(),
+		Sequences: &history.Q{Session: app.HorizonSession(context.Background())},
 	}
 }
