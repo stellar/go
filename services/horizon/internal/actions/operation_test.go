@@ -19,7 +19,7 @@ func TestGetOperationsWithoutFilter(t *testing.T) {
 	tt.Scenario("base")
 
 	q := &history.Q{tt.HorizonSession()}
-	handler := GetOperationsHandler{}
+	handler := GetOperationsHandler{IngestingFailedTransactions: true}
 
 	records, err := handler.GetResourcePage(
 		httptest.NewRecorder(),
@@ -37,7 +37,7 @@ func TestGetOperationsFilterByAccountID(t *testing.T) {
 	tt.Scenario("base")
 
 	q := &history.Q{tt.HorizonSession()}
-	handler := GetOperationsHandler{}
+	handler := GetOperationsHandler{IngestingFailedTransactions: true}
 
 	testCases := []struct {
 		accountID string
@@ -78,7 +78,7 @@ func TestGetOperationsFilterByTxID(t *testing.T) {
 	tt.Scenario("base")
 
 	q := &history.Q{tt.HorizonSession()}
-	handler := GetOperationsHandler{}
+	handler := GetOperationsHandler{IngestingFailedTransactions: true}
 
 	testCases := []struct {
 		desc          string
@@ -152,7 +152,7 @@ func TestGetOperationsIncludeFailed(t *testing.T) {
 	tt.Scenario("failed_transactions")
 
 	q := &history.Q{tt.HorizonSession()}
-	handler := GetOperationsHandler{}
+	handler := GetOperationsHandler{IngestingFailedTransactions: true}
 
 	records, err := handler.GetResourcePage(
 		httptest.NewRecorder(),
@@ -257,14 +257,27 @@ func TestGetOperationsIncludeFailed(t *testing.T) {
 		tt.Assert.True(op.IsTransactionSuccessful())
 	}
 
-	// TODO: Move this one level up, this should be concern of the action handler
-	// should failed if failed txs are not ingested
-	// if action.IncludeFailed && !action.App.config.IngestFailedTransactions {
-	// 	err := errors.New("`include_failed` parameter is unavailable when Horizon is not ingesting failed " +
-	// 		"transactions. Set `INGEST_FAILED_TRANSACTIONS=true` to start ingesting them.")
-	// 	action.Err = supportProblem.MakeInvalidFieldProblem("include_failed", err)
-	// 	return
-	// }
+	handler = GetOperationsHandler{
+		IngestingFailedTransactions: false,
+	}
+
+	_, err = handler.GetResourcePage(
+		httptest.NewRecorder(),
+		makeRequest(
+			t, map[string]string{
+				"include_failed": "true",
+			}, map[string]string{}, q.Session,
+		),
+	)
+	tt.Assert.Error(err)
+	tt.Assert.IsType(&problem.P{}, err)
+	p := err.(*problem.P)
+	tt.Assert.Equal("bad_request", p.Type)
+	tt.Assert.Equal("include_failed", p.Extras["invalid_field"])
+	tt.Assert.Equal(
+		"`include_failed` parameter is unavailable when Horizon is not ingesting failed transactions. Set `INGEST_FAILED_TRANSACTIONS=true` to start ingesting them.",
+		p.Extras["reason"],
+	)
 }
 
 func TestGetOperationsFilterByLedgerID(t *testing.T) {
@@ -273,7 +286,7 @@ func TestGetOperationsFilterByLedgerID(t *testing.T) {
 	tt.Scenario("base")
 
 	q := &history.Q{tt.HorizonSession()}
-	handler := GetOperationsHandler{}
+	handler := GetOperationsHandler{IngestingFailedTransactions: true}
 
 	testCases := []struct {
 		ledgerID    string
@@ -348,7 +361,8 @@ func TestGetOperationsOnlyPayments(t *testing.T) {
 
 	q := &history.Q{tt.HorizonSession()}
 	handler := GetOperationsHandler{
-		OnlyPayments: true,
+		IngestingFailedTransactions: true,
+		OnlyPayments:                true,
 	}
 
 	records, err := handler.GetResourcePage(
@@ -427,7 +441,7 @@ func TestOperation_CreatedAt(t *testing.T) {
 	tt.Scenario("base")
 
 	q := &history.Q{tt.HorizonSession()}
-	handler := GetOperationsHandler{}
+	handler := GetOperationsHandler{IngestingFailedTransactions: true}
 
 	records, err := handler.GetResourcePage(
 		httptest.NewRecorder(),
@@ -452,7 +466,7 @@ func TestGetOperationsPagination(t *testing.T) {
 	tt.Scenario("base")
 
 	q := &history.Q{tt.HorizonSession()}
-	handler := GetOperationsHandler{}
+	handler := GetOperationsHandler{IngestingFailedTransactions: true}
 
 	records, err := handler.GetResourcePage(
 		httptest.NewRecorder(),
@@ -509,7 +523,7 @@ func TestGetOperations_IncludeTransactions(t *testing.T) {
 	tt.Scenario("failed_transactions")
 
 	q := &history.Q{tt.HorizonSession()}
-	handler := GetOperationsHandler{}
+	handler := GetOperationsHandler{IngestingFailedTransactions: true}
 
 	_, err := handler.GetResourcePage(
 		httptest.NewRecorder(),

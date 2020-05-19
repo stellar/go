@@ -46,7 +46,8 @@ func (qp OperationsQuery) Ledger() (int32, error) {
 
 // GetOperationsHandler is the action handler for all end-points returning a list of operations.
 type GetOperationsHandler struct {
-	OnlyPayments bool
+	OnlyPayments                bool
+	IngestingFailedTransactions bool
 }
 
 // GetResourcePage returns a page of operations.
@@ -87,6 +88,12 @@ func (handler GetOperationsHandler) GetResourcePage(w HeaderWriter, r *http.Requ
 		if query.Err != nil {
 			return nil, query.Err
 		}
+	}
+
+	if qp.IncludeFailed && !handler.IngestingFailedTransactions {
+		err := errors.New("`include_failed` parameter is unavailable when Horizon is not ingesting failed " +
+			"transactions. Set `INGEST_FAILED_TRANSACTIONS=true` to start ingesting them.")
+		return nil, problem.MakeInvalidFieldProblem("include_failed", err)
 	}
 
 	// When querying operations for transaction return both successful
