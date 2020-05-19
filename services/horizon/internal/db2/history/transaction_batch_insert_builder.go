@@ -43,12 +43,12 @@ func (q *Q) NewTransactionBatchInsertBuilder(maxBatchSize int) TransactionBatchI
 
 // Add adds a new transaction to the batch
 func (i *transactionBatchInsertBuilder) Add(transaction io.LedgerTransaction, sequence uint32) error {
-	m, err := transactionToMap(transaction, sequence)
+	row, err := transactionToRow(transaction, sequence)
 	if err != nil {
 		return err
 	}
 
-	return i.builder.Row(m)
+	return i.builder.RowStruct(row)
 }
 
 func (i *transactionBatchInsertBuilder) Exec() error {
@@ -130,61 +130,88 @@ func memo(transaction io.LedgerTransaction) null.String {
 	return null.NewString(value, valid)
 }
 
-func transactionToMap(transaction io.LedgerTransaction, sequence uint32) (map[string]interface{}, error) {
+type transactionRow struct {
+	ID                   int64       `db:"id"`
+	TransactionHash      string      `db:"transaction_hash"`
+	LedgerSequence       int32       `db:"ledger_sequence"`
+	ApplicationOrder     int32       `db:"application_order"`
+	Account              string      `db:"account"`
+	AccountSequence      string      `db:"account_sequence"`
+	MaxFee               int64       `db:"max_fee"`
+	FeeCharged           int64       `db:"fee_charged"`
+	OperationCount       int32       `db:"operation_count"`
+	TxEnvelope           string      `db:"tx_envelope"`
+	TxResult             string      `db:"tx_result"`
+	TxMeta               string      `db:"tx_meta"`
+	TxFeeMeta            string      `db:"tx_fee_meta"`
+	Signatures           interface{} `db:"signatures"`
+	MemoType             string      `db:"memo_type"`
+	Memo                 null.String `db:"memo"`
+	TimeBounds           interface{} `db:"time_bounds"`
+	CreatedAt            time.Time   `db:"created_at"`
+	UpdatedAt            time.Time   `db:"updated_at"`
+	Successful           bool        `db:"successful"`
+	FeeAccount           null.String `db:"fee_account"`
+	InnerTransactionHash null.String `db:"inner_transaction_hash"`
+	NewMaxFee            null.Int    `db:"new_max_fee"`
+	InnerSignatures      interface{} `db:"inner_signatures"`
+}
+
+func transactionToRow(transaction io.LedgerTransaction, sequence uint32) (transactionRow, error) {
 	envelopeBase64, err := xdr.MarshalBase64(transaction.Envelope)
 	if err != nil {
-		return nil, err
+		return transactionRow{}, err
 	}
 	resultBase64, err := xdr.MarshalBase64(transaction.Result.Result)
 	if err != nil {
-		return nil, err
+		return transactionRow{}, err
 	}
 	metaBase64, err := xdr.MarshalBase64(transaction.Meta)
 	if err != nil {
-		return nil, err
+		return transactionRow{}, err
 	}
 	feeMetaBase64, err := xdr.MarshalBase64(transaction.FeeChanges)
 	if err != nil {
-		return nil, err
+		return transactionRow{}, err
 	}
 
 	sourceAccount := transaction.Envelope.SourceAccount().ToAccountId()
-	m := map[string]interface{}{
-		"id":                toid.New(int32(sequence), int32(transaction.Index), 0).ToInt64(),
-		"transaction_hash":  hex.EncodeToString(transaction.Result.TransactionHash[:]),
-		"ledger_sequence":   sequence,
-		"application_order": int32(transaction.Index),
-		"account":           sourceAccount.Address(),
-		"account_sequence":  strconv.FormatInt(transaction.Envelope.SeqNum(), 10),
-		"max_fee":           int64(transaction.Envelope.Fee()),
-		"fee_charged":       int64(transaction.Result.Result.FeeCharged),
-		"operation_count":   int32(len(transaction.Envelope.Operations())),
-		"tx_envelope":       envelopeBase64,
-		"tx_result":         resultBase64,
-		"tx_meta":           metaBase64,
-		"tx_fee_meta":       feeMetaBase64,
-		"time_bounds":       formatTimeBounds(transaction),
-		"memo_type":         memoType(transaction),
-		"memo":              memo(transaction),
-		"created_at":        time.Now().UTC(),
-		"updated_at":        time.Now().UTC(),
-		"successful":        transaction.Result.Successful(),
+	t := transactionRow{
+		ID:               toid.New(int32(sequence), int32(transaction.Index), 0).ToInt64(),
+		TransactionHash:  hex.EncodeToString(transaction.Result.TransactionHash[:]),
+		LedgerSequence:   int32(sequence),
+		ApplicationOrder: int32(transaction.Index),
+		Account:          sourceAccount.Address(),
+		AccountSequence:  strconv.FormatInt(transaction.Envelope.SeqNum(), 10),
+		MaxFee:           int64(transaction.Envelope.Fee()),
+		FeeCharged:       int64(transaction.Result.Result.FeeCharged),
+		OperationCount:   int32(len(transaction.Envelope.Operations())),
+		TxEnvelope:       envelopeBase64,
+		TxResult:         resultBase64,
+		TxMeta:           metaBase64,
+		TxFeeMeta:        feeMetaBase64,
+		TimeBounds:       formatTimeBounds(transaction),
+		MemoType:         memoType(transaction),
+		Memo:             memo(transaction),
+		CreatedAt:        time.Now().UTC(),
+		UpdatedAt:        time.Now().UTC(),
+		Successful:       transaction.Result.Successful(),
 	}
 	if transaction.Envelope.IsFeeBump() {
 		innerHash := transaction.Result.InnerHash()
-		m["inner_transaction_hash"] = hex.EncodeToString(innerHash[:])
+		t.InnerTransactionHash = null.StringFrom(hex.EncodeToString(innerHash[:]))
 		feeAccount := transaction.Envelope.FeeBumpAccount().ToAccountId()
-		m["fee_account"] = feeAccount.Address()
-		m["new_max_fee"] = transaction.Envelope.FeeBumpFee()
-		m["inner_signatures"] = sqx.StringArray(signatures(transaction.Envelope.Signatures()))
-		m["signatures"] = sqx.StringArray(signatures(transaction.Envelope.FeeBumpSignatures()))
+		t.FeeAccount = null.StringFrom(feeAccount.Address())
+		t.NewMaxFee = null.IntFrom(transaction.Envelope.FeeBumpFee())
+		t.InnerSignatures = sqx.StringArray(signatures(transaction.Envelope.Signatures()))
+		t.Signatures = sqx.StringArray(signatures(transaction.Envelope.FeeBumpSignatures()))
 	} else {
-		m["inner_transaction_hash"] = nil
-		m["fee_account"] = nil
-		m["new_max_fee"] = nil
-		m["inner_signatures"] = nil
-		m["signatures"] = sqx.StringArray(signatures(transaction.Envelope.Signatures()))
+		t.InnerTransactionHash = null.StringFromPtr(nil)
+		t.FeeAccount = null.StringFromPtr(nil)
+		t.NewMaxFee = null.IntFromPtr(nil)
+		t.InnerSignatures = nil
+		t.Signatures = sqx.StringArray(signatures(transaction.Envelope.Signatures()))
 	}
 
-	return m, nil
+	return t, nil
 }

@@ -9,6 +9,17 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type hungerRow struct {
+	Name        string `db:"name"`
+	HungerLevel string `db:"hunger_level"`
+}
+
+type invalidHungerRow struct {
+	Name        string `db:"name"`
+	HungerLevel string `db:"hunger_level"`
+	LastName    string `db:"last_name"`
+}
+
 func TestBatchInsertBuilder(t *testing.T) {
 	db := dbtest.Postgres(t).Load(testSchema)
 	defer db.Close()
@@ -30,9 +41,9 @@ func TestBatchInsertBuilder(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	err = insertBuilder.Row(map[string]interface{}{
-		"name":         "bubba2",
-		"hunger_level": "1202",
+	err = insertBuilder.RowStruct(hungerRow{
+		Name:        "bubba2",
+		HungerLevel: "1202",
 	})
 	assert.NoError(t, err)
 
@@ -56,6 +67,12 @@ func TestBatchInsertBuilder(t *testing.T) {
 		"hello": "120",
 	})
 	assert.EqualError(t, err, `column "hunger_level" does not exist`)
+
+	err = insertBuilder.RowStruct(invalidHungerRow{
+		Name:        "Max",
+		HungerLevel: "500",
+	})
+	assert.EqualError(t, err, `expected value of type "db.hungerRow" but got "db.invalidHungerRow" value`)
 
 	err = insertBuilder.Exec()
 	assert.NoError(t, err)
