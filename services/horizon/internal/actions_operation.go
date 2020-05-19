@@ -110,7 +110,8 @@ func (action *OperationIndexAction) SSE(stream *sse.Stream) error {
 
 				stream.Send(sse.Event{
 					ID:   res.PagingToken(),
-					Data: res,
+					Data: re
+					s,
 				})
 			}
 		},

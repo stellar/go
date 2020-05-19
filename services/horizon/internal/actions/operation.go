@@ -19,6 +19,12 @@ type OperationsQuery struct {
 	TransactionHash string `schema:"tx_id" valid:"transactionHash,optional"`
 	IncludeFailed   bool   `schema:"include_failed"`
 	LedgerID        string `schema:"ledger_id" valid:"ledgerID,optional"`
+	Join            string `schema:"join" valid:"in(transactions),optional"`
+}
+
+// IncludeTransactions returns true if the join parameter is specified
+func (qp OperationsQuery) IncludeTransactions() bool {
+	return qp.Join != ""
 }
 
 // Ledger returns the ledger id from the query parameter as an integer
@@ -93,6 +99,10 @@ func (handler GetOperationsHandler) GetResourcePage(w HeaderWriter, r *http.Requ
 		}
 	}
 
+	if qp.IncludeTransactions() {
+		query.IncludeTransactions()
+	}
+
 	ledgerID, err := qp.Ledger()
 	if err != nil {
 		return nil, err
@@ -111,6 +121,10 @@ func (handler GetOperationsHandler) GetResourcePage(w HeaderWriter, r *http.Requ
 	ops, txs, err := query.Page(pq).Fetch()
 	if err != nil {
 		return nil, err
+	}
+
+	if qp.IncludeTransactions() && len(ops) != len(txs) {
+		return nil, errors.New("number of transactions doesn't match number of operations")
 	}
 
 	// TODO: add test and run this check
@@ -140,10 +154,10 @@ func (handler GetOperationsHandler) GetResourcePage(w HeaderWriter, r *http.Requ
 	// 		}
 	// 	}
 	// }
-	return buildOperationsPage(ctx, historyQ, ops, txs)
+	return buildOperationsPage(ctx, historyQ, ops, txs, qp.IncludeTransactions())
 }
 
-func buildOperationsPage(ctx context.Context, historyQ *history.Q, operations []history.Operation, transactions []history.Transaction) ([]hal.Pageable, error) {
+func buildOperationsPage(ctx context.Context, historyQ *history.Q, operations []history.Operation, transactions []history.Transaction, includeTransactions bool) ([]hal.Pageable, error) {
 	ledgerCache := history.LedgerCache{}
 	for _, record := range operations {
 		ledgerCache.Queue(record.LedgerSequence())
@@ -163,21 +177,15 @@ func buildOperationsPage(ctx context.Context, historyQ *history.Q, operations []
 
 		var transactionRecord *history.Transaction
 
-		// TODO: fix -- maybe we should pass down the query?
-		// if action.IncludeTransactions {
-		if false {
+		if includeTransactions {
 			transactionRecord = &transactions[i]
 		}
 
 		var res hal.Pageable
-		transactionHash := "" // this doesn't make sense -- if we  are using the query then all tx will belong to the tx hash action.TransactionFilter
-		if len(transactionHash) == 0 {
-			transactionHash = operationRecord.TransactionHash
-		}
 		res, err := resourceadapter.NewOperation(
 			ctx,
 			operationRecord,
-			transactionHash,
+			operationRecord.TransactionHash,
 			transactionRecord,
 			ledger,
 		)

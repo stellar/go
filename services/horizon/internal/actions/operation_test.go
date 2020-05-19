@@ -503,6 +503,58 @@ func TestGetOperationsPagination(t *testing.T) {
 	tt.Assert.EqualError(err, "problem: before_history")
 }
 
-func TestGetOperations(t *testing.T) {
-	t.Run("With includes(join)", func(t *testing.T) {})
+func TestGetOperations_IncludeTransactions(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	tt.Scenario("failed_transactions")
+
+	q := &history.Q{tt.HorizonSession()}
+	handler := GetOperationsHandler{}
+
+	_, err := handler.GetResourcePage(
+		httptest.NewRecorder(),
+		makeRequest(
+			t, map[string]string{
+				"join": "accounts",
+			}, map[string]string{}, q.Session,
+		),
+	)
+	tt.Assert.Error(err)
+	tt.Assert.IsType(&problem.P{}, err)
+	p := err.(*problem.P)
+	tt.Assert.Equal("bad_request", p.Type)
+	tt.Assert.Equal("join", p.Extras["invalid_field"])
+	tt.Assert.Equal(
+		"accounts does not validate as in(transactions)",
+		p.Extras["reason"],
+	)
+
+	records, err := handler.GetResourcePage(
+		httptest.NewRecorder(),
+		makeRequest(
+			t, map[string]string{
+				"join":  "transactions",
+				"limit": "1",
+			}, map[string]string{}, q.Session,
+		),
+	)
+	tt.Assert.NoError(err)
+	for _, record := range records {
+		op := record.(operations.CreateAccount)
+		tt.Assert.NotNil(op.Transaction)
+	}
+
+	records, err = handler.GetResourcePage(
+		httptest.NewRecorder(),
+		makeRequest(
+			t, map[string]string{
+				"limit": "1",
+			}, map[string]string{}, q.Session,
+		),
+	)
+	tt.Assert.NoError(err)
+	for _, record := range records {
+		op := record.(operations.CreateAccount)
+		tt.Assert.Nil(op.Transaction)
+	}
 }
