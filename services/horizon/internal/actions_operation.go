@@ -52,8 +52,8 @@ type OperationIndexAction struct {
 // JSON is a method for actions.JSON
 func (action *OperationIndexAction) JSON() error {
 	action.Do(
-		action.EnsureHistoryFreshness,
-		action.loadParams,
+		action.EnsureHistoryFreshness, // replaced by checkHistoryStaleMiddleware.
+		action.loadParams,             // the following steps are done in the action handler
 		action.ValidateCursorWithinHistory,
 		action.loadRecords,
 		action.loadLedgers,
@@ -63,7 +63,7 @@ func (action *OperationIndexAction) JSON() error {
 	return action.Err
 }
 
-// SSE is a method for actions.SSE
+// SSE is a method for actions.SSE - TODO (move to action handler)
 func (action *OperationIndexAction) SSE(stream *sse.Stream) error {
 	action.Setup(
 		action.EnsureHistoryFreshness,

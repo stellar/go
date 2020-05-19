@@ -504,7 +504,5 @@ func TestGetOperationsPagination(t *testing.T) {
 }
 
 func TestGetOperations(t *testing.T) {
-	// should this be a middleware?
-	t.Run("EnsureHistoryFreshness", func(t *testing.T) {})
 	t.Run("With includes(join)", func(t *testing.T) {})
 }
