@@ -71,6 +71,22 @@ func (c *ServeCommand) Command() *cobra.Command {
 			ConfigKey: &opts.FirebaseProjectID,
 			Required:  true,
 		},
+		{
+			Name:        "admin-port",
+			Usage:       "Port to listen and serve admin functionality including metrics",
+			OptType:     types.Int,
+			ConfigKey:   &opts.AdminPort,
+			FlagDefault: 0,
+			Required:    false,
+		},
+		{
+			Name:        "metrics-namespace",
+			Usage:       "Namespace to use for metric names prefixed to metrics reported",
+			OptType:     types.String,
+			ConfigKey:   &opts.MetricsNamespace,
+			FlagDefault: "recoverysigner",
+			Required:    false,
+		},
 	}
 	cmd := &cobra.Command{
 		Use:   "serve",

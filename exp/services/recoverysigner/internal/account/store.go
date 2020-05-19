@@ -10,6 +10,7 @@ type Store interface {
 	FindWithIdentityAddress(address string) ([]Account, error)
 	FindWithIdentityPhoneNumber(phoneNumber string) ([]Account, error)
 	FindWithIdentityEmail(email string) ([]Account, error)
+	Count() (int, error)
 }
 
 var ErrNotFound = errors.New("account not found")
