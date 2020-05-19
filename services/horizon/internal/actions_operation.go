@@ -110,8 +110,7 @@ func (action *OperationIndexAction) SSE(stream *sse.Stream) error {
 
 				stream.Send(sse.Event{
 					ID:   res.PagingToken(),
-					Data: re
-					s,
+					Data: res,
 				})
 			}
 		},
@@ -261,8 +260,8 @@ func (action *OperationIndexAction) loadRecords() {
 		return
 	}
 
+	// This check for corrupted data is done already when loading the operations
 	for i, o := range action.OperationRecords {
-		// This check for corrupted data is done already when loading the operations
 		if !action.IncludeFailed && action.TransactionFilter == "" {
 			if !o.TransactionSuccessful {
 				action.Err = errors.Errorf("Corrupted data! `include_failed=false` but returned transaction in /operations is failed: %s", o.TransactionHash)
