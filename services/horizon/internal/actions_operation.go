@@ -187,6 +187,10 @@ func (action *OperationIndexAction) loadParams() {
 	}
 }
 
+// Maybe I'm missing something but I don't think this test makes sense, since
+// when we fetch operations we pull the transaction details for both tx and op
+// from the same table. Also the ID can't be different since we do some
+// validation while fetching the txs
 func validateTransactionForOperation(transaction history.Transaction, operation history.Operation) error {
 	if transaction.ID != operation.TransactionID {
 		return errors.Errorf(
@@ -253,12 +257,13 @@ func (action *OperationIndexAction) loadRecords() {
 		return
 	}
 
+	// this check won't be reached if there are missing txs Fetch will fail if
+	// it can't find a tx for one of the operations in the result set
 	if action.IncludeTransactions && len(action.TransactionRecords) != len(action.OperationRecords) {
 		action.Err = errors.New("number of transactions doesn't match number of operations")
 		return
 	}
 
-	// TODO: migrate this to new actions handler
 	for i, o := range action.OperationRecords {
 		if !action.IncludeFailed && action.TransactionFilter == "" {
 			if !o.TransactionSuccessful {

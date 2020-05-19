@@ -123,37 +123,6 @@ func (handler GetOperationsHandler) GetResourcePage(w HeaderWriter, r *http.Requ
 		return nil, err
 	}
 
-	if qp.IncludeTransactions() && len(ops) != len(txs) {
-		return nil, errors.New("number of transactions doesn't match number of operations")
-	}
-
-	// TODO: add test and run this check
-	// for i, o := range action.OperationRecords {
-	// 	if !action.IncludeFailed && action.TransactionFilter == "" {
-	// 		if !o.TransactionSuccessful {
-	// 			action.Err = errors.Errorf("Corrupted data! `include_failed=false` but returned transaction in /operations is failed: %s", o.TransactionHash)
-	// 			return
-	// 		}
-
-	// 		var resultXDR xdr.TransactionResult
-	// 		action.Err = xdr.SafeUnmarshalBase64(o.TxResult, &resultXDR)
-	// 		if action.Err != nil {
-	// 			return
-	// 		}
-
-	// 		if !resultXDR.Successful() {
-	// 			action.Err = errors.Errorf("Corrupted data! `include_failed=false` but returned transaction /operations is failed: %s %s", o.TransactionHash, o.TxResult)
-	// 			return
-	// 		}
-	// 	}
-	// 	if action.IncludeTransactions {
-	// 		transaction := action.TransactionRecords[i]
-	// 		action.Err = validateTransactionForOperation(transaction, o)
-	// 		if action.Err != nil {
-	// 			return
-	// 		}
-	// 	}
-	// }
 	return buildOperationsPage(ctx, historyQ, ops, txs, qp.IncludeTransactions())
 }
 
