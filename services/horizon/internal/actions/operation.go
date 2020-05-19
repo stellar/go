@@ -46,14 +46,19 @@ type GetOperationsHandler struct {
 // GetResourcePage returns a page of operations.
 func (handler GetOperationsHandler) GetResourcePage(w HeaderWriter, r *http.Request) ([]hal.Pageable, error) {
 	ctx := r.Context()
-	qp := OperationsQuery{}
 
-	err := GetParams(&qp, r)
+	pq, err := GetPageQuery(r)
 	if err != nil {
 		return nil, err
 	}
 
-	pq, err := GetPageQuery(r)
+	err = ValidateCursorWithinHistory(pq)
+	if err != nil {
+		return nil, err
+	}
+
+	qp := OperationsQuery{}
+	err = GetParams(&qp, r)
 	if err != nil {
 		return nil, err
 	}

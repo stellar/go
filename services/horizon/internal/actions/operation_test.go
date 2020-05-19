@@ -489,11 +489,22 @@ func TestGetOperationsPagination(t *testing.T) {
 	)
 	tt.Assert.NoError(err)
 	tt.Assert.Len(records, 3)
+
+	records, err = handler.GetResourcePage(
+		httptest.NewRecorder(),
+		makeRequest(
+			t, map[string]string{
+				"order":  "desc",
+				"cursor": "0",
+			}, map[string]string{}, q.Session,
+		),
+	)
+	tt.Assert.Error(err)
+	tt.Assert.EqualError(err, "problem: before_history")
 }
 
 func TestGetOperations(t *testing.T) {
 	t.Run("Validates cursor as default", func(t *testing.T) {})
-	t.Run("Validates cursor within history", func(t *testing.T) {})
 	// should this be a middleware?
 	t.Run("EnsureHistoryFreshness", func(t *testing.T) {})
 	t.Run("With includes(join)", func(t *testing.T) {})
