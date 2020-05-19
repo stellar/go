@@ -446,15 +446,55 @@ func TestOperation_CreatedAt(t *testing.T) {
 
 	tt.Assert.WithinDuration(l.ClosedAt, record.LedgerCloseTime, 1*time.Second)
 }
+func TestGetOperationsPagination(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	tt.Scenario("base")
+
+	q := &history.Q{tt.HorizonSession()}
+	handler := GetOperationsHandler{}
+
+	records, err := handler.GetResourcePage(
+		httptest.NewRecorder(),
+		makeRequest(
+			t, map[string]string{
+				"order": "asc",
+				"limit": "1",
+			}, map[string]string{}, q.Session,
+		),
+	)
+	tt.Assert.NoError(err)
+	tt.Assert.Len(records, 1)
+
+	descRecords, err := handler.GetResourcePage(
+		httptest.NewRecorder(),
+		makeRequest(
+			t, map[string]string{
+				"limit": "1",
+				"order": "desc",
+			}, map[string]string{}, q.Session,
+		),
+	)
+	tt.Assert.NoError(err)
+	tt.Assert.NotEqual(records, descRecords)
+
+	records, err = handler.GetResourcePage(
+		httptest.NewRecorder(),
+		makeRequest(
+			t, map[string]string{
+				"order":  "desc",
+				"cursor": "12884905985",
+			}, map[string]string{}, q.Session,
+		),
+	)
+	tt.Assert.NoError(err)
+	tt.Assert.Len(records, 3)
+}
 
 func TestGetOperations(t *testing.T) {
 	t.Run("Validates cursor as default", func(t *testing.T) {})
 	t.Run("Validates cursor within history", func(t *testing.T) {})
 	// should this be a middleware?
 	t.Run("EnsureHistoryFreshness", func(t *testing.T) {})
-	t.Run("Pagination", func(t *testing.T) {})
 	t.Run("With includes(join)", func(t *testing.T) {})
-	// // Regression: negative cursor
-	// w = ht.Get("/accounts/GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2/payments?cursor=-23667108046966785&order=asc&limit=100")
-	// ht.Assert.Equal(400, w.Code)
 }

@@ -60,6 +60,8 @@ func TestPaymentActions(t *testing.T) {
 	if ht.Assert.Equal(200, w.Code) {
 		ht.Assert.PageOf(0, w.Body)
 	}
+	// ===========================================
+	// The following scenarios are handled in the action test
 	// missing tx
 	w = ht.Get("/transactions/ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff/payments")
 	ht.Assert.Equal(404, w.Code)
@@ -69,17 +71,22 @@ func TestPaymentActions(t *testing.T) {
 	// badly formated tx hash not accepted
 	w = ht.Get("/transactions/%00%1E4%5E%EF%BF%BD%EF%BF%BD%EF%BF%BDpVP%EF%BF%BDI&R%0BK%EF%BF%BD%1D%EF%BF%BD%EF%BF%BD=%EF%BF%BD%3F%23%EF%BF%BD%EF%BF%BDl%EF%BF%BD%1El%EF%BF%BD%EF%BF%BD/payments")
 	ht.Assert.Equal(400, w.Code)
+	// ===========================================
 
+	// TODO: test at the routing level
 	// 400 for invalid tx hash
 	w = ht.Get("/transactions/ /payments")
 	ht.Assert.Equal(400, w.Code)
 
+	// this is handled in operations test, invalid will not match as a valid tx_id.
 	w = ht.Get("/transactions/invalid/payments")
 	ht.Assert.Equal(400, w.Code)
 
+	// This is already handled in operations test
 	w = ht.Get("/transactions/1d2a4be72470658f68db50eef29ea0af3f985ce18b5c218f03461d40c47dc29/payments")
 	ht.Assert.Equal(400, w.Code)
 
+	// This is already handled in operations test
 	w = ht.Get("/transactions/1d2a4be72470658f68db50eef29ea0af3f985ce18b5c218f03461d40c47dc29222/payments")
 	ht.Assert.Equal(400, w.Code)
 
@@ -94,6 +101,8 @@ func TestPaymentActions(t *testing.T) {
 	}
 
 	initializeStateMiddleware()
+
+	// This is tested in PageQueryTest
 	// Regression: negative cursor
 	w = ht.Get("/accounts/GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2/payments?cursor=-23667108046966785&order=asc&limit=100")
 	ht.Assert.Equal(400, w.Code)
