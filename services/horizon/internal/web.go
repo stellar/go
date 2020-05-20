@@ -227,8 +227,18 @@ func (w *web) mustInstallActions(
 	// emptiness. Without it, requesting `/accounts//payments` return all payments!
 	r.Group(func(r chi.Router) {
 		r.Get("/accounts/{account_id:\\w+}/transactions", w.streamIndexActionHandler(w.getTransactionPage, w.streamTransactions))
-		r.Get("/accounts/{account_id:\\w+}/operations", OperationIndexAction{}.Handle)
-		r.Get("/accounts/{account_id:\\w+}/payments", OperationIndexAction{OnlyPayments: true}.Handle)
+		r.Group(func(r chi.Router) {
+			r.Use(historyMiddleware)
+			r.Get("/accounts/{account_id:\\w+}/operations", OperationIndexAction{}.Handle)
+			// r.Method(http.MethodGet, "/accounts/{account_id:\\w+}/operations", streamablePageHandler(actions.GetOperationsHandler{
+			// 	IngestingFailedTransactions: w.ingestFailedTx,
+			// 	OnlyPayments:                false,
+			// }, streamHandler))
+			r.Method(http.MethodGet, "/accounts/{account_id:\\w+}/payments", streamablePageHandler(actions.GetOperationsHandler{
+				IngestingFailedTransactions: w.ingestFailedTx,
+				OnlyPayments:                true,
+			}, streamHandler))
+		})
 		r.Get("/accounts/{account_id:\\w+}/effects", EffectIndexAction{}.Handle)
 		r.Get("/accounts/{account_id:\\w+}/trades", TradeIndexAction{}.Handle)
 	})

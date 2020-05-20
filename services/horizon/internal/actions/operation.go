@@ -75,6 +75,12 @@ func (handler GetOperationsHandler) GetResourcePage(w HeaderWriter, r *http.Requ
 		return nil, err
 	}
 
+	if qp.IncludeFailedTransactions() && !handler.IngestingFailedTransactions {
+		err = errors.New("`include_failed` parameter is unavailable when Horizon is not ingesting failed " +
+			"transactions. Set `INGEST_FAILED_TRANSACTIONS=true` to start ingesting them.")
+		return nil, problem.MakeInvalidFieldProblem("include_failed", err)
+	}
+
 	historyQ, err := HistoryQFromRequest(r)
 	if err != nil {
 		return nil, err
@@ -82,23 +88,20 @@ func (handler GetOperationsHandler) GetResourcePage(w HeaderWriter, r *http.Requ
 
 	query := historyQ.Operations()
 
-	if qp.AccountID != "" {
+	ledgerID, err := qp.Ledger()
+	if err != nil {
+		return nil, err
+	}
+	switch {
+	case qp.AccountID != "":
 		query.ForAccount(qp.AccountID)
-		if query.Err != nil {
-			return nil, query.Err
-		}
-	}
-	if qp.TransactionHash != "" {
+	case ledgerID > 0:
+		query.ForLedger(ledgerID)
+	case qp.TransactionHash != "":
 		query.ForTransaction(qp.TransactionHash)
-		if query.Err != nil {
-			return nil, query.Err
-		}
 	}
-
-	if qp.IncludeFailedTransactions() && !handler.IngestingFailedTransactions {
-		err = errors.New("`include_failed` parameter is unavailable when Horizon is not ingesting failed " +
-			"transactions. Set `INGEST_FAILED_TRANSACTIONS=true` to start ingesting them.")
-		return nil, problem.MakeInvalidFieldProblem("include_failed", err)
+	if query.Err != nil {
+		return nil, query.Err
 	}
 
 	// When querying operations for transaction return both successful
@@ -113,17 +116,6 @@ func (handler GetOperationsHandler) GetResourcePage(w HeaderWriter, r *http.Requ
 
 	if qp.IncludeTransactions() {
 		query.IncludeTransactions()
-	}
-
-	ledgerID, err := qp.Ledger()
-	if err != nil {
-		return nil, err
-	}
-	if ledgerID > 0 {
-		query.ForLedger(ledgerID)
-		if query.Err != nil {
-			return nil, query.Err
-		}
 	}
 
 	if handler.OnlyPayments {
