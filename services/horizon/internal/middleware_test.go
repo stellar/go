@@ -287,9 +287,10 @@ func TestStateMiddleware(t *testing.T) {
 }
 
 func TestCheckHistoryStaleMiddleware(t *testing.T) {
-	tt := assert.New(t)
+	tt := test.Start(t)
+	defer tt.Finish()
 	request, err := http.NewRequest("GET", "http://localhost", nil)
-	tt.NoError(err)
+	tt.Assert.NoError(err)
 
 	endpoint := func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -330,11 +331,11 @@ func TestCheckHistoryStaleMiddleware(t *testing.T) {
 				HistoryLatest: testCase.historyLatest,
 			}
 			ledger.SetState(state)
-			stateMiddleware := checkHistoryStaleMiddleware(testCase.staleThreshold)
-			handler := stateMiddleware(http.HandlerFunc(endpoint))
+			historyMiddleware := NewHistoryMiddleware(testCase.staleThreshold, tt.HorizonSession())
+			handler := historyMiddleware(http.HandlerFunc(endpoint))
 			w := httptest.NewRecorder()
 			handler.ServeHTTP(w, request)
-			tt.Equal(testCase.expectedStatus, w.Code)
+			tt.Assert.Equal(testCase.expectedStatus, w.Code)
 		})
 	}
 }
