@@ -147,11 +147,16 @@ func NewSystem(config Config) (*System, error) {
 	coreSession := config.CoreSession.Clone()
 	coreSession.Ctx = ctx
 
-	ledgerBackend, err := ledgerbackend.NewDatabaseBackendFromSession(coreSession)
-	if err != nil {
-		cancel()
-		return nil, errors.Wrap(err, "error creating ledger backend")
-	}
+	// ledgerBackend, err := ledgerbackend.NewDatabaseBackendFromSession(coreSession)
+	// if err != nil {
+	// 	cancel()
+	// 	return nil, errors.Wrap(err, "error creating ledger backend")
+	// }
+
+	ledgerBackend := ledgerbackend.NewCaptive(
+		config.NetworkPassphrase,
+		[]string{config.HistoryArchiveURL},
+	)
 
 	historyQ := &history.Q{config.HistorySession.Clone()}
 	historyQ.Ctx = ctx

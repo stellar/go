@@ -631,6 +631,23 @@ func (h reingestHistoryRangeState) run(s *System) (transition, error) {
 		return stop(), errors.Errorf("invalid range: [%d, %d]", h.fromLedger, h.toLedger)
 	}
 
+	log.WithFields(logpkg.F{
+		"from": h.fromLedger,
+		"to":   h.toLedger,
+	}).Info("Preparing ledger backend to retrieve range")
+	startTime := time.Now()
+
+	err := s.ledgerBackend.PrepareRange(h.fromLedger, h.toLedger)
+	if err != nil {
+		return stop(), errors.Wrap(err, "error preparing range")
+	}
+
+	log.WithFields(logpkg.F{
+		"from":     h.fromLedger,
+		"to":       h.toLedger,
+		"duration": time.Since(startTime).Seconds(),
+	}).Info("Range ready")
+
 	if h.force {
 		if err := s.historyQ.Begin(); err != nil {
 			return stop(), errors.Wrap(err, "Error starting a transaction")
