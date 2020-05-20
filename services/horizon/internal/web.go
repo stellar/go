@@ -267,7 +267,10 @@ func (w *web) mustInstallActions(
 
 	r.Group(func(r chi.Router) {
 		// payment actions
-		r.Get("/payments", OperationIndexAction{OnlyPayments: true}.Handle)
+		r.With(historyMiddleware).Method(http.MethodGet, "/payments", streamablePageHandler(actions.GetOperationsHandler{
+			IngestingFailedTransactions: w.ingestFailedTx,
+			OnlyPayments:                true,
+		}, streamHandler))
 
 		// effect actions
 		r.Get("/effects", EffectIndexAction{}.Handle)
