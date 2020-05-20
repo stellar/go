@@ -91,7 +91,7 @@ func (handler GetOperationsHandler) GetResourcePage(w HeaderWriter, r *http.Requ
 	}
 
 	if qp.IncludeFailed && !handler.IngestingFailedTransactions {
-		err := errors.New("`include_failed` parameter is unavailable when Horizon is not ingesting failed " +
+		err = errors.New("`include_failed` parameter is unavailable when Horizon is not ingesting failed " +
 			"transactions. Set `INGEST_FAILED_TRANSACTIONS=true` to start ingesting them.")
 		return nil, problem.MakeInvalidFieldProblem("include_failed", err)
 	}
