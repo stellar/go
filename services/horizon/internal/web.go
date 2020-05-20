@@ -164,6 +164,8 @@ func (w *web) mustInstallActions(
 		LedgerSourceFactory: historyLedgerSourceFactory{updateFrequency: w.sseUpdateFrequency},
 	}
 
+	historyMiddleware := NewHistoryMiddleware(int32(w.staleThreshold), session)
+
 	// State endpoints behind stateMiddleware
 	r.Group(func(r chi.Router) {
 		r.Use(stateMiddleware.Wrap)
@@ -255,7 +257,10 @@ func (w *web) mustInstallActions(
 
 	// operation actions
 	r.Route("/operations", func(r chi.Router) {
-		r.Get("/", OperationIndexAction{}.Handle)
+		r.With(historyMiddleware).Method(http.MethodGet, "/", streamablePageHandler(actions.GetOperationsHandler{
+			IngestingFailedTransactions: w.ingestFailedTx,
+			OnlyPayments:                false,
+		}, streamHandler))
 		r.Get("/{id}", OperationShowAction{}.Handle)
 		r.Get("/{op_id}/effects", EffectIndexAction{}.Handle)
 	})
