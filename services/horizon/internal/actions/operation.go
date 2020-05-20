@@ -17,14 +17,19 @@ import (
 type OperationsQuery struct {
 	AccountID       string `schema:"account_id" valid:"accountID,optional"`
 	TransactionHash string `schema:"tx_id" valid:"transactionHash,optional"`
-	IncludeFailed   bool   `schema:"include_failed" valid:"-"`
+	IncludeFailed   string `schema:"include_failed" valid:"in(true|false)~Filter should be true or false,optional"`
 	LedgerID        string `schema:"ledger_id" valid:"ledgerID,optional"`
-	Join            string `schema:"join" valid:"in(transactions),optional"`
+	Join            string `schema:"join" valid:"in(transactions)~Accepted values: transactions,optional"`
 }
 
-// IncludeTransactions returns true if the join parameter is specified
+// IncludeTransactions returns extra fields to include in the response
 func (qp OperationsQuery) IncludeTransactions() bool {
 	return qp.Join != ""
+}
+
+// IncludeFailedTransactions returns whether to include failed transactions or not
+func (qp OperationsQuery) IncludeFailedTransactions() bool {
+	return qp.IncludeFailed == "true"
 }
 
 // Ledger returns the ledger id from the query parameter as an integer
@@ -90,7 +95,7 @@ func (handler GetOperationsHandler) GetResourcePage(w HeaderWriter, r *http.Requ
 		}
 	}
 
-	if qp.IncludeFailed && !handler.IngestingFailedTransactions {
+	if qp.IncludeFailedTransactions() && !handler.IngestingFailedTransactions {
 		err = errors.New("`include_failed` parameter is unavailable when Horizon is not ingesting failed " +
 			"transactions. Set `INGEST_FAILED_TRANSACTIONS=true` to start ingesting them.")
 		return nil, problem.MakeInvalidFieldProblem("include_failed", err)
@@ -99,7 +104,7 @@ func (handler GetOperationsHandler) GetResourcePage(w HeaderWriter, r *http.Requ
 	// When querying operations for transaction return both successful
 	// and failed operations. We assume that because the user is querying
 	// this specific transactions, they knows its status.
-	if qp.TransactionHash != "" || qp.IncludeFailed {
+	if qp.TransactionHash != "" || qp.IncludeFailedTransactions() {
 		query.IncludeFailed()
 		if query.Err != nil {
 			return nil, query.Err

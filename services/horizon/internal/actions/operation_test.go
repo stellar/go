@@ -257,6 +257,24 @@ func TestGetOperationsIncludeFailed(t *testing.T) {
 		tt.Assert.True(op.IsTransactionSuccessful())
 	}
 
+	_, err = handler.GetResourcePage(
+		httptest.NewRecorder(),
+		makeRequest(
+			t, map[string]string{
+				"include_failed": "1",
+			}, map[string]string{}, q.Session,
+		),
+	)
+	tt.Assert.Error(err)
+	tt.Assert.IsType(&problem.P{}, err)
+	p := err.(*problem.P)
+	tt.Assert.Equal("bad_request", p.Type)
+	tt.Assert.Equal("include_failed", p.Extras["invalid_field"])
+	tt.Assert.Equal(
+		"Filter should be true or false",
+		p.Extras["reason"],
+	)
+
 	handler = GetOperationsHandler{
 		IngestingFailedTransactions: false,
 	}
@@ -271,7 +289,7 @@ func TestGetOperationsIncludeFailed(t *testing.T) {
 	)
 	tt.Assert.Error(err)
 	tt.Assert.IsType(&problem.P{}, err)
-	p := err.(*problem.P)
+	p = err.(*problem.P)
 	tt.Assert.Equal("bad_request", p.Type)
 	tt.Assert.Equal("include_failed", p.Extras["invalid_field"])
 	tt.Assert.Equal(
@@ -539,7 +557,7 @@ func TestGetOperations_IncludeTransactions(t *testing.T) {
 	tt.Assert.Equal("bad_request", p.Type)
 	tt.Assert.Equal("join", p.Extras["invalid_field"])
 	tt.Assert.Equal(
-		"accounts does not validate as in(transactions)",
+		"Accepted values: transactions",
 		p.Extras["reason"],
 	)
 
