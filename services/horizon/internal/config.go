@@ -11,12 +11,14 @@ import (
 // Config is the configuration for horizon.  It gets populated by the
 // app's main function and is provided to NewApp.
 type Config struct {
-	DatabaseURL            string
-	StellarCoreDatabaseURL string
-	StellarCoreURL         string
-	HistoryArchiveURLs     []string
-	Port                   uint
-	AdminPort              uint
+	DatabaseURL                string
+	StellarCoreBinaryPath      string
+	StellarCoreDatabaseURL     string
+	StellarCoreURL             string
+	EnableCaptiveCoreIngestion bool
+	HistoryArchiveURLs         []string
+	Port                       uint
+	AdminPort                  uint
 
 	// MaxDBConnections has a priority over all 4 values below.
 	MaxDBConnections            int
