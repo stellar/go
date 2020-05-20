@@ -227,20 +227,19 @@ func (w *web) mustInstallActions(
 	// emptiness. Without it, requesting `/accounts//payments` return all payments!
 	r.Group(func(r chi.Router) {
 		r.Get("/accounts/{account_id:\\w+}/transactions", w.streamIndexActionHandler(w.getTransactionPage, w.streamTransactions))
+		r.Get("/accounts/{account_id:\\w+}/effects", EffectIndexAction{}.Handle)
+		r.Get("/accounts/{account_id:\\w+}/trades", TradeIndexAction{}.Handle)
 		r.Group(func(r chi.Router) {
 			r.Use(historyMiddleware)
-			r.Get("/accounts/{account_id:\\w+}/operations", OperationIndexAction{}.Handle)
-			// r.Method(http.MethodGet, "/accounts/{account_id:\\w+}/operations", streamablePageHandler(actions.GetOperationsHandler{
-			// 	IngestingFailedTransactions: w.ingestFailedTx,
-			// 	OnlyPayments:                false,
-			// }, streamHandler))
+			r.Method(http.MethodGet, "/accounts/{account_id:\\w+}/operations", streamablePageHandler(actions.GetOperationsHandler{
+				IngestingFailedTransactions: w.ingestFailedTx,
+				OnlyPayments:                false,
+			}, streamHandler))
 			r.Method(http.MethodGet, "/accounts/{account_id:\\w+}/payments", streamablePageHandler(actions.GetOperationsHandler{
 				IngestingFailedTransactions: w.ingestFailedTx,
 				OnlyPayments:                true,
 			}, streamHandler))
 		})
-		r.Get("/accounts/{account_id:\\w+}/effects", EffectIndexAction{}.Handle)
-		r.Get("/accounts/{account_id:\\w+}/trades", TradeIndexAction{}.Handle)
 	})
 	// ledger actions
 	r.Route("/ledgers", func(r chi.Router) {
@@ -248,9 +247,18 @@ func (w *web) mustInstallActions(
 		r.Route("/{ledger_id}", func(r chi.Router) {
 			r.Get("/", LedgerShowAction{}.Handle)
 			r.Get("/transactions", w.streamIndexActionHandler(w.getTransactionPage, w.streamTransactions))
-			r.Get("/operations", OperationIndexAction{}.Handle)
-			r.Get("/payments", OperationIndexAction{OnlyPayments: true}.Handle)
 			r.Get("/effects", EffectIndexAction{}.Handle)
+			r.Group(func(r chi.Router) {
+				r.Use(historyMiddleware)
+				r.Method(http.MethodGet, "/operations", streamablePageHandler(actions.GetOperationsHandler{
+					IngestingFailedTransactions: w.ingestFailedTx,
+					OnlyPayments:                false,
+				}, streamHandler))
+				r.Method(http.MethodGet, "/payments", streamablePageHandler(actions.GetOperationsHandler{
+					IngestingFailedTransactions: w.ingestFailedTx,
+					OnlyPayments:                true,
+				}, streamHandler))
+			})
 		})
 	})
 
@@ -259,9 +267,18 @@ func (w *web) mustInstallActions(
 		r.Get("/", w.streamIndexActionHandler(w.getTransactionPage, w.streamTransactions))
 		r.Route("/{tx_id}", func(r chi.Router) {
 			r.Get("/", showActionHandler(w.getTransactionResource))
-			r.Get("/operations", OperationIndexAction{}.Handle)
-			r.Get("/payments", OperationIndexAction{OnlyPayments: true}.Handle)
 			r.Get("/effects", EffectIndexAction{}.Handle)
+			r.Group(func(r chi.Router) {
+				r.Use(historyMiddleware)
+				r.Method(http.MethodGet, "/operations", streamablePageHandler(actions.GetOperationsHandler{
+					IngestingFailedTransactions: w.ingestFailedTx,
+					OnlyPayments:                false,
+				}, streamHandler))
+				r.Method(http.MethodGet, "/payments", streamablePageHandler(actions.GetOperationsHandler{
+					IngestingFailedTransactions: w.ingestFailedTx,
+					OnlyPayments:                true,
+				}, streamHandler))
+			})
 		})
 	})
 
