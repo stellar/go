@@ -39,7 +39,7 @@ func AccountInfo(ctx context.Context, hq *history.Q, addr string) (*protocol.Acc
 		return nil, errors.Wrap(err, "getting history signers")
 	}
 
-	trustlines, err = hq.GetTrustLinesByAccountID(addr)
+	trustlines, err = hq.GetSortedTrustLinesByAccountID(addr)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting history trustlines")
 	}

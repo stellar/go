@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/stellar/go/services/horizon/internal/actions"
@@ -139,9 +140,19 @@ func (we *web) streamHandler(jfn interface{}, sfn streamFunc, params interface{}
 			// will never return if `newLedgers` channel is not read. From Effective Go:
 			// > If the channel is unbuffered, the sender blocks until the receiver has received the value.
 			newLedgers := make(chan bool, 1)
+			var closedLock sync.Mutex
+			var closed bool
 			go func() {
 				for {
 					time.Sleep(we.sseUpdateFrequency)
+
+					closedLock.Lock()
+					tmpClosed := closed
+					closedLock.Unlock()
+					if tmpClosed {
+						return
+					}
+
 					currentLedgerState := ledger.CurrentState()
 					if currentLedgerState.HistoryLatest >= lastLedgerState.HistoryLatest+1 {
 						newLedgers <- true
@@ -154,6 +165,9 @@ func (we *web) streamHandler(jfn interface{}, sfn streamFunc, params interface{}
 			case <-newLedgers:
 				continue
 			case <-ctx.Done():
+				closedLock.Lock()
+				closed = true
+				closedLock.Unlock()
 			case <-we.appCtx.Done():
 			}
 

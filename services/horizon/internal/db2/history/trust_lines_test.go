@@ -352,7 +352,7 @@ func TestGetTrustLinesByAccountID(t *testing.T) {
 	_, err := q.InsertTrustLine(eurTrustLine, 1234)
 	tt.Assert.NoError(err)
 
-	record, err := q.GetTrustLinesByAccountID(eurTrustLine.AccountId.Address())
+	record, err := q.GetSortedTrustLinesByAccountID(eurTrustLine.AccountId.Address())
 	tt.Assert.NoError(err)
 
 	asset := xdr.MustNewCreditAsset(record[0].AssetCode, record[0].AssetIssuer)
