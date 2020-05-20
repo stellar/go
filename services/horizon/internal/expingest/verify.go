@@ -195,11 +195,12 @@ func (s *System) verifyState(
 	localLog.WithField("total", total).Info("Finished writing to StateVerifier")
 
 	if len(graphOffers) != 0 {
+		offerIDs := make([]xdr.Int64, 0, len(graphOffers))
+		for id := range graphOffers {
+			offerIDs = append(offerIDs, id)
+		}
 		return ingesterrors.NewStateError(
-			fmt.Errorf(
-				"orderbook graph contains %v offers missing from HAS",
-				len(graphOffers),
-			),
+			fmt.Errorf("orderbook graph contains offers missing from HAS: %v", offerIDs),
 		)
 	}
 
@@ -328,7 +329,14 @@ func addAccountsToStateVerifier(verifier *verify.StateVerifier, q history.Ingest
 
 		// Ensure master weight matches, if not it's a state error!
 		if int32(row.MasterWeight) != masterWeightMap[row.AccountID] {
-			return ingesterrors.NewStateError(errors.New("Master key weight in accounts does not match "))
+			return ingesterrors.NewStateError(
+				fmt.Errorf(
+					"Master key weight in account %s does not match (expected=%d, actual=%d)",
+					row.AccountID,
+					masterWeightMap[row.AccountID],
+					int32(row.MasterWeight),
+				),
+			)
 		}
 
 		account := &xdr.AccountEntry{
