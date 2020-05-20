@@ -2,6 +2,7 @@ package gql
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/graph-gophers/graphql-go"
 	"github.com/stellar/go/services/ticker/internal/tickerdb"
@@ -21,6 +22,11 @@ func (r *resolver) Markets(args struct {
 		return
 	}
 
+	var pairName string
+	if args.BaseAssetCode != nil {
+		pairName = fmt.Sprintf("%s:%s / %s:%s", *args.BaseAssetCode, *args.BaseAssetIssuer, *args.CounterAssetCode, *args.CounterAssetIssuer)
+	}
+
 	dbMarkets, err := r.db.RetrievePartialMarkets(
 		args.BaseAssetCode,
 		args.BaseAssetIssuer,
@@ -36,7 +42,8 @@ func (r *resolver) Markets(args struct {
 	}
 
 	for _, dbMkt := range dbMarkets {
-		partialMarkets = append(partialMarkets, dbMarketToPartialMarket(dbMkt))
+		processedMkt := postProcessPartialMarket(dbMarketToPartialMarket(dbMkt), reverseOrderbook(dbMkt), &pairName)
+		partialMarkets = append(partialMarkets, processedMkt)
 	}
 	return
 }
@@ -62,7 +69,8 @@ func (r *resolver) Ticker(
 	}
 
 	for _, dbMkt := range dbMarkets {
-		partialMarkets = append(partialMarkets, dbMarketToPartialMarket(dbMkt))
+		processedMkt := postProcessPartialMarket(dbMarketToPartialMarket(dbMkt), reverseOrderbook(dbMkt), args.PairName)
+		partialMarkets = append(partialMarkets, processedMkt)
 	}
 	return
 
@@ -115,4 +123,68 @@ func dbMarketToPartialMarket(dbMarket tickerdb.PartialMarket) *partialMarket {
 		LastLedgerCloseTime:  graphql.Time{Time: dbMarket.LastLedgerCloseTime},
 		OrderbookStats:       os,
 	}
+}
+
+func postProcessPartialMarket(
+	dbMkt *partialMarket,
+	reverseOS orderbookStats,
+	oldPairName *string,
+) *partialMarket {
+	// If a nil partial market was passed, return it.
+	if dbMkt == nil {
+		return dbMkt
+	}
+
+	// Get the requested pair name from the user.
+	// If none was provided, the user wants all markets.
+	var oldPairNameStr string
+	if oldPairName != nil {
+		oldPairNameStr = *oldPairName
+	}
+
+	// If the user-requested trade pair matches the name
+	// of the generated partial market, the market is as expected.
+	processedDbMkt := *dbMkt
+	if oldPairNameStr == dbMkt.TradePair || oldPairName == nil || oldPairNameStr == "" {
+		return &processedDbMkt
+	}
+
+	// We swap base code/issuer/volume with counter.
+	processedDbMkt.TradePair = oldPairNameStr
+	processedDbMkt.BaseAssetCode, processedDbMkt.CounterAssetCode = processedDbMkt.CounterAssetCode, processedDbMkt.BaseAssetCode
+	processedDbMkt.BaseAssetIssuer, processedDbMkt.CounterAssetIssuer = processedDbMkt.CounterAssetIssuer, processedDbMkt.BaseAssetIssuer
+	processedDbMkt.BaseVolume, processedDbMkt.CounterVolume = processedDbMkt.CounterVolume, processedDbMkt.BaseVolume
+
+	// Since prices are now denominated in counter, we invert the existing ones.
+	processedDbMkt.Open = invertIfNonZero(dbMkt.Open)
+	processedDbMkt.Low = invertIfNonZero(dbMkt.High)
+	processedDbMkt.High = invertIfNonZero(dbMkt.Low)
+	processedDbMkt.Change = processedDbMkt.High - processedDbMkt.Low
+	processedDbMkt.Close = invertIfNonZero(dbMkt.Close)
+
+	// We substitute the orderbook for the reversed pair.
+	processedDbMkt.OrderbookStats = reverseOS
+	return &processedDbMkt
+}
+
+func reverseOrderbook(dbMarket tickerdb.PartialMarket) orderbookStats {
+	spread, spreadMidPoint := utils.CalcSpread(dbMarket.HighestBidReverse, dbMarket.LowestAskReverse)
+	os := orderbookStats{
+		BidCount:       BigInt(dbMarket.NumBidsReverse),
+		BidVolume:      dbMarket.BidVolumeReverse,
+		BidMax:         dbMarket.HighestBidReverse,
+		AskCount:       BigInt(dbMarket.NumAsksReverse),
+		AskVolume:      dbMarket.AskVolumeReverse,
+		AskMin:         dbMarket.LowestAskReverse,
+		Spread:         spread,
+		SpreadMidPoint: spreadMidPoint,
+	}
+	return os
+}
+
+func invertIfNonZero(num float64) float64 {
+	if num != 0 {
+		return 1 / num
+	}
+	return num
 }

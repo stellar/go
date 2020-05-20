@@ -145,7 +145,7 @@ func hProtocolTradeToDBTrade(
 		return
 	}
 
-	fPrice := float64(hpt.Price.D) / float64(hpt.Price.N)
+	fPrice := float64(hpt.Price.N) / float64(hpt.Price.D)
 
 	trade = tickerdb.Trade{
 		HorizonID:       hpt.ID,
