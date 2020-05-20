@@ -17,7 +17,7 @@ import (
 type OperationsQuery struct {
 	AccountID       string `schema:"account_id" valid:"accountID,optional"`
 	TransactionHash string `schema:"tx_id" valid:"transactionHash,optional"`
-	IncludeFailed   bool   `schema:"include_failed"`
+	IncludeFailed   bool   `schema:"include_failed" valid:"-"`
 	LedgerID        string `schema:"ledger_id" valid:"ledgerID,optional"`
 	Join            string `schema:"join" valid:"in(transactions),optional"`
 }
