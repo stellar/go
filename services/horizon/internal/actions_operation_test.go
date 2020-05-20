@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"net/http/httptest"
-	"strings"
 	"testing"
 	"time"
 
@@ -20,15 +19,12 @@ func TestOperationActions_Index(t *testing.T) {
 	ht := StartHTTPTest(t, "base")
 	defer ht.Finish()
 
-	// Moved to TestGetOperationsWithoutFilter
 	// no filter
 	w := ht.Get("/operations")
 	if ht.Assert.Equal(200, w.Code) {
 		ht.Assert.PageOf(4, w.Body)
 	}
 
-	// =============================
-	// Moved to TestGetOperationsFilterByLedgerID
 	// filtered by ledger sequence
 	w = ht.Get("/ledgers/1/operations")
 	if ht.Assert.Equal(200, w.Code) {
@@ -44,10 +40,7 @@ func TestOperationActions_Index(t *testing.T) {
 	if ht.Assert.Equal(200, w.Code) {
 		ht.Assert.PageOf(1, w.Body)
 	}
-	// =============================
 
-	// =============================
-	// Moved to TestGetOperationsFilterByAccountID
 	// filtered by account
 	w = ht.Get("/accounts/GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H/operations")
 	if ht.Assert.Equal(200, w.Code) {
@@ -63,49 +56,31 @@ func TestOperationActions_Index(t *testing.T) {
 	if ht.Assert.Equal(200, w.Code) {
 		ht.Assert.PageOf(2, w.Body)
 	}
-	// =============================
 
-	// =============================
-	// Moved to TestGetOperationsFilterByTxID
 	// filtered by transaction
 	w = ht.Get("/transactions/2374e99349b9ef7dba9a5db3339b78fda8f34777b1af33ba468ad5c0df946d4d/operations")
 	if ht.Assert.Equal(200, w.Code) {
 		ht.Assert.PageOf(1, w.Body)
 	}
-	// missing tx
-	w = ht.Get("/transactions/ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff/operations")
-	ht.Assert.Equal(404, w.Code)
-	// uppercase tx hash not accepted
-	w = ht.Get("/transactions/2374E99349B9EF7DBA9A5DB3339B78FDA8F34777B1AF33BA468AD5C0DF946D4D/operations")
-	ht.Assert.Equal(400, w.Code)
-	// badly formated tx hash not accepted
-	w = ht.Get("/transactions/%00%1E4%5E%EF%BF%BD%EF%BF%BD%EF%BF%BDpVP%EF%BF%BDI&R%0BK%EF%BF%BD%1D%EF%BF%BD%EF%BF%BD=%EF%BF%BD%3F%23%EF%BF%BD%EF%BF%BDl%EF%BF%BD%1El%EF%BF%BD%EF%BF%BD/operations")
-	ht.Assert.Equal(400, w.Code)
 
 	w = ht.Get("/transactions/164a5064eba64f2cdbadb856bf3448485fc626247ada3ed39cddf0f6902133b6/operations")
 	if ht.Assert.Equal(200, w.Code) {
 		ht.Assert.PageOf(1, w.Body)
 	}
-	// =============================
 
-	// TODO
 	// 400 for invalid tx hash
 	w = ht.Get("/transactions/ /operations")
 	ht.Assert.Equal(400, w.Code)
 
-	// TODO
 	w = ht.Get("/transactions/invalid/operations")
 	ht.Assert.Equal(400, w.Code)
 
-	// Moved to query param validator
 	w = ht.Get("/transactions/1d2a4be72470658f68db50eef29ea0af3f985ce18b5c218f03461d40c47dc29/operations")
 	ht.Assert.Equal(400, w.Code)
 
-	// Moved to query param validator
 	w = ht.Get("/transactions/1d2a4be72470658f68db50eef29ea0af3f985ce18b5c218f03461d40c47dc29222/operations")
 	ht.Assert.Equal(400, w.Code)
 
-	// Done in TestGetOperationsFilterByLedgerID
 	// filtered by ledger
 	w = ht.Get("/ledgers/3/operations")
 	if ht.Assert.Equal(200, w.Code) {
@@ -113,12 +88,10 @@ func TestOperationActions_Index(t *testing.T) {
 	}
 
 	// missing ledger
-	// TODO: add test for 404, this should not be in the actions test
 	w = ht.Get("/ledgers/100/operations")
 	ht.Assert.Equal(404, w.Code)
 }
 
-// Moved to TestGetOperationsIncludeFailed
 func TestOperationActions_Show_Failed(t *testing.T) {
 	ht := StartHTTPTest(t, "failed_transactions")
 	defer ht.Finish()
@@ -441,60 +414,4 @@ func TestOperationActions_Show_Extra_TxID(t *testing.T) {
 		ht.Assert.Equal(3, successful)
 		ht.Assert.Equal(0, failed)
 	}
-}
-
-func TestOperationsForFeeBumpTransaction(t *testing.T) {
-	ht := StartHTTPTestWithoutScenario(t)
-	defer ht.Finish()
-	test.ResetHorizonDB(t, ht.HorizonDB)
-	q := &history.Q{ht.HorizonSession()}
-	fixture := history.FeeBumpScenario(ht.T, q, true)
-
-	w := ht.Get("/transactions/" + fixture.OuterHash + "/operations")
-	ht.Assert.Equal(200, w.Code)
-	var byOuterHash []operations.Base
-	ht.UnmarshalPage(w.Body, &byOuterHash)
-	ht.Assert.Len(byOuterHash, 1)
-	ht.Assert.Equal(fixture.OuterHash, byOuterHash[0].TransactionHash)
-
-	w = ht.Get("/transactions/" + fixture.InnerHash + "/operations")
-	ht.Assert.Equal(200, w.Code)
-	var byInnerHash []operations.Base
-	ht.UnmarshalPage(w.Body, &byInnerHash)
-	ht.Assert.Len(byInnerHash, 1)
-	ht.Assert.Equal(fixture.InnerHash, byInnerHash[0].TransactionHash)
-
-	byInnerHash[0].TransactionHash = byOuterHash[0].TransactionHash
-	ht.Assert.Equal(byOuterHash, byInnerHash)
-
-	w = ht.Get("/transactions/" + fixture.OuterHash + "/operations?join=transactions")
-	ht.Assert.Equal(200, w.Code)
-	ht.UnmarshalPage(w.Body, &byOuterHash)
-	ht.Assert.Len(byOuterHash, 1)
-	ht.Assert.Equal(fixture.OuterHash, byOuterHash[0].TransactionHash)
-	tx := byOuterHash[0].Transaction
-	ht.Assert.Equal(fixture.OuterHash, tx.Hash)
-	ht.Assert.Equal(fixture.OuterHash, tx.ID)
-	ht.Assert.Equal(
-		strings.Split(fixture.Transaction.SignatureString, ","),
-		tx.Signatures,
-	)
-
-	w = ht.Get("/transactions/" + fixture.InnerHash + "/operations?join=transactions")
-	ht.Assert.Equal(200, w.Code)
-	ht.UnmarshalPage(w.Body, &byInnerHash)
-	ht.Assert.Len(byInnerHash, 1)
-	ht.Assert.Equal(fixture.InnerHash, byInnerHash[0].TransactionHash)
-	tx = byInnerHash[0].Transaction
-	ht.Assert.Equal(fixture.InnerHash, tx.Hash)
-	ht.Assert.Equal(fixture.InnerHash, tx.ID)
-	ht.Assert.Equal(
-		strings.Split(fixture.Transaction.InnerSignatureString.String, ","),
-		tx.Signatures,
-	)
-
-	ht.Assert.Equal(byInnerHash[0].ID, byOuterHash[0].ID)
-	ht.Assert.Equal(byInnerHash[0].SourceAccount, byOuterHash[0].SourceAccount)
-	ht.Assert.Equal(byInnerHash[0].TransactionSuccessful, byOuterHash[0].TransactionSuccessful)
-	ht.Assert.Equal(byInnerHash[0].Type, byOuterHash[0].Type)
 }
