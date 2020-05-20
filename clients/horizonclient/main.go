@@ -160,7 +160,6 @@ type ClientInterface interface {
 	Assets(request AssetRequest) (hProtocol.AssetsPage, error)
 	Ledgers(request LedgerRequest) (hProtocol.LedgersPage, error)
 	LedgerDetail(sequence uint32) (hProtocol.Ledger, error)
-	Metrics() (hProtocol.Metrics, error)
 	FeeStats() (hProtocol.FeeStats, error)
 	Offers(request OfferRequest) (hProtocol.OffersPage, error)
 	OfferDetails(offerID string) (offer hProtocol.Offer, err error)
