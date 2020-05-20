@@ -107,7 +107,7 @@ func (handler AssetStatsHandler) findIssuersForAssets(
 
 // GetResourcePage returns a page of offers.
 func (handler AssetStatsHandler) GetResourcePage(
-	w HeaderWriter,
+	w http.ResponseWriter,
 	r *http.Request,
 ) ([]hal.Pageable, error) {
 	ctx := r.Context()

@@ -142,7 +142,7 @@ func (handler GetOrderbookHandler) orderBookSummary(
 }
 
 // GetResource implements the /order_book endpoint
-func (handler GetOrderbookHandler) GetResource(w HeaderWriter, r *http.Request) (StreamableObjectResponse, error) {
+func (handler GetOrderbookHandler) GetResource(w http.ResponseWriter, r *http.Request) (StreamableObjectResponse, error) {
 	selling, err := GetAsset(r, "selling_")
 	if err != nil {
 		return nil, invalidOrderBook

@@ -54,13 +54,8 @@ const (
 	maxAssetCodeLength = 12
 )
 
-// HeaderWriter is an interface for setting HTTP response headers
-type HeaderWriter interface {
-	Header() http.Header
-}
-
 // SetLastLedgerHeader sets the Latest-Ledger header
-func SetLastLedgerHeader(w HeaderWriter, lastLedger uint32) {
+func SetLastLedgerHeader(w http.ResponseWriter, lastLedger uint32) {
 	w.Header().Set(LastLedgerHeaderName, strconv.FormatUint(uint64(lastLedger), 10))
 }
 
