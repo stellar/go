@@ -61,6 +61,7 @@ type captiveStellarCore struct {
 	historyURLs       []string
 	lastLedger        *uint32 // end of current segment if offline, nil if online
 	cmd               *exec.Cmd
+	executablePath    string
 	metaPipe          io.Reader
 
 	nextLedgerMutex sync.Mutex
@@ -72,11 +73,12 @@ type captiveStellarCore struct {
 // and restart the subprocess if subsequent calls to .GetLedger() are discontiguous.
 //
 // Platform-specific pipe setup logic is in the .start() methods.
-func NewCaptive(networkPassphrase string, historyURLs []string) *captiveStellarCore {
+func NewCaptive(executablePath, networkPassphrase string, historyURLs []string) *captiveStellarCore {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	return &captiveStellarCore{
 		nonce:             fmt.Sprintf("captive-stellar-core-%x", r.Uint64()),
 		networkPassphrase: networkPassphrase,
+		executablePath:    executablePath,
 		historyURLs:       historyURLs,
 		nextLedger:        0,
 	}
@@ -188,7 +190,7 @@ func (c *captiveStellarCore) openOfflineReplaySubprocess(nextLedger, lastLedger 
 	rangeArg := fmt.Sprintf("%d/%d", lastLedger, (lastLedger-nextLedger)+1)
 	args := []string{"--conf", c.getConfFileName(), "catchup", rangeArg,
 		"--replay-in-memory"}
-	cmd := exec.Command("stellar-core", args...)
+	cmd := exec.Command(c.executablePath, args...)
 	cmd.Dir = c.getTmpDir()
 	cmd.Stdout = c.getLogLineWriter()
 	cmd.Stderr = cmd.Stdout

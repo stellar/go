@@ -110,6 +110,9 @@ var ingestVerifyRangeCmd = &cobra.Command{
 			OrderBookGraph:           orderbook.NewOrderBookGraph(),
 			IngestFailedTransactions: config.IngestFailedTransactions,
 		}
+		if config.EnableCaptiveCoreIngestion {
+			ingestConfig.StellarCorePath = config.StellarCoreBinaryPath
+		}
 
 		system, err := expingest.NewSystem(ingestConfig)
 		if err != nil {
@@ -187,6 +190,9 @@ var ingestStressTestCmd = &cobra.Command{
 			HistoryArchiveURL:        config.HistoryArchiveURLs[0],
 			OrderBookGraph:           orderbook.NewOrderBookGraph(),
 			IngestFailedTransactions: config.IngestFailedTransactions,
+		}
+		if config.EnableCaptiveCoreIngestion {
+			ingestConfig.StellarCorePath = config.StellarCoreBinaryPath
 		}
 
 		system, err := expingest.NewSystem(ingestConfig)
