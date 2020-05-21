@@ -1379,6 +1379,16 @@ func TestFetchTimebounds(t *testing.T) {
 		assert.Equal(t, st.MinTime, int64(0))
 	}
 
+	// server time is saved on requests to horizon
+	header := http.Header{}
+	header.Add("Date", "Wed, 19 Jun 2019 12:24:56 GMT") //unix time: 1560947096
+	hmock.On(
+		"GET",
+		"https://localhost/",
+	).ReturnStringWithHeader(200, metricsResponse, header)
+	_, err = client.Root()
+	assert.NoError(t, err)
+
 	// get saved server time
 	st, err = client.FetchTimebounds(100)
 	if assert.NoError(t, err) {
