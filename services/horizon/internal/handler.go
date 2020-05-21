@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"encoding/json"
+	"io"
 	"net/http"
 	"strings"
 	"sync"
@@ -370,13 +371,6 @@ func (handler objectActionHandler) ServeHTTP(
 	w http.ResponseWriter,
 	r *http.Request,
 ) {
-	if r.URL.Query().Get("prometheus_format") == "true" {
-		if _, err := handler.action.GetResource(w, r); err != nil {
-			problem.Render(r.Context(), w, err)
-			return
-		}
-		return
-	}
 	switch render.Negotiate(r) {
 	case render.MimeHal, render.MimeJSON:
 		response, err := handler.action.GetResource(w, r)
@@ -617,4 +611,20 @@ func buildPage(r *http.Request, records []hal.Pageable) (hal.Page, error) {
 	page.PopulateLinks()
 
 	return page, nil
+}
+
+type metricsAction interface {
+	PrometheusFormat(w io.Writer) error
+}
+
+func HandleMetrics(action metricsAction) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("prometheus_format") == "true" {
+			if err := action.PrometheusFormat(w); err != nil {
+				problem.Render(r.Context(), w, err)
+			}
+			return
+		}
+		problem.Render(r.Context(), w, hProblem.NotAcceptable)
+	}
 }

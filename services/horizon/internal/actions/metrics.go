@@ -2,24 +2,21 @@ package actions
 
 import (
 	"fmt"
-	"net/http"
+	"io"
 	"strings"
 	"time"
 
 	"github.com/rcrowley/go-metrics"
-
-	"github.com/stellar/go/support/render/hal"
 )
 
-// GetMetrics is the action handler for the /metrics endpoint
-type GetMetrics struct {
+// MetricsAction is the action handler for the /metrics endpoint
+type MetricsAction struct {
 	Metrics metrics.Registry
 }
 
 // PrometheusFormat is a method for actions.PrometheusResponder
-func (getMetrics GetMetrics) GetResource(w http.ResponseWriter, r *http.Request) (hal.Pageable, error) {
-
-	getMetrics.Metrics.Each(func(name string, i interface{}) {
+func (action *MetricsAction) PrometheusFormat(w io.Writer) error {
+	action.Metrics.Each(func(name string, i interface{}) {
 		// Replace `.` with `_` to follow Prometheus metric name convention.
 		name = strings.ReplaceAll(name, ".", "_")
 
@@ -74,5 +71,5 @@ func (getMetrics GetMetrics) GetResource(w http.ResponseWriter, r *http.Request)
 		fmt.Fprintf(w, "\n")
 	})
 
-	return nil, nil
+	return nil
 }
