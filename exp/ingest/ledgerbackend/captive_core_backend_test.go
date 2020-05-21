@@ -13,8 +13,11 @@ import (
 
 func TestCaptiveCore(t *testing.T) {
 	log.SetLevel(logpkg.InfoLevel)
-	c := NewCaptive("Public Global Stellar Network ; September 2015",
-		[]string{"http://history.stellar.org/prd/core-live/core_live_001"})
+	c := NewCaptive(
+		"stellar-core",
+		"Public Global Stellar Network ; September 2015",
+		[]string{"http://history.stellar.org/prd/core-live/core_live_001"},
+	)
 	seq, e := c.GetLatestLedgerSequence()
 	assert.NoError(t, e)
 	assert.Greater(t, seq, uint32(0))
