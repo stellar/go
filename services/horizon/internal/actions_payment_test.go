@@ -246,6 +246,21 @@ func TestPayment_CreatedAt(t *testing.T) {
 	ht.Assert.WithinDuration(l.ClosedAt, records[0].LedgerCloseTime, 1*time.Second)
 }
 
+func TestPaymentActions_Show_Extra_TxID(t *testing.T) {
+	ht := StartHTTPTest(t, "failed_transactions")
+	defer ht.Finish()
+
+	w := ht.Get("/accounts/GBXGQJWVLWOYHFLVTKWV5FGHA3LNYY2JQKM7OAJAUEQFU6LPCSEFVXON/payments?limit=200&tx_id=aa168f12124b7c196c0adaee7c73a64d37f99428cacb59a91ff389626845e7cf")
+
+	ht.Assert.Equal(400, w.Code)
+	payload := ht.UnmarshalExtras(w.Body)
+	ht.Assert.Equal("filters", payload["invalid_field"])
+	ht.Assert.Equal(
+		"Use a single filter for operations, you can't combine tx_id, account_id, and ledger_id",
+		payload["reason"],
+	)
+}
+
 func TestPaymentActionsPathPaymentStrictSend(t *testing.T) {
 	ht := StartHTTPTest(t, "paths_strict_send")
 	defer ht.Finish()

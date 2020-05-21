@@ -362,3 +362,17 @@ func TestOperation_IncludeTransaction(t *testing.T) {
 	ht.Require.NoError(err, "failed to parse body")
 	ht.Assert.Equal(transactionInOperationsResponse, getTransactionResponse)
 }
+func TestOperationActions_Show_Extra_TxID(t *testing.T) {
+	ht := StartHTTPTest(t, "failed_transactions")
+	defer ht.Finish()
+
+	w := ht.Get("/accounts/GBXGQJWVLWOYHFLVTKWV5FGHA3LNYY2JQKM7OAJAUEQFU6LPCSEFVXON/operations?limit=200&tx_id=aa168f12124b7c196c0adaee7c73a64d37f99428cacb59a91ff389626845e7cf")
+
+	ht.Assert.Equal(400, w.Code)
+	payload := ht.UnmarshalExtras(w.Body)
+	ht.Assert.Equal("filters", payload["invalid_field"])
+	ht.Assert.Equal(
+		"Use a single filter for operations, you can't combine tx_id, account_id, and ledger_id",
+		payload["reason"],
+	)
+}
