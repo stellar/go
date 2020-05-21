@@ -15,10 +15,9 @@ func (s *TickerSession) RetrieveMarketData() (markets []Market, err error) {
 // RetrievePartialAggMarkets retrieves the aggregated market data for all
 // markets (or for a specific one if PairName != nil) for a given period.
 func (s *TickerSession) RetrievePartialAggMarkets(
-	pairNames *[]string,
+	pairNames *[]*string,
 	numHoursAgo int,
 ) (partialMkts []PartialMarket, err error) {
-	var bCode, cCode string
 	sqlTrue := new(string)
 	*sqlTrue = "TRUE"
 
@@ -27,14 +26,21 @@ func (s *TickerSession) RetrievePartialAggMarkets(
 	if pairNames != nil {
 		pairNamesArr := *pairNames
 		for _, pairName := range pairNamesArr {
+			if pairName == nil {
+				continue
+			}
+
 			optVars := []optionalVar{
 				optionalVar{"bAsset.is_valid", sqlTrue},
 				optionalVar{"cAsset.is_valid", sqlTrue},
 			}
-			bCode, cCode, err = getBaseAndCounterCodes(pairName)
+
+			var bCode, cCode string
+			bCode, cCode, err = getBaseAndCounterCodes(*pairName)
 			if err != nil {
 				return
 			}
+
 			optVars = append(optVars, []optionalVar{
 				optionalVar{"bAsset.code", &bCode},
 				optionalVar{"cAsset.code", &cCode},

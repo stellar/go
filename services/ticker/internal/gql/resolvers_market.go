@@ -51,7 +51,7 @@ func (r *resolver) Markets(args struct {
 // Ticker resolves the ticker() GraphQL query (TODO)
 func (r *resolver) Ticker(
 	args struct {
-		PairNames   *[]string
+		PairNames   *[]*string
 		NumHoursAgo *int32
 	},
 ) (partialMarkets []*partialMarket, err error) {
@@ -68,12 +68,18 @@ func (r *resolver) Ticker(
 		return
 	}
 
-	for _, dbMkt := range dbMarkets {
-		processedMkt := postProcessPartialMarket(dbMarketToPartialMarket(dbMkt), reverseOrderbook(dbMkt), args.PairName)
+	for i, dbMkt := range dbMarkets {
+		processedMkt := postProcessPartialMarket(dbMarketToPartialMarket(dbMkt), reverseOrderbook(dbMkt), getPairName(args.PairNames, i))
 		partialMarkets = append(partialMarkets, processedMkt)
 	}
 	return
+}
 
+func getPairName(pairNames *[]*string, index int) *string {
+	if pairNames == nil {
+		return nil
+	}
+	return (*pairNames)[index]
 }
 
 // validateNumHoursAgo validates if the numHoursAgo parameter is within an acceptable

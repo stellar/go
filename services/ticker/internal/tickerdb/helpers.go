@@ -106,9 +106,13 @@ func generateWhereClause(optVars []optionalVar) (clause string, args []string) {
 // It also returns the valid vals in the args param. This function was created to take advantage
 // of go/sql's sanitization and to prevent possible SQL injections.
 func generateWhereClauseWithOrs(optVarLists [][]optionalVar) (clause string, args []string) {
+	if len(optVarLists) == 0 {
+		return
+	}
+
 	for _, ovl := range optVarLists {
 		if clause == "" {
-			clause += "WHERE "
+			clause += "WHERE ("
 		} else {
 			clause += " OR "
 		}
@@ -119,15 +123,15 @@ func generateWhereClauseWithOrs(optVarLists [][]optionalVar) (clause string, arg
 				continue
 			}
 			if orClause == "" {
-				orClause = fmt.Sprintf("(%s = ?", ov.name)
+				orClause = fmt.Sprintf("%s = ?", ov.name)
 			} else {
 				orClause += fmt.Sprintf(" AND %s = ?", ov.name)
 			}
 			args = append(args, *ov.val)
 		}
-		orClause += ")"
 		clause += orClause
 	}
+	clause += ")"
 	return
 }
 
