@@ -24,7 +24,7 @@ type OperationsQuery struct {
 
 // IncludeTransactions returns extra fields to include in the response
 func (qp OperationsQuery) IncludeTransactions() bool {
-	return qp.Join != ""
+	return qp.Join == "transactions"
 }
 
 // IncludeFailedTransactions returns whether to include failed transactions or not
