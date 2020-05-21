@@ -125,7 +125,7 @@ type GetAccountsHandler struct {
 // GetResourcePage returns a page containing the account records that have
 // `signer` as a signer or have a trustline to the given asset.
 func (handler GetAccountsHandler) GetResourcePage(
-	w http.ResponseWriter,
+	w HeaderWriter,
 	r *http.Request,
 ) ([]hal.Pageable, error) {
 	ctx := r.Context()

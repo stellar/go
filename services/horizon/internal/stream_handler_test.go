@@ -138,7 +138,7 @@ type testPageAction struct {
 }
 
 func (action *testPageAction) GetResourcePage(
-	w http.ResponseWriter,
+	w actions.HeaderWriter,
 	r *http.Request,
 ) ([]hal.Pageable, error) {
 	objects, ok := action.objects[action.ledgerSource.CurrentLedger()]
@@ -242,10 +242,10 @@ func TestPageStream(t *testing.T) {
 		request := streamRequest(t, "")
 		action := &testPageAction{
 			objects: map[uint32][]string{
-				3: {"a", "b", "c"},
-				4: {"a", "b", "c", "d", "e"},
-				6: {"a", "b", "c", "d", "e", "f"},
-				7: {"a", "b", "c", "d", "e", "f"},
+				3: []string{"a", "b", "c"},
+				4: []string{"a", "b", "c", "d", "e"},
+				6: []string{"a", "b", "c", "d", "e", "f"},
+				7: []string{"a", "b", "c", "d", "e", "f"},
 			},
 		}
 		st := NewStreamablePageTest(
@@ -266,10 +266,10 @@ func TestPageStream(t *testing.T) {
 		request := streamRequest(t, "cursor=1")
 		action := &testPageAction{
 			objects: map[uint32][]string{
-				3: {"a", "b", "c"},
-				4: {"a", "b", "c", "d", "e"},
-				6: {"a", "b", "c", "d", "e", "f"},
-				7: {"a", "b", "c", "d", "e", "f"},
+				3: []string{"a", "b", "c"},
+				4: []string{"a", "b", "c", "d", "e"},
+				6: []string{"a", "b", "c", "d", "e", "f"},
+				7: []string{"a", "b", "c", "d", "e", "f"},
 			},
 		}
 		st := NewStreamablePageTest(
@@ -290,7 +290,7 @@ func TestPageStream(t *testing.T) {
 		request := streamRequest(t, "limit=2")
 		action := &testPageAction{
 			objects: map[uint32][]string{
-				3: {"a", "b", "c"},
+				3: []string{"a", "b", "c"},
 			},
 		}
 		st := NewStreamablePageTest(
@@ -307,7 +307,7 @@ func TestPageStream(t *testing.T) {
 		request := streamRequest(t, "limit=2&cursor=1")
 		action := &testPageAction{
 			objects: map[uint32][]string{
-				3: {"a", "b", "c", "d", "e"},
+				3: []string{"a", "b", "c", "d", "e"},
 			},
 		}
 		st := NewStreamablePageTest(
@@ -324,9 +324,9 @@ func TestPageStream(t *testing.T) {
 		request := streamRequest(t, "limit=3&cursor=1")
 		action := &testPageAction{
 			objects: map[uint32][]string{
-				3: {"a"},
-				4: {"a", "b"},
-				5: {"a", "b", "c", "d", "e", "f", "g"},
+				3: []string{"a"},
+				4: []string{"a", "b"},
+				5: []string{"a", "b", "c", "d", "e", "f", "g"},
 			},
 		}
 		st := NewStreamablePageTest(
@@ -365,7 +365,7 @@ type testObjectAction struct {
 }
 
 func (action *testObjectAction) GetResource(
-	w http.ResponseWriter,
+	w actions.HeaderWriter,
 	r *http.Request,
 ) (actions.StreamableObjectResponse, error) {
 	ledger := action.ledgerSource.CurrentLedger()
@@ -470,8 +470,8 @@ func TestRepeatableReadStream(t *testing.T) {
 	t.Run("page stream creates repeatable read tx", func(t *testing.T) {
 		action := &testPageAction{
 			objects: map[uint32][]string{
-				3: {"a"},
-				4: {"a", "b"},
+				3: []string{"a"},
+				4: []string{"a", "b"},
 			},
 		}
 

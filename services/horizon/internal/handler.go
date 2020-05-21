@@ -358,7 +358,7 @@ func validateCursorWithinHistory(pq db2.PageQuery) error {
 
 type objectAction interface {
 	GetResource(
-		w http.ResponseWriter,
+		w actions.HeaderWriter,
 		r *http.Request,
 	) (hal.Pageable, error)
 }
@@ -394,7 +394,7 @@ const defaultObjectStreamLimit = 10
 
 type streamableObjectAction interface {
 	GetResource(
-		w http.ResponseWriter,
+		w actions.HeaderWriter,
 		r *http.Request,
 	) (actions.StreamableObjectResponse, error)
 }
@@ -486,7 +486,7 @@ func (handler streamableObjectActionHandler) renderStream(
 }
 
 type pageAction interface {
-	GetResourcePage(w http.ResponseWriter, r *http.Request) ([]hal.Pageable, error)
+	GetResourcePage(w actions.HeaderWriter, r *http.Request) ([]hal.Pageable, error)
 }
 
 type pageActionHandler struct {

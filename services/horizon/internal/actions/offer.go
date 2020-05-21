@@ -17,7 +17,7 @@ type GetOfferByID struct {
 
 // GetResource returns an offer by id.
 func (handler GetOfferByID) GetResource(
-	w http.ResponseWriter,
+	w HeaderWriter,
 	r *http.Request,
 ) (hal.Pageable, error) {
 	ctx := r.Context()
@@ -75,7 +75,7 @@ type GetOffersHandler struct {
 
 // GetResourcePage returns a page of offers.
 func (handler GetOffersHandler) GetResourcePage(
-	w http.ResponseWriter,
+	w HeaderWriter,
 	r *http.Request,
 ) ([]hal.Pageable, error) {
 	ctx := r.Context()
@@ -142,7 +142,7 @@ func (handler GetAccountOffersHandler) parseOffersQuery(r *http.Request) (histor
 
 // GetResourcePage returns a page of offers for a given account.
 func (handler GetAccountOffersHandler) GetResourcePage(
-	w http.ResponseWriter,
+	w HeaderWriter,
 	r *http.Request,
 ) ([]hal.Pageable, error) {
 	ctx := r.Context()
