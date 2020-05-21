@@ -49,6 +49,8 @@ func TestPopulateTransaction_TextMemo(t *testing.T) {
 	rawMemo := []byte{0, 0, 1, 1, 0, 0, 3, 3}
 	rawMemoString := string(rawMemo)
 
+	sourceAID := xdr.MustAddress("GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
+	feeSourceAID := xdr.MustAddress("GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU")
 	for _, envelope := range []xdr.TransactionEnvelope{
 		{
 			Type: xdr.EnvelopeTypeEnvelopeTypeTxV0,
@@ -65,7 +67,7 @@ func TestPopulateTransaction_TextMemo(t *testing.T) {
 			Type: xdr.EnvelopeTypeEnvelopeTypeTx,
 			V1: &xdr.TransactionV1Envelope{
 				Tx: xdr.Transaction{
-					SourceAccount: xdr.MustMuxedAccountAddress("GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H"),
+					SourceAccount: sourceAID.ToMuxedAccount(),
 					Memo: xdr.Memo{
 						Type: xdr.MemoTypeMemoText,
 						Text: &rawMemoString,
@@ -73,7 +75,7 @@ func TestPopulateTransaction_TextMemo(t *testing.T) {
 				},
 			},
 		},
-		xdr.TransactionEnvelope{
+		{
 			Type: xdr.EnvelopeTypeEnvelopeTypeTxFeeBump,
 			FeeBump: &xdr.FeeBumpTransactionEnvelope{
 				Tx: xdr.FeeBumpTransaction{
@@ -81,7 +83,7 @@ func TestPopulateTransaction_TextMemo(t *testing.T) {
 						Type: xdr.EnvelopeTypeEnvelopeTypeTx,
 						V1: &xdr.TransactionV1Envelope{
 							Tx: xdr.Transaction{
-								SourceAccount: xdr.MustMuxedAccountAddress("GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H"),
+								SourceAccount: sourceAID.ToMuxedAccount(),
 								Memo: xdr.Memo{
 									Type: xdr.MemoTypeMemoText,
 									Text: &rawMemoString,
@@ -89,7 +91,7 @@ func TestPopulateTransaction_TextMemo(t *testing.T) {
 							},
 						},
 					},
-					FeeSource: xdr.MustMuxedAccountAddress("GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU"),
+					FeeSource: feeSourceAID.ToMuxedAccount(),
 				},
 			},
 		},

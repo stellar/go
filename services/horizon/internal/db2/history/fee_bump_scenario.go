@@ -249,8 +249,8 @@ func FeeBumpScenario(tt *test.T, q *Q, successful bool) FeeBumpFixture {
 	tt.Assert.NoError(insertBuilder.Add(normalTransaction, sequence))
 	tt.Assert.NoError(insertBuilder.Exec())
 
-	account := fixture.Envelope.SourceAccount()
-	feeBumpAccount := fixture.Envelope.FeeBumpAccount()
+	account := fixture.Envelope.SourceAccount().ToAccountId()
+	feeBumpAccount := fixture.Envelope.FeeBumpAccount().ToAccountId()
 
 	opBuilder := q.NewOperationBatchInsertBuilder(1)
 	details, err := json.Marshal(map[string]string{

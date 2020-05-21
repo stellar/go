@@ -156,9 +156,9 @@ type effectsWrapper struct {
 	operation *transactionOperationWrapper
 }
 
-func (e *effectsWrapper) add(acc xdr.AccountId, effectType history.EffectType, details map[string]interface{}) {
+func (e *effectsWrapper) add(address string, effectType history.EffectType, details map[string]interface{}) {
 	e.effects = append(e.effects, effect{
-		address:     acc.Address(),
+		address:     address,
 		operationID: e.operation.ID(),
 		effectType:  effectType,
 		order:       uint32(len(e.effects) + 1),
@@ -218,14 +218,14 @@ func (operation *transactionOperationWrapper) accountCreatedEffects() []effect {
 	}
 
 	effects.add(
-		op.Destination,
+		op.Destination.Address(),
 		history.EffectAccountCreated,
 		map[string]interface{}{
 			"starting_balance": amount.String(op.StartingBalance),
 		},
 	)
 	effects.add(
-		*operation.SourceAccount(),
+		operation.SourceAccount().Address(),
 		history.EffectAccountDebited,
 		map[string]interface{}{
 			"asset_type": "native",
@@ -233,7 +233,7 @@ func (operation *transactionOperationWrapper) accountCreatedEffects() []effect {
 		},
 	)
 	effects.add(
-		op.Destination,
+		op.Destination.Address(),
 		history.EffectSignerCreated,
 		map[string]interface{}{
 			"public_key": op.Destination.Address(),
@@ -254,13 +254,14 @@ func (operation *transactionOperationWrapper) paymentEffects() []effect {
 	details := map[string]interface{}{"amount": amount.String(op.Amount)}
 	assetDetails(details, op.Asset, "")
 
+	aid := op.Destination.ToAccountId()
 	effects.add(
-		op.Destination.ToAccountId(),
+		aid.Address(),
 		history.EffectAccountCredited,
 		details,
 	)
 	effects.add(
-		*operation.SourceAccount(),
+		operation.SourceAccount().Address(),
 		history.EffectAccountDebited,
 		details,
 	)
@@ -281,8 +282,9 @@ func (operation *transactionOperationWrapper) pathPaymentStrictReceiveEffects() 
 		operation: operation,
 	}
 
+	aid := op.Destination.ToAccountId()
 	effects.add(
-		op.Destination.ToAccountId(),
+		aid.Address(),
 		history.EffectAccountCredited,
 		details,
 	)
@@ -292,7 +294,7 @@ func (operation *transactionOperationWrapper) pathPaymentStrictReceiveEffects() 
 	assetDetails(details, op.SendAsset, "")
 
 	effects.add(
-		*source,
+		source.Address(),
 		history.EffectAccountDebited,
 		details,
 	)
@@ -314,11 +316,12 @@ func (operation *transactionOperationWrapper) pathPaymentStrictSendEffects() []e
 
 	details := map[string]interface{}{"amount": amount.String(result.DestAmount())}
 	assetDetails(details, op.DestAsset, "")
-	effects.add(op.Destination.ToAccountId(), history.EffectAccountCredited, details)
+	aid := op.Destination.ToAccountId()
+	effects.add(aid.Address(), history.EffectAccountCredited, details)
 
 	details = map[string]interface{}{"amount": amount.String(op.SendAmount)}
 	assetDetails(details, op.SendAsset, "")
-	effects.add(*source, history.EffectAccountDebited, details)
+	effects.add(source.Address(), history.EffectAccountDebited, details)
 
 	ingestTradeEffects(&effects, *source, resultSuccess.Offers)
 
@@ -382,7 +385,7 @@ func (operation *transactionOperationWrapper) setOptionsEffects() ([]effect, err
 	}
 
 	if op.HomeDomain != nil {
-		effects.add(*source, history.EffectAccountHomeDomainUpdated,
+		effects.add(source.Address(), history.EffectAccountHomeDomainUpdated,
 			map[string]interface{}{
 				"home_domain": string(*op.HomeDomain),
 			},
@@ -404,7 +407,7 @@ func (operation *transactionOperationWrapper) setOptionsEffects() ([]effect, err
 	}
 
 	if len(thresholdDetails) > 0 {
-		effects.add(*source, history.EffectAccountThresholdsUpdated, thresholdDetails)
+		effects.add(source.Address(), history.EffectAccountThresholdsUpdated, thresholdDetails)
 	}
 
 	flagDetails := map[string]interface{}{}
@@ -412,11 +415,11 @@ func (operation *transactionOperationWrapper) setOptionsEffects() ([]effect, err
 	effectFlagDetails(flagDetails, op.ClearFlags, false)
 
 	if len(flagDetails) > 0 {
-		effects.add(*source, history.EffectAccountFlagsUpdated, flagDetails)
+		effects.add(source.Address(), history.EffectAccountFlagsUpdated, flagDetails)
 	}
 
 	if op.InflationDest != nil {
-		effects.add(*source, history.EffectAccountInflationDestinationUpdated,
+		effects.add(source.Address(), history.EffectAccountInflationDestinationUpdated,
 			map[string]interface{}{
 				"inflation_destination": op.InflationDest.Address(),
 			},
@@ -452,14 +455,14 @@ func (operation *transactionOperationWrapper) setOptionsEffects() ([]effect, err
 		for _, addy := range beforeSortedSigners {
 			weight, ok := after[addy]
 			if !ok {
-				effects.add(*source, history.EffectSignerRemoved, map[string]interface{}{
+				effects.add(source.Address(), history.EffectSignerRemoved, map[string]interface{}{
 					"public_key": addy,
 				})
 				continue
 			}
 
 			if weight != before[addy] {
-				effects.add(*source, history.EffectSignerUpdated, map[string]interface{}{
+				effects.add(source.Address(), history.EffectSignerUpdated, map[string]interface{}{
 					"public_key": addy,
 					"weight":     weight,
 				})
@@ -481,7 +484,7 @@ func (operation *transactionOperationWrapper) setOptionsEffects() ([]effect, err
 				continue
 			}
 
-			effects.add(*source, history.EffectSignerCreated, map[string]interface{}{
+			effects.add(source.Address(), history.EffectSignerCreated, map[string]interface{}{
 				"public_key": addy,
 				"weight":     weight,
 			})
@@ -530,7 +533,7 @@ func (operation *transactionOperationWrapper) changeTrustEffects() ([]effect, er
 			break
 		}
 
-		effects.add(*source, effect, details)
+		effects.add(source.Address(), effect, details)
 	}
 
 	return effects.effects, nil
@@ -551,15 +554,15 @@ func (operation *transactionOperationWrapper) allowTrustEffects() []effect {
 
 	switch {
 	case xdr.TrustLineFlags(op.Authorize).IsAuthorized():
-		effects.add(*source, history.EffectTrustlineAuthorized, details)
+		effects.add(source.Address(), history.EffectTrustlineAuthorized, details)
 	case xdr.TrustLineFlags(op.Authorize).IsAuthorizedToMaintainLiabilitiesFlag():
 		effects.add(
-			*source,
+			source.Address(),
 			history.EffectTrustlineAuthorizedToMaintainLiabilities,
 			details,
 		)
 	default:
-		effects.add(*source, history.EffectTrustlineDeauthorized, details)
+		effects.add(source.Address(), history.EffectTrustlineDeauthorized, details)
 	}
 
 	return effects.effects
@@ -572,16 +575,17 @@ func (operation *transactionOperationWrapper) accountMergeEffects() []effect {
 		operation: operation,
 	}
 
-	dest := operation.operation.Body.MustDestination().ToAccountId()
+	dest := operation.operation.Body.MustDestination()
 	result := operation.OperationResult().MustAccountMergeResult()
 	details := map[string]interface{}{
 		"amount":     amount.String(result.MustSourceAccountBalance()),
 		"asset_type": "native",
 	}
 
-	effects.add(*source, history.EffectAccountDebited, details)
-	effects.add(dest, history.EffectAccountCredited, details)
-	effects.add(*source, history.EffectAccountRemoved, map[string]interface{}{})
+	effects.add(source.Address(), history.EffectAccountDebited, details)
+	aid := dest.ToAccountId()
+	effects.add(aid.Address(), history.EffectAccountCredited, details)
+	effects.add(source.Address(), history.EffectAccountRemoved, map[string]interface{}{})
 
 	return effects.effects
 }
@@ -593,7 +597,7 @@ func (operation *transactionOperationWrapper) inflationEffects() []effect {
 	}
 	payouts := operation.OperationResult().MustInflationResult().MustPayouts()
 	for _, payout := range payouts {
-		effects.add(payout.Destination, history.EffectAccountCredited,
+		effects.add(payout.Destination.Address(), history.EffectAccountCredited,
 			map[string]interface{}{
 				"amount":     amount.String(payout.Amount),
 				"asset_type": "native",
@@ -645,7 +649,7 @@ func (operation *transactionOperationWrapper) manageDataEffects() ([]effect, err
 		break
 	}
 
-	effects.add(*source, effect, details)
+	effects.add(source.Address(), effect, details)
 
 	return effects.effects, nil
 }
@@ -674,7 +678,7 @@ func (operation *transactionOperationWrapper) bumpSequenceEffects() ([]effect, e
 
 		if beforeAccount.SeqNum != afterAccount.SeqNum {
 			details := map[string]interface{}{"new_seq": afterAccount.SeqNum}
-			effects.add(*source, history.EffectSequenceBumped, details)
+			effects.add(source.Address(), history.EffectSequenceBumped, details)
 		}
 
 		break
@@ -709,20 +713,20 @@ func ingestTradeEffects(effects *effectsWrapper, buyer xdr.AccountId, claims []x
 		bd, sd := tradeDetails(buyer, seller, claim)
 
 		effects.add(
-			buyer,
+			buyer.Address(),
 			history.EffectTrade,
 			bd,
 		)
 
 		effects.add(
-			seller,
+			seller.Address(),
 			history.EffectTrade,
 			sd,
 		)
 	}
 }
 
-func tradeDetails(buyer xdr.AccountId, seller xdr.AccountId, claim xdr.ClaimOfferAtom) (bd map[string]interface{}, sd map[string]interface{}) {
+func tradeDetails(buyer, seller xdr.AccountId, claim xdr.ClaimOfferAtom) (bd map[string]interface{}, sd map[string]interface{}) {
 	bd = map[string]interface{}{
 		"offer_id":      claim.OfferId,
 		"seller":        seller.Address(),

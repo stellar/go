@@ -39,7 +39,8 @@ func (am *AccountMerge) FromXDR(xdrOp xdr.Operation) error {
 
 	am.SourceAccount = accountFromXDR(xdrOp.SourceAccount)
 	if xdrOp.Body.Destination != nil {
-		am.Destination = xdrOp.Body.Destination.Address()
+		aid := xdrOp.Body.Destination.ToAccountId()
+		am.Destination = aid.Address()
 	}
 
 	return nil
@@ -48,7 +49,7 @@ func (am *AccountMerge) FromXDR(xdrOp xdr.Operation) error {
 // Validate for AccountMerge validates the required struct fields. It returns an error if any of the fields are
 // invalid. Otherwise, it returns nil.
 func (am *AccountMerge) Validate() error {
-	_, err := xdr.AddressToMuxedAccount(am.Destination)
+	_, err := xdr.AddressToAccountId(am.Destination)
 	if err != nil {
 		return NewValidationError("Destination", err.Error())
 	}
