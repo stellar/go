@@ -142,6 +142,9 @@ func (h accountPostHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	resp := accountResponse{
 		Address: acc.Address,
 		Signer:  h.SigningAddress.Address(),
+		Signers: []accountResponseSigner{
+			{Key: h.SigningAddress.Address()},
+		},
 	}
 	for _, i := range acc.Identities {
 		respIdentity := accountResponseIdentity{
