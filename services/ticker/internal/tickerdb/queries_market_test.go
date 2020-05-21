@@ -647,7 +647,7 @@ func TestRetrievePartialMarkets(t *testing.T) {
 
 	partialAggMkt := partialAggMkts[0]
 
-	btcEthStr := "BTC_ETH" 
+	btcEthStr := "BTC_ETH"
 	assert.Equal(t, btcEthStr, partialAggMkt.TradePairName)
 	assert.Equal(t, 174.0, partialAggMkt.BaseVolume)
 	assert.Equal(t, 86.0, partialAggMkt.CounterVolume)
