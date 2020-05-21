@@ -49,6 +49,28 @@ func (qp OperationsQuery) Ledger() (int32, error) {
 	return int32(ledger), nil
 }
 
+// Validate runs extra validations on query parameters
+func (qp OperationsQuery) Validate() error {
+	filters, err := countNonEmpty(
+		qp.AccountID,
+		qp.LedgerID,
+		qp.TransactionHash,
+	)
+
+	if err != nil {
+		return &problem.BadRequest
+	}
+
+	if filters > 1 {
+		return problem.MakeInvalidFieldProblem(
+			"filters",
+			errors.New("Use a single filter for operations, you can't combine tx_id, account_id, and ledger_id"),
+		)
+	}
+
+	return nil
+}
+
 // GetOperationsHandler is the action handler for all end-points returning a list of operations.
 type GetOperationsHandler struct {
 	OnlyPayments                bool

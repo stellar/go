@@ -362,32 +362,3 @@ func TestOperation_IncludeTransaction(t *testing.T) {
 	ht.Require.NoError(err, "failed to parse body")
 	ht.Assert.Equal(transactionInOperationsResponse, getTransactionResponse)
 }
-
-// TestOperationActions_Show_Extra_TxID tests if failed transactions are not returned
-// when `tx_id` GET param is present. This was happening because `base.GetString()`
-// method retuns values from the query when URL param is not present.
-func TestOperationActions_Show_Extra_TxID(t *testing.T) {
-	ht := StartHTTPTest(t, "failed_transactions")
-	defer ht.Finish()
-
-	w := ht.Get("/accounts/GBXGQJWVLWOYHFLVTKWV5FGHA3LNYY2JQKM7OAJAUEQFU6LPCSEFVXON/operations?limit=200&tx_id=aa168f12124b7c196c0adaee7c73a64d37f99428cacb59a91ff389626845e7cf")
-
-	if ht.Assert.Equal(200, w.Code) {
-		records := []operations.Base{}
-		ht.UnmarshalPage(w.Body, &records)
-
-		successful := 0
-		failed := 0
-
-		for _, op := range records {
-			if op.TransactionSuccessful {
-				successful++
-			} else {
-				failed++
-			}
-		}
-
-		ht.Assert.Equal(3, successful)
-		ht.Assert.Equal(0, failed)
-	}
-}

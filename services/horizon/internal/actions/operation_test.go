@@ -31,6 +31,61 @@ func TestGetOperationsWithoutFilter(t *testing.T) {
 	tt.Assert.Len(records, 4)
 }
 
+func TestGetOperationsExclusiveFilters(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	tt.Scenario("base")
+
+	q := &history.Q{tt.HorizonSession()}
+	handler := GetOperationsHandler{IngestingFailedTransactions: true}
+
+	testCases := []struct {
+		desc  string
+		query map[string]string
+	}{
+		{
+			desc: "tx_id & ledger_id",
+			query: map[string]string{
+				"tx_id":     "1d2a4be72470658f68db50eef29ea0af3f985ce18b5c218f03461d40c47dc292",
+				"ledger_id": "1",
+			},
+		},
+		{
+			desc: "tx_id & account_id",
+			query: map[string]string{
+				"tx_id":      "1d2a4be72470658f68db50eef29ea0af3f985ce18b5c218f03461d40c47dc292",
+				"account_id": "GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2",
+			},
+		},
+		{
+			desc: "account_id & ledger_id",
+			query: map[string]string{
+				"account_id": "GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2",
+				"ledger_id":  "1",
+			},
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.desc, func(t *testing.T) {
+			_, err := handler.GetResourcePage(
+				httptest.NewRecorder(),
+				makeRequest(
+					t, tc.query, map[string]string{}, q.Session,
+				),
+			)
+			tt.Assert.IsType(&problem.P{}, err)
+			p := err.(*problem.P)
+			tt.Assert.Equal("bad_request", p.Type)
+			tt.Assert.Equal("filters", p.Extras["invalid_field"])
+			tt.Assert.Equal(
+				"Use a single filter for operations, you can't combine tx_id, account_id, and ledger_id",
+				p.Extras["reason"],
+			)
+		})
+	}
+
+}
+
 func TestGetOperationsFilterByAccountID(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
