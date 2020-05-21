@@ -281,10 +281,6 @@ type LedgerRequest struct {
 	forSequence uint32
 }
 
-type metricsRequest struct {
-	endpoint string
-}
-
 type feeStatsRequest struct {
 	endpoint string
 }
