@@ -110,13 +110,8 @@ func generateWhereClauseWithOrs(optVarLists [][]optionalVar) (clause string, arg
 		return
 	}
 
+	clauses := []string{}
 	for _, ovl := range optVarLists {
-		if clause == "" {
-			clause += "WHERE ("
-		} else {
-			clause += " OR "
-		}
-
 		var orClause string
 		for _, ov := range ovl {
 			if ov.val == nil {
@@ -129,9 +124,9 @@ func generateWhereClauseWithOrs(optVarLists [][]optionalVar) (clause string, arg
 			}
 			args = append(args, *ov.val)
 		}
-		clause += orClause
+		clauses = append(clauses, orClause)
 	}
-	clause += ")"
+	clause = fmt.Sprintf("WHERE (%s)", strings.Join(clauses, " OR "))
 	return
 }
 
