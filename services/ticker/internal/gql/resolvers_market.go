@@ -57,7 +57,7 @@ func (r *resolver) Markets(args struct {
 // Ticker resolves the ticker() GraphQL query (TODO)
 func (r *resolver) Ticker(
 	args struct {
-		Code *string
+		Code        *string
 		PairNames   *[]*string
 		NumHoursAgo *int32
 	},
@@ -260,7 +260,7 @@ func userCodeMatchesMarket(userCodePtr *string, dbMkt *partialMarket) (bool, err
 	if err != nil {
 		return false, err
 	}
-	
+
 	assetsArr := strings.Split(dbMkt.TradePair, sep)
 	if len(assetsArr) != 2 {
 		return false, errors.New("invalid trade pair in market")
@@ -276,8 +276,8 @@ func userCodeMatchesMarket(userCodePtr *string, dbMkt *partialMarket) (bool, err
 			return false, errors.New("invalid base asset format in market")
 		}
 		baseCode = baseAssetArr[0]
-	} 
-	
+	}
+
 	return baseCode == userCode, nil
 }
 
@@ -291,7 +291,7 @@ func reversePairName(pairName string) (string, error) {
 	if len(assetsArr) != 2 {
 		return "", errors.New("invalid trade pair in market")
 	}
-	
+
 	reversedAssetsArr := []string{assetsArr[1], assetsArr[0]}
 	reversedPairName := strings.Join(reversedAssetsArr, sep)
 	return reversedPairName, nil
