@@ -168,6 +168,9 @@ func (h accountPutHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	resp := accountResponse{
 		Address: accWithNewIdentiies.Address,
 		Signer:  h.SigningAddress.Address(),
+		Signers: []accountResponseSigner{
+			{Key: h.SigningAddress.Address()},
+		},
 	}
 	for _, i := range accWithNewIdentiies.Identities {
 		resp.Identities = append(resp.Identities, accountResponseIdentity{
