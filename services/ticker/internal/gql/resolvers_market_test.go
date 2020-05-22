@@ -64,11 +64,6 @@ func TestPostProcessPartialMarket(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, partialMkt, processedMkt)
 
-	// Confirm that an empty pair name has no effect.
-	processedMkt, err = postProcessPartialMarket(partialMkt, reverseOs, &userPairName, nil)
-	require.NoError(t, err)
-	assert.Equal(t, partialMkt, processedMkt)
-
 	// Confirm that a matching pair name has no effect.
 	userPairName = fmt.Sprintf("%s:%s / %s:%s", baseCode, baseIssuer, counterCode, counterIssuer)
 	processedMkt, err = postProcessPartialMarket(partialMkt, reverseOs, &userPairName, nil)
