@@ -641,7 +641,7 @@ func TestRetrievePartialMarkets(t *testing.T) {
 	assert.Equal(t, 0.70, btceth2Mkt.LowestAskReverse)
 
 	// Now let's use the same data, but aggregating by asset pair
-	partialAggMkts, err := session.RetrievePartialAggMarkets(nil, 12)
+	partialAggMkts, err := session.RetrievePartialAggMarkets(nil, nil, 12)
 	require.NoError(t, err)
 	assert.Equal(t, 1, len(partialAggMkts))
 
@@ -667,7 +667,7 @@ func TestRetrievePartialMarkets(t *testing.T) {
 
 	// Validate the pair name parsing:
 	pairNames := []*string{&btcEthStr}
-	partialAggMkts, err = session.RetrievePartialAggMarkets(&pairNames, 12)
+	partialAggMkts, err = session.RetrievePartialAggMarkets(nil, &pairNames, 12)
 	require.NoError(t, err)
 	assert.Equal(t, 1, len(partialAggMkts))
 	assert.Equal(t, int32(3), partialAggMkts[0].TradeCount)
@@ -732,11 +732,21 @@ func TestRetrievePartialMarkets(t *testing.T) {
 	// Validate that both markets are parsed.
 	btcXlmStr := "BTC_XLM"
 	pairNames = []*string{&btcEthStr, &btcXlmStr}
-	partialAggMkts, err = session.RetrievePartialAggMarkets(&pairNames, 12)
+	partialAggMkts, err = session.RetrievePartialAggMarkets(nil, &pairNames, 12)
 	require.NoError(t, err)
 	assert.Equal(t, 2, len(partialAggMkts))
 	assert.Equal(t, int32(3), partialAggMkts[0].TradeCount)
 	assert.Equal(t, int32(2), partialAggMkts[1].TradeCount)
+
+	// Validate that passing a code works.
+	btcStr := "BTC"
+	partialAggMkts, err = session.RetrievePartialAggMarkets(&btcStr, nil, 12)
+	require.NoError(t, err)
+	assert.Equal(t, 2, len(partialAggMkts))
+
+	// Make sure there's an error with a non-nil code and non-nil pair names.
+	partialAggMkts, err = session.RetrievePartialAggMarkets(&btcStr, &pairNames, 12)
+	require.Error(t, err)
 }
 
 func Test24hStatsFallback(t *testing.T) {
@@ -947,7 +957,7 @@ func TestPreferAnchorAssetCode(t *testing.T) {
 		require.Equal(t, "XLM_EUR", mkt.TradePair)
 	}
 
-	partialAggMkts, err := session.RetrievePartialAggMarkets(nil, 168)
+	partialAggMkts, err := session.RetrievePartialAggMarkets(nil, nil, 168)
 	require.NoError(t, err)
 	assert.Equal(t, 1, len(partialAggMkts))
 	for _, aggMkt := range partialAggMkts {

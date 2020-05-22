@@ -21,9 +21,11 @@ type Query {
 	): [Market]!
 
 	# retrieve aggregated trade stats for the last <numHoursAgo>
-	# hours. optionally provide the name of the trade pair (e.g.
-	# XLM_BTC) for filtering results.
+	# hours. optionally provide a list of pairNames (e.g.
+	# ["XLM_BTC", "XLM_USD"]) or a single currency (e.g. "XLM")
+	# for filtering results.
 	ticker(
+		code: String
 		pairNames: [String]
 		numHoursAgo: Int
 	): [AggregatedMarket]!

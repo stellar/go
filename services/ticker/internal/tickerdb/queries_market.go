@@ -1,6 +1,7 @@
 package tickerdb
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 )
@@ -13,47 +14,42 @@ func (s *TickerSession) RetrieveMarketData() (markets []Market, err error) {
 }
 
 // RetrievePartialAggMarkets retrieves the aggregated market data for all
-// markets (or for a specific one if PairName != nil) for a given period.
+// markets (or for a specific one if PairNames != nil) for a given period.
 func (s *TickerSession) RetrievePartialAggMarkets(
+	code *string,
 	pairNames *[]*string,
 	numHoursAgo int,
 ) (partialMkts []PartialMarket, err error) {
-	sqlTrue := new(string)
-	*sqlTrue = "TRUE"
+	var where string
+	var args []string
+	sqlTrue := "TRUE"
 
-	optVarsSlice := [][]optionalVar{}
-	// parse base and asset codes and add them as SQL parameters
-	if pairNames != nil {
-		pairNamesArr := *pairNames
-		for _, pairName := range pairNamesArr {
-			if pairName == nil {
-				continue
-			}
-
-			optVars := []optionalVar{
-				optionalVar{"bAsset.is_valid", sqlTrue},
-				optionalVar{"cAsset.is_valid", sqlTrue},
-			}
-
-			var bCode, cCode string
-			bCode, cCode, err = getBaseAndCounterCodes(*pairName)
-			if err != nil {
-				return
-			}
-
-			optVars = append(optVars, []optionalVar{
-				optionalVar{"bAsset.code", &bCode},
-				optionalVar{"cAsset.code", &cCode},
-			}...)
-			optVarsSlice = append(optVarsSlice, optVars)
-		}
+	if code != nil && pairNames != nil {
+		err = errors.New("code and pairNames cannot both be non-nil")
+		return
 	}
 
-	where, args := generateWhereClauseWithOrs(optVarsSlice)
+	// Construct the part of the WHERE clause that filters by asset.
+	if pairNames != nil {
+		where, args, err = s.constructPartialAggMarketsWhere(*pairNames)
+		if err != nil {
+			return
+		}
+	} else if code != nil {
+		where = "WHERE (bAsset.is_valid = ? AND bAsset.code = ?) OR (cAsset.is_valid = ? AND cAsset.code = ?)"
+		args = []string{sqlTrue, *code, sqlTrue, *code}
+	} else {
+		where = "WHERE bAsset.is_valid = ? AND cAsset.is_valid = ?"
+		args = []string{sqlTrue, sqlTrue}
+	}
+
+	// Add the filter by time to the WHERE clause.
 	where += fmt.Sprintf(
 		" AND t.ledger_close_time > now() - interval '%d hours'",
 		numHoursAgo,
 	)
+
+	// Generate and execute the final qurey.
 	q := strings.Replace(aggMarketQuery, "__WHERECLAUSE__", where, -1)
 	q = strings.Replace(q, "__NUMHOURS__", fmt.Sprintf("%d", numHoursAgo), -1)
 
@@ -63,6 +59,40 @@ func (s *TickerSession) RetrievePartialAggMarkets(
 	}
 
 	err = s.SelectRaw(&partialMkts, q, argsInterface...)
+	return
+}
+
+func (s *TickerSession) constructPartialAggMarketsWhere(
+	pairNames []*string,
+) (where string, args []string, err error) {
+	sqlTrue := new(string)
+	*sqlTrue = "TRUE"
+
+	optVarsSlice := [][]optionalVar{}
+	for _, pairName := range pairNames {
+		if pairName == nil {
+			continue
+		}
+
+		optVars := []optionalVar{
+			optionalVar{"bAsset.is_valid", sqlTrue},
+			optionalVar{"cAsset.is_valid", sqlTrue},
+		}
+
+		var bCode, cCode string
+		bCode, cCode, err = getBaseAndCounterCodes(*pairName)
+		if err != nil {
+			return
+		}
+
+		optVars = append(optVars, []optionalVar{
+			optionalVar{"bAsset.code", &bCode},
+			optionalVar{"cAsset.code", &cCode},
+		}...)
+		optVarsSlice = append(optVarsSlice, optVars)
+	}
+
+	where, args = generateWhereClauseWithOrs(optVarsSlice)
 	return
 }
 

@@ -8,6 +8,7 @@ import (
 
 	"github.com/stellar/go/services/ticker/internal/tickerdb"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestPostProcessPartialMarket(t *testing.T) {
@@ -48,29 +49,36 @@ func TestPostProcessPartialMarket(t *testing.T) {
 		LastLedgerCloseTime:  now,
 	}
 
-	partialMarket := dbMarketToPartialMarket(dbMkt)
+	partialMkt := dbMarketToPartialMarket(dbMkt)
 	reverseOs := reverseOrderbook(dbMkt)
 
-	processedMkt := postProcessPartialMarket(partialMarket, reverseOs, nil)
-	assert.Equal(t, partialMarket, processedMkt)
+	// Confirm that non-nil pair name and code results in an error.
+	userCode := ""
+	userPairName := ""
+	processedMkt, err := postProcessPartialMarket(partialMkt, reverseOs, &userPairName, &userCode)
+	require.Error(t, err)
+	assert.Nil(t, processedMkt)
 
-	// Confirm that a nil pair name has no effect.
-	processedMkt = postProcessPartialMarket(partialMarket, reverseOs, nil)
-	assert.Equal(t, partialMarket, processedMkt)
+	// Confirm that a nil pair name and code has no effect.
+	processedMkt, err = postProcessPartialMarket(partialMkt, reverseOs, nil, nil)
+	require.NoError(t, err)
+	assert.Equal(t, partialMkt, processedMkt)
 
 	// Confirm that an empty pair name has no effect.
-	userPairName := ""
-	processedMkt = postProcessPartialMarket(partialMarket, reverseOs, &userPairName)
-	assert.Equal(t, partialMarket, processedMkt)
+	processedMkt, err = postProcessPartialMarket(partialMkt, reverseOs, &userPairName, nil)
+	require.NoError(t, err)
+	assert.Equal(t, partialMkt, processedMkt)
 
 	// Confirm that a matching pair name has no effect.
 	userPairName = fmt.Sprintf("%s:%s / %s:%s", baseCode, baseIssuer, counterCode, counterIssuer)
-	processedMkt = postProcessPartialMarket(partialMarket, reverseOs, &userPairName)
-	assert.Equal(t, partialMarket, processedMkt)
+	processedMkt, err = postProcessPartialMarket(partialMkt, reverseOs, &userPairName, nil)
+	require.NoError(t, err)
+	assert.Equal(t, partialMkt, processedMkt)
 
 	// Confirm that a swapped pair name reverses counter and base assets and changes the orderbook.
 	userPairName = fmt.Sprintf("%s:%s / %s:%s", counterCode, counterIssuer, baseCode, baseIssuer)
-	processedMkt = postProcessPartialMarket(partialMarket, reverseOs, &userPairName)
+	processedMkt, err = postProcessPartialMarket(partialMkt, reverseOs, &userPairName, nil)
+	require.NoError(t, err)
 	assert.Equal(t, userPairName, processedMkt.TradePair)
 	assert.Equal(t, counterCode, processedMkt.BaseAssetCode)
 	assert.Equal(t, counterIssuer, processedMkt.BaseAssetIssuer)
@@ -86,6 +94,34 @@ func TestPostProcessPartialMarket(t *testing.T) {
 	// needs to be a bit more flexible. Since the change is 0.15, an error
 	// around 0.0000000000001 is acceptable:
 	changeDiff := math.Abs(0.15 - processedMkt.Change)
+	assert.True(t, changeDiff < 0.0000000000001)
+
+	assert.Equal(t, 1/10.0, processedMkt.Close)
+	assert.Equal(t, reverseOs, processedMkt.OrderbookStats)
+
+	userCode = "BTC"
+	processedMkt, err = postProcessPartialMarket(partialMkt, reverseOs, nil, &userCode)
+	require.NoError(t, err)
+	assert.Equal(t, partialMkt, processedMkt)
+
+	userCode = "ETH"
+	processedMkt, err = postProcessPartialMarket(partialMkt, reverseOs, nil, &userCode)
+	require.NoError(t, err)
+	assert.Equal(t, userPairName, processedMkt.TradePair)
+	assert.Equal(t, counterCode, processedMkt.BaseAssetCode)
+	assert.Equal(t, counterIssuer, processedMkt.BaseAssetIssuer)
+	assert.Equal(t, baseCode, processedMkt.CounterAssetCode)
+	assert.Equal(t, baseIssuer, processedMkt.CounterAssetIssuer)
+	assert.Equal(t, 100.0, processedMkt.CounterVolume)
+	assert.Equal(t, 200.0, processedMkt.BaseVolume)
+	assert.Equal(t, 1/10.0, processedMkt.Open)
+	assert.Equal(t, 1/20.0, processedMkt.Low)
+	assert.Equal(t, 1/5.0, processedMkt.High)
+
+	// There might be some floating point rounding issues, so this test
+	// needs to be a bit more flexible. Since the change is 0.15, an error
+	// around 0.0000000000001 is acceptable:
+	changeDiff = math.Abs(0.15 - processedMkt.Change)
 	assert.True(t, changeDiff < 0.0000000000001)
 
 	assert.Equal(t, 1/10.0, processedMkt.Close)
