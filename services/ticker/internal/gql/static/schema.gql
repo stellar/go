@@ -83,6 +83,8 @@ type Market {
 
 type AggregatedMarket {
 	tradePair: String!
+	baseAssetCode: String!
+	counterAssetCode: String!
 	baseVolume: Float!
 	counterVolume: Float!
 	tradeCount: Int!
