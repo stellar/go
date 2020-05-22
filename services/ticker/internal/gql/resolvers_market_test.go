@@ -56,7 +56,7 @@ func TestPostProcessPartialMarket(t *testing.T) {
 	userCode := ""
 	userPairName := ""
 	processedMkt, err := postProcessPartialMarket(partialMkt, reverseOs, &userPairName, &userCode)
-	require.Error(t, err)
+	require.EqualError(t, err, "cannot provide both pair name and code")
 	assert.Nil(t, processedMkt)
 
 	// Confirm that a nil pair name and code has no effect.

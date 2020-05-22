@@ -22,7 +22,6 @@ func (s *TickerSession) RetrievePartialAggMarkets(
 ) (partialMkts []PartialMarket, err error) {
 	var where string
 	var args []string
-	sqlTrue := "TRUE"
 
 	if code != nil && pairNames != nil {
 		err = errors.New("code and pairNames cannot both be non-nil")
