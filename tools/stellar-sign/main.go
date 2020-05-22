@@ -65,7 +65,7 @@ func main() {
 
 	fmt.Println("")
 	fmt.Println("Transaction Summary:")
-	sourceAccount := txe.SourceAccount()
+	sourceAccount := txe.SourceAccount().ToAccountId()
 	fmt.Printf("  type: %s\n", txe.Type.String())
 	fmt.Printf("  source: %s\n", sourceAccount.Address())
 	fmt.Printf("  ops: %d\n", len(txe.Operations()))

@@ -292,6 +292,7 @@ func TestTransactionActions_PostSuccessful(t *testing.T) {
 	ht := StartHTTPTest(t, "failed_transactions")
 	defer ht.Finish()
 
+	destAID := xdr.MustAddress("GBXGQJWVLWOYHFLVTKWV5FGHA3LNYY2JQKM7OAJAUEQFU6LPCSEFVXON")
 	tx2 := xdr.TransactionEnvelope{
 		Type: xdr.EnvelopeTypeEnvelopeTypeTxV0,
 		V0: &xdr.TransactionV0Envelope{
@@ -304,7 +305,7 @@ func TestTransactionActions_PostSuccessful(t *testing.T) {
 						Body: xdr.OperationBody{
 							Type: xdr.OperationTypePayment,
 							PaymentOp: &xdr.PaymentOp{
-								Destination: xdr.MustMuxedAccountAddress("GBXGQJWVLWOYHFLVTKWV5FGHA3LNYY2JQKM7OAJAUEQFU6LPCSEFVXON"),
+								Destination: destAID.ToMuxedAccount(),
 								Asset: xdr.Asset{
 									Type: xdr.AssetTypeAssetTypeCreditAlphanum4,
 									AlphaNum4: &xdr.AssetAlphaNum4{

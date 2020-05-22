@@ -36,7 +36,7 @@ func TestFeeBumpInvalidFeeSource(t *testing.T) {
 			Inner:      tx,
 		},
 	)
-	assert.EqualError(t, err, "fee account is not a valid address: invalid address")
+	assert.Contains(t, err.Error(), "fee account is not a valid address")
 }
 
 func TestFeeBumpInvalidInnerTxType(t *testing.T) {
@@ -98,29 +98,26 @@ func TestFeeBumpAllowsFeeAccountToEqualInnerSourceAccount(t *testing.T) {
 	}
 	tx.envelope.V1.Tx.SourceAccount = muxedAccount
 
-	otherMuxedAccount := xdr.MuxedAccount{
-		Type: xdr.CryptoKeyTypeKeyTypeMuxedEd25519,
-		Med25519: &xdr.MuxedAccountMed25519{
-			Id:      1,
-			Ed25519: xdr.Uint256{1, 2, 3},
-		},
+	otherAccount := xdr.AccountId{
+		Type:    xdr.PublicKeyTypePublicKeyTypeEd25519,
+		Ed25519: &xdr.Uint256{1, 2, 3},
 	}
 	_, err = NewFeeBumpTransaction(
 		FeeBumpTransactionParams{
-			FeeAccount: otherMuxedAccount.Address(),
+			FeeAccount: otherAccount.Address(),
 			BaseFee:    MinBaseFee,
 			Inner:      tx,
 		},
 	)
 	assert.NoError(t, err)
 
-	otherMuxedAccount = xdr.MuxedAccount{
-		Type:    xdr.CryptoKeyTypeKeyTypeEd25519,
+	otherAccount = xdr.AccountId{
+		Type:    xdr.PublicKeyTypePublicKeyTypeEd25519,
 		Ed25519: &xdr.Uint256{1, 2, 3},
 	}
 	_, err = NewFeeBumpTransaction(
 		FeeBumpTransactionParams{
-			FeeAccount: otherMuxedAccount.Address(),
+			FeeAccount: otherAccount.Address(),
 			BaseFee:    MinBaseFee,
 			Inner:      tx,
 		},
@@ -169,7 +166,7 @@ func TestFeeBumpRoundTrip(t *testing.T) {
 	env, err := feeBumpTx.TxEnvelope()
 	assert.NoError(t, err)
 	assert.Equal(t, xdr.EnvelopeTypeEnvelopeTypeTxFeeBump, env.Type)
-	assert.Equal(t, xdr.MustMuxedAccountAddress(kp1.Address()), env.FeeBumpAccount())
+	assert.Equal(t, xdr.MustAddress(kp1.Address()), env.FeeBumpAccount().ToAccountId())
 	assert.Equal(t, int64(4*MinBaseFee), env.FeeBumpFee())
 	assert.Equal(t, feeBumpTx.Signatures(), env.FeeBumpSignatures())
 	innerB64, err = xdr.MarshalBase64(xdr.TransactionEnvelope{
