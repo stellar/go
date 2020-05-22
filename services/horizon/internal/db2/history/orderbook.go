@@ -111,7 +111,7 @@ func (q *Q) GetOrderBookSummary(sellingAsset, buyingAsset xdr.Asset, maxPriceLev
 	}
 
 	// we don't expect there to be any inconsistency between levels and offers because
-	// GetOfferPrices() should be invoked in a repeatable read transaction
+	// this function should only be invoked in a repeatable read transaction
 	if len(levels) != len(offers) {
 		return result, errors.Wrap(err, "price levels length does not match summaries length")
 	}
