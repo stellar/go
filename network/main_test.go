@@ -60,9 +60,10 @@ func TestHashTransaction(t *testing.T) {
 	_, err = HashTransactionInEnvelope(txe, "")
 	assert.Contains(t, err.Error(), "empty network passphrase")
 
+	sourceAID := xdr.MustAddress("GCLOMB72ODBFUGK4E2BK7VMR3RNZ5WSTMEOGNA2YUVHFR3WMH2XBAB6H")
 	feeBumpTx := xdr.FeeBumpTransaction{
 		Fee:       123456,
-		FeeSource: xdr.MustMuxedAccountAddress("GCLOMB72ODBFUGK4E2BK7VMR3RNZ5WSTMEOGNA2YUVHFR3WMH2XBAB6H"),
+		FeeSource: sourceAID.ToMuxedAccount(),
 		InnerTx: xdr.FeeBumpTransactionInnerTx{
 			Type: xdr.EnvelopeTypeEnvelopeTypeTx,
 			V1: &xdr.TransactionV1Envelope{

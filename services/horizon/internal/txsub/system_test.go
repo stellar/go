@@ -101,7 +101,7 @@ func (suite *SystemTestSuite) SetupTest() {
 		Err: ErrBadSequence,
 	}
 
-	suite.sequences.On("Get", []string{suite.unmuxedSource.Address()}).
+	suite.sequences.On("GetSequenceNumbers", []string{suite.unmuxedSource.Address()}).
 		Return(map[string]uint64{suite.unmuxedSource.Address(): 0}, nil).
 		Once()
 }
@@ -214,7 +214,7 @@ func (suite *SystemTestSuite) TestTick_Deadlock() {
 	// Start first Tick
 	suite.system.SubmissionQueue.Push("address", 0)
 	// Configure suite.sequences to return after 1 second in a first call
-	suite.sequences.On("Get", []string{"address"}).After(time.Second).Return(map[string]uint64{}, nil)
+	suite.sequences.On("GetSequenceNumbers", []string{"address"}).After(time.Second).Return(map[string]uint64{}, nil)
 
 	go func() {
 		fmt.Println("Starting first Tick()")
@@ -267,7 +267,7 @@ func (suite *SystemTestSuite) TestTickFinishFeeBumpTransaction() {
 	}
 
 	suite.sequences = &MockSequenceProvider{}
-	suite.sequences.On("Get", []string{"GABQGAYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB2MX"}).
+	suite.sequences.On("GetSequenceNumbers", []string{"GABQGAYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB2MX"}).
 		Return(map[string]uint64{"GABQGAYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB2MX": 96}, nil).
 		Once()
 	suite.system.Sequences = suite.sequences

@@ -96,33 +96,6 @@ func TestPathPaymentStrictSendValidateDestination(t *testing.T) {
 	}
 }
 
-func TestPathPaymentStrictSendValidateDestinationAcceptsMuxedACcount(t *testing.T) {
-	kp0 := newKeypair0()
-	kp2 := newKeypair2()
-	sourceAccount := NewSimpleAccount(kp2.Address(), int64(187316408680450))
-
-	abcdAsset := CreditAsset{"ABCD", kp0.Address()}
-	pathPayment := PathPaymentStrictSend{
-		SendAsset:   NativeAsset{},
-		SendAmount:  "10",
-		Destination: "MCAAAAAAAAAAAAB7BQ2L7E5NBWMXDUCMZSIPOBKRDSBYVLMXGSSKF6YNPIB7Y77ITKNOG",
-		DestAsset:   CreditAsset{"ABCD", kp0.Address()},
-		DestMin:     "1",
-		Path:        []Asset{abcdAsset},
-	}
-
-	_, err := NewTransaction(
-		TransactionParams{
-			SourceAccount:        &sourceAccount,
-			IncrementSequenceNum: false,
-			Operations:           []Operation{&pathPayment},
-			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
-		},
-	)
-	assert.NoError(t, err)
-}
-
 func TestPathPaymentStrictSendValidateSendMax(t *testing.T) {
 	kp0 := newKeypair0()
 	kp2 := newKeypair2()

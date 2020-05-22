@@ -1,6 +1,7 @@
 package txnbuild
 
 import (
+	"github.com/stellar/go/xdr"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -140,4 +141,28 @@ func TestManageSellOfferValidateOfferID(t *testing.T) {
 		expected := "validation failed for *txnbuild.ManageSellOffer operation: Field: OfferID, Error: amount can not be negative"
 		assert.Contains(t, err.Error(), expected)
 	}
+}
+
+func TestManageSellOfferPrice(t *testing.T) {
+	kp0 := newKeypair0()
+
+	mso := ManageSellOffer{
+		Selling: CreditAsset{"ABCD", kp0.Address()},
+		Buying:  NativeAsset{},
+		Amount:  "1",
+		Price:   "0.000000001",
+		OfferID: 1,
+	}
+
+	xdrOp, err := mso.BuildXDR()
+	assert.NoError(t, err)
+	expectedPrice := xdr.Price{N: 1, D: 1000000000}
+	assert.Equal(t, expectedPrice, xdrOp.Body.ManageSellOfferOp.Price)
+	assert.Equal(t, mso.Price, mso.price.string())
+	assert.Equal(t, expectedPrice, mso.price.toXDR())
+
+	parsed := ManageSellOffer{}
+	assert.NoError(t, parsed.FromXDR(xdrOp))
+	assert.Equal(t, mso.Price, parsed.Price)
+	assert.Equal(t, mso.price, parsed.price)
 }

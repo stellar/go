@@ -201,7 +201,13 @@ func TestAccountPut_authenticatedByAccountAddress(t *testing.T) {
 			"role": "owner"
 		}
 	],
-	"signer": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"
+	"signer": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE",
+	"signers": [
+		{
+			"key": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE",
+			"added_at": "0001-01-01T00:00:00Z"
+		}
+	]
 }`
 
 	assert.JSONEq(t, wantBody, string(body))
@@ -285,7 +291,13 @@ func TestAccountPut_authenticatedByIdentityAddress(t *testing.T) {
 			"role": "owner"
 		}
 	],
-	"signer": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"
+	"signer": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE",
+	"signers": [
+		{
+			"key": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE",
+			"added_at": "0001-01-01T00:00:00Z"
+		}
+	]
 }`
 
 	assert.JSONEq(t, wantBody, string(body))
@@ -369,7 +381,13 @@ func TestAccountPut_authenticatedByPhoneNumber(t *testing.T) {
 			"role": "owner"
 		}
 	],
-	"signer": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"
+	"signer": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE",
+	"signers": [
+		{
+			"key": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE",
+			"added_at": "0001-01-01T00:00:00Z"
+		}
+	]
 }`
 
 	assert.JSONEq(t, wantBody, string(body))
@@ -453,7 +471,13 @@ func TestAccountPut_authenticatedByEmail(t *testing.T) {
 			"role": "owner"
 		}
 	],
-	"signer": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"
+	"signer": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE",
+	"signers": [
+		{
+			"key": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE",
+			"added_at": "0001-01-01T00:00:00Z"
+		}
+	]
 }`
 
 	assert.JSONEq(t, wantBody, string(body))

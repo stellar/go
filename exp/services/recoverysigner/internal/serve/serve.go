@@ -7,6 +7,7 @@ import (
 
 	firebaseauth "firebase.google.com/go/auth"
 	"github.com/go-chi/chi"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stellar/go/exp/services/recoverysigner/internal/account"
 	"github.com/stellar/go/exp/services/recoverysigner/internal/db"
 	"github.com/stellar/go/exp/services/recoverysigner/internal/serve/auth"
@@ -27,6 +28,9 @@ type Options struct {
 	SEP10JWKS         string
 	SEP10JWTIssuer    string
 	FirebaseProjectID string
+
+	AdminPort        int
+	MetricsNamespace string
 }
 
 func Serve(opts Options) {
@@ -36,6 +40,14 @@ func Serve(opts Options) {
 		return
 	}
 
+	if opts.AdminPort != 0 {
+		adminDeps := adminDeps{
+			Logger:          opts.Logger,
+			MetricsGatherer: deps.MetricsRegistry,
+		}
+		go serveAdmin(opts, adminDeps)
+	}
+
 	handler := handler(deps)
 
 	addr := fmt.Sprintf(":%d", opts.Port)
@@ -43,8 +55,7 @@ func Serve(opts Options) {
 		ListenAddr: addr,
 		Handler:    handler,
 		OnStarting: func() {
-			opts.Logger.Info("Starting SEP-30 Recover Signer server")
-			opts.Logger.Infof("Listening on %s", addr)
+			deps.Logger.Infof("Starting SEP-30 Recover Signer server on %s", addr)
 		},
 	})
 }
@@ -57,6 +68,7 @@ type handlerDeps struct {
 	SEP10JWK           jose.JSONWebKey
 	SEP10JWTIssuer     string
 	FirebaseAuthClient *firebaseauth.Client
+	MetricsRegistry    *prometheus.Registry
 }
 
 func getHandlerDeps(opts Options) (handlerDeps, error) {
@@ -97,6 +109,30 @@ func getHandlerDeps(opts Options) (handlerDeps, error) {
 		return handlerDeps{}, errors.Wrap(err, "error setting up firebase auth client")
 	}
 
+	metricsRegistry := prometheus.NewRegistry()
+
+	err = metricsRegistry.Register(prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{}))
+	if err != nil {
+		opts.Logger.Warn("Error registering metric for process: ", err)
+	}
+	err = metricsRegistry.Register(prometheus.NewGoCollector())
+	if err != nil {
+		opts.Logger.Warn("Error registering metric for Go: ", err)
+	}
+
+	metricsRegistryNamespaced := prometheus.Registerer(metricsRegistry)
+	if opts.MetricsNamespace != "" {
+		metricsRegistryNamespaced = prometheus.WrapRegistererWithPrefix(opts.MetricsNamespace+"_", metricsRegistry)
+	}
+
+	err = metricsRegistryNamespaced.Register(metricAccountsCount{
+		Logger:       opts.Logger,
+		AccountStore: accountStore,
+	}.NewCollector())
+	if err != nil {
+		opts.Logger.Warn("Error registering metric for accounts count: ", err)
+	}
+
 	deps := handlerDeps{
 		Logger:             opts.Logger,
 		NetworkPassphrase:  opts.NetworkPassphrase,
@@ -105,6 +141,7 @@ func getHandlerDeps(opts Options) (handlerDeps, error) {
 		SEP10JWK:           sep10JWK,
 		SEP10JWTIssuer:     opts.SEP10JWTIssuer,
 		FirebaseAuthClient: firebaseAuthClient,
+		MetricsRegistry:    metricsRegistry,
 	}
 
 	return deps, nil
@@ -146,12 +183,14 @@ func handler(deps handlerDeps) http.Handler {
 				SigningAddress: deps.SigningKey.FromAddress(),
 				AccountStore:   deps.AccountStore,
 			}.ServeHTTP)
-			mux.Post("/sign", accountSignHandler{
+			signHandler := accountSignHandler{
 				Logger:            deps.Logger,
 				SigningKey:        deps.SigningKey,
 				NetworkPassphrase: deps.NetworkPassphrase,
 				AccountStore:      deps.AccountStore,
-			}.ServeHTTP)
+			}
+			mux.Post("/sign", signHandler.ServeHTTP)
+			mux.Post("/sign/{signing-address}", signHandler.ServeHTTP)
 		})
 	})
 

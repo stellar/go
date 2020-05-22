@@ -3,12 +3,31 @@
 All notable changes to this project will be documented in this
 file. This project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+
+* Drop support for MuxedAccounts strkeys (spec'ed in [SEP23](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0023.md)).
+  SEP23 is still a draft and we don't want to encourage storing strkeys which may not be definite.
+* Replace `SequenceProvider` implementation with one which queries the Horizon DB for sequence numbers instead of the Stellar Core DB.
+
 ## v1.3.0
 
-* Add `last_modified_time` to account responses. `last_modified_time` is the
- closing time of the most recent ledger in which the account was modified.
-* Fix a memory leak in the code responsible for streaming [#2548](https://github.com/stellar/go/pull/2548).
-* Horizon encodes `fee_charged` and `max_fee` as strings when serializing transaction responses to JSON [#2555](https://github.com/stellar/go/pull/2555).
+### Breaking changes
+
+* The type for the following attributes has been changed from `int64` to `string` ([#2555](https://github.com/stellar/go/pull/2555)):
+  - Attribute `fee_charged` in [Transaction](https://www.stellar.org/developers/horizon/reference/resources/transaction.html) resource.
+  - Attribute `max_fee` in [Transaction](https://www.stellar.org/developers/horizon/reference/resources/transaction.html) resource.
+
+### Changes
+
+* Add `last_modified_time` to account responses. `last_modified_time` is the closing time of the most recent ledger in which the account was modified ([#2528](https://github.com/stellar/go/pull/2528)).
+* Balances in the Account resource are now sorted by asset code and asset issuer ([#2516](https://github.com/stellar/go/pull/2516)).
+* Ingestion system has its dedicated DB connection pool ([#2560](https://github.com/stellar/go/pull/2560)).
+* A new metric has been added to `/metrics` ([#2537](https://github.com/stellar/go/pull/2537) and [#2553](https://github.com/stellar/go/pull/2553)):
+  - `ingest.local_latest_ledger`: a gauge with the local latest ledger,
+  - `txsub.v0`: a meter counting `v0` transactions in `POST /transaction`,
+  - `txsub.v1`: a meter counting `v1` transactions in `POST /transaction`,
+  - `txsub.feebump`: a meter counting `feebump` transactions in `POST /transaction`.
+* Fix a memory leak in the code responsible for streaming ([#2548](https://github.com/stellar/go/pull/2548), [#2575](https://github.com/stellar/go/pull/2575) and [#2576](https://github.com/stellar/go/pull/2576)).
 
 ## v1.2.2
 

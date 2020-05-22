@@ -61,7 +61,13 @@ func TestAccountPost_newWithRoleOwnerContentTypeJSON(t *testing.T) {
 	"identities": [
 		{ "role": "owner" }
 	],
-	"signer": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"
+	"signer": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE",
+	"signers": [
+		{
+			"key": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE",
+			"added_at": "0001-01-01T00:00:00Z"
+		}
+	]
 }`
 	assert.JSONEq(t, wantBody, string(body))
 
@@ -124,7 +130,13 @@ func TestAccountPost_newWithRoleOwnerContentTypeForm(t *testing.T) {
 	"identities": [
 		{ "role": "owner" }
 	],
-	"signer": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"
+	"signer": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE",
+	"signers": [
+		{
+			"key": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE",
+			"added_at": "0001-01-01T00:00:00Z"
+		}
+	]
 }`
 	assert.JSONEq(t, wantBody, string(body))
 
@@ -197,7 +209,13 @@ func TestAccountPost_newWithRolesSenderReceiverContentTypeJSON(t *testing.T) {
 		{ "role": "sender" },
 		{ "role": "receiver" }
 	],
-	"signer": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"
+	"signer": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE",
+	"signers": [
+		{
+			"key": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE",
+			"added_at": "0001-01-01T00:00:00Z"
+		}
+	]
 }`
 	assert.JSONEq(t, wantBody, string(body))
 
@@ -276,7 +294,13 @@ func TestAccountPost_newWithRolesSenderReceiverContentTypeForm(t *testing.T) {
 		{ "role": "sender" },
 		{ "role": "receiver" }
 	],
-	"signer": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"
+	"signer": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE",
+	"signers": [
+		{
+			"key": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE",
+			"added_at": "0001-01-01T00:00:00Z"
+		}
+	]
 }`
 	assert.JSONEq(t, wantBody, string(body))
 

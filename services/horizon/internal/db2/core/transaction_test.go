@@ -65,7 +65,15 @@ func TestSignatures(t *testing.T) {
 }
 
 func TestTransaction_SourceAddress_MuxedAccount(t *testing.T) {
-	muxed := xdr.MustMuxedAccountAddress("MCAAAAAAAAAAAAB7BQ2L7E5NBWMXDUCMZSIPOBKRDSBYVLMXGSSKF6YNPIB7Y77ITKNOG")
+	aid := xdr.MustAddress("GA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVSGZ")
+
+	muxed := xdr.MuxedAccount{
+		Type: xdr.CryptoKeyTypeKeyTypeMuxedEd25519,
+		Med25519: &xdr.MuxedAccountMed25519{
+			Id:      0xcafebabe,
+			Ed25519: *aid.Ed25519,
+		},
+	}
 	var tx Transaction
 	tx.Envelope = xdr.TransactionEnvelope{
 		Type: xdr.EnvelopeTypeEnvelopeTypeTx,

@@ -3,8 +3,9 @@
 All notable changes to this project will be documented in this
 file.  This project adheres to [Semantic Versioning](http://semver.org/).
 
-## Unreleased
+## [v3.1.0](https://github.com/stellar/go/releases/tag/horizonclient-v3.1.0) - 2020-05-14
 
+* Fix bug which occurs when parsing xdr offers with prices that require more than 7 decimals of precision ([#2588](https://github.com/stellar/go/pull/2588))
 * Add `AddSignatureBase64` function to both `Transaction` and `FeeBumpTransaction` objects for adding a base64-encoded signature. [#2586](https://github.com/stellar/go/pull/2586)
 
 ## [v3.0.1](https://github.com/stellar/go/releases/tag/horizonclient-v3.0.1) - 2020-05-11

@@ -60,7 +60,8 @@ func (p *Payment) FromXDR(xdrOp xdr.Operation) error {
 	}
 
 	p.SourceAccount = accountFromXDR(xdrOp.SourceAccount)
-	p.Destination = result.Destination.Address()
+	destAID := result.Destination.ToAccountId()
+	p.Destination = destAID.Address()
 	p.Amount = amount.String(result.Amount)
 
 	asset, err := assetFromXDR(result.Asset)
@@ -75,7 +76,7 @@ func (p *Payment) FromXDR(xdrOp xdr.Operation) error {
 // Validate for Payment validates the required struct fields. It returns an error if any
 // of the fields are invalid. Otherwise, it returns nil.
 func (p *Payment) Validate() error {
-	_, err := xdr.AddressToMuxedAccount(p.Destination)
+	_, err := xdr.AddressToAccountId(p.Destination)
 	if err != nil {
 		return NewValidationError("Destination", err.Error())
 	}

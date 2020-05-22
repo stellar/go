@@ -53,7 +53,7 @@ type MockSequenceProvider struct {
 }
 
 // Get implements `txsub.SequenceProvider`
-func (o *MockSequenceProvider) Get(addresses []string) (map[string]uint64, error) {
+func (o *MockSequenceProvider) GetSequenceNumbers(addresses []string) (map[string]uint64, error) {
 	args := o.Called(addresses)
 	return args.Get(0).(map[string]uint64), args.Error(1)
 }

@@ -121,11 +121,12 @@ func (f fakeLedgerBackend) GetLedger(sequence uint32) (bool, ledgerbackend.Ledge
 				},
 			},
 		}
+		aid := xdr.MustAddress("GAHK7EEG2WWHVKDNT4CEQFZGKF2LGDSW2IVM4S5DP42RBW3K6BTODB4A")
 		ledgerCloseMeta.TransactionEnvelope[i] = xdr.TransactionEnvelope{
 			Type: xdr.EnvelopeTypeEnvelopeTypeTx,
 			V1: &xdr.TransactionV1Envelope{
 				Tx: xdr.Transaction{
-					SourceAccount: xdr.MustMuxedAccountAddress("GAHK7EEG2WWHVKDNT4CEQFZGKF2LGDSW2IVM4S5DP42RBW3K6BTODB4A"),
+					SourceAccount: aid.ToMuxedAccount(),
 				},
 			},
 		}

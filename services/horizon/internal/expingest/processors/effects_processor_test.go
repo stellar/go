@@ -247,11 +247,27 @@ func (s *EffectsProcessorTestSuiteLedger) TestBatchAddFails() {
 
 func TestOperationEffects(t *testing.T) {
 
+	sourceAID := xdr.MustAddress("GD3MMHD2YZWL5RAUWG6O3RMA5HTZYM7S3JLSZ2Z35JNJAWTDIKXY737V")
+	sourceAccount := xdr.MuxedAccount{
+		Type: xdr.CryptoKeyTypeKeyTypeMuxedEd25519,
+		Med25519: &xdr.MuxedAccountMed25519{
+			Id:      0xcafebabe,
+			Ed25519: *sourceAID.Ed25519,
+		},
+	}
+	destAID := xdr.MustAddress("GDEOVUDLCYTO46D6GD6WH7BFESPBV5RACC6F6NUFCIRU7PL2XONQHVGJ")
+	dest := xdr.MuxedAccount{
+		Type: xdr.CryptoKeyTypeKeyTypeMuxedEd25519,
+		Med25519: &xdr.MuxedAccountMed25519{
+			Id:      0xcafebabe,
+			Ed25519: *destAID.Ed25519,
+		},
+	}
 	strictPaymentWithMuxedAccountsTx := xdr.TransactionEnvelope{
 		Type: xdr.EnvelopeTypeEnvelopeTypeTx,
 		V1: &xdr.TransactionV1Envelope{
 			Tx: xdr.Transaction{
-				SourceAccount: xdr.MustMuxedAccountAddress("MDFP5OV6ZL7LVPXWYYOHVRTMX3CBJMN45XCYB2PHTQZ7FWSXFTVTX2S2SBNGGQVPR67LA"),
+				SourceAccount: sourceAccount,
 				Fee:           100,
 				SeqNum:        3684420515004429,
 				Operations: []xdr.Operation{
@@ -267,7 +283,7 @@ func TestOperationEffects(t *testing.T) {
 									},
 								},
 								SendAmount:  300000,
-								Destination: xdr.MustMuxedAccountAddress("MAAAB6X27LHM5TWI5LIGWFRG5Z4H4MH5MP6CKJE6DL3CAEF4L43IKERDJ66XVO43ANKEI"),
+								Destination: dest,
 								DestAsset: xdr.Asset{
 									Type: 1,
 									AlphaNum4: &xdr.AssetAlphaNum4{
@@ -1124,9 +1140,10 @@ func TestOperationEffectsSetOptionsSignersOrder(t *testing.T) {
 	}
 	transaction.Index = 1
 	transaction.Envelope.Type = xdr.EnvelopeTypeEnvelopeTypeTx
+	aid := xdr.MustAddress("GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV")
 	transaction.Envelope.V1 = &xdr.TransactionV1Envelope{
 		Tx: xdr.Transaction{
-			SourceAccount: xdr.MustMuxedAccountAddress("GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV"),
+			SourceAccount: aid.ToMuxedAccount(),
 		},
 	}
 
@@ -1254,9 +1271,10 @@ func TestOperationEffectsSetOptionsSignersNoUpdated(t *testing.T) {
 	}
 	transaction.Index = 1
 	transaction.Envelope.Type = xdr.EnvelopeTypeEnvelopeTypeTx
+	aid := xdr.MustAddress("GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV")
 	transaction.Envelope.V1 = &xdr.TransactionV1Envelope{
 		Tx: xdr.Transaction{
-			SourceAccount: xdr.MustMuxedAccountAddress("GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV"),
+			SourceAccount: aid.ToMuxedAccount(),
 		},
 	}
 
@@ -1317,9 +1335,10 @@ func TestOperationRegressionAccountTrustItself(t *testing.T) {
 	}
 	transaction.Index = 1
 	transaction.Envelope.Type = xdr.EnvelopeTypeEnvelopeTypeTx
+	aid := xdr.MustAddress("GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV")
 	transaction.Envelope.V1 = &xdr.TransactionV1Envelope{
 		Tx: xdr.Transaction{
-			SourceAccount: xdr.MustMuxedAccountAddress("GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV"),
+			SourceAccount: aid.ToMuxedAccount(),
 		},
 	}
 	operation := transactionOperationWrapper{
@@ -1347,7 +1366,8 @@ func TestOperationEffectsAllowTrustAuthorizedToMaintainLiabilities(t *testing.T)
 	asset := xdr.Asset{}
 	allowTrustAsset, err := asset.ToAllowTrustOpAsset("COP")
 	tt.NoError(err)
-	source := xdr.MustMuxedAccountAddress("GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD")
+	aid := xdr.MustAddress("GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD")
+	source := aid.ToMuxedAccount()
 	op := xdr.Operation{
 		SourceAccount: &source,
 		Body: xdr.OperationBody{

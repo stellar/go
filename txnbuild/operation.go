@@ -63,7 +63,8 @@ func operationFromXDR(xdrOp xdr.Operation) (Operation, error) {
 // accountFromXDR returns a txnbuild Account from a XDR Account.
 func accountFromXDR(account *xdr.MuxedAccount) Account {
 	if account != nil {
-		return &SimpleAccount{AccountID: account.Address()}
+		aid := account.ToAccountId()
+		return &SimpleAccount{AccountID: aid.Address()}
 	}
 	return nil
 }
