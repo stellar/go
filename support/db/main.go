@@ -102,6 +102,7 @@ type Session struct {
 	Ctx context.Context
 
 	tx *sqlx.Tx
+	txOptions *sql.TxOptions
 }
 
 type SessionInterface interface {
