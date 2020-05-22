@@ -9,6 +9,7 @@ bumps.  A breaking change will get clearly notified in this log.
 ## Unreleased
 
 * Dropped support for Go 1.12.
+* Log User-Agent header in request logs.
 
 ## [v0.3.0] - 2019-11-20
 
