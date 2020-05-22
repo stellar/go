@@ -183,14 +183,14 @@ func handler(deps handlerDeps) http.Handler {
 				SigningAddress: deps.SigningKey.FromAddress(),
 				AccountStore:   deps.AccountStore,
 			}.ServeHTTP)
-			accountSignHandler := accountSignHandler{
+			signHandler := accountSignHandler{
 				Logger:            deps.Logger,
 				SigningKey:        deps.SigningKey,
 				NetworkPassphrase: deps.NetworkPassphrase,
 				AccountStore:      deps.AccountStore,
 			}
-			mux.Post("/sign", accountSignHandler.ServeHTTP)
-			mux.Post("/sign/{signing-address}", accountSignHandler.ServeHTTP)
+			mux.Post("/sign", signHandler.ServeHTTP)
+			mux.Post("/sign/{signing-address}", signHandler.ServeHTTP)
 		})
 	})
 
