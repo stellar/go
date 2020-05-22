@@ -212,9 +212,7 @@ func (w *web) mustInstallActions(
 				"/order_book",
 				streamableObjectActionHandler{
 					streamHandler: streamHandler,
-					action: actions.GetOrderbookHandler{
-						OrderBookGraph: orderBookGraph,
-					},
+					action:        actions.GetOrderbookHandler{},
 				},
 			)
 		}

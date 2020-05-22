@@ -97,13 +97,13 @@ func TestOrderBookGetResource(t *testing.T) {
 			{
 				Pricen: int32(twoEurOffer.Price.N),
 				Priced: int32(twoEurOffer.Price.D),
-				Pricef:  "2.0000000",
+				Pricef: "2.0000000",
 				Amount: "922337203685.4776807",
 			},
 			{
 				Pricen: int32(threeEurOffer.Price.N),
 				Priced: int32(threeEurOffer.Price.D),
-				Pricef:  "3.0000000",
+				Pricef: "3.0000000",
 				Amount: "0.0000500",
 			},
 		},
@@ -111,13 +111,13 @@ func TestOrderBookGetResource(t *testing.T) {
 			{
 				Pricen: int32(sellEurOffer.Price.D),
 				Priced: int32(sellEurOffer.Price.N),
-				Pricef:  "1.1111111",
+				Pricef: "1.1111111",
 				Amount: "0.0000500",
 			},
 			{
 				Pricen: int32(otherSellEurOffer.Price.D),
 				Priced: int32(otherSellEurOffer.Price.N),
-				Pricef:  "0.5555556",
+				Pricef: "0.5555556",
 				Amount: "0.0000500",
 			},
 		},
@@ -128,7 +128,7 @@ func TestOrderBookGetResource(t *testing.T) {
 			{
 				Pricen: int32(twoEurOffer.Price.N),
 				Priced: int32(twoEurOffer.Price.D),
-				Pricef:  "2.0000000",
+				Pricef: "2.0000000",
 				Amount: "922337203685.4776807",
 			},
 		},
@@ -136,17 +136,17 @@ func TestOrderBookGetResource(t *testing.T) {
 			{
 				Pricen: int32(sellEurOffer.Price.D),
 				Priced: int32(sellEurOffer.Price.N),
-				Pricef:  "1.1111111",
+				Pricef: "1.1111111",
 				Amount: "0.0000500",
 			},
 		},
 	}
 
 	for _, testCase := range []struct {
-		name       string
-		offers []xdr.OfferEntry
-		limit      int
-		expected   OrderBookSummary
+		name     string
+		offers   []xdr.OfferEntry
+		limit    int
+		expected OrderBookSummary
 	}{
 		{
 			"empty orderbook",
