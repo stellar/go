@@ -36,11 +36,10 @@ func (s *TickerSession) RetrievePartialAggMarkets(
 			return
 		}
 	} else if code != nil {
-		where = "WHERE (bAsset.is_valid = ? AND bAsset.code = ?) OR (cAsset.is_valid = ? AND cAsset.code = ?)"
-		args = []string{sqlTrue, *code, sqlTrue, *code}
+		where = "WHERE (bAsset.is_valid = TRUE AND bAsset.code = ?) OR (cAsset.is_valid = TRUE AND cAsset.code = ?)"
+		args = []string{*code, *code}
 	} else {
-		where = "WHERE bAsset.is_valid = ? AND cAsset.is_valid = ?"
-		args = []string{sqlTrue, sqlTrue}
+		where = "WHERE bAsset.is_valid = TRUE AND cAsset.is_valid = TRUE"
 	}
 
 	// Add the filter by time to the WHERE clause.
