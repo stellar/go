@@ -49,11 +49,12 @@ func logStartOfRequest(
 	r *stdhttp.Request,
 ) {
 	log.Ctx(r.Context()).WithFields(log.F{
-		"subsys": "http",
-		"path":   r.URL.String(),
-		"method": r.Method,
-		"ip":     r.RemoteAddr,
-		"host":   r.Host,
+		"subsys":    "http",
+		"path":      r.URL.String(),
+		"method":    r.Method,
+		"ip":        r.RemoteAddr,
+		"host":      r.Host,
+		"useragent": r.Header.Get("User-Agent"),
 	}).Info("starting request")
 }
 

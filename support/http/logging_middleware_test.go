@@ -36,6 +36,7 @@ func TestHTTPMiddleware(t *testing.T) {
 		assert.Equal(t, "GET", logged[0].Data["method"])
 		assert.NotEmpty(t, logged[0].Data["req"])
 		assert.NotEmpty(t, logged[0].Data["path"])
+		assert.Equal(t, "Go-http-client/1.1", logged[0].Data["useragent"])
 		req1 := logged[0].Data["req"]
 
 		assert.Equal(t, "handler log line", logged[1].Message)
@@ -52,6 +53,7 @@ func TestHTTPMiddleware(t *testing.T) {
 		assert.Equal(t, "GET", logged[3].Data["method"])
 		assert.NotEmpty(t, logged[3].Data["req"])
 		assert.NotEmpty(t, logged[3].Data["path"])
+		assert.Equal(t, "Go-http-client/1.1", logged[3].Data["useragent"])
 		req2 := logged[3].Data["req"]
 
 		assert.Equal(t, "finished request", logged[4].Message)
@@ -89,6 +91,7 @@ func TestHTTPMiddlewareWithLoggerSet(t *testing.T) {
 		assert.Equal(t, "GET", logged[0].Data["method"])
 		assert.NotEmpty(t, logged[0].Data["req"])
 		assert.NotEmpty(t, logged[0].Data["path"])
+		assert.Equal(t, "Go-http-client/1.1", logged[0].Data["useragent"])
 		req1 := logged[0].Data["req"]
 
 		assert.Equal(t, "handler log line", logged[1].Message)
@@ -105,6 +108,7 @@ func TestHTTPMiddlewareWithLoggerSet(t *testing.T) {
 		assert.Equal(t, "GET", logged[3].Data["method"])
 		assert.NotEmpty(t, logged[3].Data["req"])
 		assert.NotEmpty(t, logged[3].Data["path"])
+		assert.Equal(t, "Go-http-client/1.1", logged[3].Data["useragent"])
 		req2 := logged[3].Data["req"]
 
 		assert.Equal(t, "finished request", logged[4].Message)
