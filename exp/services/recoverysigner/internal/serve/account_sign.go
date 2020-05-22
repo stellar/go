@@ -20,8 +20,9 @@ type accountSignHandler struct {
 }
 
 type accountSignRequest struct {
-	Address     *keypair.FromAddress `path:"address"`
-	Transaction string               `json:"transaction" form:"transaction"`
+	Address        *keypair.FromAddress `path:"address"`
+	SigningAddress *keypair.FromAddress `path:"signing-address"`
+	Transaction    string               `json:"transaction" form:"transaction"`
 }
 
 type accountSignResponse struct {
@@ -50,8 +51,17 @@ func (h accountSignHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	l := h.Logger.Ctx(ctx).
 		WithField("account", req.Address.Address())
+	if req.SigningAddress != nil {
+		l = l.WithField("signingaddress", req.SigningAddress.Address())
+	}
 
 	l.Info("Request to sign transaction.")
+
+	if req.SigningAddress != nil && req.SigningAddress.Address() != h.SigningKey.Address() {
+		l.Info("Signing key not found.")
+		notFound.Render(w)
+		return
+	}
 
 	// Find the account that the request is for.
 	acc, err := h.AccountStore.Get(req.Address.Address())
