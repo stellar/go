@@ -10,9 +10,9 @@ import (
 	"github.com/pkg/errors"
 )
 
-// Posix-specific methods for the captiveStellarCore type.
+// Posix-specific methods for the stellarCoreRunner type.
 
-func (c *captiveStellarCore) getPipeName() string {
+func (c *stellarCoreRunner) getPipeName() string {
 	// The exec.Cmd.ExtraFiles field carries *io.File values that are assigned
 	// to child process fds counting from 3, and we'll be passing exactly one
 	// fd: the write end of the anonymous pipe below.
@@ -20,8 +20,7 @@ func (c *captiveStellarCore) getPipeName() string {
 }
 
 // Starts the subprocess and sets the c.metaPipe field
-func (c *captiveStellarCore) start() error {
-
+func (c *stellarCoreRunner) start() error {
 	// First make an anonymous pipe.
 	// Note io.File objects close-on-finalization.
 	readFile, writeFile, e := os.Pipe()
@@ -55,7 +54,7 @@ func (c *captiveStellarCore) start() error {
 	return nil
 }
 
-func (c *captiveStellarCore) processIsAlive() bool {
+func (c *stellarCoreRunner) processIsAlive() bool {
 	if c.cmd == nil {
 		return false
 	}

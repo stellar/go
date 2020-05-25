@@ -5,17 +5,18 @@ package ledgerbackend
 import (
 	"bufio"
 	"fmt"
-	"github.com/Microsoft/go-winio"
 	"os"
+
+	"github.com/Microsoft/go-winio"
 )
 
-// Windows-specific methods for the captiveStellarCore type.
+// Windows-specific methods for the stellarCoreRunner type.
 
-func (c *captiveStellarCore) getPipeName() string {
+func (c *stellarCoreRunner) getPipeName() string {
 	return fmt.Sprintf(`\\.\pipe\%s`, c.nonce)
 }
 
-func (c *captiveStellarCore) start() error {
+func (c *stellarCoreRunner) start() error {
 	// First set up the server pipe.
 	listener, e := winio.ListenPipe(c.getPipeName(), nil)
 	if e != nil {
