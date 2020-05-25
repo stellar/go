@@ -228,7 +228,7 @@ func (arch *Archive) VerifyBucketEntries(h Hash) error {
 		var entry xdr.BucketEntry
 		err = rdr.ReadOne(&entry)
 		if err == nil {
-			err2 := WriteFramedXdr(hsh, &entry)
+			err2 := xdr.MarshalFramed(hsh, &entry)
 			if err2 != nil {
 				return err2
 			}

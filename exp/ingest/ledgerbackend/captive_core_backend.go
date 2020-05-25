@@ -88,37 +88,6 @@ func (c *captiveStellarCore) IsInOnlineTrackingMode() bool {
 	return c.lastLedger == nil
 }
 
-// XDR and RPC define a (minimal) framing format which our metadata arrives in: a 4-byte
-// big-endian length header that has the high bit set, followed by that length worth of
-// XDR data. Decoding this involves just a little more work than xdr.Unmarshal.
-func unmarshalFramed(r io.Reader, v interface{}) (int, error) {
-	var frameLen uint32
-	n, e := xdr.Unmarshal(r, &frameLen)
-	if e != nil {
-		err := errors.Wrap(e, "unmarshalling XDR frame header")
-		return n, err
-	}
-	if n != 4 {
-		err := errors.New("bad length of XDR frame header")
-		return n, err
-	}
-	if (frameLen & 0x80000000) != 0x80000000 {
-		err := errors.New("malformed XDR frame header")
-		return n, err
-	}
-	frameLen &= 0x7fffffff
-	m, e := xdr.Unmarshal(r, v)
-	if e != nil {
-		err := errors.Wrap(e, "unmarshalling framed XDR")
-		return n + m, err
-	}
-	if int64(m) != int64(frameLen) {
-		err := errors.New("bad length of XDR frame body")
-		return n + m, err
-	}
-	return m + n, nil
-}
-
 // Returns the sequence number of an LCM, returning an error if the LCM is of
 // an unknown version.
 func peekLedgerSequence(xlcm *xdr.LedgerCloseMeta) (uint32, error) {
@@ -238,7 +207,8 @@ func (c *captiveStellarCore) GetLedger(sequence uint32) (bool, LedgerCloseMeta, 
 	}
 
 	// ... and open
-	if c.stellarCoreRunner.getMetaPipe() == nil {
+	metaPipe := c.stellarCoreRunner.getMetaPipe()
+	if metaPipe == nil {
 		return false, LedgerCloseMeta{}, errors.New("missing metadata pipe")
 	}
 
@@ -246,7 +216,7 @@ func (c *captiveStellarCore) GetLedger(sequence uint32) (bool, LedgerCloseMeta, 
 	var errOut error
 	for {
 		var xlcm xdr.LedgerCloseMeta
-		_, e0 := unmarshalFramed(c.stellarCoreRunner.getMetaPipe(), &xlcm)
+		_, e0 := xdr.UnmarshalFramed(metaPipe, &xlcm)
 		if e0 != nil {
 			if e0 == io.EOF {
 				errOut = errors.Wrap(e0, "got EOF from subprocess")
@@ -264,7 +234,7 @@ func (c *captiveStellarCore) GetLedger(sequence uint32) (bool, LedgerCloseMeta, 
 		c.nextLedgerMutex.Lock()
 		if seq != c.nextLedger {
 			// We got something unexpected; close and reset
-			errOut = errors.Errorf("unexpected ledger %d", seq)
+			errOut = errors.Errorf("unexpected ledger (expected=%d actual=%d)", c.nextLedger, seq)
 			c.nextLedgerMutex.Unlock()
 			break
 		}
