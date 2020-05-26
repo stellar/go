@@ -35,7 +35,7 @@ func TestXdrStreamHash(t *testing.T) {
 	// - uint32 representing the number of bytes of a structure,
 	// - xdr-encoded `BucketEntry` above.
 	b := &bytes.Buffer{}
-	err := WriteFramedXdr(b, bucketEntry)
+	err := xdr.MarshalFramed(b, bucketEntry)
 	require.NoError(t, err)
 
 	expectedHash := sha256.Sum256(b.Bytes())
@@ -82,8 +82,8 @@ func TestXdrStreamDiscard(t *testing.T) {
 
 	fullStream := createXdrStream(firstEntry, secondEntry)
 	b := &bytes.Buffer{}
-	require.NoError(t, WriteFramedXdr(b, firstEntry))
-	require.NoError(t, WriteFramedXdr(b, secondEntry))
+	require.NoError(t, xdr.MarshalFramed(b, firstEntry))
+	require.NoError(t, xdr.MarshalFramed(b, secondEntry))
 	expectedHash := sha256.Sum256(b.Bytes())
 	fullStream.SetExpectedHash(expectedHash)
 
@@ -121,7 +121,7 @@ func TestXdrStreamDiscard(t *testing.T) {
 func createXdrStream(entries ...xdr.BucketEntry) *XdrStream {
 	b := &bytes.Buffer{}
 	for _, e := range entries {
-		err := WriteFramedXdr(b, e)
+		err := xdr.MarshalFramed(b, e)
 		if err != nil {
 			panic(err)
 		}
