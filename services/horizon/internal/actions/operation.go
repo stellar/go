@@ -122,18 +122,11 @@ func (handler GetOperationsHandler) GetResourcePage(w HeaderWriter, r *http.Requ
 	case qp.TransactionHash != "":
 		query.ForTransaction(qp.TransactionHash)
 	}
-	if query.Err != nil {
-		return nil, query.Err
-	}
-
 	// When querying operations for transaction return both successful
 	// and failed operations. We assume that because the user is querying
 	// this specific transactions, they knows its status.
 	if qp.TransactionHash != "" || qp.IncludeFailedTransactions() {
 		query.IncludeFailed()
-		if query.Err != nil {
-			return nil, query.Err
-		}
 	}
 
 	if qp.IncludeTransactions() {
