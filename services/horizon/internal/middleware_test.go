@@ -10,6 +10,7 @@ import (
 	horizonContext "github.com/stellar/go/services/horizon/internal/context"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/expingest"
+	"github.com/stellar/go/services/horizon/internal/ledger"
 	hProblem "github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/support/db"
@@ -281,6 +282,60 @@ func TestStateMiddleware(t *testing.T) {
 			} else {
 				tt.Assert.Equal(w.Header().Get(actions.LastLedgerHeaderName), "")
 			}
+		})
+	}
+}
+
+func TestCheckHistoryStaleMiddleware(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	request, err := http.NewRequest("GET", "http://localhost", nil)
+	tt.Assert.NoError(err)
+
+	endpoint := func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}
+
+	for _, testCase := range []struct {
+		name           string
+		coreLatest     int32
+		historyLatest  int32
+		expectedStatus int
+		staleThreshold int32
+	}{
+		{
+			name:           "responds with a service unavailable if history is stale",
+			coreLatest:     4,
+			historyLatest:  2,
+			expectedStatus: http.StatusServiceUnavailable,
+			staleThreshold: 1,
+		},
+		{
+			name:           "succeeds",
+			coreLatest:     6,
+			historyLatest:  6,
+			expectedStatus: http.StatusOK,
+			staleThreshold: 1,
+		},
+		{
+			name:           "succeeds with threshold 0",
+			coreLatest:     6,
+			historyLatest:  5,
+			expectedStatus: http.StatusOK,
+			staleThreshold: 0,
+		},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			state := ledger.State{
+				CoreLatest:    testCase.coreLatest,
+				HistoryLatest: testCase.historyLatest,
+			}
+			ledger.SetState(state)
+			historyMiddleware := NewHistoryMiddleware(testCase.staleThreshold, tt.HorizonSession())
+			handler := historyMiddleware(http.HandlerFunc(endpoint))
+			w := httptest.NewRecorder()
+			handler.ServeHTTP(w, request)
+			tt.Assert.Equal(testCase.expectedStatus, w.Code)
 		})
 	}
 }

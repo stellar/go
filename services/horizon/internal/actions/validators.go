@@ -1,6 +1,8 @@
 package actions
 
 import (
+	"encoding/hex"
+	"strconv"
 	"strings"
 
 	"github.com/asaskevich/govalidator"
@@ -20,13 +22,17 @@ func init() {
 	govalidator.TagMap["amount"] = govalidator.Validator(isAmount)
 	govalidator.TagMap["assetType"] = govalidator.Validator(isAssetType)
 	govalidator.TagMap["asset"] = govalidator.Validator(isAsset)
+	govalidator.TagMap["ledgerID"] = govalidator.Validator(isLedgerID)
+	govalidator.TagMap["transactionHash"] = govalidator.Validator(isTransactionHash)
 }
 
 var customTagsErrorMessages = map[string]string{
-	"accountID": "Account ID must start with `G` and contain 56 alphanum characters",
-	"amount":    "Amount must be positive",
-	"asset":     "Asset must be the string \"native\" or a string of the form \"Code:IssuerAccountID\" for issued assets.",
-	"assetType": "Asset type must be native, credit_alphanum4 or credit_alphanum12",
+	"accountID":       "Account ID must start with `G` and contain 56 alphanum characters",
+	"amount":          "Amount must be positive",
+	"asset":           "Asset must be the string \"native\" or a string of the form \"Code:IssuerAccountID\" for issued assets.",
+	"assetType":       "Asset type must be native, credit_alphanum4 or credit_alphanum12",
+	"ledgerID":        "Ledger ID must be higher than 0",
+	"transactionHash": "Transaction hash must be a hex-encoded, lowercase SHA-256 hash",
 }
 
 // isAsset validates if string contains a valid SEP11 asset
@@ -103,8 +109,29 @@ func isAccountID(str string) bool {
 	return true
 }
 
+func isTransactionHash(str string) bool {
+	decoded, err := hex.DecodeString(str)
+	if err != nil {
+		return false
+	}
+
+	return len(decoded) == 32 && strings.ToLower(str) == str
+}
+
 func isAmount(str string) bool {
 	parsed, err := amount.Parse(str)
+	switch {
+	case err != nil:
+		return false
+	case parsed <= 0:
+		return false
+	}
+
+	return true
+}
+
+func isLedgerID(str string) bool {
+	parsed, err := strconv.ParseInt(str, 10, 32)
 	switch {
 	case err != nil:
 		return false
