@@ -607,7 +607,7 @@ func (s *ReadBucketEntryTestSuite) TestReadEntryRetrySucceedsWithDiscard() {
 	secondEntry := metaEntry(2)
 
 	b := &bytes.Buffer{}
-	s.Require().NoError(historyarchive.WriteFramedXdr(b, firstEntry))
+	s.Require().NoError(xdr.MarshalFramed(b, firstEntry))
 	writeInvalidFrame(b)
 
 	s.mockArchive.
@@ -643,7 +643,7 @@ func (s *ReadBucketEntryTestSuite) TestReadEntryRetryFailsWithDiscardError() {
 	firstEntry := metaEntry(1)
 
 	b := &bytes.Buffer{}
-	s.Require().NoError(historyarchive.WriteFramedXdr(b, firstEntry))
+	s.Require().NoError(xdr.MarshalFramed(b, firstEntry))
 	writeInvalidFrame(b)
 
 	s.mockArchive.
@@ -679,7 +679,7 @@ func (s *ReadBucketEntryTestSuite) TestReadEntryRetrySucceedsAfterDiscardError()
 	secondEntry := metaEntry(2)
 
 	b := &bytes.Buffer{}
-	s.Require().NoError(historyarchive.WriteFramedXdr(b, firstEntry))
+	s.Require().NoError(xdr.MarshalFramed(b, firstEntry))
 	writeInvalidFrame(b)
 
 	s.mockArchive.
@@ -765,7 +765,7 @@ func createInvalidXdrStream(closeError error) *historyarchive.XdrStream {
 
 func writeInvalidFrame(b *bytes.Buffer) {
 	bufferSize := b.Len()
-	err := historyarchive.WriteFramedXdr(b, metaEntry(1))
+	err := xdr.MarshalFramed(b, metaEntry(1))
 	if err != nil {
 		panic(err)
 	}
@@ -776,7 +776,7 @@ func writeInvalidFrame(b *bytes.Buffer) {
 func createXdrStream(entries ...xdr.BucketEntry) *historyarchive.XdrStream {
 	b := &bytes.Buffer{}
 	for _, e := range entries {
-		err := historyarchive.WriteFramedXdr(b, e)
+		err := xdr.MarshalFramed(b, e)
 		if err != nil {
 			panic(err)
 		}
