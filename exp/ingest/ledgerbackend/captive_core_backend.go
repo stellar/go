@@ -1,6 +1,8 @@
 package ledgerbackend
 
 import (
+	"encoding/hex"
+	"fmt"
 	"io"
 	"sync"
 
@@ -115,6 +117,8 @@ func (c *captiveStellarCore) copyLedgerCloseMeta(xlcm *xdr.LedgerCloseMeta, lcm 
 			return errors.Wrap(e, "error hashing tx in LedgerCloseMeta")
 		}
 		envelopes[hash] = tx
+		a := hex.EncodeToString(hash[:])
+		fmt.Println(a)
 	}
 	for _, trm := range v0.TxProcessing {
 		txe, ok := envelopes[trm.Result.TransactionHash]
