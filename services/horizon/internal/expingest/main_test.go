@@ -359,6 +359,30 @@ func (m *mockDBQ) CreateAssets(assets []xdr.Asset, batchSize int) (map[string]hi
 	return args.Get(0).(map[string]history.Asset), args.Error(1)
 }
 
+type mockLedgerBackend struct {
+	mock.Mock
+}
+
+func (m *mockLedgerBackend) GetLatestLedgerSequence() (sequence uint32, err error) {
+	args := m.Called()
+	return args.Get(0).(uint32), args.Error(1)
+}
+
+func (m *mockLedgerBackend) GetLedger(sequence uint32) (bool, ledgerbackend.LedgerCloseMeta, error) {
+	args := m.Called(sequence)
+	return args.Get(0).(bool), args.Get(1).(ledgerbackend.LedgerCloseMeta), args.Error(2)
+}
+
+func (m *mockLedgerBackend) PrepareRange(from uint32, to uint32) error {
+	args := m.Called(from, to)
+	return args.Error(0)
+}
+
+func (m *mockLedgerBackend) Close() error {
+	args := m.Called()
+	return args.Error(0)
+}
+
 type mockProcessorsRunner struct {
 	mock.Mock
 }
