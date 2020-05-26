@@ -253,6 +253,11 @@ func TestTransactionHashValidator(t *testing.T) {
 			"",
 			true,
 		},
+		{
+			"0x prefixed hash",
+			"0x2374e99349b9ef7dba9a5db3339b78fda8f34777b1af33ba468ad5c0df946d4d",
+			false,
+		},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			tt := assert.New(t)
