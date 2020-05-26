@@ -1,7 +1,6 @@
 package ledgerbackend
 
 import (
-	"bufio"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -9,7 +8,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"time"
 
@@ -61,21 +59,20 @@ func (r *stellarCoreRunner) getConfFileName() string {
 }
 
 func (*stellarCoreRunner) getLogLineWriter() io.Writer {
-	r, w := io.Pipe()
-	br := bufio.NewReader(r)
-	// Strip timestamps from log lines from captive stellar-core. We emit our own.
-	dateRx := regexp.MustCompile("^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3} ")
-	go func() {
-		for {
-			line, e := br.ReadString('\n')
-			if e != nil {
-				break
-			}
-			line = dateRx.ReplaceAllString(line, "")
-			// Leaving for debug purposes:
-			// fmt.Print(line)
-		}
-	}()
+	_, w := io.Pipe()
+	// br := bufio.NewReader(r)
+	// // Strip timestamps from log lines from captive stellar-core. We emit our own.
+	// dateRx := regexp.MustCompile(`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3} `)
+	// go func() {
+	// 	for {
+	// 		line, e := br.ReadString('\n')
+	// 		if e != nil {
+	// 			break
+	// 		}
+	// 		line = dateRx.ReplaceAllString(line, "")
+	// 		fmt.Print(line)
+	// 	}
+	// }()
 	return w
 }
 
