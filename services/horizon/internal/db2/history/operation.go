@@ -260,15 +260,53 @@ func (q *OperationsQ) Fetch() ([]Operation, []Transaction, error) {
 			return nil, nil, err
 		}
 		for _, o := range operations {
-			if transaction, ok := transactionsByID[o.TransactionID]; !ok {
+			transaction, ok := transactionsByID[o.TransactionID]
+			if !ok {
 				return nil, nil, errors.Errorf("transaction with id %v could not be found", o.TransactionID)
-			} else {
-				transactions = append(transactions, transaction)
 			}
+			err = validateTransactionForOperation(transaction, o)
+			if err != nil {
+				return nil, nil, err
+			}
+
+			transactions = append(transactions, transaction)
 		}
 	}
 
 	return operations, transactions, nil
+}
+
+func validateTransactionForOperation(transaction Transaction, operation Operation) error {
+	if transaction.ID != operation.TransactionID {
+		return errors.Errorf(
+			"transaction id %v does not match transaction id in operation %v",
+			transaction.ID,
+			operation.TransactionID,
+		)
+	}
+	if transaction.TransactionHash != operation.TransactionHash {
+		return errors.Errorf(
+			"transaction hash %v does not match transaction hash in operation %v",
+			transaction.TransactionHash,
+			operation.TransactionHash,
+		)
+	}
+	if transaction.TxResult != operation.TxResult {
+		return errors.Errorf(
+			"transaction result %v does not match transaction result in operation %v",
+			transaction.TxResult,
+			operation.TxResult,
+		)
+	}
+	if transaction.Successful != operation.TransactionSuccessful {
+		return errors.Errorf(
+			"transaction successful flag %v does not match transaction successful flag in operation %v",
+			transaction.Successful,
+			operation.TransactionSuccessful,
+		)
+	}
+
+	return nil
 }
 
 // QOperations defines history_operation related queries.

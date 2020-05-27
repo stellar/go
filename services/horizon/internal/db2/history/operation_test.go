@@ -3,6 +3,7 @@ package history
 import (
 	"testing"
 
+	sq "github.com/Masterminds/squirrel"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/test"
 )
@@ -292,4 +293,69 @@ func TestOperationIncludeTransactions(t *testing.T) {
 	tt.Assert.Equal(op, expectedOperations[0])
 	tt.Assert.Equal(*transaction, expectedTransactions[0])
 	assertOperationMatchesTransaction(tt, op, *transaction)
+}
+
+func TestValidateTransactionForOperation(t *testing.T) {
+	tt := test.Start(t).Scenario("failed_transactions")
+	selectTransactionCopy := selectTransaction
+	defer func() {
+		selectTransaction = selectTransactionCopy
+		tt.Finish()
+	}()
+
+	selectTransaction = sq.Select(
+		"ht.transaction_hash, " +
+			"ht.tx_result, " +
+			"COALESCE(ht.successful, true) as successful").
+		From("history_transactions ht")
+
+	accountID := "GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2"
+
+	q := &Q{tt.HorizonSession()}
+	query := q.Operations().
+		IncludeTransactions().
+		ForAccount(accountID)
+
+	_, _, err := query.Fetch()
+	tt.Assert.Error(err)
+	tt.Assert.EqualError(err, "transaction with id 17179877376 could not be found")
+
+	selectTransaction = sq.Select(
+		"ht.id, " +
+			"ht.transaction_hash, " +
+			"COALESCE(ht.successful, true) as successful").
+		From("history_transactions ht")
+	query = q.Operations().
+		IncludeTransactions().
+		ForAccount(accountID)
+
+	_, _, err = query.Fetch()
+	tt.Assert.Error(err)
+	tt.Assert.EqualError(err, "transaction result  does not match transaction result in operation AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAA=")
+
+	selectTransaction = sq.Select(
+		"ht.id, " +
+			"ht.tx_result, " +
+			"COALESCE(ht.successful, true) as successful").
+		From("history_transactions ht")
+	query = q.Operations().
+		IncludeTransactions().
+		ForAccount(accountID)
+
+	_, _, err = query.Fetch()
+	tt.Assert.Error(err)
+	tt.Assert.EqualError(err, "transaction hash  does not match transaction hash in operation 1c454630267aa8767ec8c8e30450cea6ba660145e9c924abb75d7a6669b6c28a")
+
+	selectTransaction = sq.Select(
+		"ht.id, " +
+			"ht.tx_result, " +
+			"ht.transaction_hash").
+		From("history_transactions ht")
+	query = q.Operations().
+		IncludeTransactions().
+		ForAccount(accountID)
+
+	_, _, err = query.Fetch()
+	tt.Assert.Error(err)
+	tt.Assert.EqualError(err, "transaction successful flag false does not match transaction successful flag in operation true")
 }

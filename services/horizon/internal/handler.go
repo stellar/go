@@ -558,6 +558,12 @@ func (handler pageActionHandler) renderStream(w http.ResponseWriter, r *http.Req
 				// but otherwise, we'll have to edit r.URL, which is also a
 				// hack.
 				r.Header.Set("Last-Event-ID", events[len(events)-1].ID)
+			} else if len(r.Header.Get("Last-Event-ID")) == 0 {
+				// If there are no records and Last-Event-ID has not been set,
+				// use the cursor from pq as the Last-Event-ID, otherwise, we'll
+				// keep using `now` which will always resolve to the next
+				// ledger.
+				r.Header.Set("Last-Event-ID", pq.Cursor)
 			}
 
 			return events, nil

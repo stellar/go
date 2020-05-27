@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	horizonContext "github.com/stellar/go/services/horizon/internal/context"
+	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/ledger"
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/services/horizon/internal/toid"
@@ -187,6 +188,69 @@ func TestGetCursor(t *testing.T) {
 	cursor, err = GetCursor(r, "cursor")
 	if tt.Assert.NoError(err) {
 		tt.Assert.Equal("from_header", cursor)
+	}
+}
+
+func TestValidateCursorWithinHistory(t *testing.T) {
+	tt := assert.New(t)
+	testCases := []struct {
+		cursor string
+		order  string
+		valid  bool
+	}{
+		{
+			cursor: "10",
+			order:  "desc",
+			valid:  true,
+		},
+		{
+			cursor: "10-1234",
+			order:  "desc",
+			valid:  true,
+		},
+		{
+			cursor: "0",
+			order:  "desc",
+			valid:  false,
+		},
+		{
+			cursor: "0-1234",
+			order:  "desc",
+			valid:  false,
+		},
+		{
+			cursor: "10",
+			order:  "asc",
+			valid:  true,
+		},
+		{
+			cursor: "10-1234",
+			order:  "asc",
+			valid:  true,
+		},
+		{
+			cursor: "0",
+			order:  "asc",
+			valid:  true,
+		},
+		{
+			cursor: "0-1234",
+			order:  "asc",
+			valid:  true,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(fmt.Sprintf("cursor: %s", tc.cursor), func(t *testing.T) {
+			pq, err := db2.NewPageQuery(tc.cursor, false, tc.order, 10)
+			tt.NoError(err)
+			err = ValidateCursorWithinHistory(pq)
+
+			if tc.valid {
+				tt.NoError(err)
+			} else {
+				tt.EqualError(err, "problem: before_history")
+			}
+		})
 	}
 }
 
