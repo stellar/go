@@ -8,6 +8,7 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 * Drop support for MuxedAccounts strkeys (spec'ed in [SEP23](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0023.md)).
   SEP23 is still a draft and we don't want to encourage storing strkeys which may not be definite.
 * Replace `SequenceProvider` implementation with one which queries the Horizon DB for sequence numbers instead of the Stellar Core DB.
+* Decreased a memory usage of initial state ingestion stage and state verifier ([#2618](https://github.com/stellar/go/pull/2618)).
 
 ## v1.3.0
 

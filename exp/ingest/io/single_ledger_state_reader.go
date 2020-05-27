@@ -160,23 +160,25 @@ func (msr *SingleLedgerStateReader) streamBuckets() {
 		close(msr.readChan)
 	}()
 
-	var buckets []string
+	var buckets []historyarchive.Hash
 	for i := 0; i < len(msr.has.CurrentBuckets); i++ {
 		b := msr.has.CurrentBuckets[i]
-		buckets = append(buckets, b.Curr, b.Snap)
+		for _, hashString := range []string{b.Curr, b.Snap} {
+			hash, err := historyarchive.DecodeHash(hashString)
+			if err != nil {
+				msr.readChan <- msr.error(errors.Wrap(err, "Error decoding bucket hash"))
+				return
+			}
+
+			if hash.IsZero() {
+				continue
+			}
+
+			buckets = append(buckets, hash)
+		}
 	}
 
-	for _, hashString := range buckets {
-		hash, err := historyarchive.DecodeHash(hashString)
-		if err != nil {
-			msr.readChan <- msr.error(errors.Wrap(err, "Error decoding bucket hash"))
-			return
-		}
-
-		if hash.IsZero() {
-			continue
-		}
-
+	for i, hash := range buckets {
 		exists, err := msr.bucketExists(hash)
 		if err != nil {
 			msr.readChan <- msr.error(
@@ -192,7 +194,8 @@ func (msr *SingleLedgerStateReader) streamBuckets() {
 			return
 		}
 
-		if shouldContinue := msr.streamBucketContents(hash); !shouldContinue {
+		oldestBucket := i == len(buckets)-1
+		if shouldContinue := msr.streamBucketContents(hash, oldestBucket); !shouldContinue {
 			break
 		}
 	}
@@ -261,7 +264,7 @@ func (msr *SingleLedgerStateReader) newXDRStream(hash historyarchive.Hash) (
 }
 
 // streamBucketContents pushes value onto the read channel, returning false when the channel needs to be closed otherwise true
-func (msr *SingleLedgerStateReader) streamBucketContents(hash historyarchive.Hash) bool {
+func (msr *SingleLedgerStateReader) streamBucketContents(hash historyarchive.Hash, oldestBucket bool) bool {
 	rdr, e := msr.newXDRStream(hash)
 	if e != nil {
 		msr.readChan <- msr.error(
@@ -428,6 +431,13 @@ LoopBucketEntry:
 				// > that the (chronologically) preceding entry with the same ledger
 				// > key was DEADENTRY.
 				if entry.Type == xdr.BucketEntryTypeLiveentry {
+					// We skip adding entries from the last bucket to tempStore because:
+					// 1. Ledger keys are unique within a single bucket.
+					// 2. This is the last bucket we process so there's no need to track
+					//    seen last entries in this bucket.
+					if oldestBucket {
+						continue
+					}
 					err := msr.tempStore.Add(h)
 					if err != nil {
 						msr.readChan <- msr.error(errors.Wrap(err, "Error updating to tempStore"))
