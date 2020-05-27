@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"encoding/json"
+	"io"
 	"net/http"
 	"strings"
 	"sync"
@@ -477,7 +478,7 @@ func (handler streamableObjectActionHandler) renderStream(
 
 			if lastResponse == nil || !lastResponse.Equals(response) {
 				lastResponse = response
-				return []sse.Event{sse.Event{Data: response}}, nil
+				return []sse.Event{{Data: response}}, nil
 			}
 			return []sse.Event{}, nil
 		}),
@@ -610,4 +611,16 @@ func buildPage(r *http.Request, records []hal.Pageable) (hal.Page, error) {
 	page.PopulateLinks()
 
 	return page, nil
+}
+
+type metricsAction interface {
+	PrometheusFormat(w io.Writer) error
+}
+
+func HandleMetrics(action metricsAction) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if err := action.PrometheusFormat(w); err != nil {
+			problem.Render(r.Context(), w, err)
+		}
+	}
 }

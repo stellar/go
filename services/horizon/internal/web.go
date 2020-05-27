@@ -142,12 +142,8 @@ func (f historyLedgerSourceFactory) Get() ledger.Source {
 
 // mustInstallActions installs the routing configuration of horizon onto the
 // provided app.  All route registration should be implemented here.
-func (w *web) mustInstallActions(
-	config Config,
-	pathFinder paths.Finder,
-	orderBookGraph *orderbook.OrderBookGraph,
-	session *db.Session,
-) {
+func (w *web) mustInstallActions(config Config, pathFinder paths.Finder, orderBookGraph *orderbook.OrderBookGraph,
+	session *db.Session, registry metrics.Registry) {
 	if w == nil {
 		log.Fatal("missing web instance for installing web actions")
 	}
@@ -329,7 +325,7 @@ func (w *web) mustInstallActions(
 	r.NotFound(NotFoundAction{}.Handle)
 
 	// internal
-	w.internalRouter.Get("/metrics", MetricsAction{}.Handle)
+	w.internalRouter.Get("/metrics", HandleMetrics(&actions.MetricsHandler{registry}))
 	w.internalRouter.Get("/debug/pprof/heap", pprof.Index)
 	w.internalRouter.Get("/debug/pprof/profile", pprof.Profile)
 }
