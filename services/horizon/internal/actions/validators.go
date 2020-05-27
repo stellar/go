@@ -5,9 +5,11 @@ import (
 	"strings"
 
 	"github.com/asaskevich/govalidator"
+	"github.com/gorilla/schema"
 
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/services/horizon/internal/assets"
+	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
 
@@ -29,6 +31,7 @@ var customTagsErrorMessages = map[string]string{
 	"amount":          "Amount must be positive",
 	"asset":           "Asset must be the string \"native\" or a string of the form \"Code:IssuerAccountID\" for issued assets.",
 	"assetType":       "Asset type must be native, credit_alphanum4 or credit_alphanum12",
+	"bool":            "Filter should be true or false",
 	"ledger_id":       "Ledger ID must be higher than 0",
 	"transactionHash": "Transaction hash must be a hex-encoded, lowercase SHA-256 hash",
 }
@@ -64,6 +67,21 @@ func isAsset(assetString string) bool {
 	}
 
 	return true
+}
+
+func getSchemaErrorFieldMessage(field string, err error) error {
+	if customMessage, ok := customTagsErrorMessages[field]; ok {
+		return errors.New(customMessage)
+	}
+
+	if ce, ok := err.(schema.ConversionError); ok {
+		customMessage, ok := customTagsErrorMessages[ce.Type.String()]
+		if ok {
+			return errors.New(customMessage)
+		}
+	}
+
+	return err
 }
 
 func getErrorFieldMessage(err error) (string, string) {

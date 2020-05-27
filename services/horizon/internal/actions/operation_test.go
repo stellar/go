@@ -316,7 +316,7 @@ func TestGetOperationsIncludeFailed(t *testing.T) {
 		httptest.NewRecorder(),
 		makeRequest(
 			t, map[string]string{
-				"include_failed": "1",
+				"include_failed": "foo",
 			}, map[string]string{}, q.Session,
 		),
 	)
