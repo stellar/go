@@ -9,14 +9,14 @@ import (
 	"github.com/rcrowley/go-metrics"
 )
 
-// MetricsAction is the action handler for the /metrics endpoint
-type MetricsAction struct {
+// MetricsHandler is the action handler for the /metrics endpoint
+type MetricsHandler struct {
 	Metrics metrics.Registry
 }
 
 // PrometheusFormat is a method for actions.PrometheusResponder
-func (action *MetricsAction) PrometheusFormat(w io.Writer) error {
-	action.Metrics.Each(func(name string, i interface{}) {
+func (handler *MetricsHandler) PrometheusFormat(w io.Writer) error {
+	handler.Metrics.Each(func(name string, i interface{}) {
 		// Replace `.` with `_` to follow Prometheus metric name convention.
 		name = strings.ReplaceAll(name, ".", "_")
 

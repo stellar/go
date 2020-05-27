@@ -618,34 +618,6 @@ type LedgersPage struct {
 	} `json:"_embedded"`
 }
 
-// SingleMetric represents a metric with a single value
-type SingleMetric struct {
-	Value int `json:"value"`
-}
-
-// LogMetric represents metrics that are logged by horizon for each log level
-type LogMetric struct {
-	Rate15m  float64 `json:"15m.rate"`
-	Rate1m   float64 `json:"1m.rate"`
-	Rate5m   float64 `json:"5m.rate"`
-	Count    int     `json:"count"`
-	MeanRate float64 `json:"mean.rate"`
-}
-
-// LogTotalMetric represents total metrics logged for ingester, requests and submitted transactions
-type LogTotalMetric struct {
-	LogMetric
-	Percent75   float64 `json:"75%"`
-	Percent95   float64 `json:"95%"`
-	Percent99   float64 `json:"99%"`
-	Percent99_9 float64 `json:"99.9%"`
-	Max         float64 `json:"max"`
-	Mean        float64 `json:"mean"`
-	Median      float64 `json:"median"`
-	Min         float64 `json:"min"`
-	StdDev      float64 `json:"stddev"`
-}
-
 type FeeDistribution struct {
 	Max  int64 `json:"max,string"`
 	Min  int64 `json:"min,string"`

@@ -619,12 +619,8 @@ type metricsAction interface {
 
 func HandleMetrics(action metricsAction) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Query().Get("prometheus_format") == "true" {
-			if err := action.PrometheusFormat(w); err != nil {
-				problem.Render(r.Context(), w, err)
-			}
-			return
+		if err := action.PrometheusFormat(w); err != nil {
+			problem.Render(r.Context(), w, err)
 		}
-		problem.Render(r.Context(), w, hProblem.NotAcceptable)
 	}
 }

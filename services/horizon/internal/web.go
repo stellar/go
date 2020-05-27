@@ -325,7 +325,7 @@ func (w *web) mustInstallActions(config Config, pathFinder paths.Finder, orderBo
 	r.NotFound(NotFoundAction{}.Handle)
 
 	// internal
-	w.internalRouter.Get("/metrics", HandleMetrics(&actions.MetricsAction{registry}))
+	w.internalRouter.Get("/metrics", HandleMetrics(&actions.MetricsHandler{registry}))
 	w.internalRouter.Get("/debug/pprof/heap", pprof.Index)
 	w.internalRouter.Get("/debug/pprof/profile", pprof.Profile)
 }
