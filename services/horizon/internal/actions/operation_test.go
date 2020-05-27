@@ -385,10 +385,6 @@ func TestGetOperationsFilterByLedgerID(t *testing.T) {
 			notFound:    true,
 		},
 		{
-			ledgerID:    "0",
-			expectedErr: "Ledger ID must be higher than 0",
-		},
-		{
 			ledgerID:    "-1",
 			expectedErr: "Ledger ID must be higher than 0",
 		},

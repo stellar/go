@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"strconv"
 
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/resourceadapter"
@@ -18,7 +17,7 @@ type OperationsQuery struct {
 	AccountID       string `schema:"account_id" valid:"accountID,optional"`
 	TransactionHash string `schema:"tx_id" valid:"transactionHash,optional"`
 	IncludeFailed   string `schema:"include_failed" valid:"in(true|false)~Filter should be true or false,optional"`
-	LedgerID        string `schema:"ledger_id" valid:"ledgerID,optional"`
+	LedgerID        uint32 `schema:"ledger_id" valid:"~"`
 	Join            string `schema:"join" valid:"in(transactions)~Accepted values: transactions,optional"`
 }
 
@@ -32,28 +31,11 @@ func (qp OperationsQuery) IncludeFailedTransactions() bool {
 	return qp.IncludeFailed == "true"
 }
 
-// Ledger returns the ledger id from the query parameter as an integer
-func (qp OperationsQuery) Ledger() (int32, error) {
-	if qp.LedgerID == "" {
-		return 0, nil
-	}
-
-	ledger, err := strconv.ParseInt(qp.LedgerID, 10, 32)
-	if err != nil {
-		return 0, problem.MakeInvalidFieldProblem(
-			"ledger_id",
-			errors.Wrapf(err, "invalid ledger_id"),
-		)
-	}
-
-	return int32(ledger), nil
-}
-
 // Validate runs extra validations on query parameters
 func (qp OperationsQuery) Validate() error {
 	filters, err := countNonEmpty(
 		qp.AccountID,
-		qp.LedgerID,
+		int32(qp.LedgerID),
 		qp.TransactionHash,
 	)
 
@@ -110,15 +92,11 @@ func (handler GetOperationsHandler) GetResourcePage(w HeaderWriter, r *http.Requ
 
 	query := historyQ.Operations()
 
-	ledgerID, err := qp.Ledger()
-	if err != nil {
-		return nil, err
-	}
 	switch {
 	case qp.AccountID != "":
 		query.ForAccount(qp.AccountID)
-	case ledgerID > 0:
-		query.ForLedger(ledgerID)
+	case qp.LedgerID > 0:
+		query.ForLedger(int32(qp.LedgerID))
 	case qp.TransactionHash != "":
 		query.ForTransaction(qp.TransactionHash)
 	}

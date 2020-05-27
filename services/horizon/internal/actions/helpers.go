@@ -739,7 +739,17 @@ func GetParams(dst interface{}, r *http.Request) error {
 
 	decoder.IgnoreUnknownKeys(true)
 	if err := decoder.Decode(dst, query); err != nil {
-		return errors.Wrap(err, "error decoding Request query")
+		for k, e := range err.(schema.MultiError) {
+			customMessage, ok := customTagsErrorMessages[k]
+			if ok {
+				e = errors.New(customMessage)
+			}
+			return problem.NewProblemWithInvalidField(
+				problem.BadRequest,
+				k,
+				e,
+			)
+		}
 	}
 
 	if _, err := govalidator.ValidateStruct(dst); err != nil {
