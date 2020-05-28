@@ -1076,6 +1076,7 @@ func TestOperationEffects(t *testing.T) {
 		})
 	}
 }
+
 func TestOperationEffectsSetOptionsSignersOrder(t *testing.T) {
 	tt := assert.New(t)
 	transaction := io.LedgerTransaction{
@@ -1380,9 +1381,41 @@ func TestOperationEffectsAllowTrustAuthorizedToMaintainLiabilities(t *testing.T)
 		},
 	}
 
+	tx := io.LedgerTransaction{
+		Result: xdr.TransactionResultPair{
+			Result: xdr.TransactionResult{
+				Result: xdr.TransactionResultResult{
+					Code:    xdr.TransactionResultCodeTxSuccess,
+					Results: &[]xdr.OperationResult{},
+				},
+			},
+		},
+		Envelope: xdr.TransactionEnvelope{
+			Type: xdr.EnvelopeTypeEnvelopeTypeTx,
+			V1: &xdr.TransactionV1Envelope{
+				Tx: xdr.Transaction{
+					SourceAccount: source,
+					Operations:    []xdr.Operation{},
+				},
+			},
+		},
+		Index:      0,
+		FeeChanges: []xdr.LedgerEntryChange{},
+		Meta: xdr.TransactionMeta{
+			V: 2,
+			V2: &xdr.TransactionMetaV2{
+				Operations: []xdr.OperationMeta{
+					{
+						Changes: xdr.LedgerEntryChanges{},
+					},
+				},
+			},
+		},
+	}
+
 	operation := transactionOperationWrapper{
 		index:          0,
-		transaction:    io.LedgerTransaction{},
+		transaction:    tx,
 		operation:      op,
 		ledgerSequence: 1,
 	}
