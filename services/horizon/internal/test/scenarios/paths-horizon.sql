@@ -204,7 +204,8 @@ SET default_with_oids = false;
 -- added manually
 CREATE TABLE key_value_store (
   key varchar(255) NOT NULL,
-  value varchar(255) NOT NULL,
+  value character varying(255) NOT NULL,
+  updated_at timestamp without time zone DEFAULT NOW(),
   PRIMARY KEY (key)
 );
 

@@ -473,7 +473,8 @@ CREATE TABLE history_transactions (
 
 CREATE TABLE key_value_store (
     key character varying(255) NOT NULL,
-    value character varying(255) NOT NULL
+    value character varying(255) NOT NULL,
+    updated_at timestamp without time zone DEFAULT NOW()
 );
 
 
