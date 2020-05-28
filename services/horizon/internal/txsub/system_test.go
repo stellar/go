@@ -89,10 +89,12 @@ func (suite *SystemTestSuite) SetupTest() {
 	envelopeBase64, _ := xdr.MarshalBase64(tx)
 	suite.successTx = Result{
 		Transaction: history.Transaction{
-			TransactionHash: "2374e99349b9ef7dba9a5db3339b78fda8f34777b1af33ba468ad5c0df946d4d",
-			LedgerSequence:  2,
-			TxEnvelope:      envelopeBase64,
-			TxResult:        "I3Tpk0m57326ml2zM5t4/ajzR3exrzO6RorVwN+UbU0AAAAAAAAAZAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAA==",
+			TransactionWithoutLedger: history.TransactionWithoutLedger{
+				TransactionHash: "2374e99349b9ef7dba9a5db3339b78fda8f34777b1af33ba468ad5c0df946d4d",
+				LedgerSequence:  2,
+				TxEnvelope:      envelopeBase64,
+				TxResult:        "I3Tpk0m57326ml2zM5t4/ajzR3exrzO6RorVwN+UbU0AAAAAAAAAZAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAA==",
+			},
 		},
 	}
 	assert.NoError(suite.T(), xdr.SafeUnmarshalBase64(suite.successTx.Transaction.TxEnvelope, &suite.successXDR))
@@ -256,13 +258,15 @@ func (suite *SystemTestSuite) TestTickFinishFeeBumpTransaction() {
 
 	feeBumpTx := Result{
 		Transaction: history.Transaction{
-			Account:              "GABQGAYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB2MX",
-			TransactionHash:      "3dfef7d7226995b504f2827cc63d45ad41e9687bb0a8abcf08ba755fedca0352",
-			LedgerSequence:       123,
-			TxEnvelope:           "AAAABQAAAAACAgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMIAAAAAgAAAAADAwMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGMAAAAAAAAAYQAAAAEAAAAAAAAAAgAAAAAAAAAEAAAAAAAAAAEAAAAAAAAACwAAAAAAAABiAAAAAAAAAAECAgICAAAAAxQUFAAAAAAAAAAAAQMDAwMAAAADHh4eAA==",
-			TxResult:             "AAAAAAAAAHsAAAAB6Yhpu6i84IwQt4QGICEn84iMJUVM03sCYAhiRSdR9SYAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAsAAAAAAAAAAAAAAAA=",
-			TxMeta:               "AAAAAQAAAAAAAAAA",
-			InnerTransactionHash: null.StringFrom("e98869bba8bce08c10b78406202127f3888c25454cd37b02600862452751f526"),
+			TransactionWithoutLedger: history.TransactionWithoutLedger{
+				Account:              "GABQGAYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB2MX",
+				TransactionHash:      "3dfef7d7226995b504f2827cc63d45ad41e9687bb0a8abcf08ba755fedca0352",
+				LedgerSequence:       123,
+				TxEnvelope:           "AAAABQAAAAACAgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMIAAAAAgAAAAADAwMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGMAAAAAAAAAYQAAAAEAAAAAAAAAAgAAAAAAAAAEAAAAAAAAAAEAAAAAAAAACwAAAAAAAABiAAAAAAAAAAECAgICAAAAAxQUFAAAAAAAAAAAAQMDAwMAAAADHh4eAA==",
+				TxResult:             "AAAAAAAAAHsAAAAB6Yhpu6i84IwQt4QGICEn84iMJUVM03sCYAhiRSdR9SYAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAsAAAAAAAAAAAAAAAA=",
+				TxMeta:               "AAAAAQAAAAAAAAAA",
+				InnerTransactionHash: null.StringFrom("e98869bba8bce08c10b78406202127f3888c25454cd37b02600862452751f526"),
+			},
 		},
 	}
 

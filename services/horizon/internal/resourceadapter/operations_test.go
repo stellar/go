@@ -2,6 +2,7 @@ package resourceadapter
 
 import (
 	"encoding/json"
+	"github.com/jackc/pgtype"
 	"testing"
 
 	"github.com/guregu/null"
@@ -56,7 +57,19 @@ func TestPopulateOperation_WithTransaction(t *testing.T) {
 
 	dest = operations.Base{}
 	operationsRow = history.Operation{TransactionSuccessful: true}
-	transactionRow = history.Transaction{Successful: true, MaxFee: 10000, FeeCharged: 100}
+	transactionRow = history.Transaction{
+		TransactionWithoutLedger: history.TransactionWithoutLedger{
+			Successful: true,
+			MaxFee:     10000,
+			FeeCharged: 100,
+			Signatures: pgtype.VarcharArray{
+				Status: pgtype.Null,
+			},
+			InnerSignatures: pgtype.VarcharArray{
+				Status: pgtype.Null,
+			},
+		},
+	}
 
 	assert.NoError(
 		t,
@@ -126,7 +139,19 @@ func TestPopulateOperation_AllowTrust(t *testing.T) {
 
 func getJSONResponse(details string) (rsp map[string]interface{}, err error) {
 	ctx, _ := test.ContextWithLogBuffer()
-	transactionRow := history.Transaction{Successful: true, MaxFee: 10000, FeeCharged: 100}
+	transactionRow := history.Transaction{
+		TransactionWithoutLedger: history.TransactionWithoutLedger{
+			Successful: true,
+			MaxFee:     10000,
+			FeeCharged: 100,
+			Signatures: pgtype.VarcharArray{
+				Status: pgtype.Null,
+			},
+			InnerSignatures: pgtype.VarcharArray{
+				Status: pgtype.Null,
+			},
+		},
+	}
 	operationsRow := history.Operation{
 		TransactionSuccessful: true,
 		Type:                  xdr.OperationTypeAllowTrust,
@@ -150,16 +175,19 @@ func TestFeeBumpOperation(t *testing.T) {
 	dest := operations.Base{}
 	operationsRow := history.Operation{TransactionSuccessful: true}
 	transactionRow := history.Transaction{
-		MaxFee:               123,
-		FeeCharged:           100,
-		TransactionHash:      "cebb875a00ff6e1383aef0fd251a76f22c1f9ab2a2dffcb077855736ade2659a",
-		SignatureString:      "a,b,c",
-		FeeAccount:           null.StringFrom("GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU"),
-		Account:              "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
-		NewMaxFee:            null.IntFrom(10000),
-		InnerSignatureString: null.StringFrom("d,e,f"),
-		InnerTransactionHash: null.StringFrom("2374e99349b9ef7dba9a5db3339b78fda8f34777b1af33ba468ad5c0df946d4d"),
+		TransactionWithoutLedger: history.TransactionWithoutLedger{
+			Successful:           true,
+			MaxFee:               123,
+			FeeCharged:           100,
+			TransactionHash:      "cebb875a00ff6e1383aef0fd251a76f22c1f9ab2a2dffcb077855736ade2659a",
+			FeeAccount:           null.StringFrom("GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU"),
+			Account:              "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+			NewMaxFee:            null.IntFrom(10000),
+			InnerTransactionHash: null.StringFrom("2374e99349b9ef7dba9a5db3339b78fda8f34777b1af33ba468ad5c0df946d4d"),
+		},
 	}
+	assert.NoError(t, transactionRow.Signatures.Set([]string{"a", "b", "c"}))
+	assert.NoError(t, transactionRow.InnerSignatures.Set([]string{"d", "e", "f"}))
 
 	assert.NoError(
 		t,

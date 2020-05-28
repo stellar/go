@@ -4,11 +4,11 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
-	"strings"
 	"time"
 
-	"github.com/guregu/null"
+	"github.com/jackc/pgtype"
 	protocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/httpx"
@@ -47,9 +47,11 @@ func PopulateTransaction(
 			dest.MemoBytes = memoBytes
 		}
 	}
-	dest.Signatures = strings.Split(row.SignatureString, ",")
-	dest.ValidBefore = timeString(dest, row.ValidBefore)
-	dest.ValidAfter = timeString(dest, row.ValidAfter)
+	if err := row.Signatures.AssignTo(&dest.Signatures); err != nil {
+		return errors.Wrap(err, "could not parse signatures")
+	}
+	dest.ValidBefore = timeString(dest, row.TimeBounds.Upper)
+	dest.ValidAfter = timeString(dest, row.TimeBounds.Lower)
 
 	if row.InnerTransactionHash.Valid {
 		dest.FeeAccount = row.FeeAccount.String
@@ -59,9 +61,11 @@ func PopulateTransaction(
 			Signatures: dest.Signatures,
 		}
 		dest.InnerTransaction = &protocol.InnerTransaction{
-			Hash:       row.InnerTransactionHash.String,
-			MaxFee:     row.MaxFee,
-			Signatures: strings.Split(row.InnerSignatureString.String, ","),
+			Hash:   row.InnerTransactionHash.String,
+			MaxFee: row.MaxFee,
+		}
+		if err := row.InnerSignatures.AssignTo(&dest.InnerTransaction.Signatures); err != nil {
+			return errors.Wrap(err, "could not parse inner signatures")
 		}
 		if transactionHash != row.TransactionHash {
 			dest.Signatures = dest.InnerTransaction.Signatures
@@ -94,10 +98,10 @@ func memoBytes(envelopeXDR string) (string, error) {
 	return base64.StdEncoding.EncodeToString([]byte(memo)), nil
 }
 
-func timeString(res *protocol.Transaction, in null.Int) string {
-	if !in.Valid {
+func timeString(res *protocol.Transaction, in pgtype.Int8) string {
+	if in.Status == pgtype.Null {
 		return ""
 	}
 
-	return time.Unix(in.Int64, 0).UTC().Format(time.RFC3339)
+	return time.Unix(in.Int, 0).UTC().Format(time.RFC3339)
 }

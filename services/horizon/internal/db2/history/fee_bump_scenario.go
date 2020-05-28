@@ -3,12 +3,12 @@ package history
 import (
 	"encoding/hex"
 	"encoding/json"
-	"strings"
 	"testing"
 	"time"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/guregu/null"
+	"github.com/jackc/pgtype"
 	"github.com/stellar/go/exp/ingest/io"
 	"github.com/stellar/go/network"
 	"github.com/stellar/go/services/horizon/internal/test"
@@ -286,55 +286,63 @@ func FeeBumpScenario(tt *test.T, q *Q, successful bool) FeeBumpFixture {
 	tt.Assert.NoError(effectBuilder.Exec())
 
 	fixture.Transaction = Transaction{
-		TotalOrderID:     TotalOrderID{528280981504},
-		TransactionHash:  fixture.OuterHash,
-		LedgerSequence:   fixture.Ledger.Sequence,
-		ApplicationOrder: 1,
-		Account:          account.Address(),
-		AccountSequence:  "97",
-		MaxFee:           int64(fixture.Envelope.Fee()),
-		FeeCharged:       int64(resultPair.Result.FeeCharged),
-		OperationCount:   1,
-		TxEnvelope:       envelopeXDR,
-		TxResult:         resultXDR,
-		TxFeeMeta:        "AAAAAA==",
-		TxMeta:           "AAAAAQAAAAAAAAAA",
-		MemoType:         "none",
-		Memo:             null.NewString("", false),
-		ValidAfter:       null.IntFrom(2),
-		ValidBefore:      null.IntFrom(4),
-		Successful:       successful,
-		SignatureString: strings.Join(
-			signatures(fixture.Envelope.FeeBumpSignatures()), ",",
-		),
-		InnerSignatureString: null.StringFrom(strings.Join(
-			signatures(fixture.Envelope.Signatures()), ",",
-		)),
-		NewMaxFee:            null.IntFrom(int64(fixture.Envelope.FeeBumpFee())),
-		InnerTransactionHash: null.StringFrom(fixture.InnerHash),
-		FeeAccount:           null.StringFrom(feeBumpAccount.Address()),
+		TransactionWithoutLedger: TransactionWithoutLedger{
+			TotalOrderID:     TotalOrderID{528280981504},
+			TransactionHash:  fixture.OuterHash,
+			LedgerSequence:   fixture.Ledger.Sequence,
+			ApplicationOrder: 1,
+			Account:          account.Address(),
+			AccountSequence:  "97",
+			MaxFee:           int64(fixture.Envelope.Fee()),
+			FeeCharged:       int64(resultPair.Result.FeeCharged),
+			OperationCount:   1,
+			TxEnvelope:       envelopeXDR,
+			TxResult:         resultXDR,
+			TxFeeMeta:        "AAAAAA==",
+			TxMeta:           "AAAAAQAAAAAAAAAA",
+			MemoType:         "none",
+			Memo:             null.NewString("", false),
+			TimeBounds: pgtype.Int8range{
+				Lower: pgtype.Int8{
+					Int:    2,
+					Status: pgtype.Present,
+				},
+				Upper: pgtype.Int8{
+					Int:    4,
+					Status: pgtype.Present,
+				},
+				LowerType: pgtype.Inclusive,
+				UpperType: pgtype.Exclusive,
+				Status:    pgtype.Present,
+			},
+			Successful:           successful,
+			NewMaxFee:            null.IntFrom(int64(fixture.Envelope.FeeBumpFee())),
+			InnerTransactionHash: null.StringFrom(fixture.InnerHash),
+			FeeAccount:           null.StringFrom(feeBumpAccount.Address()),
+		},
 	}
+	tt.Assert.NoError(fixture.Transaction.Signatures.Set(signatures(fixture.Envelope.FeeBumpSignatures())))
+	tt.Assert.NoError(fixture.Transaction.InnerSignatures.Set(signatures(fixture.Envelope.Signatures())))
 
 	fixture.NormalTransaction = Transaction{
-		TotalOrderID:     TotalOrderID{528280981504},
-		TransactionHash:  "edba3051b2f2d9b713e8a08709d631eccb72c59864ff3c564c68792271bb24a7",
-		LedgerSequence:   fixture.Ledger.Sequence,
-		ApplicationOrder: 1,
-		Account:          "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
-		AccountSequence:  "78621794419880145",
-		MaxFee:           200,
-		FeeCharged:       300,
-		OperationCount:   1,
-		TxEnvelope:       "AAAAACiSTRmpH6bHC6Ekna5e82oiGY5vKDEEUgkq9CB//t+rAAAAyAEXUhsAADDRAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAABAAAACXRlc3QgbWVtbwAAAAAAAAEAAAAAAAAACwEXUhsAAFfhAAAAAAAAAAA=",
-		TxResult:         "AAAAAAAAASwAAAAAAAAAAwAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAFAAAAAAAAAAA=",
-		TxFeeMeta:        "AAAAAA==",
-		TxMeta:           "AAAAAQAAAAAAAAAA",
-		SignatureString:  "",
-		MemoType:         "text",
-		Memo:             null.NewString("test memo", true),
-		ValidAfter:       null.NewInt(0, true),
-		ValidBefore:      null.NewInt(0, false),
-		Successful:       successful,
+		TransactionWithoutLedger: TransactionWithoutLedger{
+			TotalOrderID:     TotalOrderID{528280981504},
+			TransactionHash:  "edba3051b2f2d9b713e8a08709d631eccb72c59864ff3c564c68792271bb24a7",
+			LedgerSequence:   fixture.Ledger.Sequence,
+			ApplicationOrder: 1,
+			Account:          "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+			AccountSequence:  "78621794419880145",
+			MaxFee:           200,
+			FeeCharged:       300,
+			OperationCount:   1,
+			TxEnvelope:       "AAAAACiSTRmpH6bHC6Ekna5e82oiGY5vKDEEUgkq9CB//t+rAAAAyAEXUhsAADDRAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAABAAAACXRlc3QgbWVtbwAAAAAAAAEAAAAAAAAACwEXUhsAAFfhAAAAAAAAAAA=",
+			TxResult:         "AAAAAAAAASwAAAAAAAAAAwAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAFAAAAAAAAAAA=",
+			TxFeeMeta:        "AAAAAA==",
+			TxMeta:           "AAAAAQAAAAAAAAAA",
+			MemoType:         "text",
+			Memo:             null.NewString("test memo", true),
+			Successful:       successful,
+		},
 	}
 
 	results, err := q.TransactionsByIDs(fixture.Transaction.ID, fixture.NormalTransaction.ID)
