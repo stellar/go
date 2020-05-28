@@ -38,12 +38,20 @@ func (b *HttpArchiveBackend) GetFile(pth string) (io.ReadCloser, error) {
 		return nil, err
 	}
 	req = req.WithContext(b.ctx)
-	resp, err := b.client.Do(req)
-	if err != nil {
-		if resp != nil && resp.Body != nil {
-			resp.Body.Close()
+	var resp *http.Response
+	for {
+		resp, err := b.client.Do(req)
+		if err != nil {
+			if resp != nil && resp.Body != nil {
+				resp.Body.Close()
+			}
+			return nil, err
 		}
-		return nil, err
+		if resp.StatusCode != 503 {
+			break
+		}
+		// FIXME: exponential backoff
+		// sleep(exponential_backoff)
 	}
 	err = checkResp(resp)
 	if err != nil {
