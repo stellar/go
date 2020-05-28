@@ -101,7 +101,8 @@ type Session struct {
 	// Ctx is the context in which the repo is operating under.
 	Ctx context.Context
 
-	tx *sqlx.Tx
+	tx        *sqlx.Tx
+	txOptions *sql.TxOptions
 }
 
 type SessionInterface interface {

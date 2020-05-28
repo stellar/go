@@ -32,6 +32,7 @@ func (s *Session) Begin() error {
 	s.logBegin()
 
 	s.tx = tx
+	s.txOptions = nil
 	return nil
 }
 
@@ -53,11 +54,16 @@ func (s *Session) BeginTx(opts *sql.TxOptions) error {
 	s.logBegin()
 
 	s.tx = tx
+	s.txOptions = opts
 	return nil
 }
 
 func (s *Session) GetTx() *sqlx.Tx {
 	return s.tx
+}
+
+func (s *Session) GetTxOptions() *sql.TxOptions {
+	return s.txOptions
 }
 
 // Clone clones the receiver, returning a new instance backed by the same
@@ -86,6 +92,7 @@ func (s *Session) Commit() error {
 	err := s.tx.Commit()
 	s.logCommit()
 	s.tx = nil
+	s.txOptions = nil
 	return err
 }
 
@@ -283,6 +290,7 @@ func (s *Session) Rollback() error {
 	err := s.tx.Rollback()
 	s.logRollback()
 	s.tx = nil
+	s.txOptions = nil
 	return err
 }
 

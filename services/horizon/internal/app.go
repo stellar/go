@@ -479,7 +479,7 @@ func (a *App) init() {
 	a.web.mustInstallMiddlewares(a, a.config.ConnectionTimeout)
 
 	// web.actions
-	a.web.mustInstallActions(a.config, a.paths, orderBookGraph, a.historyQ.Session)
+	a.web.mustInstallActions(a.config, a.paths, orderBookGraph, a.historyQ.Session, a.metrics)
 
 	// metrics and log.metrics
 	a.metrics = metrics.NewRegistry()
