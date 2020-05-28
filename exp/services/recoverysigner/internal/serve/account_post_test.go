@@ -22,9 +22,12 @@ import (
 func TestAccountPost_newWithRoleOwnerContentTypeJSON(t *testing.T) {
 	s := &account.DBStore{DB: dbtest.Open(t).Open()}
 	h := accountPostHandler{
-		Logger:         supportlog.DefaultLogger,
-		AccountStore:   s,
-		SigningAddress: keypair.MustParseAddress("GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"),
+		Logger:       supportlog.DefaultLogger,
+		AccountStore: s,
+		SigningAddresses: []*keypair.FromAddress{
+			keypair.MustParseAddress("GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"),
+			keypair.MustParseAddress("GAPE22DOMALCH42VOR4S3HN6KIZZ643G7D3GNTYF4YOWWXP6UVRAF5JS"),
+		},
 	}
 
 	ctx := context.Background()
@@ -66,6 +69,10 @@ func TestAccountPost_newWithRoleOwnerContentTypeJSON(t *testing.T) {
 		{
 			"key": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE",
 			"added_at": "0001-01-01T00:00:00Z"
+		},
+		{
+			"key": "GAPE22DOMALCH42VOR4S3HN6KIZZ643G7D3GNTYF4YOWWXP6UVRAF5JS",
+			"added_at": "0001-01-01T00:00:00Z"
 		}
 	]
 }`
@@ -92,9 +99,12 @@ func TestAccountPost_newWithRoleOwnerContentTypeJSON(t *testing.T) {
 func TestAccountPost_newWithRoleOwnerContentTypeForm(t *testing.T) {
 	s := &account.DBStore{DB: dbtest.Open(t).Open()}
 	h := accountPostHandler{
-		Logger:         supportlog.DefaultLogger,
-		AccountStore:   s,
-		SigningAddress: keypair.MustParseAddress("GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"),
+		Logger:       supportlog.DefaultLogger,
+		AccountStore: s,
+		SigningAddresses: []*keypair.FromAddress{
+			keypair.MustParseAddress("GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"),
+			keypair.MustParseAddress("GAPE22DOMALCH42VOR4S3HN6KIZZ643G7D3GNTYF4YOWWXP6UVRAF5JS"),
+		},
 	}
 
 	ctx := context.Background()
@@ -135,6 +145,10 @@ func TestAccountPost_newWithRoleOwnerContentTypeForm(t *testing.T) {
 		{
 			"key": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE",
 			"added_at": "0001-01-01T00:00:00Z"
+		},
+		{
+			"key": "GAPE22DOMALCH42VOR4S3HN6KIZZ643G7D3GNTYF4YOWWXP6UVRAF5JS",
+			"added_at": "0001-01-01T00:00:00Z"
 		}
 	]
 }`
@@ -161,9 +175,12 @@ func TestAccountPost_newWithRoleOwnerContentTypeForm(t *testing.T) {
 func TestAccountPost_newWithRolesSenderReceiverContentTypeJSON(t *testing.T) {
 	s := &account.DBStore{DB: dbtest.Open(t).Open()}
 	h := accountPostHandler{
-		Logger:         supportlog.DefaultLogger,
-		AccountStore:   s,
-		SigningAddress: keypair.MustParseAddress("GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"),
+		Logger:       supportlog.DefaultLogger,
+		AccountStore: s,
+		SigningAddresses: []*keypair.FromAddress{
+			keypair.MustParseAddress("GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"),
+			keypair.MustParseAddress("GAPE22DOMALCH42VOR4S3HN6KIZZ643G7D3GNTYF4YOWWXP6UVRAF5JS"),
+		},
 	}
 
 	ctx := context.Background()
@@ -214,6 +231,10 @@ func TestAccountPost_newWithRolesSenderReceiverContentTypeJSON(t *testing.T) {
 		{
 			"key": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE",
 			"added_at": "0001-01-01T00:00:00Z"
+		},
+		{
+			"key": "GAPE22DOMALCH42VOR4S3HN6KIZZ643G7D3GNTYF4YOWWXP6UVRAF5JS",
+			"added_at": "0001-01-01T00:00:00Z"
 		}
 	]
 }`
@@ -248,9 +269,12 @@ func TestAccountPost_newWithRolesSenderReceiverContentTypeJSON(t *testing.T) {
 func TestAccountPost_newWithRolesSenderReceiverContentTypeForm(t *testing.T) {
 	s := &account.DBStore{DB: dbtest.Open(t).Open()}
 	h := accountPostHandler{
-		Logger:         supportlog.DefaultLogger,
-		AccountStore:   s,
-		SigningAddress: keypair.MustParseAddress("GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"),
+		Logger:       supportlog.DefaultLogger,
+		AccountStore: s,
+		SigningAddresses: []*keypair.FromAddress{
+			keypair.MustParseAddress("GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"),
+			keypair.MustParseAddress("GAPE22DOMALCH42VOR4S3HN6KIZZ643G7D3GNTYF4YOWWXP6UVRAF5JS"),
+		},
 	}
 
 	ctx := context.Background()
@@ -299,6 +323,10 @@ func TestAccountPost_newWithRolesSenderReceiverContentTypeForm(t *testing.T) {
 		{
 			"key": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE",
 			"added_at": "0001-01-01T00:00:00Z"
+		},
+		{
+			"key": "GAPE22DOMALCH42VOR4S3HN6KIZZ643G7D3GNTYF4YOWWXP6UVRAF5JS",
+			"added_at": "0001-01-01T00:00:00Z"
 		}
 	]
 }`
@@ -336,9 +364,12 @@ func TestAccountPost_accountAddressInvalid(t *testing.T) {
 		Address: "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N",
 	})
 	h := accountPostHandler{
-		Logger:         supportlog.DefaultLogger,
-		AccountStore:   s,
-		SigningAddress: keypair.MustParseAddress("GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"),
+		Logger:       supportlog.DefaultLogger,
+		AccountStore: s,
+		SigningAddresses: []*keypair.FromAddress{
+			keypair.MustParseAddress("GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"),
+			keypair.MustParseAddress("GAPE22DOMALCH42VOR4S3HN6KIZZ643G7D3GNTYF4YOWWXP6UVRAF5JS"),
+		},
 	}
 
 	ctx := context.Background()
@@ -374,9 +405,12 @@ func TestAccountPost_accountAlreadyExists(t *testing.T) {
 		Address: "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N",
 	})
 	h := accountPostHandler{
-		Logger:         supportlog.DefaultLogger,
-		AccountStore:   s,
-		SigningAddress: keypair.MustParseAddress("GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"),
+		Logger:       supportlog.DefaultLogger,
+		AccountStore: s,
+		SigningAddresses: []*keypair.FromAddress{
+			keypair.MustParseAddress("GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"),
+			keypair.MustParseAddress("GAPE22DOMALCH42VOR4S3HN6KIZZ643G7D3GNTYF4YOWWXP6UVRAF5JS"),
+		},
 	}
 
 	ctx := context.Background()
@@ -422,9 +456,12 @@ func TestAccountPost_accountAlreadyExists(t *testing.T) {
 func TestAccountPost_identitiesNotProvided(t *testing.T) {
 	s := &account.DBStore{DB: dbtest.Open(t).Open()}
 	h := accountPostHandler{
-		Logger:         supportlog.DefaultLogger,
-		AccountStore:   s,
-		SigningAddress: keypair.MustParseAddress("GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"),
+		Logger:       supportlog.DefaultLogger,
+		AccountStore: s,
+		SigningAddresses: []*keypair.FromAddress{
+			keypair.MustParseAddress("GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"),
+			keypair.MustParseAddress("GAPE22DOMALCH42VOR4S3HN6KIZZ643G7D3GNTYF4YOWWXP6UVRAF5JS"),
+		},
 	}
 
 	ctx := context.Background()
@@ -457,9 +494,12 @@ func TestAccountPost_identitiesNotProvided(t *testing.T) {
 func TestAccountPost_roleNotProvided(t *testing.T) {
 	s := &account.DBStore{DB: dbtest.Open(t).Open()}
 	h := accountPostHandler{
-		Logger:         supportlog.DefaultLogger,
-		AccountStore:   s,
-		SigningAddress: keypair.MustParseAddress("GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"),
+		Logger:       supportlog.DefaultLogger,
+		AccountStore: s,
+		SigningAddresses: []*keypair.FromAddress{
+			keypair.MustParseAddress("GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"),
+			keypair.MustParseAddress("GAPE22DOMALCH42VOR4S3HN6KIZZ643G7D3GNTYF4YOWWXP6UVRAF5JS"),
+		},
 	}
 
 	ctx := context.Background()
@@ -502,9 +542,12 @@ func TestAccountPost_roleNotProvided(t *testing.T) {
 func TestAccountPost_authMethodsNotProvided(t *testing.T) {
 	s := &account.DBStore{DB: dbtest.Open(t).Open()}
 	h := accountPostHandler{
-		Logger:         supportlog.DefaultLogger,
-		AccountStore:   s,
-		SigningAddress: keypair.MustParseAddress("GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"),
+		Logger:       supportlog.DefaultLogger,
+		AccountStore: s,
+		SigningAddresses: []*keypair.FromAddress{
+			keypair.MustParseAddress("GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"),
+			keypair.MustParseAddress("GAPE22DOMALCH42VOR4S3HN6KIZZ643G7D3GNTYF4YOWWXP6UVRAF5JS"),
+		},
 	}
 
 	ctx := context.Background()
@@ -546,9 +589,12 @@ func TestAccountPost_authMethodTypeUnrecognized(t *testing.T) {
 		Address: "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N",
 	})
 	h := accountPostHandler{
-		Logger:         supportlog.DefaultLogger,
-		AccountStore:   s,
-		SigningAddress: keypair.MustParseAddress("GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"),
+		Logger:       supportlog.DefaultLogger,
+		AccountStore: s,
+		SigningAddresses: []*keypair.FromAddress{
+			keypair.MustParseAddress("GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"),
+			keypair.MustParseAddress("GAPE22DOMALCH42VOR4S3HN6KIZZ643G7D3GNTYF4YOWWXP6UVRAF5JS"),
+		},
 	}
 
 	ctx := context.Background()
@@ -597,9 +643,12 @@ func TestAccountPost_authMethodTypeUnrecognized(t *testing.T) {
 func TestAccountPost_notAuthenticatedForAccount(t *testing.T) {
 	s := &account.DBStore{DB: dbtest.Open(t).Open()}
 	h := accountPostHandler{
-		Logger:         supportlog.DefaultLogger,
-		AccountStore:   s,
-		SigningAddress: keypair.MustParseAddress("GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"),
+		Logger:       supportlog.DefaultLogger,
+		AccountStore: s,
+		SigningAddresses: []*keypair.FromAddress{
+			keypair.MustParseAddress("GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"),
+			keypair.MustParseAddress("GAPE22DOMALCH42VOR4S3HN6KIZZ643G7D3GNTYF4YOWWXP6UVRAF5JS"),
+		},
 	}
 
 	ctx := context.Background()

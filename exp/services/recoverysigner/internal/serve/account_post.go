@@ -13,9 +13,9 @@ import (
 )
 
 type accountPostHandler struct {
-	Logger         *supportlog.Entry
-	SigningAddress *keypair.FromAddress
-	AccountStore   account.Store
+	Logger           *supportlog.Entry
+	SigningAddresses []*keypair.FromAddress
+	AccountStore     account.Store
 }
 
 type accountPostRequest struct {
@@ -139,12 +139,16 @@ func (h accountPostHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	l.Info("Account registered.")
 
+	signers := []accountResponseSigner{}
+	for _, signingAddress := range h.SigningAddresses {
+		signers = append(signers, accountResponseSigner{
+			Key: signingAddress.Address(),
+		})
+	}
 	resp := accountResponse{
 		Address: acc.Address,
-		Signer:  h.SigningAddress.Address(),
-		Signers: []accountResponseSigner{
-			{Key: h.SigningAddress.Address()},
-		},
+		Signer:  h.SigningAddresses[0].Address(),
+		Signers: signers,
 	}
 	for _, i := range acc.Identities {
 		respIdentity := accountResponseIdentity{
