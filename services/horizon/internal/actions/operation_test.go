@@ -316,7 +316,7 @@ func TestGetOperationsIncludeFailed(t *testing.T) {
 		httptest.NewRecorder(),
 		makeRequest(
 			t, map[string]string{
-				"include_failed": "1",
+				"include_failed": "foo",
 			}, map[string]string{}, q.Session,
 		),
 	)
@@ -383,10 +383,6 @@ func TestGetOperationsFilterByLedgerID(t *testing.T) {
 			ledgerID:    "10000",
 			expectedErr: "sql: no rows in result set",
 			notFound:    true,
-		},
-		{
-			ledgerID:    "0",
-			expectedErr: "Ledger ID must be higher than 0",
 		},
 		{
 			ledgerID:    "-1",

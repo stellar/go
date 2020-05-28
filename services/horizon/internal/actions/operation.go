@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"strconv"
 
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/resourceadapter"
@@ -15,11 +14,11 @@ import (
 
 // OperationsQuery query struct for offers end-point
 type OperationsQuery struct {
-	AccountID       string `schema:"account_id" valid:"accountID,optional"`
-	TransactionHash string `schema:"tx_id" valid:"transactionHash,optional"`
-	IncludeFailed   string `schema:"include_failed" valid:"in(true|false)~Filter should be true or false,optional"`
-	LedgerID        string `schema:"ledger_id" valid:"ledgerID,optional"`
-	Join            string `schema:"join" valid:"in(transactions)~Accepted values: transactions,optional"`
+	AccountID                 string `schema:"account_id" valid:"accountID,optional"`
+	TransactionHash           string `schema:"tx_id" valid:"transactionHash,optional"`
+	IncludeFailedTransactions bool   `schema:"include_failed" valid:"-"`
+	LedgerID                  uint32 `schema:"ledger_id" valid:"-"`
+	Join                      string `schema:"join" valid:"in(transactions)~Accepted values: transactions,optional"`
 }
 
 // IncludeTransactions returns extra fields to include in the response
@@ -27,33 +26,11 @@ func (qp OperationsQuery) IncludeTransactions() bool {
 	return qp.Join == "transactions"
 }
 
-// IncludeFailedTransactions returns whether to include failed transactions or not
-func (qp OperationsQuery) IncludeFailedTransactions() bool {
-	return qp.IncludeFailed == "true"
-}
-
-// Ledger returns the ledger id from the query parameter as an integer
-func (qp OperationsQuery) Ledger() (int32, error) {
-	if qp.LedgerID == "" {
-		return 0, nil
-	}
-
-	ledger, err := strconv.ParseInt(qp.LedgerID, 10, 32)
-	if err != nil {
-		return 0, problem.MakeInvalidFieldProblem(
-			"ledger_id",
-			errors.Wrapf(err, "invalid ledger_id"),
-		)
-	}
-
-	return int32(ledger), nil
-}
-
 // Validate runs extra validations on query parameters
 func (qp OperationsQuery) Validate() error {
 	filters, err := countNonEmpty(
 		qp.AccountID,
-		qp.LedgerID,
+		int32(qp.LedgerID),
 		qp.TransactionHash,
 	)
 
@@ -97,7 +74,7 @@ func (handler GetOperationsHandler) GetResourcePage(w HeaderWriter, r *http.Requ
 		return nil, err
 	}
 
-	if qp.IncludeFailedTransactions() && !handler.IngestingFailedTransactions {
+	if qp.IncludeFailedTransactions && !handler.IngestingFailedTransactions {
 		err = errors.New("`include_failed` parameter is unavailable when Horizon is not ingesting failed " +
 			"transactions. Set `INGEST_FAILED_TRANSACTIONS=true` to start ingesting them.")
 		return nil, problem.MakeInvalidFieldProblem("include_failed", err)
@@ -110,22 +87,18 @@ func (handler GetOperationsHandler) GetResourcePage(w HeaderWriter, r *http.Requ
 
 	query := historyQ.Operations()
 
-	ledgerID, err := qp.Ledger()
-	if err != nil {
-		return nil, err
-	}
 	switch {
 	case qp.AccountID != "":
 		query.ForAccount(qp.AccountID)
-	case ledgerID > 0:
-		query.ForLedger(ledgerID)
+	case qp.LedgerID > 0:
+		query.ForLedger(int32(qp.LedgerID))
 	case qp.TransactionHash != "":
 		query.ForTransaction(qp.TransactionHash)
 	}
 	// When querying operations for transaction return both successful
 	// and failed operations. We assume that because the user is querying
 	// this specific transactions, they knows its status.
-	if qp.TransactionHash != "" || qp.IncludeFailedTransactions() {
+	if qp.TransactionHash != "" || qp.IncludeFailedTransactions {
 		query.IncludeFailed()
 	}
 
