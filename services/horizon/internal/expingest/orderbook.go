@@ -93,7 +93,8 @@ func (o *OrderBookStream) update(q history.IngestionQ) ([]history.Offer, []xdr.I
 		}
 
 		defer o.OrderBookGraph.Discard()
-		offers, err := loadOffersIntoGraph(q, o.OrderBookGraph)
+		var offers []history.Offer
+		offers, err = loadOffersIntoGraph(q, o.OrderBookGraph)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "error from loadOffersIntoGraph")
 		}
@@ -112,13 +113,15 @@ func (o *OrderBookStream) update(q history.IngestionQ) ([]history.Offer, []xdr.I
 
 	defer o.OrderBookGraph.Discard()
 
-	offers, err := q.GetUpdatedOffers(o.lastLedger)
+	var offers []history.Offer
+	var removed []xdr.Int64
+	offers, err = q.GetUpdatedOffers(o.lastLedger)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "error from GetUpdatedOffers")
 	}
 	addOffersToGraph(offers, o.OrderBookGraph)
 
-	removed, err := q.GetRemovedOffers(o.lastLedger)
+	removed, err = q.GetRemovedOffers(o.lastLedger)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "error from GetRemovedOffers")
 	}
