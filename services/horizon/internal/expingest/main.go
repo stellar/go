@@ -109,9 +109,11 @@ type System struct {
 
 	config Config
 
-	graph    orderbook.OBGraph
-	historyQ history.IngestionQ
-	runner   ProcessorRunnerInterface
+	graph                 orderbook.OBGraph
+	verifyOrderBookStream bool
+	orderBookStream       *OrderBookStream
+	historyQ              history.IngestionQ
+	runner                ProcessorRunnerInterface
 
 	ledgerBackend  ledgerbackend.LedgerBackend
 	historyAdapter adapters.HistoryArchiveAdapterInterface
@@ -159,13 +161,16 @@ func NewSystem(config Config) (*System, error) {
 	historyAdapter := adapters.MakeHistoryArchiveAdapter(archive)
 
 	system := &System{
-		ctx:                      ctx,
-		cancel:                   cancel,
-		historyAdapter:           historyAdapter,
-		ledgerBackend:            ledgerBackend,
-		config:                   config,
-		historyQ:                 historyQ,
-		graph:                    config.OrderBookGraph,
+		ctx:             ctx,
+		cancel:          cancel,
+		historyAdapter:  historyAdapter,
+		ledgerBackend:   ledgerBackend,
+		config:          config,
+		historyQ:        historyQ,
+		graph:           config.OrderBookGraph,
+		orderBookStream: &OrderBookStream{OrderBookGraph: orderbook.NewOrderBookGraph()},
+		// only verify order book stream when ingesting into db
+		verifyOrderBookStream:    !config.IngestInMemoryOnly,
 		disableStateVerification: config.DisableStateVerification,
 		maxStreamRetries:         config.MaxStreamRetries,
 		stellarCoreClient: &stellarcore.Client{
@@ -322,22 +327,10 @@ func (s *System) graphApply(sequence uint32) error {
 	return nil
 }
 
-func (s *System) loadOffersIntoMemory(sequence uint32) error {
-	defer s.graph.Discard()
-
-	s.graph.Clear()
-
-	log.Info("Loading offers from a database into memory store...")
-	start := time.Now()
-
-	offers, err := s.historyQ.GetAllOffers()
-	if err != nil {
-		return errors.Wrap(err, "GetAllOffers error")
-	}
-
+func addOffersToGraph(offers []history.Offer, graph orderbook.OBGraph) {
 	for _, offer := range offers {
 		sellerID := xdr.MustAddress(offer.SellerID)
-		s.graph.AddOffer(xdr.OfferEntry{
+		graph.AddOffer(xdr.OfferEntry{
 			SellerId: sellerID,
 			OfferId:  offer.OfferID,
 			Selling:  offer.SellingAsset,
@@ -349,6 +342,32 @@ func (s *System) loadOffersIntoMemory(sequence uint32) error {
 			},
 			Flags: xdr.Uint32(offer.Flags),
 		})
+	}
+}
+
+func loadOffersIntoGraph(q history.IngestionQ, graph orderbook.OBGraph) ([]history.Offer, error) {
+	offers, err := q.GetAllOffers()
+	if err != nil {
+		return nil, errors.Wrap(err, "GetAllOffers error")
+	}
+
+	addOffersToGraph(offers, graph)
+	return offers, nil
+}
+
+func (s *System) loadOffersIntoMemory(sequence uint32) error {
+	defer s.graph.Discard()
+	s.graph.Clear()
+
+	log.Info("Loading offers from a database into memory store...")
+	start := time.Now()
+
+	if _, err := loadOffersIntoGraph(s.historyQ, s.graph); err != nil {
+		return errors.Wrap(err, "GetAllOffers error")
+	}
+
+	if s.verifyOrderBookStream {
+		s.orderBookStream.updateAndVerify(sequence, s.historyQ, s.graph)
 	}
 
 	if err := s.graphApply(sequence); err != nil {

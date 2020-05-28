@@ -888,6 +888,10 @@ func (s *System) completeIngestion(ledger uint32) error {
 		return err
 	}
 
+	if s.verifyOrderBookStream {
+		s.orderBookStream.updateAndVerify(ledger, s.historyQ, s.graph)
+	}
+
 	if err := s.historyQ.Commit(); err != nil {
 		return errors.Wrap(err, commitErrMsg)
 	}
