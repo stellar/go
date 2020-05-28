@@ -3,6 +3,7 @@ package history
 import (
 	"database/sql"
 	"strconv"
+	"time"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/stellar/go/support/errors"
@@ -22,7 +23,7 @@ const (
 // has not been previously set.
 // This is used in status reporting (ex. in root resource of Horizon).
 func (q *Q) GetLastLedgerExpIngestNonBlocking() (uint32, error) {
-	lastIngestedLedger, err := q.getValueFromStore(lastLedgerKey, false)
+	lastIngestedLedger, _, err := q.getValueFromStore(lastLedgerKey, false)
 	if err != nil {
 		return 0, err
 	}
@@ -46,7 +47,7 @@ func (q *Q) GetLastLedgerExpIngestNonBlocking() (uint32, error) {
 // it unless you know what you are doing.
 // The value can be set using UpdateLastLedgerExpIngest.
 func (q *Q) GetLastLedgerExpIngest() (uint32, error) {
-	lastIngestedLedger, err := q.getValueFromStore(lastLedgerKey, true)
+	lastIngestedLedger, _, err := q.getValueFromStore(lastLedgerKey, true)
 	if err != nil {
 		return 0, err
 	}
@@ -77,7 +78,7 @@ func (q *Q) UpdateLastLedgerExpIngest(ledgerSequence uint32) error {
 // GetExpIngestVersion returns the exp ingest version. Returns zero
 // if there is no value.
 func (q *Q) GetExpIngestVersion() (int, error) {
-	expVersion, err := q.getValueFromStore(ingestVersion, false)
+	expVersion, _, err := q.getValueFromStore(ingestVersion, false)
 	if err != nil {
 		return 0, err
 	}
@@ -104,21 +105,21 @@ func (q *Q) UpdateExpIngestVersion(ledgerSequence int) error {
 
 // GetExpStateInvalid returns true if the state was found to be invalid.
 // Returns false otherwise.
-func (q *Q) GetExpStateInvalid() (bool, error) {
-	invalid, err := q.getValueFromStore(stateInvalid, false)
+func (q *Q) GetExpStateInvalid() (bool, time.Time, error) {
+	invalid, updatedAt, err := q.getValueFromStore(stateInvalid, false)
 	if err != nil {
-		return false, err
+		return false, updatedAt, err
 	}
 
 	if invalid == "" {
-		return false, nil
+		return false, updatedAt, nil
 	} else {
 		val, err := strconv.ParseBool(invalid)
 		if err != nil {
-			return false, errors.Wrap(err, "Error converting invalid value")
+			return false, updatedAt, errors.Wrap(err, "Error converting invalid value")
 		}
 
-		return val, nil
+		return val, updatedAt, nil
 	}
 }
 
@@ -132,8 +133,8 @@ func (q *Q) UpdateExpStateInvalid(val bool) error {
 
 // getValueFromStore returns a value for a given key from KV store. If value
 // is not present in the key value store "" will be returned.
-func (q *Q) getValueFromStore(key string, forUpdate bool) (string, error) {
-	query := sq.Select("key_value_store.value").
+func (q *Q) getValueFromStore(key string, forUpdate bool) (string, time.Time, error) {
+	query := sq.Select("key_value_store.value", "key_value_store.updated_at").
 		From("key_value_store").
 		Where("key_value_store.key = ?", key)
 
@@ -141,23 +142,27 @@ func (q *Q) getValueFromStore(key string, forUpdate bool) (string, error) {
 		query = query.Suffix("FOR UPDATE")
 	}
 
-	var value string
-	if err := q.Get(&value, query); err != nil {
-		if errors.Cause(err) == sql.ErrNoRows {
-			return "", nil
-		}
-		return "", errors.Wrap(err, "could not get value")
+	var row struct {
+		Value     string    `db:"value"`
+		UpdatedAt time.Time `db:"updated_at"`
 	}
 
-	return value, nil
+	if err := q.Get(&row, query); err != nil {
+		if errors.Cause(err) == sql.ErrNoRows {
+			return "", time.Time{}, nil
+		}
+		return "", time.Time{}, errors.Wrap(err, "could not get value")
+	}
+
+	return row.Value, row.UpdatedAt, nil
 }
 
 // updateValueInStore updates a value for a given key in KV store
 func (q *Q) updateValueInStore(key, value string) error {
 	query := sq.Insert("key_value_store").
-		Columns("key", "value").
-		Values(key, value).
-		Suffix("ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value")
+		Columns("key", "value", "updated_at").
+		Values(key, value, "NOW()").
+		Suffix("ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value, updated_at=EXCLUDED.updated_at")
 
 	_, err := q.Exec(query)
 	return err

@@ -29,6 +29,7 @@
 // migrations/34_fee_bump_transactions.sql (863B)
 // migrations/35_drop_participant_id.sql (306B)
 // migrations/36_add_orderbook_index.sql (141B)
+// migrations/37_key_value_last_updated.sql (180B)
 // migrations/3_use_sequence_in_history_accounts.sql (447B)
 // migrations/4_add_protocol_version.sql (188B)
 // migrations/5_create_trades_table.sql (1.1kB)
@@ -685,6 +686,26 @@ func migrations36_add_orderbook_indexSql() (*asset, error) {
 	return a, nil
 }
 
+var _migrations37_key_value_last_updatedSql = []byte("\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff\x84\xcd\xb1\xae\xc2\x20\x14\x06\xe0\x9d\xa7\xf8\xc7\x7b\x63\xfa\x04\x9d\x50\xea\x84\xc5\x34\x10\x47\x42\xd2\x13\x25\x4a\x21\xed\xc1\x46\x9f\xde\xc1\xa5\x9b\xeb\xb7\x7c\x4d\x83\x5d\x8a\xd7\x39\x30\xc1\x15\x21\xa4\xb6\xdd\x00\x2b\xf7\xba\xc3\x9d\x5e\xfe\x19\x1e\x95\xfc\xc2\x79\x26\x01\x00\x52\x29\xd4\x32\x06\xa6\xd1\x07\x06\xc7\x44\x0b\x87\x54\xb0\x46\xbe\xe5\xfa\x15\xbc\xf3\x44\x50\xdd\x51\x3a\x6d\xd1\x9b\xcb\xdf\x7f\x2b\xc4\xb6\x52\x79\x9d\x7e\x67\x6a\x30\x67\x1c\x8c\x76\xa7\x7e\x93\xb6\x9f\x00\x00\x00\xff\xff\xc5\x05\x92\x31\xb4\x00\x00\x00")
+
+func migrations37_key_value_last_updatedSqlBytes() ([]byte, error) {
+	return bindataRead(
+		_migrations37_key_value_last_updatedSql,
+		"migrations/37_key_value_last_updated.sql",
+	)
+}
+
+func migrations37_key_value_last_updatedSql() (*asset, error) {
+	bytes, err := migrations37_key_value_last_updatedSqlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "migrations/37_key_value_last_updated.sql", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0x2a, 0x27, 0xcf, 0x2f, 0xea, 0x0, 0x6a, 0xfd, 0x2b, 0xa4, 0xcb, 0x76, 0x50, 0xbd, 0x47, 0xe8, 0xb0, 0xd9, 0x56, 0xae, 0x34, 0x9d, 0xcc, 0x52, 0x32, 0x28, 0x39, 0x28, 0x21, 0xa8, 0x36, 0x67}}
+	return a, nil
+}
+
 var _migrations3_use_sequence_in_history_accountsSql = []byte("\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff\x9c\x91\x4d\x6b\xb3\x40\x14\x85\xf7\xf3\x2b\xce\x2e\xca\xfb\x66\x91\x6d\x5c\x4d\xc6\x1b\x22\x8c\x63\x3b\x5e\xdb\x64\x25\xa2\x43\x3a\x90\x6a\xeb\xd8\xaf\x7f\x5f\x48\xd3\x0f\x08\x6d\xa1\xcb\x73\x78\xe0\x39\xdc\x3b\x9f\xe3\xdf\xad\xdf\x8f\xcd\xe4\x50\xdd\x09\x65\x49\x32\xa1\xa4\xcb\x8a\x8c\x22\xdc\xf8\x30\x0d\xe3\x4b\xdd\xb4\xed\xf0\xd0\x4f\xa1\xf6\x5d\x1d\xdc\xbd\x00\x80\x92\xa5\x65\x5c\x67\xbc\xc1\xe2\x58\x64\x46\x59\xca\xc9\x30\x56\xbb\x53\x65\x0a\xe4\x99\xb9\x92\xba\xa2\x8f\x2c\xb7\x9f\x59\x49\xb5\x21\x2c\x12\x51\x92\x26\xc5\x08\x6e\x7a\x6c\x0e\xd1\xec\x1b\xef\xec\x3f\xa2\x13\x99\xcb\x6d\xe4\xbb\x18\x6b\x5b\xe4\x67\x33\xe3\x38\x11\x52\x33\x59\xb0\x5c\x69\x42\x61\xf4\xee\x0c\xc2\x1b\xa1\x0a\x5d\xe5\x06\xbe\x43\x49\x8c\x94\xd6\xb2\xd2\x8c\xde\x3d\xff\xbc\x64\xb9\x1c\xdd\xbe\x3d\x34\x21\xc4\x89\x10\x5f\xcf\x98\x0e\x4f\xfd\x1f\xec\xa9\x2d\x2e\xde\xf5\x89\x38\xa6\xdf\xde\x90\x88\xd7\x00\x00\x00\xff\xff\x55\xe2\xdd\x2c\xbf\x01\x00\x00")
 
 func migrations3_use_sequence_in_history_accountsSqlBytes() ([]byte, error) {
@@ -965,6 +986,7 @@ var _bindata = map[string]func() (*asset, error){
 	"migrations/34_fee_bump_transactions.sql":                 migrations34_fee_bump_transactionsSql,
 	"migrations/35_drop_participant_id.sql":                   migrations35_drop_participant_idSql,
 	"migrations/36_add_orderbook_index.sql":                   migrations36_add_orderbook_indexSql,
+	"migrations/37_key_value_last_updated.sql":                migrations37_key_value_last_updatedSql,
 	"migrations/3_use_sequence_in_history_accounts.sql":       migrations3_use_sequence_in_history_accountsSql,
 	"migrations/4_add_protocol_version.sql":                   migrations4_add_protocol_versionSql,
 	"migrations/5_create_trades_table.sql":                    migrations5_create_trades_tableSql,
@@ -1046,6 +1068,7 @@ var _bintree = &bintree{nil, map[string]*bintree{
 		"34_fee_bump_transactions.sql":                 &bintree{migrations34_fee_bump_transactionsSql, map[string]*bintree{}},
 		"35_drop_participant_id.sql":                   &bintree{migrations35_drop_participant_idSql, map[string]*bintree{}},
 		"36_add_orderbook_index.sql":                   &bintree{migrations36_add_orderbook_indexSql, map[string]*bintree{}},
+		"37_key_value_last_updated.sql":                &bintree{migrations37_key_value_last_updatedSql, map[string]*bintree{}},
 		"3_use_sequence_in_history_accounts.sql":       &bintree{migrations3_use_sequence_in_history_accountsSql, map[string]*bintree{}},
 		"4_add_protocol_version.sql":                   &bintree{migrations4_add_protocol_versionSql, map[string]*bintree{}},
 		"5_create_trades_table.sql":                    &bintree{migrations5_create_trades_tableSql, map[string]*bintree{}},

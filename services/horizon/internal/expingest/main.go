@@ -364,7 +364,7 @@ func (s *System) loadOffersIntoMemory(sequence uint32) error {
 }
 
 func (s *System) maybeVerifyState(lastIngestedLedger uint32) {
-	stateInvalid, err := s.historyQ.GetExpStateInvalid()
+	stateInvalid, _, err := s.historyQ.GetExpStateInvalid()
 	if err != nil && !isCancelledError(err) {
 		log.WithField("err", err).Error("Error getting state invalid value")
 	}

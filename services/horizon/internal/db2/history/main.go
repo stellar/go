@@ -182,7 +182,7 @@ type IngestionQ interface {
 	GetExpIngestVersion() (int, error)
 	UpdateExpStateInvalid(bool) error
 	UpdateExpIngestVersion(int) error
-	GetExpStateInvalid() (bool, error)
+	GetExpStateInvalid() (bool, time.Time, error)
 	GetLatestLedger() (uint32, error)
 	TruncateExpingestStateTables() error
 	DeleteRangeAll(start, end int64) error
@@ -370,12 +370,6 @@ type FeeStats struct {
 	MaxFeeP99      null.Int `db:"max_fee_p99"`
 }
 
-// KeyValueStoreRow represents a row in key value store.
-type KeyValueStoreRow struct {
-	Key   string `db:"key"`
-	Value string `db:"value"`
-}
-
 // LatestLedger represents a response from the raw LatestLedgerBaseFeeAndSequence
 // query.
 type LatestLedger struct {
@@ -515,6 +509,8 @@ type OffersQuery struct {
 type QOffers interface {
 	GetAllOffers() ([]Offer, error)
 	GetOffersByIDs(ids []int64) ([]Offer, error)
+	GetUpdatedOffers(newerThanSequence uint32) ([]Offer, error)
+	GetRemovedOffers(removedAfterSequence uint32) ([]xdr.Int64, error)
 	CountOffers() (int, error)
 	NewOffersBatchInsertBuilder(maxBatchSize int) OffersBatchInsertBuilder
 	InsertOffer(offer xdr.OfferEntry, lastModifiedLedger xdr.Uint32) (int64, error)
