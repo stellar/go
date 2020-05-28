@@ -51,6 +51,9 @@ func (h accountListHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			accResp := accountResponse{
 				Address: acc.Address,
 				Signer:  h.SigningAddress.Address(),
+				Signers: []accountResponseSigner{
+					{Key: h.SigningAddress.Address()},
+				},
 			}
 			for _, i := range acc.Identities {
 				accRespIdentity := accountResponseIdentity{
@@ -75,6 +78,9 @@ func (h accountListHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			accResp := accountResponse{
 				Address: acc.Address,
 				Signer:  h.SigningAddress.Address(),
+				Signers: []accountResponseSigner{
+					{Key: h.SigningAddress.Address()},
+				},
 			}
 			for _, i := range acc.Identities {
 				accRespIdentity := accountResponseIdentity{
@@ -107,6 +113,9 @@ func (h accountListHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			accResp := accountResponse{
 				Address: acc.Address,
 				Signer:  h.SigningAddress.Address(),
+				Signers: []accountResponseSigner{
+					{Key: h.SigningAddress.Address()},
+				},
 			}
 			for _, i := range acc.Identities {
 				accRespIdentity := accountResponseIdentity{
@@ -139,6 +148,9 @@ func (h accountListHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			accResp := accountResponse{
 				Address: acc.Address,
 				Signer:  h.SigningAddress.Address(),
+				Signers: []accountResponseSigner{
+					{Key: h.SigningAddress.Address()},
+				},
 			}
 			for _, i := range acc.Identities {
 				accRespIdentity := accountResponseIdentity{

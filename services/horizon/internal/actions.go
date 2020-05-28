@@ -28,12 +28,6 @@ func (action LedgerShowAction) Handle(w http.ResponseWriter, r *http.Request) {
 	ap.Execute(&action)
 }
 
-func (action MetricsAction) Handle(w http.ResponseWriter, r *http.Request) {
-	ap := &action.Action
-	ap.Prepare(w, r)
-	ap.Execute(&action)
-}
-
 func (action NotFoundAction) Handle(w http.ResponseWriter, r *http.Request) {
 	ap := &action.Action
 	ap.Prepare(w, r)
@@ -47,12 +41,6 @@ func (action NotImplementedAction) Handle(w http.ResponseWriter, r *http.Request
 }
 
 func (action FeeStatsAction) Handle(w http.ResponseWriter, r *http.Request) {
-	ap := &action.Action
-	ap.Prepare(w, r)
-	ap.Execute(&action)
-}
-
-func (action OperationIndexAction) Handle(w http.ResponseWriter, r *http.Request) {
 	ap := &action.Action
 	ap.Prepare(w, r)
 	ap.Execute(&action)

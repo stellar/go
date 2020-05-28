@@ -867,3 +867,65 @@ func ValidateAssetParams(aType, code, issuer, prefix string) error {
 
 	return nil
 }
+
+// ValidateCursorWithinHistory compares the requested page of data against the
+// ledger state of the history database.  In the event that the cursor is
+// guaranteed to return no results, we return a 410 GONE http response.
+func ValidateCursorWithinHistory(pq db2.PageQuery) error {
+	// an ascending query should never return a gone response:  An ascending query
+	// prior to known history should return results at the beginning of history,
+	// and an ascending query beyond the end of history should not error out but
+	// rather return an empty page (allowing code that tracks the procession of
+	// some resource more easily).
+	if pq.Order != "desc" {
+		return nil
+	}
+
+	var cursor int64
+	var err error
+
+	// Checking for the presence of "-" to see whether we should use CursorInt64
+	// or CursorInt64Pair
+	if strings.Contains(pq.Cursor, "-") {
+		cursor, _, err = pq.CursorInt64Pair("-")
+	} else {
+		cursor, err = pq.CursorInt64()
+	}
+
+	if err != nil {
+		return problem.MakeInvalidFieldProblem("cursor", errors.New("invalid value"))
+	}
+
+	elder := toid.New(ledger.CurrentState().HistoryElder, 0, 0)
+
+	if cursor <= elder.ToInt64() {
+		return &hProblem.BeforeHistory
+	}
+
+	return nil
+}
+
+func countNonEmpty(params ...interface{}) (int, error) {
+	count := 0
+
+	for _, param := range params {
+		switch param := param.(type) {
+		default:
+			return 0, errors.Errorf("unexpected type %T", param)
+		case int32:
+			if param != int32(0) {
+				count++
+			}
+		case int64:
+			if param != int64(0) {
+				count++
+			}
+		case string:
+			if param != "" {
+				count++
+			}
+		}
+	}
+
+	return count, nil
+}

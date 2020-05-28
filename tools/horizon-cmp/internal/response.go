@@ -34,8 +34,8 @@ var removeRegexps = []*regexp.Regexp{
 	// regexp.MustCompile(`\s*"last_modified_ledger": [0-9]+,`),
 	// regexp.MustCompile(`\s*"public_key": "G.*",`),
 	// regexp.MustCompile(`,\s*"paging_token": ?""`),
-	// Removes memo_bytes field, introduced in horizon 1.2.0
-	regexp.MustCompile(`\s*"memo_bytes": ?"[^"]*",`),
+	// Removes last_modified_time field, introduced in horizon 1.3.0
+	regexp.MustCompile(`\s*"last_modified_time": ?"[^"]*",`),
 }
 
 type replace struct {
@@ -56,6 +56,16 @@ var replaceRegexps = []replace{
 		// Removes paging_token from /accounts/*
 		`"data":( ?){([^}]*)},\s*"paging_token":( ?)"([0-9A-Z]*)"`),
 		`"data":${1}{${2}},"paging_token":${3}""`,
+	},
+	{regexp.MustCompile(
+		// fee_charged is a string since horizon 1.3.0
+		`"fee_charged":( ?)([\d]+),`),
+		`"fee_charged":${1}"${2}",`,
+	},
+	{regexp.MustCompile(
+		// max_fee is a string since horizon 1.3.0
+		`"max_fee":( ?)([\d]+),`),
+		`"max_fee":${1}"${2}",`,
 	},
 }
 

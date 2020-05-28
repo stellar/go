@@ -135,14 +135,26 @@ func TestAccountList_authenticatedByPhoneNumber(t *testing.T) {
 			"identities": [
 				{ "role": "sender", "authenticated": true }
 			],
-			"signer": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"
+			"signer": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE",
+			"signers": [
+				{
+					"key": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE",
+					"added_at": "0001-01-01T00:00:00Z"
+				}
+			]
 		},
 		{
 			"address": "GDU2CH4V3QYQB2BLMX45XQLVBEKSIN2EZLP37I6MZZ7NAR5U3TLZDQEY",
 			"identities": [
 				{ "role": "receiver", "authenticated": true }
 			],
-			"signer": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"
+			"signer": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE",
+			"signers": [
+				{
+					"key": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE",
+					"added_at": "0001-01-01T00:00:00Z"
+				}
+			]
 		}
 	]
 }`
@@ -212,14 +224,26 @@ func TestAccountList_authenticatedByEmail(t *testing.T) {
 			"identities": [
 				{ "role": "sender", "authenticated": true }
 			],
-			"signer": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"
+			"signer": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE",
+			"signers": [
+				{
+					"key": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE",
+					"added_at": "0001-01-01T00:00:00Z"
+				}
+			]
 		},
 		{
 			"address": "GDU2CH4V3QYQB2BLMX45XQLVBEKSIN2EZLP37I6MZZ7NAR5U3TLZDQEY",
 			"identities": [
 				{ "role": "receiver", "authenticated": true }
 			],
-			"signer": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"
+			"signer": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE",
+			"signers": [
+				{
+					"key": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE",
+					"added_at": "0001-01-01T00:00:00Z"
+				}
+			]
 		}
 	]
 }`
