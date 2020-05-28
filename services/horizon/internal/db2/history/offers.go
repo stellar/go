@@ -2,6 +2,7 @@ package history
 
 import (
 	sq "github.com/Masterminds/squirrel"
+	"github.com/stellar/go/services/horizon/internal/toid"
 
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
@@ -76,6 +77,31 @@ func (q *Q) GetAllOffers() ([]Offer, error) {
 	var offers []Offer
 	err := q.Select(&offers, selectOffers)
 	return offers, err
+}
+
+// GetUpdatedOffers returns all offers created or updated after the given ledger sequence.
+func (q *Q) GetUpdatedOffers(newerThanSequence uint32) ([]Offer, error) {
+	var offers []Offer
+	err := q.Select(&offers, selectOffers.Where("offers.last_modified_ledger > ?", newerThanSequence))
+	return offers, err
+}
+
+// GetRemovedOffers returns all offers removed after the given ledger sequence.
+func (q *Q) GetRemovedOffers(removedAfterSequence uint32) ([]xdr.Int64, error) {
+	var removed []xdr.Int64
+	sql := `
+		SELECT DISTINCT
+			(details ->> 'offer_id')::bigint
+		FROM  history_effects
+		WHERE history_operation_id >= $1 AND type = $2
+	`
+	err := q.SelectRaw(
+		&removed,
+		sql,
+		toid.ID{LedgerSequence: int32(removedAfterSequence) + 1}.ToInt64(),
+		EffectOfferRemoved,
+	)
+	return removed, err
 }
 
 func offerToMap(offer xdr.OfferEntry, lastModifiedLedger xdr.Uint32) (map[string]interface{}, error) {

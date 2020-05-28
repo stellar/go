@@ -86,7 +86,7 @@ func (q *Q) GetOrderBookSummary(sellingAsset, buyingAsset xdr.Asset, maxPriceLev
 			SELECT
 				'ask' as type, co.price, SUM(co.amount) as amount
 			FROM  offers co
-			WHERE selling_asset = $1 AND   buying_asset = $2
+			WHERE selling_asset = $1 AND buying_asset = $2
 			GROUP BY co.price
 			ORDER BY co.price ASC
 			LIMIT $3
