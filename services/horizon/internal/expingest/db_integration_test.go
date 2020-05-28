@@ -86,7 +86,6 @@ func (s *DBTestSuite) SetupTest() {
 		MaxStreamRetries:         3,
 		DisableStateVerification: false,
 		IngestFailedTransactions: true,
-		IngestInMemoryOnly:       false,
 	})
 	s.Assert().NoError(err)
 

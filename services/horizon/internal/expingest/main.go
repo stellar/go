@@ -69,7 +69,6 @@ type Config struct {
 	MaxStreamRetries int
 
 	OrderBookGraph           *orderbook.OrderBookGraph
-	IngestInMemoryOnly       bool
 	IngestFailedTransactions bool
 }
 
@@ -161,16 +160,15 @@ func NewSystem(config Config) (*System, error) {
 	historyAdapter := adapters.MakeHistoryArchiveAdapter(archive)
 
 	system := &System{
-		ctx:             ctx,
-		cancel:          cancel,
-		historyAdapter:  historyAdapter,
-		ledgerBackend:   ledgerBackend,
-		config:          config,
-		historyQ:        historyQ,
-		graph:           config.OrderBookGraph,
-		orderBookStream: &OrderBookStream{OrderBookGraph: orderbook.NewOrderBookGraph()},
-		// only verify order book stream when ingesting into db
-		verifyOrderBookStream:    !config.IngestInMemoryOnly,
+		ctx:                      ctx,
+		cancel:                   cancel,
+		historyAdapter:           historyAdapter,
+		ledgerBackend:            ledgerBackend,
+		config:                   config,
+		historyQ:                 historyQ,
+		graph:                    config.OrderBookGraph,
+		orderBookStream:          &OrderBookStream{OrderBookGraph: orderbook.NewOrderBookGraph()},
+		verifyOrderBookStream:    true,
 		disableStateVerification: config.DisableStateVerification,
 		maxStreamRetries:         config.MaxStreamRetries,
 		stellarCoreClient: &stellarcore.Client{
