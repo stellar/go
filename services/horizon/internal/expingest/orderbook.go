@@ -3,7 +3,6 @@ package expingest
 import (
 	"database/sql"
 	"sort"
-	"time"
 
 	"github.com/stellar/go/exp/orderbook"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
@@ -19,24 +18,23 @@ import (
 // in memory graph. However, it is safe for other go routines to use the
 // in memory graph for read operations.
 type OrderBookStream struct {
-	OrderBookGraph          *orderbook.OrderBookGraph
-	HistorySession          *db.Session
-	lastLedger              uint32
-	stateValidLastUpdatedAt time.Time
+	OrderBookGraph *orderbook.OrderBookGraph
+	HistorySession *db.Session
+	lastLedger     uint32
 }
 
 type ingestionStatus struct {
 	HistoryConsistentWithState bool
 	StateInvalid               bool
-	StateInvalidLastUpdated    time.Time
 	LastIngestedLedger         uint32
+	LastOfferCompactionLedger  uint32
 }
 
 func (o *OrderBookStream) isValid(q history.IngestionQ) (ingestionStatus, error) {
 	var status ingestionStatus
 	var err error
 
-	status.StateInvalid, status.StateInvalidLastUpdated, err = q.GetExpStateInvalid()
+	status.StateInvalid, err = q.GetExpStateInvalid()
 	if err != nil {
 		return status, errors.Wrap(err, "error from GetExpStateInvalid")
 	}
@@ -49,6 +47,10 @@ func (o *OrderBookStream) isValid(q history.IngestionQ) (ingestionStatus, error)
 	status.LastIngestedLedger, err = q.GetLastLedgerExpIngestNonBlocking()
 	if err != nil {
 		return status, errors.Wrap(err, "error from GetLastLedgerExpIngestNonBlocking")
+	}
+	status.LastOfferCompactionLedger, err = q.GetOfferCompactionSequence()
+	if err != nil {
+		return status, errors.Wrap(err, "error from GetOfferCompactionSequence")
 	}
 
 	status.HistoryConsistentWithState = (status.LastIngestedLedger == lastHistoryLedger) ||
@@ -74,16 +76,16 @@ func (o *OrderBookStream) update(q history.IngestionQ) ([]history.Offer, []xdr.I
 			WithField("last_ledger", o.lastLedger).
 			Warn("ingestion is behind order book last ledger")
 		reset = true
-	} else if !reset && !o.stateValidLastUpdatedAt.Equal(status.StateInvalidLastUpdated) {
+	} else if o.lastLedger > 0 && o.lastLedger < status.LastOfferCompactionLedger {
 		log.WithField("status", status).
-			Info("ingestion valid state flag was recently updated")
+			WithField("last_ledger", o.lastLedger).
+			Warn("order book is behind the last offer compaction ledger")
 		reset = true
 	}
 
 	if reset {
 		o.OrderBookGraph.Clear()
 		o.lastLedger = 0
-		o.stateValidLastUpdatedAt = status.StateInvalidLastUpdated
 
 		// wait until offers in horizon db is valid before populating order book graph
 		if status.StateInvalid || !status.HistoryConsistentWithState {
@@ -113,18 +115,21 @@ func (o *OrderBookStream) update(q history.IngestionQ) ([]history.Offer, []xdr.I
 
 	defer o.OrderBookGraph.Discard()
 
-	var offers []history.Offer
+	var updated, rows []history.Offer
 	var removed []xdr.Int64
-	offers, err = q.GetUpdatedOffers(o.lastLedger)
+	rows, err = q.GetUpdatedOffers(o.lastLedger)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "error from GetUpdatedOffers")
 	}
-	addOffersToGraph(offers, o.OrderBookGraph)
-
-	removed, err = q.GetRemovedOffers(o.lastLedger)
-	if err != nil {
-		return nil, nil, errors.Wrap(err, "error from GetRemovedOffers")
+	for _, row := range rows {
+		if row.Deleted {
+			removed = append(removed, row.OfferID)
+		} else {
+			updated = append(updated, row)
+		}
 	}
+	addOffersToGraph(updated, o.OrderBookGraph)
+
 	for _, offerID := range removed {
 		o.OrderBookGraph.RemoveOffer(offerID)
 	}
@@ -134,7 +139,7 @@ func (o *OrderBookStream) update(q history.IngestionQ) ([]history.Offer, []xdr.I
 	}
 
 	o.lastLedger = status.LastIngestedLedger
-	return offers, removed, nil
+	return updated, removed, nil
 }
 
 func verifyUpdatedOffers(ledger uint32, fromDB []history.Offer, fromIngestion []xdr.OfferEntry) {
