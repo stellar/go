@@ -217,13 +217,74 @@ func TestUpdateOffer(t *testing.T) {
 	assertOfferEntryMatchesDBOffer(t, modifiedEurOffer, offers[0], 1235)
 }
 
+//
+//func TestGetRemovedOffers(t *testing.T) {
+//	tt := test.Start(t)
+//	defer tt.Finish()
+//	test.ResetHorizonDB(t, tt.HorizonDB)
+//	q := &Q{tt.HorizonSession()}
+//
+//	address := "GBXGQJWVLWOYHFLVTKWV5FGHA3LNYY2JQKM7OAJAUEQFU6LPCSEFVXON"
+//	accounIDs, err := q.CreateAccounts([]string{address}, 1)
+//	tt.Assert.NoError(err)
+//
+//	builder := q.NewEffectBatchInsertBuilder(2)
+//	sequence := int32(56)
+//	details, err := json.Marshal(map[string]interface{}{
+//		"offer_id": xdr.Int64(12345),
+//	})
+//	tt.Assert.NoError(err)
+//
+//	otherSequence := int32(100)
+//	otherDetails, err := json.Marshal(map[string]interface{}{
+//		"offer_id": xdr.Int64(3456),
+//	})
+//	tt.Assert.NoError(err)
+//
+//	err = builder.Add(
+//		accounIDs[address],
+//		toid.New(sequence, 1, 1).ToInt64(),
+//		1,
+//		EffectOfferRemoved,
+//		details,
+//	)
+//	tt.Assert.NoError(err)
+//
+//	err = builder.Add(
+//		accounIDs[address],
+//		toid.New(otherSequence, 1, 1).ToInt64(),
+//		1,
+//		EffectOfferRemoved,
+//		otherDetails,
+//	)
+//	tt.Assert.NoError(err)
+//
+//	err = builder.Exec()
+//	tt.Assert.NoError(err)
+//
+//	removedOffers, err := q.GetRemovedOffers(uint32(sequence) - 1)
+//	tt.Assert.NoError(err)
+//	sort.Slice(removedOffers, func(i, j int) bool {
+//		return removedOffers[i] < removedOffers[j]
+//	})
+//	assert.Equal(t, []xdr.Int64{3456, 12345}, removedOffers)
+//
+//	removedOffers, err = q.GetRemovedOffers(uint32(sequence))
+//	tt.Assert.NoError(err)
+//	assert.Equal(t, []xdr.Int64{3456}, removedOffers)
+//
+//	removedOffers, err = q.GetRemovedOffers(uint32(otherSequence))
+//	tt.Assert.NoError(err)
+//	assert.Len(t, removedOffers, 0)
+//}
+
 func TestRemoveNonExistantOffer(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
-	_, err := q.RemoveOffer(xdr.Int64(12345))
+	_, err := q.RemoveOffer(xdr.Int64(12345), 1236)
 	tt.Assert.NoError(err)
 }
 
@@ -240,7 +301,7 @@ func TestRemoveOffer(t *testing.T) {
 	tt.Assert.Len(offers, 1)
 	assertOfferEntryMatchesDBOffer(t, eurOffer, offers[0], 1234)
 
-	rowsAffected, err := q.RemoveOffer(eurOffer.OfferId)
+	rowsAffected, err := q.RemoveOffer(eurOffer.OfferId, 1236)
 	tt.Assert.Equal(int64(1), rowsAffected)
 	tt.Assert.NoError(err)
 

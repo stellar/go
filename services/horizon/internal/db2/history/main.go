@@ -460,6 +460,7 @@ type Offer struct {
 	Priced             int32     `db:"priced"`
 	Price              float64   `db:"price"`
 	Flags              uint32    `db:"flags"`
+	Deleted            bool      `db:"deleted"`
 	LastModifiedLedger uint32    `db:"last_modified_ledger"`
 }
 
@@ -509,17 +510,6 @@ type OffersQuery struct {
 	SellerID  string
 	Selling   *xdr.Asset
 	Buying    *xdr.Asset
-}
-
-// QOffers defines offer related queries.
-type QOffers interface {
-	GetAllOffers() ([]Offer, error)
-	GetOffersByIDs(ids []int64) ([]Offer, error)
-	CountOffers() (int, error)
-	NewOffersBatchInsertBuilder(maxBatchSize int) OffersBatchInsertBuilder
-	InsertOffer(offer xdr.OfferEntry, lastModifiedLedger xdr.Uint32) (int64, error)
-	UpdateOffer(offer xdr.OfferEntry, lastModifiedLedger xdr.Uint32) (int64, error)
-	RemoveOffer(offerID xdr.Int64) (int64, error)
 }
 
 // TotalOrderID represents the ID portion of rows that are identified by the
