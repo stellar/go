@@ -102,35 +102,46 @@ func TestMarkets(t *testing.T) {
 	m := chi.NewMux()
 	m.Post("/graphql", h.ServeHTTP)
 
-	// Assets are BTC/issuer1, ETH/issuer1, ETH/issuer2
-	issuer1PK := "GCF3TQXKZJNFJK7HCMNE2O2CUNKCJH2Y2ROISTBPLC7C5EIA5NNG2XZB"
-	issuer2PK := "ABF3TQXKZJNFJK7HCMNE2O2CUNKCJH2Y2ROISTBPLC7C5EIA5NNG2XZB"
+	issuerPK := "GCF3TQXKZJNFJK7HCMNE2O2CUNKCJH2Y2ROISTBPLC7C5EIA5NNG2XZB"
 
-	// TODO: Figure out minimal set of fields needed.
 	type test struct {
-		bCode     string
-		bIssuer   string
-		cCode     string
-		cIssuer   string
-		respField string
-		wantBody  string
+		field    string
+		wantBody string
 	}
 	tests := []test{
-		{bCode: "BTC", bIssuer: issuer1PK, cCode: "ETH", cIssuer: issuer2PK, respField: "tradePair", wantBody: fmt.Sprintf(`{"tradePair":"BTC:%s / ETH:%s"}`, issuer1PK, issuer2PK)},
-		// TODO: Fill out remaining tests.
+		{field: "tradePair", wantBody: fmt.Sprintf(`{"tradePair":"BTC:%s / ETH:%s"}`, issuerPK, issuerPK)},
+		{field: "baseAssetCode", wantBody: `{"baseAssetCode":"BTC"}`},
+		{field: "baseAssetIssuer", wantBody: fmt.Sprintf(`{"baseAssetIssuer":"%s"}`, issuerPK)},
+		{field: "counterAssetCode", wantBody: `{"counterAssetCode":"ETH"}`},
+		{field: "counterAssetIssuer", wantBody: fmt.Sprintf(`{"counterAssetIssuer":"%s"}`, issuerPK)},
+		{field: "baseVolume", wantBody: `{"baseVolume":150}`},
+		{field: "counterVolume", wantBody: `{"counterVolume":60}`},
+		{field: "tradeCount", wantBody: `{"tradeCount":2}`},
+		{field: "open", wantBody: `{"open":1}`},
+		{field: "low", wantBody: `{"low":0.1}`},
+		{field: "high", wantBody: `{"high":1}`},
+		{field: "close", wantBody: `{"close":0.1}`},
+		{field: "change", wantBody: `{"change":-0.9}`},
+		{field: "orderbookStats { bidCount }", wantBody: `{"orderbookStats": {"bidCount": 15}}`},
+		{field: "orderbookStats { bidVolume }", wantBody: `{"orderbookStats": {"bidVolume": 0.15}}`},
+		{field: "orderbookStats { bidMax }", wantBody: `{"orderbookStats": {"bidMax": 200}}`},
+		{field: "orderbookStats { askCount }", wantBody: `{"orderbookStats": {"askCount": 17}}`},
+		{field: "orderbookStats { askVolume }", wantBody: `{"orderbookStats": {"askVolume": 30}}`},
+		{field: "orderbookStats { askMin }", wantBody: `{"orderbookStats": {"askMin": 0.1}}`},
+		{field: "orderbookStats { askMin }", wantBody: `{"orderbookStats": {"askMin": 0.1}}`},
 	}
 
 	for _, tc := range tests {
 		queryStr := fmt.Sprintf(
-			`baseAssetCode: \"%s\", baseAssetIssuer: \"%s\", counterAssetCode: \"%s\", counterAssetIssuer: \"%s\"`,
-			tc.bCode, tc.bIssuer, tc.cCode, tc.cIssuer,
+			`baseAssetCode: \"BTC\", baseAssetIssuer: \"%s\", counterAssetCode: \"ETH\", counterAssetIssuer: \"%s\"`,
+			issuerPK, issuerPK,
 		)
 		req := fmt.Sprintf(`
 		{
 			"query": "query getMarkets() {markets(%s, numHoursAgo: 24) {%s}}",
 			"operationName": "getMarkets",
 			"variables": {}
-		}`, queryStr, tc.respField)
+		}`, queryStr, tc.field)
 
 		fmt.Println(req)
 		r := httptest.NewRequest("POST", "/graphql", strings.NewReader(req))
