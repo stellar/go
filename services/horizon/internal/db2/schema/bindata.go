@@ -28,7 +28,7 @@
 // migrations/33_remove_unused.sql (860B)
 // migrations/34_fee_bump_transactions.sql (863B)
 // migrations/35_drop_participant_id.sql (306B)
-// migrations/36_add_orderbook_index.sql (141B)
+// migrations/36_deleted_offers.sql (917B)
 // migrations/37_key_value_last_updated.sql (180B)
 // migrations/3_use_sequence_in_history_accounts.sql (447B)
 // migrations/4_add_protocol_version.sql (188B)
@@ -666,23 +666,23 @@ func migrations35_drop_participant_idSql() (*asset, error) {
 	return a, nil
 }
 
-var _migrations36_add_orderbook_indexSql = []byte("\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff\xd2\xd5\x55\xd0\xce\xcd\x4c\x2f\x4a\x2c\x49\x55\x08\x2d\xe0\xe2\x72\x0e\x72\x75\x0c\x71\x55\xf0\xf4\x73\x71\x8d\x50\x48\x4a\x2d\x2e\x89\xcf\x4f\x4b\x4b\x2d\x52\xf0\xf7\x53\x00\x33\x8a\x15\x42\x83\x3d\xfd\xdc\x15\x92\x4a\x8a\x52\x53\x15\x34\x8a\x53\x73\x72\x32\xf3\xd2\xe3\x13\x8b\x8b\x53\x4b\x74\x14\x92\x4a\x2b\x91\x78\x05\x45\x99\xc9\xa9\x9a\xd6\x5c\x5c\xc8\x96\xb8\xe4\x97\xe7\x71\x71\xb9\x04\xf9\x07\x60\x58\x62\x0d\x08\x00\x00\xff\xff\x2b\x0e\x55\x72\x8d\x00\x00\x00")
+var _migrations36_deleted_offersSql = []byte("\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff\xac\x92\xdd\x4e\x83\x30\x14\xc7\xef\xfb\x14\xe7\x72\x44\xf6\x04\x5c\x75\xeb\xd1\x2c\x41\x30\x58\x12\xef\x1a\x90\xc3\xd2\xa4\xc2\x42\x51\xb3\xb7\x37\xdb\x98\xeb\x2a\xf5\x42\x77\x09\x6d\x7f\xe7\xff\x71\x96\x4b\xb8\x7b\xd3\xdb\xa1\x1a\x09\xca\x1d\x63\x3c\x95\x58\x80\xe4\xab\x14\xa1\x6f\x5b\x1a\x2c\x70\x21\xa0\x21\x43\x23\x35\x50\xf7\xbd\xa1\xaa\x03\x81\xf7\xbc\x4c\x25\xb4\x95\xb1\x94\x30\xb6\x2e\x90\x4b\x84\x4d\x26\xf0\x05\x6a\xb2\xa3\x3a\x3e\x86\x3c\x3b\x53\xca\xe7\x4d\xf6\x00\x2b\x59\x20\xc2\xc2\x92\x31\xba\xdb\xaa\xca\x5a\x1a\x63\xa8\xdf\xf7\xce\xd7\x34\x2b\x86\xdd\xa0\x5f\x29\x4a\xae\xe1\x46\x7f\x90\x9a\x98\x01\xfa\x04\x88\x12\xc6\x44\x91\x3f\x4d\x0f\x4f\x37\x55\xbd\x57\x87\xe9\x34\xc4\xde\x1f\x47\xc1\xe5\xc0\x55\xe6\xdb\xf4\x81\xf3\x72\x16\xa7\x43\xa5\x9b\x6f\x67\xbe\xa5\x80\x8e\x5f\x78\x3f\xd3\x0a\x33\x5d\x0b\x01\xe4\x6c\xfe\x87\xf8\xdc\xed\x10\xfd\x67\x77\x15\xe8\xa5\xe6\xd8\x6d\xc5\xcf\xf5\x6f\x49\xcf\xec\xe1\x71\xf4\x3a\x4f\xcb\xc7\xec\xac\xf1\xbf\x95\xdc\xb0\x89\x9b\x15\x10\x25\xec\x2b\x00\x00\xff\xff\xc9\x05\xee\x23\x95\x03\x00\x00")
 
-func migrations36_add_orderbook_indexSqlBytes() ([]byte, error) {
+func migrations36_deleted_offersSqlBytes() ([]byte, error) {
 	return bindataRead(
-		_migrations36_add_orderbook_indexSql,
-		"migrations/36_add_orderbook_index.sql",
+		_migrations36_deleted_offersSql,
+		"migrations/36_deleted_offers.sql",
 	)
 }
 
-func migrations36_add_orderbook_indexSql() (*asset, error) {
-	bytes, err := migrations36_add_orderbook_indexSqlBytes()
+func migrations36_deleted_offersSql() (*asset, error) {
+	bytes, err := migrations36_deleted_offersSqlBytes()
 	if err != nil {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "migrations/36_add_orderbook_index.sql", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
-	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0xb5, 0xf1, 0x1b, 0x57, 0xa9, 0x94, 0xb, 0x9d, 0xa0, 0x9, 0x30, 0x7, 0x8, 0x9e, 0x51, 0xd3, 0x76, 0xed, 0x1e, 0x54, 0xa1, 0x22, 0x18, 0x3e, 0xf8, 0xe9, 0x6, 0xb8, 0xf8, 0x38, 0xea, 0xc5}}
+	info := bindataFileInfo{name: "migrations/36_deleted_offers.sql", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0x76, 0xce, 0xd4, 0x2d, 0xb2, 0xcc, 0xfd, 0x12, 0xf2, 0xd, 0xc7, 0x96, 0x66, 0x14, 0x10, 0xe1, 0xe2, 0xff, 0xac, 0xdd, 0x22, 0x76, 0x8a, 0x87, 0xf5, 0xaf, 0x85, 0x64, 0xe4, 0xdc, 0xfa, 0x19}}
 	return a, nil
 }
 
@@ -985,7 +985,7 @@ var _bindata = map[string]func() (*asset, error){
 	"migrations/33_remove_unused.sql":                         migrations33_remove_unusedSql,
 	"migrations/34_fee_bump_transactions.sql":                 migrations34_fee_bump_transactionsSql,
 	"migrations/35_drop_participant_id.sql":                   migrations35_drop_participant_idSql,
-	"migrations/36_add_orderbook_index.sql":                   migrations36_add_orderbook_indexSql,
+	"migrations/36_deleted_offers.sql":                        migrations36_deleted_offersSql,
 	"migrations/37_key_value_last_updated.sql":                migrations37_key_value_last_updatedSql,
 	"migrations/3_use_sequence_in_history_accounts.sql":       migrations3_use_sequence_in_history_accountsSql,
 	"migrations/4_add_protocol_version.sql":                   migrations4_add_protocol_versionSql,
@@ -1067,7 +1067,7 @@ var _bintree = &bintree{nil, map[string]*bintree{
 		"33_remove_unused.sql":                         &bintree{migrations33_remove_unusedSql, map[string]*bintree{}},
 		"34_fee_bump_transactions.sql":                 &bintree{migrations34_fee_bump_transactionsSql, map[string]*bintree{}},
 		"35_drop_participant_id.sql":                   &bintree{migrations35_drop_participant_idSql, map[string]*bintree{}},
-		"36_add_orderbook_index.sql":                   &bintree{migrations36_add_orderbook_indexSql, map[string]*bintree{}},
+		"36_deleted_offers.sql":                        &bintree{migrations36_deleted_offersSql, map[string]*bintree{}},
 		"37_key_value_last_updated.sql":                &bintree{migrations37_key_value_last_updatedSql, map[string]*bintree{}},
 		"3_use_sequence_in_history_accounts.sql":       &bintree{migrations3_use_sequence_in_history_accountsSql, map[string]*bintree{}},
 		"4_add_protocol_version.sql":                   &bintree{migrations4_add_protocol_versionSql, map[string]*bintree{}},
