@@ -2,6 +2,7 @@ package actions
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/stellar/go/protocols/horizon"
@@ -9,6 +10,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/resourceadapter"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/render/hal"
+	"github.com/stellar/go/support/render/problem"
 )
 
 // GetOfferByID is the action handler for the /offers/{id} endpoint
@@ -90,11 +92,24 @@ func (handler GetOffersHandler) GetResourcePage(
 		return nil, err
 	}
 
+	selling, err := qp.Selling()
+	if err != nil {
+		p := problem.BadRequest
+		p.Extras = map[string]interface{}{"reason": fmt.Sprintf("bad selling asset: %s", err.Error())}
+		return nil, p
+	}
+	buying, err := qp.Buying()
+	if err != nil {
+		p := problem.BadRequest
+		p.Extras = map[string]interface{}{"reason": fmt.Sprintf("bad buying asset: %s", err.Error())}
+		return nil, p
+	}
+
 	query := history.OffersQuery{
 		PageQuery: pq,
 		SellerID:  qp.Seller,
-		Selling:   qp.Selling(),
-		Buying:    qp.Buying(),
+		Selling:   selling,
+		Buying:    buying,
 	}
 
 	historyQ, err := HistoryQFromRequest(r)

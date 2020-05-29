@@ -697,7 +697,10 @@ func TestGetParams(t *testing.T) {
 
 	tt.Assert.NoError(err)
 	tt.Assert.Equal(account, qp.Account)
-	tt.Assert.True(usd.Equals(*qp.Selling()))
+	selling, err := qp.Selling()
+	tt.Assert.NoError(err)
+	tt.Assert.NotNil(selling)
+	tt.Assert.True(usd.Equals(*selling))
 
 	urlParams = map[string]string{
 		"account_id":         account,
@@ -710,7 +713,10 @@ func TestGetParams(t *testing.T) {
 
 	tt.Assert.NoError(err)
 	native := xdr.MustNewNativeAsset()
-	tt.Assert.True(native.Equals(*qp.Selling()))
+	selling, err = qp.Selling()
+	tt.Assert.NoError(err)
+	tt.Assert.NotNil(selling)
+	tt.Assert.True(native.Equals(*selling))
 
 	urlParams = map[string]string{"account_id": "1"}
 	r = makeAction("/transactions?limit=2&cursor=123456&order=desc", urlParams).R
