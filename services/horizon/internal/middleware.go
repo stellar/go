@@ -336,7 +336,7 @@ func (m *StateMiddleware) WrapFunc(h http.HandlerFunc) http.HandlerFunc {
 		defer session.Rollback()
 
 		if !m.NoStateVerification {
-			stateInvalid, _, invalidErr := q.GetExpStateInvalid()
+			stateInvalid, invalidErr := q.GetExpStateInvalid()
 			if invalidErr != nil {
 				invalidErr = supportErrors.Wrap(invalidErr, "Error running GetExpStateInvalid")
 				problem.Render(r.Context(), w, invalidErr)

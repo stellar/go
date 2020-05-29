@@ -3,7 +3,6 @@ package expingest
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/stellar/go/exp/ingest/adapters"
 	"github.com/stellar/go/exp/ingest/io"
@@ -285,7 +284,7 @@ func (s *ResumeTestTestSuite) TestIngestAllMasterNode() {
 		int32(101),
 	).Return(nil).Once()
 
-	s.historyQ.On("GetExpStateInvalid").Return(false, time.Time{}, nil).Once()
+	s.historyQ.On("GetExpStateInvalid").Return(false, nil).Once()
 
 	next, err := resumeState{latestSuccessfullyProcessedLedger: 100}.run(s.system)
 	s.Assert().NoError(err)
@@ -318,7 +317,7 @@ func (s *ResumeTestTestSuite) TestErrorSettingCursorIgnored() {
 		int32(101),
 	).Return(errors.New("my error")).Once()
 
-	s.historyQ.On("GetExpStateInvalid").Return(false, time.Time{}, nil).Once()
+	s.historyQ.On("GetExpStateInvalid").Return(false, nil).Once()
 
 	next, err := resumeState{latestSuccessfullyProcessedLedger: 100}.run(s.system)
 	s.Assert().NoError(err)

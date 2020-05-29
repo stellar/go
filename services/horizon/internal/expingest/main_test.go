@@ -5,7 +5,6 @@ import (
 	"context"
 	"database/sql"
 	"testing"
-	"time"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/stellar/go/exp/ingest/adapters"
@@ -185,10 +184,10 @@ func TestMaybeVerifyStateGetExpStateInvalidDBErrCancelOrContextCanceled(t *testi
 	log = logger
 	defer func() { log = oldLogger }()
 
-	historyQ.On("GetExpStateInvalid").Return(false, time.Time{}, db.ErrCancelled).Once()
+	historyQ.On("GetExpStateInvalid").Return(false, db.ErrCancelled).Once()
 	system.maybeVerifyState(0)
 
-	historyQ.On("GetExpStateInvalid").Return(false, time.Time{}, context.Canceled).Once()
+	historyQ.On("GetExpStateInvalid").Return(false, context.Canceled).Once()
 	system.maybeVerifyState(0)
 
 	logged := done()
@@ -214,7 +213,7 @@ func TestMaybeVerifyInternalDBErrCancelOrContextCanceled(t *testing.T) {
 	defer func() { log = oldLogger }()
 
 	graph.On("OffersMap").Return(map[xdr.Int64]xdr.OfferEntry{}).Twice()
-	historyQ.On("GetExpStateInvalid").Return(false, time.Time{}, nil).Twice()
+	historyQ.On("GetExpStateInvalid").Return(false, nil).Twice()
 	historyQ.On("Rollback").Return(nil).Twice()
 	historyQ.On("CloneIngestionQ").Return(historyQ).Twice()
 
@@ -313,9 +312,9 @@ func (m *mockDBQ) UpdateExpIngestVersion(version int) error {
 	return args.Error(0)
 }
 
-func (m *mockDBQ) GetExpStateInvalid() (bool, time.Time, error) {
+func (m *mockDBQ) GetExpStateInvalid() (bool, error) {
 	args := m.Called()
-	return args.Get(0).(bool), args.Get(1).(time.Time), args.Error(2)
+	return args.Get(0).(bool), args.Error(1)
 }
 
 func (m *mockDBQ) GetAllOffers() ([]history.Offer, error) {
