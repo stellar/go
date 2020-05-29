@@ -88,7 +88,7 @@ func TestInsertOrUpdateAsset(t *testing.T) {
 		dbAsset1.LastChecked.Local().Round(time.Millisecond),
 	)
 
-	// Creating Seconde tickerdb.Asset:
+	// Creating second Asset:
 	secondTime := time.Now()
 	t.Log("secondTime:", secondTime)
 	a.LastValid = secondTime
@@ -123,7 +123,7 @@ func TestInsertOrUpdateAsset(t *testing.T) {
 		dbAsset2.LastChecked.Local().Round(time.Millisecond),
 	)
 
-	// Creating Third tickerdb.Asset:
+	// Creating Third Asset:
 	thirdTime := time.Now()
 	t.Log("thirdTime:", thirdTime)
 	a.LastValid = thirdTime

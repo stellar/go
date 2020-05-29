@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// SetupTickerTestSession sets up the database for testing the `ticker` endpoint
+// SetupTickerTestSession sets up the database for testing the GraphQL endpoints
 // and associated query logic.
 func SetupTickerTestSession(t *testing.T, migrationsDir string) (session tickerdb.TickerSession) {
 	db := dbtest.Postgres(t)

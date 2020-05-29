@@ -38,7 +38,6 @@ func TestBulkInsertTrades(t *testing.T) {
 		Name:      "FOO BAR",
 	}).IgnoreCols("id").Exec()
 	require.NoError(t, err)
-
 	var issuer tickerdb.Issuer
 	err = session.GetRaw(&issuer, `
 		SELECT *
@@ -54,7 +53,6 @@ func TestBulkInsertTrades(t *testing.T) {
 		IssuerID: issuer.ID,
 	}, []string{"code", "issuer_id"})
 	require.NoError(t, err)
-
 	var asset1 tickerdb.Asset
 	err = session.GetRaw(&asset1, `
 		SELECT *
