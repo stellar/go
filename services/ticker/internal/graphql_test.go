@@ -23,73 +23,109 @@ func TestTicker(t *testing.T) {
 
 	logger := hlog.New()
 	resolver := gql.New(&session, logger)
-	h := resolver.SetupHandler()
+	h := resolver.NewRelayHandler()
 	m := chi.NewMux()
 	m.Post("/graphql", h.ServeHTTP)
 
-	type test struct {
-		queryField string
-		queryVal   string
-		respField  string
-		wantBody   string
-	}
+	reqStr := `{
+		"query": "%s",
+		"operationName": "getTicker",
+		"variables": {}
+	}`
+	query := `
+	query getTicker() {
+		ticker(pairNames: [\"BTC_ETH\"], numHoursAgo: 24)
+		{
+			tradePair,
+			baseAssetCode,
+			counterAssetCode,
+			baseVolume,
+			counterVolume,
+			tradeCount,
+			open,
+			close,
+			high,
+			low,
+			orderbookStats {
+				bidCount,
+				bidVolume,
+				bidMax,
+				askCount,
+				askVolume,
+				askMin,
+				spread,
+				spreadMidPoint,
+			}
+		}
+	}`
+	req := fmt.Sprintf(reqStr, formatMultiline(query))
+	t.Log(req)
 
-	tests := []test{
-		// All response fields, with a single queried pair.
-		{queryField: "pairNames", queryVal: `[\"BTC_ETH\"]`, respField: "tradePair", wantBody: `{"tradePair": "BTC_ETH"}`},
-		{queryField: "pairNames", queryVal: `[\"BTC_ETH\"]`, respField: "baseAssetCode", wantBody: `{"baseAssetCode": "BTC"}`},
-		{queryField: "pairNames", queryVal: `[\"BTC_ETH\"]`, respField: "counterAssetCode", wantBody: `{"counterAssetCode": "ETH"}`},
-		{queryField: "pairNames", queryVal: `[\"BTC_ETH\"]`, respField: "baseVolume", wantBody: `{"baseVolume": 174}`},
-		{queryField: "pairNames", queryVal: `[\"BTC_ETH\"]`, respField: "counterVolume", wantBody: `{"counterVolume": 86}`},
-		{queryField: "pairNames", queryVal: `[\"BTC_ETH\"]`, respField: "tradeCount", wantBody: `{"tradeCount": 3}`},
-		{queryField: "pairNames", queryVal: `[\"BTC_ETH\"]`, respField: "open", wantBody: `{"open": 1}`},
-		{queryField: "pairNames", queryVal: `[\"BTC_ETH\"]`, respField: "close", wantBody: `{"close": 0.92}`},
-		{queryField: "pairNames", queryVal: `[\"BTC_ETH\"]`, respField: "high", wantBody: `{"high": 1.0}`},
-		{queryField: "pairNames", queryVal: `[\"BTC_ETH\"]`, respField: "low", wantBody: `{"low": 0.1}`},
-		{queryField: "pairNames", queryVal: `[\"BTC_ETH\"]`, respField: "orderbookStats { bidCount }", wantBody: `{"orderbookStats": {"bidCount": 16}}`},
-		{queryField: "pairNames", queryVal: `[\"BTC_ETH\"]`, respField: "orderbookStats { bidVolume }", wantBody: `{"orderbookStats": {"bidVolume": 0.25}}`},
-		{queryField: "pairNames", queryVal: `[\"BTC_ETH\"]`, respField: "orderbookStats { bidMax }", wantBody: `{"orderbookStats": {"bidMax": 200}}`},
-		{queryField: "pairNames", queryVal: `[\"BTC_ETH\"]`, respField: "orderbookStats { askCount }", wantBody: `{"orderbookStats": {"askCount": 18}}`},
-		{queryField: "pairNames", queryVal: `[\"BTC_ETH\"]`, respField: "orderbookStats { askVolume }", wantBody: `{"orderbookStats": {"askVolume": 45}}`},
-		{queryField: "pairNames", queryVal: `[\"BTC_ETH\"]`, respField: "orderbookStats { askMin }", wantBody: `{"orderbookStats": {"askMin": 0.1}}`},
-		{queryField: "pairNames", queryVal: `[\"BTC_ETH\"]`, respField: "orderbookStats { spread }", wantBody: `{"orderbookStats": {"spread": -1999}}`},
-		{queryField: "pairNames", queryVal: `[\"BTC_ETH\"]`, respField: "orderbookStats { spreadMidPoint }", wantBody: `{"orderbookStats": {"spreadMidPoint": -799.5}}`},
-		// Check reversing base and counter.
-		{queryField: "pairNames", queryVal: `[\"ETH_BTC\"]`, respField: "tradePair", wantBody: `{"tradePair": "ETH_BTC"}`},
-		{queryField: "pairNames", queryVal: `[\"ETH_BTC\"]`, respField: "baseAssetCode", wantBody: `{"baseAssetCode": "ETH"}`},
-		{queryField: "pairNames", queryVal: `[\"ETH_BTC\"]`, respField: "counterAssetCode", wantBody: `{"counterAssetCode": "BTC"}`},
-		{queryField: "pairNames", queryVal: `[\"ETH_BTC\"]`, respField: "baseVolume", wantBody: `{"baseVolume": 86}`},
-		{queryField: "pairNames", queryVal: `[\"ETH_BTC\"]`, respField: "counterVolume", wantBody: `{"counterVolume": 174}`},
-		{queryField: "pairNames", queryVal: `[\"ETH_BTC\"]`, respField: "tradeCount", wantBody: `{"tradeCount": 3}`},
-		// Other input cases: multiple pairs, code.
-		{queryField: "pairNames", queryVal: `[\"BTC_ETH\", \"BTC_XLM\"]`, respField: "tradePair", wantBody: `{"tradePair": "BTC_ETH"},{"tradePair": "BTC_XLM"}`},
-		{queryField: "pairNames", queryVal: `[\"BTC_ETH\", \"BTC_XLM\"]`, respField: "tradeCount", wantBody: `{"tradeCount": 3},{"tradeCount": 2}`},
-		{queryField: "code", queryVal: `\"BTC\"`, respField: "tradePair", wantBody: `{"tradePair": "BTC_ETH"},{"tradePair": "BTC_XLM"}`},
-	}
+	wantBody := formatMultiline(`
+	{"data":{"ticker": [{
+		"tradePair": "BTC_ETH",
+		"baseAssetCode": "BTC",
+		"counterAssetCode": "ETH",
+		"baseVolume": 174,
+		"counterVolume": 86,
+		"tradeCount": 3,
+		"open": 1,
+		"close": 0.92,
+		"high": 1.0,
+		"low": 0.1,
+		"orderbookStats": {
+			"bidCount": 16,
+			"bidVolume": 0.25,
+			"bidMax": 200,
+			"askCount": 18,
+			"askVolume": 45,
+			"askMin": 0.1,
+			"spread": -1999,
+			"spreadMidPoint": -799.5
+		}
+	}]}}`)
+	testRequest(t, m, req, wantBody)
 
-	for _, tc := range tests {
-		req := fmt.Sprintf(`{
-			"query": "query getTicker() {ticker(%s: %s, numHoursAgo: 24) {%s}}",
-			"operationName": "getTicker",
-			"variables": {}
-		}`, tc.queryField, tc.queryVal, tc.respField)
+	query = `
+	query getTicker() {
+		ticker(pairNames: [\"ETH_BTC\"], numHoursAgo: 24)
+		{
+			tradePair,
+			baseAssetCode,
+			counterAssetCode,
+			baseVolume,
+			counterVolume,
+			tradeCount
+		}
+	}`
+	req = fmt.Sprintf(reqStr, formatMultiline(query))
+	t.Log(req)
 
-		fmt.Println(req)
-		r := httptest.NewRequest("POST", "/graphql", strings.NewReader(req))
-		w := httptest.NewRecorder()
+	wantBody = formatMultiline(`
+	{"data":{"ticker": [{
+		"tradePair": "ETH_BTC",
+		"baseAssetCode": "ETH",
+		"counterAssetCode": "BTC",
+		"baseVolume": 86,
+		"counterVolume": 174,
+		"tradeCount": 3
+	}]}}`)
+	testRequest(t, m, req, wantBody)
 
-		m.ServeHTTP(w, r)
-		resp := w.Result()
+	query = `
+	query getTicker() {
+		ticker(code: \"BTC\", numHoursAgo: 24)
+		{ tradePair }
+	}`
+	req = fmt.Sprintf(reqStr, formatMultiline(query))
+	t.Log(req)
 
-		require.Equal(t, http.StatusOK, resp.StatusCode)
-		assert.Equal(t, "application/json", resp.Header.Get("Content-Type"))
-
-		body, err := ioutil.ReadAll(resp.Body)
-		require.NoError(t, err)
-
-		wantBody := fmt.Sprintf(`{"data":{"ticker":[%s]}}`, tc.wantBody)
-		assert.JSONEq(t, wantBody, string(body))
-	}
+	wantBody = formatMultiline(`
+	{"data":{"ticker": [
+		{"tradePair": "BTC_ETH"},
+		{"tradePair": "BTC_XLM"}
+	]}}`)
+	testRequest(t, m, req, wantBody)
 }
 
 func TestMarkets(t *testing.T) {
@@ -98,65 +134,96 @@ func TestMarkets(t *testing.T) {
 
 	logger := hlog.New()
 	resolver := gql.New(&session, logger)
-	h := resolver.SetupHandler()
+	h := resolver.NewRelayHandler()
 	m := chi.NewMux()
 	m.Post("/graphql", h.ServeHTTP)
 
 	issuerPK := "GCF3TQXKZJNFJK7HCMNE2O2CUNKCJH2Y2ROISTBPLC7C5EIA5NNG2XZB"
 
-	type test struct {
-		field    string
-		wantBody string
-	}
-	tests := []test{
-		{field: "tradePair", wantBody: fmt.Sprintf(`{"tradePair":"BTC:%s / ETH:%s"}`, issuerPK, issuerPK)},
-		{field: "baseAssetCode", wantBody: `{"baseAssetCode":"BTC"}`},
-		{field: "baseAssetIssuer", wantBody: fmt.Sprintf(`{"baseAssetIssuer":"%s"}`, issuerPK)},
-		{field: "counterAssetCode", wantBody: `{"counterAssetCode":"ETH"}`},
-		{field: "counterAssetIssuer", wantBody: fmt.Sprintf(`{"counterAssetIssuer":"%s"}`, issuerPK)},
-		{field: "baseVolume", wantBody: `{"baseVolume":150}`},
-		{field: "counterVolume", wantBody: `{"counterVolume":60}`},
-		{field: "tradeCount", wantBody: `{"tradeCount":2}`},
-		{field: "open", wantBody: `{"open":1}`},
-		{field: "low", wantBody: `{"low":0.1}`},
-		{field: "high", wantBody: `{"high":1}`},
-		{field: "close", wantBody: `{"close":0.1}`},
-		{field: "change", wantBody: `{"change":-0.9}`},
-		{field: "orderbookStats { bidCount }", wantBody: `{"orderbookStats": {"bidCount": 15}}`},
-		{field: "orderbookStats { bidVolume }", wantBody: `{"orderbookStats": {"bidVolume": 0.15}}`},
-		{field: "orderbookStats { bidMax }", wantBody: `{"orderbookStats": {"bidMax": 200}}`},
-		{field: "orderbookStats { askCount }", wantBody: `{"orderbookStats": {"askCount": 17}}`},
-		{field: "orderbookStats { askVolume }", wantBody: `{"orderbookStats": {"askVolume": 30}}`},
-		{field: "orderbookStats { askMin }", wantBody: `{"orderbookStats": {"askMin": 0.1}}`},
-		{field: "orderbookStats { askMin }", wantBody: `{"orderbookStats": {"askMin": 0.1}}`},
-	}
-
-	for _, tc := range tests {
-		queryStr := fmt.Sprintf(
-			`baseAssetCode: \"BTC\", baseAssetIssuer: \"%s\", counterAssetCode: \"ETH\", counterAssetIssuer: \"%s\"`,
-			issuerPK, issuerPK,
+	query := fmt.Sprintf(`
+	query getMarkets() {
+		markets(
+			baseAssetCode: \"BTC\",
+			baseAssetIssuer: \"%s\",
+			counterAssetCode: \"ETH\",
+			counterAssetIssuer: \"%s\",
+			numHoursAgo: 24
 		)
-		req := fmt.Sprintf(`
 		{
-			"query": "query getMarkets() {markets(%s, numHoursAgo: 24) {%s}}",
-			"operationName": "getMarkets",
-			"variables": {}
-		}`, queryStr, tc.field)
+			tradePair,
+			baseAssetCode,
+			baseAssetIssuer,
+			counterAssetCode,
+			counterAssetIssuer,
+			baseVolume,
+			counterVolume,
+			tradeCount,
+			open,
+			low,
+			high,
+			close,
+			change,
+			orderbookStats {
+				bidCount,
+				bidVolume,
+				bidMax,
+				askCount,
+				askVolume,
+				askMin
+			}
+		}
+	}`, issuerPK, issuerPK)
+	req := fmt.Sprintf(`{
+		"query": "%s",
+		"operationName": "getMarkets",
+		"variables": {}
+	}`, formatMultiline(query))
+	t.Log(req)
 
-		fmt.Println(req)
-		r := httptest.NewRequest("POST", "/graphql", strings.NewReader(req))
-		w := httptest.NewRecorder()
+	wantBody := fmt.Sprintf(`
+	{"data":{"markets": [{
+		"tradePair": "BTC:%s / ETH:%s",
+		"baseAssetCode": "BTC",
+		"baseAssetIssuer":"%s",
+		"counterAssetCode": "ETH",
+		"counterAssetIssuer":"%s",
+		"baseVolume": 150,
+		"counterVolume": 60,
+		"tradeCount": 2,
+		"open":1,
+		"low":0.1,
+		"high":1,
+		"close":0.1,
+		"change":-0.9,
+		"orderbookStats": {
+			"bidCount": 15,
+			"bidVolume": 0.15,
+			"bidMax": 200,
+			"askCount": 17,
+			"askVolume": 30,
+			"askMin": 0.1
+		}
+	}]}}`, issuerPK, issuerPK, issuerPK, issuerPK)
+	testRequest(t, m, req, wantBody)
+}
 
-		m.ServeHTTP(w, r)
-		resp := w.Result()
+func testRequest(t *testing.T, m *chi.Mux, req, wantBody string) {
+	r := httptest.NewRequest("POST", "/graphql", strings.NewReader(req))
+	w := httptest.NewRecorder()
 
-		require.Equal(t, http.StatusOK, resp.StatusCode)
-		assert.Equal(t, "application/json", resp.Header.Get("Content-Type"))
+	m.ServeHTTP(w, r)
+	resp := w.Result()
 
-		body, err := ioutil.ReadAll(resp.Body)
-		require.NoError(t, err)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, "application/json", resp.Header.Get("Content-Type"))
 
-		wantBody := fmt.Sprintf(`{"data":{"markets":[%s]}}`, tc.wantBody)
-		assert.JSONEq(t, wantBody, string(body))
-	}
+	body, err := ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	assert.JSONEq(t, wantBody, string(body))
+}
+
+func formatMultiline(s string) string {
+	s = strings.ReplaceAll(s, "\n", "")
+	return strings.ReplaceAll(s, "\t", "")
 }
