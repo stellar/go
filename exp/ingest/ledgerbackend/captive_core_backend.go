@@ -1,18 +1,8 @@
 package ledgerbackend
 
 import (
-	"bufio"
-	"fmt"
 	"io"
-	"io/ioutil"
-	"math/rand"
-	"os"
-	"os/exec"
-	"path/filepath"
-	"regexp"
-	"strings"
 	"sync"
-	"time"
 
 	"github.com/pkg/errors"
 	"github.com/stellar/go/network"
@@ -56,13 +46,11 @@ func roundDownToFirstReplayAfterCheckpointStart(ledger uint32) uint32 {
 }
 
 type captiveStellarCore struct {
-	nonce             string
 	networkPassphrase string
 	historyURLs       []string
 	lastLedger        *uint32 // end of current segment if offline, nil if online
-	cmd               *exec.Cmd
-	executablePath    string
-	metaPipe          io.Reader
+
+	stellarCoreRunner stellarCoreRunnerInterface
 
 	nextLedgerMutex sync.Mutex
 	nextLedger      uint32 // next ledger expected, error w/ restart if not seen
@@ -74,13 +62,15 @@ type captiveStellarCore struct {
 //
 // Platform-specific pipe setup logic is in the .start() methods.
 func NewCaptive(executablePath, networkPassphrase string, historyURLs []string) *captiveStellarCore {
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	return &captiveStellarCore{
-		nonce:             fmt.Sprintf("captive-stellar-core-%x", r.Uint64()),
 		networkPassphrase: networkPassphrase,
-		executablePath:    executablePath,
 		historyURLs:       historyURLs,
 		nextLedger:        0,
+		stellarCoreRunner: &stellarCoreRunner{
+			executablePath:    executablePath,
+			networkPassphrase: networkPassphrase,
+			historyURLs:       historyURLs,
+		},
 	}
 }
 
@@ -96,37 +86,6 @@ func (c *captiveStellarCore) IsInOfflineReplayMode() bool {
 
 func (c *captiveStellarCore) IsInOnlineTrackingMode() bool {
 	return c.lastLedger == nil
-}
-
-// XDR and RPC define a (minimal) framing format which our metadata arrives in: a 4-byte
-// big-endian length header that has the high bit set, followed by that length worth of
-// XDR data. Decoding this involves just a little more work than xdr.Unmarshal.
-func unmarshalFramed(r io.Reader, v interface{}) (int, error) {
-	var frameLen uint32
-	n, e := xdr.Unmarshal(r, &frameLen)
-	if e != nil {
-		err := errors.Wrap(e, "unmarshalling XDR frame header")
-		return n, err
-	}
-	if n != 4 {
-		err := errors.New("bad length of XDR frame header")
-		return n, err
-	}
-	if (frameLen & 0x80000000) != 0x80000000 {
-		err := errors.New("malformed XDR frame header")
-		return n, err
-	}
-	frameLen &= 0x7fffffff
-	m, e := xdr.Unmarshal(r, v)
-	if e != nil {
-		err := errors.Wrap(e, "unmarshalling framed XDR")
-		return n + m, err
-	}
-	if int64(m) != int64(frameLen) {
-		err := errors.New("bad length of XDR frame body")
-		return n + m, err
-	}
-	return m + n, nil
 }
 
 // Returns the sequence number of an LCM, returning an error if the LCM is of
@@ -187,19 +146,12 @@ func (c *captiveStellarCore) openOfflineReplaySubprocess(nextLedger, lastLedger 
 	if lastLedger > maxLedger {
 		lastLedger = maxLedger
 	}
-	rangeArg := fmt.Sprintf("%d/%d", lastLedger, (lastLedger-nextLedger)+1)
-	args := []string{"--conf", c.getConfFileName(), "catchup", rangeArg,
-		"--replay-in-memory"}
-	cmd := exec.Command(c.executablePath, args...)
-	cmd.Dir = c.getTmpDir()
-	cmd.Stdout = c.getLogLineWriter()
-	cmd.Stderr = cmd.Stdout
-	c.cmd = cmd
-	e = c.start()
-	if e != nil {
-		err := errors.Wrap(e, "starting stellar-core subprocess")
-		return err
+
+	err := c.stellarCoreRunner.run(nextLedger, lastLedger)
+	if err != nil {
+		return errors.Wrap(err, "error running stellar-core")
 	}
+
 	// The next ledger should be the first ledger of the checkpoint containing
 	// the requested ledger
 	c.nextLedgerMutex.Lock()
@@ -218,7 +170,7 @@ func (c *captiveStellarCore) PrepareRange(from uint32, to uint32) error {
 		return errors.Wrap(e, "opening subprocess")
 	}
 
-	if c.metaPipe == nil {
+	if c.stellarCoreRunner.getMetaPipe() == nil {
 		return errors.New("missing metadata pipe")
 	}
 
@@ -255,7 +207,8 @@ func (c *captiveStellarCore) GetLedger(sequence uint32) (bool, LedgerCloseMeta, 
 	}
 
 	// ... and open
-	if c.metaPipe == nil {
+	metaPipe := c.stellarCoreRunner.getMetaPipe()
+	if metaPipe == nil {
 		return false, LedgerCloseMeta{}, errors.New("missing metadata pipe")
 	}
 
@@ -263,7 +216,7 @@ func (c *captiveStellarCore) GetLedger(sequence uint32) (bool, LedgerCloseMeta, 
 	var errOut error
 	for {
 		var xlcm xdr.LedgerCloseMeta
-		_, e0 := unmarshalFramed(c.metaPipe, &xlcm)
+		_, e0 := xdr.UnmarshalFramed(metaPipe, &xlcm)
 		if e0 != nil {
 			if e0 == io.EOF {
 				errOut = errors.Wrap(e0, "got EOF from subprocess")
@@ -281,7 +234,7 @@ func (c *captiveStellarCore) GetLedger(sequence uint32) (bool, LedgerCloseMeta, 
 		c.nextLedgerMutex.Lock()
 		if seq != c.nextLedger {
 			// We got something unexpected; close and reset
-			errOut = errors.Errorf("unexpected ledger %d", seq)
+			errOut = errors.Errorf("unexpected ledger (expected=%d actual=%d)", c.nextLedger, seq)
 			c.nextLedgerMutex.Unlock()
 			break
 		}
@@ -348,84 +301,10 @@ func (c *captiveStellarCore) Close() error {
 	c.nextLedgerMutex.Unlock()
 
 	c.lastLedger = nil
-	var e1, e2 error
-	if c.metaPipe != nil {
-		c.metaPipe = nil
-	}
-	if c.processIsAlive() {
-		e1 = c.cmd.Process.Kill()
-		c.cmd.Wait()
-		c.cmd = nil
-	}
-	e2 = os.RemoveAll(c.getTmpDir())
-	if e1 != nil {
-		return errors.Wrap(e1, "error killing subprocess")
-	}
-	if e2 != nil {
-		return errors.Wrap(e2, "error removing subprocess tmpdir")
+
+	err := c.stellarCoreRunner.close()
+	if err != nil {
+		return errors.Wrap(err, "error closing stellar-core subprocess")
 	}
 	return nil
-}
-
-func (c *captiveStellarCore) getTmpDir() string {
-	return filepath.Join(os.TempDir(), c.nonce)
-}
-
-func (c *captiveStellarCore) getConfFileName() string {
-	return filepath.Join(c.getTmpDir(), "stellar-core.conf")
-}
-
-func (c *captiveStellarCore) getConf() string {
-	lines := []string{
-		"# Generated file -- do not edit",
-		"RUN_STANDALONE=true",
-		"NODE_IS_VALIDATOR=false",
-		"DISABLE_XDR_FSYNC=true",
-		"UNSAFE_QUORUM=true",
-		fmt.Sprintf(`NETWORK_PASSPHRASE="%s"`, c.networkPassphrase),
-		fmt.Sprintf(`BUCKET_DIR_PATH="%s"`, filepath.Join(c.getTmpDir(), "buckets")),
-		fmt.Sprintf(`METADATA_OUTPUT_STREAM="%s"`, c.getPipeName()),
-	}
-	for i, val := range c.historyURLs {
-		lines = append(lines, fmt.Sprintf("[HISTORY.h%d]", i))
-		lines = append(lines, fmt.Sprintf(`get="curl -sf %s/{0} -o {1}"`, val))
-	}
-	// Add a fictional quorum -- necessary to convince core to start up;
-	// but not used at all for our purposes. Pubkey here is just random.
-	lines = append(lines,
-		"[QUORUM_SET]",
-		"THRESHOLD_PERCENT=100",
-		`VALIDATORS=["GCZBOIAY4HLKAJVNJORXZOZRAY2BJDBZHKPBHZCRAIUR5IHC2UHBGCQR"]`)
-	return strings.ReplaceAll(strings.Join(lines, "\n"), "\\", "\\\\")
-}
-
-func (c *captiveStellarCore) getLogLineWriter() io.Writer {
-	r, w := io.Pipe()
-	br := bufio.NewReader(r)
-	// Strip timestamps from log lines from captive stellar-core. We emit our own.
-	dateRx := regexp.MustCompile("^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3} ")
-	go func() {
-		for {
-			line, e := br.ReadString('\n')
-			if e != nil {
-				break
-			}
-			line = dateRx.ReplaceAllString(line, "")
-			// Leaving for debug purposes:
-			// fmt.Print(line)
-		}
-	}()
-	return w
-}
-
-// Makes the temp directory and writes the config file to it; called by the
-// platform-specific captiveStellarCore.Start() methods.
-func (c *captiveStellarCore) writeConf() error {
-	dir := c.getTmpDir()
-	e := os.MkdirAll(dir, 0755)
-	if e != nil {
-		return errors.Wrap(e, "error creating subprocess tmpdir")
-	}
-	conf := c.getConf()
-	return ioutil.WriteFile(c.getConfFileName(), []byte(conf), 0644)
 }
