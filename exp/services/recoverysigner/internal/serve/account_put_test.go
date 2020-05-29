@@ -38,9 +38,12 @@ func TestAccountPut_authenticatedNotAuthorized(t *testing.T) {
 		},
 	})
 	h := accountPutHandler{
-		Logger:         supportlog.DefaultLogger,
-		AccountStore:   s,
-		SigningAddress: keypair.MustParseAddress("GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"),
+		Logger:       supportlog.DefaultLogger,
+		AccountStore: s,
+		SigningAddresses: []*keypair.FromAddress{
+			keypair.MustParseAddress("GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"),
+			keypair.MustParseAddress("GAPE22DOMALCH42VOR4S3HN6KIZZ643G7D3GNTYF4YOWWXP6UVRAF5JS"),
+		},
 	}
 
 	ctx := context.Background()
@@ -99,9 +102,12 @@ func TestAccountPut_notAuthenticated(t *testing.T) {
 		},
 	})
 	h := accountPutHandler{
-		Logger:         supportlog.DefaultLogger,
-		AccountStore:   s,
-		SigningAddress: keypair.MustParseAddress("GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"),
+		Logger:       supportlog.DefaultLogger,
+		AccountStore: s,
+		SigningAddresses: []*keypair.FromAddress{
+			keypair.MustParseAddress("GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"),
+			keypair.MustParseAddress("GAPE22DOMALCH42VOR4S3HN6KIZZ643G7D3GNTYF4YOWWXP6UVRAF5JS"),
+		},
 	}
 
 	ctx := context.Background()
@@ -160,9 +166,12 @@ func TestAccountPut_authenticatedByAccountAddress(t *testing.T) {
 		},
 	})
 	h := accountPutHandler{
-		Logger:         supportlog.DefaultLogger,
-		AccountStore:   s,
-		SigningAddress: keypair.MustParseAddress("GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"),
+		Logger:       supportlog.DefaultLogger,
+		AccountStore: s,
+		SigningAddresses: []*keypair.FromAddress{
+			keypair.MustParseAddress("GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"),
+			keypair.MustParseAddress("GAPE22DOMALCH42VOR4S3HN6KIZZ643G7D3GNTYF4YOWWXP6UVRAF5JS"),
+		},
 	}
 
 	ctx := context.Background()
@@ -205,6 +214,10 @@ func TestAccountPut_authenticatedByAccountAddress(t *testing.T) {
 	"signers": [
 		{
 			"key": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE",
+			"added_at": "0001-01-01T00:00:00Z"
+		},
+		{
+			"key": "GAPE22DOMALCH42VOR4S3HN6KIZZ643G7D3GNTYF4YOWWXP6UVRAF5JS",
 			"added_at": "0001-01-01T00:00:00Z"
 		}
 	]
@@ -250,9 +263,12 @@ func TestAccountPut_authenticatedByIdentityAddress(t *testing.T) {
 		},
 	})
 	h := accountPutHandler{
-		Logger:         supportlog.DefaultLogger,
-		AccountStore:   s,
-		SigningAddress: keypair.MustParseAddress("GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"),
+		Logger:       supportlog.DefaultLogger,
+		AccountStore: s,
+		SigningAddresses: []*keypair.FromAddress{
+			keypair.MustParseAddress("GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"),
+			keypair.MustParseAddress("GAPE22DOMALCH42VOR4S3HN6KIZZ643G7D3GNTYF4YOWWXP6UVRAF5JS"),
+		},
 	}
 
 	ctx := context.Background()
@@ -295,6 +311,10 @@ func TestAccountPut_authenticatedByIdentityAddress(t *testing.T) {
 	"signers": [
 		{
 			"key": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE",
+			"added_at": "0001-01-01T00:00:00Z"
+		},
+		{
+			"key": "GAPE22DOMALCH42VOR4S3HN6KIZZ643G7D3GNTYF4YOWWXP6UVRAF5JS",
 			"added_at": "0001-01-01T00:00:00Z"
 		}
 	]
@@ -340,9 +360,12 @@ func TestAccountPut_authenticatedByPhoneNumber(t *testing.T) {
 		},
 	})
 	h := accountPutHandler{
-		Logger:         supportlog.DefaultLogger,
-		AccountStore:   s,
-		SigningAddress: keypair.MustParseAddress("GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"),
+		Logger:       supportlog.DefaultLogger,
+		AccountStore: s,
+		SigningAddresses: []*keypair.FromAddress{
+			keypair.MustParseAddress("GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"),
+			keypair.MustParseAddress("GAPE22DOMALCH42VOR4S3HN6KIZZ643G7D3GNTYF4YOWWXP6UVRAF5JS"),
+		},
 	}
 
 	ctx := context.Background()
@@ -385,6 +408,10 @@ func TestAccountPut_authenticatedByPhoneNumber(t *testing.T) {
 	"signers": [
 		{
 			"key": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE",
+			"added_at": "0001-01-01T00:00:00Z"
+		},
+		{
+			"key": "GAPE22DOMALCH42VOR4S3HN6KIZZ643G7D3GNTYF4YOWWXP6UVRAF5JS",
 			"added_at": "0001-01-01T00:00:00Z"
 		}
 	]
@@ -430,9 +457,12 @@ func TestAccountPut_authenticatedByEmail(t *testing.T) {
 		},
 	})
 	h := accountPutHandler{
-		Logger:         supportlog.DefaultLogger,
-		AccountStore:   s,
-		SigningAddress: keypair.MustParseAddress("GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"),
+		Logger:       supportlog.DefaultLogger,
+		AccountStore: s,
+		SigningAddresses: []*keypair.FromAddress{
+			keypair.MustParseAddress("GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"),
+			keypair.MustParseAddress("GAPE22DOMALCH42VOR4S3HN6KIZZ643G7D3GNTYF4YOWWXP6UVRAF5JS"),
+		},
 	}
 
 	ctx := context.Background()
@@ -475,6 +505,10 @@ func TestAccountPut_authenticatedByEmail(t *testing.T) {
 	"signers": [
 		{
 			"key": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE",
+			"added_at": "0001-01-01T00:00:00Z"
+		},
+		{
+			"key": "GAPE22DOMALCH42VOR4S3HN6KIZZ643G7D3GNTYF4YOWWXP6UVRAF5JS",
 			"added_at": "0001-01-01T00:00:00Z"
 		}
 	]

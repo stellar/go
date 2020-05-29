@@ -2,13 +2,14 @@ package serve
 
 import (
 	"context"
-	"github.com/stellar/go/xdr"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"strings"
 	"testing"
+
+	"github.com/stellar/go/xdr"
 
 	"github.com/go-chi/chi"
 	"github.com/stellar/go/exp/services/recoverysigner/internal/account"
@@ -26,9 +27,12 @@ import (
 func TestAccountSign_authenticatedButNotFound(t *testing.T) {
 	s := &account.DBStore{DB: dbtest.Open(t).Open()}
 	h := accountSignHandler{
-		Logger:            supportlog.DefaultLogger,
-		AccountStore:      s,
-		SigningKey:        keypair.MustParseFull("SBIB72S6JMTGJRC6LMKLC5XMHZ2IOHZSZH4SASTN47LECEEJ7QEB6EYK"),
+		Logger:       supportlog.DefaultLogger,
+		AccountStore: s,
+		SigningKeys: []*keypair.Full{
+			keypair.MustParseFull("SBIB72S6JMTGJRC6LMKLC5XMHZ2IOHZSZH4SASTN47LECEEJ7QEB6EYK"), // GBOG4KF66M4AFRBUHOTJQJRO7BGGFCSGIICTI5BHXHKXCWV2C67QRN5H
+			keypair.MustParseFull("SBJGZKZ7LU2FQNEFBUOBW4LHCA5BOZCABIJTR7BQIFWQ3P763ZW7MYDD"), // GAPE22DOMALCH42VOR4S3HN6KIZZ643G7D3GNTYF4YOWWXP6UVRAF5JS
+		},
 		NetworkPassphrase: network.TestNetworkPassphrase,
 	}
 
@@ -69,9 +73,12 @@ func TestAccountSign_accountAuthenticatedButNotPermitted(t *testing.T) {
 		Address: "GBLOP46WEVXWO5N75TDX7GXLYFQE3XLDT5NQ2VYIBEWWEMSZWR3AUISZ",
 	})
 	h := accountSignHandler{
-		Logger:            supportlog.DefaultLogger,
-		AccountStore:      s,
-		SigningKey:        keypair.MustParseFull("SBIB72S6JMTGJRC6LMKLC5XMHZ2IOHZSZH4SASTN47LECEEJ7QEB6EYK"),
+		Logger:       supportlog.DefaultLogger,
+		AccountStore: s,
+		SigningKeys: []*keypair.Full{
+			keypair.MustParseFull("SBIB72S6JMTGJRC6LMKLC5XMHZ2IOHZSZH4SASTN47LECEEJ7QEB6EYK"), // GBOG4KF66M4AFRBUHOTJQJRO7BGGFCSGIICTI5BHXHKXCWV2C67QRN5H
+			keypair.MustParseFull("SBJGZKZ7LU2FQNEFBUOBW4LHCA5BOZCABIJTR7BQIFWQ3P763ZW7MYDD"), // GAPE22DOMALCH42VOR4S3HN6KIZZ643G7D3GNTYF4YOWWXP6UVRAF5JS
+		},
 		NetworkPassphrase: network.TestNetworkPassphrase,
 	}
 
@@ -104,9 +111,12 @@ func TestAccountSign_accountAuthenticatedButNotPermitted(t *testing.T) {
 func TestAccountSign_accountAuthenticatedButInvalidAddress(t *testing.T) {
 	s := &account.DBStore{DB: dbtest.Open(t).Open()}
 	h := accountSignHandler{
-		Logger:            supportlog.DefaultLogger,
-		AccountStore:      s,
-		SigningKey:        keypair.MustParseFull("SBIB72S6JMTGJRC6LMKLC5XMHZ2IOHZSZH4SASTN47LECEEJ7QEB6EYK"),
+		Logger:       supportlog.DefaultLogger,
+		AccountStore: s,
+		SigningKeys: []*keypair.Full{
+			keypair.MustParseFull("SBIB72S6JMTGJRC6LMKLC5XMHZ2IOHZSZH4SASTN47LECEEJ7QEB6EYK"), // GBOG4KF66M4AFRBUHOTJQJRO7BGGFCSGIICTI5BHXHKXCWV2C67QRN5H
+			keypair.MustParseFull("SBJGZKZ7LU2FQNEFBUOBW4LHCA5BOZCABIJTR7BQIFWQ3P763ZW7MYDD"), // GAPE22DOMALCH42VOR4S3HN6KIZZ643G7D3GNTYF4YOWWXP6UVRAF5JS
+		},
 		NetworkPassphrase: network.TestNetworkPassphrase,
 	}
 
@@ -134,9 +144,12 @@ func TestAccountSign_accountAuthenticatedButInvalidAddress(t *testing.T) {
 func TestAccountSign_accountAuthenticatedButEmptyAddress(t *testing.T) {
 	s := &account.DBStore{DB: dbtest.Open(t).Open()}
 	h := accountSignHandler{
-		Logger:            supportlog.DefaultLogger,
-		AccountStore:      s,
-		SigningKey:        keypair.MustParseFull("SBIB72S6JMTGJRC6LMKLC5XMHZ2IOHZSZH4SASTN47LECEEJ7QEB6EYK"),
+		Logger:       supportlog.DefaultLogger,
+		AccountStore: s,
+		SigningKeys: []*keypair.Full{
+			keypair.MustParseFull("SBIB72S6JMTGJRC6LMKLC5XMHZ2IOHZSZH4SASTN47LECEEJ7QEB6EYK"), // GBOG4KF66M4AFRBUHOTJQJRO7BGGFCSGIICTI5BHXHKXCWV2C67QRN5H
+			keypair.MustParseFull("SBJGZKZ7LU2FQNEFBUOBW4LHCA5BOZCABIJTR7BQIFWQ3P763ZW7MYDD"), // GAPE22DOMALCH42VOR4S3HN6KIZZ643G7D3GNTYF4YOWWXP6UVRAF5JS
+		},
 		NetworkPassphrase: network.TestNetworkPassphrase,
 	}
 
@@ -200,9 +213,12 @@ func TestAccountSign_phoneNumberAuthenticatedButNotPermitted(t *testing.T) {
 		},
 	})
 	h := accountSignHandler{
-		Logger:            supportlog.DefaultLogger,
-		AccountStore:      s,
-		SigningKey:        keypair.MustParseFull("SBIB72S6JMTGJRC6LMKLC5XMHZ2IOHZSZH4SASTN47LECEEJ7QEB6EYK"),
+		Logger:       supportlog.DefaultLogger,
+		AccountStore: s,
+		SigningKeys: []*keypair.Full{
+			keypair.MustParseFull("SBIB72S6JMTGJRC6LMKLC5XMHZ2IOHZSZH4SASTN47LECEEJ7QEB6EYK"), // GBOG4KF66M4AFRBUHOTJQJRO7BGGFCSGIICTI5BHXHKXCWV2C67QRN5H
+			keypair.MustParseFull("SBJGZKZ7LU2FQNEFBUOBW4LHCA5BOZCABIJTR7BQIFWQ3P763ZW7MYDD"), // GAPE22DOMALCH42VOR4S3HN6KIZZ643G7D3GNTYF4YOWWXP6UVRAF5JS
+		},
 		NetworkPassphrase: network.TestNetworkPassphrase,
 	}
 
@@ -271,9 +287,12 @@ func TestAccountSign_emailAuthenticatedButNotPermitted(t *testing.T) {
 		},
 	})
 	h := accountSignHandler{
-		Logger:            supportlog.DefaultLogger,
-		AccountStore:      s,
-		SigningKey:        keypair.MustParseFull("SBIB72S6JMTGJRC6LMKLC5XMHZ2IOHZSZH4SASTN47LECEEJ7QEB6EYK"),
+		Logger:       supportlog.DefaultLogger,
+		AccountStore: s,
+		SigningKeys: []*keypair.Full{
+			keypair.MustParseFull("SBIB72S6JMTGJRC6LMKLC5XMHZ2IOHZSZH4SASTN47LECEEJ7QEB6EYK"), // GBOG4KF66M4AFRBUHOTJQJRO7BGGFCSGIICTI5BHXHKXCWV2C67QRN5H
+			keypair.MustParseFull("SBJGZKZ7LU2FQNEFBUOBW4LHCA5BOZCABIJTR7BQIFWQ3P763ZW7MYDD"), // GAPE22DOMALCH42VOR4S3HN6KIZZ643G7D3GNTYF4YOWWXP6UVRAF5JS
+		},
 		NetworkPassphrase: network.TestNetworkPassphrase,
 	}
 
@@ -312,9 +331,12 @@ func TestAccountSign_accountAuthenticatedTxSourceAccountValid(t *testing.T) {
 		Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4",
 	})
 	h := accountSignHandler{
-		Logger:            supportlog.DefaultLogger,
-		AccountStore:      s,
-		SigningKey:        keypair.MustParseFull("SBIB72S6JMTGJRC6LMKLC5XMHZ2IOHZSZH4SASTN47LECEEJ7QEB6EYK"),
+		Logger:       supportlog.DefaultLogger,
+		AccountStore: s,
+		SigningKeys: []*keypair.Full{
+			keypair.MustParseFull("SBIB72S6JMTGJRC6LMKLC5XMHZ2IOHZSZH4SASTN47LECEEJ7QEB6EYK"), // GBOG4KF66M4AFRBUHOTJQJRO7BGGFCSGIICTI5BHXHKXCWV2C67QRN5H
+			keypair.MustParseFull("SBJGZKZ7LU2FQNEFBUOBW4LHCA5BOZCABIJTR7BQIFWQ3P763ZW7MYDD"), // GAPE22DOMALCH42VOR4S3HN6KIZZ643G7D3GNTYF4YOWWXP6UVRAF5JS
+		},
 		NetworkPassphrase: network.TestNetworkPassphrase,
 	}
 
@@ -376,9 +398,12 @@ func TestAccountSign_accountAuthenticatedTxAndOpSourceAccountValid(t *testing.T)
 		Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4",
 	})
 	h := accountSignHandler{
-		Logger:            supportlog.DefaultLogger,
-		AccountStore:      s,
-		SigningKey:        keypair.MustParseFull("SBIB72S6JMTGJRC6LMKLC5XMHZ2IOHZSZH4SASTN47LECEEJ7QEB6EYK"),
+		Logger:       supportlog.DefaultLogger,
+		AccountStore: s,
+		SigningKeys: []*keypair.Full{
+			keypair.MustParseFull("SBIB72S6JMTGJRC6LMKLC5XMHZ2IOHZSZH4SASTN47LECEEJ7QEB6EYK"), // GBOG4KF66M4AFRBUHOTJQJRO7BGGFCSGIICTI5BHXHKXCWV2C67QRN5H
+			keypair.MustParseFull("SBJGZKZ7LU2FQNEFBUOBW4LHCA5BOZCABIJTR7BQIFWQ3P763ZW7MYDD"), // GAPE22DOMALCH42VOR4S3HN6KIZZ643G7D3GNTYF4YOWWXP6UVRAF5JS
+		},
 		NetworkPassphrase: network.TestNetworkPassphrase,
 	}
 
@@ -440,9 +465,12 @@ func TestAccountSign_accountAuthenticatedTxSourceAccountInvalid(t *testing.T) {
 		Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4",
 	})
 	h := accountSignHandler{
-		Logger:            supportlog.DefaultLogger,
-		AccountStore:      s,
-		SigningKey:        keypair.MustParseFull("SBIB72S6JMTGJRC6LMKLC5XMHZ2IOHZSZH4SASTN47LECEEJ7QEB6EYK"),
+		Logger:       supportlog.DefaultLogger,
+		AccountStore: s,
+		SigningKeys: []*keypair.Full{
+			keypair.MustParseFull("SBIB72S6JMTGJRC6LMKLC5XMHZ2IOHZSZH4SASTN47LECEEJ7QEB6EYK"), // GBOG4KF66M4AFRBUHOTJQJRO7BGGFCSGIICTI5BHXHKXCWV2C67QRN5H
+			keypair.MustParseFull("SBJGZKZ7LU2FQNEFBUOBW4LHCA5BOZCABIJTR7BQIFWQ3P763ZW7MYDD"), // GAPE22DOMALCH42VOR4S3HN6KIZZ643G7D3GNTYF4YOWWXP6UVRAF5JS
+		},
 		NetworkPassphrase: network.TestNetworkPassphrase,
 	}
 
@@ -500,9 +528,12 @@ func TestAccountSign_accountAuthenticatedOpSourceAccountInvalid(t *testing.T) {
 		Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4",
 	})
 	h := accountSignHandler{
-		Logger:            supportlog.DefaultLogger,
-		AccountStore:      s,
-		SigningKey:        keypair.MustParseFull("SBIB72S6JMTGJRC6LMKLC5XMHZ2IOHZSZH4SASTN47LECEEJ7QEB6EYK"),
+		Logger:       supportlog.DefaultLogger,
+		AccountStore: s,
+		SigningKeys: []*keypair.Full{
+			keypair.MustParseFull("SBIB72S6JMTGJRC6LMKLC5XMHZ2IOHZSZH4SASTN47LECEEJ7QEB6EYK"), // GBOG4KF66M4AFRBUHOTJQJRO7BGGFCSGIICTI5BHXHKXCWV2C67QRN5H
+			keypair.MustParseFull("SBJGZKZ7LU2FQNEFBUOBW4LHCA5BOZCABIJTR7BQIFWQ3P763ZW7MYDD"), // GAPE22DOMALCH42VOR4S3HN6KIZZ643G7D3GNTYF4YOWWXP6UVRAF5JS
+		},
 		NetworkPassphrase: network.TestNetworkPassphrase,
 	}
 
@@ -561,9 +592,12 @@ func TestAccountSign_accountAuthenticatedTxAndOpSourceAccountInvalid(t *testing.
 		Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4",
 	})
 	h := accountSignHandler{
-		Logger:            supportlog.DefaultLogger,
-		AccountStore:      s,
-		SigningKey:        keypair.MustParseFull("SBIB72S6JMTGJRC6LMKLC5XMHZ2IOHZSZH4SASTN47LECEEJ7QEB6EYK"),
+		Logger:       supportlog.DefaultLogger,
+		AccountStore: s,
+		SigningKeys: []*keypair.Full{
+			keypair.MustParseFull("SBIB72S6JMTGJRC6LMKLC5XMHZ2IOHZSZH4SASTN47LECEEJ7QEB6EYK"), // GBOG4KF66M4AFRBUHOTJQJRO7BGGFCSGIICTI5BHXHKXCWV2C67QRN5H
+			keypair.MustParseFull("SBJGZKZ7LU2FQNEFBUOBW4LHCA5BOZCABIJTR7BQIFWQ3P763ZW7MYDD"), // GAPE22DOMALCH42VOR4S3HN6KIZZ643G7D3GNTYF4YOWWXP6UVRAF5JS
+		},
 		NetworkPassphrase: network.TestNetworkPassphrase,
 	}
 
@@ -628,9 +662,12 @@ func TestAccountSign_phoneNumberOwnerAuthenticated(t *testing.T) {
 		},
 	})
 	h := accountSignHandler{
-		Logger:            supportlog.DefaultLogger,
-		AccountStore:      s,
-		SigningKey:        keypair.MustParseFull("SBIB72S6JMTGJRC6LMKLC5XMHZ2IOHZSZH4SASTN47LECEEJ7QEB6EYK"),
+		Logger:       supportlog.DefaultLogger,
+		AccountStore: s,
+		SigningKeys: []*keypair.Full{
+			keypair.MustParseFull("SBIB72S6JMTGJRC6LMKLC5XMHZ2IOHZSZH4SASTN47LECEEJ7QEB6EYK"), // GBOG4KF66M4AFRBUHOTJQJRO7BGGFCSGIICTI5BHXHKXCWV2C67QRN5H
+			keypair.MustParseFull("SBJGZKZ7LU2FQNEFBUOBW4LHCA5BOZCABIJTR7BQIFWQ3P763ZW7MYDD"), // GAPE22DOMALCH42VOR4S3HN6KIZZ643G7D3GNTYF4YOWWXP6UVRAF5JS
+		},
 		NetworkPassphrase: network.TestNetworkPassphrase,
 	}
 
@@ -698,9 +735,12 @@ func TestAccountSign_phoneNumberOtherAuthenticated(t *testing.T) {
 		},
 	})
 	h := accountSignHandler{
-		Logger:            supportlog.DefaultLogger,
-		AccountStore:      s,
-		SigningKey:        keypair.MustParseFull("SBIB72S6JMTGJRC6LMKLC5XMHZ2IOHZSZH4SASTN47LECEEJ7QEB6EYK"),
+		Logger:       supportlog.DefaultLogger,
+		AccountStore: s,
+		SigningKeys: []*keypair.Full{
+			keypair.MustParseFull("SBIB72S6JMTGJRC6LMKLC5XMHZ2IOHZSZH4SASTN47LECEEJ7QEB6EYK"), // GBOG4KF66M4AFRBUHOTJQJRO7BGGFCSGIICTI5BHXHKXCWV2C67QRN5H
+			keypair.MustParseFull("SBJGZKZ7LU2FQNEFBUOBW4LHCA5BOZCABIJTR7BQIFWQ3P763ZW7MYDD"), // GAPE22DOMALCH42VOR4S3HN6KIZZ643G7D3GNTYF4YOWWXP6UVRAF5JS
+		},
 		NetworkPassphrase: network.TestNetworkPassphrase,
 	}
 
@@ -768,9 +808,12 @@ func TestAccountSign_emailOwnerAuthenticated(t *testing.T) {
 		},
 	})
 	h := accountSignHandler{
-		Logger:            supportlog.DefaultLogger,
-		AccountStore:      s,
-		SigningKey:        keypair.MustParseFull("SBIB72S6JMTGJRC6LMKLC5XMHZ2IOHZSZH4SASTN47LECEEJ7QEB6EYK"),
+		Logger:       supportlog.DefaultLogger,
+		AccountStore: s,
+		SigningKeys: []*keypair.Full{
+			keypair.MustParseFull("SBIB72S6JMTGJRC6LMKLC5XMHZ2IOHZSZH4SASTN47LECEEJ7QEB6EYK"), // GBOG4KF66M4AFRBUHOTJQJRO7BGGFCSGIICTI5BHXHKXCWV2C67QRN5H
+			keypair.MustParseFull("SBJGZKZ7LU2FQNEFBUOBW4LHCA5BOZCABIJTR7BQIFWQ3P763ZW7MYDD"), // GAPE22DOMALCH42VOR4S3HN6KIZZ643G7D3GNTYF4YOWWXP6UVRAF5JS
+		},
 		NetworkPassphrase: network.TestNetworkPassphrase,
 	}
 
@@ -838,9 +881,12 @@ func TestAccountSign_emailOtherAuthenticated(t *testing.T) {
 		},
 	})
 	h := accountSignHandler{
-		Logger:            supportlog.DefaultLogger,
-		AccountStore:      s,
-		SigningKey:        keypair.MustParseFull("SBIB72S6JMTGJRC6LMKLC5XMHZ2IOHZSZH4SASTN47LECEEJ7QEB6EYK"),
+		Logger:       supportlog.DefaultLogger,
+		AccountStore: s,
+		SigningKeys: []*keypair.Full{
+			keypair.MustParseFull("SBIB72S6JMTGJRC6LMKLC5XMHZ2IOHZSZH4SASTN47LECEEJ7QEB6EYK"), // GBOG4KF66M4AFRBUHOTJQJRO7BGGFCSGIICTI5BHXHKXCWV2C67QRN5H
+			keypair.MustParseFull("SBJGZKZ7LU2FQNEFBUOBW4LHCA5BOZCABIJTR7BQIFWQ3P763ZW7MYDD"), // GAPE22DOMALCH42VOR4S3HN6KIZZ643G7D3GNTYF4YOWWXP6UVRAF5JS
+		},
 		NetworkPassphrase: network.TestNetworkPassphrase,
 	}
 
@@ -900,9 +946,12 @@ func TestAccountSign_cannotParseTransaction(t *testing.T) {
 		Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4",
 	})
 	h := accountSignHandler{
-		Logger:            supportlog.DefaultLogger,
-		AccountStore:      s,
-		SigningKey:        keypair.MustParseFull("SBIB72S6JMTGJRC6LMKLC5XMHZ2IOHZSZH4SASTN47LECEEJ7QEB6EYK"),
+		Logger:       supportlog.DefaultLogger,
+		AccountStore: s,
+		SigningKeys: []*keypair.Full{
+			keypair.MustParseFull("SBIB72S6JMTGJRC6LMKLC5XMHZ2IOHZSZH4SASTN47LECEEJ7QEB6EYK"), // GBOG4KF66M4AFRBUHOTJQJRO7BGGFCSGIICTI5BHXHKXCWV2C67QRN5H
+			keypair.MustParseFull("SBJGZKZ7LU2FQNEFBUOBW4LHCA5BOZCABIJTR7BQIFWQ3P763ZW7MYDD"), // GAPE22DOMALCH42VOR4S3HN6KIZZ643G7D3GNTYF4YOWWXP6UVRAF5JS
+		},
 		NetworkPassphrase: network.TestNetworkPassphrase,
 	}
 
@@ -939,9 +988,12 @@ func TestAccountSign_rejectsFeeBumpTx(t *testing.T) {
 		Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4",
 	})
 	h := accountSignHandler{
-		Logger:            supportlog.DefaultLogger,
-		AccountStore:      s,
-		SigningKey:        keypair.MustParseFull("SBIB72S6JMTGJRC6LMKLC5XMHZ2IOHZSZH4SASTN47LECEEJ7QEB6EYK"),
+		Logger:       supportlog.DefaultLogger,
+		AccountStore: s,
+		SigningKeys: []*keypair.Full{
+			keypair.MustParseFull("SBIB72S6JMTGJRC6LMKLC5XMHZ2IOHZSZH4SASTN47LECEEJ7QEB6EYK"), // GBOG4KF66M4AFRBUHOTJQJRO7BGGFCSGIICTI5BHXHKXCWV2C67QRN5H
+			keypair.MustParseFull("SBJGZKZ7LU2FQNEFBUOBW4LHCA5BOZCABIJTR7BQIFWQ3P763ZW7MYDD"), // GAPE22DOMALCH42VOR4S3HN6KIZZ643G7D3GNTYF4YOWWXP6UVRAF5JS
+		},
 		NetworkPassphrase: network.TestNetworkPassphrase,
 	}
 
@@ -1029,9 +1081,12 @@ func TestAccountSign_validContentTypeForm(t *testing.T) {
 		Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4",
 	})
 	h := accountSignHandler{
-		Logger:            supportlog.DefaultLogger,
-		AccountStore:      s,
-		SigningKey:        keypair.MustParseFull("SBIB72S6JMTGJRC6LMKLC5XMHZ2IOHZSZH4SASTN47LECEEJ7QEB6EYK"),
+		Logger:       supportlog.DefaultLogger,
+		AccountStore: s,
+		SigningKeys: []*keypair.Full{
+			keypair.MustParseFull("SBIB72S6JMTGJRC6LMKLC5XMHZ2IOHZSZH4SASTN47LECEEJ7QEB6EYK"), // GBOG4KF66M4AFRBUHOTJQJRO7BGGFCSGIICTI5BHXHKXCWV2C67QRN5H
+			keypair.MustParseFull("SBJGZKZ7LU2FQNEFBUOBW4LHCA5BOZCABIJTR7BQIFWQ3P763ZW7MYDD"), // GAPE22DOMALCH42VOR4S3HN6KIZZ643G7D3GNTYF4YOWWXP6UVRAF5JS
+		},
 		NetworkPassphrase: network.TestNetworkPassphrase,
 	}
 

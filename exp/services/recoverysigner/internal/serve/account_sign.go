@@ -14,7 +14,7 @@ import (
 
 type accountSignHandler struct {
 	Logger            *supportlog.Entry
-	SigningKey        *keypair.Full
+	SigningKeys       []*keypair.Full
 	NetworkPassphrase string
 	AccountStore      account.Store
 }
@@ -57,10 +57,22 @@ func (h accountSignHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	l.Info("Request to sign transaction.")
 
-	if req.SigningAddress != nil && req.SigningAddress.Address() != h.SigningKey.Address() {
-		l.Info("Signing key not found.")
-		notFound.Render(w)
-		return
+	var signingKey *keypair.Full
+	if req.SigningAddress != nil {
+		for _, sk := range h.SigningKeys {
+			if req.SigningAddress.Address() == sk.Address() {
+				signingKey = sk
+				break
+			}
+		}
+		if signingKey == nil {
+			l.Info("Signing key not found.")
+			notFound.Render(w)
+			return
+		}
+	}
+	if signingKey == nil {
+		signingKey = h.SigningKeys[0]
 	}
 
 	// Find the account that the request is for.
@@ -149,7 +161,7 @@ func (h accountSignHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		serverError.Render(w)
 		return
 	}
-	sig, err := h.SigningKey.SignBase64(hash[:])
+	sig, err := signingKey.SignBase64(hash[:])
 	if err != nil {
 		l.Error("Error signing transaction:", err)
 		serverError.Render(w)
@@ -159,7 +171,7 @@ func (h accountSignHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	l.Info("Transaction signed.")
 
 	resp := accountSignResponse{
-		Signer:            h.SigningKey.Address(),
+		Signer:            signingKey.Address(),
 		Signature:         sig,
 		NetworkPassphrase: h.NetworkPassphrase,
 	}
