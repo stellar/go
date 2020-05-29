@@ -190,7 +190,11 @@ func (q *Q) CompactOffers(cuttOffSequence uint32) (int64, error) {
 
 	result, err := q.Exec(sql)
 	if err != nil {
-		return 0, err
+		return 0, errors.Wrap(err, "cannot delete offer rows")
+	}
+
+	if err = q.UpdateOfferCompactionSequence(cuttOffSequence); err != nil {
+		return 0, errors.Wrap(err, "cannot update offer compaction sequence")
 	}
 
 	return result.RowsAffected()

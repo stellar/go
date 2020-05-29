@@ -184,6 +184,7 @@ type IngestionQ interface {
 	UpdateExpIngestVersion(int) error
 	GetExpStateInvalid() (bool, error)
 	GetLatestLedger() (uint32, error)
+	GetOfferCompactionSequence() (uint32, error)
 	TruncateExpingestStateTables() error
 	DeleteRangeAll(start, end int64) error
 }
