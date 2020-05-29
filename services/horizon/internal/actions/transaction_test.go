@@ -99,10 +99,8 @@ func checkOuterHashResponse(
 	tt.Assert.Equal(fixture.Transaction.FeeCharged, transactionResponse.FeeCharged)
 	tt.Assert.Equal(fixture.Transaction.TransactionHash, transactionResponse.ID)
 	tt.Assert.Equal(fixture.Transaction.MaxFee, transactionResponse.InnerTransaction.MaxFee)
-	var innerSignatures []string
-	tt.Assert.NoError(fixture.Transaction.InnerSignatures.AssignTo(&innerSignatures))
 	tt.Assert.Equal(
-		innerSignatures,
+		[]string(fixture.Transaction.InnerSignatures),
 		transactionResponse.InnerTransaction.Signatures,
 	)
 	tt.Assert.Equal(
@@ -113,10 +111,8 @@ func checkOuterHashResponse(
 	tt.Assert.Equal(fixture.Transaction.Memo.String, transactionResponse.Memo)
 	tt.Assert.Equal(fixture.Transaction.MemoType, transactionResponse.MemoType)
 	tt.Assert.Equal(fixture.Transaction.OperationCount, transactionResponse.OperationCount)
-	var outerSignatures []string
-	tt.Assert.NoError(fixture.Transaction.Signatures.AssignTo(&outerSignatures))
 	tt.Assert.Equal(
-		outerSignatures,
+		[]string(fixture.Transaction.Signatures),
 		transactionResponse.Signatures,
 	)
 	tt.Assert.Equal(fixture.Transaction.Successful, transactionResponse.Successful)
@@ -174,10 +170,8 @@ func TestFeeBumpTransactionResource(t *testing.T) {
 
 	tt.Assert.Equal(fixture.InnerHash, byInnerHash.Hash)
 	tt.Assert.Equal(fixture.InnerHash, byInnerHash.ID)
-	var innerSignatures []string
-	tt.Assert.NoError(fixture.Transaction.InnerSignatures.AssignTo(&innerSignatures))
 	tt.Assert.Equal(
-		innerSignatures,
+		[]string(fixture.Transaction.InnerSignatures),
 		byInnerHash.Signatures,
 	)
 
