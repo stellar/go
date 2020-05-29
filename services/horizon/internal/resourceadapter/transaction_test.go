@@ -3,7 +3,6 @@ package resourceadapter
 import (
 	"encoding/base64"
 	"github.com/guregu/null"
-	"github.com/jackc/pgtype"
 	"github.com/stellar/go/xdr"
 	"testing"
 
@@ -26,12 +25,6 @@ func TestPopulateTransaction_Successful(t *testing.T) {
 	row = history.Transaction{
 		TransactionWithoutLedger: history.TransactionWithoutLedger{
 			Successful: true,
-			Signatures: pgtype.VarcharArray{
-				Status: pgtype.Null,
-			},
-			InnerSignatures: pgtype.VarcharArray{
-				Status: pgtype.Null,
-			},
 		},
 	}
 
@@ -42,12 +35,6 @@ func TestPopulateTransaction_Successful(t *testing.T) {
 	row = history.Transaction{
 		TransactionWithoutLedger: history.TransactionWithoutLedger{
 			Successful: false,
-			Signatures: pgtype.VarcharArray{
-				Status: pgtype.Null,
-			},
-			InnerSignatures: pgtype.VarcharArray{
-				Status: pgtype.Null,
-			},
 		},
 	}
 
@@ -62,12 +49,6 @@ func TestPopulateTransaction_HashMemo(t *testing.T) {
 		TransactionWithoutLedger: history.TransactionWithoutLedger{
 			MemoType: "hash",
 			Memo:     null.StringFrom("abcdef"),
-			Signatures: pgtype.VarcharArray{
-				Status: pgtype.Null,
-			},
-			InnerSignatures: pgtype.VarcharArray{
-				Status: pgtype.Null,
-			},
 		},
 	}
 	assert.NoError(t, PopulateTransaction(ctx, row.TransactionHash, &dest, row))
@@ -135,12 +116,6 @@ func TestPopulateTransaction_TextMemo(t *testing.T) {
 				MemoType:   "text",
 				TxEnvelope: envelopeXDR,
 				Memo:       null.StringFrom("sample"),
-				Signatures: pgtype.VarcharArray{
-					Status: pgtype.Null,
-				},
-				InnerSignatures: pgtype.VarcharArray{
-					Status: pgtype.Null,
-				},
 			},
 		}
 
@@ -167,12 +142,6 @@ func TestPopulateTransaction_Fee(t *testing.T) {
 		TransactionWithoutLedger: history.TransactionWithoutLedger{
 			MaxFee:     10000,
 			FeeCharged: 100,
-			Signatures: pgtype.VarcharArray{
-				Status: pgtype.Null,
-			},
-			InnerSignatures: pgtype.VarcharArray{
-				Status: pgtype.Null,
-			},
 		},
 	}
 
@@ -193,10 +162,10 @@ func TestFeeBumpTransaction(t *testing.T) {
 			Account:              "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
 			NewMaxFee:            null.IntFrom(10000),
 			InnerTransactionHash: null.StringFrom("2374e99349b9ef7dba9a5db3339b78fda8f34777b1af33ba468ad5c0df946d4d"),
+			Signatures:           []string{"a", "b", "c"},
+			InnerSignatures:      []string{"d", "e", "f"},
 		},
 	}
-	assert.NoError(t, row.Signatures.Set([]string{"a", "b", "c"}))
-	assert.NoError(t, row.InnerSignatures.Set([]string{"d", "e", "f"}))
 
 	assert.NoError(t, PopulateTransaction(ctx, row.TransactionHash, &dest, row))
 	assert.Equal(t, row.TransactionHash, dest.Hash)

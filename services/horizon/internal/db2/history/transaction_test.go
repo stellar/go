@@ -2,7 +2,6 @@ package history
 
 import (
 	"database/sql"
-	"github.com/jackc/pgtype"
 	"testing"
 	"time"
 
@@ -240,75 +239,24 @@ func TestInsertTransaction(t *testing.T) {
 
 	success := true
 
-	emptySignatures := pgtype.VarcharArray{}
-	tt.Assert.NoError(emptySignatures.Set([]string{}))
+	emptySignatures := []string{}
+	var nullSignatures []string
 
-	nullSignatures := pgtype.VarcharArray{}
-	tt.Assert.NoError(nullSignatures.Set(nil))
+	nullTimeBounds := TimeBounds{Null: true}
 
-	nullTimeBounds := pgtype.Int8range{}
-	tt.Assert.NoError(nullTimeBounds.Set(nil))
+	infiniteTimeBounds := TimeBounds{Lower: null.IntFrom(0)}
+	timeBoundWithMin := TimeBounds{Lower: null.IntFrom(1576195867)}
+	timeBoundWithMax := TimeBounds{Lower: null.IntFrom(0), Upper: null.IntFrom(1576195867)}
+	timeboundsWithMinAndMax := TimeBounds{Lower: null.IntFrom(1576095867), Upper: null.IntFrom(1576195867)}
 
-	infiniteTimeBounds := pgtype.Int8range{
-		Lower: pgtype.Int8{
-			Int:    0,
-			Status: pgtype.Present,
-		},
-		Upper:     pgtype.Int8{},
-		LowerType: pgtype.Inclusive,
-		UpperType: pgtype.Unbounded,
-		Status:    pgtype.Present,
-	}
-
-	timeBoundWithMin := pgtype.Int8range{
-		Lower: pgtype.Int8{
-			Int:    1576195867,
-			Status: pgtype.Present,
-		},
-		Upper:     pgtype.Int8{},
-		LowerType: pgtype.Inclusive,
-		UpperType: pgtype.Unbounded,
-		Status:    pgtype.Present,
-	}
-
-	timeBoundWithMax := pgtype.Int8range{
-		Lower: pgtype.Int8{
-			Int:    0,
-			Status: pgtype.Present,
-		},
-		Upper: pgtype.Int8{
-			Int:    1576195867,
-			Status: pgtype.Present,
-		},
-		LowerType: pgtype.Inclusive,
-		UpperType: pgtype.Exclusive,
-		Status:    pgtype.Present,
-	}
-
-	timeboundsWithMinAndMax := pgtype.Int8range{
-		Lower: pgtype.Int8{
-			Int:    1576095867,
-			Status: pgtype.Present,
-		},
-		Upper: pgtype.Int8{
-			Int:    1576195867,
-			Status: pgtype.Present,
-		},
-		LowerType: pgtype.Inclusive,
-		UpperType: pgtype.Exclusive,
-		Status:    pgtype.Present,
-	}
-
-	withMultipleSignatures := pgtype.VarcharArray{}
-	tt.Assert.NoError(withMultipleSignatures.Set([]string{
+	withMultipleSignatures := []string{
 		"MID8kIOLP/yEymCyhU7A/YeVpnVTDzAqszWtv8c+/qAw542BaKWxCJxl/jsggY0mF+SR8X0bvWXvPBgyYcDZDw==",
 		"J0J8qTsKREW29GAmZMXXBTVkYKkGbOk1AUPUalbIiDdDjd8mpIIdMStqo9w+k5A8UKRTm/iO2V/riQ14CF9IAg==",
-	}))
+	}
 
-	withSingleSignature := pgtype.VarcharArray{}
-	tt.Assert.NoError(withSingleSignature.Set([]string{
+	withSingleSignature := []string{
 		"MID8kIOLP/yEymCyhU7A/YeVpnVTDzAqszWtv8c+/qAw542BaKWxCJxl/jsggY0mF+SR8X0bvWXvPBgyYcDZDw==",
-	}))
+	}
 
 	for _, testCase := range []struct {
 		name     string

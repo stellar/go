@@ -8,7 +8,6 @@ import (
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/guregu/null"
-	"github.com/jackc/pgtype"
 	"github.com/stellar/go/exp/ingest/io"
 	"github.com/stellar/go/network"
 	"github.com/stellar/go/services/horizon/internal/test"
@@ -287,42 +286,30 @@ func FeeBumpScenario(tt *test.T, q *Q, successful bool) FeeBumpFixture {
 
 	fixture.Transaction = Transaction{
 		TransactionWithoutLedger: TransactionWithoutLedger{
-			TotalOrderID:     TotalOrderID{528280981504},
-			TransactionHash:  fixture.OuterHash,
-			LedgerSequence:   fixture.Ledger.Sequence,
-			ApplicationOrder: 1,
-			Account:          account.Address(),
-			AccountSequence:  "97",
-			MaxFee:           int64(fixture.Envelope.Fee()),
-			FeeCharged:       int64(resultPair.Result.FeeCharged),
-			OperationCount:   1,
-			TxEnvelope:       envelopeXDR,
-			TxResult:         resultXDR,
-			TxFeeMeta:        "AAAAAA==",
-			TxMeta:           "AAAAAQAAAAAAAAAA",
-			MemoType:         "none",
-			Memo:             null.NewString("", false),
-			TimeBounds: pgtype.Int8range{
-				Lower: pgtype.Int8{
-					Int:    2,
-					Status: pgtype.Present,
-				},
-				Upper: pgtype.Int8{
-					Int:    4,
-					Status: pgtype.Present,
-				},
-				LowerType: pgtype.Inclusive,
-				UpperType: pgtype.Exclusive,
-				Status:    pgtype.Present,
-			},
+			TotalOrderID:         TotalOrderID{528280981504},
+			TransactionHash:      fixture.OuterHash,
+			LedgerSequence:       fixture.Ledger.Sequence,
+			ApplicationOrder:     1,
+			Account:              account.Address(),
+			AccountSequence:      "97",
+			MaxFee:               int64(fixture.Envelope.Fee()),
+			FeeCharged:           int64(resultPair.Result.FeeCharged),
+			OperationCount:       1,
+			TxEnvelope:           envelopeXDR,
+			TxResult:             resultXDR,
+			TxFeeMeta:            "AAAAAA==",
+			TxMeta:               "AAAAAQAAAAAAAAAA",
+			MemoType:             "none",
+			Memo:                 null.NewString("", false),
+			TimeBounds:           TimeBounds{Lower: null.IntFrom(2), Upper: null.IntFrom(4)},
+			Signatures:           signatures(fixture.Envelope.FeeBumpSignatures()),
+			InnerSignatures:      signatures(fixture.Envelope.Signatures()),
 			Successful:           successful,
 			NewMaxFee:            null.IntFrom(int64(fixture.Envelope.FeeBumpFee())),
 			InnerTransactionHash: null.StringFrom(fixture.InnerHash),
 			FeeAccount:           null.StringFrom(feeBumpAccount.Address()),
 		},
 	}
-	tt.Assert.NoError(fixture.Transaction.Signatures.Set(signatures(fixture.Envelope.FeeBumpSignatures())))
-	tt.Assert.NoError(fixture.Transaction.InnerSignatures.Set(signatures(fixture.Envelope.Signatures())))
 
 	fixture.NormalTransaction = Transaction{
 		TransactionWithoutLedger: TransactionWithoutLedger{
