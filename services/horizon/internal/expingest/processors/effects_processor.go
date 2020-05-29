@@ -55,17 +55,6 @@ func (p *EffectProcessor) loadAccountIDs(accountSet map[string]int64) error {
 func operationsEffects(transaction io.LedgerTransaction, sequence uint32) ([]effect, error) {
 	effects := []effect{}
 
-	changes, err := transaction.GetChanges()
-	if err != nil {
-		return effects, errors.Wrap(err, "cannot obtain transaction changes")
-	}
-	createdOffers := map[xdr.Int64]bool{}
-	for _, change := range changes {
-		if change.Type == xdr.LedgerEntryTypeOffer && change.Pre == nil && change.Post != nil {
-			createdOffers[change.Post.Data.MustOffer().OfferId] = true
-		}
-	}
-
 	for opi, op := range transaction.Envelope.Operations() {
 		operation := transactionOperationWrapper{
 			index:          uint32(opi),
@@ -78,50 +67,10 @@ func operationsEffects(transaction io.LedgerTransaction, sequence uint32) ([]eff
 		if err != nil {
 			return effects, errors.Wrapf(err, "reading operation %v effects", operation.ID())
 		}
-		p, err = appendOfferRemovedEffects(createdOffers, p, operation)
-		if err != nil {
-			return effects, errors.Wrapf(err, "appending offer removed effects for operation %v", operation.ID())
-		}
-
 		effects = append(effects, p...)
 	}
 
 	return effects, nil
-}
-
-func appendOfferRemovedEffects(
-	createdOffers map[xdr.Int64]bool,
-	effects []effect,
-	operation transactionOperationWrapper,
-) ([]effect, error) {
-	changes, err := operation.transaction.GetOperationChanges(operation.index)
-	if err != nil {
-		return effects, errors.Wrap(err, "cannot obtain changes for operation")
-	}
-
-	for _, change := range changes {
-		if change.Type != xdr.LedgerEntryTypeOffer || change.Pre == nil || change.Post != nil {
-			continue
-		}
-
-		offer := change.Pre.Data.MustOffer()
-		// skip offers which were created in the current transaction
-		if createdOffers[offer.OfferId] {
-			continue
-		}
-
-		effects = append(effects, effect{
-			address:     offer.SellerId.Address(),
-			operationID: operation.ID(),
-			details: map[string]interface{}{
-				"offer_id": offer.OfferId,
-			},
-			effectType: history.EffectOfferRemoved,
-			order:      uint32(len(effects) + 1),
-		})
-	}
-
-	return effects, err
 }
 
 func (p *EffectProcessor) insertDBOperationsEffects(effects []effect, accountSet map[string]int64) error {
