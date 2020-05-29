@@ -9,7 +9,7 @@ import (
 
 	migrate "github.com/rubenv/sql-migrate"
 	"github.com/stellar/go/services/ticker/internal/tickerdb"
-	"github.com/stellar/go/services/ticker/internal/tickerdb/tickerdbsetup"
+	"github.com/stellar/go/services/ticker/internal/tickerdb/tickerdbtest"
 	"github.com/stellar/go/support/db/dbtest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -305,7 +305,7 @@ func TestRetrieveMarketData(t *testing.T) {
 }
 
 func TestRetrievePartialMarkets(t *testing.T) {
-	session := tickerdbsetup.SetupTickerTestSession(t, "../migrations")
+	session := tickerdbtest.SetupTickerTestSession(t, "../migrations")
 	defer session.DB.Close()
 
 	issuer1PK := "GCF3TQXKZJNFJK7HCMNE2O2CUNKCJH2Y2ROISTBPLC7C5EIA5NNG2XZB"
