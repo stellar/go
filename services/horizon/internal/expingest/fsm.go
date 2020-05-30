@@ -387,6 +387,16 @@ func (r resumeState) run(s *System) (transition, error) {
 	startTime := time.Now()
 
 	if ingestLedger <= lastIngestedLedger {
+		// this ingestion node is behind so we will update the order book stream
+		// without doing any verification. the verification routine only works
+		// when we are updating both the db and order book stream at the same time
+		if s.verifyOrderBookStream {
+			_, _, err = s.orderBookStream.update(s.historyQ)
+			if err != nil {
+				return retryResume(r), errors.Wrap(err, "Error updating order book stream")
+			}
+		}
+
 		// rollback because we will not be updating the DB
 		// so there is no need to hold on to the distributed lock
 		// and thereby block the other nodes from ingesting
