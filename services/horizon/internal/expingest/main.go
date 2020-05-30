@@ -160,14 +160,17 @@ func NewSystem(config Config) (*System, error) {
 	historyAdapter := adapters.MakeHistoryArchiveAdapter(archive)
 
 	system := &System{
-		ctx:                      ctx,
-		cancel:                   cancel,
-		historyAdapter:           historyAdapter,
-		ledgerBackend:            ledgerBackend,
-		config:                   config,
-		historyQ:                 historyQ,
-		graph:                    config.OrderBookGraph,
-		orderBookStream:          &OrderBookStream{OrderBookGraph: orderbook.NewOrderBookGraph()},
+		ctx:            ctx,
+		cancel:         cancel,
+		historyAdapter: historyAdapter,
+		ledgerBackend:  ledgerBackend,
+		config:         config,
+		historyQ:       historyQ,
+		graph:          config.OrderBookGraph,
+		orderBookStream: &OrderBookStream{
+			HistoryQ:       historyQ,
+			OrderBookGraph: orderbook.NewOrderBookGraph(),
+		},
 		verifyOrderBookStream:    true,
 		disableStateVerification: config.DisableStateVerification,
 		maxStreamRetries:         config.MaxStreamRetries,
@@ -365,7 +368,7 @@ func (s *System) loadOffersIntoMemory(sequence uint32) error {
 	}
 
 	if s.verifyOrderBookStream {
-		s.orderBookStream.updateAndVerify(sequence, s.historyQ, s.graph)
+		s.orderBookStream.updateAndVerify(s.graph, sequence)
 	}
 
 	if err := s.graphApply(sequence); err != nil {

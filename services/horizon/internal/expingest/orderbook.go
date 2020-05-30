@@ -6,7 +6,6 @@ import (
 
 	"github.com/stellar/go/exp/orderbook"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
@@ -18,8 +17,8 @@ import (
 // in memory graph. However, it is safe for other go routines to use the
 // in memory graph for read operations.
 type OrderBookStream struct {
-	OrderBookGraph *orderbook.OrderBookGraph
-	HistorySession *db.Session
+	OrderBookGraph orderbook.OBGraph
+	HistoryQ       history.IngestionQ
 	lastLedger     uint32
 }
 
@@ -30,27 +29,27 @@ type ingestionStatus struct {
 	LastOfferCompactionLedger  uint32
 }
 
-func (o *OrderBookStream) isValid(q history.IngestionQ) (ingestionStatus, error) {
+func (o *OrderBookStream) getIngestionStatus() (ingestionStatus, error) {
 	var status ingestionStatus
 	var err error
 
-	status.StateInvalid, err = q.GetExpStateInvalid()
+	status.StateInvalid, err = o.HistoryQ.GetExpStateInvalid()
 	if err != nil {
-		return status, errors.Wrap(err, "error from GetExpStateInvalid")
+		return status, errors.Wrap(err, "Error from GetExpStateInvalid")
 	}
 
 	var lastHistoryLedger uint32
-	lastHistoryLedger, err = q.GetLatestLedger()
+	lastHistoryLedger, err = o.HistoryQ.GetLatestLedger()
 	if err != nil {
-		return status, errors.Wrap(err, "error from GetLatestLedger")
+		return status, errors.Wrap(err, "Error from GetLatestLedger")
 	}
-	status.LastIngestedLedger, err = q.GetLastLedgerExpIngestNonBlocking()
+	status.LastIngestedLedger, err = o.HistoryQ.GetLastLedgerExpIngestNonBlocking()
 	if err != nil {
-		return status, errors.Wrap(err, "error from GetLastLedgerExpIngestNonBlocking")
+		return status, errors.Wrap(err, "Error from GetLastLedgerExpIngestNonBlocking")
 	}
-	status.LastOfferCompactionLedger, err = q.GetOfferCompactionSequence()
+	status.LastOfferCompactionLedger, err = o.HistoryQ.GetOfferCompactionSequence()
 	if err != nil {
-		return status, errors.Wrap(err, "error from GetOfferCompactionSequence")
+		return status, errors.Wrap(err, "Error from GetOfferCompactionSequence")
 	}
 
 	status.HistoryConsistentWithState = (status.LastIngestedLedger == lastHistoryLedger) ||
@@ -61,12 +60,7 @@ func (o *OrderBookStream) isValid(q history.IngestionQ) (ingestionStatus, error)
 	return status, nil
 }
 
-func (o *OrderBookStream) update(q history.IngestionQ) ([]history.Offer, []xdr.Int64, error) {
-	status, err := o.isValid(q)
-	if err != nil {
-		return nil, nil, errors.Wrap(err, "error from isValid check")
-	}
-
+func (o *OrderBookStream) update(status ingestionStatus) ([]history.Offer, []xdr.Int64, error) {
 	reset := o.lastLedger == 0
 	if status.StateInvalid || !status.HistoryConsistentWithState {
 		log.WithField("status", status).Warn("ingestion state is invalid")
@@ -95,14 +89,13 @@ func (o *OrderBookStream) update(q history.IngestionQ) ([]history.Offer, []xdr.I
 		}
 
 		defer o.OrderBookGraph.Discard()
-		var offers []history.Offer
-		offers, err = loadOffersIntoGraph(q, o.OrderBookGraph)
+		offers, err := loadOffersIntoGraph(o.HistoryQ, o.OrderBookGraph)
 		if err != nil {
-			return nil, nil, errors.Wrap(err, "error from loadOffersIntoGraph")
+			return nil, nil, errors.Wrap(err, "Error from loadOffersIntoGraph")
 		}
 
 		if err = o.OrderBookGraph.Apply(status.LastIngestedLedger); err != nil {
-			return nil, nil, err
+			return nil, nil, errors.Wrap(err, "Error applying changes to order book")
 		}
 
 		o.lastLedger = status.LastIngestedLedger
@@ -115,11 +108,11 @@ func (o *OrderBookStream) update(q history.IngestionQ) ([]history.Offer, []xdr.I
 
 	defer o.OrderBookGraph.Discard()
 
-	var updated, rows []history.Offer
+	var updated []history.Offer
 	var removed []xdr.Int64
-	rows, err = q.GetUpdatedOffers(o.lastLedger)
+	rows, err := o.HistoryQ.GetUpdatedOffers(o.lastLedger)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "error from GetUpdatedOffers")
+		return nil, nil, errors.Wrap(err, "Error from GetUpdatedOffers")
 	}
 	for _, row := range rows {
 		if row.Deleted {
@@ -135,7 +128,7 @@ func (o *OrderBookStream) update(q history.IngestionQ) ([]history.Offer, []xdr.I
 	}
 
 	if err = o.OrderBookGraph.Apply(status.LastIngestedLedger); err != nil {
-		return nil, nil, errors.Wrap(err, "could not apply changes to orderbook")
+		return nil, nil, errors.Wrap(err, "Error applying changes to order book")
 	}
 
 	o.lastLedger = status.LastIngestedLedger
@@ -197,10 +190,16 @@ func verifyRemovedOffers(ledger uint32, fromDB []xdr.Int64, fromIngestion []xdr.
 	}
 }
 
-func (o *OrderBookStream) updateAndVerify(sequence uint32, q history.IngestionQ, graph orderbook.OBGraph) {
-	dbUpdates, dbRemoved, err := o.update(q)
+func (o *OrderBookStream) updateAndVerify(graph orderbook.OBGraph, sequence uint32) {
+	status, err := o.getIngestionStatus()
 	if err != nil {
-		log.WithError(err).WithField("sequence", sequence).Info("could not update order book ingester")
+		log.WithError(err).WithField("sequence", sequence).Info("Error obtaining ingestion status")
+		return
+	}
+
+	dbUpdates, dbRemoved, err := o.update(status)
+	if err != nil {
+		log.WithError(err).WithField("sequence", sequence).Info("Error consuming from order book stream")
 		return
 	}
 	ingestionUpdates, ingestionRemoved := graph.Pending()
@@ -208,16 +207,21 @@ func (o *OrderBookStream) updateAndVerify(sequence uint32, q history.IngestionQ,
 	verifyRemovedOffers(sequence, dbRemoved, ingestionRemoved)
 }
 
-// Update will query the Horizon DB for updates and apply them to the in memory order book graph.
-// After calling this function the the in memory order book graph should be consistent with the
+// Update will query the Horizon DB for offers which have been created, removed, or updated since the
+// last time Update() was called. Those changes will then be applied to the in memory order book graph.
+// After calling this function, the the in memory order book graph should be consistent with the
 // Horizon DB (assuming no error is returned).
 func (o *OrderBookStream) Update() error {
-	q := &history.Q{o.HistorySession}
-	if err := q.BeginTx(&sql.TxOptions{ReadOnly: true, Isolation: sql.LevelRepeatableRead}); err != nil {
-		return errors.Wrap(err, "could not start repeatable read transaction")
+	if err := o.HistoryQ.BeginTx(&sql.TxOptions{ReadOnly: true, Isolation: sql.LevelRepeatableRead}); err != nil {
+		return errors.Wrap(err, "Error starting repeatable read transaction")
 	}
-	defer q.Rollback()
+	defer o.HistoryQ.Rollback()
 
-	_, _, err := o.update(q)
+	status, err := o.getIngestionStatus()
+	if err != nil {
+		return errors.Wrap(err, "Error obtaining ingestion status")
+	}
+
+	_, _, err = o.update(status)
 	return err
 }

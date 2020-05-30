@@ -471,7 +471,7 @@ func (a *App) init() {
 		orderBookGraph := orderbook.NewOrderBookGraph()
 		a.orderBookStream = &expingest.OrderBookStream{
 			OrderBookGraph: orderBookGraph,
-			HistorySession: a.historyQ.Clone(),
+			HistoryQ:       &history.Q{a.HorizonSession(a.ctx)},
 		}
 		initPathFinder(a, orderBookGraph)
 	}

@@ -391,7 +391,13 @@ func (r resumeState) run(s *System) (transition, error) {
 		// without doing any verification. the verification routine only works
 		// when we are updating both the db and order book stream at the same time
 		if s.verifyOrderBookStream {
-			_, _, err = s.orderBookStream.update(s.historyQ)
+			var status ingestionStatus
+			status, err = s.orderBookStream.getIngestionStatus()
+			if err != nil {
+				return retryResume(r), errors.Wrap(err, "Error obtaining ingestion status")
+			}
+
+			_, _, err = s.orderBookStream.update(status)
 			if err != nil {
 				return retryResume(r), errors.Wrap(err, "Error updating order book stream")
 			}
@@ -875,7 +881,7 @@ func (s *System) completeIngestion(ledger uint32) error {
 	}
 
 	if s.verifyOrderBookStream {
-		s.orderBookStream.updateAndVerify(ledger, s.historyQ, s.graph)
+		s.orderBookStream.updateAndVerify(s.graph, ledger)
 	}
 
 	if err := s.historyQ.Commit(); err != nil {
