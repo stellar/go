@@ -36,14 +36,12 @@ func (p *OffersProcessor) ProcessChange(change io.Change) error {
 		return nil
 	}
 
-	err := p.cache.AddChange(change)
-	if err != nil {
+	if err := p.cache.AddChange(change); err != nil {
 		return errors.Wrap(err, "error adding to ledgerCache")
 	}
 
 	if p.cache.Size() > maxBatchSize {
-		err = p.Commit()
-		if err != nil {
+		if err := p.flushCache(); err != nil {
 			return errors.Wrap(err, "error in Commit")
 		}
 		p.reset()
@@ -113,9 +111,8 @@ func (p *OffersProcessor) Commit() error {
 		// trim offers table by removing offers which were deleted before the cutoff ledger
 		if offerRowsRemoved, err := p.offersQ.CompactOffers(p.sequence - offerCompactionWindow); err != nil {
 			return errors.Wrap(err, "could not compact offers")
-		} else if offerRowsRemoved > 0 {
-			log.WithField("offerRowsRemoved", offerRowsRemoved).
-				Info("Trimmed offers table")
+		} else {
+			log.WithField("offer_rows_removed", offerRowsRemoved).Info("Trimmed offers table")
 		}
 	}
 
