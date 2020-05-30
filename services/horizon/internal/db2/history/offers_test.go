@@ -109,13 +109,22 @@ func assertOfferEntryMatchesDBOffer(t *testing.T, offerEntry xdr.OfferEntry, off
 	}
 }
 
+func insertOffer(q *Q, offer xdr.OfferEntry, lastModifiedSeq uint32) error {
+	batch := q.NewOffersBatchInsertBuilder(0)
+	err := batch.Add(offer, xdr.Uint32(lastModifiedSeq))
+	if err != nil {
+		return err
+	}
+	return batch.Exec()
+}
+
 func TestGetOfferByID(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
-	_, err := q.InsertOffer(eurOffer, 1234)
+	err := insertOffer(q, eurOffer, 1234)
 	tt.Assert.NoError(err)
 	offer, err := q.GetOfferByID(int64(eurOffer.OfferId))
 	tt.Assert.NoError(err)
@@ -149,9 +158,9 @@ func TestInsertOffers(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
-	_, err := q.InsertOffer(eurOffer, 1234)
+	err := insertOffer(q, eurOffer, 1234)
 	tt.Assert.NoError(err)
-	_, err = q.InsertOffer(twoEurOffer, 1235)
+	err = insertOffer(q, twoEurOffer, 1235)
 	tt.Assert.NoError(err)
 
 	offers, err := q.GetAllOffers()
@@ -173,9 +182,8 @@ func TestUpdateOffer(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
-	rowsAffected, err := q.InsertOffer(eurOffer, 1234)
+	err := insertOffer(q, eurOffer, 1234)
 	tt.Assert.NoError(err)
-	tt.Assert.Equal(int64(1), rowsAffected)
 
 	offers, err := q.GetAllOffers()
 	tt.Assert.NoError(err)
@@ -198,7 +206,7 @@ func TestUpdateOffer(t *testing.T) {
 	modifiedEurOffer := eurOffer
 	modifiedEurOffer.Amount -= 10
 
-	rowsAffected, err = q.UpdateOffer(modifiedEurOffer, 1235)
+	rowsAffected, err := q.UpdateOffer(modifiedEurOffer, 1235)
 	tt.Assert.NoError(err)
 	tt.Assert.Equal(int64(1), rowsAffected)
 
@@ -294,7 +302,7 @@ func TestRemoveOffer(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
-	_, err := q.InsertOffer(eurOffer, 1234)
+	err := insertOffer(q, eurOffer, 1234)
 	tt.Assert.NoError(err)
 	offers, err := q.GetAllOffers()
 	tt.Assert.NoError(err)
@@ -316,9 +324,9 @@ func TestGetOffers(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
-	_, err := q.InsertOffer(eurOffer, 1234)
+	err := insertOffer(q, eurOffer, 1234)
 	tt.Assert.NoError(err)
-	_, err = q.InsertOffer(twoEurOffer, 1235)
+	err = insertOffer(q, twoEurOffer, 1235)
 	tt.Assert.NoError(err)
 
 	pageQuery, err := db2.NewPageQuery("", false, "", 10)

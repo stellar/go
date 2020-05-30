@@ -41,11 +41,6 @@ func (m *MockQOffers) NewOffersBatchInsertBuilder(maxBatchSize int) OffersBatchI
 	return a.Get(0).(OffersBatchInsertBuilder)
 }
 
-func (m *MockQOffers) InsertOffer(offer xdr.OfferEntry, lastModifiedLedger xdr.Uint32) (int64, error) {
-	a := m.Called(offer, lastModifiedLedger)
-	return a.Get(0).(int64), a.Error(1)
-}
-
 func (m *MockQOffers) UpdateOffer(offer xdr.OfferEntry, lastModifiedLedger xdr.Uint32) (int64, error) {
 	a := m.Called(offer, lastModifiedLedger)
 	return a.Get(0).(int64), a.Error(1)

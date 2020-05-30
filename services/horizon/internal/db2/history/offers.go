@@ -13,7 +13,6 @@ type QOffers interface {
 	CountOffers() (int, error)
 	GetUpdatedOffers(newerThanSequence uint32) ([]Offer, error)
 	NewOffersBatchInsertBuilder(maxBatchSize int) OffersBatchInsertBuilder
-	InsertOffer(offer xdr.OfferEntry, lastModifiedLedger xdr.Uint32) (int64, error)
 	UpdateOffer(offer xdr.OfferEntry, lastModifiedLedger xdr.Uint32) (int64, error)
 	RemoveOffer(offerID xdr.Int64, lastModifiedLedger uint32) (int64, error)
 	CompactOffers(cuttOffSequence uint32) (int64, error)
@@ -99,65 +98,29 @@ func (q *Q) GetUpdatedOffers(newerThanSequence uint32) ([]Offer, error) {
 	return offers, err
 }
 
-func offerToMap(offer xdr.OfferEntry, lastModifiedLedger xdr.Uint32) (map[string]interface{}, error) {
+// UpdateOffer updates a row in the offers table.
+// Returns number of rows affected and error.
+func (q *Q) UpdateOffer(offer xdr.OfferEntry, lastModifiedLedger xdr.Uint32) (int64, error) {
 	var price float64
 	if offer.Price.N > 0 {
 		price = float64(offer.Price.N) / float64(offer.Price.D)
 	} else if offer.Price.D == 0 {
-		return nil, errors.New("offer price denominator is zero")
-	}
-	buyingAsset, err := xdr.MarshalBase64(offer.Buying)
-	if err != nil {
-		return nil, errors.Wrap(err, "cannot marshal buying asset in offer")
-	}
-	sellingAsset, err := xdr.MarshalBase64(offer.Selling)
-	if err != nil {
-		return nil, errors.Wrap(err, "cannot marshal selling asset in offer")
+		return 0, errors.New("offer price denominator is zero")
 	}
 
-	return map[string]interface{}{
+	offerMap := map[string]interface{}{
 		"seller_id":            offer.SellerId.Address(),
-		"offer_id":             offer.OfferId,
-		"selling_asset":        sellingAsset,
-		"buying_asset":         buyingAsset,
+		"selling_asset":        offer.Selling,
+		"buying_asset":         offer.Buying,
 		"amount":               offer.Amount,
 		"pricen":               offer.Price.N,
 		"priced":               offer.Price.D,
 		"price":                price,
 		"flags":                offer.Flags,
 		"last_modified_ledger": lastModifiedLedger,
-	}, nil
-}
-
-// InsertOffer creates a row in the offers table.
-// Returns number of rows affected and error.
-func (q *Q) InsertOffer(offer xdr.OfferEntry, lastModifiedLedger xdr.Uint32) (int64, error) {
-	m, err := offerToMap(offer, lastModifiedLedger)
-	if err != nil {
-		return 0, err
 	}
 
-	sql := sq.Insert("offers").SetMap(m)
-	result, err := q.Exec(sql)
-	if err != nil {
-		return 0, err
-	}
-
-	return result.RowsAffected()
-}
-
-// UpdateOffer updates a row in the offers table.
-// Returns number of rows affected and error.
-func (q *Q) UpdateOffer(offer xdr.OfferEntry, lastModifiedLedger xdr.Uint32) (int64, error) {
-	m, err := offerToMap(offer, lastModifiedLedger)
-	if err != nil {
-		return 0, err
-	}
-
-	offerID := m["offer_id"]
-	delete(m, "offer_id")
-
-	sql := sq.Update("offers").SetMap(m).Where(sq.Eq{"offer_id": offerID})
+	sql := sq.Update("offers").SetMap(offerMap).Where("offer_id = ?", offer.OfferId)
 	result, err := q.Exec(sql)
 	if err != nil {
 		return 0, err
