@@ -51,7 +51,7 @@ func (m *MockQOffers) RemoveOffer(offerID xdr.Int64, lastModifiedLedger uint32) 
 	return a.Get(0).(int64), a.Error(1)
 }
 
-func (m *MockQOffers) CompactOffers(cuttOffSequence uint32) (int64, error) {
-	a := m.Called(cuttOffSequence)
+func (m *MockQOffers) CompactOffers(cutOffSequence uint32) (int64, error) {
+	a := m.Called(cutOffSequence)
 	return a.Get(0).(int64), a.Error(1)
 }

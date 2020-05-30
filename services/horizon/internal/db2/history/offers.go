@@ -15,7 +15,7 @@ type QOffers interface {
 	NewOffersBatchInsertBuilder(maxBatchSize int) OffersBatchInsertBuilder
 	UpdateOffer(offer xdr.OfferEntry, lastModifiedLedger xdr.Uint32) (int64, error)
 	RemoveOffer(offerID xdr.Int64, lastModifiedLedger uint32) (int64, error)
-	CompactOffers(cuttOffSequence uint32) (int64, error)
+	CompactOffers(cutOffSequence uint32) (int64, error)
 }
 
 func (q *Q) CountOffers() (int, error) {
@@ -146,17 +146,17 @@ func (q *Q) RemoveOffer(offerID xdr.Int64, lastModifiedLedger uint32) (int64, er
 }
 
 // CompactOffers removes rows from the offers table which are marked for deletion.
-func (q *Q) CompactOffers(cuttOffSequence uint32) (int64, error) {
+func (q *Q) CompactOffers(cutOffSequence uint32) (int64, error) {
 	sql := sq.Delete("offers").
 		Where("deleted = ?", true).
-		Where("last_modified_ledger <= ?", cuttOffSequence)
+		Where("last_modified_ledger <= ?", cutOffSequence)
 
 	result, err := q.Exec(sql)
 	if err != nil {
 		return 0, errors.Wrap(err, "cannot delete offer rows")
 	}
 
-	if err = q.UpdateOfferCompactionSequence(cuttOffSequence); err != nil {
+	if err = q.UpdateOfferCompactionSequence(cutOffSequence); err != nil {
 		return 0, errors.Wrap(err, "cannot update offer compaction sequence")
 	}
 
