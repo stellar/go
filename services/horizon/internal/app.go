@@ -419,7 +419,7 @@ func (a *App) Tick() {
 		defer wg.Done()
 		if a.orderBookStream != nil {
 			if err := a.orderBookStream.Update(); err != nil {
-				log.WithField("error", err).Info("could not apply updates from order book stream")
+				log.WithField("error", err).Error("could not apply updates from order book stream")
 			}
 		}
 	}()
