@@ -17,7 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestTicker(t *testing.T) {
+func TestTicker_btcEth(t *testing.T) {
 	session := tickerdbtest.SetupTickerTestSession(t, "./tickerdb/migrations")
 	defer session.DB.Close()
 
@@ -27,105 +27,134 @@ func TestTicker(t *testing.T) {
 	m := chi.NewMux()
 	m.Post("/graphql", h.ServeHTTP)
 
-	reqStr := `{
-		"query": "%s",
-		"operationName": "getTicker",
-		"variables": {}
-	}`
-	query := `
-	query getTicker() {
-		ticker(pairNames: [\"BTC_ETH\"], numHoursAgo: 24)
-		{
-			tradePair,
-			baseAssetCode,
-			counterAssetCode,
-			baseVolume,
-			counterVolume,
-			tradeCount,
-			open,
-			close,
-			high,
-			low,
-			orderbookStats {
-				bidCount,
-				bidVolume,
-				bidMax,
-				askCount,
-				askVolume,
-				askMin,
-				spread,
-				spreadMidPoint,
+	req := `{
+	"query": "query getTicker() { ticker(pairNames: [\"BTC_ETH\"], numHoursAgo: 24) { tradePair, baseAssetCode, counterAssetCode, baseVolume, counterVolume, tradeCount, open, close, high, low, orderbookStats { bidCount, bidVolume, bidMax, askCount, askVolume, askMin, spread, spreadMidPoint, } } }",
+	"operationName": "getTicker",
+	"variables": {}
+}`
+	r := httptest.NewRequest("POST", "/graphql", strings.NewReader(req))
+	w := httptest.NewRecorder()
+
+	m.ServeHTTP(w, r)
+	resp := w.Result()
+
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, "application/json", resp.Header.Get("Content-Type"))
+
+	body, err := ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	wantBody := `{
+	"data": {
+		"ticker": [
+			{
+				"tradePair": "BTC_ETH",
+				"baseAssetCode": "BTC",
+				"counterAssetCode": "ETH",
+				"baseVolume": 174,
+				"counterVolume": 86,
+				"tradeCount": 3,
+				"open": 1,
+				"close": 0.92,
+				"high": 1.0,
+				"low": 0.1,
+				"orderbookStats": {
+					"bidCount": 16,
+					"bidVolume": 0.25,
+					"bidMax": 200,
+					"askCount": 18,
+					"askVolume": 45,
+					"askMin": 0.1,
+					"spread": -1999,
+					"spreadMidPoint": -799.5
+				}
 			}
-		}
-	}`
-	req := fmt.Sprintf(reqStr, formatMultiline(query))
-	t.Log(req)
+		]
+	}
+}`
+	assert.JSONEq(t, wantBody, string(body))
+}
 
-	wantBody := formatMultiline(`
-	{"data":{"ticker": [{
-		"tradePair": "BTC_ETH",
-		"baseAssetCode": "BTC",
-		"counterAssetCode": "ETH",
-		"baseVolume": 174,
-		"counterVolume": 86,
-		"tradeCount": 3,
-		"open": 1,
-		"close": 0.92,
-		"high": 1.0,
-		"low": 0.1,
-		"orderbookStats": {
-			"bidCount": 16,
-			"bidVolume": 0.25,
-			"bidMax": 200,
-			"askCount": 18,
-			"askVolume": 45,
-			"askMin": 0.1,
-			"spread": -1999,
-			"spreadMidPoint": -799.5
-		}
-	}]}}`)
-	testRequest(t, m, req, wantBody)
+func TestTicker_ethBtc(t *testing.T) {
+	session := tickerdbtest.SetupTickerTestSession(t, "./tickerdb/migrations")
+	defer session.DB.Close()
 
-	query = `
-	query getTicker() {
-		ticker(pairNames: [\"ETH_BTC\"], numHoursAgo: 24)
-		{
-			tradePair,
-			baseAssetCode,
-			counterAssetCode,
-			baseVolume,
-			counterVolume,
-			tradeCount
-		}
-	}`
-	req = fmt.Sprintf(reqStr, formatMultiline(query))
-	t.Log(req)
+	logger := hlog.New()
+	resolver := gql.New(&session, logger)
+	h := resolver.NewRelayHandler()
+	m := chi.NewMux()
+	m.Post("/graphql", h.ServeHTTP)
 
-	wantBody = formatMultiline(`
-	{"data":{"ticker": [{
-		"tradePair": "ETH_BTC",
-		"baseAssetCode": "ETH",
-		"counterAssetCode": "BTC",
-		"baseVolume": 86,
-		"counterVolume": 174,
-		"tradeCount": 3
-	}]}}`)
-	testRequest(t, m, req, wantBody)
+	req := `{
+	"query": "query getTicker() { ticker(pairNames: [\"ETH_BTC\"], numHoursAgo: 24) { tradePair, baseAssetCode, counterAssetCode, baseVolume, counterVolume, tradeCount } }",
+	"operationName": "getTicker",
+	"variables": {}
+}`
+	r := httptest.NewRequest("POST", "/graphql", strings.NewReader(req))
+	w := httptest.NewRecorder()
 
-	query = `
-	query getTicker() {
-		ticker(code: \"BTC\", numHoursAgo: 24)
-		{ tradePair }
-	}`
-	req = fmt.Sprintf(reqStr, formatMultiline(query))
-	t.Log(req)
+	m.ServeHTTP(w, r)
+	resp := w.Result()
 
-	wantBody = formatMultiline(`
-	{"data":{"ticker": [
-		{"tradePair": "BTC_ETH"},
-		{"tradePair": "BTC_XLM"}
-	]}}`)
-	testRequest(t, m, req, wantBody)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, "application/json", resp.Header.Get("Content-Type"))
+
+	body, err := ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	wantBody := `{
+	"data": {
+		"ticker": [
+			{
+				"tradePair": "ETH_BTC",
+				"baseAssetCode": "ETH",
+				"counterAssetCode": "BTC",
+				"baseVolume": 86,
+				"counterVolume": 174,
+				"tradeCount": 3
+			}
+		]
+	}
+}`
+	assert.JSONEq(t, wantBody, string(body))
+}
+
+func TestTicker_btc(t *testing.T) {
+	session := tickerdbtest.SetupTickerTestSession(t, "./tickerdb/migrations")
+	defer session.DB.Close()
+
+	logger := hlog.New()
+	resolver := gql.New(&session, logger)
+	h := resolver.NewRelayHandler()
+	m := chi.NewMux()
+	m.Post("/graphql", h.ServeHTTP)
+
+	req := `{
+	"query": "query getTicker() { ticker(code: \"BTC\", numHoursAgo: 24) { tradePair } }",
+	"operationName": "getTicker",
+	"variables": {}
+}`
+	r := httptest.NewRequest("POST", "/graphql", strings.NewReader(req))
+	w := httptest.NewRecorder()
+
+	m.ServeHTTP(w, r)
+	resp := w.Result()
+
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, "application/json", resp.Header.Get("Content-Type"))
+
+	body, err := ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	wantBody := `{
+	"data":{
+		"ticker": [
+			{"tradePair": "BTC_ETH"},
+			{"tradePair": "BTC_XLM"}
+		]
+	}
+}`
+	assert.JSONEq(t, wantBody, string(body))
 }
 
 func TestMarkets(t *testing.T) {
