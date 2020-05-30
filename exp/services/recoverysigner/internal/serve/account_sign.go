@@ -31,6 +31,11 @@ type accountSignResponse struct {
 	NetworkPassphrase string `json:"network_passphrase"`
 }
 
+type accountSignWithSigningAddressResponse struct {
+	Signature         string `json:"signature"`
+	NetworkPassphrase string `json:"network_passphrase"`
+}
+
 func (h accountSignHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -170,10 +175,18 @@ func (h accountSignHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	l.Info("Transaction signed.")
 
-	resp := accountSignResponse{
-		Signer:            signingKey.Address(),
-		Signature:         sig,
-		NetworkPassphrase: h.NetworkPassphrase,
+	if req.SigningAddress != nil {
+		resp := accountSignWithSigningAddressResponse{
+			Signature:         sig,
+			NetworkPassphrase: h.NetworkPassphrase,
+		}
+		httpjson.Render(w, resp, httpjson.JSON)
+	} else {
+		resp := accountSignResponse{
+			Signer:            signingKey.Address(),
+			Signature:         sig,
+			NetworkPassphrase: h.NetworkPassphrase,
+		}
+		httpjson.Render(w, resp, httpjson.JSON)
 	}
-	httpjson.Render(w, resp, httpjson.JSON)
 }
