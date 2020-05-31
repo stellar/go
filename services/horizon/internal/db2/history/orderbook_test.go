@@ -70,10 +70,6 @@ func TestGetOrderBookSummary(t *testing.T) {
 	nonCanonicalPriceTwoEurOffer.Price.N *= 15
 	nonCanonicalPriceTwoEurOffer.Price.D *= 15
 
-	threeEurOffer := twoEurOffer
-	threeEurOffer.Price.N = 3
-	threeEurOffer.OfferId = 20
-
 	sellEurOffer.Price.N = 9
 	sellEurOffer.Price.D = 10
 
@@ -235,7 +231,8 @@ func TestGetOrderBookSummaryExcludesRemovedOffers(t *testing.T) {
 	assert.NoError(t, q.Rollback())
 
 	for i, offer := range offers {
-		count, err := q.RemoveOffer(offer.OfferId, uint32(i+2))
+		var count int64
+		count, err = q.RemoveOffer(offer.OfferId, uint32(i+2))
 		assert.NoError(t, err)
 		assert.Equal(t, int64(1), count)
 	}
