@@ -417,10 +417,8 @@ func (a *App) Tick() {
 	wg.Add(4)
 	go func() {
 		defer wg.Done()
-		if a.orderBookStream != nil {
-			if err := a.orderBookStream.Update(); err != nil {
-				log.WithField("error", err).Error("could not apply updates from order book stream")
-			}
+		if err := a.orderBookStream.Update(); err != nil {
+			log.WithField("error", err).Error("could not apply updates from order book stream")
 		}
 	}()
 	go func() { a.UpdateLedgerState(); wg.Done() }()
@@ -462,19 +460,15 @@ func (a *App) init() {
 	mustInitCoreDB(a)
 
 	if a.config.Ingest {
-		orderBookGraph := orderbook.NewOrderBookGraph()
 		// expingester
-		initExpIngester(a, orderBookGraph)
-		// path-finder
-		initPathFinder(a, orderBookGraph)
-	} else {
-		orderBookGraph := orderbook.NewOrderBookGraph()
-		a.orderBookStream = &expingest.OrderBookStream{
-			OrderBookGraph: orderBookGraph,
-			HistoryQ:       &history.Q{a.HorizonSession(a.ctx)},
-		}
-		initPathFinder(a, orderBookGraph)
+		initExpIngester(a)
 	}
+	orderBookGraph := orderbook.NewOrderBookGraph()
+	a.orderBookStream = &expingest.OrderBookStream{
+		OrderBookGraph: orderBookGraph,
+		HistoryQ:       &history.Q{a.HorizonSession(a.ctx)},
+	}
+	initPathFinder(a, orderBookGraph)
 
 	// txsub
 	initSubmissionSystem(a)

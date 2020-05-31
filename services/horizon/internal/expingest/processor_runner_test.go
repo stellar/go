@@ -19,7 +19,6 @@ import (
 func TestProcessorRunnerRunHistoryArchiveIngestionGenesis(t *testing.T) {
 	maxBatchSize := 100000
 
-	graph := &mockOrderBookGraph{}
 	q := &mockDBQ{}
 
 	// Batches
@@ -68,7 +67,6 @@ func TestProcessorRunnerRunHistoryArchiveIngestionGenesis(t *testing.T) {
 		config: Config{
 			NetworkPassphrase: network.PublicNetworkPassphrase,
 		},
-		graph:    graph,
 		historyQ: q,
 	}
 
@@ -84,8 +82,6 @@ func TestProcessorRunnerRunHistoryArchiveIngestionHistoryArchive(t *testing.T) {
 		MaxStreamRetries:  3,
 	}
 
-	graph := &mockOrderBookGraph{}
-	defer mock.AssertExpectationsForObjects(t, graph)
 	q := &mockDBQ{}
 	defer mock.AssertExpectationsForObjects(t, q)
 	historyAdapter := &adapters.MockHistoryArchiveAdapter{}
@@ -168,7 +164,6 @@ func TestProcessorRunnerRunHistoryArchiveIngestionHistoryArchive(t *testing.T) {
 	runner := ProcessorRunner{
 		ctx:            context.Background(),
 		config:         config,
-		graph:          graph,
 		historyQ:       q,
 		historyAdapter: historyAdapter,
 		ledgerBackend:  ledgerBackend,
@@ -201,17 +196,16 @@ func TestProcessorRunnerBuildChangeProcessor(t *testing.T) {
 	assert.IsType(t, groupChangeProcessors{}, processor)
 
 	assert.IsType(t, &statsChangeProcessor{}, processor.(groupChangeProcessors)[0])
-	assert.IsType(t, &processors.OrderbookProcessor{}, processor.(groupChangeProcessors)[1])
-	assert.IsType(t, &processors.AccountDataProcessor{}, processor.(groupChangeProcessors)[2])
-	assert.IsType(t, &processors.AccountsProcessor{}, processor.(groupChangeProcessors)[3])
-	assert.IsType(t, &processors.OffersProcessor{}, processor.(groupChangeProcessors)[4])
-	assert.IsType(t, &processors.AssetStatsProcessor{}, processor.(groupChangeProcessors)[5])
+	assert.IsType(t, &processors.AccountDataProcessor{}, processor.(groupChangeProcessors)[1])
+	assert.IsType(t, &processors.AccountsProcessor{}, processor.(groupChangeProcessors)[2])
+	assert.IsType(t, &processors.OffersProcessor{}, processor.(groupChangeProcessors)[3])
+	assert.IsType(t, &processors.AssetStatsProcessor{}, processor.(groupChangeProcessors)[4])
+	assert.True(t, reflect.ValueOf(processor.(groupChangeProcessors)[4]).
+		Elem().FieldByName("useLedgerEntryCache").Bool())
+	assert.IsType(t, &processors.SignersProcessor{}, processor.(groupChangeProcessors)[5])
 	assert.True(t, reflect.ValueOf(processor.(groupChangeProcessors)[5]).
 		Elem().FieldByName("useLedgerEntryCache").Bool())
-	assert.IsType(t, &processors.SignersProcessor{}, processor.(groupChangeProcessors)[6])
-	assert.True(t, reflect.ValueOf(processor.(groupChangeProcessors)[6]).
-		Elem().FieldByName("useLedgerEntryCache").Bool())
-	assert.IsType(t, &processors.TrustLinesProcessor{}, processor.(groupChangeProcessors)[7])
+	assert.IsType(t, &processors.TrustLinesProcessor{}, processor.(groupChangeProcessors)[6])
 
 	runner = ProcessorRunner{
 		historyQ: q,
@@ -221,17 +215,16 @@ func TestProcessorRunnerBuildChangeProcessor(t *testing.T) {
 	assert.IsType(t, groupChangeProcessors{}, processor)
 
 	assert.IsType(t, &statsChangeProcessor{}, processor.(groupChangeProcessors)[0])
-	assert.IsType(t, &processors.OrderbookProcessor{}, processor.(groupChangeProcessors)[1])
-	assert.IsType(t, &processors.AccountDataProcessor{}, processor.(groupChangeProcessors)[2])
-	assert.IsType(t, &processors.AccountsProcessor{}, processor.(groupChangeProcessors)[3])
-	assert.IsType(t, &processors.OffersProcessor{}, processor.(groupChangeProcessors)[4])
-	assert.IsType(t, &processors.AssetStatsProcessor{}, processor.(groupChangeProcessors)[5])
+	assert.IsType(t, &processors.AccountDataProcessor{}, processor.(groupChangeProcessors)[1])
+	assert.IsType(t, &processors.AccountsProcessor{}, processor.(groupChangeProcessors)[2])
+	assert.IsType(t, &processors.OffersProcessor{}, processor.(groupChangeProcessors)[3])
+	assert.IsType(t, &processors.AssetStatsProcessor{}, processor.(groupChangeProcessors)[4])
+	assert.False(t, reflect.ValueOf(processor.(groupChangeProcessors)[4]).
+		Elem().FieldByName("useLedgerEntryCache").Bool())
+	assert.IsType(t, &processors.SignersProcessor{}, processor.(groupChangeProcessors)[5])
 	assert.False(t, reflect.ValueOf(processor.(groupChangeProcessors)[5]).
 		Elem().FieldByName("useLedgerEntryCache").Bool())
-	assert.IsType(t, &processors.SignersProcessor{}, processor.(groupChangeProcessors)[6])
-	assert.False(t, reflect.ValueOf(processor.(groupChangeProcessors)[6]).
-		Elem().FieldByName("useLedgerEntryCache").Bool())
-	assert.IsType(t, &processors.TrustLinesProcessor{}, processor.(groupChangeProcessors)[7])
+	assert.IsType(t, &processors.TrustLinesProcessor{}, processor.(groupChangeProcessors)[6])
 }
 
 func TestProcessorRunnerBuildTransactionProcessor(t *testing.T) {
@@ -284,8 +277,6 @@ func TestProcessorRunnerRunAllProcessorsOnLedger(t *testing.T) {
 		MaxStreamRetries:  3,
 	}
 
-	graph := &mockOrderBookGraph{}
-	defer mock.AssertExpectationsForObjects(t, graph)
 	q := &mockDBQ{}
 	defer mock.AssertExpectationsForObjects(t, q)
 	ledgerBackend := &ledgerbackend.MockDatabaseBackend{}
@@ -342,49 +333,11 @@ func TestProcessorRunnerRunAllProcessorsOnLedger(t *testing.T) {
 	runner := ProcessorRunner{
 		ctx:           context.Background(),
 		config:        config,
-		graph:         graph,
 		historyQ:      q,
 		ledgerBackend: ledgerBackend,
 	}
 
 	_, _, err := runner.RunAllProcessorsOnLedger(63)
-	assert.NoError(t, err)
-}
-
-func TestProcessorRunnerRunOrderBookProcessorOnLedger(t *testing.T) {
-	config := Config{
-		NetworkPassphrase: network.PublicNetworkPassphrase,
-		MaxStreamRetries:  3,
-	}
-
-	graph := &mockOrderBookGraph{}
-	defer mock.AssertExpectationsForObjects(t, graph)
-	ledgerBackend := &ledgerbackend.MockDatabaseBackend{}
-	defer mock.AssertExpectationsForObjects(t, ledgerBackend)
-
-	ledger := xdr.LedgerHeaderHistoryEntry{
-		Header: xdr.LedgerHeader{
-			BucketListHash: xdr.Hash([32]byte{0, 1, 2}),
-		},
-	}
-
-	ledgerBackend.On("GetLedger", uint32(63)).
-		Return(
-			true,
-			ledgerbackend.LedgerCloseMeta{
-				LedgerHeader: ledger,
-			},
-			nil,
-		).Once()
-
-	runner := ProcessorRunner{
-		ctx:           context.Background(),
-		config:        config,
-		graph:         graph,
-		ledgerBackend: ledgerBackend,
-	}
-
-	_, err := runner.RunOrderBookProcessorOnLedger(63)
 	assert.NoError(t, err)
 }
 
