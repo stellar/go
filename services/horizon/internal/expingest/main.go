@@ -393,6 +393,10 @@ func (s *System) maybeVerifyState(lastIngestedLedger uint32) {
 	if !stateInvalid && // state has not been proved to be invalid...
 		!s.disableStateVerification && // state verification is not disabled...
 		historyarchive.IsCheckpoint(lastIngestedLedger) { // it's a checkpoint ledger.
+		if s.verifyOrderBookStream {
+			s.orderBookStream.verifyGraph(s.graph)
+		}
+
 		s.wg.Add(1)
 		go func(graphOffersMap map[xdr.Int64]xdr.OfferEntry) {
 			defer s.wg.Done()

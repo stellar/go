@@ -135,6 +135,39 @@ func (o *OrderBookStream) update(status ingestionStatus) ([]history.Offer, []xdr
 	return updated, removed, nil
 }
 
+func (o *OrderBookStream) verifyGraph(ingestion orderbook.OBGraph) {
+	offers := o.OrderBookGraph.Offers()
+	ingestionOffers := ingestion.Offers()
+	mismatch := len(offers) != len(ingestionOffers)
+
+	if !mismatch {
+		sort.Slice(offers, func(i, j int) bool {
+			return offers[i].OfferId < offers[j].OfferId
+		})
+		sort.Slice(ingestionOffers, func(i, j int) bool {
+			return ingestionOffers[i].OfferId < ingestionOffers[j].OfferId
+		})
+
+		offerBase64, err := xdr.MarshalBase64(offers)
+		if err != nil {
+			log.WithError(err).Error("could not serialize offers")
+			return
+		}
+		ingestionOffersBase64, err := xdr.MarshalBase64(ingestionOffers)
+		if err != nil {
+			log.WithError(err).Error("could not serialize ingestion offers")
+			return
+		}
+		mismatch = offerBase64 != ingestionOffersBase64
+	}
+
+	if mismatch {
+		log.WithField("stream_offers", offers).
+			WithField("ingestion_offers", ingestionOffers).
+			Error("offers derived from order book stream does not match offers from ingestion")
+	}
+}
+
 func verifyUpdatedOffers(ledger uint32, fromDB []history.Offer, fromIngestion []xdr.OfferEntry) {
 	sort.Slice(fromDB, func(i, j int) bool {
 		return fromDB[i].OfferID < fromDB[j].OfferID
