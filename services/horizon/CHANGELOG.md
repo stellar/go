@@ -11,7 +11,6 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 * Use the Horizon DB instead of Horizon's in memory order book graph to query orderbook details for the /order_book endpoint.
 * Remove JSON variant of `GET /metrics`, both in the server and client code. It's using Prometheus format by default now.
 * Decreased a memory usage of initial state ingestion stage and state verifier ([#2618](https://github.com/stellar/go/pull/2618)).
-* Horizon will now ingest "Offer Removed" effects. If an offer is consumed by a trade or canceled in a operation there will be an "Offer Removed" effect. ([#2630](https://github.com/stellar/go/pull/2630)).
 * Remove `--exp-ingest-in-memory-only` Horizon flag. The in memory order book graph which powers the path finding endpoints is now updated using the Horizon DB instead of directly via ingestion ([#2630](https://github.com/stellar/go/pull/2630)).
 
 ## v1.3.0
