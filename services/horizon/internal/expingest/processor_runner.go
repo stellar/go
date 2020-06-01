@@ -90,7 +90,11 @@ func (s *ProcessorRunner) DisableMemoryStatsLogging() {
 	s.logMemoryStats = false
 }
 
-func (s *ProcessorRunner) buildChangeProcessor(changeStats *io.StatsChangeProcessor, source ingestionSource) horizonChangeProcessor {
+func (s *ProcessorRunner) buildChangeProcessor(
+	changeStats *io.StatsChangeProcessor,
+	source ingestionSource,
+	sequence uint32,
+) horizonChangeProcessor {
 	statsChangeProcessor := &statsChangeProcessor{
 		StatsChangeProcessor: changeStats,
 	}
@@ -101,7 +105,7 @@ func (s *ProcessorRunner) buildChangeProcessor(changeStats *io.StatsChangeProces
 		processors.NewOrderbookProcessor(s.graph),
 		processors.NewAccountDataProcessor(s.historyQ),
 		processors.NewAccountsProcessor(s.historyQ),
-		processors.NewOffersProcessor(s.historyQ),
+		processors.NewOffersProcessor(s.historyQ, sequence),
 		processors.NewAssetStatsProcessor(s.historyQ, useLedgerCache),
 		processors.NewSignersProcessor(s.historyQ, useLedgerCache),
 		processors.NewTrustLinesProcessor(s.historyQ),
@@ -186,7 +190,7 @@ func (s *ProcessorRunner) validateBucketList(ledgerSequence uint32) error {
 
 func (s *ProcessorRunner) RunHistoryArchiveIngestion(checkpointLedger uint32) (io.StatsChangeProcessorResults, error) {
 	changeStats := io.StatsChangeProcessor{}
-	changeProcessor := s.buildChangeProcessor(&changeStats, historyArchiveSource)
+	changeProcessor := s.buildChangeProcessor(&changeStats, historyArchiveSource, checkpointLedger)
 
 	var changeReader io.ChangeReader
 	var err error
@@ -283,18 +287,19 @@ func (s *ProcessorRunner) RunTransactionProcessorsOnLedger(ledger uint32) (io.St
 	return ledgerTransactionStats.GetResults(), nil
 }
 
-func (s *ProcessorRunner) RunAllProcessorsOnLedger(ledger uint32) (io.StatsChangeProcessorResults, io.StatsLedgerTransactionProcessorResults, error) {
+func (s *ProcessorRunner) RunAllProcessorsOnLedger(sequence uint32) (io.StatsChangeProcessorResults, io.StatsLedgerTransactionProcessorResults, error) {
 	changeStats := io.StatsChangeProcessor{}
 	var statsLedgerTransactionProcessorResults io.StatsLedgerTransactionProcessorResults
 
 	err := s.runChangeProcessorOnLedger(
-		s.buildChangeProcessor(&changeStats, ledgerSource), ledger,
+		s.buildChangeProcessor(&changeStats, ledgerSource, sequence),
+		sequence,
 	)
 	if err != nil {
 		return changeStats.GetResults(), statsLedgerTransactionProcessorResults, err
 	}
 
-	statsLedgerTransactionProcessorResults, err = s.RunTransactionProcessorsOnLedger(ledger)
+	statsLedgerTransactionProcessorResults, err = s.RunTransactionProcessorsOnLedger(sequence)
 	if err != nil {
 		return changeStats.GetResults(), statsLedgerTransactionProcessorResults, err
 	}
