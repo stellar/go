@@ -13,13 +13,11 @@ import (
 	"github.com/stellar/go/exp/ingest/adapters"
 	ingesterrors "github.com/stellar/go/exp/ingest/errors"
 	"github.com/stellar/go/exp/ingest/ledgerbackend"
-	"github.com/stellar/go/exp/orderbook"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/historyarchive"
 	logpkg "github.com/stellar/go/support/log"
-	"github.com/stellar/go/xdr"
 )
 
 const (
@@ -68,7 +66,6 @@ type Config struct {
 	// Set MaxStreamRetries to 0 if there should be no retry attempts
 	MaxStreamRetries int
 
-	OrderBookGraph           *orderbook.OrderBookGraph
 	IngestFailedTransactions bool
 }
 
@@ -97,10 +94,6 @@ type System struct {
 		// StateVerifyTimer exposes timing metrics about the rate and
 		// duration of state verification.
 		StateVerifyTimer metrics.Timer
-
-		// LocalLatestLedgerGauge exposes the local (order book graph)
-		// latest processed ledger
-		LocalLatestLedgerGauge metrics.Gauge
 	}
 
 	ctx    context.Context
@@ -108,11 +101,8 @@ type System struct {
 
 	config Config
 
-	graph                 orderbook.OBGraph
-	verifyOrderBookStream bool
-	orderBookStream       *OrderBookStream
-	historyQ              history.IngestionQ
-	runner                ProcessorRunnerInterface
+	historyQ history.IngestionQ
+	runner   ProcessorRunnerInterface
 
 	ledgerBackend  ledgerbackend.LedgerBackend
 	historyAdapter adapters.HistoryArchiveAdapterInterface
@@ -160,18 +150,12 @@ func NewSystem(config Config) (*System, error) {
 	historyAdapter := adapters.MakeHistoryArchiveAdapter(archive)
 
 	system := &System{
-		ctx:            ctx,
-		cancel:         cancel,
-		historyAdapter: historyAdapter,
-		ledgerBackend:  ledgerBackend,
-		config:         config,
-		historyQ:       historyQ,
-		graph:          config.OrderBookGraph,
-		orderBookStream: &OrderBookStream{
-			HistoryQ:       historyQ,
-			OrderBookGraph: orderbook.NewOrderBookGraph(),
-		},
-		verifyOrderBookStream:    true,
+		ctx:                      ctx,
+		cancel:                   cancel,
+		historyAdapter:           historyAdapter,
+		ledgerBackend:            ledgerBackend,
+		config:                   config,
+		historyQ:                 historyQ,
 		disableStateVerification: config.DisableStateVerification,
 		maxStreamRetries:         config.MaxStreamRetries,
 		stellarCoreClient: &stellarcore.Client{
@@ -180,7 +164,6 @@ func NewSystem(config Config) (*System, error) {
 		runner: &ProcessorRunner{
 			ctx:            ctx,
 			config:         config,
-			graph:          config.OrderBookGraph,
 			historyQ:       historyQ,
 			historyAdapter: historyAdapter,
 			ledgerBackend:  ledgerBackend,
@@ -195,7 +178,6 @@ func (s *System) initMetrics() {
 	s.Metrics.LedgerIngestionTimer = metrics.NewTimer()
 	s.Metrics.LedgerInMemoryIngestionTimer = metrics.NewTimer()
 	s.Metrics.StateVerifyTimer = metrics.NewTimer()
-	s.Metrics.LocalLatestLedgerGauge = metrics.NewGauge()
 }
 
 // Run starts ingestion system. Ingestion system supports distributed ingestion
@@ -320,69 +302,6 @@ func (s *System) runStateMachine(cur stateMachineNode) error {
 	}
 }
 
-func (s *System) graphApply(sequence uint32) error {
-	if err := s.graph.Apply(sequence); err != nil {
-		return err
-	}
-	s.Metrics.LocalLatestLedgerGauge.Update(int64(sequence))
-	return nil
-}
-
-func addOffersToGraph(offers []history.Offer, graph orderbook.OBGraph) {
-	for _, offer := range offers {
-		sellerID := xdr.MustAddress(offer.SellerID)
-		graph.AddOffer(xdr.OfferEntry{
-			SellerId: sellerID,
-			OfferId:  offer.OfferID,
-			Selling:  offer.SellingAsset,
-			Buying:   offer.BuyingAsset,
-			Amount:   offer.Amount,
-			Price: xdr.Price{
-				N: xdr.Int32(offer.Pricen),
-				D: xdr.Int32(offer.Priced),
-			},
-			Flags: xdr.Uint32(offer.Flags),
-		})
-	}
-}
-
-func loadOffersIntoGraph(q history.IngestionQ, graph orderbook.OBGraph) ([]history.Offer, error) {
-	offers, err := q.GetAllOffers()
-	if err != nil {
-		return nil, errors.Wrap(err, "GetAllOffers error")
-	}
-
-	addOffersToGraph(offers, graph)
-	return offers, nil
-}
-
-func (s *System) loadOffersIntoMemory(sequence uint32) error {
-	defer s.graph.Discard()
-	s.graph.Clear()
-
-	log.Info("Loading offers from a database into memory store...")
-	start := time.Now()
-
-	if _, err := loadOffersIntoGraph(s.historyQ, s.graph); err != nil {
-		return errors.Wrap(err, "GetAllOffers error")
-	}
-
-	if s.verifyOrderBookStream {
-		s.orderBookStream.updateAndVerify(s.graph, sequence)
-	}
-
-	if err := s.graphApply(sequence); err != nil {
-		return errors.Wrap(err, "Error running graph.Apply")
-	}
-
-	log.WithField(
-		"duration",
-		time.Since(start).Seconds(),
-	).Info("Finished loading offers from a database into memory store")
-
-	return nil
-}
-
 func (s *System) maybeVerifyState(lastIngestedLedger uint32) {
 	stateInvalid, err := s.historyQ.GetExpStateInvalid()
 	if err != nil && !isCancelledError(err) {
@@ -393,15 +312,11 @@ func (s *System) maybeVerifyState(lastIngestedLedger uint32) {
 	if !stateInvalid && // state has not been proved to be invalid...
 		!s.disableStateVerification && // state verification is not disabled...
 		historyarchive.IsCheckpoint(lastIngestedLedger) { // it's a checkpoint ledger.
-		if s.verifyOrderBookStream {
-			s.orderBookStream.verifyGraph(s.graph)
-		}
-
 		s.wg.Add(1)
-		go func(graphOffersMap map[xdr.Int64]xdr.OfferEntry) {
+		go func() {
 			defer s.wg.Done()
 
-			err := s.verifyState(graphOffersMap, true)
+			err := s.verifyState(true)
 			if err != nil {
 				if isCancelledError(err) {
 					return
@@ -421,7 +336,7 @@ func (s *System) maybeVerifyState(lastIngestedLedger uint32) {
 			} else {
 				s.resetStateVerificationErrors()
 			}
-		}(s.graph.OffersMap())
+		}()
 	}
 }
 

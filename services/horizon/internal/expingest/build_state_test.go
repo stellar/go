@@ -17,7 +17,6 @@ func TestBuildStateTestSuite(t *testing.T) {
 
 type BuildStateTestSuite struct {
 	suite.Suite
-	graph             *mockOrderBookGraph
 	historyQ          *mockDBQ
 	historyAdapter    *adapters.MockHistoryArchiveAdapter
 	system            *System
@@ -28,7 +27,6 @@ type BuildStateTestSuite struct {
 }
 
 func (s *BuildStateTestSuite) SetupTest() {
-	s.graph = &mockOrderBookGraph{}
 	s.historyQ = &mockDBQ{}
 	s.runner = &mockProcessorsRunner{}
 	s.historyAdapter = &adapters.MockHistoryArchiveAdapter{}
@@ -39,7 +37,6 @@ func (s *BuildStateTestSuite) SetupTest() {
 		ctx:               context.Background(),
 		historyQ:          s.historyQ,
 		historyAdapter:    s.historyAdapter,
-		graph:             s.graph,
 		runner:            s.runner,
 		stellarCoreClient: s.stellarCoreClient,
 	}
@@ -47,7 +44,6 @@ func (s *BuildStateTestSuite) SetupTest() {
 
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("Rollback").Return(nil).Once()
-	s.graph.On("Discard").Once()
 }
 
 func (s *BuildStateTestSuite) TearDownTest() {
@@ -56,7 +52,6 @@ func (s *BuildStateTestSuite) TearDownTest() {
 	s.historyAdapter.AssertExpectations(t)
 	s.runner.AssertExpectations(t)
 	s.stellarCoreClient.AssertExpectations(t)
-	s.graph.AssertExpectations(t)
 }
 
 func (s *BuildStateTestSuite) mockCommonHistoryQ() {
@@ -77,9 +72,6 @@ func (s *BuildStateTestSuite) TestCheckPointLedgerIsZero() {
 	// Recreate mock in this single test to remove Rollback assertion.
 	*s.historyQ = mockDBQ{}
 
-	// Recreate orderbook graph to remove Discard assertion
-	*s.graph = mockOrderBookGraph{}
-
 	next, err := buildState{checkpointLedger: 0}.run(s.system)
 	s.Assert().Error(err)
 	s.Assert().EqualError(err, "unexpected checkpointLedger value")
@@ -90,9 +82,6 @@ func (s *BuildStateTestSuite) TestBeginReturnsError() {
 	// Recreate mock in this single test to remove Rollback assertion.
 	*s.historyQ = mockDBQ{}
 	s.historyQ.On("Begin").Return(errors.New("my error")).Once()
-
-	// Recreate orderbook graph to remove Discard assertion
-	*s.graph = mockOrderBookGraph{}
 
 	next, err := buildState{checkpointLedger: s.checkpointLedger}.run(s.system)
 	s.Assert().Error(err)
@@ -187,7 +176,6 @@ func (s *BuildStateTestSuite) TestTruncateExpingestStateTablesReturnsError() {
 
 func (s *BuildStateTestSuite) TestRunHistoryArchiveIngestionReturnsError() {
 	s.mockCommonHistoryQ()
-	s.graph.On("Clear").Return().Once()
 	s.runner.
 		On("RunHistoryArchiveIngestion", s.checkpointLedger).
 		Return(io.StatsChangeProcessorResults{}, errors.New("my error")).
@@ -201,7 +189,6 @@ func (s *BuildStateTestSuite) TestRunHistoryArchiveIngestionReturnsError() {
 
 func (s *BuildStateTestSuite) TestUpdateLastLedgerExpIngestAfterIngestReturnsError() {
 	s.mockCommonHistoryQ()
-	s.graph.On("Clear").Return(nil).Once()
 	s.runner.
 		On("RunHistoryArchiveIngestion", s.checkpointLedger).
 		Return(io.StatsChangeProcessorResults{}, nil).
@@ -221,7 +208,6 @@ func (s *BuildStateTestSuite) TestUpdateLastLedgerExpIngestAfterIngestReturnsErr
 
 func (s *BuildStateTestSuite) TestUpdateExpIngestVersionIngestReturnsError() {
 	s.mockCommonHistoryQ()
-	s.graph.On("Clear").Return(nil).Once()
 	s.runner.
 		On("RunHistoryArchiveIngestion", s.checkpointLedger).
 		Return(io.StatsChangeProcessorResults{}, nil).
@@ -248,7 +234,6 @@ func (s *BuildStateTestSuite) TestUpdateCommitReturnsError() {
 	s.historyQ.On("UpdateExpIngestVersion", CurrentVersion).
 		Return(nil).
 		Once()
-	s.graph.On("Clear").Return(nil).Once()
 	s.historyQ.On("Commit").
 		Return(errors.New("my error")).
 		Once()
@@ -256,31 +241,6 @@ func (s *BuildStateTestSuite) TestUpdateCommitReturnsError() {
 
 	s.Assert().Error(err)
 	s.Assert().EqualError(err, "Error committing db transaction: my error")
-	s.Assert().Equal(transition{node: startState{}, sleepDuration: defaultSleep}, next)
-}
-
-func (s *BuildStateTestSuite) TestOBGraphApplyReturnsError() {
-	s.mockCommonHistoryQ()
-	s.runner.
-		On("RunHistoryArchiveIngestion", s.checkpointLedger).
-		Return(io.StatsChangeProcessorResults{}, nil).
-		Once()
-	s.historyQ.On("UpdateLastLedgerExpIngest", s.checkpointLedger).
-		Return(nil).
-		Once()
-	s.historyQ.On("UpdateExpIngestVersion", CurrentVersion).
-		Return(nil).
-		Once()
-	s.historyQ.On("Commit").
-		Return(nil).
-		Once()
-
-	s.graph.On("Clear").Return().Once()
-	s.graph.On("Apply", s.checkpointLedger).Return(errors.New("my error")).Once()
-	next, err := buildState{checkpointLedger: s.checkpointLedger}.run(s.system)
-
-	s.Assert().Error(err)
-	s.Assert().EqualError(err, "Error applying order book changes: my error")
 	s.Assert().Equal(transition{node: startState{}, sleepDuration: defaultSleep}, next)
 }
 
@@ -300,8 +260,6 @@ func (s *BuildStateTestSuite) TestBuildStateSucceeds() {
 		Return(nil).
 		Once()
 
-	s.graph.On("Clear").Return(nil).Once()
-	s.graph.On("Apply", s.checkpointLedger).Return(nil).Once()
 	next, err := buildState{checkpointLedger: s.checkpointLedger}.run(s.system)
 
 	s.Assert().NoError(err)

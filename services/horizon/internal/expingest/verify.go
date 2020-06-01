@@ -1,7 +1,6 @@
 package expingest
 
 import (
-	"bytes"
 	"database/sql"
 	"fmt"
 	"time"
@@ -31,10 +30,7 @@ const stateVerifierExpectedIngestionVersion = 10
 // verifyState is called as a go routine from pipeline post hook every 64
 // ledgers. It checks if the state is correct. If another go routine is already
 // running it exits.
-func (s *System) verifyState(
-	graphOffers map[xdr.Int64]xdr.OfferEntry,
-	verifyAgainstLatestCheckpoint bool,
-) error {
+func (s *System) verifyState(verifyAgainstLatestCheckpoint bool) error {
 	s.stateVerificationMutex.Lock()
 	if s.stateVerificationRunning {
 		log.Warn("State verification is already running...")
@@ -178,7 +174,7 @@ func (s *System) verifyState(
 			return errors.Wrap(err, "addDataToStateVerifier failed")
 		}
 
-		err = addOffersToStateVerifier(verifier, historyQ, offers, graphOffers)
+		err = addOffersToStateVerifier(verifier, historyQ, offers)
 		if err != nil {
 			return errors.Wrap(err, "addOffersToStateVerifier failed")
 		}
@@ -193,16 +189,6 @@ func (s *System) verifyState(
 	}
 
 	localLog.WithField("total", total).Info("Finished writing to StateVerifier")
-
-	if len(graphOffers) != 0 {
-		offerIDs := make([]xdr.Int64, 0, len(graphOffers))
-		for id := range graphOffers {
-			offerIDs = append(offerIDs, id)
-		}
-		return ingesterrors.NewStateError(
-			fmt.Errorf("orderbook graph contains offers missing from HAS: %v", offerIDs),
-		)
-	}
 
 	countAccounts, err := historyQ.CountAccounts()
 	if err != nil {
@@ -413,24 +399,10 @@ func addDataToStateVerifier(verifier *verify.StateVerifier, q history.IngestionQ
 	return nil
 }
 
-func offerEntryEquals(offer, other xdr.OfferEntry) (bool, error) {
-	serialized, err := offer.MarshalBinary()
-	if err != nil {
-		return false, errors.Wrap(err, "could not serialize offer")
-	}
-	otherSerialized, err := other.MarshalBinary()
-	if err != nil {
-		return false, errors.Wrap(err, "could not serialize offer")
-	}
-
-	return bytes.Equal(serialized, otherSerialized), nil
-}
-
 func addOffersToStateVerifier(
 	verifier *verify.StateVerifier,
 	q history.IngestionQ,
 	ids []int64,
-	graphOffers map[xdr.Int64]xdr.OfferEntry,
 ) error {
 	if len(ids) == 0 {
 		return nil
@@ -460,23 +432,7 @@ func addOffersToStateVerifier(
 				},
 			},
 		}
-		graphOffer, ok := graphOffers[row.OfferID]
-		if !ok {
-			return ingesterrors.NewStateError(
-				fmt.Errorf("offer %v is not in orderbook graph", row.OfferID),
-			)
-		}
-		if equal, err := offerEntryEquals(graphOffer, *entry.Data.Offer); err != nil {
-			return errors.Wrap(err, "could not compare offers")
-		} else if !equal {
-			return ingesterrors.NewStateError(
-				fmt.Errorf(
-					"offer %v from db does not match offer in orderbook graph",
-					row.OfferID,
-				),
-			)
-		}
-		delete(graphOffers, row.OfferID)
+
 		err := verifier.Write(entry)
 		if err != nil {
 			return err
