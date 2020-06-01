@@ -9,8 +9,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/stellar/go/xdr"
-
 	"github.com/go-chi/chi"
 	"github.com/stellar/go/exp/services/recoverysigner/internal/account"
 	"github.com/stellar/go/exp/services/recoverysigner/internal/db/dbtest"
@@ -1014,29 +1012,6 @@ func TestAccountSign_rejectsFeeBumpTx(t *testing.T) {
 		},
 	)
 	require.NoError(t, err)
-
-	// Action needed in release: horizonclient-v3.1.0
-	// remove manual envelope type configuration because
-	// once protocol 13 is enabled txnbuild will generate
-	// v1 transaction envelopes by default
-	innerTxEnvelope, err := tx.TxEnvelope()
-	require.NoError(t, err)
-	innerTxEnvelope.V1 = &xdr.TransactionV1Envelope{
-		Tx: xdr.Transaction{
-			SourceAccount: innerTxEnvelope.SourceAccount(),
-			Fee:           xdr.Uint32(innerTxEnvelope.Fee()),
-			SeqNum:        xdr.SequenceNumber(innerTxEnvelope.SeqNum()),
-			TimeBounds:    innerTxEnvelope.V0.Tx.TimeBounds,
-			Memo:          innerTxEnvelope.Memo(),
-			Operations:    innerTxEnvelope.Operations(),
-		},
-	}
-	innerTxEnvelope.Type = xdr.EnvelopeTypeEnvelopeTypeTx
-	innerTxEnvelope.V0 = nil
-	innerTxEnvelopeB64, err := xdr.MarshalBase64(innerTxEnvelope)
-	require.NoError(t, err)
-	parsed, err := txnbuild.TransactionFromXDR(innerTxEnvelopeB64)
-	tx, _ = parsed.Transaction()
 
 	feeBumpTx, err := txnbuild.NewFeeBumpTransaction(
 		txnbuild.FeeBumpTransactionParams{

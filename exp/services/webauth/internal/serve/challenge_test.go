@@ -60,7 +60,7 @@ func TestChallenge(t *testing.T) {
 
 	hash, err := network.HashTransactionInEnvelope(tx, res.NetworkPassphrase)
 	require.NoError(t, err)
-	assert.NoError(t, serverKey.FromAddress().Verify(hash[:], tx.V0.Signatures[0].Signature))
+	assert.NoError(t, serverKey.FromAddress().Verify(hash[:], tx.Signatures()[0].Signature))
 
 	assert.Equal(t, network.TestNetworkPassphrase, res.NetworkPassphrase)
 }
