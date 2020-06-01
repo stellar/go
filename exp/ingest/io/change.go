@@ -20,6 +20,54 @@ type Change struct {
 	Post *xdr.LedgerEntry
 }
 
+// GetChangesFromLedgerEntryChanges transforms LedgerEntryChanges to []Change.
+// Each `update` and `removed` is preceded with `state` and `create` changes
+// are alone, without `state`. The transformation we're doing is to move each
+// change (state/update, state/removed or create) to an array of pre/post pairs.
+// Then:
+// - for create, pre is null and post is a new entry,
+// - for update, pre is previous state and post is the current state,
+// - for removed, pre is previous state and post is null.
+//
+// stellar-core source:
+// https://github.com/stellar/stellar-core/blob/e584b43/src/ledger/LedgerTxn.cpp#L582
+func GetChangesFromLedgerEntryChanges(ledgerEntryChanges xdr.LedgerEntryChanges) []Change {
+	changes := []Change{}
+
+	for i, entryChange := range ledgerEntryChanges {
+		switch entryChange.Type {
+		case xdr.LedgerEntryChangeTypeLedgerEntryCreated:
+			created := entryChange.MustCreated()
+			changes = append(changes, Change{
+				Type: created.Data.Type,
+				Pre:  nil,
+				Post: &created,
+			})
+		case xdr.LedgerEntryChangeTypeLedgerEntryUpdated:
+			state := ledgerEntryChanges[i-1].MustState()
+			updated := entryChange.MustUpdated()
+			changes = append(changes, Change{
+				Type: state.Data.Type,
+				Pre:  &state,
+				Post: &updated,
+			})
+		case xdr.LedgerEntryChangeTypeLedgerEntryRemoved:
+			state := ledgerEntryChanges[i-1].MustState()
+			changes = append(changes, Change{
+				Type: state.Data.Type,
+				Pre:  &state,
+				Post: nil,
+			})
+		case xdr.LedgerEntryChangeTypeLedgerEntryState:
+			continue
+		default:
+			panic("Invalid LedgerEntryChangeType")
+		}
+	}
+
+	return changes
+}
+
 // LedgerEntryChangeType returns type in terms of LedgerEntryChangeType.
 func (c *Change) LedgerEntryChangeType() xdr.LedgerEntryChangeType {
 	switch {

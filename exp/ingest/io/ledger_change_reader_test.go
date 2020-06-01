@@ -1,7 +1,6 @@
 package io
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"testing"
@@ -26,11 +25,11 @@ func TestNewLedgerChangeReaderFails(t *testing.T) {
 		ledgerbackend.LedgerCloseMeta{},
 		fmt.Errorf("ledger error"),
 	).Once()
-	_, err := NewLedgerChangeReader(context.Background(), seq, mock)
+	_, err := NewLedgerChangeReader(mock, seq)
 	assert.EqualError(
 		t,
 		err,
-		"error reading ledger from backend: ledger error",
+		"error getting ledger from the backend: ledger error",
 	)
 }
 
@@ -42,7 +41,7 @@ func TestNewLedgerChangeReaderLedgerDoesNotExist(t *testing.T) {
 		ledgerbackend.LedgerCloseMeta{},
 		nil,
 	).Once()
-	_, err := NewLedgerChangeReader(context.Background(), seq, mock)
+	_, err := NewLedgerChangeReader(mock, seq)
 	assert.Equal(
 		t,
 		err,
@@ -69,7 +68,7 @@ func TestNewLedgerChangeReaderSucceeds(t *testing.T) {
 		nil,
 	).Once()
 
-	reader, err := NewLedgerChangeReader(context.Background(), seq, mock)
+	reader, err := NewLedgerChangeReader(mock, seq)
 	assert.NoError(t, err)
 
 	assert.Equal(t, reader.GetHeader(), header)
@@ -108,7 +107,7 @@ func assertChangesEqual(
 	backend ledgerbackend.LedgerBackend,
 	expected []balanceEntry,
 ) {
-	reader, err := NewLedgerChangeReader(context.Background(), sequence, backend)
+	reader, err := NewLedgerChangeReader(backend, sequence)
 	assert.NoError(t, err)
 
 	changes := []balanceEntry{}
@@ -265,74 +264,4 @@ func TestLedgerChangeReaderOrder(t *testing.T) {
 
 	assertChangesEqual(t, seq, mock, []balanceEntry{})
 	mock.AssertExpectations(t)
-}
-
-func TestLedgerChangeReaderContext(t *testing.T) {
-	mock := &ledgerbackend.MockDatabaseBackend{}
-	seq := uint32(123)
-
-	ledger := ledgerbackend.LedgerCloseMeta{
-		TransactionResult: []xdr.TransactionResultPair{
-			xdr.TransactionResultPair{},
-			xdr.TransactionResultPair{},
-		},
-		TransactionEnvelope: []xdr.TransactionEnvelope{
-			xdr.TransactionEnvelope{},
-			xdr.TransactionEnvelope{},
-		},
-		TransactionMeta: []xdr.TransactionMeta{
-			xdr.TransactionMeta{
-				V: 1,
-				V1: &xdr.TransactionMetaV1{
-					Operations: []xdr.OperationMeta{},
-				},
-			},
-			xdr.TransactionMeta{
-				V: 1,
-				V1: &xdr.TransactionMetaV1{
-					Operations: []xdr.OperationMeta{},
-				},
-			},
-		},
-		TransactionFeeChanges: []xdr.LedgerEntryChanges{
-			xdr.LedgerEntryChanges{
-				buildChange(feeAddress, 100),
-			},
-			xdr.LedgerEntryChanges{
-				buildChange(feeAddress, 300),
-			},
-		},
-		UpgradesMeta: []xdr.LedgerEntryChanges{
-			xdr.LedgerEntryChanges{
-				buildChange(upgradeAddress, 2),
-			},
-			xdr.LedgerEntryChanges{
-				buildChange(upgradeAddress, 3),
-			},
-		},
-	}
-
-	mock.On("GetLedger", seq).Return(true, ledger, nil).Once()
-	ctx, cancel := context.WithCancel(context.Background())
-	reader, err := NewLedgerChangeReader(ctx, seq, mock)
-	mock.AssertExpectations(t)
-	assert.NoError(t, err)
-
-	cancel()
-	_, err = reader.Read()
-	assert.Equal(t, context.Canceled, err)
-
-	mock.On("GetLedger", seq).Return(true, ledger, nil).Once()
-	ctx, cancel = context.WithCancel(context.Background())
-	reader, err = NewLedgerChangeReader(ctx, seq, mock)
-	mock.AssertExpectations(t)
-	assert.NoError(t, err)
-
-	change, err := reader.Read()
-	assert.Equal(t, balanceEntry{feeAddress, 100}, parseChange(change))
-	assert.NoError(t, err)
-
-	cancel()
-	_, err = reader.Read()
-	assert.Equal(t, context.Canceled, err)
 }

@@ -1,14 +1,13 @@
 package io
 
 import (
-	"context"
 	"io"
 
 	"github.com/stellar/go/exp/ingest/ledgerbackend"
 	"github.com/stellar/go/xdr"
 )
 
-// ChangeReader provides convenient, streaming access to a sequence of Changes
+// ChangeReader provides convenient, streaming access to a sequence of Changes.
 type ChangeReader interface {
 	// Read should return the next `Change` in the leader. If there are no more
 	// changes left it should return an `io.EOF` error.
@@ -19,15 +18,22 @@ type ChangeReader interface {
 	Close() error
 }
 
+type ledgerChangeReaderState int
+
+const (
+	feeChangesState ledgerChangeReaderState = iota
+	metaChangesState
+	upgradeChangesState
+)
+
 // LedgerChangeReader is a ChangeReader which returns Changes from Stellar Core
 // for a single ledger
 type LedgerChangeReader struct {
-	dbReader               DBLedgerReader
-	streamedFeeChanges     bool
-	streamedMetaChanges    bool
-	streamedUpgradeChanges bool
-	pending                []Change
-	pendingIndex           int
+	transactionReader *TransactionReader
+	state             ledgerChangeReaderState
+	pending           []Change
+	pendingIndex      int
+	upgradeIndex      int
 }
 
 // Ensure LedgerChangeReader implements ChangeReader
@@ -36,103 +42,31 @@ var _ ChangeReader = (*LedgerChangeReader)(nil)
 // NewLedgerChangeReader constructs a new LedgerChangeReader instance bound to the given ledger.
 // Note that the returned LedgerChangeReader is not thread safe and should not be shared
 // by multiple goroutines.
-func NewLedgerChangeReader(
-	ctx context.Context, sequence uint32, backend ledgerbackend.LedgerBackend,
-) (*LedgerChangeReader, error) {
-	reader, err := NewDBLedgerReader(ctx, sequence, backend)
+func NewLedgerChangeReader(backend ledgerbackend.LedgerBackend, sequence uint32) (*LedgerChangeReader, error) {
+	transactionReader, err := NewTransactionReader(backend, sequence)
 	if err != nil {
 		return nil, err
 	}
 
-	return &LedgerChangeReader{dbReader: *reader}, nil
+	return &LedgerChangeReader{
+		transactionReader: transactionReader,
+		state:             feeChangesState,
+	}, nil
 }
 
-// GetHeader returns the ledger header for the reader
+// GetSequence returns the sequence number of the ledger data stored by this object.
+func (r *LedgerChangeReader) GetSequence() uint32 {
+	return r.transactionReader.GetSequence()
+}
+
+// GetHeader returns the XDR Header data associated with the stored ledger.
 func (r *LedgerChangeReader) GetHeader() xdr.LedgerHeaderHistoryEntry {
-	return r.dbReader.GetHeader()
-}
-
-func (r *LedgerChangeReader) getNextFeeChange() (Change, error) {
-	if r.streamedFeeChanges {
-		return Change{}, io.EOF
-	}
-
-	// Remember that it's possible that transaction can remove a preauth
-	// tx signer even when it's a failed transaction so we need to check
-	// failed transactions too.
-	for {
-		transaction, err := r.dbReader.Read()
-		if err != nil {
-			if err == io.EOF {
-				r.dbReader.rewind()
-				r.streamedFeeChanges = true
-				return Change{}, io.EOF
-			} else {
-				return Change{}, err
-			}
-		}
-
-		changes := transaction.GetFeeChanges()
-		if len(changes) >= 1 {
-			r.pending = append(r.pending, changes[1:]...)
-			return changes[0], nil
-		}
-	}
-}
-
-func (r *LedgerChangeReader) getNextMetaChange() (Change, error) {
-	if r.streamedMetaChanges {
-		return Change{}, io.EOF
-	}
-
-	for {
-		transaction, err := r.dbReader.Read()
-		if err != nil {
-			if err == io.EOF {
-				r.streamedMetaChanges = true
-				return Change{}, io.EOF
-			} else {
-				return Change{}, err
-			}
-		}
-
-		changes, err := transaction.GetChanges()
-		if err != nil {
-			return Change{}, err
-		}
-		if len(changes) >= 1 {
-			r.pending = append(r.pending, changes[1:]...)
-			return changes[0], nil
-		}
-	}
-}
-
-func (r *LedgerChangeReader) getNextUpgradeChange() (Change, error) {
-	if r.streamedUpgradeChanges {
-		return Change{}, io.EOF
-	}
-
-	change, err := r.dbReader.readUpgradeChange()
-	if err != nil {
-		if err == io.EOF {
-			r.streamedUpgradeChanges = true
-			return Change{}, io.EOF
-		} else {
-			return Change{}, err
-		}
-	}
-
-	return change, nil
+	return r.transactionReader.GetHeader()
 }
 
 // Read returns the next change in the stream.
-// If there are no changes remaining io.EOF is returned
-// as an error.
+// If there are no changes remaining io.EOF is returned as an error.
 func (r *LedgerChangeReader) Read() (Change, error) {
-	if err := r.dbReader.ctx.Err(); err != nil {
-		return Change{}, err
-	}
-
 	if r.pendingIndex < len(r.pending) {
 		next := r.pending[r.pendingIndex]
 		r.pendingIndex++
@@ -143,23 +77,49 @@ func (r *LedgerChangeReader) Read() (Change, error) {
 		return next, nil
 	}
 
-	change, err := r.getNextFeeChange()
-	if err == nil || err != io.EOF {
-		return change, err
+	switch r.state {
+	case feeChangesState, metaChangesState:
+		tx, err := r.transactionReader.Read()
+		if err != nil {
+			if err == io.EOF {
+				// If done streaming fee changes rewind to stream meta changes
+				if r.state == feeChangesState {
+					r.transactionReader.Rewind()
+				}
+				r.state++
+				return r.Read()
+			}
+			return Change{}, err
+		}
+
+		switch r.state {
+		case feeChangesState:
+			r.pending = append(r.pending, tx.GetFeeChanges()...)
+		case metaChangesState:
+			metaChanges, err := tx.GetChanges()
+			if err != nil {
+				return Change{}, err
+			}
+			r.pending = append(r.pending, metaChanges...)
+		}
+		return r.Read()
+	case upgradeChangesState:
+		// Get upgrade changes
+		if r.upgradeIndex < len(r.transactionReader.ledgerReader.ledgerCloseMeta.UpgradesMeta) {
+			changes := GetChangesFromLedgerEntryChanges(
+				r.transactionReader.ledgerReader.ledgerCloseMeta.UpgradesMeta[r.upgradeIndex],
+			)
+			r.pending = append(r.pending, changes...)
+			r.upgradeIndex++
+			return r.Read()
+		}
 	}
 
-	change, err = r.getNextMetaChange()
-	if err == nil || err != io.EOF {
-		return change, err
-	}
-
-	return r.getNextUpgradeChange()
+	return Change{}, io.EOF
 }
 
+// Close should be called when reading is finished.
 func (r *LedgerChangeReader) Close() error {
 	r.pending = nil
-	r.streamedFeeChanges = true
-	r.streamedMetaChanges = true
-	r.streamedUpgradeChanges = true
-	return r.dbReader.Close()
+	return r.transactionReader.Close()
 }
