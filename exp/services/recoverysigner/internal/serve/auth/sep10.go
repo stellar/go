@@ -13,10 +13,10 @@ import (
 )
 
 // SEP10Middleware provides middleware for handling an authentication SEP-10 JWT.
-func SEP10Middleware(issuer string, k jose.JSONWebKey) func(http.Handler) http.Handler {
+func SEP10Middleware(issuer string, ks jose.JSONWebKeySet) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if address, ok := sep10ClaimsFromRequest(r, issuer, k); ok {
+			if address, ok := sep10ClaimsFromRequest(r, issuer, ks); ok {
 				ctx := r.Context()
 				auth, _ := FromContext(ctx)
 				auth.Address = address
@@ -51,7 +51,7 @@ func (c sep10JWTClaims) Validate(issuer string) error {
 	return c.Claims.Validate(expectedClaims)
 }
 
-func sep10ClaimsFromRequest(r *http.Request, issuer string, k jose.JSONWebKey) (address string, ok bool) {
+func sep10ClaimsFromRequest(r *http.Request, issuer string, ks jose.JSONWebKeySet) (address string, ok bool) {
 	authHeader := r.Header.Get("Authorization")
 	tokenEncoded := httpauthz.ParseBearerToken(authHeader)
 	if tokenEncoded == "" {
@@ -62,8 +62,15 @@ func sep10ClaimsFromRequest(r *http.Request, issuer string, k jose.JSONWebKey) (
 		return "", false
 	}
 	tokenClaims := sep10JWTClaims{}
-	err = token.Claims(k, &tokenClaims)
-	if err != nil {
+	verified := false
+	for _, k := range ks.Keys {
+		err = token.Claims(k, &tokenClaims)
+		if err == nil {
+			verified = true
+			break
+		}
+	}
+	if !verified {
 		return "", false
 	}
 	err = tokenClaims.Validate(issuer)
