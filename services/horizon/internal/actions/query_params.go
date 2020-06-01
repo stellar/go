@@ -70,7 +70,10 @@ func (q SellingBuyingAssetQueryParams) Selling() (*xdr.Asset, error) {
 			}
 			asset, err := xdr.NewCreditAsset(parts[0], parts[1])
 			if err != nil {
-				return nil, err
+				return nil, problem.MakeInvalidFieldProblem(
+					"selling",
+					err,
+				)
 			}
 			return &asset, err
 		}
@@ -87,7 +90,9 @@ func (q SellingBuyingAssetQueryParams) Selling() (*xdr.Asset, error) {
 	)
 
 	if err != nil {
-		return nil, err
+		p := problem.BadRequest
+		p.Extras = map[string]interface{}{"reason": fmt.Sprintf("bad selling asset: %s", err.Error())}
+		return nil, p
 	}
 
 	return &selling, nil
@@ -110,7 +115,10 @@ func (q SellingBuyingAssetQueryParams) Buying() (*xdr.Asset, error) {
 			}
 			asset, err := xdr.NewCreditAsset(parts[0], parts[1])
 			if err != nil {
-				return nil, err
+				return nil, problem.MakeInvalidFieldProblem(
+					"buying",
+					err,
+				)
 			}
 			return &asset, err
 		}
@@ -127,7 +135,9 @@ func (q SellingBuyingAssetQueryParams) Buying() (*xdr.Asset, error) {
 	)
 
 	if err != nil {
-		return nil, err
+		p := problem.BadRequest
+		p.Extras = map[string]interface{}{"reason": fmt.Sprintf("bad buying asset: %s", err.Error())}
+		return nil, p
 	}
 
 	return &buying, nil
