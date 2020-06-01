@@ -16,7 +16,7 @@ type LedgerTransactionProcessor interface {
 
 func StreamLedgerTransactions(
 	txProcessor LedgerTransactionProcessor,
-	reader *TransactionReader,
+	reader *LedgerTransactionReader,
 ) error {
 	for {
 		tx, err := reader.Read()

@@ -264,7 +264,7 @@ func (s *ProcessorRunner) runChangeProcessorOnLedger(
 func (s *ProcessorRunner) RunTransactionProcessorsOnLedger(ledger uint32) (io.StatsLedgerTransactionProcessorResults, error) {
 	ledgerTransactionStats := io.StatsLedgerTransactionProcessor{}
 
-	transactionReader, err := io.NewTransactionReader(s.ledgerBackend, ledger)
+	transactionReader, err := io.NewLedgerTransactionReader(s.ledgerBackend, ledger)
 	if err != nil {
 		return ledgerTransactionStats.GetResults(), errors.Wrap(err, "Error creating ledger reader")
 	}
