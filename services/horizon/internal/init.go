@@ -88,12 +88,14 @@ func initExpIngester(app *App, orderBookGraph *orderbook.OrderBookGraph) {
 		HistoryArchiveURL:        app.config.HistoryArchiveURLs[0],
 		StellarCoreURL:           app.config.StellarCoreURL,
 		StellarCoreCursor:        app.config.CursorName,
+		StellarCorePath:          app.config.StellarCoreBinaryPath,
 		OrderBookGraph:           orderBookGraph,
 		MaxStreamRetries:         3,
 		DisableStateVerification: app.config.IngestDisableStateVerification,
 		IngestFailedTransactions: app.config.IngestFailedTransactions,
 		IngestInMemoryOnly:       app.config.IngestInMemoryOnly,
 	})
+
 	if err != nil {
 		log.Fatal(err)
 	}
