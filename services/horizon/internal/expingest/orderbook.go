@@ -15,7 +15,7 @@ import (
 
 const (
 	verificationFrequency = time.Hour
-	updateFrequency       = 30 * time.Second
+	updateFrequency       = 2 * time.Second
 )
 
 // OrderBookStream updates an in memory graph to be consistent with
