@@ -600,10 +600,6 @@ func NewTransaction(params TransactionParams) (*Transaction, error) {
 		return nil, errors.Wrap(err, "account id is not valid")
 	}
 
-	sourceAccountEd25519, ok := accountID.GetEd25519()
-	if !ok {
-		return nil, errors.New("invalid account id")
-	}
 	if tx.baseFee < MinBaseFee {
 		return nil, errors.Errorf(
 			"base fee cannot be lower than network minimum of %d", MinBaseFee,
@@ -630,12 +626,12 @@ func NewTransaction(params TransactionParams) (*Transaction, error) {
 	}
 
 	envelope := xdr.TransactionEnvelope{
-		Type: xdr.EnvelopeTypeEnvelopeTypeTxV0,
-		V0: &xdr.TransactionV0Envelope{
-			Tx: xdr.TransactionV0{
-				SourceAccountEd25519: sourceAccountEd25519,
-				Fee:                  xdr.Uint32(tx.maxFee),
-				SeqNum:               xdr.SequenceNumber(sequence),
+		Type: xdr.EnvelopeTypeEnvelopeTypeTx,
+		V1: &xdr.TransactionV1Envelope{
+			Tx: xdr.Transaction{
+				SourceAccount: accountID.ToMuxedAccount(),
+				Fee:           xdr.Uint32(tx.maxFee),
+				SeqNum:        xdr.SequenceNumber(sequence),
 				TimeBounds: &xdr.TimeBounds{
 					MinTime: xdr.TimePoint(tx.timebounds.MinTime),
 					MaxTime: xdr.TimePoint(tx.timebounds.MaxTime),
@@ -651,7 +647,7 @@ func NewTransaction(params TransactionParams) (*Transaction, error) {
 		if err != nil {
 			return nil, errors.Wrap(err, "couldn't build memo XDR")
 		}
-		envelope.V0.Tx.Memo = xdrMemo
+		envelope.V1.Tx.Memo = xdrMemo
 	}
 
 	for _, op := range tx.operations {
@@ -663,7 +659,7 @@ func NewTransaction(params TransactionParams) (*Transaction, error) {
 		if err2 != nil {
 			return nil, errors.Wrap(err2, fmt.Sprintf("failed to build operation %T", op))
 		}
-		envelope.V0.Tx.Operations = append(envelope.V0.Tx.Operations, xdrOperation)
+		envelope.V1.Tx.Operations = append(envelope.V1.Tx.Operations, xdrOperation)
 	}
 
 	tx.envelope = envelope

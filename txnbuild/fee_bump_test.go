@@ -28,7 +28,6 @@ func TestFeeBumpInvalidFeeSource(t *testing.T) {
 	)
 	assert.NoError(t, err)
 
-	convertToV1Tx(tx)
 	_, err = NewFeeBumpTransaction(
 		FeeBumpTransactionParams{
 			FeeAccount: "/.','ml",
@@ -52,6 +51,8 @@ func TestFeeBumpInvalidInnerTxType(t *testing.T) {
 		},
 	)
 	assert.NoError(t, err)
+
+	convertToV0(tx)
 
 	_, err = NewFeeBumpTransaction(
 		FeeBumpTransactionParams{
@@ -78,7 +79,6 @@ func TestFeeBumpAllowsFeeAccountToEqualInnerSourceAccount(t *testing.T) {
 		},
 	)
 	assert.NoError(t, err)
-	convertToV1Tx(tx)
 
 	_, err = NewFeeBumpTransaction(
 		FeeBumpTransactionParams{
@@ -140,7 +140,6 @@ func TestFeeBumpRoundTrip(t *testing.T) {
 	assert.NoError(t, err)
 	tx, err = tx.Sign(network.TestNetworkPassphrase, kp0)
 	assert.NoError(t, err)
-	convertToV1Tx(tx)
 	expectedInnerB64, err := tx.Base64()
 	assert.NoError(t, err)
 
