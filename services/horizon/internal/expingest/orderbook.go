@@ -1,6 +1,7 @@
 package expingest
 
 import (
+	"context"
 	"database/sql"
 	"math/rand"
 	"sort"
@@ -12,7 +13,10 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-const verificationFrequency = time.Hour
+const (
+	verificationFrequency = time.Hour
+	updateFrequency       = 30 * time.Second
+)
 
 // OrderBookStream updates an in memory graph to be consistent with
 // offers in the Horizon DB. Any offers which are created, modified, or removed
@@ -160,7 +164,7 @@ func (o *OrderBookStream) verifyAllOffers() {
 	ingestionOffers, err := o.HistoryQ.GetAllOffers()
 	if err != nil {
 		// reset last update so that we retry verification on next update
-		o.lastUpdate = time.Now().Add(time.Hour * -2)
+		o.lastUpdate = time.Now().Add(verificationFrequency * -2)
 		log.WithError(err).Info("Could not verify offers because of error from GetAllOffers")
 		return
 	}
@@ -230,4 +234,22 @@ func (o *OrderBookStream) Update() error {
 		o.verifyAllOffers()
 	}
 	return nil
+}
+
+// Run will call Update() every 30 seconds until the given context is terminated.
+func (o *OrderBookStream) Run(ctx context.Context) {
+	ticker := time.NewTicker(updateFrequency)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			if err := o.Update(); err != nil {
+				log.WithError(err).Error("could not apply updates from order book stream")
+			}
+		case <-ctx.Done():
+			log.Info("finished background ticker")
+			return
+		}
+	}
 }
