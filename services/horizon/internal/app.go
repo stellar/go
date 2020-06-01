@@ -113,6 +113,7 @@ func (a *App) Serve() {
 	}
 
 	go a.run()
+	go a.orderBookStream.Run(a.ctx)
 
 	// WaitGroup for all go routines. Makes sure that DB is closed when
 	// all services gracefully shutdown.
@@ -414,15 +415,7 @@ func (a *App) Tick() {
 	var wg sync.WaitGroup
 	log.Debug("ticking app")
 	// update ledger state, operation fee state, and stellar-core info in parallel
-	wg.Add(4)
-	go func() {
-		defer wg.Done()
-		if a.orderBookStream != nil {
-			if err := a.orderBookStream.Update(); err != nil {
-				log.WithField("error", err).Error("could not apply updates from order book stream")
-			}
-		}
-	}()
+	wg.Add(3)
 	go func() { a.UpdateLedgerState(); wg.Done() }()
 	go func() { a.UpdateFeeStatsState(); wg.Done() }()
 	go func() { a.UpdateStellarCoreInfo(); wg.Done() }()
@@ -462,19 +455,15 @@ func (a *App) init() {
 	mustInitCoreDB(a)
 
 	if a.config.Ingest {
-		orderBookGraph := orderbook.NewOrderBookGraph()
 		// expingester
-		initExpIngester(a, orderBookGraph)
-		// path-finder
-		initPathFinder(a, orderBookGraph)
-	} else {
-		orderBookGraph := orderbook.NewOrderBookGraph()
-		a.orderBookStream = &expingest.OrderBookStream{
-			OrderBookGraph: orderBookGraph,
-			HistoryQ:       &history.Q{a.HorizonSession(a.ctx)},
-		}
-		initPathFinder(a, orderBookGraph)
+		initExpIngester(a)
 	}
+	orderBookGraph := orderbook.NewOrderBookGraph()
+	a.orderBookStream = &expingest.OrderBookStream{
+		OrderBookGraph: orderBookGraph,
+		HistoryQ:       &history.Q{a.HorizonSession(a.ctx)},
+	}
+	initPathFinder(a, orderBookGraph)
 
 	// txsub
 	initSubmissionSystem(a)

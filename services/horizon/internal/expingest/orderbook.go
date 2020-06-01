@@ -1,13 +1,21 @@
 package expingest
 
 import (
+	"context"
 	"database/sql"
+	"math/rand"
 	"sort"
+	"time"
 
 	"github.com/stellar/go/exp/orderbook"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
+)
+
+const (
+	verificationFrequency = time.Hour
+	updateFrequency       = 2 * time.Second
 )
 
 // OrderBookStream updates an in memory graph to be consistent with
@@ -20,6 +28,7 @@ type OrderBookStream struct {
 	OrderBookGraph orderbook.OBGraph
 	HistoryQ       history.IngestionQ
 	lastLedger     uint32
+	lastUpdate     time.Time
 }
 
 type ingestionStatus struct {
@@ -60,7 +69,23 @@ func (o *OrderBookStream) getIngestionStatus() (ingestionStatus, error) {
 	return status, nil
 }
 
-func (o *OrderBookStream) update(status ingestionStatus) ([]history.Offer, []xdr.Int64, error) {
+func addOfferToGraph(graph orderbook.OBGraph, offer history.Offer) {
+	sellerID := xdr.MustAddress(offer.SellerID)
+	graph.AddOffer(xdr.OfferEntry{
+		SellerId: sellerID,
+		OfferId:  offer.OfferID,
+		Selling:  offer.SellingAsset,
+		Buying:   offer.BuyingAsset,
+		Amount:   offer.Amount,
+		Price: xdr.Price{
+			N: xdr.Int32(offer.Pricen),
+			D: xdr.Int32(offer.Priced),
+		},
+		Flags: xdr.Uint32(offer.Flags),
+	})
+}
+
+func (o *OrderBookStream) update(status ingestionStatus) error {
 	reset := o.lastLedger == 0
 	if status.StateInvalid || !status.HistoryConsistentWithState {
 		log.WithField("status", status).Warn("ingestion state is invalid")
@@ -85,59 +110,65 @@ func (o *OrderBookStream) update(status ingestionStatus) ([]history.Offer, []xdr
 		if status.StateInvalid || !status.HistoryConsistentWithState {
 			log.WithField("status", status).
 				Info("waiting for ingestion to update offers table")
-			return []history.Offer{}, []xdr.Int64{}, nil
+			return nil
 		}
 
 		defer o.OrderBookGraph.Discard()
-		offers, err := loadOffersIntoGraph(o.HistoryQ, o.OrderBookGraph)
+
+		offers, err := o.HistoryQ.GetAllOffers()
 		if err != nil {
-			return nil, nil, errors.Wrap(err, "Error from loadOffersIntoGraph")
+			return errors.Wrap(err, "Error from GetAllOffers")
 		}
 
-		if err = o.OrderBookGraph.Apply(status.LastIngestedLedger); err != nil {
-			return nil, nil, errors.Wrap(err, "Error applying changes to order book")
+		for _, offer := range offers {
+			addOfferToGraph(o.OrderBookGraph, offer)
+		}
+
+		if err := o.OrderBookGraph.Apply(status.LastIngestedLedger); err != nil {
+			return errors.Wrap(err, "Error applying changes to order book")
 		}
 
 		o.lastLedger = status.LastIngestedLedger
-		return offers, []xdr.Int64{}, nil
+		return nil
 	}
 
 	if status.LastIngestedLedger == o.lastLedger {
-		return []history.Offer{}, []xdr.Int64{}, nil
+		return nil
 	}
 
 	defer o.OrderBookGraph.Discard()
 
-	var updated []history.Offer
-	var removed []xdr.Int64
-	rows, err := o.HistoryQ.GetUpdatedOffers(o.lastLedger)
+	offers, err := o.HistoryQ.GetUpdatedOffers(o.lastLedger)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "Error from GetUpdatedOffers")
+		return errors.Wrap(err, "Error from GetUpdatedOffers")
 	}
-	for _, row := range rows {
-		if row.Deleted {
-			removed = append(removed, row.OfferID)
+	for _, offer := range offers {
+		if offer.Deleted {
+			o.OrderBookGraph.RemoveOffer(offer.OfferID)
 		} else {
-			updated = append(updated, row)
+			addOfferToGraph(o.OrderBookGraph, offer)
 		}
-	}
-	addOffersToGraph(updated, o.OrderBookGraph)
-
-	for _, offerID := range removed {
-		o.OrderBookGraph.RemoveOffer(offerID)
 	}
 
 	if err = o.OrderBookGraph.Apply(status.LastIngestedLedger); err != nil {
-		return nil, nil, errors.Wrap(err, "Error applying changes to order book")
+		return errors.Wrap(err, "Error applying changes to order book")
 	}
 
+	o.lastUpdate = time.Now()
 	o.lastLedger = status.LastIngestedLedger
-	return updated, removed, nil
+	return nil
 }
 
-func (o *OrderBookStream) verifyGraph(ingestion orderbook.OBGraph) {
+func (o *OrderBookStream) verifyAllOffers() {
 	offers := o.OrderBookGraph.Offers()
-	ingestionOffers := ingestion.Offers()
+	ingestionOffers, err := o.HistoryQ.GetAllOffers()
+	if err != nil {
+		// reset last update so that we retry verification on next update
+		o.lastUpdate = time.Now().Add(verificationFrequency * -2)
+		log.WithError(err).Info("Could not verify offers because of error from GetAllOffers")
+		return
+	}
+
 	mismatch := len(offers) != len(ingestionOffers)
 
 	if !mismatch {
@@ -145,40 +176,11 @@ func (o *OrderBookStream) verifyGraph(ingestion orderbook.OBGraph) {
 			return offers[i].OfferId < offers[j].OfferId
 		})
 		sort.Slice(ingestionOffers, func(i, j int) bool {
-			return ingestionOffers[i].OfferId < ingestionOffers[j].OfferId
+			return ingestionOffers[i].OfferID < ingestionOffers[j].OfferID
 		})
 
-		offerBase64, err := xdr.MarshalBase64(offers)
-		if err != nil {
-			log.WithError(err).Error("could not serialize offers")
-			return
-		}
-		ingestionOffersBase64, err := xdr.MarshalBase64(ingestionOffers)
-		if err != nil {
-			log.WithError(err).Error("could not serialize ingestion offers")
-			return
-		}
-		mismatch = offerBase64 != ingestionOffersBase64
-	}
-
-	if mismatch {
-		log.WithField("stream_offers", offers).
-			WithField("ingestion_offers", ingestionOffers).
-			Error("offers derived from order book stream does not match offers from ingestion")
-	}
-}
-
-func verifyUpdatedOffers(ledger uint32, fromDB []history.Offer, fromIngestion []xdr.OfferEntry) {
-	sort.Slice(fromDB, func(i, j int) bool {
-		return fromDB[i].OfferID < fromDB[j].OfferID
-	})
-	sort.Slice(fromIngestion, func(i, j int) bool {
-		return fromIngestion[i].OfferId < fromIngestion[j].OfferId
-	})
-	mismatch := len(fromDB) != len(fromIngestion)
-	if !mismatch {
-		for i, offerRow := range fromDB {
-			offerEntry := fromIngestion[i]
+		for i, offerRow := range ingestionOffers {
+			offerEntry := offers[i]
 			if offerRow.OfferID != offerEntry.OfferId ||
 				offerRow.Amount != offerEntry.Amount ||
 				offerRow.Priced != int32(offerEntry.Price.D) ||
@@ -191,53 +193,16 @@ func verifyUpdatedOffers(ledger uint32, fromDB []history.Offer, fromIngestion []
 			}
 		}
 	}
+
 	if mismatch {
-		log.WithField("fromDB", fromDB).
-			WithField("fromIngestion", fromIngestion).
-			WithField("sequence", ledger).
-			Warn("offers from db does not match offers from ingestion")
+		log.WithField("stream_offers", offers).
+			WithField("ingestion_offers", ingestionOffers).
+			Error("offers derived from order book stream does not match offers from ingestion")
+		// set last ledger to 0 so that we reset on next update
+		o.lastLedger = 0
+	} else {
+		log.Info("order book stream verification succeeded")
 	}
-}
-
-func verifyRemovedOffers(ledger uint32, fromDB []xdr.Int64, fromIngestion []xdr.Int64) {
-	sort.Slice(fromDB, func(i, j int) bool {
-		return fromDB[i] < fromDB[j]
-	})
-	sort.Slice(fromIngestion, func(i, j int) bool {
-		return fromIngestion[i] < fromIngestion[j]
-	})
-	mismatch := len(fromDB) != len(fromIngestion)
-	if !mismatch {
-		for i, offerRow := range fromDB {
-			if offerRow != fromIngestion[i] {
-				mismatch = true
-				break
-			}
-		}
-	}
-	if mismatch {
-		log.WithField("fromDB", fromDB).
-			WithField("fromIngestion", fromIngestion).
-			WithField("sequence", ledger).
-			Warn("offers from db does not match offers from ingestion")
-	}
-}
-
-func (o *OrderBookStream) updateAndVerify(graph orderbook.OBGraph, sequence uint32) {
-	status, err := o.getIngestionStatus()
-	if err != nil {
-		log.WithError(err).WithField("sequence", sequence).Info("Error obtaining ingestion status")
-		return
-	}
-
-	dbUpdates, dbRemoved, err := o.update(status)
-	if err != nil {
-		log.WithError(err).WithField("sequence", sequence).Info("Error consuming from order book stream")
-		return
-	}
-	ingestionUpdates, ingestionRemoved := graph.Pending()
-	verifyUpdatedOffers(sequence, dbUpdates, ingestionUpdates)
-	verifyRemovedOffers(sequence, dbRemoved, ingestionRemoved)
 }
 
 // Update will query the Horizon DB for offers which have been created, removed, or updated since the
@@ -250,11 +215,41 @@ func (o *OrderBookStream) Update() error {
 	}
 	defer o.HistoryQ.Rollback()
 
+	// add 15 minute jitter so that not all horizon nodes are calling
+	// HistoryQ.GetAllOffers at the same time
+	jitter := time.Duration(rand.Int63n(int64(15 * time.Minute)))
+	requiresVerification := !o.lastUpdate.Equal(time.Time{}) &&
+		time.Since(o.lastUpdate) >= verificationFrequency+jitter
+
 	status, err := o.getIngestionStatus()
 	if err != nil {
 		return errors.Wrap(err, "Error obtaining ingestion status")
 	}
 
-	_, _, err = o.update(status)
-	return err
+	if err := o.update(status); err != nil {
+		return errors.Wrap(err, "Error updating")
+	}
+
+	if requiresVerification {
+		o.verifyAllOffers()
+	}
+	return nil
+}
+
+// Run will call Update() every 30 seconds until the given context is terminated.
+func (o *OrderBookStream) Run(ctx context.Context) {
+	ticker := time.NewTicker(updateFrequency)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			if err := o.Update(); err != nil {
+				log.WithError(err).Error("could not apply updates from order book stream")
+			}
+		case <-ctx.Done():
+			log.Info("shutting down OrderBookStream")
+			return
+		}
+	}
 }

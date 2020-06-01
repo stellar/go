@@ -6,6 +6,7 @@ import (
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/suite"
 	"testing"
+	"time"
 )
 
 type IngestionStatusTestSuite struct {
@@ -202,9 +203,10 @@ func (t *UpdateOrderBookStreamTestSuite) TestGetAllOffersError() {
 		Once()
 
 	t.stream.lastLedger = 300
-	_, _, err := t.stream.update(status)
-	t.Assert().EqualError(err, "Error from loadOffersIntoGraph: GetAllOffers error: offers error")
+	err := t.stream.update(status)
+	t.Assert().EqualError(err, "Error from GetAllOffers: offers error")
 	t.Assert().Equal(uint32(0), t.stream.lastLedger)
+	t.Assert().True(t.stream.lastUpdate.Equal(time.Time{}))
 }
 
 func (t *UpdateOrderBookStreamTestSuite) TestResetApplyError() {
@@ -240,12 +242,13 @@ func (t *UpdateOrderBookStreamTestSuite) TestResetApplyError() {
 		Once()
 
 	t.stream.lastLedger = 300
-	_, _, err := t.stream.update(status)
+	err := t.stream.update(status)
 	t.Assert().EqualError(err, "Error applying changes to order book: apply error")
 	t.Assert().Equal(uint32(0), t.stream.lastLedger)
+	t.Assert().True(t.stream.lastUpdate.Equal(time.Time{}))
 }
 
-func (t *UpdateOrderBookStreamTestSuite) mockReset(status ingestionStatus) []history.Offer {
+func (t *UpdateOrderBookStreamTestSuite) mockReset(status ingestionStatus) {
 	t.graph.On("Clear").Return().Once()
 	t.graph.On("Discard").Return().Once()
 
@@ -271,7 +274,6 @@ func (t *UpdateOrderBookStreamTestSuite) mockReset(status ingestionStatus) []his
 	t.graph.On("Apply", status.LastIngestedLedger).
 		Return(nil).
 		Once()
-	return offers
 }
 
 func (t *UpdateOrderBookStreamTestSuite) TestFirstUpdateSucceeds() {
@@ -281,13 +283,12 @@ func (t *UpdateOrderBookStreamTestSuite) TestFirstUpdateSucceeds() {
 		LastIngestedLedger:         201,
 		LastOfferCompactionLedger:  100,
 	}
-	offers := t.mockReset(status)
+	t.mockReset(status)
 
-	updated, removed, err := t.stream.update(status)
+	err := t.stream.update(status)
 	t.Assert().NoError(err)
-	t.Assert().Empty(removed)
-	t.Assert().Equal(offers, updated)
 	t.Assert().Equal(uint32(201), t.stream.lastLedger)
+	t.Assert().True(t.stream.lastUpdate.Equal(time.Time{}))
 }
 
 func (t *UpdateOrderBookStreamTestSuite) TestInvalidState() {
@@ -299,21 +300,18 @@ func (t *UpdateOrderBookStreamTestSuite) TestInvalidState() {
 	}
 	t.graph.On("Clear").Return().Once()
 
-	updated, removed, err := t.stream.update(status)
+	err := t.stream.update(status)
 	t.Assert().NoError(err)
-	t.Assert().Empty(removed)
-	t.Assert().Empty(updated)
 	t.Assert().Equal(uint32(0), t.stream.lastLedger)
 
 	t.stream.lastLedger = 123
 
 	t.graph.On("Clear").Return().Once()
 
-	updated, removed, err = t.stream.update(status)
+	err = t.stream.update(status)
 	t.Assert().NoError(err)
-	t.Assert().Empty(removed)
-	t.Assert().Empty(updated)
 	t.Assert().Equal(uint32(0), t.stream.lastLedger)
+	t.Assert().True(t.stream.lastUpdate.Equal(time.Time{}))
 }
 
 func (t *UpdateOrderBookStreamTestSuite) TestHistoryInconsistentWithState() {
@@ -325,21 +323,18 @@ func (t *UpdateOrderBookStreamTestSuite) TestHistoryInconsistentWithState() {
 	}
 	t.graph.On("Clear").Return().Once()
 
-	updated, removed, err := t.stream.update(status)
+	err := t.stream.update(status)
 	t.Assert().NoError(err)
-	t.Assert().Empty(removed)
-	t.Assert().Empty(updated)
 	t.Assert().Equal(uint32(0), t.stream.lastLedger)
 
 	t.stream.lastLedger = 123
 
 	t.graph.On("Clear").Return().Once()
 
-	updated, removed, err = t.stream.update(status)
+	err = t.stream.update(status)
 	t.Assert().NoError(err)
-	t.Assert().Empty(removed)
-	t.Assert().Empty(updated)
 	t.Assert().Equal(uint32(0), t.stream.lastLedger)
+	t.Assert().True(t.stream.lastUpdate.Equal(time.Time{}))
 }
 
 func (t *UpdateOrderBookStreamTestSuite) TestLastIngestedLedgerBehindStream() {
@@ -349,14 +344,13 @@ func (t *UpdateOrderBookStreamTestSuite) TestLastIngestedLedgerBehindStream() {
 		LastIngestedLedger:         201,
 		LastOfferCompactionLedger:  100,
 	}
-	offers := t.mockReset(status)
+	t.mockReset(status)
 
 	t.stream.lastLedger = 300
-	updated, removed, err := t.stream.update(status)
+	err := t.stream.update(status)
 	t.Assert().NoError(err)
-	t.Assert().Empty(removed)
-	t.Assert().Equal(offers, updated)
 	t.Assert().Equal(uint32(201), t.stream.lastLedger)
+	t.Assert().True(t.stream.lastUpdate.Equal(time.Time{}))
 }
 
 func (t *UpdateOrderBookStreamTestSuite) TestStreamBehindLastCompactionLedger() {
@@ -366,14 +360,13 @@ func (t *UpdateOrderBookStreamTestSuite) TestStreamBehindLastCompactionLedger() 
 		LastIngestedLedger:         201,
 		LastOfferCompactionLedger:  100,
 	}
-	offers := t.mockReset(status)
+	t.mockReset(status)
 
 	t.stream.lastLedger = 99
-	updated, removed, err := t.stream.update(status)
+	err := t.stream.update(status)
 	t.Assert().NoError(err)
-	t.Assert().Empty(removed)
-	t.Assert().Equal(offers, updated)
 	t.Assert().Equal(uint32(201), t.stream.lastLedger)
+	t.Assert().True(t.stream.lastUpdate.Equal(time.Time{}))
 }
 
 func (t *UpdateOrderBookStreamTestSuite) TestStreamLedgerEqualsLastIngestedLedger() {
@@ -385,11 +378,10 @@ func (t *UpdateOrderBookStreamTestSuite) TestStreamLedgerEqualsLastIngestedLedge
 	}
 
 	t.stream.lastLedger = 201
-	updated, removed, err := t.stream.update(status)
+	err := t.stream.update(status)
 	t.Assert().NoError(err)
-	t.Assert().Empty(removed)
-	t.Assert().Empty(updated)
 	t.Assert().Equal(uint32(201), t.stream.lastLedger)
+	t.Assert().True(t.stream.lastUpdate.Equal(time.Time{}))
 }
 
 func (t *UpdateOrderBookStreamTestSuite) TestGetUpdatedOffersError() {
@@ -406,12 +398,13 @@ func (t *UpdateOrderBookStreamTestSuite) TestGetUpdatedOffersError() {
 		Return([]history.Offer{}, fmt.Errorf("updated offers error")).
 		Once()
 
-	_, _, err := t.stream.update(status)
+	err := t.stream.update(status)
 	t.Assert().EqualError(err, "Error from GetUpdatedOffers: updated offers error")
 	t.Assert().Equal(uint32(100), t.stream.lastLedger)
+	t.Assert().True(t.stream.lastUpdate.Equal(time.Time{}))
 }
 
-func (t *UpdateOrderBookStreamTestSuite) mockUpdate() ([]history.Offer, []xdr.Int64) {
+func (t *UpdateOrderBookStreamTestSuite) mockUpdate() {
 	t.stream.lastLedger = 100
 
 	t.graph.On("Discard").Return().Once()
@@ -435,8 +428,6 @@ func (t *UpdateOrderBookStreamTestSuite) mockUpdate() ([]history.Offer, []xdr.In
 	t.graph.On("AddOffer", offerEntry).Return().Once()
 	t.graph.On("AddOffer", otherOfferEntry).Return().Once()
 	t.graph.On("RemoveOffer", deletedOffer.OfferID).Return(t.graph).Once()
-
-	return offers[:2], []xdr.Int64{deletedOffer.OfferID}
 }
 
 func (t *UpdateOrderBookStreamTestSuite) TestApplyUpdatesError() {
@@ -453,9 +444,10 @@ func (t *UpdateOrderBookStreamTestSuite) TestApplyUpdatesError() {
 		Return(fmt.Errorf("apply error")).
 		Once()
 
-	_, _, err := t.stream.update(status)
+	err := t.stream.update(status)
 	t.Assert().EqualError(err, "Error applying changes to order book: apply error")
 	t.Assert().Equal(uint32(100), t.stream.lastLedger)
+	t.Assert().True(t.stream.lastUpdate.Equal(time.Time{}))
 }
 
 func (t *UpdateOrderBookStreamTestSuite) TestApplyUpdatesSucceeds() {
@@ -466,15 +458,187 @@ func (t *UpdateOrderBookStreamTestSuite) TestApplyUpdatesSucceeds() {
 		LastOfferCompactionLedger:  100,
 	}
 
-	expectedUpdates, expectedRemoved := t.mockUpdate()
+	t.mockUpdate()
 
 	t.graph.On("Apply", status.LastIngestedLedger).
 		Return(nil).
 		Once()
 
-	updates, removed, err := t.stream.update(status)
+	err := t.stream.update(status)
 	t.Assert().NoError(err)
 	t.Assert().Equal(status.LastIngestedLedger, t.stream.lastLedger)
-	t.Assert().Equal(expectedUpdates, updates)
-	t.Assert().Equal(expectedRemoved, removed)
+	t.Assert().False(t.stream.lastUpdate.Equal(time.Time{}))
+}
+
+type VerifyOrderBookStreamTestSuite struct {
+	suite.Suite
+	historyQ *mockDBQ
+	graph    *mockOrderBookGraph
+	stream   *OrderBookStream
+}
+
+func TestVerifyOrderBookStream(t *testing.T) {
+	suite.Run(t, new(VerifyOrderBookStreamTestSuite))
+}
+
+func (t *VerifyOrderBookStreamTestSuite) SetupTest() {
+	t.historyQ = &mockDBQ{}
+	t.graph = &mockOrderBookGraph{}
+	t.stream = &OrderBookStream{OrderBookGraph: t.graph, HistoryQ: t.historyQ}
+
+	sellerID := "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"
+	otherSellerID := "GAXI33UCLQTCKM2NMRBS7XYBR535LLEVAHL5YBN4FTCB4HZHT7ZA5CVK"
+	t.graph.On("Offers").Return([]xdr.OfferEntry{
+		{
+			SellerId: xdr.MustAddress(sellerID),
+			OfferId:  1,
+			Selling:  xdr.MustNewNativeAsset(),
+			Buying:   xdr.MustNewCreditAsset("USD", sellerID),
+			Amount:   123,
+			Price: xdr.Price{
+				N: 1,
+				D: 2,
+			},
+			Flags: 1,
+			Ext:   xdr.OfferEntryExt{},
+		},
+		{
+			SellerId: xdr.MustAddress(otherSellerID),
+			OfferId:  3,
+			Selling:  xdr.MustNewCreditAsset("EUR", sellerID),
+			Buying:   xdr.MustNewCreditAsset("CHF", sellerID),
+			Amount:   9,
+			Price: xdr.Price{
+				N: 3,
+				D: 1,
+			},
+			Flags: 0,
+			Ext:   xdr.OfferEntryExt{},
+		},
+	}).Once()
+}
+
+func (t *VerifyOrderBookStreamTestSuite) TearDownTest() {
+	t.historyQ.AssertExpectations(t.T())
+	t.graph.AssertExpectations(t.T())
+}
+
+func (t *VerifyOrderBookStreamTestSuite) TestGetAllOffersError() {
+	t.historyQ.On("GetAllOffers").
+		Return([]history.Offer{}, fmt.Errorf("offers error")).
+		Once()
+
+	t.stream.lastLedger = 300
+	t.stream.verifyAllOffers()
+	t.Assert().Equal(uint32(300), t.stream.lastLedger)
+	t.Assert().False(t.stream.lastUpdate.Equal(time.Time{}))
+	t.Assert().True(t.stream.lastUpdate.Before(time.Now()))
+}
+
+func (t *VerifyOrderBookStreamTestSuite) TestEmptyDBOffers() {
+	var offers []history.Offer
+	t.historyQ.On("GetAllOffers").Return(offers, nil).Once()
+
+	t.stream.lastLedger = 300
+	t.stream.verifyAllOffers()
+	t.Assert().Equal(uint32(0), t.stream.lastLedger)
+	t.Assert().True(t.stream.lastUpdate.Equal(time.Time{}))
+}
+
+func (t *VerifyOrderBookStreamTestSuite) TestLengthMismatch() {
+	offers := []history.Offer{
+		{
+			OfferID:            1,
+			SellerID:           "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
+			SellingAsset:       xdr.MustNewNativeAsset(),
+			BuyingAsset:        xdr.MustNewCreditAsset("USD", "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+			Amount:             123,
+			Pricen:             1,
+			Priced:             2,
+			Price:              0.5,
+			Flags:              1,
+			Deleted:            false,
+			LastModifiedLedger: 1,
+		},
+	}
+	t.historyQ.On("GetAllOffers").Return(offers, nil).Once()
+
+	t.stream.lastLedger = 300
+	t.stream.verifyAllOffers()
+	t.Assert().Equal(uint32(0), t.stream.lastLedger)
+	t.Assert().True(t.stream.lastUpdate.Equal(time.Time{}))
+}
+
+func (t *VerifyOrderBookStreamTestSuite) TestContentMismatch() {
+	offers := []history.Offer{
+		{
+			OfferID:            1,
+			SellerID:           "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
+			SellingAsset:       xdr.MustNewNativeAsset(),
+			BuyingAsset:        xdr.MustNewCreditAsset("USD", "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+			Amount:             123,
+			Pricen:             1,
+			Priced:             2,
+			Price:              0.5,
+			Flags:              1,
+			Deleted:            false,
+			LastModifiedLedger: 1,
+		},
+		{
+			OfferID:            3,
+			SellerID:           "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
+			SellingAsset:       xdr.MustNewNativeAsset(),
+			BuyingAsset:        xdr.MustNewCreditAsset("USD", "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+			Amount:             123,
+			Pricen:             1,
+			Priced:             2,
+			Price:              0.5,
+			Flags:              1,
+			Deleted:            false,
+			LastModifiedLedger: 1,
+		},
+	}
+	t.historyQ.On("GetAllOffers").Return(offers, nil).Once()
+
+	t.stream.lastLedger = 300
+	t.stream.verifyAllOffers()
+	t.Assert().Equal(uint32(0), t.stream.lastLedger)
+	t.Assert().True(t.stream.lastUpdate.Equal(time.Time{}))
+}
+
+func (t *VerifyOrderBookStreamTestSuite) TestSuccess() {
+	offers := []history.Offer{
+		{
+			OfferID:            1,
+			SellerID:           "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
+			SellingAsset:       xdr.MustNewNativeAsset(),
+			BuyingAsset:        xdr.MustNewCreditAsset("USD", "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+			Amount:             123,
+			Pricen:             1,
+			Priced:             2,
+			Price:              0.5,
+			Flags:              1,
+			Deleted:            false,
+			LastModifiedLedger: 1,
+		},
+		{
+			OfferID:            3,
+			SellerID:           "GAXI33UCLQTCKM2NMRBS7XYBR535LLEVAHL5YBN4FTCB4HZHT7ZA5CVK",
+			SellingAsset:       xdr.MustNewCreditAsset("EUR", "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+			BuyingAsset:        xdr.MustNewCreditAsset("CHF", "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+			Amount:             9,
+			Pricen:             3,
+			Priced:             1,
+			Price:              3,
+			Flags:              0,
+			Deleted:            false,
+			LastModifiedLedger: 1,
+		},
+	}
+	t.historyQ.On("GetAllOffers").Return(offers, nil).Once()
+
+	t.stream.lastLedger = 300
+	t.stream.verifyAllOffers()
+	t.Assert().Equal(uint32(300), t.stream.lastLedger)
+	t.Assert().True(t.stream.lastUpdate.Equal(time.Time{}))
 }

@@ -8,7 +8,6 @@ import (
 	"github.com/stellar/go/exp/ingest/adapters"
 	"github.com/stellar/go/exp/ingest/io"
 	"github.com/stellar/go/exp/ingest/ledgerbackend"
-	"github.com/stellar/go/exp/orderbook"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/expingest/processors"
 	"github.com/stellar/go/support/errors"
@@ -53,7 +52,6 @@ type ProcessorRunnerInterface interface {
 	DisableMemoryStatsLogging()
 	RunHistoryArchiveIngestion(checkpointLedger uint32) (io.StatsChangeProcessorResults, error)
 	RunTransactionProcessorsOnLedger(sequence uint32) (io.StatsLedgerTransactionProcessorResults, error)
-	RunOrderBookProcessorOnLedger(sequence uint32) (io.StatsChangeProcessorResults, error)
 	RunAllProcessorsOnLedger(sequence uint32) (
 		io.StatsChangeProcessorResults,
 		io.StatsLedgerTransactionProcessorResults,
@@ -67,7 +65,6 @@ type ProcessorRunner struct {
 	config Config
 
 	ctx            context.Context
-	graph          orderbook.OBGraph
 	historyQ       history.IngestionQ
 	historyAdapter adapters.HistoryArchiveAdapterInterface
 	ledgerBackend  ledgerbackend.LedgerBackend
@@ -102,7 +99,6 @@ func (s *ProcessorRunner) buildChangeProcessor(
 	useLedgerCache := source == ledgerSource
 	return groupChangeProcessors{
 		statsChangeProcessor,
-		processors.NewOrderbookProcessor(s.graph),
 		processors.NewAccountDataProcessor(s.historyQ),
 		processors.NewAccountsProcessor(s.historyQ),
 		processors.NewOffersProcessor(s.historyQ, sequence),
@@ -305,24 +301,4 @@ func (s *ProcessorRunner) RunAllProcessorsOnLedger(sequence uint32) (io.StatsCha
 	}
 
 	return changeStats.GetResults(), statsLedgerTransactionProcessorResults, nil
-}
-
-func (s *ProcessorRunner) RunOrderBookProcessorOnLedger(ledger uint32) (io.StatsChangeProcessorResults, error) {
-	changeStats := io.StatsChangeProcessor{}
-
-	statsChangeProcessor := &statsChangeProcessor{
-		StatsChangeProcessor: &changeStats,
-	}
-
-	groupProcessor := groupChangeProcessors{
-		statsChangeProcessor,
-		processors.NewOrderbookProcessor(s.graph),
-	}
-
-	err := s.runChangeProcessorOnLedger(groupProcessor, ledger)
-	if err != nil {
-		return changeStats.GetResults(), err
-	}
-
-	return changeStats.GetResults(), nil
 }
