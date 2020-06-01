@@ -72,7 +72,7 @@ func mustInitCoreDB(app *App) {
 	)}
 }
 
-func initExpIngester(app *App, orderBookGraph *orderbook.OrderBookGraph) {
+func initExpIngester(app *App) {
 	var err error
 	app.expingester, err = expingest.NewSystem(expingest.Config{
 		CoreSession: mustNewDBSession(
@@ -88,7 +88,6 @@ func initExpIngester(app *App, orderBookGraph *orderbook.OrderBookGraph) {
 		HistoryArchiveURL:        app.config.HistoryArchiveURLs[0],
 		StellarCoreURL:           app.config.StellarCoreURL,
 		StellarCoreCursor:        app.config.CursorName,
-		OrderBookGraph:           orderBookGraph,
 		MaxStreamRetries:         3,
 		DisableStateVerification: app.config.IngestDisableStateVerification,
 		IngestFailedTransactions: app.config.IngestFailedTransactions,
@@ -159,7 +158,6 @@ func initIngestMetrics(app *App) {
 	app.metrics.Register("ingest.ledger_ingestion", app.expingester.Metrics.LedgerIngestionTimer)
 	app.metrics.Register("ingest.ledger_in_memory_ingestion", app.expingester.Metrics.LedgerInMemoryIngestionTimer)
 	app.metrics.Register("ingest.state_verify", app.expingester.Metrics.StateVerifyTimer)
-	app.metrics.Register("ingest.local_latest_ledger", app.expingester.Metrics.LocalLatestLedgerGauge)
 }
 
 func initTxSubMetrics(app *App) {

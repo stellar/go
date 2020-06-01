@@ -8,7 +8,6 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"github.com/stellar/go/exp/orderbook"
 	"github.com/stellar/go/services/horizon/internal/expingest"
 	support "github.com/stellar/go/support/config"
 	"github.com/stellar/go/support/db"
@@ -107,7 +106,6 @@ var ingestVerifyRangeCmd = &cobra.Command{
 			NetworkPassphrase:        config.NetworkPassphrase,
 			HistorySession:           horizonSession,
 			HistoryArchiveURL:        config.HistoryArchiveURLs[0],
-			OrderBookGraph:           orderbook.NewOrderBookGraph(),
 			IngestFailedTransactions: config.IngestFailedTransactions,
 		}
 
@@ -185,7 +183,6 @@ var ingestStressTestCmd = &cobra.Command{
 			NetworkPassphrase:        config.NetworkPassphrase,
 			HistorySession:           horizonSession,
 			HistoryArchiveURL:        config.HistoryArchiveURLs[0],
-			OrderBookGraph:           orderbook.NewOrderBookGraph(),
 			IngestFailedTransactions: config.IngestFailedTransactions,
 		}
 
