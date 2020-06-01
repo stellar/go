@@ -1093,6 +1093,10 @@ func ExampleClient_SubmitFeeBumpTransaction() {
 		BaseFee:    txnbuild.MinBaseFee * 2,
 	})
 	feeBumpTx, err = feeBumpTx.Sign(network.TestNetworkPassphrase, feeBumpKP)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 
 	result, err := client.SubmitFeeBumpTransaction(feeBumpTx)
 	if err != nil {
@@ -1143,6 +1147,10 @@ func ExampleClient_SubmitFeeBumpTransactionWithOptions() {
 		BaseFee:    txnbuild.MinBaseFee * 2,
 	})
 	feeBumpTx, err = feeBumpTx.Sign(network.TestNetworkPassphrase, feeBumpKP)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 
 	result, err := client.SubmitFeeBumpTransactionWithOptions(
 		feeBumpTx,
