@@ -94,12 +94,10 @@ func TestNewSystem(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, config, system.config)
-	assert.Equal(t, config.OrderBookGraph, system.graph)
 	assert.Equal(t, config.DisableStateVerification, system.disableStateVerification)
 	assert.Equal(t, config.MaxStreamRetries, system.maxStreamRetries)
 
 	assert.Equal(t, config, system.runner.(*ProcessorRunner).config)
-	assert.Equal(t, config.OrderBookGraph, system.runner.(*ProcessorRunner).graph)
 	assert.Equal(t, system.ctx, system.runner.(*ProcessorRunner).ctx)
 }
 
@@ -154,11 +152,9 @@ func TestContextCancel(t *testing.T) {
 // non-zero exit code.
 func TestStateMachineRunReturnsErrorWhenNextStateIsShutdownWithError(t *testing.T) {
 	historyQ := &mockDBQ{}
-	graph := &mockOrderBookGraph{}
 	system := &System{
 		ctx:      context.Background(),
 		historyQ: historyQ,
-		graph:    graph,
 	}
 
 	historyQ.On("GetTx").Return(nil).Once()
@@ -196,11 +192,9 @@ func TestMaybeVerifyStateGetExpStateInvalidDBErrCancelOrContextCanceled(t *testi
 }
 func TestMaybeVerifyInternalDBErrCancelOrContextCanceled(t *testing.T) {
 	historyQ := &mockDBQ{}
-	graph := &mockOrderBookGraph{}
 	system := &System{
 		historyQ: historyQ,
 		ctx:      context.Background(),
-		graph:    graph,
 	}
 
 	var out bytes.Buffer
@@ -212,7 +206,6 @@ func TestMaybeVerifyInternalDBErrCancelOrContextCanceled(t *testing.T) {
 	log = logger
 	defer func() { log = oldLogger }()
 
-	graph.On("OffersMap").Return(map[xdr.Int64]xdr.OfferEntry{}).Twice()
 	historyQ.On("GetExpStateInvalid").Return(false, nil).Twice()
 	historyQ.On("Rollback").Return(nil).Twice()
 	historyQ.On("CloneIngestionQ").Return(historyQ).Twice()
@@ -230,7 +223,6 @@ func TestMaybeVerifyInternalDBErrCancelOrContextCanceled(t *testing.T) {
 	// it logs "State verification finished" twice, but no errors
 	assert.Len(t, logged, 2)
 
-	graph.AssertExpectations(t)
 	historyQ.AssertExpectations(t)
 }
 
