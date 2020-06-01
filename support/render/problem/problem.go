@@ -26,7 +26,7 @@ var (
 		Status: http.StatusInternalServerError,
 		Detail: "An error occurred while processing this request.  This is usually due " +
 			"to a bug within the server software.  Trying this request again may " +
-			"succeed if the bug is transient. Otherwise, please contact the system" +
+			"succeed if the bug is transient. Otherwise, please contact the system " +
 			"administrator.",
 	}
 

@@ -43,6 +43,7 @@ type App struct {
 	horizonVersion               string
 	currentProtocolVersion       int32
 	coreSupportedProtocolVersion int32
+	orderBookStream              *expingest.OrderBookStream
 	submitter                    *txsub.System
 	paths                        paths.Finder
 	expingester                  *expingest.System
@@ -413,7 +414,15 @@ func (a *App) Tick() {
 	var wg sync.WaitGroup
 	log.Debug("ticking app")
 	// update ledger state, operation fee state, and stellar-core info in parallel
-	wg.Add(3)
+	wg.Add(4)
+	go func() {
+		defer wg.Done()
+		if a.orderBookStream != nil {
+			if err := a.orderBookStream.Update(); err != nil {
+				log.WithField("error", err).Error("could not apply updates from order book stream")
+			}
+		}
+	}()
 	go func() { a.UpdateLedgerState(); wg.Done() }()
 	go func() { a.UpdateFeeStatsState(); wg.Done() }()
 	go func() { a.UpdateStellarCoreInfo(); wg.Done() }()
@@ -452,12 +461,18 @@ func (a *App) init() {
 	mustInitHorizonDB(a)
 	mustInitCoreDB(a)
 
-	var orderBookGraph *orderbook.OrderBookGraph
 	if a.config.Ingest {
-		orderBookGraph = orderbook.NewOrderBookGraph()
+		orderBookGraph := orderbook.NewOrderBookGraph()
 		// expingester
 		initExpIngester(a, orderBookGraph)
 		// path-finder
+		initPathFinder(a, orderBookGraph)
+	} else {
+		orderBookGraph := orderbook.NewOrderBookGraph()
+		a.orderBookStream = &expingest.OrderBookStream{
+			OrderBookGraph: orderBookGraph,
+			HistoryQ:       &history.Q{a.HorizonSession(a.ctx)},
+		}
 		initPathFinder(a, orderBookGraph)
 	}
 
@@ -479,7 +494,7 @@ func (a *App) init() {
 	a.web.mustInstallMiddlewares(a, a.config.ConnectionTimeout)
 
 	// web.actions
-	a.web.mustInstallActions(a.config, a.paths, orderBookGraph, a.historyQ.Session, a.metrics)
+	a.web.mustInstallActions(a.config, a.paths, a.historyQ.Session, a.metrics)
 
 	// metrics and log.metrics
 	a.metrics = metrics.NewRegistry()

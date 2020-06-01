@@ -197,7 +197,7 @@ func TestProcessorRunnerBuildChangeProcessor(t *testing.T) {
 	}
 
 	stats := &io.StatsChangeProcessor{}
-	processor := runner.buildChangeProcessor(stats, ledgerSource)
+	processor := runner.buildChangeProcessor(stats, ledgerSource, 123)
 	assert.IsType(t, groupChangeProcessors{}, processor)
 
 	assert.IsType(t, &statsChangeProcessor{}, processor.(groupChangeProcessors)[0])
@@ -217,7 +217,7 @@ func TestProcessorRunnerBuildChangeProcessor(t *testing.T) {
 		historyQ: q,
 	}
 
-	processor = runner.buildChangeProcessor(stats, historyArchiveSource)
+	processor = runner.buildChangeProcessor(stats, historyArchiveSource, 456)
 	assert.IsType(t, groupChangeProcessors{}, processor)
 
 	assert.IsType(t, &statsChangeProcessor{}, processor.(groupChangeProcessors)[0])

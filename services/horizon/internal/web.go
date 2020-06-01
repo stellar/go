@@ -15,7 +15,6 @@ import (
 	"github.com/rs/cors"
 	"github.com/sebest/xff"
 
-	"github.com/stellar/go/exp/orderbook"
 	"github.com/stellar/go/services/horizon/internal/actions"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/core"
@@ -142,8 +141,7 @@ func (f historyLedgerSourceFactory) Get() ledger.Source {
 
 // mustInstallActions installs the routing configuration of horizon onto the
 // provided app.  All route registration should be implemented here.
-func (w *web) mustInstallActions(config Config, pathFinder paths.Finder, orderBookGraph *orderbook.OrderBookGraph,
-	session *db.Session, registry metrics.Registry) {
+func (w *web) mustInstallActions(config Config, pathFinder paths.Finder, session *db.Session, registry metrics.Registry) {
 	if w == nil {
 		log.Fatal("missing web instance for installing web actions")
 	}
@@ -182,38 +180,35 @@ func (w *web) mustInstallActions(config Config, pathFinder paths.Finder, orderBo
 
 		r.Method(http.MethodGet, "/assets", restPageHandler(actions.AssetStatsHandler{}))
 
-		// Endpoints available on ingesting instances only.
-		if config.Ingest {
-			findPaths := FindPathsHandler{
-				staleThreshold:       config.StaleThreshold,
-				checkHistoryIsStale:  false,
-				setLastLedgerHeader:  true,
-				maxPathLength:        config.MaxPathLength,
-				maxAssetsParamLength: maxAssetsForPathFinding,
-				pathFinder:           pathFinder,
-				coreQ:                w.coreQ,
-			}
-			findFixedPaths := FindFixedPathsHandler{
-				maxPathLength:        config.MaxPathLength,
-				setLastLedgerHeader:  true,
-				maxAssetsParamLength: maxAssetsForPathFinding,
-				pathFinder:           pathFinder,
-				coreQ:                w.coreQ,
-			}
-
-			r.Method(http.MethodGet, "/paths", findPaths)
-			r.Method(http.MethodGet, "/paths/strict-receive", findPaths)
-			r.Method(http.MethodGet, "/paths/strict-send", findFixedPaths)
-
-			r.Method(
-				http.MethodGet,
-				"/order_book",
-				streamableObjectActionHandler{
-					streamHandler: streamHandler,
-					action:        actions.GetOrderbookHandler{},
-				},
-			)
+		findPaths := FindPathsHandler{
+			staleThreshold:       config.StaleThreshold,
+			checkHistoryIsStale:  false,
+			setLastLedgerHeader:  true,
+			maxPathLength:        config.MaxPathLength,
+			maxAssetsParamLength: maxAssetsForPathFinding,
+			pathFinder:           pathFinder,
+			coreQ:                w.coreQ,
 		}
+		findFixedPaths := FindFixedPathsHandler{
+			maxPathLength:        config.MaxPathLength,
+			setLastLedgerHeader:  true,
+			maxAssetsParamLength: maxAssetsForPathFinding,
+			pathFinder:           pathFinder,
+			coreQ:                w.coreQ,
+		}
+
+		r.Method(http.MethodGet, "/paths", findPaths)
+		r.Method(http.MethodGet, "/paths/strict-receive", findPaths)
+		r.Method(http.MethodGet, "/paths/strict-send", findFixedPaths)
+
+		r.Method(
+			http.MethodGet,
+			"/order_book",
+			streamableObjectActionHandler{
+				streamHandler: streamHandler,
+				action:        actions.GetOrderbookHandler{},
+			},
+		)
 	})
 
 	// account actions - /accounts/{account_id} has been created above so we

@@ -40,6 +40,7 @@ type OBGraph interface {
 	Offers() []xdr.OfferEntry
 	OffersMap() map[xdr.Int64]xdr.OfferEntry
 	RemoveOffer(xdr.Int64) OBGraph
+	Pending() ([]xdr.OfferEntry, []xdr.Int64)
 	Clear()
 }
 
@@ -92,6 +93,21 @@ func (graph *OrderBookGraph) AddOffer(offer xdr.OfferEntry) {
 func (graph *OrderBookGraph) RemoveOffer(offerID xdr.Int64) OBGraph {
 	graph.batchedUpdates.removeOffer(offerID)
 	return graph
+}
+
+// Pending returns a list of queued offers which will be added to the order book and
+// a list of queued offers which will be removed from the order book.
+func (graph *OrderBookGraph) Pending() ([]xdr.OfferEntry, []xdr.Int64) {
+	var toUpdate []xdr.OfferEntry
+	var toRemove []xdr.Int64
+	for _, update := range graph.batchedUpdates.operations {
+		if update.operationType == addOfferOperationType {
+			toUpdate = append(toUpdate, *update.offer)
+		} else if update.operationType == removeOfferOperationType {
+			toRemove = append(toRemove, update.offerID)
+		}
+	}
+	return toUpdate, toRemove
 }
 
 // Discard removes all operations which have been queued but not yet applied to the OrderBookGraph

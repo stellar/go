@@ -67,13 +67,13 @@ func (q *Q) GetOrderBookSummary(sellingAsset, buyingAsset xdr.Asset, maxPriceLev
 		(SELECT DISTINCT ON (price)
 			'ask' as type, pricen, priced, price
 		FROM offers
-		WHERE selling_asset = $1 AND buying_asset = $2
+		WHERE selling_asset = $1 AND buying_asset = $2 AND deleted = false
 		ORDER BY price ASC LIMIT $3)
 		UNION ALL
 		(SELECT DISTINCT ON (price)
 			'bid' as type, pricen, priced, price
 		FROM offers
-		WHERE selling_asset = $2 AND buying_asset = $1
+		WHERE selling_asset = $2 AND buying_asset = $1 AND deleted = false
 		ORDER BY price ASC LIMIT $3)
 	`
 
@@ -86,7 +86,7 @@ func (q *Q) GetOrderBookSummary(sellingAsset, buyingAsset xdr.Asset, maxPriceLev
 			SELECT
 				'ask' as type, co.price, SUM(co.amount) as amount
 			FROM  offers co
-			WHERE selling_asset = $1 AND   buying_asset = $2
+			WHERE selling_asset = $1 AND buying_asset = $2 AND deleted = false
 			GROUP BY co.price
 			ORDER BY co.price ASC
 			LIMIT $3
@@ -94,7 +94,7 @@ func (q *Q) GetOrderBookSummary(sellingAsset, buyingAsset xdr.Asset, maxPriceLev
 			SELECT
 				'bid'  as type, co.price, SUM(co.amount) as amount
 			FROM offers co
-			WHERE selling_asset = $2 AND buying_asset = $1
+			WHERE selling_asset = $2 AND buying_asset = $1 AND deleted = false
 			GROUP BY co.price
 			ORDER BY co.price ASC
 			LIMIT $3
