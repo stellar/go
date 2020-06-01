@@ -248,7 +248,7 @@ func (o *OrderBookStream) Run(ctx context.Context) {
 				log.WithError(err).Error("could not apply updates from order book stream")
 			}
 		case <-ctx.Done():
-			log.Info("finished background ticker")
+			log.Info("shutting down OrderBookStream")
 			return
 		}
 	}
