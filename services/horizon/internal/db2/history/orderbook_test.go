@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-func TestOrderBookGetResourceRequiresTransaction(t *testing.T) {
+func TestGetOrderBookSummaryRequiresTransaction(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
 	test.ResetHorizonDB(t, tt.HorizonDB)
@@ -25,7 +25,7 @@ func TestOrderBookGetResourceRequiresTransaction(t *testing.T) {
 	assert.EqualError(t, err, "should only be called in a repeatable read transaction")
 }
 
-func TestOrderBookGetResource(t *testing.T) {
+func TestGetOrderBookSummary(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
 	test.ResetHorizonDB(t, tt.HorizonDB)
@@ -69,10 +69,6 @@ func TestOrderBookGetResource(t *testing.T) {
 	// they are coalesced into the same price level
 	nonCanonicalPriceTwoEurOffer.Price.N *= 15
 	nonCanonicalPriceTwoEurOffer.Price.D *= 15
-
-	threeEurOffer := twoEurOffer
-	threeEurOffer.Price.N = 3
-	threeEurOffer.OfferId = 20
 
 	sellEurOffer.Price.N = 9
 	sellEurOffer.Price.D = 10
@@ -199,4 +195,73 @@ func TestOrderBookGetResource(t *testing.T) {
 			assert.Equal(t, testCase.expected, result)
 		})
 	}
+}
+
+func TestGetOrderBookSummaryExcludesRemovedOffers(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	test.ResetHorizonDB(t, tt.HorizonDB)
+	q := &Q{tt.HorizonSession()}
+
+	sellEurOffer := twoEurOffer
+	sellEurOffer.Buying, sellEurOffer.Selling = sellEurOffer.Selling, sellEurOffer.Buying
+	sellEurOffer.OfferId = 15
+	offers := []xdr.OfferEntry{
+		twoEurOffer,
+		threeEurOffer,
+		sellEurOffer,
+	}
+
+	batch := q.NewOffersBatchInsertBuilder(0)
+	for i, offer := range offers {
+		assert.NoError(t, batch.Add(offer, xdr.Uint32(i+1)))
+	}
+	assert.NoError(t, batch.Exec())
+
+	assert.NoError(t, q.BeginTx(&sql.TxOptions{
+		Isolation: sql.LevelRepeatableRead,
+		ReadOnly:  true,
+	}))
+
+	result, err := q.GetOrderBookSummary(nativeAsset, eurAsset, 100)
+	assert.NoError(t, err)
+	assert.Len(t, result.Asks, 2)
+	assert.Len(t, result.Bids, 1)
+
+	assert.NoError(t, q.Rollback())
+
+	for i, offer := range offers {
+		var count int64
+		count, err = q.RemoveOffer(offer.OfferId, uint32(i+2))
+		assert.NoError(t, err)
+		assert.Equal(t, int64(1), count)
+	}
+
+	assert.NoError(t, q.BeginTx(&sql.TxOptions{
+		Isolation: sql.LevelRepeatableRead,
+		ReadOnly:  true,
+	}))
+
+	result, err = q.GetOrderBookSummary(nativeAsset, eurAsset, 100)
+	assert.NoError(t, err)
+	assert.Len(t, result.Asks, 0)
+	assert.Len(t, result.Bids, 0)
+
+	assert.NoError(t, q.Rollback())
+
+	count, err := q.CompactOffers(1000)
+	assert.NoError(t, err)
+	assert.Equal(t, int64(len(offers)), count)
+
+	assert.NoError(t, q.BeginTx(&sql.TxOptions{
+		Isolation: sql.LevelRepeatableRead,
+		ReadOnly:  true,
+	}))
+
+	result, err = q.GetOrderBookSummary(nativeAsset, eurAsset, 100)
+	assert.NoError(t, err)
+	assert.Len(t, result.Asks, 0)
+	assert.Len(t, result.Bids, 0)
+
+	assert.NoError(t, q.Rollback())
 }

@@ -287,6 +287,11 @@ func (m *mockDBQ) GetLastLedgerExpIngest() (uint32, error) {
 	return args.Get(0).(uint32), args.Error(1)
 }
 
+func (m *mockDBQ) GetOfferCompactionSequence() (uint32, error) {
+	args := m.Called()
+	return args.Get(0).(uint32), args.Error(1)
+}
+
 func (m *mockDBQ) GetLastLedgerExpIngestNonBlocking() (uint32, error) {
 	args := m.Called()
 	return args.Get(0).(uint32), args.Error(1)

@@ -33,7 +33,7 @@ func mustNewDBSession(databaseURL string, maxIdle, maxOpen int) *db.Session {
 func mustInitHorizonDB(app *App) {
 	maxIdle := app.config.HorizonDBMaxIdleConnections
 	maxOpen := app.config.HorizonDBMaxOpenConnections
-	if app.config.Ingest || app.config.IngestInMemoryOnly {
+	if app.config.Ingest {
 		maxIdle -= expingest.MaxDBConnections
 		maxOpen -= expingest.MaxDBConnections
 		if maxIdle <= 0 {
@@ -54,7 +54,7 @@ func mustInitHorizonDB(app *App) {
 func mustInitCoreDB(app *App) {
 	maxIdle := app.config.CoreDBMaxIdleConnections
 	maxOpen := app.config.CoreDBMaxOpenConnections
-	if app.config.Ingest || app.config.IngestInMemoryOnly {
+	if app.config.Ingest {
 		maxIdle -= expingest.MaxDBConnections
 		maxOpen -= expingest.MaxDBConnections
 		if maxIdle <= 0 {
@@ -92,7 +92,6 @@ func initExpIngester(app *App, orderBookGraph *orderbook.OrderBookGraph) {
 		MaxStreamRetries:         3,
 		DisableStateVerification: app.config.IngestDisableStateVerification,
 		IngestFailedTransactions: app.config.IngestFailedTransactions,
-		IngestInMemoryOnly:       app.config.IngestInMemoryOnly,
 	})
 	if err != nil {
 		log.Fatal(err)
