@@ -21,7 +21,7 @@ func TestIngestionStatus(t *testing.T) {
 
 func (t *IngestionStatusTestSuite) SetupTest() {
 	t.historyQ = &mockDBQ{}
-	t.stream = &OrderBookStream{HistoryQ: t.historyQ}
+	t.stream = NewOrderBookStream(t.historyQ, &mockOrderBookGraph{})
 }
 
 func (t *IngestionStatusTestSuite) TearDownTest() {
@@ -181,7 +181,7 @@ func TestUpdateOrderBookStream(t *testing.T) {
 func (t *UpdateOrderBookStreamTestSuite) SetupTest() {
 	t.historyQ = &mockDBQ{}
 	t.graph = &mockOrderBookGraph{}
-	t.stream = &OrderBookStream{OrderBookGraph: t.graph, HistoryQ: t.historyQ}
+	t.stream = NewOrderBookStream(t.historyQ, t.graph)
 }
 
 func (t *UpdateOrderBookStreamTestSuite) TearDownTest() {
@@ -484,7 +484,7 @@ func TestVerifyOrderBookStream(t *testing.T) {
 func (t *VerifyOrderBookStreamTestSuite) SetupTest() {
 	t.historyQ = &mockDBQ{}
 	t.graph = &mockOrderBookGraph{}
-	t.stream = &OrderBookStream{OrderBookGraph: t.graph, HistoryQ: t.historyQ}
+	t.stream = NewOrderBookStream(t.historyQ, t.graph)
 
 	sellerID := "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"
 	otherSellerID := "GAXI33UCLQTCKM2NMRBS7XYBR535LLEVAHL5YBN4FTCB4HZHT7ZA5CVK"
