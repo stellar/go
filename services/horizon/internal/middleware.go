@@ -266,7 +266,7 @@ func NewHistoryMiddleware(staleThreshold int32, session *db.Session) func(http.H
 				context.WithValue(
 					r.Context(),
 					&horizonContext.SessionContextKey,
-					session,
+					session.Clone(),
 				),
 			))
 		})

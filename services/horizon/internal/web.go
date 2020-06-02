@@ -169,7 +169,7 @@ func (w *web) mustInstallActions(config Config, pathFinder paths.Finder, session
 			r.Route("/{account_id}", func(r chi.Router) {
 				r.Get("/", w.streamShowActionHandler(w.getAccountInfo, true))
 				r.Get("/data/{key}", DataShowAction{}.Handle)
-				r.Method(http.MethodGet, "/offers", streamablePageHandler(actions.GetAccountOffersHandler{}, streamHandler))
+				r.Method(http.MethodGet, "/offers", streamableStatePageHandler(actions.GetAccountOffersHandler{}, streamHandler))
 			})
 		})
 
@@ -220,11 +220,11 @@ func (w *web) mustInstallActions(config Config, pathFinder paths.Finder, session
 		r.Get("/accounts/{account_id:\\w+}/trades", TradeIndexAction{}.Handle)
 		r.Group(func(r chi.Router) {
 			r.Use(historyMiddleware)
-			r.Method(http.MethodGet, "/accounts/{account_id:\\w+}/operations", streamablePageHandler(actions.GetOperationsHandler{
+			r.Method(http.MethodGet, "/accounts/{account_id:\\w+}/operations", streamableHistoryPageHandler(actions.GetOperationsHandler{
 				IngestingFailedTransactions: w.ingestFailedTx,
 				OnlyPayments:                false,
 			}, streamHandler))
-			r.Method(http.MethodGet, "/accounts/{account_id:\\w+}/payments", streamablePageHandler(actions.GetOperationsHandler{
+			r.Method(http.MethodGet, "/accounts/{account_id:\\w+}/payments", streamableHistoryPageHandler(actions.GetOperationsHandler{
 				IngestingFailedTransactions: w.ingestFailedTx,
 				OnlyPayments:                true,
 			}, streamHandler))
@@ -239,11 +239,11 @@ func (w *web) mustInstallActions(config Config, pathFinder paths.Finder, session
 			r.Get("/effects", EffectIndexAction{}.Handle)
 			r.Group(func(r chi.Router) {
 				r.Use(historyMiddleware)
-				r.Method(http.MethodGet, "/operations", streamablePageHandler(actions.GetOperationsHandler{
+				r.Method(http.MethodGet, "/operations", streamableHistoryPageHandler(actions.GetOperationsHandler{
 					IngestingFailedTransactions: w.ingestFailedTx,
 					OnlyPayments:                false,
 				}, streamHandler))
-				r.Method(http.MethodGet, "/payments", streamablePageHandler(actions.GetOperationsHandler{
+				r.Method(http.MethodGet, "/payments", streamableHistoryPageHandler(actions.GetOperationsHandler{
 					IngestingFailedTransactions: w.ingestFailedTx,
 					OnlyPayments:                true,
 				}, streamHandler))
@@ -259,11 +259,11 @@ func (w *web) mustInstallActions(config Config, pathFinder paths.Finder, session
 			r.Get("/effects", EffectIndexAction{}.Handle)
 			r.Group(func(r chi.Router) {
 				r.Use(historyMiddleware)
-				r.Method(http.MethodGet, "/operations", streamablePageHandler(actions.GetOperationsHandler{
+				r.Method(http.MethodGet, "/operations", streamableHistoryPageHandler(actions.GetOperationsHandler{
 					IngestingFailedTransactions: w.ingestFailedTx,
 					OnlyPayments:                false,
 				}, streamHandler))
-				r.Method(http.MethodGet, "/payments", streamablePageHandler(actions.GetOperationsHandler{
+				r.Method(http.MethodGet, "/payments", streamableHistoryPageHandler(actions.GetOperationsHandler{
 					IngestingFailedTransactions: w.ingestFailedTx,
 					OnlyPayments:                true,
 				}, streamHandler))
@@ -273,7 +273,7 @@ func (w *web) mustInstallActions(config Config, pathFinder paths.Finder, session
 
 	// operation actions
 	r.Route("/operations", func(r chi.Router) {
-		r.With(historyMiddleware).Method(http.MethodGet, "/", streamablePageHandler(actions.GetOperationsHandler{
+		r.With(historyMiddleware).Method(http.MethodGet, "/", streamableHistoryPageHandler(actions.GetOperationsHandler{
 			IngestingFailedTransactions: w.ingestFailedTx,
 			OnlyPayments:                false,
 		}, streamHandler))
@@ -283,7 +283,7 @@ func (w *web) mustInstallActions(config Config, pathFinder paths.Finder, session
 
 	r.Group(func(r chi.Router) {
 		// payment actions
-		r.With(historyMiddleware).Method(http.MethodGet, "/payments", streamablePageHandler(actions.GetOperationsHandler{
+		r.With(historyMiddleware).Method(http.MethodGet, "/payments", streamableHistoryPageHandler(actions.GetOperationsHandler{
 			IngestingFailedTransactions: w.ingestFailedTx,
 			OnlyPayments:                true,
 		}, streamHandler))

@@ -490,23 +490,41 @@ type pageAction interface {
 }
 
 type pageActionHandler struct {
-	action        pageAction
-	streamable    bool
-	streamHandler sse.StreamHandler
+	action         pageAction
+	streamable     bool
+	streamHandler  sse.StreamHandler
+	repeatableRead bool
 }
 
 func restPageHandler(action pageAction) pageActionHandler {
 	return pageActionHandler{action: action}
 }
 
-func streamablePageHandler(
+// streamableStatePageHandler creates a streamable page handler than generates
+// events within a REPEATABLE READ transaction.
+func streamableStatePageHandler(
 	action pageAction,
 	streamHandler sse.StreamHandler,
 ) pageActionHandler {
 	return pageActionHandler{
-		action:        action,
-		streamable:    true,
-		streamHandler: streamHandler,
+		action:         action,
+		streamable:     true,
+		streamHandler:  streamHandler,
+		repeatableRead: true,
+	}
+}
+
+// streamableStatePageHandler creates a streamable page handler than generates
+// events without starting a REPEATABLE READ transaction.
+func streamableHistoryPageHandler(
+	action pageAction,
+	streamHandler sse.StreamHandler,
+) pageActionHandler {
+	return pageActionHandler{
+		action:         action,
+		streamable:     true,
+		streamHandler:  streamHandler,
+		repeatableRead: false,
 	}
 }
 
@@ -538,37 +556,43 @@ func (handler pageActionHandler) renderStream(w http.ResponseWriter, r *http.Req
 		return
 	}
 
+	var generateEvents sse.GenerateEventsFunc = func() ([]sse.Event, error) {
+		records, err := handler.action.GetResourcePage(w, r)
+		if err != nil {
+			return nil, err
+		}
+
+		events := make([]sse.Event, 0, len(records))
+		for _, record := range records {
+			events = append(events, sse.Event{ID: record.PagingToken(), Data: record})
+		}
+
+		if len(events) > 0 {
+			// Update the cursor for the next call to GetObject, GetCursor
+			// will use Last-Event-ID if present. This feels kind of hacky,
+			// but otherwise, we'll have to edit r.URL, which is also a
+			// hack.
+			r.Header.Set("Last-Event-ID", events[len(events)-1].ID)
+		} else if len(r.Header.Get("Last-Event-ID")) == 0 {
+			// If there are no records and Last-Event-ID has not been set,
+			// use the cursor from pq as the Last-Event-ID, otherwise, we'll
+			// keep using `now` which will always resolve to the next
+			// ledger.
+			r.Header.Set("Last-Event-ID", pq.Cursor)
+		}
+
+		return events, nil
+	}
+
+	if handler.repeatableRead {
+		generateEvents = repeatableReadStream(r, generateEvents)
+	}
+
 	handler.streamHandler.ServeStream(
 		w,
 		r,
 		int(pq.Limit),
-		repeatableReadStream(r, func() ([]sse.Event, error) {
-			records, err := handler.action.GetResourcePage(w, r)
-			if err != nil {
-				return nil, err
-			}
-
-			events := make([]sse.Event, 0, len(records))
-			for _, record := range records {
-				events = append(events, sse.Event{ID: record.PagingToken(), Data: record})
-			}
-
-			if len(events) > 0 {
-				// Update the cursor for the next call to GetObject, GetCursor
-				// will use Last-Event-ID if present. This feels kind of hacky,
-				// but otherwise, we'll have to edit r.URL, which is also a
-				// hack.
-				r.Header.Set("Last-Event-ID", events[len(events)-1].ID)
-			} else if len(r.Header.Get("Last-Event-ID")) == 0 {
-				// If there are no records and Last-Event-ID has not been set,
-				// use the cursor from pq as the Last-Event-ID, otherwise, we'll
-				// keep using `now` which will always resolve to the next
-				// ledger.
-				r.Header.Set("Last-Event-ID", pq.Cursor)
-			}
-
-			return events, nil
-		}),
+		generateEvents,
 	)
 }
 
