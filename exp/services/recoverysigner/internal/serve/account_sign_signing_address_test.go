@@ -442,7 +442,6 @@ func TestAccountSign_signingAddressAccountAuthenticatedOtherSignerSelected(t *te
 	require.NoError(t, err)
 
 	wantBody := `{
-	"signer": "GAPE22DOMALCH42VOR4S3HN6KIZZ643G7D3GNTYF4YOWWXP6UVRAF5JS",
 	"signature": "8Tew6rTol9me8H9u7ezJXg6SEqzOr7cwSf1y9+Vri275XEDH9xWtZ2klTX2uUSPy56otUoIySPqsV3dUFs2kDA==",
 	"network_passphrase": "Test SDF Network ; September 2015"
 }`
@@ -509,7 +508,6 @@ func TestAccountSign_signingAddressAccountAuthenticatedTxSourceAccountValid(t *t
 	require.NoError(t, err)
 
 	wantBody := `{
-	"signer": "GBOG4KF66M4AFRBUHOTJQJRO7BGGFCSGIICTI5BHXHKXCWV2C67QRN5H",
 	"signature": "okp0ISR/hjU6ItsfXie6ArlQ3YWkBBqEAM5TJrthALdawV5DzcpuwBKi0QE/iBgoU7eY0hY3RPdxm8mXGNYfCQ==",
 	"network_passphrase": "Test SDF Network ; September 2015"
 }`
@@ -577,7 +575,6 @@ func TestAccountSign_signingAddressAccountAuthenticatedTxAndOpSourceAccountValid
 	require.NoError(t, err)
 
 	wantBody := `{
-	"signer": "GBOG4KF66M4AFRBUHOTJQJRO7BGGFCSGIICTI5BHXHKXCWV2C67QRN5H",
 	"signature": "MKAkl+R3VT5DJw6Qed8jO8ERD4RcQ4dJlN+UR2n7nT6AVBXnKBk0zqBZnDuB153zfTYmuA5kmsRiNr5terHVBg==",
 	"network_passphrase": "Test SDF Network ; September 2015"
 }`
@@ -840,7 +837,6 @@ func TestAccountSign_signingAddressPhoneNumberOwnerAuthenticated(t *testing.T) {
 	require.NoError(t, err)
 
 	wantBody := `{
-	"signer": "GBOG4KF66M4AFRBUHOTJQJRO7BGGFCSGIICTI5BHXHKXCWV2C67QRN5H",
 	"signature": "okp0ISR/hjU6ItsfXie6ArlQ3YWkBBqEAM5TJrthALdawV5DzcpuwBKi0QE/iBgoU7eY0hY3RPdxm8mXGNYfCQ==",
 	"network_passphrase": "Test SDF Network ; September 2015"
 }`
@@ -913,7 +909,6 @@ func TestAccountSign_signingAddressPhoneNumberOtherAuthenticated(t *testing.T) {
 	require.NoError(t, err)
 
 	wantBody := `{
-	"signer": "GBOG4KF66M4AFRBUHOTJQJRO7BGGFCSGIICTI5BHXHKXCWV2C67QRN5H",
 	"signature": "okp0ISR/hjU6ItsfXie6ArlQ3YWkBBqEAM5TJrthALdawV5DzcpuwBKi0QE/iBgoU7eY0hY3RPdxm8mXGNYfCQ==",
 	"network_passphrase": "Test SDF Network ; September 2015"
 }`
@@ -986,7 +981,6 @@ func TestAccountSign_signingAddressEmailOwnerAuthenticated(t *testing.T) {
 	require.NoError(t, err)
 
 	wantBody := `{
-	"signer": "GBOG4KF66M4AFRBUHOTJQJRO7BGGFCSGIICTI5BHXHKXCWV2C67QRN5H",
 	"signature": "okp0ISR/hjU6ItsfXie6ArlQ3YWkBBqEAM5TJrthALdawV5DzcpuwBKi0QE/iBgoU7eY0hY3RPdxm8mXGNYfCQ==",
 	"network_passphrase": "Test SDF Network ; September 2015"
 }`
@@ -1059,7 +1053,6 @@ func TestAccountSign_signingAddressEmailOtherAuthenticated(t *testing.T) {
 	require.NoError(t, err)
 
 	wantBody := `{
-	"signer": "GBOG4KF66M4AFRBUHOTJQJRO7BGGFCSGIICTI5BHXHKXCWV2C67QRN5H",
 	"signature": "okp0ISR/hjU6ItsfXie6ArlQ3YWkBBqEAM5TJrthALdawV5DzcpuwBKi0QE/iBgoU7eY0hY3RPdxm8mXGNYfCQ==",
 	"network_passphrase": "Test SDF Network ; September 2015"
 }`
@@ -1261,7 +1254,6 @@ func TestAccountSign_signingAddressValidContentTypeForm(t *testing.T) {
 	require.NoError(t, err)
 
 	wantBody := `{
-	"signer": "GBOG4KF66M4AFRBUHOTJQJRO7BGGFCSGIICTI5BHXHKXCWV2C67QRN5H",
 	"signature": "okp0ISR/hjU6ItsfXie6ArlQ3YWkBBqEAM5TJrthALdawV5DzcpuwBKi0QE/iBgoU7eY0hY3RPdxm8mXGNYfCQ==",
 	"network_passphrase": "Test SDF Network ; September 2015"
 }`
