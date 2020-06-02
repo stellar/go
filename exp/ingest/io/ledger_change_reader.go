@@ -17,11 +17,15 @@ type ChangeReader interface {
 	Close() error
 }
 
+// ledgerChangeReaderState defines possible states of LedgerChangeReader.
 type ledgerChangeReaderState int
 
 const (
+	// feeChangesState is active when LedgerChangeReader is reading fee changes.
 	feeChangesState ledgerChangeReaderState = iota
+	// feeChangesState is active when LedgerChangeReader is reading transaction meta changes.
 	metaChangesState
+	// feeChangesState is active when LedgerChangeReader is reading upgrade changes.
 	upgradeChangesState
 )
 
@@ -56,6 +60,15 @@ func NewLedgerChangeReader(backend ledgerbackend.LedgerBackend, sequence uint32)
 // Read returns the next change in the stream.
 // If there are no changes remaining io.EOF is returned as an error.
 func (r *LedgerChangeReader) Read() (Change, error) {
+	// Changes within a ledger should be read in the following order:
+	// - fee changes of all transactions,
+	// - transaction meta changes of all transactions,
+	// - upgrade changes.
+	// Because a single transaction can introduce many changes we read all the
+	// changes from a single transaction  and save them in r.pending.
+	// When Read() is called we stream pending changes first. We also call Read()
+	// recursively after adding some changes (what will return them from r.pending)
+	// to not duplicate the code.
 	if r.pendingIndex < len(r.pending) {
 		next := r.pending[r.pendingIndex]
 		r.pendingIndex++
