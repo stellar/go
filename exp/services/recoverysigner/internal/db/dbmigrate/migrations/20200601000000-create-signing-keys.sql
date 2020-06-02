@@ -8,7 +8,7 @@ CREATE TABLE signing_keys (
 
   public_key TEXT NOT NULL,
   encrypted_secret_key BYTEA NOT NULL,
-  encryption_keyid TEXT NOT NULL
+  encryption_key_id TEXT NOT NULL
 );
 
 
