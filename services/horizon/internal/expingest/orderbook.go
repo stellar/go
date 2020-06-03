@@ -100,6 +100,7 @@ func addOfferToGraph(graph orderbook.OBGraph, offer history.Offer) {
 	})
 }
 
+// update returns true if the order book graph was reset
 func (o *OrderBookStream) update(status ingestionStatus) (bool, error) {
 	reset := o.lastLedger == 0
 	if status.StateInvalid || !status.HistoryConsistentWithState {
