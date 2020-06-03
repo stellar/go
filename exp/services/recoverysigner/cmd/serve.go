@@ -87,6 +87,22 @@ func (c *ServeCommand) Command() *cobra.Command {
 			FlagDefault: "recoverysigner",
 			Required:    false,
 		},
+		{
+			Name:        "kms-provider",
+			Usage:       "Key Management Service (KMS) Provider",
+			OptType:     types.String,
+			ConfigKey:   &opts.KMSProvider,
+			FlagDefault: "aws",
+			Required:    true,
+		},
+		{
+			Name:        "kms-key-id",
+			Usage:       "Key Management Service (KMS) encryption key ID",
+			OptType:     types.String,
+			ConfigKey:   &opts.EncryptionKeyID,
+			FlagDefault: "",
+			Required:    true,
+		},
 	}
 	cmd := &cobra.Command{
 		Use:   "serve",
