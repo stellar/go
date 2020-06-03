@@ -67,7 +67,7 @@ type handlerDeps struct {
 	SigningKeys        []*keypair.Full
 	SigningAddresses   []*keypair.FromAddress
 	AccountStore       account.Store
-	SEP10JWK           jose.JSONWebKey
+	SEP10JWKS          jose.JSONWebKeySet
 	SEP10JWTIssuer     string
 	FirebaseAuthClient *firebaseauth.Client
 	MetricsRegistry    *prometheus.Registry
@@ -89,18 +89,15 @@ func getHandlerDeps(opts Options) (handlerDeps, error) {
 		opts.Logger.Info("Signing key ", i, ": ", signingKey.Address())
 	}
 
-	sep10JWKS := &jose.JSONWebKeySet{}
-	err := json.Unmarshal([]byte(opts.SEP10JWKS), sep10JWKS)
+	sep10JWKS := jose.JSONWebKeySet{}
+	err := json.Unmarshal([]byte(opts.SEP10JWKS), &sep10JWKS)
 	if err != nil {
 		return handlerDeps{}, errors.Wrap(err, "parsing SEP-10 JSON Web Key (JWK) Set")
 	}
 	if len(sep10JWKS.Keys) == 0 {
 		return handlerDeps{}, errors.New("no keys included in SEP-10 JSON Web Key (JWK) Set")
 	}
-	if len(sep10JWKS.Keys) > 1 {
-		return handlerDeps{}, errors.New("more than one key included in SEP-10 JSON Web Key (JWK) Set only one supported")
-	}
-	sep10JWK := sep10JWKS.Keys[0]
+	opts.Logger.Infof("SEP10 JWKS contains %d keys", len(sep10JWKS.Keys))
 
 	db, err := db.Open(opts.DatabaseURL)
 	if err != nil {
@@ -147,7 +144,7 @@ func getHandlerDeps(opts Options) (handlerDeps, error) {
 		SigningKeys:        signingKeys,
 		SigningAddresses:   signingAddresses,
 		AccountStore:       accountStore,
-		SEP10JWK:           sep10JWK,
+		SEP10JWKS:          sep10JWKS,
 		SEP10JWTIssuer:     opts.SEP10JWTIssuer,
 		FirebaseAuthClient: firebaseAuthClient,
 		MetricsRegistry:    metricsRegistry,
@@ -164,7 +161,7 @@ func handler(deps handlerDeps) http.Handler {
 
 	mux.Get("/health", health.PassHandler{}.ServeHTTP)
 	mux.Route("/accounts", func(mux chi.Router) {
-		mux.Use(auth.SEP10Middleware(deps.SEP10JWTIssuer, deps.SEP10JWK))
+		mux.Use(auth.SEP10Middleware(deps.SEP10JWTIssuer, deps.SEP10JWKS))
 		mux.Use(auth.FirebaseMiddleware(auth.FirebaseTokenVerifierLive{AuthClient: deps.FirebaseAuthClient}))
 		mux.Get("/", accountListHandler{
 			Logger:           deps.Logger,
