@@ -1,10 +1,11 @@
 -- +migrate Up
 
-CREATE TABLE signing_keys (
+CREATE TABLE signers (
   account_id BIGINT NOT NULL REFERENCES accounts (id) ON DELETE CASCADE,
   id BIGINT NOT NULL PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
 
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE,
 
   public_key TEXT NOT NULL,
   encrypted_secret_key BYTEA NOT NULL,
@@ -12,9 +13,9 @@ CREATE TABLE signing_keys (
 );
 
 
-CREATE INDEX ON signing_keys (account_id);
-CREATE INDEX ON signing_keys (public_key);
+CREATE INDEX ON signers (account_id);
+CREATE INDEX ON signers (public_key);
 
 -- +migrate Down
 
-DROP TABLE signing_keys;
+DROP TABLE signers;
