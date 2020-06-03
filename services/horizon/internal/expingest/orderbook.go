@@ -33,7 +33,7 @@ type OrderBookStream struct {
 	// latest processed ledger
 	LatestLedgerGauge metrics.Gauge
 	lastLedger        uint32
-	lastUpdate        time.Time
+	lastVerification  time.Time
 }
 
 // NewOrderBookStream constructs and initializes an OrderBookStream instance
@@ -42,6 +42,7 @@ func NewOrderBookStream(historyQ history.IngestionQ, graph orderbook.OBGraph) *O
 		graph:             graph,
 		historyQ:          historyQ,
 		LatestLedgerGauge: metrics.NewGauge(),
+		lastVerification:  time.Now(),
 	}
 }
 
@@ -99,7 +100,8 @@ func addOfferToGraph(graph orderbook.OBGraph, offer history.Offer) {
 	})
 }
 
-func (o *OrderBookStream) update(status ingestionStatus) error {
+// update returns true if the order book graph was reset
+func (o *OrderBookStream) update(status ingestionStatus) (bool, error) {
 	reset := o.lastLedger == 0
 	if status.StateInvalid || !status.HistoryConsistentWithState {
 		log.WithField("status", status).Warn("ingestion state is invalid")
@@ -124,14 +126,14 @@ func (o *OrderBookStream) update(status ingestionStatus) error {
 		if status.StateInvalid || !status.HistoryConsistentWithState {
 			log.WithField("status", status).
 				Info("waiting for ingestion to update offers table")
-			return nil
+			return true, nil
 		}
 
 		defer o.graph.Discard()
 
 		offers, err := o.historyQ.GetAllOffers()
 		if err != nil {
-			return errors.Wrap(err, "Error from GetAllOffers")
+			return true, errors.Wrap(err, "Error from GetAllOffers")
 		}
 
 		for _, offer := range offers {
@@ -139,23 +141,23 @@ func (o *OrderBookStream) update(status ingestionStatus) error {
 		}
 
 		if err := o.graph.Apply(status.LastIngestedLedger); err != nil {
-			return errors.Wrap(err, "Error applying changes to order book")
+			return true, errors.Wrap(err, "Error applying changes to order book")
 		}
 
 		o.lastLedger = status.LastIngestedLedger
 		o.LatestLedgerGauge.Update(int64(status.LastIngestedLedger))
-		return nil
+		return true, nil
 	}
 
 	if status.LastIngestedLedger == o.lastLedger {
-		return nil
+		return false, nil
 	}
 
 	defer o.graph.Discard()
 
 	offers, err := o.historyQ.GetUpdatedOffers(o.lastLedger)
 	if err != nil {
-		return errors.Wrap(err, "Error from GetUpdatedOffers")
+		return false, errors.Wrap(err, "Error from GetUpdatedOffers")
 	}
 	for _, offer := range offers {
 		if offer.Deleted {
@@ -166,25 +168,23 @@ func (o *OrderBookStream) update(status ingestionStatus) error {
 	}
 
 	if err = o.graph.Apply(status.LastIngestedLedger); err != nil {
-		return errors.Wrap(err, "Error applying changes to order book")
+		return false, errors.Wrap(err, "Error applying changes to order book")
 	}
 
-	o.lastUpdate = time.Now()
 	o.lastLedger = status.LastIngestedLedger
 	o.LatestLedgerGauge.Update(int64(status.LastIngestedLedger))
-	return nil
+	return false, nil
 }
 
 func (o *OrderBookStream) verifyAllOffers() {
 	offers := o.graph.Offers()
 	ingestionOffers, err := o.historyQ.GetAllOffers()
 	if err != nil {
-		// reset last update so that we retry verification on next update
-		o.lastUpdate = time.Now().Add(verificationFrequency * -2)
 		log.WithError(err).Info("Could not verify offers because of error from GetAllOffers")
 		return
 	}
 
+	o.lastVerification = time.Now()
 	mismatch := len(offers) != len(ingestionOffers)
 
 	if !mismatch {
@@ -231,20 +231,22 @@ func (o *OrderBookStream) Update() error {
 	}
 	defer o.historyQ.Rollback()
 
-	// add 15 minute jitter so that not all horizon nodes are calling
-	// historyQ.GetAllOffers at the same time
-	jitter := time.Duration(rand.Int63n(int64(15 * time.Minute)))
-	requiresVerification := !o.lastUpdate.Equal(time.Time{}) &&
-		time.Since(o.lastUpdate) >= verificationFrequency+jitter
-
 	status, err := o.getIngestionStatus()
 	if err != nil {
 		return errors.Wrap(err, "Error obtaining ingestion status")
 	}
 
-	if err := o.update(status); err != nil {
+	if reset, err := o.update(status); err != nil {
 		return errors.Wrap(err, "Error updating")
+	} else if reset {
+		return nil
 	}
+
+	// add 15 minute jitter so that not all horizon nodes are calling
+	// historyQ.GetAllOffers at the same time
+	jitter := time.Duration(rand.Int63n(int64(15 * time.Minute)))
+	requiresVerification := o.lastLedger > 0 &&
+		time.Since(o.lastVerification) >= verificationFrequency+jitter
 
 	if requiresVerification {
 		o.verifyAllOffers()
