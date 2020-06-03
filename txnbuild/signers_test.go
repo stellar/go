@@ -436,12 +436,15 @@ func TestSetOptionsMultSigners(t *testing.T) {
 	assert.Equal(t, expected, received, "Base 64 XDR should match")
 }
 
-type SignatureList interface {
+type transactionCommon interface {
 	Signatures() []xdr.DecoratedSignature
 	Hash(networkStr string) ([32]byte, error)
+	Base64() (string, error)
+	TxEnvelope() (xdr.TransactionEnvelope, error)
+	ToXDR() xdr.TransactionEnvelope
 }
 
-func verifySignatures(t *testing.T, tx SignatureList, signers ...*keypair.Full) {
+func verifySignatures(t *testing.T, tx transactionCommon, signers ...*keypair.Full) {
 	assert.Len(t, tx.Signatures(), len(signers))
 
 	hash, err := tx.Hash(network.TestNetworkPassphrase)
@@ -450,6 +453,25 @@ func verifySignatures(t *testing.T, tx SignatureList, signers ...*keypair.Full) 
 	for i, kp := range signers {
 		assert.NoError(t, kp.Verify(hash[:], signatures[i].Signature))
 	}
+}
+
+func assertBase64(t *testing.T, tx transactionCommon) string {
+	base64, err := tx.Base64()
+	assert.NoError(t, err)
+
+	envCopy, err := tx.TxEnvelope()
+	assert.NoError(t, err)
+	envCopyBase64, err := xdr.MarshalBase64(envCopy)
+	assert.NoError(t, err)
+
+	envRef := tx.ToXDR()
+	envRefBase64, err := xdr.MarshalBase64(envRef)
+	assert.NoError(t, err)
+
+	assert.Equal(t, base64, envCopyBase64)
+	assert.Equal(t, base64, envRefBase64)
+
+	return base64
 }
 
 func TestSigningImmutability(t *testing.T) {
@@ -466,18 +488,15 @@ func TestSigningImmutability(t *testing.T) {
 	assert.NoError(t, err)
 	root, err = root.Sign(network.TestNetworkPassphrase, kp0)
 	assert.NoError(t, err)
-	rootB64, err := root.Base64()
-	assert.NoError(t, err)
+	rootB64 := assertBase64(t, root)
 
 	left, err := root.Sign(network.TestNetworkPassphrase, kp1)
 	assert.NoError(t, err)
-	leftB64, err := left.Base64()
-	assert.NoError(t, err)
+	leftB64 := assertBase64(t, left)
 
 	right, err := root.Sign(network.TestNetworkPassphrase, kp2)
 	assert.NoError(t, err)
-	rightB64, err := right.Base64()
-	assert.NoError(t, err)
+	rightB64 := assertBase64(t, right)
 
 	expectedRootB64, err := newSignedTransaction(
 		params, network.TestNetworkPassphrase, kp0,
@@ -521,18 +540,16 @@ func TestFeeBumpSigningImmutability(t *testing.T) {
 	root, err := NewFeeBumpTransaction(params)
 	assert.NoError(t, err)
 	root, err = root.Sign(network.TestNetworkPassphrase, kp1)
-	rootB64, err := root.Base64()
 	assert.NoError(t, err)
+	rootB64 := assertBase64(t, root)
 
 	left, err := root.Sign(network.TestNetworkPassphrase, kp0)
 	assert.NoError(t, err)
-	leftB64, err := left.Base64()
-	assert.NoError(t, err)
+	leftB64 := assertBase64(t, left)
 
 	right, err := root.Sign(network.TestNetworkPassphrase, kp2)
 	assert.NoError(t, err)
-	rightB64, err := right.Base64()
-	assert.NoError(t, err)
+	rightB64 := assertBase64(t, right)
 
 	expectedRootB64, err := newSignedFeeBumpTransaction(
 		params, network.TestNetworkPassphrase, kp1,

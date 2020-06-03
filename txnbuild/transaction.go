@@ -319,6 +319,23 @@ func (t *Transaction) TxEnvelope() (xdr.TransactionEnvelope, error) {
 	return cloneEnvelope(t.envelope, t.signatures)
 }
 
+// ToXDR is like TxEnvelope except that the transaction envelope returned by ToXDR
+// should not be modified because any changes applied to the transaction envelope may
+// affect the internals of the Transaction instance.
+func (t *Transaction) ToXDR() xdr.TransactionEnvelope {
+	env := t.envelope
+	switch env.Type {
+	case xdr.EnvelopeTypeEnvelopeTypeTx:
+		env.V1.Signatures = t.signatures
+	case xdr.EnvelopeTypeEnvelopeTypeTxV0:
+		env.V0.Signatures = t.signatures
+	default:
+		panic("invalid transaction type: " + env.Type.String())
+	}
+
+	return env
+}
+
 // MarshalBinary returns the binary XDR representation of the transaction envelope.
 func (t *Transaction) MarshalBinary() ([]byte, error) {
 	return marshallBinary(t.envelope, t.signatures)
@@ -430,6 +447,21 @@ func (t *FeeBumpTransaction) AddSignatureBase64(network, publicKey, signature st
 // equivalent to this transaction.
 func (t *FeeBumpTransaction) TxEnvelope() (xdr.TransactionEnvelope, error) {
 	return cloneEnvelope(t.envelope, t.signatures)
+}
+
+// ToXDR is like TxEnvelope except that the transaction envelope returned by ToXDR
+// should not be modified because any changes applied to the transaction envelope may
+// affect the internals of the FeeBumpTransaction instance.
+func (t *FeeBumpTransaction) ToXDR() xdr.TransactionEnvelope {
+	env := t.envelope
+	switch env.Type {
+	case xdr.EnvelopeTypeEnvelopeTypeTxFeeBump:
+		env.FeeBump.Signatures = t.signatures
+	default:
+		panic("invalid transaction type: " + env.Type.String())
+	}
+
+	return env
 }
 
 // MarshalBinary returns the binary XDR representation of the transaction envelope.
