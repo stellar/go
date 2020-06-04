@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	firebaseauth "firebase.google.com/go/auth"
+	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/go-chi/chi"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stellar/go/exp/services/recoverysigner/internal/account"
@@ -105,6 +106,9 @@ func getHandlerDeps(opts Options) (handlerDeps, error) {
 
 	kms, err := encryption.NewKMS(opts.KMSProvider, opts.EncryptionKeyID)
 	if err != nil {
+		if awsErr, ok := errors.Cause(err).(awserr.Error); ok {
+			opts.Logger.Error("Error initializing AWS KMS: ", awsErr.Error())
+		}
 		return handlerDeps{}, errors.Wrap(err, "error initializing KMS")
 	}
 

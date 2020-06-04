@@ -8,7 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	awskms "github.com/aws/aws-sdk-go/service/kms"
 	"github.com/aws/aws-sdk-go/service/kms/kmsiface"
-	"github.com/pkg/errors"
+	"github.com/stellar/go/support/errors"
 )
 
 // KMS implements crypto.Decrypter.
