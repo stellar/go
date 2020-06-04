@@ -70,14 +70,16 @@ type Problem struct {
 	log             *log.Entry
 	errToProblemMap map[error]P
 	reportFn        ReportFunc
+	logAllErrors    bool
 }
 
 // New returns a new instance of Problem.
-func New(serviceHost string, log *log.Entry) *Problem {
+func New(serviceHost string, log *log.Entry, logAllErrors bool) *Problem {
 	return &Problem{
 		serviceHost:     serviceHost,
 		log:             log,
 		errToProblemMap: map[error]P{},
+		logAllErrors:    logAllErrors,
 	}
 }
 
@@ -139,8 +141,11 @@ func (ps *Problem) RegisterReportFunc(fn ReportFunc) {
 // Render writes a http response to `w`, compliant with the "Problem
 // Details for HTTP APIs" RFC: https://www.rfc-editor.org/rfc/rfc7807.txt
 func (ps *Problem) Render(ctx context.Context, w http.ResponseWriter, err error) {
-	setRequestError(ctx, err)
 	origErr := errors.Cause(err)
+
+	if ps.logAllErrors {
+		ps.log.Ctx(ctx).WithStack(err).WithError(err).Info("request failed due to error")
+	}
 
 	var problem P
 	switch p := origErr.(type) {
@@ -155,7 +160,9 @@ func (ps *Problem) Render(ctx context.Context, w http.ResponseWriter, err error)
 		// If this error is not a registered error
 		// log it and replace it with a 500 error
 		if !ok {
-			ps.log.Ctx(ctx).WithStack(err).Error(err)
+			if !ps.logAllErrors {
+				ps.log.Ctx(ctx).WithStack(err).Error(err)
+			}
 			if ps.reportFn != nil {
 				ps.reportFn(ctx, err)
 			}
