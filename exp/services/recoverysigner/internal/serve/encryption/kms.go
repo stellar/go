@@ -32,10 +32,24 @@ func NewKMS(kmsProvider, keyID string) (*KMS, error) {
 		if err != nil {
 			return nil, errors.Wrap(err, "initializing a AWS SDK session")
 		}
+
 		kms := KMS{
 			awsKMSClient: awskms.New(sess),
 			keyID:        keyID,
 		}
+
+		gpki := &awskms.GetPublicKeyInput{KeyId: aws.String(kms.keyID)}
+		gpko, err := kms.awsKMSClient.GetPublicKey(gpki)
+		if err != nil {
+			return nil, errors.Wrap(err, "getting public key from AWS KMS")
+		}
+
+		pk, err := parsePublicKey(gpko.PublicKey)
+		if err != nil {
+			return nil, errors.Wrap(err, "parsing public key")
+		}
+		kms.publicKey = pk
+
 		return &kms, nil
 
 	case "mock":
@@ -62,16 +76,4 @@ func (k *KMS) Decrypt(_ io.Reader, msg []byte, _ crypto.DecrypterOpts) (plaintex
 
 func (k *KMS) Public() crypto.PublicKey {
 	return k.publicKey
-}
-
-type mockAWSKMS struct {
-	kmsiface.KMSAPI
-}
-
-func (m *mockAWSKMS) Encrypt(ei *awskms.EncryptInput) (*awskms.EncryptOutput, error) {
-	return &awskms.EncryptOutput{CiphertextBlob: ei.Plaintext}, nil
-}
-
-func (m *mockAWSKMS) Decrypt(di *awskms.DecryptInput) (*awskms.DecryptOutput, error) {
-	return &awskms.DecryptOutput{Plaintext: di.CiphertextBlob}, nil
 }
