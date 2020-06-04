@@ -21,9 +21,10 @@ type KMS struct {
 	// Google Cloud KMS (if we decide to support it in the future)
 	// googleKMSClient ...
 
-	// shared attribute
-	keyID     string
-	publicKey crypto.PublicKey
+	// shared attributes
+	keyID               string
+	publicKey           crypto.PublicKey
+	encryptionAlgorithm string
 }
 
 func NewKMS(kmsProvider, keyID string) (*KMS, error) {
@@ -35,8 +36,9 @@ func NewKMS(kmsProvider, keyID string) (*KMS, error) {
 		}
 
 		kms := KMS{
-			awsKMSClient: awskms.New(sess),
-			keyID:        keyID,
+			awsKMSClient:        awskms.New(sess),
+			keyID:               keyID,
+			encryptionAlgorithm: awskms.EncryptionAlgorithmSpecRsaesOaepSha256,
 		}
 
 		gpki := &awskms.GetPublicKeyInput{KeyId: aws.String(kms.keyID)}
@@ -45,6 +47,7 @@ func NewKMS(kmsProvider, keyID string) (*KMS, error) {
 			return nil, errors.Wrap(err, "getting public key from AWS KMS")
 		}
 
+		// should be parsed as *rsa.PublicKey
 		pk, err := parsePublicKey(gpko.PublicKey)
 		if err != nil {
 			return nil, errors.Wrap(err, "parsing public key")
@@ -61,7 +64,10 @@ func NewKMS(kmsProvider, keyID string) (*KMS, error) {
 
 func (k *KMS) Decrypt(_ io.Reader, msg []byte, _ crypto.DecrypterOpts) (plaintext []byte, err error) {
 	if k.awsKMSClient != nil {
-		di := &awskms.DecryptInput{CiphertextBlob: msg}
+		di := &awskms.DecryptInput{
+			CiphertextBlob:      msg,
+			EncryptionAlgorithm: aws.String(k.encryptionAlgorithm),
+		}
 		do, err := k.awsKMSClient.Decrypt(di)
 		if err != nil {
 			return nil, errors.Wrap(err, "decrypting message")
