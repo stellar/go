@@ -82,6 +82,7 @@ func loggerMiddleware(h http.Handler) http.Handler {
 
 		logger := log.WithField("req", middleware.GetReqID(ctx))
 		ctx = log.Set(ctx, logger)
+		ctx = problem.NewContext(ctx)
 
 		// Checking `Accept` header from user request because if the streaming connection
 		// is reset before sending the first event no Content-Type header is sent in a response.
@@ -187,6 +188,7 @@ func logEndOfRequest(ctx context.Context, r *http.Request, duration time.Duratio
 		"path":           r.URL.String(),
 		"route":          routePattern,
 		"status":         mw.Status(),
+		"error":          problem.GetRequestError(ctx),
 		"streaming":      streaming,
 		"referer":        referer,
 	}).Info("Finished request")
