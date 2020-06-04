@@ -18,7 +18,8 @@ type KMS struct {
 	// AWS KMS
 	awsKMSClient kmsiface.KMSAPI
 
-	// Google Cloud KMS (support in the future)
+	// Google Cloud KMS (if we decide to support it in the future)
+	// googleKMSClient ...
 
 	// shared attribute
 	keyID     string
@@ -49,12 +50,10 @@ func NewKMS(kmsProvider, keyID string) (*KMS, error) {
 			return nil, errors.Wrap(err, "parsing public key")
 		}
 		kms.publicKey = pk
-
 		return &kms, nil
 
 	case "mock":
 		return &KMS{awsKMSClient: &mockAWSKMS{}}, nil
-
 	}
 
 	return nil, errors.New("KMS_PROVIDER is not set to a valid value, must be 'aws' (default) or 'mock'")
@@ -71,7 +70,12 @@ func (k *KMS) Decrypt(_ io.Reader, msg []byte, _ crypto.DecrypterOpts) (plaintex
 		return do.Plaintext, nil
 	}
 
-	return nil, errors.New("AWSKMSClient is not set")
+	// If we decide to support Google Cloud KMS:
+	// if k.googleKMSClient != nil {
+	// 	resp, err := k.googleKMSClient.AsymmetricDecrypt(...)
+	// }
+
+	return nil, errors.New("No KMS client is configured")
 }
 
 func (k *KMS) Public() crypto.PublicKey {
