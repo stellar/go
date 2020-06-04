@@ -12,9 +12,9 @@ var (
 	trustLineIssuer = xdr.MustAddress("GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
 
 	eurTrustLine = xdr.TrustLineEntry{
-		AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
+		AccountId: account1.AccountId,
 		Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()),
-		Balance:   20000,
+		Balance:   30000,
 		Limit:     223456789,
 		Flags:     1,
 		Ext: xdr.TrustLineEntryExt{
@@ -364,4 +364,68 @@ func TestGetTrustLinesByAccountID(t *testing.T) {
 	tt.Assert.Equal(int64(eurTrustLine.Ext.V1.Liabilities.Buying), record[0].BuyingLiabilities)
 	tt.Assert.Equal(int64(eurTrustLine.Ext.V1.Liabilities.Selling), record[0].SellingLiabilities)
 
+}
+
+func TestAssetsForAddress(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	test.ResetHorizonDB(t, tt.HorizonDB)
+	q := &Q{tt.HorizonSession()}
+
+	assets, balances, err := q.AssetsForAddress(eurTrustLine.AccountId.Address())
+	tt.Assert.NoError(err)
+	tt.Assert.Empty(assets)
+	tt.Assert.Empty(balances)
+
+	ledgerEntries := []xdr.LedgerEntry{
+		xdr.LedgerEntry{
+			LastModifiedLedgerSeq: 1234,
+			Data: xdr.LedgerEntryData{
+				Type:    xdr.LedgerEntryTypeAccount,
+				Account: &account1,
+			},
+		},
+	}
+
+	err = q.UpsertAccounts(ledgerEntries)
+	assert.NoError(t, err)
+
+	_, err = q.InsertTrustLine(eurTrustLine, 1234)
+	tt.Assert.NoError(err)
+
+	brlTrustLine := xdr.TrustLineEntry{
+		AccountId: account1.AccountId,
+		Asset:     xdr.MustNewCreditAsset("BRL", trustLineIssuer.Address()),
+		Balance:   1000,
+		Limit:     20000,
+		Flags:     1,
+		Ext: xdr.TrustLineEntryExt{
+			V: 1,
+			V1: &xdr.TrustLineEntryV1{
+				Liabilities: xdr.Liabilities{
+					Buying:  3,
+					Selling: 4,
+				},
+			},
+		},
+	}
+
+	_, err = q.InsertTrustLine(brlTrustLine, 1234)
+	tt.Assert.NoError(err)
+
+	assets, balances, err = q.AssetsForAddress(account1.AccountId.Address())
+	tt.Assert.NoError(err)
+
+	assetsToBalance := map[string]xdr.Int64{}
+	for i, symbol := range assets {
+		assetsToBalance[symbol.String()] = balances[i]
+	}
+
+	expected := map[string]xdr.Int64{
+		"credit_alphanum4/BRL/GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H": 1000,
+		"credit_alphanum4/EUR/GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H": 30000,
+		"native": 20000,
+	}
+
+	tt.Assert.Equal(expected, assetsToBalance)
 }
