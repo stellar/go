@@ -50,76 +50,6 @@ func inMemoryPathFindingClient(
 	return test.NewRequestHelper(router)
 }
 
-func dbPathFindingClient(
-	tt *test.T,
-	maxAssetsParamLength int,
-) test.RequestHelper {
-	router := chi.NewRouter()
-	findPaths := FindPathsHandler{
-		pathFinder: &simplepath.Finder{
-			Q: &core.Q{tt.CoreSession()},
-		},
-		maxAssetsParamLength: maxAssetsParamLength,
-		setLastLedgerHeader:  false,
-		coreQ:                &core.Q{tt.CoreSession()},
-	}
-	findFixedPaths := FindFixedPathsHandler{
-		pathFinder: &simplepath.Finder{
-			Q: &core.Q{tt.CoreSession()},
-		},
-		maxAssetsParamLength: maxAssetsParamLength,
-		setLastLedgerHeader:  false,
-		coreQ:                &core.Q{tt.CoreSession()},
-	}
-
-	router.Group(func(r chi.Router) {
-		router.Method("GET", "/paths", findPaths)
-		router.Method("GET", "/paths/strict-receive", findPaths)
-		router.Method("GET", "/paths/strict-send", findFixedPaths)
-	})
-	return test.NewRequestHelper(router)
-}
-
-func TestPathActions_Index(t *testing.T) {
-	tt := test.Start(t).Scenario("paths")
-	assertions := &Assertions{tt.Assert}
-	defer tt.Finish()
-	rh := dbPathFindingClient(
-		tt,
-		3,
-	)
-
-	// no query args
-	w := rh.Get("/paths")
-	assertions.Equal(400, w.Code)
-
-	// happy path
-	var q = make(url.Values)
-
-	q.Add(
-		"destination_account",
-		"GAEDTJ4PPEFVW5XV2S7LUXBEHNQMX5Q2GM562RJGOQG7GVCE5H3HIB4V",
-	)
-	q.Add(
-		"source_account",
-		"GARSFJNXJIHO6ULUBK3DBYKVSIZE7SC72S5DYBCHU7DKL22UXKVD7MXP",
-	)
-	q.Add(
-		"destination_asset_issuer",
-		"GDSBCQO34HWPGUGQSP3QBFEXVTSR2PW46UIGTHVWGWJGQKH3AFNHXHXN",
-	)
-	q.Add("destination_asset_type", "credit_alphanum4")
-	q.Add("destination_asset_code", "EUR")
-	q.Add("destination_amount", "10")
-
-	for _, uri := range []string{"/paths", "/paths/strict-receive"} {
-		w = rh.Get(uri + "?" + q.Encode())
-		assertions.Equal(200, w.Code)
-		assertions.PageOf(3, w.Body)
-		assertions.Equal("", w.Header().Get(actions.LastLedgerHeaderName))
-	}
-}
-
 func TestPathActionsStillIngesting(t *testing.T) {
 	tt := test.Start(t).Scenario("paths")
 	defer tt.Finish()
@@ -199,10 +129,6 @@ func TestPathActionsInMemoryFinder(t *testing.T) {
 		orderBookGraph,
 		len(sourceAssets),
 	)
-	dbPathsClient := dbPathFindingClient(
-		tt,
-		len(sourceAssets),
-	)
 
 	loadOffers(tt, orderBookGraph, "GA2NC4ZOXMXLVQAQQ5IQKJX47M3PKBQV2N5UV5Z4OXLQJ3CKMBA2O2YL", 1)
 	loadOffers(tt, orderBookGraph, "GDSBCQO34HWPGUGQSP3QBFEXVTSR2PW46UIGTHVWGWJGQKH3AFNHXHXN", 2)
@@ -238,14 +164,7 @@ func TestPathActionsInMemoryFinder(t *testing.T) {
 		tt.UnmarshalPage(w.Body, &inMemorySourceAccountResponse)
 		tt.Assert.Equal("2", w.Header().Get(actions.LastLedgerHeaderName))
 
-		w = dbPathsClient.Get(uri + "?" + withSourceAccount.Encode())
-		tt.Assert.Equal(http.StatusOK, w.Code)
-		dbSourceAccountResponse := []horizon.Path{}
-		tt.UnmarshalPage(w.Body, &dbSourceAccountResponse)
-		tt.Assert.Equal("", w.Header().Get(actions.LastLedgerHeaderName))
-
 		tt.Assert.True(len(inMemorySourceAccountResponse) > 0)
-		tt.Assert.Equal(inMemorySourceAccountResponse, dbSourceAccountResponse)
 
 		w = inMemoryPathsClient.Get(uri + "?" + withSourceAssets.Encode())
 		tt.Assert.Equal(http.StatusOK, w.Code)
@@ -253,13 +172,6 @@ func TestPathActionsInMemoryFinder(t *testing.T) {
 		tt.UnmarshalPage(w.Body, &inMemorySourceAssetsResponse)
 		tt.Assert.Equal("2", w.Header().Get(actions.LastLedgerHeaderName))
 
-		w = dbPathsClient.Get(uri + "?" + withSourceAccount.Encode())
-		tt.Assert.Equal(http.StatusOK, w.Code)
-		dbSourceAssetsResponse := []horizon.Path{}
-		tt.UnmarshalPage(w.Body, &dbSourceAssetsResponse)
-		tt.Assert.Equal("", w.Header().Get(actions.LastLedgerHeaderName))
-
-		tt.Assert.Equal(inMemorySourceAssetsResponse, dbSourceAssetsResponse)
 		tt.Assert.Equal(inMemorySourceAssetsResponse, inMemorySourceAccountResponse)
 	}
 }
@@ -272,10 +184,6 @@ func TestPathActionsEmptySourceAcount(t *testing.T) {
 	inMemoryPathsClient := inMemoryPathFindingClient(
 		tt,
 		orderBookGraph,
-		3,
-	)
-	dbPathsClient := dbPathFindingClient(
-		tt,
 		3,
 	)
 
@@ -307,13 +215,6 @@ func TestPathActionsEmptySourceAcount(t *testing.T) {
 		inMemoryResponse := []horizon.Path{}
 		tt.UnmarshalPage(w.Body, &inMemoryResponse)
 		assertions.Empty(inMemoryResponse)
-		tt.Assert.Equal("", w.Header().Get(actions.LastLedgerHeaderName))
-
-		w = dbPathsClient.Get(uri + "?" + q.Encode())
-		assertions.Equal(http.StatusOK, w.Code)
-		dbResponse := []horizon.Path{}
-		tt.UnmarshalPage(w.Body, &dbResponse)
-		assertions.Empty(dbResponse)
 		tt.Assert.Equal("", w.Header().Get(actions.LastLedgerHeaderName))
 	}
 }
