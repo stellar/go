@@ -11,7 +11,7 @@ github.com/alecthomas/template v0.0.0-20160405071501-a0175ee3bccc
 github.com/alecthomas/units v0.0.0-20151022065526-2efee857e7cf
 github.com/apache/thrift v0.12.0
 github.com/asaskevich/govalidator v0.0.0-20180319081651-7d2e70ef918f
-github.com/aws/aws-sdk-go v1.25.25
+github.com/aws/aws-sdk-go v1.28.14
 github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973
 github.com/client9/misspell v0.3.4
 github.com/davecgh/go-spew v1.1.1
