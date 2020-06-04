@@ -81,3 +81,5 @@ func (k *KMS) Decrypt(_ io.Reader, msg []byte, _ crypto.DecrypterOpts) (plaintex
 func (k *KMS) Public() crypto.PublicKey {
 	return k.publicKey
 }
+
+//TODO: implement Encrypt method
