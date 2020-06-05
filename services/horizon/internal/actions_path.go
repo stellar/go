@@ -2,6 +2,7 @@ package horizon
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"net/http"
 	"strings"
@@ -154,9 +155,7 @@ func (handler FindPathsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 		sourceAccount := xdr.MustAddress(sourceAccount)
 		query.SourceAccount = &sourceAccount
 		query.ValidateSourceBalance = true
-		query.SourceAssets, query.SourceAssetBalances, err = handler.historyQ.AssetsForAddress(
-			query.SourceAccount.Address(),
-		)
+		query.SourceAssets, query.SourceAssetBalances, err = assetsForAddress(handler.historyQ, query.SourceAccount.Address())
 		if err != nil {
 			problem.Render(ctx, w, err)
 			return
@@ -320,9 +319,7 @@ func (handler FindFixedPathsHandler) ServeHTTP(w http.ResponseWriter, r *http.Re
 	}
 
 	if destinationAccount != "" {
-		destinationAssets, _, err = handler.historyQ.AssetsForAddress(
-			destinationAccount,
-		)
+		destinationAssets, _, err = assetsForAddress(handler.historyQ, destinationAccount)
 		if err != nil {
 			problem.Render(ctx, w, err)
 			return
@@ -358,4 +355,16 @@ func (handler FindFixedPathsHandler) ServeHTTP(w http.ResponseWriter, r *http.Re
 	}
 
 	renderPaths(ctx, records, w)
+}
+
+func assetsForAddress(historyQ *history.Q, addy string) ([]xdr.Asset, []xdr.Int64, error) {
+	err := historyQ.BeginTx(&sql.TxOptions{
+		Isolation: sql.LevelRepeatableRead,
+		ReadOnly:  true,
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+	defer historyQ.Rollback()
+	return historyQ.AssetsForAddress(addy)
 }
