@@ -3,7 +3,7 @@
 package ledgerbackend
 
 import (
-	"bufio"
+	"io"
 	"os"
 	"syscall"
 
@@ -19,13 +19,12 @@ func (c *stellarCoreRunner) getPipeName() string {
 	return "fd:3"
 }
 
-// Starts the subprocess and sets the c.metaPipe field
-func (c *stellarCoreRunner) start() error {
+func (c *stellarCoreRunner) start() (io.Reader, error) {
 	// First make an anonymous pipe.
 	// Note io.File objects close-on-finalization.
 	readFile, writeFile, e := os.Pipe()
 	if e != nil {
-		return errors.Wrap(e, "error making a pipe")
+		return readFile, errors.Wrap(e, "error making a pipe")
 	}
 
 	defer writeFile.Close()
@@ -33,7 +32,7 @@ func (c *stellarCoreRunner) start() error {
 	// Then write config file pointing to it.
 	e = c.writeConf()
 	if e != nil {
-		return errors.Wrap(e, "error writing conf")
+		return readFile, errors.Wrap(e, "error writing conf")
 	}
 
 	// Add the write-end to the set of inherited file handles. This is defined
@@ -41,7 +40,7 @@ func (c *stellarCoreRunner) start() error {
 	c.cmd.ExtraFiles = []*os.File{writeFile}
 	e = c.cmd.Start()
 	if e != nil {
-		return errors.Wrap(e, "error starting stellar-core")
+		return readFile, errors.Wrap(e, "error starting stellar-core")
 	}
 
 	// Launch a goroutine to reap immediately on exit (I think this is right,
@@ -50,8 +49,7 @@ func (c *stellarCoreRunner) start() error {
 	cmd := c.cmd
 	go cmd.Wait()
 
-	c.metaPipe = bufio.NewReaderSize(readFile, 1024*1024)
-	return nil
+	return readFile, nil
 }
 
 func (c *stellarCoreRunner) processIsAlive() bool {

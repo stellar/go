@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/stellar/go/exp/ingest/io"
+	"github.com/stellar/go/exp/ingest/ledgerbackend"
 	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/support/errors"
 	logpkg "github.com/stellar/go/support/log"
@@ -629,6 +630,15 @@ func (h reingestHistoryRangeState) run(s *System) (transition, error) {
 	if h.fromLedger == 0 || h.toLedger == 0 ||
 		h.fromLedger > h.toLedger {
 		return stop(), errors.Errorf("invalid range: [%d, %d]", h.fromLedger, h.toLedger)
+	}
+
+	// Set blocking mode when using captive core. Horizon is actually able to ingest
+	// historical data faster than core (because we don't update ledger entries) so
+	// instead of using `time.Sleep` to wait for core to apply a ledger it's faster
+	// to simply block when reading a ledger.
+	if captive, ok := s.ledgerBackend.(*ledgerbackend.CaptiveStellarCore); ok {
+		log.Info("Set blocking mode in captive stellar-core")
+		captive.SetBlockingMode(true)
 	}
 
 	log.WithFields(logpkg.F{

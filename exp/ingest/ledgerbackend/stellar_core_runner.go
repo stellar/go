@@ -1,6 +1,7 @@
 package ledgerbackend
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -8,15 +9,18 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
 	"github.com/pkg/errors"
 )
 
+const pipeBufferSize = 1024 * 1024
+
 type stellarCoreRunnerInterface interface {
 	run(from, to uint32) error
-	getMetaPipe() io.Reader
+	getMetaPipe() *bufferedPipe
 	close() error
 }
 
@@ -26,7 +30,7 @@ type stellarCoreRunner struct {
 	historyURLs       []string
 
 	cmd      *exec.Cmd
-	metaPipe io.Reader
+	metaPipe *bufferedPipe
 	tempDir  string
 }
 
@@ -59,20 +63,20 @@ func (r *stellarCoreRunner) getConfFileName() string {
 }
 
 func (*stellarCoreRunner) getLogLineWriter() io.Writer {
-	_, w := io.Pipe()
-	// br := bufio.NewReader(r)
-	// // Strip timestamps from log lines from captive stellar-core. We emit our own.
-	// dateRx := regexp.MustCompile(`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3} `)
-	// go func() {
-	// 	for {
-	// 		line, e := br.ReadString('\n')
-	// 		if e != nil {
-	// 			break
-	// 		}
-	// 		line = dateRx.ReplaceAllString(line, "")
-	// 		fmt.Print(line)
-	// 	}
-	// }()
+	r, w := io.Pipe()
+	br := bufio.NewReader(r)
+	// Strip timestamps from log lines from captive stellar-core. We emit our own.
+	dateRx := regexp.MustCompile(`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3} `)
+	go func() {
+		for {
+			line, e := br.ReadString('\n')
+			if e != nil {
+				break
+			}
+			line = dateRx.ReplaceAllString(line, "")
+			fmt.Print(line)
+		}
+	}()
 	return w
 }
 
@@ -110,14 +114,25 @@ func (r *stellarCoreRunner) run(from, to uint32) error {
 	cmd.Stdout = r.getLogLineWriter()
 	cmd.Stderr = cmd.Stdout
 	r.cmd = cmd
-	err = r.start()
+	reader, err := r.start()
 	if err != nil {
 		return errors.Wrap(err, "error starting stellar-core subprocess")
 	}
+
+	r.metaPipe = newBufferedPipe(pipeBufferSize)
+	go func() {
+		for {
+			io.Copy(r.metaPipe, reader)
+			if !r.processIsAlive() {
+				return
+			}
+		}
+	}()
+
 	return nil
 }
 
-func (r *stellarCoreRunner) getMetaPipe() io.Reader {
+func (r *stellarCoreRunner) getMetaPipe() *bufferedPipe {
 	return r.metaPipe
 }
 

@@ -3,6 +3,7 @@ package ledgerbackend
 import (
 	"io"
 	"sync"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/stellar/go/network"
@@ -10,8 +11,8 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-// Ensure captiveStellarCore implements LedgerBackend
-var _ LedgerBackend = (*captiveStellarCore)(nil)
+// Ensure CaptiveStellarCore implements LedgerBackend
+var _ LedgerBackend = (*CaptiveStellarCore)(nil)
 
 // This is a not-very-complete or well-organized sketch of code be used to
 // stream LedgerCloseMeta data from a "captive" stellar-core: one running as a
@@ -45,27 +46,27 @@ func roundDownToFirstReplayAfterCheckpointStart(ledger uint32) uint32 {
 	return v
 }
 
-type captiveStellarCore struct {
+type CaptiveStellarCore struct {
 	networkPassphrase string
 	historyURLs       []string
 	lastLedger        *uint32 // end of current segment if offline, nil if online
 
 	stellarCoreRunner stellarCoreRunnerInterface
 
-	// bufferedMeta
 	bufferedMeta *LedgerCloseMeta
+	blocking     bool
 
 	nextLedgerMutex sync.Mutex
 	nextLedger      uint32 // next ledger expected, error w/ restart if not seen
 }
 
-// NewCaptive returns a new captiveStellarCore that is not running. Will lazily start a subprocess
+// NewCaptive returns a new CaptiveStellarCore that is not running. Will lazily start a subprocess
 // to feed it a block of streaming metadata when user calls .GetLedger(), and will kill
 // and restart the subprocess if subsequent calls to .GetLedger() are discontiguous.
 //
 // Platform-specific pipe setup logic is in the .start() methods.
-func NewCaptive(executablePath, networkPassphrase string, historyURLs []string) *captiveStellarCore {
-	return &captiveStellarCore{
+func NewCaptive(executablePath, networkPassphrase string, historyURLs []string) *CaptiveStellarCore {
+	return &CaptiveStellarCore{
 		networkPassphrase: networkPassphrase,
 		historyURLs:       historyURLs,
 		nextLedger:        0,
@@ -77,17 +78,17 @@ func NewCaptive(executablePath, networkPassphrase string, historyURLs []string) 
 	}
 }
 
-// Each captiveStellarCore is either doing bulk offline replay or tracking
+// Each CaptiveStellarCore is either doing bulk offline replay or tracking
 // a network as it closes ledgers online. These cases are differentiated
-// by the lastLedger field of captiveStellarCore, which is nil in the online
+// by the lastLedger field of CaptiveStellarCore, which is nil in the online
 // case (indicating there's no end to the subprocess) and non-nil in the
 // offline case (indicating that the subprocess will be closed after it yields
 // the last ledger in the segment).
-func (c *captiveStellarCore) IsInOfflineReplayMode() bool {
+func (c *CaptiveStellarCore) IsInOfflineReplayMode() bool {
 	return c.lastLedger != nil
 }
 
-func (c *captiveStellarCore) IsInOnlineTrackingMode() bool {
+func (c *CaptiveStellarCore) IsInOnlineTrackingMode() bool {
 	return c.lastLedger == nil
 }
 
@@ -105,7 +106,7 @@ func peekLedgerSequence(xlcm *xdr.LedgerCloseMeta) (uint32, error) {
 // Note: the xdr.LedgerCloseMeta structure is _not_ the same as
 // the ledgerbackend.LedgerCloseMeta structure; the latter should
 // probably migrate to the former eventually.
-func (c *captiveStellarCore) copyLedgerCloseMeta(xlcm *xdr.LedgerCloseMeta, lcm *LedgerCloseMeta) error {
+func (c *CaptiveStellarCore) copyLedgerCloseMeta(xlcm *xdr.LedgerCloseMeta, lcm *LedgerCloseMeta) error {
 	v0, ok := xlcm.GetV0()
 	if !ok {
 		return errors.New("unexpected XDR LedgerCloseMeta version")
@@ -135,7 +136,7 @@ func (c *captiveStellarCore) copyLedgerCloseMeta(xlcm *xdr.LedgerCloseMeta, lcm 
 	return nil
 }
 
-func (c *captiveStellarCore) openOfflineReplaySubprocess(nextLedger, lastLedger uint32) error {
+func (c *CaptiveStellarCore) openOfflineReplaySubprocess(nextLedger, lastLedger uint32) error {
 	c.Close()
 	maxLedger, e := c.GetLatestLedgerSequence()
 	if e != nil {
@@ -164,25 +165,34 @@ func (c *captiveStellarCore) openOfflineReplaySubprocess(nextLedger, lastLedger 
 	return nil
 }
 
-func (c *captiveStellarCore) PrepareRange(from uint32, to uint32) error {
-	// `from-1` here because being able to read ledger `from-1` is a confirmation
-	// that the range is ready. This effectively makes getting ledger #1 impossible.
-	// TODO: should be replaced with by a tee reader with buffer or similar in the
-	// later stage of development.
-	if e := c.openOfflineReplaySubprocess(from-1, to); e != nil {
+func (c *CaptiveStellarCore) PrepareRange(from uint32, to uint32) error {
+	if e := c.openOfflineReplaySubprocess(from, to); e != nil {
 		return errors.Wrap(e, "opening subprocess")
 	}
 
-	if c.stellarCoreRunner.getMetaPipe() == nil {
+	metaPipe := c.stellarCoreRunner.getMetaPipe()
+	if metaPipe == nil {
 		return errors.New("missing metadata pipe")
 	}
 
-	_, _, err := c.GetLedger(from - 1)
-	if err != nil {
-		return errors.Wrap(err, "opening getting ledger `from-1`")
+	for {
+		// Wait for the first byte
+		if !metaPipe.IsEmpty() {
+			break
+		}
+		time.Sleep(time.Second)
 	}
 
 	return nil
+}
+
+// SetBlockingMode turns on/off blocking mode (off by default). In blocking mode,
+// calling GetLedger blocks until the requested ledger is available. This is useful
+// for scenarios when Horizon consumes ledgers faster than Stellar-Core produces them
+// and using `time.Sleep` when ledger is not available can actually slow entire
+// ingestion process.
+func (c *CaptiveStellarCore) SetBlockingMode(blocking bool) {
+	c.blocking = blocking
 }
 
 // We assume that we'll be called repeatedly asking for ledgers in ascending
@@ -191,7 +201,7 @@ func (c *captiveStellarCore) PrepareRange(from uint32, to uint32) error {
 // this is that core will actually replay from the _checkpoint before_
 // the implicit start ledger, so we might need to skip a few ledgers until
 // we hit the one requested (this routine does so transparently if needed).
-func (c *captiveStellarCore) GetLedger(sequence uint32) (bool, LedgerCloseMeta, error) {
+func (c *CaptiveStellarCore) GetLedger(sequence uint32) (bool, LedgerCloseMeta, error) {
 	if c.bufferedMeta != nil && sequence == uint32(c.bufferedMeta.LedgerHeader.Header.LedgerSeq) {
 		// GetLedger can be called multiple times using the same sequence, ex. to create
 		// change and transaction readers. If we have this ledger buffered, let's return it.
@@ -224,6 +234,12 @@ func (c *captiveStellarCore) GetLedger(sequence uint32) (bool, LedgerCloseMeta, 
 	// Now loop along the range until we find the ledger we want.
 	var errOut error
 	for {
+		if !c.blocking {
+			if metaPipe.IsEmpty() {
+				return false, LedgerCloseMeta{}, nil
+			}
+		}
+
 		var xlcm xdr.LedgerCloseMeta
 		_, e0 := xdr.UnmarshalFramed(metaPipe, &xlcm)
 		if e0 != nil {
@@ -274,7 +290,7 @@ func (c *captiveStellarCore) GetLedger(sequence uint32) (bool, LedgerCloseMeta, 
 	return false, LedgerCloseMeta{}, errOut
 }
 
-func (c *captiveStellarCore) GetLatestLedgerSequence() (uint32, error) {
+func (c *CaptiveStellarCore) GetLatestLedgerSequence() (uint32, error) {
 	archive, e := historyarchive.Connect(
 		c.historyURLs[0],
 		historyarchive.ConnectOptions{},
@@ -293,18 +309,18 @@ func (c *captiveStellarCore) GetLatestLedgerSequence() (uint32, error) {
 // from a given subprocess (so ledger will be read eventually) and no more
 // than numCheckpoints checkpoints ahead of the next ledger to be read
 // (so it will not be too long before ledger is read).
-func (c *captiveStellarCore) LedgerWithinCheckpoints(ledger uint32, numCheckpoints uint32) bool {
+func (c *CaptiveStellarCore) LedgerWithinCheckpoints(ledger uint32, numCheckpoints uint32) bool {
 	return ((c.nextLedger <= ledger) &&
 		(ledger <= (c.nextLedger + (numCheckpoints * ledgersPerCheckpoint))))
 }
 
-func (c *captiveStellarCore) IsClosed() bool {
+func (c *CaptiveStellarCore) IsClosed() bool {
 	c.nextLedgerMutex.Lock()
 	defer c.nextLedgerMutex.Unlock()
 	return c.nextLedger == 0
 }
 
-func (c *captiveStellarCore) Close() error {
+func (c *CaptiveStellarCore) Close() error {
 	if c.IsClosed() {
 		return nil
 	}
