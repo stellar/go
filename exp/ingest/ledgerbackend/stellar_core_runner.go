@@ -60,7 +60,7 @@ func (r *stellarCoreRunner) getConfFileName() string {
 	return filepath.Join(r.getTmpDir(), "stellar-core.conf")
 }
 
-func (*stellarCoreRunner) getLogLineWriter() io.Writer {
+func (*stellarCoreRunner) GetLogLineWriter() io.Writer {
 	r, w := io.Pipe()
 	br := bufio.NewReader(r)
 	// Strip timestamps from log lines from captive stellar-core. We emit our own.
@@ -110,7 +110,7 @@ func (r *stellarCoreRunner) run(from, to uint32) error {
 	cmd := exec.Command(r.executablePath, args...)
 	cmd.Dir = r.getTmpDir()
 	// In order to get the full stellar core logs:
-	// cmd.Stdout = r.getLogLineWriter()
+	// cmd.Stdout = r.GetLogLineWriter()
 	cmd.Stderr = cmd.Stdout
 	r.cmd = cmd
 	err = r.start()
