@@ -52,7 +52,7 @@ func (c *ServeCommand) Command() *cobra.Command {
 		},
 		{
 			Name:      "sep10-jwks",
-			Usage:     "JSON Web Key Set (JWKS) containing exactly one key used to validate SEP-10 JWTs (if the key is an asymmetric key that has separate public and private key, the JWK need only contain the public key)",
+			Usage:     "JSON Web Key Set (JWKS) containing one or more keys used to validate SEP-10 JWTs (if the key is an asymmetric key that has separate public and private key, the JWK need only contain the public key) (if multiple keys are provided they will all attempt verification the key ID will be ignored although logged)",
 			OptType:   types.String,
 			ConfigKey: &opts.SEP10JWKS,
 			Required:  true,
@@ -90,7 +90,7 @@ func (c *ServeCommand) Command() *cobra.Command {
 	}
 	cmd := &cobra.Command{
 		Use:   "serve",
-		Short: "Run the SEP-30 Recover Signer server",
+		Short: "Run the SEP-30 Recovery Signer server",
 		Run: func(_ *cobra.Command, _ []string) {
 			configOpts.Require()
 			configOpts.SetValues()
