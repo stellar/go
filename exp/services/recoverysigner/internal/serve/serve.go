@@ -56,7 +56,7 @@ func Serve(opts Options) {
 		ListenAddr: addr,
 		Handler:    handler,
 		OnStarting: func() {
-			deps.Logger.Infof("Starting SEP-30 Recover Signer server on %s", addr)
+			deps.Logger.Infof("Starting SEP-30 Recovery Signer server on %s", addr)
 		},
 	})
 }
