@@ -1064,6 +1064,63 @@ func TestHashHex(t *testing.T) {
 	assert.Len(t, txEnv.Operations(), 1)
 }
 
+func TestTransactionVersions(t *testing.T) {
+	kp0 := newKeypair0()
+	sourceAccount := NewSimpleAccount(kp0.Address(), int64(9605939170639897))
+
+	createAccount := CreateAccount{
+		Destination: "GCCOBXW2XQNUSL467IEILE6MMCNRR66SSVL4YQADUNYYNUVREF3FIV2Z",
+		Amount:      "10",
+	}
+	params := TransactionParams{
+		SourceAccount:        &sourceAccount,
+		IncrementSequenceNum: false,
+		Operations:           []Operation{&createAccount},
+		BaseFee:              MinBaseFee,
+		Timebounds:           NewInfiniteTimeout(),
+		Memo:                 MemoText("test memo"),
+	}
+
+	tx, err := NewTransaction(params)
+	assert.NoError(t, err)
+	tx, err = tx.Sign(network.TestNetworkPassphrase, kp0)
+	assert.NoError(t, err)
+
+	v1Hash, err := tx.HashHex(network.TestNetworkPassphrase)
+	assert.NoError(t, err)
+
+	v1Base64, err := tx.Base64()
+	assert.NoError(t, err)
+
+	v1Env := tx.ToXDR()
+
+	params.V0 = true
+	v0Tx, err := NewTransaction(params)
+	assert.NoError(t, err)
+	v0Tx, err = v0Tx.Sign(network.TestNetworkPassphrase, kp0)
+	assert.NoError(t, err)
+
+	v0Hash, err := v0Tx.HashHex(network.TestNetworkPassphrase)
+	assert.NoError(t, err)
+
+	v0Base64, err := v0Tx.Base64()
+	assert.NoError(t, err)
+
+	v0Env := v0Tx.ToXDR()
+
+	assert.Equal(t, v0Hash, v1Hash)
+	assert.NotEqual(t, v0Base64, v1Base64)
+
+	assert.Equal(t, xdr.EnvelopeTypeEnvelopeTypeTxV0, v0Env.Type)
+	assert.Equal(t, xdr.EnvelopeTypeEnvelopeTypeTx, v1Env.Type)
+	assert.Equal(t, v1Env.Fee(), v0Env.Fee())
+	assert.Equal(t, v1Env.Memo(), v0Env.Memo())
+	assert.Equal(t, v1Env.SourceAccount().MustEd25519(), v0Env.SourceAccount().MustEd25519())
+	assert.Equal(t, v1Env.Memo(), v0Env.Memo())
+	assert.Equal(t, v1Env.Operations(), v0Env.Operations())
+	assert.Equal(t, v1Env.TimeBounds(), v0Env.TimeBounds())
+}
+
 func TestTransactionFee(t *testing.T) {
 	kp0 := newKeypair0()
 	sourceAccount := NewSimpleAccount(kp0.Address(), int64(9605939170639897))
@@ -1946,8 +2003,9 @@ func TestReadChallengeTx_acceptsV0AndV1Transactions(t *testing.T) {
 	v1Challenge, err := marshallBase64(tx.envelope, tx.Signatures())
 	assert.NoError(t, err)
 
-	convertToV0(tx)
-	v0Challenge, err := marshallBase64(tx.envelope, tx.Signatures())
+	v0Tx, err := convertTx(tx, true)
+	assert.NoError(t, err)
+	v0Challenge, err := marshallBase64(v0Tx.envelope, tx.Signatures())
 	assert.NoError(t, err)
 
 	for _, challenge := range []string{v1Challenge, v0Challenge} {

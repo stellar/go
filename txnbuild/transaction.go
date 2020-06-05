@@ -595,6 +595,11 @@ type TransactionParams struct {
 	BaseFee              int64
 	Memo                 Memo
 	Timebounds           Timebounds
+	// V0 should be set to true if you want to generate V0 transaction envelopes
+	// V0 transactions are protocol 12 transactions which can also be consumed by protocol 13 clients.
+	// If V0 is false, NewTransaction() will generate a V1 transaction envelope which is
+	// only supported by protocol 13 or higher
+	V0 bool
 }
 
 // NewTransaction returns a new Transaction instance
@@ -657,20 +662,47 @@ func NewTransaction(params TransactionParams) (*Transaction, error) {
 		return nil, errors.Wrap(err, "invalid time bounds")
 	}
 
-	envelope := xdr.TransactionEnvelope{
-		Type: xdr.EnvelopeTypeEnvelopeTypeTx,
-		V1: &xdr.TransactionV1Envelope{
-			Tx: xdr.Transaction{
-				SourceAccount: accountID.ToMuxedAccount(),
-				Fee:           xdr.Uint32(tx.maxFee),
-				SeqNum:        xdr.SequenceNumber(sequence),
-				TimeBounds: &xdr.TimeBounds{
-					MinTime: xdr.TimePoint(tx.timebounds.MinTime),
-					MaxTime: xdr.TimePoint(tx.timebounds.MaxTime),
+	var envelope xdr.TransactionEnvelope
+
+	if params.V0 {
+		ed25519, ok := accountID.GetEd25519()
+		if !ok {
+			return nil, errors.Errorf(
+				"%s is not a valid source account",
+				params.SourceAccount.GetAccountID(),
+			)
+		}
+		envelope = xdr.TransactionEnvelope{
+			Type: xdr.EnvelopeTypeEnvelopeTypeTxV0,
+			V0: &xdr.TransactionV0Envelope{
+				Tx: xdr.TransactionV0{
+					SourceAccountEd25519: ed25519,
+					Fee:                  xdr.Uint32(tx.maxFee),
+					SeqNum:               xdr.SequenceNumber(sequence),
+					TimeBounds: &xdr.TimeBounds{
+						MinTime: xdr.TimePoint(tx.timebounds.MinTime),
+						MaxTime: xdr.TimePoint(tx.timebounds.MaxTime),
+					},
 				},
+				Signatures: nil,
 			},
-			Signatures: nil,
-		},
+		}
+	} else {
+		envelope = xdr.TransactionEnvelope{
+			Type: xdr.EnvelopeTypeEnvelopeTypeTx,
+			V1: &xdr.TransactionV1Envelope{
+				Tx: xdr.Transaction{
+					SourceAccount: accountID.ToMuxedAccount(),
+					Fee:           xdr.Uint32(tx.maxFee),
+					SeqNum:        xdr.SequenceNumber(sequence),
+					TimeBounds: &xdr.TimeBounds{
+						MinTime: xdr.TimePoint(tx.timebounds.MinTime),
+						MaxTime: xdr.TimePoint(tx.timebounds.MaxTime),
+					},
+				},
+				Signatures: nil,
+			},
+		}
 	}
 
 	// Handle the memo, if one is present
@@ -679,7 +711,11 @@ func NewTransaction(params TransactionParams) (*Transaction, error) {
 		if err != nil {
 			return nil, errors.Wrap(err, "couldn't build memo XDR")
 		}
-		envelope.V1.Tx.Memo = xdrMemo
+		if params.V0 {
+			envelope.V0.Tx.Memo = xdrMemo
+		} else {
+			envelope.V1.Tx.Memo = xdrMemo
+		}
 	}
 
 	for _, op := range tx.operations {
@@ -691,7 +727,11 @@ func NewTransaction(params TransactionParams) (*Transaction, error) {
 		if err2 != nil {
 			return nil, errors.Wrap(err2, fmt.Sprintf("failed to build operation %T", op))
 		}
-		envelope.V1.Tx.Operations = append(envelope.V1.Tx.Operations, xdrOperation)
+		if params.V0 {
+			envelope.V0.Tx.Operations = append(envelope.V0.Tx.Operations, xdrOperation)
+		} else {
+			envelope.V1.Tx.Operations = append(envelope.V1.Tx.Operations, xdrOperation)
+		}
 	}
 
 	tx.envelope = envelope
@@ -706,7 +746,7 @@ type FeeBumpTransactionParams struct {
 	BaseFee    int64
 }
 
-func convertToV1(tx *Transaction) (*Transaction, error) {
+func convertTx(tx *Transaction, v0 bool) (*Transaction, error) {
 	sourceAccount := tx.SourceAccount()
 	signatures := tx.Signatures()
 	tx, err := NewTransaction(TransactionParams{
@@ -716,6 +756,7 @@ func convertToV1(tx *Transaction) (*Transaction, error) {
 		BaseFee:              tx.BaseFee(),
 		Memo:                 tx.Memo(),
 		Timebounds:           tx.Timebounds(),
+		V0:                   v0,
 	})
 	if err != nil {
 		return tx, err
@@ -735,7 +776,7 @@ func NewFeeBumpTransaction(params FeeBumpTransactionParams) (*FeeBumpTransaction
 		return nil, errors.Wrap(err, "inner transaction envelope not found")
 	}
 	if innerEnv.Type == xdr.EnvelopeTypeEnvelopeTypeTxV0 {
-		inner, err = convertToV1(inner)
+		inner, err = convertTx(inner, false)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not upgrade transaction from v0 to v1")
 		}

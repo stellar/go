@@ -101,21 +101,6 @@ func newSignedFeeBumpTransaction(
 	return txeBase64, err
 }
 
-func convertToV0(tx *Transaction) {
-	tx.envelope.V0 = &xdr.TransactionV0Envelope{
-		Tx: xdr.TransactionV0{
-			SourceAccountEd25519: *tx.envelope.SourceAccount().Ed25519,
-			Fee:                  xdr.Uint32(tx.envelope.Fee()),
-			SeqNum:               xdr.SequenceNumber(tx.envelope.SeqNum()),
-			TimeBounds:           tx.envelope.V1.Tx.TimeBounds,
-			Memo:                 tx.envelope.Memo(),
-			Operations:           tx.envelope.Operations(),
-		},
-	}
-	tx.envelope.V1 = nil
-	tx.envelope.Type = xdr.EnvelopeTypeEnvelopeTypeTxV0
-}
-
 func TestValidateStellarPublicKey(t *testing.T) {
 	validKey := "GDWZCOEQRODFCH6ISYQPWY67L3ULLWS5ISXYYL5GH43W7YFMTLB65PYM"
 	err := validateStellarPublicKey(validKey)

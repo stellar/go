@@ -50,14 +50,13 @@ func TestFeeBumpUpgradesV0Transaction(t *testing.T) {
 			BaseFee:              2 * MinBaseFee,
 			Memo:                 MemoText("test-memo"),
 			Timebounds:           NewInfiniteTimeout(),
+			V0:                   true,
 		},
 	)
 	assert.NoError(t, err)
 
 	tx, err = tx.Sign(network.TestNetworkPassphrase, kp0)
 	assert.NoError(t, err)
-
-	convertToV0(tx)
 
 	feeBump, err := NewFeeBumpTransaction(
 		FeeBumpTransactionParams{
