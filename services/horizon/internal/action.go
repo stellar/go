@@ -9,7 +9,6 @@ import (
 
 	"github.com/stellar/go/services/horizon/internal/actions"
 	"github.com/stellar/go/services/horizon/internal/db2"
-	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/httpx"
 	"github.com/stellar/go/services/horizon/internal/ledger"
@@ -28,16 +27,6 @@ type Action struct {
 	Log *log.Entry
 
 	hq *history.Q
-	cq *core.Q
-}
-
-// CoreQ provides access to queries that access the stellar core database.
-func (action *Action) CoreQ() *core.Q {
-	if action.cq == nil {
-		action.cq = &core.Q{Session: action.App.CoreSession(action.R.Context())}
-	}
-
-	return action.cq
 }
 
 // HistoryQ provides access to queries that access the history portion of
