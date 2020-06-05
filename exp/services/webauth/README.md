@@ -25,12 +25,8 @@ Usage:
   webauth [command]
 
 Available Commands:
-  convjwtkey2jwk Convert a JWT ECDSA private key ASN.1 DER Base64 encoded that was generated with the old genjwtkey command to a JSON Web Key
-  genjwk         Generate a JSON Web Key (ECDSA/ES256) for JWT issuing
-  serve          Run the SEP-10 Web Authentication server
-
-Flags:
-  -h, --help   help for webauth
+  genjwk      Generate a JSON Web Key (ECDSA/ES256) for JWT issuing
+  serve       Run the SEP-10 Web Authentication server
 
 Use "webauth [command] --help" for more information about a command.
 ```
