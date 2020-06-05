@@ -9,7 +9,7 @@ import (
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/actions"
-	"github.com/stellar/go/services/horizon/internal/db2/core"
+	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/ledger"
 	"github.com/stellar/go/services/horizon/internal/paths"
 	hProblem "github.com/stellar/go/services/horizon/internal/render/problem"
@@ -30,7 +30,7 @@ type FindPathsHandler struct {
 	setLastLedgerHeader  bool
 	maxAssetsParamLength int
 	pathFinder           paths.Finder
-	coreQ                *core.Q
+	historyQ             *history.Q
 }
 
 // StrictReceivePathsQuery query struct for paths/strict-send end-point
@@ -154,7 +154,7 @@ func (handler FindPathsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 		sourceAccount := xdr.MustAddress(sourceAccount)
 		query.SourceAccount = &sourceAccount
 		query.ValidateSourceBalance = true
-		query.SourceAssets, query.SourceAssetBalances, err = handler.coreQ.AssetsForAddress(
+		query.SourceAssets, query.SourceAssetBalances, err = handler.historyQ.AssetsForAddress(
 			query.SourceAccount.Address(),
 		)
 		if err != nil {
@@ -212,7 +212,7 @@ type FindFixedPathsHandler struct {
 	maxAssetsParamLength int
 	setLastLedgerHeader  bool
 	pathFinder           paths.Finder
-	coreQ                *core.Q
+	historyQ             *history.Q
 }
 
 var destinationAssetsOrDestinationAccount = problem.P{
@@ -320,7 +320,7 @@ func (handler FindFixedPathsHandler) ServeHTTP(w http.ResponseWriter, r *http.Re
 	}
 
 	if destinationAccount != "" {
-		destinationAssets, _, err = handler.coreQ.AssetsForAddress(
+		destinationAssets, _, err = handler.historyQ.AssetsForAddress(
 			destinationAccount,
 		)
 		if err != nil {
