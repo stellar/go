@@ -19,7 +19,7 @@ type tokenHandler struct {
 	Logger                      *supportlog.Entry
 	HorizonClient               horizonclient.ClientInterface
 	NetworkPassphrase           string
-	SigningAddress              *keypair.FromAddress
+	SigningAddresses            []*keypair.FromAddress
 	JWK                         jose.JSONWebKey
 	JWTIssuer                   string
 	JWTExpiresIn                time.Duration
@@ -45,7 +45,16 @@ func (h tokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tx, clientAccountID, err := txnbuild.ReadChallengeTx(req.Transaction, h.SigningAddress.Address(), h.NetworkPassphrase)
+	var tx *txnbuild.Transaction
+	var clientAccountID string
+	var signingAddress *keypair.FromAddress
+	for _, s := range h.SigningAddresses {
+		tx, clientAccountID, err = txnbuild.ReadChallengeTx(req.Transaction, s.Address(), h.NetworkPassphrase)
+		if err == nil {
+			signingAddress = s
+			break
+		}
+	}
 	if err != nil {
 		badRequest.Render(w)
 		return
@@ -83,7 +92,7 @@ func (h tokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if clientAccountExists {
 		requiredThreshold := txnbuild.Threshold(clientAccount.Thresholds.HighThreshold)
 		clientSignerSummary := clientAccount.SignerSummary()
-		signersVerified, err = txnbuild.VerifyChallengeTxThreshold(req.Transaction, h.SigningAddress.Address(), h.NetworkPassphrase, requiredThreshold, clientSignerSummary)
+		signersVerified, err = txnbuild.VerifyChallengeTxThreshold(req.Transaction, signingAddress.Address(), h.NetworkPassphrase, requiredThreshold, clientSignerSummary)
 		if err != nil {
 			l.
 				WithField("signersCount", len(clientSignerSummary)).
@@ -99,7 +108,7 @@ func (h tokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			unauthorized.Render(w)
 			return
 		}
-		signersVerified, err = txnbuild.VerifyChallengeTxSigners(req.Transaction, h.SigningAddress.Address(), h.NetworkPassphrase, clientAccountID)
+		signersVerified, err = txnbuild.VerifyChallengeTxSigners(req.Transaction, signingAddress.Address(), h.NetworkPassphrase, clientAccountID)
 		if err != nil {
 			l.Infof("Failed to verify with account master key as signer.")
 			unauthorized.Render(w)

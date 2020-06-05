@@ -79,7 +79,7 @@ func TestToken_formInputSuccess(t *testing.T) {
 		Logger:            supportlog.DefaultLogger,
 		HorizonClient:     horizonClient,
 		NetworkPassphrase: network.TestNetworkPassphrase,
-		SigningAddress:    serverKey.FromAddress(),
+		SigningAddresses:  []*keypair.FromAddress{serverKey.FromAddress()},
 		JWK:               jwk,
 		JWTIssuer:         "https://example.com",
 		JWTExpiresIn:      time.Minute,
@@ -177,7 +177,7 @@ func TestToken_jsonInputSuccess(t *testing.T) {
 		Logger:            supportlog.DefaultLogger,
 		HorizonClient:     horizonClient,
 		NetworkPassphrase: network.TestNetworkPassphrase,
-		SigningAddress:    serverKey.FromAddress(),
+		SigningAddresses:  []*keypair.FromAddress{serverKey.FromAddress()},
 		JWK:               jwk,
 		JWTIssuer:         "https://example.com",
 		JWTExpiresIn:      time.Minute,
@@ -218,6 +218,120 @@ func TestToken_jsonInputSuccess(t *testing.T) {
 	claims := token.Claims.(jwt.MapClaims)
 	assert.Equal(t, "https://example.com", claims["iss"])
 	assert.Equal(t, account.Address(), claims["sub"])
+	assert.Equal(t, account.Address(), claims["sub"])
+	iat := time.Unix(int64(claims["iat"].(float64)), 0)
+	exp := time.Unix(int64(claims["exp"].(float64)), 0)
+	assert.True(t, iat.Before(time.Now()))
+	assert.True(t, exp.After(time.Now()))
+	assert.True(t, time.Now().Add(time.Minute).After(exp))
+	assert.Equal(t, exp.Sub(iat), time.Minute)
+}
+
+func TestToken_jsonInputValidRotatingServerSigners(t *testing.T) {
+	serverKey1 := keypair.MustRandom()
+	t.Logf("Server signing key 1: %s", serverKey1.Address())
+	serverKey2 := keypair.MustRandom()
+	t.Logf("Server signing key 2: %s", serverKey2.Address())
+
+	jwtPrivateKey, err := jwtkey.GenerateKey()
+	require.NoError(t, err)
+	jwk := jose.JSONWebKey{Key: jwtPrivateKey, Algorithm: string(jose.ES256)}
+
+	account := keypair.MustRandom()
+	t.Logf("Client account: %s", account.Address())
+
+	accountSigner1 := keypair.MustRandom()
+	t.Logf("Client account signer 1: %s", accountSigner1.Address())
+
+	accountSigner2 := keypair.MustRandom()
+	t.Logf("Client account signer 2: %s", accountSigner2.Address())
+
+	tx, err := txnbuild.BuildChallengeTx(
+		serverKey2.Seed(),
+		account.Address(),
+		"testserver",
+		network.TestNetworkPassphrase,
+		time.Minute,
+	)
+	require.NoError(t, err)
+
+	chTx, err := tx.Base64()
+	require.NoError(t, err)
+	t.Logf("Tx: %s", chTx)
+
+	tx, err = tx.Sign(network.TestNetworkPassphrase, accountSigner1, accountSigner2)
+	require.NoError(t, err)
+	txSigned, err := tx.Base64()
+	require.NoError(t, err)
+	t.Logf("Signed: %s", txSigned)
+
+	horizonClient := &horizonclient.MockClient{}
+	horizonClient.
+		On("AccountDetail", horizonclient.AccountRequest{AccountID: account.Address()}).
+		Return(
+			horizon.Account{
+				Thresholds: horizon.AccountThresholds{
+					LowThreshold:  1,
+					MedThreshold:  10,
+					HighThreshold: 100,
+				},
+				Signers: []horizon.Signer{
+					{
+						Key:    accountSigner1.Address(),
+						Weight: 40,
+					},
+					{
+						Key:    accountSigner2.Address(),
+						Weight: 60,
+					},
+				}},
+			nil,
+		)
+
+	h := tokenHandler{
+		Logger:            supportlog.DefaultLogger,
+		HorizonClient:     horizonClient,
+		NetworkPassphrase: network.TestNetworkPassphrase,
+		SigningAddresses:  []*keypair.FromAddress{serverKey1.FromAddress(), serverKey2.FromAddress()},
+		JWK:               jwk,
+		JWTIssuer:         "https://example.com",
+		JWTExpiresIn:      time.Minute,
+	}
+
+	body := struct {
+		Transaction string `json:"transaction"`
+	}{
+		Transaction: txSigned,
+	}
+	bodyBytes, err := json.Marshal(body)
+	require.NoError(t, err)
+	r := httptest.NewRequest("POST", "/", bytes.NewReader(bodyBytes))
+	r.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, r)
+	resp := w.Result()
+
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
+
+	res := struct {
+		Token string `json:"token"`
+	}{}
+	err = json.NewDecoder(resp.Body).Decode(&res)
+	require.NoError(t, err)
+
+	t.Logf("JWT: %s", res.Token)
+
+	token, err := jwt.Parse(res.Token, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodECDSA); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return &jwtPrivateKey.PublicKey, nil
+	})
+	require.NoError(t, err)
+
+	claims := token.Claims.(jwt.MapClaims)
+	assert.Equal(t, "https://example.com", claims["iss"])
 	assert.Equal(t, account.Address(), claims["sub"])
 	iat := time.Unix(int64(claims["iat"].(float64)), 0)
 	exp := time.Unix(int64(claims["exp"].(float64)), 0)
@@ -290,7 +404,7 @@ func TestToken_jsonInputValidMultipleSigners(t *testing.T) {
 		Logger:            supportlog.DefaultLogger,
 		HorizonClient:     horizonClient,
 		NetworkPassphrase: network.TestNetworkPassphrase,
-		SigningAddress:    serverKey.FromAddress(),
+		SigningAddresses:  []*keypair.FromAddress{serverKey.FromAddress()},
 		JWK:               jwk,
 		JWTIssuer:         "https://example.com",
 		JWTExpiresIn:      time.Minute,
@@ -392,7 +506,7 @@ func TestToken_jsonInputNotEnoughWeight(t *testing.T) {
 		Logger:            supportlog.DefaultLogger,
 		HorizonClient:     horizonClient,
 		NetworkPassphrase: network.TestNetworkPassphrase,
-		SigningAddress:    serverKey.FromAddress(),
+		SigningAddresses:  []*keypair.FromAddress{serverKey.FromAddress()},
 		JWK:               jwk,
 		JWTIssuer:         "https://example.com",
 		JWTExpiresIn:      time.Minute,
@@ -473,7 +587,7 @@ func TestToken_jsonInputUnrecognizedSigner(t *testing.T) {
 		Logger:            supportlog.DefaultLogger,
 		HorizonClient:     horizonClient,
 		NetworkPassphrase: network.TestNetworkPassphrase,
-		SigningAddress:    serverKey.FromAddress(),
+		SigningAddresses:  []*keypair.FromAddress{serverKey.FromAddress()},
 		JWK:               jwk,
 		JWTIssuer:         "https://example.com",
 		JWTExpiresIn:      time.Minute,
@@ -549,7 +663,7 @@ func TestToken_jsonInputAccountNotExistSuccess(t *testing.T) {
 		Logger:                      supportlog.DefaultLogger,
 		HorizonClient:               horizonClient,
 		NetworkPassphrase:           network.TestNetworkPassphrase,
-		SigningAddress:              serverKey.FromAddress(),
+		SigningAddresses:            []*keypair.FromAddress{serverKey.FromAddress()},
 		JWK:                         jwk,
 		JWTIssuer:                   "https://example.com",
 		JWTExpiresIn:                time.Minute,
@@ -651,7 +765,7 @@ func TestToken_jsonInputAccountNotExistFail(t *testing.T) {
 		Logger:                      supportlog.DefaultLogger,
 		HorizonClient:               horizonClient,
 		NetworkPassphrase:           network.TestNetworkPassphrase,
-		SigningAddress:              serverKey.FromAddress(),
+		SigningAddresses:            []*keypair.FromAddress{serverKey.FromAddress()},
 		JWK:                         jwk,
 		JWTIssuer:                   "https://example.com",
 		JWTExpiresIn:                time.Minute,
@@ -728,7 +842,7 @@ func TestToken_jsonInputAccountNotExistNotAllowed(t *testing.T) {
 		Logger:                      supportlog.DefaultLogger,
 		HorizonClient:               horizonClient,
 		NetworkPassphrase:           network.TestNetworkPassphrase,
-		SigningAddress:              serverKey.FromAddress(),
+		SigningAddresses:            []*keypair.FromAddress{serverKey.FromAddress()},
 		JWK:                         jwk,
 		JWTIssuer:                   "https://example.com",
 		JWTExpiresIn:                time.Minute,
