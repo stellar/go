@@ -870,3 +870,82 @@ func TestToken_jsonInputAccountNotExistNotAllowed(t *testing.T) {
 
 	assert.JSONEq(t, `{"error":"The request could not be authenticated."}`, string(respBodyBytes))
 }
+
+func TestToken_jsonInputUnrecognizedServerSigner(t *testing.T) {
+	serverKey1 := keypair.MustRandom()
+	t.Logf("Server signing key 1: %s", serverKey1.Address())
+	serverKey2 := keypair.MustRandom()
+	t.Logf("Server signing key 2: %s", serverKey2.Address())
+
+	jwtPrivateKey, err := jwtkey.GenerateKey()
+	require.NoError(t, err)
+	jwk := jose.JSONWebKey{Key: jwtPrivateKey, Algorithm: string(jose.ES256)}
+
+	account := keypair.MustRandom()
+	t.Logf("Client account: %s", account.Address())
+
+	tx, err := txnbuild.BuildChallengeTx(
+		serverKey1.Seed(),
+		account.Address(),
+		"testserver",
+		network.TestNetworkPassphrase,
+		time.Minute,
+	)
+	require.NoError(t, err)
+
+	chTx, err := tx.Base64()
+	require.NoError(t, err)
+	t.Logf("Tx: %s", chTx)
+
+	tx, err = tx.Sign(network.TestNetworkPassphrase, account)
+	require.NoError(t, err)
+	txSigned, err := tx.Base64()
+	require.NoError(t, err)
+	t.Logf("Signed: %s", txSigned)
+
+	horizonClient := &horizonclient.MockClient{}
+	horizonClient.
+		On("AccountDetail", horizonclient.AccountRequest{AccountID: account.Address()}).
+		Return(
+			horizon.Account{},
+			&horizonclient.Error{
+				Problem: problem.P{
+					Type:   "https://stellar.org/horizon-errors/not_found",
+					Title:  "Resource Missing",
+					Status: 404,
+				},
+			},
+		)
+
+	h := tokenHandler{
+		Logger:                      supportlog.DefaultLogger,
+		HorizonClient:               horizonClient,
+		NetworkPassphrase:           network.TestNetworkPassphrase,
+		SigningAddresses:            []*keypair.FromAddress{serverKey2.FromAddress()},
+		JWK:                         jwk,
+		JWTIssuer:                   "https://example.com",
+		JWTExpiresIn:                time.Minute,
+		AllowAccountsThatDoNotExist: false,
+	}
+
+	body := struct {
+		Transaction string `json:"transaction"`
+	}{
+		Transaction: txSigned,
+	}
+	bodyBytes, err := json.Marshal(body)
+	require.NoError(t, err)
+	r := httptest.NewRequest("POST", "/", bytes.NewReader(bodyBytes))
+	r.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, r)
+	resp := w.Result()
+
+	require.Equal(t, 400, resp.StatusCode)
+	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
+
+	respBodyBytes, err := ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	assert.JSONEq(t, `{"error":"The request was invalid in some way."}`, string(respBodyBytes))
+}
