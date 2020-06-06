@@ -55,7 +55,7 @@ func (h tokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 	}
-	if err != nil {
+	if signingAddress == nil {
 		badRequest.Render(w)
 		return
 	}
