@@ -61,7 +61,6 @@ func (h accountGetHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	resp := accountResponse{
 		Address: acc.Address,
-		Signer:  h.SigningAddresses[0].Address(),
 		Signers: signers,
 	}
 
