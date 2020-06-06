@@ -69,7 +69,8 @@ func (h tokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	l := h.Logger.Ctx(ctx).
 		WithField("tx", hash).
-		WithField("account", clientAccountID)
+		WithField("account", clientAccountID).
+		WithField("serversigner", signingAddress.Address())
 
 	l.Info("Start verifying challenge transaction.")
 
