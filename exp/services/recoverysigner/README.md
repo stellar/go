@@ -28,7 +28,8 @@ Usage:
   recoverysigner [command]
 
 Available Commands:
-  serve       Run the SEP-30 Recover Signer server
+  db          Run database operations
+  serve       Run the SEP-30 Recovery Signer server
 
 Use "recoverysigner [command] --help" for more information about a command.
 ```
