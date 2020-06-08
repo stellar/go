@@ -70,7 +70,7 @@ type handlerDeps struct {
 	NetworkPassphrase  string
 	SigningKeys        []*keypair.Full
 	SigningAddresses   []*keypair.FromAddress
-	KMS                *encryption.KMS
+	KMS                encryption.KMS
 	AccountStore       account.Store
 	SEP10JWKS          jose.JSONWebKeySet
 	SEP10JWTIssuer     string
