@@ -54,22 +54,33 @@ func (q SellingBuyingAssetQueryParams) Validate() error {
 }
 
 // Selling returns an xdr.Asset representing the selling side of the offer.
-func (q SellingBuyingAssetQueryParams) Selling() *xdr.Asset {
+func (q SellingBuyingAssetQueryParams) Selling() (*xdr.Asset, error) {
 	if len(q.SellingAsset) > 0 {
 		switch q.SellingAsset {
 		case "native":
 			asset := xdr.MustNewNativeAsset()
-			return &asset
+			return &asset, nil
 		default:
 			parts := strings.Split(q.SellingAsset, ":")
-			asset := xdr.MustNewCreditAsset(parts[0], parts[1])
-
-			return &asset
+			if len(parts) != 2 {
+				return nil, problem.MakeInvalidFieldProblem(
+					"selling",
+					errors.New("missing colon"),
+				)
+			}
+			asset, err := xdr.NewCreditAsset(parts[0], parts[1])
+			if err != nil {
+				return nil, problem.MakeInvalidFieldProblem(
+					"selling",
+					err,
+				)
+			}
+			return &asset, err
 		}
 	}
 
 	if len(q.SellingAssetType) == 0 {
-		return nil
+		return nil, nil
 	}
 
 	selling, err := xdr.BuildAsset(
@@ -79,29 +90,42 @@ func (q SellingBuyingAssetQueryParams) Selling() *xdr.Asset {
 	)
 
 	if err != nil {
-		panic(err)
+		p := problem.BadRequest
+		p.Extras = map[string]interface{}{"reason": fmt.Sprintf("bad selling asset: %s", err.Error())}
+		return nil, p
 	}
 
-	return &selling
+	return &selling, nil
 }
 
 // Buying returns an *xdr.Asset representing the buying side of the offer.
-func (q SellingBuyingAssetQueryParams) Buying() *xdr.Asset {
+func (q SellingBuyingAssetQueryParams) Buying() (*xdr.Asset, error) {
 	if len(q.BuyingAsset) > 0 {
 		switch q.BuyingAsset {
 		case "native":
 			asset := xdr.MustNewNativeAsset()
-			return &asset
+			return &asset, nil
 		default:
 			parts := strings.Split(q.BuyingAsset, ":")
-			asset := xdr.MustNewCreditAsset(parts[0], parts[1])
-
-			return &asset
+			if len(parts) != 2 {
+				return nil, problem.MakeInvalidFieldProblem(
+					"buying",
+					errors.New("missing colon"),
+				)
+			}
+			asset, err := xdr.NewCreditAsset(parts[0], parts[1])
+			if err != nil {
+				return nil, problem.MakeInvalidFieldProblem(
+					"buying",
+					err,
+				)
+			}
+			return &asset, err
 		}
 	}
 
 	if len(q.BuyingAssetType) == 0 {
-		return nil
+		return nil, nil
 	}
 
 	buying, err := xdr.BuildAsset(
@@ -111,8 +135,10 @@ func (q SellingBuyingAssetQueryParams) Buying() *xdr.Asset {
 	)
 
 	if err != nil {
-		panic(err)
+		p := problem.BadRequest
+		p.Extras = map[string]interface{}{"reason": fmt.Sprintf("bad buying asset: %s", err.Error())}
+		return nil, p
 	}
 
-	return &buying
+	return &buying, nil
 }

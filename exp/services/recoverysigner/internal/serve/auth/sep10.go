@@ -16,12 +16,13 @@ import (
 func SEP10Middleware(issuer string, ks jose.JSONWebKeySet) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if address, ok := sep10ClaimsFromRequest(r, issuer, ks); ok {
+			if address, k, ok := sep10ClaimsFromRequest(r, issuer, ks); ok {
 				ctx := r.Context()
 				auth, _ := FromContext(ctx)
 				auth.Address = address
 
 				log.Ctx(ctx).
+					WithField("jwkkid", k.KeyID).
 					WithField("address", address).
 					Info("SEP-10 JWT verified.")
 
@@ -51,36 +52,38 @@ func (c sep10JWTClaims) Validate(issuer string) error {
 	return c.Claims.Validate(expectedClaims)
 }
 
-func sep10ClaimsFromRequest(r *http.Request, issuer string, ks jose.JSONWebKeySet) (address string, ok bool) {
+func sep10ClaimsFromRequest(r *http.Request, issuer string, ks jose.JSONWebKeySet) (address string, k jose.JSONWebKey, ok bool) {
 	authHeader := r.Header.Get("Authorization")
 	tokenEncoded := httpauthz.ParseBearerToken(authHeader)
 	if tokenEncoded == "" {
-		return "", false
+		return "", jose.JSONWebKey{}, false
 	}
 	token, err := jwt.ParseSigned(tokenEncoded)
 	if err != nil {
-		return "", false
+		return "", jose.JSONWebKey{}, false
 	}
 	tokenClaims := sep10JWTClaims{}
 	verified := false
+	verifiedWithKey := jose.JSONWebKey{}
 	for _, k := range ks.Keys {
 		err = token.Claims(k, &tokenClaims)
 		if err == nil {
 			verified = true
+			verifiedWithKey = k
 			break
 		}
 	}
 	if !verified {
-		return "", false
+		return "", jose.JSONWebKey{}, false
 	}
 	err = tokenClaims.Validate(issuer)
 	if err != nil {
-		return "", false
+		return "", jose.JSONWebKey{}, false
 	}
 	address = tokenClaims.Subject
 	_, err = keypair.ParseAddress(address)
 	if err != nil {
-		return "", false
+		return "", jose.JSONWebKey{}, false
 	}
-	return address, true
+	return address, verifiedWithKey, true
 }

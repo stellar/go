@@ -57,7 +57,8 @@ func (h challengeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	l := h.Logger.Ctx(ctx).
 		WithField("tx", hash).
-		WithField("account", account)
+		WithField("account", account).
+		WithField("serversigner", h.SigningKey.Address())
 
 	l.Info("Generated challenge transaction for account.")
 

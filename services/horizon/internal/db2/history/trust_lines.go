@@ -1,6 +1,7 @@
 package history
 
 import (
+	"database/sql"
 	"encoding/base64"
 
 	sq "github.com/Masterminds/squirrel"
@@ -19,6 +20,45 @@ func (trustLine TrustLine) IsAuthorized() bool {
 // liabilities with its credit
 func (trustLine TrustLine) IsAuthorizedToMaintainLiabilities() bool {
 	return xdr.TrustLineFlags(trustLine.Flags).IsAuthorizedToMaintainLiabilitiesFlag()
+}
+
+// AssetsForAddress returns a list of assets and balances for those assets held by
+// a given address.
+func (q *Q) AssetsForAddress(addy string) ([]xdr.Asset, []xdr.Int64, error) {
+	if tx := q.GetTx(); tx == nil {
+		return nil, nil, errors.New("cannot be called outside of a transaction")
+	}
+	if opts := q.GetTxOptions(); opts == nil || !opts.ReadOnly || opts.Isolation != sql.LevelRepeatableRead {
+		return nil, nil, errors.New("should only be called in a repeatable read transaction")
+	}
+
+	account, err := q.GetAccountByID(addy)
+
+	if q.NoRows(err) {
+		// if there is no account for the given address then
+		// we return an empty list of assets and balances
+		return []xdr.Asset{}, []xdr.Int64{}, nil
+	} else if err != nil {
+		return nil, nil, err
+	}
+
+	var tls []TrustLine
+	err = q.Select(&tls, selectTrustLines.Where(sq.Eq{"account_id": addy}))
+	if err != nil {
+		return nil, nil, err
+	}
+
+	assets := make([]xdr.Asset, len(tls)+1)
+	balances := make([]xdr.Int64, len(tls)+1)
+	for i, tl := range tls {
+		assets[i] = xdr.MustNewCreditAsset(tl.AssetCode, tl.AssetIssuer)
+		balances[i] = xdr.Int64(tl.Balance)
+	}
+
+	assets[len(assets)-1] = xdr.MustNewNativeAsset()
+	balances[len(assets)-1] = xdr.Int64(account.Balance)
+
+	return assets, balances, err
 }
 
 func (q *Q) CountTrustLines() (int, error) {

@@ -37,17 +37,24 @@ func MustNewNativeAsset() Asset {
 
 // MustNewCreditAsset returns a new general asset, panicking if it can't.
 func MustNewCreditAsset(code string, issuer string) Asset {
-	a := Asset{}
-	accountID := AccountId{}
-	err := accountID.SetAddress(issuer)
-	if err != nil {
-		panic(err)
-	}
-	err = a.SetCredit(code, accountID)
+	a, err := NewCreditAsset(code, issuer)
 	if err != nil {
 		panic(err)
 	}
 	return a
+}
+
+// NewCreditAsset returns a new general asset, returning an error if it can't.
+func NewCreditAsset(code string, issuer string) (Asset, error) {
+	a := Asset{}
+	accountID := AccountId{}
+	if err := accountID.SetAddress(issuer); err != nil {
+		return Asset{}, err
+	}
+	if err := a.SetCredit(code, accountID); err != nil {
+		return Asset{}, err
+	}
+	return a, nil
 }
 
 // BuildAsset creates a new asset from a given `assetType`, `code`, and `issuer`.

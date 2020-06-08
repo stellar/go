@@ -90,11 +90,20 @@ func (handler GetOffersHandler) GetResourcePage(
 		return nil, err
 	}
 
+	selling, err := qp.Selling()
+	if err != nil {
+		return nil, err
+	}
+	buying, err := qp.Buying()
+	if err != nil {
+		return nil, err
+	}
+
 	query := history.OffersQuery{
 		PageQuery: pq,
 		SellerID:  qp.Seller,
-		Selling:   qp.Selling(),
-		Buying:    qp.Buying(),
+		Selling:   selling,
+		Buying:    buying,
 	}
 
 	historyQ, err := HistoryQFromRequest(r)

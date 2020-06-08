@@ -393,6 +393,31 @@ func TestGetOffersHandler(t *testing.T) {
 			tt.Assert.Equal(asset, offer.Buying)
 		}
 	})
+
+	t.Run("Wrong buying query parameter", func(t *testing.T) {
+		asset := horizon.Asset{}
+		eurAsset.Extract(&asset.Type, &asset.Code, &asset.Issuer)
+
+		_, err := handler.GetResourcePage(
+			httptest.NewRecorder(),
+			makeRequest(
+				t,
+				map[string]string{
+					"buying": `native\\u0026cursor=\\u0026limit=10\\u0026order=asc\\u0026selling=BTC:GAEDZ7BHMDYEMU6IJT3CTTGDUSLZWS5CQWZHGP4XUOIDG5ISH3AFAEK2`,
+				},
+				map[string]string{},
+				q.Session,
+			),
+		)
+		tt.Assert.Error(err)
+		p, ok := err.(*problem.P)
+		if tt.Assert.True(ok) {
+			tt.Assert.Equal(400, p.Status)
+			tt.Assert.NotNil(p.Extras)
+			tt.Assert.Equal(p.Extras["invalid_field"], "buying")
+			tt.Assert.Equal(p.Extras["reason"], "Asset code length is invalid")
+		}
+	})
 }
 
 func TestGetAccountOffersHandler(t *testing.T) {
