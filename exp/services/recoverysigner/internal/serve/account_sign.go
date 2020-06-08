@@ -26,12 +26,6 @@ type accountSignRequest struct {
 }
 
 type accountSignResponse struct {
-	Signer            string `json:"signer"`
-	Signature         string `json:"signature"`
-	NetworkPassphrase string `json:"network_passphrase"`
-}
-
-type accountSignWithSigningAddressResponse struct {
 	Signature         string `json:"signature"`
 	NetworkPassphrase string `json:"network_passphrase"`
 }
@@ -49,7 +43,7 @@ func (h accountSignHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Decode request.
 	req := accountSignRequest{}
 	err := httpdecode.Decode(r, &req)
-	if err != nil || req.Address == nil {
+	if err != nil || req.Address == nil || req.SigningAddress == nil {
 		badRequest.Render(w)
 		return
 	}
@@ -63,21 +57,16 @@ func (h accountSignHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	l.Info("Request to sign transaction.")
 
 	var signingKey *keypair.Full
-	if req.SigningAddress != nil {
-		for _, sk := range h.SigningKeys {
-			if req.SigningAddress.Address() == sk.Address() {
-				signingKey = sk
-				break
-			}
-		}
-		if signingKey == nil {
-			l.Info("Signing key not found.")
-			notFound.Render(w)
-			return
+	for _, sk := range h.SigningKeys {
+		if req.SigningAddress.Address() == sk.Address() {
+			signingKey = sk
+			break
 		}
 	}
 	if signingKey == nil {
-		signingKey = h.SigningKeys[0]
+		l.Info("Signing key not found.")
+		notFound.Render(w)
+		return
 	}
 
 	// Find the account that the request is for.
@@ -175,18 +164,9 @@ func (h accountSignHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	l.Info("Transaction signed.")
 
-	if req.SigningAddress != nil {
-		resp := accountSignWithSigningAddressResponse{
-			Signature:         sig,
-			NetworkPassphrase: h.NetworkPassphrase,
-		}
-		httpjson.Render(w, resp, httpjson.JSON)
-	} else {
-		resp := accountSignResponse{
-			Signer:            signingKey.Address(),
-			Signature:         sig,
-			NetworkPassphrase: h.NetworkPassphrase,
-		}
-		httpjson.Render(w, resp, httpjson.JSON)
+	resp := accountSignResponse{
+		Signature:         sig,
+		NetworkPassphrase: h.NetworkPassphrase,
 	}
+	httpjson.Render(w, resp, httpjson.JSON)
 }

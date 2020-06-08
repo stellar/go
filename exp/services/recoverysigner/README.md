@@ -1,7 +1,7 @@
 # Recovery Signer
 
 This is an incomplete and work-in-progress implementation of the [SEP-30]
-Recovery Signer protocol.
+Recovery Signer protocol v0.4.0.
 
 A Recovery Signer is a server that can help a user regain control of a Stellar
 account if they have lost their secret key. A user registers their account with
