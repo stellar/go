@@ -5,7 +5,6 @@ import "time"
 type accountResponse struct {
 	Address    string                    `json:"address"`
 	Identities []accountResponseIdentity `json:"identities"`
-	Signer     string                    `json:"signer"`
 	Signers    []accountResponseSigner   `json:"signers"`
 }
 
