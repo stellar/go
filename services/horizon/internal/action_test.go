@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/stellar/go/services/horizon/internal/db2"
-	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/support/render/hal"
@@ -23,7 +22,7 @@ func TestGetTransactionPage(t *testing.T) {
 	defer tt.Finish()
 
 	ctx := context.Background()
-	w := mustInitWeb(ctx, &history.Q{tt.HorizonSession()}, &core.Q{tt.CoreSession()}, time.Duration(5), 0, true)
+	w := mustInitWeb(ctx, &history.Q{tt.HorizonSession()}, time.Duration(5), 0, true)
 
 	// filter by account
 	params := &indexActionQueryParams{

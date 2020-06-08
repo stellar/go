@@ -17,7 +17,6 @@ import (
 
 	"github.com/stellar/go/services/horizon/internal/actions"
 	"github.com/stellar/go/services/horizon/internal/db2"
-	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/ledger"
 	"github.com/stellar/go/services/horizon/internal/paths"
@@ -47,7 +46,6 @@ type web struct {
 	ingestFailedTx     bool
 
 	historyQ *history.Q
-	coreQ    *core.Q
 
 	requestTimer metrics.Timer
 	failureMeter metrics.Meter
@@ -68,12 +66,9 @@ func init() {
 }
 
 // mustInitWeb installed a new Web instance onto the provided app object.
-func mustInitWeb(ctx context.Context, hq *history.Q, cq *core.Q, updateFreq time.Duration, threshold uint, ingestFailedTx bool) *web {
+func mustInitWeb(ctx context.Context, hq *history.Q, updateFreq time.Duration, threshold uint, ingestFailedTx bool) *web {
 	if hq == nil {
 		log.Fatal("missing history DB for installing the web instance")
-	}
-	if cq == nil {
-		log.Fatal("missing core DB for installing the web instance")
 	}
 
 	return &web{
@@ -81,7 +76,6 @@ func mustInitWeb(ctx context.Context, hq *history.Q, cq *core.Q, updateFreq time
 		router:             chi.NewRouter(),
 		internalRouter:     chi.NewRouter(),
 		historyQ:           hq,
-		coreQ:              cq,
 		sseUpdateFrequency: updateFreq,
 		staleThreshold:     threshold,
 		ingestFailedTx:     ingestFailedTx,
