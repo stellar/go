@@ -41,6 +41,8 @@ func TestDBCommand_Migrate_upDownAll(t *testing.T) {
 			"20200320000000-create-accounts-audit.sql",
 			"20200320000001-create-identities-audit.sql",
 			"20200320000002-create-auth-methods-audit.sql",
+			"20200603000000-create-signers.sql",
+			"20200603000001-create-signers-audit.sql",
 		}
 		assert.Equal(t, wantIDs, ids)
 
@@ -50,8 +52,8 @@ func TestDBCommand_Migrate_upDownAll(t *testing.T) {
 			messages = append(messages, l.Message)
 		}
 		wantMessages := []string{
-			"Migrations to apply up: 20200309000000-initial-1.sql, 20200309000001-initial-2.sql, 20200311000000-create-accounts.sql, 20200311000001-create-identities.sql, 20200311000002-create-auth-methods.sql, 20200320000000-create-accounts-audit.sql, 20200320000001-create-identities-audit.sql, 20200320000002-create-auth-methods-audit.sql",
-			"Successfully applied 8 migrations up.",
+			"Migrations to apply up: 20200309000000-initial-1.sql, 20200309000001-initial-2.sql, 20200311000000-create-accounts.sql, 20200311000001-create-identities.sql, 20200311000002-create-auth-methods.sql, 20200320000000-create-accounts-audit.sql, 20200320000001-create-identities-audit.sql, 20200320000002-create-auth-methods-audit.sql, 20200603000000-create-signers.sql, 20200603000001-create-signers-audit.sql",
+			"Successfully applied 10 migrations up.",
 		}
 		assert.Equal(t, wantMessages, messages)
 	}
@@ -75,8 +77,8 @@ func TestDBCommand_Migrate_upDownAll(t *testing.T) {
 			messages = append(messages, l.Message)
 		}
 		wantMessages := []string{
-			"Migrations to apply down: 20200320000002-create-auth-methods-audit.sql, 20200320000001-create-identities-audit.sql, 20200320000000-create-accounts-audit.sql, 20200311000002-create-auth-methods.sql, 20200311000001-create-identities.sql, 20200311000000-create-accounts.sql, 20200309000001-initial-2.sql, 20200309000000-initial-1.sql",
-			"Successfully applied 8 migrations down.",
+			"Migrations to apply down: 20200603000001-create-signers-audit.sql, 20200603000000-create-signers.sql, 20200320000002-create-auth-methods-audit.sql, 20200320000001-create-identities-audit.sql, 20200320000000-create-accounts-audit.sql, 20200311000002-create-auth-methods.sql, 20200311000001-create-identities.sql, 20200311000000-create-accounts.sql, 20200309000001-initial-2.sql, 20200309000000-initial-1.sql",
+			"Successfully applied 10 migrations down.",
 		}
 		assert.Equal(t, wantMessages, messages)
 	}
