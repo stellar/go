@@ -1,6 +1,7 @@
 package history
 
 import (
+	"database/sql"
 	"encoding/base64"
 
 	sq "github.com/Masterminds/squirrel"
@@ -24,6 +25,13 @@ func (trustLine TrustLine) IsAuthorizedToMaintainLiabilities() bool {
 // AssetsForAddress returns a list of assets and balances for those assets held by
 // a given address.
 func (q *Q) AssetsForAddress(addy string) ([]xdr.Asset, []xdr.Int64, error) {
+	if tx := q.GetTx(); tx == nil {
+		return nil, nil, errors.New("cannot be called outside of a transaction")
+	}
+	if opts := q.GetTxOptions(); opts == nil || !opts.ReadOnly || opts.Isolation != sql.LevelRepeatableRead {
+		return nil, nil, errors.New("should only be called in a repeatable read transaction")
+	}
+
 	account, err := q.GetAccountByID(addy)
 
 	if q.NoRows(err) {

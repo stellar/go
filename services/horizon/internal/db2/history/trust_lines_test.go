@@ -1,6 +1,7 @@
 package history
 
 import (
+	"database/sql"
 	"testing"
 
 	"github.com/stellar/go/services/horizon/internal/test"
@@ -366,16 +367,27 @@ func TestGetTrustLinesByAccountID(t *testing.T) {
 
 }
 
-func TestAssetsForAddress(t *testing.T) {
+func TestAssetsForAddressRequiresTransaction(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
-	assets, balances, err := q.AssetsForAddress(eurTrustLine.AccountId.Address())
-	tt.Assert.NoError(err)
-	tt.Assert.Empty(assets)
-	tt.Assert.Empty(balances)
+	_, _, err := q.AssetsForAddress(eurTrustLine.AccountId.Address())
+	assert.EqualError(t, err, "cannot be called outside of a transaction")
+
+	assert.NoError(t, q.Begin())
+	defer q.Rollback()
+
+	_, _, err = q.AssetsForAddress(eurTrustLine.AccountId.Address())
+	assert.EqualError(t, err, "should only be called in a repeatable read transaction")
+}
+
+func TestAssetsForAddress(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	test.ResetHorizonDB(t, tt.HorizonDB)
+	q := &Q{tt.HorizonSession()}
 
 	ledgerEntries := []xdr.LedgerEntry{
 		xdr.LedgerEntry{
@@ -387,7 +399,7 @@ func TestAssetsForAddress(t *testing.T) {
 		},
 	}
 
-	err = q.UpsertAccounts(ledgerEntries)
+	err := q.UpsertAccounts(ledgerEntries)
 	assert.NoError(t, err)
 
 	_, err = q.InsertTrustLine(eurTrustLine, 1234)
@@ -412,6 +424,18 @@ func TestAssetsForAddress(t *testing.T) {
 
 	_, err = q.InsertTrustLine(brlTrustLine, 1234)
 	tt.Assert.NoError(err)
+
+	err = q.BeginTx(&sql.TxOptions{
+		Isolation: sql.LevelRepeatableRead,
+		ReadOnly:  true,
+	})
+	assert.NoError(t, err)
+	defer q.Rollback()
+
+	assets, balances, err := q.AssetsForAddress(usdTrustLine.AccountId.Address())
+	tt.Assert.NoError(err)
+	tt.Assert.Empty(assets)
+	tt.Assert.Empty(balances)
 
 	assets, balances, err = q.AssetsForAddress(account1.AccountId.Address())
 	tt.Assert.NoError(err)
