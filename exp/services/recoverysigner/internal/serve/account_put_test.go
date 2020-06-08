@@ -210,7 +210,6 @@ func TestAccountPut_authenticatedByAccountAddress(t *testing.T) {
 			"role": "owner"
 		}
 	],
-	"signer": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE",
 	"signers": [
 		{
 			"key": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE",
@@ -307,7 +306,6 @@ func TestAccountPut_authenticatedByIdentityAddress(t *testing.T) {
 			"role": "owner"
 		}
 	],
-	"signer": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE",
 	"signers": [
 		{
 			"key": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE",
@@ -404,7 +402,6 @@ func TestAccountPut_authenticatedByPhoneNumber(t *testing.T) {
 			"role": "owner"
 		}
 	],
-	"signer": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE",
 	"signers": [
 		{
 			"key": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE",
@@ -501,7 +498,6 @@ func TestAccountPut_authenticatedByEmail(t *testing.T) {
 			"role": "owner"
 		}
 	],
-	"signer": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE",
 	"signers": [
 		{
 			"key": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE",
