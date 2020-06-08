@@ -19,6 +19,7 @@ func TestAuditTables(t *testing.T) {
 	assertAuditTableCols(t, conn, "accounts", "accounts_audit")
 	assertAuditTableCols(t, conn, "identities", "identities_audit")
 	assertAuditTableCols(t, conn, "auth_methods", "auth_methods_audit")
+	assertAuditTableCols(t, conn, "signers", "signers_audit")
 }
 
 // assertAuditTableCols checks that the audit table for the given
