@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/stellar/go/clients/horizonclient"
@@ -20,7 +21,7 @@ type Options struct {
 	HorizonURL                  string
 	Port                        int
 	NetworkPassphrase           string
-	SigningKey                  string
+	SigningKeys                 string
 	ChallengeExpiresIn          time.Duration
 	JWK                         string
 	JWTIssuer                   string
@@ -47,13 +48,20 @@ func Serve(opts Options) {
 }
 
 func handler(opts Options) (http.Handler, error) {
-	signingKey, err := keypair.ParseFull(opts.SigningKey)
-	if err != nil {
-		return nil, errors.Wrap(err, "parsing signing key seed")
+	signingKeys := []*keypair.Full{}
+	signingAddresses := []*keypair.FromAddress{}
+	for i, signingKeyStr := range strings.Split(opts.SigningKeys, ",") {
+		signingKey, err := keypair.ParseFull(signingKeyStr)
+		if err != nil {
+			return nil, errors.Wrap(err, "parsing signing key seed")
+		}
+		signingKeys = append(signingKeys, signingKey)
+		signingAddresses = append(signingAddresses, signingKey.FromAddress())
+		opts.Logger.Info("Signing key ", i, ": ", signingKey.Address())
 	}
 
 	jwk := jose.JSONWebKey{}
-	err = json.Unmarshal([]byte(opts.JWK), &jwk)
+	err := json.Unmarshal([]byte(opts.JWK), &jwk)
 	if err != nil {
 		return nil, errors.Wrap(err, "parsing JSON Web Key (JWK)")
 	}
@@ -80,14 +88,14 @@ func handler(opts Options) (http.Handler, error) {
 	mux.Get("/", challengeHandler{
 		Logger:             opts.Logger,
 		NetworkPassphrase:  opts.NetworkPassphrase,
-		SigningKey:         signingKey,
+		SigningKey:         signingKeys[0],
 		ChallengeExpiresIn: opts.ChallengeExpiresIn,
 	}.ServeHTTP)
 	mux.Post("/", tokenHandler{
 		Logger:                      opts.Logger,
 		HorizonClient:               horizonClient,
 		NetworkPassphrase:           opts.NetworkPassphrase,
-		SigningAddress:              signingKey.FromAddress(),
+		SigningAddresses:            signingAddresses,
 		JWK:                         jwk,
 		JWTIssuer:                   opts.JWTIssuer,
 		JWTExpiresIn:                opts.JWTExpiresIn,
