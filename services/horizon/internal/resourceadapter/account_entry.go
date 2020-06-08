@@ -46,7 +46,7 @@ func PopulateAccountEntry(
 	// populate balances
 	dest.Balances = make([]protocol.Balance, len(trustLines)+1)
 	for i, tl := range trustLines {
-		err := PopulateHistoryBalance(&dest.Balances[i], tl)
+		err := PopulateBalance(&dest.Balances[i], tl)
 		if err != nil {
 			return errors.Wrap(err, "populating balance")
 		}
