@@ -49,7 +49,7 @@ Flags:
       --jwt-issuer string                  The issuer to set in the JWT iss claim (JWT_ISSUER)
       --network-passphrase string          Network passphrase of the Stellar network transactions should be signed for (NETWORK_PASSPHRASE) (default "Test SDF Network ; September 2015")
       --port int                           Port to listen and serve on (PORT) (default 8000)
-      --signing-key string                 Stellar signing key used for signing transactions (SIGNING_KEY)
+      --signing-key string                 Stellar signing key(s) used for signing transactions comma separated (first key is used for signing, others used for verifying challenges) (SIGNING_KEY)
 ```
 
 [SEP-10]: https://github.com/stellar/stellar-protocol/blob/2be91ce8d8032ca9b2f368800d06b9fba346a147/ecosystem/sep-0010.md

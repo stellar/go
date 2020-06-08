@@ -46,9 +46,9 @@ func (c *ServeCommand) Command() *cobra.Command {
 		},
 		{
 			Name:      "signing-key",
-			Usage:     "Stellar signing key used for signing transactions",
+			Usage:     "Stellar signing key(s) used for signing transactions comma separated (first key is used for signing, others used for verifying challenges)",
 			OptType:   types.String,
-			ConfigKey: &opts.SigningKey,
+			ConfigKey: &opts.SigningKeys,
 			Required:  true,
 		},
 		{
