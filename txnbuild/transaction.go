@@ -586,6 +586,14 @@ func transactionFromParsedXDR(xdrEnv xdr.TransactionEnvelope) (*GenericTransacti
 	return newTx, nil
 }
 
+type TransactionVersion int
+
+const (
+	TransactionVersionLatest TransactionVersion = iota
+	TransactionVersion0
+	TransactionVersion1
+)
+
 // TransactionParams is a container for parameters
 // which are used to construct new Transaction instances
 type TransactionParams struct {
@@ -595,11 +603,11 @@ type TransactionParams struct {
 	BaseFee              int64
 	Memo                 Memo
 	Timebounds           Timebounds
-	// V0 should be set to true if you want to generate V0 transaction envelopes
+	// Version should be set to TransactionVersion1 if you want to generate V0 transaction envelopes
 	// V0 transactions are protocol 12 transactions which can also be consumed by protocol 13 clients.
-	// If V0 is false, NewTransaction() will generate a V1 transaction envelope which is
+	// By default, NewTransaction() will generate a V1 transaction envelope which is
 	// only supported by protocol 13 or higher
-	V0 bool
+	Version TransactionVersion
 }
 
 // NewTransaction returns a new Transaction instance
@@ -664,7 +672,7 @@ func NewTransaction(params TransactionParams) (*Transaction, error) {
 
 	var envelope xdr.TransactionEnvelope
 
-	if params.V0 {
+	if params.Version == TransactionVersion0 {
 		ed25519, ok := accountID.GetEd25519()
 		if !ok {
 			return nil, errors.Errorf(
@@ -711,7 +719,7 @@ func NewTransaction(params TransactionParams) (*Transaction, error) {
 		if err != nil {
 			return nil, errors.Wrap(err, "couldn't build memo XDR")
 		}
-		if params.V0 {
+		if params.Version == TransactionVersion0 {
 			envelope.V0.Tx.Memo = xdrMemo
 		} else {
 			envelope.V1.Tx.Memo = xdrMemo
@@ -727,7 +735,7 @@ func NewTransaction(params TransactionParams) (*Transaction, error) {
 		if err2 != nil {
 			return nil, errors.Wrap(err2, fmt.Sprintf("failed to build operation %T", op))
 		}
-		if params.V0 {
+		if params.Version == TransactionVersion0 {
 			envelope.V0.Tx.Operations = append(envelope.V0.Tx.Operations, xdrOperation)
 		} else {
 			envelope.V1.Tx.Operations = append(envelope.V1.Tx.Operations, xdrOperation)
@@ -746,7 +754,7 @@ type FeeBumpTransactionParams struct {
 	BaseFee    int64
 }
 
-func convertTx(tx *Transaction, v0 bool) (*Transaction, error) {
+func convertTx(tx *Transaction, version TransactionVersion) (*Transaction, error) {
 	sourceAccount := tx.SourceAccount()
 	signatures := tx.Signatures()
 	tx, err := NewTransaction(TransactionParams{
@@ -756,7 +764,7 @@ func convertTx(tx *Transaction, v0 bool) (*Transaction, error) {
 		BaseFee:              tx.BaseFee(),
 		Memo:                 tx.Memo(),
 		Timebounds:           tx.Timebounds(),
-		V0:                   v0,
+		Version:              version,
 	})
 	if err != nil {
 		return tx, err
@@ -776,7 +784,7 @@ func NewFeeBumpTransaction(params FeeBumpTransactionParams) (*FeeBumpTransaction
 		return nil, errors.Wrap(err, "inner transaction envelope not found")
 	}
 	if innerEnv.Type == xdr.EnvelopeTypeEnvelopeTypeTxV0 {
-		inner, err = convertTx(inner, false)
+		inner, err = convertTx(inner, TransactionVersionLatest)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not upgrade transaction from v0 to v1")
 		}

@@ -50,7 +50,7 @@ func TestFeeBumpUpgradesV0Transaction(t *testing.T) {
 			BaseFee:              2 * MinBaseFee,
 			Memo:                 MemoText("test-memo"),
 			Timebounds:           NewInfiniteTimeout(),
-			V0:                   true,
+			Version:              TransactionVersion0,
 		},
 	)
 	assert.NoError(t, err)

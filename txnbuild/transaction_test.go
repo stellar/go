@@ -1094,7 +1094,7 @@ func TestTransactionVersions(t *testing.T) {
 
 	v1Env := tx.ToXDR()
 
-	params.V0 = true
+	params.Version = TransactionVersion0
 	v0Tx, err := NewTransaction(params)
 	assert.NoError(t, err)
 	v0Tx, err = v0Tx.Sign(network.TestNetworkPassphrase, kp0)
@@ -2003,7 +2003,7 @@ func TestReadChallengeTx_acceptsV0AndV1Transactions(t *testing.T) {
 	v1Challenge, err := marshallBase64(tx.envelope, tx.Signatures())
 	assert.NoError(t, err)
 
-	v0Tx, err := convertTx(tx, true)
+	v0Tx, err := convertTx(tx, TransactionVersion0)
 	assert.NoError(t, err)
 	v0Challenge, err := marshallBase64(v0Tx.envelope, tx.Signatures())
 	assert.NoError(t, err)
