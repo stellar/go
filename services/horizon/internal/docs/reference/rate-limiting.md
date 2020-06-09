@@ -1,5 +1,6 @@
 ---
 title: Rate Limiting
+replacement: https://developers.stellar.org/api/introduction/rate-limiting/
 ---
 
 In order to provide service stability, Horizon limits the number of requests a

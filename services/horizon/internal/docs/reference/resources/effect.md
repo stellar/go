@@ -1,5 +1,6 @@
 ---
 title: Effect
+replacement: https://developers.stellar.org/api/resources/effects/
 ---
 
 A successful operation will yield zero or more **effects**.  These effects

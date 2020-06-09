@@ -1,5 +1,6 @@
 ---
 title: Streaming
+replacement: https://developers.stellar.org/api/introduction/streaming/
 ---
 
 ## Streaming

@@ -2,6 +2,7 @@
 title: Strict Send Payment Paths
 clientData:
   laboratoryUrl: https://www.stellar.org/laboratory/#explorer?resource=paths&endpoint=all
+replacement: https://developers.stellar.org/api/aggregations/paths/strict-send/
 ---
 
 The Stellar Network allows payments to be made across assets through _path payments_.  A path

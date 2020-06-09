@@ -2,6 +2,7 @@
 title: Operations for Transaction
 clientData:
   laboratoryUrl: https://www.stellar.org/laboratory/#explorer?resource=operations&endpoint=for_transaction
+replacement: https://developers.stellar.org/api/resources/transactions/operations/
 ---
 
 This endpoint represents successful [operations](../resources/operation.md) that are part of a given [transaction](../resources/transaction.md).

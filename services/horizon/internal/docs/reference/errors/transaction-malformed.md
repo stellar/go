@@ -1,5 +1,6 @@
 ---
 title: Transaction Malformed
+replacement: https://developers.stellar.org/api/errors/http-status-codes/horizon-specific/
 ---
 
 When you submit a malformed transaction to Horizon, Horizon will return a `transaction_malformed`

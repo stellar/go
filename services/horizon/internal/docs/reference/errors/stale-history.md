@@ -1,5 +1,6 @@
 ---
 title: Stale History
+replacement: https://developers.stellar.org/api/errors/http-status-codes/horizon-specific/
 ---
 
 A horizon server may be configured to reject historical requests when the history is known to be
