@@ -4,6 +4,7 @@ import (
 	stdhttp "net/http"
 	"time"
 
+	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/stellar/go/support/http/mutil"
 	"github.com/stellar/go/support/log"
@@ -48,14 +49,15 @@ func LoggingMiddleware(next stdhttp.Handler) stdhttp.Handler {
 func logStartOfRequest(
 	r *stdhttp.Request,
 ) {
-	log.Ctx(r.Context()).WithFields(log.F{
+	l := log.Ctx(r.Context()).WithFields(log.F{
 		"subsys":    "http",
 		"path":      r.URL.String(),
 		"method":    r.Method,
 		"ip":        r.RemoteAddr,
 		"host":      r.Host,
 		"useragent": r.Header.Get("User-Agent"),
-	}).Info("starting request")
+	})
+	l.Info("starting request")
 }
 
 // logEndOfRequest emits the logline for the end of the request
@@ -64,12 +66,16 @@ func logEndOfRequest(
 	duration time.Duration,
 	mw mutil.WriterProxy,
 ) {
-	log.Ctx(r.Context()).WithFields(log.F{
+	l := log.Ctx(r.Context()).WithFields(log.F{
 		"subsys":   "http",
 		"path":     r.URL.String(),
 		"method":   r.Method,
 		"status":   mw.Status(),
 		"bytes":    mw.BytesWritten(),
 		"duration": duration,
-	}).Info("finished request")
+	})
+	if routeContext := chi.RouteContext(r.Context()); routeContext != nil {
+		l = l.WithField("route", routeContext.RoutePattern())
+	}
+	l.Info("finished request")
 }
