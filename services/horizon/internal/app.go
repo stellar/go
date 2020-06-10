@@ -12,7 +12,6 @@ import (
 
 	metrics "github.com/rcrowley/go-metrics"
 	"github.com/stellar/go/clients/stellarcore"
-	"github.com/stellar/go/exp/orderbook"
 	horizonContext "github.com/stellar/go/services/horizon/internal/context"
 	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
@@ -458,12 +457,7 @@ func (a *App) init() {
 		// expingester
 		initExpIngester(a)
 	}
-	orderBookGraph := orderbook.NewOrderBookGraph()
-	a.orderBookStream = &expingest.OrderBookStream{
-		OrderBookGraph: orderBookGraph,
-		HistoryQ:       &history.Q{a.HorizonSession(a.ctx)},
-	}
-	initPathFinder(a, orderBookGraph)
+	initPathFinder(a)
 
 	// txsub
 	initSubmissionSystem(a)

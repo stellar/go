@@ -262,11 +262,13 @@ func NewHistoryMiddleware(staleThreshold int32, session *db.Session) func(http.H
 				}
 			}
 
+			requestSession := session.Clone()
+			requestSession.Ctx = r.Context()
 			h.ServeHTTP(w, r.WithContext(
 				context.WithValue(
 					r.Context(),
 					&horizonContext.SessionContextKey,
-					session,
+					requestSession,
 				),
 			))
 		})

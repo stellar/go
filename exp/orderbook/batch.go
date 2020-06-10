@@ -60,7 +60,7 @@ func (tx *orderBookBatchedUpdates) apply(ledger uint32) error {
 	}
 	tx.committed = true
 
-	if tx.orderbook.lastLedger > 0 && ledger != tx.orderbook.lastLedger+1 {
+	if tx.orderbook.lastLedger > 0 && ledger <= tx.orderbook.lastLedger {
 		return errUnexpectedLedger
 	}
 
@@ -71,6 +71,9 @@ func (tx *orderBookBatchedUpdates) apply(ledger uint32) error {
 				panic(errors.Wrap(err, "could not apply update in batch"))
 			}
 		case removeOfferOperationType:
+			if _, ok := tx.orderbook.tradingPairForOffer[operation.offerID]; !ok {
+				continue
+			}
 			if err := tx.orderbook.remove(operation.offerID); err != nil {
 				panic(errors.Wrap(err, "could not apply update in batch"))
 			}

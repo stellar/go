@@ -17,7 +17,7 @@ import (
 
 // TestProblemRender tests the render cases
 func TestProblemRender(t *testing.T) {
-	problem := New("", log.DefaultLogger)
+	problem := New("", log.DefaultLogger, LogNoErrors)
 
 	testCases := []struct {
 		name     string
@@ -62,7 +62,7 @@ func TestProblemRender(t *testing.T) {
 // TestProblemServerErrorConversion tests that we convert errors to ServerError problems and also log the
 // stacktrace as unknown for non-rich errors
 func TestProblemServerErrorConversion(t *testing.T) {
-	problem := New("", log.DefaultLogger)
+	problem := New("", log.DefaultLogger, LogUnknownErrors)
 
 	testCases := []struct {
 		name          string
@@ -104,7 +104,7 @@ func TestProblemServerErrorConversion(t *testing.T) {
 
 // TestProblemInflate test errors that come inflated from horizon
 func TestProblemInflate(t *testing.T) {
-	problem := New("", log.DefaultLogger)
+	problem := New("", log.DefaultLogger, LogNoErrors)
 
 	testCase := struct {
 		name string
@@ -133,7 +133,7 @@ func testProblemRender(ctx context.Context, problem *Problem, err error) *httpte
 }
 
 func TestProblemRegisterReportFunc(t *testing.T) {
-	problem := New("", log.DefaultLogger)
+	problem := New("", log.DefaultLogger, LogAllErrors)
 
 	var buf strings.Builder
 	ctx := context.Background()
@@ -161,7 +161,7 @@ func TestProblemRegisterReportFunc(t *testing.T) {
 }
 
 func TestProblemUnRegisterErrors(t *testing.T) {
-	problem := New("", log.DefaultLogger)
+	problem := New("", log.DefaultLogger, LogNoErrors)
 
 	problem.RegisterError(context.DeadlineExceeded, ServerError)
 	err := problem.IsKnownError(context.DeadlineExceeded)
@@ -174,7 +174,7 @@ func TestProblemUnRegisterErrors(t *testing.T) {
 }
 
 func TestProblemIsKnownError(t *testing.T) {
-	problem := New("", log.DefaultLogger)
+	problem := New("", log.DefaultLogger, LogNoErrors)
 
 	problem.RegisterError(context.DeadlineExceeded, ServerError)
 	defer problem.UnRegisterErrors()

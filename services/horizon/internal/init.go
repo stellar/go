@@ -97,7 +97,13 @@ func initExpIngester(app *App) {
 	}
 }
 
-func initPathFinder(app *App, orderBookGraph *orderbook.OrderBookGraph) {
+func initPathFinder(app *App) {
+	orderBookGraph := orderbook.NewOrderBookGraph()
+	app.orderBookStream = expingest.NewOrderBookStream(
+		&history.Q{app.HorizonSession(app.ctx)},
+		orderBookGraph,
+	)
+
 	app.paths = simplepath.NewInMemoryFinder(orderBookGraph)
 }
 
@@ -144,6 +150,7 @@ func initDbMetrics(app *App) {
 	app.metrics.Register("history.latest_ledger", app.historyLatestLedgerGauge)
 	app.metrics.Register("history.elder_ledger", app.historyElderLedgerGauge)
 	app.metrics.Register("stellar_core.latest_ledger", app.coreLatestLedgerGauge)
+	app.metrics.Register("order_book_stream.latest_ledger", app.orderBookStream.LatestLedgerGauge)
 	app.metrics.Register("history.open_connections", app.horizonConnGauge)
 	app.metrics.Register("stellar_core.open_connections", app.coreConnGauge)
 	app.metrics.Register("goroutines", app.goroutineGauge)
