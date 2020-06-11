@@ -158,20 +158,19 @@ func (s *ProcessorRunner) validateBucketList(ledgerSequence uint32) error {
 		return errors.Wrap(err, "Error getting bucket list hash")
 	}
 
-	ledgerReader, err := io.NewLedgerReader(s.ledgerBackend, ledgerSequence)
+	exists, ledgerCloseMeta, err := s.ledgerBackend.GetLedger(ledgerSequence)
 	if err != nil {
-		if err == io.ErrNotFound {
-			return fmt.Errorf(
-				"cannot validate bucket hash list. Checkpoint ledger (%d) must exist in Stellar-Core database.",
-				ledgerSequence,
-			)
-		} else {
-			return errors.Wrap(err, "Error getting ledger")
-		}
+		return errors.Wrap(err, "Error getting ledger")
 	}
 
-	ledgerHeader := ledgerReader.GetHeader()
-	ledgerBucketHashList := ledgerHeader.Header.BucketListHash
+	if !exists {
+		return fmt.Errorf(
+			"cannot validate bucket hash list. Checkpoint ledger (%d) must exist in Stellar-Core database.",
+			ledgerSequence,
+		)
+	}
+
+	ledgerBucketHashList := ledgerCloseMeta.LedgerHeader.Header.BucketListHash
 
 	if !bytes.Equal(historyBucketListHash[:], ledgerBucketHashList[:]) {
 		return fmt.Errorf(

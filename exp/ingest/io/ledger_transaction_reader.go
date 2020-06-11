@@ -4,27 +4,43 @@ import (
 	"io"
 
 	"github.com/stellar/go/exp/ingest/ledgerbackend"
+	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/xdr"
 )
 
 // LedgerTransactionReader reads transactions for a given ledger sequence from a backend.
 // Use NewTransactionReader to create a new instance.
 type LedgerTransactionReader struct {
-	*LedgerReader
-	transactions []LedgerTransaction
-	readIdx      int
+	ledgerCloseMeta ledgerbackend.LedgerCloseMeta
+	transactions    []LedgerTransaction
+	readIdx         int
 }
 
 // NewLedgerTransactionReader creates a new TransactionReader instance.
 // Note that TransactionReader is not thread safe and should not be shared by multiple goroutines
 func NewLedgerTransactionReader(backend ledgerbackend.LedgerBackend, sequence uint32) (*LedgerTransactionReader, error) {
-	ledgerReader, err := NewLedgerReader(backend, sequence)
+	exists, ledgerCloseMeta, err := backend.GetLedger(sequence)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "error getting ledger from the backend")
 	}
 
-	reader := &LedgerTransactionReader{LedgerReader: ledgerReader}
-	reader.storeTransactions(ledgerReader.ledgerCloseMeta)
+	if !exists {
+		return nil, ErrNotFound
+	}
+
+	reader := &LedgerTransactionReader{ledgerCloseMeta: ledgerCloseMeta}
+	reader.storeTransactions(ledgerCloseMeta)
 	return reader, nil
+}
+
+// GetSequence returns the sequence number of the ledger data stored by this object.
+func (reader *LedgerTransactionReader) GetSequence() uint32 {
+	return uint32(reader.ledgerCloseMeta.LedgerHeader.Header.LedgerSeq)
+}
+
+// GetHeader returns the XDR Header data associated with the stored ledger.
+func (reader *LedgerTransactionReader) GetHeader() xdr.LedgerHeaderHistoryEntry {
+	return reader.ledgerCloseMeta.LedgerHeader
 }
 
 // Read returns the next transaction in the ledger, ordered by tx number, each time
