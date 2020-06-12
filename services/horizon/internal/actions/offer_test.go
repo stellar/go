@@ -78,7 +78,7 @@ func TestGetOfferByIDHandler(t *testing.T) {
 				CloseTime: xdr.TimePoint(ledgerCloseTime),
 			},
 		},
-	}, 0, 0, 0, 0)
+	}, 0, 0, 0, 0, 0)
 	tt.Assert.NoError(err)
 
 	batch := q.NewOffersBatchInsertBuilder(0)
@@ -188,7 +188,7 @@ func TestGetOffersHandler(t *testing.T) {
 				CloseTime: xdr.TimePoint(ledgerCloseTime),
 			},
 		},
-	}, 0, 0, 0, 0)
+	}, 0, 0, 0, 0, 0)
 	tt.Assert.NoError(err)
 
 	batch := q.NewOffersBatchInsertBuilder(0)
