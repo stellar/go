@@ -327,7 +327,7 @@ func TestProcessorRunnerRunAllProcessorsOnLedger(t *testing.T) {
 	q.MockQTransactions.On("NewTransactionBatchInsertBuilder", maxBatchSize).
 		Return(mockTransactionsBatchInsertBuilder).Twice()
 
-	q.MockQLedgers.On("InsertLedger", ledger, 0, 0, 0, CurrentVersion).
+	q.MockQLedgers.On("InsertLedger", ledger, 0, 0, 0, 0, CurrentVersion).
 		Return(int64(1), nil).Once()
 
 	runner := ProcessorRunner{
