@@ -14,8 +14,9 @@ func (m *MockQLedgers) InsertLedger(
 	successTxsCount int,
 	failedTxsCount int,
 	opCount int,
+	txSetOpCount int,
 	ingestVersion int,
 ) (int64, error) {
-	a := m.Called(ledger, successTxsCount, failedTxsCount, opCount, ingestVersion)
+	a := m.Called(ledger, successTxsCount, failedTxsCount, opCount, txSetOpCount, ingestVersion)
 	return a.Get(0).(int64), a.Error(1)
 }

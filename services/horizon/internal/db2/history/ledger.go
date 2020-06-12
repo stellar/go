@@ -92,6 +92,7 @@ type QLedgers interface {
 		successTxsCount int,
 		failedTxsCount int,
 		opCount int,
+		txSetOpCount int,
 		ingestVersion int,
 	) (int64, error)
 }
@@ -103,6 +104,7 @@ func (q *Q) InsertLedger(
 	successTxsCount int,
 	failedTxsCount int,
 	opCount int,
+	txSetOpCount int,
 	ingestVersion int,
 ) (int64, error) {
 	m, err := ledgerHeaderToMap(
