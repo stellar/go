@@ -192,32 +192,32 @@ func (c *captiveStellarCore) sendLedgerMeta(untilSequence uint32) {
 		case <-printBufferOccupation.C:
 			log.Debug("captive core read-ahead buffer occupation:", atomic.LoadUint32(&c.readBufferOccupation))
 		default:
-			meta, err := c.readLedgerMetaFromPipe()
-			if err != nil {
-				select {
-				case <-c.stop:
-				case c.errC <- err:
-				}
-				return
-			}
+		}
+		meta, err := c.readLedgerMetaFromPipe()
+		if err != nil {
 			select {
 			case <-c.stop:
-				return
-			case c.metaC <- meta:
+			case c.errC <- err:
 			}
-			atomic.AddUint32(&c.readBufferOccupation, 1)
-			seq, err := peekLedgerSequence(meta)
-			if err != nil {
-				select {
-				case <-c.stop:
-				case c.errC <- err:
-				}
-				return
+			return
+		}
+		select {
+		case <-c.stop:
+			return
+		case c.metaC <- meta:
+		}
+		atomic.AddUint32(&c.readBufferOccupation, 1)
+		seq, err := peekLedgerSequence(meta)
+		if err != nil {
+			select {
+			case <-c.stop:
+			case c.errC <- err:
 			}
-			if seq >= untilSequence {
-				// we are done
-				return
-			}
+			return
+		}
+		if seq >= untilSequence {
+			// we are done
+			return
 		}
 	}
 }
