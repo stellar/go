@@ -3,7 +3,6 @@ package ledgerbackend
 import (
 	"io"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/pkg/errors"
@@ -31,14 +30,18 @@ var _ LedgerBackend = (*captiveStellarCore)(nil)
 
 // TODO: switch from history URLs to history archive interface provided from support package, to permit mocking
 
-// In this (crude, initial) sketch, we replay ledgers in blocks of 17,280
-// which is 24 hours worth of ledgers at 5 second intervals.
-const ledgersPerProcess = 17280
-const ledgersPerCheckpoint = 64
+const (
+	// In this (crude, initial) sketch, we replay ledgers in blocks of 17,280
+	// which is 24 hours worth of ledgers at 5 second intervals.
+	ledgersPerProcess    = 17280
+	ledgersPerCheckpoint = 64
 
-// The number of checkpoints we're willing to scan over and ignore, without
-// restarting a subprocess.
-const numCheckpointsLeeway = 10
+	// The number of checkpoints we're willing to scan over and ignore, without
+	// restarting a subprocess.
+	numCheckpointsLeeway = 10
+
+	readAheadBufferSize = 2
+)
 
 func roundDownToFirstReplayAfterCheckpointStart(ledger uint32) uint32 {
 	v := (ledger / ledgersPerCheckpoint) * ledgersPerCheckpoint
@@ -49,17 +52,20 @@ func roundDownToFirstReplayAfterCheckpointStart(ledger uint32) uint32 {
 	return v
 }
 
+type metaResult struct {
+	*xdr.LedgerCloseMeta
+	err error
+}
+
 type captiveStellarCore struct {
 	networkPassphrase string
 	historyURLs       []string
 	lastLedger        *uint32 // end of current segment if offline, nil if online
 
 	// read-ahead buffer
-	readBufferOccupation uint32
-	stop                 chan struct{}
-	wait                 sync.WaitGroup
-	metaC                chan *xdr.LedgerCloseMeta
-	errC                 chan error
+	stop  chan struct{}
+	wait  sync.WaitGroup
+	metaC chan metaResult
 
 	stellarCoreRunner stellarCoreRunnerInterface
 
@@ -171,8 +177,7 @@ func (c *captiveStellarCore) openOfflineReplaySubprocess(nextLedger, lastLedger 
 	c.lastLedger = &lastLedger
 
 	// read-ahead buffer
-	c.metaC = make(chan *xdr.LedgerCloseMeta, 2)
-	c.errC = make(chan error)
+	c.metaC = make(chan metaResult, readAheadBufferSize)
 	c.stop = make(chan struct{})
 	c.wait.Add(1)
 	go c.sendLedgerMeta(lastLedger)
@@ -190,28 +195,27 @@ func (c *captiveStellarCore) sendLedgerMeta(untilSequence uint32) {
 		case <-c.stop:
 			return
 		case <-printBufferOccupation.C:
-			log.Debug("captive core read-ahead buffer occupation:", atomic.LoadUint32(&c.readBufferOccupation))
+			log.Debug("captive core read-ahead buffer occupation:", len(c.metaC))
 		default:
 		}
 		meta, err := c.readLedgerMetaFromPipe()
 		if err != nil {
 			select {
 			case <-c.stop:
-			case c.errC <- err:
+			case c.metaC <- metaResult{nil, err}:
 			}
 			return
 		}
 		select {
 		case <-c.stop:
 			return
-		case c.metaC <- meta:
+		case c.metaC <- metaResult{meta, nil}:
 		}
-		atomic.AddUint32(&c.readBufferOccupation, 1)
 		seq, err := peekLedgerSequence(meta)
 		if err != nil {
 			select {
 			case <-c.stop:
-			case c.errC <- err:
+			case c.metaC <- metaResult{nil, err}:
 			}
 			return
 		}
@@ -288,17 +292,13 @@ func (c *captiveStellarCore) GetLedger(sequence uint32) (bool, LedgerCloseMeta, 
 	var errOut error
 loop:
 	for {
-		var xlcm *xdr.LedgerCloseMeta
-		select {
-		case err := <-c.errC:
-			errOut = err
+		metaResult := <-c.metaC
+		if metaResult.err != nil {
+			errOut = metaResult.err
 			break loop
-		case xlcm = <-c.metaC:
-			// decrement counter
-			atomic.AddUint32(&c.readBufferOccupation, ^uint32(0))
 		}
 
-		seq, e1 := peekLedgerSequence(xlcm)
+		seq, e1 := peekLedgerSequence(metaResult.LedgerCloseMeta)
 		if e1 != nil {
 			errOut = e1
 			break
@@ -315,7 +315,7 @@ loop:
 		if seq == sequence {
 			// Found the requested seq
 			var lcm LedgerCloseMeta
-			e2 := c.copyLedgerCloseMeta(xlcm, &lcm)
+			e2 := c.copyLedgerCloseMeta(metaResult.LedgerCloseMeta, &lcm)
 			if e2 != nil {
 				errOut = e2
 				break
@@ -376,19 +376,13 @@ func (c *captiveStellarCore) Close() error {
 		close(c.stop)
 		// discard pending data in case the goroutine is blocked writing to the channel
 		select {
-		case <-c.errC:
 		case <-c.metaC:
 		default:
 		}
-		// Do not close the other channels until we know
+		// Do not close the communication channel until we know
 		// the goroutine is done
 		c.wait.Wait()
-	}
-	if c.metaC != nil {
 		close(c.metaC)
-	}
-	if c.errC != nil {
-		close(c.errC)
 	}
 
 	c.lastLedger = nil
