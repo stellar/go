@@ -7,6 +7,8 @@ import (
 	"sort"
 	"time"
 
+	"github.com/rcrowley/go-metrics"
+
 	"github.com/stellar/go/exp/orderbook"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"
@@ -25,10 +27,23 @@ const (
 // in memory graph. However, it is safe for other go routines to use the
 // in memory graph for read operations.
 type OrderBookStream struct {
-	OrderBookGraph orderbook.OBGraph
-	HistoryQ       history.IngestionQ
-	lastLedger     uint32
-	lastUpdate     time.Time
+	graph    orderbook.OBGraph
+	historyQ history.IngestionQ
+	// LatestLedgerGauge exposes the local (order book graph)
+	// latest processed ledger
+	LatestLedgerGauge metrics.Gauge
+	lastLedger        uint32
+	lastVerification  time.Time
+}
+
+// NewOrderBookStream constructs and initializes an OrderBookStream instance
+func NewOrderBookStream(historyQ history.IngestionQ, graph orderbook.OBGraph) *OrderBookStream {
+	return &OrderBookStream{
+		graph:             graph,
+		historyQ:          historyQ,
+		LatestLedgerGauge: metrics.NewGauge(),
+		lastVerification:  time.Now(),
+	}
 }
 
 type ingestionStatus struct {
@@ -42,21 +57,21 @@ func (o *OrderBookStream) getIngestionStatus() (ingestionStatus, error) {
 	var status ingestionStatus
 	var err error
 
-	status.StateInvalid, err = o.HistoryQ.GetExpStateInvalid()
+	status.StateInvalid, err = o.historyQ.GetExpStateInvalid()
 	if err != nil {
 		return status, errors.Wrap(err, "Error from GetExpStateInvalid")
 	}
 
 	var lastHistoryLedger uint32
-	lastHistoryLedger, err = o.HistoryQ.GetLatestLedger()
+	lastHistoryLedger, err = o.historyQ.GetLatestLedger()
 	if err != nil {
 		return status, errors.Wrap(err, "Error from GetLatestLedger")
 	}
-	status.LastIngestedLedger, err = o.HistoryQ.GetLastLedgerExpIngestNonBlocking()
+	status.LastIngestedLedger, err = o.historyQ.GetLastLedgerExpIngestNonBlocking()
 	if err != nil {
 		return status, errors.Wrap(err, "Error from GetLastLedgerExpIngestNonBlocking")
 	}
-	status.LastOfferCompactionLedger, err = o.HistoryQ.GetOfferCompactionSequence()
+	status.LastOfferCompactionLedger, err = o.historyQ.GetOfferCompactionSequence()
 	if err != nil {
 		return status, errors.Wrap(err, "Error from GetOfferCompactionSequence")
 	}
@@ -85,7 +100,8 @@ func addOfferToGraph(graph orderbook.OBGraph, offer history.Offer) {
 	})
 }
 
-func (o *OrderBookStream) update(status ingestionStatus) error {
+// update returns true if the order book graph was reset
+func (o *OrderBookStream) update(status ingestionStatus) (bool, error) {
 	reset := o.lastLedger == 0
 	if status.StateInvalid || !status.HistoryConsistentWithState {
 		log.WithField("status", status).Warn("ingestion state is invalid")
@@ -103,72 +119,72 @@ func (o *OrderBookStream) update(status ingestionStatus) error {
 	}
 
 	if reset {
-		o.OrderBookGraph.Clear()
+		o.graph.Clear()
 		o.lastLedger = 0
 
 		// wait until offers in horizon db is valid before populating order book graph
 		if status.StateInvalid || !status.HistoryConsistentWithState {
 			log.WithField("status", status).
 				Info("waiting for ingestion to update offers table")
-			return nil
+			return true, nil
 		}
 
-		defer o.OrderBookGraph.Discard()
+		defer o.graph.Discard()
 
-		offers, err := o.HistoryQ.GetAllOffers()
+		offers, err := o.historyQ.GetAllOffers()
 		if err != nil {
-			return errors.Wrap(err, "Error from GetAllOffers")
+			return true, errors.Wrap(err, "Error from GetAllOffers")
 		}
 
 		for _, offer := range offers {
-			addOfferToGraph(o.OrderBookGraph, offer)
+			addOfferToGraph(o.graph, offer)
 		}
 
-		if err := o.OrderBookGraph.Apply(status.LastIngestedLedger); err != nil {
-			return errors.Wrap(err, "Error applying changes to order book")
+		if err := o.graph.Apply(status.LastIngestedLedger); err != nil {
+			return true, errors.Wrap(err, "Error applying changes to order book")
 		}
 
 		o.lastLedger = status.LastIngestedLedger
-		return nil
+		o.LatestLedgerGauge.Update(int64(status.LastIngestedLedger))
+		return true, nil
 	}
 
 	if status.LastIngestedLedger == o.lastLedger {
-		return nil
+		return false, nil
 	}
 
-	defer o.OrderBookGraph.Discard()
+	defer o.graph.Discard()
 
-	offers, err := o.HistoryQ.GetUpdatedOffers(o.lastLedger)
+	offers, err := o.historyQ.GetUpdatedOffers(o.lastLedger)
 	if err != nil {
-		return errors.Wrap(err, "Error from GetUpdatedOffers")
+		return false, errors.Wrap(err, "Error from GetUpdatedOffers")
 	}
 	for _, offer := range offers {
 		if offer.Deleted {
-			o.OrderBookGraph.RemoveOffer(offer.OfferID)
+			o.graph.RemoveOffer(offer.OfferID)
 		} else {
-			addOfferToGraph(o.OrderBookGraph, offer)
+			addOfferToGraph(o.graph, offer)
 		}
 	}
 
-	if err = o.OrderBookGraph.Apply(status.LastIngestedLedger); err != nil {
-		return errors.Wrap(err, "Error applying changes to order book")
+	if err = o.graph.Apply(status.LastIngestedLedger); err != nil {
+		return false, errors.Wrap(err, "Error applying changes to order book")
 	}
 
-	o.lastUpdate = time.Now()
 	o.lastLedger = status.LastIngestedLedger
-	return nil
+	o.LatestLedgerGauge.Update(int64(status.LastIngestedLedger))
+	return false, nil
 }
 
 func (o *OrderBookStream) verifyAllOffers() {
-	offers := o.OrderBookGraph.Offers()
-	ingestionOffers, err := o.HistoryQ.GetAllOffers()
+	offers := o.graph.Offers()
+	ingestionOffers, err := o.historyQ.GetAllOffers()
 	if err != nil {
-		// reset last update so that we retry verification on next update
-		o.lastUpdate = time.Now().Add(verificationFrequency * -2)
 		log.WithError(err).Info("Could not verify offers because of error from GetAllOffers")
 		return
 	}
 
+	o.lastVerification = time.Now()
 	mismatch := len(offers) != len(ingestionOffers)
 
 	if !mismatch {
@@ -210,25 +226,27 @@ func (o *OrderBookStream) verifyAllOffers() {
 // After calling this function, the the in memory order book graph should be consistent with the
 // Horizon DB (assuming no error is returned).
 func (o *OrderBookStream) Update() error {
-	if err := o.HistoryQ.BeginTx(&sql.TxOptions{ReadOnly: true, Isolation: sql.LevelRepeatableRead}); err != nil {
+	if err := o.historyQ.BeginTx(&sql.TxOptions{ReadOnly: true, Isolation: sql.LevelRepeatableRead}); err != nil {
 		return errors.Wrap(err, "Error starting repeatable read transaction")
 	}
-	defer o.HistoryQ.Rollback()
-
-	// add 15 minute jitter so that not all horizon nodes are calling
-	// HistoryQ.GetAllOffers at the same time
-	jitter := time.Duration(rand.Int63n(int64(15 * time.Minute)))
-	requiresVerification := !o.lastUpdate.Equal(time.Time{}) &&
-		time.Since(o.lastUpdate) >= verificationFrequency+jitter
+	defer o.historyQ.Rollback()
 
 	status, err := o.getIngestionStatus()
 	if err != nil {
 		return errors.Wrap(err, "Error obtaining ingestion status")
 	}
 
-	if err := o.update(status); err != nil {
+	if reset, err := o.update(status); err != nil {
 		return errors.Wrap(err, "Error updating")
+	} else if reset {
+		return nil
 	}
+
+	// add 15 minute jitter so that not all horizon nodes are calling
+	// historyQ.GetAllOffers at the same time
+	jitter := time.Duration(rand.Int63n(int64(15 * time.Minute)))
+	requiresVerification := o.lastLedger > 0 &&
+		time.Since(o.lastVerification) >= verificationFrequency+jitter
 
 	if requiresVerification {
 		o.verifyAllOffers()

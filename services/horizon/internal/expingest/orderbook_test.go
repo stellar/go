@@ -21,7 +21,7 @@ func TestIngestionStatus(t *testing.T) {
 
 func (t *IngestionStatusTestSuite) SetupTest() {
 	t.historyQ = &mockDBQ{}
-	t.stream = &OrderBookStream{HistoryQ: t.historyQ}
+	t.stream = NewOrderBookStream(t.historyQ, &mockOrderBookGraph{})
 }
 
 func (t *IngestionStatusTestSuite) TearDownTest() {
@@ -181,7 +181,7 @@ func TestUpdateOrderBookStream(t *testing.T) {
 func (t *UpdateOrderBookStreamTestSuite) SetupTest() {
 	t.historyQ = &mockDBQ{}
 	t.graph = &mockOrderBookGraph{}
-	t.stream = &OrderBookStream{OrderBookGraph: t.graph, HistoryQ: t.historyQ}
+	t.stream = NewOrderBookStream(t.historyQ, t.graph)
 }
 
 func (t *UpdateOrderBookStreamTestSuite) TearDownTest() {
@@ -203,10 +203,9 @@ func (t *UpdateOrderBookStreamTestSuite) TestGetAllOffersError() {
 		Once()
 
 	t.stream.lastLedger = 300
-	err := t.stream.update(status)
+	_, err := t.stream.update(status)
 	t.Assert().EqualError(err, "Error from GetAllOffers: offers error")
 	t.Assert().Equal(uint32(0), t.stream.lastLedger)
-	t.Assert().True(t.stream.lastUpdate.Equal(time.Time{}))
 }
 
 func (t *UpdateOrderBookStreamTestSuite) TestResetApplyError() {
@@ -242,10 +241,9 @@ func (t *UpdateOrderBookStreamTestSuite) TestResetApplyError() {
 		Once()
 
 	t.stream.lastLedger = 300
-	err := t.stream.update(status)
+	_, err := t.stream.update(status)
 	t.Assert().EqualError(err, "Error applying changes to order book: apply error")
 	t.Assert().Equal(uint32(0), t.stream.lastLedger)
-	t.Assert().True(t.stream.lastUpdate.Equal(time.Time{}))
 }
 
 func (t *UpdateOrderBookStreamTestSuite) mockReset(status ingestionStatus) {
@@ -285,10 +283,10 @@ func (t *UpdateOrderBookStreamTestSuite) TestFirstUpdateSucceeds() {
 	}
 	t.mockReset(status)
 
-	err := t.stream.update(status)
+	reset, err := t.stream.update(status)
 	t.Assert().NoError(err)
 	t.Assert().Equal(uint32(201), t.stream.lastLedger)
-	t.Assert().True(t.stream.lastUpdate.Equal(time.Time{}))
+	t.Assert().True(reset)
 }
 
 func (t *UpdateOrderBookStreamTestSuite) TestInvalidState() {
@@ -300,18 +298,19 @@ func (t *UpdateOrderBookStreamTestSuite) TestInvalidState() {
 	}
 	t.graph.On("Clear").Return().Once()
 
-	err := t.stream.update(status)
+	reset, err := t.stream.update(status)
 	t.Assert().NoError(err)
 	t.Assert().Equal(uint32(0), t.stream.lastLedger)
+	t.Assert().True(reset)
 
 	t.stream.lastLedger = 123
 
 	t.graph.On("Clear").Return().Once()
 
-	err = t.stream.update(status)
+	reset, err = t.stream.update(status)
 	t.Assert().NoError(err)
 	t.Assert().Equal(uint32(0), t.stream.lastLedger)
-	t.Assert().True(t.stream.lastUpdate.Equal(time.Time{}))
+	t.Assert().True(reset)
 }
 
 func (t *UpdateOrderBookStreamTestSuite) TestHistoryInconsistentWithState() {
@@ -323,18 +322,19 @@ func (t *UpdateOrderBookStreamTestSuite) TestHistoryInconsistentWithState() {
 	}
 	t.graph.On("Clear").Return().Once()
 
-	err := t.stream.update(status)
+	reset, err := t.stream.update(status)
 	t.Assert().NoError(err)
 	t.Assert().Equal(uint32(0), t.stream.lastLedger)
+	t.Assert().True(reset)
 
 	t.stream.lastLedger = 123
 
 	t.graph.On("Clear").Return().Once()
 
-	err = t.stream.update(status)
+	reset, err = t.stream.update(status)
 	t.Assert().NoError(err)
 	t.Assert().Equal(uint32(0), t.stream.lastLedger)
-	t.Assert().True(t.stream.lastUpdate.Equal(time.Time{}))
+	t.Assert().True(reset)
 }
 
 func (t *UpdateOrderBookStreamTestSuite) TestLastIngestedLedgerBehindStream() {
@@ -347,10 +347,10 @@ func (t *UpdateOrderBookStreamTestSuite) TestLastIngestedLedgerBehindStream() {
 	t.mockReset(status)
 
 	t.stream.lastLedger = 300
-	err := t.stream.update(status)
+	reset, err := t.stream.update(status)
 	t.Assert().NoError(err)
 	t.Assert().Equal(uint32(201), t.stream.lastLedger)
-	t.Assert().True(t.stream.lastUpdate.Equal(time.Time{}))
+	t.Assert().True(reset)
 }
 
 func (t *UpdateOrderBookStreamTestSuite) TestStreamBehindLastCompactionLedger() {
@@ -363,10 +363,10 @@ func (t *UpdateOrderBookStreamTestSuite) TestStreamBehindLastCompactionLedger() 
 	t.mockReset(status)
 
 	t.stream.lastLedger = 99
-	err := t.stream.update(status)
+	reset, err := t.stream.update(status)
 	t.Assert().NoError(err)
 	t.Assert().Equal(uint32(201), t.stream.lastLedger)
-	t.Assert().True(t.stream.lastUpdate.Equal(time.Time{}))
+	t.Assert().True(reset)
 }
 
 func (t *UpdateOrderBookStreamTestSuite) TestStreamLedgerEqualsLastIngestedLedger() {
@@ -378,10 +378,10 @@ func (t *UpdateOrderBookStreamTestSuite) TestStreamLedgerEqualsLastIngestedLedge
 	}
 
 	t.stream.lastLedger = 201
-	err := t.stream.update(status)
+	reset, err := t.stream.update(status)
 	t.Assert().NoError(err)
 	t.Assert().Equal(uint32(201), t.stream.lastLedger)
-	t.Assert().True(t.stream.lastUpdate.Equal(time.Time{}))
+	t.Assert().False(reset)
 }
 
 func (t *UpdateOrderBookStreamTestSuite) TestGetUpdatedOffersError() {
@@ -398,10 +398,9 @@ func (t *UpdateOrderBookStreamTestSuite) TestGetUpdatedOffersError() {
 		Return([]history.Offer{}, fmt.Errorf("updated offers error")).
 		Once()
 
-	err := t.stream.update(status)
+	_, err := t.stream.update(status)
 	t.Assert().EqualError(err, "Error from GetUpdatedOffers: updated offers error")
 	t.Assert().Equal(uint32(100), t.stream.lastLedger)
-	t.Assert().True(t.stream.lastUpdate.Equal(time.Time{}))
 }
 
 func (t *UpdateOrderBookStreamTestSuite) mockUpdate() {
@@ -444,10 +443,9 @@ func (t *UpdateOrderBookStreamTestSuite) TestApplyUpdatesError() {
 		Return(fmt.Errorf("apply error")).
 		Once()
 
-	err := t.stream.update(status)
+	_, err := t.stream.update(status)
 	t.Assert().EqualError(err, "Error applying changes to order book: apply error")
 	t.Assert().Equal(uint32(100), t.stream.lastLedger)
-	t.Assert().True(t.stream.lastUpdate.Equal(time.Time{}))
 }
 
 func (t *UpdateOrderBookStreamTestSuite) TestApplyUpdatesSucceeds() {
@@ -464,17 +462,18 @@ func (t *UpdateOrderBookStreamTestSuite) TestApplyUpdatesSucceeds() {
 		Return(nil).
 		Once()
 
-	err := t.stream.update(status)
+	reset, err := t.stream.update(status)
 	t.Assert().NoError(err)
 	t.Assert().Equal(status.LastIngestedLedger, t.stream.lastLedger)
-	t.Assert().False(t.stream.lastUpdate.Equal(time.Time{}))
+	t.Assert().False(reset)
 }
 
 type VerifyOrderBookStreamTestSuite struct {
 	suite.Suite
-	historyQ *mockDBQ
-	graph    *mockOrderBookGraph
-	stream   *OrderBookStream
+	historyQ    *mockDBQ
+	graph       *mockOrderBookGraph
+	stream      *OrderBookStream
+	initialTime time.Time
 }
 
 func TestVerifyOrderBookStream(t *testing.T) {
@@ -484,7 +483,8 @@ func TestVerifyOrderBookStream(t *testing.T) {
 func (t *VerifyOrderBookStreamTestSuite) SetupTest() {
 	t.historyQ = &mockDBQ{}
 	t.graph = &mockOrderBookGraph{}
-	t.stream = &OrderBookStream{OrderBookGraph: t.graph, HistoryQ: t.historyQ}
+	t.stream = NewOrderBookStream(t.historyQ, t.graph)
+	t.initialTime = t.stream.lastVerification
 
 	sellerID := "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"
 	otherSellerID := "GAXI33UCLQTCKM2NMRBS7XYBR535LLEVAHL5YBN4FTCB4HZHT7ZA5CVK"
@@ -531,8 +531,7 @@ func (t *VerifyOrderBookStreamTestSuite) TestGetAllOffersError() {
 	t.stream.lastLedger = 300
 	t.stream.verifyAllOffers()
 	t.Assert().Equal(uint32(300), t.stream.lastLedger)
-	t.Assert().False(t.stream.lastUpdate.Equal(time.Time{}))
-	t.Assert().True(t.stream.lastUpdate.Before(time.Now()))
+	t.Assert().True(t.stream.lastVerification.Equal(t.initialTime))
 }
 
 func (t *VerifyOrderBookStreamTestSuite) TestEmptyDBOffers() {
@@ -542,7 +541,7 @@ func (t *VerifyOrderBookStreamTestSuite) TestEmptyDBOffers() {
 	t.stream.lastLedger = 300
 	t.stream.verifyAllOffers()
 	t.Assert().Equal(uint32(0), t.stream.lastLedger)
-	t.Assert().True(t.stream.lastUpdate.Equal(time.Time{}))
+	t.Assert().False(t.stream.lastVerification.Equal(t.initialTime))
 }
 
 func (t *VerifyOrderBookStreamTestSuite) TestLengthMismatch() {
@@ -566,7 +565,7 @@ func (t *VerifyOrderBookStreamTestSuite) TestLengthMismatch() {
 	t.stream.lastLedger = 300
 	t.stream.verifyAllOffers()
 	t.Assert().Equal(uint32(0), t.stream.lastLedger)
-	t.Assert().True(t.stream.lastUpdate.Equal(time.Time{}))
+	t.Assert().False(t.stream.lastVerification.Equal(t.initialTime))
 }
 
 func (t *VerifyOrderBookStreamTestSuite) TestContentMismatch() {
@@ -603,7 +602,7 @@ func (t *VerifyOrderBookStreamTestSuite) TestContentMismatch() {
 	t.stream.lastLedger = 300
 	t.stream.verifyAllOffers()
 	t.Assert().Equal(uint32(0), t.stream.lastLedger)
-	t.Assert().True(t.stream.lastUpdate.Equal(time.Time{}))
+	t.Assert().False(t.stream.lastVerification.Equal(t.initialTime))
 }
 
 func (t *VerifyOrderBookStreamTestSuite) TestSuccess() {
@@ -640,5 +639,5 @@ func (t *VerifyOrderBookStreamTestSuite) TestSuccess() {
 	t.stream.lastLedger = 300
 	t.stream.verifyAllOffers()
 	t.Assert().Equal(uint32(300), t.stream.lastLedger)
-	t.Assert().True(t.stream.lastUpdate.Equal(time.Time{}))
+	t.Assert().False(t.stream.lastVerification.Equal(t.initialTime))
 }
