@@ -364,6 +364,12 @@ func (c *captiveStellarCore) Close() error {
 
 	if c.stop != nil {
 		close(c.stop)
+		// discard pending data in case the goroutine is blocked writing to the channel
+		select {
+		case <-c.errC:
+		case <-c.metaC:
+		default:
+		}
 		// Do not close the other channels until we know
 		// the goroutine is done
 		c.wait.Wait()
