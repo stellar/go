@@ -194,14 +194,24 @@ func (c *captiveStellarCore) sendLedgerMeta(untilSequence uint32) {
 		default:
 			meta, err := c.readLedgerMetaFromPipe()
 			if err != nil {
-				c.errC <- err
+				select {
+				case <-c.stop:
+				case c.errC <- err:
+				}
 				return
 			}
-			c.metaC <- meta
+			select {
+			case <-c.stop:
+				return
+			case c.metaC <- meta:
+			}
 			atomic.AddUint32(&c.readBufferOccupation, 1)
 			seq, err := peekLedgerSequence(meta)
 			if err != nil {
-				c.errC <- err
+				select {
+				case <-c.stop:
+				case c.errC <- err:
+				}
 				return
 			}
 			if seq >= untilSequence {
