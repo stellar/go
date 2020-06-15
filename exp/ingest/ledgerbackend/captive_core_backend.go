@@ -3,10 +3,14 @@ package ledgerbackend
 import (
 	"io"
 	"sync"
+	"sync/atomic"
+	"time"
 
 	"github.com/pkg/errors"
+
 	"github.com/stellar/go/network"
 	"github.com/stellar/go/support/historyarchive"
+	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/xdr"
 )
 
@@ -49,6 +53,13 @@ type captiveStellarCore struct {
 	networkPassphrase string
 	historyURLs       []string
 	lastLedger        *uint32 // end of current segment if offline, nil if online
+
+	// read-ahead buffer
+	readBufferOccupation uint32
+	stop                 chan struct{}
+	wait                 sync.WaitGroup
+	metaC                chan *xdr.LedgerCloseMeta
+	errC                 chan error
 
 	stellarCoreRunner stellarCoreRunnerInterface
 
@@ -158,7 +169,64 @@ func (c *captiveStellarCore) openOfflineReplaySubprocess(nextLedger, lastLedger 
 	c.nextLedger = roundDownToFirstReplayAfterCheckpointStart(nextLedger)
 	c.nextLedgerMutex.Unlock()
 	c.lastLedger = &lastLedger
+
+	// read-ahead buffer
+	c.metaC = make(chan *xdr.LedgerCloseMeta, 2)
+	c.errC = make(chan error)
+	c.stop = make(chan struct{})
+	c.wait.Add(1)
+	go c.sendLedgerMeta(lastLedger)
 	return nil
+}
+
+// sendLedgerMeta reads from the captive core pipe, decodes the ledger metadata
+// and sends it to the metadata buffered channel
+func (c *captiveStellarCore) sendLedgerMeta(untilSequence uint32) {
+	defer c.wait.Done()
+	printBufferOccupation := time.NewTicker(5 * time.Second)
+	defer printBufferOccupation.Stop()
+	for {
+		select {
+		case <-c.stop:
+			return
+		case <-printBufferOccupation.C:
+			log.Debug("captive core read-ahead buffer occupation:", atomic.LoadUint32(&c.readBufferOccupation))
+		default:
+			meta, err := c.readLedgerMetaFromPipe()
+			if err != nil {
+				c.errC <- err
+				return
+			}
+			c.metaC <- meta
+			atomic.AddUint32(&c.readBufferOccupation, 1)
+			seq, err := peekLedgerSequence(meta)
+			if err != nil {
+				c.errC <- err
+				return
+			}
+			if seq >= untilSequence {
+				// we are done
+				return
+			}
+		}
+	}
+}
+
+func (c *captiveStellarCore) readLedgerMetaFromPipe() (*xdr.LedgerCloseMeta, error) {
+	metaPipe := c.stellarCoreRunner.getMetaPipe()
+	if metaPipe == nil {
+		return nil, errors.New("missing metadata pipe")
+	}
+	var xlcm xdr.LedgerCloseMeta
+	_, e0 := xdr.UnmarshalFramed(metaPipe, &xlcm)
+	if e0 != nil {
+		if e0 == io.EOF {
+			return nil, errors.Wrap(e0, "got EOF from subprocess")
+		} else {
+			return nil, errors.Wrap(e0, "unmarshalling framed LedgerCloseMeta")
+		}
+	}
+	return &xlcm, nil
 }
 
 func (c *captiveStellarCore) PrepareRange(from uint32, to uint32) error {
@@ -206,27 +274,21 @@ func (c *captiveStellarCore) GetLedger(sequence uint32) (bool, LedgerCloseMeta, 
 		return false, LedgerCloseMeta{}, errors.New("unexpected subprocess next-ledger")
 	}
 
-	// ... and open
-	metaPipe := c.stellarCoreRunner.getMetaPipe()
-	if metaPipe == nil {
-		return false, LedgerCloseMeta{}, errors.New("missing metadata pipe")
-	}
-
 	// Now loop along the range until we find the ledger we want.
 	var errOut error
+loop:
 	for {
-		var xlcm xdr.LedgerCloseMeta
-		_, e0 := xdr.UnmarshalFramed(metaPipe, &xlcm)
-		if e0 != nil {
-			if e0 == io.EOF {
-				errOut = errors.Wrap(e0, "got EOF from subprocess")
-				break
-			} else {
-				errOut = errors.Wrap(e0, "unmarshalling framed LedgerCloseMeta")
-				break
-			}
+		var xlcm *xdr.LedgerCloseMeta
+		select {
+		case err := <-c.errC:
+			errOut = err
+			break loop
+		case xlcm = <-c.metaC:
+			// decrement counter
+			atomic.AddUint32(&c.readBufferOccupation, ^uint32(0))
 		}
-		seq, e1 := peekLedgerSequence(&xlcm)
+
+		seq, e1 := peekLedgerSequence(xlcm)
 		if e1 != nil {
 			errOut = e1
 			break
@@ -243,7 +305,7 @@ func (c *captiveStellarCore) GetLedger(sequence uint32) (bool, LedgerCloseMeta, 
 		if seq == sequence {
 			// Found the requested seq
 			var lcm LedgerCloseMeta
-			e2 := c.copyLedgerCloseMeta(&xlcm, &lcm)
+			e2 := c.copyLedgerCloseMeta(xlcm, &lcm)
 			if e2 != nil {
 				errOut = e2
 				break
@@ -299,6 +361,19 @@ func (c *captiveStellarCore) Close() error {
 	c.nextLedgerMutex.Lock()
 	c.nextLedger = 0
 	c.nextLedgerMutex.Unlock()
+
+	if c.stop != nil {
+		close(c.stop)
+		// Do not close the other channels until we know
+		// the goroutine is done
+		c.wait.Wait()
+	}
+	if c.metaC != nil {
+		close(c.metaC)
+	}
+	if c.errC != nil {
+		close(c.errC)
+	}
 
 	c.lastLedger = nil
 
