@@ -3,7 +3,6 @@
 package ledgerbackend
 
 import (
-	"bufio"
 	"os"
 	"syscall"
 
@@ -50,7 +49,7 @@ func (c *stellarCoreRunner) start() error {
 	cmd := c.cmd
 	go cmd.Wait()
 
-	c.metaPipe = bufio.NewReaderSize(readFile, 1024*1024)
+	c.metaPipe = readFile
 	return nil
 }
 
