@@ -55,6 +55,7 @@ type Config struct {
 	CoreSession       *db.Session
 	StellarCoreURL    string
 	StellarCoreCursor string
+	StellarCorePath   string
 	NetworkPassphrase string
 
 	HistorySession           *db.Session
@@ -138,10 +139,19 @@ func NewSystem(config Config) (*System, error) {
 	coreSession := config.CoreSession.Clone()
 	coreSession.Ctx = ctx
 
-	ledgerBackend, err := ledgerbackend.NewDatabaseBackendFromSession(coreSession)
-	if err != nil {
-		cancel()
-		return nil, errors.Wrap(err, "error creating ledger backend")
+	var ledgerBackend ledgerbackend.LedgerBackend
+	if len(config.StellarCorePath) > 0 {
+		ledgerBackend = ledgerbackend.NewCaptive(
+			config.StellarCorePath,
+			config.NetworkPassphrase,
+			[]string{config.HistoryArchiveURL},
+		)
+	} else {
+		ledgerBackend, err = ledgerbackend.NewDatabaseBackendFromSession(coreSession)
+		if err != nil {
+			cancel()
+			return nil, errors.Wrap(err, "error creating ledger backend")
+		}
 	}
 
 	historyQ := &history.Q{config.HistorySession.Clone()}

@@ -166,6 +166,7 @@ type ReingestHistoryRangeStateTestSuite struct {
 	suite.Suite
 	historyQ       *mockDBQ
 	historyAdapter *adapters.MockHistoryArchiveAdapter
+	ledgerBackend  *mockLedgerBackend
 	runner         *mockProcessorsRunner
 	system         *System
 }
@@ -173,17 +174,21 @@ type ReingestHistoryRangeStateTestSuite struct {
 func (s *ReingestHistoryRangeStateTestSuite) SetupTest() {
 	s.historyQ = &mockDBQ{}
 	s.historyAdapter = &adapters.MockHistoryArchiveAdapter{}
+	s.ledgerBackend = &mockLedgerBackend{}
 	s.runner = &mockProcessorsRunner{}
 	s.system = &System{
 		ctx:            context.Background(),
 		historyQ:       s.historyQ,
 		historyAdapter: s.historyAdapter,
+		ledgerBackend:  s.ledgerBackend,
 		runner:         s.runner,
 	}
 
 	s.historyQ.On("GetTx").Return(nil).Once()
 	s.historyQ.On("Rollback").Return(nil).Once()
 	s.historyQ.On("Begin").Return(nil).Once()
+
+	s.ledgerBackend.On("PrepareRange", uint32(100), uint32(200)).Return(nil).Once()
 }
 
 func (s *ReingestHistoryRangeStateTestSuite) TearDownTest() {
@@ -342,7 +347,6 @@ func (s *ReingestHistoryRangeStateTestSuite) TestSuccess() {
 
 func (s *ReingestHistoryRangeStateTestSuite) TestSuccessOneLedger() {
 	s.historyQ.On("GetLastLedgerExpIngestNonBlocking").Return(uint32(0), nil).Once()
-
 	s.historyQ.On("GetTx").Return(&sqlx.Tx{}).Once()
 
 	toidFrom := toid.New(100, 0, 0)
@@ -353,6 +357,10 @@ func (s *ReingestHistoryRangeStateTestSuite) TestSuccessOneLedger() {
 
 	s.runner.On("RunTransactionProcessorsOnLedger", uint32(100)).Return(io.StatsLedgerTransactionProcessorResults{}, nil).Once()
 	s.historyQ.On("Commit").Return(nil).Once()
+
+	// Recreate mock in this single test to remove previous assertion.
+	*s.ledgerBackend = mockLedgerBackend{}
+	s.ledgerBackend.On("PrepareRange", uint32(100), uint32(100)).Return(nil).Once()
 
 	err := s.system.ReingestRange(100, 100, false)
 	s.Assert().NoError(err)

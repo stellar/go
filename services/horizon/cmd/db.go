@@ -179,6 +179,9 @@ var dbReingestRangeCmd = &cobra.Command{
 			HistoryArchiveURL:        config.HistoryArchiveURLs[0],
 			IngestFailedTransactions: config.IngestFailedTransactions,
 		}
+		if config.EnableCaptiveCoreIngestion {
+			ingestConfig.StellarCorePath = config.StellarCoreBinaryPath
+		}
 
 		system, err := expingest.NewSystem(ingestConfig)
 		if err != nil {

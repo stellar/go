@@ -39,6 +39,28 @@ func NewDatabaseBackendFromSession(session *db.Session) (*DatabaseBackend, error
 	return &DatabaseBackend{session: session}, nil
 }
 
+func (dbb *DatabaseBackend) PrepareRange(from uint32, to uint32) error {
+	fromExists, _, err := dbb.GetLedger(from)
+	if err != nil {
+		return errors.Wrap(err, "error getting ledger")
+	}
+
+	if !fromExists {
+		return errors.New("`from` ledger does not exist")
+	}
+
+	toExists, _, err := dbb.GetLedger(to)
+	if err != nil {
+		return errors.Wrap(err, "error getting ledger")
+	}
+
+	if !toExists {
+		return errors.New("`to` ledger does not exist")
+	}
+
+	return nil
+}
+
 // GetLatestLedgerSequence returns the most recent ledger sequence number present in the database.
 func (dbb *DatabaseBackend) GetLatestLedgerSequence() (uint32, error) {
 	var ledger []ledgerHeader

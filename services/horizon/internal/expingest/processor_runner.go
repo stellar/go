@@ -158,20 +158,19 @@ func (s *ProcessorRunner) validateBucketList(ledgerSequence uint32) error {
 		return errors.Wrap(err, "Error getting bucket list hash")
 	}
 
-	ledgerReader, err := io.NewDBLedgerReader(s.ctx, ledgerSequence, s.ledgerBackend)
+	exists, ledgerCloseMeta, err := s.ledgerBackend.GetLedger(ledgerSequence)
 	if err != nil {
-		if err == io.ErrNotFound {
-			return fmt.Errorf(
-				"cannot validate bucket hash list. Checkpoint ledger (%d) must exist in Stellar-Core database.",
-				ledgerSequence,
-			)
-		} else {
-			return errors.Wrap(err, "Error getting ledger")
-		}
+		return errors.Wrap(err, "Error getting ledger")
 	}
 
-	ledgerHeader := ledgerReader.GetHeader()
-	ledgerBucketHashList := ledgerHeader.Header.BucketListHash
+	if !exists {
+		return fmt.Errorf(
+			"cannot validate bucket hash list. Checkpoint ledger (%d) must exist in Stellar-Core database.",
+			ledgerSequence,
+		)
+	}
+
+	ledgerBucketHashList := ledgerCloseMeta.LedgerHeader.Header.BucketListHash
 
 	if !bytes.Equal(historyBucketListHash[:], ledgerBucketHashList[:]) {
 		return fmt.Errorf(
@@ -238,7 +237,7 @@ func (s *ProcessorRunner) runChangeProcessorOnLedger(
 ) error {
 	var changeReader io.ChangeReader
 	var err error
-	changeReader, err = io.NewLedgerChangeReader(s.ctx, ledger, s.ledgerBackend)
+	changeReader, err = io.NewLedgerChangeReader(s.ledgerBackend, ledger)
 	if err != nil {
 		return errors.Wrap(err, "Error creating ledger change reader")
 	}
@@ -264,13 +263,13 @@ func (s *ProcessorRunner) runChangeProcessorOnLedger(
 func (s *ProcessorRunner) RunTransactionProcessorsOnLedger(ledger uint32) (io.StatsLedgerTransactionProcessorResults, error) {
 	ledgerTransactionStats := io.StatsLedgerTransactionProcessor{}
 
-	ledgerReader, err := io.NewDBLedgerReader(s.ctx, ledger, s.ledgerBackend)
+	transactionReader, err := io.NewLedgerTransactionReader(s.ledgerBackend, ledger)
 	if err != nil {
 		return ledgerTransactionStats.GetResults(), errors.Wrap(err, "Error creating ledger reader")
 	}
 
-	txProcessor := s.buildTransactionProcessor(&ledgerTransactionStats, ledgerReader.GetHeader())
-	err = io.StreamLedgerTransactions(txProcessor, ledgerReader)
+	txProcessor := s.buildTransactionProcessor(&ledgerTransactionStats, transactionReader.GetHeader())
+	err = io.StreamLedgerTransactions(txProcessor, transactionReader)
 	if err != nil {
 		return ledgerTransactionStats.GetResults(), errors.Wrap(err, "Error streaming changes from ledger")
 	}

@@ -16,6 +16,10 @@ func (fakeLedgerBackend) GetLatestLedgerSequence() (uint32, error) {
 	return 1, nil
 }
 
+func (fakeLedgerBackend) PrepareRange(from uint32, to uint32) error {
+	return nil
+}
+
 func fakeAccount() xdr.LedgerEntryChange {
 	account := keypair.MustRandom().Address()
 	return xdr.LedgerEntryChange{

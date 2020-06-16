@@ -1,12 +1,18 @@
 package ledgerbackend
 
-import "github.com/stellar/go/xdr"
+import (
+	"github.com/stellar/go/xdr"
+)
 
 // LedgerBackend represents the interface to a ledger data store.
 type LedgerBackend interface {
 	GetLatestLedgerSequence() (sequence uint32, err error)
 	// The first returned value is false when the ledger does not exist in a backend.
 	GetLedger(sequence uint32) (bool, LedgerCloseMeta, error)
+	// Prepares the given range (including from and to) to be loaded. Some backends
+	// (like captive stellar-core) need to process data before being able to stream
+	// ledgers.
+	PrepareRange(from uint32, to uint32) error
 	Close() error
 }
 
