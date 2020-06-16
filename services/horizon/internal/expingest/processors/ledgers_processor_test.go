@@ -21,6 +21,7 @@ type LedgersProcessorTestSuiteLedger struct {
 	opCount       int
 	ingestVersion int
 	txs           []io.LedgerTransaction
+	txSetOpCount  int
 }
 
 func TestLedgersProcessorTestSuiteLedger(t *testing.T) {
@@ -87,6 +88,7 @@ func (s *LedgersProcessorTestSuiteLedger) SetupTest() {
 	s.successCount = 2
 	s.failedCount = 1
 	s.opCount = 5
+	s.txSetOpCount = 8
 }
 
 func (s *LedgersProcessorTestSuiteLedger) TearDownTest() {
@@ -100,6 +102,7 @@ func (s *LedgersProcessorTestSuiteLedger) TestInsertLedgerSucceeds() {
 		s.successCount,
 		s.failedCount,
 		s.opCount,
+		s.txSetOpCount,
 		s.ingestVersion,
 	).Return(int64(1), nil)
 
@@ -120,6 +123,7 @@ func (s *LedgersProcessorTestSuiteLedger) TestInsertLedgerReturnsError() {
 		mock.Anything,
 		mock.Anything,
 		mock.Anything,
+		mock.Anything,
 	).Return(int64(0), errors.New("transient error"))
 
 	err := s.processor.Commit()
@@ -130,6 +134,7 @@ func (s *LedgersProcessorTestSuiteLedger) TestInsertLedgerReturnsError() {
 func (s *LedgersProcessorTestSuiteLedger) TestInsertLedgerNoRowsAffected() {
 	s.mockQ.On(
 		"InsertLedger",
+		mock.Anything,
 		mock.Anything,
 		mock.Anything,
 		mock.Anything,

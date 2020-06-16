@@ -260,7 +260,7 @@ func TestStateMiddleware(t *testing.T) {
 					LedgerSeq:          testCase.latestHistoryLedger,
 					PreviousLedgerHash: xdr.Hash{byte(i)},
 				},
-			}, 0, 0, 0, 0)
+			}, 0, 0, 0, 0, 0)
 			tt.Assert.NoError(err)
 			tt.Assert.NoError(q.UpdateLastLedgerExpIngest(testCase.lastIngestedLedger))
 			tt.Assert.NoError(q.UpdateExpIngestVersion(testCase.ingestionVersion))

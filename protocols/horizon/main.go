@@ -219,6 +219,7 @@ type Ledger struct {
 	SuccessfulTransactionCount int32     `json:"successful_transaction_count"`
 	FailedTransactionCount     *int32    `json:"failed_transaction_count"`
 	OperationCount             int32     `json:"operation_count"`
+	TxSetOperationCount        *int32    `json:"tx_set_operation_count"`
 	ClosedAt                   time.Time `json:"closed_at"`
 	TotalCoins                 string    `json:"total_coins"`
 	FeePool                    string    `json:"fee_pool"`
