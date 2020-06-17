@@ -22,6 +22,8 @@ type HistoryArchiveBackend struct {
 	cache     map[uint32]*LedgerCloseMeta
 }
 
+var _ LedgerBackend = (*HistoryArchiveBackend)(nil)
+
 func NewHistoryArchiveBackendFromURL(archiveURL string) (*HistoryArchiveBackend, error) {
 	archive, err := historyarchive.Connect(
 		archiveURL,
