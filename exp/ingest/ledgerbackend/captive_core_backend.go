@@ -68,6 +68,7 @@ type captiveStellarCore struct {
 	metaC chan metaResult
 
 	stellarCoreRunner stellarCoreRunnerInterface
+	cachedMeta        *LedgerCloseMeta
 
 	nextLedgerMutex sync.Mutex
 	nextLedger      uint32 // next ledger expected, error w/ restart if not seen
@@ -271,6 +272,12 @@ func (c *captiveStellarCore) PrepareRange(from uint32, to uint32) error {
 // the implicit start ledger, so we might need to skip a few ledgers until
 // we hit the one requested (this routine does so transparently if needed).
 func (c *captiveStellarCore) GetLedger(sequence uint32) (bool, LedgerCloseMeta, error) {
+	if c.cachedMeta != nil && sequence == uint32(c.cachedMeta.LedgerHeader.Header.LedgerSeq) {
+		// GetLedger can be called multiple times using the same sequence, ex. to create
+		// change and transaction readers. If we have this ledger buffered, let's return it.
+		return true, *c.cachedMeta, nil
+	}
+
 	// First, if we're open but out of range for the request, close.
 	if !c.IsClosed() && !c.LedgerWithinCheckpoints(sequence, numCheckpointsLeeway) {
 		c.Close()
@@ -320,6 +327,9 @@ loop:
 				errOut = e2
 				break
 			}
+
+			c.cachedMeta = &lcm
+
 			// If we got the _last_ ledger in a segment, close before returning.
 			if c.lastLedger != nil && *c.lastLedger == seq {
 				c.Close()
