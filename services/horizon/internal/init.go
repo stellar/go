@@ -224,7 +224,6 @@ func initSubmissionSystem(app *App) {
 		Submitter:       txsub.NewDefaultSubmitter(http.DefaultClient, app.config.StellarCoreURL),
 		SubmissionQueue: sequence.NewManager(),
 		Results: &results.DB{
-			Core:    &core.Q{Session: app.CoreSession(context.Background())},
 			History: &history.Q{Session: app.HorizonSession(context.Background())},
 		},
 		Sequences: &history.Q{Session: app.HorizonSession(context.Background())},
