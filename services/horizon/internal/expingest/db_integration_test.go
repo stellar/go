@@ -112,6 +112,8 @@ func (s *DBTestSuite) setupMocksForBuildState() {
 	s.mockChangeReader()
 	s.historyAdapter.On("BucketListHash", s.sequence).
 		Return(checkpointHash, nil).Once()
+
+	s.ledgerBackend.On("PrepareRange", s.sequence, uint32(0)).Return(nil).Once()
 	s.ledgerBackend.On("GetLedger", s.sequence).
 		Return(
 			true,

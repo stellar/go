@@ -6,12 +6,14 @@ import (
 
 // LedgerBackend represents the interface to a ledger data store.
 type LedgerBackend interface {
+	// GetLatestLedgerSequence returns the sequence of the latest ledger available
+	// in the backend.
 	GetLatestLedgerSequence() (sequence uint32, err error)
 	// The first returned value is false when the ledger does not exist in a backend.
 	GetLedger(sequence uint32) (bool, LedgerCloseMeta, error)
-	// Prepares the given range (including from and to) to be loaded. Some backends
-	// (like captive stellar-core) need to process data before being able to stream
-	// ledgers.
+	// PrepareRange prepares the given range (including from and to) to be loaded.
+	// Some backends (like captive stellar-core) need to initalize data to be
+	// able to stream ledgers.
 	PrepareRange(from uint32, to uint32) error
 	Close() error
 }

@@ -49,13 +49,15 @@ func (dbb *DatabaseBackend) PrepareRange(from uint32, to uint32) error {
 		return errors.New("`from` ledger does not exist")
 	}
 
-	toExists, _, err := dbb.GetLedger(to)
-	if err != nil {
-		return errors.Wrap(err, "error getting ledger")
-	}
+	if to != 0 {
+		toExists, _, err := dbb.GetLedger(to)
+		if err != nil {
+			return errors.Wrap(err, "error getting ledger")
+		}
 
-	if !toExists {
-		return errors.New("`to` ledger does not exist")
+		if !toExists {
+			return errors.New("`to` ledger does not exist")
+		}
 	}
 
 	return nil

@@ -17,7 +17,8 @@ import (
 )
 
 type stellarCoreRunnerInterface interface {
-	run(from, to uint32) error
+	catchup(from, to uint32) error
+	runFrom(from uint32) error
 	getMetaPipe() io.Reader
 	close() error
 }
@@ -35,24 +36,46 @@ type stellarCoreRunner struct {
 func (r *stellarCoreRunner) getConf() string {
 	lines := []string{
 		"# Generated file -- do not edit",
-		"RUN_STANDALONE=true",
-		"NODE_IS_VALIDATOR=false",
-		"DISABLE_XDR_FSYNC=true",
-		"UNSAFE_QUORUM=true",
 		fmt.Sprintf(`NETWORK_PASSPHRASE="%s"`, r.networkPassphrase),
 		fmt.Sprintf(`BUCKET_DIR_PATH="%s"`, filepath.Join(r.getTmpDir(), "buckets")),
 		fmt.Sprintf(`METADATA_OUTPUT_STREAM="%s"`, r.getPipeName()),
+		// "RUN_STANDALONE=true",
+		"NODE_IS_VALIDATOR=false",
+		// "DISABLE_XDR_FSYNC=true",
+		`DATABASE="postgresql://dbname=core host=localhost user=Bartek"`,
+
+		`
+[[HOME_DOMAINS]]
+HOME_DOMAIN="testnet.stellar.org"
+QUALITY="HIGH"
+
+[[VALIDATORS]]
+NAME="sdf_testnet_1"
+HOME_DOMAIN="testnet.stellar.org"
+PUBLIC_KEY="GDKXE2OZMJIPOSLNA6N6F2BVCI3O777I2OOC4BV7VOYUEHYX7RTRYA7Y"
+ADDRESS="core-testnet1.stellar.org"
+HISTORY="curl -sf http://history.stellar.org/prd/core-testnet/core_testnet_001/{0} -o {1}"
+
+[[VALIDATORS]]
+NAME="sdf_testnet_2"
+HOME_DOMAIN="testnet.stellar.org"
+PUBLIC_KEY="GCUCJTIYXSOXKBSNFGNFWW5MUQ54HKRPGJUTQFJ5RQXZXNOLNXYDHRAP"
+ADDRESS="core-testnet2.stellar.org"
+HISTORY="curl -sf http://history.stellar.org/prd/core-testnet/core_testnet_002/{0} -o {1}"
+
+[[VALIDATORS]]
+NAME="sdf_testnet_3"
+HOME_DOMAIN="testnet.stellar.org"
+PUBLIC_KEY="GC2V2EFSXN6SQTWVYA5EPJPBWWIMSD2XQNKUOHGEKB535AQE2I6IXV2Z"
+ADDRESS="core-testnet3.stellar.org"
+HISTORY="curl -sf http://history.stellar.org/prd/core-testnet/core_testnet_003/{0} -o {1}"
+
+`,
 	}
 	for i, val := range r.historyURLs {
 		lines = append(lines, fmt.Sprintf("[HISTORY.h%d]", i))
 		lines = append(lines, fmt.Sprintf(`get="curl -sf %s/{0} -o {1}"`, val))
 	}
-	// Add a fictional quorum -- necessary to convince core to start up;
-	// but not used at all for our purposes. Pubkey here is just random.
-	lines = append(lines,
-		"[QUORUM_SET]",
-		"THRESHOLD_PERCENT=100",
-		`VALIDATORS=["GCZBOIAY4HLKAJVNJORXZOZRAY2BJDBZHKPBHZCRAIUR5IHC2UHBGCQR"]`)
 	return strings.ReplaceAll(strings.Join(lines, "\n"), "\\", "\\\\")
 }
 
@@ -60,15 +83,15 @@ func (r *stellarCoreRunner) getConfFileName() string {
 	return filepath.Join(r.getTmpDir(), "stellar-core.conf")
 }
 
-func (*stellarCoreRunner) GetLogLineWriter() io.Writer {
+func (*stellarCoreRunner) getLogLineWriter() io.Writer {
 	r, w := io.Pipe()
 	br := bufio.NewReader(r)
 	// Strip timestamps from log lines from captive stellar-core. We emit our own.
 	dateRx := regexp.MustCompile(`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3} `)
 	go func() {
 		for {
-			line, e := br.ReadString('\n')
-			if e != nil {
+			line, err := br.ReadString('\n')
+			if err != nil {
 				break
 			}
 			line = dateRx.ReplaceAllString(line, "")
@@ -91,32 +114,97 @@ func (r *stellarCoreRunner) getTmpDir() string {
 // platform-specific captiveStellarCore.Start() methods.
 func (r *stellarCoreRunner) writeConf() error {
 	dir := r.getTmpDir()
-	e := os.MkdirAll(dir, 0755)
-	if e != nil {
-		return errors.Wrap(e, "error creating subprocess tmpdir")
+	err := os.MkdirAll(dir, 0755)
+	if err != nil {
+		return errors.Wrap(err, "error creating subprocess tmpdir")
 	}
 	conf := r.getConf()
 	return ioutil.WriteFile(r.getConfFileName(), []byte(conf), 0644)
 }
 
-func (r *stellarCoreRunner) run(from, to uint32) error {
+func (r *stellarCoreRunner) catchup(from, to uint32) error {
 	err := r.writeConf()
 	if err != nil {
 		return errors.Wrap(err, "error writing configuration")
 	}
 
+	// new-db
+	cmd := exec.Command(r.executablePath, []string{"--conf", r.getConfFileName(), "new-db"}...)
+	err = cmd.Start()
+	if err != nil {
+		return errors.Wrap(err, "error starting `stellar-core new-db` subprocess")
+	}
+	cmd.Dir = r.getTmpDir()
+	cmd.Stdout = r.getLogLineWriter()
+	cmd.Stderr = r.getLogLineWriter()
+	err = cmd.Wait()
+	if err != nil {
+		return errors.Wrap(err, "error waiting for `stellar-core new-db` subprocess")
+	}
+
 	rangeArg := fmt.Sprintf("%d/%d", to, to-from+1)
 	args := []string{"--conf", r.getConfFileName(), "catchup", rangeArg, "--replay-in-memory"}
-	cmd := exec.Command(r.executablePath, args...)
+	cmd = exec.Command(r.executablePath, args...)
 	cmd.Dir = r.getTmpDir()
-	// In order to get the full stellar core logs:
-	// cmd.Stdout = r.GetLogLineWriter()
-	cmd.Stderr = cmd.Stdout
+	cmd.Stdout = r.getLogLineWriter()
+	cmd.Stderr = r.getLogLineWriter()
 	r.cmd = cmd
-	err = r.start()
+	r.metaPipe, err = r.start()
 	if err != nil {
-		return errors.Wrap(err, "error starting stellar-core subprocess")
+		return errors.Wrap(err, "error starting `stellar-core run` subprocess")
 	}
+
+	return nil
+}
+
+func (r *stellarCoreRunner) runFrom(from uint32) error {
+	err := r.writeConf()
+	if err != nil {
+		return errors.Wrap(err, "error writing configuration")
+	}
+
+	// new-db
+	cmd := exec.Command(r.executablePath, []string{"--conf", r.getConfFileName(), "new-db"}...)
+	err = cmd.Start()
+	if err != nil {
+		return errors.Wrap(err, "error starting `stellar-core new-db` subprocess")
+	}
+	cmd.Dir = r.getTmpDir()
+	cmd.Stdout = r.getLogLineWriter()
+	cmd.Stderr = r.getLogLineWriter()
+	err = cmd.Wait()
+	if err != nil {
+		return errors.Wrap(err, "error waiting for `stellar-core new-db` subprocess")
+	}
+
+	// catchup to `from` ledger
+	cmd = exec.Command(r.executablePath, []string{
+		"--conf", r.getConfFileName(),
+		"catchup", fmt.Sprintf("%d/0", from-1),
+	}...)
+	cmd.Dir = r.getTmpDir()
+	cmd.Stdout = r.getLogLineWriter()
+	cmd.Stderr = r.getLogLineWriter()
+	err = cmd.Start()
+	if err != nil {
+		return errors.Wrapf(err, "error starting `stellar-core catchup %d/0` subprocess", from-1)
+	}
+	err = cmd.Wait()
+	if err != nil {
+		return errors.Wrapf(err, "error waiting for `stellar-core catchup %d/0` subprocess", from-1)
+	}
+
+	args := []string{"--conf", r.getConfFileName(), "run"}
+	cmd = exec.Command(r.executablePath, args...)
+	cmd.Dir = r.getTmpDir()
+	cmd.Stdout = r.getLogLineWriter()
+	cmd.Stderr = r.getLogLineWriter()
+	r.cmd = cmd
+	r.metaPipe, err = r.start()
+	if err != nil {
+		return errors.Wrap(err, "error starting `stellar-core run` subprocess")
+	}
+
 	return nil
 }
 

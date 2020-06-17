@@ -294,6 +294,11 @@ func (b buildState) run(s *System) (transition, error) {
 	}).Info("Processing state")
 	startTime := time.Now()
 
+	err = s.ledgerBackend.PrepareRange(b.checkpointLedger, 0)
+	if err != nil {
+		return stop(), errors.Wrap(err, "error preparing range")
+	}
+
 	stats, err := s.runner.RunHistoryArchiveIngestion(b.checkpointLedger)
 	if err != nil {
 		return start(), errors.Wrap(err, "Error ingesting history archive")
@@ -379,6 +384,11 @@ func (r resumeState) run(s *System) (transition, error) {
 				"going back to start state",
 		)
 		return start(), nil
+	}
+
+	err = s.ledgerBackend.PrepareRange(ingestLedger, 0)
+	if err != nil {
+		return stop(), errors.Wrap(err, "error preparing range")
 	}
 
 	// Check if ledger is closed
@@ -537,6 +547,11 @@ func (h historyRangeState) run(s *System) (transition, error) {
 	// we should go back to the init state
 	if lastHistoryLedger != h.fromLedger-1 {
 		return start(), nil
+	}
+
+	err = s.ledgerBackend.PrepareRange(h.fromLedger, 0)
+	if err != nil {
+		return stop(), errors.Wrap(err, "error preparing range")
 	}
 
 	for cur := h.fromLedger; cur <= h.toLedger; cur++ {

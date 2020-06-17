@@ -19,7 +19,7 @@ func TestResumeTestTestSuite(t *testing.T) {
 type ResumeTestTestSuite struct {
 	suite.Suite
 	graph             *mockOrderBookGraph
-	ledgeBackend      *ledgerbackend.MockDatabaseBackend
+	ledgerBackend     *ledgerbackend.MockDatabaseBackend
 	historyQ          *mockDBQ
 	historyAdapter    *adapters.MockHistoryArchiveAdapter
 	runner            *mockProcessorsRunner
@@ -29,7 +29,7 @@ type ResumeTestTestSuite struct {
 
 func (s *ResumeTestTestSuite) SetupTest() {
 	s.graph = &mockOrderBookGraph{}
-	s.ledgeBackend = &ledgerbackend.MockDatabaseBackend{}
+	s.ledgerBackend = &ledgerbackend.MockDatabaseBackend{}
 	s.historyQ = &mockDBQ{}
 	s.historyAdapter = &adapters.MockHistoryArchiveAdapter{}
 	s.runner = &mockProcessorsRunner{}
@@ -39,7 +39,7 @@ func (s *ResumeTestTestSuite) SetupTest() {
 		historyQ:          s.historyQ,
 		historyAdapter:    s.historyAdapter,
 		runner:            s.runner,
-		ledgerBackend:     s.ledgeBackend,
+		ledgerBackend:     s.ledgerBackend,
 		graph:             s.graph,
 		stellarCoreClient: s.stellarCoreClient,
 	}
@@ -54,7 +54,7 @@ func (s *ResumeTestTestSuite) TearDownTest() {
 	s.historyQ.AssertExpectations(t)
 	s.runner.AssertExpectations(t)
 	s.historyAdapter.AssertExpectations(t)
-	s.ledgeBackend.AssertExpectations(t)
+	s.ledgerBackend.AssertExpectations(t)
 	s.stellarCoreClient.AssertExpectations(t)
 	s.graph.AssertExpectations(t)
 }
@@ -219,10 +219,11 @@ func (s *ResumeTestTestSuite) TestIngestOrderbookOnly() {
 	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion, nil).Once()
 	s.historyQ.On("GetLatestLedger").Return(uint32(0), nil)
 
-	s.ledgeBackend.On("GetLatestLedgerSequence").Return(uint32(111), nil).Once()
+	s.ledgerBackend.On("GetLatestLedgerSequence").Return(uint32(111), nil).Once()
 
 	// Rollback to release the lock as we're not updating DB
 	s.historyQ.On("Rollback").Return(nil).Once()
+	s.ledgerBackend.On("PrepareRange", uint32(101), uint32(0)).Return(nil).Once()
 	s.runner.On("RunOrderBookProcessorOnLedger", uint32(101)).Return(io.StatsChangeProcessorResults{}, nil).Once()
 	s.graph.On("Apply", uint32(101)).Return(nil).Once()
 
@@ -246,7 +247,8 @@ func (s *ResumeTestTestSuite) TestIngestOrderbookOnlyWhenLastLedgerExpEqualsCurr
 	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion, nil).Once()
 	s.historyQ.On("GetLatestLedger").Return(uint32(101), nil)
 
-	s.ledgeBackend.On("GetLatestLedgerSequence").Return(uint32(111), nil).Once()
+	s.ledgerBackend.On("PrepareRange", uint32(101), uint32(0)).Return(nil).Once()
+	s.ledgerBackend.On("GetLatestLedgerSequence").Return(uint32(111), nil).Once()
 
 	// Rollback to release the lock as we're not updating DB
 	s.historyQ.On("Rollback").Return(nil).Once()
@@ -278,7 +280,8 @@ func (s *ResumeTestTestSuite) TestNewLedgerButInMemoryOnly() {
 	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion, nil).Once()
 	s.historyQ.On("GetLatestLedger").Return(uint32(0), nil)
 
-	s.ledgeBackend.On("GetLatestLedgerSequence").Return(uint32(111), nil).Once()
+	s.ledgerBackend.On("PrepareRange", uint32(101), uint32(0)).Return(nil).Once()
+	s.ledgerBackend.On("GetLatestLedgerSequence").Return(uint32(111), nil).Once()
 
 	next, err := resumeState{latestSuccessfullyProcessedLedger: 100}.run(s.system)
 	s.Assert().NoError(err)
@@ -297,7 +300,8 @@ func (s *ResumeTestTestSuite) TestIngestAllMasterNode() {
 	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion, nil).Once()
 	s.historyQ.On("GetLatestLedger").Return(uint32(0), nil)
 
-	s.ledgeBackend.On("GetLatestLedgerSequence").Return(uint32(111), nil).Once()
+	s.ledgerBackend.On("PrepareRange", uint32(101), uint32(0)).Return(nil).Once()
+	s.ledgerBackend.On("GetLatestLedgerSequence").Return(uint32(111), nil).Once()
 
 	s.runner.On("RunAllProcessorsOnLedger", uint32(101)).Return(io.StatsChangeProcessorResults{}, io.StatsLedgerTransactionProcessorResults{}, nil).Once()
 	s.historyQ.On("UpdateLastLedgerExpIngest", uint32(101)).Return(nil).Once()
@@ -330,7 +334,8 @@ func (s *ResumeTestTestSuite) TestErrorSettingCursorIgnored() {
 	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion, nil).Once()
 	s.historyQ.On("GetLatestLedger").Return(uint32(0), nil)
 
-	s.ledgeBackend.On("GetLatestLedgerSequence").Return(uint32(111), nil).Once()
+	s.ledgerBackend.On("PrepareRange", uint32(101), uint32(0)).Return(nil).Once()
+	s.ledgerBackend.On("GetLatestLedgerSequence").Return(uint32(111), nil).Once()
 
 	s.runner.On("RunAllProcessorsOnLedger", uint32(101)).Return(io.StatsChangeProcessorResults{}, io.StatsLedgerTransactionProcessorResults{}, nil).Once()
 	s.historyQ.On("UpdateLastLedgerExpIngest", uint32(101)).Return(nil).Once()
@@ -363,7 +368,8 @@ func (s *ResumeTestTestSuite) TestNoNewLedgers() {
 	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion, nil).Once()
 	s.historyQ.On("GetLatestLedger").Return(uint32(0), nil)
 
-	s.ledgeBackend.On("GetLatestLedgerSequence").Return(uint32(100), nil).Once()
+	s.ledgerBackend.On("PrepareRange", uint32(101), uint32(0)).Return(nil).Once()
+	s.ledgerBackend.On("GetLatestLedgerSequence").Return(uint32(100), nil).Once()
 
 	next, err := resumeState{latestSuccessfullyProcessedLedger: 100}.run(s.system)
 	s.Assert().NoError(err)

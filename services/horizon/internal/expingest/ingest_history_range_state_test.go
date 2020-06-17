@@ -7,6 +7,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/stellar/go/exp/ingest/adapters"
 	"github.com/stellar/go/exp/ingest/io"
+	"github.com/stellar/go/exp/ingest/ledgerbackend"
 	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/support/errors"
 	"github.com/stretchr/testify/suite"
@@ -20,18 +21,21 @@ type IngestHistoryRangeStateTestSuite struct {
 	suite.Suite
 	historyQ       *mockDBQ
 	historyAdapter *adapters.MockHistoryArchiveAdapter
+	ledgerBackend  *ledgerbackend.MockDatabaseBackend
 	runner         *mockProcessorsRunner
 	system         *System
 }
 
 func (s *IngestHistoryRangeStateTestSuite) SetupTest() {
 	s.historyQ = &mockDBQ{}
+	s.ledgerBackend = &ledgerbackend.MockDatabaseBackend{}
 	s.historyAdapter = &adapters.MockHistoryArchiveAdapter{}
 	s.runner = &mockProcessorsRunner{}
 	s.system = &System{
 		ctx:            context.Background(),
 		historyQ:       s.historyQ,
 		historyAdapter: s.historyAdapter,
+		ledgerBackend:  s.ledgerBackend,
 		runner:         s.runner,
 	}
 	s.system.initMetrics()
@@ -134,6 +138,7 @@ func (s *IngestHistoryRangeStateTestSuite) TestRunTransactionProcessorsOnLedgerR
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
 	s.historyQ.On("GetLatestLedger").Return(uint32(99), nil).Once()
 
+	s.ledgerBackend.On("PrepareRange", uint32(100), uint32(0)).Return(nil).Once()
 	s.runner.On("RunTransactionProcessorsOnLedger", uint32(100)).Return(io.StatsLedgerTransactionProcessorResults{}, errors.New("my error")).Once()
 
 	next, err := historyRangeState{fromLedger: 100, toLedger: 200}.run(s.system)
@@ -147,6 +152,7 @@ func (s *IngestHistoryRangeStateTestSuite) TestSuccess() {
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
 	s.historyQ.On("GetLatestLedger").Return(uint32(99), nil).Once()
 
+	s.ledgerBackend.On("PrepareRange", uint32(100), uint32(0)).Return(nil).Once()
 	for i := 100; i <= 200; i++ {
 		s.runner.On("RunTransactionProcessorsOnLedger", uint32(i)).Return(io.StatsLedgerTransactionProcessorResults{}, nil).Once()
 	}
@@ -163,6 +169,7 @@ func (s *IngestHistoryRangeStateTestSuite) TestSuccessOneLedger() {
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
 	s.historyQ.On("GetLatestLedger").Return(uint32(99), nil).Once()
 
+	s.ledgerBackend.On("PrepareRange", uint32(100), uint32(0)).Return(nil).Once()
 	s.runner.On("RunTransactionProcessorsOnLedger", uint32(100)).Return(io.StatsLedgerTransactionProcessorResults{}, nil).Once()
 
 	s.historyQ.On("Commit").Return(nil).Once()

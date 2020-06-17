@@ -6,6 +6,7 @@ import (
 
 	"github.com/stellar/go/exp/ingest/adapters"
 	"github.com/stellar/go/exp/ingest/io"
+	"github.com/stellar/go/exp/ingest/ledgerbackend"
 	"github.com/stellar/go/support/errors"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
@@ -20,6 +21,7 @@ type BuildStateTestSuite struct {
 	graph             *mockOrderBookGraph
 	historyQ          *mockDBQ
 	historyAdapter    *adapters.MockHistoryArchiveAdapter
+	ledgerBackend     *ledgerbackend.MockDatabaseBackend
 	system            *System
 	runner            *mockProcessorsRunner
 	stellarCoreClient *mockStellarCoreClient
@@ -32,6 +34,7 @@ func (s *BuildStateTestSuite) SetupTest() {
 	s.historyQ = &mockDBQ{}
 	s.runner = &mockProcessorsRunner{}
 	s.historyAdapter = &adapters.MockHistoryArchiveAdapter{}
+	s.ledgerBackend = &ledgerbackend.MockDatabaseBackend{}
 	s.stellarCoreClient = &mockStellarCoreClient{}
 	s.checkpointLedger = uint32(63)
 	s.lastLedger = 0
@@ -39,6 +42,7 @@ func (s *BuildStateTestSuite) SetupTest() {
 		ctx:               context.Background(),
 		historyQ:          s.historyQ,
 		historyAdapter:    s.historyAdapter,
+		ledgerBackend:     s.ledgerBackend,
 		graph:             s.graph,
 		runner:            s.runner,
 		stellarCoreClient: s.stellarCoreClient,
@@ -205,6 +209,7 @@ func (s *BuildStateTestSuite) TestTruncateExpingestStateTablesReturnsError() {
 func (s *BuildStateTestSuite) TestRunHistoryArchiveIngestionReturnsError() {
 	s.mockCommonHistoryQ()
 	s.graph.On("Clear").Return().Once()
+	s.ledgerBackend.On("PrepareRange", uint32(63), uint32(0)).Return(nil).Once()
 	s.runner.
 		On("RunHistoryArchiveIngestion", s.checkpointLedger).
 		Return(io.StatsChangeProcessorResults{}, errors.New("my error")).
@@ -219,6 +224,7 @@ func (s *BuildStateTestSuite) TestRunHistoryArchiveIngestionReturnsError() {
 func (s *BuildStateTestSuite) TestUpdateLastLedgerExpIngestAfterIngestReturnsError() {
 	s.mockCommonHistoryQ()
 	s.graph.On("Clear").Return(nil).Once()
+	s.ledgerBackend.On("PrepareRange", uint32(63), uint32(0)).Return(nil).Once()
 	s.runner.
 		On("RunHistoryArchiveIngestion", s.checkpointLedger).
 		Return(io.StatsChangeProcessorResults{}, nil).
@@ -239,6 +245,7 @@ func (s *BuildStateTestSuite) TestUpdateLastLedgerExpIngestAfterIngestReturnsErr
 func (s *BuildStateTestSuite) TestUpdateExpIngestVersionIngestReturnsError() {
 	s.mockCommonHistoryQ()
 	s.graph.On("Clear").Return(nil).Once()
+	s.ledgerBackend.On("PrepareRange", uint32(63), uint32(0)).Return(nil).Once()
 	s.runner.
 		On("RunHistoryArchiveIngestion", s.checkpointLedger).
 		Return(io.StatsChangeProcessorResults{}, nil).
@@ -255,6 +262,7 @@ func (s *BuildStateTestSuite) TestUpdateExpIngestVersionIngestReturnsError() {
 
 func (s *BuildStateTestSuite) TestUpdateCommitReturnsError() {
 	s.mockCommonHistoryQ()
+	s.ledgerBackend.On("PrepareRange", uint32(63), uint32(0)).Return(nil).Once()
 	s.runner.
 		On("RunHistoryArchiveIngestion", s.checkpointLedger).
 		Return(io.StatsChangeProcessorResults{}, nil).
@@ -278,6 +286,7 @@ func (s *BuildStateTestSuite) TestUpdateCommitReturnsError() {
 
 func (s *BuildStateTestSuite) TestOBGraphApplyReturnsError() {
 	s.mockCommonHistoryQ()
+	s.ledgerBackend.On("PrepareRange", uint32(63), uint32(0)).Return(nil).Once()
 	s.runner.
 		On("RunHistoryArchiveIngestion", s.checkpointLedger).
 		Return(io.StatsChangeProcessorResults{}, nil).
@@ -303,6 +312,7 @@ func (s *BuildStateTestSuite) TestOBGraphApplyReturnsError() {
 
 func (s *BuildStateTestSuite) TestBuildStateSucceeds() {
 	s.mockCommonHistoryQ()
+	s.ledgerBackend.On("PrepareRange", uint32(63), uint32(0)).Return(nil).Once()
 	s.runner.
 		On("RunHistoryArchiveIngestion", s.checkpointLedger).
 		Return(io.StatsChangeProcessorResults{}, nil).

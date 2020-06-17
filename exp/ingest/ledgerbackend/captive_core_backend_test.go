@@ -20,8 +20,13 @@ type stellarCoreRunnerMock struct {
 	mock.Mock
 }
 
-func (m *stellarCoreRunnerMock) run(from, to uint32) error {
+func (m *stellarCoreRunnerMock) catchup(from, to uint32) error {
 	a := m.Called(from, to)
+	return a.Error(0)
+}
+
+func (m *stellarCoreRunnerMock) runFrom(from uint32) error {
+	a := m.Called(from)
 	return a.Error(0)
 }
 
@@ -118,14 +123,11 @@ func TestCaptivePrepareRange(t *testing.T) {
 	}
 
 	mockRunner := &stellarCoreRunnerMock{}
-	// We prepare [from-1, to] range because it's not possible to rewind the reader
-	// and there is no other way to check if stellar-core has built the state without
-	// reading actual ledger.
-	mockRunner.On("run", uint32(99), uint32(200)).Return(nil).Once()
+	mockRunner.On("catchup", uint32(100), uint32(200)).Return(nil).Once()
 	mockRunner.On("getMetaPipe").Return(&buf)
 	mockRunner.On("close").Return(nil).Once()
 
-	captiveBackend := captiveStellarCore{
+	captiveBackend := CaptiveStellarCore{
 		networkPassphrase: network.PublicNetworkPassphrase,
 		historyURLs:       []string{"http://history.stellar.org/prd/core-live/core_live_001"},
 		stellarCoreRunner: mockRunner,
