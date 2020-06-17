@@ -87,7 +87,6 @@ func TestNewSystem(t *testing.T) {
 		},
 		DisableStateVerification: true,
 		HistoryArchiveURL:        "https://history.stellar.org/prd/core-live/core_live_001",
-		IngestFailedTransactions: true,
 	}
 
 	system, err := NewSystem(config)

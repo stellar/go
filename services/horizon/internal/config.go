@@ -45,8 +45,6 @@ type Config struct {
 	TLSKey string
 	// Ingest toggles whether this horizon instance should run the data ingestion subsystem.
 	Ingest bool
-	// IngestFailedTransactions toggles whether to ingest failed transactions
-	IngestFailedTransactions bool
 	// CursorName is the cursor used for ingesting from stellar-core.
 	// Setting multiple cursors in different Horizon instances allows multiple
 	// Horizons to ingest from the same stellar-core instance without cursor
