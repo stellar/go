@@ -167,7 +167,11 @@ func (hab *HistoryArchiveBackend) loadTransactionsFromCheckpoint(checkpointSeque
 		hab.cache[uint32(transactionHistoryResultEntry.LedgerSeq)].TransactionResult = transactionHistoryResultEntry.TxResultSet.Results
 	}
 
-	hab.rangeFrom = checkpointSequence - 64
+	if checkpointSequence >= 64 {
+		hab.rangeFrom = checkpointSequence - 64 + 1
+	} else {
+		hab.rangeFrom = 1
+	}
 	hab.rangeTo = checkpointSequence
 
 	return true, nil
