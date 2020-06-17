@@ -3,7 +3,6 @@ package results
 import (
 	"testing"
 
-	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/services/horizon/internal/txsub"
@@ -14,7 +13,6 @@ func TestResultProvider(t *testing.T) {
 	defer tt.Finish()
 
 	rp := &DB{
-		Core:    &core.Q{Session: tt.CoreSession()},
 		History: &history.Q{Session: tt.HorizonSession()},
 	}
 
@@ -32,7 +30,6 @@ func TestResultProviderHorizonOnly(t *testing.T) {
 	defer tt.Finish()
 
 	rp := &DB{
-		Core:    &core.Q{Session: tt.CoreSession()},
 		History: &history.Q{Session: tt.HorizonSession()},
 	}
 
@@ -50,7 +47,6 @@ func TestResultFailed(t *testing.T) {
 	defer tt.Finish()
 
 	rp := &DB{
-		Core:    &core.Q{Session: tt.CoreSession()},
 		History: &history.Q{Session: tt.HorizonSession()},
 	}
 

@@ -4,7 +4,6 @@ package results
 
 import (
 	"context"
-	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/txsub"
 	"github.com/stellar/go/xdr"
@@ -13,7 +12,6 @@ import (
 // DB provides transaction submission results by querying the
 // connected horizon and, if set, stellar core databases.
 type DB struct {
-	Core    *core.Q
 	History *history.Q
 }
 
