@@ -89,6 +89,8 @@ function compare() {
   fi
 }
 
+BASE_BRANCH=${BASE_BRANCH:-horizon-v1.4.0}
+
 if [ ! -z "$VERIFY_HISTORY" ]; then
 	dump_horizon_db "exp_history"
 
@@ -100,7 +102,7 @@ if [ ! -z "$VERIFY_HISTORY" ]; then
 	# sudo -u postgres dropdb horizon
 	# sudo -u postgres createdb horizon
 
-	git checkout horizon-v1.3.0
+	git checkout "$BASE_BRANCH"
 
 	/usr/local/go/bin/go build -v ./services/horizon
 
