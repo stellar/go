@@ -95,8 +95,9 @@ func (s *HistoryArchiveBackendTestSuite) TestGetLedger() {
 	s.Assert().True(exists)
 
 	for sequence := uint32(64); sequence <= 127; sequence++ {
-		exists, ledger, err := s.backend.GetLedger(sequence)
-		s.Require().NoError(err)
+		var err2 error
+		exists, ledger, err2 := s.backend.GetLedger(sequence)
+		s.Require().NoError(err2)
 		s.Assert().True(exists)
 
 		s.Assert().Equal(sequence, uint32(ledger.LedgerHeader.Header.LedgerSeq))
