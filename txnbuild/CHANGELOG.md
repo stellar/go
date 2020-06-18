@@ -3,7 +3,7 @@
 All notable changes to this project will be documented in this
 file.  This project adheres to [Semantic Versioning](http://semver.org/).
 
-## Unreleased
+## [v3.2.0](https://github.com/stellar/go/releases/tag/horizonclient-v3.2.0) - 2020-06-18
 
 * `txnbuild` now generates V1 transaction envelopes which are only supported by Protocol 13 ([#2640](https://github.com/stellar/go/pull/2640))
 * Add `ToXDR()` functions for `Transaction` and `FeeBumpTransaction` instances which return xdr transaction envelopes without errors ([#2651](https://github.com/stellar/go/pull/2651))
