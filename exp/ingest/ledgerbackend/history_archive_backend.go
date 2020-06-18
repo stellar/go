@@ -24,6 +24,16 @@ type HistoryArchiveBackend struct {
 
 var _ LedgerBackend = (*HistoryArchiveBackend)(nil)
 
+const ledgersPerCheckpoint = 64
+
+const (
+	ledgerCategory       = "ledger"
+	transactionsCategory = "transactions"
+	resultsCategory      = "results"
+)
+
+// NewHistoryArchiveBackendFromURL builds a new HistoryArchiveBackend using
+// history archive URL.
 func NewHistoryArchiveBackendFromURL(archiveURL string) (*HistoryArchiveBackend, error) {
 	archive, err := historyarchive.Connect(
 		archiveURL,
@@ -39,6 +49,8 @@ func NewHistoryArchiveBackendFromURL(archiveURL string) (*HistoryArchiveBackend,
 	}, nil
 }
 
+// NewHistoryArchiveBackendFromArchive builds a new HistoryArchiveBackend using
+// historyarchive.Archive.
 func NewHistoryArchiveBackendFromArchive(archive historyarchive.ArchiveInterface) *HistoryArchiveBackend {
 	return &HistoryArchiveBackend{
 		archive: archive,
@@ -65,7 +77,7 @@ func (hab *HistoryArchiveBackend) GetLatestLedgerSequence() (uint32, error) {
 // slow again.
 func (hab *HistoryArchiveBackend) GetLedger(sequence uint32) (bool, LedgerCloseMeta, error) {
 	if !(sequence >= hab.rangeFrom && sequence <= hab.rangeTo) {
-		checkpointSequence := (sequence/64)*64 + 64 - 1
+		checkpointSequence := (sequence/ledgersPerCheckpoint)*ledgersPerCheckpoint + ledgersPerCheckpoint - 1
 		found, err := hab.loadTransactionsFromCheckpoint(checkpointSequence)
 		if err != nil {
 			return false, LedgerCloseMeta{}, err
@@ -104,77 +116,64 @@ func (hab *HistoryArchiveBackend) loadTransactionsFromCheckpoint(checkpointSeque
 	if !ledgerExists && !transactionsExists && !resultsExists {
 		return false, nil
 	} else if !(ledgerExists && transactionsExists && resultsExists) {
-		return false, errors.New("history archive broken, some categories does not exist")
+		return false, errors.New("history archive broken, some categories do not exist")
 	}
 
-	// Ledger
-	ledgerPath := historyarchive.CategoryCheckpointPath("ledger", checkpointSequence)
-	xdrStream, err := hab.archive.GetXdrStream(ledgerPath)
-	if err != nil {
-		return false, errors.Wrap(err, "error opening ledger stream")
-	}
-	defer xdrStream.Close()
-
-	for {
-		var header xdr.LedgerHeaderHistoryEntry
-		err = xdrStream.ReadOne(&header)
+	// ledger must be fetched first because it initalizes LedgerCloseMeta for
+	// a given sequence.
+	categories := []string{ledgerCategory, transactionsCategory, resultsCategory}
+	for _, category := range categories {
+		err = hab.fetchCategory(category, checkpointSequence)
 		if err != nil {
-			if err == io.EOF {
-				break
-			}
-			return false, errors.Wrap(err, "error reading from ledger stream")
+			return false, err
 		}
-		hab.cache[uint32(header.Header.LedgerSeq)] = &LedgerCloseMeta{LedgerHeader: header}
 	}
 
-	// Transactions
-	transactionsPath := historyarchive.CategoryCheckpointPath("transactions", checkpointSequence)
-	xdrStream, err = hab.archive.GetXdrStream(transactionsPath)
-	if err != nil {
-		return false, errors.Wrap(err, "error opening transactions stream")
-	}
-	defer xdrStream.Close()
-
-	for {
-		var transactionHistoryEntry xdr.TransactionHistoryEntry
-		err = xdrStream.ReadOne(&transactionHistoryEntry)
-		if err != nil {
-			if err == io.EOF {
-				break
-			}
-			return false, errors.Wrap(err, "error reading from transactions stream")
-		}
-		hab.cache[uint32(transactionHistoryEntry.LedgerSeq)].TransactionEnvelope = transactionHistoryEntry.TxSet.Txs
-	}
-
-	// Results
-	resultsPath := historyarchive.CategoryCheckpointPath("results", checkpointSequence)
-	xdrStream, err = hab.archive.GetXdrStream(resultsPath)
-	if err != nil {
-		return false, errors.Wrap(err, "error opening results stream")
-	}
-	defer xdrStream.Close()
-
-	for {
-		var transactionHistoryResultEntry xdr.TransactionHistoryResultEntry
-		err = xdrStream.ReadOne(&transactionHistoryResultEntry)
-		if err != nil {
-			if err == io.EOF {
-				break
-			}
-			return false, errors.Wrap(err, "error reading from results stream")
-		}
-		hab.cache[uint32(transactionHistoryResultEntry.LedgerSeq)].TransactionResult = transactionHistoryResultEntry.TxResultSet.Results
-	}
-
-	if checkpointSequence >= 64 {
-		hab.rangeFrom = checkpointSequence - 64 + 1
+	if checkpointSequence >= ledgersPerCheckpoint {
+		hab.rangeFrom = checkpointSequence - ledgersPerCheckpoint + 1
 	} else {
 		hab.rangeFrom = 1
 	}
 	hab.rangeTo = checkpointSequence
 
 	return true, nil
+}
+
+func (hab *HistoryArchiveBackend) fetchCategory(category string, checkpointSequence uint32) error {
+	path := historyarchive.CategoryCheckpointPath(category, checkpointSequence)
+	xdrStream, err := hab.archive.GetXdrStream(path)
+	if err != nil {
+		return errors.Wrapf(err, "error opening %s stream", category)
+	}
+	defer xdrStream.Close()
+
+	for {
+		switch category {
+		case ledgerCategory:
+			var object xdr.LedgerHeaderHistoryEntry
+			err = xdrStream.ReadOne(&object)
+			hab.cache[uint32(object.Header.LedgerSeq)] = &LedgerCloseMeta{LedgerHeader: object}
+		case transactionsCategory:
+			var object xdr.TransactionHistoryEntry
+			err = xdrStream.ReadOne(&object)
+			hab.cache[uint32(object.LedgerSeq)].TransactionEnvelope = object.TxSet.Txs
+		case resultsCategory:
+			var object xdr.TransactionHistoryResultEntry
+			err = xdrStream.ReadOne(&object)
+			hab.cache[uint32(object.LedgerSeq)].TransactionResult = object.TxResultSet.Results
+		default:
+			panic("unknown category")
+		}
+
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return errors.Wrapf(err, "error reading from %s stream", category)
+		}
+	}
+
+	return nil
 }
 
 // Close clears and resets internal state.
