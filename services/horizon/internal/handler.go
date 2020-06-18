@@ -200,7 +200,7 @@ func (we *web) streamIndexActionHandler(jfn interface{}, sfn streamFunc) http.Ha
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		params, err := getIndexActionQueryParams(r, we.ingestFailedTx)
+		params, err := getIndexActionQueryParams(r)
 		if err != nil {
 			problem.Render(ctx, w, err)
 			return
@@ -282,7 +282,7 @@ func getShowActionQueryParams(r *http.Request, requireAccountID bool) (*showActi
 }
 
 // getIndexActionQueryParams gets the available query params for all indexable endpoints.
-func getIndexActionQueryParams(r *http.Request, ingestFailedTransactions bool) (*indexActionQueryParams, error) {
+func getIndexActionQueryParams(r *http.Request) (*indexActionQueryParams, error) {
 	addr, err := getAccountID(r, "account_id", false)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting account id")
@@ -306,11 +306,6 @@ func getIndexActionQueryParams(r *http.Request, ingestFailedTransactions bool) (
 	includeFailedTx, err := getBoolParamFromURL(r, "include_failed")
 	if err != nil {
 		return nil, errors.Wrap(err, "getting include_failed param")
-	}
-	if includeFailedTx && !ingestFailedTransactions {
-		return nil, problem.MakeInvalidFieldProblem("include_failed",
-			errors.New("`include_failed` parameter is unavailable when Horizon is not ingesting failed "+
-				"transactions. Set `INGEST_FAILED_TRANSACTIONS=true` to start ingesting them."))
 	}
 
 	return &indexActionQueryParams{

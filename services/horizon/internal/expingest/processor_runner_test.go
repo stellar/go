@@ -239,9 +239,7 @@ func TestProcessorRunnerBuildTransactionProcessor(t *testing.T) {
 		Return(&history.MockTransactionsBatchInsertBuilder{}).Twice()
 
 	runner := ProcessorRunner{
-		config: Config{
-			IngestFailedTransactions: true,
-		},
+		config:   Config{},
 		historyQ: q,
 	}
 
@@ -257,16 +255,6 @@ func TestProcessorRunnerBuildTransactionProcessor(t *testing.T) {
 	assert.IsType(t, &processors.TradeProcessor{}, processor.(groupTransactionProcessors)[4])
 	assert.IsType(t, &processors.ParticipantsProcessor{}, processor.(groupTransactionProcessors)[5])
 	assert.IsType(t, &processors.TransactionProcessor{}, processor.(groupTransactionProcessors)[6])
-
-	runner = ProcessorRunner{
-		config: Config{
-			IngestFailedTransactions: false,
-		},
-		historyQ: q,
-	}
-
-	processor = runner.buildTransactionProcessor(stats, ledger)
-	assert.IsType(t, skipFailedTransactions{}, processor)
 }
 
 func TestProcessorRunnerRunAllProcessorsOnLedger(t *testing.T) {
@@ -338,35 +326,5 @@ func TestProcessorRunnerRunAllProcessorsOnLedger(t *testing.T) {
 	}
 
 	_, _, err := runner.RunAllProcessorsOnLedger(63)
-	assert.NoError(t, err)
-}
-
-func TestSkipFailedTransactions(t *testing.T) {
-	mockProcessor := &mockHorizonTransactionProcessor{}
-	successfulTx := io.LedgerTransaction{
-		Result: xdr.TransactionResultPair{
-			Result: xdr.TransactionResult{
-				Result: xdr.TransactionResultResult{
-					Code: xdr.TransactionResultCodeTxSuccess,
-				},
-			},
-		},
-	}
-	mockProcessor.On("ProcessTransaction", successfulTx).Return(nil)
-	defer mock.AssertExpectationsForObjects(t, mockProcessor)
-
-	processor := skipFailedTransactions{mockProcessor}
-	err := processor.ProcessTransaction(io.LedgerTransaction{
-		Result: xdr.TransactionResultPair{
-			Result: xdr.TransactionResult{
-				Result: xdr.TransactionResultResult{
-					Code: xdr.TransactionResultCodeTxBadAuth,
-				},
-			},
-		},
-	})
-	assert.NoError(t, err)
-
-	err = processor.ProcessTransaction(successfulTx)
 	assert.NoError(t, err)
 }

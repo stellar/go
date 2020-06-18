@@ -83,7 +83,6 @@ func (s *DBTestSuite) SetupTest() {
 		HistoryArchiveURL:        "http://ignore.test",
 		MaxStreamRetries:         3,
 		DisableStateVerification: false,
-		IngestFailedTransactions: true,
 	})
 	s.Assert().NoError(err)
 

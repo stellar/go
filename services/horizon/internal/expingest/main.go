@@ -66,8 +66,6 @@ type Config struct {
 	// errors while streaming xdr bucket entries from the history archive.
 	// Set MaxStreamRetries to 0 if there should be no retry attempts
 	MaxStreamRetries int
-
-	IngestFailedTransactions bool
 }
 
 const (

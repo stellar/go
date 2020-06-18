@@ -108,17 +108,6 @@ func (s *ProcessorRunner) buildChangeProcessor(
 	}
 }
 
-type skipFailedTransactions struct {
-	horizonTransactionProcessor
-}
-
-func (p skipFailedTransactions) ProcessTransaction(tx io.LedgerTransaction) error {
-	if !tx.Result.Successful() {
-		return nil
-	}
-	return p.horizonTransactionProcessor.ProcessTransaction(tx)
-}
-
 func (s *ProcessorRunner) buildTransactionProcessor(
 	ledgerTransactionStats *io.StatsLedgerTransactionProcessor,
 	ledger xdr.LedgerHeaderHistoryEntry,
@@ -128,7 +117,7 @@ func (s *ProcessorRunner) buildTransactionProcessor(
 	}
 
 	sequence := uint32(ledger.Header.LedgerSeq)
-	group := groupTransactionProcessors{
+	return groupTransactionProcessors{
 		statsLedgerTransactionProcessor,
 		processors.NewEffectProcessor(s.historyQ, sequence),
 		processors.NewLedgerProcessor(s.historyQ, ledger, CurrentVersion),
@@ -137,12 +126,6 @@ func (s *ProcessorRunner) buildTransactionProcessor(
 		processors.NewParticipantsProcessor(s.historyQ, sequence),
 		processors.NewTransactionProcessor(s.historyQ, sequence),
 	}
-
-	if s.config.IngestFailedTransactions {
-		return group
-	}
-
-	return skipFailedTransactions{group}
 }
 
 // validateBucketList validates if the bucket list hash in history archive
