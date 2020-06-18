@@ -105,17 +105,6 @@ func (c *captiveStellarCore) IsInOnlineTrackingMode() bool {
 	return c.lastLedger == nil
 }
 
-// Returns the sequence number of an LCM, returning an error if the LCM is of
-// an unknown version.
-func peekLedgerSequence(xlcm *xdr.LedgerCloseMeta) (uint32, error) {
-	v0, ok := xlcm.GetV0()
-	if !ok {
-		err := errors.New("unexpected XDR LedgerCloseMeta version")
-		return 0, err
-	}
-	return uint32(v0.LedgerHeader.Header.LedgerSeq), nil
-}
-
 func (c *captiveStellarCore) openOfflineReplaySubprocess(nextLedger, lastLedger uint32) error {
 	c.Close()
 	maxLedger, e := c.GetLatestLedgerSequence()
@@ -178,7 +167,7 @@ func (c *captiveStellarCore) sendLedgerMeta(untilSequence uint32) {
 			return
 		case c.metaC <- metaResult{meta, nil}:
 		}
-		seq, err := peekLedgerSequence(meta)
+		seq, err := meta.LedgerSequence()
 		if err != nil {
 			select {
 			case <-c.stop:
@@ -271,7 +260,7 @@ loop:
 			break loop
 		}
 
-		seq, e1 := peekLedgerSequence(metaResult.LedgerCloseMeta)
+		seq, e1 := metaResult.LedgerCloseMeta.LedgerSequence()
 		if e1 != nil {
 			errOut = e1
 			break
