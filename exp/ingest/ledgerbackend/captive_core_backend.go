@@ -7,7 +7,6 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/stellar/go/network"
 	"github.com/stellar/go/support/historyarchive"
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/xdr"
@@ -68,7 +67,7 @@ type captiveStellarCore struct {
 	metaC chan metaResult
 
 	stellarCoreRunner stellarCoreRunnerInterface
-	cachedMeta        *LedgerCloseMeta
+	cachedMeta        *xdr.LedgerCloseMeta
 
 	nextLedgerMutex sync.Mutex
 	nextLedger      uint32 // next ledger expected, error w/ restart if not seen
@@ -115,39 +114,6 @@ func peekLedgerSequence(xlcm *xdr.LedgerCloseMeta) (uint32, error) {
 		return 0, err
 	}
 	return uint32(v0.LedgerHeader.Header.LedgerSeq), nil
-}
-
-// Note: the xdr.LedgerCloseMeta structure is _not_ the same as
-// the ledgerbackend.LedgerCloseMeta structure; the latter should
-// probably migrate to the former eventually.
-func (c *captiveStellarCore) copyLedgerCloseMeta(xlcm *xdr.LedgerCloseMeta, lcm *LedgerCloseMeta) error {
-	v0, ok := xlcm.GetV0()
-	if !ok {
-		return errors.New("unexpected XDR LedgerCloseMeta version")
-	}
-	lcm.LedgerHeader = v0.LedgerHeader
-	envelopes := make(map[xdr.Hash]xdr.TransactionEnvelope)
-	for _, tx := range v0.TxSet.Txs {
-		hash, e := network.HashTransactionInEnvelope(tx, c.networkPassphrase)
-		if e != nil {
-			return errors.Wrap(e, "error hashing tx in LedgerCloseMeta")
-		}
-		envelopes[hash] = tx
-	}
-	for _, trm := range v0.TxProcessing {
-		txe, ok := envelopes[trm.Result.TransactionHash]
-		if !ok {
-			return errors.New("unknown tx hash in LedgerCloseMeta")
-		}
-		lcm.TransactionEnvelope = append(lcm.TransactionEnvelope, txe)
-		lcm.TransactionResult = append(lcm.TransactionResult, trm.Result)
-		lcm.TransactionMeta = append(lcm.TransactionMeta, trm.TxApplyProcessing)
-		lcm.TransactionFeeChanges = append(lcm.TransactionFeeChanges, trm.FeeProcessing)
-	}
-	for _, urm := range v0.UpgradesProcessing {
-		lcm.UpgradesMeta = append(lcm.UpgradesMeta, urm.Changes)
-	}
-	return nil
 }
 
 func (c *captiveStellarCore) openOfflineReplaySubprocess(nextLedger, lastLedger uint32) error {
@@ -271,8 +237,8 @@ func (c *captiveStellarCore) PrepareRange(from uint32, to uint32) error {
 // this is that core will actually replay from the _checkpoint before_
 // the implicit start ledger, so we might need to skip a few ledgers until
 // we hit the one requested (this routine does so transparently if needed).
-func (c *captiveStellarCore) GetLedger(sequence uint32) (bool, LedgerCloseMeta, error) {
-	if c.cachedMeta != nil && sequence == uint32(c.cachedMeta.LedgerHeader.Header.LedgerSeq) {
+func (c *captiveStellarCore) GetLedger(sequence uint32) (bool, xdr.LedgerCloseMeta, error) {
+	if c.cachedMeta != nil && sequence == uint32(c.cachedMeta.V0.LedgerHeader.Header.LedgerSeq) {
 		// GetLedger can be called multiple times using the same sequence, ex. to create
 		// change and transaction readers. If we have this ledger buffered, let's return it.
 		return true, *c.cachedMeta, nil
@@ -286,13 +252,13 @@ func (c *captiveStellarCore) GetLedger(sequence uint32) (bool, LedgerCloseMeta, 
 	// Next, if we're closed, open.
 	if c.IsClosed() {
 		if e := c.openOfflineReplaySubprocess(sequence, sequence+ledgersPerProcess); e != nil {
-			return false, LedgerCloseMeta{}, errors.Wrap(e, "opening subprocess")
+			return false, xdr.LedgerCloseMeta{}, errors.Wrap(e, "opening subprocess")
 		}
 	}
 
 	// Check that we're where we expect to be: in range ...
 	if !c.LedgerWithinCheckpoints(sequence, 1) {
-		return false, LedgerCloseMeta{}, errors.New("unexpected subprocess next-ledger")
+		return false, xdr.LedgerCloseMeta{}, errors.New("unexpected subprocess next-ledger")
 	}
 
 	// Now loop along the range until we find the ledger we want.
@@ -321,27 +287,20 @@ loop:
 		c.nextLedgerMutex.Unlock()
 		if seq == sequence {
 			// Found the requested seq
-			var lcm LedgerCloseMeta
-			e2 := c.copyLedgerCloseMeta(metaResult.LedgerCloseMeta, &lcm)
-			if e2 != nil {
-				errOut = e2
-				break
-			}
-
-			c.cachedMeta = &lcm
+			c.cachedMeta = metaResult.LedgerCloseMeta
 
 			// If we got the _last_ ledger in a segment, close before returning.
 			if c.lastLedger != nil && *c.lastLedger == seq {
 				c.Close()
 			}
-			return true, lcm, nil
+			return true, *c.cachedMeta, nil
 		}
 	}
 	// All paths above that break out of the loop (instead of return)
 	// set e to non-nil: there was an error and we should close and
 	// reset state before retuning an error to our caller.
 	c.Close()
-	return false, LedgerCloseMeta{}, errOut
+	return false, xdr.LedgerCloseMeta{}, errOut
 }
 
 func (c *captiveStellarCore) GetLatestLedgerSequence() (uint32, error) {

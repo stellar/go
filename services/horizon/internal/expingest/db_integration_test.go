@@ -111,10 +111,12 @@ func (s *DBTestSuite) setupMocksForBuildState() {
 	s.ledgerBackend.On("GetLedger", s.sequence).
 		Return(
 			true,
-			ledgerbackend.LedgerCloseMeta{
-				LedgerHeader: xdr.LedgerHeaderHistoryEntry{
-					Header: xdr.LedgerHeader{
-						BucketListHash: checkpointHash,
+			xdr.LedgerCloseMeta{
+				V0: &xdr.LedgerCloseMetaV0{
+					LedgerHeader: xdr.LedgerHeaderHistoryEntry{
+						Header: xdr.LedgerHeader{
+							BucketListHash: checkpointHash,
+						},
 					},
 				},
 			},
