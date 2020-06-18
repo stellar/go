@@ -11,7 +11,7 @@ import (
 // LedgerTransactionReader reads transactions for a given ledger sequence from a backend.
 // Use NewTransactionReader to create a new instance.
 type LedgerTransactionReader struct {
-	ledgerCloseMeta ledgerbackend.LedgerCloseMeta
+	ledgerCloseMeta xdr.LedgerCloseMeta
 	transactions    []LedgerTransaction
 	readIdx         int
 }
@@ -35,12 +35,12 @@ func NewLedgerTransactionReader(backend ledgerbackend.LedgerBackend, sequence ui
 
 // GetSequence returns the sequence number of the ledger data stored by this object.
 func (reader *LedgerTransactionReader) GetSequence() uint32 {
-	return uint32(reader.ledgerCloseMeta.LedgerHeader.Header.LedgerSeq)
+	return reader.ledgerCloseMeta.LedgerSequence()
 }
 
 // GetHeader returns the XDR Header data associated with the stored ledger.
 func (reader *LedgerTransactionReader) GetHeader() xdr.LedgerHeaderHistoryEntry {
-	return reader.ledgerCloseMeta.LedgerHeader
+	return reader.ledgerCloseMeta.V0.LedgerHeader
 }
 
 // Read returns the next transaction in the ledger, ordered by tx number, each time
@@ -60,14 +60,14 @@ func (reader *LedgerTransactionReader) Rewind() {
 
 // storeTransactions maps the close meta data into a slice of LedgerTransaction structs, to provide
 // a per-transaction view of the data when Read() is called.
-func (reader *LedgerTransactionReader) storeTransactions(lcm ledgerbackend.LedgerCloseMeta) {
-	for i := range lcm.TransactionEnvelope {
+func (reader *LedgerTransactionReader) storeTransactions(lcm xdr.LedgerCloseMeta) {
+	for i := range lcm.V0.TxSet.Txs {
 		reader.transactions = append(reader.transactions, LedgerTransaction{
 			Index:      uint32(i + 1), // Transactions start at '1'
-			Envelope:   lcm.TransactionEnvelope[i],
-			Result:     lcm.TransactionResult[i],
-			Meta:       lcm.TransactionMeta[i],
-			FeeChanges: lcm.TransactionFeeChanges[i],
+			Envelope:   lcm.V0.TxSet.Txs[i],
+			Result:     lcm.V0.TxProcessing[i].Result,
+			Meta:       lcm.V0.TxProcessing[i].TxApplyProcessing,
+			FeeChanges: lcm.V0.TxProcessing[i].FeeProcessing,
 		})
 	}
 }

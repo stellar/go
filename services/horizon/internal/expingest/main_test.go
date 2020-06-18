@@ -364,9 +364,9 @@ func (m *mockLedgerBackend) GetLatestLedgerSequence() (sequence uint32, err erro
 	return args.Get(0).(uint32), args.Error(1)
 }
 
-func (m *mockLedgerBackend) GetLedger(sequence uint32) (bool, ledgerbackend.LedgerCloseMeta, error) {
+func (m *mockLedgerBackend) GetLedger(sequence uint32) (bool, xdr.LedgerCloseMeta, error) {
 	args := m.Called(sequence)
-	return args.Get(0).(bool), args.Get(1).(ledgerbackend.LedgerCloseMeta), args.Error(2)
+	return args.Get(0).(bool), args.Get(1).(xdr.LedgerCloseMeta), args.Error(2)
 }
 
 func (m *mockLedgerBackend) PrepareRange(from uint32, to uint32) error {

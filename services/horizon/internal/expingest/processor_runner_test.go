@@ -109,10 +109,12 @@ func TestProcessorRunnerRunHistoryArchiveIngestionHistoryArchive(t *testing.T) {
 	ledgerBackend.On("GetLedger", uint32(63)).
 		Return(
 			true,
-			ledgerbackend.LedgerCloseMeta{
-				LedgerHeader: xdr.LedgerHeaderHistoryEntry{
-					Header: xdr.LedgerHeader{
-						BucketListHash: xdr.Hash([32]byte{0, 1, 2}),
+			xdr.LedgerCloseMeta{
+				V0: &xdr.LedgerCloseMetaV0{
+					LedgerHeader: xdr.LedgerHeaderHistoryEntry{
+						Header: xdr.LedgerHeader{
+							BucketListHash: xdr.Hash([32]byte{0, 1, 2}),
+						},
 					},
 				},
 			},
@@ -279,8 +281,10 @@ func TestProcessorRunnerRunAllProcessorsOnLedger(t *testing.T) {
 	ledgerBackend.On("GetLedger", uint32(63)).
 		Return(
 			true,
-			ledgerbackend.LedgerCloseMeta{
-				LedgerHeader: ledger,
+			xdr.LedgerCloseMeta{
+				V0: &xdr.LedgerCloseMetaV0{
+					LedgerHeader: ledger,
+				},
 			},
 			nil,
 		).Twice() // Twice = changes then transactions

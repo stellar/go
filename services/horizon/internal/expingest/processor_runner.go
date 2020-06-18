@@ -153,7 +153,7 @@ func (s *ProcessorRunner) validateBucketList(ledgerSequence uint32) error {
 		)
 	}
 
-	ledgerBucketHashList := ledgerCloseMeta.LedgerHeader.Header.BucketListHash
+	ledgerBucketHashList := ledgerCloseMeta.V0.LedgerHeader.Header.BucketListHash
 
 	if !bytes.Equal(historyBucketListHash[:], ledgerBucketHashList[:]) {
 		return fmt.Errorf(
