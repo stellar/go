@@ -5,10 +5,12 @@ package expingest
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
 	"github.com/rcrowley/go-metrics"
+
 	"github.com/stellar/go/clients/stellarcore"
 	"github.com/stellar/go/exp/ingest/adapters"
 	ingesterrors "github.com/stellar/go/exp/ingest/errors"
@@ -80,23 +82,33 @@ type stellarCoreClient interface {
 	SetCursor(ctx context.Context, id string, cursor int32) error
 }
 
-type System struct {
-	Metrics struct {
-		// LedgerIngestionTimer exposes timing metrics about the rate and
-		// duration of ledger ingestion (including updating DB and graph).
-		LedgerIngestionTimer metrics.Timer
+type Metrics struct {
+	// LedgerIngestionTimer exposes timing metrics about the rate and
+	// duration of ledger ingestion (including updating DB and graph).
+	LedgerIngestionTimer metrics.Timer
 
-		// LedgerInMemoryIngestionTimer exposes timing metrics about the rate and
-		// duration of ingestion into in-memory graph only.
-		LedgerInMemoryIngestionTimer metrics.Timer
+	// LedgerInMemoryIngestionTimer exposes timing metrics about the rate and
+	// duration of ingestion into in-memory graph only.
+	LedgerInMemoryIngestionTimer metrics.Timer
 
-		// StateVerifyTimer exposes timing metrics about the rate and
-		// duration of state verification.
-		StateVerifyTimer metrics.Timer
-	}
+	// StateVerifyTimer exposes timing metrics about the rate and
+	// duration of state verification.
+	StateVerifyTimer metrics.Timer
+}
 
-	ctx    context.Context
-	cancel context.CancelFunc
+type System interface {
+	Run()
+	Metrics() Metrics
+	StressTest(numTransactions, changesPerTransaction int) error
+	VerifyRange(fromLedger, toLedger uint32, verifyState bool) error
+	ReingestRange(fromLedger, toLedger uint32, force bool) error
+	Shutdown()
+}
+
+type system struct {
+	metrics Metrics
+	ctx     context.Context
+	cancel  context.CancelFunc
 
 	config Config
 
@@ -120,7 +132,7 @@ type System struct {
 	disableStateVerification bool
 }
 
-func NewSystem(config Config) (*System, error) {
+func NewSystem(config Config) (System, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	archive, err := historyarchive.Connect(
@@ -157,7 +169,7 @@ func NewSystem(config Config) (*System, error) {
 
 	historyAdapter := adapters.MakeHistoryArchiveAdapter(archive)
 
-	system := &System{
+	system := &system{
 		ctx:                      ctx,
 		cancel:                   cancel,
 		historyAdapter:           historyAdapter,
@@ -182,10 +194,14 @@ func NewSystem(config Config) (*System, error) {
 	return system, nil
 }
 
-func (s *System) initMetrics() {
-	s.Metrics.LedgerIngestionTimer = metrics.NewTimer()
-	s.Metrics.LedgerInMemoryIngestionTimer = metrics.NewTimer()
-	s.Metrics.StateVerifyTimer = metrics.NewTimer()
+func (s *system) initMetrics() {
+	s.metrics.LedgerIngestionTimer = metrics.NewTimer()
+	s.metrics.LedgerInMemoryIngestionTimer = metrics.NewTimer()
+	s.metrics.StateVerifyTimer = metrics.NewTimer()
+}
+
+func (s *system) Metrics() Metrics {
+	return s.metrics
 }
 
 // Run starts ingestion system. Ingestion system supports distributed ingestion
@@ -217,11 +233,11 @@ func (s *System) initMetrics() {
 //     a database.
 //   * If instances is a NOT leader, it runs ledger pipeline without updating a
 //     a database so order book graph is updated but database is not overwritten.
-func (s *System) Run() {
+func (s *system) Run() {
 	s.runStateMachine(startState{})
 }
 
-func (s *System) StressTest(numTransactions, changesPerTransaction int) error {
+func (s *system) StressTest(numTransactions, changesPerTransaction int) error {
 	if numTransactions <= 0 {
 		return errors.New("transactions must be positive")
 	}
@@ -239,7 +255,7 @@ func (s *System) StressTest(numTransactions, changesPerTransaction int) error {
 
 // VerifyRange runs the ingestion pipeline on the range of ledgers. When
 // verifyState is true it verifies the state when ingestion is complete.
-func (s *System) VerifyRange(fromLedger, toLedger uint32, verifyState bool) error {
+func (s *system) VerifyRange(fromLedger, toLedger uint32, verifyState bool) error {
 	return s.runStateMachine(verifyRangeState{
 		fromLedger:  fromLedger,
 		toLedger:    toLedger,
@@ -249,7 +265,7 @@ func (s *System) VerifyRange(fromLedger, toLedger uint32, verifyState bool) erro
 
 // ReingestRange runs the ingestion pipeline on the range of ledgers ingesting
 // history data only.
-func (s *System) ReingestRange(fromLedger, toLedger uint32, force bool) error {
+func (s *system) ReingestRange(fromLedger, toLedger uint32, force bool) error {
 	return s.runStateMachine(reingestHistoryRangeState{
 		fromLedger: fromLedger,
 		toLedger:   toLedger,
@@ -257,7 +273,7 @@ func (s *System) ReingestRange(fromLedger, toLedger uint32, force bool) error {
 	})
 }
 
-func (s *System) runStateMachine(cur stateMachineNode) error {
+func (s *system) runStateMachine(cur stateMachineNode) error {
 	defer func() {
 		s.wg.Wait()
 	}()
@@ -310,7 +326,7 @@ func (s *System) runStateMachine(cur stateMachineNode) error {
 	}
 }
 
-func (s *System) maybeVerifyState(lastIngestedLedger uint32) {
+func (s *system) maybeVerifyState(lastIngestedLedger uint32) {
 	stateInvalid, err := s.historyQ.GetExpStateInvalid()
 	if err != nil && !isCancelledError(err) {
 		log.WithField("err", err).Error("Error getting state invalid value")
@@ -348,20 +364,20 @@ func (s *System) maybeVerifyState(lastIngestedLedger uint32) {
 	}
 }
 
-func (s *System) incrementStateVerificationErrors() int {
+func (s *system) incrementStateVerificationErrors() int {
 	s.stateVerificationMutex.Lock()
 	defer s.stateVerificationMutex.Unlock()
 	s.stateVerificationErrors++
 	return s.stateVerificationErrors
 }
 
-func (s *System) resetStateVerificationErrors() {
+func (s *system) resetStateVerificationErrors() {
 	s.stateVerificationMutex.Lock()
 	defer s.stateVerificationMutex.Unlock()
 	s.stateVerificationErrors = 0
 }
 
-func (s *System) updateCursor(ledgerSequence uint32) error {
+func (s *system) updateCursor(ledgerSequence uint32) error {
 	if s.stellarCoreClient == nil {
 		return nil
 	}
@@ -381,7 +397,7 @@ func (s *System) updateCursor(ledgerSequence uint32) error {
 	return nil
 }
 
-func (s *System) Shutdown() {
+func (s *system) Shutdown() {
 	log.Info("Shutting down ingestion system...")
 	s.stateVerificationMutex.Lock()
 	defer s.stateVerificationMutex.Unlock()
@@ -402,4 +418,145 @@ func markStateInvalid(historyQ history.IngestionQ, err error) {
 func isCancelledError(err error) bool {
 	cause := errors.Cause(err)
 	return cause == context.Canceled || cause == db.ErrCancelled
+}
+
+type ledgerRange struct {
+	from uint32
+	to   uint32
+}
+
+type rangeResult struct {
+	err            error
+	requestedRange ledgerRange
+}
+
+type ParallelSystems struct {
+	workerCount       uint
+	reingestJobQueue  chan ledgerRange
+	shutdown          chan struct{}
+	wait              sync.WaitGroup
+	reingestJobResult chan rangeResult
+}
+
+func NewParallelSystems(config Config, workerCount uint) (*ParallelSystems, error) {
+	return newParallelSystems(config, workerCount, NewSystem)
+}
+
+// private version of NewParallel systems, allowing to inject a mock system
+func newParallelSystems(config Config, workerCount uint, systemFactory func(Config) (System, error)) (*ParallelSystems, error) {
+	if workerCount < 1 {
+		return nil, errors.New("workerCount must be > 0")
+	}
+
+	result := ParallelSystems{
+		workerCount:       workerCount,
+		reingestJobQueue:  make(chan ledgerRange),
+		shutdown:          make(chan struct{}),
+		reingestJobResult: make(chan rangeResult),
+	}
+	for i := uint(0); i < workerCount; i++ {
+		s, err := systemFactory(config)
+		if err != nil {
+			result.Shutdown()
+			return nil, errors.Wrap(err, "cannot create new system")
+		}
+		result.wait.Add(1)
+		go result.work(s)
+	}
+	return &result, nil
+}
+
+func (ps *ParallelSystems) work(s System) {
+	defer func() {
+		s.Shutdown()
+		ps.wait.Done()
+	}()
+	for {
+		select {
+		case <-ps.shutdown:
+			return
+		case ledgerRange := <-ps.reingestJobQueue:
+			err := s.ReingestRange(ledgerRange.from, ledgerRange.to, false)
+			select {
+			case <-ps.shutdown:
+				return
+			case ps.reingestJobResult <- rangeResult{err, ledgerRange}:
+			}
+		}
+	}
+}
+
+const (
+	historyCheckpointLedgerInterval = 64
+	minBatchSize                    = historyCheckpointLedgerInterval
+)
+
+func (ps *ParallelSystems) ReingestRange(fromLedger, toLedger uint32, batchSizeSuggestion uint32) error {
+	rangeSize := toLedger - fromLedger
+	batchSize := batchSizeSuggestion
+	if rangeSize/batchSize < uint32(ps.workerCount) {
+		// let's try to make use of all the workers
+		batchSize = rangeSize / uint32(ps.workerCount)
+	}
+
+	// Use a minimum batch size to make it worth it in terms of overhead
+	if batchSize < minBatchSize {
+		batchSize = minBatchSize
+	}
+
+	// Also, round the batch size to the closest, lower or equal 64 multiple
+	batchSize = (batchSize / historyCheckpointLedgerInterval) * historyCheckpointLedgerInterval
+
+	pendingJobsCount := 0
+	var result error
+	processSubRangeResult := func(subRangeResult rangeResult) {
+		pendingJobsCount--
+		if result == nil && subRangeResult.err != nil {
+			// TODO: give account of what ledgers were correctly reingested?
+			errMsg := fmt.Sprintf("in subrange %d to %d",
+				subRangeResult.requestedRange.from, subRangeResult.requestedRange.to)
+			result = errors.Wrap(subRangeResult.err, errMsg)
+		}
+	}
+
+	for subRangeFrom := fromLedger; subRangeFrom < toLedger && result == nil; {
+		// job queuing
+		subRangeTo := subRangeFrom + batchSize
+		if subRangeTo > toLedger {
+			subRangeTo = toLedger
+		}
+		subRange := ledgerRange{subRangeFrom, subRangeTo}
+
+		select {
+		case <-ps.shutdown:
+			return errors.New("aborted")
+		case subRangeResult := <-ps.reingestJobResult:
+			processSubRangeResult(subRangeResult)
+		case ps.reingestJobQueue <- subRange:
+			pendingJobsCount++
+			subRangeFrom = subRangeTo
+		}
+	}
+
+	for pendingJobsCount > 0 {
+		// wait for any remaining running jobs to finish
+		select {
+		case <-ps.shutdown:
+			return errors.New("aborted")
+		case subRangeResult := <-ps.reingestJobResult:
+			processSubRangeResult(subRangeResult)
+		}
+
+	}
+
+	return result
+}
+
+func (ps *ParallelSystems) Shutdown() {
+	if ps.shutdown != nil {
+		close(ps.shutdown)
+		ps.wait.Wait()
+		close(ps.reingestJobQueue)
+		close(ps.reingestJobResult)
+	}
 }

@@ -69,7 +69,7 @@ type App struct {
 	orderBookStream *expingest.OrderBookStream
 	submitter       *txsub.System
 	paths           paths.Finder
-	expingester     *expingest.System
+	expingester     expingest.System
 	reaper          *reap.System
 	ticks           *time.Ticker
 

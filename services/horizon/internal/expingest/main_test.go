@@ -4,7 +4,11 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
+	"math/rand"
+	"sort"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/stellar/go/exp/ingest/adapters"
@@ -89,8 +93,9 @@ func TestNewSystem(t *testing.T) {
 		HistoryArchiveURL:        "https://history.stellar.org/prd/core-live/core_live_001",
 	}
 
-	system, err := NewSystem(config)
+	sIface, err := NewSystem(config)
 	assert.NoError(t, err)
+	system := sIface.(*system)
 
 	assert.Equal(t, config, system.config)
 	assert.Equal(t, config.DisableStateVerification, system.disableStateVerification)
@@ -100,9 +105,61 @@ func TestNewSystem(t *testing.T) {
 	assert.Equal(t, system.ctx, system.runner.(*ProcessorRunner).ctx)
 }
 
+type sorteableRanges []ledgerRange
+
+func (s sorteableRanges) Len() int           { return len(s) }
+func (s sorteableRanges) Less(i, j int) bool { return s[i].from < s[j].from }
+func (s sorteableRanges) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
+
+func TestParallelReingestRange(t *testing.T) {
+	config := Config{}
+	var (
+		systems      []*mockSystem
+		rangesCalled sorteableRanges
+		shutdowns    int
+		m            sync.Mutex
+	)
+	factory := func(c Config) (System, error) {
+		result := &mockSystem{}
+		result.On("ReingestRange", mock.AnythingOfType("uint32"), mock.AnythingOfType("uint32"), mock.AnythingOfType("bool")).Run(
+			func(args mock.Arguments) {
+				r := ledgerRange{
+					from: args.Get(0).(uint32),
+					to:   args.Get(1).(uint32),
+				}
+				m.Lock()
+				defer m.Unlock()
+				rangesCalled = append(rangesCalled, r)
+				// simulate call
+				time.Sleep(time.Millisecond * time.Duration(10+rand.Int31n(50)))
+			}).Return(error(nil))
+		result.On("Shutdown").Run(func(mock.Arguments) {
+			m.Lock()
+			defer m.Unlock()
+			shutdowns++
+		})
+		systems = append(systems, result)
+		return result, nil
+	}
+	system, err := newParallelSystems(config, 3, factory)
+	assert.NoError(t, err)
+	err = system.ReingestRange(0, 2050, 258)
+	assert.NoError(t, err)
+
+	sort.Sort(rangesCalled)
+	expected := sorteableRanges{
+		{from: 0, to: 256}, {from: 256, to: 512}, {from: 512, to: 768}, {from: 768, to: 1024}, {from: 1024, to: 1280},
+		{from: 1280, to: 1536}, {from: 1536, to: 1792}, {from: 1792, to: 2048}, {from: 2048, to: 2050},
+	}
+	assert.Equal(t, expected, rangesCalled)
+	system.Shutdown()
+	assert.Equal(t, 3, shutdowns)
+
+}
+
 func TestStateMachineRunReturnsUnexpectedTransaction(t *testing.T) {
 	historyQ := &mockDBQ{}
-	system := &System{
+	system := &system{
 		historyQ: historyQ,
 		ctx:      context.Background(),
 	}
@@ -116,7 +173,7 @@ func TestStateMachineRunReturnsUnexpectedTransaction(t *testing.T) {
 
 func TestStateMachineTransition(t *testing.T) {
 	historyQ := &mockDBQ{}
-	system := &System{
+	system := &system{
 		historyQ: historyQ,
 		ctx:      context.Background(),
 	}
@@ -133,7 +190,7 @@ func TestStateMachineTransition(t *testing.T) {
 func TestContextCancel(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	historyQ := &mockDBQ{}
-	system := &System{
+	system := &system{
 		historyQ: historyQ,
 		ctx:      ctx,
 	}
@@ -151,7 +208,7 @@ func TestContextCancel(t *testing.T) {
 // non-zero exit code.
 func TestStateMachineRunReturnsErrorWhenNextStateIsShutdownWithError(t *testing.T) {
 	historyQ := &mockDBQ{}
-	system := &System{
+	system := &system{
 		ctx:      context.Background(),
 		historyQ: historyQ,
 	}
@@ -165,7 +222,7 @@ func TestStateMachineRunReturnsErrorWhenNextStateIsShutdownWithError(t *testing.
 
 func TestMaybeVerifyStateGetExpStateInvalidDBErrCancelOrContextCanceled(t *testing.T) {
 	historyQ := &mockDBQ{}
-	system := &System{
+	system := &system{
 		historyQ: historyQ,
 		ctx:      context.Background(),
 	}
@@ -191,7 +248,7 @@ func TestMaybeVerifyStateGetExpStateInvalidDBErrCancelOrContextCanceled(t *testi
 }
 func TestMaybeVerifyInternalDBErrCancelOrContextCanceled(t *testing.T) {
 	historyQ := &mockDBQ{}
-	system := &System{
+	system := &system{
 		historyQ: historyQ,
 		ctx:      context.Background(),
 	}
@@ -433,3 +490,37 @@ func (m *mockStellarCoreClient) SetCursor(ctx context.Context, id string, cursor
 }
 
 var _ stellarCoreClient = (*mockStellarCoreClient)(nil)
+
+type mockSystem struct {
+	mock.Mock
+}
+
+func (m *mockSystem) Run() {
+	m.Called()
+}
+
+func (m *mockSystem) Metrics() Metrics {
+	args := m.Called()
+	return args.Get(0).(Metrics)
+}
+
+func (m *mockSystem) StressTest(numTransactions, changesPerTransaction int) error {
+	args := m.Called(numTransactions, changesPerTransaction)
+	return args.Error(0)
+}
+
+func (m *mockSystem) VerifyRange(fromLedger, toLedger uint32, verifyState bool) error {
+	args := m.Called(fromLedger, toLedger, verifyState)
+	return args.Error(0)
+}
+
+func (m *mockSystem) ReingestRange(fromLedger, toLedger uint32, force bool) error {
+	args := m.Called(fromLedger, toLedger, force)
+	return args.Error(0)
+}
+
+func (m *mockSystem) Shutdown() {
+	m.Called()
+}
+
+var _ System = (*mockSystem)(nil)

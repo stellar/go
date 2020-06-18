@@ -30,7 +30,7 @@ const stateVerifierExpectedIngestionVersion = 10
 // verifyState is called as a go routine from pipeline post hook every 64
 // ledgers. It checks if the state is correct. If another go routine is already
 // running it exits.
-func (s *System) verifyState(verifyAgainstLatestCheckpoint bool) error {
+func (s *system) verifyState(verifyAgainstLatestCheckpoint bool) error {
 	s.stateVerificationMutex.Lock()
 	if s.stateVerificationRunning {
 		log.Warn("State verification is already running...")
@@ -57,7 +57,7 @@ func (s *System) verifyState(verifyAgainstLatestCheckpoint bool) error {
 	defer func() {
 		duration := time.Since(startTime)
 		if updateMetrics {
-			s.Metrics.StateVerifyTimer.Update(duration)
+			s.Metrics().StateVerifyTimer.Update(duration)
 		}
 		log.WithField("duration", duration.Seconds()).Info("State verification finished")
 		historyQ.Rollback()

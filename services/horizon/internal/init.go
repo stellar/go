@@ -161,9 +161,9 @@ func initIngestMetrics(app *App) {
 	if app.expingester == nil {
 		return
 	}
-	app.metrics.Register("ingest.ledger_ingestion", app.expingester.Metrics.LedgerIngestionTimer)
-	app.metrics.Register("ingest.ledger_in_memory_ingestion", app.expingester.Metrics.LedgerInMemoryIngestionTimer)
-	app.metrics.Register("ingest.state_verify", app.expingester.Metrics.StateVerifyTimer)
+	app.metrics.Register("ingest.ledger_ingestion", app.expingester.Metrics().LedgerIngestionTimer)
+	app.metrics.Register("ingest.ledger_in_memory_ingestion", app.expingester.Metrics().LedgerInMemoryIngestionTimer)
+	app.metrics.Register("ingest.state_verify", app.expingester.Metrics().StateVerifyTimer)
 }
 
 func initTxSubMetrics(app *App) {
