@@ -167,15 +167,7 @@ func (c *captiveStellarCore) sendLedgerMeta(untilSequence uint32) {
 			return
 		case c.metaC <- metaResult{meta, nil}:
 		}
-		seq, err := meta.LedgerSequence()
-		if err != nil {
-			select {
-			case <-c.stop:
-			case c.metaC <- metaResult{nil, err}:
-			}
-			return
-		}
-		if seq >= untilSequence {
+		if meta.LedgerSequence() >= untilSequence {
 			// we are done
 			return
 		}
@@ -227,7 +219,7 @@ func (c *captiveStellarCore) PrepareRange(from uint32, to uint32) error {
 // the implicit start ledger, so we might need to skip a few ledgers until
 // we hit the one requested (this routine does so transparently if needed).
 func (c *captiveStellarCore) GetLedger(sequence uint32) (bool, xdr.LedgerCloseMeta, error) {
-	if c.cachedMeta != nil && sequence == uint32(c.cachedMeta.V0.LedgerHeader.Header.LedgerSeq) {
+	if c.cachedMeta != nil && sequence == c.cachedMeta.LedgerSequence() {
 		// GetLedger can be called multiple times using the same sequence, ex. to create
 		// change and transaction readers. If we have this ledger buffered, let's return it.
 		return true, *c.cachedMeta, nil
@@ -260,11 +252,7 @@ loop:
 			break loop
 		}
 
-		seq, e1 := metaResult.LedgerCloseMeta.LedgerSequence()
-		if e1 != nil {
-			errOut = e1
-			break
-		}
+		seq := metaResult.LedgerCloseMeta.LedgerSequence()
 		c.nextLedgerMutex.Lock()
 		if seq != c.nextLedger {
 			// We got something unexpected; close and reset

@@ -13,12 +13,5 @@ func TestLedgerSequence(t *testing.T) {
 			},
 		},
 	}
-
-	seq, err := l.LedgerSequence()
-	assert.NoError(t, err)
-	assert.Equal(t, uint32(23), seq)
-
-	l.V = 1
-	_, err = l.LedgerSequence()
-	assert.EqualError(t, err, "unexpected XDR LedgerCloseMeta version: 1")
+	assert.Equal(t, uint32(23), l.LedgerSequence())
 }

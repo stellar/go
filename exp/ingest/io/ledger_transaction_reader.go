@@ -35,7 +35,7 @@ func NewLedgerTransactionReader(backend ledgerbackend.LedgerBackend, sequence ui
 
 // GetSequence returns the sequence number of the ledger data stored by this object.
 func (reader *LedgerTransactionReader) GetSequence() uint32 {
-	return uint32(reader.ledgerCloseMeta.V0.LedgerHeader.Header.LedgerSeq)
+	return reader.ledgerCloseMeta.LedgerSequence()
 }
 
 // GetHeader returns the XDR Header data associated with the stored ledger.
