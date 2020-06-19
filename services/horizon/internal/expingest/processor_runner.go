@@ -220,7 +220,7 @@ func (s *ProcessorRunner) runChangeProcessorOnLedger(
 ) error {
 	var changeReader io.ChangeReader
 	var err error
-	changeReader, err = io.NewLedgerChangeReader(s.ledgerBackend, ledger)
+	changeReader, err = io.NewLedgerChangeReader(s.ledgerBackend, s.config.NetworkPassphrase, ledger)
 	if err != nil {
 		return errors.Wrap(err, "Error creating ledger change reader")
 	}
@@ -246,7 +246,7 @@ func (s *ProcessorRunner) runChangeProcessorOnLedger(
 func (s *ProcessorRunner) RunTransactionProcessorsOnLedger(ledger uint32) (io.StatsLedgerTransactionProcessorResults, error) {
 	ledgerTransactionStats := io.StatsLedgerTransactionProcessor{}
 
-	transactionReader, err := io.NewLedgerTransactionReader(s.ledgerBackend, ledger)
+	transactionReader, err := io.NewLedgerTransactionReader(s.ledgerBackend, s.config.NetworkPassphrase, ledger)
 	if err != nil {
 		return ledgerTransactionStats.GetResults(), errors.Wrap(err, "Error creating ledger reader")
 	}

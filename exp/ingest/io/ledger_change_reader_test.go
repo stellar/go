@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/stellar/go/exp/ingest/ledgerbackend"
+	"github.com/stellar/go/network"
 	"github.com/stellar/go/xdr"
 )
 
@@ -25,7 +26,7 @@ func TestNewLedgerChangeReaderFails(t *testing.T) {
 		xdr.LedgerCloseMeta{},
 		fmt.Errorf("ledger error"),
 	).Once()
-	_, err := NewLedgerChangeReader(mock, seq)
+	_, err := NewLedgerChangeReader(mock, network.TestNetworkPassphrase, seq)
 	assert.EqualError(
 		t,
 		err,
@@ -41,7 +42,7 @@ func TestNewLedgerChangeReaderLedgerDoesNotExist(t *testing.T) {
 		xdr.LedgerCloseMeta{},
 		nil,
 	).Once()
-	_, err := NewLedgerChangeReader(mock, seq)
+	_, err := NewLedgerChangeReader(mock, network.TestNetworkPassphrase, seq)
 	assert.Equal(
 		t,
 		err,
@@ -70,7 +71,7 @@ func TestNewLedgerChangeReaderSucceeds(t *testing.T) {
 		nil,
 	).Once()
 
-	reader, err := NewLedgerChangeReader(mock, seq)
+	reader, err := NewLedgerChangeReader(mock, network.TestNetworkPassphrase, seq)
 	assert.NoError(t, err)
 
 	assert.Equal(t, reader.GetHeader(), header)
@@ -109,7 +110,7 @@ func assertChangesEqual(
 	backend ledgerbackend.LedgerBackend,
 	expected []balanceEntry,
 ) {
-	reader, err := NewLedgerChangeReader(backend, sequence)
+	reader, err := NewLedgerChangeReader(backend, network.TestNetworkPassphrase, sequence)
 	assert.NoError(t, err)
 
 	changes := []balanceEntry{}
@@ -132,17 +133,43 @@ func TestLedgerChangeReaderOrder(t *testing.T) {
 	mock := &ledgerbackend.MockDatabaseBackend{}
 	seq := uint32(123)
 
+	src := xdr.MustAddress("GBXGQJWVLWOYHFLVTKWV5FGHA3LNYY2JQKM7OAJAUEQFU6LPCSEFVXON")
+	firstTx := xdr.TransactionEnvelope{
+		Type: xdr.EnvelopeTypeEnvelopeTypeTx,
+		V1: &xdr.TransactionV1Envelope{
+			Tx: xdr.Transaction{
+				Fee:           1,
+				SourceAccount: src.ToMuxedAccount(),
+			},
+		},
+	}
+	firstTxHash, err := network.HashTransactionInEnvelope(firstTx, network.TestNetworkPassphrase)
+	assert.NoError(t, err)
+
+	src = xdr.MustAddress("GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU")
+	secondTx := xdr.TransactionEnvelope{
+		Type: xdr.EnvelopeTypeEnvelopeTypeTx,
+		V1: &xdr.TransactionV1Envelope{
+			Tx: xdr.Transaction{
+				Fee:           2,
+				SourceAccount: src.ToMuxedAccount(),
+			},
+		},
+	}
+	secondTxHash, err := network.HashTransactionInEnvelope(secondTx, network.TestNetworkPassphrase)
+	assert.NoError(t, err)
+
 	ledger := xdr.LedgerCloseMeta{
 		V0: &xdr.LedgerCloseMetaV0{
 			TxSet: xdr.TransactionSet{
 				Txs: []xdr.TransactionEnvelope{
-					{},
-					{},
+					secondTx,
+					firstTx,
 				},
 			},
 			TxProcessing: []xdr.TransactionResultMeta{
 				{
-					Result: xdr.TransactionResultPair{},
+					Result: xdr.TransactionResultPair{TransactionHash: firstTxHash},
 					FeeProcessing: xdr.LedgerEntryChanges{
 						buildChange(feeAddress, 100),
 						buildChange(feeAddress, 200),
@@ -168,7 +195,7 @@ func TestLedgerChangeReaderOrder(t *testing.T) {
 					},
 				},
 				{
-					Result: xdr.TransactionResultPair{},
+					Result: xdr.TransactionResultPair{TransactionHash: secondTxHash},
 					FeeProcessing: xdr.LedgerEntryChanges{
 						buildChange(feeAddress, 300),
 					},
