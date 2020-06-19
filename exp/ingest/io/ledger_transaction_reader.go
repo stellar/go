@@ -1,9 +1,11 @@
 package io
 
 import (
+	"encoding/hex"
 	"io"
 
 	"github.com/stellar/go/exp/ingest/ledgerbackend"
+	"github.com/stellar/go/network"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
@@ -18,7 +20,7 @@ type LedgerTransactionReader struct {
 
 // NewLedgerTransactionReader creates a new TransactionReader instance.
 // Note that TransactionReader is not thread safe and should not be shared by multiple goroutines
-func NewLedgerTransactionReader(backend ledgerbackend.LedgerBackend, sequence uint32) (*LedgerTransactionReader, error) {
+func NewLedgerTransactionReader(backend ledgerbackend.LedgerBackend, networkPassphrase string, sequence uint32) (*LedgerTransactionReader, error) {
 	exists, ledgerCloseMeta, err := backend.GetLedger(sequence)
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting ledger from the backend")
@@ -29,7 +31,9 @@ func NewLedgerTransactionReader(backend ledgerbackend.LedgerBackend, sequence ui
 	}
 
 	reader := &LedgerTransactionReader{ledgerCloseMeta: ledgerCloseMeta}
-	reader.storeTransactions(ledgerCloseMeta)
+	if err = reader.storeTransactions(ledgerCloseMeta, networkPassphrase); err != nil {
+		return nil, errors.Wrap(err, "error extracting transactions from ledger close meta")
+	}
 	return reader, nil
 }
 
@@ -60,16 +64,32 @@ func (reader *LedgerTransactionReader) Rewind() {
 
 // storeTransactions maps the close meta data into a slice of LedgerTransaction structs, to provide
 // a per-transaction view of the data when Read() is called.
-func (reader *LedgerTransactionReader) storeTransactions(lcm xdr.LedgerCloseMeta) {
-	for i := range lcm.V0.TxSet.Txs {
+func (reader *LedgerTransactionReader) storeTransactions(lcm xdr.LedgerCloseMeta, networkPassphrase string) error {
+	byHash := map[xdr.Hash]xdr.TransactionEnvelope{}
+	for i, tx := range lcm.V0.TxSet.Txs {
+		hash, err := network.HashTransactionInEnvelope(tx, networkPassphrase)
+		if err != nil {
+			return errors.Wrapf(err, "could not hash transaction %d in TxSet", i)
+		}
+		byHash[hash] = tx
+	}
+
+	for i := range lcm.V0.TxProcessing {
+		result := lcm.V0.TxProcessing[i].Result
+		envelope, ok := byHash[result.TransactionHash]
+		if !ok {
+			hexHash := hex.EncodeToString(result.TransactionHash[:])
+			return errors.Errorf("unknown tx hash in LedgerCloseMeta: %v", hexHash)
+		}
 		reader.transactions = append(reader.transactions, LedgerTransaction{
 			Index:      uint32(i + 1), // Transactions start at '1'
-			Envelope:   lcm.V0.TxSet.Txs[i],
-			Result:     lcm.V0.TxProcessing[i].Result,
+			Envelope:   envelope,
+			Result:     result,
 			Meta:       lcm.V0.TxProcessing[i].TxApplyProcessing,
 			FeeChanges: lcm.V0.TxProcessing[i].FeeProcessing,
 		})
 	}
+	return nil
 }
 
 // Close should be called when reading is finished. This is especially
