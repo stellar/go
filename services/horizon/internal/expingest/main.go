@@ -491,22 +491,23 @@ const (
 	minBatchSize                    = historyCheckpointLedgerInterval
 )
 
-func (ps *ParallelSystems) ReingestRange(fromLedger, toLedger uint32, batchSizeSuggestion uint32) error {
-	rangeSize := toLedger - fromLedger
+func calculateParallelLedgerBatchSize(rangeSize uint32, batchSizeSuggestion uint32, workerCount uint) uint32 {
 	batchSize := batchSizeSuggestion
-	if rangeSize/batchSize < uint32(ps.workerCount) {
+	if batchSize == 0 || rangeSize/batchSize < uint32(workerCount) {
 		// let's try to make use of all the workers
-		batchSize = rangeSize / uint32(ps.workerCount)
+		batchSize = rangeSize / uint32(workerCount)
 	}
-
 	// Use a minimum batch size to make it worth it in terms of overhead
 	if batchSize < minBatchSize {
 		batchSize = minBatchSize
 	}
 
 	// Also, round the batch size to the closest, lower or equal 64 multiple
-	batchSize = (batchSize / historyCheckpointLedgerInterval) * historyCheckpointLedgerInterval
+	return (batchSize / historyCheckpointLedgerInterval) * historyCheckpointLedgerInterval
+}
 
+func (ps *ParallelSystems) ReingestRange(fromLedger, toLedger uint32, batchSizeSuggestion uint32) error {
+	batchSize := calculateParallelLedgerBatchSize(toLedger-fromLedger, batchSizeSuggestion, ps.workerCount)
 	pendingJobsCount := 0
 	var result error
 	processSubRangeResult := func(subRangeResult rangeResult) {
