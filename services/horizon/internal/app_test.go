@@ -49,5 +49,5 @@ func TestMetrics(t *testing.T) {
 
 	ht.Require.EqualValues(3, hl.Value())
 	ht.Require.EqualValues(1, he.Value())
-	ht.Require.EqualValues(3, cl.Value())
+	ht.Require.EqualValues(64, cl.Value())
 }
