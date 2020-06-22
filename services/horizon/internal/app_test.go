@@ -3,6 +3,8 @@ package horizon
 import (
 	"net/http"
 	"testing"
+
+	"github.com/stellar/go/services/horizon/internal/test"
 )
 
 func TestGenericHTTPFeatures(t *testing.T) {
@@ -36,6 +38,10 @@ func TestGenericHTTPFeatures(t *testing.T) {
 func TestMetrics(t *testing.T) {
 	ht := StartHTTPTest(t, "base")
 	defer ht.Finish()
+
+	adminRouterRH := test.NewRequestHelper(ht.App.web.internalRouter)
+	w := adminRouterRH.Get("/metrics")
+	ht.Assert.Equal(200, w.Code)
 
 	hl := ht.App.historyLatestLedgerGauge
 	he := ht.App.historyElderLedgerGauge

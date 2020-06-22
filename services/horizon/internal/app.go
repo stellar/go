@@ -476,9 +476,6 @@ func (a *App) init() {
 	// This parameter will be removed soon.
 	a.web.mustInstallMiddlewares(a, a.config.ConnectionTimeout)
 
-	// web.actions
-	a.web.mustInstallActions(a.config, a.paths, a.historyQ.Session, a.metrics)
-
 	// metrics and log.metrics
 	a.metrics = metrics.NewRegistry()
 	for level, meter := range *logmetrics.DefaultMetrics {
@@ -487,6 +484,9 @@ func (a *App) init() {
 
 	// db-metrics
 	initDbMetrics(a)
+
+	// web.actions
+	a.web.mustInstallActions(a.config, a.paths, a.historyQ.Session, a.metrics)
 
 	// ingest.metrics
 	initIngestMetrics(a)
