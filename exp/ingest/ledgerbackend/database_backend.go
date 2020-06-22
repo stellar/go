@@ -124,12 +124,6 @@ func (dbb *DatabaseBackend) GetLedger(sequence uint32) (bool, xdr.LedgerCloseMet
 			Result:            tx.TXResult,
 			TxApplyProcessing: tx.TXMeta,
 		})
-
-		if lcm.V0.LedgerHeader.Header.LedgerVersion < 10 && tx.TXMeta.V != 2 {
-			return false, lcm,
-				errors.New("TransactionMeta.V=2 is required in protocol version older than version 10. " +
-					"Please process ledgers again using stellar-core with SUPPORTED_META_VERSION=2 in the config file.")
-		}
 	}
 
 	// Query - txfeehistory

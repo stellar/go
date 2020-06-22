@@ -161,6 +161,7 @@ func TestLedgerChangeReaderOrder(t *testing.T) {
 
 	ledger := xdr.LedgerCloseMeta{
 		V0: &xdr.LedgerCloseMetaV0{
+			LedgerHeader: xdr.LedgerHeaderHistoryEntry{Header: xdr.LedgerHeader{LedgerVersion: 10}},
 			TxSet: xdr.TransactionSet{
 				Txs: []xdr.TransactionEnvelope{
 					secondTx,
@@ -251,6 +252,19 @@ func TestLedgerChangeReaderOrder(t *testing.T) {
 	})
 	mock.AssertExpectations(t)
 
+	ledger.V0.LedgerHeader.Header.LedgerVersion = 8
+	mock.On("GetLedger", seq).Return(true, ledger, nil).Once()
+	_, err = NewLedgerChangeReader(mock, network.TestNetworkPassphrase, seq)
+	assert.EqualError(
+		t,
+		err,
+		"error extracting transactions from ledger close meta: TransactionMeta.V=2 is required in protocol"+
+			" version older than version 10. Please process ledgers again using stellar-core with "+
+			"SUPPORTED_META_VERSION=2 in the config file.",
+	)
+	mock.AssertExpectations(t)
+
+	ledger.V0.LedgerHeader.Header.LedgerVersion = 10
 	ledger.V0.TxProcessing[0].FeeProcessing = xdr.LedgerEntryChanges{}
 	ledger.V0.TxProcessing[1].FeeProcessing = xdr.LedgerEntryChanges{}
 	mock.On("GetLedger", seq).Return(true, ledger, nil).Once()
