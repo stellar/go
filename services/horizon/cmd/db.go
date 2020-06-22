@@ -198,9 +198,9 @@ var dbReingestRangeCmd = &cobra.Command{
 		}
 
 		if parallelWorkers < 2 {
-			system, err := expingest.NewSystem(ingestConfig)
+			system, systemErr := expingest.NewSystem(ingestConfig)
 			if err != nil {
-				log.Fatal(err)
+				log.Fatal(systemErr)
 			}
 
 			err = system.ReingestRange(
@@ -209,9 +209,9 @@ var dbReingestRangeCmd = &cobra.Command{
 				reingestForce,
 			)
 		} else {
-			system, err := expingest.NewParallelSystems(ingestConfig, parallelWorkers)
+			system, systemErr := expingest.NewParallelSystems(ingestConfig, parallelWorkers)
 			if err != nil {
-				log.Fatal(err)
+				log.Fatal(systemErr)
 			}
 			defer system.Shutdown()
 

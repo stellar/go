@@ -475,12 +475,12 @@ func (ps *ParallelSystems) work(s System) {
 		select {
 		case <-ps.shutdown:
 			return
-		case ledgerRange := <-ps.reingestJobQueue:
-			err := s.ReingestRange(ledgerRange.from, ledgerRange.to, false)
+		case reingestRange := <-ps.reingestJobQueue:
+			err := s.ReingestRange(reingestRange.from, reingestRange.to, false)
 			select {
 			case <-ps.shutdown:
 				return
-			case ps.reingestJobResult <- rangeResult{err, ledgerRange}:
+			case ps.reingestJobResult <- rangeResult{err, reingestRange}:
 			}
 		}
 	}
