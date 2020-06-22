@@ -108,17 +108,6 @@ func (s *ProcessorRunner) buildChangeProcessor(
 	}
 }
 
-type skipFailedTransactions struct {
-	horizonTransactionProcessor
-}
-
-func (p skipFailedTransactions) ProcessTransaction(tx io.LedgerTransaction) error {
-	if !tx.Result.Successful() {
-		return nil
-	}
-	return p.horizonTransactionProcessor.ProcessTransaction(tx)
-}
-
 func (s *ProcessorRunner) buildTransactionProcessor(
 	ledgerTransactionStats *io.StatsLedgerTransactionProcessor,
 	ledger xdr.LedgerHeaderHistoryEntry,
@@ -128,7 +117,7 @@ func (s *ProcessorRunner) buildTransactionProcessor(
 	}
 
 	sequence := uint32(ledger.Header.LedgerSeq)
-	group := groupTransactionProcessors{
+	return groupTransactionProcessors{
 		statsLedgerTransactionProcessor,
 		processors.NewEffectProcessor(s.historyQ, sequence),
 		processors.NewLedgerProcessor(s.historyQ, ledger, CurrentVersion),
@@ -137,12 +126,6 @@ func (s *ProcessorRunner) buildTransactionProcessor(
 		processors.NewParticipantsProcessor(s.historyQ, sequence),
 		processors.NewTransactionProcessor(s.historyQ, sequence),
 	}
-
-	if s.config.IngestFailedTransactions {
-		return group
-	}
-
-	return skipFailedTransactions{group}
 }
 
 // validateBucketList validates if the bucket list hash in history archive
@@ -170,7 +153,7 @@ func (s *ProcessorRunner) validateBucketList(ledgerSequence uint32) error {
 		)
 	}
 
-	ledgerBucketHashList := ledgerCloseMeta.LedgerHeader.Header.BucketListHash
+	ledgerBucketHashList := ledgerCloseMeta.V0.LedgerHeader.Header.BucketListHash
 
 	if !bytes.Equal(historyBucketListHash[:], ledgerBucketHashList[:]) {
 		return fmt.Errorf(
@@ -237,7 +220,7 @@ func (s *ProcessorRunner) runChangeProcessorOnLedger(
 ) error {
 	var changeReader io.ChangeReader
 	var err error
-	changeReader, err = io.NewLedgerChangeReader(s.ledgerBackend, ledger)
+	changeReader, err = io.NewLedgerChangeReader(s.ledgerBackend, s.config.NetworkPassphrase, ledger)
 	if err != nil {
 		return errors.Wrap(err, "Error creating ledger change reader")
 	}
@@ -263,7 +246,7 @@ func (s *ProcessorRunner) runChangeProcessorOnLedger(
 func (s *ProcessorRunner) RunTransactionProcessorsOnLedger(ledger uint32) (io.StatsLedgerTransactionProcessorResults, error) {
 	ledgerTransactionStats := io.StatsLedgerTransactionProcessor{}
 
-	transactionReader, err := io.NewLedgerTransactionReader(s.ledgerBackend, ledger)
+	transactionReader, err := io.NewLedgerTransactionReader(s.ledgerBackend, s.config.NetworkPassphrase, ledger)
 	if err != nil {
 		return ledgerTransactionStats.GetResults(), errors.Wrap(err, "Error creating ledger reader")
 	}

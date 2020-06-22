@@ -22,7 +22,7 @@ func TestGetTransactionPage(t *testing.T) {
 	defer tt.Finish()
 
 	ctx := context.Background()
-	w := mustInitWeb(ctx, &history.Q{tt.HorizonSession()}, time.Duration(5), 0, true)
+	w := mustInitWeb(ctx, &history.Q{tt.HorizonSession()}, time.Duration(5), 0)
 
 	// filter by account
 	params := &indexActionQueryParams{

@@ -1,7 +1,6 @@
 package expingest
 
 import (
-	"github.com/stellar/go/exp/ingest/ledgerbackend"
 	"github.com/stellar/go/keypair"
 	logpkg "github.com/stellar/go/support/log"
 	"github.com/stellar/go/xdr"
@@ -94,20 +93,22 @@ func fakeOffer(offerID int64) xdr.LedgerEntryChange {
 	}
 }
 
-func (f fakeLedgerBackend) GetLedger(sequence uint32) (bool, ledgerbackend.LedgerCloseMeta, error) {
-	ledgerCloseMeta := ledgerbackend.LedgerCloseMeta{
-		LedgerHeader: xdr.LedgerHeaderHistoryEntry{
-			Hash: xdr.Hash{1, 2, 3, 4, 5, 6},
-			Header: xdr.LedgerHeader{
-				LedgerVersion: 7,
-				LedgerSeq:     xdr.Uint32(1),
+func (f fakeLedgerBackend) GetLedger(sequence uint32) (bool, xdr.LedgerCloseMeta, error) {
+	ledgerCloseMeta := xdr.LedgerCloseMeta{
+		V0: &xdr.LedgerCloseMetaV0{
+			LedgerHeader: xdr.LedgerHeaderHistoryEntry{
+				Hash: xdr.Hash{1, 2, 3, 4, 5, 6},
+				Header: xdr.LedgerHeader{
+					LedgerVersion: 7,
+					LedgerSeq:     xdr.Uint32(1),
+				},
 			},
+			TxSet: xdr.TransactionSet{
+				Txs: make([]xdr.TransactionEnvelope, f.numTransactions),
+			},
+			TxProcessing:       make([]xdr.TransactionResultMeta, f.numTransactions),
+			UpgradesProcessing: []xdr.UpgradeEntryMeta{},
 		},
-		TransactionResult:     make([]xdr.TransactionResultPair, f.numTransactions),
-		TransactionEnvelope:   make([]xdr.TransactionEnvelope, f.numTransactions),
-		TransactionMeta:       make([]xdr.TransactionMeta, f.numTransactions),
-		TransactionFeeChanges: make([]xdr.LedgerEntryChanges, f.numTransactions),
-		UpgradesMeta:          []xdr.LedgerEntryChanges{},
 	}
 
 	logger := log.WithField("sequence", sequence)
@@ -116,17 +117,26 @@ func (f fakeLedgerBackend) GetLedger(sequence uint32) (bool, ledgerbackend.Ledge
 
 	for i := 0; i < f.numTransactions; i++ {
 		var results []xdr.OperationResult
-		ledgerCloseMeta.TransactionResult[i] = xdr.TransactionResultPair{
-			TransactionHash: xdr.Hash{1, byte(i % 256), byte((i / 256) % 256)},
-			Result: xdr.TransactionResult{
-				Result: xdr.TransactionResultResult{
-					Code:    xdr.TransactionResultCodeTxSuccess,
-					Results: &results,
+		ledgerCloseMeta.V0.TxProcessing[i] = xdr.TransactionResultMeta{
+			Result: xdr.TransactionResultPair{
+				TransactionHash: xdr.Hash{1, byte(i % 256), byte((i / 256) % 256)},
+				Result: xdr.TransactionResult{
+					Result: xdr.TransactionResultResult{
+						Code:    xdr.TransactionResultCodeTxSuccess,
+						Results: &results,
+					},
+				},
+			},
+			//FeeProcessing:     nil,
+			TxApplyProcessing: xdr.TransactionMeta{
+				V: 1,
+				V1: &xdr.TransactionMetaV1{
+					Operations: []xdr.OperationMeta{},
 				},
 			},
 		}
 		aid := xdr.MustAddress("GAHK7EEG2WWHVKDNT4CEQFZGKF2LGDSW2IVM4S5DP42RBW3K6BTODB4A")
-		ledgerCloseMeta.TransactionEnvelope[i] = xdr.TransactionEnvelope{
+		ledgerCloseMeta.V0.TxSet.Txs[i] = xdr.TransactionEnvelope{
 			Type: xdr.EnvelopeTypeEnvelopeTypeTx,
 			V1: &xdr.TransactionV1Envelope{
 				Tx: xdr.Transaction{
@@ -134,13 +144,6 @@ func (f fakeLedgerBackend) GetLedger(sequence uint32) (bool, ledgerbackend.Ledge
 				},
 			},
 		}
-		ledgerCloseMeta.TransactionMeta[i] = xdr.TransactionMeta{
-			V: 1,
-			V1: &xdr.TransactionMetaV1{
-				Operations: []xdr.OperationMeta{},
-			},
-		}
-
 		feeChanges := xdr.LedgerEntryChanges{}
 		for j := 0; j < f.changesPerTransaction; j++ {
 			var change xdr.LedgerEntryChange
@@ -175,7 +178,7 @@ func (f fakeLedgerBackend) GetLedger(sequence uint32) (bool, ledgerbackend.Ledge
 			}
 		}
 
-		ledgerCloseMeta.TransactionFeeChanges[i] = feeChanges
+		ledgerCloseMeta.V0.TxProcessing[i].FeeProcessing = feeChanges
 	}
 
 	curHeap, sysHeap := getMemStats()

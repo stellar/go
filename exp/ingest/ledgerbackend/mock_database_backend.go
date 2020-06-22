@@ -1,6 +1,7 @@
 package ledgerbackend
 
 import (
+	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/mock"
 )
 
@@ -20,9 +21,9 @@ func (m *MockDatabaseBackend) PrepareRange(from uint32, to uint32) error {
 	return args.Error(1)
 }
 
-func (m *MockDatabaseBackend) GetLedger(sequence uint32) (bool, LedgerCloseMeta, error) {
+func (m *MockDatabaseBackend) GetLedger(sequence uint32) (bool, xdr.LedgerCloseMeta, error) {
 	args := m.Called(sequence)
-	return args.Bool(0), args.Get(1).(LedgerCloseMeta), args.Error(2)
+	return args.Bool(0), args.Get(1).(xdr.LedgerCloseMeta), args.Error(2)
 }
 
 func (m *MockDatabaseBackend) Close() error {

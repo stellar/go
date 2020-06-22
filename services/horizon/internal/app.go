@@ -466,7 +466,7 @@ func (a *App) init() {
 	a.reaper = reap.New(a.config.HistoryRetentionCount, a.HorizonSession(context.Background()))
 
 	// web.init
-	a.web = mustInitWeb(a.ctx, a.historyQ, a.config.SSEUpdateFrequency, a.config.StaleThreshold, a.config.IngestFailedTransactions)
+	a.web = mustInitWeb(a.ctx, a.historyQ, a.config.SSEUpdateFrequency, a.config.StaleThreshold)
 
 	// web.rate-limiter
 	a.web.rateLimiter = maybeInitWebRateLimiter(a.config.RateQuota)
@@ -476,9 +476,6 @@ func (a *App) init() {
 	// This parameter will be removed soon.
 	a.web.mustInstallMiddlewares(a, a.config.ConnectionTimeout)
 
-	// web.actions
-	a.web.mustInstallActions(a.config, a.paths, a.historyQ.Session, a.metrics)
-
 	// metrics and log.metrics
 	a.metrics = metrics.NewRegistry()
 	for level, meter := range *logmetrics.DefaultMetrics {
@@ -487,6 +484,9 @@ func (a *App) init() {
 
 	// db-metrics
 	initDbMetrics(a)
+
+	// web.actions
+	a.web.mustInstallActions(a.config, a.paths, a.historyQ.Session, a.metrics)
 
 	// ingest.metrics
 	initIngestMetrics(a)
