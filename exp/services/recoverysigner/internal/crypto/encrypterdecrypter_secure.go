@@ -11,6 +11,11 @@ import (
 	"github.com/stellar/go/support/errors"
 )
 
+type secureDecrypter struct {
+	remote tink.AEAD
+	keyset *tinkpb.EncryptedKeyset
+}
+
 // kmsKeyURI must have the following format: 'aws-kms://arn:<partition>:kms:<region>:[:path]'.
 // See http://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html.
 func newSecureEncrypterDecrypter(client registry.KMSClient, kmsKeyURI, tinkKeysetJSON string) (Encrypter, Decrypter, error) {
@@ -19,20 +24,19 @@ func newSecureEncrypterDecrypter(client registry.KMSClient, kmsKeyURI, tinkKeyse
 		return nil, nil, errors.Wrap(err, "getting AEAD primitive from KMS")
 	}
 
-	khPriv, err := keyset.Read(keyset.NewJSONReader(strings.NewReader(tinkKeysetJSON)), aead)
+	ks, err := keyset.NewJSONReader(strings.NewReader(tinkKeysetJSON)).ReadEncrypted()
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "getting key handle for private key")
-	}
-
-	memKeyset := &keyset.MemReaderWriter{}
-	err = khPriv.Write(memKeyset, aead)
-	if err != nil {
-		return nil, nil, errors.Wrap(err, "encrypting keyset")
+		return nil, nil, errors.Wrap(err, "reading encrypted keyset")
 	}
 
 	d := &secureDecrypter{
 		remote: aead,
-		keyset: memKeyset.EncryptedKeyset,
+		keyset: ks,
+	}
+
+	khPriv, err := keyset.Read(&keyset.MemReaderWriter{EncryptedKeyset: ks}, aead)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "getting key handle for private key")
 	}
 
 	khPub, err := khPriv.Public()
@@ -46,11 +50,6 @@ func newSecureEncrypterDecrypter(client registry.KMSClient, kmsKeyURI, tinkKeyse
 	}
 
 	return he, d, nil
-}
-
-type secureDecrypter struct {
-	remote tink.AEAD
-	keyset *tinkpb.EncryptedKeyset
 }
 
 func (ks *secureDecrypter) Decrypt(ciphertext, contextInfo []byte) ([]byte, error) {
