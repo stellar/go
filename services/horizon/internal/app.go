@@ -215,7 +215,7 @@ func (a *App) UpdateLedgerState() {
 
 	coreInfo, err := coreClient.Info(a.ctx)
 	if err != nil {
-		logErr(err, "failed to load the latest known ledger state from core DB")
+		logErr(err, "failed to load the stellar-core info")
 		return
 	}
 	next.CoreLatest = int32(coreInfo.Info.Ledger.Num)
