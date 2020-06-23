@@ -65,15 +65,15 @@ func (c *KeysetCommand) Create() {
 	keysetPublic := strings.Builder{}
 
 	if c.RemoteKEKURI != "" {
-		kmsClient, err := awskms.NewClient(c.RemoteKEKURI)
-		if err != nil {
-			c.Logger.Errorf("Error initializing AWS KMS client: %s", err.Error())
+		kmsClient, kmsErr := awskms.NewClient(c.RemoteKEKURI)
+		if kmsErr != nil {
+			c.Logger.Errorf("Error initializing AWS KMS client: %s", kmsErr.Error())
 			return
 		}
 
-		aead, err := kmsClient.GetAEAD(c.RemoteKEKURI)
-		if err != nil {
-			c.Logger.Errorf("Error getting AEAD primitive from KMS: %s", err.Error())
+		aead, kmsErr := kmsClient.GetAEAD(c.RemoteKEKURI)
+		if kmsErr != nil {
+			c.Logger.Errorf("Error getting AEAD primitive from KMS: %s", kmsErr.Error())
 			return
 		}
 
