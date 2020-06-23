@@ -87,6 +87,22 @@ func (c *ServeCommand) Command() *cobra.Command {
 			FlagDefault: "recoverysigner",
 			Required:    false,
 		},
+		{
+			Name:        "encryption-kms-key-uri",
+			Usage:       "URI for a remote KMS key used to decrypt the Tink keyset provided in encryption-tink-keyset",
+			OptType:     types.String,
+			ConfigKey:   &opts.EncryptionKMSKeyURI,
+			FlagDefault: "",
+			Required:    false,
+		},
+		{
+			Name:        "encryption-tink-keyset",
+			Usage:       "Tink keyset in JSON format containing a single asymmetric key used to encrypt/decrypt signing keys (the keyset must be encrypted by the remote KMS key specified in encryption-kms-key-uri if that option is present)",
+			OptType:     types.String,
+			ConfigKey:   &opts.EncryptionTinkKeysetJSON,
+			FlagDefault: "",
+			Required:    true,
+		},
 	}
 	cmd := &cobra.Command{
 		Use:   "serve",

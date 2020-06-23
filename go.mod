@@ -9,7 +9,7 @@ require (
 	github.com/Masterminds/squirrel v0.0.0-20161115235646-20f192218cf5
 	github.com/ajg/form v0.0.0-20160822230020-523a5da1a92f // indirect
 	github.com/asaskevich/govalidator v0.0.0-20180319081651-7d2e70ef918f
-	github.com/aws/aws-sdk-go v1.25.25
+	github.com/aws/aws-sdk-go v1.25.39
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/elazarl/go-bindata-assetfs v1.0.0
 	github.com/fatih/structs v1.0.0 // indirect
@@ -19,8 +19,7 @@ require (
 	github.com/go-errors/errors v0.0.0-20150906023321-a41850380601
 	github.com/gobuffalo/packr v1.12.1 // indirect
 	github.com/google/go-querystring v0.0.0-20160401233042-9235644dd9e5 // indirect
-	github.com/google/martian v2.1.0+incompatible // indirect
-	github.com/googleapis/gax-go v2.0.2+incompatible // indirect
+	github.com/google/tink/go v1.4.0-rc2
 	github.com/gorilla/schema v1.1.0
 	github.com/graph-gophers/graphql-go v0.0.0-20190225005345-3e8838d4614c
 	github.com/guregu/null v2.1.3-0.20151024101046-79c5bd36b615+incompatible
@@ -79,11 +78,11 @@ require (
 	github.com/yudai/golcs v0.0.0-20150405163532-d1c525dea8ce // indirect
 	github.com/yudai/pp v2.0.1+incompatible // indirect
 	github.com/ziutek/mymysql v1.5.4 // indirect
-	golang.org/x/crypto v0.0.0-20191112222119-e1110fd1c708
+	golang.org/x/crypto v0.0.0-20191119213627-4f8c1d86b1ba
 	golang.org/x/net v0.0.0-20190827160401-ba9fcec4b297 // indirect
 	golang.org/x/text v0.3.3 // indirect
 	golang.org/x/tools v0.0.0-20190624180213-70d37148ca0c // indirect
-	google.golang.org/api v0.3.1
+	google.golang.org/api v0.14.0
 	google.golang.org/appengine v1.6.1 // indirect
 	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
 	gopkg.in/gavv/httpexpect.v1 v1.0.0-20170111145843-40724cf1e4a0

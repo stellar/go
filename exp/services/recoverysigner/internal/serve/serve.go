@@ -10,6 +10,7 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stellar/go/exp/services/recoverysigner/internal/account"
+	"github.com/stellar/go/exp/services/recoverysigner/internal/crypto"
 	"github.com/stellar/go/exp/services/recoverysigner/internal/db"
 	"github.com/stellar/go/exp/services/recoverysigner/internal/serve/auth"
 	"github.com/stellar/go/keypair"
@@ -29,6 +30,9 @@ type Options struct {
 	SEP10JWKS         string
 	SEP10JWTIssuer    string
 	FirebaseProjectID string
+
+	EncryptionKMSKeyURI      string
+	EncryptionTinkKeysetJSON string
 
 	AdminPort        int
 	MetricsNamespace string
@@ -66,6 +70,8 @@ type handlerDeps struct {
 	NetworkPassphrase  string
 	SigningKeys        []*keypair.Full
 	SigningAddresses   []*keypair.FromAddress
+	Encrypter          crypto.Encrypter
+	Decrypter          crypto.Decrypter
 	AccountStore       account.Store
 	SEP10JWKS          jose.JSONWebKeySet
 	SEP10JWTIssuer     string
@@ -98,6 +104,11 @@ func getHandlerDeps(opts Options) (handlerDeps, error) {
 		return handlerDeps{}, errors.New("no keys included in SEP-10 JSON Web Key (JWK) Set")
 	}
 	opts.Logger.Infof("SEP10 JWKS contains %d keys", len(sep10JWKS.Keys))
+
+	encrypter, decrypter, err := crypto.NewEncrypterDecrypter(opts.EncryptionKMSKeyURI, opts.EncryptionTinkKeysetJSON)
+	if err != nil {
+		return handlerDeps{}, errors.Wrap(err, "initializing encrypter decrypter")
+	}
 
 	db, err := db.Open(opts.DatabaseURL)
 	if err != nil {
@@ -143,6 +154,8 @@ func getHandlerDeps(opts Options) (handlerDeps, error) {
 		NetworkPassphrase:  opts.NetworkPassphrase,
 		SigningKeys:        signingKeys,
 		SigningAddresses:   signingAddresses,
+		Encrypter:          encrypter,
+		Decrypter:          decrypter,
 		AccountStore:       accountStore,
 		SEP10JWKS:          sep10JWKS,
 		SEP10JWTIssuer:     opts.SEP10JWTIssuer,
