@@ -18,7 +18,8 @@ func TestRootAction(t *testing.T) {
 				"network": "test",
 				"build": "test-core",
 				"ledger": {
-					"version": 3
+					"version": 3,
+					"num": 64
 				},
 				"protocol_version": 4
 			}
@@ -29,6 +30,7 @@ func TestRootAction(t *testing.T) {
 	ht.App.config.StellarCoreURL = server.URL
 	ht.App.config.NetworkPassphrase = "test"
 	ht.App.UpdateStellarCoreInfo()
+	ht.App.UpdateLedgerState()
 
 	w := ht.Get("/")
 
@@ -40,6 +42,7 @@ func TestRootAction(t *testing.T) {
 		ht.Assert.Equal("test-core", actual.StellarCoreVersion)
 		ht.Assert.Equal(int32(4), actual.CoreSupportedProtocolVersion)
 		ht.Assert.Equal(int32(3), actual.CurrentProtocolVersion)
+		ht.Assert.Equal(int32(64), actual.CoreSequence)
 
 		err = json.Unmarshal(w.Body.Bytes(), &actual)
 		ht.Require.NoError(err)
@@ -80,5 +83,26 @@ func TestRootAction(t *testing.T) {
 			"http://localhost/paths/strict-receive{?"+strings.Join(params, ",")+"}",
 			actual.Links.StrictReceivePaths.Href,
 		)
+	}
+}
+
+func TestRootCoreClientInfoErrored(t *testing.T) {
+	ht := StartHTTPTestWithoutScenario(t)
+	defer ht.Finish()
+
+	// an empty payload causes the core client to err
+	server := test.NewStaticMockServer(`{}`)
+	defer server.Close()
+
+	ht.App.config.StellarCoreURL = server.URL
+	ht.App.UpdateLedgerState()
+
+	w := ht.Get("/")
+
+	if ht.Assert.Equal(200, w.Code) {
+		var actual horizon.Root
+		err := json.Unmarshal(w.Body.Bytes(), &actual)
+		ht.Require.NoError(err)
+		ht.Assert.Equal(int32(0), actual.CurrentProtocolVersion)
 	}
 }
