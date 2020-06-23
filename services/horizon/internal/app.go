@@ -13,7 +13,6 @@ import (
 	metrics "github.com/rcrowley/go-metrics"
 	"github.com/stellar/go/clients/stellarcore"
 	horizonContext "github.com/stellar/go/services/horizon/internal/context"
-	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/expingest"
 	"github.com/stellar/go/services/horizon/internal/ledger"
@@ -35,7 +34,6 @@ type App struct {
 	config                       Config
 	web                          *web
 	historyQ                     *history.Q
-	coreQ                        *core.Q
 	ctx                          context.Context
 	cancel                       func()
 	coreVersion                  string
@@ -55,7 +53,6 @@ type App struct {
 	historyElderLedgerGauge  metrics.Gauge
 	horizonConnGauge         metrics.Gauge
 	coreLatestLedgerGauge    metrics.Gauge
-	coreConnGauge            metrics.Gauge
 	goroutineGauge           metrics.Gauge
 }
 
@@ -157,7 +154,6 @@ func (a *App) Close() {
 // closed" errors.
 func (a *App) CloseDB() {
 	a.historyQ.Session.DB.Close()
-	a.coreQ.Session.DB.Close()
 }
 
 // HistoryQ returns a helper object for performing sql queries against the
@@ -170,18 +166,6 @@ func (a *App) HistoryQ() *history.Q {
 // database. The returned session is bound to `ctx`.
 func (a *App) HorizonSession(ctx context.Context) *db.Session {
 	return &db.Session{DB: a.historyQ.Session.DB, Ctx: ctx}
-}
-
-// CoreSession returns a new session that loads data from the stellar core
-// database. The returned session is bound to `ctx`.
-func (a *App) CoreSession(ctx context.Context) *db.Session {
-	return &db.Session{DB: a.coreQ.Session.DB, Ctx: ctx}
-}
-
-// CoreQ returns a helper object for performing sql queries aginst the
-// stellar core database.
-func (a *App) CoreQ() *core.Q {
-	return a.coreQ
 }
 
 // IsHistoryStale returns true if the latest history ledger is more than
@@ -405,7 +389,6 @@ func (a *App) UpdateMetrics() {
 	a.coreLatestLedgerGauge.Update(int64(ls.CoreLatest))
 
 	a.horizonConnGauge.Update(int64(a.historyQ.Session.DB.Stats().OpenConnections))
-	a.coreConnGauge.Update(int64(a.coreQ.Session.DB.Stats().OpenConnections))
 }
 
 // DeleteUnretainedHistory forwards to the app's reaper.  See
@@ -457,7 +440,6 @@ func (a *App) init() {
 
 	// horizon-db and core-db
 	mustInitHorizonDB(a)
-	mustInitCoreDB(a)
 
 	if a.config.Ingest {
 		// expingester
