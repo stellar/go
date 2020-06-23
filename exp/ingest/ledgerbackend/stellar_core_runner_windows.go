@@ -39,9 +39,7 @@ func (c *stellarCoreRunner) start() error {
 	// as we do not want zombies and we might abruptly forget / kill / close
 	// the process, but I'm not certain).
 	cmd := c.cmd
-	go func() {
-		cmd.Wait()
-	}()
+	go cmd.Wait()
 
 	// Then accept on the server end.
 	connection, e := listener.Accept()

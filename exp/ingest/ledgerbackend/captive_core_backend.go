@@ -300,8 +300,8 @@ func (c *captiveStellarCore) GetLatestLedgerSequence() (uint32, error) {
 // than numCheckpoints checkpoints ahead of the next ledger to be read
 // (so it will not be too long before ledger is read).
 func (c *captiveStellarCore) LedgerWithinCheckpoints(ledger uint32, numCheckpoints uint32) bool {
-	return ((c.nextLedger <= ledger) &&
-		(ledger <= (c.nextLedger + (numCheckpoints * ledgersPerCheckpoint))))
+	return c.nextLedger <= ledger &&
+		ledger <= (c.nextLedger+numCheckpoints*ledgersPerCheckpoint)
 }
 
 func (c *captiveStellarCore) IsClosed() bool {

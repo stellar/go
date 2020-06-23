@@ -29,7 +29,7 @@ func (c *stellarCoreRunner) start() error {
 
 	defer writeFile.Close()
 
-	// Then write config file pointing to it.
+	// Then output the config file pointing to it.
 	e = c.writeConf()
 	if e != nil {
 		return errors.Wrap(e, "error writing conf")
@@ -54,11 +54,7 @@ func (c *stellarCoreRunner) start() error {
 }
 
 func (c *stellarCoreRunner) processIsAlive() bool {
-	if c.cmd == nil {
-		return false
-	}
-	if c.cmd.Process == nil {
-		return false
-	}
-	return c.cmd.Process.Signal(syscall.Signal(0)) == nil
+	return c.cmd != nil &&
+		c.cmd.Process != nil &&
+		c.cmd.Process.Signal(syscall.Signal(0)) == nil
 }
