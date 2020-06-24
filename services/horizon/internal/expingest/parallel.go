@@ -99,7 +99,8 @@ func (ps *ParallelSystems) ReingestRange(fromLedger, toLedger uint32, batchSizeS
 		wait      sync.WaitGroup
 		stop      = make(chan struct{})
 		batchSize = calculateParallelLedgerBatchSize(toLedger-fromLedger, batchSizeSuggestion, ps.workerCount)
-		totalJobs = uint32(math.Ceil(float64(toLedger-fromLedger) / float64(batchSize)))
+		// we add one because both toLedger and fromLedger are included in the rabge
+		totalJobs = uint32(math.Ceil(float64(toLedger-fromLedger+1) / float64(batchSize)))
 	)
 
 	wait.Add(1)
@@ -113,7 +114,7 @@ func (ps *ParallelSystems) ReingestRange(fromLedger, toLedger uint32, batchSizeS
 		defer wait.Done()
 		for subRangeFrom := fromLedger; subRangeFrom < toLedger; {
 			// job queuing
-			subRangeTo := subRangeFrom + batchSize
+			subRangeTo := subRangeFrom + (batchSize - 1) // we subtract one because both from and to are part of the batch
 			if subRangeTo > toLedger {
 				subRangeTo = toLedger
 			}
@@ -122,7 +123,7 @@ func (ps *ParallelSystems) ReingestRange(fromLedger, toLedger uint32, batchSizeS
 				return
 			case ps.reingestJobQueue <- ledgerRange{subRangeFrom, subRangeTo}:
 			}
-			subRangeFrom = subRangeTo
+			subRangeFrom = subRangeTo + 1
 		}
 	}()
 
