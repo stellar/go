@@ -145,7 +145,7 @@ func NewSystem(config Config) (*System, error) {
 			[]string{config.HistoryArchiveURL},
 		)
 	} else {
-		ledgerBackend, err = ledgerbackend.NewDatabaseBackendFromSession(coreSession)
+		ledgerBackend, err = ledgerbackend.NewDatabaseBackendFromSession(coreSession, config.NetworkPassphrase)
 		if err != nil {
 			cancel()
 			return nil, errors.Wrap(err, "error creating ledger backend")
