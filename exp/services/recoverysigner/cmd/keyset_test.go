@@ -49,7 +49,10 @@ func TestCreateKeyset(t *testing.T) {
 	// context info not matching will result in a failed decryption
 	_, err = hd.Decrypt(ciphertext, []byte("wrong info"))
 	assert.Error(t, err)
+}
 
-	_, _, _, err = createKeyset("invalid-uri")
-	assert.Error(t, err)
+func TestCreateKeyset_invalidKMSKeyURI(t *testing.T) {
+	_, _, _, err := createKeyset("invalid-uri")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "initializing AWS KMS client")
 }
