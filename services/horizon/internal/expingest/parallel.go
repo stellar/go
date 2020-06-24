@@ -2,10 +2,14 @@ package expingest
 
 import (
 	"fmt"
-	"math"
 	"sync"
 
 	"github.com/stellar/go/support/errors"
+)
+
+const (
+	historyCheckpointLedgerInterval = 64
+	minBatchSize                    = historyCheckpointLedgerInterval
 )
 
 type ledgerRange struct {
@@ -13,71 +17,60 @@ type ledgerRange struct {
 	to   uint32
 }
 
-type rangeResult struct {
-	err            error
-	requestedRange ledgerRange
+type rangeError struct {
+	err         error
+	ledgerRange ledgerRange
+}
+
+func (e rangeError) Error() string {
+	return fmt.Sprintf("error when processing [%d, %d] range: %s", e.ledgerRange.from, e.ledgerRange.to, e.err)
 }
 
 type ParallelSystems struct {
-	workerCount       uint
-	reingestJobQueue  chan ledgerRange
-	shutdown          chan struct{}
-	wait              sync.WaitGroup
-	reingestJobResult chan rangeResult
+	config       Config
+	workerCount  uint
+	shutdownOnce sync.Once
+	shutdown     chan struct{}
 }
 
 func NewParallelSystems(config Config, workerCount uint) (*ParallelSystems, error) {
-	return newParallelSystems(config, workerCount, NewSystem)
+	// Leaving this because used in tests, will update after a code review.
+	return newParallelSystems(config, workerCount)
 }
 
 // private version of NewParallel systems, allowing to inject a mock system
-func newParallelSystems(config Config, workerCount uint, systemFactory func(Config) (System, error)) (*ParallelSystems, error) {
+func newParallelSystems(config Config, workerCount uint) (*ParallelSystems, error) {
 	if workerCount < 1 {
 		return nil, errors.New("workerCount must be > 0")
 	}
 
-	result := ParallelSystems{
-		workerCount:       workerCount,
-		reingestJobQueue:  make(chan ledgerRange),
-		shutdown:          make(chan struct{}),
-		reingestJobResult: make(chan rangeResult),
-	}
-	for i := uint(0); i < workerCount; i++ {
-		s, err := systemFactory(config)
-		if err != nil {
-			result.Shutdown()
-			return nil, errors.Wrap(err, "cannot create new system")
-		}
-		result.wait.Add(1)
-		go result.work(s)
-	}
-	return &result, nil
+	return &ParallelSystems{
+		config:      config,
+		workerCount: workerCount,
+		shutdown:    make(chan struct{}),
+	}, nil
 }
 
-func (ps *ParallelSystems) work(s System) {
-	defer func() {
-		s.Shutdown()
-		ps.wait.Done()
-	}()
+func (ps *ParallelSystems) reingestWorker(reingestJobQueue <-chan ledgerRange) error {
+	s, err := NewSystem(ps.config)
+	if err != nil {
+		return errors.Wrap(err, "error creating new system")
+	}
 	for {
 		select {
 		case <-ps.shutdown:
-			return
-		case reingestRange := <-ps.reingestJobQueue:
+			return nil
+		case reingestRange := <-reingestJobQueue:
 			err := s.ReingestRange(reingestRange.from, reingestRange.to, false)
-			select {
-			case <-ps.shutdown:
-				return
-			case ps.reingestJobResult <- rangeResult{err, reingestRange}:
+			if err != nil {
+				return rangeError{
+					err:         err,
+					ledgerRange: reingestRange,
+				}
 			}
 		}
 	}
 }
-
-const (
-	historyCheckpointLedgerInterval = 64
-	minBatchSize                    = historyCheckpointLedgerInterval
-)
 
 func calculateParallelLedgerBatchSize(rangeSize uint32, batchSizeSuggestion uint32, workerCount uint) uint32 {
 	batchSize := batchSizeSuggestion
@@ -96,25 +89,24 @@ func calculateParallelLedgerBatchSize(rangeSize uint32, batchSizeSuggestion uint
 
 func (ps *ParallelSystems) ReingestRange(fromLedger, toLedger uint32, batchSizeSuggestion uint32) error {
 	var (
-		firstErr  error
-		wait      sync.WaitGroup
-		stop      = make(chan struct{})
-		batchSize = calculateParallelLedgerBatchSize(toLedger-fromLedger, batchSizeSuggestion, ps.workerCount)
-		// we add one because both toLedger and fromLedger are included in the rabge
-		totalJobs        = uint32(math.Ceil(float64(toLedger-fromLedger+1) / float64(batchSize)))
-		pendingJobs      = 0
-		pendingJobsMutex sync.Mutex
+		batchSize        = calculateParallelLedgerBatchSize(toLedger-fromLedger, batchSizeSuggestion, ps.workerCount)
+		reingestJobQueue = make(chan ledgerRange)
+		wg               sync.WaitGroup
+
+		lowestRangeErrMutex sync.Mutex
+		// lowestRangeErr is an error of the failed range with the lowest starting ledger sequence that is used to tell
+		// the user which range to reingest in case of errors. We use that fact that System.ReingestRange is blocking,
+		// jobs are sent to a queue (unbuffered channel) in sequence and there is a WaitGroup waiting for all the workers
+		// to exit.
+		// Because of this when we reach `wg.Wait()` all jobs previously sent to a channel are processed (either success
+		// or failure). In case of a failure we save the range with the smallest sequence number because this is where
+		// the user needs to start again to prevent the gaps.
+		lowestRangeErr *rangeError
 	)
 
-	wait.Add(1)
-	defer func() {
-		close(stop)
-		wait.Wait()
-	}()
-
-	// queue subranges
+	wg.Add(1)
 	go func() {
-		defer wait.Done()
+		defer wg.Done()
 		for subRangeFrom := fromLedger; subRangeFrom < toLedger; {
 			// job queuing
 			subRangeTo := subRangeFrom + (batchSize - 1) // we subtract one because both from and to are part of the batch
@@ -122,49 +114,49 @@ func (ps *ParallelSystems) ReingestRange(fromLedger, toLedger uint32, batchSizeS
 				subRangeTo = toLedger
 			}
 			select {
-			case <-stop:
+			case <-ps.shutdown:
 				return
-			case ps.reingestJobQueue <- ledgerRange{subRangeFrom, subRangeTo}:
-				pendingJobsMutex.Lock()
-				pendingJobs++
-				pendingJobsMutex.Unlock()
+			case reingestJobQueue <- ledgerRange{subRangeFrom, subRangeTo}:
 			}
 			subRangeFrom = subRangeTo + 1
 		}
 	}()
 
-	// collect subrange results
-collect:
-	for i := uint32(0); i < totalJobs; i++ {
-		select {
-		case <-ps.shutdown:
-			return errors.New("aborted")
-		case subRangeResult := <-ps.reingestJobResult:
-			pendingJobsMutex.Lock()
-			pendingJobs--
-			if firstErr != nil {
-				if pendingJobs == 0 {
-					break collect
+	for i := uint(0); i < ps.workerCount; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			err := ps.reingestWorker(reingestJobQueue)
+			if err != nil {
+				log.WithError(err).Error("error in reingest worker")
+				if rangeErr, ok := err.(rangeError); ok {
+					lowestRangeErrMutex.Lock()
+					if lowestRangeErr == nil || (lowestRangeErr != nil && lowestRangeErr.ledgerRange.from > rangeErr.ledgerRange.from) {
+						lowestRangeErr = &rangeErr
+					}
+					lowestRangeErrMutex.Unlock()
 				}
-			} else if subRangeResult.err != nil {
-				// TODO: give account of what ledgers were correctly reingested?
-				errMsg := fmt.Sprintf("in subrange %d to %d",
-					subRangeResult.requestedRange.from, subRangeResult.requestedRange.to)
-				firstErr = errors.Wrap(subRangeResult.err, errMsg)
+				ps.Shutdown()
+				return
 			}
-			pendingJobsMutex.Unlock()
-		}
-
+		}()
 	}
 
-	return firstErr
+	wg.Wait()
+	close(reingestJobQueue)
+
+	if lowestRangeErr != nil {
+		return errors.Errorf("one or more jobs failed, recommended restart range: [%d, %d]", lowestRangeErr.ledgerRange.from, toLedger)
+	}
+	return nil
 }
 
-func (ps *ParallelSystems) Shutdown() {
-	if ps.shutdown != nil {
-		close(ps.shutdown)
-		ps.wait.Wait()
-		close(ps.reingestJobQueue)
-		close(ps.reingestJobResult)
-	}
+func (ps *ParallelSystems) doShutdown() {
+	close(ps.shutdown)
+
+}
+
+func (ps *ParallelSystems) Shutdown() error {
+	ps.shutdownOnce.Do(ps.doShutdown)
+	return nil
 }
