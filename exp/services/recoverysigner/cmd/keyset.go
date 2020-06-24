@@ -69,7 +69,7 @@ func (c *KeysetCommand) Create() {
 	}
 }
 
-func createKeyset(kmsKeyURI string) (public string, privateCleartext string, privateEncrypted string, err error) {
+func createKeyset(kmsKeyURI string) (publicCleartext string, privateCleartext string, privateEncrypted string, err error) {
 	khPriv, err := keyset.NewHandle(hybrid.ECIESHKDFAES128CTRHMACSHA256KeyTemplate())
 	if err != nil {
 		return "", "", "", errors.Wrap(err, "generating a new keyset")
