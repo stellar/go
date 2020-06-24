@@ -10,7 +10,6 @@ import (
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/actions"
-	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/ledger"
 	"github.com/stellar/go/services/horizon/internal/paths"
 	hProblem "github.com/stellar/go/services/horizon/internal/render/problem"
@@ -31,7 +30,6 @@ type FindPathsHandler struct {
 	setLastLedgerHeader  bool
 	maxAssetsParamLength int
 	pathFinder           paths.Finder
-	historyQ             *history.Q
 }
 
 // StrictReceivePathsQuery query struct for paths/strict-send end-point
@@ -155,7 +153,8 @@ func (handler FindPathsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 		sourceAccount := xdr.MustAddress(sourceAccount)
 		query.SourceAccount = &sourceAccount
 		query.ValidateSourceBalance = true
-		query.SourceAssets, query.SourceAssetBalances, err = assetsForAddress(handler.historyQ, query.SourceAccount.Address())
+
+		query.SourceAssets, query.SourceAssetBalances, err = assetsForAddress(r, query.SourceAccount.Address())
 		if err != nil {
 			problem.Render(ctx, w, err)
 			return
@@ -211,7 +210,6 @@ type FindFixedPathsHandler struct {
 	maxAssetsParamLength int
 	setLastLedgerHeader  bool
 	pathFinder           paths.Finder
-	historyQ             *history.Q
 }
 
 var destinationAssetsOrDestinationAccount = problem.P{
@@ -319,7 +317,7 @@ func (handler FindFixedPathsHandler) ServeHTTP(w http.ResponseWriter, r *http.Re
 	}
 
 	if destinationAccount != "" {
-		destinationAssets, _, err = assetsForAddress(handler.historyQ, destinationAccount)
+		destinationAssets, _, err = assetsForAddress(r, destinationAccount)
 		if err != nil {
 			problem.Render(ctx, w, err)
 			return
@@ -357,8 +355,12 @@ func (handler FindFixedPathsHandler) ServeHTTP(w http.ResponseWriter, r *http.Re
 	renderPaths(ctx, records, w)
 }
 
-func assetsForAddress(historyQ *history.Q, addy string) ([]xdr.Asset, []xdr.Int64, error) {
-	err := historyQ.BeginTx(&sql.TxOptions{
+func assetsForAddress(r *http.Request, addy string) ([]xdr.Asset, []xdr.Int64, error) {
+	historyQ, err := actions.HistoryQFromRequest(r)
+	if err != nil {
+		return nil, nil, err
+	}
+	err = historyQ.BeginTx(&sql.TxOptions{
 		Isolation: sql.LevelRepeatableRead,
 		ReadOnly:  true,
 	})
