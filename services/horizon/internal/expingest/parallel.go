@@ -96,11 +96,14 @@ func calculateParallelLedgerBatchSize(rangeSize uint32, batchSizeSuggestion uint
 
 func (ps *ParallelSystems) ReingestRange(fromLedger, toLedger uint32, batchSizeSuggestion uint32) error {
 	var (
+		firstErr  error
 		wait      sync.WaitGroup
 		stop      = make(chan struct{})
 		batchSize = calculateParallelLedgerBatchSize(toLedger-fromLedger, batchSizeSuggestion, ps.workerCount)
 		// we add one because both toLedger and fromLedger are included in the rabge
-		totalJobs = uint32(math.Ceil(float64(toLedger-fromLedger+1) / float64(batchSize)))
+		totalJobs        = uint32(math.Ceil(float64(toLedger-fromLedger+1) / float64(batchSize)))
+		pendingJobs      = 0
+		pendingJobsMutex sync.Mutex
 	)
 
 	wait.Add(1)
@@ -122,29 +125,39 @@ func (ps *ParallelSystems) ReingestRange(fromLedger, toLedger uint32, batchSizeS
 			case <-stop:
 				return
 			case ps.reingestJobQueue <- ledgerRange{subRangeFrom, subRangeTo}:
+				pendingJobsMutex.Lock()
+				pendingJobs++
+				pendingJobsMutex.Unlock()
 			}
 			subRangeFrom = subRangeTo + 1
 		}
 	}()
 
 	// collect subrange results
+collect:
 	for i := uint32(0); i < totalJobs; i++ {
-		// collect results
 		select {
 		case <-ps.shutdown:
 			return errors.New("aborted")
 		case subRangeResult := <-ps.reingestJobResult:
-			if subRangeResult.err != nil {
+			pendingJobsMutex.Lock()
+			pendingJobs--
+			if firstErr != nil {
+				if pendingJobs == 0 {
+					break collect
+				}
+			} else if subRangeResult.err != nil {
 				// TODO: give account of what ledgers were correctly reingested?
 				errMsg := fmt.Sprintf("in subrange %d to %d",
 					subRangeResult.requestedRange.from, subRangeResult.requestedRange.to)
-				return errors.Wrap(subRangeResult.err, errMsg)
+				firstErr = errors.Wrap(subRangeResult.err, errMsg)
 			}
+			pendingJobsMutex.Unlock()
 		}
 
 	}
 
-	return nil
+	return firstErr
 }
 
 func (ps *ParallelSystems) Shutdown() {
