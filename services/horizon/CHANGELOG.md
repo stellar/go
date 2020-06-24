@@ -25,9 +25,9 @@ Extend ingestion to store the total number of operations in the transaction set 
   - `--enable-captive-core-ingestion` or `ENABLE_CAPTIVE_CORE_INGESTION=true`.
   - `--stellar-core-binary-path` or `STELLAR_CORE_BINARY_PATH`.
 
-### SDK Maintainers
+### SDK Maintainers: action needed
 
-- Add the new field `tx_set_operation_count` to the `ledger` resource ([#2690](https://github.com/stellar/go/pull/2690)).
+- Add the new field `tx_set_operation_count` to the `ledger` resource ([#2690](https://github.com/stellar/go/pull/2690)). This field can be a `number` or `null`.
 
 ## v1.4.0
 
