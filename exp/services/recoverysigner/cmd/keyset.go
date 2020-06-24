@@ -61,7 +61,7 @@ func (c *KeysetCommand) Command() *cobra.Command {
 	}
 	rotateCmd := &cobra.Command{
 		Use:   "rotate",
-		Short: "Rotate an existing Tink keyset",
+		Short: "Rotate the Tink keyset by generating a new key, adding it to the keyset, and making it the primary key in the keyset",
 		Run: func(_ *cobra.Command, _ []string) {
 			c.Rotate()
 		},
