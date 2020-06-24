@@ -126,6 +126,7 @@ var dbReingestCmd = &cobra.Command{
 var (
 	reingestForce   bool
 	parallelWorkers uint
+	parallelJobSize uint32
 )
 var reingestRangeCmdOpts = []*support.ConfigOption{
 	{
@@ -144,6 +145,14 @@ var reingestRangeCmdOpts = []*support.ConfigOption{
 		Required:    false,
 		FlagDefault: uint(1),
 		Usage:       "[optional] if this flag is set to > 1, horizon will parallelize reingestion using the supplied number of workers",
+	},
+	{
+		Name:        "parallel-job-size",
+		ConfigKey:   &parallelJobSize,
+		OptType:     types.Uint32,
+		Required:    false,
+		FlagDefault: uint32(256),
+		Usage:       "[optional] parallel workers will run jobs processing ledger batches of the supplied size",
 	},
 }
 
@@ -218,7 +227,7 @@ var dbReingestRangeCmd = &cobra.Command{
 			err = system.ReingestRange(
 				argsInt32[0],
 				argsInt32[1],
-				argsInt32[1]-argsInt32[0],
+				parallelJobSize,
 			)
 		}
 
