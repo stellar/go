@@ -10,12 +10,13 @@ import (
 	"github.com/google/tink/go/keyset"
 	"github.com/spf13/cobra"
 	"github.com/stellar/go/support/config"
+	"github.com/stellar/go/support/errors"
 	supportlog "github.com/stellar/go/support/log"
 )
 
 type KeysetCommand struct {
-	Logger       *supportlog.Entry
-	RemoteKEKURI string
+	Logger              *supportlog.Entry
+	EncryptionKMSKeyURI string
 }
 
 func (c *KeysetCommand) Command() *cobra.Command {
@@ -24,7 +25,7 @@ func (c *KeysetCommand) Command() *cobra.Command {
 			Name:        "encryption-kms-key-uri",
 			Usage:       "URI for a remote KMS key used to encrypt Tink keyset",
 			OptType:     types.String,
-			ConfigKey:   &c.RemoteKEKURI,
+			ConfigKey:   &c.EncryptionKMSKeyURI,
 			FlagDefault: "",
 			Required:    false,
 		},
@@ -54,57 +55,61 @@ func (c *KeysetCommand) Command() *cobra.Command {
 }
 
 func (c *KeysetCommand) Create() {
+	keysetPublic, keysetPrivateCleartext, keysetPrivateEncrypted, err := createKeyset(c.EncryptionKMSKeyURI)
+	if err != nil {
+		c.Logger.Errorf("Error creating keyset: %v", err)
+		return
+	}
+
+	c.Logger.Print("Cleartext keyset public:", keysetPublic)
+	c.Logger.Print("Cleartext keyset private:", keysetPrivateCleartext)
+
+	if keysetPrivateEncrypted != "" {
+		c.Logger.Print("Encrypted keyset private:", keysetPrivateEncrypted)
+	}
+}
+
+func createKeyset(kmsKeyURI string) (public string, privateCleartext string, privateEncrypted string, err error) {
 	khPriv, err := keyset.NewHandle(hybrid.ECIESHKDFAES128CTRHMACSHA256KeyTemplate())
 	if err != nil {
-		c.Logger.Errorf("Error generating a new keyset: %s", err.Error())
-		return
+		return "", "", "", errors.Wrap(err, "generating a new keyset")
 	}
 
 	keysetPrivateEncrypted := strings.Builder{}
 	keysetPrivateCleartext := strings.Builder{}
 	keysetPublic := strings.Builder{}
 
-	if c.RemoteKEKURI != "" {
-		kmsClient, kmsErr := awskms.NewClient(c.RemoteKEKURI)
+	if kmsKeyURI != "" {
+		kmsClient, kmsErr := awskms.NewClient(kmsKeyURI)
 		if kmsErr != nil {
-			c.Logger.Errorf("Error initializing AWS KMS client: %s", kmsErr.Error())
-			return
+			return "", "", "", errors.Wrap(kmsErr, "initializing AWS KMS client")
 		}
 
-		aead, kmsErr := kmsClient.GetAEAD(c.RemoteKEKURI)
+		aead, kmsErr := kmsClient.GetAEAD(kmsKeyURI)
 		if kmsErr != nil {
-			c.Logger.Errorf("Error getting AEAD primitive from KMS: %s", kmsErr.Error())
-			return
+			return "", "", "", errors.Wrap(kmsErr, "getting AEAD primitive from KMS")
 		}
 
 		err = khPriv.Write(keyset.NewJSONWriter(&keysetPrivateEncrypted), aead)
 		if err != nil {
-			c.Logger.Errorf("Error writing encrypted keyset containing private key: %s", err.Error())
-			return
+			return "", "", "", errors.Wrap(err, "writing encrypted keyset containing private key")
 		}
 	}
 
 	err = insecurecleartextkeyset.Write(khPriv, keyset.NewJSONWriter(&keysetPrivateCleartext))
 	if err != nil {
-		c.Logger.Errorf("Error writing cleartext keyset containing private key: %s", err.Error())
-		return
+		return "", "", "", errors.Wrap(err, "writing cleartext keyset containing private key")
 	}
 
 	khPub, err := khPriv.Public()
 	if err != nil {
-		c.Logger.Errorf("Error getting keyhandle for public key: %s", err.Error())
-		return
+		return "", "", "", errors.Wrap(err, "getting keyhandle for public key")
 	}
 
 	err = khPub.WriteWithNoSecrets(keyset.NewJSONWriter(&keysetPublic))
 	if err != nil {
-		c.Logger.Errorf("Error writing cleartext keyset containing public key: %s", err.Error())
-		return
+		return "", "", "", errors.Wrap(err, "writing cleartext keyset containing public key")
 	}
 
-	c.Logger.Print("Cleartext keyset public:", keysetPublic.String())
-	c.Logger.Print("Cleartext keyset private:", keysetPrivateCleartext.String())
-	if c.RemoteKEKURI != "" {
-		c.Logger.Print("Encrypted keyset private:", keysetPrivateEncrypted.String())
-	}
+	return keysetPublic.String(), keysetPrivateCleartext.String(), keysetPrivateEncrypted.String(), nil
 }
