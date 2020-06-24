@@ -5,7 +5,8 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).x
 
 ## Unreleased
 
-* Add `--parallel-workers` to `horizon db reingest range`. `--parallel-workers`  will parallelize reingestion using the supplied number of workers cores to 
+* Add `--parallel-workers` to `horizon db reingest range`. `--parallel
+-workers`  will parallelize reingestion using the supplied number of workers.
 * Add transaction set operation count to `history_ledger`([#2690](https://github.com/stellar/go/pull/2690)).
 Extend ingestion to store the total number of operations in the transaction set and expose it in the ledger resource via `tx_set_operation_count`. This feature allow you to assess the used capacity of a transaction set.
 * Remove `--ingest-failed-transactions` flag. From now on Horizon will always ingest failed transactions. WARNING: if your application is using Horizon DB directly (not recommended!) remember that now it will also contain failed txs. ([#2702](https://github.com/stellar/go/pull/2702)).
