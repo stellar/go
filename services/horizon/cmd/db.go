@@ -151,7 +151,7 @@ var reingestRangeCmdOpts = []*support.ConfigOption{
 		ConfigKey:   &parallelJobSize,
 		OptType:     types.Uint32,
 		Required:    false,
-		FlagDefault: uint32(20096),
+		FlagDefault: uint32(100000),
 		Usage:       "[optional] parallel workers will run jobs processing ledger batches of the supplied size",
 	},
 }
