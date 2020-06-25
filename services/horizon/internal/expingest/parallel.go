@@ -27,40 +27,43 @@ func (e rangeError) Error() string {
 }
 
 type ParallelSystems struct {
-	config       Config
-	workerCount  uint
-	shutdownOnce sync.Once
-	shutdown     chan struct{}
+	config        Config
+	workerCount   uint
+	systemFactory func(Config) (System, error)
 }
 
 func NewParallelSystems(config Config, workerCount uint) (*ParallelSystems, error) {
 	// Leaving this because used in tests, will update after a code review.
-	return newParallelSystems(config, workerCount)
+	return newParallelSystems(config, workerCount, NewSystem)
 }
 
 // private version of NewParallel systems, allowing to inject a mock system
-func newParallelSystems(config Config, workerCount uint) (*ParallelSystems, error) {
+func newParallelSystems(config Config, workerCount uint, systemFactory func(Config) (System, error)) (*ParallelSystems, error) {
 	if workerCount < 1 {
 		return nil, errors.New("workerCount must be > 0")
 	}
 
 	return &ParallelSystems{
-		config:      config,
-		workerCount: workerCount,
-		shutdown:    make(chan struct{}),
+		config:        config,
+		workerCount:   workerCount,
+		systemFactory: systemFactory,
 	}, nil
 }
 
-func (ps *ParallelSystems) reingestWorker(reingestJobQueue <-chan ledgerRange) error {
-	s, err := NewSystem(ps.config)
+func (ps *ParallelSystems) runReingestWorker(stop <-chan struct{}, reingestJobQueue <-chan ledgerRange) error {
+	s, err := ps.systemFactory(ps.config)
 	if err != nil {
 		return errors.Wrap(err, "error creating new system")
 	}
 	for {
 		select {
-		case <-ps.shutdown:
+		case <-stop:
 			return nil
-		case reingestRange := <-reingestJobQueue:
+		case reingestRange, more := <-reingestJobQueue:
+			if !more {
+				// Channel closed - no more jobs
+				return nil
+			}
 			err := s.ReingestRange(reingestRange.from, reingestRange.to, false)
 			if err != nil {
 				return rangeError{
@@ -93,6 +96,11 @@ func (ps *ParallelSystems) ReingestRange(fromLedger, toLedger uint32, batchSizeS
 		reingestJobQueue = make(chan ledgerRange)
 		wg               sync.WaitGroup
 
+		// stopOnce is used to close the stop channel once: closing a closed channel panics and it can happen in case
+		// of errors in multiple ranges.
+		stopOnce sync.Once
+		stop     = make(chan struct{})
+
 		lowestRangeErrMutex sync.Mutex
 		// lowestRangeErr is an error of the failed range with the lowest starting ledger sequence that is used to tell
 		// the user which range to reingest in case of errors. We use that fact that System.ReingestRange is blocking,
@@ -104,29 +112,11 @@ func (ps *ParallelSystems) ReingestRange(fromLedger, toLedger uint32, batchSizeS
 		lowestRangeErr *rangeError
 	)
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		for subRangeFrom := fromLedger; subRangeFrom < toLedger; {
-			// job queuing
-			subRangeTo := subRangeFrom + (batchSize - 1) // we subtract one because both from and to are part of the batch
-			if subRangeTo > toLedger {
-				subRangeTo = toLedger
-			}
-			select {
-			case <-ps.shutdown:
-				return
-			case reingestJobQueue <- ledgerRange{subRangeFrom, subRangeTo}:
-			}
-			subRangeFrom = subRangeTo + 1
-		}
-	}()
-
 	for i := uint(0); i < ps.workerCount; i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			err := ps.reingestWorker(reingestJobQueue)
+			err := ps.runReingestWorker(stop, reingestJobQueue)
 			if err != nil {
 				log.WithError(err).Error("error in reingest worker")
 				if rangeErr, ok := err.(rangeError); ok {
@@ -136,27 +126,33 @@ func (ps *ParallelSystems) ReingestRange(fromLedger, toLedger uint32, batchSizeS
 					}
 					lowestRangeErrMutex.Unlock()
 				}
-				ps.Shutdown()
+				stopOnce.Do(func() {
+					close(stop)
+				})
 				return
 			}
 		}()
 	}
 
-	wg.Wait()
+	for subRangeFrom := fromLedger; subRangeFrom < toLedger; {
+		// job queuing
+		subRangeTo := subRangeFrom + (batchSize - 1) // we subtract one because both from and to are part of the batch
+		if subRangeTo > toLedger {
+			subRangeTo = toLedger
+		}
+		select {
+		case <-stop:
+			break
+		case reingestJobQueue <- ledgerRange{subRangeFrom, subRangeTo}:
+		}
+		subRangeFrom = subRangeTo + 1
+	}
+
 	close(reingestJobQueue)
+	wg.Wait()
 
 	if lowestRangeErr != nil {
 		return errors.Errorf("one or more jobs failed, recommended restart range: [%d, %d]", lowestRangeErr.ledgerRange.from, toLedger)
 	}
-	return nil
-}
-
-func (ps *ParallelSystems) doShutdown() {
-	close(ps.shutdown)
-
-}
-
-func (ps *ParallelSystems) Shutdown() error {
-	ps.shutdownOnce.Do(ps.doShutdown)
 	return nil
 }

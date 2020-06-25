@@ -32,7 +32,6 @@ func TestParallelReingestRange(t *testing.T) {
 	config := Config{}
 	var (
 		rangesCalled sorteableRanges
-		shutdowns    int
 		m            sync.Mutex
 	)
 	factory := func(c Config) (System, error) {
@@ -49,11 +48,6 @@ func TestParallelReingestRange(t *testing.T) {
 				// simulate call
 				time.Sleep(time.Millisecond * time.Duration(10+rand.Int31n(50)))
 			}).Return(error(nil))
-		result.On("Shutdown").Run(func(mock.Arguments) {
-			m.Lock()
-			defer m.Unlock()
-			shutdowns++
-		})
 		return result, nil
 	}
 	system, err := newParallelSystems(config, 3, factory)
@@ -67,36 +61,22 @@ func TestParallelReingestRange(t *testing.T) {
 		{from: 1280, to: 1535}, {from: 1536, to: 1791}, {from: 1792, to: 2047}, {from: 2048, to: 2050},
 	}
 	assert.Equal(t, expected, rangesCalled)
-	system.Shutdown()
-	assert.Equal(t, 3, shutdowns)
 
 }
 
 func TestParallelReingestRangeError(t *testing.T) {
 	config := Config{}
-	var (
-		shutdowns int
-		m         sync.Mutex
-	)
 	factory := func(c Config) (System, error) {
 		result := &mockSystem{}
 		// Fail on the second range
 		result.On("ReingestRange", uint32(1536), uint32(1791), mock.AnythingOfType("bool")).Return(errors.New("failed because of foo"))
 		result.On("ReingestRange", mock.AnythingOfType("uint32"), mock.AnythingOfType("uint32"), mock.AnythingOfType("bool")).Return(error(nil))
-		result.On("Shutdown").Run(func(mock.Arguments) {
-			m.Lock()
-			defer m.Unlock()
-			shutdowns++
-		})
 		return result, nil
 	}
 	system, err := newParallelSystems(config, 3, factory)
 	assert.NoError(t, err)
 	err = system.ReingestRange(0, 2050, 258)
 	assert.Error(t, err)
-	assert.Equal(t, "in subrange 1536 to 1791: failed because of foo", err.Error())
-
-	system.Shutdown()
-	assert.Equal(t, 3, shutdowns)
+	assert.Equal(t, "one or more jobs failed, recommended restart range: [1536, 2050]", err.Error())
 
 }

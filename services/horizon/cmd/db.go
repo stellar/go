@@ -222,7 +222,6 @@ var dbReingestRangeCmd = &cobra.Command{
 			if err != nil {
 				log.Fatal(systemErr)
 			}
-			defer system.Shutdown()
 
 			err = system.ReingestRange(
 				argsInt32[0],
