@@ -8,7 +8,7 @@ import (
 )
 
 func TestNewSecureEncrypterDecrypter(t *testing.T) {
-	ksPriv := generateHybridKeysetEncrypted(t)
+	ksPriv := generateKeysetEncrypted(t, keyTemplateHybridGCM())
 	enc, dec, err := newSecureEncrypterDecrypter(mockKMSClient{}, "aws-kms://key-uri", ksPriv)
 	require.NoError(t, err)
 	assert.NotNil(t, enc)
@@ -21,7 +21,7 @@ func TestNewSecureEncrypterDecrypter(t *testing.T) {
 }
 
 func TestSecureEncrypterDecrypter_encryptDecrypt(t *testing.T) {
-	ksPriv := generateHybridKeysetEncrypted(t)
+	ksPriv := generateKeysetEncrypted(t, keyTemplateHybridGCM())
 	enc, dec, err := newSecureEncrypterDecrypter(mockKMSClient{}, "mock-key-uri", ksPriv)
 	require.NoError(t, err)
 

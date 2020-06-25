@@ -8,7 +8,7 @@ import (
 )
 
 func TestNewInsecureEncrypterDecrypter(t *testing.T) {
-	ksPriv := generateHybridKeysetCleartext(t)
+	ksPriv := generateKeysetCleartext(t, keyTemplateHybridGCM())
 	enc, dec, err := newInsecureEncrypterDecrypter(ksPriv)
 	require.NoError(t, err)
 	assert.NotNil(t, enc)
@@ -21,7 +21,7 @@ func TestNewInsecureEncrypterDecrypter(t *testing.T) {
 	assert.Nil(t, dec)
 
 	// encrypted keyset is preset
-	ksPrivEncrypted := generateHybridKeysetEncrypted(t)
+	ksPrivEncrypted := generateKeysetEncrypted(t, keyTemplateHybridGCM())
 	enc, dec, err = newInsecureEncrypterDecrypter(ksPrivEncrypted)
 	assert.Error(t, err)
 	assert.Nil(t, enc)
@@ -29,7 +29,7 @@ func TestNewInsecureEncrypterDecrypter(t *testing.T) {
 }
 
 func TestInsecureEncrypterDecrypter_encryptDecrypt(t *testing.T) {
-	ksPriv := generateHybridKeysetCleartext(t)
+	ksPriv := generateKeysetCleartext(t, keyTemplateHybridGCM())
 	enc, dec, err := newInsecureEncrypterDecrypter(ksPriv)
 	require.NoError(t, err)
 
