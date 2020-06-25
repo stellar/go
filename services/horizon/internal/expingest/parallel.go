@@ -114,7 +114,7 @@ func (ps *ParallelSystems) ReingestRange(fromLedger, toLedger uint32, batchSizeS
 			defer wg.Done()
 			rangeErr := ps.runReingestWorker(s, stop, reingestJobQueue)
 			if rangeErr.err != nil {
-				log.WithError(err).Error("error in reingest worker")
+				log.WithError(rangeErr).Error("error in reingest worker")
 				lowestRangeErrMutex.Lock()
 				if lowestRangeErr == nil || lowestRangeErr.ledgerRange.from > rangeErr.ledgerRange.from {
 					lowestRangeErr = &rangeErr
