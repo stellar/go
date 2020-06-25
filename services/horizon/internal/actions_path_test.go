@@ -2,6 +2,7 @@ package horizon
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -46,10 +47,17 @@ func mockPathFindingClient(
 
 	router.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			s := session.Clone()
+			s.BeginTx(&sql.TxOptions{
+				Isolation: sql.LevelRepeatableRead,
+				ReadOnly:  true,
+			})
+			defer s.Rollback()
+
 			ctx := context.WithValue(
 				r.Context(),
 				&horizonContext.SessionContextKey,
-				session,
+				s,
 			)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
