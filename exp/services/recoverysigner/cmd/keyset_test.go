@@ -76,8 +76,11 @@ func TestRotateKeyset(t *testing.T) {
 	khPub1, err := keyset.ReadWithNoSecrets(keyset.NewJSONReader(strings.NewReader(public1)))
 	require.NoError(t, err)
 
-	public2, privateC2, _, err := rotateKeyset("", privateC1, keyTemplate)
+	public2, privateC2, privateE2, err := rotateKeyset("", privateC1, keyTemplate)
 	require.NoError(t, err)
+	assert.NotEmpty(t, public2)
+	assert.NotEmpty(t, privateC2)
+	assert.Empty(t, privateE2)
 
 	khPriv2, err := insecurecleartextkeyset.Read(keyset.NewJSONReader(strings.NewReader(privateC2)))
 	require.NoError(t, err)
