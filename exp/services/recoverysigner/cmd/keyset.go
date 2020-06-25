@@ -67,9 +67,17 @@ func (c *KeysetCommand) Command() *cobra.Command {
 			c.Rotate()
 		},
 	}
+	decryptCmd := &cobra.Command{
+		Use:   "decrypt",
+		Short: "Decrypt the Tink keyset specified in encryption-tink-keyset specified by using the key specified in encryption-kms-key-uri",
+		Run: func(_ *cobra.Command, _ []string) {
+			c.Decrypt()
+		},
+	}
 
 	cmd.AddCommand(createCmd)
 	cmd.AddCommand(rotateCmd)
+	cmd.AddCommand(decryptCmd)
 
 	return cmd
 }
@@ -116,13 +124,13 @@ func createKeyset(kmsKeyURI string, keyTemplate *tinkpb.KeyTemplate) (publicClea
 
 		err = khPriv.Write(keyset.NewJSONWriter(&keysetPrivateEncrypted), aead)
 		if err != nil {
-			return "", "", "", errors.Wrap(err, "writing encrypted keyset containing private key")
+			return "", "", "", errors.Wrap(err, "writing encrypted keyset private")
 		}
 	}
 
 	err = insecurecleartextkeyset.Write(khPriv, keyset.NewJSONWriter(&keysetPrivateCleartext))
 	if err != nil {
-		return "", "", "", errors.Wrap(err, "writing cleartext keyset containing private key")
+		return "", "", "", errors.Wrap(err, "writing cleartext keyset private")
 	}
 
 	khPub, err := khPriv.Public()
@@ -132,7 +140,7 @@ func createKeyset(kmsKeyURI string, keyTemplate *tinkpb.KeyTemplate) (publicClea
 
 	err = khPub.WriteWithNoSecrets(keyset.NewJSONWriter(&keysetPublic))
 	if err != nil {
-		return "", "", "", errors.Wrap(err, "writing cleartext keyset containing public key")
+		return "", "", "", errors.Wrap(err, "writing cleartext keyset public")
 	}
 
 	return keysetPublic.String(), keysetPrivateCleartext.String(), keysetPrivateEncrypted.String(), nil
@@ -153,29 +161,29 @@ func (c *KeysetCommand) Rotate() {
 	}
 }
 
-func rotateKeyset(kmsKeyURI, currentTinkKeyset string, keyTemplate *tinkpb.KeyTemplate) (publicCleartext string, privateCleartext string, privateEncrypted string, err error) {
+func rotateKeyset(kmsKeyURI, keysetJSON string, keyTemplate *tinkpb.KeyTemplate) (publicCleartext string, privateCleartext string, privateEncrypted string, err error) {
 	var (
 		khPriv *keyset.Handle
 		aead   tink.AEAD
 	)
 
 	if kmsKeyURI != "" {
-		kmsClient, kmsErr := awskms.NewClient(kmsKeyURI)
-		if kmsErr != nil {
-			return "", "", "", errors.Wrap(kmsErr, "initializing AWS KMS client")
+		kmsClient, err := awskms.NewClient(kmsKeyURI)
+		if err != nil {
+			return "", "", "", errors.Wrap(err, "initializing AWS KMS client")
 		}
 
-		aead, kmsErr = kmsClient.GetAEAD(kmsKeyURI)
-		if kmsErr != nil {
-			return "", "", "", errors.Wrap(kmsErr, "getting AEAD primitive from KMS")
+		aead, err = kmsClient.GetAEAD(kmsKeyURI)
+		if err != nil {
+			return "", "", "", errors.Wrap(err, "getting AEAD primitive from KMS")
 		}
 
-		khPriv, err = keyset.Read(keyset.NewJSONReader(strings.NewReader(currentTinkKeyset)), aead)
+		khPriv, err = keyset.Read(keyset.NewJSONReader(strings.NewReader(keysetJSON)), aead)
 		if err != nil {
 			return "", "", "", errors.Wrap(err, "reading encrypted keyset")
 		}
 	} else {
-		khPriv, err = insecurecleartextkeyset.Read(keyset.NewJSONReader(strings.NewReader(currentTinkKeyset)))
+		khPriv, err = insecurecleartextkeyset.Read(keyset.NewJSONReader(strings.NewReader(keysetJSON)))
 		if err != nil {
 			return "", "", "", errors.Wrap(err, "getting key handle for private key")
 		}
@@ -199,13 +207,13 @@ func rotateKeyset(kmsKeyURI, currentTinkKeyset string, keyTemplate *tinkpb.KeyTe
 	if kmsKeyURI != "" {
 		err = khPriv.Write(keyset.NewJSONWriter(&keysetPrivateEncrypted), aead)
 		if err != nil {
-			return "", "", "", errors.Wrap(err, "writing encrypted keyset containing private keys")
+			return "", "", "", errors.Wrap(err, "writing encrypted keyset private")
 		}
 	}
 
 	err = insecurecleartextkeyset.Write(khPriv, keyset.NewJSONWriter(&keysetPrivateCleartext))
 	if err != nil {
-		return "", "", "", errors.Wrap(err, "writing cleartext keyset containing private keys")
+		return "", "", "", errors.Wrap(err, "writing cleartext keyset private")
 	}
 
 	khPub, err := khPriv.Public()
@@ -215,8 +223,49 @@ func rotateKeyset(kmsKeyURI, currentTinkKeyset string, keyTemplate *tinkpb.KeyTe
 
 	err = khPub.WriteWithNoSecrets(keyset.NewJSONWriter(&keysetPublic))
 	if err != nil {
-		return "", "", "", errors.Wrap(err, "writing cleartext keyset containing public keys")
+		return "", "", "", errors.Wrap(err, "writing cleartext keyset public")
 	}
 
 	return keysetPublic.String(), keysetPrivateCleartext.String(), keysetPrivateEncrypted.String(), nil
+}
+
+var errNoKMSKeyURI = errors.New("KMS Key URI is not configured")
+
+func (c *KeysetCommand) Decrypt() {
+	keysetPrivateCleartext, err := decryptKeyset(c.EncryptionKMSKeyURI, c.EncryptionTinkKeyset)
+	if err != nil {
+		c.Logger.Errorf("Error decrypting keyset: %v", err)
+		return
+	}
+
+	c.Logger.Print("Cleartext keyset private:", keysetPrivateCleartext)
+}
+
+func decryptKeyset(kmsKeyURI, keysetJSON string) (string, error) {
+	if kmsKeyURI == "" {
+		return "", errNoKMSKeyURI
+	}
+
+	kmsClient, err := awskms.NewClient(kmsKeyURI)
+	if err != nil {
+		return "", errors.Wrap(err, "initializing AWS KMS client")
+	}
+
+	aead, err := kmsClient.GetAEAD(kmsKeyURI)
+	if err != nil {
+		return "", errors.Wrap(err, "getting AEAD primitive from KMS")
+	}
+
+	khPriv, err := keyset.Read(keyset.NewJSONReader(strings.NewReader(keysetJSON)), aead)
+	if err != nil {
+		return "", errors.Wrap(err, "reading encrypted keyset")
+	}
+
+	keysetPrivateCleartext := strings.Builder{}
+	err = insecurecleartextkeyset.Write(khPriv, keyset.NewJSONWriter(&keysetPrivateCleartext))
+	if err != nil {
+		return "", errors.Wrap(err, "writing cleartext keyset private")
+	}
+
+	return keysetPrivateCleartext.String(), nil
 }

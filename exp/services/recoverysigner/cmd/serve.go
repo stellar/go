@@ -89,7 +89,7 @@ func (c *ServeCommand) Command() *cobra.Command {
 		},
 		{
 			Name:        "encryption-kms-key-uri",
-			Usage:       "URI for a remote KMS key used to decrypt the Tink keyset provided in encryption-tink-keyset",
+			Usage:       "URI for a remote KMS key used to decrypt the Tink keyset specified in encryption-tink-keyset",
 			OptType:     types.String,
 			ConfigKey:   &opts.EncryptionKMSKeyURI,
 			FlagDefault: "",
