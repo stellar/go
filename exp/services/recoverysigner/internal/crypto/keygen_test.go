@@ -51,6 +51,24 @@ func generateRotatedKeysetCleartext(t *testing.T, keysetCleartextJSON string, ke
 	return keysetPrivateCleartext.String()
 }
 
+func generateRotatedKeysetEncrypted(t *testing.T, keysetEncryptedJSON string, keyTemplate *tinkpb.KeyTemplate) string {
+	khPriv, err := keyset.Read(keyset.NewJSONReader(strings.NewReader(keysetEncryptedJSON)), mockAEAD{})
+	require.NoError(t, err)
+
+	m := keyset.NewManagerFromHandle(khPriv)
+	err = m.Rotate(keyTemplate)
+	require.NoError(t, err)
+
+	khPriv, err = m.Handle()
+	require.NoError(t, err)
+
+	keysetPrivateEncrypted := strings.Builder{}
+	err = khPriv.Write(keyset.NewJSONWriter(&keysetPrivateEncrypted), mockAEAD{})
+	require.NoError(t, err)
+
+	return keysetPrivateEncrypted.String()
+}
+
 func keyTemplateHybridGCM() *tinkpb.KeyTemplate {
 	return hybrid.ECIESHKDFAES128GCMKeyTemplate()
 }
