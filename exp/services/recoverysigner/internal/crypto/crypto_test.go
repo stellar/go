@@ -8,14 +8,22 @@ import (
 )
 
 func TestNewEncrypterDecrypter(t *testing.T) {
-	ksPriv := generateKeysetCleartext(t, keyTemplateHybridGCM())
-	enc, dec, err := NewEncrypterDecrypter("", ksPriv)
+	ksPrivOriginal := generateKeysetCleartext(t, keyTemplateHybridGCM())
+	enc, dec, err := NewEncrypterDecrypter("", ksPrivOriginal)
 	require.NoError(t, err)
 	assert.NotNil(t, enc)
 	assert.NotNil(t, dec)
 
-	ksPriv = generateRotatedKeysetCleartext(t, ksPriv, keyTemplateHybridGCM())
-	enc, dec, err = NewEncrypterDecrypter("", ksPriv)
+	// add an additional ECIESHKDFAES128GCM Key
+	ksPriv1 := generateRotatedKeysetCleartext(t, ksPrivOriginal, keyTemplateHybridGCM())
+	enc, dec, err = NewEncrypterDecrypter("", ksPriv1)
+	require.NoError(t, err)
+	assert.NotNil(t, enc)
+	assert.NotNil(t, dec)
+
+	// add a new ECIESHKDFAES128CTRHMACSHA256 Key on top of a ECIESHKDFAES128GCM Key
+	ksPriv2 := generateRotatedKeysetCleartext(t, ksPrivOriginal, keyTemplateHybridCTRHMACSHA256())
+	enc, dec, err = NewEncrypterDecrypter("", ksPriv2)
 	require.NoError(t, err)
 	assert.NotNil(t, enc)
 	assert.NotNil(t, dec)

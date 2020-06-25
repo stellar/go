@@ -54,3 +54,7 @@ func generateRotatedKeysetCleartext(t *testing.T, keysetCleartextJSON string, ke
 func keyTemplateHybridGCM() *tinkpb.KeyTemplate {
 	return hybrid.ECIESHKDFAES128GCMKeyTemplate()
 }
+
+func keyTemplateHybridCTRHMACSHA256() *tinkpb.KeyTemplate {
+	return hybrid.ECIESHKDFAES128CTRHMACSHA256KeyTemplate()
+}
