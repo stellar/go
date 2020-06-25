@@ -1,5 +1,6 @@
 ---
 title: Data
+replacement: https://developers.stellar.org/api/resources/accounts/data/
 ---
 
 Each account in Stellar network can contain multiple key/value pairs associated with it. Horizon can be used to retrieve value of each data key.

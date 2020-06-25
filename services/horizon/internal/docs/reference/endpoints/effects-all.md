@@ -2,6 +2,7 @@
 title: All Effects
 clientData:
   laboratoryUrl: https://www.stellar.org/laboratory/#explorer?resource=effects&endpoint=all
+replacement: https://developers.stellar.org/api/resources/effects/list/
 ---
 
 This endpoint represents all [effects](../resources/effect.md).

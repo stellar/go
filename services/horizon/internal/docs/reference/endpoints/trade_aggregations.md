@@ -1,5 +1,6 @@
 ---
 title: Trade Aggregations
+replacement: https://developers.stellar.org/api/aggregations/trade-aggregations/
 ---
 
 Trade Aggregations are catered specifically for developers of trading clients. They facilitate

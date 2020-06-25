@@ -1,5 +1,6 @@
 ---
 title: Trades
+replacement: https://developers.stellar.org/api/resources/trades/
 ---
 
 People on the Stellar network can make [offers](../resources/offer.md) to buy or sell assets. When

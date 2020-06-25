@@ -2,6 +2,7 @@
 title: Transactions for Account
 clientData:
   laboratoryUrl: https://www.stellar.org/laboratory/#explorer?resource=transactions&endpoint=for_account
+replacement: https://developers.stellar.org/api/resources/accounts/transactions/
 ---
 
 This endpoint represents successful [transactions](../resources/transaction.md) that affected a

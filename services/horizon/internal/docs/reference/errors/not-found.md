@@ -1,5 +1,6 @@
 ---
 title: Not Found
+replacement: https://developers.stellar.org/api/errors/http-status-codes/standard/
 ---
 
 When Horizon can't find whatever data you are requesting, it will return a `not_found` error. This

@@ -1,5 +1,6 @@
 ---
 title: Orderbook
+replacement: https://developers.stellar.org/api/aggregations/order-books/
 ---
 
 [Orderbooks](https://www.stellar.org/developers/learn/concepts/exchange.html) are collections of offers for each issuer and currency pairs.  Let's say you wanted to exchange EUR issued by a particular bank for BTC issued by a particular exchange.  You would look at the orderbook and see who is buying `foo_bank/EUR` and selling `baz_exchange/BTC` and at what prices.
