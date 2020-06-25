@@ -80,3 +80,31 @@ func TestParallelReingestRangeError(t *testing.T) {
 	assert.Equal(t, "job failed, recommended restart range: [1536, 2050]: error when processing [1536, 1791] range: failed because of foo", err.Error())
 
 }
+
+func TestParallelReingestRangeErrorInEarlierJob(t *testing.T) {
+	config := Config{}
+	var wg sync.WaitGroup
+	wg.Add(1)
+	factory := func(c Config) (System, error) {
+		result := &mockSystem{}
+		// Fail on the second range
+		result.On("ReingestRange", uint32(1024), uint32(1279), mock.AnythingOfType("bool")).Run(func(mock.Arguments) {
+			// Wait for a more recent range to error
+			wg.Wait()
+			// This sleep should help making sure the result of this range is processed later than the earlier ones
+			// (there are no guarantees without instrumenting ReingestRange(), but that's too complicated)
+			time.Sleep(50 * time.Millisecond)
+		}).Return(errors.New("failed because of foo"))
+		result.On("ReingestRange", uint32(1536), uint32(1791), mock.AnythingOfType("bool")).Run(func(mock.Arguments) {
+			wg.Done()
+		}).Return(errors.New("failed because of bar"))
+		result.On("ReingestRange", mock.AnythingOfType("uint32"), mock.AnythingOfType("uint32"), mock.AnythingOfType("bool")).Return(error(nil))
+		return result, nil
+	}
+	system, err := newParallelSystems(config, 3, factory)
+	assert.NoError(t, err)
+	err = system.ReingestRange(0, 2050, 258)
+	assert.Error(t, err)
+	assert.Equal(t, "job failed, recommended restart range: [1024, 2050]: error when processing [1024, 1279] range: failed because of foo", err.Error())
+
+}
