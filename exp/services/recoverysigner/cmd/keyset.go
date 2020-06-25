@@ -8,6 +8,7 @@ import (
 	"github.com/google/tink/go/insecurecleartextkeyset"
 	"github.com/google/tink/go/integration/awskms"
 	"github.com/google/tink/go/keyset"
+	tinkpb "github.com/google/tink/go/proto/tink_go_proto"
 	"github.com/google/tink/go/tink"
 	"github.com/spf13/cobra"
 	"github.com/stellar/go/support/config"
@@ -73,8 +74,12 @@ func (c *KeysetCommand) Command() *cobra.Command {
 	return cmd
 }
 
+func (c *KeysetCommand) keyTemplate() *tinkpb.KeyTemplate {
+	return hybrid.ECIESHKDFAES128GCMKeyTemplate()
+}
+
 func (c *KeysetCommand) Create() {
-	keysetPublic, keysetPrivateCleartext, keysetPrivateEncrypted, err := createKeyset(c.EncryptionKMSKeyURI)
+	keysetPublic, keysetPrivateCleartext, keysetPrivateEncrypted, err := createKeyset(c.EncryptionKMSKeyURI, c.keyTemplate())
 	if err != nil {
 		c.Logger.Errorf("Error creating keyset: %v", err)
 		return
@@ -88,8 +93,8 @@ func (c *KeysetCommand) Create() {
 	}
 }
 
-func createKeyset(kmsKeyURI string) (publicCleartext string, privateCleartext string, privateEncrypted string, err error) {
-	khPriv, err := keyset.NewHandle(hybrid.ECIESHKDFAES128GCMKeyTemplate())
+func createKeyset(kmsKeyURI string, keyTemplate *tinkpb.KeyTemplate) (publicCleartext string, privateCleartext string, privateEncrypted string, err error) {
+	khPriv, err := keyset.NewHandle(keyTemplate)
 	if err != nil {
 		return "", "", "", errors.Wrap(err, "generating a new keyset")
 	}
@@ -134,7 +139,7 @@ func createKeyset(kmsKeyURI string) (publicCleartext string, privateCleartext st
 }
 
 func (c *KeysetCommand) Rotate() {
-	keysetPublic, keysetPrivateCleartext, keysetPrivateEncrypted, err := rotateKeyset(c.EncryptionKMSKeyURI, c.CurrentTinkKeyset)
+	keysetPublic, keysetPrivateCleartext, keysetPrivateEncrypted, err := rotateKeyset(c.EncryptionKMSKeyURI, c.CurrentTinkKeyset, c.keyTemplate())
 	if err != nil {
 		c.Logger.Errorf("Error rotating keyset: %v", err)
 		return
@@ -148,7 +153,7 @@ func (c *KeysetCommand) Rotate() {
 	}
 }
 
-func rotateKeyset(kmsKeyURI, currentTinkKeyset string) (publicCleartext string, privateCleartext string, privateEncrypted string, err error) {
+func rotateKeyset(kmsKeyURI, currentTinkKeyset string, keyTemplate *tinkpb.KeyTemplate) (publicCleartext string, privateCleartext string, privateEncrypted string, err error) {
 	var (
 		khPriv *keyset.Handle
 		aead   tink.AEAD
@@ -177,7 +182,7 @@ func rotateKeyset(kmsKeyURI, currentTinkKeyset string) (publicCleartext string, 
 	}
 
 	m := keyset.NewManagerFromHandle(khPriv)
-	err = m.Rotate(hybrid.ECIESHKDFAES128GCMKeyTemplate())
+	err = m.Rotate(keyTemplate)
 	if err != nil {
 		return "", "", "", errors.Wrap(err, "rotating keyset")
 	}

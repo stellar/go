@@ -12,7 +12,7 @@ import (
 )
 
 func TestCreateKeyset(t *testing.T) {
-	public, privateC, privateE, err := createKeyset("")
+	public, privateC, privateE, err := createKeyset("", hybrid.ECIESHKDFAES128GCMKeyTemplate())
 	require.NoError(t, err)
 	assert.NotEmpty(t, public)
 	assert.NotEmpty(t, privateC)
@@ -52,13 +52,14 @@ func TestCreateKeyset(t *testing.T) {
 }
 
 func TestCreateKeyset_invalidKMSKeyURI(t *testing.T) {
-	_, _, _, err := createKeyset("invalid-uri")
+	_, _, _, err := createKeyset("invalid-uri", hybrid.ECIESHKDFAES128GCMKeyTemplate())
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "initializing AWS KMS client")
 }
 
 func TestRotateKeyset(t *testing.T) {
-	public1, privateC1, _, err := createKeyset("")
+	keyTemplate := hybrid.ECIESHKDFAES128GCMKeyTemplate()
+	public1, privateC1, _, err := createKeyset("", keyTemplate)
 	require.NoError(t, err)
 
 	khPriv1, err := insecurecleartextkeyset.Read(keyset.NewJSONReader(strings.NewReader(privateC1)))
@@ -72,7 +73,7 @@ func TestRotateKeyset(t *testing.T) {
 	khPub1, err := keyset.ReadWithNoSecrets(keyset.NewJSONReader(strings.NewReader(public1)))
 	require.NoError(t, err)
 
-	public2, privateC2, _, err := rotateKeyset("", privateC1)
+	public2, privateC2, _, err := rotateKeyset("", privateC1, keyTemplate)
 	require.NoError(t, err)
 
 	khPriv2, err := insecurecleartextkeyset.Read(keyset.NewJSONReader(strings.NewReader(privateC2)))
@@ -142,16 +143,17 @@ func TestRotateKeyset(t *testing.T) {
 }
 
 func TestRotateKeyset_invalidKMSKeyURI(t *testing.T) {
-	_, privateC, _, err := createKeyset("")
+	keyTemplate := hybrid.ECIESHKDFAES128GCMKeyTemplate()
+	_, privateC, _, err := createKeyset("", keyTemplate)
 	require.NoError(t, err)
 
-	_, _, _, err = rotateKeyset("invalid-uri", privateC)
+	_, _, _, err = rotateKeyset("invalid-uri", privateC, keyTemplate)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "initializing AWS KMS client")
 }
 
 func TestRotateKeyset_noCurrentKeyset(t *testing.T) {
-	_, _, _, err := rotateKeyset("", "")
+	_, _, _, err := rotateKeyset("", "", hybrid.ECIESHKDFAES128GCMKeyTemplate())
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "getting key handle for private key")
 }
