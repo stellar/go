@@ -2,6 +2,7 @@
 title: Operations for Ledger
 clientData:
   laboratoryUrl: https://www.stellar.org/laboratory/#explorer?resource=operations&endpoint=for_ledger
+replacement: https://developers.stellar.org/api/resources/ledgers/operations/
 ---
 
 This endpoint returns successful [operations](../resources/operation.md) that occurred in a given [ledger](../resources/ledger.md).

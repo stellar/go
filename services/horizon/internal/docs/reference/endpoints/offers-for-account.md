@@ -2,6 +2,7 @@
 title: Offers for Account
 clientData:
   laboratoryUrl: https://www.stellar.org/laboratory/#explorer?resource=offers&endpoint=for_account
+replacement: https://developers.stellar.org/api/resources/accounts/offers/
 ---
 
 People on the Stellar network can make [offers](../resources/offer.md) to buy or sell assets. This

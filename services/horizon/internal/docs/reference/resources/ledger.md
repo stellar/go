@@ -1,5 +1,6 @@
 ---
 title: Ledger
+replacement: https://developers.stellar.org/api/resources/ledgers/
 ---
 
 A **ledger** resource contains information about a given ledger.

@@ -1,5 +1,6 @@
 ---
 title: Transaction
+replacement: https://developers.stellar.org/api/resources/transactions/
 ---
 
 **Transactions** are the basic unit of change in the Stellar Network.

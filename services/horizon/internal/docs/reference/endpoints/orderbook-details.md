@@ -2,6 +2,7 @@
 title: Orderbook Details
 clientData:
   laboratoryUrl: https://www.stellar.org/laboratory/#explorer?resource=order_book&endpoint=details
+replacement: https://developers.stellar.org/api/aggregations/order-books/
 ---
 
 People on the Stellar network can make [offers](../resources/offer.md) to buy or sell assets.

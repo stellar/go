@@ -10,9 +10,10 @@ import (
 )
 
 type HTTPT struct {
-	Assert *Assertions
-	App    *App
-	RH     test.RequestHelper
+	Assert     *Assertions
+	App        *App
+	RH         test.RequestHelper
+	coreServer *test.StaticMockServer
 	*test.T
 }
 
@@ -26,6 +27,20 @@ func startHTTPTest(t *testing.T, scenario string) *HTTPT {
 	ret.App = NewTestApp()
 	ret.RH = test.NewRequestHelper(ret.App.web.router)
 	ret.Assert = &Assertions{ret.T.Assert}
+
+	ret.coreServer = test.NewStaticMockServer(`{
+		"info": {
+			"network": "test",
+			"build": "test-core",
+			"ledger": {
+				"version": 13,
+				"num": 64
+			},
+			"protocol_version": 4
+		}
+	}`)
+
+	ret.App.config.StellarCoreURL = ret.coreServer.URL
 	ret.App.UpdateLedgerState()
 
 	return ret
@@ -67,6 +82,7 @@ func (ht *HTTPT) GetWithParams(
 func (ht *HTTPT) Finish() {
 	ht.T.Finish()
 	ht.App.Close()
+	ht.coreServer.Close()
 }
 
 // Post delegates to the test's request helper

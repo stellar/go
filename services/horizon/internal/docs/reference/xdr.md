@@ -1,5 +1,6 @@
 ---
 title: XDR
+replacement: https://developers.stellar.org/api/introduction/xdr/
 ---
 
 **XDR**, also known as _External Data Representation_, is used extensively in
