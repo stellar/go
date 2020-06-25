@@ -58,7 +58,7 @@ Flags:
 
 ## Usage: encryption-tink-keyset
 
-The format of the --encryption-kms-key-uri configuration option should conform to the format stated in [Google Tink](https://github.com/google/tink/blob/040ac621b3e9ff7a240b1e596a423a30d32f9013/docs/KEY-MANAGEMENT.md#key-management-systems)
+The format of the --encryption-kms-key-uri configuration option should conform to the format stated in [Google Tink](https://github.com/google/tink/blob/040ac621b3e9ff7a240b1e596a423a30d32f9013/docs/KEY-MANAGEMENT.md#key-management-systems).
 ```
 $ recoverysigner encryption-tink-keyset --help
 Run Tink keyset operations
