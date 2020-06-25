@@ -59,11 +59,7 @@ func (ps *ParallelSystems) runReingestWorker(stop <-chan struct{}, reingestJobQu
 		select {
 		case <-stop:
 			return nil
-		case reingestRange, more := <-reingestJobQueue:
-			if !more {
-				// Channel closed - no more jobs
-				return nil
-			}
+		case reingestRange := <-reingestJobQueue:
 			err := s.ReingestRange(reingestRange.from, reingestRange.to, false)
 			if err != nil {
 				return rangeError{
@@ -149,8 +145,11 @@ rangeQueueLoop:
 		subRangeFrom = subRangeTo + 1
 	}
 
-	close(reingestJobQueue)
+	stopOnce.Do(func() {
+		close(stop)
+	})
 	wg.Wait()
+	close(reingestJobQueue)
 
 	if lowestRangeErr != nil {
 		return errors.Errorf("one or more jobs failed, recommended restart range: [%d, %d]", lowestRangeErr.ledgerRange.from, toLedger)
