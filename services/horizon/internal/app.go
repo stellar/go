@@ -12,7 +12,7 @@ import (
 
 	metrics "github.com/rcrowley/go-metrics"
 	"github.com/stellar/go/clients/stellarcore"
-	"github.com/stellar/go/exp/orderbook"
+	proto "github.com/stellar/go/protocols/stellarcore"
 	horizonContext "github.com/stellar/go/services/horizon/internal/context"
 	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
@@ -31,23 +31,47 @@ import (
 	graceful "gopkg.in/tylerb/graceful.v1"
 )
 
-// App represents the root of the state of a horizon instance.
-type App struct {
-	config                       Config
-	web                          *web
-	historyQ                     *history.Q
-	coreQ                        *core.Q
-	ctx                          context.Context
-	cancel                       func()
-	coreVersion                  string
-	horizonVersion               string
+type coreSettings struct {
 	currentProtocolVersion       int32
 	coreSupportedProtocolVersion int32
-	submitter                    *txsub.System
-	paths                        paths.Finder
-	expingester                  *expingest.System
-	reaper                       *reap.System
-	ticks                        *time.Ticker
+	coreVersion                  string
+}
+
+type coreSettingsStore struct {
+	sync.RWMutex
+	coreSettings
+}
+
+func (c *coreSettingsStore) set(resp *proto.InfoResponse) {
+	c.Lock()
+	defer c.Unlock()
+	c.coreVersion = resp.Info.Build
+	c.currentProtocolVersion = int32(resp.Info.Ledger.Version)
+	c.coreSupportedProtocolVersion = int32(resp.Info.ProtocolVersion)
+}
+
+func (c *coreSettingsStore) get() coreSettings {
+	c.RLock()
+	defer c.RUnlock()
+	return c.coreSettings
+}
+
+// App represents the root of the state of a horizon instance.
+type App struct {
+	config          Config
+	web             *web
+	historyQ        *history.Q
+	coreQ           *core.Q
+	ctx             context.Context
+	cancel          func()
+	horizonVersion  string
+	coreSettings    coreSettingsStore
+	orderBookStream *expingest.OrderBookStream
+	submitter       *txsub.System
+	paths           paths.Finder
+	expingester     *expingest.System
+	reaper          *reap.System
+	ticks           *time.Ticker
 
 	// metrics
 	metrics                  metrics.Registry
@@ -112,6 +136,7 @@ func (a *App) Serve() {
 	}
 
 	go a.run()
+	go a.orderBookStream.Run(a.ctx)
 
 	// WaitGroup for all go routines. Makes sure that DB is closed when
 	// all services gracefully shutdown.
@@ -383,9 +408,7 @@ func (a *App) UpdateStellarCoreInfo() {
 		os.Exit(1)
 	}
 
-	a.coreVersion = resp.Info.Build
-	a.currentProtocolVersion = int32(resp.Info.Ledger.Version)
-	a.coreSupportedProtocolVersion = int32(resp.Info.ProtocolVersion)
+	a.coreSettings.set(resp)
 }
 
 // UpdateMetrics triggers a refresh of several metrics gauges, such as open
@@ -452,14 +475,11 @@ func (a *App) init() {
 	mustInitHorizonDB(a)
 	mustInitCoreDB(a)
 
-	var orderBookGraph *orderbook.OrderBookGraph
 	if a.config.Ingest {
-		orderBookGraph = orderbook.NewOrderBookGraph()
 		// expingester
-		initExpIngester(a, orderBookGraph)
-		// path-finder
-		initPathFinder(a, orderBookGraph)
+		initExpIngester(a)
 	}
+	initPathFinder(a)
 
 	// txsub
 	initSubmissionSystem(a)
@@ -468,7 +488,7 @@ func (a *App) init() {
 	a.reaper = reap.New(a.config.HistoryRetentionCount, a.HorizonSession(context.Background()))
 
 	// web.init
-	a.web = mustInitWeb(a.ctx, a.historyQ, a.coreQ, a.config.SSEUpdateFrequency, a.config.StaleThreshold, a.config.IngestFailedTransactions)
+	a.web = mustInitWeb(a.ctx, a.historyQ, a.config.SSEUpdateFrequency, a.config.StaleThreshold)
 
 	// web.rate-limiter
 	a.web.rateLimiter = maybeInitWebRateLimiter(a.config.RateQuota)
@@ -478,9 +498,6 @@ func (a *App) init() {
 	// This parameter will be removed soon.
 	a.web.mustInstallMiddlewares(a, a.config.ConnectionTimeout)
 
-	// web.actions
-	a.web.mustInstallActions(a.config, a.paths, orderBookGraph, a.historyQ.Session)
-
 	// metrics and log.metrics
 	a.metrics = metrics.NewRegistry()
 	for level, meter := range *logmetrics.DefaultMetrics {
@@ -489,6 +506,9 @@ func (a *App) init() {
 
 	// db-metrics
 	initDbMetrics(a)
+
+	// web.actions
+	a.web.mustInstallActions(a.config, a.paths, a.historyQ.Session, a.metrics)
 
 	// ingest.metrics
 	initIngestMetrics(a)

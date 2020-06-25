@@ -50,20 +50,6 @@ func (s *IngestHistoryRangeStateTestSuite) TearDownTest() {
 	s.runner.AssertExpectations(t)
 }
 
-func (s *IngestHistoryRangeStateTestSuite) TestIngestInMemory() {
-	// Recreate mock in this single test to remove Rollback assertion.
-	*s.historyQ = mockDBQ{}
-
-	s.system.config.IngestInMemoryOnly = true
-	defer func() {
-		s.system.config.IngestInMemoryOnly = false
-	}()
-
-	next, err := historyRangeState{fromLedger: 100, toLedger: 200}.run(s.system)
-	s.Assert().NoError(err)
-	s.Assert().Equal(transition{node: startState{}, sleepDuration: defaultSleep}, next)
-}
-
 func (s *IngestHistoryRangeStateTestSuite) TestInvalidRange() {
 	// Recreate mock in this single test to remove Rollback assertion.
 	*s.historyQ = mockDBQ{}

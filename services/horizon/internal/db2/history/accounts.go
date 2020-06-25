@@ -187,7 +187,7 @@ func (q *Q) UpsertAccounts(accounts []xdr.LedgerEntry) error {
 	return err
 }
 
-// RemoveAccount deletes a row in the offers table.
+// RemoveAccount deletes a row in the accounts table.
 // Returns number of rows affected and error.
 func (q *Q) RemoveAccount(accountID string) (int64, error) {
 	sql := sq.Delete("accounts").Where(sq.Eq{"account_id": accountID})

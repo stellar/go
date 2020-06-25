@@ -78,13 +78,15 @@ func TestGetOfferByIDHandler(t *testing.T) {
 				CloseTime: xdr.TimePoint(ledgerCloseTime),
 			},
 		},
-	}, 0, 0, 0, 0)
+	}, 0, 0, 0, 0, 0)
 	tt.Assert.NoError(err)
 
-	_, err = q.InsertOffer(eurOffer, 3)
+	batch := q.NewOffersBatchInsertBuilder(0)
+	err = batch.Add(eurOffer, 3)
 	tt.Assert.NoError(err)
-	_, err = q.InsertOffer(usdOffer, 4)
+	err = batch.Add(usdOffer, 4)
 	tt.Assert.NoError(err)
+	tt.Assert.NoError(batch.Exec())
 
 	for _, testCase := range []struct {
 		name          string
@@ -186,15 +188,17 @@ func TestGetOffersHandler(t *testing.T) {
 				CloseTime: xdr.TimePoint(ledgerCloseTime),
 			},
 		},
-	}, 0, 0, 0, 0)
+	}, 0, 0, 0, 0, 0)
 	tt.Assert.NoError(err)
 
-	_, err = q.InsertOffer(eurOffer, 3)
+	batch := q.NewOffersBatchInsertBuilder(0)
+	err = batch.Add(eurOffer, 3)
 	tt.Assert.NoError(err)
-	_, err = q.InsertOffer(twoEurOffer, 3)
+	err = batch.Add(twoEurOffer, 3)
 	tt.Assert.NoError(err)
-	_, err = q.InsertOffer(usdOffer, 3)
+	err = batch.Add(usdOffer, 3)
 	tt.Assert.NoError(err)
+	tt.Assert.NoError(batch.Exec())
 
 	t.Run("No filter", func(t *testing.T) {
 		records, err := handler.GetResourcePage(
@@ -389,6 +393,31 @@ func TestGetOffersHandler(t *testing.T) {
 			tt.Assert.Equal(asset, offer.Buying)
 		}
 	})
+
+	t.Run("Wrong buying query parameter", func(t *testing.T) {
+		asset := horizon.Asset{}
+		eurAsset.Extract(&asset.Type, &asset.Code, &asset.Issuer)
+
+		_, err := handler.GetResourcePage(
+			httptest.NewRecorder(),
+			makeRequest(
+				t,
+				map[string]string{
+					"buying": `native\\u0026cursor=\\u0026limit=10\\u0026order=asc\\u0026selling=BTC:GAEDZ7BHMDYEMU6IJT3CTTGDUSLZWS5CQWZHGP4XUOIDG5ISH3AFAEK2`,
+				},
+				map[string]string{},
+				q.Session,
+			),
+		)
+		tt.Assert.Error(err)
+		p, ok := err.(*problem.P)
+		if tt.Assert.True(ok) {
+			tt.Assert.Equal(400, p.Status)
+			tt.Assert.NotNil(p.Extras)
+			tt.Assert.Equal(p.Extras["invalid_field"], "buying")
+			tt.Assert.Equal(p.Extras["reason"], "Asset code length is invalid")
+		}
+	})
 }
 
 func TestGetAccountOffersHandler(t *testing.T) {
@@ -399,12 +428,13 @@ func TestGetAccountOffersHandler(t *testing.T) {
 	q := &history.Q{tt.HorizonSession()}
 	handler := GetAccountOffersHandler{}
 
-	_, err := q.InsertOffer(eurOffer, 3)
+	batch := q.NewOffersBatchInsertBuilder(0)
+	err := batch.Add(eurOffer, 3)
+	err = batch.Add(twoEurOffer, 3)
 	tt.Assert.NoError(err)
-	_, err = q.InsertOffer(twoEurOffer, 3)
+	err = batch.Add(usdOffer, 3)
 	tt.Assert.NoError(err)
-	_, err = q.InsertOffer(usdOffer, 3)
-	tt.Assert.NoError(err)
+	tt.Assert.NoError(batch.Exec())
 
 	records, err := handler.GetResourcePage(
 		httptest.NewRecorder(),

@@ -307,8 +307,12 @@ func TestSellingBuyingAssetQueryParamsWithCanonicalRepresenation(t *testing.T) {
 
 			if len(tc.expectedInvalidField) == 0 {
 				tt.NoError(err)
-				tt.Equal(tc.expectedBuying, qp.Buying())
-				tt.Equal(tc.expectedSelling, qp.Selling())
+				selling, sellingErr := qp.Selling()
+				tt.NoError(sellingErr)
+				buying, buyingErr := qp.Buying()
+				tt.NoError(buyingErr)
+				tt.Equal(tc.expectedBuying, buying)
+				tt.Equal(tc.expectedSelling, selling)
 			} else {
 				if tt.IsType(&problem.P{}, err) {
 					p := err.(*problem.P)

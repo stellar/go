@@ -1,11 +1,23 @@
 # Changelog
 
 All notable changes to this project will be documented in this
-file. This project adheres to [Semantic Versioning](http://semver.org/).
+file. This project adheres to [Semantic Versioning](http://semver.org/).x
 
 ## Unreleased
 
+* Add transaction set operation count to `history_ledger`([#2690](https://github.com/stellar/go/pull/2690)).
+Extend ingestion to store the total number of operations in the transaction set and expose it in the ledger resource via `tx_set_operation_count`. This feature allow you to assess the used capacity of a transaction set.
+* Remove `--ingest-failed-transactions` flag. From now on Horizon will always ingest failed transactions. WARNING: if your application is using Horizon DB directly (not recommended!) remember that now it will also contain failed txs. ([#2702](https://github.com/stellar/go/pull/2702)).
+
+## v1.4.0
+
+* Drop support for MuxedAccounts strkeys (spec'ed in [SEP23](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0023.md)).
+  SEP23 is still a draft and we don't want to encourage storing strkeys which may not be definite.
 * Replace `SequenceProvider` implementation with one which queries the Horizon DB for sequence numbers instead of the Stellar Core DB.
+* Use the Horizon DB instead of Horizon's in memory order book graph to query orderbook details for the /order_book endpoint.
+* Remove JSON variant of `GET /metrics`, both in the server and client code. It's using Prometheus format by default now.
+* Decreased a memory usage of initial state ingestion stage and state verifier ([#2618](https://github.com/stellar/go/pull/2618)).
+* Remove `--exp-ingest-in-memory-only` Horizon flag. The in memory order book graph which powers the path finding endpoints is now updated using the Horizon DB instead of directly via ingestion ([#2630](https://github.com/stellar/go/pull/2630)).
 
 ## v1.3.0
 
@@ -54,8 +66,8 @@ The changes are required by [CAP-15](https://github.com/stellar/stellar-protocol
 
 * Added support for [CAP-27](https://github.com/stellar/stellar-protocol/blob/master/core/cap-0027.md) and [SEP-23](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0023.md) [#2491](https://github.com/stellar/go/pull/2491).
 * The XDR definition of a transaction memo is a string.
-However, XDR strings are actually binary blobs with no enforced encoding. 
-It is possible to set the memo in a transaction envelope to a binary sequence which is not valid ASCII or unicode. 
+However, XDR strings are actually binary blobs with no enforced encoding.
+It is possible to set the memo in a transaction envelope to a binary sequence which is not valid ASCII or unicode.
 Previously, if you wanted to recover the original binary sequence for a transaction memo, you would have to decode the transaction's envelope.
 In this release, we have added a `memo_bytes` field to the Horizon transaction response for transactions with `memo_type` equal `text`.
 `memo_bytes` stores the base 64 encoding of the memo bytes set in the transaction envelope [#2485](https://github.com/stellar/go/pull/2485).
@@ -139,7 +151,7 @@ To execute the migration run `horizon db migrate up` using the Horizon v1.1.0 bi
       "trustor": "GA332TXN6BX2DYKGYB7FW5BWV2JLQKERNX4T7EUJT4MHWOW2TSGC2SPM",
       "asset_type": "credit_alphanum4",
       "asset_code": "USD"
-    }    
+    }
     </pre>
 * It is no longer possible to use Redis as a mechanism for rate-limiting requests ([#2409](https://github.com/stellar/go/pull/2409)).
 

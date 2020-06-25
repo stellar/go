@@ -57,12 +57,6 @@ func (m *MockClient) LedgerDetail(sequence uint32) (hProtocol.Ledger, error) {
 	return a.Get(0).(hProtocol.Ledger), a.Error(1)
 }
 
-// Metrics is a mocking method
-func (m *MockClient) Metrics() (hProtocol.Metrics, error) {
-	a := m.Called()
-	return a.Get(0).(hProtocol.Metrics), a.Error(1)
-}
-
 // FeeStats is a mocking method
 func (m *MockClient) FeeStats() (hProtocol.FeeStats, error) {
 	a := m.Called()

@@ -84,13 +84,10 @@ func TestTransactionToMap_muxed(t *testing.T) {
 			},
 		},
 	}
-	result, err := transactionToMap(tx, 20)
+	row, err := transactionToRow(tx, 20)
 	assert.NoError(t, err)
 
-	assert.NotEqual(t, innerSource.Address(), result["account"])
-	assert.Equal(t, innerAccountID.Address(), result["account"])
+	assert.Equal(t, innerAccountID.Address(), row.Account)
 
-	assert.NotEqual(t, feeSource.Address(), result["fee_account"])
-	assert.Equal(t, feeSourceAccountID.Address(), result["fee_account"])
-
+	assert.Equal(t, feeSourceAccountID.Address(), row.FeeAccount.String)
 }

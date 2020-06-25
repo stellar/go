@@ -9,7 +9,6 @@ import (
 	"github.com/stellar/go/exp/ingest/adapters"
 	"github.com/stellar/go/exp/ingest/io"
 	"github.com/stellar/go/exp/ingest/ledgerbackend"
-	"github.com/stellar/go/exp/orderbook"
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/suite"
@@ -82,11 +81,8 @@ func (s *DBTestSuite) SetupTest() {
 		CoreSession:              s.tt.CoreSession(),
 		HistorySession:           s.tt.HorizonSession(),
 		HistoryArchiveURL:        "http://ignore.test",
-		OrderBookGraph:           orderbook.NewOrderBookGraph(),
 		MaxStreamRetries:         3,
 		DisableStateVerification: false,
-		IngestFailedTransactions: true,
-		IngestInMemoryOnly:       false,
 	})
 	s.Assert().NoError(err)
 
@@ -117,10 +113,12 @@ func (s *DBTestSuite) setupMocksForBuildState() {
 	s.ledgerBackend.On("GetLedger", s.sequence).
 		Return(
 			true,
-			ledgerbackend.LedgerCloseMeta{
-				LedgerHeader: xdr.LedgerHeaderHistoryEntry{
-					Header: xdr.LedgerHeader{
-						BucketListHash: checkpointHash,
+			xdr.LedgerCloseMeta{
+				V0: &xdr.LedgerCloseMetaV0{
+					LedgerHeader: xdr.LedgerHeaderHistoryEntry{
+						Header: xdr.LedgerHeader{
+							BucketListHash: checkpointHash,
+						},
 					},
 				},
 			},
@@ -147,7 +145,7 @@ func (s *DBTestSuite) TestBuildState() {
 	s.Assert().Equal(s.sequence, resume.latestSuccessfullyProcessedLedger)
 
 	s.mockChangeReader()
-	s.Assert().NoError(s.system.verifyState(s.system.graph.OffersMap(), false))
+	s.Assert().NoError(s.system.verifyState(false))
 }
 
 func (s *DBTestSuite) TestVersionMismatchTriggersRebuild() {

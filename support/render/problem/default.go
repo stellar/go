@@ -17,7 +17,7 @@ var DefaultLogger = log.DefaultLogger
 // Default is the problem instance used by the package functions providing a
 // global state registry and rendering of problems for an application. For a
 // non-global state registry instantiate a new Problem with New.
-var Default = New(DefaultServiceHost, DefaultLogger)
+var Default = New(DefaultServiceHost, DefaultLogger, LogAllErrors)
 
 // RegisterError records an error -> P mapping, allowing the app to register
 // specific errors that may occur in other packages to be rendered as a specific

@@ -21,9 +21,6 @@ const (
 	//VersionByteAccountID is the version byte used for encoded stellar addresses
 	VersionByteAccountID VersionByte = 6 << 3 // Base32-encodes to 'G...'
 
-	//VersionByteAccountID is the version byte used for encoded stellar multiplexed addresses
-	VersionByteMuxedAccount = 12 << 3 // Base32-encodes to 'M...'
-
 	//VersionByteSeed is the version byte used for encoded stellar seed
 	VersionByteSeed = 18 << 3 // Base32-encodes to 'S...'
 
@@ -158,27 +155,14 @@ func Version(src string) (VersionByte, error) {
 // checkValidVersionByte returns an error if the provided value
 // is not one of the defined valid version byte constants.
 func checkValidVersionByte(version VersionByte) error {
-	if version == VersionByteAccountID {
+	switch version {
+	// intentionally disallow M-strkeys  (versionByteMuxedAccount)
+	// until SEP23 leaves the Draft status.
+	case VersionByteAccountID, VersionByteSeed, VersionByteHashTx, VersionByteHashX:
 		return nil
+	default:
+		return ErrInvalidVersionByte
 	}
-
-	if version == VersionByteMuxedAccount {
-		return nil
-	}
-
-	if version == VersionByteSeed {
-		return nil
-	}
-
-	if version == VersionByteHashTx {
-		return nil
-	}
-
-	if version == VersionByteHashX {
-		return nil
-	}
-
-	return ErrInvalidVersionByte
 }
 
 var decodingTable = initDecodingTable()

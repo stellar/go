@@ -328,12 +328,22 @@ func TestApplyOutdatedLedger(t *testing.T) {
 	graph.Discard()
 
 	graph.AddOffer(eurOffer)
-	err = graph.Apply(4)
+	err = graph.Apply(2)
 	if err != errUnexpectedLedger {
 		t.Fatalf("expected error %v but got %v", errUnexpectedLedger, err)
 	}
 	if graph.lastLedger != 2 {
 		t.Fatalf("expected last ledger to be %v but got %v", 2, graph.lastLedger)
+	}
+
+	graph.Discard()
+
+	err = graph.Apply(4)
+	if err != nil {
+		t.Fatalf("unexpected error %v", err)
+	}
+	if graph.lastLedger != 4 {
+		t.Fatalf("expected last ledger to be %v but got %v", 4, graph.lastLedger)
 	}
 }
 
@@ -812,6 +822,17 @@ func TestRemoveOfferOrderBook(t *testing.T) {
 		t.Fatalf("unexpected error %v", err)
 	}
 	if graph.lastLedger != 3 {
+		t.Fatalf("expected last ledger to be %v but got %v", 3, graph.lastLedger)
+	}
+
+	// Skip over offer ids which are not present in the graph
+	err = graph.
+		RemoveOffer(988888).
+		Apply(5)
+	if err != nil {
+		t.Fatalf("unexpected error %v", err)
+	}
+	if graph.lastLedger != 5 {
 		t.Fatalf("expected last ledger to be %v but got %v", 3, graph.lastLedger)
 	}
 

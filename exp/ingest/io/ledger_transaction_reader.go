@@ -1,9 +1,11 @@
 package io
 
 import (
+	"encoding/hex"
 	"io"
 
 	"github.com/stellar/go/exp/ingest/ledgerbackend"
+	"github.com/stellar/go/network"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
@@ -11,14 +13,14 @@ import (
 // LedgerTransactionReader reads transactions for a given ledger sequence from a backend.
 // Use NewTransactionReader to create a new instance.
 type LedgerTransactionReader struct {
-	ledgerCloseMeta ledgerbackend.LedgerCloseMeta
+	ledgerCloseMeta xdr.LedgerCloseMeta
 	transactions    []LedgerTransaction
 	readIdx         int
 }
 
 // NewLedgerTransactionReader creates a new TransactionReader instance.
 // Note that TransactionReader is not thread safe and should not be shared by multiple goroutines
-func NewLedgerTransactionReader(backend ledgerbackend.LedgerBackend, sequence uint32) (*LedgerTransactionReader, error) {
+func NewLedgerTransactionReader(backend ledgerbackend.LedgerBackend, networkPassphrase string, sequence uint32) (*LedgerTransactionReader, error) {
 	exists, ledgerCloseMeta, err := backend.GetLedger(sequence)
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting ledger from the backend")
@@ -29,18 +31,20 @@ func NewLedgerTransactionReader(backend ledgerbackend.LedgerBackend, sequence ui
 	}
 
 	reader := &LedgerTransactionReader{ledgerCloseMeta: ledgerCloseMeta}
-	reader.storeTransactions(ledgerCloseMeta)
+	if err = reader.storeTransactions(ledgerCloseMeta, networkPassphrase); err != nil {
+		return nil, errors.Wrap(err, "error extracting transactions from ledger close meta")
+	}
 	return reader, nil
 }
 
 // GetSequence returns the sequence number of the ledger data stored by this object.
 func (reader *LedgerTransactionReader) GetSequence() uint32 {
-	return uint32(reader.ledgerCloseMeta.LedgerHeader.Header.LedgerSeq)
+	return reader.ledgerCloseMeta.LedgerSequence()
 }
 
 // GetHeader returns the XDR Header data associated with the stored ledger.
 func (reader *LedgerTransactionReader) GetHeader() xdr.LedgerHeaderHistoryEntry {
-	return reader.ledgerCloseMeta.LedgerHeader
+	return reader.ledgerCloseMeta.V0.LedgerHeader
 }
 
 // Read returns the next transaction in the ledger, ordered by tx number, each time
@@ -60,16 +64,40 @@ func (reader *LedgerTransactionReader) Rewind() {
 
 // storeTransactions maps the close meta data into a slice of LedgerTransaction structs, to provide
 // a per-transaction view of the data when Read() is called.
-func (reader *LedgerTransactionReader) storeTransactions(lcm ledgerbackend.LedgerCloseMeta) {
-	for i := range lcm.TransactionEnvelope {
+func (reader *LedgerTransactionReader) storeTransactions(lcm xdr.LedgerCloseMeta, networkPassphrase string) error {
+	byHash := map[xdr.Hash]xdr.TransactionEnvelope{}
+	for i, tx := range lcm.V0.TxSet.Txs {
+		hash, err := network.HashTransactionInEnvelope(tx, networkPassphrase)
+		if err != nil {
+			return errors.Wrapf(err, "could not hash transaction %d in TxSet", i)
+		}
+		byHash[hash] = tx
+	}
+
+	for i := range lcm.V0.TxProcessing {
+		result := lcm.V0.TxProcessing[i].Result
+		envelope, ok := byHash[result.TransactionHash]
+		if !ok {
+			hexHash := hex.EncodeToString(result.TransactionHash[:])
+			return errors.Errorf("unknown tx hash in LedgerCloseMeta: %v", hexHash)
+		}
+
+		if lcm.V0.LedgerHeader.Header.LedgerVersion < 10 && lcm.V0.TxProcessing[i].TxApplyProcessing.V != 2 {
+			return errors.New(
+				"TransactionMeta.V=2 is required in protocol version older than version 10. " +
+					"Please process ledgers again using stellar-core with SUPPORTED_META_VERSION=2 in the config file.",
+			)
+		}
+
 		reader.transactions = append(reader.transactions, LedgerTransaction{
 			Index:      uint32(i + 1), // Transactions start at '1'
-			Envelope:   lcm.TransactionEnvelope[i],
-			Result:     lcm.TransactionResult[i],
-			Meta:       lcm.TransactionMeta[i],
-			FeeChanges: lcm.TransactionFeeChanges[i],
+			Envelope:   envelope,
+			Result:     result,
+			Meta:       lcm.V0.TxProcessing[i].TxApplyProcessing,
+			FeeChanges: lcm.V0.TxProcessing[i].FeeProcessing,
 		})
 	}
+	return nil
 }
 
 // Close should be called when reading is finished. This is especially

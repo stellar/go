@@ -330,20 +330,6 @@ var configOpts = support.ConfigOptions{
 		Usage:       "causes this horizon process to ingest data from stellar-core into horizon's db",
 	},
 	&support.ConfigOption{
-		Name:        "exp-ingest-in-memory-only",
-		ConfigKey:   &config.IngestInMemoryOnly,
-		OptType:     types.Bool,
-		FlagDefault: false,
-		Usage:       "[experimental flag!] causes this horizon process to ingest data from stellar-core into memory structures only, ignored when --ingest not set",
-	},
-	&support.ConfigOption{
-		Name:        "ingest-failed-transactions",
-		ConfigKey:   &config.IngestFailedTransactions,
-		OptType:     types.Bool,
-		FlagDefault: false,
-		Usage:       "causes this horizon process to ingest failed transactions data",
-	},
-	&support.ConfigOption{
 		Name:        "cursor-name",
 		EnvVar:      "CURSOR_NAME",
 		ConfigKey:   &config.CursorName,

@@ -13,9 +13,9 @@ import (
 )
 
 type accountPutHandler struct {
-	Logger         *supportlog.Entry
-	SigningAddress *keypair.FromAddress
-	AccountStore   account.Store
+	Logger           *supportlog.Entry
+	SigningAddresses []*keypair.FromAddress
+	AccountStore     account.Store
 }
 
 type accountPutRequest struct {
@@ -165,9 +165,15 @@ func (h accountPutHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	l.Info("Account updated.")
 
+	signers := []accountResponseSigner{}
+	for _, signingAddress := range h.SigningAddresses {
+		signers = append(signers, accountResponseSigner{
+			Key: signingAddress.Address(),
+		})
+	}
 	resp := accountResponse{
 		Address: accWithNewIdentiies.Address,
-		Signer:  h.SigningAddress.Address(),
+		Signers: signers,
 	}
 	for _, i := range accWithNewIdentiies.Identities {
 		resp.Identities = append(resp.Identities, accountResponseIdentity{

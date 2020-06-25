@@ -79,8 +79,10 @@ func (dbb *DatabaseBackend) GetLatestLedgerSequence() (uint32, error) {
 
 // GetLedger returns the LedgerCloseMeta for the given ledger sequence number.
 // The first returned value is false when the ledger does not exist in the database.
-func (dbb *DatabaseBackend) GetLedger(sequence uint32) (bool, LedgerCloseMeta, error) {
-	lcm := LedgerCloseMeta{}
+func (dbb *DatabaseBackend) GetLedger(sequence uint32) (bool, xdr.LedgerCloseMeta, error) {
+	lcm := xdr.LedgerCloseMeta{
+		V0: &xdr.LedgerCloseMetaV0{},
+	}
 
 	// Query - ledgerheader
 	var lRow ledgerHeaderHistory
@@ -91,14 +93,14 @@ func (dbb *DatabaseBackend) GetLedger(sequence uint32) (bool, LedgerCloseMeta, e
 		switch err {
 		case sql.ErrNoRows:
 			// Ledger was not found
-			return false, LedgerCloseMeta{}, nil
+			return false, xdr.LedgerCloseMeta{}, nil
 		default:
-			return false, LedgerCloseMeta{}, errors.Wrap(err, "Error getting ledger header")
+			return false, xdr.LedgerCloseMeta{}, errors.Wrap(err, "Error getting ledger header")
 		}
 	}
 
 	// ...otherwise store the header
-	lcm.LedgerHeader = xdr.LedgerHeaderHistoryEntry{
+	lcm.V0.LedgerHeader = xdr.LedgerHeaderHistoryEntry{
 		Hash:   lRow.Hash,
 		Header: lRow.Header,
 		Ext:    xdr.LedgerHeaderHistoryEntryExt{},
@@ -116,18 +118,14 @@ func (dbb *DatabaseBackend) GetLedger(sequence uint32) (bool, LedgerCloseMeta, e
 	for i, tx := range txhRows {
 		// Sanity check index. Note that first TXIndex in a ledger is 1
 		if i != int(tx.TXIndex)-1 {
-			return false, LedgerCloseMeta{}, errors.New("transactions read from DB history table are misordered")
+			return false, xdr.LedgerCloseMeta{}, errors.New("transactions read from DB history table are misordered")
 		}
 
-		lcm.TransactionEnvelope = append(lcm.TransactionEnvelope, tx.TXBody)
-		lcm.TransactionResult = append(lcm.TransactionResult, tx.TXResult)
-		lcm.TransactionMeta = append(lcm.TransactionMeta, tx.TXMeta)
-
-		if lcm.LedgerHeader.Header.LedgerVersion < 10 && tx.TXMeta.V != 2 {
-			return false, lcm,
-				errors.New("TransactionMeta.V=2 is required in protocol version older than version 10. " +
-					"Please process ledgers again using stellar-core with SUPPORTED_META_VERSION=2 in the config file.")
-		}
+		lcm.V0.TxSet.Txs = append(lcm.V0.TxSet.Txs, tx.TXBody)
+		lcm.V0.TxProcessing = append(lcm.V0.TxProcessing, xdr.TransactionResultMeta{
+			Result:            tx.TXResult,
+			TxApplyProcessing: tx.TXMeta,
+		})
 	}
 
 	// Query - txfeehistory
@@ -142,9 +140,9 @@ func (dbb *DatabaseBackend) GetLedger(sequence uint32) (bool, LedgerCloseMeta, e
 	for i, tx := range txfhRows {
 		// Sanity check index. Note that first TXIndex in a ledger is 1
 		if i != int(tx.TXIndex)-1 {
-			return false, LedgerCloseMeta{}, errors.New("transactions read from DB fee history table are misordered")
+			return false, xdr.LedgerCloseMeta{}, errors.New("transactions read from DB fee history table are misordered")
 		}
-		lcm.TransactionFeeChanges = append(lcm.TransactionFeeChanges, tx.TXChanges)
+		lcm.V0.TxProcessing[i].FeeProcessing = tx.TXChanges
 	}
 
 	// Query - upgradehistory
@@ -156,11 +154,13 @@ func (dbb *DatabaseBackend) GetLedger(sequence uint32) (bool, LedgerCloseMeta, e
 	}
 
 	// ...otherwise store the data
-	var upgradesMeta []xdr.LedgerEntryChanges
-	for _, upgradeHistoryRow := range upgradeHistoryRows {
-		upgradesMeta = append(upgradesMeta, upgradeHistoryRow.Changes)
+	lcm.V0.UpgradesProcessing = make([]xdr.UpgradeEntryMeta, len(upgradeHistoryRows))
+	for i, upgradeHistoryRow := range upgradeHistoryRows {
+		lcm.V0.UpgradesProcessing[i] = xdr.UpgradeEntryMeta{
+			Upgrade: upgradeHistoryRow.Upgrade,
+			Changes: upgradeHistoryRow.Changes,
+		}
 	}
-	lcm.UpgradesMeta = upgradesMeta
 
 	return true, lcm, nil
 }

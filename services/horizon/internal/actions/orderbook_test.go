@@ -1,12 +1,15 @@
 package actions
 
 import (
+	"database/sql"
+	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/services/horizon/internal/test"
+	"github.com/stretchr/testify/assert"
 	"math"
 	"net/http/httptest"
 	"strconv"
 	"testing"
 
-	"github.com/stellar/go/exp/orderbook"
 	protocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/xdr"
 )
@@ -349,10 +352,7 @@ func TestOrderBookResponseEquals(t *testing.T) {
 }
 
 func TestOrderbookGetResourceValidation(t *testing.T) {
-	graph := orderbook.NewOrderBookGraph()
-	handler := GetOrderbookHandler{
-		OrderBookGraph: graph,
-	}
+	handler := GetOrderbookHandler{}
 
 	var eurAssetType, eurAssetCode, eurAssetIssuer string
 	if err := eurAsset.Extract(&eurAssetType, &eurAssetCode, &eurAssetIssuer); err != nil {
@@ -465,6 +465,11 @@ func TestOrderbookGetResourceValidation(t *testing.T) {
 }
 
 func TestOrderbookGetResource(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	test.ResetHorizonDB(t, tt.HorizonDB)
+	q := &history.Q{tt.HorizonSession()}
+
 	var eurAssetType, eurAssetCode, eurAssetIssuer string
 	if err := eurAsset.Extract(&eurAssetType, &eurAssetCode, &eurAssetIssuer); err != nil {
 		t.Fatalf("cound not extract eur asset: %v", err)
@@ -485,49 +490,14 @@ func TestOrderbookGetResource(t *testing.T) {
 		},
 	}
 
-	asksButNoBidsGraph := orderbook.NewOrderBookGraph()
-	asksButNoBidsGraph.AddOffer(twoEurOffer)
-	if err := asksButNoBidsGraph.Apply(1); err != nil {
-		t.Fatalf("unexpected error %v", err)
-	}
-	asksButNoBidsResponse := empty
-	asksButNoBidsResponse.Asks = []protocol.PriceLevel{
-		{
-			PriceR: protocol.Price{N: int32(twoEurOffer.Price.N), D: int32(twoEurOffer.Price.D)},
-			Price:  "2.0000000",
-			Amount: "0.0000500",
-		},
-	}
-
 	sellEurOffer := twoEurOffer
 	sellEurOffer.Buying, sellEurOffer.Selling = sellEurOffer.Selling, sellEurOffer.Buying
 	sellEurOffer.OfferId = 15
-	bidsButNoAsksGraph := orderbook.NewOrderBookGraph()
-	bidsButNoAsksGraph.AddOffer(sellEurOffer)
-	if err := bidsButNoAsksGraph.Apply(2); err != nil {
-		t.Fatalf("unexpected error %v", err)
-	}
-	bidsButNoAsksResponse := empty
-	bidsButNoAsksResponse.Bids = []protocol.PriceLevel{
-		{
-			PriceR: protocol.Price{N: int32(sellEurOffer.Price.D), D: int32(sellEurOffer.Price.N)},
-			Price:  "0.5000000",
-			Amount: "0.0000500",
-		},
-	}
 
-	fullGraph := orderbook.NewOrderBookGraph()
-	fullGraph.AddOffer(twoEurOffer)
-	if err := fullGraph.Apply(3); err != nil {
-		t.Fatalf("unexpected error %v", err)
-	}
 	otherEurOffer := twoEurOffer
 	otherEurOffer.Amount = xdr.Int64(math.MaxInt64)
 	otherEurOffer.OfferId = 16
-	fullGraph.AddOffer(otherEurOffer)
-	if err := fullGraph.Apply(4); err != nil {
-		t.Fatalf("unexpected error %v", err)
-	}
+
 	nonCanonicalPriceTwoEurOffer := twoEurOffer
 	nonCanonicalPriceTwoEurOffer.OfferId = 30
 	// Add a separate offer with the same price value, but
@@ -535,33 +505,42 @@ func TestOrderbookGetResource(t *testing.T) {
 	// they are coalesced into the same price level
 	nonCanonicalPriceTwoEurOffer.Price.N *= 15
 	nonCanonicalPriceTwoEurOffer.Price.D *= 15
-	fullGraph.AddOffer(nonCanonicalPriceTwoEurOffer)
-	if err := fullGraph.Apply(5); err != nil {
-		t.Fatalf("unexpected error %v", err)
-	}
+
 	threeEurOffer := twoEurOffer
 	threeEurOffer.Price.N = 3
 	threeEurOffer.OfferId = 20
-	fullGraph.AddOffer(threeEurOffer)
-	if err := fullGraph.Apply(6); err != nil {
-		t.Fatalf("unexpected error %v", err)
-	}
 
 	sellEurOffer.Price.N = 9
 	sellEurOffer.Price.D = 10
-	fullGraph.AddOffer(sellEurOffer)
-	if err := fullGraph.Apply(7); err != nil {
-		t.Fatalf("unexpected error %v", err)
-	}
+
 	otherSellEurOffer := sellEurOffer
 	otherSellEurOffer.OfferId = 17
 	// sellEurOffer.Price * 2
 	otherSellEurOffer.Price.N = 9
 	otherSellEurOffer.Price.D = 5
-	fullGraph.AddOffer(otherSellEurOffer)
-	if err := fullGraph.Apply(8); err != nil {
-		t.Fatalf("unexpected error %v", err)
+
+	offers := []xdr.OfferEntry{
+		twoEurOffer,
+		otherEurOffer,
+		nonCanonicalPriceTwoEurOffer,
+		threeEurOffer,
+		sellEurOffer,
+		otherSellEurOffer,
 	}
+
+	assert.NoError(t, q.TruncateTables([]string{"offers"}))
+
+	batch := q.NewOffersBatchInsertBuilder(0)
+	for i, offer := range offers {
+		assert.NoError(t, batch.Add(offer, xdr.Uint32(i+1)))
+	}
+	assert.NoError(t, batch.Exec())
+
+	assert.NoError(t, q.BeginTx(&sql.TxOptions{
+		Isolation: sql.LevelRepeatableRead,
+		ReadOnly:  true,
+	}))
+	defer q.Rollback()
 
 	fullResponse := empty
 	fullResponse.Asks = []protocol.PriceLevel{
@@ -606,52 +585,24 @@ func TestOrderbookGetResource(t *testing.T) {
 	}
 
 	for _, testCase := range []struct {
-		name       string
-		graph      *orderbook.OrderBookGraph
-		limit      int
-		expected   OrderBookResponse
-		lastLedger string
+		name     string
+		limit    int
+		expected OrderBookResponse
 	}{
-		{
-			"empty orderbook",
-			orderbook.NewOrderBookGraph(),
-			10,
-			empty,
-			"0",
-		},
-		{
-			"orderbook with asks but no bids",
-			asksButNoBidsGraph,
-			10,
-			asksButNoBidsResponse,
-			"1",
-		},
-		{
-			"orderbook with bids but no asks",
-			bidsButNoAsksGraph,
-			10,
-			bidsButNoAsksResponse,
-			"2",
-		},
+
 		{
 			"full orderbook",
-			fullGraph,
 			10,
 			fullResponse,
-			"8",
 		},
 		{
 			"limit request",
-			fullGraph,
 			1,
 			limitResponse,
-			"8",
 		},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
-			handler := GetOrderbookHandler{
-				OrderBookGraph: testCase.graph,
-			}
+			handler := GetOrderbookHandler{}
 			r := makeRequest(
 				t,
 				map[string]string{
@@ -662,7 +613,7 @@ func TestOrderbookGetResource(t *testing.T) {
 					"limit":               strconv.Itoa(testCase.limit),
 				},
 				map[string]string{},
-				nil,
+				q.Session,
 			)
 			w := httptest.NewRecorder()
 			response, err := handler.GetResource(w, r)
@@ -671,14 +622,6 @@ func TestOrderbookGetResource(t *testing.T) {
 			}
 			if !response.Equals(testCase.expected) {
 				t.Fatalf("expected %v but got %v", testCase.expected, response)
-			}
-			lastLedger := w.Header().Get(LastLedgerHeaderName)
-			if lastLedger != testCase.lastLedger {
-				t.Fatalf(
-					"expected last ledger to be %v but got %v",
-					testCase.lastLedger,
-					lastLedger,
-				)
 			}
 		})
 	}

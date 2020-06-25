@@ -12,9 +12,9 @@ import (
 )
 
 type accountGetHandler struct {
-	Logger         *supportlog.Entry
-	SigningAddress *keypair.FromAddress
-	AccountStore   account.Store
+	Logger           *supportlog.Entry
+	SigningAddresses []*keypair.FromAddress
+	AccountStore     account.Store
 }
 
 type accountGetRequest struct {
@@ -53,9 +53,15 @@ func (h accountGetHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	signers := []accountResponseSigner{}
+	for _, signingAddress := range h.SigningAddresses {
+		signers = append(signers, accountResponseSigner{
+			Key: signingAddress.Address(),
+		})
+	}
 	resp := accountResponse{
 		Address: acc.Address,
-		Signer:  h.SigningAddress.Address(),
+		Signers: signers,
 	}
 
 	// Authorized if authenticated as the account.

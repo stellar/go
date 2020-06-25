@@ -33,7 +33,7 @@ func mustNewDBSession(databaseURL string, maxIdle, maxOpen int) *db.Session {
 func mustInitHorizonDB(app *App) {
 	maxIdle := app.config.HorizonDBMaxIdleConnections
 	maxOpen := app.config.HorizonDBMaxOpenConnections
-	if app.config.Ingest || app.config.IngestInMemoryOnly {
+	if app.config.Ingest {
 		maxIdle -= expingest.MaxDBConnections
 		maxOpen -= expingest.MaxDBConnections
 		if maxIdle <= 0 {
@@ -54,7 +54,7 @@ func mustInitHorizonDB(app *App) {
 func mustInitCoreDB(app *App) {
 	maxIdle := app.config.CoreDBMaxIdleConnections
 	maxOpen := app.config.CoreDBMaxOpenConnections
-	if app.config.Ingest || app.config.IngestInMemoryOnly {
+	if app.config.Ingest {
 		maxIdle -= expingest.MaxDBConnections
 		maxOpen -= expingest.MaxDBConnections
 		if maxIdle <= 0 {
@@ -72,7 +72,7 @@ func mustInitCoreDB(app *App) {
 	)}
 }
 
-func initExpIngester(app *App, orderBookGraph *orderbook.OrderBookGraph) {
+func initExpIngester(app *App) {
 	var err error
 	app.expingester, err = expingest.NewSystem(expingest.Config{
 		CoreSession: mustNewDBSession(
@@ -89,11 +89,8 @@ func initExpIngester(app *App, orderBookGraph *orderbook.OrderBookGraph) {
 		StellarCoreURL:           app.config.StellarCoreURL,
 		StellarCoreCursor:        app.config.CursorName,
 		StellarCorePath:          app.config.StellarCoreBinaryPath,
-		OrderBookGraph:           orderBookGraph,
 		MaxStreamRetries:         3,
 		DisableStateVerification: app.config.IngestDisableStateVerification,
-		IngestFailedTransactions: app.config.IngestFailedTransactions,
-		IngestInMemoryOnly:       app.config.IngestInMemoryOnly,
 	})
 
 	if err != nil {
@@ -101,7 +98,13 @@ func initExpIngester(app *App, orderBookGraph *orderbook.OrderBookGraph) {
 	}
 }
 
-func initPathFinder(app *App, orderBookGraph *orderbook.OrderBookGraph) {
+func initPathFinder(app *App) {
+	orderBookGraph := orderbook.NewOrderBookGraph()
+	app.orderBookStream = expingest.NewOrderBookStream(
+		&history.Q{app.HorizonSession(app.ctx)},
+		orderBookGraph,
+	)
+
 	app.paths = simplepath.NewInMemoryFinder(orderBookGraph)
 }
 
@@ -148,6 +151,7 @@ func initDbMetrics(app *App) {
 	app.metrics.Register("history.latest_ledger", app.historyLatestLedgerGauge)
 	app.metrics.Register("history.elder_ledger", app.historyElderLedgerGauge)
 	app.metrics.Register("stellar_core.latest_ledger", app.coreLatestLedgerGauge)
+	app.metrics.Register("order_book_stream.latest_ledger", app.orderBookStream.LatestLedgerGauge)
 	app.metrics.Register("history.open_connections", app.horizonConnGauge)
 	app.metrics.Register("stellar_core.open_connections", app.coreConnGauge)
 	app.metrics.Register("goroutines", app.goroutineGauge)
@@ -162,7 +166,6 @@ func initIngestMetrics(app *App) {
 	app.metrics.Register("ingest.ledger_ingestion", app.expingester.Metrics.LedgerIngestionTimer)
 	app.metrics.Register("ingest.ledger_in_memory_ingestion", app.expingester.Metrics.LedgerInMemoryIngestionTimer)
 	app.metrics.Register("ingest.state_verify", app.expingester.Metrics.StateVerifyTimer)
-	app.metrics.Register("ingest.local_latest_ledger", app.expingester.Metrics.LocalLatestLedgerGauge)
 }
 
 func initTxSubMetrics(app *App) {
@@ -223,9 +226,7 @@ func initSubmissionSystem(app *App) {
 		Submitter:       txsub.NewDefaultSubmitter(http.DefaultClient, app.config.StellarCoreURL),
 		SubmissionQueue: sequence.NewManager(),
 		Results: &results.DB{
-			Core:           &core.Q{Session: app.CoreSession(context.Background())},
-			History:        &history.Q{Session: app.HorizonSession(context.Background())},
-			SkipCoreChecks: app.config.IngestFailedTransactions,
+			History: &history.Q{Session: app.HorizonSession(context.Background())},
 		},
 		Sequences: &history.Q{Session: app.HorizonSession(context.Background())},
 	}

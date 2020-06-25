@@ -26,7 +26,7 @@ var (
 		Status: http.StatusInternalServerError,
 		Detail: "An error occurred while processing this request.  This is usually due " +
 			"to a bug within the server software.  Trying this request again may " +
-			"succeed if the bug is transient. Otherwise, please contact the system" +
+			"succeed if the bug is transient. Otherwise, please contact the system " +
 			"administrator.",
 	}
 
@@ -64,20 +64,37 @@ func (p P) Error() string {
 	return fmt.Sprintf("problem: %s", p.Type)
 }
 
+// LogFilter describes which errors should be logged when terminating requests in
+// Problem.Render()
+type LogFilter int
+
+const (
+	_ = iota
+	// LogNoErrors indicates that the Problem instance should not log any errors
+	LogNoErrors = LogFilter(iota)
+	// LogUnknownErrors indicates that the Problem instance should only log errors
+	// which are not registered
+	LogUnknownErrors = LogFilter(iota)
+	// LogAllErrors indicates that the Problem instance should log all errors
+	LogAllErrors = LogFilter(iota)
+)
+
 // Problem is an instance of the functionality served by the problem package.
 type Problem struct {
 	serviceHost     string
 	log             *log.Entry
 	errToProblemMap map[error]P
 	reportFn        ReportFunc
+	filter          LogFilter
 }
 
 // New returns a new instance of Problem.
-func New(serviceHost string, log *log.Entry) *Problem {
+func New(serviceHost string, log *log.Entry, filter LogFilter) *Problem {
 	return &Problem{
 		serviceHost:     serviceHost,
 		log:             log,
 		errToProblemMap: map[error]P{},
+		filter:          filter,
 	}
 }
 
@@ -141,6 +158,10 @@ func (ps *Problem) RegisterReportFunc(fn ReportFunc) {
 func (ps *Problem) Render(ctx context.Context, w http.ResponseWriter, err error) {
 	origErr := errors.Cause(err)
 
+	if ps.filter == LogAllErrors {
+		ps.log.Ctx(ctx).WithStack(err).WithError(err).Info("request failed due to error")
+	}
+
 	var problem P
 	switch p := origErr.(type) {
 	case P:
@@ -154,7 +175,9 @@ func (ps *Problem) Render(ctx context.Context, w http.ResponseWriter, err error)
 		// If this error is not a registered error
 		// log it and replace it with a 500 error
 		if !ok {
-			ps.log.Ctx(ctx).WithStack(err).Error(err)
+			if ps.filter == LogUnknownErrors {
+				ps.log.Ctx(ctx).WithStack(err).Error(err)
+			}
 			if ps.reportFn != nil {
 				ps.reportFn(ctx, err)
 			}

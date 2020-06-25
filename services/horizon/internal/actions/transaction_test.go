@@ -2,7 +2,6 @@ package actions
 
 import (
 	"context"
-	"strings"
 	"testing"
 
 	"github.com/stellar/go/protocols/horizon"
@@ -101,7 +100,7 @@ func checkOuterHashResponse(
 	tt.Assert.Equal(fixture.Transaction.TransactionHash, transactionResponse.ID)
 	tt.Assert.Equal(fixture.Transaction.MaxFee, transactionResponse.InnerTransaction.MaxFee)
 	tt.Assert.Equal(
-		strings.Split(fixture.Transaction.InnerSignatureString.String, ","),
+		[]string(fixture.Transaction.InnerSignatures),
 		transactionResponse.InnerTransaction.Signatures,
 	)
 	tt.Assert.Equal(
@@ -113,7 +112,7 @@ func checkOuterHashResponse(
 	tt.Assert.Equal(fixture.Transaction.MemoType, transactionResponse.MemoType)
 	tt.Assert.Equal(fixture.Transaction.OperationCount, transactionResponse.OperationCount)
 	tt.Assert.Equal(
-		strings.Split(fixture.Transaction.SignatureString, ","),
+		[]string(fixture.Transaction.Signatures),
 		transactionResponse.Signatures,
 	)
 	tt.Assert.Equal(fixture.Transaction.Successful, transactionResponse.Successful)
@@ -172,7 +171,7 @@ func TestFeeBumpTransactionResource(t *testing.T) {
 	tt.Assert.Equal(fixture.InnerHash, byInnerHash.Hash)
 	tt.Assert.Equal(fixture.InnerHash, byInnerHash.ID)
 	tt.Assert.Equal(
-		strings.Split(fixture.Transaction.InnerSignatureString.String, ","),
+		[]string(fixture.Transaction.InnerSignatures),
 		byInnerHash.Signatures,
 	)
 

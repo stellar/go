@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 
 	firebaseauth "firebase.google.com/go/auth"
 	"github.com/go-chi/chi"
@@ -24,7 +25,7 @@ type Options struct {
 	DatabaseURL       string
 	Port              int
 	NetworkPassphrase string
-	SigningKey        string
+	SigningKeys       string
 	SEP10JWKS         string
 	SEP10JWTIssuer    string
 	FirebaseProjectID string
@@ -55,7 +56,7 @@ func Serve(opts Options) {
 		ListenAddr: addr,
 		Handler:    handler,
 		OnStarting: func() {
-			deps.Logger.Infof("Starting SEP-30 Recover Signer server on %s", addr)
+			deps.Logger.Infof("Starting SEP-30 Recovery Signer server on %s", addr)
 		},
 	})
 }
@@ -63,9 +64,10 @@ func Serve(opts Options) {
 type handlerDeps struct {
 	Logger             *supportlog.Entry
 	NetworkPassphrase  string
-	SigningKey         *keypair.Full
+	SigningKeys        []*keypair.Full
+	SigningAddresses   []*keypair.FromAddress
 	AccountStore       account.Store
-	SEP10JWK           jose.JSONWebKey
+	SEP10JWKS          jose.JSONWebKeySet
 	SEP10JWTIssuer     string
 	FirebaseAuthClient *firebaseauth.Client
 	MetricsRegistry    *prometheus.Registry
@@ -75,24 +77,27 @@ func getHandlerDeps(opts Options) (handlerDeps, error) {
 	// TODO: Replace this signing key with randomly generating a unique signing
 	// key for each account so that it is not possible to identify which
 	// accounts are recoverable via a recovery signer.
-	signingKey, err := keypair.ParseFull(opts.SigningKey)
-	if err != nil {
-		return handlerDeps{}, errors.Wrap(err, "parsing signing key seed")
+	signingKeys := []*keypair.Full{}
+	signingAddresses := []*keypair.FromAddress{}
+	for i, signingKeyStr := range strings.Split(opts.SigningKeys, ",") {
+		signingKey, err := keypair.ParseFull(signingKeyStr)
+		if err != nil {
+			return handlerDeps{}, errors.Wrap(err, "parsing signing key seed")
+		}
+		signingKeys = append(signingKeys, signingKey)
+		signingAddresses = append(signingAddresses, signingKey.FromAddress())
+		opts.Logger.Info("Signing key ", i, ": ", signingKey.Address())
 	}
-	opts.Logger.Info("Signing key: ", signingKey.Address())
 
-	sep10JWKS := &jose.JSONWebKeySet{}
-	err = json.Unmarshal([]byte(opts.SEP10JWKS), sep10JWKS)
+	sep10JWKS := jose.JSONWebKeySet{}
+	err := json.Unmarshal([]byte(opts.SEP10JWKS), &sep10JWKS)
 	if err != nil {
 		return handlerDeps{}, errors.Wrap(err, "parsing SEP-10 JSON Web Key (JWK) Set")
 	}
 	if len(sep10JWKS.Keys) == 0 {
 		return handlerDeps{}, errors.New("no keys included in SEP-10 JSON Web Key (JWK) Set")
 	}
-	if len(sep10JWKS.Keys) > 1 {
-		return handlerDeps{}, errors.New("more than one key included in SEP-10 JSON Web Key (JWK) Set only one supported")
-	}
-	sep10JWK := sep10JWKS.Keys[0]
+	opts.Logger.Infof("SEP10 JWKS contains %d keys", len(sep10JWKS.Keys))
 
 	db, err := db.Open(opts.DatabaseURL)
 	if err != nil {
@@ -136,9 +141,10 @@ func getHandlerDeps(opts Options) (handlerDeps, error) {
 	deps := handlerDeps{
 		Logger:             opts.Logger,
 		NetworkPassphrase:  opts.NetworkPassphrase,
-		SigningKey:         signingKey,
+		SigningKeys:        signingKeys,
+		SigningAddresses:   signingAddresses,
 		AccountStore:       accountStore,
-		SEP10JWK:           sep10JWK,
+		SEP10JWKS:          sep10JWKS,
 		SEP10JWTIssuer:     opts.SEP10JWTIssuer,
 		FirebaseAuthClient: firebaseAuthClient,
 		MetricsRegistry:    metricsRegistry,
@@ -155,40 +161,42 @@ func handler(deps handlerDeps) http.Handler {
 
 	mux.Get("/health", health.PassHandler{}.ServeHTTP)
 	mux.Route("/accounts", func(mux chi.Router) {
-		mux.Use(auth.SEP10Middleware(deps.SEP10JWTIssuer, deps.SEP10JWK))
+		mux.Use(auth.SEP10Middleware(deps.SEP10JWTIssuer, deps.SEP10JWKS))
 		mux.Use(auth.FirebaseMiddleware(auth.FirebaseTokenVerifierLive{AuthClient: deps.FirebaseAuthClient}))
 		mux.Get("/", accountListHandler{
-			Logger:         deps.Logger,
-			SigningAddress: deps.SigningKey.FromAddress(),
-			AccountStore:   deps.AccountStore,
+			Logger:           deps.Logger,
+			SigningAddresses: deps.SigningAddresses,
+			AccountStore:     deps.AccountStore,
 		}.ServeHTTP)
 		mux.Route("/{address}", func(mux chi.Router) {
 			mux.Post("/", accountPostHandler{
-				Logger:         deps.Logger,
-				SigningAddress: deps.SigningKey.FromAddress(),
-				AccountStore:   deps.AccountStore,
+				Logger:           deps.Logger,
+				SigningAddresses: deps.SigningAddresses,
+				AccountStore:     deps.AccountStore,
 			}.ServeHTTP)
 			mux.Put("/", accountPutHandler{
-				Logger:         deps.Logger,
-				SigningAddress: deps.SigningKey.FromAddress(),
-				AccountStore:   deps.AccountStore,
+				Logger:           deps.Logger,
+				SigningAddresses: deps.SigningAddresses,
+				AccountStore:     deps.AccountStore,
 			}.ServeHTTP)
 			mux.Get("/", accountGetHandler{
-				Logger:         deps.Logger,
-				SigningAddress: deps.SigningKey.FromAddress(),
-				AccountStore:   deps.AccountStore,
+				Logger:           deps.Logger,
+				SigningAddresses: deps.SigningAddresses,
+				AccountStore:     deps.AccountStore,
 			}.ServeHTTP)
 			mux.Delete("/", accountDeleteHandler{
-				Logger:         deps.Logger,
-				SigningAddress: deps.SigningKey.FromAddress(),
-				AccountStore:   deps.AccountStore,
+				Logger:           deps.Logger,
+				SigningAddresses: deps.SigningAddresses,
+				AccountStore:     deps.AccountStore,
 			}.ServeHTTP)
-			mux.Post("/sign", accountSignHandler{
+			signHandler := accountSignHandler{
 				Logger:            deps.Logger,
-				SigningKey:        deps.SigningKey,
+				SigningKeys:       deps.SigningKeys,
 				NetworkPassphrase: deps.NetworkPassphrase,
 				AccountStore:      deps.AccountStore,
-			}.ServeHTTP)
+			}
+			mux.Post("/sign", signHandler.ServeHTTP)
+			mux.Post("/sign/{signing-address}", signHandler.ServeHTTP)
 		})
 	})
 

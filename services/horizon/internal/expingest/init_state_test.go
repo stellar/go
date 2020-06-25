@@ -5,9 +5,7 @@ import (
 	"testing"
 
 	"github.com/stellar/go/exp/ingest/adapters"
-	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"
-	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -17,21 +15,18 @@ func TestInitStateTestSuite(t *testing.T) {
 
 type InitStateTestSuite struct {
 	suite.Suite
-	graph          *mockOrderBookGraph
 	historyQ       *mockDBQ
 	historyAdapter *adapters.MockHistoryArchiveAdapter
 	system         *System
 }
 
 func (s *InitStateTestSuite) SetupTest() {
-	s.graph = &mockOrderBookGraph{}
 	s.historyQ = &mockDBQ{}
 	s.historyAdapter = &adapters.MockHistoryArchiveAdapter{}
 	s.system = &System{
 		ctx:            context.Background(),
 		historyQ:       s.historyQ,
 		historyAdapter: s.historyAdapter,
-		graph:          s.graph,
 	}
 	s.system.initMetrics()
 
@@ -42,7 +37,6 @@ func (s *InitStateTestSuite) TearDownTest() {
 	t := s.T()
 	s.historyQ.AssertExpectations(t)
 	s.historyAdapter.AssertExpectations(t)
-	s.graph.AssertExpectations(t)
 }
 
 func (s *InitStateTestSuite) TestBeginReturnsError() {
@@ -195,26 +189,6 @@ func (s *InitStateTestSuite) TestResumeStateInFront() {
 	s.Assert().Equal(transition{node: startState{}, sleepDuration: defaultSleep}, next)
 }
 
-// TestResumeStateInFrontInMemoryOnly is testing the case when:
-// * state doesn't need to be rebuilt,
-// * history is in front of expingest,
-// * Horizon is ingesting into memory only.
-func (s *InitStateTestSuite) TestResumeStateInFrontInMemoryOnly() {
-	s.system.config.IngestInMemoryOnly = true
-	defer func() {
-		s.system.config.IngestInMemoryOnly = false
-	}()
-
-	s.historyQ.On("Begin").Return(nil).Once()
-	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(100), nil).Once()
-	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion, nil).Once()
-	s.historyQ.On("GetLatestLedger").Return(uint32(130), nil).Once()
-
-	next, err := startState{}.run(s.system)
-	s.Assert().NoError(err)
-	s.Assert().Equal(transition{node: startState{}, sleepDuration: defaultSleep}, next)
-}
-
 // TestResumeStateBehind is testing the case when:
 // * state doesn't need to be rebuilt,
 // * history is behind of expingest.
@@ -245,62 +219,6 @@ func (s *InitStateTestSuite) TestResumeStateBehindHistory0() {
 	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion, nil).Once()
 	s.historyQ.On("GetLatestLedger").Return(uint32(0), nil).Once()
 
-	s.historyQ.On("GetAllOffers").Return(
-		[]history.Offer{
-			history.Offer{
-				OfferID:      eurOffer.OfferId,
-				SellerID:     eurOffer.SellerId.Address(),
-				SellingAsset: eurOffer.Selling,
-				BuyingAsset:  eurOffer.Buying,
-				Amount:       eurOffer.Amount,
-				Pricen:       int32(eurOffer.Price.N),
-				Priced:       int32(eurOffer.Price.D),
-				Price:        float64(eurOffer.Price.N) / float64(eurOffer.Price.D),
-				Flags:        uint32(eurOffer.Flags),
-			},
-			history.Offer{
-				OfferID:      twoEurOffer.OfferId,
-				SellerID:     twoEurOffer.SellerId.Address(),
-				SellingAsset: twoEurOffer.Selling,
-				BuyingAsset:  twoEurOffer.Buying,
-				Amount:       twoEurOffer.Amount,
-				Pricen:       int32(twoEurOffer.Price.N),
-				Priced:       int32(twoEurOffer.Price.D),
-				Price:        float64(twoEurOffer.Price.N) / float64(twoEurOffer.Price.D),
-				Flags:        uint32(twoEurOffer.Flags),
-			},
-		},
-		nil,
-	).Once()
-
-	s.graph.On("Clear").Once()
-	s.graph.On("AddOffer", xdr.OfferEntry{
-		SellerId: eurOffer.SellerId,
-		OfferId:  eurOffer.OfferId,
-		Selling:  eurOffer.Selling,
-		Buying:   eurOffer.Buying,
-		Amount:   eurOffer.Amount,
-		Price: xdr.Price{
-			N: xdr.Int32(eurOffer.Price.N),
-			D: xdr.Int32(eurOffer.Price.D),
-		},
-		Flags: xdr.Uint32(eurOffer.Flags),
-	}).Once()
-	s.graph.On("AddOffer", xdr.OfferEntry{
-		SellerId: twoEurOffer.SellerId,
-		OfferId:  twoEurOffer.OfferId,
-		Selling:  twoEurOffer.Selling,
-		Buying:   twoEurOffer.Buying,
-		Amount:   twoEurOffer.Amount,
-		Price: xdr.Price{
-			N: xdr.Int32(twoEurOffer.Price.N),
-			D: xdr.Int32(twoEurOffer.Price.D),
-		},
-		Flags: xdr.Uint32(twoEurOffer.Flags),
-	}).Once()
-	s.graph.On("Apply", uint32(130)).Return(nil).Once()
-	s.graph.On("Discard").Once()
-
 	next, err := startState{}.run(s.system)
 	s.Assert().NoError(err)
 	s.Assert().Equal(
@@ -320,62 +238,6 @@ func (s *InitStateTestSuite) TestResumeStateSync() {
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(130), nil).Once()
 	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion, nil).Once()
 	s.historyQ.On("GetLatestLedger").Return(uint32(130), nil).Once()
-
-	s.historyQ.On("GetAllOffers").Return(
-		[]history.Offer{
-			history.Offer{
-				OfferID:      eurOffer.OfferId,
-				SellerID:     eurOffer.SellerId.Address(),
-				SellingAsset: eurOffer.Selling,
-				BuyingAsset:  eurOffer.Buying,
-				Amount:       eurOffer.Amount,
-				Pricen:       int32(eurOffer.Price.N),
-				Priced:       int32(eurOffer.Price.D),
-				Price:        float64(eurOffer.Price.N) / float64(eurOffer.Price.D),
-				Flags:        uint32(eurOffer.Flags),
-			},
-			history.Offer{
-				OfferID:      twoEurOffer.OfferId,
-				SellerID:     twoEurOffer.SellerId.Address(),
-				SellingAsset: twoEurOffer.Selling,
-				BuyingAsset:  twoEurOffer.Buying,
-				Amount:       twoEurOffer.Amount,
-				Pricen:       int32(twoEurOffer.Price.N),
-				Priced:       int32(twoEurOffer.Price.D),
-				Price:        float64(twoEurOffer.Price.N) / float64(twoEurOffer.Price.D),
-				Flags:        uint32(twoEurOffer.Flags),
-			},
-		},
-		nil,
-	).Once()
-
-	s.graph.On("Clear").Once()
-	s.graph.On("AddOffer", xdr.OfferEntry{
-		SellerId: eurOffer.SellerId,
-		OfferId:  eurOffer.OfferId,
-		Selling:  eurOffer.Selling,
-		Buying:   eurOffer.Buying,
-		Amount:   eurOffer.Amount,
-		Price: xdr.Price{
-			N: xdr.Int32(eurOffer.Price.N),
-			D: xdr.Int32(eurOffer.Price.D),
-		},
-		Flags: xdr.Uint32(eurOffer.Flags),
-	}).Once()
-	s.graph.On("AddOffer", xdr.OfferEntry{
-		SellerId: twoEurOffer.SellerId,
-		OfferId:  twoEurOffer.OfferId,
-		Selling:  twoEurOffer.Selling,
-		Buying:   twoEurOffer.Buying,
-		Amount:   twoEurOffer.Amount,
-		Price: xdr.Price{
-			N: xdr.Int32(twoEurOffer.Price.N),
-			D: xdr.Int32(twoEurOffer.Price.D),
-		},
-		Flags: xdr.Uint32(twoEurOffer.Flags),
-	}).Once()
-	s.graph.On("Apply", uint32(130)).Return(nil).Once()
-	s.graph.On("Discard").Once()
 
 	next, err := startState{}.run(s.system)
 	s.Assert().NoError(err)

@@ -48,12 +48,13 @@ func TestChallenge(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Len(t, tx.Signatures(), 1)
-	sourceAccount := tx.SourceAccount()
+	sourceAccount := tx.SourceAccount().ToAccountId()
 	assert.Equal(t, serverKey.Address(), sourceAccount.Address())
 	assert.Equal(t, tx.SeqNum(), int64(0))
 	assert.Equal(t, time.Unix(int64(tx.TimeBounds().MaxTime), 0).Sub(time.Unix(int64(tx.TimeBounds().MinTime), 0)), time.Minute)
 	assert.Len(t, tx.Operations(), 1)
-	assert.Equal(t, account.Address(), tx.Operations()[0].SourceAccount.Address())
+	opSourceAccount := tx.Operations()[0].SourceAccount.ToAccountId()
+	assert.Equal(t, account.Address(), opSourceAccount.Address())
 	assert.Equal(t, xdr.OperationTypeManageData, tx.Operations()[0].Body.Type)
 	assert.Regexp(t, "^testserver auth", tx.Operations()[0].Body.ManageDataOp.DataName)
 

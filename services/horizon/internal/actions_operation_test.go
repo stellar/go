@@ -1,10 +1,7 @@
 package horizon
 
 import (
-	"context"
 	"encoding/json"
-	"net/http/httptest"
-	"strings"
 	"testing"
 	"time"
 
@@ -12,7 +9,6 @@ import (
 	"github.com/stellar/go/protocols/horizon/effects"
 	"github.com/stellar/go/protocols/horizon/operations"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/services/horizon/internal/render/sse"
 	"github.com/stellar/go/services/horizon/internal/test"
 )
 
@@ -63,15 +59,6 @@ func TestOperationActions_Index(t *testing.T) {
 	if ht.Assert.Equal(200, w.Code) {
 		ht.Assert.PageOf(1, w.Body)
 	}
-	// missing tx
-	w = ht.Get("/transactions/ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff/operations")
-	ht.Assert.Equal(404, w.Code)
-	// uppercase tx hash not accepted
-	w = ht.Get("/transactions/2374E99349B9EF7DBA9A5DB3339B78FDA8F34777B1AF33BA468AD5C0DF946D4D/operations")
-	ht.Assert.Equal(400, w.Code)
-	// badly formated tx hash not accepted
-	w = ht.Get("/transactions/%00%1E4%5E%EF%BF%BD%EF%BF%BD%EF%BF%BDpVP%EF%BF%BDI&R%0BK%EF%BF%BD%1D%EF%BF%BD%EF%BF%BD=%EF%BF%BD%3F%23%EF%BF%BD%EF%BF%BDl%EF%BF%BD%1El%EF%BF%BD%EF%BF%BD/operations")
-	ht.Assert.Equal(400, w.Code)
 
 	w = ht.Get("/transactions/164a5064eba64f2cdbadb856bf3448485fc626247ada3ed39cddf0f6902133b6/operations")
 	if ht.Assert.Equal(200, w.Code) {
@@ -225,27 +212,6 @@ func TestOperationActions_IncludeTransactions(t *testing.T) {
 	ht.Assert.Equal(withoutTransactions, withTransactions)
 }
 
-func TestOperationActions_SSE(t *testing.T) {
-	tt := test.Start(t).Scenario("failed_transactions")
-	defer tt.Finish()
-
-	ctx := context.Background()
-	stream := sse.NewStream(ctx, httptest.NewRecorder())
-	oa := OperationIndexAction{
-		Action: *NewTestAction(ctx, "/operations?account_id=GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2"),
-	}
-
-	oa.SSE(stream)
-	tt.Require.NoError(oa.Err)
-
-	streamWithTransactions := sse.NewStream(ctx, httptest.NewRecorder())
-	oaWithTransactions := OperationIndexAction{
-		Action: *NewTestAction(ctx, "/operations?account_id=GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2&join=transactions"),
-	}
-	oaWithTransactions.SSE(streamWithTransactions)
-	tt.Require.NoError(oaWithTransactions.Err)
-}
-
 func TestOperationActions_Show(t *testing.T) {
 	ht := StartHTTPTest(t, "base")
 	defer ht.Finish()
@@ -396,88 +362,17 @@ func TestOperation_IncludeTransaction(t *testing.T) {
 	ht.Require.NoError(err, "failed to parse body")
 	ht.Assert.Equal(transactionInOperationsResponse, getTransactionResponse)
 }
-
-// TestOperationActions_Show_Extra_TxID tests if failed transactions are not returned
-// when `tx_id` GET param is present. This was happening because `base.GetString()`
-// method retuns values from the query when URL param is not present.
 func TestOperationActions_Show_Extra_TxID(t *testing.T) {
 	ht := StartHTTPTest(t, "failed_transactions")
 	defer ht.Finish()
 
-	w := ht.Get("/accounts/GBXGQJWVLWOYHFLVTKWV5FGHA3LNYY2JQKM7OAJAUEQFU6LPCSEFVXON/operations?limit=200&tx_id=abc")
+	w := ht.Get("/accounts/GBXGQJWVLWOYHFLVTKWV5FGHA3LNYY2JQKM7OAJAUEQFU6LPCSEFVXON/operations?limit=200&tx_id=aa168f12124b7c196c0adaee7c73a64d37f99428cacb59a91ff389626845e7cf")
 
-	if ht.Assert.Equal(200, w.Code) {
-		records := []operations.Base{}
-		ht.UnmarshalPage(w.Body, &records)
-
-		successful := 0
-		failed := 0
-
-		for _, op := range records {
-			if op.TransactionSuccessful {
-				successful++
-			} else {
-				failed++
-			}
-		}
-
-		ht.Assert.Equal(3, successful)
-		ht.Assert.Equal(0, failed)
-	}
-}
-
-func TestOperationsForFeeBumpTransaction(t *testing.T) {
-	ht := StartHTTPTestWithoutScenario(t)
-	defer ht.Finish()
-	test.ResetHorizonDB(t, ht.HorizonDB)
-	q := &history.Q{ht.HorizonSession()}
-	fixture := history.FeeBumpScenario(ht.T, q, true)
-
-	w := ht.Get("/transactions/" + fixture.OuterHash + "/operations")
-	ht.Assert.Equal(200, w.Code)
-	var byOuterHash []operations.Base
-	ht.UnmarshalPage(w.Body, &byOuterHash)
-	ht.Assert.Len(byOuterHash, 1)
-	ht.Assert.Equal(fixture.OuterHash, byOuterHash[0].TransactionHash)
-
-	w = ht.Get("/transactions/" + fixture.InnerHash + "/operations")
-	ht.Assert.Equal(200, w.Code)
-	var byInnerHash []operations.Base
-	ht.UnmarshalPage(w.Body, &byInnerHash)
-	ht.Assert.Len(byInnerHash, 1)
-	ht.Assert.Equal(fixture.InnerHash, byInnerHash[0].TransactionHash)
-
-	byInnerHash[0].TransactionHash = byOuterHash[0].TransactionHash
-	ht.Assert.Equal(byOuterHash, byInnerHash)
-
-	w = ht.Get("/transactions/" + fixture.OuterHash + "/operations?join=transactions")
-	ht.Assert.Equal(200, w.Code)
-	ht.UnmarshalPage(w.Body, &byOuterHash)
-	ht.Assert.Len(byOuterHash, 1)
-	ht.Assert.Equal(fixture.OuterHash, byOuterHash[0].TransactionHash)
-	tx := byOuterHash[0].Transaction
-	ht.Assert.Equal(fixture.OuterHash, tx.Hash)
-	ht.Assert.Equal(fixture.OuterHash, tx.ID)
+	ht.Assert.Equal(400, w.Code)
+	payload := ht.UnmarshalExtras(w.Body)
+	ht.Assert.Equal("filters", payload["invalid_field"])
 	ht.Assert.Equal(
-		strings.Split(fixture.Transaction.SignatureString, ","),
-		tx.Signatures,
+		"Use a single filter for operations, you can't combine tx_id, account_id, and ledger_id",
+		payload["reason"],
 	)
-
-	w = ht.Get("/transactions/" + fixture.InnerHash + "/operations?join=transactions")
-	ht.Assert.Equal(200, w.Code)
-	ht.UnmarshalPage(w.Body, &byInnerHash)
-	ht.Assert.Len(byInnerHash, 1)
-	ht.Assert.Equal(fixture.InnerHash, byInnerHash[0].TransactionHash)
-	tx = byInnerHash[0].Transaction
-	ht.Assert.Equal(fixture.InnerHash, tx.Hash)
-	ht.Assert.Equal(fixture.InnerHash, tx.ID)
-	ht.Assert.Equal(
-		strings.Split(fixture.Transaction.InnerSignatureString.String, ","),
-		tx.Signatures,
-	)
-
-	ht.Assert.Equal(byInnerHash[0].ID, byOuterHash[0].ID)
-	ht.Assert.Equal(byInnerHash[0].SourceAccount, byOuterHash[0].SourceAccount)
-	ht.Assert.Equal(byInnerHash[0].TransactionSuccessful, byOuterHash[0].TransactionSuccessful)
-	ht.Assert.Equal(byInnerHash[0].Type, byOuterHash[0].Type)
 }

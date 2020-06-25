@@ -48,6 +48,7 @@ func writeLedgerHeader(w io.Writer, sequence uint32) error {
 	var hash [32]byte
 	copy(hash[:], tmpHash)
 
+	source := xdr.MustAddress("GAEJJMDDCRYF752PKIJICUVL7MROJBNXDV2ZB455T7BAFHU2LCLSE2LW")
 	ledgerCloseMeta := xdr.LedgerCloseMeta{
 		V: 0,
 		V0: &xdr.LedgerCloseMetaV0{
@@ -62,7 +63,7 @@ func writeLedgerHeader(w io.Writer, sequence uint32) error {
 						Type: xdr.EnvelopeTypeEnvelopeTypeTx,
 						V1: &xdr.TransactionV1Envelope{
 							Tx: xdr.Transaction{
-								SourceAccount: xdr.MustMuxedAccountAddress("GAEJJMDDCRYF752PKIJICUVL7MROJBNXDV2ZB455T7BAFHU2LCLSE2LW"),
+								SourceAccount: source.ToMuxedAccount(),
 								Fee:           xdr.Uint32(sequence),
 							},
 						},

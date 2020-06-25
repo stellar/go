@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"encoding/json"
+	"io"
 	"net/http"
 	"strings"
 	"sync"
@@ -199,7 +200,7 @@ func (we *web) streamIndexActionHandler(jfn interface{}, sfn streamFunc) http.Ha
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		params, err := getIndexActionQueryParams(r, we.ingestFailedTx)
+		params, err := getIndexActionQueryParams(r)
 		if err != nil {
 			problem.Render(ctx, w, err)
 			return
@@ -281,7 +282,7 @@ func getShowActionQueryParams(r *http.Request, requireAccountID bool) (*showActi
 }
 
 // getIndexActionQueryParams gets the available query params for all indexable endpoints.
-func getIndexActionQueryParams(r *http.Request, ingestFailedTransactions bool) (*indexActionQueryParams, error) {
+func getIndexActionQueryParams(r *http.Request) (*indexActionQueryParams, error) {
 	addr, err := getAccountID(r, "account_id", false)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting account id")
@@ -305,11 +306,6 @@ func getIndexActionQueryParams(r *http.Request, ingestFailedTransactions bool) (
 	includeFailedTx, err := getBoolParamFromURL(r, "include_failed")
 	if err != nil {
 		return nil, errors.Wrap(err, "getting include_failed param")
-	}
-	if includeFailedTx && !ingestFailedTransactions {
-		return nil, problem.MakeInvalidFieldProblem("include_failed",
-			errors.New("`include_failed` parameter is unavailable when Horizon is not ingesting failed "+
-				"transactions. Set `INGEST_FAILED_TRANSACTIONS=true` to start ingesting them."))
 	}
 
 	return &indexActionQueryParams{
@@ -477,7 +473,7 @@ func (handler streamableObjectActionHandler) renderStream(
 
 			if lastResponse == nil || !lastResponse.Equals(response) {
 				lastResponse = response
-				return []sse.Event{sse.Event{Data: response}}, nil
+				return []sse.Event{{Data: response}}, nil
 			}
 			return []sse.Event{}, nil
 		}),
@@ -489,23 +485,41 @@ type pageAction interface {
 }
 
 type pageActionHandler struct {
-	action        pageAction
-	streamable    bool
-	streamHandler sse.StreamHandler
+	action         pageAction
+	streamable     bool
+	streamHandler  sse.StreamHandler
+	repeatableRead bool
 }
 
 func restPageHandler(action pageAction) pageActionHandler {
 	return pageActionHandler{action: action}
 }
 
-func streamablePageHandler(
+// streamableStatePageHandler creates a streamable page handler than generates
+// events within a REPEATABLE READ transaction.
+func streamableStatePageHandler(
 	action pageAction,
 	streamHandler sse.StreamHandler,
 ) pageActionHandler {
 	return pageActionHandler{
-		action:        action,
-		streamable:    true,
-		streamHandler: streamHandler,
+		action:         action,
+		streamable:     true,
+		streamHandler:  streamHandler,
+		repeatableRead: true,
+	}
+}
+
+// streamableStatePageHandler creates a streamable page handler than generates
+// events without starting a REPEATABLE READ transaction.
+func streamableHistoryPageHandler(
+	action pageAction,
+	streamHandler sse.StreamHandler,
+) pageActionHandler {
+	return pageActionHandler{
+		action:         action,
+		streamable:     true,
+		streamHandler:  streamHandler,
+		repeatableRead: false,
 	}
 }
 
@@ -537,31 +551,43 @@ func (handler pageActionHandler) renderStream(w http.ResponseWriter, r *http.Req
 		return
 	}
 
+	var generateEvents sse.GenerateEventsFunc = func() ([]sse.Event, error) {
+		records, err := handler.action.GetResourcePage(w, r)
+		if err != nil {
+			return nil, err
+		}
+
+		events := make([]sse.Event, 0, len(records))
+		for _, record := range records {
+			events = append(events, sse.Event{ID: record.PagingToken(), Data: record})
+		}
+
+		if len(events) > 0 {
+			// Update the cursor for the next call to GetObject, GetCursor
+			// will use Last-Event-ID if present. This feels kind of hacky,
+			// but otherwise, we'll have to edit r.URL, which is also a
+			// hack.
+			r.Header.Set("Last-Event-ID", events[len(events)-1].ID)
+		} else if len(r.Header.Get("Last-Event-ID")) == 0 {
+			// If there are no records and Last-Event-ID has not been set,
+			// use the cursor from pq as the Last-Event-ID, otherwise, we'll
+			// keep using `now` which will always resolve to the next
+			// ledger.
+			r.Header.Set("Last-Event-ID", pq.Cursor)
+		}
+
+		return events, nil
+	}
+
+	if handler.repeatableRead {
+		generateEvents = repeatableReadStream(r, generateEvents)
+	}
+
 	handler.streamHandler.ServeStream(
 		w,
 		r,
 		int(pq.Limit),
-		repeatableReadStream(r, func() ([]sse.Event, error) {
-			records, err := handler.action.GetResourcePage(w, r)
-			if err != nil {
-				return nil, err
-			}
-
-			events := make([]sse.Event, 0, len(records))
-			for _, record := range records {
-				events = append(events, sse.Event{ID: record.PagingToken(), Data: record})
-			}
-
-			if len(events) > 0 {
-				// Update the cursor for the next call to GetObject, GetCursor
-				// will use Last-Event-ID if present. This feels kind of hacky,
-				// but otherwise, we'll have to edit r.URL, which is also a
-				// hack.
-				r.Header.Set("Last-Event-ID", events[len(events)-1].ID)
-			}
-
-			return events, nil
-		}),
+		generateEvents,
 	)
 }
 
@@ -604,4 +630,16 @@ func buildPage(r *http.Request, records []hal.Pageable) (hal.Page, error) {
 	page.PopulateLinks()
 
 	return page, nil
+}
+
+type metricsAction interface {
+	PrometheusFormat(w io.Writer) error
+}
+
+func HandleMetrics(action metricsAction) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if err := action.PrometheusFormat(w); err != nil {
+			problem.Render(r.Context(), w, err)
+		}
+	}
 }

@@ -43,21 +43,11 @@ func (c *stellarCoreRunner) start() (io.Reader, error) {
 		return readFile, errors.Wrap(err, "error starting stellar-core")
 	}
 
-	// Launch a goroutine to reap immediately on exit (I think this is right,
-	// as we do not want zombies and we might abruptly forget / kill / close
-	// the process, but I'm not certain).
-	cmd := c.cmd
-	go cmd.Wait()
-
 	return readFile, nil
 }
 
 func (c *stellarCoreRunner) processIsAlive() bool {
-	if c.cmd == nil {
-		return false
-	}
-	if c.cmd.Process == nil {
-		return false
-	}
-	return c.cmd.Process.Signal(syscall.Signal(0)) == nil
+	return c.cmd != nil &&
+		c.cmd.Process != nil &&
+		c.cmd.Process.Signal(syscall.Signal(0)) == nil
 }

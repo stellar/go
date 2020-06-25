@@ -186,15 +186,14 @@ var selectTransaction = sq.Select(
 		"ht.created_at, " +
 		"ht.updated_at, " +
 		"COALESCE(ht.successful, true) as successful, " +
-		"array_to_string(ht.signatures, ',') AS signatures, " +
+		"ht.signatures, " +
 		"ht.memo_type, " +
 		"ht.memo, " +
-		"lower(ht.time_bounds) AS valid_after, " +
-		"upper(ht.time_bounds) AS valid_before, " +
+		"time_bounds, " +
 		"hl.closed_at AS ledger_close_time, " +
 		"ht.inner_transaction_hash, " +
 		"ht.fee_account, " +
 		"ht.new_max_fee, " +
-		"array_to_string(ht.inner_signatures, ',') AS inner_signatures").
+		"ht.inner_signatures").
 	From("history_transactions ht").
 	LeftJoin("history_ledgers hl ON ht.ledger_sequence = hl.sequence")

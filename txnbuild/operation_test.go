@@ -215,7 +215,7 @@ func TestSetOptionsFromXDR(t *testing.T) {
 		Signer:        &signer,
 	}
 
-	muxSource := xdr.MustMuxedAccountAddress(opSource.Address())
+	muxSource := opSource.ToMuxedAccount()
 	xdrOp := xdr.Operation{
 		SourceAccount: &muxSource,
 		Body: xdr.OperationBody{

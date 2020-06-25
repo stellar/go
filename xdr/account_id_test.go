@@ -67,3 +67,15 @@ var _ = Describe("xdr.AddressToAccountID()", func() {
 		Expect(err).Should(HaveOccurred())
 	})
 })
+
+var _ = Describe("xdr.AccountId#ToMuxedAccount()", func() {
+	It("works", func() {
+		address := "GCR22L3WS7TP72S4Z27YTO6JIQYDJK2KLS2TQNHK6Y7XYPA3AGT3X4FH"
+		accountID, err := AddressToAccountId(address)
+		Expect(err).ShouldNot(HaveOccurred())
+		muxed := accountID.ToMuxedAccount()
+
+		Expect(muxed.Type).To(Equal(CryptoKeyTypeKeyTypeEd25519))
+		Expect(*muxed.Ed25519).To(Equal(*accountID.Ed25519))
+	})
+})

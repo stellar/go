@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this
 file.  This project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+
+* Remove JSON variant of `GET /metrics`, both in the server and client code. It's using Prometheus format by default now.
+
 ## [v3.0.0](https://github.com/stellar/go/releases/tag/horizonclient-v3.0.0) - 2020-04-28
 
 ### Breaking changes

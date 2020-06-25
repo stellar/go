@@ -184,6 +184,7 @@ type IngestionQ interface {
 	UpdateExpIngestVersion(int) error
 	GetExpStateInvalid() (bool, error)
 	GetLatestLedger() (uint32, error)
+	GetOfferCompactionSequence() (uint32, error)
 	TruncateExpingestStateTables() error
 	DeleteRangeAll(start, end int64) error
 }
@@ -394,6 +395,7 @@ type Ledger struct {
 	SuccessfulTransactionCount *int32      `db:"successful_transaction_count"`
 	FailedTransactionCount     *int32      `db:"failed_transaction_count"`
 	OperationCount             int32       `db:"operation_count"`
+	TxSetOperationCount        *int32      `db:"tx_set_operation_count"`
 	ClosedAt                   time.Time   `db:"closed_at"`
 	CreatedAt                  time.Time   `db:"created_at"`
 	UpdatedAt                  time.Time   `db:"updated_at"`
@@ -460,6 +462,7 @@ type Offer struct {
 	Priced             int32     `db:"priced"`
 	Price              float64   `db:"price"`
 	Flags              uint32    `db:"flags"`
+	Deleted            bool      `db:"deleted"`
 	LastModifiedLedger uint32    `db:"last_modified_ledger"`
 }
 
@@ -511,17 +514,6 @@ type OffersQuery struct {
 	Buying    *xdr.Asset
 }
 
-// QOffers defines offer related queries.
-type QOffers interface {
-	GetAllOffers() ([]Offer, error)
-	GetOffersByIDs(ids []int64) ([]Offer, error)
-	CountOffers() (int, error)
-	NewOffersBatchInsertBuilder(maxBatchSize int) OffersBatchInsertBuilder
-	InsertOffer(offer xdr.OfferEntry, lastModifiedLedger xdr.Uint32) (int64, error)
-	UpdateOffer(offer xdr.OfferEntry, lastModifiedLedger xdr.Uint32) (int64, error)
-	RemoveOffer(offerID xdr.Int64) (int64, error)
-}
-
 // TotalOrderID represents the ID portion of rows that are identified by the
 // "TotalOrderID".  See total_order_id.go in the `db` package for details.
 type TotalOrderID struct {
@@ -562,32 +554,8 @@ type TradesQ struct {
 
 // Transaction is a row of data from the `history_transactions` table
 type Transaction struct {
-	TotalOrderID
-	TransactionHash      string      `db:"transaction_hash"`
-	LedgerSequence       int32       `db:"ledger_sequence"`
-	LedgerCloseTime      time.Time   `db:"ledger_close_time"`
-	ApplicationOrder     int32       `db:"application_order"`
-	Account              string      `db:"account"`
-	AccountSequence      string      `db:"account_sequence"`
-	MaxFee               int64       `db:"max_fee"`
-	FeeCharged           int64       `db:"fee_charged"`
-	OperationCount       int32       `db:"operation_count"`
-	TxEnvelope           string      `db:"tx_envelope"`
-	TxResult             string      `db:"tx_result"`
-	TxMeta               string      `db:"tx_meta"`
-	TxFeeMeta            string      `db:"tx_fee_meta"`
-	SignatureString      string      `db:"signatures"`
-	MemoType             string      `db:"memo_type"`
-	Memo                 null.String `db:"memo"`
-	ValidAfter           null.Int    `db:"valid_after"`
-	ValidBefore          null.Int    `db:"valid_before"`
-	CreatedAt            time.Time   `db:"created_at"`
-	UpdatedAt            time.Time   `db:"updated_at"`
-	Successful           bool        `db:"successful"`
-	FeeAccount           null.String `db:"fee_account"`
-	InnerTransactionHash null.String `db:"inner_transaction_hash"`
-	NewMaxFee            null.Int    `db:"new_max_fee"`
-	InnerSignatureString null.String `db:"inner_signatures"`
+	LedgerCloseTime time.Time `db:"ledger_close_time"`
+	TransactionWithoutLedger
 }
 
 // TransactionsQ is a helper struct to aid in configuring queries that loads

@@ -172,12 +172,6 @@ func (startState) run(s *System) (transition, error) {
 
 	switch {
 	case lastHistoryLedger > lastIngestedLedger:
-		// If ingesting into memory wait until other ingesting instance ingests state.
-		if s.config.IngestInMemoryOnly {
-			log.Info("Waiting for other ingesting instance to ingest into DB...")
-			return start(), nil
-		}
-
 		// Expingest was running at some point the past but was turned off.
 		// Now it's on by default but the latest history ledger is greater
 		// than the latest expingest ledger. We reset the exp ledger sequence
@@ -207,10 +201,6 @@ func (startState) run(s *System) (transition, error) {
 		log.WithField("last_ledger", lastIngestedLedger).
 			Info("Resuming ingestion system from last processed ledger...")
 
-		if err = s.loadOffersIntoMemory(lastIngestedLedger); err != nil {
-			return start(), errors.Wrap(err, "Error loading offers into in memory graph")
-		}
-
 		return resume(lastIngestedLedger), nil
 	}
 }
@@ -228,17 +218,10 @@ func (b buildState) run(s *System) (transition, error) {
 		return start(), errors.New("unexpected checkpointLedger value")
 	}
 
-	// If ingesting into memory wait until other ingesting instance ingests state.
-	if s.config.IngestInMemoryOnly {
-		log.Info("Waiting for other ingesting instance to ingest into DB...")
-		return start(), nil
-	}
-
 	if err := s.historyQ.Begin(); err != nil {
 		return start(), errors.Wrap(err, "Error starting a transaction")
 	}
 	defer s.historyQ.Rollback()
-	defer s.graph.Discard()
 
 	// We need to get this value `FOR UPDATE` so all other instances
 	// are blocked.
@@ -285,9 +268,6 @@ func (b buildState) run(s *System) (transition, error) {
 	if err != nil {
 		return start(), errors.Wrap(err, "Error clearing ingest tables")
 	}
-
-	// Graph should be empty.
-	s.graph.Clear()
 
 	log.WithFields(logpkg.F{
 		"ledger": b.checkpointLedger,
@@ -342,7 +322,6 @@ func (r resumeState) run(s *System) (transition, error) {
 			errors.Wrap(err, "Error starting a transaction")
 	}
 	defer s.historyQ.Rollback()
-	defer s.graph.Discard()
 
 	// This will get the value `FOR UPDATE`, blocking it for other nodes.
 	lastIngestedLedger, err := s.historyQ.GetLastLedgerExpIngest()
@@ -355,6 +334,11 @@ func (r resumeState) run(s *System) (transition, error) {
 	if ingestLedger > lastIngestedLedger+1 {
 		return start(), errors.New("expected ingest ledger to be at most one greater " +
 			"than last ingested ledger in db")
+	} else if ingestLedger <= lastIngestedLedger {
+		log.WithField("ingestLedger", ingestLedger).
+			WithField("lastIngestedLedger", lastIngestedLedger).
+			Info("bumping ingest ledger to next ledger after ingested ledger in db")
+		ingestLedger = lastIngestedLedger + 1
 	}
 
 	ingestVersion, err := s.historyQ.GetExpIngestVersion()
@@ -408,61 +392,10 @@ func (r resumeState) run(s *System) (transition, error) {
 
 	startTime := time.Now()
 
-	if ingestLedger <= lastIngestedLedger {
-		// rollback because we will not be updating the DB
-		// so there is no need to hold on to the distributed lock
-		// and thereby block the other nodes from ingesting
-		if err = s.historyQ.Rollback(); err != nil {
-			return retryResume(r), errors.Wrap(err, "Error rolling back transaction")
-		}
-
-		log.WithFields(logpkg.F{
-			"sequence": ingestLedger,
-			"state":    false,
-			"ledger":   false,
-			"graph":    true,
-			"commit":   false,
-		}).Info("Processing ledger")
-
-		var stats io.StatsChangeProcessorResults
-		stats, err = s.runner.RunOrderBookProcessorOnLedger(ingestLedger)
-		if err != nil {
-			return retryResume(r), errors.Wrap(err, "Error running change processor on ledger")
-
-		}
-
-		if err = s.graphApply(ingestLedger); err != nil {
-			return retryResume(r), errors.Wrap(err, "Error applying graph changes from ledger")
-		}
-
-		duration := time.Since(startTime)
-		s.Metrics.LedgerInMemoryIngestionTimer.Update(duration)
-		log.
-			WithFields(stats.Map()).
-			WithFields(logpkg.F{
-				"sequence": ingestLedger,
-				"duration": duration.Seconds(),
-				"state":    false,
-				"ledger":   false,
-				"graph":    true,
-				"commit":   false,
-			}).
-			Info("Processed ledger")
-
-		return resumeImmediately(ingestLedger), nil
-	}
-
-	// If ingesting into memory wait until other ingesting instance updates DB.
-	if s.config.IngestInMemoryOnly {
-		log.Info("Waiting for other ingesting instance to ingest into DB...")
-		return retryResume(r), nil
-	}
-
 	log.WithFields(logpkg.F{
 		"sequence": ingestLedger,
 		"state":    true,
 		"ledger":   true,
-		"graph":    true,
 		"commit":   true,
 	}).Info("Processing ledger")
 
@@ -490,7 +423,6 @@ func (r resumeState) run(s *System) (transition, error) {
 			"duration": duration.Seconds(),
 			"state":    true,
 			"ledger":   true,
-			"graph":    true,
 			"commit":   true,
 		}).
 		Info("Processed ledger")
@@ -515,12 +447,6 @@ func (h historyRangeState) String() string {
 
 // historyRangeState is used when catching up history data
 func (h historyRangeState) run(s *System) (transition, error) {
-	// If ingesting into memory wait until other ingesting instance ingests state.
-	if s.config.IngestInMemoryOnly {
-		log.Info("Waiting for other ingesting instance to ingest into DB...")
-		return start(), nil
-	}
-
 	if h.fromLedger == 0 || h.toLedger == 0 ||
 		h.fromLedger > h.toLedger {
 		return start(), errors.Errorf("invalid range: [%d, %d]", h.fromLedger, h.toLedger)
@@ -572,7 +498,6 @@ func runTransactionProcessorsOnLedger(s *System, ledger uint32) error {
 		"sequence": ledger,
 		"state":    false,
 		"ledger":   true,
-		"graph":    false,
 		"commit":   false,
 	}).Info("Processing ledger")
 	startTime := time.Now()
@@ -589,7 +514,6 @@ func runTransactionProcessorsOnLedger(s *System, ledger uint32) error {
 			"duration": time.Since(startTime).Seconds(),
 			"state":    false,
 			"ledger":   true,
-			"graph":    false,
 			"commit":   false,
 		}).
 		Info("Processed ledger")
@@ -757,7 +681,6 @@ func (v verifyRangeState) run(s *System) (transition, error) {
 		return stop(), err
 	}
 	defer s.historyQ.Rollback()
-	defer s.graph.Discard()
 
 	// Simple check if DB clean
 	lastIngestedLedger, err := s.historyQ.GetLastLedgerExpIngest()
@@ -799,7 +722,6 @@ func (v verifyRangeState) run(s *System) (transition, error) {
 			"sequence": sequence,
 			"state":    true,
 			"ledger":   true,
-			"graph":    true,
 			"commit":   true,
 		}).Info("Processing ledger")
 		startTime := time.Now()
@@ -829,14 +751,13 @@ func (v verifyRangeState) run(s *System) (transition, error) {
 				"duration": time.Since(startTime).Seconds(),
 				"state":    true,
 				"ledger":   true,
-				"graph":    true,
 				"commit":   true,
 			}).
 			Info("Processed ledger")
 	}
 
 	if v.verifyState {
-		err = s.verifyState(s.graph.OffersMap(), false)
+		err = s.verifyState(false)
 	}
 
 	return stop(), err
@@ -854,7 +775,6 @@ func (stressTestState) run(s *System) (transition, error) {
 		return stop(), err
 	}
 	defer s.historyQ.Rollback()
-	defer s.graph.Discard()
 
 	// Simple check if DB clean
 	lastIngestedLedger, err := s.historyQ.GetLastLedgerExpIngest()
@@ -876,7 +796,6 @@ func (stressTestState) run(s *System) (transition, error) {
 		"sequence":          sequence,
 		"state":             true,
 		"ledger":            true,
-		"graph":             true,
 		"commit":            true,
 	}).Info("Processing ledger")
 	startTime := time.Now()
@@ -902,7 +821,6 @@ func (stressTestState) run(s *System) (transition, error) {
 			"duration":          time.Since(startTime).Seconds(),
 			"state":             true,
 			"ledger":            true,
-			"graph":             true,
 			"commit":            true,
 		}).
 		Info("Processed ledger")
@@ -922,11 +840,6 @@ func (s *System) completeIngestion(ledger uint32) error {
 
 	if err := s.historyQ.Commit(); err != nil {
 		return errors.Wrap(err, commitErrMsg)
-	}
-
-	if err := s.graphApply(ledger); err != nil {
-		err = errors.Wrap(err, "Error applying order book changes")
-		return err
 	}
 
 	return nil

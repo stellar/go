@@ -35,14 +35,6 @@ func (c *stellarCoreRunner) start() (io.Reader, error) {
 		return io.Reader(nil), err
 	}
 
-	// Launch a goroutine to reap immediately on exit (I think this is right,
-	// as we do not want zombies and we might abruptly forget / kill / close
-	// the process, but I'm not certain).
-	cmd := c.cmd
-	go func() {
-		cmd.Wait()
-	}()
-
 	// Then accept on the server end.
 	connection, err := listener.Accept()
 	if e != nil {

@@ -2,6 +2,7 @@ package db
 
 import (
 	"fmt"
+	"reflect"
 	"sort"
 
 	sq "github.com/Masterminds/squirrel"
@@ -22,8 +23,9 @@ type BatchInsertBuilder struct {
 	// Suffix adds a sql expression to the end of the query (e.g. an ON CONFLICT clause)
 	Suffix string
 
-	columns []string
-	rows    [][]interface{}
+	columns       []string
+	rows          [][]interface{}
+	rowStructType reflect.Type
 }
 
 // Row adds a new row to the batch. All rows must have exactly the same columns
@@ -56,6 +58,38 @@ func (b *BatchInsertBuilder) Row(row map[string]interface{}) error {
 	}
 
 	b.rows = append(b.rows, rowSlice)
+
+	// Call Exec when MaxBatchSize is reached.
+	if len(b.rows) == b.MaxBatchSize {
+		return b.Exec()
+	}
+
+	return nil
+}
+
+func (b *BatchInsertBuilder) RowStruct(row interface{}) error {
+	if b.columns == nil {
+		b.columns = columnsForStruct(row)
+		b.rows = make([][]interface{}, 0)
+	}
+
+	rowType := reflect.TypeOf(row)
+	if b.rowStructType == nil {
+		b.rowStructType = rowType
+	} else if b.rowStructType != rowType {
+		return errors.Errorf(`expected value of type "%s" but got "%s" value`, b.rowStructType.String(), rowType.String())
+	}
+
+	rrow := reflect.ValueOf(row)
+	rvals := mapper.FieldsByName(rrow, b.columns)
+
+	// convert fields values to interface{}
+	columnValues := make([]interface{}, len(b.columns))
+	for i, rval := range rvals {
+		columnValues[i] = rval.Interface()
+	}
+
+	b.rows = append(b.rows, columnValues)
 
 	// Call Exec when MaxBatchSize is reached.
 	if len(b.rows) == b.MaxBatchSize {

@@ -4,11 +4,10 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"github.com/guregu/null"
 	"github.com/stellar/go/xdr"
-	"strings"
 	"time"
 
-	"github.com/guregu/null"
 	protocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/httpx"
@@ -47,9 +46,11 @@ func PopulateTransaction(
 			dest.MemoBytes = memoBytes
 		}
 	}
-	dest.Signatures = strings.Split(row.SignatureString, ",")
-	dest.ValidBefore = timeString(dest, row.ValidBefore)
-	dest.ValidAfter = timeString(dest, row.ValidAfter)
+	dest.Signatures = row.Signatures
+	if !row.TimeBounds.Null {
+		dest.ValidBefore = timeString(dest, row.TimeBounds.Upper)
+		dest.ValidAfter = timeString(dest, row.TimeBounds.Lower)
+	}
 
 	if row.InnerTransactionHash.Valid {
 		dest.FeeAccount = row.FeeAccount.String
@@ -61,7 +62,7 @@ func PopulateTransaction(
 		dest.InnerTransaction = &protocol.InnerTransaction{
 			Hash:       row.InnerTransactionHash.String,
 			MaxFee:     row.MaxFee,
-			Signatures: strings.Split(row.InnerSignatureString.String, ","),
+			Signatures: row.InnerSignatures,
 		}
 		if transactionHash != row.TransactionHash {
 			dest.Signatures = dest.InnerTransaction.Signatures

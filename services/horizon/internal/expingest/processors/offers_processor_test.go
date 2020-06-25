@@ -20,6 +20,7 @@ type OffersProcessorTestSuiteState struct {
 	processor              *OffersProcessor
 	mockQ                  *history.MockQOffers
 	mockBatchInsertBuilder *history.MockOffersBatchInsertBuilder
+	sequence               uint32
 }
 
 func (s *OffersProcessorTestSuiteState) SetupTest() {
@@ -30,11 +31,13 @@ func (s *OffersProcessorTestSuiteState) SetupTest() {
 		On("NewOffersBatchInsertBuilder", maxBatchSize).
 		Return(s.mockBatchInsertBuilder).Once()
 
-	s.processor = NewOffersProcessor(s.mockQ)
+	s.sequence = 456
+	s.processor = NewOffersProcessor(s.mockQ, s.sequence)
 }
 
 func (s *OffersProcessorTestSuiteState) TearDownTest() {
 	s.mockBatchInsertBuilder.On("Exec").Return(nil).Once()
+	s.mockQ.On("CompactOffers", s.sequence-100).Return(int64(0), nil).Once()
 	s.Assert().NoError(s.processor.Commit())
 
 	s.mockQ.AssertExpectations(s.T())
@@ -74,6 +77,7 @@ type OffersProcessorTestSuiteLedger struct {
 	processor              *OffersProcessor
 	mockQ                  *history.MockQOffers
 	mockBatchInsertBuilder *history.MockOffersBatchInsertBuilder
+	sequence               uint32
 }
 
 func (s *OffersProcessorTestSuiteLedger) SetupTest() {
@@ -84,7 +88,8 @@ func (s *OffersProcessorTestSuiteLedger) SetupTest() {
 		On("NewOffersBatchInsertBuilder", maxBatchSize).
 		Return(s.mockBatchInsertBuilder).Once()
 
-	s.processor = NewOffersProcessor(s.mockQ)
+	s.sequence = 456
+	s.processor = NewOffersProcessor(s.mockQ, s.sequence)
 }
 
 func (s *OffersProcessorTestSuiteLedger) TearDownTest() {
@@ -92,7 +97,7 @@ func (s *OffersProcessorTestSuiteLedger) TearDownTest() {
 	s.mockBatchInsertBuilder.AssertExpectations(s.T())
 }
 
-func (s *OffersProcessorTestSuiteLedger) TestInsertOffer() {
+func (s *OffersProcessorTestSuiteLedger) setupInsertOffer() {
 	// should be ignored because it's not an offer type
 	err := s.processor.ProcessChange(io.Change{
 		Type: xdr.LedgerEntryTypeAccount,
@@ -163,7 +168,31 @@ func (s *OffersProcessorTestSuiteLedger) TestInsertOffer() {
 	).Return(nil).Once()
 
 	s.mockBatchInsertBuilder.On("Exec").Return(nil).Once()
+}
+
+func (s *OffersProcessorTestSuiteLedger) TestInsertOffer() {
+	s.setupInsertOffer()
+	s.mockQ.On("CompactOffers", s.sequence-100).Return(int64(0), nil).Once()
 	s.Assert().NoError(s.processor.Commit())
+}
+
+func (s *OffersProcessorTestSuiteLedger) TestSkipCompactionIfSequenceEqualsWindow() {
+	s.processor.sequence = offerCompactionWindow
+	s.setupInsertOffer()
+	s.Assert().NoError(s.processor.Commit())
+}
+
+func (s *OffersProcessorTestSuiteLedger) TestSkipCompactionIfSequenceLessThanWindow() {
+	s.processor.sequence = offerCompactionWindow - 1
+	s.setupInsertOffer()
+	s.Assert().NoError(s.processor.Commit())
+}
+
+func (s *OffersProcessorTestSuiteLedger) TestCompactionError() {
+	s.setupInsertOffer()
+	s.mockQ.On("CompactOffers", s.sequence-100).
+		Return(int64(0), errors.New("compaction error")).Once()
+	s.Assert().EqualError(s.processor.Commit(), "could not compact offers: compaction error")
 }
 
 func (s *OffersProcessorTestSuiteLedger) TestUpdateOfferNoRowsAffected() {
@@ -208,7 +237,7 @@ func (s *OffersProcessorTestSuiteLedger) TestUpdateOfferNoRowsAffected() {
 	err = s.processor.Commit()
 	s.Assert().Error(err)
 	s.Assert().IsType(ingesterrors.StateError{}, errors.Cause(err))
-	s.Assert().EqualError(err, "0 rows affected when updating offer 2")
+	s.Assert().EqualError(err, "error flushing cache: 0 rows affected when updating offer 2")
 }
 
 func (s *OffersProcessorTestSuiteLedger) TestRemoveOffer() {
@@ -231,9 +260,11 @@ func (s *OffersProcessorTestSuiteLedger) TestRemoveOffer() {
 	s.mockQ.On(
 		"RemoveOffer",
 		xdr.Int64(3),
+		s.sequence,
 	).Return(int64(1), nil).Once()
 
 	s.mockBatchInsertBuilder.On("Exec").Return(nil).Once()
+	s.mockQ.On("CompactOffers", s.sequence-100).Return(int64(0), nil).Once()
 	s.Assert().NoError(s.processor.Commit())
 }
 
@@ -291,6 +322,7 @@ func (s *OffersProcessorTestSuiteLedger) TestProcessUpgradeChange() {
 	).Return(nil).Once()
 
 	s.mockBatchInsertBuilder.On("Exec").Return(nil).Once()
+	s.mockQ.On("CompactOffers", s.sequence-100).Return(int64(0), nil).Once()
 	s.Assert().NoError(s.processor.Commit())
 }
 
@@ -314,10 +346,11 @@ func (s *OffersProcessorTestSuiteLedger) TestRemoveOfferNoRowsAffected() {
 	s.mockQ.On(
 		"RemoveOffer",
 		xdr.Int64(3),
+		s.sequence,
 	).Return(int64(0), nil).Once()
 
 	err = s.processor.Commit()
 	s.Assert().Error(err)
 	s.Assert().IsType(ingesterrors.StateError{}, errors.Cause(err))
-	s.Assert().EqualError(err, "0 rows affected when removing offer 3")
+	s.Assert().EqualError(err, "error flushing cache: 0 rows affected when removing offer 3")
 }

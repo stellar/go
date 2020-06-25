@@ -17,6 +17,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/expingest"
 	"github.com/stellar/go/services/horizon/internal/hchi"
 	"github.com/stellar/go/services/horizon/internal/httpx"
+	"github.com/stellar/go/services/horizon/internal/ledger"
 	"github.com/stellar/go/services/horizon/internal/render"
 	hProblem "github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/support/db"
@@ -238,6 +239,40 @@ func requestMetricsMiddleware(h http.Handler) http.Handler {
 			app.web.failureMeter.Mark(1)
 		}
 	})
+}
+
+// NewHistoryMiddleware adds session to the request context and ensures Horizon
+// is not in a stale state, which is when the difference between latest core
+// ledger and latest history ledger is higher than the given threshold
+func NewHistoryMiddleware(staleThreshold int32, session *db.Session) func(http.Handler) http.Handler {
+	return func(h http.Handler) http.Handler {
+
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if staleThreshold > 0 {
+				ls := ledger.CurrentState()
+				isStale := (ls.CoreLatest - ls.HistoryLatest) > int32(staleThreshold)
+				if isStale {
+					err := hProblem.StaleHistory
+					err.Extras = map[string]interface{}{
+						"history_latest_ledger": ls.HistoryLatest,
+						"core_latest_ledger":    ls.CoreLatest,
+					}
+					problem.Render(r.Context(), w, err)
+					return
+				}
+			}
+
+			requestSession := session.Clone()
+			requestSession.Ctx = r.Context()
+			h.ServeHTTP(w, r.WithContext(
+				context.WithValue(
+					r.Context(),
+					&horizonContext.SessionContextKey,
+					requestSession,
+				),
+			))
+		})
+	}
 }
 
 // StateMiddleware is a middleware which enables a state handler if the state

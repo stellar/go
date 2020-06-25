@@ -486,60 +486,6 @@ func TestAssetsRequest(t *testing.T) {
 
 }
 
-func TestMetrics(t *testing.T) {
-	hmock := httptest.NewClient()
-	client := &Client{
-		HorizonURL: "https://localhost/",
-		HTTP:       hmock,
-	}
-
-	// happy path
-	hmock.On(
-		"GET",
-		"https://localhost/metrics",
-	).ReturnString(200, metricsResponse)
-
-	metrics, err := client.Metrics()
-
-	if assert.NoError(t, err) {
-		assert.Equal(t, metrics.GoRoutines.Value, 1893)
-		assert.Equal(t, metrics.HistoryElderLedger.Value, 1)
-		assert.Equal(t, metrics.HistoryLatestLedger.Value, 22826153)
-		assert.Equal(t, metrics.IngestLedgerGraphOnlyIngestion.Min, float64(10))
-		assert.Equal(t, metrics.IngestLedgerIngestion.Median, float64(0.0706217925))
-		assert.Equal(t, metrics.IngestStateVerify.Percent99_9, float64(230.123456))
-		assert.Equal(t, metrics.LoggingDebug.Count, 0)
-		assert.Equal(t, metrics.LoggingError.Rate15m, float64(0))
-		assert.Equal(t, metrics.LoggingInfo.MeanRate, 227.30356525388274)
-		assert.Equal(t, metrics.LoggingPanic.Rate1m, float64(0))
-		assert.Equal(t, metrics.LoggingWarning.Rate5m, 3.714334583072108e-10)
-		assert.Equal(t, metrics.RequestsFailed.Rate5m, 47.132925275045295)
-		assert.Equal(t, metrics.RequestsSucceeded.MeanRate, 68.31190342961553)
-		assert.Equal(t, metrics.RequestsTotal.Percent99, 55004856745.49)
-		assert.Equal(t, metrics.CoreLatestLedger.Value, 22826156)
-		assert.Equal(t, metrics.CoreOpenConnections.Value, 94)
-		assert.Equal(t, metrics.TxsubBuffered.Value, 1)
-		assert.Equal(t, metrics.TxsubFailed.Count, 13977)
-		assert.Equal(t, metrics.TxsubSucceeded.Rate15m, 0.3684477520175787)
-		assert.Equal(t, metrics.TxsubOpen.Value, 0)
-		assert.Equal(t, metrics.TxsubTotal.Rate5m, 0.3935864740456858)
-
-	}
-
-	// connection error
-	hmock.On(
-		"GET",
-		"https://localhost/metrics",
-	).ReturnError("http.Client error")
-
-	_, err = client.Metrics()
-	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), "http.Client error")
-		_, ok := err.(*Error)
-		assert.Equal(t, ok, false)
-	}
-}
-
 func TestFeeStats(t *testing.T) {
 	hmock := httptest.NewClient()
 	client := &Client{
@@ -588,19 +534,6 @@ func TestFeeStats(t *testing.T) {
 		assert.Equal(t, int64(100), fees.FeeCharged.P90)
 		assert.Equal(t, int64(100), fees.FeeCharged.P95)
 		assert.Equal(t, int64(100), fees.FeeCharged.P99)
-	}
-
-	// connection error
-	hmock.On(
-		"GET",
-		"https://localhost/metrics",
-	).ReturnError("http.Client error")
-
-	_, err = client.Metrics()
-	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), "http.Client error")
-		_, ok := err.(*Error)
-		assert.Equal(t, ok, false)
 	}
 }
 
@@ -915,31 +848,6 @@ func TestSubmitTransactionXDRRequest(t *testing.T) {
 		assert.Equal(t, resp.ResultXdr, "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAA=")
 		assert.Equal(t, resp.ResultMetaXdr, `AAAAAQAAAAIAAAADAAVp+wAAAAAAAAAAEH3Rayw4M0iCLoEe96rPFNGYim8AVHJU0z4ebYZW4JwACBP/TuycHAAABD0AAuV+AAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAVp+wAAAAAAAAAAEH3Rayw4M0iCLoEe96rPFNGYim8AVHJU0z4ebYZW4JwACBP/TuycHAAABD0AAuV/AAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAAwAAAAMABWn7AAAAAAAAAAAQfdFrLDgzSIIugR73qs8U0ZiKbwBUclTTPh5thlbgnAAIE/9O7JwcAAAEPQAC5X8AAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEABWn7AAAAAAAAAAAQfdFrLDgzSIIugR73qs8U0ZiKbwBUclTTPh5thlbgnAAIE+gGdbQcAAAEPQAC5X8AAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAABWn7AAAAAAAAAADJMEbE6B9ICmmmxOdv9hGvqA5HxZPQtk2uEuHjLcUKCgAAABdIdugAAAVp+wAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA==`)
 	}
-}
-
-func TestCheckMemoRequiredSkipsMemoIDAddress(t *testing.T) {
-	client := &Client{HorizonURL: "https://localhost/"}
-
-	kp := keypair.MustParseFull("SA26PHIKZM6CXDGR472SSGUQQRYXM6S437ZNHZGRM6QA4FOPLLLFRGDX")
-	sourceAccount := txnbuild.NewSimpleAccount(kp.Address(), int64(0))
-
-	payment := txnbuild.Payment{
-		Destination: "MCAAAAAAAAAAAAB7BQ2L7E5NBWMXDUCMZSIPOBKRDSBYVLMXGSSKF6YNPIB7Y77ITKNOG",
-		Amount:      "10",
-		Asset:       txnbuild.NativeAsset{},
-	}
-
-	tx, err := txnbuild.NewTransaction(
-		txnbuild.TransactionParams{
-			SourceAccount:        &sourceAccount,
-			IncrementSequenceNum: true,
-			Operations:           []txnbuild.Operation{&payment},
-			BaseFee:              txnbuild.MinBaseFee,
-			Timebounds:           txnbuild.NewTimebounds(0, 10),
-		},
-	)
-	assert.NoError(t, err)
-	assert.NoError(t, client.checkMemoRequired(tx))
 }
 
 func TestSubmitTransactionRequest(t *testing.T) {
@@ -1476,9 +1384,9 @@ func TestFetchTimebounds(t *testing.T) {
 	header.Add("Date", "Wed, 19 Jun 2019 12:24:56 GMT") //unix time: 1560947096
 	hmock.On(
 		"GET",
-		"https://localhost/metrics",
+		"https://localhost/",
 	).ReturnStringWithHeader(200, metricsResponse, header)
-	_, err = client.Metrics()
+	_, err = client.Root()
 	assert.NoError(t, err)
 
 	// get saved server time

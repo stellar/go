@@ -129,3 +129,16 @@ func (aid *AccountId) SetAddress(address string) error {
 
 	return err
 }
+
+// ToMuxedAccount transforms an AccountId into a MuxedAccount with
+// a zero memo id
+func (aid *AccountId) ToMuxedAccount() MuxedAccount {
+	result := MuxedAccount{Type: CryptoKeyTypeKeyTypeEd25519}
+	switch aid.Type {
+	case PublicKeyTypePublicKeyTypeEd25519:
+		result.Ed25519 = aid.Ed25519
+	default:
+		panic(fmt.Errorf("Unknown account id type: %v", aid.Type))
+	}
+	return result
+}

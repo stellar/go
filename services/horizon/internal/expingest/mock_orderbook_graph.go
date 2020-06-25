@@ -21,6 +21,12 @@ func (m *mockOrderBookGraph) Apply(ledger uint32) error {
 	return args.Error(0)
 
 }
+
+func (m *mockOrderBookGraph) Pending() ([]xdr.OfferEntry, []xdr.Int64) {
+	args := m.Called()
+	return args.Get(0).([]xdr.OfferEntry), args.Get(1).([]xdr.Int64)
+}
+
 func (m *mockOrderBookGraph) Discard() {
 	m.Called()
 }

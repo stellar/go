@@ -11,9 +11,9 @@ import (
 )
 
 type accountListHandler struct {
-	Logger         *supportlog.Entry
-	SigningAddress *keypair.FromAddress
-	AccountStore   account.Store
+	Logger           *supportlog.Entry
+	SigningAddresses []*keypair.FromAddress
+	AccountStore     account.Store
 }
 
 type accountListResponse struct {
@@ -48,9 +48,15 @@ func (h accountListHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			serverError.Render(w)
 			return
 		} else {
+			signers := []accountResponseSigner{}
+			for _, signingAddress := range h.SigningAddresses {
+				signers = append(signers, accountResponseSigner{
+					Key: signingAddress.Address(),
+				})
+			}
 			accResp := accountResponse{
 				Address: acc.Address,
-				Signer:  h.SigningAddress.Address(),
+				Signers: signers,
 			}
 			for _, i := range acc.Identities {
 				accRespIdentity := accountResponseIdentity{
@@ -72,9 +78,15 @@ func (h accountListHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		for _, acc := range accs {
+			signers := []accountResponseSigner{}
+			for _, signingAddress := range h.SigningAddresses {
+				signers = append(signers, accountResponseSigner{
+					Key: signingAddress.Address(),
+				})
+			}
 			accResp := accountResponse{
 				Address: acc.Address,
-				Signer:  h.SigningAddress.Address(),
+				Signers: signers,
 			}
 			for _, i := range acc.Identities {
 				accRespIdentity := accountResponseIdentity{
@@ -104,9 +116,15 @@ func (h accountListHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		for _, acc := range accs {
+			signers := []accountResponseSigner{}
+			for _, signingAddress := range h.SigningAddresses {
+				signers = append(signers, accountResponseSigner{
+					Key: signingAddress.Address(),
+				})
+			}
 			accResp := accountResponse{
 				Address: acc.Address,
-				Signer:  h.SigningAddress.Address(),
+				Signers: signers,
 			}
 			for _, i := range acc.Identities {
 				accRespIdentity := accountResponseIdentity{
@@ -136,9 +154,15 @@ func (h accountListHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		for _, acc := range accs {
+			signers := []accountResponseSigner{}
+			for _, signingAddress := range h.SigningAddresses {
+				signers = append(signers, accountResponseSigner{
+					Key: signingAddress.Address(),
+				})
+			}
 			accResp := accountResponse{
 				Address: acc.Address,
-				Signer:  h.SigningAddress.Address(),
+				Signers: signers,
 			}
 			for _, i := range acc.Identities {
 				accRespIdentity := accountResponseIdentity{

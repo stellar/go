@@ -125,17 +125,6 @@ func ExampleClient_LedgerDetail() {
 
 }
 
-func ExampleClient_Metrics() {
-	client := horizonclient.DefaultPublicNetClient
-	// horizon metrics
-	metrics, err := client.Metrics()
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	fmt.Print(metrics)
-}
-
 func ExampleClient_NextAssetsPage() {
 	client := horizonclient.DefaultPublicNetClient
 	// assets for asset issuer

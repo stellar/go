@@ -28,6 +28,8 @@
 // migrations/33_remove_unused.sql (860B)
 // migrations/34_fee_bump_transactions.sql (863B)
 // migrations/35_drop_participant_id.sql (306B)
+// migrations/36_deleted_offers.sql (956B)
+// migrations/37_add_tx_set_operation_count_to_ledgers.sql (176B)
 // migrations/3_use_sequence_in_history_accounts.sql (447B)
 // migrations/4_add_protocol_version.sql (188B)
 // migrations/5_create_trades_table.sql (1.1kB)
@@ -664,6 +666,46 @@ func migrations35_drop_participant_idSql() (*asset, error) {
 	return a, nil
 }
 
+var _migrations36_deleted_offersSql = []byte("\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff\xac\x92\x41\x6e\xb3\x30\x10\x85\xf7\x3e\xc5\x2c\x83\x7e\x72\x02\xf4\x2f\x48\xec\x54\x91\x08\x54\xd4\x48\xdd\x59\x50\x0f\xd4\x92\x03\x91\xed\x34\xca\xed\xab\x24\x40\x29\x85\x6e\xca\xd2\x1e\xcd\x37\xef\xcd\x9b\xf5\x1a\xfe\x1d\x55\x65\x72\x87\x90\x9d\x08\x09\x23\xce\x52\xe0\xe1\x26\x62\xd0\x94\x25\x1a\x0b\x21\xa5\x20\x51\xa3\x43\x09\x45\xd3\x68\xcc\x6b\xa0\x6c\x17\x66\x11\x87\x32\xd7\x16\x03\x42\xb6\x29\x0b\x39\x83\x7d\x4c\xd9\x2b\x14\x68\x9d\xb8\x37\x43\x12\x77\x94\xec\x65\x1f\x3f\xc1\x86\xa7\x8c\xc1\xca\xa2\xd6\xaa\xae\x44\x6e\x2d\x3a\x1f\x8a\xf3\x75\xf0\x6a\x67\xf9\x70\x32\xea\x0d\xbd\xe0\x3b\x5c\xab\x0f\x14\x2d\x73\x86\xde\x03\x74\x6e\x9d\x38\x36\x52\x95\x0a\xa5\xd0\x28\x2b\x34\x5e\x40\x08\x4d\x93\xe7\x16\xf7\xe8\x17\xc5\x55\xdc\x34\xa1\xf1\x47\x3f\x03\x5d\x5f\x85\xa1\xde\xb1\xf9\x31\x70\x5a\xe4\xea\x51\x14\x4a\xf6\x7e\xc7\x46\x67\x74\xfc\xc2\xfb\xb9\xc3\x79\xe6\xd0\xc2\x0c\x72\x32\x95\xdb\xfa\x86\x37\x43\x9b\x4b\x4d\x08\x65\x11\xe3\x0c\x76\x69\x72\xe8\x48\x97\x77\x34\xd8\xdf\xcd\x7f\x70\xe6\x8c\xcb\xaf\x7e\xe2\x5c\xef\x13\xb6\x49\x94\x1d\xe2\x6e\xfc\x5f\x33\x5a\x30\x9a\xc5\x12\xf1\x02\xf2\x19\x00\x00\xff\xff\xfa\xd2\x27\x51\xbc\x03\x00\x00")
+
+func migrations36_deleted_offersSqlBytes() ([]byte, error) {
+	return bindataRead(
+		_migrations36_deleted_offersSql,
+		"migrations/36_deleted_offers.sql",
+	)
+}
+
+func migrations36_deleted_offersSql() (*asset, error) {
+	bytes, err := migrations36_deleted_offersSqlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "migrations/36_deleted_offers.sql", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0x8c, 0xf8, 0x3f, 0x36, 0xd9, 0x93, 0x75, 0x16, 0xab, 0x80, 0xc6, 0x1d, 0xc6, 0x4a, 0x4e, 0x0, 0x2, 0xa9, 0xac, 0x37, 0x1c, 0x6a, 0x4f, 0x53, 0xf0, 0xe8, 0x78, 0x41, 0xeb, 0xd2, 0x85, 0x3}}
+	return a, nil
+}
+
+var _migrations37_add_tx_set_operation_count_to_ledgersSql = []byte("\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff\x7c\xcd\x31\xae\x02\x21\x10\x06\xe0\x9e\x53\xfc\xfd\xcb\x9e\x60\x2b\x9e\x60\x35\xee\x9a\x0d\xd4\x64\xa3\x13\x24\x51\xd8\x0c\x63\xd4\xdb\xdb\xda\xe8\x05\xbe\x6f\x18\xf0\x77\x2b\x59\x56\x65\xc4\xcd\x18\x4b\xc1\x2f\x08\xf6\x9f\x3c\x2e\xa5\x6b\x93\x57\xba\xf2\x39\xb3\x74\x58\xe7\xa0\xcf\xd4\x59\x53\xdb\x58\x56\x2d\xad\xa6\x53\xbb\x57\x45\xa9\xca\x99\x05\xce\xef\x6d\xa4\x80\x29\x12\x8d\xc6\x7c\xea\xae\x3d\xea\x6f\xdf\x2d\xf3\x11\xbb\x99\xe2\x61\xfa\xf2\x8c\xe6\x1d\x00\x00\xff\xff\x32\x43\x33\x1d\xb0\x00\x00\x00")
+
+func migrations37_add_tx_set_operation_count_to_ledgersSqlBytes() ([]byte, error) {
+	return bindataRead(
+		_migrations37_add_tx_set_operation_count_to_ledgersSql,
+		"migrations/37_add_tx_set_operation_count_to_ledgers.sql",
+	)
+}
+
+func migrations37_add_tx_set_operation_count_to_ledgersSql() (*asset, error) {
+	bytes, err := migrations37_add_tx_set_operation_count_to_ledgersSqlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "migrations/37_add_tx_set_operation_count_to_ledgers.sql", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0xc2, 0xf1, 0x5, 0x98, 0x10, 0xbb, 0xd8, 0x0, 0x7d, 0xda, 0xff, 0x9a, 0x91, 0xc8, 0xea, 0x31, 0x96, 0xba, 0xfb, 0x44, 0x84, 0xbe, 0x41, 0xc3, 0xac, 0x15, 0x42, 0x4c, 0xc0, 0x1e, 0xeb, 0xe8}}
+	return a, nil
+}
+
 var _migrations3_use_sequence_in_history_accountsSql = []byte("\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff\x9c\x91\x4d\x6b\xb3\x40\x14\x85\xf7\xf3\x2b\xce\x2e\xca\xfb\x66\x91\x6d\x5c\x4d\xc6\x1b\x22\x8c\x63\x3b\x5e\xdb\x64\x25\xa2\x43\x3a\x90\x6a\xeb\xd8\xaf\x7f\x5f\x48\xd3\x0f\x08\x6d\xa1\xcb\x73\x78\xe0\x39\xdc\x3b\x9f\xe3\xdf\xad\xdf\x8f\xcd\xe4\x50\xdd\x09\x65\x49\x32\xa1\xa4\xcb\x8a\x8c\x22\xdc\xf8\x30\x0d\xe3\x4b\xdd\xb4\xed\xf0\xd0\x4f\xa1\xf6\x5d\x1d\xdc\xbd\x00\x80\x92\xa5\x65\x5c\x67\xbc\xc1\xe2\x58\x64\x46\x59\xca\xc9\x30\x56\xbb\x53\x65\x0a\xe4\x99\xb9\x92\xba\xa2\x8f\x2c\xb7\x9f\x59\x49\xb5\x21\x2c\x12\x51\x92\x26\xc5\x08\x6e\x7a\x6c\x0e\xd1\xec\x1b\xef\xec\x3f\xa2\x13\x99\xcb\x6d\xe4\xbb\x18\x6b\x5b\xe4\x67\x33\xe3\x38\x11\x52\x33\x59\xb0\x5c\x69\x42\x61\xf4\xee\x0c\xc2\x1b\xa1\x0a\x5d\xe5\x06\xbe\x43\x49\x8c\x94\xd6\xb2\xd2\x8c\xde\x3d\xff\xbc\x64\xb9\x1c\xdd\xbe\x3d\x34\x21\xc4\x89\x10\x5f\xcf\x98\x0e\x4f\xfd\x1f\xec\xa9\x2d\x2e\xde\xf5\x89\x38\xa6\xdf\xde\x90\x88\xd7\x00\x00\x00\xff\xff\x55\xe2\xdd\x2c\xbf\x01\x00\x00")
 
 func migrations3_use_sequence_in_history_accountsSqlBytes() ([]byte, error) {
@@ -943,6 +985,8 @@ var _bindata = map[string]func() (*asset, error){
 	"migrations/33_remove_unused.sql":                         migrations33_remove_unusedSql,
 	"migrations/34_fee_bump_transactions.sql":                 migrations34_fee_bump_transactionsSql,
 	"migrations/35_drop_participant_id.sql":                   migrations35_drop_participant_idSql,
+	"migrations/36_deleted_offers.sql":                        migrations36_deleted_offersSql,
+	"migrations/37_add_tx_set_operation_count_to_ledgers.sql": migrations37_add_tx_set_operation_count_to_ledgersSql,
 	"migrations/3_use_sequence_in_history_accounts.sql":       migrations3_use_sequence_in_history_accountsSql,
 	"migrations/4_add_protocol_version.sql":                   migrations4_add_protocol_versionSql,
 	"migrations/5_create_trades_table.sql":                    migrations5_create_trades_tableSql,
@@ -1023,6 +1067,8 @@ var _bintree = &bintree{nil, map[string]*bintree{
 		"33_remove_unused.sql":                         &bintree{migrations33_remove_unusedSql, map[string]*bintree{}},
 		"34_fee_bump_transactions.sql":                 &bintree{migrations34_fee_bump_transactionsSql, map[string]*bintree{}},
 		"35_drop_participant_id.sql":                   &bintree{migrations35_drop_participant_idSql, map[string]*bintree{}},
+		"36_deleted_offers.sql":                        &bintree{migrations36_deleted_offersSql, map[string]*bintree{}},
+		"37_add_tx_set_operation_count_to_ledgers.sql": &bintree{migrations37_add_tx_set_operation_count_to_ledgersSql, map[string]*bintree{}},
 		"3_use_sequence_in_history_accounts.sql":       &bintree{migrations3_use_sequence_in_history_accountsSql, map[string]*bintree{}},
 		"4_add_protocol_version.sql":                   &bintree{migrations4_add_protocol_versionSql, map[string]*bintree{}},
 		"5_create_trades_table.sql":                    &bintree{migrations5_create_trades_tableSql, map[string]*bintree{}},
