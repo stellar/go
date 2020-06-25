@@ -124,9 +124,11 @@ var dbReingestCmd = &cobra.Command{
 }
 
 var (
-	reingestForce   bool
-	parallelWorkers uint
-	parallelJobSize uint32
+	reingestForce       bool
+	parallelWorkers     uint
+	parallelJobSize     uint32
+	retries             uint
+	retryBackoffSeconds uint
 )
 var reingestRangeCmdOpts = []*support.ConfigOption{
 	{
@@ -153,6 +155,22 @@ var reingestRangeCmdOpts = []*support.ConfigOption{
 		Required:    false,
 		FlagDefault: uint32(100000),
 		Usage:       "[optional] parallel workers will run jobs processing ledger batches of the supplied size",
+	},
+	{
+		Name:        "retries",
+		ConfigKey:   &retries,
+		OptType:     types.Uint,
+		Required:    false,
+		FlagDefault: uint(0),
+		Usage:       "[optional] number of reingest retries",
+	},
+	{
+		Name:        "retry-backoff-seconds",
+		ConfigKey:   &retryBackoffSeconds,
+		OptType:     types.Uint,
+		Required:    false,
+		FlagDefault: uint(5),
+		Usage:       "[optional] backoff seconds between reingest retries",
 	},
 }
 
@@ -197,10 +215,12 @@ var dbReingestRangeCmd = &cobra.Command{
 		}
 
 		ingestConfig := expingest.Config{
-			CoreSession:       coreSession,
-			NetworkPassphrase: config.NetworkPassphrase,
-			HistorySession:    horizonSession,
-			HistoryArchiveURL: config.HistoryArchiveURLs[0],
+			CoreSession:                coreSession,
+			NetworkPassphrase:          config.NetworkPassphrase,
+			HistorySession:             horizonSession,
+			HistoryArchiveURL:          config.HistoryArchiveURLs[0],
+			MaxReingestRetries:         int(retries),
+			ReingesRetryBackoffSeconds: int(retryBackoffSeconds),
 		}
 		if config.EnableCaptiveCoreIngestion {
 			ingestConfig.StellarCorePath = config.StellarCoreBinaryPath

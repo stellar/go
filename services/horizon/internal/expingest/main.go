@@ -66,7 +66,9 @@ type Config struct {
 	// MaxStreamRetries determines how many times the reader will retry when encountering
 	// errors while streaming xdr bucket entries from the history archive.
 	// Set MaxStreamRetries to 0 if there should be no retry attempts
-	MaxStreamRetries int
+	MaxStreamRetries           int
+	MaxReingestRetries         int
+	ReingesRetryBackoffSeconds int
 }
 
 const (
@@ -119,8 +121,10 @@ type system struct {
 
 	stellarCoreClient stellarCoreClient
 
-	maxStreamRetries int
-	wg               sync.WaitGroup
+	maxStreamRetries           int
+	maxReingestRetries         int
+	reingesRetryBackoffSeconds int
+	wg                         sync.WaitGroup
 
 	// stateVerificationRunning is true when verification routine is currently
 	// running.
@@ -169,14 +173,16 @@ func NewSystem(config Config) (System, error) {
 	historyAdapter := adapters.MakeHistoryArchiveAdapter(archive)
 
 	system := &system{
-		ctx:                      ctx,
-		cancel:                   cancel,
-		historyAdapter:           historyAdapter,
-		ledgerBackend:            ledgerBackend,
-		config:                   config,
-		historyQ:                 historyQ,
-		disableStateVerification: config.DisableStateVerification,
-		maxStreamRetries:         config.MaxStreamRetries,
+		ctx:                        ctx,
+		cancel:                     cancel,
+		historyAdapter:             historyAdapter,
+		ledgerBackend:              ledgerBackend,
+		config:                     config,
+		historyQ:                   historyQ,
+		disableStateVerification:   config.DisableStateVerification,
+		maxStreamRetries:           config.MaxStreamRetries,
+		maxReingestRetries:         config.MaxReingestRetries,
+		reingesRetryBackoffSeconds: config.ReingesRetryBackoffSeconds,
 		stellarCoreClient: &stellarcore.Client{
 			URL: config.StellarCoreURL,
 		},
@@ -265,11 +271,19 @@ func (s *system) VerifyRange(fromLedger, toLedger uint32, verifyState bool) erro
 // ReingestRange runs the ingestion pipeline on the range of ledgers ingesting
 // history data only.
 func (s *system) ReingestRange(fromLedger, toLedger uint32, force bool) error {
-	return s.runStateMachine(reingestHistoryRangeState{
-		fromLedger: fromLedger,
-		toLedger:   toLedger,
-		force:      force,
-	})
+	run := func() error {
+		return s.runStateMachine(reingestHistoryRangeState{
+			fromLedger: fromLedger,
+			toLedger:   toLedger,
+			force:      force,
+		})
+	}
+	err := run()
+	for retry := 0; err != nil && retry < s.maxReingestRetries; retry++ {
+		time.Sleep(time.Second * time.Duration(s.reingesRetryBackoffSeconds))
+		err = run()
+	}
+	return err
 }
 
 func (s *system) runStateMachine(cur stateMachineNode) error {
