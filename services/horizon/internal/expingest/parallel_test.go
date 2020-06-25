@@ -77,6 +77,6 @@ func TestParallelReingestRangeError(t *testing.T) {
 	assert.NoError(t, err)
 	err = system.ReingestRange(0, 2050, 258)
 	assert.Error(t, err)
-	assert.Equal(t, "one or more jobs failed, recommended restart range: [1536, 2050]", err.Error())
+	assert.Equal(t, "job failed, recommended restart range: [1536, 2050]: error when processing [1536, 1791] range: failed because of foo", err.Error())
 
 }

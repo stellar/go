@@ -50,15 +50,11 @@ func newParallelSystems(config Config, workerCount uint, systemFactory func(Conf
 	}, nil
 }
 
-func (ps *ParallelSystems) runReingestWorker(stop <-chan struct{}, reingestJobQueue <-chan ledgerRange) error {
-	s, err := ps.systemFactory(ps.config)
-	if err != nil {
-		return errors.Wrap(err, "error creating new system")
-	}
+func (ps *ParallelSystems) runReingestWorker(s System, stop <-chan struct{}, reingestJobQueue <-chan ledgerRange) rangeError {
 	for {
 		select {
 		case <-stop:
-			return nil
+			return rangeError{}
 		case reingestRange := <-reingestJobQueue:
 			err := s.ReingestRange(reingestRange.from, reingestRange.to, false)
 			if err != nil {
@@ -110,18 +106,20 @@ func (ps *ParallelSystems) ReingestRange(fromLedger, toLedger uint32, batchSizeS
 
 	for i := uint(0); i < ps.workerCount; i++ {
 		wg.Add(1)
+		s, err := ps.systemFactory(ps.config)
+		if err != nil {
+			return errors.Wrap(err, "error creating new system")
+		}
 		go func() {
 			defer wg.Done()
-			err := ps.runReingestWorker(stop, reingestJobQueue)
-			if err != nil {
+			rangeErr := ps.runReingestWorker(s, stop, reingestJobQueue)
+			if rangeErr.err != nil {
 				log.WithError(err).Error("error in reingest worker")
-				if rangeErr, ok := err.(rangeError); ok {
-					lowestRangeErrMutex.Lock()
-					if lowestRangeErr == nil || (lowestRangeErr != nil && lowestRangeErr.ledgerRange.from > rangeErr.ledgerRange.from) {
-						lowestRangeErr = &rangeErr
-					}
-					lowestRangeErrMutex.Unlock()
+				lowestRangeErrMutex.Lock()
+				if lowestRangeErr == nil || lowestRangeErr.ledgerRange.from > rangeErr.ledgerRange.from {
+					lowestRangeErr = &rangeErr
 				}
+				lowestRangeErrMutex.Unlock()
 				stopOnce.Do(func() {
 					close(stop)
 				})
@@ -152,7 +150,7 @@ rangeQueueLoop:
 	close(reingestJobQueue)
 
 	if lowestRangeErr != nil {
-		return errors.Errorf("one or more jobs failed, recommended restart range: [%d, %d]", lowestRangeErr.ledgerRange.from, toLedger)
+		return errors.Wrapf(lowestRangeErr, "job failed, recommended restart range: [%d, %d]", lowestRangeErr.ledgerRange.from, toLedger)
 	}
 	return nil
 }
