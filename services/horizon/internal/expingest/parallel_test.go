@@ -87,11 +87,11 @@ func TestParallelReingestRangeErrorInEarlierJob(t *testing.T) {
 	wg.Add(1)
 	factory := func(c Config) (System, error) {
 		result := &mockSystem{}
-		// Fail on the second range
+		// Fail on an lower subrange after the first error
 		result.On("ReingestRange", uint32(1024), uint32(1279), mock.AnythingOfType("bool")).Run(func(mock.Arguments) {
 			// Wait for a more recent range to error
 			wg.Wait()
-			// This sleep should help making sure the result of this range is processed later than the earlier ones
+			// This sleep should help making sure the result of this range is processed later than the one below
 			// (there are no guarantees without instrumenting ReingestRange(), but that's too complicated)
 			time.Sleep(50 * time.Millisecond)
 		}).Return(errors.New("failed because of foo"))
