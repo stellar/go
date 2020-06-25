@@ -17,9 +17,9 @@ import (
 )
 
 type KeysetCommand struct {
-	Logger               *supportlog.Entry
-	EncryptionKMSKeyURI  string
-	EncryptionTinkKeyset string
+	Logger                   *supportlog.Entry
+	EncryptionKMSKeyURI      string
+	EncryptionTinkKeysetJSON string
 }
 
 func (c *KeysetCommand) Command() *cobra.Command {
@@ -36,7 +36,7 @@ func (c *KeysetCommand) Command() *cobra.Command {
 			Name:        "encryption-tink-keyset",
 			Usage:       "Existing Tink keyset to rotate/encrypt/decrypt",
 			OptType:     types.String,
-			ConfigKey:   &c.EncryptionTinkKeyset,
+			ConfigKey:   &c.EncryptionTinkKeysetJSON,
 			FlagDefault: "",
 			Required:    false,
 		},
@@ -155,7 +155,7 @@ func createKeyset(kmsKeyURI string, keyTemplate *tinkpb.KeyTemplate) (publicClea
 }
 
 func (c *KeysetCommand) Rotate() {
-	keysetPublic, keysetPrivateCleartext, keysetPrivateEncrypted, err := rotateKeyset(c.EncryptionKMSKeyURI, c.EncryptionTinkKeyset, c.keyTemplate())
+	keysetPublic, keysetPrivateCleartext, keysetPrivateEncrypted, err := rotateKeyset(c.EncryptionKMSKeyURI, c.EncryptionTinkKeysetJSON, c.keyTemplate())
 	if err != nil {
 		c.Logger.Errorf("Error rotating keyset: %v", err)
 		return
@@ -240,7 +240,7 @@ func rotateKeyset(kmsKeyURI, keysetJSON string, keyTemplate *tinkpb.KeyTemplate)
 var errNoKMSKeyURI = errors.New("KMS Key URI is not configured")
 
 func (c *KeysetCommand) Decrypt() {
-	keysetPublic, keysetPrivateCleartext, err := decryptKeyset(c.EncryptionKMSKeyURI, c.EncryptionTinkKeyset)
+	keysetPublic, keysetPrivateCleartext, err := decryptKeyset(c.EncryptionKMSKeyURI, c.EncryptionTinkKeysetJSON)
 	if err != nil {
 		c.Logger.Errorf("Error decrypting keyset: %v", err)
 		return
@@ -291,7 +291,7 @@ func decryptKeyset(kmsKeyURI, keysetJSON string) (publicCleartext string, privat
 }
 
 func (c *KeysetCommand) Encrypt() {
-	keysetPublic, keysetPrivateEncrypted, err := encryptKeyset(c.EncryptionKMSKeyURI, c.EncryptionTinkKeyset)
+	keysetPublic, keysetPrivateEncrypted, err := encryptKeyset(c.EncryptionKMSKeyURI, c.EncryptionTinkKeysetJSON)
 	if err != nil {
 		c.Logger.Errorf("Error encrypting keyset: %v", err)
 		return
