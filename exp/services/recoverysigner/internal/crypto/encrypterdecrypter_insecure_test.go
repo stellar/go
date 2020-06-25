@@ -46,3 +46,111 @@ func TestInsecureEncrypterDecrypter_encryptDecrypt(t *testing.T) {
 	_, err = dec.Decrypt(ciphertext, []byte("wrong info"))
 	assert.Error(t, err)
 }
+
+func TestNewInsecureEncrypterDecrypter_rotatedKeyset(t *testing.T) {
+	ksPriv1 := generateKeysetCleartext(t, keyTemplateHybridGCM())
+
+	// add an additional ECIESHKDFAES128GCM Key
+	ksPriv2 := generateRotatedKeysetCleartext(t, ksPriv1, keyTemplateHybridGCM())
+	enc, dec, err := newInsecureEncrypterDecrypter(ksPriv2)
+	require.NoError(t, err)
+	assert.NotNil(t, enc)
+	assert.NotNil(t, dec)
+
+	// add a new ECIESHKDFAES128CTRHMACSHA256 Key on top of the current ECIESHKDFAES128GCM Key
+	ksPriv3 := generateRotatedKeysetCleartext(t, ksPriv1, keyTemplateHybridCTRHMACSHA256())
+	enc, dec, err = newInsecureEncrypterDecrypter(ksPriv3)
+	require.NoError(t, err)
+	assert.NotNil(t, enc)
+	assert.NotNil(t, dec)
+}
+
+func TestInsecureEncrypterDecrypter_rotatedKeysetEncryptDecrypt(t *testing.T) {
+	ksPriv1 := generateKeysetCleartext(t, keyTemplateHybridGCM())
+	enc1, dec1, err := newInsecureEncrypterDecrypter(ksPriv1)
+	require.NoError(t, err)
+
+	// add an additional ECIESHKDFAES128GCM Key
+	ksPriv2 := generateRotatedKeysetCleartext(t, ksPriv1, keyTemplateHybridGCM())
+	enc2, dec2, err := newInsecureEncrypterDecrypter(ksPriv2)
+	require.NoError(t, err)
+
+	plaintext := []byte("secure message")
+	contextInfo := []byte("context info")
+
+	// verify that the new keyset private is able to decrypt what the new keyset public encrypts
+	ciphertext, err := enc2.Encrypt(plaintext, contextInfo)
+	require.NoError(t, err)
+
+	plaintext2, err := dec2.Decrypt(ciphertext, contextInfo)
+	require.NoError(t, err)
+	assert.Equal(t, plaintext, plaintext2)
+
+	// context info not matching will result in a failed decryption
+	_, err = dec2.Decrypt(ciphertext, []byte("wrong info"))
+	assert.Error(t, err)
+
+	// verify that the new keyset is able to decrypt what the old keyset encrypts
+	ciphertext, err = enc1.Encrypt(plaintext, contextInfo)
+	require.NoError(t, err)
+
+	plaintext2, err = dec2.Decrypt(ciphertext, contextInfo)
+	require.NoError(t, err)
+	assert.Equal(t, plaintext, plaintext2)
+
+	// context info not matching will still result in a failed decryption
+	_, err = dec2.Decrypt(ciphertext, []byte("wrong info"))
+	assert.Error(t, err)
+
+	// verify that the old keyset is not able to decrypt what the new keyset encrypts
+	ciphertext, err = enc2.Encrypt(plaintext, contextInfo)
+	require.NoError(t, err)
+
+	_, err = dec1.Decrypt(ciphertext, contextInfo)
+	assert.Error(t, err)
+}
+
+func TestInsecureEncrypterDecrypter_rotatedKeysetMixedKeysEncryptDecrypt(t *testing.T) {
+	ksPriv1 := generateKeysetCleartext(t, keyTemplateHybridGCM())
+	enc1, dec1, err := newInsecureEncrypterDecrypter(ksPriv1)
+	require.NoError(t, err)
+
+	// add a new ECIESHKDFAES128CTRHMACSHA256 Key on top of the current ECIESHKDFAES128GCM Key
+	ksPriv2 := generateRotatedKeysetCleartext(t, ksPriv1, keyTemplateHybridCTRHMACSHA256())
+	enc2, dec2, err := newInsecureEncrypterDecrypter(ksPriv2)
+	require.NoError(t, err)
+
+	plaintext := []byte("secure message")
+	contextInfo := []byte("context info")
+
+	// verify that the new keyset private is able to decrypt what the new keyset public encrypts
+	ciphertext, err := enc2.Encrypt(plaintext, contextInfo)
+	require.NoError(t, err)
+
+	plaintext2, err := dec2.Decrypt(ciphertext, contextInfo)
+	require.NoError(t, err)
+	assert.Equal(t, plaintext, plaintext2)
+
+	// context info not matching will result in a failed decryption
+	_, err = dec2.Decrypt(ciphertext, []byte("wrong info"))
+	assert.Error(t, err)
+
+	// verify that the new keyset is able to decrypt what the old keyset encrypts
+	ciphertext, err = enc1.Encrypt(plaintext, contextInfo)
+	require.NoError(t, err)
+
+	plaintext2, err = dec2.Decrypt(ciphertext, contextInfo)
+	require.NoError(t, err)
+	assert.Equal(t, plaintext, plaintext2)
+
+	// context info not matching will still result in a failed decryption
+	_, err = dec2.Decrypt(ciphertext, []byte("wrong info"))
+	assert.Error(t, err)
+
+	// verify that the old keyset is not able to decrypt what the new keyset encrypts
+	ciphertext, err = enc2.Encrypt(plaintext, contextInfo)
+	require.NoError(t, err)
+
+	_, err = dec1.Decrypt(ciphertext, contextInfo)
+	assert.Error(t, err)
+}
