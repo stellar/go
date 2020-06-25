@@ -68,7 +68,10 @@ func TestRotateKeyset(t *testing.T) {
 	exportedPriv1 := &keyset.MemReaderWriter{}
 	err = insecurecleartextkeyset.Write(khPriv1, exportedPriv1)
 	require.NoError(t, err)
-	assert.Len(t, exportedPriv1.Keyset.Key, 1)
+
+	ksPriv1 := exportedPriv1.Keyset
+	assert.Len(t, ksPriv1.Key, 1)
+	assert.Equal(t, ksPriv1.PrimaryKeyId, ksPriv1.Key[0].KeyId)
 
 	khPub1, err := keyset.ReadWithNoSecrets(keyset.NewJSONReader(strings.NewReader(public1)))
 	require.NoError(t, err)
@@ -84,8 +87,10 @@ func TestRotateKeyset(t *testing.T) {
 	require.NoError(t, err)
 
 	// rotation will add a new key to the keyset and make the new key the primary key
-	assert.Len(t, exportedPriv2.Keyset.Key, 2)
-	assert.NotEqual(t, exportedPriv2.Keyset.PrimaryKeyId, exportedPriv1.Keyset.PrimaryKeyId)
+	ksPriv2 := exportedPriv2.Keyset
+	assert.Len(t, ksPriv2.Key, 2)
+	assert.Equal(t, ksPriv2.PrimaryKeyId, ksPriv2.Key[1].KeyId)
+	assert.NotEqual(t, ksPriv2.PrimaryKeyId, ksPriv1.PrimaryKeyId)
 
 	khPub2, err := keyset.ReadWithNoSecrets(keyset.NewJSONReader(strings.NewReader(public2)))
 	require.NoError(t, err)
