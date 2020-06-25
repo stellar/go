@@ -1,5 +1,6 @@
 ---
 title: Response Format
+replacement: https://developers.stellar.org/api/introduction/response-format/
 ---
 
 Rather than using a fully custom way of representing the resources we expose in

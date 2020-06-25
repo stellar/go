@@ -2,6 +2,7 @@
 title: Post Transaction
 clientData:
   laboratoryUrl: https://www.stellar.org/laboratory/#explorer?resource=transactions&endpoint=create
+replacement: https://developers.stellar.org/api/resources/transactions/post/
 ---
 
 Posts a new [transaction](../resources/transaction.md) to the Stellar Network.

@@ -1,5 +1,6 @@
 ---
 title: Not Acceptable
+replacement: https://developers.stellar.org/api/errors/http-status-codes/standard/
 ---
 
 When your client only accepts certain formats of data from Horizon and Horizon cannot fulfill that

@@ -2,6 +2,7 @@
 title: Transactions for Ledger
 clientData:
   laboratoryUrl: https://www.stellar.org/laboratory/#explorer?resource=transactions&endpoint=for_ledger
+replacement: https://developers.stellar.org/api/resources/ledgers/transactions/
 ---
 
 This endpoint represents successful [transactions](../resources/transaction.md) in a given [ledger](../resources/ledger.md).

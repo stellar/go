@@ -1,5 +1,6 @@
 ---
 title: Bad Request
+replacement: https://developers.stellar.org/api/errors/http-status-codes/standard/
 ---
 
 If Horizon cannot understand a request due to invalid parameters, it will return a `bad_request`

@@ -1,5 +1,6 @@
 ---
 title: Timeout
+replacement: https://developers.stellar.org/api/errors/http-status-codes/horizon-specific/
 ---
 
 If you are encountering this error it means that either:
