@@ -34,7 +34,7 @@ Available Commands:
 Use "recoverysigner [command] --help" for more information about a command.
 ```
 
-## Usage: Serve
+## Usage: serve
 
 ```
 $ recoverysigner serve --help
@@ -53,6 +53,25 @@ Flags:
       --sep10-jwks string            JSON Web Key Set (JWKS) containing one or more keys used to validate SEP-10 JWTs (if the key is an asymmetric key that has separate public and private key, the JWK need only contain the public key) (if multiple keys are provided they will all attempt verification the key ID will be ignored although logged) (SEP10_JWKS)
       --sep10-jwt-issuer string      JWT issuer to verify if in the SEP-10 JWT iss field (not checked if empty) (SEP10_JWT_ISSUER)
       --signing-key string           Stellar signing key(s) used for signing transactions comma separated (first key is preferred signer) (will be deprecated with per-account keys in the future) (SIGNING_KEY)
+```
+
+## Usage: db
+
+```
+$ recoverysigner db --help
+Run database operations
+
+Usage:
+  recoverysigner db [flags]
+  recoverysigner db [command]
+
+Available Commands:
+  migrate     Run migrations on the database
+
+Flags:
+      --db-url string   Database URL (DB_URL) (default "postgres://localhost:5432/?sslmode=disable")
+
+Use "recoverysigner db [command] --help" for more information about a command.
 ```
 
 [SEP-30]: https://github.com/stellar/stellar-protocol/blob/600c326b210d71ee031d7f3a40ca88191b4cdf9c/ecosystem/sep-0030.md
