@@ -69,15 +69,23 @@ func (c *KeysetCommand) Command() *cobra.Command {
 	}
 	decryptCmd := &cobra.Command{
 		Use:   "decrypt",
-		Short: "Decrypt the Tink keyset specified in encryption-tink-keyset specified by using the key specified in encryption-kms-key-uri",
+		Short: "Decrypt the Tink keyset specified in encryption-tink-keyset with the KMS key specified in encryption-kms-key-uri",
 		Run: func(_ *cobra.Command, _ []string) {
 			c.Decrypt()
+		},
+	}
+	encryptCmd := &cobra.Command{
+		Use:   "encrypt",
+		Short: "Encrypt the Tink keyset specified in encryption-tink-keyset with the KMS key specified in encryption-kms-key-uri",
+		Run: func(_ *cobra.Command, _ []string) {
+			c.Encrypt()
 		},
 	}
 
 	cmd.AddCommand(createCmd)
 	cmd.AddCommand(rotateCmd)
 	cmd.AddCommand(decryptCmd)
+	cmd.AddCommand(encryptCmd)
 
 	return cmd
 }
@@ -268,4 +276,43 @@ func decryptKeyset(kmsKeyURI, keysetJSON string) (string, error) {
 	}
 
 	return keysetPrivateCleartext.String(), nil
+}
+
+func (c *KeysetCommand) Encrypt() {
+	keysetPrivateEncrypted, err := encryptKeyset(c.EncryptionKMSKeyURI, c.EncryptionTinkKeyset)
+	if err != nil {
+		c.Logger.Errorf("Error encrypting keyset: %v", err)
+		return
+	}
+
+	c.Logger.Print("Encrypted keyset private:", keysetPrivateEncrypted)
+}
+
+func encryptKeyset(kmsKeyURI, keysetJSON string) (string, error) {
+	if kmsKeyURI == "" {
+		return "", errNoKMSKeyURI
+	}
+
+	kmsClient, err := awskms.NewClient(kmsKeyURI)
+	if err != nil {
+		return "", errors.Wrap(err, "initializing AWS KMS client")
+	}
+
+	aead, err := kmsClient.GetAEAD(kmsKeyURI)
+	if err != nil {
+		return "", errors.Wrap(err, "getting AEAD primitive from KMS")
+	}
+
+	khPriv, err := insecurecleartextkeyset.Read(keyset.NewJSONReader(strings.NewReader(keysetJSON)))
+	if err != nil {
+		return "", errors.Wrap(err, "getting key handle for private key")
+	}
+
+	keysetPrivateEncrypted := strings.Builder{}
+	err = khPriv.Write(keyset.NewJSONWriter(&keysetPrivateEncrypted), aead)
+	if err != nil {
+		return "", errors.Wrap(err, "writing encrypted keyset private")
+	}
+
+	return keysetPrivateEncrypted.String(), nil
 }

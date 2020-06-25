@@ -176,3 +176,14 @@ func TestDecryptKeyset_invalidKMSKeyURI(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "initializing AWS KMS client")
 }
+
+func TestEncryptKeyset_invalidKMSKeyURI(t *testing.T) {
+	// encrption-kms-key-uri is not configured
+	_, err := encryptKeyset("", "keysetJSON")
+	require.Error(t, err)
+	assert.Equal(t, err, errNoKMSKeyURI)
+
+	_, err = encryptKeyset("invalid-uri", "keysetJSON")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "initializing AWS KMS client")
+}
