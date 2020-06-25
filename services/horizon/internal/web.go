@@ -179,14 +179,12 @@ func (w *web) mustInstallActions(config Config, pathFinder paths.Finder, session
 			maxPathLength:        config.MaxPathLength,
 			maxAssetsParamLength: maxAssetsForPathFinding,
 			pathFinder:           pathFinder,
-			historyQ:             w.historyQ,
 		}
 		findFixedPaths := FindFixedPathsHandler{
 			maxPathLength:        config.MaxPathLength,
 			setLastLedgerHeader:  true,
 			maxAssetsParamLength: maxAssetsForPathFinding,
 			pathFinder:           pathFinder,
-			historyQ:             w.historyQ,
 		}
 
 		r.Method(http.MethodGet, "/paths", findPaths)
