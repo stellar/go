@@ -176,14 +176,14 @@ func rotateKeyset(kmsKeyURI, keysetJSON string, keyTemplate *tinkpb.KeyTemplate)
 	)
 
 	if kmsKeyURI != "" {
-		kmsClient, err := awskms.NewClient(kmsKeyURI)
-		if err != nil {
-			return "", "", "", errors.Wrap(err, "initializing AWS KMS client")
+		kmsClient, kmsErr := awskms.NewClient(kmsKeyURI)
+		if kmsErr != nil {
+			return "", "", "", errors.Wrap(kmsErr, "initializing AWS KMS client")
 		}
 
-		aead, err = kmsClient.GetAEAD(kmsKeyURI)
-		if err != nil {
-			return "", "", "", errors.Wrap(err, "getting AEAD primitive from KMS")
+		aead, kmsErr = kmsClient.GetAEAD(kmsKeyURI)
+		if kmsErr != nil {
+			return "", "", "", errors.Wrap(kmsErr, "getting AEAD primitive from KMS")
 		}
 
 		khPriv, err = keyset.Read(keyset.NewJSONReader(strings.NewReader(keysetJSON)), aead)
