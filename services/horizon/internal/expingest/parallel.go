@@ -134,6 +134,7 @@ func (ps *ParallelSystems) ReingestRange(fromLedger, toLedger uint32, batchSizeS
 		}()
 	}
 
+rangeQueueLoop:
 	for subRangeFrom := fromLedger; subRangeFrom < toLedger; {
 		// job queuing
 		subRangeTo := subRangeFrom + (batchSize - 1) // we subtract one because both from and to are part of the batch
@@ -142,7 +143,7 @@ func (ps *ParallelSystems) ReingestRange(fromLedger, toLedger uint32, batchSizeS
 		}
 		select {
 		case <-stop:
-			break
+			break rangeQueueLoop
 		case reingestJobQueue <- ledgerRange{subRangeFrom, subRangeTo}:
 		}
 		subRangeFrom = subRangeTo + 1
