@@ -7,12 +7,15 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).x
 
 ## v1.5.0
 
+### Changes
+
 * Remove `--ingest-failed-transactions` flag. From now on Horizon will always ingest failed transactions. WARNING: If your application is using Horizon DB directly (not recommended!) remember that now it will also contain failed txs. ([#2702](https://github.com/stellar/go/pull/2702)).
 * Add transaction set operation count to `history_ledger`([#2690](https://github.com/stellar/go/pull/2690)).
 Extend ingestion to store the total number of operations in the transaction set and expose it in the ledger resource via `tx_set_operation_count`. This feature allows you to assess the used capacity of a transaction set.
 * Fix `/metrics` end-point ([#2717](https://github.com/stellar/go/pull/2717)).
 * Gracefully handle incorrect assets in the query parameters of GET `/offers` ([#2634](https://github.com/stellar/go/pull/2634)).
 * Fix logging message in OrderBookStream ([#2699](https://github.com/stellar/go/pull/2699)).
+* Fix data race in root endpoint ([#2745](https://github.com/stellar/go/pull/2745)).
 
 ### Experimental
 
