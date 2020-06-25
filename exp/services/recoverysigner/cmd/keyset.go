@@ -17,9 +17,9 @@ import (
 )
 
 type KeysetCommand struct {
-	Logger              *supportlog.Entry
-	EncryptionKMSKeyURI string
-	CurrentTinkKeyset   string
+	Logger               *supportlog.Entry
+	EncryptionKMSKeyURI  string
+	EncryptionTinkKeyset string
 }
 
 func (c *KeysetCommand) Command() *cobra.Command {
@@ -33,10 +33,10 @@ func (c *KeysetCommand) Command() *cobra.Command {
 			Required:    false,
 		},
 		{
-			Name:        "current-tink-keyset",
-			Usage:       "Current Tink keyset to rotate",
+			Name:        "encryption-tink-keyset",
+			Usage:       "Existing Tink keyset to rotate",
 			OptType:     types.String,
-			ConfigKey:   &c.CurrentTinkKeyset,
+			ConfigKey:   &c.EncryptionTinkKeyset,
 			FlagDefault: "",
 			Required:    false,
 		},
@@ -62,7 +62,7 @@ func (c *KeysetCommand) Command() *cobra.Command {
 	}
 	rotateCmd := &cobra.Command{
 		Use:   "rotate",
-		Short: "Rotate the Tink keyset by generating a new key, adding it to the keyset, and making it the primary key in the keyset",
+		Short: "Rotate the Tink keyset specified in encryption-tink-keyset by generating a new key, adding it to the keyset, and making it the primary key in the keyset",
 		Run: func(_ *cobra.Command, _ []string) {
 			c.Rotate()
 		},
@@ -139,7 +139,7 @@ func createKeyset(kmsKeyURI string, keyTemplate *tinkpb.KeyTemplate) (publicClea
 }
 
 func (c *KeysetCommand) Rotate() {
-	keysetPublic, keysetPrivateCleartext, keysetPrivateEncrypted, err := rotateKeyset(c.EncryptionKMSKeyURI, c.CurrentTinkKeyset, c.keyTemplate())
+	keysetPublic, keysetPrivateCleartext, keysetPrivateEncrypted, err := rotateKeyset(c.EncryptionKMSKeyURI, c.EncryptionTinkKeyset, c.keyTemplate())
 	if err != nil {
 		c.Logger.Errorf("Error rotating keyset: %v", err)
 		return
