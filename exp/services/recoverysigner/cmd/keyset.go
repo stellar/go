@@ -34,7 +34,7 @@ func (c *KeysetCommand) Command() *cobra.Command {
 		},
 		{
 			Name:        "encryption-tink-keyset",
-			Usage:       "Existing Tink keyset to rotate",
+			Usage:       "Existing Tink keyset to rotate/encrypt/decrypt",
 			OptType:     types.String,
 			ConfigKey:   &c.EncryptionTinkKeyset,
 			FlagDefault: "",
