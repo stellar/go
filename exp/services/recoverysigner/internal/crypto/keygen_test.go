@@ -4,7 +4,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/google/tink/go/hybrid"
 	"github.com/google/tink/go/insecurecleartextkeyset"
 	"github.com/google/tink/go/keyset"
 	tinkpb "github.com/google/tink/go/proto/tink_go_proto"
@@ -67,12 +66,4 @@ func rotateKeysetEncrypted(t *testing.T, keysetEncryptedJSON string, keyTemplate
 	require.NoError(t, err)
 
 	return keysetPrivateEncrypted.String()
-}
-
-func keyTemplateHybridGCM() *tinkpb.KeyTemplate {
-	return hybrid.ECIESHKDFAES128GCMKeyTemplate()
-}
-
-func keyTemplateHybridCTRHMACSHA256() *tinkpb.KeyTemplate {
-	return hybrid.ECIESHKDFAES128CTRHMACSHA256KeyTemplate()
 }

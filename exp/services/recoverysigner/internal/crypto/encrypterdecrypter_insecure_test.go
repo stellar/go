@@ -3,12 +3,13 @@ package crypto
 import (
 	"testing"
 
+	"github.com/google/tink/go/hybrid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestNewInsecureEncrypterDecrypter(t *testing.T) {
-	ksPriv := generateKeysetCleartext(t, keyTemplateHybridGCM())
+	ksPriv := generateKeysetCleartext(t, hybrid.ECIESHKDFAES128GCMKeyTemplate())
 	enc, dec, err := newInsecureEncrypterDecrypter(ksPriv)
 	require.NoError(t, err)
 	assert.NotNil(t, enc)
@@ -21,7 +22,7 @@ func TestNewInsecureEncrypterDecrypter(t *testing.T) {
 	assert.Nil(t, dec)
 
 	// encrypted keyset is preset
-	ksPrivEncrypted := generateKeysetEncrypted(t, keyTemplateHybridGCM())
+	ksPrivEncrypted := generateKeysetEncrypted(t, hybrid.ECIESHKDFAES128GCMKeyTemplate())
 	enc, dec, err = newInsecureEncrypterDecrypter(ksPrivEncrypted)
 	assert.Error(t, err)
 	assert.Nil(t, enc)
@@ -29,7 +30,7 @@ func TestNewInsecureEncrypterDecrypter(t *testing.T) {
 }
 
 func TestInsecureEncrypterDecrypter_encryptDecrypt(t *testing.T) {
-	ksPriv := generateKeysetCleartext(t, keyTemplateHybridGCM())
+	ksPriv := generateKeysetCleartext(t, hybrid.ECIESHKDFAES128GCMKeyTemplate())
 	enc, dec, err := newInsecureEncrypterDecrypter(ksPriv)
 	require.NoError(t, err)
 
@@ -48,17 +49,17 @@ func TestInsecureEncrypterDecrypter_encryptDecrypt(t *testing.T) {
 }
 
 func TestNewInsecureEncrypterDecrypter_rotatedKeyset(t *testing.T) {
-	ksPriv1 := generateKeysetCleartext(t, keyTemplateHybridGCM())
+	ksPriv1 := generateKeysetCleartext(t, hybrid.ECIESHKDFAES128GCMKeyTemplate())
 
 	// add an additional ECIESHKDFAES128GCM Key
-	ksPriv2 := rotateKeysetCleartext(t, ksPriv1, keyTemplateHybridGCM())
+	ksPriv2 := rotateKeysetCleartext(t, ksPriv1, hybrid.ECIESHKDFAES128GCMKeyTemplate())
 	enc, dec, err := newInsecureEncrypterDecrypter(ksPriv2)
 	require.NoError(t, err)
 	assert.NotNil(t, enc)
 	assert.NotNil(t, dec)
 
 	// add a new ECIESHKDFAES128CTRHMACSHA256 Key on top of the current ECIESHKDFAES128GCM Key
-	ksPriv3 := rotateKeysetCleartext(t, ksPriv1, keyTemplateHybridCTRHMACSHA256())
+	ksPriv3 := rotateKeysetCleartext(t, ksPriv1, hybrid.ECIESHKDFAES128CTRHMACSHA256KeyTemplate())
 	enc, dec, err = newInsecureEncrypterDecrypter(ksPriv3)
 	require.NoError(t, err)
 	assert.NotNil(t, enc)
@@ -66,12 +67,12 @@ func TestNewInsecureEncrypterDecrypter_rotatedKeyset(t *testing.T) {
 }
 
 func TestInsecureEncrypterDecrypter_rotatedKeysetEncryptDecrypt(t *testing.T) {
-	ksPriv1 := generateKeysetCleartext(t, keyTemplateHybridGCM())
+	ksPriv1 := generateKeysetCleartext(t, hybrid.ECIESHKDFAES128GCMKeyTemplate())
 	enc1, dec1, err := newInsecureEncrypterDecrypter(ksPriv1)
 	require.NoError(t, err)
 
 	// add an additional ECIESHKDFAES128GCM Key
-	ksPriv2 := rotateKeysetCleartext(t, ksPriv1, keyTemplateHybridGCM())
+	ksPriv2 := rotateKeysetCleartext(t, ksPriv1, hybrid.ECIESHKDFAES128GCMKeyTemplate())
 	enc2, dec2, err := newInsecureEncrypterDecrypter(ksPriv2)
 	require.NoError(t, err)
 
@@ -111,12 +112,12 @@ func TestInsecureEncrypterDecrypter_rotatedKeysetEncryptDecrypt(t *testing.T) {
 }
 
 func TestInsecureEncrypterDecrypter_rotatedKeysetMixedKeysEncryptDecrypt(t *testing.T) {
-	ksPriv1 := generateKeysetCleartext(t, keyTemplateHybridGCM())
+	ksPriv1 := generateKeysetCleartext(t, hybrid.ECIESHKDFAES128GCMKeyTemplate())
 	enc1, dec1, err := newInsecureEncrypterDecrypter(ksPriv1)
 	require.NoError(t, err)
 
 	// add a new ECIESHKDFAES128CTRHMACSHA256 Key on top of the current ECIESHKDFAES128GCM Key
-	ksPriv2 := rotateKeysetCleartext(t, ksPriv1, keyTemplateHybridCTRHMACSHA256())
+	ksPriv2 := rotateKeysetCleartext(t, ksPriv1, hybrid.ECIESHKDFAES128CTRHMACSHA256KeyTemplate())
 	enc2, dec2, err := newInsecureEncrypterDecrypter(ksPriv2)
 	require.NoError(t, err)
 
