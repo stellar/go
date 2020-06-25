@@ -15,14 +15,14 @@ func TestNewEncrypterDecrypter(t *testing.T) {
 	assert.NotNil(t, dec)
 
 	// add an additional ECIESHKDFAES128GCM Key
-	ksPriv2 := generateRotatedKeysetCleartext(t, ksPriv1, keyTemplateHybridGCM())
+	ksPriv2 := rotateKeysetCleartext(t, ksPriv1, keyTemplateHybridGCM())
 	enc, dec, err = NewEncrypterDecrypter("", ksPriv2)
 	require.NoError(t, err)
 	assert.NotNil(t, enc)
 	assert.NotNil(t, dec)
 
 	// add a new ECIESHKDFAES128CTRHMACSHA256 Key on top of the current ECIESHKDFAES128GCM Key
-	ksPriv3 := generateRotatedKeysetCleartext(t, ksPriv1, keyTemplateHybridCTRHMACSHA256())
+	ksPriv3 := rotateKeysetCleartext(t, ksPriv1, keyTemplateHybridCTRHMACSHA256())
 	enc, dec, err = NewEncrypterDecrypter("", ksPriv3)
 	require.NoError(t, err)
 	assert.NotNil(t, enc)

@@ -44,14 +44,14 @@ func TestNewSecureEncrypterDecrypter_rotatedKeyset(t *testing.T) {
 	ksPriv1 := generateKeysetEncrypted(t, keyTemplateHybridGCM())
 
 	// add an additional ECIESHKDFAES128GCM Key
-	ksPriv2 := generateRotatedKeysetEncrypted(t, ksPriv1, keyTemplateHybridGCM())
+	ksPriv2 := rotateKeysetEncrypted(t, ksPriv1, keyTemplateHybridGCM())
 	enc, dec, err := newSecureEncrypterDecrypter(mockKMSClient{}, "mock-key-uri", ksPriv2)
 	require.NoError(t, err)
 	assert.NotNil(t, enc)
 	assert.NotNil(t, dec)
 
 	// add a new ECIESHKDFAES128CTRHMACSHA256 Key on top of the current ECIESHKDFAES128GCM Key
-	ksPriv3 := generateRotatedKeysetEncrypted(t, ksPriv1, keyTemplateHybridCTRHMACSHA256())
+	ksPriv3 := rotateKeysetEncrypted(t, ksPriv1, keyTemplateHybridCTRHMACSHA256())
 	enc, dec, err = newSecureEncrypterDecrypter(mockKMSClient{}, "mock-key-uri", ksPriv3)
 	require.NoError(t, err)
 	assert.NotNil(t, enc)
@@ -64,7 +64,7 @@ func TestSecureEncrypterDecrypter_rotatedKeysetEncryptDecrypt(t *testing.T) {
 	require.NoError(t, err)
 
 	// add an additional ECIESHKDFAES128GCM Key
-	ksPriv2 := generateRotatedKeysetEncrypted(t, ksPriv1, keyTemplateHybridGCM())
+	ksPriv2 := rotateKeysetEncrypted(t, ksPriv1, keyTemplateHybridGCM())
 	enc2, dec2, err := newSecureEncrypterDecrypter(mockKMSClient{}, "mock-key-uri", ksPriv2)
 	require.NoError(t, err)
 
@@ -109,7 +109,7 @@ func TestSecureEncrypterDecrypter_rotatedKeysetMixedKeysEncryptDecrypt(t *testin
 	require.NoError(t, err)
 
 	// add a new ECIESHKDFAES128CTRHMACSHA256 Key on top of the current ECIESHKDFAES128GCM Key
-	ksPriv2 := generateRotatedKeysetEncrypted(t, ksPriv1, keyTemplateHybridCTRHMACSHA256())
+	ksPriv2 := rotateKeysetEncrypted(t, ksPriv1, keyTemplateHybridCTRHMACSHA256())
 	enc2, dec2, err := newSecureEncrypterDecrypter(mockKMSClient{}, "mock-key-uri", ksPriv2)
 	require.NoError(t, err)
 
