@@ -160,8 +160,30 @@ func TestRotateKeyset_invalidKMSKeyURI(t *testing.T) {
 	assert.Contains(t, err.Error(), "initializing AWS KMS client")
 }
 
-func TestRotateKeyset_noCurrentKeyset(t *testing.T) {
+func TestRotateKeyset_noEncryptionTinkKeyset(t *testing.T) {
 	_, _, _, err := rotateKeyset("", "", hybrid.ECIESHKDFAES128GCMKeyTemplate())
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "getting key handle for private key")
+	assert.Contains(t, err.Error(), "getting key handle for keyset private by reading a cleartext keyset")
+}
+
+func TestDecryptKeyset_invalidKMSKeyURI(t *testing.T) {
+	// encrption-kms-key-uri is not configured
+	_, _, err := decryptKeyset("", "keysetJSON")
+	require.Error(t, err)
+	assert.Equal(t, err, errNoKMSKeyURI)
+
+	_, _, err = decryptKeyset("invalid-uri", "keysetJSON")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "initializing AWS KMS client")
+}
+
+func TestEncryptKeyset_invalidKMSKeyURI(t *testing.T) {
+	// encrption-kms-key-uri is not configured
+	_, _, err := encryptKeyset("", "keysetJSON")
+	require.Error(t, err)
+	assert.Equal(t, err, errNoKMSKeyURI)
+
+	_, _, err = encryptKeyset("invalid-uri", "keysetJSON")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "initializing AWS KMS client")
 }
