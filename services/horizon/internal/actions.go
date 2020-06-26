@@ -10,12 +10,6 @@ func (action DataShowAction) Handle(w http.ResponseWriter, r *http.Request) {
 	ap.Execute(&action)
 }
 
-func (action EffectIndexAction) Handle(w http.ResponseWriter, r *http.Request) {
-	ap := &action.Action
-	ap.Prepare(w, r)
-	ap.Execute(&action)
-}
-
 func (action LedgerIndexAction) Handle(w http.ResponseWriter, r *http.Request) {
 	ap := &action.Action
 	ap.Prepare(w, r)

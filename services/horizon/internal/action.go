@@ -197,7 +197,7 @@ func (w *web) getTransactionPage(ctx context.Context, qp *indexActionQueryParams
 	return actions.TransactionPage(ctx, &history.Q{horizonSession}, qp.AccountID, qp.LedgerID, qp.IncludeFailedTxs, qp.PagingParams)
 }
 
-// getTransactionRecord returns a single transaction resource.
+// getTransactionResource returns a single transaction resource.
 func (w *web) getTransactionResource(ctx context.Context, qp *showActionQueryParams) (interface{}, error) {
 	horizonSession, err := w.horizonSession(ctx)
 	if err != nil {
@@ -214,5 +214,6 @@ func (w *web) streamTransactions(ctx context.Context, s *sse.Stream, qp *indexAc
 		return errors.Wrap(err, "getting horizon db session")
 	}
 
-	return actions.StreamTransactions(ctx, s, &history.Q{horizonSession}, qp.AccountID, qp.LedgerID, qp.IncludeFailedTxs, qp.PagingParams)
+	return actions.StreamTransactions(ctx, s, &history.Q{horizonSession},
+		qp.AccountID, qp.LedgerID, qp.IncludeFailedTxs, qp.PagingParams)
 }
