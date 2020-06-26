@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/stellar/go/support/errors"
+	logpkg "github.com/stellar/go/support/log"
 )
 
 const (
@@ -63,6 +64,7 @@ func (ps *ParallelSystems) runReingestWorker(s System, stop <-chan struct{}, rei
 					ledgerRange: reingestRange,
 				}
 			}
+			log.WithFields(logpkg.F{"from": reingestRange.from, "to": reingestRange.to}).Info("successfully reingested range")
 		}
 	}
 }
