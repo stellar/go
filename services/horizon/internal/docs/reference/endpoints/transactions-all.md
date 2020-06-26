@@ -2,6 +2,7 @@
 title: All Transactions
 clientData:
   laboratoryUrl: https://www.stellar.org/laboratory/#explorer?resource=transactions&endpoint=all
+replacement: https://developers.stellar.org/api/resources/transactions/single/
 ---
 
 This endpoint represents all successful [transactions](../resources/transaction.md).

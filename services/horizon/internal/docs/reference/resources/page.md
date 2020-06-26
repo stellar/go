@@ -1,5 +1,6 @@
 ---
 title: Page
+replacement: https://developers.stellar.org/api/introduction/pagination/page-arguments/
 ---
 
 Pages represent a subset of a larger collection of objects.

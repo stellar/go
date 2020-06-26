@@ -1,5 +1,6 @@
 ---
 title: Offers
+replacement: https://developers.stellar.org/api/resources/offers/list/
 ---
 
 People on the Stellar network can make [offers](../resources/offer.md) to buy or sell assets. This

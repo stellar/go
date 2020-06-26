@@ -2,6 +2,7 @@
 title: Fee Stats
 clientData:
   laboratoryUrl:
+replacement: https://developers.stellar.org/api/aggregations/fee-stats/
 ---
 
 This endpoint gives useful information about per-operation fee stats in the last 5 ledgers. It can be used to

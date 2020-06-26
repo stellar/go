@@ -1,5 +1,6 @@
 ---
 title: Transaction Failed
+replacement: https://developers.stellar.org/api/errors/http-status-codes/horizon-specific/
 ---
 
 The `transaction_failed` error occurs when a client submits a transaction that was well-formed but

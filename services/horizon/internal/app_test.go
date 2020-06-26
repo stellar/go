@@ -32,7 +32,6 @@ func TestGenericHTTPFeatures(t *testing.T) {
 	w = ht.Get("/ledgers/")
 	ht.Assert.Equal(200, w.Code)
 }
-
 func TestMetrics(t *testing.T) {
 	ht := StartHTTPTest(t, "base")
 	defer ht.Finish()
@@ -50,5 +49,5 @@ func TestMetrics(t *testing.T) {
 
 	ht.Require.EqualValues(3, hl.Value())
 	ht.Require.EqualValues(1, he.Value())
-	ht.Require.EqualValues(3, cl.Value())
+	ht.Require.EqualValues(64, cl.Value())
 }

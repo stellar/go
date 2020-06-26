@@ -1,5 +1,6 @@
 ---
 title: Internal Server Error
+replacement: https://developers.stellar.org/api/errors/http-status-codes/standard/
 ---
 
 If there's an internal error within Horizon, Horizon will return a

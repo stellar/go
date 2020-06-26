@@ -2,6 +2,7 @@
 title: All Ledgers
 clientData:
   laboratoryUrl: https://www.stellar.org/laboratory/#explorer?resource=ledgers&endpoint=all
+replacement: https://developers.stellar.org/api/resources/ledgers/
 ---
 
 This endpoint represents all [ledgers](../resources/ledger.md).

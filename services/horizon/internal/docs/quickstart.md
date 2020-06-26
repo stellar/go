@@ -1,5 +1,6 @@
 ---
 title: Horizon Quickstart
+replacement: https://developers.stellar.org/docs/run-api-server/quickstart/
 ---
 ## Horizon Quickstart
 This document describes how to quickly set up a **test** Stellar Core + Horizon node, that you can play around with to get a feel for how a stellar node operates. **This configuration is not secure!** It is **not** intended as a guide for production administration.
