@@ -12,7 +12,7 @@ import (
 	"github.com/stellar/go/support/render/problem"
 )
 
-// OperationsQuery query struct for offers end-point
+// OperationsQuery query struct for operations end-points
 type OperationsQuery struct {
 	AccountID                 string `schema:"account_id" valid:"accountID,optional"`
 	TransactionHash           string `schema:"tx_id" valid:"transactionHash,optional"`
@@ -30,18 +30,18 @@ func (qp OperationsQuery) IncludeTransactions() bool {
 func (qp OperationsQuery) Validate() error {
 	filters, err := countNonEmpty(
 		qp.AccountID,
-		int32(qp.LedgerID),
+		qp.LedgerID,
 		qp.TransactionHash,
 	)
 
 	if err != nil {
-		return &problem.BadRequest
+		return problem.BadRequest
 	}
 
 	if filters > 1 {
 		return problem.MakeInvalidFieldProblem(
 			"filters",
-			errors.New("Use a single filter for operations, you can't combine tx_id, account_id, and ledger_id"),
+			errors.New("Use a single filter for operations, you can only use one of tx_id, account_id or ledger_id"),
 		)
 	}
 

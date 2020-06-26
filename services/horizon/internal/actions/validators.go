@@ -19,11 +19,11 @@ type Validateable interface {
 }
 
 func init() {
-	govalidator.TagMap["accountID"] = govalidator.Validator(isAccountID)
-	govalidator.TagMap["amount"] = govalidator.Validator(isAmount)
-	govalidator.TagMap["assetType"] = govalidator.Validator(isAssetType)
-	govalidator.TagMap["asset"] = govalidator.Validator(isAsset)
-	govalidator.TagMap["transactionHash"] = govalidator.Validator(isTransactionHash)
+	govalidator.TagMap["accountID"] = isAccountID
+	govalidator.TagMap["amount"] = isAmount
+	govalidator.TagMap["assetType"] = isAssetType
+	govalidator.TagMap["asset"] = isAsset
+	govalidator.TagMap["transactionHash"] = isTransactionHash
 }
 
 var customTagsErrorMessages = map[string]string{
@@ -32,7 +32,8 @@ var customTagsErrorMessages = map[string]string{
 	"asset":           "Asset must be the string \"native\" or a string of the form \"Code:IssuerAccountID\" for issued assets.",
 	"assetType":       "Asset type must be native, credit_alphanum4 or credit_alphanum12",
 	"bool":            "Filter should be true or false",
-	"ledger_id":       "Ledger ID must be higher than 0",
+	"ledger_id":       "Ledger ID must be an integer higher than 0",
+	"op_id":           "Operation ID must be an integer higher than 0",
 	"transactionHash": "Transaction hash must be a hex-encoded, lowercase SHA-256 hash",
 }
 

@@ -78,7 +78,7 @@ func TestGetOperationsExclusiveFilters(t *testing.T) {
 			tt.Assert.Equal("bad_request", p.Type)
 			tt.Assert.Equal("filters", p.Extras["invalid_field"])
 			tt.Assert.Equal(
-				"Use a single filter for operations, you can't combine tx_id, account_id, and ledger_id",
+				"Use a single filter for operations, you can only use one of tx_id, account_id or ledger_id",
 				p.Extras["reason"],
 			)
 		})
@@ -386,11 +386,11 @@ func TestGetOperationsFilterByLedgerID(t *testing.T) {
 		},
 		{
 			ledgerID:    "-1",
-			expectedErr: "Ledger ID must be higher than 0",
+			expectedErr: "Ledger ID must be an integer higher than 0",
 		},
 		{
 			ledgerID:    "one",
-			expectedErr: "Ledger ID must be higher than 0",
+			expectedErr: "Ledger ID must be an integer higher than 0",
 		},
 	}
 	for _, tc := range testCases {
@@ -423,6 +423,7 @@ func TestGetOperationsFilterByLedgerID(t *testing.T) {
 		})
 	}
 }
+
 func TestGetOperationsOnlyPayments(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()

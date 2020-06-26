@@ -197,7 +197,7 @@ func (we *web) streamShowActionHandler(jfn interface{}, requireAccountID bool) h
 // the URL, validates the cursor is within history, and finally passes the
 // indexAction query params to the more general purpose streamableEndpointHandler.
 func (we *web) streamIndexActionHandler(jfn interface{}, sfn streamFunc) http.HandlerFunc {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
 		params, err := getIndexActionQueryParams(r, we.ingestFailedTx)
@@ -213,7 +213,7 @@ func (we *web) streamIndexActionHandler(jfn interface{}, sfn streamFunc) http.Ha
 		}
 
 		we.streamableEndpointHandler(jfn, false, sfn, params).ServeHTTP(w, r)
-	})
+	}
 }
 
 // showActionHandler handles all non-streamable endpoints.
@@ -293,7 +293,7 @@ func getIndexActionQueryParams(r *http.Request, ingestFailedTransactions bool) (
 		return nil, errors.Wrap(err, "getting ledger id")
 	}
 
-	// account_id and ledger_id are mutually excludesive.
+	// account_id and ledger_id are mutually exclusive.
 	if addr != "" && lid != int32(0) {
 		return nil, problem.BadRequest
 	}
