@@ -260,9 +260,8 @@ func (w *web) mustInstallActions(config Config, pathFinder paths.Finder, session
 		r.With(historyMiddleware).Method(http.MethodGet, "/", streamableHistoryPageHandler(actions.GetOperationsHandler{
 			OnlyPayments: false,
 		}, streamHandler))
-		r.Get("/{id}", OperationShowAction{}.Handle)
+		r.With(historyMiddleware).Method(http.MethodGet, "/{id}", objectActionHandler{actions.GetOperationByIDHandler{}})
 		r.With(historyMiddleware).Method(http.MethodGet, "/{op_id}/effects", streamableHistoryPageHandler(actions.GetEffectsHandler{}, streamHandler))
-
 	})
 
 	r.Group(func(r chi.Router) {

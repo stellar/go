@@ -626,7 +626,7 @@ func TestGetOperation(t *testing.T) {
 	defer tt.Finish()
 	tt.Scenario("base")
 
-	handler := GetOperationHandler{}
+	handler := GetOperationByIDHandler{}
 
 	record, err := handler.GetResource(
 		httptest.NewRecorder(),
@@ -662,7 +662,7 @@ func TestOperation_IncludeTransaction(t *testing.T) {
 	defer tt.Finish()
 	tt.Scenario("kahuna")
 
-	handler := GetOperationHandler{}
+	handler := GetOperationByIDHandler{}
 	record, err := handler.GetResource(
 		httptest.NewRecorder(),
 		makeRequest(
