@@ -6,10 +6,13 @@ import (
 	"net/http"
 
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/services/horizon/internal/ledger"
+	"github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/resourceadapter"
+	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/render/hal"
-	"github.com/stellar/go/support/render/problem"
+	supportProblem "github.com/stellar/go/support/render/problem"
 )
 
 // OperationsQuery query struct for operations end-points
@@ -35,11 +38,11 @@ func (qp OperationsQuery) Validate() error {
 	)
 
 	if err != nil {
-		return problem.BadRequest
+		return supportProblem.BadRequest
 	}
 
 	if filters > 1 {
-		return problem.MakeInvalidFieldProblem(
+		return supportProblem.MakeInvalidFieldProblem(
 			"filters",
 			errors.New("Use a single filter for operations, you can only use one of tx_id, account_id or ledger_id"),
 		)
@@ -109,6 +112,60 @@ func (handler GetOperationsHandler) GetResourcePage(w HeaderWriter, r *http.Requ
 	}
 
 	return buildOperationsPage(ctx, historyQ, ops, txs, qp.IncludeTransactions())
+}
+
+// GetOperationHandler is the action handler for all end-points returning a list of operations.
+type GetOperationHandler struct {
+}
+
+// OperationQuery query struct for operation/id end-point
+type OperationQuery struct {
+	ID   uint64 `schema:"id" valid:"-"`
+	Join string `schema:"join" valid:"in(transactions)~Accepted values: transactions,optional"`
+}
+
+// IncludeTransactions returns extra fields to include in the response
+func (qp OperationQuery) IncludeTransactions() bool {
+	return qp.Join == "transactions"
+}
+
+// Validate runs extra validations on query parameters
+func (qp OperationQuery) Validate() error {
+	parsed := toid.Parse(int64(qp.ID))
+	if parsed.LedgerSequence < ledger.CurrentState().HistoryElder {
+		return problem.BeforeHistory
+	}
+	return nil
+}
+
+// GetResource returns an operation page.
+func (handler GetOperationHandler) GetResource(w HeaderWriter, r *http.Request) (hal.Pageable, error) {
+	ctx := r.Context()
+	qp := OperationQuery{}
+	err := GetParams(&qp, r)
+	if err != nil {
+		return nil, err
+	}
+
+	historyQ, err := HistoryQFromRequest(r)
+	op, tx, err := historyQ.OperationByID(qp.IncludeTransactions(), int64(qp.ID))
+	if err != nil {
+		return nil, err
+	}
+
+	var ledger history.Ledger
+	err = historyQ.LedgerBySequence(&ledger, op.LedgerSequence())
+	if err != nil {
+		return nil, err
+	}
+
+	return resourceadapter.NewOperation(
+		ctx,
+		op,
+		op.TransactionHash,
+		tx,
+		ledger,
+	)
 }
 
 func buildOperationsPage(ctx context.Context, historyQ *history.Q, operations []history.Operation, transactions []history.Transaction, includeTransactions bool) ([]hal.Pageable, error) {
