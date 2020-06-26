@@ -40,12 +40,6 @@ func (action FeeStatsAction) Handle(w http.ResponseWriter, r *http.Request) {
 	ap.Execute(&action)
 }
 
-func (action OperationShowAction) Handle(w http.ResponseWriter, r *http.Request) {
-	ap := &action.Action
-	ap.Prepare(w, r)
-	ap.Execute(&action)
-}
-
 func (action RateLimitExceededAction) Handle(w http.ResponseWriter, r *http.Request) {
 	ap := &action.Action
 	ap.Prepare(w, r)
