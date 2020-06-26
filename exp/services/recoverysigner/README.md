@@ -94,7 +94,7 @@ Available Commands:
 
 Flags:
       --encryption-kms-key-uri string   URI for a remote KMS key used to encrypt Tink keyset (ENCRYPTION_KMS_KEY_URI)
-      --encryption-tink-keyset string   Existing Tink keyset to rotate/encrypt/decrypt (ENCRYPTION_TINK_KEYSET)
+      --encryption-tink-keyset string   Tink keyset to rotate/encrypt/decrypt (ENCRYPTION_TINK_KEYSET)
 
 Use "recoverysigner encryption-tink-keyset [command] --help" for more information about a command.
 ```
