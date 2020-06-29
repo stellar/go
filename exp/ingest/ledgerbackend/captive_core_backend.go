@@ -83,11 +83,7 @@ func NewCaptive(executablePath, networkPassphrase string, historyURLs []string) 
 		networkPassphrase: networkPassphrase,
 		historyURLs:       historyURLs,
 		nextLedger:        0,
-		stellarCoreRunner: &stellarCoreRunner{
-			executablePath:    executablePath,
-			networkPassphrase: networkPassphrase,
-			historyURLs:       historyURLs,
-		},
+		stellarCoreRunner: newStellarCoreRunner(executablePath, networkPassphrase, historyURLs),
 	}
 }
 
