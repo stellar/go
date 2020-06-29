@@ -189,23 +189,3 @@ func (x *XdrStream) BytesRead() int64 {
 func (x *XdrStream) Discard(n int64) (int64, error) {
 	return io.CopyN(ioutil.Discard, x.rdr, n)
 }
-
-func WriteFramedXdr(out io.Writer, in interface{}) error {
-	var tmp bytes.Buffer
-	n, err := xdr.Marshal(&tmp, in)
-	if err != nil {
-		return err
-	}
-	un := uint32(n)
-	if un > 0x7fffffff {
-		return fmt.Errorf("Overlong write: %d bytes", n)
-	}
-
-	un = un | 0x80000000
-	binary.Write(out, binary.BigEndian, &un)
-	k, err := tmp.WriteTo(out)
-	if int64(n) != k {
-		return fmt.Errorf("Mismatched write length: %d vs. %d", n, k)
-	}
-	return err
-}

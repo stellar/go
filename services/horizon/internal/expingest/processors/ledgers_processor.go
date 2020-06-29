@@ -14,6 +14,7 @@ type LedgersProcessor struct {
 	successTxCount int
 	failedTxCount  int
 	opCount        int
+	txSetOpCount   int
 }
 
 func NewLedgerProcessor(
@@ -29,9 +30,11 @@ func NewLedgerProcessor(
 }
 
 func (p *LedgersProcessor) ProcessTransaction(transaction io.LedgerTransaction) (err error) {
+	opCount := len(transaction.Envelope.Operations())
+	p.txSetOpCount += opCount
 	if transaction.Result.Successful() {
 		p.successTxCount++
-		p.opCount += len(transaction.Envelope.Operations())
+		p.opCount += opCount
 	} else {
 		p.failedTxCount++
 	}
@@ -45,6 +48,7 @@ func (p *LedgersProcessor) Commit() error {
 		p.successTxCount,
 		p.failedTxCount,
 		p.opCount,
+		p.txSetOpCount,
 		p.ingestVersion,
 	)
 

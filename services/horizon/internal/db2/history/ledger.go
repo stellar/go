@@ -92,6 +92,7 @@ type QLedgers interface {
 		successTxsCount int,
 		failedTxsCount int,
 		opCount int,
+		txSetOpCount int,
 		ingestVersion int,
 	) (int64, error)
 }
@@ -103,6 +104,7 @@ func (q *Q) InsertLedger(
 	successTxsCount int,
 	failedTxsCount int,
 	opCount int,
+	txSetOpCount int,
 	ingestVersion int,
 ) (int64, error) {
 	m, err := ledgerHeaderToMap(
@@ -110,6 +112,7 @@ func (q *Q) InsertLedger(
 		successTxsCount,
 		failedTxsCount,
 		opCount,
+		txSetOpCount,
 		ingestVersion,
 	)
 	if err != nil {
@@ -130,6 +133,7 @@ func ledgerHeaderToMap(
 	successTxsCount int,
 	failedTxsCount int,
 	opCount int,
+	txSetOpCount int,
 	importerVersion int,
 ) (map[string]interface{}, error) {
 	ledgerHeaderBase64, err := xdr.MarshalBase64(ledger.Header)
@@ -155,6 +159,7 @@ func ledgerHeaderToMap(
 		"successful_transaction_count": successTxsCount,
 		"failed_transaction_count":     failedTxsCount,
 		"operation_count":              opCount,
+		"tx_set_operation_count":       txSetOpCount,
 		"protocol_version":             ledger.Header.LedgerVersion,
 		"ledger_header":                ledgerHeaderBase64,
 	}, nil
@@ -170,6 +175,7 @@ var selectLedger = sq.Select(
 	"hl.successful_transaction_count",
 	"hl.failed_transaction_count",
 	"hl.operation_count",
+	"hl.tx_set_operation_count",
 	"hl.closed_at",
 	"hl.created_at",
 	"hl.updated_at",

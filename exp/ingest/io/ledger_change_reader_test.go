@@ -1,7 +1,6 @@
 package io
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"testing"
@@ -9,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/stellar/go/exp/ingest/ledgerbackend"
+	"github.com/stellar/go/network"
 	"github.com/stellar/go/xdr"
 )
 
@@ -23,14 +23,14 @@ func TestNewLedgerChangeReaderFails(t *testing.T) {
 	seq := uint32(123)
 	mock.On("GetLedger", seq).Return(
 		true,
-		ledgerbackend.LedgerCloseMeta{},
+		xdr.LedgerCloseMeta{},
 		fmt.Errorf("ledger error"),
 	).Once()
-	_, err := NewLedgerChangeReader(context.Background(), seq, mock)
+	_, err := NewLedgerChangeReader(mock, network.TestNetworkPassphrase, seq)
 	assert.EqualError(
 		t,
 		err,
-		"error reading ledger from backend: ledger error",
+		"error getting ledger from the backend: ledger error",
 	)
 }
 
@@ -39,10 +39,10 @@ func TestNewLedgerChangeReaderLedgerDoesNotExist(t *testing.T) {
 	seq := uint32(123)
 	mock.On("GetLedger", seq).Return(
 		false,
-		ledgerbackend.LedgerCloseMeta{},
+		xdr.LedgerCloseMeta{},
 		nil,
 	).Once()
-	_, err := NewLedgerChangeReader(context.Background(), seq, mock)
+	_, err := NewLedgerChangeReader(mock, network.TestNetworkPassphrase, seq)
 	assert.Equal(
 		t,
 		err,
@@ -63,13 +63,15 @@ func TestNewLedgerChangeReaderSucceeds(t *testing.T) {
 
 	mock.On("GetLedger", seq).Return(
 		true,
-		ledgerbackend.LedgerCloseMeta{
-			LedgerHeader: header,
+		xdr.LedgerCloseMeta{
+			V0: &xdr.LedgerCloseMetaV0{
+				LedgerHeader: header,
+			},
 		},
 		nil,
 	).Once()
 
-	reader, err := NewLedgerChangeReader(context.Background(), seq, mock)
+	reader, err := NewLedgerChangeReader(mock, network.TestNetworkPassphrase, seq)
 	assert.NoError(t, err)
 
 	assert.Equal(t, reader.GetHeader(), header)
@@ -108,7 +110,7 @@ func assertChangesEqual(
 	backend ledgerbackend.LedgerBackend,
 	expected []balanceEntry,
 ) {
-	reader, err := NewLedgerChangeReader(context.Background(), sequence, backend)
+	reader, err := NewLedgerChangeReader(backend, network.TestNetworkPassphrase, sequence)
 	assert.NoError(t, err)
 
 	changes := []balanceEntry{}
@@ -131,70 +133,105 @@ func TestLedgerChangeReaderOrder(t *testing.T) {
 	mock := &ledgerbackend.MockDatabaseBackend{}
 	seq := uint32(123)
 
-	ledger := ledgerbackend.LedgerCloseMeta{
-		TransactionResult: []xdr.TransactionResultPair{
-			xdr.TransactionResultPair{},
-			xdr.TransactionResultPair{},
+	src := xdr.MustAddress("GBXGQJWVLWOYHFLVTKWV5FGHA3LNYY2JQKM7OAJAUEQFU6LPCSEFVXON")
+	firstTx := xdr.TransactionEnvelope{
+		Type: xdr.EnvelopeTypeEnvelopeTypeTx,
+		V1: &xdr.TransactionV1Envelope{
+			Tx: xdr.Transaction{
+				Fee:           1,
+				SourceAccount: src.ToMuxedAccount(),
+			},
 		},
-		TransactionEnvelope: []xdr.TransactionEnvelope{
-			xdr.TransactionEnvelope{},
-			xdr.TransactionEnvelope{},
+	}
+	firstTxHash, err := network.HashTransactionInEnvelope(firstTx, network.TestNetworkPassphrase)
+	assert.NoError(t, err)
+
+	src = xdr.MustAddress("GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU")
+	secondTx := xdr.TransactionEnvelope{
+		Type: xdr.EnvelopeTypeEnvelopeTypeTx,
+		V1: &xdr.TransactionV1Envelope{
+			Tx: xdr.Transaction{
+				Fee:           2,
+				SourceAccount: src.ToMuxedAccount(),
+			},
 		},
-		TransactionMeta: []xdr.TransactionMeta{
-			xdr.TransactionMeta{
-				V: 1,
-				V1: &xdr.TransactionMetaV1{
-					Operations: []xdr.OperationMeta{
-						{
-							Changes: xdr.LedgerEntryChanges{
-								buildChange(
-									metaAddress,
-									300,
-								),
-								buildChange(
-									metaAddress,
-									400,
-								),
+	}
+	secondTxHash, err := network.HashTransactionInEnvelope(secondTx, network.TestNetworkPassphrase)
+	assert.NoError(t, err)
+
+	ledger := xdr.LedgerCloseMeta{
+		V0: &xdr.LedgerCloseMetaV0{
+			LedgerHeader: xdr.LedgerHeaderHistoryEntry{Header: xdr.LedgerHeader{LedgerVersion: 10}},
+			TxSet: xdr.TransactionSet{
+				Txs: []xdr.TransactionEnvelope{
+					secondTx,
+					firstTx,
+				},
+			},
+			TxProcessing: []xdr.TransactionResultMeta{
+				{
+					Result: xdr.TransactionResultPair{TransactionHash: firstTxHash},
+					FeeProcessing: xdr.LedgerEntryChanges{
+						buildChange(feeAddress, 100),
+						buildChange(feeAddress, 200),
+					},
+					TxApplyProcessing: xdr.TransactionMeta{
+						V: 1,
+						V1: &xdr.TransactionMetaV1{
+							Operations: []xdr.OperationMeta{
+								{
+									Changes: xdr.LedgerEntryChanges{
+										buildChange(
+											metaAddress,
+											300,
+										),
+										buildChange(
+											metaAddress,
+											400,
+										),
+									},
+								},
+							},
+						},
+					},
+				},
+				{
+					Result: xdr.TransactionResultPair{TransactionHash: secondTxHash},
+					FeeProcessing: xdr.LedgerEntryChanges{
+						buildChange(feeAddress, 300),
+					},
+					TxApplyProcessing: xdr.TransactionMeta{
+						V: 2,
+						V2: &xdr.TransactionMetaV2{
+							TxChangesBefore: xdr.LedgerEntryChanges{
+								buildChange(metaAddress, 600),
+							},
+							Operations: []xdr.OperationMeta{
+								{
+									Changes: xdr.LedgerEntryChanges{
+										buildChange(metaAddress, 700),
+									},
+								},
+							},
+							TxChangesAfter: xdr.LedgerEntryChanges{
+								buildChange(metaAddress, 800),
+								buildChange(metaAddress, 900),
 							},
 						},
 					},
 				},
 			},
-			xdr.TransactionMeta{
-				V: 2,
-				V2: &xdr.TransactionMetaV2{
-					TxChangesBefore: xdr.LedgerEntryChanges{
-						buildChange(metaAddress, 600),
-					},
-					Operations: []xdr.OperationMeta{
-						{
-							Changes: xdr.LedgerEntryChanges{
-								buildChange(metaAddress, 700),
-							},
-						},
-					},
-					TxChangesAfter: xdr.LedgerEntryChanges{
-						buildChange(metaAddress, 800),
-						buildChange(metaAddress, 900),
+			UpgradesProcessing: []xdr.UpgradeEntryMeta{
+				{
+					Changes: xdr.LedgerEntryChanges{
+						buildChange(upgradeAddress, 2),
 					},
 				},
-			},
-		},
-		TransactionFeeChanges: []xdr.LedgerEntryChanges{
-			xdr.LedgerEntryChanges{
-				buildChange(feeAddress, 100),
-				buildChange(feeAddress, 200),
-			},
-			xdr.LedgerEntryChanges{
-				buildChange(feeAddress, 300),
-			},
-		},
-		UpgradesMeta: []xdr.LedgerEntryChanges{
-			xdr.LedgerEntryChanges{
-				buildChange(upgradeAddress, 2),
-			},
-			xdr.LedgerEntryChanges{
-				buildChange(upgradeAddress, 3),
+				{
+					Changes: xdr.LedgerEntryChanges{
+						buildChange(upgradeAddress, 3),
+					},
+				},
 			},
 		},
 	}
@@ -215,9 +252,21 @@ func TestLedgerChangeReaderOrder(t *testing.T) {
 	})
 	mock.AssertExpectations(t)
 
-	ledger.TransactionFeeChanges = []xdr.LedgerEntryChanges{
-		xdr.LedgerEntryChanges{}, xdr.LedgerEntryChanges{},
-	}
+	ledger.V0.LedgerHeader.Header.LedgerVersion = 8
+	mock.On("GetLedger", seq).Return(true, ledger, nil).Once()
+	_, err = NewLedgerChangeReader(mock, network.TestNetworkPassphrase, seq)
+	assert.EqualError(
+		t,
+		err,
+		"error extracting transactions from ledger close meta: TransactionMeta.V=2 is required in protocol"+
+			" version older than version 10. Please process ledgers again using stellar-core with "+
+			"SUPPORTED_META_VERSION=2 in the config file.",
+	)
+	mock.AssertExpectations(t)
+
+	ledger.V0.LedgerHeader.Header.LedgerVersion = 10
+	ledger.V0.TxProcessing[0].FeeProcessing = xdr.LedgerEntryChanges{}
+	ledger.V0.TxProcessing[1].FeeProcessing = xdr.LedgerEntryChanges{}
 	mock.On("GetLedger", seq).Return(true, ledger, nil).Once()
 
 	assertChangesEqual(t, seq, mock, []balanceEntry{
@@ -232,8 +281,13 @@ func TestLedgerChangeReaderOrder(t *testing.T) {
 	})
 	mock.AssertExpectations(t)
 
-	ledger.UpgradesMeta = []xdr.LedgerEntryChanges{
-		xdr.LedgerEntryChanges{}, xdr.LedgerEntryChanges{},
+	ledger.V0.UpgradesProcessing = []xdr.UpgradeEntryMeta{
+		{
+			Changes: xdr.LedgerEntryChanges{},
+		},
+		{
+			Changes: xdr.LedgerEntryChanges{},
+		},
 	}
 	mock.On("GetLedger", seq).Return(true, ledger, nil).Once()
 
@@ -247,92 +301,20 @@ func TestLedgerChangeReaderOrder(t *testing.T) {
 	})
 	mock.AssertExpectations(t)
 
-	ledger.TransactionMeta = []xdr.TransactionMeta{
-		xdr.TransactionMeta{
-			V: 1,
-			V1: &xdr.TransactionMetaV1{
-				Operations: []xdr.OperationMeta{},
-			},
+	ledger.V0.TxProcessing[0].TxApplyProcessing = xdr.TransactionMeta{
+		V: 1,
+		V1: &xdr.TransactionMetaV1{
+			Operations: []xdr.OperationMeta{},
 		},
-		xdr.TransactionMeta{
-			V: 1,
-			V1: &xdr.TransactionMetaV1{
-				Operations: []xdr.OperationMeta{},
-			},
+	}
+	ledger.V0.TxProcessing[1].TxApplyProcessing = xdr.TransactionMeta{
+		V: 1,
+		V1: &xdr.TransactionMetaV1{
+			Operations: []xdr.OperationMeta{},
 		},
 	}
 	mock.On("GetLedger", seq).Return(true, ledger, nil).Once()
 
 	assertChangesEqual(t, seq, mock, []balanceEntry{})
 	mock.AssertExpectations(t)
-}
-
-func TestLedgerChangeReaderContext(t *testing.T) {
-	mock := &ledgerbackend.MockDatabaseBackend{}
-	seq := uint32(123)
-
-	ledger := ledgerbackend.LedgerCloseMeta{
-		TransactionResult: []xdr.TransactionResultPair{
-			xdr.TransactionResultPair{},
-			xdr.TransactionResultPair{},
-		},
-		TransactionEnvelope: []xdr.TransactionEnvelope{
-			xdr.TransactionEnvelope{},
-			xdr.TransactionEnvelope{},
-		},
-		TransactionMeta: []xdr.TransactionMeta{
-			xdr.TransactionMeta{
-				V: 1,
-				V1: &xdr.TransactionMetaV1{
-					Operations: []xdr.OperationMeta{},
-				},
-			},
-			xdr.TransactionMeta{
-				V: 1,
-				V1: &xdr.TransactionMetaV1{
-					Operations: []xdr.OperationMeta{},
-				},
-			},
-		},
-		TransactionFeeChanges: []xdr.LedgerEntryChanges{
-			xdr.LedgerEntryChanges{
-				buildChange(feeAddress, 100),
-			},
-			xdr.LedgerEntryChanges{
-				buildChange(feeAddress, 300),
-			},
-		},
-		UpgradesMeta: []xdr.LedgerEntryChanges{
-			xdr.LedgerEntryChanges{
-				buildChange(upgradeAddress, 2),
-			},
-			xdr.LedgerEntryChanges{
-				buildChange(upgradeAddress, 3),
-			},
-		},
-	}
-
-	mock.On("GetLedger", seq).Return(true, ledger, nil).Once()
-	ctx, cancel := context.WithCancel(context.Background())
-	reader, err := NewLedgerChangeReader(ctx, seq, mock)
-	mock.AssertExpectations(t)
-	assert.NoError(t, err)
-
-	cancel()
-	_, err = reader.Read()
-	assert.Equal(t, context.Canceled, err)
-
-	mock.On("GetLedger", seq).Return(true, ledger, nil).Once()
-	ctx, cancel = context.WithCancel(context.Background())
-	reader, err = NewLedgerChangeReader(ctx, seq, mock)
-	mock.AssertExpectations(t)
-	assert.NoError(t, err)
-
-	change, err := reader.Read()
-	assert.Equal(t, balanceEntry{feeAddress, 100}, parseChange(change))
-	assert.NoError(t, err)
-
-	cancel()
-	_, err = reader.Read()
-	assert.Equal(t, context.Canceled, err)
 }

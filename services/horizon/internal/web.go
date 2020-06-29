@@ -43,7 +43,6 @@ type web struct {
 	rateLimiter        *throttled.HTTPRateLimiter
 	sseUpdateFrequency time.Duration
 	staleThreshold     uint
-	ingestFailedTx     bool
 
 	historyQ *history.Q
 
@@ -66,7 +65,7 @@ func init() {
 }
 
 // mustInitWeb installed a new Web instance onto the provided app object.
-func mustInitWeb(ctx context.Context, hq *history.Q, updateFreq time.Duration, threshold uint, ingestFailedTx bool) *web {
+func mustInitWeb(ctx context.Context, hq *history.Q, updateFreq time.Duration, threshold uint) *web {
 	if hq == nil {
 		log.Fatal("missing history DB for installing the web instance")
 	}
@@ -78,7 +77,6 @@ func mustInitWeb(ctx context.Context, hq *history.Q, updateFreq time.Duration, t
 		historyQ:           hq,
 		sseUpdateFrequency: updateFreq,
 		staleThreshold:     threshold,
-		ingestFailedTx:     ingestFailedTx,
 		requestTimer:       metrics.NewTimer(),
 		failureMeter:       metrics.NewMeter(),
 		successMeter:       metrics.NewMeter(),
@@ -181,14 +179,12 @@ func (w *web) mustInstallActions(config Config, pathFinder paths.Finder, session
 			maxPathLength:        config.MaxPathLength,
 			maxAssetsParamLength: maxAssetsForPathFinding,
 			pathFinder:           pathFinder,
-			historyQ:             w.historyQ,
 		}
 		findFixedPaths := FindFixedPathsHandler{
 			maxPathLength:        config.MaxPathLength,
 			setLastLedgerHeader:  true,
 			maxAssetsParamLength: maxAssetsForPathFinding,
 			pathFinder:           pathFinder,
-			historyQ:             w.historyQ,
 		}
 
 		r.Method(http.MethodGet, "/paths", findPaths)
@@ -215,12 +211,10 @@ func (w *web) mustInstallActions(config Config, pathFinder paths.Finder, session
 			r.Use(historyMiddleware)
 			r.Method(http.MethodGet, "/accounts/{account_id:\\w+}/effects", streamableHistoryPageHandler(actions.GetEffectsHandler{}, streamHandler))
 			r.Method(http.MethodGet, "/accounts/{account_id:\\w+}/operations", streamableHistoryPageHandler(actions.GetOperationsHandler{
-				IngestingFailedTransactions: w.ingestFailedTx,
-				OnlyPayments:                false,
+				OnlyPayments: false,
 			}, streamHandler))
 			r.Method(http.MethodGet, "/accounts/{account_id:\\w+}/payments", streamableHistoryPageHandler(actions.GetOperationsHandler{
-				IngestingFailedTransactions: w.ingestFailedTx,
-				OnlyPayments:                true,
+				OnlyPayments: true,
 			}, streamHandler))
 		})
 	})
@@ -234,12 +228,10 @@ func (w *web) mustInstallActions(config Config, pathFinder paths.Finder, session
 				r.Use(historyMiddleware)
 				r.Method(http.MethodGet, "/effects", streamableHistoryPageHandler(actions.GetEffectsHandler{}, streamHandler))
 				r.Method(http.MethodGet, "/operations", streamableHistoryPageHandler(actions.GetOperationsHandler{
-					IngestingFailedTransactions: w.ingestFailedTx,
-					OnlyPayments:                false,
+					OnlyPayments: false,
 				}, streamHandler))
 				r.Method(http.MethodGet, "/payments", streamableHistoryPageHandler(actions.GetOperationsHandler{
-					IngestingFailedTransactions: w.ingestFailedTx,
-					OnlyPayments:                true,
+					OnlyPayments: true,
 				}, streamHandler))
 			})
 		})
@@ -254,12 +246,10 @@ func (w *web) mustInstallActions(config Config, pathFinder paths.Finder, session
 				r.Use(historyMiddleware)
 				r.Method(http.MethodGet, "/effects", streamableHistoryPageHandler(actions.GetEffectsHandler{}, streamHandler))
 				r.Method(http.MethodGet, "/operations", streamableHistoryPageHandler(actions.GetOperationsHandler{
-					IngestingFailedTransactions: w.ingestFailedTx,
-					OnlyPayments:                false,
+					OnlyPayments: false,
 				}, streamHandler))
 				r.Method(http.MethodGet, "/payments", streamableHistoryPageHandler(actions.GetOperationsHandler{
-					IngestingFailedTransactions: w.ingestFailedTx,
-					OnlyPayments:                true,
+					OnlyPayments: true,
 				}, streamHandler))
 			})
 		})
@@ -268,8 +258,7 @@ func (w *web) mustInstallActions(config Config, pathFinder paths.Finder, session
 	// operation actions
 	r.Route("/operations", func(r chi.Router) {
 		r.With(historyMiddleware).Method(http.MethodGet, "/", streamableHistoryPageHandler(actions.GetOperationsHandler{
-			IngestingFailedTransactions: w.ingestFailedTx,
-			OnlyPayments:                false,
+			OnlyPayments: false,
 		}, streamHandler))
 		r.Get("/{id}", OperationShowAction{}.Handle)
 		r.With(historyMiddleware).Method(http.MethodGet, "/{op_id}/effects", streamableHistoryPageHandler(actions.GetEffectsHandler{}, streamHandler))
@@ -279,8 +268,7 @@ func (w *web) mustInstallActions(config Config, pathFinder paths.Finder, session
 	r.Group(func(r chi.Router) {
 		// payment actions
 		r.With(historyMiddleware).Method(http.MethodGet, "/payments", streamableHistoryPageHandler(actions.GetOperationsHandler{
-			IngestingFailedTransactions: w.ingestFailedTx,
-			OnlyPayments:                true,
+			OnlyPayments: true,
 		}, streamHandler))
 
 		// effect actions

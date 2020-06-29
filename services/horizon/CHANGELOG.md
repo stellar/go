@@ -1,7 +1,36 @@
 # Changelog
 
 All notable changes to this project will be documented in this
-file. This project adheres to [Semantic Versioning](http://semver.org/).
+file. This project adheres to [Semantic Versioning](http://semver.org/).x
+
+## Unreleased
+
+## v1.5.0
+
+### Changes
+
+* Remove `--ingest-failed-transactions` flag. From now on Horizon will always ingest failed transactions. WARNING: If your application is using Horizon DB directly (not recommended!) remember that now it will also contain failed txs. ([#2702](https://github.com/stellar/go/pull/2702)).
+* Add transaction set operation count to `history_ledger`([#2690](https://github.com/stellar/go/pull/2690)).
+Extend ingestion to store the total number of operations in the transaction set and expose it in the ledger resource via `tx_set_operation_count`. This feature allows you to assess the used capacity of a transaction set.
+* Fix `/metrics` end-point ([#2717](https://github.com/stellar/go/pull/2717)).
+* Gracefully handle incorrect assets in the query parameters of GET `/offers` ([#2634](https://github.com/stellar/go/pull/2634)).
+* Fix logging message in OrderBookStream ([#2699](https://github.com/stellar/go/pull/2699)).
+* Fix data race in root endpoint ([#2745](https://github.com/stellar/go/pull/2745)).
+
+### Experimental
+
+* Add experimental support for database reingestion using a Stellar Core subprocess instead of a persistent Stellar Core database ([#2695](https://github.com/stellar/go/pull/2695)).
+
+  [Stellar Core v12.3.0](https://github.com/stellar/stellar-core/releases/tag/v12.3.0) added an experimental feature which allows replaying ledger's metadata in-memory. This feature speeds up reingestion and starts paving the way to remove the dependency between Stellar Core's database and Horizon.
+
+  For now, this is only supported while running `horizon db reingest`. To try out this new experimental feature, you need to specify the following parameters:
+
+  - `--enable-captive-core-ingestion` or `ENABLE_CAPTIVE_CORE_INGESTION=true`.
+  - `--stellar-core-binary-path` or `STELLAR_CORE_BINARY_PATH`.
+
+### SDK Maintainers: action needed
+
+- Add the new field `tx_set_operation_count` to the `ledger` resource ([#2690](https://github.com/stellar/go/pull/2690)). This field can be a `number` or `null`.
 
 ## v1.4.0
 
@@ -60,8 +89,8 @@ The changes are required by [CAP-15](https://github.com/stellar/stellar-protocol
 
 * Added support for [CAP-27](https://github.com/stellar/stellar-protocol/blob/master/core/cap-0027.md) and [SEP-23](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0023.md) [#2491](https://github.com/stellar/go/pull/2491).
 * The XDR definition of a transaction memo is a string.
-However, XDR strings are actually binary blobs with no enforced encoding. 
-It is possible to set the memo in a transaction envelope to a binary sequence which is not valid ASCII or unicode. 
+However, XDR strings are actually binary blobs with no enforced encoding.
+It is possible to set the memo in a transaction envelope to a binary sequence which is not valid ASCII or unicode.
 Previously, if you wanted to recover the original binary sequence for a transaction memo, you would have to decode the transaction's envelope.
 In this release, we have added a `memo_bytes` field to the Horizon transaction response for transactions with `memo_type` equal `text`.
 `memo_bytes` stores the base 64 encoding of the memo bytes set in the transaction envelope [#2485](https://github.com/stellar/go/pull/2485).
@@ -145,7 +174,7 @@ To execute the migration run `horizon db migrate up` using the Horizon v1.1.0 bi
       "trustor": "GA332TXN6BX2DYKGYB7FW5BWV2JLQKERNX4T7EUJT4MHWOW2TSGC2SPM",
       "asset_type": "credit_alphanum4",
       "asset_code": "USD"
-    }    
+    }
     </pre>
 * It is no longer possible to use Redis as a mechanism for rate-limiting requests ([#2409](https://github.com/stellar/go/pull/2409)).
 

@@ -173,11 +173,13 @@ var dbReingestRangeCmd = &cobra.Command{
 		}
 
 		ingestConfig := expingest.Config{
-			CoreSession:              coreSession,
-			NetworkPassphrase:        config.NetworkPassphrase,
-			HistorySession:           horizonSession,
-			HistoryArchiveURL:        config.HistoryArchiveURLs[0],
-			IngestFailedTransactions: config.IngestFailedTransactions,
+			CoreSession:       coreSession,
+			NetworkPassphrase: config.NetworkPassphrase,
+			HistorySession:    horizonSession,
+			HistoryArchiveURL: config.HistoryArchiveURLs[0],
+		}
+		if config.EnableCaptiveCoreIngestion {
+			ingestConfig.StellarCorePath = config.StellarCoreBinaryPath
 		}
 
 		system, err := expingest.NewSystem(ingestConfig)

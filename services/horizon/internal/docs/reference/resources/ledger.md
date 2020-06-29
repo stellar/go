@@ -19,6 +19,7 @@ To learn more about the concept of ledgers in the Stellar network, take a look a
 | successful_transaction_count | number | The number of successful transactions in this ledger.                                                                        |
 | failed_transaction_count     | number | The number of failed transactions in this ledger.                                                                            |
 | operation_count              | number | The number of operations applied in this ledger.                                                                             |
+| tx_set_operation_count       | number | The number of operations in this ledger. This number includes operations from failed and successful transactions.            |
 | closed_at                    | string | An [ISO 8601](https://en.wikipedia.org/wiki/ISO_8601) formatted string of when this ledger was closed.                       |
 | total_coins                  | string | The total number of lumens in circulation.                                                                                   |
 | fee_pool                     | string | The sum of all transaction fees *(in lumens)* since the last inflation operation. They are redistributed during [inflation]. |
@@ -69,6 +70,7 @@ To learn more about the concept of ledgers in the Stellar network, take a look a
   "successful_transaction_count": 0,
   "failed_transaction_count": 0,
   "operation_count": 0,
+  "tx_set_operation_count": 0,
   "closed_at": "2015-07-09T21:39:28Z",
   "total_coins": "100000000000.0000000",
   "fee_pool": "0.0025600",

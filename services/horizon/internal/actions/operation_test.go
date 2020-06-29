@@ -19,7 +19,7 @@ func TestGetOperationsWithoutFilter(t *testing.T) {
 	tt.Scenario("base")
 
 	q := &history.Q{tt.HorizonSession()}
-	handler := GetOperationsHandler{IngestingFailedTransactions: true}
+	handler := GetOperationsHandler{}
 
 	records, err := handler.GetResourcePage(
 		httptest.NewRecorder(),
@@ -37,7 +37,7 @@ func TestGetOperationsExclusiveFilters(t *testing.T) {
 	tt.Scenario("base")
 
 	q := &history.Q{tt.HorizonSession()}
-	handler := GetOperationsHandler{IngestingFailedTransactions: true}
+	handler := GetOperationsHandler{}
 
 	testCases := []struct {
 		desc  string
@@ -92,7 +92,7 @@ func TestGetOperationsFilterByAccountID(t *testing.T) {
 	tt.Scenario("base")
 
 	q := &history.Q{tt.HorizonSession()}
-	handler := GetOperationsHandler{IngestingFailedTransactions: true}
+	handler := GetOperationsHandler{}
 
 	testCases := []struct {
 		accountID string
@@ -133,7 +133,7 @@ func TestGetOperationsFilterByTxID(t *testing.T) {
 	tt.Scenario("base")
 
 	q := &history.Q{tt.HorizonSession()}
-	handler := GetOperationsHandler{IngestingFailedTransactions: true}
+	handler := GetOperationsHandler{}
 
 	testCases := []struct {
 		desc          string
@@ -207,7 +207,7 @@ func TestGetOperationsIncludeFailed(t *testing.T) {
 	tt.Scenario("failed_transactions")
 
 	q := &history.Q{tt.HorizonSession()}
-	handler := GetOperationsHandler{IngestingFailedTransactions: true}
+	handler := GetOperationsHandler{}
 
 	records, err := handler.GetResourcePage(
 		httptest.NewRecorder(),
@@ -329,28 +329,6 @@ func TestGetOperationsIncludeFailed(t *testing.T) {
 		"Filter should be true or false",
 		p.Extras["reason"],
 	)
-
-	handler = GetOperationsHandler{
-		IngestingFailedTransactions: false,
-	}
-
-	_, err = handler.GetResourcePage(
-		httptest.NewRecorder(),
-		makeRequest(
-			t, map[string]string{
-				"include_failed": "true",
-			}, map[string]string{}, q.Session,
-		),
-	)
-	tt.Assert.Error(err)
-	tt.Assert.IsType(&problem.P{}, err)
-	p = err.(*problem.P)
-	tt.Assert.Equal("bad_request", p.Type)
-	tt.Assert.Equal("include_failed", p.Extras["invalid_field"])
-	tt.Assert.Equal(
-		"`include_failed` parameter is unavailable when Horizon is not ingesting failed transactions. Set `INGEST_FAILED_TRANSACTIONS=true` to start ingesting them.",
-		p.Extras["reason"],
-	)
 }
 
 func TestGetOperationsFilterByLedgerID(t *testing.T) {
@@ -359,7 +337,7 @@ func TestGetOperationsFilterByLedgerID(t *testing.T) {
 	tt.Scenario("base")
 
 	q := &history.Q{tt.HorizonSession()}
-	handler := GetOperationsHandler{IngestingFailedTransactions: true}
+	handler := GetOperationsHandler{}
 
 	testCases := []struct {
 		ledgerID    string
@@ -431,8 +409,7 @@ func TestGetOperationsOnlyPayments(t *testing.T) {
 
 	q := &history.Q{tt.HorizonSession()}
 	handler := GetOperationsHandler{
-		IngestingFailedTransactions: true,
-		OnlyPayments:                true,
+		OnlyPayments: true,
 	}
 
 	records, err := handler.GetResourcePage(
@@ -511,7 +488,7 @@ func TestOperation_CreatedAt(t *testing.T) {
 	tt.Scenario("base")
 
 	q := &history.Q{tt.HorizonSession()}
-	handler := GetOperationsHandler{IngestingFailedTransactions: true}
+	handler := GetOperationsHandler{}
 
 	records, err := handler.GetResourcePage(
 		httptest.NewRecorder(),
@@ -536,7 +513,7 @@ func TestGetOperationsPagination(t *testing.T) {
 	tt.Scenario("base")
 
 	q := &history.Q{tt.HorizonSession()}
-	handler := GetOperationsHandler{IngestingFailedTransactions: true}
+	handler := GetOperationsHandler{}
 
 	records, err := handler.GetResourcePage(
 		httptest.NewRecorder(),
@@ -593,7 +570,7 @@ func TestGetOperations_IncludeTransactions(t *testing.T) {
 	tt.Scenario("failed_transactions")
 
 	q := &history.Q{tt.HorizonSession()}
-	handler := GetOperationsHandler{IngestingFailedTransactions: true}
+	handler := GetOperationsHandler{}
 
 	_, err := handler.GetResourcePage(
 		httptest.NewRecorder(),

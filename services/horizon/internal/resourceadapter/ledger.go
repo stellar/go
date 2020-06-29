@@ -25,6 +25,7 @@ func PopulateLedger(ctx context.Context, dest *protocol.Ledger, row history.Ledg
 	}
 	dest.FailedTransactionCount = row.FailedTransactionCount
 	dest.OperationCount = row.OperationCount
+	dest.TxSetOperationCount = row.TxSetOperationCount
 	dest.ClosedAt = row.ClosedAt
 	dest.TotalCoins = amount.String(xdr.Int64(row.TotalCoins))
 	dest.FeePool = amount.String(xdr.Int64(row.FeePool))
