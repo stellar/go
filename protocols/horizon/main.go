@@ -372,10 +372,7 @@ func (res Trade) PagingToken() string {
 	return res.PT
 }
 
-// TradeEffect represents a trade effect resource.  NOTE (scott, 2017-12-08):
-// this resource is being added back in temporarily to deal with a deploy snafu.
-// I didn't properly message the community that we were changing the response
-// format, and so we're adding this back in to allow transition.
+// TradeEffect represents a trade effect resource.
 type TradeEffect struct {
 	Links struct {
 		Self      hal.Link `json:"self"`

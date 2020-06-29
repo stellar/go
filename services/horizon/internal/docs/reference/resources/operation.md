@@ -1,5 +1,6 @@
 ---
 title: Operation
+replacement: https://developers.stellar.org/api/resources/operations/
 ---
 
 [Operations](https://www.stellar.org/developers/learn/concepts/operations.html) are objects that represent a desired change to the ledger: payments,

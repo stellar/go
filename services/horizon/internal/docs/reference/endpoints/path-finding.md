@@ -2,6 +2,7 @@
 title: Find Payment Paths
 clientData:
   laboratoryUrl: https://www.stellar.org/laboratory/#explorer?resource=paths&endpoint=all
+replacement: https://developers.stellar.org/api/aggregations/paths/
 ---
 
 **Note**: This endpoint will be deprecated, use [/path/strict-receive](./path-finding-strict-receive.md) instead. There are no differences between both endpoints, `/paths` is an alias for `/path/strict-receive`.

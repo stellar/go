@@ -919,11 +919,19 @@ func countNonEmpty(params ...interface{}) (int, error) {
 		default:
 			return 0, errors.Errorf("unexpected type %T", param)
 		case int32:
-			if param != int32(0) {
+			if param != 0 {
+				count++
+			}
+		case uint32:
+			if param != 0 {
 				count++
 			}
 		case int64:
-			if param != int64(0) {
+			if param != 0 {
+				count++
+			}
+		case uint64:
+			if param != 0 {
 				count++
 			}
 		case string:

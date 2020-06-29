@@ -2,6 +2,7 @@
 title: Effects for Account
 clientData:
   laboratoryUrl: https://www.stellar.org/laboratory/#explorer?resource=effects&endpoint=for_account
+replacement: https://developers.stellar.org/api/resources/accounts/effects/
 ---
 
 This endpoint represents all [effects](../resources/effect.md) that changed a given

@@ -2,6 +2,7 @@
 title: Trades for Account
 clientData:
   laboratoryUrl: https://www.stellar.org/laboratory/#explorer?resource=trades&endpoint=for_account
+replacement: https://developers.stellar.org/api/resources/accounts/trades/
 ---
 
 This endpoint represents all [trades](../resources/trade.md) that affect a given [account](../resources/account.md).

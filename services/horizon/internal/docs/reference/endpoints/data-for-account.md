@@ -2,6 +2,7 @@
 title: Data for Account
 clientData:
   laboratoryUrl: https://www.stellar.org/laboratory/#explorer?resource=data&endpoint=for_account
+replacement: https://developers.stellar.org/api/resources/accounts/data/
 ---
 
 This endpoint represents a single [data](../resources/data.md) associated with a given [account](../resources/account.md).

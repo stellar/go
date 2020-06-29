@@ -1,6 +1,6 @@
 package xdr
 
-// IsFeeBump returns true if the transaction envelope is a fee bump transctoin
+// IsFeeBump returns true if the transaction envelope is a fee bump transaction
 func (e TransactionEnvelope) IsFeeBump() bool {
 	return e.Type == EnvelopeTypeEnvelopeTypeTxFeeBump
 }

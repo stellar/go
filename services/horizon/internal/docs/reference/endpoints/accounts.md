@@ -1,5 +1,6 @@
 ---
 title: Accounts
+replacement: https://developers.stellar.org/api/resources/accounts/
 ---
 
 This endpoint allows filtering accounts who have a given `signer` or have a trustline to an `asset`. The result is a list of [accounts](../resources/account.md).
