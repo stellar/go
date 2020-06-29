@@ -1,9 +1,7 @@
 package ledgerbackend
 
 import (
-	"fmt"
 	"io"
-	"math/rand"
 	"sync"
 	"time"
 
@@ -81,17 +79,11 @@ type captiveStellarCore struct {
 //
 // Platform-specific pipe setup logic is in the .start() methods.
 func NewCaptive(executablePath, networkPassphrase string, historyURLs []string) *captiveStellarCore {
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	return &captiveStellarCore{
 		networkPassphrase: networkPassphrase,
 		historyURLs:       historyURLs,
 		nextLedger:        0,
-		stellarCoreRunner: &stellarCoreRunner{
-			executablePath:    executablePath,
-			networkPassphrase: networkPassphrase,
-			historyURLs:       historyURLs,
-			nonce:             fmt.Sprintf("captive-stellar-core-%x", r.Uint64()),
-		},
+		stellarCoreRunner: newStellarCoreRunner(executablePath, networkPassphrase, historyURLs),
 	}
 }
 

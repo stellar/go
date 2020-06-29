@@ -33,6 +33,16 @@ type stellarCoreRunner struct {
 	nonce    string
 }
 
+func newStellarCoreRunner(executablePath, networkPassphrase string, historyURLs []string) *stellarCoreRunner {
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	return &stellarCoreRunner{
+		executablePath:    executablePath,
+		networkPassphrase: networkPassphrase,
+		historyURLs:       historyURLs,
+		nonce:             fmt.Sprintf("captive-stellar-core-%x", r.Uint64()),
+	}
+}
+
 func (r *stellarCoreRunner) getConf() string {
 	lines := []string{
 		"# Generated file -- do not edit",
