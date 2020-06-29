@@ -280,6 +280,7 @@ func (s *system) ReingestRange(fromLedger, toLedger uint32, force bool) error {
 	}
 	err := run()
 	for retry := 0; err != nil && retry < s.maxReingestRetries; retry++ {
+		log.Warnf("reingest range [%d, %d] failed (%s), retrying", fromLedger, toLedger, err.Error())
 		time.Sleep(time.Second * time.Duration(s.reingesRetryBackoffSeconds))
 		err = run()
 	}
