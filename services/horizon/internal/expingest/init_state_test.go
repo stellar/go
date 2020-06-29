@@ -17,13 +17,13 @@ type InitStateTestSuite struct {
 	suite.Suite
 	historyQ       *mockDBQ
 	historyAdapter *adapters.MockHistoryArchiveAdapter
-	system         *System
+	system         *system
 }
 
 func (s *InitStateTestSuite) SetupTest() {
 	s.historyQ = &mockDBQ{}
 	s.historyAdapter = &adapters.MockHistoryArchiveAdapter{}
-	s.system = &System{
+	s.system = &system{
 		ctx:            context.Background(),
 		historyQ:       s.historyQ,
 		historyAdapter: s.historyAdapter,

@@ -19,7 +19,7 @@ type BuildStateTestSuite struct {
 	suite.Suite
 	historyQ          *mockDBQ
 	historyAdapter    *adapters.MockHistoryArchiveAdapter
-	system            *System
+	system            *system
 	runner            *mockProcessorsRunner
 	stellarCoreClient *mockStellarCoreClient
 	checkpointLedger  uint32
@@ -33,7 +33,7 @@ func (s *BuildStateTestSuite) SetupTest() {
 	s.stellarCoreClient = &mockStellarCoreClient{}
 	s.checkpointLedger = uint32(63)
 	s.lastLedger = 0
-	s.system = &System{
+	s.system = &system{
 		ctx:               context.Background(),
 		historyQ:          s.historyQ,
 		historyAdapter:    s.historyAdapter,

@@ -10,6 +10,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+
 	"github.com/stellar/go/services/horizon/internal/db2/schema"
 	"github.com/stellar/go/services/horizon/internal/expingest"
 	support "github.com/stellar/go/support/config"
@@ -122,16 +123,54 @@ var dbReingestCmd = &cobra.Command{
 	},
 }
 
-var reingestForce bool
+var (
+	reingestForce       bool
+	parallelWorkers     uint
+	parallelJobSize     uint32
+	retries             uint
+	retryBackoffSeconds uint
+)
 var reingestRangeCmdOpts = []*support.ConfigOption{
-	&support.ConfigOption{
+	{
 		Name:        "force",
 		ConfigKey:   &reingestForce,
 		OptType:     types.Bool,
 		Required:    false,
 		FlagDefault: false,
 		Usage: "[optional] if this flag is set, horizon will be blocked " +
-			"from ingesting until the reingestion command completes",
+			"from ingesting until the reingestion command completes (incompatible with --parallel-workers > 1)",
+	},
+	{
+		Name:        "parallel-workers",
+		ConfigKey:   &parallelWorkers,
+		OptType:     types.Uint,
+		Required:    false,
+		FlagDefault: uint(1),
+		Usage:       "[optional] if this flag is set to > 1, horizon will parallelize reingestion using the supplied number of workers",
+	},
+	{
+		Name:        "parallel-job-size",
+		ConfigKey:   &parallelJobSize,
+		OptType:     types.Uint32,
+		Required:    false,
+		FlagDefault: uint32(100000),
+		Usage:       "[optional] parallel workers will run jobs processing ledger batches of the supplied size",
+	},
+	{
+		Name:        "retries",
+		ConfigKey:   &retries,
+		OptType:     types.Uint,
+		Required:    false,
+		FlagDefault: uint(0),
+		Usage:       "[optional] number of reingest retries",
+	},
+	{
+		Name:        "retry-backoff-seconds",
+		ConfigKey:   &retryBackoffSeconds,
+		OptType:     types.Uint,
+		Required:    false,
+		FlagDefault: uint(5),
+		Usage:       "[optional] backoff seconds between reingest retries",
 	},
 }
 
@@ -143,6 +182,9 @@ var dbReingestRangeCmd = &cobra.Command{
 		for _, co := range reingestRangeCmdOpts {
 			co.Require()
 			co.SetValue()
+		}
+		if reingestForce && parallelWorkers > 1 {
+			log.Fatal("--force is incompatible with --parallel-workers > 1")
 		}
 
 		if len(args) != 2 {
@@ -173,25 +215,41 @@ var dbReingestRangeCmd = &cobra.Command{
 		}
 
 		ingestConfig := expingest.Config{
-			CoreSession:       coreSession,
-			NetworkPassphrase: config.NetworkPassphrase,
-			HistorySession:    horizonSession,
-			HistoryArchiveURL: config.HistoryArchiveURLs[0],
+			CoreSession:                coreSession,
+			NetworkPassphrase:          config.NetworkPassphrase,
+			HistorySession:             horizonSession,
+			HistoryArchiveURL:          config.HistoryArchiveURLs[0],
+			MaxReingestRetries:         int(retries),
+			ReingesRetryBackoffSeconds: int(retryBackoffSeconds),
 		}
 		if config.EnableCaptiveCoreIngestion {
 			ingestConfig.StellarCorePath = config.StellarCoreBinaryPath
 		}
 
-		system, err := expingest.NewSystem(ingestConfig)
-		if err != nil {
-			log.Fatal(err)
+		if parallelWorkers < 2 {
+			system, systemErr := expingest.NewSystem(ingestConfig)
+			if err != nil {
+				log.Fatal(systemErr)
+			}
+
+			err = system.ReingestRange(
+				argsInt32[0],
+				argsInt32[1],
+				reingestForce,
+			)
+		} else {
+			system, systemErr := expingest.NewParallelSystems(ingestConfig, parallelWorkers)
+			if err != nil {
+				log.Fatal(systemErr)
+			}
+
+			err = system.ReingestRange(
+				argsInt32[0],
+				argsInt32[1],
+				parallelJobSize,
+			)
 		}
 
-		err = system.ReingestRange(
-			argsInt32[0],
-			argsInt32[1],
-			reingestForce,
-		)
 		if err == nil {
 			hlog.Info("Range run successfully!")
 			return

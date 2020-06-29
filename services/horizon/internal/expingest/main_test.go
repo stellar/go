@@ -7,6 +7,9 @@ import (
 	"testing"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+
 	"github.com/stellar/go/exp/ingest/adapters"
 	"github.com/stellar/go/exp/ingest/io"
 	"github.com/stellar/go/exp/ingest/ledgerbackend"
@@ -15,8 +18,6 @@ import (
 	"github.com/stellar/go/support/errors"
 	logpkg "github.com/stellar/go/support/log"
 	"github.com/stellar/go/xdr"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
 
 var (
@@ -89,8 +90,9 @@ func TestNewSystem(t *testing.T) {
 		HistoryArchiveURL:        "https://history.stellar.org/prd/core-live/core_live_001",
 	}
 
-	system, err := NewSystem(config)
+	sIface, err := NewSystem(config)
 	assert.NoError(t, err)
+	system := sIface.(*system)
 
 	assert.Equal(t, config, system.config)
 	assert.Equal(t, config.DisableStateVerification, system.disableStateVerification)
@@ -102,7 +104,7 @@ func TestNewSystem(t *testing.T) {
 
 func TestStateMachineRunReturnsUnexpectedTransaction(t *testing.T) {
 	historyQ := &mockDBQ{}
-	system := &System{
+	system := &system{
 		historyQ: historyQ,
 		ctx:      context.Background(),
 	}
@@ -116,7 +118,7 @@ func TestStateMachineRunReturnsUnexpectedTransaction(t *testing.T) {
 
 func TestStateMachineTransition(t *testing.T) {
 	historyQ := &mockDBQ{}
-	system := &System{
+	system := &system{
 		historyQ: historyQ,
 		ctx:      context.Background(),
 	}
@@ -133,7 +135,7 @@ func TestStateMachineTransition(t *testing.T) {
 func TestContextCancel(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	historyQ := &mockDBQ{}
-	system := &System{
+	system := &system{
 		historyQ: historyQ,
 		ctx:      ctx,
 	}
@@ -151,7 +153,7 @@ func TestContextCancel(t *testing.T) {
 // non-zero exit code.
 func TestStateMachineRunReturnsErrorWhenNextStateIsShutdownWithError(t *testing.T) {
 	historyQ := &mockDBQ{}
-	system := &System{
+	system := &system{
 		ctx:      context.Background(),
 		historyQ: historyQ,
 	}
@@ -165,7 +167,7 @@ func TestStateMachineRunReturnsErrorWhenNextStateIsShutdownWithError(t *testing.
 
 func TestMaybeVerifyStateGetExpStateInvalidDBErrCancelOrContextCanceled(t *testing.T) {
 	historyQ := &mockDBQ{}
-	system := &System{
+	system := &system{
 		historyQ: historyQ,
 		ctx:      context.Background(),
 	}
@@ -191,7 +193,7 @@ func TestMaybeVerifyStateGetExpStateInvalidDBErrCancelOrContextCanceled(t *testi
 }
 func TestMaybeVerifyInternalDBErrCancelOrContextCanceled(t *testing.T) {
 	historyQ := &mockDBQ{}
-	system := &System{
+	system := &system{
 		historyQ: historyQ,
 		ctx:      context.Background(),
 	}
@@ -433,3 +435,37 @@ func (m *mockStellarCoreClient) SetCursor(ctx context.Context, id string, cursor
 }
 
 var _ stellarCoreClient = (*mockStellarCoreClient)(nil)
+
+type mockSystem struct {
+	mock.Mock
+}
+
+func (m *mockSystem) Run() {
+	m.Called()
+}
+
+func (m *mockSystem) Metrics() Metrics {
+	args := m.Called()
+	return args.Get(0).(Metrics)
+}
+
+func (m *mockSystem) StressTest(numTransactions, changesPerTransaction int) error {
+	args := m.Called(numTransactions, changesPerTransaction)
+	return args.Error(0)
+}
+
+func (m *mockSystem) VerifyRange(fromLedger, toLedger uint32, verifyState bool) error {
+	args := m.Called(fromLedger, toLedger, verifyState)
+	return args.Error(0)
+}
+
+func (m *mockSystem) ReingestRange(fromLedger, toLedger uint32, force bool) error {
+	args := m.Called(fromLedger, toLedger, force)
+	return args.Error(0)
+}
+
+func (m *mockSystem) Shutdown() {
+	m.Called()
+}
+
+var _ System = (*mockSystem)(nil)
