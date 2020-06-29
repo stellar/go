@@ -32,8 +32,7 @@ var _ LedgerBackend = (*captiveStellarCore)(nil)
 const (
 	// In this (crude, initial) sketch, we replay ledgers in blocks of 17,280
 	// which is 24 hours worth of ledgers at 5 second intervals.
-	ledgersPerProcess    = 17280
-	ledgersPerCheckpoint = 64
+	ledgersPerProcess = 17280
 
 	// The number of checkpoints we're willing to scan over and ignore, without
 	// restarting a subprocess.

@@ -19,12 +19,10 @@ type HistoryArchiveBackend struct {
 
 	rangeFrom uint32
 	rangeTo   uint32
-	cache     map[uint32]*LedgerCloseMeta
+	cache     map[uint32]*xdr.LedgerCloseMeta
 }
 
 var _ LedgerBackend = (*HistoryArchiveBackend)(nil)
-
-const ledgersPerCheckpoint = 64
 
 const (
 	ledgerCategory       = "ledger"
@@ -45,7 +43,7 @@ func NewHistoryArchiveBackendFromURL(archiveURL string) (*HistoryArchiveBackend,
 
 	return &HistoryArchiveBackend{
 		archive: archive,
-		cache:   make(map[uint32]*LedgerCloseMeta),
+		cache:   make(map[uint32]*xdr.LedgerCloseMeta),
 	}, nil
 }
 
@@ -54,7 +52,7 @@ func NewHistoryArchiveBackendFromURL(archiveURL string) (*HistoryArchiveBackend,
 func NewHistoryArchiveBackendFromArchive(archive historyarchive.ArchiveInterface) *HistoryArchiveBackend {
 	return &HistoryArchiveBackend{
 		archive: archive,
-		cache:   make(map[uint32]*LedgerCloseMeta),
+		cache:   make(map[uint32]*xdr.LedgerCloseMeta),
 	}
 }
 
@@ -69,27 +67,33 @@ func (hab *HistoryArchiveBackend) GetLatestLedgerSequence() (uint32, error) {
 	return has.CurrentLedger, nil
 }
 
+// PrepareRange does nothing because of how history archives are structured. Request any
+// ledger by using `GetLedger` to download all ledger data within a given checkpoint
+func (hab *HistoryArchiveBackend) PrepareRange(from uint32, to uint32) error {
+	return nil
+}
+
 // GetLedger returns the LedgerCloseMeta for the given ledger sequence number.
 // The first returned value is false when the ledger does not exist in the history archives.
 // Due to the history archives architecture the first request to get a ledger is slow because
 // it downloads the data for all the ledgers for a given checkpoint. The following requests
 // for other ledgers within the same checkpoint are fast, requesting another checkpoint is
 // slow again.
-func (hab *HistoryArchiveBackend) GetLedger(sequence uint32) (bool, LedgerCloseMeta, error) {
+func (hab *HistoryArchiveBackend) GetLedger(sequence uint32) (bool, xdr.LedgerCloseMeta, error) {
 	if !(sequence >= hab.rangeFrom && sequence <= hab.rangeTo) {
 		checkpointSequence := (sequence/ledgersPerCheckpoint)*ledgersPerCheckpoint + ledgersPerCheckpoint - 1
 		found, err := hab.loadTransactionsFromCheckpoint(checkpointSequence)
 		if err != nil {
-			return false, LedgerCloseMeta{}, err
+			return false, xdr.LedgerCloseMeta{}, err
 		}
 		if !found {
-			return false, LedgerCloseMeta{}, nil
+			return false, xdr.LedgerCloseMeta{}, nil
 		}
 	}
 
 	meta := hab.cache[sequence]
 	if meta == nil {
-		return false, LedgerCloseMeta{}, errors.New("checkpoint loaded but ledger not found")
+		return false, xdr.LedgerCloseMeta{}, errors.New("checkpoint loaded but ledger not found")
 	}
 	return true, *meta, nil
 }
@@ -152,15 +156,23 @@ func (hab *HistoryArchiveBackend) fetchCategory(category string, checkpointSeque
 		case ledgerCategory:
 			var object xdr.LedgerHeaderHistoryEntry
 			err = xdrStream.ReadOne(&object)
-			hab.cache[uint32(object.Header.LedgerSeq)] = &LedgerCloseMeta{LedgerHeader: object}
+			hab.cache[uint32(object.Header.LedgerSeq)] = &xdr.LedgerCloseMeta{
+				V: 0,
+				V0: &xdr.LedgerCloseMetaV0{
+					LedgerHeader: object,
+				},
+			}
 		case transactionsCategory:
 			var object xdr.TransactionHistoryEntry
 			err = xdrStream.ReadOne(&object)
-			hab.cache[uint32(object.LedgerSeq)].TransactionEnvelope = object.TxSet.Txs
+			hab.cache[uint32(object.LedgerSeq)].V0.TxSet = object.TxSet
 		case resultsCategory:
 			var object xdr.TransactionHistoryResultEntry
 			err = xdrStream.ReadOne(&object)
-			hab.cache[uint32(object.LedgerSeq)].TransactionResult = object.TxResultSet.Results
+			hab.cache[uint32(object.LedgerSeq)].V0.TxProcessing = make([]xdr.TransactionResultMeta, len(object.TxResultSet.Results))
+			for i := range object.TxResultSet.Results {
+				hab.cache[uint32(object.LedgerSeq)].V0.TxProcessing[i].Result = object.TxResultSet.Results[i]
+			}
 		default:
 			panic("unknown category")
 		}
@@ -180,6 +192,6 @@ func (hab *HistoryArchiveBackend) fetchCategory(category string, checkpointSeque
 func (hab *HistoryArchiveBackend) Close() error {
 	hab.rangeFrom = 0
 	hab.rangeTo = 0
-	hab.cache = make(map[uint32]*LedgerCloseMeta)
+	hab.cache = make(map[uint32]*xdr.LedgerCloseMeta)
 	return nil
 }
