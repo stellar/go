@@ -154,6 +154,7 @@ jobs:
       - gogenerate
       - govet
       - staticcheck
+      - build_packages
 
   # test_code_1_13 performs all package tests using Go 1.13.
   test_code_1_13:
