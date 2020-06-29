@@ -45,7 +45,7 @@ func (c *stellarCoreRunner) start() error {
 	return nil
 }
 
-func (c *captiveStellarCore) processIsAlive() bool {
+func (c *stellarCoreRunner) processIsAlive() bool {
 	if c.cmd == nil {
 		return false
 	}
