@@ -30,6 +30,7 @@ type stellarCoreRunner struct {
 	cmd      *exec.Cmd
 	metaPipe io.Reader
 	tempDir  string
+	nonce    string
 }
 
 func (r *stellarCoreRunner) getConf() string {
