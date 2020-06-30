@@ -3,9 +3,8 @@ package expingest
 import (
 	"testing"
 
-	"github.com/stellar/go/network"
-
 	"github.com/stellar/go/exp/ingest/ledgerbackend"
+	"github.com/stellar/go/network"
 	"github.com/stellar/go/services/horizon/internal/test"
 )
 

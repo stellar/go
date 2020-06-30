@@ -24,8 +24,6 @@ type Config struct {
 	MaxDBConnections            int
 	HorizonDBMaxOpenConnections int
 	HorizonDBMaxIdleConnections int
-	CoreDBMaxOpenConnections    int
-	CoreDBMaxIdleConnections    int
 
 	SSEUpdateFrequency time.Duration
 	ConnectionTimeout  time.Duration
