@@ -1,16 +1,17 @@
-package keypair_test
+package keypairgen_test
 
 import (
 	"testing"
 
 	"github.com/stellar/go/keypair"
-	"github.com/stellar/go/keypair/keypairtest"
+	"github.com/stellar/go/keypairgen"
+	"github.com/stellar/go/keypairgen/keypairgentest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestGenerator_Generate_sourceNotSet(t *testing.T) {
-	g := keypair.Generator{}
+	g := keypairgen.Generator{}
 	k1, err := g.Generate()
 	require.NoError(t, err)
 	t.Log("k1", k1.Address(), k1.Seed())
@@ -21,7 +22,7 @@ func TestGenerator_Generate_sourceNotSet(t *testing.T) {
 }
 
 func TestGenerator_Generate_sourceNotSetPtrNil(t *testing.T) {
-	g := (*keypair.Generator)(nil)
+	g := (*keypairgen.Generator)(nil)
 	k1, err := g.Generate()
 	require.NoError(t, err)
 	t.Log("k1", k1.Address(), k1.Seed())
@@ -32,12 +33,12 @@ func TestGenerator_Generate_sourceNotSetPtrNil(t *testing.T) {
 }
 
 func TestGenerator_Generate_sourceSet(t *testing.T) {
-	s := keypairtest.SliceSource{
+	s := keypairgentest.SliceSource{
 		keypair.MustRandom(),
 		keypair.MustRandom(),
 		keypair.MustRandom(),
 	}
-	g := keypair.Generator{
+	g := keypairgen.Generator{
 		Source: &s,
 	}
 	k1, err := g.Generate()

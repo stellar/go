@@ -1,10 +1,10 @@
-package keypairtest_test
+package keypairgentest_test
 
 import (
 	"testing"
 
 	"github.com/stellar/go/keypair"
-	"github.com/stellar/go/keypair/keypairtest"
+	"github.com/stellar/go/keypairgen/keypairgentest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -15,7 +15,7 @@ import (
 func TestSliceSource_Generate(t *testing.T) {
 	kp1 := keypair.MustRandom()
 	kp2 := keypair.MustRandom()
-	s := keypairtest.SliceSource{kp1, kp2}
+	s := keypairgentest.SliceSource{kp1, kp2}
 
 	gkp1, err := s.Generate()
 	require.NoError(t, err)
@@ -30,7 +30,7 @@ func TestSliceSource_Generate(t *testing.T) {
 // by the slice has been exhausted of values the function panics.
 func TestSliceSource_Generate_noMoreAvailable(t *testing.T) {
 	kp := keypair.MustRandom()
-	s := keypairtest.SliceSource{kp}
+	s := keypairgentest.SliceSource{kp}
 
 	_, err := s.Generate()
 	require.NoError(t, err)

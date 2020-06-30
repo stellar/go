@@ -1,10 +1,10 @@
-package keypairtest
+package keypairgentest
 
 import (
 	"github.com/stellar/go/keypair"
 )
 
-// SliceSource is a keypair.Generator source that has the values returned
+// SliceSource is a keypairgen.Generator source that has the values returned
 // from a slice of keys that are provided at generation one at a time.
 type SliceSource []*keypair.Full
 
