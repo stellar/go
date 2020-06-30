@@ -41,6 +41,8 @@ func (c *stellarCoreRunner) start() error {
 		return e
 	}
 
+	// Do not remove bufio.Reader wrapping. Turns out that each read from a pipe
+	// adds an overhead time so it's better to preload data to a buffer.
 	c.metaPipe = bufio.NewReaderSize(connection, 1024*1024)
 	return nil
 }

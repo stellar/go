@@ -577,6 +577,8 @@ func (h reingestHistoryRangeState) run(s *system) (transition, error) {
 		h.fromLedger = 2
 	}
 
+	startTime = time.Now()
+
 	if h.force {
 		if err := s.historyQ.Begin(); err != nil {
 			return stop(), errors.Wrap(err, "Error starting a transaction")
@@ -629,6 +631,12 @@ func (h reingestHistoryRangeState) run(s *system) (transition, error) {
 			}
 		}
 	}
+
+	log.WithFields(logpkg.F{
+		"from":     h.fromLedger,
+		"to":       h.toLedger,
+		"duration": time.Since(startTime).Seconds(),
+	}).Info("Reingestion done")
 
 	return stop(), nil
 }
