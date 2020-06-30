@@ -183,12 +183,12 @@ func (r *stellarCoreRunner) runFrom(from uint32) error {
 		return errors.Wrap(err, "error writing configuration")
 	}
 
-	if err := r.runCmd("new-db"); err != nil {
+	if err = r.runCmd("new-db"); err != nil {
 		return errors.Wrap(err, "error waiting for `stellar-core new-db` subprocess")
 	}
 
 	// catchup to `from` ledger
-	if err := r.runCmd("catchup", fmt.Sprintf("%d/0", from-1)); err != nil {
+	if err = r.runCmd("catchup", fmt.Sprintf("%d/0", from-1)); err != nil {
 		return errors.Wrap(err, "error running `stellar-core catchup` subprocess")
 	}
 
