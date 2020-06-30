@@ -122,36 +122,53 @@ func (r *stellarCoreRunner) writeConf() error {
 	return ioutil.WriteFile(r.getConfFileName(), []byte(conf), 0644)
 }
 
-func (r *stellarCoreRunner) catchup(from, to uint32) error {
-	err := r.writeConf()
+func (r *stellarCoreRunner) createCmd(params ...string) (*exec.Cmd, error) {
+	allParams := append([]string{"--conf", r.getConfFileName()}, params...)
+	cmd := exec.Command(r.executablePath, allParams...)
+	err := cmd.Start()
 	if err != nil {
-		return errors.Wrap(err, "error writing configuration")
-	}
-
-	// new-db
-	cmd := exec.Command(r.executablePath, []string{"--conf", r.getConfFileName(), "new-db"}...)
-	err = cmd.Start()
-	if err != nil {
-		return errors.Wrap(err, "error starting `stellar-core new-db` subprocess")
+		return nil, errors.Wrapf(err, "error starting `stellar-core %v` subprocess", params)
 	}
 	cmd.Dir = r.getTmpDir()
 	cmd.Stdout = r.getLogLineWriter()
 	cmd.Stderr = r.getLogLineWriter()
-	err = cmd.Wait()
+	return cmd, nil
+}
+
+func (r *stellarCoreRunner) runCmd(params ...string) error {
+	cmd, err := r.createCmd(params...)
 	if err != nil {
+		return errors.Wrapf(err, "could not create `stellar-core %v` cmd", params)
+	}
+
+	if err = cmd.Start(); err != nil {
+		return errors.Wrapf(err, "could not start `stellar-core %v` cmd", params)
+	}
+
+	if err = cmd.Wait(); err != nil {
+		return errors.Wrapf(err, "error waiting for `stellar-core %v` subprocess", params)
+	}
+	return nil
+}
+
+func (r *stellarCoreRunner) catchup(from, to uint32) error {
+	if err := r.writeConf(); err != nil {
+		return errors.Wrap(err, "error writing configuration")
+	}
+
+	if err := r.runCmd("new-db"); err != nil {
 		return errors.Wrap(err, "error waiting for `stellar-core new-db` subprocess")
 	}
 
 	rangeArg := fmt.Sprintf("%d/%d", to, to-from+1)
-	args := []string{"--conf", r.getConfFileName(), "catchup", rangeArg, "--replay-in-memory"}
-	cmd = exec.Command(r.executablePath, args...)
-	cmd.Dir = r.getTmpDir()
-	cmd.Stdout = r.getLogLineWriter()
-	cmd.Stderr = r.getLogLineWriter()
+	cmd, err := r.createCmd("catchup", rangeArg, "--replay-in-memory")
+	if err != nil {
+		return errors.Wrap(err, "error creating `stellar-core catchup` subprocess")
+	}
 	r.cmd = cmd
 	r.metaPipe, err = r.start()
 	if err != nil {
-		return errors.Wrap(err, "error starting `stellar-core run` subprocess")
+		return errors.Wrap(err, "error starting `stellar-core catchup` subprocess")
 	}
 
 	return nil
@@ -163,43 +180,19 @@ func (r *stellarCoreRunner) runFrom(from uint32) error {
 		return errors.Wrap(err, "error writing configuration")
 	}
 
-	// new-db
-	cmd := exec.Command(r.executablePath, []string{"--conf", r.getConfFileName(), "new-db"}...)
-	err = cmd.Start()
-	if err != nil {
-		return errors.Wrap(err, "error starting `stellar-core new-db` subprocess")
-	}
-	cmd.Dir = r.getTmpDir()
-	cmd.Stdout = r.getLogLineWriter()
-	cmd.Stderr = r.getLogLineWriter()
-	err = cmd.Wait()
-	if err != nil {
+	if err = r.runCmd("new-db"); err != nil {
 		return errors.Wrap(err, "error waiting for `stellar-core new-db` subprocess")
 	}
 
 	// catchup to `from` ledger
-	cmd = exec.Command(r.executablePath, []string{
-		"--conf", r.getConfFileName(),
-		"catchup", fmt.Sprintf("%d/0", from-1),
-	}...)
-	cmd.Dir = r.getTmpDir()
-	cmd.Stdout = r.getLogLineWriter()
-	cmd.Stderr = r.getLogLineWriter()
-	err = cmd.Start()
-	if err != nil {
-		return errors.Wrapf(err, "error starting `stellar-core catchup %d/0` subprocess", from-1)
-	}
-	err = cmd.Wait()
-	if err != nil {
-		return errors.Wrapf(err, "error waiting for `stellar-core catchup %d/0` subprocess", from-1)
+	if err = r.runCmd("catchup", fmt.Sprintf("%d/0", from-1)); err != nil {
+		return errors.Wrap(err, "error running `stellar-core catchup` subprocess")
 	}
 
-	args := []string{"--conf", r.getConfFileName(), "run"}
-	cmd = exec.Command(r.executablePath, args...)
-	cmd.Dir = r.getTmpDir()
-	cmd.Stdout = r.getLogLineWriter()
-	cmd.Stderr = r.getLogLineWriter()
-	r.cmd = cmd
+	r.cmd, err = r.createCmd("run")
+	if err != nil {
+		return errors.Wrap(err, "error creating `stellar-core run` subprocess")
+	}
 	r.metaPipe, err = r.start()
 	if err != nil {
 		return errors.Wrap(err, "error starting `stellar-core run` subprocess")
