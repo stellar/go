@@ -572,6 +572,11 @@ func (h reingestHistoryRangeState) run(s *system) (transition, error) {
 		"duration": time.Since(startTime).Seconds(),
 	}).Info("Range ready")
 
+	if h.fromLedger == 1 {
+		log.Warn("Ledger 1 is pregenerated and not available, starting from ledger 2.")
+		h.fromLedger = 2
+	}
+
 	if h.force {
 		if err := s.historyQ.Begin(); err != nil {
 			return stop(), errors.Wrap(err, "Error starting a transaction")
