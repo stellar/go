@@ -123,10 +123,7 @@ func (r *stellarCoreRunner) writeConf() error {
 }
 
 func (r *stellarCoreRunner) createCmd(params ...string) (*exec.Cmd, error) {
-	allParams := []string{"--conf", r.getConfFileName()}
-	for _, p := range params {
-		allParams = append(allParams, p)
-	}
+	allParams := append([]string{"--conf", r.getConfFileName()}, params...)
 	cmd := exec.Command(r.executablePath, allParams...)
 	err := cmd.Start()
 	if err != nil {
