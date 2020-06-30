@@ -1,5 +1,6 @@
 ---
 title: Offer Details
+replacement: https://developers.stellar.org/api/resources/offers/
 ---
 
 Returns information and links relating to a single [offer](../resources/offer.md).

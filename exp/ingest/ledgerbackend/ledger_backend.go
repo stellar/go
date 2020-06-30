@@ -4,6 +4,8 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
+const ledgersPerCheckpoint = 64
+
 // LedgerBackend represents the interface to a ledger data store.
 type LedgerBackend interface {
 	GetLatestLedgerSequence() (sequence uint32, err error)

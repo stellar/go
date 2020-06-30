@@ -2,6 +2,7 @@
 title: Transaction Details
 clientData:
   laboratoryUrl: https://www.stellar.org/laboratory/#explorer?resource=transactions&endpoint=single
+replacement: https://developers.stellar.org/api/resources/transactions/single/
 ---
 
 The transaction details endpoint provides information on a single

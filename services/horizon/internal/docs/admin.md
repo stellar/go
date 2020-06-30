@@ -1,5 +1,6 @@
 ---
 title: Horizon Administration Guide
+replacement: https://developers.stellar.org/docs/run-api-server/
 ---
 ## Horizon Administration Guide
 

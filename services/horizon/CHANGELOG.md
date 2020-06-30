@@ -6,9 +6,33 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).x
 ## Unreleased
 
 * Add `--parallel-workers` and `--parallel-job-size` to `horizon db reingest range`. `--parallel-workers` will parallelize reingestion using the supplied number of workers.
+
+## v1.5.0
+
+### Changes
+
+* Remove `--ingest-failed-transactions` flag. From now on Horizon will always ingest failed transactions. WARNING: If your application is using Horizon DB directly (not recommended!) remember that now it will also contain failed txs. ([#2702](https://github.com/stellar/go/pull/2702)).
 * Add transaction set operation count to `history_ledger`([#2690](https://github.com/stellar/go/pull/2690)).
-Extend ingestion to store the total number of operations in the transaction set and expose it in the ledger resource via `tx_set_operation_count`. This feature allow you to assess the used capacity of a transaction set.
-* Remove `--ingest-failed-transactions` flag. From now on Horizon will always ingest failed transactions. WARNING: if your application is using Horizon DB directly (not recommended!) remember that now it will also contain failed txs. ([#2702](https://github.com/stellar/go/pull/2702)).
+Extend ingestion to store the total number of operations in the transaction set and expose it in the ledger resource via `tx_set_operation_count`. This feature allows you to assess the used capacity of a transaction set.
+* Fix `/metrics` end-point ([#2717](https://github.com/stellar/go/pull/2717)).
+* Gracefully handle incorrect assets in the query parameters of GET `/offers` ([#2634](https://github.com/stellar/go/pull/2634)).
+* Fix logging message in OrderBookStream ([#2699](https://github.com/stellar/go/pull/2699)).
+* Fix data race in root endpoint ([#2745](https://github.com/stellar/go/pull/2745)).
+
+### Experimental
+
+* Add experimental support for database reingestion using a Stellar Core subprocess instead of a persistent Stellar Core database ([#2695](https://github.com/stellar/go/pull/2695)).
+
+  [Stellar Core v12.3.0](https://github.com/stellar/stellar-core/releases/tag/v12.3.0) added an experimental feature which allows replaying ledger's metadata in-memory. This feature speeds up reingestion and starts paving the way to remove the dependency between Stellar Core's database and Horizon.
+
+  For now, this is only supported while running `horizon db reingest`. To try out this new experimental feature, you need to specify the following parameters:
+
+  - `--enable-captive-core-ingestion` or `ENABLE_CAPTIVE_CORE_INGESTION=true`.
+  - `--stellar-core-binary-path` or `STELLAR_CORE_BINARY_PATH`.
+
+### SDK Maintainers: action needed
+
+- Add the new field `tx_set_operation_count` to the `ledger` resource ([#2690](https://github.com/stellar/go/pull/2690)). This field can be a `number` or `null`.
 
 ## v1.4.0
 

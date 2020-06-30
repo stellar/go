@@ -232,11 +232,17 @@ func (a *App) UpdateLedgerState() {
 		log.WithStack(err).WithField("err", err.Error()).Error(msg)
 	}
 
-	err := a.CoreQ().LatestLedger(&next.CoreLatest)
+	coreClient := &stellarcore.Client{
+		HTTP: http.DefaultClient,
+		URL:  a.config.StellarCoreURL,
+	}
+
+	coreInfo, err := coreClient.Info(a.ctx)
 	if err != nil {
-		logErr(err, "failed to load the latest known ledger state from core DB")
+		logErr(err, "failed to load the stellar-core info")
 		return
 	}
+	next.CoreLatest = int32(coreInfo.Info.Ledger.Num)
 
 	err = a.HistoryQ().LatestLedger(&next.HistoryLatest)
 	if err != nil {

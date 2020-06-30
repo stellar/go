@@ -1,5 +1,6 @@
 ---
 title: Before History
+replacement: https://developers.stellar.org/api/errors/http-status-codes/horizon-specific/
 ---
 
 A horizon server may be configured to only keep a portion of the stellar network's history stored

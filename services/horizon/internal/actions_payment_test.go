@@ -256,7 +256,7 @@ func TestPaymentActions_Show_Extra_TxID(t *testing.T) {
 	payload := ht.UnmarshalExtras(w.Body)
 	ht.Assert.Equal("filters", payload["invalid_field"])
 	ht.Assert.Equal(
-		"Use a single filter for operations, you can't combine tx_id, account_id, and ledger_id",
+		"Use a single filter for operations, you can only use one of tx_id, account_id or ledger_id",
 		payload["reason"],
 	)
 }

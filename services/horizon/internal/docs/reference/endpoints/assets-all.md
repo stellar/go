@@ -2,6 +2,7 @@
 title: All Assets
 clientData:
   laboratoryUrl:
+replacement: https://developers.stellar.org/api/resources/assets/
 ---
 
 This endpoint represents all [assets](../resources/asset.md).
