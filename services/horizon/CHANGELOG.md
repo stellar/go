@@ -6,6 +6,11 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).x
 ## Unreleased
 
 * Add `--parallel-workers` and `--parallel-job-size` to `horizon db reingest range`. `--parallel-workers` will parallelize reingestion using the supplied number of workers.
+* Remove Stellar Core's database dependency for non-ingesting instances of Horizon ((#2759)[https://github.com/stellar/go/pull/2759]).
+  Horizon doesn't require access to a Stellar Core database if it is only serving HTTP request, this allows the separation of front-end and ingesting instances. 
+  The following config parameters were removed:
+  - `core-db-max-open-connections`
+  - `core-db-max-idle-connections`
 
 ## v1.5.0
 
