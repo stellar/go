@@ -3,6 +3,7 @@
 package ledgerbackend
 
 import (
+	"bufio"
 	"os"
 	"syscall"
 
@@ -43,7 +44,9 @@ func (c *stellarCoreRunner) start() error {
 		return errors.Wrap(e, "error starting stellar-core")
 	}
 
-	c.metaPipe = readFile
+	// Do not remove bufio.Reader wrapping. Turns out that each read from a pipe
+	// adds an overhead time so it's better to preload data to a buffer.
+	c.metaPipe = bufio.NewReaderSize(readFile, 1024*1024)
 	return nil
 }
 
