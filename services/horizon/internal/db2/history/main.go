@@ -395,6 +395,7 @@ type Ledger struct {
 	SuccessfulTransactionCount *int32      `db:"successful_transaction_count"`
 	FailedTransactionCount     *int32      `db:"failed_transaction_count"`
 	OperationCount             int32       `db:"operation_count"`
+	TxSetOperationCount        *int32      `db:"tx_set_operation_count"`
 	ClosedAt                   time.Time   `db:"closed_at"`
 	CreatedAt                  time.Time   `db:"created_at"`
 	UpdatedAt                  time.Time   `db:"updated_at"`

@@ -65,6 +65,7 @@ func TestInsertLedger(t *testing.T) {
 		TransactionCount:           12,
 		SuccessfulTransactionCount: new(int32),
 		FailedTransactionCount:     new(int32),
+		TxSetOperationCount:        new(int32),
 		OperationCount:             23,
 		TotalCoins:                 23451,
 		FeePool:                    213,
@@ -76,6 +77,7 @@ func TestInsertLedger(t *testing.T) {
 	}
 	*expectedLedger.SuccessfulTransactionCount = 12
 	*expectedLedger.FailedTransactionCount = 3
+	*expectedLedger.TxSetOperationCount = 26
 
 	var ledgerHash, previousLedgerHash xdr.Hash
 
@@ -112,6 +114,7 @@ func TestInsertLedger(t *testing.T) {
 		12,
 		3,
 		23,
+		26,
 		int(expectedLedger.ImporterVersion),
 	)
 	tt.Assert.NoError(err)

@@ -102,12 +102,13 @@ func (s *HistoryArchiveBackendTestSuite) TestGetLedger() {
 		s.Require().NoError(err2)
 		s.Assert().True(exists)
 
-		s.Assert().Equal(sequence, uint32(ledger.LedgerHeader.Header.LedgerSeq))
-		s.Assert().Equal(sequence, uint32(ledger.TransactionEnvelope[0].Operations()[0].Body.BumpSequenceOp.BumpTo))
-		s.Assert().Equal(sequence, uint32(ledger.TransactionResult[0].Result.FeeCharged))
-		s.Assert().Empty(ledger.TransactionMeta)
-		s.Assert().Empty(ledger.TransactionFeeChanges)
-		s.Assert().Empty(ledger.UpgradesMeta)
+		s.Assert().Equal(sequence, uint32(ledger.V0.LedgerHeader.Header.LedgerSeq))
+		s.Assert().Equal(sequence, uint32(ledger.V0.TxSet.Txs[0].Operations()[0].Body.BumpSequenceOp.BumpTo))
+		s.Assert().Equal(sequence, uint32(ledger.V0.TxProcessing[0].Result.Result.FeeCharged))
+		s.Assert().Empty(ledger.V0.TxProcessing[0].FeeProcessing)
+		s.Assert().Empty(ledger.V0.TxProcessing[0].TxApplyProcessing)
+		s.Assert().Empty(ledger.V0.UpgradesProcessing)
+		s.Assert().Empty(ledger.V0.ScpInfo)
 	}
 
 	err = s.backend.Close()
@@ -175,12 +176,13 @@ func (s *HistoryArchiveBackendTestSuite) TestGetLedgerFirstCheckpoint() {
 		s.Require().NoError(err2)
 		s.Assert().True(exists)
 
-		s.Assert().Equal(sequence, uint32(ledger.LedgerHeader.Header.LedgerSeq))
-		s.Assert().Equal(sequence, uint32(ledger.TransactionEnvelope[0].Operations()[0].Body.BumpSequenceOp.BumpTo))
-		s.Assert().Equal(sequence, uint32(ledger.TransactionResult[0].Result.FeeCharged))
-		s.Assert().Empty(ledger.TransactionMeta)
-		s.Assert().Empty(ledger.TransactionFeeChanges)
-		s.Assert().Empty(ledger.UpgradesMeta)
+		s.Assert().Equal(sequence, uint32(ledger.V0.LedgerHeader.Header.LedgerSeq))
+		s.Assert().Equal(sequence, uint32(ledger.V0.TxSet.Txs[0].Operations()[0].Body.BumpSequenceOp.BumpTo))
+		s.Assert().Equal(sequence, uint32(ledger.V0.TxProcessing[0].Result.Result.FeeCharged))
+		s.Assert().Empty(ledger.V0.TxProcessing[0].FeeProcessing)
+		s.Assert().Empty(ledger.V0.TxProcessing[0].TxApplyProcessing)
+		s.Assert().Empty(ledger.V0.UpgradesProcessing)
+		s.Assert().Empty(ledger.V0.ScpInfo)
 	}
 
 	err = s.backend.Close()
@@ -193,7 +195,7 @@ func (s *HistoryArchiveBackendTestSuite) TestGetLedgerFirstCheckpoint() {
 func createXdrStream(entries []interface{}) *historyarchive.XdrStream {
 	b := &bytes.Buffer{}
 	for _, e := range entries {
-		err := historyarchive.WriteFramedXdr(b, e)
+		err := xdr.MarshalFramed(b, e)
 		if err != nil {
 			panic(err)
 		}

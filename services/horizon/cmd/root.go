@@ -109,6 +109,24 @@ var dbURLConfigOption = &support.ConfigOption{
 var configOpts = support.ConfigOptions{
 	dbURLConfigOption,
 	&support.ConfigOption{
+		Name:        "stellar-core-binary-path",
+		EnvVar:      "STELLAR_CORE_BINARY_PATH",
+		OptType:     types.String,
+		FlagDefault: "",
+		Required:    false,
+		Usage:       "path to stellar core binary",
+		ConfigKey:   &config.StellarCoreBinaryPath,
+	},
+	&support.ConfigOption{
+		Name:        "enable-captive-core-ingestion",
+		EnvVar:      "ENABLE_CAPTIVE_CORE_INGESTION",
+		OptType:     types.Bool,
+		FlagDefault: false,
+		Required:    false,
+		Usage:       "[experimental flag!] causes Horizon to ingest from a Stellar Core subprocess instead of a persistent Stellar Core database",
+		ConfigKey:   &config.EnableCaptiveCoreIngestion,
+	},
+	&support.ConfigOption{
 		Name:      "stellar-core-db-url",
 		EnvVar:    "STELLAR_CORE_DATABASE_URL",
 		ConfigKey: &config.StellarCoreDatabaseURL,
@@ -312,13 +330,6 @@ var configOpts = support.ConfigOptions{
 		Usage:       "causes this horizon process to ingest data from stellar-core into horizon's db",
 	},
 	&support.ConfigOption{
-		Name:        "ingest-failed-transactions",
-		ConfigKey:   &config.IngestFailedTransactions,
-		OptType:     types.Bool,
-		FlagDefault: false,
-		Usage:       "causes this horizon process to ingest failed transactions data",
-	},
-	&support.ConfigOption{
 		Name:        "cursor-name",
 		EnvVar:      "CURSOR_NAME",
 		ConfigKey:   &config.CursorName,
@@ -395,6 +406,10 @@ func initRootConfig() {
 	// viper.GetString is easier.
 	if config.Ingest && viper.GetString("history-archive-urls") == "" {
 		stdLog.Fatalf("--history-archive-urls must be set when --ingest is set")
+	}
+
+	if config.EnableCaptiveCoreIngestion && config.StellarCoreBinaryPath == "" {
+		stdLog.Fatalf("--stellar-core-binary-path must be set when --enable-captive-core-ingestion is set")
 	}
 
 	// Configure log file

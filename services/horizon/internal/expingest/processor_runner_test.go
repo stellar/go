@@ -109,10 +109,12 @@ func TestProcessorRunnerRunHistoryArchiveIngestionHistoryArchive(t *testing.T) {
 	ledgerBackend.On("GetLedger", uint32(63)).
 		Return(
 			true,
-			ledgerbackend.LedgerCloseMeta{
-				LedgerHeader: xdr.LedgerHeaderHistoryEntry{
-					Header: xdr.LedgerHeader{
-						BucketListHash: xdr.Hash([32]byte{0, 1, 2}),
+			xdr.LedgerCloseMeta{
+				V0: &xdr.LedgerCloseMetaV0{
+					LedgerHeader: xdr.LedgerHeaderHistoryEntry{
+						Header: xdr.LedgerHeader{
+							BucketListHash: xdr.Hash([32]byte{0, 1, 2}),
+						},
 					},
 				},
 			},
@@ -239,9 +241,7 @@ func TestProcessorRunnerBuildTransactionProcessor(t *testing.T) {
 		Return(&history.MockTransactionsBatchInsertBuilder{}).Twice()
 
 	runner := ProcessorRunner{
-		config: Config{
-			IngestFailedTransactions: true,
-		},
+		config:   Config{},
 		historyQ: q,
 	}
 
@@ -257,16 +257,6 @@ func TestProcessorRunnerBuildTransactionProcessor(t *testing.T) {
 	assert.IsType(t, &processors.TradeProcessor{}, processor.(groupTransactionProcessors)[4])
 	assert.IsType(t, &processors.ParticipantsProcessor{}, processor.(groupTransactionProcessors)[5])
 	assert.IsType(t, &processors.TransactionProcessor{}, processor.(groupTransactionProcessors)[6])
-
-	runner = ProcessorRunner{
-		config: Config{
-			IngestFailedTransactions: false,
-		},
-		historyQ: q,
-	}
-
-	processor = runner.buildTransactionProcessor(stats, ledger)
-	assert.IsType(t, skipFailedTransactions{}, processor)
 }
 
 func TestProcessorRunnerRunAllProcessorsOnLedger(t *testing.T) {
@@ -291,8 +281,10 @@ func TestProcessorRunnerRunAllProcessorsOnLedger(t *testing.T) {
 	ledgerBackend.On("GetLedger", uint32(63)).
 		Return(
 			true,
-			ledgerbackend.LedgerCloseMeta{
-				LedgerHeader: ledger,
+			xdr.LedgerCloseMeta{
+				V0: &xdr.LedgerCloseMetaV0{
+					LedgerHeader: ledger,
+				},
 			},
 			nil,
 		).Twice() // Twice = changes then transactions
@@ -327,7 +319,7 @@ func TestProcessorRunnerRunAllProcessorsOnLedger(t *testing.T) {
 	q.MockQTransactions.On("NewTransactionBatchInsertBuilder", maxBatchSize).
 		Return(mockTransactionsBatchInsertBuilder).Twice()
 
-	q.MockQLedgers.On("InsertLedger", ledger, 0, 0, 0, CurrentVersion).
+	q.MockQLedgers.On("InsertLedger", ledger, 0, 0, 0, 0, CurrentVersion).
 		Return(int64(1), nil).Once()
 
 	runner := ProcessorRunner{
@@ -338,35 +330,5 @@ func TestProcessorRunnerRunAllProcessorsOnLedger(t *testing.T) {
 	}
 
 	_, _, err := runner.RunAllProcessorsOnLedger(63)
-	assert.NoError(t, err)
-}
-
-func TestSkipFailedTransactions(t *testing.T) {
-	mockProcessor := &mockHorizonTransactionProcessor{}
-	successfulTx := io.LedgerTransaction{
-		Result: xdr.TransactionResultPair{
-			Result: xdr.TransactionResult{
-				Result: xdr.TransactionResultResult{
-					Code: xdr.TransactionResultCodeTxSuccess,
-				},
-			},
-		},
-	}
-	mockProcessor.On("ProcessTransaction", successfulTx).Return(nil)
-	defer mock.AssertExpectationsForObjects(t, mockProcessor)
-
-	processor := skipFailedTransactions{mockProcessor}
-	err := processor.ProcessTransaction(io.LedgerTransaction{
-		Result: xdr.TransactionResultPair{
-			Result: xdr.TransactionResult{
-				Result: xdr.TransactionResultResult{
-					Code: xdr.TransactionResultCodeTxBadAuth,
-				},
-			},
-		},
-	})
-	assert.NoError(t, err)
-
-	err = processor.ProcessTransaction(successfulTx)
 	assert.NoError(t, err)
 }

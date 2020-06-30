@@ -218,7 +218,7 @@ func TestAccountInfo(t *testing.T) {
 				CloseTime: xdr.TimePoint(ledgerFourCloseTime),
 			},
 		},
-	}, 0, 0, 0, 0)
+	}, 0, 0, 0, 0, 0)
 	assert.NoError(t, err)
 
 	account, err := AccountInfo(tt.Ctx, &history.Q{tt.HorizonSession()}, accountID.Address())
@@ -376,7 +376,7 @@ func TestGetAccountsHandlerPageResultsByAsset(t *testing.T) {
 				CloseTime: xdr.TimePoint(ledgerCloseTime),
 			},
 		},
-	}, 0, 0, 0, 0)
+	}, 0, 0, 0, 0, 0)
 	assert.NoError(t, err)
 
 	for _, row := range accountSigners {

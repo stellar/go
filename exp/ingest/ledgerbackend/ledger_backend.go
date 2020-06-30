@@ -1,12 +1,20 @@
 package ledgerbackend
 
-import "github.com/stellar/go/xdr"
+import (
+	"github.com/stellar/go/xdr"
+)
+
+const ledgersPerCheckpoint = 64
 
 // LedgerBackend represents the interface to a ledger data store.
 type LedgerBackend interface {
 	GetLatestLedgerSequence() (sequence uint32, err error)
 	// The first returned value is false when the ledger does not exist in a backend.
-	GetLedger(sequence uint32) (bool, LedgerCloseMeta, error)
+	GetLedger(sequence uint32) (bool, xdr.LedgerCloseMeta, error)
+	// Prepares the given range (including from and to) to be loaded. Some backends
+	// (like captive stellar-core) need to process data before being able to stream
+	// ledgers.
+	PrepareRange(from uint32, to uint32) error
 	Close() error
 }
 
@@ -16,16 +24,6 @@ type session interface {
 	GetRaw(dest interface{}, query string, args ...interface{}) error
 	SelectRaw(dest interface{}, query string, args ...interface{}) error
 	Close() error
-}
-
-// LedgerCloseMeta is the information needed to reconstruct the history of transactions in a given ledger.
-type LedgerCloseMeta struct {
-	LedgerHeader          xdr.LedgerHeaderHistoryEntry
-	TransactionEnvelope   []xdr.TransactionEnvelope
-	TransactionResult     []xdr.TransactionResultPair
-	TransactionMeta       []xdr.TransactionMeta
-	TransactionFeeChanges []xdr.LedgerEntryChanges
-	UpgradesMeta          []xdr.LedgerEntryChanges
 }
 
 // ledgerHeaderHistory is a helper struct used to unmarshall header fields from a stellar-core DB.

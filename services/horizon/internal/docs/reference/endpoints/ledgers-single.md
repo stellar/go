@@ -76,6 +76,7 @@ This endpoint responds with a single Ledger.  See [ledger resource](../resources
   "successful_transaction_count": 0,
   "failed_transaction_count": 0,
   "operation_count": 0,
+  "tx_set_operation_count": 0,
   "closed_at": "2015-07-20T15:51:52Z",
   "total_coins": "100000000000.0000000",
   "fee_pool": "0.0025600",

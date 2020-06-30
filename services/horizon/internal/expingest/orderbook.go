@@ -103,8 +103,12 @@ func addOfferToGraph(graph orderbook.OBGraph, offer history.Offer) {
 // update returns true if the order book graph was reset
 func (o *OrderBookStream) update(status ingestionStatus) (bool, error) {
 	reset := o.lastLedger == 0
-	if status.StateInvalid || !status.HistoryConsistentWithState {
+	if status.StateInvalid {
 		log.WithField("status", status).Warn("ingestion state is invalid")
+		reset = true
+	} else if !status.HistoryConsistentWithState {
+		log.WithField("status", status).
+			Info("ingestion state not consistent with ingested history")
 		reset = true
 	} else if status.LastIngestedLedger < o.lastLedger {
 		log.WithField("status", status).
@@ -124,8 +128,6 @@ func (o *OrderBookStream) update(status ingestionStatus) (bool, error) {
 
 		// wait until offers in horizon db is valid before populating order book graph
 		if status.StateInvalid || !status.HistoryConsistentWithState {
-			log.WithField("status", status).
-				Info("waiting for ingestion to update offers table")
 			return true, nil
 		}
 

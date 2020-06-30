@@ -1,6 +1,8 @@
 package horizon
 
 import (
+	"context"
+	"database/sql"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -10,11 +12,13 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/actions"
+	horizonContext "github.com/stellar/go/services/horizon/internal/context"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/paths"
 	horizonProblem "github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/simplepath"
 	"github.com/stellar/go/services/horizon/internal/test"
+	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/render/problem"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
@@ -25,6 +29,7 @@ func mockPathFindingClient(
 	tt *test.T,
 	finder paths.Finder,
 	maxAssetsParamLength int,
+	session *db.Session,
 ) test.RequestHelper {
 	router := chi.NewRouter()
 	findPaths := FindPathsHandler{
@@ -32,15 +37,31 @@ func mockPathFindingClient(
 		maxAssetsParamLength: maxAssetsParamLength,
 		maxPathLength:        3,
 		setLastLedgerHeader:  true,
-		historyQ:             &history.Q{tt.HorizonSession()},
 	}
 	findFixedPaths := FindFixedPathsHandler{
 		pathFinder:           finder,
 		maxAssetsParamLength: maxAssetsParamLength,
 		maxPathLength:        3,
 		setLastLedgerHeader:  true,
-		historyQ:             &history.Q{tt.HorizonSession()},
 	}
+
+	router.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			s := session.Clone()
+			s.BeginTx(&sql.TxOptions{
+				Isolation: sql.LevelRepeatableRead,
+				ReadOnly:  true,
+			})
+			defer s.Rollback()
+
+			ctx := context.WithValue(
+				r.Context(),
+				&horizonContext.SessionContextKey,
+				s,
+			)
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	})
 
 	router.Group(func(r chi.Router) {
 		router.Method("GET", "/paths", findPaths)
@@ -67,6 +88,7 @@ func TestPathActionsStillIngesting(t *testing.T) {
 		tt,
 		&finder,
 		2,
+		tt.HorizonSession(),
 	)
 
 	var q = make(url.Values)
@@ -206,6 +228,7 @@ func TestPathActionsStrictReceive(t *testing.T) {
 		tt,
 		&finder,
 		len(sourceAssets),
+		tt.HorizonSession(),
 	)
 
 	var withSourceAccount = make(url.Values)
@@ -257,6 +280,7 @@ func TestPathActionsEmptySourceAcount(t *testing.T) {
 		tt,
 		&finder,
 		2,
+		tt.HorizonSession(),
 	)
 	var q = make(url.Values)
 
@@ -297,6 +321,7 @@ func TestPathActionsSourceAssetsValidation(t *testing.T) {
 		tt,
 		&finder,
 		2,
+		tt.HorizonSession(),
 	)
 
 	missingSourceAccountAndAssets := make(url.Values)
@@ -376,6 +401,7 @@ func TestPathActionsDestinationAssetsValidation(t *testing.T) {
 		tt,
 		&finder,
 		2,
+		tt.HorizonSession(),
 	)
 	missingDestinationAccountAndAssets := make(url.Values)
 	missingDestinationAccountAndAssets.Add(
@@ -538,6 +564,7 @@ func TestPathActionsStrictSend(t *testing.T) {
 		tt,
 		&finder,
 		len(destinationAssets),
+		tt.HorizonSession(),
 	)
 
 	var q = make(url.Values)

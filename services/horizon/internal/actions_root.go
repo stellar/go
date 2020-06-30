@@ -26,15 +26,16 @@ func (action *RootAction) JSON() error {
 		"strictReceivePaths": StrictReceivePathsQuery{}.URITemplate(),
 		"strictSendPaths":    FindFixedPathsQuery{}.URITemplate(),
 	}
+	coreInfo := action.App.coreSettings.get()
 	resourceadapter.PopulateRoot(
 		action.R.Context(),
 		&res,
 		ledger.CurrentState(),
 		action.App.horizonVersion,
-		action.App.coreVersion,
+		coreInfo.coreVersion,
 		action.App.config.NetworkPassphrase,
-		action.App.currentProtocolVersion,
-		action.App.coreSupportedProtocolVersion,
+		coreInfo.currentProtocolVersion,
+		coreInfo.coreSupportedProtocolVersion,
 		action.App.config.FriendbotURL,
 		templates,
 	)

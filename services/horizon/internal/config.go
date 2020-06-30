@@ -11,12 +11,14 @@ import (
 // Config is the configuration for horizon.  It gets populated by the
 // app's main function and is provided to NewApp.
 type Config struct {
-	DatabaseURL            string
-	StellarCoreDatabaseURL string
-	StellarCoreURL         string
-	HistoryArchiveURLs     []string
-	Port                   uint
-	AdminPort              uint
+	DatabaseURL                string
+	StellarCoreBinaryPath      string
+	StellarCoreDatabaseURL     string
+	StellarCoreURL             string
+	EnableCaptiveCoreIngestion bool
+	HistoryArchiveURLs         []string
+	Port                       uint
+	AdminPort                  uint
 
 	// MaxDBConnections has a priority over all 4 values below.
 	MaxDBConnections            int
@@ -43,8 +45,6 @@ type Config struct {
 	TLSKey string
 	// Ingest toggles whether this horizon instance should run the data ingestion subsystem.
 	Ingest bool
-	// IngestFailedTransactions toggles whether to ingest failed transactions
-	IngestFailedTransactions bool
 	// CursorName is the cursor used for ingesting from stellar-core.
 	// Setting multiple cursors in different Horizon instances allows multiple
 	// Horizons to ingest from the same stellar-core instance without cursor
