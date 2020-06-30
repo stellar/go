@@ -44,7 +44,8 @@ const (
 func roundDownToFirstReplayAfterCheckpointStart(ledger uint32) uint32 {
 	v := (ledger / ledgersPerCheckpoint) * ledgersPerCheckpoint
 	if v == 0 {
-		return 1
+		// Stellar-Core doesn't stream ledger 1
+		return 2
 	}
 	// All other checkpoints start at the next multiple of 64
 	return v
@@ -187,11 +188,7 @@ func (c *captiveStellarCore) readLedgerMetaFromPipe() (*xdr.LedgerCloseMeta, err
 }
 
 func (c *captiveStellarCore) PrepareRange(from uint32, to uint32) error {
-	// `from-1` here because being able to read ledger `from-1` is a confirmation
-	// that the range is ready. This effectively makes getting ledger #1 impossible.
-	// TODO: should be replaced with by a tee reader with buffer or similar in the
-	// later stage of development.
-	if e := c.openOfflineReplaySubprocess(from-1, to); e != nil {
+	if e := c.openOfflineReplaySubprocess(from, to); e != nil {
 		return errors.Wrap(e, "opening subprocess")
 	}
 
@@ -199,9 +196,12 @@ func (c *captiveStellarCore) PrepareRange(from uint32, to uint32) error {
 		return errors.New("missing metadata pipe")
 	}
 
-	_, _, err := c.GetLedger(from - 1)
-	if err != nil {
-		return errors.Wrap(err, "opening getting ledger `from-1`")
+	for {
+		// Wait for the first ledger
+		if len(c.metaC) > 0 {
+			break
+		}
+		time.Sleep(time.Second)
 	}
 
 	return nil
