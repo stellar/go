@@ -45,6 +45,8 @@ func (s *DBStore) Add(a Account) error {
 		}
 	}
 
+	// Insert signers in reverse order because signers in an Account are always
+	// ordered in descending order, from newest to oldest.
 	for i := len(a.Signers) - 1; i >= 0; i-- {
 		s := a.Signers[i]
 		_, err = tx.Exec(`
