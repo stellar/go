@@ -45,7 +45,8 @@ func (s *DBStore) Add(a Account) error {
 		}
 	}
 
-	for _, s := range a.Signers {
+	for i := len(a.Signers) - 1; i >= 0; i-- {
+		s := a.Signers[i]
 		_, err = tx.Exec(`
 			INSERT INTO signers (account_id, public_key, encrypted_secret_key)
 			VALUES ($1, $2, $3)

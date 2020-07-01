@@ -164,17 +164,22 @@ func TestAdd(t *testing.T) {
 		err = session.Select(&rows, `SELECT account_id, id, public_key, encrypted_secret_key FROM signers`)
 		require.NoError(t, err)
 		wantRows := []row{
+			// Signers are always operated on with the most recent being the
+			// first in a list has the higher ID and so when this account was
+			// added with two signers the first in the list became the last in
+			// this query because this query is getting oldest to newest, so
+			// they are back to front here.
 			{
 				AccountID:          1,
 				ID:                 1,
-				PublicKey:          "GDANXMIFFAQY33KESJWSWFYKRMNIRHVVJVTLJZR6YCGCDELJWXS7TOHJ",
-				EncryptedSecretKey: []byte("encrypted(SBTUBPV5B5WRYN7IH2DTAX6HDG5H6AN6BOQOJEXOOPSBK6Y7FBVLRUVS)"),
+				PublicKey:          "GCTOKLPWCQ4COBTRLEG5OBERD3HI2PCFPONPMID64EL3RYRQNHGV6QVC",
+				EncryptedSecretKey: []byte("encrypted(SAZ6EGTXXJVABVORLHIVDOGTZX4KTDCKJPXY46XK3ZDSCFMAOCMHDHBI)"),
 			},
 			{
 				AccountID:          1,
 				ID:                 2,
-				PublicKey:          "GCTOKLPWCQ4COBTRLEG5OBERD3HI2PCFPONPMID64EL3RYRQNHGV6QVC",
-				EncryptedSecretKey: []byte("encrypted(SAZ6EGTXXJVABVORLHIVDOGTZX4KTDCKJPXY46XK3ZDSCFMAOCMHDHBI)"),
+				PublicKey:          "GDANXMIFFAQY33KESJWSWFYKRMNIRHVVJVTLJZR6YCGCDELJWXS7TOHJ",
+				EncryptedSecretKey: []byte("encrypted(SBTUBPV5B5WRYN7IH2DTAX6HDG5H6AN6BOQOJEXOOPSBK6Y7FBVLRUVS)"),
 			},
 		}
 		assert.Equal(t, wantRows, rows)
