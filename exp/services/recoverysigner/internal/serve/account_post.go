@@ -167,11 +167,11 @@ func (h accountPostHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	resp := accountResponse{
 		Address: acc.Address,
-	}
-	for _, signer := range acc.Signers {
-		resp.Signers = append(resp.Signers, accountResponseSigner{
-			Key: signer.PublicKey,
-		})
+		Signers: []accountResponseSigner{
+			{
+				Key: signingPublicKey,
+			},
+		},
 	}
 	for _, signingAddress := range h.SigningAddresses {
 		resp.Signers = append(resp.Signers, accountResponseSigner{
