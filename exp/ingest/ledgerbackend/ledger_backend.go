@@ -4,6 +4,23 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
+// Range represents a range of ledger sequence numbers.
+type Range struct {
+	from    uint32
+	to      uint32
+	bounded bool
+}
+
+// BoundedRange constructs a bounded range of ledgers with a fixed starting ledger and ending ledger.
+func BoundedRange(from uint32, to uint32) Range {
+	return Range{from: from, to: to, bounded: true}
+}
+
+// BoundedRange constructs a unbounded range of ledgers with a fixed starting ledger.
+func UnboundedRange(from uint32) Range {
+	return Range{from: from, bounded: false}
+}
+
 // LedgerBackend represents the interface to a ledger data store.
 type LedgerBackend interface {
 	// GetLatestLedgerSequence returns the sequence of the latest ledger available
@@ -14,7 +31,7 @@ type LedgerBackend interface {
 	// PrepareRange prepares the given range (including from and to) to be loaded.
 	// Some backends (like captive stellar-core) need to initalize data to be
 	// able to stream ledgers.
-	PrepareRange(from uint32, to uint32) error
+	PrepareRange(ledgerRange Range) error
 	Close() error
 }
 

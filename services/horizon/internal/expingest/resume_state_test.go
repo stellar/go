@@ -208,7 +208,7 @@ func (s *ResumeTestTestSuite) mockSuccessfulIngestion() {
 	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion, nil).Once()
 	s.historyQ.On("GetLatestLedger").Return(uint32(101), nil)
 
-	s.ledgerBackend.On("PrepareRange", uint32(102), uint32(0)).Return(nil).Once()
+	s.ledgerBackend.On("PrepareRange", ledgerbackend.UnboundedRange(102)).Return(nil).Once()
 	s.ledgerBackend.On("GetLatestLedgerSequence").Return(uint32(111), nil).Once()
 
 	s.runner.On("RunAllProcessorsOnLedger", uint32(102)).Return(io.StatsChangeProcessorResults{}, io.StatsLedgerTransactionProcessorResults{}, nil).Once()
@@ -272,7 +272,7 @@ func (s *ResumeTestTestSuite) TestErrorSettingCursorIgnored() {
 	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion, nil).Once()
 	s.historyQ.On("GetLatestLedger").Return(uint32(0), nil)
 
-	s.ledgerBackend.On("PrepareRange", uint32(101), uint32(0)).Return(nil).Once()
+	s.ledgerBackend.On("PrepareRange", ledgerbackend.UnboundedRange(101)).Return(nil).Once()
 	s.ledgerBackend.On("GetLatestLedgerSequence").Return(uint32(111), nil).Once()
 
 	s.runner.On("RunAllProcessorsOnLedger", uint32(101)).Return(io.StatsChangeProcessorResults{}, io.StatsLedgerTransactionProcessorResults{}, nil).Once()
@@ -305,7 +305,7 @@ func (s *ResumeTestTestSuite) TestNoNewLedgers() {
 	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion, nil).Once()
 	s.historyQ.On("GetLatestLedger").Return(uint32(0), nil)
 
-	s.ledgerBackend.On("PrepareRange", uint32(101), uint32(0)).Return(nil).Once()
+	s.ledgerBackend.On("PrepareRange", ledgerbackend.UnboundedRange(101)).Return(nil).Once()
 	s.ledgerBackend.On("GetLatestLedgerSequence").Return(uint32(100), nil).Once()
 
 	next, err := resumeState{latestSuccessfullyProcessedLedger: 100}.run(s.system)

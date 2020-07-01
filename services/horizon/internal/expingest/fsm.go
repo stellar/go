@@ -2,6 +2,7 @@ package expingest
 
 import (
 	"fmt"
+	"github.com/stellar/go/exp/ingest/ledgerbackend"
 	"time"
 
 	"github.com/stellar/go/exp/ingest/io"
@@ -274,7 +275,7 @@ func (b buildState) run(s *System) (transition, error) {
 	}).Info("Processing state")
 	startTime := time.Now()
 
-	err = s.ledgerBackend.PrepareRange(b.checkpointLedger, 0)
+	err = s.ledgerBackend.PrepareRange(ledgerbackend.UnboundedRange(b.checkpointLedger))
 	if err != nil {
 		return stop(), errors.Wrap(err, "error preparing range")
 	}
@@ -370,7 +371,7 @@ func (r resumeState) run(s *System) (transition, error) {
 		return start(), nil
 	}
 
-	err = s.ledgerBackend.PrepareRange(ingestLedger, 0)
+	err = s.ledgerBackend.PrepareRange(ledgerbackend.UnboundedRange(ingestLedger))
 	if err != nil {
 		return stop(), errors.Wrap(err, "error preparing range")
 	}
@@ -475,7 +476,7 @@ func (h historyRangeState) run(s *System) (transition, error) {
 		return start(), nil
 	}
 
-	err = s.ledgerBackend.PrepareRange(h.fromLedger, 0)
+	err = s.ledgerBackend.PrepareRange(ledgerbackend.UnboundedRange(h.fromLedger))
 	if err != nil {
 		return stop(), errors.Wrap(err, "error preparing range")
 	}
@@ -576,7 +577,7 @@ func (h reingestHistoryRangeState) run(s *System) (transition, error) {
 	}).Info("Preparing ledger backend to retrieve range")
 	startTime := time.Now()
 
-	err := s.ledgerBackend.PrepareRange(h.fromLedger, h.toLedger)
+	err := s.ledgerBackend.PrepareRange(ledgerbackend.BoundedRange(h.fromLedger, h.toLedger))
 	if err != nil {
 		return stop(), errors.Wrap(err, "error preparing range")
 	}

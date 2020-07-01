@@ -180,7 +180,7 @@ func (s *BuildStateTestSuite) TestTruncateExpingestStateTablesReturnsError() {
 
 func (s *BuildStateTestSuite) TestRunHistoryArchiveIngestionReturnsError() {
 	s.mockCommonHistoryQ()
-	s.ledgerBackend.On("PrepareRange", uint32(63), uint32(0)).Return(nil).Once()
+	s.ledgerBackend.On("PrepareRange", ledgerbackend.UnboundedRange(63)).Return(nil).Once()
 	s.runner.
 		On("RunHistoryArchiveIngestion", s.checkpointLedger).
 		Return(io.StatsChangeProcessorResults{}, errors.New("my error")).
@@ -194,7 +194,7 @@ func (s *BuildStateTestSuite) TestRunHistoryArchiveIngestionReturnsError() {
 
 func (s *BuildStateTestSuite) TestUpdateLastLedgerExpIngestAfterIngestReturnsError() {
 	s.mockCommonHistoryQ()
-	s.ledgerBackend.On("PrepareRange", uint32(63), uint32(0)).Return(nil).Once()
+	s.ledgerBackend.On("PrepareRange", ledgerbackend.UnboundedRange(63)).Return(nil).Once()
 	s.runner.
 		On("RunHistoryArchiveIngestion", s.checkpointLedger).
 		Return(io.StatsChangeProcessorResults{}, nil).
@@ -214,7 +214,7 @@ func (s *BuildStateTestSuite) TestUpdateLastLedgerExpIngestAfterIngestReturnsErr
 
 func (s *BuildStateTestSuite) TestUpdateExpIngestVersionIngestReturnsError() {
 	s.mockCommonHistoryQ()
-	s.ledgerBackend.On("PrepareRange", uint32(63), uint32(0)).Return(nil).Once()
+	s.ledgerBackend.On("PrepareRange", ledgerbackend.UnboundedRange(63)).Return(nil).Once()
 	s.runner.
 		On("RunHistoryArchiveIngestion", s.checkpointLedger).
 		Return(io.StatsChangeProcessorResults{}, nil).
@@ -231,7 +231,7 @@ func (s *BuildStateTestSuite) TestUpdateExpIngestVersionIngestReturnsError() {
 
 func (s *BuildStateTestSuite) TestUpdateCommitReturnsError() {
 	s.mockCommonHistoryQ()
-	s.ledgerBackend.On("PrepareRange", uint32(63), uint32(0)).Return(nil).Once()
+	s.ledgerBackend.On("PrepareRange", ledgerbackend.UnboundedRange(63)).Return(nil).Once()
 	s.runner.
 		On("RunHistoryArchiveIngestion", s.checkpointLedger).
 		Return(io.StatsChangeProcessorResults{}, nil).
@@ -254,7 +254,7 @@ func (s *BuildStateTestSuite) TestUpdateCommitReturnsError() {
 
 func (s *BuildStateTestSuite) TestBuildStateSucceeds() {
 	s.mockCommonHistoryQ()
-	s.ledgerBackend.On("PrepareRange", uint32(63), uint32(0)).Return(nil).Once()
+	s.ledgerBackend.On("PrepareRange", ledgerbackend.UnboundedRange(63)).Return(nil).Once()
 	s.runner.
 		On("RunHistoryArchiveIngestion", s.checkpointLedger).
 		Return(io.StatsChangeProcessorResults{}, nil).

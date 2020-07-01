@@ -253,17 +253,17 @@ func (c *CaptiveStellarCore) readLedgerMetaFromPipe() (*xdr.LedgerCloseMeta, err
 // Some backends (like captive stellar-core) need to initalize data to be
 // able to stream ledgers.
 // Set `to` to 0 to stream starting from `from` but without limits.
-func (c *CaptiveStellarCore) PrepareRange(from uint32, to uint32) error {
-	if c.nextLedger != 0 && c.nextLedger >= from {
+func (c *CaptiveStellarCore) PrepareRange(ledgerRange Range) error {
+	if c.nextLedger != 0 && c.nextLedger >= ledgerRange.from {
 		// Range already prepared
 		return nil
 	}
 
 	var err error
-	if to == 0 {
-		err = c.openOnlineReplaySubprocess(from)
+	if ledgerRange.bounded {
+		err = c.openOfflineReplaySubprocess(ledgerRange.from, ledgerRange.to)
 	} else {
-		err = c.openOfflineReplaySubprocess(from, to)
+		err = c.openOnlineReplaySubprocess(ledgerRange.from)
 	}
 	if err != nil {
 		return errors.Wrap(err, "opening subprocess")
