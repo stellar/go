@@ -8,8 +8,7 @@ CREATE TABLE signers (
   updated_at TIMESTAMP WITH TIME ZONE,
 
   public_key TEXT NOT NULL,
-  encrypted_secret_key BYTEA NOT NULL,
-  encryption_key_id TEXT NOT NULL
+  encrypted_secret_key BYTEA NOT NULL
 );
 
 
