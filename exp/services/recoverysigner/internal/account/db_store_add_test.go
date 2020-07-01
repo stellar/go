@@ -161,7 +161,7 @@ func TestAdd(t *testing.T) {
 			EncryptedSecretKey []byte `db:"encrypted_secret_key"`
 		}
 		rows := []row{}
-		err = session.Select(&rows, `SELECT account_id, id, public_key, encrypted_secret_key FROM signers`)
+		err = session.Select(&rows, `SELECT account_id, id, public_key, encrypted_secret_key FROM signers ORDER BY id`)
 		require.NoError(t, err)
 		wantRows := []row{
 			{

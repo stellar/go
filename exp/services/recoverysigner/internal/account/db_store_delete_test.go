@@ -217,7 +217,7 @@ func TestDelete(t *testing.T) {
 			PublicKey string `db:"public_key"`
 		}
 		rows := []row{}
-		err = session.Select(&rows, `SELECT public_key FROM signers`)
+		err = session.Select(&rows, `SELECT public_key FROM signers ORDER BY id`)
 		require.NoError(t, err)
 		wantRows := []row{
 			// Signers for account 2
@@ -233,7 +233,7 @@ func TestDelete(t *testing.T) {
 			PublicKey string `db:"public_key"`
 		}
 		rows := []row{}
-		err = session.Select(&rows, `SELECT audit_op, public_key FROM signers_audit`)
+		err = session.Select(&rows, `SELECT audit_op, public_key FROM signers_audit ORDER BY audit_id`)
 		require.NoError(t, err)
 		wantRows := []row{
 			// Signers for account 1
