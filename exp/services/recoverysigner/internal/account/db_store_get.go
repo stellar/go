@@ -124,7 +124,7 @@ func (s *DBStore) getSigners(accountIDs []int64) (map[int64][]Signer, error) {
 			signers.encrypted_secret_key
 		FROM signers
 		WHERE signers.account_id = ANY($1)
-		ORDER BY signers.account_id, signers.id DESC`
+		ORDER BY signers.account_id, signers.id`
 
 	rows, err := s.DB.Queryx(query, pq.Array(accountIDs))
 	if err != nil {
