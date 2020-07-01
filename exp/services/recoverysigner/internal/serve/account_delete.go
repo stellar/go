@@ -53,15 +53,13 @@ func (h accountDeleteHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	signers := []accountResponseSigner{}
-	for _, signingAddress := range h.SigningAddresses {
-		signers = append(signers, accountResponseSigner{
-			Key: signingAddress.Address(),
-		})
-	}
 	resp := accountResponse{
 		Address: acc.Address,
-		Signers: signers,
+	}
+	for _, signingAddress := range h.SigningAddresses {
+		resp.Signers = append(resp.Signers, accountResponseSigner{
+			Key: signingAddress.Address(),
+		})
 	}
 
 	// Authorized if authenticated as the account.

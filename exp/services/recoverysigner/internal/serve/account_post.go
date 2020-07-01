@@ -106,8 +106,7 @@ func (h accountPostHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	authMethodCount := 0
 	acc := account.Account{
-		Address:    req.Address.Address(),
-		Identities: []account.Identity{},
+		Address: req.Address.Address(),
 	}
 	for _, i := range req.Identities {
 		accIdentity := account.Identity{
@@ -139,15 +138,13 @@ func (h accountPostHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	l.Info("Account registered.")
 
-	signers := []accountResponseSigner{}
-	for _, signingAddress := range h.SigningAddresses {
-		signers = append(signers, accountResponseSigner{
-			Key: signingAddress.Address(),
-		})
-	}
 	resp := accountResponse{
 		Address: acc.Address,
-		Signers: signers,
+	}
+	for _, signingAddress := range h.SigningAddresses {
+		resp.Signers = append(resp.Signers, accountResponseSigner{
+			Key: signingAddress.Address(),
+		})
 	}
 	for _, i := range acc.Identities {
 		respIdentity := accountResponseIdentity{
