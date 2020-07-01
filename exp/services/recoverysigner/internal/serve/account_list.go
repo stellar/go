@@ -51,6 +51,12 @@ func (h accountListHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			accResp := accountResponse{
 				Address: acc.Address,
 			}
+			for i := len(acc.Signers) - 1; i >= 0; i-- {
+				signer := acc.Signers[i]
+				accResp.Signers = append(accResp.Signers, accountResponseSigner{
+					Key: signer.PublicKey,
+				})
+			}
 			for _, signingAddress := range h.SigningAddresses {
 				accResp.Signers = append(accResp.Signers, accountResponseSigner{
 					Key: signingAddress.Address(),
@@ -78,6 +84,12 @@ func (h accountListHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		for _, acc := range accs {
 			accResp := accountResponse{
 				Address: acc.Address,
+			}
+			for i := len(acc.Signers) - 1; i >= 0; i-- {
+				signer := acc.Signers[i]
+				accResp.Signers = append(accResp.Signers, accountResponseSigner{
+					Key: signer.PublicKey,
+				})
 			}
 			for _, signingAddress := range h.SigningAddresses {
 				accResp.Signers = append(accResp.Signers, accountResponseSigner{
@@ -112,15 +124,19 @@ func (h accountListHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		for _, acc := range accs {
-			signers := []accountResponseSigner{}
-			for _, signingAddress := range h.SigningAddresses {
-				signers = append(signers, accountResponseSigner{
-					Key: signingAddress.Address(),
-				})
-			}
 			accResp := accountResponse{
 				Address: acc.Address,
-				Signers: signers,
+			}
+			for i := len(acc.Signers) - 1; i >= 0; i-- {
+				signer := acc.Signers[i]
+				accResp.Signers = append(accResp.Signers, accountResponseSigner{
+					Key: signer.PublicKey,
+				})
+			}
+			for _, signingAddress := range h.SigningAddresses {
+				accResp.Signers = append(accResp.Signers, accountResponseSigner{
+					Key: signingAddress.Address(),
+				})
 			}
 			for _, i := range acc.Identities {
 				accRespIdentity := accountResponseIdentity{
@@ -150,15 +166,19 @@ func (h accountListHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		for _, acc := range accs {
-			signers := []accountResponseSigner{}
-			for _, signingAddress := range h.SigningAddresses {
-				signers = append(signers, accountResponseSigner{
-					Key: signingAddress.Address(),
-				})
-			}
 			accResp := accountResponse{
 				Address: acc.Address,
-				Signers: signers,
+			}
+			for i := len(acc.Signers) - 1; i >= 0; i-- {
+				signer := acc.Signers[i]
+				accResp.Signers = append(accResp.Signers, accountResponseSigner{
+					Key: signer.PublicKey,
+				})
+			}
+			for _, signingAddress := range h.SigningAddresses {
+				accResp.Signers = append(accResp.Signers, accountResponseSigner{
+					Key: signingAddress.Address(),
+				})
 			}
 			for _, i := range acc.Identities {
 				accRespIdentity := accountResponseIdentity{

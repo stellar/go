@@ -56,6 +56,12 @@ func (h accountGetHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	resp := accountResponse{
 		Address: acc.Address,
 	}
+	for i := len(acc.Signers) - 1; i >= 0; i-- {
+		signer := acc.Signers[i]
+		resp.Signers = append(resp.Signers, accountResponseSigner{
+			Key: signer.PublicKey,
+		})
+	}
 	for _, signingAddress := range h.SigningAddresses {
 		resp.Signers = append(resp.Signers, accountResponseSigner{
 			Key: signingAddress.Address(),
