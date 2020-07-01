@@ -106,8 +106,7 @@ func (h accountPostHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	authMethodCount := 0
 	acc := account.Account{
-		Address:    req.Address.Address(),
-		Identities: []account.Identity{},
+		Address: req.Address.Address(),
 	}
 	for _, i := range req.Identities {
 		accIdentity := account.Identity{
