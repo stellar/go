@@ -3,6 +3,7 @@ package account
 type Account struct {
 	Address    string
 	Identities []Identity
+	Signers    []Signer
 }
 
 type Identity struct {
@@ -31,4 +32,9 @@ var AuthMethodTypes = map[AuthMethodType]bool{
 type AuthMethod struct {
 	Type  AuthMethodType
 	Value string
+}
+
+type Signer struct {
+	PublicKey          string
+	EncryptedSecretKey []byte
 }
