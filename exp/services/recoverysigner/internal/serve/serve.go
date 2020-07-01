@@ -176,33 +176,34 @@ func handler(deps handlerDeps) http.Handler {
 	mux.Route("/accounts", func(mux chi.Router) {
 		mux.Use(auth.SEP10Middleware(deps.SEP10JWTIssuer, deps.SEP10JWKS))
 		mux.Use(auth.FirebaseMiddleware(auth.FirebaseTokenVerifierLive{AuthClient: deps.FirebaseAuthClient}))
-		mux.Get("/", accountListHandler{
+		mux.Get("/", accountListHandler{ // no encrypter/decrypter, just get public key from db
 			Logger:           deps.Logger,
 			SigningAddresses: deps.SigningAddresses,
 			AccountStore:     deps.AccountStore,
 		}.ServeHTTP)
 		mux.Route("/{address}", func(mux chi.Router) {
-			mux.Post("/", accountPostHandler{
+			mux.Post("/", accountPostHandler{ // encrypter, and will generate key and store it
+				Logger:           deps.Logger,
+				SigningAddresses: deps.SigningAddresses,
+				Encrypter:        deps.Encrypter,
+				AccountStore:     deps.AccountStore,
+			}.ServeHTTP)
+			mux.Put("/", accountPutHandler{ // no encrypter/decrypter, just get public key from db
 				Logger:           deps.Logger,
 				SigningAddresses: deps.SigningAddresses,
 				AccountStore:     deps.AccountStore,
 			}.ServeHTTP)
-			mux.Put("/", accountPutHandler{
+			mux.Get("/", accountGetHandler{ // no encrypter/decrypter, just get public key from db
 				Logger:           deps.Logger,
 				SigningAddresses: deps.SigningAddresses,
 				AccountStore:     deps.AccountStore,
 			}.ServeHTTP)
-			mux.Get("/", accountGetHandler{
+			mux.Delete("/", accountDeleteHandler{ // no encrypter/decrypter, just get public key from db
 				Logger:           deps.Logger,
 				SigningAddresses: deps.SigningAddresses,
 				AccountStore:     deps.AccountStore,
 			}.ServeHTTP)
-			mux.Delete("/", accountDeleteHandler{
-				Logger:           deps.Logger,
-				SigningAddresses: deps.SigningAddresses,
-				AccountStore:     deps.AccountStore,
-			}.ServeHTTP)
-			signHandler := accountSignHandler{
+			signHandler := accountSignHandler{ // decrypter, and will use key to sign
 				Logger:            deps.Logger,
 				SigningKeys:       deps.SigningKeys,
 				NetworkPassphrase: deps.NetworkPassphrase,
