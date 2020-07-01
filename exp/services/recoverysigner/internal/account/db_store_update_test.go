@@ -125,7 +125,7 @@ func TestUpdate(t *testing.T) {
 			Value      string `db:"value"`
 		}
 		rows := []row{}
-		err = session.Select(&rows, `SELECT account_id, identity_id, id, type_, value FROM auth_methods`)
+		err = session.Select(&rows, `SELECT account_id, identity_id, id, type_, value FROM auth_methods ORDER BY id`)
 		require.NoError(t, err)
 		wantRows := []row{
 			{
@@ -208,7 +208,7 @@ func TestUpdate_removeIdentities(t *testing.T) {
 			Role      string `db:"role"`
 		}
 		rows := []row{}
-		err = session.Select(&rows, `SELECT account_id, id, role FROM identities`)
+		err = session.Select(&rows, `SELECT account_id, id, role FROM identities ORDER BY id`)
 		require.NoError(t, err)
 		assert.Equal(t, []row{}, rows)
 	}
@@ -221,7 +221,7 @@ func TestUpdate_removeIdentities(t *testing.T) {
 			Value      string `db:"value"`
 		}
 		rows := []row{}
-		err = session.Select(&rows, `SELECT account_id, identity_id, id, type_, value FROM auth_methods`)
+		err = session.Select(&rows, `SELECT account_id, identity_id, id, type_, value FROM auth_methods ORDER BY id`)
 		require.NoError(t, err)
 		assert.Equal(t, []row{}, rows)
 	}
