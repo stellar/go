@@ -119,7 +119,7 @@ func (s *DBStore) getAccounts(where string, args ...interface{}) ([]Account, err
 
 func (s *DBStore) getSigners(accountIDs []int64) (map[int64][]Signer, error) {
 	query := `SELECT
-            signers.account_id,
+			signers.account_id,
 			signers.public_key,
 			signers.encrypted_secret_key
 		FROM signers
