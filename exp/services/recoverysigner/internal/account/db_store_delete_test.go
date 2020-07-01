@@ -38,6 +38,16 @@ func TestDelete(t *testing.T) {
 				},
 			},
 		},
+		Signers: []Signer{
+			{
+				PublicKey:          "GCTOKLPWCQ4COBTRLEG5OBERD3HI2PCFPONPMID64EL3RYRQNHGV6QVC",
+				EncryptedSecretKey: []byte("encrypted(SAZ6EGTXXJVABVORLHIVDOGTZX4KTDCKJPXY46XK3ZDSCFMAOCMHDHBI)"),
+			},
+			{
+				PublicKey:          "GDANXMIFFAQY33KESJWSWFYKRMNIRHVVJVTLJZR6YCGCDELJWXS7TOHJ",
+				EncryptedSecretKey: []byte("encrypted(SBTUBPV5B5WRYN7IH2DTAX6HDG5H6AN6BOQOJEXOOPSBK6Y7FBVLRUVS)"),
+			},
+		},
 	}
 	err := store.Add(a1)
 	require.NoError(t, err)
@@ -54,6 +64,16 @@ func TestDelete(t *testing.T) {
 					{Type: AuthMethodTypePhoneNumber, Value: "+30000000000"},
 					{Type: AuthMethodTypeEmail, Value: "user3@example.com"},
 				},
+			},
+		},
+		Signers: []Signer{
+			{
+				PublicKey:          "GA5CX7BFI5T2TDLI7CINFUUDKNV257UQXADQOGC3IK6HCLTWYMOMBQB2",
+				EncryptedSecretKey: []byte("encrypted(SAHLGVJK3YTNM7MT4DWO7NQEVN3UDVEZMGSAXO6F3P6W2AD23I3MOOWI)"),
+			},
+			{
+				PublicKey:          "GCBVZBR6YHOKHCGLWXXOFJKQBKBHKY2NDZWPCP546MAOZE7JR2O3IWIC",
+				EncryptedSecretKey: []byte("encrypted(SCNHWRBHMFM6G4UMIHAMCJ47ZXR6Z5OTZH3XLE3UZHXUQYCFC7VS6RYW)"),
 			},
 		},
 	}
@@ -187,6 +207,44 @@ func TestDelete(t *testing.T) {
 			{AuditOp: "DELETE", Value: "GBJCOYGKIJYX3VUEOZ6GVMFP522UO4OEBI5KB5HHWZAZ2DEJTHS6VOHP"},
 			{AuditOp: "DELETE", Value: "+20000000000"},
 			{AuditOp: "DELETE", Value: "user2@example.com"},
+		}
+		assert.Equal(t, wantRows, rows)
+	}
+
+	// Check that account 1's signers are gone and account 2's remain
+	{
+		type row struct {
+			PublicKey string `db:"public_key"`
+		}
+		rows := []row{}
+		err = session.Select(&rows, `SELECT public_key FROM signers`)
+		require.NoError(t, err)
+		wantRows := []row{
+			// Signers for account 2
+			{PublicKey: "GCBVZBR6YHOKHCGLWXXOFJKQBKBHKY2NDZWPCP546MAOZE7JR2O3IWIC"},
+			{PublicKey: "GA5CX7BFI5T2TDLI7CINFUUDKNV257UQXADQOGC3IK6HCLTWYMOMBQB2"},
+		}
+		assert.ElementsMatch(t, wantRows, rows)
+	}
+	// Check that account 1's signers's deletes have been audited
+	{
+		type row struct {
+			AuditOp   string `db:"audit_op"`
+			PublicKey string `db:"public_key"`
+		}
+		rows := []row{}
+		err = session.Select(&rows, `SELECT audit_op, public_key FROM signers_audit`)
+		require.NoError(t, err)
+		wantRows := []row{
+			// Signers for account 1
+			{AuditOp: "INSERT", PublicKey: "GCTOKLPWCQ4COBTRLEG5OBERD3HI2PCFPONPMID64EL3RYRQNHGV6QVC"},
+			{AuditOp: "INSERT", PublicKey: "GDANXMIFFAQY33KESJWSWFYKRMNIRHVVJVTLJZR6YCGCDELJWXS7TOHJ"},
+			// Signers for account 2
+			{AuditOp: "INSERT", PublicKey: "GA5CX7BFI5T2TDLI7CINFUUDKNV257UQXADQOGC3IK6HCLTWYMOMBQB2"},
+			{AuditOp: "INSERT", PublicKey: "GCBVZBR6YHOKHCGLWXXOFJKQBKBHKY2NDZWPCP546MAOZE7JR2O3IWIC"},
+			// Signers for account 1 - removed
+			{AuditOp: "DELETE", PublicKey: "GCTOKLPWCQ4COBTRLEG5OBERD3HI2PCFPONPMID64EL3RYRQNHGV6QVC"},
+			{AuditOp: "DELETE", PublicKey: "GDANXMIFFAQY33KESJWSWFYKRMNIRHVVJVTLJZR6YCGCDELJWXS7TOHJ"},
 		}
 		assert.Equal(t, wantRows, rows)
 	}

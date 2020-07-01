@@ -36,6 +36,16 @@ func TestAdd(t *testing.T) {
 				},
 			},
 		},
+		Signers: []Signer{
+			{
+				PublicKey:          "GCTOKLPWCQ4COBTRLEG5OBERD3HI2PCFPONPMID64EL3RYRQNHGV6QVC",
+				EncryptedSecretKey: []byte("encrypted(SAZ6EGTXXJVABVORLHIVDOGTZX4KTDCKJPXY46XK3ZDSCFMAOCMHDHBI)"),
+			},
+			{
+				PublicKey:          "GDANXMIFFAQY33KESJWSWFYKRMNIRHVVJVTLJZR6YCGCDELJWXS7TOHJ",
+				EncryptedSecretKey: []byte("encrypted(SBTUBPV5B5WRYN7IH2DTAX6HDG5H6AN6BOQOJEXOOPSBK6Y7FBVLRUVS)"),
+			},
+		},
 	}
 	err := store.Add(a)
 	require.NoError(t, err)
@@ -137,6 +147,34 @@ func TestAdd(t *testing.T) {
 				ID:         6,
 				Type:       "email",
 				Value:      "user2@example.com",
+			},
+		}
+		assert.Equal(t, wantRows, rows)
+	}
+
+	// Check the signer rows have been added.
+	{
+		type row struct {
+			AccountID          int64  `db:"account_id"`
+			ID                 int64  `db:"id"`
+			PublicKey          string `db:"public_key"`
+			EncryptedSecretKey []byte `db:"encrypted_secret_key"`
+		}
+		rows := []row{}
+		err = session.Select(&rows, `SELECT account_id, id, public_key, encrypted_secret_key FROM signers`)
+		require.NoError(t, err)
+		wantRows := []row{
+			{
+				AccountID:          1,
+				ID:                 1,
+				PublicKey:          "GCTOKLPWCQ4COBTRLEG5OBERD3HI2PCFPONPMID64EL3RYRQNHGV6QVC",
+				EncryptedSecretKey: []byte("encrypted(SAZ6EGTXXJVABVORLHIVDOGTZX4KTDCKJPXY46XK3ZDSCFMAOCMHDHBI)"),
+			},
+			{
+				AccountID:          1,
+				ID:                 2,
+				PublicKey:          "GDANXMIFFAQY33KESJWSWFYKRMNIRHVVJVTLJZR6YCGCDELJWXS7TOHJ",
+				EncryptedSecretKey: []byte("encrypted(SBTUBPV5B5WRYN7IH2DTAX6HDG5H6AN6BOQOJEXOOPSBK6Y7FBVLRUVS)"),
 			},
 		}
 		assert.Equal(t, wantRows, rows)

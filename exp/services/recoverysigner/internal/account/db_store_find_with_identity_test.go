@@ -37,6 +37,16 @@ func TestFindWithIdentityAuthMethod(t *testing.T) {
 				},
 			},
 		},
+		Signers: []Signer{
+			{
+				PublicKey:          "GCTOKLPWCQ4COBTRLEG5OBERD3HI2PCFPONPMID64EL3RYRQNHGV6QVC",
+				EncryptedSecretKey: []byte("encrypted(SAZ6EGTXXJVABVORLHIVDOGTZX4KTDCKJPXY46XK3ZDSCFMAOCMHDHBI)"),
+			},
+			{
+				PublicKey:          "GDANXMIFFAQY33KESJWSWFYKRMNIRHVVJVTLJZR6YCGCDELJWXS7TOHJ",
+				EncryptedSecretKey: []byte("encrypted(SBTUBPV5B5WRYN7IH2DTAX6HDG5H6AN6BOQOJEXOOPSBK6Y7FBVLRUVS)"),
+			},
+		},
 	}
 	err := store.Add(a1)
 	require.NoError(t, err)
@@ -52,6 +62,16 @@ func TestFindWithIdentityAuthMethod(t *testing.T) {
 					{Type: AuthMethodTypePhoneNumber, Value: "+20000000000"},
 					{Type: AuthMethodTypeEmail, Value: "user2@example.com"},
 				},
+			},
+		},
+		Signers: []Signer{
+			{
+				PublicKey:          "GDPLSCUPCZY3DU24E5AKNTGPMIODO57MXMMCNP242SVQIXPL7ZWQBWGF",
+				EncryptedSecretKey: []byte("encrypted(SCYT3GTACLWCEKMRJVUH5QNGWIT2CBGGDJBUVVANNDGQDCJAMO77WGLU)"),
+			},
+			{
+				PublicKey:          "GCV2L4IL6XU7Q4PVAESTXCBQI4MUK6NYPZ46TWBPDGSXML5BATMEK5RD",
+				EncryptedSecretKey: []byte("encrypted(SDTAFESJOUTIVPIPRAWPC46JT7OHNBVXACSRMLBUWDFHE42CGYDNRL74)"),
 			},
 		},
 	}

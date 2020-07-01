@@ -39,6 +39,12 @@ func TestUpdate(t *testing.T) {
 				},
 			},
 		},
+		Signers: []Signer{
+			{
+				PublicKey:          "GDPLSCUPCZY3DU24E5AKNTGPMIODO57MXMMCNP242SVQIXPL7ZWQBWGF",
+				EncryptedSecretKey: []byte("encrypted(SCYT3GTACLWCEKMRJVUH5QNGWIT2CBGGDJBUVVANNDGQDCJAMO77WGLU)"),
+			},
+		},
 	}
 	err := store.Add(a)
 	require.NoError(t, err)
@@ -54,6 +60,12 @@ func TestUpdate(t *testing.T) {
 					{Type: AuthMethodTypePhoneNumber, Value: "+30000000000"},
 					{Type: AuthMethodTypeEmail, Value: "user3@example.com"},
 				},
+			},
+		},
+		Signers: []Signer{
+			{
+				PublicKey:          "GDPLSCUPCZY3DU24E5AKNTGPMIODO57MXMMCNP242SVQIXPL7ZWQBWGF",
+				EncryptedSecretKey: []byte("encrypted(SCYT3GTACLWCEKMRJVUH5QNGWIT2CBGGDJBUVVANNDGQDCJAMO77WGLU)"),
 			},
 		},
 	}

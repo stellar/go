@@ -52,5 +52,7 @@ func (s *DBStore) Update(a Account) error {
 		}
 	}
 
+	// TODO: Add support for updating signers?
+
 	return tx.Commit()
 }

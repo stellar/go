@@ -1,5 +1,9 @@
 package account
 
+import (
+	"github.com/lib/pq"
+)
+
 func (s *DBStore) Get(address string) (Account, error) {
 	accounts, err := s.getAccounts("accounts.address = $1", address)
 	if err != nil {
@@ -97,5 +101,54 @@ func (s *DBStore) getAccounts(where string, args ...interface{}) ([]Account, err
 		accounts[accountIndex] = a
 	}
 
+	accountIDs := make([]int64, 0, len(accountIndexByAccountID))
+	for accountID := range accountIndexByAccountID {
+		accountIDs = append(accountIDs, accountID)
+	}
+	signersByAccountID, err := s.getSigners(accountIDs)
+	if err != nil {
+		return nil, err
+	}
+	for accountID, signers := range signersByAccountID {
+		accountIndex := accountIndexByAccountID[accountID]
+		accounts[accountIndex].Signers = signers
+	}
+
 	return accounts, nil
+}
+
+func (s *DBStore) getSigners(accountIDs []int64) (map[int64][]Signer, error) {
+	query := `SELECT
+			signers.account_id,
+			signers.public_key,
+			signers.encrypted_secret_key
+		FROM signers
+		WHERE signers.account_id = ANY($1)
+		ORDER BY signers.account_id, signers.id`
+
+	rows, err := s.DB.Queryx(query, pq.Array(accountIDs))
+	if err != nil {
+		return nil, err
+	}
+
+	signers := map[int64][]Signer{}
+
+	for rows.Next() {
+		var r struct {
+			AccountID          int64  `db:"account_id"`
+			PublicKey          string `db:"public_key"`
+			EncryptedSecretKey []byte `db:"encrypted_secret_key"`
+		}
+		err = rows.StructScan(&r)
+		if err != nil {
+			return nil, err
+		}
+		signer := Signer{
+			PublicKey:          r.PublicKey,
+			EncryptedSecretKey: r.EncryptedSecretKey,
+		}
+		signers[r.AccountID] = append(signers[r.AccountID], signer)
+	}
+
+	return signers, nil
 }
