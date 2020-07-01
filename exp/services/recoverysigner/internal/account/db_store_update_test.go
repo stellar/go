@@ -152,6 +152,28 @@ func TestUpdate(t *testing.T) {
 		}
 		assert.Equal(t, wantRows, rows)
 	}
+
+	// Check the signer rows remain unchanged.
+	{
+		type row struct {
+			AccountID          int64  `db:"account_id"`
+			ID                 int64  `db:"id"`
+			PublicKey          string `db:"public_key"`
+			EncryptedSecretKey []byte `db:"encrypted_secret_key"`
+		}
+		rows := []row{}
+		err = session.Select(&rows, `SELECT account_id, id, public_key, encrypted_secret_key FROM signers ORDER BY id`)
+		require.NoError(t, err)
+		wantRows := []row{
+			{
+				AccountID:          1,
+				ID:                 1,
+				PublicKey:          "GDPLSCUPCZY3DU24E5AKNTGPMIODO57MXMMCNP242SVQIXPL7ZWQBWGF",
+				EncryptedSecretKey: []byte("encrypted(SCYT3GTACLWCEKMRJVUH5QNGWIT2CBGGDJBUVVANNDGQDCJAMO77WGLU)"),
+			},
+		}
+		assert.Equal(t, wantRows, rows)
+	}
 }
 
 func TestUpdate_removeIdentities(t *testing.T) {
