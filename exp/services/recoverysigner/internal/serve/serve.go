@@ -16,6 +16,7 @@ import (
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/support/errors"
 	supporthttp "github.com/stellar/go/support/http"
+	"github.com/stellar/go/support/keypairgen"
 	supportlog "github.com/stellar/go/support/log"
 	"github.com/stellar/go/support/render/health"
 	"gopkg.in/square/go-jose.v2"
@@ -183,10 +184,11 @@ func handler(deps handlerDeps) http.Handler {
 		}.ServeHTTP)
 		mux.Route("/{address}", func(mux chi.Router) {
 			mux.Post("/", accountPostHandler{
-				Logger:           deps.Logger,
-				SigningAddresses: deps.SigningAddresses,
-				Encrypter:        deps.Encrypter,
-				AccountStore:     deps.AccountStore,
+				Logger:              deps.Logger,
+				SigningAddresses:    deps.SigningAddresses,
+				SigningKeyGenerator: keypairgen.Generator{Source: keypairgen.RandomSource{}},
+				Encrypter:           deps.Encrypter,
+				AccountStore:        deps.AccountStore,
 			}.ServeHTTP)
 			mux.Put("/", accountPutHandler{
 				Logger:           deps.Logger,
