@@ -1,5 +1,11 @@
 package crypto
 
-func ContextInfo(accountAddress string) []byte {
-	return []byte(accountAddress)
+import "strings"
+
+func ContextInfo(accountAddress, signingAddress string) []byte {
+	parts := []string{
+		accountAddress,
+		signingAddress,
+	}
+	return []byte(strings.Join(parts, ","))
 }
