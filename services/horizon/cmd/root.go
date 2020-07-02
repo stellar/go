@@ -20,6 +20,12 @@ import (
 	"github.com/stellar/throttled"
 )
 
+const (
+	maxDBPingAttempts        = 30
+	stellarCoreDBURLFlagName = "stellar-core-db-url"
+	stellarCoreURLFlagName   = "stellar-core-url"
+)
+
 var (
 	config horizon.Config
 
@@ -28,12 +34,18 @@ var (
 		Short: "client-facing api server for the stellar network",
 		Long:  "client-facing api server for the stellar network. It acts as the interface between Stellar Core and applications that want to access the Stellar network. It allows you to submit transactions to the network, check the status of accounts, subscribe to event streams and more.",
 		Run: func(cmd *cobra.Command, args []string) {
+			if config.Ingest {
+				if config.StellarCoreURL == "" {
+					log.Fatalf("flag --%s cannot be empty", stellarCoreDBURLFlagName)
+				}
+				if config.StellarCoreDatabaseURL == "" {
+					log.Fatalf("flag --%s cannot be empty", stellarCoreURLFlagName)
+				}
+			}
 			initApp().Serve()
 		},
 	}
 )
-
-const maxDBPingAttempts = 30
 
 // validateBothOrNeither ensures that both options are provided, if either is provided.
 func validateBothOrNeither(option1, option2 string) {
@@ -127,18 +139,16 @@ var configOpts = support.ConfigOptions{
 		ConfigKey:   &config.EnableCaptiveCoreIngestion,
 	},
 	&support.ConfigOption{
-		Name:      "stellar-core-db-url",
+		Name:      stellarCoreDBURLFlagName,
 		EnvVar:    "STELLAR_CORE_DATABASE_URL",
 		ConfigKey: &config.StellarCoreDatabaseURL,
 		OptType:   types.String,
-		Required:  true,
 		Usage:     "stellar-core postgres database to connect with",
 	},
 	&support.ConfigOption{
-		Name:      "stellar-core-url",
+		Name:      stellarCoreURLFlagName,
 		ConfigKey: &config.StellarCoreURL,
 		OptType:   types.String,
-		Required:  true,
 		Usage:     "stellar-core to connect with (for http commands)",
 	},
 	&support.ConfigOption{
