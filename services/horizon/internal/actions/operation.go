@@ -15,18 +15,23 @@ import (
 	supportProblem "github.com/stellar/go/support/render/problem"
 )
 
+// Joinable query struct for join query parameter
+type Joinable struct {
+	Join string `schema:"join" valid:"in(transactions)~Accepted values: transactions,optional"`
+}
+
+// IncludeTransactions returns extra fields to include in the response
+func (qp Joinable) IncludeTransactions() bool {
+	return qp.Join == "transactions"
+}
+
 // OperationsQuery query struct for operations end-points
 type OperationsQuery struct {
+	Joinable                  `valid:"optional"`
 	AccountID                 string `schema:"account_id" valid:"accountID,optional"`
 	TransactionHash           string `schema:"tx_id" valid:"transactionHash,optional"`
 	IncludeFailedTransactions bool   `schema:"include_failed" valid:"-"`
 	LedgerID                  uint32 `schema:"ledger_id" valid:"-"`
-	Join                      string `schema:"join" valid:"in(transactions)~Accepted values: transactions,optional"`
-}
-
-// IncludeTransactions returns extra fields to include in the response
-func (qp OperationsQuery) IncludeTransactions() bool {
-	return qp.Join == "transactions"
 }
 
 // Validate runs extra validations on query parameters
@@ -120,13 +125,8 @@ type GetOperationByIDHandler struct {
 
 // OperationQuery query struct for operation/id end-point
 type OperationQuery struct {
-	ID   uint64 `schema:"id" valid:"-"`
-	Join string `schema:"join" valid:"in(transactions)~Accepted values: transactions,optional"`
-}
-
-// IncludeTransactions returns extra fields to include in the response
-func (qp OperationQuery) IncludeTransactions() bool {
-	return qp.Join == "transactions"
+	Joinable `valid:"optional"`
+	ID       uint64 `schema:"id" valid:"-"`
 }
 
 // Validate runs extra validations on query parameters
