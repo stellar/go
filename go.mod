@@ -34,15 +34,11 @@ require (
 	github.com/klauspost/compress v0.0.0-20161106143436-e3b7981a12dd // indirect
 	github.com/klauspost/cpuid v0.0.0-20160302075316-09cded8978dc // indirect
 	github.com/klauspost/crc32 v0.0.0-20161016154125-cb6bfca970f6 // indirect
-	github.com/kr/pretty v0.0.0-20150520163514-e6ac2fc51e89 // indirect
-	github.com/kr/text v0.0.0-20150520163712-e373e137fafd // indirect
 	github.com/lann/builder v0.0.0-20140829050551-c603884a2c1f // indirect
 	github.com/lib/pq v1.2.0
-	github.com/magiconair/properties v1.5.4 // indirect
 	github.com/manucorporat/sse v0.0.0-20160126180136-ee05b128a739
 	github.com/mattn/go-colorable v0.1.2 // indirect
 	github.com/mitchellh/go-homedir v1.1.0
-	github.com/mitchellh/mapstructure v0.0.0-20150613213606-2caf8efc9366 // indirect
 	github.com/mndrix/ps v0.0.0-20131111202200-33ddf69629c1 // indirect
 	github.com/moul/http2curl v0.0.0-20161031194548-4e24498b31db // indirect
 	github.com/nullstyle/go-xdr v0.0.0-20180726165426-f4c839f75077 // indirect
@@ -50,7 +46,7 @@ require (
 	github.com/onsi/gomega v1.4.3
 	github.com/opentracing/opentracing-go v1.1.0 // indirect
 	github.com/pkg/errors v0.8.1
-	github.com/prometheus/client_golang v0.9.3-0.20190127221311-3c4408c8b829
+	github.com/prometheus/client_golang v0.9.3
 	github.com/rcrowley/go-metrics v0.0.0-20181016184325-3113b8401b8a
 	github.com/rs/cors v0.0.0-20160617231935-a62a804a8a00
 	github.com/rs/xhandler v0.0.0-20160618193221-ed27b6fd6521 // indirect
@@ -61,11 +57,9 @@ require (
 	github.com/shurcooL/httpfs v0.0.0-20190707220628-8d4bc4ba7749
 	github.com/sirupsen/logrus v1.4.1
 	github.com/smartystreets/goconvey v0.0.0-20190731233626-505e41936337 // indirect
-	github.com/spf13/cast v0.0.0-20150508191742-4d07383ffe94 // indirect
-	github.com/spf13/cobra v0.0.0-20160830174925-9c28e4bbd74e
-	github.com/spf13/jwalterweatherman v0.0.0-20141219030609-3d60171a6431 // indirect
-	github.com/spf13/pflag v0.0.0-20161005214240-4bd69631f475
-	github.com/spf13/viper v0.0.0-20150621231900-db7ff930a189
+	github.com/spf13/cobra v1.0.0
+	github.com/spf13/pflag v1.0.3
+	github.com/spf13/viper v1.4.0
 	github.com/stellar/go-xdr v0.0.0-20180917104419-0bc96f33a18e
 	github.com/stellar/throttled v2.2.3-0.20190823235211-89d75816f59d+incompatible
 	github.com/stretchr/testify v1.5.1
