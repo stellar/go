@@ -11,6 +11,7 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/stellar/go/exp/services/recoverysigner/internal/account"
+	"github.com/stellar/go/exp/services/recoverysigner/internal/crypto"
 	"github.com/stellar/go/exp/services/recoverysigner/internal/crypto/cryptotest"
 	"github.com/stellar/go/exp/services/recoverysigner/internal/db/dbtest"
 	"github.com/stellar/go/exp/services/recoverysigner/internal/serve/auth"
@@ -24,6 +25,8 @@ import (
 
 func TestAccountPost_newWithRoleOwnerContentTypeJSON(t *testing.T) {
 	e := cryptotest.EncrypterFunc(func(plaintext, contextInfo []byte) ([]byte, error) {
+		wantContextInfo := crypto.ContextInfo("GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N", "GC733FYXCANZUKEXCMS3ITZQCSLASORHKHGLTKBOWXS5VYPGNC4SLXVI")
+		assert.Equal(t, wantContextInfo, contextInfo)
 		return []byte("encrypted(" + string(plaintext) + ")"), nil
 	})
 	s := &account.DBStore{DB: dbtest.Open(t).Open()}
@@ -121,6 +124,8 @@ func TestAccountPost_newWithRoleOwnerContentTypeJSON(t *testing.T) {
 
 func TestAccountPost_newWithRoleOwnerContentTypeForm(t *testing.T) {
 	e := cryptotest.EncrypterFunc(func(plaintext, contextInfo []byte) ([]byte, error) {
+		wantContextInfo := crypto.ContextInfo("GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N", "GC733FYXCANZUKEXCMS3ITZQCSLASORHKHGLTKBOWXS5VYPGNC4SLXVI")
+		assert.Equal(t, wantContextInfo, contextInfo)
 		return []byte("encrypted(" + string(plaintext) + ")"), nil
 	})
 	s := &account.DBStore{DB: dbtest.Open(t).Open()}
@@ -217,6 +222,8 @@ func TestAccountPost_newWithRoleOwnerContentTypeForm(t *testing.T) {
 
 func TestAccountPost_newWithRolesSenderReceiverContentTypeJSON(t *testing.T) {
 	e := cryptotest.EncrypterFunc(func(plaintext, contextInfo []byte) ([]byte, error) {
+		wantContextInfo := crypto.ContextInfo("GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N", "GC733FYXCANZUKEXCMS3ITZQCSLASORHKHGLTKBOWXS5VYPGNC4SLXVI")
+		assert.Equal(t, wantContextInfo, contextInfo)
 		return []byte("encrypted(" + string(plaintext) + ")"), nil
 	})
 	s := &account.DBStore{DB: dbtest.Open(t).Open()}
@@ -331,6 +338,8 @@ func TestAccountPost_newWithRolesSenderReceiverContentTypeJSON(t *testing.T) {
 
 func TestAccountPost_newWithRolesSenderReceiverContentTypeForm(t *testing.T) {
 	e := cryptotest.EncrypterFunc(func(plaintext, contextInfo []byte) ([]byte, error) {
+		wantContextInfo := crypto.ContextInfo("GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N", "GC733FYXCANZUKEXCMS3ITZQCSLASORHKHGLTKBOWXS5VYPGNC4SLXVI")
+		assert.Equal(t, wantContextInfo, contextInfo)
 		return []byte("encrypted(" + string(plaintext) + ")"), nil
 	})
 	s := &account.DBStore{DB: dbtest.Open(t).Open()}
