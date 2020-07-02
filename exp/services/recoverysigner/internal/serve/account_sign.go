@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/stellar/go/exp/services/recoverysigner/internal/account"
+	"github.com/stellar/go/exp/services/recoverysigner/internal/crypto"
 	"github.com/stellar/go/exp/services/recoverysigner/internal/serve/auth"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/support/http/httpdecode"
@@ -15,6 +16,7 @@ import (
 type accountSignHandler struct {
 	Logger            *supportlog.Entry
 	SigningKeys       []*keypair.Full
+	Decrypter         crypto.Decrypter
 	NetworkPassphrase string
 	AccountStore      account.Store
 }
@@ -56,19 +58,6 @@ func (h accountSignHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	l.Info("Request to sign transaction.")
 
-	var signingKey *keypair.Full
-	for _, sk := range h.SigningKeys {
-		if req.SigningAddress.Address() == sk.Address() {
-			signingKey = sk
-			break
-		}
-	}
-	if signingKey == nil {
-		l.Info("Signing key not found.")
-		notFound.Render(w)
-		return
-	}
-
 	// Find the account that the request is for.
 	acc, err := h.AccountStore.Get(req.Address.Address())
 	if err == account.ErrNotFound {
@@ -100,6 +89,41 @@ func (h accountSignHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	l.Infof("Authorized: %v.", authorized)
 	if !authorized {
+		notFound.Render(w)
+		return
+	}
+
+	// Validating the signing key requested.
+	var signingKey *keypair.Full
+	for _, signer := range acc.Signers {
+		if req.SigningAddress.Address() == signer.PublicKey {
+			encryptionContextInfo := crypto.ContextInfo(acc.Address, signer.PublicKey)
+			var signingKeySeed []byte
+			signingKeySeed, err = h.Decrypter.Decrypt(signer.EncryptedSecretKey, encryptionContextInfo)
+			if err != nil {
+				l.Error(err)
+				serverError.Render(w)
+				return
+			}
+			signingKey, err = keypair.ParseFull(string(signingKeySeed))
+			if err != nil {
+				l.Error(err)
+				serverError.Render(w)
+				return
+			}
+			break
+		}
+	}
+	if signingKey == nil {
+		for _, sk := range h.SigningKeys {
+			if req.SigningAddress.Address() == sk.Address() {
+				signingKey = sk
+				break
+			}
+		}
+	}
+	if signingKey == nil {
+		l.Info("Signing key not found.")
 		notFound.Render(w)
 		return
 	}
