@@ -16,6 +16,7 @@ import (
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/support/errors"
 	supporthttp "github.com/stellar/go/support/http"
+	"github.com/stellar/go/support/keypairgen"
 	supportlog "github.com/stellar/go/support/log"
 	"github.com/stellar/go/support/render/health"
 	"gopkg.in/square/go-jose.v2"
@@ -66,17 +67,18 @@ func Serve(opts Options) {
 }
 
 type handlerDeps struct {
-	Logger             *supportlog.Entry
-	NetworkPassphrase  string
-	SigningKeys        []*keypair.Full
-	SigningAddresses   []*keypair.FromAddress
-	Encrypter          crypto.Encrypter
-	Decrypter          crypto.Decrypter
-	AccountStore       account.Store
-	SEP10JWKS          jose.JSONWebKeySet
-	SEP10JWTIssuer     string
-	FirebaseAuthClient *firebaseauth.Client
-	MetricsRegistry    *prometheus.Registry
+	Logger              *supportlog.Entry
+	NetworkPassphrase   string
+	SigningKeys         []*keypair.Full
+	SigningAddresses    []*keypair.FromAddress
+	SigningKeyGenerator keypairgen.Generator
+	Encrypter           crypto.Encrypter
+	Decrypter           crypto.Decrypter
+	AccountStore        account.Store
+	SEP10JWKS           jose.JSONWebKeySet
+	SEP10JWTIssuer      string
+	FirebaseAuthClient  *firebaseauth.Client
+	MetricsRegistry     *prometheus.Registry
 }
 
 func getHandlerDeps(opts Options) (handlerDeps, error) {
@@ -150,17 +152,18 @@ func getHandlerDeps(opts Options) (handlerDeps, error) {
 	}
 
 	deps := handlerDeps{
-		Logger:             opts.Logger,
-		NetworkPassphrase:  opts.NetworkPassphrase,
-		SigningKeys:        signingKeys,
-		SigningAddresses:   signingAddresses,
-		Encrypter:          encrypter,
-		Decrypter:          decrypter,
-		AccountStore:       accountStore,
-		SEP10JWKS:          sep10JWKS,
-		SEP10JWTIssuer:     opts.SEP10JWTIssuer,
-		FirebaseAuthClient: firebaseAuthClient,
-		MetricsRegistry:    metricsRegistry,
+		Logger:              opts.Logger,
+		NetworkPassphrase:   opts.NetworkPassphrase,
+		SigningKeys:         signingKeys,
+		SigningAddresses:    signingAddresses,
+		Encrypter:           encrypter,
+		SigningKeyGenerator: keypairgen.Generator{Source: keypairgen.RandomSource{}},
+		Decrypter:           decrypter,
+		AccountStore:        accountStore,
+		SEP10JWKS:           sep10JWKS,
+		SEP10JWTIssuer:      opts.SEP10JWTIssuer,
+		FirebaseAuthClient:  firebaseAuthClient,
+		MetricsRegistry:     metricsRegistry,
 	}
 
 	return deps, nil
@@ -183,9 +186,11 @@ func handler(deps handlerDeps) http.Handler {
 		}.ServeHTTP)
 		mux.Route("/{address}", func(mux chi.Router) {
 			mux.Post("/", accountPostHandler{
-				Logger:           deps.Logger,
-				SigningAddresses: deps.SigningAddresses,
-				AccountStore:     deps.AccountStore,
+				Logger:              deps.Logger,
+				SigningAddresses:    deps.SigningAddresses,
+				SigningKeyGenerator: deps.SigningKeyGenerator,
+				Encrypter:           deps.Encrypter,
+				AccountStore:        deps.AccountStore,
 			}.ServeHTTP)
 			mux.Put("/", accountPutHandler{
 				Logger:           deps.Logger,
