@@ -134,7 +134,7 @@ func TestCaptivePrepareRange(t *testing.T) {
 		stellarCoreRunner: mockRunner,
 	}
 
-	err := captiveBackend.PrepareRange(100, 200)
+	err := captiveBackend.PrepareRange(BoundedRange(100, 200))
 	assert.NoError(t, err)
 	err = captiveBackend.Close()
 	assert.NoError(t, err)

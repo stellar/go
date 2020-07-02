@@ -124,7 +124,7 @@ func (s *IngestHistoryRangeStateTestSuite) TestRunTransactionProcessorsOnLedgerR
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
 	s.historyQ.On("GetLatestLedger").Return(uint32(99), nil).Once()
 
-	s.ledgerBackend.On("PrepareRange", uint32(100), uint32(0)).Return(nil).Once()
+	s.ledgerBackend.On("PrepareRange", ledgerbackend.UnboundedRange(100)).Return(nil).Once()
 	s.runner.On("RunTransactionProcessorsOnLedger", uint32(100)).Return(io.StatsLedgerTransactionProcessorResults{}, errors.New("my error")).Once()
 
 	next, err := historyRangeState{fromLedger: 100, toLedger: 200}.run(s.system)
@@ -138,7 +138,7 @@ func (s *IngestHistoryRangeStateTestSuite) TestSuccess() {
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
 	s.historyQ.On("GetLatestLedger").Return(uint32(99), nil).Once()
 
-	s.ledgerBackend.On("PrepareRange", uint32(100), uint32(0)).Return(nil).Once()
+	s.ledgerBackend.On("PrepareRange", ledgerbackend.UnboundedRange(100)).Return(nil).Once()
 	for i := 100; i <= 200; i++ {
 		s.runner.On("RunTransactionProcessorsOnLedger", uint32(i)).Return(io.StatsLedgerTransactionProcessorResults{}, nil).Once()
 	}
@@ -155,7 +155,7 @@ func (s *IngestHistoryRangeStateTestSuite) TestSuccessOneLedger() {
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
 	s.historyQ.On("GetLatestLedger").Return(uint32(99), nil).Once()
 
-	s.ledgerBackend.On("PrepareRange", uint32(100), uint32(0)).Return(nil).Once()
+	s.ledgerBackend.On("PrepareRange", ledgerbackend.UnboundedRange(100)).Return(nil).Once()
 	s.runner.On("RunTransactionProcessorsOnLedger", uint32(100)).Return(io.StatsLedgerTransactionProcessorResults{}, nil).Once()
 
 	s.historyQ.On("Commit").Return(nil).Once()
@@ -195,7 +195,7 @@ func (s *ReingestHistoryRangeStateTestSuite) SetupTest() {
 	s.historyQ.On("Rollback").Return(nil).Once()
 	s.historyQ.On("Begin").Return(nil).Once()
 
-	s.ledgerBackend.On("PrepareRange", uint32(100), uint32(200)).Return(nil).Once()
+	s.ledgerBackend.On("PrepareRange", ledgerbackend.BoundedRange(100, 200)).Return(nil).Once()
 }
 
 func (s *ReingestHistoryRangeStateTestSuite) TearDownTest() {
@@ -367,7 +367,7 @@ func (s *ReingestHistoryRangeStateTestSuite) TestSuccessOneLedger() {
 
 	// Recreate mock in this single test to remove previous assertion.
 	*s.ledgerBackend = mockLedgerBackend{}
-	s.ledgerBackend.On("PrepareRange", uint32(100), uint32(100)).Return(nil).Once()
+	s.ledgerBackend.On("PrepareRange", ledgerbackend.BoundedRange(100, 100)).Return(nil).Once()
 
 	err := s.system.ReingestRange(100, 100, false)
 	s.Assert().NoError(err)
