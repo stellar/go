@@ -175,6 +175,16 @@ func TestAccountGet_authenticatedByIdentityAddress(t *testing.T) {
 				},
 			},
 		},
+		Signers: []account.Signer{
+			{
+				PublicKey:          "GC733FYXCANZUKEXCMS3ITZQCSLASORHKHGLTKBOWXS5VYPGNC4SLXVI",
+				EncryptedSecretKey: []byte("encrypted(SCGSFYH4WA2WPFQO3AF7KKZQQLK4DOGLHSA3VCOCOEI2H6ZDPEY5NITC)"),
+			},
+			{
+				PublicKey:          "GC2OTODRRSWRSNWKLQFF2KIEURLE6XHCQRRNDP2HOC5FMBBP4Y2KBTT3",
+				EncryptedSecretKey: []byte("encrypted(SDXAS6Q4VX3BTQYIGSNO47WDFFIJY7P2HIH2OF6KJOCX556PAMQFNI6N)"),
+			},
+		},
 	})
 	h := accountGetHandler{
 		Logger:       supportlog.DefaultLogger,
@@ -215,6 +225,14 @@ func TestAccountGet_authenticatedByIdentityAddress(t *testing.T) {
 	],
 	"signers": [
 		{
+			"key": "GC2OTODRRSWRSNWKLQFF2KIEURLE6XHCQRRNDP2HOC5FMBBP4Y2KBTT3",
+			"added_at": "0001-01-01T00:00:00Z"
+		},
+		{
+			"key": "GC733FYXCANZUKEXCMS3ITZQCSLASORHKHGLTKBOWXS5VYPGNC4SLXVI",
+			"added_at": "0001-01-01T00:00:00Z"
+		},
+		{
 			"key": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE",
 			"added_at": "0001-01-01T00:00:00Z"
 		},
@@ -244,6 +262,16 @@ func TestAccountGet_authenticatedByAccountAddress(t *testing.T) {
 				AuthMethods: []account.AuthMethod{
 					{Type: account.AuthMethodTypePhoneNumber, Value: "+10000000000"},
 				},
+			},
+		},
+		Signers: []account.Signer{
+			{
+				PublicKey:          "GC733FYXCANZUKEXCMS3ITZQCSLASORHKHGLTKBOWXS5VYPGNC4SLXVI",
+				EncryptedSecretKey: []byte("encrypted(SCGSFYH4WA2WPFQO3AF7KKZQQLK4DOGLHSA3VCOCOEI2H6ZDPEY5NITC)"),
+			},
+			{
+				PublicKey:          "GC2OTODRRSWRSNWKLQFF2KIEURLE6XHCQRRNDP2HOC5FMBBP4Y2KBTT3",
+				EncryptedSecretKey: []byte("encrypted(SDXAS6Q4VX3BTQYIGSNO47WDFFIJY7P2HIH2OF6KJOCX556PAMQFNI6N)"),
 			},
 		},
 	})
@@ -285,6 +313,14 @@ func TestAccountGet_authenticatedByAccountAddress(t *testing.T) {
 	],
 	"signers": [
 		{
+			"key": "GC2OTODRRSWRSNWKLQFF2KIEURLE6XHCQRRNDP2HOC5FMBBP4Y2KBTT3",
+			"added_at": "0001-01-01T00:00:00Z"
+		},
+		{
+			"key": "GC733FYXCANZUKEXCMS3ITZQCSLASORHKHGLTKBOWXS5VYPGNC4SLXVI",
+			"added_at": "0001-01-01T00:00:00Z"
+		},
+		{
 			"key": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE",
 			"added_at": "0001-01-01T00:00:00Z"
 		},
@@ -314,6 +350,16 @@ func TestAccountGet_authenticatedByPhoneNumber(t *testing.T) {
 				AuthMethods: []account.AuthMethod{
 					{Type: account.AuthMethodTypePhoneNumber, Value: "+10000000000"},
 				},
+			},
+		},
+		Signers: []account.Signer{
+			{
+				PublicKey:          "GC733FYXCANZUKEXCMS3ITZQCSLASORHKHGLTKBOWXS5VYPGNC4SLXVI",
+				EncryptedSecretKey: []byte("encrypted(SCGSFYH4WA2WPFQO3AF7KKZQQLK4DOGLHSA3VCOCOEI2H6ZDPEY5NITC)"),
+			},
+			{
+				PublicKey:          "GC2OTODRRSWRSNWKLQFF2KIEURLE6XHCQRRNDP2HOC5FMBBP4Y2KBTT3",
+				EncryptedSecretKey: []byte("encrypted(SDXAS6Q4VX3BTQYIGSNO47WDFFIJY7P2HIH2OF6KJOCX556PAMQFNI6N)"),
 			},
 		},
 	})
@@ -356,6 +402,14 @@ func TestAccountGet_authenticatedByPhoneNumber(t *testing.T) {
 	],
 	"signers": [
 		{
+			"key": "GC2OTODRRSWRSNWKLQFF2KIEURLE6XHCQRRNDP2HOC5FMBBP4Y2KBTT3",
+			"added_at": "0001-01-01T00:00:00Z"
+		},
+		{
+			"key": "GC733FYXCANZUKEXCMS3ITZQCSLASORHKHGLTKBOWXS5VYPGNC4SLXVI",
+			"added_at": "0001-01-01T00:00:00Z"
+		},
+		{
 			"key": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE",
 			"added_at": "0001-01-01T00:00:00Z"
 		},
@@ -385,6 +439,16 @@ func TestAccountGet_authenticatedByEmail(t *testing.T) {
 				AuthMethods: []account.AuthMethod{
 					{Type: account.AuthMethodTypeEmail, Value: "user1@example.com"},
 				},
+			},
+		},
+		Signers: []account.Signer{
+			{
+				PublicKey:          "GC733FYXCANZUKEXCMS3ITZQCSLASORHKHGLTKBOWXS5VYPGNC4SLXVI",
+				EncryptedSecretKey: []byte("encrypted(SCGSFYH4WA2WPFQO3AF7KKZQQLK4DOGLHSA3VCOCOEI2H6ZDPEY5NITC)"),
+			},
+			{
+				PublicKey:          "GC2OTODRRSWRSNWKLQFF2KIEURLE6XHCQRRNDP2HOC5FMBBP4Y2KBTT3",
+				EncryptedSecretKey: []byte("encrypted(SDXAS6Q4VX3BTQYIGSNO47WDFFIJY7P2HIH2OF6KJOCX556PAMQFNI6N)"),
 			},
 		},
 	})
@@ -426,6 +490,14 @@ func TestAccountGet_authenticatedByEmail(t *testing.T) {
 		}
 	],
 	"signers": [
+		{
+			"key": "GC2OTODRRSWRSNWKLQFF2KIEURLE6XHCQRRNDP2HOC5FMBBP4Y2KBTT3",
+			"added_at": "0001-01-01T00:00:00Z"
+		},
+		{
+			"key": "GC733FYXCANZUKEXCMS3ITZQCSLASORHKHGLTKBOWXS5VYPGNC4SLXVI",
+			"added_at": "0001-01-01T00:00:00Z"
+		},
 		{
 			"key": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE",
 			"added_at": "0001-01-01T00:00:00Z"
