@@ -13,6 +13,7 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/stellar/go/exp/services/recoverysigner/internal/account"
+	"github.com/stellar/go/exp/services/recoverysigner/internal/crypto"
 	"github.com/stellar/go/exp/services/recoverysigner/internal/crypto/cryptotest"
 	"github.com/stellar/go/exp/services/recoverysigner/internal/db/dbtest"
 	"github.com/stellar/go/exp/services/recoverysigner/internal/serve/auth"
@@ -550,6 +551,8 @@ func TestAccountSign_signingAddressAccountAuthenticatedOtherSignerSelected(t *te
 
 func TestAccountSign_signingAddressAccountAuthenticatedUserSignerSelected(t *testing.T) {
 	d := cryptotest.DecrypterFunc(func(ciphertext, contextInfo []byte) ([]byte, error) {
+		wantContextInfo := crypto.ContextInfo("GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4", "GC733FYXCANZUKEXCMS3ITZQCSLASORHKHGLTKBOWXS5VYPGNC4SLXVI")
+		assert.Equal(t, wantContextInfo, contextInfo)
 		return []byte(strings.TrimSuffix(strings.TrimPrefix(string(ciphertext), "encrypted("), ")")), nil
 	})
 	s := &account.DBStore{DB: dbtest.Open(t).Open()}
