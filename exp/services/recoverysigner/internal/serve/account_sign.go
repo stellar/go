@@ -97,7 +97,8 @@ func (h accountSignHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var signingKey *keypair.Full
 	for _, signer := range acc.Signers {
 		if req.SigningAddress.Address() == signer.PublicKey {
-			signingKeySeed, err := h.Decrypter.Decrypt(signer.EncryptedSecretKey, nil)
+			encryptionContextInfo := crypto.ContextInfo(acc.Address, signer.PublicKey)
+			signingKeySeed, err := h.Decrypter.Decrypt(signer.EncryptedSecretKey, encryptionContextInfo)
 			if err != nil {
 				l.Error(err)
 				serverError.Render(w)
