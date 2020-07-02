@@ -4,18 +4,22 @@ import (
 	"net/http"
 
 	"github.com/stellar/go/exp/services/recoverysigner/internal/account"
+	"github.com/stellar/go/exp/services/recoverysigner/internal/crypto"
 	"github.com/stellar/go/exp/services/recoverysigner/internal/serve/auth"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/http/httpdecode"
+	"github.com/stellar/go/support/keypairgen"
 	supportlog "github.com/stellar/go/support/log"
 	"github.com/stellar/go/support/render/httpjson"
 )
 
 type accountPostHandler struct {
-	Logger           *supportlog.Entry
-	SigningAddresses []*keypair.FromAddress
-	AccountStore     account.Store
+	Logger              *supportlog.Entry
+	SigningAddresses    []*keypair.FromAddress
+	SigningKeyGenerator keypairgen.Generator
+	Encrypter           crypto.Encrypter
+	AccountStore        account.Store
 }
 
 type accountPostRequest struct {
@@ -125,6 +129,30 @@ func (h accountPostHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		WithField("identities_count", len(acc.Identities)).
 		WithField("auth_methods_count", authMethodCount)
 
+	signingKey, err := h.SigningKeyGenerator.Generate()
+	if err != nil {
+		l.Error(err)
+		serverError.Render(w)
+		return
+	}
+	signingPublicKey := signingKey.Address()
+	l.
+		WithField("signer", signingPublicKey).
+		Info("Generated signer.")
+	encryptionContextInfo := crypto.ContextInfo(acc.Address, signingPublicKey)
+	signingSecretKeyEncrypted, err := h.Encrypter.Encrypt([]byte(signingKey.Seed()), encryptionContextInfo)
+	if err != nil {
+		l.Error(err)
+		serverError.Render(w)
+		return
+	}
+	acc.Signers = []account.Signer{
+		{
+			PublicKey:          signingPublicKey,
+			EncryptedSecretKey: signingSecretKeyEncrypted,
+		},
+	}
+
 	err = h.AccountStore.Add(acc)
 	if err == account.ErrAlreadyExists {
 		l.Info("Account already registered.")
@@ -140,6 +168,11 @@ func (h accountPostHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	resp := accountResponse{
 		Address: acc.Address,
+		Signers: []accountResponseSigner{
+			{
+				Key: signingPublicKey,
+			},
+		},
 	}
 	for _, signingAddress := range h.SigningAddresses {
 		resp.Signers = append(resp.Signers, accountResponseSigner{

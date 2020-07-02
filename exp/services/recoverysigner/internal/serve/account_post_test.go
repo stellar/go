@@ -11,19 +11,36 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/stellar/go/exp/services/recoverysigner/internal/account"
+	"github.com/stellar/go/exp/services/recoverysigner/internal/crypto"
+	"github.com/stellar/go/exp/services/recoverysigner/internal/crypto/cryptotest"
 	"github.com/stellar/go/exp/services/recoverysigner/internal/db/dbtest"
 	"github.com/stellar/go/exp/services/recoverysigner/internal/serve/auth"
 	"github.com/stellar/go/keypair"
+	"github.com/stellar/go/support/keypairgen"
+	"github.com/stellar/go/support/keypairgen/keypairgentest"
 	supportlog "github.com/stellar/go/support/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestAccountPost_newWithRoleOwnerContentTypeJSON(t *testing.T) {
+	e := cryptotest.EncrypterFunc(func(plaintext, contextInfo []byte) ([]byte, error) {
+		wantContextInfo := crypto.ContextInfo("GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N", "GC733FYXCANZUKEXCMS3ITZQCSLASORHKHGLTKBOWXS5VYPGNC4SLXVI")
+		assert.Equal(t, wantContextInfo, contextInfo)
+		return []byte("encrypted(" + string(plaintext) + ")"), nil
+	})
 	s := &account.DBStore{DB: dbtest.Open(t).Open()}
+	g := keypairgen.Generator{
+		Source: &keypairgentest.SliceSource{
+			keypair.MustParseFull("SCGSFYH4WA2WPFQO3AF7KKZQQLK4DOGLHSA3VCOCOEI2H6ZDPEY5NITC"), // GC733FYXCANZUKEXCMS3ITZQCSLASORHKHGLTKBOWXS5VYPGNC4SLXVI
+		},
+	}
+
 	h := accountPostHandler{
-		Logger:       supportlog.DefaultLogger,
-		AccountStore: s,
+		Logger:              supportlog.DefaultLogger,
+		AccountStore:        s,
+		SigningKeyGenerator: g,
+		Encrypter:           e,
 		SigningAddresses: []*keypair.FromAddress{
 			keypair.MustParseAddress("GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"),
 			keypair.MustParseAddress("GAPE22DOMALCH42VOR4S3HN6KIZZ643G7D3GNTYF4YOWWXP6UVRAF5JS"),
@@ -66,6 +83,10 @@ func TestAccountPost_newWithRoleOwnerContentTypeJSON(t *testing.T) {
 	],
 	"signers": [
 		{
+			"key": "GC733FYXCANZUKEXCMS3ITZQCSLASORHKHGLTKBOWXS5VYPGNC4SLXVI",
+			"added_at": "0001-01-01T00:00:00Z"
+		},
+		{
 			"key": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE",
 			"added_at": "0001-01-01T00:00:00Z"
 		},
@@ -91,15 +112,34 @@ func TestAccountPost_newWithRoleOwnerContentTypeJSON(t *testing.T) {
 				},
 			},
 		},
+		Signers: []account.Signer{
+			{
+				PublicKey:          "GC733FYXCANZUKEXCMS3ITZQCSLASORHKHGLTKBOWXS5VYPGNC4SLXVI",
+				EncryptedSecretKey: []byte("encrypted(SCGSFYH4WA2WPFQO3AF7KKZQQLK4DOGLHSA3VCOCOEI2H6ZDPEY5NITC)"),
+			},
+		},
 	}
 	assert.Equal(t, wantAcc, acc)
 }
 
 func TestAccountPost_newWithRoleOwnerContentTypeForm(t *testing.T) {
+	e := cryptotest.EncrypterFunc(func(plaintext, contextInfo []byte) ([]byte, error) {
+		wantContextInfo := crypto.ContextInfo("GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N", "GC733FYXCANZUKEXCMS3ITZQCSLASORHKHGLTKBOWXS5VYPGNC4SLXVI")
+		assert.Equal(t, wantContextInfo, contextInfo)
+		return []byte("encrypted(" + string(plaintext) + ")"), nil
+	})
 	s := &account.DBStore{DB: dbtest.Open(t).Open()}
+	g := keypairgen.Generator{
+		Source: &keypairgentest.SliceSource{
+			keypair.MustParseFull("SCGSFYH4WA2WPFQO3AF7KKZQQLK4DOGLHSA3VCOCOEI2H6ZDPEY5NITC"), // GC733FYXCANZUKEXCMS3ITZQCSLASORHKHGLTKBOWXS5VYPGNC4SLXVI
+		},
+	}
+
 	h := accountPostHandler{
-		Logger:       supportlog.DefaultLogger,
-		AccountStore: s,
+		Logger:              supportlog.DefaultLogger,
+		AccountStore:        s,
+		SigningKeyGenerator: g,
+		Encrypter:           e,
 		SigningAddresses: []*keypair.FromAddress{
 			keypair.MustParseAddress("GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"),
 			keypair.MustParseAddress("GAPE22DOMALCH42VOR4S3HN6KIZZ643G7D3GNTYF4YOWWXP6UVRAF5JS"),
@@ -141,6 +181,10 @@ func TestAccountPost_newWithRoleOwnerContentTypeForm(t *testing.T) {
 	],
 	"signers": [
 		{
+			"key": "GC733FYXCANZUKEXCMS3ITZQCSLASORHKHGLTKBOWXS5VYPGNC4SLXVI",
+			"added_at": "0001-01-01T00:00:00Z"
+		},
+		{
 			"key": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE",
 			"added_at": "0001-01-01T00:00:00Z"
 		},
@@ -166,15 +210,34 @@ func TestAccountPost_newWithRoleOwnerContentTypeForm(t *testing.T) {
 				},
 			},
 		},
+		Signers: []account.Signer{
+			{
+				PublicKey:          "GC733FYXCANZUKEXCMS3ITZQCSLASORHKHGLTKBOWXS5VYPGNC4SLXVI",
+				EncryptedSecretKey: []byte("encrypted(SCGSFYH4WA2WPFQO3AF7KKZQQLK4DOGLHSA3VCOCOEI2H6ZDPEY5NITC)"),
+			},
+		},
 	}
 	assert.Equal(t, wantAcc, acc)
 }
 
 func TestAccountPost_newWithRolesSenderReceiverContentTypeJSON(t *testing.T) {
+	e := cryptotest.EncrypterFunc(func(plaintext, contextInfo []byte) ([]byte, error) {
+		wantContextInfo := crypto.ContextInfo("GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N", "GC733FYXCANZUKEXCMS3ITZQCSLASORHKHGLTKBOWXS5VYPGNC4SLXVI")
+		assert.Equal(t, wantContextInfo, contextInfo)
+		return []byte("encrypted(" + string(plaintext) + ")"), nil
+	})
 	s := &account.DBStore{DB: dbtest.Open(t).Open()}
+	g := keypairgen.Generator{
+		Source: &keypairgentest.SliceSource{
+			keypair.MustParseFull("SCGSFYH4WA2WPFQO3AF7KKZQQLK4DOGLHSA3VCOCOEI2H6ZDPEY5NITC"), // GC733FYXCANZUKEXCMS3ITZQCSLASORHKHGLTKBOWXS5VYPGNC4SLXVI
+		},
+	}
+
 	h := accountPostHandler{
-		Logger:       supportlog.DefaultLogger,
-		AccountStore: s,
+		Logger:              supportlog.DefaultLogger,
+		AccountStore:        s,
+		SigningKeyGenerator: g,
+		Encrypter:           e,
 		SigningAddresses: []*keypair.FromAddress{
 			keypair.MustParseAddress("GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"),
 			keypair.MustParseAddress("GAPE22DOMALCH42VOR4S3HN6KIZZ643G7D3GNTYF4YOWWXP6UVRAF5JS"),
@@ -226,6 +289,10 @@ func TestAccountPost_newWithRolesSenderReceiverContentTypeJSON(t *testing.T) {
 	],
 	"signers": [
 		{
+			"key": "GC733FYXCANZUKEXCMS3ITZQCSLASORHKHGLTKBOWXS5VYPGNC4SLXVI",
+			"added_at": "0001-01-01T00:00:00Z"
+		},
+		{
 			"key": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE",
 			"added_at": "0001-01-01T00:00:00Z"
 		},
@@ -259,15 +326,34 @@ func TestAccountPost_newWithRolesSenderReceiverContentTypeJSON(t *testing.T) {
 				},
 			},
 		},
+		Signers: []account.Signer{
+			{
+				PublicKey:          "GC733FYXCANZUKEXCMS3ITZQCSLASORHKHGLTKBOWXS5VYPGNC4SLXVI",
+				EncryptedSecretKey: []byte("encrypted(SCGSFYH4WA2WPFQO3AF7KKZQQLK4DOGLHSA3VCOCOEI2H6ZDPEY5NITC)"),
+			},
+		},
 	}
 	assert.Equal(t, wantAcc, acc)
 }
 
 func TestAccountPost_newWithRolesSenderReceiverContentTypeForm(t *testing.T) {
+	e := cryptotest.EncrypterFunc(func(plaintext, contextInfo []byte) ([]byte, error) {
+		wantContextInfo := crypto.ContextInfo("GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N", "GC733FYXCANZUKEXCMS3ITZQCSLASORHKHGLTKBOWXS5VYPGNC4SLXVI")
+		assert.Equal(t, wantContextInfo, contextInfo)
+		return []byte("encrypted(" + string(plaintext) + ")"), nil
+	})
 	s := &account.DBStore{DB: dbtest.Open(t).Open()}
+	g := keypairgen.Generator{
+		Source: &keypairgentest.SliceSource{
+			keypair.MustParseFull("SCGSFYH4WA2WPFQO3AF7KKZQQLK4DOGLHSA3VCOCOEI2H6ZDPEY5NITC"), // GC733FYXCANZUKEXCMS3ITZQCSLASORHKHGLTKBOWXS5VYPGNC4SLXVI
+		},
+	}
+
 	h := accountPostHandler{
-		Logger:       supportlog.DefaultLogger,
-		AccountStore: s,
+		Logger:              supportlog.DefaultLogger,
+		AccountStore:        s,
+		SigningKeyGenerator: g,
+		Encrypter:           e,
 		SigningAddresses: []*keypair.FromAddress{
 			keypair.MustParseAddress("GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"),
 			keypair.MustParseAddress("GAPE22DOMALCH42VOR4S3HN6KIZZ643G7D3GNTYF4YOWWXP6UVRAF5JS"),
@@ -317,6 +403,10 @@ func TestAccountPost_newWithRolesSenderReceiverContentTypeForm(t *testing.T) {
 	],
 	"signers": [
 		{
+			"key": "GC733FYXCANZUKEXCMS3ITZQCSLASORHKHGLTKBOWXS5VYPGNC4SLXVI",
+			"added_at": "0001-01-01T00:00:00Z"
+		},
+		{
 			"key": "GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE",
 			"added_at": "0001-01-01T00:00:00Z"
 		},
@@ -350,18 +440,35 @@ func TestAccountPost_newWithRolesSenderReceiverContentTypeForm(t *testing.T) {
 				},
 			},
 		},
+		Signers: []account.Signer{
+			{
+				PublicKey:          "GC733FYXCANZUKEXCMS3ITZQCSLASORHKHGLTKBOWXS5VYPGNC4SLXVI",
+				EncryptedSecretKey: []byte("encrypted(SCGSFYH4WA2WPFQO3AF7KKZQQLK4DOGLHSA3VCOCOEI2H6ZDPEY5NITC)"),
+			},
+		},
 	}
 	assert.Equal(t, wantAcc, acc)
 }
 
 func TestAccountPost_accountAddressInvalid(t *testing.T) {
+	e := cryptotest.EncrypterFunc(func(plaintext, contextInfo []byte) ([]byte, error) {
+		return []byte("encrypted(" + string(plaintext) + ")"), nil
+	})
 	s := &account.DBStore{DB: dbtest.Open(t).Open()}
 	s.Add(account.Account{
 		Address: "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N",
 	})
+	g := keypairgen.Generator{
+		Source: &keypairgentest.SliceSource{
+			keypair.MustParseFull("SCGSFYH4WA2WPFQO3AF7KKZQQLK4DOGLHSA3VCOCOEI2H6ZDPEY5NITC"), // GC733FYXCANZUKEXCMS3ITZQCSLASORHKHGLTKBOWXS5VYPGNC4SLXVI
+		},
+	}
+
 	h := accountPostHandler{
-		Logger:       supportlog.DefaultLogger,
-		AccountStore: s,
+		Logger:              supportlog.DefaultLogger,
+		AccountStore:        s,
+		SigningKeyGenerator: g,
+		Encrypter:           e,
 		SigningAddresses: []*keypair.FromAddress{
 			keypair.MustParseAddress("GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"),
 			keypair.MustParseAddress("GAPE22DOMALCH42VOR4S3HN6KIZZ643G7D3GNTYF4YOWWXP6UVRAF5JS"),
@@ -396,13 +503,24 @@ func TestAccountPost_accountAddressInvalid(t *testing.T) {
 }
 
 func TestAccountPost_accountAlreadyExists(t *testing.T) {
+	e := cryptotest.EncrypterFunc(func(plaintext, contextInfo []byte) ([]byte, error) {
+		return []byte("encrypted(" + string(plaintext) + ")"), nil
+	})
 	s := &account.DBStore{DB: dbtest.Open(t).Open()}
 	s.Add(account.Account{
 		Address: "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N",
 	})
+	g := keypairgen.Generator{
+		Source: &keypairgentest.SliceSource{
+			keypair.MustParseFull("SCGSFYH4WA2WPFQO3AF7KKZQQLK4DOGLHSA3VCOCOEI2H6ZDPEY5NITC"), // GC733FYXCANZUKEXCMS3ITZQCSLASORHKHGLTKBOWXS5VYPGNC4SLXVI
+		},
+	}
+
 	h := accountPostHandler{
-		Logger:       supportlog.DefaultLogger,
-		AccountStore: s,
+		Logger:              supportlog.DefaultLogger,
+		AccountStore:        s,
+		SigningKeyGenerator: g,
+		Encrypter:           e,
 		SigningAddresses: []*keypair.FromAddress{
 			keypair.MustParseAddress("GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"),
 			keypair.MustParseAddress("GAPE22DOMALCH42VOR4S3HN6KIZZ643G7D3GNTYF4YOWWXP6UVRAF5JS"),
@@ -450,10 +568,21 @@ func TestAccountPost_accountAlreadyExists(t *testing.T) {
 }
 
 func TestAccountPost_identitiesNotProvided(t *testing.T) {
+	e := cryptotest.EncrypterFunc(func(plaintext, contextInfo []byte) ([]byte, error) {
+		return []byte("encrypted(" + string(plaintext) + ")"), nil
+	})
 	s := &account.DBStore{DB: dbtest.Open(t).Open()}
+	g := keypairgen.Generator{
+		Source: &keypairgentest.SliceSource{
+			keypair.MustParseFull("SCGSFYH4WA2WPFQO3AF7KKZQQLK4DOGLHSA3VCOCOEI2H6ZDPEY5NITC"), // GC733FYXCANZUKEXCMS3ITZQCSLASORHKHGLTKBOWXS5VYPGNC4SLXVI
+		},
+	}
+
 	h := accountPostHandler{
-		Logger:       supportlog.DefaultLogger,
-		AccountStore: s,
+		Logger:              supportlog.DefaultLogger,
+		AccountStore:        s,
+		SigningKeyGenerator: g,
+		Encrypter:           e,
 		SigningAddresses: []*keypair.FromAddress{
 			keypair.MustParseAddress("GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"),
 			keypair.MustParseAddress("GAPE22DOMALCH42VOR4S3HN6KIZZ643G7D3GNTYF4YOWWXP6UVRAF5JS"),
@@ -488,10 +617,21 @@ func TestAccountPost_identitiesNotProvided(t *testing.T) {
 }
 
 func TestAccountPost_roleNotProvided(t *testing.T) {
+	e := cryptotest.EncrypterFunc(func(plaintext, contextInfo []byte) ([]byte, error) {
+		return []byte("encrypted(" + string(plaintext) + ")"), nil
+	})
 	s := &account.DBStore{DB: dbtest.Open(t).Open()}
+	g := keypairgen.Generator{
+		Source: &keypairgentest.SliceSource{
+			keypair.MustParseFull("SCGSFYH4WA2WPFQO3AF7KKZQQLK4DOGLHSA3VCOCOEI2H6ZDPEY5NITC"), // GC733FYXCANZUKEXCMS3ITZQCSLASORHKHGLTKBOWXS5VYPGNC4SLXVI
+		},
+	}
+
 	h := accountPostHandler{
-		Logger:       supportlog.DefaultLogger,
-		AccountStore: s,
+		Logger:              supportlog.DefaultLogger,
+		AccountStore:        s,
+		SigningKeyGenerator: g,
+		Encrypter:           e,
 		SigningAddresses: []*keypair.FromAddress{
 			keypair.MustParseAddress("GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"),
 			keypair.MustParseAddress("GAPE22DOMALCH42VOR4S3HN6KIZZ643G7D3GNTYF4YOWWXP6UVRAF5JS"),
@@ -536,10 +676,21 @@ func TestAccountPost_roleNotProvided(t *testing.T) {
 }
 
 func TestAccountPost_authMethodsNotProvided(t *testing.T) {
+	e := cryptotest.EncrypterFunc(func(plaintext, contextInfo []byte) ([]byte, error) {
+		return []byte("encrypted(" + string(plaintext) + ")"), nil
+	})
 	s := &account.DBStore{DB: dbtest.Open(t).Open()}
+	g := keypairgen.Generator{
+		Source: &keypairgentest.SliceSource{
+			keypair.MustParseFull("SCGSFYH4WA2WPFQO3AF7KKZQQLK4DOGLHSA3VCOCOEI2H6ZDPEY5NITC"), // GC733FYXCANZUKEXCMS3ITZQCSLASORHKHGLTKBOWXS5VYPGNC4SLXVI
+		},
+	}
+
 	h := accountPostHandler{
-		Logger:       supportlog.DefaultLogger,
-		AccountStore: s,
+		Logger:              supportlog.DefaultLogger,
+		AccountStore:        s,
+		SigningKeyGenerator: g,
+		Encrypter:           e,
 		SigningAddresses: []*keypair.FromAddress{
 			keypair.MustParseAddress("GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"),
 			keypair.MustParseAddress("GAPE22DOMALCH42VOR4S3HN6KIZZ643G7D3GNTYF4YOWWXP6UVRAF5JS"),
@@ -580,13 +731,24 @@ func TestAccountPost_authMethodsNotProvided(t *testing.T) {
 }
 
 func TestAccountPost_authMethodTypeUnrecognized(t *testing.T) {
+	e := cryptotest.EncrypterFunc(func(plaintext, contextInfo []byte) ([]byte, error) {
+		return []byte("encrypted(" + string(plaintext) + ")"), nil
+	})
 	s := &account.DBStore{DB: dbtest.Open(t).Open()}
 	s.Add(account.Account{
 		Address: "GDIXCQJ2W2N6TAS6AYW4LW2EBV7XNRUCLNHQB37FARDEWBQXRWP47Q6N",
 	})
+	g := keypairgen.Generator{
+		Source: &keypairgentest.SliceSource{
+			keypair.MustParseFull("SCGSFYH4WA2WPFQO3AF7KKZQQLK4DOGLHSA3VCOCOEI2H6ZDPEY5NITC"), // GC733FYXCANZUKEXCMS3ITZQCSLASORHKHGLTKBOWXS5VYPGNC4SLXVI
+		},
+	}
+
 	h := accountPostHandler{
-		Logger:       supportlog.DefaultLogger,
-		AccountStore: s,
+		Logger:              supportlog.DefaultLogger,
+		AccountStore:        s,
+		SigningKeyGenerator: g,
+		Encrypter:           e,
 		SigningAddresses: []*keypair.FromAddress{
 			keypair.MustParseAddress("GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"),
 			keypair.MustParseAddress("GAPE22DOMALCH42VOR4S3HN6KIZZ643G7D3GNTYF4YOWWXP6UVRAF5JS"),
@@ -637,10 +799,21 @@ func TestAccountPost_authMethodTypeUnrecognized(t *testing.T) {
 }
 
 func TestAccountPost_notAuthenticatedForAccount(t *testing.T) {
+	e := cryptotest.EncrypterFunc(func(plaintext, contextInfo []byte) ([]byte, error) {
+		return []byte("encrypted(" + string(plaintext) + ")"), nil
+	})
 	s := &account.DBStore{DB: dbtest.Open(t).Open()}
+	g := keypairgen.Generator{
+		Source: &keypairgentest.SliceSource{
+			keypair.MustParseFull("SCGSFYH4WA2WPFQO3AF7KKZQQLK4DOGLHSA3VCOCOEI2H6ZDPEY5NITC"), // GC733FYXCANZUKEXCMS3ITZQCSLASORHKHGLTKBOWXS5VYPGNC4SLXVI
+		},
+	}
+
 	h := accountPostHandler{
-		Logger:       supportlog.DefaultLogger,
-		AccountStore: s,
+		Logger:              supportlog.DefaultLogger,
+		AccountStore:        s,
+		SigningKeyGenerator: g,
+		Encrypter:           e,
 		SigningAddresses: []*keypair.FromAddress{
 			keypair.MustParseAddress("GCAPXRXSU7P6D353YGXMP6ROJIC744HO5OZCIWTXZQK2X757YU5KCHUE"),
 			keypair.MustParseAddress("GAPE22DOMALCH42VOR4S3HN6KIZZ643G7D3GNTYF4YOWWXP6UVRAF5JS"),
