@@ -108,9 +108,9 @@ var ingestVerifyRangeCmd = &cobra.Command{
 				log.Fatalf("flag --%s cannot be empty", stellarCoreDBURLFlagName)
 			}
 
-			coreSession, err := db.Open("postgres", config.StellarCoreDatabaseURL)
-			if err != nil {
-				log.Fatalf("cannot open Core DB: %v", err)
+			coreSession, dbErr := db.Open("postgres", config.StellarCoreDatabaseURL)
+			if dbErr != nil {
+				log.Fatalf("cannot open Core DB: %v", dbErr)
 			}
 			ingestConfig.CoreSession = coreSession
 		}
@@ -192,9 +192,9 @@ var ingestStressTestCmd = &cobra.Command{
 				log.Fatalf("flag --%s cannot be empty", stellarCoreDBURLFlagName)
 			}
 
-			coreSession, err := db.Open("postgres", config.StellarCoreDatabaseURL)
-			if err != nil {
-				log.Fatalf("cannot open Core DB: %v", err)
+			coreSession, dbErr := db.Open("postgres", config.StellarCoreDatabaseURL)
+			if dbErr != nil {
+				log.Fatalf("cannot open Core DB: %v", dbErr)
 			}
 			ingestConfig.CoreSession = coreSession
 		}
