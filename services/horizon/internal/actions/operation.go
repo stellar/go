@@ -148,6 +148,9 @@ func (handler GetOperationByIDHandler) GetResource(w HeaderWriter, r *http.Reque
 	}
 
 	historyQ, err := HistoryQFromRequest(r)
+	if err != nil {
+		return nil, err
+	}
 	op, tx, err := historyQ.OperationByID(qp.IncludeTransactions(), int64(qp.ID))
 	if err != nil {
 		return nil, err
