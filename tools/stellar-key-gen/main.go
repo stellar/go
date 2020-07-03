@@ -17,7 +17,7 @@ func main() {
 
 func NewRootCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "stellar-key-gen [command]",
+		Use:   "stellar-key-gen",
 		Short: "Generate a Stellar key.",
 		Run:   gen,
 	}
