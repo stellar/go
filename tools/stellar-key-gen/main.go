@@ -32,5 +32,5 @@ func gen(cmd *cobra.Command, args []string) {
 	fmt.Fprintln(cmd.ErrOrStderr(), "Public Key:")
 	fmt.Fprintln(cmd.ErrOrStderr(), key.Address())
 	fmt.Fprintln(cmd.ErrOrStderr(), "Secret Key:")
-	fmt.Fprint(cmd.OutOrStderr(), key.Seed())
+	fmt.Fprint(cmd.OutOrStdout(), key.Seed())
 }
