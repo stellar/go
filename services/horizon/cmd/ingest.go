@@ -212,11 +212,6 @@ var ingestTriggerStateRebuildCmd = &cobra.Command{
 	Use:   "trigger-state-rebuild",
 	Short: "updates a database to trigger state rebuild, state will be rebuilt by a running Horizon instance, DO NOT RUN production DB, some endpoints will be unavailable until state is rebuilt",
 	Run: func(cmd *cobra.Command, args []string) {
-		for _, co := range stressTestCmdOpts {
-			co.Require()
-			co.SetValue()
-		}
-
 		initRootConfig()
 
 		horizonSession, err := db.Open("postgres", config.DatabaseURL)
