@@ -72,15 +72,17 @@ const (
 	sleepDuration = time.Second
 )
 
+// MaxStreamRetries is an option used in MakeSingleLedgerStateReader.
+type MaxStreamRetries int
+
 // MakeSingleLedgerStateReader is a factory method for SingleLedgerStateReader.
-// `maxStreamRetries` determines how many times the reader will retry when encountering
-// errors while streaming xdr bucket entries from the history archive.
-// Set `maxStreamRetries` to 0 if there should be no retry attempts
+// Passing `MaxStreamRetries` option determines how many times the reader will retry
+// when errors while streaming xdr bucket entries from the history archive (default=3).
 func MakeSingleLedgerStateReader(
 	ctx context.Context,
 	archive historyarchive.ArchiveInterface,
 	sequence uint32,
-	maxStreamRetries int,
+	opts ...interface{},
 ) (*SingleLedgerStateReader, error) {
 	has, err := archive.GetCheckpointHAS(sequence)
 	if err != nil {
@@ -91,6 +93,16 @@ func MakeSingleLedgerStateReader(
 	err = tempStore.Open()
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to get open temp store")
+	}
+
+	maxStreamRetries := 3
+	for _, opt := range opts {
+		switch opt := opt.(type) {
+		case MaxStreamRetries:
+			maxStreamRetries = int(opt)
+		default:
+			return nil, errors.Errorf("unknown option: %T %v", opt, opt)
+		}
 	}
 
 	return &SingleLedgerStateReader{

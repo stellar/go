@@ -98,7 +98,7 @@ func (s *DBTestSuite) SetupTest() {
 func (s *DBTestSuite) mockChangeReader() {
 	changeReader, err := loadChanges(s.sampleFile)
 	s.Assert().NoError(err)
-	s.historyAdapter.On("GetState", s.system.ctx, s.sequence, 3).
+	s.historyAdapter.On("GetState", s.system.ctx, s.sequence, io.MaxStreamRetries(3)).
 		Return(io.ChangeReader(changeReader), nil).Once()
 }
 func (s *DBTestSuite) setupMocksForBuildState() {

@@ -97,7 +97,7 @@ func TestProcessorRunnerRunHistoryArchiveIngestionHistoryArchive(t *testing.T) {
 			"GetState",
 			mock.AnythingOfType("*context.emptyCtx"),
 			uint32(63),
-			config.MaxStreamRetries,
+			io.MaxStreamRetries(config.MaxStreamRetries),
 		).
 		Return(
 			&io.GenesisLedgerStateReader{

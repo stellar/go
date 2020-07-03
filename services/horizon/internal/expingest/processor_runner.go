@@ -185,7 +185,7 @@ func (s *ProcessorRunner) RunHistoryArchiveIngestion(checkpointLedger uint32) (i
 		changeReader, err = s.historyAdapter.GetState(
 			s.ctx,
 			checkpointLedger,
-			s.config.MaxStreamRetries,
+			io.MaxStreamRetries(s.config.MaxStreamRetries),
 		)
 		if err != nil {
 			return changeStats.GetResults(), errors.Wrap(err, "Error creating HAS reader")

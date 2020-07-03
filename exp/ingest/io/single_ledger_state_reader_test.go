@@ -50,11 +50,12 @@ func (s *SingleLedgerStateReaderTestSuite) SetupTest() {
 		context.Background(),
 		s.mockArchive,
 		ledgerSeq,
-		0,
 	)
 	s.Require().NotNil(s.reader)
 	s.Require().NoError(err)
 	s.Assert().Equal(ledgerSeq, s.reader.sequence)
+	// Test default
+	s.Assert().Equal(3, s.reader.maxStreamRetries)
 
 	// Disable hash validation. We trust historyarchive.XdrStream tests here.
 	s.reader.disableBucketListHashValidation = true
@@ -285,7 +286,7 @@ func (s *BucketExistsTestSuite) SetupTest() {
 		ctx,
 		s.mockArchive,
 		ledgerSeq,
-		4,
+		MaxStreamRetries(4),
 	)
 	s.cancel = cancel
 	s.Require().NoError(err)
@@ -375,7 +376,7 @@ func (s *ReadBucketEntryTestSuite) SetupTest() {
 		ctx,
 		s.mockArchive,
 		ledgerSeq,
-		2,
+		MaxStreamRetries(2),
 	)
 	s.cancel = cancel
 	s.Require().NoError(err)
