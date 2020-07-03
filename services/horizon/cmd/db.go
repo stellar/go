@@ -204,26 +204,30 @@ var dbReingestRangeCmd = &cobra.Command{
 
 		initRootConfig()
 
-		coreSession, err := db.Open("postgres", config.StellarCoreDatabaseURL)
-		if err != nil {
-			log.Fatalf("cannot open Core DB: %v", err)
-		}
-
 		horizonSession, err := db.Open("postgres", config.DatabaseURL)
 		if err != nil {
 			log.Fatalf("cannot open Horizon DB: %v", err)
 		}
 
 		ingestConfig := expingest.Config{
-			CoreSession:                coreSession,
 			NetworkPassphrase:          config.NetworkPassphrase,
 			HistorySession:             horizonSession,
 			HistoryArchiveURL:          config.HistoryArchiveURLs[0],
 			MaxReingestRetries:         int(retries),
 			ReingesRetryBackoffSeconds: int(retryBackoffSeconds),
 		}
+
 		if config.EnableCaptiveCoreIngestion {
 			ingestConfig.StellarCorePath = config.StellarCoreBinaryPath
+		} else {
+			if config.StellarCoreDatabaseURL == "" {
+				log.Fatalf("flag --%s cannot be empty", stellarCoreDBURLFlagName)
+			}
+			coreSession, dbErr := db.Open("postgres", config.StellarCoreDatabaseURL)
+			if dbErr != nil {
+				log.Fatalf("cannot open Core DB: %v", dbErr)
+			}
+			ingestConfig.CoreSession = coreSession
 		}
 
 		if parallelWorkers < 2 {

@@ -20,6 +20,12 @@ import (
 	"github.com/stellar/throttled"
 )
 
+const (
+	maxDBPingAttempts        = 30
+	stellarCoreDBURLFlagName = "stellar-core-db-url"
+	stellarCoreURLFlagName   = "stellar-core-url"
+)
+
 var (
 	config horizon.Config
 
@@ -32,8 +38,6 @@ var (
 		},
 	}
 )
-
-const maxDBPingAttempts = 30
 
 // validateBothOrNeither ensures that both options are provided, if either is provided.
 func validateBothOrNeither(option1, option2 string) {
@@ -127,18 +131,16 @@ var configOpts = support.ConfigOptions{
 		ConfigKey:   &config.EnableCaptiveCoreIngestion,
 	},
 	&support.ConfigOption{
-		Name:      "stellar-core-db-url",
+		Name:      stellarCoreDBURLFlagName,
 		EnvVar:    "STELLAR_CORE_DATABASE_URL",
 		ConfigKey: &config.StellarCoreDatabaseURL,
 		OptType:   types.String,
-		Required:  true,
 		Usage:     "stellar-core postgres database to connect with",
 	},
 	&support.ConfigOption{
-		Name:      "stellar-core-url",
+		Name:      stellarCoreURLFlagName,
 		ConfigKey: &config.StellarCoreURL,
 		OptType:   types.String,
-		Required:  true,
 		Usage:     "stellar-core to connect with (for http commands)",
 	},
 	&support.ConfigOption{
@@ -370,6 +372,15 @@ func init() {
 
 func initApp() *horizon.App {
 	initRootConfig()
+	// Validate app-specific arguments
+	if config.StellarCoreURL == "" {
+		log.Fatalf("flag --%s cannot be empty", stellarCoreURLFlagName)
+	}
+	if config.Ingest {
+		if config.StellarCoreDatabaseURL == "" {
+			log.Fatalf("flag --%s cannot be empty", stellarCoreDBURLFlagName)
+		}
+	}
 	return horizon.NewApp(config)
 }
 

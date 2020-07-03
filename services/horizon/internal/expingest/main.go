@@ -149,9 +149,6 @@ func NewSystem(config Config) (System, error) {
 		return nil, errors.Wrap(err, "error creating history archive")
 	}
 
-	coreSession := config.CoreSession.Clone()
-	coreSession.Ctx = ctx
-
 	var ledgerBackend ledgerbackend.LedgerBackend
 	if len(config.StellarCorePath) > 0 {
 		ledgerBackend = ledgerbackend.NewCaptive(
@@ -160,6 +157,8 @@ func NewSystem(config Config) (System, error) {
 			[]string{config.HistoryArchiveURL},
 		)
 	} else {
+		coreSession := config.CoreSession.Clone()
+		coreSession.Ctx = ctx
 		ledgerBackend, err = ledgerbackend.NewDatabaseBackendFromSession(coreSession, config.NetworkPassphrase)
 		if err != nil {
 			cancel()
