@@ -13,10 +13,10 @@ import (
 	"github.com/stellar/go/exp/ingest/adapters"
 	ingesterrors "github.com/stellar/go/exp/ingest/errors"
 	"github.com/stellar/go/exp/ingest/ledgerbackend"
+	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
-	"github.com/stellar/go/support/historyarchive"
 	logpkg "github.com/stellar/go/support/log"
 )
 

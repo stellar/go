@@ -8,10 +8,10 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/services/horizon/internal/expingest"
 	support "github.com/stellar/go/support/config"
 	"github.com/stellar/go/support/db"
-	"github.com/stellar/go/support/historyarchive"
 	"github.com/stellar/go/support/log"
 )
 
