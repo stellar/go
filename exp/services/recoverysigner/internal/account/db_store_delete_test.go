@@ -89,7 +89,7 @@ func TestDelete(t *testing.T) {
 			Address string `db:"address"`
 		}
 		rows := []row{}
-		err = session.Select(&rows, `SELECT address FROM accounts`)
+		err = session.Select(&rows, `SELECT address FROM accounts ORDER BY id`)
 		require.NoError(t, err)
 		wantRows := []row{
 			{Address: a2Address},
@@ -103,7 +103,7 @@ func TestDelete(t *testing.T) {
 			Address string `db:"address"`
 		}
 		rows := []row{}
-		err = session.Select(&rows, `SELECT audit_op, address FROM accounts_audit`)
+		err = session.Select(&rows, `SELECT audit_op, address FROM accounts_audit ORDER BY audit_id`)
 		require.NoError(t, err)
 		wantRows := []row{
 			{AuditOp: "INSERT", Address: a1Address},
@@ -119,7 +119,7 @@ func TestDelete(t *testing.T) {
 			Role string `db:"role"`
 		}
 		rows := []row{}
-		err = session.Select(&rows, `SELECT role FROM identities`)
+		err = session.Select(&rows, `SELECT role FROM identities ORDER BY id`)
 		require.NoError(t, err)
 		wantRows := []row{
 			// Identities for account 2
@@ -134,7 +134,7 @@ func TestDelete(t *testing.T) {
 			Role    string `db:"role"`
 		}
 		rows := []row{}
-		err = session.Select(&rows, `SELECT audit_op, role FROM identities_audit`)
+		err = session.Select(&rows, `SELECT audit_op, role FROM identities_audit ORDER BY audit_id`)
 		require.NoError(t, err)
 		wantRows := []row{
 			{AuditOp: "INSERT", Role: "sender"},
@@ -152,7 +152,7 @@ func TestDelete(t *testing.T) {
 			Value string `db:"value"`
 		}
 		rows := []row{}
-		err = session.Select(&rows, `SELECT value FROM auth_methods`)
+		err = session.Select(&rows, `SELECT value FROM auth_methods ORDER BY id`)
 		require.NoError(t, err)
 		wantRows := []row{
 			// Auth methods for account 2
@@ -169,7 +169,7 @@ func TestDelete(t *testing.T) {
 			Value   string `db:"value"`
 		}
 		rows := []row{}
-		err = session.Select(&rows, `SELECT audit_op, value FROM auth_methods_audit`)
+		err = session.Select(&rows, `SELECT audit_op, value FROM auth_methods_audit ORDER BY audit_id`)
 		require.NoError(t, err)
 		wantRows := []row{
 			{AuditOp: "INSERT", Value: "GD4NGMOTV4QOXWA6PGPIGVWZYMRCJAKLQJKZIP55C5DGB3GBHHET3YC6"},
