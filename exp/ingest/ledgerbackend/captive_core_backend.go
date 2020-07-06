@@ -350,22 +350,16 @@ loop:
 
 // GetLatestLedgerSequence returns the sequence of the latest ledger available
 // in the backend.
-// Will return error if not in session (start with `PrepareRange`).
+// Will return error if not in a session (start with `PrepareRange`).
 func (c *CaptiveStellarCore) GetLatestLedgerSequence() (uint32, error) {
 	if c.isClosed() {
 		return 0, errors.New("stellar-core must be opened to return latest available sequence")
 	}
 
 	if c.lastLedger == nil {
-		// TODO Get latest buffered ledger when XDR buffer is ready
-		if len(c.metaC) > 0 {
-			return c.nextLedger, nil
-		} else {
-			return c.nextLedger - 1, nil
-		}
-	} else {
-		return *c.lastLedger, nil
+		return c.nextLedger - 1 + uint32(len(c.metaC)), nil
 	}
+	return *c.lastLedger, nil
 }
 
 func (c *CaptiveStellarCore) isClosed() bool {
