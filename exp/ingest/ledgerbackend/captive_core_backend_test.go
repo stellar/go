@@ -10,7 +10,6 @@ import (
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/require"
 )
 
 // TODO: test frame decoding
@@ -40,7 +39,7 @@ func (m *stellarCoreRunnerMock) close() error {
 	return a.Error(0)
 }
 
-func writeLedgerHeader(w io.Writer, sequence uint32) error {
+func writeLedgerHeader(w io.Writer, sequence uint32) {
 	opResults := []xdr.OperationResult{}
 	opMeta := []xdr.OperationMeta{}
 
@@ -90,7 +89,10 @@ func writeLedgerHeader(w io.Writer, sequence uint32) error {
 		},
 	}
 
-	return xdr.MarshalFramed(w, ledgerCloseMeta)
+	err := xdr.MarshalFramed(w, ledgerCloseMeta)
+	if err != nil {
+		panic(err)
+	}
 }
 
 func TestCaptiveNew(t *testing.T) {
@@ -119,8 +121,7 @@ func TestCaptivePrepareRange(t *testing.T) {
 	// Core will actually start with the last checkpoint before the from ledger
 	// and then rewind to the `from` ledger.
 	for i := 64; i <= 99; i++ {
-		err := writeLedgerHeader(&buf, uint32(i))
-		require.NoError(t, err)
+		writeLedgerHeader(&buf, uint32(i))
 	}
 
 	mockRunner := &stellarCoreRunnerMock{}
@@ -138,4 +139,56 @@ func TestCaptivePrepareRange(t *testing.T) {
 	assert.NoError(t, err)
 	err = captiveBackend.Close()
 	assert.NoError(t, err)
+}
+
+func TestGetLatestLedgerSequence(t *testing.T) {
+	var buf bytes.Buffer
+
+	for i := 64; i <= 99; i++ {
+		writeLedgerHeader(&buf, uint32(i))
+	}
+
+	mockRunner := &stellarCoreRunnerMock{}
+	mockRunner.On("runFrom", uint32(64)).Return(nil).Once()
+	mockRunner.On("getMetaPipe").Return(&buf)
+	mockRunner.On("close").Return(nil).Once()
+
+	captiveBackend := CaptiveStellarCore{
+		networkPassphrase: network.PublicNetworkPassphrase,
+		historyURLs:       []string{"http://history.stellar.org/prd/core-live/core_live_001"},
+		stellarCoreRunner: mockRunner,
+	}
+
+	err := captiveBackend.PrepareRange(UnboundedRange(64))
+	assert.NoError(t, err)
+
+	// To prevent flaky test runs wait for channel to fill.
+	waitForBufferToFill(&captiveBackend)
+
+	latest, err := captiveBackend.GetLatestLedgerSequence()
+	assert.NoError(t, err)
+	// readAheadBufferSize is 2 so 2 ledgers are buffered: 64 and 65
+	assert.Equal(t, uint32(65), latest)
+
+	exists, _, err := captiveBackend.GetLedger(64)
+	assert.NoError(t, err)
+	assert.True(t, exists)
+
+	waitForBufferToFill(&captiveBackend)
+
+	latest, err = captiveBackend.GetLatestLedgerSequence()
+	assert.NoError(t, err)
+	// readAheadBufferSize is 2 so 2 ledgers are buffered: 65 and 66
+	assert.Equal(t, uint32(66), latest)
+
+	err = captiveBackend.Close()
+	assert.NoError(t, err)
+}
+
+func waitForBufferToFill(captiveBackend *CaptiveStellarCore) {
+	for {
+		if len(captiveBackend.metaC) == readAheadBufferSize {
+			break
+		}
+	}
 }
