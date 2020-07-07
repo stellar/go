@@ -165,15 +165,13 @@ func (h accountPutHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	l.Info("Account updated.")
 
-	signers := []accountResponseSigner{}
-	for _, signingAddress := range h.SigningAddresses {
-		signers = append(signers, accountResponseSigner{
-			Key: signingAddress.Address(),
-		})
-	}
 	resp := accountResponse{
 		Address: accWithNewIdentiies.Address,
-		Signers: signers,
+	}
+	for _, signingAddress := range h.SigningAddresses {
+		resp.Signers = append(resp.Signers, accountResponseSigner{
+			Key: signingAddress.Address(),
+		})
 	}
 	for _, i := range accWithNewIdentiies.Identities {
 		resp.Identities = append(resp.Identities, accountResponseIdentity{

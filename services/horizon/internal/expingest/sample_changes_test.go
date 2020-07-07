@@ -11,7 +11,7 @@ import (
 
 	"github.com/stellar/go/exp/ingest/adapters"
 	"github.com/stellar/go/exp/ingest/io"
-	"github.com/stellar/go/support/historyarchive"
+	"github.com/stellar/go/historyarchive"
 	logpkg "github.com/stellar/go/support/log"
 	"github.com/stellar/go/xdr"
 )
