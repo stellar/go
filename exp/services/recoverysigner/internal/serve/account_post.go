@@ -130,7 +130,7 @@ func (h accountPostHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		WithField("auth_methods_count", authMethodCount)
 
 	if h.Encrypter != nil {
-		signingKey := (*keypair.Full)(nil)
+		var signingKey *keypair.Full
 		signingKey, err = h.SigningKeyGenerator.Generate()
 		if err != nil {
 			l.Error(err)
@@ -142,7 +142,7 @@ func (h accountPostHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			WithField("signer", signingPublicKey).
 			Info("Generated signer.")
 		encryptionContextInfo := crypto.ContextInfo(acc.Address, signingPublicKey)
-		signingSecretKeyEncrypted := []byte(nil)
+		var signingSecretKeyEncrypted []byte
 		signingSecretKeyEncrypted, err = h.Encrypter.Encrypt([]byte(signingKey.Seed()), encryptionContextInfo)
 		if err != nil {
 			l.Error(err)
