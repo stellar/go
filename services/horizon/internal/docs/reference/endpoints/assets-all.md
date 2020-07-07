@@ -10,8 +10,6 @@ It will give you all the assets in the system along with various statistics abou
 
 ### Notes
 - The attribute `num_accounts` includes authorized trust lines only.
-- When running this in `catchup_recent` mode you will only get a subset of all the assets in the system.
-This is because we only register assets when they are encountered during ingestion.
 
 ## Request
 
@@ -32,8 +30,8 @@ GET /assets{?asset_code,asset_issuer,cursor,limit,order}
 ### curl Example Request
 
 ```sh
-# Retrieve the 200 newest assets, ordered chronologically:
-curl "https://horizon-testnet.stellar.org/assets?limit=200&order=desc"
+# Retrieve the 200 assets, ordered alphabetically:
+curl "https://horizon-testnet.stellar.org/assets?limit=200"
 ```
 
 ### JavaScript Example Request

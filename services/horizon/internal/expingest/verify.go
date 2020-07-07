@@ -7,11 +7,11 @@ import (
 
 	ingesterrors "github.com/stellar/go/exp/ingest/errors"
 	"github.com/stellar/go/exp/ingest/verify"
+	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/expingest/processors"
 	"github.com/stellar/go/support/errors"
-	"github.com/stellar/go/support/historyarchive"
 	logpkg "github.com/stellar/go/support/log"
 	"github.com/stellar/go/xdr"
 )

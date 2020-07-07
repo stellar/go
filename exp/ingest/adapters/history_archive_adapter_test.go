@@ -6,7 +6,7 @@ import (
 	stdio "io"
 	"testing"
 
-	"github.com/stellar/go/support/historyarchive"
+	"github.com/stellar/go/historyarchive"
 	"github.com/stretchr/testify/assert"
 )
 

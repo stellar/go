@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/support/errors"
-	"github.com/stellar/go/support/historyarchive"
 	"github.com/stellar/go/xdr"
 )
 

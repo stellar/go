@@ -12,8 +12,8 @@ import (
 	"time"
 
 	"github.com/stellar/go/exp/ingest/io"
+	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/support/errors"
-	"github.com/stellar/go/support/historyarchive"
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/xdr"
 )
