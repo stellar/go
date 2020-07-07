@@ -11,52 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestCreateKeyset(t *testing.T) {
-	public, privateC, privateE, err := createKeyset("", hybrid.ECIESHKDFAES128GCMKeyTemplate())
-	require.NoError(t, err)
-	assert.NotEmpty(t, public)
-	assert.NotEmpty(t, privateC)
-	assert.Empty(t, privateE)
-
-	khPriv, err := insecurecleartextkeyset.Read(keyset.NewJSONReader(strings.NewReader(privateC)))
-	require.NoError(t, err)
-
-	khPub, err := keyset.ReadWithNoSecrets(keyset.NewJSONReader(strings.NewReader(public)))
-	require.NoError(t, err)
-
-	// verify that one is able to get the same keyset public with keyset private
-	khPubv, err := khPriv.Public()
-	require.NoError(t, err)
-	assert.Equal(t, khPub.String(), khPubv.String())
-
-	hd, err := hybrid.NewHybridDecrypt(khPriv)
-	require.NoError(t, err)
-
-	he, err := hybrid.NewHybridEncrypt(khPub)
-	require.NoError(t, err)
-
-	// verify that one can use keyset private to decrypt what keyset public
-	// encrypts
-	plaintext := []byte("secure message")
-	contextInfo := []byte("context info")
-	ciphertext, err := he.Encrypt(plaintext, contextInfo)
-	require.NoError(t, err)
-
-	plaintext2, err := hd.Decrypt(ciphertext, contextInfo)
-	require.NoError(t, err)
-	assert.Equal(t, plaintext, plaintext2)
-
-	// context info not matching will result in a failed decryption
-	_, err = hd.Decrypt(ciphertext, []byte("wrong info"))
-	assert.Error(t, err)
-}
-
-func TestCreateKeyset_invalidKMSKeyURI(t *testing.T) {
-	_, _, _, err := createKeyset("invalid-uri", hybrid.ECIESHKDFAES128GCMKeyTemplate())
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "initializing AWS KMS client")
-}
-
 func TestRotateKeyset(t *testing.T) {
 	keyTemplate := hybrid.ECIESHKDFAES128GCMKeyTemplate()
 	public1, privateC1, _, err := createKeyset("", keyTemplate)
@@ -164,26 +118,4 @@ func TestRotateKeyset_noEncryptionTinkKeyset(t *testing.T) {
 	_, _, _, err := rotateKeyset("", "", hybrid.ECIESHKDFAES128GCMKeyTemplate())
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "getting key handle for keyset private by reading a cleartext keyset")
-}
-
-func TestDecryptKeyset_invalidKMSKeyURI(t *testing.T) {
-	// encrption-kms-key-uri is not configured
-	_, _, err := decryptKeyset("", "keysetJSON")
-	require.Error(t, err)
-	assert.Equal(t, err, errNoKMSKeyURI)
-
-	_, _, err = decryptKeyset("invalid-uri", "keysetJSON")
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "initializing AWS KMS client")
-}
-
-func TestEncryptKeyset_invalidKMSKeyURI(t *testing.T) {
-	// encrption-kms-key-uri is not configured
-	_, _, err := encryptKeyset("", "keysetJSON")
-	require.Error(t, err)
-	assert.Equal(t, err, errNoKMSKeyURI)
-
-	_, _, err = encryptKeyset("invalid-uri", "keysetJSON")
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "initializing AWS KMS client")
 }
