@@ -130,7 +130,8 @@ func (h accountPostHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		WithField("auth_methods_count", authMethodCount)
 
 	if h.Encrypter != nil {
-		signingKey, err := h.SigningKeyGenerator.Generate()
+		signingKey := (*keypair.Full)(nil)
+		signingKey, err = h.SigningKeyGenerator.Generate()
 		if err != nil {
 			l.Error(err)
 			serverError.Render(w)
