@@ -211,6 +211,7 @@ func handler(deps handlerDeps) http.Handler {
 				Logger:            deps.Logger,
 				SigningKeys:       deps.SigningKeys,
 				NetworkPassphrase: deps.NetworkPassphrase,
+				Decrypter:         deps.Decrypter,
 				AccountStore:      deps.AccountStore,
 			}
 			mux.Post("/sign", signHandler.ServeHTTP)
