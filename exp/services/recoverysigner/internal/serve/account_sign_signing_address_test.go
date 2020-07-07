@@ -19,11 +19,76 @@ import (
 	"github.com/stellar/go/exp/services/recoverysigner/internal/serve/auth"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/network"
+	supporthttp "github.com/stellar/go/support/http"
+	"github.com/stellar/go/support/log"
 	supportlog "github.com/stellar/go/support/log"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestAccountSign_signingAddressAccountAuthenticatedUserSignerSelectedButNoDecrypter(t *testing.T) {
+	s := &account.DBStore{DB: dbtest.Open(t).Open()}
+	s.Add(account.Account{
+		Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4",
+		Signers: []account.Signer{
+			{
+				PublicKey:          "GC733FYXCANZUKEXCMS3ITZQCSLASORHKHGLTKBOWXS5VYPGNC4SLXVI",
+				EncryptedSecretKey: []byte("encrypted(SCGSFYH4WA2WPFQO3AF7KKZQQLK4DOGLHSA3VCOCOEI2H6ZDPEY5NITC)"),
+			},
+			{
+				PublicKey:          "GC2OTODRRSWRSNWKLQFF2KIEURLE6XHCQRRNDP2HOC5FMBBP4Y2KBTT3",
+				EncryptedSecretKey: []byte("encrypted(SDXAS6Q4VX3BTQYIGSNO47WDFFIJY7P2HIH2OF6KJOCX556PAMQFNI6N)"),
+			},
+		},
+	})
+	h := accountSignHandler{
+		Logger:       supportlog.DefaultLogger,
+		AccountStore: s,
+		SigningKeys: []*keypair.Full{
+			keypair.MustParseFull("SBIB72S6JMTGJRC6LMKLC5XMHZ2IOHZSZH4SASTN47LECEEJ7QEB6EYK"), // GBOG4KF66M4AFRBUHOTJQJRO7BGGFCSGIICTI5BHXHKXCWV2C67QRN5H
+			keypair.MustParseFull("SBJGZKZ7LU2FQNEFBUOBW4LHCA5BOZCABIJTR7BQIFWQ3P763ZW7MYDD"), // GAPE22DOMALCH42VOR4S3HN6KIZZ643G7D3GNTYF4YOWWXP6UVRAF5JS
+		},
+		NetworkPassphrase: network.TestNetworkPassphrase,
+	}
+
+	tx, err := txnbuild.NewTransaction(
+		txnbuild.TransactionParams{
+			SourceAccount:        &txnbuild.SimpleAccount{AccountID: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4"},
+			IncrementSequenceNum: true,
+			Operations: []txnbuild.Operation{
+				&txnbuild.SetOptions{
+					Signer: &txnbuild.Signer{
+						Address: "GD7CGJSJ5OBOU5KOP2UQDH3MPY75UTEY27HVV5XPSL2X6DJ2VGTOSXEU",
+						Weight:  20,
+					},
+				},
+			},
+			BaseFee:    txnbuild.MinBaseFee,
+			Timebounds: txnbuild.NewTimebounds(0, 1),
+		},
+	)
+	require.NoError(t, err)
+	txEnc, err := tx.Base64()
+	require.NoError(t, err)
+	t.Log("Tx:", txEnc)
+
+	ctx := context.Background()
+	ctx = auth.NewContext(ctx, auth.Auth{Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4"})
+	req := `{
+	"transaction": "` + txEnc + `"
+}`
+	r := httptest.NewRequest("POST", "/GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4/sign/GC733FYXCANZUKEXCMS3ITZQCSLASORHKHGLTKBOWXS5VYPGNC4SLXVI", strings.NewReader(req))
+	r = r.WithContext(ctx)
+
+	w := httptest.NewRecorder()
+	m := supporthttp.NewAPIMux(log.DefaultLogger)
+	m.Post("/{address}/sign/{signing-address}", h.ServeHTTP)
+	m.ServeHTTP(w, r)
+	resp := w.Result()
+
+	require.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+}
 
 // Test that when the account does not exist it returns not found.
 func TestAccountSign_signingAddressAuthenticatedButNotFound(t *testing.T) {
