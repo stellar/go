@@ -199,3 +199,38 @@ func TestAdd_conflict(t *testing.T) {
 	err = store.Add(a)
 	assert.Equal(t, ErrAlreadyExists, err)
 }
+
+func TestAdd_conflictSigners(t *testing.T) {
+	db := dbtest.Open(t)
+	session := db.Open()
+
+	store := DBStore{
+		DB: session,
+	}
+
+	a1 := Account{
+		Address: "GCLLT3VG4F6EZAHZEBKWBWV5JGVPCVIKUCGTY3QEOAIZU5IJGMWCT2TT",
+		Signers: []Signer{
+			{
+				PublicKey:          "GDANXMIFFAQY33KESJWSWFYKRMNIRHVVJVTLJZR6YCGCDELJWXS7TOHJ",
+				EncryptedSecretKey: []byte("encrypted(SBTUBPV5B5WRYN7IH2DTAX6HDG5H6AN6BOQOJEXOOPSBK6Y7FBVLRUVS)"),
+			},
+		},
+	}
+
+	err := store.Add(a1)
+	require.NoError(t, err)
+
+	a2 := Account{
+		Address: "GDTSGRXVP3OA4T7C44LTGPZ5XEORNIUY7ZIUUQNDNH5W4YZMYEKD3R5C",
+		Signers: []Signer{
+			{
+				PublicKey:          "GDANXMIFFAQY33KESJWSWFYKRMNIRHVVJVTLJZR6YCGCDELJWXS7TOHJ",
+				EncryptedSecretKey: []byte("encrypted(SBTUBPV5B5WRYN7IH2DTAX6HDG5H6AN6BOQOJEXOOPSBK6Y7FBVLRUVS)"),
+			},
+		},
+	}
+
+	err = store.Add(a2)
+	assert.EqualError(t, err, `pq: duplicate key value violates unique constraint "signers_upper_idx"`)
+}
