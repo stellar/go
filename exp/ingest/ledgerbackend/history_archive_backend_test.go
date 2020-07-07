@@ -5,8 +5,8 @@ import (
 	"io/ioutil"
 	"testing"
 
+	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/keypair"
-	"github.com/stellar/go/support/historyarchive"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/suite"

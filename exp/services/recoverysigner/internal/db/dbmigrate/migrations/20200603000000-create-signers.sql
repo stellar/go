@@ -13,7 +13,7 @@ CREATE TABLE signers (
 
 
 CREATE INDEX ON signers (account_id);
-CREATE INDEX ON signers (public_key);
+CREATE UNIQUE INDEX ON signers (UPPER(public_key));
 
 -- +migrate Down
 

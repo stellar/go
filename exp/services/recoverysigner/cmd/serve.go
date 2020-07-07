@@ -101,7 +101,7 @@ func (c *ServeCommand) Command() *cobra.Command {
 			OptType:     types.String,
 			ConfigKey:   &opts.EncryptionTinkKeysetJSON,
 			FlagDefault: "",
-			Required:    true,
+			Required:    false,
 		},
 	}
 	cmd := &cobra.Command{
