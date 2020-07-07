@@ -142,7 +142,8 @@ func (h accountPostHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			WithField("signer", signingPublicKey).
 			Info("Generated signer.")
 		encryptionContextInfo := crypto.ContextInfo(acc.Address, signingPublicKey)
-		signingSecretKeyEncrypted, err := h.Encrypter.Encrypt([]byte(signingKey.Seed()), encryptionContextInfo)
+		signingSecretKeyEncrypted := []byte(nil)
+		signingSecretKeyEncrypted, err = h.Encrypter.Encrypt([]byte(signingKey.Seed()), encryptionContextInfo)
 		if err != nil {
 			l.Error(err)
 			serverError.Render(w)
