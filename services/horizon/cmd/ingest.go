@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/stellar/go/historyarchive"
+	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/expingest"
 	support "github.com/stellar/go/support/config"
 	"github.com/stellar/go/support/db"
@@ -207,6 +208,27 @@ var ingestStressTestCmd = &cobra.Command{
 	},
 }
 
+var ingestTriggerStateRebuildCmd = &cobra.Command{
+	Use:   "trigger-state-rebuild",
+	Short: "updates a database to trigger state rebuild, state will be rebuilt by a running Horizon instance, DO NOT RUN production DB, some endpoints will be unavailable until state is rebuilt",
+	Run: func(cmd *cobra.Command, args []string) {
+		initRootConfig()
+
+		horizonSession, err := db.Open("postgres", config.DatabaseURL)
+		if err != nil {
+			log.Fatalf("cannot open Horizon DB: %v", err)
+		}
+
+		historyQ := &history.Q{horizonSession}
+		err = historyQ.UpdateExpIngestVersion(0)
+		if err != nil {
+			log.Fatalf("cannot trigger state rebuild: %v", err)
+		}
+
+		log.Info("Triggered state rebuild")
+	},
+}
+
 func init() {
 	for _, co := range ingestVerifyRangeCmdOpts {
 		err := co.Init(ingestVerifyRangeCmd)
@@ -225,5 +247,5 @@ func init() {
 	viper.BindPFlags(ingestVerifyRangeCmd.PersistentFlags())
 
 	rootCmd.AddCommand(ingestCmd)
-	ingestCmd.AddCommand(ingestVerifyRangeCmd, ingestStressTestCmd)
+	ingestCmd.AddCommand(ingestVerifyRangeCmd, ingestStressTestCmd, ingestTriggerStateRebuildCmd)
 }
