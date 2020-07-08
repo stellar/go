@@ -2,35 +2,63 @@ package main
 
 import (
 	"fmt"
+	"html/template"
+	"io"
+	"os"
 
 	"github.com/spf13/cobra"
 	"github.com/stellar/go/keypair"
 )
 
 func main() {
-	cmd := NewRootCmd()
-	err := cmd.Execute()
-	if err != nil {
-		fmt.Fprintln(cmd.ErrOrStderr(), "Error:", err)
-	}
+	exitCode := run(os.Args[1:], os.Stdout, os.Stderr)
+	os.Exit(exitCode)
 }
 
-func NewRootCmd() *cobra.Command {
-	return &cobra.Command{
+type outData struct {
+	PublicKey string
+	SecretKey string
+}
+
+func run(args []string, stdout io.Writer, stderr io.Writer) int {
+	cmd := &cobra.Command{
 		Use:   "stellar-key-gen",
 		Short: "Generate a Stellar key.",
-		Run:   gen,
 	}
-}
+	cmd.SetArgs(args)
+	cmd.SetOutput(stderr)
 
-func gen(cmd *cobra.Command, args []string) {
-	key, err := keypair.Random()
-	if err != nil {
-		fmt.Fprintln(cmd.ErrOrStderr(), "Error:", err)
-		return
+	outFormat := "{{.PublicKey}}\n{{.SecretKey}}\n"
+	cmd.Flags().StringVarP(&outFormat, "format", "f", outFormat, "Format of output")
+
+	cmd.RunE = func(cmd *cobra.Command, args []string) error {
+		tmpl, err := template.New("").Parse(outFormat)
+		if err != nil {
+			return err
+		}
+
+		key, err := keypair.Random()
+		if err != nil {
+			return err
+		}
+
+		data := outData{
+			PublicKey: key.Address(),
+			SecretKey: key.Seed(),
+		}
+
+		err = tmpl.Execute(stdout, data)
+		if err != nil {
+			return err
+		}
+
+		return nil
 	}
-	fmt.Fprintln(cmd.ErrOrStderr(), "Public Key:")
-	fmt.Fprintln(cmd.ErrOrStderr(), key.Address())
-	fmt.Fprintln(cmd.ErrOrStderr(), "Secret Key:")
-	fmt.Fprint(cmd.OutOrStdout(), key.Seed())
+
+	err := cmd.Execute()
+	if err != nil {
+		fmt.Fprintln(stderr, "Error:", err)
+		return 1
+	}
+	return 0
 }

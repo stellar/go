@@ -1,58 +1,99 @@
 package main
 
 import (
+	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/stellar/go/keypair"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
-func TestRootCmd_stdoutAndStderr(t *testing.T) {
-	cmd := NewRootCmd()
+func TestRun_defaultFormat(t *testing.T) {
+	args := []string{}
 	stdout := strings.Builder{}
 	stderr := strings.Builder{}
-	cmd.SetOut(&stdout)
-	cmd.SetErr(&stderr)
 
-	err := cmd.Execute()
-	require.NoError(t, err)
+	exitCode := run(args, &stdout, &stderr)
 
-	// Stdout will be a secret key only.
-	f, err := keypair.ParseFull(stdout.String())
-	require.NoError(t, err)
-	assert.Equal(t, stdout.String(), f.Seed())
+	t.Logf("exit code: %d", exitCode)
+	t.Logf("stdout: %q", stdout.String())
+	t.Logf("stderr: %q", stderr.String())
 
-	// Stderr will be the public key and some friendly text.
-	stderrLines := strings.Split(stderr.String(), "\n")
-	require.Len(t, stderrLines, 4)
-	assert.Equal(t, "Public Key:", stderrLines[0])
-	a, err := keypair.ParseAddress(stderrLines[1])
-	require.NoError(t, err)
-	assert.Equal(t, stderrLines[1], a.Address())
-	assert.Equal(t, "Secret Key:", stderrLines[2])
-	assert.Equal(t, "", stderrLines[3])
+	// Exit code should be zero for success.
+	assert.Equal(t, 0, exitCode)
+
+	// Stdout should be public key then secret key new line separated.
+	lines := strings.Split(stdout.String(), "\n")
+	if assert.Len(t, lines, 3) {
+		f, err := keypair.ParseFull(lines[1])
+		if assert.NoError(t, err) {
+			assert.Equal(t, f.Address(), lines[0])
+			assert.Equal(t, f.Seed(), lines[1])
+			assert.Equal(t, "", lines[2])
+		}
+	}
+
+	// Stderr should be empty
+	assert.Equal(t, "", stderr.String())
 }
 
-func TestRootCmd_secretKeyRandom(t *testing.T) {
-	seenKeys := map[string]bool{}
-	for i := 0; i < 10; i++ {
-		cmd := NewRootCmd()
-		stdout := strings.Builder{}
-		stderr := strings.Builder{}
-		cmd.SetOut(&stdout)
-		cmd.SetErr(&stderr)
+func TestRun_customFormat(t *testing.T) {
+	args := []string{
+		"-f",
+		"{{.SecretKey}},{{.PublicKey}}",
+	}
+	stdout := strings.Builder{}
+	stderr := strings.Builder{}
 
-		err := cmd.Execute()
-		require.NoError(t, err)
+	exitCode := run(args, &stdout, &stderr)
 
-		key := stdout.String()
-		if seenKeys[key] {
-			t.Errorf("%s seen before", key)
-			continue
+	t.Logf("exit code: %d", exitCode)
+	t.Logf("stdout: %q", stdout.String())
+	t.Logf("stderr: %q", stderr.String())
+
+	// Exit code should be zero for success.
+	assert.Equal(t, 0, exitCode)
+
+	// Stdout should be secret key then public key comma separated.
+	parts := strings.Split(stdout.String(), ",")
+	if assert.Len(t, parts, 2) {
+		f, err := keypair.ParseFull(parts[0])
+		if assert.NoError(t, err) {
+			assert.Equal(t, f.Seed(), parts[0])
+			assert.Equal(t, f.Address(), parts[1])
 		}
-		t.Logf("%s seen first time", key)
-		seenKeys[key] = true
+	}
+
+	// Stderr should be empty
+	assert.Equal(t, "", stderr.String())
+}
+
+func TestRun_random(t *testing.T) {
+	args := []string{
+		"-f",
+		"{{.SecretKey}}",
+	}
+	seen := map[string]bool{}
+	for i := 0; i < 10; i++ {
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			stdout := strings.Builder{}
+			stderr := strings.Builder{}
+
+			exitCode := run(args, &stdout, &stderr)
+
+			// Exit code should be zero for success.
+			assert.Equal(t, 0, exitCode)
+
+			key := stdout.String()
+			if seen[key] {
+				t.Error(key, "seen before")
+			} else {
+				t.Log(key, "not seen before")
+			}
+
+			// Stderr should be empty
+			assert.Equal(t, "", stderr.String())
+		})
 	}
 }
