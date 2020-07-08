@@ -15,11 +15,6 @@ func main() {
 	os.Exit(exitCode)
 }
 
-type outData struct {
-	PublicKey string
-	SecretKey string
-}
-
 func run(args []string, stdout io.Writer, stderr io.Writer) int {
 	cmd := &cobra.Command{
 		Use:   "stellar-key-gen",
@@ -61,4 +56,9 @@ func run(args []string, stdout io.Writer, stderr io.Writer) int {
 		return 1
 	}
 	return 0
+}
+
+type outData struct {
+	PublicKey string
+	SecretKey string
 }
