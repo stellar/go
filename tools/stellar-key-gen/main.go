@@ -41,12 +41,7 @@ func run(args []string, stdout io.Writer, stderr io.Writer) int {
 			SecretKey: key.Seed(),
 		}
 
-		err = tmpl.Execute(stdout, data)
-		if err != nil {
-			return err
-		}
-
-		return nil
+		return tmpl.Execute(stdout, data)
 	}
 
 	err := cmd.Execute()
