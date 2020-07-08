@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"html/template"
 	"io"
 	"os"
@@ -52,7 +51,6 @@ func run(args []string, stdout io.Writer, stderr io.Writer) int {
 
 	err := cmd.Execute()
 	if err != nil {
-		fmt.Fprintln(stderr, "Error:", err)
 		return 1
 	}
 	return 0

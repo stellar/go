@@ -34,7 +34,7 @@ func TestRun_defaultFormat(t *testing.T) {
 		}
 	}
 
-	// Stderr should be empty
+	// Stderr should be empty.
 	assert.Equal(t, "", stderr.String())
 }
 
@@ -65,8 +65,32 @@ func TestRun_customFormat(t *testing.T) {
 		}
 	}
 
-	// Stderr should be empty
+	// Stderr should be empty.
 	assert.Equal(t, "", stderr.String())
+}
+
+func TestRun_invalidFormat(t *testing.T) {
+	args := []string{
+		"-f",
+		"{{.FooBar}}",
+	}
+	stdout := strings.Builder{}
+	stderr := strings.Builder{}
+
+	exitCode := run(args, &stdout, &stderr)
+
+	t.Logf("exit code: %d", exitCode)
+	t.Logf("stdout: %q", stdout.String())
+	t.Logf("stderr: %q", stderr.String())
+
+	// Exit code should be one for failure.
+	assert.Equal(t, 1, exitCode)
+
+	// Stdout should be empty.
+	assert.Equal(t, "", stdout.String())
+
+	// Stderr should contain the error.
+	assert.Contains(t, stderr.String(), "can't evaluate field FooBar")
 }
 
 func TestRun_random(t *testing.T) {
@@ -85,6 +109,7 @@ func TestRun_random(t *testing.T) {
 			// Exit code should be zero for success.
 			assert.Equal(t, 0, exitCode)
 
+			// Stdout will contain the secret, which should not have be seen before.
 			key := stdout.String()
 			if seen[key] {
 				t.Error(key, "seen before")
@@ -92,7 +117,7 @@ func TestRun_random(t *testing.T) {
 				t.Log(key, "not seen before")
 			}
 
-			// Stderr should be empty
+			// Stderr should be empty.
 			assert.Equal(t, "", stderr.String())
 		})
 	}
