@@ -136,10 +136,6 @@ func (r *stellarCoreRunner) writeConf() error {
 func (r *stellarCoreRunner) createCmd(params ...string) (*exec.Cmd, error) {
 	allParams := append([]string{"--conf", r.getConfFileName()}, params...)
 	cmd := exec.Command(r.executablePath, allParams...)
-	err := cmd.Start()
-	if err != nil {
-		return nil, errors.Wrapf(err, "error starting `stellar-core %v` subprocess", params)
-	}
 	cmd.Dir = r.getTmpDir()
 	cmd.Stdout = r.getLogLineWriter()
 	cmd.Stderr = r.getLogLineWriter()

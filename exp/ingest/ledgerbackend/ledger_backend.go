@@ -34,6 +34,8 @@ type LedgerBackend interface {
 	// Some backends (like captive stellar-core) need to initalize data to be
 	// able to stream ledgers.
 	PrepareRange(ledgerRange Range) error
+	// IsPrepared returns true if a given ledgerRange is prepared.
+	IsPrepared(ledgerRange Range) bool
 	Close() error
 }
 

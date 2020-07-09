@@ -250,8 +250,8 @@ func (c *CaptiveStellarCore) readLedgerMetaFromPipe() (*xdr.LedgerCloseMeta, err
 // able to stream ledgers.
 // Set `to` to 0 to stream starting from `from` but without limits.
 func (c *CaptiveStellarCore) PrepareRange(ledgerRange Range) error {
-	if c.nextLedger != 0 && c.nextLedger >= ledgerRange.from {
-		// Range already prepared
+	// Range already prepared
+	if c.IsPrepared(ledgerRange) {
 		return nil
 	}
 
@@ -279,6 +279,20 @@ func (c *CaptiveStellarCore) PrepareRange(ledgerRange Range) error {
 	}
 
 	return nil
+}
+
+// IsPrepared returns true if a given ledgerRange is prepared.
+func (c *CaptiveStellarCore) IsPrepared(ledgerRange Range) bool {
+	if c.nextLedger == 0 {
+		return false
+	}
+
+	if ledgerRange.bounded {
+		return c.nextLedger >= ledgerRange.from &&
+			c.nextLedger <= *c.lastLedger
+	}
+
+	return c.nextLedger >= ledgerRange.from
 }
 
 // GetLedger returns true when ledger is found and it's LedgerCloseMeta.

@@ -2,8 +2,9 @@ package expingest
 
 import (
 	"fmt"
-	"github.com/stellar/go/exp/ingest/ledgerbackend"
 	"time"
+
+	"github.com/stellar/go/exp/ingest/ledgerbackend"
 
 	"github.com/stellar/go/exp/ingest/io"
 	"github.com/stellar/go/services/horizon/internal/toid"
@@ -270,15 +271,15 @@ func (b buildState) run(s *system) (transition, error) {
 		return start(), errors.Wrap(err, "Error clearing ingest tables")
 	}
 
+	followTransition, transition, err := s.checkPrepareRange(b.checkpointLedger)
+	if followTransition {
+		return transition, err
+	}
+
 	log.WithFields(logpkg.F{
 		"ledger": b.checkpointLedger,
 	}).Info("Processing state")
 	startTime := time.Now()
-
-	err = s.ledgerBackend.PrepareRange(ledgerbackend.UnboundedRange(b.checkpointLedger))
-	if err != nil {
-		return stop(), errors.Wrap(err, "error preparing range")
-	}
 
 	stats, err := s.runner.RunHistoryArchiveIngestion(b.checkpointLedger)
 	if err != nil {
@@ -371,9 +372,9 @@ func (r resumeState) run(s *system) (transition, error) {
 		return start(), nil
 	}
 
-	err = s.ledgerBackend.PrepareRange(ledgerbackend.UnboundedRange(ingestLedger))
-	if err != nil {
-		return stop(), errors.Wrap(err, "error preparing range")
+	followTransition, transition, err := s.checkPrepareRange(ingestLedger)
+	if followTransition {
+		return transition, err
 	}
 
 	// Check if ledger is closed
@@ -474,6 +475,11 @@ func (h historyRangeState) run(s *system) (transition, error) {
 	// we should go back to the init state
 	if lastHistoryLedger != h.fromLedger-1 {
 		return start(), nil
+	}
+
+	followTransition, transition, err := s.checkPrepareRange(h.fromLedger)
+	if followTransition {
+		return transition, err
 	}
 
 	err = s.ledgerBackend.PrepareRange(ledgerbackend.UnboundedRange(h.fromLedger))
@@ -857,4 +863,35 @@ func (s *system) completeIngestion(ledger uint32) error {
 	}
 
 	return nil
+}
+
+// checkPrepareRange checks if the range is prepared. If not, it releases
+// the distributed ingestion lock and prepares the range.
+// The first return value determines if the caller should follow the transition.
+func (s *System) checkPrepareRange(from uint32) (bool, transition, error) {
+	ledgerRange := ledgerbackend.UnboundedRange(from)
+
+	if !s.ledgerBackend.IsPrepared(ledgerRange) {
+		// Release distributed ingestion lock and prepare the range
+		s.historyQ.Rollback()
+		log.Info("Released ingestion lock to prepare range")
+		log.WithFields(logpkg.F{"ledger": from}).Info("Preparing range")
+		startTime := time.Now()
+
+		err := s.ledgerBackend.PrepareRange(ledgerRange)
+		if err != nil {
+			return true, start(), errors.Wrap(err, "error preparing range")
+		}
+
+		log.
+			WithFields(logpkg.F{
+				"ledger":   from,
+				"duration": time.Since(startTime).Seconds(),
+			}).
+			Info("Range prepared")
+
+		return true, start(), nil
+	}
+
+	return false, start(), nil
 }
