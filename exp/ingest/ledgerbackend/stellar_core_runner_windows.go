@@ -38,7 +38,7 @@ func (c *stellarCoreRunner) start() (io.Reader, error) {
 
 	// Then accept on the server end.
 	connection, err := listener.Accept()
-	if e != nil {
+	if err != nil {
 		return connection, err
 	}
 
