@@ -296,9 +296,9 @@ func (b buildState) run(s *system) (transition, error) {
 		return start(), errors.Wrap(err, "Error clearing ingest tables")
 	}
 
-	followTransition, transition, err := s.checkPrepareRange(b.checkpointLedger, true)
+	followTransition, nextState, err := s.checkPrepareRange(b.checkpointLedger, true)
 	if followTransition {
-		return transition, err
+		return nextState, err
 	}
 
 	log.WithFields(logpkg.F{
@@ -397,9 +397,9 @@ func (r resumeState) run(s *system) (transition, error) {
 		return start(), nil
 	}
 
-	followTransition, transition, err := s.checkPrepareRange(ingestLedger, false)
+	followTransition, nextState, err := s.checkPrepareRange(ingestLedger, false)
 	if followTransition {
-		return transition, err
+		return nextState, err
 	}
 
 	// Check if ledger is closed
@@ -421,7 +421,7 @@ func (r resumeState) run(s *system) (transition, error) {
 		}
 
 		// Will fast-forward to the latest ledger in a buffer in case of captive core.
-		_, _, err := s.ledgerBackend.GetLedger(latestLedgerCore)
+		_, _, err = s.ledgerBackend.GetLedger(latestLedgerCore)
 		if err != nil {
 			return retryResume(r), errors.Wrap(err, "Error fast-forwarding to the latest ledger in stellar-core")
 		}
@@ -517,9 +517,9 @@ func (h historyRangeState) run(s *system) (transition, error) {
 		return start(), nil
 	}
 
-	followTransition, transition, err := s.checkPrepareRange(h.fromLedger, false)
+	followTransition, nextState, err := s.checkPrepareRange(h.fromLedger, false)
 	if followTransition {
-		return transition, err
+		return nextState, err
 	}
 
 	for cur := h.fromLedger; cur <= h.toLedger; cur++ {
