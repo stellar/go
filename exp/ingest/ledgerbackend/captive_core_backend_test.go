@@ -192,3 +192,62 @@ func waitForBufferToFill(captiveBackend *CaptiveStellarCore) {
 		}
 	}
 }
+
+func TestGetLedgerBoundsCheck(t *testing.T) {
+	var buf bytes.Buffer
+	writeLedgerHeader(&buf, 128)
+	writeLedgerHeader(&buf, 129)
+	writeLedgerHeader(&buf, 130)
+
+	mockRunner := &stellarCoreRunnerMock{}
+	mockRunner.On("catchup", uint32(128), uint32(130)).Return(nil).Once()
+	mockRunner.On("getMetaPipe").Return(&buf)
+	mockRunner.On("close").Return(nil).Once()
+
+	captiveBackend := CaptiveStellarCore{
+		networkPassphrase: network.PublicNetworkPassphrase,
+		historyURLs:       []string{"http://history.stellar.org/prd/core-live/core_live_001"},
+		stellarCoreRunner: mockRunner,
+	}
+
+	err := captiveBackend.PrepareRange(BoundedRange(128, 130))
+	assert.NoError(t, err)
+
+	exists, meta, err := captiveBackend.GetLedger(128)
+	assert.NoError(t, err)
+	assert.True(t, exists)
+	assert.Equal(t, uint32(128), meta.LedgerSequence())
+
+	prev := meta
+	exists, meta, err = captiveBackend.GetLedger(128)
+	assert.NoError(t, err)
+	assert.True(t, exists)
+	assert.Equal(t, prev, meta)
+
+	_, _, err = captiveBackend.GetLedger(64)
+	assert.EqualError(t, err, "requested ledger 64 is behind the captive core stream (expected=129)")
+
+	err = captiveBackend.Close()
+	assert.NoError(t, err)
+	mockRunner.AssertExpectations(t)
+
+	buf.Reset()
+	writeLedgerHeader(&buf, 64)
+	writeLedgerHeader(&buf, 65)
+	writeLedgerHeader(&buf, 66)
+	mockRunner.On("catchup", uint32(64), uint32(66)).Return(nil).Once()
+	mockRunner.On("getMetaPipe").Return(&buf)
+	mockRunner.On("close").Return(nil).Once()
+
+	err = captiveBackend.PrepareRange(BoundedRange(64, 66))
+	assert.NoError(t, err)
+
+	exists, meta, err = captiveBackend.GetLedger(64)
+	assert.NoError(t, err)
+	assert.True(t, exists)
+	assert.Equal(t, uint32(64), meta.LedgerSequence())
+
+	err = captiveBackend.Close()
+	assert.NoError(t, err)
+	mockRunner.AssertExpectations(t)
+}
