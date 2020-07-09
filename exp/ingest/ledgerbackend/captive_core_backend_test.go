@@ -3,10 +3,13 @@ package ledgerbackend
 import (
 	"bytes"
 	"encoding/hex"
+	"errors"
+	"fmt"
 	"io"
 	"testing"
 
 	"github.com/stellar/go/network"
+	"github.com/stellar/go/support/historyarchive"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -100,15 +103,15 @@ func TestCaptiveNew(t *testing.T) {
 	networkPassphrase := network.PublicNetworkPassphrase
 	historyURLs := []string{"http://history.stellar.org/prd/core-live/core_live_001"}
 
-	captiveStellarCore := NewCaptive(
+	captiveStellarCore, err := NewCaptive(
 		executablePath,
 		networkPassphrase,
 		historyURLs,
 	)
-
+	assert.NoError(t, err)
 	assert.Equal(t, networkPassphrase, captiveStellarCore.networkPassphrase)
-	assert.Equal(t, historyURLs, captiveStellarCore.historyURLs)
 	assert.Equal(t, uint32(0), captiveStellarCore.nextLedger)
+	assert.NotNil(t, captiveStellarCore.archive)
 
 	assert.Equal(t, executablePath, captiveStellarCore.stellarCoreRunner.(*stellarCoreRunner).executablePath)
 	assert.Equal(t, networkPassphrase, captiveStellarCore.stellarCoreRunner.(*stellarCoreRunner).networkPassphrase)
@@ -129,9 +132,16 @@ func TestCaptivePrepareRange(t *testing.T) {
 	mockRunner.On("getMetaPipe").Return(&buf)
 	mockRunner.On("close").Return(nil).Once()
 
+	mockArchive := &historyarchive.MockArchive{}
+	mockArchive.
+		On("GetRootHAS").
+		Return(historyarchive.HistoryArchiveState{
+			CurrentLedger: uint32(200),
+		}, nil)
+
 	captiveBackend := CaptiveStellarCore{
+		archive:           mockArchive,
 		networkPassphrase: network.PublicNetworkPassphrase,
-		historyURLs:       []string{"http://history.stellar.org/prd/core-live/core_live_001"},
 		stellarCoreRunner: mockRunner,
 	}
 
@@ -139,6 +149,54 @@ func TestCaptivePrepareRange(t *testing.T) {
 	assert.NoError(t, err)
 	err = captiveBackend.Close()
 	assert.NoError(t, err)
+}
+
+func TestCaptivePrepareRange_ErrClosingSession(t *testing.T) {
+	var buf bytes.Buffer
+	mockRunner := &stellarCoreRunnerMock{}
+	mockRunner.On("catchup", uint32(100), uint32(200)).Return(nil).Once()
+	mockRunner.On("getMetaPipe").Return(&buf)
+	mockRunner.On("close").Return(fmt.Errorf("transient error"))
+
+	mockArchive := &historyarchive.MockArchive{}
+	mockArchive.
+		On("GetRootHAS").
+		Return(historyarchive.HistoryArchiveState{
+			CurrentLedger: uint32(200),
+		}, nil)
+
+	captiveBackend := CaptiveStellarCore{
+		archive:           mockArchive,
+		networkPassphrase: network.PublicNetworkPassphrase,
+		stellarCoreRunner: mockRunner,
+		nextLedger:        1,
+	}
+
+	err := captiveBackend.PrepareRange(BoundedRange(100, 200))
+	assert.EqualError(t, err, "opening subprocess: error closing existing session: error closing stellar-core subprocess: transient error")
+}
+
+func TestCaptivePrepareRange_ErrGettingRootHAS(t *testing.T) {
+	var buf bytes.Buffer
+	mockRunner := &stellarCoreRunnerMock{}
+	mockRunner.On("catchup", uint32(100), uint32(200)).Return(nil).Once()
+	mockRunner.On("getMetaPipe").Return(&buf)
+	mockRunner.On("close").Return(nil)
+
+	mockArchive := &historyarchive.MockArchive{}
+	mockArchive.
+		On("GetRootHAS").
+		Return(historyarchive.HistoryArchiveState{}, errors.New("transient error"))
+
+	captiveBackend := CaptiveStellarCore{
+		archive:           mockArchive,
+		networkPassphrase: network.PublicNetworkPassphrase,
+		stellarCoreRunner: mockRunner,
+		nextLedger:        1,
+	}
+
+	err := captiveBackend.PrepareRange(BoundedRange(100, 200))
+	assert.EqualError(t, err, "opening subprocess: error getting latest checkpoint sequence: error getting root HAS: transient error")
 }
 
 func TestGetLatestLedgerSequence(t *testing.T) {
@@ -153,9 +211,16 @@ func TestGetLatestLedgerSequence(t *testing.T) {
 	mockRunner.On("getMetaPipe").Return(&buf)
 	mockRunner.On("close").Return(nil).Once()
 
+	mockArchive := &historyarchive.MockArchive{}
+	mockArchive.
+		On("GetRootHAS").
+		Return(historyarchive.HistoryArchiveState{
+			CurrentLedger: uint32(200),
+		}, nil)
+
 	captiveBackend := CaptiveStellarCore{
+		archive:           mockArchive,
 		networkPassphrase: network.PublicNetworkPassphrase,
-		historyURLs:       []string{"http://history.stellar.org/prd/core-live/core_live_001"},
 		stellarCoreRunner: mockRunner,
 	}
 
@@ -204,9 +269,16 @@ func TestGetLedgerBoundsCheck(t *testing.T) {
 	mockRunner.On("getMetaPipe").Return(&buf)
 	mockRunner.On("close").Return(nil).Once()
 
+	mockArchive := &historyarchive.MockArchive{}
+	mockArchive.
+		On("GetRootHAS").
+		Return(historyarchive.HistoryArchiveState{
+			CurrentLedger: uint32(200),
+		}, nil)
+
 	captiveBackend := CaptiveStellarCore{
+		archive:           mockArchive,
 		networkPassphrase: network.PublicNetworkPassphrase,
-		historyURLs:       []string{"http://history.stellar.org/prd/core-live/core_live_001"},
 		stellarCoreRunner: mockRunner,
 	}
 

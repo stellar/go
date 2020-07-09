@@ -50,7 +50,7 @@ type metaResult struct {
 
 type CaptiveStellarCore struct {
 	networkPassphrase string
-	historyURLs       []string
+	archive           historyarchive.ArchiveInterface
 
 	// read-ahead buffer
 	stop  chan struct{}
@@ -76,31 +76,30 @@ type CaptiveStellarCore struct {
 // and restart the subprocess if subsequent calls to .GetLedger() are discontiguous.
 //
 // Platform-specific pipe setup logic is in the .start() methods.
-func NewCaptive(executablePath, networkPassphrase string, historyURLs []string) *CaptiveStellarCore {
-	return &CaptiveStellarCore{
-		networkPassphrase: networkPassphrase,
-		historyURLs:       historyURLs,
-		nextLedger:        0,
-		stellarCoreRunner: newStellarCoreRunner(executablePath, networkPassphrase, historyURLs),
-	}
-}
-
-func (c *CaptiveStellarCore) getLatestCheckpointSequence() (uint32, error) {
+func NewCaptive(executablePath, networkPassphrase string, historyURLs []string) (*CaptiveStellarCore, error) {
 	archive, err := historyarchive.Connect(
-		c.historyURLs[0],
+		historyURLs[0],
 		historyarchive.ConnectOptions{},
 	)
 	if err != nil {
-		return 0, errors.Wrap(err, "error connecting to history archive")
+		return nil, errors.Wrap(err, "error connecting to history archive")
 	}
 
-	has, err := archive.GetRootHAS()
+	return &CaptiveStellarCore{
+		archive:           archive,
+		networkPassphrase: networkPassphrase,
+		nextLedger:        0,
+		stellarCoreRunner: newStellarCoreRunner(executablePath, networkPassphrase, historyURLs),
+	}, nil
+}
+
+func (c *CaptiveStellarCore) getLatestCheckpointSequence() (uint32, error) {
+	has, err := c.archive.GetRootHAS()
 	if err != nil {
 		return 0, errors.Wrap(err, "error getting root HAS")
 	}
 
 	return has.CurrentLedger, nil
-
 }
 
 func (c *CaptiveStellarCore) openOfflineReplaySubprocess(from, to uint32) error {

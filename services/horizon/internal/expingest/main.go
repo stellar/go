@@ -151,11 +151,15 @@ func NewSystem(config Config) (System, error) {
 
 	var ledgerBackend ledgerbackend.LedgerBackend
 	if len(config.StellarCorePath) > 0 {
-		ledgerBackend = ledgerbackend.NewCaptive(
+		ledgerBackend, err = ledgerbackend.NewCaptive(
 			config.StellarCorePath,
 			config.NetworkPassphrase,
 			[]string{config.HistoryArchiveURL},
 		)
+		if err != nil {
+			cancel()
+			return nil, errors.Wrap(err, "error creating captive core backend")
+		}
 	} else {
 		coreSession := config.CoreSession.Clone()
 		coreSession.Ctx = ctx
