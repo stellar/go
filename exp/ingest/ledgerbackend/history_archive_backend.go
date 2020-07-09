@@ -73,6 +73,11 @@ func (hab *HistoryArchiveBackend) PrepareRange(ledgerRange Range) error {
 	return nil
 }
 
+// IsPrepared returns true if a given ledgerRange is prepared.
+func (hab *HistoryArchiveBackend) IsPrepared(ledgerRange Range) bool {
+	return true
+}
+
 // GetLedger returns the LedgerCloseMeta for the given ledger sequence number.
 // The first returned value is false when the ledger does not exist in the history archives.
 // Due to the history archives architecture the first request to get a ledger is slow because

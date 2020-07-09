@@ -288,11 +288,11 @@ func (c *CaptiveStellarCore) IsPrepared(ledgerRange Range) bool {
 	}
 
 	if ledgerRange.bounded {
-		return c.nextLedger >= ledgerRange.from &&
+		return c.nextLedger <= ledgerRange.from &&
 			c.nextLedger <= *c.lastLedger
 	}
 
-	return c.nextLedger >= ledgerRange.from
+	return c.nextLedger <= ledgerRange.from
 }
 
 // GetLedger returns true when ledger is found and it's LedgerCloseMeta.
