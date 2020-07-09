@@ -284,7 +284,7 @@ func (c *CaptiveStellarCore) PrepareRange(ledgerRange Range) error {
 // GetLedger returns true when ledger is found and it's LedgerCloseMeta.
 // Call `PrepareRange` first to instruct the backend which ledgers to fetch.
 //
-// We assume that we'll be called repeatedly asking for ledgers in ascending
+// We assume that we'll be called repeatedly asking for ledgers in a non-decreasing
 // order, so when asked for ledger 23 we start a subprocess doing catchup
 // "100023/100000", which should replay 23, 24, 25, ... 100023. The wrinkle in
 // this is that core will actually replay from the _checkpoint before_
@@ -299,6 +299,14 @@ func (c *CaptiveStellarCore) GetLedger(sequence uint32) (bool, xdr.LedgerCloseMe
 
 	if c.isClosed() {
 		return false, xdr.LedgerCloseMeta{}, errors.New("session is closed, call PrepareRange first")
+	}
+
+	if sequence < c.nextLedger {
+		return false, xdr.LedgerCloseMeta{}, errors.Errorf(
+			"requested ledger %d is behind the captive core stream (expected=%d)",
+			sequence,
+			c.nextLedger,
+		)
 	}
 
 	// Now loop along the range until we find the ledger we want.
