@@ -192,11 +192,82 @@ func TestCaptivePrepareRange_ErrGettingRootHAS(t *testing.T) {
 		archive:           mockArchive,
 		networkPassphrase: network.PublicNetworkPassphrase,
 		stellarCoreRunner: mockRunner,
-		nextLedger:        1,
 	}
 
 	err := captiveBackend.PrepareRange(BoundedRange(100, 200))
 	assert.EqualError(t, err, "opening subprocess: error getting latest checkpoint sequence: error getting root HAS: transient error")
+}
+
+func TestCaptivePrepareRange_FromIsAheadOfRootHAS(t *testing.T) {
+	var buf bytes.Buffer
+	mockRunner := &stellarCoreRunnerMock{}
+	mockRunner.On("catchup", uint32(100), uint32(200)).Return(nil).Once()
+	mockRunner.On("getMetaPipe").Return(&buf)
+	mockRunner.On("close").Return(nil)
+
+	mockArchive := &historyarchive.MockArchive{}
+	mockArchive.
+		On("GetRootHAS").
+		Return(historyarchive.HistoryArchiveState{
+			CurrentLedger: uint32(64),
+		}, nil)
+
+	captiveBackend := CaptiveStellarCore{
+		archive:           mockArchive,
+		networkPassphrase: network.PublicNetworkPassphrase,
+		stellarCoreRunner: mockRunner,
+	}
+
+	err := captiveBackend.PrepareRange(BoundedRange(100, 200))
+	assert.EqualError(t, err, "opening subprocess: sequence: 100 is greater than max available in history archives: 64")
+}
+
+func TestCaptivePrepareRange_ToIsAheadOfRootHAS(t *testing.T) {
+	var buf bytes.Buffer
+	mockRunner := &stellarCoreRunnerMock{}
+	mockRunner.On("catchup", uint32(100), uint32(192)).Return(nil).Once()
+	mockRunner.On("getMetaPipe").Return(&buf)
+	mockRunner.On("close").Return(nil)
+
+	mockArchive := &historyarchive.MockArchive{}
+	mockArchive.
+		On("GetRootHAS").
+		Return(historyarchive.HistoryArchiveState{
+			CurrentLedger: uint32(192),
+		}, nil)
+
+	captiveBackend := CaptiveStellarCore{
+		archive:           mockArchive,
+		networkPassphrase: network.PublicNetworkPassphrase,
+		stellarCoreRunner: mockRunner,
+	}
+
+	err := captiveBackend.PrepareRange(BoundedRange(100, 200))
+	assert.NoError(t, err)
+}
+
+func TestCaptivePrepareRange_ErrCatchup(t *testing.T) {
+	var buf bytes.Buffer
+	mockRunner := &stellarCoreRunnerMock{}
+	mockRunner.On("catchup", uint32(100), uint32(192)).Return(errors.New("transient error")).Once()
+	mockRunner.On("getMetaPipe").Return(&buf)
+	mockRunner.On("close").Return(nil)
+
+	mockArchive := &historyarchive.MockArchive{}
+	mockArchive.
+		On("GetRootHAS").
+		Return(historyarchive.HistoryArchiveState{
+			CurrentLedger: uint32(192),
+		}, nil)
+
+	captiveBackend := CaptiveStellarCore{
+		archive:           mockArchive,
+		networkPassphrase: network.PublicNetworkPassphrase,
+		stellarCoreRunner: mockRunner,
+	}
+
+	err := captiveBackend.PrepareRange(BoundedRange(100, 200))
+	assert.EqualError(t, err, "opening subprocess: error running stellar-core: transient error")
 }
 
 func TestGetLatestLedgerSequence(t *testing.T) {
