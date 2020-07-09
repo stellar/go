@@ -23,7 +23,7 @@ type IngestHistoryRangeStateTestSuite struct {
 	historyAdapter *adapters.MockHistoryArchiveAdapter
 	ledgerBackend  *ledgerbackend.MockDatabaseBackend
 	runner         *mockProcessorsRunner
-	system         *System
+	system         *system
 }
 
 func (s *IngestHistoryRangeStateTestSuite) SetupTest() {
@@ -31,7 +31,7 @@ func (s *IngestHistoryRangeStateTestSuite) SetupTest() {
 	s.ledgerBackend = &ledgerbackend.MockDatabaseBackend{}
 	s.historyAdapter = &adapters.MockHistoryArchiveAdapter{}
 	s.runner = &mockProcessorsRunner{}
-	s.system = &System{
+	s.system = &system{
 		ctx:            context.Background(),
 		historyQ:       s.historyQ,
 		historyAdapter: s.historyAdapter,
@@ -175,7 +175,7 @@ type ReingestHistoryRangeStateTestSuite struct {
 	historyAdapter *adapters.MockHistoryArchiveAdapter
 	ledgerBackend  *mockLedgerBackend
 	runner         *mockProcessorsRunner
-	system         *System
+	system         *system
 }
 
 func (s *ReingestHistoryRangeStateTestSuite) SetupTest() {
@@ -183,7 +183,7 @@ func (s *ReingestHistoryRangeStateTestSuite) SetupTest() {
 	s.historyAdapter = &adapters.MockHistoryArchiveAdapter{}
 	s.ledgerBackend = &mockLedgerBackend{}
 	s.runner = &mockProcessorsRunner{}
-	s.system = &System{
+	s.system = &system{
 		ctx:            context.Background(),
 		historyQ:       s.historyQ,
 		historyAdapter: s.historyAdapter,

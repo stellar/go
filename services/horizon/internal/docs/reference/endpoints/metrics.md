@@ -228,10 +228,7 @@ As noted above, Horizon relies on Stellar Core to stay in sync with the Stellar 
 ```shell
 "stellar_core.latest_ledger": {
   "value": 19203710
-},
-"stellar_core.open_connections": {
-  "value": 4
-},
+}
 ```
 
 #### Transaction Submission

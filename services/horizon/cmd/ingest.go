@@ -24,7 +24,7 @@ var ingestVerifyFrom, ingestVerifyTo, ingestVerifyDebugServerPort uint32
 var ingestVerifyState bool
 
 var ingestVerifyRangeCmdOpts = []*support.ConfigOption{
-	&support.ConfigOption{
+	{
 		Name:        "from",
 		ConfigKey:   &ingestVerifyFrom,
 		OptType:     types.Uint32,
@@ -32,7 +32,7 @@ var ingestVerifyRangeCmdOpts = []*support.ConfigOption{
 		FlagDefault: uint32(0),
 		Usage:       "first ledger of the range to ingest",
 	},
-	&support.ConfigOption{
+	{
 		Name:        "to",
 		ConfigKey:   &ingestVerifyTo,
 		OptType:     types.Uint32,
@@ -40,7 +40,7 @@ var ingestVerifyRangeCmdOpts = []*support.ConfigOption{
 		FlagDefault: uint32(0),
 		Usage:       "last ledger of the range to ingest",
 	},
-	&support.ConfigOption{
+	{
 		Name:        "verify-state",
 		ConfigKey:   &ingestVerifyState,
 		OptType:     types.Bool,
@@ -48,7 +48,7 @@ var ingestVerifyRangeCmdOpts = []*support.ConfigOption{
 		FlagDefault: false,
 		Usage:       "[optional] verifies state at the last ledger of the range when true",
 	},
-	&support.ConfigOption{
+	{
 		Name:        "debug-server-port",
 		ConfigKey:   &ingestVerifyDebugServerPort,
 		OptType:     types.Uint32,
@@ -83,11 +83,6 @@ var ingestVerifyRangeCmd = &cobra.Command{
 			}()
 		}
 
-		coreSession, err := db.Open("postgres", config.StellarCoreDatabaseURL)
-		if err != nil {
-			log.Fatalf("cannot open Core DB: %v", err)
-		}
-
 		horizonSession, err := db.Open("postgres", config.DatabaseURL)
 		if err != nil {
 			log.Fatalf("cannot open Horizon DB: %v", err)
@@ -102,13 +97,22 @@ var ingestVerifyRangeCmd = &cobra.Command{
 		}
 
 		ingestConfig := expingest.Config{
-			CoreSession:       coreSession,
 			NetworkPassphrase: config.NetworkPassphrase,
 			HistorySession:    horizonSession,
 			HistoryArchiveURL: config.HistoryArchiveURLs[0],
 		}
 		if config.EnableCaptiveCoreIngestion {
 			ingestConfig.StellarCorePath = config.StellarCoreBinaryPath
+		} else {
+			if config.StellarCoreDatabaseURL == "" {
+				log.Fatalf("flag --%s cannot be empty", stellarCoreDBURLFlagName)
+			}
+
+			coreSession, dbErr := db.Open("postgres", config.StellarCoreDatabaseURL)
+			if dbErr != nil {
+				log.Fatalf("cannot open Core DB: %v", dbErr)
+			}
+			ingestConfig.CoreSession = coreSession
 		}
 
 		system, err := expingest.NewSystem(ingestConfig)
@@ -132,7 +136,7 @@ var ingestVerifyRangeCmd = &cobra.Command{
 var stressTestNumTransactions, stressTestChangesPerTransaction int
 
 var stressTestCmdOpts = []*support.ConfigOption{
-	&support.ConfigOption{
+	{
 		Name:        "transactions",
 		ConfigKey:   &stressTestNumTransactions,
 		OptType:     types.Int,
@@ -140,7 +144,7 @@ var stressTestCmdOpts = []*support.ConfigOption{
 		FlagDefault: int(1000),
 		Usage:       "total number of transactions to ingest (at most 1000)",
 	},
-	&support.ConfigOption{
+	{
 		Name:        "changes",
 		ConfigKey:   &stressTestChangesPerTransaction,
 		OptType:     types.Int,
@@ -162,11 +166,6 @@ var ingestStressTestCmd = &cobra.Command{
 
 		initRootConfig()
 
-		coreSession, err := db.Open("postgres", config.StellarCoreDatabaseURL)
-		if err != nil {
-			log.Fatalf("cannot open Core DB: %v", err)
-		}
-
 		horizonSession, err := db.Open("postgres", config.DatabaseURL)
 		if err != nil {
 			log.Fatalf("cannot open Horizon DB: %v", err)
@@ -181,13 +180,23 @@ var ingestStressTestCmd = &cobra.Command{
 		}
 
 		ingestConfig := expingest.Config{
-			CoreSession:       coreSession,
 			NetworkPassphrase: config.NetworkPassphrase,
 			HistorySession:    horizonSession,
 			HistoryArchiveURL: config.HistoryArchiveURLs[0],
 		}
+
 		if config.EnableCaptiveCoreIngestion {
 			ingestConfig.StellarCorePath = config.StellarCoreBinaryPath
+		} else {
+			if config.StellarCoreDatabaseURL == "" {
+				log.Fatalf("flag --%s cannot be empty", stellarCoreDBURLFlagName)
+			}
+
+			coreSession, dbErr := db.Open("postgres", config.StellarCoreDatabaseURL)
+			if dbErr != nil {
+				log.Fatalf("cannot open Core DB: %v", dbErr)
+			}
+			ingestConfig.CoreSession = coreSession
 		}
 
 		system, err := expingest.NewSystem(ingestConfig)

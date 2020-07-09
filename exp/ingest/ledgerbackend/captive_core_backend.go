@@ -30,14 +30,14 @@ var _ LedgerBackend = (*CaptiveStellarCore)(nil)
 // TODO: switch from history URLs to history archive interface provided from support package, to permit mocking
 
 const (
-	ledgersPerCheckpoint = 64
-	readAheadBufferSize  = 2
+	readAheadBufferSize = 2
 )
 
 func roundDownToFirstReplayAfterCheckpointStart(ledger uint32) uint32 {
 	v := (ledger / ledgersPerCheckpoint) * ledgersPerCheckpoint
 	if v == 0 {
-		return 1
+		// Stellar-Core doesn't stream ledger 1
+		return 2
 	}
 	// All other checkpoints start at the next multiple of 64
 	return v
@@ -81,11 +81,7 @@ func NewCaptive(executablePath, networkPassphrase string, historyURLs []string) 
 		networkPassphrase: networkPassphrase,
 		historyURLs:       historyURLs,
 		nextLedger:        0,
-		stellarCoreRunner: &stellarCoreRunner{
-			executablePath:    executablePath,
-			networkPassphrase: networkPassphrase,
-			historyURLs:       historyURLs,
-		},
+		stellarCoreRunner: newStellarCoreRunner(executablePath, networkPassphrase, historyURLs),
 	}
 }
 

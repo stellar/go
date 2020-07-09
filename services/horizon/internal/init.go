@@ -8,7 +8,6 @@ import (
 	"github.com/rcrowley/go-metrics"
 
 	"github.com/stellar/go/exp/orderbook"
-	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/expingest"
 	"github.com/stellar/go/services/horizon/internal/simplepath"
@@ -46,27 +45,6 @@ func mustInitHorizonDB(app *App) {
 
 	app.historyQ = &history.Q{mustNewDBSession(
 		app.config.DatabaseURL,
-		maxIdle,
-		maxOpen,
-	)}
-}
-
-func mustInitCoreDB(app *App) {
-	maxIdle := app.config.CoreDBMaxIdleConnections
-	maxOpen := app.config.CoreDBMaxOpenConnections
-	if app.config.Ingest {
-		maxIdle -= expingest.MaxDBConnections
-		maxOpen -= expingest.MaxDBConnections
-		if maxIdle <= 0 {
-			log.Fatalf("max idle connections to stellar-core db must be greater than %d", expingest.MaxDBConnections)
-		}
-		if maxOpen <= 0 {
-			log.Fatalf("max open connections to stellar-core db must be greater than %d", expingest.MaxDBConnections)
-		}
-	}
-
-	app.coreQ = &core.Q{mustNewDBSession(
-		app.config.StellarCoreDatabaseURL,
 		maxIdle,
 		maxOpen,
 	)}
@@ -146,14 +124,12 @@ func initDbMetrics(app *App) {
 	app.historyElderLedgerGauge = metrics.NewGauge()
 	app.coreLatestLedgerGauge = metrics.NewGauge()
 	app.horizonConnGauge = metrics.NewGauge()
-	app.coreConnGauge = metrics.NewGauge()
 	app.goroutineGauge = metrics.NewGauge()
 	app.metrics.Register("history.latest_ledger", app.historyLatestLedgerGauge)
 	app.metrics.Register("history.elder_ledger", app.historyElderLedgerGauge)
 	app.metrics.Register("stellar_core.latest_ledger", app.coreLatestLedgerGauge)
 	app.metrics.Register("order_book_stream.latest_ledger", app.orderBookStream.LatestLedgerGauge)
 	app.metrics.Register("history.open_connections", app.horizonConnGauge)
-	app.metrics.Register("stellar_core.open_connections", app.coreConnGauge)
 	app.metrics.Register("goroutines", app.goroutineGauge)
 }
 
@@ -163,9 +139,9 @@ func initIngestMetrics(app *App) {
 	if app.expingester == nil {
 		return
 	}
-	app.metrics.Register("ingest.ledger_ingestion", app.expingester.Metrics.LedgerIngestionTimer)
-	app.metrics.Register("ingest.ledger_in_memory_ingestion", app.expingester.Metrics.LedgerInMemoryIngestionTimer)
-	app.metrics.Register("ingest.state_verify", app.expingester.Metrics.StateVerifyTimer)
+	app.metrics.Register("ingest.ledger_ingestion", app.expingester.Metrics().LedgerIngestionTimer)
+	app.metrics.Register("ingest.ledger_in_memory_ingestion", app.expingester.Metrics().LedgerInMemoryIngestionTimer)
+	app.metrics.Register("ingest.state_verify", app.expingester.Metrics().StateVerifyTimer)
 }
 
 func initTxSubMetrics(app *App) {

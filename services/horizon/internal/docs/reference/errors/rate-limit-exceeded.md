@@ -1,5 +1,6 @@
 ---
 title: Rate Limit Exceeded
+replacement: https://developers.stellar.org/api/errors/http-status-codes/standard/
 ---
 
 When a single user makes too many requests to Horizon in a one hour time frame, Horizon returns a

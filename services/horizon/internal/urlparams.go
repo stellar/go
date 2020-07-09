@@ -127,12 +127,12 @@ func getInt32ParamFromURL(r *http.Request, key string) (int32, error) {
 		return 0, errors.Wrapf(err, "loading %s from URL", key)
 	}
 	if val == "" {
-		return int32(0), nil
+		return 0, nil
 	}
 
 	asI64, err := strconv.ParseInt(val, 10, 32)
 	if err != nil {
-		return int32(0), problem.MakeInvalidFieldProblem(key, errors.New("invalid int32 value"))
+		return 0, problem.MakeInvalidFieldProblem(key, errors.New("invalid int32 value"))
 	}
 
 	return int32(asI64), nil

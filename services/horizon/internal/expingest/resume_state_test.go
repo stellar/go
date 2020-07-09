@@ -23,7 +23,7 @@ type ResumeTestTestSuite struct {
 	historyAdapter    *adapters.MockHistoryArchiveAdapter
 	runner            *mockProcessorsRunner
 	stellarCoreClient *mockStellarCoreClient
-	system            *System
+	system            *system
 }
 
 func (s *ResumeTestTestSuite) SetupTest() {
@@ -32,7 +32,7 @@ func (s *ResumeTestTestSuite) SetupTest() {
 	s.historyAdapter = &adapters.MockHistoryArchiveAdapter{}
 	s.runner = &mockProcessorsRunner{}
 	s.stellarCoreClient = &mockStellarCoreClient{}
-	s.system = &System{
+	s.system = &system{
 		ctx:               context.Background(),
 		historyQ:          s.historyQ,
 		historyAdapter:    s.historyAdapter,

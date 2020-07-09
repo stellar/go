@@ -1,5 +1,6 @@
 ---
 title: Asset
+replacement: https://developers.stellar.org/api/resources/assets/
 ---
 
 **Assets** are the units that are traded on the Stellar Network.

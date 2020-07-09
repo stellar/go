@@ -2,6 +2,7 @@
 title: Ledger Details
 clientData:
   laboratoryUrl: https://www.stellar.org/laboratory/#explorer?resource=ledgers&endpoint=single
+replacement: https://developers.stellar.org/api/resources/ledgers/single/
 ---
 
 The ledger details endpoint provides information on a single [ledger](../resources/ledger.md).

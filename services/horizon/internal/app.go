@@ -14,7 +14,6 @@ import (
 	"github.com/stellar/go/clients/stellarcore"
 	proto "github.com/stellar/go/protocols/stellarcore"
 	horizonContext "github.com/stellar/go/services/horizon/internal/context"
-	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/expingest"
 	"github.com/stellar/go/services/horizon/internal/ledger"
@@ -61,7 +60,6 @@ type App struct {
 	config          Config
 	web             *web
 	historyQ        *history.Q
-	coreQ           *core.Q
 	ctx             context.Context
 	cancel          func()
 	horizonVersion  string
@@ -69,7 +67,7 @@ type App struct {
 	orderBookStream *expingest.OrderBookStream
 	submitter       *txsub.System
 	paths           paths.Finder
-	expingester     *expingest.System
+	expingester     expingest.System
 	reaper          *reap.System
 	ticks           *time.Ticker
 
@@ -79,7 +77,6 @@ type App struct {
 	historyElderLedgerGauge  metrics.Gauge
 	horizonConnGauge         metrics.Gauge
 	coreLatestLedgerGauge    metrics.Gauge
-	coreConnGauge            metrics.Gauge
 	goroutineGauge           metrics.Gauge
 }
 
@@ -181,7 +178,6 @@ func (a *App) Close() {
 // closed" errors.
 func (a *App) CloseDB() {
 	a.historyQ.Session.DB.Close()
-	a.coreQ.Session.DB.Close()
 }
 
 // HistoryQ returns a helper object for performing sql queries against the
@@ -194,18 +190,6 @@ func (a *App) HistoryQ() *history.Q {
 // database. The returned session is bound to `ctx`.
 func (a *App) HorizonSession(ctx context.Context) *db.Session {
 	return &db.Session{DB: a.historyQ.Session.DB, Ctx: ctx}
-}
-
-// CoreSession returns a new session that loads data from the stellar core
-// database. The returned session is bound to `ctx`.
-func (a *App) CoreSession(ctx context.Context) *db.Session {
-	return &db.Session{DB: a.coreQ.Session.DB, Ctx: ctx}
-}
-
-// CoreQ returns a helper object for performing sql queries aginst the
-// stellar core database.
-func (a *App) CoreQ() *core.Q {
-	return a.coreQ
 }
 
 // IsHistoryStale returns true if the latest history ledger is more than
@@ -232,11 +216,17 @@ func (a *App) UpdateLedgerState() {
 		log.WithStack(err).WithField("err", err.Error()).Error(msg)
 	}
 
-	err := a.CoreQ().LatestLedger(&next.CoreLatest)
+	coreClient := &stellarcore.Client{
+		HTTP: http.DefaultClient,
+		URL:  a.config.StellarCoreURL,
+	}
+
+	coreInfo, err := coreClient.Info(a.ctx)
 	if err != nil {
-		logErr(err, "failed to load the latest known ledger state from core DB")
+		logErr(err, "failed to load the stellar-core info")
 		return
 	}
+	next.CoreLatest = int32(coreInfo.Info.Ledger.Num)
 
 	err = a.HistoryQ().LatestLedger(&next.HistoryLatest)
 	if err != nil {
@@ -421,7 +411,6 @@ func (a *App) UpdateMetrics() {
 	a.coreLatestLedgerGauge.Update(int64(ls.CoreLatest))
 
 	a.horizonConnGauge.Update(int64(a.historyQ.Session.DB.Stats().OpenConnections))
-	a.coreConnGauge.Update(int64(a.coreQ.Session.DB.Stats().OpenConnections))
 }
 
 // DeleteUnretainedHistory forwards to the app's reaper.  See
@@ -473,7 +462,6 @@ func (a *App) init() {
 
 	// horizon-db and core-db
 	mustInitHorizonDB(a)
-	mustInitCoreDB(a)
 
 	if a.config.Ingest {
 		// expingester

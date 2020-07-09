@@ -4,6 +4,8 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
+const ledgersPerCheckpoint = 64
+
 // Range represents a range of ledger sequence numbers.
 type Range struct {
 	from    uint32

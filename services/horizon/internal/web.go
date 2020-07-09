@@ -206,10 +206,10 @@ func (w *web) mustInstallActions(config Config, pathFinder paths.Finder, session
 	// emptiness. Without it, requesting `/accounts//payments` return all payments!
 	r.Group(func(r chi.Router) {
 		r.Get("/accounts/{account_id:\\w+}/transactions", w.streamIndexActionHandler(w.getTransactionPage, w.streamTransactions))
-		r.Get("/accounts/{account_id:\\w+}/effects", EffectIndexAction{}.Handle)
 		r.Get("/accounts/{account_id:\\w+}/trades", TradeIndexAction{}.Handle)
 		r.Group(func(r chi.Router) {
 			r.Use(historyMiddleware)
+			r.Method(http.MethodGet, "/accounts/{account_id:\\w+}/effects", streamableHistoryPageHandler(actions.GetEffectsHandler{}, streamHandler))
 			r.Method(http.MethodGet, "/accounts/{account_id:\\w+}/operations", streamableHistoryPageHandler(actions.GetOperationsHandler{
 				OnlyPayments: false,
 			}, streamHandler))
@@ -224,9 +224,9 @@ func (w *web) mustInstallActions(config Config, pathFinder paths.Finder, session
 		r.Route("/{ledger_id}", func(r chi.Router) {
 			r.Get("/", LedgerShowAction{}.Handle)
 			r.Get("/transactions", w.streamIndexActionHandler(w.getTransactionPage, w.streamTransactions))
-			r.Get("/effects", EffectIndexAction{}.Handle)
 			r.Group(func(r chi.Router) {
 				r.Use(historyMiddleware)
+				r.Method(http.MethodGet, "/effects", streamableHistoryPageHandler(actions.GetEffectsHandler{}, streamHandler))
 				r.Method(http.MethodGet, "/operations", streamableHistoryPageHandler(actions.GetOperationsHandler{
 					OnlyPayments: false,
 				}, streamHandler))
@@ -242,9 +242,9 @@ func (w *web) mustInstallActions(config Config, pathFinder paths.Finder, session
 		r.Get("/", w.streamIndexActionHandler(w.getTransactionPage, w.streamTransactions))
 		r.Route("/{tx_id}", func(r chi.Router) {
 			r.Get("/", showActionHandler(w.getTransactionResource))
-			r.Get("/effects", EffectIndexAction{}.Handle)
 			r.Group(func(r chi.Router) {
 				r.Use(historyMiddleware)
+				r.Method(http.MethodGet, "/effects", streamableHistoryPageHandler(actions.GetEffectsHandler{}, streamHandler))
 				r.Method(http.MethodGet, "/operations", streamableHistoryPageHandler(actions.GetOperationsHandler{
 					OnlyPayments: false,
 				}, streamHandler))
@@ -257,11 +257,12 @@ func (w *web) mustInstallActions(config Config, pathFinder paths.Finder, session
 
 	// operation actions
 	r.Route("/operations", func(r chi.Router) {
-		r.With(historyMiddleware).Method(http.MethodGet, "/", streamableHistoryPageHandler(actions.GetOperationsHandler{
+		r.Use(historyMiddleware)
+		r.Method(http.MethodGet, "/", streamableHistoryPageHandler(actions.GetOperationsHandler{
 			OnlyPayments: false,
 		}, streamHandler))
-		r.Get("/{id}", OperationShowAction{}.Handle)
-		r.Get("/{op_id}/effects", EffectIndexAction{}.Handle)
+		r.Method(http.MethodGet, "/{id}", objectActionHandler{actions.GetOperationByIDHandler{}})
+		r.Method(http.MethodGet, "/{op_id}/effects", streamableHistoryPageHandler(actions.GetEffectsHandler{}, streamHandler))
 	})
 
 	r.Group(func(r chi.Router) {
@@ -271,7 +272,7 @@ func (w *web) mustInstallActions(config Config, pathFinder paths.Finder, session
 		}, streamHandler))
 
 		// effect actions
-		r.Get("/effects", EffectIndexAction{}.Handle)
+		r.With(historyMiddleware).Method(http.MethodGet, "/effects", streamableHistoryPageHandler(actions.GetEffectsHandler{}, streamHandler))
 
 		// trading related endpoints
 		r.Get("/trades", TradeIndexAction{}.Handle)

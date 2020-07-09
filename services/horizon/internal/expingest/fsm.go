@@ -19,7 +19,7 @@ var (
 )
 
 type stateMachineNode interface {
-	run(*System) (transition, error)
+	run(*system) (transition, error)
 	String() string
 }
 
@@ -93,7 +93,7 @@ func (stopState) String() string {
 	return "stop"
 }
 
-func (stopState) run(s *System) (transition, error) {
+func (stopState) run(s *system) (transition, error) {
 	return stop(), errors.New("Cannot run terminal state")
 }
 
@@ -103,7 +103,7 @@ func (startState) String() string {
 	return "start"
 }
 
-func (startState) run(s *System) (transition, error) {
+func (startState) run(s *system) (transition, error) {
 	if err := s.historyQ.Begin(); err != nil {
 		return start(), errors.Wrap(err, "Error starting a transaction")
 	}
@@ -214,7 +214,7 @@ func (b buildState) String() string {
 	return fmt.Sprintf("buildFromCheckpoint(checkpointLedger=%d)", b.checkpointLedger)
 }
 
-func (b buildState) run(s *System) (transition, error) {
+func (b buildState) run(s *system) (transition, error) {
 	if b.checkpointLedger == 0 {
 		return start(), errors.New("unexpected checkpointLedger value")
 	}
@@ -313,7 +313,7 @@ func (r resumeState) String() string {
 	return fmt.Sprintf("resume(latestSuccessfullyProcessedLedger=%d)", r.latestSuccessfullyProcessedLedger)
 }
 
-func (r resumeState) run(s *System) (transition, error) {
+func (r resumeState) run(s *system) (transition, error) {
 	if r.latestSuccessfullyProcessedLedger == 0 {
 		return start(), errors.New("unexpected latestSuccessfullyProcessedLedger value")
 	}
@@ -415,7 +415,7 @@ func (r resumeState) run(s *System) (transition, error) {
 	}
 
 	duration := time.Since(startTime)
-	s.Metrics.LedgerIngestionTimer.Update(duration)
+	s.Metrics().LedgerIngestionTimer.Update(duration)
 	log.
 		WithFields(changeStats.Map()).
 		WithFields(ledgerTransactionStats.Map()).
@@ -447,7 +447,7 @@ func (h historyRangeState) String() string {
 }
 
 // historyRangeState is used when catching up history data
-func (h historyRangeState) run(s *System) (transition, error) {
+func (h historyRangeState) run(s *system) (transition, error) {
 	if h.fromLedger == 0 || h.toLedger == 0 ||
 		h.fromLedger > h.toLedger {
 		return start(), errors.Errorf("invalid range: [%d, %d]", h.fromLedger, h.toLedger)
@@ -494,7 +494,7 @@ func (h historyRangeState) run(s *System) (transition, error) {
 	return start(), nil
 }
 
-func runTransactionProcessorsOnLedger(s *System, ledger uint32) error {
+func runTransactionProcessorsOnLedger(s *system, ledger uint32) error {
 	log.WithFields(logpkg.F{
 		"sequence": ledger,
 		"state":    false,
@@ -536,7 +536,7 @@ func (h reingestHistoryRangeState) String() string {
 	)
 }
 
-func (h reingestHistoryRangeState) ingestRange(s *System, fromLedger, toLedger uint32) error {
+func (h reingestHistoryRangeState) ingestRange(s *system, fromLedger, toLedger uint32) error {
 	if s.historyQ.GetTx() == nil {
 		return errors.New("expected transaction to be present")
 	}
@@ -565,7 +565,7 @@ func (h reingestHistoryRangeState) ingestRange(s *System, fromLedger, toLedger u
 }
 
 // reingestHistoryRangeState is used as a command to reingest historical data
-func (h reingestHistoryRangeState) run(s *System) (transition, error) {
+func (h reingestHistoryRangeState) run(s *system) (transition, error) {
 	if h.fromLedger == 0 || h.toLedger == 0 ||
 		h.fromLedger > h.toLedger {
 		return stop(), errors.Errorf("invalid range: [%d, %d]", h.fromLedger, h.toLedger)
@@ -587,6 +587,13 @@ func (h reingestHistoryRangeState) run(s *System) (transition, error) {
 		"to":       h.toLedger,
 		"duration": time.Since(startTime).Seconds(),
 	}).Info("Range ready")
+
+	if h.fromLedger == 1 {
+		log.Warn("Ledger 1 is pregenerated and not available, starting from ledger 2.")
+		h.fromLedger = 2
+	}
+
+	startTime = time.Now()
 
 	if h.force {
 		if err := s.historyQ.Begin(); err != nil {
@@ -641,6 +648,12 @@ func (h reingestHistoryRangeState) run(s *System) (transition, error) {
 		}
 	}
 
+	log.WithFields(logpkg.F{
+		"from":     h.fromLedger,
+		"to":       h.toLedger,
+		"duration": time.Since(startTime).Seconds(),
+	}).Info("Reingestion done")
+
 	return stop(), nil
 }
 
@@ -650,7 +663,7 @@ func (waitForCheckpointState) String() string {
 	return "waitForCheckpoint"
 }
 
-func (waitForCheckpointState) run(*System) (transition, error) {
+func (waitForCheckpointState) run(*system) (transition, error) {
 	log.Info("Waiting for the next checkpoint...")
 	time.Sleep(10 * time.Second)
 	return start(), nil
@@ -671,7 +684,7 @@ func (v verifyRangeState) String() string {
 	)
 }
 
-func (v verifyRangeState) run(s *System) (transition, error) {
+func (v verifyRangeState) run(s *system) (transition, error) {
 	if v.fromLedger == 0 || v.toLedger == 0 ||
 		v.fromLedger > v.toLedger {
 		return stop(), errors.Errorf("invalid range: [%d, %d]", v.fromLedger, v.toLedger)
@@ -770,7 +783,7 @@ func (stressTestState) String() string {
 	return "stressTest"
 }
 
-func (stressTestState) run(s *System) (transition, error) {
+func (stressTestState) run(s *system) (transition, error) {
 	if err := s.historyQ.Begin(); err != nil {
 		err = errors.Wrap(err, "Error starting a transaction")
 		return stop(), err
@@ -829,7 +842,7 @@ func (stressTestState) run(s *System) (transition, error) {
 	return stop(), nil
 }
 
-func (s *System) completeIngestion(ledger uint32) error {
+func (s *system) completeIngestion(ledger uint32) error {
 	if ledger == 0 {
 		return errors.New("ledger must be positive")
 	}

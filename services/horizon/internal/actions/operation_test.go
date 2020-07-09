@@ -1,6 +1,7 @@
 package actions
 
 import (
+	"database/sql"
 	"fmt"
 	"net/http/httptest"
 
@@ -9,8 +10,9 @@ import (
 
 	"github.com/stellar/go/protocols/horizon/operations"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/test"
-	"github.com/stellar/go/support/render/problem"
+	supportProblem "github.com/stellar/go/support/render/problem"
 )
 
 func TestGetOperationsWithoutFilter(t *testing.T) {
@@ -73,12 +75,12 @@ func TestGetOperationsExclusiveFilters(t *testing.T) {
 					t, tc.query, map[string]string{}, q.Session,
 				),
 			)
-			tt.Assert.IsType(&problem.P{}, err)
-			p := err.(*problem.P)
+			tt.Assert.IsType(&supportProblem.P{}, err)
+			p := err.(*supportProblem.P)
 			tt.Assert.Equal("bad_request", p.Type)
 			tt.Assert.Equal("filters", p.Extras["invalid_field"])
 			tt.Assert.Equal(
-				"Use a single filter for operations, you can't combine tx_id, account_id, and ledger_id",
+				"Use a single filter for operations, you can only use one of tx_id, account_id or ledger_id",
 				p.Extras["reason"],
 			)
 		})
@@ -187,8 +189,8 @@ func TestGetOperationsFilterByTxID(t *testing.T) {
 				if tc.notFound {
 					tt.Assert.EqualError(err, tc.expectedErr)
 				} else {
-					tt.Assert.IsType(&problem.P{}, err)
-					p := err.(*problem.P)
+					tt.Assert.IsType(&supportProblem.P{}, err)
+					p := err.(*supportProblem.P)
 					tt.Assert.Equal("bad_request", p.Type)
 					tt.Assert.Equal("tx_id", p.Extras["invalid_field"])
 					tt.Assert.Equal(
@@ -321,8 +323,8 @@ func TestGetOperationsIncludeFailed(t *testing.T) {
 		),
 	)
 	tt.Assert.Error(err)
-	tt.Assert.IsType(&problem.P{}, err)
-	p := err.(*problem.P)
+	tt.Assert.IsType(&supportProblem.P{}, err)
+	p := err.(*supportProblem.P)
 	tt.Assert.Equal("bad_request", p.Type)
 	tt.Assert.Equal("include_failed", p.Extras["invalid_field"])
 	tt.Assert.Equal(
@@ -364,11 +366,11 @@ func TestGetOperationsFilterByLedgerID(t *testing.T) {
 		},
 		{
 			ledgerID:    "-1",
-			expectedErr: "Ledger ID must be higher than 0",
+			expectedErr: "Ledger ID must be an integer higher than 0",
 		},
 		{
 			ledgerID:    "one",
-			expectedErr: "Ledger ID must be higher than 0",
+			expectedErr: "Ledger ID must be an integer higher than 0",
 		},
 	}
 	for _, tc := range testCases {
@@ -388,8 +390,8 @@ func TestGetOperationsFilterByLedgerID(t *testing.T) {
 				if tc.notFound {
 					tt.Assert.EqualError(err, tc.expectedErr)
 				} else {
-					tt.Assert.IsType(&problem.P{}, err)
-					p := err.(*problem.P)
+					tt.Assert.IsType(&supportProblem.P{}, err)
+					p := err.(*supportProblem.P)
 					tt.Assert.Equal("bad_request", p.Type)
 					tt.Assert.Equal("ledger_id", p.Extras["invalid_field"])
 					tt.Assert.Equal(
@@ -401,6 +403,7 @@ func TestGetOperationsFilterByLedgerID(t *testing.T) {
 		})
 	}
 }
+
 func TestGetOperationsOnlyPayments(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
@@ -580,8 +583,8 @@ func TestGetOperations_IncludeTransactions(t *testing.T) {
 		),
 	)
 	tt.Assert.Error(err)
-	tt.Assert.IsType(&problem.P{}, err)
-	p := err.(*problem.P)
+	tt.Assert.IsType(&supportProblem.P{}, err)
+	p := err.(*supportProblem.P)
 	tt.Assert.Equal("bad_request", p.Type)
 	tt.Assert.Equal("join", p.Extras["invalid_field"])
 	tt.Assert.Equal(
@@ -617,4 +620,68 @@ func TestGetOperations_IncludeTransactions(t *testing.T) {
 		op := record.(operations.CreateAccount)
 		tt.Assert.Nil(op.Transaction)
 	}
+}
+func TestGetOperation(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	tt.Scenario("base")
+
+	handler := GetOperationByIDHandler{}
+
+	record, err := handler.GetResource(
+		httptest.NewRecorder(),
+		makeRequest(
+			t, map[string]string{}, map[string]string{"id": "8589938689"}, tt.HorizonSession(),
+		),
+	)
+	tt.Assert.NoError(err)
+	op := record.(operations.Operation)
+	tt.Assert.Equal("8589938689", op.PagingToken())
+	tt.Assert.Equal("2374e99349b9ef7dba9a5db3339b78fda8f34777b1af33ba468ad5c0df946d4d", op.GetTransactionHash())
+
+	_, err = handler.GetResource(
+		httptest.NewRecorder(),
+		makeRequest(
+			t, map[string]string{}, map[string]string{"id": "9589938689"}, tt.HorizonSession(),
+		),
+	)
+
+	tt.Assert.Equal(err, sql.ErrNoRows)
+
+	_, err = handler.GetResource(
+		httptest.NewRecorder(),
+		makeRequest(
+			t, map[string]string{}, map[string]string{"id": "0"}, tt.HorizonSession(),
+		),
+	)
+	tt.Assert.Equal(err, problem.BeforeHistory)
+}
+
+func TestOperation_IncludeTransaction(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	tt.Scenario("kahuna")
+
+	handler := GetOperationByIDHandler{}
+	record, err := handler.GetResource(
+		httptest.NewRecorder(),
+		makeRequest(
+			t, map[string]string{}, map[string]string{"id": "261993009153"}, tt.HorizonSession(),
+		),
+	)
+
+	tt.Assert.NoError(err)
+
+	op := record.(operations.BumpSequence)
+	tt.Assert.Nil(op.Transaction)
+
+	record, err = handler.GetResource(
+		httptest.NewRecorder(),
+		makeRequest(
+			t, map[string]string{"join": "transactions"}, map[string]string{"id": "261993009153"}, tt.HorizonSession(),
+		),
+	)
+	op = record.(operations.BumpSequence)
+	tt.Assert.NotNil(op.Transaction)
+	tt.Assert.Equal(op.TransactionHash, op.Transaction.ID)
 }

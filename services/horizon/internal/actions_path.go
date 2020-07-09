@@ -2,7 +2,6 @@ package horizon
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"net/http"
 	"strings"
@@ -360,13 +359,5 @@ func assetsForAddress(r *http.Request, addy string) ([]xdr.Asset, []xdr.Int64, e
 	if err != nil {
 		return nil, nil, err
 	}
-	err = historyQ.BeginTx(&sql.TxOptions{
-		Isolation: sql.LevelRepeatableRead,
-		ReadOnly:  true,
-	})
-	if err != nil {
-		return nil, nil, err
-	}
-	defer historyQ.Rollback()
 	return historyQ.AssetsForAddress(addy)
 }

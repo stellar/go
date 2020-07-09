@@ -20,6 +20,12 @@ import (
 	"github.com/stellar/throttled"
 )
 
+const (
+	maxDBPingAttempts        = 30
+	stellarCoreDBURLFlagName = "stellar-core-db-url"
+	stellarCoreURLFlagName   = "stellar-core-url"
+)
+
 var (
 	config horizon.Config
 
@@ -32,8 +38,6 @@ var (
 		},
 	}
 )
-
-const maxDBPingAttempts = 30
 
 // validateBothOrNeither ensures that both options are provided, if either is provided.
 func validateBothOrNeither(option1, option2 string) {
@@ -127,18 +131,16 @@ var configOpts = support.ConfigOptions{
 		ConfigKey:   &config.EnableCaptiveCoreIngestion,
 	},
 	&support.ConfigOption{
-		Name:      "stellar-core-db-url",
+		Name:      stellarCoreDBURLFlagName,
 		EnvVar:    "STELLAR_CORE_DATABASE_URL",
 		ConfigKey: &config.StellarCoreDatabaseURL,
 		OptType:   types.String,
-		Required:  true,
 		Usage:     "stellar-core postgres database to connect with",
 	},
 	&support.ConfigOption{
-		Name:      "stellar-core-url",
+		Name:      stellarCoreURLFlagName,
 		ConfigKey: &config.StellarCoreURL,
 		OptType:   types.String,
-		Required:  true,
 		Usage:     "stellar-core to connect with (for http commands)",
 	},
 	&support.ConfigOption{
@@ -174,7 +176,7 @@ var configOpts = support.ConfigOptions{
 		ConfigKey:   &config.MaxDBConnections,
 		OptType:     types.Int,
 		FlagDefault: 0,
-		Usage:       "when set has a priority over horizon-db-max-open-connections, horizon-db-max-idle-connections, core-db-max-open-connections, core-db-max-idle-connections. max horizon database open connections. may need to be increased when responses are slow but DB CPU is normal",
+		Usage:       "when set has a priority over horizon-db-max-open-connections, horizon-db-max-idle-connections. max horizon database open connections may need to be increased when responses are slow but DB CPU is normal",
 	},
 	&support.ConfigOption{
 		Name:        "horizon-db-max-open-connections",
@@ -189,20 +191,6 @@ var configOpts = support.ConfigOptions{
 		OptType:     types.Int,
 		FlagDefault: 20,
 		Usage:       "max horizon database idle connections. may need to be set to the same value as horizon-db-max-open-connections when responses are slow and DB CPU is normal, because it may indicate that a lot of time is spent closing/opening idle connections. This can happen in case of high variance in number of requests. must be equal or lower than max open connections",
-	},
-	&support.ConfigOption{
-		Name:        "core-db-max-open-connections",
-		ConfigKey:   &config.CoreDBMaxOpenConnections,
-		OptType:     types.Int,
-		FlagDefault: 20,
-		Usage:       "max core database open connections. may need to be increased when responses are slow but DB CPU is normal",
-	},
-	&support.ConfigOption{
-		Name:        "core-db-max-idle-connections",
-		ConfigKey:   &config.CoreDBMaxIdleConnections,
-		OptType:     types.Int,
-		FlagDefault: 20,
-		Usage:       "max core database idle connections. may need to be set to the same value as core-db-max-open-connections when responses are slow and DB CPU is normal, because it may indicate that a lot of time is spent closing/opening idle connections. This can happen in case of high variance in number of requests. must be equal or lower than max open connections",
 	},
 	&support.ConfigOption{
 		Name:           "sse-update-frequency",
@@ -384,6 +372,15 @@ func init() {
 
 func initApp() *horizon.App {
 	initRootConfig()
+	// Validate app-specific arguments
+	if config.StellarCoreURL == "" {
+		log.Fatalf("flag --%s cannot be empty", stellarCoreURLFlagName)
+	}
+	if config.Ingest {
+		if config.StellarCoreDatabaseURL == "" {
+			log.Fatalf("flag --%s cannot be empty", stellarCoreDBURLFlagName)
+		}
+	}
 	return horizon.NewApp(config)
 }
 
@@ -430,8 +427,6 @@ func initRootConfig() {
 	if config.MaxDBConnections != 0 {
 		config.HorizonDBMaxOpenConnections = config.MaxDBConnections
 		config.HorizonDBMaxIdleConnections = config.MaxDBConnections
-		config.CoreDBMaxOpenConnections = config.MaxDBConnections
-		config.CoreDBMaxIdleConnections = config.MaxDBConnections
 	}
 }
 

@@ -3,6 +3,7 @@
 package ledgerbackend
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"os"
@@ -41,10 +42,12 @@ func (c *stellarCoreRunner) start() (io.Reader, error) {
 		return connection, err
 	}
 
-	return connection, nil
+	// Do not remove bufio.Reader wrapping. Turns out that each read from a pipe
+	// adds an overhead time so it's better to preload data to a buffer.
+	return bufio.NewReaderSize(connection, 1024*1024), nil
 }
 
-func (c *captiveStellarCore) processIsAlive() bool {
+func (c *stellarCoreRunner) processIsAlive() bool {
 	if c.cmd == nil {
 		return false
 	}

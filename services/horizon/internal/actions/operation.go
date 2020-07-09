@@ -6,42 +6,50 @@ import (
 	"net/http"
 
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/services/horizon/internal/ledger"
+	"github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/resourceadapter"
+	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/render/hal"
-	"github.com/stellar/go/support/render/problem"
+	supportProblem "github.com/stellar/go/support/render/problem"
 )
 
-// OperationsQuery query struct for offers end-point
+// Joinable query struct for join query parameter
+type Joinable struct {
+	Join string `schema:"join" valid:"in(transactions)~Accepted values: transactions,optional"`
+}
+
+// IncludeTransactions returns extra fields to include in the response
+func (qp Joinable) IncludeTransactions() bool {
+	return qp.Join == "transactions"
+}
+
+// OperationsQuery query struct for operations end-points
 type OperationsQuery struct {
+	Joinable                  `valid:"optional"`
 	AccountID                 string `schema:"account_id" valid:"accountID,optional"`
 	TransactionHash           string `schema:"tx_id" valid:"transactionHash,optional"`
 	IncludeFailedTransactions bool   `schema:"include_failed" valid:"-"`
 	LedgerID                  uint32 `schema:"ledger_id" valid:"-"`
-	Join                      string `schema:"join" valid:"in(transactions)~Accepted values: transactions,optional"`
-}
-
-// IncludeTransactions returns extra fields to include in the response
-func (qp OperationsQuery) IncludeTransactions() bool {
-	return qp.Join == "transactions"
 }
 
 // Validate runs extra validations on query parameters
 func (qp OperationsQuery) Validate() error {
 	filters, err := countNonEmpty(
 		qp.AccountID,
-		int32(qp.LedgerID),
+		qp.LedgerID,
 		qp.TransactionHash,
 	)
 
 	if err != nil {
-		return &problem.BadRequest
+		return supportProblem.BadRequest
 	}
 
 	if filters > 1 {
-		return problem.MakeInvalidFieldProblem(
+		return supportProblem.MakeInvalidFieldProblem(
 			"filters",
-			errors.New("Use a single filter for operations, you can't combine tx_id, account_id, and ledger_id"),
+			errors.New("Use a single filter for operations, you can only use one of tx_id, account_id or ledger_id"),
 		)
 	}
 
@@ -109,6 +117,58 @@ func (handler GetOperationsHandler) GetResourcePage(w HeaderWriter, r *http.Requ
 	}
 
 	return buildOperationsPage(ctx, historyQ, ops, txs, qp.IncludeTransactions())
+}
+
+// GetOperationByIDHandler is the action handler for all end-points returning a list of operations.
+type GetOperationByIDHandler struct {
+}
+
+// OperationQuery query struct for operation/id end-point
+type OperationQuery struct {
+	Joinable `valid:"optional"`
+	ID       uint64 `schema:"id" valid:"-"`
+}
+
+// Validate runs extra validations on query parameters
+func (qp OperationQuery) Validate() error {
+	parsed := toid.Parse(int64(qp.ID))
+	if parsed.LedgerSequence < ledger.CurrentState().HistoryElder {
+		return problem.BeforeHistory
+	}
+	return nil
+}
+
+// GetResource returns an operation page.
+func (handler GetOperationByIDHandler) GetResource(w HeaderWriter, r *http.Request) (hal.Pageable, error) {
+	ctx := r.Context()
+	qp := OperationQuery{}
+	err := GetParams(&qp, r)
+	if err != nil {
+		return nil, err
+	}
+
+	historyQ, err := HistoryQFromRequest(r)
+	if err != nil {
+		return nil, err
+	}
+	op, tx, err := historyQ.OperationByID(qp.IncludeTransactions(), int64(qp.ID))
+	if err != nil {
+		return nil, err
+	}
+
+	var ledger history.Ledger
+	err = historyQ.LedgerBySequence(&ledger, op.LedgerSequence())
+	if err != nil {
+		return nil, err
+	}
+
+	return resourceadapter.NewOperation(
+		ctx,
+		op,
+		op.TransactionHash,
+		tx,
+		ledger,
+	)
 }
 
 func buildOperationsPage(ctx context.Context, historyQ *history.Q, operations []history.Operation, transactions []history.Transaction, includeTransactions bool) ([]hal.Pageable, error) {

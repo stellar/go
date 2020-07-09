@@ -60,7 +60,7 @@ type DBTestSuite struct {
 	sequence       uint32
 	ledgerBackend  *ledgerbackend.MockDatabaseBackend
 	historyAdapter *adapters.MockHistoryArchiveAdapter
-	system         *System
+	system         *system
 	tt             *test.T
 }
 
@@ -77,7 +77,7 @@ func (s *DBTestSuite) SetupTest() {
 	s.ledgerBackend = &ledgerbackend.MockDatabaseBackend{}
 	s.historyAdapter = &adapters.MockHistoryArchiveAdapter{}
 	var err error
-	s.system, err = NewSystem(Config{
+	sIface, err := NewSystem(Config{
 		CoreSession:              s.tt.CoreSession(),
 		HistorySession:           s.tt.HorizonSession(),
 		HistoryArchiveURL:        "http://ignore.test",
@@ -85,6 +85,7 @@ func (s *DBTestSuite) SetupTest() {
 		DisableStateVerification: false,
 	})
 	s.Assert().NoError(err)
+	s.system = sIface.(*system)
 
 	s.sequence = uint32(28660351)
 	s.setupMocksForBuildState()

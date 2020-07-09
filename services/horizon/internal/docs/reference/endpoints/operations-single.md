@@ -2,6 +2,7 @@
 title: Operation Details
 clientData:
   laboratoryUrl: https://www.stellar.org/laboratory/#explorer?resource=operations&endpoint=single
+replacement: https://developers.stellar.org/api/resources/operations/single/
 ---
 
 The operation details endpoint provides information on a single
