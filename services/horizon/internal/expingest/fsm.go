@@ -296,7 +296,7 @@ func (b buildState) run(s *system) (transition, error) {
 		return start(), errors.Wrap(err, "Error clearing ingest tables")
 	}
 
-	followTransition, transition, err := s.checkPrepareRange(b.checkpointLedger)
+	followTransition, transition, err := s.checkPrepareRange(b.checkpointLedger, true)
 	if followTransition {
 		return transition, err
 	}
@@ -397,7 +397,7 @@ func (r resumeState) run(s *system) (transition, error) {
 		return start(), nil
 	}
 
-	followTransition, transition, err := s.checkPrepareRange(ingestLedger)
+	followTransition, transition, err := s.checkPrepareRange(ingestLedger, false)
 	if followTransition {
 		return transition, err
 	}
@@ -517,14 +517,9 @@ func (h historyRangeState) run(s *system) (transition, error) {
 		return start(), nil
 	}
 
-	followTransition, transition, err := s.checkPrepareRange(h.fromLedger)
+	followTransition, transition, err := s.checkPrepareRange(h.fromLedger, false)
 	if followTransition {
 		return transition, err
-	}
-
-	err = s.ledgerBackend.PrepareRange(ledgerbackend.UnboundedRange(h.fromLedger))
-	if err != nil {
-		return stop(), errors.Wrap(err, "error preparing range")
 	}
 
 	for cur := h.fromLedger; cur <= h.toLedger; cur++ {
@@ -908,7 +903,7 @@ func (s *system) completeIngestion(ledger uint32) error {
 // checkPrepareRange checks if the range is prepared. If not, it releases
 // the distributed ingestion lock and prepares the range.
 // The first return value determines if the caller should follow the transition.
-func (s *system) checkPrepareRange(from uint32) (bool, transition, error) {
+func (s *system) checkPrepareRange(from uint32, suggestCheckpoint bool) (bool, transition, error) {
 	ledgerRange := ledgerbackend.UnboundedRange(from)
 
 	if !s.ledgerBackend.IsPrepared(ledgerRange) {
@@ -930,7 +925,10 @@ func (s *system) checkPrepareRange(from uint32) (bool, transition, error) {
 			}).
 			Info("Range prepared")
 
-		return true, startSuggestedCheckpoint(from), nil
+		if suggestCheckpoint {
+			return true, startSuggestedCheckpoint(from), nil
+		}
+		return true, start(), nil
 	}
 
 	return false, start(), nil
