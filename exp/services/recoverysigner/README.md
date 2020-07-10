@@ -31,8 +31,6 @@ Available Commands:
   db                     Run database operations
   encryption-tink-keyset Run Tink keyset operations
   serve                  Run the SEP-30 Recovery Signer server
-
-Use "recoverysigner [command] --help" for more information about a command.
 ```
 
 ## Usage: serve
@@ -71,13 +69,10 @@ Available Commands:
 
 Flags:
       --db-url string   Database URL (DB_URL) (default "postgres://localhost:5432/?sslmode=disable")
-
-Use "recoverysigner db [command] --help" for more information about a command.
 ```
 
 ## Usage: encryption-tink-keyset
 
-The format of the --encryption-kms-key-uri configuration option should conform to the format stated in [Google Tink](https://github.com/google/tink/blob/040ac621b3e9ff7a240b1e596a423a30d32f9013/docs/KEY-MANAGEMENT.md#key-management-systems).
 ```
 $ recoverysigner encryption-tink-keyset --help
 Run Tink keyset operations
@@ -87,16 +82,10 @@ Usage:
   recoverysigner encryption-tink-keyset [command]
 
 Available Commands:
-  create      Create a new Tink keyset
-  decrypt     Decrypt the Tink keyset specified in encryption-tink-keyset with the KMS key specified in encryption-kms-key-uri
-  encrypt     Encrypt the Tink keyset specified in encryption-tink-keyset with the KMS key specified in encryption-kms-key-uri
-  rotate      Rotate the Tink keyset specified in encryption-tink-keyset by generating a new key, adding it to the keyset, and making it the primary key in the keyset
-
-Flags:
-      --encryption-kms-key-uri string   URI for a remote KMS key used to encrypt Tink keyset (ENCRYPTION_KMS_KEY_URI)
-      --encryption-tink-keyset string   Tink keyset to rotate/encrypt/decrypt (ENCRYPTION_TINK_KEYSET)
-
-Use "recoverysigner encryption-tink-keyset [command] --help" for more information about a command.
+  create      Create a new Tink keyset containing a single key
+  decrypt     Decrypt a Tink keyset
+  encrypt     Encrypt a Tink keyset
+  rotate      Rotate a Tink keyset
 ```
 
 [SEP-30]: https://github.com/stellar/stellar-protocol/blob/600c326b210d71ee031d7f3a40ca88191b4cdf9c/ecosystem/sep-0030.md

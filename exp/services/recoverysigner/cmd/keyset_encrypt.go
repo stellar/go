@@ -23,7 +23,7 @@ func (c *KeysetEncryptCommand) Command() *cobra.Command {
 	configOpts := config.ConfigOptions{
 		{
 			Name:        "encryption-kms-key-uri",
-			Usage:       "URI for a remote KMS key used to encrypt the Tink keyset",
+			Usage:       "URI for a remote KMS key used to encrypt the Tink keyset (format: aws-kms://arn:aws:kms:<region>:<account-id>:key/<key-id>)",
 			OptType:     types.String,
 			ConfigKey:   &c.EncryptionKMSKeyURI,
 			FlagDefault: "",
@@ -31,7 +31,7 @@ func (c *KeysetEncryptCommand) Command() *cobra.Command {
 		},
 		{
 			Name:        "encryption-tink-keyset",
-			Usage:       "Tink keyset to encrypt",
+			Usage:       "Tink keyset in JSON format to be encrypted",
 			OptType:     types.String,
 			ConfigKey:   &c.EncryptionTinkKeysetJSON,
 			FlagDefault: "",
@@ -40,7 +40,8 @@ func (c *KeysetEncryptCommand) Command() *cobra.Command {
 	}
 	cmd := &cobra.Command{
 		Use:   "encrypt",
-		Short: "Encrypt the Tink keyset specified in encryption-tink-keyset with the KMS key specified in encryption-kms-key-uri",
+		Short: "Encrypt a Tink keyset",
+		Long:  "Encrypt a Tink keyset specified in encryption-tink-keyset with the KMS key specified in encryption-kms-key-uri",
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		},
 		Run: func(cmd *cobra.Command, args []string) {
