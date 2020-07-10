@@ -49,13 +49,16 @@ type metaResult struct {
 }
 
 type CaptiveStellarCore struct {
+	executablePath    string
 	networkPassphrase string
 	historyURLs       []string
 
-	// read-ahead buffer
-	stop  chan struct{}
-	wait  sync.WaitGroup
+	// shutdown is a channel that triggers the backend shutdown by the user.
+	shutdown chan struct{}
+	// metaC is a read-ahead buffer.
 	metaC chan metaResult
+	// wait is a waiting group waiting for a read-ahead buffer to return.
+	wait sync.WaitGroup
 
 	stellarCoreRunner stellarCoreRunnerInterface
 	cachedMeta        *xdr.LedgerCloseMeta
@@ -78,10 +81,9 @@ type CaptiveStellarCore struct {
 // Platform-specific pipe setup logic is in the .start() methods.
 func NewCaptive(executablePath, networkPassphrase string, historyURLs []string) *CaptiveStellarCore {
 	return &CaptiveStellarCore{
+		executablePath:    executablePath,
 		networkPassphrase: networkPassphrase,
 		historyURLs:       historyURLs,
-		nextLedger:        0,
-		stellarCoreRunner: newStellarCoreRunner(executablePath, networkPassphrase, historyURLs),
 	}
 }
 
@@ -124,6 +126,7 @@ func (c *CaptiveStellarCore) openOfflineReplaySubprocess(from, to uint32) error 
 		to = latestCheckpointSequence
 	}
 
+	c.stellarCoreRunner = newStellarCoreRunner(c.executablePath, c.networkPassphrase, c.historyURLs)
 	err = c.stellarCoreRunner.catchup(from, to)
 	if err != nil {
 		return errors.Wrap(err, "error running stellar-core")
@@ -137,7 +140,7 @@ func (c *CaptiveStellarCore) openOfflineReplaySubprocess(from, to uint32) error 
 
 	// read-ahead buffer
 	c.metaC = make(chan metaResult, readAheadBufferSize)
-	c.stop = make(chan struct{})
+	c.shutdown = make(chan struct{})
 	c.wait.Add(1)
 	go c.sendLedgerMeta(to)
 	return nil
@@ -172,6 +175,7 @@ func (c *CaptiveStellarCore) openOnlineReplaySubprocess(from uint32) error {
 		)
 	}
 
+	c.stellarCoreRunner = newStellarCoreRunner(c.executablePath, c.networkPassphrase, c.historyURLs)
 	err = c.stellarCoreRunner.runFrom(from)
 	if err != nil {
 		return errors.Wrap(err, "error running stellar-core")
@@ -185,7 +189,7 @@ func (c *CaptiveStellarCore) openOnlineReplaySubprocess(from uint32) error {
 
 	// read-ahead buffer
 	c.metaC = make(chan metaResult, readAheadBufferSize)
-	c.stop = make(chan struct{})
+	c.shutdown = make(chan struct{})
 	c.wait.Add(1)
 	go c.sendLedgerMeta(0)
 	return nil
@@ -199,25 +203,31 @@ func (c *CaptiveStellarCore) sendLedgerMeta(untilSequence uint32) {
 	defer printBufferOccupation.Stop()
 	for {
 		select {
-		case <-c.stop:
+		case <-c.shutdown:
+			return
+		case err := <-c.stellarCoreRunner.getProcessExitChan():
+			if err != nil {
+				err = errors.Wrap(err, "stellar-core process exited with an error")
+			} else {
+				err = errors.New("stellar-core process exited without an error unexpectedly")
+			}
+			// When `GetLedger` sees the error it will close the backend. We shouldn't
+			// close it now because there may be some ledgers in a buffer.
+			c.metaC <- metaResult{nil, err}
 			return
 		case <-printBufferOccupation.C:
 			log.Debug("captive core read-ahead buffer occupation:", len(c.metaC))
 		default:
 		}
+
 		meta, err := c.readLedgerMetaFromPipe()
 		if err != nil {
-			select {
-			case <-c.stop:
-			case c.metaC <- metaResult{nil, err}:
-			}
+			// When `GetLedger` sees the error it will close the backend. We shouldn't
+			// close it now because there may be some ledgers in a buffer.
+			c.metaC <- metaResult{nil, err}
 			return
 		}
-		select {
-		case <-c.stop:
-			return
-		case c.metaC <- metaResult{meta, nil}:
-		}
+		c.metaC <- metaResult{meta, nil}
 
 		if untilSequence != 0 {
 			if meta.LedgerSequence() >= untilSequence {
@@ -271,6 +281,20 @@ func (c *CaptiveStellarCore) PrepareRange(ledgerRange Range) error {
 	}
 
 	for {
+		select {
+		case <-c.shutdown:
+			return nil
+		case err := <-c.stellarCoreRunner.getProcessExitChan():
+			if err != nil {
+				err = errors.Wrap(err, "stellar-core process exited with an error")
+			} else {
+				err = errors.New("stellar-core process exited without an error unexpectedly")
+			}
+			// We close the backend to reset it's state to be able to prepare again.
+			c.Close()
+			return err
+		default:
+		}
 		// Wait for the first ledger
 		if len(c.metaC) > 0 {
 			break
@@ -378,9 +402,10 @@ func (c *CaptiveStellarCore) Close() error {
 	c.nextLedger = 0
 	c.lastLedger = nil
 
-	if c.stop != nil {
-		close(c.stop)
-		// discard pending data in case the goroutine is blocked writing to the channel
+	if c.shutdown != nil {
+		close(c.shutdown)
+		// discard pending data in case the goroutine is blocked writing to the channel,
+		// see: `sendLedgerMeta`.
 		select {
 		case <-c.metaC:
 		default:
@@ -391,9 +416,11 @@ func (c *CaptiveStellarCore) Close() error {
 		close(c.metaC)
 	}
 
-	err := c.stellarCoreRunner.close()
-	if err != nil {
-		return errors.Wrap(err, "error closing stellar-core subprocess")
+	if c.stellarCoreRunner != nil {
+		err := c.stellarCoreRunner.close()
+		if err != nil {
+			return errors.Wrap(err, "error closing stellar-core subprocess")
+		}
 	}
 	return nil
 }

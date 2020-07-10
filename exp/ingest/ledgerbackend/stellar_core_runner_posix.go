@@ -44,6 +44,11 @@ func (c *stellarCoreRunner) start() (io.Reader, error) {
 		return readFile, errors.Wrap(err, "error starting stellar-core")
 	}
 
+	go func() {
+		c.processExit <- c.cmd.Wait()
+		close(c.processExit)
+	}()
+
 	// Do not remove bufio.Reader wrapping. Turns out that each read from a pipe
 	// adds an overhead time so it's better to preload data to a buffer.
 	return bufio.NewReaderSize(readFile, 1024*1024), nil
