@@ -40,7 +40,8 @@ func (c *KeysetDecryptCommand) Command() *cobra.Command {
 	}
 	cmd := &cobra.Command{
 		Use:   "decrypt",
-		Short: "Decrypt the Tink keyset specified in encryption-tink-keyset with the KMS key specified in encryption-kms-key-uri",
+		Short: "Decrypt a Tink keyset",
+		Long:  "Decrypt a Tink keyset specified in encryption-tink-keyset with the KMS key specified in encryption-kms-key-uri",
 		Run: func(cmd *cobra.Command, args []string) {
 			configOpts.Require()
 			configOpts.SetValues()

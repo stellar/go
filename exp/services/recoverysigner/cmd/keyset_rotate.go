@@ -43,7 +43,8 @@ func (c *KeysetRotateCommand) Command() *cobra.Command {
 	}
 	cmd := &cobra.Command{
 		Use:   "rotate",
-		Short: "Rotate the Tink keyset specified in encryption-tink-keyset by generating a new key, adding it to the keyset, and making it the primary key in the keyset",
+		Short: "Rotate a Tink keyset",
+		Long:  "Rotate a Tink keyset specified in encryption-tink-keyset by generating a new key, adding it to the keyset, and making it the primary key in the keyset",
 		Run: func(cmd *cobra.Command, args []string) {
 			configOpts.Require()
 			configOpts.SetValues()

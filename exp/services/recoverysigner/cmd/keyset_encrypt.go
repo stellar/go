@@ -40,7 +40,8 @@ func (c *KeysetEncryptCommand) Command() *cobra.Command {
 	}
 	cmd := &cobra.Command{
 		Use:   "encrypt",
-		Short: "Encrypt the Tink keyset specified in encryption-tink-keyset with the KMS key specified in encryption-kms-key-uri",
+		Short: "Encrypt a Tink keyset",
+		Long:  "Encrypt a Tink keyset specified in encryption-tink-keyset with the KMS key specified in encryption-kms-key-uri",
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		},
 		Run: func(cmd *cobra.Command, args []string) {
