@@ -24,7 +24,7 @@ func (c *KeysetCreateCommand) Command() *cobra.Command {
 	configOpts := config.ConfigOptions{
 		{
 			Name:        "encryption-kms-key-uri",
-			Usage:       "URI for a remote KMS key used to encrypt the Tink keyset",
+			Usage:       "URI for a remote KMS key used to encrypt the Tink keyset (format: aws-kms://arn:aws:kms:<region>:<account-id>:key/<key-id>)",
 			OptType:     types.String,
 			ConfigKey:   &c.EncryptionKMSKeyURI,
 			FlagDefault: "",

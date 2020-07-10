@@ -23,7 +23,7 @@ func (c *KeysetDecryptCommand) Command() *cobra.Command {
 	configOpts := config.ConfigOptions{
 		{
 			Name:        "encryption-kms-key-uri",
-			Usage:       "URI for a remote KMS key used to decrypt the Tink keyset",
+			Usage:       "URI for a remote KMS key used to decrypt the Tink keyset (format: aws-kms://arn:aws:kms:<region>:<account-id>:key/<key-id>)",
 			OptType:     types.String,
 			ConfigKey:   &c.EncryptionKMSKeyURI,
 			FlagDefault: "",
@@ -31,7 +31,7 @@ func (c *KeysetDecryptCommand) Command() *cobra.Command {
 		},
 		{
 			Name:        "encryption-tink-keyset",
-			Usage:       "Tink keyset to decrypt",
+			Usage:       "Tink keyset in JSON format to be decrypted",
 			OptType:     types.String,
 			ConfigKey:   &c.EncryptionTinkKeysetJSON,
 			FlagDefault: "",
@@ -40,7 +40,8 @@ func (c *KeysetDecryptCommand) Command() *cobra.Command {
 	}
 	cmd := &cobra.Command{
 		Use:   "decrypt",
-		Short: "Decrypt the Tink keyset specified in encryption-tink-keyset with the KMS key specified in encryption-kms-key-uri",
+		Short: "Decrypt a Tink keyset",
+		Long:  "Decrypt a Tink keyset specified in encryption-tink-keyset with the KMS key specified in encryption-kms-key-uri.",
 		Run: func(cmd *cobra.Command, args []string) {
 			configOpts.Require()
 			configOpts.SetValues()
