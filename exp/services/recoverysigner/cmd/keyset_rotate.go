@@ -26,7 +26,7 @@ func (c *KeysetRotateCommand) Command() *cobra.Command {
 	configOpts := config.ConfigOptions{
 		{
 			Name:        "encryption-kms-key-uri",
-			Usage:       "URI for a remote KMS key used to decrypt/encrypt Tink keyset during rotation",
+			Usage:       "URI for a remote KMS key used to decrypt/encrypt the Tink keyset (format: aws-kms://arn:aws:kms:<region>:<account-id>:key/<key-id>)",
 			OptType:     types.String,
 			ConfigKey:   &c.EncryptionKMSKeyURI,
 			FlagDefault: "",
@@ -34,7 +34,7 @@ func (c *KeysetRotateCommand) Command() *cobra.Command {
 		},
 		{
 			Name:        "encryption-tink-keyset",
-			Usage:       "Tink keyset to rotate",
+			Usage:       "Tink keyset to rotate in JSON format",
 			OptType:     types.String,
 			ConfigKey:   &c.EncryptionTinkKeysetJSON,
 			FlagDefault: "",
