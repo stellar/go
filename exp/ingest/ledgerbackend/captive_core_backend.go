@@ -72,6 +72,10 @@ type CaptiveStellarCore struct {
 
 	nextLedger uint32  // next ledger expected, error w/ restart if not seen
 	lastLedger *uint32 // end of current segment if offline, nil if online
+
+	processExitMutex sync.Mutex
+	processExit      bool
+	processErr       error
 }
 
 // NewCaptive returns a new CaptiveStellarCore that is not running. Will lazily start a subprocess
@@ -139,6 +143,8 @@ func (c *CaptiveStellarCore) openOfflineReplaySubprocess(from, to uint32) error 
 	c.nextLedger = roundDownToFirstReplayAfterCheckpointStart(from)
 	c.lastLedger = &to
 	c.blocking = true
+	c.processExit = false
+	c.processErr = nil
 
 	// read-ahead buffer
 	c.metaC = make(chan metaResult, readAheadBufferSize)
@@ -190,6 +196,8 @@ func (c *CaptiveStellarCore) openOnlineReplaySubprocess(from uint32) error {
 	c.nextLedger = from
 	c.lastLedger = nil
 	c.blocking = false
+	c.processExit = false
+	c.processErr = nil
 
 	// read-ahead buffer
 	c.metaC = make(chan metaResult, readAheadBufferSize)
@@ -209,17 +217,6 @@ func (c *CaptiveStellarCore) sendLedgerMeta(untilSequence uint32) {
 		select {
 		case <-c.shutdown:
 			return
-		case processErr := <-c.stellarCoreRunner.getProcessExitChan():
-			// First, check if this is an error caused by a process exit.
-			if processErr != nil {
-				processErr = errors.Wrap(processErr, "stellar-core process exited with an error")
-			} else {
-				processErr = errors.New("stellar-core process exited without an error unexpectedly")
-			}
-			// When `GetLedger` sees the error it will close the backend. We shouldn't
-			// close it now because there may be some ledgers in a buffer.
-			c.metaC <- metaResult{nil, processErr}
-			return
 		case <-printBufferOccupation.C:
 			log.Debug("captive core read-ahead buffer occupation:", len(c.metaC))
 		default:
@@ -227,6 +224,20 @@ func (c *CaptiveStellarCore) sendLedgerMeta(untilSequence uint32) {
 
 		meta, err := c.readLedgerMetaFromPipe()
 		if err != nil {
+			select {
+			case processErr := <-c.stellarCoreRunner.getProcessExitChan():
+				// First, check if this is an error caused by a process exit.
+				c.processExitMutex.Lock()
+				c.processExit = true
+				c.processErr = processErr
+				c.processExitMutex.Unlock()
+				if processErr != nil {
+					err = errors.Wrap(processErr, "stellar-core process exited with an error")
+				} else {
+					err = errors.New("stellar-core process exited without an error unexpectedly")
+				}
+			default:
+			}
 			// When `GetLedger` sees the error it will close the backend. We shouldn't
 			// close it now because there may be some ledgers in a buffer.
 			c.metaC <- metaResult{nil, err}
@@ -289,19 +300,23 @@ func (c *CaptiveStellarCore) PrepareRange(ledgerRange Range) error {
 		select {
 		case <-c.shutdown:
 			return nil
-		case err := <-c.stellarCoreRunner.getProcessExitChan():
-			if err != nil {
-				err = errors.Wrap(err, "stellar-core process exited with an error")
-			} else {
-				err = errors.New("stellar-core process exited without an error unexpectedly")
-			}
-			// We close the backend to reset it's state to be able to prepare again.
-			c.Close()
-			return err
 		default:
 		}
-		// Wait for the first ledger
+		// Wait for the first ledger or an error
 		if len(c.metaC) > 0 {
+			// If process exited return an error
+			c.processExitMutex.Lock()
+			if c.processExit {
+				if c.processErr != nil {
+					err = errors.Wrap(c.processErr, "stellar-core process exited with an error")
+				} else {
+					err = errors.New("stellar-core process exited without an error unexpectedly")
+				}
+			}
+			c.processExitMutex.Unlock()
+			if err != nil {
+				return err
+			}
 			break
 		}
 		time.Sleep(time.Second)
