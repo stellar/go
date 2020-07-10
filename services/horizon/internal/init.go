@@ -12,7 +12,6 @@ import (
 	"github.com/stellar/go/services/horizon/internal/expingest"
 	"github.com/stellar/go/services/horizon/internal/simplepath"
 	"github.com/stellar/go/services/horizon/internal/txsub"
-	results "github.com/stellar/go/services/horizon/internal/txsub/results/db"
 	"github.com/stellar/go/services/horizon/internal/txsub/sequence"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/log"
@@ -199,9 +198,8 @@ func initSubmissionSystem(app *App) {
 		Pending:         txsub.NewDefaultSubmissionList(),
 		Submitter:       txsub.NewDefaultSubmitter(http.DefaultClient, app.config.StellarCoreURL),
 		SubmissionQueue: sequence.NewManager(),
-		Results: &results.DB{
-			History: &history.Q{Session: app.HorizonSession(context.Background())},
+		DB: func(ctx context.Context) txsub.HorizonDB {
+			return &history.Q{Session: app.HorizonSession(ctx)}
 		},
-		Sequences: &history.Q{Session: app.HorizonSession(context.Background())},
 	}
 }
