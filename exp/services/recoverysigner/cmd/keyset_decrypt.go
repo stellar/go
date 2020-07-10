@@ -31,7 +31,7 @@ func (c *KeysetDecryptCommand) Command() *cobra.Command {
 		},
 		{
 			Name:        "encryption-tink-keyset",
-			Usage:       "Tink keyset to decrypt in JSON format",
+			Usage:       "Tink keyset in JSON format to be decrypted",
 			OptType:     types.String,
 			ConfigKey:   &c.EncryptionTinkKeysetJSON,
 			FlagDefault: "",

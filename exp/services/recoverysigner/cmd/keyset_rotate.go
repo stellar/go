@@ -34,7 +34,7 @@ func (c *KeysetRotateCommand) Command() *cobra.Command {
 		},
 		{
 			Name:        "encryption-tink-keyset",
-			Usage:       "Tink keyset to rotate in JSON format",
+			Usage:       "Tink keyset in JSON format to be rotated",
 			OptType:     types.String,
 			ConfigKey:   &c.EncryptionTinkKeysetJSON,
 			FlagDefault: "",
