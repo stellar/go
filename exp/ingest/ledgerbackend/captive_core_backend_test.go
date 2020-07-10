@@ -34,6 +34,11 @@ func (m *stellarCoreRunnerMock) getMetaPipe() io.Reader {
 	return a.Get(0).(io.Reader)
 }
 
+func (m *stellarCoreRunnerMock) getProcessExitChan() chan error {
+	a := m.Called()
+	return a.Get(0).(chan error)
+}
+
 func (m *stellarCoreRunnerMock) close() error {
 	a := m.Called()
 	return a.Error(0)
@@ -106,13 +111,10 @@ func TestCaptiveNew(t *testing.T) {
 		historyURLs,
 	)
 
+	assert.Equal(t, executablePath, captiveStellarCore.executablePath)
 	assert.Equal(t, networkPassphrase, captiveStellarCore.networkPassphrase)
 	assert.Equal(t, historyURLs, captiveStellarCore.historyURLs)
 	assert.Equal(t, uint32(0), captiveStellarCore.nextLedger)
-
-	assert.Equal(t, executablePath, captiveStellarCore.stellarCoreRunner.(*stellarCoreRunner).executablePath)
-	assert.Equal(t, networkPassphrase, captiveStellarCore.stellarCoreRunner.(*stellarCoreRunner).networkPassphrase)
-	assert.Equal(t, historyURLs, captiveStellarCore.stellarCoreRunner.(*stellarCoreRunner).historyURLs)
 }
 
 func TestCaptivePrepareRange(t *testing.T) {
@@ -126,6 +128,7 @@ func TestCaptivePrepareRange(t *testing.T) {
 
 	mockRunner := &stellarCoreRunnerMock{}
 	mockRunner.On("catchup", uint32(100), uint32(200)).Return(nil).Once()
+	mockRunner.On("getProcessExitChan").Return(make(chan error))
 	mockRunner.On("getMetaPipe").Return(&buf)
 	mockRunner.On("close").Return(nil).Once()
 
@@ -151,6 +154,7 @@ func TestGetLatestLedgerSequence(t *testing.T) {
 	mockRunner := &stellarCoreRunnerMock{}
 	mockRunner.On("runFrom", uint32(64)).Return(nil).Once()
 	mockRunner.On("getMetaPipe").Return(&buf)
+	mockRunner.On("getProcessExitChan").Return(make(chan error))
 	mockRunner.On("close").Return(nil).Once()
 
 	captiveBackend := CaptiveStellarCore{
@@ -202,6 +206,7 @@ func TestGetLedgerBoundsCheck(t *testing.T) {
 	mockRunner := &stellarCoreRunnerMock{}
 	mockRunner.On("catchup", uint32(128), uint32(130)).Return(nil).Once()
 	mockRunner.On("getMetaPipe").Return(&buf)
+	mockRunner.On("getProcessExitChan").Return(make(chan error))
 	mockRunner.On("close").Return(nil).Once()
 
 	captiveBackend := CaptiveStellarCore{

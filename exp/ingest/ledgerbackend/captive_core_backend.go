@@ -126,7 +126,9 @@ func (c *CaptiveStellarCore) openOfflineReplaySubprocess(from, to uint32) error 
 		to = latestCheckpointSequence
 	}
 
-	c.stellarCoreRunner = newStellarCoreRunner(c.executablePath, c.networkPassphrase, c.historyURLs)
+	if c.stellarCoreRunner == nil {
+		c.stellarCoreRunner = newStellarCoreRunner(c.executablePath, c.networkPassphrase, c.historyURLs)
+	}
 	err = c.stellarCoreRunner.catchup(from, to)
 	if err != nil {
 		return errors.Wrap(err, "error running stellar-core")
@@ -175,7 +177,9 @@ func (c *CaptiveStellarCore) openOnlineReplaySubprocess(from uint32) error {
 		)
 	}
 
-	c.stellarCoreRunner = newStellarCoreRunner(c.executablePath, c.networkPassphrase, c.historyURLs)
+	if c.stellarCoreRunner == nil {
+		c.stellarCoreRunner = newStellarCoreRunner(c.executablePath, c.networkPassphrase, c.historyURLs)
+	}
 	err = c.stellarCoreRunner.runFrom(from)
 	if err != nil {
 		return errors.Wrap(err, "error running stellar-core")
