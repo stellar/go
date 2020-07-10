@@ -6,6 +6,7 @@ import (
 	"io"
 	"testing"
 
+	"github.com/pkg/errors"
 	"github.com/stellar/go/network"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
@@ -34,7 +35,7 @@ func (m *stellarCoreRunnerMock) getMetaPipe() io.Reader {
 	return a.Get(0).(io.Reader)
 }
 
-func (m *stellarCoreRunnerMock) getProcessExitChan() chan error {
+func (m *stellarCoreRunnerMock) getProcessExitChan() <-chan error {
 	a := m.Called()
 	return a.Get(0).(chan error)
 }
@@ -142,6 +143,50 @@ func TestCaptivePrepareRange(t *testing.T) {
 	assert.NoError(t, err)
 	err = captiveBackend.Close()
 	assert.NoError(t, err)
+}
+
+func TestCaptivePrepareRangeCrash(t *testing.T) {
+	var buf bytes.Buffer
+
+	ch := make(chan error, 1) // we use buffered channel in tests only
+	ch <- errors.New("exit code -1")
+	mockRunner := &stellarCoreRunnerMock{}
+	mockRunner.On("catchup", uint32(100), uint32(200)).Return(nil).Once()
+	mockRunner.On("getProcessExitChan").Return(ch)
+	mockRunner.On("getMetaPipe").Return(&buf)
+	mockRunner.On("close").Return(nil).Once()
+
+	captiveBackend := CaptiveStellarCore{
+		networkPassphrase: network.PublicNetworkPassphrase,
+		historyURLs:       []string{"http://history.stellar.org/prd/core-live/core_live_001"},
+		stellarCoreRunner: mockRunner,
+	}
+
+	err := captiveBackend.PrepareRange(BoundedRange(100, 200))
+	assert.Error(t, err)
+	assert.EqualError(t, err, "stellar-core process exited with an error: exit code -1")
+}
+
+func TestCaptivePrepareRangeTerrminated(t *testing.T) {
+	var buf bytes.Buffer
+
+	ch := make(chan error, 1) // we use buffered channel in tests only
+	ch <- nil
+	mockRunner := &stellarCoreRunnerMock{}
+	mockRunner.On("catchup", uint32(100), uint32(200)).Return(nil).Once()
+	mockRunner.On("getProcessExitChan").Return(ch)
+	mockRunner.On("getMetaPipe").Return(&buf)
+	mockRunner.On("close").Return(nil).Once()
+
+	captiveBackend := CaptiveStellarCore{
+		networkPassphrase: network.PublicNetworkPassphrase,
+		historyURLs:       []string{"http://history.stellar.org/prd/core-live/core_live_001"},
+		stellarCoreRunner: mockRunner,
+	}
+
+	err := captiveBackend.PrepareRange(BoundedRange(100, 200))
+	assert.Error(t, err)
+	assert.EqualError(t, err, "stellar-core process exited without an error unexpectedly")
 }
 
 func TestGetLatestLedgerSequence(t *testing.T) {

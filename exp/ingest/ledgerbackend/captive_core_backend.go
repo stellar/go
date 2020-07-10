@@ -209,15 +209,16 @@ func (c *CaptiveStellarCore) sendLedgerMeta(untilSequence uint32) {
 		select {
 		case <-c.shutdown:
 			return
-		case err := <-c.stellarCoreRunner.getProcessExitChan():
-			if err != nil {
-				err = errors.Wrap(err, "stellar-core process exited with an error")
+		case processErr := <-c.stellarCoreRunner.getProcessExitChan():
+			// First, check if this is an error caused by a process exit.
+			if processErr != nil {
+				processErr = errors.Wrap(processErr, "stellar-core process exited with an error")
 			} else {
-				err = errors.New("stellar-core process exited without an error unexpectedly")
+				processErr = errors.New("stellar-core process exited without an error unexpectedly")
 			}
 			// When `GetLedger` sees the error it will close the backend. We shouldn't
 			// close it now because there may be some ledgers in a buffer.
-			c.metaC <- metaResult{nil, err}
+			c.metaC <- metaResult{nil, processErr}
 			return
 		case <-printBufferOccupation.C:
 			log.Debug("captive core read-ahead buffer occupation:", len(c.metaC))

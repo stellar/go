@@ -20,7 +20,7 @@ type stellarCoreRunnerInterface interface {
 	catchup(from, to uint32) error
 	runFrom(from uint32) error
 	getMetaPipe() io.Reader
-	getProcessExitChan() chan error
+	getProcessExitChan() <-chan error
 	close() error
 }
 
@@ -217,7 +217,7 @@ func (r *stellarCoreRunner) getMetaPipe() io.Reader {
 	return r.metaPipe
 }
 
-func (r *stellarCoreRunner) getProcessExitChan() chan error {
+func (r *stellarCoreRunner) getProcessExitChan() <-chan error {
 	return r.processExit
 }
 
