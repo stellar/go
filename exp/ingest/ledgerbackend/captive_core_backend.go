@@ -286,12 +286,19 @@ func (c *CaptiveStellarCore) IsPrepared(ledgerRange Range) bool {
 		return false
 	}
 
+	if c.lastLedger == nil {
+		return c.nextLedger <= ledgerRange.from
+	}
+
+	// c.lastLedger != nil: current range is bounded
+
 	if ledgerRange.bounded {
 		return c.nextLedger <= ledgerRange.from &&
 			c.nextLedger <= *c.lastLedger
 	}
 
-	return c.nextLedger <= ledgerRange.from
+	// Requested range is unbounded but current one is bounded
+	return false
 }
 
 // GetLedger returns true when ledger is found and it's LedgerCloseMeta.
