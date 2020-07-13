@@ -52,11 +52,7 @@ func newSampleChangeReader(output string, size int) (*sampleChangeReader, error)
 		return nil, err
 	}
 
-	inner, err := historyAdapter.GetState(
-		context.Background(),
-		checkpointLedger,
-		io.MaxStreamRetries(3),
-	)
+	inner, err := historyAdapter.GetState(context.Background(), checkpointLedger)
 	if err != nil {
 		return nil, err
 	}
