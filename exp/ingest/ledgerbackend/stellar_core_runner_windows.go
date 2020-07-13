@@ -35,6 +35,11 @@ func (c *stellarCoreRunner) start() (io.Reader, error) {
 		return io.Reader(nil), err
 	}
 
+	go func() {
+		c.processExit <- c.cmd.Wait()
+		close(c.processExit)
+	}()
+
 	// Then accept on the server end.
 	connection, err := listener.Accept()
 	if err != nil {

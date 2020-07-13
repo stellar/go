@@ -20,6 +20,7 @@ type stellarCoreRunnerInterface interface {
 	catchup(from, to uint32) error
 	runFrom(from uint32) error
 	getMetaPipe() io.Reader
+	getProcessExitChan() <-chan error
 	close() error
 }
 
@@ -28,10 +29,13 @@ type stellarCoreRunner struct {
 	networkPassphrase string
 	historyURLs       []string
 
-	cmd      *exec.Cmd
-	metaPipe io.Reader
-	tempDir  string
-	nonce    string
+	cmd *exec.Cmd
+	// processExit channel receives an error when the process exited with an error
+	// or nil if the process exited without an error.
+	processExit chan error
+	metaPipe    io.Reader
+	tempDir     string
+	nonce       string
 }
 
 func newStellarCoreRunner(executablePath, networkPassphrase string, historyURLs []string) *stellarCoreRunner {
@@ -40,6 +44,7 @@ func newStellarCoreRunner(executablePath, networkPassphrase string, historyURLs 
 		executablePath:    executablePath,
 		networkPassphrase: networkPassphrase,
 		historyURLs:       historyURLs,
+		processExit:       make(chan error),
 		nonce:             fmt.Sprintf("captive-stellar-core-%x", r.Uint64()),
 	}
 }
@@ -216,6 +221,10 @@ func (r *stellarCoreRunner) runFrom(from uint32) error {
 
 func (r *stellarCoreRunner) getMetaPipe() io.Reader {
 	return r.metaPipe
+}
+
+func (r *stellarCoreRunner) getProcessExitChan() <-chan error {
+	return r.processExit
 }
 
 func (r *stellarCoreRunner) close() error {

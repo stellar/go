@@ -43,6 +43,11 @@ func (c *stellarCoreRunner) start() (io.Reader, error) {
 		return readFile, errors.Wrap(err, "error starting stellar-core")
 	}
 
+	go func() {
+		c.processExit <- c.cmd.Wait()
+		close(c.processExit)
+	}()
+
 	return readFile, nil
 }
 
