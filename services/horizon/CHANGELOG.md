@@ -11,6 +11,7 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).x
   The following config parameters were removed:
   - `core-db-max-open-connections`
   - `core-db-max-idle-connections`
+* HAL response population is implemented using Go `strings` package instead of `regexp`, improving its performance.  
 
 ## v1.5.0
 
