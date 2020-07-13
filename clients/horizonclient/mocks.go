@@ -211,6 +211,12 @@ func (m *MockClient) Root() (hProtocol.Root, error) {
 	return a.Get(0).(hProtocol.Root), a.Error(1)
 }
 
+// NextAccountsPage is a mocking method
+func (m *MockClient) NextAccountsPage(page hProtocol.AccountsPage) (hProtocol.AccountsPage, error) {
+	a := m.Called(page)
+	return a.Get(0).(hProtocol.AccountsPage), a.Error(1)
+}
+
 // NextAssetsPage is a mocking method
 func (m *MockClient) NextAssetsPage(page hProtocol.AssetsPage) (hProtocol.AssetsPage, error) {
 	a := m.Called(page)

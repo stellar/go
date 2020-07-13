@@ -187,6 +187,7 @@ type ClientInterface interface {
 	StreamLedgers(ctx context.Context, request LedgerRequest, handler LedgerHandler) error
 	StreamOrderBooks(ctx context.Context, request OrderBookRequest, handler OrderBookHandler) error
 	Root() (hProtocol.Root, error)
+	NextAccountsPage(hProtocol.AccountsPage) (hProtocol.AccountsPage, error)
 	NextAssetsPage(hProtocol.AssetsPage) (hProtocol.AssetsPage, error)
 	PrevAssetsPage(hProtocol.AssetsPage) (hProtocol.AssetsPage, error)
 	NextLedgersPage(hProtocol.LedgersPage) (hProtocol.LedgersPage, error)
