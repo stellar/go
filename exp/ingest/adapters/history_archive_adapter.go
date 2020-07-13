@@ -17,9 +17,7 @@ type HistoryArchiveAdapter struct {
 type HistoryArchiveAdapterInterface interface {
 	GetLatestLedgerSequence() (uint32, error)
 	BucketListHash(sequence uint32) (xdr.Hash, error)
-	GetState(
-		ctx context.Context, sequence uint32, opts ...interface{},
-	) (io.ChangeReader, error)
+	GetState(ctx context.Context, sequence uint32) (io.ChangeReader, error)
 }
 
 // MakeHistoryArchiveAdapter is a factory method to make a HistoryArchiveAdapter
@@ -59,9 +57,7 @@ func (haa *HistoryArchiveAdapter) BucketListHash(sequence uint32) (xdr.Hash, err
 // GetState returns a reader with the state of the ledger at the provided sequence number.
 // Passing `io.MaxStreamRetries` option determines how many times the reader will retry
 // when errors while streaming xdr bucket entries from the history archive (default=3).
-func (haa *HistoryArchiveAdapter) GetState(
-	ctx context.Context, sequence uint32, opts ...interface{},
-) (io.ChangeReader, error) {
+func (haa *HistoryArchiveAdapter) GetState(ctx context.Context, sequence uint32) (io.ChangeReader, error) {
 	exists, err := haa.archive.CategoryCheckpointExists("history", sequence)
 	if err != nil {
 		return nil, errors.Wrap(err, "error checking if category checkpoint exists")
@@ -70,7 +66,7 @@ func (haa *HistoryArchiveAdapter) GetState(
 		return nil, errors.Errorf("history checkpoint does not exist for ledger %d", sequence)
 	}
 
-	sr, e := io.MakeSingleLedgerStateReader(ctx, haa.archive, sequence, opts...)
+	sr, e := io.MakeSingleLedgerStateReader(ctx, haa.archive, sequence)
 	if e != nil {
 		return nil, errors.Wrap(e, "could not make memory state reader")
 	}

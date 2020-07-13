@@ -33,9 +33,6 @@ type SingleLedgerStateReader struct {
 	streamOnce sync.Once
 	closeOnce  sync.Once
 	done       chan bool
-	// how many times should we retry when there are errors in
-	// the xdr stream returned by GetXdrStreamForHash()
-	maxStreamRetries int
 
 	// This should be set to true in tests only
 	disableBucketListHashValidation bool
@@ -62,7 +59,10 @@ type tempSet interface {
 }
 
 const (
-	msrBufferSize = 50000
+	// maxStreamRetries defines how many times should we retry when there are errors in
+	// the xdr stream returned by GetXdrStreamForHash().
+	maxStreamRetries = 3
+	msrBufferSize    = 50000
 
 	// preloadedEntries defines a number of bucket entries to preload from a
 	// bucket in a single run. This is done to allow preloading keys from
@@ -71,9 +71,6 @@ const (
 
 	sleepDuration = time.Second
 )
-
-// MaxStreamRetries is an option used in MakeSingleLedgerStateReader.
-type MaxStreamRetries int
 
 // MakeSingleLedgerStateReader is a factory method for SingleLedgerStateReader.
 // Passing `MaxStreamRetries` option determines how many times the reader will retry
@@ -95,28 +92,17 @@ func MakeSingleLedgerStateReader(
 		return nil, errors.Wrap(err, "unable to get open temp store")
 	}
 
-	maxStreamRetries := 3
-	for _, opt := range opts {
-		switch opt := opt.(type) {
-		case MaxStreamRetries:
-			maxStreamRetries = int(opt)
-		default:
-			return nil, errors.Errorf("unknown option: %T %v", opt, opt)
-		}
-	}
-
 	return &SingleLedgerStateReader{
-		ctx:              ctx,
-		has:              &has,
-		archive:          archive,
-		tempStore:        tempStore,
-		sequence:         sequence,
-		readChan:         make(chan readResult, msrBufferSize),
-		streamOnce:       sync.Once{},
-		closeOnce:        sync.Once{},
-		done:             make(chan bool),
-		maxStreamRetries: maxStreamRetries,
-		sleep:            time.Sleep,
+		ctx:        ctx,
+		has:        &has,
+		archive:    archive,
+		tempStore:  tempStore,
+		sequence:   sequence,
+		readChan:   make(chan readResult, msrBufferSize),
+		streamOnce: sync.Once{},
+		closeOnce:  sync.Once{},
+		done:       make(chan bool),
+		sleep:      time.Sleep,
 	}, nil
 }
 
@@ -129,7 +115,7 @@ func (msr *SingleLedgerStateReader) bucketExists(hash historyarchive.Hash) (bool
 		if err == nil {
 			return exists, nil
 		}
-		if attempts >= msr.maxStreamRetries {
+		if attempts >= maxStreamRetries {
 			break
 		}
 		msr.sleep(duration)
@@ -236,7 +222,7 @@ func (msr *SingleLedgerStateReader) readBucketEntry(stream *historyarchive.XdrSt
 				break
 			}
 		}
-		if attempts >= msr.maxStreamRetries {
+		if attempts >= maxStreamRetries {
 			break
 		}
 
