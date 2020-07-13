@@ -52,6 +52,7 @@ type CaptiveStellarCore struct {
 	executablePath    string
 	networkPassphrase string
 	historyURLs       []string
+	archive           historyarchive.ArchiveInterface
 
 	// shutdown is a channel that triggers the backend shutdown by the user.
 	shutdown chan struct{}
@@ -83,30 +84,32 @@ type CaptiveStellarCore struct {
 // and restart the subprocess if subsequent calls to .GetLedger() are discontiguous.
 //
 // Platform-specific pipe setup logic is in the .start() methods.
-func NewCaptive(executablePath, networkPassphrase string, historyURLs []string) *CaptiveStellarCore {
+func NewCaptive(executablePath, networkPassphrase string, historyURLs []string) (*CaptiveStellarCore, error) {
+	archive, err := historyarchive.Connect(
+		historyURLs[0],
+		historyarchive.ConnectOptions{},
+	)
+	if err != nil {
+		return nil, errors.Wrap(err, "error connecting to history archive")
+	}
+
 	return &CaptiveStellarCore{
 		executablePath:    executablePath,
 		networkPassphrase: networkPassphrase,
 		historyURLs:       historyURLs,
-	}
+		archive:           archive,
+		nextLedger:        0,
+		stellarCoreRunner: newStellarCoreRunner(executablePath, networkPassphrase, historyURLs),
+	}, nil
 }
 
 func (c *CaptiveStellarCore) getLatestCheckpointSequence() (uint32, error) {
-	archive, err := historyarchive.Connect(
-		c.historyURLs[0],
-		historyarchive.ConnectOptions{},
-	)
-	if err != nil {
-		return 0, errors.Wrap(err, "error connecting to history archive")
-	}
-
-	has, err := archive.GetRootHAS()
+	has, err := c.archive.GetRootHAS()
 	if err != nil {
 		return 0, errors.Wrap(err, "error getting root HAS")
 	}
 
 	return has.CurrentLedger, nil
-
 }
 
 func (c *CaptiveStellarCore) openOfflineReplaySubprocess(from, to uint32) error {
