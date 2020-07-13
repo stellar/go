@@ -69,6 +69,10 @@ type CaptiveStellarCore struct {
 
 	nextLedger uint32  // next ledger expected, error w/ restart if not seen
 	lastLedger *uint32 // end of current segment if offline, nil if online
+
+	// waitIntervalPrepareRange defines a time to wait between checking if the buffer
+	// is empty. Default 1s, lower in tests to make them faster.
+	waitIntervalPrepareRange time.Duration
 }
 
 // NewCaptive returns a new CaptiveStellarCore that is not running. Will lazily start a subprocess
@@ -86,10 +90,11 @@ func NewCaptive(executablePath, networkPassphrase string, historyURLs []string) 
 	}
 
 	return &CaptiveStellarCore{
-		archive:           archive,
-		networkPassphrase: networkPassphrase,
-		nextLedger:        0,
-		stellarCoreRunner: newStellarCoreRunner(executablePath, networkPassphrase, historyURLs),
+		archive:                  archive,
+		networkPassphrase:        networkPassphrase,
+		nextLedger:               0,
+		stellarCoreRunner:        newStellarCoreRunner(executablePath, networkPassphrase, historyURLs),
+		waitIntervalPrepareRange: time.Second,
 	}, nil
 }
 
@@ -274,7 +279,7 @@ func (c *CaptiveStellarCore) PrepareRange(ledgerRange Range) error {
 		if len(c.metaC) > 0 {
 			break
 		}
-		time.Sleep(time.Second)
+		time.Sleep(c.waitIntervalPrepareRange)
 	}
 
 	return nil
