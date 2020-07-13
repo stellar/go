@@ -42,7 +42,7 @@ func (m *stellarCoreRunnerMock) close() error {
 	return a.Error(0)
 }
 
-func writeLedgerHeader(w io.Writer, sequence uint32) {
+func buildLedgerCloseMeta(sequence uint32) xdr.LedgerCloseMeta {
 	opResults := []xdr.OperationResult{}
 	opMeta := []xdr.OperationMeta{}
 
@@ -51,7 +51,7 @@ func writeLedgerHeader(w io.Writer, sequence uint32) {
 	copy(hash[:], tmpHash)
 
 	source := xdr.MustAddress("GAEJJMDDCRYF752PKIJICUVL7MROJBNXDV2ZB455T7BAFHU2LCLSE2LW")
-	ledgerCloseMeta := xdr.LedgerCloseMeta{
+	return xdr.LedgerCloseMeta{
 		V: 0,
 		V0: &xdr.LedgerCloseMetaV0{
 			LedgerHeader: xdr.LedgerHeaderHistoryEntry{
@@ -92,7 +92,10 @@ func writeLedgerHeader(w io.Writer, sequence uint32) {
 		},
 	}
 
-	err := xdr.MarshalFramed(w, ledgerCloseMeta)
+}
+
+func writeLedgerHeader(w io.Writer, sequence uint32) {
+	err := xdr.MarshalFramed(w, buildLedgerCloseMeta(sequence))
 	if err != nil {
 		panic(err)
 	}
@@ -437,6 +440,162 @@ func TestGetLatestLedgerSequence(t *testing.T) {
 
 	err = captiveBackend.Close()
 	assert.NoError(t, err)
+}
+func TestCaptiveGetLedger(t *testing.T) {
+	tt := assert.New(t)
+	var buf bytes.Buffer
+	for i := 64; i <= 66; i++ {
+		writeLedgerHeader(&buf, uint32(i))
+	}
+
+	mockRunner := &stellarCoreRunnerMock{}
+	mockRunner.On("catchup", uint32(65), uint32(66)).Return(nil)
+	mockRunner.On("getMetaPipe").Return(&buf)
+	mockRunner.On("close").Return(nil)
+
+	mockArchive := &historyarchive.MockArchive{}
+	mockArchive.
+		On("GetRootHAS").
+		Return(historyarchive.HistoryArchiveState{
+			CurrentLedger: uint32(200),
+		}, nil)
+
+	captiveBackend := CaptiveStellarCore{
+		archive:           mockArchive,
+		networkPassphrase: network.PublicNetworkPassphrase,
+		stellarCoreRunner: mockRunner,
+	}
+
+	// requires PrepareRange
+	_, _, err := captiveBackend.GetLedger(64)
+	tt.EqualError(err, "session is closed, call PrepareRange first")
+
+	err = captiveBackend.PrepareRange(BoundedRange(65, 66))
+	assert.NoError(t, err)
+
+	// reads value from buffer
+	found, meta, err := captiveBackend.GetLedger(64)
+	tt.NoError(err)
+	tt.True(found)
+	tt.Equal(xdr.Uint32(64), meta.V0.LedgerHeader.Header.LedgerSeq)
+
+	// advance to next sequence number
+	tt.Equal(uint32(65), captiveBackend.nextLedger)
+
+	// reads value from cachedMeta
+	_, cachedMeta, err := captiveBackend.GetLedger(64)
+	tt.NoError(err)
+	tt.Equal(meta, cachedMeta)
+
+	// next sequence number didn't get consumed
+	tt.Equal(uint32(65), captiveBackend.nextLedger)
+
+	_, _, err = captiveBackend.GetLedger(66)
+	tt.NoError(err)
+
+	// closes after last ledger is consumed
+	tt.True(captiveBackend.isClosed())
+
+	// we should be able to call last ledger even after get ledger is closed
+	_, _, err = captiveBackend.GetLedger(66)
+	tt.NoError(err)
+}
+
+func TestCaptiveGetLedger_NextLedgerIsDifferentToLedgerFromBuffer(t *testing.T) {
+	tt := assert.New(t)
+	var buf bytes.Buffer
+	for i := 64; i <= 65; i++ {
+		writeLedgerHeader(&buf, uint32(i))
+	}
+
+	writeLedgerHeader(&buf, uint32(68))
+
+	mockRunner := &stellarCoreRunnerMock{}
+	mockRunner.On("catchup", uint32(65), uint32(66)).Return(nil)
+	mockRunner.On("getMetaPipe").Return(&buf)
+	mockRunner.On("close").Return(nil)
+
+	mockArchive := &historyarchive.MockArchive{}
+	mockArchive.
+		On("GetRootHAS").
+		Return(historyarchive.HistoryArchiveState{
+			CurrentLedger: uint32(200),
+		}, nil)
+
+	captiveBackend := CaptiveStellarCore{
+		archive:           mockArchive,
+		networkPassphrase: network.PublicNetworkPassphrase,
+		stellarCoreRunner: mockRunner,
+	}
+
+	err := captiveBackend.PrepareRange(BoundedRange(65, 66))
+	assert.NoError(t, err)
+
+	_, _, err = captiveBackend.GetLedger(66)
+	tt.EqualError(err, "unexpected ledger (expected=66 actual=68)")
+}
+func TestCaptiveGetLedger_ErrReadingMetaResult(t *testing.T) {
+	tt := assert.New(t)
+	var buf bytes.Buffer
+
+	mockRunner := &stellarCoreRunnerMock{}
+	mockRunner.On("catchup", uint32(65), uint32(66)).Return(nil)
+	mockRunner.On("getMetaPipe").Return(&buf)
+	mockRunner.On("close").Return(nil)
+
+	mockArchive := &historyarchive.MockArchive{}
+	mockArchive.
+		On("GetRootHAS").
+		Return(historyarchive.HistoryArchiveState{
+			CurrentLedger: uint32(200),
+		}, nil)
+
+	captiveBackend := CaptiveStellarCore{
+		archive:           mockArchive,
+		networkPassphrase: network.PublicNetworkPassphrase,
+		stellarCoreRunner: mockRunner,
+	}
+
+	err := captiveBackend.PrepareRange(BoundedRange(65, 66))
+	assert.NoError(t, err)
+
+	// try reading from an empty buffer
+	_, _, err = captiveBackend.GetLedger(64)
+	tt.EqualError(err, "unmarshalling framed LedgerCloseMeta: unmarshalling XDR frame header: xdr:DecodeUint: EOF while decoding 4 bytes - read: '[]'")
+
+	// closes if there is an error getting ledger
+	tt.True(captiveBackend.isClosed())
+}
+func TestCaptiveGetLedger_ErrClosingAfterLastLedger(t *testing.T) {
+	tt := assert.New(t)
+	var buf bytes.Buffer
+	for i := 64; i <= 66; i++ {
+		writeLedgerHeader(&buf, uint32(i))
+	}
+
+	mockRunner := &stellarCoreRunnerMock{}
+	mockRunner.On("catchup", uint32(65), uint32(66)).Return(nil)
+	mockRunner.On("getMetaPipe").Return(&buf)
+	mockRunner.On("close").Return(fmt.Errorf("transient error"))
+
+	mockArchive := &historyarchive.MockArchive{}
+	mockArchive.
+		On("GetRootHAS").
+		Return(historyarchive.HistoryArchiveState{
+			CurrentLedger: uint32(200),
+		}, nil)
+
+	captiveBackend := CaptiveStellarCore{
+		archive:           mockArchive,
+		networkPassphrase: network.PublicNetworkPassphrase,
+		stellarCoreRunner: mockRunner,
+	}
+
+	err := captiveBackend.PrepareRange(BoundedRange(65, 66))
+	assert.NoError(t, err)
+
+	_, _, err = captiveBackend.GetLedger(66)
+	tt.EqualError(err, "error closing session: error closing stellar-core subprocess: transient error")
 }
 
 func waitForBufferToFill(captiveBackend *CaptiveStellarCore) {
