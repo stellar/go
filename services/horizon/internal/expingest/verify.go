@@ -117,11 +117,7 @@ func (s *System) verifyState(verifyAgainstLatestCheckpoint bool) error {
 
 	localLog.Info("Creating state reader...")
 
-	stateReader, err := s.historyAdapter.GetState(
-		s.ctx,
-		ledgerSequence,
-		s.config.MaxStreamRetries,
-	)
+	stateReader, err := s.historyAdapter.GetState(s.ctx, ledgerSequence)
 	if err != nil {
 		return errors.Wrap(err, "Error running GetState")
 	}

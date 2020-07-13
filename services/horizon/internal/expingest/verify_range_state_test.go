@@ -222,7 +222,7 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 	mockChangeReader.On("Read").Return(offerChange, nil).Once()
 	mockChangeReader.On("Read").Return(ingestio.Change{}, io.EOF).Once()
 	mockChangeReader.On("Read").Return(ingestio.Change{}, io.EOF).Once()
-	s.historyAdapter.On("GetState", nil, uint32(63), 0).Return(mockChangeReader, nil).Once()
+	s.historyAdapter.On("GetState", nil, uint32(63)).Return(mockChangeReader, nil).Once()
 	mockAccount := history.AccountEntry{
 		AccountID:          mockAccountID,
 		Balance:            600,

@@ -17,7 +17,7 @@ func TestGetState_Read(t *testing.T) {
 	}
 	haa := MakeHistoryArchiveAdapter(archive)
 
-	sr, e := haa.GetState(context.Background(), 21686847, 0)
+	sr, e := haa.GetState(context.Background(), 21686847)
 	if !assert.NoError(t, e) {
 		return
 	}

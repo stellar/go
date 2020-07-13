@@ -61,11 +61,6 @@ type Config struct {
 	HistorySession           *db.Session
 	HistoryArchiveURL        string
 	DisableStateVerification bool
-
-	// MaxStreamRetries determines how many times the reader will retry when encountering
-	// errors while streaming xdr bucket entries from the history archive.
-	// Set MaxStreamRetries to 0 if there should be no retry attempts
-	MaxStreamRetries int
 }
 
 const (
@@ -108,8 +103,7 @@ type System struct {
 
 	stellarCoreClient stellarCoreClient
 
-	maxStreamRetries int
-	wg               sync.WaitGroup
+	wg sync.WaitGroup
 
 	// stateVerificationRunning is true when verification routine is currently
 	// running.
@@ -165,7 +159,6 @@ func NewSystem(config Config) (*System, error) {
 		config:                   config,
 		historyQ:                 historyQ,
 		disableStateVerification: config.DisableStateVerification,
-		maxStreamRetries:         config.MaxStreamRetries,
 		stellarCoreClient: &stellarcore.Client{
 			URL: config.StellarCoreURL,
 		},

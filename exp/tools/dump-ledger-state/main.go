@@ -18,8 +18,6 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-const maxStreamRetries = 3
-
 // csvMap maintains a mapping from ledger entry type to csv file
 type csvMap struct {
 	files   map[xdr.LedgerEntryType]*os.File
@@ -231,7 +229,6 @@ func main() {
 		context.Background(),
 		archive,
 		uint32(ledgerSequence),
-		maxStreamRetries,
 	)
 	if err != nil {
 		log.WithField("err", err).Fatal("cannot construct change reader")

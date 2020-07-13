@@ -88,7 +88,6 @@ func initExpIngester(app *App) {
 		HistoryArchiveURL:        app.config.HistoryArchiveURLs[0],
 		StellarCoreURL:           app.config.StellarCoreURL,
 		StellarCoreCursor:        app.config.CursorName,
-		MaxStreamRetries:         3,
 		DisableStateVerification: app.config.IngestDisableStateVerification,
 	})
 	if err != nil {
