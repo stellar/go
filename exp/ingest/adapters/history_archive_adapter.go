@@ -55,8 +55,6 @@ func (haa *HistoryArchiveAdapter) BucketListHash(sequence uint32) (xdr.Hash, err
 }
 
 // GetState returns a reader with the state of the ledger at the provided sequence number.
-// Passing `io.MaxStreamRetries` option determines how many times the reader will retry
-// when errors while streaming xdr bucket entries from the history archive (default=3).
 func (haa *HistoryArchiveAdapter) GetState(ctx context.Context, sequence uint32) (io.ChangeReader, error) {
 	exists, err := haa.archive.CategoryCheckpointExists("history", sequence)
 	if err != nil {

@@ -22,11 +22,7 @@ func (m *MockHistoryArchiveAdapter) BucketListHash(sequence uint32) (xdr.Hash, e
 	return args.Get(0).(xdr.Hash), args.Error(1)
 }
 
-func (m *MockHistoryArchiveAdapter) GetState(
-	ctx context.Context, sequence uint32, opts ...interface{},
-) (io.ChangeReader, error) {
-	params := []interface{}{ctx, sequence}
-	params = append(params, opts...)
-	args := m.Called(params...)
+func (m *MockHistoryArchiveAdapter) GetState(ctx context.Context, sequence uint32) (io.ChangeReader, error) {
+	args := m.Called(ctx, sequence)
 	return args.Get(0).(io.ChangeReader), args.Error(1)
 }

@@ -73,8 +73,6 @@ const (
 )
 
 // MakeSingleLedgerStateReader is a factory method for SingleLedgerStateReader.
-// Passing `MaxStreamRetries` option determines how many times the reader will retry
-// when errors while streaming xdr bucket entries from the history archive (default=3).
 func MakeSingleLedgerStateReader(
 	ctx context.Context,
 	archive historyarchive.ArchiveInterface,
