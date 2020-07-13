@@ -103,8 +103,7 @@ type System struct {
 
 	stellarCoreClient stellarCoreClient
 
-	maxStreamRetries int
-	wg               sync.WaitGroup
+	wg sync.WaitGroup
 
 	// stateVerificationRunning is true when verification routine is currently
 	// running.
