@@ -246,7 +246,7 @@ func (sys *System) Tick(ctx context.Context) {
 		ReadOnly:  true,
 	}
 	if err := db.BeginTx(options); err != nil {
-		logger.WithError(err).Warn("could not start repeatable read transaction for txsub tick")
+		logger.WithError(err).Error("could not start repeatable read transaction for txsub tick")
 		return
 	}
 	defer db.Rollback()
