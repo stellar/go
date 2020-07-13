@@ -77,7 +77,6 @@ func MakeSingleLedgerStateReader(
 	ctx context.Context,
 	archive historyarchive.ArchiveInterface,
 	sequence uint32,
-	opts ...interface{},
 ) (*SingleLedgerStateReader, error) {
 	has, err := archive.GetCheckpointHAS(sequence)
 	if err != nil {
