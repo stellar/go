@@ -3,12 +3,12 @@ package ledgerbackend
 import (
 	"bytes"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"io"
 	"testing"
 
 	"github.com/stellar/go/network"
+	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/historyarchive"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
@@ -35,6 +35,11 @@ func (m *stellarCoreRunnerMock) runFrom(from uint32) error {
 func (m *stellarCoreRunnerMock) getMetaPipe() io.Reader {
 	a := m.Called()
 	return a.Get(0).(io.Reader)
+}
+
+func (m *stellarCoreRunnerMock) getProcessExitChan() <-chan error {
+	a := m.Called()
+	return a.Get(0).(chan error)
 }
 
 func (m *stellarCoreRunnerMock) close() error {
@@ -111,14 +116,13 @@ func TestCaptiveNew(t *testing.T) {
 		networkPassphrase,
 		historyURLs,
 	)
+
 	assert.NoError(t, err)
+	assert.Equal(t, executablePath, captiveStellarCore.executablePath)
 	assert.Equal(t, networkPassphrase, captiveStellarCore.networkPassphrase)
+	assert.Equal(t, historyURLs, captiveStellarCore.historyURLs)
 	assert.Equal(t, uint32(0), captiveStellarCore.nextLedger)
 	assert.NotNil(t, captiveStellarCore.archive)
-
-	assert.Equal(t, executablePath, captiveStellarCore.stellarCoreRunner.(*stellarCoreRunner).executablePath)
-	assert.Equal(t, networkPassphrase, captiveStellarCore.stellarCoreRunner.(*stellarCoreRunner).networkPassphrase)
-	assert.Equal(t, historyURLs, captiveStellarCore.stellarCoreRunner.(*stellarCoreRunner).historyURLs)
 }
 
 func TestCaptivePrepareRange(t *testing.T) {
@@ -132,6 +136,7 @@ func TestCaptivePrepareRange(t *testing.T) {
 
 	mockRunner := &stellarCoreRunnerMock{}
 	mockRunner.On("catchup", uint32(100), uint32(200)).Return(nil).Once()
+	mockRunner.On("getProcessExitChan").Return(make(chan error))
 	mockRunner.On("getMetaPipe").Return(&buf)
 	mockRunner.On("close").Return(nil).Once()
 
@@ -152,6 +157,64 @@ func TestCaptivePrepareRange(t *testing.T) {
 	assert.NoError(t, err)
 	err = captiveBackend.Close()
 	assert.NoError(t, err)
+}
+
+func TestCaptivePrepareRangeCrash(t *testing.T) {
+	var buf bytes.Buffer
+
+	ch := make(chan error, 1) // we use buffered channel in tests only
+	ch <- errors.New("exit code -1")
+	mockRunner := &stellarCoreRunnerMock{}
+	mockRunner.On("catchup", uint32(100), uint32(200)).Return(nil).Once()
+	mockRunner.On("getProcessExitChan").Return(ch)
+	mockRunner.On("getMetaPipe").Return(&buf)
+	mockRunner.On("close").Return(nil).Once()
+
+	mockArchive := &historyarchive.MockArchive{}
+	mockArchive.
+		On("GetRootHAS").
+		Return(historyarchive.HistoryArchiveState{
+			CurrentLedger: uint32(200),
+		}, nil)
+
+	captiveBackend := CaptiveStellarCore{
+		archive:           mockArchive,
+		networkPassphrase: network.PublicNetworkPassphrase,
+		stellarCoreRunner: mockRunner,
+	}
+
+	err := captiveBackend.PrepareRange(BoundedRange(100, 200))
+	assert.Error(t, err)
+	assert.EqualError(t, err, "stellar-core process exited with an error: exit code -1")
+}
+
+func TestCaptivePrepareRangeTerminated(t *testing.T) {
+	var buf bytes.Buffer
+
+	ch := make(chan error, 1) // we use buffered channel in tests only
+	ch <- nil
+	mockRunner := &stellarCoreRunnerMock{}
+	mockRunner.On("catchup", uint32(100), uint32(200)).Return(nil).Once()
+	mockRunner.On("getProcessExitChan").Return(ch)
+	mockRunner.On("getMetaPipe").Return(&buf)
+	mockRunner.On("close").Return(nil).Once()
+
+	mockArchive := &historyarchive.MockArchive{}
+	mockArchive.
+		On("GetRootHAS").
+		Return(historyarchive.HistoryArchiveState{
+			CurrentLedger: uint32(200),
+		}, nil)
+
+	captiveBackend := CaptiveStellarCore{
+		archive:           mockArchive,
+		networkPassphrase: network.PublicNetworkPassphrase,
+		stellarCoreRunner: mockRunner,
+	}
+
+	err := captiveBackend.PrepareRange(BoundedRange(100, 200))
+	assert.Error(t, err)
+	assert.EqualError(t, err, "stellar-core process exited without an error unexpectedly")
 }
 
 func TestCaptivePrepareRange_ErrClosingSession(t *testing.T) {
@@ -229,6 +292,7 @@ func TestCaptivePrepareRange_ToIsAheadOfRootHAS(t *testing.T) {
 	var buf bytes.Buffer
 	mockRunner := &stellarCoreRunnerMock{}
 	mockRunner.On("catchup", uint32(100), uint32(192)).Return(nil).Once()
+	mockRunner.On("getProcessExitChan").Return(make(chan error))
 	mockRunner.On("getMetaPipe").Return(&buf)
 	mockRunner.On("close").Return(nil)
 
@@ -268,6 +332,7 @@ func TestCaptivePrepareRange_ErrCatchup(t *testing.T) {
 	}
 
 	err := captiveBackend.PrepareRange(BoundedRange(100, 200))
+	assert.Error(t, err)
 	assert.EqualError(t, err, "opening subprocess: error running stellar-core: transient error")
 }
 
@@ -401,6 +466,7 @@ func TestGetLatestLedgerSequence(t *testing.T) {
 	mockRunner := &stellarCoreRunnerMock{}
 	mockRunner.On("runFrom", uint32(64)).Return(nil).Once()
 	mockRunner.On("getMetaPipe").Return(&buf)
+	mockRunner.On("getProcessExitChan").Return(make(chan error))
 	mockRunner.On("close").Return(nil).Once()
 
 	mockArchive := &historyarchive.MockArchive{}
@@ -540,6 +606,7 @@ func TestCaptiveGetLedger_ErrReadingMetaResult(t *testing.T) {
 
 	mockRunner := &stellarCoreRunnerMock{}
 	mockRunner.On("catchup", uint32(65), uint32(66)).Return(nil)
+	mockRunner.On("getProcessExitChan").Return(make(chan error))
 	mockRunner.On("getMetaPipe").Return(&buf)
 	mockRunner.On("close").Return(nil)
 
@@ -670,4 +737,44 @@ func TestGetLedgerBoundsCheck(t *testing.T) {
 	err = captiveBackend.Close()
 	assert.NoError(t, err)
 	mockRunner.AssertExpectations(t)
+}
+
+func TestCaptiveGetLedgerTerminated(t *testing.T) {
+	reader, writer := io.Pipe()
+
+	ch := make(chan error, 1) // we use buffered channel in tests only
+	mockRunner := &stellarCoreRunnerMock{}
+	mockRunner.On("catchup", uint32(64), uint32(100)).Return(nil).Once()
+	mockRunner.On("getProcessExitChan").Return(ch)
+	mockRunner.On("getMetaPipe").Return(reader)
+	mockRunner.On("close").Return(nil).Once()
+
+	mockArchive := &historyarchive.MockArchive{}
+	mockArchive.
+		On("GetRootHAS").
+		Return(historyarchive.HistoryArchiveState{
+			CurrentLedger: uint32(200),
+		}, nil)
+
+	captiveBackend := CaptiveStellarCore{
+		archive:           mockArchive,
+		networkPassphrase: network.PublicNetworkPassphrase,
+		stellarCoreRunner: mockRunner,
+	}
+
+	go writeLedgerHeader(writer, 64)
+	err := captiveBackend.PrepareRange(BoundedRange(64, 100))
+	assert.NoError(t, err)
+
+	ch <- nil
+	writer.Close()
+
+	exists, meta, err := captiveBackend.GetLedger(64)
+	assert.NoError(t, err)
+	assert.True(t, exists)
+	assert.Equal(t, uint32(64), meta.LedgerSequence())
+
+	_, _, err = captiveBackend.GetLedger(65)
+	assert.Error(t, err)
+	assert.EqualError(t, err, "stellar-core process exited without an error unexpectedly")
 }

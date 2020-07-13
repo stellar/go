@@ -2,8 +2,9 @@ package expingest
 
 import (
 	"fmt"
-	"github.com/stellar/go/exp/ingest/ledgerbackend"
 	"time"
+
+	"github.com/stellar/go/exp/ingest/ledgerbackend"
 
 	"github.com/stellar/go/exp/ingest/io"
 	"github.com/stellar/go/services/horizon/internal/toid"
@@ -277,7 +278,7 @@ func (b buildState) run(s *system) (transition, error) {
 
 	err = s.ledgerBackend.PrepareRange(ledgerbackend.UnboundedRange(b.checkpointLedger))
 	if err != nil {
-		return stop(), errors.Wrap(err, "error preparing range")
+		return start(), errors.Wrap(err, "error preparing range")
 	}
 
 	stats, err := s.runner.RunHistoryArchiveIngestion(b.checkpointLedger)
@@ -373,7 +374,7 @@ func (r resumeState) run(s *system) (transition, error) {
 
 	err = s.ledgerBackend.PrepareRange(ledgerbackend.UnboundedRange(ingestLedger))
 	if err != nil {
-		return stop(), errors.Wrap(err, "error preparing range")
+		return start(), errors.Wrap(err, "error preparing range")
 	}
 
 	// Check if ledger is closed
@@ -478,7 +479,7 @@ func (h historyRangeState) run(s *system) (transition, error) {
 
 	err = s.ledgerBackend.PrepareRange(ledgerbackend.UnboundedRange(h.fromLedger))
 	if err != nil {
-		return stop(), errors.Wrap(err, "error preparing range")
+		return start(), errors.Wrap(err, "error preparing range")
 	}
 
 	for cur := h.fromLedger; cur <= h.toLedger; cur++ {
