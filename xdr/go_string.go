@@ -76,7 +76,7 @@ func (m MuxedAccount) GoString() string {
 
 func (o Operation) GoString() string {
 	var sb strings.Builder
-	sb.WriteString("xdr.OperationBody{")
+	sb.WriteString("xdr.Operation{")
 	if o.SourceAccount != nil {
 		sb.WriteString(fmt.Sprintf("SourceAccount: &%#v,", *o.SourceAccount))
 	}
