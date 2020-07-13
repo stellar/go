@@ -18,7 +18,7 @@ import (
 	"github.com/stellar/go/support/log"
 )
 
-var extractBinName = regexp.MustCompile(`^(?P<bin>[a-z-]+)-(?P<tag>.+)$`)
+var extractBinName = regexp.MustCompile(`^(?P<bin>[a-z0-9-]+)-(?P<tag>.+)$`)
 
 var builds = []buildConfig{
 	{"darwin", "amd64"},
