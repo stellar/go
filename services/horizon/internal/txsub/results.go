@@ -4,6 +4,7 @@ import (
 	"database/sql"
 
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
 
@@ -16,7 +17,7 @@ func txResultByHash(db HorizonDB, hash string) (history.Transaction, error) {
 	}
 
 	if !db.NoRows(err) {
-		return hr, err
+		return hr, errors.Wrap(err, "could not lookup transaction by hash")
 	}
 
 	// if no result was found in either db, return ErrNoResults
@@ -32,18 +33,25 @@ func txResultFromHistory(tx history.Transaction) (history.Transaction, error) {
 				ResultXDR: tx.TxResult,
 			}
 		}
+	} else {
+		err = errors.Wrap(err, "could not unmarshall transaction result")
 	}
 
 	return tx, err
 }
 
+// checkTxAlreadyExists uses a repeatable read transaction to look up both transaction results
+// and sequence numbers. Without the repeatable read transaction it is possible that the two database
+// queries execute on different ledgers. In this case, txsub can mistakenly respond with a bad_seq error
+// because the first query occurs when the tx is not yet ingested and the second query occurs when the tx
+// is ingested.
 func checkTxAlreadyExists(db HorizonDB, hash, sourceAddress string) (history.Transaction, uint64, error) {
 	err := db.BeginTx(&sql.TxOptions{
 		Isolation: sql.LevelRepeatableRead,
 		ReadOnly:  true,
 	})
 	if err != nil {
-		return history.Transaction{}, 0, err
+		return history.Transaction{}, 0, errors.Wrap(err, "cannot start repeatable read tx")
 	}
 	defer db.Rollback()
 
@@ -52,7 +60,7 @@ func checkTxAlreadyExists(db HorizonDB, hash, sourceAddress string) (history.Tra
 		var sequenceNumbers map[string]uint64
 		sequenceNumbers, err = db.GetSequenceNumbers([]string{sourceAddress})
 		if err != nil {
-			return tx, 0, err
+			return tx, 0, errors.Wrapf(err, "cannot fetch sequence number for %v", sourceAddress)
 		}
 
 		num, ok := sequenceNumbers[sourceAddress]
