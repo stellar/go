@@ -296,7 +296,7 @@ func (b buildState) run(s *system) (transition, error) {
 		return start(), errors.Wrap(err, "Error clearing ingest tables")
 	}
 
-	followTransition, nextState, err := s.checkPrepareRange(b.checkpointLedger, true)
+	followTransition, nextState, err := s.maybePrepareRange(b.checkpointLedger, true)
 	if followTransition {
 		return nextState, err
 	}
@@ -397,7 +397,7 @@ func (r resumeState) run(s *system) (transition, error) {
 		return start(), nil
 	}
 
-	followTransition, nextState, err := s.checkPrepareRange(ingestLedger, false)
+	followTransition, nextState, err := s.maybePrepareRange(ingestLedger, false)
 	if followTransition {
 		return nextState, err
 	}
@@ -414,19 +414,18 @@ func (r resumeState) run(s *system) (transition, error) {
 			"core_sequence":   latestLedgerCore,
 		})
 
-		if latestLedgerCore == ingestLedger-1 {
-			logger.Info("Waiting for ledger to be available in stellar-core")
-			// Go to the next state, machine will wait for 1s. before continuing.
-			return retryResume(r), nil
-		}
-
 		// Will fast-forward to the latest ledger in a buffer in case of captive core.
 		_, _, err = s.ledgerBackend.GetLedger(latestLedgerCore)
 		if err != nil {
 			return retryResume(r), errors.Wrap(err, "Error fast-forwarding to the latest ledger in stellar-core")
 		}
 
-		logger.Info("Fast-forward to the latest ledger ingested in the cluster")
+		if latestLedgerCore == ingestLedger-1 {
+			logger.Info("Waiting for ledger to be available in stellar-core")
+		} else {
+			logger.Info("Fast-forward to the latest ledger ingested in the cluster")
+		}
+
 		return retryResume(resumeState{
 			latestSuccessfullyProcessedLedger: latestLedgerCore,
 		}), nil
@@ -517,7 +516,7 @@ func (h historyRangeState) run(s *system) (transition, error) {
 		return start(), nil
 	}
 
-	followTransition, nextState, err := s.checkPrepareRange(h.fromLedger, false)
+	followTransition, nextState, err := s.maybePrepareRange(h.fromLedger, false)
 	if followTransition {
 		return nextState, err
 	}
@@ -900,10 +899,10 @@ func (s *system) completeIngestion(ledger uint32) error {
 	return nil
 }
 
-// checkPrepareRange checks if the range is prepared. If not, it releases
+// maybePrepareRange checks if the range is prepared. If not, it releases
 // the distributed ingestion lock and prepares the range.
 // The first return value determines if the caller should follow the transition.
-func (s *system) checkPrepareRange(from uint32, suggestCheckpoint bool) (bool, transition, error) {
+func (s *system) maybePrepareRange(from uint32, suggestCheckpoint bool) (bool, transition, error) {
 	ledgerRange := ledgerbackend.UnboundedRange(from)
 
 	if !s.ledgerBackend.IsPrepared(ledgerRange) {
@@ -918,12 +917,10 @@ func (s *system) checkPrepareRange(from uint32, suggestCheckpoint bool) (bool, t
 			return true, start(), errors.Wrap(err, "error preparing range")
 		}
 
-		log.
-			WithFields(logpkg.F{
-				"ledger":   from,
-				"duration": time.Since(startTime).Seconds(),
-			}).
-			Info("Range prepared")
+		log.WithFields(logpkg.F{
+			"ledger":   from,
+			"duration": time.Since(startTime).Seconds(),
+		}).Info("Range prepared")
 
 		if suggestCheckpoint {
 			return true, startSuggestedCheckpoint(from), nil

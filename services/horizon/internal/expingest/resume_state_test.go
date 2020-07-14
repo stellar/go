@@ -371,6 +371,8 @@ func (s *ResumeTestTestSuite) TestNoNewLedgers() {
 
 	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(101)).Return(true).Once()
 	s.ledgerBackend.On("GetLatestLedgerSequence").Return(uint32(100), nil).Once()
+	// Fast forward the backend
+	s.ledgerBackend.On("GetLedger", uint32(100)).Return(true, xdr.LedgerCloseMeta{}, nil).Once()
 
 	next, err := resumeState{latestSuccessfullyProcessedLedger: 100}.run(s.system)
 	s.Assert().NoError(err)
@@ -378,6 +380,30 @@ func (s *ResumeTestTestSuite) TestNoNewLedgers() {
 		transition{
 			// Check the same ledger later
 			node: resumeState{latestSuccessfullyProcessedLedger: 100},
+			// Sleep because we learned the ledger is not there yet.
+			sleepDuration: defaultSleep,
+		},
+		next,
+	)
+}
+
+func (s *ResumeTestTestSuite) TestFarBehind() {
+	s.historyQ.On("Begin").Return(nil).Once()
+	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(200), nil).Once()
+	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion, nil).Once()
+	s.historyQ.On("GetLatestLedger").Return(uint32(0), nil)
+
+	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(201)).Return(true).Once()
+	s.ledgerBackend.On("GetLatestLedgerSequence").Return(uint32(102), nil).Once()
+	// Fast forward the backend
+	s.ledgerBackend.On("GetLedger", uint32(102)).Return(true, xdr.LedgerCloseMeta{}, nil).Once()
+
+	next, err := resumeState{latestSuccessfullyProcessedLedger: 200}.run(s.system)
+	s.Assert().NoError(err)
+	s.Assert().Equal(
+		transition{
+			// Check the same ledger later
+			node: resumeState{latestSuccessfullyProcessedLedger: 102},
 			// Sleep because we learned the ledger is not there yet.
 			sleepDuration: defaultSleep,
 		},
