@@ -241,17 +241,15 @@ func (w *web) mustInstallActions(config Config, pathFinder paths.Finder, session
 	r.Route("/transactions", func(r chi.Router) {
 		r.With(historyMiddleware).Method(http.MethodGet, "/", streamableHistoryPageHandler(actions.GetTransactionsHandler{}, streamHandler))
 		r.Route("/{tx_id}", func(r chi.Router) {
-			r.Get("/", showActionHandler(w.getTransactionResource))
-			r.Group(func(r chi.Router) {
-				r.Use(historyMiddleware)
-				r.Method(http.MethodGet, "/effects", streamableHistoryPageHandler(actions.GetEffectsHandler{}, streamHandler))
-				r.Method(http.MethodGet, "/operations", streamableHistoryPageHandler(actions.GetOperationsHandler{
-					OnlyPayments: false,
-				}, streamHandler))
-				r.Method(http.MethodGet, "/payments", streamableHistoryPageHandler(actions.GetOperationsHandler{
-					OnlyPayments: true,
-				}, streamHandler))
-			})
+			r.Use(historyMiddleware)
+			r.Method(http.MethodGet, "/", objectActionHandler{actions.GetTransactionByHashHandler{}})
+			r.Method(http.MethodGet, "/effects", streamableHistoryPageHandler(actions.GetEffectsHandler{}, streamHandler))
+			r.Method(http.MethodGet, "/operations", streamableHistoryPageHandler(actions.GetOperationsHandler{
+				OnlyPayments: false,
+			}, streamHandler))
+			r.Method(http.MethodGet, "/payments", streamableHistoryPageHandler(actions.GetOperationsHandler{
+				OnlyPayments: true,
+			}, streamHandler))
 		})
 	})
 

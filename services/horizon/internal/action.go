@@ -185,13 +185,3 @@ func (w *web) getAccountInfo(ctx context.Context, qp *showActionQueryParams) (in
 
 	return actions.AccountInfo(ctx, historyQ, qp.AccountID)
 }
-
-// getTransactionResource returns a single transaction resource.
-func (w *web) getTransactionResource(ctx context.Context, qp *showActionQueryParams) (interface{}, error) {
-	horizonSession, err := w.horizonSession(ctx)
-	if err != nil {
-		return nil, errors.Wrap(err, "getting horizon db session")
-	}
-
-	return actions.TransactionResource(ctx, &history.Q{horizonSession}, qp.TxHash)
-}

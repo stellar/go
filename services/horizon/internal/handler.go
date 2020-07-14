@@ -190,31 +190,6 @@ func (we *web) streamShowActionHandler(jfn interface{}, requireAccountID bool) h
 	})
 }
 
-// showActionHandler handles all non-streamable endpoints.
-func showActionHandler(jfn interface{}) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
-		contentType := render.Negotiate(r)
-		if jfn == nil || (contentType != render.MimeHal && contentType != render.MimeJSON) {
-			problem.Render(ctx, w, hProblem.NotAcceptable)
-			return
-		}
-
-		params, err := getShowActionQueryParams(r, false)
-		if err != nil {
-			problem.Render(ctx, w, err)
-			return
-		}
-
-		h, err := hal.Handler(jfn, params)
-		if err != nil {
-			panic(err)
-		}
-
-		h.ServeHTTP(w, r)
-	}
-}
-
 // getAccountID retrieves the account id by the provided key. The key is
 // usually "account_id", "source_account", and "destination_account". The
 // function would return an error if the account id is empty and the required

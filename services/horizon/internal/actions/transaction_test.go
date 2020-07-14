@@ -1,7 +1,6 @@
 package actions
 
 import (
-	"context"
 	"net/http/httptest"
 	"testing"
 
@@ -157,7 +156,6 @@ func TestFeeBumpTransactionPage(t *testing.T) {
 	handler := GetTransactionsHandler{}
 
 	records, err := handler.GetResourcePage(
-
 		httptest.NewRecorder(),
 		makeRequest(
 			t, map[string]string{}, map[string]string{}, q.Session,
@@ -180,13 +178,30 @@ func TestFeeBumpTransactionResource(t *testing.T) {
 	q := &history.Q{tt.HorizonSession()}
 	fixture := history.FeeBumpScenario(tt, q, true)
 
-	byOuterHash, err := TransactionResource(context.Background(), q, fixture.OuterHash)
+	handler := GetTransactionByHashHandler{}
+	resource, err := handler.GetResource(
+		httptest.NewRecorder(),
+		makeRequest(
+			t, map[string]string{}, map[string]string{
+				"tx_id": fixture.OuterHash,
+			}, q.Session,
+		),
+	)
 	tt.Assert.NoError(err)
-
+	byOuterHash := resource.(horizon.Transaction)
 	checkOuterHashResponse(tt, fixture, byOuterHash)
 
-	byInnerHash, err := TransactionResource(context.Background(), q, fixture.InnerHash)
+	resource, err = handler.GetResource(
+		httptest.NewRecorder(),
+		makeRequest(
+			t, map[string]string{}, map[string]string{
+				"tx_id": fixture.InnerHash,
+			}, q.Session,
+		),
+	)
 	tt.Assert.NoError(err)
+
+	byInnerHash := resource.(horizon.Transaction)
 
 	tt.Assert.NotEqual(byOuterHash.Hash, byInnerHash.Hash)
 	tt.Assert.NotEqual(byOuterHash.ID, byInnerHash.ID)
