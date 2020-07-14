@@ -14,6 +14,10 @@ This implementation uses Firebase to authenticate a user with an email address
 or phone number. To configure a Firebase project for use with recoverysigner
 see [README-Firebase.md](README-Firebase.md).
 
+This implementation uses shared signing keys for all accounts registered. The
+service can be configured to generate and store unique signing keys for each
+user. See [README-Unique-Signing-Keys.md](README-Unique-Signing-Keys.md).
+
 This implementation is not polished and is still experimental.
 Running this implementation in production is not recommended.
 
