@@ -46,6 +46,7 @@ func (s *IngestHistoryRangeStateTestSuite) SetupTest() {
 func (s *IngestHistoryRangeStateTestSuite) TearDownTest() {
 	t := s.T()
 	s.historyQ.AssertExpectations(t)
+	s.ledgerBackend.AssertExpectations(t)
 	s.historyAdapter.AssertExpectations(t)
 	s.runner.AssertExpectations(t)
 }
@@ -124,7 +125,7 @@ func (s *IngestHistoryRangeStateTestSuite) TestRunTransactionProcessorsOnLedgerR
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
 	s.historyQ.On("GetLatestLedger").Return(uint32(99), nil).Once()
 
-	s.ledgerBackend.On("PrepareRange", ledgerbackend.UnboundedRange(100)).Return(nil).Once()
+	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(100)).Return(true).Once()
 	s.runner.On("RunTransactionProcessorsOnLedger", uint32(100)).Return(io.StatsLedgerTransactionProcessorResults{}, errors.New("my error")).Once()
 
 	next, err := historyRangeState{fromLedger: 100, toLedger: 200}.run(s.system)
@@ -133,12 +134,45 @@ func (s *IngestHistoryRangeStateTestSuite) TestRunTransactionProcessorsOnLedgerR
 	s.Assert().Equal(transition{node: startState{}, sleepDuration: defaultSleep}, next)
 }
 
+func (s *IngestHistoryRangeStateTestSuite) TestRangeNotPreparedFailPrepare() {
+	s.historyQ.On("Begin").Return(nil).Once()
+	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
+	s.historyQ.On("GetLatestLedger").Return(uint32(99), nil).Once()
+
+	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(100)).Return(false).Once()
+	s.ledgerBackend.On("PrepareRange", ledgerbackend.UnboundedRange(100)).Return(errors.New("my error")).Once()
+	// Rollback twice (first one mocked in SetupTest) because we want to release
+	// a distributed ingestion lock.
+	s.historyQ.On("Rollback").Return(nil).Once()
+
+	next, err := historyRangeState{fromLedger: 100, toLedger: 200}.run(s.system)
+	s.Assert().Error(err)
+	s.Assert().EqualError(err, "error preparing range: my error")
+	s.Assert().Equal(transition{node: startState{}, sleepDuration: defaultSleep}, next)
+}
+
+func (s *IngestHistoryRangeStateTestSuite) TestRangeNotPreparedSuccessPrepare() {
+	s.historyQ.On("Begin").Return(nil).Once()
+	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
+	s.historyQ.On("GetLatestLedger").Return(uint32(99), nil).Once()
+
+	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(100)).Return(false).Once()
+	s.ledgerBackend.On("PrepareRange", ledgerbackend.UnboundedRange(100)).Return(nil).Once()
+	// Rollback twice (first one mocked in SetupTest) because we want to release
+	// a distributed ingestion lock.
+	s.historyQ.On("Rollback").Return(nil).Once()
+
+	next, err := historyRangeState{fromLedger: 100, toLedger: 200}.run(s.system)
+	s.Assert().NoError(err)
+	s.Assert().Equal(transition{node: startState{}, sleepDuration: defaultSleep}, next)
+}
+
 func (s *IngestHistoryRangeStateTestSuite) TestSuccess() {
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
 	s.historyQ.On("GetLatestLedger").Return(uint32(99), nil).Once()
 
-	s.ledgerBackend.On("PrepareRange", ledgerbackend.UnboundedRange(100)).Return(nil).Once()
+	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(100)).Return(true).Once()
 	for i := 100; i <= 200; i++ {
 		s.runner.On("RunTransactionProcessorsOnLedger", uint32(i)).Return(io.StatsLedgerTransactionProcessorResults{}, nil).Once()
 	}
@@ -155,7 +189,7 @@ func (s *IngestHistoryRangeStateTestSuite) TestSuccessOneLedger() {
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
 	s.historyQ.On("GetLatestLedger").Return(uint32(99), nil).Once()
 
-	s.ledgerBackend.On("PrepareRange", ledgerbackend.UnboundedRange(100)).Return(nil).Once()
+	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(100)).Return(true).Once()
 	s.runner.On("RunTransactionProcessorsOnLedger", uint32(100)).Return(io.StatsLedgerTransactionProcessorResults{}, nil).Once()
 
 	s.historyQ.On("Commit").Return(nil).Once()

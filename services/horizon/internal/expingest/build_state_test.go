@@ -56,6 +56,7 @@ func (s *BuildStateTestSuite) TearDownTest() {
 	s.historyAdapter.AssertExpectations(t)
 	s.runner.AssertExpectations(t)
 	s.stellarCoreClient.AssertExpectations(t)
+	s.ledgerBackend.AssertExpectations(t)
 }
 
 func (s *BuildStateTestSuite) mockCommonHistoryQ() {
@@ -70,6 +71,7 @@ func (s *BuildStateTestSuite) mockCommonHistoryQ() {
 		defaultCoreCursorName,
 		int32(62),
 	).Return(nil).Once()
+	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(63)).Return(true).Once()
 }
 
 func (s *BuildStateTestSuite) TestCheckPointLedgerIsZero() {
@@ -178,9 +180,64 @@ func (s *BuildStateTestSuite) TestTruncateExpingestStateTablesReturnsError() {
 	s.Assert().Equal(transition{node: startState{}, sleepDuration: defaultSleep}, next)
 }
 
+func (s *BuildStateTestSuite) TestRangeNotPreparedFailPrepare() {
+	s.historyQ.On("GetLastLedgerExpIngest").Return(s.lastLedger, nil).Once()
+	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion, nil).Once()
+	s.historyQ.On("UpdateLastLedgerExpIngest", s.lastLedger).Return(nil).Once()
+	s.historyQ.On("UpdateExpStateInvalid", false).Return(nil).Once()
+	s.historyQ.On("TruncateExpingestStateTables").Return(nil).Once()
+
+	s.stellarCoreClient.On(
+		"SetCursor",
+		mock.AnythingOfType("*context.timerCtx"),
+		defaultCoreCursorName,
+		int32(62),
+	).Return(nil).Once()
+
+	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(63)).Return(false).Once()
+	s.ledgerBackend.On("PrepareRange", ledgerbackend.UnboundedRange(63)).Return(errors.New("my error")).Once()
+	// Rollback twice (first one mocked in SetupTest) because we want to release
+	// a distributed ingestion lock.
+	s.historyQ.On("Rollback").Return(nil).Once()
+
+	next, err := buildState{checkpointLedger: s.checkpointLedger}.run(s.system)
+
+	s.Assert().Error(err)
+	s.Assert().EqualError(err, "error preparing range: my error")
+	s.Assert().Equal(transition{node: startState{}, sleepDuration: defaultSleep}, next)
+}
+
+func (s *BuildStateTestSuite) TestRangeNotPreparedSuccessPrepare() {
+	s.historyQ.On("GetLastLedgerExpIngest").Return(s.lastLedger, nil).Once()
+	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion, nil).Once()
+	s.historyQ.On("UpdateLastLedgerExpIngest", s.lastLedger).Return(nil).Once()
+	s.historyQ.On("UpdateExpStateInvalid", false).Return(nil).Once()
+	s.historyQ.On("TruncateExpingestStateTables").Return(nil).Once()
+
+	s.stellarCoreClient.On(
+		"SetCursor",
+		mock.AnythingOfType("*context.timerCtx"),
+		defaultCoreCursorName,
+		int32(62),
+	).Return(nil).Once()
+
+	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(63)).Return(false).Once()
+	s.ledgerBackend.On("PrepareRange", ledgerbackend.UnboundedRange(63)).Return(nil).Once()
+	// Rollback twice (first one mocked in SetupTest) because we want to release
+	// a distributed ingestion lock.
+	s.historyQ.On("Rollback").Return(nil).Once()
+
+	next, err := buildState{checkpointLedger: s.checkpointLedger}.run(s.system)
+
+	s.Assert().NoError(err)
+	s.Assert().Equal(transition{node: startState{
+		// suggestedCheckpoint is set. See startSuggestedCheckpoint for more info.
+		suggestedCheckpoint: 63,
+	}, sleepDuration: defaultSleep}, next)
+}
+
 func (s *BuildStateTestSuite) TestRunHistoryArchiveIngestionReturnsError() {
 	s.mockCommonHistoryQ()
-	s.ledgerBackend.On("PrepareRange", ledgerbackend.UnboundedRange(63)).Return(nil).Once()
 	s.runner.
 		On("RunHistoryArchiveIngestion", s.checkpointLedger).
 		Return(io.StatsChangeProcessorResults{}, errors.New("my error")).
@@ -194,7 +251,6 @@ func (s *BuildStateTestSuite) TestRunHistoryArchiveIngestionReturnsError() {
 
 func (s *BuildStateTestSuite) TestUpdateLastLedgerExpIngestAfterIngestReturnsError() {
 	s.mockCommonHistoryQ()
-	s.ledgerBackend.On("PrepareRange", ledgerbackend.UnboundedRange(63)).Return(nil).Once()
 	s.runner.
 		On("RunHistoryArchiveIngestion", s.checkpointLedger).
 		Return(io.StatsChangeProcessorResults{}, nil).
@@ -214,7 +270,6 @@ func (s *BuildStateTestSuite) TestUpdateLastLedgerExpIngestAfterIngestReturnsErr
 
 func (s *BuildStateTestSuite) TestUpdateExpIngestVersionIngestReturnsError() {
 	s.mockCommonHistoryQ()
-	s.ledgerBackend.On("PrepareRange", ledgerbackend.UnboundedRange(63)).Return(nil).Once()
 	s.runner.
 		On("RunHistoryArchiveIngestion", s.checkpointLedger).
 		Return(io.StatsChangeProcessorResults{}, nil).
@@ -231,7 +286,6 @@ func (s *BuildStateTestSuite) TestUpdateExpIngestVersionIngestReturnsError() {
 
 func (s *BuildStateTestSuite) TestUpdateCommitReturnsError() {
 	s.mockCommonHistoryQ()
-	s.ledgerBackend.On("PrepareRange", ledgerbackend.UnboundedRange(63)).Return(nil).Once()
 	s.runner.
 		On("RunHistoryArchiveIngestion", s.checkpointLedger).
 		Return(io.StatsChangeProcessorResults{}, nil).
@@ -254,7 +308,6 @@ func (s *BuildStateTestSuite) TestUpdateCommitReturnsError() {
 
 func (s *BuildStateTestSuite) TestBuildStateSucceeds() {
 	s.mockCommonHistoryQ()
-	s.ledgerBackend.On("PrepareRange", ledgerbackend.UnboundedRange(63)).Return(nil).Once()
 	s.runner.
 		On("RunHistoryArchiveIngestion", s.checkpointLedger).
 		Return(io.StatsChangeProcessorResults{}, nil).

@@ -77,6 +77,10 @@ type CaptiveStellarCore struct {
 	processExitMutex sync.Mutex
 	processExit      bool
 	processErr       error
+
+	// waitIntervalPrepareRange defines a time to wait between checking if the buffer
+	// is empty. Default 1s, lower in tests to make them faster.
+	waitIntervalPrepareRange time.Duration
 }
 
 // NewCaptive returns a new CaptiveStellarCore that is not running. Will lazily start a subprocess
@@ -94,12 +98,11 @@ func NewCaptive(executablePath, networkPassphrase string, historyURLs []string) 
 	}
 
 	return &CaptiveStellarCore{
-		executablePath:    executablePath,
-		networkPassphrase: networkPassphrase,
-		historyURLs:       historyURLs,
-		archive:           archive,
-		nextLedger:        0,
-		stellarCoreRunner: newStellarCoreRunner(executablePath, networkPassphrase, historyURLs),
+		archive:                  archive,
+		executablePath:           executablePath,
+		historyURLs:              historyURLs,
+		networkPassphrase:        networkPassphrase,
+		waitIntervalPrepareRange: time.Second,
 	}, nil
 }
 
@@ -279,8 +282,8 @@ func (c *CaptiveStellarCore) readLedgerMetaFromPipe() (*xdr.LedgerCloseMeta, err
 // able to stream ledgers.
 // Set `to` to 0 to stream starting from `from` but without limits.
 func (c *CaptiveStellarCore) PrepareRange(ledgerRange Range) error {
-	if c.nextLedger != 0 && c.nextLedger >= ledgerRange.from {
-		// Range already prepared
+	// Range already prepared
+	if c.IsPrepared(ledgerRange) {
 		return nil
 	}
 
@@ -322,10 +325,31 @@ func (c *CaptiveStellarCore) PrepareRange(ledgerRange Range) error {
 			}
 			break
 		}
-		time.Sleep(time.Second)
+		time.Sleep(c.waitIntervalPrepareRange)
 	}
 
 	return nil
+}
+
+// IsPrepared returns true if a given ledgerRange is prepared.
+func (c *CaptiveStellarCore) IsPrepared(ledgerRange Range) bool {
+	if c.nextLedger == 0 {
+		return false
+	}
+
+	if c.lastLedger == nil {
+		return c.nextLedger <= ledgerRange.from
+	}
+
+	// From now on: c.lastLedger != nil so current range is bounded
+
+	if ledgerRange.bounded {
+		return c.nextLedger <= ledgerRange.from &&
+			c.nextLedger <= *c.lastLedger
+	}
+
+	// Requested range is unbounded but current one is bounded
+	return false
 }
 
 // GetLedger returns true when ledger is found and it's LedgerCloseMeta.

@@ -235,7 +235,7 @@ func TestCaptivePrepareRange_ErrClosingSession(t *testing.T) {
 		archive:           mockArchive,
 		networkPassphrase: network.PublicNetworkPassphrase,
 		stellarCoreRunner: mockRunner,
-		nextLedger:        1,
+		nextLedger:        300,
 	}
 
 	err := captiveBackend.PrepareRange(BoundedRange(100, 200))

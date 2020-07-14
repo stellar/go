@@ -109,6 +109,20 @@ func (s *InitStateTestSuite) TestBuildStateEmptyDatabase() {
 	)
 }
 
+func (s *InitStateTestSuite) TestBuildStateEmptyDatabaseFromSuggestedCheckpoint() {
+	s.historyQ.On("Begin").Return(nil).Once()
+	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
+	s.historyQ.On("GetExpIngestVersion").Return(0, nil).Once()
+	s.historyQ.On("GetLatestLedger").Return(uint32(0), nil).Once()
+
+	next, err := startState{suggestedCheckpoint: 127}.run(s.system)
+	s.Assert().NoError(err)
+	s.Assert().Equal(
+		transition{node: buildState{checkpointLedger: 127}, sleepDuration: defaultSleep},
+		next,
+	)
+}
+
 // TestBuildStateWait is testing the case when:
 // * the ingest system version has been incremented or no expingest ledger,
 // * the old system is in front of the latest checkpoint.

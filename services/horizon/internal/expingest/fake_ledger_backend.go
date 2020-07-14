@@ -20,6 +20,10 @@ func (fakeLedgerBackend) PrepareRange(r ledgerbackend.Range) error {
 	return nil
 }
 
+func (fakeLedgerBackend) IsPrepared(r ledgerbackend.Range) bool {
+	return true
+}
+
 func fakeAccount() xdr.LedgerEntryChange {
 	account := keypair.MustRandom().Address()
 	return xdr.LedgerEntryChange{

@@ -376,6 +376,11 @@ func (m *mockLedgerBackend) PrepareRange(ledgerRange ledgerbackend.Range) error 
 	return args.Error(0)
 }
 
+func (m *mockLedgerBackend) IsPrepared(ledgerRange ledgerbackend.Range) bool {
+	args := m.Called(ledgerRange)
+	return args.Bool(0)
+}
+
 func (m *mockLedgerBackend) Close() error {
 	args := m.Called()
 	return args.Error(0)
