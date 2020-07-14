@@ -11,8 +11,6 @@ import (
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/expingest"
 	"github.com/stellar/go/services/horizon/internal/test"
-	"github.com/stellar/go/services/horizon/internal/txsub"
-	"github.com/stellar/go/services/horizon/internal/txsub/sequence"
 	"github.com/stellar/go/xdr"
 )
 
@@ -277,15 +275,6 @@ func TestTransactionActions_Post(t *testing.T) {
 	// existing transaction
 	w := ht.Post("/transactions", form)
 	ht.Assert.Equal(200, w.Code)
-
-	// sequence buffer full
-	ht.App.submitter.Results = &txsub.MockResultProvider{
-		Results: []txsub.Result{
-			{Err: sequence.ErrNoMoreRoom},
-		},
-	}
-	w = ht.Post("/transactions", form)
-	ht.Assert.Equal(503, w.Code)
 }
 
 func TestTransactionActions_PostSuccessful(t *testing.T) {

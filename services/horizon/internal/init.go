@@ -12,7 +12,6 @@ import (
 	"github.com/stellar/go/services/horizon/internal/expingest"
 	"github.com/stellar/go/services/horizon/internal/simplepath"
 	"github.com/stellar/go/services/horizon/internal/txsub"
-	results "github.com/stellar/go/services/horizon/internal/txsub/results/db"
 	"github.com/stellar/go/services/horizon/internal/txsub/sequence"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/log"
@@ -163,45 +162,12 @@ func initWebMetrics(app *App) {
 }
 
 func initSubmissionSystem(app *App) {
-	// Due to a delay between Stellar-Core closing a ledger and Horizon
-	// ingesting it, it's possible that results of transaction submitted to
-	// Stellar-Core via Horizon may not be immediately visible. This is
-	// happening because `txsub` package checks two sources when checking a
-	// transaction result: Stellar-Core and Horizon DB.
-	//
-	// The extreme case is https://github.com/stellar/go/issues/2272 where
-	// results of transaction creating an account are not visible: requesting
-	// account details in Horizon returns `404 Not Found`:
-	//
-	// ```
-	// 	 Horizon DB                  Core DB                  User
-	// 		 |                          |                      |
-	// 		 |                          |                      |
-	// 		 |                          | <------- Submit create_account op
-	// 		 |                          |                      |
-	// 		 |                  Insert transaction             |
-	// 		 |                          |                      |
-	// 		 |                     Tx found -----------------> |
-	// 		 |                          |                      |
-	// 		 |                          |                      |
-	// 		 | <--------------------------------------- Get account info
-	// 		 |                          |                      |
-	// 		 |                          |                      |
-	//         Account NOT found ------------------------------------> |
-	// 		 |                          |                      |
-	//         Insert account                   |                      |
-	// ```
-	//
-	// To fix this skip checking Stellar-Core DB for transaction results if
-	// Horizon is ingesting failed transactions.
-
 	app.submitter = &txsub.System{
 		Pending:         txsub.NewDefaultSubmissionList(),
 		Submitter:       txsub.NewDefaultSubmitter(http.DefaultClient, app.config.StellarCoreURL),
 		SubmissionQueue: sequence.NewManager(),
-		Results: &results.DB{
-			History: &history.Q{Session: app.HorizonSession(context.Background())},
+		DB: func(ctx context.Context) txsub.HorizonDB {
+			return &history.Q{Session: app.HorizonSession(ctx)}
 		},
-		Sequences: &history.Q{Session: app.HorizonSession(context.Background())},
 	}
 }
