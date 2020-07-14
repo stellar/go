@@ -30,7 +30,7 @@ An AWS KMS key can be used to encrypt the Tink keyset.
 
 Google Tink keysets are used to hold the keys that are used in protecting the
 signing keys stored in the database. The Tink keyset given to the application
-should be in Tink's JSON format. You can use the official tinkey tool to
+should be in Tink's JSON format. You can use the official [tinkey] tool to
 generate and manage the keyset.
 
 The keyset should contain at least one key. All keys in the file should be
@@ -42,6 +42,8 @@ Example:
 ```
 $ tinkey create-keyset --out=keyset.json --key-template=ECIES_P256_HKDF_HMAC_SHA256_AES128_GCM
 ```
+
+[tinkey]: https://github.com/google/tink/blob/master/docs/TINKEY.md
 
 ## Enable Unique Signing Keys
 
