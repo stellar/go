@@ -30,19 +30,31 @@ An AWS KMS key can be used to encrypt the Tink keyset.
 
 Google Tink keysets are used to hold the keys that are used in protecting the
 signing keys stored in the database. The Tink keyset given to the application
-should be in Tink's JSON format. You can use the official tinkey tool to
-generate and manage the keyset, or you can use the built in
-`encryption-tink-keyset` commands in recoverysigner to execute some basic
-operations.
+should be in Tink's JSON format. You can use the official [tinkey] tool to
+generate and manage the keyset.
 
 The keyset should contain at least one key. All keys in the file should be
 asymmetric keys.
 
-Create a Tink keyset containing a single key with the create subcommand. The
-private key will be printed to stderr.
+Create a Tink keyset containing a single key with the create subcommand.
+
+Example:
 ```
-$ recoverysigner encryption-tink-keyset create
+$ tinkey create-keyset --out=keyset.json --key-template=ECIES_P256_HKDF_HMAC_SHA256_AES128_GCM
 ```
+
+You can also specify the `--master-key-uri` option to have the keyset
+encrypted with AWS KMS.
+
+Example:
+```
+$ tinkey create-keyset --out=keyset.json --key-template=ECIES_P256_HKDF_HMAC_SHA256_AES128_GCM --master-key-uri=aws-kms://arn:aws:kms:<region>:<account-id>:key/<key-id>
+```
+
+Refer to the [tinkey] documentation for complete details about how to use the
+tool.
+
+[tinkey]: https://github.com/google/tink/blob/master/docs/TINKEY.md
 
 ## Enable Unique Signing Keys
 
