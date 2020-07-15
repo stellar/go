@@ -205,7 +205,6 @@ func (w *web) mustInstallActions(config Config, pathFinder paths.Finder, session
 	// need to use absolute routes here. Make sure we use regexp check here for
 	// emptiness. Without it, requesting `/accounts//payments` return all payments!
 	r.Group(func(r chi.Router) {
-		r.Get("/accounts/{account_id:\\w+}/transactions", w.streamIndexActionHandler(w.getTransactionPage, w.streamTransactions))
 		r.Get("/accounts/{account_id:\\w+}/trades", TradeIndexAction{}.Handle)
 		r.Group(func(r chi.Router) {
 			r.Use(historyMiddleware)
@@ -216,6 +215,7 @@ func (w *web) mustInstallActions(config Config, pathFinder paths.Finder, session
 			r.Method(http.MethodGet, "/accounts/{account_id:\\w+}/payments", streamableHistoryPageHandler(actions.GetOperationsHandler{
 				OnlyPayments: true,
 			}, streamHandler))
+			r.Method(http.MethodGet, "/accounts/{account_id:\\w+}/transactions", streamableHistoryPageHandler(actions.GetTransactionsHandler{}, streamHandler))
 		})
 	})
 	// ledger actions
@@ -223,7 +223,7 @@ func (w *web) mustInstallActions(config Config, pathFinder paths.Finder, session
 		r.Get("/", LedgerIndexAction{}.Handle)
 		r.Route("/{ledger_id}", func(r chi.Router) {
 			r.Get("/", LedgerShowAction{}.Handle)
-			r.Get("/transactions", w.streamIndexActionHandler(w.getTransactionPage, w.streamTransactions))
+			r.With(historyMiddleware).Method(http.MethodGet, "/transactions", streamableHistoryPageHandler(actions.GetTransactionsHandler{}, streamHandler))
 			r.Group(func(r chi.Router) {
 				r.Use(historyMiddleware)
 				r.Method(http.MethodGet, "/effects", streamableHistoryPageHandler(actions.GetEffectsHandler{}, streamHandler))
@@ -239,19 +239,17 @@ func (w *web) mustInstallActions(config Config, pathFinder paths.Finder, session
 
 	// transaction history actions
 	r.Route("/transactions", func(r chi.Router) {
-		r.Get("/", w.streamIndexActionHandler(w.getTransactionPage, w.streamTransactions))
+		r.With(historyMiddleware).Method(http.MethodGet, "/", streamableHistoryPageHandler(actions.GetTransactionsHandler{}, streamHandler))
 		r.Route("/{tx_id}", func(r chi.Router) {
-			r.Get("/", showActionHandler(w.getTransactionResource))
-			r.Group(func(r chi.Router) {
-				r.Use(historyMiddleware)
-				r.Method(http.MethodGet, "/effects", streamableHistoryPageHandler(actions.GetEffectsHandler{}, streamHandler))
-				r.Method(http.MethodGet, "/operations", streamableHistoryPageHandler(actions.GetOperationsHandler{
-					OnlyPayments: false,
-				}, streamHandler))
-				r.Method(http.MethodGet, "/payments", streamableHistoryPageHandler(actions.GetOperationsHandler{
-					OnlyPayments: true,
-				}, streamHandler))
-			})
+			r.Use(historyMiddleware)
+			r.Method(http.MethodGet, "/", objectActionHandler{actions.GetTransactionByHashHandler{}})
+			r.Method(http.MethodGet, "/effects", streamableHistoryPageHandler(actions.GetEffectsHandler{}, streamHandler))
+			r.Method(http.MethodGet, "/operations", streamableHistoryPageHandler(actions.GetOperationsHandler{
+				OnlyPayments: false,
+			}, streamHandler))
+			r.Method(http.MethodGet, "/payments", streamableHistoryPageHandler(actions.GetOperationsHandler{
+				OnlyPayments: true,
+			}, streamHandler))
 		})
 	})
 

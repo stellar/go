@@ -8,19 +8,16 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/stellar/go/services/horizon/internal/actions"
 	horizonContext "github.com/stellar/go/services/horizon/internal/context"
-	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/hchi"
 	"github.com/stellar/go/services/horizon/internal/ledger"
 	"github.com/stellar/go/services/horizon/internal/render"
 	hProblem "github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/render/sse"
-	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
@@ -193,54 +190,6 @@ func (we *web) streamShowActionHandler(jfn interface{}, requireAccountID bool) h
 	})
 }
 
-// streamIndexActionHandler gets the required params for indexable endpoints from
-// the URL, validates the cursor is within history, and finally passes the
-// indexAction query params to the more general purpose streamableEndpointHandler.
-func (we *web) streamIndexActionHandler(jfn interface{}, sfn streamFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
-
-		params, err := getIndexActionQueryParams(r)
-		if err != nil {
-			problem.Render(ctx, w, err)
-			return
-		}
-
-		err = validateCursorWithinHistory(params.PagingParams)
-		if err != nil {
-			problem.Render(ctx, w, err)
-			return
-		}
-
-		we.streamableEndpointHandler(jfn, false, sfn, params).ServeHTTP(w, r)
-	}
-}
-
-// showActionHandler handles all non-streamable endpoints.
-func showActionHandler(jfn interface{}) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
-		contentType := render.Negotiate(r)
-		if jfn == nil || (contentType != render.MimeHal && contentType != render.MimeJSON) {
-			problem.Render(ctx, w, hProblem.NotAcceptable)
-			return
-		}
-
-		params, err := getShowActionQueryParams(r, false)
-		if err != nil {
-			problem.Render(ctx, w, err)
-			return
-		}
-
-		h, err := hal.Handler(jfn, params)
-		if err != nil {
-			panic(err)
-		}
-
-		h.ServeHTTP(w, r)
-	}
-}
-
 // getAccountID retrieves the account id by the provided key. The key is
 // usually "account_id", "source_account", and "destination_account". The
 // function would return an error if the account id is empty and the required
@@ -279,76 +228,6 @@ func getShowActionQueryParams(r *http.Request, requireAccountID bool) (*showActi
 		AccountID: addr,
 		TxHash:    txHash,
 	}, nil
-}
-
-// getIndexActionQueryParams gets the available query params for all indexable endpoints.
-func getIndexActionQueryParams(r *http.Request) (*indexActionQueryParams, error) {
-	addr, err := getAccountID(r, "account_id", false)
-	if err != nil {
-		return nil, errors.Wrap(err, "getting account id")
-	}
-
-	lid, err := getInt32ParamFromURL(r, "ledger_id")
-	if err != nil {
-		return nil, errors.Wrap(err, "getting ledger id")
-	}
-
-	// account_id and ledger_id are mutually exclusive.
-	if addr != "" && lid != int32(0) {
-		return nil, problem.BadRequest
-	}
-
-	pq, err := getPageQuery(r, false)
-	if err != nil {
-		return nil, errors.Wrap(err, "getting page query")
-	}
-
-	includeFailedTx, err := getBoolParamFromURL(r, "include_failed")
-	if err != nil {
-		return nil, errors.Wrap(err, "getting include_failed param")
-	}
-
-	return &indexActionQueryParams{
-		AccountID:        addr,
-		LedgerID:         lid,
-		PagingParams:     pq,
-		IncludeFailedTxs: includeFailedTx,
-	}, nil
-}
-
-// validateCursorWithinHistory first checks whether the cursor in the page
-// param is valid basesd on the order then verifies whether the cursor is
-// within history.
-func validateCursorWithinHistory(pq db2.PageQuery) error {
-	// an ascending query should never return a gone response:  An ascending query
-	// prior to known history should return results at the beginning of history,
-	// and an ascending query beyond the end of history should not error out but
-	// rather return an empty page (allowing code that tracks the procession of
-	// some resource more easily).
-	if pq.Order != "desc" {
-		return nil
-	}
-
-	var (
-		cursor int64
-		err    error
-	)
-	// cursor from effect streaming endpoint may contain the DefaultPairSep.
-	if strings.Contains(pq.Cursor, db2.DefaultPairSep) {
-		cursor, _, err = pq.CursorInt64Pair(db2.DefaultPairSep)
-	} else {
-		cursor, err = pq.CursorInt64()
-	}
-	if err != nil {
-		return problem.MakeInvalidFieldProblem(actions.ParamCursor, errors.New("invalid value"))
-	}
-
-	elder := toid.New(ledger.CurrentState().HistoryElder, 0, 0)
-	if cursor <= elder.ToInt64() {
-		return &hProblem.BeforeHistory
-	}
-
-	return nil
 }
 
 type objectAction interface {
