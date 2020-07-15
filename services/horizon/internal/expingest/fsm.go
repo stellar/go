@@ -296,9 +296,11 @@ func (b buildState) run(s *system) (transition, error) {
 		return start(), errors.Wrap(err, "Error clearing ingest tables")
 	}
 
-	followTransition, nextState, err := s.maybePrepareRange(b.checkpointLedger, true)
-	if followTransition {
-		return nextState, err
+	lockReleased, err := s.maybePrepareRange(b.checkpointLedger)
+	if err != nil {
+		return start(), err
+	} else if lockReleased {
+		return startSuggestedCheckpoint(b.checkpointLedger), nil
 	}
 
 	log.WithFields(logpkg.F{
@@ -397,9 +399,9 @@ func (r resumeState) run(s *system) (transition, error) {
 		return start(), nil
 	}
 
-	followTransition, nextState, err := s.maybePrepareRange(ingestLedger, false)
-	if followTransition {
-		return nextState, err
+	lockReleased, err := s.maybePrepareRange(ingestLedger)
+	if lockReleased || err != nil {
+		return start(), err
 	}
 
 	// Check if ledger is closed
@@ -516,9 +518,9 @@ func (h historyRangeState) run(s *system) (transition, error) {
 		return start(), nil
 	}
 
-	followTransition, nextState, err := s.maybePrepareRange(h.fromLedger, false)
-	if followTransition {
-		return nextState, err
+	lockReleased, err := s.maybePrepareRange(h.fromLedger)
+	if lockReleased || err != nil {
+		return start(), err
 	}
 
 	for cur := h.fromLedger; cur <= h.toLedger; cur++ {
@@ -899,10 +901,10 @@ func (s *system) completeIngestion(ledger uint32) error {
 	return nil
 }
 
-// maybePrepareRange checks if the range is prepared. If not, it releases
-// the distributed ingestion lock and prepares the range.
-// The first return value determines if the caller should follow the transition.
-func (s *system) maybePrepareRange(from uint32, suggestCheckpoint bool) (bool, transition, error) {
+// maybePrepareRange checks if the range is prepared and returns false in that case.
+// If the range is not prepared, maybePrepareRange() releases the distributed ingestion lock,
+// prepares the range, and returns true.
+func (s *system) maybePrepareRange(from uint32) (bool, error) {
 	ledgerRange := ledgerbackend.UnboundedRange(from)
 
 	if !s.ledgerBackend.IsPrepared(ledgerRange) {
@@ -914,7 +916,7 @@ func (s *system) maybePrepareRange(from uint32, suggestCheckpoint bool) (bool, t
 
 		err := s.ledgerBackend.PrepareRange(ledgerRange)
 		if err != nil {
-			return true, start(), errors.Wrap(err, "error preparing range")
+			return true, errors.Wrap(err, "error preparing range")
 		}
 
 		log.WithFields(logpkg.F{
@@ -922,11 +924,8 @@ func (s *system) maybePrepareRange(from uint32, suggestCheckpoint bool) (bool, t
 			"duration": time.Since(startTime).Seconds(),
 		}).Info("Range prepared")
 
-		if suggestCheckpoint {
-			return true, startSuggestedCheckpoint(from), nil
-		}
-		return true, start(), nil
+		return true, nil
 	}
 
-	return false, start(), nil
+	return false, nil
 }
