@@ -114,7 +114,10 @@ func timeoutMiddleware(timeout time.Duration) func(next http.Handler) http.Handl
 				}
 			}()
 
-			r = r.WithContext(ctx)
+			// txsub has a custom timeout
+			if r.Method != http.MethodPost {
+				r = r.WithContext(ctx)
+			}
 			next.ServeHTTP(mw, r)
 		}
 		return http.HandlerFunc(fn)

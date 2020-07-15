@@ -206,7 +206,7 @@ var configOpts = support.ConfigOptions{
 		OptType:        types.Int,
 		FlagDefault:    55,
 		CustomSetValue: support.SetDuration,
-		Usage:          "defines the timeout of connection after which 504 response will be sent or stream will be closed, if Horizon is behind a load balancer with idle connection timeout, this should be set to a few seconds less that idle timeout",
+		Usage:          "defines the timeout of connection after which 504 response will be sent or stream will be closed, if Horizon is behind a load balancer with idle connection timeout, this should be set to a few seconds less that idle timeout, does not apply to POST /transactions",
 	},
 	&support.ConfigOption{
 		Name:        "per-hour-rate-limit",
