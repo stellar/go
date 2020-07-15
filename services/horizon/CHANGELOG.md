@@ -12,6 +12,7 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).x
   - `core-db-max-open-connections`
   - `core-db-max-idle-connections`
 * HAL response population is implemented using Go `strings` package instead of `regexp`, improving its performance.  
+* The `--connection-timeout` param is ignored in `POST /transactions`. The requests sent to that endpoint will always timeout after 30 seconds.
 
 ## v1.5.0
 
