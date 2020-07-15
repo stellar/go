@@ -3,7 +3,7 @@
 package ledgerbackend
 
 import (
-	"bufio"
+	"io"
 	"os"
 	"syscall"
 
@@ -19,35 +19,36 @@ func (c *stellarCoreRunner) getPipeName() string {
 	return "fd:3"
 }
 
-// Starts the subprocess and sets the c.metaPipe field
-func (c *stellarCoreRunner) start() error {
+func (c *stellarCoreRunner) start() (io.Reader, error) {
 	// First make an anonymous pipe.
 	// Note io.File objects close-on-finalization.
-	readFile, writeFile, e := os.Pipe()
-	if e != nil {
-		return errors.Wrap(e, "error making a pipe")
+	readFile, writeFile, err := os.Pipe()
+	if err != nil {
+		return readFile, errors.Wrap(err, "error making a pipe")
 	}
 
 	defer writeFile.Close()
 
-	// Then output the config file pointing to it.
-	e = c.writeConf()
-	if e != nil {
-		return errors.Wrap(e, "error writing conf")
+	// Then write config file pointing to it.
+	err = c.writeConf()
+	if err != nil {
+		return readFile, errors.Wrap(err, "error writing conf")
 	}
 
 	// Add the write-end to the set of inherited file handles. This is defined
 	// to be fd 3 on posix platforms.
 	c.cmd.ExtraFiles = []*os.File{writeFile}
-	e = c.cmd.Start()
-	if e != nil {
-		return errors.Wrap(e, "error starting stellar-core")
+	err = c.cmd.Start()
+	if err != nil {
+		return readFile, errors.Wrap(err, "error starting stellar-core")
 	}
 
-	// Do not remove bufio.Reader wrapping. Turns out that each read from a pipe
-	// adds an overhead time so it's better to preload data to a buffer.
-	c.metaPipe = bufio.NewReaderSize(readFile, 1024*1024)
-	return nil
+	go func() {
+		c.processExit <- c.cmd.Wait()
+		close(c.processExit)
+	}()
+
+	return readFile, nil
 }
 
 func (c *stellarCoreRunner) processIsAlive() bool {

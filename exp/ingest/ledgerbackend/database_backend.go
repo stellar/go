@@ -42,8 +42,8 @@ func NewDatabaseBackendFromSession(session *db.Session, networkPassphrase string
 	return &DatabaseBackend{session: session, networkPassphrase: networkPassphrase}, nil
 }
 
-func (dbb *DatabaseBackend) PrepareRange(from uint32, to uint32) error {
-	fromExists, _, err := dbb.GetLedger(from)
+func (dbb *DatabaseBackend) PrepareRange(ledgerRange Range) error {
+	fromExists, _, err := dbb.GetLedger(ledgerRange.from)
 	if err != nil {
 		return errors.Wrap(err, "error getting ledger")
 	}
@@ -52,16 +52,23 @@ func (dbb *DatabaseBackend) PrepareRange(from uint32, to uint32) error {
 		return errors.New("`from` ledger does not exist")
 	}
 
-	toExists, _, err := dbb.GetLedger(to)
-	if err != nil {
-		return errors.Wrap(err, "error getting ledger")
-	}
+	if ledgerRange.bounded {
+		toExists, _, err := dbb.GetLedger(ledgerRange.to)
+		if err != nil {
+			return errors.Wrap(err, "error getting ledger")
+		}
 
-	if !toExists {
-		return errors.New("`to` ledger does not exist")
+		if !toExists {
+			return errors.New("`to` ledger does not exist")
+		}
 	}
 
 	return nil
+}
+
+// IsPrepared returns true if a given ledgerRange is prepared.
+func (*DatabaseBackend) IsPrepared(ledgerRange Range) bool {
+	return true
 }
 
 // GetLatestLedgerSequence returns the most recent ledger sequence number present in the database.

@@ -6,6 +6,7 @@ import (
 
 	"github.com/stellar/go/exp/ingest/adapters"
 	"github.com/stellar/go/exp/ingest/io"
+	"github.com/stellar/go/exp/ingest/ledgerbackend"
 	"github.com/stellar/go/support/errors"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
@@ -19,6 +20,7 @@ type BuildStateTestSuite struct {
 	suite.Suite
 	historyQ          *mockDBQ
 	historyAdapter    *adapters.MockHistoryArchiveAdapter
+	ledgerBackend     *ledgerbackend.MockDatabaseBackend
 	system            *system
 	runner            *mockProcessorsRunner
 	stellarCoreClient *mockStellarCoreClient
@@ -30,6 +32,7 @@ func (s *BuildStateTestSuite) SetupTest() {
 	s.historyQ = &mockDBQ{}
 	s.runner = &mockProcessorsRunner{}
 	s.historyAdapter = &adapters.MockHistoryArchiveAdapter{}
+	s.ledgerBackend = &ledgerbackend.MockDatabaseBackend{}
 	s.stellarCoreClient = &mockStellarCoreClient{}
 	s.checkpointLedger = uint32(63)
 	s.lastLedger = 0
@@ -37,6 +40,7 @@ func (s *BuildStateTestSuite) SetupTest() {
 		ctx:               context.Background(),
 		historyQ:          s.historyQ,
 		historyAdapter:    s.historyAdapter,
+		ledgerBackend:     s.ledgerBackend,
 		runner:            s.runner,
 		stellarCoreClient: s.stellarCoreClient,
 	}
@@ -52,6 +56,7 @@ func (s *BuildStateTestSuite) TearDownTest() {
 	s.historyAdapter.AssertExpectations(t)
 	s.runner.AssertExpectations(t)
 	s.stellarCoreClient.AssertExpectations(t)
+	s.ledgerBackend.AssertExpectations(t)
 }
 
 func (s *BuildStateTestSuite) mockCommonHistoryQ() {
@@ -66,6 +71,7 @@ func (s *BuildStateTestSuite) mockCommonHistoryQ() {
 		defaultCoreCursorName,
 		int32(62),
 	).Return(nil).Once()
+	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(63)).Return(true).Once()
 }
 
 func (s *BuildStateTestSuite) TestCheckPointLedgerIsZero() {
@@ -172,6 +178,62 @@ func (s *BuildStateTestSuite) TestTruncateExpingestStateTablesReturnsError() {
 	s.Assert().Error(err)
 	s.Assert().EqualError(err, "Error clearing ingest tables: my error")
 	s.Assert().Equal(transition{node: startState{}, sleepDuration: defaultSleep}, next)
+}
+
+func (s *BuildStateTestSuite) TestRangeNotPreparedFailPrepare() {
+	s.historyQ.On("GetLastLedgerExpIngest").Return(s.lastLedger, nil).Once()
+	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion, nil).Once()
+	s.historyQ.On("UpdateLastLedgerExpIngest", s.lastLedger).Return(nil).Once()
+	s.historyQ.On("UpdateExpStateInvalid", false).Return(nil).Once()
+	s.historyQ.On("TruncateExpingestStateTables").Return(nil).Once()
+
+	s.stellarCoreClient.On(
+		"SetCursor",
+		mock.AnythingOfType("*context.timerCtx"),
+		defaultCoreCursorName,
+		int32(62),
+	).Return(nil).Once()
+
+	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(63)).Return(false).Once()
+	s.ledgerBackend.On("PrepareRange", ledgerbackend.UnboundedRange(63)).Return(errors.New("my error")).Once()
+	// Rollback twice (first one mocked in SetupTest) because we want to release
+	// a distributed ingestion lock.
+	s.historyQ.On("Rollback").Return(nil).Once()
+
+	next, err := buildState{checkpointLedger: s.checkpointLedger}.run(s.system)
+
+	s.Assert().Error(err)
+	s.Assert().EqualError(err, "error preparing range: my error")
+	s.Assert().Equal(transition{node: startState{}, sleepDuration: defaultSleep}, next)
+}
+
+func (s *BuildStateTestSuite) TestRangeNotPreparedSuccessPrepare() {
+	s.historyQ.On("GetLastLedgerExpIngest").Return(s.lastLedger, nil).Once()
+	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion, nil).Once()
+	s.historyQ.On("UpdateLastLedgerExpIngest", s.lastLedger).Return(nil).Once()
+	s.historyQ.On("UpdateExpStateInvalid", false).Return(nil).Once()
+	s.historyQ.On("TruncateExpingestStateTables").Return(nil).Once()
+
+	s.stellarCoreClient.On(
+		"SetCursor",
+		mock.AnythingOfType("*context.timerCtx"),
+		defaultCoreCursorName,
+		int32(62),
+	).Return(nil).Once()
+
+	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(63)).Return(false).Once()
+	s.ledgerBackend.On("PrepareRange", ledgerbackend.UnboundedRange(63)).Return(nil).Once()
+	// Rollback twice (first one mocked in SetupTest) because we want to release
+	// a distributed ingestion lock.
+	s.historyQ.On("Rollback").Return(nil).Once()
+
+	next, err := buildState{checkpointLedger: s.checkpointLedger}.run(s.system)
+
+	s.Assert().NoError(err)
+	s.Assert().Equal(transition{node: startState{
+		// suggestedCheckpoint is set. See startSuggestedCheckpoint for more info.
+		suggestedCheckpoint: 63,
+	}, sleepDuration: defaultSleep}, next)
 }
 
 func (s *BuildStateTestSuite) TestRunHistoryArchiveIngestionReturnsError() {
