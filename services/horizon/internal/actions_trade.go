@@ -1,15 +1,12 @@
 package horizon
 
 import (
-	"database/sql"
 	"strconv"
 	gTime "time"
 
 	"github.com/stellar/go/protocols/horizon"
-	"github.com/stellar/go/services/horizon/internal/actions"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/services/horizon/internal/render/sse"
 	"github.com/stellar/go/services/horizon/internal/resourceadapter"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/render/hal"
@@ -17,133 +14,6 @@ import (
 	"github.com/stellar/go/support/time"
 	"github.com/stellar/go/xdr"
 )
-
-// Interface verifications
-var _ actions.JSONer = (*TradeIndexAction)(nil)
-var _ actions.EventStreamer = (*TradeIndexAction)(nil)
-
-type TradeIndexAction struct {
-	Action
-	BaseAssetFilter       xdr.Asset
-	HasBaseAssetFilter    bool
-	CounterAssetFilter    xdr.Asset
-	HasCounterAssetFilter bool
-	OfferFilter           int64
-	AccountFilter         string
-	PagingParams          db2.PageQuery
-	Records               []history.Trade
-	Page                  hal.Page
-}
-
-// JSON is a method for actions.JSON
-func (action *TradeIndexAction) JSON() error {
-	action.Do(
-		action.EnsureHistoryFreshness,
-		action.loadParams,
-		action.loadRecords,
-		action.loadPage,
-		func() { hal.Render(action.W, action.Page) },
-	)
-	return action.Err
-}
-
-// SSE is a method for actions.SSE
-func (action *TradeIndexAction) SSE(stream *sse.Stream) error {
-	action.Setup(
-		action.EnsureHistoryFreshness,
-		action.loadParams,
-	)
-	action.Do(
-		action.loadRecords,
-		func() {
-			stream.SetLimit(int(action.PagingParams.Limit))
-			records := action.Records[stream.SentCount():]
-
-			for _, record := range records {
-				var res horizon.Trade
-				resourceadapter.PopulateTrade(action.R.Context(), &res, record)
-				stream.Send(sse.Event{
-					ID:   res.PagingToken(),
-					Data: res,
-				})
-			}
-		},
-	)
-
-	return action.Err
-}
-
-// loadParams sets action.Query from the request params
-func (action *TradeIndexAction) loadParams() {
-	action.PagingParams = action.GetPageQuery()
-	action.BaseAssetFilter, action.HasBaseAssetFilter = action.MaybeGetAsset("base_")
-	action.CounterAssetFilter, action.HasCounterAssetFilter = action.MaybeGetAsset("counter_")
-	action.OfferFilter = action.GetInt64("offer_id")
-	action.AccountFilter = action.GetAddress("account_id")
-
-	if (!action.HasBaseAssetFilter && action.HasCounterAssetFilter) ||
-		(action.HasBaseAssetFilter && !action.HasCounterAssetFilter) {
-		action.SetInvalidField("base_asset_type,counter_asset_type", errors.New("this endpoint supports asset pairs but only one asset supplied"))
-	}
-}
-
-// loadRecords populates action.Records
-func (action *TradeIndexAction) loadRecords() {
-	trades := action.HistoryQ().Trades()
-
-	if action.AccountFilter != "" {
-		trades.ForAccount(action.AccountFilter)
-	}
-
-	if action.HasBaseAssetFilter {
-
-		baseAssetId, err := action.HistoryQ().GetAssetID(action.BaseAssetFilter)
-		if err != nil {
-			action.Err = err
-			return
-		}
-
-		if action.HasCounterAssetFilter {
-
-			counterAssetId, err := action.HistoryQ().GetAssetID(action.CounterAssetFilter)
-			if err != nil {
-				action.Err = err
-				return
-			}
-			trades = action.HistoryQ().TradesForAssetPair(baseAssetId, counterAssetId)
-		} else {
-			action.Err = errors.New("this endpoint supports asset pairs but only one asset supplied")
-			return
-		}
-	}
-
-	if action.OfferFilter != 0 {
-		trades = trades.ForOffer(action.OfferFilter)
-	}
-
-	err := trades.Page(action.PagingParams).Select(&action.Records)
-	if err != sql.ErrNoRows {
-		action.Err = err
-	}
-}
-
-// loadPage populates action.Page
-func (action *TradeIndexAction) loadPage() {
-	for _, record := range action.Records {
-		var res horizon.Trade
-		resourceadapter.PopulateTrade(action.R.Context(), &res, record)
-		action.Page.Add(res)
-	}
-
-	action.Page.FullURL = action.FullURL()
-	action.Page.Limit = action.PagingParams.Limit
-	action.Page.Cursor = action.PagingParams.Cursor
-	action.Page.Order = action.PagingParams.Order
-	action.Page.PopulateLinks()
-}
-
-// Interface verification
-var _ actions.JSONer = (*TradeAggregateIndexAction)(nil)
 
 type TradeAggregateIndexAction struct {
 	Action
