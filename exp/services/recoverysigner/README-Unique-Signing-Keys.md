@@ -43,6 +43,17 @@ Example:
 $ tinkey create-keyset --out=keyset.json --key-template=ECIES_P256_HKDF_HMAC_SHA256_AES128_GCM
 ```
 
+You can also specify the `--master-key-uri` option to have the keyset
+encrypted with AWS KMS.
+
+Example:
+```
+$ tinkey create-keyset --out=keyset.json --key-template=ECIES_P256_HKDF_HMAC_SHA256_AES128_GCM --master-key-uri=aws-kms://arn:aws:kms:<region>:<account-id>:key/<key-id>
+```
+
+Refer to the [tinkey] documentation for complete details about how to use the
+tool.
+
 [tinkey]: https://github.com/google/tink/blob/master/docs/TINKEY.md
 
 ## Enable Unique Signing Keys
