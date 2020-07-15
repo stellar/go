@@ -5,14 +5,26 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).x
 
 ## Unreleased
 
-* Add `--parallel-workers` and `--parallel-job-size` to `horizon db reingest range`. `--parallel-workers` will parallelize reingestion using the supplied number of workers.
-* Remove Stellar Core's database dependency for non-ingesting instances of Horizon ((#2759)[https://github.com/stellar/go/pull/2759]).
+* Add `--parallel-workers` and `--parallel-job-size` to `horizon db reingest range`. `--parallel-workers` will parallelize reingestion using the supplied number of workers. ([#2724](https://github.com/stellar/go/pull/2724))
+* Remove Stellar Core's database dependency for non-ingesting instances of Horizon.  ([#2759](https://github.com/stellar/go/pull/2759))
   Horizon doesn't require access to a Stellar Core database if it is only serving HTTP request, this allows the separation of front-end and ingesting instances. 
   The following config parameters were removed:
   - `core-db-max-open-connections`
   - `core-db-max-idle-connections`
-* HAL response population is implemented using Go `strings` package instead of `regexp`, improving its performance.  
-* The `--connection-timeout` param is ignored in `POST /transactions`. The requests sent to that endpoint will always timeout after 30 seconds.
+* HAL response population is implemented using Go `strings` package instead of `regexp`, improving its performance. ([#2806](https://github.com/stellar/go/pull/2806))
+* Fix a bug in `POST /transactions` that could cause `tx_bad_seq` errors instead of processing a valid transaction. ([#2805](https://github.com/stellar/go/pull/2805))
+* The `--connection-timeout` param is ignored in `POST /transactions`. The requests sent to that endpoint will always timeout after 30 seconds. ([#2818](https://github.com/stellar/go/pull/2818))
+
+### Experimental
+
+* Add experimental support for live ingestion using a Stellar Core subprocess instead of a persistent Stellar Core database.
+
+  [Stellar Core v12.3.0](https://github.com/stellar/stellar-core/releases/tag/v12.3.0) added an experimental feature which allows replaying ledger's metadata in-memory. This feature starts paving the way to remove the dependency between Stellar Core's database and Horizon.
+
+  To try out this new experimental feature, you need to specify the following parameters when starting ingesting Horizon instance:
+
+  - `--enable-captive-core-ingestion` or `ENABLE_CAPTIVE_CORE_INGESTION=true`.
+  - `--stellar-core-binary-path` or `STELLAR_CORE_BINARY_PATH`.
 
 ## v1.5.0
 

@@ -210,11 +210,11 @@ var dbReingestRangeCmd = &cobra.Command{
 		}
 
 		ingestConfig := expingest.Config{
-			NetworkPassphrase:          config.NetworkPassphrase,
-			HistorySession:             horizonSession,
-			HistoryArchiveURL:          config.HistoryArchiveURLs[0],
-			MaxReingestRetries:         int(retries),
-			ReingesRetryBackoffSeconds: int(retryBackoffSeconds),
+			NetworkPassphrase:           config.NetworkPassphrase,
+			HistorySession:              horizonSession,
+			HistoryArchiveURL:           config.HistoryArchiveURLs[0],
+			MaxReingestRetries:          int(retries),
+			ReingestRetryBackoffSeconds: int(retryBackoffSeconds),
 		}
 
 		if config.EnableCaptiveCoreIngestion {

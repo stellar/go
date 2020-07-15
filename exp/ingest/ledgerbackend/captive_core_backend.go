@@ -384,10 +384,8 @@ func (c *CaptiveStellarCore) GetLedger(sequence uint32) (bool, xdr.LedgerCloseMe
 	var errOut error
 loop:
 	for {
-		if !c.blocking {
-			if len(c.metaC) == 0 {
-				return false, xdr.LedgerCloseMeta{}, nil
-			}
+		if !c.blocking && len(c.metaC) == 0 {
+			return false, xdr.LedgerCloseMeta{}, nil
 		}
 
 		metaResult := <-c.metaC

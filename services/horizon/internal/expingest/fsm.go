@@ -38,7 +38,7 @@ func start() transition {
 }
 
 // startSuggestedCheckpoint is a transition to start `state` but with a suggested
-// checkpoint to use if the follow step is `buildState`.
+// checkpoint to use if the following step is `buildState`.
 // This is required because some ledger backends (like captive core) require some
 // time to prepare a requested range and have a small buffer of ledgers available
 // to fetch using GetLedger.

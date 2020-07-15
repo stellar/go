@@ -66,9 +66,9 @@ type Config struct {
 	// MaxStreamRetries determines how many times the reader will retry when encountering
 	// errors while streaming xdr bucket entries from the history archive.
 	// Set MaxStreamRetries to 0 if there should be no retry attempts
-	MaxStreamRetries           int
-	MaxReingestRetries         int
-	ReingesRetryBackoffSeconds int
+	MaxStreamRetries            int
+	MaxReingestRetries          int
+	ReingestRetryBackoffSeconds int
 }
 
 const (
@@ -121,10 +121,10 @@ type system struct {
 
 	stellarCoreClient stellarCoreClient
 
-	maxStreamRetries           int
-	maxReingestRetries         int
-	reingesRetryBackoffSeconds int
-	wg                         sync.WaitGroup
+	maxStreamRetries            int
+	maxReingestRetries          int
+	reingestRetryBackoffSeconds int
+	wg                          sync.WaitGroup
 
 	// stateVerificationRunning is true when verification routine is currently
 	// running.
@@ -176,16 +176,16 @@ func NewSystem(config Config) (System, error) {
 	historyAdapter := adapters.MakeHistoryArchiveAdapter(archive)
 
 	system := &system{
-		ctx:                        ctx,
-		cancel:                     cancel,
-		historyAdapter:             historyAdapter,
-		ledgerBackend:              ledgerBackend,
-		config:                     config,
-		historyQ:                   historyQ,
-		disableStateVerification:   config.DisableStateVerification,
-		maxStreamRetries:           config.MaxStreamRetries,
-		maxReingestRetries:         config.MaxReingestRetries,
-		reingesRetryBackoffSeconds: config.ReingesRetryBackoffSeconds,
+		ctx:                         ctx,
+		cancel:                      cancel,
+		historyAdapter:              historyAdapter,
+		ledgerBackend:               ledgerBackend,
+		config:                      config,
+		historyQ:                    historyQ,
+		disableStateVerification:    config.DisableStateVerification,
+		maxStreamRetries:            config.MaxStreamRetries,
+		maxReingestRetries:          config.MaxReingestRetries,
+		reingestRetryBackoffSeconds: config.ReingestRetryBackoffSeconds,
 		stellarCoreClient: &stellarcore.Client{
 			URL: config.StellarCoreURL,
 		},
@@ -284,7 +284,7 @@ func (s *system) ReingestRange(fromLedger, toLedger uint32, force bool) error {
 	err := run()
 	for retry := 0; err != nil && retry < s.maxReingestRetries; retry++ {
 		log.Warnf("reingest range [%d, %d] failed (%s), retrying", fromLedger, toLedger, err.Error())
-		time.Sleep(time.Second * time.Duration(s.reingesRetryBackoffSeconds))
+		time.Sleep(time.Second * time.Duration(s.reingestRetryBackoffSeconds))
 		err = run()
 	}
 	return err
