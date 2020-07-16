@@ -108,17 +108,20 @@ func writeLedgerHeader(w io.Writer, sequence uint32) {
 
 func TestCaptiveNew(t *testing.T) {
 	executablePath := "/etc/stellar-core"
+	configPath := "/etc/stellar-core.cfg"
 	networkPassphrase := network.PublicNetworkPassphrase
 	historyURLs := []string{"http://history.stellar.org/prd/core-live/core_live_001"}
 
 	captiveStellarCore, err := NewCaptive(
 		executablePath,
+		configPath,
 		networkPassphrase,
 		historyURLs,
 	)
 
 	assert.NoError(t, err)
 	assert.Equal(t, executablePath, captiveStellarCore.executablePath)
+	assert.Equal(t, configPath, captiveStellarCore.configPath)
 	assert.Equal(t, networkPassphrase, captiveStellarCore.networkPassphrase)
 	assert.Equal(t, historyURLs, captiveStellarCore.historyURLs)
 	assert.Equal(t, uint32(0), captiveStellarCore.nextLedger)

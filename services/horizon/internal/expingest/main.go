@@ -53,11 +53,12 @@ const (
 var log = logpkg.DefaultLogger.WithField("service", "expingest")
 
 type Config struct {
-	CoreSession       *db.Session
-	StellarCoreURL    string
-	StellarCoreCursor string
-	StellarCorePath   string
-	NetworkPassphrase string
+	CoreSession           *db.Session
+	StellarCoreURL        string
+	StellarCoreCursor     string
+	StellarCoreBinaryPath string
+	StellarCoreConfigPath string
+	NetworkPassphrase     string
 
 	HistorySession           *db.Session
 	HistoryArchiveURL        string
@@ -150,9 +151,10 @@ func NewSystem(config Config) (System, error) {
 	}
 
 	var ledgerBackend ledgerbackend.LedgerBackend
-	if len(config.StellarCorePath) > 0 {
+	if len(config.StellarCoreBinaryPath) > 0 {
 		ledgerBackend, err = ledgerbackend.NewCaptive(
-			config.StellarCorePath,
+			config.StellarCoreBinaryPath,
+			config.StellarCoreConfigPath,
 			config.NetworkPassphrase,
 			[]string{config.HistoryArchiveURL},
 		)

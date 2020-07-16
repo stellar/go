@@ -218,7 +218,7 @@ var dbReingestRangeCmd = &cobra.Command{
 		}
 
 		if config.EnableCaptiveCoreIngestion {
-			ingestConfig.StellarCorePath = config.StellarCoreBinaryPath
+			ingestConfig.StellarCoreBinaryPath = config.StellarCoreBinaryPath
 		} else {
 			if config.StellarCoreDatabaseURL == "" {
 				log.Fatalf("flag --%s cannot be empty", stellarCoreDBURLFlagName)

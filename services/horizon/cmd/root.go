@@ -114,7 +114,6 @@ var configOpts = support.ConfigOptions{
 	dbURLConfigOption,
 	&support.ConfigOption{
 		Name:        "stellar-core-binary-path",
-		EnvVar:      "STELLAR_CORE_BINARY_PATH",
 		OptType:     types.String,
 		FlagDefault: "",
 		Required:    false,
@@ -122,8 +121,15 @@ var configOpts = support.ConfigOptions{
 		ConfigKey:   &config.StellarCoreBinaryPath,
 	},
 	&support.ConfigOption{
+		Name:        "stellar-core-config-path",
+		OptType:     types.String,
+		FlagDefault: "",
+		Required:    false,
+		Usage:       "path to stellar core config file",
+		ConfigKey:   &config.StellarCoreConfigPath,
+	},
+	&support.ConfigOption{
 		Name:        "enable-captive-core-ingestion",
-		EnvVar:      "ENABLE_CAPTIVE_CORE_INGESTION",
 		OptType:     types.Bool,
 		FlagDefault: false,
 		Required:    false,
@@ -406,6 +412,10 @@ func initRootConfig() {
 	}
 
 	validateBothOrNeither("enable-captive-core-ingestion", "stellar-core-binary-path")
+	if config.Ingest {
+		// When running live ingestion a config file is required too
+		validateBothOrNeither("enable-captive-core-ingestion", "stellar-core-config-path")
+	}
 
 	// Configure log file
 	if config.LogFile != "" {
