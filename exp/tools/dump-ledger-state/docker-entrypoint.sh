@@ -26,6 +26,11 @@ if [ -z ${LATEST_LEDGER+x} ]; then
     fi
 fi
 
+if [ -z ${LATEST_LEDGER+x} ]; then
+  echo "could not obtain latest ledger"
+  exit 1
+fi
+
 echo "Latest ledger: $LATEST_LEDGER"
 
 if ! ./run_test.sh; then
