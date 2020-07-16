@@ -13,16 +13,21 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-// TradesQuery query struct for trades end-points
-type TradesQuery struct {
-	AccountID          string `schema:"account_id" valid:"accountID,optional"`
-	OfferID            uint64 `schema:"offer_id" valid:"-"`
+// TradeAssetsQueryParams represents the base and counter assets on trade related end-points.
+type TradeAssetsQueryParams struct {
 	BaseAssetType      string `schema:"base_asset_type" valid:"assetType,optional"`
 	BaseAssetIssuer    string `schema:"base_asset_issuer" valid:"accountID,optional"`
 	BaseAssetCode      string `schema:"base_asset_code" valid:"-"`
 	CounterAssetType   string `schema:"counter_asset_type" valid:"assetType,optional"`
 	CounterAssetIssuer string `schema:"counter_asset_issuer" valid:"accountID,optional"`
 	CounterAssetCode   string `schema:"counter_asset_code" valid:"-"`
+}
+
+// TradesQuery query struct for trades end-points
+type TradesQuery struct {
+	AccountID              string `schema:"account_id" valid:"accountID,optional"`
+	OfferID                uint64 `schema:"offer_id" valid:"-"`
+	TradeAssetsQueryParams `valid:"optional"`
 }
 
 // Base returns an xdr.Asset representing the base side of the trade.
