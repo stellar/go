@@ -10,7 +10,7 @@ import (
 // AccountDataQuery query struct for account data end-point
 type AccountDataQuery struct {
 	AccountID string `schema:"account_id" valid:"accountID"`
-	Key       string `schema:"key" valid:"required"`
+	Key       string `schema:"key" valid:"length(1|64)"`
 }
 
 type accountDataResponse struct {
