@@ -160,7 +160,11 @@ func (w *web) mustInstallActions(config Config, pathFinder paths.Finder, session
 			r.Method(http.MethodGet, "/", restPageHandler(actions.GetAccountsHandler{}))
 			r.Route("/{account_id}", func(r chi.Router) {
 				r.Get("/", w.streamShowActionHandler(w.getAccountInfo, true))
-				r.Get("/data/{key}", DataShowAction{}.Handle)
+				accountData := actions.GetAccountDataHandler{}
+				r.Method(http.MethodGet, "/data/{key}", WrapRaw(
+					streamableObjectActionHandler{streamHandler: streamHandler, action: accountData},
+					accountData,
+				))
 				r.Method(http.MethodGet, "/offers", streamableStatePageHandler(actions.GetAccountOffersHandler{}, streamHandler))
 			})
 		})
@@ -299,7 +303,7 @@ func (w *web) mustInstallActions(config Config, pathFinder paths.Finder, session
 	r.NotFound(NotFoundAction{}.Handle)
 
 	// internal
-	w.internalRouter.Get("/metrics", HandleMetrics(&actions.MetricsHandler{registry}))
+	w.internalRouter.Get("/metrics", HandleRaw(&actions.MetricsHandler{registry}))
 	w.internalRouter.Get("/debug/pprof/heap", pprof.Index)
 	w.internalRouter.Get("/debug/pprof/profile", pprof.Profile)
 }

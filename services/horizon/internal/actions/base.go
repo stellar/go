@@ -167,17 +167,6 @@ func (base *Base) Execute(action interface{}) {
 			stream.Done()
 			return
 		}
-	case render.MimeRaw:
-		action, ok := action.(RawDataResponder)
-		if !ok {
-			goto NotAcceptable
-		}
-
-		err := action.Raw()
-		if err != nil {
-			problem.Render(ctx, base.W, err)
-			return
-		}
 	default:
 		goto NotAcceptable
 	}

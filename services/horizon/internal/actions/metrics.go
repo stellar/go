@@ -3,6 +3,7 @@ package actions
 import (
 	"fmt"
 	"io"
+	"net/http"
 	"strings"
 	"time"
 
@@ -14,8 +15,8 @@ type MetricsHandler struct {
 	Metrics metrics.Registry
 }
 
-// PrometheusFormat is a method for actions.PrometheusResponder
-func (handler *MetricsHandler) PrometheusFormat(w io.Writer) error {
+// Raw is a method for actions.PrometheusResponder
+func (handler *MetricsHandler) WriteRawResponse(w io.Writer, r *http.Request) error {
 	handler.Metrics.Each(func(name string, i interface{}) {
 		// Replace `.` with `_` to follow Prometheus metric name convention.
 		name = strings.ReplaceAll(name, ".", "_")
