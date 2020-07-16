@@ -405,9 +405,7 @@ func initRootConfig() {
 		stdLog.Fatalf("--history-archive-urls must be set when --ingest is set")
 	}
 
-	if config.EnableCaptiveCoreIngestion && config.StellarCoreBinaryPath == "" {
-		stdLog.Fatalf("--stellar-core-binary-path must be set when --enable-captive-core-ingestion is set")
-	}
+	validateBothOrNeither("enable-captive-core-ingestion", "stellar-core-binary-path")
 
 	// Configure log file
 	if config.LogFile != "" {
