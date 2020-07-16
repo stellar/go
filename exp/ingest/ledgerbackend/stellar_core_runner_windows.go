@@ -23,12 +23,6 @@ func (c *stellarCoreRunner) start() (io.Reader, error) {
 		return io.Reader(nil), err
 	}
 
-	// Then write config file pointing to it.
-	err = c.writeConf()
-	if err != nil {
-		return io.Reader(nil), err
-	}
-
 	// Then start the process.
 	err = c.cmd.Start()
 	if err != nil {

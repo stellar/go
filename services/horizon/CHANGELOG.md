@@ -19,7 +19,7 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).x
 
 * Add experimental support for live ingestion using a Stellar Core subprocess instead of a persistent Stellar Core database.
 
-  [Stellar Core v12.3.0](https://github.com/stellar/stellar-core/releases/tag/v12.3.0) added an experimental feature which allows replaying ledger's metadata in-memory. This feature starts paving the way to remove the dependency between Stellar Core's database and Horizon.
+  Stellar-core now contains an experimental feature which allows replaying ledger's metadata in-memory. This feature starts paving the way to remove the dependency between Stellar Core's database and Horizon. Requires [Stellar Core v13.2.0](https://github.com/stellar/stellar-core/releases/tag/v13.2.0).
 
   To try out this new experimental feature, you need to specify the following parameters when starting ingesting Horizon instance:
 

@@ -50,6 +50,7 @@ type metaResult struct {
 
 type CaptiveStellarCore struct {
 	executablePath    string
+	configPath        string
 	networkPassphrase string
 	historyURLs       []string
 	archive           historyarchive.ArchiveInterface
@@ -88,7 +89,7 @@ type CaptiveStellarCore struct {
 // and restart the subprocess if subsequent calls to .GetLedger() are discontiguous.
 //
 // Platform-specific pipe setup logic is in the .start() methods.
-func NewCaptive(executablePath, networkPassphrase string, historyURLs []string) (*CaptiveStellarCore, error) {
+func NewCaptive(executablePath, configPath, networkPassphrase string, historyURLs []string) (*CaptiveStellarCore, error) {
 	archive, err := historyarchive.Connect(
 		historyURLs[0],
 		historyarchive.ConnectOptions{},
@@ -100,6 +101,7 @@ func NewCaptive(executablePath, networkPassphrase string, historyURLs []string) 
 	return &CaptiveStellarCore{
 		archive:                  archive,
 		executablePath:           executablePath,
+		configPath:               configPath,
 		historyURLs:              historyURLs,
 		networkPassphrase:        networkPassphrase,
 		waitIntervalPrepareRange: time.Second,
@@ -137,7 +139,11 @@ func (c *CaptiveStellarCore) openOfflineReplaySubprocess(from, to uint32) error 
 	}
 
 	if c.stellarCoreRunner == nil {
-		c.stellarCoreRunner = newStellarCoreRunner(c.executablePath, c.networkPassphrase, c.historyURLs)
+		// configPath is empty in an offline mode because it's generated
+		c.stellarCoreRunner, err = newStellarCoreRunner(c.executablePath, "", c.networkPassphrase, c.historyURLs)
+		if err != nil {
+			return errors.Wrap(err, "error creating stellar-core runner")
+		}
 	}
 	err = c.stellarCoreRunner.catchup(from, to)
 	if err != nil {
@@ -190,7 +196,13 @@ func (c *CaptiveStellarCore) openOnlineReplaySubprocess(from uint32) error {
 	}
 
 	if c.stellarCoreRunner == nil {
-		c.stellarCoreRunner = newStellarCoreRunner(c.executablePath, c.networkPassphrase, c.historyURLs)
+		if c.configPath == "" {
+			return errors.New("stellar-core config file path cannot be empty in an online mode")
+		}
+		c.stellarCoreRunner, err = newStellarCoreRunner(c.executablePath, c.configPath, c.networkPassphrase, c.historyURLs)
+		if err != nil {
+			return errors.Wrap(err, "error creating stellar-core runner")
+		}
 	}
 	err = c.stellarCoreRunner.runFrom(from)
 	if err != nil {

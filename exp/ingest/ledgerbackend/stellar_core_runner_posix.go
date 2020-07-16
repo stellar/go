@@ -29,12 +29,6 @@ func (c *stellarCoreRunner) start() (io.Reader, error) {
 
 	defer writeFile.Close()
 
-	// Then write config file pointing to it.
-	err = c.writeConf()
-	if err != nil {
-		return readFile, errors.Wrap(err, "error writing conf")
-	}
-
 	// Add the write-end to the set of inherited file handles. This is defined
 	// to be fd 3 on posix platforms.
 	c.cmd.ExtraFiles = []*os.File{writeFile}
