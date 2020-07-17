@@ -378,7 +378,7 @@ func (handler GetTradeAggregationsHandler) records(w HeaderWriter, r *http.Reque
 		return nil, err
 	}
 
-	var response []horizon.TradeAggregation
+	response := []horizon.TradeAggregation{}
 
 	for _, record := range records {
 		var res horizon.TradeAggregation
@@ -410,6 +410,7 @@ func (handler GetTradeAggregationsHandler) buildPage(r *http.Request, records []
 		Order:  pageQuery.Order,
 		Limit:  pageQuery.Limit,
 	}
+	page.Init()
 
 	for _, record := range records {
 		page.Add(record)
