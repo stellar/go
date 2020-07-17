@@ -3,9 +3,9 @@ package main
 import (
 	"fmt"
 	"go/format"
-	"os"
 
 	"github.com/spf13/cobra"
+	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
 
@@ -16,8 +16,8 @@ var (
 var rootCmd = &cobra.Command{
 	Use:   "xdr2go [base64-encoded XDR object]",
 	Short: "xdr2go transforms base64 encoded XDR objects into a pretty Go code",
-	Run: func(cmd *cobra.Command, args []string) {
-		run(cmd, args)
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return run(cmd, args)
 	},
 }
 
@@ -26,32 +26,27 @@ func main() {
 	rootCmd.Execute()
 }
 
-func run(cmd *cobra.Command, args []string) {
+func run(cmd *cobra.Command, args []string) error {
 	if len(args) != 1 {
-		printHelpExit(cmd, "Exactly one command argument with XDR object is required.")
+		return errors.New("Exactly one command argument with XDR object is required.")
 	}
 	var object interface{}
 	switch typ {
 	case "TransactionEnvelope":
 		object = &xdr.TransactionEnvelope{}
 	default:
-		printHelpExit(cmd, "Unknown type.")
+		return errors.New("Unknown type.")
 	}
 	err := xdr.SafeUnmarshalBase64(args[0], object)
 	if err != nil {
-		panic(err)
+		return errors.Wrap(err, "Error unmarshalling XDR stucture.")
 	}
 
 	source := fmt.Sprintf("%#v\n", object)
 	formatted, err := format.Source([]byte(source))
 	if err != nil {
-		panic(err)
+		return errors.Wrap(err, "Error formatting code.")
 	}
 	fmt.Println(string(formatted))
-}
-
-func printHelpExit(cmd *cobra.Command, msg string) {
-	fmt.Println(msg)
-	cmd.Help()
-	os.Exit(-1)
+	return nil
 }

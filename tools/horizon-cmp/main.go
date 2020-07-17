@@ -188,14 +188,23 @@ func run(cmd *cobra.Command) {
 
 			requestWg.Wait()
 
+			if a.Error != nil {
+				enqueuePathRetry(pl)
+				log.Warnf("Error sending request, retry queued: %s", a.Error)
+				return
+			}
+
+			if b.Error != nil {
+				enqueuePathRetry(pl)
+				log.Warnf("Error sending request, retry queued: %s", b.Error)
+				return
+			}
+
 			// Retry when LatestLedger not equal but only if not empty because
 			// older Horizon versions don't send this header.
 			if a.LatestLedger != "" && b.LatestLedger != "" &&
 				a.LatestLedger != b.LatestLedger {
-				visitedPathsMutex.Lock()
-				visitedPaths[pl.ID()] = false
-				visitedPathsMutex.Unlock()
-				paths <- pl
+				enqueuePathRetry(pl)
 				log.Warnf("LatestLedger does not match, retry queued: %s", pl.Path)
 				return
 			}
@@ -233,6 +242,13 @@ func run(cmd *cobra.Command) {
 	}
 
 	wg.Wait()
+}
+
+func enqueuePathRetry(pl cmp.Path) {
+	visitedPathsMutex.Lock()
+	visitedPaths[pl.ID()] = false
+	visitedPathsMutex.Unlock()
+	paths <- pl
 }
 
 func getLatestLedger(url string) protocol.Ledger {

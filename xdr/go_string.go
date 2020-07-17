@@ -40,17 +40,17 @@ func (a Asset) GoString() string {
 
 func (m Memo) GoString() string {
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("xdr.Memo{Type: xdr.%s,", memoTypeMap[int32(m.Type)]))
+	sb.WriteString(fmt.Sprintf("xdr.Memo{Type: xdr.%s", memoTypeMap[int32(m.Type)]))
 	switch m.Type {
 	case MemoTypeMemoNone:
 	case MemoTypeMemoText:
-		sb.WriteString(fmt.Sprintf("Text: &%#v,", *m.Text))
+		sb.WriteString(fmt.Sprintf(",Text: &%#v,", *m.Text))
 	case MemoTypeMemoId:
-		sb.WriteString(fmt.Sprintf("Id: &%#v,", *m.Id))
+		sb.WriteString(fmt.Sprintf(",Id: &%#v,", *m.Id))
 	case MemoTypeMemoHash:
-		sb.WriteString(fmt.Sprintf("Hash: &%#v,", *m.Hash))
+		sb.WriteString(fmt.Sprintf(",Hash: &%#v,", *m.Hash))
 	case MemoTypeMemoReturn:
-		sb.WriteString(fmt.Sprintf("RetHash: &%#v,", *m.RetHash))
+		sb.WriteString(fmt.Sprintf(",RetHash: &%#v,", *m.RetHash))
 	default:
 		panic("Unknown type")
 	}
@@ -59,19 +59,20 @@ func (m Memo) GoString() string {
 }
 
 func (m MuxedAccount) GoString() string {
-	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("xdr.MuxedAccount{Type: %d,", m.Type))
-	accountID := m.ToAccountId()
 	switch m.Type {
 	case CryptoKeyTypeKeyTypeEd25519:
+		accountID := m.ToAccountId()
 		return fmt.Sprintf("xdr.MustAddress(%#v)", accountID.Address())
 	case CryptoKeyTypeKeyTypeMuxedEd25519:
+		var sb strings.Builder
+		sb.WriteString(fmt.Sprintf("xdr.MuxedAccount{Type: %d,", m.Type))
 		sb.WriteString(fmt.Sprintf("Med25519: &%#v,", *m.Med25519))
+		sb.WriteString("}")
+		return sb.String()
 	default:
 		panic("Unknown type")
 	}
-	sb.WriteString("}")
-	return sb.String()
+
 }
 
 func (o Operation) GoString() string {
