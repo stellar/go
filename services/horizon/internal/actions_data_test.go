@@ -95,4 +95,11 @@ func TestDataActions_Show(t *testing.T) {
 
 	w = ht.Get(prefix+"/data/missing", test.RequestHelperRaw)
 	ht.Assert.Equal(404, w.Code)
+
+	// Too long
+	w = ht.Get(prefix+"/data/01234567890123456789012345678901234567890123456789012345678901234567890123456789", test.RequestHelperRaw)
+	if ht.Assert.Equal(400, w.Code) {
+		ht.Assert.Contains(w.Body.String(), "does not validate as length(1|64)")
+	}
+
 }

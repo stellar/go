@@ -511,14 +511,25 @@ func buildPage(r *http.Request, records []hal.Pageable) (hal.Page, error) {
 	return page, nil
 }
 
-type metricsAction interface {
-	PrometheusFormat(w io.Writer) error
+type rawAction interface {
+	WriteRawResponse(w io.Writer, r *http.Request) error
 }
 
-func HandleMetrics(action metricsAction) http.HandlerFunc {
+func HandleRaw(action rawAction) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if err := action.PrometheusFormat(w); err != nil {
+		if err := action.WriteRawResponse(w, r); err != nil {
 			problem.Render(r.Context(), w, err)
 		}
 	}
+}
+
+func WrapRaw(next http.Handler, action rawAction) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch render.Negotiate(r) {
+		case render.MimeRaw:
+			HandleRaw(action).ServeHTTP(w, r)
+		default:
+			next.ServeHTTP(w, r)
+		}
+	})
 }
