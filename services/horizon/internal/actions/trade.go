@@ -8,12 +8,9 @@ import (
 
 	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/services/horizon/internal/render"
-	hProblem "github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/resourceadapter"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/render/hal"
-	"github.com/stellar/go/support/render/httpjson"
 	"github.com/stellar/go/support/render/problem"
 	"github.com/stellar/go/support/time"
 	"github.com/stellar/go/xdr"
@@ -240,37 +237,8 @@ func (q TradeAggregationsQuery) Validate() error {
 type GetTradeAggregationsHandler struct {
 }
 
-func (handler GetTradeAggregationsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	switch render.Negotiate(r) {
-	case render.MimeHal, render.MimeJSON:
-		handler.renderPage(w, r)
-		return
-	}
-
-	problem.Render(r.Context(), w, hProblem.NotAcceptable)
-}
-
-func (handler GetTradeAggregationsHandler) renderPage(w http.ResponseWriter, r *http.Request) {
-	records, err := handler.records(w, r)
-	if err != nil {
-		problem.Render(r.Context(), w, err)
-		return
-	}
-
-	page, err := handler.buildPage(r, records)
-	if err != nil {
-		problem.Render(r.Context(), w, err)
-		return
-	}
-
-	httpjson.Render(
-		w,
-		page,
-		httpjson.HALJSON,
-	)
-}
-
-func (handler GetTradeAggregationsHandler) records(w HeaderWriter, r *http.Request) ([]horizon.TradeAggregation, error) {
+// GetResourcePage returns a page of trade aggregations
+func (handler GetTradeAggregationsHandler) GetResourcePage(w HeaderWriter, r *http.Request) ([]hal.Pageable, error) {
 	ctx := r.Context()
 
 	pq, err := GetPageQuery(r)
@@ -378,7 +346,7 @@ func (handler GetTradeAggregationsHandler) records(w HeaderWriter, r *http.Reque
 		return nil, err
 	}
 
-	response := []horizon.TradeAggregation{}
+	response := []hal.Pageable{}
 
 	for _, record := range records {
 		var res horizon.TradeAggregation
@@ -393,7 +361,8 @@ func (handler GetTradeAggregationsHandler) records(w HeaderWriter, r *http.Reque
 	return response, nil
 }
 
-func (handler GetTradeAggregationsHandler) buildPage(r *http.Request, records []horizon.TradeAggregation) (hal.Page, error) {
+// BuildPage builds a custom hal page for this handler
+func (handler GetTradeAggregationsHandler) BuildPage(r *http.Request, records []hal.Pageable) (hal.Page, error) {
 	ctx := r.Context()
 	pageQuery, err := GetPageQuery(r, DisableCursorValidation)
 	if err != nil {
@@ -425,8 +394,9 @@ func (handler GetTradeAggregationsHandler) buildPage(r *http.Request, records []
 	if uint64(len(records)) == 0 {
 		page.Links.Next = page.Links.Self
 	} else {
+		lastRecord := records[len(records)-1].(horizon.TradeAggregation)
 		if page.Order == "asc" {
-			newStartTime := records[len(records)-1].Timestamp + int64(qp.ResolutionFilter)
+			newStartTime := lastRecord.Timestamp + int64(qp.ResolutionFilter)
 			if newStartTime >= qp.EndTimeFilter.ToInt64() {
 				newStartTime = qp.EndTimeFilter.ToInt64()
 			}
@@ -434,7 +404,7 @@ func (handler GetTradeAggregationsHandler) buildPage(r *http.Request, records []
 			newURL.RawQuery = q.Encode()
 			page.Links.Next = hal.NewLink(newURL.String())
 		} else { //desc
-			newEndTime := records[len(records)-1].Timestamp
+			newEndTime := lastRecord.Timestamp
 			if newEndTime <= qp.StartTimeFilter.ToInt64() {
 				newEndTime = qp.StartTimeFilter.ToInt64()
 			}

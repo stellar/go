@@ -363,6 +363,10 @@ type pageAction interface {
 	GetResourcePage(w actions.HeaderWriter, r *http.Request) ([]hal.Pageable, error)
 }
 
+type withPageBuilderAction interface {
+	BuildPage(r *http.Request, records []hal.Pageable) (hal.Page, error)
+}
+
 type pageActionHandler struct {
 	action         pageAction
 	streamable     bool
@@ -409,7 +413,14 @@ func (handler pageActionHandler) renderPage(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	page, err := buildPage(r, records)
+	var page hal.Page
+
+	if action, ok := handler.action.(withPageBuilderAction); ok {
+		page, err = action.BuildPage(r, records)
+	} else {
+		page, err = buildPage(r, records)
+	}
+
 	if err != nil {
 		problem.Render(r.Context(), w, err)
 		return
@@ -500,6 +511,7 @@ func buildPage(r *http.Request, records []hal.Pageable) (hal.Page, error) {
 		Order:  pageQuery.Order,
 		Limit:  pageQuery.Limit,
 	}
+	page.Init()
 
 	for _, record := range records {
 		page.Add(record)
