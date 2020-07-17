@@ -40,13 +40,14 @@ func (a Asset) GoString() string {
 
 func (m Memo) GoString() string {
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("xdr.Memo{Type: xdr.%s", memoTypeMap[int32(m.Type)]))
+
 	switch m.Type {
 	case MemoTypeMemoNone:
+		return fmt.Sprintf("xdr.Memo{Type: xdr.%s}", memoTypeMap[int32(m.Type)])
 	case MemoTypeMemoText:
-		sb.WriteString(fmt.Sprintf(",Text: &%#v,", *m.Text))
+		return fmt.Sprintf(`xdr.MemoText(%#v)`, *m.Text)
 	case MemoTypeMemoId:
-		sb.WriteString(fmt.Sprintf(",Id: &%#v,", *m.Id))
+		return fmt.Sprintf(`xdr.MemoId(%d)`, *m.Id)
 	case MemoTypeMemoHash:
 		sb.WriteString(fmt.Sprintf(",Hash: &%#v,", *m.Hash))
 	case MemoTypeMemoReturn:
