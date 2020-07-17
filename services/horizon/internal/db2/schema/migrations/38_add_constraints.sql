@@ -49,7 +49,7 @@ ALTER TABLE accounts ADD CONSTRAINT valid_balance CHECK (balance >= 0) NOT VALID
 ALTER TABLE accounts ADD CONSTRAINT valid_buying_liabilities CHECK (buying_liabilities >= 0) NOT VALID;
 ALTER TABLE accounts ADD CONSTRAINT valid_selling_liabilities CHECK (selling_liabilities >= 0) NOT VALID;
 ALTER TABLE accounts ADD CONSTRAINT valid_last_modified_ledger CHECK (last_modified_ledger > 0) NOT VALID;
-ALTER TABLE accounts ADD CONSTRAINT valid_sequence_number CHECK (sequence_number > 0) NOT VALID;
+ALTER TABLE accounts ADD CONSTRAINT valid_sequence_number CHECK (sequence_number >= 0) NOT VALID;
 ALTER TABLE accounts ADD CONSTRAINT valid_num_subentries CHECK (num_subentries >= 0) NOT VALID;
 ALTER TABLE accounts ADD CONSTRAINT valid_master_weight CHECK (master_weight >= 0) NOT VALID;
 ALTER TABLE accounts ADD CONSTRAINT valid_threshold_low CHECK (threshold_low >= 0) NOT VALID;
