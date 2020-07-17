@@ -76,7 +76,6 @@ type Response struct {
 	Path   string
 	Stream bool
 
-	Error        error
 	StatusCode   int
 	LatestLedger string
 	Body         string
@@ -128,8 +127,9 @@ func NewResponse(domain, path string, stream bool) *Response {
 	body, err := ioutil.ReadAll(resp.Body)
 	// We ignore the error below to timeout streaming requests.
 	// net/http: request canceled (Client.Timeout exceeded while reading body)
-	if err != nil {
-		response.Error = err
+	if err != nil && !stream {
+		response.Body = err.Error()
+		response.NormalizedBody = err.Error()
 		return response
 	}
 
