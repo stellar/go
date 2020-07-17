@@ -266,20 +266,21 @@ func (w *web) mustInstallActions(config Config, pathFinder paths.Finder, session
 	})
 
 	r.Group(func(r chi.Router) {
+		r.Use(historyMiddleware)
 		// payment actions
-		r.With(historyMiddleware).Method(http.MethodGet, "/payments", streamableHistoryPageHandler(actions.GetOperationsHandler{
+		r.Method(http.MethodGet, "/payments", streamableHistoryPageHandler(actions.GetOperationsHandler{
 			OnlyPayments: true,
 		}, streamHandler))
 
 		// effect actions
-		r.With(historyMiddleware).Method(http.MethodGet, "/effects", streamableHistoryPageHandler(actions.GetEffectsHandler{}, streamHandler))
+		r.Method(http.MethodGet, "/effects", streamableHistoryPageHandler(actions.GetEffectsHandler{}, streamHandler))
 
 		// trading related endpoints
-		r.With(historyMiddleware).Method(http.MethodGet, "/trades", streamableHistoryPageHandler(actions.GetTradesHandler{}, streamHandler))
-		r.With(historyMiddleware).Method(http.MethodGet, "/trade_aggregations", restPageHandler(actions.GetTradeAggregationsHandler{}))
+		r.Method(http.MethodGet, "/trades", streamableHistoryPageHandler(actions.GetTradesHandler{}, streamHandler))
+		r.Method(http.MethodGet, "/trade_aggregations", restPageHandler(actions.GetTradeAggregationsHandler{}))
 		// /offers/{offer_id} has been created above so we need to use absolute
 		// routes here.
-		r.With(historyMiddleware).Method(http.MethodGet, "/offers/{offer_id}/trades", streamableHistoryPageHandler(actions.GetTradesHandler{}, streamHandler))
+		r.Method(http.MethodGet, "/offers/{offer_id}/trades", streamableHistoryPageHandler(actions.GetTradesHandler{}, streamHandler))
 	})
 
 	// Transaction submission API
