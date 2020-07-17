@@ -1,24 +1,24 @@
 -- +migrate Up
 
-ALTER TABLE history_transactions ADD CONSTRAINT valid_ledger_sequence CHECK (ledger_sequence >= 0) NOT VALID;
+ALTER TABLE history_transactions ADD CONSTRAINT valid_ledger_sequence CHECK (ledger_sequence > 0) NOT VALID;
 ALTER TABLE history_transactions ADD CONSTRAINT valid_application_order CHECK (application_order >= 0) NOT VALID;
 ALTER TABLE history_transactions ADD CONSTRAINT valid_account_sequence CHECK (account_sequence >= 0) NOT VALID;
-ALTER TABLE history_transactions ADD CONSTRAINT valid_max_fee CHECK (max_fee >= 0) NOT VALID;
+ALTER TABLE history_transactions ADD CONSTRAINT valid_max_fee CHECK (max_fee > 0) NOT VALID;
 ALTER TABLE history_transactions ADD CONSTRAINT valid_operation_count CHECK (operation_count >= 0) NOT VALID;
-ALTER TABLE history_transactions ADD CONSTRAINT valid_fee_charged CHECK (fee_charged >= 0) NOT VALID;
-ALTER TABLE history_transactions ADD CONSTRAINT valid_new_max_fee CHECK (new_max_fee >= 0) NOT VALID;
+ALTER TABLE history_transactions ADD CONSTRAINT valid_fee_charged CHECK (fee_charged > 0) NOT VALID;
+ALTER TABLE history_transactions ADD CONSTRAINT valid_new_max_fee CHECK (new_max_fee > 0) NOT VALID;
 
 ALTER TABLE offers ADD CONSTRAINT valid_amount CHECK (amount >= 0) NOT VALID;
 ALTER TABLE offers ADD CONSTRAINT valid_pricen CHECK (pricen >= 0) NOT VALID;
 ALTER TABLE offers ADD CONSTRAINT valid_priced CHECK (priced >= 0) NOT VALID;
 ALTER TABLE offers ADD CONSTRAINT valid_price CHECK (price >= 0) NOT VALID;
-ALTER TABLE offers ADD CONSTRAINT valid_last_modified_ledger CHECK (last_modified_ledger >= 0) NOT VALID;
+ALTER TABLE offers ADD CONSTRAINT valid_last_modified_ledger CHECK (last_modified_ledger > 0) NOT VALID;
 
 ALTER TABLE trust_lines ADD CONSTRAINT valid_balance CHECK (balance >= 0) NOT VALID;
 ALTER TABLE trust_lines ADD CONSTRAINT valid_trust_line_limit CHECK (trust_line_limit >= 0) NOT VALID;
 ALTER TABLE trust_lines ADD CONSTRAINT valid_buying_liabilities CHECK (buying_liabilities >= 0) NOT VALID;
 ALTER TABLE trust_lines ADD CONSTRAINT valid_selling_liabilities CHECK (selling_liabilities >= 0) NOT VALID;
-ALTER TABLE trust_lines ADD CONSTRAINT valid_last_modified_ledger CHECK (last_modified_ledger >= 0) NOT VALID;
+ALTER TABLE trust_lines ADD CONSTRAINT valid_last_modified_ledger CHECK (last_modified_ledger > 0) NOT VALID;
 
 ALTER TABLE history_trades ADD CONSTRAINT valid_price_n CHECK (price_n >= 0) NOT VALID;
 ALTER TABLE history_trades ADD CONSTRAINT valid_price_d CHECK (price_d >= 0) NOT VALID;
@@ -26,7 +26,7 @@ ALTER TABLE history_trades ADD CONSTRAINT valid_order CHECK ("order" >= 0) NOT V
 
 ALTER TABLE history_operations ADD CONSTRAINT valid_application_order CHECK (application_order >= 0) NOT VALID;
 
-ALTER TABLE history_ledgers ADD CONSTRAINT valid_sequence CHECK (sequence >= 0) NOT VALID;
+ALTER TABLE history_ledgers ADD CONSTRAINT valid_sequence CHECK (sequence > 0) NOT VALID;
 ALTER TABLE history_ledgers ADD CONSTRAINT valid_transaction_count CHECK (transaction_count >= 0) NOT VALID;
 ALTER TABLE history_ledgers ADD CONSTRAINT valid_operation_count CHECK (operation_count >= 0) NOT VALID;
 ALTER TABLE history_ledgers ADD CONSTRAINT valid_total_coins CHECK (total_coins >= 0) NOT VALID;
@@ -43,13 +43,13 @@ ALTER TABLE exp_asset_stats ADD CONSTRAINT valid_num_accounts CHECK (num_account
 
 ALTER TABLE accounts_signers ADD CONSTRAINT valid_weight CHECK (weight >= 0) NOT VALID;
 
-ALTER TABLE accounts_data ADD CONSTRAINT valid_last_modified_ledger CHECK (last_modified_ledger >= 0) NOT VALID;
+ALTER TABLE accounts_data ADD CONSTRAINT valid_last_modified_ledger CHECK (last_modified_ledger > 0) NOT VALID;
 
 ALTER TABLE accounts ADD CONSTRAINT valid_balance CHECK (balance >= 0) NOT VALID;
 ALTER TABLE accounts ADD CONSTRAINT valid_buying_liabilities CHECK (buying_liabilities >= 0) NOT VALID;
 ALTER TABLE accounts ADD CONSTRAINT valid_selling_liabilities CHECK (selling_liabilities >= 0) NOT VALID;
-ALTER TABLE accounts ADD CONSTRAINT valid_last_modified_ledger CHECK (last_modified_ledger >= 0) NOT VALID;
-ALTER TABLE accounts ADD CONSTRAINT valid_sequence_number CHECK (sequence_number >= 0) NOT VALID;
+ALTER TABLE accounts ADD CONSTRAINT valid_last_modified_ledger CHECK (last_modified_ledger > 0) NOT VALID;
+ALTER TABLE accounts ADD CONSTRAINT valid_sequence_number CHECK (sequence_number > 0) NOT VALID;
 ALTER TABLE accounts ADD CONSTRAINT valid_num_subentries CHECK (num_subentries >= 0) NOT VALID;
 ALTER TABLE accounts ADD CONSTRAINT valid_master_weight CHECK (master_weight >= 0) NOT VALID;
 ALTER TABLE accounts ADD CONSTRAINT valid_threshold_low CHECK (threshold_low >= 0) NOT VALID;
