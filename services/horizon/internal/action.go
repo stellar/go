@@ -13,7 +13,6 @@ import (
 	"github.com/stellar/go/services/horizon/internal/httpx"
 	"github.com/stellar/go/services/horizon/internal/ledger"
 	hProblem "github.com/stellar/go/services/horizon/internal/render/problem"
-	"github.com/stellar/go/services/horizon/internal/render/sse"
 	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
@@ -185,35 +184,4 @@ func (w *web) getAccountInfo(ctx context.Context, qp *showActionQueryParams) (in
 	historyQ := &history.Q{horizonSession}
 
 	return actions.AccountInfo(ctx, historyQ, qp.AccountID)
-}
-
-// getTransactionPage returns a page containing the transaction records of an account or a ledger.
-func (w *web) getTransactionPage(ctx context.Context, qp *indexActionQueryParams) (interface{}, error) {
-	horizonSession, err := w.horizonSession(ctx)
-	if err != nil {
-		return nil, errors.Wrap(err, "getting horizon db session")
-	}
-
-	return actions.TransactionPage(ctx, &history.Q{horizonSession}, qp.AccountID, qp.LedgerID, qp.IncludeFailedTxs, qp.PagingParams)
-}
-
-// getTransactionResource returns a single transaction resource.
-func (w *web) getTransactionResource(ctx context.Context, qp *showActionQueryParams) (interface{}, error) {
-	horizonSession, err := w.horizonSession(ctx)
-	if err != nil {
-		return nil, errors.Wrap(err, "getting horizon db session")
-	}
-
-	return actions.TransactionResource(ctx, &history.Q{horizonSession}, qp.TxHash)
-}
-
-// streamTransactions streams the transaction records of an account or a ledger.
-func (w *web) streamTransactions(ctx context.Context, s *sse.Stream, qp *indexActionQueryParams) error {
-	horizonSession, err := w.horizonSession(ctx)
-	if err != nil {
-		return errors.Wrap(err, "getting horizon db session")
-	}
-
-	return actions.StreamTransactions(ctx, s, &history.Q{horizonSession},
-		qp.AccountID, qp.LedgerID, qp.IncludeFailedTxs, qp.PagingParams)
 }
