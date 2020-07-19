@@ -225,7 +225,7 @@ func (w *web) mustInstallActions(config Config, pathFinder paths.Finder, session
 	// ledger actions
 	r.Route("/ledgers", func(r chi.Router) {
 		r.Use(historyMiddleware)
-		r.Method(http.MethodGet, "/", streamableHistoryPageHandler(actions.GetLedgerHandler{}, streamHandler))
+		r.Method(http.MethodGet, "/", streamableHistoryPageHandler(actions.GetLedgerIndexHandler{}, streamHandler))
 		r.Route("/{ledger_id}", func(r chi.Router) {
 			r.Method(http.MethodGet, "/", objectActionHandler{actions.GetLedgerHandler{}})
 			r.Method(http.MethodGet, "/transactions", streamableHistoryPageHandler(actions.GetTransactionsHandler{}, streamHandler))

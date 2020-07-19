@@ -11,14 +11,9 @@ import (
 	"github.com/stellar/go/support/render/hal"
 )
 
-// LedgerQuery query struct for ledger end-points
-type LedgerQuery struct {
-	LedgerID uint32 `schema:"ledger_id" valid:"-"`
-}
+type GetLedgerIndexHandler struct{}
 
-type GetLedgerHandler struct{}
-
-func (handler GetLedgerHandler) GetResourcePage(w HeaderWriter, r *http.Request) ([]hal.Pageable, error) {
+func (handler GetLedgerIndexHandler) GetResourcePage(w HeaderWriter, r *http.Request) ([]hal.Pageable, error) {
 	pq, err := GetPageQuery(r)
 	if err != nil {
 		return nil, err
@@ -51,6 +46,13 @@ func (handler GetLedgerHandler) GetResourcePage(w HeaderWriter, r *http.Request)
 
 	return result, nil
 }
+
+// LedgerQuery query struct for the ledger/{id} endpoint
+type LedgerQuery struct {
+	LedgerID uint32 `schema:"ledger_id" valid:"-"`
+}
+
+type GetLedgerHandler struct{}
 
 func (handler GetLedgerHandler) GetResource(w HeaderWriter, r *http.Request) (hal.Pageable, error) {
 	qp := LedgerQuery{}
