@@ -117,8 +117,7 @@ func (handler GetTradesHandler) GetResourcePage(w HeaderWriter, r *http.Request)
 	}
 
 	qp := TradesQuery{}
-	err = GetParams(&qp, r)
-	if err != nil {
+	if err = GetParams(&qp, r); err != nil {
 		return nil, err
 	}
 
@@ -161,8 +160,7 @@ func (handler GetTradesHandler) GetResourcePage(w HeaderWriter, r *http.Request)
 	}
 
 	var records []history.Trade
-	err = trades.Page(pq).Select(&records)
-	if err != nil {
+	if err = trades.Page(pq).Select(&records); err != nil {
 		return nil, err
 	}
 	var response []hal.Pageable
