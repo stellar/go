@@ -2,8 +2,9 @@ package horizon
 
 import (
 	"encoding/json"
-	hProtocol "github.com/stellar/go/protocols/horizon"
 	"testing"
+
+	hProtocol "github.com/stellar/go/protocols/horizon"
 )
 
 func TestOperationFeeTestsActions_Show(t *testing.T) {

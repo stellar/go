@@ -6,15 +6,15 @@ import (
 
 	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/operationfeestats"
-	"github.com/stellar/go/support/render/httpjson"
-	"github.com/stellar/go/support/render/problem"
+	"github.com/stellar/go/support/render/hal"
 )
 
 // FeeStatsHandler is the action handler for the /fee_stats endpoint
 type FeeStatsHandler struct {
 }
 
-func (handler FeeStatsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+// GetResource fee stats resource
+func (handler FeeStatsHandler) GetResource(w HeaderWriter, r *http.Request) (hal.Pageable, error) {
 	feeStats := horizon.FeeStats{}
 
 	cur, ok := operationfeestats.CurrentState()
@@ -28,7 +28,7 @@ func (handler FeeStatsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 			64,
 		)
 		if err != nil {
-			problem.Render(r.Context(), w, err)
+			return nil, err
 		}
 		feeStats.LedgerCapacityUsage = capacity
 	}
@@ -65,9 +65,5 @@ func (handler FeeStatsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	feeStats.MaxFee.P95 = cur.MaxFeeP95
 	feeStats.MaxFee.P99 = cur.MaxFeeP99
 
-	httpjson.Render(
-		w,
-		feeStats,
-		httpjson.HALJSON,
-	)
+	return feeStats, nil
 }
