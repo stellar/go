@@ -288,7 +288,7 @@ func (w *web) mustInstallActions(config Config, pathFinder paths.Finder, session
 	r.Post("/transactions", TransactionCreateAction{}.Handle)
 
 	// Network state related endpoints
-	r.Get("/fee_stats", FeeStatsAction{}.Handle)
+	r.Method(http.MethodGet, "/fee_stats", objectActionHandler{actions.FeeStatsHandler{}})
 
 	// friendbot
 	if config.FriendbotURL != nil {
