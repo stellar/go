@@ -26,7 +26,7 @@ if [ -z ${LATEST_LEDGER+x} ]; then
     fi
 fi
 
-if [ -z ${LATEST_LEDGER+x} ]; then
+if [[ -z "${LATEST_LEDGER}" ]]; then
   echo "could not obtain latest ledger"
   exit 1
 fi
