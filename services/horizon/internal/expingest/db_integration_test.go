@@ -60,7 +60,7 @@ type DBTestSuite struct {
 	sequence       uint32
 	ledgerBackend  *ledgerbackend.MockDatabaseBackend
 	historyAdapter *adapters.MockHistoryArchiveAdapter
-	system         *System
+	system         *system
 	tt             *test.T
 }
 
@@ -77,13 +77,14 @@ func (s *DBTestSuite) SetupTest() {
 	s.ledgerBackend = &ledgerbackend.MockDatabaseBackend{}
 	s.historyAdapter = &adapters.MockHistoryArchiveAdapter{}
 	var err error
-	s.system, err = NewSystem(Config{
+	sIface, err := NewSystem(Config{
 		CoreSession:              s.tt.CoreSession(),
 		HistorySession:           s.tt.HorizonSession(),
 		HistoryArchiveURL:        "http://ignore.test",
 		DisableStateVerification: false,
 	})
 	s.Assert().NoError(err)
+	s.system = sIface.(*system)
 
 	s.sequence = uint32(28660351)
 	s.setupMocksForBuildState()
@@ -107,6 +108,8 @@ func (s *DBTestSuite) setupMocksForBuildState() {
 	s.mockChangeReader()
 	s.historyAdapter.On("BucketListHash", s.sequence).
 		Return(checkpointHash, nil).Once()
+
+	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(s.sequence)).Return(true).Once()
 	s.ledgerBackend.On("GetLedger", s.sequence).
 		Return(
 			true,

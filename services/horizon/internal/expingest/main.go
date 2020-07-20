@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/rcrowley/go-metrics"
+
 	"github.com/stellar/go/clients/stellarcore"
 	"github.com/stellar/go/exp/ingest/adapters"
 	ingesterrors "github.com/stellar/go/exp/ingest/errors"
@@ -52,15 +53,19 @@ const (
 var log = logpkg.DefaultLogger.WithField("service", "expingest")
 
 type Config struct {
-	CoreSession       *db.Session
-	StellarCoreURL    string
-	StellarCoreCursor string
-	StellarCorePath   string
-	NetworkPassphrase string
+	CoreSession           *db.Session
+	StellarCoreURL        string
+	StellarCoreCursor     string
+	StellarCoreBinaryPath string
+	StellarCoreConfigPath string
+	NetworkPassphrase     string
 
 	HistorySession           *db.Session
 	HistoryArchiveURL        string
 	DisableStateVerification bool
+
+	MaxReingestRetries          int
+	ReingestRetryBackoffSeconds int
 }
 
 const (
@@ -75,23 +80,33 @@ type stellarCoreClient interface {
 	SetCursor(ctx context.Context, id string, cursor int32) error
 }
 
-type System struct {
-	Metrics struct {
-		// LedgerIngestionTimer exposes timing metrics about the rate and
-		// duration of ledger ingestion (including updating DB and graph).
-		LedgerIngestionTimer metrics.Timer
+type Metrics struct {
+	// LedgerIngestionTimer exposes timing metrics about the rate and
+	// duration of ledger ingestion (including updating DB and graph).
+	LedgerIngestionTimer metrics.Timer
 
-		// LedgerInMemoryIngestionTimer exposes timing metrics about the rate and
-		// duration of ingestion into in-memory graph only.
-		LedgerInMemoryIngestionTimer metrics.Timer
+	// LedgerInMemoryIngestionTimer exposes timing metrics about the rate and
+	// duration of ingestion into in-memory graph only.
+	LedgerInMemoryIngestionTimer metrics.Timer
 
-		// StateVerifyTimer exposes timing metrics about the rate and
-		// duration of state verification.
-		StateVerifyTimer metrics.Timer
-	}
+	// StateVerifyTimer exposes timing metrics about the rate and
+	// duration of state verification.
+	StateVerifyTimer metrics.Timer
+}
 
-	ctx    context.Context
-	cancel context.CancelFunc
+type System interface {
+	Run()
+	Metrics() Metrics
+	StressTest(numTransactions, changesPerTransaction int) error
+	VerifyRange(fromLedger, toLedger uint32, verifyState bool) error
+	ReingestRange(fromLedger, toLedger uint32, force bool) error
+	Shutdown()
+}
+
+type system struct {
+	metrics Metrics
+	ctx     context.Context
+	cancel  context.CancelFunc
 
 	config Config
 
@@ -103,7 +118,9 @@ type System struct {
 
 	stellarCoreClient stellarCoreClient
 
-	wg sync.WaitGroup
+	maxReingestRetries          int
+	reingestRetryBackoffSeconds int
+	wg                          sync.WaitGroup
 
 	// stateVerificationRunning is true when verification routine is currently
 	// running.
@@ -114,7 +131,7 @@ type System struct {
 	disableStateVerification bool
 }
 
-func NewSystem(config Config) (*System, error) {
+func NewSystem(config Config) (System, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	archive, err := historyarchive.Connect(
@@ -128,18 +145,22 @@ func NewSystem(config Config) (*System, error) {
 		return nil, errors.Wrap(err, "error creating history archive")
 	}
 
-	coreSession := config.CoreSession.Clone()
-	coreSession.Ctx = ctx
-
 	var ledgerBackend ledgerbackend.LedgerBackend
-	if len(config.StellarCorePath) > 0 {
-		ledgerBackend = ledgerbackend.NewCaptive(
-			config.StellarCorePath,
+	if len(config.StellarCoreBinaryPath) > 0 {
+		ledgerBackend, err = ledgerbackend.NewCaptive(
+			config.StellarCoreBinaryPath,
+			config.StellarCoreConfigPath,
 			config.NetworkPassphrase,
 			[]string{config.HistoryArchiveURL},
 		)
+		if err != nil {
+			cancel()
+			return nil, errors.Wrap(err, "error creating captive core backend")
+		}
 	} else {
-		ledgerBackend, err = ledgerbackend.NewDatabaseBackendFromSession(coreSession)
+		coreSession := config.CoreSession.Clone()
+		coreSession.Ctx = ctx
+		ledgerBackend, err = ledgerbackend.NewDatabaseBackendFromSession(coreSession, config.NetworkPassphrase)
 		if err != nil {
 			cancel()
 			return nil, errors.Wrap(err, "error creating ledger backend")
@@ -151,14 +172,16 @@ func NewSystem(config Config) (*System, error) {
 
 	historyAdapter := adapters.MakeHistoryArchiveAdapter(archive)
 
-	system := &System{
-		ctx:                      ctx,
-		cancel:                   cancel,
-		historyAdapter:           historyAdapter,
-		ledgerBackend:            ledgerBackend,
-		config:                   config,
-		historyQ:                 historyQ,
-		disableStateVerification: config.DisableStateVerification,
+	system := &system{
+		cancel:                      cancel,
+		config:                      config,
+		ctx:                         ctx,
+		disableStateVerification:    config.DisableStateVerification,
+		historyAdapter:              historyAdapter,
+		historyQ:                    historyQ,
+		ledgerBackend:               ledgerBackend,
+		maxReingestRetries:          config.MaxReingestRetries,
+		reingestRetryBackoffSeconds: config.ReingestRetryBackoffSeconds,
 		stellarCoreClient: &stellarcore.Client{
 			URL: config.StellarCoreURL,
 		},
@@ -175,10 +198,14 @@ func NewSystem(config Config) (*System, error) {
 	return system, nil
 }
 
-func (s *System) initMetrics() {
-	s.Metrics.LedgerIngestionTimer = metrics.NewTimer()
-	s.Metrics.LedgerInMemoryIngestionTimer = metrics.NewTimer()
-	s.Metrics.StateVerifyTimer = metrics.NewTimer()
+func (s *system) initMetrics() {
+	s.metrics.LedgerIngestionTimer = metrics.NewTimer()
+	s.metrics.LedgerInMemoryIngestionTimer = metrics.NewTimer()
+	s.metrics.StateVerifyTimer = metrics.NewTimer()
+}
+
+func (s *system) Metrics() Metrics {
+	return s.metrics
 }
 
 // Run starts ingestion system. Ingestion system supports distributed ingestion
@@ -210,11 +237,11 @@ func (s *System) initMetrics() {
 //     a database.
 //   * If instances is a NOT leader, it runs ledger pipeline without updating a
 //     a database so order book graph is updated but database is not overwritten.
-func (s *System) Run() {
+func (s *system) Run() {
 	s.runStateMachine(startState{})
 }
 
-func (s *System) StressTest(numTransactions, changesPerTransaction int) error {
+func (s *system) StressTest(numTransactions, changesPerTransaction int) error {
 	if numTransactions <= 0 {
 		return errors.New("transactions must be positive")
 	}
@@ -232,7 +259,7 @@ func (s *System) StressTest(numTransactions, changesPerTransaction int) error {
 
 // VerifyRange runs the ingestion pipeline on the range of ledgers. When
 // verifyState is true it verifies the state when ingestion is complete.
-func (s *System) VerifyRange(fromLedger, toLedger uint32, verifyState bool) error {
+func (s *system) VerifyRange(fromLedger, toLedger uint32, verifyState bool) error {
 	return s.runStateMachine(verifyRangeState{
 		fromLedger:  fromLedger,
 		toLedger:    toLedger,
@@ -242,15 +269,24 @@ func (s *System) VerifyRange(fromLedger, toLedger uint32, verifyState bool) erro
 
 // ReingestRange runs the ingestion pipeline on the range of ledgers ingesting
 // history data only.
-func (s *System) ReingestRange(fromLedger, toLedger uint32, force bool) error {
-	return s.runStateMachine(reingestHistoryRangeState{
-		fromLedger: fromLedger,
-		toLedger:   toLedger,
-		force:      force,
-	})
+func (s *system) ReingestRange(fromLedger, toLedger uint32, force bool) error {
+	run := func() error {
+		return s.runStateMachine(reingestHistoryRangeState{
+			fromLedger: fromLedger,
+			toLedger:   toLedger,
+			force:      force,
+		})
+	}
+	err := run()
+	for retry := 0; err != nil && retry < s.maxReingestRetries; retry++ {
+		log.Warnf("reingest range [%d, %d] failed (%s), retrying", fromLedger, toLedger, err.Error())
+		time.Sleep(time.Second * time.Duration(s.reingestRetryBackoffSeconds))
+		err = run()
+	}
+	return err
 }
 
-func (s *System) runStateMachine(cur stateMachineNode) error {
+func (s *system) runStateMachine(cur stateMachineNode) error {
 	defer func() {
 		s.wg.Wait()
 	}()
@@ -303,7 +339,7 @@ func (s *System) runStateMachine(cur stateMachineNode) error {
 	}
 }
 
-func (s *System) maybeVerifyState(lastIngestedLedger uint32) {
+func (s *system) maybeVerifyState(lastIngestedLedger uint32) {
 	stateInvalid, err := s.historyQ.GetExpStateInvalid()
 	if err != nil && !isCancelledError(err) {
 		log.WithField("err", err).Error("Error getting state invalid value")
@@ -341,20 +377,20 @@ func (s *System) maybeVerifyState(lastIngestedLedger uint32) {
 	}
 }
 
-func (s *System) incrementStateVerificationErrors() int {
+func (s *system) incrementStateVerificationErrors() int {
 	s.stateVerificationMutex.Lock()
 	defer s.stateVerificationMutex.Unlock()
 	s.stateVerificationErrors++
 	return s.stateVerificationErrors
 }
 
-func (s *System) resetStateVerificationErrors() {
+func (s *system) resetStateVerificationErrors() {
 	s.stateVerificationMutex.Lock()
 	defer s.stateVerificationMutex.Unlock()
 	s.stateVerificationErrors = 0
 }
 
-func (s *System) updateCursor(ledgerSequence uint32) error {
+func (s *system) updateCursor(ledgerSequence uint32) error {
 	if s.stellarCoreClient == nil {
 		return nil
 	}
@@ -374,7 +410,7 @@ func (s *System) updateCursor(ledgerSequence uint32) error {
 	return nil
 }
 
-func (s *System) Shutdown() {
+func (s *system) Shutdown() {
 	log.Info("Shutting down ingestion system...")
 	s.stateVerificationMutex.Lock()
 	defer s.stateVerificationMutex.Unlock()

@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/stellar/go/exp/ingest/ledgerbackend"
+
 	"github.com/stellar/go/exp/ingest/io"
 	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/support/errors"
@@ -18,7 +20,7 @@ var (
 )
 
 type stateMachineNode interface {
-	run(*System) (transition, error)
+	run(*system) (transition, error)
 	String() string
 }
 
@@ -33,6 +35,25 @@ func stop() transition {
 
 func start() transition {
 	return transition{node: startState{}, sleepDuration: defaultSleep}
+}
+
+// startSuggestedCheckpoint is a transition to start `state` but with a suggested
+// checkpoint to use if the following step is `buildState`.
+// This is required because some ledger backends (like captive core) require some
+// time to prepare a requested range and have a small buffer of ledgers available
+// to fetch using GetLedger.
+// It's possible that a new checkpoint will be created while a range is prepared.
+// Because ledgers are kept in a buffer `GetLatestLedgerSequence` returns the latest
+// sequence available in a buffer, not in a network. This would make bucket hash
+// verification failures because the code would wrongly assume that the ledger is
+// not available.
+func startSuggestedCheckpoint(checkpoint uint32) transition {
+	return transition{
+		node: startState{
+			suggestedCheckpoint: checkpoint,
+		},
+		sleepDuration: defaultSleep,
+	}
 }
 
 func rebuild(checkpointLedger uint32) transition {
@@ -92,17 +113,19 @@ func (stopState) String() string {
 	return "stop"
 }
 
-func (stopState) run(s *System) (transition, error) {
+func (stopState) run(s *system) (transition, error) {
 	return stop(), errors.New("Cannot run terminal state")
 }
 
-type startState struct{}
+type startState struct {
+	suggestedCheckpoint uint32
+}
 
 func (startState) String() string {
 	return "start"
 }
 
-func (startState) run(s *System) (transition, error) {
+func (state startState) run(s *system) (transition, error) {
 	if err := s.historyQ.Begin(); err != nil {
 		return start(), errors.Wrap(err, "Error starting a transaction")
 	}
@@ -140,9 +163,13 @@ func (startState) run(s *System) (transition, error) {
 		// be updated when leading instance finishes processing state.
 		// In case of errors it will start `Init` from the beginning.
 		var lastCheckpoint uint32
-		lastCheckpoint, err = s.historyAdapter.GetLatestLedgerSequence()
-		if err != nil {
-			return start(), errors.Wrap(err, "Error getting last checkpoint")
+		if state.suggestedCheckpoint != 0 {
+			lastCheckpoint = state.suggestedCheckpoint
+		} else {
+			lastCheckpoint, err = s.historyAdapter.GetLatestLedgerSequence()
+			if err != nil {
+				return start(), errors.Wrap(err, "Error getting last checkpoint")
+			}
 		}
 
 		if lastHistoryLedger != 0 {
@@ -213,7 +240,7 @@ func (b buildState) String() string {
 	return fmt.Sprintf("buildFromCheckpoint(checkpointLedger=%d)", b.checkpointLedger)
 }
 
-func (b buildState) run(s *System) (transition, error) {
+func (b buildState) run(s *system) (transition, error) {
 	if b.checkpointLedger == 0 {
 		return start(), errors.New("unexpected checkpointLedger value")
 	}
@@ -269,6 +296,13 @@ func (b buildState) run(s *System) (transition, error) {
 		return start(), errors.Wrap(err, "Error clearing ingest tables")
 	}
 
+	lockReleased, err := s.maybePrepareRange(b.checkpointLedger)
+	if err != nil {
+		return start(), err
+	} else if lockReleased {
+		return startSuggestedCheckpoint(b.checkpointLedger), nil
+	}
+
 	log.WithFields(logpkg.F{
 		"ledger": b.checkpointLedger,
 	}).Info("Processing state")
@@ -307,7 +341,7 @@ func (r resumeState) String() string {
 	return fmt.Sprintf("resume(latestSuccessfullyProcessedLedger=%d)", r.latestSuccessfullyProcessedLedger)
 }
 
-func (r resumeState) run(s *System) (transition, error) {
+func (r resumeState) run(s *system) (transition, error) {
 	if r.latestSuccessfullyProcessedLedger == 0 {
 		return start(), errors.New("unexpected latestSuccessfullyProcessedLedger value")
 	}
@@ -365,6 +399,11 @@ func (r resumeState) run(s *System) (transition, error) {
 		return start(), nil
 	}
 
+	lockReleased, err := s.maybePrepareRange(ingestLedger)
+	if lockReleased || err != nil {
+		return start(), err
+	}
+
 	// Check if ledger is closed
 	latestLedgerCore, err := s.ledgerBackend.GetLatestLedgerSequence()
 	if err != nil {
@@ -372,12 +411,26 @@ func (r resumeState) run(s *System) (transition, error) {
 	}
 
 	if latestLedgerCore < ingestLedger {
-		log.WithFields(logpkg.F{
+		logger := log.WithFields(logpkg.F{
 			"ingest_sequence": ingestLedger,
 			"core_sequence":   latestLedgerCore,
-		}).Info("Waiting for ledger to be available in stellar-core")
-		// Go to the next state, machine will wait for 1s. before continuing.
-		return retryResume(r), nil
+		})
+
+		// Will fast-forward to the latest ledger in a buffer in case of captive core.
+		_, _, err = s.ledgerBackend.GetLedger(latestLedgerCore)
+		if err != nil {
+			return retryResume(r), errors.Wrap(err, "Error fast-forwarding to the latest ledger in stellar-core")
+		}
+
+		if latestLedgerCore == ingestLedger-1 {
+			logger.Info("Waiting for ledger to be available in stellar-core")
+		} else {
+			logger.Info("Fast-forward to the latest ledger ingested in the cluster")
+		}
+
+		return retryResume(resumeState{
+			latestSuccessfullyProcessedLedger: latestLedgerCore,
+		}), nil
 	}
 
 	startTime := time.Now()
@@ -404,7 +457,7 @@ func (r resumeState) run(s *System) (transition, error) {
 	}
 
 	duration := time.Since(startTime)
-	s.Metrics.LedgerIngestionTimer.Update(duration)
+	s.Metrics().LedgerIngestionTimer.Update(duration)
 	log.
 		WithFields(changeStats.Map()).
 		WithFields(ledgerTransactionStats.Map()).
@@ -436,7 +489,7 @@ func (h historyRangeState) String() string {
 }
 
 // historyRangeState is used when catching up history data
-func (h historyRangeState) run(s *System) (transition, error) {
+func (h historyRangeState) run(s *system) (transition, error) {
 	if h.fromLedger == 0 || h.toLedger == 0 ||
 		h.fromLedger > h.toLedger {
 		return start(), errors.Errorf("invalid range: [%d, %d]", h.fromLedger, h.toLedger)
@@ -465,6 +518,11 @@ func (h historyRangeState) run(s *System) (transition, error) {
 		return start(), nil
 	}
 
+	lockReleased, err := s.maybePrepareRange(h.fromLedger)
+	if lockReleased || err != nil {
+		return start(), err
+	}
+
 	for cur := h.fromLedger; cur <= h.toLedger; cur++ {
 		if err = runTransactionProcessorsOnLedger(s, cur); err != nil {
 			return start(), err
@@ -478,7 +536,7 @@ func (h historyRangeState) run(s *System) (transition, error) {
 	return start(), nil
 }
 
-func runTransactionProcessorsOnLedger(s *System, ledger uint32) error {
+func runTransactionProcessorsOnLedger(s *system, ledger uint32) error {
 	log.WithFields(logpkg.F{
 		"sequence": ledger,
 		"state":    false,
@@ -520,7 +578,7 @@ func (h reingestHistoryRangeState) String() string {
 	)
 }
 
-func (h reingestHistoryRangeState) ingestRange(s *System, fromLedger, toLedger uint32) error {
+func (h reingestHistoryRangeState) ingestRange(s *system, fromLedger, toLedger uint32) error {
 	if s.historyQ.GetTx() == nil {
 		return errors.New("expected transaction to be present")
 	}
@@ -549,7 +607,7 @@ func (h reingestHistoryRangeState) ingestRange(s *System, fromLedger, toLedger u
 }
 
 // reingestHistoryRangeState is used as a command to reingest historical data
-func (h reingestHistoryRangeState) run(s *System) (transition, error) {
+func (h reingestHistoryRangeState) run(s *system) (transition, error) {
 	if h.fromLedger == 0 || h.toLedger == 0 ||
 		h.fromLedger > h.toLedger {
 		return stop(), errors.Errorf("invalid range: [%d, %d]", h.fromLedger, h.toLedger)
@@ -561,7 +619,7 @@ func (h reingestHistoryRangeState) run(s *System) (transition, error) {
 	}).Info("Preparing ledger backend to retrieve range")
 	startTime := time.Now()
 
-	err := s.ledgerBackend.PrepareRange(h.fromLedger, h.toLedger)
+	err := s.ledgerBackend.PrepareRange(ledgerbackend.BoundedRange(h.fromLedger, h.toLedger))
 	if err != nil {
 		return stop(), errors.Wrap(err, "error preparing range")
 	}
@@ -571,6 +629,13 @@ func (h reingestHistoryRangeState) run(s *System) (transition, error) {
 		"to":       h.toLedger,
 		"duration": time.Since(startTime).Seconds(),
 	}).Info("Range ready")
+
+	if h.fromLedger == 1 {
+		log.Warn("Ledger 1 is pregenerated and not available, starting from ledger 2.")
+		h.fromLedger = 2
+	}
+
+	startTime = time.Now()
 
 	if h.force {
 		if err := s.historyQ.Begin(); err != nil {
@@ -625,6 +690,12 @@ func (h reingestHistoryRangeState) run(s *System) (transition, error) {
 		}
 	}
 
+	log.WithFields(logpkg.F{
+		"from":     h.fromLedger,
+		"to":       h.toLedger,
+		"duration": time.Since(startTime).Seconds(),
+	}).Info("Reingestion done")
+
 	return stop(), nil
 }
 
@@ -634,7 +705,7 @@ func (waitForCheckpointState) String() string {
 	return "waitForCheckpoint"
 }
 
-func (waitForCheckpointState) run(*System) (transition, error) {
+func (waitForCheckpointState) run(*system) (transition, error) {
 	log.Info("Waiting for the next checkpoint...")
 	time.Sleep(10 * time.Second)
 	return start(), nil
@@ -655,7 +726,7 @@ func (v verifyRangeState) String() string {
 	)
 }
 
-func (v verifyRangeState) run(s *System) (transition, error) {
+func (v verifyRangeState) run(s *system) (transition, error) {
 	if v.fromLedger == 0 || v.toLedger == 0 ||
 		v.fromLedger > v.toLedger {
 		return stop(), errors.Errorf("invalid range: [%d, %d]", v.fromLedger, v.toLedger)
@@ -754,7 +825,7 @@ func (stressTestState) String() string {
 	return "stressTest"
 }
 
-func (stressTestState) run(s *System) (transition, error) {
+func (stressTestState) run(s *system) (transition, error) {
 	if err := s.historyQ.Begin(); err != nil {
 		err = errors.Wrap(err, "Error starting a transaction")
 		return stop(), err
@@ -813,7 +884,7 @@ func (stressTestState) run(s *System) (transition, error) {
 	return stop(), nil
 }
 
-func (s *System) completeIngestion(ledger uint32) error {
+func (s *system) completeIngestion(ledger uint32) error {
 	if ledger == 0 {
 		return errors.New("ledger must be positive")
 	}
@@ -828,4 +899,33 @@ func (s *System) completeIngestion(ledger uint32) error {
 	}
 
 	return nil
+}
+
+// maybePrepareRange checks if the range is prepared and returns false in that case.
+// If the range is not prepared, maybePrepareRange() releases the distributed ingestion lock,
+// prepares the range, and returns true.
+func (s *system) maybePrepareRange(from uint32) (bool, error) {
+	ledgerRange := ledgerbackend.UnboundedRange(from)
+
+	if !s.ledgerBackend.IsPrepared(ledgerRange) {
+		// Release distributed ingestion lock and prepare the range
+		s.historyQ.Rollback()
+		log.Info("Released ingestion lock to prepare range")
+		log.WithFields(logpkg.F{"ledger": from}).Info("Preparing range")
+		startTime := time.Now()
+
+		err := s.ledgerBackend.PrepareRange(ledgerRange)
+		if err != nil {
+			return true, errors.Wrap(err, "error preparing range")
+		}
+
+		log.WithFields(logpkg.F{
+			"ledger":   from,
+			"duration": time.Since(startTime).Seconds(),
+		}).Info("Range prepared")
+
+		return true, nil
+	}
+
+	return false, nil
 }

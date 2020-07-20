@@ -69,8 +69,13 @@ func (hab *HistoryArchiveBackend) GetLatestLedgerSequence() (uint32, error) {
 
 // PrepareRange does nothing because of how history archives are structured. Request any
 // ledger by using `GetLedger` to download all ledger data within a given checkpoint
-func (hab *HistoryArchiveBackend) PrepareRange(from uint32, to uint32) error {
+func (hab *HistoryArchiveBackend) PrepareRange(ledgerRange Range) error {
 	return nil
+}
+
+// IsPrepared returns true if a given ledgerRange is prepared.
+func (hab *HistoryArchiveBackend) IsPrepared(ledgerRange Range) bool {
+	return true
 }
 
 // GetLedger returns the LedgerCloseMeta for the given ledger sequence number.
