@@ -81,7 +81,6 @@ func (s *DBTestSuite) SetupTest() {
 		CoreSession:              s.tt.CoreSession(),
 		HistorySession:           s.tt.HorizonSession(),
 		HistoryArchiveURL:        "http://ignore.test",
-		MaxStreamRetries:         3,
 		DisableStateVerification: false,
 	})
 	s.Assert().NoError(err)
@@ -99,7 +98,7 @@ func (s *DBTestSuite) SetupTest() {
 func (s *DBTestSuite) mockChangeReader() {
 	changeReader, err := loadChanges(s.sampleFile)
 	s.Assert().NoError(err)
-	s.historyAdapter.On("GetState", s.system.ctx, s.sequence, 3).
+	s.historyAdapter.On("GetState", s.system.ctx, s.sequence).
 		Return(io.ChangeReader(changeReader), nil).Once()
 }
 func (s *DBTestSuite) setupMocksForBuildState() {

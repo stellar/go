@@ -7,11 +7,11 @@ import (
 
 	ingesterrors "github.com/stellar/go/exp/ingest/errors"
 	"github.com/stellar/go/exp/ingest/verify"
+	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/expingest/processors"
 	"github.com/stellar/go/support/errors"
-	"github.com/stellar/go/support/historyarchive"
 	logpkg "github.com/stellar/go/support/log"
 	"github.com/stellar/go/xdr"
 )
@@ -117,11 +117,7 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool) error {
 
 	localLog.Info("Creating state reader...")
 
-	stateReader, err := s.historyAdapter.GetState(
-		s.ctx,
-		ledgerSequence,
-		s.config.MaxStreamRetries,
-	)
+	stateReader, err := s.historyAdapter.GetState(s.ctx, ledgerSequence)
 	if err != nil {
 		return errors.Wrap(err, "Error running GetState")
 	}

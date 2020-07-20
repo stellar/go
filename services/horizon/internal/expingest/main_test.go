@@ -96,7 +96,6 @@ func TestNewSystem(t *testing.T) {
 
 	assert.Equal(t, config, system.config)
 	assert.Equal(t, config.DisableStateVerification, system.disableStateVerification)
-	assert.Equal(t, config.MaxStreamRetries, system.maxStreamRetries)
 
 	assert.Equal(t, config, system.runner.(*ProcessorRunner).config)
 	assert.Equal(t, system.ctx, system.runner.(*ProcessorRunner).ctx)

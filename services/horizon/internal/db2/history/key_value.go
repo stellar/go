@@ -96,10 +96,10 @@ func (q *Q) GetExpIngestVersion() (int, error) {
 }
 
 // UpdateExpIngestVersion updates the exp ingest version.
-func (q *Q) UpdateExpIngestVersion(ledgerSequence int) error {
+func (q *Q) UpdateExpIngestVersion(version int) error {
 	return q.updateValueInStore(
 		ingestVersion,
-		strconv.FormatUint(uint64(ledgerSequence), 10),
+		strconv.FormatUint(uint64(version), 10),
 	)
 }
 

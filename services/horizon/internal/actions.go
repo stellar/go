@@ -4,24 +4,6 @@ import (
 	"net/http"
 )
 
-func (action DataShowAction) Handle(w http.ResponseWriter, r *http.Request) {
-	ap := &action.Action
-	ap.Prepare(w, r)
-	ap.Execute(&action)
-}
-
-func (action LedgerIndexAction) Handle(w http.ResponseWriter, r *http.Request) {
-	ap := &action.Action
-	ap.Prepare(w, r)
-	ap.Execute(&action)
-}
-
-func (action LedgerShowAction) Handle(w http.ResponseWriter, r *http.Request) {
-	ap := &action.Action
-	ap.Prepare(w, r)
-	ap.Execute(&action)
-}
-
 func (action NotFoundAction) Handle(w http.ResponseWriter, r *http.Request) {
 	ap := &action.Action
 	ap.Prepare(w, r)

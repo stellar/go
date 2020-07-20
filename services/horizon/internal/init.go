@@ -67,7 +67,6 @@ func initExpIngester(app *App) {
 		StellarCoreCursor:        app.config.CursorName,
 		StellarCoreBinaryPath:    app.config.StellarCoreBinaryPath,
 		StellarCoreConfigPath:    app.config.StellarCoreConfigPath,
-		MaxStreamRetries:         3,
 		DisableStateVerification: app.config.IngestDisableStateVerification,
 	})
 

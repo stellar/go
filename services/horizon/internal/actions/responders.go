@@ -8,12 +8,6 @@ type JSONer interface {
 	JSON() error
 }
 
-// RawDataResponder implementors can respond to a request whose response type was negotiated
-// to be MimeRaw.
-type RawDataResponder interface {
-	Raw() error
-}
-
 // EventStreamer implementors can respond to a request whose response type was negotiated
 // to be MimeEventStream.
 type EventStreamer interface {

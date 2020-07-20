@@ -12,13 +12,11 @@ import (
 	"time"
 
 	"github.com/stellar/go/exp/ingest/io"
+	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/support/errors"
-	"github.com/stellar/go/support/historyarchive"
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/xdr"
 )
-
-const maxStreamRetries = 3
 
 // csvMap maintains a mapping from ledger entry type to csv file
 type csvMap struct {
@@ -231,7 +229,6 @@ func main() {
 		context.Background(),
 		archive,
 		uint32(ledgerSequence),
-		maxStreamRetries,
 	)
 	if err != nil {
 		log.WithField("err", err).Fatal("cannot construct change reader")

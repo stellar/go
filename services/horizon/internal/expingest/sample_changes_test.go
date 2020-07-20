@@ -11,7 +11,7 @@ import (
 
 	"github.com/stellar/go/exp/ingest/adapters"
 	"github.com/stellar/go/exp/ingest/io"
-	"github.com/stellar/go/support/historyarchive"
+	"github.com/stellar/go/historyarchive"
 	logpkg "github.com/stellar/go/support/log"
 	"github.com/stellar/go/xdr"
 )
@@ -52,11 +52,7 @@ func newSampleChangeReader(output string, size int) (*sampleChangeReader, error)
 		return nil, err
 	}
 
-	inner, err := historyAdapter.GetState(
-		context.Background(),
-		checkpointLedger,
-		3,
-	)
+	inner, err := historyAdapter.GetState(context.Background(), checkpointLedger)
 	if err != nil {
 		return nil, err
 	}

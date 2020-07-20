@@ -182,11 +182,7 @@ func (s *ProcessorRunner) RunHistoryArchiveIngestion(checkpointLedger uint32) (i
 			return changeStats.GetResults(), errors.Wrap(err, "Error validating bucket list from HAS")
 		}
 
-		changeReader, err = s.historyAdapter.GetState(
-			s.ctx,
-			checkpointLedger,
-			s.config.MaxStreamRetries,
-		)
+		changeReader, err = s.historyAdapter.GetState(s.ctx, checkpointLedger)
 		if err != nil {
 			return changeStats.GetResults(), errors.Wrap(err, "Error creating HAS reader")
 		}

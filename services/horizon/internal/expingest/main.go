@@ -14,10 +14,10 @@ import (
 	"github.com/stellar/go/exp/ingest/adapters"
 	ingesterrors "github.com/stellar/go/exp/ingest/errors"
 	"github.com/stellar/go/exp/ingest/ledgerbackend"
+	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
-	"github.com/stellar/go/support/historyarchive"
 	logpkg "github.com/stellar/go/support/log"
 )
 
@@ -64,10 +64,6 @@ type Config struct {
 	HistoryArchiveURL        string
 	DisableStateVerification bool
 
-	// MaxStreamRetries determines how many times the reader will retry when encountering
-	// errors while streaming xdr bucket entries from the history archive.
-	// Set MaxStreamRetries to 0 if there should be no retry attempts
-	MaxStreamRetries            int
 	MaxReingestRetries          int
 	ReingestRetryBackoffSeconds int
 }
@@ -122,7 +118,6 @@ type system struct {
 
 	stellarCoreClient stellarCoreClient
 
-	maxStreamRetries            int
 	maxReingestRetries          int
 	reingestRetryBackoffSeconds int
 	wg                          sync.WaitGroup
@@ -178,14 +173,13 @@ func NewSystem(config Config) (System, error) {
 	historyAdapter := adapters.MakeHistoryArchiveAdapter(archive)
 
 	system := &system{
-		ctx:                         ctx,
 		cancel:                      cancel,
-		historyAdapter:              historyAdapter,
-		ledgerBackend:               ledgerBackend,
 		config:                      config,
-		historyQ:                    historyQ,
+		ctx:                         ctx,
 		disableStateVerification:    config.DisableStateVerification,
-		maxStreamRetries:            config.MaxStreamRetries,
+		historyAdapter:              historyAdapter,
+		historyQ:                    historyQ,
+		ledgerBackend:               ledgerBackend,
 		maxReingestRetries:          config.MaxReingestRetries,
 		reingestRetryBackoffSeconds: config.ReingestRetryBackoffSeconds,
 		stellarCoreClient: &stellarcore.Client{

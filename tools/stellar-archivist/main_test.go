@@ -5,9 +5,10 @@
 package main
 
 import (
-	"github.com/stellar/go/support/historyarchive"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stellar/go/historyarchive"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestLastOption(t *testing.T) {
