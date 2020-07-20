@@ -7,9 +7,9 @@ import (
 	"io"
 	"testing"
 
+	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/network"
 	"github.com/stellar/go/support/errors"
-	"github.com/stellar/go/support/historyarchive"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
