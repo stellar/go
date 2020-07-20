@@ -100,10 +100,13 @@ func (q *Q) OperationByID(includeTransactions bool, id int64) (Operation, *Trans
 		if err = q.TransactionByHash(&transaction, operation.TransactionHash); err != nil {
 			return operation, nil, err
 		}
+		if err = validateTransactionForOperation(transaction, operation); err != nil {
+			return operation, nil, err
+		}
 
-		return operation, &transaction, err
+		return operation, &transaction, nil
 	}
-	return operation, nil, err
+	return operation, nil, nil
 }
 
 // ForAccount filters the operations collection to a specific account

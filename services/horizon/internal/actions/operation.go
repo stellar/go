@@ -6,7 +6,10 @@ import (
 	"net/http"
 
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/services/horizon/internal/ledger"
+	iproblem "github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/resourceadapter"
+	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/render/hal"
 	"github.com/stellar/go/support/render/problem"
@@ -68,8 +71,7 @@ func (handler GetOperationsHandler) GetResourcePage(w HeaderWriter, r *http.Requ
 	}
 
 	qp := OperationsQuery{}
-	err = GetParams(&qp, r)
-	if err != nil {
+	if err = GetParams(&qp, r); err != nil {
 		return nil, err
 	}
 
@@ -150,4 +152,58 @@ func buildOperationsPage(ctx context.Context, historyQ *history.Q, operations []
 	}
 
 	return response, nil
+}
+
+// OperationsByIDQuery query struct for operations end-points
+type OperationsByIDQuery struct {
+	OperationID uint64 `schema:"op_id" valid:"-"`
+	Join        string `schema:"join" valid:"in(transactions)~Accepted values: transactions,optional"`
+}
+
+// IncludeTransactions returns extra fields to include in the response
+func (qp OperationsByIDQuery) IncludeTransactions() bool {
+	return qp.Join == "transactions"
+}
+
+type GetOperationsByIDHandler struct{}
+
+func (handler GetOperationsByIDHandler) GetResource(w HeaderWriter, r *http.Request) (hal.Pageable, error) {
+	qp := OperationsByIDQuery{}
+	if err := GetParams(&qp, r); err != nil {
+		return nil, err
+	}
+
+	parsed := toid.Parse(int64(qp.OperationID))
+	if parsed.LedgerSequence < ledger.CurrentState().HistoryElder {
+		return nil, iproblem.BeforeHistory
+	}
+
+	historyQ, err := HistoryQFromRequest(r)
+	if err != nil {
+		return nil, err
+	}
+
+	operationRecord, transactionRecord, err := historyQ.OperationByID(qp.IncludeTransactions(), int64(qp.OperationID))
+	if err != nil {
+		return nil, err
+	}
+
+	var ledger history.Ledger
+	if err = historyQ.LedgerBySequence(&ledger, operationRecord.LedgerSequence()); err != nil {
+		return nil, err
+	}
+
+	operation, err := resourceadapter.NewOperation(
+		r.Context(),
+		operationRecord,
+		operationRecord.TransactionHash,
+		transactionRecord,
+		ledger,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return operation, nil
+
 }
