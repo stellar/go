@@ -1,6 +1,7 @@
 package expingest
 
 import (
+	"github.com/stellar/go/exp/ingest/ledgerbackend"
 	"github.com/stellar/go/keypair"
 	logpkg "github.com/stellar/go/support/log"
 	"github.com/stellar/go/xdr"
@@ -15,8 +16,12 @@ func (fakeLedgerBackend) GetLatestLedgerSequence() (uint32, error) {
 	return 1, nil
 }
 
-func (fakeLedgerBackend) PrepareRange(from uint32, to uint32) error {
+func (fakeLedgerBackend) PrepareRange(r ledgerbackend.Range) error {
 	return nil
+}
+
+func (fakeLedgerBackend) IsPrepared(r ledgerbackend.Range) bool {
+	return true
 }
 
 func fakeAccount() xdr.LedgerEntryChange {

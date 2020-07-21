@@ -25,14 +25,14 @@ type VerifyRangeStateTestSuite struct {
 	historyQ       *mockDBQ
 	historyAdapter *adapters.MockHistoryArchiveAdapter
 	runner         *mockProcessorsRunner
-	system         *System
+	system         *system
 }
 
 func (s *VerifyRangeStateTestSuite) SetupTest() {
 	s.historyQ = &mockDBQ{}
 	s.historyAdapter = &adapters.MockHistoryArchiveAdapter{}
 	s.runner = &mockProcessorsRunner{}
-	s.system = &System{
+	s.system = &system{
 		historyQ:       s.historyQ,
 		historyAdapter: s.historyAdapter,
 		runner:         s.runner,

@@ -8,12 +8,10 @@ import (
 	"github.com/rcrowley/go-metrics"
 
 	"github.com/stellar/go/exp/orderbook"
-	"github.com/stellar/go/services/horizon/internal/db2/core"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/expingest"
 	"github.com/stellar/go/services/horizon/internal/simplepath"
 	"github.com/stellar/go/services/horizon/internal/txsub"
-	results "github.com/stellar/go/services/horizon/internal/txsub/results/db"
 	"github.com/stellar/go/services/horizon/internal/txsub/sequence"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/log"
@@ -51,27 +49,6 @@ func mustInitHorizonDB(app *App) {
 	)}
 }
 
-func mustInitCoreDB(app *App) {
-	maxIdle := app.config.CoreDBMaxIdleConnections
-	maxOpen := app.config.CoreDBMaxOpenConnections
-	if app.config.Ingest {
-		maxIdle -= expingest.MaxDBConnections
-		maxOpen -= expingest.MaxDBConnections
-		if maxIdle <= 0 {
-			log.Fatalf("max idle connections to stellar-core db must be greater than %d", expingest.MaxDBConnections)
-		}
-		if maxOpen <= 0 {
-			log.Fatalf("max open connections to stellar-core db must be greater than %d", expingest.MaxDBConnections)
-		}
-	}
-
-	app.coreQ = &core.Q{mustNewDBSession(
-		app.config.StellarCoreDatabaseURL,
-		maxIdle,
-		maxOpen,
-	)}
-}
-
 func initExpIngester(app *App) {
 	var err error
 	app.expingester, err = expingest.NewSystem(expingest.Config{
@@ -88,8 +65,11 @@ func initExpIngester(app *App) {
 		HistoryArchiveURL:        app.config.HistoryArchiveURLs[0],
 		StellarCoreURL:           app.config.StellarCoreURL,
 		StellarCoreCursor:        app.config.CursorName,
+		StellarCoreBinaryPath:    app.config.StellarCoreBinaryPath,
+		StellarCoreConfigPath:    app.config.StellarCoreConfigPath,
 		DisableStateVerification: app.config.IngestDisableStateVerification,
 	})
+
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -143,14 +123,12 @@ func initDbMetrics(app *App) {
 	app.historyElderLedgerGauge = metrics.NewGauge()
 	app.coreLatestLedgerGauge = metrics.NewGauge()
 	app.horizonConnGauge = metrics.NewGauge()
-	app.coreConnGauge = metrics.NewGauge()
 	app.goroutineGauge = metrics.NewGauge()
 	app.metrics.Register("history.latest_ledger", app.historyLatestLedgerGauge)
 	app.metrics.Register("history.elder_ledger", app.historyElderLedgerGauge)
 	app.metrics.Register("stellar_core.latest_ledger", app.coreLatestLedgerGauge)
 	app.metrics.Register("order_book_stream.latest_ledger", app.orderBookStream.LatestLedgerGauge)
 	app.metrics.Register("history.open_connections", app.horizonConnGauge)
-	app.metrics.Register("stellar_core.open_connections", app.coreConnGauge)
 	app.metrics.Register("goroutines", app.goroutineGauge)
 }
 
@@ -160,9 +138,9 @@ func initIngestMetrics(app *App) {
 	if app.expingester == nil {
 		return
 	}
-	app.metrics.Register("ingest.ledger_ingestion", app.expingester.Metrics.LedgerIngestionTimer)
-	app.metrics.Register("ingest.ledger_in_memory_ingestion", app.expingester.Metrics.LedgerInMemoryIngestionTimer)
-	app.metrics.Register("ingest.state_verify", app.expingester.Metrics.StateVerifyTimer)
+	app.metrics.Register("ingest.ledger_ingestion", app.expingester.Metrics().LedgerIngestionTimer)
+	app.metrics.Register("ingest.ledger_in_memory_ingestion", app.expingester.Metrics().LedgerInMemoryIngestionTimer)
+	app.metrics.Register("ingest.state_verify", app.expingester.Metrics().StateVerifyTimer)
 }
 
 func initTxSubMetrics(app *App) {
@@ -186,45 +164,12 @@ func initWebMetrics(app *App) {
 }
 
 func initSubmissionSystem(app *App) {
-	// Due to a delay between Stellar-Core closing a ledger and Horizon
-	// ingesting it, it's possible that results of transaction submitted to
-	// Stellar-Core via Horizon may not be immediately visible. This is
-	// happening because `txsub` package checks two sources when checking a
-	// transaction result: Stellar-Core and Horizon DB.
-	//
-	// The extreme case is https://github.com/stellar/go/issues/2272 where
-	// results of transaction creating an account are not visible: requesting
-	// account details in Horizon returns `404 Not Found`:
-	//
-	// ```
-	// 	 Horizon DB                  Core DB                  User
-	// 		 |                          |                      |
-	// 		 |                          |                      |
-	// 		 |                          | <------- Submit create_account op
-	// 		 |                          |                      |
-	// 		 |                  Insert transaction             |
-	// 		 |                          |                      |
-	// 		 |                     Tx found -----------------> |
-	// 		 |                          |                      |
-	// 		 |                          |                      |
-	// 		 | <--------------------------------------- Get account info
-	// 		 |                          |                      |
-	// 		 |                          |                      |
-	//         Account NOT found ------------------------------------> |
-	// 		 |                          |                      |
-	//         Insert account                   |                      |
-	// ```
-	//
-	// To fix this skip checking Stellar-Core DB for transaction results if
-	// Horizon is ingesting failed transactions.
-
 	app.submitter = &txsub.System{
 		Pending:         txsub.NewDefaultSubmissionList(),
 		Submitter:       txsub.NewDefaultSubmitter(http.DefaultClient, app.config.StellarCoreURL),
 		SubmissionQueue: sequence.NewManager(),
-		Results: &results.DB{
-			History: &history.Q{Session: app.HorizonSession(context.Background())},
+		DB: func(ctx context.Context) txsub.HorizonDB {
+			return &history.Q{Session: app.HorizonSession(ctx)}
 		},
-		Sequences: &history.Q{Session: app.HorizonSession(context.Background())},
 	}
 }

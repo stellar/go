@@ -224,12 +224,12 @@ func (w *web) mustInstallActions(config Config, pathFinder paths.Finder, session
 	})
 	// ledger actions
 	r.Route("/ledgers", func(r chi.Router) {
-		r.Get("/", LedgerIndexAction{}.Handle)
+		r.Use(historyMiddleware)
+		r.Method(http.MethodGet, "/", streamableHistoryPageHandler(actions.GetLedgerIndexHandler{}, streamHandler))
 		r.Route("/{ledger_id}", func(r chi.Router) {
-			r.Get("/", LedgerShowAction{}.Handle)
-			r.With(historyMiddleware).Method(http.MethodGet, "/transactions", streamableHistoryPageHandler(actions.GetTransactionsHandler{}, streamHandler))
+			r.Method(http.MethodGet, "/", objectActionHandler{actions.GetLedgerHandler{}})
+			r.Method(http.MethodGet, "/transactions", streamableHistoryPageHandler(actions.GetTransactionsHandler{}, streamHandler))
 			r.Group(func(r chi.Router) {
-				r.Use(historyMiddleware)
 				r.Method(http.MethodGet, "/effects", streamableHistoryPageHandler(actions.GetEffectsHandler{}, streamHandler))
 				r.Method(http.MethodGet, "/operations", streamableHistoryPageHandler(actions.GetOperationsHandler{
 					OnlyPayments: false,
@@ -259,12 +259,12 @@ func (w *web) mustInstallActions(config Config, pathFinder paths.Finder, session
 
 	// operation actions
 	r.Route("/operations", func(r chi.Router) {
-		r.With(historyMiddleware).Method(http.MethodGet, "/", streamableHistoryPageHandler(actions.GetOperationsHandler{
+		r.Use(historyMiddleware)
+		r.Method(http.MethodGet, "/", streamableHistoryPageHandler(actions.GetOperationsHandler{
 			OnlyPayments: false,
 		}, streamHandler))
-		r.Get("/{id}", OperationShowAction{}.Handle)
-		r.With(historyMiddleware).Method(http.MethodGet, "/{op_id}/effects", streamableHistoryPageHandler(actions.GetEffectsHandler{}, streamHandler))
-
+		r.Method(http.MethodGet, "/{id}", objectActionHandler{actions.GetOperationByIDHandler{}})
+		r.Method(http.MethodGet, "/{op_id}/effects", streamableHistoryPageHandler(actions.GetEffectsHandler{}, streamHandler))
 	})
 
 	r.Group(func(r chi.Router) {
@@ -288,7 +288,7 @@ func (w *web) mustInstallActions(config Config, pathFinder paths.Finder, session
 	r.Post("/transactions", TransactionCreateAction{}.Handle)
 
 	// Network state related endpoints
-	r.Get("/fee_stats", FeeStatsAction{}.Handle)
+	r.Method(http.MethodGet, "/fee_stats", objectActionHandler{actions.FeeStatsHandler{}})
 
 	// friendbot
 	if config.FriendbotURL != nil {

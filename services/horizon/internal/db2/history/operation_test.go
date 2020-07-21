@@ -293,6 +293,11 @@ func TestOperationIncludeTransactions(t *testing.T) {
 	tt.Assert.Equal(op, expectedOperations[0])
 	tt.Assert.Equal(*transaction, expectedTransactions[0])
 	assertOperationMatchesTransaction(tt, op, *transaction)
+
+	_, err = q.Exec(sq.Delete("history_transactions"))
+	tt.Assert.NoError(err)
+	_, _, err = q.OperationByID(true, 17179877377)
+	tt.Assert.Error(err)
 }
 
 func TestValidateTransactionForOperation(t *testing.T) {
@@ -320,6 +325,10 @@ func TestValidateTransactionForOperation(t *testing.T) {
 	tt.Assert.Error(err)
 	tt.Assert.EqualError(err, "transaction with id 17179877376 could not be found")
 
+	_, _, err = q.OperationByID(true, 17179877377)
+	tt.Assert.Error(err)
+	tt.Assert.EqualError(err, "transaction id 0 does not match transaction id in operation 17179877376")
+
 	selectTransaction = sq.Select(
 		"ht.id, " +
 			"ht.transaction_hash, " +
@@ -330,6 +339,10 @@ func TestValidateTransactionForOperation(t *testing.T) {
 		ForAccount(accountID)
 
 	_, _, err = query.Fetch()
+	tt.Assert.Error(err)
+	tt.Assert.EqualError(err, "transaction result  does not match transaction result in operation AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAA=")
+
+	_, _, err = q.OperationByID(true, 17179877377)
 	tt.Assert.Error(err)
 	tt.Assert.EqualError(err, "transaction result  does not match transaction result in operation AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAA=")
 
@@ -346,6 +359,10 @@ func TestValidateTransactionForOperation(t *testing.T) {
 	tt.Assert.Error(err)
 	tt.Assert.EqualError(err, "transaction hash  does not match transaction hash in operation 1c454630267aa8767ec8c8e30450cea6ba660145e9c924abb75d7a6669b6c28a")
 
+	_, _, err = q.OperationByID(true, 17179877377)
+	tt.Assert.Error(err)
+	tt.Assert.EqualError(err, "transaction hash  does not match transaction hash in operation 1c454630267aa8767ec8c8e30450cea6ba660145e9c924abb75d7a6669b6c28a")
+
 	selectTransaction = sq.Select(
 		"ht.id, " +
 			"ht.tx_result, " +
@@ -356,6 +373,10 @@ func TestValidateTransactionForOperation(t *testing.T) {
 		ForAccount(accountID)
 
 	_, _, err = query.Fetch()
+	tt.Assert.Error(err)
+	tt.Assert.EqualError(err, "transaction successful flag false does not match transaction successful flag in operation true")
+
+	_, _, err = q.OperationByID(true, 17179877377)
 	tt.Assert.Error(err)
 	tt.Assert.EqualError(err, "transaction successful flag false does not match transaction successful flag in operation true")
 }

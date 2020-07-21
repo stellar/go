@@ -17,13 +17,13 @@ type InitStateTestSuite struct {
 	suite.Suite
 	historyQ       *mockDBQ
 	historyAdapter *adapters.MockHistoryArchiveAdapter
-	system         *System
+	system         *system
 }
 
 func (s *InitStateTestSuite) SetupTest() {
 	s.historyQ = &mockDBQ{}
 	s.historyAdapter = &adapters.MockHistoryArchiveAdapter{}
-	s.system = &System{
+	s.system = &system{
 		ctx:            context.Background(),
 		historyQ:       s.historyQ,
 		historyAdapter: s.historyAdapter,
@@ -105,6 +105,20 @@ func (s *InitStateTestSuite) TestBuildStateEmptyDatabase() {
 	s.Assert().NoError(err)
 	s.Assert().Equal(
 		transition{node: buildState{checkpointLedger: 63}, sleepDuration: defaultSleep},
+		next,
+	)
+}
+
+func (s *InitStateTestSuite) TestBuildStateEmptyDatabaseFromSuggestedCheckpoint() {
+	s.historyQ.On("Begin").Return(nil).Once()
+	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
+	s.historyQ.On("GetExpIngestVersion").Return(0, nil).Once()
+	s.historyQ.On("GetLatestLedger").Return(uint32(0), nil).Once()
+
+	next, err := startState{suggestedCheckpoint: 127}.run(s.system)
+	s.Assert().NoError(err)
+	s.Assert().Equal(
+		transition{node: buildState{checkpointLedger: 127}, sleepDuration: defaultSleep},
 		next,
 	)
 }
