@@ -248,8 +248,7 @@ func (handler GetTradeAggregationsHandler) GetResourcePage(w HeaderWriter, r *ht
 		return nil, err
 	}
 	qp := TradeAggregationsQuery{}
-	err = GetParams(&qp, r)
-	if err != nil {
+	if err = GetParams(&qp, r); err != nil {
 		return nil, err
 	}
 
