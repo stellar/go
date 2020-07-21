@@ -7,6 +7,7 @@ import (
 	gTime "time"
 
 	"github.com/stellar/go/protocols/horizon"
+	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/resourceadapter"
 	"github.com/stellar/go/support/errors"
@@ -238,17 +239,14 @@ type GetTradeAggregationsHandler struct {
 // GetResourcePage returns a page of trade aggregations
 func (handler GetTradeAggregationsHandler) GetResourcePage(w HeaderWriter, r *http.Request) ([]hal.Pageable, error) {
 	ctx := r.Context()
-
 	pq, err := GetPageQuery(r)
 	if err != nil {
 		return nil, err
 	}
-
 	err = ValidateCursorWithinHistory(pq)
 	if err != nil {
 		return nil, err
 	}
-
 	qp := TradeAggregationsQuery{}
 	err = GetParams(&qp, r)
 	if err != nil {
@@ -260,6 +258,25 @@ func (handler GetTradeAggregationsHandler) GetResourcePage(w HeaderWriter, r *ht
 		return nil, err
 	}
 
+	records, err := handler.fetchRecords(historyQ, qp, pq)
+	if err != nil {
+		return nil, err
+	}
+	response := []hal.Pageable{}
+	for _, record := range records {
+		var res horizon.TradeAggregation
+		err = resourceadapter.PopulateTradeAggregation(ctx, &res, record)
+		if err != nil {
+			return nil, err
+		}
+
+		response = append(response, res)
+	}
+
+	return response, nil
+}
+
+func (handler GetTradeAggregationsHandler) fetchRecords(historyQ *history.Q, qp TradeAggregationsQuery, pq db2.PageQuery) ([]history.TradeAggregation, error) {
 	baseAsset, err := qp.Base()
 	if err != nil {
 		return nil, err
@@ -272,7 +289,6 @@ func (handler GetTradeAggregationsHandler) GetResourcePage(w HeaderWriter, r *ht
 			p = problem.NotFound
 			err = errors.New("not found")
 		}
-
 		return nil, problem.NewProblemWithInvalidField(
 			p,
 			"base_asset",
@@ -343,20 +359,7 @@ func (handler GetTradeAggregationsHandler) GetResourcePage(w HeaderWriter, r *ht
 	if err != nil {
 		return nil, err
 	}
-
-	response := []hal.Pageable{}
-
-	for _, record := range records {
-		var res horizon.TradeAggregation
-		err = resourceadapter.PopulateTradeAggregation(ctx, &res, record)
-		if err != nil {
-			return nil, err
-		}
-
-		response = append(response, res)
-	}
-
-	return response, nil
+	return records, err
 }
 
 // BuildPage builds a custom hal page for this handler
