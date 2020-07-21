@@ -300,7 +300,9 @@ func (w *web) mustInstallActions(config Config, pathFinder paths.Finder, session
 		r.Get("/friendbot", redirectFriendbot)
 	}
 
-	r.NotFound(NotFoundAction{}.Handle)
+	r.NotFound(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		problem.Render(request.Context(), w, problem.NotFound)
+	}))
 
 	// internal
 	w.internalRouter.Get("/metrics", HandleRaw(&actions.MetricsHandler{registry}))
@@ -320,9 +322,11 @@ func maybeInitWebRateLimiter(rateQuota *throttled.RateQuota) *throttled.HTTPRate
 	}
 
 	return &throttled.HTTPRateLimiter{
-		RateLimiter:   rateLimiter,
-		DeniedHandler: &RateLimitExceededAction{Action{}},
-		VaryBy:        VaryByRemoteIP{},
+		RateLimiter: rateLimiter,
+		DeniedHandler: http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+			problem.Render(request.Context(), w, hProblem.RateLimitExceeded)
+		}),
+		VaryBy: VaryByRemoteIP{},
 	}
 }
 
