@@ -367,8 +367,7 @@ func (handler GetTradeAggregationsHandler) BuildPage(r *http.Request, records []
 		return hal.Page{}, err
 	}
 	qp := TradeAggregationsQuery{}
-	err = GetParams(&qp, r)
-	if err != nil {
+	if err = GetParams(&qp, r); err != nil {
 		return hal.Page{}, err
 	}
 
