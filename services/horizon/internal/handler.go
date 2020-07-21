@@ -363,19 +363,22 @@ type pageAction interface {
 	GetResourcePage(w actions.HeaderWriter, r *http.Request) ([]hal.Pageable, error)
 }
 
-type withPageBuilderAction interface {
-	BuildPage(r *http.Request, records []hal.Pageable) (hal.Page, error)
-}
+type buildPageFun func(r *http.Request, records []hal.Pageable) (hal.Page, error)
 
 type pageActionHandler struct {
 	action         pageAction
 	streamable     bool
 	streamHandler  sse.StreamHandler
 	repeatableRead bool
+	buildPage      buildPageFun
 }
 
-func restPageHandler(action pageAction) pageActionHandler {
-	return pageActionHandler{action: action}
+func restPageHandler(action pageAction, customPageBuilder ...buildPageFun) pageActionHandler {
+	handler := pageActionHandler{action: action}
+	if len(customPageBuilder) > 0 {
+		handler.buildPage = customPageBuilder[0]
+	}
+	return handler
 }
 
 // streamableStatePageHandler creates a streamable page handler than generates
@@ -415,8 +418,8 @@ func (handler pageActionHandler) renderPage(w http.ResponseWriter, r *http.Reque
 
 	var page hal.Page
 
-	if action, ok := handler.action.(withPageBuilderAction); ok {
-		page, err = action.BuildPage(r, records)
+	if handler.buildPage != nil {
+		page, err = handler.buildPage(r, records)
 	} else {
 		page, err = buildPage(r, records)
 	}
