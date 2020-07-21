@@ -279,7 +279,7 @@ func (w *web) mustInstallActions(config Config, pathFinder paths.Finder, session
 		r.Method(http.MethodGet, "/trades", streamableHistoryPageHandler(actions.GetTradesHandler{}, streamHandler))
 
 		tradeAggHandler := actions.GetTradeAggregationsHandler{}
-		r.Method(http.MethodGet, "/trade_aggregations", restPageHandler(tradeAggHandler, tradeAggHandler.BuildPage))
+		r.Method(http.MethodGet, "/trade_aggregations", restPageHandlerWithBuilder(tradeAggHandler, tradeAggHandler.BuildPage))
 
 		// /offers/{offer_id} has been created above so we need to use absolute
 		// routes here.

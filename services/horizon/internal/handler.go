@@ -373,12 +373,15 @@ type pageActionHandler struct {
 	buildPage      buildPageFun
 }
 
-func restPageHandler(action pageAction, customPageBuilder ...buildPageFun) pageActionHandler {
-	handler := pageActionHandler{action: action}
-	if len(customPageBuilder) > 0 {
-		handler.buildPage = customPageBuilder[0]
+func restPageHandler(action pageAction) pageActionHandler {
+	return pageActionHandler{action: action}
+}
+
+func restPageHandlerWithBuilder(action pageAction, customPageBuilder buildPageFun) pageActionHandler {
+	return pageActionHandler{
+		action:    action,
+		buildPage: customPageBuilder,
 	}
-	return handler
 }
 
 // streamableStatePageHandler creates a streamable page handler than generates
