@@ -363,12 +363,16 @@ type pageAction interface {
 	GetResourcePage(w actions.HeaderWriter, r *http.Request) ([]hal.Pageable, error)
 }
 
+type pageBuilder interface {
+	BuildPage(r *http.Request, records []hal.Pageable) (interface{}, error)
+}
+
 type pageActionHandler struct {
-	action         pageAction
-	streamable     bool
-	streamHandler  sse.StreamHandler
-	repeatableRead bool
-	buildPage      func(r *http.Request, records []hal.Pageable) (hal.Page, error)
+	action            pageAction
+	streamable        bool
+	streamHandler     sse.StreamHandler
+	repeatableRead    bool
+	customPageBuilder pageBuilder
 }
 
 func restPageHandler(action pageAction) pageActionHandler {
@@ -377,13 +381,13 @@ func restPageHandler(action pageAction) pageActionHandler {
 
 type customBuiltPageAction interface {
 	pageAction
-	BuildPage(r *http.Request, records []hal.Pageable) (hal.Page, error)
+	pageBuilder
 }
 
 func restCustomBuiltPageHandler(action customBuiltPageAction) pageActionHandler {
 	return pageActionHandler{
-		action:    action,
-		buildPage: action.BuildPage,
+		action:            action,
+		customPageBuilder: action,
 	}
 }
 
@@ -422,10 +426,10 @@ func (handler pageActionHandler) renderPage(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	var page hal.Page
+	var page interface{}
 
-	if handler.buildPage != nil {
-		page, err = handler.buildPage(r, records)
+	if handler.customPageBuilder != nil {
+		page, err = handler.customPageBuilder.BuildPage(r, records)
 	} else {
 		page, err = buildPage(r, records)
 	}

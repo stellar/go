@@ -10,7 +10,7 @@ import (
 )
 
 type HTTPT struct {
-	Assert     *Assertions
+	Assert     *test.Assertions
 	App        *App
 	RH         test.RequestHelper
 	coreServer *test.StaticMockServer
@@ -26,7 +26,7 @@ func startHTTPTest(t *testing.T, scenario string) *HTTPT {
 	}
 	ret.App = NewTestApp()
 	ret.RH = test.NewRequestHelper(ret.App.web.router)
-	ret.Assert = &Assertions{ret.T.Assert}
+	ret.Assert = &test.Assertions{ret.T.Assert}
 
 	ret.coreServer = test.NewStaticMockServer(`{
 		"info": {

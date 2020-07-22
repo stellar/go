@@ -362,7 +362,7 @@ func (handler GetTradeAggregationsHandler) fetchRecords(historyQ *history.Q, qp 
 }
 
 // BuildPage builds a custom hal page for this handler
-func (handler GetTradeAggregationsHandler) BuildPage(r *http.Request, records []hal.Pageable) (hal.Page, error) {
+func (handler GetTradeAggregationsHandler) BuildPage(r *http.Request, records []hal.Pageable) (interface{}, error) {
 	ctx := r.Context()
 	pageQuery, err := GetPageQuery(r, DisableCursorValidation)
 	if err != nil {

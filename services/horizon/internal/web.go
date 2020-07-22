@@ -176,20 +176,19 @@ func (w *web) mustInstallActions(config Config, pathFinder paths.Finder, session
 
 		r.Method(http.MethodGet, "/assets", restPageHandler(actions.AssetStatsHandler{}))
 
-		findPaths := FindPathsHandler{
-			staleThreshold:       config.StaleThreshold,
-			checkHistoryIsStale:  false,
-			setLastLedgerHeader:  true,
-			maxPathLength:        config.MaxPathLength,
-			maxAssetsParamLength: maxAssetsForPathFinding,
-			pathFinder:           pathFinder,
-		}
-		findFixedPaths := FindFixedPathsHandler{
-			maxPathLength:        config.MaxPathLength,
-			setLastLedgerHeader:  true,
-			maxAssetsParamLength: maxAssetsForPathFinding,
-			pathFinder:           pathFinder,
-		}
+		findPaths := restCustomBuiltPageHandler(actions.FindPathsHandler{
+			StaleThreshold:       config.StaleThreshold,
+			SetLastLedgerHeader:  true,
+			MaxPathLength:        config.MaxPathLength,
+			MaxAssetsParamLength: maxAssetsForPathFinding,
+			PathFinder:           pathFinder,
+		})
+		findFixedPaths := restCustomBuiltPageHandler(actions.FindFixedPathsHandler{
+			MaxPathLength:        config.MaxPathLength,
+			SetLastLedgerHeader:  true,
+			MaxAssetsParamLength: maxAssetsForPathFinding,
+			PathFinder:           pathFinder,
+		})
 
 		r.Method(http.MethodGet, "/paths", findPaths)
 		r.Method(http.MethodGet, "/paths/strict-receive", findPaths)
