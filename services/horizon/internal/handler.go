@@ -368,10 +368,23 @@ type pageActionHandler struct {
 	streamable     bool
 	streamHandler  sse.StreamHandler
 	repeatableRead bool
+	buildPage      func(r *http.Request, records []hal.Pageable) (hal.Page, error)
 }
 
 func restPageHandler(action pageAction) pageActionHandler {
 	return pageActionHandler{action: action}
+}
+
+type customBuiltPageAction interface {
+	pageAction
+	BuildPage(r *http.Request, records []hal.Pageable) (hal.Page, error)
+}
+
+func restCustomBuiltPageHandler(action customBuiltPageAction) pageActionHandler {
+	return pageActionHandler{
+		action:    action,
+		buildPage: action.BuildPage,
+	}
 }
 
 // streamableStatePageHandler creates a streamable page handler than generates
@@ -409,7 +422,14 @@ func (handler pageActionHandler) renderPage(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	page, err := buildPage(r, records)
+	var page hal.Page
+
+	if handler.buildPage != nil {
+		page, err = handler.buildPage(r, records)
+	} else {
+		page, err = buildPage(r, records)
+	}
+
 	if err != nil {
 		problem.Render(r.Context(), w, err)
 		return
@@ -500,6 +520,7 @@ func buildPage(r *http.Request, records []hal.Pageable) (hal.Page, error) {
 		Order:  pageQuery.Order,
 		Limit:  pageQuery.Limit,
 	}
+	page.Init()
 
 	for _, record := range records {
 		page.Add(record)
