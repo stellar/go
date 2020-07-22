@@ -4,6 +4,7 @@ import (
 	"compress/flate"
 	"context"
 	"database/sql"
+	"github.com/stellar/go/services/horizon/internal/txsub"
 	"net/http"
 	"net/http/pprof"
 	"strings"
@@ -133,7 +134,7 @@ func (f historyLedgerSourceFactory) Get() ledger.Source {
 
 // mustInstallActions installs the routing configuration of horizon onto the
 // provided app.  All route registration should be implemented here.
-func (w *web) mustInstallActions(config Config, pathFinder paths.Finder, session *db.Session, registry metrics.Registry) {
+func (w *web) mustInstallActions(config Config, pathFinder paths.Finder, session *db.Session, submitter *txsub.System, registry metrics.Registry) {
 	if w == nil {
 		log.Fatal("missing web instance for installing web actions")
 	}
@@ -283,7 +284,10 @@ func (w *web) mustInstallActions(config Config, pathFinder paths.Finder, session
 	})
 
 	// Transaction submission API
-	r.Post("/transactions", TransactionCreateAction{}.Handle)
+	r.Method(http.MethodPost, "/transactions", objectActionHandler{actions.SubmitTransactionHandler{
+		Submitter:         submitter,
+		NetworkPassphrase: config.NetworkPassphrase,
+	}})
 
 	// Network state related endpoints
 	r.Method(http.MethodGet, "/fee_stats", objectActionHandler{actions.FeeStatsHandler{}})

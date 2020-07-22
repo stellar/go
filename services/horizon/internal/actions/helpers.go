@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
-	"mime"
 	"net/http"
 	"net/url"
 	"reflect"
@@ -674,25 +673,6 @@ func (base *Base) SetInvalidField(name string, reason error) {
 // this action
 func (base *Base) Path() string {
 	return base.R.URL.Path
-}
-
-// ValidateBodyType sets an error on the action if the requests Content-Type
-//  is not `application/x-www-form-urlencoded`
-func (base *Base) ValidateBodyType() {
-	c := base.R.Header.Get("Content-Type")
-	if c == "" {
-		return
-	}
-
-	mt, _, err := mime.ParseMediaType(c)
-	if err != nil {
-		base.Err = err
-		return
-	}
-
-	if mt != "application/x-www-form-urlencoded" && mt != "multipart/form-data" {
-		base.Err = &hProblem.UnsupportedMediaType
-	}
 }
 
 // FullURL returns a URL containing the information regarding the original

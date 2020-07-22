@@ -496,7 +496,7 @@ func (a *App) init() {
 	initDbMetrics(a)
 
 	// web.actions
-	a.web.mustInstallActions(a.config, a.paths, a.historyQ.Session, a.metrics)
+	a.web.mustInstallActions(a.config, a.paths, a.historyQ.Session, a.submitter, a.metrics)
 
 	// ingest.metrics
 	initIngestMetrics(a)
