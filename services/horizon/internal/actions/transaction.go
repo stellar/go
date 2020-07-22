@@ -22,8 +22,8 @@ type TransactionQuery struct {
 type GetTransactionByHashHandler struct {
 }
 
-// GetResource returns an transaction page.
-func (handler GetTransactionByHashHandler) GetResource(w HeaderWriter, r *http.Request) (hal.Pageable, error) {
+// GetResource returns a transaction page.
+func (handler GetTransactionByHashHandler) GetResource(w HeaderWriter, r *http.Request) (interface{}, error) {
 	ctx := r.Context()
 	qp := TransactionQuery{}
 	err := GetParams(&qp, r)

@@ -13,6 +13,7 @@ import (
 	metrics "github.com/rcrowley/go-metrics"
 	"github.com/stellar/go/clients/stellarcore"
 	proto "github.com/stellar/go/protocols/stellarcore"
+	"github.com/stellar/go/services/horizon/internal/actions"
 	horizonContext "github.com/stellar/go/services/horizon/internal/context"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/expingest"
@@ -30,29 +31,23 @@ import (
 	graceful "gopkg.in/tylerb/graceful.v1"
 )
 
-type coreSettings struct {
-	currentProtocolVersion       int32
-	coreSupportedProtocolVersion int32
-	coreVersion                  string
-}
-
 type coreSettingsStore struct {
 	sync.RWMutex
-	coreSettings
+	actions.CoreSettings
 }
 
 func (c *coreSettingsStore) set(resp *proto.InfoResponse) {
 	c.Lock()
 	defer c.Unlock()
-	c.coreVersion = resp.Info.Build
-	c.currentProtocolVersion = int32(resp.Info.Ledger.Version)
-	c.coreSupportedProtocolVersion = int32(resp.Info.ProtocolVersion)
+	c.CoreVersion = resp.Info.Build
+	c.CurrentProtocolVersion = int32(resp.Info.Ledger.Version)
+	c.CoreSupportedProtocolVersion = int32(resp.Info.ProtocolVersion)
 }
 
-func (c *coreSettingsStore) get() coreSettings {
+func (c *coreSettingsStore) get() actions.CoreSettings {
 	c.RLock()
 	defer c.RUnlock()
-	return c.coreSettings
+	return c.CoreSettings
 }
 
 // App represents the root of the state of a horizon instance.
@@ -78,6 +73,10 @@ type App struct {
 	horizonConnGauge         metrics.Gauge
 	coreLatestLedgerGauge    metrics.Gauge
 	goroutineGauge           metrics.Gauge
+}
+
+func (a *App) GetCoreSettings() actions.CoreSettings {
+	return a.coreSettings.get()
 }
 
 // NewApp constructs an new App instance from the provided config.
@@ -369,8 +368,8 @@ func (a *App) UpdateFeeStatsState() {
 	operationfeestats.SetState(next)
 }
 
-// UpdateStellarCoreInfo updates the value of coreVersion,
-// currentProtocolVersion, and coreSupportedProtocolVersion from the Stellar
+// UpdateStellarCoreInfo updates the value of CoreVersion,
+// CurrentProtocolVersion, and CoreSupportedProtocolVersion from the Stellar
 // core API.
 func (a *App) UpdateStellarCoreInfo() {
 	if a.config.StellarCoreURL == "" {
@@ -496,7 +495,7 @@ func (a *App) init() {
 	initDbMetrics(a)
 
 	// web.actions
-	a.web.mustInstallActions(a.config, a.paths, a.historyQ.Session, a.submitter, a.metrics)
+	a.web.mustInstallActions(a.config, a.paths, a.historyQ.Session, a.submitter, a.metrics, a, a.horizonVersion)
 
 	// ingest.metrics
 	initIngestMetrics(a)

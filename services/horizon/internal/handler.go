@@ -234,7 +234,7 @@ type objectAction interface {
 	GetResource(
 		w actions.HeaderWriter,
 		r *http.Request,
-	) (hal.Pageable, error)
+	) (interface{}, error)
 }
 
 type objectActionHandler struct {
@@ -447,7 +447,7 @@ func (handler pageActionHandler) renderPage(w http.ResponseWriter, r *http.Reque
 }
 
 func (handler pageActionHandler) renderStream(w http.ResponseWriter, r *http.Request) {
-	// Use pq to get SSE limit.
+	// Use pq to Get SSE limit.
 	pq, err := actions.GetPageQuery(r)
 	if err != nil {
 		problem.Render(r.Context(), w, err)
