@@ -97,13 +97,14 @@ func TestGetOfferByIDHandler(t *testing.T) {
 		{
 			"offer id is invalid",
 			makeRequest(
-				t, map[string]string{}, map[string]string{"id": "invalid"}, q.Session,
+				t, map[string]string{}, map[string]string{"offer_id": "invalid"}, q.Session,
 			),
 			func(err error) {
 				tt.Assert.Error(err)
 				p := err.(*problem.P)
 				tt.Assert.Equal("bad_request", p.Type)
-				tt.Assert.Equal("id", p.Extras["invalid_field"])
+				tt.Assert.Equal("offer_id", p.Extras["invalid_field"])
+				tt.Assert.Equal("Offer ID must be an integer higher than 0", p.Extras["reason"])
 			},
 			func(response hal.Pageable) {
 				tt.Assert.Nil(response)
@@ -112,7 +113,7 @@ func TestGetOfferByIDHandler(t *testing.T) {
 		{
 			"offer does not exist",
 			makeRequest(
-				t, map[string]string{}, map[string]string{"id": "1234567"}, q.Session,
+				t, map[string]string{}, map[string]string{"offer_id": "1234567"}, q.Session,
 			),
 			func(err error) {
 				tt.Assert.Equal(err, sql.ErrNoRows)
@@ -124,7 +125,7 @@ func TestGetOfferByIDHandler(t *testing.T) {
 		{
 			"offer with ledger close time",
 			makeRequest(
-				t, map[string]string{}, map[string]string{"id": "4"}, q.Session,
+				t, map[string]string{}, map[string]string{"offer_id": "4"}, q.Session,
 			),
 			func(err error) {
 				tt.Assert.NoError(err)
@@ -144,7 +145,7 @@ func TestGetOfferByIDHandler(t *testing.T) {
 		{
 			"offer without ledger close time",
 			makeRequest(
-				t, map[string]string{}, map[string]string{"id": "6"}, q.Session,
+				t, map[string]string{}, map[string]string{"offer_id": "6"}, q.Session,
 			),
 			func(err error) {
 				tt.Assert.NoError(err)

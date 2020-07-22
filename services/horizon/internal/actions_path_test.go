@@ -32,18 +32,18 @@ func mockPathFindingClient(
 	session *db.Session,
 ) test.RequestHelper {
 	router := chi.NewRouter()
-	findPaths := FindPathsHandler{
-		pathFinder:           finder,
-		maxAssetsParamLength: maxAssetsParamLength,
-		maxPathLength:        3,
-		setLastLedgerHeader:  true,
-	}
-	findFixedPaths := FindFixedPathsHandler{
-		pathFinder:           finder,
-		maxAssetsParamLength: maxAssetsParamLength,
-		maxPathLength:        3,
-		setLastLedgerHeader:  true,
-	}
+	findPaths := restCustomBuiltPageHandler(actions.FindPathsHandler{
+		PathFinder:           finder,
+		MaxAssetsParamLength: maxAssetsParamLength,
+		MaxPathLength:        3,
+		SetLastLedgerHeader:  true,
+	})
+	findFixedPaths := restCustomBuiltPageHandler(actions.FindFixedPathsHandler{
+		PathFinder:           finder,
+		MaxAssetsParamLength: maxAssetsParamLength,
+		MaxPathLength:        3,
+		SetLastLedgerHeader:  true,
+	})
 
 	router.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -77,7 +77,7 @@ func TestPathActionsStillIngesting(t *testing.T) {
 	defer tt.Finish()
 	test.ResetHorizonDB(t, tt.HorizonDB)
 
-	assertions := &Assertions{tt.Assert}
+	assertions := &test.Assertions{tt.Assert}
 	finder := paths.MockFinder{}
 	finder.On("Find", mock.Anything, uint(3)).
 		Return([]paths.Path{}, uint32(0), simplepath.ErrEmptyInMemoryOrderBook).Times(2)
@@ -274,7 +274,7 @@ func TestPathActionsEmptySourceAcount(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
 	test.ResetHorizonDB(t, tt.HorizonDB)
-	assertions := &Assertions{tt.Assert}
+	assertions := &test.Assertions{tt.Assert}
 	finder := paths.MockFinder{}
 	rh := mockPathFindingClient(
 		tt,
@@ -315,7 +315,7 @@ func TestPathActionsSourceAssetsValidation(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
 	test.ResetHorizonDB(t, tt.HorizonDB)
-	assertions := &Assertions{tt.Assert}
+	assertions := &test.Assertions{tt.Assert}
 	finder := paths.MockFinder{}
 	rh := mockPathFindingClient(
 		tt,
@@ -366,12 +366,12 @@ func TestPathActionsSourceAssetsValidation(t *testing.T) {
 		{
 			"both destination asset and destination account are missing",
 			missingSourceAccountAndAssets,
-			sourceAssetsOrSourceAccount,
+			actions.SourceAssetsOrSourceAccountProblem,
 		},
 		{
 			"both destination asset and destination account are present",
 			sourceAccountAndAssets,
-			sourceAssetsOrSourceAccount,
+			actions.SourceAssetsOrSourceAccountProblem,
 		},
 		{
 			"too many assets in destination_assets",
@@ -395,7 +395,7 @@ func TestPathActionsDestinationAssetsValidation(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
 	test.ResetHorizonDB(t, tt.HorizonDB)
-	assertions := &Assertions{tt.Assert}
+	assertions := &test.Assertions{tt.Assert}
 	finder := paths.MockFinder{}
 	rh := mockPathFindingClient(
 		tt,
@@ -449,12 +449,12 @@ func TestPathActionsDestinationAssetsValidation(t *testing.T) {
 		{
 			"both destination asset and destination account are missing",
 			missingDestinationAccountAndAssets,
-			destinationAssetsOrDestinationAccount,
+			actions.DestinationAssetsOrDestinationAccountProblem,
 		},
 		{
 			"both destination asset and destination account are present",
 			destinationAccountAndAssets,
-			destinationAssetsOrDestinationAccount,
+			actions.DestinationAssetsOrDestinationAccountProblem,
 		},
 		{
 			"too many assets in destination_assets",
@@ -478,7 +478,7 @@ func TestPathActionsStrictSend(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
 	test.ResetHorizonDB(t, tt.HorizonDB)
-	assertions := &Assertions{tt.Assert}
+	assertions := &test.Assertions{tt.Assert}
 	historyQ := &history.Q{tt.HorizonSession()}
 	destinationAccount := "GARSFJNXJIHO6ULUBK3DBYKVSIZE7SC72S5DYBCHU7DKL22UXKVD7MXP"
 	destinationAssets := []xdr.Asset{
@@ -620,7 +620,7 @@ func TestFindFixedPathsQueryQueryURLTemplate(t *testing.T) {
 		"source_amount",
 	}
 	expected := "/paths/strict-send{?" + strings.Join(params, ",") + "}"
-	qp := FindFixedPathsQuery{}
+	qp := actions.FindFixedPathsQuery{}
 	tt.Equal(expected, qp.URITemplate())
 }
 
@@ -636,6 +636,6 @@ func TestStrictReceivePathsQueryURLTemplate(t *testing.T) {
 		"destination_amount",
 	}
 	expected := "/paths/strict-receive{?" + strings.Join(params, ",") + "}"
-	qp := StrictReceivePathsQuery{}
+	qp := actions.StrictReceivePathsQuery{}
 	tt.Equal(expected, qp.URITemplate())
 }

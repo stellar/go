@@ -11,18 +11,20 @@ import (
 	"github.com/stellar/go/support/render/hal"
 )
 
-// GetOfferByID is the action handler for the /offers/{id} endpoint
-type GetOfferByID struct {
+// AccountOffersQuery query struct for offers end-point
+type OfferByIDQuery struct {
+	OfferID uint64 `schema:"offer_id" valid:"-"`
 }
 
+// GetOfferByID is the action handler for the /offers/{id} endpoint
+type GetOfferByID struct{}
+
 // GetResource returns an offer by id.
-func (handler GetOfferByID) GetResource(
-	w HeaderWriter,
-	r *http.Request,
-) (hal.Pageable, error) {
+func (handler GetOfferByID) GetResource(w HeaderWriter, r *http.Request) (hal.Pageable, error) {
 	ctx := r.Context()
-	offerID, err := GetInt64(r, "id")
-	if err != nil {
+
+	qp := OfferByIDQuery{}
+	if err := GetParams(&qp, r); err != nil {
 		return nil, err
 	}
 
@@ -31,7 +33,7 @@ func (handler GetOfferByID) GetResource(
 		return nil, err
 	}
 
-	record, err := historyQ.GetOfferByID(offerID)
+	record, err := historyQ.GetOfferByID(int64(qp.OfferID))
 	if err != nil {
 		return nil, err
 	}
@@ -136,8 +138,7 @@ func (handler GetAccountOffersHandler) parseOffersQuery(r *http.Request) (histor
 	}
 
 	qp := AccountOffersQuery{}
-	err = GetParams(&qp, r)
-	if err != nil {
+	if err = GetParams(&qp, r); err != nil {
 		return history.OffersQuery{}, err
 	}
 
