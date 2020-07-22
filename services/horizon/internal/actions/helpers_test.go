@@ -733,22 +733,16 @@ func TestGetParams(t *testing.T) {
 		)
 	}
 
+	// Test that we get the URL parameter properly
+	// when a query parameter with the same name is provided
 	urlParams = map[string]string{
-		"account_id": account,
+		"account_id": "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
 	}
-	r = makeAction(fmt.Sprintf("/transactions?account_id=%s", account), urlParams).R
+	r = makeAction("/transactions?account_id=bar", urlParams).R
 	err = GetParams(&qp, r)
+	tt.Assert.NoError(err)
+	tt.Assert.Equal("GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H", qp.Account)
 
-	tt.Assert.Error(err)
-	if tt.Assert.IsType(&problem.P{}, err) {
-		p := err.(*problem.P)
-		tt.Assert.Equal("bad_request", p.Type)
-		tt.Assert.Equal("account_id", p.Extras["invalid_field"])
-		tt.Assert.Equal(
-			"The parameter should not be included in the request",
-			p.Extras["reason"],
-		)
-	}
 }
 
 type ParamsValidator struct {

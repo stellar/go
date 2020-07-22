@@ -724,14 +724,6 @@ func GetParams(dst interface{}, r *http.Request) error {
 			if key == "*" {
 				continue
 			}
-			val := query.Get(key)
-			if len(val) > 0 {
-				return problem.MakeInvalidFieldProblem(
-					key,
-					errors.New("The parameter should not be included in the request"),
-				)
-			}
-
 			param, _ := GetURLParam(r, key)
 			query.Set(key, param)
 		}
