@@ -368,14 +368,14 @@ type pageActionHandler struct {
 	streamable     bool
 	streamHandler  sse.StreamHandler
 	repeatableRead bool
-	buildPage      buildPageFun
+	buildPage      func(r *http.Request, records []hal.Pageable) (hal.Page, error)
 }
 
 func restPageHandler(action pageAction) pageActionHandler {
 	return pageActionHandler{action: action}
 }
 
-interface customBuiltPageAction {
+type customBuiltPageAction interface {
 	pageAction
 	BuildPage(r *http.Request, records []hal.Pageable) (hal.Page, error)
 }
@@ -383,7 +383,7 @@ interface customBuiltPageAction {
 func restCustomBuiltPageHandler(action customBuiltPageAction) pageActionHandler {
 	return pageActionHandler{
 		action:    action,
-		buildPage: customBuiltPageAction.BuildPage,
+		buildPage: action.BuildPage,
 	}
 }
 
