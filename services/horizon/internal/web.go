@@ -128,8 +128,7 @@ func (w *web) mustInstallMiddlewares(app *App, connTimeout time.Duration) {
 	r.Use(xff.Handler)
 	r.Use(loggerMiddleware)
 	r.Use(timeoutMiddleware(connTimeout))
-	metricsMiddleware := func(next http.Handler) http.Handler { return requestMetricsMiddleware(next, w) }
-	r.Use(metricsMiddleware)
+	r.Use(requestMetricsMiddleware(w))
 	r.Use(recoverMiddleware)
 	r.Use(chimiddleware.Compress(flate.DefaultCompression, "application/hal+json"))
 

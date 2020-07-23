@@ -214,22 +214,24 @@ func recoverMiddleware(h http.Handler) http.Handler {
 }
 
 // requestMetricsMiddleware records success and failures using a meter, and times every request
-func requestMetricsMiddleware(h http.Handler, web *web) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		mw := newWrapResponseWriter(w, r)
+func requestMetricsMiddleware(web *web) func(http.Handler) http.Handler {
+	return func(h http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			mw := newWrapResponseWriter(w, r)
 
-		web.requestTimer.Time(func() {
-			h.ServeHTTP(mw.(http.ResponseWriter), r)
+			web.requestTimer.Time(func() {
+				h.ServeHTTP(mw.(http.ResponseWriter), r)
+			})
+
+			if 200 <= mw.Status() && mw.Status() < 400 {
+				// a success is in [200, 400)
+				web.successMeter.Mark(1)
+			} else if 400 <= mw.Status() && mw.Status() < 600 {
+				// a success is in [400, 600)
+				web.failureMeter.Mark(1)
+			}
 		})
-
-		if 200 <= mw.Status() && mw.Status() < 400 {
-			// a success is in [200, 400)
-			web.successMeter.Mark(1)
-		} else if 400 <= mw.Status() && mw.Status() < 600 {
-			// a success is in [400, 600)
-			web.failureMeter.Mark(1)
-		}
-	})
+	}
 }
 
 // NewHistoryMiddleware adds session to the request context and ensures Horizon
