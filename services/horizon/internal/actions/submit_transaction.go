@@ -114,7 +114,7 @@ func (handler SubmitTransactionHandler) GetResource(w HeaderWriter, r *http.Requ
 		return nil, err
 	}
 
-	raw, err := GetString(r, "tx")
+	raw, err := getString(r, "tx")
 	if err != nil {
 		return nil, err
 	}

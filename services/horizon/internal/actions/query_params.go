@@ -35,7 +35,7 @@ func (q SellingBuyingAssetQueryParams) Validate() error {
 			errors.New(fmt.Sprintf(ambiguousErr, "selling")),
 		)
 	}
-	err := ValidateAssetParams(q.SellingAssetType, q.SellingAssetCode, q.SellingAssetIssuer, "selling_")
+	err := validateAssetParams(q.SellingAssetType, q.SellingAssetCode, q.SellingAssetIssuer, "selling_")
 	if err != nil {
 		return err
 	}
@@ -46,7 +46,7 @@ func (q SellingBuyingAssetQueryParams) Validate() error {
 			errors.New(fmt.Sprintf(ambiguousErr, "buying")),
 		)
 	}
-	err = ValidateAssetParams(q.BuyingAssetType, q.BuyingAssetCode, q.BuyingAssetIssuer, "buying_")
+	err = validateAssetParams(q.BuyingAssetType, q.BuyingAssetCode, q.BuyingAssetIssuer, "buying_")
 	if err != nil {
 		return err
 	}

@@ -112,13 +112,13 @@ func (handler GetTradesHandler) GetResourcePage(w HeaderWriter, r *http.Request)
 		return nil, err
 	}
 
-	err = ValidateCursorWithinHistory(pq)
+	err = validateCursorWithinHistory(pq)
 	if err != nil {
 		return nil, err
 	}
 
 	qp := TradesQuery{}
-	if err = GetParams(&qp, r); err != nil {
+	if err = getParams(&qp, r); err != nil {
 		return nil, err
 	}
 
@@ -243,12 +243,12 @@ func (handler GetTradeAggregationsHandler) GetResourcePage(w HeaderWriter, r *ht
 	if err != nil {
 		return nil, err
 	}
-	err = ValidateCursorWithinHistory(pq)
+	err = validateCursorWithinHistory(pq)
 	if err != nil {
 		return nil, err
 	}
 	qp := TradeAggregationsQuery{}
-	if err = GetParams(&qp, r); err != nil {
+	if err = getParams(&qp, r); err != nil {
 		return nil, err
 	}
 
@@ -369,7 +369,7 @@ func (handler GetTradeAggregationsHandler) BuildPage(r *http.Request, records []
 		return hal.Page{}, err
 	}
 	qp := TradeAggregationsQuery{}
-	if err = GetParams(&qp, r); err != nil {
+	if err = getParams(&qp, r); err != nil {
 		return hal.Page{}, err
 	}
 

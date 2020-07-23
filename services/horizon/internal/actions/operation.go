@@ -70,13 +70,13 @@ func (handler GetOperationsHandler) GetResourcePage(w HeaderWriter, r *http.Requ
 		return nil, err
 	}
 
-	err = ValidateCursorWithinHistory(pq)
+	err = validateCursorWithinHistory(pq)
 	if err != nil {
 		return nil, err
 	}
 
 	qp := OperationsQuery{}
-	err = GetParams(&qp, r)
+	err = getParams(&qp, r)
 	if err != nil {
 		return nil, err
 	}
@@ -141,7 +141,7 @@ func (qp OperationQuery) Validate() error {
 func (handler GetOperationByIDHandler) GetResource(w HeaderWriter, r *http.Request) (interface{}, error) {
 	ctx := r.Context()
 	qp := OperationQuery{}
-	err := GetParams(&qp, r)
+	err := getParams(&qp, r)
 	if err != nil {
 		return nil, err
 	}

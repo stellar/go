@@ -19,7 +19,7 @@ func (handler GetLedgersHandler) GetResourcePage(w HeaderWriter, r *http.Request
 		return nil, err
 	}
 
-	err = ValidateCursorWithinHistory(pq)
+	err = validateCursorWithinHistory(pq)
 	if err != nil {
 		return nil, err
 	}
@@ -56,7 +56,7 @@ type GetLedgerByIDHandler struct{}
 
 func (handler GetLedgerByIDHandler) GetResource(w HeaderWriter, r *http.Request) (interface{}, error) {
 	qp := LedgerByIDQuery{}
-	err := GetParams(&qp, r)
+	err := getParams(&qp, r)
 	if err != nil {
 		return nil, err
 	}

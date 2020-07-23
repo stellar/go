@@ -24,7 +24,7 @@ func (handler GetOfferByID) GetResource(w HeaderWriter, r *http.Request) (interf
 	ctx := r.Context()
 
 	qp := OfferByIDQuery{}
-	if err := GetParams(&qp, r); err != nil {
+	if err := getParams(&qp, r); err != nil {
 		return nil, err
 	}
 
@@ -82,7 +82,7 @@ func (handler GetOffersHandler) GetResourcePage(
 ) ([]hal.Pageable, error) {
 	ctx := r.Context()
 	qp := OffersQuery{}
-	err := GetParams(&qp, r)
+	err := getParams(&qp, r)
 	if err != nil {
 		return nil, err
 	}
@@ -138,7 +138,7 @@ func (handler GetAccountOffersHandler) parseOffersQuery(r *http.Request) (histor
 	}
 
 	qp := AccountOffersQuery{}
-	if err = GetParams(&qp, r); err != nil {
+	if err = getParams(&qp, r); err != nil {
 		return history.OffersQuery{}, err
 	}
 

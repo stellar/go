@@ -49,13 +49,13 @@ func (handler GetEffectsHandler) GetResourcePage(w HeaderWriter, r *http.Request
 		return nil, err
 	}
 
-	err = ValidateCursorWithinHistory(pq)
+	err = validateCursorWithinHistory(pq)
 	if err != nil {
 		return nil, err
 	}
 
 	qp := EffectsQuery{}
-	err = GetParams(&qp, r)
+	err = getParams(&qp, r)
 	if err != nil {
 		return nil, err
 	}

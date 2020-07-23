@@ -81,15 +81,15 @@ func convertPriceLevels(src []history.PriceLevel) []protocol.PriceLevel {
 
 // GetResource implements the /order_book endpoint
 func (handler GetOrderbookHandler) GetResource(w HeaderWriter, r *http.Request) (StreamableObjectResponse, error) {
-	selling, err := GetAsset(r, "selling_")
+	selling, err := getAsset(r, "selling_")
 	if err != nil {
 		return nil, invalidOrderBook
 	}
-	buying, err := GetAsset(r, "buying_")
+	buying, err := getAsset(r, "buying_")
 	if err != nil {
 		return nil, invalidOrderBook
 	}
-	limit, err := GetLimit(r, "limit", 20, 200)
+	limit, err := getLimit(r, "limit", 20, 200)
 	if err != nil {
 		return nil, invalidOrderBook
 	}

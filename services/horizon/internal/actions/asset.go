@@ -112,12 +112,12 @@ func (handler AssetStatsHandler) GetResourcePage(
 ) ([]hal.Pageable, error) {
 	ctx := r.Context()
 
-	code, err := GetString(r, "asset_code")
+	code, err := getString(r, "asset_code")
 	if err != nil {
 		return nil, err
 	}
 
-	issuer, err := GetString(r, "asset_issuer")
+	issuer, err := getString(r, "asset_issuer")
 	if err != nil {
 		return nil, err
 	}

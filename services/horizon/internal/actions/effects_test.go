@@ -14,7 +14,7 @@ func TestEffectsQuery_BadOperationID(t *testing.T) {
 	called := false
 	s := httptest.NewServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		qp := EffectsQuery{}
-		err := GetParams(&qp, r)
+		err := getParams(&qp, r)
 		assert.Error(t, err)
 		p, ok := err.(*problem.P)
 		if assert.True(t, ok) {
