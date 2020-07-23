@@ -54,7 +54,7 @@ type LedgerByIDQuery struct {
 
 type GetLedgerByIDHandler struct{}
 
-func (handler GetLedgerByIDHandler) GetResource(w HeaderWriter, r *http.Request) (hal.Pageable, error) {
+func (handler GetLedgerByIDHandler) GetResource(w HeaderWriter, r *http.Request) (interface{}, error) {
 	qp := LedgerByIDQuery{}
 	err := GetParams(&qp, r)
 	if err != nil {

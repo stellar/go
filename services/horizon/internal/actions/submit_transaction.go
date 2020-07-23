@@ -109,7 +109,7 @@ func (handler SubmitTransactionHandler) response(r *http.Request, info envelopeI
 	return nil, result.Err
 }
 
-func (handler SubmitTransactionHandler) GetResource(w HeaderWriter, r *http.Request) (hal.Pageable, error) {
+func (handler SubmitTransactionHandler) GetResource(w HeaderWriter, r *http.Request) (interface{}, error) {
 	if err := handler.validateBodyType(r); err != nil {
 		return nil, err
 	}

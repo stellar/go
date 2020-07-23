@@ -92,7 +92,7 @@ func TestGetOfferByIDHandler(t *testing.T) {
 		name          string
 		request       *http.Request
 		expectedError func(error)
-		expectedOffer func(hal.Pageable)
+		expectedOffer func(interface{})
 	}{
 		{
 			"offer id is invalid",
@@ -106,7 +106,7 @@ func TestGetOfferByIDHandler(t *testing.T) {
 				tt.Assert.Equal("offer_id", p.Extras["invalid_field"])
 				tt.Assert.Equal("Offer ID must be an integer higher than 0", p.Extras["reason"])
 			},
-			func(response hal.Pageable) {
+			func(response interface{}) {
 				tt.Assert.Nil(response)
 			},
 		},
@@ -118,7 +118,7 @@ func TestGetOfferByIDHandler(t *testing.T) {
 			func(err error) {
 				tt.Assert.Equal(err, sql.ErrNoRows)
 			},
-			func(response hal.Pageable) {
+			func(response interface{}) {
 				tt.Assert.Nil(response)
 			},
 		},
@@ -130,7 +130,7 @@ func TestGetOfferByIDHandler(t *testing.T) {
 			func(err error) {
 				tt.Assert.NoError(err)
 			},
-			func(response hal.Pageable) {
+			func(response interface{}) {
 				offer := response.(horizon.Offer)
 				tt.Assert.Equal(int64(eurOffer.OfferId), offer.ID)
 				tt.Assert.Equal("native", offer.Selling.Type)
@@ -150,7 +150,7 @@ func TestGetOfferByIDHandler(t *testing.T) {
 			func(err error) {
 				tt.Assert.NoError(err)
 			},
-			func(response hal.Pageable) {
+			func(response interface{}) {
 				offer := response.(horizon.Offer)
 				tt.Assert.Equal(int64(usdOffer.OfferId), offer.ID)
 				tt.Assert.Equal("credit_alphanum4", offer.Selling.Type)

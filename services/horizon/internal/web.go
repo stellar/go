@@ -12,9 +12,11 @@ import (
 
 	"github.com/go-chi/chi"
 	chimiddleware "github.com/go-chi/chi/middleware"
-	metrics "github.com/rcrowley/go-metrics"
+	"github.com/rcrowley/go-metrics"
 	"github.com/rs/cors"
 	"github.com/sebest/xff"
+
+	"github.com/stellar/throttled"
 
 	"github.com/stellar/go/services/horizon/internal/actions"
 	"github.com/stellar/go/services/horizon/internal/db2"
@@ -27,7 +29,6 @@ import (
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/support/render/problem"
-	"github.com/stellar/throttled"
 )
 
 const (
@@ -134,7 +135,13 @@ func (f historyLedgerSourceFactory) Get() ledger.Source {
 
 // mustInstallActions installs the routing configuration of horizon onto the
 // provided app.  All route registration should be implemented here.
-func (w *web) mustInstallActions(config Config, pathFinder paths.Finder, session *db.Session, submitter *txsub.System, registry metrics.Registry) {
+func (w *web) mustInstallActions(config Config,
+	pathFinder paths.Finder,
+	session *db.Session,
+	submitter *txsub.System,
+	registry metrics.Registry,
+	coreGetter actions.CoreSettingsGetter,
+	horizonVersion string) {
 	if w == nil {
 		log.Fatal("missing web instance for installing web actions")
 	}
@@ -144,7 +151,13 @@ func (w *web) mustInstallActions(config Config, pathFinder paths.Finder, session
 	}
 
 	r := w.router
-	r.Get("/", RootAction{}.Handle)
+
+	r.Method(http.MethodGet, "/", objectActionHandler{action: actions.GetRootHandler{
+		CoreSettingsGetter: coreGetter,
+		NetworkPassphrase:  config.NetworkPassphrase,
+		FriendbotURL:       config.FriendbotURL,
+		HorizonVersion:     horizonVersion,
+	}})
 
 	streamHandler := sse.StreamHandler{
 		RateLimiter:         w.rateLimiter,
