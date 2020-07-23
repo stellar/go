@@ -6,11 +6,10 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"runtime"
 	"sync"
 	"time"
 
-	metrics "github.com/rcrowley/go-metrics"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stellar/go/clients/stellarcore"
 	proto "github.com/stellar/go/protocols/stellarcore"
 	"github.com/stellar/go/services/horizon/internal/actions"
@@ -67,15 +66,13 @@ type App struct {
 	ticks           *time.Ticker
 
 	// metrics
-	metrics                  metrics.Registry
-	historyLatestLedgerGauge metrics.Gauge
-	historyElderLedgerGauge  metrics.Gauge
-	dbOpenConnectionsGauge   metrics.Gauge
-	dbInUseConnectionsGauge  metrics.Gauge
-	dbWaitCountGauge         metrics.Gauge
-	dbWaitDurationTimer      metrics.Timer
-	coreLatestLedgerGauge    metrics.Gauge
-	goroutineGauge           metrics.Gauge
+	historyLatestLedgerGauge prometheus.Gauge
+	historyElderLedgerGauge  prometheus.Gauge
+	dbOpenConnectionsGauge   prometheus.Gauge
+	dbInUseConnectionsGauge  prometheus.Gauge
+	dbWaitCountGauge         prometheus.Gauge
+	dbWaitDurationGauge      prometheus.Gauge
+	coreLatestLedgerGauge    prometheus.Gauge
 }
 
 func (a *App) GetCoreSettings() actions.CoreSettings {
@@ -406,17 +403,15 @@ func (a *App) UpdateStellarCoreInfo() {
 // UpdateMetrics triggers a refresh of several metrics gauges, such as open
 // db connections and ledger state
 func (a *App) UpdateMetrics() {
-	a.goroutineGauge.Update(int64(runtime.NumGoroutine()))
-
 	ls := ledger.CurrentState()
-	a.historyLatestLedgerGauge.Update(int64(ls.HistoryLatest))
-	a.historyElderLedgerGauge.Update(int64(ls.HistoryElder))
-	a.coreLatestLedgerGauge.Update(int64(ls.CoreLatest))
+	a.historyLatestLedgerGauge.Set(float64(ls.HistoryLatest))
+	a.historyElderLedgerGauge.Set(float64(ls.HistoryElder))
+	a.coreLatestLedgerGauge.Set(float64(ls.CoreLatest))
 
-	a.dbOpenConnectionsGauge.Update(int64(a.historyQ.Session.DB.Stats().OpenConnections))
-	a.dbInUseConnectionsGauge.Update(int64(a.historyQ.Session.DB.Stats().InUse))
-	a.dbWaitCountGauge.Update(int64(a.historyQ.Session.DB.Stats().WaitCount))
-	a.dbWaitDurationTimer.Update(a.historyQ.Session.DB.Stats().WaitDuration)
+	a.dbOpenConnectionsGauge.Set(float64(a.historyQ.Session.DB.Stats().OpenConnections))
+	a.dbInUseConnectionsGauge.Set(float64(a.historyQ.Session.DB.Stats().InUse))
+	a.dbWaitCountGauge.Set(float64(a.historyQ.Session.DB.Stats().WaitCount))
+	a.dbWaitDurationGauge.Set(float64(a.historyQ.Session.DB.Stats().WaitDuration))
 }
 
 // DeleteUnretainedHistory forwards to the app's reaper.  See
@@ -493,25 +488,16 @@ func (a *App) init() {
 	a.web.mustInstallMiddlewares(a, a.config.ConnectionTimeout)
 
 	// metrics and log.metrics
-	a.metrics = metrics.NewRegistry()
-	for level, meter := range *logmetrics.DefaultMetrics {
-		a.metrics.Register(fmt.Sprintf("logging.%s", level), meter)
-	}
+	// a.metrics = metrics.NewRegistry()
+	// for level, meter := range *logmetrics.DefaultMetrics {
+	// 	a.metrics.Register(fmt.Sprintf("logging.%s", level), meter)
+	// }
 
 	// db-metrics
 	initDbMetrics(a)
 
 	// web.actions
-	a.web.mustInstallActions(a.config, a.paths, a.historyQ.Session, a.submitter, a.metrics, a, a.horizonVersion)
-
-	// ingest.metrics
-	initIngestMetrics(a)
-
-	// web.metrics
-	initWebMetrics(a)
-
-	// txsub.metrics
-	initTxSubMetrics(a)
+	a.web.mustInstallActions(a.config, a.paths, a.historyQ.Session, a.submitter, a, a.horizonVersion)
 }
 
 // run is the function that runs in the background that triggers Tick each

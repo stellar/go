@@ -5,8 +5,8 @@ import (
 	"net/http"
 
 	"github.com/getsentry/raven-go"
-	"github.com/rcrowley/go-metrics"
-
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/stellar/go/exp/orderbook"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/expingest"
@@ -119,57 +119,28 @@ func initLogglyLog(app *App) {
 }
 
 func initDbMetrics(app *App) {
-	app.goroutineGauge = metrics.NewGauge()
-	app.metrics.Register("goroutines", app.goroutineGauge)
+	app.historyLatestLedgerGauge = promauto.NewGauge(prometheus.GaugeOpts{
+		Namespace: "horizon", Subsystem: "history", Name: "latest_ledger",
+	})
+	app.historyElderLedgerGauge = promauto.NewGauge(prometheus.GaugeOpts{
+		Namespace: "horizon", Subsystem: "history", Name: "elder_ledger",
+	})
+	app.coreLatestLedgerGauge = promauto.NewGauge(prometheus.GaugeOpts{
+		Namespace: "horizon", Subsystem: "stellar_core", Name: "latest_ledger",
+	})
 
-	app.historyLatestLedgerGauge = metrics.NewGauge()
-	app.metrics.Register("history.latest_ledger", app.historyLatestLedgerGauge)
-	app.historyElderLedgerGauge = metrics.NewGauge()
-	app.metrics.Register("history.elder_ledger", app.historyElderLedgerGauge)
-	app.coreLatestLedgerGauge = metrics.NewGauge()
-	app.metrics.Register("stellar_core.latest_ledger", app.coreLatestLedgerGauge)
-
-	app.dbOpenConnectionsGauge = metrics.NewGauge()
-	app.metrics.Register("db.open_connections", app.dbOpenConnectionsGauge)
-	app.dbInUseConnectionsGauge = metrics.NewGauge()
-	app.metrics.Register("db.in_use_connections", app.dbInUseConnectionsGauge)
-	app.dbWaitCountGauge = metrics.NewGauge()
-	app.metrics.Register("db.wait_count", app.dbWaitCountGauge)
-	app.dbWaitDurationTimer = metrics.NewTimer()
-	app.metrics.Register("db.wait_duration", app.dbWaitDurationTimer)
-
-	app.metrics.Register("order_book_stream.latest_ledger", app.orderBookStream.LatestLedgerGauge)
-}
-
-// initIngestMetrics registers the metrics for the ingestion into the provided
-// app's metrics registry.
-func initIngestMetrics(app *App) {
-	if app.expingester == nil {
-		return
-	}
-	app.metrics.Register("ingest.ledger_ingestion", app.expingester.Metrics().LedgerIngestionTimer)
-	app.metrics.Register("ingest.ledger_in_memory_ingestion", app.expingester.Metrics().LedgerInMemoryIngestionTimer)
-	app.metrics.Register("ingest.state_verify", app.expingester.Metrics().StateVerifyTimer)
-}
-
-func initTxSubMetrics(app *App) {
-	app.submitter.Init()
-	app.metrics.Register("txsub.buffered", app.submitter.Metrics.BufferedSubmissionsGauge)
-	app.metrics.Register("txsub.open", app.submitter.Metrics.OpenSubmissionsGauge)
-	app.metrics.Register("txsub.succeeded", app.submitter.Metrics.SuccessfulSubmissionsMeter)
-	app.metrics.Register("txsub.failed", app.submitter.Metrics.FailedSubmissionsMeter)
-	app.metrics.Register("txsub.v0", app.submitter.Metrics.V0TransactionsMeter)
-	app.metrics.Register("txsub.v1", app.submitter.Metrics.V1TransactionsMeter)
-	app.metrics.Register("txsub.feebump", app.submitter.Metrics.FeeBumpTransactionsMeter)
-	app.metrics.Register("txsub.total", app.submitter.Metrics.SubmissionTimer)
-}
-
-// initWebMetrics registers the metrics for the web server into the provided
-// app's metrics registry.
-func initWebMetrics(app *App) {
-	app.metrics.Register("requests.total", app.web.requestTimer)
-	app.metrics.Register("requests.succeeded", app.web.successMeter)
-	app.metrics.Register("requests.failed", app.web.failureMeter)
+	app.dbOpenConnectionsGauge = promauto.NewGauge(prometheus.GaugeOpts{
+		Namespace: "horizon", Subsystem: "db", Name: "open_connections",
+	})
+	app.dbInUseConnectionsGauge = promauto.NewGauge(prometheus.GaugeOpts{
+		Namespace: "horizon", Subsystem: "db", Name: "in_use_connections",
+	})
+	app.dbWaitCountGauge = promauto.NewGauge(prometheus.GaugeOpts{
+		Namespace: "horizon", Subsystem: "db", Name: "wait_count",
+	})
+	app.dbWaitDurationGauge = promauto.NewGauge(prometheus.GaugeOpts{
+		Namespace: "horizon", Subsystem: "db", Name: "wait_duration",
+	})
 }
 
 func initSubmissionSystem(app *App) {

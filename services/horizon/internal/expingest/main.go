@@ -8,7 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/rcrowley/go-metrics"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 
 	"github.com/stellar/go/clients/stellarcore"
 	"github.com/stellar/go/exp/ingest/adapters"
@@ -81,17 +82,13 @@ type stellarCoreClient interface {
 }
 
 type Metrics struct {
-	// LedgerIngestionTimer exposes timing metrics about the rate and
+	// LedgerIngestionDuration exposes timing metrics about the rate and
 	// duration of ledger ingestion (including updating DB and graph).
-	LedgerIngestionTimer metrics.Timer
+	LedgerIngestionDuration prometheus.Summary
 
-	// LedgerInMemoryIngestionTimer exposes timing metrics about the rate and
-	// duration of ingestion into in-memory graph only.
-	LedgerInMemoryIngestionTimer metrics.Timer
-
-	// StateVerifyTimer exposes timing metrics about the rate and
+	// StateVerifyDuration exposes timing metrics about the rate and
 	// duration of state verification.
-	StateVerifyTimer metrics.Timer
+	StateVerifyDuration prometheus.Summary
 }
 
 type System interface {
@@ -199,9 +196,13 @@ func NewSystem(config Config) (System, error) {
 }
 
 func (s *system) initMetrics() {
-	s.metrics.LedgerIngestionTimer = metrics.NewTimer()
-	s.metrics.LedgerInMemoryIngestionTimer = metrics.NewTimer()
-	s.metrics.StateVerifyTimer = metrics.NewTimer()
+	s.metrics.LedgerIngestionDuration = promauto.NewSummary(prometheus.SummaryOpts{
+		Namespace: "horizon", Subsystem: "ingest", Name: "ledger_ingestion_duration_seconds",
+	})
+
+	s.metrics.StateVerifyDuration = promauto.NewSummary(prometheus.SummaryOpts{
+		Namespace: "horizon", Subsystem: "ingest", Name: "state_verify_duration_seconds",
+	})
 }
 
 func (s *system) Metrics() Metrics {

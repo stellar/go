@@ -4,11 +4,13 @@ import (
 	"context"
 	"database/sql"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
+	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/stellar/go/services/horizon/internal/actions"
 	horizonContext "github.com/stellar/go/services/horizon/internal/context"
@@ -193,6 +195,14 @@ func logEndOfRequest(ctx context.Context, r *http.Request, duration time.Duratio
 		"streaming":      streaming,
 		"referer":        referer,
 	}).Info("Finished request")
+
+	app := AppFromContext(r.Context())
+	app.web.requestDuration.With(prometheus.Labels{
+		"status":    strconv.FormatInt(int64(mw.Status()), 10),
+		"route":     routePattern,
+		"streaming": strconv.FormatBool(streaming),
+		"method":    r.Method,
+	}).Observe(float64(duration.Seconds()))
 }
 
 func firstXForwardedFor(r *http.Request) string {
@@ -221,26 +231,6 @@ func recoverMiddleware(h http.Handler) http.Handler {
 		}()
 
 		h.ServeHTTP(w, r)
-	})
-}
-
-// requestMetricsMiddleware records success and failures using a meter, and times every request
-func requestMetricsMiddleware(h http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		app := AppFromContext(r.Context())
-		mw := newWrapResponseWriter(w, r)
-
-		app.web.requestTimer.Time(func() {
-			h.ServeHTTP(mw.(http.ResponseWriter), r)
-		})
-
-		if 200 <= mw.Status() && mw.Status() < 400 {
-			// a success is in [200, 400)
-			app.web.successMeter.Mark(1)
-		} else if 400 <= mw.Status() && mw.Status() < 600 {
-			// a success is in [400, 600)
-			app.web.failureMeter.Mark(1)
-		}
 	})
 }
 

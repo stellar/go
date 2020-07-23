@@ -7,7 +7,8 @@ import (
 	"sort"
 	"time"
 
-	"github.com/rcrowley/go-metrics"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 
 	"github.com/stellar/go/exp/orderbook"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
@@ -31,7 +32,7 @@ type OrderBookStream struct {
 	historyQ history.IngestionQ
 	// LatestLedgerGauge exposes the local (order book graph)
 	// latest processed ledger
-	LatestLedgerGauge metrics.Gauge
+	LatestLedgerGauge prometheus.Gauge
 	lastLedger        uint32
 	lastVerification  time.Time
 }
@@ -39,10 +40,12 @@ type OrderBookStream struct {
 // NewOrderBookStream constructs and initializes an OrderBookStream instance
 func NewOrderBookStream(historyQ history.IngestionQ, graph orderbook.OBGraph) *OrderBookStream {
 	return &OrderBookStream{
-		graph:             graph,
-		historyQ:          historyQ,
-		LatestLedgerGauge: metrics.NewGauge(),
-		lastVerification:  time.Now(),
+		graph:    graph,
+		historyQ: historyQ,
+		LatestLedgerGauge: promauto.NewGauge(prometheus.GaugeOpts{
+			Namespace: "horizon", Subsystem: "order_book_stream", Name: "latest_ledger",
+		}),
+		lastVerification: time.Now(),
 	}
 }
 
@@ -147,7 +150,7 @@ func (o *OrderBookStream) update(status ingestionStatus) (bool, error) {
 		}
 
 		o.lastLedger = status.LastIngestedLedger
-		o.LatestLedgerGauge.Update(int64(status.LastIngestedLedger))
+		o.LatestLedgerGauge.Set(float64(status.LastIngestedLedger))
 		return true, nil
 	}
 
@@ -174,7 +177,7 @@ func (o *OrderBookStream) update(status ingestionStatus) (bool, error) {
 	}
 
 	o.lastLedger = status.LastIngestedLedger
-	o.LatestLedgerGauge.Update(int64(status.LastIngestedLedger))
+	o.LatestLedgerGauge.Set(float64(status.LastIngestedLedger))
 	return false, nil
 }
 

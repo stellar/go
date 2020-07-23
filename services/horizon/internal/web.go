@@ -4,15 +4,18 @@ import (
 	"compress/flate"
 	"context"
 	"database/sql"
-	"github.com/stellar/go/services/horizon/internal/txsub"
 	"net/http"
 	"net/http/pprof"
 	"strings"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/stellar/go/services/horizon/internal/txsub"
+
 	"github.com/go-chi/chi"
 	chimiddleware "github.com/go-chi/chi/middleware"
-	"github.com/rcrowley/go-metrics"
 	"github.com/rs/cors"
 	"github.com/sebest/xff"
 
@@ -48,9 +51,7 @@ type web struct {
 
 	historyQ *history.Q
 
-	requestTimer metrics.Timer
-	failureMeter metrics.Meter
-	successMeter metrics.Meter
+	requestDuration *prometheus.SummaryVec
 }
 
 func init() {
@@ -79,9 +80,12 @@ func mustInitWeb(ctx context.Context, hq *history.Q, updateFreq time.Duration, t
 		historyQ:           hq,
 		sseUpdateFrequency: updateFreq,
 		staleThreshold:     threshold,
-		requestTimer:       metrics.NewTimer(),
-		failureMeter:       metrics.NewMeter(),
-		successMeter:       metrics.NewMeter(),
+		requestDuration: promauto.NewSummaryVec(
+			prometheus.SummaryOpts{
+				Namespace: "horizon", Subsystem: "http", Name: "requests_duration_seconds",
+			},
+			[]string{"status", "route", "streaming", "method"},
+		),
 	}
 }
 
@@ -105,7 +109,6 @@ func (w *web) mustInstallMiddlewares(app *App, connTimeout time.Duration) {
 	r.Use(xff.Handler)
 	r.Use(loggerMiddleware)
 	r.Use(timeoutMiddleware(connTimeout))
-	r.Use(requestMetricsMiddleware)
 	r.Use(recoverMiddleware)
 	r.Use(chimiddleware.Compress(flate.DefaultCompression, "application/hal+json"))
 
@@ -139,7 +142,6 @@ func (w *web) mustInstallActions(config Config,
 	pathFinder paths.Finder,
 	session *db.Session,
 	submitter *txsub.System,
-	registry metrics.Registry,
 	coreGetter actions.CoreSettingsGetter,
 	horizonVersion string) {
 	if w == nil {
@@ -320,7 +322,7 @@ func (w *web) mustInstallActions(config Config,
 	}))
 
 	// internal
-	w.internalRouter.Get("/metrics", HandleRaw(&actions.MetricsHandler{registry}))
+	w.internalRouter.Get("/metrics", promhttp.Handler().ServeHTTP)
 	w.internalRouter.Get("/debug/pprof/heap", pprof.Index)
 	w.internalRouter.Get("/debug/pprof/profile", pprof.Profile)
 }

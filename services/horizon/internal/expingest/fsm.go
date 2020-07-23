@@ -457,7 +457,7 @@ func (r resumeState) run(s *system) (transition, error) {
 	}
 
 	duration := time.Since(startTime)
-	s.Metrics().LedgerIngestionTimer.Update(duration)
+	s.Metrics().LedgerIngestionDuration.Observe(float64(duration.Seconds()))
 	log.
 		WithFields(changeStats.Map()).
 		WithFields(ledgerTransactionStats.Map()).

@@ -57,7 +57,7 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool) error {
 	defer func() {
 		duration := time.Since(startTime)
 		if updateMetrics {
-			s.Metrics().StateVerifyTimer.Update(duration)
+			s.Metrics().StateVerifyDuration.Observe(float64(duration.Seconds()))
 		}
 		log.WithField("duration", duration.Seconds()).Info("State verification finished")
 		historyQ.Rollback()
