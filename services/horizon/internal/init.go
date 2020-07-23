@@ -143,15 +143,23 @@ func initDbMetrics(app *App) {
 	})
 	app.prometheusRegistry.MustRegister(app.dbInUseConnectionsGauge)
 
-	app.dbWaitCountGauge = prometheus.NewGauge(prometheus.GaugeOpts{
-		Namespace: "horizon", Subsystem: "db", Name: "wait_count",
-	})
-	app.prometheusRegistry.MustRegister(app.dbWaitCountGauge)
+	// dbWaitCountCounter and dbWaitDurationCounter are CounterFuncs because
+	// the standard Counter does not allow setting values to arbitrary numbers.
+	app.dbWaitCountCounter = prometheus.NewCounterFunc(
+		prometheus.CounterOpts{Namespace: "horizon", Subsystem: "db", Name: "wait_count_total"},
+		func() float64 {
+			return float64(app.historyQ.Session.DB.Stats().WaitCount)
+		},
+	)
+	app.prometheusRegistry.MustRegister(app.dbWaitCountCounter)
 
-	app.dbWaitDurationGauge = prometheus.NewGauge(prometheus.GaugeOpts{
-		Namespace: "horizon", Subsystem: "db", Name: "wait_duration",
-	})
-	app.prometheusRegistry.MustRegister(app.dbWaitDurationGauge)
+	app.dbWaitDurationCounter = prometheus.NewCounterFunc(
+		prometheus.CounterOpts{Namespace: "horizon", Subsystem: "db", Name: "wait_duration_seconds_total"},
+		func() float64 {
+			return float64(app.historyQ.Session.DB.Stats().WaitDuration)
+		},
+	)
+	app.prometheusRegistry.MustRegister(app.dbWaitDurationCounter)
 
 	app.prometheusRegistry.MustRegister(app.orderBookStream.LatestLedgerGauge)
 }

@@ -71,10 +71,9 @@ type App struct {
 	historyElderLedgerGauge  prometheus.Gauge
 	dbOpenConnectionsGauge   prometheus.Gauge
 	dbInUseConnectionsGauge  prometheus.Gauge
-	// TODO: these are alwasy increasing...
-	dbWaitCountGauge      prometheus.Gauge
-	dbWaitDurationGauge   prometheus.Gauge
-	coreLatestLedgerGauge prometheus.Gauge
+	dbWaitCountCounter       prometheus.CounterFunc
+	dbWaitDurationCounter    prometheus.CounterFunc
+	coreLatestLedgerGauge    prometheus.Gauge
 }
 
 func (a *App) GetCoreSettings() actions.CoreSettings {
@@ -412,8 +411,6 @@ func (a *App) UpdateMetrics() {
 
 	a.dbOpenConnectionsGauge.Set(float64(a.historyQ.Session.DB.Stats().OpenConnections))
 	a.dbInUseConnectionsGauge.Set(float64(a.historyQ.Session.DB.Stats().InUse))
-	a.dbWaitCountGauge.Set(float64(a.historyQ.Session.DB.Stats().WaitCount))
-	a.dbWaitDurationGauge.Set(float64(a.historyQ.Session.DB.Stats().WaitDuration))
 }
 
 // DeleteUnretainedHistory forwards to the app's reaper.  See
@@ -491,10 +488,9 @@ func (a *App) init() {
 
 	// metrics and log.metrics
 	a.prometheusRegistry = prometheus.NewRegistry()
-	// TODO
-	// for level, meter := range *logmetrics.DefaultMetrics {
-	// 	a.metrics.Register(fmt.Sprintf("logging.%s", level), meter)
-	// }
+	for _, meter := range *logmetrics.DefaultMetrics {
+		a.prometheusRegistry.MustRegister(meter)
+	}
 
 	// db-metrics
 	initDbMetrics(a)
