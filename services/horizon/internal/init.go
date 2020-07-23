@@ -127,6 +127,7 @@ func initDbMetrics(app *App) {
 		Namespace: "horizon", Subsystem: "history", Name: "elder_ledger",
 	})
 	app.prometheusRegistry.MustRegister(app.historyElderLedgerGauge)
+
 	app.coreLatestLedgerGauge = prometheus.NewGauge(prometheus.GaugeOpts{
 		Namespace: "horizon", Subsystem: "stellar_core", Name: "latest_ledger",
 	})
@@ -136,18 +137,23 @@ func initDbMetrics(app *App) {
 		Namespace: "horizon", Subsystem: "db", Name: "open_connections",
 	})
 	app.prometheusRegistry.MustRegister(app.dbOpenConnectionsGauge)
+
 	app.dbInUseConnectionsGauge = prometheus.NewGauge(prometheus.GaugeOpts{
 		Namespace: "horizon", Subsystem: "db", Name: "in_use_connections",
 	})
 	app.prometheusRegistry.MustRegister(app.dbInUseConnectionsGauge)
+
 	app.dbWaitCountGauge = prometheus.NewGauge(prometheus.GaugeOpts{
 		Namespace: "horizon", Subsystem: "db", Name: "wait_count",
 	})
 	app.prometheusRegistry.MustRegister(app.dbWaitCountGauge)
+
 	app.dbWaitDurationGauge = prometheus.NewGauge(prometheus.GaugeOpts{
 		Namespace: "horizon", Subsystem: "db", Name: "wait_duration",
 	})
 	app.prometheusRegistry.MustRegister(app.dbWaitDurationGauge)
+
+	app.prometheusRegistry.MustRegister(app.orderBookStream.LatestLedgerGauge)
 }
 
 // initIngestMetrics registers the metrics for the ingestion into the provided

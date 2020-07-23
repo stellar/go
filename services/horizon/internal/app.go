@@ -71,9 +71,10 @@ type App struct {
 	historyElderLedgerGauge  prometheus.Gauge
 	dbOpenConnectionsGauge   prometheus.Gauge
 	dbInUseConnectionsGauge  prometheus.Gauge
-	dbWaitCountGauge         prometheus.Gauge
-	dbWaitDurationGauge      prometheus.Gauge
-	coreLatestLedgerGauge    prometheus.Gauge
+	// TODO: these are alwasy increasing...
+	dbWaitCountGauge      prometheus.Gauge
+	dbWaitDurationGauge   prometheus.Gauge
+	coreLatestLedgerGauge prometheus.Gauge
 }
 
 func (a *App) GetCoreSettings() actions.CoreSettings {
@@ -498,6 +499,9 @@ func (a *App) init() {
 	// db-metrics
 	initDbMetrics(a)
 
+	// web.actions
+	a.web.mustInstallActions(a.config, a.paths, a.historyQ.Session, a.submitter, a.prometheusRegistry, a, a.horizonVersion)
+
 	// ingest.metrics
 	initIngestMetrics(a)
 
@@ -506,9 +510,6 @@ func (a *App) init() {
 
 	// txsub.metrics
 	initTxSubMetrics(a)
-
-	// web.actions
-	a.web.mustInstallActions(a.config, a.paths, a.historyQ.Session, a.submitter, a.prometheusRegistry, a, a.horizonVersion)
 }
 
 // run is the function that runs in the background that triggers Tick each
