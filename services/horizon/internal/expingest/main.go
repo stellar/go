@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
 
 	"github.com/stellar/go/clients/stellarcore"
 	"github.com/stellar/go/exp/ingest/adapters"
@@ -196,11 +195,11 @@ func NewSystem(config Config) (System, error) {
 }
 
 func (s *system) initMetrics() {
-	s.metrics.LedgerIngestionDuration = promauto.NewSummary(prometheus.SummaryOpts{
+	s.metrics.LedgerIngestionDuration = prometheus.NewSummary(prometheus.SummaryOpts{
 		Namespace: "horizon", Subsystem: "ingest", Name: "ledger_ingestion_duration_seconds",
 	})
 
-	s.metrics.StateVerifyDuration = promauto.NewSummary(prometheus.SummaryOpts{
+	s.metrics.StateVerifyDuration = prometheus.NewSummary(prometheus.SummaryOpts{
 		Namespace: "horizon", Subsystem: "ingest", Name: "state_verify_duration_seconds",
 	})
 }

@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/stellar/go/services/horizon/internal/txsub/sequence"
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/xdr"
@@ -298,28 +297,28 @@ func (sys *System) Init() {
 	sys.initializer.Do(func() {
 		sys.Log = log.DefaultLogger.WithField("service", "txsub.System")
 
-		sys.Metrics.SubmissionDuration = promauto.NewSummary(prometheus.SummaryOpts{
+		sys.Metrics.SubmissionDuration = prometheus.NewSummary(prometheus.SummaryOpts{
 			Namespace: "horizon", Subsystem: "txsub", Name: "submission_duration_seconds",
 		})
-		sys.Metrics.FailedSubmissionsCounter = promauto.NewCounter(prometheus.CounterOpts{
+		sys.Metrics.FailedSubmissionsCounter = prometheus.NewCounter(prometheus.CounterOpts{
 			Namespace: "horizon", Subsystem: "txsub", Name: "failed",
 		})
-		sys.Metrics.SuccessfulSubmissionsCounter = promauto.NewCounter(prometheus.CounterOpts{
+		sys.Metrics.SuccessfulSubmissionsCounter = prometheus.NewCounter(prometheus.CounterOpts{
 			Namespace: "horizon", Subsystem: "txsub", Name: "succeeded",
 		})
-		sys.Metrics.OpenSubmissionsGauge = promauto.NewGauge(prometheus.GaugeOpts{
+		sys.Metrics.OpenSubmissionsGauge = prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: "horizon", Subsystem: "txsub", Name: "open",
 		})
-		sys.Metrics.BufferedSubmissionsGauge = promauto.NewGauge(prometheus.GaugeOpts{
+		sys.Metrics.BufferedSubmissionsGauge = prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: "horizon", Subsystem: "txsub", Name: "buffered",
 		})
-		sys.Metrics.V0TransactionsCounter = promauto.NewCounter(prometheus.CounterOpts{
+		sys.Metrics.V0TransactionsCounter = prometheus.NewCounter(prometheus.CounterOpts{
 			Namespace: "horizon", Subsystem: "txsub", Name: "v0",
 		})
-		sys.Metrics.V1TransactionsCounter = promauto.NewCounter(prometheus.CounterOpts{
+		sys.Metrics.V1TransactionsCounter = prometheus.NewCounter(prometheus.CounterOpts{
 			Namespace: "horizon", Subsystem: "txsub", Name: "v1",
 		})
-		sys.Metrics.FeeBumpTransactionsCounter = promauto.NewCounter(prometheus.CounterOpts{
+		sys.Metrics.FeeBumpTransactionsCounter = prometheus.NewCounter(prometheus.CounterOpts{
 			Namespace: "horizon", Subsystem: "txsub", Name: "feebump",
 		})
 

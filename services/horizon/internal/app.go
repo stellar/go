@@ -66,6 +66,7 @@ type App struct {
 	ticks           *time.Ticker
 
 	// metrics
+	prometheusRegistry       *prometheus.Registry
 	historyLatestLedgerGauge prometheus.Gauge
 	historyElderLedgerGauge  prometheus.Gauge
 	dbOpenConnectionsGauge   prometheus.Gauge
@@ -488,7 +489,8 @@ func (a *App) init() {
 	a.web.mustInstallMiddlewares(a, a.config.ConnectionTimeout)
 
 	// metrics and log.metrics
-	// a.metrics = metrics.NewRegistry()
+	a.prometheusRegistry = prometheus.NewRegistry()
+	// TODO
 	// for level, meter := range *logmetrics.DefaultMetrics {
 	// 	a.metrics.Register(fmt.Sprintf("logging.%s", level), meter)
 	// }
@@ -496,8 +498,17 @@ func (a *App) init() {
 	// db-metrics
 	initDbMetrics(a)
 
+	// ingest.metrics
+	initIngestMetrics(a)
+
+	// web.metrics
+	initWebMetrics(a)
+
+	// txsub.metrics
+	initTxSubMetrics(a)
+
 	// web.actions
-	a.web.mustInstallActions(a.config, a.paths, a.historyQ.Session, a.submitter, a, a.horizonVersion)
+	a.web.mustInstallActions(a.config, a.paths, a.historyQ.Session, a.submitter, a.prometheusRegistry, a, a.horizonVersion)
 }
 
 // run is the function that runs in the background that triggers Tick each

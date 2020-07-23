@@ -6,7 +6,6 @@ import (
 
 	"github.com/getsentry/raven-go"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/stellar/go/exp/orderbook"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/expingest"
@@ -119,28 +118,63 @@ func initLogglyLog(app *App) {
 }
 
 func initDbMetrics(app *App) {
-	app.historyLatestLedgerGauge = promauto.NewGauge(prometheus.GaugeOpts{
+	app.historyLatestLedgerGauge = prometheus.NewGauge(prometheus.GaugeOpts{
 		Namespace: "horizon", Subsystem: "history", Name: "latest_ledger",
 	})
-	app.historyElderLedgerGauge = promauto.NewGauge(prometheus.GaugeOpts{
+	app.prometheusRegistry.MustRegister(app.historyLatestLedgerGauge)
+
+	app.historyElderLedgerGauge = prometheus.NewGauge(prometheus.GaugeOpts{
 		Namespace: "horizon", Subsystem: "history", Name: "elder_ledger",
 	})
-	app.coreLatestLedgerGauge = promauto.NewGauge(prometheus.GaugeOpts{
+	app.prometheusRegistry.MustRegister(app.historyElderLedgerGauge)
+	app.coreLatestLedgerGauge = prometheus.NewGauge(prometheus.GaugeOpts{
 		Namespace: "horizon", Subsystem: "stellar_core", Name: "latest_ledger",
 	})
+	app.prometheusRegistry.MustRegister(app.coreLatestLedgerGauge)
 
-	app.dbOpenConnectionsGauge = promauto.NewGauge(prometheus.GaugeOpts{
+	app.dbOpenConnectionsGauge = prometheus.NewGauge(prometheus.GaugeOpts{
 		Namespace: "horizon", Subsystem: "db", Name: "open_connections",
 	})
-	app.dbInUseConnectionsGauge = promauto.NewGauge(prometheus.GaugeOpts{
+	app.prometheusRegistry.MustRegister(app.dbOpenConnectionsGauge)
+	app.dbInUseConnectionsGauge = prometheus.NewGauge(prometheus.GaugeOpts{
 		Namespace: "horizon", Subsystem: "db", Name: "in_use_connections",
 	})
-	app.dbWaitCountGauge = promauto.NewGauge(prometheus.GaugeOpts{
+	app.prometheusRegistry.MustRegister(app.dbInUseConnectionsGauge)
+	app.dbWaitCountGauge = prometheus.NewGauge(prometheus.GaugeOpts{
 		Namespace: "horizon", Subsystem: "db", Name: "wait_count",
 	})
-	app.dbWaitDurationGauge = promauto.NewGauge(prometheus.GaugeOpts{
+	app.prometheusRegistry.MustRegister(app.dbWaitCountGauge)
+	app.dbWaitDurationGauge = prometheus.NewGauge(prometheus.GaugeOpts{
 		Namespace: "horizon", Subsystem: "db", Name: "wait_duration",
 	})
+	app.prometheusRegistry.MustRegister(app.dbWaitDurationGauge)
+}
+
+// initIngestMetrics registers the metrics for the ingestion into the provided
+// app's metrics registry.
+func initIngestMetrics(app *App) {
+	if app.expingester == nil {
+		return
+	}
+
+	app.prometheusRegistry.MustRegister(app.expingester.Metrics().LedgerIngestionDuration)
+	app.prometheusRegistry.MustRegister(app.expingester.Metrics().StateVerifyDuration)
+}
+
+func initTxSubMetrics(app *App) {
+	app.submitter.Init()
+	app.prometheusRegistry.MustRegister(app.submitter.Metrics.SubmissionDuration)
+	app.prometheusRegistry.MustRegister(app.submitter.Metrics.BufferedSubmissionsGauge)
+	app.prometheusRegistry.MustRegister(app.submitter.Metrics.OpenSubmissionsGauge)
+	app.prometheusRegistry.MustRegister(app.submitter.Metrics.FailedSubmissionsCounter)
+	app.prometheusRegistry.MustRegister(app.submitter.Metrics.SuccessfulSubmissionsCounter)
+	app.prometheusRegistry.MustRegister(app.submitter.Metrics.V0TransactionsCounter)
+	app.prometheusRegistry.MustRegister(app.submitter.Metrics.V1TransactionsCounter)
+	app.prometheusRegistry.MustRegister(app.submitter.Metrics.FeeBumpTransactionsCounter)
+}
+
+func initWebMetrics(app *App) {
+	app.prometheusRegistry.MustRegister(app.web.requestDuration)
 }
 
 func initSubmissionSystem(app *App) {

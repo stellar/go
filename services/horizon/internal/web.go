@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/stellar/go/services/horizon/internal/txsub"
 
@@ -80,7 +79,7 @@ func mustInitWeb(ctx context.Context, hq *history.Q, updateFreq time.Duration, t
 		historyQ:           hq,
 		sseUpdateFrequency: updateFreq,
 		staleThreshold:     threshold,
-		requestDuration: promauto.NewSummaryVec(
+		requestDuration: prometheus.NewSummaryVec(
 			prometheus.SummaryOpts{
 				Namespace: "horizon", Subsystem: "http", Name: "requests_duration_seconds",
 			},
@@ -142,6 +141,7 @@ func (w *web) mustInstallActions(config Config,
 	pathFinder paths.Finder,
 	session *db.Session,
 	submitter *txsub.System,
+	prometheusRegistry *prometheus.Registry,
 	coreGetter actions.CoreSettingsGetter,
 	horizonVersion string) {
 	if w == nil {
@@ -322,7 +322,7 @@ func (w *web) mustInstallActions(config Config,
 	}))
 
 	// internal
-	w.internalRouter.Get("/metrics", promhttp.Handler().ServeHTTP)
+	w.internalRouter.Get("/metrics", promhttp.HandlerFor(prometheusRegistry, promhttp.HandlerOpts{}).ServeHTTP)
 	w.internalRouter.Get("/debug/pprof/heap", pprof.Index)
 	w.internalRouter.Get("/debug/pprof/profile", pprof.Profile)
 }

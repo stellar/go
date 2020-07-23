@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
 
 	"github.com/stellar/go/exp/orderbook"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
@@ -42,7 +41,7 @@ func NewOrderBookStream(historyQ history.IngestionQ, graph orderbook.OBGraph) *O
 	return &OrderBookStream{
 		graph:    graph,
 		historyQ: historyQ,
-		LatestLedgerGauge: promauto.NewGauge(prometheus.GaugeOpts{
+		LatestLedgerGauge: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: "horizon", Subsystem: "order_book_stream", Name: "latest_ledger",
 		}),
 		lastVerification: time.Now(),

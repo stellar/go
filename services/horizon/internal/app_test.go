@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/prometheus/client_golang/prometheus"
+	dto "github.com/prometheus/client_model/go"
 	"github.com/stellar/go/services/horizon/internal/test"
 )
 
@@ -46,14 +48,23 @@ func TestMetrics(t *testing.T) {
 	he := ht.App.historyElderLedgerGauge
 	cl := ht.App.coreLatestLedgerGauge
 
-	ht.Require.EqualValues(0, hl.Value())
-	ht.Require.EqualValues(0, he.Value())
-	ht.Require.EqualValues(0, cl.Value())
+	ht.Require.EqualValues(0, getMetricValue(hl).GetGauge().GetValue())
+	ht.Require.EqualValues(0, getMetricValue(he).GetGauge().GetValue())
+	ht.Require.EqualValues(0, getMetricValue(cl).GetGauge().GetValue())
 
 	ht.App.UpdateLedgerState()
 	ht.App.UpdateMetrics()
 
-	ht.Require.EqualValues(3, hl.Value())
-	ht.Require.EqualValues(1, he.Value())
-	ht.Require.EqualValues(64, cl.Value())
+	ht.Require.EqualValues(3, getMetricValue(hl).GetGauge().GetValue())
+	ht.Require.EqualValues(1, getMetricValue(he).GetGauge().GetValue())
+	ht.Require.EqualValues(64, getMetricValue(cl).GetGauge().GetValue())
+}
+
+func getMetricValue(metric prometheus.Metric) *dto.Metric {
+	value := &dto.Metric{}
+	err := metric.Write(value)
+	if err != nil {
+		panic(err)
+	}
+	return value
 }
