@@ -13,6 +13,7 @@ import (
 
 	"github.com/stellar/go/services/horizon/internal/actions"
 	horizonContext "github.com/stellar/go/services/horizon/internal/context"
+	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/hchi"
 	"github.com/stellar/go/services/horizon/internal/ledger"
 	"github.com/stellar/go/services/horizon/internal/render"
@@ -25,6 +26,23 @@ import (
 	"github.com/stellar/go/support/render/httpjson"
 	"github.com/stellar/go/support/render/problem"
 )
+
+// Fields of this struct are exported for json marshaling/unmarshaling in
+// support/render/hal package.
+type indexActionQueryParams struct {
+	AccountID        string
+	LedgerID         int32
+	PagingParams     db2.PageQuery
+	IncludeFailedTxs bool
+	Signer           string
+}
+
+// Fields of this struct are exported for json marshaling/unmarshaling in
+// support/render/hal package.
+type showActionQueryParams struct {
+	AccountID string
+	TxHash    string
+}
 
 // streamFunc represents the signature of the function that handles requests
 // with stream mode turned on using server-sent events.
@@ -466,7 +484,7 @@ func (handler pageActionHandler) renderStream(w http.ResponseWriter, r *http.Req
 		}
 
 		if len(events) > 0 {
-			// Update the cursor for the next call to GetObject, GetCursor
+			// Update the cursor for the next call to GetObject, getCursor
 			// will use Last-Event-ID if present. This feels kind of hacky,
 			// but otherwise, we'll have to edit r.URL, which is also a
 			// hack.

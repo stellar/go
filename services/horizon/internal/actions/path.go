@@ -68,7 +68,7 @@ func (q StrictReceivePathsQuery) DestinationAsset() xdr.Asset {
 
 // URITemplate returns a rfc6570 URI template for the query struct
 func (q StrictReceivePathsQuery) URITemplate() string {
-	return "/paths/strict-receive{?" + strings.Join(GetURIParams(&q, false), ",") + "}"
+	return "/paths/strict-receive{?" + strings.Join(getURIParams(&q, false), ",") + "}"
 }
 
 // Validate runs custom validations.
@@ -77,7 +77,7 @@ func (q StrictReceivePathsQuery) Validate() error {
 		return SourceAssetsOrSourceAccountProblem
 	}
 
-	err := ValidateAssetParams(
+	err := validateAssetParams(
 		q.DestinationAssetType,
 		q.DestinationAssetCode,
 		q.DestinationAssetIssuer,
@@ -119,7 +119,7 @@ func (handler FindPathsHandler) GetResourcePage(w HeaderWriter, r *http.Request)
 	ctx := r.Context()
 	qp := StrictReceivePathsQuery{}
 
-	if err = GetParams(&qp, r); err != nil {
+	if err = getParams(&qp, r); err != nil {
 		return nil, err
 	}
 
@@ -213,7 +213,7 @@ type FindFixedPathsQuery struct {
 
 // URITemplate returns a rfc6570 URI template for the query struct
 func (q FindFixedPathsQuery) URITemplate() string {
-	return "/paths/strict-send{?" + strings.Join(GetURIParams(&q, false), ",") + "}"
+	return "/paths/strict-send{?" + strings.Join(getURIParams(&q, false), ",") + "}"
 }
 
 // Validate runs custom validations.
@@ -222,7 +222,7 @@ func (q FindFixedPathsQuery) Validate() error {
 		return DestinationAssetsOrDestinationAccountProblem
 	}
 
-	err := ValidateAssetParams(
+	err := validateAssetParams(
 		q.SourceAssetType,
 		q.SourceAssetCode,
 		q.SourceAssetIssuer,
@@ -284,7 +284,7 @@ func (handler FindFixedPathsHandler) GetResourcePage(w HeaderWriter, r *http.Req
 	ctx := r.Context()
 	qp := FindFixedPathsQuery{}
 
-	if err = GetParams(&qp, r); err != nil {
+	if err = getParams(&qp, r); err != nil {
 		return nil, err
 	}
 

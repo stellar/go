@@ -4,6 +4,9 @@ import (
 	"compress/flate"
 	"context"
 	"database/sql"
+
+	"github.com/pkg/errors"
+
 	"github.com/stellar/go/services/horizon/internal/txsub"
 	"net/http"
 	"net/http/pprof"
@@ -83,6 +86,29 @@ func mustInitWeb(ctx context.Context, hq *history.Q, updateFreq time.Duration, t
 		failureMeter:       metrics.NewMeter(),
 		successMeter:       metrics.NewMeter(),
 	}
+}
+
+// getAccountInfo returns the information about an account based on the provided param.
+func (w *web) getAccountInfo(ctx context.Context, qp *showActionQueryParams) (interface{}, error) {
+	// Use AppFromContext to prevent larger refactoring of actions code. Will
+	// be removed once this endpoint is migrated to use new actions design.
+	horizonSession, err := w.horizonSession(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting horizon db session")
+	}
+
+	err = horizonSession.BeginTx(&sql.TxOptions{
+		Isolation: sql.LevelRepeatableRead,
+		ReadOnly:  true,
+	})
+	if err != nil {
+		return nil, errors.Wrap(err, "error starting transaction")
+	}
+
+	defer horizonSession.Rollback()
+	historyQ := &history.Q{horizonSession}
+
+	return actions.AccountInfo(ctx, historyQ, qp.AccountID)
 }
 
 // mustInstallMiddlewares installs the middleware stack used for horizon onto the

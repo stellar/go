@@ -15,17 +15,14 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/gorilla/schema"
 
-	"github.com/stellar/go/amount"
 	"github.com/stellar/go/services/horizon/internal/assets"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/httpx"
 	"github.com/stellar/go/services/horizon/internal/ledger"
 	hProblem "github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/toid"
-	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/render/problem"
-	"github.com/stellar/go/support/time"
 	"github.com/stellar/go/xdr"
 )
 
@@ -63,22 +60,10 @@ func SetLastLedgerHeader(w HeaderWriter, lastLedger uint32) {
 	w.Header().Set(LastLedgerHeaderName, strconv.FormatUint(uint64(lastLedger), 10))
 }
 
-// GetCursor retrieves a string from either the URLParams, form or query string.
+// getCursor retrieves a string from either the URLParams, form or query string.
 // This method uses the priority (URLParams, Form, Query).
-func (base *Base) GetCursor(name string) (cursor string) {
-	if base.Err != nil {
-		return ""
-	}
-
-	cursor, base.Err = GetCursor(base.R, name)
-
-	return cursor
-}
-
-// GetCursor retrieves a string from either the URLParams, form or query string.
-// This method uses the priority (URLParams, Form, Query).
-func GetCursor(r *http.Request, name string) (string, error) {
-	cursor, err := GetString(r, name)
+func getCursor(r *http.Request, name string) (string, error) {
+	cursor, err := getString(r, name)
 
 	if err != nil {
 		return "", err
@@ -114,9 +99,9 @@ func checkUTF8(name, value string) error {
 	return nil
 }
 
-// GetStringFromURLParam retrieves a string from the URLParams.
-func GetStringFromURLParam(r *http.Request, name string) (string, error) {
-	fromURL, ok := GetURLParam(r, name)
+// getStringFromURLParam retrieves a string from the URLParams.
+func getStringFromURLParam(r *http.Request, name string) (string, error) {
+	fromURL, ok := getURLParam(r, name)
 	if ok {
 		ret, err := url.PathUnescape(fromURL)
 		if err != nil {
@@ -132,21 +117,10 @@ func GetStringFromURLParam(r *http.Request, name string) (string, error) {
 	return "", nil
 }
 
-// GetStringFromURLParam retrieves a string from the URLParams.
-func (base *Base) GetStringFromURLParam(name string) string {
-	if base.Err != nil {
-		return ""
-	}
-
-	var ret string
-	ret, base.Err = GetString(base.R, name)
-	return ret
-}
-
-// GetString retrieves a string from either the URLParams, form or query string.
+// getString retrieves a string from either the URLParams, form or query string.
 // This method uses the priority (URLParams, Form, Query).
-func GetString(r *http.Request, name string) (string, error) {
-	fromURL, ok := GetURLParam(r, name)
+func getString(r *http.Request, name string) (string, error) {
+	fromURL, ok := getURLParam(r, name)
 	if ok {
 		ret, err := url.PathUnescape(fromURL)
 		if err != nil {
@@ -176,112 +150,11 @@ func GetString(r *http.Request, name string) (string, error) {
 	return value, nil
 }
 
-// GetString retrieves a string from either the URLParams, form or query string.
-// This method uses the priority (URLParams, Form, Query).
-func (base *Base) GetString(name string) (result string) {
-	if base.Err != nil {
-		return ""
-	}
-
-	result, base.Err = GetString(base.R, name)
-	return result
-}
-
-// GetInt64 retrieves an int64 from the action parameter of the given name.
-func GetInt64(r *http.Request, name string) (int64, error) {
-	asStr, err := GetString(r, name)
-	if err != nil {
-		return 0, err
-	}
-	if asStr == "" {
-		return 0, nil
-	}
-
-	asI64, err := strconv.ParseInt(asStr, 10, 64)
-	if err != nil {
-		return 0, problem.MakeInvalidFieldProblem(name, errors.New("unparseable value"))
-	}
-
-	return asI64, nil
-}
-
-// GetInt64 retrieves an int64 from the action parameter of the given name.
-// Populates err if the value is not a valid int64
-func (base *Base) GetInt64(name string) int64 {
-	if base.Err != nil {
-		return 0
-	}
-
-	var parsed int64
-	parsed, base.Err = GetInt64(base.R, name)
-
-	return parsed
-}
-
-// GetInt32 retrieves an int32 from the action parameter of the given name.
-// Populates err if the value is not a valid int32
-func (base *Base) GetInt32(name string) int32 {
-	if base.Err != nil {
-		return 0
-	}
-
-	asStr := base.GetString(name)
-	if asStr == "" {
-		return 0
-	}
-
-	asI64, err := strconv.ParseInt(asStr, 10, 32)
-	if err != nil {
-		base.SetInvalidField(name, errors.New("unparseable value"))
-		return 0
-	}
-
-	return int32(asI64)
-}
-
-// GetBool retrieves a bool from the query parameter for the given name.
-// Populates err if the value is not a valid bool.
-// Defaults to `false` in case of an empty string. WARNING, do not change
-// this behaviour without checking other modules, ex. this is critical
-// that failed transactions are not included (`false`) by default.
-func (base *Base) GetBool(name string) bool {
-	if base.Err != nil {
-		return false
-	}
-
-	asStr := base.R.URL.Query().Get(name)
-	if asStr == "" {
-		return false
-	}
-
-	if asStr == "true" {
-		return true
-	} else if asStr == "false" || asStr == "" {
-		return false
-	} else {
-		base.SetInvalidField(name, errors.New("unparseable value"))
-		return false
-	}
-}
-
-// GetLimit retrieves a uint64 limit from the action parameter of the given
+// getLimit retrieves a uint64 limit from the action parameter of the given
 // name. Populates err if the value is not a valid limit.  Uses the provided
 // default value if the limit parameter is a blank string.
-func (base *Base) GetLimit(name string, def uint64, max uint64) (limit uint64) {
-	if base.Err != nil {
-		return 0
-	}
-
-	limit, base.Err = GetLimit(base.R, name, def, max)
-
-	return limit
-}
-
-// GetLimit retrieves a uint64 limit from the action parameter of the given
-// name. Populates err if the value is not a valid limit.  Uses the provided
-// default value if the limit parameter is a blank string.
-func GetLimit(r *http.Request, name string, def uint64, max uint64) (uint64, error) {
-	limit, err := GetString(r, name)
+func getLimit(r *http.Request, name string, def uint64, max uint64) (uint64, error) {
+	limit, err := getString(r, name)
 
 	if err != nil {
 		return 0, err
@@ -311,18 +184,6 @@ func GetLimit(r *http.Request, name string, def uint64, max uint64) (uint64, err
 
 // GetPageQuery is a helper that returns a new db.PageQuery struct initialized
 // using the results from a call to GetPagingParams()
-func (base *Base) GetPageQuery(opts ...Opt) (result db2.PageQuery) {
-	if base.Err != nil {
-		return db2.PageQuery{}
-	}
-
-	result, base.Err = GetPageQuery(base.R, opts...)
-
-	return result
-}
-
-// GetPageQuery is a helper that returns a new db.PageQuery struct initialized
-// using the results from a call to GetPagingParams()
 func GetPageQuery(r *http.Request, opts ...Opt) (db2.PageQuery, error) {
 	disableCursorValidation := false
 	for _, opt := range opts {
@@ -331,15 +192,15 @@ func GetPageQuery(r *http.Request, opts ...Opt) (db2.PageQuery, error) {
 		}
 	}
 
-	cursor, err := GetCursor(r, ParamCursor)
+	cursor, err := getCursor(r, ParamCursor)
 	if err != nil {
 		return db2.PageQuery{}, err
 	}
-	order, err := GetString(r, ParamOrder)
+	order, err := getString(r, ParamOrder)
 	if err != nil {
 		return db2.PageQuery{}, err
 	}
-	limit, err := GetLimit(r, ParamLimit, db2.DefaultPageSize, db2.MaxPageSize)
+	limit, err := getLimit(r, ParamLimit, db2.DefaultPageSize, db2.MaxPageSize)
 	if err != nil {
 		return db2.PageQuery{}, err
 	}
@@ -361,38 +222,10 @@ func GetPageQuery(r *http.Request, opts ...Opt) (db2.PageQuery, error) {
 	return pageQuery, nil
 }
 
-// GetAddress retrieves a stellar address.  It confirms the value loaded is a
-// valid stellar address, setting an invalid field error if it is not.
-func (base *Base) GetAddress(name string, opts ...Opt) (result string) {
-	if base.Err != nil {
-		return
-	}
-
-	requiredParam := false
-	for _, opt := range opts {
-		if opt == RequiredParam {
-			requiredParam = true
-		}
-	}
-
-	// We should check base.Err after this call. This is why it's better to remove base.Err.
-	result = base.GetString(name)
-	if result == "" && !requiredParam {
-		return result
-	}
-
-	_, err := strkey.Decode(strkey.VersionByteAccountID, result)
-	if err != nil {
-		base.SetInvalidField(name, errors.New("invalid address"))
-	}
-
-	return result
-}
-
 // GetTransactionID retireves a transaction identifier by attempting to decode an hex-encoded,
 // 64-digit lowercase string at the provided name.
 func GetTransactionID(r *http.Request, name string) (string, error) {
-	value, err := GetStringFromURLParam(r, name)
+	value, err := getStringFromURLParam(r, name)
 	if err != nil {
 		return "", err
 	}
@@ -406,10 +239,10 @@ func GetTransactionID(r *http.Request, name string) (string, error) {
 	return value, nil
 }
 
-// GetAccountID retireves an xdr.AccountID by attempting to decode a stellar
+// getAccountID retireves an xdr.AccountID by attempting to decode a stellar
 // address at the provided name.
-func GetAccountID(r *http.Request, name string) (xdr.AccountId, error) {
-	value, err := GetString(r, name)
+func getAccountID(r *http.Request, name string) (xdr.AccountId, error) {
+	value, err := getString(r, name)
 	if err != nil {
 		return xdr.AccountId{}, err
 	}
@@ -425,47 +258,9 @@ func GetAccountID(r *http.Request, name string) (xdr.AccountId, error) {
 	return result, nil
 }
 
-// GetAccountID retireves an xdr.AccountID by attempting to decode a stellar
-// address at the provided name.
-func (base *Base) GetAccountID(name string) (result xdr.AccountId) {
-	if base.Err != nil {
-		return
-	}
-
-	result, base.Err = GetAccountID(base.R, name)
-	return result
-}
-
-// GetPositiveAmount returns a native amount (i.e. 64-bit integer) by parsing
-// the string at the provided name in accordance with the stellar client
-// conventions. Renders error for negative amounts and zero.
-func GetPositiveAmount(r *http.Request, fieldName string) (xdr.Int64, error) {
-	amountString, err := GetString(r, fieldName)
-	if err != nil {
-		return 0, err
-	}
-
-	parsed, err := amount.Parse(amountString)
-	if err != nil {
-		return 0, problem.MakeInvalidFieldProblem(
-			fieldName,
-			errors.New("invalid amount"),
-		)
-	}
-
-	if parsed <= 0 {
-		return 0, problem.MakeInvalidFieldProblem(
-			fieldName,
-			errors.New("amount must be positive"),
-		)
-	}
-
-	return parsed, nil
-}
-
 // getAssetType is a helper that returns a xdr.AssetType by reading a string
 func getAssetType(r *http.Request, name string) (xdr.AssetType, error) {
-	val, err := GetString(r, name)
+	val, err := getString(r, name)
 	if err != nil {
 		return xdr.AssetTypeAssetTypeNative, nil
 	}
@@ -481,10 +276,10 @@ func getAssetType(r *http.Request, name string) (xdr.AssetType, error) {
 	return t, nil
 }
 
-// GetAsset decodes an asset from the request fields prefixed by `prefix`.  To
+// getAsset decodes an asset from the request fields prefixed by `prefix`.  To
 // succeed, three prefixed fields must be present: asset_type, asset_code, and
 // asset_issuer.
-func GetAsset(r *http.Request, prefix string) (xdr.Asset, error) {
+func getAsset(r *http.Request, prefix string) (xdr.Asset, error) {
 	var value interface{}
 	t, err := getAssetType(r, prefix+"asset_type")
 	if err != nil {
@@ -494,13 +289,13 @@ func GetAsset(r *http.Request, prefix string) (xdr.Asset, error) {
 	switch t {
 	case xdr.AssetTypeAssetTypeCreditAlphanum4:
 		a := xdr.AssetAlphaNum4{}
-		a.Issuer, err = GetAccountID(r, prefix+"asset_issuer")
+		a.Issuer, err = getAccountID(r, prefix+"asset_issuer")
 		if err != nil {
 			return xdr.Asset{}, err
 		}
 
 		var code string
-		code, err = GetString(r, prefix+"asset_code")
+		code, err = getString(r, prefix+"asset_code")
 		if err != nil {
 			return xdr.Asset{}, err
 		}
@@ -516,13 +311,13 @@ func GetAsset(r *http.Request, prefix string) (xdr.Asset, error) {
 		value = a
 	case xdr.AssetTypeAssetTypeCreditAlphanum12:
 		a := xdr.AssetAlphaNum12{}
-		a.Issuer, err = GetAccountID(r, prefix+"asset_issuer")
+		a.Issuer, err = getAccountID(r, prefix+"asset_issuer")
 		if err != nil {
 			return xdr.Asset{}, err
 		}
 
 		var code string
-		code, err = GetString(r, prefix+"asset_code")
+		code, err = getString(r, prefix+"asset_code")
 		if err != nil {
 			return xdr.Asset{}, err
 		}
@@ -546,96 +341,12 @@ func GetAsset(r *http.Request, prefix string) (xdr.Asset, error) {
 	return result, nil
 }
 
-// GetAsset decodes an asset from the request fields prefixed by `prefix`.  To
-// succeed, three prefixed fields must be present: asset_type, asset_code, and
-// asset_issuer.
-func (base *Base) GetAsset(prefix string) (result xdr.Asset) {
-	if base.Err != nil {
-		return
-	}
-
-	result, base.Err = GetAsset(base.R, prefix)
-	return result
-}
-
-// GetAssets parses a list of assets from a given request.
-// The request parameter is expected to be a comma separated list of assets
-// encoded in the format (Code:Issuer or "native") defined by SEP-0011
-// https://github.com/stellar/stellar-protocol/pull/313
-// If there is no request parameter present GetAssets will return an empty list of assets
-func GetAssets(r *http.Request, name string) ([]xdr.Asset, error) {
-	s, err := GetString(r, name)
-	if err != nil {
-		return nil, err
-	}
-
-	assets, err := xdr.BuildAssets(s)
-
-	if err != nil {
-		return nil, problem.MakeInvalidFieldProblem(
-			name,
-			err,
-		)
-	}
-
-	return assets, nil
-}
-
-// MaybeGetAsset decodes an asset from the request fields as GetAsset does, but
-// only if type field is populated. returns an additional boolean reflecting whether
-// or not the decoding was performed
-func MaybeGetAsset(r *http.Request, prefix string) (xdr.Asset, bool) {
-	s, err := GetString(r, prefix+"asset_type")
-	if err != nil || s == "" {
-		return xdr.Asset{}, false
-	}
-
-	asset, err := GetAsset(r, prefix)
-	if err != nil {
-		return xdr.Asset{}, false
-	}
-
-	return asset, true
-}
-
-// MaybeGetAsset decodes an asset from the request fields as GetAsset does, but
-// only if type field is populated. returns an additional boolean reflecting whether
-// or not the decoding was performed
-func (base *Base) MaybeGetAsset(prefix string) (xdr.Asset, bool) {
-	if base.Err != nil {
-		return xdr.Asset{}, false
-	}
-
-	return MaybeGetAsset(base.R, prefix)
-}
-
-// GetTimeMillis retrieves a TimeMillis from the action parameter of the given name.
-// Populates err if the value is not a valid TimeMillis
-func (base *Base) GetTimeMillis(name string) (timeMillis time.Millis) {
-	if base.Err != nil {
-		return
-	}
-
-	asStr := base.GetString(name)
-	if asStr == "" {
-		return
-	}
-
-	timeMillis, err := time.MillisFromString(asStr)
-	if err != nil {
-		base.SetInvalidField(name, err)
-		return
-	}
-
-	return
-}
-
-// GetURLParam returns the corresponding URL parameter value from the request
+// getURLParam returns the corresponding URL parameter value from the request
 // routing context and an additional boolean reflecting whether or not the
 // param was found. This is ported from Chi since the Chi version returns ""
 // for params not found. This is undesirable since "" also is a valid url param.
 // Ref: https://github.com/go-chi/chi/blob/d132b31857e5922a2cc7963f4fcfd8f46b3f2e97/context.go#L69
-func GetURLParam(r *http.Request, key string) (string, bool) {
+func getURLParam(r *http.Request, key string) (string, bool) {
 	rctx := chi.RouteContext(r.Context())
 
 	// Return immediately if keys does not match Values
@@ -652,27 +363,6 @@ func GetURLParam(r *http.Request, key string) (string, bool) {
 	}
 
 	return "", false
-}
-
-// GetURLParam returns the corresponding URL parameter value from the request
-// routing context and an additional boolean reflecting whether or not the
-// param was found. This is ported from Chi since the Chi version returns ""
-// for params not found. This is undesirable since "" also is a valid url param.
-// Ref: https://github.com/go-chi/chi/blob/d132b31857e5922a2cc7963f4fcfd8f46b3f2e97/context.go#L69
-func (base *Base) GetURLParam(key string) (string, bool) {
-	return GetURLParam(base.R, key)
-}
-
-// SetInvalidField establishes an error response triggered by an invalid
-// input field from the user.
-func (base *Base) SetInvalidField(name string, reason error) {
-	base.Err = problem.MakeInvalidFieldProblem(name, reason)
-}
-
-// Path returns the current action's path, as determined by the http.Request of
-// this action
-func (base *Base) Path() string {
-	return base.R.URL.Path
 }
 
 // FullURL returns a URL containing the information regarding the original
@@ -692,8 +382,8 @@ func FullURL(ctx context.Context) *url.URL {
 // shared safely:
 var decoder = schema.NewDecoder()
 
-// GetParams fills a struct with values read from a request's query parameters.
-func GetParams(dst interface{}, r *http.Request) error {
+// getParams fills a struct with values read from a request's query parameters.
+func getParams(dst interface{}, r *http.Request) error {
 	query := r.URL.Query()
 
 	// Merge chi's URLParams with URL Query Params. Given
@@ -704,7 +394,7 @@ func GetParams(dst interface{}, r *http.Request) error {
 			if key == "*" {
 				continue
 			}
-			param, _ := GetURLParam(r, key)
+			param, _ := getURLParam(r, key)
 			query.Set(key, param)
 		}
 	}
@@ -746,8 +436,8 @@ func getSchemaTag(params interface{}, field string) string {
 	return f.Tag.Get("schema")
 }
 
-// GetURIParams returns a list of query parameters for a given query struct
-func GetURIParams(query interface{}, paginated bool) []string {
+// getURIParams returns a list of query parameters for a given query struct
+func getURIParams(query interface{}, paginated bool) []string {
 	params := getSchemaTags(reflect.ValueOf(query).Elem())
 	if paginated {
 		pagingParams := []string{
@@ -780,8 +470,8 @@ func getSchemaTags(v reflect.Value) []string {
 	return fields
 }
 
-// ValidateAssetParams runs multiple checks on an asset query parameter
-func ValidateAssetParams(aType, code, issuer, prefix string) error {
+// validateAssetParams runs multiple checks on an asset query parameter
+func validateAssetParams(aType, code, issuer, prefix string) error {
 	// If asset type is not present but code or issuer are, then there is a
 	// missing parameter and the request is unprocessable.
 	if len(aType) == 0 {
@@ -846,10 +536,10 @@ func ValidateAssetParams(aType, code, issuer, prefix string) error {
 	return nil
 }
 
-// ValidateCursorWithinHistory compares the requested page of data against the
+// validateCursorWithinHistory compares the requested page of data against the
 // ledger state of the history database.  In the event that the cursor is
 // guaranteed to return no results, we return a 410 GONE http response.
-func ValidateCursorWithinHistory(pq db2.PageQuery) error {
+func validateCursorWithinHistory(pq db2.PageQuery) error {
 	// an ascending query should never return a gone response:  An ascending query
 	// prior to known history should return results at the beginning of history,
 	// and an ascending query beyond the end of history should not error out but

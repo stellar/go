@@ -26,7 +26,7 @@ type GetTransactionByHashHandler struct {
 func (handler GetTransactionByHashHandler) GetResource(w HeaderWriter, r *http.Request) (interface{}, error) {
 	ctx := r.Context()
 	qp := TransactionQuery{}
-	err := GetParams(&qp, r)
+	err := getParams(&qp, r)
 	if err != nil {
 		return nil, err
 	}
@@ -93,13 +93,13 @@ func (handler GetTransactionsHandler) GetResourcePage(w HeaderWriter, r *http.Re
 		return nil, err
 	}
 
-	err = ValidateCursorWithinHistory(pq)
+	err = validateCursorWithinHistory(pq)
 	if err != nil {
 		return nil, err
 	}
 
 	qp := TransactionsQuery{}
-	err = GetParams(&qp, r)
+	err = getParams(&qp, r)
 	if err != nil {
 		return nil, err
 	}

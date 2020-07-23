@@ -200,9 +200,9 @@ func TestSellingBuyingAssetQueryParams(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.desc, func(t *testing.T) {
 			tt := assert.New(t)
-			r := makeAction("/", tc.urlParams).R
+			r := makeTestActionRequest("/", tc.urlParams)
 			qp := SellingBuyingAssetQueryParams{}
-			err := GetParams(&qp, r)
+			err := getParams(&qp, r)
 
 			if len(tc.expectedInvalidField) == 0 {
 				tt.NoError(err)
@@ -301,9 +301,9 @@ func TestSellingBuyingAssetQueryParamsWithCanonicalRepresenation(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.desc, func(t *testing.T) {
 			tt := assert.New(t)
-			r := makeAction("/", tc.urlParams).R
+			r := makeTestActionRequest("/", tc.urlParams)
 			qp := SellingBuyingAssetQueryParams{}
-			err := GetParams(&qp, r)
+			err := getParams(&qp, r)
 
 			if len(tc.expectedInvalidField) == 0 {
 				tt.NoError(err)
