@@ -120,8 +120,7 @@ func (handler GetOperationsHandler) GetResourcePage(w HeaderWriter, r *http.Requ
 }
 
 // GetOperationByIDHandler is the action handler for all end-points returning a list of operations.
-type GetOperationByIDHandler struct {
-}
+type GetOperationByIDHandler struct{}
 
 // OperationQuery query struct for operation/id end-point
 type OperationQuery struct {
@@ -139,7 +138,7 @@ func (qp OperationQuery) Validate() error {
 }
 
 // GetResource returns an operation page.
-func (handler GetOperationByIDHandler) GetResource(w HeaderWriter, r *http.Request) (hal.Pageable, error) {
+func (handler GetOperationByIDHandler) GetResource(w HeaderWriter, r *http.Request) (interface{}, error) {
 	ctx := r.Context()
 	qp := OperationQuery{}
 	err := GetParams(&qp, r)

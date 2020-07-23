@@ -20,7 +20,7 @@ type OfferByIDQuery struct {
 type GetOfferByID struct{}
 
 // GetResource returns an offer by id.
-func (handler GetOfferByID) GetResource(w HeaderWriter, r *http.Request) (hal.Pageable, error) {
+func (handler GetOfferByID) GetResource(w HeaderWriter, r *http.Request) (interface{}, error) {
 	ctx := r.Context()
 
 	qp := OfferByIDQuery{}

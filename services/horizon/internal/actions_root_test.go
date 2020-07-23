@@ -26,7 +26,6 @@ func TestRootAction(t *testing.T) {
 		}`)
 	defer server.Close()
 
-	ht.App.horizonVersion = "test-horizon"
 	ht.App.config.StellarCoreURL = server.URL
 	ht.App.config.NetworkPassphrase = "test"
 	ht.App.UpdateStellarCoreInfo()
@@ -38,7 +37,7 @@ func TestRootAction(t *testing.T) {
 		var actual horizon.Root
 		err := json.Unmarshal(w.Body.Bytes(), &actual)
 		ht.Require.NoError(err)
-		ht.Assert.Equal("test-horizon", actual.HorizonVersion)
+		ht.Assert.Equal("devel", actual.HorizonVersion)
 		ht.Assert.Equal("test-core", actual.StellarCoreVersion)
 		ht.Assert.Equal(int32(4), actual.CoreSupportedProtocolVersion)
 		ht.Assert.Equal(int32(3), actual.CurrentProtocolVersion)

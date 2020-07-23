@@ -644,11 +644,6 @@ type FeeStats struct {
 	MaxFee     FeeDistribution `json:"max_fee"`
 }
 
-// PagingToken stub to satisfy Pageable interface
-func (f FeeStats) PagingToken() string {
-	return ""
-}
-
 // TransactionsPage contains records of transaction information returned by Horizon
 type TransactionsPage struct {
 	Links    hal.Links `json:"_links"`
