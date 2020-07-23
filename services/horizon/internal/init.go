@@ -119,17 +119,26 @@ func initLogglyLog(app *App) {
 }
 
 func initDbMetrics(app *App) {
-	app.historyLatestLedgerGauge = metrics.NewGauge()
-	app.historyElderLedgerGauge = metrics.NewGauge()
-	app.coreLatestLedgerGauge = metrics.NewGauge()
-	app.horizonConnGauge = metrics.NewGauge()
 	app.goroutineGauge = metrics.NewGauge()
-	app.metrics.Register("history.latest_ledger", app.historyLatestLedgerGauge)
-	app.metrics.Register("history.elder_ledger", app.historyElderLedgerGauge)
-	app.metrics.Register("stellar_core.latest_ledger", app.coreLatestLedgerGauge)
-	app.metrics.Register("order_book_stream.latest_ledger", app.orderBookStream.LatestLedgerGauge)
-	app.metrics.Register("history.open_connections", app.horizonConnGauge)
 	app.metrics.Register("goroutines", app.goroutineGauge)
+
+	app.historyLatestLedgerGauge = metrics.NewGauge()
+	app.metrics.Register("history.latest_ledger", app.historyLatestLedgerGauge)
+	app.historyElderLedgerGauge = metrics.NewGauge()
+	app.metrics.Register("history.elder_ledger", app.historyElderLedgerGauge)
+	app.coreLatestLedgerGauge = metrics.NewGauge()
+	app.metrics.Register("stellar_core.latest_ledger", app.coreLatestLedgerGauge)
+
+	app.dbOpenConnectionsGauge = metrics.NewGauge()
+	app.metrics.Register("db.open_connections", app.dbOpenConnectionsGauge)
+	app.dbInUseConnectionsGauge = metrics.NewGauge()
+	app.metrics.Register("db.in_use_connections", app.dbInUseConnectionsGauge)
+	app.dbWaitCountGauge = metrics.NewGauge()
+	app.metrics.Register("db.wait_count", app.dbWaitCountGauge)
+	app.dbWaitDurationTimer = metrics.NewTimer()
+	app.metrics.Register("db.wait_duration", app.dbWaitDurationTimer)
+
+	app.metrics.Register("order_book_stream.latest_ledger", app.orderBookStream.LatestLedgerGauge)
 }
 
 // initIngestMetrics registers the metrics for the ingestion into the provided

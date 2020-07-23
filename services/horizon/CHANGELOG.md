@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this
 file. This project adheres to [Semantic Versioning](http://semver.org/).x
 
+## Unreleased
+
+* Add new DB metrics ([#2844](https://github.com/stellar/go/pull/2844)):
+  * `db_in_use_connections` - number of opened DB connections in use (not idle),
+  * `db_wait_count` - number of connections waited for,
+  * `db_wait_duration` - total time blocked waiting for a new connection.
+
 ## v1.6.0
 
 * Add `--parallel-workers` and `--parallel-job-size` to `horizon db reingest range`. `--parallel-workers` will parallelize reingestion using the supplied number of workers. ([#2724](https://github.com/stellar/go/pull/2724))

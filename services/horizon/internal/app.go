@@ -70,7 +70,10 @@ type App struct {
 	metrics                  metrics.Registry
 	historyLatestLedgerGauge metrics.Gauge
 	historyElderLedgerGauge  metrics.Gauge
-	horizonConnGauge         metrics.Gauge
+	dbOpenConnectionsGauge   metrics.Gauge
+	dbInUseConnectionsGauge  metrics.Gauge
+	dbWaitCountGauge         metrics.Gauge
+	dbWaitDurationTimer      metrics.Timer
 	coreLatestLedgerGauge    metrics.Gauge
 	goroutineGauge           metrics.Gauge
 }
@@ -404,12 +407,16 @@ func (a *App) UpdateStellarCoreInfo() {
 // db connections and ledger state
 func (a *App) UpdateMetrics() {
 	a.goroutineGauge.Update(int64(runtime.NumGoroutine()))
+
 	ls := ledger.CurrentState()
 	a.historyLatestLedgerGauge.Update(int64(ls.HistoryLatest))
 	a.historyElderLedgerGauge.Update(int64(ls.HistoryElder))
 	a.coreLatestLedgerGauge.Update(int64(ls.CoreLatest))
 
-	a.horizonConnGauge.Update(int64(a.historyQ.Session.DB.Stats().OpenConnections))
+	a.dbOpenConnectionsGauge.Update(int64(a.historyQ.Session.DB.Stats().OpenConnections))
+	a.dbInUseConnectionsGauge.Update(int64(a.historyQ.Session.DB.Stats().InUse))
+	a.dbWaitCountGauge.Update(int64(a.historyQ.Session.DB.Stats().WaitCount))
+	a.dbWaitDurationTimer.Update(a.historyQ.Session.DB.Stats().WaitDuration)
 }
 
 // DeleteUnretainedHistory forwards to the app's reaper.  See
