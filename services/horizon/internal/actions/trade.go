@@ -237,7 +237,7 @@ type GetTradeAggregationsHandler struct {
 }
 
 // GetResourcePage returns a page of trade aggregations
-func (handler GetTradeAggregationsHandler) GetResourcePage(w HeaderWriter, r *http.Request) ([]hal.Pageable, error) {
+func (handler GetTradeAggregationsHandler) GetResource(w HeaderWriter, r *http.Request) (interface{}, error) {
 	ctx := r.Context()
 	pq, err := GetPageQuery(r)
 	if err != nil {
@@ -261,7 +261,7 @@ func (handler GetTradeAggregationsHandler) GetResourcePage(w HeaderWriter, r *ht
 	if err != nil {
 		return nil, err
 	}
-	response := []hal.Pageable{}
+	aggregations := []horizon.TradeAggregation{}
 	for _, record := range records {
 		var res horizon.TradeAggregation
 		err = resourceadapter.PopulateTradeAggregation(ctx, &res, record)
@@ -269,10 +269,10 @@ func (handler GetTradeAggregationsHandler) GetResourcePage(w HeaderWriter, r *ht
 			return nil, err
 		}
 
-		response = append(response, res)
+		aggregations = append(aggregations, res)
 	}
 
-	return response, nil
+	return handler.buildPage(r, aggregations)
 }
 
 func (handler GetTradeAggregationsHandler) fetchRecords(historyQ *history.Q, qp TradeAggregationsQuery, pq db2.PageQuery) ([]history.TradeAggregation, error) {
@@ -362,7 +362,7 @@ func (handler GetTradeAggregationsHandler) fetchRecords(historyQ *history.Q, qp 
 }
 
 // BuildPage builds a custom hal page for this handler
-func (handler GetTradeAggregationsHandler) BuildPage(r *http.Request, records []hal.Pageable) (interface{}, error) {
+func (handler GetTradeAggregationsHandler) buildPage(r *http.Request, records []horizon.TradeAggregation) (hal.Page, error) {
 	ctx := r.Context()
 	pageQuery, err := GetPageQuery(r, DisableCursorValidation)
 	if err != nil {
@@ -393,7 +393,7 @@ func (handler GetTradeAggregationsHandler) BuildPage(r *http.Request, records []
 	if uint64(len(records)) == 0 {
 		page.Links.Next = page.Links.Self
 	} else {
-		lastRecord := records[len(records)-1].(horizon.TradeAggregation)
+		lastRecord := records[len(records)-1]
 		if page.Order == "asc" {
 			newStartTime := lastRecord.Timestamp + int64(qp.ResolutionFilter)
 			if newStartTime >= qp.EndTimeFilter.ToInt64() {
