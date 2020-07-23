@@ -26,17 +26,6 @@ import (
 	"github.com/stellar/go/support/render/problem"
 )
 
-// appContextMiddleware adds the "app" context into every request, so that subsequence appContextMiddleware
-// or handlers can retrieve a horizon.App instance
-func appContextMiddleware(app *App) func(http.Handler) http.Handler {
-	return func(h http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ctx := withAppContext(r.Context(), app)
-			h.ServeHTTP(w, r.WithContext(ctx))
-		})
-	}
-}
-
 // requestCacheHeadersMiddleware adds caching headers to each response.
 func requestCacheHeadersMiddleware(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -225,23 +214,24 @@ func recoverMiddleware(h http.Handler) http.Handler {
 }
 
 // requestMetricsMiddleware records success and failures using a meter, and times every request
-func requestMetricsMiddleware(h http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		app := AppFromContext(r.Context())
-		mw := newWrapResponseWriter(w, r)
+func requestMetricsMiddleware(web *web) func(http.Handler) http.Handler {
+	return func(h http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			mw := newWrapResponseWriter(w, r)
 
-		app.web.requestTimer.Time(func() {
-			h.ServeHTTP(mw.(http.ResponseWriter), r)
+			web.requestTimer.Time(func() {
+				h.ServeHTTP(mw.(http.ResponseWriter), r)
+			})
+
+			if 200 <= mw.Status() && mw.Status() < 400 {
+				// a success is in [200, 400)
+				web.successMeter.Mark(1)
+			} else if 400 <= mw.Status() && mw.Status() < 600 {
+				// a success is in [400, 600)
+				web.failureMeter.Mark(1)
+			}
 		})
-
-		if 200 <= mw.Status() && mw.Status() < 400 {
-			// a success is in [200, 400)
-			app.web.successMeter.Mark(1)
-		} else if 400 <= mw.Status() && mw.Status() < 600 {
-			// a success is in [400, 600)
-			app.web.failureMeter.Mark(1)
-		}
-	})
+	}
 }
 
 // NewHistoryMiddleware adds session to the request context and ensures Horizon

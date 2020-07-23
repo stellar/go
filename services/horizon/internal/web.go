@@ -122,16 +122,13 @@ func (w *web) mustInstallMiddlewares(app *App, connTimeout time.Duration) {
 	r := w.router
 	r.Use(chimiddleware.StripSlashes)
 
-	//TODO: remove this middleware
-	r.Use(appContextMiddleware(app))
-
 	r.Use(requestCacheHeadersMiddleware)
 	r.Use(chimiddleware.RequestID)
 	r.Use(contextMiddleware)
 	r.Use(xff.Handler)
 	r.Use(loggerMiddleware)
 	r.Use(timeoutMiddleware(connTimeout))
-	r.Use(requestMetricsMiddleware)
+	r.Use(requestMetricsMiddleware(w))
 	r.Use(recoverMiddleware)
 	r.Use(chimiddleware.Compress(flate.DefaultCompression, "application/hal+json"))
 
@@ -146,7 +143,6 @@ func (w *web) mustInstallMiddlewares(app *App, connTimeout time.Duration) {
 
 	// Internal middlewares
 	w.internalRouter.Use(chimiddleware.StripSlashes)
-	w.internalRouter.Use(appContextMiddleware(app))
 	w.internalRouter.Use(chimiddleware.RequestID)
 	w.internalRouter.Use(loggerMiddleware)
 }
