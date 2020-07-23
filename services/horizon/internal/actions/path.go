@@ -109,12 +109,8 @@ var SourceAssetsOrSourceAccountProblem = problem.P{
 		"Both fields cannot be present.",
 }
 
-func (handler FindPathsHandler) BuildPage(r *http.Request, records []hal.Pageable) (interface{}, error) {
-	return buildBasePageFromRecords(records), nil
-}
-
-// GetResourcePage finds a list of strict receive paths
-func (handler FindPathsHandler) GetResourcePage(w HeaderWriter, r *http.Request) ([]hal.Pageable, error) {
+// GetResource finds a list of strict receive paths
+func (handler FindPathsHandler) GetResource(w HeaderWriter, r *http.Request) (interface{}, error) {
 	var err error
 	ctx := r.Context()
 	qp := StrictReceivePathsQuery{}
@@ -171,16 +167,17 @@ func (handler FindPathsHandler) GetResourcePage(w HeaderWriter, r *http.Request)
 	return renderPaths(ctx, records)
 }
 
-func renderPaths(ctx context.Context, records []paths.Path) ([]hal.Pageable, error) {
-	var response []hal.Pageable
+func renderPaths(ctx context.Context, records []paths.Path) (hal.BasePage, error) {
+	var page hal.BasePage
+	page.Init()
 	for _, p := range records {
 		var res horizon.Path
 		if err := resourceadapter.PopulatePath(ctx, &res, p); err != nil {
-			return nil, err
+			return hal.BasePage{}, err
 		}
-		response = append(response, res)
+		page.Add(res)
 	}
-	return response, nil
+	return page, nil
 }
 
 // FindFixedPathsHandler is the http handler for the find fixed payment paths endpoint
@@ -274,12 +271,8 @@ func (q FindFixedPathsQuery) SourceAsset() xdr.Asset {
 	return asset
 }
 
-func (handler FindFixedPathsHandler) BuildPage(r *http.Request, records []hal.Pageable) (interface{}, error) {
-	return buildBasePageFromRecords(records), nil
-}
-
-// GetResourcePage returns a list of strict send paths
-func (handler FindFixedPathsHandler) GetResourcePage(w HeaderWriter, r *http.Request) ([]hal.Pageable, error) {
+// GetResource returns a list of strict send paths
+func (handler FindFixedPathsHandler) GetResource(w HeaderWriter, r *http.Request) (interface{}, error) {
 	var err error
 	ctx := r.Context()
 	qp := FindFixedPathsQuery{}
@@ -341,13 +334,4 @@ func assetsForAddress(r *http.Request, addy string) ([]xdr.Asset, []xdr.Int64, e
 		return nil, nil, err
 	}
 	return historyQ.AssetsForAddress(addy)
-}
-
-func buildBasePageFromRecords(records []hal.Pageable) hal.BasePage {
-	var page hal.BasePage
-	page.Init()
-	for _, record := range records {
-		page.Add(record)
-	}
-	return page
 }

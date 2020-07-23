@@ -91,7 +91,7 @@ func (we *web) streamableEndpointHandler(jfn interface{}, streamSingleObjectEnab
 // Note that we don't return an error if both jfn and sfn are not nil. sfn will
 // simply take precedence.
 func (we *web) streamHandler(jfn interface{}, sfn streamFunc, params interface{}) http.HandlerFunc {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
 		stream := sse.NewStream(ctx, w)
@@ -190,7 +190,7 @@ func (we *web) streamHandler(jfn interface{}, sfn streamFunc, params interface{}
 			stream.Done()
 			return
 		}
-	})
+	}
 }
 
 // streamShowActionHandler gets the showAction query params from the request
@@ -381,32 +381,15 @@ type pageAction interface {
 	GetResourcePage(w actions.HeaderWriter, r *http.Request) ([]hal.Pageable, error)
 }
 
-type pageBuilder interface {
-	BuildPage(r *http.Request, records []hal.Pageable) (interface{}, error)
-}
-
 type pageActionHandler struct {
-	action            pageAction
-	streamable        bool
-	streamHandler     sse.StreamHandler
-	repeatableRead    bool
-	customPageBuilder pageBuilder
+	action         pageAction
+	streamable     bool
+	streamHandler  sse.StreamHandler
+	repeatableRead bool
 }
 
 func restPageHandler(action pageAction) pageActionHandler {
 	return pageActionHandler{action: action}
-}
-
-type customBuiltPageAction interface {
-	pageAction
-	pageBuilder
-}
-
-func restCustomBuiltPageHandler(action customBuiltPageAction) pageActionHandler {
-	return pageActionHandler{
-		action:            action,
-		customPageBuilder: action,
-	}
 }
 
 // streamableStatePageHandler creates a streamable page handler than generates
@@ -444,13 +427,7 @@ func (handler pageActionHandler) renderPage(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	var page interface{}
-
-	if handler.customPageBuilder != nil {
-		page, err = handler.customPageBuilder.BuildPage(r, records)
-	} else {
-		page, err = buildPage(r, records)
-	}
+	page, err := buildPage(r, records)
 
 	if err != nil {
 		problem.Render(r.Context(), w, err)

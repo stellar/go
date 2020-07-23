@@ -212,19 +212,19 @@ func (w *web) mustInstallActions(config Config,
 
 		r.Method(http.MethodGet, "/assets", restPageHandler(actions.AssetStatsHandler{}))
 
-		findPaths := restCustomBuiltPageHandler(actions.FindPathsHandler{
+		findPaths := objectActionHandler{actions.FindPathsHandler{
 			StaleThreshold:       config.StaleThreshold,
 			SetLastLedgerHeader:  true,
 			MaxPathLength:        config.MaxPathLength,
 			MaxAssetsParamLength: maxAssetsForPathFinding,
 			PathFinder:           pathFinder,
-		})
-		findFixedPaths := restCustomBuiltPageHandler(actions.FindFixedPathsHandler{
+		}}
+		findFixedPaths := objectActionHandler{actions.FindFixedPathsHandler{
 			MaxPathLength:        config.MaxPathLength,
 			SetLastLedgerHeader:  true,
 			MaxAssetsParamLength: maxAssetsForPathFinding,
 			PathFinder:           pathFinder,
-		})
+		}}
 
 		r.Method(http.MethodGet, "/paths", findPaths)
 		r.Method(http.MethodGet, "/paths/strict-receive", findPaths)
@@ -312,7 +312,7 @@ func (w *web) mustInstallActions(config Config,
 
 		// trading related endpoints
 		r.Method(http.MethodGet, "/trades", streamableHistoryPageHandler(actions.GetTradesHandler{}, streamHandler))
-		r.Method(http.MethodGet, "/trade_aggregations", restCustomBuiltPageHandler(actions.GetTradeAggregationsHandler{}))
+		r.Method(http.MethodGet, "/trade_aggregations", objectActionHandler{actions.GetTradeAggregationsHandler{}})
 		// /offers/{offer_id} has been created above so we need to use absolute
 		// routes here.
 		r.Method(http.MethodGet, "/offers/{offer_id}/trades", streamableHistoryPageHandler(actions.GetTradesHandler{}, streamHandler))

@@ -32,18 +32,18 @@ func mockPathFindingClient(
 	session *db.Session,
 ) test.RequestHelper {
 	router := chi.NewRouter()
-	findPaths := restCustomBuiltPageHandler(actions.FindPathsHandler{
+	findPaths := objectActionHandler{actions.FindPathsHandler{
 		PathFinder:           finder,
 		MaxAssetsParamLength: maxAssetsParamLength,
 		MaxPathLength:        3,
 		SetLastLedgerHeader:  true,
-	})
-	findFixedPaths := restCustomBuiltPageHandler(actions.FindFixedPathsHandler{
+	}}
+	findFixedPaths := objectActionHandler{actions.FindFixedPathsHandler{
 		PathFinder:           finder,
 		MaxAssetsParamLength: maxAssetsParamLength,
 		MaxPathLength:        3,
 		SetLastLedgerHeader:  true,
-	})
+	}}
 
 	router.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
