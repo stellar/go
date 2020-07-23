@@ -4,6 +4,7 @@ import (
 	"compress/flate"
 	"context"
 	"database/sql"
+
 	"net/http"
 	"net/http/pprof"
 	"strings"
@@ -11,7 +12,6 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/stellar/go/services/horizon/internal/txsub"
 
 	"github.com/go-chi/chi"
 	chimiddleware "github.com/go-chi/chi/middleware"
@@ -27,8 +27,10 @@ import (
 	"github.com/stellar/go/services/horizon/internal/paths"
 	hProblem "github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/render/sse"
+	"github.com/stellar/go/services/horizon/internal/txsub"
 	"github.com/stellar/go/services/horizon/internal/txsub/sequence"
 	"github.com/stellar/go/support/db"
+	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/support/render/problem"
 )
@@ -50,7 +52,7 @@ type web struct {
 
 	historyQ *history.Q
 
-	requestDuration *prometheus.SummaryVec
+	requestDurationSummary *prometheus.SummaryVec
 }
 
 func init() {
@@ -79,13 +81,36 @@ func mustInitWeb(ctx context.Context, hq *history.Q, updateFreq time.Duration, t
 		historyQ:           hq,
 		sseUpdateFrequency: updateFreq,
 		staleThreshold:     threshold,
-		requestDuration: prometheus.NewSummaryVec(
+		requestDurationSummary: prometheus.NewSummaryVec(
 			prometheus.SummaryOpts{
 				Namespace: "horizon", Subsystem: "http", Name: "requests_duration_seconds",
 			},
 			[]string{"status", "route", "streaming", "method"},
 		),
 	}
+}
+
+// getAccountInfo returns the information about an account based on the provided param.
+func (w *web) getAccountInfo(ctx context.Context, qp *showActionQueryParams) (interface{}, error) {
+	// Use AppFromContext to prevent larger refactoring of actions code. Will
+	// be removed once this endpoint is migrated to use new actions design.
+	horizonSession, err := w.horizonSession(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting horizon db session")
+	}
+
+	err = horizonSession.BeginTx(&sql.TxOptions{
+		Isolation: sql.LevelRepeatableRead,
+		ReadOnly:  true,
+	})
+	if err != nil {
+		return nil, errors.Wrap(err, "error starting transaction")
+	}
+
+	defer horizonSession.Rollback()
+	historyQ := &history.Q{horizonSession}
+
+	return actions.AccountInfo(ctx, historyQ, qp.AccountID)
 }
 
 // mustInstallMiddlewares installs the middleware stack used for horizon onto the
@@ -99,14 +124,11 @@ func (w *web) mustInstallMiddlewares(app *App, connTimeout time.Duration) {
 	r := w.router
 	r.Use(chimiddleware.StripSlashes)
 
-	//TODO: remove this middleware
-	r.Use(appContextMiddleware(app))
-
 	r.Use(requestCacheHeadersMiddleware)
 	r.Use(chimiddleware.RequestID)
 	r.Use(contextMiddleware)
 	r.Use(xff.Handler)
-	r.Use(loggerMiddleware)
+	r.Use(loggerMiddleware(app.web.requestDurationSummary))
 	r.Use(timeoutMiddleware(connTimeout))
 	r.Use(recoverMiddleware)
 	r.Use(chimiddleware.Compress(flate.DefaultCompression, "application/hal+json"))
@@ -122,9 +144,8 @@ func (w *web) mustInstallMiddlewares(app *App, connTimeout time.Duration) {
 
 	// Internal middlewares
 	w.internalRouter.Use(chimiddleware.StripSlashes)
-	w.internalRouter.Use(appContextMiddleware(app))
 	w.internalRouter.Use(chimiddleware.RequestID)
-	w.internalRouter.Use(loggerMiddleware)
+	w.internalRouter.Use(loggerMiddleware(app.web.requestDurationSummary))
 }
 
 type historyLedgerSourceFactory struct {
@@ -192,19 +213,19 @@ func (w *web) mustInstallActions(config Config,
 
 		r.Method(http.MethodGet, "/assets", restPageHandler(actions.AssetStatsHandler{}))
 
-		findPaths := restCustomBuiltPageHandler(actions.FindPathsHandler{
+		findPaths := objectActionHandler{actions.FindPathsHandler{
 			StaleThreshold:       config.StaleThreshold,
 			SetLastLedgerHeader:  true,
 			MaxPathLength:        config.MaxPathLength,
 			MaxAssetsParamLength: maxAssetsForPathFinding,
 			PathFinder:           pathFinder,
-		})
-		findFixedPaths := restCustomBuiltPageHandler(actions.FindFixedPathsHandler{
+		}}
+		findFixedPaths := objectActionHandler{actions.FindFixedPathsHandler{
 			MaxPathLength:        config.MaxPathLength,
 			SetLastLedgerHeader:  true,
 			MaxAssetsParamLength: maxAssetsForPathFinding,
 			PathFinder:           pathFinder,
-		})
+		}}
 
 		r.Method(http.MethodGet, "/paths", findPaths)
 		r.Method(http.MethodGet, "/paths/strict-receive", findPaths)
@@ -292,7 +313,7 @@ func (w *web) mustInstallActions(config Config,
 
 		// trading related endpoints
 		r.Method(http.MethodGet, "/trades", streamableHistoryPageHandler(actions.GetTradesHandler{}, streamHandler))
-		r.Method(http.MethodGet, "/trade_aggregations", restCustomBuiltPageHandler(actions.GetTradeAggregationsHandler{}))
+		r.Method(http.MethodGet, "/trade_aggregations", objectActionHandler{actions.GetTradeAggregationsHandler{}})
 		// /offers/{offer_id} has been created above so we need to use absolute
 		// routes here.
 		r.Method(http.MethodGet, "/offers/{offer_id}/trades", streamableHistoryPageHandler(actions.GetTradesHandler{}, streamHandler))

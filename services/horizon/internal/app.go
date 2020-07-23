@@ -10,10 +10,12 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/stellar/throttled"
+	"gopkg.in/tylerb/graceful.v1"
+
 	"github.com/stellar/go/clients/stellarcore"
 	proto "github.com/stellar/go/protocols/stellarcore"
 	"github.com/stellar/go/services/horizon/internal/actions"
-	horizonContext "github.com/stellar/go/services/horizon/internal/context"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/expingest"
 	"github.com/stellar/go/services/horizon/internal/ledger"
@@ -26,8 +28,6 @@ import (
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
-	"github.com/stellar/throttled"
-	graceful "gopkg.in/tylerb/graceful.v1"
 )
 
 type coreSettingsStore struct {
@@ -526,23 +526,7 @@ func (a *App) run() {
 	}
 }
 
-// withAppContext create a context on from the App type.
-func withAppContext(ctx context.Context, a *App) context.Context {
-	return context.WithValue(ctx, &horizonContext.AppContextKey, a)
-}
-
 // GetRateLimiter returns the HTTPRateLimiter of the App.
 func (a *App) GetRateLimiter() *throttled.HTTPRateLimiter {
 	return a.web.rateLimiter
-}
-
-// AppFromContext returns the set app, if one has been set, from the
-// provided context returns nil if no app has been set.
-func AppFromContext(ctx context.Context) *App {
-	if ctx == nil {
-		return nil
-	}
-
-	val, _ := ctx.Value(&horizonContext.AppContextKey).(*App)
-	return val
 }

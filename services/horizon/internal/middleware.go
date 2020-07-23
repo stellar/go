@@ -28,17 +28,6 @@ import (
 	"github.com/stellar/go/support/render/problem"
 )
 
-// appContextMiddleware adds the "app" context into every request, so that subsequence appContextMiddleware
-// or handlers can retrieve a horizon.App instance
-func appContextMiddleware(app *App) func(http.Handler) http.Handler {
-	return func(h http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ctx := withAppContext(r.Context(), app)
-			h.ServeHTTP(w, r.WithContext(ctx))
-		})
-	}
-}
-
 // requestCacheHeadersMiddleware adds caching headers to each response.
 func requestCacheHeadersMiddleware(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -77,27 +66,29 @@ func newWrapResponseWriter(w http.ResponseWriter, r *http.Request) middleware.Wr
 }
 
 // loggerMiddleware logs http requests and resposnes to the logging subsytem of horizon.
-func loggerMiddleware(h http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
-		mw := newWrapResponseWriter(w, r)
+func loggerMiddleware(requestDurationSummary *prometheus.SummaryVec) func(next http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx := r.Context()
+			mw := newWrapResponseWriter(w, r)
 
-		logger := log.WithField("req", middleware.GetReqID(ctx))
-		ctx = log.Set(ctx, logger)
+			logger := log.WithField("req", middleware.GetReqID(ctx))
+			ctx = log.Set(ctx, logger)
 
-		// Checking `Accept` header from user request because if the streaming connection
-		// is reset before sending the first event no Content-Type header is sent in a response.
-		acceptHeader := r.Header.Get("Accept")
-		streaming := strings.Contains(acceptHeader, render.MimeEventStream)
+			// Checking `Accept` header from user request because if the streaming connection
+			// is reset before sending the first event no Content-Type header is sent in a response.
+			acceptHeader := r.Header.Get("Accept")
+			streaming := strings.Contains(acceptHeader, render.MimeEventStream)
 
-		logStartOfRequest(ctx, r, streaming)
-		then := time.Now()
+			logStartOfRequest(ctx, r, streaming)
+			then := time.Now()
 
-		h.ServeHTTP(mw, r.WithContext(ctx))
+			next.ServeHTTP(mw, r.WithContext(ctx))
 
-		duration := time.Since(then)
-		logEndOfRequest(ctx, r, duration, mw, streaming)
-	})
+			duration := time.Since(then)
+			logEndOfRequest(ctx, r, requestDurationSummary, duration, mw, streaming)
+		})
+	}
 }
 
 // timeoutMiddleware ensures the request is terminated after the given timeout
@@ -164,7 +155,7 @@ func logStartOfRequest(ctx context.Context, r *http.Request, streaming bool) {
 	}).Info("Starting request")
 }
 
-func logEndOfRequest(ctx context.Context, r *http.Request, duration time.Duration, mw middleware.WrapResponseWriter, streaming bool) {
+func logEndOfRequest(ctx context.Context, r *http.Request, requestDurationSummary *prometheus.SummaryVec, duration time.Duration, mw middleware.WrapResponseWriter, streaming bool) {
 	routePattern := chi.RouteContext(r.Context()).RoutePattern()
 	// Can be empty when request did not reached the final route (ex. blocked by
 	// a middleware). More info: https://github.com/go-chi/chi/issues/270
@@ -196,8 +187,7 @@ func logEndOfRequest(ctx context.Context, r *http.Request, duration time.Duratio
 		"referer":        referer,
 	}).Info("Finished request")
 
-	app := AppFromContext(r.Context())
-	app.web.requestDuration.With(prometheus.Labels{
+	requestDurationSummary.With(prometheus.Labels{
 		"status":    strconv.FormatInt(int64(mw.Status()), 10),
 		"route":     routePattern,
 		"streaming": strconv.FormatBool(streaming),

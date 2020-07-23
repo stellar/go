@@ -47,7 +47,7 @@ func (handler GetAccountDataHandler) WriteRawResponse(w io.Writer, r *http.Reque
 
 func loadAccountData(r *http.Request) (history.Data, error) {
 	qp := AccountDataQuery{}
-	err := GetParams(&qp, r)
+	err := getParams(&qp, r)
 	if err != nil {
 		return history.Data{}, err
 	}
