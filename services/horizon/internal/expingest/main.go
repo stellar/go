@@ -197,10 +197,12 @@ func NewSystem(config Config) (System, error) {
 func (s *system) initMetrics() {
 	s.metrics.LedgerIngestionDuration = prometheus.NewSummary(prometheus.SummaryOpts{
 		Namespace: "horizon", Subsystem: "ingest", Name: "ledger_ingestion_duration_seconds",
+		Help: "ledger ingestion durations, sliding window = 10m",
 	})
 
 	s.metrics.StateVerifyDuration = prometheus.NewSummary(prometheus.SummaryOpts{
 		Namespace: "horizon", Subsystem: "ingest", Name: "state_verify_duration_seconds",
+		Help: "state verification durations, sliding window = 10m",
 	})
 }
 

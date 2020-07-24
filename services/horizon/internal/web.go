@@ -84,6 +84,7 @@ func mustInitWeb(ctx context.Context, hq *history.Q, updateFreq time.Duration, t
 		requestDurationSummary: prometheus.NewSummaryVec(
 			prometheus.SummaryOpts{
 				Namespace: "horizon", Subsystem: "http", Name: "requests_duration_seconds",
+				Help: "HTTP requests durations, sliding window = 10m",
 			},
 			[]string{"status", "route", "streaming", "method"},
 		),

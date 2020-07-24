@@ -66,14 +66,14 @@ type App struct {
 	ticks           *time.Ticker
 
 	// metrics
-	prometheusRegistry       *prometheus.Registry
-	historyLatestLedgerGauge prometheus.Gauge
-	historyElderLedgerGauge  prometheus.Gauge
-	dbOpenConnectionsGauge   prometheus.Gauge
-	dbInUseConnectionsGauge  prometheus.Gauge
-	dbWaitCountCounter       prometheus.CounterFunc
-	dbWaitDurationCounter    prometheus.CounterFunc
-	coreLatestLedgerGauge    prometheus.Gauge
+	prometheusRegistry         *prometheus.Registry
+	historyLatestLedgerCounter prometheus.CounterFunc
+	historyElderLedgerCounter  prometheus.CounterFunc
+	dbOpenConnectionsGauge     prometheus.GaugeFunc
+	dbInUseConnectionsGauge    prometheus.GaugeFunc
+	dbWaitCountCounter         prometheus.CounterFunc
+	dbWaitDurationCounter      prometheus.CounterFunc
+	coreLatestLedgerCounter    prometheus.CounterFunc
 }
 
 func (a *App) GetCoreSettings() actions.CoreSettings {
@@ -401,18 +401,6 @@ func (a *App) UpdateStellarCoreInfo() {
 	a.coreSettings.set(resp)
 }
 
-// UpdateMetrics triggers a refresh of several metrics gauges, such as open
-// db connections and ledger state
-func (a *App) UpdateMetrics() {
-	ls := ledger.CurrentState()
-	a.historyLatestLedgerGauge.Set(float64(ls.HistoryLatest))
-	a.historyElderLedgerGauge.Set(float64(ls.HistoryElder))
-	a.coreLatestLedgerGauge.Set(float64(ls.CoreLatest))
-
-	a.dbOpenConnectionsGauge.Set(float64(a.historyQ.Session.DB.Stats().OpenConnections))
-	a.dbInUseConnectionsGauge.Set(float64(a.historyQ.Session.DB.Stats().InUse))
-}
-
 // DeleteUnretainedHistory forwards to the app's reaper.  See
 // `reap.DeleteUnretainedHistory` for details
 func (a *App) DeleteUnretainedHistory() error {
@@ -436,8 +424,6 @@ func (a *App) Tick() {
 	go func() { a.submitter.Tick(a.ctx); wg.Done() }()
 	wg.Wait()
 
-	// finally, update metrics
-	a.UpdateMetrics()
 	log.Debug("finished ticking app")
 }
 

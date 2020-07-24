@@ -9,6 +9,7 @@ import (
 	"github.com/stellar/go/exp/orderbook"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/expingest"
+	"github.com/stellar/go/services/horizon/internal/ledger"
 	"github.com/stellar/go/services/horizon/internal/simplepath"
 	"github.com/stellar/go/services/horizon/internal/txsub"
 	"github.com/stellar/go/services/horizon/internal/txsub/sequence"
@@ -118,35 +119,54 @@ func initLogglyLog(app *App) {
 }
 
 func initDbMetrics(app *App) {
-	app.historyLatestLedgerGauge = prometheus.NewGauge(prometheus.GaugeOpts{
-		Namespace: "horizon", Subsystem: "history", Name: "latest_ledger",
-	})
-	app.prometheusRegistry.MustRegister(app.historyLatestLedgerGauge)
+	app.historyLatestLedgerCounter = prometheus.NewCounterFunc(
+		prometheus.CounterOpts{Namespace: "horizon", Subsystem: "history", Name: "latest_ledger"},
+		func() float64 {
+			ls := ledger.CurrentState()
+			return float64(ls.HistoryLatest)
+		},
+	)
+	app.prometheusRegistry.MustRegister(app.historyLatestLedgerCounter)
 
-	app.historyElderLedgerGauge = prometheus.NewGauge(prometheus.GaugeOpts{
-		Namespace: "horizon", Subsystem: "history", Name: "elder_ledger",
-	})
-	app.prometheusRegistry.MustRegister(app.historyElderLedgerGauge)
+	app.historyElderLedgerCounter = prometheus.NewCounterFunc(
+		prometheus.CounterOpts{Namespace: "horizon", Subsystem: "history", Name: "elder_ledger"},
+		func() float64 {
+			ls := ledger.CurrentState()
+			return float64(ls.HistoryElder)
+		},
+	)
+	app.prometheusRegistry.MustRegister(app.historyElderLedgerCounter)
 
-	app.coreLatestLedgerGauge = prometheus.NewGauge(prometheus.GaugeOpts{
-		Namespace: "horizon", Subsystem: "stellar_core", Name: "latest_ledger",
-	})
-	app.prometheusRegistry.MustRegister(app.coreLatestLedgerGauge)
+	app.coreLatestLedgerCounter = prometheus.NewCounterFunc(
+		prometheus.CounterOpts{Namespace: "horizon", Subsystem: "stellar_core", Name: "latest_ledger"},
+		func() float64 {
+			ls := ledger.CurrentState()
+			return float64(ls.CoreLatest)
+		},
+	)
+	app.prometheusRegistry.MustRegister(app.coreLatestLedgerCounter)
 
-	app.dbOpenConnectionsGauge = prometheus.NewGauge(prometheus.GaugeOpts{
-		Namespace: "horizon", Subsystem: "db", Name: "open_connections",
-	})
+	app.dbOpenConnectionsGauge = prometheus.NewGaugeFunc(
+		prometheus.GaugeOpts{Namespace: "horizon", Subsystem: "db", Name: "open_connections"},
+		func() float64 {
+			return float64(app.historyQ.Session.DB.Stats().OpenConnections)
+		},
+	)
 	app.prometheusRegistry.MustRegister(app.dbOpenConnectionsGauge)
 
-	app.dbInUseConnectionsGauge = prometheus.NewGauge(prometheus.GaugeOpts{
-		Namespace: "horizon", Subsystem: "db", Name: "in_use_connections",
-	})
+	app.dbInUseConnectionsGauge = prometheus.NewGaugeFunc(
+		prometheus.GaugeOpts{Namespace: "horizon", Subsystem: "db", Name: "in_use_connections"},
+		func() float64 {
+			return float64(app.historyQ.Session.DB.Stats().InUse)
+		},
+	)
 	app.prometheusRegistry.MustRegister(app.dbInUseConnectionsGauge)
 
-	// dbWaitCountCounter and dbWaitDurationCounter are CounterFuncs because
-	// the standard Counter does not allow setting values to arbitrary numbers.
 	app.dbWaitCountCounter = prometheus.NewCounterFunc(
-		prometheus.CounterOpts{Namespace: "horizon", Subsystem: "db", Name: "wait_count_total"},
+		prometheus.CounterOpts{
+			Namespace: "horizon", Subsystem: "db", Name: "wait_count_total",
+			Help: "total number of number of connections waited for",
+		},
 		func() float64 {
 			return float64(app.historyQ.Session.DB.Stats().WaitCount)
 		},
@@ -154,7 +174,10 @@ func initDbMetrics(app *App) {
 	app.prometheusRegistry.MustRegister(app.dbWaitCountCounter)
 
 	app.dbWaitDurationCounter = prometheus.NewCounterFunc(
-		prometheus.CounterOpts{Namespace: "horizon", Subsystem: "db", Name: "wait_duration_seconds_total"},
+		prometheus.CounterOpts{
+			Namespace: "horizon", Subsystem: "db", Name: "wait_duration_seconds_total",
+			Help: "total time blocked waiting for a new connection",
+		},
 		func() float64 {
 			return float64(app.historyQ.Session.DB.Stats().WaitDuration)
 		},

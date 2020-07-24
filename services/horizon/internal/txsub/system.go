@@ -299,6 +299,7 @@ func (sys *System) Init() {
 
 		sys.Metrics.SubmissionDuration = prometheus.NewSummary(prometheus.SummaryOpts{
 			Namespace: "horizon", Subsystem: "txsub", Name: "submission_duration_seconds",
+			Help: "submission durations to Stellar-Core, sliding window = 10m",
 		})
 		sys.Metrics.FailedSubmissionsCounter = prometheus.NewCounter(prometheus.CounterOpts{
 			Namespace: "horizon", Subsystem: "txsub", Name: "failed",
