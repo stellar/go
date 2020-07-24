@@ -44,8 +44,8 @@ func MustNewCreditAsset(code string, issuer string) Asset {
 	return a
 }
 
-// MustNewAllowTrustAsset returns a new allow trust asset, panicking if it can't.
-func MustNewAllowTrustAsset(code string) AllowTrustOpAsset {
+// NewAllowTrustAsset returns a new allow trust asset, panicking if it can't.
+func NewAllowTrustAsset(code string) (AllowTrustOpAsset, error) {
 	a := AllowTrustOpAsset{}
 	length := len(code)
 	switch {
@@ -60,7 +60,17 @@ func MustNewAllowTrustAsset(code string) AllowTrustOpAsset {
 		a.Type = AssetTypeAssetTypeCreditAlphanum12
 		a.AssetCode12 = &newCode
 	default:
-		panic("Asset code length is invalid")
+		return a, errors.New("Asset code length is invalid")
+	}
+
+	return a, nil
+}
+
+// MustNewAllowTrustAsset returns a new allow trust asset, panicking if it can't.
+func MustNewAllowTrustAsset(code string) AllowTrustOpAsset {
+	a, err := NewAllowTrustAsset(code)
+	if err != nil {
+		panic(err)
 	}
 
 	return a

@@ -16,7 +16,7 @@ var (
 var rootCmd = &cobra.Command{
 	Use:   "xdr2go [base64-encoded XDR object]",
 	Short: "xdr2go transforms base64 encoded XDR objects into a pretty Go code",
-	RunE: run(cmd, args),
+	RunE:  run,
 }
 
 func main() {
