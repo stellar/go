@@ -1,91 +1,114 @@
 package actions
 
 import (
-	"context"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/stellar/go/protocols/horizon"
-	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/test"
+	supportProblem "github.com/stellar/go/support/render/problem"
 )
 
-var defaultPage db2.PageQuery = db2.PageQuery{
-	Order:  db2.OrderAscending,
-	Limit:  db2.DefaultPageSize,
-	Cursor: "",
-}
-
-func TestTransactionPage(t *testing.T) {
+func TestGetTransactionsHandler(t *testing.T) {
 	tt := test.Start(t).Scenario("base")
 	defer tt.Finish()
 
-	ctx := context.Background()
+	q := &history.Q{tt.HorizonSession()}
+	handler := GetTransactionsHandler{}
 
 	// filter by account
-	page, err := TransactionPage(ctx, &history.Q{tt.HorizonSession()}, "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H", 0, true, defaultPage)
+	records, err := handler.GetResourcePage(
+		httptest.NewRecorder(),
+		makeRequest(
+			t, map[string]string{
+				"account_id":     "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+				"include_failed": "true",
+			}, map[string]string{}, q.Session,
+		),
+	)
 	tt.Assert.NoError(err)
-	tt.Assert.Equal(3, len(page.Embedded.Records))
+	tt.Assert.Len(records, 3)
 
-	page, err = TransactionPage(ctx, &history.Q{tt.HorizonSession()}, "GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2", 0, true, defaultPage)
+	records, err = handler.GetResourcePage(
+		httptest.NewRecorder(),
+		makeRequest(
+			t, map[string]string{
+				"account_id":     "GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2",
+				"include_failed": "true",
+			}, map[string]string{}, q.Session,
+		),
+	)
 	tt.Assert.NoError(err)
-	tt.Assert.Equal(1, len(page.Embedded.Records))
+	tt.Assert.Len(records, 1)
 
-	page, err = TransactionPage(ctx, &history.Q{tt.HorizonSession()}, "GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU", 0, true, defaultPage)
+	records, err = handler.GetResourcePage(
+		httptest.NewRecorder(),
+		makeRequest(
+			t, map[string]string{
+				"account_id":     "GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU",
+				"include_failed": "true",
+			}, map[string]string{}, q.Session,
+		),
+	)
 	tt.Assert.NoError(err)
-	tt.Assert.Equal(2, len(page.Embedded.Records))
+	tt.Assert.Len(records, 2)
 
-	// filter by ledger
-	page, err = TransactionPage(ctx, &history.Q{tt.HorizonSession()}, "", 1, true, defaultPage)
+	// // filter by ledger
+	records, err = handler.GetResourcePage(
+		httptest.NewRecorder(),
+		makeRequest(
+			t, map[string]string{
+				"ledger_id":      "1",
+				"include_failed": "true",
+			}, map[string]string{}, q.Session,
+		),
+	)
 	tt.Assert.NoError(err)
-	tt.Assert.Equal(0, len(page.Embedded.Records))
+	tt.Assert.Len(records, 0)
 
-	page, err = TransactionPage(ctx, &history.Q{tt.HorizonSession()}, "", 2, true, defaultPage)
+	records, err = handler.GetResourcePage(
+		httptest.NewRecorder(),
+		makeRequest(
+			t, map[string]string{
+				"ledger_id":      "2",
+				"include_failed": "true",
+			}, map[string]string{}, q.Session,
+		),
+	)
 	tt.Assert.NoError(err)
-	tt.Assert.Equal(3, len(page.Embedded.Records))
+	tt.Assert.Len(records, 3)
 
-	page, err = TransactionPage(ctx, &history.Q{tt.HorizonSession()}, "", 3, true, defaultPage)
+	records, err = handler.GetResourcePage(
+		httptest.NewRecorder(),
+		makeRequest(
+			t, map[string]string{
+				"ledger_id":      "3",
+				"include_failed": "true",
+			}, map[string]string{}, q.Session,
+		),
+	)
 	tt.Assert.NoError(err)
-	tt.Assert.Equal(1, len(page.Embedded.Records))
+	tt.Assert.Len(records, 1)
 
-	// conflict fields
-	_, err = TransactionPage(ctx, &history.Q{tt.HorizonSession()}, "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H", 1, true, defaultPage)
-	tt.Assert.Error(err)
-}
-
-func TestLoadTransactionRecords(t *testing.T) {
-	tt := test.Start(t).Scenario("base")
-	defer tt.Finish()
-
-	// filter by account
-	records, err := loadTransactionRecords(&history.Q{tt.HorizonSession()}, "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H", 0, true, defaultPage)
-	tt.Assert.NoError(err)
-	tt.Assert.Equal(3, len(records))
-
-	records, err = loadTransactionRecords(&history.Q{tt.HorizonSession()}, "GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2", 0, true, defaultPage)
-	tt.Assert.NoError(err)
-	tt.Assert.Equal(1, len(records))
-
-	records, err = loadTransactionRecords(&history.Q{tt.HorizonSession()}, "GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU", 0, true, defaultPage)
-	tt.Assert.NoError(err)
-	tt.Assert.Equal(2, len(records))
-
-	// filter by ledger
-	records, err = loadTransactionRecords(&history.Q{tt.HorizonSession()}, "", 1, true, defaultPage)
-	tt.Assert.NoError(err)
-	tt.Assert.Equal(0, len(records))
-
-	records, err = loadTransactionRecords(&history.Q{tt.HorizonSession()}, "", 2, true, defaultPage)
-	tt.Assert.NoError(err)
-	tt.Assert.Equal(3, len(records))
-
-	records, err = loadTransactionRecords(&history.Q{tt.HorizonSession()}, "", 3, true, defaultPage)
-	tt.Assert.NoError(err)
-	tt.Assert.Equal(1, len(records))
-
-	// conflict fields
-	_, err = loadTransactionRecords(&history.Q{tt.HorizonSession()}, "GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2", 1, true, defaultPage)
-	tt.Assert.Error(err)
+	records, err = handler.GetResourcePage(
+		httptest.NewRecorder(),
+		makeRequest(
+			t, map[string]string{
+				"account_id":     "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+				"ledger_id":      "3",
+				"include_failed": "true",
+			}, map[string]string{}, q.Session,
+		),
+	)
+	tt.Assert.IsType(&supportProblem.P{}, err)
+	p := err.(*supportProblem.P)
+	tt.Assert.Equal("bad_request", p.Type)
+	tt.Assert.Equal("filters", p.Extras["invalid_field"])
+	tt.Assert.Equal(
+		"Use a single filter for transaction, you can only use one of account_id or ledger_id",
+		p.Extras["reason"],
+	)
 }
 
 func checkOuterHashResponse(
@@ -130,22 +153,21 @@ func TestFeeBumpTransactionPage(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &history.Q{tt.HorizonSession()}
 	fixture := history.FeeBumpScenario(tt, q, true)
+	handler := GetTransactionsHandler{}
 
-	page, err := TransactionPage(
-		context.Background(),
-		q,
-		"",
-		0,
-		false,
-		db2.PageQuery{Cursor: "", Limit: 10, Order: db2.OrderAscending},
+	records, err := handler.GetResourcePage(
+		httptest.NewRecorder(),
+		makeRequest(
+			t, map[string]string{}, map[string]string{}, q.Session,
+		),
 	)
 	tt.Assert.NoError(err)
-	tt.Assert.Len(page.Embedded.Records, 2)
+	tt.Assert.Len(records, 2)
 
-	feeBumpResponse := page.Embedded.Records[0].(horizon.Transaction)
+	feeBumpResponse := records[0].(horizon.Transaction)
 	checkOuterHashResponse(tt, fixture, feeBumpResponse)
 
-	normalTxResponse := page.Embedded.Records[1].(horizon.Transaction)
+	normalTxResponse := records[1].(horizon.Transaction)
 	tt.Assert.Equal(fixture.NormalTransaction.TransactionHash, normalTxResponse.ID)
 }
 
@@ -156,13 +178,30 @@ func TestFeeBumpTransactionResource(t *testing.T) {
 	q := &history.Q{tt.HorizonSession()}
 	fixture := history.FeeBumpScenario(tt, q, true)
 
-	byOuterHash, err := TransactionResource(context.Background(), q, fixture.OuterHash)
+	handler := GetTransactionByHashHandler{}
+	resource, err := handler.GetResource(
+		httptest.NewRecorder(),
+		makeRequest(
+			t, map[string]string{}, map[string]string{
+				"tx_id": fixture.OuterHash,
+			}, q.Session,
+		),
+	)
 	tt.Assert.NoError(err)
-
+	byOuterHash := resource.(horizon.Transaction)
 	checkOuterHashResponse(tt, fixture, byOuterHash)
 
-	byInnerHash, err := TransactionResource(context.Background(), q, fixture.InnerHash)
+	resource, err = handler.GetResource(
+		httptest.NewRecorder(),
+		makeRequest(
+			t, map[string]string{}, map[string]string{
+				"tx_id": fixture.InnerHash,
+			}, q.Session,
+		),
+	)
 	tt.Assert.NoError(err)
+
+	byInnerHash := resource.(horizon.Transaction)
 
 	tt.Assert.NotEqual(byOuterHash.Hash, byInnerHash.Hash)
 	tt.Assert.NotEqual(byOuterHash.ID, byInnerHash.ID)

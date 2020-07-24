@@ -171,7 +171,7 @@ func TestStateMiddleware(t *testing.T) {
 		{
 			name:                "responds with still ingesting if lastIngestedLedger <= 0",
 			stateInvalid:        false,
-			latestHistoryLedger: 0,
+			latestHistoryLedger: 1,
 			lastIngestedLedger:  0,
 			ingestionVersion:    expingest.CurrentVersion,
 			sseRequest:          false,

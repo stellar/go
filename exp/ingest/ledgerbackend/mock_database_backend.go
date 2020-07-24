@@ -16,9 +16,14 @@ func (m *MockDatabaseBackend) GetLatestLedgerSequence() (uint32, error) {
 	return args.Get(0).(uint32), args.Error(1)
 }
 
-func (m *MockDatabaseBackend) PrepareRange(from uint32, to uint32) error {
-	args := m.Called(from, to)
-	return args.Error(1)
+func (m *MockDatabaseBackend) PrepareRange(ledgerRange Range) error {
+	args := m.Called(ledgerRange)
+	return args.Error(0)
+}
+
+func (m *MockDatabaseBackend) IsPrepared(ledgerRange Range) bool {
+	args := m.Called(ledgerRange)
+	return args.Bool(0)
 }
 
 func (m *MockDatabaseBackend) GetLedger(sequence uint32) (bool, xdr.LedgerCloseMeta, error) {

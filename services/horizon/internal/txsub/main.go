@@ -9,23 +9,6 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-// ResultProvider represents an abstract store that can lookup Result objects
-// by transaction hash or by [address,sequence] pairs.  A ResultProvider is
-// used within the transaction submission system to decide whether a submission should
-// be submitted to the backing stellar-core process, as well as looking up the status
-// of each transaction in the open submission list at each tick (i.e. ledger close)
-type ResultProvider interface {
-	// Look up a result by transaction hash
-	ResultByHash(context.Context, string) Result
-}
-
-// SequenceProvider represents an abstract store that can lookup the current
-// sequence number of an account.  It is used by the SequenceLock to
-type SequenceProvider interface {
-	// Look up a sequence by address
-	GetSequenceNumbers(addresses []string) (map[string]uint64, error)
-}
-
 // Listener represents some client who is interested in retrieving the result
 // of a specific transaction.
 type Listener chan<- Result

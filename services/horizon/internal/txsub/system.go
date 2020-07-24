@@ -2,15 +2,24 @@ package txsub
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
-	"github.com/stellar/go/xdr"
 	"sync"
 	"time"
 
 	"github.com/rcrowley/go-metrics"
 	"github.com/stellar/go/services/horizon/internal/txsub/sequence"
 	"github.com/stellar/go/support/log"
+	"github.com/stellar/go/xdr"
 )
+
+type HorizonDB interface {
+	TransactionByHash(dest interface{}, hash string) error
+	GetSequenceNumbers(addresses []string) (map[string]uint64, error)
+	BeginTx(*sql.TxOptions) error
+	Rollback() error
+	NoRows(error) bool
+}
 
 // System represents a completely configured transaction submission system.
 // Its methods tie together the various pieces used to reliably submit transactions
@@ -21,9 +30,8 @@ type System struct {
 	tickMutex      sync.Mutex
 	tickInProgress bool
 
+	DB                func(context.Context) HorizonDB
 	Pending           OpenSubmissionList
-	Results           ResultProvider
-	Sequences         SequenceProvider
 	Submitter         Submitter
 	SubmissionQueue   *sequence.Manager
 	SubmissionTimeout time.Duration
@@ -76,43 +84,27 @@ func (sys *System) Submit(
 	response := make(chan Result, 1)
 	result = response
 
+	db := sys.DB(ctx)
+	// The database doesn't (yet) store muxed accounts, so we query
+	// the corresponding AccountId
+	sourceAccount := envelope.SourceAccount().ToAccountId()
+	sourceAddress := sourceAccount.Address()
+
 	sys.Log.Ctx(ctx).WithFields(log.F{
 		"hash":    hash,
 		"tx_type": envelope.Type.String(),
 		"tx":      rawTx,
 	}).Info("Processing transaction")
 
-	// check the configured result provider for an existing result
-	r := sys.Results.ResultByHash(ctx, hash)
-
-	if r.Err == nil {
+	tx, sequenceNumber, err := checkTxAlreadyExists(db, hash, sourceAddress)
+	if err == nil {
 		sys.Log.Ctx(ctx).WithField("hash", hash).Info("Found submission result in a DB")
-		sys.finish(ctx, hash, response, r)
+		sys.finish(ctx, hash, response, Result{Transaction: tx})
 		return
 	}
-
-	if r.Err != ErrNoResults {
+	if err != ErrNoResults {
 		sys.Log.Ctx(ctx).WithField("hash", hash).Info("Error getting submission result from a DB")
-		sys.finish(ctx, hash, response, r)
-		return
-	}
-
-	// From now: r.Err == ErrNoResults
-	sourceAccount := envelope.SourceAccount()
-	// The database doesn't (yet) store muxed accounts, so we query
-	// the corresponding AccountId
-	accid := sourceAccount.ToAccountId()
-	sourceAddress := accid.Address()
-	curSeq, err := sys.Sequences.GetSequenceNumbers([]string{sourceAddress})
-	if err != nil {
-		sys.finish(ctx, hash, response, Result{Err: err})
-		return
-	}
-
-	// If account's sequence cannot be found, abort with tx_NO_ACCOUNT
-	// error code
-	if _, ok := curSeq[sourceAddress]; !ok {
-		sys.finish(ctx, hash, response, Result{Err: ErrNoAccount})
+		sys.finish(ctx, hash, response, Result{Transaction: tx, Err: err})
 		return
 	}
 
@@ -122,7 +114,9 @@ func (sys *System) Submit(
 
 	// update the submission queue with the source accounts current sequence value
 	// which will cause the channel returned by Push() to emit if possible.
-	sys.SubmissionQueue.Update(curSeq)
+	sys.SubmissionQueue.Update(map[string]uint64{
+		sourceAddress: sequenceNumber,
+	})
 
 	select {
 	case err := <-seq:
@@ -163,11 +157,10 @@ func (sys *System) Submit(
 		}
 
 		// If error is txBAD_SEQ, check for the result again
-		r = sys.Results.ResultByHash(ctx, hash)
-
-		if r.Err == nil {
+		tx, err = txResultByHash(db, hash)
+		if err == nil {
 			// If the found use it as the result
-			sys.finish(ctx, hash, response, r)
+			sys.finish(ctx, hash, response, Result{Transaction: tx})
 		} else {
 			// finally, return the bad_seq error if no result was found on 2nd attempt
 			sys.finish(ctx, hash, response, Result{Err: sr.Err})
@@ -247,9 +240,20 @@ func (sys *System) Tick(ctx context.Context) {
 		WithField("queued", sys.SubmissionQueue.String()).
 		Debug("ticking txsub system")
 
+	db := sys.DB(ctx)
+	options := &sql.TxOptions{
+		Isolation: sql.LevelRepeatableRead,
+		ReadOnly:  true,
+	}
+	if err := db.BeginTx(options); err != nil {
+		logger.WithError(err).Error("could not start repeatable read transaction for txsub tick")
+		return
+	}
+	defer db.Rollback()
+
 	addys := sys.SubmissionQueue.Addresses()
 	if len(addys) > 0 {
-		curSeq, err := sys.Sequences.GetSequenceNumbers(addys)
+		curSeq, err := db.GetSequenceNumbers(addys)
 		if err != nil {
 			logger.WithStack(err).Error(err)
 			return
@@ -259,24 +263,22 @@ func (sys *System) Tick(ctx context.Context) {
 	}
 
 	for _, hash := range sys.Pending.Pending(ctx) {
-		r := sys.Results.ResultByHash(ctx, hash)
+		tx, err := txResultByHash(db, hash)
 
-		if r.Err == nil {
+		if err == nil {
 			logger.WithField("hash", hash).Debug("finishing open submission")
-			sys.Pending.Finish(ctx, hash, r)
+			sys.Pending.Finish(ctx, hash, Result{Transaction: tx})
 			continue
 		}
 
-		_, ok := r.Err.(*FailedTransactionError)
-
-		if ok {
+		if _, ok := err.(*FailedTransactionError); ok {
 			logger.WithField("hash", hash).Debug("finishing open submission")
-			sys.Pending.Finish(ctx, hash, r)
+			sys.Pending.Finish(ctx, hash, Result{Transaction: tx, Err: err})
 			continue
 		}
 
-		if r.Err != ErrNoResults {
-			logger.WithStack(r.Err).Error(r.Err)
+		if err != ErrNoResults {
+			logger.WithStack(err).Error(err)
 		}
 	}
 

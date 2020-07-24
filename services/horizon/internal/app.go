@@ -10,11 +10,13 @@ import (
 	"sync"
 	"time"
 
-	metrics "github.com/rcrowley/go-metrics"
+	"github.com/rcrowley/go-metrics"
+	"github.com/stellar/throttled"
+	"gopkg.in/tylerb/graceful.v1"
+
 	"github.com/stellar/go/clients/stellarcore"
 	proto "github.com/stellar/go/protocols/stellarcore"
-	horizonContext "github.com/stellar/go/services/horizon/internal/context"
-	"github.com/stellar/go/services/horizon/internal/db2/core"
+	"github.com/stellar/go/services/horizon/internal/actions"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/expingest"
 	"github.com/stellar/go/services/horizon/internal/ledger"
@@ -27,33 +29,25 @@ import (
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
-	"github.com/stellar/throttled"
-	graceful "gopkg.in/tylerb/graceful.v1"
 )
-
-type coreSettings struct {
-	currentProtocolVersion       int32
-	coreSupportedProtocolVersion int32
-	coreVersion                  string
-}
 
 type coreSettingsStore struct {
 	sync.RWMutex
-	coreSettings
+	actions.CoreSettings
 }
 
 func (c *coreSettingsStore) set(resp *proto.InfoResponse) {
 	c.Lock()
 	defer c.Unlock()
-	c.coreVersion = resp.Info.Build
-	c.currentProtocolVersion = int32(resp.Info.Ledger.Version)
-	c.coreSupportedProtocolVersion = int32(resp.Info.ProtocolVersion)
+	c.CoreVersion = resp.Info.Build
+	c.CurrentProtocolVersion = int32(resp.Info.Ledger.Version)
+	c.CoreSupportedProtocolVersion = int32(resp.Info.ProtocolVersion)
 }
 
-func (c *coreSettingsStore) get() coreSettings {
+func (c *coreSettingsStore) get() actions.CoreSettings {
 	c.RLock()
 	defer c.RUnlock()
-	return c.coreSettings
+	return c.CoreSettings
 }
 
 // App represents the root of the state of a horizon instance.
@@ -61,7 +55,6 @@ type App struct {
 	config          Config
 	web             *web
 	historyQ        *history.Q
-	coreQ           *core.Q
 	ctx             context.Context
 	cancel          func()
 	horizonVersion  string
@@ -69,7 +62,7 @@ type App struct {
 	orderBookStream *expingest.OrderBookStream
 	submitter       *txsub.System
 	paths           paths.Finder
-	expingester     *expingest.System
+	expingester     expingest.System
 	reaper          *reap.System
 	ticks           *time.Ticker
 
@@ -77,10 +70,16 @@ type App struct {
 	metrics                  metrics.Registry
 	historyLatestLedgerGauge metrics.Gauge
 	historyElderLedgerGauge  metrics.Gauge
-	horizonConnGauge         metrics.Gauge
+	dbOpenConnectionsGauge   metrics.Gauge
+	dbInUseConnectionsGauge  metrics.Gauge
+	dbWaitCountGauge         metrics.Gauge
+	dbWaitDurationTimer      metrics.Timer
 	coreLatestLedgerGauge    metrics.Gauge
-	coreConnGauge            metrics.Gauge
 	goroutineGauge           metrics.Gauge
+}
+
+func (a *App) GetCoreSettings() actions.CoreSettings {
+	return a.coreSettings.get()
 }
 
 // NewApp constructs an new App instance from the provided config.
@@ -181,7 +180,6 @@ func (a *App) Close() {
 // closed" errors.
 func (a *App) CloseDB() {
 	a.historyQ.Session.DB.Close()
-	a.coreQ.Session.DB.Close()
 }
 
 // HistoryQ returns a helper object for performing sql queries against the
@@ -194,18 +192,6 @@ func (a *App) HistoryQ() *history.Q {
 // database. The returned session is bound to `ctx`.
 func (a *App) HorizonSession(ctx context.Context) *db.Session {
 	return &db.Session{DB: a.historyQ.Session.DB, Ctx: ctx}
-}
-
-// CoreSession returns a new session that loads data from the stellar core
-// database. The returned session is bound to `ctx`.
-func (a *App) CoreSession(ctx context.Context) *db.Session {
-	return &db.Session{DB: a.coreQ.Session.DB, Ctx: ctx}
-}
-
-// CoreQ returns a helper object for performing sql queries aginst the
-// stellar core database.
-func (a *App) CoreQ() *core.Q {
-	return a.coreQ
 }
 
 // IsHistoryStale returns true if the latest history ledger is more than
@@ -385,8 +371,8 @@ func (a *App) UpdateFeeStatsState() {
 	operationfeestats.SetState(next)
 }
 
-// UpdateStellarCoreInfo updates the value of coreVersion,
-// currentProtocolVersion, and coreSupportedProtocolVersion from the Stellar
+// UpdateStellarCoreInfo updates the value of CoreVersion,
+// CurrentProtocolVersion, and CoreSupportedProtocolVersion from the Stellar
 // core API.
 func (a *App) UpdateStellarCoreInfo() {
 	if a.config.StellarCoreURL == "" {
@@ -421,13 +407,16 @@ func (a *App) UpdateStellarCoreInfo() {
 // db connections and ledger state
 func (a *App) UpdateMetrics() {
 	a.goroutineGauge.Update(int64(runtime.NumGoroutine()))
+
 	ls := ledger.CurrentState()
 	a.historyLatestLedgerGauge.Update(int64(ls.HistoryLatest))
 	a.historyElderLedgerGauge.Update(int64(ls.HistoryElder))
 	a.coreLatestLedgerGauge.Update(int64(ls.CoreLatest))
 
-	a.horizonConnGauge.Update(int64(a.historyQ.Session.DB.Stats().OpenConnections))
-	a.coreConnGauge.Update(int64(a.coreQ.Session.DB.Stats().OpenConnections))
+	a.dbOpenConnectionsGauge.Update(int64(a.historyQ.Session.DB.Stats().OpenConnections))
+	a.dbInUseConnectionsGauge.Update(int64(a.historyQ.Session.DB.Stats().InUse))
+	a.dbWaitCountGauge.Update(int64(a.historyQ.Session.DB.Stats().WaitCount))
+	a.dbWaitDurationTimer.Update(a.historyQ.Session.DB.Stats().WaitDuration)
 }
 
 // DeleteUnretainedHistory forwards to the app's reaper.  See
@@ -479,7 +468,6 @@ func (a *App) init() {
 
 	// horizon-db and core-db
 	mustInitHorizonDB(a)
-	mustInitCoreDB(a)
 
 	if a.config.Ingest {
 		// expingester
@@ -514,7 +502,7 @@ func (a *App) init() {
 	initDbMetrics(a)
 
 	// web.actions
-	a.web.mustInstallActions(a.config, a.paths, a.historyQ.Session, a.metrics)
+	a.web.mustInstallActions(a.config, a.paths, a.historyQ.Session, a.submitter, a.metrics, a, a.horizonVersion)
 
 	// ingest.metrics
 	initIngestMetrics(a)
@@ -540,23 +528,7 @@ func (a *App) run() {
 	}
 }
 
-// withAppContext create a context on from the App type.
-func withAppContext(ctx context.Context, a *App) context.Context {
-	return context.WithValue(ctx, &horizonContext.AppContextKey, a)
-}
-
 // GetRateLimiter returns the HTTPRateLimiter of the App.
 func (a *App) GetRateLimiter() *throttled.HTTPRateLimiter {
 	return a.web.rateLimiter
-}
-
-// AppFromContext returns the set app, if one has been set, from the
-// provided context returns nil if no app has been set.
-func AppFromContext(ctx context.Context) *App {
-	if ctx == nil {
-		return nil
-	}
-
-	val, _ := ctx.Value(&horizonContext.AppContextKey).(*App)
-	return val
 }
