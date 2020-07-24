@@ -44,20 +44,13 @@ func TestMetrics(t *testing.T) {
 	w := adminRouterRH.Get("/metrics")
 	ht.Assert.Equal(200, w.Code)
 
-	hl := ht.App.historyLatestLedgerGauge
-	he := ht.App.historyElderLedgerGauge
-	cl := ht.App.coreLatestLedgerGauge
+	hl := ht.App.historyLatestLedgerCounter
+	he := ht.App.historyElderLedgerCounter
+	cl := ht.App.coreLatestLedgerCounter
 
-	ht.Require.EqualValues(0, getMetricValue(hl).GetGauge().GetValue())
-	ht.Require.EqualValues(0, getMetricValue(he).GetGauge().GetValue())
-	ht.Require.EqualValues(0, getMetricValue(cl).GetGauge().GetValue())
-
-	ht.App.UpdateLedgerState()
-	ht.App.UpdateMetrics()
-
-	ht.Require.EqualValues(3, getMetricValue(hl).GetGauge().GetValue())
-	ht.Require.EqualValues(1, getMetricValue(he).GetGauge().GetValue())
-	ht.Require.EqualValues(64, getMetricValue(cl).GetGauge().GetValue())
+	ht.Require.EqualValues(3, getMetricValue(hl).GetCounter().GetValue())
+	ht.Require.EqualValues(1, getMetricValue(he).GetCounter().GetValue())
+	ht.Require.EqualValues(64, getMetricValue(cl).GetCounter().GetValue())
 }
 
 func getMetricValue(metric prometheus.Metric) *dto.Metric {
