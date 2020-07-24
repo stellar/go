@@ -22,6 +22,11 @@ type Keyer interface {
 var _ = LedgerEntry{}
 var _ = LedgerKey{}
 
+func Uint32Ptr(val uint32) *Uint32 {
+	pval := Uint32(val)
+	return &pval
+}
+
 // SafeUnmarshalBase64 first decodes the provided reader from base64 before
 // decoding the xdr into the provided destination.  Also ensures that the reader
 // is fully consumed.
