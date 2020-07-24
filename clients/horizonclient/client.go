@@ -681,6 +681,12 @@ func (c *Client) Version() string {
 	return version
 }
 
+// NextAccountsPage returns the next page of accounts.
+func (c *Client) NextAccountsPage(page hProtocol.AccountsPage) (accounts hProtocol.AccountsPage, err error) {
+	err = c.sendRequestURL(page.Links.Next.Href, "get", &accounts)
+	return
+}
+
 // NextAssetsPage returns the next page of assets.
 func (c *Client) NextAssetsPage(page hProtocol.AssetsPage) (assets hProtocol.AssetsPage, err error) {
 	err = c.sendRequestURL(page.Links.Next.Href, "get", &assets)

@@ -1,4 +1,4 @@
-package horizon
+package test
 
 import (
 	"bytes"
@@ -13,6 +13,7 @@ import (
 
 // Assertions provides an assertions helper.  Custom assertions for this package
 // can be defined as methods on this struct.
+// foo
 type Assertions struct {
 	*assert.Assertions
 }

@@ -79,7 +79,6 @@ func TestProcessorRunnerRunHistoryArchiveIngestionHistoryArchive(t *testing.T) {
 
 	config := Config{
 		NetworkPassphrase: network.PublicNetworkPassphrase,
-		MaxStreamRetries:  3,
 	}
 
 	q := &mockDBQ{}
@@ -97,7 +96,6 @@ func TestProcessorRunnerRunHistoryArchiveIngestionHistoryArchive(t *testing.T) {
 			"GetState",
 			mock.AnythingOfType("*context.emptyCtx"),
 			uint32(63),
-			config.MaxStreamRetries,
 		).
 		Return(
 			&io.GenesisLedgerStateReader{
@@ -264,7 +262,6 @@ func TestProcessorRunnerRunAllProcessorsOnLedger(t *testing.T) {
 
 	config := Config{
 		NetworkPassphrase: network.PublicNetworkPassphrase,
-		MaxStreamRetries:  3,
 	}
 
 	q := &mockDBQ{}

@@ -25,14 +25,14 @@ type VerifyRangeStateTestSuite struct {
 	historyQ       *mockDBQ
 	historyAdapter *adapters.MockHistoryArchiveAdapter
 	runner         *mockProcessorsRunner
-	system         *System
+	system         *system
 }
 
 func (s *VerifyRangeStateTestSuite) SetupTest() {
 	s.historyQ = &mockDBQ{}
 	s.historyAdapter = &adapters.MockHistoryArchiveAdapter{}
 	s.runner = &mockProcessorsRunner{}
-	s.system = &System{
+	s.system = &system{
 		historyQ:       s.historyQ,
 		historyAdapter: s.historyAdapter,
 		runner:         s.runner,
@@ -222,7 +222,7 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 	mockChangeReader.On("Read").Return(offerChange, nil).Once()
 	mockChangeReader.On("Read").Return(ingestio.Change{}, io.EOF).Once()
 	mockChangeReader.On("Read").Return(ingestio.Change{}, io.EOF).Once()
-	s.historyAdapter.On("GetState", nil, uint32(63), 0).Return(mockChangeReader, nil).Once()
+	s.historyAdapter.On("GetState", nil, uint32(63)).Return(mockChangeReader, nil).Once()
 	mockAccount := history.AccountEntry{
 		AccountID:          mockAccountID,
 		Balance:            600,

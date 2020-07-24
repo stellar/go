@@ -1,19 +1,13 @@
 package horizon
 
 import (
-	"bytes"
-	"context"
-	"encoding/json"
-	"fmt"
-	"net/http/httptest"
 	"time"
 
-	"github.com/go-chi/chi"
+	"github.com/stellar/throttled"
+
 	"github.com/stellar/go/network"
-	"github.com/stellar/go/services/horizon/internal/actions"
 	"github.com/stellar/go/services/horizon/internal/test"
 	supportLog "github.com/stellar/go/support/log"
-	"github.com/stellar/throttled"
 )
 
 func NewTestApp() *App {
@@ -36,41 +30,4 @@ func NewTestConfig() Config {
 
 func NewRequestHelper(app *App) test.RequestHelper {
 	return test.NewRequestHelper(app.web.router)
-}
-
-func ShouldBePageOf(actual interface{}, options ...interface{}) string {
-	body := actual.(*bytes.Buffer)
-	expected := options[0].(int)
-
-	var result map[string]interface{}
-	err := json.Unmarshal(body.Bytes(), &result)
-	if err != nil {
-		return fmt.Sprintf("Could not unmarshal json:\n%s\n", body.String())
-	}
-
-	embedded, ok := result["_embedded"]
-	if !ok {
-		return "No _embedded key in response"
-	}
-
-	records, ok := embedded.(map[string]interface{})["records"]
-	if !ok {
-		return "No records key in _embedded"
-	}
-
-	length := len(records.([]interface{}))
-	if length != expected {
-		return fmt.Sprintf("Expected %d records in page, got %d", expected, length)
-	}
-
-	return ""
-}
-
-func NewTestAction(ctx context.Context, path string) *Action {
-	return &Action{
-		App: NewTestApp(),
-		Base: actions.Base{
-			R: httptest.NewRequest("GET", path, nil).WithContext(context.WithValue(ctx, chi.RouteCtxKey, chi.NewRouteContext())),
-		},
-	}
 }

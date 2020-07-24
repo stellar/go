@@ -101,6 +101,11 @@ func (q *Q) OperationByID(includeTransactions bool, id int64) (Operation, *Trans
 			return operation, nil, err
 		}
 
+		err = validateTransactionForOperation(transaction, operation)
+		if err != nil {
+			return operation, nil, err
+		}
+
 		return operation, &transaction, err
 	}
 	return operation, nil, err

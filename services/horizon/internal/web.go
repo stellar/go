@@ -4,6 +4,10 @@ import (
 	"compress/flate"
 	"context"
 	"database/sql"
+
+	"github.com/pkg/errors"
+
+	"github.com/stellar/go/services/horizon/internal/txsub"
 	"net/http"
 	"net/http/pprof"
 	"strings"
@@ -11,9 +15,11 @@ import (
 
 	"github.com/go-chi/chi"
 	chimiddleware "github.com/go-chi/chi/middleware"
-	metrics "github.com/rcrowley/go-metrics"
+	"github.com/rcrowley/go-metrics"
 	"github.com/rs/cors"
 	"github.com/sebest/xff"
+
+	"github.com/stellar/throttled"
 
 	"github.com/stellar/go/services/horizon/internal/actions"
 	"github.com/stellar/go/services/horizon/internal/db2"
@@ -26,7 +32,6 @@ import (
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/support/render/problem"
-	"github.com/stellar/throttled"
 )
 
 const (
@@ -83,6 +88,29 @@ func mustInitWeb(ctx context.Context, hq *history.Q, updateFreq time.Duration, t
 	}
 }
 
+// getAccountInfo returns the information about an account based on the provided param.
+func (w *web) getAccountInfo(ctx context.Context, qp *showActionQueryParams) (interface{}, error) {
+	// Use AppFromContext to prevent larger refactoring of actions code. Will
+	// be removed once this endpoint is migrated to use new actions design.
+	horizonSession, err := w.horizonSession(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting horizon db session")
+	}
+
+	err = horizonSession.BeginTx(&sql.TxOptions{
+		Isolation: sql.LevelRepeatableRead,
+		ReadOnly:  true,
+	})
+	if err != nil {
+		return nil, errors.Wrap(err, "error starting transaction")
+	}
+
+	defer horizonSession.Rollback()
+	historyQ := &history.Q{horizonSession}
+
+	return actions.AccountInfo(ctx, historyQ, qp.AccountID)
+}
+
 // mustInstallMiddlewares installs the middleware stack used for horizon onto the
 // provided app.
 // Note that a request will go through the middlewares from top to bottom.
@@ -94,16 +122,13 @@ func (w *web) mustInstallMiddlewares(app *App, connTimeout time.Duration) {
 	r := w.router
 	r.Use(chimiddleware.StripSlashes)
 
-	//TODO: remove this middleware
-	r.Use(appContextMiddleware(app))
-
 	r.Use(requestCacheHeadersMiddleware)
 	r.Use(chimiddleware.RequestID)
 	r.Use(contextMiddleware)
 	r.Use(xff.Handler)
 	r.Use(loggerMiddleware)
 	r.Use(timeoutMiddleware(connTimeout))
-	r.Use(requestMetricsMiddleware)
+	r.Use(requestMetricsMiddleware(w))
 	r.Use(recoverMiddleware)
 	r.Use(chimiddleware.Compress(flate.DefaultCompression, "application/hal+json"))
 
@@ -118,7 +143,6 @@ func (w *web) mustInstallMiddlewares(app *App, connTimeout time.Duration) {
 
 	// Internal middlewares
 	w.internalRouter.Use(chimiddleware.StripSlashes)
-	w.internalRouter.Use(appContextMiddleware(app))
 	w.internalRouter.Use(chimiddleware.RequestID)
 	w.internalRouter.Use(loggerMiddleware)
 }
@@ -133,7 +157,13 @@ func (f historyLedgerSourceFactory) Get() ledger.Source {
 
 // mustInstallActions installs the routing configuration of horizon onto the
 // provided app.  All route registration should be implemented here.
-func (w *web) mustInstallActions(config Config, pathFinder paths.Finder, session *db.Session, registry metrics.Registry) {
+func (w *web) mustInstallActions(config Config,
+	pathFinder paths.Finder,
+	session *db.Session,
+	submitter *txsub.System,
+	registry metrics.Registry,
+	coreGetter actions.CoreSettingsGetter,
+	horizonVersion string) {
 	if w == nil {
 		log.Fatal("missing web instance for installing web actions")
 	}
@@ -143,7 +173,13 @@ func (w *web) mustInstallActions(config Config, pathFinder paths.Finder, session
 	}
 
 	r := w.router
-	r.Get("/", RootAction{}.Handle)
+
+	r.Method(http.MethodGet, "/", objectActionHandler{action: actions.GetRootHandler{
+		CoreSettingsGetter: coreGetter,
+		NetworkPassphrase:  config.NetworkPassphrase,
+		FriendbotURL:       config.FriendbotURL,
+		HorizonVersion:     horizonVersion,
+	}})
 
 	streamHandler := sse.StreamHandler{
 		RateLimiter:         w.rateLimiter,
@@ -160,7 +196,11 @@ func (w *web) mustInstallActions(config Config, pathFinder paths.Finder, session
 			r.Method(http.MethodGet, "/", restPageHandler(actions.GetAccountsHandler{}))
 			r.Route("/{account_id}", func(r chi.Router) {
 				r.Get("/", w.streamShowActionHandler(w.getAccountInfo, true))
-				r.Get("/data/{key}", DataShowAction{}.Handle)
+				accountData := actions.GetAccountDataHandler{}
+				r.Method(http.MethodGet, "/data/{key}", WrapRaw(
+					streamableObjectActionHandler{streamHandler: streamHandler, action: accountData},
+					accountData,
+				))
 				r.Method(http.MethodGet, "/offers", streamableStatePageHandler(actions.GetAccountOffersHandler{}, streamHandler))
 			})
 		})
@@ -172,20 +212,19 @@ func (w *web) mustInstallActions(config Config, pathFinder paths.Finder, session
 
 		r.Method(http.MethodGet, "/assets", restPageHandler(actions.AssetStatsHandler{}))
 
-		findPaths := FindPathsHandler{
-			staleThreshold:       config.StaleThreshold,
-			checkHistoryIsStale:  false,
-			setLastLedgerHeader:  true,
-			maxPathLength:        config.MaxPathLength,
-			maxAssetsParamLength: maxAssetsForPathFinding,
-			pathFinder:           pathFinder,
-		}
-		findFixedPaths := FindFixedPathsHandler{
-			maxPathLength:        config.MaxPathLength,
-			setLastLedgerHeader:  true,
-			maxAssetsParamLength: maxAssetsForPathFinding,
-			pathFinder:           pathFinder,
-		}
+		findPaths := objectActionHandler{actions.FindPathsHandler{
+			StaleThreshold:       config.StaleThreshold,
+			SetLastLedgerHeader:  true,
+			MaxPathLength:        config.MaxPathLength,
+			MaxAssetsParamLength: maxAssetsForPathFinding,
+			PathFinder:           pathFinder,
+		}}
+		findFixedPaths := objectActionHandler{actions.FindFixedPathsHandler{
+			MaxPathLength:        config.MaxPathLength,
+			SetLastLedgerHeader:  true,
+			MaxAssetsParamLength: maxAssetsForPathFinding,
+			PathFinder:           pathFinder,
+		}}
 
 		r.Method(http.MethodGet, "/paths", findPaths)
 		r.Method(http.MethodGet, "/paths/strict-receive", findPaths)
@@ -205,27 +244,25 @@ func (w *web) mustInstallActions(config Config, pathFinder paths.Finder, session
 	// need to use absolute routes here. Make sure we use regexp check here for
 	// emptiness. Without it, requesting `/accounts//payments` return all payments!
 	r.Group(func(r chi.Router) {
-		r.Get("/accounts/{account_id:\\w+}/transactions", w.streamIndexActionHandler(w.getTransactionPage, w.streamTransactions))
-		r.Get("/accounts/{account_id:\\w+}/trades", TradeIndexAction{}.Handle)
-		r.Group(func(r chi.Router) {
-			r.Use(historyMiddleware)
-			r.Method(http.MethodGet, "/accounts/{account_id:\\w+}/effects", streamableHistoryPageHandler(actions.GetEffectsHandler{}, streamHandler))
-			r.Method(http.MethodGet, "/accounts/{account_id:\\w+}/operations", streamableHistoryPageHandler(actions.GetOperationsHandler{
-				OnlyPayments: false,
-			}, streamHandler))
-			r.Method(http.MethodGet, "/accounts/{account_id:\\w+}/payments", streamableHistoryPageHandler(actions.GetOperationsHandler{
-				OnlyPayments: true,
-			}, streamHandler))
-		})
+		r.Use(historyMiddleware)
+		r.Method(http.MethodGet, "/accounts/{account_id:\\w+}/effects", streamableHistoryPageHandler(actions.GetEffectsHandler{}, streamHandler))
+		r.Method(http.MethodGet, "/accounts/{account_id:\\w+}/operations", streamableHistoryPageHandler(actions.GetOperationsHandler{
+			OnlyPayments: false,
+		}, streamHandler))
+		r.Method(http.MethodGet, "/accounts/{account_id:\\w+}/payments", streamableHistoryPageHandler(actions.GetOperationsHandler{
+			OnlyPayments: true,
+		}, streamHandler))
+		r.Method(http.MethodGet, "/accounts/{account_id:\\w+}/trades", streamableHistoryPageHandler(actions.GetTradesHandler{}, streamHandler))
+		r.Method(http.MethodGet, "/accounts/{account_id:\\w+}/transactions", streamableHistoryPageHandler(actions.GetTransactionsHandler{}, streamHandler))
 	})
 	// ledger actions
 	r.Route("/ledgers", func(r chi.Router) {
-		r.Get("/", LedgerIndexAction{}.Handle)
+		r.Use(historyMiddleware)
+		r.Method(http.MethodGet, "/", streamableHistoryPageHandler(actions.GetLedgersHandler{}, streamHandler))
 		r.Route("/{ledger_id}", func(r chi.Router) {
-			r.Get("/", LedgerShowAction{}.Handle)
-			r.Get("/transactions", w.streamIndexActionHandler(w.getTransactionPage, w.streamTransactions))
+			r.Method(http.MethodGet, "/", objectActionHandler{actions.GetLedgerByIDHandler{}})
+			r.Method(http.MethodGet, "/transactions", streamableHistoryPageHandler(actions.GetTransactionsHandler{}, streamHandler))
 			r.Group(func(r chi.Router) {
-				r.Use(historyMiddleware)
 				r.Method(http.MethodGet, "/effects", streamableHistoryPageHandler(actions.GetEffectsHandler{}, streamHandler))
 				r.Method(http.MethodGet, "/operations", streamableHistoryPageHandler(actions.GetOperationsHandler{
 					OnlyPayments: false,
@@ -239,54 +276,56 @@ func (w *web) mustInstallActions(config Config, pathFinder paths.Finder, session
 
 	// transaction history actions
 	r.Route("/transactions", func(r chi.Router) {
-		r.Get("/", w.streamIndexActionHandler(w.getTransactionPage, w.streamTransactions))
+		r.With(historyMiddleware).Method(http.MethodGet, "/", streamableHistoryPageHandler(actions.GetTransactionsHandler{}, streamHandler))
 		r.Route("/{tx_id}", func(r chi.Router) {
-			r.Get("/", showActionHandler(w.getTransactionResource))
-			r.Group(func(r chi.Router) {
-				r.Use(historyMiddleware)
-				r.Method(http.MethodGet, "/effects", streamableHistoryPageHandler(actions.GetEffectsHandler{}, streamHandler))
-				r.Method(http.MethodGet, "/operations", streamableHistoryPageHandler(actions.GetOperationsHandler{
-					OnlyPayments: false,
-				}, streamHandler))
-				r.Method(http.MethodGet, "/payments", streamableHistoryPageHandler(actions.GetOperationsHandler{
-					OnlyPayments: true,
-				}, streamHandler))
-			})
+			r.Use(historyMiddleware)
+			r.Method(http.MethodGet, "/", objectActionHandler{actions.GetTransactionByHashHandler{}})
+			r.Method(http.MethodGet, "/effects", streamableHistoryPageHandler(actions.GetEffectsHandler{}, streamHandler))
+			r.Method(http.MethodGet, "/operations", streamableHistoryPageHandler(actions.GetOperationsHandler{
+				OnlyPayments: false,
+			}, streamHandler))
+			r.Method(http.MethodGet, "/payments", streamableHistoryPageHandler(actions.GetOperationsHandler{
+				OnlyPayments: true,
+			}, streamHandler))
 		})
 	})
 
 	// operation actions
 	r.Route("/operations", func(r chi.Router) {
-		r.With(historyMiddleware).Method(http.MethodGet, "/", streamableHistoryPageHandler(actions.GetOperationsHandler{
+		r.Use(historyMiddleware)
+		r.Method(http.MethodGet, "/", streamableHistoryPageHandler(actions.GetOperationsHandler{
 			OnlyPayments: false,
 		}, streamHandler))
-		r.Get("/{id}", OperationShowAction{}.Handle)
-		r.With(historyMiddleware).Method(http.MethodGet, "/{op_id}/effects", streamableHistoryPageHandler(actions.GetEffectsHandler{}, streamHandler))
-
+		r.Method(http.MethodGet, "/{id}", objectActionHandler{actions.GetOperationByIDHandler{}})
+		r.Method(http.MethodGet, "/{op_id}/effects", streamableHistoryPageHandler(actions.GetEffectsHandler{}, streamHandler))
 	})
 
 	r.Group(func(r chi.Router) {
+		r.Use(historyMiddleware)
 		// payment actions
-		r.With(historyMiddleware).Method(http.MethodGet, "/payments", streamableHistoryPageHandler(actions.GetOperationsHandler{
+		r.Method(http.MethodGet, "/payments", streamableHistoryPageHandler(actions.GetOperationsHandler{
 			OnlyPayments: true,
 		}, streamHandler))
 
 		// effect actions
-		r.With(historyMiddleware).Method(http.MethodGet, "/effects", streamableHistoryPageHandler(actions.GetEffectsHandler{}, streamHandler))
+		r.Method(http.MethodGet, "/effects", streamableHistoryPageHandler(actions.GetEffectsHandler{}, streamHandler))
 
 		// trading related endpoints
-		r.Get("/trades", TradeIndexAction{}.Handle)
-		r.Get("/trade_aggregations", TradeAggregateIndexAction{}.Handle)
+		r.Method(http.MethodGet, "/trades", streamableHistoryPageHandler(actions.GetTradesHandler{}, streamHandler))
+		r.Method(http.MethodGet, "/trade_aggregations", objectActionHandler{actions.GetTradeAggregationsHandler{}})
 		// /offers/{offer_id} has been created above so we need to use absolute
 		// routes here.
-		r.Get("/offers/{offer_id}/trades", TradeIndexAction{}.Handle)
+		r.Method(http.MethodGet, "/offers/{offer_id}/trades", streamableHistoryPageHandler(actions.GetTradesHandler{}, streamHandler))
 	})
 
 	// Transaction submission API
-	r.Post("/transactions", TransactionCreateAction{}.Handle)
+	r.Method(http.MethodPost, "/transactions", objectActionHandler{actions.SubmitTransactionHandler{
+		Submitter:         submitter,
+		NetworkPassphrase: config.NetworkPassphrase,
+	}})
 
 	// Network state related endpoints
-	r.Get("/fee_stats", FeeStatsAction{}.Handle)
+	r.Method(http.MethodGet, "/fee_stats", objectActionHandler{actions.FeeStatsHandler{}})
 
 	// friendbot
 	if config.FriendbotURL != nil {
@@ -298,10 +337,12 @@ func (w *web) mustInstallActions(config Config, pathFinder paths.Finder, session
 		r.Get("/friendbot", redirectFriendbot)
 	}
 
-	r.NotFound(NotFoundAction{}.Handle)
+	r.NotFound(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		problem.Render(request.Context(), w, problem.NotFound)
+	}))
 
 	// internal
-	w.internalRouter.Get("/metrics", HandleMetrics(&actions.MetricsHandler{registry}))
+	w.internalRouter.Get("/metrics", HandleRaw(&actions.MetricsHandler{registry}))
 	w.internalRouter.Get("/debug/pprof/heap", pprof.Index)
 	w.internalRouter.Get("/debug/pprof/profile", pprof.Profile)
 }
@@ -318,9 +359,11 @@ func maybeInitWebRateLimiter(rateQuota *throttled.RateQuota) *throttled.HTTPRate
 	}
 
 	return &throttled.HTTPRateLimiter{
-		RateLimiter:   rateLimiter,
-		DeniedHandler: &RateLimitExceededAction{Action{}},
-		VaryBy:        VaryByRemoteIP{},
+		RateLimiter: rateLimiter,
+		DeniedHandler: http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+			problem.Render(request.Context(), w, hProblem.RateLimitExceeded)
+		}),
+		VaryBy: VaryByRemoteIP{},
 	}
 }
 

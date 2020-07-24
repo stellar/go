@@ -33,6 +33,7 @@ var customTagsErrorMessages = map[string]string{
 	"assetType":       "Asset type must be native, credit_alphanum4 or credit_alphanum12",
 	"bool":            "Filter should be true or false",
 	"ledger_id":       "Ledger ID must be an integer higher than 0",
+	"offer_id":        "Offer ID must be an integer higher than 0",
 	"op_id":           "Operation ID must be an integer higher than 0",
 	"transactionHash": "Transaction hash must be a hex-encoded, lowercase SHA-256 hash",
 }

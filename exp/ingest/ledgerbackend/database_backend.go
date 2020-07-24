@@ -2,7 +2,9 @@ package ledgerbackend
 
 import (
 	"database/sql"
+	"sort"
 
+	"github.com/stellar/go/network"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
@@ -23,24 +25,25 @@ var _ LedgerBackend = (*DatabaseBackend)(nil)
 
 // DatabaseBackend implements a database data store.
 type DatabaseBackend struct {
-	session session
+	networkPassphrase string
+	session           session
 }
 
-func NewDatabaseBackend(dataSourceName string) (*DatabaseBackend, error) {
+func NewDatabaseBackend(dataSourceName, networkPassphrase string) (*DatabaseBackend, error) {
 	session, err := createSession(dataSourceName)
 	if err != nil {
 		return nil, err
 	}
 
-	return &DatabaseBackend{session: session}, nil
+	return &DatabaseBackend{session: session, networkPassphrase: networkPassphrase}, nil
 }
 
-func NewDatabaseBackendFromSession(session *db.Session) (*DatabaseBackend, error) {
-	return &DatabaseBackend{session: session}, nil
+func NewDatabaseBackendFromSession(session *db.Session, networkPassphrase string) (*DatabaseBackend, error) {
+	return &DatabaseBackend{session: session, networkPassphrase: networkPassphrase}, nil
 }
 
-func (dbb *DatabaseBackend) PrepareRange(from uint32, to uint32) error {
-	fromExists, _, err := dbb.GetLedger(from)
+func (dbb *DatabaseBackend) PrepareRange(ledgerRange Range) error {
+	fromExists, _, err := dbb.GetLedger(ledgerRange.from)
 	if err != nil {
 		return errors.Wrap(err, "error getting ledger")
 	}
@@ -49,16 +52,23 @@ func (dbb *DatabaseBackend) PrepareRange(from uint32, to uint32) error {
 		return errors.New("`from` ledger does not exist")
 	}
 
-	toExists, _, err := dbb.GetLedger(to)
-	if err != nil {
-		return errors.Wrap(err, "error getting ledger")
-	}
+	if ledgerRange.bounded {
+		toExists, _, err := dbb.GetLedger(ledgerRange.to)
+		if err != nil {
+			return errors.Wrap(err, "error getting ledger")
+		}
 
-	if !toExists {
-		return errors.New("`to` ledger does not exist")
+		if !toExists {
+			return errors.New("`to` ledger does not exist")
+		}
 	}
 
 	return nil
+}
+
+// IsPrepared returns true if a given ledgerRange is prepared.
+func (*DatabaseBackend) IsPrepared(ledgerRange Range) bool {
+	return true
 }
 
 // GetLatestLedgerSequence returns the most recent ledger sequence number present in the database.
@@ -73,6 +83,38 @@ func (dbb *DatabaseBackend) GetLatestLedgerSequence() (uint32, error) {
 	}
 
 	return ledger[0].LedgerSeq, nil
+}
+
+func sortByHash(transactions []xdr.TransactionEnvelope, passphrase string) error {
+	hashes := make([]xdr.Hash, len(transactions))
+	txByHash := map[xdr.Hash]xdr.TransactionEnvelope{}
+	for i, tx := range transactions {
+		hash, err := network.HashTransactionInEnvelope(tx, passphrase)
+		if err != nil {
+			return errors.Wrap(err, "cannot hash transaction")
+		}
+		hashes[i] = hash
+		txByHash[hash] = tx
+	}
+
+	sort.Slice(hashes, func(i, j int) bool {
+		a := hashes[i]
+		b := hashes[j]
+		for k := range a {
+			if a[k] < b[k] {
+				return true
+			}
+			if a[k] > b[k] {
+				return false
+			}
+		}
+		return false
+	})
+
+	for i, hash := range hashes {
+		transactions[i] = txByHash[hash]
+	}
+	return nil
 }
 
 // GetLedger returns the LedgerCloseMeta for the given ledger sequence number.
@@ -124,6 +166,10 @@ func (dbb *DatabaseBackend) GetLedger(sequence uint32) (bool, xdr.LedgerCloseMet
 			Result:            tx.TXResult,
 			TxApplyProcessing: tx.TXMeta,
 		})
+	}
+
+	if err = sortByHash(lcm.V0.TxSet.Txs, dbb.networkPassphrase); err != nil {
+		return false, xdr.LedgerCloseMeta{}, errors.Wrap(err, "could not sort txset")
 	}
 
 	// Query - txfeehistory
