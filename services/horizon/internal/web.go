@@ -114,7 +114,7 @@ func (w *web) getAccountInfo(ctx context.Context, qp *showActionQueryParams) (in
 // mustInstallMiddlewares installs the middleware stack used for horizon onto the
 // provided app.
 // Note that a request will go through the middlewares from top to bottom.
-func (w *web) mustInstallMiddlewares(app *App, connTimeout time.Duration) {
+func (w *web) mustInstallMiddlewares(connTimeout time.Duration) {
 	if w == nil {
 		log.Fatal("missing web instance for installing middlewares")
 	}
