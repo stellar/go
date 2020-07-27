@@ -272,7 +272,6 @@ func getLedgerBySequence(hq *history.Q, sequence int32) (*history.Ledger, error)
 // AccountByIDQuery query struct for accounts/{account_id} end-point
 type AccountByIDQuery struct {
 	AccountID string `schema:"account_id" valid:"accountID,optional"`
-	TxHash    string `schema:"tx_id" valid:"transactionHash,optional"`
 }
 
 // GetAccountByIDHandler is the action handler for the /accounts/{account_id} endpoint
