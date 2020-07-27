@@ -119,8 +119,7 @@ func (q AccountsQuery) Asset() *xdr.Asset {
 }
 
 // GetAccountsHandler is the action handler for the /accounts endpoint
-type GetAccountsHandler struct {
-}
+type GetAccountsHandler struct{}
 
 // GetResourcePage returns a page containing the account records that have
 // `signer` as a signer or have a trustline to the given asset.
@@ -268,4 +267,44 @@ func getLedgerBySequence(hq *history.Q, sequence int32) (*history.Ledger, error)
 	default:
 		return ledger, nil
 	}
+}
+
+// AccountByIDQuery query struct for accounts/{account_id} end-point
+type AccountByIDQuery struct {
+	AccountID string `schema:"account_id" valid:"accountID,optional"`
+}
+
+// GetAccountByIDHandler is the action handler for the /accounts/{account_id} endpoint
+type GetAccountByIDHandler struct{}
+
+type Account protocol.Account
+
+func (a Account) Equals(other StreamableObjectResponse) bool {
+	otherAccount, ok := other.(Account)
+	if !ok {
+		return false
+	}
+	return a.ID == otherAccount.ID
+}
+
+func (handler GetAccountByIDHandler) GetResource(
+	w HeaderWriter,
+	r *http.Request,
+) (StreamableObjectResponse, error) {
+
+	historyQ, err := HistoryQFromRequest(r)
+	if err != nil {
+		return nil, err
+	}
+
+	qp := AccountByIDQuery{}
+	err = getParams(&qp, r)
+	if err != nil {
+		return nil, err
+	}
+	account, err := AccountInfo(r.Context(), historyQ, qp.AccountID)
+	if err != nil {
+		return Account{}, err
+	}
+	return Account(*account), nil
 }
