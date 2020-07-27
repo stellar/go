@@ -6,8 +6,8 @@ import (
 	"strconv"
 
 	protocol "github.com/stellar/go/protocols/horizon"
+	horizonContext "github.com/stellar/go/services/horizon/internal/context"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/services/horizon/internal/httpx"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/render/hal"
 	"github.com/stellar/go/xdr"
@@ -91,7 +91,7 @@ func PopulateAccountEntry(
 		})
 	}
 
-	lb := hal.LinkBuilder{httpx.BaseURL(ctx)}
+	lb := hal.LinkBuilder{horizonContext.BaseURL(ctx)}
 	self := fmt.Sprintf("/accounts/%s", account.AccountID)
 	dest.Links.Self = lb.Link(self)
 	dest.Links.Transactions = lb.PagedLink(self, "transactions")

@@ -16,8 +16,8 @@ import (
 	"github.com/gorilla/schema"
 
 	"github.com/stellar/go/services/horizon/internal/assets"
+	horizonContext "github.com/stellar/go/services/horizon/internal/context"
 	"github.com/stellar/go/services/horizon/internal/db2"
-	"github.com/stellar/go/services/horizon/internal/httpx"
 	"github.com/stellar/go/services/horizon/internal/ledger"
 	hProblem "github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/toid"
@@ -368,8 +368,8 @@ func getURLParam(r *http.Request, key string) (string, bool) {
 // FullURL returns a URL containing the information regarding the original
 // request stored in the context.
 func FullURL(ctx context.Context) *url.URL {
-	url := httpx.BaseURL(ctx)
-	r := httpx.RequestFromContext(ctx)
+	url := horizonContext.BaseURL(ctx)
+	r := horizonContext.RequestFromContext(ctx)
 	if r != nil {
 		url.Path = r.URL.Path
 		url.RawQuery = r.URL.RawQuery

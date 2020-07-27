@@ -8,6 +8,7 @@ import (
 
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/protocols/horizon"
+	horizonContext "github.com/stellar/go/services/horizon/internal/context"
 	"github.com/stellar/go/services/horizon/internal/paths"
 	horizonProblem "github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/resourceadapter"
@@ -329,7 +330,7 @@ func (handler FindFixedPathsHandler) GetResource(w HeaderWriter, r *http.Request
 }
 
 func assetsForAddress(r *http.Request, addy string) ([]xdr.Asset, []xdr.Int64, error) {
-	historyQ, err := HistoryQFromRequest(r)
+	historyQ, err := horizonContext.HistoryQFromRequest(r)
 	if err != nil {
 		return nil, nil, err
 	}

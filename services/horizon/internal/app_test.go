@@ -38,7 +38,7 @@ func TestMetrics(t *testing.T) {
 	ht := StartHTTPTest(t, "base")
 	defer ht.Finish()
 
-	adminRouterRH := test.NewRequestHelper(ht.App.web.internalRouter)
+	adminRouterRH := test.NewRequestHelper(ht.App.webServer.Router.Internal)
 	w := adminRouterRH.Get("/metrics")
 	ht.Assert.Equal(200, w.Code)
 
