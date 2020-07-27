@@ -4,14 +4,12 @@ import (
 	"compress/flate"
 	"context"
 	"database/sql"
-
-	"github.com/pkg/errors"
-
-	"github.com/stellar/go/services/horizon/internal/txsub"
 	"net/http"
 	"net/http/pprof"
 	"strings"
 	"time"
+
+	"github.com/stellar/go/services/horizon/internal/txsub"
 
 	"github.com/go-chi/chi"
 	chimiddleware "github.com/go-chi/chi/middleware"
@@ -86,29 +84,6 @@ func mustInitWeb(ctx context.Context, hq *history.Q, updateFreq time.Duration, t
 		failureMeter:       metrics.NewMeter(),
 		successMeter:       metrics.NewMeter(),
 	}
-}
-
-// getAccountInfo returns the information about an account based on the provided param.
-func (w *web) getAccountInfo(ctx context.Context, qp *showActionQueryParams) (interface{}, error) {
-	// Use AppFromContext to prevent larger refactoring of actions code. Will
-	// be removed once this endpoint is migrated to use new actions design.
-	horizonSession, err := w.horizonSession(ctx)
-	if err != nil {
-		return nil, errors.Wrap(err, "getting horizon db session")
-	}
-
-	err = horizonSession.BeginTx(&sql.TxOptions{
-		Isolation: sql.LevelRepeatableRead,
-		ReadOnly:  true,
-	})
-	if err != nil {
-		return nil, errors.Wrap(err, "error starting transaction")
-	}
-
-	defer horizonSession.Rollback()
-	historyQ := &history.Q{horizonSession}
-
-	return actions.AccountInfo(ctx, historyQ, qp.AccountID)
 }
 
 // mustInstallMiddlewares installs the middleware stack used for horizon onto the
@@ -195,7 +170,14 @@ func (w *web) mustInstallActions(config Config,
 		r.Route("/accounts", func(r chi.Router) {
 			r.Method(http.MethodGet, "/", restPageHandler(actions.GetAccountsHandler{}))
 			r.Route("/{account_id}", func(r chi.Router) {
-				r.Get("/", w.streamShowActionHandler(w.getAccountInfo, true))
+				r.Method(
+					http.MethodGet,
+					"/",
+					streamableObjectActionHandler{
+						streamHandler: streamHandler,
+						action:        actions.GetAccountByIDHandler{},
+					},
+				)
 				accountData := actions.GetAccountDataHandler{}
 				r.Method(http.MethodGet, "/data/{key}", WrapRaw(
 					streamableObjectActionHandler{streamHandler: streamHandler, action: accountData},
@@ -381,41 +363,4 @@ func remoteAddrIP(r *http.Request) string {
 	} else {
 		return r.RemoteAddr[0:lastSemicolon]
 	}
-}
-
-// horizonSession returns a new session that loads data from the horizon
-// database. The returned session is bound to `ctx`.
-func (w *web) horizonSession(ctx context.Context) (*db.Session, error) {
-	err := errorIfHistoryIsStale(w.isHistoryStale())
-	if err != nil {
-		return nil, err
-	}
-
-	return &db.Session{DB: w.historyQ.Session.DB, Ctx: ctx}, nil
-}
-
-// isHistoryStale returns true if the latest history ledger is more than
-// `StaleThreshold` ledgers behind the latest core ledger
-func (w *web) isHistoryStale() bool {
-	if w.staleThreshold == 0 {
-		return false
-	}
-
-	ls := ledger.CurrentState()
-	return (ls.CoreLatest - ls.HistoryLatest) > int32(w.staleThreshold)
-}
-
-// errorIfHistoryIsStale returns a formatted error if isStale is true.
-func errorIfHistoryIsStale(isStale bool) error {
-	if !isStale {
-		return nil
-	}
-
-	ls := ledger.CurrentState()
-	err := hProblem.StaleHistory
-	err.Extras = map[string]interface{}{
-		"history_latest_ledger": ls.HistoryLatest,
-		"core_latest_ledger":    ls.CoreLatest,
-	}
-	return err
 }
