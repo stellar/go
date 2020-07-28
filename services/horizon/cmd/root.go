@@ -387,7 +387,11 @@ func initApp() *horizon.App {
 			log.Fatalf("flag --%s cannot be empty", stellarCoreDBURLFlagName)
 		}
 	}
-	return horizon.NewApp(config)
+	app, err := horizon.NewApp(config)
+	if err != nil {
+		log.Fatalf("cannot initialize app: %s", err)
+	}
+	return app
 }
 
 func initRootConfig() {

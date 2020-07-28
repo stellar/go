@@ -1,4 +1,4 @@
-package horizon
+package httpx
 
 import (
 	"context"
@@ -16,7 +16,6 @@ import (
 	"github.com/stellar/go/services/horizon/internal/errors"
 	"github.com/stellar/go/services/horizon/internal/expingest"
 	"github.com/stellar/go/services/horizon/internal/hchi"
-	"github.com/stellar/go/services/horizon/internal/httpx"
 	"github.com/stellar/go/services/horizon/internal/ledger"
 	"github.com/stellar/go/services/horizon/internal/render"
 	hProblem "github.com/stellar/go/services/horizon/internal/render/problem"
@@ -41,7 +40,7 @@ func contextMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		ctx = hchi.WithChiRequestID(ctx)
-		ctx = httpx.RequestContext(ctx, w, r)
+		ctx = horizonContext.RequestContext(ctx, w, r)
 
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
@@ -188,13 +187,6 @@ func firstXForwardedFor(r *http.Request) string {
 	return strings.TrimSpace(strings.SplitN(r.Header.Get("X-Forwarded-For"), ",", 2)[0])
 }
 
-func (w *web) RateLimitMiddleware(next http.Handler) http.Handler {
-	if w.rateLimiter == nil {
-		return next
-	}
-	return w.rateLimiter.RateLimit(next)
-}
-
 // recoverMiddleware helps the server recover from panics. It ensures that
 // no request can fully bring down the horizon server, and it also logs the
 // panics to the logging subsystem.
@@ -214,21 +206,21 @@ func recoverMiddleware(h http.Handler) http.Handler {
 }
 
 // requestMetricsMiddleware records success and failures using a meter, and times every request
-func requestMetricsMiddleware(web *web) func(http.Handler) http.Handler {
+func requestMetricsMiddleware(sm *ServerMetrics) func(http.Handler) http.Handler {
 	return func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			mw := newWrapResponseWriter(w, r)
 
-			web.requestTimer.Time(func() {
+			sm.RequestTimer.Time(func() {
 				h.ServeHTTP(mw.(http.ResponseWriter), r)
 			})
 
 			if 200 <= mw.Status() && mw.Status() < 400 {
 				// a success is in [200, 400)
-				web.successMeter.Mark(1)
+				sm.SuccessMeter.Mark(1)
 			} else if 400 <= mw.Status() && mw.Status() < 600 {
 				// a success is in [400, 600)
-				web.failureMeter.Mark(1)
+				sm.FailureMeter.Mark(1)
 			}
 		})
 	}

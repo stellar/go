@@ -7,8 +7,8 @@ import (
 
 	"github.com/stellar/go/amount"
 	protocol "github.com/stellar/go/protocols/horizon"
+	horizonContext "github.com/stellar/go/services/horizon/internal/context"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/services/horizon/internal/httpx"
 	"github.com/stellar/go/support/render/hal"
 )
 
@@ -30,7 +30,7 @@ func PopulateOffer(ctx context.Context, dest *protocol.Offer, row history.Offer,
 	if ledger != nil {
 		dest.LastModifiedTime = &ledger.ClosedAt
 	}
-	lb := hal.LinkBuilder{httpx.BaseURL(ctx)}
+	lb := hal.LinkBuilder{horizonContext.BaseURL(ctx)}
 	dest.Links.Self = lb.Linkf("/offers/%d", row.OfferID)
 	dest.Links.OfferMaker = lb.Linkf("/accounts/%s", row.SellerID)
 }

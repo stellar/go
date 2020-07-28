@@ -5,8 +5,8 @@ import (
 
 	"github.com/stellar/go/protocols/horizon/base"
 	"github.com/stellar/go/protocols/horizon/effects"
+	horizonContext "github.com/stellar/go/services/horizon/internal/context"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/services/horizon/internal/httpx"
 	"github.com/stellar/go/support/render/hal"
 )
 
@@ -160,7 +160,7 @@ func PopulateBaseEffect(ctx context.Context, this *effects.Base, row history.Eff
 	populateEffectType(this, row)
 	this.LedgerCloseTime = ledger.ClosedAt
 
-	lb := hal.LinkBuilder{httpx.BaseURL(ctx)}
+	lb := hal.LinkBuilder{horizonContext.BaseURL(ctx)}
 	this.Links.Operation = lb.Linkf("/operations/%d", row.HistoryOperationID)
 	this.Links.Succeeds = lb.Linkf("/effects?order=desc&cursor=%s", this.PT)
 	this.Links.Precedes = lb.Linkf("/effects?order=asc&cursor=%s", this.PT)

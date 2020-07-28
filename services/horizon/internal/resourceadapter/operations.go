@@ -6,8 +6,8 @@ import (
 
 	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/protocols/horizon/operations"
+	horizonContext "github.com/stellar/go/services/horizon/internal/context"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/services/horizon/internal/httpx"
 	"github.com/stellar/go/support/render/hal"
 	"github.com/stellar/go/xdr"
 )
@@ -132,7 +132,7 @@ func PopulateBaseOperation(
 	dest.LedgerCloseTime = ledger.ClosedAt
 	dest.TransactionHash = transactionHash
 
-	lb := hal.LinkBuilder{Base: httpx.BaseURL(ctx)}
+	lb := hal.LinkBuilder{Base: horizonContext.BaseURL(ctx)}
 	self := fmt.Sprintf("/operations/%d", operationRow.ID)
 	dest.Links.Self = lb.Link(self)
 	dest.Links.Succeeds = lb.Linkf("/effects?order=desc&cursor=%s", dest.PT)

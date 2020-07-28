@@ -4,6 +4,7 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/stellar/go/services/horizon/internal/context"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 )
 
@@ -51,7 +52,7 @@ func loadAccountData(r *http.Request) (history.Data, error) {
 	if err != nil {
 		return history.Data{}, err
 	}
-	historyQ, err := HistoryQFromRequest(r)
+	historyQ, err := context.HistoryQFromRequest(r)
 	if err != nil {
 		return history.Data{}, err
 	}

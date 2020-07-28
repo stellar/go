@@ -164,14 +164,6 @@ func initTxSubMetrics(app *App) {
 	app.metrics.Register("txsub.total", app.submitter.Metrics.SubmissionTimer)
 }
 
-// initWebMetrics registers the metrics for the web server into the provided
-// app's metrics registry.
-func initWebMetrics(app *App) {
-	app.metrics.Register("requests.total", app.web.requestTimer)
-	app.metrics.Register("requests.succeeded", app.web.successMeter)
-	app.metrics.Register("requests.failed", app.web.failureMeter)
-}
-
 func initSubmissionSystem(app *App) {
 	app.submitter = &txsub.System{
 		Pending:         txsub.NewDefaultSubmissionList(),

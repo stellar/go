@@ -6,18 +6,21 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/stellar/throttled"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
+
 	"github.com/stellar/go/services/horizon/internal/actions"
 	horizonContext "github.com/stellar/go/services/horizon/internal/context"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/expingest"
+	"github.com/stellar/go/services/horizon/internal/httpx"
 	"github.com/stellar/go/services/horizon/internal/ledger"
 	hProblem "github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/support/db"
+	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/xdr"
-	"github.com/stellar/throttled"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/suite"
 )
 
 type RateLimitMiddlewareTestSuite struct {
@@ -38,7 +41,11 @@ func (suite *RateLimitMiddlewareTestSuite) SetupTest() {
 		MaxRate:  throttled.PerHour(10),
 		MaxBurst: 9,
 	}
-	suite.app = NewApp(suite.c)
+	app, err := NewApp(suite.c)
+	if err != nil {
+		log.Fatal("cannot initialize app", err)
+	}
+	suite.app = app
 	suite.rh = NewRequestHelper(suite.app)
 }
 
@@ -142,7 +149,7 @@ func TestStateMiddleware(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	}
 
-	stateMiddleware := &StateMiddleware{
+	stateMiddleware := &httpx.StateMiddleware{
 		HorizonSession: tt.HorizonSession(),
 	}
 	handler := stateMiddleware.Wrap(http.HandlerFunc(endpoint))
@@ -331,7 +338,7 @@ func TestCheckHistoryStaleMiddleware(t *testing.T) {
 				HistoryLatest: testCase.historyLatest,
 			}
 			ledger.SetState(state)
-			historyMiddleware := NewHistoryMiddleware(testCase.staleThreshold, tt.HorizonSession())
+			historyMiddleware := httpx.NewHistoryMiddleware(testCase.staleThreshold, tt.HorizonSession())
 			handler := historyMiddleware(http.HandlerFunc(endpoint))
 			w := httptest.NewRecorder()
 			handler.ServeHTTP(w, request)

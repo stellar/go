@@ -5,7 +5,7 @@ import (
 	"net/url"
 
 	"github.com/stellar/go/protocols/horizon"
-	"github.com/stellar/go/services/horizon/internal/httpx"
+	horizonContext "github.com/stellar/go/services/horizon/internal/context"
 	"github.com/stellar/go/services/horizon/internal/ledger"
 	"github.com/stellar/go/support/render/hal"
 )
@@ -32,7 +32,7 @@ func PopulateRoot(
 	dest.CurrentProtocolVersion = currentProtocolVersion
 	dest.CoreSupportedProtocolVersion = coreSupportedProtocolVersion
 
-	lb := hal.LinkBuilder{Base: httpx.BaseURL(ctx)}
+	lb := hal.LinkBuilder{Base: horizonContext.BaseURL(ctx)}
 	if friendBotURL != nil {
 		friendbotLinkBuild := hal.LinkBuilder{Base: friendBotURL}
 		l := friendbotLinkBuild.Link("{?addr}")

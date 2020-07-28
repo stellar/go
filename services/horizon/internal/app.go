@@ -6,19 +6,20 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"os/signal"
 	"runtime"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/rcrowley/go-metrics"
-	"github.com/stellar/throttled"
-	"gopkg.in/tylerb/graceful.v1"
 
 	"github.com/stellar/go/clients/stellarcore"
 	proto "github.com/stellar/go/protocols/stellarcore"
 	"github.com/stellar/go/services/horizon/internal/actions"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/expingest"
+	"github.com/stellar/go/services/horizon/internal/httpx"
 	"github.com/stellar/go/services/horizon/internal/ledger"
 	"github.com/stellar/go/services/horizon/internal/logmetrics"
 	"github.com/stellar/go/services/horizon/internal/operationfeestats"
@@ -52,8 +53,9 @@ func (c *coreSettingsStore) get() actions.CoreSettings {
 
 // App represents the root of the state of a horizon instance.
 type App struct {
+	done            chan struct{}
 	config          Config
-	web             *web
+	webServer       *httpx.Server
 	historyQ        *history.Q
 	ctx             context.Context
 	cancel          func()
@@ -83,55 +85,28 @@ func (a *App) GetCoreSettings() actions.CoreSettings {
 }
 
 // NewApp constructs an new App instance from the provided config.
-func NewApp(config Config) *App {
+func NewApp(config Config) (*App, error) {
 	a := &App{
 		config:         config,
 		horizonVersion: app.Version(),
 		ticks:          time.NewTicker(1 * time.Second),
+		done:           make(chan struct{}),
 	}
 
-	a.init()
-	return a
+	if err := a.init(); err != nil {
+		return nil, err
+	}
+	return a, nil
 }
 
 // Serve starts the horizon web server, binding it to a socket, setting up
 // the shutdown signals.
 func (a *App) Serve() {
-	addr := fmt.Sprintf(":%d", a.config.Port)
 
-	srv := &graceful.Server{
-		Timeout: 10 * time.Second,
-
-		Server: &http.Server{
-			Addr:        addr,
-			Handler:     a.web.router,
-			ReadTimeout: 5 * time.Second,
-		},
-
-		ShutdownInitiated: func() {
-			log.Info("received signal, gracefully stopping")
-			a.Close()
-		},
-	}
-
-	log.Infof("Starting horizon on %s (ingest: %v)", addr, a.config.Ingest)
+	log.Infof("Starting horizon on :%d (ingest: %v)", a.config.Port, a.config.Ingest)
 
 	if a.config.AdminPort != 0 {
-		go func() {
-			adminAddr := fmt.Sprintf(":%d", a.config.AdminPort)
-			log.Infof("Starting internal server on %s", adminAddr)
-
-			internalSrv := &http.Server{
-				Addr:        adminAddr,
-				Handler:     a.web.internalRouter,
-				ReadTimeout: 5 * time.Second,
-			}
-
-			err := internalSrv.ListenAndServe()
-			if err != nil {
-				log.Warn(errors.Wrap(err, "error in internalSrv.ListenAndServe()"))
-			}
-		}()
+		log.Infof("Starting internal server on :%d", a.config.AdminPort)
 	}
 
 	go a.run()
@@ -149,14 +124,17 @@ func (a *App) Serve() {
 		}()
 	}
 
-	var err error
-	if a.config.TLSCert != "" {
-		err = srv.ListenAndServeTLS(a.config.TLSCert, a.config.TLSKey)
-	} else {
-		err = srv.ListenAndServe()
-	}
+	// configure shutdown signal handler
+	done := make(chan os.Signal, 1)
+	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		<-done
+		a.Close()
+	}()
+	go a.waitForDone()
 
-	if err != nil {
+	err := a.webServer.Serve(uint16(a.config.Port), a.config.TLSCert, a.config.TLSKey, uint16(a.config.AdminPort))
+	if err != nil && err != http.ErrServerClosed {
 		log.Fatal(err)
 	}
 
@@ -168,6 +146,14 @@ func (a *App) Serve() {
 
 // Close cancels the app. It does not close DB connections - use App.CloseDB().
 func (a *App) Close() {
+	close(a.done)
+}
+
+func (a *App) waitForDone() {
+	<-a.done
+	webShutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	a.webServer.Shutdown(webShutdownCtx)
 	a.cancel()
 	if a.expingester != nil {
 		a.expingester.Shutdown()
@@ -449,7 +435,7 @@ func (a *App) Tick() {
 
 // Init initializes app, using the config to populate db connections and
 // whatnot.
-func (a *App) init() {
+func (a *App) init() error {
 	// app-context
 	a.ctx, a.cancel = context.WithCancel(context.Background())
 
@@ -481,17 +467,6 @@ func (a *App) init() {
 	// reaper
 	a.reaper = reap.New(a.config.HistoryRetentionCount, a.HorizonSession(context.Background()))
 
-	// web.init
-	a.web = mustInitWeb(a.ctx, a.historyQ, a.config.SSEUpdateFrequency, a.config.StaleThreshold)
-
-	// web.rate-limiter
-	a.web.rateLimiter = maybeInitWebRateLimiter(a.config.RateQuota)
-
-	// web.middleware
-	// Note that we passed in `a` here for putting the whole App in the context.
-	// This parameter will be removed soon.
-	a.web.mustInstallMiddlewares(a.config.ConnectionTimeout)
-
 	// metrics and log.metrics
 	a.metrics = metrics.NewRegistry()
 	for level, meter := range *logmetrics.DefaultMetrics {
@@ -501,17 +476,34 @@ func (a *App) init() {
 	// db-metrics
 	initDbMetrics(a)
 
-	// web.actions
-	a.web.mustInstallActions(a.config, a.paths, a.historyQ.Session, a.submitter, a.metrics, a, a.horizonVersion)
-
 	// ingest.metrics
 	initIngestMetrics(a)
 
-	// web.metrics
-	initWebMetrics(a)
-
 	// txsub.metrics
 	initTxSubMetrics(a)
+
+	webConfig := &httpx.RouterConfig{
+		DBSession:          a.historyQ.Session,
+		TxSubmitter:        a.submitter,
+		RateQuota:          a.config.RateQuota,
+		SSEUpdateFrequency: a.config.SSEUpdateFrequency,
+		StaleThreshold:     a.config.StaleThreshold,
+		ConnectionTimeout:  a.config.ConnectionTimeout,
+		NetworkPassphrase:  a.config.NetworkPassphrase,
+		MaxPathLength:      a.config.MaxPathLength,
+		PathFinder:         a.paths,
+		MetricsRegistry:    a.metrics,
+		CoreGetter:         a,
+		HorizonVersion:     a.horizonVersion,
+		FriendbotURL:       a.config.FriendbotURL,
+	}
+
+	var err error
+	a.webServer, err = httpx.NewServer(webConfig)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // run is the function that runs in the background that triggers Tick each
@@ -526,9 +518,4 @@ func (a *App) run() {
 			return
 		}
 	}
-}
-
-// GetRateLimiter returns the HTTPRateLimiter of the App.
-func (a *App) GetRateLimiter() *throttled.HTTPRateLimiter {
-	return a.web.rateLimiter
 }

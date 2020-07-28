@@ -1,4 +1,4 @@
-package horizon
+package httpx
 
 import (
 	"database/sql"
@@ -24,17 +24,17 @@ type objectAction interface {
 	) (interface{}, error)
 }
 
-type objectActionHandler struct {
-	action objectAction
+type ObjectActionHandler struct {
+	Action objectAction
 }
 
-func (handler objectActionHandler) ServeHTTP(
+func (handler ObjectActionHandler) ServeHTTP(
 	w http.ResponseWriter,
 	r *http.Request,
 ) {
 	switch render.Negotiate(r) {
 	case render.MimeHal, render.MimeJSON:
-		response, err := handler.action.GetResource(w, r)
+		response, err := handler.Action.GetResource(w, r)
 		if err != nil {
 			problem.Render(r.Context(), w, err)
 			return

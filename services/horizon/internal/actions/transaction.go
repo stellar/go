@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/stellar/go/protocols/horizon"
+	"github.com/stellar/go/services/horizon/internal/context"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/resourceadapter"
@@ -31,7 +32,7 @@ func (handler GetTransactionByHashHandler) GetResource(w HeaderWriter, r *http.R
 		return nil, err
 	}
 
-	historyQ, err := HistoryQFromRequest(r)
+	historyQ, err := context.HistoryQFromRequest(r)
 	if err != nil {
 		return nil, err
 	}
@@ -104,7 +105,7 @@ func (handler GetTransactionsHandler) GetResourcePage(w HeaderWriter, r *http.Re
 		return nil, err
 	}
 
-	historyQ, err := HistoryQFromRequest(r)
+	historyQ, err := context.HistoryQFromRequest(r)
 	if err != nil {
 		return nil, err
 	}
