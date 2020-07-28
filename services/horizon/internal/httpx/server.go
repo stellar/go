@@ -20,11 +20,6 @@ import (
 	"github.com/stellar/go/support/render/problem"
 )
 
-const (
-	LRUCacheSize            = 50000
-	maxAssetsForPathFinding = 15
-)
-
 type ServerMetrics struct {
 	RequestTimer metrics.Timer
 	FailureMeter metrics.Meter
