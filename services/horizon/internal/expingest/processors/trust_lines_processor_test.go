@@ -1,16 +1,17 @@
+//lint:file-ignore U1001 Ignore all unused code, staticcheck doesn't understand testify/suite
 package processors
 
 import (
-	"context"
 	"testing"
+
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/suite"
 
 	ingesterrors "github.com/stellar/go/exp/ingest/errors"
 	"github.com/stellar/go/exp/ingest/io"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
-	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/suite"
 )
 
 var trustLineIssuer = xdr.MustAddress("GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
@@ -59,7 +60,7 @@ func (s *TrustLinesProcessorTestSuiteState) TestCreateTrustLine() {
 	s.mockQ.On(
 		"UpsertTrustLines",
 		[]xdr.LedgerEntry{
-			xdr.LedgerEntry{
+			{
 				LastModifiedLedgerSeq: lastModifiedLedgerSeq,
 				Data: xdr.LedgerEntryData{
 					Type:      xdr.LedgerEntryTypeTrustline,
@@ -92,7 +93,7 @@ func (s *TrustLinesProcessorTestSuiteState) TestCreateTrustLineUnauthorized() {
 	s.mockQ.On(
 		"UpsertTrustLines",
 		[]xdr.LedgerEntry{
-			xdr.LedgerEntry{
+			{
 				LastModifiedLedgerSeq: lastModifiedLedgerSeq,
 				Data: xdr.LedgerEntryData{
 					Type:      xdr.LedgerEntryTypeTrustline,
@@ -109,7 +110,6 @@ func TestTrustLinesProcessorTestSuiteLedger(t *testing.T) {
 
 type TrustLinesProcessorTestSuiteLedger struct {
 	suite.Suite
-	context   context.Context
 	processor *TrustLinesProcessor
 	mockQ     *history.MockQTrustLines
 }
@@ -242,14 +242,14 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestInsertTrustLine() {
 		arg := args.Get(0).([]xdr.LedgerEntry)
 		s.Assert().ElementsMatch(
 			[]xdr.LedgerEntry{
-				xdr.LedgerEntry{
+				{
 					LastModifiedLedgerSeq: lastModifiedLedgerSeq,
 					Data: xdr.LedgerEntryData{
 						Type:      xdr.LedgerEntryTypeTrustline,
 						TrustLine: &updatedTrustLine,
 					},
 				},
-				xdr.LedgerEntry{
+				{
 					LastModifiedLedgerSeq: lastModifiedLedgerSeq,
 					Data: xdr.LedgerEntryData{
 						Type:      xdr.LedgerEntryTypeTrustline,
@@ -301,7 +301,7 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestUpdateTrustLine() {
 	s.mockQ.On(
 		"UpsertTrustLines",
 		[]xdr.LedgerEntry{
-			xdr.LedgerEntry{
+			{
 				LastModifiedLedgerSeq: lastModifiedLedgerSeq,
 				Data: xdr.LedgerEntryData{
 					Type:      xdr.LedgerEntryTypeTrustline,
@@ -385,14 +385,14 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestUpdateTrustLineAuthorization() 
 		arg := args.Get(0).([]xdr.LedgerEntry)
 		s.Assert().ElementsMatch(
 			[]xdr.LedgerEntry{
-				xdr.LedgerEntry{
+				{
 					LastModifiedLedgerSeq: lastModifiedLedgerSeq,
 					Data: xdr.LedgerEntryData{
 						Type:      xdr.LedgerEntryTypeTrustline,
 						TrustLine: &updatedTrustLine,
 					},
 				},
-				xdr.LedgerEntry{
+				{
 					LastModifiedLedgerSeq: lastModifiedLedgerSeq,
 					Data: xdr.LedgerEntryData{
 						Type:      xdr.LedgerEntryTypeTrustline,
@@ -510,7 +510,7 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestProcessUpgradeChange() {
 	s.mockQ.On(
 		"UpsertTrustLines",
 		[]xdr.LedgerEntry{
-			xdr.LedgerEntry{
+			{
 				LastModifiedLedgerSeq: lastModifiedLedgerSeq,
 				Data: xdr.LedgerEntryData{
 					Type:      xdr.LedgerEntryTypeTrustline,

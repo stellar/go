@@ -422,11 +422,6 @@ func (m *mockProcessorsRunner) RunTransactionProcessorsOnLedger(sequence uint32)
 	return args.Get(0).(io.StatsLedgerTransactionProcessorResults), args.Error(1)
 }
 
-func (m *mockProcessorsRunner) RunOrderBookProcessorOnLedger(sequence uint32) (io.StatsChangeProcessorResults, error) {
-	args := m.Called(sequence)
-	return args.Get(0).(io.StatsChangeProcessorResults), args.Error(1)
-}
-
 var _ ProcessorRunnerInterface = (*mockProcessorsRunner)(nil)
 
 type mockStellarCoreClient struct {

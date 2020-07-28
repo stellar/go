@@ -1,3 +1,4 @@
+//lint:file-ignore U1001 Ignore all unused code, staticcheck doesn't understand testify/suite
 package sse
 
 import (
@@ -14,6 +15,23 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
+
+func (s *Stream) SentCount() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.sent
+}
+
+// IsDone is safe to call concurrently and is exported.
+func (s *Stream) IsDone() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.limit == 0 {
+		return s.done
+	}
+
+	return s.done || s.sent >= s.limit
+}
 
 type StreamTestSuite struct {
 	suite.Suite

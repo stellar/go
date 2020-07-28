@@ -5,8 +5,8 @@ import (
 	"math"
 
 	sq "github.com/Masterminds/squirrel"
+
 	"github.com/stellar/go/services/horizon/internal/db2"
-	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
@@ -73,22 +73,6 @@ func (q *TradesQ) ForOffer(id int64) *TradesQ {
 //Filter by asset pair. This function is private to ensure that correct order and proper select statement are coupled
 func (q *TradesQ) forAssetPair(baseAssetId int64, counterAssetId int64) *TradesQ {
 	q.sql = q.sql.Where(sq.Eq{"base_asset_id": baseAssetId, "counter_asset_id": counterAssetId})
-	return q
-}
-
-// ForLedger adds a filter which only includes trades within the given ledger sequence
-func (q *TradesQ) ForLedger(sequence int32, order string) *TradesQ {
-	from := toid.ID{LedgerSequence: sequence}.ToInt64()
-	to := toid.ID{LedgerSequence: sequence + 1}.ToInt64()
-
-	q.sql = q.sql.Where(
-		"htrd.history_operation_id >= ? AND htrd.history_operation_id <= ? ",
-		from,
-		to,
-	).OrderBy(
-		"htrd.history_operation_id " + order + ", htrd.order " + order,
-	)
-
 	return q
 }
 
