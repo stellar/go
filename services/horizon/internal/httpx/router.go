@@ -23,6 +23,8 @@ import (
 	"github.com/stellar/go/support/render/problem"
 )
 
+const maxAssetsForPathFinding = 15
+
 type RouterConfig struct {
 	DBSession   *db.Session
 	TxSubmitter *txsub.System
