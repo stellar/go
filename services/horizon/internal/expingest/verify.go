@@ -338,7 +338,7 @@ func addAccountsToStateVerifier(verifier *verify.StateVerifier, q history.Ingest
 			Signers: xdr.SortSignersByKey(signersMap[row.AccountID]),
 			Ext: xdr.AccountEntryExt{
 				V: 1,
-				V1: &xdr.AccountEntryV1{
+				V1: &xdr.AccountEntryExtensionV1{
 					Liabilities: xdr.Liabilities{
 						Buying:  xdr.Int64(row.BuyingLiabilities),
 						Selling: xdr.Int64(row.SellingLiabilities),
@@ -501,7 +501,7 @@ func transformEntry(entry xdr.LedgerEntry) (bool, xdr.LedgerEntry) {
 		// with 0 liabilities.
 		if accountEntry.Ext.V == 0 {
 			accountEntry.Ext.V = 1
-			accountEntry.Ext.V1 = &xdr.AccountEntryV1{
+			accountEntry.Ext.V1 = &xdr.AccountEntryExtensionV1{
 				Liabilities: xdr.Liabilities{
 					Buying:  0,
 					Selling: 0,

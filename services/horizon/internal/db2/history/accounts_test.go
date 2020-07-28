@@ -23,7 +23,7 @@ var (
 		Thresholds:    xdr.Thresholds{1, 2, 3, 4},
 		Ext: xdr.AccountEntryExt{
 			V: 1,
-			V1: &xdr.AccountEntryV1{
+			V1: &xdr.AccountEntryExtensionV1{
 				Liabilities: xdr.Liabilities{
 					Buying:  3,
 					Selling: 4,
@@ -43,7 +43,7 @@ var (
 		Thresholds:    xdr.Thresholds{5, 6, 7, 8},
 		Ext: xdr.AccountEntryExt{
 			V: 1,
-			V1: &xdr.AccountEntryV1{
+			V1: &xdr.AccountEntryExtensionV1{
 				Liabilities: xdr.Liabilities{
 					Buying:  30,
 					Selling: 40,
@@ -62,7 +62,7 @@ var (
 		Thresholds:    xdr.Thresholds{5, 6, 7, 8},
 		Ext: xdr.AccountEntryExt{
 			V: 1,
-			V1: &xdr.AccountEntryV1{
+			V1: &xdr.AccountEntryExtensionV1{
 				Liabilities: xdr.Liabilities{
 					Buying:  30,
 					Selling: 40,
@@ -175,7 +175,7 @@ func TestUpsertAccount(t *testing.T) {
 		},
 		Ext: xdr.AccountEntryExt{
 			V: 1,
-			V1: &xdr.AccountEntryV1{
+			V1: &xdr.AccountEntryExtensionV1{
 				Liabilities: xdr.Liabilities{
 					Buying:  xdr.Int64(accounts[0].BuyingLiabilities),
 					Selling: xdr.Int64(accounts[0].SellingLiabilities),
@@ -212,7 +212,7 @@ func TestUpsertAccount(t *testing.T) {
 		},
 		Ext: xdr.AccountEntryExt{
 			V: 1,
-			V1: &xdr.AccountEntryV1{
+			V1: &xdr.AccountEntryExtensionV1{
 				Liabilities: xdr.Liabilities{
 					Buying:  xdr.Int64(accounts[0].BuyingLiabilities),
 					Selling: xdr.Int64(accounts[0].SellingLiabilities),

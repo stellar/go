@@ -504,7 +504,7 @@ func TestChangeAccountChangedExceptSignersNoChanges(t *testing.T) {
 					},
 					Ext: xdr.AccountEntryExt{
 						V: 1,
-						V1: &xdr.AccountEntryV1{
+						V1: &xdr.AccountEntryExtensionV1{
 							Liabilities: xdr.Liabilities{
 								Buying:  10,
 								Selling: 20,
@@ -535,7 +535,7 @@ func TestChangeAccountChangedExceptSignersNoChanges(t *testing.T) {
 					},
 					Ext: xdr.AccountEntryExt{
 						V: 1,
-						V1: &xdr.AccountEntryV1{
+						V1: &xdr.AccountEntryExtensionV1{
 							Liabilities: xdr.Liabilities{
 								Buying:  10,
 								Selling: 20,
