@@ -513,13 +513,17 @@ func (t *Transaction) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
-	t.FeeCharged, err = v.FeeCharged.Int64()
-	if err != nil {
-		return err
+	if v.FeeCharged != "" {
+		t.FeeCharged, err = v.FeeCharged.Int64()
+		if err != nil {
+			return err
+		}
 	}
-	t.MaxFee, err = v.MaxFee.Int64()
-	if err != nil {
-		return err
+	if v.MaxFee != "" {
+		t.MaxFee, err = v.MaxFee.Int64()
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
