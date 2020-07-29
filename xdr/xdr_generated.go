@@ -1456,7 +1456,7 @@ const MaxSigners = 20
 //
 //   typedef AccountID* SponsorshipDescriptor;
 //
-type SponsorshipDescriptor AccountId
+type SponsorshipDescriptor *AccountId
 
 // MarshalBinary implements encoding.BinaryMarshaler.
 func (s SponsorshipDescriptor) MarshalBinary() ([]byte, error) {
