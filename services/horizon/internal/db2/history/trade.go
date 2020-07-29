@@ -166,9 +166,8 @@ func (q *TradesQ) Page(page db2.PageQuery) *TradesQ {
 		q.sql = sq.SelectBuilder{}
 	} else {
 		q.sql = q.appendOrdering(q.sql, op, idx, page.Order)
+		q.sql = q.sql.Limit(page.Limit)
 	}
-
-	q.sql = q.sql.Limit(page.Limit)
 	return q
 }
 
