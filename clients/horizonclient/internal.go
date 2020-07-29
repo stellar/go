@@ -34,7 +34,7 @@ func decodeResponse(resp *http.Response, object interface{}, hc *Client) (err er
 
 	err = decoder.Decode(&object)
 	if err != nil {
-		return
+		return errors.Wrap(err, "error decoding response")
 	}
 	return
 }
