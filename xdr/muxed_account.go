@@ -7,6 +7,20 @@ import (
 	"github.com/stellar/go/strkey"
 )
 
+func MustMuxedAddress(address string) MuxedAccount {
+	muxed := MuxedAccount{}
+	err := muxed.SetAddress(address)
+	if err != nil {
+		panic(err)
+	}
+	return muxed
+}
+
+func MustMuxedAddressPtr(address string) *MuxedAccount {
+	muxed := MustMuxedAddress(address)
+	return &muxed
+}
+
 // SetAddress modifies the receiver, setting it's value to the MuxedAccount form
 // of the provided address.
 func (m *MuxedAccount) SetAddress(address string) error {

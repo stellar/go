@@ -6,8 +6,8 @@ import (
 
 	"github.com/stellar/go/amount"
 	protocol "github.com/stellar/go/protocols/horizon"
+	horizonContext "github.com/stellar/go/services/horizon/internal/context"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/services/horizon/internal/httpx"
 	"github.com/stellar/go/support/render/hal"
 )
 
@@ -57,7 +57,7 @@ func populateTradeLinks(
 	dest *protocol.Trade,
 	opid int64,
 ) {
-	lb := hal.LinkBuilder{httpx.BaseURL(ctx)}
+	lb := hal.LinkBuilder{horizonContext.BaseURL(ctx)}
 	dest.Links.Base = lb.Link("/accounts", dest.BaseAccount)
 	dest.Links.Counter = lb.Link("/accounts", dest.CounterAccount)
 	dest.Links.Operation = lb.Link(

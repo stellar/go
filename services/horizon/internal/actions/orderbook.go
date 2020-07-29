@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	protocol "github.com/stellar/go/protocols/horizon"
+	"github.com/stellar/go/services/horizon/internal/context"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/resourceadapter"
 	"github.com/stellar/go/support/render/problem"
@@ -94,7 +95,7 @@ func (handler GetOrderbookHandler) GetResource(w HeaderWriter, r *http.Request) 
 		return nil, invalidOrderBook
 	}
 
-	historyQ, err := HistoryQFromRequest(r)
+	historyQ, err := context.HistoryQFromRequest(r)
 	if err != nil {
 		return nil, err
 	}

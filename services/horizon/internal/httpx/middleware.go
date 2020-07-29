@@ -1,4 +1,4 @@
-package horizon
+package httpx
 
 import (
 	"context"
@@ -18,7 +18,6 @@ import (
 	"github.com/stellar/go/services/horizon/internal/errors"
 	"github.com/stellar/go/services/horizon/internal/expingest"
 	"github.com/stellar/go/services/horizon/internal/hchi"
-	"github.com/stellar/go/services/horizon/internal/httpx"
 	"github.com/stellar/go/services/horizon/internal/ledger"
 	"github.com/stellar/go/services/horizon/internal/render"
 	hProblem "github.com/stellar/go/services/horizon/internal/render/problem"
@@ -43,7 +42,7 @@ func contextMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		ctx = hchi.WithChiRequestID(ctx)
-		ctx = httpx.RequestContext(ctx, w, r)
+		ctx = horizonContext.RequestContext(ctx, w, r)
 
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
@@ -66,7 +65,7 @@ func newWrapResponseWriter(w http.ResponseWriter, r *http.Request) middleware.Wr
 }
 
 // loggerMiddleware logs http requests and resposnes to the logging subsytem of horizon.
-func loggerMiddleware(requestDurationSummary *prometheus.SummaryVec) func(next http.Handler) http.Handler {
+func loggerMiddleware(serverMetrics *ServerMetrics) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()
@@ -86,7 +85,7 @@ func loggerMiddleware(requestDurationSummary *prometheus.SummaryVec) func(next h
 			next.ServeHTTP(mw, r.WithContext(ctx))
 
 			duration := time.Since(then)
-			logEndOfRequest(ctx, r, requestDurationSummary, duration, mw, streaming)
+			logEndOfRequest(ctx, r, serverMetrics.RequestDurationSummary, duration, mw, streaming)
 		})
 	}
 }
@@ -197,13 +196,6 @@ func logEndOfRequest(ctx context.Context, r *http.Request, requestDurationSummar
 
 func firstXForwardedFor(r *http.Request) string {
 	return strings.TrimSpace(strings.SplitN(r.Header.Get("X-Forwarded-For"), ",", 2)[0])
-}
-
-func (w *web) RateLimitMiddleware(next http.Handler) http.Handler {
-	if w.rateLimiter == nil {
-		return next
-	}
-	return w.rateLimiter.RateLimit(next)
 }
 
 // recoverMiddleware helps the server recover from panics. It ensures that

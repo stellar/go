@@ -211,7 +211,7 @@ func initTxSubMetrics(app *App) {
 }
 
 func initWebMetrics(app *App) {
-	app.prometheusRegistry.MustRegister(app.web.requestDurationSummary)
+	app.prometheusRegistry.MustRegister(app.webServer.Metrics.RequestDurationSummary)
 }
 
 func initSubmissionSystem(app *App) {

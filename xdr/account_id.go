@@ -97,6 +97,11 @@ func MustAddress(address string) AccountId {
 	return aid
 }
 
+func MustAddressPtr(address string) *AccountId {
+	aid := MustAddress(address)
+	return &aid
+}
+
 // AddressToAccountId returns an AccountId for a given address string.
 // If the address is not valid the error returned will not be nil
 func AddressToAccountId(address string) (AccountId, error) {

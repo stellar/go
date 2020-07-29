@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/stellar/go/protocols/horizon"
+	horizonContext "github.com/stellar/go/services/horizon/internal/context"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/resourceadapter"
 	"github.com/stellar/go/support/errors"
@@ -28,7 +29,7 @@ func (handler GetOfferByID) GetResource(w HeaderWriter, r *http.Request) (interf
 		return nil, err
 	}
 
-	historyQ, err := HistoryQFromRequest(r)
+	historyQ, err := horizonContext.HistoryQFromRequest(r)
 	if err != nil {
 		return nil, err
 	}
@@ -108,7 +109,7 @@ func (handler GetOffersHandler) GetResourcePage(
 		Buying:    buying,
 	}
 
-	historyQ, err := HistoryQFromRequest(r)
+	historyQ, err := horizonContext.HistoryQFromRequest(r)
 	if err != nil {
 		return nil, err
 	}
@@ -161,7 +162,7 @@ func (handler GetAccountOffersHandler) GetResourcePage(
 		return nil, err
 	}
 
-	historyQ, err := HistoryQFromRequest(r)
+	historyQ, err := horizonContext.HistoryQFromRequest(r)
 	if err != nil {
 		return nil, err
 	}

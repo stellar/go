@@ -4,13 +4,15 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"github.com/guregu/null"
-	"github.com/stellar/go/xdr"
 	"time"
+
+	"github.com/guregu/null"
+
+	horizonContext "github.com/stellar/go/services/horizon/internal/context"
+	"github.com/stellar/go/xdr"
 
 	protocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/services/horizon/internal/httpx"
 	"github.com/stellar/go/support/render/hal"
 )
 
@@ -72,7 +74,7 @@ func PopulateTransaction(
 		dest.MaxFee = row.MaxFee
 	}
 
-	lb := hal.LinkBuilder{Base: httpx.BaseURL(ctx)}
+	lb := hal.LinkBuilder{Base: horizonContext.BaseURL(ctx)}
 	dest.Links.Account = lb.Link("/accounts", dest.Account)
 	dest.Links.Ledger = lb.Link("/ledgers", fmt.Sprintf("%d", dest.Ledger))
 	dest.Links.Operations = lb.PagedLink("/transactions", dest.ID, "operations")

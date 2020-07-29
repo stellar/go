@@ -1,6 +1,7 @@
 package horizon
 
 import (
+	"log"
 	"time"
 
 	"github.com/stellar/throttled"
@@ -11,7 +12,11 @@ import (
 )
 
 func NewTestApp() *App {
-	return NewApp(NewTestConfig())
+	app, err := NewApp(NewTestConfig())
+	if err != nil {
+		log.Fatal("cannot create app", err)
+	}
+	return app
 }
 
 func NewTestConfig() Config {
@@ -29,5 +34,5 @@ func NewTestConfig() Config {
 }
 
 func NewRequestHelper(app *App) test.RequestHelper {
-	return test.NewRequestHelper(app.web.router)
+	return test.NewRequestHelper(app.webServer.Router.Mux)
 }
