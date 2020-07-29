@@ -64,6 +64,29 @@ func TestTransactionJSONMarshal(t *testing.T) {
 	assert.Equal(t, result, transaction, "data matches original input")
 }
 
+// Test that a typical friendbot fund response can unmarshal to the Transaction
+// type. The horizonclient uses the Transaction type for friendbot responses
+// also, but their response is a slimmed down version of the full transaction
+// response. This test confirms there are no errors unmarshalling that slimmed
+// down version.
+func TestTransactionUnmarshalsFriendbotFund(t *testing.T) {
+	friendbotFundResponse := `{
+  "_links": {
+    "transaction": {
+      "href": "https://horizon-testnet.stellar.org/transactions/94e42f65d3ff5f30669b6109c2ce3e82c0e592c52004e3b41bb30e24df33954e"
+    }
+  },
+  "hash": "94e42f65d3ff5f30669b6109c2ce3e82c0e592c52004e3b41bb30e24df33954e",
+  "ledger": 8269,
+  "envelope_xdr": "AAAAAgAAAAD2Leuk4afNVCYqxbN03yPH6kgKe/o2yiOd3CQNkpkpQwABhqAAAAFSAAAACQAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAABAAAAABB90WssODNIgi6BHveqzxTRmIpvAFRyVNM+Hm2GVuCcAAAAAAAAAABW9+rbvt6YXwwXyFszptQFlfzzFMrWObLiJmBhOzNblAAAABdIdugAAAAAAAAAAAKSmSlDAAAAQHWNbXOoVQqH0YJRr8LAtpalV+NoXb8Tv/ETkPNv2NignhN8seUSde8m2HLNLHOo+5W34BXfxfBmDXgZn8yHkwSGVuCcAAAAQDQLh1UAxYZ27sIxyYgyYFo8IUbTiANWadUJUR7K0q1eY6Q5J/BFfNlf6UqLqJ5zd8uI3TXCaBNJDkiQc1ZLEg4=",
+  "result_xdr": "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAA=",
+  "result_meta_xdr": "AAAAAgAAAAIAAAADAAAgTQAAAAAAAAAA9i3rpOGnzVQmKsWzdN8jx+pICnv6NsojndwkDZKZKUMAAAAAPDNbbAAAAVIAAAAIAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAgTQAAAAAAAAAA9i3rpOGnzVQmKsWzdN8jx+pICnv6NsojndwkDZKZKUMAAAAAPDNbbAAAAVIAAAAJAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAAwAAAAMAACBMAAAAAAAAAAAQfdFrLDgzSIIugR73qs8U0ZiKbwBUclTTPh5thlbgnAFg09HQY/uMAAAA2wAAAAoAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAACBNAAAAAAAAAAAQfdFrLDgzSIIugR73qs8U0ZiKbwBUclTTPh5thlbgnAFg07qH7ROMAAAA2wAAAAoAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAACBNAAAAAAAAAABW9+rbvt6YXwwXyFszptQFlfzzFMrWObLiJmBhOzNblAAAABdIdugAAAAgTQAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAA="
+}`
+	transaction := Transaction{}
+	err := json.Unmarshal([]byte(friendbotFundResponse), &transaction)
+	assert.Nil(t, err)
+}
+
 func TestTransactionEmptyMemoText(t *testing.T) {
 	transaction := Transaction{
 		MemoType:  "text",
