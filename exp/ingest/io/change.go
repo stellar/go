@@ -116,7 +116,7 @@ func (c *Change) AccountChangedExceptSigners() (bool, error) {
 	// modify them here, EXCEPT pointers inside them!
 	if preAccountEntry.Ext.V == 0 {
 		preAccountEntry.Ext.V = 1
-		preAccountEntry.Ext.V1 = &xdr.AccountEntryV1{
+		preAccountEntry.Ext.V1 = &xdr.AccountEntryExtensionV1{
 			Liabilities: xdr.Liabilities{
 				Buying:  0,
 				Selling: 0,
@@ -128,7 +128,7 @@ func (c *Change) AccountChangedExceptSigners() (bool, error) {
 
 	if postAccountEntry.Ext.V == 0 {
 		postAccountEntry.Ext.V = 1
-		postAccountEntry.Ext.V1 = &xdr.AccountEntryV1{
+		postAccountEntry.Ext.V1 = &xdr.AccountEntryExtensionV1{
 			Liabilities: xdr.Liabilities{
 				Buying:  0,
 				Selling: 0,

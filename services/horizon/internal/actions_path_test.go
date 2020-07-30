@@ -152,7 +152,7 @@ func TestPathActionsStrictReceive(t *testing.T) {
 		Thresholds:    xdr.Thresholds{1, 2, 3, 4},
 		Ext: xdr.AccountEntryExt{
 			V: 1,
-			V1: &xdr.AccountEntryV1{
+			V1: &xdr.AccountEntryExtensionV1{
 				Liabilities: xdr.Liabilities{
 					Buying:  3,
 					Selling: 4,
@@ -498,7 +498,7 @@ func TestPathActionsStrictSend(t *testing.T) {
 		Thresholds:    xdr.Thresholds{1, 2, 3, 4},
 		Ext: xdr.AccountEntryExt{
 			V: 1,
-			V1: &xdr.AccountEntryV1{
+			V1: &xdr.AccountEntryExtensionV1{
 				Liabilities: xdr.Liabilities{
 					Buying:  3,
 					Selling: 4,
