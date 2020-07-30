@@ -40,33 +40,3 @@ func String(aType xdr.AssetType) (string, error) {
 
 	return "", errors.New(ErrInvalidValue)
 }
-
-// MustString is the panicky version of String.
-func MustString(aType xdr.AssetType) string {
-	s, err := String(aType)
-	if err != nil {
-		panic(err)
-	}
-	return s
-}
-
-// Equals returns true if l and r are equivalent.
-func Equals(l, r xdr.Asset) bool {
-	var le, re struct {
-		T xdr.AssetType
-		C string
-		I string
-	}
-
-	err := l.Extract(&le.T, &le.C, &le.I)
-	if err != nil {
-		panic(err)
-	}
-
-	err = r.Extract(&re.T, &re.C, &re.I)
-	if err != nil {
-		panic(err)
-	}
-
-	return le == re
-}

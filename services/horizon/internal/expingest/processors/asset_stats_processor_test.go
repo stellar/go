@@ -1,3 +1,4 @@
+//lint:file-ignore U1001 Ignore all unused code, staticcheck doesn't understand testify/suite
 package processors
 
 import (
@@ -52,7 +53,7 @@ func (s *AssetStatsProcessorTestSuiteState) TestCreateTrustLine() {
 	s.Assert().NoError(err)
 
 	s.mockQ.On("InsertAssetStats", []history.ExpAssetStat{
-		history.ExpAssetStat{
+		{
 			AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
 			AssetIssuer: trustLineIssuer.Address(),
 			AssetCode:   "EUR",

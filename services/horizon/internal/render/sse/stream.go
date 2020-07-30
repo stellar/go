@@ -56,12 +56,6 @@ func (s *Stream) Send(e Event) {
 	s.sent++
 }
 
-func (s *Stream) SentCount() int {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.sent
-}
-
 func (s *Stream) SetLimit(limit int) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -74,23 +68,6 @@ func (s *Stream) Done() {
 	s.Init()
 	WriteEvent(s.ctx, s.w, goodbyeEvent)
 	s.done = true
-}
-
-// isDone checks to see if the stream is done. Not safe to call concurrently
-// and meant for internal use.
-func (s *Stream) isDone() bool {
-	if s.limit == 0 {
-		return s.done
-	}
-
-	return s.done || s.sent >= s.limit
-}
-
-// IsDone is safe to call concurrently and is exported.
-func (s *Stream) IsDone() bool {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.isDone()
 }
 
 func (s *Stream) Err(err error) {

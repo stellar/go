@@ -180,21 +180,6 @@ func (a *App) HorizonSession(ctx context.Context) *db.Session {
 	return &db.Session{DB: a.historyQ.Session.DB, Ctx: ctx}
 }
 
-// IsHistoryStale returns true if the latest history ledger is more than
-// `StaleThreshold` ledgers behind the latest core ledger
-func (a *App) IsHistoryStale() bool {
-	return isHistoryStale(a.config.StaleThreshold)
-}
-
-func isHistoryStale(staleThreshold uint) bool {
-	if staleThreshold == 0 {
-		return false
-	}
-
-	ls := ledger.CurrentState()
-	return (ls.CoreLatest - ls.HistoryLatest) > int32(staleThreshold)
-}
-
 // UpdateLedgerState triggers a refresh of several metrics gauges, such as open
 // db connections and ledger state
 func (a *App) UpdateLedgerState() {

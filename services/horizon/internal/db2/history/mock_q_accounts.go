@@ -21,16 +21,6 @@ func (m *MockQAccounts) NewAccountsBatchInsertBuilder(maxBatchSize int) Accounts
 	return a.Get(0).(AccountsBatchInsertBuilder)
 }
 
-func (m *MockQAccounts) InsertAccount(account xdr.AccountEntry, lastModifiedLedger xdr.Uint32) (int64, error) {
-	a := m.Called(account, lastModifiedLedger)
-	return a.Get(0).(int64), a.Error(1)
-}
-
-func (m *MockQAccounts) UpdateAccount(account xdr.AccountEntry, lastModifiedLedger xdr.Uint32) (int64, error) {
-	a := m.Called(account, lastModifiedLedger)
-	return a.Get(0).(int64), a.Error(1)
-}
-
 func (m *MockQAccounts) UpsertAccounts(accounts []xdr.LedgerEntry) error {
 	a := m.Called(accounts)
 	return a.Error(0)
