@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	protocol "github.com/stellar/go/protocols/horizon"
+	horizonContext "github.com/stellar/go/services/horizon/internal/context"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/services/horizon/internal/httpx"
 	"github.com/stellar/go/support/render/hal"
 )
 
@@ -25,7 +25,7 @@ func PopulateAccountSigner(
 		Type:   protocol.MustKeyTypeFromAddress(has.Signer),
 	}
 
-	lb := hal.LinkBuilder{httpx.BaseURL(ctx)}
+	lb := hal.LinkBuilder{horizonContext.BaseURL(ctx)}
 	account := fmt.Sprintf("/accounts/%s", has.Account)
 	dest.Links.Account = lb.Link(account)
 }

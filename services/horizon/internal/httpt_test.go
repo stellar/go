@@ -25,7 +25,7 @@ func startHTTPTest(t *testing.T, scenario string) *HTTPT {
 		ret.Scenario(scenario)
 	}
 	ret.App = NewTestApp()
-	ret.RH = test.NewRequestHelper(ret.App.web.router)
+	ret.RH = test.NewRequestHelper(ret.App.webServer.Router.Mux)
 	ret.Assert = &test.Assertions{ret.T.Assert}
 
 	ret.coreServer = test.NewStaticMockServer(`{

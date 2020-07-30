@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	horizonContext "github.com/stellar/go/services/horizon/internal/context"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/ledger"
 	"github.com/stellar/go/services/horizon/internal/render/problem"
@@ -81,7 +82,7 @@ func (handler GetOperationsHandler) GetResourcePage(w HeaderWriter, r *http.Requ
 		return nil, err
 	}
 
-	historyQ, err := HistoryQFromRequest(r)
+	historyQ, err := horizonContext.HistoryQFromRequest(r)
 	if err != nil {
 		return nil, err
 	}
@@ -146,7 +147,7 @@ func (handler GetOperationByIDHandler) GetResource(w HeaderWriter, r *http.Reque
 		return nil, err
 	}
 
-	historyQ, err := HistoryQFromRequest(r)
+	historyQ, err := horizonContext.HistoryQFromRequest(r)
 	if err != nil {
 		return nil, err
 	}

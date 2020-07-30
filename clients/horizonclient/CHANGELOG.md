@@ -7,6 +7,7 @@ file.  This project adheres to [Semantic Versioning](http://semver.org/).
 
 * Remove JSON variant of `GET /metrics`, both in the server and client code. It's using Prometheus format by default now.
 * Add `NextAccountsPage`.
+* Fix `Fund` function that consistently errored.
 
 ## [v3.0.0](https://github.com/stellar/go/releases/tag/horizonclient-v3.0.0) - 2020-04-28
 

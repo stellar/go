@@ -1,4 +1,4 @@
-package horizon
+package httpx
 
 import (
 	"context"
@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/go-chi/chi"
+
 	"github.com/stellar/go/services/horizon/internal/actions"
 	horizonContext "github.com/stellar/go/services/horizon/internal/context"
 	"github.com/stellar/go/services/horizon/internal/ledger"
@@ -242,10 +243,10 @@ func TestPageStream(t *testing.T) {
 		request := streamRequest(t, "")
 		action := &testPageAction{
 			objects: map[uint32][]string{
-				3: []string{"a", "b", "c"},
-				4: []string{"a", "b", "c", "d", "e"},
-				6: []string{"a", "b", "c", "d", "e", "f"},
-				7: []string{"a", "b", "c", "d", "e", "f"},
+				3: {"a", "b", "c"},
+				4: {"a", "b", "c", "d", "e"},
+				6: {"a", "b", "c", "d", "e", "f"},
+				7: {"a", "b", "c", "d", "e", "f"},
 			},
 		}
 		st := NewStreamablePageTest(
@@ -266,10 +267,10 @@ func TestPageStream(t *testing.T) {
 		request := streamRequest(t, "cursor=1")
 		action := &testPageAction{
 			objects: map[uint32][]string{
-				3: []string{"a", "b", "c"},
-				4: []string{"a", "b", "c", "d", "e"},
-				6: []string{"a", "b", "c", "d", "e", "f"},
-				7: []string{"a", "b", "c", "d", "e", "f"},
+				3: {"a", "b", "c"},
+				4: {"a", "b", "c", "d", "e"},
+				6: {"a", "b", "c", "d", "e", "f"},
+				7: {"a", "b", "c", "d", "e", "f"},
 			},
 		}
 		st := NewStreamablePageTest(
@@ -290,7 +291,7 @@ func TestPageStream(t *testing.T) {
 		request := streamRequest(t, "limit=2")
 		action := &testPageAction{
 			objects: map[uint32][]string{
-				3: []string{"a", "b", "c"},
+				3: {"a", "b", "c"},
 			},
 		}
 		st := NewStreamablePageTest(
@@ -307,7 +308,7 @@ func TestPageStream(t *testing.T) {
 		request := streamRequest(t, "limit=2&cursor=1")
 		action := &testPageAction{
 			objects: map[uint32][]string{
-				3: []string{"a", "b", "c", "d", "e"},
+				3: {"a", "b", "c", "d", "e"},
 			},
 		}
 		st := NewStreamablePageTest(
@@ -324,9 +325,9 @@ func TestPageStream(t *testing.T) {
 		request := streamRequest(t, "limit=3&cursor=1")
 		action := &testPageAction{
 			objects: map[uint32][]string{
-				3: []string{"a"},
-				4: []string{"a", "b"},
-				5: []string{"a", "b", "c", "d", "e", "f", "g"},
+				3: {"a"},
+				4: {"a", "b"},
+				5: {"a", "b", "c", "d", "e", "f", "g"},
 			},
 		}
 		st := NewStreamablePageTest(
@@ -470,8 +471,8 @@ func TestRepeatableReadStream(t *testing.T) {
 	t.Run("page stream creates repeatable read tx", func(t *testing.T) {
 		action := &testPageAction{
 			objects: map[uint32][]string{
-				3: []string{"a"},
-				4: []string{"a", "b"},
+				3: {"a"},
+				4: {"a", "b"},
 			},
 		}
 

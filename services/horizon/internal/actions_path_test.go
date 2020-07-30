@@ -10,10 +10,14 @@ import (
 	"testing"
 
 	"github.com/go-chi/chi"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+
 	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/actions"
 	horizonContext "github.com/stellar/go/services/horizon/internal/context"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/services/horizon/internal/httpx"
 	"github.com/stellar/go/services/horizon/internal/paths"
 	horizonProblem "github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/simplepath"
@@ -21,8 +25,6 @@ import (
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/render/problem"
 	"github.com/stellar/go/xdr"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
 
 func mockPathFindingClient(
@@ -32,13 +34,13 @@ func mockPathFindingClient(
 	session *db.Session,
 ) test.RequestHelper {
 	router := chi.NewRouter()
-	findPaths := objectActionHandler{actions.FindPathsHandler{
+	findPaths := httpx.ObjectActionHandler{actions.FindPathsHandler{
 		PathFinder:           finder,
 		MaxAssetsParamLength: maxAssetsParamLength,
 		MaxPathLength:        3,
 		SetLastLedgerHeader:  true,
 	}}
-	findFixedPaths := objectActionHandler{actions.FindFixedPathsHandler{
+	findFixedPaths := httpx.ObjectActionHandler{actions.FindFixedPathsHandler{
 		PathFinder:           finder,
 		MaxAssetsParamLength: maxAssetsParamLength,
 		MaxPathLength:        3,

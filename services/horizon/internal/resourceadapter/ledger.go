@@ -6,8 +6,8 @@ import (
 
 	"github.com/stellar/go/amount"
 	protocol "github.com/stellar/go/protocols/horizon"
+	horizonContext "github.com/stellar/go/services/horizon/internal/context"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/services/horizon/internal/httpx"
 	"github.com/stellar/go/support/render/hal"
 	"github.com/stellar/go/xdr"
 )
@@ -41,7 +41,7 @@ func PopulateLedger(ctx context.Context, dest *protocol.Ledger, row history.Ledg
 	}
 
 	self := fmt.Sprintf("/ledgers/%d", row.Sequence)
-	lb := hal.LinkBuilder{httpx.BaseURL(ctx)}
+	lb := hal.LinkBuilder{horizonContext.BaseURL(ctx)}
 	dest.Links.Self = lb.Link(self)
 	dest.Links.Transactions = lb.PagedLink(self, "transactions")
 	dest.Links.Operations = lb.PagedLink(self, "operations")

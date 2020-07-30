@@ -3,6 +3,7 @@ package actions
 import (
 	"net/http"
 
+	"github.com/stellar/go/services/horizon/internal/context"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/resourceadapter"
@@ -60,7 +61,7 @@ func (handler GetEffectsHandler) GetResourcePage(w HeaderWriter, r *http.Request
 		return nil, err
 	}
 
-	historyQ, err := HistoryQFromRequest(r)
+	historyQ, err := context.HistoryQFromRequest(r)
 	if err != nil {
 		return nil, err
 	}
