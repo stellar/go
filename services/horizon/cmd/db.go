@@ -232,7 +232,7 @@ var dbReingestRangeCmd = &cobra.Command{
 
 		if parallelWorkers < 2 {
 			system, systemErr := expingest.NewSystem(ingestConfig)
-			if err != nil {
+			if systemErr != nil {
 				log.Fatal(systemErr)
 			}
 
@@ -243,7 +243,7 @@ var dbReingestRangeCmd = &cobra.Command{
 			)
 		} else {
 			system, systemErr := expingest.NewParallelSystems(ingestConfig, parallelWorkers)
-			if err != nil {
+			if systemErr != nil {
 				log.Fatal(systemErr)
 			}
 
