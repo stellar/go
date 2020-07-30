@@ -7,6 +7,7 @@ import (
 	sq "github.com/Masterminds/squirrel"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/toid"
+	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
 
@@ -65,7 +66,7 @@ func (q *Q) TradesForAssetPair(baseAssetId int64, counterAssetId int64) *TradesQ
 
 // ForOffer filters the query results by the offer id.
 func (q *TradesQ) ForOffer(id int64) *TradesQ {
-	q.sql = q.sql.Where("(htrd.base_offer_id = ? OR htrd.counter_offer_id = ?)", id, id)
+	q.forOfferID = id
 	return q
 }
 
@@ -99,7 +100,7 @@ func (q *TradesQ) ForAccount(aid string) *TradesQ {
 		return q
 	}
 
-	q.sql = q.sql.Where("(htrd.base_account_id = ? OR htrd.counter_account_id = ?)", account.ID, account.ID)
+	q.forAccountID = account.ID
 	return q
 }
 
@@ -120,42 +121,100 @@ func (q *TradesQ) Page(page db2.PageQuery) *TradesQ {
 		idx = math.MaxInt32
 	}
 
+	q.pageCalled = true
+
+	if q.forAccountID != 0 || q.forOfferID != 0 {
+		// Construct UNION query
+		var firstSelect, secondSelect sq.SelectBuilder
+		switch {
+		case q.forAccountID != 0:
+			firstSelect = q.sql.Where("htrd.base_account_id = ?", q.forAccountID)
+			secondSelect = q.sql.Where("htrd.counter_account_id = ?", q.forAccountID)
+		case q.forOfferID != 0:
+			firstSelect = q.sql.Where("htrd.base_offer_id = ?", q.forOfferID)
+			secondSelect = q.sql.Where("htrd.counter_offer_id = ?", q.forOfferID)
+		}
+
+		firstSelect = q.appendOrdering(firstSelect, op, idx, page.Order)
+		secondSelect = q.appendOrdering(secondSelect, op, idx, page.Order)
+
+		firstSQL, firstArgs, err := firstSelect.ToSql()
+		if err != nil {
+			q.Err = errors.New("error building a firstSelect query")
+			return q
+		}
+		secondSQL, secondArgs, err := secondSelect.ToSql()
+		if err != nil {
+			q.Err = errors.New("error building a secondSelect query")
+			return q
+		}
+
+		q.rawSQL = fmt.Sprintf("(%s) UNION (%s) ", firstSQL, secondSQL)
+		q.rawArgs = append(q.rawArgs, firstArgs...)
+		q.rawArgs = append(q.rawArgs, secondArgs...)
+		// Order the final UNION:
+		switch page.Order {
+		case "asc":
+			q.rawSQL = q.rawSQL + `ORDER BY history_operation_id asc, "order" asc `
+		case "desc":
+			q.rawSQL = q.rawSQL + `ORDER BY history_operation_id desc, "order" desc `
+		default:
+			panic("Invalid order")
+		}
+		q.rawSQL = q.rawSQL + fmt.Sprintf("LIMIT %d", page.Limit)
+		// Reset sql so it's not used accidentally
+		q.sql = sq.SelectBuilder{}
+	} else {
+		q.sql = q.appendOrdering(q.sql, op, idx, page.Order)
+		q.sql = q.sql.Limit(page.Limit)
+	}
+	return q
+}
+
+func (q *TradesQ) appendOrdering(sel sq.SelectBuilder, op, idx int64, order string) sq.SelectBuilder {
 	// NOTE: Remember to test the queries below with EXPLAIN / EXPLAIN ANALYZE
 	// before changing them.
 	// This condition is using multicolumn index and it's easy to write it in a way that
 	// DB will perform a full table scan.
-	switch page.Order {
+	switch order {
 	case "asc":
-		q.sql = q.sql.
+		return sel.
 			Where(`(
-					 htrd.history_operation_id >= ?
-				AND (
-					 htrd.history_operation_id > ? OR
-					(htrd.history_operation_id = ? AND htrd.order > ?)
-				))`, op, op, op, idx).
+				htrd.history_operation_id >= ?
+			AND (
+				htrd.history_operation_id > ? OR
+				(htrd.history_operation_id = ? AND htrd.order > ?)
+			))`, op, op, op, idx).
 			OrderBy("htrd.history_operation_id asc, htrd.order asc")
 	case "desc":
-		q.sql = q.sql.
+		return sel.
 			Where(`(
-					 htrd.history_operation_id <= ?
-				AND (
-					 htrd.history_operation_id < ? OR
-					(htrd.history_operation_id = ? AND htrd.order < ?)
-				))`, op, op, op, idx).
+				htrd.history_operation_id <= ?
+			AND (
+				htrd.history_operation_id < ? OR
+				(htrd.history_operation_id = ? AND htrd.order < ?)
+			))`, op, op, op, idx).
 			OrderBy("htrd.history_operation_id desc, htrd.order desc")
+	default:
+		panic("Invalid order")
 	}
-
-	q.sql = q.sql.Limit(page.Limit)
-	return q
 }
 
 // Select loads the results of the query specified by `q` into `dest`.
 func (q *TradesQ) Select(dest interface{}) error {
+	if !q.pageCalled {
+		return errors.New("TradesQ.Page call is required before calling Select")
+	}
+
 	if q.Err != nil {
 		return q.Err
 	}
 
-	q.Err = q.parent.Select(dest, q.sql)
+	if q.rawSQL != "" {
+		q.Err = q.parent.SelectRaw(dest, q.rawSQL, q.rawArgs...)
+	} else {
+		q.Err = q.parent.Select(dest, q.sql)
+	}
 	return q.Err
 }
 

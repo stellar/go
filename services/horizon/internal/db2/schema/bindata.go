@@ -31,6 +31,7 @@
 // migrations/36_deleted_offers.sql (956B)
 // migrations/37_add_tx_set_operation_count_to_ledgers.sql (176B)
 // migrations/38_add_constraints.sql (7.33kB)
+// migrations/39_history_trades_indices.sql (183B)
 // migrations/3_use_sequence_in_history_accounts.sql (447B)
 // migrations/4_add_protocol_version.sql (188B)
 // migrations/5_create_trades_table.sql (1.1kB)
@@ -727,6 +728,26 @@ func migrations38_add_constraintsSql() (*asset, error) {
 	return a, nil
 }
 
+var _migrations39_history_trades_indicesSql = []byte("\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff\x6c\xce\xb1\x0a\xc2\x40\x0c\x80\xe1\x3d\x4f\x11\x3a\x29\xda\x27\xe8\xa4\xf6\x90\x2e\xad\xd4\x16\xdc\x8e\xd3\x0b\x36\x83\xcd\x91\x8b\x88\x6f\x2f\x08\x42\x07\xd7\x1f\x7e\xf8\xca\x12\x37\x0f\xbe\x6b\x30\xc2\x31\x01\x1c\x7a\xb7\x1b\x1c\x36\x6d\xed\x2e\x38\x99\x46\x9f\x02\xab\x4f\x1c\xb1\x6b\x71\xe2\x6c\xa2\x6f\x6f\x1a\x22\x65\x1c\xcf\x4d\x7b\xc4\xfd\xd0\x3b\xb7\xba\x86\x4c\x3e\xe4\x4c\xe6\x39\x6e\xf1\x26\xcf\xd9\x48\x17\xe5\xf7\x4a\x22\x0d\xc6\x32\x7f\x6b\x21\x1a\x49\x8b\x75\x05\xb0\xa4\xd4\xf2\x9a\x01\xea\xbe\x3b\xfd\xa3\x54\xf0\x09\x00\x00\xff\xff\xb2\xf0\x3e\xfe\xb7\x00\x00\x00")
+
+func migrations39_history_trades_indicesSqlBytes() ([]byte, error) {
+	return bindataRead(
+		_migrations39_history_trades_indicesSql,
+		"migrations/39_history_trades_indices.sql",
+	)
+}
+
+func migrations39_history_trades_indicesSql() (*asset, error) {
+	bytes, err := migrations39_history_trades_indicesSqlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "migrations/39_history_trades_indices.sql", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0x50, 0x44, 0xfd, 0xa3, 0xc4, 0xc9, 0x68, 0x24, 0xb5, 0xf7, 0xea, 0xf3, 0x46, 0xb9, 0x2, 0xc1, 0x2d, 0xe7, 0xce, 0xd3, 0x42, 0x93, 0x2e, 0x87, 0x22, 0xca, 0xad, 0x97, 0xa9, 0xa, 0x6a, 0xe3}}
+	return a, nil
+}
+
 var _migrations3_use_sequence_in_history_accountsSql = []byte("\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff\x9c\x91\x4d\x6b\xb3\x40\x14\x85\xf7\xf3\x2b\xce\x2e\xca\xfb\x66\x91\x6d\x5c\x4d\xc6\x1b\x22\x8c\x63\x3b\x5e\xdb\x64\x25\xa2\x43\x3a\x90\x6a\xeb\xd8\xaf\x7f\x5f\x48\xd3\x0f\x08\x6d\xa1\xcb\x73\x78\xe0\x39\xdc\x3b\x9f\xe3\xdf\xad\xdf\x8f\xcd\xe4\x50\xdd\x09\x65\x49\x32\xa1\xa4\xcb\x8a\x8c\x22\xdc\xf8\x30\x0d\xe3\x4b\xdd\xb4\xed\xf0\xd0\x4f\xa1\xf6\x5d\x1d\xdc\xbd\x00\x80\x92\xa5\x65\x5c\x67\xbc\xc1\xe2\x58\x64\x46\x59\xca\xc9\x30\x56\xbb\x53\x65\x0a\xe4\x99\xb9\x92\xba\xa2\x8f\x2c\xb7\x9f\x59\x49\xb5\x21\x2c\x12\x51\x92\x26\xc5\x08\x6e\x7a\x6c\x0e\xd1\xec\x1b\xef\xec\x3f\xa2\x13\x99\xcb\x6d\xe4\xbb\x18\x6b\x5b\xe4\x67\x33\xe3\x38\x11\x52\x33\x59\xb0\x5c\x69\x42\x61\xf4\xee\x0c\xc2\x1b\xa1\x0a\x5d\xe5\x06\xbe\x43\x49\x8c\x94\xd6\xb2\xd2\x8c\xde\x3d\xff\xbc\x64\xb9\x1c\xdd\xbe\x3d\x34\x21\xc4\x89\x10\x5f\xcf\x98\x0e\x4f\xfd\x1f\xec\xa9\x2d\x2e\xde\xf5\x89\x38\xa6\xdf\xde\x90\x88\xd7\x00\x00\x00\xff\xff\x55\xe2\xdd\x2c\xbf\x01\x00\x00")
 
 func migrations3_use_sequence_in_history_accountsSqlBytes() ([]byte, error) {
@@ -1009,6 +1030,7 @@ var _bindata = map[string]func() (*asset, error){
 	"migrations/36_deleted_offers.sql":                        migrations36_deleted_offersSql,
 	"migrations/37_add_tx_set_operation_count_to_ledgers.sql": migrations37_add_tx_set_operation_count_to_ledgersSql,
 	"migrations/38_add_constraints.sql":                       migrations38_add_constraintsSql,
+	"migrations/39_history_trades_indices.sql":                migrations39_history_trades_indicesSql,
 	"migrations/3_use_sequence_in_history_accounts.sql":       migrations3_use_sequence_in_history_accountsSql,
 	"migrations/4_add_protocol_version.sql":                   migrations4_add_protocol_versionSql,
 	"migrations/5_create_trades_table.sql":                    migrations5_create_trades_tableSql,
@@ -1092,6 +1114,7 @@ var _bintree = &bintree{nil, map[string]*bintree{
 		"36_deleted_offers.sql":                        &bintree{migrations36_deleted_offersSql, map[string]*bintree{}},
 		"37_add_tx_set_operation_count_to_ledgers.sql": &bintree{migrations37_add_tx_set_operation_count_to_ledgersSql, map[string]*bintree{}},
 		"38_add_constraints.sql":                       &bintree{migrations38_add_constraintsSql, map[string]*bintree{}},
+		"39_history_trades_indices.sql":                &bintree{migrations39_history_trades_indicesSql, map[string]*bintree{}},
 		"3_use_sequence_in_history_accounts.sql":       &bintree{migrations3_use_sequence_in_history_accountsSql, map[string]*bintree{}},
 		"4_add_protocol_version.sql":                   &bintree{migrations4_add_protocol_versionSql, map[string]*bintree{}},
 		"5_create_trades_table.sql":                    &bintree{migrations5_create_trades_tableSql, map[string]*bintree{}},
