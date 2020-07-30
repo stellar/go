@@ -26,11 +26,6 @@ func (m *MockQOffers) GetUpdatedOffers(newerThanSequence uint32) ([]Offer, error
 	return a.Get(0).([]Offer), a.Error(1)
 }
 
-func (m *MockQOffers) GetRemovedOffers(removedAfterSequence uint32) ([]xdr.Int64, error) {
-	a := m.Called(removedAfterSequence)
-	return a.Get(0).([]xdr.Int64), a.Error(1)
-}
-
 func (m *MockQOffers) CountOffers() (int, error) {
 	a := m.Called()
 	return a.Get(0).(int), a.Error(1)

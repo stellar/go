@@ -1,3 +1,4 @@
+//lint:file-ignore U1001 Ignore all unused code, staticcheck doesn't understand testify/suite
 package horizon
 
 import (
@@ -22,6 +23,18 @@ import (
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/xdr"
 )
+
+func requestHelperRemoteAddr(ip string) func(r *http.Request) {
+	return func(r *http.Request) {
+		r.RemoteAddr = ip
+	}
+}
+
+func requestHelperXFF(xff string) func(r *http.Request) {
+	return func(r *http.Request) {
+		r.Header.Set("X-Forwarded-For", xff)
+	}
+}
 
 type RateLimitMiddlewareTestSuite struct {
 	suite.Suite
@@ -95,34 +108,34 @@ func (suite *RateLimitMiddlewareTestSuite) TestRateLimit_RemoteAddr() {
 	w := suite.rh.Get("/")
 	assert.Equal(suite.T(), 429, w.Code)
 
-	w = suite.rh.Get("/", test.RequestHelperRemoteAddr("127.0.0.2"))
+	w = suite.rh.Get("/", requestHelperRemoteAddr("127.0.0.2"))
 	assert.Equal(suite.T(), 200, w.Code)
 
 	// Ignores ports
-	w = suite.rh.Get("/", test.RequestHelperRemoteAddr("127.0.0.1:4312"))
+	w = suite.rh.Get("/", requestHelperRemoteAddr("127.0.0.1:4312"))
 	assert.Equal(suite.T(), 429, w.Code)
 }
 
 // Restrict based upon X-Forwarded-For correctly.
 func (suite *RateLimitMiddlewareTestSuite) TestRateLimit_XForwardedFor() {
 	for i := 0; i < 10; i++ {
-		w := suite.rh.Get("/", test.RequestHelperXFF("4.4.4.4"))
+		w := suite.rh.Get("/", requestHelperXFF("4.4.4.4"))
 		assert.Equal(suite.T(), 200, w.Code)
 	}
 
-	w := suite.rh.Get("/", test.RequestHelperXFF("4.4.4.4"))
+	w := suite.rh.Get("/", requestHelperXFF("4.4.4.4"))
 	assert.Equal(suite.T(), 429, w.Code)
 
 	// allow other ips
-	w = suite.rh.Get("/", test.RequestHelperRemoteAddr("4.4.4.3"))
+	w = suite.rh.Get("/", requestHelperRemoteAddr("4.4.4.3"))
 	assert.Equal(suite.T(), 200, w.Code)
 
 	// Ignores leading private ips
-	w = suite.rh.Get("/", test.RequestHelperXFF("10.0.0.1, 4.4.4.4"))
+	w = suite.rh.Get("/", requestHelperXFF("10.0.0.1, 4.4.4.4"))
 	assert.Equal(suite.T(), 429, w.Code)
 
 	// Ignores trailing ips
-	w = suite.rh.Get("/", test.RequestHelperXFF("4.4.4.4, 4.4.4.5, 127.0.0.1"))
+	w = suite.rh.Get("/", requestHelperXFF("4.4.4.4, 4.4.4.5, 127.0.0.1"))
 	assert.Equal(suite.T(), 429, w.Code)
 }
 

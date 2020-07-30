@@ -10,11 +10,10 @@ import (
 // when added to a logrus.Logger
 type Metrics map[logrus.Level]metrics.Meter
 
-var DefaultLogger *log.Entry
-var DefaultMetrics *Metrics
+var DefaultMetrics = NewMetrics()
 
 func init() {
-	DefaultLogger, DefaultMetrics = New()
+	_, DefaultMetrics = New()
 }
 
 // New creates a new logger according to horizon specifications.
