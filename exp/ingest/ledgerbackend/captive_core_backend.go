@@ -69,6 +69,8 @@ type metaResult struct {
 //     because there is no buffering of communication pipe and CaptiveStellarCore
 //     has a very small internal buffer and Stellar-Core will not close the new
 //     ledger if it's not read.
+//
+// Requires Stellar-Core v13.2.0+.
 type CaptiveStellarCore struct {
 	executablePath    string
 	configPath        string
