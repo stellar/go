@@ -2,17 +2,16 @@
 
 Package ingest provides primitives for building custom ingestion engines.
 
-Very often developers need features that are outside of scope of the Horizon: API
-server for building apps on Stellar network. While it provides APIs for building
-the  most common apps, it's not possible to add all possible features. This is
-why this package was created.
+Very often developers need features that are outside of Horizon's scope. While it
+provides APIs for building the  most common apps, it's not possible to add all
+possible features. This is why this package was created.
 
 Ledger Backend
 
 Ledger backends are sources of information about Stellar network ledgers. This
-can be either Stellar-Core DB (deprecated), Captive Stellar-Core or History
-Archives. Please consult the ledgerbackend package docs for more information
-about each backend.
+can be either Stellar-Core DB, Captive Stellar-Core or History Archives.
+Please consult the ledgerbackend package docs for more information about each
+backend.
 
 Warning: Please note that ledger backends provide low-level xdr.LedgerCloseMeta
 that should not be used directly unless developer really understand this data
