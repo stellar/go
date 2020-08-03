@@ -9,6 +9,18 @@ import (
 	"github.com/stellar/go/services/horizon/internal/test"
 )
 
+// AssetStatsR is the result from the AssetStatsQ query
+type AssetStatsR struct {
+	SortKey     string `db:"sort_key"`
+	Type        string `db:"asset_type"`
+	Code        string `db:"asset_code"`
+	Issuer      string `db:"asset_issuer"`
+	Amount      string `db:"amount"`
+	NumAccounts int32  `db:"num_accounts"`
+	Flags       int8   `db:"flags"`
+	Toml        string `db:"toml"`
+}
+
 func TestAssetsStatsQExec(t *testing.T) {
 	item0 := AssetStatsR{
 		SortKey:     "BTC_GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4_credit_alphanum4",

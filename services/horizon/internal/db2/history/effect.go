@@ -6,10 +6,10 @@ import (
 	"math"
 
 	sq "github.com/Masterminds/squirrel"
+
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/support/errors"
-	"github.com/stellar/go/xdr"
 )
 
 // UnmarshalDetails unmarshals the details of this effect into `dest`
@@ -95,21 +95,6 @@ func (q *EffectsQ) ForOperation(id int64) *EffectsQ {
 	return q
 }
 
-// ForOrderBook filters the query to only effects whose details indicate that
-// the effect is for a specific asset pair.
-func (q *EffectsQ) ForOrderBook(selling, buying xdr.Asset) *EffectsQ {
-	q.orderBookFilter(selling, "sold_")
-	if q.Err != nil {
-		return q
-	}
-	q.orderBookFilter(buying, "bought_")
-	if q.Err != nil {
-		return q
-	}
-
-	return q
-}
-
 // ForTransaction filters the query to only effects in a specific
 // transaction, specified by the transactions's hex-encoded hash.
 func (q *EffectsQ) ForTransaction(hash string) *EffectsQ {
@@ -128,12 +113,6 @@ func (q *EffectsQ) ForTransaction(hash string) *EffectsQ {
 		end.ToInt64(),
 	)
 
-	return q
-}
-
-// OfType filters the query to only effects of the given type.
-func (q *EffectsQ) OfType(typ EffectType) *EffectsQ {
-	q.sql = q.sql.Where("heff.type = ?", typ)
 	return q
 }
 
@@ -190,30 +169,6 @@ func (q *EffectsQ) Select(dest interface{}) error {
 
 	q.Err = q.parent.Select(dest, q.sql)
 	return q.Err
-}
-
-// OfType filters the query to only effects of the given type.
-func (q *EffectsQ) orderBookFilter(a xdr.Asset, prefix string) {
-	var typ, code, iss string
-	q.Err = a.Extract(&typ, &code, &iss)
-	if q.Err != nil {
-		return
-	}
-
-	if a.Type == xdr.AssetTypeAssetTypeNative {
-		clause := fmt.Sprintf(`
-				(heff.details->>'%sasset_type' = ?
-		AND heff.details ?? '%sasset_code' = false
-		AND heff.details ?? '%sasset_issuer' = false)`, prefix, prefix, prefix)
-		q.sql = q.sql.Where(clause, typ)
-		return
-	}
-
-	clause := fmt.Sprintf(`
-		(heff.details->>'%sasset_type' = ?
-	AND heff.details->>'%sasset_code' = ?
-	AND heff.details->>'%sasset_issuer' = ?)`, prefix, prefix, prefix)
-	q.sql = q.sql.Where(clause, typ, code, iss)
 }
 
 // QEffects defines history_effects related queries.

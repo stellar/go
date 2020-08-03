@@ -17,14 +17,14 @@ func TestInsertAssetStats(t *testing.T) {
 	tt.Assert.NoError(q.InsertAssetStats([]ExpAssetStat{}, 1))
 
 	assetStats := []ExpAssetStat{
-		ExpAssetStat{
+		{
 			AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
 			AssetIssuer: "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
 			AssetCode:   "USD",
 			Amount:      "1",
 			NumAccounts: 2,
 		},
-		ExpAssetStat{
+		{
 			AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum12,
 			AssetIssuer: "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
 			AssetCode:   "ETHER",
@@ -48,14 +48,14 @@ func TestInsertAssetStat(t *testing.T) {
 	q := &Q{tt.HorizonSession()}
 
 	assetStats := []ExpAssetStat{
-		ExpAssetStat{
+		{
 			AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
 			AssetIssuer: "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
 			AssetCode:   "USD",
 			Amount:      "1",
 			NumAccounts: 2,
 		},
-		ExpAssetStat{
+		{
 			AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum12,
 			AssetIssuer: "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
 			AssetCode:   "ETHER",

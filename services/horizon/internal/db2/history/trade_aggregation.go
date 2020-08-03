@@ -132,11 +132,28 @@ func (q *TradeAggregationsQ) GetSql() sq.SelectBuilder {
 	bucketSQL = bucketSQL.From("history_trades").
 		Where(sq.Eq{"base_asset_id": q.baseAssetID, "counter_asset_id": q.counterAssetID})
 
-	//adjust time range and apply time filters
-	bucketSQL = bucketSQL.Where(sq.GtOrEq{"ledger_closed_at": q.startTime.ToTime()})
-	if !q.endTime.IsNil() {
-		bucketSQL = bucketSQL.Where(sq.Lt{"ledger_closed_at": q.endTime.ToTime()})
+	// We limit the response to `q.pagingParams.Limit` buckets so we can adjust
+	// startTime and endTime to not go beyond the range visible to the user.
+	// Note: we don't add/subtract q.offset because startTime and endTime are
+	// already adjusted (see: WithStartTime, WithEndTime).
+	if q.pagingParams.Order == db2.OrderAscending {
+		maxEndTime := q.startTime.ToInt64() + int64(q.pagingParams.Limit)*q.resolution
+		if q.endTime.IsNil() || q.endTime.ToInt64() > maxEndTime {
+			q.endTime = strtime.MillisFromInt64(maxEndTime)
+		}
+	} else /* db2.OrderDescending */ {
+		if q.endTime.IsNil() {
+			q.endTime = strtime.MillisFromSeconds(time.Now().Unix())
+		}
+		minStartTime := q.endTime.ToInt64() - int64(q.pagingParams.Limit)*q.resolution
+		if q.startTime.ToInt64() < minStartTime {
+			q.startTime = strtime.MillisFromInt64(minStartTime)
+		}
 	}
+
+	bucketSQL = bucketSQL.
+		Where(sq.GtOrEq{"ledger_closed_at": q.startTime.ToTime()}).
+		Where(sq.Lt{"ledger_closed_at": q.endTime.ToTime()})
 
 	//ensure open/close order for cases when multiple trades occur in the same ledger
 	bucketSQL = bucketSQL.OrderBy("history_operation_id ", "\"order\"")

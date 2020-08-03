@@ -48,14 +48,14 @@ func TestTradeQueries(t *testing.T) {
 	assetEUR, err := q.GetAssetID(xdr.MustNewCreditAsset("EUR", "GAXMF43TGZHW3QN3REOUA2U5PW5BTARXGGYJ3JIFHW3YT6QRKRL3CPPU"))
 	tt.Require.NoError(err)
 
-	err = q.TradesForAssetPair(assetUSD, assetEUR).Select(&trades)
+	err = q.TradesForAssetPair(assetUSD, assetEUR).Page(db2.MustPageQuery("", false, "asc", 100)).Select(&trades)
 	tt.Require.NoError(err)
 	tt.Assert.Len(trades, 0)
 
 	assetUSD, err = q.GetAssetID(xdr.MustNewCreditAsset("USD", "GAXMF43TGZHW3QN3REOUA2U5PW5BTARXGGYJ3JIFHW3YT6QRKRL3CPPU"))
 	tt.Require.NoError(err)
 
-	err = q.TradesForAssetPair(lumen, assetUSD).Select(&trades)
+	err = q.TradesForAssetPair(lumen, assetUSD).Page(db2.MustPageQuery("", false, "asc", 100)).Select(&trades)
 	tt.Require.NoError(err)
 	tt.Assert.Len(trades, 1)
 
@@ -64,7 +64,7 @@ func TestTradeQueries(t *testing.T) {
 	tt.Assert.Equal(true, trades[0].BaseIsSeller)
 
 	// reverse assets
-	err = q.TradesForAssetPair(assetUSD, lumen).Select(&trades)
+	err = q.TradesForAssetPair(assetUSD, lumen).Page(db2.MustPageQuery("", false, "asc", 100)).Select(&trades)
 	tt.Require.NoError(err)
 	tt.Assert.Len(trades, 1)
 
@@ -199,7 +199,7 @@ func TestBatchInsertTrade(t *testing.T) {
 	tt.Assert.NoError(builder.Exec())
 
 	var rows []Trade
-	tt.Assert.NoError(q.Trades().Select(&rows))
+	tt.Assert.NoError(q.Trades().Page(db2.MustPageQuery("", false, "asc", 100)).Select(&rows))
 
 	idToAccount := buildIDtoAccountMapping(addresses, accountIDs)
 	idToAsset := buildIDtoAssetMapping(assets, assetIDs)
@@ -312,4 +312,93 @@ func TestBatchInsertTrade(t *testing.T) {
 			rows[i],
 		)
 	}
+}
+
+func TestTradesQueryForAccount(t *testing.T) {
+	tt := test.Start(t).Scenario("kahuna")
+	defer tt.Finish()
+	q := &Q{tt.HorizonSession()}
+	tradesQ := q.Trades()
+	var trades []Trade
+
+	account := "GAXMF43TGZHW3QN3REOUA2U5PW5BTARXGGYJ3JIFHW3YT6QRKRL3CPPU"
+	tradesQ.ForAccount(account)
+	tt.Assert.Equal(int64(15), tradesQ.forAccountID)
+	tt.Assert.Equal(int64(0), tradesQ.forOfferID)
+
+	tradesQ.Page(db2.MustPageQuery("", false, "desc", 100))
+	_, _, err := tradesQ.sql.ToSql()
+	// q.sql was reset in Page so should return error
+	tt.Assert.EqualError(err, "select statements must have at least one result column")
+
+	expectedRawSQL := `(SELECT history_operation_id, htrd."order", htrd.ledger_closed_at, htrd.offer_id, htrd.base_offer_id, base_accounts.address as base_account, base_assets.asset_type as base_asset_type, base_assets.asset_code as base_asset_code, base_assets.asset_issuer as base_asset_issuer, htrd.base_amount, htrd.counter_offer_id, counter_accounts.address as counter_account, counter_assets.asset_type as counter_asset_type, counter_assets.asset_code as counter_asset_code, counter_assets.asset_issuer as counter_asset_issuer, htrd.counter_amount, htrd.base_is_seller, htrd.price_n, htrd.price_d FROM history_trades htrd JOIN history_accounts base_accounts ON base_account_id = base_accounts.id JOIN history_accounts counter_accounts ON counter_account_id = counter_accounts.id JOIN history_assets base_assets ON base_asset_id = base_assets.id JOIN history_assets counter_assets ON counter_asset_id = counter_assets.id WHERE htrd.base_account_id = ? AND (
+				htrd.history_operation_id <= ?
+			AND (
+				htrd.history_operation_id < ? OR
+				(htrd.history_operation_id = ? AND htrd.order < ?)
+			)) ORDER BY htrd.history_operation_id desc, htrd.order desc) UNION (SELECT history_operation_id, htrd."order", htrd.ledger_closed_at, htrd.offer_id, htrd.base_offer_id, base_accounts.address as base_account, base_assets.asset_type as base_asset_type, base_assets.asset_code as base_asset_code, base_assets.asset_issuer as base_asset_issuer, htrd.base_amount, htrd.counter_offer_id, counter_accounts.address as counter_account, counter_assets.asset_type as counter_asset_type, counter_assets.asset_code as counter_asset_code, counter_assets.asset_issuer as counter_asset_issuer, htrd.counter_amount, htrd.base_is_seller, htrd.price_n, htrd.price_d FROM history_trades htrd JOIN history_accounts base_accounts ON base_account_id = base_accounts.id JOIN history_accounts counter_accounts ON counter_account_id = counter_accounts.id JOIN history_assets base_assets ON base_asset_id = base_assets.id JOIN history_assets counter_assets ON counter_asset_id = counter_assets.id WHERE htrd.counter_account_id = ? AND (
+				htrd.history_operation_id <= ?
+			AND (
+				htrd.history_operation_id < ? OR
+				(htrd.history_operation_id = ? AND htrd.order < ?)
+			)) ORDER BY htrd.history_operation_id desc, htrd.order desc) ORDER BY history_operation_id desc, "order" desc LIMIT 100`
+	tt.Assert.Equal(expectedRawSQL, tradesQ.rawSQL)
+
+	err = tradesQ.Select(&trades)
+	tt.Assert.NoError(err)
+	tt.Assert.Len(trades, 3)
+
+	// Ensure "desc" order and account present
+	tt.Assert.Equal(int64(85899350017), trades[0].HistoryOperationID)
+	tt.Assert.Equal(account, trades[0].BaseAccount)
+
+	tt.Assert.Equal(int64(81604382721), trades[1].HistoryOperationID)
+	tt.Assert.Equal(int32(1), trades[1].Order)
+	tt.Assert.Equal(account, trades[1].BaseAccount)
+
+	tt.Assert.Equal(int64(81604382721), trades[2].HistoryOperationID)
+	tt.Assert.Equal(int32(0), trades[2].Order)
+	tt.Assert.Equal(account, trades[2].CounterAccount)
+}
+
+func TestTradesQueryForOffer(t *testing.T) {
+	tt := test.Start(t).Scenario("kahuna")
+	defer tt.Finish()
+	q := &Q{tt.HorizonSession()}
+	tradesQ := q.Trades()
+	var trades []Trade
+
+	offerID := int64(2)
+	tradesQ.ForOffer(offerID)
+	tt.Assert.Equal(int64(0), tradesQ.forAccountID)
+	tt.Assert.Equal(int64(2), tradesQ.forOfferID)
+
+	tradesQ.Page(db2.MustPageQuery("", false, "asc", 100))
+	_, _, err := tradesQ.sql.ToSql()
+	// q.sql was reset in Page so should return error
+	tt.Assert.EqualError(err, "select statements must have at least one result column")
+
+	expectedRawSQL := `(SELECT history_operation_id, htrd."order", htrd.ledger_closed_at, htrd.offer_id, htrd.base_offer_id, base_accounts.address as base_account, base_assets.asset_type as base_asset_type, base_assets.asset_code as base_asset_code, base_assets.asset_issuer as base_asset_issuer, htrd.base_amount, htrd.counter_offer_id, counter_accounts.address as counter_account, counter_assets.asset_type as counter_asset_type, counter_assets.asset_code as counter_asset_code, counter_assets.asset_issuer as counter_asset_issuer, htrd.counter_amount, htrd.base_is_seller, htrd.price_n, htrd.price_d FROM history_trades htrd JOIN history_accounts base_accounts ON base_account_id = base_accounts.id JOIN history_accounts counter_accounts ON counter_account_id = counter_accounts.id JOIN history_assets base_assets ON base_asset_id = base_assets.id JOIN history_assets counter_assets ON counter_asset_id = counter_assets.id WHERE htrd.base_offer_id = ? AND (
+				htrd.history_operation_id >= ?
+			AND (
+				htrd.history_operation_id > ? OR
+				(htrd.history_operation_id = ? AND htrd.order > ?)
+			)) ORDER BY htrd.history_operation_id asc, htrd.order asc) UNION (SELECT history_operation_id, htrd."order", htrd.ledger_closed_at, htrd.offer_id, htrd.base_offer_id, base_accounts.address as base_account, base_assets.asset_type as base_asset_type, base_assets.asset_code as base_asset_code, base_assets.asset_issuer as base_asset_issuer, htrd.base_amount, htrd.counter_offer_id, counter_accounts.address as counter_account, counter_assets.asset_type as counter_asset_type, counter_assets.asset_code as counter_asset_code, counter_assets.asset_issuer as counter_asset_issuer, htrd.counter_amount, htrd.base_is_seller, htrd.price_n, htrd.price_d FROM history_trades htrd JOIN history_accounts base_accounts ON base_account_id = base_accounts.id JOIN history_accounts counter_accounts ON counter_account_id = counter_accounts.id JOIN history_assets base_assets ON base_asset_id = base_assets.id JOIN history_assets counter_assets ON counter_asset_id = counter_assets.id WHERE htrd.counter_offer_id = ? AND (
+				htrd.history_operation_id >= ?
+			AND (
+				htrd.history_operation_id > ? OR
+				(htrd.history_operation_id = ? AND htrd.order > ?)
+			)) ORDER BY htrd.history_operation_id asc, htrd.order asc) ORDER BY history_operation_id asc, "order" asc LIMIT 100`
+	tt.Assert.Equal(expectedRawSQL, tradesQ.rawSQL)
+
+	err = tradesQ.Select(&trades)
+	tt.Assert.NoError(err)
+	tt.Assert.Len(trades, 2)
+
+	// Ensure "asc" order and offer present
+	tt.Assert.Equal(int64(81604382721), trades[0].HistoryOperationID)
+	tt.Assert.Equal(offerID, trades[0].OfferID)
+
+	tt.Assert.Equal(int64(85899350017), trades[1].HistoryOperationID)
+	tt.Assert.Equal(offerID, trades[1].OfferID)
 }
