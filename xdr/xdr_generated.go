@@ -1466,7 +1466,7 @@ type SponsorshipDescriptor *AccountId
 // }
 
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
-// func (s SponsorshipDescriptor) UnmarshalBinary(inp []byte) error {
+// func (s *SponsorshipDescriptor) UnmarshalBinary(inp []byte) error {
 // 	_, err := Unmarshal(bytes.NewReader(inp), s)
 // 	return err
 // }
@@ -14178,8 +14178,7 @@ var (
 //        UPDATE_SPONSORSHIP_DOES_NOT_EXIST = -1,
 //        UPDATE_SPONSORSHIP_NOT_SPONSOR = -2,
 //        UPDATE_SPONSORSHIP_LOW_RESERVE = -3,
-//        UPDATE_SPONSORSHIP_LINE_FULL = -4,
-//        UPDATE_SPONSORSHIP_ONLY_TRANSFERABLE = -5
+//        UPDATE_SPONSORSHIP_ONLY_TRANSFERABLE = -4
 //    };
 //
 type UpdateSponsorshipResultCode int32
@@ -14189,8 +14188,7 @@ const (
 	UpdateSponsorshipResultCodeUpdateSponsorshipDoesNotExist     UpdateSponsorshipResultCode = -1
 	UpdateSponsorshipResultCodeUpdateSponsorshipNotSponsor       UpdateSponsorshipResultCode = -2
 	UpdateSponsorshipResultCodeUpdateSponsorshipLowReserve       UpdateSponsorshipResultCode = -3
-	UpdateSponsorshipResultCodeUpdateSponsorshipLineFull         UpdateSponsorshipResultCode = -4
-	UpdateSponsorshipResultCodeUpdateSponsorshipOnlyTransferable UpdateSponsorshipResultCode = -5
+	UpdateSponsorshipResultCodeUpdateSponsorshipOnlyTransferable UpdateSponsorshipResultCode = -4
 )
 
 var updateSponsorshipResultCodeMap = map[int32]string{
@@ -14198,8 +14196,7 @@ var updateSponsorshipResultCodeMap = map[int32]string{
 	-1: "UpdateSponsorshipResultCodeUpdateSponsorshipDoesNotExist",
 	-2: "UpdateSponsorshipResultCodeUpdateSponsorshipNotSponsor",
 	-3: "UpdateSponsorshipResultCodeUpdateSponsorshipLowReserve",
-	-4: "UpdateSponsorshipResultCodeUpdateSponsorshipLineFull",
-	-5: "UpdateSponsorshipResultCodeUpdateSponsorshipOnlyTransferable",
+	-4: "UpdateSponsorshipResultCodeUpdateSponsorshipOnlyTransferable",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
