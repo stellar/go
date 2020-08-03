@@ -30,6 +30,8 @@ type System struct {
 	tickMutex      sync.Mutex
 	tickInProgress bool
 
+	accountSeqPollInterval time.Duration
+
 	DB                func(context.Context) HorizonDB
 	Pending           OpenSubmissionList
 	Submitter         Submitter
@@ -156,6 +158,11 @@ func (sys *System) Submit(
 			return
 		}
 
+		if sys.waitUntilAccountSequence(ctx, db, sourceAddress, uint64(envelope.SeqNum())) {
+			sys.finish(ctx, hash, response, Result{Err: ErrCanceled})
+			return
+		}
+
 		// If error is txBAD_SEQ, check for the result again
 		tx, err = txResultByHash(db, hash)
 		if err == nil {
@@ -171,6 +178,41 @@ func (sys *System) Submit(
 	}
 
 	return
+}
+
+// waitUntilAccountSequence blocks until either the context times out or the sequence number of the
+// given source account is greater than or equal to `seq`
+func (sys *System) waitUntilAccountSequence(ctx context.Context, db HorizonDB, sourceAddress string, seq uint64) bool {
+	timer := time.NewTimer(sys.accountSeqPollInterval)
+	defer timer.Stop()
+
+	for {
+		sequenceNumbers, err := db.GetSequenceNumbers([]string{sourceAddress})
+		if err != nil {
+			sys.Log.Ctx(ctx).
+				WithError(err).
+				WithField("sourceAddress", sourceAddress).
+				Warn("cannot fetch sequence number")
+		} else {
+			num, ok := sequenceNumbers[sourceAddress]
+			if !ok {
+				sys.Log.Ctx(ctx).
+					WithField("sequenceNumbers", sequenceNumbers).
+					WithField("sourceAddress", sourceAddress).
+					Warn("missing sequence number for account")
+			}
+			if num >= seq {
+				return false
+			}
+		}
+
+		select {
+		case <-ctx.Done():
+			return true
+		case <-timer.C:
+			timer.Reset(sys.accountSeqPollInterval)
+		}
+	}
 }
 
 // Submit submits the provided base64 encoded transaction envelope to the
@@ -305,6 +347,8 @@ func (sys *System) Init() {
 		sys.Metrics.V0TransactionsMeter = metrics.NewMeter()
 		sys.Metrics.V1TransactionsMeter = metrics.NewMeter()
 		sys.Metrics.FeeBumpTransactionsMeter = metrics.NewMeter()
+
+		sys.accountSeqPollInterval = time.Second
 
 		if sys.SubmissionTimeout == 0 {
 			// HTTP clients in SDKs usually timeout in 60 seconds. We want SubmissionTimeout
