@@ -14,9 +14,9 @@ can be either Stellar-Core DB (deprecated), Captive Stellar-Core or History
 Archives. Please consult the ledgerbackend package docs for more information
 about each backend.
 
-Warning: Please note that provide low-level xdr.LedgerCloseMeta that should not
-be used directly unless developer really understand this data structure. Read on
-to understand how to use ledger backend in higher level objects.
+Warning: Please note that ledger backends provide low-level xdr.LedgerCloseMeta
+that should not be used directly unless developer really understand this data
+structure. Read on to understand how to use ledger backend in higher level objects.
 
 Readers
 
