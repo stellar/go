@@ -6,6 +6,7 @@ CREATE TABLE claimable_balances (
     asset text NOT NULL,
     amount bigint NOT NULL CHECK (amount > 0),
     sponsor character varying(56),
+    last_modified_ledger integer NOT NULL,
     PRIMARY KEY (id)
 );
 
