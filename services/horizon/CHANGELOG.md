@@ -5,17 +5,16 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).x
 
 ## v1.7.0
 
-* Update Go toolchain to 1.14.6 in order to fix [golang/go#34775](https://github.com/golang/go/issues/34775),
-  which caused some database queries to be executed instead of rolled back.
- 
-* Fix panic on missing command line arguments [#2872](https://github.com/stellar/go/pull/2872)
-
-* DB schema changes:
+### DB schema migration (expected migration time: < 10 mins)
   * Add new multicolumn index to improve the `/trades`'s
     endpoint performance [#2869](https://github.com/stellar/go/pull/2869).
   * Add constraints on database columns which cannot hold
     negative values [#2827](https://github.com/stellar/go/pull/2827).
-  
+
+### Changes
+* Update Go toolchain to 1.14.6 in order to fix [golang/go#34775](https://github.com/golang/go/issues/34775),
+  which caused some database queries to be executed instead of rolled back.
+* Fix panic on missing command line arguments [#2872](https://github.com/stellar/go/pull/2872)
 * Add new DB metrics ([#2844](https://github.com/stellar/go/pull/2844)):
   * `db_in_use_connections` - number of opened DB connections in use (not idle),
   * `db_wait_count` - number of connections waited for,
