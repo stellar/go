@@ -15,6 +15,7 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).x
 * Update Go toolchain to 1.14.6 in order to fix [golang/go#34775](https://github.com/golang/go/issues/34775),
   which caused some database queries to be executed instead of rolled back.
 * Fix panic on missing command line arguments [#2872](https://github.com/stellar/go/pull/2872)
+* Fix race condition where submitting a transaction to Horizon can result in a bad sequence error even though Stellar Core accepted the transaction. [#2877](https://github.com/stellar/go/pull/2877)
 * Add new DB metrics ([#2844](https://github.com/stellar/go/pull/2844)):
   * `db_in_use_connections` - number of opened DB connections in use (not idle),
   * `db_wait_count` - number of connections waited for,
