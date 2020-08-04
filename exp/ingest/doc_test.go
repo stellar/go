@@ -11,7 +11,7 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-// Example_ledgerentrieshistoryarchive is explaining how to stream all ledger
+// Example_ledgerentrieshistoryarchive demonstrates how to stream all ledger
 // entries live at specific checkpoint ledger from history archives.
 func Example_ledgerentrieshistoryarchive() {
 	archiveURL := "http://history.stellar.org/prd/core-live/core_live_001"
@@ -60,7 +60,7 @@ func Example_ledgerentrieshistoryarchive() {
 	fmt.Println("offers", offers)
 }
 
-// Example_transactionshistoryarchive is explaining how to stream transactions
+// Example_transactionshistoryarchive demonstrates how to stream transactions
 // for a specific ledger from history archives. Please note that transaction
 // meta IS NOT available in history archives.
 func Example_transactionshistoryarchive() {
@@ -94,7 +94,7 @@ func Example_transactionshistoryarchive() {
 	}
 }
 
-// Example_changes is explaining how to stream ledger entry changes
+// Example_changes demonstrates how to stream ledger entry changes
 // for a specific ledger using captive stellar-core. Please note that transaction
 // meta IS available when using this backend.
 func Example_changes() {

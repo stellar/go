@@ -14,7 +14,7 @@ Please consult the ledgerbackend package docs for more information about each
 backend.
 
 Warning: Please note that ledger backends provide low-level xdr.LedgerCloseMeta
-that should not be used directly unless developer really understand this data
+that should not be used directly unless the developer really understands this data
 structure. Read on to understand how to use ledger backend in higher level objects.
 
 Readers
@@ -49,7 +49,7 @@ There are two types of processors (ingest/io package):
 
 For an object to be a processor, it needs to implement a single method:
 ProcessChange or ProcessTransaction. This is a very simple yet powerful interface
-that allows building any kind of features.
+that allows building many kinds of features.
 
 */
 package ingest
