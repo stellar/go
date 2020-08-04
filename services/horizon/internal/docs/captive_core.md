@@ -21,9 +21,9 @@ To enable captive mode three feature config variables are required:
 * Horizon v1.6.0,
 * Stellar-Core v13.2.0.
 
-### How it works?
+### How it works
 
-When using Captive Stellar-Core, Horizon runs `stellar-core` binary as a subprocess. Then both processes communicate over filesystem pipe: Stellar-Core sends `xdr.LedgerCloseMeta` structs with information about each ledger and Horizon reads it.
+When using Captive Stellar-Core, Horizon runs the `stellar-core` binary as a subprocess. Then both processes communicate over filesystem pipe: Stellar-Core sends `xdr.LedgerCloseMeta` structs with information about each ledger and Horizon reads it.
 
 The behaviour is slightly different when reingesting old ledgers and when reading recently closed ledgers.
 
