@@ -3,16 +3,14 @@ package horizon
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
-	"runtime"
 	"sync"
 	"syscall"
 	"time"
 
-	"github.com/rcrowley/go-metrics"
+	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/stellar/go/clients/stellarcore"
 	proto "github.com/stellar/go/protocols/stellarcore"
@@ -69,15 +67,14 @@ type App struct {
 	ticks           *time.Ticker
 
 	// metrics
-	metrics                  metrics.Registry
-	historyLatestLedgerGauge metrics.Gauge
-	historyElderLedgerGauge  metrics.Gauge
-	dbOpenConnectionsGauge   metrics.Gauge
-	dbInUseConnectionsGauge  metrics.Gauge
-	dbWaitCountGauge         metrics.Gauge
-	dbWaitDurationTimer      metrics.Timer
-	coreLatestLedgerGauge    metrics.Gauge
-	goroutineGauge           metrics.Gauge
+	prometheusRegistry         *prometheus.Registry
+	historyLatestLedgerCounter prometheus.CounterFunc
+	historyElderLedgerCounter  prometheus.CounterFunc
+	dbOpenConnectionsGauge     prometheus.GaugeFunc
+	dbInUseConnectionsGauge    prometheus.GaugeFunc
+	dbWaitCountCounter         prometheus.CounterFunc
+	dbWaitDurationCounter      prometheus.CounterFunc
+	coreLatestLedgerCounter    prometheus.CounterFunc
 }
 
 func (a *App) GetCoreSettings() actions.CoreSettings {
@@ -374,22 +371,6 @@ func (a *App) UpdateStellarCoreInfo() {
 	a.coreSettings.set(resp)
 }
 
-// UpdateMetrics triggers a refresh of several metrics gauges, such as open
-// db connections and ledger state
-func (a *App) UpdateMetrics() {
-	a.goroutineGauge.Update(int64(runtime.NumGoroutine()))
-
-	ls := ledger.CurrentState()
-	a.historyLatestLedgerGauge.Update(int64(ls.HistoryLatest))
-	a.historyElderLedgerGauge.Update(int64(ls.HistoryElder))
-	a.coreLatestLedgerGauge.Update(int64(ls.CoreLatest))
-
-	a.dbOpenConnectionsGauge.Update(int64(a.historyQ.Session.DB.Stats().OpenConnections))
-	a.dbInUseConnectionsGauge.Update(int64(a.historyQ.Session.DB.Stats().InUse))
-	a.dbWaitCountGauge.Update(int64(a.historyQ.Session.DB.Stats().WaitCount))
-	a.dbWaitDurationTimer.Update(a.historyQ.Session.DB.Stats().WaitDuration)
-}
-
 // DeleteUnretainedHistory forwards to the app's reaper.  See
 // `reap.DeleteUnretainedHistory` for details
 func (a *App) DeleteUnretainedHistory() error {
@@ -413,8 +394,6 @@ func (a *App) Tick() {
 	go func() { a.submitter.Tick(a.ctx); wg.Done() }()
 	wg.Wait()
 
-	// finally, update metrics
-	a.UpdateMetrics()
 	log.Debug("finished ticking app")
 }
 
@@ -453,9 +432,9 @@ func (a *App) init() error {
 	a.reaper = reap.New(a.config.HistoryRetentionCount, a.HorizonSession(context.Background()))
 
 	// metrics and log.metrics
-	a.metrics = metrics.NewRegistry()
-	for level, meter := range *logmetrics.DefaultMetrics {
-		a.metrics.Register(fmt.Sprintf("logging.%s", level), meter)
+	a.prometheusRegistry = prometheus.NewRegistry()
+	for _, meter := range *logmetrics.DefaultMetrics {
+		a.prometheusRegistry.MustRegister(meter)
 	}
 
 	// db-metrics
@@ -477,7 +456,7 @@ func (a *App) init() error {
 		NetworkPassphrase:  a.config.NetworkPassphrase,
 		MaxPathLength:      a.config.MaxPathLength,
 		PathFinder:         a.paths,
-		MetricsRegistry:    a.metrics,
+		PrometheusRegistry: a.prometheusRegistry,
 		CoreGetter:         a,
 		HorizonVersion:     a.horizonVersion,
 		FriendbotURL:       a.config.FriendbotURL,
@@ -488,6 +467,10 @@ func (a *App) init() error {
 	if err != nil {
 		return err
 	}
+
+	// web.metrics
+	initWebMetrics(a)
+
 	return nil
 }
 

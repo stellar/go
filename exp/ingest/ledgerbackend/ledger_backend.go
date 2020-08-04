@@ -13,6 +13,11 @@ type Range struct {
 	bounded bool
 }
 
+// SingleLedgerRange constructs a bounded range containing a single ledger.
+func SingleLedgerRange(ledger uint32) Range {
+	return Range{from: ledger, to: ledger, bounded: true}
+}
+
 // BoundedRange constructs a bounded range of ledgers with a fixed starting ledger and ending ledger.
 func BoundedRange(from uint32, to uint32) Range {
 	return Range{from: from, to: to, bounded: true}
