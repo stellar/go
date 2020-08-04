@@ -15,20 +15,6 @@ import (
 // Ensure CaptiveStellarCore implements LedgerBackend
 var _ LedgerBackend = (*CaptiveStellarCore)(nil)
 
-// This is a not-very-complete or well-organized sketch of code be used to
-// stream LedgerCloseMeta data from a "captive" stellar-core: one running as a
-// subprocess and replaying portions of history against an in-memory ledger.
-//
-// A captive stellar-core still needs (and allocates, in os.TempDir()) a
-// temporary directory to run in: one in which its config file is stored, along
-// with temporary files it downloads and decompresses, and its bucket
-// state. Only the ledger will be in-memory (and we might even switch this to
-// SQLite + large buffers in the future if the in-memory ledger gets too big.)
-//
-// Feel free to reorganize this to fit better. It's preliminary!
-
-// TODO: switch from history URLs to history archive interface provided from support package, to permit mocking
-
 const (
 	readAheadBufferSize = 2
 )
@@ -48,6 +34,43 @@ type metaResult struct {
 	err error
 }
 
+// CaptiveStellarCore is a ledger backend that starts internal Stellar-Core
+// subprocess responsible for streaming ledger data. It provides better decoupling
+// than DatabaseBackend but requires some extra init time.
+//
+// It operates in two modes:
+//   * When a BoundedRange is prepared it starts Stellar-Core in catchup mode that
+//     replays ledgers in memory. This is very fast but requires Stellar-Core to
+//     keep ledger state in RAM. It requires around 3GB of RAM as of August 2020.
+//   * When a UnboundedRange is prepared it runs Stellar-Core catchup mode to
+//     sync with the first ledger and then runs it in a normal mode. This
+//     requires the configPath to be provided because a database connection is
+//     required and quorum set needs to be selected.
+//
+// The database requirement for UnboundedRange will soon be removed when some
+// changes are implemented in Stellar-Core.
+//
+// When running CaptiveStellarCore will create a temporary folder to store
+// bucket files and other temporary files. The folder is removed when Close is
+// called.
+//
+// The communication is performed via filesystem pipe which is created in a
+// temporary folder.
+//
+// Currently BoundedRange requires a full-trust on history archive. This issue is
+// being fixed in Stellar-Core.
+//
+// While using BoundedRanges is straightforward there are a few gotchas connected
+// to UnboundedRanges:
+//   * PrepareRange takes more time because all ledger entries must be stored on
+//     disk instead of RAM.
+//   * If GetLedger is not called frequently (every 5 sec. on average) the
+//     Stellar-Core process can go out of sync with the network. This happens
+//     because there is no buffering of communication pipe and CaptiveStellarCore
+//     has a very small internal buffer and Stellar-Core will not close the new
+//     ledger if it's not read.
+//
+// Requires Stellar-Core v13.2.0+.
 type CaptiveStellarCore struct {
 	executablePath    string
 	configPath        string
@@ -84,11 +107,10 @@ type CaptiveStellarCore struct {
 	waitIntervalPrepareRange time.Duration
 }
 
-// NewCaptive returns a new CaptiveStellarCore that is not running. Will lazily start a subprocess
-// to feed it a block of streaming metadata when user calls .GetLedger(), and will kill
-// and restart the subprocess if subsequent calls to .GetLedger() are discontiguous.
+// NewCaptive returns a new CaptiveStellarCore.
 //
-// Platform-specific pipe setup logic is in the .start() methods.
+// All parameters are required, except configPath which is not required when
+// working with BoundedRanges only.
 func NewCaptive(executablePath, configPath, networkPassphrase string, historyURLs []string) (*CaptiveStellarCore, error) {
 	archive, err := historyarchive.Connect(
 		historyURLs[0],
@@ -290,9 +312,14 @@ func (c *CaptiveStellarCore) readLedgerMetaFromPipe() (*xdr.LedgerCloseMeta, err
 }
 
 // PrepareRange prepares the given range (including from and to) to be loaded.
-// Some backends (like captive stellar-core) need to initalize data to be
+// Captive stellar-core backend needs to initalize Stellar-Core state to be
 // able to stream ledgers.
-// Set `to` to 0 to stream starting from `from` but without limits.
+// Stellar-Core mode depends on the provided ledgerRange:
+//   * For BoundedRange it will start Stellar-Core in catchup mode.
+//   * For UnboundedRange it will first catchup to starting ledger and then run
+//     it normally (including connecting to the Stellar network).
+// Please note that using a BoundedRange, currently, requires a full-trust on
+// history archive. This issue is being fixed in Stellar-Core.
 func (c *CaptiveStellarCore) PrepareRange(ledgerRange Range) error {
 	// Range already prepared
 	if c.IsPrepared(ledgerRange) {
@@ -365,14 +392,22 @@ func (c *CaptiveStellarCore) IsPrepared(ledgerRange Range) bool {
 }
 
 // GetLedger returns true when ledger is found and it's LedgerCloseMeta.
-// Call `PrepareRange` first to instruct the backend which ledgers to fetch.
+// Call PrepareRange first to instruct the backend which ledgers to fetch.
 //
-// We assume that we'll be called repeatedly asking for ledgers in a non-decreasing
-// order, so when asked for ledger 23 we start a subprocess doing catchup
-// "100023/100000", which should replay 23, 24, 25, ... 100023. The wrinkle in
-// this is that core will actually replay from the _checkpoint before_
-// the implicit start ledger, so we might need to skip a few ledgers until
-// we hit the one requested (this routine does so transparently if needed).
+// CaptiveStellarCore requires PrepareRange call first to initialize Stellar-Core.
+// Requesting a ledger on non-prepared backend will return an error.
+//
+// Because data is streamed from Stellar-Core ledger after ledger user should
+// request sequences in a non-decreasing order. If the requested sequence number
+// is less than the last requested sequence number, an error will be returned.
+//
+// This function behaves differently for bounded and unbounded ranges:
+//   * BoundedRange makes GetLedger blocking if the requested ledger is not yet
+//     available in the ledger. After getting the last ledger in a range this
+//     method will also Close() the backend.
+//   * UnboundedRange makes GetLedger non-blocking. The method will return with
+//     the first argument equal false.
+// This is done to provide maximum performance when streaming old ledgers.
 func (c *CaptiveStellarCore) GetLedger(sequence uint32) (bool, xdr.LedgerCloseMeta, error) {
 	if c.cachedMeta != nil && sequence == c.cachedMeta.LedgerSequence() {
 		// GetLedger can be called multiple times using the same sequence, ex. to create
@@ -434,8 +469,12 @@ loop:
 }
 
 // GetLatestLedgerSequence returns the sequence of the latest ledger available
+// in the backend. This method returns an error if not in a session (start with
+// PrepareRange).
+//
+// Note that for UnboundedRange the returned sequence number is not necessarily
+// the latest sequence closed by the network. It's always the last value available
 // in the backend.
-// Will return error if not in a session (start with `PrepareRange`).
 func (c *CaptiveStellarCore) GetLatestLedgerSequence() (uint32, error) {
 	if c.isClosed() {
 		return 0, errors.New("stellar-core must be opened to return latest available sequence")
@@ -451,7 +490,8 @@ func (c *CaptiveStellarCore) isClosed() bool {
 	return c.nextLedger == 0
 }
 
-// Close closes existing stellar-core process and streaming sessions.
+// Close closes existing Stellar-Core process, streaming sessions and removes all
+// temporary files.
 func (c *CaptiveStellarCore) Close() error {
 	if c.isClosed() {
 		return nil
