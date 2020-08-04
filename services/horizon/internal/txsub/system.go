@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/rcrowley/go-metrics"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stellar/go/services/horizon/internal/txsub/sequence"
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/xdr"
@@ -38,37 +38,37 @@ type System struct {
 	Log               *log.Entry
 
 	Metrics struct {
-		// SubmissionTimer exposes timing metrics about the rate and latency of
+		// SubmissionDuration exposes timing metrics about the rate and latency of
 		// submissions to stellar-core
-		SubmissionTimer metrics.Timer
+		SubmissionDuration prometheus.Summary
 
 		// BufferedSubmissionGauge tracks the count of submissions buffered
 		// behind this system's SubmissionQueue
-		BufferedSubmissionsGauge metrics.Gauge
+		BufferedSubmissionsGauge prometheus.Gauge
 
 		// OpenSubmissionsGauge tracks the count of "open" submissions (i.e.
 		// submissions whose transactions haven't been confirmed successful or failed
-		OpenSubmissionsGauge metrics.Gauge
+		OpenSubmissionsGauge prometheus.Gauge
 
-		// FailedSubmissionsMeter tracks the rate of failed transactions that have
+		// FailedSubmissionsCounter tracks the rate of failed transactions that have
 		// been submitted to this process
-		FailedSubmissionsMeter metrics.Meter
+		FailedSubmissionsCounter prometheus.Counter
 
-		// SuccessfulSubmissionsMeter tracks the rate of successful transactions that
+		// SuccessfulSubmissionsCounter tracks the rate of successful transactions that
 		// have been submitted to this process
-		SuccessfulSubmissionsMeter metrics.Meter
+		SuccessfulSubmissionsCounter prometheus.Counter
 
-		// V0TransactionsMeter tracks the rate of v0 transaction envelopes that
+		// V0TransactionsCounter tracks the rate of v0 transaction envelopes that
 		// have been submitted to this process
-		V0TransactionsMeter metrics.Meter
+		V0TransactionsCounter prometheus.Counter
 
-		// V1TransactionsMeter tracks the rate of v1 transaction envelopes that
+		// V1TransactionsCounter tracks the rate of v1 transaction envelopes that
 		// have been submitted to this process
-		V1TransactionsMeter metrics.Meter
+		V1TransactionsCounter prometheus.Counter
 
-		// FeeBumpTransactionsMeter tracks the rate of fee bump transaction envelopes that
+		// FeeBumpTransactionsCounter tracks the rate of fee bump transaction envelopes that
 		// have been submitted to this process
-		FeeBumpTransactionsMeter metrics.Meter
+		FeeBumpTransactionsCounter prometheus.Counter
 	}
 }
 
@@ -178,13 +178,13 @@ func (sys *System) Submit(
 func (sys *System) submitOnce(ctx context.Context, env string) SubmissionResult {
 	// submit to stellar-core
 	sr := sys.Submitter.Submit(ctx, env)
-	sys.Metrics.SubmissionTimer.Update(sr.Duration)
+	sys.Metrics.SubmissionDuration.Observe(float64(sr.Duration.Seconds()))
 
 	// if received or duplicate, add to the open submissions list
 	if sr.Err == nil {
-		sys.Metrics.SuccessfulSubmissionsMeter.Mark(1)
+		sys.Metrics.SuccessfulSubmissionsCounter.Inc()
 	} else {
-		sys.Metrics.FailedSubmissionsMeter.Mark(1)
+		sys.Metrics.FailedSubmissionsCounter.Inc()
 	}
 
 	return sr
@@ -193,11 +193,11 @@ func (sys *System) submitOnce(ctx context.Context, env string) SubmissionResult 
 func (sys *System) updateTransactionTypeMetrics(envelope xdr.TransactionEnvelope) {
 	switch envelope.Type {
 	case xdr.EnvelopeTypeEnvelopeTypeTxV0:
-		sys.Metrics.V0TransactionsMeter.Mark(1)
+		sys.Metrics.V0TransactionsCounter.Inc()
 	case xdr.EnvelopeTypeEnvelopeTypeTx:
-		sys.Metrics.V1TransactionsMeter.Mark(1)
+		sys.Metrics.V1TransactionsCounter.Inc()
 	case xdr.EnvelopeTypeEnvelopeTypeTxFeeBump:
-		sys.Metrics.FeeBumpTransactionsMeter.Mark(1)
+		sys.Metrics.FeeBumpTransactionsCounter.Inc()
 	}
 }
 
@@ -288,8 +288,8 @@ func (sys *System) Tick(ctx context.Context) {
 		return
 	}
 
-	sys.Metrics.OpenSubmissionsGauge.Update(int64(stillOpen))
-	sys.Metrics.BufferedSubmissionsGauge.Update(int64(sys.SubmissionQueue.Size()))
+	sys.Metrics.OpenSubmissionsGauge.Set(float64(stillOpen))
+	sys.Metrics.BufferedSubmissionsGauge.Set(float64(sys.SubmissionQueue.Size()))
 }
 
 // Init initializes `sys`
@@ -297,14 +297,31 @@ func (sys *System) Init() {
 	sys.initializer.Do(func() {
 		sys.Log = log.DefaultLogger.WithField("service", "txsub.System")
 
-		sys.Metrics.FailedSubmissionsMeter = metrics.NewMeter()
-		sys.Metrics.SuccessfulSubmissionsMeter = metrics.NewMeter()
-		sys.Metrics.SubmissionTimer = metrics.NewTimer()
-		sys.Metrics.OpenSubmissionsGauge = metrics.NewGauge()
-		sys.Metrics.BufferedSubmissionsGauge = metrics.NewGauge()
-		sys.Metrics.V0TransactionsMeter = metrics.NewMeter()
-		sys.Metrics.V1TransactionsMeter = metrics.NewMeter()
-		sys.Metrics.FeeBumpTransactionsMeter = metrics.NewMeter()
+		sys.Metrics.SubmissionDuration = prometheus.NewSummary(prometheus.SummaryOpts{
+			Namespace: "horizon", Subsystem: "txsub", Name: "submission_duration_seconds",
+			Help: "submission durations to Stellar-Core, sliding window = 10m",
+		})
+		sys.Metrics.FailedSubmissionsCounter = prometheus.NewCounter(prometheus.CounterOpts{
+			Namespace: "horizon", Subsystem: "txsub", Name: "failed",
+		})
+		sys.Metrics.SuccessfulSubmissionsCounter = prometheus.NewCounter(prometheus.CounterOpts{
+			Namespace: "horizon", Subsystem: "txsub", Name: "succeeded",
+		})
+		sys.Metrics.OpenSubmissionsGauge = prometheus.NewGauge(prometheus.GaugeOpts{
+			Namespace: "horizon", Subsystem: "txsub", Name: "open",
+		})
+		sys.Metrics.BufferedSubmissionsGauge = prometheus.NewGauge(prometheus.GaugeOpts{
+			Namespace: "horizon", Subsystem: "txsub", Name: "buffered",
+		})
+		sys.Metrics.V0TransactionsCounter = prometheus.NewCounter(prometheus.CounterOpts{
+			Namespace: "horizon", Subsystem: "txsub", Name: "v0",
+		})
+		sys.Metrics.V1TransactionsCounter = prometheus.NewCounter(prometheus.CounterOpts{
+			Namespace: "horizon", Subsystem: "txsub", Name: "v1",
+		})
+		sys.Metrics.FeeBumpTransactionsCounter = prometheus.NewCounter(prometheus.CounterOpts{
+			Namespace: "horizon", Subsystem: "txsub", Name: "feebump",
+		})
 
 		if sys.SubmissionTimeout == 0 {
 			// HTTP clients in SDKs usually timeout in 60 seconds. We want SubmissionTimeout

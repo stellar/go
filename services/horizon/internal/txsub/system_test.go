@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/guregu/null"
+	"github.com/prometheus/client_golang/prometheus"
+	dto "github.com/prometheus/client_model/go"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -143,6 +145,15 @@ func (suite *SystemTestSuite) TestSubmit_Basic() {
 	assert.False(suite.T(), suite.submitter.WasSubmittedTo)
 }
 
+func getMetricValue(metric prometheus.Metric) *dto.Metric {
+	value := &dto.Metric{}
+	err := metric.Write(value)
+	if err != nil {
+		panic(err)
+	}
+	return value
+}
+
 // Returns the error from submission if no result is found by hash and the suite.submitter returns an error.
 func (suite *SystemTestSuite) TestSubmit_NotFoundError() {
 	suite.db.On("BeginTx", &sql.TxOptions{
@@ -167,9 +178,9 @@ func (suite *SystemTestSuite) TestSubmit_NotFoundError() {
 
 	assert.NotNil(suite.T(), r.Err)
 	assert.True(suite.T(), suite.submitter.WasSubmittedTo)
-	assert.Equal(suite.T(), int64(0), suite.system.Metrics.SuccessfulSubmissionsMeter.Count())
-	assert.Equal(suite.T(), int64(1), suite.system.Metrics.FailedSubmissionsMeter.Count())
-	assert.Equal(suite.T(), int64(1), suite.system.Metrics.SubmissionTimer.Count())
+	assert.Equal(suite.T(), float64(0), getMetricValue(suite.system.Metrics.SuccessfulSubmissionsCounter).GetCounter().GetValue())
+	assert.Equal(suite.T(), float64(1), getMetricValue(suite.system.Metrics.FailedSubmissionsCounter).GetCounter().GetValue())
+	assert.Equal(suite.T(), uint64(1), getMetricValue(suite.system.Metrics.SubmissionDuration).GetSummary().GetSampleCount())
 }
 
 // If the error is bad_seq and the result at the transaction's sequence number is for the same hash, return result.
@@ -253,9 +264,9 @@ func (suite *SystemTestSuite) TestSubmit_OpenTransactionList() {
 	pending := suite.system.Pending.Pending(suite.ctx)
 	assert.Equal(suite.T(), 1, len(pending))
 	assert.Equal(suite.T(), suite.successTx.Transaction.TransactionHash, pending[0])
-	assert.Equal(suite.T(), int64(1), suite.system.Metrics.SuccessfulSubmissionsMeter.Count())
-	assert.Equal(suite.T(), int64(0), suite.system.Metrics.FailedSubmissionsMeter.Count())
-	assert.Equal(suite.T(), int64(1), suite.system.Metrics.SubmissionTimer.Count())
+	assert.Equal(suite.T(), float64(1), getMetricValue(suite.system.Metrics.SuccessfulSubmissionsCounter).GetCounter().GetValue())
+	assert.Equal(suite.T(), float64(0), getMetricValue(suite.system.Metrics.FailedSubmissionsCounter).GetCounter().GetValue())
+	assert.Equal(suite.T(), uint64(1), getMetricValue(suite.system.Metrics.SubmissionDuration).GetSummary().GetSampleCount())
 }
 
 // Tick should be a no-op if there are no open submissions.

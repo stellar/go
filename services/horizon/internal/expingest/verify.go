@@ -55,11 +55,11 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool) error {
 	historyQ := s.historyQ.CloneIngestionQ()
 
 	defer func() {
-		duration := time.Since(startTime)
+		duration := time.Since(startTime).Seconds()
 		if updateMetrics {
-			s.Metrics().StateVerifyTimer.Update(duration)
+			s.Metrics().StateVerifyDuration.Observe(float64(duration))
 		}
-		log.WithField("duration", duration.Seconds()).Info("State verification finished")
+		log.WithField("duration", duration).Info("State verification finished")
 		historyQ.Rollback()
 		s.stateVerificationMutex.Lock()
 		s.stateVerificationRunning = false
