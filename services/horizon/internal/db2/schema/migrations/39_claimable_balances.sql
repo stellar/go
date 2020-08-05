@@ -12,7 +12,7 @@ CREATE TABLE claimable_balances (
 
 CREATE TABLE claimable_balances_claimants (
     id character varying(64) NOT NULL, -- sha256 of balance_id in HEX
-    destination character varying(64),
+    destination character varying(64) NOT NULL,
     predicate TEXT NOT NULL,
     PRIMARY KEY (id, destination)
 );
