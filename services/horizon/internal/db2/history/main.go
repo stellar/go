@@ -585,6 +585,7 @@ type TrustLine struct {
 	SellingLiabilities int64         `db:"selling_liabilities"`
 	Flags              uint32        `db:"flags"`
 	LastModifiedLedger uint32        `db:"last_modified_ledger"`
+	Sponsor            null.String   `db:"sponsor"`
 }
 
 // QTrustLines defines trust lines related queries.
