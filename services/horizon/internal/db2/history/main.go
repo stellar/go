@@ -132,20 +132,23 @@ type AccountsQ struct {
 
 // AccountEntry is a row of data from the `account` table
 type AccountEntry struct {
-	AccountID            string `db:"account_id"`
-	Balance              int64  `db:"balance"`
-	BuyingLiabilities    int64  `db:"buying_liabilities"`
-	SellingLiabilities   int64  `db:"selling_liabilities"`
-	SequenceNumber       int64  `db:"sequence_number"`
-	NumSubEntries        uint32 `db:"num_subentries"`
-	InflationDestination string `db:"inflation_destination"`
-	HomeDomain           string `db:"home_domain"`
-	Flags                uint32 `db:"flags"`
-	MasterWeight         byte   `db:"master_weight"`
-	ThresholdLow         byte   `db:"threshold_low"`
-	ThresholdMedium      byte   `db:"threshold_medium"`
-	ThresholdHigh        byte   `db:"threshold_high"`
-	LastModifiedLedger   uint32 `db:"last_modified_ledger"`
+	AccountID            string      `db:"account_id"`
+	Balance              int64       `db:"balance"`
+	BuyingLiabilities    int64       `db:"buying_liabilities"`
+	SellingLiabilities   int64       `db:"selling_liabilities"`
+	SequenceNumber       int64       `db:"sequence_number"`
+	NumSubEntries        uint32      `db:"num_subentries"`
+	InflationDestination string      `db:"inflation_destination"`
+	HomeDomain           string      `db:"home_domain"`
+	Flags                uint32      `db:"flags"`
+	MasterWeight         byte        `db:"master_weight"`
+	ThresholdLow         byte        `db:"threshold_low"`
+	ThresholdMedium      byte        `db:"threshold_medium"`
+	ThresholdHigh        byte        `db:"threshold_high"`
+	LastModifiedLedger   uint32      `db:"last_modified_ledger"`
+	Sponsor              null.String `db:"sponsor"`
+	NumSponsored         uint32      `db:"num_sponsored"`
+	NumSponsoring        uint32      `db:"num_sponsoring"`
 }
 
 type AccountsBatchInsertBuilder interface {
@@ -199,9 +202,10 @@ type QAccounts interface {
 
 // AccountSigner is a row of data from the `accounts_signers` table
 type AccountSigner struct {
-	Account string `db:"account_id"`
-	Signer  string `db:"signer"`
-	Weight  int32  `db:"weight"`
+	Account string      `db:"account_id"`
+	Signer  string      `db:"signer"`
+	Weight  int32       `db:"weight"`
+	Sponsor null.String `db:"sponsor"`
 }
 
 type AccountSignersBatchInsertBuilder interface {
@@ -220,6 +224,7 @@ type Data struct {
 	Name               string           `db:"name"`
 	Value              AccountDataValue `db:"value"`
 	LastModifiedLedger uint32           `db:"last_modified_ledger"`
+	Sponsor            null.String      `db:"sponsor"`
 }
 
 type AccountDataValue []byte
@@ -457,13 +462,14 @@ type Offer struct {
 	SellingAsset xdr.Asset `db:"selling_asset"`
 	BuyingAsset  xdr.Asset `db:"buying_asset"`
 
-	Amount             xdr.Int64 `db:"amount"`
-	Pricen             int32     `db:"pricen"`
-	Priced             int32     `db:"priced"`
-	Price              float64   `db:"price"`
-	Flags              uint32    `db:"flags"`
-	Deleted            bool      `db:"deleted"`
-	LastModifiedLedger uint32    `db:"last_modified_ledger"`
+	Amount             xdr.Int64   `db:"amount"`
+	Pricen             int32       `db:"pricen"`
+	Priced             int32       `db:"priced"`
+	Price              float64     `db:"price"`
+	Flags              uint32      `db:"flags"`
+	Deleted            bool        `db:"deleted"`
+	LastModifiedLedger uint32      `db:"last_modified_ledger"`
+	Sponsor            null.String `db:"sponsor"`
 }
 
 type OffersBatchInsertBuilder interface {
@@ -579,6 +585,7 @@ type TrustLine struct {
 	SellingLiabilities int64         `db:"selling_liabilities"`
 	Flags              uint32        `db:"flags"`
 	LastModifiedLedger uint32        `db:"last_modified_ledger"`
+	Sponsor            null.String   `db:"sponsor"`
 }
 
 // QTrustLines defines trust lines related queries.
