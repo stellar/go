@@ -8266,33 +8266,33 @@ var (
 //        PATH_PAYMENT_STRICT_SEND = 13,
 //        CREATE_CLAIMABLE_BALANCE = 14,
 //        CLAIM_CLAIMABLE_BALANCE = 15,
-//        SPONSOR_FUTURE_RESERVES = 16,
-//        CONFIRM_AND_CLEAR_SPONSOR = 17,
-//        UPDATE_SPONSORSHIP = 18
+//        BEGIN_SPONSORING_FUTURE_RESERVES = 16,
+//        END_SPONSORING_FUTURE_RESERVES = 17,
+//        REVOKE_SPONSORSHIP = 18
 //    };
 //
 type OperationType int32
 
 const (
-	OperationTypeCreateAccount            OperationType = 0
-	OperationTypePayment                  OperationType = 1
-	OperationTypePathPaymentStrictReceive OperationType = 2
-	OperationTypeManageSellOffer          OperationType = 3
-	OperationTypeCreatePassiveSellOffer   OperationType = 4
-	OperationTypeSetOptions               OperationType = 5
-	OperationTypeChangeTrust              OperationType = 6
-	OperationTypeAllowTrust               OperationType = 7
-	OperationTypeAccountMerge             OperationType = 8
-	OperationTypeInflation                OperationType = 9
-	OperationTypeManageData               OperationType = 10
-	OperationTypeBumpSequence             OperationType = 11
-	OperationTypeManageBuyOffer           OperationType = 12
-	OperationTypePathPaymentStrictSend    OperationType = 13
-	OperationTypeCreateClaimableBalance   OperationType = 14
-	OperationTypeClaimClaimableBalance    OperationType = 15
-	OperationTypeSponsorFutureReserves    OperationType = 16
-	OperationTypeConfirmAndClearSponsor   OperationType = 17
-	OperationTypeUpdateSponsorship        OperationType = 18
+	OperationTypeCreateAccount                 OperationType = 0
+	OperationTypePayment                       OperationType = 1
+	OperationTypePathPaymentStrictReceive      OperationType = 2
+	OperationTypeManageSellOffer               OperationType = 3
+	OperationTypeCreatePassiveSellOffer        OperationType = 4
+	OperationTypeSetOptions                    OperationType = 5
+	OperationTypeChangeTrust                   OperationType = 6
+	OperationTypeAllowTrust                    OperationType = 7
+	OperationTypeAccountMerge                  OperationType = 8
+	OperationTypeInflation                     OperationType = 9
+	OperationTypeManageData                    OperationType = 10
+	OperationTypeBumpSequence                  OperationType = 11
+	OperationTypeManageBuyOffer                OperationType = 12
+	OperationTypePathPaymentStrictSend         OperationType = 13
+	OperationTypeCreateClaimableBalance        OperationType = 14
+	OperationTypeClaimClaimableBalance         OperationType = 15
+	OperationTypeBeginSponsoringFutureReserves OperationType = 16
+	OperationTypeEndSponsoringFutureReserves   OperationType = 17
+	OperationTypeRevokeSponsorship             OperationType = 18
 )
 
 var operationTypeMap = map[int32]string{
@@ -8312,9 +8312,9 @@ var operationTypeMap = map[int32]string{
 	13: "OperationTypePathPaymentStrictSend",
 	14: "OperationTypeCreateClaimableBalance",
 	15: "OperationTypeClaimClaimableBalance",
-	16: "OperationTypeSponsorFutureReserves",
-	17: "OperationTypeConfirmAndClearSponsor",
-	18: "OperationTypeUpdateSponsorship",
+	16: "OperationTypeBeginSponsoringFutureReserves",
+	17: "OperationTypeEndSponsoringFutureReserves",
+	18: "OperationTypeRevokeSponsorship",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
@@ -8993,87 +8993,87 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ClaimClaimableBalanceOp)(nil)
 )
 
-// SponsorFutureReservesOp is an XDR Struct defines as:
+// BeginSponsoringFutureReservesOp is an XDR Struct defines as:
 //
-//   struct SponsorFutureReservesOp
+//   struct BeginSponsoringFutureReservesOp
 //    {
 //        AccountID sponsoredID;
 //    };
 //
-type SponsorFutureReservesOp struct {
+type BeginSponsoringFutureReservesOp struct {
 	SponsoredId AccountId
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
-func (s SponsorFutureReservesOp) MarshalBinary() ([]byte, error) {
+func (s BeginSponsoringFutureReservesOp) MarshalBinary() ([]byte, error) {
 	b := new(bytes.Buffer)
 	_, err := Marshal(b, s)
 	return b.Bytes(), err
 }
 
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
-func (s *SponsorFutureReservesOp) UnmarshalBinary(inp []byte) error {
+func (s *BeginSponsoringFutureReservesOp) UnmarshalBinary(inp []byte) error {
 	_, err := Unmarshal(bytes.NewReader(inp), s)
 	return err
 }
 
 var (
-	_ encoding.BinaryMarshaler   = (*SponsorFutureReservesOp)(nil)
-	_ encoding.BinaryUnmarshaler = (*SponsorFutureReservesOp)(nil)
+	_ encoding.BinaryMarshaler   = (*BeginSponsoringFutureReservesOp)(nil)
+	_ encoding.BinaryUnmarshaler = (*BeginSponsoringFutureReservesOp)(nil)
 )
 
-// UpdateSponsorshipType is an XDR Enum defines as:
+// RevokeSponsorshipType is an XDR Enum defines as:
 //
-//   enum UpdateSponsorshipType
+//   enum RevokeSponsorshipType
 //    {
-//        UPDATE_SPONSORSHIP_LEDGER_ENTRY = 0,
-//        UPDATE_SPONSORSHIP_SIGNER = 1
+//        REVOKE_SPONSORSHIP_LEDGER_ENTRY = 0,
+//        REVOKE_SPONSORSHIP_SIGNER = 1
 //    };
 //
-type UpdateSponsorshipType int32
+type RevokeSponsorshipType int32
 
 const (
-	UpdateSponsorshipTypeUpdateSponsorshipLedgerEntry UpdateSponsorshipType = 0
-	UpdateSponsorshipTypeUpdateSponsorshipSigner      UpdateSponsorshipType = 1
+	RevokeSponsorshipTypeRevokeSponsorshipLedgerEntry RevokeSponsorshipType = 0
+	RevokeSponsorshipTypeRevokeSponsorshipSigner      RevokeSponsorshipType = 1
 )
 
-var updateSponsorshipTypeMap = map[int32]string{
-	0: "UpdateSponsorshipTypeUpdateSponsorshipLedgerEntry",
-	1: "UpdateSponsorshipTypeUpdateSponsorshipSigner",
+var revokeSponsorshipTypeMap = map[int32]string{
+	0: "RevokeSponsorshipTypeRevokeSponsorshipLedgerEntry",
+	1: "RevokeSponsorshipTypeRevokeSponsorshipSigner",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
-// the Enum interface for UpdateSponsorshipType
-func (e UpdateSponsorshipType) ValidEnum(v int32) bool {
-	_, ok := updateSponsorshipTypeMap[v]
+// the Enum interface for RevokeSponsorshipType
+func (e RevokeSponsorshipType) ValidEnum(v int32) bool {
+	_, ok := revokeSponsorshipTypeMap[v]
 	return ok
 }
 
 // String returns the name of `e`
-func (e UpdateSponsorshipType) String() string {
-	name, _ := updateSponsorshipTypeMap[int32(e)]
+func (e RevokeSponsorshipType) String() string {
+	name, _ := revokeSponsorshipTypeMap[int32(e)]
 	return name
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
-func (s UpdateSponsorshipType) MarshalBinary() ([]byte, error) {
+func (s RevokeSponsorshipType) MarshalBinary() ([]byte, error) {
 	b := new(bytes.Buffer)
 	_, err := Marshal(b, s)
 	return b.Bytes(), err
 }
 
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
-func (s *UpdateSponsorshipType) UnmarshalBinary(inp []byte) error {
+func (s *RevokeSponsorshipType) UnmarshalBinary(inp []byte) error {
 	_, err := Unmarshal(bytes.NewReader(inp), s)
 	return err
 }
 
 var (
-	_ encoding.BinaryMarshaler   = (*UpdateSponsorshipType)(nil)
-	_ encoding.BinaryUnmarshaler = (*UpdateSponsorshipType)(nil)
+	_ encoding.BinaryMarshaler   = (*RevokeSponsorshipType)(nil)
+	_ encoding.BinaryUnmarshaler = (*RevokeSponsorshipType)(nil)
 )
 
-// UpdateSponsorshipOpSigner is an XDR NestedStruct defines as:
+// RevokeSponsorshipOpSigner is an XDR NestedStruct defines as:
 //
 //   struct
 //        {
@@ -9081,36 +9081,36 @@ var (
 //            SignerKey signerKey;
 //        }
 //
-type UpdateSponsorshipOpSigner struct {
+type RevokeSponsorshipOpSigner struct {
 	AccountId AccountId
 	SignerKey SignerKey
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
-func (s UpdateSponsorshipOpSigner) MarshalBinary() ([]byte, error) {
+func (s RevokeSponsorshipOpSigner) MarshalBinary() ([]byte, error) {
 	b := new(bytes.Buffer)
 	_, err := Marshal(b, s)
 	return b.Bytes(), err
 }
 
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
-func (s *UpdateSponsorshipOpSigner) UnmarshalBinary(inp []byte) error {
+func (s *RevokeSponsorshipOpSigner) UnmarshalBinary(inp []byte) error {
 	_, err := Unmarshal(bytes.NewReader(inp), s)
 	return err
 }
 
 var (
-	_ encoding.BinaryMarshaler   = (*UpdateSponsorshipOpSigner)(nil)
-	_ encoding.BinaryUnmarshaler = (*UpdateSponsorshipOpSigner)(nil)
+	_ encoding.BinaryMarshaler   = (*RevokeSponsorshipOpSigner)(nil)
+	_ encoding.BinaryUnmarshaler = (*RevokeSponsorshipOpSigner)(nil)
 )
 
-// UpdateSponsorshipOp is an XDR Union defines as:
+// RevokeSponsorshipOp is an XDR Union defines as:
 //
-//   union UpdateSponsorshipOp switch (UpdateSponsorshipType type)
+//   union RevokeSponsorshipOp switch (RevokeSponsorshipType type)
 //    {
-//    case UPDATE_SPONSORSHIP_LEDGER_ENTRY:
+//    case REVOKE_SPONSORSHIP_LEDGER_ENTRY:
 //        LedgerKey ledgerKey;
-//    case UPDATE_SPONSORSHIP_SIGNER:
+//    case REVOKE_SPONSORSHIP_SIGNER:
 //        struct
 //        {
 //            AccountID accountID;
@@ -9119,45 +9119,45 @@ var (
 //        signer;
 //    };
 //
-type UpdateSponsorshipOp struct {
-	Type      UpdateSponsorshipType
+type RevokeSponsorshipOp struct {
+	Type      RevokeSponsorshipType
 	LedgerKey *LedgerKey
-	Signer    *UpdateSponsorshipOpSigner
+	Signer    *RevokeSponsorshipOpSigner
 }
 
 // SwitchFieldName returns the field name in which this union's
 // discriminant is stored
-func (u UpdateSponsorshipOp) SwitchFieldName() string {
+func (u RevokeSponsorshipOp) SwitchFieldName() string {
 	return "Type"
 }
 
 // ArmForSwitch returns which field name should be used for storing
-// the value for an instance of UpdateSponsorshipOp
-func (u UpdateSponsorshipOp) ArmForSwitch(sw int32) (string, bool) {
-	switch UpdateSponsorshipType(sw) {
-	case UpdateSponsorshipTypeUpdateSponsorshipLedgerEntry:
+// the value for an instance of RevokeSponsorshipOp
+func (u RevokeSponsorshipOp) ArmForSwitch(sw int32) (string, bool) {
+	switch RevokeSponsorshipType(sw) {
+	case RevokeSponsorshipTypeRevokeSponsorshipLedgerEntry:
 		return "LedgerKey", true
-	case UpdateSponsorshipTypeUpdateSponsorshipSigner:
+	case RevokeSponsorshipTypeRevokeSponsorshipSigner:
 		return "Signer", true
 	}
 	return "-", false
 }
 
-// NewUpdateSponsorshipOp creates a new  UpdateSponsorshipOp.
-func NewUpdateSponsorshipOp(aType UpdateSponsorshipType, value interface{}) (result UpdateSponsorshipOp, err error) {
+// NewRevokeSponsorshipOp creates a new  RevokeSponsorshipOp.
+func NewRevokeSponsorshipOp(aType RevokeSponsorshipType, value interface{}) (result RevokeSponsorshipOp, err error) {
 	result.Type = aType
-	switch UpdateSponsorshipType(aType) {
-	case UpdateSponsorshipTypeUpdateSponsorshipLedgerEntry:
+	switch RevokeSponsorshipType(aType) {
+	case RevokeSponsorshipTypeRevokeSponsorshipLedgerEntry:
 		tv, ok := value.(LedgerKey)
 		if !ok {
 			err = fmt.Errorf("invalid value, must be LedgerKey")
 			return
 		}
 		result.LedgerKey = &tv
-	case UpdateSponsorshipTypeUpdateSponsorshipSigner:
-		tv, ok := value.(UpdateSponsorshipOpSigner)
+	case RevokeSponsorshipTypeRevokeSponsorshipSigner:
+		tv, ok := value.(RevokeSponsorshipOpSigner)
 		if !ok {
-			err = fmt.Errorf("invalid value, must be UpdateSponsorshipOpSigner")
+			err = fmt.Errorf("invalid value, must be RevokeSponsorshipOpSigner")
 			return
 		}
 		result.Signer = &tv
@@ -9167,7 +9167,7 @@ func NewUpdateSponsorshipOp(aType UpdateSponsorshipType, value interface{}) (res
 
 // MustLedgerKey retrieves the LedgerKey value from the union,
 // panicing if the value is not set.
-func (u UpdateSponsorshipOp) MustLedgerKey() LedgerKey {
+func (u RevokeSponsorshipOp) MustLedgerKey() LedgerKey {
 	val, ok := u.GetLedgerKey()
 
 	if !ok {
@@ -9179,7 +9179,7 @@ func (u UpdateSponsorshipOp) MustLedgerKey() LedgerKey {
 
 // GetLedgerKey retrieves the LedgerKey value from the union,
 // returning ok if the union's switch indicated the value is valid.
-func (u UpdateSponsorshipOp) GetLedgerKey() (result LedgerKey, ok bool) {
+func (u RevokeSponsorshipOp) GetLedgerKey() (result LedgerKey, ok bool) {
 	armName, _ := u.ArmForSwitch(int32(u.Type))
 
 	if armName == "LedgerKey" {
@@ -9192,7 +9192,7 @@ func (u UpdateSponsorshipOp) GetLedgerKey() (result LedgerKey, ok bool) {
 
 // MustSigner retrieves the Signer value from the union,
 // panicing if the value is not set.
-func (u UpdateSponsorshipOp) MustSigner() UpdateSponsorshipOpSigner {
+func (u RevokeSponsorshipOp) MustSigner() RevokeSponsorshipOpSigner {
 	val, ok := u.GetSigner()
 
 	if !ok {
@@ -9204,7 +9204,7 @@ func (u UpdateSponsorshipOp) MustSigner() UpdateSponsorshipOpSigner {
 
 // GetSigner retrieves the Signer value from the union,
 // returning ok if the union's switch indicated the value is valid.
-func (u UpdateSponsorshipOp) GetSigner() (result UpdateSponsorshipOpSigner, ok bool) {
+func (u RevokeSponsorshipOp) GetSigner() (result RevokeSponsorshipOpSigner, ok bool) {
 	armName, _ := u.ArmForSwitch(int32(u.Type))
 
 	if armName == "Signer" {
@@ -9216,21 +9216,21 @@ func (u UpdateSponsorshipOp) GetSigner() (result UpdateSponsorshipOpSigner, ok b
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
-func (s UpdateSponsorshipOp) MarshalBinary() ([]byte, error) {
+func (s RevokeSponsorshipOp) MarshalBinary() ([]byte, error) {
 	b := new(bytes.Buffer)
 	_, err := Marshal(b, s)
 	return b.Bytes(), err
 }
 
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
-func (s *UpdateSponsorshipOp) UnmarshalBinary(inp []byte) error {
+func (s *RevokeSponsorshipOp) UnmarshalBinary(inp []byte) error {
 	_, err := Unmarshal(bytes.NewReader(inp), s)
 	return err
 }
 
 var (
-	_ encoding.BinaryMarshaler   = (*UpdateSponsorshipOp)(nil)
-	_ encoding.BinaryUnmarshaler = (*UpdateSponsorshipOp)(nil)
+	_ encoding.BinaryMarshaler   = (*RevokeSponsorshipOp)(nil)
+	_ encoding.BinaryUnmarshaler = (*RevokeSponsorshipOp)(nil)
 )
 
 // OperationBody is an XDR NestedUnion defines as:
@@ -9269,33 +9269,33 @@ var (
 //            CreateClaimableBalanceOp createClaimableBalanceOp;
 //        case CLAIM_CLAIMABLE_BALANCE:
 //            ClaimClaimableBalanceOp claimClaimableBalanceOp;
-//        case SPONSOR_FUTURE_RESERVES:
-//            SponsorFutureReservesOp sponsorFutureReservesOp;
-//        case CONFIRM_AND_CLEAR_SPONSOR:
+//        case BEGIN_SPONSORING_FUTURE_RESERVES:
+//            BeginSponsoringFutureReservesOp beginSponsoringFutureReservesOp;
+//        case END_SPONSORING_FUTURE_RESERVES:
 //            void;
-//        case UPDATE_SPONSORSHIP:
-//            UpdateSponsorshipOp updateSponsorshipOp;
+//        case REVOKE_SPONSORSHIP:
+//            RevokeSponsorshipOp revokeSponsorshipOp;
 //        }
 //
 type OperationBody struct {
-	Type                       OperationType
-	CreateAccountOp            *CreateAccountOp
-	PaymentOp                  *PaymentOp
-	PathPaymentStrictReceiveOp *PathPaymentStrictReceiveOp
-	ManageSellOfferOp          *ManageSellOfferOp
-	CreatePassiveSellOfferOp   *CreatePassiveSellOfferOp
-	SetOptionsOp               *SetOptionsOp
-	ChangeTrustOp              *ChangeTrustOp
-	AllowTrustOp               *AllowTrustOp
-	Destination                *MuxedAccount
-	ManageDataOp               *ManageDataOp
-	BumpSequenceOp             *BumpSequenceOp
-	ManageBuyOfferOp           *ManageBuyOfferOp
-	PathPaymentStrictSendOp    *PathPaymentStrictSendOp
-	CreateClaimableBalanceOp   *CreateClaimableBalanceOp
-	ClaimClaimableBalanceOp    *ClaimClaimableBalanceOp
-	SponsorFutureReservesOp    *SponsorFutureReservesOp
-	UpdateSponsorshipOp        *UpdateSponsorshipOp
+	Type                            OperationType
+	CreateAccountOp                 *CreateAccountOp
+	PaymentOp                       *PaymentOp
+	PathPaymentStrictReceiveOp      *PathPaymentStrictReceiveOp
+	ManageSellOfferOp               *ManageSellOfferOp
+	CreatePassiveSellOfferOp        *CreatePassiveSellOfferOp
+	SetOptionsOp                    *SetOptionsOp
+	ChangeTrustOp                   *ChangeTrustOp
+	AllowTrustOp                    *AllowTrustOp
+	Destination                     *MuxedAccount
+	ManageDataOp                    *ManageDataOp
+	BumpSequenceOp                  *BumpSequenceOp
+	ManageBuyOfferOp                *ManageBuyOfferOp
+	PathPaymentStrictSendOp         *PathPaymentStrictSendOp
+	CreateClaimableBalanceOp        *CreateClaimableBalanceOp
+	ClaimClaimableBalanceOp         *ClaimClaimableBalanceOp
+	BeginSponsoringFutureReservesOp *BeginSponsoringFutureReservesOp
+	RevokeSponsorshipOp             *RevokeSponsorshipOp
 }
 
 // SwitchFieldName returns the field name in which this union's
@@ -9340,12 +9340,12 @@ func (u OperationBody) ArmForSwitch(sw int32) (string, bool) {
 		return "CreateClaimableBalanceOp", true
 	case OperationTypeClaimClaimableBalance:
 		return "ClaimClaimableBalanceOp", true
-	case OperationTypeSponsorFutureReserves:
-		return "SponsorFutureReservesOp", true
-	case OperationTypeConfirmAndClearSponsor:
+	case OperationTypeBeginSponsoringFutureReserves:
+		return "BeginSponsoringFutureReservesOp", true
+	case OperationTypeEndSponsoringFutureReserves:
 		return "", true
-	case OperationTypeUpdateSponsorship:
-		return "UpdateSponsorshipOp", true
+	case OperationTypeRevokeSponsorship:
+		return "RevokeSponsorshipOp", true
 	}
 	return "-", false
 }
@@ -9461,22 +9461,22 @@ func NewOperationBody(aType OperationType, value interface{}) (result OperationB
 			return
 		}
 		result.ClaimClaimableBalanceOp = &tv
-	case OperationTypeSponsorFutureReserves:
-		tv, ok := value.(SponsorFutureReservesOp)
+	case OperationTypeBeginSponsoringFutureReserves:
+		tv, ok := value.(BeginSponsoringFutureReservesOp)
 		if !ok {
-			err = fmt.Errorf("invalid value, must be SponsorFutureReservesOp")
+			err = fmt.Errorf("invalid value, must be BeginSponsoringFutureReservesOp")
 			return
 		}
-		result.SponsorFutureReservesOp = &tv
-	case OperationTypeConfirmAndClearSponsor:
+		result.BeginSponsoringFutureReservesOp = &tv
+	case OperationTypeEndSponsoringFutureReserves:
 		// void
-	case OperationTypeUpdateSponsorship:
-		tv, ok := value.(UpdateSponsorshipOp)
+	case OperationTypeRevokeSponsorship:
+		tv, ok := value.(RevokeSponsorshipOp)
 		if !ok {
-			err = fmt.Errorf("invalid value, must be UpdateSponsorshipOp")
+			err = fmt.Errorf("invalid value, must be RevokeSponsorshipOp")
 			return
 		}
-		result.UpdateSponsorshipOp = &tv
+		result.RevokeSponsorshipOp = &tv
 	}
 	return
 }
@@ -9856,50 +9856,50 @@ func (u OperationBody) GetClaimClaimableBalanceOp() (result ClaimClaimableBalanc
 	return
 }
 
-// MustSponsorFutureReservesOp retrieves the SponsorFutureReservesOp value from the union,
+// MustBeginSponsoringFutureReservesOp retrieves the BeginSponsoringFutureReservesOp value from the union,
 // panicing if the value is not set.
-func (u OperationBody) MustSponsorFutureReservesOp() SponsorFutureReservesOp {
-	val, ok := u.GetSponsorFutureReservesOp()
+func (u OperationBody) MustBeginSponsoringFutureReservesOp() BeginSponsoringFutureReservesOp {
+	val, ok := u.GetBeginSponsoringFutureReservesOp()
 
 	if !ok {
-		panic("arm SponsorFutureReservesOp is not set")
+		panic("arm BeginSponsoringFutureReservesOp is not set")
 	}
 
 	return val
 }
 
-// GetSponsorFutureReservesOp retrieves the SponsorFutureReservesOp value from the union,
+// GetBeginSponsoringFutureReservesOp retrieves the BeginSponsoringFutureReservesOp value from the union,
 // returning ok if the union's switch indicated the value is valid.
-func (u OperationBody) GetSponsorFutureReservesOp() (result SponsorFutureReservesOp, ok bool) {
+func (u OperationBody) GetBeginSponsoringFutureReservesOp() (result BeginSponsoringFutureReservesOp, ok bool) {
 	armName, _ := u.ArmForSwitch(int32(u.Type))
 
-	if armName == "SponsorFutureReservesOp" {
-		result = *u.SponsorFutureReservesOp
+	if armName == "BeginSponsoringFutureReservesOp" {
+		result = *u.BeginSponsoringFutureReservesOp
 		ok = true
 	}
 
 	return
 }
 
-// MustUpdateSponsorshipOp retrieves the UpdateSponsorshipOp value from the union,
+// MustRevokeSponsorshipOp retrieves the RevokeSponsorshipOp value from the union,
 // panicing if the value is not set.
-func (u OperationBody) MustUpdateSponsorshipOp() UpdateSponsorshipOp {
-	val, ok := u.GetUpdateSponsorshipOp()
+func (u OperationBody) MustRevokeSponsorshipOp() RevokeSponsorshipOp {
+	val, ok := u.GetRevokeSponsorshipOp()
 
 	if !ok {
-		panic("arm UpdateSponsorshipOp is not set")
+		panic("arm RevokeSponsorshipOp is not set")
 	}
 
 	return val
 }
 
-// GetUpdateSponsorshipOp retrieves the UpdateSponsorshipOp value from the union,
+// GetRevokeSponsorshipOp retrieves the RevokeSponsorshipOp value from the union,
 // returning ok if the union's switch indicated the value is valid.
-func (u OperationBody) GetUpdateSponsorshipOp() (result UpdateSponsorshipOp, ok bool) {
+func (u OperationBody) GetRevokeSponsorshipOp() (result RevokeSponsorshipOp, ok bool) {
 	armName, _ := u.ArmForSwitch(int32(u.Type))
 
-	if armName == "UpdateSponsorshipOp" {
-		result = *u.UpdateSponsorshipOp
+	if armName == "RevokeSponsorshipOp" {
+		result = *u.RevokeSponsorshipOp
 		ok = true
 	}
 
@@ -9967,12 +9967,12 @@ var (
 //            CreateClaimableBalanceOp createClaimableBalanceOp;
 //        case CLAIM_CLAIMABLE_BALANCE:
 //            ClaimClaimableBalanceOp claimClaimableBalanceOp;
-//        case SPONSOR_FUTURE_RESERVES:
-//            SponsorFutureReservesOp sponsorFutureReservesOp;
-//        case CONFIRM_AND_CLEAR_SPONSOR:
+//        case BEGIN_SPONSORING_FUTURE_RESERVES:
+//            BeginSponsoringFutureReservesOp beginSponsoringFutureReservesOp;
+//        case END_SPONSORING_FUTURE_RESERVES:
 //            void;
-//        case UPDATE_SPONSORSHIP:
-//            UpdateSponsorshipOp updateSponsorshipOp;
+//        case REVOKE_SPONSORSHIP:
+//            RevokeSponsorshipOp revokeSponsorshipOp;
 //        }
 //        body;
 //    };
@@ -13931,102 +13931,102 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ClaimClaimableBalanceResult)(nil)
 )
 
-// SponsorFutureReservesResultCode is an XDR Enum defines as:
+// BeginSponsoringFutureReservesResultCode is an XDR Enum defines as:
 //
-//   enum SponsorFutureReservesResultCode
+//   enum BeginSponsoringFutureReservesResultCode
 //    {
 //        // codes considered as "success" for the operation
-//        SPONSOR_FUTURE_RESERVES_SUCCESS = 0,
+//        BEGIN_SPONSORING_FUTURE_RESERVES_SUCCESS = 0,
 //
 //        // codes considered as "failure" for the operation
-//        SPONSOR_FUTURE_RESERVES_MALFORMED = -1,
-//        SPONSOR_FUTURE_RESERVES_ALREADY_SPONSORED = -2,
-//        SPONSOR_FUTURE_RESERVES_RECURSIVE = -3
+//        BEGIN_SPONSORING_FUTURE_RESERVES_MALFORMED = -1,
+//        BEGIN_SPONSORING_FUTURE_RESERVES_ALREADY_SPONSORED = -2,
+//        BEGIN_SPONSORING_FUTURE_RESERVES_RECURSIVE = -3
 //    };
 //
-type SponsorFutureReservesResultCode int32
+type BeginSponsoringFutureReservesResultCode int32
 
 const (
-	SponsorFutureReservesResultCodeSponsorFutureReservesSuccess          SponsorFutureReservesResultCode = 0
-	SponsorFutureReservesResultCodeSponsorFutureReservesMalformed        SponsorFutureReservesResultCode = -1
-	SponsorFutureReservesResultCodeSponsorFutureReservesAlreadySponsored SponsorFutureReservesResultCode = -2
-	SponsorFutureReservesResultCodeSponsorFutureReservesRecursive        SponsorFutureReservesResultCode = -3
+	BeginSponsoringFutureReservesResultCodeBeginSponsoringFutureReservesSuccess          BeginSponsoringFutureReservesResultCode = 0
+	BeginSponsoringFutureReservesResultCodeBeginSponsoringFutureReservesMalformed        BeginSponsoringFutureReservesResultCode = -1
+	BeginSponsoringFutureReservesResultCodeBeginSponsoringFutureReservesAlreadySponsored BeginSponsoringFutureReservesResultCode = -2
+	BeginSponsoringFutureReservesResultCodeBeginSponsoringFutureReservesRecursive        BeginSponsoringFutureReservesResultCode = -3
 )
 
-var sponsorFutureReservesResultCodeMap = map[int32]string{
-	0:  "SponsorFutureReservesResultCodeSponsorFutureReservesSuccess",
-	-1: "SponsorFutureReservesResultCodeSponsorFutureReservesMalformed",
-	-2: "SponsorFutureReservesResultCodeSponsorFutureReservesAlreadySponsored",
-	-3: "SponsorFutureReservesResultCodeSponsorFutureReservesRecursive",
+var beginSponsoringFutureReservesResultCodeMap = map[int32]string{
+	0:  "BeginSponsoringFutureReservesResultCodeBeginSponsoringFutureReservesSuccess",
+	-1: "BeginSponsoringFutureReservesResultCodeBeginSponsoringFutureReservesMalformed",
+	-2: "BeginSponsoringFutureReservesResultCodeBeginSponsoringFutureReservesAlreadySponsored",
+	-3: "BeginSponsoringFutureReservesResultCodeBeginSponsoringFutureReservesRecursive",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
-// the Enum interface for SponsorFutureReservesResultCode
-func (e SponsorFutureReservesResultCode) ValidEnum(v int32) bool {
-	_, ok := sponsorFutureReservesResultCodeMap[v]
+// the Enum interface for BeginSponsoringFutureReservesResultCode
+func (e BeginSponsoringFutureReservesResultCode) ValidEnum(v int32) bool {
+	_, ok := beginSponsoringFutureReservesResultCodeMap[v]
 	return ok
 }
 
 // String returns the name of `e`
-func (e SponsorFutureReservesResultCode) String() string {
-	name, _ := sponsorFutureReservesResultCodeMap[int32(e)]
+func (e BeginSponsoringFutureReservesResultCode) String() string {
+	name, _ := beginSponsoringFutureReservesResultCodeMap[int32(e)]
 	return name
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
-func (s SponsorFutureReservesResultCode) MarshalBinary() ([]byte, error) {
+func (s BeginSponsoringFutureReservesResultCode) MarshalBinary() ([]byte, error) {
 	b := new(bytes.Buffer)
 	_, err := Marshal(b, s)
 	return b.Bytes(), err
 }
 
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
-func (s *SponsorFutureReservesResultCode) UnmarshalBinary(inp []byte) error {
+func (s *BeginSponsoringFutureReservesResultCode) UnmarshalBinary(inp []byte) error {
 	_, err := Unmarshal(bytes.NewReader(inp), s)
 	return err
 }
 
 var (
-	_ encoding.BinaryMarshaler   = (*SponsorFutureReservesResultCode)(nil)
-	_ encoding.BinaryUnmarshaler = (*SponsorFutureReservesResultCode)(nil)
+	_ encoding.BinaryMarshaler   = (*BeginSponsoringFutureReservesResultCode)(nil)
+	_ encoding.BinaryUnmarshaler = (*BeginSponsoringFutureReservesResultCode)(nil)
 )
 
-// SponsorFutureReservesResult is an XDR Union defines as:
+// BeginSponsoringFutureReservesResult is an XDR Union defines as:
 //
-//   union SponsorFutureReservesResult switch (SponsorFutureReservesResultCode code)
+//   union BeginSponsoringFutureReservesResult switch (BeginSponsoringFutureReservesResultCode code)
 //    {
-//    case SPONSOR_FUTURE_RESERVES_SUCCESS:
+//    case BEGIN_SPONSORING_FUTURE_RESERVES_SUCCESS:
 //        void;
 //    default:
 //        void;
 //    };
 //
-type SponsorFutureReservesResult struct {
-	Code SponsorFutureReservesResultCode
+type BeginSponsoringFutureReservesResult struct {
+	Code BeginSponsoringFutureReservesResultCode
 }
 
 // SwitchFieldName returns the field name in which this union's
 // discriminant is stored
-func (u SponsorFutureReservesResult) SwitchFieldName() string {
+func (u BeginSponsoringFutureReservesResult) SwitchFieldName() string {
 	return "Code"
 }
 
 // ArmForSwitch returns which field name should be used for storing
-// the value for an instance of SponsorFutureReservesResult
-func (u SponsorFutureReservesResult) ArmForSwitch(sw int32) (string, bool) {
-	switch SponsorFutureReservesResultCode(sw) {
-	case SponsorFutureReservesResultCodeSponsorFutureReservesSuccess:
+// the value for an instance of BeginSponsoringFutureReservesResult
+func (u BeginSponsoringFutureReservesResult) ArmForSwitch(sw int32) (string, bool) {
+	switch BeginSponsoringFutureReservesResultCode(sw) {
+	case BeginSponsoringFutureReservesResultCodeBeginSponsoringFutureReservesSuccess:
 		return "", true
 	default:
 		return "", true
 	}
 }
 
-// NewSponsorFutureReservesResult creates a new  SponsorFutureReservesResult.
-func NewSponsorFutureReservesResult(code SponsorFutureReservesResultCode, value interface{}) (result SponsorFutureReservesResult, err error) {
+// NewBeginSponsoringFutureReservesResult creates a new  BeginSponsoringFutureReservesResult.
+func NewBeginSponsoringFutureReservesResult(code BeginSponsoringFutureReservesResultCode, value interface{}) (result BeginSponsoringFutureReservesResult, err error) {
 	result.Code = code
-	switch SponsorFutureReservesResultCode(code) {
-	case SponsorFutureReservesResultCodeSponsorFutureReservesSuccess:
+	switch BeginSponsoringFutureReservesResultCode(code) {
+	case BeginSponsoringFutureReservesResultCodeBeginSponsoringFutureReservesSuccess:
 		// void
 	default:
 		// void
@@ -14035,113 +14035,113 @@ func NewSponsorFutureReservesResult(code SponsorFutureReservesResultCode, value 
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
-func (s SponsorFutureReservesResult) MarshalBinary() ([]byte, error) {
+func (s BeginSponsoringFutureReservesResult) MarshalBinary() ([]byte, error) {
 	b := new(bytes.Buffer)
 	_, err := Marshal(b, s)
 	return b.Bytes(), err
 }
 
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
-func (s *SponsorFutureReservesResult) UnmarshalBinary(inp []byte) error {
+func (s *BeginSponsoringFutureReservesResult) UnmarshalBinary(inp []byte) error {
 	_, err := Unmarshal(bytes.NewReader(inp), s)
 	return err
 }
 
 var (
-	_ encoding.BinaryMarshaler   = (*SponsorFutureReservesResult)(nil)
-	_ encoding.BinaryUnmarshaler = (*SponsorFutureReservesResult)(nil)
+	_ encoding.BinaryMarshaler   = (*BeginSponsoringFutureReservesResult)(nil)
+	_ encoding.BinaryUnmarshaler = (*BeginSponsoringFutureReservesResult)(nil)
 )
 
-// ConfirmAndClearSponsorResultCode is an XDR Enum defines as:
+// EndSponsoringFutureReservesResultCode is an XDR Enum defines as:
 //
-//   enum ConfirmAndClearSponsorResultCode
+//   enum EndSponsoringFutureReservesResultCode
 //    {
 //        // codes considered as "success" for the operation
-//        CONFIRM_AND_CLEAR_SPONSOR_SUCCESS = 0,
+//        END_SPONSORING_FUTURE_RESERVES_SUCCESS = 0,
 //
 //        // codes considered as "failure" for the operation
-//        CONFIRM_AND_CLEAR_SPONSOR_NOT_SPONSORED = -1
+//        END_SPONSORING_FUTURE_RESERVES_NOT_SPONSORED = -1
 //    };
 //
-type ConfirmAndClearSponsorResultCode int32
+type EndSponsoringFutureReservesResultCode int32
 
 const (
-	ConfirmAndClearSponsorResultCodeConfirmAndClearSponsorSuccess      ConfirmAndClearSponsorResultCode = 0
-	ConfirmAndClearSponsorResultCodeConfirmAndClearSponsorNotSponsored ConfirmAndClearSponsorResultCode = -1
+	EndSponsoringFutureReservesResultCodeEndSponsoringFutureReservesSuccess      EndSponsoringFutureReservesResultCode = 0
+	EndSponsoringFutureReservesResultCodeEndSponsoringFutureReservesNotSponsored EndSponsoringFutureReservesResultCode = -1
 )
 
-var confirmAndClearSponsorResultCodeMap = map[int32]string{
-	0:  "ConfirmAndClearSponsorResultCodeConfirmAndClearSponsorSuccess",
-	-1: "ConfirmAndClearSponsorResultCodeConfirmAndClearSponsorNotSponsored",
+var endSponsoringFutureReservesResultCodeMap = map[int32]string{
+	0:  "EndSponsoringFutureReservesResultCodeEndSponsoringFutureReservesSuccess",
+	-1: "EndSponsoringFutureReservesResultCodeEndSponsoringFutureReservesNotSponsored",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
-// the Enum interface for ConfirmAndClearSponsorResultCode
-func (e ConfirmAndClearSponsorResultCode) ValidEnum(v int32) bool {
-	_, ok := confirmAndClearSponsorResultCodeMap[v]
+// the Enum interface for EndSponsoringFutureReservesResultCode
+func (e EndSponsoringFutureReservesResultCode) ValidEnum(v int32) bool {
+	_, ok := endSponsoringFutureReservesResultCodeMap[v]
 	return ok
 }
 
 // String returns the name of `e`
-func (e ConfirmAndClearSponsorResultCode) String() string {
-	name, _ := confirmAndClearSponsorResultCodeMap[int32(e)]
+func (e EndSponsoringFutureReservesResultCode) String() string {
+	name, _ := endSponsoringFutureReservesResultCodeMap[int32(e)]
 	return name
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
-func (s ConfirmAndClearSponsorResultCode) MarshalBinary() ([]byte, error) {
+func (s EndSponsoringFutureReservesResultCode) MarshalBinary() ([]byte, error) {
 	b := new(bytes.Buffer)
 	_, err := Marshal(b, s)
 	return b.Bytes(), err
 }
 
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
-func (s *ConfirmAndClearSponsorResultCode) UnmarshalBinary(inp []byte) error {
+func (s *EndSponsoringFutureReservesResultCode) UnmarshalBinary(inp []byte) error {
 	_, err := Unmarshal(bytes.NewReader(inp), s)
 	return err
 }
 
 var (
-	_ encoding.BinaryMarshaler   = (*ConfirmAndClearSponsorResultCode)(nil)
-	_ encoding.BinaryUnmarshaler = (*ConfirmAndClearSponsorResultCode)(nil)
+	_ encoding.BinaryMarshaler   = (*EndSponsoringFutureReservesResultCode)(nil)
+	_ encoding.BinaryUnmarshaler = (*EndSponsoringFutureReservesResultCode)(nil)
 )
 
-// ConfirmAndClearSponsorResult is an XDR Union defines as:
+// EndSponsoringFutureReservesResult is an XDR Union defines as:
 //
-//   union ConfirmAndClearSponsorResult switch (ConfirmAndClearSponsorResultCode code)
+//   union EndSponsoringFutureReservesResult switch (EndSponsoringFutureReservesResultCode code)
 //    {
-//    case CONFIRM_AND_CLEAR_SPONSOR_SUCCESS:
+//    case END_SPONSORING_FUTURE_RESERVES_SUCCESS:
 //        void;
 //    default:
 //        void;
 //    };
 //
-type ConfirmAndClearSponsorResult struct {
-	Code ConfirmAndClearSponsorResultCode
+type EndSponsoringFutureReservesResult struct {
+	Code EndSponsoringFutureReservesResultCode
 }
 
 // SwitchFieldName returns the field name in which this union's
 // discriminant is stored
-func (u ConfirmAndClearSponsorResult) SwitchFieldName() string {
+func (u EndSponsoringFutureReservesResult) SwitchFieldName() string {
 	return "Code"
 }
 
 // ArmForSwitch returns which field name should be used for storing
-// the value for an instance of ConfirmAndClearSponsorResult
-func (u ConfirmAndClearSponsorResult) ArmForSwitch(sw int32) (string, bool) {
-	switch ConfirmAndClearSponsorResultCode(sw) {
-	case ConfirmAndClearSponsorResultCodeConfirmAndClearSponsorSuccess:
+// the value for an instance of EndSponsoringFutureReservesResult
+func (u EndSponsoringFutureReservesResult) ArmForSwitch(sw int32) (string, bool) {
+	switch EndSponsoringFutureReservesResultCode(sw) {
+	case EndSponsoringFutureReservesResultCodeEndSponsoringFutureReservesSuccess:
 		return "", true
 	default:
 		return "", true
 	}
 }
 
-// NewConfirmAndClearSponsorResult creates a new  ConfirmAndClearSponsorResult.
-func NewConfirmAndClearSponsorResult(code ConfirmAndClearSponsorResultCode, value interface{}) (result ConfirmAndClearSponsorResult, err error) {
+// NewEndSponsoringFutureReservesResult creates a new  EndSponsoringFutureReservesResult.
+func NewEndSponsoringFutureReservesResult(code EndSponsoringFutureReservesResultCode, value interface{}) (result EndSponsoringFutureReservesResult, err error) {
 	result.Code = code
-	switch ConfirmAndClearSponsorResultCode(code) {
-	case ConfirmAndClearSponsorResultCodeConfirmAndClearSponsorSuccess:
+	switch EndSponsoringFutureReservesResultCode(code) {
+	case EndSponsoringFutureReservesResultCodeEndSponsoringFutureReservesSuccess:
 		// void
 	default:
 		// void
@@ -14150,122 +14150,122 @@ func NewConfirmAndClearSponsorResult(code ConfirmAndClearSponsorResultCode, valu
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
-func (s ConfirmAndClearSponsorResult) MarshalBinary() ([]byte, error) {
+func (s EndSponsoringFutureReservesResult) MarshalBinary() ([]byte, error) {
 	b := new(bytes.Buffer)
 	_, err := Marshal(b, s)
 	return b.Bytes(), err
 }
 
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
-func (s *ConfirmAndClearSponsorResult) UnmarshalBinary(inp []byte) error {
+func (s *EndSponsoringFutureReservesResult) UnmarshalBinary(inp []byte) error {
 	_, err := Unmarshal(bytes.NewReader(inp), s)
 	return err
 }
 
 var (
-	_ encoding.BinaryMarshaler   = (*ConfirmAndClearSponsorResult)(nil)
-	_ encoding.BinaryUnmarshaler = (*ConfirmAndClearSponsorResult)(nil)
+	_ encoding.BinaryMarshaler   = (*EndSponsoringFutureReservesResult)(nil)
+	_ encoding.BinaryUnmarshaler = (*EndSponsoringFutureReservesResult)(nil)
 )
 
-// UpdateSponsorshipResultCode is an XDR Enum defines as:
+// RevokeSponsorshipResultCode is an XDR Enum defines as:
 //
-//   enum UpdateSponsorshipResultCode
+//   enum RevokeSponsorshipResultCode
 //    {
 //        // codes considered as "success" for the operation
-//        UPDATE_SPONSORSHIP_SUCCESS = 0,
+//        REVOKE_SPONSORSHIP_SUCCESS = 0,
 //
 //        // codes considered as "failure" for the operation
-//        UPDATE_SPONSORSHIP_DOES_NOT_EXIST = -1,
-//        UPDATE_SPONSORSHIP_NOT_SPONSOR = -2,
-//        UPDATE_SPONSORSHIP_LOW_RESERVE = -3,
-//        UPDATE_SPONSORSHIP_ONLY_TRANSFERABLE = -4
+//        REVOKE_SPONSORSHIP_DOES_NOT_EXIST = -1,
+//        REVOKE_SPONSORSHIP_NOT_SPONSOR = -2,
+//        REVOKE_SPONSORSHIP_LOW_RESERVE = -3,
+//        REVOKE_SPONSORSHIP_ONLY_TRANSFERABLE = -4
 //    };
 //
-type UpdateSponsorshipResultCode int32
+type RevokeSponsorshipResultCode int32
 
 const (
-	UpdateSponsorshipResultCodeUpdateSponsorshipSuccess          UpdateSponsorshipResultCode = 0
-	UpdateSponsorshipResultCodeUpdateSponsorshipDoesNotExist     UpdateSponsorshipResultCode = -1
-	UpdateSponsorshipResultCodeUpdateSponsorshipNotSponsor       UpdateSponsorshipResultCode = -2
-	UpdateSponsorshipResultCodeUpdateSponsorshipLowReserve       UpdateSponsorshipResultCode = -3
-	UpdateSponsorshipResultCodeUpdateSponsorshipOnlyTransferable UpdateSponsorshipResultCode = -4
+	RevokeSponsorshipResultCodeRevokeSponsorshipSuccess          RevokeSponsorshipResultCode = 0
+	RevokeSponsorshipResultCodeRevokeSponsorshipDoesNotExist     RevokeSponsorshipResultCode = -1
+	RevokeSponsorshipResultCodeRevokeSponsorshipNotSponsor       RevokeSponsorshipResultCode = -2
+	RevokeSponsorshipResultCodeRevokeSponsorshipLowReserve       RevokeSponsorshipResultCode = -3
+	RevokeSponsorshipResultCodeRevokeSponsorshipOnlyTransferable RevokeSponsorshipResultCode = -4
 )
 
-var updateSponsorshipResultCodeMap = map[int32]string{
-	0:  "UpdateSponsorshipResultCodeUpdateSponsorshipSuccess",
-	-1: "UpdateSponsorshipResultCodeUpdateSponsorshipDoesNotExist",
-	-2: "UpdateSponsorshipResultCodeUpdateSponsorshipNotSponsor",
-	-3: "UpdateSponsorshipResultCodeUpdateSponsorshipLowReserve",
-	-4: "UpdateSponsorshipResultCodeUpdateSponsorshipOnlyTransferable",
+var revokeSponsorshipResultCodeMap = map[int32]string{
+	0:  "RevokeSponsorshipResultCodeRevokeSponsorshipSuccess",
+	-1: "RevokeSponsorshipResultCodeRevokeSponsorshipDoesNotExist",
+	-2: "RevokeSponsorshipResultCodeRevokeSponsorshipNotSponsor",
+	-3: "RevokeSponsorshipResultCodeRevokeSponsorshipLowReserve",
+	-4: "RevokeSponsorshipResultCodeRevokeSponsorshipOnlyTransferable",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
-// the Enum interface for UpdateSponsorshipResultCode
-func (e UpdateSponsorshipResultCode) ValidEnum(v int32) bool {
-	_, ok := updateSponsorshipResultCodeMap[v]
+// the Enum interface for RevokeSponsorshipResultCode
+func (e RevokeSponsorshipResultCode) ValidEnum(v int32) bool {
+	_, ok := revokeSponsorshipResultCodeMap[v]
 	return ok
 }
 
 // String returns the name of `e`
-func (e UpdateSponsorshipResultCode) String() string {
-	name, _ := updateSponsorshipResultCodeMap[int32(e)]
+func (e RevokeSponsorshipResultCode) String() string {
+	name, _ := revokeSponsorshipResultCodeMap[int32(e)]
 	return name
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
-func (s UpdateSponsorshipResultCode) MarshalBinary() ([]byte, error) {
+func (s RevokeSponsorshipResultCode) MarshalBinary() ([]byte, error) {
 	b := new(bytes.Buffer)
 	_, err := Marshal(b, s)
 	return b.Bytes(), err
 }
 
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
-func (s *UpdateSponsorshipResultCode) UnmarshalBinary(inp []byte) error {
+func (s *RevokeSponsorshipResultCode) UnmarshalBinary(inp []byte) error {
 	_, err := Unmarshal(bytes.NewReader(inp), s)
 	return err
 }
 
 var (
-	_ encoding.BinaryMarshaler   = (*UpdateSponsorshipResultCode)(nil)
-	_ encoding.BinaryUnmarshaler = (*UpdateSponsorshipResultCode)(nil)
+	_ encoding.BinaryMarshaler   = (*RevokeSponsorshipResultCode)(nil)
+	_ encoding.BinaryUnmarshaler = (*RevokeSponsorshipResultCode)(nil)
 )
 
-// UpdateSponsorshipResult is an XDR Union defines as:
+// RevokeSponsorshipResult is an XDR Union defines as:
 //
-//   union UpdateSponsorshipResult switch (UpdateSponsorshipResultCode code)
+//   union RevokeSponsorshipResult switch (RevokeSponsorshipResultCode code)
 //    {
-//    case UPDATE_SPONSORSHIP_SUCCESS:
+//    case REVOKE_SPONSORSHIP_SUCCESS:
 //        void;
 //    default:
 //        void;
 //    };
 //
-type UpdateSponsorshipResult struct {
-	Code UpdateSponsorshipResultCode
+type RevokeSponsorshipResult struct {
+	Code RevokeSponsorshipResultCode
 }
 
 // SwitchFieldName returns the field name in which this union's
 // discriminant is stored
-func (u UpdateSponsorshipResult) SwitchFieldName() string {
+func (u RevokeSponsorshipResult) SwitchFieldName() string {
 	return "Code"
 }
 
 // ArmForSwitch returns which field name should be used for storing
-// the value for an instance of UpdateSponsorshipResult
-func (u UpdateSponsorshipResult) ArmForSwitch(sw int32) (string, bool) {
-	switch UpdateSponsorshipResultCode(sw) {
-	case UpdateSponsorshipResultCodeUpdateSponsorshipSuccess:
+// the value for an instance of RevokeSponsorshipResult
+func (u RevokeSponsorshipResult) ArmForSwitch(sw int32) (string, bool) {
+	switch RevokeSponsorshipResultCode(sw) {
+	case RevokeSponsorshipResultCodeRevokeSponsorshipSuccess:
 		return "", true
 	default:
 		return "", true
 	}
 }
 
-// NewUpdateSponsorshipResult creates a new  UpdateSponsorshipResult.
-func NewUpdateSponsorshipResult(code UpdateSponsorshipResultCode, value interface{}) (result UpdateSponsorshipResult, err error) {
+// NewRevokeSponsorshipResult creates a new  RevokeSponsorshipResult.
+func NewRevokeSponsorshipResult(code RevokeSponsorshipResultCode, value interface{}) (result RevokeSponsorshipResult, err error) {
 	result.Code = code
-	switch UpdateSponsorshipResultCode(code) {
-	case UpdateSponsorshipResultCodeUpdateSponsorshipSuccess:
+	switch RevokeSponsorshipResultCode(code) {
+	case RevokeSponsorshipResultCodeRevokeSponsorshipSuccess:
 		// void
 	default:
 		// void
@@ -14274,21 +14274,21 @@ func NewUpdateSponsorshipResult(code UpdateSponsorshipResultCode, value interfac
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
-func (s UpdateSponsorshipResult) MarshalBinary() ([]byte, error) {
+func (s RevokeSponsorshipResult) MarshalBinary() ([]byte, error) {
 	b := new(bytes.Buffer)
 	_, err := Marshal(b, s)
 	return b.Bytes(), err
 }
 
 // UnmarshalBinary implements encoding.BinaryUnmarshaler.
-func (s *UpdateSponsorshipResult) UnmarshalBinary(inp []byte) error {
+func (s *RevokeSponsorshipResult) UnmarshalBinary(inp []byte) error {
 	_, err := Unmarshal(bytes.NewReader(inp), s)
 	return err
 }
 
 var (
-	_ encoding.BinaryMarshaler   = (*UpdateSponsorshipResult)(nil)
-	_ encoding.BinaryUnmarshaler = (*UpdateSponsorshipResult)(nil)
+	_ encoding.BinaryMarshaler   = (*RevokeSponsorshipResult)(nil)
+	_ encoding.BinaryUnmarshaler = (*RevokeSponsorshipResult)(nil)
 )
 
 // OperationResultCode is an XDR Enum defines as:
@@ -14394,35 +14394,35 @@ var (
 //            CreateClaimableBalanceResult createClaimableBalanceResult;
 //        case CLAIM_CLAIMABLE_BALANCE:
 //            ClaimClaimableBalanceResult claimClaimableBalanceResult;
-//        case SPONSOR_FUTURE_RESERVES:
-//            SponsorFutureReservesResult sponsorFutureReservesResult;
-//        case CONFIRM_AND_CLEAR_SPONSOR:
-//            ConfirmAndClearSponsorResult confirmAndClearSponsorResult;
-//        case UPDATE_SPONSORSHIP:
-//            UpdateSponsorshipResult updateSponsorshipResult;
+//        case BEGIN_SPONSORING_FUTURE_RESERVES:
+//            BeginSponsoringFutureReservesResult beginSponsoringFutureReservesResult;
+//        case END_SPONSORING_FUTURE_RESERVES:
+//            EndSponsoringFutureReservesResult endSponsoringFutureReservesResult;
+//        case REVOKE_SPONSORSHIP:
+//            RevokeSponsorshipResult revokeSponsorshipResult;
 //        }
 //
 type OperationResultTr struct {
-	Type                           OperationType
-	CreateAccountResult            *CreateAccountResult
-	PaymentResult                  *PaymentResult
-	PathPaymentStrictReceiveResult *PathPaymentStrictReceiveResult
-	ManageSellOfferResult          *ManageSellOfferResult
-	CreatePassiveSellOfferResult   *ManageSellOfferResult
-	SetOptionsResult               *SetOptionsResult
-	ChangeTrustResult              *ChangeTrustResult
-	AllowTrustResult               *AllowTrustResult
-	AccountMergeResult             *AccountMergeResult
-	InflationResult                *InflationResult
-	ManageDataResult               *ManageDataResult
-	BumpSeqResult                  *BumpSequenceResult
-	ManageBuyOfferResult           *ManageBuyOfferResult
-	PathPaymentStrictSendResult    *PathPaymentStrictSendResult
-	CreateClaimableBalanceResult   *CreateClaimableBalanceResult
-	ClaimClaimableBalanceResult    *ClaimClaimableBalanceResult
-	SponsorFutureReservesResult    *SponsorFutureReservesResult
-	ConfirmAndClearSponsorResult   *ConfirmAndClearSponsorResult
-	UpdateSponsorshipResult        *UpdateSponsorshipResult
+	Type                                OperationType
+	CreateAccountResult                 *CreateAccountResult
+	PaymentResult                       *PaymentResult
+	PathPaymentStrictReceiveResult      *PathPaymentStrictReceiveResult
+	ManageSellOfferResult               *ManageSellOfferResult
+	CreatePassiveSellOfferResult        *ManageSellOfferResult
+	SetOptionsResult                    *SetOptionsResult
+	ChangeTrustResult                   *ChangeTrustResult
+	AllowTrustResult                    *AllowTrustResult
+	AccountMergeResult                  *AccountMergeResult
+	InflationResult                     *InflationResult
+	ManageDataResult                    *ManageDataResult
+	BumpSeqResult                       *BumpSequenceResult
+	ManageBuyOfferResult                *ManageBuyOfferResult
+	PathPaymentStrictSendResult         *PathPaymentStrictSendResult
+	CreateClaimableBalanceResult        *CreateClaimableBalanceResult
+	ClaimClaimableBalanceResult         *ClaimClaimableBalanceResult
+	BeginSponsoringFutureReservesResult *BeginSponsoringFutureReservesResult
+	EndSponsoringFutureReservesResult   *EndSponsoringFutureReservesResult
+	RevokeSponsorshipResult             *RevokeSponsorshipResult
 }
 
 // SwitchFieldName returns the field name in which this union's
@@ -14467,12 +14467,12 @@ func (u OperationResultTr) ArmForSwitch(sw int32) (string, bool) {
 		return "CreateClaimableBalanceResult", true
 	case OperationTypeClaimClaimableBalance:
 		return "ClaimClaimableBalanceResult", true
-	case OperationTypeSponsorFutureReserves:
-		return "SponsorFutureReservesResult", true
-	case OperationTypeConfirmAndClearSponsor:
-		return "ConfirmAndClearSponsorResult", true
-	case OperationTypeUpdateSponsorship:
-		return "UpdateSponsorshipResult", true
+	case OperationTypeBeginSponsoringFutureReserves:
+		return "BeginSponsoringFutureReservesResult", true
+	case OperationTypeEndSponsoringFutureReserves:
+		return "EndSponsoringFutureReservesResult", true
+	case OperationTypeRevokeSponsorship:
+		return "RevokeSponsorshipResult", true
 	}
 	return "-", false
 }
@@ -14593,27 +14593,27 @@ func NewOperationResultTr(aType OperationType, value interface{}) (result Operat
 			return
 		}
 		result.ClaimClaimableBalanceResult = &tv
-	case OperationTypeSponsorFutureReserves:
-		tv, ok := value.(SponsorFutureReservesResult)
+	case OperationTypeBeginSponsoringFutureReserves:
+		tv, ok := value.(BeginSponsoringFutureReservesResult)
 		if !ok {
-			err = fmt.Errorf("invalid value, must be SponsorFutureReservesResult")
+			err = fmt.Errorf("invalid value, must be BeginSponsoringFutureReservesResult")
 			return
 		}
-		result.SponsorFutureReservesResult = &tv
-	case OperationTypeConfirmAndClearSponsor:
-		tv, ok := value.(ConfirmAndClearSponsorResult)
+		result.BeginSponsoringFutureReservesResult = &tv
+	case OperationTypeEndSponsoringFutureReserves:
+		tv, ok := value.(EndSponsoringFutureReservesResult)
 		if !ok {
-			err = fmt.Errorf("invalid value, must be ConfirmAndClearSponsorResult")
+			err = fmt.Errorf("invalid value, must be EndSponsoringFutureReservesResult")
 			return
 		}
-		result.ConfirmAndClearSponsorResult = &tv
-	case OperationTypeUpdateSponsorship:
-		tv, ok := value.(UpdateSponsorshipResult)
+		result.EndSponsoringFutureReservesResult = &tv
+	case OperationTypeRevokeSponsorship:
+		tv, ok := value.(RevokeSponsorshipResult)
 		if !ok {
-			err = fmt.Errorf("invalid value, must be UpdateSponsorshipResult")
+			err = fmt.Errorf("invalid value, must be RevokeSponsorshipResult")
 			return
 		}
-		result.UpdateSponsorshipResult = &tv
+		result.RevokeSponsorshipResult = &tv
 	}
 	return
 }
@@ -15018,75 +15018,75 @@ func (u OperationResultTr) GetClaimClaimableBalanceResult() (result ClaimClaimab
 	return
 }
 
-// MustSponsorFutureReservesResult retrieves the SponsorFutureReservesResult value from the union,
+// MustBeginSponsoringFutureReservesResult retrieves the BeginSponsoringFutureReservesResult value from the union,
 // panicing if the value is not set.
-func (u OperationResultTr) MustSponsorFutureReservesResult() SponsorFutureReservesResult {
-	val, ok := u.GetSponsorFutureReservesResult()
+func (u OperationResultTr) MustBeginSponsoringFutureReservesResult() BeginSponsoringFutureReservesResult {
+	val, ok := u.GetBeginSponsoringFutureReservesResult()
 
 	if !ok {
-		panic("arm SponsorFutureReservesResult is not set")
+		panic("arm BeginSponsoringFutureReservesResult is not set")
 	}
 
 	return val
 }
 
-// GetSponsorFutureReservesResult retrieves the SponsorFutureReservesResult value from the union,
+// GetBeginSponsoringFutureReservesResult retrieves the BeginSponsoringFutureReservesResult value from the union,
 // returning ok if the union's switch indicated the value is valid.
-func (u OperationResultTr) GetSponsorFutureReservesResult() (result SponsorFutureReservesResult, ok bool) {
+func (u OperationResultTr) GetBeginSponsoringFutureReservesResult() (result BeginSponsoringFutureReservesResult, ok bool) {
 	armName, _ := u.ArmForSwitch(int32(u.Type))
 
-	if armName == "SponsorFutureReservesResult" {
-		result = *u.SponsorFutureReservesResult
+	if armName == "BeginSponsoringFutureReservesResult" {
+		result = *u.BeginSponsoringFutureReservesResult
 		ok = true
 	}
 
 	return
 }
 
-// MustConfirmAndClearSponsorResult retrieves the ConfirmAndClearSponsorResult value from the union,
+// MustEndSponsoringFutureReservesResult retrieves the EndSponsoringFutureReservesResult value from the union,
 // panicing if the value is not set.
-func (u OperationResultTr) MustConfirmAndClearSponsorResult() ConfirmAndClearSponsorResult {
-	val, ok := u.GetConfirmAndClearSponsorResult()
+func (u OperationResultTr) MustEndSponsoringFutureReservesResult() EndSponsoringFutureReservesResult {
+	val, ok := u.GetEndSponsoringFutureReservesResult()
 
 	if !ok {
-		panic("arm ConfirmAndClearSponsorResult is not set")
+		panic("arm EndSponsoringFutureReservesResult is not set")
 	}
 
 	return val
 }
 
-// GetConfirmAndClearSponsorResult retrieves the ConfirmAndClearSponsorResult value from the union,
+// GetEndSponsoringFutureReservesResult retrieves the EndSponsoringFutureReservesResult value from the union,
 // returning ok if the union's switch indicated the value is valid.
-func (u OperationResultTr) GetConfirmAndClearSponsorResult() (result ConfirmAndClearSponsorResult, ok bool) {
+func (u OperationResultTr) GetEndSponsoringFutureReservesResult() (result EndSponsoringFutureReservesResult, ok bool) {
 	armName, _ := u.ArmForSwitch(int32(u.Type))
 
-	if armName == "ConfirmAndClearSponsorResult" {
-		result = *u.ConfirmAndClearSponsorResult
+	if armName == "EndSponsoringFutureReservesResult" {
+		result = *u.EndSponsoringFutureReservesResult
 		ok = true
 	}
 
 	return
 }
 
-// MustUpdateSponsorshipResult retrieves the UpdateSponsorshipResult value from the union,
+// MustRevokeSponsorshipResult retrieves the RevokeSponsorshipResult value from the union,
 // panicing if the value is not set.
-func (u OperationResultTr) MustUpdateSponsorshipResult() UpdateSponsorshipResult {
-	val, ok := u.GetUpdateSponsorshipResult()
+func (u OperationResultTr) MustRevokeSponsorshipResult() RevokeSponsorshipResult {
+	val, ok := u.GetRevokeSponsorshipResult()
 
 	if !ok {
-		panic("arm UpdateSponsorshipResult is not set")
+		panic("arm RevokeSponsorshipResult is not set")
 	}
 
 	return val
 }
 
-// GetUpdateSponsorshipResult retrieves the UpdateSponsorshipResult value from the union,
+// GetRevokeSponsorshipResult retrieves the RevokeSponsorshipResult value from the union,
 // returning ok if the union's switch indicated the value is valid.
-func (u OperationResultTr) GetUpdateSponsorshipResult() (result UpdateSponsorshipResult, ok bool) {
+func (u OperationResultTr) GetRevokeSponsorshipResult() (result RevokeSponsorshipResult, ok bool) {
 	armName, _ := u.ArmForSwitch(int32(u.Type))
 
-	if armName == "UpdateSponsorshipResult" {
-		result = *u.UpdateSponsorshipResult
+	if armName == "RevokeSponsorshipResult" {
+		result = *u.RevokeSponsorshipResult
 		ok = true
 	}
 
@@ -15150,12 +15150,12 @@ var (
 //            CreateClaimableBalanceResult createClaimableBalanceResult;
 //        case CLAIM_CLAIMABLE_BALANCE:
 //            ClaimClaimableBalanceResult claimClaimableBalanceResult;
-//        case SPONSOR_FUTURE_RESERVES:
-//            SponsorFutureReservesResult sponsorFutureReservesResult;
-//        case CONFIRM_AND_CLEAR_SPONSOR:
-//            ConfirmAndClearSponsorResult confirmAndClearSponsorResult;
-//        case UPDATE_SPONSORSHIP:
-//            UpdateSponsorshipResult updateSponsorshipResult;
+//        case BEGIN_SPONSORING_FUTURE_RESERVES:
+//            BeginSponsoringFutureReservesResult beginSponsoringFutureReservesResult;
+//        case END_SPONSORING_FUTURE_RESERVES:
+//            EndSponsoringFutureReservesResult endSponsoringFutureReservesResult;
+//        case REVOKE_SPONSORSHIP:
+//            RevokeSponsorshipResult revokeSponsorshipResult;
 //        }
 //        tr;
 //    default:
