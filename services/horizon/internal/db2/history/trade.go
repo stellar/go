@@ -186,12 +186,12 @@ func (q *TradesQ) appendOrdering(sel sq.SelectBuilder, op, idx int64, order stri
 
 // Select loads the results of the query specified by `q` into `dest`.
 func (q *TradesQ) Select(dest interface{}) error {
-	if !q.pageCalled {
-		return errors.New("TradesQ.Page call is required before calling Select")
-	}
-
 	if q.Err != nil {
 		return q.Err
+	}
+
+	if !q.pageCalled {
+		return errors.New("TradesQ.Page call is required before calling Select")
 	}
 
 	if q.rawSQL != "" {
