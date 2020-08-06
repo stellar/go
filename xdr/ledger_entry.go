@@ -30,6 +30,11 @@ func (entry *LedgerEntry) LedgerKey() LedgerKey {
 			AccountId: tline.AccountId,
 			Asset:     tline.Asset,
 		}
+	case LedgerEntryTypeClaimableBalance:
+		cBalance := entry.Data.MustClaimableBalance()
+		body = LedgerKeyClaimableBalance{
+			BalanceId: cBalance.BalanceId,
+		}
 	default:
 		panic(fmt.Errorf("Unknown entry type: %v", entry.Data.Type))
 	}
