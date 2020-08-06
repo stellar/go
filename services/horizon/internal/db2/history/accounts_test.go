@@ -349,15 +349,15 @@ func TestAccountEntriesForSigner(t *testing.T) {
 	_, err = q.InsertTrustLine(usdTrustLine)
 	tt.Assert.NoError(err)
 
-	_, err = q.CreateAccountSigner(account1.Data.Account.AccountId.Address(), account1.Data.Account.AccountId.Address(), 1)
+	_, err = q.CreateAccountSigner(account1.Data.Account.AccountId.Address(), account1.Data.Account.AccountId.Address(), 1, nil)
 	tt.Assert.NoError(err)
-	_, err = q.CreateAccountSigner(account2.Data.Account.AccountId.Address(), account2.Data.Account.AccountId.Address(), 1)
+	_, err = q.CreateAccountSigner(account2.Data.Account.AccountId.Address(), account2.Data.Account.AccountId.Address(), 1, nil)
 	tt.Assert.NoError(err)
-	_, err = q.CreateAccountSigner(account3.Data.Account.AccountId.Address(), account3.Data.Account.AccountId.Address(), 1)
+	_, err = q.CreateAccountSigner(account3.Data.Account.AccountId.Address(), account3.Data.Account.AccountId.Address(), 1, nil)
 	tt.Assert.NoError(err)
-	_, err = q.CreateAccountSigner(account1.Data.Account.AccountId.Address(), account3.Data.Account.AccountId.Address(), 1)
+	_, err = q.CreateAccountSigner(account1.Data.Account.AccountId.Address(), account3.Data.Account.AccountId.Address(), 1, nil)
 	tt.Assert.NoError(err)
-	_, err = q.CreateAccountSigner(account2.Data.Account.AccountId.Address(), account3.Data.Account.AccountId.Address(), 1)
+	_, err = q.CreateAccountSigner(account2.Data.Account.AccountId.Address(), account3.Data.Account.AccountId.Address(), 1, nil)
 	tt.Assert.NoError(err)
 
 	pq := db2.PageQuery{

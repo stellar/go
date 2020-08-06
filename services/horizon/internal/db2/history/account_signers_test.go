@@ -26,7 +26,7 @@ func TestInsertAccountSigner(t *testing.T) {
 	account := "GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2"
 	signer := "GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4"
 	weight := int32(123)
-	rowsAffected, err := q.CreateAccountSigner(account, signer, weight)
+	rowsAffected, err := q.CreateAccountSigner(account, signer, weight, nil)
 	tt.Assert.NoError(err)
 	tt.Assert.Equal(int64(1), rowsAffected)
 
@@ -41,7 +41,7 @@ func TestInsertAccountSigner(t *testing.T) {
 	tt.Assert.Equal(expected, results[0])
 
 	weight = 321
-	_, err = q.CreateAccountSigner(account, signer, weight)
+	_, err = q.CreateAccountSigner(account, signer, weight, nil)
 	tt.Assert.Error(err)
 	tt.Assert.EqualError(err, `exec failed: pq: duplicate key value violates unique constraint "accounts_signers_pkey"`)
 }
@@ -54,13 +54,13 @@ func TestMultipleAccountsForSigner(t *testing.T) {
 	account := "GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH1"
 	signer := "GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO2"
 	weight := int32(123)
-	rowsAffected, err := q.CreateAccountSigner(account, signer, weight)
+	rowsAffected, err := q.CreateAccountSigner(account, signer, weight, nil)
 	tt.Assert.NoError(err)
 	tt.Assert.Equal(int64(1), rowsAffected)
 
 	anotherAccount := "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H"
 	anotherWeight := int32(321)
-	rowsAffected, err = q.CreateAccountSigner(anotherAccount, signer, anotherWeight)
+	rowsAffected, err = q.CreateAccountSigner(anotherAccount, signer, anotherWeight, nil)
 	tt.Assert.NoError(err)
 	tt.Assert.Equal(int64(1), rowsAffected)
 
@@ -102,7 +102,7 @@ func TestRemoveAccountSigner(t *testing.T) {
 	account := "GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH6"
 	signer := "GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO7"
 	weight := int32(123)
-	_, err := q.CreateAccountSigner(account, signer, weight)
+	_, err := q.CreateAccountSigner(account, signer, weight, nil)
 	tt.Assert.NoError(err)
 
 	expected := AccountSigner{
@@ -132,12 +132,12 @@ func TestGetAccountSignersByAccountID(t *testing.T) {
 	account := "GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH6"
 	signer := "GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO7"
 	weight := int32(123)
-	_, err := q.CreateAccountSigner(account, signer, weight)
+	_, err := q.CreateAccountSigner(account, signer, weight, nil)
 	tt.Assert.NoError(err)
 
 	signer2 := "GC2WJF6YWMAEHGGAK2UOMZCIOMH4RU7KY2CQEWZQJV2ZQJVXJ335ZSXG"
 	weight2 := int32(100)
-	_, err = q.CreateAccountSigner(account, signer2, weight2)
+	_, err = q.CreateAccountSigner(account, signer2, weight2, nil)
 	tt.Assert.NoError(err)
 
 	expected := []AccountSigner{

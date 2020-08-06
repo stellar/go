@@ -25,7 +25,7 @@ var (
 	eurAsset    = xdr.MustNewCreditAsset("EUR", issuer.Address())
 
 	eurOffer = xdr.LedgerEntry{
-		LastModifiedLedgerSeq: 3,
+		LastModifiedLedgerSeq: 1234,
 		Data: xdr.LedgerEntryData{
 			Type: xdr.LedgerEntryTypeOffer,
 			Offer: &xdr.OfferEntry{
@@ -43,7 +43,7 @@ var (
 		},
 	}
 	twoEurOffer = xdr.LedgerEntry{
-		LastModifiedLedgerSeq: 4,
+		LastModifiedLedgerSeq: 1234,
 		Data: xdr.LedgerEntryData{
 			Type: xdr.LedgerEntryTypeOffer,
 			Offer: &xdr.OfferEntry{
@@ -61,7 +61,7 @@ var (
 		},
 	}
 	usdOffer = xdr.LedgerEntry{
-		LastModifiedLedgerSeq: 4,
+		LastModifiedLedgerSeq: 1234,
 		Data: xdr.LedgerEntryData{
 			Type: xdr.LedgerEntryTypeOffer,
 			Offer: &xdr.OfferEntry{
