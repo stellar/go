@@ -138,6 +138,7 @@ func (q *Q) UpdateTrustLine(entry xdr.LedgerEntry) (int64, error) {
 // for each ledger with the current limits.
 func (q *Q) UpsertTrustLines(trustLines []xdr.LedgerEntry) error {
 	var ledgerKey, accountID, assetIssuer, assetCode []string
+	var sponsor []*string
 	var balance, limit, buyingLiabilities, sellingLiabilities []xdr.Int64
 	var flags, lastModifiedLedger []xdr.Uint32
 	var assetType []xdr.AssetType
@@ -164,6 +165,7 @@ func (q *Q) UpsertTrustLines(trustLines []xdr.LedgerEntry) error {
 		sellingLiabilities = append(sellingLiabilities, m["selling_liabilities"].(xdr.Int64))
 		flags = append(flags, m["flags"].(xdr.Uint32))
 		lastModifiedLedger = append(lastModifiedLedger, m["last_modified_ledger"].(xdr.Uint32))
+		sponsor = append(sponsor, m["sponsor"].(*string))
 	}
 
 	sql := `
@@ -292,6 +294,7 @@ func trustLineToMap(entry xdr.LedgerEntry) map[string]interface{} {
 		"selling_liabilities":  liabilities.Selling,
 		"flags":                trustLine.Flags,
 		"last_modified_ledger": entry.LastModifiedLedgerSeq,
+		"sponsor":              ledgerEntrySponsorToNullString(entry),
 	}
 }
 
@@ -305,5 +308,6 @@ var selectTrustLines = sq.Select(`
 	buying_liabilities,
 	selling_liabilities,
 	flags,
-	last_modified_ledger
+	last_modified_ledger,
+	sponsor
 `).From("trust_lines")

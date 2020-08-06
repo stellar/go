@@ -50,10 +50,10 @@ func (q *Q) AccountsForSigner(signer string, page db2.PageQuery) ([]AccountSigne
 
 // CreateAccountSigner creates a row in the accounts_signers table.
 // Returns number of rows affected and error.
-func (q *Q) CreateAccountSigner(account, signer string, weight int32) (int64, error) {
+func (q *Q) CreateAccountSigner(account, signer string, weight int32, sponsor *string) (int64, error) {
 	sql := sq.Insert("accounts_signers").
-		Columns("account_id", "signer", "weight").
-		Values(account, signer, weight)
+		Columns("account_id", "signer", "weight", "sponsor").
+		Values(account, signer, weight, sponsor)
 
 	result, err := q.Exec(sql)
 	if err != nil {

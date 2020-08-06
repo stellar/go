@@ -191,5 +191,25 @@ func (c *Change) AccountSignersChanged() bool {
 		}
 	}
 
+	preSignerSponsors := preAccountEntry.SignerSponsoringIDs()
+	postSignerSponsors := postAccountEntry.SignerSponsoringIDs()
+
+	if len(preSignerSponsors) != len(postSignerSponsors) {
+		return true
+	}
+
+	for i := 0; i < len(preSignerSponsors); i++ {
+		preSponsor := preSignerSponsors[i]
+		postSponsor := postSignerSponsors[i]
+
+		if preSponsor == nil && postSponsor != nil {
+			return true
+		} else if preSponsor != nil && postSponsor == nil {
+			return true
+		}
+
+		// It's not possible to replace the sponsor so not checking it...
+	}
+
 	return false
 }

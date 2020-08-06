@@ -110,10 +110,19 @@ func (p *SignersProcessor) Commit() error {
 		if change.Post != nil {
 			postAccountEntry := change.Post.Data.MustAccount()
 			for signer, weight := range postAccountEntry.SignerSummary() {
+				sponsorshipDescriptor := postAccountEntry.SponsorForSigner(signer)
+				var sponsor *string
+				if sponsorshipDescriptor != nil {
+					accountID := xdr.AccountId(*sponsorshipDescriptor)
+					a := accountID.Address()
+					sponsor = &a
+				}
+
 				rowsAffected, err := p.signersQ.CreateAccountSigner(
 					postAccountEntry.AccountId.Address(),
 					signer,
 					weight,
+					sponsor,
 				)
 				if err != nil {
 					return errors.Wrap(err, "Error inserting a signer")

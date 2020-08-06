@@ -1,5 +1,7 @@
 package xdr
 
+import "fmt"
+
 func (account *AccountEntry) SignerSummary() map[string]int32 {
 	ret := map[string]int32{}
 
@@ -36,4 +38,51 @@ func (account *AccountEntry) Liabilities() Liabilities {
 		liabilities = account.Ext.V1.Liabilities
 	}
 	return liabilities
+}
+
+// NumSponsored returns NumSponsored value for account.
+func (account *AccountEntry) NumSponsored() Uint32 {
+	var numSponsored Uint32
+	if account.Ext.V1 != nil &&
+		account.Ext.V1.Ext.V2 != nil {
+		numSponsored = account.Ext.V1.Ext.V2.NumSponsored
+	}
+	return numSponsored
+}
+
+// NumSponsoring returns NumSponsoring value for account.
+func (account *AccountEntry) NumSponsoring() Uint32 {
+	var numSponsoring Uint32
+	if account.Ext.V1 != nil &&
+		account.Ext.V1.Ext.V2 != nil {
+		numSponsoring = account.Ext.V1.Ext.V2.NumSponsoring
+	}
+	return numSponsoring
+}
+
+// SignerSponsoringIDs returns SignerSponsoringIDs value for account.
+// This will return a slice of nil values if V2 extension does not exist.
+func (account *AccountEntry) SignerSponsoringIDs() []SponsorshipDescriptor {
+	var ids []SponsorshipDescriptor
+	if account.Ext.V1 != nil &&
+		account.Ext.V1.Ext.V2 != nil {
+		ids = account.Ext.V1.Ext.V2.SignerSponsoringIDs
+	} else {
+		ids = make([]SponsorshipDescriptor, len(account.Signers))
+	}
+	return ids
+}
+
+// SponsorForSigner returns a SponsorshipDescriptor for a given signer key.
+// Panics if the given signer does not exist in the AccountEntry.Signers.
+func (account *AccountEntry) SponsorForSigner(signer string) SponsorshipDescriptor {
+	ids := account.SignerSponsoringIDs()
+
+	for i, signerEntry := range account.Signers {
+		if signerEntry.Key.Address() == signer {
+			return ids[i]
+		}
+	}
+
+	panic(fmt.Sprintf("%s signer does not exist", signer))
 }

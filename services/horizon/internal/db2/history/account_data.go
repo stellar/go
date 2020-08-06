@@ -90,13 +90,14 @@ func (q *Q) InsertAccountData(entry xdr.LedgerEntry) (int64, error) {
 	}
 
 	sql := sq.Insert("accounts_data").
-		Columns("ledger_key", "account_id", "name", "value", "last_modified_ledger").
+		Columns("ledger_key", "account_id", "name", "value", "last_modified_ledger", "sponsor").
 		Values(
 			key,
 			data.AccountId.Address(),
 			data.DataName,
 			AccountDataValue(data.DataValue),
 			entry.LastModifiedLedgerSeq,
+			ledgerEntrySponsorToNullString(entry),
 		)
 
 	result, err := q.Exec(sql)
@@ -120,6 +121,7 @@ func (q *Q) UpdateAccountData(entry xdr.LedgerEntry) (int64, error) {
 		SetMap(map[string]interface{}{
 			"value":                AccountDataValue(data.DataValue),
 			"last_modified_ledger": entry.LastModifiedLedgerSeq,
+			"sponsor":              ledgerEntrySponsorToNullString(entry),
 		}).
 		Where(sq.Eq{"ledger_key": key})
 	result, err := q.Exec(sql)
@@ -160,5 +162,6 @@ var selectAccountData = sq.Select(`
 	account_id,
 	name,
 	value,
-	last_modified_ledger
+	last_modified_ledger,
+	sponsor
 `).From("accounts_data")
