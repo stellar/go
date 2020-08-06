@@ -92,7 +92,7 @@ func (c *CaptiveCoreAPI) startPrepareRange(ledgerRange ledgerbackend.Range) {
 	}
 
 	c.activeRequest.ready = true
-	c.activeRequest.readyDuration = int(time.Now().Sub(c.activeRequest.startTime).Seconds())
+	c.activeRequest.readyDuration = int(time.Since(c.activeRequest.startTime).Seconds())
 }
 
 // RangeResponse describes the status of the pending PrepareRange operation.

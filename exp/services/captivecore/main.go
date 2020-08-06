@@ -1,4 +1,4 @@
-package captivecore
+package main
 
 import (
 	"fmt"
