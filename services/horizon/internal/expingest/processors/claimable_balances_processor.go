@@ -90,7 +90,7 @@ func (p *ClaimableBalancesProcessor) Commit() error {
 				return errors.Wrap(err, "Error marshalling ledger key")
 			}
 			return ingesterrors.NewStateError(errors.Errorf(
-				"%d rows affected when %s claimable balance: %s %s",
+				"%d rows affected when %s claimable balance: %s",
 				rowsAffected,
 				action,
 				ledgerKeyString,
