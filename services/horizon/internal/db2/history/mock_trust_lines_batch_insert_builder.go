@@ -9,8 +9,8 @@ type MockTrustLinesBatchInsertBuilder struct {
 	mock.Mock
 }
 
-func (m *MockTrustLinesBatchInsertBuilder) Add(trustLines xdr.TrustLineEntry, lastModifiedLedger xdr.Uint32) error {
-	a := m.Called(trustLines, lastModifiedLedger)
+func (m *MockTrustLinesBatchInsertBuilder) Add(entry xdr.LedgerEntry) error {
+	a := m.Called(entry)
 	return a.Error(0)
 }
 

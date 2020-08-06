@@ -60,10 +60,7 @@ func (p *AccountDataProcessor) Commit() error {
 		case change.Pre == nil && change.Post != nil:
 			// Created
 			action = "inserting"
-			err = batch.Add(
-				change.Post.Data.MustData(),
-				change.Post.LastModifiedLedgerSeq,
-			)
+			err = batch.Add(*change.Post)
 			rowsAffected = 1 // We don't track this when batch inserting
 		case change.Pre != nil && change.Post == nil:
 			// Removed
@@ -82,7 +79,7 @@ func (p *AccountDataProcessor) Commit() error {
 			if err != nil {
 				return errors.Wrap(err, "Error creating ledger key")
 			}
-			rowsAffected, err = p.dataQ.UpdateAccountData(data, change.Post.LastModifiedLedgerSeq)
+			rowsAffected, err = p.dataQ.UpdateAccountData(*change.Post)
 		}
 
 		if err != nil {

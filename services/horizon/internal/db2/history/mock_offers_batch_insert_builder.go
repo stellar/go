@@ -9,8 +9,8 @@ type MockOffersBatchInsertBuilder struct {
 	mock.Mock
 }
 
-func (m *MockOffersBatchInsertBuilder) Add(offer xdr.OfferEntry, lastModifiedLedger xdr.Uint32) error {
-	a := m.Called(offer, lastModifiedLedger)
+func (m *MockOffersBatchInsertBuilder) Add(entry xdr.LedgerEntry) error {
+	a := m.Called(entry)
 	return a.Error(0)
 }
 

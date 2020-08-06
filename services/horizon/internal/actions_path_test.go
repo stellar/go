@@ -143,26 +143,32 @@ func TestPathActionsStrictReceive(t *testing.T) {
 
 	q := &history.Q{tt.HorizonSession()}
 
-	account := xdr.AccountEntry{
-		AccountId:     xdr.MustAddress(sourceAccount),
-		Balance:       20000,
-		SeqNum:        223456789,
-		NumSubEntries: 10,
-		Flags:         1,
-		Thresholds:    xdr.Thresholds{1, 2, 3, 4},
-		Ext: xdr.AccountEntryExt{
-			V: 1,
-			V1: &xdr.AccountEntryExtensionV1{
-				Liabilities: xdr.Liabilities{
-					Buying:  3,
-					Selling: 4,
+	account := xdr.LedgerEntry{
+		LastModifiedLedgerSeq: 1234,
+		Data: xdr.LedgerEntryData{
+			Type: xdr.LedgerEntryTypeAccount,
+			Account: &xdr.AccountEntry{
+				AccountId:     xdr.MustAddress(sourceAccount),
+				Balance:       20000,
+				SeqNum:        223456789,
+				NumSubEntries: 10,
+				Flags:         1,
+				Thresholds:    xdr.Thresholds{1, 2, 3, 4},
+				Ext: xdr.AccountEntryExt{
+					V: 1,
+					V1: &xdr.AccountEntryExtensionV1{
+						Liabilities: xdr.Liabilities{
+							Buying:  3,
+							Selling: 4,
+						},
+					},
 				},
 			},
 		},
 	}
 
 	batch := q.NewAccountsBatchInsertBuilder(0)
-	err := batch.Add(account, 1234)
+	err := batch.Add(account)
 	assert.NoError(t, err)
 	err = batch.Exec()
 	assert.NoError(t, err)
@@ -175,24 +181,30 @@ func TestPathActionsStrictReceive(t *testing.T) {
 		if code == "native" {
 			continue
 		}
-		trustline := xdr.TrustLineEntry{
-			AccountId: xdr.MustAddress(sourceAccount),
-			Asset:     asset,
-			Balance:   10000,
-			Limit:     123456789,
-			Flags:     0,
-			Ext: xdr.TrustLineEntryExt{
-				V: 1,
-				V1: &xdr.TrustLineEntryV1{
-					Liabilities: xdr.Liabilities{
-						Buying:  1,
-						Selling: 2,
+		trustline := xdr.LedgerEntry{
+			LastModifiedLedgerSeq: 1234,
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeTrustline,
+				TrustLine: &xdr.TrustLineEntry{
+					AccountId: xdr.MustAddress(sourceAccount),
+					Asset:     asset,
+					Balance:   10000,
+					Limit:     123456789,
+					Flags:     0,
+					Ext: xdr.TrustLineEntryExt{
+						V: 1,
+						V1: &xdr.TrustLineEntryV1{
+							Liabilities: xdr.Liabilities{
+								Buying:  1,
+								Selling: 2,
+							},
+						},
 					},
 				},
 			},
 		}
 
-		rows, err1 := q.InsertTrustLine(trustline, 1234)
+		rows, err1 := q.InsertTrustLine(trustline)
 		assert.NoError(t, err1)
 		assert.Equal(t, int64(1), rows)
 	}
@@ -489,26 +501,32 @@ func TestPathActionsStrictSend(t *testing.T) {
 		xdr.MustNewNativeAsset(),
 	}
 
-	account := xdr.AccountEntry{
-		AccountId:     xdr.MustAddress(destinationAccount),
-		Balance:       20000,
-		SeqNum:        223456789,
-		NumSubEntries: 10,
-		Flags:         1,
-		Thresholds:    xdr.Thresholds{1, 2, 3, 4},
-		Ext: xdr.AccountEntryExt{
-			V: 1,
-			V1: &xdr.AccountEntryExtensionV1{
-				Liabilities: xdr.Liabilities{
-					Buying:  3,
-					Selling: 4,
+	account := xdr.LedgerEntry{
+		LastModifiedLedgerSeq: 1234,
+		Data: xdr.LedgerEntryData{
+			Type: xdr.LedgerEntryTypeAccount,
+			Account: &xdr.AccountEntry{
+				AccountId:     xdr.MustAddress(destinationAccount),
+				Balance:       20000,
+				SeqNum:        223456789,
+				NumSubEntries: 10,
+				Flags:         1,
+				Thresholds:    xdr.Thresholds{1, 2, 3, 4},
+				Ext: xdr.AccountEntryExt{
+					V: 1,
+					V1: &xdr.AccountEntryExtensionV1{
+						Liabilities: xdr.Liabilities{
+							Buying:  3,
+							Selling: 4,
+						},
+					},
 				},
 			},
 		},
 	}
 
 	batch := historyQ.NewAccountsBatchInsertBuilder(0)
-	err := batch.Add(account, 1234)
+	err := batch.Add(account)
 	assert.NoError(t, err)
 	err = batch.Exec()
 	assert.NoError(t, err)
@@ -521,24 +539,30 @@ func TestPathActionsStrictSend(t *testing.T) {
 		if code == "native" {
 			continue
 		}
-		trustline := xdr.TrustLineEntry{
-			AccountId: xdr.MustAddress(destinationAccount),
-			Asset:     asset,
-			Balance:   10000,
-			Limit:     123456789,
-			Flags:     0,
-			Ext: xdr.TrustLineEntryExt{
-				V: 1,
-				V1: &xdr.TrustLineEntryV1{
-					Liabilities: xdr.Liabilities{
-						Buying:  1,
-						Selling: 2,
+		trustline := xdr.LedgerEntry{
+			LastModifiedLedgerSeq: 1234,
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeTrustline,
+				TrustLine: &xdr.TrustLineEntry{
+					AccountId: xdr.MustAddress(destinationAccount),
+					Asset:     asset,
+					Balance:   10000,
+					Limit:     123456789,
+					Flags:     0,
+					Ext: xdr.TrustLineEntryExt{
+						V: 1,
+						V1: &xdr.TrustLineEntryV1{
+							Liabilities: xdr.Liabilities{
+								Buying:  1,
+								Selling: 2,
+							},
+						},
 					},
 				},
 			},
 		}
 
-		rows, err := historyQ.InsertTrustLine(trustline, 1234)
+		rows, err := historyQ.InsertTrustLine(trustline)
 		assert.NoError(t, err)
 		assert.Equal(t, int64(1), rows)
 	}

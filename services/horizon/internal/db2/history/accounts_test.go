@@ -12,60 +12,78 @@ import (
 var (
 	inflationDest = xdr.MustAddress("GBUH7T6U36DAVEKECMKN5YEBQYZVRBPNSZAAKBCO6P5HBMDFSQMQL4Z4")
 
-	account1 = xdr.AccountEntry{
-		AccountId:     xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
-		Balance:       20000,
-		SeqNum:        223456789,
-		NumSubEntries: 10,
-		InflationDest: &inflationDest,
-		Flags:         1,
-		HomeDomain:    "stellar.org",
-		Thresholds:    xdr.Thresholds{1, 2, 3, 4},
-		Ext: xdr.AccountEntryExt{
-			V: 1,
-			V1: &xdr.AccountEntryExtensionV1{
-				Liabilities: xdr.Liabilities{
-					Buying:  3,
-					Selling: 4,
+	account1 = xdr.LedgerEntry{
+		LastModifiedLedgerSeq: 1234,
+		Data: xdr.LedgerEntryData{
+			Type: xdr.LedgerEntryTypeAccount,
+			Account: &xdr.AccountEntry{
+				AccountId:     xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
+				Balance:       20000,
+				SeqNum:        223456789,
+				NumSubEntries: 10,
+				InflationDest: &inflationDest,
+				Flags:         1,
+				HomeDomain:    "stellar.org",
+				Thresholds:    xdr.Thresholds{1, 2, 3, 4},
+				Ext: xdr.AccountEntryExt{
+					V: 1,
+					V1: &xdr.AccountEntryExtensionV1{
+						Liabilities: xdr.Liabilities{
+							Buying:  3,
+							Selling: 4,
+						},
+					},
 				},
 			},
 		},
 	}
 
-	account2 = xdr.AccountEntry{
-		AccountId:     xdr.MustAddress("GCT2NQM5KJJEF55NPMY444C6M6CA7T33HRNCMA6ZFBIIXKNCRO6J25K7"),
-		Balance:       50000,
-		SeqNum:        648736,
-		NumSubEntries: 10,
-		InflationDest: &inflationDest,
-		Flags:         2,
-		HomeDomain:    "meridian.stellar.org",
-		Thresholds:    xdr.Thresholds{5, 6, 7, 8},
-		Ext: xdr.AccountEntryExt{
-			V: 1,
-			V1: &xdr.AccountEntryExtensionV1{
-				Liabilities: xdr.Liabilities{
-					Buying:  30,
-					Selling: 40,
+	account2 = xdr.LedgerEntry{
+		LastModifiedLedgerSeq: 1235,
+		Data: xdr.LedgerEntryData{
+			Type: xdr.LedgerEntryTypeAccount,
+			Account: &xdr.AccountEntry{
+				AccountId:     xdr.MustAddress("GCT2NQM5KJJEF55NPMY444C6M6CA7T33HRNCMA6ZFBIIXKNCRO6J25K7"),
+				Balance:       50000,
+				SeqNum:        648736,
+				NumSubEntries: 10,
+				InflationDest: &inflationDest,
+				Flags:         2,
+				HomeDomain:    "meridian.stellar.org",
+				Thresholds:    xdr.Thresholds{5, 6, 7, 8},
+				Ext: xdr.AccountEntryExt{
+					V: 1,
+					V1: &xdr.AccountEntryExtensionV1{
+						Liabilities: xdr.Liabilities{
+							Buying:  30,
+							Selling: 40,
+						},
+					},
 				},
 			},
 		},
 	}
 
-	account3 = xdr.AccountEntry{
-		AccountId:     xdr.MustAddress("GDPGOMFSP4IF7A4P7UBKA4UC4QTRLEHGBD6IMDIS3W3KBDNBFAQ7FXDY"),
-		Balance:       50000,
-		SeqNum:        648736,
-		NumSubEntries: 10,
-		InflationDest: &inflationDest,
-		Flags:         2,
-		Thresholds:    xdr.Thresholds{5, 6, 7, 8},
-		Ext: xdr.AccountEntryExt{
-			V: 1,
-			V1: &xdr.AccountEntryExtensionV1{
-				Liabilities: xdr.Liabilities{
-					Buying:  30,
-					Selling: 40,
+	account3 = xdr.LedgerEntry{
+		LastModifiedLedgerSeq: 1235,
+		Data: xdr.LedgerEntryData{
+			Type: xdr.LedgerEntryTypeAccount,
+			Account: &xdr.AccountEntry{
+				AccountId:     xdr.MustAddress("GDPGOMFSP4IF7A4P7UBKA4UC4QTRLEHGBD6IMDIS3W3KBDNBFAQ7FXDY"),
+				Balance:       50000,
+				SeqNum:        648736,
+				NumSubEntries: 10,
+				InflationDest: &inflationDest,
+				Flags:         2,
+				Thresholds:    xdr.Thresholds{5, 6, 7, 8},
+				Ext: xdr.AccountEntryExt{
+					V: 1,
+					V1: &xdr.AccountEntryExtensionV1{
+						Liabilities: xdr.Liabilities{
+							Buying:  30,
+							Selling: 40,
+						},
+					},
 				},
 			},
 		},
@@ -79,9 +97,9 @@ func TestInsertAccount(t *testing.T) {
 	q := &Q{tt.HorizonSession()}
 
 	batch := q.NewAccountsBatchInsertBuilder(0)
-	err := batch.Add(account1, 1234)
+	err := batch.Add(account1)
 	assert.NoError(t, err)
-	err = batch.Add(account2, 1235)
+	err = batch.Add(account2)
 	assert.NoError(t, err)
 	assert.NoError(t, batch.Exec())
 
@@ -113,50 +131,52 @@ func TestUpsertAccount(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
-	ledgerEntries := []xdr.LedgerEntry{
-		xdr.LedgerEntry{
-			LastModifiedLedgerSeq: 1234,
-			Data: xdr.LedgerEntryData{
-				Type:    xdr.LedgerEntryTypeAccount,
-				Account: &account1,
-			},
-		},
-		xdr.LedgerEntry{
-			LastModifiedLedgerSeq: 1234,
-			Data: xdr.LedgerEntryData{
-				Type:    xdr.LedgerEntryTypeAccount,
-				Account: &account2,
-			},
-		},
-	}
+	ledgerEntries := []xdr.LedgerEntry{account1, account2}
 	err := q.UpsertAccounts(ledgerEntries)
 	assert.NoError(t, err)
 
-	modifiedAccount := account1
-	modifiedAccount.Balance = 32847893
-
-	err = q.UpsertAccounts([]xdr.LedgerEntry{{
-		LastModifiedLedgerSeq: 1235,
+	modifiedAccount := xdr.LedgerEntry{
+		LastModifiedLedgerSeq: 1234,
 		Data: xdr.LedgerEntryData{
-			Type:    xdr.LedgerEntryTypeAccount,
-			Account: &modifiedAccount,
+			Type: xdr.LedgerEntryTypeAccount,
+			Account: &xdr.AccountEntry{
+				AccountId:     xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
+				Balance:       32847893,
+				SeqNum:        223456789,
+				NumSubEntries: 10,
+				InflationDest: &inflationDest,
+				Flags:         1,
+				HomeDomain:    "stellar.org",
+				Thresholds:    xdr.Thresholds{1, 2, 3, 4},
+				Ext: xdr.AccountEntryExt{
+					V: 1,
+					V1: &xdr.AccountEntryExtensionV1{
+						Liabilities: xdr.Liabilities{
+							Buying:  3,
+							Selling: 4,
+						},
+					},
+				},
+			},
 		},
-	}})
+	}
+
+	err = q.UpsertAccounts([]xdr.LedgerEntry{modifiedAccount})
 	assert.NoError(t, err)
 
 	keys := []string{
-		account1.AccountId.Address(),
-		account2.AccountId.Address(),
+		account1.Data.Account.AccountId.Address(),
+		account2.Data.Account.AccountId.Address(),
 	}
 	accounts, err := q.GetAccountsByIDs(keys)
 	assert.NoError(t, err)
 	assert.Len(t, accounts, 2)
 
-	accounts, err = q.GetAccountsByIDs([]string{account1.AccountId.Address()})
+	accounts, err = q.GetAccountsByIDs([]string{account1.Data.Account.AccountId.Address()})
 	assert.NoError(t, err)
 	assert.Len(t, accounts, 1)
 
-	expectedBinary, err := modifiedAccount.MarshalBinary()
+	expectedBinary, err := modifiedAccount.Data.Account.MarshalBinary()
 	assert.NoError(t, err)
 
 	dbEntry := xdr.AccountEntry{
@@ -187,13 +207,13 @@ func TestUpsertAccount(t *testing.T) {
 	actualBinary, err := dbEntry.MarshalBinary()
 	assert.NoError(t, err)
 	assert.Equal(t, expectedBinary, actualBinary)
-	assert.Equal(t, uint32(1235), accounts[0].LastModifiedLedger)
+	assert.Equal(t, uint32(1234), accounts[0].LastModifiedLedger)
 
-	accounts, err = q.GetAccountsByIDs([]string{account2.AccountId.Address()})
+	accounts, err = q.GetAccountsByIDs([]string{account2.Data.Account.AccountId.Address()})
 	assert.NoError(t, err)
 	assert.Len(t, accounts, 1)
 
-	expectedBinary, err = account2.MarshalBinary()
+	expectedBinary, err = account2.Data.Account.MarshalBinary()
 	assert.NoError(t, err)
 
 	dbEntry = xdr.AccountEntry{
@@ -224,7 +244,7 @@ func TestUpsertAccount(t *testing.T) {
 	actualBinary, err = dbEntry.MarshalBinary()
 	assert.NoError(t, err)
 	assert.Equal(t, expectedBinary, actualBinary)
-	assert.Equal(t, uint32(1234), accounts[0].LastModifiedLedger)
+	assert.Equal(t, uint32(1235), accounts[0].LastModifiedLedger)
 }
 
 func TestRemoveAccount(t *testing.T) {
@@ -234,7 +254,7 @@ func TestRemoveAccount(t *testing.T) {
 	q := &Q{tt.HorizonSession()}
 
 	batch := q.NewAccountsBatchInsertBuilder(0)
-	err := batch.Add(account1, 1234)
+	err := batch.Add(account1)
 	assert.NoError(t, err)
 	assert.NoError(t, batch.Exec())
 
@@ -259,19 +279,19 @@ func TestAccountsForAsset(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
-	eurTrustLine.AccountId = account1.AccountId
-	usdTrustLine.AccountId = account2.AccountId
+	eurTrustLine.Data.TrustLine.AccountId = account1.Data.Account.AccountId
+	usdTrustLine.Data.TrustLine.AccountId = account2.Data.Account.AccountId
 
 	batch := q.NewAccountsBatchInsertBuilder(0)
-	err := batch.Add(account1, 1234)
+	err := batch.Add(account1)
 	assert.NoError(t, err)
-	err = batch.Add(account2, 1235)
+	err = batch.Add(account2)
 	assert.NoError(t, err)
 	assert.NoError(t, batch.Exec())
 
-	_, err = q.InsertTrustLine(eurTrustLine, 1234)
+	_, err = q.InsertTrustLine(eurTrustLine)
 	tt.Assert.NoError(err)
-	_, err = q.InsertTrustLine(usdTrustLine, 1235)
+	_, err = q.InsertTrustLine(usdTrustLine)
 	tt.Assert.NoError(err)
 
 	pq := db2.PageQuery{
@@ -280,18 +300,18 @@ func TestAccountsForAsset(t *testing.T) {
 		Cursor: "",
 	}
 
-	accounts, err := q.AccountsForAsset(eurTrustLine.Asset, pq)
+	accounts, err := q.AccountsForAsset(eurTrustLine.Data.TrustLine.Asset, pq)
 	assert.NoError(t, err)
 	tt.Assert.Len(accounts, 1)
-	tt.Assert.Equal(account1.AccountId.Address(), accounts[0].AccountID)
+	tt.Assert.Equal(account1.Data.Account.AccountId.Address(), accounts[0].AccountID)
 
-	accounts, err = q.AccountsForAsset(usdTrustLine.Asset, pq)
+	accounts, err = q.AccountsForAsset(usdTrustLine.Data.TrustLine.Asset, pq)
 	assert.NoError(t, err)
 	tt.Assert.Len(accounts, 1)
-	tt.Assert.Equal(account2.AccountId.Address(), accounts[0].AccountID)
+	tt.Assert.Equal(account2.Data.Account.AccountId.Address(), accounts[0].AccountID)
 
-	pq.Cursor = account2.AccountId.Address()
-	accounts, err = q.AccountsForAsset(usdTrustLine.Asset, pq)
+	pq.Cursor = account2.Data.Account.AccountId.Address()
+	accounts, err = q.AccountsForAsset(usdTrustLine.Data.TrustLine.Asset, pq)
 	assert.NoError(t, err)
 	tt.Assert.Len(accounts, 0)
 
@@ -301,7 +321,7 @@ func TestAccountsForAsset(t *testing.T) {
 		Cursor: "",
 	}
 
-	accounts, err = q.AccountsForAsset(eurTrustLine.Asset, pq)
+	accounts, err = q.AccountsForAsset(eurTrustLine.Data.TrustLine.Asset, pq)
 	assert.NoError(t, err)
 	tt.Assert.Len(accounts, 1)
 }
@@ -312,32 +332,32 @@ func TestAccountEntriesForSigner(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
-	eurTrustLine.AccountId = account1.AccountId
-	usdTrustLine.AccountId = account2.AccountId
+	eurTrustLine.Data.TrustLine.AccountId = account1.Data.Account.AccountId
+	usdTrustLine.Data.TrustLine.AccountId = account2.Data.Account.AccountId
 
 	batch := q.NewAccountsBatchInsertBuilder(0)
-	err := batch.Add(account1, 1234)
+	err := batch.Add(account1)
 	assert.NoError(t, err)
-	err = batch.Add(account2, 1235)
+	err = batch.Add(account2)
 	assert.NoError(t, err)
-	err = batch.Add(account3, 1235)
+	err = batch.Add(account3)
 	assert.NoError(t, err)
 	assert.NoError(t, batch.Exec())
 
-	_, err = q.InsertTrustLine(eurTrustLine, 1234)
+	_, err = q.InsertTrustLine(eurTrustLine)
 	tt.Assert.NoError(err)
-	_, err = q.InsertTrustLine(usdTrustLine, 1235)
+	_, err = q.InsertTrustLine(usdTrustLine)
 	tt.Assert.NoError(err)
 
-	_, err = q.CreateAccountSigner(account1.AccountId.Address(), account1.AccountId.Address(), 1)
+	_, err = q.CreateAccountSigner(account1.Data.Account.AccountId.Address(), account1.Data.Account.AccountId.Address(), 1)
 	tt.Assert.NoError(err)
-	_, err = q.CreateAccountSigner(account2.AccountId.Address(), account2.AccountId.Address(), 1)
+	_, err = q.CreateAccountSigner(account2.Data.Account.AccountId.Address(), account2.Data.Account.AccountId.Address(), 1)
 	tt.Assert.NoError(err)
-	_, err = q.CreateAccountSigner(account3.AccountId.Address(), account3.AccountId.Address(), 1)
+	_, err = q.CreateAccountSigner(account3.Data.Account.AccountId.Address(), account3.Data.Account.AccountId.Address(), 1)
 	tt.Assert.NoError(err)
-	_, err = q.CreateAccountSigner(account1.AccountId.Address(), account3.AccountId.Address(), 1)
+	_, err = q.CreateAccountSigner(account1.Data.Account.AccountId.Address(), account3.Data.Account.AccountId.Address(), 1)
 	tt.Assert.NoError(err)
-	_, err = q.CreateAccountSigner(account2.AccountId.Address(), account3.AccountId.Address(), 1)
+	_, err = q.CreateAccountSigner(account2.Data.Account.AccountId.Address(), account3.Data.Account.AccountId.Address(), 1)
 	tt.Assert.NoError(err)
 
 	pq := db2.PageQuery{
@@ -346,23 +366,23 @@ func TestAccountEntriesForSigner(t *testing.T) {
 		Cursor: "",
 	}
 
-	accounts, err := q.AccountEntriesForSigner(account1.AccountId.Address(), pq)
+	accounts, err := q.AccountEntriesForSigner(account1.Data.Account.AccountId.Address(), pq)
 	assert.NoError(t, err)
 	tt.Assert.Len(accounts, 1)
-	tt.Assert.Equal(account1.AccountId.Address(), accounts[0].AccountID)
+	tt.Assert.Equal(account1.Data.Account.AccountId.Address(), accounts[0].AccountID)
 
-	accounts, err = q.AccountEntriesForSigner(account2.AccountId.Address(), pq)
+	accounts, err = q.AccountEntriesForSigner(account2.Data.Account.AccountId.Address(), pq)
 	assert.NoError(t, err)
 	tt.Assert.Len(accounts, 1)
-	tt.Assert.Equal(account2.AccountId.Address(), accounts[0].AccountID)
+	tt.Assert.Equal(account2.Data.Account.AccountId.Address(), accounts[0].AccountID)
 
 	want := map[string]bool{
-		account1.AccountId.Address(): true,
-		account2.AccountId.Address(): true,
-		account3.AccountId.Address(): true,
+		account1.Data.Account.AccountId.Address(): true,
+		account2.Data.Account.AccountId.Address(): true,
+		account3.Data.Account.AccountId.Address(): true,
 	}
 
-	accounts, err = q.AccountEntriesForSigner(account3.AccountId.Address(), pq)
+	accounts, err = q.AccountEntriesForSigner(account3.Data.Account.AccountId.Address(), pq)
 	assert.NoError(t, err)
 	tt.Assert.Len(accounts, 3)
 
@@ -374,12 +394,12 @@ func TestAccountEntriesForSigner(t *testing.T) {
 	tt.Assert.Len(want, 0)
 
 	pq.Cursor = accounts[len(accounts)-1].AccountID
-	accounts, err = q.AccountEntriesForSigner(account3.AccountId.Address(), pq)
+	accounts, err = q.AccountEntriesForSigner(account3.Data.Account.AccountId.Address(), pq)
 	assert.NoError(t, err)
 	tt.Assert.Len(accounts, 0)
 
 	pq.Order = "desc"
-	accounts, err = q.AccountEntriesForSigner(account3.AccountId.Address(), pq)
+	accounts, err = q.AccountEntriesForSigner(account3.Data.Account.AccountId.Address(), pq)
 	assert.NoError(t, err)
 	tt.Assert.Len(accounts, 2)
 
@@ -389,7 +409,7 @@ func TestAccountEntriesForSigner(t *testing.T) {
 		Cursor: "",
 	}
 
-	accounts, err = q.AccountEntriesForSigner(account1.AccountId.Address(), pq)
+	accounts, err = q.AccountEntriesForSigner(account1.Data.Account.AccountId.Address(), pq)
 	assert.NoError(t, err)
 	tt.Assert.Len(accounts, 1)
 }
@@ -401,11 +421,11 @@ func TestGetAccountByID(t *testing.T) {
 	q := &Q{tt.HorizonSession()}
 
 	batch := q.NewAccountsBatchInsertBuilder(0)
-	err := batch.Add(account1, 1234)
+	err := batch.Add(account1)
 	assert.NoError(t, err)
 	assert.NoError(t, batch.Exec())
 
-	resultAccount, err := q.GetAccountByID(account1.AccountId.Address())
+	resultAccount, err := q.GetAccountByID(account1.Data.Account.AccountId.Address())
 	assert.NoError(t, err)
 
 	assert.Equal(t, "GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB", resultAccount.AccountID)

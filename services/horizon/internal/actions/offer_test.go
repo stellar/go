@@ -24,41 +24,59 @@ var (
 	usdAsset    = xdr.MustNewCreditAsset("USD", issuer.Address())
 	eurAsset    = xdr.MustNewCreditAsset("EUR", issuer.Address())
 
-	eurOffer = xdr.OfferEntry{
-		SellerId: issuer,
-		OfferId:  xdr.Int64(4),
-		Buying:   eurAsset,
-		Selling:  nativeAsset,
-		Price: xdr.Price{
-			N: 1,
-			D: 1,
+	eurOffer = xdr.LedgerEntry{
+		LastModifiedLedgerSeq: 3,
+		Data: xdr.LedgerEntryData{
+			Type: xdr.LedgerEntryTypeOffer,
+			Offer: &xdr.OfferEntry{
+				SellerId: issuer,
+				OfferId:  xdr.Int64(4),
+				Buying:   eurAsset,
+				Selling:  nativeAsset,
+				Price: xdr.Price{
+					N: 1,
+					D: 1,
+				},
+				Flags:  1,
+				Amount: xdr.Int64(500),
+			},
 		},
-		Flags:  1,
-		Amount: xdr.Int64(500),
 	}
-	twoEurOffer = xdr.OfferEntry{
-		SellerId: seller,
-		OfferId:  xdr.Int64(5),
-		Buying:   eurAsset,
-		Selling:  nativeAsset,
-		Price: xdr.Price{
-			N: 2,
-			D: 1,
+	twoEurOffer = xdr.LedgerEntry{
+		LastModifiedLedgerSeq: 4,
+		Data: xdr.LedgerEntryData{
+			Type: xdr.LedgerEntryTypeOffer,
+			Offer: &xdr.OfferEntry{
+				SellerId: seller,
+				OfferId:  xdr.Int64(5),
+				Buying:   eurAsset,
+				Selling:  nativeAsset,
+				Price: xdr.Price{
+					N: 2,
+					D: 1,
+				},
+				Flags:  2,
+				Amount: xdr.Int64(500),
+			},
 		},
-		Flags:  2,
-		Amount: xdr.Int64(500),
 	}
-	usdOffer = xdr.OfferEntry{
-		SellerId: issuer,
-		OfferId:  xdr.Int64(6),
-		Buying:   usdAsset,
-		Selling:  eurAsset,
-		Price: xdr.Price{
-			N: 1,
-			D: 1,
+	usdOffer = xdr.LedgerEntry{
+		LastModifiedLedgerSeq: 4,
+		Data: xdr.LedgerEntryData{
+			Type: xdr.LedgerEntryTypeOffer,
+			Offer: &xdr.OfferEntry{
+				SellerId: issuer,
+				OfferId:  xdr.Int64(6),
+				Buying:   usdAsset,
+				Selling:  eurAsset,
+				Price: xdr.Price{
+					N: 1,
+					D: 1,
+				},
+				Flags:  1,
+				Amount: xdr.Int64(500),
+			},
 		},
-		Flags:  1,
-		Amount: xdr.Int64(500),
 	}
 )
 
@@ -82,9 +100,9 @@ func TestGetOfferByIDHandler(t *testing.T) {
 	tt.Assert.NoError(err)
 
 	batch := q.NewOffersBatchInsertBuilder(0)
-	err = batch.Add(eurOffer, 3)
+	err = batch.Add(eurOffer)
 	tt.Assert.NoError(err)
-	err = batch.Add(usdOffer, 4)
+	err = batch.Add(usdOffer)
 	tt.Assert.NoError(err)
 	tt.Assert.NoError(batch.Exec())
 
@@ -132,7 +150,7 @@ func TestGetOfferByIDHandler(t *testing.T) {
 			},
 			func(response interface{}) {
 				offer := response.(horizon.Offer)
-				tt.Assert.Equal(int64(eurOffer.OfferId), offer.ID)
+				tt.Assert.Equal(int64(eurOffer.Data.Offer.OfferId), offer.ID)
 				tt.Assert.Equal("native", offer.Selling.Type)
 				tt.Assert.Equal("credit_alphanum4", offer.Buying.Type)
 				tt.Assert.Equal("EUR", offer.Buying.Code)
@@ -152,7 +170,7 @@ func TestGetOfferByIDHandler(t *testing.T) {
 			},
 			func(response interface{}) {
 				offer := response.(horizon.Offer)
-				tt.Assert.Equal(int64(usdOffer.OfferId), offer.ID)
+				tt.Assert.Equal(int64(usdOffer.Data.Offer.OfferId), offer.ID)
 				tt.Assert.Equal("credit_alphanum4", offer.Selling.Type)
 				tt.Assert.Equal("EUR", offer.Selling.Code)
 				tt.Assert.Equal("credit_alphanum4", offer.Buying.Type)
@@ -193,11 +211,11 @@ func TestGetOffersHandler(t *testing.T) {
 	tt.Assert.NoError(err)
 
 	batch := q.NewOffersBatchInsertBuilder(0)
-	err = batch.Add(eurOffer, 3)
+	err = batch.Add(eurOffer)
 	tt.Assert.NoError(err)
-	err = batch.Add(twoEurOffer, 3)
+	err = batch.Add(twoEurOffer)
 	tt.Assert.NoError(err)
-	err = batch.Add(usdOffer, 3)
+	err = batch.Add(usdOffer)
 	tt.Assert.NoError(err)
 	tt.Assert.NoError(batch.Exec())
 
@@ -213,7 +231,7 @@ func TestGetOffersHandler(t *testing.T) {
 
 		offers := pageableToOffers(t, records)
 
-		tt.Assert.Equal(int64(eurOffer.OfferId), offers[0].ID)
+		tt.Assert.Equal(int64(eurOffer.Data.Offer.OfferId), offers[0].ID)
 		tt.Assert.Equal("native", offers[0].Selling.Type)
 		tt.Assert.Equal("credit_alphanum4", offers[0].Buying.Type)
 		tt.Assert.Equal(issuer.Address(), offers[0].Seller)
@@ -430,10 +448,10 @@ func TestGetAccountOffersHandler(t *testing.T) {
 	handler := GetAccountOffersHandler{}
 
 	batch := q.NewOffersBatchInsertBuilder(0)
-	err := batch.Add(eurOffer, 3)
-	err = batch.Add(twoEurOffer, 3)
+	err := batch.Add(eurOffer)
+	err = batch.Add(twoEurOffer)
 	tt.Assert.NoError(err)
-	err = batch.Add(usdOffer, 3)
+	err = batch.Add(usdOffer)
 	tt.Assert.NoError(err)
 	tt.Assert.NoError(batch.Exec())
 

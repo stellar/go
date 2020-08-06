@@ -24,107 +24,149 @@ var (
 	usd             = xdr.MustNewCreditAsset("USD", trustLineIssuer)
 	euro            = xdr.MustNewCreditAsset("EUR", trustLineIssuer)
 
-	account1 = xdr.AccountEntry{
-		AccountId:     xdr.MustAddress(accountOne),
-		Balance:       20000,
-		SeqNum:        223456789,
-		NumSubEntries: 10,
-		Flags:         1,
-		HomeDomain:    "stellar.org",
-		Thresholds:    xdr.Thresholds{1, 2, 3, 4},
-		Ext: xdr.AccountEntryExt{
-			V: 1,
-			V1: &xdr.AccountEntryExtensionV1{
-				Liabilities: xdr.Liabilities{
-					Buying:  3,
-					Selling: 4,
+	account1 = xdr.LedgerEntry{
+		LastModifiedLedgerSeq: 1234,
+		Data: xdr.LedgerEntryData{
+			Type: xdr.LedgerEntryTypeAccount,
+			Account: &xdr.AccountEntry{
+				AccountId:     xdr.MustAddress(accountOne),
+				Balance:       20000,
+				SeqNum:        223456789,
+				NumSubEntries: 10,
+				Flags:         1,
+				HomeDomain:    "stellar.org",
+				Thresholds:    xdr.Thresholds{1, 2, 3, 4},
+				Ext: xdr.AccountEntryExt{
+					V: 1,
+					V1: &xdr.AccountEntryExtensionV1{
+						Liabilities: xdr.Liabilities{
+							Buying:  3,
+							Selling: 4,
+						},
+					},
 				},
 			},
 		},
 	}
 
-	account2 = xdr.AccountEntry{
-		AccountId:     xdr.MustAddress(accountTwo),
-		Balance:       50000,
-		SeqNum:        648736,
-		NumSubEntries: 10,
-		Flags:         2,
-		HomeDomain:    "meridian.stellar.org",
-		Thresholds:    xdr.Thresholds{5, 6, 7, 8},
-		Ext: xdr.AccountEntryExt{
-			V: 1,
-			V1: &xdr.AccountEntryExtensionV1{
-				Liabilities: xdr.Liabilities{
-					Buying:  30,
-					Selling: 40,
+	account2 = xdr.LedgerEntry{
+		LastModifiedLedgerSeq: 1234,
+		Data: xdr.LedgerEntryData{
+			Type: xdr.LedgerEntryTypeAccount,
+			Account: &xdr.AccountEntry{
+				AccountId:     xdr.MustAddress(accountTwo),
+				Balance:       50000,
+				SeqNum:        648736,
+				NumSubEntries: 10,
+				Flags:         2,
+				HomeDomain:    "meridian.stellar.org",
+				Thresholds:    xdr.Thresholds{5, 6, 7, 8},
+				Ext: xdr.AccountEntryExt{
+					V: 1,
+					V1: &xdr.AccountEntryExtensionV1{
+						Liabilities: xdr.Liabilities{
+							Buying:  30,
+							Selling: 40,
+						},
+					},
 				},
 			},
 		},
 	}
 
-	account3 = xdr.AccountEntry{
-		AccountId:     xdr.MustAddress(signer),
-		Balance:       50000,
-		SeqNum:        648736,
-		NumSubEntries: 10,
-		Flags:         2,
-		Thresholds:    xdr.Thresholds{5, 6, 7, 8},
-		Ext: xdr.AccountEntryExt{
-			V: 1,
-			V1: &xdr.AccountEntryExtensionV1{
-				Liabilities: xdr.Liabilities{
-					Buying:  30,
-					Selling: 40,
+	account3 = xdr.LedgerEntry{
+		LastModifiedLedgerSeq: 1234,
+		Data: xdr.LedgerEntryData{
+			Type: xdr.LedgerEntryTypeAccount,
+			Account: &xdr.AccountEntry{
+				AccountId:     xdr.MustAddress(signer),
+				Balance:       50000,
+				SeqNum:        648736,
+				NumSubEntries: 10,
+				Flags:         2,
+				Thresholds:    xdr.Thresholds{5, 6, 7, 8},
+				Ext: xdr.AccountEntryExt{
+					V: 1,
+					V1: &xdr.AccountEntryExtensionV1{
+						Liabilities: xdr.Liabilities{
+							Buying:  30,
+							Selling: 40,
+						},
+					},
 				},
 			},
 		},
 	}
 
-	eurTrustLine = xdr.TrustLineEntry{
-		AccountId: xdr.MustAddress(accountOne),
-		Asset:     euro,
-		Balance:   20000,
-		Limit:     223456789,
-		Flags:     1,
-		Ext: xdr.TrustLineEntryExt{
-			V: 1,
-			V1: &xdr.TrustLineEntryV1{
-				Liabilities: xdr.Liabilities{
-					Buying:  3,
-					Selling: 4,
+	eurTrustLine = xdr.LedgerEntry{
+		LastModifiedLedgerSeq: 1234,
+		Data: xdr.LedgerEntryData{
+			Type: xdr.LedgerEntryTypeTrustline,
+			TrustLine: &xdr.TrustLineEntry{
+				AccountId: xdr.MustAddress(accountOne),
+				Asset:     euro,
+				Balance:   20000,
+				Limit:     223456789,
+				Flags:     1,
+				Ext: xdr.TrustLineEntryExt{
+					V: 1,
+					V1: &xdr.TrustLineEntryV1{
+						Liabilities: xdr.Liabilities{
+							Buying:  3,
+							Selling: 4,
+						},
+					},
 				},
 			},
 		},
 	}
 
-	usdTrustLine = xdr.TrustLineEntry{
-		AccountId: xdr.MustAddress(accountTwo),
-		Asset:     usd,
-		Balance:   10000,
-		Limit:     123456789,
-		Flags:     0,
-		Ext: xdr.TrustLineEntryExt{
-			V: 1,
-			V1: &xdr.TrustLineEntryV1{
-				Liabilities: xdr.Liabilities{
-					Buying:  1,
-					Selling: 2,
+	usdTrustLine = xdr.LedgerEntry{
+		LastModifiedLedgerSeq: 1234,
+		Data: xdr.LedgerEntryData{
+			Type: xdr.LedgerEntryTypeTrustline,
+			TrustLine: &xdr.TrustLineEntry{
+				AccountId: xdr.MustAddress(accountTwo),
+				Asset:     usd,
+				Balance:   10000,
+				Limit:     123456789,
+				Flags:     0,
+				Ext: xdr.TrustLineEntryExt{
+					V: 1,
+					V1: &xdr.TrustLineEntryV1{
+						Liabilities: xdr.Liabilities{
+							Buying:  1,
+							Selling: 2,
+						},
+					},
 				},
 			},
 		},
 	}
 
-	data1 = xdr.DataEntry{
-		AccountId: xdr.MustAddress(accountOne),
-		DataName:  "test data",
-		// This also tests if base64 encoding is working as 0 is invalid UTF-8 byte
-		DataValue: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
+	data1 = xdr.LedgerEntry{
+		LastModifiedLedgerSeq: 100,
+		Data: xdr.LedgerEntryData{
+			Type: xdr.LedgerEntryTypeData,
+			Data: &xdr.DataEntry{
+				AccountId: xdr.MustAddress(accountOne),
+				DataName:  "test data",
+				// This also tests if base64 encoding is working as 0 is invalid UTF-8 byte
+				DataValue: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
+			},
+		},
 	}
 
-	data2 = xdr.DataEntry{
-		AccountId: xdr.MustAddress(accountTwo),
-		DataName:  "test data2",
-		DataValue: []byte{10, 11, 12, 13, 14, 15, 16, 17, 18, 19},
+	data2 = xdr.LedgerEntry{
+		LastModifiedLedgerSeq: 100,
+		Data: xdr.LedgerEntryData{
+			Type: xdr.LedgerEntryTypeData,
+			Data: &xdr.DataEntry{
+				AccountId: xdr.MustAddress(accountTwo),
+				DataName:  "test data2",
+				DataValue: []byte{10, 11, 12, 13, 14, 15, 16, 17, 18, 19},
+			},
+		},
 	}
 
 	accountSigners = []history.AccountSigner{
@@ -169,45 +211,63 @@ func TestAccountInfo(t *testing.T) {
 	accountID := xdr.MustAddress(
 		"GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU",
 	)
-	accountEntry := xdr.AccountEntry{
-		AccountId:     accountID,
-		Balance:       9999999900,
-		SeqNum:        8589934593,
-		NumSubEntries: 1,
-		InflationDest: nil,
-		HomeDomain:    "",
-		Thresholds:    thresholds,
-		Flags:         0,
+	accountEntry := xdr.LedgerEntry{
+		LastModifiedLedgerSeq: 4,
+		Data: xdr.LedgerEntryData{
+			Type: xdr.LedgerEntryTypeAccount,
+			Account: &xdr.AccountEntry{
+				AccountId:     accountID,
+				Balance:       9999999900,
+				SeqNum:        8589934593,
+				NumSubEntries: 1,
+				InflationDest: nil,
+				HomeDomain:    "",
+				Thresholds:    thresholds,
+				Flags:         0,
+			},
+		},
 	}
 	batch := q.NewAccountsBatchInsertBuilder(0)
-	err := batch.Add(accountEntry, 4)
+	err := batch.Add(accountEntry)
 	assert.NoError(t, err)
 	assert.NoError(t, batch.Exec())
 
 	tt.Assert.NoError(err)
 
-	_, err = q.InsertTrustLine(xdr.TrustLineEntry{
-		AccountId: accountID,
-		Asset: xdr.MustNewCreditAsset(
-			"USD",
-			"GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4",
-		),
-		Balance: 0,
-		Limit:   9223372036854775807,
-		Flags:   1,
-	}, 6)
+	_, err = q.InsertTrustLine(xdr.LedgerEntry{
+		LastModifiedLedgerSeq: 6,
+		Data: xdr.LedgerEntryData{
+			Type: xdr.LedgerEntryTypeTrustline,
+			TrustLine: &xdr.TrustLineEntry{
+				AccountId: accountID,
+				Asset: xdr.MustNewCreditAsset(
+					"USD",
+					"GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4",
+				),
+				Balance: 0,
+				Limit:   9223372036854775807,
+				Flags:   1,
+			},
+		},
+	})
 	assert.NoError(t, err)
 
-	_, err = q.InsertTrustLine(xdr.TrustLineEntry{
-		AccountId: accountID,
-		Asset: xdr.MustNewCreditAsset(
-			"EUR",
-			"GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4",
-		),
-		Balance: 0,
-		Limit:   9223372036854775807,
-		Flags:   1,
-	}, 6)
+	_, err = q.InsertTrustLine(xdr.LedgerEntry{
+		LastModifiedLedgerSeq: 1234,
+		Data: xdr.LedgerEntryData{
+			Type: xdr.LedgerEntryTypeTrustline,
+			TrustLine: &xdr.TrustLineEntry{
+				AccountId: accountID,
+				Asset: xdr.MustNewCreditAsset(
+					"EUR",
+					"GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4",
+				),
+				Balance: 0,
+				Limit:   9223372036854775807,
+				Flags:   1,
+			},
+		},
+	})
 	assert.NoError(t, err)
 
 	ledgerFourCloseTime := time.Now().Unix()
@@ -283,11 +343,11 @@ func TestGetAccountsHandlerPageResultsBySigner(t *testing.T) {
 	handler := &GetAccountsHandler{}
 
 	batch := q.NewAccountsBatchInsertBuilder(0)
-	err := batch.Add(account1, 1234)
+	err := batch.Add(account1)
 	assert.NoError(t, err)
-	err = batch.Add(account2, 1234)
+	err = batch.Add(account2)
 	assert.NoError(t, err)
-	err = batch.Add(account3, 1234)
+	err = batch.Add(account3)
 	assert.NoError(t, err)
 	assert.NoError(t, batch.Exec())
 
@@ -363,9 +423,9 @@ func TestGetAccountsHandlerPageResultsByAsset(t *testing.T) {
 	handler := &GetAccountsHandler{}
 
 	batch := q.NewAccountsBatchInsertBuilder(0)
-	err := batch.Add(account1, 1234)
+	err := batch.Add(account1)
 	assert.NoError(t, err)
-	err = batch.Add(account2, 1234)
+	err = batch.Add(account2)
 	assert.NoError(t, err)
 	assert.NoError(t, batch.Exec())
 	ledgerCloseTime := time.Now().Unix()
@@ -384,9 +444,9 @@ func TestGetAccountsHandlerPageResultsByAsset(t *testing.T) {
 		tt.Assert.NoError(err)
 	}
 
-	_, err = q.InsertAccountData(data1, 1234)
+	_, err = q.InsertAccountData(data1)
 	assert.NoError(t, err)
-	_, err = q.InsertAccountData(data2, 1234)
+	_, err = q.InsertAccountData(data2)
 	assert.NoError(t, err)
 
 	var assetType, code, issuer string
@@ -408,9 +468,9 @@ func TestGetAccountsHandlerPageResultsByAsset(t *testing.T) {
 	tt.Assert.NoError(err)
 	tt.Assert.Equal(0, len(records))
 
-	_, err = q.InsertTrustLine(eurTrustLine, 1234)
+	_, err = q.InsertTrustLine(eurTrustLine)
 	assert.NoError(t, err)
-	_, err = q.InsertTrustLine(usdTrustLine, 1235)
+	_, err = q.InsertTrustLine(usdTrustLine)
 	assert.NoError(t, err)
 
 	records, err = handler.GetResourcePage(
@@ -432,7 +492,7 @@ func TestGetAccountsHandlerPageResultsByAsset(t *testing.T) {
 	tt.Assert.Len(result.Balances, 2)
 	tt.Assert.Len(result.Signers, 2)
 
-	_, ok := result.Data[string(data2.DataName)]
+	_, ok := result.Data[string(data2.Data.Data.DataName)]
 	tt.Assert.True(ok)
 }
 

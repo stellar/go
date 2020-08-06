@@ -10,8 +10,8 @@ type accountsBatchInsertBuilder struct {
 	builder db.BatchInsertBuilder
 }
 
-func (i *accountsBatchInsertBuilder) Add(account xdr.AccountEntry, lastModifiedLedger xdr.Uint32) error {
-	return i.builder.Row(accountToMap(account, lastModifiedLedger))
+func (i *accountsBatchInsertBuilder) Add(entry xdr.LedgerEntry) error {
+	return i.builder.Row(accountToMap(entry))
 }
 
 func (i *accountsBatchInsertBuilder) Exec() error {

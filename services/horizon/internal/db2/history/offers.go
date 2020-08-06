@@ -13,7 +13,7 @@ type QOffers interface {
 	CountOffers() (int, error)
 	GetUpdatedOffers(newerThanSequence uint32) ([]Offer, error)
 	NewOffersBatchInsertBuilder(maxBatchSize int) OffersBatchInsertBuilder
-	UpdateOffer(offer xdr.OfferEntry, lastModifiedLedger xdr.Uint32) (int64, error)
+	UpdateOffer(entry xdr.LedgerEntry) (int64, error)
 	RemoveOffer(offerID xdr.Int64, lastModifiedLedger uint32) (int64, error)
 	CompactOffers(cutOffSequence uint32) (int64, error)
 }
@@ -100,7 +100,9 @@ func (q *Q) GetUpdatedOffers(newerThanSequence uint32) ([]Offer, error) {
 
 // UpdateOffer updates a row in the offers table.
 // Returns number of rows affected and error.
-func (q *Q) UpdateOffer(offer xdr.OfferEntry, lastModifiedLedger xdr.Uint32) (int64, error) {
+func (q *Q) UpdateOffer(entry xdr.LedgerEntry) (int64, error) {
+	offer := entry.Data.MustOffer()
+
 	var price float64
 	if offer.Price.N > 0 {
 		price = float64(offer.Price.N) / float64(offer.Price.D)
@@ -117,7 +119,7 @@ func (q *Q) UpdateOffer(offer xdr.OfferEntry, lastModifiedLedger xdr.Uint32) (in
 		"priced":               offer.Price.D,
 		"price":                price,
 		"flags":                offer.Flags,
-		"last_modified_ledger": lastModifiedLedger,
+		"last_modified_ledger": entry.LastModifiedLedgerSeq,
 	}
 
 	sql := sq.Update("offers").SetMap(offerMap).Where("offer_id = ?", offer.OfferId)

@@ -2,13 +2,14 @@ package actions
 
 import (
 	"database/sql"
-	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/services/horizon/internal/test"
-	"github.com/stretchr/testify/assert"
 	"math"
 	"net/http/httptest"
 	"strconv"
 	"testing"
+
+	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/services/horizon/internal/test"
+	"github.com/stretchr/testify/assert"
 
 	protocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/xdr"
@@ -490,36 +491,105 @@ func TestOrderbookGetResource(t *testing.T) {
 		},
 	}
 
-	sellEurOffer := twoEurOffer
-	sellEurOffer.Buying, sellEurOffer.Selling = sellEurOffer.Selling, sellEurOffer.Buying
-	sellEurOffer.OfferId = 15
+	sellEurOffer := xdr.LedgerEntry{
+		LastModifiedLedgerSeq: 4,
+		Data: xdr.LedgerEntryData{
+			Type: xdr.LedgerEntryTypeOffer,
+			Offer: &xdr.OfferEntry{
+				SellerId: seller,
+				OfferId:  xdr.Int64(15),
+				Buying:   nativeAsset,
+				Selling:  eurAsset,
+				Price: xdr.Price{
+					N: 2,
+					D: 1,
+				},
+				Flags:  2,
+				Amount: xdr.Int64(500),
+			},
+		},
+	}
 
-	otherEurOffer := twoEurOffer
-	otherEurOffer.Amount = xdr.Int64(math.MaxInt64)
-	otherEurOffer.OfferId = 16
+	otherEurOffer := xdr.LedgerEntry{
+		LastModifiedLedgerSeq: 16,
+		Data: xdr.LedgerEntryData{
+			Type: xdr.LedgerEntryTypeOffer,
+			Offer: &xdr.OfferEntry{
+				SellerId: seller,
+				OfferId:  xdr.Int64(6),
+				Buying:   eurAsset,
+				Selling:  nativeAsset,
+				Price: xdr.Price{
+					N: 2,
+					D: 1,
+				},
+				Flags:  2,
+				Amount: xdr.Int64(math.MaxInt64),
+			},
+		},
+	}
 
-	nonCanonicalPriceTwoEurOffer := twoEurOffer
-	nonCanonicalPriceTwoEurOffer.OfferId = 30
-	// Add a separate offer with the same price value, but
-	// using a non-canonical representation, to make sure
-	// they are coalesced into the same price level
-	nonCanonicalPriceTwoEurOffer.Price.N *= 15
-	nonCanonicalPriceTwoEurOffer.Price.D *= 15
+	nonCanonicalPriceTwoEurOffer := xdr.LedgerEntry{
+		LastModifiedLedgerSeq: 30,
+		Data: xdr.LedgerEntryData{
+			Type: xdr.LedgerEntryTypeOffer,
+			Offer: &xdr.OfferEntry{
+				SellerId: seller,
+				OfferId:  xdr.Int64(7),
+				Buying:   eurAsset,
+				Selling:  nativeAsset,
+				Price: xdr.Price{
+					// Add a separate offer with the same price value, but
+					// using a non-canonical representation, to make sure
+					// they are coalesced into the same price level
+					N: 2 * 15,
+					D: 1 * 15,
+				},
+				Flags:  2,
+				Amount: xdr.Int64(500),
+			},
+		},
+	}
 
-	threeEurOffer := twoEurOffer
-	threeEurOffer.Price.N = 3
-	threeEurOffer.OfferId = 20
+	threeEurOffer := xdr.LedgerEntry{
+		LastModifiedLedgerSeq: 4,
+		Data: xdr.LedgerEntryData{
+			Type: xdr.LedgerEntryTypeOffer,
+			Offer: &xdr.OfferEntry{
+				SellerId: seller,
+				OfferId:  xdr.Int64(20),
+				Buying:   eurAsset,
+				Selling:  nativeAsset,
+				Price: xdr.Price{
+					N: 3,
+					D: 1,
+				},
+				Flags:  2,
+				Amount: xdr.Int64(500),
+			},
+		},
+	}
 
-	sellEurOffer.Price.N = 9
-	sellEurOffer.Price.D = 10
+	otherSellEurOffer := xdr.LedgerEntry{
+		LastModifiedLedgerSeq: 4,
+		Data: xdr.LedgerEntryData{
+			Type: xdr.LedgerEntryTypeOffer,
+			Offer: &xdr.OfferEntry{
+				SellerId: seller,
+				OfferId:  xdr.Int64(17),
+				Buying:   nativeAsset,
+				Selling:  eurAsset,
+				Price: xdr.Price{
+					N: 5,
+					D: 9,
+				},
+				Flags:  2,
+				Amount: xdr.Int64(500),
+			},
+		},
+	}
 
-	otherSellEurOffer := sellEurOffer
-	otherSellEurOffer.OfferId = 17
-	// sellEurOffer.Price * 2
-	otherSellEurOffer.Price.N = 9
-	otherSellEurOffer.Price.D = 5
-
-	offers := []xdr.OfferEntry{
+	offers := []xdr.LedgerEntry{
 		twoEurOffer,
 		otherEurOffer,
 		nonCanonicalPriceTwoEurOffer,
@@ -531,8 +601,8 @@ func TestOrderbookGetResource(t *testing.T) {
 	assert.NoError(t, q.TruncateTables([]string{"offers"}))
 
 	batch := q.NewOffersBatchInsertBuilder(0)
-	for i, offer := range offers {
-		assert.NoError(t, batch.Add(offer, xdr.Uint32(i+1)))
+	for _, offer := range offers {
+		assert.NoError(t, batch.Add(offer))
 	}
 	assert.NoError(t, batch.Exec())
 
@@ -545,25 +615,25 @@ func TestOrderbookGetResource(t *testing.T) {
 	fullResponse := empty
 	fullResponse.Asks = []protocol.PriceLevel{
 		{
-			PriceR: protocol.Price{N: int32(twoEurOffer.Price.N), D: int32(twoEurOffer.Price.D)},
+			PriceR: protocol.Price{N: int32(twoEurOffer.Data.Offer.Price.N), D: int32(twoEurOffer.Data.Offer.Price.D)},
 			Price:  "2.0000000",
 			Amount: "922337203685.4776807",
 		},
 		{
-			PriceR: protocol.Price{N: int32(threeEurOffer.Price.N), D: int32(threeEurOffer.Price.D)},
+			PriceR: protocol.Price{N: int32(threeEurOffer.Data.Offer.Price.N), D: int32(threeEurOffer.Data.Offer.Price.D)},
 			Price:  "3.0000000",
 			Amount: "0.0000500",
 		},
 	}
 	fullResponse.Bids = []protocol.PriceLevel{
 		{
-			PriceR: protocol.Price{N: int32(sellEurOffer.Price.D), D: int32(sellEurOffer.Price.N)},
-			Price:  "1.1111111",
+			PriceR: protocol.Price{N: int32(otherSellEurOffer.Data.Offer.Price.D), D: int32(otherSellEurOffer.Data.Offer.Price.N)},
+			Price:  "1.8000000",
 			Amount: "0.0000500",
 		},
 		{
-			PriceR: protocol.Price{N: int32(otherSellEurOffer.Price.D), D: int32(otherSellEurOffer.Price.N)},
-			Price:  "0.5555556",
+			PriceR: protocol.Price{N: int32(sellEurOffer.Data.Offer.Price.D), D: int32(sellEurOffer.Data.Offer.Price.N)},
+			Price:  "0.5000000",
 			Amount: "0.0000500",
 		},
 	}
@@ -571,15 +641,15 @@ func TestOrderbookGetResource(t *testing.T) {
 	limitResponse := empty
 	limitResponse.Asks = []protocol.PriceLevel{
 		{
-			PriceR: protocol.Price{N: int32(twoEurOffer.Price.N), D: int32(twoEurOffer.Price.D)},
+			PriceR: protocol.Price{N: int32(twoEurOffer.Data.Offer.Price.N), D: int32(twoEurOffer.Data.Offer.Price.D)},
 			Price:  "2.0000000",
 			Amount: "922337203685.4776807",
 		},
 	}
 	limitResponse.Bids = []protocol.PriceLevel{
 		{
-			PriceR: protocol.Price{N: int32(sellEurOffer.Price.D), D: int32(sellEurOffer.Price.N)},
-			Price:  "1.1111111",
+			PriceR: protocol.Price{N: int32(otherSellEurOffer.Data.Offer.Price.D), D: int32(otherSellEurOffer.Data.Offer.Price.N)},
+			Price:  "1.8000000",
 			Amount: "0.0000500",
 		},
 	}

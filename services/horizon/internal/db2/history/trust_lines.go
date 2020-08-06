@@ -94,11 +94,11 @@ func (q *Q) GetTrustLinesByKeys(keys []xdr.LedgerKeyTrustLine) ([]TrustLine, err
 
 // InsertTrustLine creates a row in the trust lines table.
 // Returns number of rows affected and error.
-func (q *Q) InsertTrustLine(trustLine xdr.TrustLineEntry, lastModifiedLedger xdr.Uint32) (int64, error) {
-	m := trustLineToMap(trustLine, lastModifiedLedger)
+func (q *Q) InsertTrustLine(entry xdr.LedgerEntry) (int64, error) {
+	m := trustLineToMap(entry)
 
 	// Add lkey only when inserting rows
-	key, err := trustLineEntryToLedgerKeyString(trustLine)
+	key, err := trustLineEntryToLedgerKeyString(entry)
 	if err != nil {
 		return 0, errors.Wrap(err, "Error running trustLineEntryToLedgerKeyString")
 	}
@@ -115,20 +115,14 @@ func (q *Q) InsertTrustLine(trustLine xdr.TrustLineEntry, lastModifiedLedger xdr
 
 // UpdateTrustLine updates a row in the trust lines table.
 // Returns number of rows affected and error.
-func (q *Q) UpdateTrustLine(trustLine xdr.TrustLineEntry, lastModifiedLedger xdr.Uint32) (int64, error) {
-	ledgerKey := xdr.LedgerKey{}
-	err := ledgerKey.SetTrustline(trustLine.AccountId, trustLine.Asset)
-	if err != nil {
-		return 0, errors.Wrap(err, "Error creating ledger key")
-	}
-
-	key, err := trustLineEntryToLedgerKeyString(trustLine)
+func (q *Q) UpdateTrustLine(entry xdr.LedgerEntry) (int64, error) {
+	key, err := trustLineEntryToLedgerKeyString(entry)
 	if err != nil {
 		return 0, errors.Wrap(err, "Error running trustLineEntryToLedgerKeyString")
 	}
 
 	sql := sq.Update("trust_lines").
-		SetMap(trustLineToMap(trustLine, lastModifiedLedger)).
+		SetMap(trustLineToMap(entry)).
 		Where(map[string]interface{}{"ledger_key": key})
 	result, err := q.Exec(sql)
 	if err != nil {
@@ -153,13 +147,12 @@ func (q *Q) UpsertTrustLines(trustLines []xdr.LedgerEntry) error {
 			return errors.Errorf("Invalid entry type: %d", entry.Data.Type)
 		}
 
-		key, err := trustLineEntryToLedgerKeyString(entry.Data.MustTrustLine())
+		key, err := trustLineEntryToLedgerKeyString(entry)
 		if err != nil {
 			return errors.Wrap(err, "Error running trustLineEntryToLedgerKeyString")
 		}
 
-		m := trustLineToMap(entry.Data.MustTrustLine(), entry.LastModifiedLedgerSeq)
-
+		m := trustLineToMap(entry)
 		ledgerKey = append(ledgerKey, key)
 		accountID = append(accountID, m["account_id"].(string))
 		assetType = append(assetType, m["asset_type"].(xdr.AssetType))
@@ -256,12 +249,8 @@ func (q *Q) GetSortedTrustLinesByAccountIDs(id []string) ([]TrustLine, error) {
 	return data, err
 }
 
-func trustLineEntryToLedgerKeyString(trustLine xdr.TrustLineEntry) (string, error) {
-	ledgerKey := &xdr.LedgerKey{}
-	err := ledgerKey.SetTrustline(trustLine.AccountId, trustLine.Asset)
-	if err != nil {
-		return "", errors.Wrap(err, "Error running ledgerKey.SetTrustline")
-	}
+func trustLineEntryToLedgerKeyString(entry xdr.LedgerEntry) (string, error) {
+	ledgerKey := entry.LedgerKey()
 	key, err := ledgerKey.MarshalBinary()
 	if err != nil {
 		return "", errors.Wrap(err, "Error running MarshalBinaryCompress")
@@ -284,18 +273,14 @@ func ledgerKeyTrustLineToString(trustLineKey xdr.LedgerKeyTrustLine) (string, er
 	return base64.StdEncoding.EncodeToString(key), nil
 }
 
-func trustLineToMap(trustLine xdr.TrustLineEntry, lastModifiedLedger xdr.Uint32) map[string]interface{} {
+func trustLineToMap(entry xdr.LedgerEntry) map[string]interface{} {
+	trustLine := entry.Data.MustTrustLine()
+
 	var assetType xdr.AssetType
 	var assetCode, assetIssuer string
 	trustLine.Asset.MustExtract(&assetType, &assetCode, &assetIssuer)
 
-	var buyingliabilities, sellingliabilities xdr.Int64
-	if trustLine.Ext.V1 != nil {
-		v1 := trustLine.Ext.V1
-		buyingliabilities = v1.Liabilities.Buying
-		sellingliabilities = v1.Liabilities.Selling
-	}
-
+	liabilities := trustLine.Liabilities()
 	return map[string]interface{}{
 		"account_id":           trustLine.AccountId.Address(),
 		"asset_type":           assetType,
@@ -303,10 +288,10 @@ func trustLineToMap(trustLine xdr.TrustLineEntry, lastModifiedLedger xdr.Uint32)
 		"asset_code":           assetCode,
 		"balance":              trustLine.Balance,
 		"trust_line_limit":     trustLine.Limit,
-		"buying_liabilities":   buyingliabilities,
-		"selling_liabilities":  sellingliabilities,
+		"buying_liabilities":   liabilities.Buying,
+		"selling_liabilities":  liabilities.Selling,
 		"flags":                trustLine.Flags,
-		"last_modified_ledger": lastModifiedLedger,
+		"last_modified_ledger": entry.LastModifiedLedgerSeq,
 	}
 }
 

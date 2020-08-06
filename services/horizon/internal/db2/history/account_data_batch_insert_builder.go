@@ -5,9 +5,10 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-func (i *accountDataBatchInsertBuilder) Add(data xdr.DataEntry, lastModifiedLedger xdr.Uint32) error {
+func (i *accountDataBatchInsertBuilder) Add(entry xdr.LedgerEntry) error {
+	data := entry.Data.MustData()
 	// Add ledger_key only when inserting rows
-	key, err := dataEntryToLedgerKeyString(data)
+	key, err := dataEntryToLedgerKeyString(entry)
 	if err != nil {
 		return errors.Wrap(err, "Error running dataEntryToLedgerKeyString")
 	}
@@ -17,7 +18,7 @@ func (i *accountDataBatchInsertBuilder) Add(data xdr.DataEntry, lastModifiedLedg
 		"account_id":           data.AccountId.Address(),
 		"name":                 data.DataName,
 		"value":                AccountDataValue(data.DataValue),
-		"last_modified_ledger": lastModifiedLedger,
+		"last_modified_ledger": entry.LastModifiedLedgerSeq,
 	})
 }
 

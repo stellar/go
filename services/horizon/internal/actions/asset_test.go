@@ -212,15 +212,21 @@ func TestAssetStats(t *testing.T) {
 		issuer,
 		otherIssuer,
 	} {
-		accountEntry := xdr.AccountEntry{
-			Flags:      xdr.Uint32(account.Flags),
-			HomeDomain: xdr.String32(account.HomeDomain),
+		accountEntry := xdr.LedgerEntry{
+			LastModifiedLedgerSeq: 100,
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeAccount,
+				Account: &xdr.AccountEntry{
+					Flags:      xdr.Uint32(account.Flags),
+					HomeDomain: xdr.String32(account.HomeDomain),
+				},
+			},
 		}
-		if err := accountEntry.AccountId.SetAddress(account.AccountID); err != nil {
+		if err := accountEntry.Data.Account.AccountId.SetAddress(account.AccountID); err != nil {
 			t.Fatalf("unexpected error %v", err)
 		}
 		batch := q.NewAccountsBatchInsertBuilder(0)
-		err := batch.Add(accountEntry, 3)
+		err := batch.Add(accountEntry)
 		tt.Assert.NoError(err)
 		tt.Assert.NoError(batch.Exec())
 	}
