@@ -352,7 +352,7 @@ func TestGetAccountsHandlerPageResultsBySigner(t *testing.T) {
 	assert.NoError(t, batch.Exec())
 
 	for _, row := range accountSigners {
-		q.CreateAccountSigner(row.Account, row.Signer, row.Weight)
+		q.CreateAccountSigner(row.Account, row.Signer, row.Weight, nil)
 	}
 
 	records, err := handler.GetResourcePage(
@@ -440,7 +440,7 @@ func TestGetAccountsHandlerPageResultsByAsset(t *testing.T) {
 	assert.NoError(t, err)
 
 	for _, row := range accountSigners {
-		_, err = q.CreateAccountSigner(row.Account, row.Signer, row.Weight)
+		_, err = q.CreateAccountSigner(row.Account, row.Signer, row.Weight, nil)
 		tt.Assert.NoError(err)
 	}
 

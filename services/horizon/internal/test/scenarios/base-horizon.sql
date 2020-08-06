@@ -270,8 +270,11 @@ CREATE TABLE accounts_data (
 CREATE TABLE accounts_signers (
     account_id character varying(64) NOT NULL,
     signer character varying(64) NOT NULL,
-    weight integer NOT NULL
+    weight integer NOT NULL,
+    sponsor character varying(56)
 );
+
+CREATE INDEX accounts_signers_by_sponsor ON accounts_signers USING BTREE(sponsor);
 
 
 --

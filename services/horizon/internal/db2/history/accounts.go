@@ -138,7 +138,7 @@ func (q *Q) UpsertAccounts(accounts []xdr.LedgerEntry) error {
 			unnest(?::int[]),    /*	threshold_medium */
 			unnest(?::int[]),    /*	threshold_high */
 			unnest(?::int[]),    /*	last_modified_ledger */
-			unnest(?::text[]), /*	sponsor */
+			unnest(?::text[]),   /*	sponsor */
 			unnest(?::int[]),    /*	num_sponsored */
 			unnest(?::int[])     /*	num_sponsoring */
 		)
