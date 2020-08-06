@@ -9,12 +9,12 @@ import (
 )
 
 type ClaimableBalancesProcessor struct {
-	q     history.QClaimableBalances
-	cache *io.LedgerEntryChangeCache
+	qClaimableBalances history.QClaimableBalances
+	cache              *io.LedgerEntryChangeCache
 }
 
 func NewClaimableBalancesProcessor(Q history.QClaimableBalances) *ClaimableBalancesProcessor {
-	p := &ClaimableBalancesProcessor{q: Q}
+	p := &ClaimableBalancesProcessor{qClaimableBalances: Q}
 	p.reset()
 	return p
 }
@@ -45,7 +45,7 @@ func (p *ClaimableBalancesProcessor) ProcessChange(change io.Change) error {
 }
 
 func (p *ClaimableBalancesProcessor) Commit() error {
-	batch := p.q.NewClaimableBalancesBatchInsertBuilder(maxBatchSize)
+	batch := p.qClaimableBalances.NewClaimableBalancesBatchInsertBuilder(maxBatchSize)
 
 	changes := p.cache.GetChanges()
 	for _, change := range changes {
@@ -68,7 +68,7 @@ func (p *ClaimableBalancesProcessor) Commit() error {
 			if err != nil {
 				return errors.Wrap(err, "Error creating ledger key")
 			}
-			rowsAffected, err = p.q.RemoveClaimableBalance(*ledgerKey.ClaimableBalance)
+			rowsAffected, err = p.qClaimableBalances.RemoveClaimableBalance(*ledgerKey.ClaimableBalance)
 		default:
 			// Updated
 			action = "updating"
@@ -77,7 +77,7 @@ func (p *ClaimableBalancesProcessor) Commit() error {
 			if err != nil {
 				return errors.Wrap(err, "Error creating ledger key")
 			}
-			rowsAffected, err = p.q.UpdateClaimableBalance(change.Post)
+			rowsAffected, err = p.qClaimableBalances.UpdateClaimableBalance(change.Post)
 		}
 
 		if err != nil {
@@ -104,5 +104,4 @@ func (p *ClaimableBalancesProcessor) Commit() error {
 	}
 
 	return nil
-
 }
