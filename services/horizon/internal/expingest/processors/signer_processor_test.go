@@ -132,6 +132,7 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestNewAccount() {
 			"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
 			"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
 			int32(1),
+			(*string)(nil),
 		).
 		Return(int64(1), nil).Once()
 
@@ -195,6 +196,7 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestNewSigner() {
 			"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
 			"GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV",
 			int32(10),
+			(*string)(nil),
 		).
 		Return(int64(1), nil).Once()
 
@@ -204,6 +206,7 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestNewSigner() {
 			"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
 			"GCAHY6JSXQFKWKP6R7U5JPXDVNV4DJWOWRFLY3Y6YPBF64QRL4BPFDNS",
 			int32(15),
+			(*string)(nil),
 		).
 		Return(int64(1), nil).Once()
 
@@ -271,6 +274,7 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestSignerRemoved() {
 			"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
 			"GCAHY6JSXQFKWKP6R7U5JPXDVNV4DJWOWRFLY3Y6YPBF64QRL4BPFDNS",
 			int32(15),
+			(*string)(nil),
 		).
 		Return(int64(1), nil).Once()
 
@@ -340,6 +344,7 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestSignerPreAuthTxRemovedTxFai
 			"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
 			"GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV",
 			int32(10),
+			(*string)(nil),
 		).
 		Return(int64(1), nil).Once()
 
@@ -415,6 +420,7 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestNewAccountNoRowsAffected() 
 			"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
 			"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
 			int32(1),
+			(*string)(nil),
 		).
 		Return(int64(0), nil).Once()
 
@@ -497,6 +503,7 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestProcessUpgradeChange() {
 			"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
 			"GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV",
 			int32(12),
+			(*string)(nil),
 		).
 		Return(int64(1), nil).Once()
 
@@ -506,6 +513,7 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestProcessUpgradeChange() {
 			"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
 			"GCAHY6JSXQFKWKP6R7U5JPXDVNV4DJWOWRFLY3Y6YPBF64QRL4BPFDNS",
 			int32(15),
+			(*string)(nil),
 		).
 		Return(int64(1), nil).Once()
 

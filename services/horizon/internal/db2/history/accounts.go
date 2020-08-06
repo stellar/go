@@ -117,8 +117,8 @@ func (q *Q) UpsertAccounts(accounts []xdr.LedgerEntry) error {
 		thresholdHigh = append(thresholdHigh, m["threshold_high"].(uint8))
 		lastModifiedLedger = append(lastModifiedLedger, m["last_modified_ledger"].(xdr.Uint32))
 		sponsor = append(sponsor, m["sponsor"].(null.String))
-		numSponsored = append(numSponsored, m["numSponsored"].(xdr.Uint32))
-		numSponsoring = append(numSponsoring, m["numSponsoring"].(xdr.Uint32))
+		numSponsored = append(numSponsored, m["num_sponsored"].(xdr.Uint32))
+		numSponsoring = append(numSponsoring, m["num_sponsoring"].(xdr.Uint32))
 	}
 
 	sql := `
@@ -138,7 +138,7 @@ func (q *Q) UpsertAccounts(accounts []xdr.LedgerEntry) error {
 			unnest(?::int[]),    /*	threshold_medium */
 			unnest(?::int[]),    /*	threshold_high */
 			unnest(?::int[]),    /*	last_modified_ledger */
-			unnest(?::string[]), /*	sponsor */
+			unnest(?::text[]), /*	sponsor */
 			unnest(?::int[]),    /*	num_sponsored */
 			unnest(?::int[])     /*	num_sponsoring */
 		)

@@ -34,8 +34,8 @@ func (m *MockQSigners) NewAccountSignersBatchInsertBuilder(maxBatchSize int) Acc
 	return a.Get(0).(AccountSignersBatchInsertBuilder)
 }
 
-func (m *MockQSigners) CreateAccountSigner(account, signer string, weight int32) (int64, error) {
-	a := m.Called(account, signer, weight)
+func (m *MockQSigners) CreateAccountSigner(account, signer string, weight int32, sponsor *string) (int64, error) {
+	a := m.Called(account, signer, weight, sponsor)
 	return a.Get(0).(int64), a.Error(1)
 }
 

@@ -178,5 +178,5 @@ var selectOffers = sq.Select(`
 	flags,
 	deleted,
 	last_modified_ledger,
-	sponsor,
+	sponsor
 `).From("offers")
