@@ -2,7 +2,9 @@ package history
 
 import (
 	"crypto/sha256"
+	"database/sql/driver"
 	"encoding/hex"
+	"encoding/json"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/guregu/null"
@@ -15,17 +17,44 @@ import (
 type ClaimableBalance struct {
 	ID                 string                 `db:"id"`
 	BalanceID          xdr.ClaimableBalanceId `db:"balance_id"`
+	Claimants          Claimants              `db:"claimants"`
 	Asset              xdr.Asset              `db:"asset"`
 	Amount             xdr.Int64              `db:"amount"`
 	Sponsor            null.String            `db:"sponsor"`
 	LastModifiedLedger uint32                 `db:"last_modified_ledger"`
 }
 
-// Claimant is a row of data from the `claimable_balances_claimants` table
+type Claimants []Claimant
+
+func (c Claimants) Value() (driver.Value, error) {
+	return json.Marshal(c)
+}
+
+func (c *Claimants) Scan(value interface{}) error {
+	b, ok := value.([]byte)
+	if !ok {
+		return errors.New("type assertion to []byte failed")
+	}
+
+	return json.Unmarshal(b, &c)
+}
+
 type Claimant struct {
-	ID          string             `db:"id"`
-	Destination string             `db:"destination"`
-	Predicate   xdr.ClaimPredicate `db:"predicate"`
+	Destination string             `json:"destination"`
+	Predicate   xdr.ClaimPredicate `json:"predicate"`
+}
+
+func (c Claimant) Value() (driver.Value, error) {
+	return json.Marshal(c)
+}
+
+func (c *Claimant) Scan(value interface{}) error {
+	b, ok := value.([]byte)
+	if !ok {
+		return errors.New("type assertion to []byte failed")
+	}
+
+	return json.Unmarshal(b, &c)
 }
 
 type ClaimableBalancesBatchInsertBuilder interface {
@@ -88,6 +117,19 @@ func balanceIDToHex(balanceID xdr.ClaimableBalanceId) (string, error) {
 	return hex.EncodeToString(sum[:]), nil
 }
 
+func buildClaimants(claimants []xdr.Claimant) Claimants {
+	hClaimants := Claimants{}
+	for _, c := range claimants {
+		xc := c.MustV0()
+		hClaimants = append(hClaimants, Claimant{
+			Destination: xc.Destination.Address(),
+			Predicate:   xc.Predicate,
+		})
+	}
+
+	return hClaimants
+}
+
 func (i *claimableBalancesBatchInsertBuilder) Add(entry *xdr.LedgerEntry) error {
 	cBalance := entry.Data.MustClaimableBalance()
 	id, err := balanceIDToHex(cBalance.BalanceId)
@@ -97,6 +139,7 @@ func (i *claimableBalancesBatchInsertBuilder) Add(entry *xdr.LedgerEntry) error 
 	row := ClaimableBalance{
 		ID:                 id,
 		BalanceID:          cBalance.BalanceId,
+		Claimants:          buildClaimants(cBalance.Claimants),
 		Asset:              cBalance.Asset,
 		Amount:             cBalance.Amount,
 		Sponsor:            null.StringFromPtr(nil), // TDB - we can add this later since there might be code from Bartek's PR which we can use to pull the sponsor,
@@ -112,6 +155,7 @@ func (i *claimableBalancesBatchInsertBuilder) Exec() error {
 var selectClaimableBalances = sq.Select(
 	"cb.id, " +
 		"cb.balance_id, " +
+		"cb.claimants, " +
 		"cb.asset, " +
 		"cb.amount, " +
 		"cb.sponsor, " +
