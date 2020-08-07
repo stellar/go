@@ -43,6 +43,16 @@ func (t Asset) Value() (driver.Value, error) {
 	return MarshalBase64(t)
 }
 
+// Scan reads from src into a ClaimableBalanceId
+func (t *ClaimableBalanceId) Scan(src interface{}) error {
+	return safeBase64Scan(src, t)
+}
+
+// Value implements the database/sql/driver Valuer interface.
+func (t ClaimableBalanceId) Value() (driver.Value, error) {
+	return MarshalBase64(t)
+}
+
 // Scan reads from src into an Int64
 func (t *Int64) Scan(src interface{}) error {
 	val, ok := src.(int64)
