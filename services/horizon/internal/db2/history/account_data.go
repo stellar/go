@@ -68,12 +68,8 @@ func ledgerKeyDataToString(data xdr.LedgerKeyData) (string, error) {
 	return base64.StdEncoding.EncodeToString(key), nil
 }
 
-func dataEntryToLedgerKeyString(data xdr.DataEntry) (string, error) {
-	ledgerKey := &xdr.LedgerKey{}
-	err := ledgerKey.SetData(data.AccountId, string(data.DataName))
-	if err != nil {
-		return "", errors.Wrap(err, "Error running ledgerKey.SetTrustline")
-	}
+func dataEntryToLedgerKeyString(entry xdr.LedgerEntry) (string, error) {
+	ledgerKey := entry.LedgerKey()
 	key, err := ledgerKey.MarshalBinary()
 	if err != nil {
 		return "", errors.Wrap(err, "Error running MarshalBinaryCompress")
@@ -84,9 +80,11 @@ func dataEntryToLedgerKeyString(data xdr.DataEntry) (string, error) {
 
 // InsertAccountData creates a row in the accounts_data table.
 // Returns number of rows affected and error.
-func (q *Q) InsertAccountData(data xdr.DataEntry, lastModifiedLedger xdr.Uint32) (int64, error) {
+func (q *Q) InsertAccountData(entry xdr.LedgerEntry) (int64, error) {
+	data := entry.Data.MustData()
+
 	// Add lkey only when inserting rows
-	key, err := dataEntryToLedgerKeyString(data)
+	key, err := dataEntryToLedgerKeyString(entry)
 	if err != nil {
 		return 0, errors.Wrap(err, "Error running dataEntryToLedgerKeyString")
 	}
@@ -98,7 +96,7 @@ func (q *Q) InsertAccountData(data xdr.DataEntry, lastModifiedLedger xdr.Uint32)
 			data.AccountId.Address(),
 			data.DataName,
 			AccountDataValue(data.DataValue),
-			lastModifiedLedger,
+			entry.LastModifiedLedgerSeq,
 		)
 
 	result, err := q.Exec(sql)
@@ -111,16 +109,17 @@ func (q *Q) InsertAccountData(data xdr.DataEntry, lastModifiedLedger xdr.Uint32)
 
 // UpdateAccountData updates a row in the accounts_data table.
 // Returns number of rows affected and error.
-func (q *Q) UpdateAccountData(data xdr.DataEntry, lastModifiedLedger xdr.Uint32) (int64, error) {
-	key, err := dataEntryToLedgerKeyString(data)
+func (q *Q) UpdateAccountData(entry xdr.LedgerEntry) (int64, error) {
+	data := entry.Data.MustData()
+
+	key, err := dataEntryToLedgerKeyString(entry)
 	if err != nil {
 		return 0, errors.Wrap(err, "Error running dataEntryToLedgerKeyString")
 	}
-
 	sql := sq.Update("accounts_data").
 		SetMap(map[string]interface{}{
 			"value":                AccountDataValue(data.DataValue),
-			"last_modified_ledger": lastModifiedLedger,
+			"last_modified_ledger": entry.LastModifiedLedgerSeq,
 		}).
 		Where(sq.Eq{"ledger_key": key})
 	result, err := q.Exec(sql)

@@ -50,18 +50,19 @@ func (s *AccountsDataProcessorTestSuiteState) TestCreatesAccounts() {
 		DataValue: []byte{1, 1, 1, 1},
 	}
 	lastModifiedLedgerSeq := xdr.Uint32(123)
-	s.mockBatchInsertBuilder.On("Add", data, lastModifiedLedgerSeq).Return(nil).Once()
+	entry := xdr.LedgerEntry{
+		Data: xdr.LedgerEntryData{
+			Type: xdr.LedgerEntryTypeData,
+			Data: &data,
+		},
+		LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+	}
+	s.mockBatchInsertBuilder.On("Add", entry).Return(nil).Once()
 
 	err := s.processor.ProcessChange(io.Change{
 		Type: xdr.LedgerEntryTypeData,
 		Pre:  nil,
-		Post: &xdr.LedgerEntry{
-			Data: xdr.LedgerEntryData{
-				Type: xdr.LedgerEntryTypeData,
-				Data: &data,
-			},
-			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
-		},
+		Post: &entry,
 	})
 	s.Assert().NoError(err)
 }
@@ -125,6 +126,14 @@ func (s *AccountsDataProcessorTestSuiteLedger) TestNewAccountData() {
 		DataValue: []byte{2, 2, 2, 2},
 	}
 
+	updatedEntry := xdr.LedgerEntry{
+		Data: xdr.LedgerEntryData{
+			Type: xdr.LedgerEntryTypeData,
+			Data: &updatedData,
+		},
+		LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+	}
+
 	err = s.processor.ProcessChange(io.Change{
 		Type: xdr.LedgerEntryTypeData,
 		Pre: &xdr.LedgerEntry{
@@ -134,22 +143,12 @@ func (s *AccountsDataProcessorTestSuiteLedger) TestNewAccountData() {
 			},
 			LastModifiedLedgerSeq: lastModifiedLedgerSeq - 1,
 		},
-		Post: &xdr.LedgerEntry{
-			Data: xdr.LedgerEntryData{
-				Type: xdr.LedgerEntryTypeData,
-				Data: &updatedData,
-			},
-			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
-		},
+		Post: &updatedEntry,
 	})
 	s.Assert().NoError(err)
 
 	// We use LedgerEntryChangesCache so all changes are squashed
-	s.mockBatchInsertBuilder.On(
-		"Add",
-		updatedData,
-		lastModifiedLedgerSeq,
-	).Return(nil).Once()
+	s.mockBatchInsertBuilder.On("Add", updatedEntry).Return(nil).Once()
 }
 
 func (s *AccountsDataProcessorTestSuiteLedger) TestUpdateAccountData() {
@@ -166,6 +165,14 @@ func (s *AccountsDataProcessorTestSuiteLedger) TestUpdateAccountData() {
 		DataValue: []byte{2, 2, 2, 2},
 	}
 
+	updatedEntry := xdr.LedgerEntry{
+		Data: xdr.LedgerEntryData{
+			Type: xdr.LedgerEntryTypeData,
+			Data: &updatedData,
+		},
+		LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+	}
+
 	err := s.processor.ProcessChange(io.Change{
 		Type: xdr.LedgerEntryTypeData,
 		Pre: &xdr.LedgerEntry{
@@ -175,21 +182,11 @@ func (s *AccountsDataProcessorTestSuiteLedger) TestUpdateAccountData() {
 			},
 			LastModifiedLedgerSeq: lastModifiedLedgerSeq - 1,
 		},
-		Post: &xdr.LedgerEntry{
-			Data: xdr.LedgerEntryData{
-				Type: xdr.LedgerEntryTypeData,
-				Data: &updatedData,
-			},
-			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
-		},
+		Post: &updatedEntry,
 	})
 	s.Assert().NoError(err)
 
-	s.mockQ.On(
-		"UpdateAccountData",
-		updatedData,
-		lastModifiedLedgerSeq,
-	).Return(int64(1), nil).Once()
+	s.mockQ.On("UpdateAccountData", updatedEntry).Return(int64(1), nil).Once()
 }
 
 func (s *AccountsDataProcessorTestSuiteLedger) TestRemoveAccountData() {

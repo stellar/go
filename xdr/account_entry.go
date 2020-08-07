@@ -1,30 +1,39 @@
 package xdr
 
-func (a *AccountEntry) SignerSummary() map[string]int32 {
+func (account *AccountEntry) SignerSummary() map[string]int32 {
 	ret := map[string]int32{}
 
-	if a.MasterKeyWeight() > 0 {
-		ret[a.AccountId.Address()] = int32(a.Thresholds[0])
+	if account.MasterKeyWeight() > 0 {
+		ret[account.AccountId.Address()] = int32(account.Thresholds[0])
 	}
-	for _, signer := range a.Signers {
+	for _, signer := range account.Signers {
 		ret[signer.Key.Address()] = int32(signer.Weight)
 	}
 
 	return ret
 }
 
-func (a *AccountEntry) MasterKeyWeight() byte {
-	return a.Thresholds.MasterKeyWeight()
+func (account *AccountEntry) MasterKeyWeight() byte {
+	return account.Thresholds.MasterKeyWeight()
 }
 
-func (a *AccountEntry) ThresholdLow() byte {
-	return a.Thresholds.ThresholdLow()
+func (account *AccountEntry) ThresholdLow() byte {
+	return account.Thresholds.ThresholdLow()
 }
 
-func (a *AccountEntry) ThresholdMedium() byte {
-	return a.Thresholds.ThresholdMedium()
+func (account *AccountEntry) ThresholdMedium() byte {
+	return account.Thresholds.ThresholdMedium()
 }
 
-func (a *AccountEntry) ThresholdHigh() byte {
-	return a.Thresholds.ThresholdHigh()
+func (account *AccountEntry) ThresholdHigh() byte {
+	return account.Thresholds.ThresholdHigh()
+}
+
+// Liabilities returns AccountEntry's liabilities
+func (account *AccountEntry) Liabilities() Liabilities {
+	var liabilities Liabilities
+	if account.Ext.V1 != nil {
+		liabilities = account.Ext.V1.Liabilities
+	}
+	return liabilities
 }

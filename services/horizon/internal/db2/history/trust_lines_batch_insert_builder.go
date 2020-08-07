@@ -7,11 +7,11 @@ import (
 
 // Add adds a new trust line entry to the batch. `lastModifiedLedger` is another
 // parameter because `xdr.TrustLineEntry` does not have a field to hold this value.
-func (i *trustLinesBatchInsertBuilder) Add(trustLine xdr.TrustLineEntry, lastModifiedLedger xdr.Uint32) error {
-	m := trustLineToMap(trustLine, lastModifiedLedger)
+func (i *trustLinesBatchInsertBuilder) Add(entry xdr.LedgerEntry) error {
+	m := trustLineToMap(entry)
 
 	// Add lkey only when inserting rows
-	key, err := trustLineEntryToLedgerKeyString(trustLine)
+	key, err := trustLineEntryToLedgerKeyString(entry)
 	if err != nil {
 		return errors.Wrap(err, "Error running trustLineEntryToLedgerKeyString")
 	}

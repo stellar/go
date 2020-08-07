@@ -7,7 +7,9 @@ import (
 
 // Add adds a new offer entry to the batch. `lastModifiedLedger` is another
 // parameter because `xdr.OfferEntry` does not have a field to hold this value.
-func (i *offersBatchInsertBuilder) Add(offer xdr.OfferEntry, lastModifiedLedger xdr.Uint32) error {
+func (i *offersBatchInsertBuilder) Add(entry xdr.LedgerEntry) error {
+	offer := entry.Data.MustOffer()
+
 	var price float64
 	if offer.Price.D == 0 {
 		return errors.New("offer price denominator is zero")
@@ -26,7 +28,7 @@ func (i *offersBatchInsertBuilder) Add(offer xdr.OfferEntry, lastModifiedLedger 
 		Price:              price,
 		Flags:              uint32(offer.Flags),
 		Deleted:            false,
-		LastModifiedLedger: uint32(lastModifiedLedger),
+		LastModifiedLedger: uint32(entry.LastModifiedLedgerSeq),
 	}
 
 	return i.builder.RowStruct(row)

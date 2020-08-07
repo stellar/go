@@ -215,7 +215,7 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestNewSigner() {
 				Account: &xdr.AccountEntry{
 					AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
 					Signers: []xdr.Signer{
-						xdr.Signer{
+						{
 							Key:    xdr.MustSigner("GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV"),
 							Weight: 10,
 						},
@@ -229,11 +229,11 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestNewSigner() {
 				Account: &xdr.AccountEntry{
 					AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
 					Signers: []xdr.Signer{
-						xdr.Signer{
+						{
 							Key:    xdr.MustSigner("GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV"),
 							Weight: 10,
 						},
-						xdr.Signer{
+						{
 							Key:    xdr.MustSigner("GCAHY6JSXQFKWKP6R7U5JPXDVNV4DJWOWRFLY3Y6YPBF64QRL4BPFDNS"),
 							Weight: 15,
 						},
@@ -351,11 +351,11 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestSignerPreAuthTxRemovedTxFai
 				Account: &xdr.AccountEntry{
 					AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
 					Signers: []xdr.Signer{
-						xdr.Signer{
+						{
 							Key:    xdr.MustSigner("GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV"),
 							Weight: 10,
 						},
-						xdr.Signer{
+						{
 							Key:    xdr.MustSigner("TBU2RRGLXH3E5CQHTD3ODLDF2BWDCYUSSBLLZ5GNW7JXHDIYKXZWHXL7"),
 							Weight: 15,
 						},
@@ -369,7 +369,7 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestSignerPreAuthTxRemovedTxFai
 				Account: &xdr.AccountEntry{
 					AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
 					Signers: []xdr.Signer{
-						xdr.Signer{
+						{
 							Key:    xdr.MustSigner("GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV"),
 							Weight: 10,
 						},
@@ -517,7 +517,7 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestProcessUpgradeChange() {
 				Account: &xdr.AccountEntry{
 					AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
 					Signers: []xdr.Signer{
-						xdr.Signer{
+						{
 							Key:    xdr.MustSigner("GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV"),
 							Weight: 10,
 						},
@@ -531,11 +531,11 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestProcessUpgradeChange() {
 				Account: &xdr.AccountEntry{
 					AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
 					Signers: []xdr.Signer{
-						xdr.Signer{
+						{
 							Key:    xdr.MustSigner("GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV"),
 							Weight: 10,
 						},
-						xdr.Signer{
+						{
 							Key:    xdr.MustSigner("GCAHY6JSXQFKWKP6R7U5JPXDVNV4DJWOWRFLY3Y6YPBF64QRL4BPFDNS"),
 							Weight: 15,
 						},

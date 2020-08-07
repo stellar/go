@@ -35,7 +35,7 @@ func TestProcessorRunnerRunHistoryArchiveIngestionGenesis(t *testing.T) {
 		Return(mockAccountDataBatchInsertBuilder).Once()
 
 	q.MockQAccounts.On("UpsertAccounts", []xdr.LedgerEntry{
-		xdr.LedgerEntry{
+		{
 			LastModifiedLedgerSeq: 1,
 			Data: xdr.LedgerEntryData{
 				Type: xdr.LedgerEntryTypeAccount,

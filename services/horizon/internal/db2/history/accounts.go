@@ -52,13 +52,9 @@ func (q *Q) GetAccountsByIDs(ids []string) ([]AccountEntry, error) {
 	return accounts, err
 }
 
-func accountToMap(account xdr.AccountEntry, lastModifiedLedger xdr.Uint32) map[string]interface{} {
-	var buyingliabilities, sellingliabilities xdr.Int64
-	if account.Ext.V1 != nil {
-		v1 := account.Ext.V1
-		buyingliabilities = v1.Liabilities.Buying
-		sellingliabilities = v1.Liabilities.Selling
-	}
+func accountToMap(entry xdr.LedgerEntry) map[string]interface{} {
+	account := entry.Data.MustAccount()
+	liabilities := account.Liabilities()
 
 	var inflationDestination = ""
 	if account.InflationDest != nil {
@@ -68,8 +64,8 @@ func accountToMap(account xdr.AccountEntry, lastModifiedLedger xdr.Uint32) map[s
 	return map[string]interface{}{
 		"account_id":            account.AccountId.Address(),
 		"balance":               account.Balance,
-		"buying_liabilities":    buyingliabilities,
-		"selling_liabilities":   sellingliabilities,
+		"buying_liabilities":    liabilities.Buying,
+		"selling_liabilities":   liabilities.Selling,
 		"sequence_number":       account.SeqNum,
 		"num_subentries":        account.NumSubEntries,
 		"inflation_destination": inflationDestination,
@@ -79,7 +75,7 @@ func accountToMap(account xdr.AccountEntry, lastModifiedLedger xdr.Uint32) map[s
 		"threshold_low":         account.ThresholdLow(),
 		"threshold_medium":      account.ThresholdMedium(),
 		"threshold_high":        account.ThresholdHigh(),
-		"last_modified_ledger":  lastModifiedLedger,
+		"last_modified_ledger":  entry.LastModifiedLedgerSeq,
 	}
 }
 
@@ -100,8 +96,7 @@ func (q *Q) UpsertAccounts(accounts []xdr.LedgerEntry) error {
 			return errors.Errorf("Invalid entry type: %d", entry.Data.Type)
 		}
 
-		m := accountToMap(entry.Data.MustAccount(), entry.LastModifiedLedgerSeq)
-
+		m := accountToMap(entry)
 		accountID = append(accountID, m["account_id"].(string))
 		balance = append(balance, m["balance"].(xdr.Int64))
 		buyingLiabilities = append(buyingLiabilities, m["buying_liabilities"].(xdr.Int64))
@@ -134,7 +129,7 @@ func (q *Q) UpsertAccounts(accounts []xdr.LedgerEntry) error {
 			unnest(?::int[]),    /*	threshold_low */
 			unnest(?::int[]),    /*	threshold_medium */
 			unnest(?::int[]),    /*	threshold_high */
-			unnest(?::int[])     /*	last_modified_ledger */
+			unnest(?::int[])    /*	last_modified_ledger */
 		)
 	INSERT INTO accounts ( 
 		account_id,
@@ -183,7 +178,8 @@ func (q *Q) UpsertAccounts(accounts []xdr.LedgerEntry) error {
 		pq.Array(thresholdLow),
 		pq.Array(thresholdMedium),
 		pq.Array(thresholdHigh),
-		pq.Array(lastModifiedLedger))
+		pq.Array(lastModifiedLedger),
+	)
 	return err
 }
 

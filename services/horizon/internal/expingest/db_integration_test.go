@@ -140,8 +140,8 @@ func (s *DBTestSuite) TestBuildState() {
 	s.Assert().Equal(s.sequence, build.checkpointLedger)
 
 	next, err = build.run(s.system)
-	resume := next.node.(resumeState)
 	s.Assert().NoError(err)
+	resume := next.node.(resumeState)
 	s.Assert().Equal(s.sequence, resume.latestSuccessfullyProcessedLedger)
 
 	s.mockChangeReader()

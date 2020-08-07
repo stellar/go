@@ -152,7 +152,7 @@ type AccountEntry struct {
 }
 
 type AccountsBatchInsertBuilder interface {
-	Add(account xdr.AccountEntry, lastModifiedLedger xdr.Uint32) error
+	Add(entry xdr.LedgerEntry) error
 	Exec() error
 }
 
@@ -230,7 +230,7 @@ type Data struct {
 type AccountDataValue []byte
 
 type AccountDataBatchInsertBuilder interface {
-	Add(data xdr.DataEntry, lastModifiedLedger xdr.Uint32) error
+	Add(entry xdr.LedgerEntry) error
 	Exec() error
 }
 
@@ -244,8 +244,8 @@ type QData interface {
 	NewAccountDataBatchInsertBuilder(maxBatchSize int) AccountDataBatchInsertBuilder
 	CountAccountsData() (int, error)
 	GetAccountDataByKeys(keys []xdr.LedgerKeyData) ([]Data, error)
-	InsertAccountData(data xdr.DataEntry, lastModifiedLedger xdr.Uint32) (int64, error)
-	UpdateAccountData(data xdr.DataEntry, lastModifiedLedger xdr.Uint32) (int64, error)
+	InsertAccountData(entry xdr.LedgerEntry) (int64, error)
+	UpdateAccountData(entry xdr.LedgerEntry) (int64, error)
 	RemoveAccountData(key xdr.LedgerKeyData) (int64, error)
 }
 
@@ -473,7 +473,7 @@ type Offer struct {
 }
 
 type OffersBatchInsertBuilder interface {
-	Add(offer xdr.OfferEntry, lastModifiedLedger xdr.Uint32) error
+	Add(entry xdr.LedgerEntry) error
 	Exec() error
 }
 
@@ -592,14 +592,14 @@ type TrustLine struct {
 type QTrustLines interface {
 	NewTrustLinesBatchInsertBuilder(maxBatchSize int) TrustLinesBatchInsertBuilder
 	GetTrustLinesByKeys(keys []xdr.LedgerKeyTrustLine) ([]TrustLine, error)
-	InsertTrustLine(trustLine xdr.TrustLineEntry, lastModifiedLedger xdr.Uint32) (int64, error)
-	UpdateTrustLine(trustLine xdr.TrustLineEntry, lastModifiedLedger xdr.Uint32) (int64, error)
-	UpsertTrustLines(trustLines []xdr.LedgerEntry) error
+	InsertTrustLine(entry xdr.LedgerEntry) (int64, error)
+	UpdateTrustLine(entry xdr.LedgerEntry) (int64, error)
+	UpsertTrustLines(entries []xdr.LedgerEntry) error
 	RemoveTrustLine(key xdr.LedgerKeyTrustLine) (int64, error)
 }
 
 type TrustLinesBatchInsertBuilder interface {
-	Add(trustLine xdr.TrustLineEntry, lastModifiedLedger xdr.Uint32) error
+	Add(entry xdr.LedgerEntry) error
 	Exec() error
 }
 
