@@ -22,20 +22,25 @@ type StatsLedgerTransactionProcessorResults struct {
 	OperationsInSuccessful int64
 	OperationsInFailed     int64
 
-	OperationsCreateAccount            int64
-	OperationsPayment                  int64
-	OperationsPathPaymentStrictReceive int64
-	OperationsManageSellOffer          int64
-	OperationsCreatePassiveSellOffer   int64
-	OperationsSetOptions               int64
-	OperationsChangeTrust              int64
-	OperationsAllowTrust               int64
-	OperationsAccountMerge             int64
-	OperationsInflation                int64
-	OperationsManageData               int64
-	OperationsBumpSequence             int64
-	OperationsManageBuyOffer           int64
-	OperationsPathPaymentStrictSend    int64
+	OperationsCreateAccount                 int64
+	OperationsPayment                       int64
+	OperationsPathPaymentStrictReceive      int64
+	OperationsManageSellOffer               int64
+	OperationsCreatePassiveSellOffer        int64
+	OperationsSetOptions                    int64
+	OperationsChangeTrust                   int64
+	OperationsAllowTrust                    int64
+	OperationsAccountMerge                  int64
+	OperationsInflation                     int64
+	OperationsManageData                    int64
+	OperationsBumpSequence                  int64
+	OperationsManageBuyOffer                int64
+	OperationsPathPaymentStrictSend         int64
+	OperationsCreateClaimableBalance        int64
+	OperationsClaimClaimableBalance         int64
+	OperationsBeginSponsoringFutureReserves int64
+	OperationsEndSponsoringFutureReserves   int64
+	OperationsRevokeSponsorship             int64
 }
 
 func (p *StatsLedgerTransactionProcessor) ProcessTransaction(transaction LedgerTransaction) error {
@@ -82,6 +87,16 @@ func (p *StatsLedgerTransactionProcessor) ProcessTransaction(transaction LedgerT
 			p.results.OperationsManageBuyOffer++
 		case xdr.OperationTypePathPaymentStrictSend:
 			p.results.OperationsPathPaymentStrictSend++
+		case xdr.OperationTypeCreateClaimableBalance:
+			p.results.OperationsCreateClaimableBalance++
+		case xdr.OperationTypeClaimClaimableBalance:
+			p.results.OperationsClaimClaimableBalance++
+		case xdr.OperationTypeBeginSponsoringFutureReserves:
+			p.results.OperationsBeginSponsoringFutureReserves++
+		case xdr.OperationTypeEndSponsoringFutureReserves:
+			p.results.OperationsEndSponsoringFutureReserves++
+		case xdr.OperationTypeRevokeSponsorship:
+			p.results.OperationsRevokeSponsorship++
 		default:
 			panic(fmt.Sprintf("Unkown operation type: %d", op.Body.Type))
 		}
@@ -104,19 +119,24 @@ func (stats *StatsLedgerTransactionProcessorResults) Map() map[string]interface{
 		"stats_operations_in_successful": stats.OperationsInSuccessful,
 		"stats_operations_in_failed":     stats.OperationsInFailed,
 
-		"stats_operations_create_account":              stats.OperationsCreateAccount,
-		"stats_operations_payment":                     stats.OperationsPayment,
-		"stats_operations_path_payment_strict_receive": stats.OperationsPathPaymentStrictReceive,
-		"stats_operations_manage_sell_offer":           stats.OperationsManageSellOffer,
-		"stats_operations_create_passive_sell_offer":   stats.OperationsCreatePassiveSellOffer,
-		"stats_operations_set_options":                 stats.OperationsSetOptions,
-		"stats_operations_change_trust":                stats.OperationsChangeTrust,
-		"stats_operations_allow_trust":                 stats.OperationsAllowTrust,
-		"stats_operations_account_merge":               stats.OperationsAccountMerge,
-		"stats_operations_inflation":                   stats.OperationsInflation,
-		"stats_operations_manage_data":                 stats.OperationsManageData,
-		"stats_operations_bump_sequence":               stats.OperationsBumpSequence,
-		"stats_operations_manage_buy_offer":            stats.OperationsManageBuyOffer,
-		"stats_operations_path_payment_strict_send":    stats.OperationsPathPaymentStrictSend,
+		"stats_operations_create_account":                   stats.OperationsCreateAccount,
+		"stats_operations_payment":                          stats.OperationsPayment,
+		"stats_operations_path_payment_strict_receive":      stats.OperationsPathPaymentStrictReceive,
+		"stats_operations_manage_sell_offer":                stats.OperationsManageSellOffer,
+		"stats_operations_create_passive_sell_offer":        stats.OperationsCreatePassiveSellOffer,
+		"stats_operations_set_options":                      stats.OperationsSetOptions,
+		"stats_operations_change_trust":                     stats.OperationsChangeTrust,
+		"stats_operations_allow_trust":                      stats.OperationsAllowTrust,
+		"stats_operations_account_merge":                    stats.OperationsAccountMerge,
+		"stats_operations_inflation":                        stats.OperationsInflation,
+		"stats_operations_manage_data":                      stats.OperationsManageData,
+		"stats_operations_bump_sequence":                    stats.OperationsBumpSequence,
+		"stats_operations_manage_buy_offer":                 stats.OperationsManageBuyOffer,
+		"stats_operations_path_payment_strict_send":         stats.OperationsPathPaymentStrictSend,
+		"stats_operations_create_claimable_balance":         stats.OperationsCreateClaimableBalance,
+		"stats_operations_claim_claimable_balance":          stats.OperationsClaimClaimableBalance,
+		"stats_operations_begin_sponsoring_future_reserves": stats.OperationsBeginSponsoringFutureReserves,
+		"stats_operations_end_sponsoring_future_reserves":   stats.OperationsEndSponsoringFutureReserves,
+		"stats_operations_revoke_sponsorship":               stats.OperationsRevokeSponsorship,
 	}
 }
