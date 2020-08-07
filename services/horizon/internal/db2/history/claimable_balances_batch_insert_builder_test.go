@@ -16,11 +16,12 @@ func TestAddClaimableBalance(t *testing.T) {
 
 	lastModifiedLedgerSeq := xdr.Uint32(123)
 	asset := xdr.MustNewCreditAsset("USD", "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML")
+	balanceID := xdr.ClaimableBalanceId{
+		Type: xdr.ClaimableBalanceIdTypeClaimableBalanceIdTypeV0,
+		V0:   &xdr.Hash{1, 2, 3},
+	}
 	cBalance := xdr.ClaimableBalanceEntry{
-		BalanceId: xdr.ClaimableBalanceId{
-			Type: xdr.ClaimableBalanceIdTypeClaimableBalanceIdTypeV0,
-			V0:   &xdr.Hash{1, 2, 3},
-		},
+		BalanceId: balanceID,
 		Claimants: []xdr.Claimant{},
 		Asset:     asset,
 		Amount:    10,
@@ -49,8 +50,7 @@ func TestAddClaimableBalance(t *testing.T) {
 
 		cb := cbs[0]
 		tt.Assert.Equal("8f2fb9b32d46b3357f6d11ded015f470520ab81dd5386fc18ab7d33f5334c45b", cb.ID)
-		//  this is temporal while I figure how to deserialize/serialize the XDR
-		tt.Assert.Equal("8f2fb9b32d46b3357f6d11ded015f470520ab81dd5386fc1", cb.BalanceID)
+		tt.Assert.Equal(balanceID, cb.BalanceID)
 		tt.Assert.Equal(asset, cb.Asset)
 		tt.Assert.Equal(null.StringFromPtr(nil), cb.Sponsor)
 		tt.Assert.Equal(uint32(lastModifiedLedgerSeq), cb.LastModifiedLedger)

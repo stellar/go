@@ -13,12 +13,12 @@ import (
 
 // ClaimableBalance is a row of data from the `claimable_balances` table.
 type ClaimableBalance struct {
-	ID                 string      `db:"id"`
-	BalanceID          string      `db:"balance_id"` // this should be an xdr.BalanceID
-	Asset              xdr.Asset   `db:"asset"`
-	Amount             xdr.Int64   `db:"amount"`
-	Sponsor            null.String `db:"sponsor"`
-	LastModifiedLedger uint32      `db:"last_modified_ledger"`
+	ID                 string                 `db:"id"`
+	BalanceID          xdr.ClaimableBalanceId `db:"balance_id"`
+	Asset              xdr.Asset              `db:"asset"`
+	Amount             xdr.Int64              `db:"amount"`
+	Sponsor            null.String            `db:"sponsor"`
+	LastModifiedLedger uint32                 `db:"last_modified_ledger"`
 }
 
 // Claimant is a row of data from the `claimable_balances_claimants` table
@@ -71,7 +71,7 @@ func (i *claimableBalancesBatchInsertBuilder) Add(entry *xdr.LedgerEntry) error 
 	}
 	row := ClaimableBalance{
 		ID:                 id,
-		BalanceID:          id[:48], // temporary solution while we can store the actual xdr
+		BalanceID:          cBalance.BalanceId,
 		Asset:              cBalance.Asset,
 		Amount:             cBalance.Amount,
 		Sponsor:            null.StringFromPtr(nil), // TDB - we can add this later since there might be code from Bartek's PR which we can use to pull the sponsor,
