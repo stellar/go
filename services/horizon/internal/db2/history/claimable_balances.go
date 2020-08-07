@@ -50,6 +50,14 @@ func (q *Q) NewClaimableBalancesBatchInsertBuilder(maxBatchSize int) ClaimableBa
 	}
 }
 
+// UpdateClaimableBalance updates a row in the claimable_balances table.
+// The only updatable value on claimable_balances is sponsor
+// Returns number of rows affected and error.
+func (q *Q) UpdateClaimableBalance(entry *xdr.LedgerEntry) (int64, error) {
+	// mocking this for now - we can add the implemention upon landing https://github.com/stellar/go/pull/2897
+	return 1, nil
+}
+
 // RemoveClaimableBalance deletes a row in the claimable_balances table.
 // Returns number of rows affected and error.
 func (q *Q) RemoveClaimableBalance(cBalance xdr.ClaimableBalanceEntry) (int64, error) {
