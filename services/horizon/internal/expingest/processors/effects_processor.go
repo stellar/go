@@ -203,6 +203,12 @@ func (operation *transactionOperationWrapper) effects() (effects []effect, err e
 		effects, err = operation.manageDataEffects()
 	case xdr.OperationTypeBumpSequence:
 		effects, err = operation.bumpSequenceEffects()
+	case xdr.OperationTypeCreateClaimableBalance,
+		xdr.OperationTypeClaimClaimableBalance,
+		xdr.OperationTypeBeginSponsoringFutureReserves,
+		xdr.OperationTypeEndSponsoringFutureReserves,
+		xdr.OperationTypeRevokeSponsorship:
+		// TBD
 	default:
 		return effects, fmt.Errorf("Unknown operation type: %s", op.Body.Type)
 	}
