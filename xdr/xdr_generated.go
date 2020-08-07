@@ -2454,10 +2454,9 @@ var (
 //        CLAIM_PREDICATE_UNCONDITIONAL = 0,
 //        CLAIM_PREDICATE_AND = 1,
 //        CLAIM_PREDICATE_OR = 2,
-//        CLAIM_PREDICATE_BEFORE_ABSOLUTE_TIME = 3,
-//        CLAIM_PREDICATE_AFTER_ABSOLUTE_TIME = 4,
-//        CLAIM_PREDICATE_BEFORE_RELATIVE_TIME = 5,
-//        CLAIM_PREDICATE_AFTER_RELATIVE_TIME = 6
+//        CLAIM_PREDICATE_NOT = 3,
+//        CLAIM_PREDICATE_BEFORE_ABSOLUTE_TIME = 4,
+//        CLAIM_PREDICATE_BEFORE_RELATIVE_TIME = 5
 //    };
 //
 type ClaimPredicateType int32
@@ -2466,20 +2465,18 @@ const (
 	ClaimPredicateTypeClaimPredicateUnconditional      ClaimPredicateType = 0
 	ClaimPredicateTypeClaimPredicateAnd                ClaimPredicateType = 1
 	ClaimPredicateTypeClaimPredicateOr                 ClaimPredicateType = 2
-	ClaimPredicateTypeClaimPredicateBeforeAbsoluteTime ClaimPredicateType = 3
-	ClaimPredicateTypeClaimPredicateAfterAbsoluteTime  ClaimPredicateType = 4
+	ClaimPredicateTypeClaimPredicateNot                ClaimPredicateType = 3
+	ClaimPredicateTypeClaimPredicateBeforeAbsoluteTime ClaimPredicateType = 4
 	ClaimPredicateTypeClaimPredicateBeforeRelativeTime ClaimPredicateType = 5
-	ClaimPredicateTypeClaimPredicateAfterRelativeTime  ClaimPredicateType = 6
 )
 
 var claimPredicateTypeMap = map[int32]string{
 	0: "ClaimPredicateTypeClaimPredicateUnconditional",
 	1: "ClaimPredicateTypeClaimPredicateAnd",
 	2: "ClaimPredicateTypeClaimPredicateOr",
-	3: "ClaimPredicateTypeClaimPredicateBeforeAbsoluteTime",
-	4: "ClaimPredicateTypeClaimPredicateAfterAbsoluteTime",
+	3: "ClaimPredicateTypeClaimPredicateNot",
+	4: "ClaimPredicateTypeClaimPredicateBeforeAbsoluteTime",
 	5: "ClaimPredicateTypeClaimPredicateBeforeRelativeTime",
-	6: "ClaimPredicateTypeClaimPredicateAfterRelativeTime",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
@@ -2523,26 +2520,22 @@ var (
 //        ClaimPredicate andPredicates<2>;
 //    case CLAIM_PREDICATE_OR:
 //        ClaimPredicate orPredicates<2>;
+//    case CLAIM_PREDICATE_NOT:
+//        ClaimPredicate* notPredicate;
 //    case CLAIM_PREDICATE_BEFORE_ABSOLUTE_TIME:
 //        int64 absBefore; // Predicate will be true if closeTime < absBefore
-//    case CLAIM_PREDICATE_AFTER_ABSOLUTE_TIME:
-//        int64 absAfter; // Predicate will be true if closeTime >= absAfter
 //    case CLAIM_PREDICATE_BEFORE_RELATIVE_TIME:
 //        int64 relBefore; // Seconds since closeTime of the ledger in which the
 //                         // ClaimableBalanceEntry was created
-//    case CLAIM_PREDICATE_AFTER_RELATIVE_TIME:
-//        int64 relAfter; // Seconds since closeTime of the ledger in which the
-//                        // ClaimableBalanceEntry was created
 //    };
 //
 type ClaimPredicate struct {
 	Type          ClaimPredicateType
 	AndPredicates *[]ClaimPredicate `xdrmaxsize:"2"`
 	OrPredicates  *[]ClaimPredicate `xdrmaxsize:"2"`
+	NotPredicate  **ClaimPredicate
 	AbsBefore     *Int64
-	AbsAfter      *Int64
 	RelBefore     *Int64
-	RelAfter      *Int64
 }
 
 // SwitchFieldName returns the field name in which this union's
@@ -2561,14 +2554,12 @@ func (u ClaimPredicate) ArmForSwitch(sw int32) (string, bool) {
 		return "AndPredicates", true
 	case ClaimPredicateTypeClaimPredicateOr:
 		return "OrPredicates", true
+	case ClaimPredicateTypeClaimPredicateNot:
+		return "NotPredicate", true
 	case ClaimPredicateTypeClaimPredicateBeforeAbsoluteTime:
 		return "AbsBefore", true
-	case ClaimPredicateTypeClaimPredicateAfterAbsoluteTime:
-		return "AbsAfter", true
 	case ClaimPredicateTypeClaimPredicateBeforeRelativeTime:
 		return "RelBefore", true
-	case ClaimPredicateTypeClaimPredicateAfterRelativeTime:
-		return "RelAfter", true
 	}
 	return "-", false
 }
@@ -2593,6 +2584,13 @@ func NewClaimPredicate(aType ClaimPredicateType, value interface{}) (result Clai
 			return
 		}
 		result.OrPredicates = &tv
+	case ClaimPredicateTypeClaimPredicateNot:
+		tv, ok := value.(*ClaimPredicate)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be *ClaimPredicate")
+			return
+		}
+		result.NotPredicate = &tv
 	case ClaimPredicateTypeClaimPredicateBeforeAbsoluteTime:
 		tv, ok := value.(Int64)
 		if !ok {
@@ -2600,13 +2598,6 @@ func NewClaimPredicate(aType ClaimPredicateType, value interface{}) (result Clai
 			return
 		}
 		result.AbsBefore = &tv
-	case ClaimPredicateTypeClaimPredicateAfterAbsoluteTime:
-		tv, ok := value.(Int64)
-		if !ok {
-			err = fmt.Errorf("invalid value, must be Int64")
-			return
-		}
-		result.AbsAfter = &tv
 	case ClaimPredicateTypeClaimPredicateBeforeRelativeTime:
 		tv, ok := value.(Int64)
 		if !ok {
@@ -2614,13 +2605,6 @@ func NewClaimPredicate(aType ClaimPredicateType, value interface{}) (result Clai
 			return
 		}
 		result.RelBefore = &tv
-	case ClaimPredicateTypeClaimPredicateAfterRelativeTime:
-		tv, ok := value.(Int64)
-		if !ok {
-			err = fmt.Errorf("invalid value, must be Int64")
-			return
-		}
-		result.RelAfter = &tv
 	}
 	return
 }
@@ -2675,6 +2659,31 @@ func (u ClaimPredicate) GetOrPredicates() (result []ClaimPredicate, ok bool) {
 	return
 }
 
+// MustNotPredicate retrieves the NotPredicate value from the union,
+// panicing if the value is not set.
+func (u ClaimPredicate) MustNotPredicate() *ClaimPredicate {
+	val, ok := u.GetNotPredicate()
+
+	if !ok {
+		panic("arm NotPredicate is not set")
+	}
+
+	return val
+}
+
+// GetNotPredicate retrieves the NotPredicate value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u ClaimPredicate) GetNotPredicate() (result *ClaimPredicate, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "NotPredicate" {
+		result = *u.NotPredicate
+		ok = true
+	}
+
+	return
+}
+
 // MustAbsBefore retrieves the AbsBefore value from the union,
 // panicing if the value is not set.
 func (u ClaimPredicate) MustAbsBefore() Int64 {
@@ -2700,31 +2709,6 @@ func (u ClaimPredicate) GetAbsBefore() (result Int64, ok bool) {
 	return
 }
 
-// MustAbsAfter retrieves the AbsAfter value from the union,
-// panicing if the value is not set.
-func (u ClaimPredicate) MustAbsAfter() Int64 {
-	val, ok := u.GetAbsAfter()
-
-	if !ok {
-		panic("arm AbsAfter is not set")
-	}
-
-	return val
-}
-
-// GetAbsAfter retrieves the AbsAfter value from the union,
-// returning ok if the union's switch indicated the value is valid.
-func (u ClaimPredicate) GetAbsAfter() (result Int64, ok bool) {
-	armName, _ := u.ArmForSwitch(int32(u.Type))
-
-	if armName == "AbsAfter" {
-		result = *u.AbsAfter
-		ok = true
-	}
-
-	return
-}
-
 // MustRelBefore retrieves the RelBefore value from the union,
 // panicing if the value is not set.
 func (u ClaimPredicate) MustRelBefore() Int64 {
@@ -2744,31 +2728,6 @@ func (u ClaimPredicate) GetRelBefore() (result Int64, ok bool) {
 
 	if armName == "RelBefore" {
 		result = *u.RelBefore
-		ok = true
-	}
-
-	return
-}
-
-// MustRelAfter retrieves the RelAfter value from the union,
-// panicing if the value is not set.
-func (u ClaimPredicate) MustRelAfter() Int64 {
-	val, ok := u.GetRelAfter()
-
-	if !ok {
-		panic("arm RelAfter is not set")
-	}
-
-	return val
-}
-
-// GetRelAfter retrieves the RelAfter value from the union,
-// returning ok if the union's switch indicated the value is valid.
-func (u ClaimPredicate) GetRelAfter() (result Int64, ok bool) {
-	armName, _ := u.ArmForSwitch(int32(u.Type))
-
-	if armName == "RelAfter" {
-		result = *u.RelAfter
 		ok = true
 	}
 
