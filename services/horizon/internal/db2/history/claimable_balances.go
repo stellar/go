@@ -104,6 +104,19 @@ func (q *Q) RemoveClaimableBalance(cBalance xdr.ClaimableBalanceEntry) (int64, e
 	return result.RowsAffected()
 }
 
+// FindClaimableBalancesByDestination finds all claimable balances where accountID is one of the claimants
+func (q *Q) FindClaimableBalancesByDestination(accountID xdr.AccountId) ([]ClaimableBalance, error) {
+	sql := selectClaimableBalances.
+		Where("claimants @> '[{\"destination\": \"" + accountID.Address() + "\"}]'")
+
+	var results []ClaimableBalance
+	if err := q.Select(&results, sql); err != nil {
+		return nil, errors.Wrap(err, "could not run select query")
+	}
+
+	return results, nil
+}
+
 type claimableBalancesBatchInsertBuilder struct {
 	builder db.BatchInsertBuilder
 }
