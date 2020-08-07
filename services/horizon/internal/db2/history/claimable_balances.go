@@ -37,7 +37,7 @@ type ClaimableBalancesBatchInsertBuilder interface {
 type QClaimableBalances interface {
 	NewClaimableBalancesBatchInsertBuilder(maxBatchSize int) ClaimableBalancesBatchInsertBuilder
 	UpdateClaimableBalance(entry *xdr.LedgerEntry) (int64, error)
-	RemoveClaimableBalance(key xdr.LedgerKeyClaimableBalance) (int64, error)
+	RemoveClaimableBalance(cBalance xdr.ClaimableBalanceEntry) (int64, error)
 }
 
 // NewClaimableBalancesBatchInsertBuilder constructs a new ClaimableBalancesBatchInsertBuilder instance
@@ -48,6 +48,23 @@ func (q *Q) NewClaimableBalancesBatchInsertBuilder(maxBatchSize int) ClaimableBa
 			MaxBatchSize: maxBatchSize,
 		},
 	}
+}
+
+// RemoveClaimableBalance deletes a row in the claimable_balances table.
+// Returns number of rows affected and error.
+func (q *Q) RemoveClaimableBalance(cBalance xdr.ClaimableBalanceEntry) (int64, error) {
+	id, err := balanceIDToHex(cBalance.BalanceId)
+	if err != nil {
+		return 0, errors.Wrap(err, "encoding balanceID")
+	}
+	sql := sq.Delete("claimable_balances").
+		Where(sq.Eq{"id": id})
+	result, err := q.Exec(sql)
+	if err != nil {
+		return 0, err
+	}
+
+	return result.RowsAffected()
 }
 
 type claimableBalancesBatchInsertBuilder struct {

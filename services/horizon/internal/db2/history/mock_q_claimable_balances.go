@@ -20,8 +20,8 @@ func (m *MockQClaimableBalances) UpdateClaimableBalance(entry *xdr.LedgerEntry) 
 	return a.Get(0).(int64), a.Error(1)
 }
 
-func (m *MockQClaimableBalances) RemoveClaimableBalance(key xdr.LedgerKeyClaimableBalance) (int64, error) {
-	a := m.Called(key)
+func (m *MockQClaimableBalances) RemoveClaimableBalance(cBalance xdr.ClaimableBalanceEntry) (int64, error) {
+	a := m.Called(cBalance)
 	return a.Get(0).(int64), a.Error(1)
 }
 
