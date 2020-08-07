@@ -154,6 +154,12 @@ func (key LedgerKey) MarshalBinaryCompress() ([]byte, error) {
 		m = append(m, account...)
 		dataName := []byte(strings.TrimRight(string(key.Data.DataName), "\x00"))
 		m = append(m, dataName...)
+	case LedgerEntryTypeClaimableBalance:
+		cBalance, err := key.ClaimableBalance.BalanceId.MarshalBinaryCompress()
+		if err != nil {
+			return nil, err
+		}
+		m = append(m, cBalance...)
 	default:
 		panic("Unknown type")
 	}
