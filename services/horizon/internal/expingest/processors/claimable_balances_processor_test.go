@@ -256,8 +256,6 @@ func (s *ClaimableBalancesProcessorTestSuiteLedger) TestRemoveClaimableBalance()
 
 	s.mockQ.On(
 		"RemoveClaimableBalance",
-		xdr.LedgerKeyClaimableBalance{
-			BalanceId: cBalance.BalanceId,
-		},
+		cBalance,
 	).Return(int64(1), nil).Once()
 }
