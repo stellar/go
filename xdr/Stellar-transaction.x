@@ -342,7 +342,7 @@ struct BeginSponsoringFutureReservesOp
 
     Threshold: med
 
-    Result: BeginSponsoringFutureReservesResult
+    Result: EndSponsoringFutureReservesResult
 */
 // EndSponsoringFutureReserves is empty
 
