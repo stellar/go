@@ -283,6 +283,12 @@ func (operation *transactionOperationWrapper) Details() map[string]interface{} {
 	case xdr.OperationTypeBumpSequence:
 		op := operation.operation.Body.MustBumpSequenceOp()
 		details["bump_to"] = fmt.Sprintf("%d", op.BumpTo)
+	case xdr.OperationTypeCreateClaimableBalance,
+		xdr.OperationTypeClaimClaimableBalance,
+		xdr.OperationTypeBeginSponsoringFutureReserves,
+		xdr.OperationTypeEndSponsoringFutureReserves,
+		xdr.OperationTypeRevokeSponsorship:
+		// TBD
 	default:
 		panic(fmt.Errorf("Unknown operation type: %s", operation.OperationType()))
 	}
@@ -375,6 +381,12 @@ func (operation *transactionOperationWrapper) Participants() ([]xdr.AccountId, e
 		// the only direct participant is the source_account
 	case xdr.OperationTypeBumpSequence:
 		// the only direct participant is the source_account
+	case xdr.OperationTypeCreateClaimableBalance,
+		xdr.OperationTypeClaimClaimableBalance,
+		xdr.OperationTypeBeginSponsoringFutureReserves,
+		xdr.OperationTypeEndSponsoringFutureReserves,
+		xdr.OperationTypeRevokeSponsorship:
+		// TBD
 	default:
 		return participants, fmt.Errorf("Unknown operation type: %s", op.Body.Type)
 	}

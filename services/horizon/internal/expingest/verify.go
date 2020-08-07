@@ -531,6 +531,9 @@ func transformEntry(entry xdr.LedgerEntry) (bool, xdr.LedgerEntry) {
 	case xdr.LedgerEntryTypeData:
 		// Full check of data object
 		return false, entry
+	case xdr.LedgerEntryTypeClaimableBalance:
+		// TBD
+		return false, entry
 	default:
 		panic("Invalid type")
 	}
