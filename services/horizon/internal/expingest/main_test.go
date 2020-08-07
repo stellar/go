@@ -230,6 +230,7 @@ type mockDBQ struct {
 	mock.Mock
 
 	history.MockQAccounts
+	history.MockQClaimableBalances
 	history.MockQAssetStats
 	history.MockQData
 	history.MockQEffects

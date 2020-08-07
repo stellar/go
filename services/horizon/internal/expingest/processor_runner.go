@@ -105,6 +105,7 @@ func (s *ProcessorRunner) buildChangeProcessor(
 		processors.NewAssetStatsProcessor(s.historyQ, useLedgerCache),
 		processors.NewSignersProcessor(s.historyQ, useLedgerCache),
 		processors.NewTrustLinesProcessor(s.historyQ),
+		processors.NewClaimableBalancesProcessor(s.historyQ),
 	}
 }
 
