@@ -159,6 +159,7 @@ type AccountsBatchInsertBuilder interface {
 type IngestionQ interface {
 	QAccounts
 	QAssetStats
+	QClaimableBalances
 	QData
 	QEffects
 	QLedgers

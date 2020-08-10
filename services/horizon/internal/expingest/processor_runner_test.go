@@ -34,6 +34,12 @@ func TestProcessorRunnerRunHistoryArchiveIngestionGenesis(t *testing.T) {
 	q.MockQData.On("NewAccountDataBatchInsertBuilder", maxBatchSize).
 		Return(mockAccountDataBatchInsertBuilder).Once()
 
+	mockClaimableBalancesBatchInsertBuilder := &history.MockClaimableBalancesBatchInsertBuilder{}
+	defer mock.AssertExpectationsForObjects(t, mockClaimableBalancesBatchInsertBuilder)
+	mockClaimableBalancesBatchInsertBuilder.On("Exec").Return(nil).Once()
+	q.MockQClaimableBalances.On("NewClaimableBalancesBatchInsertBuilder", maxBatchSize).
+		Return(mockClaimableBalancesBatchInsertBuilder).Once()
+
 	q.MockQAccounts.On("UpsertAccounts", []xdr.LedgerEntry{
 		{
 			LastModifiedLedgerSeq: 1,
@@ -131,6 +137,12 @@ func TestProcessorRunnerRunHistoryArchiveIngestionHistoryArchive(t *testing.T) {
 	mockAccountDataBatchInsertBuilder.On("Exec").Return(nil).Once()
 	q.MockQData.On("NewAccountDataBatchInsertBuilder", maxBatchSize).
 		Return(mockAccountDataBatchInsertBuilder).Once()
+
+	mockClaimableBalancesBatchInsertBuilder := &history.MockClaimableBalancesBatchInsertBuilder{}
+	defer mock.AssertExpectationsForObjects(t, mockClaimableBalancesBatchInsertBuilder)
+	mockClaimableBalancesBatchInsertBuilder.On("Exec").Return(nil).Once()
+	q.MockQClaimableBalances.On("NewClaimableBalancesBatchInsertBuilder", maxBatchSize).
+		Return(mockClaimableBalancesBatchInsertBuilder).Once()
 
 	q.MockQAccounts.On("UpsertAccounts", []xdr.LedgerEntry{
 		xdr.LedgerEntry{
@@ -315,6 +327,12 @@ func TestProcessorRunnerRunAllProcessorsOnLedger(t *testing.T) {
 	mockTransactionsBatchInsertBuilder.On("Exec").Return(nil).Once()
 	q.MockQTransactions.On("NewTransactionBatchInsertBuilder", maxBatchSize).
 		Return(mockTransactionsBatchInsertBuilder).Twice()
+
+	mockClaimableBalancesBatchInsertBuilder := &history.MockClaimableBalancesBatchInsertBuilder{}
+	defer mock.AssertExpectationsForObjects(t, mockClaimableBalancesBatchInsertBuilder)
+	mockClaimableBalancesBatchInsertBuilder.On("Exec").Return(nil).Once()
+	q.MockQClaimableBalances.On("NewClaimableBalancesBatchInsertBuilder", maxBatchSize).
+		Return(mockClaimableBalancesBatchInsertBuilder).Once()
 
 	q.MockQLedgers.On("InsertLedger", ledger, 0, 0, 0, 0, CurrentVersion).
 		Return(int64(1), nil).Once()
