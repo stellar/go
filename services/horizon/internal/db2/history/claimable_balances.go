@@ -44,12 +44,14 @@ type Claimant struct {
 	Predicate   xdr.ClaimPredicate `json:"predicate"`
 }
 
-func (c *Claimant) MarshalJSON() ([]byte, error) {
-	var dbClaim struct {
-		Destination string `json:"destination"`
-		Predicate   string `json:"predicate"`
-	}
+// internal representation of Claimant as a JSON. Don't use this directly, use
+// Claimant instead.
+var dbClaim struct {
+	Destination string `json:"destination"`
+	Predicate   string `json:"predicate"`
+}
 
+func (c *Claimant) MarshalJSON() ([]byte, error) {
 	dbClaim.Destination = c.Destination
 	predicate, err := xdr.MarshalBase64(c.Predicate)
 	if err != nil {
@@ -61,11 +63,6 @@ func (c *Claimant) MarshalJSON() ([]byte, error) {
 }
 
 func (c *Claimant) UnmarshalJSON(data []byte) error {
-	var dbClaim struct {
-		Destination string `json:"destination"`
-		Predicate   string `json:"predicate"`
-	}
-
 	err := json.Unmarshal(data, &dbClaim)
 	if err != nil {
 		return errors.Wrap(err, "failed decoding claimant")
