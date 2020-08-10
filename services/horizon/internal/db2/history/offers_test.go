@@ -144,11 +144,13 @@ func assertOfferEntryMatchesDBOffer(t *testing.T, entry xdr.LedgerEntry, offer O
 			offer,
 		)
 	}
-	if entry.Ext.V1.SponsoringId == nil && offer.Sponsor.Valid {
-		t.Fatalf(
-			"sponsor is nil but %v in offer from DB",
-			offer,
-		)
+	if entry.SponsoringID() == nil {
+		if offer.Sponsor.Valid {
+			t.Fatalf(
+				"sponsor is nil but %v in offer from DB",
+				offer,
+			)
+		}
 	} else {
 		accountID := xdr.AccountId(*entry.Ext.V1.SponsoringId)
 		if accountID.Address() != offer.Sponsor.String {

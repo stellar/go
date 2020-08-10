@@ -8,7 +8,7 @@ import (
 
 func TestLedgerEntrySponsorship(t *testing.T) {
 	entry := LedgerEntry{}
-	desc := entry.SponsorshipDescriptor()
+	desc := entry.SponsoringID()
 	assert.Nil(t, desc)
 
 	sponsor := MustAddress("GCO26ZSBD63TKYX45H2C7D2WOFWOUSG5BMTNC3BG4QMXM3PAYI6WHKVZ")
@@ -21,6 +21,6 @@ func TestLedgerEntrySponsorship(t *testing.T) {
 			},
 		},
 	}
-	actualDesc := entry.SponsorshipDescriptor()
+	actualDesc := entry.SponsoringID()
 	assert.Equal(t, desc, actualDesc)
 }

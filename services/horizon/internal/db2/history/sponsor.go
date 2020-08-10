@@ -6,11 +6,11 @@ import (
 )
 
 func ledgerEntrySponsorToNullString(entry xdr.LedgerEntry) null.String {
-	sponsorshipDescriptor := entry.SponsorshipDescriptor()
+	sponsoringID := entry.SponsoringID()
 
 	var sponsor null.String
-	if sponsorshipDescriptor != nil {
-		accountID := xdr.AccountId(*sponsorshipDescriptor)
+	if sponsoringID != nil {
+		accountID := xdr.AccountId(*sponsoringID)
 		sponsor.SetValid(accountID.Address())
 	}
 
