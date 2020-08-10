@@ -67,6 +67,11 @@ var replaceRegexps = []replace{
 		`"max_fee":( ?)([\d]+),`),
 		`"max_fee":${1}"${2}",`,
 	},
+	// Removes trailing SSE data, fixed in horizon 1.7.0
+	{regexp.MustCompile(
+		`\nretry:.*\nevent:.*\ndata:.*\n`),
+		``,
+	},
 }
 
 var newAccountDetailsPathWithLastestLedger = regexp.MustCompile(`^/accounts/[A-Z0-9]+/(transactions|operations|payments|effects|trades)/?`)

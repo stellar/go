@@ -456,14 +456,14 @@ func (r resumeState) run(s *system) (transition, error) {
 		log.WithError(err).Warn("error updating stellar-core cursor")
 	}
 
-	duration := time.Since(startTime)
-	s.Metrics().LedgerIngestionTimer.Update(duration)
+	duration := time.Since(startTime).Seconds()
+	s.Metrics().LedgerIngestionDuration.Observe(float64(duration))
 	log.
 		WithFields(changeStats.Map()).
 		WithFields(ledgerTransactionStats.Map()).
 		WithFields(logpkg.F{
 			"sequence": ingestLedger,
-			"duration": duration.Seconds(),
+			"duration": duration,
 			"state":    true,
 			"ledger":   true,
 			"commit":   true,
