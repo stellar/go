@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"testing"
 
+	"github.com/guregu/null"
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
@@ -31,6 +32,11 @@ var (
 						},
 					},
 				},
+			},
+		},
+		Ext: xdr.LedgerEntryExt{
+			V1: &xdr.LedgerEntryExtensionV1{
+				SponsoringId: &sponsor,
 			},
 		},
 	}
@@ -116,6 +122,8 @@ func TestInsertTrustLine(t *testing.T) {
 	lines, err := q.GetTrustLinesByKeys(keys)
 	assert.NoError(t, err)
 	assert.Len(t, lines, 2)
+
+	assert.Equal(t, null.StringFrom(sponsor.Address()), lines[0].Sponsor)
 }
 
 func TestUpdateTrustLine(t *testing.T) {
@@ -129,6 +137,7 @@ func TestUpdateTrustLine(t *testing.T) {
 	assert.Equal(t, int64(1), rows)
 
 	modifiedTrustLine := eurTrustLine
+	modifiedTrustLine.Ext.V1.SponsoringId = nil
 	modifiedTrustLine.Data.TrustLine.Balance = 30000
 
 	rows, err = q.UpdateTrustLine(modifiedTrustLine)
@@ -212,22 +221,33 @@ func TestUpsertTrustLines(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, lines, 1)
 
-	expectedBinary, err := modifiedTrustLine.Data.TrustLine.MarshalBinary()
+	expectedBinary, err := modifiedTrustLine.MarshalBinary()
 	assert.NoError(t, err)
 
-	dbEntry := xdr.TrustLineEntry{
-		AccountId: xdr.MustAddress(lines[0].AccountID),
-		Asset:     xdr.MustNewCreditAsset(lines[0].AssetCode, lines[0].AssetIssuer),
-		Balance:   xdr.Int64(lines[0].Balance),
-		Limit:     xdr.Int64(lines[0].Limit),
-		Flags:     xdr.Uint32(lines[0].Flags),
-		Ext: xdr.TrustLineEntryExt{
-			V: 1,
-			V1: &xdr.TrustLineEntryV1{
-				Liabilities: xdr.Liabilities{
-					Buying:  xdr.Int64(lines[0].BuyingLiabilities),
-					Selling: xdr.Int64(lines[0].SellingLiabilities),
+	dbEntry := xdr.LedgerEntry{
+		LastModifiedLedgerSeq: 1234,
+		Data: xdr.LedgerEntryData{
+			Type: xdr.LedgerEntryTypeTrustline,
+			TrustLine: &xdr.TrustLineEntry{
+				AccountId: xdr.MustAddress(lines[0].AccountID),
+				Asset:     xdr.MustNewCreditAsset(lines[0].AssetCode, lines[0].AssetIssuer),
+				Balance:   xdr.Int64(lines[0].Balance),
+				Limit:     xdr.Int64(lines[0].Limit),
+				Flags:     xdr.Uint32(lines[0].Flags),
+				Ext: xdr.TrustLineEntryExt{
+					V: 1,
+					V1: &xdr.TrustLineEntryV1{
+						Liabilities: xdr.Liabilities{
+							Buying:  xdr.Int64(lines[0].BuyingLiabilities),
+							Selling: xdr.Int64(lines[0].SellingLiabilities),
+						},
+					},
 				},
+			},
+		},
+		Ext: xdr.LedgerEntryExt{
+			V1: &xdr.LedgerEntryExtensionV1{
+				SponsoringId: &sponsor,
 			},
 		},
 	}
@@ -244,21 +264,27 @@ func TestUpsertTrustLines(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, lines, 1)
 
-	expectedBinary, err = usdTrustLine.Data.TrustLine.MarshalBinary()
+	expectedBinary, err = usdTrustLine.MarshalBinary()
 	assert.NoError(t, err)
 
-	dbEntry = xdr.TrustLineEntry{
-		AccountId: xdr.MustAddress(lines[0].AccountID),
-		Asset:     xdr.MustNewCreditAsset(lines[0].AssetCode, lines[0].AssetIssuer),
-		Balance:   xdr.Int64(lines[0].Balance),
-		Limit:     xdr.Int64(lines[0].Limit),
-		Flags:     xdr.Uint32(lines[0].Flags),
-		Ext: xdr.TrustLineEntryExt{
-			V: 1,
-			V1: &xdr.TrustLineEntryV1{
-				Liabilities: xdr.Liabilities{
-					Buying:  xdr.Int64(lines[0].BuyingLiabilities),
-					Selling: xdr.Int64(lines[0].SellingLiabilities),
+	dbEntry = xdr.LedgerEntry{
+		LastModifiedLedgerSeq: 1235,
+		Data: xdr.LedgerEntryData{
+			Type: xdr.LedgerEntryTypeTrustline,
+			TrustLine: &xdr.TrustLineEntry{
+				AccountId: xdr.MustAddress(lines[0].AccountID),
+				Asset:     xdr.MustNewCreditAsset(lines[0].AssetCode, lines[0].AssetIssuer),
+				Balance:   xdr.Int64(lines[0].Balance),
+				Limit:     xdr.Int64(lines[0].Limit),
+				Flags:     xdr.Uint32(lines[0].Flags),
+				Ext: xdr.TrustLineEntryExt{
+					V: 1,
+					V1: &xdr.TrustLineEntryV1{
+						Liabilities: xdr.Liabilities{
+							Buying:  xdr.Int64(lines[0].BuyingLiabilities),
+							Selling: xdr.Int64(lines[0].SellingLiabilities),
+						},
+					},
 				},
 			},
 		},

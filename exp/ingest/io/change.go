@@ -206,9 +206,17 @@ func (c *Change) AccountSignersChanged() bool {
 			return true
 		} else if preSponsor != nil && postSponsor == nil {
 			return true
-		}
+		} else if preSponsor != nil && postSponsor != nil {
+			preSponsorAccountID := xdr.AccountId(*preSponsor)
+			preSponsorAddress := preSponsorAccountID.Address()
 
-		// It's not possible to replace the sponsor so not checking it...
+			postSponsorAccountID := xdr.AccountId(*postSponsor)
+			postSponsorAddress := postSponsorAccountID.Address()
+
+			if preSponsorAddress != postSponsorAddress {
+				return true
+			}
+		}
 	}
 
 	return false

@@ -3,6 +3,7 @@ package history
 import (
 	"testing"
 
+	"github.com/guregu/null"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/test"
 )
@@ -44,6 +45,31 @@ func TestInsertAccountSigner(t *testing.T) {
 	_, err = q.CreateAccountSigner(account, signer, weight, nil)
 	tt.Assert.Error(err)
 	tt.Assert.EqualError(err, `exec failed: pq: duplicate key value violates unique constraint "accounts_signers_pkey"`)
+}
+
+func TestInsertAccountSignerSponsor(t *testing.T) {
+	tt := test.Start(t).Scenario("base")
+	defer tt.Finish()
+	q := &Q{tt.HorizonSession()}
+
+	account := "GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2"
+	signer := "GC23QF2HUE52AMXUFUH3AYJAXXGXXV2VHXYYR6EYXETPKDXZSAW67XO4"
+	weight := int32(123)
+	sponsor := "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H"
+	rowsAffected, err := q.CreateAccountSigner(account, signer, weight, &sponsor)
+	tt.Assert.NoError(err)
+	tt.Assert.Equal(int64(1), rowsAffected)
+
+	expected := AccountSigner{
+		Account: account,
+		Signer:  signer,
+		Weight:  weight,
+		Sponsor: null.StringFrom(sponsor),
+	}
+	results, err := q.AccountsForSigner(signer, db2.PageQuery{Order: "asc", Limit: 10})
+	tt.Assert.NoError(err)
+	tt.Assert.Len(results, 1)
+	tt.Assert.Equal(expected, results[0])
 }
 
 func TestMultipleAccountsForSigner(t *testing.T) {
@@ -137,19 +163,21 @@ func TestGetAccountSignersByAccountID(t *testing.T) {
 
 	signer2 := "GC2WJF6YWMAEHGGAK2UOMZCIOMH4RU7KY2CQEWZQJV2ZQJVXJ335ZSXG"
 	weight2 := int32(100)
-	_, err = q.CreateAccountSigner(account, signer2, weight2, nil)
+	sponsor := "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H"
+	_, err = q.CreateAccountSigner(account, signer2, weight2, &sponsor)
 	tt.Assert.NoError(err)
 
 	expected := []AccountSigner{
-		AccountSigner{
+		{
 			Account: account,
 			Signer:  signer,
 			Weight:  weight,
 		},
-		AccountSigner{
+		{
 			Account: account,
 			Signer:  signer2,
 			Weight:  weight2,
+			Sponsor: null.StringFrom(sponsor),
 		},
 	}
 	results, err := q.GetAccountSignersByAccountID(account)
