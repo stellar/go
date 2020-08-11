@@ -238,6 +238,62 @@ var ingestTriggerStateRebuildCmd = &cobra.Command{
 	},
 }
 
+var ingestInitGenesisStateCmd = &cobra.Command{
+	Use:   "init-genesis-state",
+	Short: "ingests genesis state (ledger 1)",
+	Run: func(cmd *cobra.Command, args []string) {
+		initRootConfig()
+
+		horizonSession, err := db.Open("postgres", config.DatabaseURL)
+		if err != nil {
+			log.Fatalf("cannot open Horizon DB: %v", err)
+		}
+
+		historyQ := &history.Q{horizonSession}
+
+		lastIngestedLedger, err := historyQ.GetLastLedgerExpIngestNonBlocking()
+		if err != nil {
+			log.Fatalf("cannot get last ledger value: %v", err)
+		}
+
+		if lastIngestedLedger != 0 {
+			log.Fatalf("cannot run on non-empty DB")
+		}
+
+		ingestConfig := expingest.Config{
+			NetworkPassphrase: config.NetworkPassphrase,
+			HistorySession:    horizonSession,
+			HistoryArchiveURL: config.HistoryArchiveURLs[0],
+		}
+
+		if config.EnableCaptiveCoreIngestion {
+			ingestConfig.StellarCoreBinaryPath = config.StellarCoreBinaryPath
+		} else {
+			if config.StellarCoreDatabaseURL == "" {
+				log.Fatalf("flag --%s cannot be empty", stellarCoreDBURLFlagName)
+			}
+
+			coreSession, dbErr := db.Open("postgres", config.StellarCoreDatabaseURL)
+			if dbErr != nil {
+				log.Fatalf("cannot open Core DB: %v", dbErr)
+			}
+			ingestConfig.CoreSession = coreSession
+		}
+
+		system, err := expingest.NewSystem(ingestConfig)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		err = system.BuildGenesisState()
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		log.Info("Genesis ledger stat successfully ingested!")
+	},
+}
+
 func init() {
 	for _, co := range ingestVerifyRangeCmdOpts {
 		err := co.Init(ingestVerifyRangeCmd)
@@ -256,5 +312,10 @@ func init() {
 	viper.BindPFlags(ingestVerifyRangeCmd.PersistentFlags())
 
 	rootCmd.AddCommand(ingestCmd)
-	ingestCmd.AddCommand(ingestVerifyRangeCmd, ingestStressTestCmd, ingestTriggerStateRebuildCmd)
+	ingestCmd.AddCommand(
+		ingestVerifyRangeCmd,
+		ingestStressTestCmd,
+		ingestTriggerStateRebuildCmd,
+		ingestInitGenesisStateCmd,
+	)
 }
