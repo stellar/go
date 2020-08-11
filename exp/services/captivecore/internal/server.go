@@ -26,6 +26,7 @@ func serializeResponse(
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	if err := json.NewEncoder(w).Encode(response); err != nil {
 		logger.WithContext(r.Context()).WithError(err).Warn("could not serialize response")
+		w.WriteHeader(http.StatusInternalServerError)
 	}
 }
 
