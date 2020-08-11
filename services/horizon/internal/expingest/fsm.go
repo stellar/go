@@ -304,7 +304,8 @@ func (b buildState) run(s *system) (transition, error) {
 
 	// We don't need to prepare range for genesis checkpoint.
 	if b.checkpointLedger != 1 {
-		lockReleased, err := s.maybePrepareRange(b.checkpointLedger)
+		var lockReleased bool
+		lockReleased, err = s.maybePrepareRange(b.checkpointLedger)
 		if err != nil {
 			return nextFailState, err
 		} else if lockReleased {
