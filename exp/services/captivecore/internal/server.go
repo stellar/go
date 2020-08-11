@@ -23,8 +23,8 @@ func serializeResponse(
 		return
 	}
 
-	encoder := json.NewEncoder(w)
-	if err := encoder.Encode(response); err != nil {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	if err := json.NewEncoder(w).Encode(response); err != nil {
 		logger.WithContext(r.Context()).WithError(err).Warn("could not serialize response")
 	}
 }
@@ -42,7 +42,7 @@ func Handler(api CaptiveCoreAPI) http.Handler {
 		serializeResponse(api.log, w, r, response, err)
 	})
 
-	mux.Get("/ledger", func(w http.ResponseWriter, r *http.Request) {
+	mux.Get("/ledger/{sequence}", func(w http.ResponseWriter, r *http.Request) {
 		req := GetLedgerRequest{}
 		if err := httpdecode.Decode(r, &req); err != nil {
 			w.WriteHeader(http.StatusBadRequest)

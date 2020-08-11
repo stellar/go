@@ -61,7 +61,7 @@ func main() {
 			Name:        "history-archive-urls",
 			ConfigKey:   &historyArchiveURLs,
 			OptType:     types.String,
-			Required:    false,
+			Required:    true,
 			FlagDefault: "",
 			CustomSetValue: func(co *config.ConfigOption) {
 				stringOfUrls := viper.GetString(co.Name)

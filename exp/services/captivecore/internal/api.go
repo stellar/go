@@ -2,6 +2,7 @@ package internal
 
 import (
 	"context"
+	"encoding/json"
 	"sync"
 	"time"
 
@@ -34,14 +35,14 @@ type rangeRequest struct {
 type CaptiveCoreAPI struct {
 	ctx           context.Context
 	cancel        context.CancelFunc
-	core          *ledgerbackend.CaptiveStellarCore
+	core          ledgerbackend.LedgerBackend
 	activeRequest *rangeRequest
 	wg            *sync.WaitGroup
 	log           *log.Entry
 }
 
 // NewCaptiveCoreAPI constructs a new CaptiveCoreAPI instance.
-func NewCaptiveCoreAPI(core *ledgerbackend.CaptiveStellarCore, log *log.Entry) CaptiveCoreAPI {
+func NewCaptiveCoreAPI(core ledgerbackend.LedgerBackend, log *log.Entry) CaptiveCoreAPI {
 	ctx, cancel := context.WithCancel(context.Background())
 	return CaptiveCoreAPI{
 		ctx:           ctx,
@@ -67,10 +68,7 @@ func (c *CaptiveCoreAPI) Shutdown() {
 func (c *CaptiveCoreAPI) startPrepareRange(ledgerRange ledgerbackend.Range) {
 	defer c.wg.Done()
 
-	if err := c.core.PrepareRange(ledgerRange); err != nil {
-		c.log.WithError(err).WithField("preparedRange", ledgerRange).Warn("Could not prepare range")
-		return
-	}
+	err := c.core.PrepareRange(ledgerRange)
 
 	c.activeRequest.Lock()
 	defer c.activeRequest.Unlock()
@@ -89,6 +87,14 @@ func (c *CaptiveCoreAPI) startPrepareRange(ledgerRange ledgerbackend.Range) {
 
 	if c.activeRequest.ready {
 		c.log.WithField("preparedRange", ledgerRange).Warn("Prepared range already completed")
+		return
+	}
+
+	if err != nil {
+		c.log.WithError(err).WithField("preparedRange", ledgerRange).Warn("Could not prepare range")
+		c.activeRequest.valid = false
+		c.activeRequest.ready = false
+		return
 	}
 
 	c.activeRequest.ready = true
@@ -111,7 +117,7 @@ func (c *CaptiveCoreAPI) PrepareRange(ledgerRange ledgerbackend.Range) (RangeRes
 		return RangeResponse{}, errors.New("Cannot prepare range when shut down")
 	}
 
-	if !c.activeRequest.valid || c.activeRequest.ledgerRange.Contains(ledgerRange) {
+	if !c.activeRequest.valid || !c.activeRequest.ledgerRange.Contains(ledgerRange) {
 		if c.activeRequest.valid {
 			c.log.WithFields(log.F{
 				"activeRange":    c.activeRequest.ledgerRange,
@@ -136,7 +142,7 @@ func (c *CaptiveCoreAPI) PrepareRange(ledgerRange ledgerbackend.Range) (RangeRes
 	}
 
 	return RangeResponse{
-		LedgerRange:   ledgerRange,
+		LedgerRange:   c.activeRequest.ledgerRange,
 		StartTime:     c.activeRequest.startTime,
 		Ready:         c.activeRequest.ready,
 		ReadyDuration: c.activeRequest.readyDuration,
@@ -164,10 +170,35 @@ func (c *CaptiveCoreAPI) GetLatestLedgerSequence() (LatestLedgerSequenceResponse
 	return LatestLedgerSequenceResponse{Sequence: seq}, err
 }
 
+type Base64Ledger xdr.LedgerCloseMeta
+
+func (r *Base64Ledger) UnmarshalJSON(b []byte) error {
+	var base64 string
+	if err := json.Unmarshal(b, &base64); err != nil {
+		return err
+	}
+
+	var parsed xdr.LedgerCloseMeta
+	if err := xdr.SafeUnmarshalBase64(base64, &parsed); err != nil {
+		return err
+	}
+	*r = Base64Ledger(parsed)
+
+	return nil
+}
+
+func (r Base64Ledger) MarshalJSON() ([]byte, error) {
+	base64, err := xdr.MarshalBase64(xdr.LedgerCloseMeta(r))
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(base64)
+}
+
 // LedgerResponse is the response for the GetLedger command.
 type LedgerResponse struct {
-	Present bool                `json:"present"`
-	Ledger  xdr.LedgerCloseMeta `json:"ledger"`
+	Present bool         `json:"present"`
+	Ledger  Base64Ledger `json:"ledger"`
 }
 
 // GetLedger fetches the ledger with the given sequence number from the captive core instance.
@@ -185,6 +216,6 @@ func (c *CaptiveCoreAPI) GetLedger(sequence uint32) (LedgerResponse, error) {
 	present, ledger, err := c.core.GetLedger(sequence)
 	return LedgerResponse{
 		Present: present,
-		Ledger:  ledger,
+		Ledger:  Base64Ledger(ledger),
 	}, err
 }
