@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/rcrowley/go-metrics"
+	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/stellar/go/services/horizon/internal/db2"
 	hProblem "github.com/stellar/go/services/horizon/internal/render/problem"
@@ -21,27 +21,14 @@ import (
 )
 
 type ServerMetrics struct {
-	RequestTimer metrics.Timer
-	FailureMeter metrics.Meter
-	SuccessMeter metrics.Meter
-}
-
-func NewServerMetrics(registry metrics.Registry) *ServerMetrics {
-	result := ServerMetrics{
-		RequestTimer: metrics.NewTimer(),
-		FailureMeter: metrics.NewMeter(),
-		SuccessMeter: metrics.NewMeter(),
-	}
-	registry.Register("requests.total", result.RequestTimer)
-	registry.Register("requests.succeeded", result.SuccessMeter)
-	registry.Register("requests.failed", result.FailureMeter)
-	return &result
+	RequestDurationSummary *prometheus.SummaryVec
 }
 
 // Web contains the http server related fields for horizon: the Router,
 // rate limiter, etc.
 type Server struct {
 	Router         *Router
+	Metrics        *ServerMetrics
 	server         *http.Server
 	internalServer *http.Server
 }
@@ -60,13 +47,23 @@ func init() {
 }
 
 func NewServer(config *RouterConfig) (*Server, error) {
-	sm := NewServerMetrics(config.MetricsRegistry)
+	sm := &ServerMetrics{
+		RequestDurationSummary: prometheus.NewSummaryVec(
+			prometheus.SummaryOpts{
+				Namespace: "horizon", Subsystem: "http", Name: "requests_duration_seconds",
+				Help: "HTTP requests durations, sliding window = 10m",
+			},
+			[]string{"status", "route", "streaming", "method"},
+		),
+	}
+
 	router, err := NewRouter(config, sm)
 	if err != nil {
 		return nil, err
 	}
 	result := &Server{
-		Router: router,
+		Router:  router,
+		Metrics: sm,
 	}
 	return result, nil
 }
