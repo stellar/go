@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 
 	sq "github.com/Masterminds/squirrel"
+	"github.com/guregu/null"
 	"github.com/lib/pq"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
@@ -141,6 +142,7 @@ func (q *Q) UpsertTrustLines(trustLines []xdr.LedgerEntry) error {
 	var balance, limit, buyingLiabilities, sellingLiabilities []xdr.Int64
 	var flags, lastModifiedLedger []xdr.Uint32
 	var assetType []xdr.AssetType
+	var sponsor []null.String
 
 	for _, entry := range trustLines {
 		if entry.Data.Type != xdr.LedgerEntryTypeTrustline {
@@ -164,6 +166,7 @@ func (q *Q) UpsertTrustLines(trustLines []xdr.LedgerEntry) error {
 		sellingLiabilities = append(sellingLiabilities, m["selling_liabilities"].(xdr.Int64))
 		flags = append(flags, m["flags"].(xdr.Uint32))
 		lastModifiedLedger = append(lastModifiedLedger, m["last_modified_ledger"].(xdr.Uint32))
+		sponsor = append(sponsor, m["sponsor"].(null.String))
 	}
 
 	sql := `
@@ -179,7 +182,8 @@ func (q *Q) UpsertTrustLines(trustLines []xdr.LedgerEntry) error {
 			unnest(?::bigint[]),
 			unnest(?::bigint[]),
 			unnest(?::int[]),
-			unnest(?::int[])
+			unnest(?::int[]),
+			unnest(?::text[])
 		)
 	INSERT INTO trust_lines ( 
 		ledger_key,
@@ -192,7 +196,8 @@ func (q *Q) UpsertTrustLines(trustLines []xdr.LedgerEntry) error {
 		buying_liabilities,
 		selling_liabilities,
 		flags,
-		last_modified_ledger
+		last_modified_ledger,
+		sponsor
 	)
 	SELECT * from r 
 	ON CONFLICT (ledger_key) DO UPDATE SET 
@@ -206,7 +211,8 @@ func (q *Q) UpsertTrustLines(trustLines []xdr.LedgerEntry) error {
 		buying_liabilities = excluded.buying_liabilities,
 		selling_liabilities = excluded.selling_liabilities,
 		flags = excluded.flags,
-		last_modified_ledger = excluded.last_modified_ledger`
+		last_modified_ledger = excluded.last_modified_ledger,
+		sponsor = excluded.sponsor`
 
 	_, err := q.ExecRaw(sql,
 		pq.Array(ledgerKey),
@@ -219,7 +225,8 @@ func (q *Q) UpsertTrustLines(trustLines []xdr.LedgerEntry) error {
 		pq.Array(buyingLiabilities),
 		pq.Array(sellingLiabilities),
 		pq.Array(flags),
-		pq.Array(lastModifiedLedger))
+		pq.Array(lastModifiedLedger),
+		pq.Array(sponsor))
 	return err
 }
 
@@ -292,6 +299,7 @@ func trustLineToMap(entry xdr.LedgerEntry) map[string]interface{} {
 		"selling_liabilities":  liabilities.Selling,
 		"flags":                trustLine.Flags,
 		"last_modified_ledger": entry.LastModifiedLedgerSeq,
+		"sponsor":              ledgerEntrySponsorToNullString(entry),
 	}
 }
 
@@ -305,5 +313,6 @@ var selectTrustLines = sq.Select(`
 	buying_liabilities,
 	selling_liabilities,
 	flags,
-	last_modified_ledger
+	last_modified_ledger,
+	sponsor
 `).From("trust_lines")

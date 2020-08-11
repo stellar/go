@@ -34,6 +34,11 @@ var (
 				Amount: xdr.Int64(500),
 			},
 		},
+		Ext: xdr.LedgerEntryExt{
+			V1: &xdr.LedgerEntryExtensionV1{
+				SponsoringId: &sponsor,
+			},
+		},
 	}
 	twoEurOffer = xdr.LedgerEntry{
 		LastModifiedLedgerSeq: 1234,
@@ -138,6 +143,23 @@ func assertOfferEntryMatchesDBOffer(t *testing.T, entry xdr.LedgerEntry, offer O
 			entry.LastModifiedLedgerSeq,
 			offer,
 		)
+	}
+	if entry.SponsoringID() == nil {
+		if offer.Sponsor.Valid {
+			t.Fatalf(
+				"sponsor is nil but %v in offer from DB",
+				offer,
+			)
+		}
+	} else {
+		accountID := xdr.AccountId(*entry.Ext.V1.SponsoringId)
+		if accountID.Address() != offer.Sponsor.String {
+			t.Fatalf(
+				"sponsor %s does not equal sponsor %v in offer from DB",
+				accountID.Address(),
+				offer,
+			)
+		}
 	}
 }
 

@@ -29,6 +29,7 @@ func (i *offersBatchInsertBuilder) Add(entry xdr.LedgerEntry) error {
 		Flags:              uint32(offer.Flags),
 		Deleted:            false,
 		LastModifiedLedger: uint32(entry.LastModifiedLedgerSeq),
+		Sponsor:            ledgerEntrySponsorToNullString(entry),
 	}
 
 	return i.builder.RowStruct(row)

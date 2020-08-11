@@ -46,3 +46,12 @@ func (entry *LedgerEntry) LedgerKey() LedgerKey {
 
 	return ret
 }
+
+// SponsoringID return SponsorshipDescriptor for a given ledger entry
+func (entry *LedgerEntry) SponsoringID() SponsorshipDescriptor {
+	var sponsor SponsorshipDescriptor
+	if entry.Ext.V1 != nil {
+		sponsor = entry.Ext.V1.SponsoringId
+	}
+	return sponsor
+}

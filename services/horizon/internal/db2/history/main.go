@@ -507,7 +507,7 @@ type QSigners interface {
 	UpdateLastLedgerExpIngest(ledgerSequence uint32) error
 	AccountsForSigner(signer string, page db2.PageQuery) ([]AccountSigner, error)
 	NewAccountSignersBatchInsertBuilder(maxBatchSize int) AccountSignersBatchInsertBuilder
-	CreateAccountSigner(account, signer string, weight int32) (int64, error)
+	CreateAccountSigner(account, signer string, weight int32, sponsor *string) (int64, error)
 	RemoveAccountSigner(account, signer string) (int64, error)
 	SignersForAccounts(accounts []string) ([]AccountSigner, error)
 	CountAccounts() (int, error)

@@ -791,3 +791,173 @@ func TestChangeAccountSignersChangedSignerWeightChanged(t *testing.T) {
 
 	assert.True(t, change.AccountSignersChanged())
 }
+
+func TestChangeAccountSignersChangedSponsorAdded(t *testing.T) {
+	sponsor, err := xdr.AddressToAccountId("GBADGWKHSUFOC4C7E3KXKINZSRX5KPHUWHH67UGJU77LEORGVLQ3BN3B")
+	assert.NoError(t, err)
+
+	change := Change{
+		Type: xdr.LedgerEntryTypeAccount,
+		Pre: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: 10,
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeAccount,
+				Account: &xdr.AccountEntry{
+					AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+					Signers: []xdr.Signer{
+						{
+							Key:    xdr.MustSigner("GCCCU34WDY2RATQTOOQKY6SZWU6J5DONY42SWGW2CIXGW4LICAGNRZKX"),
+							Weight: 1,
+						},
+					},
+				},
+			},
+		},
+		Post: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: 10,
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeAccount,
+				Account: &xdr.AccountEntry{
+					AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+					Signers: []xdr.Signer{
+						{
+							Key:    xdr.MustSigner("GCCCU34WDY2RATQTOOQKY6SZWU6J5DONY42SWGW2CIXGW4LICAGNRZKX"),
+							Weight: 1,
+						},
+					},
+					Ext: xdr.AccountEntryExt{
+						V1: &xdr.AccountEntryExtensionV1{
+							Ext: xdr.AccountEntryExtensionV1Ext{
+								V2: &xdr.AccountEntryExtensionV2{
+									SignerSponsoringIDs: []xdr.SponsorshipDescriptor{
+										&sponsor,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	assert.True(t, change.AccountSignersChanged())
+}
+
+func TestChangeAccountSignersChangedSponsorRemoved(t *testing.T) {
+	sponsor, err := xdr.AddressToAccountId("GBADGWKHSUFOC4C7E3KXKINZSRX5KPHUWHH67UGJU77LEORGVLQ3BN3B")
+	assert.NoError(t, err)
+
+	change := Change{
+		Type: xdr.LedgerEntryTypeAccount,
+		Pre: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: 10,
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeAccount,
+				Account: &xdr.AccountEntry{
+					AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+					Signers: []xdr.Signer{
+						{
+							Key:    xdr.MustSigner("GCCCU34WDY2RATQTOOQKY6SZWU6J5DONY42SWGW2CIXGW4LICAGNRZKX"),
+							Weight: 1,
+						},
+					},
+					Ext: xdr.AccountEntryExt{
+						V1: &xdr.AccountEntryExtensionV1{
+							Ext: xdr.AccountEntryExtensionV1Ext{
+								V2: &xdr.AccountEntryExtensionV2{
+									SignerSponsoringIDs: []xdr.SponsorshipDescriptor{
+										&sponsor,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		Post: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: 10,
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeAccount,
+				Account: &xdr.AccountEntry{
+					AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+					Signers: []xdr.Signer{
+						{
+							Key:    xdr.MustSigner("GCCCU34WDY2RATQTOOQKY6SZWU6J5DONY42SWGW2CIXGW4LICAGNRZKX"),
+							Weight: 1,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	assert.True(t, change.AccountSignersChanged())
+}
+
+func TestChangeAccountSignersChangedSponsorChanged(t *testing.T) {
+	sponsor, err := xdr.AddressToAccountId("GBADGWKHSUFOC4C7E3KXKINZSRX5KPHUWHH67UGJU77LEORGVLQ3BN3B")
+	assert.NoError(t, err)
+
+	newSponsor, err := xdr.AddressToAccountId("GB2Y6D5QFDJSCR6GSBO5D2LOLGZI4RVPRGZSSPLIFWNJZ7SL73TOMXAQ")
+	assert.NoError(t, err)
+
+	change := Change{
+		Type: xdr.LedgerEntryTypeAccount,
+		Pre: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: 10,
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeAccount,
+				Account: &xdr.AccountEntry{
+					AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+					Signers: []xdr.Signer{
+						{
+							Key:    xdr.MustSigner("GCCCU34WDY2RATQTOOQKY6SZWU6J5DONY42SWGW2CIXGW4LICAGNRZKX"),
+							Weight: 1,
+						},
+					},
+					Ext: xdr.AccountEntryExt{
+						V1: &xdr.AccountEntryExtensionV1{
+							Ext: xdr.AccountEntryExtensionV1Ext{
+								V2: &xdr.AccountEntryExtensionV2{
+									SignerSponsoringIDs: []xdr.SponsorshipDescriptor{
+										&sponsor,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		Post: &xdr.LedgerEntry{
+			LastModifiedLedgerSeq: 10,
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeAccount,
+				Account: &xdr.AccountEntry{
+					AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+					Signers: []xdr.Signer{
+						{
+							Key:    xdr.MustSigner("GCCCU34WDY2RATQTOOQKY6SZWU6J5DONY42SWGW2CIXGW4LICAGNRZKX"),
+							Weight: 1,
+						},
+					},
+					Ext: xdr.AccountEntryExt{
+						V1: &xdr.AccountEntryExtensionV1{
+							Ext: xdr.AccountEntryExtensionV1Ext{
+								V2: &xdr.AccountEntryExtensionV2{
+									SignerSponsoringIDs: []xdr.SponsorshipDescriptor{
+										&newSponsor,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	assert.True(t, change.AccountSignersChanged())
+}

@@ -120,6 +120,7 @@ func (q *Q) UpdateOffer(entry xdr.LedgerEntry) (int64, error) {
 		"price":                price,
 		"flags":                offer.Flags,
 		"last_modified_ledger": entry.LastModifiedLedgerSeq,
+		"sponsor":              ledgerEntrySponsorToNullString(entry),
 	}
 
 	sql := sq.Update("offers").SetMap(offerMap).Where("offer_id = ?", offer.OfferId)
@@ -176,5 +177,6 @@ var selectOffers = sq.Select(`
 	price,
 	flags,
 	deleted,
-	last_modified_ledger
+	last_modified_ledger,
+	sponsor
 `).From("offers")

@@ -3,6 +3,7 @@ package history
 import (
 	"testing"
 
+	"github.com/guregu/null"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/xdr"
@@ -11,6 +12,7 @@ import (
 
 var (
 	inflationDest = xdr.MustAddress("GBUH7T6U36DAVEKECMKN5YEBQYZVRBPNSZAAKBCO6P5HBMDFSQMQL4Z4")
+	sponsor       = xdr.MustAddress("GCO26ZSBD63TKYX45H2C7D2WOFWOUSG5BMTNC3BG4QMXM3PAYI6WHKVZ")
 
 	account1 = xdr.LedgerEntry{
 		LastModifiedLedgerSeq: 1234,
@@ -58,8 +60,19 @@ var (
 							Buying:  30,
 							Selling: 40,
 						},
+						Ext: xdr.AccountEntryExtensionV1Ext{
+							V2: &xdr.AccountEntryExtensionV2{
+								NumSponsored:  1,
+								NumSponsoring: 2,
+							},
+						},
 					},
 				},
+			},
+		},
+		Ext: xdr.LedgerEntryExt{
+			V1: &xdr.LedgerEntryExtensionV1{
+				SponsoringId: &sponsor,
 			},
 		},
 	}
@@ -123,6 +136,13 @@ func TestInsertAccount(t *testing.T) {
 	assert.Equal(t, byte(4), accounts[0].ThresholdHigh)
 	assert.Equal(t, int64(3), accounts[0].BuyingLiabilities)
 	assert.Equal(t, int64(4), accounts[0].SellingLiabilities)
+	assert.Equal(t, uint32(0), accounts[0].NumSponsored)
+	assert.Equal(t, uint32(0), accounts[0].NumSponsoring)
+	assert.Equal(t, null.String{}, accounts[0].Sponsor)
+
+	assert.Equal(t, uint32(1), accounts[1].NumSponsored)
+	assert.Equal(t, uint32(2), accounts[1].NumSponsoring)
+	assert.Equal(t, null.StringFrom(sponsor.Address()), accounts[1].Sponsor)
 }
 
 func TestUpsertAccount(t *testing.T) {
@@ -171,6 +191,14 @@ func TestUpsertAccount(t *testing.T) {
 	accounts, err := q.GetAccountsByIDs(keys)
 	assert.NoError(t, err)
 	assert.Len(t, accounts, 2)
+
+	assert.Equal(t, uint32(1), accounts[0].NumSponsored)
+	assert.Equal(t, uint32(2), accounts[0].NumSponsoring)
+	assert.Equal(t, null.StringFrom(sponsor.Address()), accounts[0].Sponsor)
+
+	assert.Equal(t, uint32(0), accounts[1].NumSponsored)
+	assert.Equal(t, uint32(0), accounts[1].NumSponsoring)
+	assert.Equal(t, null.String{}, accounts[1].Sponsor)
 
 	accounts, err = q.GetAccountsByIDs([]string{account1.Data.Account.AccountId.Address()})
 	assert.NoError(t, err)
@@ -349,15 +377,15 @@ func TestAccountEntriesForSigner(t *testing.T) {
 	_, err = q.InsertTrustLine(usdTrustLine)
 	tt.Assert.NoError(err)
 
-	_, err = q.CreateAccountSigner(account1.Data.Account.AccountId.Address(), account1.Data.Account.AccountId.Address(), 1)
+	_, err = q.CreateAccountSigner(account1.Data.Account.AccountId.Address(), account1.Data.Account.AccountId.Address(), 1, nil)
 	tt.Assert.NoError(err)
-	_, err = q.CreateAccountSigner(account2.Data.Account.AccountId.Address(), account2.Data.Account.AccountId.Address(), 1)
+	_, err = q.CreateAccountSigner(account2.Data.Account.AccountId.Address(), account2.Data.Account.AccountId.Address(), 1, nil)
 	tt.Assert.NoError(err)
-	_, err = q.CreateAccountSigner(account3.Data.Account.AccountId.Address(), account3.Data.Account.AccountId.Address(), 1)
+	_, err = q.CreateAccountSigner(account3.Data.Account.AccountId.Address(), account3.Data.Account.AccountId.Address(), 1, nil)
 	tt.Assert.NoError(err)
-	_, err = q.CreateAccountSigner(account1.Data.Account.AccountId.Address(), account3.Data.Account.AccountId.Address(), 1)
+	_, err = q.CreateAccountSigner(account1.Data.Account.AccountId.Address(), account3.Data.Account.AccountId.Address(), 1, nil)
 	tt.Assert.NoError(err)
-	_, err = q.CreateAccountSigner(account2.Data.Account.AccountId.Address(), account3.Data.Account.AccountId.Address(), 1)
+	_, err = q.CreateAccountSigner(account2.Data.Account.AccountId.Address(), account3.Data.Account.AccountId.Address(), 1, nil)
 	tt.Assert.NoError(err)
 
 	pq := db2.PageQuery{

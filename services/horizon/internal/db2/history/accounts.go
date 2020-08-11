@@ -2,6 +2,7 @@ package history
 
 import (
 	sq "github.com/Masterminds/squirrel"
+	"github.com/guregu/null"
 	"github.com/lib/pq"
 
 	"github.com/stellar/go/services/horizon/internal/db2"
@@ -76,6 +77,9 @@ func accountToMap(entry xdr.LedgerEntry) map[string]interface{} {
 		"threshold_medium":      account.ThresholdMedium(),
 		"threshold_high":        account.ThresholdHigh(),
 		"last_modified_ledger":  entry.LastModifiedLedgerSeq,
+		"sponsor":               ledgerEntrySponsorToNullString(entry),
+		"num_sponsored":         account.NumSponsored(),
+		"num_sponsoring":        account.NumSponsoring(),
 	}
 }
 
@@ -88,8 +92,9 @@ func (q *Q) UpsertAccounts(accounts []xdr.LedgerEntry) error {
 	var homeDomain []xdr.String32
 	var balance, buyingLiabilities, sellingLiabilities []xdr.Int64
 	var sequenceNumber []xdr.SequenceNumber
-	var numSubEntries, flags, lastModifiedLedger []xdr.Uint32
+	var numSubEntries, flags, lastModifiedLedger, numSponsored, numSponsoring []xdr.Uint32
 	var masterWeight, thresholdLow, thresholdMedium, thresholdHigh []uint8
+	var sponsor []null.String
 
 	for _, entry := range accounts {
 		if entry.Data.Type != xdr.LedgerEntryTypeAccount {
@@ -111,6 +116,9 @@ func (q *Q) UpsertAccounts(accounts []xdr.LedgerEntry) error {
 		thresholdMedium = append(thresholdMedium, m["threshold_medium"].(uint8))
 		thresholdHigh = append(thresholdHigh, m["threshold_high"].(uint8))
 		lastModifiedLedger = append(lastModifiedLedger, m["last_modified_ledger"].(xdr.Uint32))
+		sponsor = append(sponsor, m["sponsor"].(null.String))
+		numSponsored = append(numSponsored, m["num_sponsored"].(xdr.Uint32))
+		numSponsoring = append(numSponsoring, m["num_sponsoring"].(xdr.Uint32))
 	}
 
 	sql := `
@@ -129,7 +137,10 @@ func (q *Q) UpsertAccounts(accounts []xdr.LedgerEntry) error {
 			unnest(?::int[]),    /*	threshold_low */
 			unnest(?::int[]),    /*	threshold_medium */
 			unnest(?::int[]),    /*	threshold_high */
-			unnest(?::int[])    /*	last_modified_ledger */
+			unnest(?::int[]),    /*	last_modified_ledger */
+			unnest(?::text[]),   /*	sponsor */
+			unnest(?::int[]),    /*	num_sponsored */
+			unnest(?::int[])     /*	num_sponsoring */
 		)
 	INSERT INTO accounts ( 
 		account_id,
@@ -145,7 +156,10 @@ func (q *Q) UpsertAccounts(accounts []xdr.LedgerEntry) error {
 		threshold_low,
 		threshold_medium,
 		threshold_high,
-		last_modified_ledger
+		last_modified_ledger,
+		sponsor,
+		num_sponsored,
+		num_sponsoring
 	)
 	SELECT * from r 
 	ON CONFLICT (account_id) DO UPDATE SET 
@@ -162,7 +176,10 @@ func (q *Q) UpsertAccounts(accounts []xdr.LedgerEntry) error {
 		threshold_low = excluded.threshold_low,
 		threshold_medium = excluded.threshold_medium,
 		threshold_high = excluded.threshold_high,
-		last_modified_ledger = excluded.last_modified_ledger`
+		last_modified_ledger = excluded.last_modified_ledger,
+		sponsor = excluded.sponsor,
+		num_sponsored = excluded.num_sponsored,
+		num_sponsoring = excluded.num_sponsoring`
 
 	_, err := q.ExecRaw(sql,
 		pq.Array(accountID),
@@ -179,6 +196,9 @@ func (q *Q) UpsertAccounts(accounts []xdr.LedgerEntry) error {
 		pq.Array(thresholdMedium),
 		pq.Array(thresholdHigh),
 		pq.Array(lastModifiedLedger),
+		pq.Array(sponsor),
+		pq.Array(numSponsored),
+		pq.Array(numSponsoring),
 	)
 	return err
 }
@@ -261,5 +281,8 @@ var selectAccounts = sq.Select(`
 	threshold_low,
 	threshold_medium,
 	threshold_high,
-	last_modified_ledger
+	last_modified_ledger,
+	sponsor,
+	num_sponsored,
+	num_sponsoring
 `).From("accounts")
