@@ -114,6 +114,11 @@ const (
 	// EffectSequenceBumped occurs when an account bumps their sequence number
 	EffectSequenceBumped EffectType = 43 // from bump_sequence
 
+	// EffectClaimableBalanceCreated occurs when a claimable balance is created
+	EffectClaimableBalanceCreated EffectType = 50 // from create_claimable_balance
+
+	// EffectClaimableBalanceClaimantCreated occurs when a claimable balance is created
+	EffectClaimableBalanceClaimantCreated EffectType = 51 // from create_claimable_balance
 )
 
 // Account is a row of data from the `history_accounts` table
