@@ -283,9 +283,28 @@ func (operation *transactionOperationWrapper) Details() map[string]interface{} {
 	case xdr.OperationTypeBumpSequence:
 		op := operation.operation.Body.MustBumpSequenceOp()
 		details["bump_to"] = fmt.Sprintf("%d", op.BumpTo)
-	case xdr.OperationTypeCreateClaimableBalance,
-		xdr.OperationTypeClaimClaimableBalance,
-		xdr.OperationTypeBeginSponsoringFutureReserves,
+	case xdr.OperationTypeCreateClaimableBalance:
+		op := operation.operation.Body.MustCreateClaimableBalanceOp()
+		details["asset"] = op.Asset.StringCanonical()
+		details["amount"] = amount.String(op.Amount)
+		var claimants history.Claimants
+		for _, c := range op.Claimants {
+			cv0 := c.MustV0()
+			claimants = append(claimants, history.Claimant{
+				Destination: cv0.Destination.Address(),
+				Predicate:   cv0.Predicate,
+			})
+		}
+		details["claimants"] = claimants
+	case xdr.OperationTypeClaimClaimableBalance:
+		op := operation.operation.Body.MustClaimClaimableBalanceOp()
+		balanceID, err := xdr.MarshalBase64(op.BalanceId)
+		if err != nil {
+			panic(fmt.Errorf("Invalid balanceId in op: %d", operation.index))
+		}
+		details["balance_id"] = balanceID
+		details["claimant"] = source.Address()
+	case xdr.OperationTypeBeginSponsoringFutureReserves,
 		xdr.OperationTypeEndSponsoringFutureReserves,
 		xdr.OperationTypeRevokeSponsorship:
 		// TBD
@@ -381,9 +400,13 @@ func (operation *transactionOperationWrapper) Participants() ([]xdr.AccountId, e
 		// the only direct participant is the source_account
 	case xdr.OperationTypeBumpSequence:
 		// the only direct participant is the source_account
-	case xdr.OperationTypeCreateClaimableBalance,
-		xdr.OperationTypeClaimClaimableBalance,
-		xdr.OperationTypeBeginSponsoringFutureReserves,
+	case xdr.OperationTypeCreateClaimableBalance:
+		for _, c := range op.Body.MustCreateClaimableBalanceOp().Claimants {
+			participants = append(participants, c.MustV0().Destination)
+		}
+	case xdr.OperationTypeClaimClaimableBalance:
+		// the only direct participant is the source_account
+	case xdr.OperationTypeBeginSponsoringFutureReserves,
 		xdr.OperationTypeEndSponsoringFutureReserves,
 		xdr.OperationTypeRevokeSponsorship:
 		// TBD
