@@ -205,8 +205,9 @@ func (operation *transactionOperationWrapper) effects() (effects []effect, err e
 		effects, err = operation.bumpSequenceEffects()
 	case xdr.OperationTypeCreateClaimableBalance:
 		effects, err = operation.createClaimableBalanceEffects()
-	case xdr.OperationTypeClaimClaimableBalance,
-		xdr.OperationTypeBeginSponsoringFutureReserves,
+	case xdr.OperationTypeClaimClaimableBalance:
+		effects, err = operation.claimClaimableBalanceEffects()
+	case xdr.OperationTypeBeginSponsoringFutureReserves,
 		xdr.OperationTypeEndSponsoringFutureReserves,
 		xdr.OperationTypeRevokeSponsorship:
 		// TBD
@@ -734,6 +735,66 @@ func (operation *transactionOperationWrapper) createClaimableBalanceEffects() ([
 			},
 		)
 	}
+
+	return effects.effects, nil
+}
+
+func (operation *transactionOperationWrapper) claimClaimableBalanceEffects() ([]effect, error) {
+	op := operation.operation.Body.MustClaimClaimableBalanceOp()
+	effects := effectsWrapper{
+		effects:   []effect{},
+		operation: operation,
+	}
+
+	balanceID, err := xdr.MarshalBase64(op.BalanceId)
+	if err != nil {
+		return nil, fmt.Errorf("Invalid balanceId in op: %d", operation.index)
+	}
+
+	changes, err := operation.transaction.GetOperationChanges(operation.index)
+	if err != nil {
+		return effects.effects, err
+	}
+
+	var cBalance xdr.ClaimableBalanceEntry
+	found := false
+
+	for _, change := range changes {
+		if change.Type != xdr.LedgerEntryTypeClaimableBalance {
+			continue
+		}
+
+		if change.Pre != nil && change.Post == nil {
+			cBalance = change.Pre.Data.MustClaimableBalance()
+			if cBalance.BalanceId == op.BalanceId {
+				found = true
+				break
+			}
+		}
+	}
+
+	if !found {
+		return nil, fmt.Errorf("Change not found for balanceId : %s", balanceID)
+	}
+
+	effects.add(
+		operation.SourceAccount().Address(),
+		history.EffectClaimableBalanceClaimed,
+		map[string]interface{}{
+			"amount":     amount.String(cBalance.Amount),
+			"asset":      cBalance.Asset.StringCanonical(),
+			"balance_id": balanceID,
+		},
+	)
+	details := map[string]interface{}{
+		"amount": amount.String(cBalance.Amount),
+	}
+	assetDetails(details, cBalance.Asset, "")
+	effects.add(
+		operation.SourceAccount().Address(),
+		history.EffectAccountCredited,
+		details,
+	)
 
 	return effects.effects, nil
 }

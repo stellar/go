@@ -119,6 +119,9 @@ const (
 
 	// EffectClaimableBalanceClaimantCreated occurs when a claimable balance is created
 	EffectClaimableBalanceClaimantCreated EffectType = 51 // from create_claimable_balance
+
+	// EffectClaimableBalanceClaimed occurs when a claimable balance is claimed
+	EffectClaimableBalanceClaimed EffectType = 52 // from claim_claimable_balance
 )
 
 // Account is a row of data from the `history_accounts` table
