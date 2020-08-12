@@ -6,8 +6,8 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
-	"github.com/stellar/go/xdr"
 	. "github.com/stellar/go/xdr"
 )
 
@@ -105,21 +105,13 @@ var _ = Describe("xdr.Asset#String()", func() {
 	})
 })
 
-var _ = Describe("xdr.Asset#StringCanonical()", func() {
-	Context("asset is native", func() {
-		It("returns 'native'", func() {
-			asset := xdr.MustNewNativeAsset()
-			Expect(asset.StringCanonical()).To(Equal("native"))
-		})
-	})
+func TestStringCanonical(t *testing.T) {
+	asset := MustNewNativeAsset()
+	require.Equal(t, "native", asset.StringCanonical())
 
-	Context("asset is issued", func() {
-		It("returns 'code:issuer'", func() {
-			asset := xdr.MustNewCreditAsset("USD", "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
-			Expect(asset.StringCanonical()).To(Equal("USD:GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H"))
-		})
-	})
-})
+	asset = MustNewCreditAsset("USD", "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
+	require.Equal(t, "USD:GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H", asset.StringCanonical())
+}
 
 var _ = Describe("xdr.Asset#Equals()", func() {
 	var (
