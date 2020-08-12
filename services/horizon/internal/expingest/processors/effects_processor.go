@@ -736,6 +736,16 @@ func (operation *transactionOperationWrapper) createClaimableBalanceEffects() ([
 		)
 	}
 
+	details := map[string]interface{}{
+		"amount": amount.String(op.Amount),
+	}
+	assetDetails(details, op.Asset, "")
+	effects.add(
+		operation.SourceAccount().Address(),
+		history.EffectAccountDebited,
+		details,
+	)
+
 	return effects.effects, nil
 }
 

@@ -1549,6 +1549,16 @@ func (s *CreateClaimableBalanceEffectsTestSuite) TestEffects() {
 					operationID: int64(4294967297),
 					order:       uint32(2),
 				},
+				{
+					address: "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
+					details: map[string]interface{}{
+						"amount":     "10.0000000",
+						"asset_type": "native",
+					},
+					effectType:  history.EffectAccountDebited,
+					operationID: int64(4294967297),
+					order:       uint32(3),
+				},
 			},
 		},
 		{
@@ -1589,6 +1599,18 @@ func (s *CreateClaimableBalanceEffectsTestSuite) TestEffects() {
 					effectType:  history.EffectClaimableBalanceClaimantCreated,
 					operationID: int64(4294967298),
 					order:       uint32(3),
+				},
+				{
+					address: "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
+					details: map[string]interface{}{
+						"amount":       "20.0000000",
+						"asset_code":   "USD",
+						"asset_type":   "credit_alphanum4",
+						"asset_issuer": "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
+					},
+					effectType:  history.EffectAccountDebited,
+					operationID: int64(4294967298),
+					order:       uint32(4),
 				},
 			},
 		},
