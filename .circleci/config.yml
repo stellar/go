@@ -339,8 +339,8 @@ jobs:
             sudo mkdir -p /go/src/github.com/stellar/go
             sudo chmod -R 777 /go
             cd /go/src/github.com/stellar/go
-            git clone $CIRCLE_REPOSITORY_URL .
-            git checkout $CIRCLE_BRANCH
+            git clone ${CIRCLE_REPOSITORY_URL} .
+            git checkout ${CIRCLE_BRANCH}
       - run:
           name: Setting env variables
           command: |
