@@ -340,7 +340,7 @@ jobs:
             sudo chmod -R 777 /go
             cd /go/src/github.com/stellar/go
             # CIRCLE_PR_REPONAME is used in forked repos only
-            git clone ${CIRCLE_REPOSITORY_URL} . || git clone ${CIRCLE_PR_REPONAME}
+            git clone ${CIRCLE_PR_REPONAME} . || git clone ${CIRCLE_REPOSITORY_URL} .
             git checkout ${CIRCLE_BRANCH}
       - run:
           name: Setting env variables
