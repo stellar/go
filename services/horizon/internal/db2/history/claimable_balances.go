@@ -190,7 +190,7 @@ func (i *claimableBalancesBatchInsertBuilder) Add(entry *xdr.LedgerEntry) error 
 		Claimants:          buildClaimants(cBalance.Claimants),
 		Asset:              cBalance.Asset,
 		Amount:             cBalance.Amount,
-		Sponsor:            null.StringFromPtr(nil), // TDB - we can add this later since there might be code from Bartek's PR which we can use to pull the sponsor,
+		Sponsor:            ledgerEntrySponsorToNullString(*entry),
 		LastModifiedLedger: uint32(entry.LastModifiedLedgerSeq),
 	}
 	return i.builder.RowStruct(row)
