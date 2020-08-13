@@ -326,7 +326,6 @@ jobs:
     steps:
       - install_go_deps
       - build_horizon
-      - setup_remote_docker
       - run:
           name: Run Horizon integration tests only
           # Currently all integration tests are in a single directory.
