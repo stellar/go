@@ -319,7 +319,7 @@ jobs:
   test_horizon_integration:
     working_directory: /go/src/github.com/stellar/go
     docker:
-      - image: circleci/golang:1.13-stretch
+      - image: circleci/golang:1.14-stretch
         environment:
           HORIZON_INTEGRATION_TESTS: true
           HORIZON_BIN_DIR: /go/src/github.com/stellar/go
@@ -330,7 +330,7 @@ jobs:
       - run:
           name: Run Horizon integration tests only
           # Currently all integration tests are in a single directory.
-          command: go test ./services/horizon/internal/integration/...
+          command: go test -v ./services/horizon/internal/integration/...
 #-------------------------------------------------------------------------#
 # Workflows orchestrate jobs and make sure they run in the right sequence #
 #-------------------------------------------------------------------------#

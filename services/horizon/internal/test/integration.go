@@ -1,7 +1,10 @@
 package test
 
 import (
+	"archive/tar"
+	"bytes"
 	"context"
+	"io"
 	"io/ioutil"
 	"os"
 	"strconv"
@@ -60,6 +63,7 @@ func NewIntegrationTest(t *testing.T, config IntegrationConfig) *IntegrationTest
 
 	image := "stellar/quickstart:testing"
 
+	t.Logf("Pulling %s...", image)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 	reader, err := i.cli.ImagePull(ctx, "docker.io/"+image, types.ImagePullOptions{})
@@ -67,8 +71,9 @@ func NewIntegrationTest(t *testing.T, config IntegrationConfig) *IntegrationTest
 		t.Fatal(errors.Wrap(err, "error pulling docker image"))
 	}
 	defer reader.Close()
-	ioutil.ReadAll(reader)
+	io.Copy(os.Stdout, reader)
 
+	t.Log("Creating container...")
 	ctx, cancel = context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 	i.container, err = i.cli.ContainerCreate(
@@ -100,6 +105,38 @@ func NewIntegrationTest(t *testing.T, config IntegrationConfig) *IntegrationTest
 		t.Fatal(errors.Wrap(err, "error creating docker container"))
 	}
 
+	horizonBinaryContents, err := ioutil.ReadFile(os.Getenv("HORIZON_BIN_DIR") + "/horizon")
+	if err != nil {
+		t.Fatal(errors.Wrap(err, "error reading horizon binary file"))
+	}
+
+	// Create a tar archive with horizon binary (required by docker API).
+	var buf bytes.Buffer
+	tw := tar.NewWriter(&buf)
+	hdr := &tar.Header{
+		Name: "horizon",
+		Mode: 0755,
+		Size: int64(len(horizonBinaryContents)),
+	}
+	if err := tw.WriteHeader(hdr); err != nil {
+		t.Fatal(errors.Wrap(err, "error writing tar header"))
+	}
+	if _, err := tw.Write(horizonBinaryContents); err != nil {
+		t.Fatal(errors.Wrap(err, "error writing tar contents"))
+	}
+	if err := tw.Close(); err != nil {
+		t.Fatal(errors.Wrap(err, "error closing tar archive"))
+	}
+
+	t.Log("Copying custom horizon binary...")
+	ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	err = i.cli.CopyToContainer(ctx, i.container.ID, "/usr/local/bin", &buf, types.CopyToContainerOptions{})
+	if err != nil {
+		t.Fatal(errors.Wrap(err, "error copying custom horizon binary"))
+	}
+
+	t.Log("Starting container...")
 	ctx, cancel = context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	err = i.cli.ContainerStart(ctx, i.container.ID, types.ContainerStartOptions{})
@@ -114,6 +151,7 @@ func NewIntegrationTest(t *testing.T, config IntegrationConfig) *IntegrationTest
 
 func (i *IntegrationTest) waitForIngestionAndUpgrade() {
 	for t := 10 * time.Second; t >= 0; t -= time.Second {
+		i.t.Log("Waiting for ingestion and protocol upgrade...")
 		root, err := i.hclient.Root()
 		if err != nil {
 			if t == 0 {
@@ -123,6 +161,7 @@ func (i *IntegrationTest) waitForIngestionAndUpgrade() {
 		if root.IngestSequence > 0 &&
 			root.HorizonSequence > 0 &&
 			root.CurrentProtocolVersion == i.config.ProtocolVersion {
+			i.t.Fatal("Horizon ingesting and protocol version matches...")
 			return
 		}
 		time.Sleep(time.Second)
