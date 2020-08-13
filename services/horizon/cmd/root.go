@@ -121,6 +121,14 @@ var configOpts = support.ConfigOptions{
 		ConfigKey:   &config.StellarCoreBinaryPath,
 	},
 	&support.ConfigOption{
+		Name:        "remote-captive-core-url",
+		OptType:     types.String,
+		FlagDefault: "",
+		Required:    false,
+		Usage:       "url to access the remote captive core server",
+		ConfigKey:   &config.RemoteCaptiveCoreURL,
+	},
+	&support.ConfigOption{
 		Name:        "stellar-core-config-path",
 		OptType:     types.String,
 		FlagDefault: "",

@@ -87,7 +87,7 @@ type LedgerBackend interface {
 	// able to stream ledgers.
 	PrepareRange(ledgerRange Range) error
 	// IsPrepared returns true if a given ledgerRange is prepared.
-	IsPrepared(ledgerRange Range) bool
+	IsPrepared(ledgerRange Range) (bool, error)
 	Close() error
 }
 
