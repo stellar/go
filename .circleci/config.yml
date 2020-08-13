@@ -145,7 +145,9 @@ commands:
     steps:
       - run:
           name: Build horizon binary
-          command: go build -v ./services/horizon
+          command: |
+            mkdir -p /go/src/github.com/stellar/go
+            go build -v /go/src/github.com/stellar/go/services/horizon
 
   # send_coverage_report sends coverage report to codecov.io
   send_coverage_report:
@@ -325,14 +327,14 @@ jobs:
             docker build -f services/horizon/docker/Dockerfile -t stellar/horizon:latest .
             docker push stellar/horizon:latest
 
-  # test_horizon_integration performs Horizon integration tests
+  # test_horizon_integration performs Horizon integration tests, it's using
+  # decicated vm machine to be able to start arbitrary docker containers.
   test_horizon_integration:
     machine:
       image: ubuntu-1604:201903-01
-    working_directory: /go/src/github.com/stellar/go
     steps:
       - run:
-          name: Getting latest checkpoint ledger
+          name: Setting env variables
           command: |
             echo "export HORIZON_INTEGRATION_TESTS=true" >> $BASH_ENV
             echo "export HORIZON_BIN_DIR=/go/src/github.com/stellar/go" >> $BASH_ENV
@@ -342,7 +344,9 @@ jobs:
       - run:
           name: Run Horizon integration tests only
           # Currently all integration tests are in a single directory.
-          command: go test -v ./services/horizon/internal/integration/...
+          command: |
+            cd /go/src/github.com/stellar/go
+            go test -v /go/src/github.com/stellar/go/services/horizon/internal/integration/...
 #-------------------------------------------------------------------------#
 # Workflows orchestrate jobs and make sure they run in the right sequence #
 #-------------------------------------------------------------------------#
