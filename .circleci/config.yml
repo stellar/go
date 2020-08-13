@@ -130,6 +130,13 @@ commands:
           name: Build release artifacts
           command: go run ./support/scripts/build_release_artifacts/main.go
 
+  # build_horizon builds horizon binary
+  build_horizon:
+    steps:
+      - run:
+          name: Build horizon binary
+          command: go build ./services/horizon
+
   # send_coverage_report sends coverage report to codecov.io
   send_coverage_report:
     steps:
@@ -308,6 +315,17 @@ jobs:
             docker build -f services/horizon/docker/Dockerfile -t stellar/horizon:latest .
             docker push stellar/horizon:latest
 
+  # test_horizon_integration performs Horizon integration tests
+  test_horizon_integration:
+    working_directory: /go/src/github.com/stellar/go
+    docker:
+      - image: circleci/golang:1.13-stretch
+        environment:
+          HORIZON_INTEGRATION_TESTS: true
+          HORIZON_BIN_DIR: /go/src/github.com/stellar/go
+    steps:
+      - build_horizon
+      - test_packages
 #-------------------------------------------------------------------------#
 # Workflows orchestrate jobs and make sure they run in the right sequence #
 #-------------------------------------------------------------------------#
@@ -327,6 +345,14 @@ workflows:
               branches:
                 only:
                   - master
+
+  run_horizon_integration_tests:
+    jobs:
+      - hold:
+          type: approval
+      - test_horizon_integration:
+          requires:
+           - hold
 
   build_and_deploy:
     jobs:
