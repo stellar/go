@@ -51,6 +51,16 @@ commands:
               ! egrep -irn -A 1 --include=*.go "Action.+needed.+in.+release:.+$CIRCLE_TAG" ./
             fi
 
+  # install_golang installs golang, it's only used in horizon integration tests,
+  # other jobs use golang docker image.
+  install_golang:
+    steps:
+      - run:
+          name: Download and install golang
+          command: |
+            wget https://dl.google.com/go/go1.14.6.linux-amd64.tar.gz
+            tar -C /usr/local -xzf go1.14.6.linux-amd64.tar.gz
+
   # install_go_deps installs the go dependencies of the project.
   install_go_deps:
     steps:
@@ -317,13 +327,16 @@ jobs:
 
   # test_horizon_integration performs Horizon integration tests
   test_horizon_integration:
+    machine:
+      image: ubuntu-1604:201903-01
     working_directory: /go/src/github.com/stellar/go
-    docker:
-      - image: circleci/golang:1.14-stretch
-        environment:
-          HORIZON_INTEGRATION_TESTS: true
-          HORIZON_BIN_DIR: /go/src/github.com/stellar/go
     steps:
+      - run:
+          name: Getting latest checkpoint ledger
+          command: |
+            echo "export HORIZON_INTEGRATION_TESTS=true" >> $BASH_ENV
+            echo "export HORIZON_BIN_DIR=/go/src/github.com/stellar/go" >> $BASH_ENV
+      - install_golang
       - install_go_deps
       - build_horizon
       - run:
