@@ -2,6 +2,7 @@ package test
 
 import (
 	"context"
+	"io/ioutil"
 	"os"
 	"strconv"
 	"testing"
@@ -14,6 +15,7 @@ import (
 	"github.com/docker/go-connections/nat"
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
+	"github.com/stellar/go/support/errors"
 )
 
 const IntegrationNetworkPassphrase = "Standalone Network ; February 2017"
@@ -53,15 +55,26 @@ func NewIntegrationTest(t *testing.T, config IntegrationConfig) *IntegrationTest
 	var err error
 	i.cli, err = client.NewEnvClient()
 	if err != nil {
-		panic(err)
+		t.Fatal(errors.Wrap(err, "error creating docker client"))
 	}
 
+	image := "stellar/quickstart:testing"
+
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+	reader, err := i.cli.ImagePull(ctx, "docker.io/"+image, types.ImagePullOptions{})
+	if err != nil {
+		t.Fatal(errors.Wrap(err, "error pulling docker image"))
+	}
+	defer reader.Close()
+	ioutil.ReadAll(reader)
+
+	ctx, cancel = context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 	i.container, err = i.cli.ContainerCreate(
 		ctx,
 		&container.Config{
-			Image: "stellar/quickstart:testing",
+			Image: image,
 			Cmd: []string{
 				"--standalone",
 				"--protocol-version", strconv.FormatInt(int64(config.ProtocolVersion), 10),
@@ -84,14 +97,14 @@ func NewIntegrationTest(t *testing.T, config IntegrationConfig) *IntegrationTest
 		"horizon-integration",
 	)
 	if err != nil {
-		panic(err)
+		t.Fatal(errors.Wrap(err, "error creating docker container"))
 	}
 
 	ctx, cancel = context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	err = i.cli.ContainerStart(ctx, i.container.ID, types.ContainerStartOptions{})
 	if err != nil {
-		panic(err)
+		t.Fatal(errors.Wrap(err, "error starting docker container"))
 	}
 
 	i.hclient = horizonclient.Client{HorizonURL: "http://localhost:8000"}
