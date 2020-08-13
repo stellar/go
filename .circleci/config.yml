@@ -58,6 +58,7 @@ commands:
       - run:
           name: Download and install golang
           command: |
+            sudo rm -rf /usr/local/go
             wget https://dl.google.com/go/go1.14.6.linux-amd64.tar.gz
             sudo tar -C /usr/local -xzf go1.14.6.linux-amd64.tar.gz
 
@@ -146,7 +147,6 @@ commands:
       - run:
           name: Build horizon binary
           command: |
-            mkdir -p /go/src/github.com/stellar/go
             go build -v /go/src/github.com/stellar/go/services/horizon
 
   # send_coverage_report sends coverage report to codecov.io
@@ -334,19 +334,26 @@ jobs:
       image: ubuntu-1604:201903-01
     steps:
       - run:
+          name: Create working dir
+          command: |
+            sudo mkdir -p /go/src/github.com/stellar/go
+            sudo chmod -R 777 /go
+            cd /go/src/github.com/stellar/go
+            git clone $CIRCLE_REPOSITORY_URL .
+            git checkout $CIRCLE_BRANCH
+      - run:
           name: Setting env variables
           command: |
             echo "export HORIZON_INTEGRATION_TESTS=true" >> $BASH_ENV
             echo "export HORIZON_BIN_DIR=/go/src/github.com/stellar/go" >> $BASH_ENV
       - install_golang
-      - install_go_deps
       - build_horizon
       - run:
           name: Run Horizon integration tests only
           # Currently all integration tests are in a single directory.
           command: |
             cd /go/src/github.com/stellar/go
-            go test -v /go/src/github.com/stellar/go/services/horizon/internal/integration/...
+            go test -v ./services/horizon/internal/integration/...
 #-------------------------------------------------------------------------#
 # Workflows orchestrate jobs and make sure they run in the right sequence #
 #-------------------------------------------------------------------------#
