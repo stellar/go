@@ -156,6 +156,7 @@ func (i *IntegrationTest) waitForIngestionAndUpgrade() {
 			i.t.Fatal("Horizon ingesting and protocol version matches...")
 			return
 		}
+		i.t.Logf("%+v", root)
 		time.Sleep(time.Second)
 	}
 }
