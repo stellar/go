@@ -342,7 +342,7 @@ jobs:
             # CIRCLE_PR_REPONAME is used in forked repos only
             git clone ${CIRCLE_PR_REPONAME} . || git clone ${CIRCLE_REPOSITORY_URL} .
             # Branch name is not available in any of the standard env variables... :(
-            CIRCLE_PR_BRANCH = `curl -s https://api.github.com/repos/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}/pulls/${CIRCLE_PR_NUMBER} | jq -r '.head.ref'`
+            export CIRCLE_PR_BRANCH=`curl -s https://api.github.com/repos/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}/pulls/${CIRCLE_PR_NUMBER} | jq -r '.head.ref'`
             git checkout ${CIRCLE_PR_BRANCH}
       - run:
           name: Setting env variables
