@@ -219,7 +219,7 @@ func (s *ClaimableBalancesProcessorTestSuiteLedger) TestUpdateClaimableBalance()
 
 	s.mockQ.On(
 		"UpdateClaimableBalance",
-		&updated,
+		updated,
 	).Return(int64(1), nil).Once()
 }
 
