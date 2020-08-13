@@ -110,13 +110,13 @@ func NewIntegrationTest(t *testing.T, config IntegrationConfig) *IntegrationTest
 		Mode: 0755,
 		Size: int64(len(horizonBinaryContents)),
 	}
-	if err := tw.WriteHeader(hdr); err != nil {
+	if err = tw.WriteHeader(hdr); err != nil {
 		t.Fatal(errors.Wrap(err, "error writing tar header"))
 	}
-	if _, err := tw.Write(horizonBinaryContents); err != nil {
+	if _, err = tw.Write(horizonBinaryContents); err != nil {
 		t.Fatal(errors.Wrap(err, "error writing tar contents"))
 	}
-	if err := tw.Close(); err != nil {
+	if err = tw.Close(); err != nil {
 		t.Fatal(errors.Wrap(err, "error closing tar archive"))
 	}
 
