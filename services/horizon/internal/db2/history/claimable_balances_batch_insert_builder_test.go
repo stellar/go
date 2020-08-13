@@ -24,7 +24,7 @@ func TestAddClaimableBalance(t *testing.T) {
 	cBalance := xdr.ClaimableBalanceEntry{
 		BalanceId: balanceID,
 		Claimants: []xdr.Claimant{
-			xdr.Claimant{
+			{
 				Type: xdr.ClaimantTypeClaimantTypeV0,
 				V0: &xdr.ClaimantV0{
 					Destination: xdr.MustAddress(accountID),
@@ -43,6 +43,12 @@ func TestAddClaimableBalance(t *testing.T) {
 			ClaimableBalance: &cBalance,
 		},
 		LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+		Ext: xdr.LedgerEntryExt{
+			V: 1,
+			V1: &xdr.LedgerEntryExtensionV1{
+				SponsoringId: xdr.MustAddressPtr("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+			},
+		},
 	}
 
 	builder := q.NewClaimableBalancesBatchInsertBuilder(2)
@@ -66,7 +72,7 @@ func TestAddClaimableBalance(t *testing.T) {
 		tt.Assert.Equal(accountID, cb.Claimants[0].Destination)
 		tt.Assert.Equal(cBalance.Claimants[0].MustV0().Predicate, cb.Claimants[0].Predicate)
 		tt.Assert.Equal(asset, cb.Asset)
-		tt.Assert.Equal(null.StringFromPtr(nil), cb.Sponsor)
+		tt.Assert.Equal(null.NewString("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML", true), cb.Sponsor)
 		tt.Assert.Equal(uint32(lastModifiedLedgerSeq), cb.LastModifiedLedger)
 	}
 }

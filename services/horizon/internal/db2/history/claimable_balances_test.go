@@ -23,7 +23,7 @@ func TestRemoveClaimableBalance(t *testing.T) {
 	cBalance := xdr.ClaimableBalanceEntry{
 		BalanceId: balanceID,
 		Claimants: []xdr.Claimant{
-			xdr.Claimant{
+			{
 				Type: xdr.ClaimantTypeClaimantTypeV0,
 				V0: &xdr.ClaimantV0{
 					Destination: xdr.MustAddress(accountID),
@@ -86,7 +86,7 @@ func TestFindClaimableBalancesByDestination(t *testing.T) {
 	cBalance := xdr.ClaimableBalanceEntry{
 		BalanceId: balanceID,
 		Claimants: []xdr.Claimant{
-			xdr.Claimant{
+			{
 				Type: xdr.ClaimantTypeClaimantTypeV0,
 				V0: &xdr.ClaimantV0{
 					Destination: xdr.MustAddress(dest1),
@@ -119,7 +119,7 @@ func TestFindClaimableBalancesByDestination(t *testing.T) {
 	cBalance = xdr.ClaimableBalanceEntry{
 		BalanceId: balanceID,
 		Claimants: []xdr.Claimant{
-			xdr.Claimant{
+			{
 				Type: xdr.ClaimantTypeClaimantTypeV0,
 				V0: &xdr.ClaimantV0{
 					Destination: xdr.MustAddress(dest1),
@@ -128,7 +128,7 @@ func TestFindClaimableBalancesByDestination(t *testing.T) {
 					},
 				},
 			},
-			xdr.Claimant{
+			{
 				Type: xdr.ClaimantTypeClaimantTypeV0,
 				V0: &xdr.ClaimantV0{
 					Destination: xdr.MustAddress(dest2),
@@ -167,4 +167,74 @@ func TestFindClaimableBalancesByDestination(t *testing.T) {
 	tt.Assert.NoError(err)
 	tt.Assert.Len(cbs, 1)
 	tt.Assert.Equal(dest2, cbs[0].Claimants[1].Destination)
+}
+
+func TestUpdateClaimableBalance(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	test.ResetHorizonDB(t, tt.HorizonDB)
+	q := &Q{tt.HorizonSession()}
+
+	accountID := "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"
+	lastModifiedLedgerSeq := xdr.Uint32(123)
+	asset := xdr.MustNewCreditAsset("USD", accountID)
+	balanceID := xdr.ClaimableBalanceId{
+		Type: xdr.ClaimableBalanceIdTypeClaimableBalanceIdTypeV0,
+		V0:   &xdr.Hash{1, 2, 3},
+	}
+	cBalance := xdr.ClaimableBalanceEntry{
+		BalanceId: balanceID,
+		Claimants: []xdr.Claimant{
+			{
+				Type: xdr.ClaimantTypeClaimantTypeV0,
+				V0: &xdr.ClaimantV0{
+					Destination: xdr.MustAddress(accountID),
+					Predicate: xdr.ClaimPredicate{
+						Type: xdr.ClaimPredicateTypeClaimPredicateUnconditional,
+					},
+				},
+			},
+		},
+		Asset:  asset,
+		Amount: 10,
+	}
+	entry := xdr.LedgerEntry{
+		Data: xdr.LedgerEntryData{
+			Type:             xdr.LedgerEntryTypeClaimableBalance,
+			ClaimableBalance: &cBalance,
+		},
+		LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+	}
+
+	builder := q.NewClaimableBalancesBatchInsertBuilder(1)
+
+	err := builder.Add(&entry)
+	tt.Assert.NoError(err)
+
+	err = builder.Exec()
+	tt.Assert.NoError(err)
+
+	entry = xdr.LedgerEntry{
+		Data: xdr.LedgerEntryData{
+			Type:             xdr.LedgerEntryTypeClaimableBalance,
+			ClaimableBalance: &cBalance,
+		},
+		LastModifiedLedgerSeq: lastModifiedLedgerSeq + 1,
+		Ext: xdr.LedgerEntryExt{
+			V: 1,
+			V1: &xdr.LedgerEntryExtensionV1{
+				SponsoringId: xdr.MustAddressPtr("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+			},
+		},
+	}
+
+	updated, err := q.UpdateClaimableBalance(entry)
+	tt.Assert.NoError(err)
+	tt.Assert.Equal(int64(1), updated)
+
+	cbs := []ClaimableBalance{}
+	err = q.Select(&cbs, selectClaimableBalances)
+	tt.Assert.NoError(err)
+	tt.Assert.Equal("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML", cbs[0].Sponsor.String)
+	tt.Assert.Equal(uint32(lastModifiedLedgerSeq+1), cbs[0].LastModifiedLedger)
 }
