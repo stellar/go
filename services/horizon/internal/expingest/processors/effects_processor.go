@@ -705,7 +705,7 @@ func (operation *transactionOperationWrapper) createClaimableBalanceEffects() ([
 	result := operation.OperationResult().MustCreateClaimableBalanceResult()
 	balanceID, err := xdr.MarshalBase64(result.BalanceId)
 	if err != nil {
-		return nil, fmt.Errorf("Invalid balanceId in op: %d", operation.index)
+		return nil, errors.Wrapf(err, "Invalid balanceId in op: %d", operation.index)
 	}
 
 	effects.add(
@@ -722,7 +722,7 @@ func (operation *transactionOperationWrapper) createClaimableBalanceEffects() ([
 		cv0 := c.MustV0()
 		predicate, err := xdr.MarshalBase64(cv0.Predicate)
 		if err != nil {
-			panic(fmt.Errorf("Invalid predicate in op: %d", operation.index))
+			panic(errors.Wrapf(err, "Invalid predicate in op: %d", operation.index))
 		}
 		effects.add(
 			cv0.Destination.Address(),
