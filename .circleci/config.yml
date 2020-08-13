@@ -324,6 +324,7 @@ jobs:
           HORIZON_INTEGRATION_TESTS: true
           HORIZON_BIN_DIR: /go/src/github.com/stellar/go
     steps:
+      - install_go_deps
       - build_horizon
       - test_packages
 #-------------------------------------------------------------------------#
