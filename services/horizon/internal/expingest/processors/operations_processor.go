@@ -304,10 +304,20 @@ func (operation *transactionOperationWrapper) Details() map[string]interface{} {
 		}
 		details["balance_id"] = balanceID
 		details["claimant"] = source.Address()
-	case xdr.OperationTypeBeginSponsoringFutureReserves,
-		xdr.OperationTypeEndSponsoringFutureReserves,
-		xdr.OperationTypeRevokeSponsorship:
-		// TBD
+	case xdr.OperationTypeBeginSponsoringFutureReserves:
+		op := operation.operation.Body.MustBeginSponsoringFutureReservesOp()
+		details["sponsored_id"] = op.SponsoredId.Address()
+	case xdr.OperationTypeEndSponsoringFutureReserves:
+		// NOP
+	case xdr.OperationTypeRevokeSponsorship:
+		op := operation.operation.Body.MustRevokeSponsorshipOp()
+		switch op.Type {
+		case xdr.RevokeSponsorshipTypeRevokeSponsorshipLedgerEntry:
+			ledgerKeyDetails(details, *op.LedgerKey, "")
+		case xdr.RevokeSponsorshipTypeRevokeSponsorshipSigner:
+			details["signer_account"] = op.Signer.AccountId.Address()
+			details["signer_key"] = op.Signer.SignerKey.Address()
+		}
 	default:
 		panic(fmt.Errorf("Unknown operation type: %s", operation.OperationType()))
 	}
@@ -364,6 +374,28 @@ func operationFlagDetails(result map[string]interface{}, f int32, prefix string)
 	result[prefix+"_flags_s"] = s
 }
 
+func ledgerKeyDetails(result map[string]interface{}, ledgerKey xdr.LedgerKey, prefix string) {
+	switch ledgerKey.Type {
+	case xdr.LedgerEntryTypeAccount:
+		result[prefix+"ledger_key_account"] = ledgerKey.Account.AccountId.Address()
+	case xdr.LedgerEntryTypeClaimableBalance:
+		result[prefix+"ledger_key_claimable_balance"] = ledgerKey.ClaimableBalance.BalanceId
+	case xdr.LedgerEntryTypeData:
+		result[prefix+"ledger_key_data"] = map[string]interface{}{
+			"account_id": ledgerKey.Data.AccountId.Address(),
+			"data_name":  ledgerKey.Data.DataName,
+		}
+	case xdr.LedgerEntryTypeOffer:
+		result[prefix+"ledger_key_offer_id"] = ledgerKey.Offer.OfferId
+	case xdr.LedgerEntryTypeTrustline:
+		trustlineDetails := map[string]interface{}{
+			"account_id": ledgerKey.TrustLine.AccountId,
+		}
+		assetDetails(trustlineDetails, ledgerKey.TrustLine.Asset, "")
+		result[prefix+"ledger_key_trustline"] = trustlineDetails
+	}
+}
+
 // Participants returns the accounts taking part in the operation.
 func (operation *transactionOperationWrapper) Participants() ([]xdr.AccountId, error) {
 	participants := []xdr.AccountId{}
@@ -406,10 +438,12 @@ func (operation *transactionOperationWrapper) Participants() ([]xdr.AccountId, e
 		}
 	case xdr.OperationTypeClaimClaimableBalance:
 		// the only direct participant is the source_account
-	case xdr.OperationTypeBeginSponsoringFutureReserves,
-		xdr.OperationTypeEndSponsoringFutureReserves,
-		xdr.OperationTypeRevokeSponsorship:
-		// TBD
+	case xdr.OperationTypeBeginSponsoringFutureReserves:
+		participants = append(participants, op.Body.MustBeginSponsoringFutureReservesOp().SponsoredId)
+	case xdr.OperationTypeEndSponsoringFutureReserves:
+		// the only direct participant is the source_account
+	case xdr.OperationTypeRevokeSponsorship:
+		// the only direct participant is the source_account
 	default:
 		return participants, fmt.Errorf("Unknown operation type: %s", op.Body.Type)
 	}
