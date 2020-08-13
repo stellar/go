@@ -59,7 +59,7 @@ commands:
           name: Download and install golang
           command: |
             wget https://dl.google.com/go/go1.14.6.linux-amd64.tar.gz
-            tar -C /usr/local -xzf go1.14.6.linux-amd64.tar.gz
+            sudo tar -C /usr/local -xzf go1.14.6.linux-amd64.tar.gz
 
   # install_go_deps installs the go dependencies of the project.
   install_go_deps:
