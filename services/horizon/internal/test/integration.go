@@ -13,7 +13,6 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
 	"github.com/stellar/go/clients/horizonclient"
@@ -89,13 +88,6 @@ func NewIntegrationTest(t *testing.T, config IntegrationConfig) *IntegrationTest
 		&container.HostConfig{
 			PortBindings: map[nat.Port][]nat.PortBinding{
 				nat.Port("8000"): {{HostIP: "127.0.0.1", HostPort: "8000"}},
-			},
-			Mounts: []mount.Mount{
-				{
-					Type:   mount.TypeBind,
-					Source: os.Getenv("HORIZON_BIN_DIR"),
-					Target: "/custom_bin",
-				},
 			},
 		},
 		nil,
