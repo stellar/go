@@ -323,13 +323,14 @@ jobs:
         environment:
           HORIZON_INTEGRATION_TESTS: true
           HORIZON_BIN_DIR: /go/src/github.com/stellar/go
-      - image: circleci/postgres:9.6.5-alpine-ram
-        environment:
-          POSTGRES_USER: circleci
     steps:
       - install_go_deps
       - build_horizon
-      - test_packages
+      - setup_remote_docker
+      - run:
+          name: Run Horizon integration tests only
+          # Currently all integration tests are in a single directory.
+          command: go test ./services/horizon/internal/integration/...
 #-------------------------------------------------------------------------#
 # Workflows orchestrate jobs and make sure they run in the right sequence #
 #-------------------------------------------------------------------------#
