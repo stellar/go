@@ -135,7 +135,7 @@ commands:
     steps:
       - run:
           name: Build horizon binary
-          command: go build ./services/horizon
+          command: go build -v ./services/horizon
 
   # send_coverage_report sends coverage report to codecov.io
   send_coverage_report:
@@ -323,6 +323,9 @@ jobs:
         environment:
           HORIZON_INTEGRATION_TESTS: true
           HORIZON_BIN_DIR: /go/src/github.com/stellar/go
+      - image: circleci/postgres:9.6.5-alpine-ram
+        environment:
+          POSTGRES_USER: circleci
     steps:
       - install_go_deps
       - build_horizon
