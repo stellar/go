@@ -37,7 +37,7 @@ func (cb *CreateClaimableBalance) BuildXDR() (xdr.Operation, error) {
 				},
 			},
 		}
-		err := c.V0.Destination.SetAddress(d)
+		err = c.V0.Destination.SetAddress(d)
 		if err != nil {
 			return xdr.Operation{}, errors.Wrapf(err, "failed to set destination address: %s", d)
 		}
