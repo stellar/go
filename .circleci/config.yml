@@ -386,11 +386,11 @@ workflows:
 
   run_horizon_integration_tests:
     jobs:
-      - hold:
+      - start_integration_tests:
           type: approval
       - test_horizon_integration:
           requires:
-           - hold
+           - start_integration_tests
 
   build_and_deploy:
     jobs:

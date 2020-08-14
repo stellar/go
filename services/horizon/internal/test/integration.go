@@ -30,7 +30,7 @@ type IntegrationTest struct {
 	t         *testing.T
 	config    IntegrationConfig
 	cli       client.APIClient
-	hclient   horizonclient.Client
+	hclient   *horizonclient.Client
 	container container.ContainerCreateCreatedBody
 }
 
@@ -136,7 +136,7 @@ func NewIntegrationTest(t *testing.T, config IntegrationConfig) *IntegrationTest
 		t.Fatal(errors.Wrap(err, "error starting docker container"))
 	}
 
-	i.hclient = horizonclient.Client{HorizonURL: "http://localhost:8000"}
+	i.hclient = &horizonclient.Client{HorizonURL: "http://localhost:8000"}
 	i.waitForIngestionAndUpgrade()
 	return i
 }
@@ -162,7 +162,7 @@ func (i *IntegrationTest) waitForIngestionAndUpgrade() {
 
 // Client returns horizon.Client connected to started Horizon instance.
 func (i *IntegrationTest) Client() *horizonclient.Client {
-	return &horizonclient.Client{HorizonURL: "http://localhost:8000"}
+	return i.hclient
 }
 
 // Master returns a keypair of the network master account.
