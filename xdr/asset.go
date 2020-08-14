@@ -254,6 +254,20 @@ func (a Asset) String() string {
 	return fmt.Sprintf("%s/%s/%s", t, c, i)
 }
 
+// StringCanonical returns a display friendly form of the asset following its
+// canonical representation
+func (a Asset) StringCanonical() string {
+	var t, c, i string
+
+	a.MustExtract(&t, &c, &i)
+
+	if a.Type == AssetTypeAssetTypeNative {
+		return t
+	}
+
+	return fmt.Sprintf("%s:%s", c, i)
+}
+
 // MarshalBinaryCompress marshals Asset to []byte but unlike
 // MarshalBinary() it removes all unnecessary bytes, exploting the fact
 // that XDR is padding data to 4 bytes in union discriminants etc.

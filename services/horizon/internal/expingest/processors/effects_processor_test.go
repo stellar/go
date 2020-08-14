@@ -1406,3 +1406,482 @@ func TestOperationEffectsAllowTrustAuthorizedToMaintainLiabilities(t *testing.T)
 	}
 	tt.Equal(expected, effects)
 }
+
+type CreateClaimableBalanceEffectsTestSuite struct {
+	suite.Suite
+	ops []xdr.Operation
+	tx  io.LedgerTransaction
+}
+
+func (s *CreateClaimableBalanceEffectsTestSuite) SetupTest() {
+	aid := xdr.MustAddress("GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD")
+	source := aid.ToMuxedAccount()
+	s.ops = []xdr.Operation{
+		{
+			SourceAccount: &source,
+			Body: xdr.OperationBody{
+				Type: xdr.OperationTypeCreateClaimableBalance,
+				CreateClaimableBalanceOp: &xdr.CreateClaimableBalanceOp{
+					Amount: xdr.Int64(100000000),
+					Asset:  xdr.MustNewNativeAsset(),
+					Claimants: []xdr.Claimant{
+						{
+							Type: xdr.ClaimantTypeClaimantTypeV0,
+							V0: &xdr.ClaimantV0{
+								Destination: xdr.MustAddress("GD5OVB6FKDV7P7SOJ5UB2BPLBL4XGSHPYHINR5355SY3RSXLT2BZWAKY"),
+
+								Predicate: xdr.ClaimPredicate{
+									Type: xdr.ClaimPredicateTypeClaimPredicateUnconditional,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			SourceAccount: &source,
+			Body: xdr.OperationBody{
+				Type: xdr.OperationTypeCreateClaimableBalance,
+				CreateClaimableBalanceOp: &xdr.CreateClaimableBalanceOp{
+					Amount: xdr.Int64(200000000),
+					Asset:  xdr.MustNewCreditAsset("USD", "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD"),
+					Claimants: []xdr.Claimant{
+						{
+							Type: xdr.ClaimantTypeClaimantTypeV0,
+							V0: &xdr.ClaimantV0{
+								Destination: xdr.MustAddress("GDMQUXK7ZUCWM5472ZU3YLDP4BMJLQQ76DEMNYDEY2ODEEGGRKLEWGW2"),
+								Predicate: xdr.ClaimPredicate{
+									Type: xdr.ClaimPredicateTypeClaimPredicateUnconditional,
+								},
+							},
+						},
+						{
+							Type: xdr.ClaimantTypeClaimantTypeV0,
+							V0: &xdr.ClaimantV0{
+								Destination: xdr.MustAddress("GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3"),
+								Predicate: xdr.ClaimPredicate{
+									Type: xdr.ClaimPredicateTypeClaimPredicateUnconditional,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	var balanceIDOp1, balanceIDOp2 xdr.ClaimableBalanceId
+	xdr.SafeUnmarshalBase64("AAAAANoNV9p9SFDn/BDSqdDrxzH3r7QFdMAzlbF9SRSbkfW+", &balanceIDOp1)
+	xdr.SafeUnmarshalBase64("AAAAALHcX0PDa9UefSAzitC6vQOUr802phH8OF2ahLzg6j1D", &balanceIDOp2)
+
+	s.tx = io.LedgerTransaction{
+		Index: 0,
+		Envelope: xdr.TransactionEnvelope{
+			Type: xdr.EnvelopeTypeEnvelopeTypeTx,
+			V1: &xdr.TransactionV1Envelope{
+				Tx: xdr.Transaction{
+					Operations: s.ops,
+				},
+			},
+		},
+		Result: xdr.TransactionResultPair{
+			Result: xdr.TransactionResult{
+				Result: xdr.TransactionResultResult{
+					Results: &[]xdr.OperationResult{
+						{
+							Code: xdr.OperationResultCodeOpInner,
+							Tr: &xdr.OperationResultTr{
+								Type: xdr.OperationTypeCreateClaimableBalance,
+								CreateClaimableBalanceResult: &xdr.CreateClaimableBalanceResult{
+									Code:      xdr.CreateClaimableBalanceResultCodeCreateClaimableBalanceSuccess,
+									BalanceId: &balanceIDOp1,
+								},
+							},
+						},
+						{
+							Code: xdr.OperationResultCodeOpInner,
+							Tr: &xdr.OperationResultTr{
+								Type: xdr.OperationTypeCreateClaimableBalance,
+								CreateClaimableBalanceResult: &xdr.CreateClaimableBalanceResult{
+									Code:      xdr.CreateClaimableBalanceResultCodeCreateClaimableBalanceSuccess,
+									BalanceId: &balanceIDOp2,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		FeeChanges: xdr.LedgerEntryChanges{},
+		Meta:       xdr.TransactionMeta{},
+	}
+}
+func (s *CreateClaimableBalanceEffectsTestSuite) TestEffects() {
+	testCases := []struct {
+		desc     string
+		op       xdr.Operation
+		expected []effect
+	}{
+		{
+			desc: "claimable balance with native asset",
+			op:   s.ops[0],
+			expected: []effect{
+				{
+					address: "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
+					details: map[string]interface{}{
+						"asset":      "native",
+						"amount":     "10.0000000",
+						"balance_id": "AAAAANoNV9p9SFDn/BDSqdDrxzH3r7QFdMAzlbF9SRSbkfW+",
+					},
+					effectType:  history.EffectClaimableBalanceCreated,
+					operationID: int64(4294967297),
+					order:       uint32(1),
+				},
+				{
+					address: "GD5OVB6FKDV7P7SOJ5UB2BPLBL4XGSHPYHINR5355SY3RSXLT2BZWAKY",
+					details: map[string]interface{}{
+						"asset":      "native",
+						"amount":     "10.0000000",
+						"balance_id": "AAAAANoNV9p9SFDn/BDSqdDrxzH3r7QFdMAzlbF9SRSbkfW+",
+						"predicate":  "AAAAAA==",
+					},
+					effectType:  history.EffectClaimableBalanceClaimantCreated,
+					operationID: int64(4294967297),
+					order:       uint32(2),
+				},
+				{
+					address: "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
+					details: map[string]interface{}{
+						"amount":     "10.0000000",
+						"asset_type": "native",
+					},
+					effectType:  history.EffectAccountDebited,
+					operationID: int64(4294967297),
+					order:       uint32(3),
+				},
+			},
+		},
+		{
+			desc: "claimable balance with issued asset",
+			op:   s.ops[1],
+			expected: []effect{
+				{
+					address: "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
+					details: map[string]interface{}{
+						"asset":      "USD:GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
+						"amount":     "20.0000000",
+						"balance_id": "AAAAALHcX0PDa9UefSAzitC6vQOUr802phH8OF2ahLzg6j1D",
+					},
+					effectType:  history.EffectClaimableBalanceCreated,
+					operationID: int64(4294967298),
+					order:       uint32(1),
+				},
+				{
+					address: "GDMQUXK7ZUCWM5472ZU3YLDP4BMJLQQ76DEMNYDEY2ODEEGGRKLEWGW2",
+					details: map[string]interface{}{
+						"asset":      "USD:GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
+						"amount":     "20.0000000",
+						"balance_id": "AAAAALHcX0PDa9UefSAzitC6vQOUr802phH8OF2ahLzg6j1D",
+						"predicate":  "AAAAAA==",
+					},
+					effectType:  history.EffectClaimableBalanceClaimantCreated,
+					operationID: int64(4294967298),
+					order:       uint32(2),
+				},
+				{
+					address: "GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3",
+					details: map[string]interface{}{
+						"asset":      "USD:GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
+						"amount":     "20.0000000",
+						"balance_id": "AAAAALHcX0PDa9UefSAzitC6vQOUr802phH8OF2ahLzg6j1D",
+						"predicate":  "AAAAAA==",
+					},
+					effectType:  history.EffectClaimableBalanceClaimantCreated,
+					operationID: int64(4294967298),
+					order:       uint32(3),
+				},
+				{
+					address: "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
+					details: map[string]interface{}{
+						"amount":       "20.0000000",
+						"asset_code":   "USD",
+						"asset_type":   "credit_alphanum4",
+						"asset_issuer": "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
+					},
+					effectType:  history.EffectAccountDebited,
+					operationID: int64(4294967298),
+					order:       uint32(4),
+				},
+			},
+		},
+	}
+	for i, tc := range testCases {
+		s.T().Run(tc.desc, func(t *testing.T) {
+			operation := transactionOperationWrapper{
+				index:          uint32(i),
+				transaction:    s.tx,
+				operation:      tc.op,
+				ledgerSequence: 1,
+			}
+
+			effects, err := operation.effects()
+			s.Assert().NoError(err)
+			s.Assert().Equal(tc.expected, effects)
+		})
+	}
+}
+
+func TestCreateClaimableBalanceEffectsTestSuite(t *testing.T) {
+	suite.Run(t, new(CreateClaimableBalanceEffectsTestSuite))
+}
+
+type ClaimClaimableBalanceEffectsTestSuite struct {
+	suite.Suite
+	ops []xdr.Operation
+	tx  io.LedgerTransaction
+}
+
+func (s *ClaimClaimableBalanceEffectsTestSuite) SetupTest() {
+	var balanceIDOp1, balanceIDOp2 xdr.ClaimableBalanceId
+	xdr.SafeUnmarshalBase64("AAAAANoNV9p9SFDn/BDSqdDrxzH3r7QFdMAzlbF9SRSbkfW+", &balanceIDOp1)
+	xdr.SafeUnmarshalBase64("AAAAALHcX0PDa9UefSAzitC6vQOUr802phH8OF2ahLzg6j1D", &balanceIDOp2)
+
+	aid := xdr.MustAddress("GD5OVB6FKDV7P7SOJ5UB2BPLBL4XGSHPYHINR5355SY3RSXLT2BZWAKY")
+	claimant1 := aid.ToMuxedAccount()
+	aid = xdr.MustAddress("GDMQUXK7ZUCWM5472ZU3YLDP4BMJLQQ76DEMNYDEY2ODEEGGRKLEWGW2")
+	claimant2 := aid.ToMuxedAccount()
+	s.ops = []xdr.Operation{
+		{
+			SourceAccount: &claimant1,
+			Body: xdr.OperationBody{
+				Type: xdr.OperationTypeClaimClaimableBalance,
+				ClaimClaimableBalanceOp: &xdr.ClaimClaimableBalanceOp{
+					BalanceId: balanceIDOp1,
+				},
+			},
+		},
+		{
+			SourceAccount: &claimant2,
+			Body: xdr.OperationBody{
+				Type: xdr.OperationTypeClaimClaimableBalance,
+				ClaimClaimableBalanceOp: &xdr.ClaimClaimableBalanceOp{
+					BalanceId: balanceIDOp2,
+				},
+			},
+		},
+	}
+
+	s.tx = io.LedgerTransaction{
+		Index: 0,
+		Envelope: xdr.TransactionEnvelope{
+			Type: xdr.EnvelopeTypeEnvelopeTypeTx,
+			V1: &xdr.TransactionV1Envelope{
+				Tx: xdr.Transaction{
+					Operations: s.ops,
+				},
+			},
+		},
+		Result: xdr.TransactionResultPair{
+			Result: xdr.TransactionResult{
+				Result: xdr.TransactionResultResult{
+					Results: &[]xdr.OperationResult{
+						{
+							Code: xdr.OperationResultCodeOpInner,
+							Tr: &xdr.OperationResultTr{
+								Type: xdr.OperationTypeClaimClaimableBalance,
+								ClaimClaimableBalanceResult: &xdr.ClaimClaimableBalanceResult{
+									Code: xdr.ClaimClaimableBalanceResultCodeClaimClaimableBalanceSuccess,
+								},
+							},
+						},
+						{
+							Code: xdr.OperationResultCodeOpInner,
+							Tr: &xdr.OperationResultTr{
+								Type: xdr.OperationTypeClaimClaimableBalance,
+								ClaimClaimableBalanceResult: &xdr.ClaimClaimableBalanceResult{
+									Code: xdr.ClaimClaimableBalanceResultCodeClaimClaimableBalanceSuccess,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		FeeChanges: xdr.LedgerEntryChanges{},
+		Meta: xdr.TransactionMeta{
+			V: 2,
+			V2: &xdr.TransactionMetaV2{
+				Operations: []xdr.OperationMeta{
+					// op1
+					{
+						Changes: xdr.LedgerEntryChanges{
+							xdr.LedgerEntryChange{
+								Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
+								State: &xdr.LedgerEntry{
+									Data: xdr.LedgerEntryData{
+										Type: xdr.LedgerEntryTypeClaimableBalance,
+										ClaimableBalance: &xdr.ClaimableBalanceEntry{
+											BalanceId: balanceIDOp1,
+											Amount:    xdr.Int64(100000000),
+											Asset:     xdr.MustNewNativeAsset(),
+											Claimants: []xdr.Claimant{
+												{
+													Type: xdr.ClaimantTypeClaimantTypeV0,
+													V0: &xdr.ClaimantV0{
+														Destination: xdr.MustAddress("GD5OVB6FKDV7P7SOJ5UB2BPLBL4XGSHPYHINR5355SY3RSXLT2BZWAKY"),
+
+														Predicate: xdr.ClaimPredicate{
+															Type: xdr.ClaimPredicateTypeClaimPredicateUnconditional,
+														},
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+							xdr.LedgerEntryChange{
+								Type: xdr.LedgerEntryChangeTypeLedgerEntryRemoved,
+								Removed: &xdr.LedgerKey{
+									Type: xdr.LedgerEntryTypeClaimableBalance,
+									ClaimableBalance: &xdr.LedgerKeyClaimableBalance{
+										BalanceId: balanceIDOp1,
+									},
+								},
+							},
+						},
+					},
+					// op2
+					{
+						Changes: xdr.LedgerEntryChanges{
+							xdr.LedgerEntryChange{
+								Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
+								State: &xdr.LedgerEntry{
+									Data: xdr.LedgerEntryData{
+										Type: xdr.LedgerEntryTypeClaimableBalance,
+										ClaimableBalance: &xdr.ClaimableBalanceEntry{
+											BalanceId: balanceIDOp2,
+											Amount:    xdr.Int64(200000000),
+											Asset:     xdr.MustNewCreditAsset("USD", "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD"),
+											Claimants: []xdr.Claimant{
+												{
+													Type: xdr.ClaimantTypeClaimantTypeV0,
+													V0: &xdr.ClaimantV0{
+														Destination: xdr.MustAddress("GDMQUXK7ZUCWM5472ZU3YLDP4BMJLQQ76DEMNYDEY2ODEEGGRKLEWGW2"),
+														Predicate: xdr.ClaimPredicate{
+															Type: xdr.ClaimPredicateTypeClaimPredicateUnconditional,
+														},
+													},
+												},
+												{
+													Type: xdr.ClaimantTypeClaimantTypeV0,
+													V0: &xdr.ClaimantV0{
+														Destination: xdr.MustAddress("GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3"),
+														Predicate: xdr.ClaimPredicate{
+															Type: xdr.ClaimPredicateTypeClaimPredicateUnconditional,
+														},
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+							xdr.LedgerEntryChange{
+								Type: xdr.LedgerEntryChangeTypeLedgerEntryRemoved,
+								Removed: &xdr.LedgerKey{
+									Type: xdr.LedgerEntryTypeClaimableBalance,
+									ClaimableBalance: &xdr.LedgerKeyClaimableBalance{
+										BalanceId: balanceIDOp2,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+}
+func (s *ClaimClaimableBalanceEffectsTestSuite) TestEffects() {
+	testCases := []struct {
+		desc     string
+		op       xdr.Operation
+		expected []effect
+	}{
+		{
+			desc: "claimable balance with native asset",
+			op:   s.ops[0],
+			expected: []effect{
+				{
+					address: "GD5OVB6FKDV7P7SOJ5UB2BPLBL4XGSHPYHINR5355SY3RSXLT2BZWAKY",
+					details: map[string]interface{}{
+						"asset":      "native",
+						"amount":     "10.0000000",
+						"balance_id": "AAAAANoNV9p9SFDn/BDSqdDrxzH3r7QFdMAzlbF9SRSbkfW+",
+					},
+					effectType:  history.EffectClaimableBalanceClaimed,
+					operationID: int64(4294967297),
+					order:       uint32(1),
+				},
+				{
+					address: "GD5OVB6FKDV7P7SOJ5UB2BPLBL4XGSHPYHINR5355SY3RSXLT2BZWAKY",
+					details: map[string]interface{}{
+						"asset_type": "native",
+						"amount":     "10.0000000",
+					},
+					effectType:  history.EffectAccountCredited,
+					operationID: int64(4294967297),
+					order:       uint32(2),
+				},
+			},
+		},
+		{
+			desc: "claimable balance with issued asset",
+			op:   s.ops[1],
+			expected: []effect{
+				{
+					address: "GDMQUXK7ZUCWM5472ZU3YLDP4BMJLQQ76DEMNYDEY2ODEEGGRKLEWGW2",
+					details: map[string]interface{}{
+						"asset":      "USD:GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
+						"amount":     "20.0000000",
+						"balance_id": "AAAAALHcX0PDa9UefSAzitC6vQOUr802phH8OF2ahLzg6j1D",
+					},
+					effectType:  history.EffectClaimableBalanceClaimed,
+					operationID: int64(4294967298),
+					order:       uint32(1),
+				},
+				{
+					address: "GDMQUXK7ZUCWM5472ZU3YLDP4BMJLQQ76DEMNYDEY2ODEEGGRKLEWGW2",
+					details: map[string]interface{}{
+						"asset_code":   "USD",
+						"asset_type":   "credit_alphanum4",
+						"asset_issuer": "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
+						"amount":       "20.0000000",
+					},
+					effectType:  history.EffectAccountCredited,
+					operationID: int64(4294967298),
+					order:       uint32(2),
+				},
+			},
+		},
+	}
+	for i, tc := range testCases {
+		s.T().Run(tc.desc, func(t *testing.T) {
+			operation := transactionOperationWrapper{
+				index:          uint32(i),
+				transaction:    s.tx,
+				operation:      tc.op,
+				ledgerSequence: 1,
+			}
+
+			effects, err := operation.effects()
+			s.Assert().NoError(err)
+			s.Assert().Equal(tc.expected, effects)
+		})
+	}
+}
+
+func TestClaimClaimableBalanceEffectsTestSuite(t *testing.T) {
+	suite.Run(t, new(ClaimClaimableBalanceEffectsTestSuite))
+}

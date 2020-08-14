@@ -85,7 +85,7 @@ type ClaimableBalancesBatchInsertBuilder interface {
 // QClaimableBalances defines account related queries.
 type QClaimableBalances interface {
 	NewClaimableBalancesBatchInsertBuilder(maxBatchSize int) ClaimableBalancesBatchInsertBuilder
-	UpdateClaimableBalance(entry *xdr.LedgerEntry) (int64, error)
+	UpdateClaimableBalance(entry xdr.LedgerEntry) (int64, error)
 	RemoveClaimableBalance(cBalance xdr.ClaimableBalanceEntry) (int64, error)
 }
 
@@ -102,9 +102,24 @@ func (q *Q) NewClaimableBalancesBatchInsertBuilder(maxBatchSize int) ClaimableBa
 // UpdateClaimableBalance updates a row in the claimable_balances table.
 // The only updatable value on claimable_balances is sponsor
 // Returns number of rows affected and error.
-func (q *Q) UpdateClaimableBalance(entry *xdr.LedgerEntry) (int64, error) {
-	// mocking this for now - we can add the implemention upon landing https://github.com/stellar/go/pull/2897
-	return 1, nil
+func (q *Q) UpdateClaimableBalance(entry xdr.LedgerEntry) (int64, error) {
+	cBalance := entry.Data.MustClaimableBalance()
+	id, err := balanceIDToHex(cBalance.BalanceId)
+	if err != nil {
+		return 0, errors.Wrap(err, "encoding balanceID")
+	}
+	cBalanceMap := map[string]interface{}{
+		"last_modified_ledger": entry.LastModifiedLedgerSeq,
+		"sponsor":              ledgerEntrySponsorToNullString(entry),
+	}
+
+	sql := sq.Update("claimable_balances").SetMap(cBalanceMap).Where("id = ?", id)
+	result, err := q.Exec(sql)
+	if err != nil {
+		return 0, err
+	}
+
+	return result.RowsAffected()
 }
 
 // RemoveClaimableBalance deletes a row in the claimable_balances table.
@@ -175,7 +190,7 @@ func (i *claimableBalancesBatchInsertBuilder) Add(entry *xdr.LedgerEntry) error 
 		Claimants:          buildClaimants(cBalance.Claimants),
 		Asset:              cBalance.Asset,
 		Amount:             cBalance.Amount,
-		Sponsor:            null.StringFromPtr(nil), // TDB - we can add this later since there might be code from Bartek's PR which we can use to pull the sponsor,
+		Sponsor:            ledgerEntrySponsorToNullString(*entry),
 		LastModifiedLedger: uint32(entry.LastModifiedLedgerSeq),
 	}
 	return i.builder.RowStruct(row)

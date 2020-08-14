@@ -6,6 +6,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	. "github.com/stellar/go/xdr"
 )
@@ -103,6 +104,14 @@ var _ = Describe("xdr.Asset#String()", func() {
 		})
 	})
 })
+
+func TestStringCanonical(t *testing.T) {
+	asset := MustNewNativeAsset()
+	require.Equal(t, "native", asset.StringCanonical())
+
+	asset = MustNewCreditAsset("USD", "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
+	require.Equal(t, "USD:GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H", asset.StringCanonical())
+}
 
 var _ = Describe("xdr.Asset#Equals()", func() {
 	var (

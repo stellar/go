@@ -77,7 +77,7 @@ func (p *ClaimableBalancesProcessor) Commit() error {
 			if err != nil {
 				return errors.Wrap(err, "Error creating ledger key")
 			}
-			rowsAffected, err = p.qClaimableBalances.UpdateClaimableBalance(change.Post)
+			rowsAffected, err = p.qClaimableBalances.UpdateClaimableBalance(*change.Post)
 		}
 
 		if err != nil {

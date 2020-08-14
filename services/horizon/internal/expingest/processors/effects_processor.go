@@ -203,9 +203,11 @@ func (operation *transactionOperationWrapper) effects() (effects []effect, err e
 		effects, err = operation.manageDataEffects()
 	case xdr.OperationTypeBumpSequence:
 		effects, err = operation.bumpSequenceEffects()
-	case xdr.OperationTypeCreateClaimableBalance,
-		xdr.OperationTypeClaimClaimableBalance,
-		xdr.OperationTypeBeginSponsoringFutureReserves,
+	case xdr.OperationTypeCreateClaimableBalance:
+		effects, err = operation.createClaimableBalanceEffects()
+	case xdr.OperationTypeClaimClaimableBalance:
+		effects, err = operation.claimClaimableBalanceEffects()
+	case xdr.OperationTypeBeginSponsoringFutureReserves,
 		xdr.OperationTypeEndSponsoringFutureReserves,
 		xdr.OperationTypeRevokeSponsorship:
 		// TBD
@@ -689,6 +691,120 @@ func (operation *transactionOperationWrapper) bumpSequenceEffects() ([]effect, e
 
 		break
 	}
+
+	return effects.effects, nil
+}
+
+func (operation *transactionOperationWrapper) createClaimableBalanceEffects() ([]effect, error) {
+	op := operation.operation.Body.MustCreateClaimableBalanceOp()
+	effects := effectsWrapper{
+		effects:   []effect{},
+		operation: operation,
+	}
+
+	result := operation.OperationResult().MustCreateClaimableBalanceResult()
+	balanceID, err := xdr.MarshalBase64(result.BalanceId)
+	if err != nil {
+		return nil, errors.Wrapf(err, "Invalid balanceId in op: %d", operation.index)
+	}
+
+	effects.add(
+		operation.SourceAccount().Address(),
+		history.EffectClaimableBalanceCreated,
+		map[string]interface{}{
+			"balance_id": balanceID,
+			"amount":     amount.String(op.Amount),
+			"asset":      op.Asset.StringCanonical(),
+		},
+	)
+
+	for _, c := range op.Claimants {
+		cv0 := c.MustV0()
+		predicate, err := xdr.MarshalBase64(cv0.Predicate)
+		if err != nil {
+			panic(errors.Wrapf(err, "Invalid predicate in op: %d", operation.index))
+		}
+		effects.add(
+			cv0.Destination.Address(),
+			history.EffectClaimableBalanceClaimantCreated,
+			map[string]interface{}{
+				"balance_id": balanceID,
+				"amount":     amount.String(op.Amount),
+				"asset":      op.Asset.StringCanonical(),
+				"predicate":  predicate,
+			},
+		)
+	}
+
+	details := map[string]interface{}{
+		"amount": amount.String(op.Amount),
+	}
+	assetDetails(details, op.Asset, "")
+	effects.add(
+		operation.SourceAccount().Address(),
+		history.EffectAccountDebited,
+		details,
+	)
+
+	return effects.effects, nil
+}
+
+func (operation *transactionOperationWrapper) claimClaimableBalanceEffects() ([]effect, error) {
+	op := operation.operation.Body.MustClaimClaimableBalanceOp()
+	effects := effectsWrapper{
+		effects:   []effect{},
+		operation: operation,
+	}
+
+	balanceID, err := xdr.MarshalBase64(op.BalanceId)
+	if err != nil {
+		return nil, fmt.Errorf("Invalid balanceId in op: %d", operation.index)
+	}
+
+	changes, err := operation.transaction.GetOperationChanges(operation.index)
+	if err != nil {
+		return effects.effects, err
+	}
+
+	var cBalance xdr.ClaimableBalanceEntry
+	found := false
+
+	for _, change := range changes {
+		if change.Type != xdr.LedgerEntryTypeClaimableBalance {
+			continue
+		}
+
+		if change.Pre != nil && change.Post == nil {
+			cBalance = change.Pre.Data.MustClaimableBalance()
+			if cBalance.BalanceId == op.BalanceId {
+				found = true
+				break
+			}
+		}
+	}
+
+	if !found {
+		return nil, fmt.Errorf("Change not found for balanceId : %s", balanceID)
+	}
+
+	effects.add(
+		operation.SourceAccount().Address(),
+		history.EffectClaimableBalanceClaimed,
+		map[string]interface{}{
+			"amount":     amount.String(cBalance.Amount),
+			"asset":      cBalance.Asset.StringCanonical(),
+			"balance_id": balanceID,
+		},
+	)
+	details := map[string]interface{}{
+		"amount": amount.String(cBalance.Amount),
+	}
+	assetDetails(details, cBalance.Asset, "")
+	effects.add(
+		operation.SourceAccount().Address(),
+		history.EffectAccountCredited,
+		details,
+	)
 
 	return effects.effects, nil
 }
