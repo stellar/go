@@ -469,6 +469,11 @@ func (m *mockSystem) ReingestRange(fromLedger, toLedger uint32, force bool) erro
 	return args.Error(0)
 }
 
+func (m *mockSystem) BuildGenesisState() error {
+	args := m.Called()
+	return args.Error(0)
+}
+
 func (m *mockSystem) Shutdown() {
 	m.Called()
 }

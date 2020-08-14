@@ -234,6 +234,7 @@ func (state startState) run(s *system) (transition, error) {
 
 type buildState struct {
 	checkpointLedger uint32
+	stop             bool
 }
 
 func (b buildState) String() string {
@@ -241,12 +242,17 @@ func (b buildState) String() string {
 }
 
 func (b buildState) run(s *system) (transition, error) {
+	var nextFailState = start()
+	if b.stop {
+		nextFailState = stop()
+	}
+
 	if b.checkpointLedger == 0 {
-		return start(), errors.New("unexpected checkpointLedger value")
+		return nextFailState, errors.New("unexpected checkpointLedger value")
 	}
 
 	if err := s.historyQ.Begin(); err != nil {
-		return start(), errors.Wrap(err, "Error starting a transaction")
+		return nextFailState, errors.Wrap(err, "Error starting a transaction")
 	}
 	defer s.historyQ.Rollback()
 
@@ -254,12 +260,12 @@ func (b buildState) run(s *system) (transition, error) {
 	// are blocked.
 	lastIngestedLedger, err := s.historyQ.GetLastLedgerExpIngest()
 	if err != nil {
-		return start(), errors.Wrap(err, getLastIngestedErrMsg)
+		return nextFailState, errors.Wrap(err, getLastIngestedErrMsg)
 	}
 
 	ingestVersion, err := s.historyQ.GetExpIngestVersion()
 	if err != nil {
-		return start(), errors.Wrap(err, getExpIngestVersionErrMsg)
+		return nextFailState, errors.Wrap(err, getExpIngestVersionErrMsg)
 	}
 
 	// Double check if we should proceed with state ingestion. It's possible that
@@ -267,7 +273,7 @@ func (b buildState) run(s *system) (transition, error) {
 	// but it's first to complete the task.
 	if ingestVersion == CurrentVersion && lastIngestedLedger > 0 {
 		log.Info("Another instance completed `buildState`. Skipping...")
-		return start(), nil
+		return nextFailState, nil
 	}
 
 	if err = s.updateCursor(b.checkpointLedger - 1); err != nil {
@@ -280,27 +286,31 @@ func (b buildState) run(s *system) (transition, error) {
 	// Clear last_ingested_ledger in key value store
 	err = s.historyQ.UpdateLastLedgerExpIngest(0)
 	if err != nil {
-		return start(), errors.Wrap(err, updateLastLedgerExpIngestErrMsg)
+		return nextFailState, errors.Wrap(err, updateLastLedgerExpIngestErrMsg)
 	}
 
 	// Clear invalid state in key value store. It's possible that upgraded
 	// ingestion is fixing it.
 	err = s.historyQ.UpdateExpStateInvalid(false)
 	if err != nil {
-		return start(), errors.Wrap(err, updateExpStateInvalidErrMsg)
+		return nextFailState, errors.Wrap(err, updateExpStateInvalidErrMsg)
 	}
 
 	// State tables should be empty.
 	err = s.historyQ.TruncateExpingestStateTables()
 	if err != nil {
-		return start(), errors.Wrap(err, "Error clearing ingest tables")
+		return nextFailState, errors.Wrap(err, "Error clearing ingest tables")
 	}
 
-	lockReleased, err := s.maybePrepareRange(b.checkpointLedger)
-	if err != nil {
-		return start(), err
-	} else if lockReleased {
-		return startSuggestedCheckpoint(b.checkpointLedger), nil
+	// We don't need to prepare range for genesis checkpoint.
+	if b.checkpointLedger != 1 {
+		var lockReleased bool
+		lockReleased, err = s.maybePrepareRange(b.checkpointLedger)
+		if err != nil {
+			return nextFailState, err
+		} else if lockReleased {
+			return startSuggestedCheckpoint(b.checkpointLedger), nil
+		}
 	}
 
 	log.WithFields(logpkg.F{
@@ -310,15 +320,15 @@ func (b buildState) run(s *system) (transition, error) {
 
 	stats, err := s.runner.RunHistoryArchiveIngestion(b.checkpointLedger)
 	if err != nil {
-		return start(), errors.Wrap(err, "Error ingesting history archive")
+		return nextFailState, errors.Wrap(err, "Error ingesting history archive")
 	}
 
 	if err = s.historyQ.UpdateExpIngestVersion(CurrentVersion); err != nil {
-		return start(), errors.Wrap(err, "Error updating expingest version")
+		return nextFailState, errors.Wrap(err, "Error updating expingest version")
 	}
 
 	if err = s.completeIngestion(b.checkpointLedger); err != nil {
-		return start(), err
+		return nextFailState, err
 	}
 
 	log.
@@ -329,6 +339,9 @@ func (b buildState) run(s *system) (transition, error) {
 		}).
 		Info("Processed state")
 
+	if b.stop {
+		return stop(), nil
+	}
 	// If successful, continue from the next ledger
 	return resume(b.checkpointLedger), nil
 }

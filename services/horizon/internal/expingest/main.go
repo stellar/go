@@ -100,6 +100,7 @@ type System interface {
 	StressTest(numTransactions, changesPerTransaction int) error
 	VerifyRange(fromLedger, toLedger uint32, verifyState bool) error
 	ReingestRange(fromLedger, toLedger uint32, force bool) error
+	BuildGenesisState() error
 	Shutdown()
 }
 
@@ -284,6 +285,15 @@ func (s *system) ReingestRange(fromLedger, toLedger uint32, force bool) error {
 		err = run()
 	}
 	return err
+}
+
+// BuildGenesisState runs the ingestion pipeline on genesis ledger. Transitions
+// to stopState when done.
+func (s *system) BuildGenesisState() error {
+	return s.runStateMachine(buildState{
+		checkpointLedger: 1,
+		stop:             true,
+	})
 }
 
 func (s *system) runStateMachine(cur stateMachineNode) error {

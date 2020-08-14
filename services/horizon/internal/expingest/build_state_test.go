@@ -333,3 +333,53 @@ func (s *BuildStateTestSuite) TestBuildStateSucceeds() {
 		next,
 	)
 }
+
+func (s *BuildStateTestSuite) TestUpdateCommitReturnsErrorStop() {
+	s.mockCommonHistoryQ()
+	s.runner.
+		On("RunHistoryArchiveIngestion", s.checkpointLedger).
+		Return(io.StatsChangeProcessorResults{}, nil).
+		Once()
+	s.historyQ.On("UpdateLastLedgerExpIngest", s.checkpointLedger).
+		Return(nil).
+		Once()
+	s.historyQ.On("UpdateExpIngestVersion", CurrentVersion).
+		Return(nil).
+		Once()
+	s.historyQ.On("Commit").
+		Return(errors.New("my error")).
+		Once()
+	next, err := buildState{checkpointLedger: s.checkpointLedger, stop: true}.run(s.system)
+
+	s.Assert().Error(err)
+	s.Assert().EqualError(err, "Error committing db transaction: my error")
+	s.Assert().Equal(transition{node: stopState{}, sleepDuration: 0}, next)
+}
+
+func (s *BuildStateTestSuite) TestBuildStateSucceedStop() {
+	s.mockCommonHistoryQ()
+	s.runner.
+		On("RunHistoryArchiveIngestion", s.checkpointLedger).
+		Return(io.StatsChangeProcessorResults{}, nil).
+		Once()
+	s.historyQ.On("UpdateLastLedgerExpIngest", s.checkpointLedger).
+		Return(nil).
+		Once()
+	s.historyQ.On("UpdateExpIngestVersion", CurrentVersion).
+		Return(nil).
+		Once()
+	s.historyQ.On("Commit").
+		Return(nil).
+		Once()
+
+	next, err := buildState{checkpointLedger: s.checkpointLedger, stop: true}.run(s.system)
+
+	s.Assert().NoError(err)
+	s.Assert().Equal(
+		transition{
+			node:          stopState{},
+			sleepDuration: 0,
+		},
+		next,
+	)
+}
