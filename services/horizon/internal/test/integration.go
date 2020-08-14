@@ -142,22 +142,22 @@ func NewIntegrationTest(t *testing.T, config IntegrationConfig) *IntegrationTest
 }
 
 func (i *IntegrationTest) waitForIngestionAndUpgrade() {
-	for t := 10 * time.Second; t >= 0; t -= time.Second {
+	for t := 30 * time.Second; t >= 0; t -= time.Second {
 		i.t.Log("Waiting for ingestion and protocol upgrade...")
-		root, err := i.hclient.Root()
-		if err != nil {
-			if t == 0 {
-				i.t.Fatal("Horizon not ingesting...")
-			}
-		}
+		root, _ := i.hclient.Root()
+		// We ignore errors here because it's likely connection error due to
+		// Horizon not running. We ensure that's is up and correct by checking
+		// the root response.
 		if root.IngestSequence > 0 &&
 			root.HorizonSequence > 0 &&
 			root.CurrentProtocolVersion == i.config.ProtocolVersion {
-			i.t.Fatal("Horizon ingesting and protocol version matches...")
+			i.t.Log("Horizon ingesting and protocol version matches...")
 			return
 		}
 		time.Sleep(time.Second)
 	}
+
+	i.t.Fatal("Horizon not ingesting...")
 }
 
 // Client returns horizon.Client connected to started Horizon instance.
