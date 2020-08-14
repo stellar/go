@@ -109,6 +109,24 @@ func (operation *transactionOperationWrapper) OperationType() xdr.OperationType 
 }
 
 // OperationResult returns the operation's result record
+func (operation *transactionOperationWrapper) getSponsor() (*xdr.AccountId, error) {
+	changes, err := operation.transaction.GetOperationChanges(operation.index)
+	if err != nil {
+		return nil, err
+	}
+	for _, c := range changes {
+		if c.Pre != nil || c.Post == nil {
+			// We are looking for entry creations
+			continue
+		}
+		if sponsorAccount := c.Post.SponsoringID(); sponsorAccount != nil {
+			return sponsorAccount, nil
+		}
+	}
+	return nil, nil
+}
+
+// OperationResult returns the operation's result record
 func (operation *transactionOperationWrapper) OperationResult() *xdr.OperationResultTr {
 	results, _ := operation.transaction.Result.OperationResults()
 	tr := results[operation.index].MustTr()
@@ -119,7 +137,10 @@ func (operation *transactionOperationWrapper) OperationResult() *xdr.OperationRe
 func (operation *transactionOperationWrapper) Details() map[string]interface{} {
 	details := map[string]interface{}{}
 	source := operation.SourceAccount()
-
+	// FIXME: we shouldn't ignore this error
+	if sponsor, _ := operation.getSponsor(); sponsor != nil {
+		details["sponsor"] = sponsor.Address()
+	}
 	switch operation.OperationType() {
 	case xdr.OperationTypeCreateAccount:
 		op := operation.operation.Body.MustCreateAccountOp()
@@ -400,7 +421,11 @@ func ledgerKeyDetails(result map[string]interface{}, ledgerKey xdr.LedgerKey, pr
 func (operation *transactionOperationWrapper) Participants() ([]xdr.AccountId, error) {
 	participants := []xdr.AccountId{}
 	participants = append(participants, *operation.SourceAccount())
-
+	// FIXME: do not ignore the error
+	sponsor, _ := operation.getSponsor()
+	if sponsor != nil {
+		participants = append(participants, *sponsor)
+	}
 	op := operation.operation
 
 	switch operation.OperationType() {
