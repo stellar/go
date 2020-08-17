@@ -330,7 +330,7 @@ func (operation *transactionOperationWrapper) Details() map[string]interface{} {
 		details["sponsored_id"] = op.SponsoredId.Address()
 	case xdr.OperationTypeEndSponsoringFutureReserves:
 		operations := operation.transaction.Envelope.Operations()
-		for i := operation.index; i >= 0; i-- {
+		for i := int(operation.index); i >= 0; i-- {
 			if operations[i].Body.Type == xdr.OperationTypeBeginSponsoringFutureReserves {
 				// We intentionally ignore `RevokeSponsorship` operations inside or outside
 				// the sandwich
