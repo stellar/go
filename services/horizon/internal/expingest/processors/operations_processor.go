@@ -329,7 +329,15 @@ func (operation *transactionOperationWrapper) Details() map[string]interface{} {
 		op := operation.operation.Body.MustBeginSponsoringFutureReservesOp()
 		details["sponsored_id"] = op.SponsoredId.Address()
 	case xdr.OperationTypeEndSponsoringFutureReserves:
-		// NOP
+		operations := operation.transaction.Envelope.Operations()
+		for i := operation.index; i >= 0; i-- {
+			if operations[i].Body.Type == xdr.OperationTypeBeginSponsoringFutureReserves {
+				// We intentionally ignore `RevokeSponsorship` operations inside or outside
+				// the sandwich
+				begin := operations[i].Body.MustBeginSponsoringFutureReservesOp()
+				details["begin_sponsored_id"] = begin.SponsoredId.Address()
+			}
+		}
 	case xdr.OperationTypeRevokeSponsorship:
 		op := operation.operation.Body.MustRevokeSponsorshipOp()
 		switch op.Type {
@@ -398,22 +406,17 @@ func operationFlagDetails(result map[string]interface{}, f int32, prefix string)
 func ledgerKeyDetails(result map[string]interface{}, ledgerKey xdr.LedgerKey, prefix string) {
 	switch ledgerKey.Type {
 	case xdr.LedgerEntryTypeAccount:
-		result[prefix+"ledger_key_account"] = ledgerKey.Account.AccountId.Address()
+		result[prefix+"account_id"] = ledgerKey.Account.AccountId.Address()
 	case xdr.LedgerEntryTypeClaimableBalance:
-		result[prefix+"ledger_key_claimable_balance"] = ledgerKey.ClaimableBalance.BalanceId
+		result[prefix+"claimable_balance_id"] = ledgerKey.ClaimableBalance.BalanceId
 	case xdr.LedgerEntryTypeData:
-		result[prefix+"ledger_key_data"] = map[string]interface{}{
-			"account_id": ledgerKey.Data.AccountId.Address(),
-			"data_name":  ledgerKey.Data.DataName,
-		}
+		result[prefix+"account_id"] = ledgerKey.Data.AccountId.Address()
+		result[prefix+"data_name"] = ledgerKey.Data.DataName
 	case xdr.LedgerEntryTypeOffer:
-		result[prefix+"ledger_key_offer_id"] = ledgerKey.Offer.OfferId
+		result[prefix+"offer_id"] = ledgerKey.Offer.OfferId
 	case xdr.LedgerEntryTypeTrustline:
-		trustlineDetails := map[string]interface{}{
-			"account_id": ledgerKey.TrustLine.AccountId,
-		}
-		assetDetails(trustlineDetails, ledgerKey.TrustLine.Asset, "")
-		result[prefix+"ledger_key_trustline"] = trustlineDetails
+		result[prefix+"account_id"] = ledgerKey.TrustLine.AccountId
+		assetDetails(result, ledgerKey.TrustLine.Asset, prefix)
 	}
 }
 
@@ -421,9 +424,7 @@ func ledgerKeyDetails(result map[string]interface{}, ledgerKey xdr.LedgerKey, pr
 func (operation *transactionOperationWrapper) Participants() ([]xdr.AccountId, error) {
 	participants := []xdr.AccountId{}
 	participants = append(participants, *operation.SourceAccount())
-	// FIXME: do not ignore the error
-	sponsor, _ := operation.getSponsor()
-	if sponsor != nil {
+	if sponsor, _ := operation.getSponsor(); sponsor != nil {
 		participants = append(participants, *sponsor)
 	}
 	op := operation.operation
