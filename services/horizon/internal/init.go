@@ -179,7 +179,7 @@ func initDbMetrics(app *App) {
 			Help: "total time blocked waiting for a new connection",
 		},
 		func() float64 {
-			return float64(app.historyQ.Session.DB.Stats().WaitDuration)
+			return app.historyQ.Session.DB.Stats().WaitDuration.Seconds()
 		},
 	)
 	app.prometheusRegistry.MustRegister(app.dbWaitDurationCounter)
