@@ -659,3 +659,30 @@ type PathsPage struct {
 		Records []Path
 	} `json:"_embedded"`
 }
+
+// ClaimableBalance represents a claimable balance
+type ClaimableBalance struct {
+	Links struct {
+		Self hal.Link `json:"self"`
+	} `json:"_links"`
+
+	ID                 string     `json:"id"`
+	BalanceID          string     `json:"balance_id"`
+	Asset              string     `json:"asset"`
+	Amount             string     `json:"amount"`
+	Sponsor            string     `json:"sponsor"`
+	LastModifiedLedger uint32     `json:"last_modified_ledger"`
+	Claimants          []Claimant `json:"claimants"`
+	PT                 string     `json:"paging_token"`
+}
+
+// PagingToken implementation for hal.Pageable
+func (res ClaimableBalance) PagingToken() string {
+	return res.PT
+}
+
+// Claimant represents a claimable balance claimant
+type Claimant struct {
+	Destination string `json:"destination"`
+	Predicate   string `json:"predicate"`
+}
