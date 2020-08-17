@@ -218,8 +218,51 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 			LastModifiedLedgerSeq: xdr.Uint32(62),
 		},
 	}
+	claimableBalance := history.ClaimableBalance{
+		BalanceID: xdr.ClaimableBalanceId{
+			Type: xdr.ClaimableBalanceIdTypeClaimableBalanceIdTypeV0,
+			V0:   &xdr.Hash{1, 2, 3},
+		},
+		Asset:              xdr.MustNewNativeAsset(),
+		Amount:             10,
+		LastModifiedLedger: 62,
+		Claimants: []history.Claimant{
+			{
+				Destination: mockAccountID,
+				Predicate: xdr.ClaimPredicate{
+					Type: xdr.ClaimPredicateTypeClaimPredicateUnconditional,
+				},
+			},
+		},
+	}
+	claimableBalanceChange := ingestio.Change{
+		Type: xdr.LedgerEntryTypeClaimableBalance,
+		Pre:  nil,
+		Post: &xdr.LedgerEntry{
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeClaimableBalance,
+				ClaimableBalance: &xdr.ClaimableBalanceEntry{
+					BalanceId: claimableBalance.BalanceID,
+					Claimants: []xdr.Claimant{
+						{
+							Type: xdr.ClaimantTypeClaimantTypeV0,
+							V0: &xdr.ClaimantV0{
+								Destination: xdr.MustAddress(claimableBalance.Claimants[0].Destination),
+								Predicate:   claimableBalance.Claimants[0].Predicate,
+							},
+						},
+					},
+					Asset:  claimableBalance.Asset,
+					Amount: claimableBalance.Amount,
+				},
+			},
+			LastModifiedLedgerSeq: xdr.Uint32(62),
+		},
+	}
+
 	mockChangeReader.On("Read").Return(accountChange, nil).Once()
 	mockChangeReader.On("Read").Return(offerChange, nil).Once()
+	mockChangeReader.On("Read").Return(claimableBalanceChange, nil).Once()
 	mockChangeReader.On("Read").Return(ingestio.Change{}, io.EOF).Once()
 	mockChangeReader.On("Read").Return(ingestio.Change{}, io.EOF).Once()
 	s.historyAdapter.On("GetState", nil, uint32(63)).Return(mockChangeReader, nil).Once()
@@ -258,6 +301,11 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 		Order: "asc",
 		Limit: assetStatsBatchSize,
 	}).Return([]history.ExpAssetStat{}, nil).Once()
+
+	clonedQ.MockQClaimableBalances.On("CountClaimableBalances").Return(1, nil).Once()
+	clonedQ.MockQClaimableBalances.
+		On("GetClaimableBalancesByID", []xdr.ClaimableBalanceId{claimableBalanceChange.Post.Data.ClaimableBalance.BalanceId}).
+		Return([]history.ClaimableBalance{claimableBalance}, nil).Once()
 
 	next, err := verifyRangeState{
 		fromLedger: 100, toLedger: 110, verifyState: true,

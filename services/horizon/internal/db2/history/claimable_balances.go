@@ -88,7 +88,7 @@ type QClaimableBalances interface {
 	UpdateClaimableBalance(entry xdr.LedgerEntry) (int64, error)
 	RemoveClaimableBalance(cBalance xdr.ClaimableBalanceEntry) (int64, error)
 	GetClaimableBalancesByID(ids []xdr.ClaimableBalanceId) ([]ClaimableBalance, error)
-	CountClaimableBalances() (int64, error)
+	CountClaimableBalances() (int, error)
 }
 
 // NewClaimableBalancesBatchInsertBuilder constructs a new ClaimableBalancesBatchInsertBuilder instance
@@ -102,10 +102,10 @@ func (q *Q) NewClaimableBalancesBatchInsertBuilder(maxBatchSize int) ClaimableBa
 }
 
 // CountClaimableBalances returns the total number of claimable balances in the DB
-func (q *Q) CountClaimableBalances() (int64, error) {
+func (q *Q) CountClaimableBalances() (int, error) {
 	sql := sq.Select("count(*)").From("claimable_balances")
 
-	var count int64
+	var count int
 	if err := q.Get(&count, sql); err != nil {
 		return 0, errors.Wrap(err, "could not run select query")
 	}
