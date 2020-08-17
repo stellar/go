@@ -57,7 +57,7 @@ func TestRemoveClaimableBalance(t *testing.T) {
 
 	r, err := q.FindClaimableBalanceByID(id)
 	tt.Assert.NoError(err)
-	tt.Assert.Len(r, 1)
+	tt.Assert.NotNil(r)
 
 	removed, err := q.RemoveClaimableBalance(cBalance)
 	tt.Assert.NoError(err)
