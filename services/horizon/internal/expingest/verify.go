@@ -530,6 +530,7 @@ func addClaimableBalanceToStateVerifier(
 				},
 			})
 		}
+		claimants = xdr.SortClaimantsByDestination(claimants)
 		cBalance := xdr.ClaimableBalanceEntry{
 			BalanceId: row.BalanceID,
 			Claimants: claimants,
@@ -592,7 +593,9 @@ func transformEntry(entry xdr.LedgerEntry) (bool, xdr.LedgerEntry) {
 		// Full check of data object
 		return false, entry
 	case xdr.LedgerEntryTypeClaimableBalance:
-		// Full check of claimable balance object
+		cBalance := entry.Data.ClaimableBalance
+		cBalance.Claimants = xdr.SortClaimantsByDestination(cBalance.Claimants)
+
 		return false, entry
 	default:
 		panic("Invalid type")
