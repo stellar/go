@@ -132,6 +132,16 @@ func (operation *transactionOperationWrapper) OperationResult() *xdr.OperationRe
 	return &tr
 }
 
+func (operation *transactionOperationWrapper) findPriorBeginSponsoringOp() *xdr.Operation {
+	operations := operation.transaction.Envelope.Operations()
+	for i := int(operation.index); i >= 0; i-- {
+		if operations[i].Body.Type == xdr.OperationTypeBeginSponsoringFutureReserves {
+			return &operations[i]
+		}
+	}
+	return nil
+}
+
 // Details returns the operation details as a map which can be stored as JSON.
 func (operation *transactionOperationWrapper) Details() map[string]interface{} {
 	details := map[string]interface{}{}
@@ -328,14 +338,9 @@ func (operation *transactionOperationWrapper) Details() map[string]interface{} {
 		op := operation.operation.Body.MustBeginSponsoringFutureReservesOp()
 		details["sponsored_id"] = op.SponsoredId.Address()
 	case xdr.OperationTypeEndSponsoringFutureReserves:
-		operations := operation.transaction.Envelope.Operations()
-		for i := int(operation.index); i >= 0; i-- {
-			if operations[i].Body.Type == xdr.OperationTypeBeginSponsoringFutureReserves {
-				// We intentionally ignore `RevokeSponsorship` operations inside or outside
-				// the sandwich
-				begin := operations[i].Body.MustBeginSponsoringFutureReservesOp()
-				details["begin_sponsored_id"] = begin.SponsoredId.Address()
-			}
+		if beginSponsoringOp := operation.findPriorBeginSponsoringOp(); beginSponsoringOp != nil {
+			beginSponsor := beginSponsoringOp.SourceAccount.ToAccountId()
+			details["begin_sponsor"] = beginSponsor.Address()
 		}
 	case xdr.OperationTypeRevokeSponsorship:
 		op := operation.operation.Body.MustRevokeSponsorshipOp()
@@ -466,7 +471,10 @@ func (operation *transactionOperationWrapper) Participants() ([]xdr.AccountId, e
 	case xdr.OperationTypeBeginSponsoringFutureReserves:
 		participants = append(participants, op.Body.MustBeginSponsoringFutureReservesOp().SponsoredId)
 	case xdr.OperationTypeEndSponsoringFutureReserves:
-		// the only direct participant is the source_account
+		if beginSponsoringOp := operation.findPriorBeginSponsoringOp(); beginSponsoringOp != nil {
+			beginSponsor := beginSponsoringOp.SourceAccount.ToAccountId()
+			participants = append(participants, beginSponsor)
+		}
 	case xdr.OperationTypeRevokeSponsorship:
 		// the only direct participant is the source_account
 	default:
