@@ -87,6 +87,8 @@ type QClaimableBalances interface {
 	NewClaimableBalancesBatchInsertBuilder(maxBatchSize int) ClaimableBalancesBatchInsertBuilder
 	UpdateClaimableBalance(entry xdr.LedgerEntry) (int64, error)
 	RemoveClaimableBalance(cBalance xdr.ClaimableBalanceEntry) (int64, error)
+	GetClaimableBalancesByID(ids []xdr.ClaimableBalanceId) ([]ClaimableBalance, error)
+	CountClaimableBalances() (int, error)
 }
 
 // NewClaimableBalancesBatchInsertBuilder constructs a new ClaimableBalancesBatchInsertBuilder instance
@@ -97,6 +99,34 @@ func (q *Q) NewClaimableBalancesBatchInsertBuilder(maxBatchSize int) ClaimableBa
 			MaxBatchSize: maxBatchSize,
 		},
 	}
+}
+
+// CountClaimableBalances returns the total number of claimable balances in the DB
+func (q *Q) CountClaimableBalances() (int, error) {
+	sql := sq.Select("count(*)").From("claimable_balances")
+
+	var count int
+	if err := q.Get(&count, sql); err != nil {
+		return 0, errors.Wrap(err, "could not run select query")
+	}
+
+	return count, nil
+}
+
+// GetClaimableBalancesByID finds all claimable balances by ClaimableBalanceId
+func (q *Q) GetClaimableBalancesByID(ids []xdr.ClaimableBalanceId) ([]ClaimableBalance, error) {
+	var cBalances []ClaimableBalance
+	hexIDs := make([]string, 0, len(ids))
+	for _, id := range ids {
+		hexID, err := balanceIDToHex(id)
+		if err != nil {
+			return nil, errors.Wrap(err, "Error running balanceIDToHex")
+		}
+		hexIDs = append(hexIDs, hexID)
+	}
+	sql := selectClaimableBalances.Where(map[string]interface{}{"claimable_balances.id": hexIDs})
+	err := q.Select(&cBalances, sql)
+	return cBalances, err
 }
 
 // UpdateClaimableBalance updates a row in the claimable_balances table.

@@ -15,6 +15,16 @@ func (m *MockQClaimableBalances) NewClaimableBalancesBatchInsertBuilder(maxBatch
 	return a.Get(0).(ClaimableBalancesBatchInsertBuilder)
 }
 
+func (m *MockQClaimableBalances) CountClaimableBalances() (int, error) {
+	a := m.Called()
+	return a.Get(0).(int), a.Error(1)
+}
+
+func (m *MockQClaimableBalances) GetClaimableBalancesByID(ids []xdr.ClaimableBalanceId) ([]ClaimableBalance, error) {
+	a := m.Called(ids)
+	return a.Get(0).([]ClaimableBalance), a.Error(1)
+}
+
 func (m *MockQClaimableBalances) UpdateClaimableBalance(entry xdr.LedgerEntry) (int64, error) {
 	a := m.Called(entry)
 	return a.Get(0).(int64), a.Error(1)

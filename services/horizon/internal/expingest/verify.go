@@ -145,6 +145,7 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool) error {
 		data := make([]xdr.LedgerKeyData, 0, verifyBatchSize)
 		offers := make([]int64, 0, verifyBatchSize)
 		trustLines := make([]xdr.LedgerKeyTrustLine, 0, verifyBatchSize)
+		cBalances := make([]xdr.ClaimableBalanceId, 0, verifyBatchSize)
 		for _, key := range keys {
 			switch key.Type {
 			case xdr.LedgerEntryTypeAccount:
@@ -155,6 +156,8 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool) error {
 				offers = append(offers, int64(key.Offer.OfferId))
 			case xdr.LedgerEntryTypeTrustline:
 				trustLines = append(trustLines, *key.TrustLine)
+			case xdr.LedgerEntryTypeClaimableBalance:
+				cBalances = append(cBalances, key.ClaimableBalance.BalanceId)
 			default:
 				return errors.New("GetLedgerKeys return unexpected type")
 			}
@@ -176,6 +179,11 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool) error {
 		}
 
 		err = addTrustLinesToStateVerifier(verifier, assetStats, historyQ, trustLines)
+		if err != nil {
+			return errors.Wrap(err, "addTrustLinesToStateVerifier failed")
+		}
+
+		err = addClaimableBalanceToStateVerifier(verifier, assetStats, historyQ, cBalances)
 		if err != nil {
 			return errors.Wrap(err, "addTrustLinesToStateVerifier failed")
 		}
@@ -206,7 +214,12 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool) error {
 		return errors.Wrap(err, "Error running historyQ.CountTrustLines")
 	}
 
-	err = verifier.Verify(countAccounts + countData + countOffers + countTrustLines)
+	countClaimableBalances, err := historyQ.CountClaimableBalances()
+	if err != nil {
+		return errors.Wrap(err, "Error running historyQ.CountClaimableBalances")
+	}
+
+	err = verifier.Verify(countAccounts + countData + countOffers + countTrustLines + countClaimableBalances)
 	if err != nil {
 		return errors.Wrap(err, "verifier.Verify failed")
 	}
@@ -491,6 +504,54 @@ func addTrustLinesToStateVerifier(
 	return nil
 }
 
+func addClaimableBalanceToStateVerifier(
+	verifier *verify.StateVerifier,
+	assetStats processors.AssetStatSet,
+	q history.IngestionQ,
+	ids []xdr.ClaimableBalanceId,
+) error {
+	if len(ids) == 0 {
+		return nil
+	}
+
+	cBalances, err := q.GetClaimableBalancesByID(ids)
+	if err != nil {
+		return errors.Wrap(err, "Error running history.Q.GetClaimableBalancesByID")
+	}
+
+	for _, row := range cBalances {
+		claimants := []xdr.Claimant{}
+		for _, claimant := range row.Claimants {
+			claimants = append(claimants, xdr.Claimant{
+				Type: xdr.ClaimantTypeClaimantTypeV0,
+				V0: &xdr.ClaimantV0{
+					Destination: xdr.MustAddress(claimant.Destination),
+					Predicate:   claimant.Predicate,
+				},
+			})
+		}
+		claimants = xdr.SortClaimantsByDestination(claimants)
+		cBalance := xdr.ClaimableBalanceEntry{
+			BalanceId: row.BalanceID,
+			Claimants: claimants,
+			Asset:     row.Asset,
+			Amount:    xdr.Int64(row.Amount),
+		}
+		entry := xdr.LedgerEntry{
+			LastModifiedLedgerSeq: xdr.Uint32(row.LastModifiedLedger),
+			Data: xdr.LedgerEntryData{
+				Type:             xdr.LedgerEntryTypeClaimableBalance,
+				ClaimableBalance: &cBalance,
+			},
+		}
+		if err := verifier.Write(entry); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func transformEntry(entry xdr.LedgerEntry) (bool, xdr.LedgerEntry) {
 	switch entry.Data.Type {
 	case xdr.LedgerEntryTypeAccount:
@@ -532,7 +593,9 @@ func transformEntry(entry xdr.LedgerEntry) (bool, xdr.LedgerEntry) {
 		// Full check of data object
 		return false, entry
 	case xdr.LedgerEntryTypeClaimableBalance:
-		// TBD
+		cBalance := entry.Data.ClaimableBalance
+		cBalance.Claimants = xdr.SortClaimantsByDestination(cBalance.Claimants)
+
 		return false, entry
 	default:
 		panic("Invalid type")
