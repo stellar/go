@@ -50,7 +50,7 @@ func (entry *LedgerEntry) LedgerKey() LedgerKey {
 // SponsoringID return SponsorshipDescriptor for a given ledger entry
 func (entry *LedgerEntry) SponsoringID() SponsorshipDescriptor {
 	var sponsor SponsorshipDescriptor
-	if entry.Ext.V == 1 && entry.Ext.V1 != nil {
+	if entry.Ext.V1 != nil {
 		sponsor = entry.Ext.V1.SponsoringId
 	}
 	return sponsor

@@ -108,7 +108,6 @@ func (operation *transactionOperationWrapper) OperationType() xdr.OperationType 
 	return operation.operation.Body.Type
 }
 
-// OperationResult returns the operation's result record
 func (operation *transactionOperationWrapper) getSponsor() (*xdr.AccountId, error) {
 	changes, err := operation.transaction.GetOperationChanges(operation.index)
 	if err != nil {
