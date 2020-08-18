@@ -71,6 +71,7 @@ var (
 			},
 		},
 		Ext: xdr.LedgerEntryExt{
+			V: 1,
 			V1: &xdr.LedgerEntryExtensionV1{
 				SponsoringId: &sponsor,
 			},

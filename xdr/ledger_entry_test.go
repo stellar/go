@@ -16,6 +16,7 @@ func TestLedgerEntrySponsorship(t *testing.T) {
 
 	entry = LedgerEntry{
 		Ext: LedgerEntryExt{
+			V: 1,
 			V1: &LedgerEntryExtensionV1{
 				SponsoringId: desc,
 			},
