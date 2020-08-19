@@ -423,10 +423,19 @@ func initRootConfig() {
 		stdLog.Fatalf("--history-archive-urls must be set when --ingest is set")
 	}
 
-	validateBothOrNeither("enable-captive-core-ingestion", "stellar-core-binary-path")
+	if config.EnableCaptiveCoreIngestion {
+		binaryPath := viper.GetString("stellar-core-binary-path")
+		remoteURL := viper.GetString("remote-captive-core-url")
+		if binaryPath == "" && remoteURL == "" {
+			stdLog.Fatalf("Invalid config: captive core requires that either --stellar-core-binary-path or --remote-captive-core-url is set")
+		}
+		if binaryPath != "" && remoteURL != "" {
+			stdLog.Fatalf("Invalid config: --stellar-core-binary-path and --remote-captive-core-url cannot both be set.")
+		}
+	}
 	if config.Ingest {
 		// When running live ingestion a config file is required too
-		validateBothOrNeither("enable-captive-core-ingestion", "stellar-core-config-path")
+		validateBothOrNeither("stellar-core-binary-path", "stellar-core-config-path")
 	}
 
 	// Configure log file

@@ -2,12 +2,13 @@ package internal
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/suite"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/suite"
 
 	"github.com/stellar/go/exp/ingest/ledgerbackend"
 	"github.com/stellar/go/support/log"
