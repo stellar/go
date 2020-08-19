@@ -66,7 +66,6 @@ func TestAddClaimableBalance(t *testing.T) {
 		tt.Assert.Len(cbs, 1)
 
 		cb := cbs[0]
-		tt.Assert.Equal("8f2fb9b32d46b3357f6d11ded015f470520ab81dd5386fc18ab7d33f5334c45b", cb.ID)
 		tt.Assert.Equal(balanceID, cb.BalanceID)
 		tt.Assert.Len(cb.Claimants, 1)
 		tt.Assert.Equal(accountID, cb.Claimants[0].Destination)

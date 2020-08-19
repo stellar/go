@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/binary"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"strings"
@@ -27,17 +28,11 @@ func Uint32Ptr(val uint32) *Uint32 {
 	return &pval
 }
 
-// SafeUnmarshalBase64 first decodes the provided reader from base64 before
-// decoding the xdr into the provided destination.  Also ensures that the reader
-// is fully consumed.
-func SafeUnmarshalBase64(data string, dest interface{}) error {
+func safeUnmarshalString(decoder func(reader io.Reader) io.Reader, data string, dest interface{}) error {
 	count := &countWriter{}
 	l := len(data)
 
-	b64 := io.TeeReader(strings.NewReader(data), count)
-	raw := base64.NewDecoder(base64.StdEncoding, b64)
-	_, err := Unmarshal(raw, dest)
-
+	_, err := Unmarshal(decoder(io.TeeReader(strings.NewReader(data), count)), dest)
 	if err != nil {
 		return err
 	}
@@ -47,6 +42,26 @@ func SafeUnmarshalBase64(data string, dest interface{}) error {
 	}
 
 	return nil
+}
+
+// SafeUnmarshalBase64 first decodes the provided reader from base64 before
+// decoding the xdr into the provided destination.  Also ensures that the reader
+// is fully consumed.
+func SafeUnmarshalBase64(data string, dest interface{}) error {
+	return safeUnmarshalString(
+		func(r io.Reader) io.Reader {
+			return base64.NewDecoder(base64.StdEncoding, r)
+		},
+		data,
+		dest,
+	)
+}
+
+// SafeUnmarshalHex first decodes the provided reader from hex before
+// decoding the xdr into the provided destination.  Also ensures that the reader
+// is fully consumed.
+func SafeUnmarshalHex(data string, dest interface{}) error {
+	return safeUnmarshalString(hex.NewDecoder, data, dest)
 }
 
 // SafeUnmarshal decodes the provided reader into the destination and verifies
@@ -66,7 +81,7 @@ func SafeUnmarshal(data []byte, dest interface{}) error {
 	return nil
 }
 
-func MarshalBase64(v interface{}) (string, error) {
+func marshalString(encoder func([]byte) string, v interface{}) (string, error) {
 	var raw bytes.Buffer
 
 	_, err := Marshal(&raw, v)
@@ -75,7 +90,15 @@ func MarshalBase64(v interface{}) (string, error) {
 		return "", err
 	}
 
-	return base64.StdEncoding.EncodeToString(raw.Bytes()), nil
+	return encoder(raw.Bytes()), nil
+}
+
+func MarshalBase64(v interface{}) (string, error) {
+	return marshalString(base64.StdEncoding.EncodeToString, v)
+}
+
+func MarshalHex(v interface{}) (string, error) {
+	return marshalString(hex.EncodeToString, v)
 }
 
 func MarshalFramed(w io.Writer, v interface{}) error {
