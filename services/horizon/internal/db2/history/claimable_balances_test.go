@@ -52,10 +52,7 @@ func TestRemoveClaimableBalance(t *testing.T) {
 	err = builder.Exec()
 	tt.Assert.NoError(err)
 
-	id, err := balanceIDToHex(cBalance.BalanceId)
-	tt.Assert.NoError(err)
-
-	r, err := q.FindClaimableBalanceByID(id)
+	r, err := q.FindClaimableBalanceByID(cBalance.BalanceId)
 	tt.Assert.NoError(err)
 	tt.Assert.NotNil(r)
 
@@ -287,12 +284,9 @@ func TestFindClaimableBalance(t *testing.T) {
 	err = builder.Exec()
 	tt.Assert.NoError(err)
 
-	id, err := balanceIDToHex(cBalance.BalanceId)
-
-	cb, err := q.FindClaimableBalanceByID(id)
+	cb, err := q.FindClaimableBalanceByID(cBalance.BalanceId)
 	tt.Assert.NoError(err)
 
-	tt.Assert.Equal(id, cb.ID)
 	tt.Assert.Equal(cBalance.BalanceId, cb.BalanceID)
 	tt.Assert.Equal(cBalance.Asset, cb.Asset)
 	tt.Assert.Equal(cBalance.Amount, cb.Amount)
