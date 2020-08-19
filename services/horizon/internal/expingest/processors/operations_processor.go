@@ -359,7 +359,11 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 		panic(fmt.Errorf("Unknown operation type: %s", operation.OperationType()))
 	}
 
-	if sponsor, _ := operation.getSponsor(); sponsor != nil {
+	sponsor, err := operation.getSponsor()
+	if err != nil {
+		return nil, err
+	}
+	if sponsor != nil {
 		details["sponsor"] = sponsor.Address()
 	}
 
@@ -493,7 +497,11 @@ func (operation *transactionOperationWrapper) Participants() ([]xdr.AccountId, e
 		return participants, fmt.Errorf("Unknown operation type: %s", op.Body.Type)
 	}
 
-	if sponsor, _ := operation.getSponsor(); sponsor != nil {
+	sponsor, err := operation.getSponsor()
+	if err != nil {
+		return nil, err
+	}
+	if sponsor != nil {
 		participants = append(participants, *sponsor)
 	}
 
