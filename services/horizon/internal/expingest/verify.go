@@ -1,6 +1,7 @@
 package expingest
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"time"
@@ -57,7 +58,10 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool) error {
 	defer func() {
 		duration := time.Since(startTime).Seconds()
 		if updateMetrics {
-			s.Metrics().StateVerifyDuration.Observe(float64(duration))
+			// Don't update metrics if context cancelled.
+			if s.ctx.Err() != context.Canceled {
+				s.Metrics().StateVerifyDuration.Observe(float64(duration))
+			}
 		}
 		log.WithField("duration", duration).Info("State verification finished")
 		historyQ.Rollback()

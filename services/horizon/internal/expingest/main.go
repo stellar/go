@@ -89,6 +89,10 @@ type Metrics struct {
 	// StateVerifyDuration exposes timing metrics about the rate and
 	// duration of state verification.
 	StateVerifyDuration prometheus.Summary
+
+	// StateInvalidGauge exposes state invalid metric. 1 if state is invalid,
+	// 0 otherwise.
+	StateInvalidGauge prometheus.GaugeFunc
 }
 
 type System interface {
@@ -212,6 +216,25 @@ func (s *system) initMetrics() {
 		Namespace: "horizon", Subsystem: "ingest", Name: "state_verify_duration_seconds",
 		Help: "state verification durations, sliding window = 10m",
 	})
+
+	s.metrics.StateInvalidGauge = prometheus.NewGaugeFunc(
+		prometheus.GaugeOpts{
+			Namespace: "horizon", Subsystem: "ingest", Name: "state_invalid",
+			Help: "equals 1 if state invalid, 0 otherwise",
+		},
+		func() float64 {
+			invalid, err := s.historyQ.GetExpStateInvalid()
+			if err != nil {
+				log.WithError(err).Error("Error in initMetrics/GetExpStateInvalid")
+				return 0
+			}
+			invalidFloat := float64(0)
+			if invalid {
+				invalidFloat = 1
+			}
+			return invalidFloat
+		},
+	)
 }
 
 func (s *system) Metrics() Metrics {

@@ -197,6 +197,7 @@ func initIngestMetrics(app *App) {
 
 	app.prometheusRegistry.MustRegister(app.expingester.Metrics().LedgerIngestionDuration)
 	app.prometheusRegistry.MustRegister(app.expingester.Metrics().StateVerifyDuration)
+	app.prometheusRegistry.MustRegister(app.expingester.Metrics().StateInvalidGauge)
 }
 
 func initTxSubMetrics(app *App) {
