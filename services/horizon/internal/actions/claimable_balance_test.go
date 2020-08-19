@@ -115,3 +115,72 @@ func TestGetClaimableBalanceByID(t *testing.T) {
 	tt.Assert.Equal("id", p.Extras["invalid_field"])
 	tt.Assert.Equal("Invalid claimable balance ID", p.Extras["reason"])
 }
+
+func TestGetClaimableBalances(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	test.ResetHorizonDB(t, tt.HorizonDB)
+	q := &history.Q{tt.HorizonSession()}
+
+	accountID := "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"
+	lastModifiedLedgerSeq := xdr.Uint32(123)
+	asset := xdr.MustNewCreditAsset("USD", accountID)
+	balanceID := xdr.ClaimableBalanceId{
+		Type: xdr.ClaimableBalanceIdTypeClaimableBalanceIdTypeV0,
+		V0:   &xdr.Hash{1, 2, 3},
+	}
+	cBalance := xdr.ClaimableBalanceEntry{
+		BalanceId: balanceID,
+		Claimants: []xdr.Claimant{
+			{
+				Type: xdr.ClaimantTypeClaimantTypeV0,
+				V0: &xdr.ClaimantV0{
+					Destination: xdr.MustAddress(accountID),
+					Predicate: xdr.ClaimPredicate{
+						Type: xdr.ClaimPredicateTypeClaimPredicateUnconditional,
+					},
+				},
+			},
+		},
+		Asset:  asset,
+		Amount: 10,
+	}
+	entry := xdr.LedgerEntry{
+		Data: xdr.LedgerEntryData{
+			Type:             xdr.LedgerEntryTypeClaimableBalance,
+			ClaimableBalance: &cBalance,
+		},
+		LastModifiedLedgerSeq: lastModifiedLedgerSeq,
+	}
+
+	builder := q.NewClaimableBalancesBatchInsertBuilder(2)
+
+	err := builder.Add(&entry)
+	tt.Assert.NoError(err)
+
+	err = builder.Exec()
+	tt.Assert.NoError(err)
+
+	tt.Assert.NoError(err)
+
+	handler := GetClaimableBalancesHandler{}
+	response, err := handler.GetResourcePage(httptest.NewRecorder(), makeRequest(
+		t,
+		map[string]string{},
+		map[string]string{},
+		q.Session,
+	))
+	tt.Assert.NoError(err)
+	tt.Assert.Len(response, 1)
+
+	response, err = handler.GetResourcePage(httptest.NewRecorder(), makeRequest(
+		t,
+		map[string]string{
+			"cursor": response[0].(protocol.ClaimableBalance).PagingToken(),
+		},
+		map[string]string{},
+		q.Session,
+	))
+	tt.Assert.NoError(err)
+	tt.Assert.Len(response, 0)
+}

@@ -3,13 +3,72 @@ package history
 import (
 	"database/sql/driver"
 	"encoding/json"
+	"fmt"
+	"strconv"
+	"strings"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/guregu/null"
+	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
+
+// ClaimableBalancesQuery is a helper struct to configure queries to claimable balances
+type ClaimableBalancesQuery struct {
+	PageQuery db2.PageQuery
+}
+
+// ApplyCursor applies cursor to the given sql
+func (cbq ClaimableBalancesQuery) ApplyCursor(sql sq.SelectBuilder) (sq.SelectBuilder, error) {
+	p := cbq.PageQuery
+	sql = sql.Limit(p.Limit)
+	var l int64
+	var r string
+	var err error
+
+	if p.Cursor != "" {
+		parts := strings.SplitN(p.Cursor, "-", 2)
+		if len(parts) != 2 {
+			return sql, errors.New("Invalid cursor")
+		}
+
+		l, err = strconv.ParseInt(parts[0], 10, 64)
+		if err != nil {
+			return sql, errors.Wrap(err, "Invalid cursor - first value should be higher than 0")
+		}
+
+		// TBD: validate second part which should be a  valid xdr.BalanceID
+		r = parts[1]
+
+		if l < 0 {
+			return sql, errors.Wrap(err, "Invalid cursor - first value should be higher than 0")
+		}
+	}
+
+	switch p.Order {
+	case "asc":
+		if l > 0 && r != "" {
+			sql = sql.
+				Where(sq.GtOrEq{"last_modified_ledger": l}).
+				Where(sq.Gt{"id": r})
+		}
+		sql = sql.OrderBy("last_modified_ledger asc, id asc")
+	case "desc":
+		if l > 0 && r != "" {
+			sql = sql.
+				Where(sq.LtOrEq{"last_modified_ledger": l}).
+				Where(sq.Lt{"id": r})
+		}
+
+		sql = sql.OrderBy("last_modified_ledger desc, id desc")
+	default:
+		return sql, errors.Errorf("invalid order: %s", p.Order)
+	}
+
+	return sql, nil
+}
 
 // ClaimableBalance is a row of data from the `claimable_balances` table.
 type ClaimableBalance struct {
@@ -19,6 +78,13 @@ type ClaimableBalance struct {
 	Amount             xdr.Int64              `db:"amount"`
 	Sponsor            null.String            `db:"sponsor"`
 	LastModifiedLedger uint32                 `db:"last_modified_ledger"`
+}
+
+// PagingToken returns a cursor for this claimable_balance
+func (cb *ClaimableBalance) PagingToken() string {
+	// it's safe to ignore err since w
+	balanceID, _ := xdr.MarshalHex(cb.BalanceID)
+	return fmt.Sprintf("%d-%s", cb.LastModifiedLedger, balanceID)
 }
 
 type Claimants []Claimant
@@ -169,6 +235,25 @@ func (q *Q) FindClaimableBalanceByID(balanceID xdr.ClaimableBalanceId) (Claimabl
 	sql := selectClaimableBalances.Limit(1).Where("cb.id = ?", balanceID)
 	err := q.Get(&claimableBalance, sql)
 	return claimableBalance, err
+}
+
+// GetClaimableBalances finds all claimable balances where accountID is one of the claimants
+func (q *Q) GetClaimableBalances(query ClaimableBalancesQuery) ([]ClaimableBalance, error) {
+	sql, err := query.ApplyCursor(selectClaimableBalances)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not read cursor")
+	}
+
+	if err != nil {
+		return nil, errors.Wrap(err, "could not apply query to page")
+	}
+
+	var results []ClaimableBalance
+	if err := q.Select(&results, sql); err != nil {
+		return nil, errors.Wrap(err, "could not run select query")
+	}
+
+	return results, nil
 }
 
 type claimableBalancesBatchInsertBuilder struct {
