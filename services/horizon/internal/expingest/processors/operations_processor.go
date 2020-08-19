@@ -150,10 +150,6 @@ func (operation *transactionOperationWrapper) findPriorBeginSponsoringOp() *xdr.
 func (operation *transactionOperationWrapper) Details() (map[string]interface{}, error) {
 	details := map[string]interface{}{}
 	source := operation.SourceAccount()
-	// FIXME: we shouldn't ignore this error
-	if sponsor, _ := operation.getSponsor(); sponsor != nil {
-		details["sponsor"] = sponsor.Address()
-	}
 	switch operation.OperationType() {
 	case xdr.OperationTypeCreateAccount:
 		op := operation.operation.Body.MustCreateAccountOp()
@@ -363,6 +359,10 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 		panic(fmt.Errorf("Unknown operation type: %s", operation.OperationType()))
 	}
 
+	if sponsor, _ := operation.getSponsor(); sponsor != nil {
+		details["sponsor"] = sponsor.Address()
+	}
+
 	return details, nil
 }
 
@@ -441,9 +441,6 @@ func ledgerKeyDetails(result map[string]interface{}, ledgerKey xdr.LedgerKey, pr
 func (operation *transactionOperationWrapper) Participants() ([]xdr.AccountId, error) {
 	participants := []xdr.AccountId{}
 	participants = append(participants, *operation.SourceAccount())
-	if sponsor, _ := operation.getSponsor(); sponsor != nil {
-		participants = append(participants, *sponsor)
-	}
 	op := operation.operation
 
 	switch operation.OperationType() {
@@ -494,6 +491,10 @@ func (operation *transactionOperationWrapper) Participants() ([]xdr.AccountId, e
 		// the only direct participant is the source_account
 	default:
 		return participants, fmt.Errorf("Unknown operation type: %s", op.Body.Type)
+	}
+
+	if sponsor, _ := operation.getSponsor(); sponsor != nil {
+		participants = append(participants, *sponsor)
 	}
 
 	return dedupe(participants), nil
