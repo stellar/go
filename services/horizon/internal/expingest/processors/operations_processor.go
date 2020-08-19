@@ -38,8 +38,12 @@ func (p *OperationProcessor) ProcessTransaction(transaction io.LedgerTransaction
 			operation:      op,
 			ledgerSequence: p.sequence,
 		}
+		details, err := operation.Details()
+		if err != nil {
+			return errors.Wrapf(err, "Error obtaining details for operation %v", operation.ID())
+		}
 		var detailsJSON []byte
-		detailsJSON, err = json.Marshal(operation.Details())
+		detailsJSON, err = json.Marshal(details)
 		if err != nil {
 			return errors.Wrapf(err, "Error marshaling details for operation %v", operation.ID())
 		}
@@ -134,7 +138,7 @@ func (operation *transactionOperationWrapper) OperationResult() *xdr.OperationRe
 
 func (operation *transactionOperationWrapper) findPriorBeginSponsoringOp() *xdr.Operation {
 	operations := operation.transaction.Envelope.Operations()
-	for i := int(operation.index); i >= 0; i-- {
+	for i := int(operation.index) - 1; i >= 0; i-- {
 		if operations[i].Body.Type == xdr.OperationTypeBeginSponsoringFutureReserves {
 			return &operations[i]
 		}
@@ -143,7 +147,7 @@ func (operation *transactionOperationWrapper) findPriorBeginSponsoringOp() *xdr.
 }
 
 // Details returns the operation details as a map which can be stored as JSON.
-func (operation *transactionOperationWrapper) Details() map[string]interface{} {
+func (operation *transactionOperationWrapper) Details() (map[string]interface{}, error) {
 	details := map[string]interface{}{}
 	source := operation.SourceAccount()
 	// FIXME: we shouldn't ignore this error
@@ -338,15 +342,19 @@ func (operation *transactionOperationWrapper) Details() map[string]interface{} {
 		op := operation.operation.Body.MustBeginSponsoringFutureReservesOp()
 		details["sponsored_id"] = op.SponsoredId.Address()
 	case xdr.OperationTypeEndSponsoringFutureReserves:
-		if beginSponsoringOp := operation.findPriorBeginSponsoringOp(); beginSponsoringOp != nil {
-			beginSponsor := beginSponsoringOp.SourceAccount.ToAccountId()
-			details["begin_sponsor"] = beginSponsor.Address()
+		beginSponsoringOp := operation.findPriorBeginSponsoringOp()
+		if beginSponsoringOp == nil {
+			return nil, fmt.Errorf("prior Begin operation not found for EndSponsoringFutureReserves")
 		}
+		beginSponsor := beginSponsoringOp.SourceAccount.ToAccountId()
+		details["begin_sponsor"] = beginSponsor.Address()
 	case xdr.OperationTypeRevokeSponsorship:
 		op := operation.operation.Body.MustRevokeSponsorshipOp()
 		switch op.Type {
 		case xdr.RevokeSponsorshipTypeRevokeSponsorshipLedgerEntry:
-			ledgerKeyDetails(details, *op.LedgerKey, "")
+			if err := ledgerKeyDetails(details, *op.LedgerKey, ""); err != nil {
+				return nil, err
+			}
 		case xdr.RevokeSponsorshipTypeRevokeSponsorshipSigner:
 			details["signer_account"] = op.Signer.AccountId.Address()
 			details["signer_key"] = op.Signer.SignerKey.Address()
@@ -355,7 +363,7 @@ func (operation *transactionOperationWrapper) Details() map[string]interface{} {
 		panic(fmt.Errorf("Unknown operation type: %s", operation.OperationType()))
 	}
 
-	return details
+	return details, nil
 }
 
 // assetDetails sets the details for `a` on `result` using keys with `prefix`
@@ -407,21 +415,26 @@ func operationFlagDetails(result map[string]interface{}, f int32, prefix string)
 	result[prefix+"_flags_s"] = s
 }
 
-func ledgerKeyDetails(result map[string]interface{}, ledgerKey xdr.LedgerKey, prefix string) {
+func ledgerKeyDetails(result map[string]interface{}, ledgerKey xdr.LedgerKey, prefix string) error {
 	switch ledgerKey.Type {
 	case xdr.LedgerEntryTypeAccount:
 		result[prefix+"account_id"] = ledgerKey.Account.AccountId.Address()
 	case xdr.LedgerEntryTypeClaimableBalance:
-		result[prefix+"claimable_balance_id"] = ledgerKey.ClaimableBalance.BalanceId
+		b64, err := xdr.MarshalBase64(ledgerKey.ClaimableBalance.BalanceId)
+		if err != nil {
+			return errors.Wrapf(err, "in claimable balance")
+		}
+		result[prefix+"claimable_balance_id"] = b64
 	case xdr.LedgerEntryTypeData:
 		result[prefix+"account_id"] = ledgerKey.Data.AccountId.Address()
 		result[prefix+"data_name"] = ledgerKey.Data.DataName
 	case xdr.LedgerEntryTypeOffer:
 		result[prefix+"offer_id"] = ledgerKey.Offer.OfferId
 	case xdr.LedgerEntryTypeTrustline:
-		result[prefix+"account_id"] = ledgerKey.TrustLine.AccountId
+		result[prefix+"account_id"] = ledgerKey.TrustLine.AccountId.Address()
 		assetDetails(result, ledgerKey.TrustLine.Asset, prefix)
 	}
+	return nil
 }
 
 // Participants returns the accounts taking part in the operation.
@@ -471,10 +484,12 @@ func (operation *transactionOperationWrapper) Participants() ([]xdr.AccountId, e
 	case xdr.OperationTypeBeginSponsoringFutureReserves:
 		participants = append(participants, op.Body.MustBeginSponsoringFutureReservesOp().SponsoredId)
 	case xdr.OperationTypeEndSponsoringFutureReserves:
-		if beginSponsoringOp := operation.findPriorBeginSponsoringOp(); beginSponsoringOp != nil {
-			beginSponsor := beginSponsoringOp.SourceAccount.ToAccountId()
-			participants = append(participants, beginSponsor)
+		beginSponsoringOp := operation.findPriorBeginSponsoringOp()
+		if beginSponsoringOp == nil {
+			return nil, fmt.Errorf("prior Begin operation not found for EndSponsoringFutureReserves")
 		}
+		beginSponsor := beginSponsoringOp.SourceAccount.ToAccountId()
+		participants = append(participants, beginSponsor)
 	case xdr.OperationTypeRevokeSponsorship:
 		// the only direct participant is the source_account
 	default:
