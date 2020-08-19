@@ -53,8 +53,11 @@ func (s *OperationsProcessorTestSuiteLedger) mockBatchInsertAdds(txs []io.Ledger
 				operation:      op,
 				ledgerSequence: sequence,
 			}
-
-			detailsJSON, err := json.Marshal(expected.Details())
+			details, err := expected.Details()
+			if err != nil {
+				return err
+			}
+			detailsJSON, err := json.Marshal(details)
 			if err != nil {
 				return err
 			}
@@ -167,7 +170,9 @@ func TestTransactionOperationWrapper_Details(t *testing.T) {
 		operation:      tx.Envelope.Operations()[0],
 		ledgerSequence: uint32(56),
 	}
-	assert.Equal(t, wrapper.Details(), map[string]interface{}{
+	details, err := wrapper.Details()
+	assert.NoError(t, err)
+	assert.Equal(t, details, map[string]interface{}{
 		"amount":     "0.0000100",
 		"asset_type": "native",
 		"from":       "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
