@@ -10,8 +10,7 @@ func ledgerEntrySponsorToNullString(entry xdr.LedgerEntry) null.String {
 
 	var sponsor null.String
 	if sponsoringID != nil {
-		accountID := xdr.AccountId(*sponsoringID)
-		sponsor.SetValid(accountID.Address())
+		sponsor.SetValid((*sponsoringID).Address())
 	}
 
 	return sponsor

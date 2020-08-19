@@ -5,9 +5,10 @@ import (
 	"testing"
 
 	"github.com/guregu/null"
+	"github.com/stretchr/testify/assert"
+
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/xdr"
-	"github.com/stretchr/testify/assert"
 )
 
 var (
@@ -35,6 +36,7 @@ var (
 			},
 		},
 		Ext: xdr.LedgerEntryExt{
+			V: 1,
 			V1: &xdr.LedgerEntryExtensionV1{
 				SponsoringId: &sponsor,
 			},
@@ -137,7 +139,10 @@ func TestUpdateTrustLine(t *testing.T) {
 	assert.Equal(t, int64(1), rows)
 
 	modifiedTrustLine := eurTrustLine
-	modifiedTrustLine.Ext.V1.SponsoringId = nil
+	// make sure we don't mutate eurTrustline
+	v1Copy := *eurTrustLine.Ext.V1
+	v1Copy.SponsoringId = nil
+	modifiedTrustLine.Ext.V1 = &v1Copy
 	modifiedTrustLine.Data.TrustLine.Balance = 30000
 
 	rows, err = q.UpdateTrustLine(modifiedTrustLine)
@@ -246,6 +251,7 @@ func TestUpsertTrustLines(t *testing.T) {
 			},
 		},
 		Ext: xdr.LedgerEntryExt{
+			V: 1,
 			V1: &xdr.LedgerEntryExtensionV1{
 				SponsoringId: &sponsor,
 			},
@@ -254,6 +260,7 @@ func TestUpsertTrustLines(t *testing.T) {
 
 	actualBinary, err := dbEntry.MarshalBinary()
 	assert.NoError(t, err)
+	assert.Equal(t, modifiedTrustLine, dbEntry)
 	assert.Equal(t, expectedBinary, actualBinary)
 	assert.Equal(t, uint32(1234), lines[0].LastModifiedLedger)
 
