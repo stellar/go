@@ -323,7 +323,7 @@ func (c *CaptiveStellarCore) readLedgerMetaFromPipe() (*xdr.LedgerCloseMeta, err
 func (c *CaptiveStellarCore) PrepareRange(ledgerRange Range) error {
 	// Range already prepared
 	if prepared, err := c.IsPrepared(ledgerRange); err != nil {
-		return err
+		return errors.Wrap(err, "error in IsPrepared")
 	} else if prepared {
 		return nil
 	}
