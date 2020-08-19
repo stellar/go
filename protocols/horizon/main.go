@@ -666,8 +666,7 @@ type ClaimableBalance struct {
 		Self hal.Link `json:"self"`
 	} `json:"_links"`
 
-	ID                 string     `json:"id"`
-	BalanceID          string     `json:"balance_id"`
+	BalanceID          string     `json:"id"`
 	Asset              string     `json:"asset"`
 	Amount             string     `json:"amount"`
 	Sponsor            string     `json:"sponsor"`

@@ -22,7 +22,6 @@ func TestPopulateClaimableBalance(t *testing.T) {
 		V0:   &xdr.Hash{1, 2, 3},
 	}
 	claimableBalance := history.ClaimableBalance{
-		ID:        "AAAAAAECAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
 		BalanceID: balanceID,
 		Asset:     xdr.MustNewNativeAsset(),
 		Amount:    100000000,
@@ -41,8 +40,7 @@ func TestPopulateClaimableBalance(t *testing.T) {
 	err := PopulateClaimableBalance(ctx, &resource, claimableBalance)
 	tt.NoError(err)
 
-	tt.Equal("AAAAAAECAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", resource.ID)
-	tt.Equal("AAAAAAECAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", resource.BalanceID)
+	tt.Equal("000000000102030000000000000000000000000000000000000000000000000000000000", resource.BalanceID)
 	tt.Equal(claimableBalance.Asset.StringCanonical(), resource.Asset)
 	tt.Equal("10.0000000", resource.Amount)
 	tt.Equal("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML", resource.Sponsor)
@@ -50,13 +48,13 @@ func TestPopulateClaimableBalance(t *testing.T) {
 	tt.Len(resource.Claimants, 1)
 	tt.Equal("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML", resource.Claimants[0].Destination)
 	tt.Equal("AAAAAA==", resource.Claimants[0].Predicate)
-	tt.Equal("123-AAAAAAECAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", resource.PagingToken())
+	tt.Equal("123-000000000102030000000000000000000000000000000000000000000000000000000000", resource.PagingToken())
 
 	links, err := json.Marshal(resource.Links)
 	want := `
 	{
 	  "self": {
-		"href": "/claimable_balances/AAAAAAECAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+		"href": "/claimable_balances/000000000102030000000000000000000000000000000000000000000000000000000000"
 	  }
 	}
 	`

@@ -19,8 +19,7 @@ func PopulateClaimableBalance(
 	dest *protocol.ClaimableBalance,
 	claimableBalance history.ClaimableBalance,
 ) error {
-	dest.ID = claimableBalance.ID
-	balanceID, err := xdr.MarshalBase64(claimableBalance.BalanceID)
+	balanceID, err := xdr.MarshalHex(claimableBalance.BalanceID)
 	if err != nil {
 		return errors.Wrap(err, "marshalling BalanceID")
 	}
@@ -42,8 +41,8 @@ func PopulateClaimableBalance(
 	}
 
 	lb := hal.LinkBuilder{Base: horizonContext.BaseURL(ctx)}
-	self := fmt.Sprintf("/claimable_balances/%s", claimableBalance.ID)
+	self := fmt.Sprintf("/claimable_balances/%s", dest.BalanceID)
 	dest.Links.Self = lb.Link(self)
-	dest.PT = fmt.Sprintf("%d-%s", claimableBalance.LastModifiedLedger, claimableBalance.ID)
+	dest.PT = fmt.Sprintf("%d-%s", claimableBalance.LastModifiedLedger, dest.BalanceID)
 	return nil
 }
