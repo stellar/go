@@ -1,9 +1,7 @@
 package history
 
 import (
-	"crypto/sha256"
 	"database/sql/driver"
-	"encoding/hex"
 	"encoding/json"
 
 	sq "github.com/Masterminds/squirrel"
@@ -15,8 +13,7 @@ import (
 
 // ClaimableBalance is a row of data from the `claimable_balances` table.
 type ClaimableBalance struct {
-	ID                 string                 `db:"id"`
-	BalanceID          xdr.ClaimableBalanceId `db:"balance_id"`
+	BalanceID          xdr.ClaimableBalanceId `db:"id"`
 	Claimants          Claimants              `db:"claimants"`
 	Asset              xdr.Asset              `db:"asset"`
 	Amount             xdr.Int64              `db:"amount"`
@@ -116,15 +113,7 @@ func (q *Q) CountClaimableBalances() (int, error) {
 // GetClaimableBalancesByID finds all claimable balances by ClaimableBalanceId
 func (q *Q) GetClaimableBalancesByID(ids []xdr.ClaimableBalanceId) ([]ClaimableBalance, error) {
 	var cBalances []ClaimableBalance
-	hexIDs := make([]string, 0, len(ids))
-	for _, id := range ids {
-		hexID, err := balanceIDToHex(id)
-		if err != nil {
-			return nil, errors.Wrap(err, "Error running balanceIDToHex")
-		}
-		hexIDs = append(hexIDs, hexID)
-	}
-	sql := selectClaimableBalances.Where(map[string]interface{}{"claimable_balances.id": hexIDs})
+	sql := selectClaimableBalances.Where(map[string]interface{}{"claimable_balances.id": ids})
 	err := q.Select(&cBalances, sql)
 	return cBalances, err
 }
@@ -134,16 +123,12 @@ func (q *Q) GetClaimableBalancesByID(ids []xdr.ClaimableBalanceId) ([]ClaimableB
 // Returns number of rows affected and error.
 func (q *Q) UpdateClaimableBalance(entry xdr.LedgerEntry) (int64, error) {
 	cBalance := entry.Data.MustClaimableBalance()
-	id, err := balanceIDToHex(cBalance.BalanceId)
-	if err != nil {
-		return 0, errors.Wrap(err, "encoding balanceID")
-	}
 	cBalanceMap := map[string]interface{}{
 		"last_modified_ledger": entry.LastModifiedLedgerSeq,
 		"sponsor":              ledgerEntrySponsorToNullString(entry),
 	}
 
-	sql := sq.Update("claimable_balances").SetMap(cBalanceMap).Where("id = ?", id)
+	sql := sq.Update("claimable_balances").SetMap(cBalanceMap).Where("id = ?", cBalance.BalanceId)
 	result, err := q.Exec(sql)
 	if err != nil {
 		return 0, err
@@ -155,12 +140,8 @@ func (q *Q) UpdateClaimableBalance(entry xdr.LedgerEntry) (int64, error) {
 // RemoveClaimableBalance deletes a row in the claimable_balances table.
 // Returns number of rows affected and error.
 func (q *Q) RemoveClaimableBalance(cBalance xdr.ClaimableBalanceEntry) (int64, error) {
-	id, err := balanceIDToHex(cBalance.BalanceId)
-	if err != nil {
-		return 0, errors.Wrap(err, "encoding balanceID")
-	}
 	sql := sq.Delete("claimable_balances").
-		Where(sq.Eq{"id": id})
+		Where(sq.Eq{"id": cBalance.BalanceId})
 	result, err := q.Exec(sql)
 	if err != nil {
 		return 0, err
@@ -186,15 +167,6 @@ type claimableBalancesBatchInsertBuilder struct {
 	builder db.BatchInsertBuilder
 }
 
-func balanceIDToHex(balanceID xdr.ClaimableBalanceId) (string, error) {
-	b, err := balanceID.MarshalBinary()
-	if err != nil {
-		return "", err
-	}
-	sum := sha256.Sum256(b)
-	return hex.EncodeToString(sum[:]), nil
-}
-
 func buildClaimants(claimants []xdr.Claimant) Claimants {
 	hClaimants := Claimants{}
 	for _, c := range claimants {
@@ -210,12 +182,7 @@ func buildClaimants(claimants []xdr.Claimant) Claimants {
 
 func (i *claimableBalancesBatchInsertBuilder) Add(entry *xdr.LedgerEntry) error {
 	cBalance := entry.Data.MustClaimableBalance()
-	id, err := balanceIDToHex(cBalance.BalanceId)
-	if err != nil {
-		return errors.Wrap(err, "encoding balanceID")
-	}
 	row := ClaimableBalance{
-		ID:                 id,
 		BalanceID:          cBalance.BalanceId,
 		Claimants:          buildClaimants(cBalance.Claimants),
 		Asset:              cBalance.Asset,
@@ -232,7 +199,6 @@ func (i *claimableBalancesBatchInsertBuilder) Exec() error {
 
 var selectClaimableBalances = sq.Select(
 	"cb.id, " +
-		"cb.balance_id, " +
 		"cb.claimants, " +
 		"cb.asset, " +
 		"cb.amount, " +

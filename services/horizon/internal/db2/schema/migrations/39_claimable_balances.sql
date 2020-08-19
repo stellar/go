@@ -1,12 +1,11 @@
 -- +migrate Up
 
 CREATE TABLE claimable_balances (
-    id character varying(64) NOT NULL, -- sha256 of balance_id in HEX
-    balance_id character varying(48) NOT NULL, -- ClaimableBalanceID in base64
+    id TEXT NOT NULL, -- ClaimableBalanceID in base64
     claimants jsonb NOT NULL,
     asset text NOT NULL,
     amount bigint NOT NULL CHECK (amount > 0),
-    sponsor character varying(56),
+    sponsor TEXT,
     last_modified_ledger integer NOT NULL,
     PRIMARY KEY (id)
 );

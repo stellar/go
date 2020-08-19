@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"testing"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/stretchr/testify/assert"
 )
 
 // ExampleUnmarshal shows the lowest-level process to decode a base64
@@ -31,6 +33,17 @@ func ExampleUnmarshal() {
 	fmt.Printf("This tx has %d operations\n", len(operations))
 	// Output: read 196 bytes
 	// This tx has 1 operations
+}
+
+func TestSafeUnmarshalHex(t *testing.T) {
+	accountID := MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML")
+	hex, err := MarshalHex(accountID)
+	assert.NoError(t, err)
+	assert.Equal(t, "00000000b62e01510c1677279da72e6df492ada2320aceedd63360037786f8ed7f52075a", hex)
+	var parsed AccountId
+	err = SafeUnmarshalHex(hex, &parsed)
+	assert.NoError(t, err)
+	assert.True(t, accountID.Equals(parsed))
 }
 
 var _ = Describe("xdr.SafeUnmarshal", func() {
