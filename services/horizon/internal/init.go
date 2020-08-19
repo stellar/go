@@ -67,6 +67,7 @@ func initExpIngester(app *App) {
 		StellarCoreCursor:        app.config.CursorName,
 		StellarCoreBinaryPath:    app.config.StellarCoreBinaryPath,
 		StellarCoreConfigPath:    app.config.StellarCoreConfigPath,
+		RemoteCaptiveCoreURL:     app.config.RemoteCaptiveCoreURL,
 		DisableStateVerification: app.config.IngestDisableStateVerification,
 	})
 
