@@ -163,6 +163,14 @@ func (q *Q) FindClaimableBalancesByDestination(accountID xdr.AccountId) ([]Claim
 	return results, nil
 }
 
+// FindClaimableBalanceByID returns a claimable balance.
+func (q *Q) FindClaimableBalanceByID(balanceID xdr.ClaimableBalanceId) (ClaimableBalance, error) {
+	var claimableBalance ClaimableBalance
+	sql := selectClaimableBalances.Limit(1).Where("cb.id = ?", balanceID)
+	err := q.Get(&claimableBalance, sql)
+	return claimableBalance, err
+}
+
 type claimableBalancesBatchInsertBuilder struct {
 	builder db.BatchInsertBuilder
 }
