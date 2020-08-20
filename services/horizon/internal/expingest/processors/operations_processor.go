@@ -30,7 +30,7 @@ func NewOperationProcessor(operationsQ history.QOperations, sequence uint32) *Op
 }
 
 // ProcessTransaction process the given transaction
-func (p *OperationProcessor) ProcessTransaction(transaction io.LedgerTransaction) (err error) {
+func (p *OperationProcessor) ProcessTransaction(transaction io.LedgerTransaction) error {
 	for i, op := range transaction.Envelope.Operations() {
 		operation := transactionOperationWrapper{
 			index:          uint32(i),
@@ -48,7 +48,7 @@ func (p *OperationProcessor) ProcessTransaction(transaction io.LedgerTransaction
 			return errors.Wrapf(err, "Error marshaling details for operation %v", operation.ID())
 		}
 
-		if err = p.batch.Add(
+		if err := p.batch.Add(
 			operation.ID(),
 			operation.TransactionID(),
 			operation.Order(),
@@ -60,7 +60,7 @@ func (p *OperationProcessor) ProcessTransaction(transaction io.LedgerTransaction
 		}
 	}
 
-	return err
+	return nil
 }
 
 func (p *OperationProcessor) Commit() error {
