@@ -259,9 +259,25 @@ func TestLedgerChangeReaderOrder(t *testing.T) {
 		t,
 		err,
 		"error extracting transactions from ledger close meta: TransactionMeta.V=2 is required in protocol"+
-			" version older than version 10. Please process ledgers again using stellar-core with "+
-			"SUPPORTED_META_VERSION=2 in the config file.",
+			" version older than version 10. Please process ledgers again using the latest stellar-core version.",
 	)
+	mock.AssertExpectations(t)
+
+	ledger.V0.LedgerHeader.Header.LedgerVersion = 9
+	ledger.V0.TxProcessing[0].FeeProcessing = xdr.LedgerEntryChanges{}
+	ledger.V0.TxProcessing[1].FeeProcessing = xdr.LedgerEntryChanges{}
+	mock.On("GetLedger", seq).Return(true, ledger, nil).Once()
+
+	assertChangesEqual(t, seq, mock, []balanceEntry{
+		{metaAddress, 300},
+		{metaAddress, 400},
+		{metaAddress, 600},
+		{metaAddress, 700},
+		{metaAddress, 800},
+		{metaAddress, 900},
+		{upgradeAddress, 2},
+		{upgradeAddress, 3},
+	})
 	mock.AssertExpectations(t)
 
 	ledger.V0.LedgerHeader.Header.LedgerVersion = 10
