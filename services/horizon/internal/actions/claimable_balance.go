@@ -78,8 +78,9 @@ func (handler GetClaimableBalanceByIDHandler) GetResource(w HeaderWriter, r *htt
 
 // ClaimableBalancesQuery query struct for claimable_balances end-point
 type ClaimableBalancesQuery struct {
-	AssetFilter   string `schema:"asset" valid:"asset,optional"`
-	SponsorFilter string `schema:"sponsor" valid:"accountID,optional"`
+	AssetFilter    string `schema:"asset" valid:"asset,optional"`
+	SponsorFilter  string `schema:"sponsor" valid:"accountID,optional"`
+	ClaimantFilter string `schema:"claimant" valid:"accountID,optional"`
 }
 
 func (q ClaimableBalancesQuery) asset() *xdr.Asset {
@@ -100,6 +101,13 @@ func (q ClaimableBalancesQuery) asset() *xdr.Asset {
 func (q ClaimableBalancesQuery) sponsor() *xdr.AccountId {
 	if q.SponsorFilter != "" {
 		return xdr.MustAddressPtr(q.SponsorFilter)
+	}
+	return nil
+}
+
+func (q ClaimableBalancesQuery) claimant() *xdr.AccountId {
+	if q.ClaimantFilter != "" {
+		return xdr.MustAddressPtr(q.ClaimantFilter)
 	}
 	return nil
 }
@@ -133,6 +141,7 @@ func (handler GetClaimableBalancesHandler) GetResourcePage(
 		PageQuery: pq,
 		Asset:     qp.asset(),
 		Sponsor:   qp.sponsor(),
+		Claimant:  qp.claimant(),
 	}
 
 	historyQ, err := horizonContext.HistoryQFromRequest(r)

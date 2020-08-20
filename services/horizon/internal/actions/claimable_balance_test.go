@@ -182,13 +182,13 @@ func TestGetClaimableBalances(t *testing.T) {
 		},
 		{
 			xdr.Hash{2, 0, 0},
-			"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
+			"GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
 			1234,
 			&usd,
 		},
 		{
 			xdr.Hash{1, 0, 0},
-			"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
+			"GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
 			1233,
 			nil,
 		},
@@ -491,11 +491,42 @@ func TestGetClaimableBalances(t *testing.T) {
 	))
 
 	tt.Assert.NoError(err)
-	tt.Assert.Len(response, 4)
+	tt.Assert.Len(response, 3)
 	for _, resource := range response {
 		tt.Assert.Equal(
 			"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
 			resource.(protocol.ClaimableBalance).Sponsor,
 		)
 	}
+
+	// filter by claimant
+	response, err = handler.GetResourcePage(httptest.NewRecorder(), makeRequest(
+		t,
+		map[string]string{
+			"claimant": "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
+		},
+		map[string]string{},
+		q.Session,
+	))
+
+	tt.Assert.NoError(err)
+	tt.Assert.Len(response, 4)
+
+	response, err = handler.GetResourcePage(httptest.NewRecorder(), makeRequest(
+		t,
+		map[string]string{
+			"claimant": "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+		},
+		map[string]string{},
+		q.Session,
+	))
+
+	tt.Assert.NoError(err)
+	tt.Assert.Len(response, 2)
+	// for _, resource := range response {
+	// 	tt.Assert.Equal(
+	// 		"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
+	// 		resource.(protocol.ClaimableBalance).Sponsor,
+	// 	)
+	// }
 }

@@ -3,9 +3,11 @@ package history
 import (
 	"database/sql/driver"
 	"encoding/json"
+	"fmt"
 	"strconv"
 	"strings"
 
+	"github.com/Masterminds/squirrel"
 	sq "github.com/Masterminds/squirrel"
 	"github.com/guregu/null"
 	"github.com/stellar/go/services/horizon/internal/db2"
@@ -19,6 +21,7 @@ type ClaimableBalancesQuery struct {
 	PageQuery db2.PageQuery
 	Asset     *xdr.Asset
 	Sponsor   *xdr.AccountId
+	Claimant  *xdr.AccountId
 }
 
 // ApplyCursor applies cursor to the given sql
@@ -249,6 +252,13 @@ func (q *Q) GetClaimableBalances(query ClaimableBalancesQuery) ([]ClaimableBalan
 	if query.Sponsor != nil {
 		sql = sql.Where("cb.sponsor = ?", query.Sponsor.Address())
 	}
+
+	if query.Claimant != nil {
+		sql = sql.
+			Where("cb.claimants @> '[{\"destination\": \"" + query.Claimant.Address() + "\"}]'")
+	}
+
+	fmt.Println(squirrel.DebugSqlizer(sql))
 
 	var results []ClaimableBalance
 	if err := q.Select(&results, sql); err != nil {
