@@ -703,7 +703,7 @@ func (operation *transactionOperationWrapper) createClaimableBalanceEffects() ([
 	}
 
 	result := operation.OperationResult().MustCreateClaimableBalanceResult()
-	balanceID, err := xdr.MarshalBase64(result.BalanceId)
+	balanceID, err := xdr.MarshalHex(result.BalanceId)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Invalid balanceId in op: %d", operation.index)
 	}
@@ -756,7 +756,7 @@ func (operation *transactionOperationWrapper) claimClaimableBalanceEffects() ([]
 		operation: operation,
 	}
 
-	balanceID, err := xdr.MarshalBase64(op.BalanceId)
+	balanceID, err := xdr.MarshalHex(op.BalanceId)
 	if err != nil {
 		return nil, fmt.Errorf("Invalid balanceId in op: %d", operation.index)
 	}

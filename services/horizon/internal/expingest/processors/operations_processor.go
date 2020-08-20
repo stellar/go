@@ -298,7 +298,7 @@ func (operation *transactionOperationWrapper) Details() map[string]interface{} {
 		details["claimants"] = claimants
 	case xdr.OperationTypeClaimClaimableBalance:
 		op := operation.operation.Body.MustClaimClaimableBalanceOp()
-		balanceID, err := xdr.MarshalBase64(op.BalanceId)
+		balanceID, err := xdr.MarshalHex(op.BalanceId)
 		if err != nil {
 			panic(fmt.Errorf("Invalid balanceId in op: %d", operation.index))
 		}
