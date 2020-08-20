@@ -68,6 +68,7 @@ type App struct {
 
 	// metrics
 	prometheusRegistry         *prometheus.Registry
+	buildInfoGauge             *prometheus.GaugeVec
 	historyLatestLedgerCounter prometheus.CounterFunc
 	historyElderLedgerCounter  prometheus.CounterFunc
 	dbOpenConnectionsGauge     prometheus.GaugeFunc
