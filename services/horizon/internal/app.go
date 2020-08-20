@@ -70,6 +70,7 @@ type App struct {
 	prometheusRegistry         *prometheus.Registry
 	historyLatestLedgerCounter prometheus.CounterFunc
 	historyElderLedgerCounter  prometheus.CounterFunc
+	dbMaxOpenConnectionsGauge  prometheus.GaugeFunc
 	dbOpenConnectionsGauge     prometheus.GaugeFunc
 	dbInUseConnectionsGauge    prometheus.GaugeFunc
 	dbWaitCountCounter         prometheus.CounterFunc
