@@ -62,6 +62,12 @@ func createTransaction(successful bool, numOps int) io.LedgerTransaction {
 				},
 			},
 		},
+		Meta: xdr.TransactionMeta{
+			V: 2,
+			V2: &xdr.TransactionMetaV2{
+				Operations: make([]xdr.OperationMeta, numOps, numOps),
+			},
+		},
 	}
 }
 

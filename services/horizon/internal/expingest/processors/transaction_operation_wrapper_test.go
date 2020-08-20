@@ -810,17 +810,7 @@ func TestTransactionOperationParticipants(t *testing.T) {
 
 			participants, err := operation.Participants()
 			tt.NoError(err)
-
-			result := map[string]xdr.AccountId{}
-
-			for _, account := range participants {
-				result[account.Address()] = account
-			}
-			for _, account := range tc.expected {
-				delete(result, account.Address())
-			}
-
-			tt.Empty(result)
+			tt.ElementsMatch(tc.expected, participants)
 		})
 	}
 }
@@ -841,27 +831,19 @@ func TestOperationParticipants(t *testing.T) {
 		},
 	)
 
-	participants, err := operationsParticipants(transaction, sequence)
-	tt.NoError(err)
-	tt.Len(participants, 1)
-
-	expected := []xdr.AccountId{
+	expectedParticipants := []xdr.AccountId{
 		xdr.MustAddress("GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD"),
 		xdr.MustAddress("GACAR2AEYEKITE2LKI5RMXF5MIVZ6Q7XILROGDT22O7JX4DSWFS7FDDP"),
 	}
-
-	result := map[string]xdr.AccountId{}
-	for _, addresses := range participants {
-		for _, account := range addresses {
-			result[account.Address()] = account
-		}
+	participantsMap, err := operationsParticipants(transaction, sequence)
+	tt.NoError(err)
+	tt.Len(participantsMap, 1)
+	for k, v := range participantsMap {
+		tt.Equal(int64(240518172673), k)
+		tt.ElementsMatch(expectedParticipants, v)
 	}
-	for _, account := range expected {
-		delete(result, account.Address())
-	}
-
-	tt.Empty(result)
 }
+
 func TestTransactionOperationAllowTrustDetails(t *testing.T) {
 	tt := assert.New(t)
 	asset := xdr.Asset{}
@@ -947,8 +929,15 @@ func TestTransactionOperationAllowTrustDetails(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.desc, func(t *testing.T) {
 			operation := transactionOperationWrapper{
-				index:          0,
-				transaction:    io.LedgerTransaction{},
+				index: 0,
+				transaction: io.LedgerTransaction{
+					Meta: xdr.TransactionMeta{
+						V: 2,
+						V2: &xdr.TransactionMetaV2{
+							Operations: make([]xdr.OperationMeta, 1, 1),
+						},
+					},
+				},
 				operation:      tc.op,
 				ledgerSequence: 1,
 			}
@@ -1070,8 +1059,15 @@ func (s *CreateClaimableBalanceOpTestSuite) TestDetails() {
 	for _, tc := range testCases {
 		s.T().Run(tc.desc, func(t *testing.T) {
 			operation := transactionOperationWrapper{
-				index:          0,
-				transaction:    io.LedgerTransaction{},
+				index: 0,
+				transaction: io.LedgerTransaction{
+					Meta: xdr.TransactionMeta{
+						V: 2,
+						V2: &xdr.TransactionMetaV2{
+							Operations: make([]xdr.OperationMeta, 1, 1),
+						},
+					},
+				},
 				operation:      tc.op,
 				ledgerSequence: 1,
 			}
@@ -1110,26 +1106,20 @@ func (s *CreateClaimableBalanceOpTestSuite) TestParticipants() {
 	for _, tc := range testCases {
 		s.T().Run(tc.desc, func(t *testing.T) {
 			operation := transactionOperationWrapper{
-				index:          0,
-				transaction:    io.LedgerTransaction{},
+				index: 0,
+				transaction: io.LedgerTransaction{Meta: xdr.TransactionMeta{
+					V: 2,
+					V2: &xdr.TransactionMetaV2{
+						Operations: make([]xdr.OperationMeta, 1, 1),
+					},
+				}},
 				operation:      tc.op,
 				ledgerSequence: 1,
 			}
 
 			participants, err := operation.Participants()
-			s.Assert().Greater(len(participants), 1)
 			s.Assert().NoError(err)
-
-			result := map[string]xdr.AccountId{}
-
-			for _, account := range participants {
-				result[account.Address()] = account
-			}
-			for _, account := range tc.expected {
-				delete(result, account.Address())
-			}
-
-			s.Assert().Empty(result)
+			s.Assert().ElementsMatch(tc.expected, participants)
 		})
 	}
 }
@@ -1166,8 +1156,14 @@ func (s *ClaimClaimableBalanceOpTestSuite) TestDetails() {
 	}
 
 	operation := transactionOperationWrapper{
-		index:          0,
-		transaction:    io.LedgerTransaction{},
+		index: 0,
+		transaction: io.LedgerTransaction{
+			Meta: xdr.TransactionMeta{
+				V: 2,
+				V2: &xdr.TransactionMetaV2{
+					Operations: make([]xdr.OperationMeta, 1, 1),
+				},
+			}},
 		operation:      s.op,
 		ledgerSequence: 1,
 	}
@@ -1179,8 +1175,15 @@ func (s *ClaimClaimableBalanceOpTestSuite) TestDetails() {
 
 func (s *ClaimClaimableBalanceOpTestSuite) TestParticipants() {
 	operation := transactionOperationWrapper{
-		index:          0,
-		transaction:    io.LedgerTransaction{},
+		index: 0,
+		transaction: io.LedgerTransaction{
+			Meta: xdr.TransactionMeta{
+				V: 2,
+				V2: &xdr.TransactionMetaV2{
+					Operations: make([]xdr.OperationMeta, 1, 1),
+				},
+			},
+		},
 		operation:      s.op,
 		ledgerSequence: 1,
 	}
@@ -1295,23 +1298,32 @@ func TestSponsoredSandwichTransaction_Participants(t *testing.T) {
 
 	participants, err := wrappers[0].Participants()
 	assert.NoError(t, err)
-	assert.Equal(t, participants, []xdr.AccountId{
-		xdr.MustAddress("GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY"),
-		xdr.MustAddress("GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2"),
-	})
+	assert.Equal(t,
+		[]xdr.AccountId{
+			xdr.MustAddress("GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY"),
+			xdr.MustAddress("GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2"),
+		},
+		participants,
+	)
 
 	participants, err = wrappers[1].Participants()
 	assert.NoError(t, err)
-	assert.Equal(t, participants, []xdr.AccountId{
-		xdr.MustAddress("GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2"),
-		xdr.MustAddress("GC6VKA3RC3CVU7POEKFORVMHWJNQIRZS6AEH3KIIHCVO3YRGWUV7MSUC"),
-		xdr.MustAddress("GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY"),
-	})
+	assert.ElementsMatch(t,
+		[]xdr.AccountId{
+			xdr.MustAddress("GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2"),
+			xdr.MustAddress("GC6VKA3RC3CVU7POEKFORVMHWJNQIRZS6AEH3KIIHCVO3YRGWUV7MSUC"),
+			xdr.MustAddress("GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY"),
+		},
+		participants,
+	)
 
 	participants, err = wrappers[2].Participants()
 	assert.NoError(t, err)
-	assert.Equal(t, participants, []xdr.AccountId{
-		xdr.MustAddress("GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2"),
-		xdr.MustAddress("GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY"),
-	})
+	assert.ElementsMatch(t,
+		[]xdr.AccountId{
+			xdr.MustAddress("GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2"),
+			xdr.MustAddress("GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY"),
+		},
+		participants,
+	)
 }
