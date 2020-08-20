@@ -67,6 +67,7 @@ func initExpIngester(app *App) {
 		StellarCoreCursor:        app.config.CursorName,
 		StellarCoreBinaryPath:    app.config.StellarCoreBinaryPath,
 		StellarCoreConfigPath:    app.config.StellarCoreConfigPath,
+		RemoteCaptiveCoreURL:     app.config.RemoteCaptiveCoreURL,
 		DisableStateVerification: app.config.IngestDisableStateVerification,
 	})
 
@@ -207,6 +208,7 @@ func initIngestMetrics(app *App) {
 
 	app.prometheusRegistry.MustRegister(app.expingester.Metrics().LedgerIngestionDuration)
 	app.prometheusRegistry.MustRegister(app.expingester.Metrics().StateVerifyDuration)
+	app.prometheusRegistry.MustRegister(app.expingester.Metrics().StateInvalidGauge)
 }
 
 func initTxSubMetrics(app *App) {

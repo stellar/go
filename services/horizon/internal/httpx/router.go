@@ -143,7 +143,7 @@ func (r *Router) addRoutes(config *RouterConfig, rateLimiter *throttled.HTTPRate
 
 		r.Route("/offers", func(r chi.Router) {
 			r.Method(http.MethodGet, "/", restPageHandler(actions.GetOffersHandler{}))
-			r.Method(http.MethodGet, "/{id}", ObjectActionHandler{actions.GetOfferByID{}})
+			r.Method(http.MethodGet, "/{offer_id}", ObjectActionHandler{actions.GetOfferByID{}})
 		})
 
 		r.Method(http.MethodGet, "/assets", restPageHandler(actions.AssetStatsHandler{}))

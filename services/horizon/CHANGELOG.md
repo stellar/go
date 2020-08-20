@@ -3,6 +3,15 @@
 All notable changes to this project will be documented in this
 file. This project adheres to [Semantic Versioning](http://semver.org/).x
 
+## v1.7.1
+
+This patch release fixes a regression introduced in 1.7.0, breaking the
+ `/offers` endpoint. Thus, we recommend upgrading as soon as possible.
+ 
+### Changes
+* Fix path parameter mismatch in `/offers` endpoint
+  [#2927](https://github.com/stellar/go/pull/2927).
+
 ## v1.7.0
 
 ### DB schema migration (expected migration time: < 10 mins)
