@@ -2,14 +2,12 @@ package internal
 
 import (
 	"context"
-	"encoding/json"
 	"sync"
 	"time"
 
 	"github.com/stellar/go/exp/ingest/ledgerbackend"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
-	"github.com/stellar/go/xdr"
 )
 
 var (
@@ -101,20 +99,12 @@ func (c *CaptiveCoreAPI) startPrepareRange(ledgerRange ledgerbackend.Range) {
 	c.activeRequest.readyDuration = int(time.Since(c.activeRequest.startTime).Seconds())
 }
 
-// RangeResponse describes the status of the pending PrepareRange operation.
-type RangeResponse struct {
-	LedgerRange   ledgerbackend.Range `json:"ledgerRange"`
-	StartTime     time.Time           `json:"startTime"`
-	Ready         bool                `json:"ready"`
-	ReadyDuration int                 `json:"readyDuration"`
-}
-
 // PrepareRange executes the PrepareRange operation on the captive core instance.
-func (c *CaptiveCoreAPI) PrepareRange(ledgerRange ledgerbackend.Range) (RangeResponse, error) {
+func (c *CaptiveCoreAPI) PrepareRange(ledgerRange ledgerbackend.Range) (ledgerbackend.PrepareRangeResponse, error) {
 	c.activeRequest.Lock()
 	defer c.activeRequest.Unlock()
 	if c.ctx.Err() != nil {
-		return RangeResponse{}, errors.New("Cannot prepare range when shut down")
+		return ledgerbackend.PrepareRangeResponse{}, errors.New("Cannot prepare range when shut down")
 	}
 
 	if !c.activeRequest.valid || !c.activeRequest.ledgerRange.Contains(ledgerRange) {
@@ -133,7 +123,7 @@ func (c *CaptiveCoreAPI) PrepareRange(ledgerRange ledgerbackend.Range) (RangeRes
 		c.wg.Add(1)
 		go c.startPrepareRange(ledgerRange)
 
-		return RangeResponse{
+		return ledgerbackend.PrepareRangeResponse{
 			LedgerRange:   ledgerRange,
 			StartTime:     c.activeRequest.startTime,
 			Ready:         false,
@@ -141,7 +131,7 @@ func (c *CaptiveCoreAPI) PrepareRange(ledgerRange ledgerbackend.Range) (RangeRes
 		}, nil
 	}
 
-	return RangeResponse{
+	return ledgerbackend.PrepareRangeResponse{
 		LedgerRange:   c.activeRequest.ledgerRange,
 		StartTime:     c.activeRequest.startTime,
 		Ready:         c.activeRequest.ready,
@@ -149,73 +139,37 @@ func (c *CaptiveCoreAPI) PrepareRange(ledgerRange ledgerbackend.Range) (RangeRes
 	}, nil
 }
 
-// LatestLedgerSequenceResponse is the response for the GetLatestLedgerSequence command.
-type LatestLedgerSequenceResponse struct {
-	Sequence uint32 `json:"sequence"`
-}
-
 // GetLatestLedgerSequence determines the latest ledger sequence available on the captive core instance.
-func (c *CaptiveCoreAPI) GetLatestLedgerSequence() (LatestLedgerSequenceResponse, error) {
+func (c *CaptiveCoreAPI) GetLatestLedgerSequence() (ledgerbackend.LatestLedgerSequenceResponse, error) {
 	c.activeRequest.RLock()
 	defer c.activeRequest.RUnlock()
 
 	if !c.activeRequest.valid {
-		return LatestLedgerSequenceResponse{}, ErrMissingPrepareRange
+		return ledgerbackend.LatestLedgerSequenceResponse{}, ErrMissingPrepareRange
 	}
 	if !c.activeRequest.ready {
-		return LatestLedgerSequenceResponse{}, ErrPrepareRangeNotReady
+		return ledgerbackend.LatestLedgerSequenceResponse{}, ErrPrepareRangeNotReady
 	}
 
 	seq, err := c.core.GetLatestLedgerSequence()
-	return LatestLedgerSequenceResponse{Sequence: seq}, err
-}
-
-type Base64Ledger xdr.LedgerCloseMeta
-
-func (r *Base64Ledger) UnmarshalJSON(b []byte) error {
-	var base64 string
-	if err := json.Unmarshal(b, &base64); err != nil {
-		return err
-	}
-
-	var parsed xdr.LedgerCloseMeta
-	if err := xdr.SafeUnmarshalBase64(base64, &parsed); err != nil {
-		return err
-	}
-	*r = Base64Ledger(parsed)
-
-	return nil
-}
-
-func (r Base64Ledger) MarshalJSON() ([]byte, error) {
-	base64, err := xdr.MarshalBase64(xdr.LedgerCloseMeta(r))
-	if err != nil {
-		return nil, err
-	}
-	return json.Marshal(base64)
-}
-
-// LedgerResponse is the response for the GetLedger command.
-type LedgerResponse struct {
-	Present bool         `json:"present"`
-	Ledger  Base64Ledger `json:"ledger"`
+	return ledgerbackend.LatestLedgerSequenceResponse{Sequence: seq}, err
 }
 
 // GetLedger fetches the ledger with the given sequence number from the captive core instance.
-func (c *CaptiveCoreAPI) GetLedger(sequence uint32) (LedgerResponse, error) {
+func (c *CaptiveCoreAPI) GetLedger(sequence uint32) (ledgerbackend.LedgerResponse, error) {
 	c.activeRequest.RLock()
 	defer c.activeRequest.RUnlock()
 
 	if !c.activeRequest.valid {
-		return LedgerResponse{}, ErrMissingPrepareRange
+		return ledgerbackend.LedgerResponse{}, ErrMissingPrepareRange
 	}
 	if !c.activeRequest.ready {
-		return LedgerResponse{}, ErrPrepareRangeNotReady
+		return ledgerbackend.LedgerResponse{}, ErrPrepareRangeNotReady
 	}
 
 	present, ledger, err := c.core.GetLedger(sequence)
-	return LedgerResponse{
+	return ledgerbackend.LedgerResponse{
 		Present: present,
-		Ledger:  Base64Ledger(ledger),
+		Ledger:  ledgerbackend.Base64Ledger(ledger),
 	}, err
 }

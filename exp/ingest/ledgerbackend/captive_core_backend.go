@@ -322,7 +322,9 @@ func (c *CaptiveStellarCore) readLedgerMetaFromPipe() (*xdr.LedgerCloseMeta, err
 // history archive. This issue is being fixed in Stellar-Core.
 func (c *CaptiveStellarCore) PrepareRange(ledgerRange Range) error {
 	// Range already prepared
-	if c.IsPrepared(ledgerRange) {
+	if prepared, err := c.IsPrepared(ledgerRange); err != nil {
+		return errors.Wrap(err, "error in IsPrepared")
+	} else if prepared {
 		return nil
 	}
 
@@ -371,24 +373,24 @@ func (c *CaptiveStellarCore) PrepareRange(ledgerRange Range) error {
 }
 
 // IsPrepared returns true if a given ledgerRange is prepared.
-func (c *CaptiveStellarCore) IsPrepared(ledgerRange Range) bool {
+func (c *CaptiveStellarCore) IsPrepared(ledgerRange Range) (bool, error) {
 	if c.nextLedger == 0 {
-		return false
+		return false, nil
 	}
 
 	if c.lastLedger == nil {
-		return c.nextLedger <= ledgerRange.from
+		return c.nextLedger <= ledgerRange.from, nil
 	}
 
 	// From now on: c.lastLedger != nil so current range is bounded
 
 	if ledgerRange.bounded {
 		return c.nextLedger <= ledgerRange.from &&
-			c.nextLedger <= *c.lastLedger
+			c.nextLedger <= *c.lastLedger, nil
 	}
 
 	// Requested range is unbounded but current one is bounded
-	return false
+	return false, nil
 }
 
 // GetLedger returns true when ledger is found and it's LedgerCloseMeta.

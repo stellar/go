@@ -1,13 +1,12 @@
 package internal
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/suite"
 
@@ -25,16 +24,27 @@ type ServerTestSuite struct {
 	ledgerBackend *ledgerbackend.MockDatabaseBackend
 	api           CaptiveCoreAPI
 	handler       http.Handler
+	server        *httptest.Server
+	client        ledgerbackend.RemoteCaptiveStellarCore
 }
 
 func (s *ServerTestSuite) SetupTest() {
 	s.ledgerBackend = &ledgerbackend.MockDatabaseBackend{}
 	s.api = NewCaptiveCoreAPI(s.ledgerBackend, log.New())
 	s.handler = Handler(s.api)
+	s.server = httptest.NewServer(s.handler)
+	var err error
+	s.client, err = ledgerbackend.NewRemoteCaptive(
+		s.server.URL,
+		ledgerbackend.PrepareRangePollInterval(time.Millisecond),
+	)
+	s.Assert().NoError(err)
 }
 
 func (s *ServerTestSuite) TearDownTest() {
 	s.ledgerBackend.AssertExpectations(s.T())
+	s.server.Close()
+	s.client.Close()
 }
 
 func (s *ServerTestSuite) TestLatestSequence() {
@@ -44,21 +54,9 @@ func (s *ServerTestSuite) TestLatestSequence() {
 	expectedSeq := uint32(100)
 	s.ledgerBackend.On("GetLatestLedgerSequence").Return(expectedSeq, nil).Once()
 
-	req := httptest.NewRequest("GET", "/latest-sequence", nil)
-	w := httptest.NewRecorder()
-
-	s.handler.ServeHTTP(w, req)
-
-	resp := w.Result()
-	body, err := ioutil.ReadAll(resp.Body)
+	seq, err := s.client.GetLatestLedgerSequence()
 	s.Assert().NoError(err)
-
-	s.Assert().Equal(http.StatusOK, resp.StatusCode)
-	s.Assert().Equal("application/json; charset=utf-8", resp.Header.Get("Content-Type"))
-
-	var parsed LatestLedgerSequenceResponse
-	s.Assert().NoError(json.Unmarshal(body, &parsed))
-	s.Assert().Equal(LatestLedgerSequenceResponse{Sequence: expectedSeq}, parsed)
+	s.Assert().Equal(expectedSeq, seq)
 }
 
 func (s *ServerTestSuite) TestLatestSequenceError() {
@@ -67,71 +65,44 @@ func (s *ServerTestSuite) TestLatestSequenceError() {
 
 	s.ledgerBackend.On("GetLatestLedgerSequence").Return(uint32(100), fmt.Errorf("test error")).Once()
 
-	req := httptest.NewRequest("GET", "/latest-sequence", nil)
-	w := httptest.NewRecorder()
-
-	s.handler.ServeHTTP(w, req)
-
-	resp := w.Result()
-	body, err := ioutil.ReadAll(resp.Body)
-	s.Assert().NoError(err)
-
-	s.Assert().Equal(http.StatusInternalServerError, resp.StatusCode)
-	s.Assert().Equal("test error", string(body))
-}
-
-func (s *ServerTestSuite) testPrepareRange(ledgerRange ledgerbackend.Range) {
-	s.ledgerBackend.On("PrepareRange", ledgerRange).
-		Return(nil).Once()
-
-	body, err := json.Marshal(ledgerRange)
-	s.Assert().NoError(err)
-
-	req := httptest.NewRequest("POST", "/prepare-range", bytes.NewReader(body))
-	w := httptest.NewRecorder()
-
-	s.handler.ServeHTTP(w, req)
-
-	resp := w.Result()
-	body, err = ioutil.ReadAll(resp.Body)
-	s.Assert().NoError(err)
-
-	s.Assert().Equal(http.StatusOK, resp.StatusCode)
-	s.Assert().Equal("application/json; charset=utf-8", resp.Header.Get("Content-Type"))
-
-	var parsed RangeResponse
-	s.Assert().NoError(json.Unmarshal(body, &parsed))
-	s.Assert().Equal(ledgerRange, parsed.LedgerRange)
-	s.Assert().False(parsed.Ready)
-	s.api.wg.Wait()
+	_, err := s.client.GetLatestLedgerSequence()
+	s.Assert().EqualError(err, "test error")
 }
 
 func (s *ServerTestSuite) TestPrepareBoundedRange() {
-	s.testPrepareRange(ledgerbackend.BoundedRange(10, 30))
+	ledgerRange := ledgerbackend.BoundedRange(10, 30)
+	s.ledgerBackend.On("PrepareRange", ledgerRange).
+		Return(nil).Once()
+
+	s.Assert().NoError(s.client.PrepareRange(ledgerRange))
+	s.Assert().True(s.api.activeRequest.ready)
+
+	prepared, err := s.client.IsPrepared(ledgerRange)
+	s.Assert().NoError(err)
+	s.Assert().True(prepared)
 }
 
 func (s *ServerTestSuite) TestPrepareUnboundedRange() {
-	s.testPrepareRange(ledgerbackend.UnboundedRange(100))
+	ledgerRange := ledgerbackend.UnboundedRange(100)
+	s.ledgerBackend.On("PrepareRange", ledgerRange).
+		Return(nil).Once()
+
+	s.Assert().NoError(s.client.PrepareRange(ledgerRange))
+	s.Assert().True(s.api.activeRequest.ready)
+
+	prepared, err := s.client.IsPrepared(ledgerRange)
+	s.Assert().NoError(err)
+	s.Assert().True(prepared)
 }
 
 func (s *ServerTestSuite) TestPrepareError() {
 	s.ledgerBackend.On("Close").Return(nil).Once()
 	s.api.Shutdown()
 
-	body, err := json.Marshal(ledgerbackend.UnboundedRange(100))
-	s.Assert().NoError(err)
-
-	req := httptest.NewRequest("POST", "/prepare-range", bytes.NewReader(body))
-	w := httptest.NewRecorder()
-
-	s.handler.ServeHTTP(w, req)
-
-	resp := w.Result()
-	body, err = ioutil.ReadAll(resp.Body)
-	s.Assert().NoError(err)
-
-	s.Assert().Equal(http.StatusInternalServerError, resp.StatusCode)
-	s.Assert().Equal("Cannot prepare range when shut down", string(body))
+	s.Assert().EqualError(
+		s.client.PrepareRange(ledgerbackend.UnboundedRange(100)),
+		"Cannot prepare range when shut down",
+	)
 }
 
 func (s *ServerTestSuite) TestGetLedgerInvalidSequence() {
@@ -156,17 +127,8 @@ func (s *ServerTestSuite) TestGetLedgerError() {
 	s.ledgerBackend.On("GetLedger", uint32(64)).
 		Return(false, xdr.LedgerCloseMeta{}, expectedErr).Once()
 
-	req := httptest.NewRequest("GET", "/ledger/64", nil)
-	w := httptest.NewRecorder()
-
-	s.handler.ServeHTTP(w, req)
-
-	resp := w.Result()
-	body, err := ioutil.ReadAll(resp.Body)
-	s.Assert().NoError(err)
-
-	s.Assert().Equal(http.StatusInternalServerError, resp.StatusCode)
-	s.Assert().Equal("test error", string(body))
+	_, _, err := s.client.GetLedger(64)
+	s.Assert().EqualError(err, "test error")
 }
 
 func (s *ServerTestSuite) TestGetLedgerSucceeds() {
@@ -185,22 +147,8 @@ func (s *ServerTestSuite) TestGetLedgerSucceeds() {
 	s.ledgerBackend.On("GetLedger", uint32(64)).
 		Return(true, expectedLedger, nil).Once()
 
-	req := httptest.NewRequest("GET", "/ledger/64", nil)
-	w := httptest.NewRecorder()
-
-	s.handler.ServeHTTP(w, req)
-
-	resp := w.Result()
-	body, err := ioutil.ReadAll(resp.Body)
+	present, ledger, err := s.client.GetLedger(64)
 	s.Assert().NoError(err)
-
-	s.Assert().Equal(http.StatusOK, resp.StatusCode)
-	s.Assert().Equal("application/json; charset=utf-8", resp.Header.Get("Content-Type"))
-
-	var parsed LedgerResponse
-	s.Assert().NoError(json.Unmarshal(body, &parsed))
-	s.Assert().Equal(LedgerResponse{
-		Present: true,
-		Ledger:  Base64Ledger(expectedLedger),
-	}, parsed)
+	s.Assert().True(present)
+	s.Assert().Equal(expectedLedger, ledger)
 }
