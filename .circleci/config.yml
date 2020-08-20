@@ -331,26 +331,11 @@ jobs:
   # test_horizon_integration performs Horizon integration tests, it's using
   # decicated vm machine to be able to start arbitrary docker containers.
   test_horizon_integration:
+    working_directory: /go/src/github.com/stellar/go
     machine:
       image: ubuntu-1604:201903-01
     steps:
-      - run:
-          name: Create working dir
-          command: |
-            sudo mkdir -p /go/src/github.com/stellar/go
-            sudo chmod -R 777 /go
-            cd /go/src/github.com/stellar/go
-            if [ -z "$CIRCLE_PR_REPONAME" ]
-            then
-              # origin
-              git clone ${CIRCLE_REPOSITORY_URL} .
-            else
-              # fork
-              git clone https://github.com/${CIRCLE_PR_USERNAME}/${CIRCLE_PR_REPONAME}.git .
-            fi
-            # Branch name is not available in any of the standard env variables... :(
-            export CIRCLE_PR_BRANCH=`curl -s https://api.github.com/repos/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}/pulls/${CIRCLE_PR_NUMBER} | jq -r '.head.ref'`
-            git checkout ${CIRCLE_PR_BRANCH}
+      - checkout
       - run:
           name: Setting env variables
           command: |
