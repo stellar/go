@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/stellar/go/protocols/horizon"
 	protocol "github.com/stellar/go/protocols/horizon"
@@ -77,11 +78,27 @@ func (handler GetClaimableBalanceByIDHandler) GetResource(w HeaderWriter, r *htt
 
 // ClaimableBalancesQuery query struct for claimable_balances end-point
 type ClaimableBalancesQuery struct {
+	AssetFilter string `schema:"asset" valid:"asset,optional"`
+}
+
+func (q ClaimableBalancesQuery) Asset() *xdr.Asset {
+	if len(q.AssetFilter) > 0 {
+		switch q.AssetFilter {
+		case "native":
+			asset := xdr.MustNewNativeAsset()
+			return &asset
+		default:
+			parts := strings.Split(q.AssetFilter, ":")
+			asset := xdr.MustNewCreditAsset(parts[0], parts[1])
+			return &asset
+		}
+	}
+	return nil
 }
 
 // URITemplate returns a rfc6570 URI template the query struct
 func (q ClaimableBalancesQuery) URITemplate() string {
-	return "/claimable_balances"
+	return "/claimable_balances?{asset}"
 }
 
 type GetClaimableBalancesHandler struct {
@@ -106,6 +123,7 @@ func (handler GetClaimableBalancesHandler) GetResourcePage(
 
 	query := history.ClaimableBalancesQuery{
 		PageQuery: pq,
+		Asset:     qp.Asset(),
 	}
 
 	historyQ, err := horizonContext.HistoryQFromRequest(r)

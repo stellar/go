@@ -17,6 +17,7 @@ import (
 // ClaimableBalancesQuery is a helper struct to configure queries to claimable balances
 type ClaimableBalancesQuery struct {
 	PageQuery db2.PageQuery
+	Asset     *xdr.Asset
 }
 
 // ApplyCursor applies cursor to the given sql
@@ -238,6 +239,10 @@ func (q *Q) GetClaimableBalances(query ClaimableBalancesQuery) ([]ClaimableBalan
 	sql, err := query.ApplyCursor(selectClaimableBalances)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not apply query to page")
+	}
+
+	if query.Asset != nil {
+		sql = sql.Where("cb.asset = ?", query.Asset)
 	}
 
 	var results []ClaimableBalance

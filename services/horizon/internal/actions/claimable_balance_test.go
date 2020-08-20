@@ -116,7 +116,12 @@ func TestGetClaimableBalanceByID(t *testing.T) {
 	tt.Assert.Equal("Invalid claimable balance ID", p.Extras["reason"])
 }
 
-func buildClaimableBalance(balanceIDHash xdr.Hash, accountID string, ledger int32) xdr.LedgerEntry {
+func buildClaimableBalance(balanceIDHash xdr.Hash, accountID string, ledger int32, asset *xdr.Asset) xdr.LedgerEntry {
+	balanceAsset := xdr.MustNewNativeAsset()
+	if asset != nil {
+		balanceAsset = *asset
+	}
+
 	return xdr.LedgerEntry{
 		Data: xdr.LedgerEntryData{
 			Type: xdr.LedgerEntryTypeClaimableBalance,
@@ -136,7 +141,7 @@ func buildClaimableBalance(balanceIDHash xdr.Hash, accountID string, ledger int3
 						},
 					},
 				},
-				Asset:  xdr.MustNewCreditAsset("USD", accountID),
+				Asset:  balanceAsset,
 				Amount: 10,
 			},
 		},
@@ -155,33 +160,38 @@ func TestGetClaimableBalances(t *testing.T) {
 		id        xdr.Hash
 		accountID string
 		ledger    int32
+		asset     *xdr.Asset
 	}{
 		{
 			xdr.Hash{4, 0, 0},
 			"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
 			1235,
+			&usd,
 		},
 		{
 			xdr.Hash{3, 0, 0},
 			"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
 			1235,
+			&euro,
 		},
 		{
 			xdr.Hash{2, 0, 0},
 			"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
 			1234,
+			&usd,
 		},
 		{
 			xdr.Hash{1, 0, 0},
 			"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
 			1233,
+			nil,
 		},
 	}
 
 	entries := []xdr.LedgerEntry{}
 
 	for _, e := range entriesMeta {
-		entry := buildClaimableBalance(e.id, e.accountID, e.ledger)
+		entry := buildClaimableBalance(e.id, e.accountID, e.ledger, e.asset)
 		entries = append(entries, entry)
 		err := builder.Add(&entry)
 		tt.Assert.NoError(err)
@@ -282,22 +292,25 @@ func TestGetClaimableBalances(t *testing.T) {
 		id        xdr.Hash
 		accountID string
 		ledger    int32
+		asset     *xdr.Asset
 	}{
 		{
 			xdr.Hash{4, 4, 4},
 			"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
 			1236,
+			nil,
 		},
 		{
 			xdr.Hash{1, 1, 1},
 			"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
 			1237,
+			nil,
 		},
 	}
 
 	entries = []xdr.LedgerEntry{}
 	for _, e := range entriesMeta {
-		entry := buildClaimableBalance(e.id, e.accountID, e.ledger)
+		entry := buildClaimableBalance(e.id, e.accountID, e.ledger, e.asset)
 		entries = append(entries, entry)
 		tt.Assert.NoError(builder.Add(&entry))
 	}
@@ -403,4 +416,62 @@ func TestGetClaimableBalances(t *testing.T) {
 	expectedID, err = xdr.MarshalHex(entries[0].Data.ClaimableBalance.BalanceId)
 	tt.Assert.NoError(err)
 	tt.Assert.Equal(expectedID, response[0].(protocol.ClaimableBalance).BalanceID)
+
+	// filter by asset
+	response, err = handler.GetResourcePage(httptest.NewRecorder(), makeRequest(
+		t,
+		map[string]string{
+			"asset": native.StringCanonical(),
+		},
+		map[string]string{},
+		q.Session,
+	))
+
+	tt.Assert.NoError(err)
+	tt.Assert.Len(response, 3)
+
+	for _, resource := range response {
+		tt.Assert.Equal(
+			native.StringCanonical(),
+			resource.(protocol.ClaimableBalance).Asset,
+		)
+	}
+
+	response, err = handler.GetResourcePage(httptest.NewRecorder(), makeRequest(
+		t,
+		map[string]string{
+			"asset": usd.StringCanonical(),
+		},
+		map[string]string{},
+		q.Session,
+	))
+
+	tt.Assert.NoError(err)
+	tt.Assert.Len(response, 2)
+
+	for _, resource := range response {
+		tt.Assert.Equal(
+			usd.StringCanonical(),
+			resource.(protocol.ClaimableBalance).Asset,
+		)
+	}
+
+	response, err = handler.GetResourcePage(httptest.NewRecorder(), makeRequest(
+		t,
+		map[string]string{
+			"asset": euro.StringCanonical(),
+		},
+		map[string]string{},
+		q.Session,
+	))
+
+	tt.Assert.NoError(err)
+	tt.Assert.Len(response, 1)
+
+	for _, resource := range response {
+		tt.Assert.Equal(
+			euro.StringCanonical(),
+			resource.(protocol.ClaimableBalance).Asset,
+		)
+	}
 }
