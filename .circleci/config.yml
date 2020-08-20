@@ -335,6 +335,11 @@ jobs:
     machine:
       image: ubuntu-1604:201903-01
     steps:
+      - run:
+          name: Create go dir
+          command: |
+            sudo mkdir -p /go/src/github.com/stellar/go
+            sudo chmod -R 777 /go
       - checkout
       - run:
           name: Setting env variables
