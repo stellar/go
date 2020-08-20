@@ -17,6 +17,10 @@ github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973
 github.com/client9/misspell v0.3.4
 github.com/davecgh/go-spew v1.1.1
 github.com/dgrijalva/jwt-go v3.2.0+incompatible
+github.com/docker/distribution v2.7.1+incompatible
+github.com/docker/docker v1.13.1
+github.com/docker/go-connections v0.4.0
+github.com/docker/go-units v0.4.0
 github.com/eapache/go-resiliency v1.1.0
 github.com/eapache/go-xerial-snappy v0.0.0-20180814174437-776d5712da21
 github.com/eapache/queue v1.1.0
@@ -81,6 +85,7 @@ github.com/moul/http2curl v0.0.0-20161031194548-4e24498b31db
 github.com/mwitkow/go-conntrack v0.0.0-20161129095857-cc309e4a2223
 github.com/onsi/ginkgo v1.7.0
 github.com/onsi/gomega v1.4.3
+github.com/opencontainers/go-digest v1.0.0
 github.com/opentracing/opentracing-go v1.1.0
 github.com/openzipkin/zipkin-go v0.1.6
 github.com/pierrec/lz4 v2.0.5+incompatible

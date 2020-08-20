@@ -51,6 +51,17 @@ commands:
               ! egrep -irn -A 1 --include=*.go "Action.+needed.+in.+release:.+$CIRCLE_TAG" ./
             fi
 
+  # install_golang installs golang, it's only used in horizon integration tests,
+  # other jobs use golang docker image.
+  install_golang:
+    steps:
+      - run:
+          name: Download and install golang
+          command: |
+            sudo rm -rf /usr/local/go
+            wget https://dl.google.com/go/go1.14.6.linux-amd64.tar.gz
+            sudo tar -C /usr/local -xzf go1.14.6.linux-amd64.tar.gz
+
   # install_go_deps installs the go dependencies of the project.
   install_go_deps:
     steps:
@@ -129,6 +140,14 @@ commands:
       - run:
           name: Build release artifacts
           command: go run ./support/scripts/build_release_artifacts/main.go
+
+  # build_horizon builds horizon binary
+  build_horizon:
+    steps:
+      - run:
+          name: Build horizon binary
+          command: |
+            go build -v ./services/horizon
 
   # send_coverage_report sends coverage report to codecov.io
   send_coverage_report:
@@ -308,6 +327,27 @@ jobs:
             docker build -f services/horizon/docker/Dockerfile -t stellar/horizon:latest .
             docker push stellar/horizon:latest
 
+  # test_horizon_integration performs Horizon integration tests, it's using
+  # decicated vm machine to be able to start arbitrary docker containers.
+  test_horizon_integration:
+    working_directory: ~/go/src/github.com/stellar/go
+    machine:
+      image: ubuntu-1604:201903-01
+    steps:
+      - checkout
+      - run:
+          name: Setting env variables
+          command: |
+            echo "export HORIZON_INTEGRATION_TESTS=true" >> $BASH_ENV
+            echo "export HORIZON_BIN_DIR=~/go/src/github.com/stellar/go" >> $BASH_ENV
+      - install_golang
+      - build_horizon
+      - run:
+          name: Run Horizon integration tests only
+          # Currently all integration tests are in a single directory.
+          command: |
+            cd ~/go/src/github.com/stellar/go
+            go test -v ./services/horizon/internal/integration/...
 #-------------------------------------------------------------------------#
 # Workflows orchestrate jobs and make sure they run in the right sequence #
 #-------------------------------------------------------------------------#
@@ -327,6 +367,14 @@ workflows:
               branches:
                 only:
                   - master
+
+  run_horizon_integration_tests:
+    jobs:
+      - start_horizon_integration_tests:
+          type: approval
+      - test_horizon_integration:
+          requires:
+           - start_horizon_integration_tests
 
   build_and_deploy:
     jobs:
