@@ -237,10 +237,6 @@ func (q *Q) FindClaimableBalanceByID(balanceID xdr.ClaimableBalanceId) (Claimabl
 func (q *Q) GetClaimableBalances(query ClaimableBalancesQuery) ([]ClaimableBalance, error) {
 	sql, err := query.ApplyCursor(selectClaimableBalances)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not read cursor")
-	}
-
-	if err != nil {
 		return nil, errors.Wrap(err, "could not apply query to page")
 	}
 
