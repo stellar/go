@@ -1298,7 +1298,7 @@ func TestSponsoredSandwichTransaction_Participants(t *testing.T) {
 
 	participants, err := wrappers[0].Participants()
 	assert.NoError(t, err)
-	assert.Equal(t,
+	assert.ElementsMatch(t,
 		[]xdr.AccountId{
 			xdr.MustAddress("GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY"),
 			xdr.MustAddress("GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2"),
