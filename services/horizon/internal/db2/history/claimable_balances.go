@@ -3,7 +3,6 @@ package history
 import (
 	"database/sql/driver"
 	"encoding/json"
-	"fmt"
 	"strconv"
 	"strings"
 
@@ -39,8 +38,14 @@ func (cbq ClaimableBalancesQuery) ApplyCursor(sql sq.SelectBuilder) (sq.SelectBu
 			return sql, errors.Wrap(err, "Invalid cursor - first value should be higher than 0")
 		}
 
-		// TBD: validate second part which should be a  valid xdr.BalanceID
-		r = parts[1]
+		var balanceID xdr.ClaimableBalanceId
+		if err = xdr.SafeUnmarshalHex(parts[1], &balanceID); err != nil {
+			return sql, errors.Wrap(err, "Invalid cursor - second value should be a valid claimable balance id")
+		}
+
+		if r, err = xdr.MarshalBase64(balanceID); err != nil {
+			return sql, errors.Wrap(err, "Invalid cursor - second value should be a valid claimable balance id")
+		}
 
 		if l < 0 {
 			return sql, errors.Wrap(err, "Invalid cursor - first value should be higher than 0")
@@ -51,15 +56,13 @@ func (cbq ClaimableBalancesQuery) ApplyCursor(sql sq.SelectBuilder) (sq.SelectBu
 	case "asc":
 		if l > 0 && r != "" {
 			sql = sql.
-				Where(sq.GtOrEq{"last_modified_ledger": l}).
-				Where(sq.Gt{"id": r})
+				Where(sq.Expr("(last_modified_ledger, id) > (?, ?)", l, r))
 		}
 		sql = sql.OrderBy("last_modified_ledger asc, id asc")
 	case "desc":
 		if l > 0 && r != "" {
 			sql = sql.
-				Where(sq.LtOrEq{"last_modified_ledger": l}).
-				Where(sq.Lt{"id": r})
+				Where(sq.Expr("(last_modified_ledger, id) < (?, ?)", l, r))
 		}
 
 		sql = sql.OrderBy("last_modified_ledger desc, id desc")
@@ -78,13 +81,6 @@ type ClaimableBalance struct {
 	Amount             xdr.Int64              `db:"amount"`
 	Sponsor            null.String            `db:"sponsor"`
 	LastModifiedLedger uint32                 `db:"last_modified_ledger"`
-}
-
-// PagingToken returns a cursor for this claimable_balance
-func (cb *ClaimableBalance) PagingToken() string {
-	// it's safe to ignore err since w
-	balanceID, _ := xdr.MarshalHex(cb.BalanceID)
-	return fmt.Sprintf("%d-%s", cb.LastModifiedLedger, balanceID)
 }
 
 type Claimants []Claimant
