@@ -56,16 +56,16 @@ func (cbq ClaimableBalancesQuery) ApplyCursor(sql sq.SelectBuilder) (sq.SelectBu
 	case "asc":
 		if l > 0 && r != "" {
 			sql = sql.
-				Where(sq.Expr("(last_modified_ledger, id) > (?, ?)", l, r))
+				Where(sq.Expr("(cb.last_modified_ledger, cb.id) > (?, ?)", l, r))
 		}
-		sql = sql.OrderBy("last_modified_ledger asc, id asc")
+		sql = sql.OrderBy("cb.last_modified_ledger asc, cb.id asc")
 	case "desc":
 		if l > 0 && r != "" {
 			sql = sql.
-				Where(sq.Expr("(last_modified_ledger, id) < (?, ?)", l, r))
+				Where(sq.Expr("(cb.last_modified_ledger, cb.id) < (?, ?)", l, r))
 		}
 
-		sql = sql.OrderBy("last_modified_ledger desc, id desc")
+		sql = sql.OrderBy("cb.last_modified_ledger desc, cb.id desc")
 	default:
 		return sql, errors.Errorf("invalid order: %s", p.Order)
 	}
