@@ -352,7 +352,7 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 				return nil, err
 			}
 		case xdr.RevokeSponsorshipTypeRevokeSponsorshipSigner:
-			details["signer_account"] = op.Signer.AccountId.Address()
+			details["signer_account_id"] = op.Signer.AccountId.Address()
 			details["signer_key"] = op.Signer.SignerKey.Address()
 		}
 	default:
@@ -492,7 +492,10 @@ func (operation *transactionOperationWrapper) Participants() ([]xdr.AccountId, e
 		beginSponsor := beginSponsoringOp.SourceAccount.ToAccountId()
 		participants = append(participants, beginSponsor)
 	case xdr.OperationTypeRevokeSponsorship:
-		// the only direct participant is the source_account
+		revokeOp := op.Body.MustRevokeSponsorshipOp()
+		if revokeOp.Type == xdr.RevokeSponsorshipTypeRevokeSponsorshipSigner {
+			participants = append(participants, revokeOp.Signer.AccountId)
+		}
 	default:
 		return participants, fmt.Errorf("Unknown operation type: %s", op.Body.Type)
 	}

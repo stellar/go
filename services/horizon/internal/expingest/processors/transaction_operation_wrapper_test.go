@@ -3,12 +3,13 @@ package processors
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
+
 	"github.com/stellar/go/exp/ingest/io"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	. "github.com/stellar/go/services/horizon/internal/test/transactions"
 	"github.com/stellar/go/xdr"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/suite"
 )
 
 var (
@@ -545,6 +546,31 @@ func TestTransactionOperationDetails(t *testing.T) {
 				"to":                "GDQVLGCJPJ57SALDJPH3YWZVGYUJJTRUUIEJGYKHLTSFY3ZOBKU3QIO3",
 			},
 		},
+		{
+			desc:          "revokeSponsorship (signer)",
+			envelopeXDR:   "AAAAAgAAAAAokk0ZqR+mxwuhJJ2uXvNqIhmObygxBFIJKvQgf/7fqwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAASAAAAAQAAAAA7YL8A7jlgEPe0dUU7VHcDQx6Q/wlHqc3UD15aJ3Ii1QAAAACCEcFim0Esp2yagOwR1omkcZQJqj9X5o5/1XafEdnfoAAAAAAAAAAA",
+			resultXDR:     "AAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+			metaXDR:       "AAAAAgAAAAAAAAABAAAAAAAAAAA=",
+			feeChangesXDR: "AAAAAA==",
+			hash:          "a41d1c8cdf515203ac5a10d945d5023325076b23dbe7d65ae402cd5f8cd9f891",
+			index:         0,
+			expected: map[string]interface{}{
+				"signer_account_id": "GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2",
+				"signer_key":        "GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV",
+			},
+		},
+		{
+			desc:          "revokeSponsorship (ledger key)",
+			envelopeXDR:   "AAAAAgAAAAAokk0ZqR+mxwuhJJ2uXvNqIhmObygxBFIJKvQgf/7fqwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAASAAAAAAAAAAQAAAAAyv66vgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+			resultXDR:     "AAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+			metaXDR:       "AAAAAgAAAAAAAAABAAAAAAAAAAA=",
+			feeChangesXDR: "AAAAAA==",
+			hash:          "13658aed93a0cb60582491a8eb945eb9b7737a7560324dd2b24f2acfe5090ada",
+			index:         0,
+			expected: map[string]interface{}{
+				"claimable_balance_id": "AAAAAMr+ur4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+			},
+		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.desc, func(t *testing.T) {
@@ -571,6 +597,25 @@ func TestTransactionOperationDetails(t *testing.T) {
 			tt.NoError(err)
 			tt.Equal(tc.expected, details)
 		})
+	}
+
+	tx := createTransaction(true, 1)
+	tx.Index = 1
+
+	tx.Envelope.Operations()[0].Body = xdr.OperationBody{
+		Type: xdr.OperationTypeRevokeSponsorship,
+		RevokeSponsorshipOp: &xdr.RevokeSponsorshipOp{
+			Type: xdr.RevokeSponsorshipTypeRevokeSponsorshipLedgerEntry,
+			LedgerKey: &xdr.LedgerKey{
+				Type: xdr.LedgerEntryTypeClaimableBalance,
+				ClaimableBalance: &xdr.LedgerKeyClaimableBalance{
+					BalanceId: xdr.ClaimableBalanceId{
+						Type: 0,
+						V0:   &xdr.Hash{0xca, 0xfe, 0xba, 0xbe},
+					},
+				},
+			},
+		},
 	}
 }
 
@@ -783,6 +828,31 @@ func TestTransactionOperationParticipants(t *testing.T) {
 			index:         2,
 			expected: []xdr.AccountId{
 				xdr.MustAddress("GD5OVB6FKDV7P7SOJ5UB2BPLBL4XGSHPYHINR5355SY3RSXLT2BZWAKY"),
+			},
+		},
+		{
+			desc:          "revokeSponsorship (signer)",
+			envelopeXDR:   "AAAAAgAAAAAokk0ZqR+mxwuhJJ2uXvNqIhmObygxBFIJKvQgf/7fqwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAASAAAAAQAAAAA7YL8A7jlgEPe0dUU7VHcDQx6Q/wlHqc3UD15aJ3Ii1QAAAACCEcFim0Esp2yagOwR1omkcZQJqj9X5o5/1XafEdnfoAAAAAAAAAAA",
+			resultXDR:     "AAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+			metaXDR:       "AAAAAgAAAAAAAAABAAAAAAAAAAA=",
+			feeChangesXDR: "AAAAAA==",
+			hash:          "a41d1c8cdf515203ac5a10d945d5023325076b23dbe7d65ae402cd5f8cd9f891",
+			index:         0,
+			expected: []xdr.AccountId{
+				xdr.MustAddress("GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY"),
+				xdr.MustAddress("GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2"),
+			},
+		},
+		{
+			desc:          "revokeSponsorship (ledger key)",
+			envelopeXDR:   "AAAAAgAAAAAokk0ZqR+mxwuhJJ2uXvNqIhmObygxBFIJKvQgf/7fqwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAASAAAAAAAAAAQAAAAAyv66vgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+			resultXDR:     "AAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+			metaXDR:       "AAAAAgAAAAAAAAABAAAAAAAAAAA=",
+			feeChangesXDR: "AAAAAA==",
+			hash:          "13658aed93a0cb60582491a8eb945eb9b7737a7560324dd2b24f2acfe5090ada",
+			index:         0,
+			expected: []xdr.AccountId{
+				xdr.MustAddress("GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY"),
 			},
 		},
 	}
