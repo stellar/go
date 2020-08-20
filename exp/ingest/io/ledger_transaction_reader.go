@@ -82,10 +82,13 @@ func (reader *LedgerTransactionReader) storeTransactions(lcm xdr.LedgerCloseMeta
 			return errors.Errorf("unknown tx hash in LedgerCloseMeta: %v", hexHash)
 		}
 
-		if lcm.V0.LedgerHeader.Header.LedgerVersion < 10 && lcm.V0.TxProcessing[i].TxApplyProcessing.V != 2 {
+		// We check the version only if FeeProcessing are non empty because some backends
+		// (like HistoryArchiveBackend) do not return meta.
+		if lcm.V0.LedgerHeader.Header.LedgerVersion < 10 && lcm.V0.TxProcessing[i].TxApplyProcessing.V != 2 &&
+			len(lcm.V0.TxProcessing[i].FeeProcessing) > 0 {
 			return errors.New(
 				"TransactionMeta.V=2 is required in protocol version older than version 10. " +
-					"Please process ledgers again using stellar-core with SUPPORTED_META_VERSION=2 in the config file.",
+					"Please process ledgers again using the latest stellar-core version.",
 			)
 		}
 
