@@ -18,6 +18,7 @@ import (
 type ClaimableBalancesQuery struct {
 	PageQuery db2.PageQuery
 	Asset     *xdr.Asset
+	Sponsor   *xdr.AccountId
 }
 
 // ApplyCursor applies cursor to the given sql
@@ -243,6 +244,10 @@ func (q *Q) GetClaimableBalances(query ClaimableBalancesQuery) ([]ClaimableBalan
 
 	if query.Asset != nil {
 		sql = sql.Where("cb.asset = ?", query.Asset)
+	}
+
+	if query.Sponsor != nil {
+		sql = sql.Where("cb.sponsor = ?", query.Sponsor.Address())
 	}
 
 	var results []ClaimableBalance

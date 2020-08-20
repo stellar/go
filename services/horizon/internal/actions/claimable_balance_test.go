@@ -118,8 +118,13 @@ func TestGetClaimableBalanceByID(t *testing.T) {
 
 func buildClaimableBalance(balanceIDHash xdr.Hash, accountID string, ledger int32, asset *xdr.Asset) xdr.LedgerEntry {
 	balanceAsset := xdr.MustNewNativeAsset()
+	ext := xdr.LedgerEntryExt{
+		V:  1,
+		V1: &xdr.LedgerEntryExtensionV1{SponsoringId: nil},
+	}
 	if asset != nil {
 		balanceAsset = *asset
+		ext.V1.SponsoringId = xdr.MustAddressPtr(accountID)
 	}
 
 	return xdr.LedgerEntry{
@@ -146,6 +151,7 @@ func buildClaimableBalance(balanceIDHash xdr.Hash, accountID string, ledger int3
 			},
 		},
 		LastModifiedLedgerSeq: xdr.Uint32(ledger),
+		Ext:                   ext,
 	}
 }
 
@@ -472,6 +478,24 @@ func TestGetClaimableBalances(t *testing.T) {
 		tt.Assert.Equal(
 			euro.StringCanonical(),
 			resource.(protocol.ClaimableBalance).Asset,
+		)
+	}
+
+	response, err = handler.GetResourcePage(httptest.NewRecorder(), makeRequest(
+		t,
+		map[string]string{
+			"sponsor": "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
+		},
+		map[string]string{},
+		q.Session,
+	))
+
+	tt.Assert.NoError(err)
+	tt.Assert.Len(response, 4)
+	for _, resource := range response {
+		tt.Assert.Equal(
+			"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
+			resource.(protocol.ClaimableBalance).Sponsor,
 		)
 	}
 }
