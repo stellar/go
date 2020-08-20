@@ -3,11 +3,9 @@ package history
 import (
 	"database/sql/driver"
 	"encoding/json"
-	"fmt"
 	"strconv"
 	"strings"
 
-	"github.com/Masterminds/squirrel"
 	sq "github.com/Masterminds/squirrel"
 	"github.com/guregu/null"
 	"github.com/stellar/go/services/horizon/internal/db2"
@@ -217,19 +215,6 @@ func (q *Q) RemoveClaimableBalance(cBalance xdr.ClaimableBalanceEntry) (int64, e
 	return result.RowsAffected()
 }
 
-// FindClaimableBalancesByDestination finds all claimable balances where accountID is one of the claimants
-func (q *Q) FindClaimableBalancesByDestination(accountID xdr.AccountId) ([]ClaimableBalance, error) {
-	sql := selectClaimableBalances.
-		Where("claimants @> '[{\"destination\": \"" + accountID.Address() + "\"}]'")
-
-	var results []ClaimableBalance
-	if err := q.Select(&results, sql); err != nil {
-		return nil, errors.Wrap(err, "could not run select query")
-	}
-
-	return results, nil
-}
-
 // FindClaimableBalanceByID returns a claimable balance.
 func (q *Q) FindClaimableBalanceByID(balanceID xdr.ClaimableBalanceId) (ClaimableBalance, error) {
 	var claimableBalance ClaimableBalance
@@ -257,8 +242,6 @@ func (q *Q) GetClaimableBalances(query ClaimableBalancesQuery) ([]ClaimableBalan
 		sql = sql.
 			Where("cb.claimants @> '[{\"destination\": \"" + query.Claimant.Address() + "\"}]'")
 	}
-
-	fmt.Println(squirrel.DebugSqlizer(sql))
 
 	var results []ClaimableBalance
 	if err := q.Select(&results, sql); err != nil {
