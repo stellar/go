@@ -240,6 +240,12 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 				},
 			},
 			LastModifiedLedgerSeq: xdr.Uint32(62),
+			Ext: xdr.LedgerEntryExt{
+				V: 1,
+				V1: &xdr.LedgerEntryExtensionV1{
+					SponsoringId: xdr.MustAddressPtr("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+				},
+			},
 		},
 	}
 	offerChange := ingestio.Change{
@@ -251,6 +257,12 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 				Offer: &eurOffer,
 			},
 			LastModifiedLedgerSeq: xdr.Uint32(62),
+			Ext: xdr.LedgerEntryExt{
+				V: 1,
+				V1: &xdr.LedgerEntryExtensionV1{
+					SponsoringId: xdr.MustAddressPtr("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+				},
+			},
 		},
 	}
 	claimableBalance := history.ClaimableBalance{
@@ -269,6 +281,7 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 				},
 			},
 		},
+		Sponsor: null.StringFrom("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
 	}
 	claimableBalanceChange := ingestio.Change{
 		Type: xdr.LedgerEntryTypeClaimableBalance,
@@ -292,6 +305,12 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 				},
 			},
 			LastModifiedLedgerSeq: xdr.Uint32(62),
+			Ext: xdr.LedgerEntryExt{
+				V: 1,
+				V1: &xdr.LedgerEntryExtensionV1{
+					SponsoringId: xdr.MustAddressPtr("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+				},
+			},
 		},
 	}
 
@@ -310,7 +329,9 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 		NumSponsoring:      2,
 		BuyingLiabilities:  1,
 		SellingLiabilities: 1,
+		Sponsor:            null.StringFrom("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
 	}
+
 	clonedQ.MockQAccounts.On("GetAccountsByIDs", []string{mockAccountID}).Return([]history.AccountEntry{mockAccount}, nil).Once()
 	clonedQ.MockQSigners.On("SignersForAccounts", []string{mockAccountID}).Return([]history.AccountSigner{
 		{
@@ -342,6 +363,7 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 		Price:              float64(eurOffer.Price.N) / float64(eurOffer.Price.N),
 		Flags:              uint32(eurOffer.Flags),
 		LastModifiedLedger: 62,
+		Sponsor:            null.StringFrom("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
 	}
 	clonedQ.MockQOffers.On("GetOffersByIDs", []int64{int64(eurOffer.OfferId)}).Return([]history.Offer{mockOffer}, nil).Once()
 	clonedQ.MockQOffers.On("CountOffers").Return(1, nil).Once()

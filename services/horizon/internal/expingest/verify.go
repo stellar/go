@@ -6,6 +6,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/guregu/null"
 	ingesterrors "github.com/stellar/go/exp/ingest/errors"
 	"github.com/stellar/go/exp/ingest/verify"
 	"github.com/stellar/go/historyarchive"
@@ -186,7 +187,7 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool) error {
 
 		err = addClaimableBalanceToStateVerifier(verifier, assetStats, historyQ, cBalances)
 		if err != nil {
-			return errors.Wrap(err, "addTrustLinesToStateVerifier failed")
+			return errors.Wrap(err, "addClaimableBalanceToStateVerifier failed")
 		}
 
 		total += len(keys)
@@ -388,7 +389,7 @@ func addAccountsToStateVerifier(verifier *verify.StateVerifier, q history.Ingest
 				Account: account,
 			},
 		}
-
+		addLedgerEntrySponsor(&entry, row.Sponsor)
 		err = verifier.Write(entry)
 		if err != nil {
 			return err
@@ -420,6 +421,7 @@ func addDataToStateVerifier(verifier *verify.StateVerifier, q history.IngestionQ
 				},
 			},
 		}
+		addLedgerEntrySponsor(&entry, row.Sponsor)
 		err := verifier.Write(entry)
 		if err != nil {
 			return err
@@ -462,7 +464,7 @@ func addOffersToStateVerifier(
 				},
 			},
 		}
-
+		addLedgerEntrySponsor(&entry, row.Sponsor)
 		err := verifier.Write(entry)
 		if err != nil {
 			return err
@@ -512,6 +514,7 @@ func addTrustLinesToStateVerifier(
 				TrustLine: &trustline,
 			},
 		}
+		addLedgerEntrySponsor(&entry, row.Sponsor)
 		if err := verifier.Write(entry); err != nil {
 			return err
 		}
@@ -565,6 +568,7 @@ func addClaimableBalanceToStateVerifier(
 				ClaimableBalance: &cBalance,
 			},
 		}
+		addLedgerEntrySponsor(&entry, row.Sponsor)
 		if err := verifier.Write(entry); err != nil {
 			return err
 		}
@@ -573,7 +577,31 @@ func addClaimableBalanceToStateVerifier(
 	return nil
 }
 
+func addLedgerEntrySponsor(entry *xdr.LedgerEntry, sponsor null.String) {
+	ledgerEntrySponsor := xdr.SponsorshipDescriptor(nil)
+
+	if !sponsor.IsZero() {
+		ledgerEntrySponsor = xdr.MustAddressPtr(sponsor.String)
+	}
+	entry.Ext = xdr.LedgerEntryExt{
+		V: 1,
+		V1: &xdr.LedgerEntryExtensionV1{
+			SponsoringId: ledgerEntrySponsor,
+		},
+	}
+}
+
 func transformEntry(entry xdr.LedgerEntry) (bool, xdr.LedgerEntry) {
+	// If ledgerEntry is V0, create ext=1 and add a nil sponsor
+	if entry.Ext.V == 0 {
+		entry.Ext = xdr.LedgerEntryExt{
+			V: 1,
+			V1: &xdr.LedgerEntryExtensionV1{
+				SponsoringId: nil,
+			},
+		}
+	}
+
 	switch entry.Data.Type {
 	case xdr.LedgerEntryTypeAccount:
 		accountEntry := entry.Data.Account
