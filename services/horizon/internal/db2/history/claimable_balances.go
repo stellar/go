@@ -241,7 +241,7 @@ func (q *Q) GetClaimableBalances(query ClaimableBalancesQuery) ([]ClaimableBalan
 
 	if query.Claimant != nil {
 		sql = sql.
-			Where("cb.claimants @> '[{\"destination\": \"" + query.Claimant.Address() + "\"}]'")
+			Where(`cb.claimants @> '[{"destination": "` + query.Claimant.Address() + `"}]'`)
 	}
 
 	// we need to use WITH syntax to force the query planner to use the right
