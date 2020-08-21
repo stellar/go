@@ -5,6 +5,7 @@ import (
 	"io"
 	"testing"
 
+	"github.com/guregu/null"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
@@ -192,6 +193,10 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 	mockChangeReader := &ingestio.MockChangeReader{}
 	mockChangeReader.On("Close").Return(nil).Once()
 	mockAccountID := "GACMZD5VJXTRLKVET72CETCYKELPNCOTTBDC6DHFEUPLG5DHEK534JQX"
+	signers := []string{
+		"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
+		"GA25GQLHJU3LPEJXEIAXK23AWEA5GWDUGRSHTQHDFT6HXHVMRULSQJUJ",
+	}
 	accountChange := ingestio.Change{
 		Type: xdr.LedgerEntryTypeAccount,
 		Pre:  nil,
@@ -202,6 +207,36 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 					AccountId:  xdr.MustAddress(mockAccountID),
 					Balance:    xdr.Int64(600),
 					Thresholds: [4]byte{1, 0, 0, 0},
+					Signers: []xdr.Signer{
+						{
+							Key:    xdr.MustSigner(signers[0]),
+							Weight: 1,
+						},
+						{
+							Key:    xdr.MustSigner(signers[1]),
+							Weight: 2,
+						},
+					},
+					Ext: xdr.AccountEntryExt{
+						V: 1,
+						V1: &xdr.AccountEntryExtensionV1{
+							Liabilities: xdr.Liabilities{
+								Buying:  1,
+								Selling: 1,
+							},
+							Ext: xdr.AccountEntryExtensionV1Ext{
+								V: 2,
+								V2: &xdr.AccountEntryExtensionV2{
+									NumSponsored:  xdr.Uint32(0),
+									NumSponsoring: xdr.Uint32(2),
+									SignerSponsoringIDs: []xdr.SponsorshipDescriptor{
+										nil,
+										xdr.MustAddressPtr(mockAccountID),
+									},
+								},
+							},
+						},
+					},
 				},
 			},
 			LastModifiedLedgerSeq: xdr.Uint32(62),
@@ -271,14 +306,30 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 		Balance:            600,
 		LastModifiedLedger: 62,
 		MasterWeight:       1,
+		NumSponsored:       0,
+		NumSponsoring:      2,
+		BuyingLiabilities:  1,
+		SellingLiabilities: 1,
 	}
 	clonedQ.MockQAccounts.On("GetAccountsByIDs", []string{mockAccountID}).Return([]history.AccountEntry{mockAccount}, nil).Once()
-	mockSigner := history.AccountSigner{
-		Account: mockAccountID,
-		Signer:  mockAccountID,
-		Weight:  1,
-	}
-	clonedQ.MockQSigners.On("SignersForAccounts", []string{mockAccountID}).Return([]history.AccountSigner{mockSigner}, nil).Once()
+	clonedQ.MockQSigners.On("SignersForAccounts", []string{mockAccountID}).Return([]history.AccountSigner{
+		{
+			Account: mockAccountID,
+			Signer:  mockAccountID,
+			Weight:  1,
+		},
+		{
+			Account: mockAccountID,
+			Signer:  signers[0],
+			Weight:  1,
+		},
+		{
+			Account: mockAccountID,
+			Signer:  signers[1],
+			Weight:  2,
+			Sponsor: null.StringFrom(mockAccountID),
+		},
+	}, nil).Once()
 	clonedQ.MockQSigners.On("CountAccounts").Return(1, nil).Once()
 	mockOffer := history.Offer{
 		SellerID:           eurOffer.SellerId.Address(),

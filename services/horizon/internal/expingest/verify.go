@@ -3,6 +3,7 @@ package expingest
 import (
 	"database/sql"
 	"fmt"
+	"sort"
 	"time"
 
 	ingesterrors "github.com/stellar/go/exp/ingest/errors"
@@ -301,6 +302,7 @@ func addAccountsToStateVerifier(verifier *verify.StateVerifier, q history.Ingest
 
 	masterWeightMap := make(map[string]int32)
 	signersMap := make(map[string][]xdr.Signer)
+	sponsoringSignersMap := make(map[string][]string)
 	for _, row := range signers {
 		if row.Account == row.Signer {
 			masterWeightMap[row.Account] = row.Weight
@@ -312,6 +314,12 @@ func addAccountsToStateVerifier(verifier *verify.StateVerifier, q history.Ingest
 					Weight: xdr.Uint32(row.Weight),
 				},
 			)
+			if !row.Sponsor.IsZero() {
+				sponsoringSignersMap[row.Account] = append(
+					sponsoringSignersMap[row.Account],
+					row.Sponsor.String,
+				)
+			}
 		}
 	}
 
@@ -332,6 +340,11 @@ func addAccountsToStateVerifier(verifier *verify.StateVerifier, q history.Ingest
 					int32(row.MasterWeight),
 				),
 			)
+		}
+		signerSponsoringIDs := []xdr.SponsorshipDescriptor{}
+		sort.Strings(sponsoringSignersMap[row.AccountID])
+		for _, sponsor := range sponsoringSignersMap[row.AccountID] {
+			signerSponsoringIDs = append(signerSponsoringIDs, xdr.MustAddressPtr(sponsor))
 		}
 
 		account := &xdr.AccountEntry{
@@ -355,6 +368,14 @@ func addAccountsToStateVerifier(verifier *verify.StateVerifier, q history.Ingest
 					Liabilities: xdr.Liabilities{
 						Buying:  xdr.Int64(row.BuyingLiabilities),
 						Selling: xdr.Int64(row.SellingLiabilities),
+					},
+					Ext: xdr.AccountEntryExtensionV1Ext{
+						V: 2,
+						V2: &xdr.AccountEntryExtensionV2{
+							NumSponsored:        xdr.Uint32(row.NumSponsored),
+							NumSponsoring:       xdr.Uint32(row.NumSponsoring),
+							SignerSponsoringIDs: signerSponsoringIDs,
+						},
 					},
 				},
 			},
@@ -567,6 +588,36 @@ func transformEntry(entry xdr.LedgerEntry) (bool, xdr.LedgerEntry) {
 					Buying:  0,
 					Selling: 0,
 				},
+			}
+		}
+		// if AccountEntryExtensionV1Ext is v=0,  then create v2 with 0 values
+		if accountEntry.Ext.V1.Ext.V == 0 {
+			accountEntry.Ext.V1.Ext.V = 2
+			accountEntry.Ext.V1.Ext.V2 = &xdr.AccountEntryExtensionV2{
+				NumSponsored:        xdr.Uint32(0),
+				NumSponsoring:       xdr.Uint32(0),
+				SignerSponsoringIDs: []xdr.SponsorshipDescriptor{},
+			}
+		}
+
+		signerSponsoringIDs := accountEntry.Ext.V1.Ext.V2.SignerSponsoringIDs
+		if len(signerSponsoringIDs) > 0 {
+			signerSponsoringIDs := []string{}
+			for _, id := range accountEntry.Ext.V1.Ext.V2.SignerSponsoringIDs {
+				if id != nil {
+					signerSponsoringIDs = append(signerSponsoringIDs, (*id).Address())
+				}
+			}
+			if len(signerSponsoringIDs) > 0 {
+				sort.Strings(signerSponsoringIDs)
+				accountEntry.Ext.V1.Ext.V2.SignerSponsoringIDs = []xdr.SponsorshipDescriptor{}
+				for _, id := range signerSponsoringIDs {
+					accountEntry.Ext.V1.Ext.V2.SignerSponsoringIDs = append(
+						accountEntry.Ext.V1.Ext.V2.SignerSponsoringIDs,
+						xdr.MustAddressPtr(id),
+					)
+
+				}
 			}
 		}
 
