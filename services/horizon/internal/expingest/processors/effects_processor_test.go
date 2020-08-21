@@ -1531,7 +1531,7 @@ func (s *CreateClaimableBalanceEffectsTestSuite) TestEffects() {
 					details: map[string]interface{}{
 						"asset":      "native",
 						"amount":     "10.0000000",
-						"balance_id": "AAAAANoNV9p9SFDn/BDSqdDrxzH3r7QFdMAzlbF9SRSbkfW+",
+						"balance_id": "00000000da0d57da7d4850e7fc10d2a9d0ebc731f7afb40574c03395b17d49149b91f5be",
 					},
 					effectType:  history.EffectClaimableBalanceCreated,
 					operationID: int64(4294967297),
@@ -1542,7 +1542,7 @@ func (s *CreateClaimableBalanceEffectsTestSuite) TestEffects() {
 					details: map[string]interface{}{
 						"asset":      "native",
 						"amount":     "10.0000000",
-						"balance_id": "AAAAANoNV9p9SFDn/BDSqdDrxzH3r7QFdMAzlbF9SRSbkfW+",
+						"balance_id": "00000000da0d57da7d4850e7fc10d2a9d0ebc731f7afb40574c03395b17d49149b91f5be",
 						"predicate":  "AAAAAA==",
 					},
 					effectType:  history.EffectClaimableBalanceClaimantCreated,
@@ -1570,7 +1570,7 @@ func (s *CreateClaimableBalanceEffectsTestSuite) TestEffects() {
 					details: map[string]interface{}{
 						"asset":      "USD:GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
 						"amount":     "20.0000000",
-						"balance_id": "AAAAALHcX0PDa9UefSAzitC6vQOUr802phH8OF2ahLzg6j1D",
+						"balance_id": "00000000b1dc5f43c36bd51e7d20338ad0babd0394afcd36a611fc385d9a84bce0ea3d43",
 					},
 					effectType:  history.EffectClaimableBalanceCreated,
 					operationID: int64(4294967298),
@@ -1581,7 +1581,7 @@ func (s *CreateClaimableBalanceEffectsTestSuite) TestEffects() {
 					details: map[string]interface{}{
 						"asset":      "USD:GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
 						"amount":     "20.0000000",
-						"balance_id": "AAAAALHcX0PDa9UefSAzitC6vQOUr802phH8OF2ahLzg6j1D",
+						"balance_id": "00000000b1dc5f43c36bd51e7d20338ad0babd0394afcd36a611fc385d9a84bce0ea3d43",
 						"predicate":  "AAAAAA==",
 					},
 					effectType:  history.EffectClaimableBalanceClaimantCreated,
@@ -1593,7 +1593,7 @@ func (s *CreateClaimableBalanceEffectsTestSuite) TestEffects() {
 					details: map[string]interface{}{
 						"asset":      "USD:GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
 						"amount":     "20.0000000",
-						"balance_id": "AAAAALHcX0PDa9UefSAzitC6vQOUr802phH8OF2ahLzg6j1D",
+						"balance_id": "00000000b1dc5f43c36bd51e7d20338ad0babd0394afcd36a611fc385d9a84bce0ea3d43",
 						"predicate":  "AAAAAA==",
 					},
 					effectType:  history.EffectClaimableBalanceClaimantCreated,
@@ -1818,7 +1818,7 @@ func (s *ClaimClaimableBalanceEffectsTestSuite) TestEffects() {
 					details: map[string]interface{}{
 						"asset":      "native",
 						"amount":     "10.0000000",
-						"balance_id": "AAAAANoNV9p9SFDn/BDSqdDrxzH3r7QFdMAzlbF9SRSbkfW+",
+						"balance_id": "00000000da0d57da7d4850e7fc10d2a9d0ebc731f7afb40574c03395b17d49149b91f5be",
 					},
 					effectType:  history.EffectClaimableBalanceClaimed,
 					operationID: int64(4294967297),
@@ -1845,7 +1845,7 @@ func (s *ClaimClaimableBalanceEffectsTestSuite) TestEffects() {
 					details: map[string]interface{}{
 						"asset":      "USD:GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
 						"amount":     "20.0000000",
-						"balance_id": "AAAAALHcX0PDa9UefSAzitC6vQOUr802phH8OF2ahLzg6j1D",
+						"balance_id": "00000000b1dc5f43c36bd51e7d20338ad0babd0394afcd36a611fc385d9a84bce0ea3d43",
 					},
 					effectType:  history.EffectClaimableBalanceClaimed,
 					operationID: int64(4294967298),

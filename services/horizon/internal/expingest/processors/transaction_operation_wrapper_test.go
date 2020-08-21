@@ -1140,11 +1140,11 @@ type ClaimClaimableBalanceOpTestSuite struct {
 }
 
 func (s *ClaimClaimableBalanceOpTestSuite) SetupTest() {
-	s.balanceID = "AAAAANoNV9p9SFDn/BDSqdDrxzH3r7QFdMAzlbF9SRSbkfW+"
+	s.balanceID = "00000000da0d57da7d4850e7fc10d2a9d0ebc731f7afb40574c03395b17d49149b91f5be"
 	aid := xdr.MustAddress("GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD")
 	source := aid.ToMuxedAccount()
 	var balanceID xdr.ClaimableBalanceId
-	xdr.SafeUnmarshalBase64(s.balanceID, &balanceID)
+	xdr.SafeUnmarshalHex(s.balanceID, &balanceID)
 	s.op = xdr.Operation{
 		SourceAccount: &source,
 		Body: xdr.OperationBody{
