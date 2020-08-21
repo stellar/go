@@ -57,13 +57,13 @@ func (cbq ClaimableBalancesQuery) ApplyCursor(sql sq.SelectBuilder) (sq.SelectBu
 	}
 
 	switch p.Order {
-	case "asc":
+	case db2.OrderAscending:
 		if l > 0 && r != "" {
 			sql = sql.
 				Where(sq.Expr("(cb.last_modified_ledger, cb.id) > (?, ?)", l, r))
 		}
 		sql = sql.OrderBy("cb.last_modified_ledger asc, cb.id asc")
-	case "desc":
+	case db2.OrderDescending:
 		if l > 0 && r != "" {
 			sql = sql.
 				Where(sq.Expr("(cb.last_modified_ledger, cb.id) < (?, ?)", l, r))
