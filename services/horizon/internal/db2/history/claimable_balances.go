@@ -28,7 +28,7 @@ type ClaimableBalancesQuery struct {
 func (cbq ClaimableBalancesQuery) ApplyCursor(sql sq.SelectBuilder) (sq.SelectBuilder, error) {
 	p := cbq.PageQuery
 	var l int64
-	var r string
+	var r *xdr.ClaimableBalanceId
 	var err error
 
 	if p.Cursor != "" {
@@ -46,11 +46,7 @@ func (cbq ClaimableBalancesQuery) ApplyCursor(sql sq.SelectBuilder) (sq.SelectBu
 		if err = xdr.SafeUnmarshalHex(parts[1], &balanceID); err != nil {
 			return sql, errors.Wrap(err, "Invalid cursor - second value should be a valid claimable balance id")
 		}
-
-		if r, err = xdr.MarshalBase64(balanceID); err != nil {
-			return sql, errors.Wrap(err, "Invalid cursor - second value should be a valid claimable balance id")
-		}
-
+		r = &balanceID
 		if l < 0 {
 			return sql, errors.Wrap(err, "Invalid cursor - first value should be higher than 0")
 		}
@@ -58,13 +54,13 @@ func (cbq ClaimableBalancesQuery) ApplyCursor(sql sq.SelectBuilder) (sq.SelectBu
 
 	switch p.Order {
 	case db2.OrderAscending:
-		if l > 0 && r != "" {
+		if l > 0 && r != nil {
 			sql = sql.
 				Where(sq.Expr("(cb.last_modified_ledger, cb.id) > (?, ?)", l, r))
 		}
 		sql = sql.OrderBy("cb.last_modified_ledger asc, cb.id asc")
 	case db2.OrderDescending:
-		if l > 0 && r != "" {
+		if l > 0 && r != nil {
 			sql = sql.
 				Where(sq.Expr("(cb.last_modified_ledger, cb.id) < (?, ?)", l, r))
 		}
