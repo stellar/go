@@ -22,10 +22,11 @@ type ClaimableBalancesQuery struct {
 	Claimant  *xdr.AccountId
 }
 
-// ApplyCursor applies cursor to the given sql
+// ApplyCursor applies cursor to the given sql. For performance reason the limit
+// is not apply here. This allows us to hint the planner later to use the right
+// indexes.
 func (cbq ClaimableBalancesQuery) ApplyCursor(sql sq.SelectBuilder) (sq.SelectBuilder, error) {
 	p := cbq.PageQuery
-	sql = sql.Limit(p.Limit)
 	var l int64
 	var r string
 	var err error
@@ -243,6 +244,16 @@ func (q *Q) GetClaimableBalances(query ClaimableBalancesQuery) ([]ClaimableBalan
 			Where("cb.claimants @> '[{\"destination\": \"" + query.Claimant.Address() + "\"}]'")
 	}
 
+	// we need to use WITH syntax to force the query planner to use the right
+	// indexes, otherwise when the limit is small, it will use an index scan
+	// which will be very slow once we have millions of records
+	sql = sql.
+		Prefix("WITH cb AS (").
+		Suffix(
+			") select "+claimableBalancesSelectStatement+" from cb LIMIT ?",
+			query.PageQuery.Limit,
+		)
+
 	var results []ClaimableBalance
 	if err := q.Select(&results, sql); err != nil {
 		return nil, errors.Wrap(err, "could not run select query")
@@ -285,11 +296,11 @@ func (i *claimableBalancesBatchInsertBuilder) Exec() error {
 	return i.builder.Exec()
 }
 
-var selectClaimableBalances = sq.Select(
-	"cb.id, " +
-		"cb.claimants, " +
-		"cb.asset, " +
-		"cb.amount, " +
-		"cb.sponsor, " +
-		"cb.last_modified_ledger").
-	From("claimable_balances cb")
+var claimableBalancesSelectStatement = "cb.id, " +
+	"cb.claimants, " +
+	"cb.asset, " +
+	"cb.amount, " +
+	"cb.sponsor, " +
+	"cb.last_modified_ledger"
+
+var selectClaimableBalances = sq.Select(claimableBalancesSelectStatement).From("claimable_balances cb")
