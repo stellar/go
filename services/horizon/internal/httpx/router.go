@@ -140,6 +140,7 @@ func (r *Router) addRoutes(config *RouterConfig, rateLimiter *throttled.HTTPRate
 		})
 
 		r.Route("/claimable_balances", func(r chi.Router) {
+			r.Method(http.MethodGet, "/", restPageHandler(actions.GetClaimableBalancesHandler{}))
 			r.Method(http.MethodGet, "/{id}", ObjectActionHandler{actions.GetClaimableBalanceByIDHandler{}})
 		})
 

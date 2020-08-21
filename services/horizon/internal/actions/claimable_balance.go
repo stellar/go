@@ -1,12 +1,17 @@
 package actions
 
 import (
+	"context"
 	"fmt"
 	"net/http"
+	"strings"
 
+	"github.com/stellar/go/protocols/horizon"
 	protocol "github.com/stellar/go/protocols/horizon"
 	horizonContext "github.com/stellar/go/services/horizon/internal/context"
+	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/resourceadapter"
+	"github.com/stellar/go/support/render/hal"
 	"github.com/stellar/go/support/render/problem"
 	"github.com/stellar/go/xdr"
 )
@@ -69,4 +74,102 @@ func (handler GetClaimableBalanceByIDHandler) GetResource(w HeaderWriter, r *htt
 	}
 
 	return resource, nil
+}
+
+// ClaimableBalancesQuery query struct for claimable_balances end-point
+type ClaimableBalancesQuery struct {
+	AssetFilter    string `schema:"asset" valid:"asset,optional"`
+	SponsorFilter  string `schema:"sponsor" valid:"accountID,optional"`
+	ClaimantFilter string `schema:"claimant" valid:"accountID,optional"`
+}
+
+func (q ClaimableBalancesQuery) asset() *xdr.Asset {
+	if len(q.AssetFilter) > 0 {
+		switch q.AssetFilter {
+		case "native":
+			asset := xdr.MustNewNativeAsset()
+			return &asset
+		default:
+			parts := strings.Split(q.AssetFilter, ":")
+			asset := xdr.MustNewCreditAsset(parts[0], parts[1])
+			return &asset
+		}
+	}
+	return nil
+}
+
+func (q ClaimableBalancesQuery) sponsor() *xdr.AccountId {
+	if q.SponsorFilter != "" {
+		return xdr.MustAddressPtr(q.SponsorFilter)
+	}
+	return nil
+}
+
+func (q ClaimableBalancesQuery) claimant() *xdr.AccountId {
+	if q.ClaimantFilter != "" {
+		return xdr.MustAddressPtr(q.ClaimantFilter)
+	}
+	return nil
+}
+
+// URITemplate returns a rfc6570 URI template the query struct
+func (q ClaimableBalancesQuery) URITemplate() string {
+	return "/claimable_balances?{asset}"
+}
+
+type GetClaimableBalancesHandler struct {
+}
+
+// GetResourcePage returns a page of claimable balances.
+func (handler GetClaimableBalancesHandler) GetResourcePage(
+	w HeaderWriter,
+	r *http.Request,
+) ([]hal.Pageable, error) {
+	ctx := r.Context()
+	qp := ClaimableBalancesQuery{}
+	err := getParams(&qp, r)
+	if err != nil {
+		return nil, err
+	}
+
+	pq, err := GetPageQuery(r, DisableCursorValidation)
+	if err != nil {
+		return nil, err
+	}
+
+	query := history.ClaimableBalancesQuery{
+		PageQuery: pq,
+		Asset:     qp.asset(),
+		Sponsor:   qp.sponsor(),
+		Claimant:  qp.claimant(),
+	}
+
+	historyQ, err := horizonContext.HistoryQFromRequest(r)
+	if err != nil {
+		return nil, err
+	}
+
+	claimableBalances, err := getClaimableBalancesPage(ctx, historyQ, query)
+	if err != nil {
+		return nil, err
+	}
+
+	return claimableBalances, nil
+}
+
+func getClaimableBalancesPage(ctx context.Context, historyQ *history.Q, query history.ClaimableBalancesQuery) ([]hal.Pageable, error) {
+	records, err := historyQ.GetClaimableBalances(query)
+	if err != nil {
+		return nil, err
+	}
+
+	var claimableBalances []hal.Pageable
+	for _, record := range records {
+		var response horizon.ClaimableBalance
+
+		resourceadapter.PopulateClaimableBalance(ctx, &response, record)
+		claimableBalances = append(claimableBalances, response)
+	}
+
+	return claimableBalances, nil
 }

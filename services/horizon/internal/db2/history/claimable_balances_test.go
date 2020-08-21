@@ -3,6 +3,7 @@ package history
 import (
 	"testing"
 
+	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/xdr"
 )
@@ -155,7 +156,12 @@ func TestFindClaimableBalancesByDestination(t *testing.T) {
 	err = builder.Exec()
 	tt.Assert.NoError(err)
 
-	cbs, err := q.FindClaimableBalancesByDestination(xdr.MustAddress(dest1))
+	query := ClaimableBalancesQuery{
+		PageQuery: db2.MustPageQuery("", false, "", 10),
+		Claimant:  xdr.MustAddressPtr(dest1),
+	}
+
+	cbs, err := q.GetClaimableBalances(query)
 	tt.Assert.NoError(err)
 	tt.Assert.Len(cbs, 2)
 
@@ -163,7 +169,8 @@ func TestFindClaimableBalancesByDestination(t *testing.T) {
 		tt.Assert.Equal(dest1, cb.Claimants[0].Destination)
 	}
 
-	cbs, err = q.FindClaimableBalancesByDestination(xdr.MustAddress(dest2))
+	query.Claimant = xdr.MustAddressPtr(dest2)
+	cbs, err = q.GetClaimableBalances(query)
 	tt.Assert.NoError(err)
 	tt.Assert.Len(cbs, 1)
 	tt.Assert.Equal(dest2, cbs[0].Claimants[1].Destination)

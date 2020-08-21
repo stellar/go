@@ -13,6 +13,7 @@ CREATE TABLE claimable_balances (
 CREATE INDEX claimable_balances_by_asset ON claimable_balances USING BTREE(asset);
 CREATE INDEX claimable_balances_by_sponsor ON claimable_balances USING BTREE(sponsor);
 CREATE INDEX claimabable_balances_by_claimants ON claimable_balances USING gin(claimants jsonb_path_ops);
+CREATE INDEX claimable_balances_by_last_modified_ledger_and_id ON claimable_balances USING BTREE(last_modified_ledger, id);
 
 -- +migrate Down
 
