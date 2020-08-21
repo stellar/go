@@ -630,22 +630,24 @@ func transformEntry(entry xdr.LedgerEntry) (bool, xdr.LedgerEntry) {
 
 		signerSponsoringIDs := accountEntry.Ext.V1.Ext.V2.SignerSponsoringIDs
 		if len(signerSponsoringIDs) > 0 {
-			signerSponsoringIDs := []string{}
-			for _, id := range accountEntry.Ext.V1.Ext.V2.SignerSponsoringIDs {
+			accountIDs := []string{}
+			// remove nil values from SignerSponsoringIDs
+			for _, id := range signerSponsoringIDs {
 				if id != nil {
-					signerSponsoringIDs = append(signerSponsoringIDs, (*id).Address())
+					accountIDs = append(accountIDs, (*id).Address())
 				}
 			}
-			if len(signerSponsoringIDs) > 0 {
-				sort.Strings(signerSponsoringIDs)
-				accountEntry.Ext.V1.Ext.V2.SignerSponsoringIDs = []xdr.SponsorshipDescriptor{}
-				for _, id := range signerSponsoringIDs {
-					accountEntry.Ext.V1.Ext.V2.SignerSponsoringIDs = append(
-						accountEntry.Ext.V1.Ext.V2.SignerSponsoringIDs,
+			if len(accountIDs) > 0 {
+				sort.Strings(accountIDs)
+				ssIDs := []xdr.SponsorshipDescriptor{}
+				for _, id := range accountIDs {
+					ssIDs = append(
+						ssIDs,
 						xdr.MustAddressPtr(id),
 					)
 
 				}
+				accountEntry.Ext.V1.Ext.V2.SignerSponsoringIDs = ssIDs
 			}
 		}
 
