@@ -568,7 +568,7 @@ func TestTransactionOperationDetails(t *testing.T) {
 			hash:          "13658aed93a0cb60582491a8eb945eb9b7737a7560324dd2b24f2acfe5090ada",
 			index:         0,
 			expected: map[string]interface{}{
-				"claimable_balance_id": "AAAAAMr+ur4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+				"claimable_balance_id": "00000000cafebabe00000000000000000000000000000000000000000000000000000000",
 			},
 		},
 	}
@@ -840,7 +840,6 @@ func TestTransactionOperationParticipants(t *testing.T) {
 			index:         0,
 			expected: []xdr.AccountId{
 				xdr.MustAddress("GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY"),
-				xdr.MustAddress("GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2"),
 			},
 		},
 		{

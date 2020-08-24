@@ -119,7 +119,8 @@ func (operation *transactionOperationWrapper) getSponsor() (*xdr.AccountId, erro
 	}
 	for _, c := range changes {
 		if c.Pre != nil || c.Post == nil {
-			// We are looking for entry creations
+			// We are only looking for entry creations denoting that a sponsor
+			// is associated to the ledger entry of the operation.
 			continue
 		}
 		if sponsorAccount := c.Post.SponsoringID(); sponsorAccount != nil {
@@ -424,11 +425,11 @@ func ledgerKeyDetails(result map[string]interface{}, ledgerKey xdr.LedgerKey, pr
 	case xdr.LedgerEntryTypeAccount:
 		result[prefix+"account_id"] = ledgerKey.Account.AccountId.Address()
 	case xdr.LedgerEntryTypeClaimableBalance:
-		b64, err := xdr.MarshalBase64(ledgerKey.ClaimableBalance.BalanceId)
+		marshalHex, err := xdr.MarshalHex(ledgerKey.ClaimableBalance.BalanceId)
 		if err != nil {
 			return errors.Wrapf(err, "in claimable balance")
 		}
-		result[prefix+"claimable_balance_id"] = b64
+		result[prefix+"claimable_balance_id"] = marshalHex
 	case xdr.LedgerEntryTypeData:
 		result[prefix+"account_id"] = ledgerKey.Data.AccountId.Address()
 		result[prefix+"data_name"] = ledgerKey.Data.DataName
@@ -492,10 +493,7 @@ func (operation *transactionOperationWrapper) Participants() ([]xdr.AccountId, e
 		beginSponsor := beginSponsoringOp.SourceAccount.ToAccountId()
 		participants = append(participants, beginSponsor)
 	case xdr.OperationTypeRevokeSponsorship:
-		revokeOp := op.Body.MustRevokeSponsorshipOp()
-		if revokeOp.Type == xdr.RevokeSponsorshipTypeRevokeSponsorshipSigner {
-			participants = append(participants, revokeOp.Signer.AccountId)
-		}
+		// the only direct participant is the source_account
 	default:
 		return participants, fmt.Errorf("Unknown operation type: %s", op.Body.Type)
 	}
