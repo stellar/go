@@ -720,10 +720,6 @@ func (operation *transactionOperationWrapper) createClaimableBalanceEffects() ([
 
 	for _, c := range op.Claimants {
 		cv0 := c.MustV0()
-		predicate, err := xdr.MarshalBase64(cv0.Predicate)
-		if err != nil {
-			panic(errors.Wrapf(err, "Invalid predicate in op: %d", operation.index))
-		}
 		effects.add(
 			cv0.Destination.Address(),
 			history.EffectClaimableBalanceClaimantCreated,
@@ -731,7 +727,7 @@ func (operation *transactionOperationWrapper) createClaimableBalanceEffects() ([
 				"balance_id": balanceID,
 				"amount":     amount.String(op.Amount),
 				"asset":      op.Asset.StringCanonical(),
-				"predicate":  predicate,
+				"predicate":  cv0.Predicate,
 			},
 		)
 	}
