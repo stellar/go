@@ -29,7 +29,6 @@ func mustNewDBSession(databaseURL string, maxIdle, maxOpen int) *db.Session {
 	return session
 }
 
-
 func mustInitHorizonDB(app *App) {
 	maxIdle := app.config.HorizonDBMaxIdleConnections
 	maxOpen := app.config.HorizonDBMaxOpenConnections
