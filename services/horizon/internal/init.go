@@ -3,6 +3,7 @@ package horizon
 import (
 	"context"
 	"net/http"
+	"runtime"
 
 	"github.com/getsentry/raven-go"
 	"github.com/prometheus/client_golang/prometheus"
@@ -120,6 +121,16 @@ func initLogglyLog(app *App) {
 }
 
 func initDbMetrics(app *App) {
+	app.buildInfoGauge = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{Namespace: "horizon", Subsystem: "build", Name: "info"},
+		[]string{"version", "goversion"},
+	)
+	app.prometheusRegistry.MustRegister(app.buildInfoGauge)
+	app.buildInfoGauge.With(prometheus.Labels{
+		"version":   app.horizonVersion,
+		"goversion": runtime.Version(),
+	}).Inc()
+
 	app.ingestingGauge = prometheus.NewGauge(
 		prometheus.GaugeOpts{Namespace: "horizon", Subsystem: "ingest", Name: "enabled"},
 	)
