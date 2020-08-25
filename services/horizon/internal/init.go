@@ -120,6 +120,11 @@ func initLogglyLog(app *App) {
 }
 
 func initDbMetrics(app *App) {
+	app.ingestingGauge = prometheus.NewGauge(
+		prometheus.GaugeOpts{Namespace: "horizon", Subsystem: "ingest", Name: "enabled"},
+	)
+	app.prometheusRegistry.MustRegister(app.ingestingGauge)
+
 	app.historyLatestLedgerCounter = prometheus.NewCounterFunc(
 		prometheus.CounterOpts{Namespace: "horizon", Subsystem: "history", Name: "latest_ledger"},
 		func() float64 {
@@ -195,6 +200,7 @@ func initIngestMetrics(app *App) {
 		return
 	}
 
+	app.ingestingGauge.Inc()
 	app.prometheusRegistry.MustRegister(app.expingester.Metrics().LedgerIngestionDuration)
 	app.prometheusRegistry.MustRegister(app.expingester.Metrics().StateVerifyDuration)
 	app.prometheusRegistry.MustRegister(app.expingester.Metrics().StateInvalidGauge)
