@@ -30,7 +30,7 @@ func NewOperationProcessor(operationsQ history.QOperations, sequence uint32) *Op
 }
 
 // ProcessTransaction process the given transaction
-func (p *OperationProcessor) ProcessTransaction(transaction io.LedgerTransaction) (err error) {
+func (p *OperationProcessor) ProcessTransaction(transaction io.LedgerTransaction) error {
 	for i, op := range transaction.Envelope.Operations() {
 		operation := transactionOperationWrapper{
 			index:          uint32(i),
@@ -38,13 +38,17 @@ func (p *OperationProcessor) ProcessTransaction(transaction io.LedgerTransaction
 			operation:      op,
 			ledgerSequence: p.sequence,
 		}
+		details, err := operation.Details()
+		if err != nil {
+			return errors.Wrapf(err, "Error obtaining details for operation %v", operation.ID())
+		}
 		var detailsJSON []byte
-		detailsJSON, err = json.Marshal(operation.Details())
+		detailsJSON, err = json.Marshal(details)
 		if err != nil {
 			return errors.Wrapf(err, "Error marshaling details for operation %v", operation.ID())
 		}
 
-		if err = p.batch.Add(
+		if err := p.batch.Add(
 			operation.ID(),
 			operation.TransactionID(),
 			operation.Order(),
@@ -56,7 +60,7 @@ func (p *OperationProcessor) ProcessTransaction(transaction io.LedgerTransaction
 		}
 	}
 
-	return err
+	return nil
 }
 
 func (p *OperationProcessor) Commit() error {
@@ -108,6 +112,24 @@ func (operation *transactionOperationWrapper) OperationType() xdr.OperationType 
 	return operation.operation.Body.Type
 }
 
+func (operation *transactionOperationWrapper) getSponsor() (*xdr.AccountId, error) {
+	changes, err := operation.transaction.GetOperationChanges(operation.index)
+	if err != nil {
+		return nil, err
+	}
+	for _, c := range changes {
+		if c.Pre != nil || c.Post == nil {
+			// We are only looking for entry creations denoting that a sponsor
+			// is associated to the ledger entry of the operation.
+			continue
+		}
+		if sponsorAccount := c.Post.SponsoringID(); sponsorAccount != nil {
+			return sponsorAccount, nil
+		}
+	}
+	return nil, nil
+}
+
 // OperationResult returns the operation's result record
 func (operation *transactionOperationWrapper) OperationResult() *xdr.OperationResultTr {
 	results, _ := operation.transaction.Result.OperationResults()
@@ -115,11 +137,20 @@ func (operation *transactionOperationWrapper) OperationResult() *xdr.OperationRe
 	return &tr
 }
 
+func (operation *transactionOperationWrapper) findPriorBeginSponsoringOp() *xdr.Operation {
+	operations := operation.transaction.Envelope.Operations()
+	for i := int(operation.index) - 1; i >= 0; i-- {
+		if operations[i].Body.Type == xdr.OperationTypeBeginSponsoringFutureReserves {
+			return &operations[i]
+		}
+	}
+	return nil
+}
+
 // Details returns the operation details as a map which can be stored as JSON.
-func (operation *transactionOperationWrapper) Details() map[string]interface{} {
+func (operation *transactionOperationWrapper) Details() (map[string]interface{}, error) {
 	details := map[string]interface{}{}
 	source := operation.SourceAccount()
-
 	switch operation.OperationType() {
 	case xdr.OperationTypeCreateAccount:
 		op := operation.operation.Body.MustCreateAccountOp()
@@ -132,7 +163,7 @@ func (operation *transactionOperationWrapper) Details() map[string]interface{} {
 		accid := op.Destination.ToAccountId()
 		details["to"] = accid.Address()
 		details["amount"] = amount.String(op.Amount)
-		assetDetails(details, op.Asset, "")
+		addAssetDetails(details, op.Asset, "")
 	case xdr.OperationTypePathPaymentStrictReceive:
 		op := operation.operation.Body.MustPathPaymentStrictReceiveOp()
 		details["from"] = source.Address()
@@ -142,8 +173,8 @@ func (operation *transactionOperationWrapper) Details() map[string]interface{} {
 		details["amount"] = amount.String(op.DestAmount)
 		details["source_amount"] = amount.String(0)
 		details["source_max"] = amount.String(op.SendMax)
-		assetDetails(details, op.DestAsset, "")
-		assetDetails(details, op.SendAsset, "source_")
+		addAssetDetails(details, op.DestAsset, "")
+		addAssetDetails(details, op.SendAsset, "source_")
 
 		if operation.transaction.Result.Successful() {
 			result := operation.OperationResult().MustPathPaymentStrictReceiveResult()
@@ -153,7 +184,7 @@ func (operation *transactionOperationWrapper) Details() map[string]interface{} {
 		var path = make([]map[string]interface{}, len(op.Path))
 		for i := range op.Path {
 			path[i] = make(map[string]interface{})
-			assetDetails(path[i], op.Path[i], "")
+			addAssetDetails(path[i], op.Path[i], "")
 		}
 		details["path"] = path
 
@@ -166,8 +197,8 @@ func (operation *transactionOperationWrapper) Details() map[string]interface{} {
 		details["amount"] = amount.String(0)
 		details["source_amount"] = amount.String(op.SendAmount)
 		details["destination_min"] = amount.String(op.DestMin)
-		assetDetails(details, op.DestAsset, "")
-		assetDetails(details, op.SendAsset, "source_")
+		addAssetDetails(details, op.DestAsset, "")
+		addAssetDetails(details, op.SendAsset, "source_")
 
 		if operation.transaction.Result.Successful() {
 			result := operation.OperationResult().MustPathPaymentStrictSendResult()
@@ -177,7 +208,7 @@ func (operation *transactionOperationWrapper) Details() map[string]interface{} {
 		var path = make([]map[string]interface{}, len(op.Path))
 		for i := range op.Path {
 			path[i] = make(map[string]interface{})
-			assetDetails(path[i], op.Path[i], "")
+			addAssetDetails(path[i], op.Path[i], "")
 		}
 		details["path"] = path
 	case xdr.OperationTypeManageBuyOffer:
@@ -189,8 +220,8 @@ func (operation *transactionOperationWrapper) Details() map[string]interface{} {
 			"n": op.Price.N,
 			"d": op.Price.D,
 		}
-		assetDetails(details, op.Buying, "buying_")
-		assetDetails(details, op.Selling, "selling_")
+		addAssetDetails(details, op.Buying, "buying_")
+		addAssetDetails(details, op.Selling, "selling_")
 	case xdr.OperationTypeManageSellOffer:
 		op := operation.operation.Body.MustManageSellOfferOp()
 		details["offer_id"] = op.OfferId
@@ -200,8 +231,8 @@ func (operation *transactionOperationWrapper) Details() map[string]interface{} {
 			"n": op.Price.N,
 			"d": op.Price.D,
 		}
-		assetDetails(details, op.Buying, "buying_")
-		assetDetails(details, op.Selling, "selling_")
+		addAssetDetails(details, op.Buying, "buying_")
+		addAssetDetails(details, op.Selling, "selling_")
 	case xdr.OperationTypeCreatePassiveSellOffer:
 		op := operation.operation.Body.MustCreatePassiveSellOfferOp()
 		details["amount"] = amount.String(op.Amount)
@@ -210,8 +241,8 @@ func (operation *transactionOperationWrapper) Details() map[string]interface{} {
 			"n": op.Price.N,
 			"d": op.Price.D,
 		}
-		assetDetails(details, op.Buying, "buying_")
-		assetDetails(details, op.Selling, "selling_")
+		addAssetDetails(details, op.Buying, "buying_")
+		addAssetDetails(details, op.Selling, "selling_")
 	case xdr.OperationTypeSetOptions:
 		op := operation.operation.Body.MustSetOptionsOp()
 
@@ -253,13 +284,13 @@ func (operation *transactionOperationWrapper) Details() map[string]interface{} {
 		}
 	case xdr.OperationTypeChangeTrust:
 		op := operation.operation.Body.MustChangeTrustOp()
-		assetDetails(details, op.Line, "")
+		addAssetDetails(details, op.Line, "")
 		details["trustor"] = source.Address()
 		details["trustee"] = details["asset_issuer"]
 		details["limit"] = amount.String(op.Limit)
 	case xdr.OperationTypeAllowTrust:
 		op := operation.operation.Body.MustAllowTrustOp()
-		assetDetails(details, op.Asset.ToAsset(*source), "")
+		addAssetDetails(details, op.Asset.ToAsset(*source), "")
 		details["trustee"] = source.Address()
 		details["trustor"] = op.Trustor.Address()
 		details["authorize"] = xdr.TrustLineFlags(op.Authorize).IsAuthorized()
@@ -304,19 +335,44 @@ func (operation *transactionOperationWrapper) Details() map[string]interface{} {
 		}
 		details["balance_id"] = balanceID
 		details["claimant"] = source.Address()
-	case xdr.OperationTypeBeginSponsoringFutureReserves,
-		xdr.OperationTypeEndSponsoringFutureReserves,
-		xdr.OperationTypeRevokeSponsorship:
-		// TBD
+	case xdr.OperationTypeBeginSponsoringFutureReserves:
+		op := operation.operation.Body.MustBeginSponsoringFutureReservesOp()
+		details["sponsored_id"] = op.SponsoredId.Address()
+	case xdr.OperationTypeEndSponsoringFutureReserves:
+		beginSponsoringOp := operation.findPriorBeginSponsoringOp()
+		if beginSponsoringOp == nil {
+			return nil, fmt.Errorf("prior Begin operation not found for EndSponsoringFutureReserves")
+		}
+		beginSponsor := beginSponsoringOp.SourceAccount.ToAccountId()
+		details["begin_sponsor"] = beginSponsor.Address()
+	case xdr.OperationTypeRevokeSponsorship:
+		op := operation.operation.Body.MustRevokeSponsorshipOp()
+		switch op.Type {
+		case xdr.RevokeSponsorshipTypeRevokeSponsorshipLedgerEntry:
+			if err := addLedgerKeyDetails(details, *op.LedgerKey, ""); err != nil {
+				return nil, err
+			}
+		case xdr.RevokeSponsorshipTypeRevokeSponsorshipSigner:
+			details["signer_account_id"] = op.Signer.AccountId.Address()
+			details["signer_key"] = op.Signer.SignerKey.Address()
+		}
 	default:
 		panic(fmt.Errorf("Unknown operation type: %s", operation.OperationType()))
 	}
 
-	return details
+	sponsor, err := operation.getSponsor()
+	if err != nil {
+		return nil, err
+	}
+	if sponsor != nil {
+		details["sponsor"] = sponsor.Address()
+	}
+
+	return details, nil
 }
 
-// assetDetails sets the details for `a` on `result` using keys with `prefix`
-func assetDetails(result map[string]interface{}, a xdr.Asset, prefix string) error {
+// addAssetDetails sets the details for `a` on `result` using keys with `prefix`
+func addAssetDetails(result map[string]interface{}, a xdr.Asset, prefix string) error {
 	var (
 		assetType string
 		code      string
@@ -364,11 +420,32 @@ func operationFlagDetails(result map[string]interface{}, f int32, prefix string)
 	result[prefix+"_flags_s"] = s
 }
 
+func addLedgerKeyDetails(result map[string]interface{}, ledgerKey xdr.LedgerKey, prefix string) error {
+	switch ledgerKey.Type {
+	case xdr.LedgerEntryTypeAccount:
+		result[prefix+"account_id"] = ledgerKey.Account.AccountId.Address()
+	case xdr.LedgerEntryTypeClaimableBalance:
+		marshalHex, err := xdr.MarshalHex(ledgerKey.ClaimableBalance.BalanceId)
+		if err != nil {
+			return errors.Wrapf(err, "in claimable balance")
+		}
+		result[prefix+"claimable_balance_id"] = marshalHex
+	case xdr.LedgerEntryTypeData:
+		result[prefix+"account_id"] = ledgerKey.Data.AccountId.Address()
+		result[prefix+"data_name"] = ledgerKey.Data.DataName
+	case xdr.LedgerEntryTypeOffer:
+		result[prefix+"offer_id"] = ledgerKey.Offer.OfferId
+	case xdr.LedgerEntryTypeTrustline:
+		result[prefix+"account_id"] = ledgerKey.TrustLine.AccountId.Address()
+		addAssetDetails(result, ledgerKey.TrustLine.Asset, prefix)
+	}
+	return nil
+}
+
 // Participants returns the accounts taking part in the operation.
 func (operation *transactionOperationWrapper) Participants() ([]xdr.AccountId, error) {
 	participants := []xdr.AccountId{}
 	participants = append(participants, *operation.SourceAccount())
-
 	op := operation.operation
 
 	switch operation.OperationType() {
@@ -406,12 +483,27 @@ func (operation *transactionOperationWrapper) Participants() ([]xdr.AccountId, e
 		}
 	case xdr.OperationTypeClaimClaimableBalance:
 		// the only direct participant is the source_account
-	case xdr.OperationTypeBeginSponsoringFutureReserves,
-		xdr.OperationTypeEndSponsoringFutureReserves,
-		xdr.OperationTypeRevokeSponsorship:
-		// TBD
+	case xdr.OperationTypeBeginSponsoringFutureReserves:
+		participants = append(participants, op.Body.MustBeginSponsoringFutureReservesOp().SponsoredId)
+	case xdr.OperationTypeEndSponsoringFutureReserves:
+		beginSponsoringOp := operation.findPriorBeginSponsoringOp()
+		if beginSponsoringOp == nil {
+			return nil, fmt.Errorf("prior Begin operation not found for EndSponsoringFutureReserves")
+		}
+		beginSponsor := beginSponsoringOp.SourceAccount.ToAccountId()
+		participants = append(participants, beginSponsor)
+	case xdr.OperationTypeRevokeSponsorship:
+		// the only direct participant is the source_account
 	default:
 		return participants, fmt.Errorf("Unknown operation type: %s", op.Body.Type)
+	}
+
+	sponsor, err := operation.getSponsor()
+	if err != nil {
+		return nil, err
+	}
+	if sponsor != nil {
+		participants = append(participants, *sponsor)
 	}
 
 	return dedupe(participants), nil

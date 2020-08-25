@@ -169,7 +169,7 @@ func participantsForTransaction(
 		p, err := operation.Participants()
 		if err != nil {
 			return nil, errors.Wrapf(
-				err, "could not determin operation %v participants", operation.ID(),
+				err, "could not determine operation %v participants", operation.ID(),
 			)
 		}
 		participants = append(participants, p...)

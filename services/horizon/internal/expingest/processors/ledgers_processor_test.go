@@ -47,9 +47,12 @@ func createTransaction(successful bool, numOps int) io.LedgerTransaction {
 	sourceAID := xdr.MustAddress("GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY")
 	return io.LedgerTransaction{
 		Result: xdr.TransactionResultPair{
+			TransactionHash: xdr.Hash{},
 			Result: xdr.TransactionResult{
 				Result: xdr.TransactionResultResult{
-					Code: code,
+					Code:            code,
+					InnerResultPair: &xdr.InnerTransactionResultPair{},
+					Results:         &[]xdr.OperationResult{},
 				},
 			},
 		},
@@ -60,6 +63,12 @@ func createTransaction(successful bool, numOps int) io.LedgerTransaction {
 					SourceAccount: sourceAID.ToMuxedAccount(),
 					Operations:    operations,
 				},
+			},
+		},
+		Meta: xdr.TransactionMeta{
+			V: 2,
+			V2: &xdr.TransactionMetaV2{
+				Operations: make([]xdr.OperationMeta, numOps, numOps),
 			},
 		},
 	}

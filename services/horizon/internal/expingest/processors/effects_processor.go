@@ -260,7 +260,7 @@ func (operation *transactionOperationWrapper) paymentEffects() []effect {
 	}
 
 	details := map[string]interface{}{"amount": amount.String(op.Amount)}
-	assetDetails(details, op.Asset, "")
+	addAssetDetails(details, op.Asset, "")
 
 	aid := op.Destination.ToAccountId()
 	effects.add(
@@ -283,7 +283,7 @@ func (operation *transactionOperationWrapper) pathPaymentStrictReceiveEffects() 
 	source := operation.SourceAccount()
 
 	details := map[string]interface{}{"amount": amount.String(op.DestAmount)}
-	assetDetails(details, op.DestAsset, "")
+	addAssetDetails(details, op.DestAsset, "")
 
 	effects := effectsWrapper{
 		effects:   []effect{},
@@ -299,7 +299,7 @@ func (operation *transactionOperationWrapper) pathPaymentStrictReceiveEffects() 
 
 	result := operation.OperationResult().MustPathPaymentStrictReceiveResult()
 	details = map[string]interface{}{"amount": amount.String(result.SendAmount())}
-	assetDetails(details, op.SendAsset, "")
+	addAssetDetails(details, op.SendAsset, "")
 
 	effects.add(
 		source.Address(),
@@ -323,12 +323,12 @@ func (operation *transactionOperationWrapper) pathPaymentStrictSendEffects() []e
 	result := operation.OperationResult().MustPathPaymentStrictSendResult()
 
 	details := map[string]interface{}{"amount": amount.String(result.DestAmount())}
-	assetDetails(details, op.DestAsset, "")
+	addAssetDetails(details, op.DestAsset, "")
 	aid := op.Destination.ToAccountId()
 	effects.add(aid.Address(), history.EffectAccountCredited, details)
 
 	details = map[string]interface{}{"amount": amount.String(op.SendAmount)}
-	assetDetails(details, op.SendAsset, "")
+	addAssetDetails(details, op.SendAsset, "")
 	effects.add(source.Address(), history.EffectAccountDebited, details)
 
 	ingestTradeEffects(&effects, *source, resultSuccess.Offers)
@@ -520,7 +520,7 @@ func (operation *transactionOperationWrapper) changeTrustEffects() ([]effect, er
 	if len(changes) > 0 {
 		details := map[string]interface{}{"limit": amount.String(op.Limit)}
 		effect := history.EffectType(0)
-		assetDetails(details, op.Line, "")
+		addAssetDetails(details, op.Line, "")
 
 		for _, change := range changes {
 			if change.Type != xdr.LedgerEntryTypeTrustline {
@@ -558,7 +558,7 @@ func (operation *transactionOperationWrapper) allowTrustEffects() []effect {
 	details := map[string]interface{}{
 		"trustor": op.Trustor.Address(),
 	}
-	assetDetails(details, asset, "")
+	addAssetDetails(details, asset, "")
 
 	switch {
 	case xdr.TrustLineFlags(op.Authorize).IsAuthorized():
@@ -739,7 +739,7 @@ func (operation *transactionOperationWrapper) createClaimableBalanceEffects() ([
 	details := map[string]interface{}{
 		"amount": amount.String(op.Amount),
 	}
-	assetDetails(details, op.Asset, "")
+	addAssetDetails(details, op.Asset, "")
 	effects.add(
 		operation.SourceAccount().Address(),
 		history.EffectAccountDebited,
@@ -799,7 +799,7 @@ func (operation *transactionOperationWrapper) claimClaimableBalanceEffects() ([]
 	details := map[string]interface{}{
 		"amount": amount.String(cBalance.Amount),
 	}
-	assetDetails(details, cBalance.Asset, "")
+	addAssetDetails(details, cBalance.Asset, "")
 	effects.add(
 		operation.SourceAccount().Address(),
 		history.EffectAccountCredited,
@@ -855,8 +855,8 @@ func tradeDetails(buyer, seller xdr.AccountId, claim xdr.ClaimOfferAtom) (bd map
 		"bought_amount": amount.String(claim.AmountSold),
 		"sold_amount":   amount.String(claim.AmountBought),
 	}
-	assetDetails(bd, claim.AssetSold, "bought_")
-	assetDetails(bd, claim.AssetBought, "sold_")
+	addAssetDetails(bd, claim.AssetSold, "bought_")
+	addAssetDetails(bd, claim.AssetBought, "sold_")
 
 	sd = map[string]interface{}{
 		"offer_id":      claim.OfferId,
@@ -864,8 +864,8 @@ func tradeDetails(buyer, seller xdr.AccountId, claim xdr.ClaimOfferAtom) (bd map
 		"bought_amount": amount.String(claim.AmountBought),
 		"sold_amount":   amount.String(claim.AmountSold),
 	}
-	assetDetails(sd, claim.AssetBought, "bought_")
-	assetDetails(sd, claim.AssetSold, "sold_")
+	addAssetDetails(sd, claim.AssetBought, "bought_")
+	addAssetDetails(sd, claim.AssetSold, "sold_")
 
 	return
 }
