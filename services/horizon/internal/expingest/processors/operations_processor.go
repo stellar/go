@@ -163,7 +163,7 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 		accid := op.Destination.ToAccountId()
 		details["to"] = accid.Address()
 		details["amount"] = amount.String(op.Amount)
-		assetDetails(details, op.Asset, "")
+		addAssetDetails(details, op.Asset, "")
 	case xdr.OperationTypePathPaymentStrictReceive:
 		op := operation.operation.Body.MustPathPaymentStrictReceiveOp()
 		details["from"] = source.Address()
@@ -173,8 +173,8 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 		details["amount"] = amount.String(op.DestAmount)
 		details["source_amount"] = amount.String(0)
 		details["source_max"] = amount.String(op.SendMax)
-		assetDetails(details, op.DestAsset, "")
-		assetDetails(details, op.SendAsset, "source_")
+		addAssetDetails(details, op.DestAsset, "")
+		addAssetDetails(details, op.SendAsset, "source_")
 
 		if operation.transaction.Result.Successful() {
 			result := operation.OperationResult().MustPathPaymentStrictReceiveResult()
@@ -184,7 +184,7 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 		var path = make([]map[string]interface{}, len(op.Path))
 		for i := range op.Path {
 			path[i] = make(map[string]interface{})
-			assetDetails(path[i], op.Path[i], "")
+			addAssetDetails(path[i], op.Path[i], "")
 		}
 		details["path"] = path
 
@@ -197,8 +197,8 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 		details["amount"] = amount.String(0)
 		details["source_amount"] = amount.String(op.SendAmount)
 		details["destination_min"] = amount.String(op.DestMin)
-		assetDetails(details, op.DestAsset, "")
-		assetDetails(details, op.SendAsset, "source_")
+		addAssetDetails(details, op.DestAsset, "")
+		addAssetDetails(details, op.SendAsset, "source_")
 
 		if operation.transaction.Result.Successful() {
 			result := operation.OperationResult().MustPathPaymentStrictSendResult()
@@ -208,7 +208,7 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 		var path = make([]map[string]interface{}, len(op.Path))
 		for i := range op.Path {
 			path[i] = make(map[string]interface{})
-			assetDetails(path[i], op.Path[i], "")
+			addAssetDetails(path[i], op.Path[i], "")
 		}
 		details["path"] = path
 	case xdr.OperationTypeManageBuyOffer:
@@ -220,8 +220,8 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 			"n": op.Price.N,
 			"d": op.Price.D,
 		}
-		assetDetails(details, op.Buying, "buying_")
-		assetDetails(details, op.Selling, "selling_")
+		addAssetDetails(details, op.Buying, "buying_")
+		addAssetDetails(details, op.Selling, "selling_")
 	case xdr.OperationTypeManageSellOffer:
 		op := operation.operation.Body.MustManageSellOfferOp()
 		details["offer_id"] = op.OfferId
@@ -231,8 +231,8 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 			"n": op.Price.N,
 			"d": op.Price.D,
 		}
-		assetDetails(details, op.Buying, "buying_")
-		assetDetails(details, op.Selling, "selling_")
+		addAssetDetails(details, op.Buying, "buying_")
+		addAssetDetails(details, op.Selling, "selling_")
 	case xdr.OperationTypeCreatePassiveSellOffer:
 		op := operation.operation.Body.MustCreatePassiveSellOfferOp()
 		details["amount"] = amount.String(op.Amount)
@@ -241,8 +241,8 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 			"n": op.Price.N,
 			"d": op.Price.D,
 		}
-		assetDetails(details, op.Buying, "buying_")
-		assetDetails(details, op.Selling, "selling_")
+		addAssetDetails(details, op.Buying, "buying_")
+		addAssetDetails(details, op.Selling, "selling_")
 	case xdr.OperationTypeSetOptions:
 		op := operation.operation.Body.MustSetOptionsOp()
 
@@ -284,13 +284,13 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 		}
 	case xdr.OperationTypeChangeTrust:
 		op := operation.operation.Body.MustChangeTrustOp()
-		assetDetails(details, op.Line, "")
+		addAssetDetails(details, op.Line, "")
 		details["trustor"] = source.Address()
 		details["trustee"] = details["asset_issuer"]
 		details["limit"] = amount.String(op.Limit)
 	case xdr.OperationTypeAllowTrust:
 		op := operation.operation.Body.MustAllowTrustOp()
-		assetDetails(details, op.Asset.ToAsset(*source), "")
+		addAssetDetails(details, op.Asset.ToAsset(*source), "")
 		details["trustee"] = source.Address()
 		details["trustor"] = op.Trustor.Address()
 		details["authorize"] = xdr.TrustLineFlags(op.Authorize).IsAuthorized()
@@ -349,7 +349,7 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 		op := operation.operation.Body.MustRevokeSponsorshipOp()
 		switch op.Type {
 		case xdr.RevokeSponsorshipTypeRevokeSponsorshipLedgerEntry:
-			if err := ledgerKeyDetails(details, *op.LedgerKey, ""); err != nil {
+			if err := addLedgerKeyDetails(details, *op.LedgerKey, ""); err != nil {
 				return nil, err
 			}
 		case xdr.RevokeSponsorshipTypeRevokeSponsorshipSigner:
@@ -371,8 +371,8 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 	return details, nil
 }
 
-// assetDetails sets the details for `a` on `result` using keys with `prefix`
-func assetDetails(result map[string]interface{}, a xdr.Asset, prefix string) error {
+// addAssetDetails sets the details for `a` on `result` using keys with `prefix`
+func addAssetDetails(result map[string]interface{}, a xdr.Asset, prefix string) error {
 	var (
 		assetType string
 		code      string
@@ -420,7 +420,7 @@ func operationFlagDetails(result map[string]interface{}, f int32, prefix string)
 	result[prefix+"_flags_s"] = s
 }
 
-func ledgerKeyDetails(result map[string]interface{}, ledgerKey xdr.LedgerKey, prefix string) error {
+func addLedgerKeyDetails(result map[string]interface{}, ledgerKey xdr.LedgerKey, prefix string) error {
 	switch ledgerKey.Type {
 	case xdr.LedgerEntryTypeAccount:
 		result[prefix+"account_id"] = ledgerKey.Account.AccountId.Address()
@@ -437,7 +437,7 @@ func ledgerKeyDetails(result map[string]interface{}, ledgerKey xdr.LedgerKey, pr
 		result[prefix+"offer_id"] = ledgerKey.Offer.OfferId
 	case xdr.LedgerEntryTypeTrustline:
 		result[prefix+"account_id"] = ledgerKey.TrustLine.AccountId.Address()
-		assetDetails(result, ledgerKey.TrustLine.Asset, prefix)
+		addAssetDetails(result, ledgerKey.TrustLine.Asset, prefix)
 	}
 	return nil
 }
