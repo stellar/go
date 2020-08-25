@@ -113,7 +113,7 @@ func (s *APITestSuite) TestLatestSeqSucceeds() {
 	s.ledgerBackend.On("GetLatestLedgerSequence").Return(expectedSeq, nil).Once()
 	seq, err := s.api.GetLatestLedgerSequence()
 	s.Assert().NoError(err)
-	s.Assert().Equal(seq, LatestLedgerSequenceResponse{Sequence: expectedSeq})
+	s.Assert().Equal(seq, ledgerbackend.LatestLedgerSequenceResponse{Sequence: expectedSeq})
 }
 
 func (s *APITestSuite) TestGetLedgerSucceeds() {
@@ -133,9 +133,9 @@ func (s *APITestSuite) TestGetLedgerSucceeds() {
 	seq, err := s.api.GetLedger(64)
 
 	s.Assert().NoError(err)
-	s.Assert().Equal(seq, LedgerResponse{
+	s.Assert().Equal(seq, ledgerbackend.LedgerResponse{
 		Present: true,
-		Ledger:  Base64Ledger(expectedLedger),
+		Ledger:  ledgerbackend.Base64Ledger(expectedLedger),
 	})
 }
 

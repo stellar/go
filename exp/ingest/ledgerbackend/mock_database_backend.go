@@ -21,9 +21,9 @@ func (m *MockDatabaseBackend) PrepareRange(ledgerRange Range) error {
 	return args.Error(0)
 }
 
-func (m *MockDatabaseBackend) IsPrepared(ledgerRange Range) bool {
+func (m *MockDatabaseBackend) IsPrepared(ledgerRange Range) (bool, error) {
 	args := m.Called(ledgerRange)
-	return args.Bool(0)
+	return args.Bool(0), args.Error(1)
 }
 
 func (m *MockDatabaseBackend) GetLedger(sequence uint32) (bool, xdr.LedgerCloseMeta, error) {
