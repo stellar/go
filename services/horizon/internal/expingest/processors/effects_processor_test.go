@@ -1381,8 +1381,13 @@ func TestOperationEffectsAllowTrustAuthorizedToMaintainLiabilities(t *testing.T)
 	}
 
 	operation := transactionOperationWrapper{
-		index:          0,
-		transaction:    io.LedgerTransaction{},
+		index: 0,
+		transaction: io.LedgerTransaction{
+			Meta: xdr.TransactionMeta{
+				V:  2,
+				V2: &xdr.TransactionMetaV2{},
+			},
+		},
 		operation:      op,
 		ledgerSequence: 1,
 	}
@@ -1513,7 +1518,10 @@ func (s *CreateClaimableBalanceEffectsTestSuite) SetupTest() {
 			},
 		},
 		FeeChanges: xdr.LedgerEntryChanges{},
-		Meta:       xdr.TransactionMeta{},
+		Meta: xdr.TransactionMeta{
+			V:  2,
+			V2: &xdr.TransactionMetaV2{},
+		},
 	}
 }
 func (s *CreateClaimableBalanceEffectsTestSuite) TestEffects() {

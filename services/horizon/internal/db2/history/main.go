@@ -122,6 +122,15 @@ const (
 
 	// EffectClaimableBalanceClaimed occurs when a claimable balance is claimed
 	EffectClaimableBalanceClaimed EffectType = 52 // from claim_claimable_balance
+
+	// EffectSponsorshipCreated occurs when a ledger entry is sponsored
+	EffectSponsorshipCreated EffectType = 60 // from any operation with a ledger entry
+
+	// EffectSponsorshipUpdated occurs when a ledger entry stops being sponsored
+	EffectSponsorshipUpdated EffectType = 61 // from any operation with a ledger entry
+
+	// EffectSponsorshipRemoved occurs when the sponsorship of a ledger entry is updated
+	EffectSponsorshipRemoved EffectType = 62 // from any operation with a ledger entry or revoke_sponsorship(signer)
 )
 
 // Account is a row of data from the `history_accounts` table
