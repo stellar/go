@@ -120,6 +120,11 @@ func initLogglyLog(app *App) {
 }
 
 func initDbMetrics(app *App) {
+	app.ingestingGauge = prometheus.NewGauge(
+		prometheus.GaugeOpts{Namespace: "horizon", Subsystem: "ingest", Name: "enabled"},
+	)
+	app.prometheusRegistry.MustRegister(app.ingestingGauge)
+
 	app.historyLatestLedgerCounter = prometheus.NewCounterFunc(
 		prometheus.CounterOpts{Namespace: "horizon", Subsystem: "history", Name: "latest_ledger"},
 		func() float64 {
@@ -191,7 +196,7 @@ func initDbMetrics(app *App) {
 			Help: "total time blocked waiting for a new connection",
 		},
 		func() float64 {
-			return float64(app.historyQ.Session.DB.Stats().WaitDuration)
+			return app.historyQ.Session.DB.Stats().WaitDuration.Seconds()
 		},
 	)
 	app.prometheusRegistry.MustRegister(app.dbWaitDurationCounter)
@@ -206,6 +211,7 @@ func initIngestMetrics(app *App) {
 		return
 	}
 
+	app.ingestingGauge.Inc()
 	app.prometheusRegistry.MustRegister(app.expingester.Metrics().LedgerIngestionDuration)
 	app.prometheusRegistry.MustRegister(app.expingester.Metrics().StateVerifyDuration)
 	app.prometheusRegistry.MustRegister(app.expingester.Metrics().StateInvalidGauge)
