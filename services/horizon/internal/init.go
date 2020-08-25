@@ -152,6 +152,17 @@ func initDbMetrics(app *App) {
 	)
 	app.prometheusRegistry.MustRegister(app.coreLatestLedgerCounter)
 
+	app.dbMaxOpenConnectionsGauge = prometheus.NewGaugeFunc(
+		prometheus.GaugeOpts{Namespace: "horizon", Subsystem: "db", Name: "max_open_connections"},
+		func() float64 {
+			// Right now MaxOpenConnections in Horizon is static however it's possible that
+			// it will change one day. In such case, using GaugeFunc is very cheap and will
+			// prevent issues with this metric in the future.
+			return float64(app.historyQ.Session.DB.Stats().MaxOpenConnections)
+		},
+	)
+	app.prometheusRegistry.MustRegister(app.dbMaxOpenConnectionsGauge)
+
 	app.dbOpenConnectionsGauge = prometheus.NewGaugeFunc(
 		prometheus.GaugeOpts{Namespace: "horizon", Subsystem: "db", Name: "open_connections"},
 		func() float64 {

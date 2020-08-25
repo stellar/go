@@ -71,6 +71,7 @@ type App struct {
 	ingestingGauge             prometheus.Gauge
 	historyLatestLedgerCounter prometheus.CounterFunc
 	historyElderLedgerCounter  prometheus.CounterFunc
+	dbMaxOpenConnectionsGauge  prometheus.GaugeFunc
 	dbOpenConnectionsGauge     prometheus.GaugeFunc
 	dbInUseConnectionsGauge    prometheus.GaugeFunc
 	dbWaitCountCounter         prometheus.CounterFunc
