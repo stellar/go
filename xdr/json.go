@@ -3,6 +3,7 @@ package xdr
 import (
 	"encoding/json"
 	"fmt"
+	"time"
 )
 
 type claimPredicateJSON struct {
@@ -10,7 +11,7 @@ type claimPredicateJSON struct {
 	Or            *[]claimPredicateJSON `json:"or,omitempty"`
 	Not           *claimPredicateJSON   `json:"not,omitempty"`
 	Unconditional bool                  `json:"unconditional,omitempty"`
-	AbsBefore     *int64                `json:"absBefore,omitempty"`
+	AbsBefore     *time.Time            `json:"absBefore,omitempty"`
 	RelBefore     *int64                `json:"relBefore,omitempty"`
 }
 
@@ -38,7 +39,7 @@ func (c claimPredicateJSON) toXDR() (ClaimPredicate, error) {
 		result.Type = ClaimPredicateTypeClaimPredicateBeforeRelativeTime
 		result.RelBefore = &relBefore
 	case c.AbsBefore != nil:
-		absBefore := Int64(*c.AbsBefore)
+		absBefore := Int64((*c.AbsBefore).UTC().Unix())
 		result.Type = ClaimPredicateTypeClaimPredicateBeforeAbsoluteTime
 		result.AbsBefore = &absBefore
 	case c.Not != nil:
@@ -97,8 +98,8 @@ func (c ClaimPredicate) toJSON() (claimPredicateJSON, error) {
 		payload.Not = new(claimPredicateJSON)
 		*payload.Not, err = c.MustNotPredicate().toJSON()
 	case ClaimPredicateTypeClaimPredicateBeforeAbsoluteTime:
-		payload.AbsBefore = new(int64)
-		*payload.AbsBefore = int64(c.MustAbsBefore())
+		payload.AbsBefore = new(time.Time)
+		*payload.AbsBefore = time.Unix(int64(c.MustAbsBefore()), 0).UTC()
 	case ClaimPredicateTypeClaimPredicateBeforeRelativeTime:
 		payload.RelBefore = new(int64)
 		*payload.RelBefore = int64(c.MustRelBefore())

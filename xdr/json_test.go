@@ -11,7 +11,7 @@ func TestClaimPredicateJSON(t *testing.T) {
 		Type: ClaimPredicateTypeClaimPredicateUnconditional,
 	}
 	relBefore := Int64(12)
-	absBefore := Int64(34)
+	absBefore := Int64(1598440539)
 
 	source := ClaimPredicate{
 		Type: ClaimPredicateTypeClaimPredicateAnd,
@@ -40,7 +40,7 @@ func TestClaimPredicateJSON(t *testing.T) {
 	assert.NoError(t, err)
 	assert.JSONEq(
 		t,
-		`{"and":[{"or":[{"relBefore":12},{"absBefore":34}]},{"not":{"unconditional":true}}]}`,
+		`{"and":[{"or":[{"relBefore":12},{"absBefore":"2020-08-26T11:15:39Z"}]},{"not":{"unconditional":true}}]}`,
 		string(serialized),
 	)
 
