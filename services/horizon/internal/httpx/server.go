@@ -27,10 +27,14 @@ type ServerMetrics struct {
 // Web contains the http server related fields for horizon: the Router,
 // rate limiter, etc.
 type Server struct {
-	Router         *Router
-	Metrics        *ServerMetrics
-	server         *http.Server
+	Router   *Router
+	Metrics  *ServerMetrics
+	server   *http.Server
+	tlsFiles *struct {
+		certFile, keyFile string
+	}
 	internalServer *http.Server
+	sync.RWMutex
 }
 
 func init() {
@@ -46,7 +50,7 @@ func init() {
 	problem.RegisterError(db.ErrCancelled, hProblem.ServiceUnavailable)
 }
 
-func NewServer(config *RouterConfig) (*Server, error) {
+func NewServer(config *RouterConfig, port uint16, certFile, keyFile string, adminPort uint16) (*Server, error) {
 	sm := &ServerMetrics{
 		RequestDurationSummary: prometheus.NewSummaryVec(
 			prometheus.SummaryOpts{
@@ -56,47 +60,52 @@ func NewServer(config *RouterConfig) (*Server, error) {
 			[]string{"status", "route", "streaming", "method"},
 		),
 	}
-
 	router, err := NewRouter(config, sm)
 	if err != nil {
 		return nil, err
 	}
+	addr := fmt.Sprintf(":%d", port)
 	result := &Server{
 		Router:  router,
 		Metrics: sm,
+		server: &http.Server{
+			Addr:        addr,
+			Handler:     router,
+			ReadTimeout: 5 * time.Second,
+		},
+	}
+	if certFile != "" && keyFile != "" {
+		result.tlsFiles = &struct {
+			certFile, keyFile string
+		}{keyFile, certFile}
+	}
+	if adminPort != 0 {
+		adminAddr := fmt.Sprintf(":%d", adminPort)
+		result.internalServer = &http.Server{
+			Addr:        adminAddr,
+			Handler:     result.Router.Internal,
+			ReadTimeout: 5 * time.Second,
+		}
 	}
 	return result, nil
 }
-func (s *Server) Serve(port uint16, certFile, keyFile string, adminPort uint16) error {
+func (s *Server) Serve() error {
 	if s.server != nil {
 		return errors.New("server already started")
 	}
 
-	if adminPort != 0 {
+	if s.internalServer != nil {
 		go func() {
-			adminAddr := fmt.Sprintf(":%d", adminPort)
-			log.Infof("Starting internal server on %s", adminAddr)
-			s.internalServer = &http.Server{
-				Addr:        adminAddr,
-				Handler:     s.Router.Internal,
-				ReadTimeout: 5 * time.Second,
-			}
+			log.Infof("Starting internal server on %s", s.internalServer.Addr)
 			if err := s.internalServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 				log.Warn(errors.Wrap(err, "error in internalServer.ListenAndServe()"))
 			}
 		}()
 	}
 
-	addr := fmt.Sprintf(":%d", port)
-	s.server = &http.Server{
-		Addr:        addr,
-		Handler:     s.Router,
-		ReadTimeout: 5 * time.Second,
-	}
-
 	var err error
-	if certFile != "" {
-		err = s.server.ListenAndServeTLS(certFile, keyFile)
+	if s.tlsFiles != nil {
+		err = s.server.ListenAndServeTLS(s.tlsFiles.certFile, s.tlsFiles.keyFile)
 	} else {
 		err = s.server.ListenAndServe()
 	}

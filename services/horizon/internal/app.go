@@ -133,7 +133,7 @@ func (a *App) Serve() {
 	}()
 	go a.waitForDone()
 
-	err := a.webServer.Serve(uint16(a.config.Port), a.config.TLSCert, a.config.TLSKey, uint16(a.config.AdminPort))
+	err := a.webServer.Serve()
 	if err != nil && err != http.ErrServerClosed {
 		log.Fatal(err)
 	}
@@ -466,7 +466,8 @@ func (a *App) init() error {
 	}
 
 	var err error
-	a.webServer, err = httpx.NewServer(webConfig)
+	a.webServer, err = httpx.NewServer(
+		webConfig, uint16(a.config.Port), a.config.TLSCert, a.config.TLSKey, uint16(a.config.AdminPort))
 	if err != nil {
 		return err
 	}
