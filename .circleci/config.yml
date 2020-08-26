@@ -362,19 +362,12 @@ workflows:
       - test_code_1_13_postgres10
       - test_code_1_14
       - test_code_1_14_postgres10
+      - test_horizon_integration
       - publish_state_diff_docker_image:
           filters:
               branches:
                 only:
                   - master
-
-  run_horizon_integration_tests:
-    jobs:
-      - start_horizon_integration_tests:
-          type: approval
-      - test_horizon_integration:
-          requires:
-           - start_horizon_integration_tests
 
   build_and_deploy:
     jobs:
