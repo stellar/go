@@ -43,8 +43,11 @@ const (
 	//      everything else).
 	CurrentVersion = 10
 
-	// MaxDBConnections is the size of the postgres connection pool dedicated to Horizon ingestion
-	MaxDBConnections = 2
+	// MaxDBConnections is the size of the postgres connection pool dedicated to Horizon ingestion:
+	//  * Ledger ingestion,
+	//  * State verifications,
+	//  * Metrics updates.
+	MaxDBConnections = 3
 
 	defaultCoreCursorName           = "HORIZON"
 	stateVerificationErrorThreshold = 3
@@ -223,7 +226,7 @@ func (s *system) initMetrics() {
 			Help: "equals 1 if state invalid, 0 otherwise",
 		},
 		func() float64 {
-			invalid, err := s.historyQ.GetExpStateInvalid()
+			invalid, err := s.historyQ.CloneIngestionQ().GetExpStateInvalid()
 			if err != nil {
 				log.WithError(err).Error("Error in initMetrics/GetExpStateInvalid")
 				return 0
