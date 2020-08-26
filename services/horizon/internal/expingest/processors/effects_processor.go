@@ -265,7 +265,7 @@ func (e *effectsWrapper) addLedgerEntrySponsoringEffects() error {
 			)
 		case change.Pre != nil && change.Pre.SponsoringID() != nil &&
 			change.Post != nil && change.Post.SponsoringID() != nil:
-			e.add(e.operation.SourceAccount().Address(), history.EffectSponsorshipRemoved,
+			e.add(e.operation.SourceAccount().Address(), history.EffectSponsorshipUpdated,
 				map[string]interface{}{
 					"former_sponsor": (*change.Pre.SponsoringID()).Address(),
 					"new_sponsor":    (*change.Post.SponsoringID()).Address(),
@@ -431,8 +431,8 @@ func (e *effectsWrapper) addSetOptionsEffects() error {
 	}
 
 	flagDetails := map[string]interface{}{}
-	effectFlagDetails(flagDetails, op.SetFlags, true)
-	effectFlagDetails(flagDetails, op.ClearFlags, false)
+	setEffectFlagDetails(flagDetails, op.SetFlags, true)
+	setEffectFlagDetails(flagDetails, op.ClearFlags, false)
 
 	if len(flagDetails) > 0 {
 		e.add(source.Address(), history.EffectAccountFlagsUpdated, flagDetails)
@@ -799,7 +799,7 @@ func (e *effectsWrapper) addIngestTradeEffects(buyer xdr.AccountId, claims []xdr
 	}
 }
 
-func effectFlagDetails(flagDetails map[string]interface{}, flagPtr *xdr.Uint32, setValue bool) {
+func setEffectFlagDetails(flagDetails map[string]interface{}, flagPtr *xdr.Uint32, setValue bool) {
 	if flagPtr != nil {
 		flags := xdr.AccountFlags(*flagPtr)
 
