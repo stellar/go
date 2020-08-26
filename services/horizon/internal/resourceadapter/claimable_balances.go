@@ -32,12 +32,8 @@ func PopulateClaimableBalance(
 	dest.LastModifiedLedger = claimableBalance.LastModifiedLedger
 	dest.Claimants = make([]protocol.Claimant, len(claimableBalance.Claimants))
 	for i, c := range claimableBalance.Claimants {
-		predicate, err := xdr.MarshalBase64(c.Predicate)
-		if err != nil {
-			errors.Wrap(err, "failed to encode predicate to base64")
-		}
 		dest.Claimants[i].Destination = c.Destination
-		dest.Claimants[i].Predicate = predicate
+		dest.Claimants[i].Predicate = c.Predicate
 	}
 
 	lb := hal.LinkBuilder{Base: horizonContext.BaseURL(ctx)}

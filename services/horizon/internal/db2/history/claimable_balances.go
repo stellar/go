@@ -103,39 +103,6 @@ type Claimant struct {
 	Predicate   xdr.ClaimPredicate `json:"predicate"`
 }
 
-// internal representation of Claimant as a JSON. Don't use this directly, use
-// Claimant instead.
-var dbClaim struct {
-	Destination string `json:"destination"`
-	Predicate   string `json:"predicate"`
-}
-
-func (c *Claimant) MarshalJSON() ([]byte, error) {
-	dbClaim.Destination = c.Destination
-	predicate, err := xdr.MarshalBase64(c.Predicate)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to encode predicate to base64")
-	}
-	dbClaim.Predicate = predicate
-
-	return json.Marshal(dbClaim)
-}
-
-func (c *Claimant) UnmarshalJSON(data []byte) error {
-	err := json.Unmarshal(data, &dbClaim)
-	if err != nil {
-		return errors.Wrap(err, "failed decoding claimant")
-	}
-
-	c.Destination = dbClaim.Destination
-	err = xdr.SafeUnmarshalBase64(dbClaim.Predicate, &c.Predicate)
-	if err != nil {
-		return errors.Wrap(err, "failed decoding xdr.ClaimPredicate")
-	}
-
-	return nil
-}
-
 type ClaimableBalancesBatchInsertBuilder interface {
 	Add(entry *xdr.LedgerEntry) error
 	Exec() error
