@@ -682,6 +682,6 @@ func (res ClaimableBalance) PagingToken() string {
 
 // Claimant represents a claimable balance claimant
 type Claimant struct {
-	Destination string `json:"destination"`
-	Predicate   string `json:"predicate"`
+	Destination string             `json:"destination"`
+	Predicate   xdr.ClaimPredicate `json:"predicate"`
 }
