@@ -3,7 +3,6 @@ package expingest
 import (
 	"database/sql"
 	"fmt"
-	"sort"
 	"time"
 
 	"github.com/guregu/null"
@@ -27,7 +26,7 @@ const assetStatsBatchSize = 500
 // check them.
 // There is a test that checks it, to fix it: update the actual `verifyState`
 // method instead of just updating this value!
-const stateVerifierExpectedIngestionVersion = 10
+const stateVerifierExpectedIngestionVersion = 11
 
 // verifyState is called as a go routine from pipeline post hook every 64
 // ledgers. It checks if the state is correct. If another go routine is already
@@ -303,7 +302,8 @@ func addAccountsToStateVerifier(verifier *verify.StateVerifier, q history.Ingest
 
 	masterWeightMap := make(map[string]int32)
 	signersMap := make(map[string][]xdr.Signer)
-	sponsoringSignersMap := make(map[string][]string)
+	// map[accountID]map[signerKey]sponsor
+	sponsoringSignersMap := make(map[string]map[string]string)
 	for _, row := range signers {
 		if row.Account == row.Signer {
 			masterWeightMap[row.Account] = row.Weight
@@ -315,12 +315,10 @@ func addAccountsToStateVerifier(verifier *verify.StateVerifier, q history.Ingest
 					Weight: xdr.Uint32(row.Weight),
 				},
 			)
-			if !row.Sponsor.IsZero() {
-				sponsoringSignersMap[row.Account] = append(
-					sponsoringSignersMap[row.Account],
-					row.Sponsor.String,
-				)
+			if sponsoringSignersMap[row.Account] == nil {
+				sponsoringSignersMap[row.Account] = make(map[string]string)
 			}
+			sponsoringSignersMap[row.Account][row.Signer] = row.Sponsor.String
 		}
 	}
 
@@ -342,10 +340,14 @@ func addAccountsToStateVerifier(verifier *verify.StateVerifier, q history.Ingest
 				),
 			)
 		}
-		signerSponsoringIDs := []xdr.SponsorshipDescriptor{}
-		sort.Strings(sponsoringSignersMap[row.AccountID])
-		for _, sponsor := range sponsoringSignersMap[row.AccountID] {
-			signerSponsoringIDs = append(signerSponsoringIDs, xdr.MustAddressPtr(sponsor))
+
+		signers := xdr.SortSignersByKey(signersMap[row.AccountID])
+		signerSponsoringIDs := make([]xdr.SponsorshipDescriptor, len(signers))
+		for i, signer := range signers {
+			sponsor := sponsoringSignersMap[row.AccountID][signer.Key.Address()]
+			if sponsor != "" {
+				signerSponsoringIDs[i] = xdr.MustAddressPtr(sponsor)
+			}
 		}
 
 		account := &xdr.AccountEntry{
@@ -362,7 +364,7 @@ func addAccountsToStateVerifier(verifier *verify.StateVerifier, q history.Ingest
 				row.ThresholdMedium,
 				row.ThresholdHigh,
 			},
-			Signers: xdr.SortSignersByKey(signersMap[row.AccountID]),
+			Signers: signers,
 			Ext: xdr.AccountEntryExt{
 				V: 1,
 				V1: &xdr.AccountEntryExtensionV1{
@@ -605,8 +607,6 @@ func transformEntry(entry xdr.LedgerEntry) (bool, xdr.LedgerEntry) {
 	switch entry.Data.Type {
 	case xdr.LedgerEntryTypeAccount:
 		accountEntry := entry.Data.Account
-		// Sort signers
-		accountEntry.Signers = xdr.SortSignersByKey(accountEntry.Signers)
 		// Account can have ext=0. For those, create ext=1
 		// with 0 liabilities.
 		if accountEntry.Ext.V == 0 {
@@ -624,33 +624,28 @@ func transformEntry(entry xdr.LedgerEntry) (bool, xdr.LedgerEntry) {
 			accountEntry.Ext.V1.Ext.V2 = &xdr.AccountEntryExtensionV2{
 				NumSponsored:        xdr.Uint32(0),
 				NumSponsoring:       xdr.Uint32(0),
-				SignerSponsoringIDs: []xdr.SponsorshipDescriptor{},
+				SignerSponsoringIDs: make([]xdr.SponsorshipDescriptor, len(accountEntry.Signers)),
 			}
 		}
 
 		signerSponsoringIDs := accountEntry.Ext.V1.Ext.V2.SignerSponsoringIDs
-		if len(signerSponsoringIDs) > 0 {
-			accountIDs := []string{}
-			// remove nil values from SignerSponsoringIDs
-			for _, id := range signerSponsoringIDs {
-				if id != nil {
-					accountIDs = append(accountIDs, (*id).Address())
-				}
-			}
-			if len(accountIDs) > 0 {
-				sort.Strings(accountIDs)
-				ssIDs := []xdr.SponsorshipDescriptor{}
-				for _, id := range accountIDs {
-					ssIDs = append(
-						ssIDs,
-						xdr.MustAddressPtr(id),
-					)
 
-				}
-				accountEntry.Ext.V1.Ext.V2.SignerSponsoringIDs = ssIDs
-			}
+		// Map sponsors (signer => xdr.SponsorshipDescriptor)
+		sponsorsMap := make(map[string]xdr.SponsorshipDescriptor)
+		for i, signer := range accountEntry.Signers {
+			sponsorsMap[signer.Key.Address()] = signerSponsoringIDs[i]
 		}
 
+		// Sort signers
+		accountEntry.Signers = xdr.SortSignersByKey(accountEntry.Signers)
+
+		// Recreate sponsors for sorted signers
+		signerSponsoringIDs = make([]xdr.SponsorshipDescriptor, len(accountEntry.Signers))
+		for i, signer := range accountEntry.Signers {
+			signerSponsoringIDs[i] = sponsorsMap[signer.Key.Address()]
+		}
+
+		accountEntry.Ext.V1.Ext.V2.SignerSponsoringIDs = signerSponsoringIDs
 		return false, entry
 	case xdr.LedgerEntryTypeOffer:
 		// Full check of offer object

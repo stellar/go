@@ -193,9 +193,11 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 	mockChangeReader := &ingestio.MockChangeReader{}
 	mockChangeReader.On("Close").Return(nil).Once()
 	mockAccountID := "GACMZD5VJXTRLKVET72CETCYKELPNCOTTBDC6DHFEUPLG5DHEK534JQX"
+	sponsor := "GAREDQSXC7QZYJLVMTU7XZW4LSILQ4M5U4GNLO523LEWZ3JBRC5E4HLE"
 	signers := []string{
 		"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
 		"GA25GQLHJU3LPEJXEIAXK23AWEA5GWDUGRSHTQHDFT6HXHVMRULSQJUJ",
+		"GC6G3EQFKOKIIZFTJQSCHTSXBVC4XO3I64F5IBRQNS3E5SW3MO3KWGMT",
 	}
 	accountChange := ingestio.Change{
 		Type: xdr.LedgerEntryTypeAccount,
@@ -216,6 +218,10 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 							Key:    xdr.MustSigner(signers[1]),
 							Weight: 2,
 						},
+						{
+							Key:    xdr.MustSigner(signers[2]),
+							Weight: 3,
+						},
 					},
 					Ext: xdr.AccountEntryExt{
 						V: 1,
@@ -232,6 +238,7 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 									SignerSponsoringIDs: []xdr.SponsorshipDescriptor{
 										nil,
 										xdr.MustAddressPtr(mockAccountID),
+										xdr.MustAddressPtr(sponsor),
 									},
 								},
 							},
@@ -343,6 +350,12 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 			Account: mockAccountID,
 			Signer:  signers[0],
 			Weight:  1,
+		},
+		{
+			Account: mockAccountID,
+			Signer:  signers[2],
+			Weight:  3,
+			Sponsor: null.StringFrom(sponsor),
 		},
 		{
 			Account: mockAccountID,
