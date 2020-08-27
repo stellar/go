@@ -213,7 +213,7 @@ func (operation *transactionOperationWrapper) effects() ([]effect, error) {
 				},
 			)
 		}
-		// The rest of the effects of these operations are
+		// The rest of the effects of this operation are
 		// obtained  indirectly from the ledger entries
 	default:
 		return nil, fmt.Errorf("Unknown operation type: %s", op.Body.Type)
@@ -251,24 +251,31 @@ func (e *effectsWrapper) addLedgerEntrySponsoringEffects() error {
 	}
 	for _, change := range changes {
 		switch {
-		case change.Pre == nil && change.Post != nil && change.Post.SponsoringID() != nil:
+		case (change.Pre == nil || change.Pre.SponsoringID() == nil) &&
+			(change.Post != nil && change.Post.SponsoringID() != nil):
 			e.add(e.operation.SourceAccount().Address(), history.EffectSponsorshipCreated,
 				map[string]interface{}{
 					"sponsor": (*change.Post.SponsoringID()).Address(),
 				},
 			)
-		case change.Post == nil && change.Pre != nil && change.Pre.SponsoringID() != nil:
+		case (change.Pre != nil && change.Pre.SponsoringID() != nil) &&
+			(change.Post == nil || change.Post.SponsoringID() == nil):
 			e.add(e.operation.SourceAccount().Address(), history.EffectSponsorshipRemoved,
 				map[string]interface{}{
 					"former_sponsor": (*change.Pre.SponsoringID()).Address(),
 				},
 			)
-		case change.Pre != nil && change.Pre.SponsoringID() != nil &&
-			change.Post != nil && change.Post.SponsoringID() != nil:
+		case (change.Pre != nil && change.Pre.SponsoringID() != nil) &&
+			(change.Post != nil && change.Post.SponsoringID() != nil):
+			preSponsor := (*change.Pre.SponsoringID()).Address()
+			postSponsor := (*change.Post.SponsoringID()).Address()
+			if preSponsor == postSponsor {
+				continue
+			}
 			e.add(e.operation.SourceAccount().Address(), history.EffectSponsorshipUpdated,
 				map[string]interface{}{
-					"former_sponsor": (*change.Pre.SponsoringID()).Address(),
 					"new_sponsor":    (*change.Post.SponsoringID()).Address(),
+					"former_sponsor": (*change.Pre.SponsoringID()).Address(),
 				},
 			)
 
