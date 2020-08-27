@@ -7,7 +7,8 @@ services:
       - POSTGRES_PASSWORD=mysecretpassword
       - POSTGRES_DB=stellar
     ports:
-      - "5641:5432"
+      - "5641:5641"
+    command: ["-p", "5641"]
     volumes:
       - "core-db-data:/var/lib/postgresql/data"
     network_mode: '${NETWORK_MODE:-bridge}'
