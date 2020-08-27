@@ -90,10 +90,6 @@ func NewServer(config *RouterConfig, port uint16, certFile, keyFile string, admi
 	return result, nil
 }
 func (s *Server) Serve() error {
-	if s.server != nil {
-		return errors.New("server already started")
-	}
-
 	if s.internalServer != nil {
 		go func() {
 			log.Infof("Starting internal server on %s", s.internalServer.Addr)
