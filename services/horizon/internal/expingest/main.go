@@ -41,7 +41,8 @@ const (
 	//      trustlines.
 	// - 10: Fixes a bug in meta processing (fees are now processed before
 	//      everything else).
-	CurrentVersion = 10
+	// - 11: Protocol 14: CAP-23 and CAP-33.
+	CurrentVersion = 11
 
 	// MaxDBConnections is the size of the postgres connection pool dedicated to Horizon ingestion
 	MaxDBConnections = 2
