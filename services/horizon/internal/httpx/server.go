@@ -34,7 +34,6 @@ type Server struct {
 		certFile, keyFile string
 	}
 	internalServer *http.Server
-	sync.RWMutex
 }
 
 func init() {
