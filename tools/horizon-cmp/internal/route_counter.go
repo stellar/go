@@ -52,6 +52,8 @@ func (r *Routes) Count(path string) {
 }
 
 func (r *Routes) Print() {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
 	fmt.Println("Routes coverage:")
 	for _, route := range r.List {
 		fmt.Println(route.counter, route.name)
