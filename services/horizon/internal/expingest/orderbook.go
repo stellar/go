@@ -184,7 +184,9 @@ func (o *OrderBookStream) verifyAllOffers() {
 	offers := o.graph.Offers()
 	ingestionOffers, err := o.historyQ.GetAllOffers()
 	if err != nil {
-		log.WithError(err).Info("Could not verify offers because of error from GetAllOffers")
+		if !isCancelledError(err) {
+			log.WithError(err).Info("Could not verify offers because of error from GetAllOffers")
+		}
 		return
 	}
 
@@ -266,7 +268,7 @@ func (o *OrderBookStream) Run(ctx context.Context) {
 	for {
 		select {
 		case <-ticker.C:
-			if err := o.Update(); err != nil {
+			if err := o.Update(); err != nil && !isCancelledError(err) {
 				log.WithError(err).Error("could not apply updates from order book stream")
 			}
 		case <-ctx.Done():
