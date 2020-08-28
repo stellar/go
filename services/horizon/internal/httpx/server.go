@@ -24,15 +24,22 @@ type ServerMetrics struct {
 	RequestDurationSummary *prometheus.SummaryVec
 }
 
-// Web contains the http server related fields for horizon: the Router,
+type TLSConfig struct {
+	CertPath, KeyPath string
+}
+type ServerConfig struct {
+	Port      uint16
+	TLSConfig *TLSConfig
+	AdminPort uint16
+}
+
+// Server contains the http server related fields for horizon: the Router,
 // rate limiter, etc.
 type Server struct {
-	Router   *Router
-	Metrics  *ServerMetrics
-	server   *http.Server
-	tlsFiles *struct {
-		certFile, keyFile string
-	}
+	Router         *Router
+	Metrics        *ServerMetrics
+	server         *http.Server
+	config         ServerConfig
 	internalServer *http.Server
 }
 
@@ -49,7 +56,7 @@ func init() {
 	problem.RegisterError(db.ErrCancelled, hProblem.ServiceUnavailable)
 }
 
-func NewServer(config *RouterConfig, port uint16, certFile, keyFile string, adminPort uint16) (*Server, error) {
+func NewServer(serverConfig ServerConfig, routerConfig RouterConfig) (*Server, error) {
 	sm := &ServerMetrics{
 		RequestDurationSummary: prometheus.NewSummaryVec(
 			prometheus.SummaryOpts{
@@ -59,11 +66,11 @@ func NewServer(config *RouterConfig, port uint16, certFile, keyFile string, admi
 			[]string{"status", "route", "streaming", "method"},
 		),
 	}
-	router, err := NewRouter(config, sm)
+	router, err := NewRouter(&routerConfig, sm)
 	if err != nil {
 		return nil, err
 	}
-	addr := fmt.Sprintf(":%d", port)
+	addr := fmt.Sprintf(":%d", serverConfig.Port)
 	result := &Server{
 		Router:  router,
 		Metrics: sm,
@@ -73,13 +80,9 @@ func NewServer(config *RouterConfig, port uint16, certFile, keyFile string, admi
 			ReadTimeout: 5 * time.Second,
 		},
 	}
-	if certFile != "" && keyFile != "" {
-		result.tlsFiles = &struct {
-			certFile, keyFile string
-		}{keyFile, certFile}
-	}
-	if adminPort != 0 {
-		adminAddr := fmt.Sprintf(":%d", adminPort)
+
+	if serverConfig.AdminPort != 0 {
+		adminAddr := fmt.Sprintf(":%d", serverConfig.AdminPort)
 		result.internalServer = &http.Server{
 			Addr:        adminAddr,
 			Handler:     result.Router.Internal,
@@ -99,8 +102,8 @@ func (s *Server) Serve() error {
 	}
 
 	var err error
-	if s.tlsFiles != nil {
-		err = s.server.ListenAndServeTLS(s.tlsFiles.certFile, s.tlsFiles.keyFile)
+	if s.config.TLSConfig != nil {
+		err = s.server.ListenAndServeTLS(s.config.TLSConfig.CertPath, s.config.TLSConfig.KeyPath)
 	} else {
 		err = s.server.ListenAndServe()
 	}

@@ -449,7 +449,7 @@ func (a *App) init() error {
 	// txsub.metrics
 	initTxSubMetrics(a)
 
-	webConfig := &httpx.RouterConfig{
+	routerConfig := httpx.RouterConfig{
 		DBSession:          a.historyQ.Session,
 		TxSubmitter:        a.submitter,
 		RateQuota:          a.config.RateQuota,
@@ -466,8 +466,17 @@ func (a *App) init() error {
 	}
 
 	var err error
-	a.webServer, err = httpx.NewServer(
-		webConfig, uint16(a.config.Port), a.config.TLSCert, a.config.TLSKey, uint16(a.config.AdminPort))
+	config := httpx.ServerConfig{
+		Port:      uint16(a.config.Port),
+		AdminPort: uint16(a.config.AdminPort),
+	}
+	if a.config.TLSCert != "" && a.config.TLSKey != "" {
+		config.TLSConfig = &httpx.TLSConfig{
+			CertPath: a.config.TLSCert,
+			KeyPath:  a.config.TLSKey,
+		}
+	}
+	a.webServer, err = httpx.NewServer(config, routerConfig)
 	if err != nil {
 		return err
 	}
