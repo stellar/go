@@ -3,6 +3,27 @@
 All notable changes to this project will be documented in this
 file. This project adheres to [Semantic Versioning](http://semver.org/).x
 
+## v1.8.0
+
+### Changes
+
+* Added new and changed existing metrics:
+  * `horizon_build_info` - contains build information in labels (`version` - Horizon version, `goversion` - Go runtime version),
+  * `horizon_ingest_enable` - equals `1` if ingestion system is running, `0` otherwise,
+  * `horizon_ingest_state_invalid` - equals `1` if state is invalid, `0` otherwise,
+  * `horizon_db_max_open_connections` - determines the maximum possible opened DB connections,
+  * `horizon_db_wait_duration_seconds_total` - changed the values to be in seconds instead of nanoseconds.
+* Fixed a data race when shutting down the HTTP server. ([#2958](https://github.com/stellar/go/pull/2958)).
+* Fixed emitting incorrect errors related to OrderBook Stream when shutting down the app. ([#2964](https://github.com/stellar/go/pull/2964))
+
+### Experimental
+
+The previous implementation of Captive Stellar-Core streams meta stream using a filesystem pipe. This implies that both Horizon and Stellar-Core had to be deployed to the same server. One of the disadvantages of such requirement is a need for detailed per-process monitoring to be able to connect potential issues (like memory leaks) to the specific service.
+
+To solve this it's now possible to start a [`captivecore`](https://github.com/stellar/go/tree/master/exp/services/captivecore) on another machine and configure Horizon to use it in ingestion. This requires two config options set:
+* `ENABLE_CAPTIVE_CORE_INGESTION=true`,
+* `REMOTE_CAPTIVE_CORE_URL` - pointing to `captivecore` server.
+
 ## v1.7.1
 
 This patch release fixes a regression introduced in 1.7.0, breaking the
