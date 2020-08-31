@@ -19,7 +19,7 @@ multiple Horizon instances.
 
 ## API
 
-### GET /latest-sequence
+### `GET /latest-sequence`
 
 Fetches the latest ledger sequence available on the captive core instance.
 
@@ -32,7 +32,7 @@ Response:
 ```
 
 
-### GET /ledger/<sequence>
+### `GET /ledger/<sequence>`
 
 Fetches the ledger with the given sequence number from the captive core instance.
 
@@ -46,7 +46,7 @@ Response:
 }
 ```
 
-### POST /prepare-range
+### `POST /prepare-range`
 
 Preloads the given range of ledgers in the captive core instance.
 
