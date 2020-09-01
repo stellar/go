@@ -206,7 +206,7 @@ func (operation *transactionOperationWrapper) effects() ([]effect, error) {
 	case xdr.OperationTypeRevokeSponsorship:
 		op := operation.operation.Body.MustRevokeSponsorshipOp()
 		if op.Type == xdr.RevokeSponsorshipTypeRevokeSponsorshipSigner {
-			source := operation.operation.SourceAccount.ToAccountId()
+			source := operation.SourceAccount()
 			wrapper.add(source.Address(), history.EffectSponsorshipRemoved,
 				map[string]interface{}{
 					"signer_account_id": op.Signer.AccountId.Address(),
