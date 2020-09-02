@@ -45,8 +45,8 @@ var EffectTypeNames = map[history.EffectType]string{
 	history.EffectTrustlineSponsorshipCreated:              "trustline_sponsorhip_created",
 	history.EffectTrustlineSponsorshipUpdated:              "trustline_sponsorhip_udpated",
 	history.EffectTrustlineSponsorshipRemoved:              "trustline_sponsorship_removed",
-	history.EffectClaimableBalanceSponsorshipCreated:       "claimable_balance_sponsorhip_created",
-	history.EffectClaimableBalanceSponsorshipUpdated:       "claimable_balance_sponsorhip_udpated",
+	history.EffectClaimableBalanceSponsorshipCreated:       "claimable_balance_sponsorship_created",
+	history.EffectClaimableBalanceSponsorshipUpdated:       "claimable_balance_sponsorship_updated",
 	history.EffectClaimableBalanceSponsorshipRemoved:       "claimable_balance_sponsorship_removed",
 	history.EffectSignerSponsorshipRemoved:                 "signer_sponsorship_removed",
 }
