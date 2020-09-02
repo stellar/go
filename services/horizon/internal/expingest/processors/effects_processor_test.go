@@ -567,7 +567,7 @@ func TestOperationEffects(t *testing.T) {
 					details: map[string]interface{}{
 						"former_sponsor": "GACMZD5VJXTRLKVET72CETCYKELPNCOTTBDC6DHFEUPLG5DHEK534JQX",
 					},
-					effectType: history.EffectSponsorshipRemoved,
+					effectType: history.EffectAccountSponsorshipRemoved,
 					order:      uint32(4),
 				},
 				{
@@ -577,7 +577,7 @@ func TestOperationEffects(t *testing.T) {
 						"former_sponsor": "GAHK7EEG2WWHVKDNT4CEQFZGKF2LGDSW2IVM4S5DP42RBW3K6BTODB4A",
 						"new_sponsor":    "GACMZD5VJXTRLKVET72CETCYKELPNCOTTBDC6DHFEUPLG5DHEK534JQX",
 					},
-					effectType: history.EffectSponsorshipUpdated,
+					effectType: history.EffectAccountSponsorshipUpdated,
 					order:      uint32(5),
 				},
 				{
@@ -586,7 +586,7 @@ func TestOperationEffects(t *testing.T) {
 					details: map[string]interface{}{
 						"sponsor": "GAHK7EEG2WWHVKDNT4CEQFZGKF2LGDSW2IVM4S5DP42RBW3K6BTODB4A",
 					},
-					effectType: history.EffectSponsorshipCreated,
+					effectType: history.EffectAccountSponsorshipCreated,
 					order:      uint32(6),
 				},
 			},
@@ -1270,7 +1270,7 @@ func TestOperationEffects(t *testing.T) {
 			expected: []effect{
 				{
 					address:     "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
-					effectType:  history.EffectSponsorshipRemoved,
+					effectType:  history.EffectSignerSponsorshipRemoved,
 					operationID: int64(249108107265),
 					order:       uint32(1),
 					details: map[string]interface{}{

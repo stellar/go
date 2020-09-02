@@ -123,14 +123,37 @@ const (
 	// EffectClaimableBalanceClaimed occurs when a claimable balance is claimed
 	EffectClaimableBalanceClaimed EffectType = 52 // from claim_claimable_balance
 
-	// EffectSponsorshipCreated occurs when a ledger entry is sponsored
-	EffectSponsorshipCreated EffectType = 60 // from any operation with a ledger entry
+	// EffectAccountSponsorshipCreated occurs when an account ledger entry is sponsored
+	EffectAccountSponsorshipCreated EffectType = 60 // from CreateAccount
 
-	// EffectSponsorshipUpdated occurs when a ledger entry stops being sponsored
-	EffectSponsorshipUpdated EffectType = 61 // from any operation with a ledger entry
+	// EffectAccountSponsorshipUpdated occurs when the sponsoring of an account ledger entry is updated
+	EffectAccountSponsorshipUpdated EffectType = 61 // from RevokeSponsorship
 
-	// EffectSponsorshipRemoved occurs when the sponsorship of a ledger entry is updated
-	EffectSponsorshipRemoved EffectType = 62 // from any operation with a ledger entry or revoke_sponsorship(signer)
+	// EffectAccountSponsorshipRemoved occurs when the sponsorship of an account ledger entry is removed
+	EffectAccountSponsorshipRemoved EffectType = 62 // from RevokeSponsorship
+
+	// EffectTrustlineSponsorshipCreated occurs when a trustline ledger entry is sponsored
+	EffectTrustlineSponsorshipCreated EffectType = 63 // from ChangeTrust
+
+	// EffectTrustlineSponsorshipUpdated occurs when the sponsoring of a trustline ledger entry is updated
+	EffectTrustlineSponsorshipUpdated EffectType = 64 // from RevokeSponsorship
+
+	// EffectTrustlineSponsorshipRemoved occurs when the sponsorship of a trustline ledger entry is removed
+	EffectTrustlineSponsorshipRemoved EffectType = 65 // from RevokeSponsorship
+
+	// EffectClaimableBalanceSponsorshipCreated occurs when a claimable balance ledger entry is sponsored
+	EffectClaimableBalanceSponsorshipCreated EffectType = 66 // from CreateClaimableBalance
+
+	// EffectClaimableBalanceSponsorshipUpdated occurs when the sponsoring of a claimable balance ledger entry
+	// is updated
+	EffectClaimableBalanceSponsorshipUpdated EffectType = 67 // from RevokeSponsorship
+
+	// EffectClaimableBalanceSponsorshipRemoved occurs when the sponsorship of a claimable balance ledger entry
+	// is removed
+	EffectClaimableBalanceSponsorshipRemoved EffectType = 68 // from RevokeSponsorship
+
+	// EffectSignerSponsorshipRemoved occurs when the sponsorship of a signer is removed
+	EffectSignerSponsorshipRemoved EffectType = 69 // from RevokeSponsorship
 )
 
 // Account is a row of data from the `history_accounts` table

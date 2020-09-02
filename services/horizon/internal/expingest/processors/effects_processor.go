@@ -207,7 +207,7 @@ func (operation *transactionOperationWrapper) effects() ([]effect, error) {
 		op := operation.operation.Body.MustRevokeSponsorshipOp()
 		if op.Type == xdr.RevokeSponsorshipTypeRevokeSponsorshipSigner {
 			source := operation.SourceAccount()
-			wrapper.add(source.Address(), history.EffectSponsorshipRemoved,
+			wrapper.add(source.Address(), history.EffectSignerSponsorshipRemoved,
 				map[string]interface{}{
 					"signer_account_id": op.Signer.AccountId.Address(),
 				},
@@ -244,23 +244,50 @@ func (e *effectsWrapper) add(address string, effectType history.EffectType, deta
 	})
 }
 
+var sponsoringEffectsTable = map[xdr.LedgerEntryType]struct {
+	created, updated, removed history.EffectType
+}{
+	xdr.LedgerEntryTypeAccount: {
+		created: history.EffectAccountSponsorshipCreated,
+		updated: history.EffectAccountSponsorshipUpdated,
+		removed: history.EffectAccountSponsorshipRemoved,
+	},
+	xdr.LedgerEntryTypeTrustline: {
+		created: history.EffectTrustlineSponsorshipCreated,
+		updated: history.EffectTrustlineSponsorshipUpdated,
+		removed: history.EffectTrustlineSponsorshipRemoved,
+	},
+	xdr.LedgerEntryTypeClaimableBalance: {
+		created: history.EffectClaimableBalanceSponsorshipCreated,
+		updated: history.EffectClaimableBalanceSponsorshipUpdated,
+		removed: history.EffectClaimableBalanceSponsorshipRemoved,
+	},
+
+	// We intentionally don't have Sponsoring effects for Offer and Data
+	// entries because we don't generate creation effects for them.
+}
+
 func (e *effectsWrapper) addLedgerEntrySponsoringEffects() error {
 	changes, err := e.operation.transaction.GetOperationChanges(e.operation.index)
 	if err != nil {
 		return err
 	}
 	for _, change := range changes {
+		effectsForEntryType, found := sponsoringEffectsTable[change.Type]
+		if !found {
+			continue
+		}
 		switch {
 		case (change.Pre == nil || change.Pre.SponsoringID() == nil) &&
 			(change.Post != nil && change.Post.SponsoringID() != nil):
-			e.add(e.operation.SourceAccount().Address(), history.EffectSponsorshipCreated,
+			e.add(e.operation.SourceAccount().Address(), effectsForEntryType.created,
 				map[string]interface{}{
 					"sponsor": (*change.Post.SponsoringID()).Address(),
 				},
 			)
 		case (change.Pre != nil && change.Pre.SponsoringID() != nil) &&
 			(change.Post == nil || change.Post.SponsoringID() == nil):
-			e.add(e.operation.SourceAccount().Address(), history.EffectSponsorshipRemoved,
+			e.add(e.operation.SourceAccount().Address(), effectsForEntryType.removed,
 				map[string]interface{}{
 					"former_sponsor": (*change.Pre.SponsoringID()).Address(),
 				},
@@ -272,7 +299,7 @@ func (e *effectsWrapper) addLedgerEntrySponsoringEffects() error {
 			if preSponsor == postSponsor {
 				continue
 			}
-			e.add(e.operation.SourceAccount().Address(), history.EffectSponsorshipUpdated,
+			e.add(e.operation.SourceAccount().Address(), effectsForEntryType.updated,
 				map[string]interface{}{
 					"new_sponsor":    (*change.Post.SponsoringID()).Address(),
 					"former_sponsor": (*change.Pre.SponsoringID()).Address(),
