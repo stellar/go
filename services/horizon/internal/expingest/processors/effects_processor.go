@@ -301,8 +301,8 @@ func (e *effectsWrapper) addLedgerEntrySponsoringEffects() error {
 			}
 			e.add(e.operation.SourceAccount().Address(), effectsForEntryType.updated,
 				map[string]interface{}{
-					"new_sponsor":    (*change.Post.SponsoringID()).Address(),
-					"former_sponsor": (*change.Pre.SponsoringID()).Address(),
+					"new_sponsor":    postSponsor,
+					"former_sponsor": preSponsor,
 				},
 			)
 
