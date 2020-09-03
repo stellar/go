@@ -162,6 +162,38 @@ func TestTransactionOperationType(t *testing.T) {
 
 	tt.Equal(xdr.OperationTypePayment, operation.OperationType())
 }
+
+func getRevokeSponsorshipEnvelopeXDR(t *testing.T) string {
+	source := xdr.MustMuxedAddress("GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY")
+	env := &xdr.TransactionEnvelope{
+		Type: xdr.EnvelopeTypeEnvelopeTypeTx,
+		V1: &xdr.TransactionV1Envelope{
+			Tx: xdr.Transaction{
+				SourceAccount: source,
+				Memo:          xdr.Memo{Type: xdr.MemoTypeMemoNone},
+				Operations: []xdr.Operation{
+					{
+						SourceAccount: &source,
+						Body: xdr.OperationBody{
+							Type: xdr.OperationTypeRevokeSponsorship,
+							RevokeSponsorshipOp: &xdr.RevokeSponsorshipOp{
+								Type: xdr.RevokeSponsorshipTypeRevokeSponsorshipSigner,
+								Signer: &xdr.RevokeSponsorshipOpSigner{
+									AccountId: xdr.MustAddress("GAHK7EEG2WWHVKDNT4CEQFZGKF2LGDSW2IVM4S5DP42RBW3K6BTODB4A"),
+									SignerKey: xdr.MustSigner("GCAHY6JSXQFKWKP6R7U5JPXDVNV4DJWOWRFLY3Y6YPBF64QRL4BPFDNS"),
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	b64, err := xdr.MarshalBase64(env)
+	assert.NoError(t, err)
+	return b64
+}
+
 func TestTransactionOperationDetails(t *testing.T) {
 	testCases := []struct {
 		desc          string
@@ -548,15 +580,15 @@ func TestTransactionOperationDetails(t *testing.T) {
 		},
 		{
 			desc:          "revokeSponsorship (signer)",
-			envelopeXDR:   "AAAAAgAAAAAokk0ZqR+mxwuhJJ2uXvNqIhmObygxBFIJKvQgf/7fqwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAASAAAAAQAAAAA7YL8A7jlgEPe0dUU7VHcDQx6Q/wlHqc3UD15aJ3Ii1QAAAACCEcFim0Esp2yagOwR1omkcZQJqj9X5o5/1XafEdnfoAAAAAAAAAAA",
+			envelopeXDR:   getRevokeSponsorshipEnvelopeXDR(t),
 			resultXDR:     "AAAAAAAAAAAAAAAAAAAAAAAAAAA=",
 			metaXDR:       "AAAAAgAAAAAAAAABAAAAAAAAAAA=",
 			feeChangesXDR: "AAAAAA==",
 			hash:          "a41d1c8cdf515203ac5a10d945d5023325076b23dbe7d65ae402cd5f8cd9f891",
 			index:         0,
 			expected: map[string]interface{}{
-				"signer_account_id": "GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2",
-				"signer_key":        "GCBBDQLCTNASZJ3MTKAOYEOWRGSHDFAJVI7VPZUOP7KXNHYR3HP2BUKV",
+				"signer_account_id": "GAHK7EEG2WWHVKDNT4CEQFZGKF2LGDSW2IVM4S5DP42RBW3K6BTODB4A",
+				"signer_key":        "GCAHY6JSXQFKWKP6R7U5JPXDVNV4DJWOWRFLY3Y6YPBF64QRL4BPFDNS",
 			},
 		},
 		{

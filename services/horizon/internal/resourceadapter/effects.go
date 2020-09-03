@@ -36,6 +36,19 @@ var EffectTypeNames = map[history.EffectType]string{
 	history.EffectDataRemoved:                              "data_removed",
 	history.EffectDataUpdated:                              "data_updated",
 	history.EffectSequenceBumped:                           "sequence_bumped",
+	history.EffectClaimableBalanceCreated:                  "claimable_balance_created",
+	history.EffectClaimableBalanceClaimantCreated:          "claimable_balance_claimant_created",
+	history.EffectClaimableBalanceClaimed:                  "claimable_balance_claimed",
+	history.EffectAccountSponsorshipCreated:                "account_sponsorship_created",
+	history.EffectAccountSponsorshipUpdated:                "account_sponsorship_updated",
+	history.EffectAccountSponsorshipRemoved:                "account_sponsorship_removed",
+	history.EffectTrustlineSponsorshipCreated:              "trustline_sponsorship_created",
+	history.EffectTrustlineSponsorshipUpdated:              "trustline_sponsorship_updated",
+	history.EffectTrustlineSponsorshipRemoved:              "trustline_sponsorship_removed",
+	history.EffectClaimableBalanceSponsorshipCreated:       "claimable_balance_sponsorship_created",
+	history.EffectClaimableBalanceSponsorshipUpdated:       "claimable_balance_sponsorship_updated",
+	history.EffectClaimableBalanceSponsorshipRemoved:       "claimable_balance_sponsorship_removed",
+	history.EffectSignerSponsorshipRemoved:                 "signer_sponsorship_removed",
 }
 
 // NewEffect creates a new effect resource from the provided database representation

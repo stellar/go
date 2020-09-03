@@ -122,6 +122,38 @@ const (
 
 	// EffectClaimableBalanceClaimed occurs when a claimable balance is claimed
 	EffectClaimableBalanceClaimed EffectType = 52 // from claim_claimable_balance
+
+	// EffectAccountSponsorshipCreated occurs when an account ledger entry is sponsored
+	EffectAccountSponsorshipCreated EffectType = 60 // from CreateAccount
+
+	// EffectAccountSponsorshipUpdated occurs when the sponsoring of an account ledger entry is updated
+	EffectAccountSponsorshipUpdated EffectType = 61 // from RevokeSponsorship
+
+	// EffectAccountSponsorshipRemoved occurs when the sponsorship of an account ledger entry is removed
+	EffectAccountSponsorshipRemoved EffectType = 62 // from RevokeSponsorship
+
+	// EffectTrustlineSponsorshipCreated occurs when a trustline ledger entry is sponsored
+	EffectTrustlineSponsorshipCreated EffectType = 63 // from ChangeTrust
+
+	// EffectTrustlineSponsorshipUpdated occurs when the sponsoring of a trustline ledger entry is updated
+	EffectTrustlineSponsorshipUpdated EffectType = 64 // from RevokeSponsorship
+
+	// EffectTrustlineSponsorshipRemoved occurs when the sponsorship of a trustline ledger entry is removed
+	EffectTrustlineSponsorshipRemoved EffectType = 65 // from RevokeSponsorship
+
+	// EffectClaimableBalanceSponsorshipCreated occurs when a claimable balance ledger entry is sponsored
+	EffectClaimableBalanceSponsorshipCreated EffectType = 66 // from CreateClaimableBalance
+
+	// EffectClaimableBalanceSponsorshipUpdated occurs when the sponsoring of a claimable balance ledger entry
+	// is updated
+	EffectClaimableBalanceSponsorshipUpdated EffectType = 67 // from RevokeSponsorship
+
+	// EffectClaimableBalanceSponsorshipRemoved occurs when the sponsorship of a claimable balance ledger entry
+	// is removed
+	EffectClaimableBalanceSponsorshipRemoved EffectType = 68 // from RevokeSponsorship
+
+	// EffectSignerSponsorshipRemoved occurs when the sponsorship of a signer is removed
+	EffectSignerSponsorshipRemoved EffectType = 69 // from RevokeSponsorship
 )
 
 // Account is a row of data from the `history_accounts` table

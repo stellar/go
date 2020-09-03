@@ -317,6 +317,200 @@ func TestOperationEffects(t *testing.T) {
 	strictPaymentWithMuxedAccountsTxBase64, err := xdr.MarshalBase64(strictPaymentWithMuxedAccountsTx)
 	assert.NoError(t, err)
 
+	creator := xdr.MustAddress("GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
+	created := xdr.MustAddress("GCQZP3IU7XU6EJ63JZXKCQOYT2RNXN3HB5CNHENNUEUHSMA4VUJJJSEN")
+	sponsor := xdr.MustAddress("GAHK7EEG2WWHVKDNT4CEQFZGKF2LGDSW2IVM4S5DP42RBW3K6BTODB4A")
+	sponsor2 := xdr.MustAddress("GACMZD5VJXTRLKVET72CETCYKELPNCOTTBDC6DHFEUPLG5DHEK534JQX")
+	createAccountMeta := &xdr.TransactionMeta{
+		V: 1,
+		V1: &xdr.TransactionMetaV1{
+			TxChanges: xdr.LedgerEntryChanges{
+				{
+					Type: 3,
+					State: &xdr.LedgerEntry{
+						LastModifiedLedgerSeq: 0x39,
+						Data: xdr.LedgerEntryData{
+							Type: 0,
+							Account: &xdr.AccountEntry{
+								AccountId:     creator,
+								Balance:       800152377009533292,
+								SeqNum:        25,
+								InflationDest: &creator,
+								Thresholds:    xdr.Thresholds{0x1, 0x0, 0x0, 0x0},
+							},
+						},
+					},
+				},
+				{
+					Type: 1,
+					Updated: &xdr.LedgerEntry{
+						LastModifiedLedgerSeq: 0x39,
+						Data: xdr.LedgerEntryData{
+							Type: 0,
+							Account: &xdr.AccountEntry{
+								AccountId:     creator,
+								Balance:       800152377009533292,
+								SeqNum:        26,
+								InflationDest: &creator,
+							},
+						},
+						Ext: xdr.LedgerEntryExt{},
+					},
+				},
+			},
+			Operations: []xdr.OperationMeta{
+				{
+					Changes: xdr.LedgerEntryChanges{
+						{
+							Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
+							State: &xdr.LedgerEntry{
+								LastModifiedLedgerSeq: 0x39,
+								Data: xdr.LedgerEntryData{
+									Type: xdr.LedgerEntryTypeAccount,
+									Account: &xdr.AccountEntry{
+										AccountId:     creator,
+										Balance:       800152367009533292,
+										SeqNum:        26,
+										InflationDest: &creator,
+										Thresholds:    xdr.Thresholds{0x1, 0x0, 0x0, 0x0},
+									},
+								},
+								Ext: xdr.LedgerEntryExt{
+									V: 1,
+									V1: &xdr.LedgerEntryExtensionV1{
+										SponsoringId: &sponsor2,
+									},
+								},
+							},
+						},
+						{
+							Type: xdr.LedgerEntryChangeTypeLedgerEntryRemoved,
+							Removed: &xdr.LedgerKey{
+								Type: xdr.LedgerEntryTypeAccount,
+								Account: &xdr.LedgerKeyAccount{
+									AccountId: created,
+								},
+							},
+						},
+						{
+							Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
+							State: &xdr.LedgerEntry{
+								LastModifiedLedgerSeq: 0x39,
+								Data: xdr.LedgerEntryData{
+									Type: xdr.LedgerEntryTypeAccount,
+									Account: &xdr.AccountEntry{
+										AccountId:     creator,
+										Balance:       800152367009533292,
+										SeqNum:        26,
+										InflationDest: &creator,
+										Thresholds:    xdr.Thresholds{0x1, 0x0, 0x0, 0x0},
+									},
+								},
+								Ext: xdr.LedgerEntryExt{
+									V: 1,
+									V1: &xdr.LedgerEntryExtensionV1{
+										SponsoringId: &sponsor,
+									},
+								},
+							},
+						},
+						{
+							Type: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
+							Updated: &xdr.LedgerEntry{
+								LastModifiedLedgerSeq: 0x39,
+								Data: xdr.LedgerEntryData{
+									Type: xdr.LedgerEntryTypeAccount,
+									Account: &xdr.AccountEntry{
+										AccountId:     creator,
+										Balance:       800152367009533292,
+										SeqNum:        26,
+										InflationDest: &creator,
+										Thresholds:    xdr.Thresholds{0x1, 0x0, 0x0, 0x0},
+									},
+								},
+								Ext: xdr.LedgerEntryExt{
+									V: 1,
+									V1: &xdr.LedgerEntryExtensionV1{
+										SponsoringId: &sponsor2,
+									},
+								},
+							},
+						},
+						{
+							Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
+							State: &xdr.LedgerEntry{
+								LastModifiedLedgerSeq: 0x39,
+								Data: xdr.LedgerEntryData{
+									Type: xdr.LedgerEntryTypeAccount,
+									Account: &xdr.AccountEntry{
+										AccountId:     creator,
+										Balance:       800152377009533292,
+										SeqNum:        26,
+										InflationDest: &creator,
+										Thresholds:    xdr.Thresholds{0x1, 0x0, 0x0, 0x0},
+									},
+								},
+								Ext: xdr.LedgerEntryExt{
+									V: 1,
+									V1: &xdr.LedgerEntryExtensionV1{
+										SponsoringId: &sponsor,
+									},
+								},
+							},
+						},
+						{
+							Type: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
+							Updated: &xdr.LedgerEntry{
+								LastModifiedLedgerSeq: 0x39,
+								Data: xdr.LedgerEntryData{
+									Type: xdr.LedgerEntryTypeAccount,
+									Account: &xdr.AccountEntry{
+										AccountId:     creator,
+										Balance:       800152367009533292,
+										SeqNum:        26,
+										InflationDest: &creator,
+										Thresholds:    xdr.Thresholds{0x1, 0x0, 0x0, 0x0},
+									},
+								},
+								Ext: xdr.LedgerEntryExt{
+									V: 1,
+									V1: &xdr.LedgerEntryExtensionV1{
+										SponsoringId: &sponsor,
+									},
+								},
+							},
+						},
+						{
+							Type: xdr.LedgerEntryChangeTypeLedgerEntryCreated,
+							Created: &xdr.LedgerEntry{
+								LastModifiedLedgerSeq: 0x39,
+								Data: xdr.LedgerEntryData{
+									Type: xdr.LedgerEntryTypeAccount,
+									Account: &xdr.AccountEntry{
+										AccountId:  created,
+										Balance:    10000000000,
+										SeqNum:     244813135872,
+										Thresholds: xdr.Thresholds{0x1, 0x0, 0x0, 0x0},
+									},
+								},
+								Ext: xdr.LedgerEntryExt{
+									V: 1,
+									V1: &xdr.LedgerEntryExtensionV1{
+										SponsoringId: &sponsor,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	createAccountMetaB64, err := xdr.MarshalBase64(createAccountMeta)
+	assert.NoError(t, err)
+	assert.NoError(t, err)
+
 	testCases := []struct {
 		desc          string
 		envelopeXDR   string
@@ -332,7 +526,7 @@ func TestOperationEffects(t *testing.T) {
 			desc:          "createAccount",
 			envelopeXDR:   "AAAAAGL8HQvQkbK2HA3WVjRrKmjX00fG8sLI7m0ERwJW/AX3AAAAZAAAAAAAAAAaAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAoZftFP3p4ifbTm6hQdieotu3Zw9E05GtoSh5MBytEpQAAAACVAvkAAAAAAAAAAABVvwF9wAAAEDHU95E9wxgETD8TqxUrkgC0/7XHyNDts6Q5huRHfDRyRcoHdv7aMp/sPvC3RPkXjOMjgbKJUX7SgExUeYB5f8F",
 			resultXDR:     "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAA=",
-			metaXDR:       "AAAAAQAAAAIAAAADAAAAOQAAAAAAAAAAYvwdC9CRsrYcDdZWNGsqaNfTR8bywsjubQRHAlb8BfcLGrZY9dZxbAAAAAAAAAAZAAAAAAAAAAEAAAAAYvwdC9CRsrYcDdZWNGsqaNfTR8bywsjubQRHAlb8BfcAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAOQAAAAAAAAAAYvwdC9CRsrYcDdZWNGsqaNfTR8bywsjubQRHAlb8BfcLGrZY9dZxbAAAAAAAAAAaAAAAAAAAAAEAAAAAYvwdC9CRsrYcDdZWNGsqaNfTR8bywsjubQRHAlb8BfcAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAAwAAAAMAAAA5AAAAAAAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9wsatlj11nFsAAAAAAAAABoAAAAAAAAAAQAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9wAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAAAA5AAAAAAAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9wsatlahyo1sAAAAAAAAABoAAAAAAAAAAQAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9wAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAA5AAAAAAAAAAChl+0U/eniJ9tObqFB2J6i27dnD0TTka2hKHkwHK0SlAAAAAJUC+QAAAAAOQAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA==",
+			metaXDR:       createAccountMetaB64,
 			feeChangesXDR: "AAAAAgAAAAMAAAA3AAAAAAAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9wsatlj11nHQAAAAAAAAABkAAAAAAAAAAQAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9wAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAAAA5AAAAAAAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9wsatlj11nFsAAAAAAAAABkAAAAAAAAAAQAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9wAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA==",
 			hash:          "0e5bd332291e3098e49886df2cdb9b5369a5f9e0a9973f0d9e1a9489c6581ba2",
 			index:         0,
@@ -366,6 +560,34 @@ func TestOperationEffects(t *testing.T) {
 					},
 					effectType: history.EffectSignerCreated,
 					order:      uint32(3),
+				},
+				{
+					address:     "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+					operationID: int64(244813139969),
+					details: map[string]interface{}{
+						"former_sponsor": "GACMZD5VJXTRLKVET72CETCYKELPNCOTTBDC6DHFEUPLG5DHEK534JQX",
+					},
+					effectType: history.EffectAccountSponsorshipRemoved,
+					order:      uint32(4),
+				},
+				{
+					address:     "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+					operationID: int64(244813139969),
+					details: map[string]interface{}{
+						"former_sponsor": "GAHK7EEG2WWHVKDNT4CEQFZGKF2LGDSW2IVM4S5DP42RBW3K6BTODB4A",
+						"new_sponsor":    "GACMZD5VJXTRLKVET72CETCYKELPNCOTTBDC6DHFEUPLG5DHEK534JQX",
+					},
+					effectType: history.EffectAccountSponsorshipUpdated,
+					order:      uint32(5),
+				},
+				{
+					address:     "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+					operationID: int64(244813139969),
+					details: map[string]interface{}{
+						"sponsor": "GAHK7EEG2WWHVKDNT4CEQFZGKF2LGDSW2IVM4S5DP42RBW3K6BTODB4A",
+					},
+					effectType: history.EffectAccountSponsorshipCreated,
+					order:      uint32(6),
 				},
 			},
 		},
@@ -1037,6 +1259,27 @@ func TestOperationEffects(t *testing.T) {
 			},
 		},
 		{
+			desc:          "revokeSponsorship (signer)",
+			envelopeXDR:   getRevokeSponsorshipEnvelopeXDR(t),
+			resultXDR:     "AAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+			metaXDR:       "AAAAAgAAAAAAAAABAAAAAAAAAAA=",
+			feeChangesXDR: "AAAAAA==",
+			hash:          "a41d1c8cdf515203ac5a10d945d5023325076b23dbe7d65ae402cd5f8cd9f891",
+			index:         0,
+			sequence:      58,
+			expected: []effect{
+				{
+					address:     "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+					effectType:  history.EffectSignerSponsorshipRemoved,
+					operationID: int64(249108107265),
+					order:       uint32(1),
+					details: map[string]interface{}{
+						"signer_account_id": "GAHK7EEG2WWHVKDNT4CEQFZGKF2LGDSW2IVM4S5DP42RBW3K6BTODB4A",
+					},
+				},
+			},
+		},
+		{
 			desc:          "Failed transaction",
 			envelopeXDR:   "AAAAAPCq/iehD2ASJorqlTyEt0usn2WG3yF4w9xBkgd4itu6AAAAZAAMpboAADNGAAAAAAAAAAAAAAABAAAAAAAAAAMAAAABVEVTVAAAAAAObS6P1g8rj8sCVzRQzYgHhWFkbh1oV+1s47LFPstSpQAAAAAAAAACVAvkAAAAAfcAAAD6AAAAAAAAAAAAAAAAAAAAAXiK27oAAABAHHk5mvM6xBRsvu3RBvzzPIb8GpXaL2M7InPn65LIhFJ2RnHIYrpP6ufZc6SUtKqChNRaN4qw5rjwFXNezmrBCw==",
 			resultXDR:     "AAAAAAAAAGT/////AAAAAQAAAAAAAAAD////+QAAAAA=",
@@ -1381,8 +1624,13 @@ func TestOperationEffectsAllowTrustAuthorizedToMaintainLiabilities(t *testing.T)
 	}
 
 	operation := transactionOperationWrapper{
-		index:          0,
-		transaction:    io.LedgerTransaction{},
+		index: 0,
+		transaction: io.LedgerTransaction{
+			Meta: xdr.TransactionMeta{
+				V:  2,
+				V2: &xdr.TransactionMetaV2{},
+			},
+		},
 		operation:      op,
 		ledgerSequence: 1,
 	}
@@ -1513,7 +1761,10 @@ func (s *CreateClaimableBalanceEffectsTestSuite) SetupTest() {
 			},
 		},
 		FeeChanges: xdr.LedgerEntryChanges{},
-		Meta:       xdr.TransactionMeta{},
+		Meta: xdr.TransactionMeta{
+			V:  2,
+			V2: &xdr.TransactionMetaV2{},
+		},
 	}
 }
 func (s *CreateClaimableBalanceEffectsTestSuite) TestEffects() {
