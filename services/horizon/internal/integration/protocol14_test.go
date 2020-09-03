@@ -1,6 +1,7 @@
 package integration
 
 import (
+	"fmt"
 	"testing"
 
 	sdk "github.com/stellar/go/clients/horizonclient"
@@ -185,18 +186,36 @@ func TestClaimableBalances(t *testing.T) {
 	aAccount, err := client.AccountDetail(request)
 	assert.NoError(t, err)
 
+	op := txnbuild.CreateClaimableBalance{
+		Destinations: []string{b.Address()},
+		Amount:       "10",
+		Asset:        txnbuild.NativeAsset{},
+	}
+
+	// Submit create_claimable_balance with different predicates:
+	//   - Two successful: native and non-native asset.
+	//   - One with a predicate that will fail later when calling
+	//     claim_claimable_balance.
+	//
+	// Check /claimable_balances (filter by claimant, asset).
+	// Check /claimable_balances/{id}.
+	//
+	// Submit claim_claimable_balance for all entries (use claimable balance id
+	// returned by Horizon).
+	//
+	// Check /operations if correctly ingested (also check
+	// /operation?include_failed=true to check failed ops due to invalid
+	// predicate).
+	//
+	// Check /effects if correctly ingested.
+	// State Verifier [1]
+
 	// Submit a simple claimable balance from A -> B.
 	tx, err = MakeAndSign(
 		a,
 		txnbuild.TransactionParams{
-			SourceAccount: &aAccount,
-			Operations: []txnbuild.Operation{
-				&txnbuild.CreateClaimableBalance{
-					Destinations: []string{b.Address()},
-					Amount:       "10",
-					Asset:        txnbuild.NativeAsset{},
-				},
-			},
+			SourceAccount:        &aAccount,
+			Operations:           []txnbuild.Operation{&op},
 			BaseFee:              txnbuild.MinBaseFee,
 			Timebounds:           txnbuild.NewInfiniteTimeout(),
 			IncrementSequenceNum: true,
@@ -210,4 +229,10 @@ func TestClaimableBalances(t *testing.T) {
 		prob := sdk.GetError(err)
 		t.Logf("Problem: %s\n", prob.Problem.Extras["result_codes"])
 	}
+
+	balances, err := client.ClaimableBalances(sdk.ClaimableBalanceRequest{})
+	assert.NoError(t, err)
+	fmt.Printf("Resulting claimables: %+v\n", balances)
+
+	assert.Len(t, balances.Embedded.Records, 1)
 }
