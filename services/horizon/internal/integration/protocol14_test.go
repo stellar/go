@@ -9,8 +9,6 @@ import (
 	"github.com/stellar/go/services/horizon/internal/txnbuild"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
-	// "fmt"
-	// "strconv"
 )
 
 var protocol14Config = test.IntegrationConfig{ProtocolVersion: 14}
@@ -117,14 +115,25 @@ func MakeAndSign(signer *keypair.Full, params txnbuild.TransactionParams) (strin
 	return txb64, nil
 }
 
-func CreateFundedAccount(master *keypair.Full, seq int64) (*keypair.Full, string, error) {
-	// client := sdk.DefaultTestNetClient
-	pair, _ := keypair.Random()
+func CreateAccounts(master *keypair.Full, count int, seq int64) ([]*keypair.Full, string, error) {
+	pairs := make([]*keypair.Full, count)
+	ops := make([]txnbuild.Operation, count)
 	amount := "1000"
 
 	masterAccount := txnbuild.SimpleAccount{
 		AccountID: master.Address(),
 		Sequence:  seq,
+	}
+
+	for i := 0; i < count; i++ {
+		pair, _ := keypair.Random()
+		pairs[i] = pair
+
+		ops[i] = &txnbuild.CreateAccount{
+			SourceAccount: &masterAccount,
+			Destination:   pair.Address(),
+			Amount:        amount,
+		}
 	}
 
 	// Build transaction:
@@ -134,17 +143,11 @@ func CreateFundedAccount(master *keypair.Full, seq int64) (*keypair.Full, string
 			SourceAccount: &masterAccount,
 			BaseFee:       txnbuild.MinBaseFee,
 			Timebounds:    txnbuild.NewInfiniteTimeout(),
-			Operations: []txnbuild.Operation{
-				&txnbuild.CreateAccount{
-					Destination:   pair.Address(),
-					Amount:        amount,
-					SourceAccount: &masterAccount,
-				},
-			},
+			Operations:    ops,
 		},
 	)
 
-	return pair, tx, err
+	return pairs, tx, err
 }
 
 func TestClaimableBalances(t *testing.T) {
@@ -154,6 +157,7 @@ func TestClaimableBalances(t *testing.T) {
 	//
 	// > It should be easy to send a payment to an account that is not
 	// > necessarily prepared to receive the payment.
+	protocol14Config.SkipContainerCreation = true
 	itest := test.NewIntegrationTest(t, protocol14Config)
 	defer itest.Close()
 
@@ -161,7 +165,7 @@ func TestClaimableBalances(t *testing.T) {
 	master := itest.Master().(*keypair.Full)
 
 	// Create a couple of accounts to test the interactions.
-	a, tx, err := CreateFundedAccount(master, seq)
+	accounts, tx, err := CreateAccounts(master, 2, seq)
 	assert.NoError(t, err)
 	seq++
 
@@ -171,30 +175,16 @@ func TestClaimableBalances(t *testing.T) {
 		prob := sdk.GetError(err)
 		t.Logf("Problem (if any): %s\n", prob.Problem.Extras["result_codes"])
 	} else {
-		t.Logf("Funded %s.\n", a.Seed())
+		for _, account := range accounts {
+			t.Logf("Funded %s (%s).\n", account.Seed(), account.Address())
+		}
 	}
 
-	b, tx, err := CreateFundedAccount(master, seq)
-	assert.NoError(t, err)
-	seq++
-
-	_, err = itest.Client().SubmitTransactionXDR(tx)
-	assert.NoError(t, err)
-	if err != nil {
-		prob := sdk.GetError(err)
-		t.Logf("Problem (if any): %s\n", prob.Problem.Extras["result_codes"])
-	} else {
-		t.Logf("Funded %s.\n", b.Seed())
-	}
-
-	masterAccount := txnbuild.SimpleAccount{
-		AccountID: master.Address(),
-		Sequence:  seq,
-	}
+	a, b := accounts[0], accounts[1]
 
 	// Submit a simple tx
 	op := txnbuild.CreateClaimableBalance{
-		Destinations: []string{masterAccount.AccountID},
+		Destinations: []string{b.Address()},
 		Amount:       "10",
 		Asset:        txnbuild.NativeAsset{},
 	}
@@ -202,7 +192,7 @@ func TestClaimableBalances(t *testing.T) {
 	tx, err = MakeAndSign(
 		master,
 		txnbuild.TransactionParams{
-			SourceAccount: &masterAccount,
+			SourceAccount: &txnbuild.SimpleAccount{AccountID: a.Address(), Sequence: 1},
 			Operations:    []txnbuild.Operation{&op},
 			BaseFee:       txnbuild.MinBaseFee,
 			Timebounds:    txnbuild.NewInfiniteTimeout(),
