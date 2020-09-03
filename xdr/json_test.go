@@ -51,7 +51,7 @@ func TestClaimPredicateJSON(t *testing.T) {
 	serializedBase64, err = MarshalBase64(source)
 	assert.NoError(t, err)
 
-	parsedBase64, err = MarshalBase64(source)
+	parsedBase64, err = MarshalBase64(parsed)
 	assert.NoError(t, err)
 
 	assert.Equal(t, serializedBase64, parsedBase64)

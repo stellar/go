@@ -62,7 +62,7 @@ func (c claimPredicateJSON) toXDR() (ClaimPredicate, error) {
 			err = innerErr
 		} else {
 			result.Type = ClaimPredicateTypeClaimPredicateOr
-			result.AndPredicates = &inner
+			result.OrPredicates = &inner
 		}
 	}
 
