@@ -495,7 +495,7 @@ func TestGetClaimableBalances(t *testing.T) {
 	for _, resource := range response {
 		tt.Assert.Equal(
 			"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
-			resource.(protocol.ClaimableBalance).Sponsor,
+			*resource.(protocol.ClaimableBalance).Sponsor,
 		)
 	}
 

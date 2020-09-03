@@ -114,7 +114,7 @@ func (q ClaimableBalancesQuery) claimant() *xdr.AccountId {
 
 // URITemplate returns a rfc6570 URI template the query struct
 func (q ClaimableBalancesQuery) URITemplate() string {
-	return "/claimable_balances?{asset}"
+	return "/claimable_balances?{asset,claimant,sponsor}"
 }
 
 type GetClaimableBalancesHandler struct {
