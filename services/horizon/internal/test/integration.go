@@ -23,7 +23,8 @@ import (
 const IntegrationNetworkPassphrase = "Standalone Network ; February 2017"
 
 type IntegrationConfig struct {
-	ProtocolVersion int32
+	ProtocolVersion       int32
+	SkipContainerCreation bool
 }
 
 type IntegrationTest struct {
@@ -62,39 +63,61 @@ func NewIntegrationTest(t *testing.T, config IntegrationConfig) *IntegrationTest
 
 	image := "stellar/quickstart:testing"
 
-	t.Logf("Pulling %s...", image)
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-	defer cancel()
-	reader, err := i.cli.ImagePull(ctx, "docker.io/"+image, types.ImagePullOptions{})
-	if err != nil {
-		t.Fatal(errors.Wrap(err, "error pulling docker image"))
+	if config.SkipContainerCreation {
+		t.Log("Trying to skip container creation...")
+		containers, _ := i.cli.ContainerList(
+			context.Background(),
+			types.ContainerListOptions{All: true, Quiet: true})
+		for _, container := range containers {
+			if container.Image == image {
+				i.container.ID = container.ID
+				break
+			}
+		}
+		if i.container.ID != "" {
+			t.Logf("Found matching container: %s\n", i.container.ID)
+		} else {
+			t.Log("No matching container found.")
+			config.SkipContainerCreation = false
+		}
 	}
-	defer reader.Close()
-	io.Copy(os.Stdout, reader)
 
-	t.Log("Creating container...")
-	ctx, cancel = context.WithTimeout(context.Background(), 5*time.Minute)
-	defer cancel()
-	i.container, err = i.cli.ContainerCreate(
-		ctx,
-		&container.Config{
-			Image: image,
-			Cmd: []string{
-				"--standalone",
-				"--protocol-version", strconv.FormatInt(int64(config.ProtocolVersion), 10),
+	if !config.SkipContainerCreation {
+		t.Logf("Pulling %s...", image)
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+		defer cancel()
+		reader, err := i.cli.ImagePull(ctx, "docker.io/"+image, types.ImagePullOptions{})
+		if err != nil {
+			t.Fatal(errors.Wrap(err, "error pulling docker image"))
+		}
+		defer reader.Close()
+		io.Copy(os.Stdout, reader)
+
+		t.Log("Creating container...")
+		ctx, cancel = context.WithTimeout(context.Background(), 5*time.Minute)
+		defer cancel()
+		i.container, err = i.cli.ContainerCreate(
+			ctx,
+			&container.Config{
+				Image: image,
+				Cmd: []string{
+					"--standalone",
+					"--protocol-version", strconv.FormatInt(int64(config.ProtocolVersion), 10),
+				},
+				ExposedPorts: nat.PortSet{"8000": struct{}{}},
 			},
-			ExposedPorts: nat.PortSet{"8000": struct{}{}},
-		},
-		&container.HostConfig{
-			PortBindings: map[nat.Port][]nat.PortBinding{
-				nat.Port("8000"): {{HostIP: "127.0.0.1", HostPort: "8000"}},
+			&container.HostConfig{
+				PortBindings: map[nat.Port][]nat.PortBinding{
+					nat.Port("8000"): {{HostIP: "127.0.0.1", HostPort: "8000"}},
+				},
 			},
-		},
-		nil,
-		"horizon-integration",
-	)
-	if err != nil {
-		t.Fatal(errors.Wrap(err, "error creating docker container"))
+			nil,
+			"horizon-integration",
+		)
+
+		if err != nil {
+			t.Fatal(errors.Wrap(err, "error creating docker container"))
+		}
 	}
 
 	horizonBinaryContents, err := ioutil.ReadFile(os.Getenv("HORIZON_BIN_DIR") + "/horizon")
@@ -121,7 +144,7 @@ func NewIntegrationTest(t *testing.T, config IntegrationConfig) *IntegrationTest
 	}
 
 	t.Log("Copying custom horizon binary...")
-	ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	err = i.cli.CopyToContainer(ctx, i.container.ID, "/usr/local/bin", &buf, types.CopyToContainerOptions{})
 	if err != nil {
@@ -174,9 +197,16 @@ func (i *IntegrationTest) Master() keypair.KP {
 func (i *IntegrationTest) Close() {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
-	err := i.cli.ContainerRemove(ctx, i.container.ID, types.ContainerRemoveOptions{
-		Force: true,
-	})
+
+	var err error
+	if !i.config.SkipContainerCreation {
+		err = i.cli.ContainerRemove(
+			ctx, i.container.ID,
+			types.ContainerRemoveOptions{Force: true})
+	} else {
+		err = i.cli.ContainerStop(ctx, i.container.ID, nil)
+	}
+
 	if err != nil {
 		panic(err)
 	}
