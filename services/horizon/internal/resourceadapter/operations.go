@@ -108,6 +108,26 @@ func NewOperation(
 		e.Payment.Base = base
 		err = operationRow.UnmarshalDetails(&e)
 		result = e
+	case xdr.OperationTypeCreateClaimableBalance:
+		e := operations.CreateClaimableBalance{}
+		err = operationRow.UnmarshalDetails(&e)
+		result = e
+	case xdr.OperationTypeClaimClaimableBalance:
+		e := operations.ClaimClaimableBalance{}
+		err = operationRow.UnmarshalDetails(&e)
+		result = e
+	case xdr.OperationTypeBeginSponsoringFutureReserves:
+		e := operations.BeginSponsoringFutureReserves{}
+		err = operationRow.UnmarshalDetails(&e)
+		result = e
+	case xdr.OperationTypeEndSponsoringFutureReserves:
+		e := operations.EndSponsoringFutureReserves{}
+		err = operationRow.UnmarshalDetails(&e)
+		result = e
+	case xdr.OperationTypeRevokeSponsorship:
+		e := operations.RevokeSponsorship{}
+		err = operationRow.UnmarshalDetails(&e)
+		result = e
 	default:
 		result = base
 	}
