@@ -151,8 +151,6 @@ func CreateAccounts(master *keypair.Full, count int, seq int64) ([]*keypair.Full
 }
 
 func TestClaimableBalances(t *testing.T) {
-	// client := sdk.DefaultTestNetClient
-
 	// The use case is straightforward:
 	//
 	// > It should be easy to send a payment to an account that is not
@@ -160,6 +158,7 @@ func TestClaimableBalances(t *testing.T) {
 	protocol14Config.SkipContainerCreation = true
 	itest := test.NewIntegrationTest(t, protocol14Config)
 	defer itest.Close()
+	client := itest.Client()
 
 	seq := int64(1)
 	master := itest.Master().(*keypair.Full)
@@ -169,7 +168,7 @@ func TestClaimableBalances(t *testing.T) {
 	assert.NoError(t, err)
 	seq++
 
-	_, err = itest.Client().SubmitTransactionXDR(tx)
+	_, err = client.SubmitTransactionXDR(tx)
 	assert.NoError(t, err)
 	if err != nil {
 		prob := sdk.GetError(err)
@@ -182,25 +181,30 @@ func TestClaimableBalances(t *testing.T) {
 
 	a, b := accounts[0], accounts[1]
 
-	// Submit a simple tx
-	op := txnbuild.CreateClaimableBalance{
-		Destinations: []string{b.Address()},
-		Amount:       "10",
-		Asset:        txnbuild.NativeAsset{},
-	}
+	request := sdk.AccountRequest{AccountID: a.Address()}
+	aAccount, err := client.AccountDetail(request)
+	assert.NoError(t, err)
 
+	// Submit a simple claimable balance from A -> B.
 	tx, err = MakeAndSign(
-		master,
+		a,
 		txnbuild.TransactionParams{
-			SourceAccount: &txnbuild.SimpleAccount{AccountID: a.Address(), Sequence: 1},
-			Operations:    []txnbuild.Operation{&op},
-			BaseFee:       txnbuild.MinBaseFee,
-			Timebounds:    txnbuild.NewInfiniteTimeout(),
+			SourceAccount: &aAccount,
+			Operations: []txnbuild.Operation{
+				&txnbuild.CreateClaimableBalance{
+					Destinations: []string{b.Address()},
+					Amount:       "10",
+					Asset:        txnbuild.NativeAsset{},
+				},
+			},
+			BaseFee:              txnbuild.MinBaseFee,
+			Timebounds:           txnbuild.NewInfiniteTimeout(),
+			IncrementSequenceNum: true,
 		},
 	)
 	assert.NoError(t, err)
 
-	_, err = itest.Client().SubmitTransactionXDR(tx)
+	_, err = client.SubmitTransactionXDR(tx)
 	assert.NoError(t, err)
 	if err != nil {
 		prob := sdk.GetError(err)
