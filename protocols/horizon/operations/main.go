@@ -251,15 +251,15 @@ type EndSponsoringFutureReserves struct {
 // RevokeSponsorship.
 type RevokeSponsorship struct {
 	Base
-	AccountID          *string `json:"account_id"`
-	ClaimableBalanceID *string `json:"claimable_balance_id"`
-	DataAccountID      *string `json:"data_account_id"`
-	DataName           *string `json:"data_name"`
-	OfferID            *string `json:"offer_id"`
-	TrustlineAccountID *string `json:"trustline_account_id"`
-	TrustlineAsset     *string `json:"trustline_asset"`
-	SignerAccountID    *string `json:"signer_account_id"`
-	SignerKey          *string `json:"signer_key"`
+	AccountID          *string `json:"account_id,omitempty"`
+	ClaimableBalanceID *string `json:"claimable_balance_id,omitempty"`
+	DataAccountID      *string `json:"data_account_id,omitempty"`
+	DataName           *string `json:"data_name,omitempty"`
+	OfferID            *string `json:"offer_id,omitempty"`
+	TrustlineAccountID *string `json:"trustline_account_id,omitempty"`
+	TrustlineAsset     *string `json:"trustline_asset,omitempty"`
+	SignerAccountID    *string `json:"signer_account_id,omitempty"`
+	SignerKey          *string `json:"signer_key,omitempty"`
 }
 
 // Operation interface contains methods implemented by the operation types
