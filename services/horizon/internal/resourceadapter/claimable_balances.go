@@ -27,7 +27,7 @@ func PopulateClaimableBalance(
 	dest.Asset = claimableBalance.Asset.StringCanonical()
 	dest.Amount = amount.StringFromInt64(int64(claimableBalance.Amount))
 	if claimableBalance.Sponsor.Valid {
-		dest.Sponsor = claimableBalance.Sponsor.String
+		dest.Sponsor = &claimableBalance.Sponsor.String
 	}
 	dest.LastModifiedLedger = claimableBalance.LastModifiedLedger
 	dest.Claimants = make([]protocol.Claimant, len(claimableBalance.Claimants))

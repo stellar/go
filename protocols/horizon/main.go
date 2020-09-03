@@ -669,7 +669,7 @@ type ClaimableBalance struct {
 	BalanceID          string     `json:"id"`
 	Asset              string     `json:"asset"`
 	Amount             string     `json:"amount"`
-	Sponsor            string     `json:"sponsor"`
+	Sponsor            *string    `json:"sponsor"`
 	LastModifiedLedger uint32     `json:"last_modified_ledger"`
 	Claimants          []Claimant `json:"claimants"`
 	PT                 string     `json:"paging_token"`
