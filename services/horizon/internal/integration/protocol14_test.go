@@ -116,7 +116,9 @@ func MakeAndSign(signer *keypair.Full, params txnbuild.TransactionParams) (strin
 	return txb64, nil
 }
 
-func CreateAccounts(master *keypair.Full, count int, seq int64) ([]*keypair.Full, string, error) {
+func CreateAccounts(master *keypair.Full, count int, seq int64) (
+	[]*keypair.Full, string, error,
+) {
 	pairs := make([]*keypair.Full, count)
 	ops := make([]txnbuild.Operation, count)
 	amount := "1000"
@@ -225,14 +227,31 @@ func TestClaimableBalances(t *testing.T) {
 
 	_, err = client.SubmitTransactionXDR(tx)
 	assert.NoError(t, err)
-	if err != nil {
-		prob := sdk.GetError(err)
-		t.Logf("Problem: %s\n", prob.Problem.Extras["result_codes"])
-	}
 
+	// Ensure it exists in the global list
 	balances, err := client.ClaimableBalances(sdk.ClaimableBalanceRequest{})
 	assert.NoError(t, err)
-	fmt.Printf("Resulting claimables: %+v\n", balances)
 
+	claims := balances.Embedded.Records
+	assert.Len(t, claims, 1)
+	assert.Equal(t, claims[0].Sponsor, a.Address())
+	id := claims[0].BalanceID
+
+	// Ensure we can look it up explicitly by ID
+	balance, err := client.ClaimableBalance(id)
+	assert.NoError(t, err)
+	assert.Equal(t, claims[0], balance)
+
+	// Ensure it shows up with the various filters (and *doesn't* show up with
+	// non-matching filters, of course).
+	balances, err = client.ClaimableBalances(sdk.ClaimableBalanceRequest{Sponsor: a.Address()})
+	assert.NoError(t, err)
 	assert.Len(t, balances.Embedded.Records, 1)
+	assert.Equal(t, claims[0], balances.Embedded.Records[0])
+
+	balances, err = client.ClaimableBalances(sdk.ClaimableBalanceRequest{Sponsor: b.Address()})
+	assert.NoError(t, err)
+	assert.Len(t, balances.Embedded.Records, 0)
+
+	fmt.Println("Done.")
 }

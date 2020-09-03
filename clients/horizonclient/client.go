@@ -816,5 +816,12 @@ func (c *Client) ClaimableBalances(cbr ClaimableBalanceRequest) (cb hProtocol.Cl
 	return
 }
 
+// ClaimableBalance returns details about a *specific* claimable balance.
+func (c *Client) ClaimableBalance(id string) (cb hProtocol.ClaimableBalance, err error) {
+	cbr := ClaimableBalanceRequest{ID: id}
+	err = c.sendRequest(cbr, &cb)
+	return
+}
+
 // ensure that the horizon client implements ClientInterface
 var _ ClientInterface = &Client{}
