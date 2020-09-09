@@ -1323,8 +1323,13 @@ func getSponsoredSandwichWrappers() []*transactionOperationWrapper {
 			SponsoredId: sponsoree,
 		},
 	}
+
 	sponsorMuxed := sponsor.ToMuxedAccount()
-	tx.Envelope.Operations()[0].SourceAccount = &sponsorMuxed
+	// Do not provide the source explicitly so that the transaction source is used
+	// It tests https://github.com/stellar/go/issues/2982 .
+	// tx.Envelope.Operations()[0].SourceAccount = &sponsorMuxed
+	tx.Envelope.Operations()[0].SourceAccount = nil
+	tx.Envelope.V1.Tx.SourceAccount = sponsorMuxed
 
 	// sponsored operation
 	tx.Envelope.Operations()[1].Body = xdr.OperationBody{

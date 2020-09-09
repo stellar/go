@@ -137,11 +137,14 @@ func (operation *transactionOperationWrapper) OperationResult() *xdr.OperationRe
 	return &tr
 }
 
-func (operation *transactionOperationWrapper) findPriorBeginSponsoringOp() *xdr.Operation {
+func (operation *transactionOperationWrapper) findPriorBeginSponsoringOp() *transactionOperationWrapper {
 	operations := operation.transaction.Envelope.Operations()
 	for i := int(operation.index) - 1; i >= 0; i-- {
 		if operations[i].Body.Type == xdr.OperationTypeBeginSponsoringFutureReserves {
-			return &operations[i]
+			result := *operation
+			result.index = uint32(i)
+			result.operation = operations[i]
+			return &result
 		}
 	}
 	return nil
@@ -339,12 +342,11 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 		op := operation.operation.Body.MustBeginSponsoringFutureReservesOp()
 		details["sponsored_id"] = op.SponsoredId.Address()
 	case xdr.OperationTypeEndSponsoringFutureReserves:
-		beginSponsoringOp := operation.findPriorBeginSponsoringOp()
-		if beginSponsoringOp == nil {
+		beginSponsorshipOp := operation.findPriorBeginSponsoringOp()
+		if beginSponsorshipOp == nil {
 			return nil, fmt.Errorf("prior Begin operation not found for EndSponsoringFutureReserves")
 		}
-		beginSponsor := beginSponsoringOp.SourceAccount.ToAccountId()
-		details["begin_sponsor"] = beginSponsor.Address()
+		details["begin_sponsor"] = beginSponsorshipOp.SourceAccount().Address()
 	case xdr.OperationTypeRevokeSponsorship:
 		op := operation.operation.Body.MustRevokeSponsorshipOp()
 		switch op.Type {
@@ -486,12 +488,11 @@ func (operation *transactionOperationWrapper) Participants() ([]xdr.AccountId, e
 	case xdr.OperationTypeBeginSponsoringFutureReserves:
 		participants = append(participants, op.Body.MustBeginSponsoringFutureReservesOp().SponsoredId)
 	case xdr.OperationTypeEndSponsoringFutureReserves:
-		beginSponsoringOp := operation.findPriorBeginSponsoringOp()
-		if beginSponsoringOp == nil {
+		beginSponsorshipOp := operation.findPriorBeginSponsoringOp()
+		if beginSponsorshipOp == nil {
 			return nil, fmt.Errorf("prior Begin operation not found for EndSponsoringFutureReserves")
 		}
-		beginSponsor := beginSponsoringOp.SourceAccount.ToAccountId()
-		participants = append(participants, beginSponsor)
+		participants = append(participants, *beginSponsorshipOp.SourceAccount())
 	case xdr.OperationTypeRevokeSponsorship:
 		// the only direct participant is the source_account
 	default:
