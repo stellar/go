@@ -139,6 +139,47 @@ func TestFilteringClaimableBalances(t *testing.T) {
 	runFilteringTest(t, client, accounts[0], accounts[1], txnbuild.NativeAsset{})
 }
 
+func TestClaimingClaimableBalances(t *testing.T) {
+	itest := test.NewIntegrationTest(t, protocol14Config)
+	defer itest.Close()
+	client, master := itest.Client(), itest.Master().(*keypair.Full)
+
+	// Create a couple of accounts to test the interactions.
+	accounts, tx, err := createAccounts(master, 2)
+	assert.NoError(t, err)
+
+	if _, err = submitOrLog(t, client, tx); err == nil {
+		for _, account := range accounts {
+			t.Logf("Funded %s (%s).\n", account.Seed(), account.Address())
+		}
+	}
+
+	a, b := accounts[0], accounts[1]
+
+	// This is an easy shortcut to setting up the scenario.
+	runFilteringTest(t, client, a, b, txnbuild.NativeAsset{})
+
+	// Now let's retrieve what the above just created so we can claim it.
+	balances, err := client.ClaimableBalances(sdk.ClaimableBalanceRequest{Sponsor: a.Address()})
+	assert.NoError(t, err)
+
+	claims := balances.Embedded.Records
+	assert.Len(t, claims, 1)
+	assert.Equal(t, claims[0].Sponsor, a.Address())
+	claim := claims[0]
+
+	request := sdk.AccountRequest{AccountID: b.Address()}
+	bAccount, err := client.AccountDetail(request)
+	assert.NoError(t, err)
+
+	op := txnbuild.ClaimClaimableBalance{
+		BalanceID:     claim.BalanceID,
+		SourceAccount: &bAccount,
+	}
+
+	tx, err = makeAndSign(b, transact(&bAccount, &op))
+}
+
 func runFilteringTest(t *testing.T, client *sdk.Client,
 	source *keypair.Full, dest *keypair.Full, asset txnbuild.Asset,
 ) {
@@ -272,7 +313,7 @@ func submitOrLog(t *testing.T, client *sdk.Client, xdr string) (response proto.T
 	return
 }
 
-func createAccounts(master *keypair.Full, count int, seq int64) (
+func createAccounts(master *keypair.Full, count int) (
 	[]*keypair.Full, string, error,
 ) {
 	pairs := make([]*keypair.Full, count)
@@ -281,7 +322,7 @@ func createAccounts(master *keypair.Full, count int, seq int64) (
 
 	masterAccount := txnbuild.SimpleAccount{
 		AccountID: master.Address(),
-		Sequence:  seq,
+		Sequence:  0,
 	}
 
 	for i := 0; i < count; i++ {
