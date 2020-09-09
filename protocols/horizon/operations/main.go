@@ -244,7 +244,7 @@ type BeginSponsoringFutureReserves struct {
 // EndSponsoringFutureReserves.
 type EndSponsoringFutureReserves struct {
 	Base
-	BeginSponsor string `json:"begin_sponsor"`
+	BeginSponsor string `json:"begin_sponsor,omitempty"`
 }
 
 // RevokeSponsorship is the json resource representing a single operation whose type is
