@@ -1,7 +1,6 @@
 package integration
 
 import (
-	"fmt"
 	"testing"
 
 	sdk "github.com/stellar/go/clients/horizonclient"
@@ -37,15 +36,10 @@ func TestProtocol14SanityCheck(t *testing.T) {
 	}
 
 	tx, err := makeAndSign(master,
-		txnbuild.TransactionParams{
-			SourceAccount: &txnbuild.SimpleAccount{
-				AccountID: master.Address(),
-				Sequence:  1,
-			},
-			Operations: []txnbuild.Operation{&op},
-			BaseFee:    txnbuild.MinBaseFee,
-			Timebounds: txnbuild.NewInfiniteTimeout(),
-		},
+		transact(&txnbuild.SimpleAccount{
+			AccountID: master.Address(),
+			Sequence:  0,
+		}, &op),
 	)
 	assert.NoError(t, err)
 
@@ -70,15 +64,10 @@ func TestCreateClaimableBalance(t *testing.T) {
 
 	tx, err := makeAndSign(
 		master,
-		txnbuild.TransactionParams{
-			SourceAccount: &txnbuild.SimpleAccount{
-				AccountID: master.Address(),
-				Sequence:  1,
-			},
-			Operations: []txnbuild.Operation{&op},
-			BaseFee:    txnbuild.MinBaseFee,
-			Timebounds: txnbuild.NewInfiniteTimeout(),
-		},
+		transact(&txnbuild.SimpleAccount{
+			AccountID: master.Address(),
+			Sequence:  0,
+		}, &op),
 	)
 	assert.NoError(t, err)
 
@@ -104,7 +93,7 @@ func TestFilteringNonNativeClaimableBalances(t *testing.T) {
 	defer itest.Close()
 	client, master := itest.Client(), itest.Master().(*keypair.Full)
 
-	accounts, tx, err := createAccounts(master, 2, int64(1))
+	accounts, tx, err := createAccounts(master, 2)
 	assert.NoError(t, err)
 
 	if _, err = submitOrLog(t, client, tx); err == nil {
@@ -138,7 +127,7 @@ func TestFilteringClaimableBalances(t *testing.T) {
 	client, master := itest.Client(), itest.Master().(*keypair.Full)
 
 	// Create a couple of accounts to test the interactions.
-	accounts, tx, err := createAccounts(master, 2, int64(1))
+	accounts, tx, err := createAccounts(master, 2)
 	assert.NoError(t, err)
 
 	if _, err = submitOrLog(t, client, tx); err == nil {
@@ -164,16 +153,7 @@ func runFilteringTest(t *testing.T, client *sdk.Client,
 	}
 
 	// Submit a simple claimable balance from A -> B.
-	tx, err := makeAndSign(
-		source,
-		txnbuild.TransactionParams{
-			SourceAccount:        &sourceAccount,
-			Operations:           []txnbuild.Operation{&op},
-			BaseFee:              txnbuild.MinBaseFee,
-			Timebounds:           txnbuild.NewInfiniteTimeout(),
-			IncrementSequenceNum: true,
-		},
-	)
+	tx, err := makeAndSign(source, transact(&sourceAccount, &op))
 	assert.NoError(t, err)
 	submitOrLog(t, client, tx)
 
@@ -270,6 +250,16 @@ func makeAndSign(signer *keypair.Full, params txnbuild.TransactionParams) (strin
 	return txb64, nil
 }
 
+func transact(account txnbuild.Account, ops ...txnbuild.Operation) txnbuild.TransactionParams {
+	return txnbuild.TransactionParams{
+		SourceAccount:        account,
+		Operations:           ops,
+		BaseFee:              txnbuild.MinBaseFee,
+		Timebounds:           txnbuild.NewInfiniteTimeout(),
+		IncrementSequenceNum: true,
+	}
+}
+
 func submitOrLog(t *testing.T, client *sdk.Client, xdr string) (response proto.Transaction, err error) {
 	response, err = client.SubmitTransactionXDR(xdr)
 	assert.NoError(t, err)
@@ -306,15 +296,7 @@ func createAccounts(master *keypair.Full, count int, seq int64) (
 	}
 
 	// Build transaction:
-	tx, err := makeAndSign(
-		master,
-		txnbuild.TransactionParams{
-			SourceAccount: &masterAccount,
-			BaseFee:       txnbuild.MinBaseFee,
-			Timebounds:    txnbuild.NewInfiniteTimeout(),
-			Operations:    ops,
-		},
-	)
+	tx, err := makeAndSign(master, transact(&masterAccount, ops...))
 
 	return pairs, tx, err
 }
@@ -327,19 +309,10 @@ func createValueFromThinAir(client *sdk.Client, truster *keypair.Full, asset txn
 		return
 	}
 
-	txp := txnbuild.TransactionParams{
-		SourceAccount:        &sourceAccount,
-		IncrementSequenceNum: true,
-		BaseFee:              txnbuild.MinBaseFee,
-		Timebounds:           txnbuild.NewInfiniteTimeout(),
-		Operations: []txnbuild.Operation{
-			&txnbuild.ChangeTrust{
-				Line:  asset,
-				Limit: "2000",
-			},
-		},
-		Memo: txnbuild.MemoText(fmt.Sprintf("i trust u %s", asset.GetCode())),
-	}
+	txp := transact(&sourceAccount, &txnbuild.ChangeTrust{
+		Line:  asset,
+		Limit: "2000",
+	})
 
 	// The usual song & dance w/ signing, submitting, etc.
 	tx, err = makeAndSign(truster, txp)
