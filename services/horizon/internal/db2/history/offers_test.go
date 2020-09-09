@@ -35,6 +35,7 @@ var (
 			},
 		},
 		Ext: xdr.LedgerEntryExt{
+			V: 1,
 			V1: &xdr.LedgerEntryExtensionV1{
 				SponsoringId: &sponsor,
 			},
@@ -453,6 +454,19 @@ func TestGetOffers(t *testing.T) {
 		query := OffersQuery{
 			PageQuery: pageQuery,
 			SellerID:  sellerID,
+		}
+
+		offers, err := q.GetOffers(query)
+		tt.Assert.NoError(err)
+		tt.Assert.Len(offers, 1)
+
+		assertOfferEntryMatchesDBOffer(t, eurOffer, offers[0])
+	})
+
+	t.Run("Filter by sponsor", func(t *testing.T) {
+		query := OffersQuery{
+			PageQuery: pageQuery,
+			Sponsor:   sponsor.Address(),
 		}
 
 		offers, err := q.GetOffers(query)

@@ -59,12 +59,13 @@ func (handler GetOfferByID) GetResource(w HeaderWriter, r *http.Request) (interf
 type OffersQuery struct {
 	SellingBuyingAssetQueryParams `valid:"-"`
 	Seller                        string `schema:"seller" valid:"accountID,optional"`
+	Sponsor                       string `schema:"sponsor" valid:"accountID,optional"`
 }
 
 // URITemplate returns a rfc6570 URI template the query struct
 func (q OffersQuery) URITemplate() string {
 	// building this manually since we don't want to include all the params in SellingBuyingAssetQueryParams
-	return "/offers{?selling,buying,seller,cursor,limit,order}"
+	return "/offers{?selling,buying,seller,sponsor,cursor,limit,order}"
 }
 
 // Validate runs custom validations.
@@ -105,6 +106,7 @@ func (handler GetOffersHandler) GetResourcePage(
 	query := history.OffersQuery{
 		PageQuery: pq,
 		SellerID:  qp.Seller,
+		Sponsor:   qp.Sponsor,
 		Selling:   selling,
 		Buying:    buying,
 	}

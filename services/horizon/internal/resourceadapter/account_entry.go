@@ -77,6 +77,9 @@ func PopulateAccountEntry(
 		dest.Signers[i].Weight = signer.Weight
 		dest.Signers[i].Key = signer.Signer
 		dest.Signers[i].Type = protocol.MustKeyTypeFromAddress(signer.Signer)
+		if signer.Sponsor.Valid {
+			dest.Signers[i].Sponsor = signer.Sponsor.String
+		}
 
 		if account.AccountID == signer.Signer {
 			masterKeyIncluded = true
@@ -89,6 +92,12 @@ func PopulateAccountEntry(
 			Key:    account.AccountID,
 			Type:   protocol.MustKeyTypeFromAddress(account.AccountID),
 		})
+	}
+
+	dest.NumSponsoring = account.NumSponsoring
+	dest.NumSponsored = account.NumSponsored
+	if account.Sponsor.Valid {
+		dest.Sponsor = account.Sponsor.String
 	}
 
 	lb := hal.LinkBuilder{horizonContext.BaseURL(ctx)}

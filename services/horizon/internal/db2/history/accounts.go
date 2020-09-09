@@ -244,6 +244,28 @@ func (q *Q) AccountsForAsset(asset xdr.Asset, page db2.PageQuery) ([]AccountEntr
 	return results, nil
 }
 
+// AccountsForSponsor returns a list of `AccountEntry` rows for a given sponsor
+func (q *Q) AccountsForSponsor(sponsor string, page db2.PageQuery) ([]AccountEntry, error) {
+	sql := sq.
+		Select("accounts.*").
+		From("accounts").
+		Where(map[string]interface{}{
+			"accounts.sponsor": sponsor,
+		})
+
+	sql, err := page.ApplyToUsingCursor(sql, "accounts.account_id", page.Cursor)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not apply query to page")
+	}
+
+	var results []AccountEntry
+	if err := q.Select(&results, sql); err != nil {
+		return nil, errors.Wrap(err, "could not run select query")
+	}
+
+	return results, nil
+}
+
 // AccountEntriesForSigner returns a list of `AccountEntry` rows for a given signer
 func (q *Q) AccountEntriesForSigner(signer string, page db2.PageQuery) ([]AccountEntry, error) {
 	sql := sq.
