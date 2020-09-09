@@ -27,6 +27,7 @@ func (cbr ClaimableBalanceRequest) BuildURL() (endpoint string, err error) {
 			map[string]string{
 				"claimant": cbr.Claimant,
 				"sponsor":  cbr.Sponsor,
+				"asset":    cbr.Asset,
 			},
 		)
 

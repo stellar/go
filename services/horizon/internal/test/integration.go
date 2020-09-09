@@ -68,12 +68,14 @@ func NewIntegrationTest(t *testing.T, config IntegrationConfig) *IntegrationTest
 		containers, _ := i.cli.ContainerList(
 			context.Background(),
 			types.ContainerListOptions{All: true, Quiet: true})
+
 		for _, container := range containers {
 			if container.Image == image {
 				i.container.ID = container.ID
 				break
 			}
 		}
+
 		if i.container.ID != "" {
 			t.Logf("Found matching container: %s\n", i.container.ID)
 		} else {
