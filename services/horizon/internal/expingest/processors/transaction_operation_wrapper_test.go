@@ -1301,22 +1301,32 @@ func TestClaimClaimableBalanceOpTestSuite(t *testing.T) {
 }
 
 var (
-	sponsor   = xdr.MustAddress("GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY")
+	sponsor1  = xdr.MustAddress("GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY")
+	sponsor2  = xdr.MustAddress("GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD")
 	sponsoree = xdr.MustAddress("GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2")
 )
 
 func getSponsoredSandwichWrappers() []*transactionOperationWrapper {
+
+	// Create a transaction containing a nested sponsoring sandwich as follows:
+	//
+	// A  BeginSponsoringFutureReserves (sponsor1)
+	// B    BeginSponsoringFutureReserves (sponsor2)
+	// C      CreateAccount
+	// D    EndSponsoringFutureReserves (sponsoree)
+	// E  EndSponsoringFutureReserves (sponsoree)
+	numOps := 5
 	const ledgerSeq = uint32(12345)
-	tx := createTransaction(true, 3)
+	tx := createTransaction(true, numOps)
 	tx.Index = 1
 	tx.Meta = xdr.TransactionMeta{
 		V: 2,
 		V2: &xdr.TransactionMetaV2{
-			Operations: make([]xdr.OperationMeta, 3, 3),
+			Operations: make([]xdr.OperationMeta, numOps, numOps),
 		},
 	}
 
-	// begin sponsorship
+	// A
 	tx.Envelope.Operations()[0].Body = xdr.OperationBody{
 		Type: xdr.OperationTypeBeginSponsoringFutureReserves,
 		BeginSponsoringFutureReservesOp: &xdr.BeginSponsoringFutureReservesOp{
@@ -1324,23 +1334,33 @@ func getSponsoredSandwichWrappers() []*transactionOperationWrapper {
 		},
 	}
 
-	sponsorMuxed := sponsor.ToMuxedAccount()
+	sponsor1Muxed := sponsor1.ToMuxedAccount()
 	// Do not provide the source explicitly so that the transaction source is used
 	// It tests https://github.com/stellar/go/issues/2982 .
 	// tx.Envelope.Operations()[0].SourceAccount = &sponsorMuxed
 	tx.Envelope.Operations()[0].SourceAccount = nil
-	tx.Envelope.V1.Tx.SourceAccount = sponsorMuxed
+	tx.Envelope.V1.Tx.SourceAccount = sponsor1Muxed
 
-	// sponsored operation
+	// B
 	tx.Envelope.Operations()[1].Body = xdr.OperationBody{
+		Type: xdr.OperationTypeBeginSponsoringFutureReserves,
+		BeginSponsoringFutureReservesOp: &xdr.BeginSponsoringFutureReservesOp{
+			SponsoredId: sponsoree,
+		},
+	}
+	sponsor2Muxed := sponsor2.ToMuxedAccount()
+	tx.Envelope.Operations()[1].SourceAccount = &sponsor2Muxed
+
+	// C
+	tx.Envelope.Operations()[2].Body = xdr.OperationBody{
 		Type: xdr.OperationTypeCreateAccount,
 		CreateAccountOp: &xdr.CreateAccountOp{
 			Destination: xdr.MustAddress("GC6VKA3RC3CVU7POEKFORVMHWJNQIRZS6AEH3KIIHCVO3YRGWUV7MSUC"),
 		},
 	}
 	sponsoreeMuxed := sponsoree.ToMuxedAccount()
-	tx.Envelope.Operations()[1].SourceAccount = &sponsoreeMuxed
-	tx.Meta.V2.Operations[1] = xdr.OperationMeta{Changes: []xdr.LedgerEntryChange{
+	tx.Envelope.Operations()[2].SourceAccount = &sponsoreeMuxed
+	tx.Meta.V2.Operations[2] = xdr.OperationMeta{Changes: []xdr.LedgerEntryChange{
 		{
 			Type: xdr.LedgerEntryChangeTypeLedgerEntryCreated,
 			Created: &xdr.LedgerEntry{
@@ -1348,18 +1368,24 @@ func getSponsoredSandwichWrappers() []*transactionOperationWrapper {
 				Ext: xdr.LedgerEntryExt{
 					V: 1,
 					V1: &xdr.LedgerEntryExtensionV1{
-						SponsoringId: &sponsor,
+						SponsoringId: &sponsor1,
 					},
 				},
 			},
 		},
 	}}
 
-	// end sponsorship
-	tx.Envelope.Operations()[2].Body = xdr.OperationBody{
+	// D
+	tx.Envelope.Operations()[3].Body = xdr.OperationBody{
 		Type: xdr.OperationTypeEndSponsoringFutureReserves,
 	}
-	tx.Envelope.Operations()[2].SourceAccount = &sponsoreeMuxed
+	tx.Envelope.Operations()[3].SourceAccount = &sponsoreeMuxed
+
+	// E
+	tx.Envelope.Operations()[4].Body = xdr.OperationBody{
+		Type: xdr.OperationTypeEndSponsoringFutureReserves,
+	}
+	tx.Envelope.Operations()[4].SourceAccount = &sponsoreeMuxed
 
 	// wrappers
 	result := make([]*transactionOperationWrapper, len(tx.Envelope.Operations()), len(tx.Envelope.Operations()))
@@ -1386,13 +1412,25 @@ func TestSponsoredSandwichTransaction_Details(t *testing.T) {
 	details, err = wrappers[1].Details()
 	assert.NoError(t, err)
 	assert.Equal(t, details, map[string]interface{}{
+		"sponsored_id": "GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2",
+	})
+
+	details, err = wrappers[2].Details()
+	assert.NoError(t, err)
+	assert.Equal(t, details, map[string]interface{}{
 		"account":          "GC6VKA3RC3CVU7POEKFORVMHWJNQIRZS6AEH3KIIHCVO3YRGWUV7MSUC",
 		"funder":           "GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2",
 		"sponsor":          "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
 		"starting_balance": "0.0000000",
 	})
 
-	details, err = wrappers[2].Details()
+	details, err = wrappers[3].Details()
+	assert.NoError(t, err)
+	assert.Equal(t, details, map[string]interface{}{
+		"begin_sponsor": "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
+	})
+
+	details, err = wrappers[4].Details()
 	assert.NoError(t, err)
 	assert.Equal(t, details, map[string]interface{}{
 		"begin_sponsor": "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
@@ -1416,6 +1454,16 @@ func TestSponsoredSandwichTransaction_Participants(t *testing.T) {
 	assert.NoError(t, err)
 	assert.ElementsMatch(t,
 		[]xdr.AccountId{
+			xdr.MustAddress("GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD"),
+			xdr.MustAddress("GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2"),
+		},
+		participants,
+	)
+
+	participants, err = wrappers[2].Participants()
+	assert.NoError(t, err)
+	assert.ElementsMatch(t,
+		[]xdr.AccountId{
 			xdr.MustAddress("GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2"),
 			xdr.MustAddress("GC6VKA3RC3CVU7POEKFORVMHWJNQIRZS6AEH3KIIHCVO3YRGWUV7MSUC"),
 			xdr.MustAddress("GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY"),
@@ -1423,7 +1471,17 @@ func TestSponsoredSandwichTransaction_Participants(t *testing.T) {
 		participants,
 	)
 
-	participants, err = wrappers[2].Participants()
+	participants, err = wrappers[3].Participants()
+	assert.NoError(t, err)
+	assert.ElementsMatch(t,
+		[]xdr.AccountId{
+			xdr.MustAddress("GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2"),
+			xdr.MustAddress("GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD"),
+		},
+		participants,
+	)
+
+	participants, err = wrappers[4].Participants()
 	assert.NoError(t, err)
 	assert.ElementsMatch(t,
 		[]xdr.AccountId{

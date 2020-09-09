@@ -137,10 +137,22 @@ func (operation *transactionOperationWrapper) OperationResult() *xdr.OperationRe
 	return &tr
 }
 
-func (operation *transactionOperationWrapper) findPriorBeginSponsoringOp() *transactionOperationWrapper {
+func (operation *transactionOperationWrapper) findInitatingBeginSponsoringOp() *transactionOperationWrapper {
 	operations := operation.transaction.Envelope.Operations()
+	// We need to take into account nested sponsoring sandwiches.
+	// To do so, we count the EndSponsoring operations that we encounter
+	sandwichNestingDepth := 0
 	for i := int(operation.index) - 1; i >= 0; i-- {
-		if operations[i].Body.Type == xdr.OperationTypeBeginSponsoringFutureReserves {
+		switch operations[i].Body.Type {
+		case xdr.OperationTypeEndSponsoringFutureReserves:
+			// we are entering a nested sandwich
+			sandwichNestingDepth++
+		case xdr.OperationTypeBeginSponsoringFutureReserves:
+			if sandwichNestingDepth > 0 {
+				// we are exiting a nested sandwich
+				sandwichNestingDepth--
+				break
+			}
 			result := *operation
 			result.index = uint32(i)
 			result.operation = operations[i]
@@ -342,7 +354,7 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 		op := operation.operation.Body.MustBeginSponsoringFutureReservesOp()
 		details["sponsored_id"] = op.SponsoredId.Address()
 	case xdr.OperationTypeEndSponsoringFutureReserves:
-		beginSponsorshipOp := operation.findPriorBeginSponsoringOp()
+		beginSponsorshipOp := operation.findInitatingBeginSponsoringOp()
 		if beginSponsorshipOp != nil {
 			details["begin_sponsor"] = beginSponsorshipOp.SourceAccount().Address()
 		}
@@ -487,7 +499,7 @@ func (operation *transactionOperationWrapper) Participants() ([]xdr.AccountId, e
 	case xdr.OperationTypeBeginSponsoringFutureReserves:
 		participants = append(participants, op.Body.MustBeginSponsoringFutureReservesOp().SponsoredId)
 	case xdr.OperationTypeEndSponsoringFutureReserves:
-		beginSponsorshipOp := operation.findPriorBeginSponsoringOp()
+		beginSponsorshipOp := operation.findInitatingBeginSponsoringOp()
 		if beginSponsorshipOp != nil {
 			participants = append(participants, *beginSponsorshipOp.SourceAccount())
 		}
