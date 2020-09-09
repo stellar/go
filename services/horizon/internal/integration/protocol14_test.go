@@ -18,7 +18,7 @@ var protocol14Config = test.IntegrationConfig{
 	// SkipContainerCreation: true,
 }
 
-func TestProtocol14Sanity(t *testing.T) {
+func TestProtocol14SanityCheck(t *testing.T) {
 	itest := test.NewIntegrationTest(t, protocol14Config)
 	defer itest.Close()
 
@@ -238,11 +238,17 @@ func runFilteringTest(t *testing.T, client *sdk.Client,
 
 	// similarly, a non-native asset shouldn't show up when filtering by a
 	// *different* non-native NOR when filtering by native
-	if aType, err := asset.GetType(); err == nil && aType == txnbuild.AssetTypeNative {
-		t.Log("  by native")
-		balances, err = client.ClaimableBalances(sdk.ClaimableBalanceRequest{Asset: "native"})
-		assert.NoError(t, err)
+	aType, err := asset.GetType()
+	assert.NoError(t, err)
+
+	t.Log("  by native")
+	balances, err = client.ClaimableBalances(sdk.ClaimableBalanceRequest{Asset: "native"})
+	assert.NoError(t, err)
+
+	if aType != txnbuild.AssetTypeNative {
 		assert.Len(t, balances.Embedded.Records, 0)
+	} else {
+		assert.Len(t, balances.Embedded.Records, 1)
 	}
 }
 
@@ -269,7 +275,7 @@ func submitOrLog(t *testing.T, client *sdk.Client, xdr string) (response proto.T
 	assert.NoError(t, err)
 	if err != nil {
 		prob := sdk.GetError(err)
-		t.Logf("Problem (if any): %s\n", prob.Problem.Extras["result_codes"])
+		t.Logf("Problem: %s\n", prob.Problem.Extras["result_codes"])
 		return
 	}
 
