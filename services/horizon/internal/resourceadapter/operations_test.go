@@ -94,7 +94,7 @@ func TestPopulateOperation_AllowTrust(t *testing.T) {
 		"trustor":                           "GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3"
 	}`
 
-	rsp, err := getJSONResponse(details)
+	rsp, err := getJSONResponse(xdr.OperationTypeAllowTrust, details)
 	tt.NoError(err)
 	tt.Equal(false, rsp["authorize"])
 	tt.Equal(true, rsp["authorize_to_maintain_liabilities"])
@@ -109,7 +109,7 @@ func TestPopulateOperation_AllowTrust(t *testing.T) {
 		"trustor":                           "GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3"
 	}`
 
-	rsp, err = getJSONResponse(details)
+	rsp, err = getJSONResponse(xdr.OperationTypeAllowTrust, details)
 	tt.NoError(err)
 	tt.Equal(true, rsp["authorize"])
 	tt.Equal(true, rsp["authorize_to_maintain_liabilities"])
@@ -124,13 +124,135 @@ func TestPopulateOperation_AllowTrust(t *testing.T) {
 		"trustor":                           "GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3"
 	}`
 
-	rsp, err = getJSONResponse(details)
+	rsp, err = getJSONResponse(xdr.OperationTypeAllowTrust, details)
 	tt.NoError(err)
 	tt.Equal(false, rsp["authorize"])
 	tt.Equal(false, rsp["authorize_to_maintain_liabilities"])
 }
 
-func getJSONResponse(details string) (rsp map[string]interface{}, err error) {
+func TestPopulateOperation_CreateClaimableBalance(t *testing.T) {
+	tt := assert.New(t)
+
+	details := `{
+		"asset":  "COP:GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
+		"amount": "10.0000000",
+		"claimants": [
+			{
+				"destination": "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
+				"predicate": {
+					"and": [
+						{
+							"or": [
+								{"relBefore":12},
+								{"absBefore": "2020-08-26T11:15:39Z"}
+							]
+						},
+						{
+							"not": {"unconditional": true}
+						}
+					]
+				}
+			}
+		]
+	}`
+
+	resp, err := getJSONResponse(xdr.OperationTypeCreateClaimableBalance, details)
+	tt.NoError(err)
+	tt.Equal("COP:GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD", resp["asset"])
+	tt.Equal("10.0000000", resp["amount"])
+}
+
+func TestPopulateOperation_ClaimClaimableBalance(t *testing.T) {
+	tt := assert.New(t)
+
+	details := `{
+		"balance_id": "abc",
+		"claimant": "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD"
+	}`
+
+	resp, err := getJSONResponse(xdr.OperationTypeClaimClaimableBalance, details)
+	tt.NoError(err)
+	tt.Equal("abc", resp["balance_id"])
+	tt.Equal("GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD", resp["claimant"])
+}
+
+func TestPopulateOperation_BeginSponsoringFutureReserves(t *testing.T) {
+	tt := assert.New(t)
+
+	details := `{
+		"sponsored_id": "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD"
+	}`
+
+	resp, err := getJSONResponse(xdr.OperationTypeBeginSponsoringFutureReserves, details)
+	tt.NoError(err)
+	tt.Equal("GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD", resp["sponsored_id"])
+}
+
+func TestPopulateOperation_EndSponsoringFutureReserves(t *testing.T) {
+	tt := assert.New(t)
+
+	details := `{
+		"begin_sponsor": "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD"
+	}`
+
+	resp, err := getJSONResponse(xdr.OperationTypeEndSponsoringFutureReserves, details)
+	tt.NoError(err)
+	tt.Equal("GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD", resp["begin_sponsor"])
+}
+
+func TestPopulateOperation_OperationTypeRevokeSponsorship_Account(t *testing.T) {
+	tt := assert.New(t)
+
+	details := `{
+		"account_id": "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD"
+	}`
+
+	resp, err := getJSONResponse(xdr.OperationTypeRevokeSponsorship, details)
+	tt.NoError(err)
+	tt.Equal("GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD", resp["account_id"])
+}
+
+func TestPopulateOperation_OperationTypeRevokeSponsorship_Data(t *testing.T) {
+	tt := assert.New(t)
+
+	details := `{
+		"data_account_id": "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
+		"data_name": "name"
+	}`
+
+	resp, err := getJSONResponse(xdr.OperationTypeRevokeSponsorship, details)
+	tt.NoError(err)
+	tt.Equal("GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD", resp["data_account_id"])
+	tt.Equal("name", resp["data_name"])
+}
+
+func TestPopulateOperation_OperationTypeRevokeSponsorship_Offer(t *testing.T) {
+	tt := assert.New(t)
+
+	details := `{
+		"offer_id": "1000"
+	}`
+
+	resp, err := getJSONResponse(xdr.OperationTypeRevokeSponsorship, details)
+	tt.NoError(err)
+	tt.Equal("1000", resp["offer_id"])
+}
+
+func TestPopulateOperation_OperationTypeRevokeSponsorship_Trustline(t *testing.T) {
+	tt := assert.New(t)
+
+	details := `{
+		"trustline_account_id": "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
+		"trustline_asset": "COP:GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD"
+	}`
+
+	resp, err := getJSONResponse(xdr.OperationTypeRevokeSponsorship, details)
+	tt.NoError(err)
+	tt.Equal("GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD", resp["trustline_account_id"])
+	tt.Equal("COP:GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD", resp["trustline_asset"])
+}
+
+func getJSONResponse(typ xdr.OperationType, details string) (rsp map[string]interface{}, err error) {
 	ctx, _ := test.ContextWithLogBuffer()
 	transactionRow := history.Transaction{
 		TransactionWithoutLedger: history.TransactionWithoutLedger{
@@ -141,7 +263,7 @@ func getJSONResponse(details string) (rsp map[string]interface{}, err error) {
 	}
 	operationsRow := history.Operation{
 		TransactionSuccessful: true,
-		Type:                  xdr.OperationTypeAllowTrust,
+		Type:                  typ,
 		DetailsString:         null.StringFrom(details),
 	}
 	resource, err := NewOperation(ctx, operationsRow, "", &transactionRow, history.Ledger{})

@@ -349,7 +349,7 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 		op := operation.operation.Body.MustRevokeSponsorshipOp()
 		switch op.Type {
 		case xdr.RevokeSponsorshipTypeRevokeSponsorshipLedgerEntry:
-			if err := addLedgerKeyDetails(details, *op.LedgerKey, ""); err != nil {
+			if err := addLedgerKeyDetails(details, *op.LedgerKey); err != nil {
 				return nil, err
 			}
 		case xdr.RevokeSponsorshipTypeRevokeSponsorshipSigner:
@@ -420,24 +420,24 @@ func operationFlagDetails(result map[string]interface{}, f int32, prefix string)
 	result[prefix+"_flags_s"] = s
 }
 
-func addLedgerKeyDetails(result map[string]interface{}, ledgerKey xdr.LedgerKey, prefix string) error {
+func addLedgerKeyDetails(result map[string]interface{}, ledgerKey xdr.LedgerKey) error {
 	switch ledgerKey.Type {
 	case xdr.LedgerEntryTypeAccount:
-		result[prefix+"account_id"] = ledgerKey.Account.AccountId.Address()
+		result["account_id"] = ledgerKey.Account.AccountId.Address()
 	case xdr.LedgerEntryTypeClaimableBalance:
 		marshalHex, err := xdr.MarshalHex(ledgerKey.ClaimableBalance.BalanceId)
 		if err != nil {
 			return errors.Wrapf(err, "in claimable balance")
 		}
-		result[prefix+"claimable_balance_id"] = marshalHex
+		result["claimable_balance_id"] = marshalHex
 	case xdr.LedgerEntryTypeData:
-		result[prefix+"account_id"] = ledgerKey.Data.AccountId.Address()
-		result[prefix+"data_name"] = ledgerKey.Data.DataName
+		result["data_account_id"] = ledgerKey.Data.AccountId.Address()
+		result["data_name"] = ledgerKey.Data.DataName
 	case xdr.LedgerEntryTypeOffer:
-		result[prefix+"offer_id"] = ledgerKey.Offer.OfferId
+		result["offer_id"] = ledgerKey.Offer.OfferId
 	case xdr.LedgerEntryTypeTrustline:
-		result[prefix+"account_id"] = ledgerKey.TrustLine.AccountId.Address()
-		addAssetDetails(result, ledgerKey.TrustLine.Asset, prefix)
+		result["trustline_account_id"] = ledgerKey.TrustLine.AccountId.Address()
+		result["trustline_asset"] = ledgerKey.TrustLine.Asset.StringCanonical()
 	}
 	return nil
 }

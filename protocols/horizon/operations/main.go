@@ -216,6 +216,52 @@ type Inflation struct {
 	Base
 }
 
+// CreateClaimableBalance is the json resource representing a single operation whose type is
+// CreateClaimableBalance.
+type CreateClaimableBalance struct {
+	Base
+	Asset     string             `json:"asset"`
+	Amount    string             `json:"amount"`
+	Claimants []horizon.Claimant `json:"claimants"`
+}
+
+// ClaimClaimableBalance is the json resource representing a single operation whose type is
+// ClaimClaimableBalance.
+type ClaimClaimableBalance struct {
+	Base
+	BalanceID string `json:"balance_id"`
+	Claimant  string `json:"claimant"`
+}
+
+// BeginSponsoringFutureReserves is the json resource representing a single operation whose type is
+// BeginSponsoringFutureReserves.
+type BeginSponsoringFutureReserves struct {
+	Base
+	SponsoredID string `json:"sponsored_id"`
+}
+
+// EndSponsoringFutureReserves is the json resource representing a single operation whose type is
+// EndSponsoringFutureReserves.
+type EndSponsoringFutureReserves struct {
+	Base
+	BeginSponsor string `json:"begin_sponsor"`
+}
+
+// RevokeSponsorship is the json resource representing a single operation whose type is
+// RevokeSponsorship.
+type RevokeSponsorship struct {
+	Base
+	AccountID          *string `json:"account_id,omitempty"`
+	ClaimableBalanceID *string `json:"claimable_balance_id,omitempty"`
+	DataAccountID      *string `json:"data_account_id,omitempty"`
+	DataName           *string `json:"data_name,omitempty"`
+	OfferID            *string `json:"offer_id,omitempty"`
+	TrustlineAccountID *string `json:"trustline_account_id,omitempty"`
+	TrustlineAsset     *string `json:"trustline_asset,omitempty"`
+	SignerAccountID    *string `json:"signer_account_id,omitempty"`
+	SignerKey          *string `json:"signer_key,omitempty"`
+}
+
 // Operation interface contains methods implemented by the operation types
 type Operation interface {
 	PagingToken() string
@@ -373,6 +419,36 @@ func UnmarshalOperation(operationTypeID int32, dataString []byte) (ops Operation
 		ops = op
 	case xdr.OperationTypePathPaymentStrictSend:
 		var op PathPaymentStrictSend
+		if err = json.Unmarshal(dataString, &op); err != nil {
+			return
+		}
+		ops = op
+	case xdr.OperationTypeCreateClaimableBalance:
+		var op CreateClaimableBalance
+		if err = json.Unmarshal(dataString, &op); err != nil {
+			return
+		}
+		ops = op
+	case xdr.OperationTypeClaimClaimableBalance:
+		var op ClaimClaimableBalance
+		if err = json.Unmarshal(dataString, &op); err != nil {
+			return
+		}
+		ops = op
+	case xdr.OperationTypeBeginSponsoringFutureReserves:
+		var op BeginSponsoringFutureReserves
+		if err = json.Unmarshal(dataString, &op); err != nil {
+			return
+		}
+		ops = op
+	case xdr.OperationTypeEndSponsoringFutureReserves:
+		var op EndSponsoringFutureReserves
+		if err = json.Unmarshal(dataString, &op); err != nil {
+			return
+		}
+		ops = op
+	case xdr.OperationTypeRevokeSponsorship:
+		var op RevokeSponsorship
 		if err = json.Unmarshal(dataString, &op); err != nil {
 			return
 		}
