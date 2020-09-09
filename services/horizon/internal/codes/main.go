@@ -440,6 +440,16 @@ func ForOperationResult(opr xdr.OperationResult) (string, error) {
 		ic = ir.MustBumpSeqResult().Code
 	case xdr.OperationTypePathPaymentStrictSend:
 		ic = ir.MustPathPaymentStrictSendResult().Code
+	case xdr.OperationTypeCreateClaimableBalance:
+		ic = ir.MustCreateClaimableBalanceResult().Code
+	case xdr.OperationTypeClaimClaimableBalance:
+		ic = ir.MustClaimClaimableBalanceResult().Code
+	case xdr.OperationTypeBeginSponsoringFutureReserves:
+		ic = ir.MustBeginSponsoringFutureReservesResult().Code
+	case xdr.OperationTypeEndSponsoringFutureReserves:
+		ic = ir.MustEndSponsoringFutureReservesResult().Code
+	case xdr.OperationTypeRevokeSponsorship:
+		ic = ir.MustRevokeSponsorshipResult().Code
 	}
 
 	return String(ic)
