@@ -343,8 +343,9 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 		if beginSponsoringOp == nil {
 			return nil, fmt.Errorf("prior Begin operation not found for EndSponsoringFutureReserves")
 		}
-		beginSponsor := beginSponsoringOp.SourceAccount.ToAccountId()
-		details["begin_sponsor"] = beginSponsor.Address()
+		beginSponsorWrapper := *operation
+		beginSponsorWrapper.operation = *beginSponsoringOp
+		details["begin_sponsor"] = beginSponsorWrapper.SourceAccount().Address()
 	case xdr.OperationTypeRevokeSponsorship:
 		op := operation.operation.Body.MustRevokeSponsorshipOp()
 		switch op.Type {
@@ -490,8 +491,10 @@ func (operation *transactionOperationWrapper) Participants() ([]xdr.AccountId, e
 		if beginSponsoringOp == nil {
 			return nil, fmt.Errorf("prior Begin operation not found for EndSponsoringFutureReserves")
 		}
-		beginSponsor := beginSponsoringOp.SourceAccount.ToAccountId()
-		participants = append(participants, beginSponsor)
+		beginSponsorWrapper := *operation
+		beginSponsorWrapper.operation = *beginSponsoringOp
+		beginSponsorSource := beginSponsorWrapper.SourceAccount()
+		participants = append(participants, *beginSponsorSource)
 	case xdr.OperationTypeRevokeSponsorship:
 		// the only direct participant is the source_account
 	default:
