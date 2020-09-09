@@ -810,13 +810,13 @@ func (c *Client) PrevTradeAggregationsPage(page hProtocol.TradeAggregationsPage)
 }
 
 // ClaimableBalances returns details about available claimable balances,
-// possibly filtered to a specific account or other parameters.
+// possibly filtered to a specific sponsor or other parameters.
 func (c *Client) ClaimableBalances(cbr ClaimableBalanceRequest) (cb hProtocol.ClaimableBalances, err error) {
 	err = c.sendRequest(cbr, &cb)
 	return
 }
 
-// ClaimableBalance returns details about a *specific* claimable balance.
+// ClaimableBalance returns details about a *specific*, unique claimable balance.
 func (c *Client) ClaimableBalance(id string) (cb hProtocol.ClaimableBalance, err error) {
 	cbr := ClaimableBalanceRequest{ID: id}
 	err = c.sendRequest(cbr, &cb)

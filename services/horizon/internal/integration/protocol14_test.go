@@ -100,6 +100,106 @@ func TestCreateClaimableBalance(t *testing.T) {
 	assert.NotNil(t, opResult.BalanceId)
 }
 
+func TestClaimableBalances(t *testing.T) {
+	// The use case is straightforward:
+	//
+	// > It should be easy to send a payment to an account that is not
+	// > necessarily prepared to receive the payment.
+	protocol14Config.SkipContainerCreation = true
+	itest := test.NewIntegrationTest(t, protocol14Config)
+	defer itest.Close()
+	client := itest.Client()
+
+	seq := int64(1)
+	master := itest.Master().(*keypair.Full)
+
+	// Create a couple of accounts to test the interactions.
+	accounts, tx, err := CreateAccounts(master, 2, seq)
+	assert.NoError(t, err)
+	seq++
+
+	_, err = client.SubmitTransactionXDR(tx)
+	assert.NoError(t, err)
+	if err != nil {
+		prob := sdk.GetError(err)
+		t.Logf("Problem (if any): %s\n", prob.Problem.Extras["result_codes"])
+	} else {
+		for _, account := range accounts {
+			t.Logf("Funded %s (%s).\n", account.Seed(), account.Address())
+		}
+	}
+
+	a, b := accounts[0], accounts[1]
+
+	request := sdk.AccountRequest{AccountID: a.Address()}
+	aAccount, err := client.AccountDetail(request)
+	assert.NoError(t, err)
+
+	op := txnbuild.CreateClaimableBalance{
+		Destinations: []string{b.Address()},
+		Amount:       "10",
+		Asset:        txnbuild.NativeAsset{},
+	}
+
+	// Submit a simple claimable balance from A -> B.
+	tx, err = MakeAndSign(
+		a,
+		txnbuild.TransactionParams{
+			SourceAccount:        &aAccount,
+			Operations:           []txnbuild.Operation{&op},
+			BaseFee:              txnbuild.MinBaseFee,
+			Timebounds:           txnbuild.NewInfiniteTimeout(),
+			IncrementSequenceNum: true,
+		},
+	)
+	assert.NoError(t, err)
+
+	_, err = client.SubmitTransactionXDR(tx)
+	assert.NoError(t, err)
+
+	// Ensure it exists in the global list
+	balances, err := client.ClaimableBalances(sdk.ClaimableBalanceRequest{})
+	assert.NoError(t, err)
+
+	claims := balances.Embedded.Records
+	assert.Len(t, claims, 1)
+	assert.Equal(t, claims[0].Sponsor, a.Address())
+	id := claims[0].BalanceID
+
+	// Ensure we can look it up explicitly by ID
+	balance, err := client.ClaimableBalance(id)
+	assert.NoError(t, err)
+	assert.Equal(t, claims[0], balance)
+
+	//
+	// Ensure it shows up with the various filters (and *doesn't* show up with
+	// non-matching filters, of course).
+	//
+
+	// filter by sponsor
+	balances, err = client.ClaimableBalances(sdk.ClaimableBalanceRequest{Sponsor: a.Address()})
+	assert.NoError(t, err)
+	assert.Len(t, balances.Embedded.Records, 1)
+	assert.Equal(t, claims[0], balances.Embedded.Records[0])
+
+	balances, err = client.ClaimableBalances(sdk.ClaimableBalanceRequest{Sponsor: b.Address()})
+	assert.NoError(t, err)
+	assert.Len(t, balances.Embedded.Records, 0)
+
+	// filter by claimant
+	balances, err = client.ClaimableBalances(sdk.ClaimableBalanceRequest{Claimant: a.Address()})
+	assert.NoError(t, err)
+	assert.Len(t, balances.Embedded.Records, 0)
+
+	balances, err = client.ClaimableBalances(sdk.ClaimableBalanceRequest{Claimant: b.Address()})
+	assert.NoError(t, err)
+	assert.Equal(t, claims[0], balances.Embedded.Records[0])
+
+	fmt.Println("Done.")
+}
+
+/* Utility functions below */
+
 func MakeAndSign(signer *keypair.Full, params txnbuild.TransactionParams) (string, error) {
 	tx, err := txnbuild.NewTransaction(params)
 	if err != nil {
@@ -151,107 +251,4 @@ func CreateAccounts(master *keypair.Full, count int, seq int64) (
 	)
 
 	return pairs, tx, err
-}
-
-func TestClaimableBalances(t *testing.T) {
-	// The use case is straightforward:
-	//
-	// > It should be easy to send a payment to an account that is not
-	// > necessarily prepared to receive the payment.
-	protocol14Config.SkipContainerCreation = true
-	itest := test.NewIntegrationTest(t, protocol14Config)
-	defer itest.Close()
-	client := itest.Client()
-
-	seq := int64(1)
-	master := itest.Master().(*keypair.Full)
-
-	// Create a couple of accounts to test the interactions.
-	accounts, tx, err := CreateAccounts(master, 2, seq)
-	assert.NoError(t, err)
-	seq++
-
-	_, err = client.SubmitTransactionXDR(tx)
-	assert.NoError(t, err)
-	if err != nil {
-		prob := sdk.GetError(err)
-		t.Logf("Problem (if any): %s\n", prob.Problem.Extras["result_codes"])
-	} else {
-		for _, account := range accounts {
-			t.Logf("Funded %s (%s).\n", account.Seed(), account.Address())
-		}
-	}
-
-	a, b := accounts[0], accounts[1]
-
-	request := sdk.AccountRequest{AccountID: a.Address()}
-	aAccount, err := client.AccountDetail(request)
-	assert.NoError(t, err)
-
-	op := txnbuild.CreateClaimableBalance{
-		Destinations: []string{b.Address()},
-		Amount:       "10",
-		Asset:        txnbuild.NativeAsset{},
-	}
-
-	// Submit create_claimable_balance with different predicates:
-	//   - Two successful: native and non-native asset.
-	//   - One with a predicate that will fail later when calling
-	//     claim_claimable_balance.
-	//
-	// Check /claimable_balances (filter by claimant, asset).
-	// Check /claimable_balances/{id}.
-	//
-	// Submit claim_claimable_balance for all entries (use claimable balance id
-	// returned by Horizon).
-	//
-	// Check /operations if correctly ingested (also check
-	// /operation?include_failed=true to check failed ops due to invalid
-	// predicate).
-	//
-	// Check /effects if correctly ingested.
-	// State Verifier [1]
-
-	// Submit a simple claimable balance from A -> B.
-	tx, err = MakeAndSign(
-		a,
-		txnbuild.TransactionParams{
-			SourceAccount:        &aAccount,
-			Operations:           []txnbuild.Operation{&op},
-			BaseFee:              txnbuild.MinBaseFee,
-			Timebounds:           txnbuild.NewInfiniteTimeout(),
-			IncrementSequenceNum: true,
-		},
-	)
-	assert.NoError(t, err)
-
-	_, err = client.SubmitTransactionXDR(tx)
-	assert.NoError(t, err)
-
-	// Ensure it exists in the global list
-	balances, err := client.ClaimableBalances(sdk.ClaimableBalanceRequest{})
-	assert.NoError(t, err)
-
-	claims := balances.Embedded.Records
-	assert.Len(t, claims, 1)
-	assert.Equal(t, claims[0].Sponsor, a.Address())
-	id := claims[0].BalanceID
-
-	// Ensure we can look it up explicitly by ID
-	balance, err := client.ClaimableBalance(id)
-	assert.NoError(t, err)
-	assert.Equal(t, claims[0], balance)
-
-	// Ensure it shows up with the various filters (and *doesn't* show up with
-	// non-matching filters, of course).
-	balances, err = client.ClaimableBalances(sdk.ClaimableBalanceRequest{Sponsor: a.Address()})
-	assert.NoError(t, err)
-	assert.Len(t, balances.Embedded.Records, 1)
-	assert.Equal(t, claims[0], balances.Embedded.Records[0])
-
-	balances, err = client.ClaimableBalances(sdk.ClaimableBalanceRequest{Sponsor: b.Address()})
-	assert.NoError(t, err)
-	assert.Len(t, balances.Embedded.Records, 0)
-
-	fmt.Println("Done.")
 }
