@@ -5,7 +5,6 @@ import (
 
 	sdk "github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
-	proto "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/services/horizon/internal/txnbuild"
 	"github.com/stellar/go/xdr"
@@ -48,10 +47,11 @@ func TestCreateClaimableBalance(t *testing.T) {
 		Asset:        txnbuild.NativeAsset{},
 	}
 
-	txResp := itest.MustSubmitOperations(itest.MasterAccount(), master, &op)
+	txResp, err := itest.SubmitOperations(itest.MasterAccount(), master, &op)
+	assert.NoError(t, err)
 
 	var txResult xdr.TransactionResult
-	err := xdr.SafeUnmarshalBase64(txResp.ResultXdr, &txResult)
+	err = xdr.SafeUnmarshalBase64(txResp.ResultXdr, &txResult)
 	assert.NoError(t, err)
 
 	assert.Equal(t, xdr.TransactionResultCodeTxSuccess, txResult.Result.Code)
@@ -64,39 +64,37 @@ func TestCreateClaimableBalance(t *testing.T) {
 	assert.NotNil(t, opResult.BalanceId)
 }
 
-func TestFilteringNonNativeClaimableBalances(t *testing.T) {
-	itest := test.NewIntegrationTest(t, protocol14Config)
-	defer itest.Close()
-
-	keypairs, _ := itest.CreateAccounts(2)
-	sender, recipient := keypairs[0], keypairs[1]
-
-	asset := txnbuild.CreditAsset{Code: "HELLO", Issuer: sender.Address()}
-	_, err := itest.EstablishTrustline(recipient, asset)
-	assert.NoError(t, err)
-	t.Log("Created asset trustline.")
-
-	runFilteringTest(itest, sender, recipient, asset)
-}
-
 func TestFilteringClaimableBalances(t *testing.T) {
-	itest := test.NewIntegrationTest(t, protocol14Config)
-	defer itest.Close()
+	// We test on all three types of assets. This convenience function just
+	// prepares the image (docker, etc.), sets up the scenario, then delegates
+	// to the real test w/ parameters set.
+	prepareAndRun := func(t *testing.T, assetType txnbuild.AssetType) {
+		itest := test.NewIntegrationTest(t, protocol14Config)
+		defer itest.Close()
 
-	// Create a couple of accounts to test the interactions.
-	keypairs, _ := itest.CreateAccounts(2)
-	sender, recipient := keypairs[0], keypairs[1]
+		keys, _ := itest.CreateAccounts(2)
+		runFilteringTest(itest, keys[0], keys[1],
+			createAsset(assetType, keys[0].Address()))
+	}
 
-	runFilteringTest(itest, sender, recipient, txnbuild.NativeAsset{})
+	t.Run("Native", func(t *testing.T) { prepareAndRun(t, txnbuild.AssetTypeNative) })
+	t.Run("4-Char Asset", func(t *testing.T) { prepareAndRun(t, txnbuild.AssetTypeCreditAlphanum4) })
+	t.Run("12-Char Asset", func(t *testing.T) { prepareAndRun(t, txnbuild.AssetTypeCreditAlphanum12) })
 }
 
 func TestClaimingClaimableBalances(t *testing.T) {
-	runClaimingCBsTest(t, txnbuild.AssetTypeNative)
-}
+	// TODO: Same structure as above, where runClaimingCBsTest doesn't
+	// create/destroy the container/accounts/etc.?
 
-func TestClaimingNonNativeClaimableBalances(t *testing.T) {
-	runClaimingCBsTest(t, txnbuild.AssetTypeCreditAlphanum12)
-	runClaimingCBsTest(t, txnbuild.AssetTypeCreditAlphanum4)
+	t.Run("Native Asset", func(t *testing.T) {
+		runClaimingCBsTest(t, txnbuild.AssetTypeNative)
+	})
+	t.Run("4-char Asset", func(t *testing.T) {
+		runClaimingCBsTest(t, txnbuild.AssetTypeCreditAlphanum4)
+	})
+	t.Run("12-char Asset", func(t *testing.T) {
+		runClaimingCBsTest(t, txnbuild.AssetTypeCreditAlphanum12)
+	})
 }
 
 func runClaimingCBsTest(t *testing.T, assetType txnbuild.AssetType) {
@@ -107,18 +105,25 @@ func runClaimingCBsTest(t *testing.T, assetType txnbuild.AssetType) {
 	// Create a couple of accounts to test the interactions.
 	keypairs, accounts := itest.CreateAccounts(2)
 	sender, recipient := keypairs[0], keypairs[1]
-	rAccount := accounts[1]
+	sAccount, rAccount := accounts[0], accounts[1]
 
-	var asset txnbuild.Asset = txnbuild.NativeAsset{}
+	// Create an asset depending on the test parameter & trust it if need be.
+	var asset txnbuild.Asset = createAsset(assetType, sender.Address())
 	if assetType != txnbuild.AssetTypeNative {
-		asset = txnbuild.CreditAsset{Code: "HEYO", Issuer: sender.Address()}
 		_, err := itest.EstablishTrustline(recipient, asset)
 		assert.NoError(t, err)
 		t.Log("Created asset trustline.")
 	}
 
-	// This is an easy shortcut to setting up the scenario.
-	runFilteringTest(itest, sender, recipient, asset)
+	// Create & submit the claimable balance from A -> B.
+	op1 := txnbuild.CreateClaimableBalance{
+		Destinations: []string{recipient.Address()},
+		Amount:       "10",
+		Asset:        asset,
+	}
+
+	_, err := itest.SubmitOperations(sAccount, sender, &op1)
+	assert.NoError(t, err)
 
 	// Now let's retrieve what the above just created so we can claim it.
 	balances, err := client.ClaimableBalances(sdk.ClaimableBalanceRequest{Sponsor: sender.Address()})
@@ -128,8 +133,8 @@ func runClaimingCBsTest(t *testing.T, assetType txnbuild.AssetType) {
 	assert.Len(t, claims, 1)
 	assert.Equal(t, claims[0].Sponsor, sender.Address())
 
-	op := txnbuild.ClaimClaimableBalance{BalanceID: claims[0].BalanceID}
-	_, err = itest.SubmitOperations(rAccount, recipient, &op)
+	op2 := txnbuild.ClaimClaimableBalance{BalanceID: claims[0].BalanceID}
+	_, err = itest.SubmitOperations(rAccount, recipient, &op2)
 	assert.NoError(t, err)
 	t.Log("Claimed balance.")
 
@@ -139,8 +144,7 @@ func runClaimingCBsTest(t *testing.T, assetType txnbuild.AssetType) {
 	assert.Len(t, balances.Embedded.Records, 0)
 }
 
-func runFilteringTest(i *test.IntegrationTest, source *keypair.Full, dest *keypair.Full, asset txnbuild.Asset,
-) {
+func runFilteringTest(i *test.IntegrationTest, source *keypair.Full, dest *keypair.Full, asset txnbuild.Asset) {
 	t := i.CurrentTest()
 	client := i.Client()
 	request := sdk.AccountRequest{AccountID: source.Address()}
@@ -234,40 +238,15 @@ func runFilteringTest(i *test.IntegrationTest, source *keypair.Full, dest *keypa
 
 /* Utility functions below */
 
-func makeAndSign(signer *keypair.Full, params txnbuild.TransactionParams) (string, error) {
-	tx, err := txnbuild.NewTransaction(params)
-	if err != nil {
-		return "", err
+func createAsset(assetType txnbuild.AssetType, issuer string) txnbuild.Asset {
+	switch assetType {
+	case txnbuild.AssetTypeNative:
+		return txnbuild.NativeAsset{}
+	case txnbuild.AssetTypeCreditAlphanum4:
+		return txnbuild.CreditAsset{Code: "HEYO", Issuer: issuer}
+	case txnbuild.AssetTypeCreditAlphanum12:
+		return txnbuild.CreditAsset{Code: "HEYYYAAAAAAA", Issuer: issuer}
+	default:
+		panic(-1)
 	}
-	tx, err = tx.Sign(test.IntegrationNetworkPassphrase, signer)
-	if err != nil {
-		return "", err
-	}
-	txb64, err := tx.Base64()
-	if err != nil {
-		return "", err
-	}
-	return txb64, nil
-}
-
-func transact(account txnbuild.Account, ops ...txnbuild.Operation) txnbuild.TransactionParams {
-	return txnbuild.TransactionParams{
-		SourceAccount:        account,
-		Operations:           ops,
-		BaseFee:              txnbuild.MinBaseFee,
-		Timebounds:           txnbuild.NewInfiniteTimeout(),
-		IncrementSequenceNum: true,
-	}
-}
-
-func submitOrLog(t *testing.T, client *sdk.Client, xdr string) (response proto.Transaction, err error) {
-	response, err = client.SubmitTransactionXDR(xdr)
-	assert.NoError(t, err)
-	if err != nil {
-		prob := sdk.GetError(err)
-		t.Logf("Problem: %s\n", prob.Problem.Extras["result_codes"])
-		return
-	}
-
-	return
 }
