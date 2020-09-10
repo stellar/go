@@ -278,12 +278,12 @@ func selectUnionBySponsor(tables []string, sponsor string, page db2.PageQuery) (
 		selectIDs = selectIDs.Suffix("UNION ("+sqlStr+")", args...)
 	}
 
-	selectAccounts := sq.
+	selectFromSubquery := sq.
 		Select("accounts.*").
 		FromSelect(selectIDs, "accountSet").
 		Join("accounts ON accounts.account_id = accountSet.account_id")
 
-	sql, err := page.ApplyToUsingCursor(selectAccounts, "accounts.account_id", page.Cursor)
+	sql, err := page.ApplyToUsingCursor(selectFromSubquery, "accounts.account_id", page.Cursor)
 	if err != nil {
 		return sql, errors.Wrap(err, "could not apply query to page")
 	}
