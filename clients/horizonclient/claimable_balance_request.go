@@ -12,8 +12,8 @@ import (
 func (cbr ClaimableBalanceRequest) BuildURL() (endpoint string, err error) {
 	endpoint = "claimable_balances"
 
-	// According to CAP-23, only one filter parameter is allowed. You can't mix
-	// an ID query and filters.
+	// Only one filter parameter is allowed, and you can't mix an ID query and
+	// filters.
 	nParams := countParams(cbr.Asset, cbr.Claimant, cbr.Sponsor, cbr.ID)
 	if nParams > 1 {
 		return endpoint, errors.New("invalid request: too many parameters")
@@ -23,7 +23,6 @@ func (cbr ClaimableBalanceRequest) BuildURL() (endpoint string, err error) {
 		endpoint = fmt.Sprintf("%s/%s", endpoint, cbr.ID)
 	} else {
 		queryParams := addQueryParams(
-			includeFailed(cbr.IncludeFailed),
 			map[string]string{
 				"claimant": cbr.Claimant,
 				"sponsor":  cbr.Sponsor,

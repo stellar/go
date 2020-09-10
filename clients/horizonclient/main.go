@@ -417,7 +417,6 @@ type ClaimableBalanceRequest struct {
 	Asset         string
 	Sponsor       string
 	Claimant      string
-	IncludeFailed includeFailed
 }
 
 // ServerTimeRecord contains data for the current unix time of a horizon server instance, and the local time when it was recorded.
