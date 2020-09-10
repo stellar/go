@@ -3,7 +3,7 @@ FROM golang:1.13.0-buster
 RUN apt-get update -y
 RUN apt-get install -y apt-transport-https
 RUN wget -qO - https://apt.stellar.org/SDF.asc | apt-key add -
-RUN echo "deb https://apt.stellar.org/public stable/" | tee -a /etc/apt/sources.list.d/SDF.list
+RUN echo "deb https://apt.stellar.org xenial stable" | tee -a /etc/apt/sources.list.d/SDF.list
 RUN apt-get update -y
 
 RUN apt-get install -y stellar-core jq

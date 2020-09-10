@@ -67,8 +67,8 @@ func (dbb *DatabaseBackend) PrepareRange(ledgerRange Range) error {
 }
 
 // IsPrepared returns true if a given ledgerRange is prepared.
-func (*DatabaseBackend) IsPrepared(ledgerRange Range) bool {
-	return true
+func (*DatabaseBackend) IsPrepared(ledgerRange Range) (bool, error) {
+	return true, nil
 }
 
 // GetLatestLedgerSequence returns the most recent ledger sequence number present in the database.

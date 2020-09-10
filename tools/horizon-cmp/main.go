@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/signal"
 	"regexp"
 	"strings"
 	"sync"
@@ -98,6 +99,14 @@ func run(cmd *cobra.Command) {
 		cmd.Help()
 		os.Exit(1)
 	}
+
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	go func() {
+		<-c
+		routes.Print()
+		os.Exit(0)
+	}()
 
 	// Get latest ledger and operate on it's cursor to get responses at a given ledger.
 	ledger := getLatestLedger(horizonBase)
@@ -200,6 +209,13 @@ func run(cmd *cobra.Command) {
 				return
 			}
 
+			// Retry when any of responses size equals 0.
+			if a.Size() == 0 || b.Size() == 0 {
+				paths <- pl
+				log.Warnf("One of responses' size equals 0, retry queued: %s", pl.Path)
+				return
+			}
+
 			var status string
 			if a.Equal(b) {
 				status = "ok"
@@ -208,7 +224,7 @@ func run(cmd *cobra.Command) {
 				a.SaveDiff(outputDir, b)
 			}
 
-			log = log.WithFields(slog.F{
+			localLog := log.WithFields(slog.F{
 				"status_code": a.StatusCode,
 				"size_base":   a.Size(),
 				"size_test":   b.Size(),
@@ -216,14 +232,16 @@ func run(cmd *cobra.Command) {
 			})
 
 			if accessLog != nil {
-				log = log.WithField("access_log_line", pl.Line)
+				localLog = localLog.WithField("access_log_line", pl.Line)
 			}
 
 			if status == "diff" {
-				log.Error("DIFF " + pl.Path)
+				localLog.Error("DIFF " + pl.Path)
 			} else {
-				log.Info(pl.Path)
+				localLog.Info(pl.Path)
 			}
+
+			routes.Count(pl.Path)
 
 			// Add new paths (only for non-ELB)
 			if accessLog == nil {
@@ -233,6 +251,8 @@ func run(cmd *cobra.Command) {
 	}
 
 	wg.Wait()
+
+	routes.Print()
 }
 
 func getLatestLedger(url string) protocol.Ledger {
