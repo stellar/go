@@ -397,8 +397,9 @@ func TestAccountsForSponsor(t *testing.T) {
 
 	accounts, err := q.AccountsForSponsor(sponsor.Address(), pq)
 	assert.NoError(t, err)
-	tt.Assert.Len(accounts, 1)
-	tt.Assert.Equal(account2.Data.Account.AccountId.Address(), accounts[0].AccountID)
+	tt.Assert.Len(accounts, 2)
+	tt.Assert.Equal(account1.Data.Account.AccountId.Address(), accounts[0].AccountID)
+	tt.Assert.Equal(account2.Data.Account.AccountId.Address(), accounts[1].AccountID)
 }
 
 func TestAccountEntriesForSigner(t *testing.T) {

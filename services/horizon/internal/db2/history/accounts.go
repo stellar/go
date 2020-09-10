@@ -244,18 +244,63 @@ func (q *Q) AccountsForAsset(asset xdr.Asset, page db2.PageQuery) ([]AccountEntr
 	return results, nil
 }
 
-// AccountsForSponsor returns a list of `AccountEntry` rows for a given sponsor
-func (q *Q) AccountsForSponsor(sponsor string, page db2.PageQuery) ([]AccountEntry, error) {
+func selectBySponsor(table, sponsor string, page db2.PageQuery) (sq.SelectBuilder, error) {
 	sql := sq.
-		Select("accounts.*").
-		From("accounts").
+		Select("account_id").
+		From(table).
 		Where(map[string]interface{}{
-			"accounts.sponsor": sponsor,
+			"sponsor": sponsor,
 		})
 
-	sql, err := page.ApplyToUsingCursor(sql, "accounts.account_id", page.Cursor)
+	sql, err := page.ApplyToUsingCursor(sql, "account_id", page.Cursor)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not apply query to page")
+		return sql, errors.Wrap(err, "could not apply query to page")
+	}
+	return sql, err
+}
+
+func selectUnionBySponsor(tables []string, sponsor string, page db2.PageQuery) (sq.SelectBuilder, error) {
+	var selectIDs sq.SelectBuilder
+	for i, table := range tables {
+		sql, err := selectBySponsor(table, sponsor, page)
+		if err != nil {
+			return sql, errors.Wrap(err, "could not construct account id query")
+		}
+		if i == 0 {
+			selectIDs = sql.Prefix("(").Suffix(")")
+			continue
+		}
+
+		sqlStr, args, err := sql.ToSql()
+		if err != nil {
+			return sql, errors.Wrap(err, "could not construct account id query")
+		}
+		selectIDs = selectIDs.Suffix("UNION ("+sqlStr+")", args...)
+	}
+
+	selectAccounts := sq.
+		Select("accounts.*").
+		FromSelect(selectIDs, "accountSet").
+		Join("accounts ON accounts.account_id = accountSet.account_id")
+
+	sql, err := page.ApplyToUsingCursor(selectAccounts, "accounts.account_id", page.Cursor)
+	if err != nil {
+		return sql, errors.Wrap(err, "could not apply query to page")
+	}
+
+	return sql, err
+}
+
+// AccountsForSponsor return all the accounts where `sponsor`` is sponsoring the account entry or
+// any of its subentries (trust lines, signers, data, or account entry)
+func (q *Q) AccountsForSponsor(sponsor string, page db2.PageQuery) ([]AccountEntry, error) {
+	sql, err := selectUnionBySponsor(
+		[]string{"accounts", "accounts_data", "accounts_signers", "trust_lines"},
+		sponsor,
+		page,
+	)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not construct accounts query")
 	}
 
 	var results []AccountEntry
