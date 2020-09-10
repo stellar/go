@@ -63,7 +63,12 @@ func NewIntegrationTest(t *testing.T, config IntegrationConfig) *IntegrationTest
 
 	image := "stellar/quickstart:testing"
 
-	if config.SkipContainerCreation {
+	skipCreation := false
+	if os.Getenv("HORIZON_SKIP_CREATION") != "" {
+		skipCreation = true
+	}
+
+	if skipCreation {
 		t.Log("Trying to skip container creation...")
 		containers, _ := i.cli.ContainerList(
 			context.Background(),
@@ -80,11 +85,12 @@ func NewIntegrationTest(t *testing.T, config IntegrationConfig) *IntegrationTest
 			t.Logf("Found matching container: %s\n", i.container.ID)
 		} else {
 			t.Log("No matching container found.")
-			config.SkipContainerCreation = false
+			os.Setenv("HORIZON_SKIP_CREATION", "")
+			skipCreation = false
 		}
 	}
 
-	if !config.SkipContainerCreation {
+	if !skipCreation {
 		t.Logf("Pulling %s...", image)
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 		defer cancel()
@@ -201,7 +207,8 @@ func (i *IntegrationTest) Close() {
 	defer cancel()
 
 	var err error
-	if !i.config.SkipContainerCreation {
+	skipCreation := ("" != os.Getenv("HORIZON_SKIP_CREATION"))
+	if !skipCreation {
 		err = i.cli.ContainerRemove(
 			ctx, i.container.ID,
 			types.ContainerRemoveOptions{Force: true})

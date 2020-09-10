@@ -12,16 +12,13 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var protocol14Config = test.IntegrationConfig{
-	ProtocolVersion: 14,
-	// SkipContainerCreation: true,
-}
+var protocol14Config = test.IntegrationConfig{ProtocolVersion: 14}
 
 func TestProtocol14SanityCheck(t *testing.T) {
 	itest := test.NewIntegrationTest(t, protocol14Config)
 	defer itest.Close()
 
-	client, master := itest.Client(), itest.Master().(*keypair.Full)
+	master := itest.Master().(*keypair.Full)
 
 	root, err := itest.Client().Root()
 	assert.NoError(t, err)
