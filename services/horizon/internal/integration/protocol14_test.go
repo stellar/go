@@ -17,8 +17,7 @@ var protocol14Config = test.IntegrationConfig{ProtocolVersion: 14}
 func TestProtocol14SanityCheck(t *testing.T) {
 	itest := test.NewIntegrationTest(t, protocol14Config)
 	defer itest.Close()
-
-	master := itest.Master().(*keypair.Full)
+	master := itest.Master()
 
 	root, err := itest.Client().Root()
 	assert.NoError(t, err)
@@ -32,47 +31,27 @@ func TestProtocol14SanityCheck(t *testing.T) {
 		Asset:       txnbuild.NativeAsset{},
 	}
 
-	tx, err := makeAndSign(master,
-		transact(&txnbuild.SimpleAccount{
-			AccountID: master.Address(),
-			Sequence:  0,
-		}, &op),
-	)
-	assert.NoError(t, err)
-
-	txResp, err := submitOrLog(t, client, tx)
-	assert.NoError(t, err)
-	assert.Equal(t, itest.Master().Address(), txResp.Account)
+	txResp := itest.MustSubmitOperations(itest.MasterAccount(), master, &op)
+	assert.Equal(t, master.Address(), txResp.Account)
 	assert.Equal(t, "1", txResp.AccountSequence)
 }
 
 func TestCreateClaimableBalance(t *testing.T) {
 	itest := test.NewIntegrationTest(t, protocol14Config)
 	defer itest.Close()
+	master := itest.Master()
 
-	client, master := itest.Client(), itest.Master().(*keypair.Full)
-
-	// Submit a simple tx
+	// Submit a self-referencing claimable balance
 	op := txnbuild.CreateClaimableBalance{
 		Destinations: []string{master.Address()},
 		Amount:       "10",
 		Asset:        txnbuild.NativeAsset{},
 	}
 
-	tx, err := makeAndSign(
-		master,
-		transact(&txnbuild.SimpleAccount{
-			AccountID: master.Address(),
-			Sequence:  0,
-		}, &op),
-	)
-	assert.NoError(t, err)
-
-	txResp, err := submitOrLog(t, client, tx)
-	assert.NoError(t, err)
+	txResp := itest.MustSubmitOperations(itest.MasterAccount(), master, &op)
 
 	var txResult xdr.TransactionResult
-	err = xdr.SafeUnmarshalBase64(txResp.ResultXdr, &txResult)
+	err := xdr.SafeUnmarshalBase64(txResp.ResultXdr, &txResult)
 	assert.NoError(t, err)
 
 	assert.Equal(t, xdr.TransactionResultCodeTxSuccess, txResult.Result.Code)
@@ -88,44 +67,28 @@ func TestCreateClaimableBalance(t *testing.T) {
 func TestFilteringNonNativeClaimableBalances(t *testing.T) {
 	itest := test.NewIntegrationTest(t, protocol14Config)
 	defer itest.Close()
-	client, master := itest.Client(), itest.Master().(*keypair.Full)
+	client := itest.Client()
 
-	accounts, tx, err := createAccounts(master, 2)
+	keypairs, _ := itest.CreateAccounts(2)
+	sender, recipient := keypairs[0], keypairs[1]
+
+	asset := txnbuild.CreditAsset{Code: "HELLO", Issuer: sender.Address()}
+	_, err := itest.EstablishTrustline(recipient, asset)
 	assert.NoError(t, err)
+	t.Log("Created asset trustline.")
 
-	if _, err = submitOrLog(t, client, tx); err == nil {
-		for _, account := range accounts {
-			t.Logf("Funded %s (%s).\n", account.Seed(), account.Address())
-		}
-	}
-
-	a, b := accounts[0], accounts[1]
-
-	asset := txnbuild.CreditAsset{Code: "HELLO", Issuer: a.Address()}
-	tx, err = createValueFromThinAir(client, b, asset)
-	if _, err = submitOrLog(t, client, tx); err == nil {
-		t.Log("Created asset trustline.")
-	}
-
-	runFilteringTest(t, client, accounts[0], accounts[1], asset)
+	runFilteringTest(t, client, sender, recipient, asset)
 }
 
 func TestFilteringClaimableBalances(t *testing.T) {
 	itest := test.NewIntegrationTest(t, protocol14Config)
 	defer itest.Close()
-	client, master := itest.Client(), itest.Master().(*keypair.Full)
 
 	// Create a couple of accounts to test the interactions.
-	accounts, tx, err := createAccounts(master, 2)
-	assert.NoError(t, err)
+	keypairs, _ := itest.CreateAccounts(2)
+	sender, recipient := keypairs[0], keypairs[1]
 
-	if _, err = submitOrLog(t, client, tx); err == nil {
-		for _, account := range accounts {
-			t.Logf("Funded %s (%s).\n", account.Seed(), account.Address())
-		}
-	}
-
-	runFilteringTest(t, client, accounts[0], accounts[1], txnbuild.NativeAsset{})
+	runFilteringTest(t, itest.Client(), sender, recipient, txnbuild.NativeAsset{})
 }
 
 func TestClaimingClaimableBalances(t *testing.T) {
@@ -140,57 +103,41 @@ func TestClaimingNonNativeClaimableBalances(t *testing.T) {
 func runClaimingCBsTest(t *testing.T, assetType txnbuild.AssetType) {
 	itest := test.NewIntegrationTest(t, protocol14Config)
 	defer itest.Close()
-	client, master := itest.Client(), itest.Master().(*keypair.Full)
+	client := itest.Client()
 
 	// Create a couple of accounts to test the interactions.
-	accounts, tx, err := createAccounts(master, 2)
-	assert.NoError(t, err)
-
-	if _, err = submitOrLog(t, client, tx); err == nil {
-		for _, account := range accounts {
-			t.Logf("Funded %s (%s).\n", account.Seed(), account.Address())
-		}
-	}
-
-	a, b := accounts[0], accounts[1]
+	keypairs, accounts := itest.CreateAccounts(2)
+	sender, recipient := keypairs[0], keypairs[1]
+	rAccount := accounts[1]
 
 	var asset txnbuild.Asset
 	if assetType != txnbuild.AssetTypeNative {
-		asset = txnbuild.CreditAsset{Code: "HEYO", Issuer: a.Address()}
-		tx, err = createValueFromThinAir(client, b, asset)
-		if _, err = submitOrLog(t, client, tx); err == nil {
-			t.Log("Created asset trustline.")
-		}
+		asset = txnbuild.CreditAsset{Code: "HEYO", Issuer: sender.Address()}
+		_, err := itest.EstablishTrustline(recipient, asset)
+		assert.NoError(t, err)
+		t.Log("Created asset trustline.")
 	} else {
 		asset = txnbuild.NativeAsset{}
 	}
 
 	// This is an easy shortcut to setting up the scenario.
-	runFilteringTest(t, client, a, b, asset)
+	runFilteringTest(t, client, sender, recipient, asset)
 
 	// Now let's retrieve what the above just created so we can claim it.
-	balances, err := client.ClaimableBalances(sdk.ClaimableBalanceRequest{Sponsor: a.Address()})
+	balances, err := client.ClaimableBalances(sdk.ClaimableBalanceRequest{Sponsor: sender.Address()})
 	assert.NoError(t, err)
 
 	claims := balances.Embedded.Records
 	assert.Len(t, claims, 1)
-	assert.Equal(t, claims[0].Sponsor, a.Address())
+	assert.Equal(t, claims[0].Sponsor, sender.Address())
 
-	request := sdk.AccountRequest{AccountID: b.Address()}
-	bAccount, err := client.AccountDetail(request)
+	op := txnbuild.ClaimClaimableBalance{BalanceID: claims[0].BalanceID}
+	_, err = itest.SubmitOperations(rAccount, recipient, &op)
 	assert.NoError(t, err)
-
-	op := txnbuild.ClaimClaimableBalance{
-		BalanceID:     claims[0].BalanceID,
-		SourceAccount: &bAccount,
-	}
-
-	tx, err = makeAndSign(b, transact(&bAccount, &op))
-	_, _ = submitOrLog(t, client, tx)
 	t.Log("Claimed balance.")
 
 	// Ensure the balance is gone now.
-	balances, err = client.ClaimableBalances(sdk.ClaimableBalanceRequest{Sponsor: a.Address()})
+	balances, err = client.ClaimableBalances(sdk.ClaimableBalanceRequest{Sponsor: sender.Address()})
 	assert.NoError(t, err)
 	assert.Len(t, balances.Embedded.Records, 0)
 }
@@ -325,52 +272,5 @@ func submitOrLog(t *testing.T, client *sdk.Client, xdr string) (response proto.T
 		return
 	}
 
-	return
-}
-
-func createAccounts(master *keypair.Full, count int) (
-	[]*keypair.Full, string, error,
-) {
-	pairs := make([]*keypair.Full, count)
-	ops := make([]txnbuild.Operation, count)
-	amount := "1000"
-
-	masterAccount := txnbuild.SimpleAccount{
-		AccountID: master.Address(),
-		Sequence:  0,
-	}
-
-	for i := 0; i < count; i++ {
-		pair, _ := keypair.Random()
-		pairs[i] = pair
-
-		ops[i] = &txnbuild.CreateAccount{
-			SourceAccount: &masterAccount,
-			Destination:   pair.Address(),
-			Amount:        amount,
-		}
-	}
-
-	// Build transaction:
-	tx, err := makeAndSign(master, transact(&masterAccount, ops...))
-
-	return pairs, tx, err
-}
-
-func createValueFromThinAir(client *sdk.Client, truster *keypair.Full, asset txnbuild.Asset) (tx string, err error) {
-	// Load the source account
-	request := sdk.AccountRequest{AccountID: truster.Address()}
-	sourceAccount, err := client.AccountDetail(request)
-	if err != nil {
-		return
-	}
-
-	txp := transact(&sourceAccount, &txnbuild.ChangeTrust{
-		Line:  asset,
-		Limit: "2000",
-	})
-
-	// The usual song & dance w/ signing, submitting, etc.
-	tx, err = makeAndSign(truster, txp)
 	return
 }
