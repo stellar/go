@@ -67,7 +67,6 @@ func TestCreateClaimableBalance(t *testing.T) {
 func TestFilteringNonNativeClaimableBalances(t *testing.T) {
 	itest := test.NewIntegrationTest(t, protocol14Config)
 	defer itest.Close()
-	client := itest.Client()
 
 	keypairs, _ := itest.CreateAccounts(2)
 	sender, recipient := keypairs[0], keypairs[1]
@@ -77,7 +76,7 @@ func TestFilteringNonNativeClaimableBalances(t *testing.T) {
 	assert.NoError(t, err)
 	t.Log("Created asset trustline.")
 
-	runFilteringTest(t, client, sender, recipient, asset)
+	runFilteringTest(itest, sender, recipient, asset)
 }
 
 func TestFilteringClaimableBalances(t *testing.T) {
@@ -88,7 +87,7 @@ func TestFilteringClaimableBalances(t *testing.T) {
 	keypairs, _ := itest.CreateAccounts(2)
 	sender, recipient := keypairs[0], keypairs[1]
 
-	runFilteringTest(t, itest.Client(), sender, recipient, txnbuild.NativeAsset{})
+	runFilteringTest(itest, sender, recipient, txnbuild.NativeAsset{})
 }
 
 func TestClaimingClaimableBalances(t *testing.T) {
@@ -110,18 +109,16 @@ func runClaimingCBsTest(t *testing.T, assetType txnbuild.AssetType) {
 	sender, recipient := keypairs[0], keypairs[1]
 	rAccount := accounts[1]
 
-	var asset txnbuild.Asset
+	var asset txnbuild.Asset = txnbuild.NativeAsset{}
 	if assetType != txnbuild.AssetTypeNative {
 		asset = txnbuild.CreditAsset{Code: "HEYO", Issuer: sender.Address()}
 		_, err := itest.EstablishTrustline(recipient, asset)
 		assert.NoError(t, err)
 		t.Log("Created asset trustline.")
-	} else {
-		asset = txnbuild.NativeAsset{}
 	}
 
 	// This is an easy shortcut to setting up the scenario.
-	runFilteringTest(t, client, sender, recipient, asset)
+	runFilteringTest(itest, sender, recipient, asset)
 
 	// Now let's retrieve what the above just created so we can claim it.
 	balances, err := client.ClaimableBalances(sdk.ClaimableBalanceRequest{Sponsor: sender.Address()})
@@ -142,9 +139,10 @@ func runClaimingCBsTest(t *testing.T, assetType txnbuild.AssetType) {
 	assert.Len(t, balances.Embedded.Records, 0)
 }
 
-func runFilteringTest(t *testing.T, client *sdk.Client,
-	source *keypair.Full, dest *keypair.Full, asset txnbuild.Asset,
+func runFilteringTest(i *test.IntegrationTest, source *keypair.Full, dest *keypair.Full, asset txnbuild.Asset,
 ) {
+	t := i.CurrentTest()
+	client := i.Client()
 	request := sdk.AccountRequest{AccountID: source.Address()}
 	sourceAccount, err := client.AccountDetail(request)
 	assert.NoError(t, err)
@@ -156,9 +154,8 @@ func runFilteringTest(t *testing.T, client *sdk.Client,
 	}
 
 	// Submit a simple claimable balance from A -> B.
-	tx, err := makeAndSign(source, transact(&sourceAccount, &op))
+	_, err = i.SubmitOperations(&sourceAccount, source, &op)
 	assert.NoError(t, err)
-	submitOrLog(t, client, tx)
 
 	// Ensure it exists in the global list
 	balances, err := client.ClaimableBalances(sdk.ClaimableBalanceRequest{})
