@@ -669,7 +669,7 @@ type ClaimableBalance struct {
 	BalanceID          string     `json:"id"`
 	Asset              string     `json:"asset"`
 	Amount             string     `json:"amount"`
-	Sponsor            string     `json:"sponsor"`
+	Sponsor            *string    `json:"sponsor"`
 	LastModifiedLedger uint32     `json:"last_modified_ledger"`
 	Claimants          []Claimant `json:"claimants"`
 	PT                 string     `json:"paging_token"`
@@ -692,6 +692,6 @@ func (res ClaimableBalance) PagingToken() string {
 
 // Claimant represents a claimable balance claimant
 type Claimant struct {
-	Destination string `json:"destination"`
-	Predicate   string `json:"predicate"`
+	Destination string             `json:"destination"`
+	Predicate   xdr.ClaimPredicate `json:"predicate"`
 }

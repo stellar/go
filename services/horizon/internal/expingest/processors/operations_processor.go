@@ -137,11 +137,14 @@ func (operation *transactionOperationWrapper) OperationResult() *xdr.OperationRe
 	return &tr
 }
 
-func (operation *transactionOperationWrapper) findPriorBeginSponsoringOp() *xdr.Operation {
+func (operation *transactionOperationWrapper) findPriorBeginSponsoringOp() *transactionOperationWrapper {
 	operations := operation.transaction.Envelope.Operations()
 	for i := int(operation.index) - 1; i >= 0; i-- {
 		if operations[i].Body.Type == xdr.OperationTypeBeginSponsoringFutureReserves {
-			return &operations[i]
+			result := *operation
+			result.index = uint32(i)
+			result.operation = operations[i]
+			return &result
 		}
 	}
 	return nil
@@ -339,17 +342,15 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 		op := operation.operation.Body.MustBeginSponsoringFutureReservesOp()
 		details["sponsored_id"] = op.SponsoredId.Address()
 	case xdr.OperationTypeEndSponsoringFutureReserves:
-		beginSponsoringOp := operation.findPriorBeginSponsoringOp()
-		if beginSponsoringOp == nil {
-			return nil, fmt.Errorf("prior Begin operation not found for EndSponsoringFutureReserves")
+		beginSponsorshipOp := operation.findPriorBeginSponsoringOp()
+		if beginSponsorshipOp != nil {
+			details["begin_sponsor"] = beginSponsorshipOp.SourceAccount().Address()
 		}
-		beginSponsor := beginSponsoringOp.SourceAccount.ToAccountId()
-		details["begin_sponsor"] = beginSponsor.Address()
 	case xdr.OperationTypeRevokeSponsorship:
 		op := operation.operation.Body.MustRevokeSponsorshipOp()
 		switch op.Type {
 		case xdr.RevokeSponsorshipTypeRevokeSponsorshipLedgerEntry:
-			if err := addLedgerKeyDetails(details, *op.LedgerKey, ""); err != nil {
+			if err := addLedgerKeyDetails(details, *op.LedgerKey); err != nil {
 				return nil, err
 			}
 		case xdr.RevokeSponsorshipTypeRevokeSponsorshipSigner:
@@ -420,24 +421,24 @@ func operationFlagDetails(result map[string]interface{}, f int32, prefix string)
 	result[prefix+"_flags_s"] = s
 }
 
-func addLedgerKeyDetails(result map[string]interface{}, ledgerKey xdr.LedgerKey, prefix string) error {
+func addLedgerKeyDetails(result map[string]interface{}, ledgerKey xdr.LedgerKey) error {
 	switch ledgerKey.Type {
 	case xdr.LedgerEntryTypeAccount:
-		result[prefix+"account_id"] = ledgerKey.Account.AccountId.Address()
+		result["account_id"] = ledgerKey.Account.AccountId.Address()
 	case xdr.LedgerEntryTypeClaimableBalance:
 		marshalHex, err := xdr.MarshalHex(ledgerKey.ClaimableBalance.BalanceId)
 		if err != nil {
 			return errors.Wrapf(err, "in claimable balance")
 		}
-		result[prefix+"claimable_balance_id"] = marshalHex
+		result["claimable_balance_id"] = marshalHex
 	case xdr.LedgerEntryTypeData:
-		result[prefix+"account_id"] = ledgerKey.Data.AccountId.Address()
-		result[prefix+"data_name"] = ledgerKey.Data.DataName
+		result["data_account_id"] = ledgerKey.Data.AccountId.Address()
+		result["data_name"] = ledgerKey.Data.DataName
 	case xdr.LedgerEntryTypeOffer:
-		result[prefix+"offer_id"] = ledgerKey.Offer.OfferId
+		result["offer_id"] = ledgerKey.Offer.OfferId
 	case xdr.LedgerEntryTypeTrustline:
-		result[prefix+"account_id"] = ledgerKey.TrustLine.AccountId.Address()
-		addAssetDetails(result, ledgerKey.TrustLine.Asset, prefix)
+		result["trustline_account_id"] = ledgerKey.TrustLine.AccountId.Address()
+		result["trustline_asset"] = ledgerKey.TrustLine.Asset.StringCanonical()
 	}
 	return nil
 }
@@ -486,12 +487,10 @@ func (operation *transactionOperationWrapper) Participants() ([]xdr.AccountId, e
 	case xdr.OperationTypeBeginSponsoringFutureReserves:
 		participants = append(participants, op.Body.MustBeginSponsoringFutureReservesOp().SponsoredId)
 	case xdr.OperationTypeEndSponsoringFutureReserves:
-		beginSponsoringOp := operation.findPriorBeginSponsoringOp()
-		if beginSponsoringOp == nil {
-			return nil, fmt.Errorf("prior Begin operation not found for EndSponsoringFutureReserves")
+		beginSponsorshipOp := operation.findPriorBeginSponsoringOp()
+		if beginSponsorshipOp != nil {
+			participants = append(participants, *beginSponsorshipOp.SourceAccount())
 		}
-		beginSponsor := beginSponsoringOp.SourceAccount.ToAccountId()
-		participants = append(participants, beginSponsor)
 	case xdr.OperationTypeRevokeSponsorship:
 		// the only direct participant is the source_account
 	default:
