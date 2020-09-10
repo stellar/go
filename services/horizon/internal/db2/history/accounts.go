@@ -266,8 +266,10 @@ func selectUnionBySponsor(tables []string, sponsor string, page db2.PageQuery) (
 		if err != nil {
 			return sql, errors.Wrap(err, "could not construct account id query")
 		}
+		sql = sql.Prefix("(").Suffix(")")
+
 		if i == 0 {
-			selectIDs = sql.Prefix("(").Suffix(")")
+			selectIDs = sql
 			continue
 		}
 
@@ -275,7 +277,7 @@ func selectUnionBySponsor(tables []string, sponsor string, page db2.PageQuery) (
 		if err != nil {
 			return sql, errors.Wrap(err, "could not construct account id query")
 		}
-		selectIDs = selectIDs.Suffix("UNION ("+sqlStr+")", args...)
+		selectIDs = selectIDs.Suffix("UNION "+sqlStr, args...)
 	}
 
 	selectFromSubquery := sq.
