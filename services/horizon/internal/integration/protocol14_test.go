@@ -116,9 +116,10 @@ func runClaimingCBsTest(t *testing.T, assetType txnbuild.AssetType) {
 	}
 
 	// Create & submit the claimable balance from A -> B.
+	t.Log("Creating claimable balance.")
 	op1 := txnbuild.CreateClaimableBalance{
 		Destinations: []string{recipient.Address()},
-		Amount:       "10",
+		Amount:       "42",
 		Asset:        asset,
 	}
 
@@ -128,15 +129,24 @@ func runClaimingCBsTest(t *testing.T, assetType txnbuild.AssetType) {
 	// Now let's retrieve what the above just created so we can claim it.
 	balances, err := client.ClaimableBalances(sdk.ClaimableBalanceRequest{Sponsor: sender.Address()})
 	assert.NoError(t, err)
+	t.Log("  confirmed")
 
 	claims := balances.Embedded.Records
 	assert.Len(t, claims, 1)
-	assert.Equal(t, claims[0].Sponsor, sender.Address())
+	claim := claims[0]
 
-	op2 := txnbuild.ClaimClaimableBalance{BalanceID: claims[0].BalanceID}
+	assert.Equal(t, sender.Address(), claim.Sponsor)
+	assert.Equal(t, "42.0000000", claim.Amount)
+
+	t.Logf("Claiming balance (ID=%s)...", claim.BalanceID)
+
+	op2 := txnbuild.ClaimClaimableBalance{
+		BalanceID:     claim.BalanceID,
+		SourceAccount: rAccount,
+	}
 	_, err = itest.SubmitOperations(rAccount, recipient, &op2)
 	assert.NoError(t, err)
-	t.Log("Claimed balance.")
+	t.Log("  claimed")
 
 	// Ensure the balance is gone now.
 	balances, err = client.ClaimableBalances(sdk.ClaimableBalanceRequest{Sponsor: sender.Address()})
@@ -229,11 +239,12 @@ func runFilteringTest(i *test.IntegrationTest, source *keypair.Full, dest *keypa
 	balances, err = client.ClaimableBalances(sdk.ClaimableBalanceRequest{Asset: "native"})
 	assert.NoError(t, err)
 
-	if aType != txnbuild.AssetTypeNative {
-		assert.Len(t, balances.Embedded.Records, 0)
-	} else {
-		assert.Len(t, balances.Embedded.Records, 1)
+	expectedLength := 0
+	if aType == txnbuild.AssetTypeNative {
+		expectedLength++
 	}
+
+	assert.Len(t, balances.Embedded.Records, expectedLength)
 }
 
 /* Utility functions below */

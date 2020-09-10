@@ -216,6 +216,10 @@ func (i *IntegrationTest) MasterAccount() txnbuild.Account {
 	}
 }
 
+func (i *IntegrationTest) CurrentTest() *testing.T {
+	return i.t
+}
+
 // Close stops and removes the docker container.
 func (i *IntegrationTest) Close() {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
@@ -224,10 +228,12 @@ func (i *IntegrationTest) Close() {
 	var err error
 	skipCreation := ("" != os.Getenv("HORIZON_SKIP_CREATION"))
 	if !skipCreation {
+		i.t.Logf("Removing container %s\n", i.container.ID)
 		err = i.cli.ContainerRemove(
 			ctx, i.container.ID,
 			types.ContainerRemoveOptions{Force: true})
 	} else {
+		i.t.Logf("Stopping container %s\n", i.container.ID)
 		err = i.cli.ContainerStop(ctx, i.container.ID, nil)
 	}
 
@@ -238,9 +244,9 @@ func (i *IntegrationTest) Close() {
 
 // Creates new accounts via the master account.
 //
-// It funds each account with 1000 XLM (just change the source if you want more,
-// since this hasn't needed to be configurable) then queries the API to find the
-// randomized sequence number for future operations.
+// It funds each account with 10000 XLM (just change the source if you want
+// more, since this hasn't needed to be configurable) then queries the API to
+// find the randomized sequence number for future operations.
 //
 // Returns: The slice of created keypairs and account objects.
 //
@@ -252,7 +258,7 @@ func (i *IntegrationTest) CreateAccounts(count int) ([]*keypair.Full, []txnbuild
 
 	pairs := make([]*keypair.Full, count)
 	ops := make([]txnbuild.Operation, count)
-	amount := "1000"
+	amount := "10000"
 
 	// Two paths here: either caller already did some stuff with the master
 	// account so we should retrieve the sequence number, or caller hasn't and
@@ -307,8 +313,7 @@ func (i *IntegrationTest) CreateAccounts(count int) ([]*keypair.Full, []txnbuild
 func (i *IntegrationTest) EstablishTrustline(
 	truster *keypair.Full, asset txnbuild.Asset,
 ) (proto.Transaction, error) {
-	master := i.Master()
-	request := sdk.AccountRequest{AccountID: master.Address()}
+	request := sdk.AccountRequest{AccountID: truster.Address()}
 	account, err := i.Client().AccountDetail(request)
 	panicIf(err)
 
