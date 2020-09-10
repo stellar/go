@@ -600,6 +600,10 @@ func countNonEmpty(params ...interface{}) (int, error) {
 			if param != "" {
 				count++
 			}
+		case *xdr.Asset:
+			if param != nil {
+				count++
+			}
 		}
 	}
 

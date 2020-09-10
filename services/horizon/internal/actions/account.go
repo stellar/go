@@ -94,15 +94,9 @@ func (q AccountsQuery) Validate() error {
 		)
 	}
 
-	numParams := 0
-	for _, present := range []bool{
-		len(q.Signer) > 0,
-		q.Asset() != nil,
-		len(q.Sponsor) > 0,
-	} {
-		if present {
-			numParams++
-		}
+	numParams, err := countNonEmpty(q.Sponsor, q.Signer, q.Asset())
+	if err != nil {
+		return errors.Wrap(err, "Could not count request params")
 	}
 	if numParams != 1 {
 		return invalidAccountsParams
