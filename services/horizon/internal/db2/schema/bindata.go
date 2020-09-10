@@ -33,6 +33,7 @@
 // migrations/38_add_constraints.sql (7.33kB)
 // migrations/39_history_trades_indices.sql (183B)
 // migrations/3_use_sequence_in_history_accounts.sql (447B)
+// migrations/40_fix_inner_tx_max_fee_constraint.sql (392B)
 // migrations/4_add_protocol_version.sql (188B)
 // migrations/5_create_trades_table.sql (1.1kB)
 // migrations/6_create_assets_table.sql (366B)
@@ -768,6 +769,26 @@ func migrations3_use_sequence_in_history_accountsSql() (*asset, error) {
 	return a, nil
 }
 
+var _migrations40_fix_inner_tx_max_fee_constraintSql = []byte("\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff\xac\x8f\xc1\x8b\x82\x40\x1c\x85\xef\xf3\x57\xbc\xe3\x2e\xcb\x80\x77\x71\x61\xd6\x11\x56\x12\x0d\x9b\xba\xca\x64\x63\x0e\xe4\x4f\x19\x27\xb3\xff\xbe\x4b\x41\x1d\xa2\x43\x1d\x1f\x3c\xf8\xbe\x8f\x73\xfc\x74\x76\xef\xb4\x37\x58\x0f\x8c\x89\x4c\x25\x25\x94\xf8\xcb\x12\xb4\x76\xf4\xbd\x3b\x57\xde\x69\x1a\x75\xed\x6d\x4f\x23\x64\x59\x2c\x11\x17\xf9\x4a\x95\x22\xcd\x15\x26\x7d\xb0\xbb\xaa\xd3\x73\xd5\x18\x13\x32\xce\x91\x12\x19\x07\x3f\xc3\x12\x1a\x63\xb0\x3d\x76\x03\x6a\x4d\x68\xf5\x64\x70\x7d\x46\xc1\x6b\x94\x90\xf2\x29\x09\xf1\x7f\x12\x2f\xf0\x75\x9b\xbf\x11\x82\x6f\xe4\x85\xc2\x46\x64\xa9\x0c\x19\xbb\x2f\x93\xfd\x89\xde\x6f\xfb\xac\xf0\xa3\xef\x25\x00\x00\xff\xff\x59\x2c\x3c\x0b\x88\x01\x00\x00")
+
+func migrations40_fix_inner_tx_max_fee_constraintSqlBytes() ([]byte, error) {
+	return bindataRead(
+		_migrations40_fix_inner_tx_max_fee_constraintSql,
+		"migrations/40_fix_inner_tx_max_fee_constraint.sql",
+	)
+}
+
+func migrations40_fix_inner_tx_max_fee_constraintSql() (*asset, error) {
+	bytes, err := migrations40_fix_inner_tx_max_fee_constraintSqlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "migrations/40_fix_inner_tx_max_fee_constraint.sql", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0x9d, 0x58, 0xe3, 0x4c, 0x97, 0xa8, 0x17, 0x34, 0xca, 0x20, 0x47, 0x8c, 0x78, 0x9b, 0x81, 0x52, 0x3d, 0xde, 0xc8, 0xf1, 0x13, 0x7a, 0x46, 0xd1, 0xa0, 0x38, 0x43, 0x63, 0xcc, 0xc6, 0xd, 0xa5}}
+	return a, nil
+}
+
 var _migrations4_add_protocol_versionSql = []byte("\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff\x84\xcd\xb1\x0a\xc2\x30\x10\x06\xe0\x3d\x4f\xf1\xef\x52\x70\xef\x14\x4d\x9d\xce\x44\x4a\x32\x38\x15\xd1\xa3\x06\x6a\xae\x5c\x82\xe2\xdb\xbb\xba\x88\x4f\xf0\x75\x1d\x36\x8f\x3c\xeb\xa5\x31\xd2\x6a\x2c\xc5\x61\x44\xb4\x3b\x1a\x10\x3c\x9d\x71\xcf\xb5\x89\xbe\xa7\x85\x6f\x33\x6b\x85\x01\xac\x73\xd8\x07\x4a\x47\x8f\x55\xa5\xc9\x55\x96\xe9\xc9\x5a\xb3\x14\xe4\xd2\x78\x66\x85\x1b\x0e\x36\x51\xc4\x16\x3e\x44\xf8\x44\xd4\x1b\xf3\x6d\x39\x79\x95\xff\x9a\x1b\xc3\xe9\x97\xd5\x9b\x4f\x00\x00\x00\xff\xff\x83\xbb\x30\x2e\xbc\x00\x00\x00")
 
 func migrations4_add_protocol_versionSqlBytes() ([]byte, error) {
@@ -1032,6 +1053,7 @@ var _bindata = map[string]func() (*asset, error){
 	"migrations/38_add_constraints.sql":                       migrations38_add_constraintsSql,
 	"migrations/39_history_trades_indices.sql":                migrations39_history_trades_indicesSql,
 	"migrations/3_use_sequence_in_history_accounts.sql":       migrations3_use_sequence_in_history_accountsSql,
+	"migrations/40_fix_inner_tx_max_fee_constraint.sql":       migrations40_fix_inner_tx_max_fee_constraintSql,
 	"migrations/4_add_protocol_version.sql":                   migrations4_add_protocol_versionSql,
 	"migrations/5_create_trades_table.sql":                    migrations5_create_trades_tableSql,
 	"migrations/6_create_assets_table.sql":                    migrations6_create_assets_tableSql,
@@ -1116,6 +1138,7 @@ var _bintree = &bintree{nil, map[string]*bintree{
 		"38_add_constraints.sql":                       &bintree{migrations38_add_constraintsSql, map[string]*bintree{}},
 		"39_history_trades_indices.sql":                &bintree{migrations39_history_trades_indicesSql, map[string]*bintree{}},
 		"3_use_sequence_in_history_accounts.sql":       &bintree{migrations3_use_sequence_in_history_accountsSql, map[string]*bintree{}},
+		"40_fix_inner_tx_max_fee_constraint.sql":       &bintree{migrations40_fix_inner_tx_max_fee_constraintSql, map[string]*bintree{}},
 		"4_add_protocol_version.sql":                   &bintree{migrations4_add_protocol_versionSql, map[string]*bintree{}},
 		"5_create_trades_table.sql":                    &bintree{migrations5_create_trades_tableSql, map[string]*bintree{}},
 		"6_create_assets_table.sql":                    &bintree{migrations6_create_assets_tableSql, map[string]*bintree{}},
