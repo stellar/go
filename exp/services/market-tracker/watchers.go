@@ -113,15 +113,25 @@ func createOrderbook(labels prometheus.Labels) Orderbook {
 			ConstLabels: labels,
 			Help:        "Number of asks in the orderbook",
 		}),
-		BidVolume: promauto.NewGauge(prometheus.GaugeOpts{
-			Name:        "stellar_market_tracker_bidvol",
+		BidBaseVolume: promauto.NewGauge(prometheus.GaugeOpts{
+			Name:        "stellar_market_tracker_bidbasevol",
 			ConstLabels: labels,
-			Help:        "Volume of bids in the orderbook",
+			Help:        "Volume of bids in the orderbook in base currency",
 		}),
-		AskVolume: promauto.NewGauge(prometheus.GaugeOpts{
-			Name:        "stellar_market_tracker_askvol",
+		BidUsdVolume: promauto.NewGauge(prometheus.GaugeOpts{
+			Name:        "stellar_market_tracker_bidusdvol",
 			ConstLabels: labels,
-			Help:        "Volume of asks in the orderbook",
+			Help:        "Volume of bids in the orderbook in USD",
+		}),
+		AskBaseVolume: promauto.NewGauge(prometheus.GaugeOpts{
+			Name:        "stellar_market_tracker_askbasevol",
+			ConstLabels: labels,
+			Help:        "Volume of asks in the orderbook in base",
+		}),
+		AskUsdVolume: promauto.NewGauge(prometheus.GaugeOpts{
+			Name:        "stellar_market_tracker_askusdvol",
+			ConstLabels: labels,
+			Help:        "Volume of asks in the orderbook in USD",
 		}),
 	}
 }

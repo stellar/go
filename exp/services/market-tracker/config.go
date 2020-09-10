@@ -64,7 +64,7 @@ func check(err error) {
 }
 
 func loadConfig() Config {
-	configFile, err := os.Open("config.json")
+	configFile, err := os.Open("config_sample.json")
 	check(err)
 
 	defer configFile.Close()

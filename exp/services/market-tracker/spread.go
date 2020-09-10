@@ -95,8 +95,10 @@ func trackSpreads(cfg Config, c trackerClient, watchedTPsPtr *[]prometheusWatche
 
 				watchedTPs[i].FairValue.DexPrice.Set(calcMidPrice(usdBids, usdAsks))
 
-				watchedTPs[i].Orderbook.BidVolume.Set(getOrdersVolume(usdBids))
-				watchedTPs[i].Orderbook.AskVolume.Set(getOrdersVolume(usdAsks))
+				watchedTPs[i].Orderbook.BidBaseVolume.Set(getOrdersBaseVolume(usdBids))
+				watchedTPs[i].Orderbook.BidUsdVolume.Set(getOrdersUsdVolume(usdBids))
+				watchedTPs[i].Orderbook.AskBaseVolume.Set(getOrdersBaseVolume(usdAsks))
+				watchedTPs[i].Orderbook.AskUsdVolume.Set(getOrdersUsdVolume(usdAsks))
 				watchedTPs[i].Orderbook.NumBids.Set(float64(len(usdBids)))
 				watchedTPs[i].Orderbook.NumAsks.Set(float64(len(usdAsks)))
 

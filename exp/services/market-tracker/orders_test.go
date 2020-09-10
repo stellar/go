@@ -52,16 +52,17 @@ func TestConvertAsks(t *testing.T) {
 	assert.Equal(t, 0, len(asks))
 
 	lowAsk := usdOrder{
-		xlmAmount:  100,
+		xlmAmount:  50,
 		usdPrice:   0.2,
-		usdAmount:  10,
-		baseAmount: 50,
+		usdAmount:  5,
+		baseAmount: 0.5,
 	}
+
 	highAsk := usdOrder{
-		xlmAmount:  250,
+		xlmAmount:  100,
 		usdPrice:   0.25,
-		usdAmount:  25,
-		baseAmount: 100,
+		usdAmount:  10,
+		baseAmount: 1,
 	}
 
 	orders := []hProtocol.PriceLevel{hHighOrder, hLowOrder}

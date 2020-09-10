@@ -11,10 +11,12 @@ import (
 // Orderbook tracks top-level orderbook statistics.
 // Note that volume is denominated in USD for easiest viewing.
 type Orderbook struct {
-	NumBids   prometheus.Gauge
-	NumAsks   prometheus.Gauge
-	BidVolume prometheus.Gauge
-	AskVolume prometheus.Gauge
+	NumBids       prometheus.Gauge
+	NumAsks       prometheus.Gauge
+	BidBaseVolume prometheus.Gauge
+	BidUsdVolume  prometheus.Gauge
+	AskBaseVolume prometheus.Gauge
+	AskUsdVolume  prometheus.Gauge
 }
 
 // usdOrder holds the USD representation of an XLM-based order on the DEX.
@@ -28,30 +30,12 @@ type usdOrder struct {
 
 // convertBids converts a list of bids into dollar and base asset amounts and sorts them in decreasing price order.
 func convertBids(bids []hProtocol.PriceLevel, xlmUsdPrice, baseUsdPrice float64) ([]usdOrder, error) {
-	convertedBids := []usdOrder{}
-	for _, b := range bids {
-		// for bids, both the price and the amount will be in XLM
-		// see: https://github.com/stellar/go/issues/612
-		xlmAmt, err := strconv.ParseFloat(b.Amount, 64)
-		if err != nil {
-			return []usdOrder{}, err
-		}
-
-		usdAmt := xlmAmt * xlmUsdPrice
-		usdPrice := (float64(b.PriceR.N) / float64(b.PriceR.D)) * xlmUsdPrice
-		baseAmt := usdAmt * baseUsdPrice
-
-		cb := usdOrder{
-			xlmAmount:  xlmAmt,
-			usdAmount:  usdAmt,
-			usdPrice:   usdPrice,
-			baseAmount: baseAmt,
-		}
-
-		convertedBids = append(convertedBids, cb)
+	convertedBids, err := convertOrders(bids, xlmUsdPrice, baseUsdPrice)
+	if err != nil {
+		return []usdOrder{}, err
 	}
 
-	// sort in decreasing order by price
+	// sort in decreasing order
 	sort.Slice(convertedBids, func(i, j int) bool {
 		return convertedBids[i].usdPrice >= convertedBids[j].usdPrice
 	})
@@ -60,28 +44,9 @@ func convertBids(bids []hProtocol.PriceLevel, xlmUsdPrice, baseUsdPrice float64)
 }
 
 func convertAsks(asks []hProtocol.PriceLevel, xlmUsdPrice, baseUsdPrice float64) ([]usdOrder, error) {
-	convertedAsks := []usdOrder{}
-	for _, a := range asks {
-		// for asks, the amount will be in base, but the price in XLM
-		// see: https://github.com/stellar/go/issues/612
-		baseAmt, err := strconv.ParseFloat(a.Amount, 64)
-		if err != nil {
-			return []usdOrder{}, err
-		}
-
-		askXlmPrice := float64(a.PriceR.N) / float64(a.PriceR.D)
-		xlmAmt := baseAmt * askXlmPrice
-		usdAmt := xlmAmt * xlmUsdPrice
-		usdPrice := askXlmPrice * xlmUsdPrice
-
-		ca := usdOrder{
-			xlmAmount:  xlmAmt,
-			usdPrice:   usdPrice,
-			usdAmount:  usdAmt,
-			baseAmount: baseAmt,
-		}
-
-		convertedAsks = append(convertedAsks, ca)
+	convertedAsks, err := convertOrders(asks, xlmUsdPrice, baseUsdPrice)
+	if err != nil {
+		return []usdOrder{}, err
 	}
 
 	// sort in increasing order
@@ -91,9 +56,40 @@ func convertAsks(asks []hProtocol.PriceLevel, xlmUsdPrice, baseUsdPrice float64)
 	return convertedAsks, nil
 }
 
-func getOrdersVolume(orders []usdOrder) (v float64) {
+func convertOrders(orders []hProtocol.PriceLevel, xlmUsdPrice, baseUsdPrice float64) ([]usdOrder, error) {
+	convertedOrders := []usdOrder{}
+	for _, order := range orders {
+		xlmAmt, err := strconv.ParseFloat(order.Amount, 64)
+		if err != nil {
+			return []usdOrder{}, err
+		}
+
+		usdAmt := xlmAmt * xlmUsdPrice
+		usdPrice := float64(order.PriceR.N) / float64(order.PriceR.D) * xlmUsdPrice
+		baseAmt := usdAmt * baseUsdPrice
+		cOrder := usdOrder{
+			xlmAmount:  xlmAmt,
+			usdPrice:   usdPrice,
+			usdAmount:  usdAmt,
+			baseAmount: baseAmt,
+		}
+
+		convertedOrders = append(convertedOrders, cOrder)
+	}
+
+	return convertedOrders, nil
+}
+
+func getOrdersUsdVolume(orders []usdOrder) (v float64) {
 	for _, o := range orders {
 		v += o.usdAmount
+	}
+	return
+}
+
+func getOrdersBaseVolume(orders []usdOrder) (v float64) {
+	for _, o := range orders {
+		v += o.baseAmount
 	}
 	return
 }
