@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this
 file. This project adheres to [Semantic Versioning](http://semver.org/).x
 
+## v1.8.1
+
+* Fixed a bug in a code ingesting fee bump transactions.
+
 ## v1.8.0
 
 ### Changes
