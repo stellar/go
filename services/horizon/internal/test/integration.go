@@ -15,8 +15,10 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
-	"github.com/stellar/go/clients/horizonclient"
+	sdk "github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
+	proto "github.com/stellar/go/protocols/horizon"
+	"github.com/stellar/go/services/horizon/internal/txnbuild"
 	"github.com/stellar/go/support/errors"
 )
 
@@ -31,7 +33,7 @@ type IntegrationTest struct {
 	t         *testing.T
 	config    IntegrationConfig
 	cli       client.APIClient
-	hclient   *horizonclient.Client
+	hclient   *sdk.Client
 	container container.ContainerCreateCreatedBody
 }
 
@@ -167,7 +169,7 @@ func NewIntegrationTest(t *testing.T, config IntegrationConfig) *IntegrationTest
 		t.Fatal(errors.Wrap(err, "error starting docker container"))
 	}
 
-	i.hclient = &horizonclient.Client{HorizonURL: "http://localhost:8000"}
+	i.hclient = &sdk.Client{HorizonURL: "http://localhost:8000"}
 	i.waitForIngestionAndUpgrade()
 	return i
 }
@@ -192,13 +194,26 @@ func (i *IntegrationTest) waitForIngestionAndUpgrade() {
 }
 
 // Client returns horizon.Client connected to started Horizon instance.
-func (i *IntegrationTest) Client() *horizonclient.Client {
+func (i *IntegrationTest) Client() *sdk.Client {
 	return i.hclient
 }
 
 // Master returns a keypair of the network master account.
-func (i *IntegrationTest) Master() keypair.KP {
-	return keypair.Master(IntegrationNetworkPassphrase)
+func (i *IntegrationTest) Master() *keypair.Full {
+	return keypair.Master(IntegrationNetworkPassphrase).(*keypair.Full)
+}
+
+func (i *IntegrationTest) MasterAccount() txnbuild.Account {
+	master := i.Master()
+	client := i.Client()
+
+	request := sdk.AccountRequest{AccountID: master.Address()}
+	account, err := client.AccountDetail(request)
+	if err == nil {
+		return &txnbuild.SimpleAccount{AccountID: master.Address(), Sequence: 0}
+	} else {
+		return &account
+	}
 }
 
 // Close stops and removes the docker container.
@@ -216,6 +231,156 @@ func (i *IntegrationTest) Close() {
 		err = i.cli.ContainerStop(ctx, i.container.ID, nil)
 	}
 
+	panicIf(err)
+}
+
+/* Utility functions for easier test case creation. */
+
+// Creates new accounts via the master account.
+//
+// It funds each account with 1000 XLM (just change the source if you want more,
+// since this hasn't needed to be configurable) then queries the API to find the
+// randomized sequence number for future operations.
+//
+// Returns: The slice of created keypairs and account objects.
+//
+// Note: panics on any errors, since we assume that tests cannot proceed without
+// this method succeeding.
+func (i *IntegrationTest) CreateAccounts(count int) ([]*keypair.Full, []txnbuild.Account) {
+	client := i.Client()
+	master := i.Master()
+
+	pairs := make([]*keypair.Full, count)
+	ops := make([]txnbuild.Operation, count)
+	amount := "1000"
+
+	// Two paths here: either caller already did some stuff with the master
+	// account so we should retrieve the sequence number, or caller hasn't and
+	// we start from scratch.
+	seq := int64(0)
+	request := sdk.AccountRequest{AccountID: master.Address()}
+	account, err := client.AccountDetail(request)
+	if err == nil {
+		seq, err = strconv.ParseInt(account.Sequence, 10, 8) // why is this a string?
+		panicIf(err)
+	}
+
+	masterAccount := txnbuild.SimpleAccount{
+		AccountID: master.Address(),
+		Sequence:  seq,
+	}
+
+	for i := 0; i < count; i++ {
+		pair, _ := keypair.Random()
+		pairs[i] = pair
+
+		ops[i] = &txnbuild.CreateAccount{
+			SourceAccount: &masterAccount,
+			Destination:   pair.Address(),
+			Amount:        amount,
+		}
+	}
+
+	// Submit transaction, then retrieve new account details.
+	_ = i.MustSubmitOperations(&masterAccount, master, ops...)
+
+	accounts := make([]txnbuild.Account, count)
+	for i, kp := range pairs {
+		request := sdk.AccountRequest{AccountID: kp.Address()}
+		account, err := client.AccountDetail(request)
+		panicIf(err)
+
+		accounts[i] = &account
+	}
+
+	for _, keys := range pairs {
+		i.t.Logf("Funded %s (%s).\n", keys.Seed(), keys.Address())
+	}
+
+	return pairs, accounts
+}
+
+// Establishes a trustline for a given asset for a particular account.
+//
+// Note: The function panics if this account doesn't exist in the ledger yet, so
+// be sure to fund it before doing this.
+func (i *IntegrationTest) EstablishTrustline(
+	truster *keypair.Full, asset txnbuild.Asset,
+) (proto.Transaction, error) {
+	master := i.Master()
+	request := sdk.AccountRequest{AccountID: master.Address()}
+	account, err := i.Client().AccountDetail(request)
+	panicIf(err)
+
+	return i.SubmitOperations(&account, truster, &txnbuild.ChangeTrust{
+		Line:  asset,
+		Limit: "2000",
+	})
+}
+
+// Submits a signed transaction from an account with standard options.
+//
+// Namely, we set the standard fee, time bounds, etc. to "non-production"
+// defaults that work well for tests.
+//
+// Most transactions only need one signer, so see the more verbose
+// `MustSubmitOperationsWithSigners` below for multi-sig transactions.
+//
+// Note: We assume that transaction will be successful here so we panic in case
+// of all errors. To allow failures, use `SubmitOperations`.
+func (i *IntegrationTest) MustSubmitOperations(
+	source txnbuild.Account, signer *keypair.Full, ops ...txnbuild.Operation,
+) proto.Transaction {
+	tx, err := i.SubmitOperations(source, signer, ops...)
+	panicIf(err)
+	return tx
+}
+
+func (i *IntegrationTest) SubmitOperations(
+	source txnbuild.Account, signer *keypair.Full, ops ...txnbuild.Operation,
+) (proto.Transaction, error) {
+	return i.SubmitMultiSigOperations(source, []*keypair.Full{signer}, ops...)
+}
+
+func (i *IntegrationTest) SubmitMultiSigOperations(
+	source txnbuild.Account, signers []*keypair.Full, ops ...txnbuild.Operation,
+) (txResp proto.Transaction, err error) {
+	txParams := txnbuild.TransactionParams{
+		SourceAccount:        source,
+		Operations:           ops,
+		BaseFee:              txnbuild.MinBaseFee,
+		Timebounds:           txnbuild.NewInfiniteTimeout(),
+		IncrementSequenceNum: true,
+	}
+
+	tx, err := txnbuild.NewTransaction(txParams)
+	if err != nil {
+		return
+	}
+
+	for _, signer := range signers {
+		tx, err = tx.Sign(IntegrationNetworkPassphrase, signer)
+		if err != nil {
+			return
+		}
+	}
+
+	txb64, err := tx.Base64()
+	if err != nil {
+		return
+	}
+
+	txResp, err = i.Client().SubmitTransactionXDR(txb64)
+	if err != nil {
+		prob := sdk.GetError(err)
+		i.t.Errorf("Problem: %s\n", prob.Problem.Extras["result_codes"])
+	}
+
+	return
+}
+
+// Cluttering code with if err != nil is absolute nonsense.
+func panicIf(err error) {
 	if err != nil {
 		panic(err)
 	}
