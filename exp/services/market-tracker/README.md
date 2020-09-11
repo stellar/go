@@ -1,7 +1,7 @@
 # Stellar Market Tracker
 
 The Stellar Market Tracker allows you to monitor the spreads of any desired asset pairs, and makes them available for Prometheus to scrape.
-To use this project, you will have to define the following:
+To use this project, you will have to define the following in a `.env`:
 - Custom `config.json` listing the asset pairs for monitoring. The format is displayed in `config_sample.json`
 - Environment variables: `STELLAR_EXPERT_AUTH_KEY` and `STELLAR_EXPERT_AUTH_VAL`, the authentication header for Stellar Expert; `RATES_API_KEY` and `RATES_API_VAL`, the key-value pair for the OpenExchangeRates API. Note that the exact format of these variables may change, as we finalize internal deployment.
 

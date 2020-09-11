@@ -27,20 +27,24 @@ type Slippage struct {
 	AskD5K  prometheus.Gauge
 }
 
-func trackSpreads(cfg Config, c trackerClient, watchedTPsPtr *[]prometheusWatchedTP) {
-	req := mustCreateXlmPriceRequest()
-	assetReq := mustCreateAssetPriceRequest()
-	var assetMapStr string
-	assetMapLastUpdated := time.Now().Add(-2 * time.Hour) // initialize so the first value won't be cached
+// FairValue tracks the reference price,
+type FairValue struct {
+	Percent  prometheus.Gauge
+	RefPrice prometheus.Gauge
+	DexPrice prometheus.Gauge
+}
 
+func trackSpreads(cfg Config, c trackerClient, watchedTPsPtr *[]prometheusWatchedTP) {
+	watchedTPs := *watchedTPsPtr
+	priceCache := createPriceCache(watchedTPs)
+	req := mustCreateXlmPriceRequest()
 	go func() {
 		for {
-			price, err := getLatestXlmPrice(req)
+			xlmPrice, err := getLatestXlmPrice(req)
 			if err != nil {
 				fmt.Printf("error while getting latest price: %s", err)
 			}
 
-			watchedTPs := *watchedTPsPtr
 			for i, wtp := range watchedTPs {
 				obStats, err := c.getOrderBookForTradePair(wtp.TradePair)
 				if err != nil {
@@ -60,17 +64,43 @@ func trackSpreads(cfg Config, c trackerClient, watchedTPsPtr *[]prometheusWatche
 					continue
 				}
 
-				usdBids, err := getUsdBids(obStats.Bids, price)
+				trueAssetUsdPrice := 0.0
+				currency := watchedTPs[i].TradePair.BuyingAsset.Currency
+				if priceCache[currency].updated.Before(time.Now().Add(-1 * time.Hour)) {
+					trueAssetUsdPrice, err = updateAssetUsdPrice(currency)
+					if err != nil {
+						fmt.Printf("error while getting asset price: %s\n", err)
+						return
+					}
+
+					priceCache[currency] = cachedPrice{
+						price:   trueAssetUsdPrice,
+						updated: time.Now(),
+					}
+				} else {
+					trueAssetUsdPrice = priceCache[currency].price
+				}
+
+				usdBids, err := convertBids(obStats.Bids, xlmPrice, trueAssetUsdPrice)
 				if err != nil {
 					fmt.Printf("error while converting bids to USD: %s", err)
 					continue
 				}
 
-				usdAsks, err := getUsdAsks(obStats.Asks, price)
+				usdAsks, err := convertAsks(obStats.Asks, xlmPrice, trueAssetUsdPrice)
 				if err != nil {
 					fmt.Printf("error while converting asks to USD: %s", err)
 					continue
 				}
+
+				watchedTPs[i].FairValue.DexPrice.Set(calcMidPrice(usdBids, usdAsks))
+
+				watchedTPs[i].Orderbook.BidBaseVolume.Set(getOrdersBaseVolume(usdBids))
+				watchedTPs[i].Orderbook.BidUsdVolume.Set(getOrdersUsdVolume(usdBids))
+				watchedTPs[i].Orderbook.AskBaseVolume.Set(getOrdersBaseVolume(usdAsks))
+				watchedTPs[i].Orderbook.AskUsdVolume.Set(getOrdersUsdVolume(usdAsks))
+				watchedTPs[i].Orderbook.NumBids.Set(float64(len(usdBids)))
+				watchedTPs[i].Orderbook.NumAsks.Set(float64(len(usdAsks)))
 
 				watchedTPs[i].Spread.D100.Set(calcSpreadPctAtDepth(usdBids, usdAsks, 100.))
 				watchedTPs[i].Spread.D1K.Set(calcSpreadPctAtDepth(usdBids, usdAsks, 1000.))
@@ -85,23 +115,8 @@ func trackSpreads(cfg Config, c trackerClient, watchedTPsPtr *[]prometheusWatche
 				watchedTPs[i].Slippage.BidD5K.Set(calcSlippageAtDepth(usdBids, usdAsks, 5000., true))
 				watchedTPs[i].Slippage.AskD5K.Set(calcSlippageAtDepth(usdBids, usdAsks, 5000., false))
 
-				if assetMapLastUpdated.Before(time.Now().Add(-1 * time.Hour)) {
-					assetMapStr, err = getPriceResponse(assetReq)
-					if err != nil {
-						fmt.Printf("error while getting price response: %s\n", err)
-						return
-					}
-					assetMapLastUpdated = time.Now()
-				}
-
-				currency := watchedTPs[i].TradePair.BuyingAsset.Currency
-				trueAssetUsdPrice, err := getAssetUSDPrice(assetMapStr, currency)
-				if err != nil {
-					fmt.Printf("error while getting asset price: %s\n", err)
-					return
-				}
-
-				watchedTPs[i].FairValue.Set(calcFairValuePct(usdBids, usdAsks, trueAssetUsdPrice))
+				watchedTPs[i].FairValue.Percent.Set(calcFairValuePct(usdBids, usdAsks, trueAssetUsdPrice))
+				watchedTPs[i].FairValue.RefPrice.Set(trueAssetUsdPrice)
 			}
 
 			time.Sleep(time.Duration(cfg.CheckIntervalSeconds) * time.Second)

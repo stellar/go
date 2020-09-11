@@ -84,7 +84,7 @@ func calcSlippageAtDepth(bids, asks []usdOrder, depth float64, isBid bool) float
 
 func calcMidPrice(bids, asks []usdOrder) float64 {
 	// note that this assumes bids and asks have already been sorted,
-	// which is done in the getUsdBids / getUsdAsks functions
+	// which is done in the convertBids / convertAsks functions
 	highestBid := calcBestOrderAtDepth(bids, 0.)
 	lowestAsk := calcBestOrderAtDepth(asks, 0.)
 	midPrice := (highestBid + lowestAsk) / 2
@@ -93,7 +93,7 @@ func calcMidPrice(bids, asks []usdOrder) float64 {
 
 func calcAvgPriceAtDepth(orders []usdOrder, depth float64) float64 {
 	// note that this assumes bids and asks have already been sorted,
-	// which is done in the getUsdBids / getUsdAsks functions
+	// which is done in the convertBids / convertAsks functions
 	totalPrice := 0.0
 	totalAmount := 0.0
 	for i, order := range orders {

@@ -64,8 +64,7 @@ func check(err error) {
 }
 
 func loadConfig() Config {
-	// TODO: Add sample `config.json` for monorepo.
-	configFile, err := os.Open("config.json")
+	configFile, err := os.Open("config_sample.json")
 	check(err)
 
 	defer configFile.Close()

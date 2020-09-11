@@ -28,10 +28,16 @@ var hHighOrder = hProtocol.PriceLevel{
 
 var hOrders = []hProtocol.PriceLevel{hLowOrder, hHighOrder}
 
-var usdLowOrder = usdOrder{
-	xlmAmount: 0.0,
-	usdPrice:  0.0,
-	usdAmount: 0.0,
+var lowUsdOrder = usdOrder{
+	xlmAmount: 50.0,
+	usdAmount: 5.0,
+	usdPrice:  20.0,
+}
+
+var highUsdOrder = usdOrder{
+	xlmAmount: 100.0,
+	usdAmount: 10.0,
+	usdPrice:  25.0,
 }
 
 func TestCalcSpreadPctForOrderBook(t *testing.T) {

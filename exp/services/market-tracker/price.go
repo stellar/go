@@ -19,6 +19,11 @@ const stelExURL = "https://api.stellar.expert/explorer/public/xlm-price"
 
 const ratesURL = "https://openexchangerates.org/api/latest.json"
 
+type cachedPrice struct {
+	price   float64
+	updated time.Time
+}
+
 func mustCreateXlmPriceRequest() *http.Request {
 	numAttempts := 10
 	var req *http.Request
@@ -231,4 +236,35 @@ func getAssetUSDPrice(body, currency string) (float64, error) {
 	}
 
 	return rate, nil
+}
+
+func updateAssetUsdPrice(currency string) (float64, error) {
+	assetReq, err := createAssetPriceRequest()
+	if err != nil {
+		return 0.0, fmt.Errorf("could not create asset price request: %s", err)
+	}
+
+	assetMapStr, err := getPriceResponse(assetReq)
+	if err != nil {
+		return 0.0, fmt.Errorf("could not get asset price response from external api: %s", err)
+	}
+
+	assetUsdPrice, err := getAssetUSDPrice(assetMapStr, currency)
+	if err != nil {
+		return 0.0, fmt.Errorf("could not parse asset price response from external api: %s", err)
+	}
+
+	return assetUsdPrice, nil
+}
+
+func createPriceCache(pairs []prometheusWatchedTP) map[string]cachedPrice {
+	pc := make(map[string]cachedPrice)
+	t := time.Now().Add(-2 * time.Hour)
+	for _, p := range pairs {
+		pc[p.TradePair.BuyingAsset.Currency] = cachedPrice{
+			price:   0.0,
+			updated: t,
+		}
+	}
+	return pc
 }
