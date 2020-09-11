@@ -534,6 +534,7 @@ type QSigners interface {
 type OffersQuery struct {
 	PageQuery db2.PageQuery
 	SellerID  string
+	Sponsor   string
 	Selling   *xdr.Asset
 	Buying    *xdr.Asset
 }

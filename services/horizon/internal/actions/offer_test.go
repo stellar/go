@@ -59,6 +59,12 @@ var (
 				Amount: xdr.Int64(500),
 			},
 		},
+		Ext: xdr.LedgerEntryExt{
+			V: 1,
+			V1: &xdr.LedgerEntryExtensionV1{
+				SponsoringId: &sponsor,
+			},
+		},
 	}
 	usdOffer = xdr.LedgerEntry{
 		LastModifiedLedgerSeq: 4,
@@ -282,6 +288,46 @@ func TestGetOffersHandler(t *testing.T) {
 		)
 	})
 
+	t.Run("Filter by sponsor", func(t *testing.T) {
+		records, err := handler.GetResourcePage(
+			httptest.NewRecorder(),
+			makeRequest(
+				t,
+				map[string]string{
+					"sponsor": sponsor.Address(),
+				},
+				map[string]string{},
+				q.Session,
+			),
+		)
+		tt.Assert.NoError(err)
+		tt.Assert.Len(records, 1)
+
+		offers := pageableToOffers(t, records)
+		tt.Assert.Equal(int64(twoEurOffer.Data.MustOffer().OfferId), offers[0].ID)
+
+		_, err = handler.GetResourcePage(
+			httptest.NewRecorder(),
+			makeRequest(
+				t,
+				map[string]string{
+					"sponsor": "GCXEWJ6U4KPGTNTBY5HX4WQ2EEVPWV2QKXEYIQ32IDYIX",
+				},
+				map[string]string{},
+				q.Session,
+			),
+		)
+		tt.Assert.Error(err)
+		tt.Assert.IsType(&problem.P{}, err)
+		p := err.(*problem.P)
+		tt.Assert.Equal("bad_request", p.Type)
+		tt.Assert.Equal("sponsor", p.Extras["invalid_field"])
+		tt.Assert.Equal(
+			"Account ID must start with `G` and contain 56 alphanum characters",
+			p.Extras["reason"],
+		)
+	})
+
 	t.Run("Filter by selling asset", func(t *testing.T) {
 		asset := horizon.Asset{}
 		nativeAsset.Extract(&asset.Type, &asset.Code, &asset.Issuer)
@@ -495,7 +541,7 @@ func pageableToOffers(t *testing.T, page []hal.Pageable) []horizon.Offer {
 
 func TestOffersQueryURLTemplate(t *testing.T) {
 	tt := assert.New(t)
-	expected := "/offers{?selling,buying,seller,cursor,limit,order}"
+	expected := "/offers{?selling,buying,seller,sponsor,cursor,limit,order}"
 	offersQuery := OffersQuery{}
 	tt.Equal(expected, offersQuery.URITemplate())
 }

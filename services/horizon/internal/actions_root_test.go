@@ -46,11 +46,11 @@ func TestRootAction(t *testing.T) {
 		err = json.Unmarshal(w.Body.Bytes(), &actual)
 		ht.Require.NoError(err)
 		ht.Assert.Equal(
-			"http://localhost/accounts{?signer,asset,cursor,limit,order}",
+			"http://localhost/accounts{?signer,sponsor,asset,cursor,limit,order}",
 			actual.Links.Accounts.Href,
 		)
 		ht.Assert.Equal(
-			"http://localhost/offers{?selling,buying,seller,cursor,limit,order}",
+			"http://localhost/offers{?selling,buying,seller,sponsor,cursor,limit,order}",
 			actual.Links.Offers.Href,
 		)
 

@@ -244,6 +244,70 @@ func (q *Q) AccountsForAsset(asset xdr.Asset, page db2.PageQuery) ([]AccountEntr
 	return results, nil
 }
 
+func selectBySponsor(table, sponsor string, page db2.PageQuery) (sq.SelectBuilder, error) {
+	sql := sq.
+		Select("account_id").
+		From(table).
+		Where(map[string]interface{}{
+			"sponsor": sponsor,
+		})
+
+	sql, err := page.ApplyToUsingCursor(sql, "account_id", page.Cursor)
+	if err != nil {
+		return sql, errors.Wrap(err, "could not apply query to page")
+	}
+	return sql, err
+}
+
+func selectUnionBySponsor(tables []string, sponsor string, page db2.PageQuery) (sq.SelectBuilder, error) {
+	var selectIDs sq.SelectBuilder
+	for i, table := range tables {
+		sql, err := selectBySponsor(table, sponsor, page)
+		if err != nil {
+			return sql, errors.Wrap(err, "could not construct account id query")
+		}
+		sql = sql.Prefix("(").Suffix(")")
+
+		if i == 0 {
+			selectIDs = sql
+			continue
+		}
+
+		sqlStr, args, err := sql.ToSql()
+		if err != nil {
+			return sql, errors.Wrap(err, "could not construct account id query")
+		}
+		selectIDs = selectIDs.Suffix("UNION "+sqlStr, args...)
+	}
+
+	return sq.
+		Select("accounts.*").
+		FromSelect(selectIDs, "accountSet").
+		Join("accounts ON accounts.account_id = accountSet.account_id").
+		OrderBy("accounts.account_id " + page.Order).
+		Limit(page.Limit), nil
+}
+
+// AccountsForSponsor return all the accounts where `sponsor`` is sponsoring the account entry or
+// any of its subentries (trust lines, signers, data, or account entry)
+func (q *Q) AccountsForSponsor(sponsor string, page db2.PageQuery) ([]AccountEntry, error) {
+	sql, err := selectUnionBySponsor(
+		[]string{"accounts", "accounts_data", "accounts_signers", "trust_lines"},
+		sponsor,
+		page,
+	)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not construct accounts query")
+	}
+
+	var results []AccountEntry
+	if err := q.Select(&results, sql); err != nil {
+		return nil, errors.Wrap(err, "could not run select query")
+	}
+
+	return results, nil
+}
+
 // AccountEntriesForSigner returns a list of `AccountEntry` rows for a given signer
 func (q *Q) AccountEntriesForSigner(signer string, page db2.PageQuery) ([]AccountEntry, error) {
 	sql := sq.

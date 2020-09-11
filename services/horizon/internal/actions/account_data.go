@@ -15,7 +15,8 @@ type AccountDataQuery struct {
 }
 
 type accountDataResponse struct {
-	Value string `json:"value"`
+	Value   string `json:"value"`
+	Sponsor string `json:"sponsor,omitempty"`
 }
 
 func (adr accountDataResponse) Equals(other StreamableObjectResponse) bool {
@@ -33,7 +34,10 @@ func (handler GetAccountDataHandler) GetResource(w HeaderWriter, r *http.Request
 	if err != nil {
 		return nil, err
 	}
-	response := accountDataResponse{data.Value.Base64()}
+	response := accountDataResponse{Value: data.Value.Base64()}
+	if data.Sponsor.Valid {
+		response.Value = data.Sponsor.String
+	}
 	return response, nil
 }
 

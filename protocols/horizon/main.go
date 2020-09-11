@@ -50,6 +50,9 @@ type Account struct {
 	Balances             []Balance         `json:"balances"`
 	Signers              []Signer          `json:"signers"`
 	Data                 map[string]string `json:"data"`
+	NumSponsoring        uint32            `json:"num_sponsoring"`
+	NumSponsored         uint32            `json:"num_sponsored"`
+	Sponsor              string            `json:"sponsor,omitempty"`
 	PT                   string            `json:"paging_token"`
 }
 
@@ -137,23 +140,6 @@ func (a *Account) SignerSummary() map[string]int32 {
 	return m
 }
 
-// AccountSigner is the account signer information.
-type AccountSigner struct {
-	Links struct {
-		Account hal.Link `json:"account"`
-	} `json:"_links"`
-
-	ID        string `json:"id"`
-	AccountID string `json:"account_id"`
-	PT        string `json:"paging_token"`
-	Signer    `json:"signer"`
-}
-
-// PagingToken implementation for hal.Pageable
-func (res AccountSigner) PagingToken() string {
-	return res.PT
-}
-
 // AccountFlags represents the state of an account's flags
 type AccountFlags struct {
 	AuthRequired  bool `json:"auth_required"`
@@ -196,6 +182,7 @@ type Balance struct {
 	Limit                             string `json:"limit,omitempty"`
 	BuyingLiabilities                 string `json:"buying_liabilities"`
 	SellingLiabilities                string `json:"selling_liabilities"`
+	Sponsor                           string `json:"sponsor,omitempty"`
 	LastModifiedLedger                uint32 `json:"last_modified_ledger,omitempty"`
 	IsAuthorized                      *bool  `json:"is_authorized,omitempty"`
 	IsAuthorizedToMaintainLiabilities *bool  `json:"is_authorized_to_maintain_liabilities,omitempty"`
@@ -251,6 +238,7 @@ type Offer struct {
 	Price              string     `json:"price"`
 	LastModifiedLedger int32      `json:"last_modified_ledger"`
 	LastModifiedTime   *time.Time `json:"last_modified_time"`
+	Sponsor            string     `json:"sponsor,omitempty"`
 }
 
 func (o Offer) PagingToken() string {
@@ -333,9 +321,10 @@ type Root struct {
 
 // Signer represents one of an account's signers.
 type Signer struct {
-	Weight int32  `json:"weight"`
-	Key    string `json:"key"`
-	Type   string `json:"type"`
+	Weight  int32  `json:"weight"`
+	Key     string `json:"key"`
+	Type    string `json:"type"`
+	Sponsor string `json:"sponsor,omitempty"`
 }
 
 // Trade represents a horizon digested trade
@@ -569,7 +558,8 @@ func MustKeyTypeFromAddress(address string) string {
 
 // AccountData represents a single data object stored on by an account
 type AccountData struct {
-	Value string `json:"value"`
+	Value   string `json:"value"`
+	Sponsor string `json:"sponsor,omitempty"`
 }
 
 // AccountsPage returns a list of account records
@@ -673,7 +663,7 @@ type ClaimableBalance struct {
 	BalanceID          string     `json:"id"`
 	Asset              string     `json:"asset"`
 	Amount             string     `json:"amount"`
-	Sponsor            *string    `json:"sponsor"`
+	Sponsor            string     `json:"sponsor,omitempty"`
 	LastModifiedLedger uint32     `json:"last_modified_ledger"`
 	Claimants          []Claimant `json:"claimants"`
 	PT                 string     `json:"paging_token"`

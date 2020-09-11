@@ -76,6 +76,10 @@ func (q *Q) GetOffers(query OffersQuery) ([]Offer, error) {
 		sql = sql.Where("offers.buying_asset = ?", buyingAsset)
 	}
 
+	if query.Sponsor != "" {
+		sql = sql.Where("offers.sponsor = ?", query.Sponsor)
+	}
+
 	var offers []Offer
 	if err := q.Select(&offers, sql); err != nil {
 		return nil, errors.Wrap(err, "could not run select query")

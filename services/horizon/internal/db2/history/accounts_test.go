@@ -355,6 +355,53 @@ func TestAccountsForAsset(t *testing.T) {
 	tt.Assert.Len(accounts, 1)
 }
 
+func TestAccountsForSponsor(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	test.ResetHorizonDB(t, tt.HorizonDB)
+	q := &Q{tt.HorizonSession()}
+
+	eurTrustLine.Data.TrustLine.AccountId = account1.Data.Account.AccountId
+	usdTrustLine.Data.TrustLine.AccountId = account2.Data.Account.AccountId
+
+	batch := q.NewAccountsBatchInsertBuilder(0)
+	err := batch.Add(account1)
+	assert.NoError(t, err)
+	err = batch.Add(account2)
+	assert.NoError(t, err)
+	err = batch.Add(account3)
+	assert.NoError(t, err)
+	assert.NoError(t, batch.Exec())
+
+	_, err = q.InsertTrustLine(eurTrustLine)
+	tt.Assert.NoError(err)
+	_, err = q.InsertTrustLine(usdTrustLine)
+	tt.Assert.NoError(err)
+
+	_, err = q.CreateAccountSigner(account1.Data.Account.AccountId.Address(), account1.Data.Account.AccountId.Address(), 1, nil)
+	tt.Assert.NoError(err)
+	_, err = q.CreateAccountSigner(account2.Data.Account.AccountId.Address(), account2.Data.Account.AccountId.Address(), 1, nil)
+	tt.Assert.NoError(err)
+	_, err = q.CreateAccountSigner(account3.Data.Account.AccountId.Address(), account3.Data.Account.AccountId.Address(), 1, nil)
+	tt.Assert.NoError(err)
+	_, err = q.CreateAccountSigner(account1.Data.Account.AccountId.Address(), account3.Data.Account.AccountId.Address(), 1, nil)
+	tt.Assert.NoError(err)
+	_, err = q.CreateAccountSigner(account2.Data.Account.AccountId.Address(), account3.Data.Account.AccountId.Address(), 1, nil)
+	tt.Assert.NoError(err)
+
+	pq := db2.PageQuery{
+		Order:  db2.OrderAscending,
+		Limit:  db2.DefaultPageSize,
+		Cursor: "",
+	}
+
+	accounts, err := q.AccountsForSponsor(sponsor.Address(), pq)
+	assert.NoError(t, err)
+	tt.Assert.Len(accounts, 2)
+	tt.Assert.Equal(account1.Data.Account.AccountId.Address(), accounts[0].AccountID)
+	tt.Assert.Equal(account2.Data.Account.AccountId.Address(), accounts[1].AccountID)
+}
+
 func TestAccountEntriesForSigner(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()

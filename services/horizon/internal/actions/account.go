@@ -69,6 +69,7 @@ func AccountInfo(ctx context.Context, hq *history.Q, addr string) (*protocol.Acc
 // AccountsQuery query struct for accounts end-point
 type AccountsQuery struct {
 	Signer      string `schema:"signer" valid:"accountID,optional"`
+	Sponsor     string `schema:"sponsor" valid:"accountID,optional"`
 	AssetFilter string `schema:"asset" valid:"asset,optional"`
 }
 
@@ -81,7 +82,7 @@ var invalidAccountsParams = problem.P{
 	Type:   "invalid_accounts_params",
 	Title:  "Invalid Accounts Parameters",
 	Status: http.StatusBadRequest,
-	Detail: "A filter is required. Please ensure that you are including a signer or an asset.",
+	Detail: "Exactly one filter is required. Please ensure that you are including a signer, an asset, or a sponsor filter.",
 }
 
 // Validate runs custom validations.
@@ -93,15 +94,12 @@ func (q AccountsQuery) Validate() error {
 		)
 	}
 
-	if len(q.Signer) == 0 && q.Asset() == nil {
-		return invalidAccountsParams
+	numParams, err := countNonEmpty(q.Sponsor, q.Signer, q.Asset())
+	if err != nil {
+		return errors.Wrap(err, "Could not count request params")
 	}
-
-	if len(q.Signer) > 0 && q.Asset() != nil {
-		return problem.MakeInvalidFieldProblem(
-			"signer",
-			errors.New("you can't filter by signer and asset at the same time"),
-		)
+	if numParams != 1 {
+		return invalidAccountsParams
 	}
 
 	return nil
@@ -147,7 +145,12 @@ func (handler GetAccountsHandler) GetResourcePage(
 
 	var records []history.AccountEntry
 
-	if len(qp.Signer) > 0 {
+	if len(qp.Sponsor) > 0 {
+		records, err = historyQ.AccountsForSponsor(qp.Sponsor, pq)
+		if err != nil {
+			return nil, errors.Wrap(err, "loading account records")
+		}
+	} else if len(qp.Signer) > 0 {
 		records, err = historyQ.AccountEntriesForSigner(qp.Signer, pq)
 		if err != nil {
 			return nil, errors.Wrap(err, "loading account records")

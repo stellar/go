@@ -20,6 +20,7 @@ var (
 	accountOne      = "GABGMPEKKDWR2WFH5AJOZV5PDKLJEHGCR3Q24ALETWR5H3A7GI3YTS7V"
 	accountTwo      = "GADTXHUTHIAESMMQ2ZWSTIIGBZRLHUCBLCHPLLUEIAWDEFRDC4SYDKOZ"
 	signer          = "GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU"
+	sponsor         = xdr.MustAddress("GCO26ZSBD63TKYX45H2C7D2WOFWOUSG5BMTNC3BG4QMXM3PAYI6WHKVZ")
 	usd             = xdr.MustNewCreditAsset("USD", trustLineIssuer)
 	euro            = xdr.MustNewCreditAsset("EUR", trustLineIssuer)
 
@@ -91,8 +92,20 @@ var (
 							Buying:  30,
 							Selling: 40,
 						},
+						Ext: xdr.AccountEntryExtensionV1Ext{
+							V2: &xdr.AccountEntryExtensionV2{
+								NumSponsored:  1,
+								NumSponsoring: 2,
+							},
+						},
 					},
 				},
+			},
+		},
+		Ext: xdr.LedgerEntryExt{
+			V: 1,
+			V1: &xdr.LedgerEntryExtensionV1{
+				SponsoringId: &sponsor,
 			},
 		},
 	}
@@ -413,6 +426,44 @@ func TestGetAccountsHandlerPageResultsBySigner(t *testing.T) {
 	tt.Assert.Empty(want)
 }
 
+func TestGetAccountsHandlerPageResultsBySponsor(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	test.ResetHorizonDB(t, tt.HorizonDB)
+
+	q := &history.Q{tt.HorizonSession()}
+	handler := &GetAccountsHandler{}
+
+	batch := q.NewAccountsBatchInsertBuilder(0)
+	err := batch.Add(account1)
+	assert.NoError(t, err)
+	err = batch.Add(account2)
+	assert.NoError(t, err)
+	err = batch.Add(account3)
+	assert.NoError(t, err)
+	assert.NoError(t, batch.Exec())
+
+	for _, row := range accountSigners {
+		q.CreateAccountSigner(row.Account, row.Signer, row.Weight, nil)
+	}
+
+	records, err := handler.GetResourcePage(
+		httptest.NewRecorder(),
+		makeRequest(
+			t,
+			map[string]string{
+				"sponsor": sponsor.Address(),
+			},
+			map[string]string{},
+			q.Session,
+		),
+	)
+
+	tt.Assert.NoError(err)
+	tt.Assert.Equal(1, len(records))
+	tt.Assert.Equal(signer, records[0].(protocol.Account).ID)
+}
+
 func TestGetAccountsHandlerPageResultsByAsset(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
@@ -513,8 +564,23 @@ func TestGetAccountsHandlerInvalidParams(t *testing.T) {
 				"signer": accountOne,
 				"asset":  "USD" + ":" + accountOne,
 			},
-			expectedInvalidField: "signer",
-			expectedErr:          "you can't filter by signer and asset at the same time",
+			isInvalidAccountsParams: true,
+		},
+		{
+			desc: "signer and sponsor",
+			params: map[string]string{
+				"signer":  accountOne,
+				"sponsor": accountTwo,
+			},
+			isInvalidAccountsParams: true,
+		},
+		{
+			desc: "asset and sponsor",
+			params: map[string]string{
+				"asset":   "USD" + ":" + accountOne,
+				"sponsor": accountTwo,
+			},
+			isInvalidAccountsParams: true,
 		},
 		{
 			desc: "filtering by native asset",
@@ -570,7 +636,7 @@ func TestGetAccountsHandlerInvalidParams(t *testing.T) {
 
 func TestAccountQueryURLTemplate(t *testing.T) {
 	tt := assert.New(t)
-	expected := "/accounts{?signer,asset,cursor,limit,order}"
+	expected := "/accounts{?signer,sponsor,asset,cursor,limit,order}"
 	accountsQuery := AccountsQuery{}
 	tt.Equal(expected, accountsQuery.URITemplate())
 }
