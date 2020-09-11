@@ -1,3 +1,4 @@
+//lint:file-ignore U1001 Ignore all unused code, staticcheck doesn't understand testify/suite
 package expingest
 
 import (
@@ -125,7 +126,7 @@ func (s *IngestHistoryRangeStateTestSuite) TestRunTransactionProcessorsOnLedgerR
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
 	s.historyQ.On("GetLatestLedger").Return(uint32(99), nil).Once()
 
-	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(100)).Return(true).Once()
+	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(100)).Return(true, nil).Once()
 	s.runner.On("RunTransactionProcessorsOnLedger", uint32(100)).Return(io.StatsLedgerTransactionProcessorResults{}, errors.New("my error")).Once()
 
 	next, err := historyRangeState{fromLedger: 100, toLedger: 200}.run(s.system)
@@ -139,7 +140,7 @@ func (s *IngestHistoryRangeStateTestSuite) TestRangeNotPreparedFailPrepare() {
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
 	s.historyQ.On("GetLatestLedger").Return(uint32(99), nil).Once()
 
-	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(100)).Return(false).Once()
+	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(100)).Return(false, nil).Once()
 	s.ledgerBackend.On("PrepareRange", ledgerbackend.UnboundedRange(100)).Return(errors.New("my error")).Once()
 	// Rollback twice (first one mocked in SetupTest) because we want to release
 	// a distributed ingestion lock.
@@ -156,7 +157,7 @@ func (s *IngestHistoryRangeStateTestSuite) TestRangeNotPreparedSuccessPrepare() 
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
 	s.historyQ.On("GetLatestLedger").Return(uint32(99), nil).Once()
 
-	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(100)).Return(false).Once()
+	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(100)).Return(false, nil).Once()
 	s.ledgerBackend.On("PrepareRange", ledgerbackend.UnboundedRange(100)).Return(nil).Once()
 	// Rollback twice (first one mocked in SetupTest) because we want to release
 	// a distributed ingestion lock.
@@ -172,7 +173,7 @@ func (s *IngestHistoryRangeStateTestSuite) TestSuccess() {
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
 	s.historyQ.On("GetLatestLedger").Return(uint32(99), nil).Once()
 
-	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(100)).Return(true).Once()
+	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(100)).Return(true, nil).Once()
 	for i := 100; i <= 200; i++ {
 		s.runner.On("RunTransactionProcessorsOnLedger", uint32(i)).Return(io.StatsLedgerTransactionProcessorResults{}, nil).Once()
 	}
@@ -189,7 +190,7 @@ func (s *IngestHistoryRangeStateTestSuite) TestSuccessOneLedger() {
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
 	s.historyQ.On("GetLatestLedger").Return(uint32(99), nil).Once()
 
-	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(100)).Return(true).Once()
+	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(100)).Return(true, nil).Once()
 	s.runner.On("RunTransactionProcessorsOnLedger", uint32(100)).Return(io.StatsLedgerTransactionProcessorResults{}, nil).Once()
 
 	s.historyQ.On("Commit").Return(nil).Once()

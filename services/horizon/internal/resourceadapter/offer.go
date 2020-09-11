@@ -22,6 +22,9 @@ func PopulateOffer(ctx context.Context, dest *protocol.Offer, row history.Offer,
 	dest.PriceR.N = row.Pricen
 	dest.PriceR.D = row.Priced
 	dest.Price = big.NewRat(int64(row.Pricen), int64(row.Priced)).FloatString(7)
+	if row.Sponsor.Valid {
+		dest.Sponsor = row.Sponsor.String
+	}
 
 	row.SellingAsset.MustExtract(&dest.Selling.Type, &dest.Selling.Code, &dest.Selling.Issuer)
 	row.BuyingAsset.MustExtract(&dest.Buying.Type, &dest.Buying.Code, &dest.Buying.Issuer)

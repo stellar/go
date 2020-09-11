@@ -32,9 +32,11 @@
 // migrations/37_add_tx_set_operation_count_to_ledgers.sql (176B)
 // migrations/38_add_constraints.sql (7.33kB)
 // migrations/39_claimable_balances.sql (750B)
+// migrations/39_history_trades_indices.sql (183B)
 // migrations/3_use_sequence_in_history_accounts.sql (447B)
-// migrations/40_add_sponsor_to_state_tables.sql (800B)
-// migrations/41_add_num_sponsored_and_num_sponsoring_to_accounts.sql (276B)
+// migrations/40_fix_inner_tx_max_fee_constraint.sql (392B)
+// migrations/41_add_sponsor_to_state_tables.sql (800B)
+// migrations/42_add_num_sponsored_and_num_sponsoring_to_accounts.sql (276B)
 // migrations/4_add_protocol_version.sql (188B)
 // migrations/5_create_trades_table.sql (1.1kB)
 // migrations/6_create_assets_table.sql (366B)
@@ -750,6 +752,26 @@ func migrations39_claimable_balancesSql() (*asset, error) {
 	return a, nil
 }
 
+var _migrations39_history_trades_indicesSql = []byte("\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff\x6c\xce\xb1\x0a\xc2\x40\x0c\x80\xe1\x3d\x4f\x11\x3a\x29\xda\x27\xe8\xa4\xf6\x90\x2e\xad\xd4\x16\xdc\x8e\xd3\x0b\x36\x83\xcd\x91\x8b\x88\x6f\x2f\x08\x42\x07\xd7\x1f\x7e\xf8\xca\x12\x37\x0f\xbe\x6b\x30\xc2\x31\x01\x1c\x7a\xb7\x1b\x1c\x36\x6d\xed\x2e\x38\x99\x46\x9f\x02\xab\x4f\x1c\xb1\x6b\x71\xe2\x6c\xa2\x6f\x6f\x1a\x22\x65\x1c\xcf\x4d\x7b\xc4\xfd\xd0\x3b\xb7\xba\x86\x4c\x3e\xe4\x4c\xe6\x39\x6e\xf1\x26\xcf\xd9\x48\x17\xe5\xf7\x4a\x22\x0d\xc6\x32\x7f\x6b\x21\x1a\x49\x8b\x75\x05\xb0\xa4\xd4\xf2\x9a\x01\xea\xbe\x3b\xfd\xa3\x54\xf0\x09\x00\x00\xff\xff\xb2\xf0\x3e\xfe\xb7\x00\x00\x00")
+
+func migrations39_history_trades_indicesSqlBytes() ([]byte, error) {
+	return bindataRead(
+		_migrations39_history_trades_indicesSql,
+		"migrations/39_history_trades_indices.sql",
+	)
+}
+
+func migrations39_history_trades_indicesSql() (*asset, error) {
+	bytes, err := migrations39_history_trades_indicesSqlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "migrations/39_history_trades_indices.sql", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0x50, 0x44, 0xfd, 0xa3, 0xc4, 0xc9, 0x68, 0x24, 0xb5, 0xf7, 0xea, 0xf3, 0x46, 0xb9, 0x2, 0xc1, 0x2d, 0xe7, 0xce, 0xd3, 0x42, 0x93, 0x2e, 0x87, 0x22, 0xca, 0xad, 0x97, 0xa9, 0xa, 0x6a, 0xe3}}
+	return a, nil
+}
+
 var _migrations3_use_sequence_in_history_accountsSql = []byte("\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff\x9c\x91\x4d\x6b\xb3\x40\x14\x85\xf7\xf3\x2b\xce\x2e\xca\xfb\x66\x91\x6d\x5c\x4d\xc6\x1b\x22\x8c\x63\x3b\x5e\xdb\x64\x25\xa2\x43\x3a\x90\x6a\xeb\xd8\xaf\x7f\x5f\x48\xd3\x0f\x08\x6d\xa1\xcb\x73\x78\xe0\x39\xdc\x3b\x9f\xe3\xdf\xad\xdf\x8f\xcd\xe4\x50\xdd\x09\x65\x49\x32\xa1\xa4\xcb\x8a\x8c\x22\xdc\xf8\x30\x0d\xe3\x4b\xdd\xb4\xed\xf0\xd0\x4f\xa1\xf6\x5d\x1d\xdc\xbd\x00\x80\x92\xa5\x65\x5c\x67\xbc\xc1\xe2\x58\x64\x46\x59\xca\xc9\x30\x56\xbb\x53\x65\x0a\xe4\x99\xb9\x92\xba\xa2\x8f\x2c\xb7\x9f\x59\x49\xb5\x21\x2c\x12\x51\x92\x26\xc5\x08\x6e\x7a\x6c\x0e\xd1\xec\x1b\xef\xec\x3f\xa2\x13\x99\xcb\x6d\xe4\xbb\x18\x6b\x5b\xe4\x67\x33\xe3\x38\x11\x52\x33\x59\xb0\x5c\x69\x42\x61\xf4\xee\x0c\xc2\x1b\xa1\x0a\x5d\xe5\x06\xbe\x43\x49\x8c\x94\xd6\xb2\xd2\x8c\xde\x3d\xff\xbc\x64\xb9\x1c\xdd\xbe\x3d\x34\x21\xc4\x89\x10\x5f\xcf\x98\x0e\x4f\xfd\x1f\xec\xa9\x2d\x2e\xde\xf5\x89\x38\xa6\xdf\xde\x90\x88\xd7\x00\x00\x00\xff\xff\x55\xe2\xdd\x2c\xbf\x01\x00\x00")
 
 func migrations3_use_sequence_in_history_accountsSqlBytes() ([]byte, error) {
@@ -770,42 +792,62 @@ func migrations3_use_sequence_in_history_accountsSql() (*asset, error) {
 	return a, nil
 }
 
-var _migrations40_add_sponsor_to_state_tablesSql = []byte("\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff\x94\x92\xd1\x4a\x87\x30\x14\xc6\xef\x7d\x8a\x73\x59\xc4\xff\x09\xbc\x9a\xed\x10\x82\x68\xac\x09\xde\x8d\x65\x2a\x42\x6d\xb2\x4d\xa2\xb7\x8f\x70\xab\x25\xad\xd6\xf5\x7e\xe7\xfc\xf6\x1d\xbe\xcb\x05\x6e\x5e\xd6\xc5\x48\x37\x41\xbf\x15\x05\x69\x38\x32\xe0\xa4\x6a\x10\xe4\x38\xea\x5d\x39\x0b\x84\x52\xb0\x9b\x56\x56\x1b\xe0\x38\xf0\xb2\xb8\x65\x48\x38\x42\xdd\x52\x1c\x3e\x39\xf1\xf8\x26\x02\xd6\xb5\x5f\xe3\xfd\x43\xdd\xde\x41\xc5\x19\xe2\x95\x7f\xbf\x2e\x7f\x56\x89\x27\xe9\x64\xb6\xef\x03\x4e\x48\x8f\x45\xff\x31\xdb\x75\x51\x93\xc9\x0f\xeb\xf9\x94\x3f\xac\xcb\xf8\x82\x33\xbb\x75\xe2\x79\x55\xd3\x9f\xf6\x08\x3d\x89\xe3\x25\x19\x4e\x3d\xcf\x19\x61\x0f\xea\x64\xf2\xa3\x09\x49\x5c\x28\xaa\x5f\x55\xa2\x52\x94\x75\xf7\xc1\x5c\xfe\x52\x85\x0c\x2e\x5c\x3a\x8d\xc6\xb7\x49\x53\x3e\xd7\x77\xe0\x3d\x00\x00\xff\xff\xb5\xbf\x3f\xcc\x20\x03\x00\x00")
+var _migrations40_fix_inner_tx_max_fee_constraintSql = []byte("\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff\xac\x8f\xc1\x8b\x82\x40\x1c\x85\xef\xf3\x57\xbc\xe3\x2e\xcb\x80\x77\x71\x61\xd6\x11\x56\x12\x0d\x9b\xba\xca\x64\x63\x0e\xe4\x4f\x19\x27\xb3\xff\xbe\x4b\x41\x1d\xa2\x43\x1d\x1f\x3c\xf8\xbe\x8f\x73\xfc\x74\x76\xef\xb4\x37\x58\x0f\x8c\x89\x4c\x25\x25\x94\xf8\xcb\x12\xb4\x76\xf4\xbd\x3b\x57\xde\x69\x1a\x75\xed\x6d\x4f\x23\x64\x59\x2c\x11\x17\xf9\x4a\x95\x22\xcd\x15\x26\x7d\xb0\xbb\xaa\xd3\x73\xd5\x18\x13\x32\xce\x91\x12\x19\x07\x3f\xc3\x12\x1a\x63\xb0\x3d\x76\x03\x6a\x4d\x68\xf5\x64\x70\x7d\x46\xc1\x6b\x94\x90\xf2\x29\x09\xf1\x7f\x12\x2f\xf0\x75\x9b\xbf\x11\x82\x6f\xe4\x85\xc2\x46\x64\xa9\x0c\x19\xbb\x2f\x93\xfd\x89\xde\x6f\xfb\xac\xf0\xa3\xef\x25\x00\x00\xff\xff\x59\x2c\x3c\x0b\x88\x01\x00\x00")
 
-func migrations40_add_sponsor_to_state_tablesSqlBytes() ([]byte, error) {
+func migrations40_fix_inner_tx_max_fee_constraintSqlBytes() ([]byte, error) {
 	return bindataRead(
-		_migrations40_add_sponsor_to_state_tablesSql,
-		"migrations/40_add_sponsor_to_state_tables.sql",
+		_migrations40_fix_inner_tx_max_fee_constraintSql,
+		"migrations/40_fix_inner_tx_max_fee_constraint.sql",
 	)
 }
 
-func migrations40_add_sponsor_to_state_tablesSql() (*asset, error) {
-	bytes, err := migrations40_add_sponsor_to_state_tablesSqlBytes()
+func migrations40_fix_inner_tx_max_fee_constraintSql() (*asset, error) {
+	bytes, err := migrations40_fix_inner_tx_max_fee_constraintSqlBytes()
 	if err != nil {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "migrations/40_add_sponsor_to_state_tables.sql", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	info := bindataFileInfo{name: "migrations/40_fix_inner_tx_max_fee_constraint.sql", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0x9d, 0x58, 0xe3, 0x4c, 0x97, 0xa8, 0x17, 0x34, 0xca, 0x20, 0x47, 0x8c, 0x78, 0x9b, 0x81, 0x52, 0x3d, 0xde, 0xc8, 0xf1, 0x13, 0x7a, 0x46, 0xd1, 0xa0, 0x38, 0x43, 0x63, 0xcc, 0xc6, 0xd, 0xa5}}
+	return a, nil
+}
+
+var _migrations41_add_sponsor_to_state_tablesSql = []byte("\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff\x94\x92\xd1\x4a\x87\x30\x14\xc6\xef\x7d\x8a\x73\x59\xc4\xff\x09\xbc\x9a\xed\x10\x82\x68\xac\x09\xde\x8d\x65\x2a\x42\x6d\xb2\x4d\xa2\xb7\x8f\x70\xab\x25\xad\xd6\xf5\x7e\xe7\xfc\xf6\x1d\xbe\xcb\x05\x6e\x5e\xd6\xc5\x48\x37\x41\xbf\x15\x05\x69\x38\x32\xe0\xa4\x6a\x10\xe4\x38\xea\x5d\x39\x0b\x84\x52\xb0\x9b\x56\x56\x1b\xe0\x38\xf0\xb2\xb8\x65\x48\x38\x42\xdd\x52\x1c\x3e\x39\xf1\xf8\x26\x02\xd6\xb5\x5f\xe3\xfd\x43\xdd\xde\x41\xc5\x19\xe2\x95\x7f\xbf\x2e\x7f\x56\x89\x27\xe9\x64\xb6\xef\x03\x4e\x48\x8f\x45\xff\x31\xdb\x75\x51\x93\xc9\x0f\xeb\xf9\x94\x3f\xac\xcb\xf8\x82\x33\xbb\x75\xe2\x79\x55\xd3\x9f\xf6\x08\x3d\x89\xe3\x25\x19\x4e\x3d\xcf\x19\x61\x0f\xea\x64\xf2\xa3\x09\x49\x5c\x28\xaa\x5f\x55\xa2\x52\x94\x75\xf7\xc1\x5c\xfe\x52\x85\x0c\x2e\x5c\x3a\x8d\xc6\xb7\x49\x53\x3e\xd7\x77\xe0\x3d\x00\x00\xff\xff\xb5\xbf\x3f\xcc\x20\x03\x00\x00")
+
+func migrations41_add_sponsor_to_state_tablesSqlBytes() ([]byte, error) {
+	return bindataRead(
+		_migrations41_add_sponsor_to_state_tablesSql,
+		"migrations/41_add_sponsor_to_state_tables.sql",
+	)
+}
+
+func migrations41_add_sponsor_to_state_tablesSql() (*asset, error) {
+	bytes, err := migrations41_add_sponsor_to_state_tablesSqlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "migrations/41_add_sponsor_to_state_tables.sql", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
 	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0xf8, 0xb2, 0xc6, 0x2e, 0x87, 0x75, 0x3, 0x0, 0x9c, 0x98, 0xc2, 0x26, 0x7, 0x99, 0x48, 0x2c, 0xcd, 0x44, 0xc5, 0x57, 0x0, 0x5c, 0xfe, 0xb9, 0x9, 0x1e, 0x2b, 0x55, 0xb5, 0xaa, 0x5, 0xab}}
 	return a, nil
 }
 
-var _migrations41_add_num_sponsored_and_num_sponsoring_to_accountsSql = []byte("\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff\x8c\xce\xb1\x0a\xc2\x30\x14\x85\xe1\xfd\x3e\xc5\x19\x15\x5b\xe8\x5e\x14\x62\x13\x11\x8c\x56\x4a\x3b\x4b\xa9\x21\x64\xe8\x4d\x69\x52\x7c\x7d\xd1\x49\xc1\x80\xf3\x39\xfc\x7c\x79\x8e\xcd\xe8\xec\xdc\x47\x83\x6e\x22\x12\xba\x55\x0d\x5a\xb1\xd7\x0a\xfd\x30\xf8\x85\x63\x20\x21\x25\xaa\x5a\x77\xe7\x0b\x78\x19\x6f\x61\xf2\x1c\xfc\x6c\xee\x70\x1c\x8d\x35\x33\xa4\x3a\x88\x4e\xb7\x28\x50\x1d\x55\x75\xc2\xea\xfb\xb6\xdb\xa2\x58\x67\x89\x8c\x63\xfb\x57\xe7\xf5\x7b\x87\x4a\xa2\x4f\xb5\xf4\x0f\x4e\xb8\x65\x53\x5f\x7f\xc2\xb3\xd4\xe4\xd8\x96\xf4\x0c\x00\x00\xff\xff\xb6\x54\xe4\xeb\x14\x01\x00\x00")
+var _migrations42_add_num_sponsored_and_num_sponsoring_to_accountsSql = []byte("\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff\x8c\xce\xb1\x0a\xc2\x30\x14\x85\xe1\xfd\x3e\xc5\x19\x15\x5b\xe8\x5e\x14\x62\x13\x11\x8c\x56\x4a\x3b\x4b\xa9\x21\x64\xe8\x4d\x69\x52\x7c\x7d\xd1\x49\xc1\x80\xf3\x39\xfc\x7c\x79\x8e\xcd\xe8\xec\xdc\x47\x83\x6e\x22\x12\xba\x55\x0d\x5a\xb1\xd7\x0a\xfd\x30\xf8\x85\x63\x20\x21\x25\xaa\x5a\x77\xe7\x0b\x78\x19\x6f\x61\xf2\x1c\xfc\x6c\xee\x70\x1c\x8d\x35\x33\xa4\x3a\x88\x4e\xb7\x28\x50\x1d\x55\x75\xc2\xea\xfb\xb6\xdb\xa2\x58\x67\x89\x8c\x63\xfb\x57\xe7\xf5\x7b\x87\x4a\xa2\x4f\xb5\xf4\x0f\x4e\xb8\x65\x53\x5f\x7f\xc2\xb3\xd4\xe4\xd8\x96\xf4\x0c\x00\x00\xff\xff\xb6\x54\xe4\xeb\x14\x01\x00\x00")
 
-func migrations41_add_num_sponsored_and_num_sponsoring_to_accountsSqlBytes() ([]byte, error) {
+func migrations42_add_num_sponsored_and_num_sponsoring_to_accountsSqlBytes() ([]byte, error) {
 	return bindataRead(
-		_migrations41_add_num_sponsored_and_num_sponsoring_to_accountsSql,
-		"migrations/41_add_num_sponsored_and_num_sponsoring_to_accounts.sql",
+		_migrations42_add_num_sponsored_and_num_sponsoring_to_accountsSql,
+		"migrations/42_add_num_sponsored_and_num_sponsoring_to_accounts.sql",
 	)
 }
 
-func migrations41_add_num_sponsored_and_num_sponsoring_to_accountsSql() (*asset, error) {
-	bytes, err := migrations41_add_num_sponsored_and_num_sponsoring_to_accountsSqlBytes()
+func migrations42_add_num_sponsored_and_num_sponsoring_to_accountsSql() (*asset, error) {
+	bytes, err := migrations42_add_num_sponsored_and_num_sponsoring_to_accountsSqlBytes()
 	if err != nil {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "migrations/41_add_num_sponsored_and_num_sponsoring_to_accounts.sql", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	info := bindataFileInfo{name: "migrations/42_add_num_sponsored_and_num_sponsoring_to_accounts.sql", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
 	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0xfd, 0x15, 0x84, 0x5c, 0x24, 0x15, 0x82, 0x45, 0x31, 0xe7, 0x89, 0x90, 0xd9, 0x7f, 0xb6, 0xf8, 0xc3, 0x21, 0xc9, 0xd3, 0xa9, 0x11, 0xee, 0x6d, 0x7a, 0x19, 0xcc, 0xba, 0xd7, 0x20, 0xbd, 0xdc}}
 	return a, nil
 }
@@ -1073,9 +1115,11 @@ var _bindata = map[string]func() (*asset, error){
 	"migrations/37_add_tx_set_operation_count_to_ledgers.sql":            migrations37_add_tx_set_operation_count_to_ledgersSql,
 	"migrations/38_add_constraints.sql":                                  migrations38_add_constraintsSql,
 	"migrations/39_claimable_balances.sql":                               migrations39_claimable_balancesSql,
+	"migrations/39_history_trades_indices.sql":                           migrations39_history_trades_indicesSql,
 	"migrations/3_use_sequence_in_history_accounts.sql":                  migrations3_use_sequence_in_history_accountsSql,
-	"migrations/40_add_sponsor_to_state_tables.sql":                      migrations40_add_sponsor_to_state_tablesSql,
-	"migrations/41_add_num_sponsored_and_num_sponsoring_to_accounts.sql": migrations41_add_num_sponsored_and_num_sponsoring_to_accountsSql,
+	"migrations/40_fix_inner_tx_max_fee_constraint.sql":                  migrations40_fix_inner_tx_max_fee_constraintSql,
+	"migrations/41_add_sponsor_to_state_tables.sql":                      migrations41_add_sponsor_to_state_tablesSql,
+	"migrations/42_add_num_sponsored_and_num_sponsoring_to_accounts.sql": migrations42_add_num_sponsored_and_num_sponsoring_to_accountsSql,
 	"migrations/4_add_protocol_version.sql":                              migrations4_add_protocol_versionSql,
 	"migrations/5_create_trades_table.sql":                               migrations5_create_trades_tableSql,
 	"migrations/6_create_assets_table.sql":                               migrations6_create_assets_tableSql,
@@ -1159,9 +1203,11 @@ var _bintree = &bintree{nil, map[string]*bintree{
 		"37_add_tx_set_operation_count_to_ledgers.sql":            &bintree{migrations37_add_tx_set_operation_count_to_ledgersSql, map[string]*bintree{}},
 		"38_add_constraints.sql":                                  &bintree{migrations38_add_constraintsSql, map[string]*bintree{}},
 		"39_claimable_balances.sql":                               &bintree{migrations39_claimable_balancesSql, map[string]*bintree{}},
+		"39_history_trades_indices.sql":                           &bintree{migrations39_history_trades_indicesSql, map[string]*bintree{}},
 		"3_use_sequence_in_history_accounts.sql":                  &bintree{migrations3_use_sequence_in_history_accountsSql, map[string]*bintree{}},
-		"40_add_sponsor_to_state_tables.sql":                      &bintree{migrations40_add_sponsor_to_state_tablesSql, map[string]*bintree{}},
-		"41_add_num_sponsored_and_num_sponsoring_to_accounts.sql": &bintree{migrations41_add_num_sponsored_and_num_sponsoring_to_accountsSql, map[string]*bintree{}},
+		"40_fix_inner_tx_max_fee_constraint.sql":                  &bintree{migrations40_fix_inner_tx_max_fee_constraintSql, map[string]*bintree{}},
+		"41_add_sponsor_to_state_tables.sql":                      &bintree{migrations41_add_sponsor_to_state_tablesSql, map[string]*bintree{}},
+		"42_add_num_sponsored_and_num_sponsoring_to_accounts.sql": &bintree{migrations42_add_num_sponsored_and_num_sponsoring_to_accountsSql, map[string]*bintree{}},
 		"4_add_protocol_version.sql":                              &bintree{migrations4_add_protocol_versionSql, map[string]*bintree{}},
 		"5_create_trades_table.sql":                               &bintree{migrations5_create_trades_tableSql, map[string]*bintree{}},
 		"6_create_assets_table.sql":                               &bintree{migrations6_create_assets_tableSql, map[string]*bintree{}},

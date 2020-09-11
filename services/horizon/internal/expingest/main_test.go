@@ -376,9 +376,9 @@ func (m *mockLedgerBackend) PrepareRange(ledgerRange ledgerbackend.Range) error 
 	return args.Error(0)
 }
 
-func (m *mockLedgerBackend) IsPrepared(ledgerRange ledgerbackend.Range) bool {
+func (m *mockLedgerBackend) IsPrepared(ledgerRange ledgerbackend.Range) (bool, error) {
 	args := m.Called(ledgerRange)
-	return args.Bool(0)
+	return args.Get(0).(bool), args.Error(1)
 }
 
 func (m *mockLedgerBackend) Close() error {
@@ -421,11 +421,6 @@ func (m *mockProcessorsRunner) RunAllProcessorsOnLedger(sequence uint32) (io.Sta
 func (m *mockProcessorsRunner) RunTransactionProcessorsOnLedger(sequence uint32) (io.StatsLedgerTransactionProcessorResults, error) {
 	args := m.Called(sequence)
 	return args.Get(0).(io.StatsLedgerTransactionProcessorResults), args.Error(1)
-}
-
-func (m *mockProcessorsRunner) RunOrderBookProcessorOnLedger(sequence uint32) (io.StatsChangeProcessorResults, error) {
-	args := m.Called(sequence)
-	return args.Get(0).(io.StatsChangeProcessorResults), args.Error(1)
 }
 
 var _ ProcessorRunnerInterface = (*mockProcessorsRunner)(nil)

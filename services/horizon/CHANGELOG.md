@@ -3,8 +3,53 @@
 All notable changes to this project will be documented in this
 file. This project adheres to [Semantic Versioning](http://semver.org/).x
 
-## Unreleased
+## v1.8.1
 
+* Fixed a bug in a code ingesting fee bump transactions.
+
+## v1.8.0
+
+### Changes
+
+* Added new and changed existing metrics:
+  * `horizon_build_info` - contains build information in labels (`version` - Horizon version, `goversion` - Go runtime version),
+  * `horizon_ingest_enable` - equals `1` if ingestion system is running, `0` otherwise,
+  * `horizon_ingest_state_invalid` - equals `1` if state is invalid, `0` otherwise,
+  * `horizon_db_max_open_connections` - determines the maximum possible opened DB connections,
+  * `horizon_db_wait_duration_seconds_total` - changed the values to be in seconds instead of nanoseconds.
+* Fixed a data race when shutting down the HTTP server. ([#2958](https://github.com/stellar/go/pull/2958)).
+* Fixed emitting incorrect errors related to OrderBook Stream when shutting down the app. ([#2964](https://github.com/stellar/go/pull/2964))
+
+### Experimental
+
+The previous implementation of Captive Stellar-Core streams meta stream using a filesystem pipe. This implies that both Horizon and Stellar-Core had to be deployed to the same server. One of the disadvantages of such requirement is a need for detailed per-process monitoring to be able to connect potential issues (like memory leaks) to the specific service.
+
+To solve this it's now possible to start a [`captivecore`](https://github.com/stellar/go/tree/master/exp/services/captivecore) on another machine and configure Horizon to use it in ingestion. This requires two config options set:
+* `ENABLE_CAPTIVE_CORE_INGESTION=true`,
+* `REMOTE_CAPTIVE_CORE_URL` - pointing to `captivecore` server.
+
+## v1.7.1
+
+This patch release fixes a regression introduced in 1.7.0, breaking the
+ `/offers` endpoint. Thus, we recommend upgrading as soon as possible.
+ 
+### Changes
+* Fix path parameter mismatch in `/offers` endpoint
+  [#2927](https://github.com/stellar/go/pull/2927).
+
+## v1.7.0
+
+### DB schema migration (expected migration time: < 10 mins)
+  * Add new multicolumn index to improve the `/trades`'s
+    endpoint performance [#2869](https://github.com/stellar/go/pull/2869).
+  * Add constraints on database columns which cannot hold
+    negative values [#2827](https://github.com/stellar/go/pull/2827).
+
+### Changes
+* Update Go toolchain to 1.14.6 in order to fix [golang/go#34775](https://github.com/golang/go/issues/34775),
+  which caused some database queries to be executed instead of rolled back.
+* Fix panic on missing command line arguments [#2872](https://github.com/stellar/go/pull/2872)
+* Fix race condition where submitting a transaction to Horizon can result in a bad sequence error even though Stellar Core accepted the transaction. [#2877](https://github.com/stellar/go/pull/2877)
 * Add new DB metrics ([#2844](https://github.com/stellar/go/pull/2844)):
   * `db_in_use_connections` - number of opened DB connections in use (not idle),
   * `db_wait_count` - number of connections waited for,

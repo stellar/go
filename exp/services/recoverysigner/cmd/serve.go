@@ -36,6 +36,14 @@ func (c *ServeCommand) Command() *cobra.Command {
 			Required:    false,
 		},
 		{
+			Name:        "db-max-open-conns",
+			Usage:       "Database max open connections",
+			OptType:     types.Int,
+			ConfigKey:   &opts.DatabaseMaxOpenConns,
+			FlagDefault: 20,
+			Required:    false,
+		},
+		{
 			Name:        "network-passphrase",
 			Usage:       "Network passphrase of the Stellar network transactions should be signed for",
 			OptType:     types.String,

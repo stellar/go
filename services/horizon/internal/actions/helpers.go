@@ -44,10 +44,6 @@ type Opt int
 const (
 	// DisableCursorValidation disables cursor validation in GetPageQuery
 	DisableCursorValidation Opt = iota
-	// RequiredParam is used in Get* methods and defines a required parameter
-	// (errors if value is empty).
-	RequiredParam
-	maxAssetCodeLength = 12
 )
 
 // HeaderWriter is an interface for setting HTTP response headers
@@ -598,6 +594,10 @@ func countNonEmpty(params ...interface{}) (int, error) {
 			}
 		case string:
 			if param != "" {
+				count++
+			}
+		case *xdr.Asset:
+			if param != nil {
 				count++
 			}
 		}

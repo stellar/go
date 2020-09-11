@@ -21,14 +21,15 @@ import (
 )
 
 type Options struct {
-	Logger            *supportlog.Entry
-	DatabaseURL       string
-	Port              int
-	NetworkPassphrase string
-	SigningKeys       string
-	SEP10JWKS         string
-	SEP10JWTIssuer    string
-	FirebaseProjectID string
+	Logger               *supportlog.Entry
+	DatabaseURL          string
+	DatabaseMaxOpenConns int
+	Port                 int
+	NetworkPassphrase    string
+	SigningKeys          string
+	SEP10JWKS            string
+	SEP10JWTIssuer       string
+	FirebaseProjectID    string
 
 	AdminPort        int
 	MetricsNamespace string
@@ -103,6 +104,9 @@ func getHandlerDeps(opts Options) (handlerDeps, error) {
 	if err != nil {
 		return handlerDeps{}, errors.Wrap(err, "error parsing database url")
 	}
+	db.SetMaxOpenConns(opts.DatabaseMaxOpenConns)
+	db.SetMaxIdleConns(opts.DatabaseMaxOpenConns)
+
 	err = db.Ping()
 	if err != nil {
 		opts.Logger.Warn("Error pinging to Database: ", err)

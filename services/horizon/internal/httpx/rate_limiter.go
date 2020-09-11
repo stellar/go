@@ -12,6 +12,8 @@ import (
 	"github.com/stellar/go/support/render/problem"
 )
 
+const lruCacheSize = 50000
+
 type historyLedgerSourceFactory struct {
 	updateFrequency time.Duration
 }
@@ -37,7 +39,7 @@ func (v VaryByRemoteIP) Key(r *http.Request) string {
 }
 
 func newRateLimiter(rateQuota *throttled.RateQuota) (*throttled.HTTPRateLimiter, error) {
-	rateLimiter, err := throttled.NewGCRARateLimiter(LRUCacheSize, *rateQuota)
+	rateLimiter, err := throttled.NewGCRARateLimiter(lruCacheSize, *rateQuota)
 	if err != nil {
 		return nil, err
 	}

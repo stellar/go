@@ -1,3 +1,4 @@
+//lint:file-ignore U1001 Ignore all unused code, staticcheck doesn't understand testify/suite
 package processors
 
 import (
@@ -46,7 +47,7 @@ func (s *AccountsProcessorTestSuiteState) TestCreatesAccounts() {
 	s.mockQ.On(
 		"UpsertAccounts",
 		[]xdr.LedgerEntry{
-			xdr.LedgerEntry{
+			{
 				LastModifiedLedgerSeq: lastModifiedLedgerSeq,
 				Data: xdr.LedgerEntryData{
 					Type:    xdr.LedgerEntryTypeAccount,
@@ -145,7 +146,7 @@ func (s *AccountsProcessorTestSuiteLedger) TestNewAccount() {
 	s.mockQ.On(
 		"UpsertAccounts",
 		[]xdr.LedgerEntry{
-			xdr.LedgerEntry{
+			{
 				LastModifiedLedgerSeq: lastModifiedLedgerSeq,
 				Data: xdr.LedgerEntryData{
 					Type:    xdr.LedgerEntryTypeAccount,
@@ -226,7 +227,7 @@ func (s *AccountsProcessorTestSuiteLedger) TestProcessUpgradeChange() {
 	s.mockQ.On(
 		"UpsertAccounts",
 		[]xdr.LedgerEntry{
-			xdr.LedgerEntry{
+			{
 				LastModifiedLedgerSeq: lastModifiedLedgerSeq + 1,
 				Data: xdr.LedgerEntryData{
 					Type:    xdr.LedgerEntryTypeAccount,
@@ -292,7 +293,7 @@ func (s *AccountsProcessorTestSuiteLedger) TestFeeProcessedBeforeEverythingElse(
 	s.mockQ.On(
 		"UpsertAccounts",
 		[]xdr.LedgerEntry{
-			xdr.LedgerEntry{
+			{
 				LastModifiedLedgerSeq: 0,
 				Data: xdr.LedgerEntryData{
 					Type:    xdr.LedgerEntryTypeAccount,

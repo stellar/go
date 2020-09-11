@@ -12,12 +12,6 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-var (
-	ledger = int64(4294967296) // ledger sequence 1
-	tx     = int64(4096)       // tx index 1
-	op     = int64(1)          // op index 1
-)
-
 func TestTransactionOperationID(t *testing.T) {
 	tt := assert.New(t)
 	transaction := BuildLedgerTransaction(

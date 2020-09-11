@@ -469,14 +469,14 @@ func (r resumeState) run(s *system) (transition, error) {
 		log.WithError(err).Warn("error updating stellar-core cursor")
 	}
 
-	duration := time.Since(startTime)
-	s.Metrics().LedgerIngestionTimer.Update(duration)
+	duration := time.Since(startTime).Seconds()
+	s.Metrics().LedgerIngestionDuration.Observe(float64(duration))
 	log.
 		WithFields(changeStats.Map()).
 		WithFields(ledgerTransactionStats.Map()).
 		WithFields(logpkg.F{
 			"sequence": ingestLedger,
-			"duration": duration.Seconds(),
+			"duration": duration,
 			"state":    true,
 			"ledger":   true,
 			"commit":   true,
@@ -920,14 +920,19 @@ func (s *system) completeIngestion(ledger uint32) error {
 func (s *system) maybePrepareRange(from uint32) (bool, error) {
 	ledgerRange := ledgerbackend.UnboundedRange(from)
 
-	if !s.ledgerBackend.IsPrepared(ledgerRange) {
+	prepared, err := s.ledgerBackend.IsPrepared(ledgerRange)
+	if err != nil {
+		return false, errors.Wrap(err, "error checking prepared range")
+	}
+
+	if !prepared {
 		// Release distributed ingestion lock and prepare the range
 		s.historyQ.Rollback()
 		log.Info("Released ingestion lock to prepare range")
 		log.WithFields(logpkg.F{"ledger": from}).Info("Preparing range")
 		startTime := time.Now()
 
-		err := s.ledgerBackend.PrepareRange(ledgerRange)
+		err = s.ledgerBackend.PrepareRange(ledgerRange)
 		if err != nil {
 			return true, errors.Wrap(err, "error preparing range")
 		}
