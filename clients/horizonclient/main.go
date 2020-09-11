@@ -413,10 +413,10 @@ type TradeAggregationRequest struct {
 // ClaimableBalanceRequest contains data about claimable balances.
 // The filters are optional (all added except Asset)
 type ClaimableBalanceRequest struct {
-	ID            string
-	Asset         string
-	Sponsor       string
-	Claimant      string
+	ID       string
+	Asset    string
+	Sponsor  string
+	Claimant string
 }
 
 // ServerTimeRecord contains data for the current unix time of a horizon server instance, and the local time when it was recorded.

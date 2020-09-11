@@ -130,6 +130,21 @@ func NewIntegrationTest(t *testing.T, config IntegrationConfig) *IntegrationTest
 		}
 	}
 
+	// At this point, any of the following actions failing will cause the dead
+	// container to stick around, failing any subsequent tests. Thus, we track a
+	// flag to determine whether or not we should do this.
+	doCleanup := true
+	cleanup := func() {
+		if doCleanup {
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+			defer cancel()
+			i.cli.ContainerRemove(
+				ctx, i.container.ID,
+				types.ContainerRemoveOptions{Force: true})
+		}
+	}
+	defer cleanup()
+
 	horizonBinaryContents, err := ioutil.ReadFile(os.Getenv("HORIZON_BIN_DIR") + "/horizon")
 	if err != nil {
 		t.Fatal(errors.Wrap(err, "error reading horizon binary file"))
@@ -169,6 +184,7 @@ func NewIntegrationTest(t *testing.T, config IntegrationConfig) *IntegrationTest
 		t.Fatal(errors.Wrap(err, "error starting docker container"))
 	}
 
+	doCleanup = false
 	i.hclient = &sdk.Client{HorizonURL: "http://localhost:8000"}
 	i.waitForIngestionAndUpgrade()
 	return i
