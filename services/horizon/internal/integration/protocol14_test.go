@@ -177,7 +177,7 @@ func runFilteringTest(i *test.IntegrationTest, source *keypair.Full, dest *keypa
 
 	claims := balances.Embedded.Records
 	assert.Len(t, claims, 1)
-	assert.Equal(t, claims[0].Sponsor, source.Address())
+	assert.Equal(t, source.Address(), claims[0].Sponsor)
 	id := claims[0].BalanceID
 
 	// Ensure we can look it up explicitly by ID
