@@ -21,6 +21,7 @@ type Config struct {
 	StellarCoreConfigPath      string
 	StellarCoreDatabaseURL     string
 	StellarCoreURL             string
+	RemoteCaptiveCoreURL       string
 
 	// MaxDBConnections has a priority over all 4 values below.
 	MaxDBConnections            int

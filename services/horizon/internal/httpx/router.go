@@ -10,7 +10,8 @@ import (
 
 	"github.com/go-chi/chi"
 	chimiddleware "github.com/go-chi/chi/middleware"
-	"github.com/rcrowley/go-metrics"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/cors"
 	"github.com/sebest/xff"
 	"github.com/stellar/throttled"
@@ -23,6 +24,8 @@ import (
 	"github.com/stellar/go/support/render/problem"
 )
 
+const maxAssetsForPathFinding = 15
+
 type RouterConfig struct {
 	DBSession   *db.Session
 	TxSubmitter *txsub.System
@@ -34,7 +37,7 @@ type RouterConfig struct {
 	NetworkPassphrase  string
 	MaxPathLength      uint
 	PathFinder         paths.Finder
-	MetricsRegistry    metrics.Registry
+	PrometheusRegistry *prometheus.Registry
 	CoreGetter         actions.CoreSettingsGetter
 	HorizonVersion     string
 	FriendbotURL       *url.URL
@@ -73,9 +76,8 @@ func (r *Router) addMiddleware(config *RouterConfig,
 	r.Use(chimiddleware.RequestID)
 	r.Use(contextMiddleware)
 	r.Use(xff.Handler)
-	r.Use(loggerMiddleware)
+	r.Use(loggerMiddleware(serverMetrics))
 	r.Use(timeoutMiddleware(config.ConnectionTimeout))
-	r.Use(requestMetricsMiddleware(serverMetrics))
 	r.Use(recoverMiddleware)
 	r.Use(chimiddleware.Compress(flate.DefaultCompression, "application/hal+json"))
 
@@ -93,7 +95,7 @@ func (r *Router) addMiddleware(config *RouterConfig,
 	// Internal middlewares
 	r.Internal.Use(chimiddleware.StripSlashes)
 	r.Internal.Use(chimiddleware.RequestID)
-	r.Internal.Use(loggerMiddleware)
+	r.Internal.Use(loggerMiddleware(serverMetrics))
 }
 
 func (r *Router) addRoutes(config *RouterConfig, rateLimiter *throttled.HTTPRateLimiter) {
@@ -146,7 +148,7 @@ func (r *Router) addRoutes(config *RouterConfig, rateLimiter *throttled.HTTPRate
 
 		r.Route("/offers", func(r chi.Router) {
 			r.Method(http.MethodGet, "/", restPageHandler(actions.GetOffersHandler{}))
-			r.Method(http.MethodGet, "/{id}", ObjectActionHandler{actions.GetOfferByID{}})
+			r.Method(http.MethodGet, "/{offer_id}", ObjectActionHandler{actions.GetOfferByID{}})
 		})
 
 		r.Method(http.MethodGet, "/assets", restPageHandler(actions.AssetStatsHandler{}))
@@ -281,7 +283,7 @@ func (r *Router) addRoutes(config *RouterConfig, rateLimiter *throttled.HTTPRate
 	})
 
 	// internal
-	r.Internal.Get("/metrics", HandleRaw(&actions.MetricsHandler{config.MetricsRegistry}))
+	r.Internal.Get("/metrics", promhttp.HandlerFor(config.PrometheusRegistry, promhttp.HandlerOpts{}).ServeHTTP)
 	r.Internal.Get("/debug/pprof/heap", pprof.Index)
 	r.Internal.Get("/debug/pprof/profile", pprof.Profile)
 }

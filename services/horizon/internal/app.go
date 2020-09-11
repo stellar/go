@@ -3,16 +3,14 @@ package horizon
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
-	"runtime"
 	"sync"
 	"syscall"
 	"time"
 
-	"github.com/rcrowley/go-metrics"
+	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/stellar/go/clients/stellarcore"
 	proto "github.com/stellar/go/protocols/stellarcore"
@@ -69,15 +67,17 @@ type App struct {
 	ticks           *time.Ticker
 
 	// metrics
-	metrics                  metrics.Registry
-	historyLatestLedgerGauge metrics.Gauge
-	historyElderLedgerGauge  metrics.Gauge
-	dbOpenConnectionsGauge   metrics.Gauge
-	dbInUseConnectionsGauge  metrics.Gauge
-	dbWaitCountGauge         metrics.Gauge
-	dbWaitDurationTimer      metrics.Timer
-	coreLatestLedgerGauge    metrics.Gauge
-	goroutineGauge           metrics.Gauge
+	prometheusRegistry         *prometheus.Registry
+	buildInfoGauge             *prometheus.GaugeVec
+	ingestingGauge             prometheus.Gauge
+	historyLatestLedgerCounter prometheus.CounterFunc
+	historyElderLedgerCounter  prometheus.CounterFunc
+	dbMaxOpenConnectionsGauge  prometheus.GaugeFunc
+	dbOpenConnectionsGauge     prometheus.GaugeFunc
+	dbInUseConnectionsGauge    prometheus.GaugeFunc
+	dbWaitCountCounter         prometheus.CounterFunc
+	dbWaitDurationCounter      prometheus.CounterFunc
+	coreLatestLedgerCounter    prometheus.CounterFunc
 }
 
 func (a *App) GetCoreSettings() actions.CoreSettings {
@@ -133,7 +133,7 @@ func (a *App) Serve() {
 	}()
 	go a.waitForDone()
 
-	err := a.webServer.Serve(uint16(a.config.Port), a.config.TLSCert, a.config.TLSKey, uint16(a.config.AdminPort))
+	err := a.webServer.Serve()
 	if err != nil && err != http.ErrServerClosed {
 		log.Fatal(err)
 	}
@@ -178,21 +178,6 @@ func (a *App) HistoryQ() *history.Q {
 // database. The returned session is bound to `ctx`.
 func (a *App) HorizonSession(ctx context.Context) *db.Session {
 	return &db.Session{DB: a.historyQ.Session.DB, Ctx: ctx}
-}
-
-// IsHistoryStale returns true if the latest history ledger is more than
-// `StaleThreshold` ledgers behind the latest core ledger
-func (a *App) IsHistoryStale() bool {
-	return isHistoryStale(a.config.StaleThreshold)
-}
-
-func isHistoryStale(staleThreshold uint) bool {
-	if staleThreshold == 0 {
-		return false
-	}
-
-	ls := ledger.CurrentState()
-	return (ls.CoreLatest - ls.HistoryLatest) > int32(staleThreshold)
 }
 
 // UpdateLedgerState triggers a refresh of several metrics gauges, such as open
@@ -389,22 +374,6 @@ func (a *App) UpdateStellarCoreInfo() {
 	a.coreSettings.set(resp)
 }
 
-// UpdateMetrics triggers a refresh of several metrics gauges, such as open
-// db connections and ledger state
-func (a *App) UpdateMetrics() {
-	a.goroutineGauge.Update(int64(runtime.NumGoroutine()))
-
-	ls := ledger.CurrentState()
-	a.historyLatestLedgerGauge.Update(int64(ls.HistoryLatest))
-	a.historyElderLedgerGauge.Update(int64(ls.HistoryElder))
-	a.coreLatestLedgerGauge.Update(int64(ls.CoreLatest))
-
-	a.dbOpenConnectionsGauge.Update(int64(a.historyQ.Session.DB.Stats().OpenConnections))
-	a.dbInUseConnectionsGauge.Update(int64(a.historyQ.Session.DB.Stats().InUse))
-	a.dbWaitCountGauge.Update(int64(a.historyQ.Session.DB.Stats().WaitCount))
-	a.dbWaitDurationTimer.Update(a.historyQ.Session.DB.Stats().WaitDuration)
-}
-
 // DeleteUnretainedHistory forwards to the app's reaper.  See
 // `reap.DeleteUnretainedHistory` for details
 func (a *App) DeleteUnretainedHistory() error {
@@ -428,8 +397,6 @@ func (a *App) Tick() {
 	go func() { a.submitter.Tick(a.ctx); wg.Done() }()
 	wg.Wait()
 
-	// finally, update metrics
-	a.UpdateMetrics()
 	log.Debug("finished ticking app")
 }
 
@@ -468,9 +435,9 @@ func (a *App) init() error {
 	a.reaper = reap.New(a.config.HistoryRetentionCount, a.HorizonSession(context.Background()))
 
 	// metrics and log.metrics
-	a.metrics = metrics.NewRegistry()
-	for level, meter := range *logmetrics.DefaultMetrics {
-		a.metrics.Register(fmt.Sprintf("logging.%s", level), meter)
+	a.prometheusRegistry = prometheus.NewRegistry()
+	for _, meter := range *logmetrics.DefaultMetrics {
+		a.prometheusRegistry.MustRegister(meter)
 	}
 
 	// db-metrics
@@ -482,7 +449,7 @@ func (a *App) init() error {
 	// txsub.metrics
 	initTxSubMetrics(a)
 
-	webConfig := &httpx.RouterConfig{
+	routerConfig := httpx.RouterConfig{
 		DBSession:          a.historyQ.Session,
 		TxSubmitter:        a.submitter,
 		RateQuota:          a.config.RateQuota,
@@ -492,17 +459,31 @@ func (a *App) init() error {
 		NetworkPassphrase:  a.config.NetworkPassphrase,
 		MaxPathLength:      a.config.MaxPathLength,
 		PathFinder:         a.paths,
-		MetricsRegistry:    a.metrics,
+		PrometheusRegistry: a.prometheusRegistry,
 		CoreGetter:         a,
 		HorizonVersion:     a.horizonVersion,
 		FriendbotURL:       a.config.FriendbotURL,
 	}
 
 	var err error
-	a.webServer, err = httpx.NewServer(webConfig)
+	config := httpx.ServerConfig{
+		Port:      uint16(a.config.Port),
+		AdminPort: uint16(a.config.AdminPort),
+	}
+	if a.config.TLSCert != "" && a.config.TLSKey != "" {
+		config.TLSConfig = &httpx.TLSConfig{
+			CertPath: a.config.TLSCert,
+			KeyPath:  a.config.TLSKey,
+		}
+	}
+	a.webServer, err = httpx.NewServer(config, routerConfig)
 	if err != nil {
 		return err
 	}
+
+	// web.metrics
+	initWebMetrics(a)
+
 	return nil
 }
 

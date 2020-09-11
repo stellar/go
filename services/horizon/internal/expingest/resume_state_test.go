@@ -1,3 +1,4 @@
+//lint:file-ignore U1001 Ignore all unused code, staticcheck doesn't understand testify/suite
 package expingest
 
 import (
@@ -209,7 +210,7 @@ func (s *ResumeTestTestSuite) TestRangeNotPreparedFailPrepare() {
 	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion, nil).Once()
 	s.historyQ.On("GetLatestLedger").Return(uint32(101), nil)
 
-	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(102)).Return(false).Once()
+	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(102)).Return(false, nil).Once()
 	s.ledgerBackend.On("PrepareRange", ledgerbackend.UnboundedRange(102)).Return(errors.New("my error")).Once()
 	// Rollback twice (first one mocked in SetupTest) because we want to release
 	// a distributed ingestion lock.
@@ -230,7 +231,7 @@ func (s *ResumeTestTestSuite) TestRangeNotPreparedSuccessPrepare() {
 	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion, nil).Once()
 	s.historyQ.On("GetLatestLedger").Return(uint32(101), nil)
 
-	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(102)).Return(false).Once()
+	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(102)).Return(false, nil).Once()
 	s.ledgerBackend.On("PrepareRange", ledgerbackend.UnboundedRange(102)).Return(nil).Once()
 	// Rollback twice (first one mocked in SetupTest) because we want to release
 	// a distributed ingestion lock.
@@ -250,7 +251,7 @@ func (s *ResumeTestTestSuite) TestFastForwardCaptiveCore() {
 	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion, nil).Once()
 	s.historyQ.On("GetLatestLedger").Return(uint32(101), nil)
 
-	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(102)).Return(true).Once()
+	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(102)).Return(true, nil).Once()
 	s.ledgerBackend.On("GetLatestLedgerSequence").Return(uint32(99), nil).Once()
 	// GetLedger will fast-forward to the latest sequence in a backend
 	s.ledgerBackend.On("GetLedger", uint32(99)).Return(true, xdr.LedgerCloseMeta{}, nil).Once()
@@ -272,7 +273,7 @@ func (s *ResumeTestTestSuite) mockSuccessfulIngestion() {
 	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion, nil).Once()
 	s.historyQ.On("GetLatestLedger").Return(uint32(101), nil)
 
-	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(102)).Return(true).Once()
+	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(102)).Return(true, nil).Once()
 	s.ledgerBackend.On("GetLatestLedgerSequence").Return(uint32(111), nil).Once()
 
 	s.runner.On("RunAllProcessorsOnLedger", uint32(102)).Return(io.StatsChangeProcessorResults{}, io.StatsLedgerTransactionProcessorResults{}, nil).Once()
@@ -336,7 +337,7 @@ func (s *ResumeTestTestSuite) TestErrorSettingCursorIgnored() {
 	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion, nil).Once()
 	s.historyQ.On("GetLatestLedger").Return(uint32(0), nil)
 
-	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(101)).Return(true).Once()
+	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(101)).Return(true, nil).Once()
 	s.ledgerBackend.On("GetLatestLedgerSequence").Return(uint32(111), nil).Once()
 
 	s.runner.On("RunAllProcessorsOnLedger", uint32(101)).Return(io.StatsChangeProcessorResults{}, io.StatsLedgerTransactionProcessorResults{}, nil).Once()
@@ -369,7 +370,7 @@ func (s *ResumeTestTestSuite) TestNoNewLedgers() {
 	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion, nil).Once()
 	s.historyQ.On("GetLatestLedger").Return(uint32(0), nil)
 
-	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(101)).Return(true).Once()
+	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(101)).Return(true, nil).Once()
 	s.ledgerBackend.On("GetLatestLedgerSequence").Return(uint32(100), nil).Once()
 	// Fast forward the backend
 	s.ledgerBackend.On("GetLedger", uint32(100)).Return(true, xdr.LedgerCloseMeta{}, nil).Once()
@@ -393,7 +394,7 @@ func (s *ResumeTestTestSuite) TestFarBehind() {
 	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion, nil).Once()
 	s.historyQ.On("GetLatestLedger").Return(uint32(0), nil)
 
-	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(201)).Return(true).Once()
+	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(201)).Return(true, nil).Once()
 	s.ledgerBackend.On("GetLatestLedgerSequence").Return(uint32(102), nil).Once()
 	// Fast forward the backend
 	s.ledgerBackend.On("GetLedger", uint32(102)).Return(true, xdr.LedgerCloseMeta{}, nil).Once()

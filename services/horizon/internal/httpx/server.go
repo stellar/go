@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/rcrowley/go-metrics"
+	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/stellar/go/services/horizon/internal/db2"
 	hProblem "github.com/stellar/go/services/horizon/internal/render/problem"
@@ -20,34 +20,26 @@ import (
 	"github.com/stellar/go/support/render/problem"
 )
 
-const (
-	LRUCacheSize            = 50000
-	maxAssetsForPathFinding = 15
-)
-
 type ServerMetrics struct {
-	RequestTimer metrics.Timer
-	FailureMeter metrics.Meter
-	SuccessMeter metrics.Meter
+	RequestDurationSummary *prometheus.SummaryVec
 }
 
-func NewServerMetrics(registry metrics.Registry) *ServerMetrics {
-	result := ServerMetrics{
-		RequestTimer: metrics.NewTimer(),
-		FailureMeter: metrics.NewMeter(),
-		SuccessMeter: metrics.NewMeter(),
-	}
-	registry.Register("requests.total", result.RequestTimer)
-	registry.Register("requests.succeeded", result.SuccessMeter)
-	registry.Register("requests.failed", result.FailureMeter)
-	return &result
+type TLSConfig struct {
+	CertPath, KeyPath string
+}
+type ServerConfig struct {
+	Port      uint16
+	TLSConfig *TLSConfig
+	AdminPort uint16
 }
 
-// Web contains the http server related fields for horizon: the Router,
+// Server contains the http server related fields for horizon: the Router,
 // rate limiter, etc.
 type Server struct {
 	Router         *Router
+	Metrics        *ServerMetrics
 	server         *http.Server
+	config         ServerConfig
 	internalServer *http.Server
 }
 
@@ -64,47 +56,54 @@ func init() {
 	problem.RegisterError(db.ErrCancelled, hProblem.ServiceUnavailable)
 }
 
-func NewServer(config *RouterConfig) (*Server, error) {
-	sm := NewServerMetrics(config.MetricsRegistry)
-	router, err := NewRouter(config, sm)
+func NewServer(serverConfig ServerConfig, routerConfig RouterConfig) (*Server, error) {
+	sm := &ServerMetrics{
+		RequestDurationSummary: prometheus.NewSummaryVec(
+			prometheus.SummaryOpts{
+				Namespace: "horizon", Subsystem: "http", Name: "requests_duration_seconds",
+				Help: "HTTP requests durations, sliding window = 10m",
+			},
+			[]string{"status", "route", "streaming", "method"},
+		),
+	}
+	router, err := NewRouter(&routerConfig, sm)
 	if err != nil {
 		return nil, err
 	}
+	addr := fmt.Sprintf(":%d", serverConfig.Port)
 	result := &Server{
-		Router: router,
+		Router:  router,
+		Metrics: sm,
+		server: &http.Server{
+			Addr:        addr,
+			Handler:     router,
+			ReadTimeout: 5 * time.Second,
+		},
+	}
+
+	if serverConfig.AdminPort != 0 {
+		adminAddr := fmt.Sprintf(":%d", serverConfig.AdminPort)
+		result.internalServer = &http.Server{
+			Addr:        adminAddr,
+			Handler:     result.Router.Internal,
+			ReadTimeout: 5 * time.Second,
+		}
 	}
 	return result, nil
 }
-func (s *Server) Serve(port uint16, certFile, keyFile string, adminPort uint16) error {
-	if s.server != nil {
-		return errors.New("server already started")
-	}
-
-	if adminPort != 0 {
+func (s *Server) Serve() error {
+	if s.internalServer != nil {
 		go func() {
-			adminAddr := fmt.Sprintf(":%d", adminPort)
-			log.Infof("Starting internal server on %s", adminAddr)
-			s.internalServer = &http.Server{
-				Addr:        adminAddr,
-				Handler:     s.Router.Internal,
-				ReadTimeout: 5 * time.Second,
-			}
+			log.Infof("Starting internal server on %s", s.internalServer.Addr)
 			if err := s.internalServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 				log.Warn(errors.Wrap(err, "error in internalServer.ListenAndServe()"))
 			}
 		}()
 	}
 
-	addr := fmt.Sprintf(":%d", port)
-	s.server = &http.Server{
-		Addr:        addr,
-		Handler:     s.Router,
-		ReadTimeout: 5 * time.Second,
-	}
-
 	var err error
-	if certFile != "" {
-		err = s.server.ListenAndServeTLS(certFile, keyFile)
+	if s.config.TLSConfig != nil {
+		err = s.server.ListenAndServeTLS(s.config.TLSConfig.CertPath, s.config.TLSConfig.KeyPath)
 	} else {
 		err = s.server.ListenAndServe()
 	}

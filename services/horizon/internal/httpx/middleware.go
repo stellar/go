@@ -4,11 +4,13 @@ import (
 	"context"
 	"database/sql"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
+	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/stellar/go/services/horizon/internal/actions"
 	horizonContext "github.com/stellar/go/services/horizon/internal/context"
@@ -63,27 +65,29 @@ func newWrapResponseWriter(w http.ResponseWriter, r *http.Request) middleware.Wr
 }
 
 // loggerMiddleware logs http requests and resposnes to the logging subsytem of horizon.
-func loggerMiddleware(h http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
-		mw := newWrapResponseWriter(w, r)
+func loggerMiddleware(serverMetrics *ServerMetrics) func(next http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx := r.Context()
+			mw := newWrapResponseWriter(w, r)
 
-		logger := log.WithField("req", middleware.GetReqID(ctx))
-		ctx = log.Set(ctx, logger)
+			logger := log.WithField("req", middleware.GetReqID(ctx))
+			ctx = log.Set(ctx, logger)
 
-		// Checking `Accept` header from user request because if the streaming connection
-		// is reset before sending the first event no Content-Type header is sent in a response.
-		acceptHeader := r.Header.Get("Accept")
-		streaming := strings.Contains(acceptHeader, render.MimeEventStream)
+			// Checking `Accept` header from user request because if the streaming connection
+			// is reset before sending the first event no Content-Type header is sent in a response.
+			acceptHeader := r.Header.Get("Accept")
+			streaming := strings.Contains(acceptHeader, render.MimeEventStream)
 
-		logStartOfRequest(ctx, r, streaming)
-		then := time.Now()
+			logStartOfRequest(ctx, r, streaming)
+			then := time.Now()
 
-		h.ServeHTTP(mw, r.WithContext(ctx))
+			next.ServeHTTP(mw, r.WithContext(ctx))
 
-		duration := time.Since(then)
-		logEndOfRequest(ctx, r, duration, mw, streaming)
-	})
+			duration := time.Since(then)
+			logEndOfRequest(ctx, r, serverMetrics.RequestDurationSummary, duration, mw, streaming)
+		})
+	}
 }
 
 // timeoutMiddleware ensures the request is terminated after the given timeout
@@ -150,7 +154,7 @@ func logStartOfRequest(ctx context.Context, r *http.Request, streaming bool) {
 	}).Info("Starting request")
 }
 
-func logEndOfRequest(ctx context.Context, r *http.Request, duration time.Duration, mw middleware.WrapResponseWriter, streaming bool) {
+func logEndOfRequest(ctx context.Context, r *http.Request, requestDurationSummary *prometheus.SummaryVec, duration time.Duration, mw middleware.WrapResponseWriter, streaming bool) {
 	routePattern := chi.RouteContext(r.Context()).RoutePattern()
 	// Can be empty when request did not reached the final route (ex. blocked by
 	// a middleware). More info: https://github.com/go-chi/chi/issues/270
@@ -181,6 +185,13 @@ func logEndOfRequest(ctx context.Context, r *http.Request, duration time.Duratio
 		"streaming":      streaming,
 		"referer":        referer,
 	}).Info("Finished request")
+
+	requestDurationSummary.With(prometheus.Labels{
+		"status":    strconv.FormatInt(int64(mw.Status()), 10),
+		"route":     routePattern,
+		"streaming": strconv.FormatBool(streaming),
+		"method":    r.Method,
+	}).Observe(float64(duration.Seconds()))
 }
 
 func firstXForwardedFor(r *http.Request) string {
@@ -203,27 +214,6 @@ func recoverMiddleware(h http.Handler) http.Handler {
 
 		h.ServeHTTP(w, r)
 	})
-}
-
-// requestMetricsMiddleware records success and failures using a meter, and times every request
-func requestMetricsMiddleware(sm *ServerMetrics) func(http.Handler) http.Handler {
-	return func(h http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			mw := newWrapResponseWriter(w, r)
-
-			sm.RequestTimer.Time(func() {
-				h.ServeHTTP(mw.(http.ResponseWriter), r)
-			})
-
-			if 200 <= mw.Status() && mw.Status() < 400 {
-				// a success is in [200, 400)
-				sm.SuccessMeter.Mark(1)
-			} else if 400 <= mw.Status() && mw.Status() < 600 {
-				// a success is in [400, 600)
-				sm.FailureMeter.Mark(1)
-			}
-		})
-	}
 }
 
 // NewHistoryMiddleware adds session to the request context and ensures Horizon

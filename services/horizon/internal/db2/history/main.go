@@ -162,14 +162,6 @@ type Account struct {
 	Address string `db:"address"`
 }
 
-// AccountsQ is a helper struct to aid in configuring queries that loads
-// slices of account structs.
-type AccountsQ struct {
-	Err    error
-	parent *Q
-	sql    sq.SelectBuilder
-}
-
 // AccountEntry is a row of data from the `account` table
 type AccountEntry struct {
 	AccountID            string      `db:"account_id"`
@@ -298,15 +290,6 @@ type Asset struct {
 	Issuer string `db:"asset_issuer"`
 }
 
-// AssetStat is a row in the asset_stats table representing the stats per Asset
-type AssetStat struct {
-	ID          int64  `db:"id"`
-	Amount      string `db:"amount"`
-	NumAccounts int32  `db:"num_accounts"`
-	Flags       int8   `db:"flags"`
-	Toml        string `db:"toml"`
-}
-
 // ExpAssetStat is a row in the exp_asset_stats table representing the stats per Asset
 type ExpAssetStat struct {
 	AssetType   xdr.AssetType `db:"asset_type"`
@@ -415,12 +398,6 @@ type FeeStats struct {
 	MaxFeeP90      null.Int `db:"max_fee_p90"`
 	MaxFeeP95      null.Int `db:"max_fee_p95"`
 	MaxFeeP99      null.Int `db:"max_fee_p99"`
-}
-
-// KeyValueStoreRow represents a row in key value store.
-type KeyValueStoreRow struct {
-	Key   string `db:"key"`
-	Value string `db:"value"`
 }
 
 // LatestLedger represents a response from the raw LatestLedgerBaseFeeAndSequence
@@ -594,9 +571,19 @@ type Trade struct {
 // TradesQ is a helper struct to aid in configuring queries that loads
 // slices of trade structs.
 type TradesQ struct {
-	Err    error
-	parent *Q
-	sql    sq.SelectBuilder
+	Err        error
+	parent     *Q
+	sql        sq.SelectBuilder
+	pageCalled bool
+
+	// For queries for account and offer we construct UNION query. The alternative
+	// is to use (base = X OR counter = X) query but it's costly.
+	forAccountID int64
+	forOfferID   int64
+
+	// rawSQL will be executed if present (instead of sql - sq.SelectBuilder).
+	rawSQL  string
+	rawArgs []interface{}
 }
 
 // Transaction is a row of data from the `history_transactions` table
@@ -720,17 +707,6 @@ func (q *Q) LatestLedgerBaseFeeAndSequence(dest interface{}) error {
 		FROM history_ledgers
 		WHERE sequence = (SELECT COALESCE(MAX(sequence), 0) FROM history_ledgers)
 	`)
-}
-
-// OldestOutdatedLedgers populates a slice of ints with the first million
-// outdated ledgers, based upon the provided `currentVersion` number
-func (q *Q) OldestOutdatedLedgers(dest interface{}, currentVersion int) error {
-	return q.SelectRaw(dest, `
-		SELECT sequence
-		FROM history_ledgers
-		WHERE importer_version < $1
-		ORDER BY sequence ASC
-		LIMIT 1000000`, currentVersion)
 }
 
 // CloneIngestionQ clones underlying db.Session and returns IngestionQ

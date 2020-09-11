@@ -1,6 +1,8 @@
+//lint:file-ignore U1001 Ignore all unused code, staticcheck doesn't understand testify/suite
 package expingest
 
 import (
+	"context"
 	"database/sql"
 	"io"
 	"testing"
@@ -34,6 +36,7 @@ func (s *VerifyRangeStateTestSuite) SetupTest() {
 	s.historyAdapter = &adapters.MockHistoryArchiveAdapter{}
 	s.runner = &mockProcessorsRunner{}
 	s.system = &system{
+		ctx:            context.Background(),
 		historyQ:       s.historyQ,
 		historyAdapter: s.historyAdapter,
 		runner:         s.runner,
@@ -326,7 +329,7 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 	mockChangeReader.On("Read").Return(claimableBalanceChange, nil).Once()
 	mockChangeReader.On("Read").Return(ingestio.Change{}, io.EOF).Once()
 	mockChangeReader.On("Read").Return(ingestio.Change{}, io.EOF).Once()
-	s.historyAdapter.On("GetState", nil, uint32(63)).Return(mockChangeReader, nil).Once()
+	s.historyAdapter.On("GetState", mock.AnythingOfType("*context.emptyCtx"), uint32(63)).Return(mockChangeReader, nil).Once()
 	mockAccount := history.AccountEntry{
 		AccountID:          mockAccountID,
 		Balance:            600,

@@ -104,6 +104,7 @@ var ingestVerifyRangeCmd = &cobra.Command{
 		}
 		if config.EnableCaptiveCoreIngestion {
 			ingestConfig.StellarCoreBinaryPath = config.StellarCoreBinaryPath
+			ingestConfig.RemoteCaptiveCoreURL = config.RemoteCaptiveCoreURL
 		} else {
 			if config.StellarCoreDatabaseURL == "" {
 				log.Fatalf("flag --%s cannot be empty", stellarCoreDBURLFlagName)
@@ -188,6 +189,7 @@ var ingestStressTestCmd = &cobra.Command{
 
 		if config.EnableCaptiveCoreIngestion {
 			ingestConfig.StellarCoreBinaryPath = config.StellarCoreBinaryPath
+			ingestConfig.RemoteCaptiveCoreURL = config.RemoteCaptiveCoreURL
 		} else {
 			if config.StellarCoreDatabaseURL == "" {
 				log.Fatalf("flag --%s cannot be empty", stellarCoreDBURLFlagName)

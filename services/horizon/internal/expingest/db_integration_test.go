@@ -1,3 +1,4 @@
+//lint:file-ignore U1001 Ignore all unused code, staticcheck doesn't understand testify/suite
 package expingest
 
 import (
@@ -109,7 +110,7 @@ func (s *DBTestSuite) setupMocksForBuildState() {
 	s.historyAdapter.On("BucketListHash", s.sequence).
 		Return(checkpointHash, nil).Once()
 
-	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(s.sequence)).Return(true).Once()
+	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(s.sequence)).Return(true, nil).Once()
 	s.ledgerBackend.On("GetLedger", s.sequence).
 		Return(
 			true,
