@@ -287,6 +287,7 @@ type Root struct {
 		Account             hal.Link  `json:"account"`
 		Accounts            *hal.Link `json:"accounts,omitempty"`
 		AccountTransactions hal.Link  `json:"account_transactions"`
+		ClaimableBalances   *hal.Link `json:"claimable_balances"`
 		Assets              hal.Link  `json:"assets"`
 		Effects             hal.Link  `json:"effects"`
 		FeeStats            hal.Link  `json:"fee_stats"`
