@@ -36,7 +36,7 @@ func (handler GetAccountDataHandler) GetResource(w HeaderWriter, r *http.Request
 	}
 	response := accountDataResponse{Value: data.Value.Base64()}
 	if data.Sponsor.Valid {
-		response.Value = data.Sponsor.String
+		response.Sponsor = data.Sponsor.String
 	}
 	return response, nil
 }

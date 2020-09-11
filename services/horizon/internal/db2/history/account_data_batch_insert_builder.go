@@ -19,6 +19,7 @@ func (i *accountDataBatchInsertBuilder) Add(entry xdr.LedgerEntry) error {
 		"name":                 data.DataName,
 		"value":                AccountDataValue(data.DataValue),
 		"last_modified_ledger": entry.LastModifiedLedgerSeq,
+		"sponsor":              ledgerEntrySponsorToNullString(entry),
 	})
 }
 
