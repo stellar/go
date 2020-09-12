@@ -64,11 +64,7 @@ func NewIntegrationTest(t *testing.T, config IntegrationConfig) *IntegrationTest
 	}
 
 	image := "stellar/quickstart:testing"
-
-	skipCreation := false
-	if os.Getenv("HORIZON_SKIP_CREATION") != "" {
-		skipCreation = true
-	}
+	skipCreation := os.Getenv("HORIZON_SKIP_CREATION") != ""
 
 	if skipCreation {
 		t.Log("Trying to skip container creation...")
@@ -87,44 +83,13 @@ func NewIntegrationTest(t *testing.T, config IntegrationConfig) *IntegrationTest
 			t.Logf("Found matching container: %s\n", i.container.ID)
 		} else {
 			t.Log("No matching container found.")
-			os.Setenv("HORIZON_SKIP_CREATION", "")
+			os.Unsetenv("HORIZON_SKIP_CREATION")
 			skipCreation = false
 		}
 	}
 
 	if !skipCreation {
-		t.Logf("Pulling %s...", image)
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-		defer cancel()
-		reader, err := i.cli.ImagePull(ctx, "docker.io/"+image, types.ImagePullOptions{})
-		if err != nil {
-			t.Fatal(errors.Wrap(err, "error pulling docker image"))
-		}
-		defer reader.Close()
-		io.Copy(os.Stdout, reader)
-
-		t.Log("Creating container...")
-		ctx, cancel = context.WithTimeout(context.Background(), 5*time.Minute)
-		defer cancel()
-		i.container, err = i.cli.ContainerCreate(
-			ctx,
-			&container.Config{
-				Image: image,
-				Cmd: []string{
-					"--standalone",
-					"--protocol-version", strconv.FormatInt(int64(config.ProtocolVersion), 10),
-				},
-				ExposedPorts: nat.PortSet{"8000": struct{}{}},
-			},
-			&container.HostConfig{
-				PortBindings: map[nat.Port][]nat.PortBinding{
-					nat.Port("8000"): {{HostIP: "127.0.0.1", HostPort: "8000"}},
-				},
-			},
-			nil,
-			"horizon-integration",
-		)
-
+		err = createTestContainer(i, image)
 		if err != nil {
 			t.Fatal(errors.Wrap(err, "error creating docker container"))
 		}
@@ -242,7 +207,7 @@ func (i *IntegrationTest) Close() {
 	defer cancel()
 
 	var err error
-	skipCreation := ("" != os.Getenv("HORIZON_SKIP_CREATION"))
+	skipCreation := os.Getenv("HORIZON_SKIP_CREATION") != ""
 	if !skipCreation {
 		i.t.Logf("Removing container %s\n", i.container.ID)
 		err = i.cli.ContainerRemove(
@@ -254,6 +219,44 @@ func (i *IntegrationTest) Close() {
 	}
 
 	panicIf(err)
+}
+
+func createTestContainer(i *IntegrationTest, image string) error {
+	t := i.CurrentTest()
+	t.Logf("Pulling %s...", image)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+
+	reader, err := i.cli.ImagePull(ctx, "docker.io/"+image, types.ImagePullOptions{})
+	if err != nil {
+		t.Fatal(errors.Wrap(err, "error pulling docker image"))
+	}
+	defer reader.Close()
+	io.Copy(os.Stdout, reader)
+
+	t.Log("Creating container...")
+	ctx, cancel = context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+	i.container, err = i.cli.ContainerCreate(
+		ctx,
+		&container.Config{
+			Image: image,
+			Cmd: []string{
+				"--standalone",
+				"--protocol-version", strconv.FormatInt(int64(i.config.ProtocolVersion), 10),
+			},
+			ExposedPorts: nat.PortSet{"8000": struct{}{}},
+		},
+		&container.HostConfig{
+			PortBindings: map[nat.Port][]nat.PortBinding{
+				nat.Port("8000"): {{HostIP: "127.0.0.1", HostPort: "8000"}},
+			},
+		},
+		nil,
+		"horizon-integration",
+	)
+
+	return err
 }
 
 /* Utility functions for easier test case creation. */
