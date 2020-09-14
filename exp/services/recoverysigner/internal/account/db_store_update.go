@@ -53,5 +53,10 @@ func (s *DBStore) Update(a Account) error {
 		}
 	}
 
-	return tx.Commit()
+	err = tx.Commit()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
