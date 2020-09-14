@@ -42,9 +42,11 @@ func TestCreateClaimableBalance(t *testing.T) {
 
 	// Submit a self-referencing claimable balance
 	op := txnbuild.CreateClaimableBalance{
-		Destinations: []string{master.Address()},
-		Amount:       "10",
-		Asset:        txnbuild.NativeAsset{},
+		Destinations: []txnbuild.Claimant{
+			txnbuild.NewClaimant(master.Address(), nil),
+		},
+		Amount: "10",
+		Asset:  txnbuild.NativeAsset{},
 	}
 
 	txResp, err := itest.SubmitOperations(itest.MasterAccount(), master, &op)
@@ -90,9 +92,11 @@ func runFilteringTest(i *test.IntegrationTest, source *keypair.Full, dest *keypa
 	assert.NoError(t, err)
 
 	op := txnbuild.CreateClaimableBalance{
-		Destinations: []string{dest.Address()},
-		Amount:       "10",
-		Asset:        asset,
+		Destinations: []txnbuild.Claimant{
+			txnbuild.NewClaimant(dest.Address(), nil),
+		},
+		Amount: "10",
+		Asset:  asset,
 	}
 
 	// Submit a simple claimable balance from A -> B.
