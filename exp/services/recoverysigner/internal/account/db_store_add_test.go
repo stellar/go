@@ -161,3 +161,26 @@ func TestAdd_conflict(t *testing.T) {
 	err = store.Add(a)
 	assert.Equal(t, ErrAlreadyExists, err)
 }
+
+func TestAdd_conflictProperlyClosesTheConnections(t *testing.T) {
+	db := dbtest.Open(t)
+	session := db.Open()
+	session.SetMaxIdleConns(1)
+	session.SetMaxOpenConns(1)
+
+	store := DBStore{
+		DB: session,
+	}
+
+	a := Account{
+		Address: "GCLLT3VG4F6EZAHZEBKWBWV5JGVPCVIKUCGTY3QEOAIZU5IJGMWCT2TT",
+	}
+
+	err := store.Add(a)
+	require.NoError(t, err)
+
+	for range [5]int{} {
+		err = store.Add(a)
+		require.Equal(t, ErrAlreadyExists, err)
+	}
+}
