@@ -669,6 +669,16 @@ type ClaimableBalance struct {
 	PT                 string     `json:"paging_token"`
 }
 
+type ClaimableBalances struct {
+	Links struct {
+		Self hal.Link `json:"self"`
+	} `json:"_links"`
+
+	Embedded struct {
+		Records []ClaimableBalance `json:"records"`
+	} `json:"_embedded"`
+}
+
 // PagingToken implementation for hal.Pageable
 func (res ClaimableBalance) PagingToken() string {
 	return res.PT
