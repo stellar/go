@@ -85,8 +85,6 @@ func TestFilteringClaimableBalances(t *testing.T) {
 }
 
 func TestClaimingClaimableBalances(t *testing.T) {
-	t.Skip("Skipping broken tests")
-
 	t.Run("Native Asset", func(t *testing.T) {
 		runClaimingCBsTest(t, txnbuild.AssetTypeNative)
 	})
@@ -119,9 +117,11 @@ func runClaimingCBsTest(t *testing.T, assetType txnbuild.AssetType) {
 	// Create & submit the claimable balance from A -> B.
 	t.Log("Creating claimable balance.")
 	op1 := txnbuild.CreateClaimableBalance{
-		Destinations: []string{recipient.Address()},
-		Amount:       "42",
-		Asset:        asset,
+		Destinations: []txnbuild.Claimant{
+			txnbuild.NewClaimant(recipient.Address(), nil),
+		},
+		Amount: "42",
+		Asset:  asset,
 	}
 
 	_, err := itest.SubmitOperations(sAccount, sender, &op1)
