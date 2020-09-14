@@ -1309,6 +1309,14 @@ func getSponsoredSandwichWrappers() []*transactionOperationWrapper {
 			Operations: make([]xdr.OperationMeta, 3, 3),
 		},
 	}
+	tx.Result = xdr.TransactionResultPair{
+		TransactionHash: xdr.Hash{},
+		Result: xdr.TransactionResult{
+			Result: xdr.TransactionResultResult{
+				Code: xdr.TransactionResultCodeTxSuccess,
+			},
+		},
+	}
 
 	// begin sponsorship
 	tx.Envelope.Operations()[0].Body = xdr.OperationBody{
@@ -1373,24 +1381,24 @@ func TestSponsoredSandwichTransaction_Details(t *testing.T) {
 
 	details, err := wrappers[0].Details()
 	assert.NoError(t, err)
-	assert.Equal(t, details, map[string]interface{}{
+	assert.Equal(t, map[string]interface{}{
 		"sponsored_id": "GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2",
-	})
+	}, details)
 
 	details, err = wrappers[1].Details()
 	assert.NoError(t, err)
-	assert.Equal(t, details, map[string]interface{}{
+	assert.Equal(t, map[string]interface{}{
 		"account":          "GC6VKA3RC3CVU7POEKFORVMHWJNQIRZS6AEH3KIIHCVO3YRGWUV7MSUC",
 		"funder":           "GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2",
 		"sponsor":          "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
 		"starting_balance": "0.0000000",
-	})
+	}, details)
 
 	details, err = wrappers[2].Details()
 	assert.NoError(t, err)
-	assert.Equal(t, details, map[string]interface{}{
+	assert.Equal(t, map[string]interface{}{
 		"begin_sponsor": "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
-	})
+	}, details)
 }
 
 func TestSponsoredSandwichTransaction_Participants(t *testing.T) {
