@@ -85,18 +85,18 @@ func TestFilteringClaimableBalances(t *testing.T) {
 }
 
 func TestClaimingClaimableBalances(t *testing.T) {
-	t.Run("Native Asset", func(t *testing.T) {
-		runClaimingCBsTest(t, txnbuild.AssetTypeNative)
-	})
-	t.Run("4-char Asset", func(t *testing.T) {
-		runClaimingCBsTest(t, txnbuild.AssetTypeCreditAlphanum4)
-	})
-	t.Run("12-char Asset", func(t *testing.T) {
-		runClaimingCBsTest(t, txnbuild.AssetTypeCreditAlphanum12)
-	})
+	for description, assetType := range map[string]txnbuild.AssetType{
+		"Native": txnbuild.AssetTypeNative,
+		"Credit4": txnbuild.AssetTypeCreditAlphanum4,
+		"Credit12": txnbuild.AssetTypeCreditAlphanum12,
+	}{
+		t.Run(description, func(t *testing.T) {
+			runClaimingCBsTest(t, assetType, nil)
+		})
+	}
 }
 
-func runClaimingCBsTest(t *testing.T, assetType txnbuild.AssetType) {
+func runClaimingCBsTest(t *testing.T, assetType txnbuild.AssetType, predicate *xdr.ClaimPredicate) {
 	itest := test.NewIntegrationTest(t, protocol14Config)
 	defer itest.Close()
 	client := itest.Client()
@@ -115,10 +115,10 @@ func runClaimingCBsTest(t *testing.T, assetType txnbuild.AssetType) {
 	}
 
 	// Create & submit the claimable balance from A -> B.
-	t.Log("Creating claimable balance.")
+	t.Logf("Creating claimable balance (asset=%s).", asset.GetCode())
 	op1 := txnbuild.CreateClaimableBalance{
 		Destinations: []txnbuild.Claimant{
-			txnbuild.NewClaimant(recipient.Address(), nil),
+			txnbuild.NewClaimant(recipient.Address(), predicate),
 		},
 		Amount: "42",
 		Asset:  asset,
