@@ -138,21 +138,17 @@ func (operation *transactionOperationWrapper) OperationResult() *xdr.OperationRe
 }
 
 func (operation *transactionOperationWrapper) findInitatingBeginSponsoringOp() *transactionOperationWrapper {
+	if !operation.transaction.Result.Successful() {
+		// Failed transactions may not have a compliant sandwich structure
+		// we can rely on (e.g. invalid nesting or a being operation with the wrong sponsoree ID)
+		// and thus we bail out since we could return incorrect information.
+		return nil
+	}
+	sponsoree := operation.SourceAccount()
 	operations := operation.transaction.Envelope.Operations()
-	// We need to take into account nested sponsoring sandwiches.
-	// To do so, we count the EndSponsoring operations that we encounter
-	sandwichNestingDepth := 0
 	for i := int(operation.index) - 1; i >= 0; i-- {
-		switch operations[i].Body.Type {
-		case xdr.OperationTypeEndSponsoringFutureReserves:
-			// we are entering a nested sandwich
-			sandwichNestingDepth++
-		case xdr.OperationTypeBeginSponsoringFutureReserves:
-			if sandwichNestingDepth > 0 {
-				// we are exiting a nested sandwich
-				sandwichNestingDepth--
-				break
-			}
+		if beginOp, ok := operations[i].Body.GetBeginSponsoringFutureReservesOp(); ok &&
+			beginOp.SponsoredId.Address() == sponsoree.Address() {
 			result := *operation
 			result.index = uint32(i)
 			result.operation = operations[i]
