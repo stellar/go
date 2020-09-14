@@ -162,7 +162,7 @@ func TestAdd_conflict(t *testing.T) {
 	assert.Equal(t, ErrAlreadyExists, err)
 }
 
-func TestAdd_conflictProperlyClosesTheConnections(t *testing.T) {
+func TestAdd_conflict_properlyClosesDBConnections(t *testing.T) {
 	db := dbtest.Open(t)
 	session := db.Open()
 	session.SetMaxIdleConns(1)

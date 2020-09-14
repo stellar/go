@@ -299,7 +299,7 @@ func TestUpdate_notFound(t *testing.T) {
 	assert.Equal(t, ErrNotFound, err)
 }
 
-func TestUpdate_notFoundProperlyClosesTheConnections(t *testing.T) {
+func TestUpdate_notFound_properlyClosesDBConnections(t *testing.T) {
 	db := dbtest.Open(t)
 	session := db.Open()
 	session.SetMaxIdleConns(1)
