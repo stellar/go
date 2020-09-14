@@ -1894,9 +1894,11 @@ type ClaimClaimableBalanceEffectsTestSuite struct {
 }
 
 func (s *ClaimClaimableBalanceEffectsTestSuite) SetupTest() {
-	var balanceIDOp1, balanceIDOp2 xdr.ClaimableBalanceId
+	var balanceIDOp1, balanceIDOp1Meta, balanceIDOp2, balanceIDOp2Meta xdr.ClaimableBalanceId
 	xdr.SafeUnmarshalBase64("AAAAANoNV9p9SFDn/BDSqdDrxzH3r7QFdMAzlbF9SRSbkfW+", &balanceIDOp1)
+	xdr.SafeUnmarshalBase64("AAAAANoNV9p9SFDn/BDSqdDrxzH3r7QFdMAzlbF9SRSbkfW+", &balanceIDOp1Meta)
 	xdr.SafeUnmarshalBase64("AAAAALHcX0PDa9UefSAzitC6vQOUr802phH8OF2ahLzg6j1D", &balanceIDOp2)
+	xdr.SafeUnmarshalBase64("AAAAALHcX0PDa9UefSAzitC6vQOUr802phH8OF2ahLzg6j1D", &balanceIDOp2Meta)
 
 	aid := xdr.MustAddress("GD5OVB6FKDV7P7SOJ5UB2BPLBL4XGSHPYHINR5355SY3RSXLT2BZWAKY")
 	claimant1 := aid.ToMuxedAccount()
@@ -1973,7 +1975,7 @@ func (s *ClaimClaimableBalanceEffectsTestSuite) SetupTest() {
 									Data: xdr.LedgerEntryData{
 										Type: xdr.LedgerEntryTypeClaimableBalance,
 										ClaimableBalance: &xdr.ClaimableBalanceEntry{
-											BalanceId: balanceIDOp1,
+											BalanceId: balanceIDOp1Meta,
 											Amount:    xdr.Int64(100000000),
 											Asset:     xdr.MustNewNativeAsset(),
 											Claimants: []xdr.Claimant{
@@ -1997,7 +1999,7 @@ func (s *ClaimClaimableBalanceEffectsTestSuite) SetupTest() {
 								Removed: &xdr.LedgerKey{
 									Type: xdr.LedgerEntryTypeClaimableBalance,
 									ClaimableBalance: &xdr.LedgerKeyClaimableBalance{
-										BalanceId: balanceIDOp1,
+										BalanceId: balanceIDOp1Meta,
 									},
 								},
 							},
@@ -2012,7 +2014,7 @@ func (s *ClaimClaimableBalanceEffectsTestSuite) SetupTest() {
 									Data: xdr.LedgerEntryData{
 										Type: xdr.LedgerEntryTypeClaimableBalance,
 										ClaimableBalance: &xdr.ClaimableBalanceEntry{
-											BalanceId: balanceIDOp2,
+											BalanceId: balanceIDOp2Meta,
 											Amount:    xdr.Int64(200000000),
 											Asset:     xdr.MustNewCreditAsset("USD", "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD"),
 											Claimants: []xdr.Claimant{
@@ -2044,7 +2046,7 @@ func (s *ClaimClaimableBalanceEffectsTestSuite) SetupTest() {
 								Removed: &xdr.LedgerKey{
 									Type: xdr.LedgerEntryTypeClaimableBalance,
 									ClaimableBalance: &xdr.LedgerKeyClaimableBalance{
-										BalanceId: balanceIDOp2,
+										BalanceId: balanceIDOp2Meta,
 									},
 								},
 							},
