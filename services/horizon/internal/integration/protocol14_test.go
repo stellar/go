@@ -109,7 +109,7 @@ func runClaimingCBsTest(t *testing.T, assetType txnbuild.AssetType) {
 	// Create an asset depending on the test parameter & trust it if need be.
 	var asset txnbuild.Asset = createAsset(assetType, sender.Address())
 	if assetType != txnbuild.AssetTypeNative {
-		_, err := itest.EstablishTrustline(recipient, asset)
+		_, err := itest.EstablishTrustline(recipient, rAccount, asset)
 		assert.NoError(t, err)
 		t.Log("Created asset trustline.")
 	}
