@@ -11,8 +11,75 @@ import (
 type CreateClaimableBalance struct {
 	Amount        string
 	Asset         Asset
-	Destinations  []string
+	Destinations  []Claimant
 	SourceAccount Account
+}
+
+// Claimant represents a claimable balance claimant
+type Claimant struct {
+	Destination string
+	Predicate   xdr.ClaimPredicate
+}
+
+// NewClaimant returns a new Claimant, if predicate is nil then a Claimant with unconditional predicate is returned.
+func NewClaimant(destination string, predicate *xdr.ClaimPredicate) Claimant {
+	if predicate == nil {
+		return Claimant{
+			Destination: destination,
+			Predicate: xdr.ClaimPredicate{
+				Type: xdr.ClaimPredicateTypeClaimPredicateUnconditional,
+			},
+		}
+	}
+
+	return Claimant{
+		Destination: destination,
+		Predicate:   *predicate,
+	}
+}
+
+// AndPredicate returns a xdr.ClaimPredicate
+func AndPredicate(left xdr.ClaimPredicate, right xdr.ClaimPredicate) (xdr.ClaimPredicate, error) {
+	predicates := []xdr.ClaimPredicate{
+		left,
+		right,
+	}
+
+	return xdr.ClaimPredicate{
+		Type:          xdr.ClaimPredicateTypeClaimPredicateAnd,
+		AndPredicates: &predicates,
+	}, nil
+}
+
+// OrPredicate returns a xdr.ClaimPredicate
+func OrPredicate(left xdr.ClaimPredicate, right xdr.ClaimPredicate) (xdr.ClaimPredicate, error) {
+	predicates := []xdr.ClaimPredicate{
+		left,
+		right,
+	}
+
+	return xdr.ClaimPredicate{
+		Type:         xdr.ClaimPredicateTypeClaimPredicateOr,
+		OrPredicates: &predicates,
+	}, nil
+}
+
+// BeforeAbsoluteTimePredicate returns a Before Absolute Time xdr.ClaimPredicate
+func BeforeAbsoluteTimePredicate(before int64) (xdr.ClaimPredicate, error) {
+	absBefore := xdr.Int64(before)
+	return xdr.ClaimPredicate{
+		Type:      xdr.ClaimPredicateTypeClaimPredicateBeforeAbsoluteTime,
+		RelBefore: &absBefore,
+	}, nil
+}
+
+// BeforeRelativeTimePredicate returns a Before Relative Time xdr.ClaimPredicate
+func BeforeRelativeTimePredicate(before int64) (xdr.ClaimPredicate, error) {
+	relBefore := xdr.Int64(before)
+	return xdr.ClaimPredicate{
+		Type:      xdr.ClaimPredicateTypeClaimPredicateBeforeRelativeTime,
+		RelBefore: &relBefore,
+	}, nil
 }
 
 // BuildXDR for CreateClaimableBalance returns a fully configured XDR Operation.
@@ -32,14 +99,12 @@ func (cb *CreateClaimableBalance) BuildXDR() (xdr.Operation, error) {
 		c := xdr.Claimant{
 			Type: xdr.ClaimantTypeClaimantTypeV0,
 			V0: &xdr.ClaimantV0{
-				Predicate: xdr.ClaimPredicate{
-					Type: xdr.ClaimPredicateTypeClaimPredicateUnconditional,
-				},
+				Predicate: d.Predicate,
 			},
 		}
-		err = c.V0.Destination.SetAddress(d)
+		err = c.V0.Destination.SetAddress(d.Destination)
 		if err != nil {
-			return xdr.Operation{}, errors.Wrapf(err, "failed to set destination address: %s", d)
+			return xdr.Operation{}, errors.Wrapf(err, "failed to set destination address: %s", d.Destination)
 		}
 		claimants = append(claimants, c)
 	}
@@ -70,8 +135,10 @@ func (cb *CreateClaimableBalance) FromXDR(xdrOp xdr.Operation) error {
 	cb.SourceAccount = accountFromXDR(xdrOp.SourceAccount)
 	for _, c := range result.Claimants {
 		claimant := c.MustV0()
-		cb.Destinations = append(cb.Destinations, claimant.Destination.Address())
-
+		cb.Destinations = append(cb.Destinations, Claimant{
+			Destination: claimant.Destination.Address(),
+			Predicate:   claimant.Predicate,
+		})
 	}
 
 	asset, err := assetFromXDR(result.Asset)
@@ -88,7 +155,7 @@ func (cb *CreateClaimableBalance) FromXDR(xdrOp xdr.Operation) error {
 // invalid. Otherwise, it returns nil.
 func (cb *CreateClaimableBalance) Validate() error {
 	for _, d := range cb.Destinations {
-		err := validateStellarPublicKey(d)
+		err := validateStellarPublicKey(d.Destination)
 		if err != nil {
 			return NewValidationError("Destinations", err.Error())
 		}
