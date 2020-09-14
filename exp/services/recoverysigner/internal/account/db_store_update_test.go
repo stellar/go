@@ -298,3 +298,23 @@ func TestUpdate_notFound(t *testing.T) {
 	err := store.Update(a)
 	assert.Equal(t, ErrNotFound, err)
 }
+
+func TestUpdate_notFound_properlyClosesDBConnections(t *testing.T) {
+	db := dbtest.Open(t)
+	session := db.Open()
+	session.SetMaxIdleConns(1)
+	session.SetMaxOpenConns(1)
+
+	store := DBStore{
+		DB: session,
+	}
+
+	a := Account{
+		Address: "GCLLT3VG4F6EZAHZEBKWBWV5JGVPCVIKUCGTY3QEOAIZU5IJGMWCT2TT",
+	}
+
+	for range [5]int{} {
+		err := store.Update(a)
+		assert.Equal(t, ErrNotFound, err)
+	}
+}
