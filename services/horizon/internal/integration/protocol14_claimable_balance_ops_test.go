@@ -19,9 +19,11 @@ func TestCreateClaimableBalanceSuccessfulOperationsEffects(t *testing.T) {
 	master := itest.Master()
 
 	op := txnbuild.CreateClaimableBalance{
-		Destinations: []string{master.Address()},
-		Amount:       "10",
-		Asset:        txnbuild.NativeAsset{},
+		Destinations: []txnbuild.Claimant{
+			txnbuild.NewClaimant(master.Address(), nil),
+		},
+		Amount: "10",
+		Asset:  txnbuild.NativeAsset{},
 	}
 
 	txResp, err := itest.SubmitOperations(itest.MasterAccount(), master, &op)
