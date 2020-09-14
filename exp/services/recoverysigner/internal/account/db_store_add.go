@@ -15,6 +15,7 @@ func (s *DBStore) Add(a Account) error {
 		RETURNING id
 	`, a.Address)
 	if err != nil {
+		tx.Rollback()
 		// 23505 is the PostgreSQL error for Unique Violation.
 		// See https://www.postgresql.org/docs/9.2/errcodes-appendix.html.
 		if pqErr, ok := err.(*pq.Error); ok && pqErr.Code == "23505" {
@@ -31,6 +32,7 @@ func (s *DBStore) Add(a Account) error {
 			RETURNING id
 		`, accountID, i.Role)
 		if err != nil {
+			tx.Rollback()
 			return err
 		}
 
@@ -40,6 +42,7 @@ func (s *DBStore) Add(a Account) error {
 				VALUES ($1, $2, $3, $4)
 			`, accountID, identityID, m.Type, m.Value)
 			if err != nil {
+				tx.Rollback()
 				return err
 			}
 		}
