@@ -109,16 +109,27 @@ func TestClaimingClaimableBalances(t *testing.T) {
 			),
 		} {
 			t.Run(desc1+"/"+desc2, func(t *testing.T) {
-				runClaimingCBsTest(t, assetType, &predicate)
+				runClaimingCBsTest(t, assetType, &predicate, false)
 			})
 		}
 
-		// Now we can test more specific cases, inc. both complex and failing
-		// predicates.
+		/*
+		 * Now we can test more specific cases, inc. both complex and failing
+		 * predicates.
+		 */
+
+		// 1. Simplest possible predicate failure.
+		pred := txnbuild.NotPredicate(&txnbuild.UnconditionalPredicate)
+		t.Run(desc1+"/AlwaysFail", func(t *testing.T) {
+			runClaimingCBsTest(t, assetType, &pred, true)
+		})
 	}
 }
 
-func runClaimingCBsTest(t *testing.T, assetType txnbuild.AssetType, predicate *xdr.ClaimPredicate) {
+func runClaimingCBsTest(
+	t *testing.T, assetType txnbuild.AssetType,
+	predicate *xdr.ClaimPredicate, shouldFail bool,
+) {
 	itest := test.NewIntegrationTest(t, protocol14Config)
 	defer itest.Close()
 	client := itest.Client()
@@ -168,14 +179,23 @@ func runClaimingCBsTest(t *testing.T, assetType txnbuild.AssetType, predicate *x
 		BalanceID:     claim.BalanceID,
 		SourceAccount: rAccount,
 	}
-	_, err = itest.SubmitOperations(rAccount, recipient, &op2)
-	assert.NoError(t, err)
-	t.Log("  claimed")
 
-	// Ensure the balance is gone now.
+	_, err = itest.SubmitOperations(rAccount, recipient, &op2)
+	expected := 1
+
+	if !shouldFail {
+		assert.NoError(t, err)
+		t.Log("  claimed")
+		expected = 0
+	} else {
+		assert.Error(t, err)
+		t.Log("  failed to claim (as expected)")
+	}
+
+	// Ensure the balance is updated accordingly, now.
 	balances, err = client.ClaimableBalances(sdk.ClaimableBalanceRequest{Sponsor: sender.Address()})
 	assert.NoError(t, err)
-	assert.Len(t, balances.Embedded.Records, 0)
+	assert.Len(t, balances.Embedded.Records, expected)
 }
 
 func runFilteringTest(i *test.IntegrationTest, source *keypair.Full, dest *keypair.Full, asset txnbuild.Asset) {
