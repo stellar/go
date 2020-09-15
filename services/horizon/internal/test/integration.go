@@ -263,21 +263,19 @@ func createTestContainer(i *IntegrationTest, image string) error {
 
 // Creates new accounts via the master account.
 //
-// It funds each account with 10000 XLM (just change the source if you want
-// more, since this hasn't needed to be configurable) then queries the API to
+// It funds each account with the given balance and then queries the API to
 // find the randomized sequence number for future operations.
 //
 // Returns: The slice of created keypairs and account objects.
 //
 // Note: panics on any errors, since we assume that tests cannot proceed without
 // this method succeeding.
-func (i *IntegrationTest) CreateAccounts(count int) ([]*keypair.Full, []txnbuild.Account) {
+func (i *IntegrationTest) CreateAccounts(count int, initialBalance string) ([]*keypair.Full, []txnbuild.Account) {
 	client := i.Client()
 	master := i.Master()
 
 	pairs := make([]*keypair.Full, count)
 	ops := make([]txnbuild.Operation, count)
-	amount := "10000"
 
 	// Two paths here: either caller already did some stuff with the master
 	// account so we should retrieve the sequence number, or caller hasn't and
@@ -302,7 +300,7 @@ func (i *IntegrationTest) CreateAccounts(count int) ([]*keypair.Full, []txnbuild
 		ops[i] = &txnbuild.CreateAccount{
 			SourceAccount: &masterAccount,
 			Destination:   pair.Address(),
-			Amount:        amount,
+			Amount:        initialBalance,
 		}
 	}
 
