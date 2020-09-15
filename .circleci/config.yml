@@ -27,13 +27,13 @@ commands:
               export HOME=$(getent passwd $(id -un) | cut -d: -f6)
             fi
 
-            if [ -e /home/circleci/project/.git ]
+            if [ -e ${CIRCLE_WORKING_DIRECTORY}/.git ]
             then
-              cd /home/circleci/project
+              cd ${CIRCLE_WORKING_DIRECTORY}
               git remote set-url origin "$CIRCLE_REPOSITORY_URL" || true
             else
-              mkdir -p /home/circleci/project
-              cd /home/circleci/project
+              mkdir -p ${CIRCLE_WORKING_DIRECTORY}
+              cd ${CIRCLE_WORKING_DIRECTORY}
               git clone "$CIRCLE_REPOSITORY_URL" .
             fi
 
@@ -41,7 +41,7 @@ commands:
             then
               git fetch --force origin "refs/tags/${CIRCLE_TAG}"
             else
-              git fetch --force origin "master:remotes/origin/master"
+              git fetch --force origin "${CIRCLE_BRANCH}/head:remotes/origin/${CIRCLE_BRANCH}"
             fi
 
 
