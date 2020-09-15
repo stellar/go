@@ -66,3 +66,44 @@ func TestCreateClaimableBalanceSuccessfulOperationsEffects(t *testing.T) {
 
 	tt.Equal("claimable_balance_sponsorship_created", effects[3].GetType())
 }
+
+func TestCreateClaimableBalanceInvalidOperationsEffects(t *testing.T) {
+	tt := assert.New(t)
+	itest := test.NewIntegrationTest(t, protocol14Config)
+	defer itest.Close()
+	master := itest.Master()
+
+	keys, accounts := itest.CreateAccounts(2, "50")
+	op := txnbuild.CreateClaimableBalance{
+		Destinations: []txnbuild.Claimant{
+			txnbuild.NewClaimant(master.Address(), nil),
+			txnbuild.NewClaimant(keys[1].Address(), nil),
+		},
+		Amount: "100",
+		Asset:  txnbuild.NativeAsset{},
+	}
+
+	// this operation will fail because the claimable balance is trying to reserve
+	// 100 XLM but the account only has 50.
+	_, err := itest.SubmitOperations(accounts[0], keys[0], &op)
+	tt.Error(err)
+
+	response, err := itest.Client().Operations(sdk.OperationRequest{
+		Order:         "desc",
+		Limit:         1,
+		IncludeFailed: true,
+	})
+	ops := response.Embedded.Records
+	tt.NoError(err)
+	tt.Len(ops, 1)
+	cb := ops[0].(operations.CreateClaimableBalance)
+	tt.False(cb.TransactionSuccessful)
+	tt.Equal("native", cb.Asset)
+	tt.Equal("100.0000000", cb.Amount)
+	tt.Equal(keys[0].Address(), cb.SourceAccount)
+	tt.Len(cb.Claimants, 2)
+
+	eResponse, err := itest.Client().Effects(sdk.EffectRequest{ForOperation: cb.ID})
+	effects := eResponse.Embedded.Records
+	tt.Len(effects, 0)
+}

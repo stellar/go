@@ -75,7 +75,7 @@ func TestFilteringClaimableBalances(t *testing.T) {
 		itest := test.NewIntegrationTest(t, protocol14Config)
 		defer itest.Close()
 
-		keys, _ := itest.CreateAccounts(2)
+		keys, _ := itest.CreateAccounts(2, "1000")
 		runFilteringTest(itest, keys[0], keys[1],
 			createAsset(assetType, keys[0].Address()))
 	}
@@ -135,7 +135,7 @@ func runClaimingCBsTest(
 	client := itest.Client()
 
 	// Create a couple of accounts to test the interactions.
-	keypairs, accounts := itest.CreateAccounts(2)
+	keypairs, accounts := itest.CreateAccounts(2, "1000")
 	sender, recipient := keypairs[0], keypairs[1]
 	sAccount, rAccount := accounts[0], accounts[1]
 
