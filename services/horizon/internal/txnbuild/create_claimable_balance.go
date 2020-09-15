@@ -32,7 +32,7 @@ var (
 // unconditional predicate is returned.
 func NewClaimant(destination string, predicate *xdr.ClaimPredicate) Claimant {
 	if predicate == nil {
-		predicate = &AlwaysTruePredicate
+		predicate = &UnconditionalPredicate
 	}
 
 	return Claimant{
@@ -56,6 +56,14 @@ func OrPredicate(left xdr.ClaimPredicate, right xdr.ClaimPredicate) xdr.ClaimPre
 	return xdr.ClaimPredicate{
 		Type:         xdr.ClaimPredicateTypeClaimPredicateOr,
 		OrPredicates: &predicates,
+	}
+}
+
+// NotPredicate returns a new predicate inverting the passed in predicate
+func NotPredicate(pred *xdr.ClaimPredicate) xdr.ClaimPredicate {
+	return xdr.ClaimPredicate{
+		Type:         xdr.ClaimPredicateTypeClaimPredicateNot,
+		NotPredicate: &pred,
 	}
 }
 
