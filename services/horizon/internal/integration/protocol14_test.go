@@ -196,6 +196,7 @@ func runClaimingCBsTest(
 	balances, err = client.ClaimableBalances(sdk.ClaimableBalanceRequest{Sponsor: sender.Address()})
 	assert.NoError(t, err)
 	assert.Len(t, balances.Embedded.Records, expected)
+	t.Logf("  claims left: %d (should be =%d)", len(balances.Embedded.Records), expected)
 }
 
 func runFilteringTest(i *test.IntegrationTest, source *keypair.Full, dest *keypair.Full, asset txnbuild.Asset) {
