@@ -86,10 +86,10 @@ func TestFilteringClaimableBalances(t *testing.T) {
 
 func TestClaimingClaimableBalances(t *testing.T) {
 	for description, assetType := range map[string]txnbuild.AssetType{
-		"Native": txnbuild.AssetTypeNative,
-		"Credit4": txnbuild.AssetTypeCreditAlphanum4,
+		"Native":   txnbuild.AssetTypeNative,
+		"Credit4":  txnbuild.AssetTypeCreditAlphanum4,
 		"Credit12": txnbuild.AssetTypeCreditAlphanum12,
-	}{
+	} {
 		t.Run(description, func(t *testing.T) {
 			runClaimingCBsTest(t, assetType, nil)
 		})
