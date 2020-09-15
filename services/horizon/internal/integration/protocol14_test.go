@@ -85,14 +85,18 @@ func TestFilteringClaimableBalances(t *testing.T) {
 }
 
 func TestClaimingClaimableBalances(t *testing.T) {
-	for description, assetType := range map[string]txnbuild.AssetType{
-		"Native": txnbuild.AssetTypeNative,
-		"Credit4": txnbuild.AssetTypeCreditAlphanum4,
+	for desc1, assetType := range map[string]txnbuild.AssetType{
+		"Native":   txnbuild.AssetTypeNative,
+		"Credit4":  txnbuild.AssetTypeCreditAlphanum4,
 		"Credit12": txnbuild.AssetTypeCreditAlphanum12,
-	}{
-		t.Run(description, func(t *testing.T) {
-			runClaimingCBsTest(t, assetType, nil)
-		})
+	} {
+		for desc2, predicate := range map[string]xdr.ClaimPredicate{
+			"N/A": txnbuild.NoPredicate(),
+		} {
+			t.Run(desc1+"/"+desc2, func(t *testing.T) {
+				runClaimingCBsTest(t, assetType, &predicate)
+			})
+		}
 	}
 }
 

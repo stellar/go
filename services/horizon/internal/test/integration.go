@@ -389,7 +389,7 @@ func (i *IntegrationTest) SubmitMultiSigOperations(
 
 	txResp, err = i.Client().SubmitTransactionXDR(txb64)
 	if err != nil {
-		i.t.Errorf("Submitting the transaction failed: %s\n", err, txb64)
+		i.t.Errorf("Submitting the transaction failed: %s\n", txb64)
 		if prob := sdk.GetError(err); prob != nil {
 			i.t.Errorf("Problem: %s\n", prob.Problem.Detail)
 			i.t.Errorf("Extras: %s\n", prob.Problem.Extras["result_codes"])
