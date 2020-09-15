@@ -325,6 +325,16 @@ func (i *IntegrationTest) CreateAccounts(count int) ([]*keypair.Full, []txnbuild
 	return pairs, accounts
 }
 
+// Establishes a trustline for a given asset for a particular account.
+func (i *IntegrationTest) EstablishTrustline(
+	truster *keypair.Full, account txnbuild.Account, asset txnbuild.Asset,
+) (proto.Transaction, error) {
+	return i.SubmitOperations(account, truster, &txnbuild.ChangeTrust{
+		Line:  asset,
+		Limit: "2000",
+	})
+}
+
 // Submits a signed transaction from an account with standard options.
 //
 // Namely, we set the standard fee, time bounds, etc. to "non-production"
@@ -379,8 +389,12 @@ func (i *IntegrationTest) SubmitMultiSigOperations(
 
 	txResp, err = i.Client().SubmitTransactionXDR(txb64)
 	if err != nil {
-		prob := sdk.GetError(err)
-		i.t.Errorf("Problem: %s\n", prob.Problem.Extras["result_codes"])
+		i.t.Errorf("Submitting the transaction failed: %s\n", txb64)
+		if prob := sdk.GetError(err); prob != nil {
+			i.t.Errorf("Problem: %s\n", prob.Problem.Detail)
+			i.t.Errorf("Extras: %s\n", prob.Problem.Extras["result_codes"])
+		}
+		return
 	}
 
 	return

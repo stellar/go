@@ -16,7 +16,7 @@ type ClaimClaimableBalance struct {
 // BuildXDR for ClaimClaimableBalance returns a fully configured XDR Operation.
 func (cb *ClaimClaimableBalance) BuildXDR() (xdr.Operation, error) {
 	var xdrBalanceID xdr.ClaimableBalanceId
-	err := xdr.SafeUnmarshalBase64(cb.BalanceID, &xdrBalanceID)
+	err := xdr.SafeUnmarshalHex(cb.BalanceID, &xdrBalanceID)
 	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "failed to set XDR 'ClaimableBalanceId' field")
 	}
@@ -42,7 +42,7 @@ func (cb *ClaimClaimableBalance) FromXDR(xdrOp xdr.Operation) error {
 	}
 
 	cb.SourceAccount = accountFromXDR(xdrOp.SourceAccount)
-	balanceID, err := xdr.MarshalBase64(result.BalanceId)
+	balanceID, err := xdr.MarshalHex(result.BalanceId)
 	if err != nil {
 		return errors.New("error parsing BalanceID in claim_claimable_balance operation from xdr")
 	}
@@ -55,7 +55,7 @@ func (cb *ClaimClaimableBalance) FromXDR(xdrOp xdr.Operation) error {
 // invalid. Otherwise, it returns nil.
 func (cb *ClaimClaimableBalance) Validate() error {
 	var xdrBalanceID xdr.ClaimableBalanceId
-	err := xdr.SafeUnmarshalBase64(cb.BalanceID, &xdrBalanceID)
+	err := xdr.SafeUnmarshalHex(cb.BalanceID, &xdrBalanceID)
 	if err != nil {
 		return NewValidationError("BalanceID", err.Error())
 	}
