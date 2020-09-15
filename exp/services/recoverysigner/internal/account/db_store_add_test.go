@@ -179,7 +179,11 @@ func TestAdd_conflict_properlyClosesDBConnections(t *testing.T) {
 	err := store.Add(a)
 	require.NoError(t, err)
 
-	for range [5]int{} {
+	for range [2]int{} {
+		// If the database transaction is not being properly closed when
+		// returning an error, the execution will get stuck in the following
+		// line of code when the `Add` method tries to start a new DB
+		// transaction through `s.DB.Beginx()`:
 		err = store.Add(a)
 		require.Equal(t, ErrAlreadyExists, err)
 	}
