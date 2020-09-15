@@ -2,6 +2,7 @@ package integration
 
 import (
 	"testing"
+	"time"
 
 	sdk "github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
@@ -85,12 +86,24 @@ func TestFilteringClaimableBalances(t *testing.T) {
 }
 
 func TestClaimingClaimableBalances(t *testing.T) {
-
+	// Every test we run should work regardless of the asset we use.
+	for desc1, assetType := range map[string]txnbuild.AssetType{
 		"Native":   txnbuild.AssetTypeNative,
 		"Credit4":  txnbuild.AssetTypeCreditAlphanum4,
 		"Credit12": txnbuild.AssetTypeCreditAlphanum12,
 	} {
+		for desc2, predicate := range map[string]xdr.ClaimPredicate{
+			"N/A":           txnbuild.NoPredicate(),
+			"BeforeAbsTime": txnbuild.BeforeAbsoluteTimePredicate(time.Now().Unix() + 60*60), // full minute to claim
+			"BeforeRelTime": txnbuild.BeforeRelativeTimePredicate(60 * 60),
+		} {
+			t.Run(desc1+"/"+desc2, func(t *testing.T) {
+				runClaimingCBsTest(t, assetType, &predicate)
+			})
+		}
 
+		// Now we can test more specific cases, inc. both complex and failing
+		// predicates.
 	}
 }
 
@@ -114,6 +127,7 @@ func runClaimingCBsTest(t *testing.T, assetType txnbuild.AssetType, predicate *x
 
 	// Create & submit the claimable balance from A -> B.
 	t.Logf("Creating claimable balance (asset=%s).", asset.GetCode())
+	t.Logf("  predicate: %+v", predicate.Type)
 	op1 := txnbuild.CreateClaimableBalance{
 		Destinations: []txnbuild.Claimant{
 			txnbuild.NewClaimant(recipient.Address(), predicate),

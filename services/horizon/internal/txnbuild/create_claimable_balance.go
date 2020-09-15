@@ -22,7 +22,8 @@ type Claimant struct {
 	Predicate   xdr.ClaimPredicate
 }
 
-// NewClaimant returns a new Claimant, if predicate is nil then a Claimant with unconditional predicate is returned.
+// NewClaimant returns a new Claimant, if predicate is nil then a Claimant with
+// unconditional predicate is returned.
 func NewClaimant(destination string, predicate *xdr.ClaimPredicate) Claimant {
 	if predicate == nil {
 		pred := NoPredicate() // wtf?
@@ -44,11 +45,7 @@ func NoPredicate() xdr.ClaimPredicate {
 
 // AndPredicate returns a xdr.ClaimPredicate
 func AndPredicate(left xdr.ClaimPredicate, right xdr.ClaimPredicate) xdr.ClaimPredicate {
-	predicates := []xdr.ClaimPredicate{
-		left,
-		right,
-	}
-
+	predicates := []xdr.ClaimPredicate{left, right}
 	return xdr.ClaimPredicate{
 		Type:          xdr.ClaimPredicateTypeClaimPredicateAnd,
 		AndPredicates: &predicates,
@@ -57,11 +54,7 @@ func AndPredicate(left xdr.ClaimPredicate, right xdr.ClaimPredicate) xdr.ClaimPr
 
 // OrPredicate returns a xdr.ClaimPredicate
 func OrPredicate(left xdr.ClaimPredicate, right xdr.ClaimPredicate) xdr.ClaimPredicate {
-	predicates := []xdr.ClaimPredicate{
-		left,
-		right,
-	}
-
+	predicates := []xdr.ClaimPredicate{left, right}
 	return xdr.ClaimPredicate{
 		Type:         xdr.ClaimPredicateTypeClaimPredicateOr,
 		OrPredicates: &predicates,
