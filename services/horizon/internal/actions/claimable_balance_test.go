@@ -10,6 +10,7 @@ import (
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/render/problem"
 	"github.com/stellar/go/xdr"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestGetClaimableBalanceByID(t *testing.T) {
@@ -529,4 +530,11 @@ func TestGetClaimableBalances(t *testing.T) {
 	// 		resource.(protocol.ClaimableBalance).Sponsor,
 	// 	)
 	// }
+}
+
+func TestClaimableBalancesQueryURLTemplate(t *testing.T) {
+	tt := assert.New(t)
+	expected := "/claimable_balances?{asset,claimant,sponsor}"
+	q := ClaimableBalancesQuery{}
+	tt.Equal(expected, q.URITemplate())
 }
