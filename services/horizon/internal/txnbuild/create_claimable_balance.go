@@ -22,24 +22,22 @@ type Claimant struct {
 	Predicate   xdr.ClaimPredicate
 }
 
+var (
+	UnconditionalPredicate = xdr.ClaimPredicate{
+		Type: xdr.ClaimPredicateTypeClaimPredicateUnconditional,
+	}
+)
+
 // NewClaimant returns a new Claimant, if predicate is nil then a Claimant with
 // unconditional predicate is returned.
 func NewClaimant(destination string, predicate *xdr.ClaimPredicate) Claimant {
 	if predicate == nil {
-		pred := NoPredicate() // wtf?
-		predicate = &pred
+		predicate = &AlwaysTruePredicate
 	}
 
 	return Claimant{
 		Destination: destination,
 		Predicate:   *predicate,
-	}
-}
-
-// Constructs a predicate with no action
-func NoPredicate() xdr.ClaimPredicate {
-	return xdr.ClaimPredicate{
-		Type: xdr.ClaimPredicateTypeClaimPredicateUnconditional,
 	}
 }
 
@@ -62,17 +60,25 @@ func OrPredicate(left xdr.ClaimPredicate, right xdr.ClaimPredicate) xdr.ClaimPre
 }
 
 // BeforeAbsoluteTimePredicate returns a Before Absolute Time xdr.ClaimPredicate
-func BeforeAbsoluteTimePredicate(before int64) xdr.ClaimPredicate {
-	absBefore := xdr.Int64(before)
+//
+// This predicate will be fulfilled if the closing time of the ledger that
+// includes the CreateClaimableBalance operation is less than this (absolute)
+// Unix timestamp.
+func BeforeAbsoluteTimePredicate(secondsBefore int64) xdr.ClaimPredicate {
+	absBefore := xdr.Int64(secondsBefore)
 	return xdr.ClaimPredicate{
 		Type:      xdr.ClaimPredicateTypeClaimPredicateBeforeAbsoluteTime,
-		RelBefore: &absBefore,
+		AbsBefore: &absBefore,
 	}
 }
 
 // BeforeRelativeTimePredicate returns a Before Relative Time xdr.ClaimPredicate
-func BeforeRelativeTimePredicate(before int64) xdr.ClaimPredicate {
-	relBefore := xdr.Int64(before)
+//
+// This predicate will be fulfilled if the closing time of the ledger that
+// includes the CreateClaimableBalance operation plus this relative time delta
+// (in seconds) is less than the current time.
+func BeforeRelativeTimePredicate(secondsBefore int64) xdr.ClaimPredicate {
+	relBefore := xdr.Int64(secondsBefore)
 	return xdr.ClaimPredicate{
 		Type:      xdr.ClaimPredicateTypeClaimPredicateBeforeRelativeTime,
 		RelBefore: &relBefore,

@@ -92,10 +92,21 @@ func TestClaimingClaimableBalances(t *testing.T) {
 		"Credit4":  txnbuild.AssetTypeCreditAlphanum4,
 		"Credit12": txnbuild.AssetTypeCreditAlphanum12,
 	} {
+		now := time.Now().Unix()
+		minute := int64(60 * 60)
+
 		for desc2, predicate := range map[string]xdr.ClaimPredicate{
-			"N/A":           txnbuild.NoPredicate(),
-			"BeforeAbsTime": txnbuild.BeforeAbsoluteTimePredicate(time.Now().Unix() + 60*60), // full minute to claim
-			"BeforeRelTime": txnbuild.BeforeRelativeTimePredicate(60 * 60),
+			"N/A":           txnbuild.UnconditionalPredicate,
+			"BeforeAbsTime": txnbuild.BeforeAbsoluteTimePredicate(now + minute), // full minute to claim
+			"BeforeRelTime": txnbuild.BeforeRelativeTimePredicate(minute),
+			"BeforeBoth": txnbuild.AndPredicate(
+				txnbuild.BeforeAbsoluteTimePredicate(now+minute),
+				txnbuild.BeforeRelativeTimePredicate(minute),
+			),
+			"BeforeEither": txnbuild.OrPredicate(
+				txnbuild.BeforeAbsoluteTimePredicate(now+minute),
+				txnbuild.BeforeRelativeTimePredicate(minute),
+			),
 		} {
 			t.Run(desc1+"/"+desc2, func(t *testing.T) {
 				runClaimingCBsTest(t, assetType, &predicate)
