@@ -204,6 +204,7 @@ func (i *IntegrationTest) MasterAccount() txnbuild.Account {
 	master, client := i.Master(), i.Client()
 	request := sdk.AccountRequest{AccountID: master.Address()}
 	account, err := client.AccountDetail(request)
+	panicIf(err)
 	return &account
 }
 
