@@ -25,6 +25,12 @@ var (
 				DataValue: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
 			},
 		},
+		Ext: xdr.LedgerEntryExt{
+			V: 1,
+			V1: &xdr.LedgerEntryExtensionV1{
+				SponsoringId: xdr.MustAddressPtr("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+			},
+		},
 	}
 
 	data2 = xdr.LedgerEntry{
@@ -67,7 +73,7 @@ func TestDataActions_Show(t *testing.T) {
 	ht.Assert.Equal(int64(1), rows)
 
 	prefix := "/accounts/GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"
-	var result map[string]string
+	result := map[string]string{}
 
 	// json
 	w := ht.Get(prefix + "/data/name1")
@@ -77,6 +83,7 @@ func TestDataActions_Show(t *testing.T) {
 		decoded, err := base64.StdEncoding.DecodeString(result["value"])
 		ht.Assert.NoError(err)
 		ht.Assert.Equal([]byte(data1.Data.Data.DataValue), decoded)
+		ht.Assert.Equal("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML", result["sponsor"])
 	}
 
 	// raw
@@ -85,6 +92,7 @@ func TestDataActions_Show(t *testing.T) {
 		ht.Assert.Equal([]byte(data1.Data.Data.DataValue), w.Body.Bytes())
 	}
 
+	result = map[string]string{}
 	// regression: https://github.com/stellar/horizon/issues/325
 	// names with special characters do not work
 	w = ht.Get(prefix + "/data/name%20")
@@ -95,6 +103,7 @@ func TestDataActions_Show(t *testing.T) {
 		decoded, err := base64.StdEncoding.DecodeString(result["value"])
 		ht.Assert.NoError(err)
 		ht.Assert.Equal([]byte(data2.Data.Data.DataValue), decoded)
+		ht.Assert.Equal("", result["sponsor"])
 	}
 
 	w = ht.Get(prefix+"/data/name%20", test.RequestHelperRaw)
