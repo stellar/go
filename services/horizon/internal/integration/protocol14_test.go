@@ -6,6 +6,8 @@ import (
 
 	sdk "github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
+	"github.com/stellar/go/protocols/horizon/operations"
+	"github.com/stellar/go/services/horizon/internal/codes"
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/services/horizon/internal/txnbuild"
 	"github.com/stellar/go/xdr"
@@ -109,7 +111,7 @@ func TestClaimingClaimableBalances(t *testing.T) {
 			),
 		} {
 			t.Run(desc1+"/"+desc2, func(t *testing.T) {
-				runClaimingCBsTest(t, assetType, &predicate, false)
+				SubtestClaimingCBs(t, assetType, &predicate, false)
 			})
 		}
 
@@ -121,31 +123,99 @@ func TestClaimingClaimableBalances(t *testing.T) {
 		// 1. Simplest possible predicate failure.
 		pred := txnbuild.NotPredicate(&txnbuild.UnconditionalPredicate)
 		t.Run(desc1+"/AlwaysFail", func(t *testing.T) {
-			runClaimingCBsTest(t, assetType, &pred, true)
+			SubtestClaimingCBs(t, assetType, &pred, true)
+		})
+
+		// 2. Claim that expires after certain time and we try claiming it afterward
+		pred = txnbuild.BeforeRelativeTimePredicate(1)
+		t.Run(desc1+"/Expired", func(t *testing.T) {
+			itest := test.NewIntegrationTest(t, protocol14Config)
+			defer itest.Close()
+			client := itest.Client()
+
+			// Create a couple of accounts to test the interactions.
+			keypairs, accounts := itest.CreateAccounts(2, "10000")
+			sender, recipient := keypairs[0], keypairs[1]
+			sAccount, rAccount := accounts[0], accounts[1]
+
+			// Create an asset depending on the test parameter & trust it if need be.
+			var asset txnbuild.Asset = createAsset(assetType, sender.Address())
+			itest.MustEstablishTrustline(recipient, rAccount, asset)
+
+			// Create & submit the claimable balance from A -> B.
+			t.Logf("Creating claimable balance (asset=%s).", asset.GetCode())
+			t.Logf("  predicate: %+v", pred.Type)
+			op1 := txnbuild.CreateClaimableBalance{
+				Destinations: []txnbuild.Claimant{
+					txnbuild.NewClaimant(recipient.Address(), &pred),
+				},
+				Amount: "42",
+				Asset:  asset,
+			}
+
+			_, err := itest.SubmitOperations(sAccount, sender, &op1)
+			assert.NoError(t, err)
+
+			// Now let's retrieve what the above just created so we can claim it.
+			balances, err := client.ClaimableBalances(sdk.ClaimableBalanceRequest{Sponsor: sender.Address()})
+			assert.NoError(t, err)
+			t.Log("  confirmed")
+
+			// Force a failed predicate
+			oneSec, _ := time.ParseDuration("1s")
+			time.Sleep(oneSec)
+
+			claim := balances.Embedded.Records[0]
+			op2 := txnbuild.ClaimClaimableBalance{BalanceID: claim.BalanceID}
+
+			// This should fail w/ CLAIM_CLAIMABLE_BALANCE_CANNOT_CLAIM, since
+			// the predicate's timer has expired.
+			t.Log("  claiming (should fail)")
+			_, err = itest.SubmitOperations(rAccount, recipient, &op2)
+			assert.Error(t, err)
+
+			resultCodes := sdk.GetError(err).Problem.Extras["result_codes"].(map[string]interface{})
+			opResultCodes := resultCodes["operations"].([]interface{}) // wtf
+			expectedResultCode, _ := codes.String(xdr.ClaimClaimableBalanceResultCodeClaimClaimableBalanceCannotClaim)
+			assert.Equal(t, expectedResultCode, opResultCodes[0].(string))
+			t.Logf("  tx did fail w/ %s", expectedResultCode)
+
+			response, err := client.Operations(sdk.OperationRequest{
+				Order:         "desc",
+				Limit:         1,
+				IncludeFailed: true,
+			})
+			ops := response.Embedded.Records
+			assert.NoError(t, err)
+			assert.Len(t, ops, 1)
+
+			cb := ops[0].(operations.ClaimClaimableBalance)
+			assert.False(t, cb.TransactionSuccessful)
+			assert.Equal(t, claim.BalanceID, cb.BalanceID)
+			assert.Equal(t, recipient.Address(), cb.Claimant)
+			t.Log("  op did fail")
 		})
 	}
 }
 
-func runClaimingCBsTest(
+func SubtestClaimingCBs(
 	t *testing.T, assetType txnbuild.AssetType,
-	predicate *xdr.ClaimPredicate, shouldFail bool,
+	predicate *xdr.ClaimPredicate,
+	shouldFail bool, // note: I'm not proud of this hack
 ) {
 	itest := test.NewIntegrationTest(t, protocol14Config)
 	defer itest.Close()
 	client := itest.Client()
 
 	// Create a couple of accounts to test the interactions.
-	keypairs, accounts := itest.CreateAccounts(2, "1000")
-	sender, recipient := keypairs[0], keypairs[1]
-	sAccount, rAccount := accounts[0], accounts[1]
+	keypairs, accounts := itest.CreateAccounts(3, "1000")
+	sender, recipient, adversary := keypairs[0], keypairs[1], keypairs[2]
+	sAccount, rAccount, aAccount := accounts[0], accounts[1], accounts[2]
 
 	// Create an asset depending on the test parameter & trust it if need be.
 	var asset txnbuild.Asset = createAsset(assetType, sender.Address())
-	if assetType != txnbuild.AssetTypeNative {
-		_, err := itest.EstablishTrustline(recipient, rAccount, asset)
-		assert.NoError(t, err)
-		t.Log("Created asset trustline.")
-	}
+	itest.MustEstablishTrustline(recipient, rAccount, asset)
+	t.Log("Created asset trustline (if necessary).")
 
 	// Create & submit the claimable balance from A -> B.
 	t.Logf("Creating claimable balance (asset=%s).", asset.GetCode())

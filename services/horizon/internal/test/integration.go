@@ -324,9 +324,21 @@ func (i *IntegrationTest) CreateAccounts(count int, initialBalance string) ([]*k
 }
 
 // Establishes a trustline for a given asset for a particular account.
+func (i *IntegrationTest) MustEstablishTrustline(
+	truster *keypair.Full, account txnbuild.Account, asset txnbuild.Asset,
+) (resp proto.Transaction) {
+	txResp, err := i.EstablishTrustline(truster, account, asset)
+	panicIf(err)
+	return txResp
+}
+
+// Establishes a trustline for a given asset for a particular account.
 func (i *IntegrationTest) EstablishTrustline(
 	truster *keypair.Full, account txnbuild.Account, asset txnbuild.Asset,
 ) (proto.Transaction, error) {
+	if asset.IsNative() {
+		return proto.Transaction{}, nil
+	}
 	return i.SubmitOperations(account, truster, &txnbuild.ChangeTrust{
 		Line:  asset,
 		Limit: "2000",
