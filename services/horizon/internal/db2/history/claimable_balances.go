@@ -142,7 +142,7 @@ func (q *Q) CountClaimableBalances() (int, error) {
 // GetClaimableBalancesByID finds all claimable balances by ClaimableBalanceId
 func (q *Q) GetClaimableBalancesByID(ids []xdr.ClaimableBalanceId) ([]ClaimableBalance, error) {
 	var cBalances []ClaimableBalance
-	sql := selectClaimableBalances.Where(map[string]interface{}{"claimable_balances.id": ids})
+	sql := selectClaimableBalances.Where(map[string]interface{}{"cb.id": ids})
 	err := q.Select(&cBalances, sql)
 	return cBalances, err
 }

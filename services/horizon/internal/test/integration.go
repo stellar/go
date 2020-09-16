@@ -179,6 +179,22 @@ func (i *IntegrationTest) Client() *sdk.Client {
 	return i.hclient
 }
 
+// LedgerIngested returns true if the ledger with a given sequence has been
+// ingested by Horizon. Panics in case of errors.
+func (i *IntegrationTest) LedgerIngested(sequence uint32) bool {
+	root, err := i.Client().Root()
+	if err != nil {
+		panic(err)
+	}
+
+	return root.IngestSequence >= sequence
+}
+
+// AdminPort returns Horizon admin port.
+func (i *IntegrationTest) AdminPort() int {
+	return 6060
+}
+
 // Master returns a keypair of the network master account.
 func (i *IntegrationTest) Master() *keypair.Full {
 	return keypair.Master(IntegrationNetworkPassphrase).(*keypair.Full)
@@ -245,11 +261,12 @@ func createTestContainer(i *IntegrationTest, image string) error {
 				"--standalone",
 				"--protocol-version", strconv.FormatInt(int64(i.config.ProtocolVersion), 10),
 			},
-			ExposedPorts: nat.PortSet{"8000": struct{}{}},
+			ExposedPorts: nat.PortSet{"8000": struct{}{}, "6060": struct{}{}},
 		},
 		&container.HostConfig{
 			PortBindings: map[nat.Port][]nat.PortBinding{
 				nat.Port("8000"): {{HostIP: "127.0.0.1", HostPort: "8000"}},
+				nat.Port("6060"): {{HostIP: "127.0.0.1", HostPort: "6060"}},
 			},
 		},
 		nil,
