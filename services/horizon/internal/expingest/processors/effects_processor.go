@@ -362,20 +362,25 @@ func (e *effectsWrapper) addLedgerEntrySponsorshipEffects() error {
 			continue
 		}
 
-		accountAddress := e.operation.SourceAccount().Address()
+		var accountAddress string
 		data := dataFromChange(change)
 		switch change.Type {
 		case xdr.LedgerEntryTypeAccount:
 			aid := data.MustAccount().AccountId
 			accountAddress = aid.Address()
 		case xdr.LedgerEntryTypeTrustline:
+			aid := data.MustTrustLine().AccountId
+			accountAddress = aid.Address()
 			addAssetDetails(details, data.MustTrustLine().Asset, "")
 		case xdr.LedgerEntryTypeClaimableBalance:
+			accountAddress = e.operation.SourceAccount().Address()
 			var err error
 			details["balance_id"], err = xdr.MarshalHex(data.MustClaimableBalance().BalanceId)
 			if err != nil {
 				return errors.Wrapf(err, "Invalid balanceId in change from op: %d", e.operation.index)
 			}
+		default:
+			return errors.Errorf("invalid sponsorship ledger entry type %v", change.Type.String())
 		}
 
 		e.add(accountAddress, effectType, details)
@@ -806,7 +811,7 @@ func (e *effectsWrapper) addCreateClaimableBalanceEffects() error {
 
 	for _, c := range op.Claimants {
 		cv0 := c.MustV0()
-		details := map[string]interface{}{
+		details = map[string]interface{}{
 			"balance_id": balanceID,
 			"amount":     amount.String(op.Amount),
 			"predicate":  cv0.Predicate,
