@@ -111,5 +111,5 @@ func TestAccountEntrySponsorships(t *testing.T) {
 	assert.Equal(t, Uint32(2), sponsoring)
 	assert.Len(t, signerIDs, 1)
 	assert.Equal(t, desc, signerIDs[0])
-	assert.Equal(t, expectedSponsorsForSigners, account.SponsorsForSigners())
+	assert.Equal(t, expectedSponsorsForSigners, account.SponsorPerSigner())
 }

@@ -71,8 +71,8 @@ func (account *AccountEntry) SignerSponsoringIDs() []SponsorshipDescriptor {
 	return ids
 }
 
-// SponsorsForSigners returns a mapping of signer to its sponsor
-func (account *AccountEntry) SponsorsForSigners() map[string]SponsorshipDescriptor {
+// SponsorPerSigner returns a mapping of signer to its sponsor
+func (account *AccountEntry) SponsorPerSigner() map[string]SponsorshipDescriptor {
 	ids := account.SignerSponsoringIDs()
 
 	signerToSponsor := map[string]SponsorshipDescriptor{}

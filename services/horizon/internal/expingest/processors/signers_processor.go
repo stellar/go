@@ -109,13 +109,13 @@ func (p *SignersProcessor) Commit() error {
 
 		if change.Post != nil {
 			postAccountEntry := change.Post.Data.MustAccount()
-			sponsorsForSigner := postAccountEntry.SponsorsForSigners()
+			sponsorsPerSigner := postAccountEntry.SponsorPerSigner()
 			for signer, weight := range postAccountEntry.SignerSummary() {
 				var sponsorshipDescriptor xdr.SponsorshipDescriptor
 
 				// Ignore master key
 				if signer != postAccountEntry.AccountId.Address() {
-					sponsorshipDescriptor = sponsorsForSigner[signer]
+					sponsorshipDescriptor = sponsorsPerSigner[signer]
 				}
 
 				var sponsor *string
