@@ -23,6 +23,7 @@ func TestProtocol14StateVerifier(t *testing.T) {
 		AccountID: sponsored.Address(),
 		Sequence:  1,
 	}
+	signer := keypair.MustRandom()
 
 	// The operations below create a sponsorship sandwich, sponsoring an
 	// account, its trustlines, offers, data, and claimable balances.
@@ -34,6 +35,10 @@ func TestProtocol14StateVerifier(t *testing.T) {
 		},
 		&txnbuild.CreateAccount{
 			Destination: sponsored.Address(),
+			Amount:      "100",
+		},
+		&txnbuild.CreateAccount{
+			Destination: signer.Address(),
 			Amount:      "100",
 		},
 		&txnbuild.ChangeTrust{
@@ -59,6 +64,13 @@ func TestProtocol14StateVerifier(t *testing.T) {
 			Asset:         txnbuild.NativeAsset{},
 			Destinations: []txnbuild.Claimant{
 				txnbuild.NewClaimant(keypair.MustRandom().Address(), nil),
+			},
+		},
+		&txnbuild.SetOptions{
+			SourceAccount: sponsoredSource,
+			Signer: &txnbuild.Signer{
+				Address: signer.Address(),
+				Weight:  3,
 			},
 		},
 		&txnbuild.EndSponsoringFutureReserves{
