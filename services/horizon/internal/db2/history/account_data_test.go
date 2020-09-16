@@ -32,6 +32,12 @@ var (
 			},
 		},
 		LastModifiedLedgerSeq: 1234,
+		Ext: xdr.LedgerEntryExt{
+			V: 1,
+			V1: &xdr.LedgerEntryExtensionV1{
+				SponsoringId: xdr.MustAddressPtr("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+			},
+		},
 	}
 )
 
@@ -60,9 +66,11 @@ func TestInsertAccountData(t *testing.T) {
 
 	tt.Assert.Equal(data1.Data.Data.DataName, xdr.String64(datas[0].Name))
 	tt.Assert.Equal([]byte(data1.Data.Data.DataValue), []byte(datas[0].Value))
+	tt.Assert.True(datas[0].Sponsor.IsZero())
 
 	tt.Assert.Equal(data2.Data.Data.DataName, xdr.String64(datas[1].Name))
 	tt.Assert.Equal([]byte(data2.Data.Data.DataValue), []byte(datas[1].Value))
+	tt.Assert.Equal("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML", datas[1].Sponsor.String)
 }
 
 func TestUpdateAccountData(t *testing.T) {
