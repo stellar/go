@@ -3,12 +3,9 @@ package integration
 import (
 	"fmt"
 	"testing"
-	"time"
 
 	sdk "github.com/stellar/go/clients/horizonclient"
 	proto "github.com/stellar/go/protocols/horizon"
-	"github.com/stellar/go/protocols/horizon/operations"
-	"github.com/stellar/go/services/horizon/internal/codes"
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/services/horizon/internal/txnbuild"
 	"github.com/stellar/go/xdr"
