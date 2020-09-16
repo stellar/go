@@ -243,14 +243,24 @@ func SubtestClaimingCBs(
 	assert.Equal(t, sender.Address(), claim.Sponsor)
 	assert.Equal(t, "42.0000000", claim.Amount)
 
-	t.Logf("Claiming balance (ID=%s)...", claim.BalanceID)
-
+	// Claiming a balance when you aren't the recipient should fail.
+	t.Logf("Stealing balance (ID=%s)...", claim.BalanceID)
 	op2 := txnbuild.ClaimClaimableBalance{
+		BalanceID:     claim.BalanceID,
+		SourceAccount: aAccount,
+	}
+
+	_, err = itest.SubmitOperations(aAccount, adversary, &op2)
+	assert.Error(t, err)
+	t.Log("  failed as expected")
+
+	t.Logf("Claiming balance (ID=%s)...", claim.BalanceID)
+	op3 := txnbuild.ClaimClaimableBalance{
 		BalanceID:     claim.BalanceID,
 		SourceAccount: rAccount,
 	}
 
-	_, err = itest.SubmitOperations(rAccount, recipient, &op2)
+	_, err = itest.SubmitOperations(rAccount, recipient, &op3)
 	expected := 1
 
 	if !shouldFail {
@@ -262,11 +272,38 @@ func SubtestClaimingCBs(
 		t.Log("  failed to claim (as expected)")
 	}
 
-	// Ensure the balance is updated accordingly, now.
+	// Ensure the claimable balance is updated accordingly, now.
 	balances, err = client.ClaimableBalances(sdk.ClaimableBalanceRequest{Sponsor: sender.Address()})
 	assert.NoError(t, err)
 	assert.Len(t, balances.Embedded.Records, expected)
 	t.Logf("  claims left: %d (should be =%d)", len(balances.Embedded.Records), expected)
+
+	// On success, we want the actual account to have a higher balance, too!
+	if !shouldFail {
+		request := sdk.AccountRequest{AccountID: recipient.Address()}
+		details, err := client.AccountDetail(request)
+		assert.NoError(t, err)
+
+		foundBalance := false
+		t.Logf("  balances: %+v", details.Balances)
+		for _, balance := range details.Balances {
+			if (balance.Issuer == asset.GetIssuer() && balance.Code == asset.GetCode()) ||
+				(balance.Code == "" && asset.IsNative()) {
+				// Ensure that the user's new balance includes the claimed
+				// balance, sans the transaction fee if applicable (this'll need
+				// to be updated if we change fees).
+				if asset.IsNative() {
+					assert.Equal(t, "1041.9999900", balance.Balance)
+				} else {
+					assert.Equal(t, "42.0000000", balance.Balance)
+				}
+				foundBalance = true
+				break
+			}
+		}
+
+		assert.True(t, foundBalance)
+	}
 }
 
 func runFilteringTest(i *test.IntegrationTest, source *keypair.Full, dest *keypair.Full, asset txnbuild.Asset) {
