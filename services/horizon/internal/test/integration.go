@@ -340,7 +340,7 @@ func (i *IntegrationTest) CreateAccounts(count int, initialBalance string) ([]*k
 	return pairs, accounts
 }
 
-// Establishes a trustline for a given asset for a particular account.
+// Panics on any error establishing a trustline.
 func (i *IntegrationTest) MustEstablishTrustline(
 	truster *keypair.Full, account txnbuild.Account, asset txnbuild.Asset,
 ) (resp proto.Transaction) {
@@ -360,6 +360,41 @@ func (i *IntegrationTest) EstablishTrustline(
 		Line:  asset,
 		Limit: "2000",
 	})
+}
+
+// Panics on any error creating a claimable balance.
+func (i *IntegrationTest) MustCreateClaimableBalance(
+	source *keypair.Full, asset txnbuild.Asset, claimants ...txnbuild.Claimant,
+) (claim proto.ClaimableBalance) {
+	account := i.MustGetAccount(source)
+	_ = i.MustSubmitOperations(&account, source,
+		&txnbuild.CreateClaimableBalance{
+			Destinations: claimants,
+			Asset:        asset,
+			Amount:       "42",
+		},
+	)
+
+	// Ensure it exists in the global list
+	balances, err := i.Client().ClaimableBalances(sdk.ClaimableBalanceRequest{})
+	panicIf(err)
+
+	claims := balances.Embedded.Records
+	if len(claims) == 0 {
+		panic(-1)
+	}
+
+	claim = claims[0]
+	return
+}
+
+// Panics on any error retrieves an account's details from its key.
+// This means it must have previously been funded.
+func (i *IntegrationTest) MustGetAccount(source *keypair.Full) proto.Account {
+	client := i.Client()
+	account, err := client.AccountDetail(sdk.AccountRequest{AccountID: source.Address()})
+	panicIf(err)
+	return account
 }
 
 // Submits a signed transaction from an account with standard options.
