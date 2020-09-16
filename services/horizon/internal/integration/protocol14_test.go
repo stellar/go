@@ -102,9 +102,9 @@ func runClaimingCBsTest(t *testing.T, assetType txnbuild.AssetType, predicate *x
 	client := itest.Client()
 
 	// Create a couple of accounts to test the interactions.
-	keypairs, accounts := itest.CreateAccounts(2, "1000")
-	sender, recipient := keypairs[0], keypairs[1]
-	sAccount, rAccount := accounts[0], accounts[1]
+	keypairs, accounts := itest.CreateAccounts(3, "1000")
+	sender, recipient, adversary := keypairs[0], keypairs[1], keypairs[2]
+	sAccount, rAccount, aAccount := accounts[0], accounts[1], accounts[2]
 
 	// Create an asset depending on the test parameter & trust it if need be.
 	var asset txnbuild.Asset = createAsset(assetType, sender.Address())
@@ -139,20 +139,53 @@ func runClaimingCBsTest(t *testing.T, assetType txnbuild.AssetType, predicate *x
 	assert.Equal(t, sender.Address(), claim.Sponsor)
 	assert.Equal(t, "42.0000000", claim.Amount)
 
-	t.Logf("Claiming balance (ID=%s)...", claim.BalanceID)
+	// Claiming a balance when you aren't the recipient should fail...
+	t.Logf("Stealing balance (ID=%s)...", claim.BalanceID)
+	op2 := txnbuild.ClaimClaimableBalance{BalanceID: claim.BalanceID}
+	_, err = itest.SubmitOperations(aAccount, adversary, &op2)
+	assert.Error(t, err)
+	t.Log("  failed as expected")
 
-	op2 := txnbuild.ClaimClaimableBalance{
-		BalanceID:     claim.BalanceID,
-		SourceAccount: rAccount,
-	}
-	_, err = itest.SubmitOperations(rAccount, recipient, &op2)
+	// ...but if you are it should succeed.
+	t.Logf("Claiming balance (ID=%s)...", claim.BalanceID)
+	op3 := txnbuild.ClaimClaimableBalance{BalanceID: claim.BalanceID}
+	_, err = itest.SubmitOperations(rAccount, recipient, &op3)
 	assert.NoError(t, err)
 	t.Log("  claimed")
 
-	// Ensure the balance is gone now.
+	// Ensure the claimable balance is gone now.
 	balances, err = client.ClaimableBalances(sdk.ClaimableBalanceRequest{Sponsor: sender.Address()})
 	assert.NoError(t, err)
 	assert.Len(t, balances.Embedded.Records, 0)
+	t.Logf("  claims left: %d", len(balances.Embedded.Records))
+
+	// On success, we want the actual account to have a higher balance, too!
+	request := sdk.AccountRequest{AccountID: recipient.Address()}
+	details, err := client.AccountDetail(request)
+	assert.NoError(t, err)
+
+	// Ensure that the user's new balance includes the claimed balance, sans the
+	// transaction fee if applicable (this'll need to be updated if we change fees).
+	foundBalance := false
+	t.Logf("  balances: %+v", details.Balances)
+	for _, balance := range details.Balances {
+		if balance.Code != "" && asset.IsNative() {
+			continue
+		}
+
+		if balance.Issuer != asset.GetIssuer() || balance.Code != asset.GetCode() {
+			continue
+		}
+
+		if asset.IsNative() {
+			assert.Equal(t, "1041.9999900", balance.Balance)
+		} else {
+			assert.Equal(t, "42.0000000", balance.Balance)
+		}
+		foundBalance = true
+		break
+	}
+	assert.True(t, foundBalance)
 }
 
 func runFilteringTest(i *test.IntegrationTest, source *keypair.Full, dest *keypair.Full, asset txnbuild.Asset) {
