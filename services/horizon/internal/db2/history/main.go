@@ -114,14 +114,18 @@ const (
 	// EffectSequenceBumped occurs when an account bumps their sequence number
 	EffectSequenceBumped EffectType = 43 // from bump_sequence
 
+	// claimable balance effects
+
 	// EffectClaimableBalanceCreated occurs when a claimable balance is created
 	EffectClaimableBalanceCreated EffectType = 50 // from create_claimable_balance
 
-	// EffectClaimableBalanceClaimantCreated occurs when a claimable balance is created
+	// EffectClaimableBalanceClaimantCreated occurs when a claimable balance claimant is created
 	EffectClaimableBalanceClaimantCreated EffectType = 51 // from create_claimable_balance
 
 	// EffectClaimableBalanceClaimed occurs when a claimable balance is claimed
 	EffectClaimableBalanceClaimed EffectType = 52 // from claim_claimable_balance
+
+	// sponsorship effects
 
 	// EffectAccountSponsorshipCreated occurs when an account ledger entry is sponsored
 	EffectAccountSponsorshipCreated EffectType = 60 // from CreateAccount
@@ -152,8 +156,14 @@ const (
 	// is removed
 	EffectClaimableBalanceSponsorshipRemoved EffectType = 68 // from RevokeSponsorship
 
+	// EffectSignerSponsorshipCreated occurs when the sponsorship of a signer is created
+	EffectSignerSponsorshipCreated EffectType = 69
+
+	// EffectSignerSponsorshipUpdated occurs when the sponsorship of a signer is updated
+	EffectSignerSponsorshipUpdated EffectType = 70
+
 	// EffectSignerSponsorshipRemoved occurs when the sponsorship of a signer is removed
-	EffectSignerSponsorshipRemoved EffectType = 69 // from RevokeSponsorship
+	EffectSignerSponsorshipRemoved EffectType = 71
 )
 
 // Account is a row of data from the `history_accounts` table

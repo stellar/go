@@ -199,22 +199,8 @@ func (operation *transactionOperationWrapper) effects() ([]effect, error) {
 		err = wrapper.addCreateClaimableBalanceEffects()
 	case xdr.OperationTypeClaimClaimableBalance:
 		err = wrapper.addClaimClaimableBalanceEffects()
-	case xdr.OperationTypeBeginSponsoringFutureReserves:
-		// The effects of these operations is obtained  indirectly from the ledger entries
-	case xdr.OperationTypeEndSponsoringFutureReserves:
-		// The effects of these operations is obtained  indirectly from the ledger entries
-	case xdr.OperationTypeRevokeSponsorship:
-		op := operation.operation.Body.MustRevokeSponsorshipOp()
-		if op.Type == xdr.RevokeSponsorshipTypeRevokeSponsorshipSigner {
-			source := operation.SourceAccount()
-			wrapper.add(source.Address(), history.EffectSignerSponsorshipRemoved,
-				map[string]interface{}{
-					"signer_account_id": op.Signer.AccountId.Address(),
-				},
-			)
-		}
-		// The rest of the effects of this operation are
-		// obtained  indirectly from the ledger entries
+	case xdr.OperationTypeBeginSponsoringFutureReserves, xdr.OperationTypeEndSponsoringFutureReserves, xdr.OperationTypeRevokeSponsorship:
+		// The effects of these operations are obtained  indirectly from the ledger entries
 	default:
 		return nil, fmt.Errorf("Unknown operation type: %s", op.Body.Type)
 	}
@@ -222,7 +208,7 @@ func (operation *transactionOperationWrapper) effects() ([]effect, error) {
 		return nil, err
 	}
 
-	if err := wrapper.addLedgerEntrySponsoringEffects(); err != nil {
+	if err := wrapper.addLedgerEntrySponsorshipEffects(); err != nil {
 		return nil, err
 	}
 
@@ -267,31 +253,101 @@ var sponsoringEffectsTable = map[xdr.LedgerEntryType]struct {
 	// entries because we don't generate creation effects for them.
 }
 
-func (e *effectsWrapper) addLedgerEntrySponsoringEffects() error {
+func (e *effectsWrapper) addSignerSponsorshipEffects(change io.Change) {
+	if change.Type != xdr.LedgerEntryTypeAccount {
+		return
+	}
+
+	preSigners := map[string]xdr.SponsorshipDescriptor{}
+	postSigners := map[string]xdr.SponsorshipDescriptor{}
+	if change.Pre != nil {
+		account := change.Pre.Data.MustAccount()
+		preSigners = account.SponsorsForSigners()
+	}
+	if change.Post != nil {
+		account := change.Post.Data.MustAccount()
+		postSigners = account.SponsorsForSigners()
+	}
+
+	var all []string
+	for signer := range preSigners {
+		all = append(all, signer)
+	}
+	for signer := range postSigners {
+		if _, ok := preSigners[signer]; ok {
+			continue
+		}
+		all = append(all, signer)
+	}
+	sort.Strings(all)
+
+	for _, signer := range all {
+		pre := preSigners[signer]
+		post := postSigners[signer]
+		if pre == nil && post == nil {
+			continue
+		}
+
+		details := map[string]interface{}{}
+		if pre == nil {
+			details["sponsor"] = (*xdr.AccountId)(post).Address()
+			details["signer"] = signer
+			srcAccount := change.Post.Data.MustAccount().AccountId
+			e.add(srcAccount.Address(), history.EffectSignerSponsorshipCreated, details)
+			continue
+		}
+
+		if post == nil {
+			details["former_sponsor"] = (*xdr.AccountId)(pre).Address()
+			details["signer"] = signer
+			srcAccount := change.Pre.Data.MustAccount().AccountId
+			e.add(srcAccount.Address(), history.EffectSignerSponsorshipRemoved, details)
+			continue
+		}
+
+		if (*xdr.AccountId)(post).Address() == (*xdr.AccountId)(pre).Address() {
+			continue
+		}
+
+		details["former_sponsor"] = (*xdr.AccountId)(pre).Address()
+		details["new_sponsor"] = (*xdr.AccountId)(post).Address()
+		details["signer"] = signer
+		srcAccount := change.Post.Data.MustAccount().AccountId
+		e.add(srcAccount.Address(), history.EffectSignerSponsorshipUpdated, details)
+	}
+}
+
+func dataFromChange(c io.Change) xdr.LedgerEntryData {
+	if c.Post != nil {
+		return c.Post.Data
+	}
+	return c.Pre.Data
+}
+
+func (e *effectsWrapper) addLedgerEntrySponsorshipEffects() error {
 	changes, err := e.operation.transaction.GetOperationChanges(e.operation.index)
 	if err != nil {
 		return err
 	}
+
 	for _, change := range changes {
 		effectsForEntryType, found := sponsoringEffectsTable[change.Type]
 		if !found {
 			continue
 		}
+
+		details := map[string]interface{}{}
+		var effectType history.EffectType
+
 		switch {
 		case (change.Pre == nil || change.Pre.SponsoringID() == nil) &&
 			(change.Post != nil && change.Post.SponsoringID() != nil):
-			e.add(e.operation.SourceAccount().Address(), effectsForEntryType.created,
-				map[string]interface{}{
-					"sponsor": (*change.Post.SponsoringID()).Address(),
-				},
-			)
+			effectType = effectsForEntryType.created
+			details["sponsor"] = (*change.Post.SponsoringID()).Address()
 		case (change.Pre != nil && change.Pre.SponsoringID() != nil) &&
 			(change.Post == nil || change.Post.SponsoringID() == nil):
-			e.add(e.operation.SourceAccount().Address(), effectsForEntryType.removed,
-				map[string]interface{}{
-					"former_sponsor": (*change.Pre.SponsoringID()).Address(),
-				},
-			)
+			effectType = effectsForEntryType.removed
+			details["former_sponsor"] = (*change.Pre.SponsoringID()).Address()
 		case (change.Pre != nil && change.Pre.SponsoringID() != nil) &&
 			(change.Post != nil && change.Post.SponsoringID() != nil):
 			preSponsor := (*change.Pre.SponsoringID()).Address()
@@ -299,16 +355,36 @@ func (e *effectsWrapper) addLedgerEntrySponsoringEffects() error {
 			if preSponsor == postSponsor {
 				continue
 			}
-			e.add(e.operation.SourceAccount().Address(), effectsForEntryType.updated,
-				map[string]interface{}{
-					"new_sponsor":    postSponsor,
-					"former_sponsor": preSponsor,
-				},
-			)
-
+			effectType = effectsForEntryType.updated
+			details["new_sponsor"] = postSponsor
+			details["former_sponsor"] = preSponsor
+		default:
+			continue
 		}
 
+		accountAddress := e.operation.SourceAccount().Address()
+		data := dataFromChange(change)
+		switch change.Type {
+		case xdr.LedgerEntryTypeAccount:
+			aid := data.MustAccount().AccountId
+			accountAddress = aid.Address()
+		case xdr.LedgerEntryTypeTrustline:
+			addAssetDetails(details, data.MustTrustLine().Asset, "")
+		case xdr.LedgerEntryTypeClaimableBalance:
+			var err error
+			details["balance_id"], err = xdr.MarshalHex(data.MustClaimableBalance().BalanceId)
+			if err != nil {
+				return errors.Wrapf(err, "Invalid balanceId in change from op: %d", e.operation.index)
+			}
+		}
+
+		e.add(accountAddress, effectType, details)
 	}
+
+	for _, change := range changes {
+		e.addSignerSponsorshipEffects(change)
+	}
+
 	return nil
 }
 
@@ -717,31 +793,33 @@ func (e *effectsWrapper) addCreateClaimableBalanceEffects() error {
 		return errors.Wrapf(err, "Invalid balanceId in op: %d", e.operation.index)
 	}
 
+	details := map[string]interface{}{
+		"balance_id": balanceID,
+		"amount":     amount.String(op.Amount),
+	}
+	addAssetDetails(details, op.Asset, "")
 	e.add(
 		e.operation.SourceAccount().Address(),
 		history.EffectClaimableBalanceCreated,
-		map[string]interface{}{
-			"balance_id": balanceID,
-			"amount":     amount.String(op.Amount),
-			"asset":      op.Asset.StringCanonical(),
-		},
+		details,
 	)
 
 	for _, c := range op.Claimants {
 		cv0 := c.MustV0()
+		details := map[string]interface{}{
+			"balance_id": balanceID,
+			"amount":     amount.String(op.Amount),
+			"predicate":  cv0.Predicate,
+		}
+		addAssetDetails(details, op.Asset, "")
 		e.add(
 			cv0.Destination.Address(),
 			history.EffectClaimableBalanceClaimantCreated,
-			map[string]interface{}{
-				"balance_id": balanceID,
-				"amount":     amount.String(op.Amount),
-				"asset":      op.Asset.StringCanonical(),
-				"predicate":  cv0.Predicate,
-			},
+			details,
 		)
 	}
 
-	details := map[string]interface{}{
+	details = map[string]interface{}{
 		"amount": amount.String(op.Amount),
 	}
 	addAssetDetails(details, op.Asset, "")
@@ -793,16 +871,18 @@ func (e *effectsWrapper) addClaimClaimableBalanceEffects() error {
 		return fmt.Errorf("Change not found for balanceId : %s", balanceID)
 	}
 
+	details := map[string]interface{}{
+		"amount":     amount.String(cBalance.Amount),
+		"balance_id": balanceID,
+	}
+	addAssetDetails(details, cBalance.Asset, "")
 	e.add(
 		e.operation.SourceAccount().Address(),
 		history.EffectClaimableBalanceClaimed,
-		map[string]interface{}{
-			"amount":     amount.String(cBalance.Amount),
-			"asset":      cBalance.Asset.StringCanonical(),
-			"balance_id": balanceID,
-		},
+		details,
 	)
-	details := map[string]interface{}{
+
+	details = map[string]interface{}{
 		"amount": amount.String(cBalance.Amount),
 	}
 	addAssetDetails(details, cBalance.Asset, "")
