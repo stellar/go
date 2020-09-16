@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this
 file.  This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [v4.0.0](https://github.com/stellar/go/releases/tag/horizonclient-v4.0.0) - 2020-08-31
+
+### Breaking changes
+
+* Replace `BuildChallengeTx()`'s `anchorName string` parameter with `homeDomain string` 
+* Add `homeDomain string` parameter to `ReadChallengeTx()`, `VerifyChallengeTxThreshold()`, and `VerifyChallengeTxSigners()`
+
+SEP-10 now requires clients to verify the `SIGNING_KEY` included in the TOML file of the service requiring authentication is used to sign the challenge and that the challenge's Manage Data operation key includes the requested service's home domain. These checks ensure the challenge cannot be used in a relay attack.
+
+The breaking changes described above support the added SEP-10 2.0 requirements for both servers and clients.
+
 ## [v3.1.0](https://github.com/stellar/go/releases/tag/horizonclient-v3.1.0) - 2020-05-14
 
 * Fix bug which occurs when parsing xdr offers with prices that require more than 7 decimals of precision ([#2588](https://github.com/stellar/go/pull/2588))

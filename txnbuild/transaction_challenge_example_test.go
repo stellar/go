@@ -52,7 +52,7 @@ func ExampleVerifyChallengeTxThreshold() {
 	// Client reads and signs challenge transaction
 	var signedChallengeTx string
 	{
-		tx, txClientAccountID, err := txnbuild.ReadChallengeTx(challengeTx, serverAccount.Address(), network.TestNetworkPassphrase)
+		tx, txClientAccountID, err := txnbuild.ReadChallengeTx(challengeTx, serverAccount.Address(), network.TestNetworkPassphrase, "test")
 		if err != nil {
 			fmt.Println("Error:", err)
 			return
@@ -75,7 +75,7 @@ func ExampleVerifyChallengeTxThreshold() {
 
 	// Server verifies signed challenge transaction
 	{
-		_, txClientAccountID, err := txnbuild.ReadChallengeTx(challengeTx, serverAccount.Address(), network.TestNetworkPassphrase)
+		_, txClientAccountID, err := txnbuild.ReadChallengeTx(challengeTx, serverAccount.Address(), network.TestNetworkPassphrase, "test")
 		if err != nil {
 			fmt.Println("Error:", err)
 			return
@@ -102,7 +102,7 @@ func ExampleVerifyChallengeTxThreshold() {
 			threshold := txnbuild.Threshold(horizonClientAccount.Thresholds.MedThreshold)
 
 			// Server verifies threshold is met
-			signers, err := txnbuild.VerifyChallengeTxThreshold(signedChallengeTx, serverAccount.Address(), network.TestNetworkPassphrase, threshold, signerSummary)
+			signers, err := txnbuild.VerifyChallengeTxThreshold(signedChallengeTx, serverAccount.Address(), network.TestNetworkPassphrase, "test", threshold, signerSummary)
 			if err != nil {
 				fmt.Println("Error:", err)
 				return
