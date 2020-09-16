@@ -139,20 +139,16 @@ func runClaimingCBsTest(t *testing.T, assetType txnbuild.AssetType, predicate *x
 	assert.Equal(t, sender.Address(), claim.Sponsor)
 	assert.Equal(t, "42.0000000", claim.Amount)
 
-	// Claiming a balance when you aren't the recipient should fail.
+	// Claiming a balance when you aren't the recipient should fail...
 	t.Logf("Stealing balance (ID=%s)...", claim.BalanceID)
 	op2 := txnbuild.ClaimClaimableBalance{BalanceID: claim.BalanceID}
-
 	_, err = itest.SubmitOperations(aAccount, adversary, &op2)
 	assert.Error(t, err)
 	t.Log("  failed as expected")
 
+	// ...but if you are it should succeed.
 	t.Logf("Claiming balance (ID=%s)...", claim.BalanceID)
-	op3 := txnbuild.ClaimClaimableBalance{
-		BalanceID:     claim.BalanceID,
-		SourceAccount: rAccount,
-	}
-
+	op3 := txnbuild.ClaimClaimableBalance{BalanceID: claim.BalanceID}
 	_, err = itest.SubmitOperations(rAccount, recipient, &op3)
 	assert.NoError(t, err)
 	t.Log("  claimed")
