@@ -100,6 +100,36 @@ func generateWhereClause(optVars []optionalVar) (clause string, args []string) {
 	return
 }
 
+// generateWhereClauseWithOrs generates a WHERE clause in the format:
+// "WHERE (a = ? AND b = ? ... AND c = ?) OR (x = ? AND y = ? ... AND z = ?)"
+// where the number of OR conditions equals the number of optVarLists with non-zero length.
+// It also returns the valid vals in the args param. This function was created to take advantage
+// of go/sql's sanitization and to prevent possible SQL injections.
+func generateWhereClauseWithOrs(optVarLists [][]optionalVar) (clause string, args []string) {
+	if len(optVarLists) == 0 {
+		return
+	}
+
+	clauses := []string{}
+	for _, ovl := range optVarLists {
+		var orClause string
+		for _, ov := range ovl {
+			if ov.val == nil {
+				continue
+			}
+			if orClause == "" {
+				orClause = fmt.Sprintf("%s = ?", ov.name)
+			} else {
+				orClause += fmt.Sprintf(" AND %s = ?", ov.name)
+			}
+			args = append(args, *ov.val)
+		}
+		clauses = append(clauses, orClause)
+	}
+	clause = fmt.Sprintf("WHERE (%s)", strings.Join(clauses, " OR "))
+	return
+}
+
 // getBaseAndCounterCodes takes an asset pair name string (e.g: XLM_BTC)
 // and returns the parsed asset codes (e.g.: XLM, BTC). It also reverses
 // the assets, according to the following rules:
@@ -116,6 +146,27 @@ func getBaseAndCounterCodes(pairName string) (string, string, error) {
 	}
 
 	return assets[0], assets[1], nil
+}
+
+// normalizeBaseAndCounter takes the user-provided base and counter asset
+// and issuer, and orders them according to the following rules:
+// 1. XLM is always the base asset
+// 2. If XLM is not in the pair, the assets should be ordered alphabetically
+func orderBaseAndCounter(
+	baseCode *string,
+	baseIssuer *string,
+	counterCode *string,
+	counterIssuer *string,
+) (*string, *string, *string, *string) {
+	if baseCode == nil || counterCode == nil {
+		return baseCode, baseIssuer, counterCode, counterIssuer
+	}
+
+	if (*counterCode == "XLM") || (*baseCode != "XLM" && *baseCode > *counterCode) {
+		return counterCode, counterIssuer, baseCode, baseIssuer
+	}
+
+	return baseCode, baseIssuer, counterCode, counterIssuer
 }
 
 // performUpsertQuery introspects a dbStruct interface{} and performs an insert query

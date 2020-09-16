@@ -1,4 +1,4 @@
-package tickerdb
+package tickerdb_test
 
 import (
 	"context"
@@ -9,6 +9,7 @@ import (
 
 	_ "github.com/lib/pq"
 	migrate "github.com/rubenv/sql-migrate"
+	"github.com/stellar/go/services/ticker/internal/tickerdb"
 	"github.com/stellar/go/support/db/dbtest"
 	"github.com/stretchr/testify/require"
 )
@@ -17,7 +18,7 @@ func TestBulkInsertTrades(t *testing.T) {
 	db := dbtest.Postgres(t)
 	defer db.Close()
 
-	var session TickerSession
+	var session tickerdb.TickerSession
 	session.DB = db.Open()
 	session.Ctx = context.Background()
 	defer session.DB.Close()
@@ -25,19 +26,19 @@ func TestBulkInsertTrades(t *testing.T) {
 	// Run migrations to make sure the tests are run
 	// on the most updated schema version
 	migrations := &migrate.FileMigrationSource{
-		Dir: "./migrations",
+		Dir: "../migrations",
 	}
 	_, err := migrate.Exec(session.DB.DB, "postgres", migrations, migrate.Up)
 	require.NoError(t, err)
 
 	// Adding a seed issuer to be used later:
 	tbl := session.GetTable("issuers")
-	_, err = tbl.Insert(Issuer{
+	_, err = tbl.Insert(tickerdb.Issuer{
 		PublicKey: "GCF3TQXKZJNFJK7HCMNE2O2CUNKCJH2Y2ROISTBPLC7C5EIA5NNG2XZB",
 		Name:      "FOO BAR",
 	}).IgnoreCols("id").Exec()
 	require.NoError(t, err)
-	var issuer Issuer
+	var issuer tickerdb.Issuer
 	err = session.GetRaw(&issuer, `
 		SELECT *
 		FROM issuers
@@ -47,12 +48,12 @@ func TestBulkInsertTrades(t *testing.T) {
 	require.NoError(t, err)
 
 	// Adding a seed asset to be used later:
-	err = session.InsertOrUpdateAsset(&Asset{
+	err = session.InsertOrUpdateAsset(&tickerdb.Asset{
 		Code:     "XLM",
 		IssuerID: issuer.ID,
 	}, []string{"code", "issuer_id"})
 	require.NoError(t, err)
-	var asset1 Asset
+	var asset1 tickerdb.Asset
 	err = session.GetRaw(&asset1, `
 		SELECT *
 		FROM assets
@@ -62,12 +63,12 @@ func TestBulkInsertTrades(t *testing.T) {
 	require.NoError(t, err)
 
 	// Adding another asset to be used later:
-	err = session.InsertOrUpdateAsset(&Asset{
+	err = session.InsertOrUpdateAsset(&tickerdb.Asset{
 		Code:     "BTC",
 		IssuerID: issuer.ID,
 	}, []string{"code", "issuer_id"})
 	require.NoError(t, err)
-	var asset2 Asset
+	var asset2 tickerdb.Asset
 	err = session.GetRaw(&asset2, `
 		SELECT *
 		FROM assets
@@ -80,14 +81,14 @@ func TestBulkInsertTrades(t *testing.T) {
 	assert.NotEqual(t, asset1.ID, asset2.ID)
 
 	// Now let's create the trades:
-	trades := []Trade{
-		Trade{
+	trades := []tickerdb.Trade{
+		tickerdb.Trade{
 			HorizonID:       "hrzid1",
 			BaseAssetID:     asset1.ID,
 			CounterAssetID:  asset2.ID,
 			LedgerCloseTime: time.Now(),
 		},
-		Trade{
+		tickerdb.Trade{
 			HorizonID:       "hrzid2",
 			BaseAssetID:     asset2.ID,
 			CounterAssetID:  asset1.ID,
@@ -123,7 +124,7 @@ func TestGetLastTrade(t *testing.T) {
 	db := dbtest.Postgres(t)
 	defer db.Close()
 
-	var session TickerSession
+	var session tickerdb.TickerSession
 	session.DB = db.Open()
 	session.Ctx = context.Background()
 	defer session.DB.Close()
@@ -131,7 +132,7 @@ func TestGetLastTrade(t *testing.T) {
 	// Run migrations to make sure the tests are run
 	// on the most updated schema version
 	migrations := &migrate.FileMigrationSource{
-		Dir: "./migrations",
+		Dir: "../migrations",
 	}
 	_, err := migrate.Exec(session.DB.DB, "postgres", migrations, migrate.Up)
 	require.NoError(t, err)
@@ -142,12 +143,12 @@ func TestGetLastTrade(t *testing.T) {
 
 	// Adding a seed issuer to be used later:
 	tbl := session.GetTable("issuers")
-	_, err = tbl.Insert(Issuer{
+	_, err = tbl.Insert(tickerdb.Issuer{
 		PublicKey: "GCF3TQXKZJNFJK7HCMNE2O2CUNKCJH2Y2ROISTBPLC7C5EIA5NNG2XZB",
 		Name:      "FOO BAR",
 	}).IgnoreCols("id").Exec()
 	require.NoError(t, err)
-	var issuer Issuer
+	var issuer tickerdb.Issuer
 	err = session.GetRaw(&issuer, `
 		SELECT *
 		FROM issuers
@@ -157,12 +158,12 @@ func TestGetLastTrade(t *testing.T) {
 	require.NoError(t, err)
 
 	// Adding a seed asset to be used later:
-	err = session.InsertOrUpdateAsset(&Asset{
+	err = session.InsertOrUpdateAsset(&tickerdb.Asset{
 		Code:     "XLM",
 		IssuerID: issuer.ID,
 	}, []string{"code", "issuer_id"})
 	require.NoError(t, err)
-	var asset1 Asset
+	var asset1 tickerdb.Asset
 	err = session.GetRaw(&asset1, `
 		SELECT *
 		FROM assets
@@ -172,12 +173,12 @@ func TestGetLastTrade(t *testing.T) {
 	require.NoError(t, err)
 
 	// Adding another asset to be used later:
-	err = session.InsertOrUpdateAsset(&Asset{
+	err = session.InsertOrUpdateAsset(&tickerdb.Asset{
 		Code:     "BTC",
 		IssuerID: issuer.ID,
 	}, []string{"code", "issuer_id"})
 	require.NoError(t, err)
-	var asset2 Asset
+	var asset2 tickerdb.Asset
 	err = session.GetRaw(&asset2, `
 		SELECT *
 		FROM assets
@@ -193,20 +194,20 @@ func TestGetLastTrade(t *testing.T) {
 	oneYearBefore := now.AddDate(-1, 0, 0)
 
 	// Now let's create the trades:
-	trades := []Trade{
-		Trade{
+	trades := []tickerdb.Trade{
+		tickerdb.Trade{
 			HorizonID:       "hrzid2",
 			BaseAssetID:     asset2.ID,
 			CounterAssetID:  asset1.ID,
 			LedgerCloseTime: oneYearBefore,
 		},
-		Trade{
+		tickerdb.Trade{
 			HorizonID:       "hrzid1",
 			BaseAssetID:     asset1.ID,
 			CounterAssetID:  asset2.ID,
 			LedgerCloseTime: now,
 		},
-		Trade{
+		tickerdb.Trade{
 			HorizonID:       "hrzid2",
 			BaseAssetID:     asset2.ID,
 			CounterAssetID:  asset1.ID,
@@ -227,7 +228,7 @@ func TestDeleteOldTrades(t *testing.T) {
 	db := dbtest.Postgres(t)
 	defer db.Close()
 
-	var session TickerSession
+	var session tickerdb.TickerSession
 	session.DB = db.Open()
 	session.Ctx = context.Background()
 	defer session.DB.Close()
@@ -235,19 +236,19 @@ func TestDeleteOldTrades(t *testing.T) {
 	// Run migrations to make sure the tests are run
 	// on the most updated schema version
 	migrations := &migrate.FileMigrationSource{
-		Dir: "./migrations",
+		Dir: "../migrations",
 	}
 	_, err := migrate.Exec(session.DB.DB, "postgres", migrations, migrate.Up)
 	require.NoError(t, err)
 
 	// Adding a seed issuer to be used later:
 	tbl := session.GetTable("issuers")
-	_, err = tbl.Insert(Issuer{
+	_, err = tbl.Insert(tickerdb.Issuer{
 		PublicKey: "GCF3TQXKZJNFJK7HCMNE2O2CUNKCJH2Y2ROISTBPLC7C5EIA5NNG2XZB",
 		Name:      "FOO BAR",
 	}).IgnoreCols("id").Exec()
 	require.NoError(t, err)
-	var issuer Issuer
+	var issuer tickerdb.Issuer
 	err = session.GetRaw(&issuer, `
 		SELECT *
 		FROM issuers
@@ -257,12 +258,12 @@ func TestDeleteOldTrades(t *testing.T) {
 	require.NoError(t, err)
 
 	// Adding a seed asset to be used later:
-	err = session.InsertOrUpdateAsset(&Asset{
+	err = session.InsertOrUpdateAsset(&tickerdb.Asset{
 		Code:     "XLM",
 		IssuerID: issuer.ID,
 	}, []string{"code", "issuer_id"})
 	require.NoError(t, err)
-	var asset1 Asset
+	var asset1 tickerdb.Asset
 	err = session.GetRaw(&asset1, `
 		SELECT *
 		FROM assets
@@ -272,12 +273,12 @@ func TestDeleteOldTrades(t *testing.T) {
 	require.NoError(t, err)
 
 	// Adding another asset to be used later:
-	err = session.InsertOrUpdateAsset(&Asset{
+	err = session.InsertOrUpdateAsset(&tickerdb.Asset{
 		Code:     "BTC",
 		IssuerID: issuer.ID,
 	}, []string{"code", "issuer_id"})
 	require.NoError(t, err)
-	var asset2 Asset
+	var asset2 tickerdb.Asset
 	err = session.GetRaw(&asset2, `
 		SELECT *
 		FROM assets
@@ -296,26 +297,26 @@ func TestDeleteOldTrades(t *testing.T) {
 	oneYearAgo := now.AddDate(-1, 0, 0)
 
 	// Now let's create the trades:
-	trades := []Trade{
-		Trade{
+	trades := []tickerdb.Trade{
+		tickerdb.Trade{
 			HorizonID:       "hrzid1",
 			BaseAssetID:     asset1.ID,
 			CounterAssetID:  asset2.ID,
 			LedgerCloseTime: now,
 		},
-		Trade{
+		tickerdb.Trade{
 			HorizonID:       "hrzid2",
 			BaseAssetID:     asset2.ID,
 			CounterAssetID:  asset1.ID,
 			LedgerCloseTime: oneDayAgo,
 		},
-		Trade{
+		tickerdb.Trade{
 			HorizonID:       "hrzid3",
 			BaseAssetID:     asset2.ID,
 			CounterAssetID:  asset1.ID,
 			LedgerCloseTime: oneMonthAgo,
 		},
-		Trade{
+		tickerdb.Trade{
 			HorizonID:       "hrzid4",
 			BaseAssetID:     asset2.ID,
 			CounterAssetID:  asset1.ID,
@@ -329,8 +330,8 @@ func TestDeleteOldTrades(t *testing.T) {
 	err = session.DeleteOldTrades(oneDayAgo)
 	require.NoError(t, err)
 
-	var dbTrades []Trade
-	var trade1, trade2 Trade
+	var dbTrades []tickerdb.Trade
+	var trade1, trade2 tickerdb.Trade
 	err = session.SelectRaw(&dbTrades, "SELECT * FROM trades")
 	require.NoError(t, err)
 	assert.Equal(t, 2, len(dbTrades))

@@ -313,7 +313,11 @@ func TestUpdate_notFound_properlyClosesDBConnections(t *testing.T) {
 		Address: "GCLLT3VG4F6EZAHZEBKWBWV5JGVPCVIKUCGTY3QEOAIZU5IJGMWCT2TT",
 	}
 
-	for range [5]int{} {
+	for range [2]int{} {
+		// If the database transaction is not being properly closed when
+		// returning an error, the execution will get stuck in the following
+		// line of code when the `Update` method tries to start a new DB
+		// transaction through `s.DB.Beginx()`:
 		err := store.Update(a)
 		assert.Equal(t, ErrNotFound, err)
 	}
