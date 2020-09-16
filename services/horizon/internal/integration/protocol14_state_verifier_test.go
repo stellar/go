@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/services/horizon/internal/txnbuild"
@@ -25,70 +24,49 @@ func TestProtocol14StateVerifier(t *testing.T) {
 		Sequence:  1,
 	}
 
-	// Transaction below creates a sponsorship sandwich sponsoring an account,
-	// it's trustline, offer, data and claimable balance created by it.
+	// The operations below create a sponsorship sandwich, sponsoring an
+	// account, its trustlines, offers, data, and claimable balances.
 	// TODO multiple signers and a sponsor at non-first position
-	master := itest.Master().(*keypair.Full)
-	tx, err := txnbuild.NewTransaction(
-		txnbuild.TransactionParams{
-			SourceAccount: &txnbuild.SimpleAccount{
-				AccountID: master.Address(),
-				Sequence:  1,
-			},
-			Operations: []txnbuild.Operation{
-				&txnbuild.BeginSponsoringFutureReserves{
-					SponsoredID: sponsored.Address(),
-				},
-				&txnbuild.CreateAccount{
-					Destination: sponsored.Address(),
-					Amount:      "100",
-				},
-				&txnbuild.ChangeTrust{
-					SourceAccount: sponsoredSource,
-					Line:          txnbuild.CreditAsset{"ABCD", master.Address()},
-					Limit:         txnbuild.MaxTrustlineLimit,
-				},
-				&txnbuild.ManageSellOffer{
-					SourceAccount: sponsoredSource,
-					Selling:       txnbuild.NativeAsset{},
-					Buying:        txnbuild.CreditAsset{"ABCD", master.Address()},
-					Amount:        "3",
-					Price:         "1",
-				},
-				&txnbuild.ManageData{
-					SourceAccount: sponsoredSource,
-					Name:          "test",
-					Value:         []byte("test"),
-				},
-				&txnbuild.CreateClaimableBalance{
-					SourceAccount: sponsoredSource,
-					Amount:        "2",
-					Asset:         txnbuild.NativeAsset{},
-					Destinations:  []string{keypair.MustRandom().Address()},
-				},
-				&txnbuild.EndSponsoringFutureReserves{
-					SourceAccount: sponsoredSource,
-				},
-			},
-			BaseFee:    txnbuild.MinBaseFee,
-			Timebounds: txnbuild.NewInfiniteTimeout(),
+	master := itest.Master()
+	ops := []txnbuild.Operation{
+		&txnbuild.BeginSponsoringFutureReserves{
+			SponsoredID: sponsored.Address(),
 		},
-	)
-	assert.NoError(t, err)
-	tx, err = tx.Sign(test.IntegrationNetworkPassphrase, master, sponsored)
-	assert.NoError(t, err)
-
-	txb64, err := tx.Base64()
-	assert.NoError(t, err)
-
-	txResp, err := itest.Client().SubmitTransactionXDR(txb64)
-	if !assert.NoError(t, err) {
-		horizonError := err.(*horizonclient.Error)
-		codes, _ := horizonError.ResultCodes()
-		envelope, _ := horizonError.EnvelopeXDR()
-		t.Logf("%+v", codes)
-		t.Logf("%+v", envelope)
+		&txnbuild.CreateAccount{
+			Destination: sponsored.Address(),
+			Amount:      "100",
+		},
+		&txnbuild.ChangeTrust{
+			SourceAccount: sponsoredSource,
+			Line:          txnbuild.CreditAsset{"ABCD", master.Address()},
+			Limit:         txnbuild.MaxTrustlineLimit,
+		},
+		&txnbuild.ManageSellOffer{
+			SourceAccount: sponsoredSource,
+			Selling:       txnbuild.NativeAsset{},
+			Buying:        txnbuild.CreditAsset{"ABCD", master.Address()},
+			Amount:        "3",
+			Price:         "1",
+		},
+		&txnbuild.ManageData{
+			SourceAccount: sponsoredSource,
+			Name:          "test",
+			Value:         []byte("test"),
+		},
+		&txnbuild.CreateClaimableBalance{
+			SourceAccount: sponsoredSource,
+			Amount:        "2",
+			Asset:         txnbuild.NativeAsset{},
+			Destinations: []txnbuild.Claimant{
+				txnbuild.NewClaimant(keypair.MustRandom().Address(), nil),
+			},
+		},
+		&txnbuild.EndSponsoringFutureReserves{
+			SourceAccount: sponsoredSource,
+		},
 	}
+	txResp, err := itest.SubmitMultiSigOperations(itest.MasterAccount(), []*keypair.Full{master, sponsored}, ops...)
+	assert.NoError(t, err)
 	assert.True(t, txResp.Successful)
 
 	// Wait for the first checkpoint ledger
