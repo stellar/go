@@ -130,11 +130,11 @@ func TestHappyClaimableBalances(t *testing.T) {
 		} {
 			t.Logf("  by non-native %+v", assetType)
 			randomAsset := createAsset(assetType, a.Address())
-			xdrAsset, err := randomAsset.ToXDR()
-			assert.NoError(t, err)
+			xdrAsset, innerErr := randomAsset.ToXDR()
+			assert.NoError(t, innerErr)
 
-			balances, err = client.ClaimableBalances(sdk.ClaimableBalanceRequest{Asset: xdrAsset.StringCanonical()})
-			assert.NoError(t, err)
+			balances, innerErr = client.ClaimableBalances(sdk.ClaimableBalanceRequest{Asset: xdrAsset.StringCanonical()})
+			assert.NoError(t, innerErr)
 			assert.Len(t, balances.Embedded.Records, 0)
 		}
 
