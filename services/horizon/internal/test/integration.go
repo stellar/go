@@ -201,16 +201,10 @@ func (i *IntegrationTest) Master() *keypair.Full {
 }
 
 func (i *IntegrationTest) MasterAccount() txnbuild.Account {
-	master := i.Master()
-	client := i.Client()
-
+	master, client := i.Master(), i.Client()
 	request := sdk.AccountRequest{AccountID: master.Address()}
 	account, err := client.AccountDetail(request)
-	if err == nil {
-		return &txnbuild.SimpleAccount{AccountID: master.Address(), Sequence: 0}
-	} else {
-		return &account
-	}
+	return &account
 }
 
 func (i *IntegrationTest) CurrentTest() *testing.T {
