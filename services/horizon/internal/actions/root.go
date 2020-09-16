@@ -30,6 +30,7 @@ func (handler GetRootHandler) GetResource(w HeaderWriter, r *http.Request) (inte
 	var res horizon.Root
 	templates := map[string]string{
 		"accounts":           AccountsQuery{}.URITemplate(),
+		"claimableBalances":  ClaimableBalancesQuery{}.URITemplate(),
 		"offers":             OffersQuery{}.URITemplate(),
 		"strictReceivePaths": StrictReceivePathsQuery{}.URITemplate(),
 		"strictSendPaths":    FindFixedPathsQuery{}.URITemplate(),
