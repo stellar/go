@@ -1477,9 +1477,7 @@ func TestOperationEffects(t *testing.T) {
 
 			effects, err := operation.effects()
 			tt.NoError(err)
-			if !tt.Equal(tc.expected, effects) {
-				t.Log("break")
-			}
+			tt.Equal(tc.expected, effects)
 		})
 	}
 }
@@ -1945,7 +1943,7 @@ func (s *CreateClaimableBalanceEffectsTestSuite) TestEffects() {
 				{
 					address: "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
 					details: map[string]interface{}{
-						"asset_type": "native",
+						"asset":      "native",
 						"amount":     "10.0000000",
 						"balance_id": "00000000da0d57da7d4850e7fc10d2a9d0ebc731f7afb40574c03395b17d49149b91f5be",
 					},
@@ -1956,7 +1954,7 @@ func (s *CreateClaimableBalanceEffectsTestSuite) TestEffects() {
 				{
 					address: "GD5OVB6FKDV7P7SOJ5UB2BPLBL4XGSHPYHINR5355SY3RSXLT2BZWAKY",
 					details: map[string]interface{}{
-						"asset_type": "native",
+						"asset":      "native",
 						"amount":     "10.0000000",
 						"balance_id": "00000000da0d57da7d4850e7fc10d2a9d0ebc731f7afb40574c03395b17d49149b91f5be",
 						"predicate":  xdr.ClaimPredicate{Type: xdr.ClaimPredicateTypeClaimPredicateUnconditional},
@@ -1984,11 +1982,9 @@ func (s *CreateClaimableBalanceEffectsTestSuite) TestEffects() {
 				{
 					address: "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
 					details: map[string]interface{}{
-						"asset_code":   "USD",
-						"asset_type":   "credit_alphanum4",
-						"asset_issuer": "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
-						"amount":       "20.0000000",
-						"balance_id":   "00000000b1dc5f43c36bd51e7d20338ad0babd0394afcd36a611fc385d9a84bce0ea3d43",
+						"asset":      "USD:GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
+						"amount":     "20.0000000",
+						"balance_id": "00000000b1dc5f43c36bd51e7d20338ad0babd0394afcd36a611fc385d9a84bce0ea3d43",
 					},
 					effectType:  history.EffectClaimableBalanceCreated,
 					operationID: int64(4294967298),
@@ -1997,12 +1993,10 @@ func (s *CreateClaimableBalanceEffectsTestSuite) TestEffects() {
 				{
 					address: "GDMQUXK7ZUCWM5472ZU3YLDP4BMJLQQ76DEMNYDEY2ODEEGGRKLEWGW2",
 					details: map[string]interface{}{
-						"asset_code":   "USD",
-						"asset_type":   "credit_alphanum4",
-						"asset_issuer": "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
-						"amount":       "20.0000000",
-						"balance_id":   "00000000b1dc5f43c36bd51e7d20338ad0babd0394afcd36a611fc385d9a84bce0ea3d43",
-						"predicate":    xdr.ClaimPredicate{Type: xdr.ClaimPredicateTypeClaimPredicateUnconditional},
+						"asset":      "USD:GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
+						"amount":     "20.0000000",
+						"balance_id": "00000000b1dc5f43c36bd51e7d20338ad0babd0394afcd36a611fc385d9a84bce0ea3d43",
+						"predicate":  xdr.ClaimPredicate{Type: xdr.ClaimPredicateTypeClaimPredicateUnconditional},
 					},
 					effectType:  history.EffectClaimableBalanceClaimantCreated,
 					operationID: int64(4294967298),
@@ -2011,12 +2005,10 @@ func (s *CreateClaimableBalanceEffectsTestSuite) TestEffects() {
 				{
 					address: "GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3",
 					details: map[string]interface{}{
-						"asset_code":   "USD",
-						"asset_type":   "credit_alphanum4",
-						"asset_issuer": "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
-						"amount":       "20.0000000",
-						"balance_id":   "00000000b1dc5f43c36bd51e7d20338ad0babd0394afcd36a611fc385d9a84bce0ea3d43",
-						"predicate":    xdr.ClaimPredicate{Type: xdr.ClaimPredicateTypeClaimPredicateUnconditional},
+						"asset":      "USD:GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
+						"amount":     "20.0000000",
+						"balance_id": "00000000b1dc5f43c36bd51e7d20338ad0babd0394afcd36a611fc385d9a84bce0ea3d43",
+						"predicate":  xdr.ClaimPredicate{Type: xdr.ClaimPredicateTypeClaimPredicateUnconditional},
 					},
 					effectType:  history.EffectClaimableBalanceClaimantCreated,
 					operationID: int64(4294967298),
@@ -2240,7 +2232,7 @@ func (s *ClaimClaimableBalanceEffectsTestSuite) TestEffects() {
 				{
 					address: "GD5OVB6FKDV7P7SOJ5UB2BPLBL4XGSHPYHINR5355SY3RSXLT2BZWAKY",
 					details: map[string]interface{}{
-						"asset_type": "native",
+						"asset":      "native",
 						"amount":     "10.0000000",
 						"balance_id": "00000000da0d57da7d4850e7fc10d2a9d0ebc731f7afb40574c03395b17d49149b91f5be",
 					},
@@ -2267,11 +2259,9 @@ func (s *ClaimClaimableBalanceEffectsTestSuite) TestEffects() {
 				{
 					address: "GDMQUXK7ZUCWM5472ZU3YLDP4BMJLQQ76DEMNYDEY2ODEEGGRKLEWGW2",
 					details: map[string]interface{}{
-						"asset_code":   "USD",
-						"asset_type":   "credit_alphanum4",
-						"asset_issuer": "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
-						"amount":       "20.0000000",
-						"balance_id":   "00000000b1dc5f43c36bd51e7d20338ad0babd0394afcd36a611fc385d9a84bce0ea3d43",
+						"asset":      "USD:GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
+						"amount":     "20.0000000",
+						"balance_id": "00000000b1dc5f43c36bd51e7d20338ad0babd0394afcd36a611fc385d9a84bce0ea3d43",
 					},
 					effectType:  history.EffectClaimableBalanceClaimed,
 					operationID: int64(4294967298),
@@ -2280,10 +2270,10 @@ func (s *ClaimClaimableBalanceEffectsTestSuite) TestEffects() {
 				{
 					address: "GDMQUXK7ZUCWM5472ZU3YLDP4BMJLQQ76DEMNYDEY2ODEEGGRKLEWGW2",
 					details: map[string]interface{}{
+						"amount":       "20.0000000",
 						"asset_code":   "USD",
 						"asset_type":   "credit_alphanum4",
 						"asset_issuer": "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
-						"amount":       "20.0000000",
 					},
 					effectType:  history.EffectAccountCredited,
 					operationID: int64(4294967298),

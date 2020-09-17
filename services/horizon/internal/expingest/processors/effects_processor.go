@@ -814,13 +814,14 @@ func (e *effectsWrapper) addCreateClaimableBalanceEffects() error {
 		)
 	}
 
+	details := map[string]interface{}{
+		"amount": amount.String(op.Amount),
+	}
+	addAssetDetails(details, op.Asset, "")
 	e.add(
 		e.operation.SourceAccount().Address(),
 		history.EffectAccountDebited,
-		map[string]interface{}{
-			"amount": amount.String(op.Amount),
-			"asset":  op.Asset.StringCanonical(),
-		},
+		details,
 	)
 
 	return nil
@@ -875,13 +876,14 @@ func (e *effectsWrapper) addClaimClaimableBalanceEffects() error {
 		},
 	)
 
+	details := map[string]interface{}{
+		"amount": amount.String(cBalance.Amount),
+	}
+	addAssetDetails(details, cBalance.Asset, "")
 	e.add(
 		e.operation.SourceAccount().Address(),
 		history.EffectAccountCredited,
-		map[string]interface{}{
-			"amount": amount.String(cBalance.Amount),
-			"asset":  cBalance.Asset.StringCanonical(),
-		},
+		details,
 	)
 
 	return nil
