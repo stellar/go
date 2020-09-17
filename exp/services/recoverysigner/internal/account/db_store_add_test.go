@@ -161,3 +161,30 @@ func TestAdd_conflict(t *testing.T) {
 	err = store.Add(a)
 	assert.Equal(t, ErrAlreadyExists, err)
 }
+
+func TestAdd_conflict_properlyClosesDBConnections(t *testing.T) {
+	db := dbtest.Open(t)
+	session := db.Open()
+	session.SetMaxIdleConns(1)
+	session.SetMaxOpenConns(1)
+
+	store := DBStore{
+		DB: session,
+	}
+
+	a := Account{
+		Address: "GCLLT3VG4F6EZAHZEBKWBWV5JGVPCVIKUCGTY3QEOAIZU5IJGMWCT2TT",
+	}
+
+	err := store.Add(a)
+	require.NoError(t, err)
+
+	for range [2]int{} {
+		// If the database transaction is not being properly closed when
+		// returning an error, the execution will get stuck in the following
+		// line of code when the `Add` method tries to start a new DB
+		// transaction through `s.DB.Beginx()`:
+		err = store.Add(a)
+		require.Equal(t, ErrAlreadyExists, err)
+	}
+}

@@ -7,6 +7,7 @@ func (s *DBStore) Add(a Account) error {
 	if err != nil {
 		return err
 	}
+	defer tx.Rollback()
 
 	accountID := int64(0)
 	err = tx.Get(&accountID, `

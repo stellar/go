@@ -1,9 +1,10 @@
 package internal
 
 import (
-	"github.com/stellar/go/txnbuild"
 	"sync"
 	"testing"
+
+	"github.com/stellar/go/txnbuild"
 
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
@@ -38,13 +39,14 @@ func TestFriendbot_Pay(t *testing.T) {
 			AccountID: minionKeypair.Address(),
 			Sequence:  1,
 		},
-		Keypair:           minionKeypair.(*keypair.Full),
-		BotAccount:        botAccount,
-		BotKeypair:        botKeypair.(*keypair.Full),
-		Network:           "Test SDF Network ; September 2015",
-		StartingBalance:   "10000.00",
-		SubmitTransaction: mockSubmitTransaction,
-		BaseFee:           txnbuild.MinBaseFee,
+		Keypair:              minionKeypair.(*keypair.Full),
+		BotAccount:           botAccount,
+		BotKeypair:           botKeypair.(*keypair.Full),
+		Network:              "Test SDF Network ; September 2015",
+		StartingBalance:      "10000.00",
+		SubmitTransaction:    mockSubmitTransaction,
+		CheckSequenceRefresh: CheckSequenceRefresh,
+		BaseFee:              txnbuild.MinBaseFee,
 	}
 	fb := &Bot{Minions: []Minion{minion}}
 

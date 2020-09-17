@@ -744,7 +744,7 @@ func NewFeeBumpTransaction(params FeeBumpTransactionParams) (*FeeBumpTransaction
 // BuildChallengeTx is a factory method that creates a valid SEP 10 challenge, for use in web authentication.
 // "timebound" is the time duration the transaction should be valid for, and must be greater than 1s (300s is recommended).
 // More details on SEP 10: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0010.md
-func BuildChallengeTx(serverSignerSecret, clientAccountID, anchorName, network string, timebound time.Duration) (*Transaction, error) {
+func BuildChallengeTx(serverSignerSecret, clientAccountID, homeDomain, network string, timebound time.Duration) (*Transaction, error) {
 	if timebound < time.Second {
 		return nil, errors.New("provided timebound must be at least 1s (300s is recommended)")
 	}
@@ -792,7 +792,7 @@ func BuildChallengeTx(serverSignerSecret, clientAccountID, anchorName, network s
 			Operations: []Operation{
 				&ManageData{
 					SourceAccount: &ca,
-					Name:          anchorName + " auth",
+					Name:          homeDomain + " auth",
 					Value:         []byte(randomNonceToString),
 				},
 			},
@@ -827,14 +827,22 @@ func generateRandomNonce(n int) ([]byte, error) {
 // ReadChallengeTx reads a SEP 10 challenge transaction and returns the decoded
 // transaction and client account ID contained within.
 //
-// It also verifies that transaction is signed by the server.
+// Before calling this function, retrieve the SIGNING_KEY included in the TOML file
+// hosted on the service's homeDomain and ensure it matches the serverAccountID you
+// intend to pass.
+//
+// This function verifies that the home domain passed is included in the Manage Data
+// operation key and that the serverAccountID signed the challenge. If the
+// serverAccountID also matches the SIGNING_KEY included in the TOML file hosted the
+// service's homeDomain passed, malicious web services will not be able to use the
+// challenge transaction POSTed back to the authentication endpoint.
 //
 // It does not verify that the transaction has been signed by the client or
 // that any signatures other than the servers on the transaction are valid. Use
 // one of the following functions to completely verify the transaction:
 // - VerifyChallengeTxThreshold
 // - VerifyChallengeTxSigners
-func ReadChallengeTx(challengeTx, serverAccountID, network string) (tx *Transaction, clientAccountID string, err error) {
+func ReadChallengeTx(challengeTx, serverAccountID, network, homeDomain string) (tx *Transaction, clientAccountID string, err error) {
 	parsed, err := TransactionFromXDR(challengeTx)
 	if err != nil {
 		return tx, clientAccountID, errors.Wrap(err, "could not parse challenge")
@@ -891,6 +899,11 @@ func ReadChallengeTx(challengeTx, serverAccountID, network string) (tx *Transact
 		return tx, clientAccountID, err
 	}
 
+	// verify manage data key
+	if op.Name != homeDomain+" auth" {
+		return tx, clientAccountID, errors.New("manage data operation key does not match homeDomain passed")
+	}
+
 	// verify manage data value
 	nonceB64 := string(op.Value)
 	if len(nonceB64) != 64 {
@@ -928,13 +941,13 @@ func ReadChallengeTx(challengeTx, serverAccountID, network string) (tx *Transact
 //  - One or more signatures in the transaction are not identifiable as the
 //    server account or one of the signers provided in the arguments.
 //  - The signatures are all valid but do not meet the threshold.
-func VerifyChallengeTxThreshold(challengeTx, serverAccountID, network string, threshold Threshold, signerSummary SignerSummary) (signersFound []string, err error) {
+func VerifyChallengeTxThreshold(challengeTx, serverAccountID, network, homeDomain string, threshold Threshold, signerSummary SignerSummary) (signersFound []string, err error) {
 	signers := make([]string, 0, len(signerSummary))
 	for s := range signerSummary {
 		signers = append(signers, s)
 	}
 
-	signersFound, err = VerifyChallengeTxSigners(challengeTx, serverAccountID, network, signers...)
+	signersFound, err = VerifyChallengeTxSigners(challengeTx, serverAccountID, network, homeDomain, signers...)
 	if err != nil {
 		return nil, err
 	}
@@ -967,9 +980,9 @@ func VerifyChallengeTxThreshold(challengeTx, serverAccountID, network string, th
 //  - No client signatures are found on the transaction.
 //  - One or more signatures in the transaction are not identifiable as the
 //    server account or one of the signers provided in the arguments.
-func VerifyChallengeTxSigners(challengeTx, serverAccountID, network string, signers ...string) ([]string, error) {
+func VerifyChallengeTxSigners(challengeTx, serverAccountID, network, homeDomain string, signers ...string) ([]string, error) {
 	// Read the transaction which validates its structure.
-	tx, _, err := ReadChallengeTx(challengeTx, serverAccountID, network)
+	tx, _, err := ReadChallengeTx(challengeTx, serverAccountID, network, homeDomain)
 	if err != nil {
 		return nil, err
 	}

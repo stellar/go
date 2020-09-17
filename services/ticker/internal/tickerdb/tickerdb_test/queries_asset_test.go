@@ -1,4 +1,4 @@
-package tickerdb
+package tickerdb_test
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 
 	_ "github.com/lib/pq"
 	migrate "github.com/rubenv/sql-migrate"
+	"github.com/stellar/go/services/ticker/internal/tickerdb"
 	"github.com/stellar/go/support/db/dbtest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -16,7 +17,7 @@ func TestInsertOrUpdateAsset(t *testing.T) {
 	db := dbtest.Postgres(t)
 	defer db.Close()
 
-	var session TickerSession
+	var session tickerdb.TickerSession
 	session.DB = db.Open()
 	session.Ctx = context.Background()
 	defer session.DB.Close()
@@ -24,7 +25,7 @@ func TestInsertOrUpdateAsset(t *testing.T) {
 	// Run migrations to make sure the tests are run
 	// on the most updated schema version
 	migrations := &migrate.FileMigrationSource{
-		Dir: "./migrations",
+		Dir: "../migrations",
 	}
 	_, err := migrate.Exec(session.DB.DB, "postgres", migrations, migrate.Up)
 	require.NoError(t, err)
@@ -35,14 +36,14 @@ func TestInsertOrUpdateAsset(t *testing.T) {
 	code := "XLM"
 
 	// Adding a seed issuer to be used later:
-	issuer := Issuer{
+	issuer := tickerdb.Issuer{
 		PublicKey: publicKey,
 		Name:      name,
 	}
 	tbl := session.GetTable("issuers")
 	_, err = tbl.Insert(issuer).IgnoreCols("id").Exec()
 	require.NoError(t, err)
-	var dbIssuer Issuer
+	var dbIssuer tickerdb.Issuer
 	err = session.GetRaw(&dbIssuer, `
 		SELECT *
 		FROM issuers
@@ -54,7 +55,7 @@ func TestInsertOrUpdateAsset(t *testing.T) {
 	// Creating first asset:
 	firstTime := time.Now()
 	t.Log("firstTime:", firstTime)
-	a := Asset{
+	a := tickerdb.Asset{
 		Code:          code,
 		IssuerAccount: issuerAccount,
 		IssuerID:      dbIssuer.ID,
@@ -64,7 +65,7 @@ func TestInsertOrUpdateAsset(t *testing.T) {
 	err = session.InsertOrUpdateAsset(&a, []string{"code", "issuer_account", "issuer_id"})
 	require.NoError(t, err)
 
-	var dbAsset1 Asset
+	var dbAsset1 tickerdb.Asset
 	err = session.GetRaw(&dbAsset1, `
 		SELECT *
 		FROM assets
@@ -87,7 +88,7 @@ func TestInsertOrUpdateAsset(t *testing.T) {
 		dbAsset1.LastChecked.Local().Round(time.Millisecond),
 	)
 
-	// Creating Seconde Asset:
+	// Creating second Asset:
 	secondTime := time.Now()
 	t.Log("secondTime:", secondTime)
 	a.LastValid = secondTime
@@ -95,7 +96,7 @@ func TestInsertOrUpdateAsset(t *testing.T) {
 	err = session.InsertOrUpdateAsset(&a, []string{"code", "issuer_account", "issuer_id"})
 	require.NoError(t, err)
 
-	var dbAsset2 Asset
+	var dbAsset2 tickerdb.Asset
 	err = session.GetRaw(&dbAsset2, `
 		SELECT *
 		FROM assets
@@ -129,7 +130,7 @@ func TestInsertOrUpdateAsset(t *testing.T) {
 	a.LastChecked = thirdTime
 	err = session.InsertOrUpdateAsset(&a, []string{"code", "issuer_id", "last_valid", "last_checked", "issuer_account"})
 	require.NoError(t, err)
-	var dbAsset3 Asset
+	var dbAsset3 tickerdb.Asset
 	err = session.GetRaw(&dbAsset3, `
 		SELECT *
 		FROM assets
@@ -160,7 +161,7 @@ func TestGetAssetByCodeAndIssuerAccount(t *testing.T) {
 	db := dbtest.Postgres(t)
 	defer db.Close()
 
-	var session TickerSession
+	var session tickerdb.TickerSession
 	session.DB = db.Open()
 	session.Ctx = context.Background()
 	defer session.DB.Close()
@@ -168,7 +169,7 @@ func TestGetAssetByCodeAndIssuerAccount(t *testing.T) {
 	// Run migrations to make sure the tests are run
 	// on the most updated schema version
 	migrations := &migrate.FileMigrationSource{
-		Dir: "./migrations",
+		Dir: "../migrations",
 	}
 	_, err := migrate.Exec(session.DB.DB, "postgres", migrations, migrate.Up)
 	require.NoError(t, err)
@@ -179,14 +180,14 @@ func TestGetAssetByCodeAndIssuerAccount(t *testing.T) {
 	issuerAccount := "AM2FQXKZJNFJK7HCMNE2O2CUNKCJH2Y2ROISTBPLC7C5EIA5NNG2XZB"
 
 	// Adding a seed issuer to be used later:
-	issuer := Issuer{
+	issuer := tickerdb.Issuer{
 		PublicKey: publicKey,
 		Name:      name,
 	}
 	tbl := session.GetTable("issuers")
 	_, err = tbl.Insert(issuer).IgnoreCols("id").Exec()
 	require.NoError(t, err)
-	var dbIssuer Issuer
+	var dbIssuer tickerdb.Issuer
 	err = session.GetRaw(&dbIssuer, `
 		SELECT *
 		FROM issuers
@@ -197,7 +198,7 @@ func TestGetAssetByCodeAndIssuerAccount(t *testing.T) {
 
 	// Creating first asset:
 	firstTime := time.Now()
-	a := Asset{
+	a := tickerdb.Asset{
 		Code:          code,
 		IssuerAccount: issuerAccount,
 		IssuerID:      dbIssuer.ID,
@@ -207,7 +208,7 @@ func TestGetAssetByCodeAndIssuerAccount(t *testing.T) {
 	err = session.InsertOrUpdateAsset(&a, []string{"code", "issuer_account", "issuer_id"})
 	require.NoError(t, err)
 
-	var dbAsset Asset
+	var dbAsset tickerdb.Asset
 	err = session.GetRaw(&dbAsset, `
 		SELECT *
 		FROM assets
