@@ -74,6 +74,7 @@ func NewServer(serverConfig ServerConfig, routerConfig RouterConfig) (*Server, e
 	result := &Server{
 		Router:  router,
 		Metrics: sm,
+		config:  serverConfig,
 		server: &http.Server{
 			Addr:        addr,
 			Handler:     router,
