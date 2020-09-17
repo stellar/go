@@ -369,7 +369,7 @@ func (e *effectsWrapper) addLedgerEntrySponsorshipEffects(change io.Change) erro
 	case xdr.LedgerEntryTypeTrustline:
 		aid := data.MustTrustLine().AccountId
 		accountAddress = aid.Address()
-		addAssetDetails(details, data.MustTrustLine().Asset, "")
+		details["asset"] = data.MustTrustLine().Asset.StringCanonical()
 	case xdr.LedgerEntryTypeClaimableBalance:
 		accountAddress = e.operation.SourceAccount().Address()
 		var err error
@@ -790,40 +790,37 @@ func (e *effectsWrapper) addCreateClaimableBalanceEffects() error {
 		return errors.Wrapf(err, "Invalid balanceId in op: %d", e.operation.index)
 	}
 
-	details := map[string]interface{}{
-		"balance_id": balanceID,
-		"amount":     amount.String(op.Amount),
-	}
-	addAssetDetails(details, op.Asset, "")
 	e.add(
 		e.operation.SourceAccount().Address(),
 		history.EffectClaimableBalanceCreated,
-		details,
+		map[string]interface{}{
+			"balance_id": balanceID,
+			"amount":     amount.String(op.Amount),
+			"asset":      op.Asset.StringCanonical(),
+		},
 	)
 
 	for _, c := range op.Claimants {
 		cv0 := c.MustV0()
-		details = map[string]interface{}{
-			"balance_id": balanceID,
-			"amount":     amount.String(op.Amount),
-			"predicate":  cv0.Predicate,
-		}
-		addAssetDetails(details, op.Asset, "")
 		e.add(
 			cv0.Destination.Address(),
 			history.EffectClaimableBalanceClaimantCreated,
-			details,
+			map[string]interface{}{
+				"balance_id": balanceID,
+				"amount":     amount.String(op.Amount),
+				"predicate":  cv0.Predicate,
+				"asset":      op.Asset.StringCanonical(),
+			},
 		)
 	}
 
-	details = map[string]interface{}{
-		"amount": amount.String(op.Amount),
-	}
-	addAssetDetails(details, op.Asset, "")
 	e.add(
 		e.operation.SourceAccount().Address(),
 		history.EffectAccountDebited,
-		details,
+		map[string]interface{}{
+			"amount": amount.String(op.Amount),
+			"asset":  op.Asset.StringCanonical(),
+		},
 	)
 
 	return nil
@@ -868,25 +865,23 @@ func (e *effectsWrapper) addClaimClaimableBalanceEffects() error {
 		return fmt.Errorf("Change not found for balanceId : %s", balanceID)
 	}
 
-	details := map[string]interface{}{
-		"amount":     amount.String(cBalance.Amount),
-		"balance_id": balanceID,
-	}
-	addAssetDetails(details, cBalance.Asset, "")
 	e.add(
 		e.operation.SourceAccount().Address(),
 		history.EffectClaimableBalanceClaimed,
-		details,
+		map[string]interface{}{
+			"amount":     amount.String(cBalance.Amount),
+			"balance_id": balanceID,
+			"asset":      cBalance.Asset.StringCanonical(),
+		},
 	)
 
-	details = map[string]interface{}{
-		"amount": amount.String(cBalance.Amount),
-	}
-	addAssetDetails(details, cBalance.Asset, "")
 	e.add(
 		e.operation.SourceAccount().Address(),
 		history.EffectAccountCredited,
-		details,
+		map[string]interface{}{
+			"amount": amount.String(cBalance.Amount),
+			"asset":  cBalance.Asset.StringCanonical(),
+		},
 	)
 
 	return nil

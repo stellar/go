@@ -349,21 +349,21 @@ type Trade struct {
 
 type ClaimableBalanceCreated struct {
 	Base
-	base.Asset
+	Asset     string `json:"asset"`
 	BalanceID string `json:"balance_id"`
 	Amount    string `json:"amount"`
 }
 
 type ClaimableBalanceClaimed struct {
 	Base
-	base.Asset
+	Asset     string `json:"asset"`
 	BalanceID string `json:"balance_id"`
 	Amount    string `json:"amount"`
 }
 
 type ClaimableBalanceClaimantCreated struct {
 	Base
-	base.Asset
+	Asset     string             `json:"asset"`
 	BalanceID string             `json:"balance_id"`
 	Amount    string             `json:"amount"`
 	Predicate xdr.ClaimPredicate `json:"predicate"`
@@ -387,20 +387,20 @@ type AccountSponsorshipRemoved struct {
 
 type TrustlineSponsorshipCreated struct {
 	Base
-	base.Asset
+	Asset   string `json:"asset"`
 	Sponsor string `json:"sponsor"`
 }
 
 type TrustlineSponsorshipUpdated struct {
 	Base
-	base.Asset
+	Asset         string `json:"asset"`
 	FormerSponsor string `json:"former_sponsor"`
 	NewSponsor    string `json:"new_sponsor"`
 }
 
 type TrustlineSponsorshipRemoved struct {
 	Base
-	base.Asset
+	Asset         string `json:"asset"`
 	FormerSponsor string `json:"former_sponsor"`
 }
 
