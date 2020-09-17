@@ -3,9 +3,12 @@ package integration
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	sdk "github.com/stellar/go/clients/horizonclient"
 	proto "github.com/stellar/go/protocols/horizon"
+	"github.com/stellar/go/protocols/horizon/operations"
+	"github.com/stellar/go/services/horizon/internal/codes"
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/services/horizon/internal/txnbuild"
 	"github.com/stellar/go/xdr"
@@ -257,6 +260,120 @@ func TestHappyClaimableBalances(t *testing.T) {
 			assert.True(t, foundBalance)
 		})
 	}
+
+	t.Run("Predicates", func(t *testing.T) {
+		now := time.Now().Unix()
+		minute := int64(60 * 60)
+
+		//
+		// All of these predicates should succeed with no issues.
+		//
+		for description, predicate := range map[string]xdr.ClaimPredicate{
+			"None":          txnbuild.UnconditionalPredicate,
+			"BeforeAbsTime": txnbuild.BeforeAbsoluteTimePredicate(now + minute), // full minute to claim
+			"BeforeRelTime": txnbuild.BeforeRelativeTimePredicate(minute),
+			"BeforeBoth": txnbuild.AndPredicate(
+				txnbuild.BeforeAbsoluteTimePredicate(now+minute),
+				txnbuild.BeforeRelativeTimePredicate(minute),
+			),
+			"BeforeEither": txnbuild.OrPredicate(
+				txnbuild.BeforeAbsoluteTimePredicate(now+minute),
+				txnbuild.BeforeRelativeTimePredicate(minute),
+			),
+		} {
+			t.Run(description, func(t *testing.T) {
+				t.Logf("Creating claimable balance (asset=native).")
+				t.Logf("  predicate: %+v", predicate.Type)
+
+				claim := itest.MustCreateClaimableBalance(
+					a, txnbuild.NativeAsset{}, "42",
+					txnbuild.NewClaimant(b.Address(), &predicate))
+
+				t.Logf("Claiming balance (ID=%s)...", claim.BalanceID)
+				_, err := itest.SubmitOperations(accountB, b,
+					&txnbuild.ClaimClaimableBalance{BalanceID: claim.BalanceID})
+				assert.NoError(t, err)
+				t.Log("  claimed")
+
+				balances, err := client.ClaimableBalances(sdk.ClaimableBalanceRequest{Sponsor: a.Address()})
+				assert.NoError(t, err)
+				assert.Len(t, balances.Embedded.Records, 0)
+				t.Log("  gone")
+			})
+		}
+	})
+}
+
+func TestComplexPredicates(t *testing.T) {
+	itest := test.NewIntegrationTest(t, protocol14Config)
+	defer itest.Close()
+	_, client := itest.Master(), itest.Client()
+
+	// Create a couple of accounts to test the interactions.
+	keys, accounts := itest.CreateAccounts(3, "1000")
+	a, b, _ := keys[0], keys[1], keys[2]
+	_, accountB, _ := accounts[0], accounts[1], accounts[2]
+
+	// This is an easy fail.
+	predicate := txnbuild.NotPredicate(&txnbuild.UnconditionalPredicate)
+	t.Run("AlwaysFail", func(t *testing.T) {
+		t.Logf("Creating claimable balance (asset=native).")
+		t.Logf("  predicate: %+v", predicate.Type)
+
+		claim := itest.MustCreateClaimableBalance(
+			a, txnbuild.NativeAsset{}, "42",
+			txnbuild.NewClaimant(b.Address(), &predicate))
+
+		t.Logf("Claiming balance (ID=%s)...", claim.BalanceID)
+		_, err := itest.SubmitOperations(accountB, b,
+			&txnbuild.ClaimClaimableBalance{BalanceID: claim.BalanceID})
+		assert.Error(t, err)
+
+		// Ensure it failed w/ the right error code:
+		//  CLAIM_CLAIMABLE_BALANCE_CANNOT_CLAIM
+		expectedResultCode, _ := codes.String(xdr.ClaimClaimableBalanceResultCodeClaimClaimableBalanceCannotClaim)
+
+		// wtf is this tbh
+		resultCodes := sdk.GetError(err).Problem.Extras["result_codes"].(map[string]interface{})
+		opResultCodes := resultCodes["operations"].([]interface{})
+		assert.Equal(t, expectedResultCode, opResultCodes[0].(string))
+		t.Logf("  tx did fail w/ %s", expectedResultCode)
+
+		// check that /operations also has the claim as failed
+		response, err := client.Operations(sdk.OperationRequest{
+			Order:         "desc",
+			Limit:         1,
+			IncludeFailed: true,
+		})
+		ops := response.Embedded.Records
+		assert.NoError(t, err)
+		assert.Len(t, ops, 1)
+
+		cb := ops[0].(operations.ClaimClaimableBalance)
+		assert.False(t, cb.TransactionSuccessful)
+		assert.Equal(t, claim.BalanceID, cb.BalanceID)
+		assert.Equal(t, b.Address(), cb.Claimant)
+		t.Log("  op did fail")
+	})
+
+	// This one fails because of an expiring claim.
+	predicate = txnbuild.BeforeRelativeTimePredicate(1)
+	t.Run("Expire", func(t *testing.T) {
+		t.Logf("Creating claimable balance (asset=native).")
+		t.Logf("  predicate: %+v", predicate.Type)
+
+		claim := itest.MustCreateClaimableBalance(
+			a, txnbuild.NativeAsset{}, "42",
+			txnbuild.NewClaimant(b.Address(), &predicate))
+
+		oneSec, err := time.ParseDuration("1s")
+		time.Sleep(oneSec)
+
+		t.Logf("Claiming balance (ID=%s)...", claim.BalanceID)
+		_, err = itest.SubmitOperations(accountB, b,
+			&txnbuild.ClaimClaimableBalance{BalanceID: claim.BalanceID})
+		assert.Error(t, err)
+	})
 }
 
 /* Utility functions below */

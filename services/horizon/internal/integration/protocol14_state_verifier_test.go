@@ -83,7 +83,7 @@ func TestProtocol14StateVerifier(t *testing.T) {
 
 	// Wait for the first checkpoint ledger
 	for !itest.LedgerIngested(63) {
-		fmt.Println("63 not closed yet...")
+		t.Log("First checkpoint ledger (63) not closed yet...")
 		time.Sleep(5 * time.Second)
 	}
 
@@ -91,7 +91,7 @@ func TestProtocol14StateVerifier(t *testing.T) {
 
 	// Check metrics until state verification run
 	for i := 0; i < 60; i++ {
-		fmt.Printf("Checking metrics (%d attempt)\n", i)
+		t.Logf("Checking metrics (%d attempt)\n", i)
 		res, err := http.Get(fmt.Sprintf("http://localhost:%d/metrics", itest.AdminPort()))
 		assert.NoError(t, err)
 
