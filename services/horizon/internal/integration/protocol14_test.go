@@ -1,10 +1,11 @@
 package integration
 
 import (
+	"fmt"
 	"testing"
 
 	sdk "github.com/stellar/go/clients/horizonclient"
-	"github.com/stellar/go/keypair"
+	proto "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/services/horizon/internal/txnbuild"
 	"github.com/stellar/go/xdr"
@@ -13,278 +14,292 @@ import (
 
 var protocol14Config = test.IntegrationConfig{ProtocolVersion: 14}
 
-func TestProtocol14SanityCheck(t *testing.T) {
+func TestProtocol14Basics(t *testing.T) {
 	itest := test.NewIntegrationTest(t, protocol14Config)
 	defer itest.Close()
 	master := itest.Master()
 
-	root, err := itest.Client().Root()
-	assert.NoError(t, err)
-	assert.Equal(t, int32(14), root.CoreSupportedProtocolVersion)
-	assert.Equal(t, int32(14), root.CurrentProtocolVersion)
+	t.Run("SanityCheck", func(t *testing.T) {
+		root, err := itest.Client().Root()
+		assert.NoError(t, err)
+		assert.Equal(t, int32(14), root.CoreSupportedProtocolVersion)
+		assert.Equal(t, int32(14), root.CurrentProtocolVersion)
 
-	// Submit a simple tx
-	op := txnbuild.Payment{
-		Destination: master.Address(),
-		Amount:      "10",
-		Asset:       txnbuild.NativeAsset{},
-	}
+		// Submit a simple tx
+		op := txnbuild.Payment{
+			Destination: master.Address(),
+			Amount:      "10",
+			Asset:       txnbuild.NativeAsset{},
+		}
 
-	txResp := itest.MustSubmitOperations(itest.MasterAccount(), master, &op)
-	assert.Equal(t, master.Address(), txResp.Account)
-	assert.Equal(t, "1", txResp.AccountSequence)
+		txResp := itest.MustSubmitOperations(itest.MasterAccount(), master, &op)
+		assert.Equal(t, master.Address(), txResp.Account)
+		assert.Equal(t, "1", txResp.AccountSequence)
+	})
+
+	t.Run("ClaimableBalanceCreation", func(t *testing.T) {
+		// Submit a self-referencing claimable balance
+		op := txnbuild.CreateClaimableBalance{
+			Destinations: []txnbuild.Claimant{
+				txnbuild.NewClaimant(master.Address(), nil),
+			},
+			Amount: "10",
+			Asset:  txnbuild.NativeAsset{},
+		}
+
+		txResp, err := itest.SubmitOperations(itest.MasterAccount(), master, &op)
+		assert.NoError(t, err)
+
+		var txResult xdr.TransactionResult
+		err = xdr.SafeUnmarshalBase64(txResp.ResultXdr, &txResult)
+		assert.NoError(t, err)
+
+		assert.Equal(t, xdr.TransactionResultCodeTxSuccess, txResult.Result.Code)
+		opsResults := *txResult.Result.Results
+		opResult := opsResults[0].MustTr().MustCreateClaimableBalanceResult()
+		assert.Equal(t,
+			xdr.CreateClaimableBalanceResultCodeCreateClaimableBalanceSuccess,
+			opResult.Code,
+		)
+		assert.NotNil(t, opResult.BalanceId)
+	})
 }
 
-func TestCreateClaimableBalance(t *testing.T) {
+func TestHappyClaimableBalances(t *testing.T) {
 	itest := test.NewIntegrationTest(t, protocol14Config)
 	defer itest.Close()
-	master := itest.Master()
 
-	// Submit a self-referencing claimable balance
-	op := txnbuild.CreateClaimableBalance{
-		Destinations: []txnbuild.Claimant{
-			txnbuild.NewClaimant(master.Address(), nil),
-		},
-		Amount: "10",
-		Asset:  txnbuild.NativeAsset{},
-	}
+	master, client := itest.Master(), itest.Client()
 
-	txResp, err := itest.SubmitOperations(itest.MasterAccount(), master, &op)
-	assert.NoError(t, err)
+	keys, accounts := itest.CreateAccounts(3, "1000")
+	a, b, c := keys[0], keys[1], keys[2]
+	accountA, accountB, accountC := accounts[0], accounts[1], accounts[2]
 
-	var txResult xdr.TransactionResult
-	err = xdr.SafeUnmarshalBase64(txResp.ResultXdr, &txResult)
-	assert.NoError(t, err)
+	/*
+	 * Each sub-test is completely self-contained: at the end of the test, we
+	 * start with a clean slate for each account. This lets us check with
+	 * equality for things like "number of operations," etc.
+	 */
 
-	assert.Equal(t, xdr.TransactionResultCodeTxSuccess, txResult.Result.Code)
-	opsResults := *txResult.Result.Results
-	opResult := opsResults[0].MustTr().MustCreateClaimableBalanceResult()
-	assert.Equal(t,
-		xdr.CreateClaimableBalanceResultCodeCreateClaimableBalanceSuccess,
-		opResult.Code,
-	)
-	assert.NotNil(t, opResult.BalanceId)
-}
+	// We start simple: native asset, single destination, no predicate.
+	t.Run("Simple/Native", func(t *testing.T) {
+		// Note that we don't use the `itest.MustCreateClaimableBalance` helper
+		// here because the whole point is to check that ^ generally works.
+		t.Logf("Creating claimable balance.")
+		_, err := itest.SubmitOperations(accountA, a,
+			&txnbuild.CreateClaimableBalance{
+				Destinations: []txnbuild.Claimant{
+					txnbuild.NewClaimant(b.Address(), nil),
+					txnbuild.NewClaimant(c.Address(), nil),
+				},
+				Asset:  txnbuild.NativeAsset{},
+				Amount: "42",
+			},
+		)
+		assert.NoError(t, err)
 
-func TestFilteringClaimableBalances(t *testing.T) {
-	// We test on all three types of assets. This convenience function just
-	// prepares the image (docker, etc.), sets up the scenario, then delegates
-	// to the real test w/ parameters set.
-	prepareAndRun := func(t *testing.T, assetType txnbuild.AssetType) {
-		itest := test.NewIntegrationTest(t, protocol14Config)
-		defer itest.Close()
+		//
+		// Ensure it shows up with the various filters (and *doesn't* show up with
+		// non-matching filters, of course).
+		//
+		// TODO: should we make these all subtests?
+		//
+		t.Log("Checking claimable balance filters")
 
-		keys, _ := itest.CreateAccounts(2, "1000")
-		runFilteringTest(itest, keys[0], keys[1],
-			createAsset(assetType, keys[0].Address()))
-	}
+		// Ensure it exists in the global list
+		t.Log("  global")
+		balances, err := client.ClaimableBalances(sdk.ClaimableBalanceRequest{})
+		assert.NoError(t, err)
 
-	t.Run("Native", func(t *testing.T) { prepareAndRun(t, txnbuild.AssetTypeNative) })
-	t.Run("4-Char Asset", func(t *testing.T) { prepareAndRun(t, txnbuild.AssetTypeCreditAlphanum4) })
-	t.Run("12-Char Asset", func(t *testing.T) { prepareAndRun(t, txnbuild.AssetTypeCreditAlphanum12) })
-}
+		claims := balances.Embedded.Records
+		assert.Len(t, claims, 1)
+		assert.Equal(t, a.Address(), claims[0].Sponsor)
+		claim := claims[0]
 
-func TestClaimingClaimableBalances(t *testing.T) {
-	for description, assetType := range map[string]txnbuild.AssetType{
-		"Native":   txnbuild.AssetTypeNative,
-		"Credit4":  txnbuild.AssetTypeCreditAlphanum4,
-		"Credit12": txnbuild.AssetTypeCreditAlphanum12,
+		// Ensure we can look it up explicitly
+		t.Log("  by ID")
+		balance, err := client.ClaimableBalance(claim.BalanceID)
+		assert.NoError(t, err)
+		assert.Equal(t, claim, balance)
+
+		checkFilters(itest, claim)
+
+		for _, assetType := range []txnbuild.AssetType{
+			txnbuild.AssetTypeCreditAlphanum4,
+			txnbuild.AssetTypeCreditAlphanum12,
+		} {
+			t.Logf("  by non-native %+v", assetType)
+			randomAsset := createAsset(assetType, a.Address())
+			xdrAsset, innerErr := randomAsset.ToXDR()
+			assert.NoError(t, innerErr)
+
+			balances, innerErr = client.ClaimableBalances(sdk.ClaimableBalanceRequest{Asset: xdrAsset.StringCanonical()})
+			assert.NoError(t, innerErr)
+			assert.Len(t, balances.Embedded.Records, 0)
+		}
+
+		//
+		// Now, actually try to *claim* the CB to remove it from the global list.
+		//
+
+		// Claiming a balance when you aren't the recipient should fail...
+		t.Logf("Stealing balance (ID=%s)...", claim.BalanceID)
+		_, err = itest.SubmitOperations(accountA, a,
+			&txnbuild.ClaimClaimableBalance{BalanceID: claim.BalanceID})
+		assert.Error(t, err)
+		t.Log("  failed as expected")
+
+		// ...but if you are it should succeed.
+		t.Logf("Claiming balance (ID=%s)...", claim.BalanceID)
+		_, err = itest.SubmitOperations(accountB, b,
+			&txnbuild.ClaimClaimableBalance{BalanceID: claim.BalanceID})
+		assert.NoError(t, err)
+		t.Log("  claimed")
+
+		// Ensure the claimable balance is gone now.
+		balances, err = client.ClaimableBalances(sdk.ClaimableBalanceRequest{Sponsor: a.Address()})
+		assert.NoError(t, err)
+		assert.Len(t, balances.Embedded.Records, 0)
+		t.Log("  gone")
+
+		// Ensure the actual account has a higher balance, now!
+		request := sdk.AccountRequest{AccountID: b.Address()}
+		details, err := client.AccountDetail(request)
+		assert.NoError(t, err)
+
+		foundBalance := false
+		for _, balance := range details.Balances {
+			if balance.Code != "" {
+				continue
+			}
+
+			assert.Equal(t, "1041.9999900", balance.Balance) // 1000 + 42 - fee
+			foundBalance = true
+			break
+		}
+		assert.True(t, foundBalance)
+
+		// Ensure that the other claimant can't do anything about it!
+		t.Logf("Claiming balance *again* (ID=%s)...", claim.BalanceID)
+		_, err = itest.SubmitOperations(accountC, c,
+			&txnbuild.ClaimClaimableBalance{BalanceID: claim.BalanceID})
+		assert.Error(t, err)
+	})
+
+	// Now, confirm the same thing works for non-native assets.
+	for _, assetType := range []txnbuild.AssetType{
+		txnbuild.AssetTypeCreditAlphanum4,
+		txnbuild.AssetTypeCreditAlphanum12,
 	} {
-		t.Run(description, func(t *testing.T) {
-			runClaimingCBsTest(t, assetType, nil)
+		t.Run(fmt.Sprintf("Simple/%+v", assetType), func(t *testing.T) {
+			asset := createAsset(assetType, a.Address())
+			itest.MustEstablishTrustline(b, accountB, asset)
+
+			t.Log("Creating claimable balance.")
+			claim := itest.MustCreateClaimableBalance(a, asset, "42",
+				txnbuild.NewClaimant(b.Address(), nil))
+
+			//
+			// Ensure it shows up with the various filters (and *doesn't* show up with
+			// non-matching filters, of course).
+			//
+			t.Log("Checking claimable balance filters")
+
+			// Ensure we can look it up explicitly
+			t.Log("  by ID")
+			balance, err := client.ClaimableBalance(claim.BalanceID)
+			assert.NoError(t, err)
+			assert.Equal(t, claim, balance)
+
+			checkFilters(itest, claim)
+
+			t.Logf("  by native")
+			xdrAsset, err := txnbuild.NativeAsset{}.ToXDR()
+			balances, err := client.ClaimableBalances(sdk.ClaimableBalanceRequest{Asset: xdrAsset.StringCanonical()})
+			assert.NoError(t, err)
+			assert.Len(t, balances.Embedded.Records, 0)
+
+			// Even if the native asset filter doesn't match, we need to ensure
+			// that a different credit asset also doesn't match.
+			t.Logf("  by random asset")
+			xdrAsset, err = txnbuild.CreditAsset{Code: "RAND", Issuer: master.Address()}.ToXDR()
+			balances, err = client.ClaimableBalances(sdk.ClaimableBalanceRequest{Asset: xdrAsset.StringCanonical()})
+			assert.NoError(t, err)
+			assert.Len(t, balances.Embedded.Records, 0)
+
+			//
+			// Now, actually try to *claim* the CB to remove it from the global list.
+			//
+			t.Logf("Claiming balance (ID=%s)...", claim.BalanceID)
+			_, err = itest.SubmitOperations(accountB, b,
+				&txnbuild.ClaimClaimableBalance{BalanceID: claim.BalanceID})
+			assert.NoError(t, err)
+			t.Log("  claimed")
+
+			// Ensure the claimable balance is gone now.
+			balances, err = client.ClaimableBalances(sdk.ClaimableBalanceRequest{Sponsor: a.Address()})
+			assert.NoError(t, err)
+			assert.Len(t, balances.Embedded.Records, 0)
+			t.Log("  gone")
+
+			// Ensure the actual account has a higher balance, now!
+			account := itest.MustGetAccount(b)
+			foundBalance := false
+			for _, balance := range account.Balances {
+				if balance.Code != asset.GetCode() || balance.Issuer != asset.GetIssuer() {
+					continue
+				}
+
+				assert.Equal(t, "42.0000000", balance.Balance)
+				foundBalance = true
+				break
+			}
+			assert.True(t, foundBalance)
 		})
 	}
 }
 
-func runClaimingCBsTest(t *testing.T, assetType txnbuild.AssetType, predicate *xdr.ClaimPredicate) {
-	itest := test.NewIntegrationTest(t, protocol14Config)
-	defer itest.Close()
-	client := itest.Client()
-
-	// Create a couple of accounts to test the interactions.
-	keypairs, accounts := itest.CreateAccounts(3, "1000")
-	sender, recipient, adversary := keypairs[0], keypairs[1], keypairs[2]
-	sAccount, rAccount, aAccount := accounts[0], accounts[1], accounts[2]
-
-	// Create an asset depending on the test parameter & trust it if need be.
-	var asset txnbuild.Asset = createAsset(assetType, sender.Address())
-	if assetType != txnbuild.AssetTypeNative {
-		_, err := itest.EstablishTrustline(recipient, rAccount, asset)
-		assert.NoError(t, err)
-		t.Log("Created asset trustline.")
-	}
-
-	// Create & submit the claimable balance from A -> B.
-	t.Logf("Creating claimable balance (asset=%s).", asset.GetCode())
-	op1 := txnbuild.CreateClaimableBalance{
-		Destinations: []txnbuild.Claimant{
-			txnbuild.NewClaimant(recipient.Address(), predicate),
-		},
-		Amount: "42",
-		Asset:  asset,
-	}
-
-	_, err := itest.SubmitOperations(sAccount, sender, &op1)
-	assert.NoError(t, err)
-
-	// Now let's retrieve what the above just created so we can claim it.
-	balances, err := client.ClaimableBalances(sdk.ClaimableBalanceRequest{Sponsor: sender.Address()})
-	assert.NoError(t, err)
-	t.Log("  confirmed")
-
-	claims := balances.Embedded.Records
-	assert.Len(t, claims, 1)
-	claim := claims[0]
-
-	assert.Equal(t, sender.Address(), claim.Sponsor)
-	assert.Equal(t, "42.0000000", claim.Amount)
-
-	// Claiming a balance when you aren't the recipient should fail...
-	t.Logf("Stealing balance (ID=%s)...", claim.BalanceID)
-	op2 := txnbuild.ClaimClaimableBalance{BalanceID: claim.BalanceID}
-	_, err = itest.SubmitOperations(aAccount, adversary, &op2)
-	assert.Error(t, err)
-	t.Log("  failed as expected")
-
-	// ...but if you are it should succeed.
-	t.Logf("Claiming balance (ID=%s)...", claim.BalanceID)
-	op3 := txnbuild.ClaimClaimableBalance{BalanceID: claim.BalanceID}
-	_, err = itest.SubmitOperations(rAccount, recipient, &op3)
-	assert.NoError(t, err)
-	t.Log("  claimed")
-
-	// Ensure the claimable balance is gone now.
-	balances, err = client.ClaimableBalances(sdk.ClaimableBalanceRequest{Sponsor: sender.Address()})
-	assert.NoError(t, err)
-	assert.Len(t, balances.Embedded.Records, 0)
-	t.Logf("  claims left: %d", len(balances.Embedded.Records))
-
-	// On success, we want the actual account to have a higher balance, too!
-	request := sdk.AccountRequest{AccountID: recipient.Address()}
-	details, err := client.AccountDetail(request)
-	assert.NoError(t, err)
-
-	// Ensure that the user's new balance includes the claimed balance, sans the
-	// transaction fee if applicable (this'll need to be updated if we change fees).
-	foundBalance := false
-	t.Logf("  balances: %+v", details.Balances)
-	for _, balance := range details.Balances {
-		if balance.Code != "" && asset.IsNative() {
-			continue
-		}
-
-		if balance.Issuer != asset.GetIssuer() || balance.Code != asset.GetCode() {
-			continue
-		}
-
-		if asset.IsNative() {
-			assert.Equal(t, "1041.9999900", balance.Balance)
-		} else {
-			assert.Equal(t, "42.0000000", balance.Balance)
-		}
-		foundBalance = true
-		break
-	}
-	assert.True(t, foundBalance)
-}
-
-func runFilteringTest(i *test.IntegrationTest, source *keypair.Full, dest *keypair.Full, asset txnbuild.Asset) {
-	t := i.CurrentTest()
-	client := i.Client()
-	request := sdk.AccountRequest{AccountID: source.Address()}
-	sourceAccount, err := client.AccountDetail(request)
-	assert.NoError(t, err)
-
-	op := txnbuild.CreateClaimableBalance{
-		Destinations: []txnbuild.Claimant{
-			txnbuild.NewClaimant(dest.Address(), nil),
-		},
-		Amount: "10",
-		Asset:  asset,
-	}
-
-	// Submit a simple claimable balance from A -> B.
-	_, err = i.SubmitOperations(&sourceAccount, source, &op)
-	assert.NoError(t, err)
-
-	// Ensure it exists in the global list
-	balances, err := client.ClaimableBalances(sdk.ClaimableBalanceRequest{})
-	assert.NoError(t, err)
-
-	claims := balances.Embedded.Records
-	assert.Len(t, claims, 1)
-	assert.Equal(t, source.Address(), claims[0].Sponsor)
-	id := claims[0].BalanceID
-
-	// Ensure we can look it up explicitly by ID
-	balance, err := client.ClaimableBalance(id)
-	assert.NoError(t, err)
-	assert.Equal(t, claims[0], balance)
-
-	//
-	// Ensure it shows up with the various filters (and *doesn't* show up with
-	// non-matching filters, of course).
-	//
-
-	t.Log("Filtering by sponsor")
-	balances, err = client.ClaimableBalances(sdk.ClaimableBalanceRequest{Sponsor: source.Address()})
-	assert.NoError(t, err)
-	assert.Len(t, balances.Embedded.Records, 1)
-	assert.Equal(t, claims[0], balances.Embedded.Records[0])
-
-	balances, err = client.ClaimableBalances(sdk.ClaimableBalanceRequest{Sponsor: dest.Address()})
-	assert.NoError(t, err)
-	assert.Len(t, balances.Embedded.Records, 0)
-
-	t.Log("Filtering by claimant")
-	balances, err = client.ClaimableBalances(sdk.ClaimableBalanceRequest{Claimant: source.Address()})
-	assert.NoError(t, err)
-	assert.Len(t, balances.Embedded.Records, 0)
-
-	balances, err = client.ClaimableBalances(sdk.ClaimableBalanceRequest{Claimant: dest.Address()})
-	assert.NoError(t, err)
-	assert.Equal(t, claims[0], balances.Embedded.Records[0])
-
-	t.Log("Filtering by assets")
-	t.Log("  by exact")
-	xdrAsset, err := asset.ToXDR()
-	assert.NoError(t, err)
-
-	balances, err = client.ClaimableBalances(sdk.ClaimableBalanceRequest{Asset: xdrAsset.StringCanonical()})
-
-	assert.NoError(t, err)
-	assert.Len(t, balances.Embedded.Records, 1)
-
-	// a native asset shouldn't show up when filtering by non-native
-	t.Log("  by mismatching")
-	randomAsset := txnbuild.CreditAsset{Code: "RAND", Issuer: source.Address()}
-	xdrAsset, err = randomAsset.ToXDR()
-	assert.NoError(t, err)
-
-	balances, err = client.ClaimableBalances(sdk.ClaimableBalanceRequest{Asset: xdrAsset.StringCanonical()})
-
-	assert.NoError(t, err)
-	assert.Len(t, balances.Embedded.Records, 0)
-
-	// similarly, a non-native asset shouldn't show up when filtering by a
-	// *different* non-native NOR when filtering by native
-	aType, err := asset.GetType()
-	assert.NoError(t, err)
-
-	t.Log("  by native")
-	balances, err = client.ClaimableBalances(sdk.ClaimableBalanceRequest{Asset: "native"})
-	assert.NoError(t, err)
-
-	expectedLength := 0
-	if aType == txnbuild.AssetTypeNative {
-		expectedLength++
-	}
-
-	assert.Len(t, balances.Embedded.Records, expectedLength)
-}
-
 /* Utility functions below */
 
+// Checks that filtering works for a particular claim.
+func checkFilters(i *test.IntegrationTest, claim proto.ClaimableBalance) {
+	client := i.Client()
+	t := i.CurrentTest()
+
+	source := claim.Sponsor
+	asset := claim.Asset
+
+	t.Log("  by sponsor")
+	balances, err := client.ClaimableBalances(sdk.ClaimableBalanceRequest{Sponsor: source})
+	assert.NoError(t, err)
+	assert.Len(t, balances.Embedded.Records, 1)
+	assert.Equal(t, claim, balances.Embedded.Records[0])
+
+	dest := claim.Claimants[0].Destination
+	balances, err = client.ClaimableBalances(sdk.ClaimableBalanceRequest{Sponsor: dest})
+	assert.NoError(t, err)
+	assert.Len(t, balances.Embedded.Records, 0)
+
+	t.Log("  by claimant(s)")
+	balances, err = client.ClaimableBalances(sdk.ClaimableBalanceRequest{Claimant: source})
+	assert.NoError(t, err)
+	assert.Len(t, balances.Embedded.Records, 0)
+
+	for _, claimant := range claim.Claimants {
+		dest := claimant.Destination
+		balances, err = client.ClaimableBalances(sdk.ClaimableBalanceRequest{Claimant: dest})
+		assert.NoError(t, err)
+		assert.Len(t, balances.Embedded.Records, 1)
+		assert.Equal(t, claim, balances.Embedded.Records[0])
+	}
+
+	t.Log("  by exact asset")
+	balances, err = client.ClaimableBalances(sdk.ClaimableBalanceRequest{Asset: asset})
+	assert.NoError(t, err)
+	assert.Len(t, balances.Embedded.Records, 1)
+}
+
+// Creates an asset object given a type and issuer.
 func createAsset(assetType txnbuild.AssetType, issuer string) txnbuild.Asset {
 	switch assetType {
 	case txnbuild.AssetTypeNative:

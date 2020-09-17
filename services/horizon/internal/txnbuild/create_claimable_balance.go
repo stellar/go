@@ -22,15 +22,17 @@ type Claimant struct {
 	Predicate   xdr.ClaimPredicate
 }
 
-// NewClaimant returns a new Claimant, if predicate is nil then a Claimant with unconditional predicate is returned.
+var (
+	UnconditionalPredicate = xdr.ClaimPredicate{
+		Type: xdr.ClaimPredicateTypeClaimPredicateUnconditional,
+	}
+)
+
+// NewClaimant returns a new Claimant, if predicate is nil then a Claimant with
+// unconditional predicate is returned.
 func NewClaimant(destination string, predicate *xdr.ClaimPredicate) Claimant {
 	if predicate == nil {
-		return Claimant{
-			Destination: destination,
-			Predicate: xdr.ClaimPredicate{
-				Type: xdr.ClaimPredicateTypeClaimPredicateUnconditional,
-			},
-		}
+		predicate = &UnconditionalPredicate
 	}
 
 	return Claimant{
@@ -40,47 +42,55 @@ func NewClaimant(destination string, predicate *xdr.ClaimPredicate) Claimant {
 }
 
 // AndPredicate returns a xdr.ClaimPredicate
-func AndPredicate(left xdr.ClaimPredicate, right xdr.ClaimPredicate) (xdr.ClaimPredicate, error) {
-	predicates := []xdr.ClaimPredicate{
-		left,
-		right,
-	}
-
+func AndPredicate(left xdr.ClaimPredicate, right xdr.ClaimPredicate) xdr.ClaimPredicate {
+	predicates := []xdr.ClaimPredicate{left, right}
 	return xdr.ClaimPredicate{
 		Type:          xdr.ClaimPredicateTypeClaimPredicateAnd,
 		AndPredicates: &predicates,
-	}, nil
+	}
 }
 
 // OrPredicate returns a xdr.ClaimPredicate
-func OrPredicate(left xdr.ClaimPredicate, right xdr.ClaimPredicate) (xdr.ClaimPredicate, error) {
-	predicates := []xdr.ClaimPredicate{
-		left,
-		right,
-	}
-
+func OrPredicate(left xdr.ClaimPredicate, right xdr.ClaimPredicate) xdr.ClaimPredicate {
+	predicates := []xdr.ClaimPredicate{left, right}
 	return xdr.ClaimPredicate{
 		Type:         xdr.ClaimPredicateTypeClaimPredicateOr,
 		OrPredicates: &predicates,
-	}, nil
+	}
+}
+
+// NotPredicate returns a new predicate inverting the passed in predicate
+func NotPredicate(pred *xdr.ClaimPredicate) xdr.ClaimPredicate {
+	return xdr.ClaimPredicate{
+		Type:         xdr.ClaimPredicateTypeClaimPredicateNot,
+		NotPredicate: &pred,
+	}
 }
 
 // BeforeAbsoluteTimePredicate returns a Before Absolute Time xdr.ClaimPredicate
-func BeforeAbsoluteTimePredicate(before int64) (xdr.ClaimPredicate, error) {
-	absBefore := xdr.Int64(before)
+//
+// This predicate will be fulfilled if the closing time of the ledger that
+// includes the CreateClaimableBalance operation is less than this (absolute)
+// Unix timestamp.
+func BeforeAbsoluteTimePredicate(secondsBefore int64) xdr.ClaimPredicate {
+	absBefore := xdr.Int64(secondsBefore)
 	return xdr.ClaimPredicate{
 		Type:      xdr.ClaimPredicateTypeClaimPredicateBeforeAbsoluteTime,
-		RelBefore: &absBefore,
-	}, nil
+		AbsBefore: &absBefore,
+	}
 }
 
 // BeforeRelativeTimePredicate returns a Before Relative Time xdr.ClaimPredicate
-func BeforeRelativeTimePredicate(before int64) (xdr.ClaimPredicate, error) {
-	relBefore := xdr.Int64(before)
+//
+// This predicate will be fulfilled if the closing time of the ledger that
+// includes the CreateClaimableBalance operation plus this relative time delta
+// (in seconds) is less than the current time.
+func BeforeRelativeTimePredicate(secondsBefore int64) xdr.ClaimPredicate {
+	relBefore := xdr.Int64(secondsBefore)
 	return xdr.ClaimPredicate{
 		Type:      xdr.ClaimPredicateTypeClaimPredicateBeforeRelativeTime,
 		RelBefore: &relBefore,
-	}, nil
+	}
 }
 
 // BuildXDR for CreateClaimableBalance returns a fully configured XDR Operation.

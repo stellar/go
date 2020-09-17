@@ -201,16 +201,11 @@ func (i *IntegrationTest) Master() *keypair.Full {
 }
 
 func (i *IntegrationTest) MasterAccount() txnbuild.Account {
-	master := i.Master()
-	client := i.Client()
-
+	master, client := i.Master(), i.Client()
 	request := sdk.AccountRequest{AccountID: master.Address()}
 	account, err := client.AccountDetail(request)
-	if err == nil {
-		return &txnbuild.SimpleAccount{AccountID: master.Address(), Sequence: 0}
-	} else {
-		return &account
-	}
+	panicIf(err)
+	return &account
 }
 
 func (i *IntegrationTest) CurrentTest() *testing.T {
@@ -340,14 +335,62 @@ func (i *IntegrationTest) CreateAccounts(count int, initialBalance string) ([]*k
 	return pairs, accounts
 }
 
+// Panics on any error establishing a trustline.
+func (i *IntegrationTest) MustEstablishTrustline(
+	truster *keypair.Full, account txnbuild.Account, asset txnbuild.Asset,
+) (resp proto.Transaction) {
+	txResp, err := i.EstablishTrustline(truster, account, asset)
+	panicIf(err)
+	return txResp
+}
+
 // Establishes a trustline for a given asset for a particular account.
 func (i *IntegrationTest) EstablishTrustline(
 	truster *keypair.Full, account txnbuild.Account, asset txnbuild.Asset,
 ) (proto.Transaction, error) {
+	if asset.IsNative() {
+		return proto.Transaction{}, nil
+	}
 	return i.SubmitOperations(account, truster, &txnbuild.ChangeTrust{
 		Line:  asset,
 		Limit: "2000",
 	})
+}
+
+// Panics on any error creating a claimable balance.
+func (i *IntegrationTest) MustCreateClaimableBalance(
+	source *keypair.Full, asset txnbuild.Asset, amount string,
+	claimants ...txnbuild.Claimant,
+) (claim proto.ClaimableBalance) {
+	account := i.MustGetAccount(source)
+	_ = i.MustSubmitOperations(&account, source,
+		&txnbuild.CreateClaimableBalance{
+			Destinations: claimants,
+			Asset:        asset,
+			Amount:       amount,
+		},
+	)
+
+	// Ensure it exists in the global list
+	balances, err := i.Client().ClaimableBalances(sdk.ClaimableBalanceRequest{})
+	panicIf(err)
+
+	claims := balances.Embedded.Records
+	if len(claims) == 0 {
+		panic(-1)
+	}
+
+	claim = claims[0]
+	return
+}
+
+// Panics on any error retrieves an account's details from its key.
+// This means it must have previously been funded.
+func (i *IntegrationTest) MustGetAccount(source *keypair.Full) proto.Account {
+	client := i.Client()
+	account, err := client.AccountDetail(sdk.AccountRequest{AccountID: source.Address()})
+	panicIf(err)
+	return account
 }
 
 // Submits a signed transaction from an account with standard options.
