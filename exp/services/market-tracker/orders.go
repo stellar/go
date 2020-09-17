@@ -4,60 +4,92 @@ import (
 	"sort"
 	"strconv"
 
+	"github.com/prometheus/client_golang/prometheus"
 	hProtocol "github.com/stellar/go/protocols/horizon"
 )
+
+// Orderbook tracks top-level orderbook statistics.
+// Note that volume is denominated in USD for easiest viewing.
+type Orderbook struct {
+	NumBids       prometheus.Gauge
+	NumAsks       prometheus.Gauge
+	BidBaseVolume prometheus.Gauge
+	BidUsdVolume  prometheus.Gauge
+	AskBaseVolume prometheus.Gauge
+	AskUsdVolume  prometheus.Gauge
+}
 
 // usdOrder holds the USD representation of an XLM-based order on the DEX.
 // This contains the amount of the asset in the order; its price in USD; and that amount in USD.
 type usdOrder struct {
-	xlmAmount float64
-	usdPrice  float64
-	usdAmount float64
+	xlmAmount  float64
+	usdPrice   float64
+	usdAmount  float64
+	baseAmount float64
 }
 
-// getUsdBids converts a list of bids to dollar amounts and sorts them in decreasing price order.
-func getUsdBids(bids []hProtocol.PriceLevel, price float64) ([]usdOrder, error) {
-	usdBids, err := getUsdOrders(bids, price)
+// convertBids converts a list of bids into dollar and base asset amounts and sorts them in decreasing price order.
+func convertBids(bids []hProtocol.PriceLevel, xlmUsdPrice, baseUsdPrice float64) ([]usdOrder, error) {
+	convertedBids, err := convertOrders(bids, xlmUsdPrice, baseUsdPrice)
 	if err != nil {
 		return []usdOrder{}, err
 	}
 
-	sort.Slice(usdBids, func(i, j int) bool {
-		return usdBids[i].usdPrice >= usdBids[j].usdPrice
+	// sort in decreasing order
+	sort.Slice(convertedBids, func(i, j int) bool {
+		return convertedBids[i].usdPrice >= convertedBids[j].usdPrice
 	})
 
-	return usdBids, nil
+	return convertedBids, nil
 }
 
-// getUsdAsks converts a list of asks to dollar amounts and sorts them in increasing price order.
-func getUsdAsks(asks []hProtocol.PriceLevel, price float64) ([]usdOrder, error) {
-	usdAsks, err := getUsdOrders(asks, price)
+func convertAsks(asks []hProtocol.PriceLevel, xlmUsdPrice, baseUsdPrice float64) ([]usdOrder, error) {
+	convertedAsks, err := convertOrders(asks, xlmUsdPrice, baseUsdPrice)
 	if err != nil {
 		return []usdOrder{}, err
 	}
-	sort.Slice(usdAsks, func(i, j int) bool {
-		return usdAsks[i].usdPrice <= usdAsks[j].usdPrice
+
+	// sort in increasing order
+	sort.Slice(convertedAsks, func(i, j int) bool {
+		return convertedAsks[i].usdPrice <= convertedAsks[j].usdPrice
 	})
-	return usdAsks, nil
+	return convertedAsks, nil
 }
 
-// getUsdOrders converts XLM-based orders to dollar amounts.
-func getUsdOrders(orders []hProtocol.PriceLevel, usdPerXlm float64) ([]usdOrder, error) {
-	usdOrders := []usdOrder{}
+func convertOrders(orders []hProtocol.PriceLevel, xlmUsdPrice, baseUsdPrice float64) ([]usdOrder, error) {
+	convertedOrders := []usdOrder{}
 	for _, order := range orders {
 		xlmAmt, err := strconv.ParseFloat(order.Amount, 64)
 		if err != nil {
 			return []usdOrder{}, err
 		}
 
-		usdAmt := xlmAmt * usdPerXlm
-		usdPrice := float64(order.PriceR.N) / float64(order.PriceR.D) / usdPerXlm
-		currBid := usdOrder{
-			xlmAmount: xlmAmt,
-			usdAmount: usdAmt,
-			usdPrice:  usdPrice,
+		usdAmt := xlmAmt * xlmUsdPrice
+		usdPrice := float64(order.PriceR.N) / float64(order.PriceR.D) * xlmUsdPrice
+		baseAmt := usdAmt * baseUsdPrice
+		cOrder := usdOrder{
+			xlmAmount:  xlmAmt,
+			usdPrice:   usdPrice,
+			usdAmount:  usdAmt,
+			baseAmount: baseAmt,
 		}
-		usdOrders = append(usdOrders, currBid)
+
+		convertedOrders = append(convertedOrders, cOrder)
 	}
-	return usdOrders, nil
+
+	return convertedOrders, nil
+}
+
+func getOrdersUsdVolume(orders []usdOrder) (v float64) {
+	for _, o := range orders {
+		v += o.usdAmount
+	}
+	return
+}
+
+func getOrdersBaseVolume(orders []usdOrder) (v float64) {
+	for _, o := range orders {
+		v += o.baseAmount
+	}
+	return
 }

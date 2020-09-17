@@ -2,6 +2,7 @@ package serve
 
 import (
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/stellar/go/keypair"
@@ -15,10 +16,10 @@ import (
 // requests for a new challenge transaction.
 type challengeHandler struct {
 	Logger             *supportlog.Entry
-	ServerName         string
 	NetworkPassphrase  string
 	SigningKey         *keypair.Full
 	ChallengeExpiresIn time.Duration
+	HomeDomains        []string
 }
 
 type challengeResponse struct {
@@ -28,17 +29,37 @@ type challengeResponse struct {
 
 func (h challengeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	queryValues := r.URL.Query()
 
-	account := r.URL.Query().Get("account")
+	account := queryValues.Get("account")
 	if !strkey.IsValidEd25519PublicKey(account) {
 		badRequest.Render(w)
 		return
 	}
 
+	homeDomain := queryValues.Get("home_domain")
+	if homeDomain != "" {
+		// In some cases the full stop (period) character is used at the end of a FQDN.
+		homeDomain = strings.TrimSuffix(homeDomain, ".")
+		matched := false
+		for _, supportedDomain := range h.HomeDomains {
+			if homeDomain == supportedDomain {
+				matched = true
+				break
+			}
+		}
+		if !matched {
+			badRequest.Render(w)
+			return
+		}
+	} else {
+		homeDomain = h.HomeDomains[0]
+	}
+
 	tx, err := txnbuild.BuildChallengeTx(
 		h.SigningKey.Seed(),
 		account,
-		h.ServerName,
+		homeDomain,
 		h.NetworkPassphrase,
 		h.ChallengeExpiresIn,
 	)
@@ -58,7 +79,8 @@ func (h challengeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	l := h.Logger.Ctx(ctx).
 		WithField("tx", hash).
 		WithField("account", account).
-		WithField("serversigner", h.SigningKey.Address())
+		WithField("serversigner", h.SigningKey.Address()).
+		WithField("homedomain", homeDomain)
 
 	l.Info("Generated challenge transaction for account.")
 

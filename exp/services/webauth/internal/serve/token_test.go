@@ -37,10 +37,11 @@ func TestToken_formInputSuccess(t *testing.T) {
 	account := keypair.MustRandom()
 	t.Logf("Client account: %s", account.Address())
 
+	homeDomain := "example.com"
 	tx, err := txnbuild.BuildChallengeTx(
 		serverKey.Seed(),
 		account.Address(),
-		"testserver",
+		homeDomain,
 		network.TestNetworkPassphrase,
 		time.Minute,
 	)
@@ -83,6 +84,7 @@ func TestToken_formInputSuccess(t *testing.T) {
 		JWK:               jwk,
 		JWTIssuer:         "https://example.com",
 		JWTExpiresIn:      time.Minute,
+		HomeDomains:       []string{homeDomain},
 	}
 
 	body := url.Values{}
@@ -135,10 +137,11 @@ func TestToken_jsonInputSuccess(t *testing.T) {
 	account := keypair.MustRandom()
 	t.Logf("Client account: %s", account.Address())
 
+	homeDomain := "example.com"
 	tx, err := txnbuild.BuildChallengeTx(
 		serverKey.Seed(),
 		account.Address(),
-		"testserver",
+		homeDomain,
 		network.TestNetworkPassphrase,
 		time.Minute,
 	)
@@ -181,6 +184,7 @@ func TestToken_jsonInputSuccess(t *testing.T) {
 		JWK:               jwk,
 		JWTIssuer:         "https://example.com",
 		JWTExpiresIn:      time.Minute,
+		HomeDomains:       []string{homeDomain},
 	}
 
 	body := struct {
@@ -275,6 +279,7 @@ func TestToken_jsonInputValidRotatingServerSigners(t *testing.T) {
 			nil,
 		)
 
+	homeDomain := "example.com"
 	h := tokenHandler{
 		Logger:            supportlog.DefaultLogger,
 		HorizonClient:     horizonClient,
@@ -283,6 +288,7 @@ func TestToken_jsonInputValidRotatingServerSigners(t *testing.T) {
 		JWK:               jwk,
 		JWTIssuer:         "https://example.com",
 		JWTExpiresIn:      time.Minute,
+		HomeDomains:       []string{homeDomain},
 	}
 
 	for i, serverKey := range serverKeys {
@@ -291,7 +297,7 @@ func TestToken_jsonInputValidRotatingServerSigners(t *testing.T) {
 			tx, err := txnbuild.BuildChallengeTx(
 				serverKey.Seed(),
 				account.Address(),
-				"testserver",
+				homeDomain,
 				network.TestNetworkPassphrase,
 				time.Minute,
 			)
@@ -373,10 +379,11 @@ func TestToken_jsonInputValidMultipleSigners(t *testing.T) {
 	accountSigner2 := keypair.MustRandom()
 	t.Logf("Client account signer 2: %s", accountSigner2.Address())
 
+	homeDomain := "example.com"
 	tx, err := txnbuild.BuildChallengeTx(
 		serverKey.Seed(),
 		account.Address(),
-		"testserver",
+		homeDomain,
 		network.TestNetworkPassphrase,
 		time.Minute,
 	)
@@ -423,6 +430,7 @@ func TestToken_jsonInputValidMultipleSigners(t *testing.T) {
 		JWK:               jwk,
 		JWTIssuer:         "https://example.com",
 		JWTExpiresIn:      time.Minute,
+		HomeDomains:       []string{homeDomain},
 	}
 
 	body := struct {
@@ -468,6 +476,89 @@ func TestToken_jsonInputValidMultipleSigners(t *testing.T) {
 	assert.Equal(t, exp.Sub(iat), time.Minute)
 }
 
+func TestToken_jsonInputHomeDomainNotSupported(t *testing.T) {
+	serverKey := keypair.MustRandom()
+	t.Logf("Server signing key: %s", serverKey.Address())
+
+	jwtPrivateKey, err := jwtkey.GenerateKey()
+	require.NoError(t, err)
+	jwk := jose.JSONWebKey{Key: jwtPrivateKey, Algorithm: string(jose.ES256)}
+
+	account := keypair.MustRandom()
+	t.Logf("Client account: %s", account.Address())
+
+	homeDomain := "example.com"
+	tx, err := txnbuild.BuildChallengeTx(
+		serverKey.Seed(),
+		account.Address(),
+		homeDomain,
+		network.TestNetworkPassphrase,
+		time.Minute,
+	)
+	require.NoError(t, err)
+
+	chTx, err := tx.Base64()
+	require.NoError(t, err)
+	t.Logf("Tx: %s", chTx)
+
+	tx, err = tx.Sign(network.TestNetworkPassphrase, account)
+	require.NoError(t, err)
+	txSigned, err := tx.Base64()
+	require.NoError(t, err)
+	t.Logf("Signed: %s", txSigned)
+
+	horizonClient := &horizonclient.MockClient{}
+	horizonClient.
+		On("AccountDetail", horizonclient.AccountRequest{AccountID: account.Address()}).
+		Return(
+			horizon.Account{
+				Thresholds: horizon.AccountThresholds{
+					LowThreshold:  1,
+					MedThreshold:  10,
+					HighThreshold: 100,
+				},
+				Signers: []horizon.Signer{
+					{
+						Key:    account.Address(),
+						Weight: 100,
+					},
+				}},
+			nil,
+		)
+
+	h := tokenHandler{
+		Logger:            supportlog.DefaultLogger,
+		HorizonClient:     horizonClient,
+		NetworkPassphrase: network.TestNetworkPassphrase,
+		SigningAddresses:  []*keypair.FromAddress{serverKey.FromAddress()},
+		JWK:               jwk,
+		JWTIssuer:         "https://example.com",
+		JWTExpiresIn:      time.Minute,
+		HomeDomains:       []string{"another.example.com"},
+	}
+
+	body := struct {
+		Transaction string `json:"transaction"`
+	}{
+		Transaction: txSigned,
+	}
+	bodyBytes, err := json.Marshal(body)
+	require.NoError(t, err)
+	r := httptest.NewRequest("POST", "/", bytes.NewReader(bodyBytes))
+	r.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, r)
+	resp := w.Result()
+
+	require.Equal(t, 400, resp.StatusCode)
+	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
+
+	respBodyBytes, err := ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	assert.JSONEq(t, `{"error":"The request was invalid in some way."}`, string(respBodyBytes))
+}
+
 func TestToken_jsonInputNotEnoughWeight(t *testing.T) {
 	serverKey := keypair.MustRandom()
 	t.Logf("Server signing key: %s", serverKey.Address())
@@ -479,10 +570,11 @@ func TestToken_jsonInputNotEnoughWeight(t *testing.T) {
 	account := keypair.MustRandom()
 	t.Logf("Client account: %s", account.Address())
 
+	homeDomain := "example.com"
 	tx, err := txnbuild.BuildChallengeTx(
 		serverKey.Seed(),
 		account.Address(),
-		"testserver",
+		homeDomain,
 		network.TestNetworkPassphrase,
 		time.Minute,
 	)
@@ -525,6 +617,7 @@ func TestToken_jsonInputNotEnoughWeight(t *testing.T) {
 		JWK:               jwk,
 		JWTIssuer:         "https://example.com",
 		JWTExpiresIn:      time.Minute,
+		HomeDomains:       []string{homeDomain},
 	}
 
 	body := struct {
@@ -560,10 +653,11 @@ func TestToken_jsonInputUnrecognizedSigner(t *testing.T) {
 	account := keypair.MustRandom()
 	t.Logf("Client account: %s", account.Address())
 
+	homeDomain := "example.com"
 	tx, err := txnbuild.BuildChallengeTx(
 		serverKey.Seed(),
 		account.Address(),
-		"testserver",
+		homeDomain,
 		network.TestNetworkPassphrase,
 		time.Minute,
 	)
@@ -606,6 +700,7 @@ func TestToken_jsonInputUnrecognizedSigner(t *testing.T) {
 		JWK:               jwk,
 		JWTIssuer:         "https://example.com",
 		JWTExpiresIn:      time.Minute,
+		HomeDomains:       []string{homeDomain},
 	}
 
 	body := struct {
@@ -641,10 +736,11 @@ func TestToken_jsonInputAccountNotExistSuccess(t *testing.T) {
 	account := keypair.MustRandom()
 	t.Logf("Client account: %s", account.Address())
 
+	homeDomain := "example.com"
 	tx, err := txnbuild.BuildChallengeTx(
 		serverKey.Seed(),
 		account.Address(),
-		"testserver",
+		homeDomain,
 		network.TestNetworkPassphrase,
 		time.Minute,
 	)
@@ -683,6 +779,7 @@ func TestToken_jsonInputAccountNotExistSuccess(t *testing.T) {
 		JWTIssuer:                   "https://example.com",
 		JWTExpiresIn:                time.Minute,
 		AllowAccountsThatDoNotExist: true,
+		HomeDomains:                 []string{homeDomain},
 	}
 
 	body := struct {
@@ -743,10 +840,11 @@ func TestToken_jsonInputAccountNotExistFail(t *testing.T) {
 	otherSigner := keypair.MustRandom()
 	t.Logf("Other signer: %s", otherSigner.Address())
 
+	homeDomain := "example.com"
 	tx, err := txnbuild.BuildChallengeTx(
 		serverKey.Seed(),
 		account.Address(),
-		"testserver",
+		homeDomain,
 		network.TestNetworkPassphrase,
 		time.Minute,
 	)
@@ -785,6 +883,7 @@ func TestToken_jsonInputAccountNotExistFail(t *testing.T) {
 		JWTIssuer:                   "https://example.com",
 		JWTExpiresIn:                time.Minute,
 		AllowAccountsThatDoNotExist: true,
+		HomeDomains:                 []string{homeDomain},
 	}
 
 	body := struct {
@@ -820,10 +919,11 @@ func TestToken_jsonInputAccountNotExistNotAllowed(t *testing.T) {
 	account := keypair.MustRandom()
 	t.Logf("Client account: %s", account.Address())
 
+	homeDomain := "example.com"
 	tx, err := txnbuild.BuildChallengeTx(
 		serverKey.Seed(),
 		account.Address(),
-		"testserver",
+		homeDomain,
 		network.TestNetworkPassphrase,
 		time.Minute,
 	)
@@ -862,6 +962,7 @@ func TestToken_jsonInputAccountNotExistNotAllowed(t *testing.T) {
 		JWTIssuer:                   "https://example.com",
 		JWTExpiresIn:                time.Minute,
 		AllowAccountsThatDoNotExist: false,
+		HomeDomains:                 []string{homeDomain},
 	}
 
 	body := struct {
@@ -899,10 +1000,11 @@ func TestToken_jsonInputUnrecognizedServerSigner(t *testing.T) {
 	account := keypair.MustRandom()
 	t.Logf("Client account: %s", account.Address())
 
+	homeDomain := "example.com"
 	tx, err := txnbuild.BuildChallengeTx(
 		serverKey1.Seed(),
 		account.Address(),
-		"testserver",
+		homeDomain,
 		network.TestNetworkPassphrase,
 		time.Minute,
 	)
@@ -941,6 +1043,7 @@ func TestToken_jsonInputUnrecognizedServerSigner(t *testing.T) {
 		JWTIssuer:                   "https://example.com",
 		JWTExpiresIn:                time.Minute,
 		AllowAccountsThatDoNotExist: false,
+		HomeDomains:                 []string{homeDomain},
 	}
 
 	body := struct {

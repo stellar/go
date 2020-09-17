@@ -92,13 +92,7 @@ func New(s *tickerdb.TickerSession, l *hlog.Entry) *resolver {
 
 // Serve creates a GraphQL interface on <address>/graphql and a GraphiQL explorer on /graphiql
 func (r *resolver) Serve(address string) {
-	opts := []graphql.SchemaOpt{graphql.UseFieldResolvers()}
-	r.logger.Infoln("Validating GraphQL schema")
-	s := graphql.MustParseSchema(static.Schema(), r, opts...)
-	r.logger.Infof("Schema Validated!")
-
-	relayHandler := relay.Handler{Schema: s}
-
+	relayHandler := r.NewRelayHandler()
 	mux := http.NewServeMux()
 	mux.Handle("/graphql", http.HandlerFunc(func(wr http.ResponseWriter, re *http.Request) {
 		r.logger.Infof("%s %s %s\n", re.RemoteAddr, re.Method, re.URL)
@@ -116,4 +110,14 @@ func (r *resolver) Serve(address string) {
 	if err := server.ListenAndServe(); err != nil {
 		r.logger.Errorln("server.ListenAndServe:", err)
 	}
+}
+
+// NewRelayHandler sets up the response handler.
+func (r *resolver) NewRelayHandler() relay.Handler {
+	opts := []graphql.SchemaOpt{graphql.UseFieldResolvers()}
+	r.logger.Infoln("Validating GraphQL schema")
+	s := graphql.MustParseSchema(static.Schema(), r, opts...)
+	r.logger.Infof("Schema Validated!")
+	relayHandler := relay.Handler{Schema: s}
+	return relayHandler
 }
