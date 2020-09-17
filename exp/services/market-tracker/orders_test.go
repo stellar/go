@@ -16,52 +16,59 @@ var badAmtOrders = []hProtocol.PriceLevel{hProtocol.PriceLevel{
 	Amount: "amount",
 }}
 
-var lowUsdOrder = usdOrder{
-	xlmAmount: 50.0,
-	usdAmount: 5.0,
-	usdPrice:  20.0,
-}
-
-var highUsdOrder = usdOrder{
-	xlmAmount: 100.0,
-	usdAmount: 10.0,
-	usdPrice:  25.0,
-}
-
-func TestGetUsdBids(t *testing.T) {
+func TestConvertBids(t *testing.T) {
 	usdXlmPrice := 0.10
-	bids, err := getUsdBids(badAmtOrders, usdXlmPrice)
+	basePrice := 0.10
+	bids, err := convertBids(badAmtOrders, usdXlmPrice, basePrice)
 	assert.Error(t, err)
 	assert.Equal(t, 0, len(bids))
 
-	bids, err = getUsdBids(hOrders, usdXlmPrice)
+	highBid := usdOrder{
+		xlmAmount:  100.0,
+		usdAmount:  10.0,
+		baseAmount: 1.0,
+		usdPrice:   0.25,
+	}
+
+	lowBid := usdOrder{
+		xlmAmount:  50.0,
+		usdAmount:  5.0,
+		baseAmount: 0.5,
+		usdPrice:   0.2,
+	}
+
+	bids, err = convertBids(hOrders, usdXlmPrice, basePrice)
 	assert.NoError(t, err)
 	assert.GreaterOrEqual(t, bids[0].usdPrice, bids[1].usdPrice)
-	assert.Equal(t, highUsdOrder, bids[0])
-	assert.Equal(t, lowUsdOrder, bids[1])
+	assert.Equal(t, highBid, bids[0])
+	assert.Equal(t, lowBid, bids[1])
 }
 
-func TestGetUsdAsks(t *testing.T) {
+func TestConvertAsks(t *testing.T) {
 	usdXlmPrice := 0.10
-	asks, err := getUsdAsks(badAmtOrders, usdXlmPrice)
+	basePrice := 0.10
+	asks, err := convertAsks(badAmtOrders, usdXlmPrice, basePrice)
 	assert.Error(t, err)
 	assert.Equal(t, 0, len(asks))
 
+	lowAsk := usdOrder{
+		xlmAmount:  50,
+		usdPrice:   0.2,
+		usdAmount:  5,
+		baseAmount: 0.5,
+	}
+
+	highAsk := usdOrder{
+		xlmAmount:  100,
+		usdPrice:   0.25,
+		usdAmount:  10,
+		baseAmount: 1,
+	}
+
 	orders := []hProtocol.PriceLevel{hHighOrder, hLowOrder}
-	asks, err = getUsdAsks(orders, usdXlmPrice)
+	asks, err = convertAsks(orders, usdXlmPrice, basePrice)
 	assert.NoError(t, err)
 	assert.LessOrEqual(t, asks[0].usdPrice, asks[1].usdPrice)
-	assert.Equal(t, lowUsdOrder, asks[0])
-	assert.Equal(t, highUsdOrder, asks[1])
-}
-
-func TestGetUsdOrders(t *testing.T) {
-	usdXlmPrice := 0.10
-	usdOrders, err := getUsdOrders(badAmtOrders, usdXlmPrice)
-	assert.Error(t, err)
-
-	usdOrders, err = getUsdOrders(hOrders, usdXlmPrice)
-	assert.NoError(t, err)
-	assert.Equal(t, lowUsdOrder, usdOrders[0])
-	assert.Equal(t, highUsdOrder, usdOrders[1])
+	assert.Equal(t, lowAsk, asks[0])
+	assert.Equal(t, highAsk, asks[1])
 }

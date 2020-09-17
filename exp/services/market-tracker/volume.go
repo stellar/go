@@ -10,11 +10,15 @@ import (
 	hProtocol "github.com/stellar/go/protocols/horizon"
 )
 
-// Volume stores volume of a various base pair over various time periods.
-// DN represents the last N days. and HM represents the last M hours.
+// Volume stores volume of a various base pair in both XLM and USD.
+// It also includes metadata about associated trades.
 type Volume struct {
-	D30 prometheus.Gauge
-	D1  prometheus.Gauge
+	BaseVolumeBaseAsset    prometheus.Gauge
+	BaseVolumeUsd          prometheus.Gauge
+	CounterVolumeBaseAsset prometheus.Gauge
+	CounterVolumeUsd       prometheus.Gauge
+	TradeCount             prometheus.Gauge
+	TradeAvgAmt            prometheus.Gauge
 }
 
 type xlmPrice struct {
@@ -23,10 +27,13 @@ type xlmPrice struct {
 }
 
 type volumeHist struct {
-	start     int64
-	end       int64
-	xlmVolume float64
-	usdVolume float64
+	start                  int64
+	end                    int64
+	numTrades              float64
+	baseVolumeBaseAsset    float64
+	baseVolumeUsd          float64
+	counterVolumeBaseAsset float64
+	counterVolumeUsd       float64
 }
 
 func trackVolumes(cfg Config, c trackerClient, watchedTPsPtr *[]prometheusWatchedTP) {
@@ -39,21 +46,29 @@ func trackVolumes(cfg Config, c trackerClient, watchedTPsPtr *[]prometheusWatche
 }
 
 func initVolumes(cfg Config, c trackerClient, watchedTPs []prometheusWatchedTP) map[string][]volumeHist {
-	req := mustCreateXlmPriceRequest()
-	priceHist, err := getXlmPriceHistory(req)
+	xlmReq := mustCreateXlmPriceRequest()
+	xlmPriceHist, err := getXlmPriceHistory(xlmReq)
 	if err != nil {
 		fmt.Printf("got error when getting xlm price history: %s\n", err)
 	}
 
 	volumeHistMap := make(map[string][]volumeHist)
 	end := time.Now()
-	start := end.Add(time.Duration(-30 * 24 * time.Hour))
+	start := end.Add(time.Duration(-24 * time.Hour))
 	res := 15 * 60                                     // resolution length, in seconds
 	cRes := time.Duration(res*1000) * time.Millisecond // horizon request must be in milliseconds
+
 	for i, wtp := range watchedTPs {
-		// TODO: Calculate volume for assets with non-native base.
-		if wtp.TradePair.SellingAsset.Code != "XLM" && wtp.TradePair.SellingAsset.IssuerAddress != "native" {
+		// TODO: Calculate volume for assets with non-native counter.
+		if wtp.TradePair.SellingAsset.Code != "XLM" && wtp.TradePair.SellingAsset.IssuerAddress != "" {
 			continue
+		}
+
+		currency := watchedTPs[i].TradePair.BuyingAsset.Currency
+		trueAssetUsdPrice, err := updateAssetUsdPrice(currency)
+		if err != nil {
+			fmt.Printf("error while getting asset price: %s\n", err)
+			return make(map[string][]volumeHist)
 		}
 
 		taps, err := c.getAggTradesForTradePair(wtp.TradePair, start, end, cRes)
@@ -62,19 +77,20 @@ func initVolumes(cfg Config, c trackerClient, watchedTPs []prometheusWatchedTP) 
 		}
 
 		records := getAggRecords(taps)
-		volumeHist, err := constructVolumeHistory(records, priceHist, start, end, res)
+		volumeHist, err := constructVolumeHistory(records, xlmPriceHist, trueAssetUsdPrice, start, end, res)
 		if err != nil {
 			fmt.Printf("got error constructing volume history for pair %s\n: %s", wtp.TradePair.String(), err)
 		}
 
 		volumeHistMap[wtp.TradePair.String()] = volumeHist
 
-		month := start.Unix()
 		day := end.Add(time.Duration(-24 * time.Hour)).Unix()
-		watchedTPs[i].XlmVolume.D1.Set(addXlmVolumeHistory(volumeHist, day))
-		watchedTPs[i].XlmVolume.D30.Set(addXlmVolumeHistory(volumeHist, month))
-		watchedTPs[i].UsdVolume.D1.Set(addUsdVolumeHistory(volumeHist, day))
-		watchedTPs[i].UsdVolume.D30.Set(addUsdVolumeHistory(volumeHist, month))
+		watchedTPs[i].Volume.BaseVolumeBaseAsset.Set(addBaseVolumeBaseAssetHistory(volumeHist, day))
+		watchedTPs[i].Volume.BaseVolumeUsd.Set(addBaseVolumeUsdHistory(volumeHist, day))
+		watchedTPs[i].Volume.CounterVolumeBaseAsset.Set(addCounterVolumeBaseHistory(volumeHist, day))
+		watchedTPs[i].Volume.CounterVolumeUsd.Set(addCounterVolumeUsdHistory(volumeHist, day))
+		watchedTPs[i].Volume.TradeCount.Set(addTradeCount(volumeHist, day))
+		watchedTPs[i].Volume.TradeAvgAmt.Set(addTradeAvg(volumeHist, day))
 	}
 	return volumeHistMap
 }
@@ -86,10 +102,12 @@ func updateVolume(cfg Config, c trackerClient, watchedTPsPtr *[]prometheusWatche
 	day := time.Duration(24 * 60 * 60 * time.Second)    // number of seconds in a day
 	watchedTPs := *watchedTPsPtr
 	forLoopDuration := time.Duration(0)
+
+	priceCache := createPriceCache(watchedTPs)
 	for {
 		time.Sleep(historyUnit - forLoopDuration) // wait before starting the update
 
-		price, err := getLatestXlmPrice(req)
+		xlmUsdPrice, err := getLatestXlmPrice(req)
 		if err != nil {
 			fmt.Printf("error while getting latest price: %s", err)
 		}
@@ -97,36 +115,66 @@ func updateVolume(cfg Config, c trackerClient, watchedTPsPtr *[]prometheusWatche
 		end := time.Now()
 		start := end.Add(-1 * historyUnit)
 		for i, wtp := range watchedTPs {
-			// TODO: Calculate volume for assets with non-native base.
-			if wtp.TradePair.SellingAsset.Code != "XLM" && wtp.TradePair.SellingAsset.IssuerAddress != "native" {
+			// TODO: Calculate volume for assets with non-native counter.
+			if wtp.TradePair.SellingAsset.Code != "XLM" && wtp.TradePair.SellingAsset.IssuerAddress != "" {
 				continue
+			}
+
+			trueAssetUsdPrice := 0.0
+			currency := wtp.TradePair.BuyingAsset.Currency
+			if priceCache[currency].updated.Before(time.Now().Add(-1 * time.Hour)) {
+				trueAssetUsdPrice, err = updateAssetUsdPrice(currency)
+				if err != nil {
+					fmt.Printf("error while getting asset price: %s\n", err)
+					return
+				}
+
+				priceCache[currency] = cachedPrice{
+					price:   trueAssetUsdPrice,
+					updated: time.Now(),
+				}
+			} else {
+				trueAssetUsdPrice = priceCache[currency].price
 			}
 
 			tps := wtp.TradePair.String()
 			taps, err := c.getAggTradesForTradePair(wtp.TradePair, start, end, cRes)
 			if err != nil {
 				fmt.Printf("got error getting agg trades for pair %s\n: %s", tps, err)
+				return
 			}
 
 			records := getAggRecords(taps)
 			sts := start.Unix()
 			ets := end.Unix()
-			xlmVolume, err := totalRecordsXlmVolume(records, start, end)
+			counterVolume, err := totalRecordsCounterVolume(records, start, end)
 			if err != nil {
 				fmt.Printf("got error aggregating xlm volume for pair %s\n: %s", tps, err)
 			}
 
+			baseVolume, err := totalRecordsBaseVolume(records, start, end)
+			if err != nil {
+				fmt.Printf("got error aggregating base volume for pair %s\n: %s", tps, err)
+			}
+
+			numTrades, err := totalRecordsTradeCount(records, start, end)
+			if err != nil {
+				fmt.Printf("got error aggregating trade counts for pair %s\n: %s", tps, err)
+			}
+
 			latestVolume := volumeHist{
-				start:     sts,
-				end:       ets,
-				xlmVolume: xlmVolume,
-				usdVolume: price * xlmVolume,
+				start:                  sts,
+				end:                    ets,
+				baseVolumeBaseAsset:    baseVolume,
+				baseVolumeUsd:          baseVolume / trueAssetUsdPrice,
+				counterVolumeBaseAsset: counterVolume * xlmUsdPrice * trueAssetUsdPrice,
+				counterVolumeUsd:       counterVolume * xlmUsdPrice,
+				numTrades:              numTrades,
 			}
 
 			// get the volumes of the oldest history unit, for both the day and month
 			vh := volumeHistMap[tps]
-			oldestVolumeMonth := vh[len(vh)-1]
-			oldestVolumeDay := vh[int(day/historyUnit)]
+			oldestVolume := vh[int(day/historyUnit)]
 
 			// remove the oldest volume, store the newest one
 			vh = vh[:len(vh)-1]
@@ -135,10 +183,12 @@ func updateVolume(cfg Config, c trackerClient, watchedTPsPtr *[]prometheusWatche
 
 			// update the volume metrics using the difference between the latest and oldest
 			// history units' volumes, as appropriate for that metric
-			watchedTPs[i].XlmVolume.D30.Add(latestVolume.xlmVolume - oldestVolumeMonth.xlmVolume)
-			watchedTPs[i].XlmVolume.D1.Add(latestVolume.xlmVolume - oldestVolumeDay.xlmVolume)
-			watchedTPs[i].UsdVolume.D30.Add(latestVolume.usdVolume - oldestVolumeMonth.usdVolume)
-			watchedTPs[i].UsdVolume.D1.Add(latestVolume.usdVolume - oldestVolumeDay.usdVolume)
+			watchedTPs[i].Volume.BaseVolumeBaseAsset.Add(latestVolume.baseVolumeBaseAsset - oldestVolume.baseVolumeBaseAsset)
+			watchedTPs[i].Volume.BaseVolumeUsd.Add(latestVolume.baseVolumeUsd - oldestVolume.baseVolumeUsd)
+			watchedTPs[i].Volume.CounterVolumeBaseAsset.Add(latestVolume.counterVolumeBaseAsset - oldestVolume.counterVolumeBaseAsset)
+			watchedTPs[i].Volume.CounterVolumeUsd.Add(latestVolume.counterVolumeUsd - oldestVolume.counterVolumeUsd)
+			watchedTPs[i].Volume.TradeCount.Add(latestVolume.numTrades - oldestVolume.numTrades)
+			watchedTPs[i].Volume.TradeAvgAmt.Add(latestVolume.counterVolumeUsd/latestVolume.numTrades - oldestVolume.counterVolumeUsd/oldestVolume.numTrades)
 		}
 
 		forLoopDuration = time.Now().Sub(end)
@@ -153,8 +203,8 @@ func getAggRecords(taps []hProtocol.TradeAggregationsPage) (records []hProtocol.
 	return
 }
 
-func constructVolumeHistory(tas []hProtocol.TradeAggregation, prices []xlmPrice, start, end time.Time, res int) ([]volumeHist, error) {
-	if len(prices) < 2 {
+func constructVolumeHistory(tas []hProtocol.TradeAggregation, xlmPrices []xlmPrice, assetPrice float64, start, end time.Time, res int) ([]volumeHist, error) {
+	if len(xlmPrices) < 2 {
 		return []volumeHist{}, fmt.Errorf("mis-formed xlm price history from stellar expert")
 	}
 
@@ -166,9 +216,9 @@ func constructVolumeHistory(tas []hProtocol.TradeAggregation, prices []xlmPrice,
 		// find the weighted price for the current interval
 		cets := currEnd.Unix()
 		csts := cets - int64(res)
-		priceIdx = findTimestampPriceIndex(csts, prices, priceIdx)
+		priceIdx = findTimestampPriceIndex(csts, xlmPrices, priceIdx)
 
-		cwp, err := calcWeightedPrice(csts, priceIdx, prices)
+		weightedXlmUsdPrice, err := calcWeightedPrice(csts, priceIdx, xlmPrices)
 		if err != nil {
 			return []volumeHist{}, err
 		}
@@ -177,7 +227,9 @@ func constructVolumeHistory(tas []hProtocol.TradeAggregation, prices []xlmPrice,
 		// TODO: This loop does not correctly include records before the start
 		// time. however, that should not happen, given that we define start before
 		// calling the horizon client.
-		currXlmVolume := 0.
+		currBaseVolume := 0.0
+		currCounterVolume := 0.0
+		currTradeCount := 0.0
 		for recordIdx < len(tas) {
 			r := tas[recordIdx]
 			rts := r.Timestamp / 1000
@@ -190,20 +242,31 @@ func constructVolumeHistory(tas []hProtocol.TradeAggregation, prices []xlmPrice,
 				recordIdx++
 				continue
 			} else {
-				recordXlmVolume, err := strconv.ParseFloat(r.CounterVolume, 64)
+				recordBaseVolume, err := strconv.ParseFloat(r.BaseVolume, 64)
 				if err != nil {
 					return []volumeHist{}, err
 				}
-				currXlmVolume += recordXlmVolume
+
+				recordCounterVolume, err := strconv.ParseFloat(r.CounterVolume, 64)
+				if err != nil {
+					return []volumeHist{}, err
+				}
+
+				currBaseVolume += recordBaseVolume
+				currCounterVolume += recordCounterVolume
+				currTradeCount += float64(r.TradeCount)
 				recordIdx++
 			}
 		}
 
 		currVolume := volumeHist{
-			start:     csts,
-			end:       cets,
-			xlmVolume: currXlmVolume,
-			usdVolume: cwp * currXlmVolume,
+			start:                  csts,
+			end:                    cets,
+			numTrades:              currTradeCount,
+			baseVolumeBaseAsset:    currBaseVolume,
+			baseVolumeUsd:          currBaseVolume / assetPrice,
+			counterVolumeBaseAsset: currCounterVolume * weightedXlmUsdPrice * assetPrice,
+			counterVolumeUsd:       weightedXlmUsdPrice * currCounterVolume,
 		}
 
 		currEnd = currEnd.Add(time.Duration(-1*res) * time.Second)
@@ -212,27 +275,71 @@ func constructVolumeHistory(tas []hProtocol.TradeAggregation, prices []xlmPrice,
 	return volumeHistory, nil
 }
 
-func addXlmVolumeHistory(history []volumeHist, end int64) (xlmVolume float64) {
+func addBaseVolumeBaseAssetHistory(history []volumeHist, end int64) (baseVolume float64) {
 	for _, vh := range history {
 		if vh.end < end {
 			break
 		}
-		xlmVolume += vh.xlmVolume
+		baseVolume += vh.baseVolumeBaseAsset
 	}
 	return
 }
 
-func addUsdVolumeHistory(history []volumeHist, end int64) (usdVolume float64) {
+func addBaseVolumeUsdHistory(history []volumeHist, end int64) (baseVolume float64) {
 	for _, vh := range history {
 		if vh.end < end {
 			break
 		}
-		usdVolume += vh.usdVolume
+		baseVolume += vh.baseVolumeUsd
 	}
 	return
 }
 
-func totalRecordsXlmVolume(tas []hProtocol.TradeAggregation, start, end time.Time) (float64, error) {
+func addCounterVolumeBaseHistory(history []volumeHist, end int64) (counterVolume float64) {
+	for _, vh := range history {
+		if vh.end < end {
+			break
+		}
+		counterVolume += vh.counterVolumeBaseAsset
+	}
+	return
+}
+
+func addCounterVolumeUsdHistory(history []volumeHist, end int64) (counterVolume float64) {
+	for _, vh := range history {
+		if vh.end < end {
+			break
+		}
+		counterVolume += vh.counterVolumeUsd
+	}
+	return
+}
+
+func addTradeCount(history []volumeHist, end int64) (tradeCount float64) {
+	for _, vh := range history {
+		if vh.end < end {
+			break
+		}
+		tradeCount += float64(vh.numTrades)
+	}
+	return
+}
+
+func addTradeAvg(history []volumeHist, end int64) (tradeAvg float64) {
+	totalAmt := 0.
+	totalTrades := 0.
+	for _, vh := range history {
+		if vh.end < end {
+			break
+		}
+		totalAmt += vh.counterVolumeUsd
+		totalTrades += float64(vh.numTrades)
+	}
+	tradeAvg = totalAmt / totalTrades
+	return
+}
+
+func totalRecordsCounterVolume(tas []hProtocol.TradeAggregation, start, end time.Time) (float64, error) {
 	tv := 0.0
 	for _, ta := range tas {
 		ts := time.Unix(ta.Timestamp/1000, 0) // timestamps are milliseconds since epoch time
@@ -244,9 +351,41 @@ func totalRecordsXlmVolume(tas []hProtocol.TradeAggregation, start, end time.Tim
 		if err != nil {
 			return 0.0, err
 		}
+
 		tv += cv
 	}
 	return tv, nil
+}
+
+func totalRecordsBaseVolume(tas []hProtocol.TradeAggregation, start, end time.Time) (float64, error) {
+	tv := 0.0
+	for _, ta := range tas {
+		ts := time.Unix(ta.Timestamp/1000, 0) // timestamps are milliseconds since epoch time
+		if ts.Before(start) || ts.After(end) {
+			return 0.0, fmt.Errorf("record at timestamp %v is out of time bounds %v to %v", ts, start, end)
+		}
+
+		bv, err := strconv.ParseFloat(ta.BaseVolume, 64)
+		if err != nil {
+			return 0.0, err
+		}
+
+		tv += bv
+	}
+	return tv, nil
+}
+
+func totalRecordsTradeCount(tas []hProtocol.TradeAggregation, start, end time.Time) (float64, error) {
+	ttc := 0.0
+	for _, ta := range tas {
+		ts := time.Unix(ta.Timestamp/1000, 0) // timestamps are milliseconds since epoch time
+		if ts.Before(start) || ts.After(end) {
+			return 0, fmt.Errorf("record at timestamp %v is out of time bounds %v to %v", ts, start, end)
+		}
+
+		ttc += float64(ta.TradeCount)
+	}
+	return ttc, nil
 }
 
 // findTimestampPriceIndex iterates through an array of timestamps and prices, and returns the

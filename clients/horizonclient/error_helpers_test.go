@@ -36,6 +36,17 @@ func TestIsNotFoundError(t *testing.T) {
 			is: true,
 		},
 		{
+			desc: "wrapped not found problem (pointer)",
+			err: errors.Wrap(&Error{
+				Problem: problem.P{
+					Type:   "https://stellar.org/horizon-errors/not_found",
+					Title:  "Resource Missing",
+					Status: 404,
+				},
+			}, "wrap message"),
+			is: true,
+		},
+		{
 			desc: "not found problem (not a pointer)",
 			err: Error{
 				Problem: problem.P{
@@ -44,6 +55,17 @@ func TestIsNotFoundError(t *testing.T) {
 					Status: 404,
 				},
 			},
+			is: true,
+		},
+		{
+			desc: "wrapped not found problem (not a pointer)",
+			err: errors.Wrap(Error{
+				Problem: problem.P{
+					Type:   "https://stellar.org/horizon-errors/not_found",
+					Title:  "Resource Missing",
+					Status: 404,
+				},
+			}, "wrap message"),
 			is: true,
 		},
 		{
@@ -58,6 +80,17 @@ func TestIsNotFoundError(t *testing.T) {
 			is: false,
 		},
 		{
+			desc: "wrapped some other problem (pointer)",
+			err: errors.Wrap(&Error{
+				Problem: problem.P{
+					Type:   "https://stellar.org/horizon-errors/server_error",
+					Title:  "Server Error",
+					Status: 500,
+				},
+			}, "wrap message"),
+			is: false,
+		},
+		{
 			desc: "some other problem (not a pointer)",
 			err: Error{
 				Problem: problem.P{
@@ -66,6 +99,17 @@ func TestIsNotFoundError(t *testing.T) {
 					Status: 500,
 				},
 			},
+			is: false,
+		},
+		{
+			desc: "wrapped some other problem (not a pointer)",
+			err: errors.Wrap(Error{
+				Problem: problem.P{
+					Type:   "https://stellar.org/horizon-errors/server_error",
+					Title:  "Server Error",
+					Status: 500,
+				},
+			}, "wrap message"),
 			is: false,
 		},
 		{
@@ -117,6 +161,23 @@ func TestGetError(t *testing.T) {
 			},
 		},
 		{
+			desc: "wrapped not found problem (pointer)",
+			err: errors.Wrap(&Error{
+				Problem: problem.P{
+					Type:   "https://stellar.org/horizon-errors/not_found",
+					Title:  "Resource Missing",
+					Status: 404,
+				},
+			}, "wrap message"),
+			wantErr: &Error{
+				Problem: problem.P{
+					Type:   "https://stellar.org/horizon-errors/not_found",
+					Title:  "Resource Missing",
+					Status: 404,
+				},
+			},
+		},
+		{
 			desc: "not found problem (not a pointer)",
 			err: Error{
 				Problem: problem.P{
@@ -125,6 +186,23 @@ func TestGetError(t *testing.T) {
 					Status: 404,
 				},
 			},
+			wantErr: &Error{
+				Problem: problem.P{
+					Type:   "https://stellar.org/horizon-errors/not_found",
+					Title:  "Resource Missing",
+					Status: 404,
+				},
+			},
+		},
+		{
+			desc: "wrapped not found problem (not a pointer)",
+			err: errors.Wrap(Error{
+				Problem: problem.P{
+					Type:   "https://stellar.org/horizon-errors/not_found",
+					Title:  "Resource Missing",
+					Status: 404,
+				},
+			}, "wrap message"),
 			wantErr: &Error{
 				Problem: problem.P{
 					Type:   "https://stellar.org/horizon-errors/not_found",

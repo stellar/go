@@ -52,6 +52,20 @@ func (c *ServeCommand) Command() *cobra.Command {
 			Required:  true,
 		},
 		{
+			Name:      "stellar-toml-domain",
+			Usage:     "Domain where stellar.toml is served. The private key counterpart of the SIGNING_KEY specified in the stellar.toml file has to be provided via signing-key",
+			OptType:   types.String,
+			ConfigKey: &opts.StellarTOMLDomain,
+			Required:  true,
+		},
+		{
+			Name:      "auth-home-domain",
+			Usage:     "Home domain(s) of the service(s) requiring SEP-10 authentication comma separated (first domain is the default domain)",
+			OptType:   types.String,
+			ConfigKey: &opts.AuthHomeDomains,
+			Required:  true,
+		},
+		{
 			Name:           "challenge-expires-in",
 			Usage:          "The time period in seconds after which the challenge transaction expires",
 			OptType:        types.Int,

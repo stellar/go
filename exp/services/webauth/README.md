@@ -1,6 +1,6 @@
 # webauth
 
-This is a [SEP-10] Web Authentication implementation based on SEP-10 v1.3.0
+This is a [SEP-10] Web Authentication implementation based on SEP-10 v2.0.0
 that requires a user to prove they possess a signing key(s) that meets the high
 threshold for an account, i.e. they have the ability to perform any high
 threshold operation on the given account. If an account does not exist it may
@@ -42,6 +42,7 @@ Usage:
 
 Flags:
       --allow-accounts-that-do-not-exist   Allow accounts that do not exist (ALLOW_ACCOUNTS_THAT_DO_NOT_EXIST)
+      --auth-home-domain string            Home domain(s) of the service(s) requiring SEP-10 authentication comma separated (first domain is the default domain) (AUTH_HOME_DOMAIN)
       --challenge-expires-in int           The time period in seconds after which the challenge transaction expires (CHALLENGE_EXPIRES_IN) (default 300)
       --horizon-url string                 Horizon URL used for looking up account details (HORIZON_URL) (default "https://horizon-testnet.stellar.org/")
       --jwk string                         JSON Web Key (JWK) used for signing JWTs (if the key is an asymmetric key that has separate public and private key, the JWK must contain the private key) (JWK)
@@ -50,6 +51,7 @@ Flags:
       --network-passphrase string          Network passphrase of the Stellar network transactions should be signed for (NETWORK_PASSPHRASE) (default "Test SDF Network ; September 2015")
       --port int                           Port to listen and serve on (PORT) (default 8000)
       --signing-key string                 Stellar signing key(s) used for signing transactions comma separated (first key is used for signing, others used for verifying challenges) (SIGNING_KEY)
+      --stellar-toml-domain string         Domain where stellar.toml is served. The private key counterpart of the SIGNING_KEY specified in the stellar.toml file has to be provided via signing-key (STELLAR_TOML_DOMAIN)
 ```
 
-[SEP-10]: https://github.com/stellar/stellar-protocol/blob/2be91ce8d8032ca9b2f368800d06b9fba346a147/ecosystem/sep-0010.md
+[SEP-10]: https://github.com/stellar/stellar-protocol/blob/28c636b4ef5074ca0c3d46bbe9bf0f3f38095233/ecosystem/sep-0010.md

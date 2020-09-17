@@ -3,8 +3,6 @@ package main
 import (
 	"net/http"
 
-	"github.com/prometheus/client_golang/prometheus"
-
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	hClient "github.com/stellar/go/clients/horizonclient"
@@ -13,10 +11,10 @@ import (
 type prometheusWatchedTP struct {
 	TradePair TradePair
 	Spread    Spread
-	XlmVolume Volume
-	UsdVolume Volume
+	Volume    Volume
 	Slippage  Slippage
-	FairValue prometheus.Gauge
+	Orderbook Orderbook
+	FairValue FairValue
 }
 
 var watchedTradePairs []prometheusWatchedTP
