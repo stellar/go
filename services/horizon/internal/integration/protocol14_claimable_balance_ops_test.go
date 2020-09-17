@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	sdk "github.com/stellar/go/clients/horizonclient"
+	"github.com/stellar/go/keypair"
 	hEffects "github.com/stellar/go/protocols/horizon/effects"
 	"github.com/stellar/go/protocols/horizon/operations"
 	"github.com/stellar/go/services/horizon/internal/test"
@@ -106,4 +107,46 @@ func TestCreateClaimableBalanceInvalidOperationsEffects(t *testing.T) {
 	eResponse, err := itest.Client().Effects(sdk.EffectRequest{ForOperation: cb.ID})
 	effects := eResponse.Embedded.Records
 	tt.Len(effects, 0)
+}
+
+func TestCreateSponsoredClaimableBalance(t *testing.T) {
+	tt := assert.New(t)
+	itest := test.NewIntegrationTest(t, protocol14Config)
+	defer itest.Close()
+	master := itest.Master()
+
+	keys, accounts := itest.CreateAccounts(1, "50")
+	ops := []txnbuild.Operation{
+		&txnbuild.BeginSponsoringFutureReserves{
+			SourceAccount: &txnbuild.SimpleAccount{
+				AccountID: master.Address(),
+			},
+			SponsoredID: keys[0].Address(),
+		},
+		&txnbuild.CreateClaimableBalance{
+			SourceAccount: accounts[0],
+			Destinations: []txnbuild.Claimant{
+				txnbuild.NewClaimant(master.Address(), nil),
+			},
+			Amount: "20",
+			Asset:  txnbuild.NativeAsset{},
+		},
+		&txnbuild.EndSponsoringFutureReserves{},
+	}
+
+	txResp, err := itest.SubmitMultiSigOperations(accounts[0], []*keypair.Full{keys[0], master}, ops...)
+	tt.NoError(err)
+
+	var txResult xdr.TransactionResult
+	err = xdr.SafeUnmarshalBase64(txResp.ResultXdr, &txResult)
+	tt.NoError(err)
+	tt.Equal(xdr.TransactionResultCodeTxSuccess, txResult.Result.Code)
+
+	balances, err := itest.Client().ClaimableBalances(sdk.ClaimableBalanceRequest{})
+	tt.NoError(err)
+
+	claims := balances.Embedded.Records
+	tt.Len(claims, 1)
+	balance := claims[0]
+	tt.Equal(master.Address(), balance.Sponsor)
 }
