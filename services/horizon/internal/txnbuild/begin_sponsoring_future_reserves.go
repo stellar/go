@@ -36,6 +36,7 @@ func (bs *BeginSponsoringFutureReserves) FromXDR(xdrOp xdr.Operation) error {
 	if !ok {
 		return errors.New("error parsing begin_sponsoring_future_reserves operation from xdr")
 	}
+	bs.SourceAccount = accountFromXDR(xdrOp.SourceAccount)
 	bs.SponsoredID = result.SponsoredId.Address()
 
 	return nil
