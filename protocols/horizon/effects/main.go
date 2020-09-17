@@ -2,6 +2,7 @@ package effects
 
 import (
 	"encoding/json"
+	"github.com/stellar/go/xdr"
 	"time"
 
 	"github.com/stellar/go/protocols/horizon/base"
@@ -110,6 +111,57 @@ const (
 
 	// EffectSequenceBumped occurs when an account bumps their sequence number
 	EffectSequenceBumped EffectType = 43 // from bump_sequence
+
+	// claimable balance effects
+
+	// EffectClaimableBalanceCreated occurs when a claimable balance is created
+	EffectClaimableBalanceCreated EffectType = 50 // from create_claimable_balance
+
+	// EffectClaimableBalanceClaimantCreated occurs when a claimable balance claimant is created
+	EffectClaimableBalanceClaimantCreated EffectType = 51 // from create_claimable_balance
+
+	// EffectClaimableBalanceClaimed occurs when a claimable balance is claimed
+	EffectClaimableBalanceClaimed EffectType = 52 // from claim_claimable_balance
+
+	// sponsorship effects
+
+	// EffectAccountSponsorshipCreated occurs when an account ledger entry is sponsored
+	EffectAccountSponsorshipCreated EffectType = 60 // from create_account
+
+	// EffectAccountSponsorshipUpdated occurs when the sponsoring of an account ledger entry is updated
+	EffectAccountSponsorshipUpdated EffectType = 61 // from revoke_sponsorship
+
+	// EffectAccountSponsorshipRemoved occurs when the sponsorship of an account ledger entry is removed
+	EffectAccountSponsorshipRemoved EffectType = 62 // from revoke_sponsorship
+
+	// EffectTrustlineSponsorshipCreated occurs when a trustline ledger entry is sponsored
+	EffectTrustlineSponsorshipCreated EffectType = 63 // from change_trust
+
+	// EffectTrustlineSponsorshipUpdated occurs when the sponsoring of a trustline ledger entry is updated
+	EffectTrustlineSponsorshipUpdated EffectType = 64 // from revoke_sponsorship
+
+	// EffectTrustlineSponsorshipRemoved occurs when the sponsorship of a trustline ledger entry is removed
+	EffectTrustlineSponsorshipRemoved EffectType = 65 // from revoke_sponsorship
+
+	// EffectClaimableBalanceSponsorshipCreated occurs when a claimable balance ledger entry is sponsored
+	EffectClaimableBalanceSponsorshipCreated EffectType = 66 // from create_claimable_balance
+
+	// EffectClaimableBalanceSponsorshipUpdated occurs when the sponsoring of a claimable balance ledger entry
+	// is updated
+	EffectClaimableBalanceSponsorshipUpdated EffectType = 67 // from revoke_sponsorship
+
+	// EffectClaimableBalanceSponsorshipRemoved occurs when the sponsorship of a claimable balance ledger entry
+	// is removed
+	EffectClaimableBalanceSponsorshipRemoved EffectType = 68 // from revoke_sponsorship
+
+	// EffectSignerSponsorshipCreated occurs when the sponsorship of a signer is created
+	EffectSignerSponsorshipCreated EffectType = 69 // from set_options
+
+	// EffectSignerSponsorshipUpdated occurs when the sponsorship of a signer is updated
+	EffectSignerSponsorshipUpdated EffectType = 70 // from revoke_sponsorship
+
+	// EffectSignerSponsorshipRemoved occurs when the sponsorship of a signer is removed
+	EffectSignerSponsorshipRemoved EffectType = 71 // from revoke_sponsorship
 )
 
 // Peter 30-04-2019: this is copied from the resourcadapter package
@@ -143,6 +195,21 @@ var EffectTypeNames = map[EffectType]string{
 	EffectDataRemoved:                              "data_removed",
 	EffectDataUpdated:                              "data_updated",
 	EffectSequenceBumped:                           "sequence_bumped",
+	EffectClaimableBalanceCreated:                  "claimable_balance_created",
+	EffectClaimableBalanceClaimed:                  "claimable_balance_claimed",
+	EffectClaimableBalanceClaimantCreated:          "claimable_balance_claimant_created",
+	EffectAccountSponsorshipCreated:                "account_sponsorship_created",
+	EffectAccountSponsorshipUpdated:                "account_sponsorship_updated",
+	EffectAccountSponsorshipRemoved:                "account_sponsorship_removed",
+	EffectTrustlineSponsorshipCreated:              "trustline_sponsorship_created",
+	EffectTrustlineSponsorshipUpdated:              "trustline_sponsorship_updated",
+	EffectTrustlineSponsorshipRemoved:              "trustline_sponsorship_removed",
+	EffectClaimableBalanceSponsorshipCreated:       "claimable_balance_sponsorship_created",
+	EffectClaimableBalanceSponsorshipUpdated:       "claimable_balance_sponsorship_updated",
+	EffectClaimableBalanceSponsorshipRemoved:       "claimable_balance_sponsorship_removed",
+	EffectSignerSponsorshipCreated:                 "signer_sponsorship_created",
+	EffectSignerSponsorshipUpdated:                 "signer_sponsorship_updated",
+	EffectSignerSponsorshipRemoved:                 "signer_sponsorship_removed",
 }
 
 // Base provides the common structure for any effect resource effect.
@@ -278,6 +345,101 @@ type Trade struct {
 	BoughtAssetType   string `json:"bought_asset_type"`
 	BoughtAssetCode   string `json:"bought_asset_code,omitempty"`
 	BoughtAssetIssuer string `json:"bought_asset_issuer,omitempty"`
+}
+
+type ClaimableBalanceCreated struct {
+	Base
+	Asset     string `json:"asset"`
+	BalanceID string `json:"balance_id"`
+	Amount    string `json:"amount"`
+}
+
+type ClaimableBalanceClaimed struct {
+	Base
+	Asset     string `json:"asset"`
+	BalanceID string `json:"balance_id"`
+	Amount    string `json:"amount"`
+}
+
+type ClaimableBalanceClaimantCreated struct {
+	Base
+	Asset     string             `json:"asset"`
+	BalanceID string             `json:"balance_id"`
+	Amount    string             `json:"amount"`
+	Predicate xdr.ClaimPredicate `json:"predicate"`
+}
+
+type AccountSponsorshipCreated struct {
+	Base
+	Sponsor string `json:"sponsor"`
+}
+
+type AccountSponsorshipUpdated struct {
+	Base
+	FormerSponsor string `json:"former_sponsor"`
+	NewSponsor    string `json:"new_sponsor"`
+}
+
+type AccountSponsorshipRemoved struct {
+	Base
+	FormerSponsor string `json:"former_sponsor"`
+}
+
+type TrustlineSponsorshipCreated struct {
+	Base
+	Asset   string `json:"asset"`
+	Sponsor string `json:"sponsor"`
+}
+
+type TrustlineSponsorshipUpdated struct {
+	Base
+	Asset         string `json:"asset"`
+	FormerSponsor string `json:"former_sponsor"`
+	NewSponsor    string `json:"new_sponsor"`
+}
+
+type TrustlineSponsorshipRemoved struct {
+	Base
+	Asset         string `json:"asset"`
+	FormerSponsor string `json:"former_sponsor"`
+}
+
+type ClaimableBalanceSponsorshipCreated struct {
+	Base
+	BalanceID string `json:"balance_id"`
+	Sponsor   string `json:"sponsor"`
+}
+
+type ClaimableBalanceSponsorshipUpdated struct {
+	Base
+	BalanceID     string `json:"balance_id"`
+	FormerSponsor string `json:"former_sponsor"`
+	NewSponsor    string `json:"new_sponsor"`
+}
+
+type ClaimableBalanceSponsorshipRemoved struct {
+	Base
+	BalanceID     string `json:"balance_id"`
+	FormerSponsor string `json:"former_sponsor"`
+}
+
+type SignerSponsorshipCreated struct {
+	Base
+	Signer  string `json:"signer"`
+	Sponsor string `json:"sponsor"`
+}
+
+type SignerSponsorshipUpdated struct {
+	Base
+	Signer        string `json:"signer"`
+	FormerSponsor string `json:"former_sponsor"`
+	NewSponsor    string `json:"new_sponsor"`
+}
+
+type SignerSponsorshipRemoved struct {
+	Base
+	Signer        string `json:"signer"`
+	FormerSponsor string `json:"former_sponsor"`
 }
 
 // Effect contains methods that are implemented by all effect types.
@@ -447,6 +609,96 @@ func UnmarshalEffect(effectType string, dataString []byte) (effects Effect, err 
 		effects = effect
 	case EffectTypeNames[EffectTrade]:
 		var effect Trade
+		if err = json.Unmarshal(dataString, &effect); err != nil {
+			return
+		}
+		effects = effect
+	case EffectTypeNames[EffectClaimableBalanceCreated]:
+		var effect ClaimableBalanceCreated
+		if err = json.Unmarshal(dataString, &effect); err != nil {
+			return
+		}
+		effects = effect
+	case EffectTypeNames[EffectClaimableBalanceClaimed]:
+		var effect ClaimableBalanceClaimed
+		if err = json.Unmarshal(dataString, &effect); err != nil {
+			return
+		}
+		effects = effect
+	case EffectTypeNames[EffectClaimableBalanceClaimantCreated]:
+		var effect ClaimableBalanceClaimantCreated
+		if err = json.Unmarshal(dataString, &effect); err != nil {
+			return
+		}
+		effects = effect
+	case EffectTypeNames[EffectAccountSponsorshipCreated]:
+		var effect AccountSponsorshipCreated
+		if err = json.Unmarshal(dataString, &effect); err != nil {
+			return
+		}
+		effects = effect
+	case EffectTypeNames[EffectAccountSponsorshipUpdated]:
+		var effect AccountSponsorshipUpdated
+		if err = json.Unmarshal(dataString, &effect); err != nil {
+			return
+		}
+		effects = effect
+	case EffectTypeNames[EffectAccountSponsorshipRemoved]:
+		var effect AccountSponsorshipRemoved
+		if err = json.Unmarshal(dataString, &effect); err != nil {
+			return
+		}
+		effects = effect
+	case EffectTypeNames[EffectTrustlineSponsorshipCreated]:
+		var effect TrustlineSponsorshipCreated
+		if err = json.Unmarshal(dataString, &effect); err != nil {
+			return
+		}
+		effects = effect
+	case EffectTypeNames[EffectTrustlineSponsorshipUpdated]:
+		var effect TrustlineSponsorshipUpdated
+		if err = json.Unmarshal(dataString, &effect); err != nil {
+			return
+		}
+		effects = effect
+	case EffectTypeNames[EffectTrustlineSponsorshipRemoved]:
+		var effect TrustlineSponsorshipRemoved
+		if err = json.Unmarshal(dataString, &effect); err != nil {
+			return
+		}
+		effects = effect
+	case EffectTypeNames[EffectClaimableBalanceSponsorshipCreated]:
+		var effect ClaimableBalanceSponsorshipCreated
+		if err = json.Unmarshal(dataString, &effect); err != nil {
+			return
+		}
+		effects = effect
+	case EffectTypeNames[EffectClaimableBalanceSponsorshipUpdated]:
+		var effect ClaimableBalanceSponsorshipUpdated
+		if err = json.Unmarshal(dataString, &effect); err != nil {
+			return
+		}
+		effects = effect
+	case EffectTypeNames[EffectClaimableBalanceSponsorshipRemoved]:
+		var effect ClaimableBalanceSponsorshipRemoved
+		if err = json.Unmarshal(dataString, &effect); err != nil {
+			return
+		}
+		effects = effect
+	case EffectTypeNames[EffectSignerSponsorshipCreated]:
+		var effect SignerSponsorshipCreated
+		if err = json.Unmarshal(dataString, &effect); err != nil {
+			return
+		}
+		effects = effect
+	case EffectTypeNames[EffectSignerSponsorshipUpdated]:
+		var effect SignerSponsorshipUpdated
+		if err = json.Unmarshal(dataString, &effect); err != nil {
+			return
+		}
+		effects = effect
+	case EffectTypeNames[EffectSignerSponsorshipRemoved]:
+		var effect SignerSponsorshipRemoved
 		if err = json.Unmarshal(dataString, &effect); err != nil {
 			return
 		}

@@ -1,7 +1,5 @@
 package xdr
 
-import "fmt"
-
 func (account *AccountEntry) SignerSummary() map[string]int32 {
 	ret := map[string]int32{}
 
@@ -73,16 +71,15 @@ func (account *AccountEntry) SignerSponsoringIDs() []SponsorshipDescriptor {
 	return ids
 }
 
-// SponsorForSigner returns a SponsorshipDescriptor for a given signer key.
-// Panics if the given signer does not exist in the AccountEntry.Signers.
-func (account *AccountEntry) SponsorForSigner(signer string) SponsorshipDescriptor {
+// SponsorPerSigner returns a mapping of signer to its sponsor
+func (account *AccountEntry) SponsorPerSigner() map[string]SponsorshipDescriptor {
 	ids := account.SignerSponsoringIDs()
 
+	signerToSponsor := map[string]SponsorshipDescriptor{}
+
 	for i, signerEntry := range account.Signers {
-		if signerEntry.Key.Address() == signer {
-			return ids[i]
-		}
+		signerToSponsor[signerEntry.Key.Address()] = ids[i]
 	}
 
-	panic(fmt.Sprintf("%s signer does not exist", signer))
+	return signerToSponsor
 }

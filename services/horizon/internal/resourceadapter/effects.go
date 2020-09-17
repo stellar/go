@@ -48,6 +48,8 @@ var EffectTypeNames = map[history.EffectType]string{
 	history.EffectClaimableBalanceSponsorshipCreated:       "claimable_balance_sponsorship_created",
 	history.EffectClaimableBalanceSponsorshipUpdated:       "claimable_balance_sponsorship_updated",
 	history.EffectClaimableBalanceSponsorshipRemoved:       "claimable_balance_sponsorship_removed",
+	history.EffectSignerSponsorshipCreated:                 "signer_sponsorship_created",
+	history.EffectSignerSponsorshipUpdated:                 "signer_sponsorship_updated",
 	history.EffectSignerSponsorshipRemoved:                 "signer_sponsorship_removed",
 }
 
@@ -147,6 +149,66 @@ func NewEffect(
 		if err == nil {
 			e.NewSeq = hsb.NewSeq
 		}
+		result = e
+	case history.EffectClaimableBalanceCreated:
+		e := effects.ClaimableBalanceCreated{Base: basev}
+		err = row.UnmarshalDetails(&e)
+		result = e
+	case history.EffectClaimableBalanceClaimed:
+		e := effects.ClaimableBalanceClaimed{Base: basev}
+		err = row.UnmarshalDetails(&e)
+		result = e
+	case history.EffectClaimableBalanceClaimantCreated:
+		e := effects.ClaimableBalanceClaimantCreated{Base: basev}
+		err = row.UnmarshalDetails(&e)
+		result = e
+	case history.EffectAccountSponsorshipCreated:
+		e := effects.AccountSponsorshipCreated{Base: basev}
+		err = row.UnmarshalDetails(&e)
+		result = e
+	case history.EffectAccountSponsorshipUpdated:
+		e := effects.AccountSponsorshipUpdated{Base: basev}
+		err = row.UnmarshalDetails(&e)
+		result = e
+	case history.EffectAccountSponsorshipRemoved:
+		e := effects.AccountSponsorshipRemoved{Base: basev}
+		err = row.UnmarshalDetails(&e)
+		result = e
+	case history.EffectTrustlineSponsorshipCreated:
+		e := effects.TrustlineSponsorshipCreated{Base: basev}
+		err = row.UnmarshalDetails(&e)
+		result = e
+	case history.EffectTrustlineSponsorshipUpdated:
+		e := effects.TrustlineSponsorshipUpdated{Base: basev}
+		err = row.UnmarshalDetails(&e)
+		result = e
+	case history.EffectTrustlineSponsorshipRemoved:
+		e := effects.TrustlineSponsorshipRemoved{Base: basev}
+		err = row.UnmarshalDetails(&e)
+		result = e
+	case history.EffectClaimableBalanceSponsorshipCreated:
+		e := effects.ClaimableBalanceSponsorshipCreated{Base: basev}
+		err = row.UnmarshalDetails(&e)
+		result = e
+	case history.EffectClaimableBalanceSponsorshipUpdated:
+		e := effects.ClaimableBalanceSponsorshipUpdated{Base: basev}
+		err = row.UnmarshalDetails(&e)
+		result = e
+	case history.EffectClaimableBalanceSponsorshipRemoved:
+		e := effects.ClaimableBalanceSponsorshipRemoved{Base: basev}
+		err = row.UnmarshalDetails(&e)
+		result = e
+	case history.EffectSignerSponsorshipCreated:
+		e := effects.SignerSponsorshipCreated{Base: basev}
+		err = row.UnmarshalDetails(&e)
+		result = e
+	case history.EffectSignerSponsorshipUpdated:
+		e := effects.SignerSponsorshipUpdated{Base: basev}
+		err = row.UnmarshalDetails(&e)
+		result = e
+	case history.EffectSignerSponsorshipRemoved:
+		e := effects.SignerSponsorshipRemoved{Base: basev}
+		err = row.UnmarshalDetails(&e)
 		result = e
 	default:
 		result = basev

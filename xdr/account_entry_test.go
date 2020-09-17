@@ -104,9 +104,12 @@ func TestAccountEntrySponsorships(t *testing.T) {
 	sponsored = account.NumSponsored()
 	sponsoring = account.NumSponsoring()
 	signerIDs = account.SignerSponsoringIDs()
+	expectedSponsorsForSigners := map[string]SponsorshipDescriptor{
+		signer.Address(): SponsorshipDescriptor(&sponsor),
+	}
 	assert.Equal(t, Uint32(1), sponsored)
 	assert.Equal(t, Uint32(2), sponsoring)
 	assert.Len(t, signerIDs, 1)
 	assert.Equal(t, desc, signerIDs[0])
-	assert.Equal(t, desc, account.SponsorForSigner(signer.Address()))
+	assert.Equal(t, expectedSponsorsForSigners, account.SponsorPerSigner())
 }

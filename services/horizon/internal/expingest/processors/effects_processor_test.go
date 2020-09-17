@@ -246,6 +246,175 @@ func (s *EffectsProcessorTestSuiteLedger) TestBatchAddFails() {
 	s.Assert().EqualError(err, "could not insert operation effect in db: transient error")
 }
 
+func getRevokeSponsorshipMeta(t *testing.T) (string, []effect) {
+	source := xdr.MustAddress("GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY")
+	firstSigner := xdr.MustAddress("GCQZP3IU7XU6EJ63JZXKCQOYT2RNXN3HB5CNHENNUEUHSMA4VUJJJSEN")
+	secondSigner := xdr.MustAddress("GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
+	thirdSigner := xdr.MustAddress("GACMZD5VJXTRLKVET72CETCYKELPNCOTTBDC6DHFEUPLG5DHEK534JQX")
+	formerSponsor := xdr.MustAddress("GAHK7EEG2WWHVKDNT4CEQFZGKF2LGDSW2IVM4S5DP42RBW3K6BTODB4A")
+	oldSponsor := xdr.MustAddress("GANFZDRBCNTUXIODCJEYMACPMCSZEVE4WZGZ3CZDZ3P2SXK4KH75IK6Y")
+	updatedSponsor := xdr.MustAddress("GAHK7EEG2WWHVKDNT4CEQFZGKF2LGDSW2IVM4S5DP42RBW3K6BTODB4A")
+	newSponsor := xdr.MustAddress("GDEOVUDLCYTO46D6GD6WH7BFESPBV5RACC6F6NUFCIRU7PL2XONQHVGJ")
+
+	expectedEffects := []effect{
+		{
+			address:     source.Address(),
+			operationID: 249108107265,
+			details: map[string]interface{}{
+				"sponsor": newSponsor.Address(),
+				"signer":  thirdSigner.Address(),
+			},
+			effectType: history.EffectSignerSponsorshipCreated,
+			order:      1,
+		},
+		{
+			address:     source.Address(),
+			operationID: 249108107265,
+			details: map[string]interface{}{
+				"former_sponsor": oldSponsor.Address(),
+				"new_sponsor":    updatedSponsor.Address(),
+				"signer":         secondSigner.Address(),
+			},
+			effectType: history.EffectSignerSponsorshipUpdated,
+			order:      2,
+		},
+		{
+			address:     source.Address(),
+			operationID: 249108107265,
+			details: map[string]interface{}{
+				"former_sponsor": formerSponsor.Address(),
+				"signer":         firstSigner.Address(),
+			},
+			effectType: history.EffectSignerSponsorshipRemoved,
+			order:      3,
+		},
+	}
+
+	accountSignersMeta := &xdr.TransactionMeta{
+		V: 1,
+		V1: &xdr.TransactionMetaV1{
+			TxChanges: xdr.LedgerEntryChanges{},
+			Operations: []xdr.OperationMeta{
+				{
+					Changes: xdr.LedgerEntryChanges{
+						{
+							Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
+							State: &xdr.LedgerEntry{
+								LastModifiedLedgerSeq: 0x39,
+								Data: xdr.LedgerEntryData{
+									Type: xdr.LedgerEntryTypeAccount,
+									Account: &xdr.AccountEntry{
+										AccountId:     source,
+										Balance:       800152367009533292,
+										SeqNum:        26,
+										InflationDest: &source,
+										Thresholds:    xdr.Thresholds{0x1, 0x0, 0x0, 0x0},
+										Signers: []xdr.Signer{
+											{
+												Key: xdr.SignerKey{
+													Type:    xdr.SignerKeyTypeSignerKeyTypeEd25519,
+													Ed25519: firstSigner.Ed25519,
+												},
+												Weight: 10,
+											},
+											{
+												Key: xdr.SignerKey{
+													Type:    xdr.SignerKeyTypeSignerKeyTypeEd25519,
+													Ed25519: secondSigner.Ed25519,
+												},
+												Weight: 10,
+											},
+											{
+												Key: xdr.SignerKey{
+													Type:    xdr.SignerKeyTypeSignerKeyTypeEd25519,
+													Ed25519: thirdSigner.Ed25519,
+												},
+												Weight: 10,
+											},
+										},
+										Ext: xdr.AccountEntryExt{
+											V: 1,
+											V1: &xdr.AccountEntryExtensionV1{
+												Liabilities: xdr.Liabilities{},
+												Ext: xdr.AccountEntryExtensionV1Ext{
+													V: 2,
+													V2: &xdr.AccountEntryExtensionV2{
+														NumSponsored:  0,
+														NumSponsoring: 0,
+														SignerSponsoringIDs: []xdr.SponsorshipDescriptor{
+															&formerSponsor,
+															&oldSponsor,
+															nil,
+														},
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+						{
+							Type: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
+							Updated: &xdr.LedgerEntry{
+								LastModifiedLedgerSeq: 0x39,
+								Data: xdr.LedgerEntryData{
+									Type: xdr.LedgerEntryTypeAccount,
+									Account: &xdr.AccountEntry{
+										AccountId:     source,
+										Balance:       800152367009533292,
+										SeqNum:        26,
+										InflationDest: &source,
+										Thresholds:    xdr.Thresholds{0x1, 0x0, 0x0, 0x0},
+										Signers: []xdr.Signer{
+											{
+												Key: xdr.SignerKey{
+													Type:    xdr.SignerKeyTypeSignerKeyTypeEd25519,
+													Ed25519: secondSigner.Ed25519,
+												},
+												Weight: 10,
+											},
+											{
+												Key: xdr.SignerKey{
+													Type:    xdr.SignerKeyTypeSignerKeyTypeEd25519,
+													Ed25519: thirdSigner.Ed25519,
+												},
+												Weight: 10,
+											},
+										},
+										Ext: xdr.AccountEntryExt{
+											V: 1,
+											V1: &xdr.AccountEntryExtensionV1{
+												Liabilities: xdr.Liabilities{},
+												Ext: xdr.AccountEntryExtensionV1Ext{
+													V: 2,
+													V2: &xdr.AccountEntryExtensionV2{
+														NumSponsored:  0,
+														NumSponsoring: 0,
+														SignerSponsoringIDs: []xdr.SponsorshipDescriptor{
+															&updatedSponsor,
+															&newSponsor,
+														},
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	b64, err := xdr.MarshalBase64(accountSignersMeta)
+	assert.NoError(t, err)
+
+	return b64, expectedEffects
+}
+
 func TestOperationEffects(t *testing.T) {
 
 	sourceAID := xdr.MustAddress("GD3MMHD2YZWL5RAUWG6O3RMA5HTZYM7S3JLSZ2Z35JNJAWTDIKXY737V")
@@ -512,6 +681,8 @@ func TestOperationEffects(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, err)
 
+	revokeSponsorshipMeta, revokeSponsorshipEffects := getRevokeSponsorshipMeta(t)
+
 	testCases := []struct {
 		desc          string
 		envelopeXDR   string
@@ -582,7 +753,7 @@ func TestOperationEffects(t *testing.T) {
 					order:      uint32(5),
 				},
 				{
-					address:     "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+					address:     "GCQZP3IU7XU6EJ63JZXKCQOYT2RNXN3HB5CNHENNUEUHSMA4VUJJJSEN",
 					operationID: int64(244813139969),
 					details: map[string]interface{}{
 						"sponsor": "GAHK7EEG2WWHVKDNT4CEQFZGKF2LGDSW2IVM4S5DP42RBW3K6BTODB4A",
@@ -1263,22 +1434,12 @@ func TestOperationEffects(t *testing.T) {
 			desc:          "revokeSponsorship (signer)",
 			envelopeXDR:   getRevokeSponsorshipEnvelopeXDR(t),
 			resultXDR:     "AAAAAAAAAAAAAAAAAAAAAAAAAAA=",
-			metaXDR:       "AAAAAgAAAAAAAAABAAAAAAAAAAA=",
+			metaXDR:       revokeSponsorshipMeta,
 			feeChangesXDR: "AAAAAA==",
 			hash:          "a41d1c8cdf515203ac5a10d945d5023325076b23dbe7d65ae402cd5f8cd9f891",
 			index:         0,
 			sequence:      58,
-			expected: []effect{
-				{
-					address:     "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
-					effectType:  history.EffectSignerSponsorshipRemoved,
-					operationID: int64(249108107265),
-					order:       uint32(1),
-					details: map[string]interface{}{
-						"signer_account_id": "GAHK7EEG2WWHVKDNT4CEQFZGKF2LGDSW2IVM4S5DP42RBW3K6BTODB4A",
-					},
-				},
-			},
+			expected:      revokeSponsorshipEffects,
 		},
 		{
 			desc:          "Failed transaction",
@@ -1320,6 +1481,7 @@ func TestOperationEffects(t *testing.T) {
 		})
 	}
 }
+
 func TestOperationEffectsSetOptionsSignersOrder(t *testing.T) {
 	tt := assert.New(t)
 	transaction := io.LedgerTransaction{
@@ -2108,10 +2270,10 @@ func (s *ClaimClaimableBalanceEffectsTestSuite) TestEffects() {
 				{
 					address: "GDMQUXK7ZUCWM5472ZU3YLDP4BMJLQQ76DEMNYDEY2ODEEGGRKLEWGW2",
 					details: map[string]interface{}{
+						"amount":       "20.0000000",
 						"asset_code":   "USD",
 						"asset_type":   "credit_alphanum4",
 						"asset_issuer": "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
-						"amount":       "20.0000000",
 					},
 					effectType:  history.EffectAccountCredited,
 					operationID: int64(4294967298),
