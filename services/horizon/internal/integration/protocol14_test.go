@@ -196,7 +196,7 @@ func TestHappyClaimableBalances(t *testing.T) {
 			itest.MustEstablishTrustline(b, accountB, asset)
 
 			t.Log("Creating claimable balance.")
-			claim := itest.MustCreateClaimableBalance(a, asset,
+			claim := itest.MustCreateClaimableBalance(a, asset, "42",
 				txnbuild.NewClaimant(b.Address(), nil))
 
 			//

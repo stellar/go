@@ -359,14 +359,15 @@ func (i *IntegrationTest) EstablishTrustline(
 
 // Panics on any error creating a claimable balance.
 func (i *IntegrationTest) MustCreateClaimableBalance(
-	source *keypair.Full, asset txnbuild.Asset, claimants ...txnbuild.Claimant,
+	source *keypair.Full, asset txnbuild.Asset, amount string,
+	claimants ...txnbuild.Claimant,
 ) (claim proto.ClaimableBalance) {
 	account := i.MustGetAccount(source)
 	_ = i.MustSubmitOperations(&account, source,
 		&txnbuild.CreateClaimableBalance{
 			Destinations: claimants,
 			Asset:        asset,
-			Amount:       "42",
+			Amount:       amount,
 		},
 	)
 
