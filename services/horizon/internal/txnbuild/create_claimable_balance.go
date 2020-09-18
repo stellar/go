@@ -60,10 +60,11 @@ func OrPredicate(left xdr.ClaimPredicate, right xdr.ClaimPredicate) xdr.ClaimPre
 }
 
 // NotPredicate returns a new predicate inverting the passed in predicate
-func NotPredicate(pred *xdr.ClaimPredicate) xdr.ClaimPredicate {
+func NotPredicate(pred xdr.ClaimPredicate) xdr.ClaimPredicate {
+	innerPred := &pred // workaround to keep API the same as Or/And
 	return xdr.ClaimPredicate{
 		Type:         xdr.ClaimPredicateTypeClaimPredicateNot,
-		NotPredicate: &pred,
+		NotPredicate: &innerPred,
 	}
 }
 

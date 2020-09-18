@@ -380,7 +380,8 @@ func (i *IntegrationTest) MustCreateClaimableBalance(
 		panic(-1)
 	}
 
-	claim = claims[0]
+	claim = claims[len(claims)-1] // latest one
+	i.t.Logf("Created claimable balance w/ id=%s", claim.BalanceID)
 	return
 }
 
