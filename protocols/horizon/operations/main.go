@@ -61,6 +61,7 @@ type Base struct {
 	// Transaction is non nil when the "join=transactions" parameter is present in the operations request
 	TransactionHash string               `json:"transaction_hash"`
 	Transaction     *horizon.Transaction `json:"transaction,omitempty"`
+	Sponsor         string               `json:"sponsor,omitempty"`
 }
 
 // PagingToken implements hal.Pageable
