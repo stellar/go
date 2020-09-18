@@ -23,19 +23,21 @@ const (
 // SponsorshipType stablishes which sponsorship is being revoked.
 // The other fields should be ignored.
 type RevokeSponsorship struct {
-	SourceAccount    Account
-	SponsorshipType  RevokeSponsorshipType
-	Account          *string
-	TrustLine        *TrustLineId
-	Offer            *OfferId
-	Data             *DataId
-	ClaimableBalance *ClaimableBalanceHash
+	SourceAccount   Account
+	SponsorshipType RevokeSponsorshipType
+	// Account Id (strkey)
+	Account   *string
+	TrustLine *TrustLineId
+	Offer     *OfferId
+	Data      *DataId
+	// Claimable Balance Id
+	ClaimableBalance *string
 	Signer           *SignerId
 }
 
 type TrustLineId struct {
-	AccountAddress string
-	Asset          Asset
+	Account string
+	Asset   Asset
 }
 
 type OfferId struct {
@@ -44,15 +46,13 @@ type OfferId struct {
 }
 
 type DataId struct {
-	AccountAddress string
-	DataName       string
+	Account  string
+	DataName string
 }
 
-type ClaimableBalanceHash [32]byte
-
 type SignerId struct {
-	AccountAddress string
-	SignerAddress  string
+	AccountId     string
+	SignerAddress string
 }
 
 func (r *RevokeSponsorship) BuildXDR() (xdr.Operation, error) {
@@ -76,7 +76,7 @@ func (r *RevokeSponsorship) BuildXDR() (xdr.Operation, error) {
 		if r.TrustLine == nil {
 			return xdr.Operation{}, errors.New("TrustLine can't be nil")
 		}
-		if err := key.AccountId.SetAddress(r.TrustLine.AccountAddress); err != nil {
+		if err := key.AccountId.SetAddress(r.TrustLine.Account); err != nil {
 			return xdr.Operation{}, errors.Wrap(err, "incorrect Account address")
 		}
 		asset, err := r.TrustLine.Asset.ToXDR()
@@ -108,10 +108,9 @@ func (r *RevokeSponsorship) BuildXDR() (xdr.Operation, error) {
 		if r.Data == nil {
 			return xdr.Operation{}, errors.New("Data can't be nil")
 		}
-		if err := key.AccountId.SetAddress(r.Data.AccountAddress); err != nil {
+		if err := key.AccountId.SetAddress(r.Data.Account); err != nil {
 			return xdr.Operation{}, errors.Wrap(err, "incorrect Account address")
 		}
-		// TODO: should we check the size?
 		key.DataName = xdr.String64(r.Data.DataName)
 		xdrOp.Type = xdr.RevokeSponsorshipTypeRevokeSponsorshipLedgerEntry
 		xdrOp.LedgerKey = &xdr.LedgerKey{
@@ -119,16 +118,14 @@ func (r *RevokeSponsorship) BuildXDR() (xdr.Operation, error) {
 			Data: &key,
 		}
 	case RevokeSponsorshipTypeClaimableBalance:
-		key := xdr.LedgerKeyClaimableBalance{
-			BalanceId: xdr.ClaimableBalanceId{
-				Type: 0,
-				V0:   &xdr.Hash{},
-			},
-		}
+		var key xdr.LedgerKeyClaimableBalance
+
 		if r.ClaimableBalance == nil {
 			return xdr.Operation{}, errors.New("ClaimableBalance can't be nil")
 		}
-		copy(key.BalanceId.V0[:], r.ClaimableBalance[:])
+		if err := xdr.SafeUnmarshalHex(*r.ClaimableBalance, &key.BalanceId); err != nil {
+			return xdr.Operation{}, errors.Wrap(err, "cannot parse ClaimableBalance")
+		}
 		xdrOp.Type = xdr.RevokeSponsorshipTypeRevokeSponsorshipLedgerEntry
 		xdrOp.LedgerKey = &xdr.LedgerKey{
 			Type:             xdr.LedgerEntryTypeClaimableBalance,
@@ -139,7 +136,7 @@ func (r *RevokeSponsorship) BuildXDR() (xdr.Operation, error) {
 		if r.Signer == nil {
 			return xdr.Operation{}, errors.New("Signer can't be nil")
 		}
-		if err := signer.AccountId.SetAddress(r.Signer.AccountAddress); err != nil {
+		if err := signer.AccountId.SetAddress(r.Signer.AccountId); err != nil {
 			return xdr.Operation{}, errors.New("incorrect Account address")
 		}
 		if err := signer.SignerKey.SetAddress(r.Signer.SignerAddress); err != nil {
@@ -177,7 +174,7 @@ func (r *RevokeSponsorship) FromXDR(xdrOp xdr.Operation) error {
 			r.Account = &sponsorshipId
 		case xdr.LedgerEntryTypeTrustline:
 			var sponsorshipId TrustLineId
-			sponsorshipId.AccountAddress = lkey.TrustLine.AccountId.Address()
+			sponsorshipId.Account = lkey.TrustLine.AccountId.Address()
 			asset, err := assetFromXDR(lkey.TrustLine.Asset)
 			if err != nil {
 				return errors.Wrap(err, "error parsing Trustline Asset")
@@ -193,27 +190,29 @@ func (r *RevokeSponsorship) FromXDR(xdrOp xdr.Operation) error {
 			r.Offer = &sponsorshipId
 		case xdr.LedgerEntryTypeData:
 			var sponsorshipId DataId
-			sponsorshipId.AccountAddress = lkey.Data.AccountId.Address()
+			sponsorshipId.Account = lkey.Data.AccountId.Address()
 			sponsorshipId.DataName = string(lkey.Data.DataName)
 			r.SponsorshipType = RevokeSponsorshipTypeData
 			r.Data = &sponsorshipId
 		case xdr.LedgerEntryTypeClaimableBalance:
-			var sponsorshipId ClaimableBalanceHash
 			if lkey.ClaimableBalance.BalanceId.Type != 0 {
 				return fmt.Errorf(
 					"unexpected ClaimableBalance Id Type: %d",
 					lkey.ClaimableBalance.BalanceId.Type,
 				)
 			}
-			copy(sponsorshipId[:], lkey.ClaimableBalance.BalanceId.V0[:])
+			claimableBalanceId, err := xdr.MarshalHex(&lkey.ClaimableBalance.BalanceId)
+			if err != nil {
+				return errors.Wrap(err, "cannot generate Claimable Balance Id")
+			}
 			r.SponsorshipType = RevokeSponsorshipTypeClaimableBalance
-			r.ClaimableBalance = &sponsorshipId
+			r.ClaimableBalance = &claimableBalanceId
 		default:
 			return fmt.Errorf("unexpected LedgerEntryType: %d", lkey.Type)
 		}
 	case xdr.RevokeSponsorshipTypeRevokeSponsorshipSigner:
 		var sponsorshipId SignerId
-		sponsorshipId.AccountAddress = op.Signer.AccountId.Address()
+		sponsorshipId.AccountId = op.Signer.AccountId.Address()
 		sponsorshipId.SignerAddress = op.Signer.SignerKey.Address()
 		r.SponsorshipType = RevokeSponsorshipTypeSigner
 		r.Signer = &sponsorshipId
@@ -234,7 +233,7 @@ func (r *RevokeSponsorship) Validate() error {
 		if r.TrustLine == nil {
 			return errors.New("Trustline can't be nil")
 		}
-		if err := validateStellarPublicKey(r.TrustLine.AccountAddress); err != nil {
+		if err := validateStellarPublicKey(r.TrustLine.Account); err != nil {
 			return errors.Wrap(err, "invalid Account address")
 		}
 		if err := validateStellarAsset(r.TrustLine.Asset); err != nil {
@@ -252,19 +251,22 @@ func (r *RevokeSponsorship) Validate() error {
 		if r.Data == nil {
 			return errors.New("Data can't be nil")
 		}
-		if err := validateStellarPublicKey(r.Data.AccountAddress); err != nil {
+		if err := validateStellarPublicKey(r.Data.Account); err != nil {
 			return errors.Wrap(err, "invalid Account address")
 		}
-		// TODO: should we check the DataName size?
 	case RevokeSponsorshipTypeClaimableBalance:
 		if r.ClaimableBalance == nil {
 			return errors.New("ClaimableBalance can't be nil")
+		}
+		var unused xdr.ClaimableBalanceId
+		if err := xdr.SafeUnmarshalHex(*r.ClaimableBalance, &unused); err != nil {
+			return errors.Wrap(err, "cannot parse ClaimableBalance")
 		}
 	case RevokeSponsorshipTypeSigner:
 		if r.Signer == nil {
 			return errors.New("Signer can't be nil")
 		}
-		if err := validateStellarPublicKey(r.Signer.AccountAddress); err != nil {
+		if err := validateStellarPublicKey(r.Signer.AccountId); err != nil {
 			return errors.New("invalid Account address")
 		}
 		if err := validateStellarSignerKey(r.Signer.SignerAddress); err != nil {

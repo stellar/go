@@ -11,6 +11,11 @@ import (
 func TestRevokeSponsorship(t *testing.T) {
 	accountAddress := "GCCOBXW2XQNUSL467IEILE6MMCNRR66SSVL4YQADUNYYNUVREF3FIV2Z"
 	accountAddress2 := "GBUKBCG5VLRKAVYAIREJRUJHOKLIADZJOICRW43WVJCLES52BDOTCQZU"
+	claimableBalanceId, err := xdr.MarshalHex(xdr.ClaimableBalanceId{
+		Type: xdr.ClaimableBalanceIdTypeClaimableBalanceIdTypeV0,
+		V0:   &xdr.Hash{0xca, 0xfe, 0xba, 0xbe, 0xde, 0xad, 0xbe, 0xef},
+	})
+	assert.NoError(t, err)
 	for _, testcase := range []struct {
 		name string
 		op   RevokeSponsorship
@@ -39,7 +44,7 @@ func TestRevokeSponsorship(t *testing.T) {
 			op: RevokeSponsorship{
 				SponsorshipType: RevokeSponsorshipTypeTrustLine,
 				TrustLine: &TrustLineId{
-					AccountAddress: accountAddress,
+					Account: accountAddress,
 					Asset: CreditAsset{
 						Code:   "USD",
 						Issuer: newKeypair0().Address(),
@@ -62,8 +67,8 @@ func TestRevokeSponsorship(t *testing.T) {
 			op: RevokeSponsorship{
 				SponsorshipType: RevokeSponsorshipTypeData,
 				Data: &DataId{
-					AccountAddress: accountAddress,
-					DataName:       "foobar",
+					Account:  accountAddress,
+					DataName: "foobar",
 				},
 			},
 		},
@@ -71,7 +76,7 @@ func TestRevokeSponsorship(t *testing.T) {
 			name: "Data",
 			op: RevokeSponsorship{
 				SponsorshipType:  RevokeSponsorshipTypeClaimableBalance,
-				ClaimableBalance: &ClaimableBalanceHash{0xde, 0xad, 0xbe, 0xef, 0xde, 0xad, 0xbe, 0xef},
+				ClaimableBalance: &claimableBalanceId,
 			},
 		},
 		{
@@ -79,8 +84,8 @@ func TestRevokeSponsorship(t *testing.T) {
 			op: RevokeSponsorship{
 				SponsorshipType: RevokeSponsorshipTypeSigner,
 				Signer: &SignerId{
-					AccountAddress: accountAddress,
-					SignerAddress:  "XBU2RRGLXH3E5CQHTD3ODLDF2BWDCYUSSBLLZ5GNW7JXHDIYKXZWGTOG",
+					AccountId:     accountAddress,
+					SignerAddress: "XBU2RRGLXH3E5CQHTD3ODLDF2BWDCYUSSBLLZ5GNW7JXHDIYKXZWGTOG",
 				},
 			},
 		},
