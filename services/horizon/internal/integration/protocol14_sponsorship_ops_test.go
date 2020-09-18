@@ -89,4 +89,17 @@ func TestSimpleSandwichHappyPath(t *testing.T) {
 	}
 	tt.Condition(endSponsorshipPresent)
 
+	// Check numSponsoring and numSponsored
+	account, err := itest.Client().AccountDetail(sdk.AccountRequest{
+		AccountID: sponsor.Address(),
+	})
+	tt.NoError(err)
+	account.NumSponsoring = 1
+
+	account, err = itest.Client().AccountDetail(sdk.AccountRequest{
+		AccountID: newAccountPair.Address(),
+	})
+	tt.NoError(err)
+	account.NumSponsored = 1
+
 }
