@@ -183,7 +183,7 @@ func TestHappyClaimableBalances(t *testing.T) {
 		assert.True(t, foundBalance)
 
 		// Ensure that the other claimant can't do anything about it!
-		t.Logf("Claiming balance *again* (ID=%s)...", claim.BalanceID)
+		t.Log("  other claimant can't claim")
 		_, err = itest.SubmitOperations(accountC, c,
 			&txnbuild.ClaimClaimableBalance{BalanceID: claim.BalanceID})
 		assert.Error(t, err)
@@ -304,6 +304,68 @@ func TestHappyClaimableBalances(t *testing.T) {
 	})
 }
 
+// We want to ensure that users can't claim the same claimable balance twice.
+func TestDoubleClaim(t *testing.T) {
+	itest := test.NewIntegrationTest(t, protocol14Config)
+	defer itest.Close()
+	client := itest.Client()
+
+	// Create a couple of accounts to test the interactions.
+	keys, accounts := itest.CreateAccounts(2, "1000")
+	a, b := keys[0], keys[1]
+	_, accountB := accounts[0], accounts[1]
+
+	notExistResult, _ := codes.String(xdr.ClaimClaimableBalanceResultCodeClaimClaimableBalanceDoesNotExist)
+
+	// Two cases: claim in separate TXs, claim twice in same TX
+	t.Run("TwoTx", func(t *testing.T) {
+		claim := itest.MustCreateClaimableBalance(
+			a, txnbuild.NativeAsset{}, "42",
+			txnbuild.NewClaimant(b.Address(), nil))
+
+		t.Logf("Claiming balance (ID=%s)...", claim.BalanceID)
+		_, err := itest.SubmitOperations(accountB, b,
+			&txnbuild.ClaimClaimableBalance{BalanceID: claim.BalanceID})
+		assert.NoError(t, err)
+		t.Log("  claimed")
+
+		_, err = itest.SubmitOperations(accountB, b,
+			&txnbuild.ClaimClaimableBalance{BalanceID: claim.BalanceID})
+		assert.Error(t, err)
+		t.Log("  couldn't claim twice")
+
+		assert.Equal(t, notExistResult, getOperationsError(err))
+	})
+
+	t.Run("SameTx", func(t *testing.T) {
+		claim := itest.MustCreateClaimableBalance(
+			a, txnbuild.NativeAsset{}, "42",
+			txnbuild.NewClaimant(b.Address(), nil))
+
+		// One succeeds, other fails
+		t.Logf("Claiming balance (ID=%s)...", claim.BalanceID)
+		_, err := itest.SubmitOperations(accountB, b,
+			&txnbuild.ClaimClaimableBalance{BalanceID: claim.BalanceID},
+			&txnbuild.ClaimClaimableBalance{BalanceID: claim.BalanceID})
+		assert.Error(t, err)
+		t.Log("  couldn't claim twice")
+
+		assert.Equal(t, codes.OpSuccess, getOperationsErrorByIndex(err, 0))
+		assert.Equal(t, notExistResult, getOperationsErrorByIndex(err, 1))
+
+		// Both included in /operations
+		response, err := client.Operations(sdk.OperationRequest{
+			ForAccount:    b.Address(),
+			Order:         "desc",
+			Limit:         2,
+			IncludeFailed: true,
+		})
+		ops := response.Embedded.Records
+		assert.NoError(t, err)
+		assert.Len(t, ops, 2)
+	})
+}
+
 func TestComplexPredicates(t *testing.T) {
 	itest := test.NewIntegrationTest(t, protocol14Config)
 	defer itest.Close()
@@ -314,8 +376,11 @@ func TestComplexPredicates(t *testing.T) {
 	a, b, _ := keys[0], keys[1], keys[2]
 	_, accountB, _ := accounts[0], accounts[1], accounts[2]
 
+	// reused a lot:
+	cantClaimResult, _ := codes.String(xdr.ClaimClaimableBalanceResultCodeClaimClaimableBalanceCannotClaim)
+
 	// This is an easy fail.
-	predicate := txnbuild.NotPredicate(&txnbuild.UnconditionalPredicate)
+	predicate := txnbuild.NotPredicate(txnbuild.UnconditionalPredicate)
 	t.Run("AlwaysFail", func(t *testing.T) {
 		t.Logf("Creating claimable balance (asset=native).")
 		t.Logf("  predicate: %+v", predicate.Type)
@@ -331,13 +396,8 @@ func TestComplexPredicates(t *testing.T) {
 
 		// Ensure it failed w/ the right error code:
 		//  CLAIM_CLAIMABLE_BALANCE_CANNOT_CLAIM
-		expectedResultCode, _ := codes.String(xdr.ClaimClaimableBalanceResultCodeClaimClaimableBalanceCannotClaim)
-
-		// wtf is this tbh
-		resultCodes := sdk.GetError(err).Problem.Extras["result_codes"].(map[string]interface{})
-		opResultCodes := resultCodes["operations"].([]interface{})
-		assert.Equal(t, expectedResultCode, opResultCodes[0].(string))
-		t.Logf("  tx did fail w/ %s", expectedResultCode)
+		assert.Equal(t, cantClaimResult, getOperationsError(err))
+		t.Logf("  tx did fail w/ %s", cantClaimResult)
 
 		// check that /operations also has the claim as failed
 		response, err := client.Operations(sdk.OperationRequest{
@@ -359,7 +419,7 @@ func TestComplexPredicates(t *testing.T) {
 	// This one fails because of an expiring claim.
 	predicate = txnbuild.BeforeRelativeTimePredicate(1)
 	t.Run("Expire", func(t *testing.T) {
-		t.Logf("Creating claimable balance (asset=native).")
+		t.Log("Creating claimable balance (asset=native).")
 		t.Logf("  predicate: %+v", predicate.Type)
 
 		claim := itest.MustCreateClaimableBalance(
@@ -377,6 +437,17 @@ func TestComplexPredicates(t *testing.T) {
 }
 
 /* Utility functions below */
+
+// Extracts the first error string in the "operations: [...]" of a Problem.
+func getOperationsError(err error) string {
+	return getOperationsErrorByIndex(err, 0)
+}
+
+func getOperationsErrorByIndex(err error, i int) string {
+	resultCodes := sdk.GetError(err).Problem.Extras["result_codes"].(map[string]interface{})
+	opResultCodes := resultCodes["operations"].([]interface{})
+	return opResultCodes[i].(string)
+}
 
 // Checks that filtering works for a particular claim.
 func checkFilters(i *test.IntegrationTest, claim proto.ClaimableBalance) {
