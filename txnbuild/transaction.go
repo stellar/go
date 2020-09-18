@@ -319,6 +319,23 @@ func (t *Transaction) TxEnvelope() (xdr.TransactionEnvelope, error) {
 	return cloneEnvelope(t.envelope, t.signatures)
 }
 
+// ToXDR is like TxEnvelope except that the transaction envelope returned by ToXDR
+// should not be modified because any changes applied to the transaction envelope may
+// affect the internals of the Transaction instance.
+func (t *Transaction) ToXDR() xdr.TransactionEnvelope {
+	env := t.envelope
+	switch env.Type {
+	case xdr.EnvelopeTypeEnvelopeTypeTx:
+		env.V1.Signatures = t.signatures
+	case xdr.EnvelopeTypeEnvelopeTypeTxV0:
+		env.V0.Signatures = t.signatures
+	default:
+		panic("invalid transaction type: " + env.Type.String())
+	}
+
+	return env
+}
+
 // MarshalBinary returns the binary XDR representation of the transaction envelope.
 func (t *Transaction) MarshalBinary() ([]byte, error) {
 	return marshallBinary(t.envelope, t.signatures)
@@ -430,6 +447,21 @@ func (t *FeeBumpTransaction) AddSignatureBase64(network, publicKey, signature st
 // equivalent to this transaction.
 func (t *FeeBumpTransaction) TxEnvelope() (xdr.TransactionEnvelope, error) {
 	return cloneEnvelope(t.envelope, t.signatures)
+}
+
+// ToXDR is like TxEnvelope except that the transaction envelope returned by ToXDR
+// should not be modified because any changes applied to the transaction envelope may
+// affect the internals of the FeeBumpTransaction instance.
+func (t *FeeBumpTransaction) ToXDR() xdr.TransactionEnvelope {
+	env := t.envelope
+	switch env.Type {
+	case xdr.EnvelopeTypeEnvelopeTypeTxFeeBump:
+		env.FeeBump.Signatures = t.signatures
+	default:
+		panic("invalid transaction type: " + env.Type.String())
+	}
+
+	return env
 }
 
 // MarshalBinary returns the binary XDR representation of the transaction envelope.
@@ -600,10 +632,6 @@ func NewTransaction(params TransactionParams) (*Transaction, error) {
 		return nil, errors.Wrap(err, "account id is not valid")
 	}
 
-	sourceAccountEd25519, ok := accountID.GetEd25519()
-	if !ok {
-		return nil, errors.New("invalid account id")
-	}
 	if tx.baseFee < MinBaseFee {
 		return nil, errors.Errorf(
 			"base fee cannot be lower than network minimum of %d", MinBaseFee,
@@ -630,12 +658,12 @@ func NewTransaction(params TransactionParams) (*Transaction, error) {
 	}
 
 	envelope := xdr.TransactionEnvelope{
-		Type: xdr.EnvelopeTypeEnvelopeTypeTxV0,
-		V0: &xdr.TransactionV0Envelope{
-			Tx: xdr.TransactionV0{
-				SourceAccountEd25519: sourceAccountEd25519,
-				Fee:                  xdr.Uint32(tx.maxFee),
-				SeqNum:               xdr.SequenceNumber(sequence),
+		Type: xdr.EnvelopeTypeEnvelopeTypeTx,
+		V1: &xdr.TransactionV1Envelope{
+			Tx: xdr.Transaction{
+				SourceAccount: accountID.ToMuxedAccount(),
+				Fee:           xdr.Uint32(tx.maxFee),
+				SeqNum:        xdr.SequenceNumber(sequence),
 				TimeBounds: &xdr.TimeBounds{
 					MinTime: xdr.TimePoint(tx.timebounds.MinTime),
 					MaxTime: xdr.TimePoint(tx.timebounds.MaxTime),
@@ -651,7 +679,7 @@ func NewTransaction(params TransactionParams) (*Transaction, error) {
 		if err != nil {
 			return nil, errors.Wrap(err, "couldn't build memo XDR")
 		}
-		envelope.V0.Tx.Memo = xdrMemo
+		envelope.V1.Tx.Memo = xdrMemo
 	}
 
 	for _, op := range tx.operations {
@@ -663,7 +691,7 @@ func NewTransaction(params TransactionParams) (*Transaction, error) {
 		if err2 != nil {
 			return nil, errors.Wrap(err2, fmt.Sprintf("failed to build operation %T", op))
 		}
-		envelope.V0.Tx.Operations = append(envelope.V0.Tx.Operations, xdrOperation)
+		envelope.V1.Tx.Operations = append(envelope.V1.Tx.Operations, xdrOperation)
 	}
 
 	tx.envelope = envelope
@@ -678,10 +706,41 @@ type FeeBumpTransactionParams struct {
 	BaseFee    int64
 }
 
+func convertToV1(tx *Transaction) (*Transaction, error) {
+	sourceAccount := tx.SourceAccount()
+	signatures := tx.Signatures()
+	tx, err := NewTransaction(TransactionParams{
+		SourceAccount:        &sourceAccount,
+		IncrementSequenceNum: false,
+		Operations:           tx.Operations(),
+		BaseFee:              tx.BaseFee(),
+		Memo:                 tx.Memo(),
+		Timebounds:           tx.Timebounds(),
+	})
+	if err != nil {
+		return tx, err
+	}
+	tx.signatures = signatures
+	return tx, nil
+}
+
 // NewFeeBumpTransaction returns a new FeeBumpTransaction instance
 func NewFeeBumpTransaction(params FeeBumpTransactionParams) (*FeeBumpTransaction, error) {
-	if params.Inner == nil {
+	inner := params.Inner
+	if inner == nil {
 		return nil, errors.New("inner transaction is missing")
+	}
+	innerEnv, err := inner.TxEnvelope()
+	if err != nil {
+		return nil, errors.Wrap(err, "inner transaction envelope not found")
+	}
+	if innerEnv.Type == xdr.EnvelopeTypeEnvelopeTypeTxV0 {
+		inner, err = convertToV1(inner)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not upgrade transaction from v0 to v1")
+		}
+	} else if innerEnv.Type != xdr.EnvelopeTypeEnvelopeTypeTx {
+		return nil, errors.Errorf("%v transactions cannot be fee bumped", innerEnv.Type.String())
 	}
 
 	tx := &FeeBumpTransaction{
@@ -690,13 +749,13 @@ func NewFeeBumpTransaction(params FeeBumpTransactionParams) (*FeeBumpTransaction
 		// number of operations in the inner transaction. Correspondingly, the minimum fee for
 		// the fee-bump transaction is one base fee more than the minimum fee for the inner
 		// transaction.
-		maxFee:     params.BaseFee * int64(len(params.Inner.operations)+1),
+		maxFee:     params.BaseFee * int64(len(inner.operations)+1),
 		feeAccount: params.FeeAccount,
 		inner:      new(Transaction),
 	}
-	*tx.inner = *params.Inner
+	*tx.inner = *inner
 
-	hi, lo := bits.Mul64(uint64(params.BaseFee), uint64(len(params.Inner.operations)+1))
+	hi, lo := bits.Mul64(uint64(params.BaseFee), uint64(len(inner.operations)+1))
 	if hi > 0 || lo > math.MaxInt64 {
 		return nil, errors.Errorf("base fee %d results in an overflow of max fee", params.BaseFee)
 	}
@@ -714,14 +773,6 @@ func NewFeeBumpTransaction(params FeeBumpTransactionParams) (*FeeBumpTransaction
 	accountID, err := xdr.AddressToAccountId(tx.feeAccount)
 	if err != nil {
 		return tx, errors.Wrap(err, "fee account is not a valid address")
-	}
-
-	innerEnv, err := tx.inner.TxEnvelope()
-	if err != nil {
-		return tx, errors.Wrap(err, "inner transaction envelope not found")
-	}
-	if innerEnv.Type != xdr.EnvelopeTypeEnvelopeTypeTx {
-		return tx, errors.Errorf("%v transactions cannot be fee bumped", innerEnv.Type.String())
 	}
 
 	tx.envelope = xdr.TransactionEnvelope{
