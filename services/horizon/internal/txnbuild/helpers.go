@@ -5,6 +5,7 @@ import (
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/xdr"
 )
 
 // validateStellarPublicKey returns an error if a public key is invalid. Otherwise, it returns nil.
@@ -16,6 +17,19 @@ func validateStellarPublicKey(publicKey string) error {
 
 	if !strkey.IsValidEd25519PublicKey(publicKey) {
 		return errors.Errorf("%s is not a valid stellar public key", publicKey)
+	}
+	return nil
+}
+
+// validateStellarSignerKey returns an error if a signerkey is invalid. Otherwise, it returns nil.
+func validateStellarSignerKey(signerKey string) error {
+	if signerKey == "" {
+		return errors.New("signer key is undefined")
+	}
+
+	var xdrKey xdr.SignerKey
+	if err := xdrKey.SetAddress(signerKey); err != nil {
+		return errors.Errorf("%s is not a valid stellar signer key", signerKey)
 	}
 	return nil
 }
