@@ -28,7 +28,6 @@ func TestFeeBumpInvalidFeeSource(t *testing.T) {
 	)
 	assert.NoError(t, err)
 
-	convertToV1Tx(tx)
 	_, err = NewFeeBumpTransaction(
 		FeeBumpTransactionParams{
 			FeeAccount: "/.','ml",
@@ -39,28 +38,96 @@ func TestFeeBumpInvalidFeeSource(t *testing.T) {
 	assert.Contains(t, err.Error(), "fee account is not a valid address")
 }
 
-func TestFeeBumpInvalidInnerTxType(t *testing.T) {
+func TestFeeBumpUpgradesV0Transaction(t *testing.T) {
 	kp0 := newKeypair0()
 	sourceAccount := NewSimpleAccount(kp0.Address(), 1)
 
 	tx, err := NewTransaction(
 		TransactionParams{
-			SourceAccount: &sourceAccount,
-			Operations:    []Operation{&Inflation{}},
-			BaseFee:       MinBaseFee,
-			Timebounds:    NewInfiniteTimeout(),
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: false,
+			Operations:           []Operation{&Inflation{}},
+			BaseFee:              2 * MinBaseFee,
+			Memo:                 MemoText("test-memo"),
+			Timebounds:           NewInfiniteTimeout(),
 		},
 	)
 	assert.NoError(t, err)
 
-	_, err = NewFeeBumpTransaction(
+	tx, err = tx.Sign(network.TestNetworkPassphrase, kp0)
+	assert.NoError(t, err)
+
+	convertToV0(tx)
+
+	feeBump, err := NewFeeBumpTransaction(
 		FeeBumpTransactionParams{
 			FeeAccount: newKeypair1().Address(),
-			BaseFee:    MinBaseFee,
+			BaseFee:    3 * MinBaseFee,
 			Inner:      tx,
 		},
 	)
-	assert.EqualError(t, err, "EnvelopeTypeEnvelopeTypeTxV0 transactions cannot be fee bumped")
+	assert.NoError(t, err)
+
+	assert.Equal(t, xdr.EnvelopeTypeEnvelopeTypeTx, feeBump.InnerTransaction().envelope.Type)
+	assert.Equal(t, xdr.EnvelopeTypeEnvelopeTypeTxV0, tx.envelope.Type)
+
+	innerHash, err := feeBump.InnerTransaction().HashHex(network.TestNetworkPassphrase)
+	assert.NoError(t, err)
+	originalHash, err := tx.HashHex(network.TestNetworkPassphrase)
+	assert.NoError(t, err)
+	assert.Equal(t, originalHash, innerHash)
+
+	assert.Equal(t, tx.Signatures(), feeBump.InnerTransaction().Signatures())
+	assert.Equal(t, tx.Operations(), feeBump.InnerTransaction().Operations())
+	assert.Equal(t, tx.MaxFee(), feeBump.InnerTransaction().MaxFee())
+	assert.Equal(t, tx.BaseFee(), feeBump.InnerTransaction().BaseFee())
+	assert.Equal(t, tx.SourceAccount(), feeBump.InnerTransaction().SourceAccount())
+	assert.Equal(t, tx.Memo(), feeBump.InnerTransaction().Memo())
+	assert.Equal(t, tx.Timebounds(), feeBump.InnerTransaction().Timebounds())
+
+	innerBase64, err := feeBump.InnerTransaction().Base64()
+	assert.NoError(t, err)
+	originalBase64, err := tx.Base64()
+	assert.NoError(t, err)
+	assert.NotEqual(t, innerBase64, originalBase64)
+}
+
+func TestFeeBumpInvalidInnerTransactionType(t *testing.T) {
+	kp0 := newKeypair0()
+	sourceAccount := NewSimpleAccount(kp0.Address(), 1)
+
+	tx, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: false,
+			Operations:           []Operation{&Inflation{}},
+			BaseFee:              2 * MinBaseFee,
+			Memo:                 MemoText("test-memo"),
+			Timebounds:           NewInfiniteTimeout(),
+		},
+	)
+	assert.NoError(t, err)
+
+	aid := xdr.MustAddress(kp0.Address())
+	tx.envelope.Type = xdr.EnvelopeTypeEnvelopeTypeTxFeeBump
+	tx.envelope.FeeBump = &xdr.FeeBumpTransactionEnvelope{
+		Tx: xdr.FeeBumpTransaction{
+			FeeSource: aid.ToMuxedAccount(),
+			InnerTx: xdr.FeeBumpTransactionInnerTx{
+				Type: xdr.EnvelopeTypeEnvelopeTypeTx,
+				V1:   tx.envelope.V1,
+			},
+		},
+		Signatures: nil,
+	}
+	_, err = NewFeeBumpTransaction(
+		FeeBumpTransactionParams{
+			FeeAccount: newKeypair1().Address(),
+			BaseFee:    3 * MinBaseFee,
+			Inner:      tx,
+		},
+	)
+	assert.EqualError(t, err, "EnvelopeTypeEnvelopeTypeTxFeeBump transactions cannot be fee bumped")
 }
 
 // There is a use case for having a fee bump tx where the fee account is equal to the
@@ -78,7 +145,6 @@ func TestFeeBumpAllowsFeeAccountToEqualInnerSourceAccount(t *testing.T) {
 		},
 	)
 	assert.NoError(t, err)
-	convertToV1Tx(tx)
 
 	_, err = NewFeeBumpTransaction(
 		FeeBumpTransactionParams{
@@ -140,7 +206,6 @@ func TestFeeBumpRoundTrip(t *testing.T) {
 	assert.NoError(t, err)
 	tx, err = tx.Sign(network.TestNetworkPassphrase, kp0)
 	assert.NoError(t, err)
-	convertToV1Tx(tx)
 	expectedInnerB64, err := tx.Base64()
 	assert.NoError(t, err)
 
