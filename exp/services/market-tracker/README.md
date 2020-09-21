@@ -7,7 +7,7 @@ To use this project, you will have to define the following in a `.env`:
 
 ## Running the project
 
-This project was built using Go 1.13 and [Go Modules](https://blog.golang.org/using-go-modules)
+This project was built using Go 1.14 and [Go Modules](https://blog.golang.org/using-go-modules)
 
 1. From the monorepo root, navigate to the project: `cd exp/services/market-tracker`
 2. Create a `config.json` file with the asset pairs to monitor and the refresh interval. A sample file is checked in at `config_sample.json`

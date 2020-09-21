@@ -11,7 +11,7 @@ If you're making changes to Horizon, look for documentation in its [docs](servic
 ## Requirements
 To checkout, build, and run most tests these tools are required:
 - Git
-- [Go 1.13 or Go 1.14](https://golang.org/dl)
+- [Go 1.14 or Go 1.15](https://golang.org/dl)
 
 To run some tests these tools are also required:
 - PostgreSQL 9.6+ server running locally, or set [environment variables](https://www.postgresql.org/docs/9.6/libpq-envars.html) (e.g. `PGHOST`, etc) for alternative host.

@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this
 file. This project adheres to [Semantic Versioning](http://semver.org/).x
 
+## Unreleased
+
+* Dropped support for Go 1.13.
+
 ## v1.8.2
 
 * Fixed a bug which prevented Horizon from accepting TLS connections.
