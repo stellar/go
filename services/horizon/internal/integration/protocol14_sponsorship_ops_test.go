@@ -14,7 +14,7 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-func getSimpleAccountCreationSandwich(a *assert.Assertions) (*keypair.Full, []txnbuild.Operation) {
+func getSimpleAccountCreationSandwich(tt *assert.Assertions) (*keypair.Full, []txnbuild.Operation) {
 	// We will create the following operation structure:
 	// BeginSponsoringFutureReserves A
 	//   CreateAccount A
@@ -22,7 +22,7 @@ func getSimpleAccountCreationSandwich(a *assert.Assertions) (*keypair.Full, []tx
 
 	ops := make([]txnbuild.Operation, 3, 3)
 	newAccountPair, err := keypair.Random()
-	a.NoError(err)
+	tt.NoError(err)
 
 	ops[0] = &txnbuild.BeginSponsoringFutureReserves{
 		SponsoredID: newAccountPair.Address(),
@@ -49,12 +49,12 @@ func TestSimpleSandwichHappyPath(t *testing.T) {
 
 	signers := []*keypair.Full{sponsorPair, newAccountPair}
 	txResp, err := itest.SubmitMultiSigOperations(sponsor, signers, ops...)
-	assert.NoError(t, err)
+	tt.NoError(err)
 
 	var txResult xdr.TransactionResult
 	err = xdr.SafeUnmarshalBase64(txResp.ResultXdr, &txResult)
-	assert.NoError(t, err)
-	assert.Equal(t, xdr.TransactionResultCodeTxSuccess, txResult.Result.Code)
+	tt.NoError(err)
+	tt.Equal(xdr.TransactionResultCodeTxSuccess, txResult.Result.Code)
 
 	response, err := itest.Client().Operations(sdk.OperationRequest{
 		Order: "asc",
@@ -123,12 +123,12 @@ func TestSimpleSandwichRevocation(t *testing.T) {
 
 	signers := []*keypair.Full{sponsorPair, newAccountPair}
 	txResp, err := itest.SubmitMultiSigOperations(sponsor, signers, ops...)
-	assert.NoError(t, err)
+	tt.NoError(err)
 
 	var txResult xdr.TransactionResult
 	err = xdr.SafeUnmarshalBase64(txResp.ResultXdr, &txResult)
-	assert.NoError(t, err)
-	assert.Equal(t, xdr.TransactionResultCodeTxSuccess, txResult.Result.Code)
+	tt.NoError(err)
+	tt.Equal(xdr.TransactionResultCodeTxSuccess, txResult.Result.Code)
 
 	// Submit sponsorship revocation in a separate transaction
 	accountToRevoke := newAccountPair.Address()
@@ -137,11 +137,11 @@ func TestSimpleSandwichRevocation(t *testing.T) {
 		Account:         &accountToRevoke,
 	}
 	txResp, err = itest.SubmitOperations(sponsor, sponsorPair, op)
-	assert.NoError(t, err)
+	tt.NoError(err)
 
 	err = xdr.SafeUnmarshalBase64(txResp.ResultXdr, &txResult)
-	assert.NoError(t, err)
-	assert.Equal(t, xdr.TransactionResultCodeTxSuccess, txResult.Result.Code)
+	tt.NoError(err)
+	tt.Equal(xdr.TransactionResultCodeTxSuccess, txResult.Result.Code)
 
 	// Verify operation details
 	response, err := itest.Client().Operations(sdk.OperationRequest{
