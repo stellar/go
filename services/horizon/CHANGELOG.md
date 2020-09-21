@@ -3,6 +3,54 @@
 All notable changes to this project will be documented in this
 file. This project adheres to [Semantic Versioning](http://semver.org/).x
 
+## v1.9.0-rc
+
+This is an experimental Horizon release which adds support for the upcoming Protocol 14 upgrade.
+The Horizon 1.9.0 release candidate will allow you to test Protocol 14 features on a standalone network before Protocol 14 is deployed to pubnet and testnet.
+Horizon still maintains backwards compatability with Protocol 13, which means it is still safe to run this release before Protocol 14 is deployed.
+However, the API changes introduced in this release are subject to change depending on the feedback we receive when Protocol 14 support is implemented in the Horizon SDKS.
+
+The two main features of Protocol 14 are [CAP 23 Claimable Balances](https://github.com/stellar/stellar-protocol/blob/master/core/cap-0023.md) and [CAP 33 Sponsored Reserves](https://github.com/stellar/stellar-protocol/blob/master/core/cap-0033.md).
+Claimable balances provide a mechanism for setting up a payment which can be claimed in the future. This allows you to make payments to accounts which are currently not able to accept them.
+Sponsored Reserves allows an account to pay the reserves on behalf of another account.
+
+In this release there is a new claimable balance resource which has a unique id, an asset (describing which asset can be claimed), an amount (the amount of the asset that can be claimed), and a list of claimants (an immutable list of accounts that could potentially claim the balance).
+The `GET /claimable_balances/{id}` endpoint was added to Horizon's API to allow looking up a claimable balance by its id. See the sample response below:
+
+```json
+{
+  "_links": {
+    "self": {
+      "href": "/claimable_balances/000000000102030000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  "id": "000000000102030000000000000000000000000000000000000000000000000000000000",
+  "asset": "native",
+  "amount": "10.0000000",
+  "sponsor": "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
+  "last_modified_ledger": 123,
+  "claimants": [
+    {
+      "destination": "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
+      "predicate": {
+        "unconditional": true
+      }
+    }
+  ],
+  "paging_token": "123-000000000102030000000000000000000000000000000000000000000000000000000000"
+}
+```
+
+There is also a `GET /claimable_balances` endpoint which searches for claimable balances by asset, sponsor, or claimant destination.
+
+To support [CAP 33 Sponsored Reserves](https://github.com/stellar/stellar-protocol/blob/master/core/cap-0033.md) we have added an optional `sponsor` attribute in the following Horizon resources: accounts, account signers, offers, trustlines, and claimable balances.
+If the `sponsor` field is present it means that the account with id `sponsor` is paying for the reserves for the sponsored account / account signer / offer / trustline / claimable balance. We have also added an optional `sponsor` query parameter to the following endpoints:
+* `GET /accounts`
+* `GET /offers`
+* `GET /claimable_balances`
+
+If the `sponsor` query param is provided, Horizon will search for objects sponsored by the given account id.
+
 ## v1.8.2
 
 * Fixed a bug which prevented Horizon from accepting TLS connections.
