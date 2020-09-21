@@ -11,6 +11,7 @@ func (s *DBStore) Update(a Account) error {
 	if err != nil {
 		return err
 	}
+	defer tx.Rollback()
 
 	var accountID int64
 	// Delete an identity will delete the associated auth methods because of the ON DELETE CASCADE reference.
@@ -52,5 +53,10 @@ func (s *DBStore) Update(a Account) error {
 		}
 	}
 
-	return tx.Commit()
+	err = tx.Commit()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

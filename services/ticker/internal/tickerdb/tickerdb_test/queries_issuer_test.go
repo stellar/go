@@ -1,4 +1,4 @@
-package tickerdb
+package tickerdb_test
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 
 	_ "github.com/lib/pq"
 	migrate "github.com/rubenv/sql-migrate"
+	"github.com/stellar/go/services/ticker/internal/tickerdb"
 	"github.com/stellar/go/support/db/dbtest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -15,7 +16,7 @@ func TestInsertOrUpdateIssuer(t *testing.T) {
 	db := dbtest.Postgres(t)
 	defer db.Close()
 
-	var session TickerSession
+	var session tickerdb.TickerSession
 	session.DB = db.Open()
 	session.Ctx = context.Background()
 	defer session.DB.Close()
@@ -23,7 +24,7 @@ func TestInsertOrUpdateIssuer(t *testing.T) {
 	// Run migrations to make sure the tests are run
 	// on the most updated schema version
 	migrations := &migrate.FileMigrationSource{
-		Dir: "./migrations",
+		Dir: "../migrations",
 	}
 	_, err := migrate.Exec(session.DB.DB, "postgres", migrations, migrate.Up)
 	require.NoError(t, err)
@@ -32,14 +33,14 @@ func TestInsertOrUpdateIssuer(t *testing.T) {
 	name := "FOO BAR"
 
 	// Adding a seed issuer to be used later:
-	issuer := Issuer{
+	issuer := tickerdb.Issuer{
 		PublicKey: publicKey,
 		Name:      name,
 	}
 	id, err := session.InsertOrUpdateIssuer(&issuer, []string{"public_key"})
 
 	require.NoError(t, err)
-	var dbIssuer Issuer
+	var dbIssuer tickerdb.Issuer
 	err = session.GetRaw(&dbIssuer, `
 		SELECT *
 		FROM issuers
@@ -52,14 +53,14 @@ func TestInsertOrUpdateIssuer(t *testing.T) {
 	assert.Equal(t, dbIssuer.ID, id)
 
 	// Adding another issuer to validate we're correctly returning the ID
-	issuer2 := Issuer{
+	issuer2 := tickerdb.Issuer{
 		PublicKey: "ANOTHERKEY",
 		Name:      "Hello from the other side",
 	}
 	id2, err := session.InsertOrUpdateIssuer(&issuer2, []string{"public_key"})
 
 	require.NoError(t, err)
-	var dbIssuer2 Issuer
+	var dbIssuer2 tickerdb.Issuer
 	err = session.GetRaw(&dbIssuer2, `
 		SELECT *
 		FROM issuers
@@ -74,14 +75,14 @@ func TestInsertOrUpdateIssuer(t *testing.T) {
 
 	// Validate if it only changes the un-preserved fields
 	name3 := "The Dark Side of the Moon"
-	issuer3 := Issuer{
+	issuer3 := tickerdb.Issuer{
 		PublicKey: publicKey,
 		Name:      name3,
 	}
 	id, err = session.InsertOrUpdateIssuer(&issuer3, []string{"public_key"})
 	require.NoError(t, err)
 
-	var dbIssuer3 Issuer
+	var dbIssuer3 tickerdb.Issuer
 	err = session.GetRaw(
 		&dbIssuer3,
 		"SELECT * FROM issuers WHERE id=?",

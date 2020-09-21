@@ -17,9 +17,7 @@ import (
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/http/httptest"
 	"github.com/stellar/go/txnbuild"
-	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestFixHTTP(t *testing.T) {
@@ -883,7 +881,7 @@ func TestSubmitTransactionRequest(t *testing.T) {
 	// successful tx with config.memo_required not found
 	hmock.On(
 		"POST",
-		"https://localhost/transactions?tx=AAAAAAU08yUQ8sHqhY8j9mXWwERfHC%2F3cKFSe%2FspAr0rGtO2AAAAZAAAAAAAAAABAAAAAQAAAAAAAAAAAAAAAAAAAAoAAAAAAAAAAQAAAAAAAAABAAAAAAU08yUQ8sHqhY8j9mXWwERfHC%2F3cKFSe%2FspAr0rGtO2AAAAAAAAAAAF9eEAAAAAAAAAAAErGtO2AAAAQKZUywjRbomZ8k14vOAf4%2Bx5kDYCBgZmXzNoeCQ6%2BFnDrkeP05oJ3DrKywbnmq7tfaxq4kDB%2FFqhMviDBuYf3gc%3D",
+		"https://localhost/transactions?tx=AAAAAgAAAAAFNPMlEPLB6oWPI%2FZl1sBEXxwv93ChUnv7KQK9KxrTtgAAAGQAAAAAAAAAAQAAAAEAAAAAAAAAAAAAAAAAAAAKAAAAAAAAAAEAAAAAAAAAAQAAAAAFNPMlEPLB6oWPI%2FZl1sBEXxwv93ChUnv7KQK9KxrTtgAAAAAAAAAABfXhAAAAAAAAAAABKxrTtgAAAECmVMsI0W6JmfJNeLzgH%2BPseZA2AgYGZl8zaHgkOvhZw65Hj9OaCdw6yssG55qu7X2sauJAwfxaoTL4gwbmH94H",
 	).ReturnString(200, txSuccess)
 
 	hmock.On(
@@ -903,32 +901,6 @@ func TestSubmitTransactionRequest(t *testing.T) {
 	_, err = client.SubmitTransaction(tx)
 	assert.Error(t, err)
 	assert.Equal(t, ErrAccountRequiresMemo, errors.Cause(err))
-}
-
-func convertToV1Tx(t *testing.T, tx *txnbuild.Transaction) *txnbuild.Transaction {
-	// Action needed in release: horizonclient-v3.2.0
-	// remove manual envelope type configuration because
-	// once protocol 13 is enabled txnbuild will generate
-	// v1 transaction envelopes by default
-	innerTxEnvelope, err := tx.TxEnvelope()
-	require.NoError(t, err)
-	innerTxEnvelope.V1 = &xdr.TransactionV1Envelope{
-		Tx: xdr.Transaction{
-			SourceAccount: innerTxEnvelope.SourceAccount(),
-			Fee:           xdr.Uint32(innerTxEnvelope.Fee()),
-			SeqNum:        xdr.SequenceNumber(innerTxEnvelope.SeqNum()),
-			TimeBounds:    innerTxEnvelope.V0.Tx.TimeBounds,
-			Memo:          innerTxEnvelope.Memo(),
-			Operations:    innerTxEnvelope.Operations(),
-		},
-	}
-	innerTxEnvelope.Type = xdr.EnvelopeTypeEnvelopeTypeTx
-	innerTxEnvelope.V0 = nil
-	innerTxEnvelopeB64, err := xdr.MarshalBase64(innerTxEnvelope)
-	require.NoError(t, err)
-	parsed, err := txnbuild.TransactionFromXDR(innerTxEnvelopeB64)
-	tx, _ = parsed.Transaction()
-	return tx
 }
 
 func TestSubmitFeeBumpTransaction(t *testing.T) {
@@ -961,7 +933,6 @@ func TestSubmitFeeBumpTransaction(t *testing.T) {
 	tx, err = tx.Sign(network.TestNetworkPassphrase, kp)
 	assert.NoError(t, err)
 
-	tx = convertToV1Tx(t, tx)
 	feeBumpKP := keypair.MustParseFull("SA5ZEFDVFZ52GRU7YUGR6EDPBNRU2WLA6IQFQ7S2IH2DG3VFV3DOMV2Q")
 	feeBumpTx, err := txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
 		Inner:      tx,
@@ -1055,7 +1026,7 @@ func TestSubmitTransactionWithOptionsRequest(t *testing.T) {
 	// successful tx
 	hmock.On(
 		"POST",
-		"https://localhost/transactions?tx=AAAAAAU08yUQ8sHqhY8j9mXWwERfHC%2F3cKFSe%2FspAr0rGtO2AAAAZAAAAAAAAAABAAAAAQAAAAAAAAAAAAAAAAAAAAoAAAAAAAAAAQAAAAAAAAABAAAAAAU08yUQ8sHqhY8j9mXWwERfHC%2F3cKFSe%2FspAr0rGtO2AAAAAAAAAAAF9eEAAAAAAAAAAAErGtO2AAAAQKZUywjRbomZ8k14vOAf4%2Bx5kDYCBgZmXzNoeCQ6%2BFnDrkeP05oJ3DrKywbnmq7tfaxq4kDB%2FFqhMviDBuYf3gc%3D",
+		"https://localhost/transactions?tx=AAAAAgAAAAAFNPMlEPLB6oWPI%2FZl1sBEXxwv93ChUnv7KQK9KxrTtgAAAGQAAAAAAAAAAQAAAAEAAAAAAAAAAAAAAAAAAAAKAAAAAAAAAAEAAAAAAAAAAQAAAAAFNPMlEPLB6oWPI%2FZl1sBEXxwv93ChUnv7KQK9KxrTtgAAAAAAAAAABfXhAAAAAAAAAAABKxrTtgAAAECmVMsI0W6JmfJNeLzgH%2BPseZA2AgYGZl8zaHgkOvhZw65Hj9OaCdw6yssG55qu7X2sauJAwfxaoTL4gwbmH94H",
 	).ReturnString(200, txSuccess)
 
 	_, err = client.SubmitTransactionWithOptions(tx, SubmitTxOpts{SkipMemoRequiredCheck: true})
@@ -1064,7 +1035,7 @@ func TestSubmitTransactionWithOptionsRequest(t *testing.T) {
 	// successful tx with config.memo_required not found
 	hmock.On(
 		"POST",
-		"https://localhost/transactions?tx=AAAAAAU08yUQ8sHqhY8j9mXWwERfHC%2F3cKFSe%2FspAr0rGtO2AAAAZAAAAAAAAAABAAAAAQAAAAAAAAAAAAAAAAAAAAoAAAAAAAAAAQAAAAAAAAABAAAAAAU08yUQ8sHqhY8j9mXWwERfHC%2F3cKFSe%2FspAr0rGtO2AAAAAAAAAAAF9eEAAAAAAAAAAAErGtO2AAAAQKZUywjRbomZ8k14vOAf4%2Bx5kDYCBgZmXzNoeCQ6%2BFnDrkeP05oJ3DrKywbnmq7tfaxq4kDB%2FFqhMviDBuYf3gc%3D",
+		"https://localhost/transactions?tx=AAAAAgAAAAAFNPMlEPLB6oWPI%2FZl1sBEXxwv93ChUnv7KQK9KxrTtgAAAGQAAAAAAAAAAQAAAAEAAAAAAAAAAAAAAAAAAAAKAAAAAAAAAAEAAAAAAAAAAQAAAAAFNPMlEPLB6oWPI%2FZl1sBEXxwv93ChUnv7KQK9KxrTtgAAAAAAAAAABfXhAAAAAAAAAAABKxrTtgAAAECmVMsI0W6JmfJNeLzgH%2BPseZA2AgYGZl8zaHgkOvhZw65Hj9OaCdw6yssG55qu7X2sauJAwfxaoTL4gwbmH94H",
 	).ReturnString(200, txSuccess)
 
 	hmock.On(
@@ -1088,7 +1059,7 @@ func TestSubmitTransactionWithOptionsRequest(t *testing.T) {
 	// skips memo check if tx includes a memo
 	hmock.On(
 		"POST",
-		"https://localhost/transactions?tx=AAAAAAU08yUQ8sHqhY8j9mXWwERfHC%2F3cKFSe%2FspAr0rGtO2AAAAZAAAAAAAAAACAAAAAQAAAAAAAAAAAAAAAAAAAAoAAAABAAAACkhlbGxvV29ybGQAAAAAAAEAAAAAAAAAAQAAAAAFNPMlEPLB6oWPI%2FZl1sBEXxwv93ChUnv7KQK9KxrTtgAAAAAAAAAABfXhAAAAAAAAAAABKxrTtgAAAEDusMdn4dwEhBtYHIxkvdpPbfVa7CM6HG9vRzWLe8%2FMCtQIT4d0IgleroyT%2FF2EmPpAQQmuDXm4DGR7c%2FeTa9YL",
+		"https://localhost/transactions?tx=AAAAAgAAAAAFNPMlEPLB6oWPI%2FZl1sBEXxwv93ChUnv7KQK9KxrTtgAAAGQAAAAAAAAAAgAAAAEAAAAAAAAAAAAAAAAAAAAKAAAAAQAAAApIZWxsb1dvcmxkAAAAAAABAAAAAAAAAAEAAAAABTTzJRDyweqFjyP2ZdbARF8cL%2FdwoVJ7%2BykCvSsa07YAAAAAAAAAAAX14QAAAAAAAAAAASsa07YAAABA7rDHZ%2BHcBIQbWByMZL3aT231WuwjOhxvb0c1i3vPzArUCE%2BHdCIJXq6Mk%2FxdhJj6QEEJrg15uAxke3P3k2vWCw%3D%3D",
 	).ReturnString(200, txSuccess)
 
 	tx, err = txnbuild.NewTransaction(
@@ -1140,7 +1111,6 @@ func TestSubmitFeeBumpTransactionWithOptions(t *testing.T) {
 	tx, err = tx.Sign(network.TestNetworkPassphrase, kp)
 	assert.NoError(t, err)
 
-	tx = convertToV1Tx(t, tx)
 	feeBumpKP := keypair.MustParseFull("SA5ZEFDVFZ52GRU7YUGR6EDPBNRU2WLA6IQFQ7S2IH2DG3VFV3DOMV2Q")
 	feeBumpTx, err := txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
 		Inner:      tx,
@@ -1221,7 +1191,6 @@ func TestSubmitFeeBumpTransactionWithOptions(t *testing.T) {
 	)
 	assert.NoError(t, err)
 
-	tx = convertToV1Tx(t, tx)
 	feeBumpKP = keypair.MustParseFull("SA5ZEFDVFZ52GRU7YUGR6EDPBNRU2WLA6IQFQ7S2IH2DG3VFV3DOMV2Q")
 	feeBumpTx, err = txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
 		Inner:      tx,

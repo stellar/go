@@ -101,23 +101,19 @@ func newSignedFeeBumpTransaction(
 	return txeBase64, err
 }
 
-func convertToV1Tx(tx *Transaction) {
-	// Action needed in release: horizonclient-v3.2.0
-	// remove manual envelope type configuration because
-	// once protocol 13 is enabled txnbuild will generate
-	// v1 transaction envelopes by default
-	tx.envelope.V1 = &xdr.TransactionV1Envelope{
-		Tx: xdr.Transaction{
-			SourceAccount: tx.envelope.SourceAccount(),
-			Fee:           xdr.Uint32(tx.envelope.Fee()),
-			SeqNum:        xdr.SequenceNumber(tx.envelope.SeqNum()),
-			TimeBounds:    tx.envelope.V0.Tx.TimeBounds,
-			Memo:          tx.envelope.Memo(),
-			Operations:    tx.envelope.Operations(),
+func convertToV0(tx *Transaction) {
+	tx.envelope.V0 = &xdr.TransactionV0Envelope{
+		Tx: xdr.TransactionV0{
+			SourceAccountEd25519: *tx.envelope.SourceAccount().Ed25519,
+			Fee:                  xdr.Uint32(tx.envelope.Fee()),
+			SeqNum:               xdr.SequenceNumber(tx.envelope.SeqNum()),
+			TimeBounds:           tx.envelope.V1.Tx.TimeBounds,
+			Memo:                 tx.envelope.Memo(),
+			Operations:           tx.envelope.Operations(),
 		},
 	}
-	tx.envelope.Type = xdr.EnvelopeTypeEnvelopeTypeTx
-	tx.envelope.V0 = nil
+	tx.envelope.V1 = nil
+	tx.envelope.Type = xdr.EnvelopeTypeEnvelopeTypeTxV0
 }
 
 func TestValidateStellarPublicKey(t *testing.T) {

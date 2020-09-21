@@ -1,9 +1,10 @@
 package internal
 
 import (
-	"github.com/stellar/go/txnbuild"
 	"sync"
 	"testing"
+
+	"github.com/stellar/go/txnbuild"
 
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
@@ -38,13 +39,14 @@ func TestFriendbot_Pay(t *testing.T) {
 			AccountID: minionKeypair.Address(),
 			Sequence:  1,
 		},
-		Keypair:           minionKeypair.(*keypair.Full),
-		BotAccount:        botAccount,
-		BotKeypair:        botKeypair.(*keypair.Full),
-		Network:           "Test SDF Network ; September 2015",
-		StartingBalance:   "10000.00",
-		SubmitTransaction: mockSubmitTransaction,
-		BaseFee:           txnbuild.MinBaseFee,
+		Keypair:              minionKeypair.(*keypair.Full),
+		BotAccount:           botAccount,
+		BotKeypair:           botKeypair.(*keypair.Full),
+		Network:              "Test SDF Network ; September 2015",
+		StartingBalance:      "10000.00",
+		SubmitTransaction:    mockSubmitTransaction,
+		CheckSequenceRefresh: CheckSequenceRefresh,
+		BaseFee:              txnbuild.MinBaseFee,
 	}
 	fb := &Bot{Minions: []Minion{minion}}
 
@@ -53,7 +55,7 @@ func TestFriendbot_Pay(t *testing.T) {
 	if !assert.NoError(t, err) {
 		return
 	}
-	expectedTxn := "AAAAAPgDPeMpTqVvOr8vkcb38bMFP4Vi6w7PvWjJgxtmQ/4YAAAAZAAAAAAAAAACAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAEAAAAA9dDyCPKtUdrjtrokM+RUfA88MrE1ETZAFxqYDgm+U4YAAAAAAAAAANKG+t565vUtbO/pb3cn4FE6XozEDoYDJcXLzr81BYYUAAAAF0h26AAAAAAAAAAAAmZD/hgAAABANEsSWMNVgAudOT2YNx5AR3k+uNDITctQCOy0jJNYfm39M/3T0XrpOAR8EUozFIoXp+Rrtm49xKzjSLHgCiYSCgm+U4YAAABA9Iazzw7Be5vPtRPqcWG+EXjsRB9o6yaIiw6SODNSuYGjKklBOYwxuB6LHSR1t8epLvn6J58ml1cs0UOt4afGAQ=="
+	expectedTxn := "AAAAAgAAAAD4Az3jKU6lbzq/L5HG9/GzBT+FYusOz71oyYMbZkP+GAAAAGQAAAAAAAAAAgAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAABAAAAAPXQ8gjyrVHa47a6JDPkVHwPPDKxNRE2QBcamA4JvlOGAAAAAAAAAADShvreeub1LWzv6W93J+BROl6MxA6GAyXFy86/NQWGFAAAABdIdugAAAAAAAAAAAJmQ/4YAAAAQDRLEljDVYALnTk9mDceQEd5PrjQyE3LUAjstIyTWH5t/TP909F66TgEfBFKMxSKF6fka7ZuPcSs40ix4AomEgoJvlOGAAAAQPSGs88OwXubz7UT6nFhvhF47EQfaOsmiIsOkjgzUrmBoypJQTmMMbgeix0kdbfHqS75+iefJpdXLNFDreGnxgE="
 	assert.Equal(t, expectedTxn, txSuccess.EnvelopeXdr)
 
 	// Don't assert on tx values below, since the completion order is unknown.

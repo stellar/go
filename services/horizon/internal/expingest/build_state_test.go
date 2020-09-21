@@ -72,7 +72,7 @@ func (s *BuildStateTestSuite) mockCommonHistoryQ() {
 		defaultCoreCursorName,
 		int32(62),
 	).Return(nil).Once()
-	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(63)).Return(true).Once()
+	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(63)).Return(true, nil).Once()
 }
 
 func (s *BuildStateTestSuite) TestCheckPointLedgerIsZero() {
@@ -195,7 +195,7 @@ func (s *BuildStateTestSuite) TestRangeNotPreparedFailPrepare() {
 		int32(62),
 	).Return(nil).Once()
 
-	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(63)).Return(false).Once()
+	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(63)).Return(false, nil).Once()
 	s.ledgerBackend.On("PrepareRange", ledgerbackend.UnboundedRange(63)).Return(errors.New("my error")).Once()
 	// Rollback twice (first one mocked in SetupTest) because we want to release
 	// a distributed ingestion lock.
@@ -222,7 +222,7 @@ func (s *BuildStateTestSuite) TestRangeNotPreparedSuccessPrepare() {
 		int32(62),
 	).Return(nil).Once()
 
-	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(63)).Return(false).Once()
+	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(63)).Return(false, nil).Once()
 	s.ledgerBackend.On("PrepareRange", ledgerbackend.UnboundedRange(63)).Return(nil).Once()
 	// Rollback twice (first one mocked in SetupTest) because we want to release
 	// a distributed ingestion lock.

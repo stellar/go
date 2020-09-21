@@ -7,7 +7,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/rcrowley/go-metrics"
+	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/stellar/go/exp/orderbook"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
@@ -31,7 +31,7 @@ type OrderBookStream struct {
 	historyQ history.IngestionQ
 	// LatestLedgerGauge exposes the local (order book graph)
 	// latest processed ledger
-	LatestLedgerGauge metrics.Gauge
+	LatestLedgerGauge prometheus.Gauge
 	lastLedger        uint32
 	lastVerification  time.Time
 }
@@ -39,10 +39,12 @@ type OrderBookStream struct {
 // NewOrderBookStream constructs and initializes an OrderBookStream instance
 func NewOrderBookStream(historyQ history.IngestionQ, graph orderbook.OBGraph) *OrderBookStream {
 	return &OrderBookStream{
-		graph:             graph,
-		historyQ:          historyQ,
-		LatestLedgerGauge: metrics.NewGauge(),
-		lastVerification:  time.Now(),
+		graph:    graph,
+		historyQ: historyQ,
+		LatestLedgerGauge: prometheus.NewGauge(prometheus.GaugeOpts{
+			Namespace: "horizon", Subsystem: "order_book_stream", Name: "latest_ledger",
+		}),
+		lastVerification: time.Now(),
 	}
 }
 
@@ -147,7 +149,7 @@ func (o *OrderBookStream) update(status ingestionStatus) (bool, error) {
 		}
 
 		o.lastLedger = status.LastIngestedLedger
-		o.LatestLedgerGauge.Update(int64(status.LastIngestedLedger))
+		o.LatestLedgerGauge.Set(float64(status.LastIngestedLedger))
 		return true, nil
 	}
 
@@ -174,7 +176,7 @@ func (o *OrderBookStream) update(status ingestionStatus) (bool, error) {
 	}
 
 	o.lastLedger = status.LastIngestedLedger
-	o.LatestLedgerGauge.Update(int64(status.LastIngestedLedger))
+	o.LatestLedgerGauge.Set(float64(status.LastIngestedLedger))
 	return false, nil
 }
 
@@ -182,7 +184,9 @@ func (o *OrderBookStream) verifyAllOffers() {
 	offers := o.graph.Offers()
 	ingestionOffers, err := o.historyQ.GetAllOffers()
 	if err != nil {
-		log.WithError(err).Info("Could not verify offers because of error from GetAllOffers")
+		if !isCancelledError(err) {
+			log.WithError(err).Info("Could not verify offers because of error from GetAllOffers")
+		}
 		return
 	}
 
@@ -264,7 +268,7 @@ func (o *OrderBookStream) Run(ctx context.Context) {
 	for {
 		select {
 		case <-ticker.C:
-			if err := o.Update(); err != nil {
+			if err := o.Update(); err != nil && !isCancelledError(err) {
 				log.WithError(err).Error("could not apply updates from order book stream")
 			}
 		case <-ctx.Done():

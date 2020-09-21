@@ -1,6 +1,7 @@
 package tickerdb
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 )
@@ -13,36 +14,40 @@ func (s *TickerSession) RetrieveMarketData() (markets []Market, err error) {
 }
 
 // RetrievePartialAggMarkets retrieves the aggregated market data for all
-// markets (or for a specific one if PairName != nil) for a given period.
+// markets (or for a specific one if PairNames != nil) for a given period.
 func (s *TickerSession) RetrievePartialAggMarkets(
-	pairName *string,
+	code *string,
+	pairNames *[]*string,
 	numHoursAgo int,
 ) (partialMkts []PartialMarket, err error) {
-	var bCode, cCode string
-	sqlTrue := new(string)
-	*sqlTrue = "TRUE"
-	optVars := []optionalVar{
-		optionalVar{"bAsset.is_valid", sqlTrue},
-		optionalVar{"cAsset.is_valid", sqlTrue},
+	var where string
+	var args []string
+
+	if code != nil && pairNames != nil {
+		err = errors.New("code and pairNames cannot both be non-nil")
+		return
 	}
 
-	// parse base and asset codes and add them as SQL parameters
-	if pairName != nil {
-		bCode, cCode, err = getBaseAndCounterCodes(*pairName)
+	// Construct the part of the WHERE clause that filters by asset.
+	if pairNames != nil {
+		where, args, err = s.constructPartialAggMarketsWhere(*pairNames)
 		if err != nil {
 			return
 		}
-		optVars = append(optVars, []optionalVar{
-			optionalVar{"bAsset.code", &bCode},
-			optionalVar{"cAsset.code", &cCode},
-		}...)
+	} else if code != nil {
+		where = "WHERE (bAsset.is_valid = TRUE AND bAsset.code = ?) OR (cAsset.is_valid = TRUE AND cAsset.code = ?)"
+		args = []string{*code, *code}
+	} else {
+		where = "WHERE bAsset.is_valid = TRUE AND cAsset.is_valid = TRUE"
 	}
 
-	where, args := generateWhereClause(optVars)
+	// Add the filter by time to the WHERE clause.
 	where += fmt.Sprintf(
 		" AND t.ledger_close_time > now() - interval '%d hours'",
 		numHoursAgo,
 	)
+
+	// Generate and execute the final qurey.
 	q := strings.Replace(aggMarketQuery, "__WHERECLAUSE__", where, -1)
 	q = strings.Replace(q, "__NUMHOURS__", fmt.Sprintf("%d", numHoursAgo), -1)
 
@@ -52,6 +57,40 @@ func (s *TickerSession) RetrievePartialAggMarkets(
 	}
 
 	err = s.SelectRaw(&partialMkts, q, argsInterface...)
+	return
+}
+
+func (s *TickerSession) constructPartialAggMarketsWhere(
+	pairNames []*string,
+) (where string, args []string, err error) {
+	sqlTrue := new(string)
+	*sqlTrue = "TRUE"
+
+	optVarsSlice := [][]optionalVar{}
+	for _, pairName := range pairNames {
+		if pairName == nil {
+			continue
+		}
+
+		optVars := []optionalVar{
+			optionalVar{"bAsset.is_valid", sqlTrue},
+			optionalVar{"cAsset.is_valid", sqlTrue},
+		}
+
+		var bCode, cCode string
+		bCode, cCode, err = getBaseAndCounterCodes(*pairName)
+		if err != nil {
+			return
+		}
+
+		optVars = append(optVars, []optionalVar{
+			optionalVar{"bAsset.code", &bCode},
+			optionalVar{"cAsset.code", &cCode},
+		}...)
+		optVarsSlice = append(optVarsSlice, optVars)
+	}
+
+	where, args = generateWhereClauseWithOrs(optVarsSlice)
 	return
 }
 
@@ -68,6 +107,12 @@ func (s *TickerSession) RetrievePartialMarkets(
 	sqlTrue := new(string)
 	*sqlTrue = "TRUE"
 
+	baseAssetCode, baseAssetIssuer, counterAssetCode, counterAssetIssuer = orderBaseAndCounter(
+		baseAssetCode,
+		baseAssetIssuer,
+		counterAssetCode,
+		counterAssetIssuer,
+	)
 	where, args := generateWhereClause([]optionalVar{
 		optionalVar{"bAsset.is_valid", sqlTrue},
 		optionalVar{"cAsset.is_valid", sqlTrue},
@@ -218,9 +263,16 @@ SELECT
 	COALESCE((array_agg(os.highest_bid))[1], 0.0) AS highest_bid,
 	COALESCE((array_agg(os.num_asks))[1], 0) AS num_asks,
 	COALESCE((array_agg(os.ask_volume))[1], 0.0) AS ask_volume,
-	COALESCE((array_agg(os.lowest_ask))[1], 0.0) AS lowest_ask
+	COALESCE((array_agg(os.lowest_ask))[1], 0.0) AS lowest_ask,
+	COALESCE((array_agg(ios.num_bids))[1], 0) AS num_bids_reverse,
+	COALESCE((array_agg(ios.bid_volume))[1], 0.0) AS bid_volume_reverse,
+	COALESCE((array_agg(ios.highest_bid))[1], 0.0) AS highest_bid_reverse,
+	COALESCE((array_agg(ios.num_asks))[1], 0) AS num_asks_reverse,
+	COALESCE((array_agg(ios.ask_volume))[1], 0.0) AS ask_volume_reverse,
+	COALESCE((array_agg(ios.lowest_ask))[1], 0.0) AS lowest_ask_reverse
 FROM trades AS t
 	LEFT JOIN orderbook_stats AS os ON t.base_asset_id = os.base_asset_id AND t.counter_asset_id = os.counter_asset_id
+	LEFT JOIN orderbook_stats AS ios ON t.base_asset_id = ios.counter_asset_id AND t.counter_asset_id = ios.base_asset_id
 	JOIN assets AS bAsset ON t.base_asset_id = bAsset.id
 	JOIN assets AS cAsset on t.counter_asset_id = cAsset.id
 __WHERECLAUSE__
@@ -248,7 +300,13 @@ SELECT
 	COALESCE(aob.highest_bid, 0.0) AS highest_bid,
 	COALESCE(aob.num_asks, 0) AS num_asks,
 	COALESCE(aob.ask_volume, 0.0) AS ask_volume,
-	COALESCE(aob.lowest_ask, 0.0) AS lowest_ask
+	COALESCE(aob.lowest_ask, 0.0) AS lowest_ask,
+	COALESCE(iaob.num_bids, 0) AS num_bids_reverse,
+	COALESCE(iaob.bid_volume, 0.0) AS bid_volume_reverse,
+	COALESCE(iaob.highest_bid, 0.0) AS highest_bid_reverse,
+	COALESCE(iaob.num_asks, 0) AS num_asks_reverse,
+	COALESCE(iaob.ask_volume, 0.0) AS ask_volume_reverse,
+	COALESCE(iaob.lowest_ask, 0.0) AS lowest_ask_reverse
 FROM (
 	SELECT
 		concat(
@@ -256,6 +314,11 @@ FROM (
 			'_',
 			COALESCE(NULLIF(cAsset.anchor_asset_code, ''), cAsset.code)
 		) as trade_pair_name,
+		concat(
+			COALESCE(NULLIF(cAsset.anchor_asset_code, ''), cAsset.code),
+			'_',
+			COALESCE(NULLIF(bAsset.anchor_asset_code, ''), bAsset.code)
+		) as reverse_trade_pair_name,
 		sum(t.base_amount) AS base_volume,
 		sum(t.counter_amount) AS counter_volume,
 		count(t.base_amount) AS trade_count,
@@ -272,5 +335,7 @@ FROM (
 		JOIN assets AS bAsset ON t.base_asset_id = bAsset.id
 		JOIN assets AS cAsset on t.counter_asset_id = cAsset.id
 	__WHERECLAUSE__
-	GROUP BY trade_pair_name
-) t1 LEFT JOIN aggregated_orderbook AS aob ON t1.trade_pair_name = aob.trade_pair_name;`
+	GROUP BY trade_pair_name, reverse_trade_pair_name
+) t1
+	LEFT JOIN aggregated_orderbook AS aob ON t1.trade_pair_name = aob.trade_pair_name
+	LEFT JOIN aggregated_orderbook AS iaob ON t1.reverse_trade_pair_name = iaob.trade_pair_name;`
