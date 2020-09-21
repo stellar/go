@@ -451,6 +451,23 @@ func addLedgerKeyDetails(result map[string]interface{}, ledgerKey xdr.LedgerKey)
 	return nil
 }
 
+func getLedgerKeyParticipants(ledgerKey xdr.LedgerKey) []xdr.AccountId {
+	var result []xdr.AccountId
+	switch ledgerKey.Type {
+	case xdr.LedgerEntryTypeAccount:
+		result = append(result, ledgerKey.Account.AccountId)
+	case xdr.LedgerEntryTypeClaimableBalance:
+		// nothing to do
+	case xdr.LedgerEntryTypeData:
+		result = append(result, ledgerKey.Data.AccountId)
+	case xdr.LedgerEntryTypeOffer:
+		result = append(result, ledgerKey.Offer.SellerId)
+	case xdr.LedgerEntryTypeTrustline:
+		result = append(result, ledgerKey.TrustLine.AccountId)
+	}
+	return result
+}
+
 // Participants returns the accounts taking part in the operation.
 func (operation *transactionOperationWrapper) Participants() ([]xdr.AccountId, error) {
 	participants := []xdr.AccountId{}
@@ -500,7 +517,20 @@ func (operation *transactionOperationWrapper) Participants() ([]xdr.AccountId, e
 			participants = append(participants, *beginSponsorshipOp.SourceAccount())
 		}
 	case xdr.OperationTypeRevokeSponsorship:
-		// the only direct participant is the source_account
+		op := operation.operation.Body.MustRevokeSponsorshipOp()
+		switch op.Type {
+		case xdr.RevokeSponsorshipTypeRevokeSponsorshipLedgerEntry:
+			participants = append(participants, getLedgerKeyParticipants(*op.LedgerKey)...)
+		case xdr.RevokeSponsorshipTypeRevokeSponsorshipSigner:
+			participants = append(participants, op.Signer.AccountId)
+			if op.Signer.SignerKey.Type == xdr.SignerKeyTypeSignerKeyTypeEd25519 {
+				signerKeyID := xdr.PublicKey{
+					Type:    xdr.PublicKeyTypePublicKeyTypeEd25519,
+					Ed25519: op.Signer.SignerKey.Ed25519,
+				}
+				participants = append(participants, xdr.AccountId(signerKeyID))
+			}
+		}
 	default:
 		return participants, fmt.Errorf("Unknown operation type: %s", op.Body.Type)
 	}

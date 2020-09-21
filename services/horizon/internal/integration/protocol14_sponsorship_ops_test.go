@@ -7,13 +7,14 @@ import (
 
 	sdk "github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
+	"github.com/stellar/go/protocols/horizon/effects"
 	"github.com/stellar/go/protocols/horizon/operations"
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/services/horizon/internal/txnbuild"
 	"github.com/stellar/go/xdr"
 )
 
-func getSimpleAccountCreationSandwich(a *assert.Assertions) (*keypair.Full, []txnbuild.Operation) {
+func getSimpleAccountCreationSandwich(tt *assert.Assertions) (*keypair.Full, []txnbuild.Operation) {
 	// We will create the following operation structure:
 	// BeginSponsoringFutureReserves A
 	//   CreateAccount A
@@ -21,7 +22,7 @@ func getSimpleAccountCreationSandwich(a *assert.Assertions) (*keypair.Full, []tx
 
 	ops := make([]txnbuild.Operation, 3, 3)
 	newAccountPair, err := keypair.Random()
-	a.NoError(err)
+	tt.NoError(err)
 
 	ops[0] = &txnbuild.BeginSponsoringFutureReserves{
 		SponsoredID: newAccountPair.Address(),
@@ -42,40 +43,41 @@ func TestSimpleSandwichHappyPath(t *testing.T) {
 	tt := assert.New(t)
 	itest := test.NewIntegrationTest(t, protocol14Config)
 	defer itest.Close()
-	sponsor := itest.Master()
+	sponsor := itest.MasterAccount()
+	sponsorPair := itest.Master()
 	newAccountPair, ops := getSimpleAccountCreationSandwich(tt)
 
-	signers := []*keypair.Full{sponsor, newAccountPair}
-	txResp, err := itest.SubmitMultiSigOperations(itest.MasterAccount(), signers, ops...)
-	assert.NoError(t, err)
+	signers := []*keypair.Full{sponsorPair, newAccountPair}
+	txResp, err := itest.SubmitMultiSigOperations(sponsor, signers, ops...)
+	tt.NoError(err)
 
 	var txResult xdr.TransactionResult
 	err = xdr.SafeUnmarshalBase64(txResp.ResultXdr, &txResult)
-	assert.NoError(t, err)
-	assert.Equal(t, xdr.TransactionResultCodeTxSuccess, txResult.Result.Code)
+	tt.NoError(err)
+	tt.Equal(xdr.TransactionResultCodeTxSuccess, txResult.Result.Code)
 
 	response, err := itest.Client().Operations(sdk.OperationRequest{
 		Order: "asc",
 	})
-	records := response.Embedded.Records
+	opRecords := response.Embedded.Records
 	tt.NoError(err)
-	tt.Len(records, 3)
-	tt.True(records[0].IsTransactionSuccessful())
+	tt.Len(opRecords, 3)
+	tt.True(opRecords[0].IsTransactionSuccessful())
 
 	// Verify operation details
 	tt.Equal(ops[0].(*txnbuild.BeginSponsoringFutureReserves).SponsoredID,
-		records[0].(operations.BeginSponsoringFutureReserves).SponsoredID)
+		opRecords[0].(operations.BeginSponsoringFutureReserves).SponsoredID)
 
-	actualCreateAccount := records[1].(operations.CreateAccount)
-	tt.Equal(sponsor.Address(), actualCreateAccount.Sponsor)
+	actualCreateAccount := opRecords[1].(operations.CreateAccount)
+	tt.Equal(sponsorPair.Address(), actualCreateAccount.Sponsor)
 
-	endSponsoringOp := records[2].(operations.EndSponsoringFutureReserves)
-	tt.Equal(sponsor.Address(), endSponsoringOp.BeginSponsor)
+	endSponsoringOp := opRecords[2].(operations.EndSponsoringFutureReserves)
+	tt.Equal(sponsorPair.Address(), endSponsoringOp.BeginSponsor)
 
 	// Make sure that the sponsor is an (implicit) participant on the end sponsorship operation
 
 	response, err = itest.Client().Operations(sdk.OperationRequest{
-		ForAccount: sponsor.Address(),
+		ForAccount: sponsorPair.Address(),
 	})
 	tt.NoError(err)
 
@@ -91,7 +93,7 @@ func TestSimpleSandwichHappyPath(t *testing.T) {
 
 	// Check numSponsoring and numSponsored
 	account, err := itest.Client().AccountDetail(sdk.AccountRequest{
-		AccountID: sponsor.Address(),
+		AccountID: sponsorPair.Address(),
 	})
 	tt.NoError(err)
 	account.NumSponsoring = 1
@@ -102,4 +104,78 @@ func TestSimpleSandwichHappyPath(t *testing.T) {
 	tt.NoError(err)
 	account.NumSponsored = 1
 
+	// Check effects of CreateAccount Operation
+	eResponse, err := itest.Client().Effects(sdk.EffectRequest{ForOperation: opRecords[1].GetID()})
+	tt.NoError(err)
+	effectRecords := eResponse.Embedded.Records
+	tt.Len(effectRecords, 4)
+	tt.IsType(effects.AccountSponsorshipCreated{}, effectRecords[3])
+	tt.Equal(sponsorPair.Address(), effectRecords[3].(effects.AccountSponsorshipCreated).Sponsor)
+}
+
+func TestSimpleSandwichRevocation(t *testing.T) {
+	tt := assert.New(t)
+	itest := test.NewIntegrationTest(t, protocol14Config)
+	defer itest.Close()
+	sponsor := itest.MasterAccount()
+	sponsorPair := itest.Master()
+	newAccountPair, ops := getSimpleAccountCreationSandwich(tt)
+
+	signers := []*keypair.Full{sponsorPair, newAccountPair}
+	txResp, err := itest.SubmitMultiSigOperations(sponsor, signers, ops...)
+	tt.NoError(err)
+
+	var txResult xdr.TransactionResult
+	err = xdr.SafeUnmarshalBase64(txResp.ResultXdr, &txResult)
+	tt.NoError(err)
+	tt.Equal(xdr.TransactionResultCodeTxSuccess, txResult.Result.Code)
+
+	// Submit sponsorship revocation in a separate transaction
+	accountToRevoke := newAccountPair.Address()
+	op := &txnbuild.RevokeSponsorship{
+		SponsorshipType: txnbuild.RevokeSponsorshipTypeAccount,
+		Account:         &accountToRevoke,
+	}
+	txResp, err = itest.SubmitOperations(sponsor, sponsorPair, op)
+	tt.NoError(err)
+
+	err = xdr.SafeUnmarshalBase64(txResp.ResultXdr, &txResult)
+	tt.NoError(err)
+	tt.Equal(xdr.TransactionResultCodeTxSuccess, txResult.Result.Code)
+
+	// Verify operation details
+	response, err := itest.Client().Operations(sdk.OperationRequest{
+		ForTransaction: txResp.Hash,
+	})
+	opRecords := response.Embedded.Records
+	tt.NoError(err)
+	tt.Len(opRecords, 1)
+	tt.True(opRecords[0].IsTransactionSuccessful())
+
+	revokeOp := opRecords[0].(operations.RevokeSponsorship)
+	tt.Equal(*op.Account, *revokeOp.AccountID)
+
+	// Make sure that the sponsoree is an (implicit) participant in the revocation operation
+	response, err = itest.Client().Operations(sdk.OperationRequest{
+		ForAccount: newAccountPair.Address(),
+	})
+	tt.NoError(err)
+
+	sponsorshipRevocationPresent := func() bool {
+		for _, o := range response.Embedded.Records {
+			if o.GetID() == revokeOp.ID {
+				return true
+			}
+		}
+		return false
+	}
+	tt.Condition(sponsorshipRevocationPresent)
+
+	// Check effects
+	eResponse, err := itest.Client().Effects(sdk.EffectRequest{ForOperation: revokeOp.ID})
+	tt.NoError(err)
+	effectRecords := eResponse.Embedded.Records
+	tt.Len(effectRecords, 1)
+	tt.IsType(effects.AccountSponsorshipRemoved{}, effectRecords[0])
+	tt.Equal(sponsorPair.Address(), effectRecords[0].(effects.AccountSponsorshipRemoved).FormerSponsor)
 }
