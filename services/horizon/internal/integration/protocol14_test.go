@@ -454,6 +454,12 @@ func TestComplexPredicates(t *testing.T) {
 			&txnbuild.ClaimClaimableBalance{BalanceID: claim2.BalanceID})
 		assert.NoError(t, err)
 		t.Log("  claimed")
+
+		// Ensure both are gone now
+		balances, err = client.ClaimableBalances(sdk.ClaimableBalanceRequest{})
+		assert.NoError(t, err)
+		assert.Len(t, balances.Embedded.Records, 0)
+		t.Log("All claimables gone.")
 	})
 
 	// In this one, we use absolute time to refine our conditions, instead. The
@@ -489,7 +495,7 @@ func TestComplexPredicates(t *testing.T) {
 			},
 		)
 
-		// Ensure it exists in the global list
+		// Ensure both exist in the global list
 		balances, err := client.ClaimableBalances(sdk.ClaimableBalanceRequest{})
 		assert.NoError(t, err)
 
@@ -528,6 +534,12 @@ func TestComplexPredicates(t *testing.T) {
 			&txnbuild.ClaimClaimableBalance{BalanceID: claim2.BalanceID})
 		assert.NoError(t, err)
 		t.Log("  success")
+
+		// Ensure both are gone now
+		balances, err = client.ClaimableBalances(sdk.ClaimableBalanceRequest{})
+		assert.NoError(t, err)
+		assert.Len(t, balances.Embedded.Records, 0)
+		t.Log("All claimables gone.")
 	})
 
 	//
