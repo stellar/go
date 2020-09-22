@@ -119,7 +119,7 @@ func NewIntegrationTest(t *testing.T, config IntegrationConfig) *IntegrationTest
 	var buf bytes.Buffer
 	tw := tar.NewWriter(&buf)
 	hdr := &tar.Header{
-		Name: "horizon",
+		Name: "stellar-horizon",
 		Mode: 0755,
 		Size: int64(len(horizonBinaryContents)),
 	}
@@ -133,10 +133,11 @@ func NewIntegrationTest(t *testing.T, config IntegrationConfig) *IntegrationTest
 		t.Fatal(errors.Wrap(err, "error closing tar archive"))
 	}
 
-	t.Log("Copying custom horizon binary...")
+	t.Logf("Copying custom horizon binary (%d bytes)...", len(horizonBinaryContents))
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	err = i.cli.CopyToContainer(ctx, i.container.ID, "/usr/local/bin", &buf, types.CopyToContainerOptions{})
+
+	err = i.cli.CopyToContainer(ctx, i.container.ID, "/usr/bin/", &buf, types.CopyToContainerOptions{})
 	if err != nil {
 		t.Fatal(errors.Wrap(err, "error copying custom horizon binary"))
 	}
