@@ -420,7 +420,7 @@ func (i *IntegrationTest) SubmitOperations(
 
 func (i *IntegrationTest) SubmitMultiSigOperations(
 	source txnbuild.Account, signers []*keypair.Full, ops ...txnbuild.Operation,
-) (txResp proto.Transaction, err error) {
+) (proto.Transaction, error) {
 	txParams := txnbuild.TransactionParams{
 		SourceAccount:        source,
 		Operations:           ops,
@@ -431,32 +431,31 @@ func (i *IntegrationTest) SubmitMultiSigOperations(
 
 	tx, err := txnbuild.NewTransaction(txParams)
 	if err != nil {
-		return
+		return proto.Transaction{}, err
 	}
 
 	for _, signer := range signers {
 		tx, err = tx.Sign(IntegrationNetworkPassphrase, signer)
 		if err != nil {
-			return
+			return proto.Transaction{}, err
 		}
 	}
 
 	txb64, err := tx.Base64()
 	if err != nil {
-		return
+		return proto.Transaction{}, err
 	}
 
-	txResp, err = i.Client().SubmitTransactionXDR(txb64)
+	txResp, err := i.Client().SubmitTransactionXDR(txb64)
 	if err != nil {
 		i.t.Logf("Submitting the transaction failed: %s\n", txb64)
 		if prob := sdk.GetError(err); prob != nil {
 			i.t.Logf("Problem: %s\n", prob.Problem.Detail)
 			i.t.Logf("Extras: %s\n", prob.Problem.Extras["result_codes"])
 		}
-		return
 	}
 
-	return
+	return txResp, err
 }
 
 // Cluttering code with if err != nil is absolute nonsense.
