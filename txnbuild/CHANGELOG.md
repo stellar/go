@@ -14,6 +14,11 @@ SEP-10 now requires clients to verify the `SIGNING_KEY` included in the TOML fil
 
 The breaking changes described above support the added SEP-10 2.0 requirements for both servers and clients.
 
+## [v3.2.0](https://github.com/stellar/go/releases/tag/horizonclient-v3.2.0) - 2020-06-18
+
+* `txnbuild` now generates V1 transaction envelopes which are only supported by Protocol 13 ([#2640](https://github.com/stellar/go/pull/2640))
+* Add `ToXDR()` functions for `Transaction` and `FeeBumpTransaction` instances which return xdr transaction envelopes without errors ([#2651](https://github.com/stellar/go/pull/2651))
+
 ## [v3.1.0](https://github.com/stellar/go/releases/tag/horizonclient-v3.1.0) - 2020-05-14
 
 * Fix bug which occurs when parsing xdr offers with prices that require more than 7 decimals of precision ([#2588](https://github.com/stellar/go/pull/2588))

@@ -88,7 +88,6 @@ func TestFeeBumpOverflow(t *testing.T) {
 	)
 	assert.NoError(t, err)
 
-	convertToV1Tx(tx)
 	_, err = NewFeeBumpTransaction(
 		FeeBumpTransactionParams{
 			FeeAccount: newKeypair1().Address(),
@@ -122,7 +121,6 @@ func TestFeeBumpFeeGreaterThanOrEqualInner(t *testing.T) {
 	)
 	assert.NoError(t, err)
 
-	convertToV1Tx(tx)
 	_, err = NewFeeBumpTransaction(
 		FeeBumpTransactionParams{
 			FeeAccount: newKeypair1().Address(),
