@@ -133,10 +133,9 @@ func NewIntegrationTest(t *testing.T, config IntegrationConfig) *IntegrationTest
 		t.Fatal(errors.Wrap(err, "error closing tar archive"))
 	}
 
-	t.Logf("Copying custom horizon binary (%d bytes)...", len(horizonBinaryContents))
+	t.Log("Copying custom horizon binary...")
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-
 	err = i.cli.CopyToContainer(ctx, i.container.ID, "/usr/bin/", &buf, types.CopyToContainerOptions{})
 	if err != nil {
 		t.Fatal(errors.Wrap(err, "error copying custom horizon binary"))
