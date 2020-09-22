@@ -105,8 +105,6 @@ func TestHappyClaimableBalances(t *testing.T) {
 		// Ensure it shows up with the various filters (and *doesn't* show up with
 		// non-matching filters, of course).
 		//
-		// TODO: should we make these all subtests?
-		//
 		t.Log("Checking claimable balance filters")
 
 		// Ensure it exists in the global list
@@ -391,15 +389,14 @@ func TestComplexPredicates(t *testing.T) {
 
 	// This one can be claimed within X seconds or after Y seconds but NOT
 	// in-between; we check to make sure all conditions are upheld.
-	predicate := txnbuild.OrPredicate(
-		txnbuild.BeforeRelativeTimePredicate(30),
-		txnbuild.NotPredicate(txnbuild.BeforeRelativeTimePredicate(60)),
-	)
-
 	asset := txnbuild.NativeAsset{}
 	t.Run("BeforeOrAfter/Rel", func(t *testing.T) {
 		accountA := itest.MustGetAccount(a)
 
+		predicate := txnbuild.OrPredicate(
+			txnbuild.BeforeRelativeTimePredicate(30),
+			txnbuild.NotPredicate(txnbuild.BeforeRelativeTimePredicate(60)),
+		)
 		t.Log("Creating claimable balances...")
 		_ = itest.MustSubmitOperations(&accountA, a,
 			&txnbuild.CreateClaimableBalance{
@@ -430,15 +427,16 @@ func TestComplexPredicates(t *testing.T) {
 
 		// First try claiming immediately.
 		t.Logf("Claiming balance before expiration (ID=%s)...", claim1.BalanceID)
-		t.Log(time.Now().String())
+		t.Logf("  %s", time.Now().String())
 		_, err = itest.SubmitOperations(accountB, b,
 			&txnbuild.ClaimClaimableBalance{BalanceID: claim1.BalanceID})
 		assert.NoError(t, err)
+		t.Log("  claimed")
 
 		// Should fail after the first predicate expires
-		time.Sleep(35 * time.Second)
+		time.Sleep(40 * time.Second)
 
-		t.Logf("Claiming balance during lull (ID=%s)...", claim2.BalanceID)
+		t.Logf("Claiming balance DURING lull (ID=%s)...", claim2.BalanceID)
 		t.Logf("  %s", time.Now().String())
 		_, err = itest.SubmitOperations(accountC, c,
 			&txnbuild.ClaimClaimableBalance{BalanceID: claim2.BalanceID})
@@ -450,28 +448,28 @@ func TestComplexPredicates(t *testing.T) {
 		// Shouldn't fail after the second predicate kicks in
 		time.Sleep(40 * time.Second)
 
-		t.Logf("Claiming balance after lull (ID=%s)...", claim2.BalanceID)
+		t.Logf("Claiming balance AFTER lull (ID=%s)...", claim2.BalanceID)
 		t.Log(time.Now().String())
 		_, err = itest.SubmitOperations(accountC, c,
 			&txnbuild.ClaimClaimableBalance{BalanceID: claim2.BalanceID})
 		assert.NoError(t, err)
-		t.Log("  success")
+		t.Log("  claimed")
 	})
 
 	// In this one, we use absolute time to refine our conditions, instead. The
 	// reason why the times are still high is because the "preparation" ops
 	// themselves take time (creating CBs), so we need to pad for that.
-	twentySecFromNow := time.Now().Add(20 * time.Second)
-	thirtySecFromNow := twentySecFromNow.Add(10 * time.Second)
-	predicate = txnbuild.OrPredicate(
-		txnbuild.BeforeAbsoluteTimePredicate(twentySecFromNow.Unix()),
-		txnbuild.NotPredicate(
-			txnbuild.BeforeAbsoluteTimePredicate(thirtySecFromNow.Unix()),
-		),
-	)
-
 	t.Run("BeforeOrAfter/Abs", func(t *testing.T) {
 		accountA := itest.MustGetAccount(a)
+
+		twentySecFromNow := time.Now().Add(20 * time.Second)
+		thirtySecFromNow := twentySecFromNow.Add(10 * time.Second)
+		predicate := txnbuild.OrPredicate(
+			txnbuild.BeforeAbsoluteTimePredicate(twentySecFromNow.Unix()),
+			txnbuild.NotPredicate(
+				txnbuild.BeforeAbsoluteTimePredicate(thirtySecFromNow.Unix()),
+			),
+		)
 
 		t.Log("Creating claimable balances...")
 		_ = itest.MustSubmitOperations(&accountA, a,
@@ -496,7 +494,7 @@ func TestComplexPredicates(t *testing.T) {
 		assert.NoError(t, err)
 
 		claims := balances.Embedded.Records
-		assert.Len(t, claims, 2)
+		assert.Len(t, claims, 1)
 		claim1, claim2 := claims[0], claims[1]
 		t.Logf("   %s", claim1.BalanceID)
 		t.Logf("   %s", claim2.BalanceID)
@@ -507,11 +505,12 @@ func TestComplexPredicates(t *testing.T) {
 		_, err = itest.SubmitOperations(accountB, b,
 			&txnbuild.ClaimClaimableBalance{BalanceID: claim1.BalanceID})
 		assert.NoError(t, err)
+		t.Log("  claimed")
 
 		// Should fail after ~15-20s
-		time.Sleep(18 * time.Second)
+		time.Sleep(20 * time.Second)
 
-		t.Logf("Claiming balance during lull (ID=%s)...", claim2.BalanceID)
+		t.Logf("Claiming balance DURING lull (ID=%s)...", claim2.BalanceID)
 		t.Log(time.Now().String())
 		_, err = itest.SubmitOperations(accountC, c,
 			&txnbuild.ClaimClaimableBalance{BalanceID: claim2.BalanceID})
@@ -521,9 +520,9 @@ func TestComplexPredicates(t *testing.T) {
 		t.Log("  failed as expected")
 
 		// Shouldn't fail after another ~10s
-		time.Sleep(9 * time.Second)
+		time.Sleep(10 * time.Second)
 
-		t.Logf("Claiming balance after lull (ID=%s)...", claim2.BalanceID)
+		t.Logf("Claiming balance AFTER lull (ID=%s)...", claim2.BalanceID)
 		t.Log(time.Now().String())
 		_, err = itest.SubmitOperations(accountC, c,
 			&txnbuild.ClaimClaimableBalance{BalanceID: claim2.BalanceID})
@@ -537,7 +536,7 @@ func TestComplexPredicates(t *testing.T) {
 	//
 
 	// This is an easy fail.
-	predicate = txnbuild.NotPredicate(txnbuild.UnconditionalPredicate)
+	predicate := txnbuild.NotPredicate(txnbuild.UnconditionalPredicate)
 	t.Run("AlwaysFail", func(t *testing.T) {
 		t.Logf("Creating claimable balance (asset=native).")
 		t.Logf("  predicate: %+v", predicate.Type)
