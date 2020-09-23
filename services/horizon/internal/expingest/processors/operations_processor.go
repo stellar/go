@@ -112,12 +112,57 @@ func (operation *transactionOperationWrapper) OperationType() xdr.OperationType 
 	return operation.operation.Body.Type
 }
 
+func (operation *transactionOperationWrapper) getSignerSponsorInChange(signerKey string, change io.Change) xdr.SponsorshipDescriptor {
+	if change.Type != xdr.LedgerEntryTypeAccount || change.Post == nil {
+		return nil
+	}
+
+	preSigners := map[string]xdr.SponsorshipDescriptor{}
+	if change.Pre != nil {
+		account := change.Pre.Data.MustAccount()
+		preSigners = account.SponsorPerSigner()
+	}
+
+	account := change.Post.Data.MustAccount()
+	postSigners := account.SponsorPerSigner()
+
+	pre := preSigners[signerKey]
+	post := postSigners[signerKey]
+
+	if post == nil {
+		return nil
+	}
+
+	if pre != nil {
+		formerSponsor := (*xdr.AccountId)(pre).Address()
+		newSponsor := (*xdr.AccountId)(post).Address()
+		if formerSponsor == newSponsor {
+			return nil
+		}
+	}
+
+	return post
+}
+
 func (operation *transactionOperationWrapper) getSponsor() (*xdr.AccountId, error) {
 	changes, err := operation.transaction.GetOperationChanges(operation.index)
 	if err != nil {
 		return nil, err
 	}
+	var signerKey string
+	if setOps, ok := operation.operation.Body.GetSetOptionsOp(); ok && setOps.Signer != nil {
+		signerKey = setOps.Signer.Key.Address()
+	}
+
 	for _, c := range changes {
+		// Check Signer changes
+		if signerKey != "" {
+			if sponsorAccount := operation.getSignerSponsorInChange(signerKey, c); sponsorAccount != nil {
+				return sponsorAccount, nil
+			}
+		}
+
+		// Check Ledger key changes
 		if c.Pre != nil || c.Post == nil {
 			// We are only looking for entry creations denoting that a sponsor
 			// is associated to the ledger entry of the operation.
@@ -127,6 +172,7 @@ func (operation *transactionOperationWrapper) getSponsor() (*xdr.AccountId, erro
 			return sponsorAccount, nil
 		}
 	}
+
 	return nil, nil
 }
 
