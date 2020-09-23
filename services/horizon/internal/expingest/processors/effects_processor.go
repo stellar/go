@@ -373,7 +373,7 @@ func (e *effectsWrapper) addLedgerEntrySponsorshipEffects(change io.Change) erro
 	case xdr.LedgerEntryTypeClaimableBalance:
 		accountAddress = e.operation.SourceAccount().Address()
 		var err error
-		details["balance_id"], err = xdr.MarshalHex(data.MustClaimableBalance().BalanceId)
+		details["balance_id"], err = data.MustClaimableBalance().BalanceId.String()
 		if err != nil {
 			return errors.Wrapf(err, "Invalid balanceId in change from op: %d", e.operation.index)
 		}
@@ -785,7 +785,7 @@ func (e *effectsWrapper) addCreateClaimableBalanceEffects() error {
 	op := e.operation.operation.Body.MustCreateClaimableBalanceOp()
 
 	result := e.operation.OperationResult().MustCreateClaimableBalanceResult()
-	balanceID, err := xdr.MarshalHex(result.BalanceId)
+	balanceID, err := result.BalanceId.String()
 	if err != nil {
 		return errors.Wrapf(err, "Invalid balanceId in op: %d", e.operation.index)
 	}
@@ -830,7 +830,7 @@ func (e *effectsWrapper) addCreateClaimableBalanceEffects() error {
 func (e *effectsWrapper) addClaimClaimableBalanceEffects() error {
 	op := e.operation.operation.Body.MustClaimClaimableBalanceOp()
 
-	balanceID, err := xdr.MarshalHex(op.BalanceId)
+	balanceID, err := op.BalanceId.String()
 	if err != nil {
 		return fmt.Errorf("Invalid balanceId in op: %d", e.operation.index)
 	}
@@ -850,7 +850,7 @@ func (e *effectsWrapper) addClaimClaimableBalanceEffects() error {
 
 		if change.Pre != nil && change.Post == nil {
 			cBalance = change.Pre.Data.MustClaimableBalance()
-			preBalanceID, err := xdr.MarshalHex(cBalance.BalanceId)
+			preBalanceID, err := cBalance.BalanceId.String()
 			if err != nil {
 				return fmt.Errorf("Invalid balanceId in meta changes for op: %d", e.operation.index)
 			}

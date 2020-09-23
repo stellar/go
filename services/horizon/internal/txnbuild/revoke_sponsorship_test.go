@@ -11,10 +11,10 @@ import (
 func TestRevokeSponsorship(t *testing.T) {
 	accountAddress := "GCCOBXW2XQNUSL467IEILE6MMCNRR66SSVL4YQADUNYYNUVREF3FIV2Z"
 	accountAddress2 := "GBUKBCG5VLRKAVYAIREJRUJHOKLIADZJOICRW43WVJCLES52BDOTCQZU"
-	claimableBalanceId, err := xdr.MarshalHex(xdr.ClaimableBalanceId{
+	claimableBalanceId, err := xdr.ClaimableBalanceId{
 		Type: xdr.ClaimableBalanceIdTypeClaimableBalanceIdTypeV0,
 		V0:   &xdr.Hash{0xca, 0xfe, 0xba, 0xbe, 0xde, 0xad, 0xbe, 0xef},
-	})
+	}.String()
 	assert.NoError(t, err)
 	for _, testcase := range []struct {
 		name string

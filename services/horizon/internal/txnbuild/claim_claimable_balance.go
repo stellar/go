@@ -42,7 +42,7 @@ func (cb *ClaimClaimableBalance) FromXDR(xdrOp xdr.Operation) error {
 	}
 
 	cb.SourceAccount = accountFromXDR(xdrOp.SourceAccount)
-	balanceID, err := xdr.MarshalHex(result.BalanceId)
+	balanceID, err := result.BalanceId.String()
 	if err != nil {
 		return errors.New("error parsing BalanceID in claim_claimable_balance operation from xdr")
 	}

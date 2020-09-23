@@ -201,7 +201,7 @@ func (r *RevokeSponsorship) FromXDR(xdrOp xdr.Operation) error {
 					lkey.ClaimableBalance.BalanceId.Type,
 				)
 			}
-			claimableBalanceId, err := xdr.MarshalHex(&lkey.ClaimableBalance.BalanceId)
+			claimableBalanceId, err := &lkey.ClaimableBalance.BalanceId.String()
 			if err != nil {
 				return errors.Wrap(err, "cannot generate Claimable Balance Id")
 			}

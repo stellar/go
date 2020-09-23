@@ -36,7 +36,7 @@ func TestCreateClaimableBalanceSuccessfulOperationsEffects(t *testing.T) {
 	tt.Equal(xdr.TransactionResultCodeTxSuccess, txResult.Result.Code)
 
 	opResults, _ := txResult.OperationResults()
-	expectedBalanceID, err := xdr.MarshalHex(opResults[0].MustTr().CreateClaimableBalanceResult.BalanceId)
+	expectedBalanceID, err := opResults[0].MustTr().CreateClaimableBalanceResult.BalanceId.String()
 	tt.NoError(err)
 
 	response, err := itest.Client().Operations(sdk.OperationRequest{})

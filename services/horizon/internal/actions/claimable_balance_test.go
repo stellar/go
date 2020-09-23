@@ -61,7 +61,7 @@ func TestGetClaimableBalanceByID(t *testing.T) {
 	tt.Assert.NoError(err)
 
 	handler := GetClaimableBalanceByIDHandler{}
-	id, err := xdr.MarshalHex(cBalance.BalanceId)
+	id, err := cBalance.BalanceId.String()
 	tt.Assert.NoError(err)
 	response, err := handler.GetResource(httptest.NewRecorder(), makeRequest(
 		t,
@@ -79,7 +79,7 @@ func TestGetClaimableBalanceByID(t *testing.T) {
 		Type: xdr.ClaimableBalanceIdTypeClaimableBalanceIdTypeV0,
 		V0:   &xdr.Hash{1, 1, 1},
 	}
-	id, err = xdr.MarshalHex(balanceID)
+	id, err = balanceID.String()
 	tt.Assert.NoError(err)
 	_, err = handler.GetResource(httptest.NewRecorder(), makeRequest(
 		t,
@@ -220,7 +220,7 @@ func TestGetClaimableBalances(t *testing.T) {
 	// check response is sorted in ascending order
 	for entriesIndex, responseIndex := len(entries)-1, 0; entriesIndex >= 0; entriesIndex, responseIndex = entriesIndex-1, responseIndex+1 {
 		entry := entries[entriesIndex]
-		expectedID, _ := xdr.MarshalHex(entry.Data.ClaimableBalance.BalanceId)
+		expectedID, _ := entry.Data.ClaimableBalance.BalanceId.String()
 		tt.Assert.Equal(expectedID, response[responseIndex].(protocol.ClaimableBalance).BalanceID)
 	}
 
@@ -248,7 +248,7 @@ func TestGetClaimableBalances(t *testing.T) {
 	// response should be the last 2 elements of entries sorted by ID
 	for entriesIndex, responseIndex := len(entries)-1, 0; entriesIndex >= 2; entriesIndex, responseIndex = entriesIndex-1, responseIndex+1 {
 		entry := entries[entriesIndex]
-		expectedID, _ := xdr.MarshalHex(entry.Data.ClaimableBalance.BalanceId)
+		expectedID, _ := entry.Data.ClaimableBalance.BalanceId.String()
 		tt.Assert.Equal(expectedID, response[responseIndex].(protocol.ClaimableBalance).BalanceID)
 	}
 
@@ -268,7 +268,7 @@ func TestGetClaimableBalances(t *testing.T) {
 	// response should be the first 2 elements of entries sorted by ID
 	for entriesIndex, responseIndex := len(entries)-3, 0; entriesIndex >= 0; entriesIndex, responseIndex = entriesIndex-1, responseIndex+1 {
 		entry := entries[entriesIndex]
-		expectedID, _ := xdr.MarshalHex(entry.Data.ClaimableBalance.BalanceId)
+		expectedID, _ := entry.Data.ClaimableBalance.BalanceId.String()
 		tt.Assert.Equal(expectedID, response[responseIndex].(protocol.ClaimableBalance).BalanceID)
 	}
 
@@ -350,7 +350,7 @@ func TestGetClaimableBalances(t *testing.T) {
 
 	// response should be the first 2 elements of entries
 	for i, entry := range entries {
-		expectedID, _ := xdr.MarshalHex(entry.Data.ClaimableBalance.BalanceId)
+		expectedID, _ := entry.Data.ClaimableBalance.BalanceId.String()
 		tt.Assert.Equal(expectedID, response[i].(protocol.ClaimableBalance).BalanceID)
 	}
 
@@ -367,7 +367,7 @@ func TestGetClaimableBalances(t *testing.T) {
 	tt.Assert.NoError(err)
 	tt.Assert.Len(response, 1)
 
-	expectedID, err := xdr.MarshalHex(entryToBeUpdated.Data.ClaimableBalance.BalanceId)
+	expectedID, err := entryToBeUpdated.Data.ClaimableBalance.BalanceId.String()
 	tt.Assert.NoError(err)
 	tt.Assert.Equal(expectedID, response[0].(protocol.ClaimableBalance).BalanceID)
 
@@ -398,11 +398,11 @@ func TestGetClaimableBalances(t *testing.T) {
 	tt.Assert.NoError(err)
 	tt.Assert.Len(response, 2)
 
-	expectedID, err = xdr.MarshalHex(entryToBeUpdated.Data.ClaimableBalance.BalanceId)
+	expectedID, err = entryToBeUpdated.Data.ClaimableBalance.BalanceId.String()
 	tt.Assert.NoError(err)
 	tt.Assert.Equal(expectedID, response[0].(protocol.ClaimableBalance).BalanceID)
 
-	expectedID, err = xdr.MarshalHex(entries[1].Data.ClaimableBalance.BalanceId)
+	expectedID, err = entries[1].Data.ClaimableBalance.BalanceId.String()
 	tt.Assert.NoError(err)
 	tt.Assert.Equal(expectedID, response[1].(protocol.ClaimableBalance).BalanceID)
 
@@ -420,7 +420,7 @@ func TestGetClaimableBalances(t *testing.T) {
 	tt.Assert.NoError(err)
 	tt.Assert.Len(response, 1)
 
-	expectedID, err = xdr.MarshalHex(entries[0].Data.ClaimableBalance.BalanceId)
+	expectedID, err = entries[0].Data.ClaimableBalance.BalanceId.String()
 	tt.Assert.NoError(err)
 	tt.Assert.Equal(expectedID, response[0].(protocol.ClaimableBalance).BalanceID)
 

@@ -10,7 +10,6 @@ import (
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/render/hal"
-	"github.com/stellar/go/xdr"
 )
 
 // PopulateClaimableBalance fills out the resource's fields
@@ -19,7 +18,7 @@ func PopulateClaimableBalance(
 	dest *protocol.ClaimableBalance,
 	claimableBalance history.ClaimableBalance,
 ) error {
-	balanceID, err := xdr.MarshalHex(claimableBalance.BalanceID)
+	balanceID, err := claimableBalance.BalanceID.String()
 	if err != nil {
 		return errors.Wrap(err, "marshalling BalanceID")
 	}

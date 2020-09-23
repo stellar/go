@@ -386,7 +386,7 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 		details["claimants"] = claimants
 	case xdr.OperationTypeClaimClaimableBalance:
 		op := operation.operation.Body.MustClaimClaimableBalanceOp()
-		balanceID, err := xdr.MarshalHex(op.BalanceId)
+		balanceID, err := op.BalanceId.String()
 		if err != nil {
 			panic(fmt.Errorf("Invalid balanceId in op: %d", operation.index))
 		}
@@ -480,11 +480,11 @@ func addLedgerKeyDetails(result map[string]interface{}, ledgerKey xdr.LedgerKey)
 	case xdr.LedgerEntryTypeAccount:
 		result["account_id"] = ledgerKey.Account.AccountId.Address()
 	case xdr.LedgerEntryTypeClaimableBalance:
-		marshalHex, err := xdr.MarshalHex(ledgerKey.ClaimableBalance.BalanceId)
+		balanceID, err := ledgerKey.ClaimableBalance.BalanceId.String()
 		if err != nil {
 			return errors.Wrapf(err, "in claimable balance")
 		}
-		result["claimable_balance_id"] = marshalHex
+		result["claimable_balance_id"] = balanceID
 	case xdr.LedgerEntryTypeData:
 		result["data_account_id"] = ledgerKey.Data.AccountId.Address()
 		result["data_name"] = ledgerKey.Data.DataName
