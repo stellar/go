@@ -265,8 +265,8 @@ func (e *effectsWrapper) addSignerSponsorshipEffects(change io.Change) {
 		return
 	}
 
-	preSigners := map[string]xdr.SponsorshipDescriptor{}
-	postSigners := map[string]xdr.SponsorshipDescriptor{}
+	preSigners := map[string]xdr.AccountId{}
+	postSigners := map[string]xdr.AccountId{}
 	if change.Pre != nil {
 		account := change.Pre.Data.MustAccount()
 		preSigners = account.SponsorPerSigner()
@@ -289,26 +289,26 @@ func (e *effectsWrapper) addSignerSponsorshipEffects(change io.Change) {
 	sort.Strings(all)
 
 	for _, signer := range all {
-		pre := preSigners[signer]
-		post := postSigners[signer]
+		pre, foundPre := preSigners[signer]
+		post, foundPost := postSigners[signer]
 		details := map[string]interface{}{}
 
 		switch {
-		case pre == nil && post == nil:
+		case !foundPre && !foundPost:
 			continue
-		case pre == nil && post != nil:
-			details["sponsor"] = (*xdr.AccountId)(post).Address()
+		case !foundPre && foundPost:
+			details["sponsor"] = post.Address()
 			details["signer"] = signer
 			srcAccount := change.Post.Data.MustAccount().AccountId
 			e.add(srcAccount.Address(), history.EffectSignerSponsorshipCreated, details)
-		case post == nil && pre != nil:
-			details["former_sponsor"] = (*xdr.AccountId)(pre).Address()
+		case !foundPost && foundPre:
+			details["former_sponsor"] = pre.Address()
 			details["signer"] = signer
 			srcAccount := change.Pre.Data.MustAccount().AccountId
 			e.add(srcAccount.Address(), history.EffectSignerSponsorshipRemoved, details)
-		case pre != nil && post != nil:
-			formerSponsor := (*xdr.AccountId)(pre).Address()
-			newSponsor := (*xdr.AccountId)(post).Address()
+		case foundPre && foundPost:
+			formerSponsor := pre.Address()
+			newSponsor := post.Address()
 			if formerSponsor == newSponsor {
 				continue
 			}
