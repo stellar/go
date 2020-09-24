@@ -18,54 +18,27 @@ import (
 var protocol14Config = test.IntegrationConfig{ProtocolVersion: 14}
 
 func TestProtocol14Basics(t *testing.T) {
+	tt := assert.New(t)
+
 	itest := test.NewIntegrationTest(t, protocol14Config)
 	defer itest.Close()
 	master := itest.Master()
 
-	t.Run("SanityCheck", func(t *testing.T) {
-		root, err := itest.Client().Root()
-		assert.NoError(t, err)
-		assert.Equal(t, int32(14), root.CoreSupportedProtocolVersion)
-		assert.Equal(t, int32(14), root.CurrentProtocolVersion)
+	root, err := itest.Client().Root()
+	tt.NoError(err)
+	tt.Equal(int32(14), root.CoreSupportedProtocolVersion)
+	tt.Equal(int32(14), root.CurrentProtocolVersion)
 
-		// Submit a simple tx
-		op := txnbuild.Payment{
-			Destination: master.Address(),
-			Amount:      "10",
-			Asset:       txnbuild.NativeAsset{},
-		}
+	// Submit a simple tx
+	op := txnbuild.Payment{
+		Destination: master.Address(),
+		Amount:      "10",
+		Asset:       txnbuild.NativeAsset{},
+	}
 
-		txResp := itest.MustSubmitOperations(itest.MasterAccount(), master, &op)
-		assert.Equal(t, master.Address(), txResp.Account)
-		assert.Equal(t, "1", txResp.AccountSequence)
-	})
-
-	t.Run("ClaimableBalanceCreation", func(t *testing.T) {
-		// Submit a self-referencing claimable balance
-		op := txnbuild.CreateClaimableBalance{
-			Destinations: []txnbuild.Claimant{
-				txnbuild.NewClaimant(master.Address(), nil),
-			},
-			Amount: "10",
-			Asset:  txnbuild.NativeAsset{},
-		}
-
-		txResp, err := itest.SubmitOperations(itest.MasterAccount(), master, &op)
-		assert.NoError(t, err)
-
-		var txResult xdr.TransactionResult
-		err = xdr.SafeUnmarshalBase64(txResp.ResultXdr, &txResult)
-		assert.NoError(t, err)
-
-		assert.Equal(t, xdr.TransactionResultCodeTxSuccess, txResult.Result.Code)
-		opsResults := *txResult.Result.Results
-		opResult := opsResults[0].MustTr().MustCreateClaimableBalanceResult()
-		assert.Equal(t,
-			xdr.CreateClaimableBalanceResultCodeCreateClaimableBalanceSuccess,
-			opResult.Code,
-		)
-		assert.NotNil(t, opResult.BalanceId)
-	})
+	txResp := itest.MustSubmitOperations(itest.MasterAccount(), master, &op)
+	tt.Equal(master.Address(), txResp.Account)
+	tt.Equal("1", txResp.AccountSequence)
 }
 
 func TestHappyClaimableBalances(t *testing.T) {

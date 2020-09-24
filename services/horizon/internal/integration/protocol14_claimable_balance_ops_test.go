@@ -37,7 +37,10 @@ func TestClaimableBalanceCreationOperationsAndEffects(t *testing.T) {
 		tt.Equal(xdr.TransactionResultCodeTxSuccess, txResult.Result.Code)
 
 		opResults, _ := txResult.OperationResults()
-		expectedBalanceID, err := xdr.MarshalHex(opResults[0].MustTr().CreateClaimableBalanceResult.BalanceId)
+		tt.Len(opResults, 1)
+		claimCreationOp := opResults[0].MustTr().CreateClaimableBalanceResult
+		tt.Equal(xdr.CreateClaimableBalanceResultCodeCreateClaimableBalanceSuccess, claimCreationOp.Code)
+		expectedBalanceID, err := xdr.MarshalHex(claimCreationOp.BalanceId)
 		tt.NoError(err)
 
 		response, err := itest.Client().Operations(sdk.OperationRequest{})
@@ -47,11 +50,11 @@ func TestClaimableBalanceCreationOperationsAndEffects(t *testing.T) {
 		cb := ops[0].(operations.CreateClaimableBalance)
 		tt.Equal("native", cb.Asset)
 		tt.Equal("10.0000000", cb.Amount)
-		tt.Equal(itest.MasterAccount().GetAccountID(), cb.SourceAccount)
+		tt.Equal(master.Address(), cb.SourceAccount)
 		tt.Len(cb.Claimants, 1)
 
 		claimant := cb.Claimants[0]
-		tt.Equal(itest.MasterAccount().GetAccountID(), claimant.Destination)
+		tt.Equal(master.Address(), claimant.Destination)
 		tt.Equal(xdr.ClaimPredicateTypeClaimPredicateUnconditional, claimant.Predicate.Type)
 
 		eResponse, err := itest.Client().Effects(sdk.EffectRequest{ForOperation: cb.ID})
