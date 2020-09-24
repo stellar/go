@@ -10,7 +10,7 @@ commands:
       - run:
           name: checkout
           command: |
-            # Copy of the upstream checkout command with the following modification:
+            # Copy of the upstream checkout command with the following modifications:
             # 1. CIRCLE_REPOSITORY_URL is updated to use https rather than ssh
             # 2. Removed ssh specific sections
 
@@ -27,6 +27,8 @@ commands:
               export HOME=$(getent passwd $(id -un) | cut -d: -f6)
             fi
 
+            # Ensure ~ is expanded otherwise bash treats is as string literal
+            eval CIRCLE_WORKING_DIRECTORY=${CIRCLE_WORKING_DIRECTORY}
             if [ -e ${CIRCLE_WORKING_DIRECTORY}/.git ]
             then
               cd ${CIRCLE_WORKING_DIRECTORY}
@@ -41,11 +43,11 @@ commands:
             then
               git fetch --force origin "refs/tags/${CIRCLE_TAG}"
             else
-              # Ensure we pull PR refs as well as normal branches
+              # By default "git fetch" only fetches refs/<branchname>
+              # Below ensures we also fetch PR refs
               git config --add remote.origin.fetch "+refs/pull/*/head:refs/remotes/origin/pull/*"
               git fetch --force --quiet origin
             fi
-
 
             if [ -n "$CIRCLE_TAG" ]
             then
