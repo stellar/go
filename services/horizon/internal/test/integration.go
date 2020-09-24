@@ -235,19 +235,16 @@ func (i *IntegrationTest) Close() {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
-	var err error
 	skipCreation := os.Getenv("HORIZON_SKIP_CREATION") != ""
 	if !skipCreation {
 		i.t.Logf("Removing container %s\n", i.container.ID)
-		err = i.cli.ContainerRemove(
+		i.cli.ContainerRemove(
 			ctx, i.container.ID,
 			types.ContainerRemoveOptions{Force: true})
 	} else {
 		i.t.Logf("Stopping container %s\n", i.container.ID)
-		err = i.cli.ContainerStop(ctx, i.container.ID, nil)
+		i.cli.ContainerStop(ctx, i.container.ID, nil)
 	}
-
-	panicIf(err)
 }
 
 func createTestContainer(i *IntegrationTest, image string) error {
