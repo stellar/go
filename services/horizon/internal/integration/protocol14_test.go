@@ -419,17 +419,12 @@ func TestComplexPredicates(t *testing.T) {
 	_, client := itest.Master(), itest.Client()
 
 	// Create a couple of accounts to test the interactions.
-	keys, accounts := itest.CreateAccounts(3, "10000")
+	keys, accounts := itest.CreateAccounts(3, "1000")
 	a, b, _ := keys[0], keys[1], keys[2]
 	_, accountB, _ := accounts[0], accounts[1], accounts[2]
 
 	// reused a lot:
 	cantClaimResult, _ := codes.String(xdr.ClaimClaimableBalanceResultCodeClaimClaimableBalanceCannotClaim)
-
-	//
-	// These two are done last because they don't clean up after themselves,
-	// making it harder to do exact length checks in a test.
-	//
 
 	// This is an easy fail.
 	predicate := txnbuild.NotPredicate(txnbuild.UnconditionalPredicate)
