@@ -117,7 +117,7 @@ func (operation *transactionOperationWrapper) getSignerSponsorInChange(signerKey
 		return nil
 	}
 
-	preSigners := map[string]xdr.SponsorshipDescriptor{}
+	preSigners := map[string]xdr.AccountId{}
 	if change.Pre != nil {
 		account := change.Pre.Data.MustAccount()
 		preSigners = account.SponsorPerSigner()
@@ -126,22 +126,22 @@ func (operation *transactionOperationWrapper) getSignerSponsorInChange(signerKey
 	account := change.Post.Data.MustAccount()
 	postSigners := account.SponsorPerSigner()
 
-	pre := preSigners[signerKey]
-	post := postSigners[signerKey]
+	pre, preFound := preSigners[signerKey]
+	post, postFound := postSigners[signerKey]
 
-	if post == nil {
+	if !postFound {
 		return nil
 	}
 
-	if pre != nil {
-		formerSponsor := (*xdr.AccountId)(pre).Address()
-		newSponsor := (*xdr.AccountId)(post).Address()
+	if preFound {
+		formerSponsor := pre.Address()
+		newSponsor := post.Address()
 		if formerSponsor == newSponsor {
 			return nil
 		}
 	}
 
-	return post
+	return &post
 }
 
 func (operation *transactionOperationWrapper) getSponsor() (*xdr.AccountId, error) {
