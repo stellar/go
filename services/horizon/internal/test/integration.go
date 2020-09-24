@@ -156,6 +156,7 @@ func NewIntegrationTest(t *testing.T, config IntegrationConfig) *IntegrationTest
 	doCleanup = false
 	i.hclient = &sdk.Client{HorizonURL: "http://localhost:8000"}
 	i.waitForIngestionAndUpgrade()
+	i.t.Cleanup(i.Close)
 	return i
 }
 

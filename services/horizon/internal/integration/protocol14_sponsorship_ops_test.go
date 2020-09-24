@@ -214,7 +214,6 @@ func TestSponsoredAccount(t *testing.T) {
 func TestSponsoredSigner(t *testing.T) {
 	tt := assert.New(t)
 	itest := test.NewIntegrationTest(t, protocol14Config)
-	defer itest.Close()
 	sponsorPair := itest.Master()
 	sponsor := itest.MasterAccount
 
