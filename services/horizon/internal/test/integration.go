@@ -7,7 +7,9 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"os/signal"
 	"strconv"
+	"syscall"
 	"testing"
 	"time"
 
@@ -155,8 +157,19 @@ func NewIntegrationTest(t *testing.T, config IntegrationConfig) *IntegrationTest
 
 	doCleanup = false
 	i.hclient = &sdk.Client{HorizonURL: "http://localhost:8000"}
-	i.waitForIngestionAndUpgrade()
+
+	// Register cleanup handlers (on panic and ctrl+c) so the container is
+	// removed even if ingestion or testing fails.
 	i.t.Cleanup(i.Close)
+	c := make(chan os.Signal)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-c
+		i.Close()
+		os.Exit(0)
+	}()
+
+	i.waitForIngestionAndUpgrade()
 	return i
 }
 
