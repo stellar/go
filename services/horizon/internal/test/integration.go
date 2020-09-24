@@ -13,13 +13,17 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
+
 	sdk "github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
 	proto "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/txnbuild"
 	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/xdr"
+	"github.com/stretchr/testify/assert"
 )
 
 const IntegrationNetworkPassphrase = "Standalone Network ; February 2017"
@@ -238,12 +242,23 @@ func createTestContainer(i *IntegrationTest, image string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
+	// If your Internet (or docker.io) is down, integration tests should still try to run.
 	reader, err := i.cli.ImagePull(ctx, "docker.io/"+image, types.ImagePullOptions{})
 	if err != nil {
-		t.Fatal(errors.Wrap(err, "error pulling docker image"))
+		t.Log("error pulling docker image")
+		t.Log("  trying to find local image, but you should note this")
+
+		args := filters.NewArgs()
+		args.Add("reference", "stellar/quickstart:testing")
+		list, innerErr := i.cli.ImageList(ctx, types.ImageListOptions{All: false, Filters: args})
+		if innerErr != nil || len(list) == 0 {
+			t.Fatal(errors.Wrap(err, "failed to find local image"))
+		}
+		t.Log("  using local", image)
+	} else {
+		defer reader.Close()
+		io.Copy(os.Stdout, reader)
 	}
-	defer reader.Close()
-	io.Copy(os.Stdout, reader)
 
 	t.Log("Creating container...")
 	ctx, cancel = context.WithTimeout(context.Background(), 5*time.Minute)
@@ -446,16 +461,25 @@ func (i *IntegrationTest) SubmitMultiSigOperations(
 		return proto.Transaction{}, err
 	}
 
-	txResp, err := i.Client().SubmitTransactionXDR(txb64)
-	if err != nil {
-		i.t.Logf("Submitting the transaction failed: %s\n", txb64)
-		if prob := sdk.GetError(err); prob != nil {
-			i.t.Logf("Problem: %s\n", prob.Problem.Detail)
-			i.t.Logf("Extras: %s\n", prob.Problem.Extras["result_codes"])
-		}
+	return i.Client().SubmitTransactionXDR(txb64)
+}
+
+// A convenience function to provide verbose information about a failing
+// transaction to the test output log, if it's expected to succeed.
+func (i *IntegrationTest) LogFailedTx(txResponse proto.Transaction, horizonResult error) {
+	t := i.CurrentTest()
+	assert.NoErrorf(t, horizonResult, "Submitting the transaction failed")
+	if prob := sdk.GetError(horizonResult); prob != nil {
+		t.Logf("  problem: %s\n", prob.Problem.Detail)
+		t.Logf("  extras: %s\n", prob.Problem.Extras["result_codes"])
+		return
 	}
 
-	return txResp, err
+	var txResult xdr.TransactionResult
+	err := xdr.SafeUnmarshalBase64(txResponse.ResultXdr, &txResult)
+	assert.NoErrorf(t, err, "Unmarshalling transaction failed.")
+	assert.Equalf(t, xdr.TransactionResultCodeTxSuccess, txResult.Result.Code,
+		"Transaction doesn't have success code.")
 }
 
 // Cluttering code with if err != nil is absolute nonsense.
