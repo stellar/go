@@ -2,6 +2,7 @@ package integration
 
 import (
 	"fmt"
+	"strconv"
 	"testing"
 	"time"
 
@@ -172,10 +173,11 @@ func TestHappyClaimableBalances(t *testing.T) {
 			t.Log("Creating claimable balance.")
 			claim := itest.MustCreateClaimableBalance(a, asset, "42",
 				txnbuild.NewClaimant(b.Address(), nil))
+			accountA.IncrementSequenceNumber()
 
 			//
-			// Ensure it shows up with the various filters (and *doesn't* show up with
-			// non-matching filters, of course).
+			// Ensure it shows up with the various filters (and *doesn't* show
+			// up with non-matching filters, of course).
 			//
 			t.Log("Checking claimable balance filters")
 
@@ -237,51 +239,115 @@ func TestHappyClaimableBalances(t *testing.T) {
 		minute := int64(60 * 60)
 
 		//
-		// All of these predicates should succeed with no issues.
+		// We create a series of claims, all claimable by the same account, with
+		// a variety of predicates, all of which should succeed with no issue.
 		//
-		for description, predicate := range map[string]xdr.ClaimPredicate{
-			"None":          txnbuild.UnconditionalPredicate,
-			"BeforeAbsTime": txnbuild.BeforeAbsoluteTimePredicate(now + minute), // full minute to claim
-			"BeforeRelTime": txnbuild.BeforeRelativeTimePredicate(minute),
-			"BeforeBoth": txnbuild.AndPredicate(
+		predicates := []xdr.ClaimPredicate{
+			txnbuild.UnconditionalPredicate,
+			txnbuild.BeforeAbsoluteTimePredicate(now + minute), // full minute to claim
+			txnbuild.BeforeRelativeTimePredicate(minute),
+			txnbuild.AndPredicate(
 				txnbuild.BeforeAbsoluteTimePredicate(now+minute),
 				txnbuild.BeforeRelativeTimePredicate(minute),
 			),
-			"BeforeEither": txnbuild.OrPredicate(
+			txnbuild.OrPredicate(
 				txnbuild.BeforeAbsoluteTimePredicate(now+minute),
 				txnbuild.BeforeRelativeTimePredicate(minute),
 			),
-
-			// We should be able to always[^1] create & claim a balance even if
-			// there's a relative time predicate.
-			//
-			// [^1]: Almost* always is more accurate, since if it's a *really*
-			//       short timeline (see the TestComplexPredicates/Expire test)
-			//       there's not enough time to form & submit the request into a
-			//       new ledger before the previous one expires. Basically, all
-			//       bets are off for anything < $LEDGER_CLOSE_TIME.
-			"BeforeFast": txnbuild.BeforeRelativeTimePredicate(10),
-		} {
-			t.Run(description, func(t *testing.T) {
-				t.Logf("Creating claimable balance (asset=native).")
-				t.Logf("  predicate: %+v", predicate.Type)
-
-				claim := itest.MustCreateClaimableBalance(
-					a, txnbuild.NativeAsset{}, "42",
-					txnbuild.NewClaimant(b.Address(), &predicate))
-
-				t.Logf("Claiming balance (ID=%s)...", claim.BalanceID)
-				_, err := itest.SubmitOperations(accountB, b,
-					&txnbuild.ClaimClaimableBalance{BalanceID: claim.BalanceID})
-				assert.NoError(t, err)
-				t.Log("  claimed")
-
-				balances, err := client.ClaimableBalances(sdk.ClaimableBalanceRequest{Sponsor: a.Address()})
-				assert.NoError(t, err)
-				assert.Len(t, balances.Embedded.Records, 0)
-				t.Log("  gone")
-			})
 		}
+
+		t.Logf("Creating claims...")
+		createClaimOps := make([]txnbuild.Operation, len(predicates))
+		for i, predicate := range predicates {
+			amount := (i + 1) * 10 // diff for uniqueness
+			claimant := txnbuild.NewClaimant(c.Address(), &predicates[i])
+			t.Logf("  amount: %d, predicate: %+v", amount, predicate.Type)
+
+			createClaimOps[i] = &txnbuild.CreateClaimableBalance{
+				SourceAccount: accountA,
+				Destinations:  []txnbuild.Claimant{claimant},
+				Amount:        fmt.Sprintf("%d.0000000", amount),
+				Asset:         txnbuild.NativeAsset{},
+			}
+		}
+
+		var txResult xdr.TransactionResult
+		txResp, err := itest.SubmitOperations(accountA, a, createClaimOps...)
+		itest.LogFailedTx(txResp, err)
+		xdr.SafeUnmarshalBase64(txResp.ResultXdr, &txResult)
+		opResults, _ := txResult.OperationResults()
+
+		// Ensure all of the operations succeeded, and also get balance IDs.
+		balanceIds := make([]string, len(predicates))
+		t.Logf("Verifying operation success...")
+		for i, result := range opResults {
+			t.Logf("  predicate: %+v", predicates[i].Type)
+			assert.Equal(t,
+				xdr.CreateClaimableBalanceResultCodeCreateClaimableBalanceSuccess,
+				result.MustTr().CreateClaimableBalanceResult.Code)
+
+			balanceId, innerErr := xdr.MarshalHex(result.MustTr().MustCreateClaimableBalanceResult().BalanceId)
+			assert.NoError(t, innerErr)
+			assert.Equal(t, uint8('0'), balanceId[0]) // check discriminant
+			balanceIds[i] = balanceId
+		}
+
+		// Ensure the global list is accurate.
+		balances, err := client.ClaimableBalances(
+			sdk.ClaimableBalanceRequest{Claimant: c.Address()})
+		claims := balances.Embedded.Records
+		assert.Len(t, claims, len(predicates))
+
+		for i, balanceId := range balanceIds {
+			claim, innerErr := client.ClaimableBalance(balanceId)
+			assert.NoError(t, innerErr)
+
+			assert.Equal(t, "native", claim.Asset)
+			assert.Equal(t, fmt.Sprintf("%d.0000000", (i+1)*10), claim.Amount)
+			assert.Equal(t, a.Address(), claim.Sponsor)
+
+			assert.Len(t, claim.Claimants, 1)
+			claimant := claim.Claimants[0]
+
+			assert.Equal(t, c.Address(), claimant.Destination)
+
+			// Ensure that RelTime() predicates turn into AbsTime()
+			expectedType := predicates[i].Type
+			if expectedType == xdr.ClaimPredicateTypeClaimPredicateBeforeRelativeTime {
+				expectedType = xdr.ClaimPredicateTypeClaimPredicateBeforeAbsoluteTime
+			}
+			assert.Equal(t, expectedType, claimant.Predicate.Type)
+		}
+
+		t.Logf("Verifying that the balance can be claimed...")
+		claimOps := make([]txnbuild.Operation, len(claims))
+		for i, predicate := range predicates {
+			id := claims[i].BalanceID
+			t.Logf("  predicate: %+v", predicate.Type)
+			t.Logf("  id:        %s", id)
+
+			claimOps[i] = &txnbuild.ClaimClaimableBalance{BalanceID: id}
+		}
+
+		_, err = itest.SubmitOperations(accountC, c, claimOps...)
+		assert.NoError(t, err)
+
+		// Ensure the global list is empty now.
+		balances, err = client.ClaimableBalances(
+			sdk.ClaimableBalanceRequest{Claimant: b.Address()})
+		claims = balances.Embedded.Records
+		assert.Len(t, claims, 0)
+		t.Log("  all claimed")
+
+		// Ensure balance got updated due to all claims.
+		account := itest.MustGetAccount(c)
+		expectedBalance := 0
+		for i := range predicates {
+			expectedBalance += (i + 1) * 10
+		}
+		actualBalance, _ := strconv.ParseFloat(account.Balances[0].Balance, 64)
+		assert.EqualValues(t, 1000+expectedBalance-1, int(actualBalance))
+		t.Log("Balance updated correctly.")
 	})
 }
 
