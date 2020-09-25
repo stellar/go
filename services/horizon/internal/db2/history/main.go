@@ -145,25 +145,34 @@ const (
 	// EffectTrustlineSponsorshipRemoved occurs when the sponsorship of a trustline ledger entry is removed
 	EffectTrustlineSponsorshipRemoved EffectType = 65 // from revoke_sponsorship
 
+	// EffectDataSponsorshipCreated occurs when a trustline ledger entry is sponsored
+	EffectDataSponsorshipCreated EffectType = 66 // from manage_data
+
+	// EffectDataSponsorshipUpdated occurs when the sponsoring of a trustline ledger entry is updated
+	EffectDataSponsorshipUpdated EffectType = 67 // from revoke_sponsorship
+
+	// EffectDataSponsorshipRemoved occurs when the sponsorship of a trustline ledger entry is removed
+	EffectDataSponsorshipRemoved EffectType = 68 // from revoke_sponsorship
+
 	// EffectClaimableBalanceSponsorshipCreated occurs when a claimable balance ledger entry is sponsored
-	EffectClaimableBalanceSponsorshipCreated EffectType = 66 // from create_claimable_balance
+	EffectClaimableBalanceSponsorshipCreated EffectType = 69 // from create_claimable_balance
 
 	// EffectClaimableBalanceSponsorshipUpdated occurs when the sponsoring of a claimable balance ledger entry
 	// is updated
-	EffectClaimableBalanceSponsorshipUpdated EffectType = 67 // from revoke_sponsorship
+	EffectClaimableBalanceSponsorshipUpdated EffectType = 70 // from revoke_sponsorship
 
 	// EffectClaimableBalanceSponsorshipRemoved occurs when the sponsorship of a claimable balance ledger entry
 	// is removed
-	EffectClaimableBalanceSponsorshipRemoved EffectType = 68 // from revoke_sponsorship
+	EffectClaimableBalanceSponsorshipRemoved EffectType = 71 // from revoke_sponsorship
 
 	// EffectSignerSponsorshipCreated occurs when the sponsorship of a signer is created
-	EffectSignerSponsorshipCreated EffectType = 69 // from set_options
+	EffectSignerSponsorshipCreated EffectType = 72 // from set_options
 
 	// EffectSignerSponsorshipUpdated occurs when the sponsorship of a signer is updated
-	EffectSignerSponsorshipUpdated EffectType = 70 // from revoke_sponsorship
+	EffectSignerSponsorshipUpdated EffectType = 73 // from revoke_sponsorship
 
 	// EffectSignerSponsorshipRemoved occurs when the sponsorship of a signer is removed
-	EffectSignerSponsorshipRemoved EffectType = 71 // from revoke_sponsorship
+	EffectSignerSponsorshipRemoved EffectType = 74 // from revoke_sponsorship
 )
 
 // Account is a row of data from the `history_accounts` table

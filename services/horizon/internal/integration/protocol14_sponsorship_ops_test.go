@@ -1,6 +1,7 @@
 package integration
 
 import (
+	"encoding/base64"
 	"testing"
 	"time"
 
@@ -327,5 +328,85 @@ func TestSponsorPreAuthSigner(t *testing.T) {
 				tt.Equal("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML", signerSponsorshipEffect.Signer)
 			}
 	*/
+
+}
+
+func TestSponsorData(t *testing.T) {
+	tt := assert.New(t)
+	itest := test.NewIntegrationTest(t, protocol14Config)
+	defer itest.Close()
+	sponsorPair := itest.Master()
+	sponsor := func() txnbuild.Account { return itest.MasterAccount() }
+
+	// Let's create a new account
+	pairs, _ := itest.CreateAccounts(1, "1000")
+	newAccountPair := pairs[0]
+	newAccount := func() txnbuild.Account {
+		request := sdk.AccountRequest{AccountID: newAccountPair.Address()}
+		account, err := itest.Client().AccountDetail(request)
+		tt.NoError(err)
+		return &account
+	}
+
+	// Let's add a sponsored data entry
+	//
+	// BeginSponsorship N (Source=sponsor)
+	//   ManageData "SponsoredData"="SponsoredValue" (Source=N)
+	// EndSponsorship (Source=N)
+	ops := make([]txnbuild.Operation, 3, 3)
+	ops[0] = &txnbuild.BeginSponsoringFutureReserves{
+		SponsoredID: newAccountPair.Address(),
+	}
+	ops[1] = &txnbuild.ManageData{
+		Name:          "SponsoredData",
+		Value:         []byte("SponsoredValue"),
+		SourceAccount: newAccount(),
+	}
+	ops[2] = &txnbuild.EndSponsoringFutureReserves{
+		SourceAccount: newAccount(),
+	}
+
+	signers := []*keypair.Full{sponsorPair, newAccountPair}
+	txResp, err := itest.SubmitMultiSigOperations(sponsor(), signers, ops...)
+	tt.NoError(err)
+
+	var txResult xdr.TransactionResult
+	err = xdr.SafeUnmarshalBase64(txResp.ResultXdr, &txResult)
+	tt.NoError(err)
+	tt.Equal(xdr.TransactionResultCodeTxSuccess, txResult.Result.Code)
+
+	// Verify that the data was incorporated
+	dataAdded := func() bool {
+		data := newAccount().(*protocol.Account).Data
+		if value, ok := data["SponsoredData"]; ok {
+			decoded, e := base64.StdEncoding.DecodeString(value)
+			tt.NoError(e)
+			if string(decoded) == "SponsoredValue" {
+				return true
+			}
+		}
+		return false
+	}
+	tt.Eventually(dataAdded, time.Second*10, time.Millisecond*100)
+
+	// Check effects and details of the ManageData operation
+	operationsResponse, err := itest.Client().Operations(sdk.OperationRequest{
+		ForTransaction: txResp.Hash,
+	})
+	tt.NoError(err)
+	tt.Len(operationsResponse.Embedded.Records, 3)
+	manageDataOp := operationsResponse.Embedded.Records[1].(operations.ManageData)
+	tt.Equal(sponsorPair.Address(), manageDataOp.Sponsor)
+
+	effectsResponse, err := itest.Client().Effects(sdk.EffectRequest{
+		ForOperation: manageDataOp.GetID(),
+	})
+	tt.NoError(err)
+	if tt.Len(effectsResponse.Embedded.Records, 2) {
+		dataSponsorshipEffect := effectsResponse.Embedded.Records[1].(effects.DataSponsorshipCreated)
+		tt.Equal(sponsorPair.Address(), dataSponsorshipEffect.Sponsor)
+		tt.Equal(newAccountPair.Address(), dataSponsorshipEffect.Account)
+		tt.Equal("SponsoredData", dataSponsorshipEffect.DataName)
+	}
 
 }

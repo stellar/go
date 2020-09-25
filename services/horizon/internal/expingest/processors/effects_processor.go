@@ -250,13 +250,18 @@ var sponsoringEffectsTable = map[xdr.LedgerEntryType]struct {
 		updated: history.EffectTrustlineSponsorshipUpdated,
 		removed: history.EffectTrustlineSponsorshipRemoved,
 	},
+	xdr.LedgerEntryTypeData: {
+		created: history.EffectDataSponsorshipCreated,
+		updated: history.EffectDataSponsorshipUpdated,
+		removed: history.EffectDataSponsorshipRemoved,
+	},
 	xdr.LedgerEntryTypeClaimableBalance: {
 		created: history.EffectClaimableBalanceSponsorshipCreated,
 		updated: history.EffectClaimableBalanceSponsorshipUpdated,
 		removed: history.EffectClaimableBalanceSponsorshipRemoved,
 	},
 
-	// We intentionally don't have Sponsoring effects for Offer and Data
+	// We intentionally don't have Sponsoring effects for Offer
 	// entries because we don't generate creation effects for them.
 }
 
@@ -370,6 +375,9 @@ func (e *effectsWrapper) addLedgerEntrySponsorshipEffects(change io.Change) erro
 		aid := data.MustTrustLine().AccountId
 		accountAddress = aid.Address()
 		details["asset"] = data.MustTrustLine().Asset.StringCanonical()
+	case xdr.LedgerEntryTypeData:
+		accountAddress = e.operation.SourceAccount().Address()
+		details["data_name"] = data.MustData().DataName
 	case xdr.LedgerEntryTypeClaimableBalance:
 		accountAddress = e.operation.SourceAccount().Address()
 		var err error
