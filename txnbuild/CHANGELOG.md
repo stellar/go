@@ -3,11 +3,18 @@
 All notable changes to this project will be documented in this
 file.  This project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unrelease
+Updated to support [Protocol 14](https://github.com/stellar/go/issues/3035) operations. There are now ways to:
+
+* Create and claim claimable balance operations (see [CAP-23](https://github.com/stellar/stellar-protocol/blob/master/core/cap-0023.md)) with the `[Create|Claim]ClaimableBalance` structures and their associated helpers
+* Begin/end sponsoring future reserves for other accounts (see [CAP-33](https://github.com/stellar/stellar-protocol/blob/master/core/cap-0033.md)) with the `[Begin|End]SponsoringFutureReserves` operations
+* Revoke sponsorships of various objects with the `RevokeSponsorship` operation
+
 ## [v4.0.0](https://github.com/stellar/go/releases/tag/horizonclient-v4.0.0) - 2020-08-31
 
 ### Breaking changes
 
-* Replace `BuildChallengeTx()`'s `anchorName string` parameter with `homeDomain string` 
+* Replace `BuildChallengeTx()`'s `anchorName string` parameter with `homeDomain string`
 * Add `homeDomain string` parameter to `ReadChallengeTx()`, `VerifyChallengeTxThreshold()`, and `VerifyChallengeTxSigners()`
 
 SEP-10 now requires clients to verify the `SIGNING_KEY` included in the TOML file of the service requiring authentication is used to sign the challenge and that the challenge's Manage Data operation key includes the requested service's home domain. These checks ensure the challenge cannot be used in a relay attack.
@@ -104,7 +111,7 @@ The breaking changes described above support the added SEP-10 2.0 requirements f
 ## [v1.3.0](https://github.com/stellar/go/releases/tag/horizonclient-v1.3.0) - 2019-07-08
 
 * Add support for getting the hex-encoded transaction hash with `Transaction.HashHex` method.
-* `TransactionEnvelope` is now available after building a transaction(`Transaction.Build`). Previously, this was only available after signing a transaction. ([#1376](https://github.com/stellar/go/pull/1376)) 
+* `TransactionEnvelope` is now available after building a transaction(`Transaction.Build`). Previously, this was only available after signing a transaction. ([#1376](https://github.com/stellar/go/pull/1376))
 * Add support for getting the `TransactionEnvelope` struct with `Transaction.TxEnvelope` method ([#1415](https://github.com/stellar/go/issues/1415)).
 * `AllowTrust` operations no longer requires the asset issuer, only asset code is required ([#1330](https://github.com/stellar/go/issues/1330)).
 * `Transaction.SetDefaultFee` method is deprecated and will be removed in the next major release ([#1221](https://github.com/stellar/go/issues/1221)).
@@ -113,7 +120,7 @@ The breaking changes described above support the added SEP-10 2.0 requirements f
 
 ## [v1.2.0](https://github.com/stellar/go/releases/tag/horizonclient-v1.2.0) - 2019-05-16
 
-* In addition to account responses from horizon, transactions and operations can now be built with txnbuild.SimpleAccount structs constructed locally ([#1266](https://github.com/stellar/go/issues/1266)). 
+* In addition to account responses from horizon, transactions and operations can now be built with txnbuild.SimpleAccount structs constructed locally ([#1266](https://github.com/stellar/go/issues/1266)).
 * Added `MaxTrustlineLimit` which represents the maximum value for a trustline limit ([#1265](https://github.com/stellar/go/issues/1265)).
 * ChangeTrust operation with no `Limit` field set now defaults to `MaxTrustlineLimit` ([#1265](https://github.com/stellar/go/issues/1265)).
 * Add support for building `ManageBuyOffer` operation ([#1165](https://github.com/stellar/go/issues/1165)).
