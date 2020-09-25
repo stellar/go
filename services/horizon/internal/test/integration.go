@@ -246,11 +246,11 @@ func createTestContainer(i *IntegrationTest, image string) error {
 	reader, err := i.cli.ImagePull(ctx, "docker.io/"+image, types.ImagePullOptions{})
 	if err != nil {
 		t.Log("error pulling docker image")
-		t.Log("  trying to find local image, but you should note this")
+		t.Log("  trying to find local image (might be out-dated)")
 
 		args := filters.NewArgs()
 		args.Add("reference", "stellar/quickstart:testing")
-		list, innerErr := i.cli.ImageList(ctx, types.ImageListOptions{All: false, Filters: args})
+		list, innerErr := i.cli.ImageList(ctx, types.ImageListOptions{Filters: args})
 		if innerErr != nil || len(list) == 0 {
 			t.Fatal(errors.Wrap(err, "failed to find local image"))
 		}
