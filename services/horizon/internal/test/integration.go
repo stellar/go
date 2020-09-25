@@ -20,8 +20,8 @@ import (
 	sdk "github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
 	proto "github.com/stellar/go/protocols/horizon"
-	"github.com/stellar/go/services/horizon/internal/txnbuild"
 	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/txnbuild"
 )
 
 const IntegrationNetworkPassphrase = "Standalone Network ; February 2017"
