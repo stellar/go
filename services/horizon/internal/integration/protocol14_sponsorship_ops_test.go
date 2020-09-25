@@ -379,8 +379,8 @@ func TestSponsorData(t *testing.T) {
 	dataAdded := func() bool {
 		data := newAccount().(*protocol.Account).Data
 		if value, ok := data["SponsoredData"]; ok {
-			decoded, err := base64.StdEncoding.DecodeString(value)
-			tt.NoError(err)
+			decoded, e := base64.StdEncoding.DecodeString(value)
+			tt.NoError(e)
 			if string(decoded) == "SponsoredValue" {
 				return true
 			}
