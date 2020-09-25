@@ -10,7 +10,7 @@ import (
 
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/services/horizon/internal/test"
-	"github.com/stellar/go/services/horizon/internal/txnbuild"
+	"github.com/stellar/go/txnbuild"
 	"github.com/stretchr/testify/assert"
 )
 
