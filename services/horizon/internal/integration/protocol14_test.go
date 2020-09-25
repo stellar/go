@@ -233,6 +233,79 @@ func TestHappyClaimableBalances(t *testing.T) {
 			assert.True(t, foundBalance)
 		})
 	}
+}
+
+// We want to ensure that users can't claim the same claimable balance twice.
+func TestDoubleClaim(t *testing.T) {
+	itest := test.NewIntegrationTest(t, protocol14Config)
+	defer itest.Close()
+	client := itest.Client()
+
+	// Create a couple of accounts to test the interactions.
+	keys, accounts := itest.CreateAccounts(2, "1000")
+	a, b := keys[0], keys[1]
+	_, accountB := accounts[0], accounts[1]
+
+	notExistResult, _ := codes.String(xdr.ClaimClaimableBalanceResultCodeClaimClaimableBalanceDoesNotExist)
+
+	// Two cases: claim in separate TXs, claim twice in same TX
+	t.Run("TwoTx", func(t *testing.T) {
+		claim := itest.MustCreateClaimableBalance(
+			a, txnbuild.NativeAsset{}, "42",
+			txnbuild.NewClaimant(b.Address(), nil))
+
+		t.Logf("Claiming balance (ID=%s)...", claim.BalanceID)
+		_, err := itest.SubmitOperations(accountB, b,
+			&txnbuild.ClaimClaimableBalance{BalanceID: claim.BalanceID})
+		assert.NoError(t, err)
+		t.Log("  claimed")
+
+		_, err = itest.SubmitOperations(accountB, b,
+			&txnbuild.ClaimClaimableBalance{BalanceID: claim.BalanceID})
+		assert.Error(t, err)
+		t.Log("  couldn't claim twice")
+
+		assert.Equal(t, notExistResult, getOperationsError(err))
+	})
+
+	t.Run("SameTx", func(t *testing.T) {
+		claim := itest.MustCreateClaimableBalance(
+			a, txnbuild.NativeAsset{}, "42",
+			txnbuild.NewClaimant(b.Address(), nil))
+
+		// One succeeds, other fails
+		t.Logf("Claiming balance (ID=%s)...", claim.BalanceID)
+		_, err := itest.SubmitOperations(accountB, b,
+			&txnbuild.ClaimClaimableBalance{BalanceID: claim.BalanceID},
+			&txnbuild.ClaimClaimableBalance{BalanceID: claim.BalanceID})
+		assert.Error(t, err)
+		t.Log("  couldn't claim twice")
+
+		assert.Equal(t, codes.OpSuccess, getOperationsErrorByIndex(err, 0))
+		assert.Equal(t, notExistResult, getOperationsErrorByIndex(err, 1))
+
+		// Both included in /operations
+		response, err := client.Operations(sdk.OperationRequest{
+			ForAccount:    b.Address(),
+			Order:         "desc",
+			Limit:         2,
+			IncludeFailed: true,
+		})
+		ops := response.Embedded.Records
+		assert.NoError(t, err)
+		assert.Len(t, ops, 2)
+	})
+}
+
+func TestClaimableBalancePredicates(t *testing.T) {
+	itest := test.NewIntegrationTest(t, protocol14Config)
+	defer itest.Close()
+	_, client := itest.Master(), itest.Client()
+
+	// Create a couple of accounts to test the interactions.
+	keys, accounts := itest.CreateAccounts(3, "1000")
+	a, b, c := keys[0], keys[1], keys[2]
+	accountA, accountB, accountC := accounts[0], accounts[1], accounts[2]
 
 	t.Run("Predicates", func(t *testing.T) {
 		now := time.Now().Unix()
@@ -349,82 +422,10 @@ func TestHappyClaimableBalances(t *testing.T) {
 		assert.EqualValues(t, 1000+expectedBalance-1, int(actualBalance))
 		t.Log("Balance updated correctly.")
 	})
-}
-
-// We want to ensure that users can't claim the same claimable balance twice.
-func TestDoubleClaim(t *testing.T) {
-	itest := test.NewIntegrationTest(t, protocol14Config)
-	defer itest.Close()
-	client := itest.Client()
-
-	// Create a couple of accounts to test the interactions.
-	keys, accounts := itest.CreateAccounts(2, "1000")
-	a, b := keys[0], keys[1]
-	_, accountB := accounts[0], accounts[1]
-
-	notExistResult, _ := codes.String(xdr.ClaimClaimableBalanceResultCodeClaimClaimableBalanceDoesNotExist)
-
-	// Two cases: claim in separate TXs, claim twice in same TX
-	t.Run("TwoTx", func(t *testing.T) {
-		claim := itest.MustCreateClaimableBalance(
-			a, txnbuild.NativeAsset{}, "42",
-			txnbuild.NewClaimant(b.Address(), nil))
-
-		t.Logf("Claiming balance (ID=%s)...", claim.BalanceID)
-		_, err := itest.SubmitOperations(accountB, b,
-			&txnbuild.ClaimClaimableBalance{BalanceID: claim.BalanceID})
-		assert.NoError(t, err)
-		t.Log("  claimed")
-
-		_, err = itest.SubmitOperations(accountB, b,
-			&txnbuild.ClaimClaimableBalance{BalanceID: claim.BalanceID})
-		assert.Error(t, err)
-		t.Log("  couldn't claim twice")
-
-		assert.Equal(t, notExistResult, getOperationsError(err))
-	})
-
-	t.Run("SameTx", func(t *testing.T) {
-		claim := itest.MustCreateClaimableBalance(
-			a, txnbuild.NativeAsset{}, "42",
-			txnbuild.NewClaimant(b.Address(), nil))
-
-		// One succeeds, other fails
-		t.Logf("Claiming balance (ID=%s)...", claim.BalanceID)
-		_, err := itest.SubmitOperations(accountB, b,
-			&txnbuild.ClaimClaimableBalance{BalanceID: claim.BalanceID},
-			&txnbuild.ClaimClaimableBalance{BalanceID: claim.BalanceID})
-		assert.Error(t, err)
-		t.Log("  couldn't claim twice")
-
-		assert.Equal(t, codes.OpSuccess, getOperationsErrorByIndex(err, 0))
-		assert.Equal(t, notExistResult, getOperationsErrorByIndex(err, 1))
-
-		// Both included in /operations
-		response, err := client.Operations(sdk.OperationRequest{
-			ForAccount:    b.Address(),
-			Order:         "desc",
-			Limit:         2,
-			IncludeFailed: true,
-		})
-		ops := response.Embedded.Records
-		assert.NoError(t, err)
-		assert.Len(t, ops, 2)
-	})
-}
-
-func TestComplexPredicates(t *testing.T) {
-	itest := test.NewIntegrationTest(t, protocol14Config)
-	defer itest.Close()
-	_, client := itest.Master(), itest.Client()
-
-	// Create a couple of accounts to test the interactions.
-	keys, accounts := itest.CreateAccounts(3, "1000")
-	a, b, _ := keys[0], keys[1], keys[2]
-	_, accountB, _ := accounts[0], accounts[1], accounts[2]
 
 	// reused a lot:
-	cantClaimResult, _ := codes.String(xdr.ClaimClaimableBalanceResultCodeClaimClaimableBalanceCannotClaim)
+	cantClaimResult, _ := codes.String(
+		xdr.ClaimClaimableBalanceResultCodeClaimClaimableBalanceCannotClaim)
 
 	// This is an easy fail.
 	predicate := txnbuild.NotPredicate(txnbuild.UnconditionalPredicate)
