@@ -143,25 +143,34 @@ const (
 	// EffectTrustlineSponsorshipRemoved occurs when the sponsorship of a trustline ledger entry is removed
 	EffectTrustlineSponsorshipRemoved EffectType = 65 // from revoke_sponsorship
 
+	// EffectDataSponsorshipCreated occurs when a trustline ledger entry is sponsored
+	EffectDataSponsorshipCreated EffectType = 66 // from manage_data
+
+	// EffectDataSponsorshipUpdated occurs when the sponsoring of a trustline ledger entry is updated
+	EffectDataSponsorshipUpdated EffectType = 67 // from revoke_sponsorship
+
+	// EffectDataSponsorshipRemoved occurs when the sponsorship of a trustline ledger entry is removed
+	EffectDataSponsorshipRemoved EffectType = 68 // from revoke_sponsorship
+
 	// EffectClaimableBalanceSponsorshipCreated occurs when a claimable balance ledger entry is sponsored
-	EffectClaimableBalanceSponsorshipCreated EffectType = 66 // from create_claimable_balance
+	EffectClaimableBalanceSponsorshipCreated EffectType = 69 // from create_claimable_balance
 
 	// EffectClaimableBalanceSponsorshipUpdated occurs when the sponsoring of a claimable balance ledger entry
 	// is updated
-	EffectClaimableBalanceSponsorshipUpdated EffectType = 67 // from revoke_sponsorship
+	EffectClaimableBalanceSponsorshipUpdated EffectType = 70 // from revoke_sponsorship
 
 	// EffectClaimableBalanceSponsorshipRemoved occurs when the sponsorship of a claimable balance ledger entry
 	// is removed
-	EffectClaimableBalanceSponsorshipRemoved EffectType = 68 // from revoke_sponsorship
+	EffectClaimableBalanceSponsorshipRemoved EffectType = 71 // from revoke_sponsorship
 
 	// EffectSignerSponsorshipCreated occurs when the sponsorship of a signer is created
-	EffectSignerSponsorshipCreated EffectType = 69 // from set_options
+	EffectSignerSponsorshipCreated EffectType = 72 // from set_options
 
 	// EffectSignerSponsorshipUpdated occurs when the sponsorship of a signer is updated
-	EffectSignerSponsorshipUpdated EffectType = 70 // from revoke_sponsorship
+	EffectSignerSponsorshipUpdated EffectType = 73 // from revoke_sponsorship
 
 	// EffectSignerSponsorshipRemoved occurs when the sponsorship of a signer is removed
-	EffectSignerSponsorshipRemoved EffectType = 71 // from revoke_sponsorship
+	EffectSignerSponsorshipRemoved EffectType = 74 // from revoke_sponsorship
 )
 
 // Peter 30-04-2019: this is copied from the resourcadapter package
@@ -204,6 +213,9 @@ var EffectTypeNames = map[EffectType]string{
 	EffectTrustlineSponsorshipCreated:              "trustline_sponsorship_created",
 	EffectTrustlineSponsorshipUpdated:              "trustline_sponsorship_updated",
 	EffectTrustlineSponsorshipRemoved:              "trustline_sponsorship_removed",
+	EffectDataSponsorshipCreated:                   "data_sponsorship_created",
+	EffectDataSponsorshipUpdated:                   "data_sponsorship_updated",
+	EffectDataSponsorshipRemoved:                   "data_sponsorship_removed",
 	EffectClaimableBalanceSponsorshipCreated:       "claimable_balance_sponsorship_created",
 	EffectClaimableBalanceSponsorshipUpdated:       "claimable_balance_sponsorship_updated",
 	EffectClaimableBalanceSponsorshipRemoved:       "claimable_balance_sponsorship_removed",
@@ -266,6 +278,23 @@ type AccountFlagsUpdated struct {
 	Base
 	AuthRequired  *bool `json:"auth_required_flag,omitempty"`
 	AuthRevokable *bool `json:"auth_revokable_flag,omitempty"`
+}
+
+type DataCreated struct {
+	Base
+	Name  string `json:"name"`
+	Value string `json:"value"`
+}
+
+type DataUpdated struct {
+	Base
+	Name  string `json:"name"`
+	Value string `json:"value"`
+}
+
+type DataRemoved struct {
+	Base
+	Name string `json:"name"`
 }
 
 type SequenceBumped struct {
@@ -401,6 +430,25 @@ type TrustlineSponsorshipUpdated struct {
 type TrustlineSponsorshipRemoved struct {
 	Base
 	Asset         string `json:"asset"`
+	FormerSponsor string `json:"former_sponsor"`
+}
+
+type DataSponsorshipCreated struct {
+	Base
+	DataName string `json:"data_name"`
+	Sponsor  string `json:"sponsor"`
+}
+
+type DataSponsorshipUpdated struct {
+	Base
+	DataName      string `json:"data_name"`
+	FormerSponsor string `json:"former_sponsor"`
+	NewSponsor    string `json:"new_sponsor"`
+}
+
+type DataSponsorshipRemoved struct {
+	Base
+	DataName      string `json:"data_name"`
 	FormerSponsor string `json:"former_sponsor"`
 }
 
@@ -613,6 +661,24 @@ func UnmarshalEffect(effectType string, dataString []byte) (effects Effect, err 
 			return
 		}
 		effects = effect
+	case EffectTypeNames[EffectDataCreated]:
+		var effect DataCreated
+		if err = json.Unmarshal(dataString, &effect); err != nil {
+			return
+		}
+		effects = effect
+	case EffectTypeNames[EffectDataUpdated]:
+		var effect DataUpdated
+		if err = json.Unmarshal(dataString, &effect); err != nil {
+			return
+		}
+		effects = effect
+	case EffectTypeNames[EffectDataRemoved]:
+		var effect DataRemoved
+		if err = json.Unmarshal(dataString, &effect); err != nil {
+			return
+		}
+		effects = effect
 	case EffectTypeNames[EffectClaimableBalanceCreated]:
 		var effect ClaimableBalanceCreated
 		if err = json.Unmarshal(dataString, &effect); err != nil {
@@ -663,6 +729,24 @@ func UnmarshalEffect(effectType string, dataString []byte) (effects Effect, err 
 		effects = effect
 	case EffectTypeNames[EffectTrustlineSponsorshipRemoved]:
 		var effect TrustlineSponsorshipRemoved
+		if err = json.Unmarshal(dataString, &effect); err != nil {
+			return
+		}
+		effects = effect
+	case EffectTypeNames[EffectDataSponsorshipCreated]:
+		var effect DataSponsorshipCreated
+		if err = json.Unmarshal(dataString, &effect); err != nil {
+			return
+		}
+		effects = effect
+	case EffectTypeNames[EffectDataSponsorshipUpdated]:
+		var effect DataSponsorshipUpdated
+		if err = json.Unmarshal(dataString, &effect); err != nil {
+			return
+		}
+		effects = effect
+	case EffectTypeNames[EffectDataSponsorshipRemoved]:
+		var effect DataSponsorshipRemoved
 		if err = json.Unmarshal(dataString, &effect); err != nil {
 			return
 		}

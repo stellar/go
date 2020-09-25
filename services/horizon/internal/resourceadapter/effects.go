@@ -45,6 +45,9 @@ var EffectTypeNames = map[history.EffectType]string{
 	history.EffectTrustlineSponsorshipCreated:              "trustline_sponsorship_created",
 	history.EffectTrustlineSponsorshipUpdated:              "trustline_sponsorship_updated",
 	history.EffectTrustlineSponsorshipRemoved:              "trustline_sponsorship_removed",
+	history.EffectDataSponsorshipCreated:                   "data_sponsorship_created",
+	history.EffectDataSponsorshipUpdated:                   "data_sponsorship_updated",
+	history.EffectDataSponsorshipRemoved:                   "data_sponsorship_removed",
 	history.EffectClaimableBalanceSponsorshipCreated:       "claimable_balance_sponsorship_created",
 	history.EffectClaimableBalanceSponsorshipUpdated:       "claimable_balance_sponsorship_updated",
 	history.EffectClaimableBalanceSponsorshipRemoved:       "claimable_balance_sponsorship_removed",
@@ -184,6 +187,18 @@ func NewEffect(
 		result = e
 	case history.EffectTrustlineSponsorshipRemoved:
 		e := effects.TrustlineSponsorshipRemoved{Base: basev}
+		err = row.UnmarshalDetails(&e)
+		result = e
+	case history.EffectDataSponsorshipCreated:
+		e := effects.DataSponsorshipCreated{Base: basev}
+		err = row.UnmarshalDetails(&e)
+		result = e
+	case history.EffectDataSponsorshipUpdated:
+		e := effects.DataSponsorshipUpdated{Base: basev}
+		err = row.UnmarshalDetails(&e)
+		result = e
+	case history.EffectDataSponsorshipRemoved:
+		e := effects.DataSponsorshipRemoved{Base: basev}
 		err = row.UnmarshalDetails(&e)
 		result = e
 	case history.EffectClaimableBalanceSponsorshipCreated:
