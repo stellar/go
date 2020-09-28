@@ -41,7 +41,7 @@ func TestClaimPredicateJSON(t *testing.T) {
 	assert.NoError(t, err)
 	assert.JSONEq(
 		t,
-		`{"and":[{"or":[{"relBefore":12},{"absBefore":"2020-08-26T11:15:39Z"}]},{"not":{"unconditional":true}}]}`,
+		`{"and":[{"or":[{"relBefore":"12"},{"absBefore":"2020-08-26T11:15:39Z"}]},{"not":{"unconditional":true}}]}`,
 		string(serialized),
 	)
 
