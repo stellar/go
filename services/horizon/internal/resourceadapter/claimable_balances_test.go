@@ -37,7 +37,7 @@ func TestPopulateClaimableBalance(t *testing.T) {
 		LastModifiedLedger: 123,
 	}
 
-	err := PopulateClaimableBalance(ctx, &resource, claimableBalance)
+	err := PopulateClaimableBalance(ctx, &resource, claimableBalance, nil)
 	tt.NoError(err)
 
 	tt.Equal("000000000102030000000000000000000000000000000000000000000000000000000000", resource.BalanceID)

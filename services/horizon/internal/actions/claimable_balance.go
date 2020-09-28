@@ -11,6 +11,7 @@ import (
 	horizonContext "github.com/stellar/go/services/horizon/internal/context"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/resourceadapter"
+	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/render/hal"
 	"github.com/stellar/go/support/render/problem"
 	"github.com/stellar/go/xdr"
@@ -66,9 +67,19 @@ func (handler GetClaimableBalanceByIDHandler) GetResource(w HeaderWriter, r *htt
 	if err != nil {
 		return nil, err
 	}
+	ledger := &history.Ledger{}
+	err = historyQ.LedgerBySequence(
+		ledger,
+		int32(cb.LastModifiedLedger),
+	)
+	if historyQ.NoRows(err) {
+		ledger = nil
+	} else if err != nil {
+		return nil, errors.Wrap(err, "LedgerBySequence error")
+	}
 
 	var resource protocol.ClaimableBalance
-	err = resourceadapter.PopulateClaimableBalance(ctx, &resource, cb)
+	err = resourceadapter.PopulateClaimableBalance(ctx, &resource, cb, ledger)
 	if err != nil {
 		return nil, err
 	}
@@ -163,11 +174,24 @@ func getClaimableBalancesPage(ctx context.Context, historyQ *history.Q, query hi
 		return nil, err
 	}
 
+	ledgerCache := history.LedgerCache{}
+	for _, record := range records {
+		ledgerCache.Queue(int32(record.LastModifiedLedger))
+	}
+	if err := ledgerCache.Load(historyQ); err != nil {
+		return nil, errors.Wrap(err, "failed to load ledger batch")
+	}
+
 	var claimableBalances []hal.Pageable
 	for _, record := range records {
 		var response horizon.ClaimableBalance
 
-		resourceadapter.PopulateClaimableBalance(ctx, &response, record)
+		var ledger *history.Ledger
+		if l, ok := ledgerCache.Records[int32(record.LastModifiedLedger)]; ok {
+			ledger = &l
+		}
+
+		resourceadapter.PopulateClaimableBalance(ctx, &response, record, ledger)
 		claimableBalances = append(claimableBalances, response)
 	}
 
