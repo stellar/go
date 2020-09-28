@@ -18,6 +18,7 @@ func PopulateClaimableBalance(
 	ctx context.Context,
 	dest *protocol.ClaimableBalance,
 	claimableBalance history.ClaimableBalance,
+	ledger *history.Ledger,
 ) error {
 	balanceID, err := xdr.MarshalHex(claimableBalance.BalanceID)
 	if err != nil {
@@ -34,6 +35,10 @@ func PopulateClaimableBalance(
 	for i, c := range claimableBalance.Claimants {
 		dest.Claimants[i].Destination = c.Destination
 		dest.Claimants[i].Predicate = c.Predicate
+	}
+
+	if ledger != nil {
+		dest.LastModifiedTime = &ledger.ClosedAt
 	}
 
 	lb := hal.LinkBuilder{Base: horizonContext.BaseURL(ctx)}

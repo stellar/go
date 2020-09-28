@@ -666,6 +666,7 @@ type ClaimableBalance struct {
 	Amount             string     `json:"amount"`
 	Sponsor            string     `json:"sponsor,omitempty"`
 	LastModifiedLedger uint32     `json:"last_modified_ledger"`
+	LastModifiedTime   *time.Time `json:"last_modified_time"`
 	Claimants          []Claimant `json:"claimants"`
 	PT                 string     `json:"paging_token"`
 }
