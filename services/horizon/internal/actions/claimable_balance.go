@@ -75,7 +75,7 @@ func (handler GetClaimableBalanceByIDHandler) GetResource(w HeaderWriter, r *htt
 	if historyQ.NoRows(err) {
 		ledger = nil
 	} else if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "LedgerBySequence error")
 	}
 
 	var resource protocol.ClaimableBalance
