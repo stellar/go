@@ -22,6 +22,8 @@ import (
 	proto "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/txnbuild"
+	"github.com/stellar/go/xdr"
+	"github.com/stretchr/testify/assert"
 )
 
 const IntegrationNetworkPassphrase = "Standalone Network ; February 2017"
@@ -460,6 +462,24 @@ func (i *IntegrationTest) SubmitMultiSigOperations(
 	}
 
 	return i.Client().SubmitTransactionXDR(txb64)
+}
+
+// A convenience function to provide verbose information about a failing
+// transaction to the test output log, if it's expected to succeed.
+func (i *IntegrationTest) LogFailedTx(txResponse proto.Transaction, horizonResult error) {
+	t := i.CurrentTest()
+	assert.NoErrorf(t, horizonResult, "Submitting the transaction failed")
+	if prob := sdk.GetError(horizonResult); prob != nil {
+		t.Logf("  problem: %s\n", prob.Problem.Detail)
+		t.Logf("  extras: %s\n", prob.Problem.Extras["result_codes"])
+		return
+	}
+
+	var txResult xdr.TransactionResult
+	err := xdr.SafeUnmarshalBase64(txResponse.ResultXdr, &txResult)
+	assert.NoErrorf(t, err, "Unmarshalling transaction failed.")
+	assert.Equalf(t, xdr.TransactionResultCodeTxSuccess, txResult.Result.Code,
+		"Transaction doesn't have success code.")
 }
 
 // Cluttering code with if err != nil is absolute nonsense.
