@@ -17,7 +17,6 @@ import (
 func TestCreateSponsoredClaimableBalance(t *testing.T) {
 	tt := assert.New(t)
 	itest := test.NewIntegrationTest(t, protocol14Config)
-	defer itest.Close()
 
 	master := itest.Master()
 	client := itest.Client()
