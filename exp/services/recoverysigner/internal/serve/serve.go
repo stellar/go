@@ -105,7 +105,6 @@ func getHandlerDeps(opts Options) (handlerDeps, error) {
 		return handlerDeps{}, errors.Wrap(err, "error parsing database url")
 	}
 	db.SetMaxOpenConns(opts.DatabaseMaxOpenConns)
-	db.SetMaxIdleConns(opts.DatabaseMaxOpenConns)
 
 	err = db.Ping()
 	if err != nil {

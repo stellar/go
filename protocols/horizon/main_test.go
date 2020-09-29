@@ -233,3 +233,8 @@ func TestTransactionUnmarshalJSON(t *testing.T) {
 	assert.Equal(t, int64(2500000000), parsedFeesAsInts.MaxFee)
 	assert.Equal(t, int64(3000000000), parsedFeesAsInts.FeeCharged)
 }
+
+func TestTradeAggregation_PagingToken(t *testing.T) {
+	ta := TradeAggregation{Timestamp: 64}
+	assert.Equal(t, "64", ta.PagingToken())
+}

@@ -5,6 +5,62 @@ version: 2.1
 #----------------------------------------------------------------------------#
 
 commands:
+  checkout:
+    steps:
+      - run:
+          name: checkout
+          command: |
+            # Copy of the upstream checkout command with the following modifications:
+            # 1. CIRCLE_REPOSITORY_URL is updated to use https rather than ssh
+            # 2. Removed ssh specific sections
+
+            # Use https rather than ssh to clone public projects
+            CIRCLE_REPOSITORY_URL=${CIRCLE_REPOSITORY_URL/://}
+            CIRCLE_REPOSITORY_URL=${CIRCLE_REPOSITORY_URL/git@/https://}
+
+            echo "Repository URL: ${CIRCLE_REPOSITORY_URL}"
+
+            # Workaround old docker images with incorrect $HOME
+            # check https://github.com/docker/docker/issues/2968 for details
+            if [ "${HOME}" = "/" ]
+            then
+              export HOME=$(getent passwd $(id -un) | cut -d: -f6)
+            fi
+
+            # Ensure ~ is expanded otherwise bash treats is as string literal
+            eval CIRCLE_WORKING_DIRECTORY=${CIRCLE_WORKING_DIRECTORY}
+            if [ -e ${CIRCLE_WORKING_DIRECTORY}/.git ]
+            then
+              cd ${CIRCLE_WORKING_DIRECTORY}
+              git remote set-url origin "$CIRCLE_REPOSITORY_URL" || true
+            else
+              mkdir -p ${CIRCLE_WORKING_DIRECTORY}
+              cd ${CIRCLE_WORKING_DIRECTORY}
+              git clone "$CIRCLE_REPOSITORY_URL" .
+            fi
+
+            if [ -n "$CIRCLE_TAG" ]
+            then
+              git fetch --force origin "refs/tags/${CIRCLE_TAG}"
+            else
+              # By default "git fetch" only fetches refs/<branchname>
+              # Below ensures we also fetch PR refs
+              git config --add remote.origin.fetch "+refs/pull/*/head:refs/remotes/origin/pull/*"
+              git fetch --force --quiet origin
+            fi
+
+            if [ -n "$CIRCLE_TAG" ]
+            then
+              git reset --hard "$CIRCLE_SHA1"
+              git checkout -q "$CIRCLE_TAG"
+            elif [ -n "$CIRCLE_BRANCH" ]
+            then
+              git reset --hard "$CIRCLE_SHA1"
+              git checkout -q -B "$CIRCLE_BRANCH"
+            fi
+
+            git reset --hard "$CIRCLE_SHA1"
+
   # gofmt performs checks on the entire codebase to ensure everything is formated
   # with the gofmt tool.
   gofmt:
@@ -161,11 +217,11 @@ commands:
 #-----------------------------------------------------------------------------#
 
 jobs:
-  # check_code_1_14 performs code checks using Go 1.14.
-  check_code_1_14:
+  # check_code_1_15 performs code checks using Go 1.15.
+  check_code_1_15:
     working_directory: /go/src/github.com/stellar/go
     docker:
-      - image: circleci/golang:1.14-stretch
+      - image: circleci/golang:1.15
     steps:
       - install_go_deps
       - check_go_deps
@@ -174,47 +230,6 @@ jobs:
       - govet
       - staticcheck
       - build_packages
-
-  # test_code_1_13 performs all package tests using Go 1.13.
-  test_code_1_13:
-    working_directory: /go/src/github.com/stellar/go
-    docker:
-      - image: circleci/golang:1.13-stretch
-        environment:
-          GO111MODULE: "on"
-          PGHOST: localhost
-          PGPORT: 5432
-          PGUSER: circleci
-          PGDATABASE: circle_test
-          MYSQL_HOST: 127.0.0.1
-          MYSQL_PORT: 3306
-      - image: circleci/postgres:9.6.5-alpine-ram
-        environment:
-          POSTGRES_USER: circleci
-    steps:
-      - install_go_deps
-      - test_packages
-
-  # test_code_1_13_postgres10 performs all package tests using Go 1.13 and Postgres 10.
-  test_code_1_13_postgres10:
-    working_directory: /go/src/github.com/stellar/go
-    docker:
-      - image: circleci/golang:1.13-stretch
-        environment:
-          GO111MODULE: "on"
-          PGHOST: localhost
-          PGPORT: 5432
-          PGUSER: circleci
-          PGDATABASE: circle_test
-          MYSQL_HOST: 127.0.0.1
-          MYSQL_PORT: 3306
-      - image: circleci/postgres:10-alpine-ram
-        environment:
-          POSTGRES_USER: circleci
-      - image: circleci/redis:5.0-alpine
-    steps:
-      - install_go_deps
-      - test_packages
 
   # test_code_1_14 performs all package tests using Go 1.14.
   test_code_1_14:
@@ -236,11 +251,52 @@ jobs:
       - install_go_deps
       - test_packages
 
-  # test_code_1_14 performs all package tests using Go 1.14 and Postgres 10.
+  # test_code_1_14_postgres10 performs all package tests using Go 1.14 and Postgres 10.
   test_code_1_14_postgres10:
     working_directory: /go/src/github.com/stellar/go
     docker:
       - image: circleci/golang:1.14-stretch
+        environment:
+          GO111MODULE: "on"
+          PGHOST: localhost
+          PGPORT: 5432
+          PGUSER: circleci
+          PGDATABASE: circle_test
+          MYSQL_HOST: 127.0.0.1
+          MYSQL_PORT: 3306
+      - image: circleci/postgres:10-alpine-ram
+        environment:
+          POSTGRES_USER: circleci
+      - image: circleci/redis:5.0-alpine
+    steps:
+      - install_go_deps
+      - test_packages
+
+  # test_code_1_15 performs all package tests using Go 1.15.
+  test_code_1_15:
+    working_directory: /go/src/github.com/stellar/go
+    docker:
+      - image: circleci/golang:1.15
+        environment:
+          GO111MODULE: "on"
+          PGHOST: localhost
+          PGPORT: 5432
+          PGUSER: circleci
+          PGDATABASE: circle_test
+          MYSQL_HOST: 127.0.0.1
+          MYSQL_PORT: 3306
+      - image: circleci/postgres:9.6.5-alpine-ram
+        environment:
+          POSTGRES_USER: circleci
+    steps:
+      - install_go_deps
+      - test_packages
+
+  # test_code_1_15 performs all package tests using Go 1.15 and Postgres 10.
+  test_code_1_15_postgres10:
+    working_directory: /go/src/github.com/stellar/go
+    docker:
+      - image: circleci/golang:1.15
         environment:
           GO111MODULE: "on"
           PGHOST: localhost
@@ -265,6 +321,9 @@ jobs:
   publish_artifacts:
     working_directory: /go/src/github.com/stellar/go
     docker:
+      # Artifacts are built on Go 1.14 because a Go 1.15 Docker image for
+      # Debian Stretch is currently not available. See
+      # https://github.com/docker-library/golang/issues/344.
       - image: circleci/golang:1.14-stretch
     steps:
       - check_deprecations
@@ -359,11 +418,11 @@ workflows:
 
   check_code_and_test:
     jobs:
-      - check_code_1_14
-      - test_code_1_13
-      - test_code_1_13_postgres10
+      - check_code_1_15
       - test_code_1_14
       - test_code_1_14_postgres10
+      - test_code_1_15
+      - test_code_1_15_postgres10
       - test_horizon_integration
       - publish_state_diff_docker_image:
           filters:
