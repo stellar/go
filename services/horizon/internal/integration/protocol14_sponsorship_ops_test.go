@@ -21,6 +21,10 @@ func TestSponsorships(t *testing.T) {
 	tt := assert.New(t)
 	itest := test.NewIntegrationTest(t, protocol14Config)
 	client := itest.Client()
+
+	// Each test has its own sponsor and sponsoree (or is it sponsee?
+	// :thinking:) so that we can do direct equality checks.
+
 	sponsor, sponsorPair := itest.MasterAccount, itest.Master()
 
 	// We will create the following operation structure:
@@ -49,9 +53,6 @@ func TestSponsorships(t *testing.T) {
 		signers := []*keypair.Full{sponsorPair, newAccountPair}
 		txResp, err := itest.SubmitMultiSigOperations(sponsor(), signers, ops...)
 		itest.LogFailedTx(txResp, err)
-
-		var txResult xdr.TransactionResult
-		xdr.SafeUnmarshalBase64(txResp.ResultXdr, &txResult)
 
 		response, err := client.Operations(sdk.OperationRequest{Order: "asc"})
 		tt.NoError(err)
@@ -86,11 +87,11 @@ func TestSponsorships(t *testing.T) {
 		}
 		tt.Condition(endSponsorshipPresent)
 
-		// Check numSponsoring and numSponsored
+		// Check numSponsoring and numSponsored values
 		account := itest.MustGetAccount(sponsorPair)
-		tt.Equal(1, account.NumSponsoring)
+		tt.EqualValues(1, account.NumSponsoring)
 		account = itest.MustGetAccount(newAccountPair)
-		tt.Equal(1, account.NumSponsored)
+		tt.EqualValues(1, account.NumSponsored)
 
 		// Check effects of CreateAccount Operation
 		effectsResponse, err := client.Effects(sdk.EffectRequest{
@@ -343,8 +344,6 @@ func TestSponsorships(t *testing.T) {
 	//   CreateAccount A
 	// EndSponsoringFutureReserves (with A as a source)
 	t.Run("Account", func(t *testing.T) {
-		tt := assert.New(t)
-		itest := test.NewIntegrationTest(t, protocol14Config)
 		sponsor := itest.MasterAccount
 		sponsorPair := itest.Master()
 
@@ -372,7 +371,8 @@ func TestSponsorships(t *testing.T) {
 		itest.LogFailedTx(txResp, err)
 
 		response, err := client.Operations(sdk.OperationRequest{
-			Order: "asc",
+			Order: "desc",
+			Limit: 3,
 		})
 		opRecords := response.Embedded.Records
 		tt.NoError(err)
@@ -380,16 +380,19 @@ func TestSponsorships(t *testing.T) {
 		tt.True(opRecords[0].IsTransactionSuccessful())
 
 		// Verify operation details
-		tt.Equal(ops[0].(*txnbuild.BeginSponsoringFutureReserves).SponsoredID,
-			opRecords[0].(operations.BeginSponsoringFutureReserves).SponsoredID)
+		endSponsoringOp := opRecords[0].(operations.EndSponsoringFutureReserves)
+		tt.Equal(sponsorPair.Address(), endSponsoringOp.BeginSponsor)
 
 		actualCreateAccount := opRecords[1].(operations.CreateAccount)
 		tt.Equal(sponsorPair.Address(), actualCreateAccount.Sponsor)
 
-		endSponsoringOp := opRecords[2].(operations.EndSponsoringFutureReserves)
-		tt.Equal(sponsorPair.Address(), endSponsoringOp.BeginSponsor)
+		beginSponsoringOp := opRecords[2].(operations.BeginSponsoringFutureReserves)
+		tt.Equal(newAccountPair.Address(), beginSponsoringOp.SponsoredID)
 
-		// Make sure that the sponsor is an (implicit) participant on the end sponsorship operation
+		//
+		// Make sure that the sponsor is an (implicit) participant on the end
+		// sponsorship operation
+		//
 
 		response, err = client.Operations(sdk.OperationRequest{
 			ForAccount: sponsorPair.Address(),
@@ -407,17 +410,10 @@ func TestSponsorships(t *testing.T) {
 		tt.Condition(endSponsorshipPresent)
 
 		// Check numSponsoring and numSponsored
-		account, err := client.AccountDetail(sdk.AccountRequest{
-			AccountID: sponsorPair.Address(),
-		})
-		tt.NoError(err)
-		account.NumSponsoring = 1
-
-		account, err = client.AccountDetail(sdk.AccountRequest{
-			AccountID: newAccountPair.Address(),
-		})
-		tt.NoError(err)
-		account.NumSponsored = 1
+		account := itest.MustGetAccount(sponsorPair)
+		tt.EqualValues(1, account.NumSponsoring)
+		account = itest.MustGetAccount(newAccountPair)
+		tt.EqualValues(1, account.NumSponsored)
 
 		// Check effects of CreateAccount Operation
 		effectsResponse, err := client.Effects(sdk.EffectRequest{
@@ -528,8 +524,6 @@ func TestSponsorships(t *testing.T) {
 	//   SetOptionsSigner (Source=N)
 	// EndSponsorship (Source=N)
 	t.Run("Signer", func(t *testing.T) {
-		tt := assert.New(t)
-		itest := test.NewIntegrationTest(t, protocol14Config)
 		sponsorPair := itest.Master()
 		sponsor := itest.MasterAccount
 
@@ -604,9 +598,7 @@ func TestSponsorships(t *testing.T) {
 		pairs, _ = itest.CreateAccounts(1, "1000")
 		newSponsorPair := pairs[0]
 		newSponsor := func() txnbuild.Account {
-			request := sdk.AccountRequest{AccountID: newSponsorPair.Address()}
-			account, e := client.AccountDetail(request)
-			tt.NoError(e)
+			account := itest.MustGetAccount(newSponsorPair)
 			return &account
 		}
 		ops = []txnbuild.Operation{
@@ -673,8 +665,6 @@ func TestSponsorships(t *testing.T) {
 	})
 
 	t.Run("PreAuthSigner", func(t *testing.T) {
-		tt := assert.New(t)
-		itest := test.NewIntegrationTest(t, protocol14Config)
 		sponsorPair := itest.Master()
 		sponsor := itest.MasterAccount
 
@@ -682,9 +672,7 @@ func TestSponsorships(t *testing.T) {
 		pairs, _ := itest.CreateAccounts(1, "1000")
 		newAccountPair := pairs[0]
 		newAccount := func() txnbuild.Account {
-			request := sdk.AccountRequest{AccountID: newAccountPair.Address()}
-			account, err := client.AccountDetail(request)
-			tt.NoError(err)
+			account := itest.MustGetAccount(newAccountPair)
 			return &account
 		}
 
@@ -707,6 +695,8 @@ func TestSponsorships(t *testing.T) {
 		preaAuthTx, err := txnbuild.NewTransaction(txParams)
 		tt.NoError(err)
 		preAuthHash, err := preaAuthTx.Hash(test.IntegrationNetworkPassphrase)
+		tt.NoError(err)
+		preAuthTxB64, err := preaAuthTx.Base64()
 		tt.NoError(err)
 
 		// Let's add a sponsored preauth signer with the following transaction:
@@ -737,12 +727,7 @@ func TestSponsorships(t *testing.T) {
 
 		signers := []*keypair.Full{sponsorPair, newAccountPair}
 		txResp, err := itest.SubmitMultiSigOperations(sponsor(), signers, ops...)
-		tt.NoError(err)
-
-		var txResult xdr.TransactionResult
-		err = xdr.SafeUnmarshalBase64(txResp.ResultXdr, &txResult)
-		tt.NoError(err)
-		tt.Equal(xdr.TransactionResultCodeTxSuccess, txResult.Result.Code)
+		itest.LogFailedTx(txResp, err)
 
 		// Verify that the preauth signer was incorporated
 		preAuthSignerAdded := func() bool {
@@ -775,7 +760,7 @@ func TestSponsorships(t *testing.T) {
 		}
 
 		// Submit the preauthorized transaction
-		preAuthTxB64, err := preaAuthTx.Base64()
+		var txResult xdr.TransactionResult
 		tt.NoError(err)
 		txResp, err = client.SubmitTransactionXDR(preAuthTxB64)
 		tt.NoError(err)
@@ -820,9 +805,12 @@ func TestSponsorships(t *testing.T) {
 		*/
 	})
 
+	// Let's add a sponsored data entry
+	//
+	// BeginSponsorship N (Source=sponsor)
+	//   ManageData "SponsoredData"="SponsoredValue" (Source=N)
+	// EndSponsorship (Source=N)
 	t.Run("Data", func(t *testing.T) {
-		tt := assert.New(t)
-		itest := test.NewIntegrationTest(t, protocol14Config)
 		sponsorPair := itest.Master()
 		sponsor := itest.MasterAccount
 
@@ -830,17 +818,10 @@ func TestSponsorships(t *testing.T) {
 		pairs, _ := itest.CreateAccounts(1, "1000")
 		newAccountPair := pairs[0]
 		newAccount := func() txnbuild.Account {
-			request := sdk.AccountRequest{AccountID: newAccountPair.Address()}
-			account, err := client.AccountDetail(request)
-			tt.NoError(err)
+			account := itest.MustGetAccount(newAccountPair)
 			return &account
 		}
 
-		// Let's add a sponsored data entry
-		//
-		// BeginSponsorship N (Source=sponsor)
-		//   ManageData "SponsoredData"="SponsoredValue" (Source=N)
-		// EndSponsorship (Source=N)
 		ops := []txnbuild.Operation{
 			&txnbuild.BeginSponsoringFutureReserves{
 				SponsoredID: newAccountPair.Address(),
@@ -857,12 +838,7 @@ func TestSponsorships(t *testing.T) {
 
 		signers := []*keypair.Full{sponsorPair, newAccountPair}
 		txResp, err := itest.SubmitMultiSigOperations(sponsor(), signers, ops...)
-		tt.NoError(err)
-
-		var txResult xdr.TransactionResult
-		err = xdr.SafeUnmarshalBase64(txResp.ResultXdr, &txResult)
-		tt.NoError(err)
-		tt.Equal(xdr.TransactionResultCodeTxSuccess, txResult.Result.Code)
+		itest.LogFailedTx(txResp, err)
 
 		// Verify that the data was incorporated
 		dataAdded := func() bool {
@@ -903,9 +879,7 @@ func TestSponsorships(t *testing.T) {
 		pairs, _ = itest.CreateAccounts(1, "1000")
 		newSponsorPair := pairs[0]
 		newSponsor := func() txnbuild.Account {
-			request := sdk.AccountRequest{AccountID: newSponsorPair.Address()}
-			account, e := client.AccountDetail(request)
-			tt.NoError(e)
+			account := itest.MustGetAccount(newSponsorPair)
 			return &account
 		}
 		ops = []txnbuild.Operation{
@@ -924,11 +898,7 @@ func TestSponsorships(t *testing.T) {
 		}
 		signers = []*keypair.Full{sponsorPair, newSponsorPair}
 		txResp, err = itest.SubmitMultiSigOperations(sponsor(), signers, ops...)
-		tt.NoError(err)
-
-		err = xdr.SafeUnmarshalBase64(txResp.ResultXdr, &txResult)
-		tt.NoError(err)
-		tt.Equal(xdr.TransactionResultCodeTxSuccess, txResult.Result.Code)
+		itest.LogFailedTx(txResp, err)
 
 		// Verify operation details
 		response, err := client.Operations(sdk.OperationRequest{
@@ -976,8 +946,6 @@ func TestSponsorships(t *testing.T) {
 	})
 
 	t.Run("TrustlineAndOffer", func(t *testing.T) {
-		tt := assert.New(t)
-		itest := test.NewIntegrationTest(t, protocol14Config)
 		sponsorPair := itest.Master()
 		sponsor := itest.MasterAccount
 
@@ -1027,7 +995,7 @@ func TestSponsorships(t *testing.T) {
 
 		// Verify that the offer was incorporated correctly
 		trustlineAdded := func() bool {
-			for _, balance := range newAccount().(*protocol.Account).Balances {
+			for _, balance := range itest.MustGetAccount(newAccountPair).Balances {
 				if balance.Issuer == sponsorPair.Address() {
 					tt.Equal("ABCD", balance.Code)
 					tt.Equal(sponsorPair.Address(), balance.Sponsor)
@@ -1107,11 +1075,7 @@ func TestSponsorships(t *testing.T) {
 		}
 		signers = []*keypair.Full{sponsorPair, newSponsorPair}
 		txResp, err = itest.SubmitMultiSigOperations(sponsor(), signers, ops...)
-		tt.NoError(err)
-
-		err = xdr.SafeUnmarshalBase64(txResp.ResultXdr, &txResult)
-		tt.NoError(err)
-		tt.Equal(xdr.TransactionResultCodeTxSuccess, txResult.Result.Code)
+		itest.LogFailedTx(txResp, err)
 
 		// Verify operation details
 		response, err := client.Operations(sdk.OperationRequest{
