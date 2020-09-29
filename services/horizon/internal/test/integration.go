@@ -256,7 +256,7 @@ func createTestContainer(i *IntegrationTest, image string) error {
 	// If your Internet (or docker.io) is down, integration tests should still try to run.
 	reader, err := i.cli.ImagePull(ctx, "docker.io/"+image, types.ImagePullOptions{})
 	if err != nil {
-		t.Log("error pulling docker image")
+		t.Log("  error pulling docker image")
 		t.Log("  trying to find local image (might be out-dated)")
 
 		args := filters.NewArgs()
@@ -355,7 +355,8 @@ func (i *IntegrationTest) CreateAccounts(count int, initialBalance string) ([]*k
 	}
 
 	for _, keys := range pairs {
-		i.t.Logf("Funded %s (%s).\n", keys.Seed(), keys.Address())
+		i.t.Logf("Funded %s (%s) with %s XLM.\n",
+			keys.Seed(), keys.Address(), initialBalance)
 	}
 
 	return pairs, accounts
