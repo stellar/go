@@ -230,12 +230,12 @@ func TestPopulateOperation_OperationTypeRevokeSponsorship_Offer(t *testing.T) {
 	tt := assert.New(t)
 
 	details := `{
-		"offer_id": 1000
+		"offer_id": "1000"
 	}`
 
 	resp, err := getJSONResponse(xdr.OperationTypeRevokeSponsorship, details)
 	tt.NoError(err)
-	tt.Equal(int64(1000), int64((resp["offer_id"]).(float64)))
+	tt.Equal("1000", resp["offer_id"])
 }
 
 func TestPopulateOperation_OperationTypeRevokeSponsorship_Trustline(t *testing.T) {
@@ -374,4 +374,28 @@ func TestFeeBumpOperation(t *testing.T) {
 	assert.Equal(t, []string{"d", "e", "f"}, dest.Transaction.InnerTransaction.Signatures)
 	assert.Equal(t, transactionRow.TransactionHash, dest.Transaction.FeeBumpTransaction.Hash)
 	assert.Equal(t, []string{"a", "b", "c"}, dest.Transaction.FeeBumpTransaction.Signatures)
+}
+
+func TestPopulateOperation_OperationTypeManageSellOffer(t *testing.T) {
+	tt := assert.New(t)
+
+	details := `{
+		"offer_id": 1000
+	}`
+
+	resp, err := getJSONResponse(xdr.OperationTypeManageSellOffer, details)
+	tt.NoError(err)
+	tt.Equal("1000", resp["offer_id"])
+}
+
+func TestPopulateOperation_OperationTypeManageBuyOffer(t *testing.T) {
+	tt := assert.New(t)
+
+	details := `{
+		"offer_id": 1000
+	}`
+
+	resp, err := getJSONResponse(xdr.OperationTypeManageBuyOffer, details)
+	tt.NoError(err)
+	tt.Equal("1000", resp["offer_id"])
 }
