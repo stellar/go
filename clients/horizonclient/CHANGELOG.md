@@ -3,11 +3,27 @@
 All notable changes to this project will be documented in this
 file.  This project adheres to [Semantic Versioning](http://semver.org/).
 
-## Unreleased
+## [v4.0.0](https://github.com/stellar/go/releases/tag/horizonclient-v4.0.0) - 2020-09-29
 
+Added new client methods and effects supporting [Protocol 14](https://github.com/stellar/go/issues/3035).
+
+* New client methods
+  * `ClaimableBalances(req ClaimableBalanceRequest)` - returns details about available claimable balances, possibly filtered to a specific sponsor or other parameters.
+  * `ClaimableBalance(balanceID string)` - returns details about a *specific*, unique claimable balance.
+* New effects:
+  * `ClaimableBalance{Created,Updated,Removed}`
+  * `ClaimabeBalanceSponsorship{Created,Updated,Removed}`
+  * `AccountSposnorship{Created,Updated,Removed}`
+  * `TrustlineSponsorship{Created,Updated,Removed}`
+  * `Data{Created,Updated,Removed}`
+  * `DataSponsorship{Created,Updated,Removed}`
+  * `SignerSponsorship{Created,Updated,Removed}`
 * Remove JSON variant of `GET /metrics`, both in the server and client code. It's using Prometheus format by default now.
 * Add `NextAccountsPage`.
 * Fix `Fund` function that consistently errored.
+
+### Breaking changes
+
 * Dropped support for Go 1.13.
 
 ## [v3.0.0](https://github.com/stellar/go/releases/tag/horizonclient-v3.0.0) - 2020-04-28
