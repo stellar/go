@@ -395,11 +395,7 @@ func TestSponsoredData(t *testing.T) {
 			DataName: "SponsoredData",
 		},
 	}
-	txResp, err = itest.SubmitOperations(itest.MasterAccount(), itest.Master(), &revoke)
-	tt.NoError(err)
-	err = xdr.SafeUnmarshalBase64(txResp.ResultXdr, &txResult)
-	tt.NoError(err)
-	tt.Equal(xdr.TransactionResultCodeTxSuccess, txResult.Result.Code)
+	itest.MustSubmitOperations(itest.MasterAccount(), itest.Master(), &revoke)
 
 	effectRecords, err := itest.Client().Effects(sdk.EffectRequest{
 		ForTransaction: txResp.ID,
