@@ -5,8 +5,6 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-
 	"github.com/stellar/go/exp/ingest/io"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"
@@ -141,37 +139,4 @@ func (s *OperationsProcessorTestSuiteLedger) TestExecFails() {
 	err := s.processor.Commit()
 	s.Assert().Error(err)
 	s.Assert().EqualError(err, "transient error")
-}
-
-func TestTransactionOperationWrapper_Details(t *testing.T) {
-	unmuxed := xdr.MustAddress("GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2")
-	muxed := xdr.MuxedAccount{
-		Type: xdr.CryptoKeyTypeKeyTypeMuxedEd25519,
-		Med25519: &xdr.MuxedAccountMed25519{
-			Id:      0xdeadbeefdeadbeef,
-			Ed25519: *unmuxed.Ed25519,
-		},
-	}
-	tx := createTransaction(true, 1)
-	tx.Index = 1
-	tx.Envelope.Operations()[0].Body = xdr.OperationBody{
-		Type: xdr.OperationTypePayment,
-		PaymentOp: &xdr.PaymentOp{
-			Destination: muxed,
-			Asset:       xdr.Asset{Type: xdr.AssetTypeAssetTypeNative},
-			Amount:      100,
-		},
-	}
-	wrapper := transactionOperationWrapper{
-		index:          1,
-		transaction:    tx,
-		operation:      tx.Envelope.Operations()[0],
-		ledgerSequence: uint32(56),
-	}
-	assert.Equal(t, wrapper.Details(), map[string]interface{}{
-		"amount":     "0.0000100",
-		"asset_type": "native",
-		"from":       "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
-		"to":         "GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2",
-	})
 }
