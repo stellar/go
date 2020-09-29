@@ -35,7 +35,7 @@ type RevokeSponsorship struct {
 	Signer           *SignerID
 }
 
-type TrustLineId struct {
+type TrustLineID struct {
 	Account string
 	Asset   Asset
 }
