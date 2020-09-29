@@ -524,11 +524,7 @@ func TestSponsoredTrustlineAndOffer(t *testing.T) {
 			},
 		},
 	}
-	txResp, err = itest.SubmitOperations(itest.MasterAccount(), itest.Master(), &revoke1, &revoke2)
-	tt.NoError(err)
-	err = xdr.SafeUnmarshalBase64(txResp.ResultXdr, &txResult)
-	tt.NoError(err)
-	tt.Equal(xdr.TransactionResultCodeTxSuccess, txResult.Result.Code)
+	itest.MustSubmitOperations(itest.MasterAccount(), itest.Master(), &revoke1, &revoke2)
 
 	effectRecords, err := itest.Client().Effects(sdk.EffectRequest{
 		ForTransaction: txResp.ID,
