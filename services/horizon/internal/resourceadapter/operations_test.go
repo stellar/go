@@ -230,12 +230,12 @@ func TestPopulateOperation_OperationTypeRevokeSponsorship_Offer(t *testing.T) {
 	tt := assert.New(t)
 
 	details := `{
-		"offer_id": "1000"
+		"offer_id": 1000
 	}`
 
 	resp, err := getJSONResponse(xdr.OperationTypeRevokeSponsorship, details)
 	tt.NoError(err)
-	tt.Equal("1000", resp["offer_id"])
+	tt.Equal(int64(1000), int64((resp["offer_id"]).(float64)))
 }
 
 func TestPopulateOperation_OperationTypeRevokeSponsorship_Trustline(t *testing.T) {
