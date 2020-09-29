@@ -13,14 +13,15 @@ Added new client methods and effects supporting [Protocol 14](https://github.com
 * New effects:
   * `ClaimableBalance{Created,Updated,Removed}`
   * `ClaimabeBalanceSponsorship{Created,Updated,Removed}`
-  * `AccountSposnorship{Created,Updated,Removed}`
+  * `AccountSponsorship{Created,Updated,Removed}`
   * `TrustlineSponsorship{Created,Updated,Removed}`
   * `Data{Created,Updated,Removed}`
   * `DataSponsorship{Created,Updated,Removed}`
   * `SignerSponsorship{Created,Updated,Removed}`
-* Remove JSON variant of `GET /metrics`, both in the server and client code. It's using Prometheus format by default now.
-* Add `NextAccountsPage`.
-* Fix `Fund` function that consistently errored.
+* Removed JSON variant of `GET /metrics`, both in the server and client code. It's using Prometheus format by default now.
+* Added `NextAccountsPage`.
+* Fixed `Fund` function that consistently errored.
+* Added support for Go 1.15.
 
 ### Breaking changes
 
