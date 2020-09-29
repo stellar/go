@@ -516,7 +516,7 @@ func TestSponsoredTrustlineAndOffer(t *testing.T) {
 	}
 	revoke2 := txnbuild.RevokeSponsorship{
 		SponsorshipType: txnbuild.RevokeSponsorshipTypeTrustLine,
-		TrustLine: &txnbuild.TrustLineId{
+		TrustLine: &txnbuild.TrustLineID{
 			Account: newAccountPair.Address(),
 			Asset: txnbuild.CreditAsset{
 				Code:   "ABCD",

@@ -43,7 +43,7 @@ func TestRevokeSponsorship(t *testing.T) {
 			name: "TrustLine",
 			op: RevokeSponsorship{
 				SponsorshipType: RevokeSponsorshipTypeTrustLine,
-				TrustLine: &TrustLineId{
+				TrustLine: &TrustLineID{
 					Account: accountAddress,
 					Asset: CreditAsset{
 						Code:   "USD",

@@ -27,7 +27,7 @@ type RevokeSponsorship struct {
 	SponsorshipType RevokeSponsorshipType
 	// Account Id (strkey)
 	Account   *string
-	TrustLine *TrustLineId
+	TrustLine *TrustLineID
 	Offer     *OfferID
 	Data      *DataID
 	// Claimable Balance Id
@@ -173,7 +173,7 @@ func (r *RevokeSponsorship) FromXDR(xdrOp xdr.Operation) error {
 			r.SponsorshipType = RevokeSponsorshipTypeAccount
 			r.Account = &sponsorshipId
 		case xdr.LedgerEntryTypeTrustline:
-			var sponsorshipId TrustLineId
+			var sponsorshipId TrustLineID
 			sponsorshipId.Account = lkey.TrustLine.AccountId.Address()
 			asset, err := assetFromXDR(lkey.TrustLine.Asset)
 			if err != nil {
