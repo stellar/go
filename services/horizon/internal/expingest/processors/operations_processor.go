@@ -569,13 +569,8 @@ func (operation *transactionOperationWrapper) Participants() ([]xdr.AccountId, e
 			participants = append(participants, getLedgerKeyParticipants(*op.LedgerKey)...)
 		case xdr.RevokeSponsorshipTypeRevokeSponsorshipSigner:
 			participants = append(participants, op.Signer.AccountId)
-			if op.Signer.SignerKey.Type == xdr.SignerKeyTypeSignerKeyTypeEd25519 {
-				signerKeyID := xdr.PublicKey{
-					Type:    xdr.PublicKeyTypePublicKeyTypeEd25519,
-					Ed25519: op.Signer.SignerKey.Ed25519,
-				}
-				participants = append(participants, xdr.AccountId(signerKeyID))
-			}
+			// We don't add signer as a participant because a signer can be arbitrary account.
+			// This can spam successful operations history of any account.
 		}
 	default:
 		return participants, fmt.Errorf("Unknown operation type: %s", op.Body.Type)
