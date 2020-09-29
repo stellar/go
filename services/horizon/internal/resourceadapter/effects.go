@@ -145,6 +145,18 @@ func NewEffect(
 			e.BoughtAssetIssuer = tradeDetails.BoughtAssetIssuer
 		}
 		result = e
+	case history.EffectDataCreated:
+		e := effects.DataCreated{Base: basev}
+		err = row.UnmarshalDetails(&e)
+		result = e
+	case history.EffectDataUpdated:
+		e := effects.DataUpdated{Base: basev}
+		err = row.UnmarshalDetails(&e)
+		result = e
+	case history.EffectDataRemoved:
+		e := effects.DataRemoved{Base: basev}
+		err = row.UnmarshalDetails(&e)
+		result = e
 	case history.EffectSequenceBumped:
 		e := effects.SequenceBumped{Base: basev}
 		hsb := history.SequenceBumped{}
