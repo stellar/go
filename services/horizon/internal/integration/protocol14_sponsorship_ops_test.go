@@ -395,10 +395,10 @@ func TestSponsoredData(t *testing.T) {
 			DataName: "SponsoredData",
 		},
 	}
-	itest.MustSubmitOperations(itest.MasterAccount(), itest.Master(), &revoke)
+	tx := itest.MustSubmitOperations(itest.MasterAccount(), itest.Master(), &revoke)
 
 	effectRecords, err := itest.Client().Effects(sdk.EffectRequest{
-		ForTransaction: txResp.ID,
+		ForTransaction: tx.ID,
 	})
 	tt.NoError(err)
 	tt.Len(effectRecords.Embedded.Records, 1)
@@ -524,10 +524,10 @@ func TestSponsoredTrustlineAndOffer(t *testing.T) {
 			},
 		},
 	}
-	itest.MustSubmitOperations(itest.MasterAccount(), itest.Master(), &revoke1, &revoke2)
+	tx := itest.MustSubmitOperations(itest.MasterAccount(), itest.Master(), &revoke1, &revoke2)
 
 	effectRecords, err := itest.Client().Effects(sdk.EffectRequest{
-		ForTransaction: txResp.ID,
+		ForTransaction: tx.ID,
 	})
 	tt.NoError(err)
 	tt.Len(effectRecords.Embedded.Records, 1)
