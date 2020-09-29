@@ -17,7 +17,13 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-func getSimpleAccountCreationSandwich(tt *assert.Assertions) (*keypair.Full, []txnbuild.Operation) {
+func TestSponsoredAccount(t *testing.T) {
+	tt := assert.New(t)
+	itest := test.NewIntegrationTest(t, protocol14Config)
+	defer itest.Close()
+	sponsor := itest.MasterAccount()
+	sponsorPair := itest.Master()
+
 	// We will create the following operation structure:
 	// BeginSponsoringFutureReserves A
 	//   CreateAccount A
@@ -39,16 +45,6 @@ func getSimpleAccountCreationSandwich(tt *assert.Assertions) (*keypair.Full, []t
 			AccountID: newAccountPair.Address(),
 		},
 	}
-	return newAccountPair, ops
-}
-
-func TestSimpleSandwichHappyPath(t *testing.T) {
-	tt := assert.New(t)
-	itest := test.NewIntegrationTest(t, protocol14Config)
-	defer itest.Close()
-	sponsor := itest.MasterAccount()
-	sponsorPair := itest.Master()
-	newAccountPair, ops := getSimpleAccountCreationSandwich(tt)
 
 	signers := []*keypair.Full{sponsorPair, newAccountPair}
 	txResp, err := itest.SubmitMultiSigOperations(sponsor, signers, ops...)
@@ -114,24 +110,6 @@ func TestSimpleSandwichHappyPath(t *testing.T) {
 	tt.Len(effectRecords, 4)
 	tt.IsType(effects.AccountSponsorshipCreated{}, effectRecords[3])
 	tt.Equal(sponsorPair.Address(), effectRecords[3].(effects.AccountSponsorshipCreated).Sponsor)
-}
-
-func TestSimpleSandwichRevocation(t *testing.T) {
-	tt := assert.New(t)
-	itest := test.NewIntegrationTest(t, protocol14Config)
-	defer itest.Close()
-	sponsor := itest.MasterAccount()
-	sponsorPair := itest.Master()
-	newAccountPair, ops := getSimpleAccountCreationSandwich(tt)
-
-	signers := []*keypair.Full{sponsorPair, newAccountPair}
-	txResp, err := itest.SubmitMultiSigOperations(sponsor, signers, ops...)
-	tt.NoError(err)
-
-	var txResult xdr.TransactionResult
-	err = xdr.SafeUnmarshalBase64(txResp.ResultXdr, &txResult)
-	tt.NoError(err)
-	tt.Equal(xdr.TransactionResultCodeTxSuccess, txResult.Result.Code)
 
 	// Submit sponsorship revocation in a separate transaction
 	accountToRevoke := newAccountPair.Address()
@@ -147,10 +125,10 @@ func TestSimpleSandwichRevocation(t *testing.T) {
 	tt.Equal(xdr.TransactionResultCodeTxSuccess, txResult.Result.Code)
 
 	// Verify operation details
-	response, err := itest.Client().Operations(sdk.OperationRequest{
+	response, err = itest.Client().Operations(sdk.OperationRequest{
 		ForTransaction: txResp.Hash,
 	})
-	opRecords := response.Embedded.Records
+	opRecords = response.Embedded.Records
 	tt.NoError(err)
 	tt.Len(opRecords, 1)
 	tt.True(opRecords[0].IsTransactionSuccessful())
@@ -175,9 +153,9 @@ func TestSimpleSandwichRevocation(t *testing.T) {
 	tt.Condition(sponsorshipRevocationPresent)
 
 	// Check effects
-	eResponse, err := itest.Client().Effects(sdk.EffectRequest{ForOperation: revokeOp.ID})
+	eResponse, err = itest.Client().Effects(sdk.EffectRequest{ForOperation: revokeOp.ID})
 	tt.NoError(err)
-	effectRecords := eResponse.Embedded.Records
+	effectRecords = eResponse.Embedded.Records
 	tt.Len(effectRecords, 1)
 	tt.IsType(effects.AccountSponsorshipRemoved{}, effectRecords[0])
 	tt.Equal(sponsorPair.Address(), effectRecords[0].(effects.AccountSponsorshipRemoved).FormerSponsor)
@@ -331,7 +309,7 @@ func TestSponsorPreAuthSigner(t *testing.T) {
 
 }
 
-func TestSponsorData(t *testing.T) {
+func TestSponsoredData(t *testing.T) {
 	tt := assert.New(t)
 	itest := test.NewIntegrationTest(t, protocol14Config)
 	defer itest.Close()
@@ -408,5 +386,193 @@ func TestSponsorData(t *testing.T) {
 		tt.Equal(newAccountPair.Address(), dataSponsorshipEffect.Account)
 		tt.Equal("SponsoredData", dataSponsorshipEffect.DataName)
 	}
+
+	// Test revocation of sponsorship
+	revoke := txnbuild.RevokeSponsorship{
+		SponsorshipType: txnbuild.RevokeSponsorshipTypeData,
+		Data: &txnbuild.DataID{
+			Account:  newAccountPair.Address(),
+			DataName: "SponsoredData",
+		},
+	}
+	tx := itest.MustSubmitOperations(itest.MasterAccount(), itest.Master(), &revoke)
+
+	effectRecords, err := itest.Client().Effects(sdk.EffectRequest{
+		ForTransaction: tx.ID,
+	})
+	tt.NoError(err)
+	tt.Len(effectRecords.Embedded.Records, 1)
+	sponsorshipRemoved := effectRecords.Embedded.Records[0].(effects.DataSponsorshipRemoved)
+	tt.Equal(sponsorPair.Address(), sponsorshipRemoved.FormerSponsor)
+	tt.Equal("SponsoredData", sponsorshipRemoved.DataName)
+
+}
+
+func TestSponsoredTrustlineAndOffer(t *testing.T) {
+	tt := assert.New(t)
+	itest := test.NewIntegrationTest(t, protocol14Config)
+	defer itest.Close()
+	sponsorPair := itest.Master()
+	sponsor := func() txnbuild.Account { return itest.MasterAccount() }
+
+	// Let's create a new account
+	pairs, _ := itest.CreateAccounts(1, "1000")
+	newAccountPair := pairs[0]
+	newAccount := func() txnbuild.Account {
+		request := sdk.AccountRequest{AccountID: newAccountPair.Address()}
+		account, err := itest.Client().AccountDetail(request)
+		tt.NoError(err)
+		return &account
+	}
+
+	// Let's add a sponsored trustline and offer
+	//
+	// BeginSponsorship N (Source=sponsor)
+	//   Change Trust (ABC, sponsor) (Source=N)
+	//   ManageSellOffer Buying (ABC, sponsor) (Source=N)
+	// EndSponsorship (Source=N)
+	ops := make([]txnbuild.Operation, 4, 4)
+	ops[0] = &txnbuild.BeginSponsoringFutureReserves{
+		SponsoredID: newAccountPair.Address(),
+	}
+	ops[1] = &txnbuild.ChangeTrust{
+		SourceAccount: newAccount(),
+		Line:          txnbuild.CreditAsset{"ABCD", sponsorPair.Address()},
+		Limit:         txnbuild.MaxTrustlineLimit,
+	}
+	ops[2] = &txnbuild.ManageSellOffer{
+		SourceAccount: newAccount(),
+		Selling:       txnbuild.NativeAsset{},
+		Buying:        txnbuild.CreditAsset{"ABCD", sponsorPair.Address()},
+		Amount:        "3",
+		Price:         "1",
+	}
+	ops[3] = &txnbuild.EndSponsoringFutureReserves{
+		SourceAccount: newAccount(),
+	}
+
+	signers := []*keypair.Full{sponsorPair, newAccountPair}
+	txResp, err := itest.SubmitMultiSigOperations(sponsor(), signers, ops...)
+	tt.NoError(err)
+
+	var txResult xdr.TransactionResult
+	err = xdr.SafeUnmarshalBase64(txResp.ResultXdr, &txResult)
+	tt.NoError(err)
+	tt.Equal(xdr.TransactionResultCodeTxSuccess, txResult.Result.Code)
+
+	// Verify that the offer was incorporated correctly
+	trustlineAdded := func() bool {
+		for _, balance := range newAccount().(*protocol.Account).Balances {
+			if balance.Issuer == sponsorPair.Address() {
+				tt.Equal("ABCD", balance.Code)
+				tt.Equal(sponsorPair.Address(), balance.Sponsor)
+				return true
+			}
+		}
+		return false
+	}
+	tt.Eventually(trustlineAdded, time.Second*10, time.Millisecond*100)
+
+	// Check the details of the ManageSellOffer operation
+	// (there are no effects, which is intentional)
+	operationsResponse, err := itest.Client().Operations(sdk.OperationRequest{
+		ForTransaction: txResp.Hash,
+	})
+	tt.NoError(err)
+	tt.Len(operationsResponse.Embedded.Records, 4)
+	changeTrust := operationsResponse.Embedded.Records[1].(operations.ChangeTrust)
+	tt.Equal(sponsorPair.Address(), changeTrust.Sponsor)
+
+	// Verify that the offer was incorporated correctly
+	var offer protocol.Offer
+	offerAdded := func() bool {
+		offers, e := itest.Client().Offers(sdk.OfferRequest{
+			ForAccount: newAccountPair.Address(),
+		})
+		tt.NoError(e)
+		if len(offers.Embedded.Records) == 1 {
+			offer = offers.Embedded.Records[0]
+			tt.Equal(sponsorPair.Address(), offer.Buying.Issuer)
+			tt.Equal("ABCD", offer.Buying.Code)
+			tt.Equal(sponsorPair.Address(), offer.Sponsor)
+			return true
+		}
+		return false
+	}
+	tt.Eventually(offerAdded, time.Second*10, time.Millisecond*100)
+
+	// Check the details of the ManageSellOffer operation
+	// (there are no effects, which is intentional)
+	manageOffer := operationsResponse.Embedded.Records[2].(operations.ManageSellOffer)
+	tt.Equal(sponsorPair.Address(), manageOffer.Sponsor)
+
+	// Test revocation of sponsorships
+	revoke1 := txnbuild.RevokeSponsorship{
+		SponsorshipType: txnbuild.RevokeSponsorshipTypeOffer,
+		Offer: &txnbuild.OfferID{
+			SellerAccountAddress: offer.Seller,
+			OfferID:              offer.ID,
+		},
+	}
+	revoke2 := txnbuild.RevokeSponsorship{
+		SponsorshipType: txnbuild.RevokeSponsorshipTypeTrustLine,
+		TrustLine: &txnbuild.TrustLineID{
+			Account: newAccountPair.Address(),
+			Asset: txnbuild.CreditAsset{
+				Code:   "ABCD",
+				Issuer: sponsorPair.Address(),
+			},
+		},
+	}
+	tx := itest.MustSubmitOperations(itest.MasterAccount(), itest.Master(), &revoke1, &revoke2)
+
+	effectRecords, err := itest.Client().Effects(sdk.EffectRequest{
+		ForTransaction: tx.ID,
+	})
+	tt.NoError(err)
+	tt.Len(effectRecords.Embedded.Records, 1)
+	sponsorshipRemoved := effectRecords.Embedded.Records[0].(effects.TrustlineSponsorshipRemoved)
+	tt.Equal(sponsorPair.Address(), sponsorshipRemoved.FormerSponsor)
+	tt.Equal("ABCD:"+sponsorPair.Address(), sponsorshipRemoved.Asset)
+}
+
+func TestSponsoredClaimableBalance(t *testing.T) {
+	tt := assert.New(t)
+	itest := test.NewIntegrationTest(t, protocol14Config)
+	defer itest.Close()
+	master := itest.Master()
+
+	keys, accounts := itest.CreateAccounts(1, "50")
+	ops := []txnbuild.Operation{
+		&txnbuild.BeginSponsoringFutureReserves{
+			SourceAccount: itest.MasterAccount(),
+			SponsoredID:   keys[0].Address(),
+		},
+		&txnbuild.CreateClaimableBalance{
+			SourceAccount: accounts[0],
+			Destinations: []txnbuild.Claimant{
+				txnbuild.NewClaimant(master.Address(), nil),
+			},
+			Amount: "20",
+			Asset:  txnbuild.NativeAsset{},
+		},
+		&txnbuild.EndSponsoringFutureReserves{},
+	}
+
+	txResp, err := itest.SubmitMultiSigOperations(accounts[0], []*keypair.Full{keys[0], master}, ops...)
+	tt.NoError(err)
+
+	var txResult xdr.TransactionResult
+	err = xdr.SafeUnmarshalBase64(txResp.ResultXdr, &txResult)
+	tt.NoError(err)
+	tt.Equal(xdr.TransactionResultCodeTxSuccess, txResult.Result.Code)
+
+	balances, err := itest.Client().ClaimableBalances(sdk.ClaimableBalanceRequest{})
+	tt.NoError(err)
+
+	claims := balances.Embedded.Records
+	tt.Len(claims, 1)
+	balance := claims[0]
+	tt.Equal(master.Address(), balance.Sponsor)
 
 }

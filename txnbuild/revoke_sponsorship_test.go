@@ -43,7 +43,7 @@ func TestRevokeSponsorship(t *testing.T) {
 			name: "TrustLine",
 			op: RevokeSponsorship{
 				SponsorshipType: RevokeSponsorshipTypeTrustLine,
-				TrustLine: &TrustLineId{
+				TrustLine: &TrustLineID{
 					Account: accountAddress,
 					Asset: CreditAsset{
 						Code:   "USD",
@@ -56,9 +56,9 @@ func TestRevokeSponsorship(t *testing.T) {
 			name: "Offer",
 			op: RevokeSponsorship{
 				SponsorshipType: RevokeSponsorshipTypeOffer,
-				Offer: &OfferId{
+				Offer: &OfferID{
 					SellerAccountAddress: accountAddress,
-					OfferId:              0xdeadbeef,
+					OfferID:              0xdeadbeef,
 				},
 			},
 		},
@@ -66,7 +66,7 @@ func TestRevokeSponsorship(t *testing.T) {
 			name: "Data",
 			op: RevokeSponsorship{
 				SponsorshipType: RevokeSponsorshipTypeData,
-				Data: &DataId{
+				Data: &DataID{
 					Account:  accountAddress,
 					DataName: "foobar",
 				},
@@ -83,8 +83,8 @@ func TestRevokeSponsorship(t *testing.T) {
 			name: "Signer",
 			op: RevokeSponsorship{
 				SponsorshipType: RevokeSponsorshipTypeSigner,
-				Signer: &SignerId{
-					AccountId:     accountAddress,
+				Signer: &SignerID{
+					AccountID:     accountAddress,
 					SignerAddress: "XBU2RRGLXH3E5CQHTD3ODLDF2BWDCYUSSBLLZ5GNW7JXHDIYKXZWGTOG",
 				},
 			},

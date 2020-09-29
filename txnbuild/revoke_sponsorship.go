@@ -27,31 +27,31 @@ type RevokeSponsorship struct {
 	SponsorshipType RevokeSponsorshipType
 	// Account Id (strkey)
 	Account   *string
-	TrustLine *TrustLineId
-	Offer     *OfferId
-	Data      *DataId
+	TrustLine *TrustLineID
+	Offer     *OfferID
+	Data      *DataID
 	// Claimable Balance Id
 	ClaimableBalance *string
-	Signer           *SignerId
+	Signer           *SignerID
 }
 
-type TrustLineId struct {
+type TrustLineID struct {
 	Account string
 	Asset   Asset
 }
 
-type OfferId struct {
+type OfferID struct {
 	SellerAccountAddress string
-	OfferId              int64
+	OfferID              int64
 }
 
-type DataId struct {
+type DataID struct {
 	Account  string
 	DataName string
 }
 
-type SignerId struct {
-	AccountId     string
+type SignerID struct {
+	AccountID     string
 	SignerAddress string
 }
 
@@ -97,7 +97,7 @@ func (r *RevokeSponsorship) BuildXDR() (xdr.Operation, error) {
 		if err := key.SellerId.SetAddress(r.Offer.SellerAccountAddress); err != nil {
 			return xdr.Operation{}, errors.Wrap(err, "incorrect Seller account address")
 		}
-		key.OfferId = xdr.Int64(r.Offer.OfferId)
+		key.OfferId = xdr.Int64(r.Offer.OfferID)
 		xdrOp.Type = xdr.RevokeSponsorshipTypeRevokeSponsorshipLedgerEntry
 		xdrOp.LedgerKey = &xdr.LedgerKey{
 			Type:  xdr.LedgerEntryTypeOffer,
@@ -136,7 +136,7 @@ func (r *RevokeSponsorship) BuildXDR() (xdr.Operation, error) {
 		if r.Signer == nil {
 			return xdr.Operation{}, errors.New("Signer can't be nil")
 		}
-		if err := signer.AccountId.SetAddress(r.Signer.AccountId); err != nil {
+		if err := signer.AccountId.SetAddress(r.Signer.AccountID); err != nil {
 			return xdr.Operation{}, errors.New("incorrect Account address")
 		}
 		if err := signer.SignerKey.SetAddress(r.Signer.SignerAddress); err != nil {
@@ -173,7 +173,7 @@ func (r *RevokeSponsorship) FromXDR(xdrOp xdr.Operation) error {
 			r.SponsorshipType = RevokeSponsorshipTypeAccount
 			r.Account = &sponsorshipId
 		case xdr.LedgerEntryTypeTrustline:
-			var sponsorshipId TrustLineId
+			var sponsorshipId TrustLineID
 			sponsorshipId.Account = lkey.TrustLine.AccountId.Address()
 			asset, err := assetFromXDR(lkey.TrustLine.Asset)
 			if err != nil {
@@ -183,13 +183,13 @@ func (r *RevokeSponsorship) FromXDR(xdrOp xdr.Operation) error {
 			r.SponsorshipType = RevokeSponsorshipTypeTrustLine
 			r.TrustLine = &sponsorshipId
 		case xdr.LedgerEntryTypeOffer:
-			var sponsorshipId OfferId
+			var sponsorshipId OfferID
 			sponsorshipId.SellerAccountAddress = lkey.Offer.SellerId.Address()
-			sponsorshipId.OfferId = int64(lkey.Offer.OfferId)
+			sponsorshipId.OfferID = int64(lkey.Offer.OfferId)
 			r.SponsorshipType = RevokeSponsorshipTypeOffer
 			r.Offer = &sponsorshipId
 		case xdr.LedgerEntryTypeData:
-			var sponsorshipId DataId
+			var sponsorshipId DataID
 			sponsorshipId.Account = lkey.Data.AccountId.Address()
 			sponsorshipId.DataName = string(lkey.Data.DataName)
 			r.SponsorshipType = RevokeSponsorshipTypeData
@@ -211,8 +211,8 @@ func (r *RevokeSponsorship) FromXDR(xdrOp xdr.Operation) error {
 			return fmt.Errorf("unexpected LedgerEntryType: %d", lkey.Type)
 		}
 	case xdr.RevokeSponsorshipTypeRevokeSponsorshipSigner:
-		var sponsorshipId SignerId
-		sponsorshipId.AccountId = op.Signer.AccountId.Address()
+		var sponsorshipId SignerID
+		sponsorshipId.AccountID = op.Signer.AccountId.Address()
 		sponsorshipId.SignerAddress = op.Signer.SignerKey.Address()
 		r.SponsorshipType = RevokeSponsorshipTypeSigner
 		r.Signer = &sponsorshipId
@@ -266,7 +266,7 @@ func (r *RevokeSponsorship) Validate() error {
 		if r.Signer == nil {
 			return errors.New("Signer can't be nil")
 		}
-		if err := validateStellarPublicKey(r.Signer.AccountId); err != nil {
+		if err := validateStellarPublicKey(r.Signer.AccountID); err != nil {
 			return errors.New("invalid Account address")
 		}
 		if err := validateStellarSignerKey(r.Signer.SignerAddress); err != nil {
