@@ -33,7 +33,27 @@ var xp4 = xlmPrice{
 
 var prices = []xlmPrice{xp1, xp2, xp3, xp4}
 
-func TestTotalRecordsXlmVolume(t *testing.T) {
+func TestTotalRecordsBaseVolume(t *testing.T) {
+	res := 15 * 60
+	ta1 := hProtocol.TradeAggregation{Timestamp: 1000 * (pts - int64(res/2))}
+	ta1.BaseVolume = "100.0"
+	ta2 := hProtocol.TradeAggregation{Timestamp: 1000 * (pts - int64(3*res/2))}
+	ta2.BaseVolume = "200.0"
+	ta3 := hProtocol.TradeAggregation{Timestamp: 1000 * (pts - int64(5*res/2))}
+	ta3.BaseVolume = "300.0"
+	tas := []hProtocol.TradeAggregation{ta1, ta2, ta3}
+
+	pt := time.Unix(pts, 0)
+	total, err := totalRecordsBaseVolume(tas, time.Unix(pts-int64(res*3), 0), pt)
+	assert.NoError(t, err)
+	assert.Equal(t, 600., total)
+
+	total, err = totalRecordsBaseVolume(tas, time.Unix(pts-int64(res*2), 0), pt)
+	assert.Error(t, err)
+	assert.Equal(t, 0., total)
+}
+
+func TestTotalRecordsCounterVolume(t *testing.T) {
 	res := 15 * 60
 	ta1 := hProtocol.TradeAggregation{Timestamp: 1000 * (pts - int64(res/2))}
 	ta1.CounterVolume = "100.0"
@@ -44,11 +64,31 @@ func TestTotalRecordsXlmVolume(t *testing.T) {
 	tas := []hProtocol.TradeAggregation{ta1, ta2, ta3}
 
 	pt := time.Unix(pts, 0)
-	total, err := totalRecordsXlmVolume(tas, time.Unix(pts-int64(res*3), 0), pt)
+	total, err := totalRecordsCounterVolume(tas, time.Unix(pts-int64(res*3), 0), pt)
 	assert.NoError(t, err)
 	assert.Equal(t, 600., total)
 
-	total, err = totalRecordsXlmVolume(tas, time.Unix(pts-int64(res*2), 0), pt)
+	total, err = totalRecordsCounterVolume(tas, time.Unix(pts-int64(res*2), 0), pt)
+	assert.Error(t, err)
+	assert.Equal(t, 0., total)
+}
+
+func TestTotalRecordsTradeCount(t *testing.T) {
+	res := 15 * 60
+	ta1 := hProtocol.TradeAggregation{Timestamp: 1000 * (pts - int64(res/2))}
+	ta1.TradeCount = int64(100)
+	ta2 := hProtocol.TradeAggregation{Timestamp: 1000 * (pts - int64(3*res/2))}
+	ta2.TradeCount = int64(200)
+	ta3 := hProtocol.TradeAggregation{Timestamp: 1000 * (pts - int64(5*res/2))}
+	ta3.TradeCount = int64(300)
+	tas := []hProtocol.TradeAggregation{ta1, ta2, ta3}
+
+	pt := time.Unix(pts, 0)
+	total, err := totalRecordsTradeCount(tas, time.Unix(pts-int64(res*3), 0), pt)
+	assert.NoError(t, err)
+	assert.Equal(t, 600., total)
+
+	total, err = totalRecordsTradeCount(tas, time.Unix(pts-int64(res*2), 0), pt)
 	assert.Error(t, err)
 	assert.Equal(t, 0., total)
 }
@@ -61,10 +101,12 @@ func TestAddVolumeHistory(t *testing.T) {
 	for i < numIntervals {
 		s := pts - int64(i*15*60)
 		h := volumeHist{
-			start:     s,
-			end:       s - 15*60,
-			xlmVolume: 100.0,
-			usdVolume: 10.0,
+			start:                  s,
+			end:                    s - 15*60,
+			baseVolumeBaseAsset:    100.0,
+			baseVolumeUsd:          10.0,
+			counterVolumeBaseAsset: 100.0,
+			counterVolumeUsd:       10.0,
 		}
 		vh = append(vh, h)
 		i++
@@ -72,54 +114,64 @@ func TestAddVolumeHistory(t *testing.T) {
 
 	// one day, in seconds
 	end := pts - 24*60*60
-	usd24h := addUsdVolumeHistory(vh, end)
-	assert.Equal(t, 960., usd24h)
-	xlm24h := addXlmVolumeHistory(vh, end)
-	assert.Equal(t, 9600., xlm24h)
-
-	// 30d, in seconds
-	end = pts - 30*24*60*60
-	usd30d := addUsdVolumeHistory(vh, end)
-	assert.Equal(t, 28800., usd30d)
-	xlm30d := addXlmVolumeHistory(vh, end)
-	assert.Equal(t, 288000., xlm30d)
+	baseBase := addBaseVolumeBaseAssetHistory(vh, end)
+	assert.Equal(t, 9600., baseBase)
+	baseUsd := addBaseVolumeUsdHistory(vh, end)
+	assert.Equal(t, 960., baseUsd)
+	counterBase := addCounterVolumeBaseHistory(vh, end)
+	assert.Equal(t, 9600., counterBase)
+	counterUsd := addCounterVolumeUsdHistory(vh, end)
+	assert.Equal(t, 960., counterUsd)
 }
 
 func TestConstructVolumeHistory(t *testing.T) {
 	res := 15 * 60
 	ta1 := hProtocol.TradeAggregation{Timestamp: 1000 * (pts - int64(res/2))}
-	ta1.CounterVolume = "100.0"
+	ta1.CounterVolume = "200.0"
+	ta1.BaseVolume = "100.0"
+
 	ta2 := hProtocol.TradeAggregation{Timestamp: 1000 * (pts - int64(3*res/2))}
-	ta2.CounterVolume = "200.0"
+	ta2.CounterVolume = "400.0"
+	ta2.BaseVolume = "200.0"
+
 	ta3 := hProtocol.TradeAggregation{Timestamp: 1000 * (pts - int64(5*res/2))}
-	ta3.CounterVolume = "300.0"
+	ta3.CounterVolume = "600.0"
+	ta3.BaseVolume = "300.0"
+
 	tas := []hProtocol.TradeAggregation{ta1, ta2, ta3}
 	start := time.Unix(pts-24*60*60, 0)
 	end := time.Unix(pts, 0)
 
 	errPrices := []xlmPrice{}
-	volumeHist, err := constructVolumeHistory(tas, errPrices, start, end, res)
+	assetUsdPrice := 10.0
+	volumeHist, err := constructVolumeHistory(tas, errPrices, assetUsdPrice, start, end, res)
 	assert.Error(t, err)
 	assert.Equal(t, 0, len(volumeHist))
 
-	volumeHist, err = constructVolumeHistory(tas, prices, start, end, res)
+	volumeHist, err = constructVolumeHistory(tas, prices, assetUsdPrice, start, end, res)
 	assert.NoError(t, err)
 	assert.Equal(t, 24*4, len(volumeHist))
 
 	assert.Equal(t, pts-int64(res), volumeHist[0].start)
 	assert.Equal(t, pts, volumeHist[0].end)
-	assert.Equal(t, float64(100), volumeHist[0].xlmVolume)
-	assert.Equal(t, float64(150), volumeHist[0].usdVolume)
+	assert.Equal(t, 100.0, volumeHist[0].baseVolumeBaseAsset)
+	assert.Equal(t, 10.0, volumeHist[0].baseVolumeUsd)
+	assert.Equal(t, 3000.0, volumeHist[0].counterVolumeBaseAsset)
+	assert.Equal(t, 300.0, volumeHist[0].counterVolumeUsd)
 
 	assert.Equal(t, pts-int64(2*res), volumeHist[1].start)
 	assert.Equal(t, pts-int64(res), volumeHist[1].end)
-	assert.Equal(t, float64(200), volumeHist[1].xlmVolume)
-	assert.Equal(t, float64(500), volumeHist[1].usdVolume)
+	assert.Equal(t, 200.0, volumeHist[1].baseVolumeBaseAsset)
+	assert.Equal(t, 20.0, volumeHist[1].baseVolumeUsd)
+	assert.Equal(t, 10000.0, volumeHist[1].counterVolumeBaseAsset)
+	assert.Equal(t, 1000.0, volumeHist[1].counterVolumeUsd)
 
 	assert.Equal(t, pts-int64(3*res), volumeHist[2].start)
 	assert.Equal(t, pts-int64(2*res), volumeHist[2].end)
-	assert.Equal(t, float64(300), volumeHist[2].xlmVolume)
-	assert.Equal(t, float64(1050), volumeHist[2].usdVolume)
+	assert.Equal(t, 300.0, volumeHist[2].baseVolumeBaseAsset)
+	assert.Equal(t, 30.0, volumeHist[2].baseVolumeUsd)
+	assert.Equal(t, 21000.0, volumeHist[2].counterVolumeBaseAsset)
+	assert.Equal(t, 2100.0, volumeHist[2].counterVolumeUsd)
 }
 
 func TestFindTimestampPriceIndex(t *testing.T) {

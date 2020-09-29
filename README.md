@@ -28,7 +28,7 @@ This repo contains various tools and services that you can use and deploy, as we
 
 ## Dependencies
 
-This repository is officially supported on the last two releases of Go, which is currently Go 1.13 and Go 1.14.
+This repository is officially supported on the last two releases of Go, which is currently Go 1.14 and Go 1.15.
 
 It depends on a [number of external dependencies](./go.mod), and uses Go [Modules](https://github.com/golang/go/wiki/Modules) to manage them. Running any `go` command will automatically download dependencies required for that operation.
 

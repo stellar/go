@@ -82,15 +82,16 @@ func createMinionAccounts(botAccount internal.Account, botKeypair *keypair.Full,
 				return minions, errors.Wrap(err, "making keypair")
 			}
 			newMinions = append(newMinions, internal.Minion{
-				Account:           internal.Account{AccountID: minionKeypair.Address()},
-				Keypair:           minionKeypair,
-				BotAccount:        botAccount,
-				BotKeypair:        botKeypair,
-				Horizon:           hclient,
-				Network:           networkPassphrase,
-				StartingBalance:   newAccountBalance,
-				SubmitTransaction: internal.SubmitTransaction,
-				BaseFee:           baseFee,
+				Account:              internal.Account{AccountID: minionKeypair.Address()},
+				Keypair:              minionKeypair,
+				BotAccount:           botAccount,
+				BotKeypair:           botKeypair,
+				Horizon:              hclient,
+				Network:              networkPassphrase,
+				StartingBalance:      newAccountBalance,
+				SubmitTransaction:    internal.SubmitTransaction,
+				CheckSequenceRefresh: internal.CheckSequenceRefresh,
+				BaseFee:              baseFee,
 			})
 
 			ops = append(ops, &txnbuild.CreateAccount{

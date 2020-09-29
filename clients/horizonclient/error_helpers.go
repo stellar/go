@@ -1,11 +1,14 @@
 package horizonclient
 
+import "github.com/stellar/go/support/errors"
+
 // IsNotFoundError returns true if the error is a horizonclient.Error with
 // a not_found problem indicating that the resource is not found on
 // Horizon.
 func IsNotFoundError(err error) bool {
 	var hErr *Error
 
+	err = errors.Cause(err)
 	switch err := err.(type) {
 	case *Error:
 		hErr = err
@@ -26,6 +29,7 @@ func IsNotFoundError(err error) bool {
 func GetError(err error) *Error {
 	var hErr *Error
 
+	err = errors.Cause(err)
 	switch e := err.(type) {
 	case *Error:
 		hErr = e

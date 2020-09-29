@@ -3,6 +3,7 @@ package horizon
 import (
 	"context"
 	"net/http"
+	"runtime"
 
 	"github.com/getsentry/raven-go"
 	"github.com/prometheus/client_golang/prometheus"
@@ -120,6 +121,21 @@ func initLogglyLog(app *App) {
 }
 
 func initDbMetrics(app *App) {
+	app.buildInfoGauge = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{Namespace: "horizon", Subsystem: "build", Name: "info"},
+		[]string{"version", "goversion"},
+	)
+	app.prometheusRegistry.MustRegister(app.buildInfoGauge)
+	app.buildInfoGauge.With(prometheus.Labels{
+		"version":   app.horizonVersion,
+		"goversion": runtime.Version(),
+	}).Inc()
+
+	app.ingestingGauge = prometheus.NewGauge(
+		prometheus.GaugeOpts{Namespace: "horizon", Subsystem: "ingest", Name: "enabled"},
+	)
+	app.prometheusRegistry.MustRegister(app.ingestingGauge)
+
 	app.historyLatestLedgerCounter = prometheus.NewCounterFunc(
 		prometheus.CounterOpts{Namespace: "horizon", Subsystem: "history", Name: "latest_ledger"},
 		func() float64 {
@@ -146,6 +162,17 @@ func initDbMetrics(app *App) {
 		},
 	)
 	app.prometheusRegistry.MustRegister(app.coreLatestLedgerCounter)
+
+	app.dbMaxOpenConnectionsGauge = prometheus.NewGaugeFunc(
+		prometheus.GaugeOpts{Namespace: "horizon", Subsystem: "db", Name: "max_open_connections"},
+		func() float64 {
+			// Right now MaxOpenConnections in Horizon is static however it's possible that
+			// it will change one day. In such case, using GaugeFunc is very cheap and will
+			// prevent issues with this metric in the future.
+			return float64(app.historyQ.Session.DB.Stats().MaxOpenConnections)
+		},
+	)
+	app.prometheusRegistry.MustRegister(app.dbMaxOpenConnectionsGauge)
 
 	app.dbOpenConnectionsGauge = prometheus.NewGaugeFunc(
 		prometheus.GaugeOpts{Namespace: "horizon", Subsystem: "db", Name: "open_connections"},
@@ -180,7 +207,7 @@ func initDbMetrics(app *App) {
 			Help: "total time blocked waiting for a new connection",
 		},
 		func() float64 {
-			return float64(app.historyQ.Session.DB.Stats().WaitDuration)
+			return app.historyQ.Session.DB.Stats().WaitDuration.Seconds()
 		},
 	)
 	app.prometheusRegistry.MustRegister(app.dbWaitDurationCounter)
@@ -195,6 +222,7 @@ func initIngestMetrics(app *App) {
 		return
 	}
 
+	app.ingestingGauge.Inc()
 	app.prometheusRegistry.MustRegister(app.expingester.Metrics().LedgerIngestionDuration)
 	app.prometheusRegistry.MustRegister(app.expingester.Metrics().StateVerifyDuration)
 	app.prometheusRegistry.MustRegister(app.expingester.Metrics().StateInvalidGauge)

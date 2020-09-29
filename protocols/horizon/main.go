@@ -416,7 +416,7 @@ type TradeAggregation struct {
 
 // PagingToken implementation for hal.Pageable. Not actually used
 func (res TradeAggregation) PagingToken() string {
-	return string(res.Timestamp)
+	return strconv.FormatInt(res.Timestamp, 10)
 }
 
 // Transaction represents a single, successful transaction

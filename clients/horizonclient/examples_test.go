@@ -1079,157 +1079,116 @@ func ExampleClient_StreamTransactions() {
 	}
 }
 
-// Action needed in release: horizonclient-v3.2.0
-// Uncomment fee bump examples when protocol 13 is enabled
-//func convertToV1Tx(tx *txnbuild.Transaction) (*txnbuild.Transaction, error) {
-//	// Action needed in release: horizonclient-v3.2.0
-//	// remove manual envelope type configuration because
-//	// once protocol 13 is enabled txnbuild will generate
-//	// v1 transaction envelopes by default
-//	innerTxEnvelope, err := tx.TxEnvelope()
-//	if err != nil {
-//		return nil, err
-//	}
-//
-//	innerTxEnvelope.V1 = &xdr.TransactionV1Envelope{
-//		Tx: xdr.Transaction{
-//			SourceAccount: innerTxEnvelope.SourceAccount(),
-//			Fee:           xdr.Uint32(innerTxEnvelope.Fee()),
-//			SeqNum:        xdr.SequenceNumber(innerTxEnvelope.SeqNum()),
-//			TimeBounds:    innerTxEnvelope.V0.Tx.TimeBounds,
-//			Memo:          innerTxEnvelope.Memo(),
-//			Operations:    innerTxEnvelope.Operations(),
-//		},
-//	}
-//	innerTxEnvelope.Type = xdr.EnvelopeTypeEnvelopeTypeTx
-//	innerTxEnvelope.V0 = nil
-//	innerTxEnvelopeB64, err := xdr.MarshalBase64(innerTxEnvelope)
-//	if err != nil {
-//		return nil, err
-//	}
-//
-//	parsed, err := txnbuild.TransactionFromXDR(innerTxEnvelopeB64)
-//	if err != nil {
-//		return nil, err
-//	}
-//	tx, _ = parsed.Transaction()
-//	return tx, nil
-//}
-//
-//func ExampleClient_SubmitFeeBumpTransaction() {
-//	kp := keypair.MustParseFull("SDQQUZMIPUP5TSDWH3UJYAKUOP55IJ4KTBXTY7RCOMEFRQGYA6GIR3OD")
-//	client := horizonclient.DefaultTestNetClient
-//	ar := horizonclient.AccountRequest{AccountID: kp.Address()}
-//	sourceAccount, err := client.AccountDetail(ar)
-//	if err != nil {
-//		return
-//	}
-//
-//	op := txnbuild.Payment{
-//		Destination: kp.Address(),
-//		Amount:      "1",
-//		Asset:       txnbuild.NativeAsset{},
-//	}
-//
-//	tx, err := txnbuild.NewTransaction(
-//		txnbuild.TransactionParams{
-//			SourceAccount:        &sourceAccount,
-//			IncrementSequenceNum: false,
-//			Operations:           []txnbuild.Operation{&op},
-//			BaseFee:              txnbuild.MinBaseFee,
-//			Timebounds:           txnbuild.NewInfiniteTimeout(), // Use a real timeout in production!
-//		},
-//	)
-//	if err != nil {
-//		fmt.Println(err)
-//		return
-//	}
-//	tx, err = tx.Sign(network.TestNetworkPassphrase, kp)
-//	if err != nil {
-//		fmt.Println(err)
-//		return
-//	}
-//
-//	tx, err = convertToV1Tx(tx)
-//	if err != nil {
-//		fmt.Println(err)
-//		return
-//	}
-//
-//	feeBumpKP := keypair.MustParseFull("SA5ZEFDVFZ52GRU7YUGR6EDPBNRU2WLA6IQFQ7S2IH2DG3VFV3DOMV2Q")
-//	feeBumpTx, err := txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
-//		Inner:      tx,
-//		FeeAccount: feeBumpKP.Address(),
-//		BaseFee:    txnbuild.MinBaseFee * 2,
-//	})
-//	feeBumpTx, err = feeBumpTx.Sign(network.TestNetworkPassphrase, feeBumpKP)
-//
-//	result, err := client.SubmitFeeBumpTransaction(feeBumpTx, horizonclient.SubmitTxOpts{})
-//	if err != nil {
-//		fmt.Println(err)
-//	}
-//
-//	fmt.Println(result)
-//}
-//
-//func ExampleClient_SubmitFeeBumpTransactionWithOptions() {
-//	kp := keypair.MustParseFull("SDQQUZMIPUP5TSDWH3UJYAKUOP55IJ4KTBXTY7RCOMEFRQGYA6GIR3OD")
-//	client := horizonclient.DefaultTestNetClient
-//	ar := horizonclient.AccountRequest{AccountID: kp.Address()}
-//	sourceAccount, err := client.AccountDetail(ar)
-//	if err != nil {
-//		return
-//	}
-//
-//	op := txnbuild.Payment{
-//		Destination: kp.Address(),
-//		Amount:      "1",
-//		Asset:       txnbuild.NativeAsset{},
-//	}
-//
-//	tx, err := txnbuild.NewTransaction(
-//		txnbuild.TransactionParams{
-//			SourceAccount:        &sourceAccount,
-//			IncrementSequenceNum: false,
-//			Operations:           []txnbuild.Operation{&op},
-//			BaseFee:              txnbuild.MinBaseFee,
-//			Timebounds:           txnbuild.NewInfiniteTimeout(), // Use a real timeout in production!
-//		},
-//	)
-//	if err != nil {
-//		fmt.Println(err)
-//		return
-//	}
-//	tx, err = tx.Sign(network.TestNetworkPassphrase, kp)
-//	if err != nil {
-//		fmt.Println(err)
-//		return
-//	}
-//
-//	tx, err = convertToV1Tx(tx)
-//	if err != nil {
-//		fmt.Println(err)
-//		return
-//	}
-//
-//	feeBumpKP := keypair.MustParseFull("SA5ZEFDVFZ52GRU7YUGR6EDPBNRU2WLA6IQFQ7S2IH2DG3VFV3DOMV2Q")
-//	feeBumpTx, err := txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
-//		Inner:      tx,
-//		FeeAccount: feeBumpKP.Address(),
-//		BaseFee:    txnbuild.MinBaseFee * 2,
-//	})
-//	feeBumpTx, err = feeBumpTx.Sign(network.TestNetworkPassphrase, feeBumpKP)
-//
-//	result, err := client.SubmitFeeBumpTransaction(
-//		feeBumpTx,
-//		horizonclient.SubmitTxOpts{SkipMemoRequiredCheck: true},
-//	)
-//	if err != nil {
-//		fmt.Println(err)
-//	}
-//
-//	fmt.Println(result)
-//}
+func ExampleClient_SubmitFeeBumpTransaction() {
+	kp := keypair.MustParseFull("SDQQUZMIPUP5TSDWH3UJYAKUOP55IJ4KTBXTY7RCOMEFRQGYA6GIR3OD")
+	client := horizonclient.DefaultTestNetClient
+	ar := horizonclient.AccountRequest{AccountID: kp.Address()}
+	sourceAccount, err := client.AccountDetail(ar)
+	if err != nil {
+		return
+	}
+
+	op := txnbuild.Payment{
+		Destination: kp.Address(),
+		Amount:      "1",
+		Asset:       txnbuild.NativeAsset{},
+	}
+
+	tx, err := txnbuild.NewTransaction(
+		txnbuild.TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: false,
+			Operations:           []txnbuild.Operation{&op},
+			BaseFee:              txnbuild.MinBaseFee,
+			Timebounds:           txnbuild.NewInfiniteTimeout(), // Use a real timeout in production!
+		},
+	)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	tx, err = tx.Sign(network.TestNetworkPassphrase, kp)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	feeBumpKP := keypair.MustParseFull("SA5ZEFDVFZ52GRU7YUGR6EDPBNRU2WLA6IQFQ7S2IH2DG3VFV3DOMV2Q")
+	feeBumpTx, err := txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
+		Inner:      tx,
+		FeeAccount: feeBumpKP.Address(),
+		BaseFee:    txnbuild.MinBaseFee * 2,
+	})
+	feeBumpTx, err = feeBumpTx.Sign(network.TestNetworkPassphrase, feeBumpKP)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	result, err := client.SubmitFeeBumpTransaction(feeBumpTx)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	fmt.Println(result)
+}
+
+func ExampleClient_SubmitFeeBumpTransactionWithOptions() {
+	kp := keypair.MustParseFull("SDQQUZMIPUP5TSDWH3UJYAKUOP55IJ4KTBXTY7RCOMEFRQGYA6GIR3OD")
+	client := horizonclient.DefaultTestNetClient
+	ar := horizonclient.AccountRequest{AccountID: kp.Address()}
+	sourceAccount, err := client.AccountDetail(ar)
+	if err != nil {
+		return
+	}
+
+	op := txnbuild.Payment{
+		Destination: kp.Address(),
+		Amount:      "1",
+		Asset:       txnbuild.NativeAsset{},
+	}
+
+	tx, err := txnbuild.NewTransaction(
+		txnbuild.TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: false,
+			Operations:           []txnbuild.Operation{&op},
+			BaseFee:              txnbuild.MinBaseFee,
+			Timebounds:           txnbuild.NewInfiniteTimeout(), // Use a real timeout in production!
+		},
+	)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	tx, err = tx.Sign(network.TestNetworkPassphrase, kp)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	feeBumpKP := keypair.MustParseFull("SA5ZEFDVFZ52GRU7YUGR6EDPBNRU2WLA6IQFQ7S2IH2DG3VFV3DOMV2Q")
+	feeBumpTx, err := txnbuild.NewFeeBumpTransaction(txnbuild.FeeBumpTransactionParams{
+		Inner:      tx,
+		FeeAccount: feeBumpKP.Address(),
+		BaseFee:    txnbuild.MinBaseFee * 2,
+	})
+	feeBumpTx, err = feeBumpTx.Sign(network.TestNetworkPassphrase, feeBumpKP)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	result, err := client.SubmitFeeBumpTransactionWithOptions(
+		feeBumpTx,
+		horizonclient.SubmitTxOpts{SkipMemoRequiredCheck: true},
+	)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	fmt.Println(result)
+}
 
 func ExampleClient_SubmitTransaction() {
 	kp := keypair.MustParseFull("SDQQUZMIPUP5TSDWH3UJYAKUOP55IJ4KTBXTY7RCOMEFRQGYA6GIR3OD")
