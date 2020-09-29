@@ -15,12 +15,9 @@ Also:
 ### Breaking changes
 
 * Dropped support for Go 1.13.
-* Replace `BuildChallengeTx()`'s `anchorName string` parameter with `homeDomain string`
-* Add `homeDomain string` parameter to `ReadChallengeTx()`, `VerifyChallengeTxThreshold()`, and `VerifyChallengeTxSigners()`
-
-SEP-10 now requires clients to verify the `SIGNING_KEY` included in the TOML file of the service requiring authentication is used to sign the challenge and that the challenge's Manage Data operation key includes the requested service's home domain. These checks ensure the challenge cannot be used in a relay attack.
-
-The breaking changes described above support the added SEP-10 2.0 requirements for both servers and clients.
+* Add support for SEP-10 v2.0.0.
+  * Replace `BuildChallengeTx`'s `anchorName` parameter with `homeDomain`.
+  * Add `homeDomain` parameter to `ReadChallengeTx`, `VerifyChallengeTxThreshold`, and `VerifyChallengeTxSigners`.
 
 ## [v3.2.0](https://github.com/stellar/go/releases/tag/horizonclient-v3.2.0) - 2020-06-18
 
