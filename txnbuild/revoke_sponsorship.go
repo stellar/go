@@ -25,12 +25,12 @@ const (
 type RevokeSponsorship struct {
 	SourceAccount   Account
 	SponsorshipType RevokeSponsorshipType
-	// Account Id (strkey)
+	// Account ID (strkey)
 	Account   *string
 	TrustLine *TrustLineID
 	Offer     *OfferID
 	Data      *DataID
-	// Claimable Balance Id
+	// Claimable Balance ID
 	ClaimableBalance *string
 	Signer           *SignerID
 }

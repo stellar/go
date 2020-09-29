@@ -163,7 +163,7 @@ const (
 
 	// EffectClaimableBalanceSponsorshipRemoved occurs when the sponsorship of a claimable balance ledger entry
 	// is removed
-	EffectClaimableBalanceSponsorshipRemoved EffectType = 71 // from revoke_sponsorship
+	EffectClaimableBalanceSponsorshipRemoved EffectType = 71 // from claim_claimable_balance
 
 	// EffectSignerSponsorshipCreated occurs when the sponsorship of a signer is created
 	EffectSignerSponsorshipCreated EffectType = 72 // from set_options

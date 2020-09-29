@@ -256,7 +256,7 @@ type RevokeSponsorship struct {
 	ClaimableBalanceID *string `json:"claimable_balance_id,omitempty"`
 	DataAccountID      *string `json:"data_account_id,omitempty"`
 	DataName           *string `json:"data_name,omitempty"`
-	OfferID            *string `json:"offer_id,omitempty"`
+	OfferID            *int64  `json:"offer_id,omitempty,string"`
 	TrustlineAccountID *string `json:"trustline_account_id,omitempty"`
 	TrustlineAsset     *string `json:"trustline_asset,omitempty"`
 	SignerAccountID    *string `json:"signer_account_id,omitempty"`

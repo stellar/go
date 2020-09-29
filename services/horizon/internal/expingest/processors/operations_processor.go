@@ -489,7 +489,7 @@ func addLedgerKeyDetails(result map[string]interface{}, ledgerKey xdr.LedgerKey)
 		result["data_account_id"] = ledgerKey.Data.AccountId.Address()
 		result["data_name"] = ledgerKey.Data.DataName
 	case xdr.LedgerEntryTypeOffer:
-		result["offer_id"] = ledgerKey.Offer.OfferId
+		result["offer_id"] = fmt.Sprintf("%d", ledgerKey.Offer.OfferId)
 	case xdr.LedgerEntryTypeTrustline:
 		result["trustline_account_id"] = ledgerKey.TrustLine.AccountId.Address()
 		result["trustline_asset"] = ledgerKey.TrustLine.Asset.StringCanonical()

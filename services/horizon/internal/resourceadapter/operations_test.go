@@ -375,3 +375,27 @@ func TestFeeBumpOperation(t *testing.T) {
 	assert.Equal(t, transactionRow.TransactionHash, dest.Transaction.FeeBumpTransaction.Hash)
 	assert.Equal(t, []string{"a", "b", "c"}, dest.Transaction.FeeBumpTransaction.Signatures)
 }
+
+func TestPopulateOperation_OperationTypeManageSellOffer(t *testing.T) {
+	tt := assert.New(t)
+
+	details := `{
+		"offer_id": 1000
+	}`
+
+	resp, err := getJSONResponse(xdr.OperationTypeManageSellOffer, details)
+	tt.NoError(err)
+	tt.Equal("1000", resp["offer_id"])
+}
+
+func TestPopulateOperation_OperationTypeManageBuyOffer(t *testing.T) {
+	tt := assert.New(t)
+
+	details := `{
+		"offer_id": 1000
+	}`
+
+	resp, err := getJSONResponse(xdr.OperationTypeManageBuyOffer, details)
+	tt.NoError(err)
+	tt.Equal("1000", resp["offer_id"])
+}
