@@ -3,12 +3,13 @@
 All notable changes to this project will be documented in this
 file.  This project adheres to [Semantic Versioning](http://semver.org/).
 
-## Unrelease
+## Unreleased
 Updated to support [Protocol 14](https://github.com/stellar/go/issues/3035) operations. There are now ways to:
 
 * Create and claim claimable balance operations (see [CAP-23](https://github.com/stellar/stellar-protocol/blob/master/core/cap-0023.md)) with the `[Create|Claim]ClaimableBalance` structures and their associated helpers
 * Begin/end sponsoring future reserves for other accounts (see [CAP-33](https://github.com/stellar/stellar-protocol/blob/master/core/cap-0033.md)) with the `[Begin|End]SponsoringFutureReserves` operations
 * Revoke sponsorships of various objects with the `RevokeSponsorship` operation
+* Dropped support for Go 1.13.
 
 ## [v4.0.0](https://github.com/stellar/go/releases/tag/horizonclient-v4.0.0) - 2020-08-31
 
