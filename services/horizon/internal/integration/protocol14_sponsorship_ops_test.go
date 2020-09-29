@@ -490,10 +490,10 @@ func TestSponsoredTrustlineAndOffer(t *testing.T) {
 	// Verify that the offer was incorporated correctly
 	var offer protocol.Offer
 	offerAdded := func() bool {
-		offers, err := itest.Client().Offers(sdk.OfferRequest{
+		offers, e := itest.Client().Offers(sdk.OfferRequest{
 			ForAccount: newAccountPair.Address(),
 		})
-		tt.NoError(err)
+		tt.NoError(e)
 		if len(offers.Embedded.Records) == 1 {
 			offer = offers.Embedded.Records[0]
 			tt.Equal(sponsorPair.Address(), offer.Buying.Issuer)
