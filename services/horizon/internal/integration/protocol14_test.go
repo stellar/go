@@ -22,7 +22,6 @@ func TestProtocol14Basics(t *testing.T) {
 	tt := assert.New(t)
 
 	itest := test.NewIntegrationTest(t, protocol14Config)
-	defer itest.Close()
 	master := itest.Master()
 
 	root, err := itest.Client().Root()
@@ -44,8 +43,6 @@ func TestProtocol14Basics(t *testing.T) {
 
 func TestHappyClaimableBalances(t *testing.T) {
 	itest := test.NewIntegrationTest(t, protocol14Config)
-	defer itest.Close()
-
 	master, client := itest.Master(), itest.Client()
 
 	keys, accounts := itest.CreateAccounts(3, "1000")
@@ -238,7 +235,6 @@ func TestHappyClaimableBalances(t *testing.T) {
 // We want to ensure that users can't claim the same claimable balance twice.
 func TestDoubleClaim(t *testing.T) {
 	itest := test.NewIntegrationTest(t, protocol14Config)
-	defer itest.Close()
 	client := itest.Client()
 
 	// Create a couple of accounts to test the interactions.
@@ -299,7 +295,6 @@ func TestDoubleClaim(t *testing.T) {
 
 func TestClaimableBalancePredicates(t *testing.T) {
 	itest := test.NewIntegrationTest(t, protocol14Config)
-	defer itest.Close()
 	_, client := itest.Master(), itest.Client()
 
 	// Create a couple of accounts to test the interactions.

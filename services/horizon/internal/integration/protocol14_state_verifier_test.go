@@ -16,7 +16,6 @@ import (
 
 func TestProtocol14StateVerifier(t *testing.T) {
 	itest := test.NewIntegrationTest(t, protocol14Config)
-	defer itest.Close()
 
 	sponsored := keypair.MustRandom()
 	sponsoredSource := &txnbuild.SimpleAccount{

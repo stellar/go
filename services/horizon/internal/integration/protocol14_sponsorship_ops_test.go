@@ -20,7 +20,6 @@ import (
 func TestSponsoredAccount(t *testing.T) {
 	tt := assert.New(t)
 	itest := test.NewIntegrationTest(t, protocol14Config)
-	defer itest.Close()
 	sponsor := itest.MasterAccount
 	sponsorPair := itest.Master()
 
@@ -214,7 +213,6 @@ func TestSponsoredAccount(t *testing.T) {
 func TestSponsoredSigner(t *testing.T) {
 	tt := assert.New(t)
 	itest := test.NewIntegrationTest(t, protocol14Config)
-	defer itest.Close()
 	sponsorPair := itest.Master()
 	sponsor := itest.MasterAccount
 
@@ -376,7 +374,6 @@ func TestSponsoredSigner(t *testing.T) {
 func TestSponsoredPreAuthSigner(t *testing.T) {
 	tt := assert.New(t)
 	itest := test.NewIntegrationTest(t, protocol14Config)
-	defer itest.Close()
 	sponsorPair := itest.Master()
 	sponsor := itest.MasterAccount
 
@@ -526,7 +523,6 @@ func TestSponsoredPreAuthSigner(t *testing.T) {
 func TestSponsoredData(t *testing.T) {
 	tt := assert.New(t)
 	itest := test.NewIntegrationTest(t, protocol14Config)
-	defer itest.Close()
 	sponsorPair := itest.Master()
 	sponsor := itest.MasterAccount
 
@@ -683,7 +679,6 @@ func TestSponsoredData(t *testing.T) {
 func TestSponsoredTrustlineAndOffer(t *testing.T) {
 	tt := assert.New(t)
 	itest := test.NewIntegrationTest(t, protocol14Config)
-	defer itest.Close()
 	sponsorPair := itest.Master()
 	sponsor := itest.MasterAccount
 
@@ -884,7 +879,6 @@ func TestSponsoredTrustlineAndOffer(t *testing.T) {
 func TestSponsoredClaimableBalance(t *testing.T) {
 	tt := assert.New(t)
 	itest := test.NewIntegrationTest(t, protocol14Config)
-	defer itest.Close()
 	sponsorPair := itest.Master()
 	sponsor := itest.MasterAccount
 

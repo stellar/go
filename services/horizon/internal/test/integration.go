@@ -7,7 +7,9 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"os/signal"
 	"strconv"
+	"syscall"
 	"testing"
 	"time"
 
@@ -155,6 +157,18 @@ func NewIntegrationTest(t *testing.T, config IntegrationConfig) *IntegrationTest
 
 	doCleanup = false
 	i.hclient = &sdk.Client{HorizonURL: "http://localhost:8000"}
+
+	// Register cleanup handlers (on panic and ctrl+c) so the container is
+	// removed even if ingestion or testing fails.
+	i.t.Cleanup(i.Close)
+	c := make(chan os.Signal)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-c
+		i.Close()
+		os.Exit(0)
+	}()
+
 	i.waitForIngestionAndUpgrade()
 	return i
 }
@@ -221,19 +235,16 @@ func (i *IntegrationTest) Close() {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
-	var err error
 	skipCreation := os.Getenv("HORIZON_SKIP_CREATION") != ""
 	if !skipCreation {
 		i.t.Logf("Removing container %s\n", i.container.ID)
-		err = i.cli.ContainerRemove(
+		i.cli.ContainerRemove(
 			ctx, i.container.ID,
 			types.ContainerRemoveOptions{Force: true})
 	} else {
 		i.t.Logf("Stopping container %s\n", i.container.ID)
-		err = i.cli.ContainerStop(ctx, i.container.ID, nil)
+		i.cli.ContainerStop(ctx, i.container.ID, nil)
 	}
-
-	panicIf(err)
 }
 
 func createTestContainer(i *IntegrationTest, image string) error {
