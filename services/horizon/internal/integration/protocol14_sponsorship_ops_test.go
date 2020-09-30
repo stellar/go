@@ -17,6 +17,30 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
+func sponsorOperations(account string, ops ...txnbuild.Operation) []txnbuild.Operation {
+	return append(append(
+		[]txnbuild.Operation{
+			&txnbuild.BeginSponsoringFutureReserves{SponsoredID: account},
+		},
+		ops...),
+		&txnbuild.EndSponsoringFutureReserves{
+			SourceAccount: &txnbuild.SimpleAccount{AccountID: account},
+		},
+	)
+}
+
+func findOperationByID(needle string, haystack []operations.Operation) func() bool {
+	// usable by assert.Condition
+	return func() bool {
+		for _, o := range haystack {
+			if o.GetID() == needle {
+				return true
+			}
+		}
+		return false
+	}
+}
+
 func TestSponsorships(t *testing.T) {
 	tt := assert.New(t)
 	itest := test.NewIntegrationTest(t, protocol14Config)
@@ -34,21 +58,11 @@ func TestSponsorships(t *testing.T) {
 	t.Run("CreateAccount", func(t *testing.T) {
 		newAccountPair := keypair.MustRandom()
 
-		ops := []txnbuild.Operation{
-			&txnbuild.BeginSponsoringFutureReserves{
-				SponsoredID: newAccountPair.Address(),
-			},
-
+		ops := sponsorOperations(newAccountPair.Address(),
 			&txnbuild.CreateAccount{
 				Destination: newAccountPair.Address(),
 				Amount:      "1000",
-			},
-			&txnbuild.EndSponsoringFutureReserves{
-				SourceAccount: &txnbuild.SimpleAccount{
-					AccountID: newAccountPair.Address(),
-				},
-			},
-		}
+			})
 
 		signers := []*keypair.Full{sponsorPair, newAccountPair}
 		txResp, err := itest.SubmitMultiSigOperations(sponsor(), signers, ops...)
@@ -72,26 +86,14 @@ func TestSponsorships(t *testing.T) {
 		// Make sure that the sponsor is an (implicit) participant on the end
 		// sponsorship operation
 
-		response, err = client.Operations(sdk.OperationRequest{
-			ForAccount: sponsorPair.Address(),
-		})
-		tt.NoError(err)
-
-		endSponsorshipPresent := func() bool {
-			for _, o := range response.Embedded.Records {
-				if o.GetID() == endSponsoringOp.ID {
-					return true
-				}
-			}
-			return false
-		}
-		tt.Condition(endSponsorshipPresent)
+		response, err = client.Operations(sdk.OperationRequest{ForAccount: sponsorPair.Address()})
+		tt.Condition(findOperationByID(endSponsoringOp.ID, response.Embedded.Records))
 
 		// Check numSponsoring and numSponsored values
 		account := itest.MustGetAccount(sponsorPair)
-		tt.EqualValues(1, account.NumSponsoring)
+		tt.EqualValues(2, account.NumSponsoring)
 		account = itest.MustGetAccount(newAccountPair)
-		tt.EqualValues(1, account.NumSponsored)
+		tt.EqualValues(2, account.NumSponsored)
 
 		// Check effects of CreateAccount Operation
 		effectsResponse, err := client.Effects(sdk.EffectRequest{
@@ -106,15 +108,12 @@ func TestSponsorships(t *testing.T) {
 		// Update sponsor
 
 		accountToRevoke := newAccountPair.Address()
-		pairs, _ := itest.CreateAccounts(1, "1000")
-		newSponsorPair := pairs[0]
-		newSponsor := func() txnbuild.Account {
-			account := itest.MustGetAccount(newSponsorPair)
-			return &account
-		}
+		pairs, accounts := itest.CreateAccounts(1, "1000")
+		newSponsorPair, newSponsor := pairs[0], accounts[0]
+
 		ops = []txnbuild.Operation{
 			&txnbuild.BeginSponsoringFutureReserves{
-				SourceAccount: newSponsor(),
+				SourceAccount: newSponsor,
 				SponsoredID:   sponsorPair.Address(),
 			},
 			&txnbuild.RevokeSponsorship{
@@ -124,6 +123,7 @@ func TestSponsorships(t *testing.T) {
 			},
 			&txnbuild.EndSponsoringFutureReserves{},
 		}
+
 		signers = []*keypair.Full{sponsorPair, newSponsorPair}
 		txResp, err = itest.SubmitMultiSigOperations(sponsor(), signers, ops...)
 		itest.LogFailedTx(txResp, err)
@@ -158,7 +158,7 @@ func TestSponsorships(t *testing.T) {
 			SponsorshipType: txnbuild.RevokeSponsorshipTypeAccount,
 			Account:         &accountToRevoke,
 		}
-		txResp = itest.MustSubmitOperations(newSponsor(), newSponsorPair, op)
+		txResp = itest.MustSubmitOperations(newSponsor, newSponsorPair, op)
 
 		// Verify operation details
 		response, err = client.Operations(sdk.OperationRequest{
@@ -172,21 +172,10 @@ func TestSponsorships(t *testing.T) {
 		revokeOp = opRecords[0].(operations.RevokeSponsorship)
 		tt.Equal(accountToRevoke, *revokeOp.AccountID)
 
-		// Make sure that the sponsoree is an (implicit) participant in the revocation operation
-		response, err = client.Operations(sdk.OperationRequest{
-			ForAccount: newAccountPair.Address(),
-		})
-		tt.NoError(err)
-
-		sponsorshipRevocationPresent := func() bool {
-			for _, o := range response.Embedded.Records {
-				if o.GetID() == revokeOp.ID {
-					return true
-				}
-			}
-			return false
-		}
-		tt.Condition(sponsorshipRevocationPresent)
+		// Make sure that the sponsoree is an (implicit) participant in the
+		// revocation operation
+		response, err = client.Operations(sdk.OperationRequest{ForAccount: newAccountPair.Address()})
+		tt.Condition(findOperationByID(revokeOp.ID, response.Embedded.Records))
 
 		// Check effects
 		effectsResponse, err = client.Effects(sdk.EffectRequest{ForOperation: revokeOp.ID})
@@ -203,31 +192,19 @@ func TestSponsorships(t *testing.T) {
 	//   SetOptionsSigner (Source=N)
 	// EndSponsorship (Source=N)
 	t.Run("Signer", func(t *testing.T) {
-		pairs, _ := itest.CreateAccounts(1, "1000")
-		newAccountPair := pairs[0]
-		newAccount := func() txnbuild.Account {
-			account := itest.MustGetAccount(newAccountPair)
-			return &account
-		}
+		pairs, accounts := itest.CreateAccounts(1, "1000")
+		newAccountPair, newAccount := pairs[0], accounts[0]
 
 		// unspecific signer
-		signerKey := "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"
+		signerKey := keypair.MustRandom().Address()
 
-		ops := []txnbuild.Operation{
-			&txnbuild.BeginSponsoringFutureReserves{
-				SponsoredID: newAccountPair.Address(),
+		ops := sponsorOperations(newAccountPair.Address(), &txnbuild.SetOptions{
+			SourceAccount: newAccount,
+			Signer: &txnbuild.Signer{
+				Address: signerKey,
+				Weight:  1,
 			},
-			&txnbuild.SetOptions{
-				SourceAccount: newAccount(),
-				Signer: &txnbuild.Signer{
-					Address: signerKey,
-					Weight:  1,
-				},
-			},
-			&txnbuild.EndSponsoringFutureReserves{
-				SourceAccount: newAccount(),
-			},
-		}
+		})
 
 		signers := []*keypair.Full{sponsorPair, newAccountPair}
 		txResp, err := itest.SubmitMultiSigOperations(sponsor(), signers, ops...)
@@ -235,7 +212,7 @@ func TestSponsorships(t *testing.T) {
 
 		// Verify that the signer was incorporated
 		signerAdded := func() bool {
-			signers := newAccount().(*protocol.Account).Signers
+			signers := newAccount.(*protocol.Account).Signers
 			for _, signer := range signers {
 				if signer.Key == signerKey {
 					tt.Equal(sponsorPair.Address(), signer.Sponsor)
@@ -259,26 +236,22 @@ func TestSponsorships(t *testing.T) {
 			ForOperation: setOptionsOp.GetID(),
 		})
 		tt.NoError(err)
-		if tt.Len(effectsResponse.Embedded.Records, 2) {
-			signerSponsorshipEffect := effectsResponse.Embedded.Records[1].(effects.SignerSponsorshipCreated)
-			tt.Equal(sponsorPair.Address(), signerSponsorshipEffect.Sponsor)
-			tt.Equal(newAccountPair.Address(), signerSponsorshipEffect.Account)
-			tt.Equal(signerKey, signerSponsorshipEffect.Signer)
-		}
+		allEffects := effectsResponse.Embedded.Records
+		tt.Len(allEffects, 2)
+
+		signerSponsorshipEffect := allEffects[1].(effects.SignerSponsorshipCreated)
+		tt.Equal(sponsorPair.Address(), signerSponsorshipEffect.Sponsor)
+		tt.Equal(newAccountPair.Address(), signerSponsorshipEffect.Account)
+		tt.Equal(signerKey, signerSponsorshipEffect.Signer)
 
 		// Update sponsor
 
-		pairs, _ = itest.CreateAccounts(1, "1000")
-		newSponsorPair := pairs[0]
-		newSponsor := func() txnbuild.Account {
-			request := sdk.AccountRequest{AccountID: newSponsorPair.Address()}
-			account, e := client.AccountDetail(request)
-			tt.NoError(e)
-			return &account
-		}
+		pairs, accounts = itest.CreateAccounts(1, "1000")
+		newSponsorPair, newSponsor := pairs[0], accounts[0]
+
 		ops = []txnbuild.Operation{
 			&txnbuild.BeginSponsoringFutureReserves{
-				SourceAccount: newSponsor(),
+				SourceAccount: newSponsor,
 				SponsoredID:   sponsorPair.Address(),
 			},
 			&txnbuild.RevokeSponsorship{
@@ -290,6 +263,7 @@ func TestSponsorships(t *testing.T) {
 			},
 			&txnbuild.EndSponsoringFutureReserves{},
 		}
+
 		signers = []*keypair.Full{sponsorPair, newSponsorPair}
 		txResp, err = itest.SubmitMultiSigOperations(sponsor(), signers, ops...)
 		itest.LogFailedTx(txResp, err)
@@ -327,11 +301,9 @@ func TestSponsorships(t *testing.T) {
 				SignerAddress: signerKey,
 			},
 		}
-		txResp = itest.MustSubmitOperations(newSponsor(), newSponsorPair, &revoke)
+		txResp = itest.MustSubmitOperations(newSponsor, newSponsorPair, &revoke)
 
-		effectsResponse, err = client.Effects(sdk.EffectRequest{
-			ForTransaction: txResp.ID,
-		})
+		effectsResponse, err = client.Effects(sdk.EffectRequest{ForTransaction: txResp.ID})
 		tt.NoError(err)
 		tt.Len(effectsResponse.Embedded.Records, 1)
 		sponsorshipRemoved := effectsResponse.Embedded.Records[0].(effects.SignerSponsorshipRemoved)
@@ -350,30 +322,17 @@ func TestSponsorships(t *testing.T) {
 		newAccountPair, err := keypair.Random()
 		tt.NoError(err)
 
-		ops := []txnbuild.Operation{
-			&txnbuild.BeginSponsoringFutureReserves{
-				SponsoredID: newAccountPair.Address(),
-			},
-
+		ops := sponsorOperations(newAccountPair.Address(),
 			&txnbuild.CreateAccount{
 				Destination: newAccountPair.Address(),
 				Amount:      "1000",
-			},
-			&txnbuild.EndSponsoringFutureReserves{
-				SourceAccount: &txnbuild.SimpleAccount{
-					AccountID: newAccountPair.Address(),
-				},
-			},
-		}
+			})
 
 		signers := []*keypair.Full{sponsorPair, newAccountPair}
 		txResp, err := itest.SubmitMultiSigOperations(sponsor(), signers, ops...)
 		itest.LogFailedTx(txResp, err)
 
-		response, err := client.Operations(sdk.OperationRequest{
-			Order: "desc",
-			Limit: 3,
-		})
+		response, err := client.Operations(sdk.OperationRequest{Order: "desc", Limit: 3})
 		opRecords := response.Embedded.Records
 		tt.NoError(err)
 		tt.Len(opRecords, 3)
@@ -394,20 +353,9 @@ func TestSponsorships(t *testing.T) {
 		// sponsorship operation
 		//
 
-		response, err = client.Operations(sdk.OperationRequest{
-			ForAccount: sponsorPair.Address(),
-		})
+		response, err = client.Operations(sdk.OperationRequest{ForAccount: sponsorPair.Address()})
 		tt.NoError(err)
-
-		endSponsorshipPresent := func() bool {
-			for _, o := range response.Embedded.Records {
-				if o.GetID() == endSponsoringOp.ID {
-					return true
-				}
-			}
-			return false
-		}
-		tt.Condition(endSponsorshipPresent)
+		tt.Condition(findOperationByID(endSponsoringOp.ID, response.Embedded.Records))
 
 		// Check numSponsoring and numSponsored
 		account := itest.MustGetAccount(sponsorPair)
@@ -428,16 +376,12 @@ func TestSponsorships(t *testing.T) {
 		// Update sponsor
 
 		accountToRevoke := newAccountPair.Address()
-		pairs, _ := itest.CreateAccounts(1, "1000")
-		newSponsorPair := pairs[0]
-		newSponsor := func() txnbuild.Account {
-			account := itest.MustGetAccount(newSponsorPair)
-			return &account
-		}
+		pairs, accounts := itest.CreateAccounts(1, "1000")
+		newSponsorPair, newSponsor := pairs[0], accounts[0]
 
 		ops = []txnbuild.Operation{
 			&txnbuild.BeginSponsoringFutureReserves{
-				SourceAccount: newSponsor(),
+				SourceAccount: newSponsor,
 				SponsoredID:   sponsorPair.Address(),
 			},
 			&txnbuild.RevokeSponsorship{
@@ -479,7 +423,7 @@ func TestSponsorships(t *testing.T) {
 			SponsorshipType: txnbuild.RevokeSponsorshipTypeAccount,
 			Account:         &accountToRevoke,
 		}
-		txResp = itest.MustSubmitOperations(newSponsor(), newSponsorPair, op)
+		txResp = itest.MustSubmitOperations(newSponsor, newSponsorPair, op)
 
 		// Verify operation details
 		response, err = client.Operations(sdk.OperationRequest{
@@ -498,16 +442,7 @@ func TestSponsorships(t *testing.T) {
 			ForAccount: newAccountPair.Address(),
 		})
 		tt.NoError(err)
-
-		sponsorshipRevocationPresent := func() bool {
-			for _, o := range response.Embedded.Records {
-				if o.GetID() == revokeOp.ID {
-					return true
-				}
-			}
-			return false
-		}
-		tt.Condition(sponsorshipRevocationPresent)
+		tt.Condition(findOperationByID(revokeOp.ID, response.Embedded.Records))
 
 		// Check effects
 		effectsResponse, err = client.Effects(sdk.EffectRequest{ForOperation: revokeOp.ID})
