@@ -22,11 +22,13 @@ func TestProtocol14StateVerifier(t *testing.T) {
 		AccountID: sponsored.Address(),
 		Sequence:  1,
 	}
-	signer := keypair.MustRandom()
+	signer1 := keypair.MustParseAddress("GAB3CVX6C2KCDZUUS4FIMP5Z2IUDTMKMRKADOFOCNOB437VCPS5DRG3Z")
+	signer2 := keypair.MustParseAddress("GBUERII77FW6Z7SPOIMFQQT63PMUQRWTIAARR3QVSXTRULNQSUQVIYRC")
+	signer3 := keypair.MustParseAddress("GCNLAKGPBL4H6CQRITHSDTJZ6RLTP3WY2OJZJN4EWKRSNM2A23CV6VD3")
 
 	// The operations below create a sponsorship sandwich, sponsoring an
 	// account, its trustlines, offers, data, and claimable balances.
-	// TODO multiple signers and a sponsor at non-first position
+	// Then 3 signers are created with the middle one sponsored.
 	master := itest.Master()
 	ops := []txnbuild.Operation{
 		&txnbuild.BeginSponsoringFutureReserves{
@@ -34,10 +36,6 @@ func TestProtocol14StateVerifier(t *testing.T) {
 		},
 		&txnbuild.CreateAccount{
 			Destination: sponsored.Address(),
-			Amount:      "100",
-		},
-		&txnbuild.CreateAccount{
-			Destination: signer.Address(),
 			Amount:      "100",
 		},
 		&txnbuild.ChangeTrust{
@@ -65,15 +63,35 @@ func TestProtocol14StateVerifier(t *testing.T) {
 				txnbuild.NewClaimant(keypair.MustRandom().Address(), nil),
 			},
 		},
+		&txnbuild.EndSponsoringFutureReserves{
+			SourceAccount: sponsoredSource,
+		},
 		&txnbuild.SetOptions{
 			SourceAccount: sponsoredSource,
 			Signer: &txnbuild.Signer{
-				Address: signer.Address(),
+				Address: signer1.Address(),
+				Weight:  3,
+			},
+		},
+		&txnbuild.BeginSponsoringFutureReserves{
+			SponsoredID: sponsored.Address(),
+		},
+		&txnbuild.SetOptions{
+			SourceAccount: sponsoredSource,
+			Signer: &txnbuild.Signer{
+				Address: signer2.Address(),
 				Weight:  3,
 			},
 		},
 		&txnbuild.EndSponsoringFutureReserves{
 			SourceAccount: sponsoredSource,
+		},
+		&txnbuild.SetOptions{
+			SourceAccount: sponsoredSource,
+			Signer: &txnbuild.Signer{
+				Address: signer3.Address(),
+				Weight:  3,
+			},
 		},
 	}
 	txResp, err := itest.SubmitMultiSigOperations(itest.MasterAccount(), []*keypair.Full{master, sponsored}, ops...)
