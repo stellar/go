@@ -8,6 +8,9 @@ keystore:
 ticker:
 	$(MAKE) -C services/ticker/ docker-build
 
+friendbot:
+	$(MAKE) -C services/friendbot/ docker-build
+
 webauth:
 	$(MAKE) -C exp/services/webauth/ docker-build
 
