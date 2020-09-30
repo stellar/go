@@ -46,86 +46,91 @@ func TestSponsorships(t *testing.T) {
 	itest := test.NewIntegrationTest(t, protocol14Config)
 	client := itest.Client()
 
+	//
 	// Each test has its own sponsor and sponsoree (or is it sponsee?
 	// :thinking:) so that we can do direct equality checks.
-
-	sponsor, sponsorPair := itest.MasterAccount, itest.Master()
+	//
+	// Each sub-test follows a similar structure:
+	//   - sponsor a particular operation
+	//   - replace the sponsor with a new one
+	//   - revoke the sponsorship
+	//
+	// Between each step, we validate /operations, /effects, etc.
+	//
 
 	// We will create the following operation structure:
 	// BeginSponsoringFutureReserves A
 	//   CreateAccount A
 	// EndSponsoringFutureReserves (with A as a source)
 	t.Run("CreateAccount", func(t *testing.T) {
-		newAccountPair := keypair.MustRandom()
+		keys, accounts := itest.CreateAccounts(2, "1000")
+		sponsor, sponsorPair := accounts[0], keys[0]
+		newAccountKeys := keypair.MustRandom()
+		newAccountID := newAccountKeys.Address()
 
-		ops := sponsorOperations(newAccountPair.Address(),
+		t.Logf("Testing sponsorship of CreateAccount operation")
+		ops := sponsorOperations(newAccountID,
 			&txnbuild.CreateAccount{
-				Destination: newAccountPair.Address(),
-				Amount:      "1000",
+				Destination: newAccountID,
+				Amount:      "100",
 			})
 
-		signers := []*keypair.Full{sponsorPair, newAccountPair}
-		txResp, err := itest.SubmitMultiSigOperations(sponsor(), signers, ops...)
+		signers := []*keypair.Full{sponsorPair, newAccountKeys}
+		txResp, err := itest.SubmitMultiSigOperations(sponsor, signers, ops...)
 		itest.LogFailedTx(txResp, err)
 
-		response, err := client.Operations(sdk.OperationRequest{Order: "asc"})
-		tt.NoError(err)
+		// Ensure that the last 3 operations are in fact the droids we're looking for
+		response, err := client.Operations(sdk.OperationRequest{Order: "desc", Limit: 3})
 		opRecords := response.Embedded.Records
 		tt.Len(opRecords, 3)
 		tt.True(opRecords[0].IsTransactionSuccessful())
 
-		// Verify operation details
-		startSponsoringOp := opRecords[0].(operations.BeginSponsoringFutureReserves)
+		endSponsoringOp := opRecords[0].(operations.EndSponsoringFutureReserves)
 		actualCreateAccount := opRecords[1].(operations.CreateAccount)
-		endSponsoringOp := opRecords[2].(operations.EndSponsoringFutureReserves)
+		startSponsoringOp := opRecords[2].(operations.BeginSponsoringFutureReserves)
 
-		tt.Equal(newAccountPair.Address(), startSponsoringOp.SponsoredID)
+		tt.Equal(newAccountID, startSponsoringOp.SponsoredID)
 		tt.Equal(sponsorPair.Address(), actualCreateAccount.Sponsor)
 		tt.Equal(sponsorPair.Address(), endSponsoringOp.BeginSponsor)
 
 		// Make sure that the sponsor is an (implicit) participant on the end
 		// sponsorship operation
-
 		response, err = client.Operations(sdk.OperationRequest{ForAccount: sponsorPair.Address()})
 		tt.Condition(findOperationByID(endSponsoringOp.ID, response.Embedded.Records))
+		t.Logf("  operations accurate")
 
-		// Check numSponsoring and numSponsored values
-		account := itest.MustGetAccount(sponsorPair)
-		tt.EqualValues(2, account.NumSponsoring)
-		account = itest.MustGetAccount(newAccountPair)
-		tt.EqualValues(2, account.NumSponsored)
+		// Check that the num_sponsoring and num_sponsored fields are accurate
+		tt.EqualValues(2, itest.MustGetAccount(sponsorPair).NumSponsoring)
+		tt.EqualValues(2, itest.MustGetAccount(newAccountKeys).NumSponsored)
+		t.Logf("  accounts accurate")
 
 		// Check effects of CreateAccount Operation
-		effectsResponse, err := client.Effects(sdk.EffectRequest{
-			ForOperation: opRecords[1].GetID(),
-		})
-		tt.NoError(err)
+		effectsResponse, err := client.Effects(sdk.EffectRequest{ForOperation: opRecords[1].GetID()})
 		effectRecords := effectsResponse.Embedded.Records
 		tt.Len(effectRecords, 4)
 		tt.IsType(effects.AccountSponsorshipCreated{}, effectRecords[3])
 		tt.Equal(sponsorPair.Address(), effectRecords[3].(effects.AccountSponsorshipCreated).Sponsor)
+		t.Logf("  effects accurate")
 
 		// Update sponsor
+		newSponsorPair, newSponsor := keys[1], accounts[1]
 
-		accountToRevoke := newAccountPair.Address()
-		pairs, accounts := itest.CreateAccounts(1, "1000")
-		newSponsorPair, newSponsor := pairs[0], accounts[0]
-
+		t.Logf("Revoking & replacing sponsorship")
 		ops = []txnbuild.Operation{
 			&txnbuild.BeginSponsoringFutureReserves{
 				SourceAccount: newSponsor,
 				SponsoredID:   sponsorPair.Address(),
 			},
 			&txnbuild.RevokeSponsorship{
-				SourceAccount:   sponsor(),
+				SourceAccount:   sponsor,
 				SponsorshipType: txnbuild.RevokeSponsorshipTypeAccount,
-				Account:         &accountToRevoke,
+				Account:         &newAccountID,
 			},
 			&txnbuild.EndSponsoringFutureReserves{},
 		}
 
 		signers = []*keypair.Full{sponsorPair, newSponsorPair}
-		txResp, err = itest.SubmitMultiSigOperations(sponsor(), signers, ops...)
+		txResp, err = itest.SubmitMultiSigOperations(sponsor, signers, ops...)
 		itest.LogFailedTx(txResp, err)
 
 		// Verify operation details
@@ -138,7 +143,8 @@ func TestSponsorships(t *testing.T) {
 		tt.True(opRecords[1].IsTransactionSuccessful())
 
 		revokeOp := opRecords[1].(operations.RevokeSponsorship)
-		tt.Equal(accountToRevoke, *revokeOp.AccountID)
+		tt.Equal(newAccountID, *revokeOp.AccountID)
+		t.Logf("  operations accurate")
 
 		// Check effects
 		effectsResponse, err = client.Effects(sdk.EffectRequest{
@@ -151,43 +157,46 @@ func TestSponsorships(t *testing.T) {
 		effect := effectRecords[0].(effects.AccountSponsorshipUpdated)
 		tt.Equal(sponsorPair.Address(), effect.FormerSponsor)
 		tt.Equal(newSponsorPair.Address(), effect.NewSponsor)
+		t.Logf("  effects accurate")
 
 		// Revoke sponsorship
 
+		t.Logf("Revoking sponsorship entirely")
 		op := &txnbuild.RevokeSponsorship{
 			SponsorshipType: txnbuild.RevokeSponsorshipTypeAccount,
-			Account:         &accountToRevoke,
+			Account:         &newAccountID,
 		}
 		txResp = itest.MustSubmitOperations(newSponsor, newSponsorPair, op)
 
 		// Verify operation details
-		response, err = client.Operations(sdk.OperationRequest{
-			ForTransaction: txResp.Hash,
-		})
-		tt.NoError(err)
+		response, err = client.Operations(sdk.OperationRequest{ForTransaction: txResp.Hash})
 		opRecords = response.Embedded.Records
 		tt.Len(opRecords, 1)
 		tt.True(opRecords[0].IsTransactionSuccessful())
-
+		tt.IsType(operations.RevokeSponsorship{}, opRecords[0])
 		revokeOp = opRecords[0].(operations.RevokeSponsorship)
-		tt.Equal(accountToRevoke, *revokeOp.AccountID)
+		tt.Equal(newAccountID, *revokeOp.AccountID)
 
 		// Make sure that the sponsoree is an (implicit) participant in the
 		// revocation operation
-		response, err = client.Operations(sdk.OperationRequest{ForAccount: newAccountPair.Address()})
+		response, err = client.Operations(sdk.OperationRequest{ForAccount: newAccountID})
 		tt.Condition(findOperationByID(revokeOp.ID, response.Embedded.Records))
+		t.Logf("  operations accurate")
 
 		// Check effects
 		effectsResponse, err = client.Effects(sdk.EffectRequest{ForOperation: revokeOp.ID})
-		tt.NoError(err)
 		effectRecords = effectsResponse.Embedded.Records
 		tt.Len(effectRecords, 1)
 		tt.IsType(effects.AccountSponsorshipRemoved{}, effectRecords[0])
-		tt.Equal(newSponsorPair.Address(), effectRecords[0].(effects.AccountSponsorshipRemoved).FormerSponsor)
+		desponsorOp := effectRecords[0].(effects.AccountSponsorshipRemoved)
+		tt.Equal(newSponsorPair.Address(), desponsorOp.FormerSponsor)
+		t.Logf("  effects accurate")
 	})
+}
 
-	// Let's add a sponsored data entry
-	//
+/*
+// Let's add a sponsored data entry
+//
 	// BeginSponsorship N (Source=sponsor)
 	//   SetOptionsSigner (Source=N)
 	// EndSponsorship (Source=N)
