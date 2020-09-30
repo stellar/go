@@ -662,141 +662,84 @@ func TestSponsorships(t *testing.T) {
 		tt.Equal(newSponsorPair.Address(), sponsorshipRemoved.FormerSponsor)
 		tt.Equal(canonicalAsset, sponsorshipRemoved.Asset)
 	})
-}
 
-/*
-func TestSponsoredClaimableBalance(t *testing.T) {
-	tt := assert.New(t)
-	itest := test.NewIntegrationTest(t, protocol14Config)
-	sponsorPair := itest.Master()
-	sponsor := itest.MasterAccount
+	t.Run("ClaimableBalance", func(t *testing.T) {
+		keys, accounts := itest.CreateAccounts(3, "1000")
+		sponsorPair, sponsor := keys[0], accounts[0]
+		newAccountPair, newAccount := keys[1], accounts[1]
 
-	pairs, _ := itest.CreateAccounts(1, "1000")
-	newAccountPair := pairs[0]
-	newAccount := func() txnbuild.Account {
-		request := sdk.AccountRequest{AccountID: newAccountPair.Address()}
-		account, err := client.AccountDetail(request)
+		ops := sponsorOperations(newAccountPair.Address(),
+			&txnbuild.CreateClaimableBalance{
+				SourceAccount: newAccount,
+				Destinations: []txnbuild.Claimant{
+					txnbuild.NewClaimant(sponsorPair.Address(), nil),
+				},
+				Amount: "20",
+				Asset:  txnbuild.NativeAsset{},
+			})
+
+		signers := []*keypair.Full{newAccountPair, sponsorPair}
+		txResp, err := itest.SubmitMultiSigOperations(newAccount, signers, ops...)
+		itest.LogFailedTx(txResp, err)
+
+		balances, err := client.ClaimableBalances(sdk.ClaimableBalanceRequest{})
 		tt.NoError(err)
-		return &account
-	}
-	ops := []txnbuild.Operation{
-		&txnbuild.BeginSponsoringFutureReserves{
-			SourceAccount: sponsor(),
-			SponsoredID:   newAccountPair.Address(),
-		},
-		&txnbuild.CreateClaimableBalance{
-			SourceAccount: newAccount(),
-			Destinations: []txnbuild.Claimant{
-				txnbuild.NewClaimant(sponsorPair.Address(), nil),
-			},
-			Amount: "20",
-			Asset:  txnbuild.NativeAsset{},
-		},
-		&txnbuild.EndSponsoringFutureReserves{},
-	}
 
-	signers := []*keypair.Full{newAccountPair, sponsorPair}
-	txResp, err := itest.SubmitMultiSigOperations(newAccount(), signers, ops...)
-	tt.NoError(err)
+		claims := balances.Embedded.Records
+		tt.Len(claims, 1)
+		balance := claims[0]
+		tt.Equal(sponsorPair.Address(), balance.Sponsor)
 
-	var txResult xdr.TransactionResult
-	err = xdr.SafeUnmarshalBase64(txResp.ResultXdr, &txResult)
-	tt.NoError(err)
-	tt.Equal(xdr.TransactionResultCodeTxSuccess, txResult.Result.Code)
+		// Check effects and details of the CreateClaimableBalance operation
+		opRecords := getOperationsByTx(txResp.Hash)
+		tt.Len(opRecords, 3)
+		createClaimableBalance := opRecords[1].(operations.CreateClaimableBalance)
+		tt.Equal(sponsorPair.Address(), createClaimableBalance.Sponsor)
 
-	balances, err := client.ClaimableBalances(sdk.ClaimableBalanceRequest{})
-	tt.NoError(err)
-
-	claims := balances.Embedded.Records
-	tt.Len(claims, 1)
-	balance := claims[0]
-	tt.Equal(sponsorPair.Address(), balance.Sponsor)
-
-	// Check effects and details of the CreateClaimableBalance operation
-	operationsResponse, err := client.Operations(sdk.OperationRequest{
-		ForTransaction: txResp.Hash,
-	})
-	tt.NoError(err)
-	tt.Len(operationsResponse.Embedded.Records, 3)
-	createClaimableBalance := operationsResponse.Embedded.Records[1].(operations.CreateClaimableBalance)
-	tt.Equal(sponsorPair.Address(), createClaimableBalance.Sponsor)
-
-	effectsResponse, err := client.Effects(sdk.EffectRequest{
-		ForOperation: createClaimableBalance.GetID(),
-	})
-	tt.NoError(err)
-	if tt.Len(effectsResponse.Embedded.Records, 4) {
-		cbSponsorshipEffect := effectsResponse.Embedded.Records[3].(effects.ClaimableBalanceSponsorshipCreated)
+		effRecords := getEffectsByOp(createClaimableBalance.GetID())
+		tt.Len(effRecords, 4)
+		cbSponsorshipEffect := effRecords[3].(effects.ClaimableBalanceSponsorshipCreated)
 		tt.Equal(sponsorPair.Address(), cbSponsorshipEffect.Sponsor)
 		tt.Equal(newAccountPair.Address(), cbSponsorshipEffect.Account)
 		tt.Equal(balance.BalanceID, cbSponsorshipEffect.BalanceID)
-	}
 
-	// Update sponsor
+		// Update sponsor
 
-	pairs, _ = itest.CreateAccounts(1, "1000")
-	newSponsorPair := pairs[0]
-	newSponsor := func() txnbuild.Account {
-		request := sdk.AccountRequest{AccountID: newSponsorPair.Address()}
-		account, e := client.AccountDetail(request)
-		tt.NoError(e)
-		return &account
-	}
-	ops = []txnbuild.Operation{
-		&txnbuild.BeginSponsoringFutureReserves{
-			SourceAccount: newSponsor(),
-			SponsoredID:   sponsorPair.Address(),
-		},
-		&txnbuild.RevokeSponsorship{
-			SponsorshipType:  txnbuild.RevokeSponsorshipTypeClaimableBalance,
-			ClaimableBalance: &balance.BalanceID,
-		},
-		&txnbuild.EndSponsoringFutureReserves{},
-	}
-	signers = []*keypair.Full{sponsorPair, newSponsorPair}
-	txResp, err = itest.SubmitMultiSigOperations(sponsor(), signers, ops...)
-	tt.NoError(err)
+		newSponsorPair, _ := keys[2], accounts[2]
+		ops = sponsorOperations(sponsorPair.Address(),
+			&txnbuild.RevokeSponsorship{
+				SponsorshipType:  txnbuild.RevokeSponsorshipTypeClaimableBalance,
+				ClaimableBalance: &balance.BalanceID,
+			})
+		signers = []*keypair.Full{sponsorPair, newSponsorPair}
+		txResp, err = itest.SubmitMultiSigOperations(sponsor, signers, ops...)
+		itest.LogFailedTx(txResp, err)
 
-	err = xdr.SafeUnmarshalBase64(txResp.ResultXdr, &txResult)
-	tt.NoError(err)
-	tt.Equal(xdr.TransactionResultCodeTxSuccess, txResult.Result.Code)
+		// Verify operation details
+		opRecords = getOperationsByTx(txResp.Hash)
+		tt.Len(opRecords, 3)
+		tt.True(opRecords[1].IsTransactionSuccessful())
 
-	// Verify operation details
-	response, err := client.Operations(sdk.OperationRequest{
-		ForTransaction: txResp.Hash,
+		revokeOp := opRecords[1].(operations.RevokeSponsorship)
+		tt.Equal(balance.BalanceID, *revokeOp.ClaimableBalanceID)
+
+		// Check effects
+		effRecords = getEffectsByOp(revokeOp.ID)
+		tt.Len(effRecords, 1)
+		effect := effRecords[0].(effects.ClaimableBalanceSponsorshipUpdated)
+		tt.Equal(sponsorPair.Address(), effect.FormerSponsor)
+		tt.Equal(newSponsorPair.Address(), effect.NewSponsor)
+
+		// It's not possible to explicitly revoke the sponsorship of a claimable
+		// balance, so we claim the balance instead
+		claimOp := &txnbuild.ClaimClaimableBalance{
+			BalanceID: balance.BalanceID,
+		}
+		txResp = itest.MustSubmitOperations(sponsor, sponsorPair, claimOp)
+		effRecords = getEffectsByTx(txResp.ID)
+		tt.Len(effRecords, 3)
+		sponsorshipRemoved := effRecords[2].(effects.ClaimableBalanceSponsorshipRemoved)
+		tt.Equal(newSponsorPair.Address(), sponsorshipRemoved.FormerSponsor)
+		tt.Equal(balance.BalanceID, sponsorshipRemoved.BalanceID)
 	})
-	opRecords := response.Embedded.Records
-	tt.NoError(err)
-	tt.Len(opRecords, 3)
-	tt.True(opRecords[1].IsTransactionSuccessful())
-
-	revokeOp := opRecords[1].(operations.RevokeSponsorship)
-	tt.Equal(balance.BalanceID, *revokeOp.ClaimableBalanceID)
-
-	// Check effects
-	effectsResponse, err = client.Effects(sdk.EffectRequest{ForOperation: revokeOp.ID})
-	tt.NoError(err)
-	effectRecords := effectsResponse.Embedded.Records
-	tt.Len(effectRecords, 1)
-	tt.IsType(effects.ClaimableBalanceSponsorshipUpdated{}, effectRecords[0])
-	effect := effectRecords[0].(effects.ClaimableBalanceSponsorshipUpdated)
-	tt.Equal(sponsorPair.Address(), effect.FormerSponsor)
-	tt.Equal(newSponsorPair.Address(), effect.NewSponsor)
-
-	// It's not possible to explicitly revoke the sponsorship of a claimable balance,
-	// so we claim the balance instead
-	claimOp := &txnbuild.ClaimClaimableBalance{
-		BalanceID: balance.BalanceID,
-	}
-	txResp = itest.MustSubmitOperations(sponsor(), sponsorPair, claimOp)
-	effectsResponse, err = client.Effects(sdk.EffectRequest{
-		ForTransaction: txResp.ID,
-	})
-	tt.NoError(err)
-	effectRecords = effectsResponse.Embedded.Records
-	tt.Len(effectRecords, 3)
-	sponsorshipRemoved := effectRecords[2].(effects.ClaimableBalanceSponsorshipRemoved)
-	tt.Equal(newSponsorPair.Address(), sponsorshipRemoved.FormerSponsor)
-	tt.Equal(balance.BalanceID, sponsorshipRemoved.BalanceID)
 }
-*/
