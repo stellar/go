@@ -31,9 +31,12 @@
 // migrations/36_deleted_offers.sql (956B)
 // migrations/37_add_tx_set_operation_count_to_ledgers.sql (176B)
 // migrations/38_add_constraints.sql (7.33kB)
+// migrations/39_claimable_balances.sql (750B)
 // migrations/39_history_trades_indices.sql (183B)
 // migrations/3_use_sequence_in_history_accounts.sql (447B)
 // migrations/40_fix_inner_tx_max_fee_constraint.sql (392B)
+// migrations/41_add_sponsor_to_state_tables.sql (800B)
+// migrations/42_add_num_sponsored_and_num_sponsoring_to_accounts.sql (276B)
 // migrations/4_add_protocol_version.sql (188B)
 // migrations/5_create_trades_table.sql (1.1kB)
 // migrations/6_create_assets_table.sql (366B)
@@ -729,6 +732,26 @@ func migrations38_add_constraintsSql() (*asset, error) {
 	return a, nil
 }
 
+var _migrations39_claimable_balancesSql = []byte("\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff\x8c\x92\x41\x4f\xbb\x40\x10\xc5\xef\x7c\x8a\x77\x84\xfc\x4b\xf2\x3f\x18\x2f\x4d\x4c\x5a\xd8\x28\x69\xa5\x0d\xd2\xa4\x3d\x6d\x16\x76\xc5\x31\xb0\x4b\xba\x6b\xd4\x6f\x6f\x0a\xad\xd5\x4a\xb5\x27\x12\xde\x9b\xdf\xce\xbc\x99\x30\xc4\xbf\x86\xaa\xad\x70\x0a\xab\xd6\xf3\xa2\x8c\x4d\x72\x86\x7c\x32\x9d\x33\x94\xb5\xa0\x46\x14\xb5\xe2\x85\xa8\x85\x2e\x95\x85\xef\x01\x00\x49\xe4\x6c\x9d\x23\x5d\xe4\x48\x57\xf3\xf9\x08\x61\x88\xe8\xe0\x9e\xf6\xe6\x24\x06\x69\x14\xc2\xaa\xeb\xab\xae\xaa\xc7\x69\x67\xf1\x6c\x8d\x2e\x8e\xd5\x9d\x2a\xac\x55\x0e\x4e\xbd\xb9\x53\xa1\x31\x2f\xda\xa1\xa0\x8a\xf4\x51\x43\x74\xc7\xa2\x19\xfc\xbd\x7a\x83\xff\x41\x6f\xb7\xad\xd1\xd6\x6c\xbb\x06\xfb\x3f\xb5\xb0\x8e\x37\x46\xd2\x23\x29\xc9\x6b\x25\x2b\xb5\x05\x69\xa7\x76\xdf\xef\x6f\x2d\xb3\xe4\x7e\x92\x6d\x30\x63\x1b\xf8\x24\x03\x2f\x18\x7f\x66\x92\xa4\x31\x5b\x0f\x64\xc2\x8b\x77\xde\x37\xbf\x48\x87\x22\x5b\x3d\x24\xe9\x2d\xa6\x79\xc6\x98\xdf\xf9\x82\xf1\x25\xc8\xc3\x1c\x7f\x43\xf7\xce\x33\xd8\x1f\xe0\xe3\x1a\x7e\x43\x57\xa4\xfd\x93\x85\xf1\x56\xb8\x27\x6e\x5a\x7b\xd9\x00\x43\xb1\x73\xa1\x25\x27\x79\xc1\x50\x43\xd5\x23\x90\xdc\x2d\xe4\xeb\xd1\xc6\xe6\x55\x7b\x5e\x9c\x2d\x96\xe7\x8f\xb6\x14\xb6\x14\x52\x8d\xbd\x8f\x00\x00\x00\xff\xff\x76\x45\x17\x78\xee\x02\x00\x00")
+
+func migrations39_claimable_balancesSqlBytes() ([]byte, error) {
+	return bindataRead(
+		_migrations39_claimable_balancesSql,
+		"migrations/39_claimable_balances.sql",
+	)
+}
+
+func migrations39_claimable_balancesSql() (*asset, error) {
+	bytes, err := migrations39_claimable_balancesSqlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "migrations/39_claimable_balances.sql", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0x58, 0xfd, 0xd0, 0xdd, 0xbf, 0xf, 0xb8, 0x78, 0xe3, 0x2, 0xe6, 0xa8, 0x94, 0x11, 0x15, 0x24, 0x35, 0xe0, 0x9c, 0xc9, 0x34, 0x36, 0xa3, 0x38, 0xdb, 0xb7, 0x86, 0xd0, 0xf2, 0xbe, 0x77, 0x49}}
+	return a, nil
+}
+
 var _migrations39_history_trades_indicesSql = []byte("\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff\x6c\xce\xb1\x0a\xc2\x40\x0c\x80\xe1\x3d\x4f\x11\x3a\x29\xda\x27\xe8\xa4\xf6\x90\x2e\xad\xd4\x16\xdc\x8e\xd3\x0b\x36\x83\xcd\x91\x8b\x88\x6f\x2f\x08\x42\x07\xd7\x1f\x7e\xf8\xca\x12\x37\x0f\xbe\x6b\x30\xc2\x31\x01\x1c\x7a\xb7\x1b\x1c\x36\x6d\xed\x2e\x38\x99\x46\x9f\x02\xab\x4f\x1c\xb1\x6b\x71\xe2\x6c\xa2\x6f\x6f\x1a\x22\x65\x1c\xcf\x4d\x7b\xc4\xfd\xd0\x3b\xb7\xba\x86\x4c\x3e\xe4\x4c\xe6\x39\x6e\xf1\x26\xcf\xd9\x48\x17\xe5\xf7\x4a\x22\x0d\xc6\x32\x7f\x6b\x21\x1a\x49\x8b\x75\x05\xb0\xa4\xd4\xf2\x9a\x01\xea\xbe\x3b\xfd\xa3\x54\xf0\x09\x00\x00\xff\xff\xb2\xf0\x3e\xfe\xb7\x00\x00\x00")
 
 func migrations39_history_trades_indicesSqlBytes() ([]byte, error) {
@@ -786,6 +809,46 @@ func migrations40_fix_inner_tx_max_fee_constraintSql() (*asset, error) {
 
 	info := bindataFileInfo{name: "migrations/40_fix_inner_tx_max_fee_constraint.sql", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
 	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0x9d, 0x58, 0xe3, 0x4c, 0x97, 0xa8, 0x17, 0x34, 0xca, 0x20, 0x47, 0x8c, 0x78, 0x9b, 0x81, 0x52, 0x3d, 0xde, 0xc8, 0xf1, 0x13, 0x7a, 0x46, 0xd1, 0xa0, 0x38, 0x43, 0x63, 0xcc, 0xc6, 0xd, 0xa5}}
+	return a, nil
+}
+
+var _migrations41_add_sponsor_to_state_tablesSql = []byte("\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff\x94\x92\xd1\x4a\x87\x30\x14\xc6\xef\x7d\x8a\x73\x59\xc4\xff\x09\xbc\x9a\xed\x10\x82\x68\xac\x09\xde\x8d\x65\x2a\x42\x6d\xb2\x4d\xa2\xb7\x8f\x70\xab\x25\xad\xd6\xf5\x7e\xe7\xfc\xf6\x1d\xbe\xcb\x05\x6e\x5e\xd6\xc5\x48\x37\x41\xbf\x15\x05\x69\x38\x32\xe0\xa4\x6a\x10\xe4\x38\xea\x5d\x39\x0b\x84\x52\xb0\x9b\x56\x56\x1b\xe0\x38\xf0\xb2\xb8\x65\x48\x38\x42\xdd\x52\x1c\x3e\x39\xf1\xf8\x26\x02\xd6\xb5\x5f\xe3\xfd\x43\xdd\xde\x41\xc5\x19\xe2\x95\x7f\xbf\x2e\x7f\x56\x89\x27\xe9\x64\xb6\xef\x03\x4e\x48\x8f\x45\xff\x31\xdb\x75\x51\x93\xc9\x0f\xeb\xf9\x94\x3f\xac\xcb\xf8\x82\x33\xbb\x75\xe2\x79\x55\xd3\x9f\xf6\x08\x3d\x89\xe3\x25\x19\x4e\x3d\xcf\x19\x61\x0f\xea\x64\xf2\xa3\x09\x49\x5c\x28\xaa\x5f\x55\xa2\x52\x94\x75\xf7\xc1\x5c\xfe\x52\x85\x0c\x2e\x5c\x3a\x8d\xc6\xb7\x49\x53\x3e\xd7\x77\xe0\x3d\x00\x00\xff\xff\xb5\xbf\x3f\xcc\x20\x03\x00\x00")
+
+func migrations41_add_sponsor_to_state_tablesSqlBytes() ([]byte, error) {
+	return bindataRead(
+		_migrations41_add_sponsor_to_state_tablesSql,
+		"migrations/41_add_sponsor_to_state_tables.sql",
+	)
+}
+
+func migrations41_add_sponsor_to_state_tablesSql() (*asset, error) {
+	bytes, err := migrations41_add_sponsor_to_state_tablesSqlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "migrations/41_add_sponsor_to_state_tables.sql", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0xf8, 0xb2, 0xc6, 0x2e, 0x87, 0x75, 0x3, 0x0, 0x9c, 0x98, 0xc2, 0x26, 0x7, 0x99, 0x48, 0x2c, 0xcd, 0x44, 0xc5, 0x57, 0x0, 0x5c, 0xfe, 0xb9, 0x9, 0x1e, 0x2b, 0x55, 0xb5, 0xaa, 0x5, 0xab}}
+	return a, nil
+}
+
+var _migrations42_add_num_sponsored_and_num_sponsoring_to_accountsSql = []byte("\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff\x8c\xce\xb1\x0a\xc2\x30\x14\x85\xe1\xfd\x3e\xc5\x19\x15\x5b\xe8\x5e\x14\x62\x13\x11\x8c\x56\x4a\x3b\x4b\xa9\x21\x64\xe8\x4d\x69\x52\x7c\x7d\xd1\x49\xc1\x80\xf3\x39\xfc\x7c\x79\x8e\xcd\xe8\xec\xdc\x47\x83\x6e\x22\x12\xba\x55\x0d\x5a\xb1\xd7\x0a\xfd\x30\xf8\x85\x63\x20\x21\x25\xaa\x5a\x77\xe7\x0b\x78\x19\x6f\x61\xf2\x1c\xfc\x6c\xee\x70\x1c\x8d\x35\x33\xa4\x3a\x88\x4e\xb7\x28\x50\x1d\x55\x75\xc2\xea\xfb\xb6\xdb\xa2\x58\x67\x89\x8c\x63\xfb\x57\xe7\xf5\x7b\x87\x4a\xa2\x4f\xb5\xf4\x0f\x4e\xb8\x65\x53\x5f\x7f\xc2\xb3\xd4\xe4\xd8\x96\xf4\x0c\x00\x00\xff\xff\xb6\x54\xe4\xeb\x14\x01\x00\x00")
+
+func migrations42_add_num_sponsored_and_num_sponsoring_to_accountsSqlBytes() ([]byte, error) {
+	return bindataRead(
+		_migrations42_add_num_sponsored_and_num_sponsoring_to_accountsSql,
+		"migrations/42_add_num_sponsored_and_num_sponsoring_to_accounts.sql",
+	)
+}
+
+func migrations42_add_num_sponsored_and_num_sponsoring_to_accountsSql() (*asset, error) {
+	bytes, err := migrations42_add_num_sponsored_and_num_sponsoring_to_accountsSqlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "migrations/42_add_num_sponsored_and_num_sponsoring_to_accounts.sql", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0xfd, 0x15, 0x84, 0x5c, 0x24, 0x15, 0x82, 0x45, 0x31, 0xe7, 0x89, 0x90, 0xd9, 0x7f, 0xb6, 0xf8, 0xc3, 0x21, 0xc9, 0xd3, 0xa9, 0x11, 0xee, 0x6d, 0x7a, 0x19, 0xcc, 0xba, 0xd7, 0x20, 0xbd, 0xdc}}
 	return a, nil
 }
 
@@ -1020,47 +1083,50 @@ func AssetNames() []string {
 
 // _bindata is a table, holding each asset generator, mapped to its name.
 var _bindata = map[string]func() (*asset, error){
-	"migrations/10_add_trades_price.sql":                      migrations10_add_trades_priceSql,
-	"migrations/11_add_trades_account_index.sql":              migrations11_add_trades_account_indexSql,
-	"migrations/12_asset_stats_amount_string.sql":             migrations12_asset_stats_amount_stringSql,
-	"migrations/13_trade_offer_ids.sql":                       migrations13_trade_offer_idsSql,
-	"migrations/14_fix_asset_toml_field.sql":                  migrations14_fix_asset_toml_fieldSql,
-	"migrations/15_ledger_failed_txs.sql":                     migrations15_ledger_failed_txsSql,
-	"migrations/16_ingest_failed_transactions.sql":            migrations16_ingest_failed_transactionsSql,
-	"migrations/17_transaction_fee_paid.sql":                  migrations17_transaction_fee_paidSql,
-	"migrations/18_account_for_signers.sql":                   migrations18_account_for_signersSql,
-	"migrations/19_offers.sql":                                migrations19_offersSql,
-	"migrations/1_initial_schema.sql":                         migrations1_initial_schemaSql,
-	"migrations/20_account_for_signer_index.sql":              migrations20_account_for_signer_indexSql,
-	"migrations/21_trades_remove_zero_amount_constraints.sql": migrations21_trades_remove_zero_amount_constraintsSql,
-	"migrations/22_trust_lines.sql":                           migrations22_trust_linesSql,
-	"migrations/23_exp_asset_stats.sql":                       migrations23_exp_asset_statsSql,
-	"migrations/24_accounts.sql":                              migrations24_accountsSql,
-	"migrations/25_expingest_rename_columns.sql":              migrations25_expingest_rename_columnsSql,
-	"migrations/26_exp_history_ledgers.sql":                   migrations26_exp_history_ledgersSql,
-	"migrations/27_exp_history_transactions.sql":              migrations27_exp_history_transactionsSql,
-	"migrations/28_exp_history_operations.sql":                migrations28_exp_history_operationsSql,
-	"migrations/29_exp_history_assets.sql":                    migrations29_exp_history_assetsSql,
-	"migrations/2_index_participants_by_toid.sql":             migrations2_index_participants_by_toidSql,
-	"migrations/30_exp_history_trades.sql":                    migrations30_exp_history_tradesSql,
-	"migrations/31_exp_history_effects.sql":                   migrations31_exp_history_effectsSql,
-	"migrations/32_drop_exp_history_tables.sql":               migrations32_drop_exp_history_tablesSql,
-	"migrations/33_remove_unused.sql":                         migrations33_remove_unusedSql,
-	"migrations/34_fee_bump_transactions.sql":                 migrations34_fee_bump_transactionsSql,
-	"migrations/35_drop_participant_id.sql":                   migrations35_drop_participant_idSql,
-	"migrations/36_deleted_offers.sql":                        migrations36_deleted_offersSql,
-	"migrations/37_add_tx_set_operation_count_to_ledgers.sql": migrations37_add_tx_set_operation_count_to_ledgersSql,
-	"migrations/38_add_constraints.sql":                       migrations38_add_constraintsSql,
-	"migrations/39_history_trades_indices.sql":                migrations39_history_trades_indicesSql,
-	"migrations/3_use_sequence_in_history_accounts.sql":       migrations3_use_sequence_in_history_accountsSql,
-	"migrations/40_fix_inner_tx_max_fee_constraint.sql":       migrations40_fix_inner_tx_max_fee_constraintSql,
-	"migrations/4_add_protocol_version.sql":                   migrations4_add_protocol_versionSql,
-	"migrations/5_create_trades_table.sql":                    migrations5_create_trades_tableSql,
-	"migrations/6_create_assets_table.sql":                    migrations6_create_assets_tableSql,
-	"migrations/7_modify_trades_table.sql":                    migrations7_modify_trades_tableSql,
-	"migrations/8_add_aggregators.sql":                        migrations8_add_aggregatorsSql,
-	"migrations/8_create_asset_stats_table.sql":               migrations8_create_asset_stats_tableSql,
-	"migrations/9_add_header_xdr.sql":                         migrations9_add_header_xdrSql,
+	"migrations/10_add_trades_price.sql":                                 migrations10_add_trades_priceSql,
+	"migrations/11_add_trades_account_index.sql":                         migrations11_add_trades_account_indexSql,
+	"migrations/12_asset_stats_amount_string.sql":                        migrations12_asset_stats_amount_stringSql,
+	"migrations/13_trade_offer_ids.sql":                                  migrations13_trade_offer_idsSql,
+	"migrations/14_fix_asset_toml_field.sql":                             migrations14_fix_asset_toml_fieldSql,
+	"migrations/15_ledger_failed_txs.sql":                                migrations15_ledger_failed_txsSql,
+	"migrations/16_ingest_failed_transactions.sql":                       migrations16_ingest_failed_transactionsSql,
+	"migrations/17_transaction_fee_paid.sql":                             migrations17_transaction_fee_paidSql,
+	"migrations/18_account_for_signers.sql":                              migrations18_account_for_signersSql,
+	"migrations/19_offers.sql":                                           migrations19_offersSql,
+	"migrations/1_initial_schema.sql":                                    migrations1_initial_schemaSql,
+	"migrations/20_account_for_signer_index.sql":                         migrations20_account_for_signer_indexSql,
+	"migrations/21_trades_remove_zero_amount_constraints.sql":            migrations21_trades_remove_zero_amount_constraintsSql,
+	"migrations/22_trust_lines.sql":                                      migrations22_trust_linesSql,
+	"migrations/23_exp_asset_stats.sql":                                  migrations23_exp_asset_statsSql,
+	"migrations/24_accounts.sql":                                         migrations24_accountsSql,
+	"migrations/25_expingest_rename_columns.sql":                         migrations25_expingest_rename_columnsSql,
+	"migrations/26_exp_history_ledgers.sql":                              migrations26_exp_history_ledgersSql,
+	"migrations/27_exp_history_transactions.sql":                         migrations27_exp_history_transactionsSql,
+	"migrations/28_exp_history_operations.sql":                           migrations28_exp_history_operationsSql,
+	"migrations/29_exp_history_assets.sql":                               migrations29_exp_history_assetsSql,
+	"migrations/2_index_participants_by_toid.sql":                        migrations2_index_participants_by_toidSql,
+	"migrations/30_exp_history_trades.sql":                               migrations30_exp_history_tradesSql,
+	"migrations/31_exp_history_effects.sql":                              migrations31_exp_history_effectsSql,
+	"migrations/32_drop_exp_history_tables.sql":                          migrations32_drop_exp_history_tablesSql,
+	"migrations/33_remove_unused.sql":                                    migrations33_remove_unusedSql,
+	"migrations/34_fee_bump_transactions.sql":                            migrations34_fee_bump_transactionsSql,
+	"migrations/35_drop_participant_id.sql":                              migrations35_drop_participant_idSql,
+	"migrations/36_deleted_offers.sql":                                   migrations36_deleted_offersSql,
+	"migrations/37_add_tx_set_operation_count_to_ledgers.sql":            migrations37_add_tx_set_operation_count_to_ledgersSql,
+	"migrations/38_add_constraints.sql":                                  migrations38_add_constraintsSql,
+	"migrations/39_claimable_balances.sql":                               migrations39_claimable_balancesSql,
+	"migrations/39_history_trades_indices.sql":                           migrations39_history_trades_indicesSql,
+	"migrations/3_use_sequence_in_history_accounts.sql":                  migrations3_use_sequence_in_history_accountsSql,
+	"migrations/40_fix_inner_tx_max_fee_constraint.sql":                  migrations40_fix_inner_tx_max_fee_constraintSql,
+	"migrations/41_add_sponsor_to_state_tables.sql":                      migrations41_add_sponsor_to_state_tablesSql,
+	"migrations/42_add_num_sponsored_and_num_sponsoring_to_accounts.sql": migrations42_add_num_sponsored_and_num_sponsoring_to_accountsSql,
+	"migrations/4_add_protocol_version.sql":                              migrations4_add_protocol_versionSql,
+	"migrations/5_create_trades_table.sql":                               migrations5_create_trades_tableSql,
+	"migrations/6_create_assets_table.sql":                               migrations6_create_assets_tableSql,
+	"migrations/7_modify_trades_table.sql":                               migrations7_modify_trades_tableSql,
+	"migrations/8_add_aggregators.sql":                                   migrations8_add_aggregatorsSql,
+	"migrations/8_create_asset_stats_table.sql":                          migrations8_create_asset_stats_tableSql,
+	"migrations/9_add_header_xdr.sql":                                    migrations9_add_header_xdrSql,
 }
 
 // AssetDir returns the file names below a certain
@@ -1105,47 +1171,50 @@ type bintree struct {
 
 var _bintree = &bintree{nil, map[string]*bintree{
 	"migrations": &bintree{nil, map[string]*bintree{
-		"10_add_trades_price.sql":                      &bintree{migrations10_add_trades_priceSql, map[string]*bintree{}},
-		"11_add_trades_account_index.sql":              &bintree{migrations11_add_trades_account_indexSql, map[string]*bintree{}},
-		"12_asset_stats_amount_string.sql":             &bintree{migrations12_asset_stats_amount_stringSql, map[string]*bintree{}},
-		"13_trade_offer_ids.sql":                       &bintree{migrations13_trade_offer_idsSql, map[string]*bintree{}},
-		"14_fix_asset_toml_field.sql":                  &bintree{migrations14_fix_asset_toml_fieldSql, map[string]*bintree{}},
-		"15_ledger_failed_txs.sql":                     &bintree{migrations15_ledger_failed_txsSql, map[string]*bintree{}},
-		"16_ingest_failed_transactions.sql":            &bintree{migrations16_ingest_failed_transactionsSql, map[string]*bintree{}},
-		"17_transaction_fee_paid.sql":                  &bintree{migrations17_transaction_fee_paidSql, map[string]*bintree{}},
-		"18_account_for_signers.sql":                   &bintree{migrations18_account_for_signersSql, map[string]*bintree{}},
-		"19_offers.sql":                                &bintree{migrations19_offersSql, map[string]*bintree{}},
-		"1_initial_schema.sql":                         &bintree{migrations1_initial_schemaSql, map[string]*bintree{}},
-		"20_account_for_signer_index.sql":              &bintree{migrations20_account_for_signer_indexSql, map[string]*bintree{}},
-		"21_trades_remove_zero_amount_constraints.sql": &bintree{migrations21_trades_remove_zero_amount_constraintsSql, map[string]*bintree{}},
-		"22_trust_lines.sql":                           &bintree{migrations22_trust_linesSql, map[string]*bintree{}},
-		"23_exp_asset_stats.sql":                       &bintree{migrations23_exp_asset_statsSql, map[string]*bintree{}},
-		"24_accounts.sql":                              &bintree{migrations24_accountsSql, map[string]*bintree{}},
-		"25_expingest_rename_columns.sql":              &bintree{migrations25_expingest_rename_columnsSql, map[string]*bintree{}},
-		"26_exp_history_ledgers.sql":                   &bintree{migrations26_exp_history_ledgersSql, map[string]*bintree{}},
-		"27_exp_history_transactions.sql":              &bintree{migrations27_exp_history_transactionsSql, map[string]*bintree{}},
-		"28_exp_history_operations.sql":                &bintree{migrations28_exp_history_operationsSql, map[string]*bintree{}},
-		"29_exp_history_assets.sql":                    &bintree{migrations29_exp_history_assetsSql, map[string]*bintree{}},
-		"2_index_participants_by_toid.sql":             &bintree{migrations2_index_participants_by_toidSql, map[string]*bintree{}},
-		"30_exp_history_trades.sql":                    &bintree{migrations30_exp_history_tradesSql, map[string]*bintree{}},
-		"31_exp_history_effects.sql":                   &bintree{migrations31_exp_history_effectsSql, map[string]*bintree{}},
-		"32_drop_exp_history_tables.sql":               &bintree{migrations32_drop_exp_history_tablesSql, map[string]*bintree{}},
-		"33_remove_unused.sql":                         &bintree{migrations33_remove_unusedSql, map[string]*bintree{}},
-		"34_fee_bump_transactions.sql":                 &bintree{migrations34_fee_bump_transactionsSql, map[string]*bintree{}},
-		"35_drop_participant_id.sql":                   &bintree{migrations35_drop_participant_idSql, map[string]*bintree{}},
-		"36_deleted_offers.sql":                        &bintree{migrations36_deleted_offersSql, map[string]*bintree{}},
-		"37_add_tx_set_operation_count_to_ledgers.sql": &bintree{migrations37_add_tx_set_operation_count_to_ledgersSql, map[string]*bintree{}},
-		"38_add_constraints.sql":                       &bintree{migrations38_add_constraintsSql, map[string]*bintree{}},
-		"39_history_trades_indices.sql":                &bintree{migrations39_history_trades_indicesSql, map[string]*bintree{}},
-		"3_use_sequence_in_history_accounts.sql":       &bintree{migrations3_use_sequence_in_history_accountsSql, map[string]*bintree{}},
-		"40_fix_inner_tx_max_fee_constraint.sql":       &bintree{migrations40_fix_inner_tx_max_fee_constraintSql, map[string]*bintree{}},
-		"4_add_protocol_version.sql":                   &bintree{migrations4_add_protocol_versionSql, map[string]*bintree{}},
-		"5_create_trades_table.sql":                    &bintree{migrations5_create_trades_tableSql, map[string]*bintree{}},
-		"6_create_assets_table.sql":                    &bintree{migrations6_create_assets_tableSql, map[string]*bintree{}},
-		"7_modify_trades_table.sql":                    &bintree{migrations7_modify_trades_tableSql, map[string]*bintree{}},
-		"8_add_aggregators.sql":                        &bintree{migrations8_add_aggregatorsSql, map[string]*bintree{}},
-		"8_create_asset_stats_table.sql":               &bintree{migrations8_create_asset_stats_tableSql, map[string]*bintree{}},
-		"9_add_header_xdr.sql":                         &bintree{migrations9_add_header_xdrSql, map[string]*bintree{}},
+		"10_add_trades_price.sql":                                 &bintree{migrations10_add_trades_priceSql, map[string]*bintree{}},
+		"11_add_trades_account_index.sql":                         &bintree{migrations11_add_trades_account_indexSql, map[string]*bintree{}},
+		"12_asset_stats_amount_string.sql":                        &bintree{migrations12_asset_stats_amount_stringSql, map[string]*bintree{}},
+		"13_trade_offer_ids.sql":                                  &bintree{migrations13_trade_offer_idsSql, map[string]*bintree{}},
+		"14_fix_asset_toml_field.sql":                             &bintree{migrations14_fix_asset_toml_fieldSql, map[string]*bintree{}},
+		"15_ledger_failed_txs.sql":                                &bintree{migrations15_ledger_failed_txsSql, map[string]*bintree{}},
+		"16_ingest_failed_transactions.sql":                       &bintree{migrations16_ingest_failed_transactionsSql, map[string]*bintree{}},
+		"17_transaction_fee_paid.sql":                             &bintree{migrations17_transaction_fee_paidSql, map[string]*bintree{}},
+		"18_account_for_signers.sql":                              &bintree{migrations18_account_for_signersSql, map[string]*bintree{}},
+		"19_offers.sql":                                           &bintree{migrations19_offersSql, map[string]*bintree{}},
+		"1_initial_schema.sql":                                    &bintree{migrations1_initial_schemaSql, map[string]*bintree{}},
+		"20_account_for_signer_index.sql":                         &bintree{migrations20_account_for_signer_indexSql, map[string]*bintree{}},
+		"21_trades_remove_zero_amount_constraints.sql":            &bintree{migrations21_trades_remove_zero_amount_constraintsSql, map[string]*bintree{}},
+		"22_trust_lines.sql":                                      &bintree{migrations22_trust_linesSql, map[string]*bintree{}},
+		"23_exp_asset_stats.sql":                                  &bintree{migrations23_exp_asset_statsSql, map[string]*bintree{}},
+		"24_accounts.sql":                                         &bintree{migrations24_accountsSql, map[string]*bintree{}},
+		"25_expingest_rename_columns.sql":                         &bintree{migrations25_expingest_rename_columnsSql, map[string]*bintree{}},
+		"26_exp_history_ledgers.sql":                              &bintree{migrations26_exp_history_ledgersSql, map[string]*bintree{}},
+		"27_exp_history_transactions.sql":                         &bintree{migrations27_exp_history_transactionsSql, map[string]*bintree{}},
+		"28_exp_history_operations.sql":                           &bintree{migrations28_exp_history_operationsSql, map[string]*bintree{}},
+		"29_exp_history_assets.sql":                               &bintree{migrations29_exp_history_assetsSql, map[string]*bintree{}},
+		"2_index_participants_by_toid.sql":                        &bintree{migrations2_index_participants_by_toidSql, map[string]*bintree{}},
+		"30_exp_history_trades.sql":                               &bintree{migrations30_exp_history_tradesSql, map[string]*bintree{}},
+		"31_exp_history_effects.sql":                              &bintree{migrations31_exp_history_effectsSql, map[string]*bintree{}},
+		"32_drop_exp_history_tables.sql":                          &bintree{migrations32_drop_exp_history_tablesSql, map[string]*bintree{}},
+		"33_remove_unused.sql":                                    &bintree{migrations33_remove_unusedSql, map[string]*bintree{}},
+		"34_fee_bump_transactions.sql":                            &bintree{migrations34_fee_bump_transactionsSql, map[string]*bintree{}},
+		"35_drop_participant_id.sql":                              &bintree{migrations35_drop_participant_idSql, map[string]*bintree{}},
+		"36_deleted_offers.sql":                                   &bintree{migrations36_deleted_offersSql, map[string]*bintree{}},
+		"37_add_tx_set_operation_count_to_ledgers.sql":            &bintree{migrations37_add_tx_set_operation_count_to_ledgersSql, map[string]*bintree{}},
+		"38_add_constraints.sql":                                  &bintree{migrations38_add_constraintsSql, map[string]*bintree{}},
+		"39_claimable_balances.sql":                               &bintree{migrations39_claimable_balancesSql, map[string]*bintree{}},
+		"39_history_trades_indices.sql":                           &bintree{migrations39_history_trades_indicesSql, map[string]*bintree{}},
+		"3_use_sequence_in_history_accounts.sql":                  &bintree{migrations3_use_sequence_in_history_accountsSql, map[string]*bintree{}},
+		"40_fix_inner_tx_max_fee_constraint.sql":                  &bintree{migrations40_fix_inner_tx_max_fee_constraintSql, map[string]*bintree{}},
+		"41_add_sponsor_to_state_tables.sql":                      &bintree{migrations41_add_sponsor_to_state_tablesSql, map[string]*bintree{}},
+		"42_add_num_sponsored_and_num_sponsoring_to_accounts.sql": &bintree{migrations42_add_num_sponsored_and_num_sponsoring_to_accountsSql, map[string]*bintree{}},
+		"4_add_protocol_version.sql":                              &bintree{migrations4_add_protocol_versionSql, map[string]*bintree{}},
+		"5_create_trades_table.sql":                               &bintree{migrations5_create_trades_tableSql, map[string]*bintree{}},
+		"6_create_assets_table.sql":                               &bintree{migrations6_create_assets_tableSql, map[string]*bintree{}},
+		"7_modify_trades_table.sql":                               &bintree{migrations7_modify_trades_tableSql, map[string]*bintree{}},
+		"8_add_aggregators.sql":                                   &bintree{migrations8_add_aggregatorsSql, map[string]*bintree{}},
+		"8_create_asset_stats_table.sql":                          &bintree{migrations8_create_asset_stats_tableSql, map[string]*bintree{}},
+		"9_add_header_xdr.sql":                                    &bintree{migrations9_add_header_xdrSql, map[string]*bintree{}},
 	}},
 }}
 

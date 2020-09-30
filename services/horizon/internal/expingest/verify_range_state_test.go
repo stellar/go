@@ -7,6 +7,7 @@ import (
 	"io"
 	"testing"
 
+	"github.com/guregu/null"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
@@ -195,6 +196,12 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 	mockChangeReader := &ingestio.MockChangeReader{}
 	mockChangeReader.On("Close").Return(nil).Once()
 	mockAccountID := "GACMZD5VJXTRLKVET72CETCYKELPNCOTTBDC6DHFEUPLG5DHEK534JQX"
+	sponsor := "GAREDQSXC7QZYJLVMTU7XZW4LSILQ4M5U4GNLO523LEWZ3JBRC5E4HLE"
+	signers := []string{
+		"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
+		"GA25GQLHJU3LPEJXEIAXK23AWEA5GWDUGRSHTQHDFT6HXHVMRULSQJUJ",
+		"GC6G3EQFKOKIIZFTJQSCHTSXBVC4XO3I64F5IBRQNS3E5SW3MO3KWGMT",
+	}
 	accountChange := ingestio.Change{
 		Type: xdr.LedgerEntryTypeAccount,
 		Pre:  nil,
@@ -205,9 +212,50 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 					AccountId:  xdr.MustAddress(mockAccountID),
 					Balance:    xdr.Int64(600),
 					Thresholds: [4]byte{1, 0, 0, 0},
+					Signers: []xdr.Signer{
+						{
+							Key:    xdr.MustSigner(signers[0]),
+							Weight: 1,
+						},
+						{
+							Key:    xdr.MustSigner(signers[1]),
+							Weight: 2,
+						},
+						{
+							Key:    xdr.MustSigner(signers[2]),
+							Weight: 3,
+						},
+					},
+					Ext: xdr.AccountEntryExt{
+						V: 1,
+						V1: &xdr.AccountEntryExtensionV1{
+							Liabilities: xdr.Liabilities{
+								Buying:  1,
+								Selling: 1,
+							},
+							Ext: xdr.AccountEntryExtensionV1Ext{
+								V: 2,
+								V2: &xdr.AccountEntryExtensionV2{
+									NumSponsored:  xdr.Uint32(0),
+									NumSponsoring: xdr.Uint32(2),
+									SignerSponsoringIDs: []xdr.SponsorshipDescriptor{
+										nil,
+										xdr.MustAddressPtr(mockAccountID),
+										xdr.MustAddressPtr(sponsor),
+									},
+								},
+							},
+						},
+					},
 				},
 			},
 			LastModifiedLedgerSeq: xdr.Uint32(62),
+			Ext: xdr.LedgerEntryExt{
+				V: 1,
+				V1: &xdr.LedgerEntryExtensionV1{
+					SponsoringId: xdr.MustAddressPtr("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+				},
+			},
 		},
 	}
 	offerChange := ingestio.Change{
@@ -219,10 +267,66 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 				Offer: &eurOffer,
 			},
 			LastModifiedLedgerSeq: xdr.Uint32(62),
+			Ext: xdr.LedgerEntryExt{
+				V: 1,
+				V1: &xdr.LedgerEntryExtensionV1{
+					SponsoringId: xdr.MustAddressPtr("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+				},
+			},
 		},
 	}
+	claimableBalance := history.ClaimableBalance{
+		BalanceID: xdr.ClaimableBalanceId{
+			Type: xdr.ClaimableBalanceIdTypeClaimableBalanceIdTypeV0,
+			V0:   &xdr.Hash{1, 2, 3},
+		},
+		Asset:              xdr.MustNewNativeAsset(),
+		Amount:             10,
+		LastModifiedLedger: 62,
+		Claimants: []history.Claimant{
+			{
+				Destination: mockAccountID,
+				Predicate: xdr.ClaimPredicate{
+					Type: xdr.ClaimPredicateTypeClaimPredicateUnconditional,
+				},
+			},
+		},
+		Sponsor: null.StringFrom("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+	}
+	claimableBalanceChange := ingestio.Change{
+		Type: xdr.LedgerEntryTypeClaimableBalance,
+		Pre:  nil,
+		Post: &xdr.LedgerEntry{
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeClaimableBalance,
+				ClaimableBalance: &xdr.ClaimableBalanceEntry{
+					BalanceId: claimableBalance.BalanceID,
+					Claimants: []xdr.Claimant{
+						{
+							Type: xdr.ClaimantTypeClaimantTypeV0,
+							V0: &xdr.ClaimantV0{
+								Destination: xdr.MustAddress(claimableBalance.Claimants[0].Destination),
+								Predicate:   claimableBalance.Claimants[0].Predicate,
+							},
+						},
+					},
+					Asset:  claimableBalance.Asset,
+					Amount: claimableBalance.Amount,
+				},
+			},
+			LastModifiedLedgerSeq: xdr.Uint32(62),
+			Ext: xdr.LedgerEntryExt{
+				V: 1,
+				V1: &xdr.LedgerEntryExtensionV1{
+					SponsoringId: xdr.MustAddressPtr("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+				},
+			},
+		},
+	}
+
 	mockChangeReader.On("Read").Return(accountChange, nil).Once()
 	mockChangeReader.On("Read").Return(offerChange, nil).Once()
+	mockChangeReader.On("Read").Return(claimableBalanceChange, nil).Once()
 	mockChangeReader.On("Read").Return(ingestio.Change{}, io.EOF).Once()
 	mockChangeReader.On("Read").Return(ingestio.Change{}, io.EOF).Once()
 	s.historyAdapter.On("GetState", mock.AnythingOfType("*context.emptyCtx"), uint32(63)).Return(mockChangeReader, nil).Once()
@@ -231,14 +335,38 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 		Balance:            600,
 		LastModifiedLedger: 62,
 		MasterWeight:       1,
+		NumSponsored:       0,
+		NumSponsoring:      2,
+		BuyingLiabilities:  1,
+		SellingLiabilities: 1,
+		Sponsor:            null.StringFrom("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
 	}
+
 	clonedQ.MockQAccounts.On("GetAccountsByIDs", []string{mockAccountID}).Return([]history.AccountEntry{mockAccount}, nil).Once()
-	mockSigner := history.AccountSigner{
-		Account: mockAccountID,
-		Signer:  mockAccountID,
-		Weight:  1,
-	}
-	clonedQ.MockQSigners.On("SignersForAccounts", []string{mockAccountID}).Return([]history.AccountSigner{mockSigner}, nil).Once()
+	clonedQ.MockQSigners.On("SignersForAccounts", []string{mockAccountID}).Return([]history.AccountSigner{
+		{
+			Account: mockAccountID,
+			Signer:  mockAccountID,
+			Weight:  1,
+		},
+		{
+			Account: mockAccountID,
+			Signer:  signers[0],
+			Weight:  1,
+		},
+		{
+			Account: mockAccountID,
+			Signer:  signers[2],
+			Weight:  3,
+			Sponsor: null.StringFrom(sponsor),
+		},
+		{
+			Account: mockAccountID,
+			Signer:  signers[1],
+			Weight:  2,
+			Sponsor: null.StringFrom(mockAccountID),
+		},
+	}, nil).Once()
 	clonedQ.MockQSigners.On("CountAccounts").Return(1, nil).Once()
 	mockOffer := history.Offer{
 		SellerID:           eurOffer.SellerId.Address(),
@@ -251,6 +379,7 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 		Price:              float64(eurOffer.Price.N) / float64(eurOffer.Price.N),
 		Flags:              uint32(eurOffer.Flags),
 		LastModifiedLedger: 62,
+		Sponsor:            null.StringFrom("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
 	}
 	clonedQ.MockQOffers.On("GetOffersByIDs", []int64{int64(eurOffer.OfferId)}).Return([]history.Offer{mockOffer}, nil).Once()
 	clonedQ.MockQOffers.On("CountOffers").Return(1, nil).Once()
@@ -261,6 +390,11 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 		Order: "asc",
 		Limit: assetStatsBatchSize,
 	}).Return([]history.ExpAssetStat{}, nil).Once()
+
+	clonedQ.MockQClaimableBalances.On("CountClaimableBalances").Return(1, nil).Once()
+	clonedQ.MockQClaimableBalances.
+		On("GetClaimableBalancesByID", []xdr.ClaimableBalanceId{claimableBalanceChange.Post.Data.ClaimableBalance.BalanceId}).
+		Return([]history.ClaimableBalance{claimableBalance}, nil).Once()
 
 	next, err := verifyRangeState{
 		fromLedger: 100, toLedger: 110, verifyState: true,

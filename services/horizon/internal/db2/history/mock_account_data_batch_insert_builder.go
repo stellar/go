@@ -9,8 +9,8 @@ type MockAccountDataBatchInsertBuilder struct {
 	mock.Mock
 }
 
-func (m *MockAccountDataBatchInsertBuilder) Add(data xdr.DataEntry, lastModifiedLedger xdr.Uint32) error {
-	a := m.Called(data, lastModifiedLedger)
+func (m *MockAccountDataBatchInsertBuilder) Add(entry xdr.LedgerEntry) error {
+	a := m.Called(entry)
 	return a.Error(0)
 }
 

@@ -141,6 +141,11 @@ func (r *Router) addRoutes(config *RouterConfig, rateLimiter *throttled.HTTPRate
 			})
 		})
 
+		r.Route("/claimable_balances", func(r chi.Router) {
+			r.Method(http.MethodGet, "/", restPageHandler(actions.GetClaimableBalancesHandler{}))
+			r.Method(http.MethodGet, "/{id}", ObjectActionHandler{actions.GetClaimableBalanceByIDHandler{}})
+		})
+
 		r.Route("/offers", func(r chi.Router) {
 			r.Method(http.MethodGet, "/", restPageHandler(actions.GetOffersHandler{}))
 			r.Method(http.MethodGet, "/{offer_id}", ObjectActionHandler{actions.GetOfferByID{}})

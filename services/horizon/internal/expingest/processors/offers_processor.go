@@ -62,10 +62,7 @@ func (p *OffersProcessor) flushCache() error {
 		case change.Pre == nil && change.Post != nil:
 			// Created
 			action = "inserting"
-			err = p.batch.Add(
-				change.Post.Data.MustOffer(),
-				change.Post.LastModifiedLedgerSeq,
-			)
+			err = p.batch.Add(*change.Post)
 			rowsAffected = 1 // We don't track this when batch inserting
 		case change.Pre != nil && change.Post == nil:
 			// Removed
@@ -78,7 +75,7 @@ func (p *OffersProcessor) flushCache() error {
 			action = "updating"
 			offer := change.Post.Data.MustOffer()
 			offerID = offer.OfferId
-			rowsAffected, err = p.offersQ.UpdateOffer(offer, change.Post.LastModifiedLedgerSeq)
+			rowsAffected, err = p.offersQ.UpdateOffer(*change.Post)
 		}
 
 		if err != nil {

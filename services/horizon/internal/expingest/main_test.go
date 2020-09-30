@@ -230,6 +230,7 @@ type mockDBQ struct {
 	mock.Mock
 
 	history.MockQAccounts
+	history.MockQClaimableBalances
 	history.MockQAssetStats
 	history.MockQData
 	history.MockQEffects
@@ -460,6 +461,11 @@ func (m *mockSystem) VerifyRange(fromLedger, toLedger uint32, verifyState bool) 
 
 func (m *mockSystem) ReingestRange(fromLedger, toLedger uint32, force bool) error {
 	args := m.Called(fromLedger, toLedger, force)
+	return args.Error(0)
+}
+
+func (m *mockSystem) BuildGenesisState() error {
+	args := m.Called()
 	return args.Error(0)
 }
 

@@ -3,6 +3,7 @@ package xdr_test
 import (
 	"database/sql"
 
+	"github.com/stellar/go/xdr"
 	. "github.com/stellar/go/xdr"
 
 	. "github.com/onsi/ginkgo"
@@ -89,11 +90,52 @@ var _ = Describe("sql.Scanner implementations", func() {
 		Entry("number", 0, Thresholds{}, false),
 	)
 
+	DescribeTable("ClaimableBalanceId",
+		func(in interface{}, val ClaimableBalanceId, shouldSucceed bool) {
+			var scanned ClaimableBalanceId
+			err := scanned.Scan(in)
+
+			if shouldSucceed {
+				Expect(err).To(BeNil())
+			} else {
+				Expect(err).ToNot(BeNil())
+			}
+
+			Expect(scanned).To(Equal(val))
+		},
+		Entry("default", "AAAAAAECAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", ClaimableBalanceId{
+			Type: ClaimableBalanceIdTypeClaimableBalanceIdTypeV0,
+			V0:   &Hash{1, 2, 3},
+		}, true),
+	)
+
+	DescribeTable("ClaimPredicate",
+		func(in interface{}, val ClaimPredicate, shouldSucceed bool) {
+			var scanned ClaimPredicate
+			err := scanned.Scan(in)
+
+			if shouldSucceed {
+				Expect(err).To(BeNil())
+			} else {
+				Expect(err).ToNot(BeNil())
+			}
+
+			Expect(scanned).To(Equal(val))
+		},
+		Entry("default", "AAAAAA==", xdr.ClaimPredicate{
+			Type: xdr.ClaimPredicateTypeClaimPredicateUnconditional,
+		}, true),
+	)
+
 	DescribeTable("Scanning base64 strings (happy paths only)",
 		func(dest interface{}, in string) {
 			err := dest.(sql.Scanner).Scan(in)
 			Expect(err).To(BeNil())
 		},
+		Entry("ClaimableBalanace", &ClaimableBalanceId{},
+			"AAAAAAECAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"),
+		Entry("ClaimablPredicate", &ClaimPredicate{},
+			"AAAAAA=="),
 		Entry("LedgerEntryChanges", &LedgerEntryChanges{},
 			"AAAAAgAAAAMAAAABAAAAAAAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9w3gtrOnZAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAAAACAAAAAAAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9w3gtrOnY/+cAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA=="),
 		Entry("LedgerHeader", &LedgerHeader{},

@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/guregu/null"
 	"github.com/stellar/go/exp/ingest/adapters"
 	"github.com/stellar/go/exp/ingest/io"
 	"github.com/stellar/go/exp/ingest/ledgerbackend"
@@ -34,8 +35,14 @@ func TestProcessorRunnerRunHistoryArchiveIngestionGenesis(t *testing.T) {
 	q.MockQData.On("NewAccountDataBatchInsertBuilder", maxBatchSize).
 		Return(mockAccountDataBatchInsertBuilder).Once()
 
+	mockClaimableBalancesBatchInsertBuilder := &history.MockClaimableBalancesBatchInsertBuilder{}
+	defer mock.AssertExpectationsForObjects(t, mockClaimableBalancesBatchInsertBuilder)
+	mockClaimableBalancesBatchInsertBuilder.On("Exec").Return(nil).Once()
+	q.MockQClaimableBalances.On("NewClaimableBalancesBatchInsertBuilder", maxBatchSize).
+		Return(mockClaimableBalancesBatchInsertBuilder).Once()
+
 	q.MockQAccounts.On("UpsertAccounts", []xdr.LedgerEntry{
-		xdr.LedgerEntry{
+		{
 			LastModifiedLedgerSeq: 1,
 			Data: xdr.LedgerEntryData{
 				Type: xdr.LedgerEntryTypeAccount,
@@ -55,6 +62,7 @@ func TestProcessorRunnerRunHistoryArchiveIngestionGenesis(t *testing.T) {
 		Account: "GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7",
 		Signer:  "GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7",
 		Weight:  1,
+		Sponsor: null.String{},
 	}).Return(nil).Once()
 	mockAccountSignersBatchInsertBuilder.On("Exec").Return(nil).Once()
 	q.MockQSigners.On("NewAccountSignersBatchInsertBuilder", maxBatchSize).
@@ -131,6 +139,12 @@ func TestProcessorRunnerRunHistoryArchiveIngestionHistoryArchive(t *testing.T) {
 	mockAccountDataBatchInsertBuilder.On("Exec").Return(nil).Once()
 	q.MockQData.On("NewAccountDataBatchInsertBuilder", maxBatchSize).
 		Return(mockAccountDataBatchInsertBuilder).Once()
+
+	mockClaimableBalancesBatchInsertBuilder := &history.MockClaimableBalancesBatchInsertBuilder{}
+	defer mock.AssertExpectationsForObjects(t, mockClaimableBalancesBatchInsertBuilder)
+	mockClaimableBalancesBatchInsertBuilder.On("Exec").Return(nil).Once()
+	q.MockQClaimableBalances.On("NewClaimableBalancesBatchInsertBuilder", maxBatchSize).
+		Return(mockClaimableBalancesBatchInsertBuilder).Once()
 
 	q.MockQAccounts.On("UpsertAccounts", []xdr.LedgerEntry{
 		xdr.LedgerEntry{
@@ -315,6 +329,12 @@ func TestProcessorRunnerRunAllProcessorsOnLedger(t *testing.T) {
 	mockTransactionsBatchInsertBuilder.On("Exec").Return(nil).Once()
 	q.MockQTransactions.On("NewTransactionBatchInsertBuilder", maxBatchSize).
 		Return(mockTransactionsBatchInsertBuilder).Twice()
+
+	mockClaimableBalancesBatchInsertBuilder := &history.MockClaimableBalancesBatchInsertBuilder{}
+	defer mock.AssertExpectationsForObjects(t, mockClaimableBalancesBatchInsertBuilder)
+	mockClaimableBalancesBatchInsertBuilder.On("Exec").Return(nil).Once()
+	q.MockQClaimableBalances.On("NewClaimableBalancesBatchInsertBuilder", maxBatchSize).
+		Return(mockClaimableBalancesBatchInsertBuilder).Once()
 
 	q.MockQLedgers.On("InsertLedger", ledger, 0, 0, 0, 0, CurrentVersion).
 		Return(int64(1), nil).Once()

@@ -90,6 +90,19 @@ func (key *LedgerKey) SetTrustline(account AccountId, line Asset) error {
 	return nil
 }
 
+// SetClaimableBalance mutates `key` such that it represents the identity of a
+// claimable balance.
+func (key *LedgerKey) SetClaimableBalance(balanceID ClaimableBalanceId) error {
+	data := LedgerKeyClaimableBalance{balanceID}
+	nkey, err := NewLedgerKey(LedgerEntryTypeClaimableBalance, data)
+	if err != nil {
+		return err
+	}
+
+	*key = nkey
+	return nil
+}
+
 // MarshalBinaryCompress marshals LedgerKey to []byte but unlike
 // MarshalBinary() it removes all unnecessary bytes, exploting the fact
 // that XDR is padding data to 4 bytes in union discriminants etc.
@@ -141,6 +154,12 @@ func (key LedgerKey) MarshalBinaryCompress() ([]byte, error) {
 		m = append(m, account...)
 		dataName := []byte(strings.TrimRight(string(key.Data.DataName), "\x00"))
 		m = append(m, dataName...)
+	case LedgerEntryTypeClaimableBalance:
+		cBalance, err := key.ClaimableBalance.BalanceId.MarshalBinaryCompress()
+		if err != nil {
+			return nil, err
+		}
+		m = append(m, cBalance...)
 	default:
 		panic("Unknown type")
 	}

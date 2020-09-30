@@ -1,12 +1,16 @@
+//lint:file-ignore U1001 Ignore all unused code, staticcheck doesn't understand testify/suite
 package processors
 
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
+
 	"github.com/stellar/go/exp/ingest/io"
+	"github.com/stellar/go/services/horizon/internal/db2/history"
 	. "github.com/stellar/go/services/horizon/internal/test/transactions"
 	"github.com/stellar/go/xdr"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestTransactionOperationID(t *testing.T) {
@@ -153,6 +157,38 @@ func TestTransactionOperationType(t *testing.T) {
 
 	tt.Equal(xdr.OperationTypePayment, operation.OperationType())
 }
+
+func getRevokeSponsorshipEnvelopeXDR(t *testing.T) string {
+	source := xdr.MustMuxedAddress("GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY")
+	env := &xdr.TransactionEnvelope{
+		Type: xdr.EnvelopeTypeEnvelopeTypeTx,
+		V1: &xdr.TransactionV1Envelope{
+			Tx: xdr.Transaction{
+				SourceAccount: source,
+				Memo:          xdr.Memo{Type: xdr.MemoTypeMemoNone},
+				Operations: []xdr.Operation{
+					{
+						SourceAccount: &source,
+						Body: xdr.OperationBody{
+							Type: xdr.OperationTypeRevokeSponsorship,
+							RevokeSponsorshipOp: &xdr.RevokeSponsorshipOp{
+								Type: xdr.RevokeSponsorshipTypeRevokeSponsorshipSigner,
+								Signer: &xdr.RevokeSponsorshipOpSigner{
+									AccountId: xdr.MustAddress("GAHK7EEG2WWHVKDNT4CEQFZGKF2LGDSW2IVM4S5DP42RBW3K6BTODB4A"),
+									SignerKey: xdr.MustSigner("GCAHY6JSXQFKWKP6R7U5JPXDVNV4DJWOWRFLY3Y6YPBF64QRL4BPFDNS"),
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	b64, err := xdr.MarshalBase64(env)
+	assert.NoError(t, err)
+	return b64
+}
+
 func TestTransactionOperationDetails(t *testing.T) {
 	testCases := []struct {
 		desc          string
@@ -537,6 +573,31 @@ func TestTransactionOperationDetails(t *testing.T) {
 				"to":                "GDQVLGCJPJ57SALDJPH3YWZVGYUJJTRUUIEJGYKHLTSFY3ZOBKU3QIO3",
 			},
 		},
+		{
+			desc:          "revokeSponsorship (signer)",
+			envelopeXDR:   getRevokeSponsorshipEnvelopeXDR(t),
+			resultXDR:     "AAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+			metaXDR:       "AAAAAgAAAAAAAAABAAAAAAAAAAA=",
+			feeChangesXDR: "AAAAAA==",
+			hash:          "a41d1c8cdf515203ac5a10d945d5023325076b23dbe7d65ae402cd5f8cd9f891",
+			index:         0,
+			expected: map[string]interface{}{
+				"signer_account_id": "GAHK7EEG2WWHVKDNT4CEQFZGKF2LGDSW2IVM4S5DP42RBW3K6BTODB4A",
+				"signer_key":        "GCAHY6JSXQFKWKP6R7U5JPXDVNV4DJWOWRFLY3Y6YPBF64QRL4BPFDNS",
+			},
+		},
+		{
+			desc:          "revokeSponsorship (ledger key)",
+			envelopeXDR:   "AAAAAgAAAAAokk0ZqR+mxwuhJJ2uXvNqIhmObygxBFIJKvQgf/7fqwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAASAAAAAAAAAAQAAAAAyv66vgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+			resultXDR:     "AAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+			metaXDR:       "AAAAAgAAAAAAAAABAAAAAAAAAAA=",
+			feeChangesXDR: "AAAAAA==",
+			hash:          "13658aed93a0cb60582491a8eb945eb9b7737a7560324dd2b24f2acfe5090ada",
+			index:         0,
+			expected: map[string]interface{}{
+				"claimable_balance_id": "00000000cafebabe00000000000000000000000000000000000000000000000000000000",
+			},
+		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.desc, func(t *testing.T) {
@@ -559,9 +620,29 @@ func TestTransactionOperationDetails(t *testing.T) {
 				operation:      transaction.Envelope.Operations()[tc.index],
 				ledgerSequence: 1,
 			}
-
-			tt.Equal(tc.expected, operation.Details())
+			details, err := operation.Details()
+			tt.NoError(err)
+			tt.Equal(tc.expected, details)
 		})
+	}
+
+	tx := createTransaction(true, 1)
+	tx.Index = 1
+
+	tx.Envelope.Operations()[0].Body = xdr.OperationBody{
+		Type: xdr.OperationTypeRevokeSponsorship,
+		RevokeSponsorshipOp: &xdr.RevokeSponsorshipOp{
+			Type: xdr.RevokeSponsorshipTypeRevokeSponsorshipLedgerEntry,
+			LedgerKey: &xdr.LedgerKey{
+				Type: xdr.LedgerEntryTypeClaimableBalance,
+				ClaimableBalance: &xdr.LedgerKeyClaimableBalance{
+					BalanceId: xdr.ClaimableBalanceId{
+						Type: 0,
+						V0:   &xdr.Hash{0xca, 0xfe, 0xba, 0xbe},
+					},
+				},
+			},
+		},
 	}
 }
 
@@ -776,6 +857,31 @@ func TestTransactionOperationParticipants(t *testing.T) {
 				xdr.MustAddress("GD5OVB6FKDV7P7SOJ5UB2BPLBL4XGSHPYHINR5355SY3RSXLT2BZWAKY"),
 			},
 		},
+		{
+			desc:          "revokeSponsorship (signer)",
+			envelopeXDR:   "AAAAAgAAAAAokk0ZqR+mxwuhJJ2uXvNqIhmObygxBFIJKvQgf/7fqwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAASAAAAAQAAAAA7YL8A7jlgEPe0dUU7VHcDQx6Q/wlHqc3UD15aJ3Ii1QAAAACCEcFim0Esp2yagOwR1omkcZQJqj9X5o5/1XafEdnfoAAAAAAAAAAA",
+			resultXDR:     "AAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+			metaXDR:       "AAAAAgAAAAAAAAABAAAAAAAAAAA=",
+			feeChangesXDR: "AAAAAA==",
+			hash:          "a41d1c8cdf515203ac5a10d945d5023325076b23dbe7d65ae402cd5f8cd9f891",
+			index:         0,
+			expected: []xdr.AccountId{
+				xdr.MustAddress("GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY"),
+				xdr.MustAddress("GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2"),
+			},
+		},
+		{
+			desc:          "revokeSponsorship (ledger key)",
+			envelopeXDR:   "AAAAAgAAAAAokk0ZqR+mxwuhJJ2uXvNqIhmObygxBFIJKvQgf/7fqwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAASAAAAAAAAAAQAAAAAyv66vgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+			resultXDR:     "AAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+			metaXDR:       "AAAAAgAAAAAAAAABAAAAAAAAAAA=",
+			feeChangesXDR: "AAAAAA==",
+			hash:          "13658aed93a0cb60582491a8eb945eb9b7737a7560324dd2b24f2acfe5090ada",
+			index:         0,
+			expected: []xdr.AccountId{
+				xdr.MustAddress("GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY"),
+			},
+		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.desc, func(t *testing.T) {
@@ -801,17 +907,7 @@ func TestTransactionOperationParticipants(t *testing.T) {
 
 			participants, err := operation.Participants()
 			tt.NoError(err)
-
-			result := map[string]xdr.AccountId{}
-
-			for _, account := range participants {
-				result[account.Address()] = account
-			}
-			for _, account := range tc.expected {
-				delete(result, account.Address())
-			}
-
-			tt.Empty(result)
+			tt.ElementsMatch(tc.expected, participants)
 		})
 	}
 }
@@ -832,27 +928,19 @@ func TestOperationParticipants(t *testing.T) {
 		},
 	)
 
-	participants, err := operationsParticipants(transaction, sequence)
-	tt.NoError(err)
-	tt.Len(participants, 1)
-
-	expected := []xdr.AccountId{
+	expectedParticipants := []xdr.AccountId{
 		xdr.MustAddress("GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD"),
 		xdr.MustAddress("GACAR2AEYEKITE2LKI5RMXF5MIVZ6Q7XILROGDT22O7JX4DSWFS7FDDP"),
 	}
-
-	result := map[string]xdr.AccountId{}
-	for _, addresses := range participants {
-		for _, account := range addresses {
-			result[account.Address()] = account
-		}
+	participantsMap, err := operationsParticipants(transaction, sequence)
+	tt.NoError(err)
+	tt.Len(participantsMap, 1)
+	for k, v := range participantsMap {
+		tt.Equal(int64(240518172673), k)
+		tt.ElementsMatch(expectedParticipants, v)
 	}
-	for _, account := range expected {
-		delete(result, account.Address())
-	}
-
-	tt.Empty(result)
 }
+
 func TestTransactionOperationAllowTrustDetails(t *testing.T) {
 	tt := assert.New(t)
 	asset := xdr.Asset{}
@@ -938,13 +1026,414 @@ func TestTransactionOperationAllowTrustDetails(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.desc, func(t *testing.T) {
 			operation := transactionOperationWrapper{
-				index:          0,
-				transaction:    io.LedgerTransaction{},
+				index: 0,
+				transaction: io.LedgerTransaction{
+					Meta: xdr.TransactionMeta{
+						V: 2,
+						V2: &xdr.TransactionMetaV2{
+							Operations: make([]xdr.OperationMeta, 1, 1),
+						},
+					},
+				},
+				operation:      tc.op,
+				ledgerSequence: 1,
+			}
+			details, err := operation.Details()
+			tt.NoError(err)
+			tt.Equal(tc.expected, details)
+		})
+	}
+}
+
+type CreateClaimableBalanceOpTestSuite struct {
+	suite.Suite
+	ops []xdr.Operation
+}
+
+func (s *CreateClaimableBalanceOpTestSuite) SetupTest() {
+	aid := xdr.MustAddress("GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD")
+	source := aid.ToMuxedAccount()
+	s.ops = []xdr.Operation{
+		{
+			SourceAccount: &source,
+			Body: xdr.OperationBody{
+				Type: xdr.OperationTypeCreateClaimableBalance,
+				CreateClaimableBalanceOp: &xdr.CreateClaimableBalanceOp{
+					Amount: xdr.Int64(100000000),
+					Asset:  xdr.MustNewNativeAsset(),
+					Claimants: []xdr.Claimant{
+						{
+							Type: xdr.ClaimantTypeClaimantTypeV0,
+							V0: &xdr.ClaimantV0{
+								Destination: xdr.MustAddress("GD5OVB6FKDV7P7SOJ5UB2BPLBL4XGSHPYHINR5355SY3RSXLT2BZWAKY"),
+
+								Predicate: xdr.ClaimPredicate{
+									Type: xdr.ClaimPredicateTypeClaimPredicateUnconditional,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			SourceAccount: &source,
+			Body: xdr.OperationBody{
+				Type: xdr.OperationTypeCreateClaimableBalance,
+				CreateClaimableBalanceOp: &xdr.CreateClaimableBalanceOp{
+					Amount: xdr.Int64(200000000),
+					Asset:  xdr.MustNewCreditAsset("USD", "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD"),
+					Claimants: []xdr.Claimant{
+						{
+							Type: xdr.ClaimantTypeClaimantTypeV0,
+							V0: &xdr.ClaimantV0{
+								Destination: xdr.MustAddress("GDMQUXK7ZUCWM5472ZU3YLDP4BMJLQQ76DEMNYDEY2ODEEGGRKLEWGW2"),
+								Predicate: xdr.ClaimPredicate{
+									Type: xdr.ClaimPredicateTypeClaimPredicateUnconditional,
+								},
+							},
+						},
+						{
+							Type: xdr.ClaimantTypeClaimantTypeV0,
+							V0: &xdr.ClaimantV0{
+								Destination: xdr.MustAddress("GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3"),
+								Predicate: xdr.ClaimPredicate{
+									Type: xdr.ClaimPredicateTypeClaimPredicateUnconditional,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+}
+func (s *CreateClaimableBalanceOpTestSuite) TestDetails() {
+	testCases := []struct {
+		desc     string
+		op       xdr.Operation
+		expected map[string]interface{}
+	}{
+		{
+			desc: "claimable balance with native asset",
+			op:   s.ops[0],
+			expected: map[string]interface{}{
+				"asset":  "native",
+				"amount": "10.0000000",
+				"claimants": history.Claimants{
+					history.Claimant{
+						Destination: "GD5OVB6FKDV7P7SOJ5UB2BPLBL4XGSHPYHINR5355SY3RSXLT2BZWAKY",
+						Predicate: xdr.ClaimPredicate{
+							Type: xdr.ClaimPredicateTypeClaimPredicateUnconditional,
+						},
+					},
+				},
+			},
+		},
+		{
+			desc: "claimable balance with issued asset",
+			op:   s.ops[1],
+			expected: map[string]interface{}{
+				"asset":  "USD:GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
+				"amount": "20.0000000",
+				"claimants": history.Claimants{
+					history.Claimant{
+						Destination: "GDMQUXK7ZUCWM5472ZU3YLDP4BMJLQQ76DEMNYDEY2ODEEGGRKLEWGW2",
+						Predicate: xdr.ClaimPredicate{
+							Type: xdr.ClaimPredicateTypeClaimPredicateUnconditional,
+						},
+					},
+					history.Claimant{
+						Destination: "GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3",
+						Predicate: xdr.ClaimPredicate{
+							Type: xdr.ClaimPredicateTypeClaimPredicateUnconditional,
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, tc := range testCases {
+		s.T().Run(tc.desc, func(t *testing.T) {
+			operation := transactionOperationWrapper{
+				index: 0,
+				transaction: io.LedgerTransaction{
+					Meta: xdr.TransactionMeta{
+						V: 2,
+						V2: &xdr.TransactionMetaV2{
+							Operations: make([]xdr.OperationMeta, 1, 1),
+						},
+					},
+				},
 				operation:      tc.op,
 				ledgerSequence: 1,
 			}
 
-			tt.Equal(tc.expected, operation.Details())
+			details, err := operation.Details()
+			s.Assert().NoError(err)
+			s.Assert().Equal(tc.expected, details)
 		})
 	}
+}
+
+func (s *CreateClaimableBalanceOpTestSuite) TestParticipants() {
+	testCases := []struct {
+		desc     string
+		op       xdr.Operation
+		expected []xdr.AccountId
+	}{
+		{
+			desc: "claimable balance with a single claimant",
+			op:   s.ops[0],
+			expected: []xdr.AccountId{
+				xdr.MustAddress("GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD"),
+				xdr.MustAddress("GD5OVB6FKDV7P7SOJ5UB2BPLBL4XGSHPYHINR5355SY3RSXLT2BZWAKY"),
+			},
+		},
+		{
+			desc: "claimable balance with a multiple claimants",
+			op:   s.ops[1],
+			expected: []xdr.AccountId{
+				xdr.MustAddress("GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD"),
+				xdr.MustAddress("GDMQUXK7ZUCWM5472ZU3YLDP4BMJLQQ76DEMNYDEY2ODEEGGRKLEWGW2"),
+				xdr.MustAddress("GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3"),
+			},
+		},
+	}
+	for _, tc := range testCases {
+		s.T().Run(tc.desc, func(t *testing.T) {
+			operation := transactionOperationWrapper{
+				index: 0,
+				transaction: io.LedgerTransaction{Meta: xdr.TransactionMeta{
+					V: 2,
+					V2: &xdr.TransactionMetaV2{
+						Operations: make([]xdr.OperationMeta, 1, 1),
+					},
+				}},
+				operation:      tc.op,
+				ledgerSequence: 1,
+			}
+
+			participants, err := operation.Participants()
+			s.Assert().NoError(err)
+			s.Assert().ElementsMatch(tc.expected, participants)
+		})
+	}
+}
+func TestCreateClaimableBalanceOpTestSuite(t *testing.T) {
+	suite.Run(t, new(CreateClaimableBalanceOpTestSuite))
+}
+
+type ClaimClaimableBalanceOpTestSuite struct {
+	suite.Suite
+	op        xdr.Operation
+	balanceID string
+}
+
+func (s *ClaimClaimableBalanceOpTestSuite) SetupTest() {
+	s.balanceID = "00000000da0d57da7d4850e7fc10d2a9d0ebc731f7afb40574c03395b17d49149b91f5be"
+	aid := xdr.MustAddress("GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD")
+	source := aid.ToMuxedAccount()
+	var balanceID xdr.ClaimableBalanceId
+	xdr.SafeUnmarshalHex(s.balanceID, &balanceID)
+	s.op = xdr.Operation{
+		SourceAccount: &source,
+		Body: xdr.OperationBody{
+			Type: xdr.OperationTypeClaimClaimableBalance,
+			ClaimClaimableBalanceOp: &xdr.ClaimClaimableBalanceOp{
+				BalanceId: balanceID,
+			},
+		},
+	}
+}
+func (s *ClaimClaimableBalanceOpTestSuite) TestDetails() {
+	expected := map[string]interface{}{
+		"claimant":   "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
+		"balance_id": s.balanceID,
+	}
+
+	operation := transactionOperationWrapper{
+		index: 0,
+		transaction: io.LedgerTransaction{
+			Meta: xdr.TransactionMeta{
+				V: 2,
+				V2: &xdr.TransactionMetaV2{
+					Operations: make([]xdr.OperationMeta, 1, 1),
+				},
+			}},
+		operation:      s.op,
+		ledgerSequence: 1,
+	}
+
+	details, err := operation.Details()
+	s.Assert().NoError(err)
+	s.Assert().Equal(expected, details)
+}
+
+func (s *ClaimClaimableBalanceOpTestSuite) TestParticipants() {
+	operation := transactionOperationWrapper{
+		index: 0,
+		transaction: io.LedgerTransaction{
+			Meta: xdr.TransactionMeta{
+				V: 2,
+				V2: &xdr.TransactionMetaV2{
+					Operations: make([]xdr.OperationMeta, 1, 1),
+				},
+			},
+		},
+		operation:      s.op,
+		ledgerSequence: 1,
+	}
+
+	participants, err := operation.Participants()
+	s.Assert().NoError(err)
+	s.Assert().Equal([]xdr.AccountId{
+		xdr.MustAddress("GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD"),
+	}, participants)
+}
+
+func TestClaimClaimableBalanceOpTestSuite(t *testing.T) {
+	suite.Run(t, new(ClaimClaimableBalanceOpTestSuite))
+}
+
+var (
+	sponsor   = xdr.MustAddress("GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY")
+	sponsoree = xdr.MustAddress("GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2")
+)
+
+func getSponsoredSandwichWrappers() []*transactionOperationWrapper {
+	const ledgerSeq = uint32(12345)
+	tx := createTransaction(true, 3)
+	tx.Index = 1
+	tx.Meta = xdr.TransactionMeta{
+		V: 2,
+		V2: &xdr.TransactionMetaV2{
+			Operations: make([]xdr.OperationMeta, 3, 3),
+		},
+	}
+	tx.Result = xdr.TransactionResultPair{
+		TransactionHash: xdr.Hash{},
+		Result: xdr.TransactionResult{
+			Result: xdr.TransactionResultResult{
+				Code: xdr.TransactionResultCodeTxSuccess,
+			},
+		},
+	}
+
+	// begin sponsorship
+	tx.Envelope.Operations()[0].Body = xdr.OperationBody{
+		Type: xdr.OperationTypeBeginSponsoringFutureReserves,
+		BeginSponsoringFutureReservesOp: &xdr.BeginSponsoringFutureReservesOp{
+			SponsoredId: sponsoree,
+		},
+	}
+
+	sponsorMuxed := sponsor.ToMuxedAccount()
+	// Do not provide the source explicitly so that the transaction source is used
+	// It tests https://github.com/stellar/go/issues/2982 .
+	// tx.Envelope.Operations()[0].SourceAccount = &sponsorMuxed
+	tx.Envelope.Operations()[0].SourceAccount = nil
+	tx.Envelope.V1.Tx.SourceAccount = sponsorMuxed
+
+	// sponsored operation
+	tx.Envelope.Operations()[1].Body = xdr.OperationBody{
+		Type: xdr.OperationTypeCreateAccount,
+		CreateAccountOp: &xdr.CreateAccountOp{
+			Destination: xdr.MustAddress("GC6VKA3RC3CVU7POEKFORVMHWJNQIRZS6AEH3KIIHCVO3YRGWUV7MSUC"),
+		},
+	}
+	sponsoreeMuxed := sponsoree.ToMuxedAccount()
+	tx.Envelope.Operations()[1].SourceAccount = &sponsoreeMuxed
+	tx.Meta.V2.Operations[1] = xdr.OperationMeta{Changes: []xdr.LedgerEntryChange{
+		{
+			Type: xdr.LedgerEntryChangeTypeLedgerEntryCreated,
+			Created: &xdr.LedgerEntry{
+				LastModifiedLedgerSeq: xdr.Uint32(ledgerSeq),
+				Ext: xdr.LedgerEntryExt{
+					V: 1,
+					V1: &xdr.LedgerEntryExtensionV1{
+						SponsoringId: &sponsor,
+					},
+				},
+			},
+		},
+	}}
+
+	// end sponsorship
+	tx.Envelope.Operations()[2].Body = xdr.OperationBody{
+		Type: xdr.OperationTypeEndSponsoringFutureReserves,
+	}
+	tx.Envelope.Operations()[2].SourceAccount = &sponsoreeMuxed
+
+	// wrappers
+	result := make([]*transactionOperationWrapper, len(tx.Envelope.Operations()), len(tx.Envelope.Operations()))
+	for i, op := range tx.Envelope.Operations() {
+		result[i] = &transactionOperationWrapper{
+			index:          uint32(i),
+			transaction:    tx,
+			operation:      op,
+			ledgerSequence: ledgerSeq,
+		}
+	}
+	return result
+}
+
+func TestSponsoredSandwichTransaction_Details(t *testing.T) {
+	wrappers := getSponsoredSandwichWrappers()
+
+	details, err := wrappers[0].Details()
+	assert.NoError(t, err)
+	assert.Equal(t, map[string]interface{}{
+		"sponsored_id": "GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2",
+	}, details)
+
+	details, err = wrappers[1].Details()
+	assert.NoError(t, err)
+	assert.Equal(t, map[string]interface{}{
+		"account":          "GC6VKA3RC3CVU7POEKFORVMHWJNQIRZS6AEH3KIIHCVO3YRGWUV7MSUC",
+		"funder":           "GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2",
+		"sponsor":          "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+		"starting_balance": "0.0000000",
+	}, details)
+
+	details, err = wrappers[2].Details()
+	assert.NoError(t, err)
+	assert.Equal(t, map[string]interface{}{
+		"begin_sponsor": "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+	}, details)
+}
+
+func TestSponsoredSandwichTransaction_Participants(t *testing.T) {
+	wrappers := getSponsoredSandwichWrappers()
+
+	participants, err := wrappers[0].Participants()
+	assert.NoError(t, err)
+	assert.ElementsMatch(t,
+		[]xdr.AccountId{
+			xdr.MustAddress("GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY"),
+			xdr.MustAddress("GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2"),
+		},
+		participants,
+	)
+
+	participants, err = wrappers[1].Participants()
+	assert.NoError(t, err)
+	assert.ElementsMatch(t,
+		[]xdr.AccountId{
+			xdr.MustAddress("GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2"),
+			xdr.MustAddress("GC6VKA3RC3CVU7POEKFORVMHWJNQIRZS6AEH3KIIHCVO3YRGWUV7MSUC"),
+			xdr.MustAddress("GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY"),
+		},
+		participants,
+	)
+
+	participants, err = wrappers[2].Participants()
+	assert.NoError(t, err)
+	assert.ElementsMatch(t,
+		[]xdr.AccountId{
+			xdr.MustAddress("GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2"),
+			xdr.MustAddress("GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY"),
+		},
+		participants,
+	)
 }

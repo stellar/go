@@ -38,6 +38,11 @@ func TestStatsLedgerTransactionProcessor(t *testing.T) {
 						{Body: xdr.OperationBody{Type: xdr.OperationTypeBumpSequence}},
 						{Body: xdr.OperationBody{Type: xdr.OperationTypeManageBuyOffer}},
 						{Body: xdr.OperationBody{Type: xdr.OperationTypePathPaymentStrictSend}},
+						{Body: xdr.OperationBody{Type: xdr.OperationTypeCreateClaimableBalance}},
+						{Body: xdr.OperationBody{Type: xdr.OperationTypeClaimClaimableBalance}},
+						{Body: xdr.OperationBody{Type: xdr.OperationTypeBeginSponsoringFutureReserves}},
+						{Body: xdr.OperationBody{Type: xdr.OperationTypeEndSponsoringFutureReserves}},
+						{Body: xdr.OperationBody{Type: xdr.OperationTypeRevokeSponsorship}},
 					},
 				},
 			},
@@ -72,6 +77,11 @@ func TestStatsLedgerTransactionProcessor(t *testing.T) {
 						{Body: xdr.OperationBody{Type: xdr.OperationTypeBumpSequence}},
 						{Body: xdr.OperationBody{Type: xdr.OperationTypeManageBuyOffer}},
 						{Body: xdr.OperationBody{Type: xdr.OperationTypePathPaymentStrictSend}},
+						{Body: xdr.OperationBody{Type: xdr.OperationTypeCreateClaimableBalance}},
+						{Body: xdr.OperationBody{Type: xdr.OperationTypeClaimClaimableBalance}},
+						{Body: xdr.OperationBody{Type: xdr.OperationTypeBeginSponsoringFutureReserves}},
+						{Body: xdr.OperationBody{Type: xdr.OperationTypeEndSponsoringFutureReserves}},
+						{Body: xdr.OperationBody{Type: xdr.OperationTypeRevokeSponsorship}},
 					},
 				},
 			},
@@ -84,9 +94,9 @@ func TestStatsLedgerTransactionProcessor(t *testing.T) {
 	assert.Equal(t, int64(1), results.TransactionsSuccessful)
 	assert.Equal(t, int64(1), results.TransactionsFailed)
 
-	assert.Equal(t, int64(14*2), results.Operations)
-	assert.Equal(t, int64(14), results.OperationsInSuccessful)
-	assert.Equal(t, int64(14), results.OperationsInFailed)
+	assert.Equal(t, int64(19*2), results.Operations)
+	assert.Equal(t, int64(19), results.OperationsInSuccessful)
+	assert.Equal(t, int64(19), results.OperationsInFailed)
 
 	assert.Equal(t, int64(2), results.OperationsCreateAccount)
 	assert.Equal(t, int64(2), results.OperationsPayment)
@@ -102,4 +112,9 @@ func TestStatsLedgerTransactionProcessor(t *testing.T) {
 	assert.Equal(t, int64(2), results.OperationsBumpSequence)
 	assert.Equal(t, int64(2), results.OperationsManageBuyOffer)
 	assert.Equal(t, int64(2), results.OperationsPathPaymentStrictSend)
+	assert.Equal(t, int64(2), results.OperationsCreateClaimableBalance)
+	assert.Equal(t, int64(2), results.OperationsClaimClaimableBalance)
+	assert.Equal(t, int64(2), results.OperationsBeginSponsoringFutureReserves)
+	assert.Equal(t, int64(2), results.OperationsEndSponsoringFutureReserves)
+	assert.Equal(t, int64(2), results.OperationsRevokeSponsorship)
 }

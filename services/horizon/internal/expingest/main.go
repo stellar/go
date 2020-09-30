@@ -41,7 +41,8 @@ const (
 	//      trustlines.
 	// - 10: Fixes a bug in meta processing (fees are now processed before
 	//      everything else).
-	CurrentVersion = 10
+	// - 11: Protocol 14: CAP-23 and CAP-33.
+	CurrentVersion = 11
 
 	// MaxDBConnections is the size of the postgres connection pool dedicated to Horizon ingestion:
 	//  * Ledger ingestion,
@@ -104,6 +105,7 @@ type System interface {
 	StressTest(numTransactions, changesPerTransaction int) error
 	VerifyRange(fromLedger, toLedger uint32, verifyState bool) error
 	ReingestRange(fromLedger, toLedger uint32, force bool) error
+	BuildGenesisState() error
 	Shutdown()
 }
 
@@ -320,6 +322,15 @@ func (s *system) ReingestRange(fromLedger, toLedger uint32, force bool) error {
 		err = run()
 	}
 	return err
+}
+
+// BuildGenesisState runs the ingestion pipeline on genesis ledger. Transitions
+// to stopState when done.
+func (s *system) BuildGenesisState() error {
+	return s.runStateMachine(buildState{
+		checkpointLedger: 1,
+		stop:             true,
+	})
 }
 
 func (s *system) runStateMachine(cur stateMachineNode) error {

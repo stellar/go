@@ -37,35 +37,47 @@ func TestOfferActions_Show(t *testing.T) {
 	usdAsset := xdr.MustNewCreditAsset("USD", issuer.Address())
 	eurAsset := xdr.MustNewCreditAsset("EUR", issuer.Address())
 
-	eurOffer := xdr.OfferEntry{
-		SellerId: issuer,
-		OfferId:  xdr.Int64(4),
-		Buying:   eurAsset,
-		Selling:  nativeAsset,
-		Price: xdr.Price{
-			N: 1,
-			D: 1,
+	eurOffer := xdr.LedgerEntry{
+		LastModifiedLedgerSeq: 4,
+		Data: xdr.LedgerEntryData{
+			Type: xdr.LedgerEntryTypeOffer,
+			Offer: &xdr.OfferEntry{
+				SellerId: issuer,
+				OfferId:  xdr.Int64(4),
+				Buying:   eurAsset,
+				Selling:  nativeAsset,
+				Price: xdr.Price{
+					N: 1,
+					D: 1,
+				},
+				Flags:  1,
+				Amount: xdr.Int64(500),
+			},
 		},
-		Flags:  1,
-		Amount: xdr.Int64(500),
 	}
-	usdOffer := xdr.OfferEntry{
-		SellerId: issuer,
-		OfferId:  xdr.Int64(6),
-		Buying:   usdAsset,
-		Selling:  eurAsset,
-		Price: xdr.Price{
-			N: 1,
-			D: 1,
+	usdOffer := xdr.LedgerEntry{
+		LastModifiedLedgerSeq: 3,
+		Data: xdr.LedgerEntryData{
+			Type: xdr.LedgerEntryTypeOffer,
+			Offer: &xdr.OfferEntry{
+				SellerId: issuer,
+				OfferId:  xdr.Int64(6),
+				Buying:   usdAsset,
+				Selling:  eurAsset,
+				Price: xdr.Price{
+					N: 1,
+					D: 1,
+				},
+				Flags:  1,
+				Amount: xdr.Int64(500),
+			},
 		},
-		Flags:  1,
-		Amount: xdr.Int64(500),
 	}
 
 	batch := q.NewOffersBatchInsertBuilder(3)
-	err = batch.Add(eurOffer, 3)
+	err = batch.Add(eurOffer)
 	ht.Assert.NoError(err)
-	err = batch.Add(usdOffer, 4)
+	err = batch.Add(usdOffer)
 	ht.Assert.NoError(err)
 	ht.Assert.NoError(batch.Exec())
 

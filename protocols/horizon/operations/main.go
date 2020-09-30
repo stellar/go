@@ -14,20 +14,25 @@ import (
 // TypeNames maps from operation type to the string used to represent that type
 // in horizon's JSON responses
 var TypeNames = map[xdr.OperationType]string{
-	xdr.OperationTypeCreateAccount:            "create_account",
-	xdr.OperationTypePayment:                  "payment",
-	xdr.OperationTypePathPaymentStrictReceive: "path_payment_strict_receive",
-	xdr.OperationTypeManageSellOffer:          "manage_sell_offer",
-	xdr.OperationTypeCreatePassiveSellOffer:   "create_passive_sell_offer",
-	xdr.OperationTypeSetOptions:               "set_options",
-	xdr.OperationTypeChangeTrust:              "change_trust",
-	xdr.OperationTypeAllowTrust:               "allow_trust",
-	xdr.OperationTypeAccountMerge:             "account_merge",
-	xdr.OperationTypeInflation:                "inflation",
-	xdr.OperationTypeManageData:               "manage_data",
-	xdr.OperationTypeBumpSequence:             "bump_sequence",
-	xdr.OperationTypeManageBuyOffer:           "manage_buy_offer",
-	xdr.OperationTypePathPaymentStrictSend:    "path_payment_strict_send",
+	xdr.OperationTypeCreateAccount:                 "create_account",
+	xdr.OperationTypePayment:                       "payment",
+	xdr.OperationTypePathPaymentStrictReceive:      "path_payment_strict_receive",
+	xdr.OperationTypeManageSellOffer:               "manage_sell_offer",
+	xdr.OperationTypeCreatePassiveSellOffer:        "create_passive_sell_offer",
+	xdr.OperationTypeSetOptions:                    "set_options",
+	xdr.OperationTypeChangeTrust:                   "change_trust",
+	xdr.OperationTypeAllowTrust:                    "allow_trust",
+	xdr.OperationTypeAccountMerge:                  "account_merge",
+	xdr.OperationTypeInflation:                     "inflation",
+	xdr.OperationTypeManageData:                    "manage_data",
+	xdr.OperationTypeBumpSequence:                  "bump_sequence",
+	xdr.OperationTypeManageBuyOffer:                "manage_buy_offer",
+	xdr.OperationTypePathPaymentStrictSend:         "path_payment_strict_send",
+	xdr.OperationTypeCreateClaimableBalance:        "create_claimable_balance",
+	xdr.OperationTypeClaimClaimableBalance:         "claim_claimable_balance",
+	xdr.OperationTypeBeginSponsoringFutureReserves: "begin_sponsoring_future_reserves",
+	xdr.OperationTypeEndSponsoringFutureReserves:   "end_sponsoring_future_reserves",
+	xdr.OperationTypeRevokeSponsorship:             "revoke_sponsorship",
 }
 
 // Base represents the common attributes of an operation resource
@@ -56,6 +61,7 @@ type Base struct {
 	// Transaction is non nil when the "join=transactions" parameter is present in the operations request
 	TransactionHash string               `json:"transaction_hash"`
 	Transaction     *horizon.Transaction `json:"transaction,omitempty"`
+	Sponsor         string               `json:"sponsor,omitempty"`
 }
 
 // PagingToken implements hal.Pageable
@@ -209,6 +215,52 @@ type AccountMerge struct {
 // Inflation.
 type Inflation struct {
 	Base
+}
+
+// CreateClaimableBalance is the json resource representing a single operation whose type is
+// CreateClaimableBalance.
+type CreateClaimableBalance struct {
+	Base
+	Asset     string             `json:"asset"`
+	Amount    string             `json:"amount"`
+	Claimants []horizon.Claimant `json:"claimants"`
+}
+
+// ClaimClaimableBalance is the json resource representing a single operation whose type is
+// ClaimClaimableBalance.
+type ClaimClaimableBalance struct {
+	Base
+	BalanceID string `json:"balance_id"`
+	Claimant  string `json:"claimant"`
+}
+
+// BeginSponsoringFutureReserves is the json resource representing a single operation whose type is
+// BeginSponsoringFutureReserves.
+type BeginSponsoringFutureReserves struct {
+	Base
+	SponsoredID string `json:"sponsored_id"`
+}
+
+// EndSponsoringFutureReserves is the json resource representing a single operation whose type is
+// EndSponsoringFutureReserves.
+type EndSponsoringFutureReserves struct {
+	Base
+	BeginSponsor string `json:"begin_sponsor,omitempty"`
+}
+
+// RevokeSponsorship is the json resource representing a single operation whose type is
+// RevokeSponsorship.
+type RevokeSponsorship struct {
+	Base
+	AccountID          *string `json:"account_id,omitempty"`
+	ClaimableBalanceID *string `json:"claimable_balance_id,omitempty"`
+	DataAccountID      *string `json:"data_account_id,omitempty"`
+	DataName           *string `json:"data_name,omitempty"`
+	OfferID            *int64  `json:"offer_id,omitempty,string"`
+	TrustlineAccountID *string `json:"trustline_account_id,omitempty"`
+	TrustlineAsset     *string `json:"trustline_asset,omitempty"`
+	SignerAccountID    *string `json:"signer_account_id,omitempty"`
+	SignerKey          *string `json:"signer_key,omitempty"`
 }
 
 // Operation interface contains methods implemented by the operation types
@@ -368,6 +420,36 @@ func UnmarshalOperation(operationTypeID int32, dataString []byte) (ops Operation
 		ops = op
 	case xdr.OperationTypePathPaymentStrictSend:
 		var op PathPaymentStrictSend
+		if err = json.Unmarshal(dataString, &op); err != nil {
+			return
+		}
+		ops = op
+	case xdr.OperationTypeCreateClaimableBalance:
+		var op CreateClaimableBalance
+		if err = json.Unmarshal(dataString, &op); err != nil {
+			return
+		}
+		ops = op
+	case xdr.OperationTypeClaimClaimableBalance:
+		var op ClaimClaimableBalance
+		if err = json.Unmarshal(dataString, &op); err != nil {
+			return
+		}
+		ops = op
+	case xdr.OperationTypeBeginSponsoringFutureReserves:
+		var op BeginSponsoringFutureReserves
+		if err = json.Unmarshal(dataString, &op); err != nil {
+			return
+		}
+		ops = op
+	case xdr.OperationTypeEndSponsoringFutureReserves:
+		var op EndSponsoringFutureReserves
+		if err = json.Unmarshal(dataString, &op); err != nil {
+			return
+		}
+		ops = op
+	case xdr.OperationTypeRevokeSponsorship:
+		var op RevokeSponsorship
 		if err = json.Unmarshal(dataString, &op); err != nil {
 			return
 		}

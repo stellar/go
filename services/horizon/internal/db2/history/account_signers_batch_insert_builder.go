@@ -5,6 +5,7 @@ func (i *accountSignersBatchInsertBuilder) Add(signer AccountSigner) error {
 		"account_id": signer.Account,
 		"signer":     signer.Signer,
 		"weight":     signer.Weight,
+		"sponsor":    signer.Sponsor,
 	})
 }
 

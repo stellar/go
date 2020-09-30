@@ -403,8 +403,8 @@ func (c *Client) Operations(request OperationRequest) (ops operations.Operations
 	return
 }
 
-// OperationDetail returns a single stellar operations (https://www.stellar.org/developers/horizon/reference/resources/operation.html)
-// for a given operation id
+// OperationDetail returns a single stellar operation for a given operation id
+// See https://www.stellar.org/developers/horizon/reference/resources/operation.html
 func (c *Client) OperationDetail(id string) (ops operations.Operation, err error) {
 	if id == "" {
 		return ops, errors.New("invalid operation id provided")
@@ -806,6 +806,20 @@ func (c *Client) NextTradeAggregationsPage(page hProtocol.TradeAggregationsPage)
 // trade aggregations response.
 func (c *Client) PrevTradeAggregationsPage(page hProtocol.TradeAggregationsPage) (ta hProtocol.TradeAggregationsPage, err error) {
 	err = c.sendRequestURL(page.Links.Prev.Href, "get", &ta)
+	return
+}
+
+// ClaimableBalances returns details about available claimable balances,
+// possibly filtered to a specific sponsor or other parameters.
+func (c *Client) ClaimableBalances(cbr ClaimableBalanceRequest) (cb hProtocol.ClaimableBalances, err error) {
+	err = c.sendRequest(cbr, &cb)
+	return
+}
+
+// ClaimableBalance returns details about a *specific*, unique claimable balance.
+func (c *Client) ClaimableBalance(id string) (cb hProtocol.ClaimableBalance, err error) {
+	cbr := ClaimableBalanceRequest{ID: id}
+	err = c.sendRequest(cbr, &cb)
 	return
 }
 

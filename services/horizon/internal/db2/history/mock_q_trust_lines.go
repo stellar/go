@@ -21,13 +21,13 @@ func (m *MockQTrustLines) GetTrustLinesByKeys(keys []xdr.LedgerKeyTrustLine) ([]
 	return a.Get(0).([]TrustLine), a.Error(1)
 }
 
-func (m *MockQTrustLines) InsertTrustLine(trustLine xdr.TrustLineEntry, lastModifiedLedger xdr.Uint32) (int64, error) {
-	a := m.Called(trustLine, lastModifiedLedger)
+func (m *MockQTrustLines) InsertTrustLine(entry xdr.LedgerEntry) (int64, error) {
+	a := m.Called(entry)
 	return a.Get(0).(int64), a.Error(1)
 }
 
-func (m *MockQTrustLines) UpdateTrustLine(trustLine xdr.TrustLineEntry, lastModifiedLedger xdr.Uint32) (int64, error) {
-	a := m.Called(trustLine, lastModifiedLedger)
+func (m *MockQTrustLines) UpdateTrustLine(entry xdr.LedgerEntry) (int64, error) {
+	a := m.Called(entry)
 	return a.Get(0).(int64), a.Error(1)
 }
 

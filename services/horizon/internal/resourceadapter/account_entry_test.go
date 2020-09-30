@@ -3,6 +3,7 @@ package resourceadapter
 import (
 	"encoding/base64"
 	"encoding/json"
+	"github.com/guregu/null"
 	"strconv"
 	"testing"
 	"time"
@@ -26,6 +27,7 @@ var (
 			Name:               "test",
 			Value:              []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
 			LastModifiedLedger: 1,
+			Sponsor:            null.StringFrom("GBUH7T6U36DAVEKECMKN5YEBQYZVRBPNSZAAKBCO6P5HBMDFSQMQL4Z4"),
 		},
 		{
 			AccountID:          accountID.Address(),
@@ -51,6 +53,9 @@ var (
 		SellingLiabilities:   4,
 		BuyingLiabilities:    3,
 		LastModifiedLedger:   1000,
+		NumSponsored:         12,
+		NumSponsoring:        34,
+		Sponsor:              null.StringFrom("GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H"),
 	}
 
 	ledgerWithCloseTime = &history.Ledger{
@@ -103,6 +108,7 @@ var (
 			Account: accountID.Address(),
 			Signer:  "GCMQBJWOLTCSSMWNVDJAXL6E42SADH563IL5MN5B6RBBP4XP7TBRLJKE",
 			Weight:  int32(1),
+			Sponsor: null.StringFrom("GBXSGN5GX4PZOSBHB4JJF67CEGSGT56IN2N7LF3VGJ7WQ56BYWRVNNDX"),
 		},
 		{
 			Account: accountID.Address(),
@@ -134,6 +140,9 @@ func TestPopulateAccountEntry(t *testing.T) {
 	tt.Equal(account.LastModifiedLedger, hAccount.LastModifiedLedger)
 	tt.NotNil(hAccount.LastModifiedTime)
 	tt.Equal(ledgerWithCloseTime.ClosedAt, *hAccount.LastModifiedTime)
+	tt.Equal(account.NumSponsoring, hAccount.NumSponsoring)
+	tt.Equal(account.NumSponsored, hAccount.NumSponsored)
+	tt.Equal(account.Sponsor.String, hAccount.Sponsor)
 
 	wantAccountThresholds := AccountThresholds{
 		LowThreshold:  account.ThresholdLow,
@@ -190,6 +199,11 @@ func TestPopulateAccountEntry(t *testing.T) {
 		tt.Equal(s.Signer, hs.Key)
 		tt.Equal(s.Weight, hs.Weight)
 		tt.Equal(protocol.MustKeyTypeFromAddress(s.Signer), hs.Type)
+		var expectedSponsor string
+		if s.Sponsor.Valid {
+			expectedSponsor = s.Sponsor.String
+		}
+		tt.Equal(expectedSponsor, hs.Sponsor)
 	}
 
 	links, err := json.Marshal(hAccount.Links)

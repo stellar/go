@@ -114,6 +114,65 @@ const (
 	// EffectSequenceBumped occurs when an account bumps their sequence number
 	EffectSequenceBumped EffectType = 43 // from bump_sequence
 
+	// claimable balance effects
+
+	// EffectClaimableBalanceCreated occurs when a claimable balance is created
+	EffectClaimableBalanceCreated EffectType = 50 // from create_claimable_balance
+
+	// EffectClaimableBalanceClaimantCreated occurs when a claimable balance claimant is created
+	EffectClaimableBalanceClaimantCreated EffectType = 51 // from create_claimable_balance
+
+	// EffectClaimableBalanceClaimed occurs when a claimable balance is claimed
+	EffectClaimableBalanceClaimed EffectType = 52 // from claim_claimable_balance
+
+	// sponsorship effects
+
+	// EffectAccountSponsorshipCreated occurs when an account ledger entry is sponsored
+	EffectAccountSponsorshipCreated EffectType = 60 // from create_account
+
+	// EffectAccountSponsorshipUpdated occurs when the sponsoring of an account ledger entry is updated
+	EffectAccountSponsorshipUpdated EffectType = 61 // from revoke_sponsorship
+
+	// EffectAccountSponsorshipRemoved occurs when the sponsorship of an account ledger entry is removed
+	EffectAccountSponsorshipRemoved EffectType = 62 // from revoke_sponsorship
+
+	// EffectTrustlineSponsorshipCreated occurs when a trustline ledger entry is sponsored
+	EffectTrustlineSponsorshipCreated EffectType = 63 // from change_trust
+
+	// EffectTrustlineSponsorshipUpdated occurs when the sponsoring of a trustline ledger entry is updated
+	EffectTrustlineSponsorshipUpdated EffectType = 64 // from revoke_sponsorship
+
+	// EffectTrustlineSponsorshipRemoved occurs when the sponsorship of a trustline ledger entry is removed
+	EffectTrustlineSponsorshipRemoved EffectType = 65 // from revoke_sponsorship
+
+	// EffectDataSponsorshipCreated occurs when a trustline ledger entry is sponsored
+	EffectDataSponsorshipCreated EffectType = 66 // from manage_data
+
+	// EffectDataSponsorshipUpdated occurs when the sponsoring of a trustline ledger entry is updated
+	EffectDataSponsorshipUpdated EffectType = 67 // from revoke_sponsorship
+
+	// EffectDataSponsorshipRemoved occurs when the sponsorship of a trustline ledger entry is removed
+	EffectDataSponsorshipRemoved EffectType = 68 // from revoke_sponsorship
+
+	// EffectClaimableBalanceSponsorshipCreated occurs when a claimable balance ledger entry is sponsored
+	EffectClaimableBalanceSponsorshipCreated EffectType = 69 // from create_claimable_balance
+
+	// EffectClaimableBalanceSponsorshipUpdated occurs when the sponsoring of a claimable balance ledger entry
+	// is updated
+	EffectClaimableBalanceSponsorshipUpdated EffectType = 70 // from revoke_sponsorship
+
+	// EffectClaimableBalanceSponsorshipRemoved occurs when the sponsorship of a claimable balance ledger entry
+	// is removed
+	EffectClaimableBalanceSponsorshipRemoved EffectType = 71 // from claim_claimable_balance
+
+	// EffectSignerSponsorshipCreated occurs when the sponsorship of a signer is created
+	EffectSignerSponsorshipCreated EffectType = 72 // from set_options
+
+	// EffectSignerSponsorshipUpdated occurs when the sponsorship of a signer is updated
+	EffectSignerSponsorshipUpdated EffectType = 73 // from revoke_sponsorship
+
+	// EffectSignerSponsorshipRemoved occurs when the sponsorship of a signer is removed
+	EffectSignerSponsorshipRemoved EffectType = 74 // from revoke_sponsorship
 )
 
 // Account is a row of data from the `history_accounts` table
@@ -124,30 +183,34 @@ type Account struct {
 
 // AccountEntry is a row of data from the `account` table
 type AccountEntry struct {
-	AccountID            string `db:"account_id"`
-	Balance              int64  `db:"balance"`
-	BuyingLiabilities    int64  `db:"buying_liabilities"`
-	SellingLiabilities   int64  `db:"selling_liabilities"`
-	SequenceNumber       int64  `db:"sequence_number"`
-	NumSubEntries        uint32 `db:"num_subentries"`
-	InflationDestination string `db:"inflation_destination"`
-	HomeDomain           string `db:"home_domain"`
-	Flags                uint32 `db:"flags"`
-	MasterWeight         byte   `db:"master_weight"`
-	ThresholdLow         byte   `db:"threshold_low"`
-	ThresholdMedium      byte   `db:"threshold_medium"`
-	ThresholdHigh        byte   `db:"threshold_high"`
-	LastModifiedLedger   uint32 `db:"last_modified_ledger"`
+	AccountID            string      `db:"account_id"`
+	Balance              int64       `db:"balance"`
+	BuyingLiabilities    int64       `db:"buying_liabilities"`
+	SellingLiabilities   int64       `db:"selling_liabilities"`
+	SequenceNumber       int64       `db:"sequence_number"`
+	NumSubEntries        uint32      `db:"num_subentries"`
+	InflationDestination string      `db:"inflation_destination"`
+	HomeDomain           string      `db:"home_domain"`
+	Flags                uint32      `db:"flags"`
+	MasterWeight         byte        `db:"master_weight"`
+	ThresholdLow         byte        `db:"threshold_low"`
+	ThresholdMedium      byte        `db:"threshold_medium"`
+	ThresholdHigh        byte        `db:"threshold_high"`
+	LastModifiedLedger   uint32      `db:"last_modified_ledger"`
+	Sponsor              null.String `db:"sponsor"`
+	NumSponsored         uint32      `db:"num_sponsored"`
+	NumSponsoring        uint32      `db:"num_sponsoring"`
 }
 
 type AccountsBatchInsertBuilder interface {
-	Add(account xdr.AccountEntry, lastModifiedLedger xdr.Uint32) error
+	Add(entry xdr.LedgerEntry) error
 	Exec() error
 }
 
 type IngestionQ interface {
 	QAccounts
 	QAssetStats
+	QClaimableBalances
 	QData
 	QEffects
 	QLedgers
@@ -191,9 +254,10 @@ type QAccounts interface {
 
 // AccountSigner is a row of data from the `accounts_signers` table
 type AccountSigner struct {
-	Account string `db:"account_id"`
-	Signer  string `db:"signer"`
-	Weight  int32  `db:"weight"`
+	Account string      `db:"account_id"`
+	Signer  string      `db:"signer"`
+	Weight  int32       `db:"weight"`
+	Sponsor null.String `db:"sponsor"`
 }
 
 type AccountSignersBatchInsertBuilder interface {
@@ -212,12 +276,13 @@ type Data struct {
 	Name               string           `db:"name"`
 	Value              AccountDataValue `db:"value"`
 	LastModifiedLedger uint32           `db:"last_modified_ledger"`
+	Sponsor            null.String      `db:"sponsor"`
 }
 
 type AccountDataValue []byte
 
 type AccountDataBatchInsertBuilder interface {
-	Add(data xdr.DataEntry, lastModifiedLedger xdr.Uint32) error
+	Add(entry xdr.LedgerEntry) error
 	Exec() error
 }
 
@@ -231,8 +296,8 @@ type QData interface {
 	NewAccountDataBatchInsertBuilder(maxBatchSize int) AccountDataBatchInsertBuilder
 	CountAccountsData() (int, error)
 	GetAccountDataByKeys(keys []xdr.LedgerKeyData) ([]Data, error)
-	InsertAccountData(data xdr.DataEntry, lastModifiedLedger xdr.Uint32) (int64, error)
-	UpdateAccountData(data xdr.DataEntry, lastModifiedLedger xdr.Uint32) (int64, error)
+	InsertAccountData(entry xdr.LedgerEntry) (int64, error)
+	UpdateAccountData(entry xdr.LedgerEntry) (int64, error)
 	RemoveAccountData(key xdr.LedgerKeyData) (int64, error)
 }
 
@@ -434,17 +499,18 @@ type Offer struct {
 	SellingAsset xdr.Asset `db:"selling_asset"`
 	BuyingAsset  xdr.Asset `db:"buying_asset"`
 
-	Amount             xdr.Int64 `db:"amount"`
-	Pricen             int32     `db:"pricen"`
-	Priced             int32     `db:"priced"`
-	Price              float64   `db:"price"`
-	Flags              uint32    `db:"flags"`
-	Deleted            bool      `db:"deleted"`
-	LastModifiedLedger uint32    `db:"last_modified_ledger"`
+	Amount             xdr.Int64   `db:"amount"`
+	Pricen             int32       `db:"pricen"`
+	Priced             int32       `db:"priced"`
+	Price              float64     `db:"price"`
+	Flags              uint32      `db:"flags"`
+	Deleted            bool        `db:"deleted"`
+	LastModifiedLedger uint32      `db:"last_modified_ledger"`
+	Sponsor            null.String `db:"sponsor"`
 }
 
 type OffersBatchInsertBuilder interface {
-	Add(offer xdr.OfferEntry, lastModifiedLedger xdr.Uint32) error
+	Add(entry xdr.LedgerEntry) error
 	Exec() error
 }
 
@@ -477,7 +543,7 @@ type QSigners interface {
 	UpdateLastLedgerExpIngest(ledgerSequence uint32) error
 	AccountsForSigner(signer string, page db2.PageQuery) ([]AccountSigner, error)
 	NewAccountSignersBatchInsertBuilder(maxBatchSize int) AccountSignersBatchInsertBuilder
-	CreateAccountSigner(account, signer string, weight int32) (int64, error)
+	CreateAccountSigner(account, signer string, weight int32, sponsor *string) (int64, error)
 	RemoveAccountSigner(account, signer string) (int64, error)
 	SignersForAccounts(accounts []string) ([]AccountSigner, error)
 	CountAccounts() (int, error)
@@ -487,6 +553,7 @@ type QSigners interface {
 type OffersQuery struct {
 	PageQuery db2.PageQuery
 	SellerID  string
+	Sponsor   string
 	Selling   *xdr.Asset
 	Buying    *xdr.Asset
 }
@@ -566,20 +633,21 @@ type TrustLine struct {
 	SellingLiabilities int64         `db:"selling_liabilities"`
 	Flags              uint32        `db:"flags"`
 	LastModifiedLedger uint32        `db:"last_modified_ledger"`
+	Sponsor            null.String   `db:"sponsor"`
 }
 
 // QTrustLines defines trust lines related queries.
 type QTrustLines interface {
 	NewTrustLinesBatchInsertBuilder(maxBatchSize int) TrustLinesBatchInsertBuilder
 	GetTrustLinesByKeys(keys []xdr.LedgerKeyTrustLine) ([]TrustLine, error)
-	InsertTrustLine(trustLine xdr.TrustLineEntry, lastModifiedLedger xdr.Uint32) (int64, error)
-	UpdateTrustLine(trustLine xdr.TrustLineEntry, lastModifiedLedger xdr.Uint32) (int64, error)
-	UpsertTrustLines(trustLines []xdr.LedgerEntry) error
+	InsertTrustLine(entry xdr.LedgerEntry) (int64, error)
+	UpdateTrustLine(entry xdr.LedgerEntry) (int64, error)
+	UpsertTrustLines(entries []xdr.LedgerEntry) error
 	RemoveTrustLine(key xdr.LedgerKeyTrustLine) (int64, error)
 }
 
 type TrustLinesBatchInsertBuilder interface {
-	Add(trustLine xdr.TrustLineEntry, lastModifiedLedger xdr.Uint32) error
+	Add(entry xdr.LedgerEntry) error
 	Exec() error
 }
 

@@ -52,8 +52,11 @@ func (s *OperationsProcessorTestSuiteLedger) mockBatchInsertAdds(txs []io.Ledger
 				operation:      op,
 				ledgerSequence: sequence,
 			}
-
-			detailsJSON, err := json.Marshal(expected.Details())
+			details, err := expected.Details()
+			if err != nil {
+				return err
+			}
+			detailsJSON, err := json.Marshal(details)
 			if err != nil {
 				return err
 			}

@@ -396,7 +396,6 @@ func TestGetParams(t *testing.T) {
 	err = getParams(&qp, r)
 
 	tt.Assert.NoError(err)
-	native := xdr.MustNewNativeAsset()
 	selling, err = qp.Selling()
 	tt.Assert.NoError(err)
 	tt.Assert.NotNil(selling)

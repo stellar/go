@@ -30,6 +30,11 @@ func (entry *LedgerEntry) LedgerKey() LedgerKey {
 			AccountId: tline.AccountId,
 			Asset:     tline.Asset,
 		}
+	case LedgerEntryTypeClaimableBalance:
+		cBalance := entry.Data.MustClaimableBalance()
+		body = LedgerKeyClaimableBalance{
+			BalanceId: cBalance.BalanceId,
+		}
 	default:
 		panic(fmt.Errorf("Unknown entry type: %v", entry.Data.Type))
 	}
@@ -40,4 +45,13 @@ func (entry *LedgerEntry) LedgerKey() LedgerKey {
 	}
 
 	return ret
+}
+
+// SponsoringID return SponsorshipDescriptor for a given ledger entry
+func (entry *LedgerEntry) SponsoringID() SponsorshipDescriptor {
+	var sponsor SponsorshipDescriptor
+	if entry.Ext.V == 1 && entry.Ext.V1 != nil {
+		sponsor = entry.Ext.V1.SponsoringId
+	}
+	return sponsor
 }

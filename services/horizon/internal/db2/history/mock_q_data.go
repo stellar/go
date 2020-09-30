@@ -26,13 +26,13 @@ func (m *MockQData) NewAccountDataBatchInsertBuilder(maxBatchSize int) AccountDa
 	return a.Get(0).(AccountDataBatchInsertBuilder)
 }
 
-func (m *MockQData) InsertAccountData(data xdr.DataEntry, lastModifiedLedger xdr.Uint32) (int64, error) {
-	a := m.Called(data, lastModifiedLedger)
+func (m *MockQData) InsertAccountData(entry xdr.LedgerEntry) (int64, error) {
+	a := m.Called(entry)
 	return a.Get(0).(int64), a.Error(1)
 }
 
-func (m *MockQData) UpdateAccountData(data xdr.DataEntry, lastModifiedLedger xdr.Uint32) (int64, error) {
-	a := m.Called(data, lastModifiedLedger)
+func (m *MockQData) UpdateAccountData(entry xdr.LedgerEntry) (int64, error) {
+	a := m.Called(entry)
 	return a.Get(0).(int64), a.Error(1)
 }
 

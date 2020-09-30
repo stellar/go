@@ -2,6 +2,7 @@ package history
 
 import (
 	sq "github.com/Masterminds/squirrel"
+	"github.com/guregu/null"
 	"github.com/lib/pq"
 
 	"github.com/stellar/go/services/horizon/internal/db2"
@@ -52,13 +53,9 @@ func (q *Q) GetAccountsByIDs(ids []string) ([]AccountEntry, error) {
 	return accounts, err
 }
 
-func accountToMap(account xdr.AccountEntry, lastModifiedLedger xdr.Uint32) map[string]interface{} {
-	var buyingliabilities, sellingliabilities xdr.Int64
-	if account.Ext.V1 != nil {
-		v1 := account.Ext.V1
-		buyingliabilities = v1.Liabilities.Buying
-		sellingliabilities = v1.Liabilities.Selling
-	}
+func accountToMap(entry xdr.LedgerEntry) map[string]interface{} {
+	account := entry.Data.MustAccount()
+	liabilities := account.Liabilities()
 
 	var inflationDestination = ""
 	if account.InflationDest != nil {
@@ -68,8 +65,8 @@ func accountToMap(account xdr.AccountEntry, lastModifiedLedger xdr.Uint32) map[s
 	return map[string]interface{}{
 		"account_id":            account.AccountId.Address(),
 		"balance":               account.Balance,
-		"buying_liabilities":    buyingliabilities,
-		"selling_liabilities":   sellingliabilities,
+		"buying_liabilities":    liabilities.Buying,
+		"selling_liabilities":   liabilities.Selling,
 		"sequence_number":       account.SeqNum,
 		"num_subentries":        account.NumSubEntries,
 		"inflation_destination": inflationDestination,
@@ -79,7 +76,10 @@ func accountToMap(account xdr.AccountEntry, lastModifiedLedger xdr.Uint32) map[s
 		"threshold_low":         account.ThresholdLow(),
 		"threshold_medium":      account.ThresholdMedium(),
 		"threshold_high":        account.ThresholdHigh(),
-		"last_modified_ledger":  lastModifiedLedger,
+		"last_modified_ledger":  entry.LastModifiedLedgerSeq,
+		"sponsor":               ledgerEntrySponsorToNullString(entry),
+		"num_sponsored":         account.NumSponsored(),
+		"num_sponsoring":        account.NumSponsoring(),
 	}
 }
 
@@ -92,16 +92,16 @@ func (q *Q) UpsertAccounts(accounts []xdr.LedgerEntry) error {
 	var homeDomain []xdr.String32
 	var balance, buyingLiabilities, sellingLiabilities []xdr.Int64
 	var sequenceNumber []xdr.SequenceNumber
-	var numSubEntries, flags, lastModifiedLedger []xdr.Uint32
+	var numSubEntries, flags, lastModifiedLedger, numSponsored, numSponsoring []xdr.Uint32
 	var masterWeight, thresholdLow, thresholdMedium, thresholdHigh []uint8
+	var sponsor []null.String
 
 	for _, entry := range accounts {
 		if entry.Data.Type != xdr.LedgerEntryTypeAccount {
 			return errors.Errorf("Invalid entry type: %d", entry.Data.Type)
 		}
 
-		m := accountToMap(entry.Data.MustAccount(), entry.LastModifiedLedgerSeq)
-
+		m := accountToMap(entry)
 		accountID = append(accountID, m["account_id"].(string))
 		balance = append(balance, m["balance"].(xdr.Int64))
 		buyingLiabilities = append(buyingLiabilities, m["buying_liabilities"].(xdr.Int64))
@@ -116,6 +116,9 @@ func (q *Q) UpsertAccounts(accounts []xdr.LedgerEntry) error {
 		thresholdMedium = append(thresholdMedium, m["threshold_medium"].(uint8))
 		thresholdHigh = append(thresholdHigh, m["threshold_high"].(uint8))
 		lastModifiedLedger = append(lastModifiedLedger, m["last_modified_ledger"].(xdr.Uint32))
+		sponsor = append(sponsor, m["sponsor"].(null.String))
+		numSponsored = append(numSponsored, m["num_sponsored"].(xdr.Uint32))
+		numSponsoring = append(numSponsoring, m["num_sponsoring"].(xdr.Uint32))
 	}
 
 	sql := `
@@ -134,7 +137,10 @@ func (q *Q) UpsertAccounts(accounts []xdr.LedgerEntry) error {
 			unnest(?::int[]),    /*	threshold_low */
 			unnest(?::int[]),    /*	threshold_medium */
 			unnest(?::int[]),    /*	threshold_high */
-			unnest(?::int[])     /*	last_modified_ledger */
+			unnest(?::int[]),    /*	last_modified_ledger */
+			unnest(?::text[]),   /*	sponsor */
+			unnest(?::int[]),    /*	num_sponsored */
+			unnest(?::int[])     /*	num_sponsoring */
 		)
 	INSERT INTO accounts ( 
 		account_id,
@@ -150,7 +156,10 @@ func (q *Q) UpsertAccounts(accounts []xdr.LedgerEntry) error {
 		threshold_low,
 		threshold_medium,
 		threshold_high,
-		last_modified_ledger
+		last_modified_ledger,
+		sponsor,
+		num_sponsored,
+		num_sponsoring
 	)
 	SELECT * from r 
 	ON CONFLICT (account_id) DO UPDATE SET 
@@ -167,7 +176,10 @@ func (q *Q) UpsertAccounts(accounts []xdr.LedgerEntry) error {
 		threshold_low = excluded.threshold_low,
 		threshold_medium = excluded.threshold_medium,
 		threshold_high = excluded.threshold_high,
-		last_modified_ledger = excluded.last_modified_ledger`
+		last_modified_ledger = excluded.last_modified_ledger,
+		sponsor = excluded.sponsor,
+		num_sponsored = excluded.num_sponsored,
+		num_sponsoring = excluded.num_sponsoring`
 
 	_, err := q.ExecRaw(sql,
 		pq.Array(accountID),
@@ -183,7 +195,11 @@ func (q *Q) UpsertAccounts(accounts []xdr.LedgerEntry) error {
 		pq.Array(thresholdLow),
 		pq.Array(thresholdMedium),
 		pq.Array(thresholdHigh),
-		pq.Array(lastModifiedLedger))
+		pq.Array(lastModifiedLedger),
+		pq.Array(sponsor),
+		pq.Array(numSponsored),
+		pq.Array(numSponsoring),
+	)
 	return err
 }
 
@@ -218,6 +234,70 @@ func (q *Q) AccountsForAsset(asset xdr.Asset, page db2.PageQuery) ([]AccountEntr
 	sql, err := page.ApplyToUsingCursor(sql, "trust_lines.account_id", page.Cursor)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not apply query to page")
+	}
+
+	var results []AccountEntry
+	if err := q.Select(&results, sql); err != nil {
+		return nil, errors.Wrap(err, "could not run select query")
+	}
+
+	return results, nil
+}
+
+func selectBySponsor(table, sponsor string, page db2.PageQuery) (sq.SelectBuilder, error) {
+	sql := sq.
+		Select("account_id").
+		From(table).
+		Where(map[string]interface{}{
+			"sponsor": sponsor,
+		})
+
+	sql, err := page.ApplyToUsingCursor(sql, "account_id", page.Cursor)
+	if err != nil {
+		return sql, errors.Wrap(err, "could not apply query to page")
+	}
+	return sql, err
+}
+
+func selectUnionBySponsor(tables []string, sponsor string, page db2.PageQuery) (sq.SelectBuilder, error) {
+	var selectIDs sq.SelectBuilder
+	for i, table := range tables {
+		sql, err := selectBySponsor(table, sponsor, page)
+		if err != nil {
+			return sql, errors.Wrap(err, "could not construct account id query")
+		}
+		sql = sql.Prefix("(").Suffix(")")
+
+		if i == 0 {
+			selectIDs = sql
+			continue
+		}
+
+		sqlStr, args, err := sql.ToSql()
+		if err != nil {
+			return sql, errors.Wrap(err, "could not construct account id query")
+		}
+		selectIDs = selectIDs.Suffix("UNION "+sqlStr, args...)
+	}
+
+	return sq.
+		Select("accounts.*").
+		FromSelect(selectIDs, "accountSet").
+		Join("accounts ON accounts.account_id = accountSet.account_id").
+		OrderBy("accounts.account_id " + page.Order).
+		Limit(page.Limit), nil
+}
+
+// AccountsForSponsor return all the accounts where `sponsor`` is sponsoring the account entry or
+// any of its subentries (trust lines, signers, data, or account entry)
+func (q *Q) AccountsForSponsor(sponsor string, page db2.PageQuery) ([]AccountEntry, error) {
+	sql, err := selectUnionBySponsor(
+		[]string{"accounts", "accounts_data", "accounts_signers", "trust_lines"},
+		sponsor,
+		page,
+	)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not construct accounts query")
 	}
 
 	var results []AccountEntry
@@ -265,5 +345,8 @@ var selectAccounts = sq.Select(`
 	threshold_low,
 	threshold_medium,
 	threshold_high,
-	last_modified_ledger
+	last_modified_ledger,
+	sponsor,
+	num_sponsored,
+	num_sponsoring
 `).From("accounts")

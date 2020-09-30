@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/guregu/null"
 	ingesterrors "github.com/stellar/go/exp/ingest/errors"
 	"github.com/stellar/go/exp/ingest/verify"
 	"github.com/stellar/go/historyarchive"
@@ -26,7 +27,7 @@ const assetStatsBatchSize = 500
 // check them.
 // There is a test that checks it, to fix it: update the actual `verifyState`
 // method instead of just updating this value!
-const stateVerifierExpectedIngestionVersion = 10
+const stateVerifierExpectedIngestionVersion = 11
 
 // verifyState is called as a go routine from pipeline post hook every 64
 // ledgers. It checks if the state is correct. If another go routine is already
@@ -149,6 +150,7 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool) error {
 		data := make([]xdr.LedgerKeyData, 0, verifyBatchSize)
 		offers := make([]int64, 0, verifyBatchSize)
 		trustLines := make([]xdr.LedgerKeyTrustLine, 0, verifyBatchSize)
+		cBalances := make([]xdr.ClaimableBalanceId, 0, verifyBatchSize)
 		for _, key := range keys {
 			switch key.Type {
 			case xdr.LedgerEntryTypeAccount:
@@ -159,6 +161,8 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool) error {
 				offers = append(offers, int64(key.Offer.OfferId))
 			case xdr.LedgerEntryTypeTrustline:
 				trustLines = append(trustLines, *key.TrustLine)
+			case xdr.LedgerEntryTypeClaimableBalance:
+				cBalances = append(cBalances, key.ClaimableBalance.BalanceId)
 			default:
 				return errors.New("GetLedgerKeys return unexpected type")
 			}
@@ -182,6 +186,11 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool) error {
 		err = addTrustLinesToStateVerifier(verifier, assetStats, historyQ, trustLines)
 		if err != nil {
 			return errors.Wrap(err, "addTrustLinesToStateVerifier failed")
+		}
+
+		err = addClaimableBalanceToStateVerifier(verifier, assetStats, historyQ, cBalances)
+		if err != nil {
+			return errors.Wrap(err, "addClaimableBalanceToStateVerifier failed")
 		}
 
 		total += len(keys)
@@ -210,7 +219,12 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool) error {
 		return errors.Wrap(err, "Error running historyQ.CountTrustLines")
 	}
 
-	err = verifier.Verify(countAccounts + countData + countOffers + countTrustLines)
+	countClaimableBalances, err := historyQ.CountClaimableBalances()
+	if err != nil {
+		return errors.Wrap(err, "Error running historyQ.CountClaimableBalances")
+	}
+
+	err = verifier.Verify(countAccounts + countData + countOffers + countTrustLines + countClaimableBalances)
 	if err != nil {
 		return errors.Wrap(err, "verifier.Verify failed")
 	}
@@ -292,6 +306,8 @@ func addAccountsToStateVerifier(verifier *verify.StateVerifier, q history.Ingest
 
 	masterWeightMap := make(map[string]int32)
 	signersMap := make(map[string][]xdr.Signer)
+	// map[accountID]map[signerKey]sponsor
+	sponsoringSignersMap := make(map[string]map[string]string)
 	for _, row := range signers {
 		if row.Account == row.Signer {
 			masterWeightMap[row.Account] = row.Weight
@@ -303,6 +319,10 @@ func addAccountsToStateVerifier(verifier *verify.StateVerifier, q history.Ingest
 					Weight: xdr.Uint32(row.Weight),
 				},
 			)
+			if sponsoringSignersMap[row.Account] == nil {
+				sponsoringSignersMap[row.Account] = make(map[string]string)
+			}
+			sponsoringSignersMap[row.Account][row.Signer] = row.Sponsor.String
 		}
 	}
 
@@ -325,6 +345,15 @@ func addAccountsToStateVerifier(verifier *verify.StateVerifier, q history.Ingest
 			)
 		}
 
+		signers := xdr.SortSignersByKey(signersMap[row.AccountID])
+		signerSponsoringIDs := make([]xdr.SponsorshipDescriptor, len(signers))
+		for i, signer := range signers {
+			sponsor := sponsoringSignersMap[row.AccountID][signer.Key.Address()]
+			if sponsor != "" {
+				signerSponsoringIDs[i] = xdr.MustAddressPtr(sponsor)
+			}
+		}
+
 		account := &xdr.AccountEntry{
 			AccountId:     xdr.MustAddress(row.AccountID),
 			Balance:       xdr.Int64(row.Balance),
@@ -339,13 +368,21 @@ func addAccountsToStateVerifier(verifier *verify.StateVerifier, q history.Ingest
 				row.ThresholdMedium,
 				row.ThresholdHigh,
 			},
-			Signers: xdr.SortSignersByKey(signersMap[row.AccountID]),
+			Signers: signers,
 			Ext: xdr.AccountEntryExt{
 				V: 1,
-				V1: &xdr.AccountEntryV1{
+				V1: &xdr.AccountEntryExtensionV1{
 					Liabilities: xdr.Liabilities{
 						Buying:  xdr.Int64(row.BuyingLiabilities),
 						Selling: xdr.Int64(row.SellingLiabilities),
+					},
+					Ext: xdr.AccountEntryExtensionV1Ext{
+						V: 2,
+						V2: &xdr.AccountEntryExtensionV2{
+							NumSponsored:        xdr.Uint32(row.NumSponsored),
+							NumSponsoring:       xdr.Uint32(row.NumSponsoring),
+							SignerSponsoringIDs: signerSponsoringIDs,
+						},
 					},
 				},
 			},
@@ -358,7 +395,7 @@ func addAccountsToStateVerifier(verifier *verify.StateVerifier, q history.Ingest
 				Account: account,
 			},
 		}
-
+		addLedgerEntrySponsor(&entry, row.Sponsor)
 		err = verifier.Write(entry)
 		if err != nil {
 			return err
@@ -390,6 +427,7 @@ func addDataToStateVerifier(verifier *verify.StateVerifier, q history.IngestionQ
 				},
 			},
 		}
+		addLedgerEntrySponsor(&entry, row.Sponsor)
 		err := verifier.Write(entry)
 		if err != nil {
 			return err
@@ -432,7 +470,7 @@ func addOffersToStateVerifier(
 				},
 			},
 		}
-
+		addLedgerEntrySponsor(&entry, row.Sponsor)
 		err := verifier.Write(entry)
 		if err != nil {
 			return err
@@ -482,6 +520,7 @@ func addTrustLinesToStateVerifier(
 				TrustLine: &trustline,
 			},
 		}
+		addLedgerEntrySponsor(&entry, row.Sponsor)
 		if err := verifier.Write(entry); err != nil {
 			return err
 		}
@@ -495,24 +534,122 @@ func addTrustLinesToStateVerifier(
 	return nil
 }
 
+func addClaimableBalanceToStateVerifier(
+	verifier *verify.StateVerifier,
+	assetStats processors.AssetStatSet,
+	q history.IngestionQ,
+	ids []xdr.ClaimableBalanceId,
+) error {
+	if len(ids) == 0 {
+		return nil
+	}
+
+	cBalances, err := q.GetClaimableBalancesByID(ids)
+	if err != nil {
+		return errors.Wrap(err, "Error running history.Q.GetClaimableBalancesByID")
+	}
+
+	for _, row := range cBalances {
+		claimants := []xdr.Claimant{}
+		for _, claimant := range row.Claimants {
+			claimants = append(claimants, xdr.Claimant{
+				Type: xdr.ClaimantTypeClaimantTypeV0,
+				V0: &xdr.ClaimantV0{
+					Destination: xdr.MustAddress(claimant.Destination),
+					Predicate:   claimant.Predicate,
+				},
+			})
+		}
+		claimants = xdr.SortClaimantsByDestination(claimants)
+		cBalance := xdr.ClaimableBalanceEntry{
+			BalanceId: row.BalanceID,
+			Claimants: claimants,
+			Asset:     row.Asset,
+			Amount:    xdr.Int64(row.Amount),
+		}
+		entry := xdr.LedgerEntry{
+			LastModifiedLedgerSeq: xdr.Uint32(row.LastModifiedLedger),
+			Data: xdr.LedgerEntryData{
+				Type:             xdr.LedgerEntryTypeClaimableBalance,
+				ClaimableBalance: &cBalance,
+			},
+		}
+		addLedgerEntrySponsor(&entry, row.Sponsor)
+		if err := verifier.Write(entry); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func addLedgerEntrySponsor(entry *xdr.LedgerEntry, sponsor null.String) {
+	ledgerEntrySponsor := xdr.SponsorshipDescriptor(nil)
+
+	if !sponsor.IsZero() {
+		ledgerEntrySponsor = xdr.MustAddressPtr(sponsor.String)
+	}
+	entry.Ext = xdr.LedgerEntryExt{
+		V: 1,
+		V1: &xdr.LedgerEntryExtensionV1{
+			SponsoringId: ledgerEntrySponsor,
+		},
+	}
+}
+
 func transformEntry(entry xdr.LedgerEntry) (bool, xdr.LedgerEntry) {
+	// If ledgerEntry is V0, create ext=1 and add a nil sponsor
+	if entry.Ext.V == 0 {
+		entry.Ext = xdr.LedgerEntryExt{
+			V: 1,
+			V1: &xdr.LedgerEntryExtensionV1{
+				SponsoringId: nil,
+			},
+		}
+	}
+
 	switch entry.Data.Type {
 	case xdr.LedgerEntryTypeAccount:
 		accountEntry := entry.Data.Account
-		// Sort signers
-		accountEntry.Signers = xdr.SortSignersByKey(accountEntry.Signers)
 		// Account can have ext=0. For those, create ext=1
 		// with 0 liabilities.
 		if accountEntry.Ext.V == 0 {
 			accountEntry.Ext.V = 1
-			accountEntry.Ext.V1 = &xdr.AccountEntryV1{
+			accountEntry.Ext.V1 = &xdr.AccountEntryExtensionV1{
 				Liabilities: xdr.Liabilities{
 					Buying:  0,
 					Selling: 0,
 				},
 			}
 		}
+		// if AccountEntryExtensionV1Ext is v=0,  then create v2 with 0 values
+		if accountEntry.Ext.V1.Ext.V == 0 {
+			accountEntry.Ext.V1.Ext.V = 2
+			accountEntry.Ext.V1.Ext.V2 = &xdr.AccountEntryExtensionV2{
+				NumSponsored:        xdr.Uint32(0),
+				NumSponsoring:       xdr.Uint32(0),
+				SignerSponsoringIDs: make([]xdr.SponsorshipDescriptor, len(accountEntry.Signers)),
+			}
+		}
 
+		signerSponsoringIDs := accountEntry.Ext.V1.Ext.V2.SignerSponsoringIDs
+
+		// Map sponsors (signer => xdr.SponsorshipDescriptor)
+		sponsorsMap := make(map[string]xdr.SponsorshipDescriptor)
+		for i, signer := range accountEntry.Signers {
+			sponsorsMap[signer.Key.Address()] = signerSponsoringIDs[i]
+		}
+
+		// Sort signers
+		accountEntry.Signers = xdr.SortSignersByKey(accountEntry.Signers)
+
+		// Recreate sponsors for sorted signers
+		signerSponsoringIDs = make([]xdr.SponsorshipDescriptor, len(accountEntry.Signers))
+		for i, signer := range accountEntry.Signers {
+			signerSponsoringIDs[i] = sponsorsMap[signer.Key.Address()]
+		}
+
+		accountEntry.Ext.V1.Ext.V2.SignerSponsoringIDs = signerSponsoringIDs
 		return false, entry
 	case xdr.LedgerEntryTypeOffer:
 		// Full check of offer object
@@ -534,6 +671,11 @@ func transformEntry(entry xdr.LedgerEntry) (bool, xdr.LedgerEntry) {
 		return false, entry
 	case xdr.LedgerEntryTypeData:
 		// Full check of data object
+		return false, entry
+	case xdr.LedgerEntryTypeClaimableBalance:
+		cBalance := entry.Data.ClaimableBalance
+		cBalance.Claimants = xdr.SortClaimantsByDestination(cBalance.Claimants)
+
 		return false, entry
 	default:
 		panic("Invalid type")
