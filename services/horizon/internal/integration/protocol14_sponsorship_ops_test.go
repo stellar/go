@@ -17,6 +17,7 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
+// Sandwiches a set of operations between a Begin/End reserve sponsorship.
 func sponsorOperations(account string, ops ...txnbuild.Operation) []txnbuild.Operation {
 	return append(append(
 		[]txnbuild.Operation{
@@ -29,8 +30,9 @@ func sponsorOperations(account string, ops ...txnbuild.Operation) []txnbuild.Ope
 	)
 }
 
+// Returns a function that will find `needle` in `haystack` by ID.
+// Designed to be usable by assert.Condition
 func findOperationByID(needle string, haystack []operations.Operation) func() bool {
-	// usable by assert.Condition
 	return func() bool {
 		for _, o := range haystack {
 			if o.GetID() == needle {
@@ -64,17 +66,18 @@ func TestSponsorships(t *testing.T) {
 		return response.Embedded.Records
 	}
 
-	//
-	// Each test has its own sponsor and sponsoree (or is it sponsee?
-	// :thinking:) so that we can do direct equality checks.
-	//
-	// Each sub-test follows a similar structure:
-	//   - sponsor a particular operation
-	//   - replace the sponsor with a new one
-	//   - revoke the sponsorship
-	//
-	// Between each step, we validate /operations, /effects, etc.
-	//
+	/*
+	 * Each test has its own sponsor and sponsoree (or is it sponsee?
+	 * :thinking:) so that we can do direct equality checks.
+	 *
+	 * Each sub-test follows a similar structure:
+	 *   - sponsor a particular operation
+	 *   - replace the sponsor with a new one
+	 *   - revoke the sponsorship
+	 *
+	 * Between each step, we validate /operations, /effects, etc. according to
+	 * the expected behavior for that sponsorship.
+	 */
 
 	// We will create the following operation structure:
 	// BeginSponsoringFutureReserves A
