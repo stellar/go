@@ -3,6 +3,7 @@ package integration
 import (
 	"encoding/base64"
 	"fmt"
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -17,36 +18,12 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-// Sandwiches a set of operations between a Begin/End reserve sponsorship.
-func sponsorOperations(account string, ops ...txnbuild.Operation) []txnbuild.Operation {
-	return append(append(
-		[]txnbuild.Operation{
-			&txnbuild.BeginSponsoringFutureReserves{SponsoredID: account},
-		},
-		ops...),
-		&txnbuild.EndSponsoringFutureReserves{
-			SourceAccount: &txnbuild.SimpleAccount{AccountID: account},
-		},
-	)
-}
-
-// Returns a function that will find `needle` in `haystack` by ID.
-// Designed to be usable by assert.Condition
-func findOperationByID(needle string, haystack []operations.Operation) func() bool {
-	return func() bool {
-		for _, o := range haystack {
-			if o.GetID() == needle {
-				return true
-			}
-		}
-		return false
-	}
-}
-
 func TestSponsorships(t *testing.T) {
 	tt := assert.New(t)
 	itest := test.NewIntegrationTest(t, protocol14Config)
 	client := itest.Client()
+
+	/* Query helpers that can/should? probably be added to IntegrationTest. */
 
 	getOperationsByTx := func(txHash string) []operations.Operation {
 		response, err := client.Operations(sdk.OperationRequest{ForTransaction: txHash})
@@ -666,25 +643,40 @@ func TestSponsorships(t *testing.T) {
 		tt.Equal(canonicalAsset, sponsorshipRemoved.Asset)
 	})
 
+	//
+	// Confirms the operations, effects, and functionality of combining the
+	// CAP-23 and CAP-33 features together as part of Protocol 14.
+	//
 	t.Run("ClaimableBalance", func(t *testing.T) {
-		keys, accounts := itest.CreateAccounts(3, "1000")
+		keys, accounts := itest.CreateAccounts(2, "50")
 		sponsorPair, sponsor := keys[0], accounts[0]
-		newAccountPair, newAccount := keys[1], accounts[1]
+		sponsoreePair, sponsoree := keys[1], accounts[1]
 
-		ops := sponsorOperations(newAccountPair.Address(),
+		ops := []txnbuild.Operation{
+			&txnbuild.BeginSponsoringFutureReserves{
+				SourceAccount: sponsor,
+				SponsoredID:   sponsoreePair.Address(),
+			},
 			&txnbuild.CreateClaimableBalance{
-				SourceAccount: newAccount,
+				SourceAccount: sponsoree,
 				Destinations: []txnbuild.Claimant{
 					txnbuild.NewClaimant(sponsorPair.Address(), nil),
+					txnbuild.NewClaimant(sponsoreePair.Address(), nil),
 				},
-				Amount: "20",
+				Amount: "25",
 				Asset:  txnbuild.NativeAsset{},
-			})
+			},
+			&txnbuild.EndSponsoringFutureReserves{},
+		}
 
-		signers := []*keypair.Full{newAccountPair, sponsorPair}
-		txResp, err := itest.SubmitMultiSigOperations(newAccount, signers, ops...)
+		txResp, err := itest.SubmitMultiSigOperations(sponsoree,
+			[]*keypair.Full{sponsoreePair, sponsorPair}, ops...)
 		itest.LogFailedTx(txResp, err)
 
+		// Establish a baseline for the master account
+		masterBalance := getAccountXLM(itest, sponsorPair)
+
+		// Check the global /claimable_balances list for success.
 		balances, err := client.ClaimableBalances(sdk.ClaimableBalanceRequest{})
 		tt.NoError(err)
 
@@ -693,56 +685,93 @@ func TestSponsorships(t *testing.T) {
 		balance := claims[0]
 		tt.Equal(sponsorPair.Address(), balance.Sponsor)
 
-		// Check effects and details of the CreateClaimableBalance operation
-		opRecords := getOperationsByTx(txResp.Hash)
-		tt.Len(opRecords, 3)
-		createClaimableBalance := opRecords[1].(operations.CreateClaimableBalance)
-		tt.Equal(sponsorPair.Address(), createClaimableBalance.Sponsor)
-
-		effRecords := getEffectsByOp(createClaimableBalance.GetID())
-		tt.Len(effRecords, 4)
-		cbSponsorshipEffect := effRecords[3].(effects.ClaimableBalanceSponsorshipCreated)
-		tt.Equal(sponsorPair.Address(), cbSponsorshipEffect.Sponsor)
-		tt.Equal(newAccountPair.Address(), cbSponsorshipEffect.Account)
-		tt.Equal(balance.BalanceID, cbSponsorshipEffect.BalanceID)
-
-		// Update sponsor
-
-		newSponsorPair, _ := keys[2], accounts[2]
-		ops = sponsorOperations(sponsorPair.Address(),
-			&txnbuild.RevokeSponsorship{
-				SponsorshipType:  txnbuild.RevokeSponsorshipTypeClaimableBalance,
-				ClaimableBalance: &balance.BalanceID,
-			})
-		signers = []*keypair.Full{sponsorPair, newSponsorPair}
-		txResp, err = itest.SubmitMultiSigOperations(sponsor, signers, ops...)
+		// Claim the CB and validate balances:
+		//  - sponsoree should go down for fulfilling the CB
+		// 	- master should go up for claiming the CB
+		txResp, err = itest.SubmitOperations(sponsor, sponsorPair,
+			&txnbuild.ClaimClaimableBalance{BalanceID: claims[0].BalanceID})
 		itest.LogFailedTx(txResp, err)
 
-		// Verify operation details
-		opRecords = getOperationsByTx(txResp.Hash)
-		tt.Len(opRecords, 3)
-		tt.True(opRecords[1].IsTransactionSuccessful())
+		tt.Lessf(getAccountXLM(itest, sponsoreePair), float64(25), "sponsoree balance didn't decrease")
+		tt.Greaterf(getAccountXLM(itest, sponsorPair), masterBalance, "master balance didn't increase")
 
-		revokeOp := opRecords[1].(operations.RevokeSponsorship)
-		tt.Equal(balance.BalanceID, *revokeOp.ClaimableBalanceID)
-
-		// Check effects
-		effRecords = getEffectsByOp(revokeOp.ID)
-		tt.Len(effRecords, 1)
-		effect := effRecords[0].(effects.ClaimableBalanceSponsorshipUpdated)
-		tt.Equal(sponsorPair.Address(), effect.FormerSponsor)
-		tt.Equal(newSponsorPair.Address(), effect.NewSponsor)
-
-		// It's not possible to explicitly revoke the sponsorship of a claimable
-		// balance, so we claim the balance instead
-		claimOp := &txnbuild.ClaimClaimableBalance{
-			BalanceID: balance.BalanceID,
+		// Check that operations populate.
+		expectedOperations := map[string]bool{
+			operations.TypeNames[xdr.OperationTypeBeginSponsoringFutureReserves]: false,
+			operations.TypeNames[xdr.OperationTypeCreateClaimableBalance]:        false,
+			operations.TypeNames[xdr.OperationTypeEndSponsoringFutureReserves]:   false,
 		}
-		txResp = itest.MustSubmitOperations(sponsor, sponsorPair, claimOp)
-		effRecords = getEffectsByTx(txResp.ID)
-		tt.Len(effRecords, 3)
-		sponsorshipRemoved := effRecords[2].(effects.ClaimableBalanceSponsorshipRemoved)
-		tt.Equal(newSponsorPair.Address(), sponsorshipRemoved.FormerSponsor)
-		tt.Equal(balance.BalanceID, sponsorshipRemoved.BalanceID)
+
+		opsPage, err := client.Operations(sdk.OperationRequest{Order: "desc", Limit: 5})
+		for _, op := range opsPage.Embedded.Records {
+			opType := op.GetType()
+			if _, ok := expectedOperations[opType]; ok {
+				expectedOperations[opType] = true
+				t.Logf("  operation %s found", opType)
+			}
+		}
+
+		for expectedType, exists := range expectedOperations {
+			tt.Truef(exists, "operation %s not found", expectedType)
+		}
+
+		// Check that effects populate.
+		expectedEffects := map[string][]uint{
+			effects.EffectTypeNames[effects.EffectClaimableBalanceSponsorshipCreated]: []uint{0, 1},
+			effects.EffectTypeNames[effects.EffectClaimableBalanceCreated]:            []uint{0, 1},
+			effects.EffectTypeNames[effects.EffectClaimableBalanceClaimantCreated]:    []uint{0, 2},
+			effects.EffectTypeNames[effects.EffectClaimableBalanceSponsorshipRemoved]: []uint{0, 1},
+			effects.EffectTypeNames[effects.EffectClaimableBalanceClaimed]:            []uint{0, 1},
+		}
+
+		effectsPage, err := client.Effects(sdk.EffectRequest{Order: "desc", Limit: 100})
+		for _, effect := range effectsPage.Embedded.Records {
+			effectType := effect.GetType()
+			if _, ok := expectedEffects[effectType]; ok {
+				expectedEffects[effectType][0] += 1
+				t.Logf("  effect %s found", effectType)
+			}
+		}
+
+		for expectedType, counts := range expectedEffects {
+			actual, needed := counts[0], counts[1]
+			tt.Equalf(needed, actual, "effect %s not found enough", expectedType)
+		}
 	})
+}
+
+// Sandwiches a set of operations between a Begin/End reserve sponsorship.
+func sponsorOperations(account string, ops ...txnbuild.Operation) []txnbuild.Operation {
+	return append(append(
+		[]txnbuild.Operation{
+			&txnbuild.BeginSponsoringFutureReserves{SponsoredID: account},
+		},
+		ops...),
+		&txnbuild.EndSponsoringFutureReserves{
+			SourceAccount: &txnbuild.SimpleAccount{AccountID: account},
+		},
+	)
+}
+
+// Returns a function that will find `needle` in `haystack` by ID.
+// Designed to be usable by assert.Condition
+func findOperationByID(needle string, haystack []operations.Operation) func() bool {
+	return func() bool {
+		for _, o := range haystack {
+			if o.GetID() == needle {
+				return true
+			}
+		}
+		return false
+	}
+}
+
+// Retrieves the XLM balance for an account.
+func getAccountXLM(i *test.IntegrationTest, account *keypair.Full) float64 {
+	details := i.MustGetAccount(account)
+	balance, err := strconv.ParseFloat(details.Balances[0].Balance, 64)
+	if err != nil {
+		panic(err)
+	}
+	return balance
 }
