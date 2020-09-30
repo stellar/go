@@ -1,6 +1,7 @@
 package integration
 
 import (
+	"encoding/base64"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -11,6 +12,7 @@ import (
 	"github.com/stellar/go/protocols/horizon/operations"
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/txnbuild"
+	"github.com/stellar/go/xdr"
 )
 
 func sponsorOperations(account string, ops ...txnbuild.Operation) []txnbuild.Operation {
@@ -305,32 +307,30 @@ func TestSponsorships(t *testing.T) {
 		tt.Equal(newSponsorPair.Address(), sponsorshipRemoved.FormerSponsor)
 		tt.Equal(signerKey, sponsorshipRemoved.Signer)
 	})
-}
 
-/*
+	// Let's add a sponsored preauth signer with a transaction:
+	//
+	// BeginSponsorship N (Source=sponsor)
+	//   SetOptionsSigner preAuthHash (Source=N)
+	// EndSponsorship (Source=N)
 	t.Run("PreAuthSigner", func(t *testing.T) {
-		sponsorPair := itest.Master()
-		sponsor := itest.MasterAccount
+		keys, accounts := itest.CreateAccounts(2, "1000")
+		sponsorPair, sponsor := keys[0], accounts[0]
+		newAccountPair, newAccount := keys[1], accounts[1]
 
-		// Let's create a new account
-		pairs, _ := itest.CreateAccounts(1, "1000")
-		newAccountPair := pairs[0]
-		newAccount := func() txnbuild.Account {
-			account := itest.MustGetAccount(newAccountPair)
-			return &account
-		}
+		// unspecified signer
+		randomSigner := keypair.MustRandom().Address()
 
 		// Let's create a preauthorized transaction for the new account
 		// to add a signer
 		preAuthOp := &txnbuild.SetOptions{
 			Signer: &txnbuild.Signer{
-				// unspecific signer
-				Address: "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
+				Address: randomSigner,
 				Weight:  1,
 			},
 		}
 		txParams := txnbuild.TransactionParams{
-			SourceAccount:        newAccount(),
+			SourceAccount:        newAccount,
 			Operations:           []txnbuild.Operation{preAuthOp},
 			BaseFee:              txnbuild.MinBaseFee,
 			Timebounds:           txnbuild.NewInfiniteTimeout(),
@@ -343,65 +343,44 @@ func TestSponsorships(t *testing.T) {
 		preAuthTxB64, err := preaAuthTx.Base64()
 		tt.NoError(err)
 
-		// Let's add a sponsored preauth signer with the following transaction:
-		//
-		// BeginSponsorship N (Source=sponsor)
-		//   SetOptionsSigner preAuthHash (Source=N)
-		// EndSponsorship (Source=N)
+		// Add a sponsored preauth signer with the above transaction.
 		preAuthSignerKey := xdr.SignerKey{
 			Type:      xdr.SignerKeyTypeSignerKeyTypePreAuthTx,
 			PreAuthTx: (*xdr.Uint256)(&preAuthHash),
 		}
-		ops := []txnbuild.Operation{
-			&txnbuild.BeginSponsoringFutureReserves{
-				SponsoredID: newAccountPair.Address(),
-			},
-
+		ops := sponsorOperations(newAccountPair.Address(),
 			&txnbuild.SetOptions{
-				SourceAccount: newAccount(),
+				SourceAccount: newAccount,
 				Signer: &txnbuild.Signer{
 					Address: preAuthSignerKey.Address(),
 					Weight:  1,
 				},
-			},
-			&txnbuild.EndSponsoringFutureReserves{
-				SourceAccount: newAccount(),
-			},
-		}
+			})
 
 		signers := []*keypair.Full{sponsorPair, newAccountPair}
-		txResp, err := itest.SubmitMultiSigOperations(sponsor(), signers, ops...)
+		txResp, err := itest.SubmitMultiSigOperations(sponsor, signers, ops...)
 		itest.LogFailedTx(txResp, err)
 
 		// Verify that the preauth signer was incorporated
 		preAuthSignerAdded := func() bool {
-			for _, signer := range newAccount().(*protocol.Account).Signers {
+			for _, signer := range itest.MustGetAccount(newAccountPair).Signers {
 				if preAuthSignerKey.Address() == signer.Key {
 					return true
 				}
 			}
 			return false
 		}
-		tt.Eventually(preAuthSignerAdded, time.Second*10, time.Millisecond*100)
+		tt.Condition(preAuthSignerAdded)
 
 		// Check effects and details of the SetOptions operation
-		operationsResponse, err := client.Operations(sdk.OperationRequest{
-			ForTransaction: txResp.Hash,
-		})
-		tt.NoError(err)
-		tt.Len(operationsResponse.Embedded.Records, 3)
-		setOptionsOp := operationsResponse.Embedded.Records[1].(operations.SetOptions)
+		opRecords := getOperationsByTx(txResp.Hash)
+		setOptionsOp := opRecords[1].(operations.SetOptions)
 		tt.Equal(sponsorPair.Address(), setOptionsOp.Sponsor)
 
-		effectsResponse, err := client.Effects(sdk.EffectRequest{
-			ForOperation: setOptionsOp.GetID(),
-		})
-		tt.NoError(err)
-		if tt.Len(effectsResponse.Embedded.Records, 2) {
-			signerSponsorshipEffect := effectsResponse.Embedded.Records[1].(effects.SignerSponsorshipCreated)
-			tt.Equal(sponsorPair.Address(), signerSponsorshipEffect.Sponsor)
-			tt.Equal(preAuthSignerKey.Address(), signerSponsorshipEffect.Signer)
-		}
+		effRecords := getEffectsByOp(setOptionsOp.GetID())
+		signerSponsorshipEffect := effRecords[1].(effects.SignerSponsorshipCreated)
+		tt.Equal(sponsorPair.Address(), signerSponsorshipEffect.Sponsor)
+		tt.Equal(preAuthSignerKey.Address(), signerSponsorshipEffect.Signer)
 
 		// Submit the preauthorized transaction
 		var txResult xdr.TransactionResult
@@ -414,39 +393,21 @@ func TestSponsorships(t *testing.T) {
 
 		// Verify that the new signer was incorporated and that the preauth signer was removed
 		preAuthSignerAdded = func() bool {
-			signers := newAccount().(*protocol.Account).Signers
+			signers := itest.MustGetAccount(newAccountPair).Signers
 			if len(signers) != 2 {
 				return false
 			}
 			for _, signer := range signers {
-				if "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML" == signer.Key {
+				if signer.Key == randomSigner {
 					return true
 				}
 			}
 			return false
 		}
-		tt.Eventually(preAuthSignerAdded, time.Second*10, time.Millisecond*100)
+		tt.Condition(preAuthSignerAdded)
 
-		// Check effects
-		// Disabled since the effects processor doesn't process transaction-level changes
+		// We don't check effects because we don't process transaction-level changes
 		// See https://github.com/stellar/go/pull/3050#discussion_r493651644
-		/*
-			operationsResponse, err = client.Operations(sdk.OperationRequest{
-				ForTransaction: txResp.Hash,
-			})
-			tt.Len(operationsResponse.Embedded.Records, 1)
-			setOptionsOp = operationsResponse.Embedded.Records[0].(operations.SetOptions)
-
-			effectsResponse, err = client.Effects(sdk.EffectRequest{
-				ForTransaction: txResp.Hash,
-			})
-			tt.NoError(err)
-			if tt.Len(effectsResponse.Embedded.Records, 2) {
-				signerSponsorshipEffect := effectsResponse.Embedded.Records[1].(effects.SignerSponsorshipRemoved)
-				tt.Equal(sponsorPair.Address(), signerSponsorshipEffect.FormerSponsor)
-				tt.Equal("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML", signerSponsorshipEffect.Signer)
-			}
-		*/
 	})
 
 	// Let's add a sponsored data entry
@@ -455,38 +416,24 @@ func TestSponsorships(t *testing.T) {
 	//   ManageData "SponsoredData"="SponsoredValue" (Source=N)
 	// EndSponsorship (Source=N)
 	t.Run("Data", func(t *testing.T) {
-		sponsorPair := itest.Master()
-		sponsor := itest.MasterAccount
+		keys, accounts := itest.CreateAccounts(3, "1000")
+		sponsorPair, sponsor := keys[0], accounts[0]
+		newAccountPair, newAccount := keys[1], accounts[1]
 
-		// Let's create a new account
-		pairs, _ := itest.CreateAccounts(1, "1000")
-		newAccountPair := pairs[0]
-		newAccount := func() txnbuild.Account {
-			account := itest.MustGetAccount(newAccountPair)
-			return &account
-		}
-
-		ops := []txnbuild.Operation{
-			&txnbuild.BeginSponsoringFutureReserves{
-				SponsoredID: newAccountPair.Address(),
-			},
+		ops := sponsorOperations(newAccountPair.Address(),
 			&txnbuild.ManageData{
 				Name:          "SponsoredData",
 				Value:         []byte("SponsoredValue"),
-				SourceAccount: newAccount(),
-			},
-			&txnbuild.EndSponsoringFutureReserves{
-				SourceAccount: newAccount(),
-			},
-		}
+				SourceAccount: newAccount,
+			})
 
 		signers := []*keypair.Full{sponsorPair, newAccountPair}
-		txResp, err := itest.SubmitMultiSigOperations(sponsor(), signers, ops...)
+		txResp, err := itest.SubmitMultiSigOperations(sponsor, signers, ops...)
 		itest.LogFailedTx(txResp, err)
 
 		// Verify that the data was incorporated
 		dataAdded := func() bool {
-			data := newAccount().(*protocol.Account).Data
+			data := itest.MustGetAccount(newAccountPair).Data
 			if value, ok := data["SponsoredData"]; ok {
 				decoded, e := base64.StdEncoding.DecodeString(value)
 				tt.NoError(e)
@@ -496,39 +443,27 @@ func TestSponsorships(t *testing.T) {
 			}
 			return false
 		}
-		tt.Eventually(dataAdded, time.Second*10, time.Millisecond*100)
+		tt.Condition(dataAdded)
 
 		// Check effects and details of the ManageData operation
-		operationsResponse, err := client.Operations(sdk.OperationRequest{
-			ForTransaction: txResp.Hash,
-		})
-		tt.NoError(err)
-		tt.Len(operationsResponse.Embedded.Records, 3)
-		manageDataOp := operationsResponse.Embedded.Records[1].(operations.ManageData)
+		opRecords := getOperationsByTx(txResp.Hash)
+		tt.Len(opRecords, 3)
+		manageDataOp := opRecords[1].(operations.ManageData)
 		tt.Equal(sponsorPair.Address(), manageDataOp.Sponsor)
 
-		effectsResponse, err := client.Effects(sdk.EffectRequest{
-			ForOperation: manageDataOp.GetID(),
-		})
-		tt.NoError(err)
-		if tt.Len(effectsResponse.Embedded.Records, 2) {
-			dataSponsorshipEffect := effectsResponse.Embedded.Records[1].(effects.DataSponsorshipCreated)
-			tt.Equal(sponsorPair.Address(), dataSponsorshipEffect.Sponsor)
-			tt.Equal(newAccountPair.Address(), dataSponsorshipEffect.Account)
-			tt.Equal("SponsoredData", dataSponsorshipEffect.DataName)
-		}
+		effRecords := getEffectsByOp(manageDataOp.GetID())
+		tt.Len(effRecords, 2)
+		dataSponsorshipEffect := effRecords[1].(effects.DataSponsorshipCreated)
+		tt.Equal(sponsorPair.Address(), dataSponsorshipEffect.Sponsor)
+		tt.Equal(newAccountPair.Address(), dataSponsorshipEffect.Account)
+		tt.Equal("SponsoredData", dataSponsorshipEffect.DataName)
 
 		// Update sponsor
 
-		pairs, _ = itest.CreateAccounts(1, "1000")
-		newSponsorPair := pairs[0]
-		newSponsor := func() txnbuild.Account {
-			account := itest.MustGetAccount(newSponsorPair)
-			return &account
-		}
+		newSponsorPair, newSponsor := keys[2], accounts[2]
 		ops = []txnbuild.Operation{
 			&txnbuild.BeginSponsoringFutureReserves{
-				SourceAccount: newSponsor(),
+				SourceAccount: newSponsor,
 				SponsoredID:   sponsorPair.Address(),
 			},
 			&txnbuild.RevokeSponsorship{
@@ -541,15 +476,11 @@ func TestSponsorships(t *testing.T) {
 			&txnbuild.EndSponsoringFutureReserves{},
 		}
 		signers = []*keypair.Full{sponsorPair, newSponsorPair}
-		txResp, err = itest.SubmitMultiSigOperations(sponsor(), signers, ops...)
+		txResp, err = itest.SubmitMultiSigOperations(sponsor, signers, ops...)
 		itest.LogFailedTx(txResp, err)
 
 		// Verify operation details
-		response, err := client.Operations(sdk.OperationRequest{
-			ForTransaction: txResp.Hash,
-		})
-		opRecords := response.Embedded.Records
-		tt.NoError(err)
+		opRecords = getOperationsByTx(txResp.Hash)
 		tt.Len(opRecords, 3)
 		tt.True(opRecords[1].IsTransactionSuccessful())
 
@@ -558,12 +489,9 @@ func TestSponsorships(t *testing.T) {
 		tt.Equal("SponsoredData", *revokeOp.DataName)
 
 		// Check effects
-		effectsResponse, err = client.Effects(sdk.EffectRequest{ForOperation: revokeOp.ID})
-		tt.NoError(err)
-		effectRecords := effectsResponse.Embedded.Records
-		tt.Len(effectRecords, 1)
-		tt.IsType(effects.DataSponsorshipUpdated{}, effectRecords[0])
-		effect := effectRecords[0].(effects.DataSponsorshipUpdated)
+		effRecords = getEffectsByOp(revokeOp.ID)
+		tt.Len(effRecords, 1)
+		effect := effRecords[0].(effects.DataSponsorshipUpdated)
 		tt.Equal(sponsorPair.Address(), effect.FormerSponsor)
 		tt.Equal(newSponsorPair.Address(), effect.NewSponsor)
 		tt.Equal("SponsoredData", effect.DataName)
@@ -577,17 +505,15 @@ func TestSponsorships(t *testing.T) {
 				DataName: "SponsoredData",
 			},
 		}
-		txResp = itest.MustSubmitOperations(newSponsor(), newSponsorPair, &revoke)
+		txResp = itest.MustSubmitOperations(newSponsor, newSponsorPair, &revoke)
 
-		effectsResponse, err = client.Effects(sdk.EffectRequest{
-			ForTransaction: txResp.ID,
-		})
-		tt.NoError(err)
-		tt.Len(effectsResponse.Embedded.Records, 1)
-		sponsorshipRemoved := effectsResponse.Embedded.Records[0].(effects.DataSponsorshipRemoved)
+		effRecords = getEffectsByTx(txResp.ID)
+		tt.Len(effRecords, 1)
+		sponsorshipRemoved := effRecords[0].(effects.DataSponsorshipRemoved)
 		tt.Equal(newSponsorPair.Address(), sponsorshipRemoved.FormerSponsor)
 		tt.Equal("SponsoredData", sponsorshipRemoved.DataName)
 	})
+}
 
 	t.Run("TrustlineAndOffer", func(t *testing.T) {
 		sponsorPair := itest.Master()
