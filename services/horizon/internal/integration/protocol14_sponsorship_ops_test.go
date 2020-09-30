@@ -97,15 +97,14 @@ func TestSponsorships(t *testing.T) {
 		txResp, err := itest.SubmitMultiSigOperations(sponsor, signers, ops...)
 		itest.LogFailedTx(txResp, err)
 
-		// Ensure that the last 3 operations are in fact the droids we're looking for
-		response, err := client.Operations(sdk.OperationRequest{Order: "desc", Limit: 3})
-		opRecords := response.Embedded.Records
+		// Ensure that the operations are in fact the droids we're looking for
+		opRecords := getOperationsByTx(txResp.Hash)
 		tt.Len(opRecords, 3)
 		tt.True(opRecords[0].IsTransactionSuccessful())
 
-		endSponsoringOp := opRecords[0].(operations.EndSponsoringFutureReserves)
+		startSponsoringOp := opRecords[0].(operations.BeginSponsoringFutureReserves)
 		actualCreateAccount := opRecords[1].(operations.CreateAccount)
-		startSponsoringOp := opRecords[2].(operations.BeginSponsoringFutureReserves)
+		endSponsoringOp := opRecords[2].(operations.EndSponsoringFutureReserves)
 
 		tt.Equal(newAccountID, startSponsoringOp.SponsoredID)
 		tt.Equal(sponsorPair.Address(), actualCreateAccount.Sponsor)
@@ -113,7 +112,7 @@ func TestSponsorships(t *testing.T) {
 
 		// Make sure that the sponsor is an (implicit) participant on the end
 		// sponsorship operation
-		response, err = client.Operations(sdk.OperationRequest{ForAccount: sponsorPair.Address()})
+		response, err := client.Operations(sdk.OperationRequest{ForAccount: sponsorPair.Address()})
 		tt.Condition(findOperationByID(endSponsoringOp.ID, response.Embedded.Records))
 		t.Logf("  operations accurate")
 
@@ -123,9 +122,8 @@ func TestSponsorships(t *testing.T) {
 		t.Logf("  accounts accurate")
 
 		// Check effects of CreateAccount Operation
-		effectRecords := getEffectsByOp(opRecords[1].GetID())
+		effectRecords := getEffectsByOp(actualCreateAccount.GetID())
 		tt.Len(effectRecords, 4)
-		tt.IsType(effects.AccountSponsorshipCreated{}, effectRecords[3])
 		tt.Equal(sponsorPair.Address(),
 			effectRecords[3].(effects.AccountSponsorshipCreated).Sponsor)
 		t.Logf("  effects accurate")
@@ -167,7 +165,6 @@ func TestSponsorships(t *testing.T) {
 		// Check effects
 		effectRecords = getEffectsByOp(revokeOp.ID)
 		tt.Len(effectRecords, 1)
-		tt.IsType(effects.AccountSponsorshipUpdated{}, effectRecords[0])
 		effect := effectRecords[0].(effects.AccountSponsorshipUpdated)
 		tt.Equal(sponsorPair.Address(), effect.FormerSponsor)
 		tt.Equal(newSponsorPair.Address(), effect.NewSponsor)
@@ -186,7 +183,6 @@ func TestSponsorships(t *testing.T) {
 		opRecords = getOperationsByTx(txResp.Hash)
 		tt.Len(opRecords, 1)
 		tt.True(opRecords[0].IsTransactionSuccessful())
-		tt.IsType(operations.RevokeSponsorship{}, opRecords[0])
 		revokeOp = opRecords[0].(operations.RevokeSponsorship)
 		tt.Equal(newAccountID, *revokeOp.AccountID)
 
