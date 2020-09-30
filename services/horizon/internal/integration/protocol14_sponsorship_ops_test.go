@@ -2,12 +2,14 @@ package integration
 
 import (
 	"encoding/base64"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
 	sdk "github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
+	protocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/protocols/horizon/effects"
 	"github.com/stellar/go/protocols/horizon/operations"
 	"github.com/stellar/go/services/horizon/internal/test"
@@ -513,77 +515,57 @@ func TestSponsorships(t *testing.T) {
 		tt.Equal(newSponsorPair.Address(), sponsorshipRemoved.FormerSponsor)
 		tt.Equal("SponsoredData", sponsorshipRemoved.DataName)
 	})
-}
 
+	// Let's add a sponsored trustline and offer
+	//
+	// BeginSponsorship N (Source=sponsor)
+	//   Change Trust (ABC, sponsor) (Source=N)
+	//   ManageSellOffer Buying (ABC, sponsor) (Source=N)
+	// EndSponsorship (Source=N)
 	t.Run("TrustlineAndOffer", func(t *testing.T) {
-		sponsorPair := itest.Master()
-		sponsor := itest.MasterAccount
+		keys, accounts := itest.CreateAccounts(3, "1000")
+		sponsorPair, sponsor := keys[0], accounts[0]
+		newAccountPair, newAccount := keys[1], accounts[1]
 
-		// Let's create a new account
-		pairs, _ := itest.CreateAccounts(1, "1000")
-		newAccountPair := pairs[0]
-		newAccount := func() txnbuild.Account {
-			account := itest.MustGetAccount(newAccountPair)
-			return &account
-		}
+		asset := txnbuild.CreditAsset{Code: "ABCD", Issuer: sponsorPair.Address()}
+		canonicalAsset := fmt.Sprintf("%s:%s", asset.Code, asset.Issuer)
 
-		// Let's add a sponsored trustline and offer
-		//
-		// BeginSponsorship N (Source=sponsor)
-		//   Change Trust (ABC, sponsor) (Source=N)
-		//   ManageSellOffer Buying (ABC, sponsor) (Source=N)
-		// EndSponsorship (Source=N)
-		ops := []txnbuild.Operation{
-			&txnbuild.BeginSponsoringFutureReserves{
-				SponsoredID: newAccountPair.Address(),
-			},
+		ops := sponsorOperations(newAccountPair.Address(),
 			&txnbuild.ChangeTrust{
-				SourceAccount: newAccount(),
-				Line:          txnbuild.CreditAsset{"ABCD", sponsorPair.Address()},
+				SourceAccount: newAccount,
+				Line:          asset,
 				Limit:         txnbuild.MaxTrustlineLimit,
 			},
 			&txnbuild.ManageSellOffer{
-				SourceAccount: newAccount(),
+				SourceAccount: newAccount,
 				Selling:       txnbuild.NativeAsset{},
-				Buying:        txnbuild.CreditAsset{"ABCD", sponsorPair.Address()},
+				Buying:        asset,
 				Amount:        "3",
 				Price:         "1",
-			},
-			&txnbuild.EndSponsoringFutureReserves{
-				SourceAccount: newAccount(),
-			},
-		}
+			})
 
 		signers := []*keypair.Full{sponsorPair, newAccountPair}
-		txResp, err := itest.SubmitMultiSigOperations(sponsor(), signers, ops...)
-		tt.NoError(err)
-
-		var txResult xdr.TransactionResult
-		err = xdr.SafeUnmarshalBase64(txResp.ResultXdr, &txResult)
-		tt.NoError(err)
-		tt.Equal(xdr.TransactionResultCodeTxSuccess, txResult.Result.Code)
+		txResp, err := itest.SubmitMultiSigOperations(sponsor, signers, ops...)
+		itest.LogFailedTx(txResp, err)
 
 		// Verify that the offer was incorporated correctly
 		trustlineAdded := func() bool {
 			for _, balance := range itest.MustGetAccount(newAccountPair).Balances {
 				if balance.Issuer == sponsorPair.Address() {
-					tt.Equal("ABCD", balance.Code)
+					tt.Equal(asset.Code, balance.Code)
 					tt.Equal(sponsorPair.Address(), balance.Sponsor)
 					return true
 				}
 			}
 			return false
 		}
-		tt.Eventually(trustlineAdded, time.Second*10, time.Millisecond*100)
+		tt.Condition(trustlineAdded)
 
 		// Check the details of the ManageSellOffer operation
 		// (there are no effects, which is intentional)
-		operationsResponse, err := client.Operations(sdk.OperationRequest{
-			ForTransaction: txResp.Hash,
-		})
-		tt.NoError(err)
-		tt.Len(operationsResponse.Embedded.Records, 4)
-		changeTrust := operationsResponse.Embedded.Records[1].(operations.ChangeTrust)
+		opRecords := getOperationsByTx(txResp.Hash)
+		tt.Len(opRecords, 4)
+		changeTrust := opRecords[1].(operations.ChangeTrust)
 		tt.Equal(sponsorPair.Address(), changeTrust.Sponsor)
 
 		// Verify that the offer was incorporated correctly
@@ -593,35 +575,29 @@ func TestSponsorships(t *testing.T) {
 				ForAccount: newAccountPair.Address(),
 			})
 			tt.NoError(e)
-			if len(offers.Embedded.Records) == 1 {
+			if tt.Len(offers.Embedded.Records, 1) {
 				offer = offers.Embedded.Records[0]
 				tt.Equal(sponsorPair.Address(), offer.Buying.Issuer)
-				tt.Equal("ABCD", offer.Buying.Code)
+				tt.Equal(asset.Code, offer.Buying.Code)
 				tt.Equal(sponsorPair.Address(), offer.Sponsor)
 				return true
 			}
 			return false
 		}
-		tt.Eventually(offerAdded, time.Second*10, time.Millisecond*100)
+		tt.Condition(offerAdded)
 
 		// Check the details of the ManageSellOffer operation
 		// (there are no effects, which is intentional)
-		manageOffer := operationsResponse.Embedded.Records[2].(operations.ManageSellOffer)
+		manageOffer := opRecords[2].(operations.ManageSellOffer)
 		tt.Equal(sponsorPair.Address(), manageOffer.Sponsor)
 
 		// Update sponsor
 
-		pairs, _ = itest.CreateAccounts(1, "1000")
-		newSponsorPair := pairs[0]
-		newSponsor := func() txnbuild.Account {
-			request := sdk.AccountRequest{AccountID: newSponsorPair.Address()}
-			account, e := client.AccountDetail(request)
-			tt.NoError(e)
-			return &account
-		}
+		newSponsorPair, newSponsor := keys[2], accounts[2]
+
 		ops = []txnbuild.Operation{
 			&txnbuild.BeginSponsoringFutureReserves{
-				SourceAccount: newSponsor(),
+				SourceAccount: newSponsor,
 				SponsoredID:   sponsorPair.Address(),
 			},
 			&txnbuild.RevokeSponsorship{
@@ -635,24 +611,17 @@ func TestSponsorships(t *testing.T) {
 				SponsorshipType: txnbuild.RevokeSponsorshipTypeTrustLine,
 				TrustLine: &txnbuild.TrustLineID{
 					Account: newAccountPair.Address(),
-					Asset: txnbuild.CreditAsset{
-						Code:   "ABCD",
-						Issuer: sponsorPair.Address(),
-					},
+					Asset:   asset,
 				},
 			},
 			&txnbuild.EndSponsoringFutureReserves{},
 		}
 		signers = []*keypair.Full{sponsorPair, newSponsorPair}
-		txResp, err = itest.SubmitMultiSigOperations(sponsor(), signers, ops...)
+		txResp, err = itest.SubmitMultiSigOperations(sponsor, signers, ops...)
 		itest.LogFailedTx(txResp, err)
 
 		// Verify operation details
-		response, err := client.Operations(sdk.OperationRequest{
-			ForTransaction: txResp.Hash,
-		})
-		opRecords := response.Embedded.Records
-		tt.NoError(err)
+		opRecords = getOperationsByTx(txResp.Hash)
 		tt.Len(opRecords, 4)
 
 		tt.True(opRecords[1].IsTransactionSuccessful())
@@ -665,12 +634,9 @@ func TestSponsorships(t *testing.T) {
 		tt.Equal("ABCD:"+sponsorPair.Address(), *revokeOp.TrustlineAsset)
 
 		// Check effects
-		effectsResponse, err := client.Effects(sdk.EffectRequest{ForOperation: revokeOp.ID})
-		tt.NoError(err)
-		effectRecords := effectsResponse.Embedded.Records
-		tt.Len(effectRecords, 1)
-		tt.IsType(effects.TrustlineSponsorshipUpdated{}, effectRecords[0])
-		effect := effectRecords[0].(effects.TrustlineSponsorshipUpdated)
+		effRecords := getEffectsByOp(revokeOp.ID)
+		tt.Len(effRecords, 1)
+		effect := effRecords[0].(effects.TrustlineSponsorshipUpdated)
 		tt.Equal(sponsorPair.Address(), effect.FormerSponsor)
 		tt.Equal(newSponsorPair.Address(), effect.NewSponsor)
 
@@ -687,24 +653,18 @@ func TestSponsorships(t *testing.T) {
 				SponsorshipType: txnbuild.RevokeSponsorshipTypeTrustLine,
 				TrustLine: &txnbuild.TrustLineID{
 					Account: newAccountPair.Address(),
-					Asset: txnbuild.CreditAsset{
-						Code:   "ABCD",
-						Issuer: sponsorPair.Address(),
-					},
+					Asset:   asset,
 				},
 			},
 		}
-		txResp = itest.MustSubmitOperations(newSponsor(), newSponsorPair, ops...)
+		txResp = itest.MustSubmitOperations(newSponsor, newSponsorPair, ops...)
 
-		effectsResponse, err = client.Effects(sdk.EffectRequest{
-			ForTransaction: txResp.ID,
-		})
-		tt.NoError(err)
 		// There are intentionally no effects when revoking an Offer
-		tt.Len(effectsResponse.Embedded.Records, 1)
-		sponsorshipRemoved := effectsResponse.Embedded.Records[0].(effects.TrustlineSponsorshipRemoved)
+		effRecords = getEffectsByTx(txResp.ID)
+		tt.Len(effRecords, 1)
+		sponsorshipRemoved := effRecords[0].(effects.TrustlineSponsorshipRemoved)
 		tt.Equal(newSponsorPair.Address(), sponsorshipRemoved.FormerSponsor)
-		tt.Equal("ABCD:"+sponsorPair.Address(), sponsorshipRemoved.Asset)
+		tt.Equal(canonicalAsset, sponsorshipRemoved.Asset)
 	})
 }
 
