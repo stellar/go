@@ -11,8 +11,8 @@ type claimPredicateJSON struct {
 	Or            *[]claimPredicateJSON `json:"or,omitempty"`
 	Not           *claimPredicateJSON   `json:"not,omitempty"`
 	Unconditional bool                  `json:"unconditional,omitempty"`
-	AbsBefore     *time.Time            `json:"absBefore,omitempty"`
-	RelBefore     *int64                `json:"relBefore,string,omitempty"`
+	AbsBefore     *time.Time            `json:"abs_before,omitempty"`
+	RelBefore     *int64                `json:"rel_before,string,omitempty"`
 }
 
 func convertPredicatesToXDR(input []claimPredicateJSON) ([]ClaimPredicate, error) {
