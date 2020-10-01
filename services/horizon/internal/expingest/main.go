@@ -143,7 +143,8 @@ func NewSystem(config Config) (System, error) {
 	archive, err := historyarchive.Connect(
 		config.HistoryArchiveURL,
 		historyarchive.ConnectOptions{
-			Context: ctx,
+			Context:           ctx,
+			NetworkPassphrase: config.NetworkPassphrase,
 		},
 	)
 	if err != nil {
