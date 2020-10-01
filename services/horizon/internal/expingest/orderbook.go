@@ -90,10 +90,10 @@ func addOfferToGraph(graph orderbook.OBGraph, offer history.Offer) {
 	sellerID := xdr.MustAddress(offer.SellerID)
 	graph.AddOffer(xdr.OfferEntry{
 		SellerId: sellerID,
-		OfferId:  offer.OfferID,
+		OfferId:  xdr.Int64(offer.OfferID),
 		Selling:  offer.SellingAsset,
 		Buying:   offer.BuyingAsset,
-		Amount:   offer.Amount,
+		Amount:   xdr.Int64(offer.Amount),
 		Price: xdr.Price{
 			N: xdr.Int32(offer.Pricen),
 			D: xdr.Int32(offer.Priced),
@@ -165,7 +165,7 @@ func (o *OrderBookStream) update(status ingestionStatus) (bool, error) {
 	}
 	for _, offer := range offers {
 		if offer.Deleted {
-			o.graph.RemoveOffer(offer.OfferID)
+			o.graph.RemoveOffer(xdr.Int64(offer.OfferID))
 		} else {
 			addOfferToGraph(o.graph, offer)
 		}
@@ -203,8 +203,8 @@ func (o *OrderBookStream) verifyAllOffers() {
 
 		for i, offerRow := range ingestionOffers {
 			offerEntry := offers[i]
-			if offerRow.OfferID != offerEntry.OfferId ||
-				offerRow.Amount != offerEntry.Amount ||
+			if xdr.Int64(offerRow.OfferID) != offerEntry.OfferId ||
+				xdr.Int64(offerRow.Amount) != offerEntry.Amount ||
 				offerRow.Priced != int32(offerEntry.Price.D) ||
 				offerRow.Pricen != int32(offerEntry.Price.N) ||
 				!offerRow.BuyingAsset.Equals(offerEntry.Buying) ||

@@ -2,8 +2,6 @@ package history
 
 import (
 	"github.com/stretchr/testify/mock"
-
-	"github.com/stellar/go/xdr"
 )
 
 // MockQOffers is a mock implementation of the QOffers interface
@@ -36,12 +34,12 @@ func (m *MockQOffers) NewOffersBatchInsertBuilder(maxBatchSize int) OffersBatchI
 	return a.Get(0).(OffersBatchInsertBuilder)
 }
 
-func (m *MockQOffers) UpdateOffer(entry xdr.LedgerEntry) (int64, error) {
-	a := m.Called(entry)
+func (m *MockQOffers) UpdateOffer(row Offer) (int64, error) {
+	a := m.Called(row)
 	return a.Get(0).(int64), a.Error(1)
 }
 
-func (m *MockQOffers) RemoveOffer(offerID xdr.Int64, lastModifiedLedger uint32) (int64, error) {
+func (m *MockQOffers) RemoveOffer(offerID int64, lastModifiedLedger uint32) (int64, error) {
 	a := m.Called(offerID, lastModifiedLedger)
 	return a.Get(0).(int64), a.Error(1)
 }

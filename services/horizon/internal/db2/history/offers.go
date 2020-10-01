@@ -3,7 +3,6 @@ package history
 import (
 	sq "github.com/Masterminds/squirrel"
 	"github.com/stellar/go/support/errors"
-	"github.com/stellar/go/xdr"
 )
 
 // QOffers defines offer related queries.
@@ -13,8 +12,8 @@ type QOffers interface {
 	CountOffers() (int, error)
 	GetUpdatedOffers(newerThanSequence uint32) ([]Offer, error)
 	NewOffersBatchInsertBuilder(maxBatchSize int) OffersBatchInsertBuilder
-	UpdateOffer(entry xdr.LedgerEntry) (int64, error)
-	RemoveOffer(offerID xdr.Int64, lastModifiedLedger uint32) (int64, error)
+	UpdateOffer(offer Offer) (int64, error)
+	RemoveOffer(offerID int64, lastModifiedLedger uint32) (int64, error)
 	CompactOffers(cutOffSequence uint32) (int64, error)
 }
 
@@ -61,19 +60,11 @@ func (q *Q) GetOffers(query OffersQuery) ([]Offer, error) {
 	}
 
 	if query.Selling != nil {
-		sellingAsset, err := xdr.MarshalBase64(*query.Selling)
-		if err != nil {
-			return nil, errors.Wrap(err, "cannot marshal selling asset")
-		}
-		sql = sql.Where("offers.selling_asset = ?", sellingAsset)
+		sql = sql.Where("offers.selling_asset = ?", query.Selling)
 	}
 
 	if query.Buying != nil {
-		buyingAsset, err := xdr.MarshalBase64(*query.Buying)
-		if err != nil {
-			return nil, errors.Wrap(err, "cannot marshal Buying asset")
-		}
-		sql = sql.Where("offers.buying_asset = ?", buyingAsset)
+		sql = sql.Where("offers.buying_asset = ?", query.Buying)
 	}
 
 	if query.Sponsor != "" {
@@ -104,41 +95,18 @@ func (q *Q) GetUpdatedOffers(newerThanSequence uint32) ([]Offer, error) {
 
 // UpdateOffer updates a row in the offers table.
 // Returns number of rows affected and error.
-func (q *Q) UpdateOffer(entry xdr.LedgerEntry) (int64, error) {
-	offer := entry.Data.MustOffer()
-
-	var price float64
-	if offer.Price.N > 0 {
-		price = float64(offer.Price.N) / float64(offer.Price.D)
-	} else if offer.Price.D == 0 {
-		return 0, errors.New("offer price denominator is zero")
-	}
-
-	offerMap := map[string]interface{}{
-		"seller_id":            offer.SellerId.Address(),
-		"selling_asset":        offer.Selling,
-		"buying_asset":         offer.Buying,
-		"amount":               offer.Amount,
-		"pricen":               offer.Price.N,
-		"priced":               offer.Price.D,
-		"price":                price,
-		"flags":                offer.Flags,
-		"last_modified_ledger": entry.LastModifiedLedgerSeq,
-		"sponsor":              ledgerEntrySponsorToNullString(entry),
-	}
-
-	sql := sq.Update("offers").SetMap(offerMap).Where("offer_id = ?", offer.OfferId)
-	result, err := q.Exec(sql)
+func (q *Q) UpdateOffer(offer Offer) (int64, error) {
+	updateBuilder := q.GetTable("offers").Update()
+	result, err := updateBuilder.SetStruct(offer, []string{}).Where("offer_id = ?", offer.OfferID).Exec()
 	if err != nil {
 		return 0, err
 	}
-
 	return result.RowsAffected()
 }
 
 // RemoveOffer marks a row in the offers table as deleted.
 // Returns number of rows affected and error.
-func (q *Q) RemoveOffer(offerID xdr.Int64, lastModifiedLedger uint32) (int64, error) {
+func (q *Q) RemoveOffer(offerID int64, lastModifiedLedger uint32) (int64, error) {
 	sql := sq.Update("offers").
 		Set("deleted", true).
 		Set("last_modified_ledger", lastModifiedLedger).

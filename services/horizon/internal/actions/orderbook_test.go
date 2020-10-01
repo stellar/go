@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	protocol "github.com/stellar/go/protocols/horizon"
-	"github.com/stellar/go/xdr"
 )
 
 type intObject int
@@ -491,105 +490,82 @@ func TestOrderbookGetResource(t *testing.T) {
 		},
 	}
 
-	sellEurOffer := xdr.LedgerEntry{
-		LastModifiedLedgerSeq: 4,
-		Data: xdr.LedgerEntryData{
-			Type: xdr.LedgerEntryTypeOffer,
-			Offer: &xdr.OfferEntry{
-				SellerId: seller,
-				OfferId:  xdr.Int64(15),
-				Buying:   nativeAsset,
-				Selling:  eurAsset,
-				Price: xdr.Price{
-					N: 2,
-					D: 1,
-				},
-				Flags:  2,
-				Amount: xdr.Int64(500),
-			},
-		},
+	sellEurOffer := history.Offer{
+		SellerID: seller.Address(),
+		OfferID:  int64(15),
+
+		BuyingAsset:  nativeAsset,
+		SellingAsset: eurAsset,
+
+		Amount:             int64(500),
+		Pricen:             int32(2),
+		Priced:             int32(1),
+		Price:              float64(2),
+		Flags:              2,
+		LastModifiedLedger: uint32(4),
 	}
 
-	otherEurOffer := xdr.LedgerEntry{
-		LastModifiedLedgerSeq: 16,
-		Data: xdr.LedgerEntryData{
-			Type: xdr.LedgerEntryTypeOffer,
-			Offer: &xdr.OfferEntry{
-				SellerId: seller,
-				OfferId:  xdr.Int64(6),
-				Buying:   eurAsset,
-				Selling:  nativeAsset,
-				Price: xdr.Price{
-					N: 2,
-					D: 1,
-				},
-				Flags:  2,
-				Amount: xdr.Int64(math.MaxInt64),
-			},
-		},
+	otherEurOffer := history.Offer{
+		SellerID: seller.Address(),
+		OfferID:  int64(16),
+
+		BuyingAsset:  eurAsset,
+		SellingAsset: nativeAsset,
+
+		Amount:             int64(math.MaxInt64),
+		Pricen:             int32(2),
+		Priced:             int32(1),
+		Price:              float64(2),
+		Flags:              2,
+		LastModifiedLedger: uint32(1234),
 	}
 
-	nonCanonicalPriceTwoEurOffer := xdr.LedgerEntry{
-		LastModifiedLedgerSeq: 30,
-		Data: xdr.LedgerEntryData{
-			Type: xdr.LedgerEntryTypeOffer,
-			Offer: &xdr.OfferEntry{
-				SellerId: seller,
-				OfferId:  xdr.Int64(7),
-				Buying:   eurAsset,
-				Selling:  nativeAsset,
-				Price: xdr.Price{
-					// Add a separate offer with the same price value, but
-					// using a non-canonical representation, to make sure
-					// they are coalesced into the same price level
-					N: 2 * 15,
-					D: 1 * 15,
-				},
-				Flags:  2,
-				Amount: xdr.Int64(500),
-			},
-		},
+	nonCanonicalPriceTwoEurOffer := history.Offer{
+		SellerID: seller.Address(),
+		OfferID:  int64(7),
+
+		BuyingAsset:  eurAsset,
+		SellingAsset: nativeAsset,
+
+		Amount:             int64(500),
+		Pricen:             int32(2 * 15),
+		Priced:             int32(1 * 15),
+		Price:              float64(2),
+		Flags:              2,
+		LastModifiedLedger: uint32(4),
 	}
 
-	threeEurOffer := xdr.LedgerEntry{
-		LastModifiedLedgerSeq: 4,
-		Data: xdr.LedgerEntryData{
-			Type: xdr.LedgerEntryTypeOffer,
-			Offer: &xdr.OfferEntry{
-				SellerId: seller,
-				OfferId:  xdr.Int64(20),
-				Buying:   eurAsset,
-				Selling:  nativeAsset,
-				Price: xdr.Price{
-					N: 3,
-					D: 1,
-				},
-				Flags:  2,
-				Amount: xdr.Int64(500),
-			},
-		},
+	threeEurOffer := history.Offer{
+		SellerID: seller.Address(),
+		OfferID:  int64(20),
+
+		BuyingAsset:  eurAsset,
+		SellingAsset: nativeAsset,
+
+		Amount:             int64(500),
+		Pricen:             int32(3),
+		Priced:             int32(1),
+		Price:              float64(3),
+		Flags:              2,
+		LastModifiedLedger: uint32(1234),
 	}
 
-	otherSellEurOffer := xdr.LedgerEntry{
-		LastModifiedLedgerSeq: 4,
-		Data: xdr.LedgerEntryData{
-			Type: xdr.LedgerEntryTypeOffer,
-			Offer: &xdr.OfferEntry{
-				SellerId: seller,
-				OfferId:  xdr.Int64(17),
-				Buying:   nativeAsset,
-				Selling:  eurAsset,
-				Price: xdr.Price{
-					N: 5,
-					D: 9,
-				},
-				Flags:  2,
-				Amount: xdr.Int64(500),
-			},
-		},
+	otherSellEurOffer := history.Offer{
+		SellerID: seller.Address(),
+		OfferID:  int64(17),
+
+		BuyingAsset:  nativeAsset,
+		SellingAsset: eurAsset,
+
+		Amount:             int64(500),
+		Pricen:             int32(5),
+		Priced:             int32(9),
+		Price:              float64(5) / float64(9),
+		Flags:              2,
+		LastModifiedLedger: uint32(1234),
 	}
 
-	offers := []xdr.LedgerEntry{
+	offers := []history.Offer{
 		twoEurOffer,
 		otherEurOffer,
 		nonCanonicalPriceTwoEurOffer,
@@ -615,24 +591,24 @@ func TestOrderbookGetResource(t *testing.T) {
 	fullResponse := empty
 	fullResponse.Asks = []protocol.PriceLevel{
 		{
-			PriceR: protocol.Price{N: int32(twoEurOffer.Data.Offer.Price.N), D: int32(twoEurOffer.Data.Offer.Price.D)},
+			PriceR: protocol.Price{N: int32(twoEurOffer.Pricen), D: int32(twoEurOffer.Priced)},
 			Price:  "2.0000000",
 			Amount: "922337203685.4776807",
 		},
 		{
-			PriceR: protocol.Price{N: int32(threeEurOffer.Data.Offer.Price.N), D: int32(threeEurOffer.Data.Offer.Price.D)},
+			PriceR: protocol.Price{N: int32(threeEurOffer.Pricen), D: int32(threeEurOffer.Priced)},
 			Price:  "3.0000000",
 			Amount: "0.0000500",
 		},
 	}
 	fullResponse.Bids = []protocol.PriceLevel{
 		{
-			PriceR: protocol.Price{N: int32(otherSellEurOffer.Data.Offer.Price.D), D: int32(otherSellEurOffer.Data.Offer.Price.N)},
+			PriceR: protocol.Price{N: int32(otherSellEurOffer.Priced), D: int32(otherSellEurOffer.Pricen)},
 			Price:  "1.8000000",
 			Amount: "0.0000500",
 		},
 		{
-			PriceR: protocol.Price{N: int32(sellEurOffer.Data.Offer.Price.D), D: int32(sellEurOffer.Data.Offer.Price.N)},
+			PriceR: protocol.Price{N: int32(sellEurOffer.Priced), D: int32(sellEurOffer.Pricen)},
 			Price:  "0.5000000",
 			Amount: "0.0000500",
 		},
@@ -641,14 +617,14 @@ func TestOrderbookGetResource(t *testing.T) {
 	limitResponse := empty
 	limitResponse.Asks = []protocol.PriceLevel{
 		{
-			PriceR: protocol.Price{N: int32(twoEurOffer.Data.Offer.Price.N), D: int32(twoEurOffer.Data.Offer.Price.D)},
+			PriceR: protocol.Price{N: int32(twoEurOffer.Pricen), D: int32(twoEurOffer.Priced)},
 			Price:  "2.0000000",
 			Amount: "922337203685.4776807",
 		},
 	}
 	limitResponse.Bids = []protocol.PriceLevel{
 		{
-			PriceR: protocol.Price{N: int32(otherSellEurOffer.Data.Offer.Price.D), D: int32(otherSellEurOffer.Data.Offer.Price.N)},
+			PriceR: protocol.Price{N: int32(otherSellEurOffer.Priced), D: int32(otherSellEurOffer.Pricen)},
 			Price:  "1.8000000",
 			Amount: "0.0000500",
 		},

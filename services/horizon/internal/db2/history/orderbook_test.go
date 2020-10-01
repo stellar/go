@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/stellar/go/services/horizon/internal/test"
-	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -32,110 +31,91 @@ func TestGetOrderBookSummary(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
-	asksButNoBids := []xdr.LedgerEntry{twoEurOffer}
+	asksButNoBids := []Offer{twoEurOffer}
 	asksButNoBidsResponse := OrderBookSummary{
 		Asks: []PriceLevel{
 			{
-				Pricen: int32(twoEurOffer.Data.Offer.Price.N),
-				Priced: int32(twoEurOffer.Data.Offer.Price.D),
+				Pricen: int32(twoEurOffer.Pricen),
+				Priced: int32(twoEurOffer.Priced),
 				Pricef: "2.0000000",
 				Amount: "0.0000500",
 			},
 		},
 	}
 
-	sellEurOffer := xdr.LedgerEntry{
-		LastModifiedLedgerSeq: 1234,
-		Data: xdr.LedgerEntryData{
-			Type: xdr.LedgerEntryTypeOffer,
-			Offer: &xdr.OfferEntry{
-				SellerId: twoEurOfferSeller,
-				OfferId:  xdr.Int64(15),
-				Buying:   nativeAsset,
-				Selling:  eurAsset,
-				Price: xdr.Price{
-					N: 2,
-					D: 1,
-				},
-				Flags:  2,
-				Amount: xdr.Int64(500),
-			},
-		},
+	sellEurOffer := Offer{
+		SellerID: twoEurOfferSeller.Address(),
+		OfferID:  int64(15),
+
+		BuyingAsset:  nativeAsset,
+		SellingAsset: eurAsset,
+
+		Amount:             int64(500),
+		Pricen:             int32(2),
+		Priced:             int32(1),
+		Price:              float64(2),
+		Flags:              2,
+		LastModifiedLedger: uint32(1234),
 	}
 
-	bidsButNoAsks := []xdr.LedgerEntry{sellEurOffer}
+	bidsButNoAsks := []Offer{sellEurOffer}
 	bidsButNoAsksResponse := OrderBookSummary{
 		Bids: []PriceLevel{
 			{
-				Pricen: int32(sellEurOffer.Data.Offer.Price.D),
-				Priced: int32(sellEurOffer.Data.Offer.Price.N),
+				Pricen: int32(sellEurOffer.Priced),
+				Priced: int32(sellEurOffer.Pricen),
 				Pricef: "0.5000000",
 				Amount: "0.0000500",
 			},
 		},
 	}
 
-	otherEurOffer := xdr.LedgerEntry{
-		LastModifiedLedgerSeq: 1234,
-		Data: xdr.LedgerEntryData{
-			Type: xdr.LedgerEntryTypeOffer,
-			Offer: &xdr.OfferEntry{
-				SellerId: twoEurOfferSeller,
-				OfferId:  xdr.Int64(6),
-				Buying:   eurAsset,
-				Selling:  nativeAsset,
-				Price: xdr.Price{
-					N: 2,
-					D: 1,
-				},
-				Flags:  2,
-				Amount: xdr.Int64(math.MaxInt64),
-			},
-		},
+	otherEurOffer := Offer{
+		SellerID: twoEurOfferSeller.Address(),
+		OfferID:  int64(6),
+
+		BuyingAsset:  eurAsset,
+		SellingAsset: nativeAsset,
+
+		Amount:             int64(math.MaxInt64),
+		Pricen:             int32(2),
+		Priced:             int32(1),
+		Price:              float64(2),
+		Flags:              2,
+		LastModifiedLedger: uint32(1234),
 	}
 
-	nonCanonicalPriceTwoEurOffer := xdr.LedgerEntry{
-		LastModifiedLedgerSeq: 1234,
-		Data: xdr.LedgerEntryData{
-			Type: xdr.LedgerEntryTypeOffer,
-			Offer: &xdr.OfferEntry{
-				SellerId: twoEurOfferSeller,
-				OfferId:  xdr.Int64(30),
-				Buying:   eurAsset,
-				Selling:  nativeAsset,
-				Price: xdr.Price{
-					// Add a separate offer with the same price value, but
-					// using a non-canonical representation, to make sure
-					// they are coalesced into the same price level
-					N: 2 * 15,
-					D: 1 * 15,
-				},
-				Flags:  2,
-				Amount: xdr.Int64(500),
-			},
-		},
+	nonCanonicalPriceTwoEurOffer := Offer{
+		SellerID: twoEurOfferSeller.Address(),
+		OfferID:  int64(30),
+
+		BuyingAsset:  eurAsset,
+		SellingAsset: nativeAsset,
+
+		Amount:             int64(500),
+		Pricen:             int32(2 * 15),
+		Priced:             int32(1 * 15),
+		Price:              float64(2),
+		Flags:              2,
+		LastModifiedLedger: uint32(1234),
 	}
 
-	otherSellEurOffer := xdr.LedgerEntry{
-		LastModifiedLedgerSeq: 1234,
-		Data: xdr.LedgerEntryData{
-			Type: xdr.LedgerEntryTypeOffer,
-			Offer: &xdr.OfferEntry{
-				SellerId: twoEurOfferSeller,
-				OfferId:  xdr.Int64(17),
-				Buying:   nativeAsset,
-				Selling:  eurAsset,
-				Price: xdr.Price{
-					N: 9,
-					D: 5,
-				},
-				Flags:  2,
-				Amount: xdr.Int64(500),
-			},
-		},
+	otherSellEurOffer := Offer{
+		SellerID: twoEurOfferSeller.Address(),
+		OfferID:  int64(17),
+
+		BuyingAsset:  nativeAsset,
+		SellingAsset: eurAsset,
+
+		Amount:             int64(500),
+		Pricen:             int32(9),
+		Priced:             int32(5),
+		Price:              float64(9) / float64(5),
+		Flags:              2,
+		LastModifiedLedger: uint32(1234),
 	}
 
-	fullOffers := []xdr.LedgerEntry{
+	fullOffers := []Offer{
 		twoEurOffer,
 		otherEurOffer,
 		nonCanonicalPriceTwoEurOffer,
@@ -147,28 +127,28 @@ func TestGetOrderBookSummary(t *testing.T) {
 	fullResponse := OrderBookSummary{
 		Asks: []PriceLevel{
 			{
-				Pricen: int32(twoEurOffer.Data.Offer.Price.N),
-				Priced: int32(twoEurOffer.Data.Offer.Price.D),
+				Pricen: int32(twoEurOffer.Pricen),
+				Priced: int32(twoEurOffer.Priced),
 				Pricef: "2.0000000",
 				Amount: "922337203685.4776807",
 			},
 			{
-				Pricen: int32(threeEurOffer.Data.Offer.Price.N),
-				Priced: int32(threeEurOffer.Data.Offer.Price.D),
+				Pricen: int32(threeEurOffer.Pricen),
+				Priced: int32(threeEurOffer.Priced),
 				Pricef: "3.0000000",
 				Amount: "0.0000500",
 			},
 		},
 		Bids: []PriceLevel{
 			{
-				Pricen: int32(otherSellEurOffer.Data.Offer.Price.D),
-				Priced: int32(otherSellEurOffer.Data.Offer.Price.N),
+				Pricen: int32(otherSellEurOffer.Priced),
+				Priced: int32(otherSellEurOffer.Pricen),
 				Pricef: "0.5555556",
 				Amount: "0.0000500",
 			},
 			{
-				Pricen: int32(sellEurOffer.Data.Offer.Price.D),
-				Priced: int32(sellEurOffer.Data.Offer.Price.N),
+				Pricen: int32(sellEurOffer.Priced),
+				Priced: int32(sellEurOffer.Pricen),
 				Pricef: "0.5000000",
 				Amount: "0.0000500",
 			},
@@ -178,16 +158,16 @@ func TestGetOrderBookSummary(t *testing.T) {
 	limitResponse := OrderBookSummary{
 		Asks: []PriceLevel{
 			{
-				Pricen: int32(twoEurOffer.Data.Offer.Price.N),
-				Priced: int32(twoEurOffer.Data.Offer.Price.D),
+				Pricen: int32(twoEurOffer.Pricen),
+				Priced: int32(twoEurOffer.Priced),
 				Pricef: "2.0000000",
 				Amount: "922337203685.4776807",
 			},
 		},
 		Bids: []PriceLevel{
 			{
-				Pricen: int32(otherSellEurOffer.Data.Offer.Price.D),
-				Priced: int32(otherSellEurOffer.Data.Offer.Price.N),
+				Pricen: int32(otherSellEurOffer.Priced),
+				Priced: int32(otherSellEurOffer.Pricen),
 				Pricef: "0.5555556",
 				Amount: "0.0000500",
 			},
@@ -196,13 +176,13 @@ func TestGetOrderBookSummary(t *testing.T) {
 
 	for _, testCase := range []struct {
 		name     string
-		offers   []xdr.LedgerEntry
+		offers   []Offer
 		limit    int
 		expected OrderBookSummary
 	}{
 		{
 			"empty orderbook",
-			[]xdr.LedgerEntry{},
+			[]Offer{},
 			10,
 			OrderBookSummary{},
 		},
@@ -259,26 +239,22 @@ func TestGetOrderBookSummaryExcludesRemovedOffers(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
-	sellEurOffer := xdr.LedgerEntry{
-		LastModifiedLedgerSeq: 1234,
-		Data: xdr.LedgerEntryData{
-			Type: xdr.LedgerEntryTypeOffer,
-			Offer: &xdr.OfferEntry{
-				SellerId: twoEurOfferSeller,
-				OfferId:  xdr.Int64(15),
-				Buying:   nativeAsset,
-				Selling:  eurAsset,
-				Price: xdr.Price{
-					N: 2,
-					D: 1,
-				},
-				Flags:  2,
-				Amount: xdr.Int64(500),
-			},
-		},
+	sellEurOffer := Offer{
+		SellerID: twoEurOfferSeller.Address(),
+		OfferID:  int64(15),
+
+		BuyingAsset:  nativeAsset,
+		SellingAsset: eurAsset,
+
+		Amount:             int64(500),
+		Pricen:             int32(2),
+		Priced:             int32(1),
+		Price:              float64(2),
+		Flags:              2,
+		LastModifiedLedger: uint32(1234),
 	}
 
-	offers := []xdr.LedgerEntry{
+	offers := []Offer{
 		twoEurOffer,
 		threeEurOffer,
 		sellEurOffer,
@@ -304,7 +280,7 @@ func TestGetOrderBookSummaryExcludesRemovedOffers(t *testing.T) {
 
 	for i, offer := range offers {
 		var count int64
-		count, err = q.RemoveOffer(offer.Data.Offer.OfferId, uint32(i+2))
+		count, err = q.RemoveOffer(offer.OfferID, uint32(i+2))
 		assert.NoError(t, err)
 		assert.Equal(t, int64(1), count)
 	}

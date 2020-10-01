@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/guregu/null"
 	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/test"
@@ -24,65 +25,48 @@ var (
 	usdAsset    = xdr.MustNewCreditAsset("USD", issuer.Address())
 	eurAsset    = xdr.MustNewCreditAsset("EUR", issuer.Address())
 
-	eurOffer = xdr.LedgerEntry{
-		LastModifiedLedgerSeq: 3,
-		Data: xdr.LedgerEntryData{
-			Type: xdr.LedgerEntryTypeOffer,
-			Offer: &xdr.OfferEntry{
-				SellerId: issuer,
-				OfferId:  xdr.Int64(4),
-				Buying:   eurAsset,
-				Selling:  nativeAsset,
-				Price: xdr.Price{
-					N: 1,
-					D: 1,
-				},
-				Flags:  1,
-				Amount: xdr.Int64(500),
-			},
-		},
+	eurOffer = history.Offer{
+		SellerID: issuer.Address(),
+		OfferID:  int64(4),
+
+		BuyingAsset:  eurAsset,
+		SellingAsset: nativeAsset,
+
+		Amount:             int64(500),
+		Pricen:             int32(1),
+		Priced:             int32(1),
+		Price:              float64(1),
+		Flags:              1,
+		LastModifiedLedger: uint32(3),
 	}
-	twoEurOffer = xdr.LedgerEntry{
-		LastModifiedLedgerSeq: 4,
-		Data: xdr.LedgerEntryData{
-			Type: xdr.LedgerEntryTypeOffer,
-			Offer: &xdr.OfferEntry{
-				SellerId: seller,
-				OfferId:  xdr.Int64(5),
-				Buying:   eurAsset,
-				Selling:  nativeAsset,
-				Price: xdr.Price{
-					N: 2,
-					D: 1,
-				},
-				Flags:  2,
-				Amount: xdr.Int64(500),
-			},
-		},
-		Ext: xdr.LedgerEntryExt{
-			V: 1,
-			V1: &xdr.LedgerEntryExtensionV1{
-				SponsoringId: &sponsor,
-			},
-		},
+	twoEurOffer = history.Offer{
+		SellerID: seller.Address(),
+		OfferID:  int64(5),
+
+		BuyingAsset:  eurAsset,
+		SellingAsset: nativeAsset,
+
+		Amount:             int64(500),
+		Pricen:             int32(2),
+		Priced:             int32(1),
+		Price:              float64(2),
+		Flags:              2,
+		LastModifiedLedger: uint32(4),
+		Sponsor:            null.StringFrom(sponsor.Address()),
 	}
-	usdOffer = xdr.LedgerEntry{
-		LastModifiedLedgerSeq: 4,
-		Data: xdr.LedgerEntryData{
-			Type: xdr.LedgerEntryTypeOffer,
-			Offer: &xdr.OfferEntry{
-				SellerId: issuer,
-				OfferId:  xdr.Int64(6),
-				Buying:   usdAsset,
-				Selling:  eurAsset,
-				Price: xdr.Price{
-					N: 1,
-					D: 1,
-				},
-				Flags:  1,
-				Amount: xdr.Int64(500),
-			},
-		},
+	usdOffer = history.Offer{
+		SellerID: issuer.Address(),
+		OfferID:  int64(6),
+
+		BuyingAsset:  usdAsset,
+		SellingAsset: eurAsset,
+
+		Amount:             int64(500),
+		Pricen:             int32(1),
+		Priced:             int32(1),
+		Price:              float64(1),
+		Flags:              1,
+		LastModifiedLedger: uint32(4),
 	}
 )
 
@@ -156,7 +140,7 @@ func TestGetOfferByIDHandler(t *testing.T) {
 			},
 			func(response interface{}) {
 				offer := response.(horizon.Offer)
-				tt.Assert.Equal(int64(eurOffer.Data.Offer.OfferId), offer.ID)
+				tt.Assert.Equal(int64(eurOffer.OfferID), offer.ID)
 				tt.Assert.Equal("native", offer.Selling.Type)
 				tt.Assert.Equal("credit_alphanum4", offer.Buying.Type)
 				tt.Assert.Equal("EUR", offer.Buying.Code)
@@ -176,7 +160,7 @@ func TestGetOfferByIDHandler(t *testing.T) {
 			},
 			func(response interface{}) {
 				offer := response.(horizon.Offer)
-				tt.Assert.Equal(int64(usdOffer.Data.Offer.OfferId), offer.ID)
+				tt.Assert.Equal(int64(usdOffer.OfferID), offer.ID)
 				tt.Assert.Equal("credit_alphanum4", offer.Selling.Type)
 				tt.Assert.Equal("EUR", offer.Selling.Code)
 				tt.Assert.Equal("credit_alphanum4", offer.Buying.Type)
@@ -237,7 +221,7 @@ func TestGetOffersHandler(t *testing.T) {
 
 		offers := pageableToOffers(t, records)
 
-		tt.Assert.Equal(int64(eurOffer.Data.Offer.OfferId), offers[0].ID)
+		tt.Assert.Equal(int64(eurOffer.OfferID), offers[0].ID)
 		tt.Assert.Equal("native", offers[0].Selling.Type)
 		tt.Assert.Equal("credit_alphanum4", offers[0].Buying.Type)
 		tt.Assert.Equal(issuer.Address(), offers[0].Seller)
@@ -304,7 +288,7 @@ func TestGetOffersHandler(t *testing.T) {
 		tt.Assert.Len(records, 1)
 
 		offers := pageableToOffers(t, records)
-		tt.Assert.Equal(int64(twoEurOffer.Data.MustOffer().OfferId), offers[0].ID)
+		tt.Assert.Equal(int64(twoEurOffer.OfferID), offers[0].ID)
 
 		_, err = handler.GetResourcePage(
 			httptest.NewRecorder(),
