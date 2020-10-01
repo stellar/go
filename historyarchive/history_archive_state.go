@@ -16,10 +16,13 @@ import (
 const NumLevels = 11
 
 type HistoryArchiveState struct {
-	Version        int    `json:"version"`
-	Server         string `json:"server"`
-	CurrentLedger  uint32 `json:"currentLedger"`
-	CurrentBuckets [NumLevels]struct {
+	Version       int    `json:"version"`
+	Server        string `json:"server"`
+	CurrentLedger uint32 `json:"currentLedger"`
+	// NetworkPassphrase was added in Stellar-Core v14.1.0. Can be missing
+	// in HAS created by previous versions.
+	NetworkPassphrase string `json:"networkPassphrase"`
+	CurrentBuckets    [NumLevels]struct {
 		Curr string `json:"curr"`
 		Snap string `json:"snap"`
 		Next struct {
