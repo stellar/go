@@ -2,8 +2,7 @@ FROM golang:1.14-stretch as build
 
 ADD . /src/friendbot
 WORKDIR /src/friendbot
-RUN go mod vendor
-RUN go build -o /bin/friendbot -mod=vendor ./services/friendbot
+RUN go build -o /bin/friendbot ./services/friendbot
 
 FROM ubuntu:16.04
 
