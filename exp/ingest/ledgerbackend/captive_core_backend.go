@@ -114,7 +114,9 @@ type CaptiveStellarCore struct {
 func NewCaptive(executablePath, configPath, networkPassphrase string, historyURLs []string) (*CaptiveStellarCore, error) {
 	archive, err := historyarchive.Connect(
 		historyURLs[0],
-		historyarchive.ConnectOptions{},
+		historyarchive.ConnectOptions{
+			NetworkPassphrase: networkPassphrase,
+		},
 	)
 	if err != nil {
 		return nil, errors.Wrap(err, "error connecting to history archive")
