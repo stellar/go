@@ -143,8 +143,8 @@ func TestPopulateOperation_CreateClaimableBalance(t *testing.T) {
 					"and": [
 						{
 							"or": [
-								{"relBefore":"12"},
-								{"absBefore": "2020-08-26T11:15:39Z"}
+								{"rel_before":"12"},
+								{"abs_before": "2020-08-26T11:15:39Z"}
 							]
 						},
 						{
