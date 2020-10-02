@@ -102,6 +102,7 @@ func TestRevokeSponsorship(t *testing.T) {
 			var op2 RevokeSponsorship
 			assert.NoError(t, op2.FromXDR(xdrOp2))
 			assert.Equal(t, op, op2)
+			roundTrip(t, []Operation{&testcase.op})
 		})
 	}
 }
