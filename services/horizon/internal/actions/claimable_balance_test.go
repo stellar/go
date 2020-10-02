@@ -524,12 +524,54 @@ func TestGetClaimableBalances(t *testing.T) {
 
 	tt.Assert.NoError(err)
 	tt.Assert.Len(response, 2)
-	// for _, resource := range response {
-	// 	tt.Assert.Equal(
-	// 		"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
-	// 		resource.(protocol.ClaimableBalance).Sponsor,
-	// 	)
-	// }
+}
+
+func TestCursorAndOrderValidation(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	test.ResetHorizonDB(t, tt.HorizonDB)
+	q := &history.Q{tt.HorizonSession()}
+
+	handler := GetClaimableBalancesHandler{}
+	_, err := handler.GetResourcePage(httptest.NewRecorder(), makeRequest(
+		t,
+		map[string]string{
+			"cursor": "-1-00000043d380c38a2f2cac46ab63674064c56fdce6b977fdef1a278ad50e1a7e6a5e18",
+		},
+		map[string]string{},
+		q.Session,
+	))
+	p := err.(*problem.P)
+	tt.Assert.Equal("bad_request", p.Type)
+	tt.Assert.Equal("cursor", p.Extras["invalid_field"])
+	tt.Assert.Equal("First part should be higher than 0 and second part should be valid claimable balance ID", p.Extras["reason"])
+
+	_, err = handler.GetResourcePage(httptest.NewRecorder(), makeRequest(
+		t,
+		map[string]string{
+			"cursor": "1003529-00000043d380c38a2f2cac46ab63674064c56fdce6b977fdef1a278ad50e1a7e6a5e18",
+		},
+		map[string]string{},
+		q.Session,
+	))
+	p = err.(*problem.P)
+	tt.Assert.Equal("bad_request", p.Type)
+	tt.Assert.Equal("cursor", p.Extras["invalid_field"])
+	tt.Assert.Equal("First part should be higher than 0 and second part should be valid claimable balance ID", p.Extras["reason"])
+
+	_, err = handler.GetResourcePage(httptest.NewRecorder(), makeRequest(
+		t,
+		map[string]string{
+			"order":  "arriba",
+			"cursor": "1003529-00000043d380c38a2f2cac46ab63674064c56fdce6b977fdef1a278ad50e1a7e6a5e18",
+		},
+		map[string]string{},
+		q.Session,
+	))
+	p = err.(*problem.P)
+	tt.Assert.Equal("bad_request", p.Type)
+	tt.Assert.Equal("order", p.Extras["invalid_field"])
+	tt.Assert.Equal("order: invalid value", p.Extras["reason"])
 }
 
 func TestClaimableBalancesQueryURLTemplate(t *testing.T) {

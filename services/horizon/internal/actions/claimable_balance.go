@@ -155,6 +155,14 @@ func (handler GetClaimableBalancesHandler) GetResourcePage(
 		Claimant:  qp.claimant(),
 	}
 
+	_, _, err = query.Cursor()
+	if err != nil {
+		return nil, problem.MakeInvalidFieldProblem(
+			"cursor",
+			errors.New("First part should be higher than 0 and second part should be valid claimable balance ID"),
+		)
+	}
+
 	historyQ, err := horizonContext.HistoryQFromRequest(r)
 	if err != nil {
 		return nil, err
