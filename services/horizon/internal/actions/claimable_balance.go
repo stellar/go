@@ -159,7 +159,7 @@ func (handler GetClaimableBalancesHandler) GetResourcePage(
 	if err != nil {
 		return nil, problem.MakeInvalidFieldProblem(
 			"cursor",
-			errors.New("First part should be higher than 0 and second part should be valid claimable balance ID"),
+			errors.New("The first part should be a number higher than 0 and the second part should be a valid claimable balance ID"),
 		)
 	}
 
