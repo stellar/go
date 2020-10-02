@@ -73,8 +73,8 @@ func NotPredicate(pred xdr.ClaimPredicate) xdr.ClaimPredicate {
 // This predicate will be fulfilled if the closing time of the ledger that
 // includes the CreateClaimableBalance operation is less than this (absolute)
 // Unix timestamp.
-func BeforeAbsoluteTimePredicate(secondsBefore int64) xdr.ClaimPredicate {
-	absBefore := xdr.Int64(secondsBefore)
+func BeforeAbsoluteTimePredicate(epochSeconds int64) xdr.ClaimPredicate {
+	absBefore := xdr.Int64(epochSeconds)
 	return xdr.ClaimPredicate{
 		Type:      xdr.ClaimPredicateTypeClaimPredicateBeforeAbsoluteTime,
 		AbsBefore: &absBefore,

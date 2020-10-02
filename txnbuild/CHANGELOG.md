@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this
 file.  This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [v4.0.1](https://github.com/stellar/go/releases/tag/horizonclient-v4.0.1) - 2020-10-02
+
+* Fixed bug in `TransactionFromXDR()` which occurs when parsing transaction XDR envelopes which contain Protocol 14 operations.
+
 ## [v4.0.0](https://github.com/stellar/go/releases/tag/horizonclient-v4.0.0) - 2020-09-29
 
 Added support for the new operations in [Protocol 14](https://github.com/stellar/go/issues/3035). Now it is possible to:
