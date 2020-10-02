@@ -544,7 +544,7 @@ func TestCursorAndOrderValidation(t *testing.T) {
 	p := err.(*problem.P)
 	tt.Assert.Equal("bad_request", p.Type)
 	tt.Assert.Equal("cursor", p.Extras["invalid_field"])
-	tt.Assert.Equal("First part should be higher than 0 and second part should be valid claimable balance ID", p.Extras["reason"])
+	tt.Assert.Equal("The first part should be a number higher than 0 and the second part should be a valid claimable balance ID", p.Extras["reason"])
 
 	_, err = handler.GetResourcePage(httptest.NewRecorder(), makeRequest(
 		t,
@@ -557,7 +557,7 @@ func TestCursorAndOrderValidation(t *testing.T) {
 	p = err.(*problem.P)
 	tt.Assert.Equal("bad_request", p.Type)
 	tt.Assert.Equal("cursor", p.Extras["invalid_field"])
-	tt.Assert.Equal("First part should be higher than 0 and second part should be valid claimable balance ID", p.Extras["reason"])
+	tt.Assert.Equal("The first part should be a number higher than 0 and the second part should be a valid claimable balance ID", p.Extras["reason"])
 
 	_, err = handler.GetResourcePage(httptest.NewRecorder(), makeRequest(
 		t,
