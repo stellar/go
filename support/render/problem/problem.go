@@ -175,7 +175,7 @@ func (ps *Problem) Render(ctx context.Context, w http.ResponseWriter, err error)
 		// If this error is not a registered error
 		// log it and replace it with a 500 error
 		if !ok {
-			if ps.filter == LogUnknownErrors {
+			if ps.filter != LogNoErrors {
 				ps.log.Ctx(ctx).WithStack(err).Error(err)
 			}
 			if ps.reportFn != nil {
