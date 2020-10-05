@@ -110,7 +110,7 @@ func (o *OrderBookStream) update(status ingestionStatus) (bool, error) {
 		reset = true
 	} else if !status.HistoryConsistentWithState {
 		log.WithField("status", status).
-			Info("ingestion state not consistent with ingested history")
+			Info("waiting for ingestion system catchup")
 		reset = true
 	} else if status.LastIngestedLedger < o.lastLedger {
 		log.WithField("status", status).
