@@ -84,8 +84,7 @@ type SelectBuilder struct {
 type UpdateBuilder struct {
 	Table *Table
 
-	source interface{}
-	sql    squirrel.UpdateBuilder
+	sql squirrel.UpdateBuilder
 }
 
 // Session provides helper methods for making queries against `DB` and provides

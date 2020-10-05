@@ -50,6 +50,23 @@ func (p *OffersProcessor) ProcessChange(change io.Change) error {
 	return nil
 }
 
+func (p *OffersProcessor) ledgerEntryToRow(entry *xdr.LedgerEntry) history.Offer {
+	offer := entry.Data.MustOffer()
+	return history.Offer{
+		SellerID:           offer.SellerId.Address(),
+		OfferID:            int64(offer.OfferId),
+		SellingAsset:       offer.Selling,
+		BuyingAsset:        offer.Buying,
+		Amount:             int64(offer.Amount),
+		Pricen:             int32(offer.Price.N),
+		Priced:             int32(offer.Price.D),
+		Price:              float64(offer.Price.N) / float64(offer.Price.D),
+		Flags:              uint32(offer.Flags),
+		LastModifiedLedger: uint32(entry.LastModifiedLedgerSeq),
+		Sponsor:            ledgerEntrySponsorToNullString(*entry),
+	}
+}
+
 func (p *OffersProcessor) flushCache() error {
 	changes := p.cache.GetChanges()
 	for _, change := range changes {
@@ -62,20 +79,22 @@ func (p *OffersProcessor) flushCache() error {
 		case change.Pre == nil && change.Post != nil:
 			// Created
 			action = "inserting"
-			err = p.batch.Add(*change.Post)
+			row := p.ledgerEntryToRow(change.Post)
+			err = p.batch.Add(row)
 			rowsAffected = 1 // We don't track this when batch inserting
 		case change.Pre != nil && change.Post == nil:
 			// Removed
 			action = "removing"
 			offer := change.Pre.Data.MustOffer()
 			offerID = offer.OfferId
-			rowsAffected, err = p.offersQ.RemoveOffer(offer.OfferId, p.sequence)
+			rowsAffected, err = p.offersQ.RemoveOffer(int64(offer.OfferId), p.sequence)
 		default:
 			// Updated
 			action = "updating"
 			offer := change.Post.Data.MustOffer()
 			offerID = offer.OfferId
-			rowsAffected, err = p.offersQ.UpdateOffer(*change.Post)
+			row := p.ledgerEntryToRow(change.Post)
+			rowsAffected, err = p.offersQ.UpdateOffer(row)
 		}
 
 		if err != nil {

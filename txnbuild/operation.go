@@ -54,6 +54,16 @@ func operationFromXDR(xdrOp xdr.Operation) (Operation, error) {
 		newOp = &ManageBuyOffer{}
 	case xdr.OperationTypePathPaymentStrictSend:
 		newOp = &PathPaymentStrictSend{}
+	case xdr.OperationTypeBeginSponsoringFutureReserves:
+		newOp = &BeginSponsoringFutureReserves{}
+	case xdr.OperationTypeEndSponsoringFutureReserves:
+		newOp = &EndSponsoringFutureReserves{}
+	case xdr.OperationTypeCreateClaimableBalance:
+		newOp = &CreateClaimableBalance{}
+	case xdr.OperationTypeClaimClaimableBalance:
+		newOp = &ClaimClaimableBalance{}
+	case xdr.OperationTypeRevokeSponsorship:
+		newOp = &RevokeSponsorship{}
 	}
 
 	err := newOp.FromXDR(xdrOp)

@@ -493,13 +493,13 @@ type ManageOffer struct {
 
 // Offer is row of data from the `offers` table from horizon DB
 type Offer struct {
-	SellerID string    `db:"seller_id"`
-	OfferID  xdr.Int64 `db:"offer_id"`
+	SellerID string `db:"seller_id"`
+	OfferID  int64  `db:"offer_id"`
 
 	SellingAsset xdr.Asset `db:"selling_asset"`
 	BuyingAsset  xdr.Asset `db:"buying_asset"`
 
-	Amount             xdr.Int64   `db:"amount"`
+	Amount             int64       `db:"amount"`
 	Pricen             int32       `db:"pricen"`
 	Priced             int32       `db:"priced"`
 	Price              float64     `db:"price"`
@@ -510,7 +510,7 @@ type Offer struct {
 }
 
 type OffersBatchInsertBuilder interface {
-	Add(entry xdr.LedgerEntry) error
+	Add(offer Offer) error
 	Exec() error
 }
 

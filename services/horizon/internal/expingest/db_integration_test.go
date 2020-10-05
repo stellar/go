@@ -124,7 +124,7 @@ func (s *DBTestSuite) setupMocksForBuildState() {
 				},
 			},
 			nil,
-		).Once()
+		).Twice()
 }
 
 func (s *DBTestSuite) TearDownTest() {

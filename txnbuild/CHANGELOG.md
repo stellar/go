@@ -3,24 +3,25 @@
 All notable changes to this project will be documented in this
 file.  This project adheres to [Semantic Versioning](http://semver.org/).
 
-## Unreleased
-Updated to support [Protocol 14](https://github.com/stellar/go/issues/3035) operations. There are now ways to:
+## [v4.0.1](https://github.com/stellar/go/releases/tag/horizonclient-v4.0.1) - 2020-10-02
 
+* Fixed bug in `TransactionFromXDR()` which occurs when parsing transaction XDR envelopes which contain Protocol 14 operations.
+
+## [v4.0.0](https://github.com/stellar/go/releases/tag/horizonclient-v4.0.0) - 2020-09-29
+
+Added support for the new operations in [Protocol 14](https://github.com/stellar/go/issues/3035). Now it is possible to:
 * Create and claim claimable balance operations (see [CAP-23](https://github.com/stellar/stellar-protocol/blob/master/core/cap-0023.md)) with the `[Create|Claim]ClaimableBalance` structures and their associated helpers
 * Begin/end sponsoring future reserves for other accounts (see [CAP-33](https://github.com/stellar/stellar-protocol/blob/master/core/cap-0033.md)) with the `[Begin|End]SponsoringFutureReserves` operations
-* Revoke sponsorships of various objects with the `RevokeSponsorship` operation
-* Dropped support for Go 1.13.
+* Revoke sponsorships of various objects with the `RevokeSponsorship` operation (see [CAP-33](https://github.com/stellar/stellar-protocol/blob/master/core/cap-0033.md)).
 
-## [v4.0.0](https://github.com/stellar/go/releases/tag/horizonclient-v4.0.0) - 2020-08-31
-
+Also:
+* Added support for Go 1.15.
 ### Breaking changes
 
-* Replace `BuildChallengeTx()`'s `anchorName string` parameter with `homeDomain string`
-* Add `homeDomain string` parameter to `ReadChallengeTx()`, `VerifyChallengeTxThreshold()`, and `VerifyChallengeTxSigners()`
-
-SEP-10 now requires clients to verify the `SIGNING_KEY` included in the TOML file of the service requiring authentication is used to sign the challenge and that the challenge's Manage Data operation key includes the requested service's home domain. These checks ensure the challenge cannot be used in a relay attack.
-
-The breaking changes described above support the added SEP-10 2.0 requirements for both servers and clients.
+* Dropped support for Go 1.13.
+* Add support for SEP-10 v2.0.0.
+  * Replace `BuildChallengeTx`'s `anchorName` parameter with `homeDomain`.
+  * Add `homeDomain` parameter to `ReadChallengeTx`, `VerifyChallengeTxThreshold`, and `VerifyChallengeTxSigners`.
 
 ## [v3.2.0](https://github.com/stellar/go/releases/tag/horizonclient-v3.2.0) - 2020-06-18
 
