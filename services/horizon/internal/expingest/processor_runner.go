@@ -129,6 +129,32 @@ func (s *ProcessorRunner) buildTransactionProcessor(
 	}
 }
 
+// checkIfProtocolVersionSupported checks if this Horizon version supports the
+// protocol version of a ledger with the given sequence number.
+func (s *ProcessorRunner) checkIfProtocolVersionSupported(ledgerSequence uint32) error {
+	exists, ledgerCloseMeta, err := s.ledgerBackend.GetLedger(ledgerSequence)
+	if err != nil {
+		return errors.Wrap(err, "Error getting ledger")
+	}
+
+	if !exists {
+		return errors.New("cannot check if protocol version supported: ledger does not exist")
+	}
+
+	ledgerVersion := ledgerCloseMeta.V0.LedgerHeader.Header.LedgerVersion
+
+	if ledgerVersion > MaxSupportedProtocolVersion {
+		return fmt.Errorf(
+			"This Horizon version does not support protocol version %d. "+
+				"The latest supported protocol version is %d. Please upgrade to the latest Horizon version.",
+			ledgerVersion,
+			MaxSupportedProtocolVersion,
+		)
+	}
+
+	return nil
+}
+
 // validateBucketList validates if the bucket list hash in history archive
 // matches the one in corresponding ledger header in stellar-core backend.
 // This gives you full security if data in stellar-core backend can be trusted
@@ -179,6 +205,10 @@ func (s *ProcessorRunner) RunHistoryArchiveIngestion(checkpointLedger uint32) (i
 			NetworkPassphrase: s.config.NetworkPassphrase,
 		}
 	} else {
+		if err = s.checkIfProtocolVersionSupported(checkpointLedger); err != nil {
+			return changeStats.GetResults(), errors.Wrap(err, "Protocol version not supported")
+		}
+
 		if err = s.validateBucketList(checkpointLedger); err != nil {
 			return changeStats.GetResults(), errors.Wrap(err, "Error validating bucket list from HAS")
 		}
@@ -248,6 +278,10 @@ func (s *ProcessorRunner) RunTransactionProcessorsOnLedger(ledger uint32) (io.St
 		return ledgerTransactionStats.GetResults(), errors.Wrap(err, "Error creating ledger reader")
 	}
 
+	if err = s.checkIfProtocolVersionSupported(ledger); err != nil {
+		return ledgerTransactionStats.GetResults(), errors.Wrap(err, "Protocol version not supported")
+	}
+
 	txProcessor := s.buildTransactionProcessor(&ledgerTransactionStats, transactionReader.GetHeader())
 	err = io.StreamLedgerTransactions(txProcessor, transactionReader)
 	if err != nil {
@@ -265,6 +299,10 @@ func (s *ProcessorRunner) RunTransactionProcessorsOnLedger(ledger uint32) (io.St
 func (s *ProcessorRunner) RunAllProcessorsOnLedger(sequence uint32) (io.StatsChangeProcessorResults, io.StatsLedgerTransactionProcessorResults, error) {
 	changeStats := io.StatsChangeProcessor{}
 	var statsLedgerTransactionProcessorResults io.StatsLedgerTransactionProcessorResults
+
+	if err := s.checkIfProtocolVersionSupported(sequence); err != nil {
+		return changeStats.GetResults(), statsLedgerTransactionProcessorResults, errors.Wrap(err, "Protocol version not supported")
+	}
 
 	err := s.runChangeProcessorOnLedger(
 		s.buildChangeProcessor(&changeStats, ledgerSource, sequence),
