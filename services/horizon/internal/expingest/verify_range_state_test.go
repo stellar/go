@@ -370,10 +370,10 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 	clonedQ.MockQSigners.On("CountAccounts").Return(1, nil).Once()
 	mockOffer := history.Offer{
 		SellerID:           eurOffer.SellerId.Address(),
-		OfferID:            eurOffer.OfferId,
+		OfferID:            int64(eurOffer.OfferId),
 		SellingAsset:       eurOffer.Selling,
 		BuyingAsset:        eurOffer.Buying,
-		Amount:             eurOffer.Amount,
+		Amount:             int64(eurOffer.Amount),
 		Pricen:             int32(eurOffer.Price.N),
 		Priced:             int32(eurOffer.Price.D),
 		Price:              float64(eurOffer.Price.N) / float64(eurOffer.Price.N),

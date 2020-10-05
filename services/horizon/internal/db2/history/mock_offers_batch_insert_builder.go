@@ -1,7 +1,6 @@
 package history
 
 import (
-	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/mock"
 )
 
@@ -9,8 +8,8 @@ type MockOffersBatchInsertBuilder struct {
 	mock.Mock
 }
 
-func (m *MockOffersBatchInsertBuilder) Add(entry xdr.LedgerEntry) error {
-	a := m.Called(entry)
+func (m *MockOffersBatchInsertBuilder) Add(row Offer) error {
+	a := m.Called(row)
 	return a.Error(0)
 }
 

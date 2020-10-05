@@ -3,11 +3,12 @@ package expingest
 
 import (
 	"fmt"
+	"testing"
+	"time"
+
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/suite"
-	"testing"
-	"time"
 )
 
 type IngestionStatusTestSuite struct {
@@ -427,7 +428,7 @@ func (t *UpdateOrderBookStreamTestSuite) mockUpdate() {
 
 	t.graph.On("AddOffer", offerEntry).Return().Once()
 	t.graph.On("AddOffer", otherOfferEntry).Return().Once()
-	t.graph.On("RemoveOffer", deletedOffer.OfferID).Return(t.graph).Once()
+	t.graph.On("RemoveOffer", xdr.Int64(deletedOffer.OfferID)).Return(t.graph).Once()
 }
 
 func (t *UpdateOrderBookStreamTestSuite) TestApplyUpdatesError() {
