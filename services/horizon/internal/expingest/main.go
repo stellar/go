@@ -22,6 +22,10 @@ import (
 )
 
 const (
+	// MaxSupportedProtocolVersion defines the maximum supported version of
+	// the Stellar protocol.
+	MaxSupportedProtocolVersion = 14
+
 	// CurrentVersion reflects the latest version of the ingestion
 	// algorithm. This value is stored in KV store and is used to decide
 	// if there's a need to reprocess the ledger state or reingest data.
@@ -143,7 +147,8 @@ func NewSystem(config Config) (System, error) {
 	archive, err := historyarchive.Connect(
 		config.HistoryArchiveURL,
 		historyarchive.ConnectOptions{
-			Context: ctx,
+			Context:           ctx,
+			NetworkPassphrase: config.NetworkPassphrase,
 		},
 	)
 	if err != nil {

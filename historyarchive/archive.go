@@ -8,7 +8,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -19,6 +18,8 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/stellar/go/support/errors"
 )
 
 const hexPrefixPat = "/[0-9a-f]{2}/[0-9a-f]{2}/[0-9a-f]{2}/"
@@ -34,10 +35,14 @@ type CommandOptions struct {
 }
 
 type ConnectOptions struct {
-	Context          context.Context
-	S3Region         string
-	S3Endpoint       string
-	UnsignedRequests bool
+	Context context.Context
+	// NetworkPassphrase defines the expected network of history archive. It is
+	// checked when getting HAS. If network passphrase does not match, error is
+	// returned.
+	NetworkPassphrase string
+	S3Region          string
+	S3Endpoint        string
+	UnsignedRequests  bool
 }
 
 type ArchiveBackend interface {
@@ -69,6 +74,8 @@ type ArchiveInterface interface {
 var _ ArchiveInterface = &Archive{}
 
 type Archive struct {
+	networkPassphrase string
+
 	mutex             sync.Mutex
 	checkpointFiles   map[string](map[uint32]bool)
 	allBuckets        map[Hash]bool
@@ -99,7 +106,22 @@ func (a *Archive) GetPathHAS(path string) (HistoryArchiveState, error) {
 	defer rdr.Close()
 	dec := json.NewDecoder(rdr)
 	err = dec.Decode(&has)
-	return has, err
+	if err != nil {
+		return has, err
+	}
+
+	// Compare network passphrase only when non empty. The field was added in
+	// Stellar-Core 14.1.0.
+	if has.NetworkPassphrase != "" && a.networkPassphrase != "" &&
+		has.NetworkPassphrase != a.networkPassphrase {
+		return has, errors.Errorf(
+			"Network passphrase does not match! expected=%s actual=%s",
+			a.networkPassphrase,
+			has.NetworkPassphrase,
+		)
+	}
+
+	return has, nil
 }
 
 func (a *Archive) PutPathHAS(path string, has HistoryArchiveState, opts *CommandOptions) error {
@@ -222,6 +244,7 @@ func (a *Archive) GetXdrStream(pth string) (*XdrStream, error) {
 
 func Connect(u string, opts ConnectOptions) (*Archive, error) {
 	arch := Archive{
+		networkPassphrase:       opts.NetworkPassphrase,
 		checkpointFiles:         make(map[string](map[uint32]bool)),
 		allBuckets:              make(map[Hash]bool),
 		referencedBuckets:       make(map[Hash]bool),

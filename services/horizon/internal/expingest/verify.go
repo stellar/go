@@ -458,10 +458,10 @@ func addOffersToStateVerifier(
 				Type: xdr.LedgerEntryTypeOffer,
 				Offer: &xdr.OfferEntry{
 					SellerId: xdr.MustAddress(row.SellerID),
-					OfferId:  row.OfferID,
+					OfferId:  xdr.Int64(row.OfferID),
 					Selling:  row.SellingAsset,
 					Buying:   row.BuyingAsset,
-					Amount:   row.Amount,
+					Amount:   xdr.Int64(row.Amount),
 					Price: xdr.Price{
 						N: xdr.Int32(row.Pricen),
 						D: xdr.Int32(row.Priced),

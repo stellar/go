@@ -14,10 +14,9 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).x
 
 ## v1.9.0
 
-This is an experimental Horizon release which adds support for the upcoming Protocol 14 upgrade.
-The Horizon 1.9.0 release candidate will allow you to test Protocol 14 features on a standalone network before Protocol 14 is deployed to pubnet and testnet.
-Horizon still maintains backwards compatability with Protocol 13, which means it is still safe to run this release before Protocol 14 is deployed.
-However, the API changes introduced in this release are subject to change depending on the feedback we receive when Protocol 14 support is implemented in the Horizon SDKS.
+This is release adds support for the upcoming Protocol 14 upgrade. However, Horizon still maintains backwards compatibility with Protocol 13, which means it is still safe to run this release before Protocol 14 is deployed.
+
+**After upgrading Horizon will rebuild it's state. During this process (which can take several minutes) it will not ingest new ledgers.**
 
 The two main features of Protocol 14 are [CAP 23 Claimable Balances](https://github.com/stellar/stellar-protocol/blob/master/core/cap-0023.md) and [CAP 33 Sponsored Reserves](https://github.com/stellar/stellar-protocol/blob/master/core/cap-0033.md).
 Claimable balances provide a mechanism for setting up a payment which can be claimed in the future. This allows you to make payments to accounts which are currently not able to accept them.
