@@ -7,6 +7,11 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).x
 
 * Dropped support for Go 1.13.
 
+## v1.9.1
+
+* Fixed a bug that caused a fresh instance of Horizon to be unable to sync with testnet (Protocol 14) correctly. ([#3096](https://github.com/stellar/go/pull/3096))
+* Use underscore in JSON fields for claim predicate to make the API consistent. ([#3086](https://github.com/stellar/go/pull/3086))
+
 ## v1.9.0
 
 This is release adds support for the upcoming Protocol 14 upgrade. However, Horizon still maintains backwards compatibility with Protocol 13, which means it is still safe to run this release before Protocol 14 is deployed.

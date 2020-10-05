@@ -4,6 +4,7 @@ package processors
 import (
 	"testing"
 
+	"github.com/guregu/null"
 	ingesterrors "github.com/stellar/go/exp/ingest/errors"
 	"github.com/stellar/go/exp/ingest/io"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
@@ -96,6 +97,53 @@ func (s *AccountsSignerProcessorTestSuiteState) TestCreatesSigners() {
 	})
 	s.Assert().NoError(err)
 
+}
+
+func (s *AccountsSignerProcessorTestSuiteState) TestCreatesSignerWithSponsor() {
+	s.mockBatchInsertBuilder.
+		On("Add", history.AccountSigner{
+			Account: "GCCCU34WDY2RATQTOOQKY6SZWU6J5DONY42SWGW2CIXGW4LICAGNRZKX",
+			Signer:  "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
+			Weight:  int32(10),
+			Sponsor: null.StringFrom("GDWZ6MKJP5ESVIB7O5RW4UFFGSCDILPEKDXWGG4HXXSHEZZPTKLR6UVG"),
+		}).Return(nil).Once()
+
+	sponsorshipDescriptor := xdr.MustAddress("GDWZ6MKJP5ESVIB7O5RW4UFFGSCDILPEKDXWGG4HXXSHEZZPTKLR6UVG")
+
+	err := s.processor.ProcessChange(io.Change{
+		Type: xdr.LedgerEntryTypeAccount,
+		Pre:  nil,
+		Post: &xdr.LedgerEntry{
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeAccount,
+				Account: &xdr.AccountEntry{
+					AccountId: xdr.MustAddress("GCCCU34WDY2RATQTOOQKY6SZWU6J5DONY42SWGW2CIXGW4LICAGNRZKX"),
+					Signers: []xdr.Signer{
+						{
+							Key:    xdr.MustSigner("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+							Weight: 10,
+						},
+					},
+					Ext: xdr.AccountEntryExt{
+						V: 1,
+						V1: &xdr.AccountEntryExtensionV1{
+							Ext: xdr.AccountEntryExtensionV1Ext{
+								V: 2,
+								V2: &xdr.AccountEntryExtensionV2{
+									NumSponsored:  1,
+									NumSponsoring: 0,
+									SignerSponsoringIDs: []xdr.SponsorshipDescriptor{
+										&sponsorshipDescriptor,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	})
+	s.Assert().NoError(err)
 }
 
 func TestAccountsSignerProcessorTestSuiteLedger(t *testing.T) {
