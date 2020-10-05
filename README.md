@@ -22,7 +22,6 @@ This repo contains various tools and services that you can use and deploy, as we
 * [Ticker](services/ticker): An API server that provides statistics about assets and markets on the Stellar network
 * [Keystore](services/keystore): An API server that is used to store and manage encrypted keys for Stellar client applications
 * Servers for Anchors & Financial Institutions
-  * [Bridge Server](services/bridge): send payments and take action when payments are received
   * [Compliance Server](services/compliance): Allows financial institutions to exchange KYC information
   * [Federation Server](services/federation): Allows organizations to provide addresses for users (`jane*examplebank.com`)
 

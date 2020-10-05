@@ -1,6 +1,7 @@
 package processors
 
 import (
+	"github.com/guregu/null"
 	ingesterrors "github.com/stellar/go/exp/ingest/errors"
 	"github.com/stellar/go/exp/ingest/io"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
@@ -61,11 +62,18 @@ func (p *SignersProcessor) ProcessChange(change io.Change) error {
 	accountEntry := change.Post.Data.MustAccount()
 	account := accountEntry.AccountId.Address()
 
+	sponsors := accountEntry.SponsorPerSigner()
 	for signer, weight := range accountEntry.SignerSummary() {
+		var sponsor null.String
+		if sponsorDesc, isSponsored := sponsors[signer]; isSponsored {
+			sponsor = null.StringFrom(sponsorDesc.Address())
+		}
+
 		err := p.batch.Add(history.AccountSigner{
 			Account: account,
 			Signer:  signer,
 			Weight:  weight,
+			Sponsor: sponsor,
 		})
 		if err != nil {
 			return errors.Wrap(err, "Error adding row to accountSignerBatch")
