@@ -98,14 +98,15 @@ var ingestVerifyRangeCmd = &cobra.Command{
 		}
 
 		ingestConfig := expingest.Config{
-			NetworkPassphrase: config.NetworkPassphrase,
-			HistorySession:    horizonSession,
-			HistoryArchiveURL: config.HistoryArchiveURLs[0],
+			NetworkPassphrase:     config.NetworkPassphrase,
+			HistorySession:        horizonSession,
+			HistoryArchiveURL:     config.HistoryArchiveURLs[0],
+			EnableCaptiveCore:     config.EnableCaptiveCoreIngestion,
+			StellarCoreBinaryPath: config.StellarCoreBinaryPath,
+			RemoteCaptiveCoreURL:  config.RemoteCaptiveCoreURL,
 		}
-		if config.EnableCaptiveCoreIngestion {
-			ingestConfig.StellarCoreBinaryPath = config.StellarCoreBinaryPath
-			ingestConfig.RemoteCaptiveCoreURL = config.RemoteCaptiveCoreURL
-		} else {
+
+		if !ingestConfig.EnableCaptiveCore {
 			if config.StellarCoreDatabaseURL == "" {
 				log.Fatalf("flag --%s cannot be empty", stellarCoreDBURLFlagName)
 			}

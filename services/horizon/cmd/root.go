@@ -117,7 +117,7 @@ var configOpts = support.ConfigOptions{
 		OptType:     types.String,
 		FlagDefault: "",
 		Required:    false,
-		Usage:       "path to stellar core binary",
+		Usage:       "path to stellar core binary (--remote-captive-core-url has higher precedence)",
 		ConfigKey:   &config.StellarCoreBinaryPath,
 	},
 	&support.ConfigOption{
@@ -428,9 +428,6 @@ func initRootConfig() {
 		remoteURL := viper.GetString("remote-captive-core-url")
 		if binaryPath == "" && remoteURL == "" {
 			stdLog.Fatalf("Invalid config: captive core requires that either --stellar-core-binary-path or --remote-captive-core-url is set")
-		}
-		if binaryPath != "" && remoteURL != "" {
-			stdLog.Fatalf("Invalid config: --stellar-core-binary-path and --remote-captive-core-url cannot both be set.")
 		}
 	}
 	if config.Ingest {

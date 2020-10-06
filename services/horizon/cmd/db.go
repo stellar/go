@@ -215,12 +215,12 @@ var dbReingestRangeCmd = &cobra.Command{
 			HistoryArchiveURL:           config.HistoryArchiveURLs[0],
 			MaxReingestRetries:          int(retries),
 			ReingestRetryBackoffSeconds: int(retryBackoffSeconds),
+			EnableCaptiveCore:           config.EnableCaptiveCoreIngestion,
+			StellarCoreBinaryPath:       config.StellarCoreBinaryPath,
+			RemoteCaptiveCoreURL:        config.RemoteCaptiveCoreURL,
 		}
 
-		if config.EnableCaptiveCoreIngestion {
-			ingestConfig.StellarCoreBinaryPath = config.StellarCoreBinaryPath
-			ingestConfig.RemoteCaptiveCoreURL = config.RemoteCaptiveCoreURL
-		} else {
+		if !ingestConfig.EnableCaptiveCore {
 			if config.StellarCoreDatabaseURL == "" {
 				log.Fatalf("flag --%s cannot be empty", stellarCoreDBURLFlagName)
 			}
