@@ -64,6 +64,7 @@ type Config struct {
 	CoreSession           *db.Session
 	StellarCoreURL        string
 	StellarCoreCursor     string
+	EnableCaptiveCore     bool
 	StellarCoreBinaryPath string
 	StellarCoreConfigPath string
 	RemoteCaptiveCoreURL  string
@@ -157,23 +158,25 @@ func NewSystem(config Config) (System, error) {
 	}
 
 	var ledgerBackend ledgerbackend.LedgerBackend
-	if len(config.RemoteCaptiveCoreURL) > 0 {
-		ledgerBackend, err = ledgerbackend.NewRemoteCaptive(config.RemoteCaptiveCoreURL)
-		if err != nil {
-			cancel()
-			return nil, errors.Wrap(err, "error creating captive core backend")
-		}
-	}
-	if len(config.StellarCoreBinaryPath) > 0 {
-		ledgerBackend, err = ledgerbackend.NewCaptive(
-			config.StellarCoreBinaryPath,
-			config.StellarCoreConfigPath,
-			config.NetworkPassphrase,
-			[]string{config.HistoryArchiveURL},
-		)
-		if err != nil {
-			cancel()
-			return nil, errors.Wrap(err, "error creating captive core backend")
+	if config.EnableCaptiveCore {
+		if len(config.RemoteCaptiveCoreURL) > 0 {
+			ledgerBackend, err = ledgerbackend.NewRemoteCaptive(config.RemoteCaptiveCoreURL)
+			if err != nil {
+				cancel()
+				return nil, errors.Wrap(err, "error creating captive core backend")
+			}
+		} else {
+			//
+			ledgerBackend, err = ledgerbackend.NewCaptive(
+				config.StellarCoreBinaryPath,
+				config.StellarCoreConfigPath,
+				config.NetworkPassphrase,
+				[]string{config.HistoryArchiveURL},
+			)
+			if err != nil {
+				cancel()
+				return nil, errors.Wrap(err, "error creating captive core backend")
+			}
 		}
 	} else {
 		coreSession := config.CoreSession.Clone()
