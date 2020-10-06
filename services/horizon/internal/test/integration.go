@@ -208,6 +208,20 @@ func (i *IntegrationTest) LedgerIngested(sequence uint32) bool {
 	return root.IngestSequence >= sequence
 }
 
+// LedgerClosed returns true if the ledger with a given sequence has been
+// closed by Stellar-Core. Panics in case of errors. Note it's different
+// than LedgerIngested because it checks if the ledger was closed, not
+// necessarily ingested (ex. when rebuilding state Horizon does not ingest
+// recent ledgers).
+func (i *IntegrationTest) LedgerClosed(sequence uint32) bool {
+	root, err := i.Client().Root()
+	if err != nil {
+		panic(err)
+	}
+
+	return root.CoreSequence >= int32(sequence)
+}
+
 // AdminPort returns Horizon admin port.
 func (i *IntegrationTest) AdminPort() int {
 	return 6060
@@ -491,6 +505,20 @@ func (i *IntegrationTest) LogFailedTx(txResponse proto.Transaction, horizonResul
 	assert.NoErrorf(t, err, "Unmarshalling transaction failed.")
 	assert.Equalf(t, xdr.TransactionResultCodeTxSuccess, txResult.Result.Code,
 		"Transaction doesn't have success code.")
+}
+
+func (i *IntegrationTest) RunHorizonCLICommand(cmd []string) {
+	fullCmd := append([]string{"/stellar/horizon/bin/horizon"}, cmd...)
+	id, err := i.cli.ContainerExecCreate(
+		context.Background(),
+		i.container.ID,
+		types.ExecConfig{
+			Cmd: fullCmd,
+		},
+	)
+	panicIf(err)
+	err = i.cli.ContainerExecStart(context.Background(), id.ID, types.ExecStartCheck{})
+	panicIf(err)
 }
 
 // Cluttering code with if err != nil is absolute nonsense.

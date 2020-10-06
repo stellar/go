@@ -100,14 +100,39 @@ func TestProtocol14StateVerifier(t *testing.T) {
 
 	// Wait for the first checkpoint ledger
 	for !itest.LedgerIngested(63) {
-		t.Log("First checkpoint ledger (63) not closed yet...")
+		t.Log("First checkpoint ledger (63) not ingested yet...")
 		time.Sleep(5 * time.Second)
 	}
 
-	var metrics string
+	verified := waitForStateVerifications(t, itest, 1)
+	if !verified {
+		t.Fatal("State verification not run...")
+	}
 
+	// Trigger state rebuild to check if ingesting from history archive works
+	itest.RunHorizonCLICommand([]string{"expingest", "trigger-state-rebuild"})
+
+	// Wait for the second checkpoint ledger and state rebuild
+	for !itest.LedgerClosed(127) {
+		t.Log("First checkpoint ledger (127) not closed yet...")
+		time.Sleep(5 * time.Second)
+	}
+
+	// Wait for the third checkpoint ledger and state verification trigger
+	for !itest.LedgerIngested(191) {
+		t.Log("First checkpoint ledger (191) not ingested yet...")
+		time.Sleep(5 * time.Second)
+	}
+
+	verified = waitForStateVerifications(t, itest, 2)
+	if !verified {
+		t.Fatal("State verification not run...")
+	}
+}
+
+func waitForStateVerifications(t *testing.T, itest *test.IntegrationTest, count int) bool {
 	// Check metrics until state verification run
-	for i := 0; i < 60; i++ {
+	for i := 0; i < 120; i++ {
 		t.Logf("Checking metrics (%d attempt)\n", i)
 		res, err := http.Get(fmt.Sprintf("http://localhost:%d/metrics", itest.AdminPort()))
 		assert.NoError(t, err)
@@ -115,19 +140,22 @@ func TestProtocol14StateVerifier(t *testing.T) {
 		metricsBytes, err := ioutil.ReadAll(res.Body)
 		res.Body.Close()
 		assert.NoError(t, err)
-		metrics = string(metricsBytes)
+		metrics := string(metricsBytes)
 
 		stateInvalid := strings.Contains(metrics, "horizon_ingest_state_invalid 1")
 		assert.False(t, stateInvalid, "State is invalid!")
 
-		notVerifiedYet := strings.Contains(metrics, "horizon_ingest_state_verify_duration_seconds_count 0")
+		notVerifiedYet := strings.Contains(
+			metrics,
+			fmt.Sprintf("horizon_ingest_state_verify_duration_seconds_count %d", count-1),
+		)
 		if notVerifiedYet {
 			time.Sleep(time.Second)
 			continue
 		}
 
-		return
+		return true
 	}
 
-	t.Fatal("State verification not run...")
+	return false
 }
