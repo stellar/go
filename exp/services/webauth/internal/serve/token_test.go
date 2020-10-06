@@ -38,10 +38,12 @@ func TestToken_formInputSuccess(t *testing.T) {
 	t.Logf("Client account: %s", account.Address())
 
 	homeDomain := "example.com"
+	serverHostname := "sep10.example.com"
 	tx, err := txnbuild.BuildChallengeTx(
 		serverKey.Seed(),
 		account.Address(),
 		homeDomain,
+		serverHostname,
 		network.TestNetworkPassphrase,
 		time.Minute,
 	)
@@ -85,6 +87,7 @@ func TestToken_formInputSuccess(t *testing.T) {
 		JWTIssuer:         "https://example.com",
 		JWTExpiresIn:      time.Minute,
 		HomeDomains:       []string{homeDomain},
+		ServerHostname:    serverHostname,
 	}
 
 	body := url.Values{}
@@ -138,10 +141,12 @@ func TestToken_jsonInputSuccess(t *testing.T) {
 	t.Logf("Client account: %s", account.Address())
 
 	homeDomain := "example.com"
+	serverHostname := "sep10.example.com"
 	tx, err := txnbuild.BuildChallengeTx(
 		serverKey.Seed(),
 		account.Address(),
 		homeDomain,
+		serverHostname,
 		network.TestNetworkPassphrase,
 		time.Minute,
 	)
@@ -185,6 +190,7 @@ func TestToken_jsonInputSuccess(t *testing.T) {
 		JWTIssuer:         "https://example.com",
 		JWTExpiresIn:      time.Minute,
 		HomeDomains:       []string{homeDomain},
+		ServerHostname:    serverHostname,
 	}
 
 	body := struct {
@@ -280,6 +286,7 @@ func TestToken_jsonInputValidRotatingServerSigners(t *testing.T) {
 		)
 
 	homeDomain := "example.com"
+	serverHostname := "sep10.example.com"
 	h := tokenHandler{
 		Logger:            supportlog.DefaultLogger,
 		HorizonClient:     horizonClient,
@@ -289,6 +296,7 @@ func TestToken_jsonInputValidRotatingServerSigners(t *testing.T) {
 		JWTIssuer:         "https://example.com",
 		JWTExpiresIn:      time.Minute,
 		HomeDomains:       []string{homeDomain},
+		ServerHostname:    serverHostname,
 	}
 
 	for i, serverKey := range serverKeys {
@@ -298,6 +306,7 @@ func TestToken_jsonInputValidRotatingServerSigners(t *testing.T) {
 				serverKey.Seed(),
 				account.Address(),
 				homeDomain,
+				serverHostname,
 				network.TestNetworkPassphrase,
 				time.Minute,
 			)
@@ -380,10 +389,12 @@ func TestToken_jsonInputValidMultipleSigners(t *testing.T) {
 	t.Logf("Client account signer 2: %s", accountSigner2.Address())
 
 	homeDomain := "example.com"
+	serverHostname := "sep10.example.com"
 	tx, err := txnbuild.BuildChallengeTx(
 		serverKey.Seed(),
 		account.Address(),
 		homeDomain,
+		serverHostname,
 		network.TestNetworkPassphrase,
 		time.Minute,
 	)
@@ -431,6 +442,7 @@ func TestToken_jsonInputValidMultipleSigners(t *testing.T) {
 		JWTIssuer:         "https://example.com",
 		JWTExpiresIn:      time.Minute,
 		HomeDomains:       []string{homeDomain},
+		ServerHostname:    serverHostname,
 	}
 
 	body := struct {
@@ -488,10 +500,12 @@ func TestToken_jsonInputNotEnoughWeight(t *testing.T) {
 	t.Logf("Client account: %s", account.Address())
 
 	homeDomain := "example.com"
+	serverHostname := "sep10.example.com"
 	tx, err := txnbuild.BuildChallengeTx(
 		serverKey.Seed(),
 		account.Address(),
 		homeDomain,
+		serverHostname,
 		network.TestNetworkPassphrase,
 		time.Minute,
 	)
@@ -535,6 +549,7 @@ func TestToken_jsonInputNotEnoughWeight(t *testing.T) {
 		JWTIssuer:         "https://example.com",
 		JWTExpiresIn:      time.Minute,
 		HomeDomains:       []string{homeDomain},
+		ServerHostname:    serverHostname,
 	}
 
 	body := struct {
@@ -571,10 +586,12 @@ func TestToken_jsonInputUnrecognizedSigner(t *testing.T) {
 	t.Logf("Client account: %s", account.Address())
 
 	homeDomain := "example.com"
+	serverHostname := "sep10.example.com"
 	tx, err := txnbuild.BuildChallengeTx(
 		serverKey.Seed(),
 		account.Address(),
 		homeDomain,
+		serverHostname,
 		network.TestNetworkPassphrase,
 		time.Minute,
 	)
@@ -618,6 +635,7 @@ func TestToken_jsonInputUnrecognizedSigner(t *testing.T) {
 		JWTIssuer:         "https://example.com",
 		JWTExpiresIn:      time.Minute,
 		HomeDomains:       []string{homeDomain},
+		ServerHostname:    serverHostname,
 	}
 
 	body := struct {
@@ -654,10 +672,12 @@ func TestToken_jsonInputAccountNotExistSuccess(t *testing.T) {
 	t.Logf("Client account: %s", account.Address())
 
 	homeDomain := "example.com"
+	serverHostname := "sep10.example.com"
 	tx, err := txnbuild.BuildChallengeTx(
 		serverKey.Seed(),
 		account.Address(),
 		homeDomain,
+		serverHostname,
 		network.TestNetworkPassphrase,
 		time.Minute,
 	)
@@ -697,6 +717,7 @@ func TestToken_jsonInputAccountNotExistSuccess(t *testing.T) {
 		JWTExpiresIn:                time.Minute,
 		AllowAccountsThatDoNotExist: true,
 		HomeDomains:                 []string{homeDomain},
+		ServerHostname:              serverHostname,
 	}
 
 	body := struct {
@@ -758,10 +779,12 @@ func TestToken_jsonInputAccountNotExistFail(t *testing.T) {
 	t.Logf("Other signer: %s", otherSigner.Address())
 
 	homeDomain := "example.com"
+	serverHostname := "sep10.example.com"
 	tx, err := txnbuild.BuildChallengeTx(
 		serverKey.Seed(),
 		account.Address(),
 		homeDomain,
+		serverHostname,
 		network.TestNetworkPassphrase,
 		time.Minute,
 	)
@@ -801,6 +824,7 @@ func TestToken_jsonInputAccountNotExistFail(t *testing.T) {
 		JWTExpiresIn:                time.Minute,
 		AllowAccountsThatDoNotExist: true,
 		HomeDomains:                 []string{homeDomain},
+		ServerHostname:              serverHostname,
 	}
 
 	body := struct {
@@ -837,10 +861,12 @@ func TestToken_jsonInputAccountNotExistNotAllowed(t *testing.T) {
 	t.Logf("Client account: %s", account.Address())
 
 	homeDomain := "example.com"
+	serverHostname := "sep10.example.com"
 	tx, err := txnbuild.BuildChallengeTx(
 		serverKey.Seed(),
 		account.Address(),
 		homeDomain,
+		serverHostname,
 		network.TestNetworkPassphrase,
 		time.Minute,
 	)
@@ -880,6 +906,7 @@ func TestToken_jsonInputAccountNotExistNotAllowed(t *testing.T) {
 		JWTExpiresIn:                time.Minute,
 		AllowAccountsThatDoNotExist: false,
 		HomeDomains:                 []string{homeDomain},
+		ServerHostname:              serverHostname,
 	}
 
 	body := struct {
@@ -918,10 +945,12 @@ func TestToken_jsonInputUnrecognizedServerSigner(t *testing.T) {
 	t.Logf("Client account: %s", account.Address())
 
 	homeDomain := "example.com"
+	serverHostname := "sep10.example.com"
 	tx, err := txnbuild.BuildChallengeTx(
 		serverKey1.Seed(),
 		account.Address(),
 		homeDomain,
+		serverHostname,
 		network.TestNetworkPassphrase,
 		time.Minute,
 	)

@@ -1,6 +1,6 @@
 # webauth
 
-This is a [SEP-10] Web Authentication implementation based on SEP-10 v2.0.0
+This is a [SEP-10] Web Authentication implementation based on SEP-10 v3.0.0
 that requires a user to prove they possess a signing key(s) that meets the high
 threshold for an account, i.e. they have the ability to perform any high
 threshold operation on the given account. If an account does not exist it may
@@ -50,6 +50,7 @@ Flags:
       --jwt-issuer string                  The issuer to set in the JWT iss claim (JWT_ISSUER)
       --network-passphrase string          Network passphrase of the Stellar network transactions should be signed for (NETWORK_PASSPHRASE) (default "Test SDF Network ; September 2015")
       --port int                           Port to listen and serve on (PORT) (default 8000)
+      --server-hostname string             Hostname or domain name of the server, which will be embedded into the challenge (must be the same as the domain clients will TLS connect to) (SERVER_HOSTNAME)
       --signing-key string                 Stellar signing key(s) used for signing transactions comma separated (first key is used for signing, others used for verifying challenges) (SIGNING_KEY)
       --stellar-toml-domain string         Domain where stellar.toml is served. The private key counterpart of the SIGNING_KEY specified in the stellar.toml file has to be provided via signing-key (STELLAR_TOML_DOMAIN)
 ```

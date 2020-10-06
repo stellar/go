@@ -33,6 +33,7 @@ type Options struct {
 	JWTIssuer                   string
 	JWTExpiresIn                time.Duration
 	AllowAccountsThatDoNotExist bool
+	ServerHostname              string
 }
 
 func Serve(opts Options) {
@@ -120,6 +121,7 @@ func handler(opts Options) (http.Handler, error) {
 		SigningKey:         signingKeyFull,
 		ChallengeExpiresIn: opts.ChallengeExpiresIn,
 		HomeDomains:        trimmedHomeDomains,
+		ServerHostname:     opts.ServerHostname,
 	}.ServeHTTP)
 	mux.Post("/", tokenHandler{
 		Logger:                      opts.Logger,
@@ -131,6 +133,7 @@ func handler(opts Options) (http.Handler, error) {
 		JWTExpiresIn:                opts.JWTExpiresIn,
 		AllowAccountsThatDoNotExist: opts.AllowAccountsThatDoNotExist,
 		HomeDomains:                 trimmedHomeDomains,
+		ServerHostname:              opts.ServerHostname,
 	}.ServeHTTP)
 
 	return mux, nil

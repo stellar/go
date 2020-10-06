@@ -25,6 +25,7 @@ type tokenHandler struct {
 	JWTExpiresIn                time.Duration
 	AllowAccountsThatDoNotExist bool
 	HomeDomains                 []string
+	ServerHostname              string
 }
 
 type tokenRequest struct {
@@ -54,7 +55,7 @@ func (h tokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	)
 	for _, s := range h.SigningAddresses {
 		for _, domain := range h.HomeDomains {
-			tx, clientAccountID, err = txnbuild.ReadChallengeTx(req.Transaction, s.Address(), h.NetworkPassphrase, domain)
+			tx, clientAccountID, err = txnbuild.ReadChallengeTx(req.Transaction, s.Address(), h.NetworkPassphrase, domain, h.ServerHostname)
 			if err == nil {
 				signingAddress = s
 				homeDomain = domain
@@ -104,7 +105,7 @@ func (h tokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if clientAccountExists {
 		requiredThreshold := txnbuild.Threshold(clientAccount.Thresholds.HighThreshold)
 		clientSignerSummary := clientAccount.SignerSummary()
-		signersVerified, err = txnbuild.VerifyChallengeTxThreshold(req.Transaction, signingAddress.Address(), h.NetworkPassphrase, homeDomain, requiredThreshold, clientSignerSummary)
+		signersVerified, err = txnbuild.VerifyChallengeTxThreshold(req.Transaction, signingAddress.Address(), h.NetworkPassphrase, homeDomain, h.ServerHostname, requiredThreshold, clientSignerSummary)
 		if err != nil {
 			l.
 				WithField("signersCount", len(clientSignerSummary)).
@@ -120,7 +121,7 @@ func (h tokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			unauthorized.Render(w)
 			return
 		}
-		signersVerified, err = txnbuild.VerifyChallengeTxSigners(req.Transaction, signingAddress.Address(), h.NetworkPassphrase, homeDomain, clientAccountID)
+		signersVerified, err = txnbuild.VerifyChallengeTxSigners(req.Transaction, signingAddress.Address(), h.NetworkPassphrase, homeDomain, h.ServerHostname, clientAccountID)
 		if err != nil {
 			l.Infof("Failed to verify with account master key as signer.")
 			unauthorized.Render(w)

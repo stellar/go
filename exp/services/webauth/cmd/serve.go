@@ -66,6 +66,13 @@ func (c *ServeCommand) Command() *cobra.Command {
 			Required:  true,
 		},
 		{
+			Name:      "server-hostname",
+			Usage:     "Hostname or domain name of the server, which will be embedded into the challenge (must be the same as the domain clients will TLS connect to)",
+			OptType:   types.String,
+			ConfigKey: &opts.ServerHostname,
+			Required:  true,
+		},
+		{
 			Name:           "challenge-expires-in",
 			Usage:          "The time period in seconds after which the challenge transaction expires",
 			OptType:        types.Int,

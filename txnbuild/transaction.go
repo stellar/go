@@ -749,8 +749,12 @@ func NewFeeBumpTransaction(params FeeBumpTransactionParams) (*FeeBumpTransaction
 
 // BuildChallengeTx is a factory method that creates a valid SEP 10 challenge, for use in web authentication.
 // "timebound" is the time duration the transaction should be valid for, and must be greater than 1s (300s is recommended).
+//
+// The serverHostname should be specified as the hostname or domain name of the
+// SEP-10 server that the client connects to, to request the challenge.
+//
 // More details on SEP 10: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0010.md
-func BuildChallengeTx(serverSignerSecret, clientAccountID, homeDomain, network string, timebound time.Duration) (*Transaction, error) {
+func BuildChallengeTx(serverSignerSecret, clientAccountID, homeDomain, serverHostname, network string, timebound time.Duration) (*Transaction, error) {
 	if timebound < time.Second {
 		return nil, errors.New("provided timebound must be at least 1s (300s is recommended)")
 	}
@@ -801,6 +805,11 @@ func BuildChallengeTx(serverSignerSecret, clientAccountID, homeDomain, network s
 					Name:          homeDomain + " auth",
 					Value:         []byte(randomNonceToString),
 				},
+				&ManageData{
+					SourceAccount: &sa,
+					Name:          "server_hostname",
+					Value:         []byte(serverHostname),
+				},
 			},
 			BaseFee:    MinBaseFee,
 			Memo:       nil,
@@ -844,12 +853,17 @@ func generateRandomNonce(n int) ([]byte, error) {
 //
 // The homeDomain field is reserved for future use and not used.
 //
+// The serverHostname should be specified as the hostname or domain name of the
+// SEP-10 server that the client connects to, to request the challenge. This
+// function verifies the server hostname specified here against the server
+// hostname within the challenge if the challenge contains it.
+//
 // It does not verify that the transaction has been signed by the client or
 // that any signatures other than the servers on the transaction are valid. Use
 // one of the following functions to completely verify the transaction:
 // - VerifyChallengeTxThreshold
 // - VerifyChallengeTxSigners
-func ReadChallengeTx(challengeTx, serverAccountID, network, homeDomain string) (tx *Transaction, clientAccountID string, err error) {
+func ReadChallengeTx(challengeTx, serverAccountID, network, homeDomain, serverHostname string) (tx *Transaction, clientAccountID string, err error) {
 	parsed, err := TransactionFromXDR(challengeTx)
 	if err != nil {
 		return tx, clientAccountID, errors.Wrap(err, "could not parse challenge")
@@ -931,6 +945,14 @@ func ReadChallengeTx(challengeTx, serverAccountID, network, homeDomain string) (
 		if op.SourceAccount.GetAccountID() != serverAccountID {
 			return tx, clientAccountID, errors.New("subsequent operations are unrecognized")
 		}
+
+		switch op.Name {
+		case "server_hostname":
+			opServerHostname := string(op.Value)
+			if opServerHostname != serverHostname {
+				return tx, clientAccountID, errors.Errorf("server hostname mismatch: got %q want %q", string(opServerHostname), serverHostname)
+			}
+		}
 	}
 
 	err = verifyTxSignature(tx, network, serverAccountID)
@@ -953,19 +975,24 @@ func ReadChallengeTx(challengeTx, serverAccountID, network, homeDomain string) (
 //
 // The homeDomain field is reserved for future use and not used.
 //
+// The serverHostname should be specified as the hostname or domain name of the
+// SEP-10 server that the client connects to, to request the challenge. This
+// function verifies the server hostname specified here against the server
+// hostname within the challenge if the challenge contains it.
+//
 // Errors will be raised if:
 //  - The transaction is invalid according to ReadChallengeTx.
 //  - No client signatures are found on the transaction.
 //  - One or more signatures in the transaction are not identifiable as the
 //    server account or one of the signers provided in the arguments.
 //  - The signatures are all valid but do not meet the threshold.
-func VerifyChallengeTxThreshold(challengeTx, serverAccountID, network, homeDomain string, threshold Threshold, signerSummary SignerSummary) (signersFound []string, err error) {
+func VerifyChallengeTxThreshold(challengeTx, serverAccountID, network, homeDomain, serverHostname string, threshold Threshold, signerSummary SignerSummary) (signersFound []string, err error) {
 	signers := make([]string, 0, len(signerSummary))
 	for s := range signerSummary {
 		signers = append(signers, s)
 	}
 
-	signersFound, err = VerifyChallengeTxSigners(challengeTx, serverAccountID, network, homeDomain, signers...)
+	signersFound, err = VerifyChallengeTxSigners(challengeTx, serverAccountID, network, homeDomain, serverHostname, signers...)
 	if err != nil {
 		return nil, err
 	}
@@ -995,14 +1022,19 @@ func VerifyChallengeTxThreshold(challengeTx, serverAccountID, network, homeDomai
 //
 // The homeDomain field is reserved for future use and not used.
 //
+// The serverHostname should be specified as the hostname or domain name of the
+// SEP-10 server that the client connects to, to request the challenge. This
+// function verifies the server hostname specified here against the server
+// hostname within the challenge if the challenge contains it.
+//
 // Errors will be raised if:
 //  - The transaction is invalid according to ReadChallengeTx.
 //  - No client signatures are found on the transaction.
 //  - One or more signatures in the transaction are not identifiable as the
 //    server account or one of the signers provided in the arguments.
-func VerifyChallengeTxSigners(challengeTx, serverAccountID, network, homeDomain string, signers ...string) ([]string, error) {
+func VerifyChallengeTxSigners(challengeTx, serverAccountID, network, homeDomain, serverHostname string, signers ...string) ([]string, error) {
 	// Read the transaction which validates its structure.
-	tx, _, err := ReadChallengeTx(challengeTx, serverAccountID, network, homeDomain)
+	tx, _, err := ReadChallengeTx(challengeTx, serverAccountID, network, homeDomain, serverHostname)
 	if err != nil {
 		return nil, err
 	}

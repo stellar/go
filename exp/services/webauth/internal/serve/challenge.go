@@ -20,6 +20,7 @@ type challengeHandler struct {
 	SigningKey         *keypair.Full
 	ChallengeExpiresIn time.Duration
 	HomeDomains        []string
+	ServerHostname     string
 }
 
 type challengeResponse struct {
@@ -60,6 +61,7 @@ func (h challengeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.SigningKey.Seed(),
 		account,
 		homeDomain,
+		h.ServerHostname,
 		h.NetworkPassphrase,
 		h.ChallengeExpiresIn,
 	)

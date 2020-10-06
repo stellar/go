@@ -973,7 +973,7 @@ func TestBuildChallengeTx(t *testing.T) {
 
 	{
 		// 1 minute timebound
-		tx, err := BuildChallengeTx(kp0.Seed(), kp0.Address(), "SDF", network.TestNetworkPassphrase, time.Minute)
+		tx, err := BuildChallengeTx(kp0.Seed(), kp0.Address(), "SDF", "sep10.example.com", network.TestNetworkPassphrase, time.Minute)
 		assert.NoError(t, err)
 		txeBase64, err := tx.Base64()
 		assert.NoError(t, err)
@@ -981,8 +981,8 @@ func TestBuildChallengeTx(t *testing.T) {
 		err = xdr.SafeUnmarshalBase64(txeBase64, &txXDR)
 		assert.NoError(t, err)
 		assert.Equal(t, int64(0), txXDR.SeqNum(), "sequence number should be 0")
-		assert.Equal(t, uint32(100), txXDR.Fee(), "Fee should be 100")
-		assert.Equal(t, 1, len(txXDR.Operations()), "number operations should be 1")
+		assert.Equal(t, uint32(200), txXDR.Fee(), "Fee should be 200")
+		assert.Equal(t, 2, len(txXDR.Operations()), "number operations should be 2")
 		timeDiff := txXDR.TimeBounds().MaxTime - txXDR.TimeBounds().MinTime
 		assert.Equal(t, int64(60), int64(timeDiff), "time difference should be 300 seconds")
 		op := txXDR.Operations()[0]
@@ -994,7 +994,7 @@ func TestBuildChallengeTx(t *testing.T) {
 
 	{
 		// 5 minutes timebound
-		tx, err := BuildChallengeTx(kp0.Seed(), kp0.Address(), "SDF1", network.TestNetworkPassphrase, time.Duration(5*time.Minute))
+		tx, err := BuildChallengeTx(kp0.Seed(), kp0.Address(), "SDF1", "sep10.example.com", network.TestNetworkPassphrase, time.Duration(5*time.Minute))
 		assert.NoError(t, err)
 		txeBase64, err := tx.Base64()
 		assert.NoError(t, err)
@@ -1002,8 +1002,8 @@ func TestBuildChallengeTx(t *testing.T) {
 		err = xdr.SafeUnmarshalBase64(txeBase64, &txXDR1)
 		assert.NoError(t, err)
 		assert.Equal(t, int64(0), txXDR1.SeqNum(), "sequence number should be 0")
-		assert.Equal(t, uint32(100), txXDR1.Fee(), "Fee should be 100")
-		assert.Equal(t, 1, len(txXDR1.Operations()), "number operations should be 1")
+		assert.Equal(t, uint32(200), txXDR1.Fee(), "Fee should be 200")
+		assert.Equal(t, 2, len(txXDR1.Operations()), "number operations should be 2")
 
 		timeDiff := txXDR1.TimeBounds().MaxTime - txXDR1.TimeBounds().MinTime
 		assert.Equal(t, int64(300), int64(timeDiff), "time difference should be 300 seconds")
@@ -1014,7 +1014,7 @@ func TestBuildChallengeTx(t *testing.T) {
 	}
 
 	//transaction with infinite timebound
-	_, err := BuildChallengeTx(kp0.Seed(), kp0.Address(), "sdf", network.TestNetworkPassphrase, 0)
+	_, err := BuildChallengeTx(kp0.Seed(), kp0.Address(), "sdf", "sep10.example.com", network.TestNetworkPassphrase, 0)
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "provided timebound must be at least 1s (300s is recommended)")
 	}
@@ -1522,7 +1522,7 @@ func TestReadChallengeTx_validSignedByServerAndClient(t *testing.T) {
 	assert.NoError(t, err)
 	tx64, err := tx.Base64()
 	require.NoError(t, err)
-	readTx, readClientAccountID, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver")
+	readTx, readClientAccountID, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", "sep10.example.com")
 	assert.Equal(t, tx, readTx)
 	assert.Equal(t, clientKP.Address(), readClientAccountID)
 	assert.NoError(t, err)
@@ -1553,7 +1553,7 @@ func TestReadChallengeTx_validSignedByServer(t *testing.T) {
 	assert.NoError(t, err)
 	tx64, err := tx.Base64()
 	require.NoError(t, err)
-	readTx, readClientAccountID, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver")
+	readTx, readClientAccountID, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", "sep10.example.com")
 	assert.Equal(t, tx, readTx)
 	assert.Equal(t, clientKP.Address(), readClientAccountID)
 	assert.NoError(t, err)
@@ -1582,7 +1582,7 @@ func TestReadChallengeTx_invalidNotSignedByServer(t *testing.T) {
 
 	tx64, err := tx.Base64()
 	require.NoError(t, err)
-	readTx, readClientAccountID, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver")
+	readTx, readClientAccountID, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", "sep10.example.com")
 	assert.Equal(t, tx, readTx)
 	assert.Equal(t, clientKP.Address(), readClientAccountID)
 	assert.EqualError(t, err, "transaction not signed by "+serverKP.Address())
@@ -1614,7 +1614,7 @@ func TestReadChallengeTx_invalidCorrupted(t *testing.T) {
 	tx64, err := tx.Base64()
 	require.NoError(t, err)
 	tx64 = strings.ReplaceAll(tx64, "A", "B")
-	readTx, readClientAccountID, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver")
+	readTx, readClientAccountID, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", "sep10.example.com")
 	assert.Nil(t, readTx)
 	assert.Equal(t, "", readClientAccountID)
 	assert.EqualError(
@@ -1650,7 +1650,7 @@ func TestReadChallengeTx_invalidServerAccountIDMismatch(t *testing.T) {
 	assert.NoError(t, err)
 	tx64, err := tx.Base64()
 	require.NoError(t, err)
-	readTx, readClientAccountID, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver")
+	readTx, readClientAccountID, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", "sep10.example.com")
 	assert.Equal(t, tx, readTx)
 	assert.Equal(t, "", readClientAccountID)
 	assert.EqualError(t, err, "transaction source account is not equal to server's account")
@@ -1681,7 +1681,7 @@ func TestReadChallengeTx_invalidSeqNoNotZero(t *testing.T) {
 	assert.NoError(t, err)
 	tx64, err := tx.Base64()
 	require.NoError(t, err)
-	readTx, readClientAccountID, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver")
+	readTx, readClientAccountID, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", "sep10.example.com")
 	assert.Equal(t, tx, readTx)
 	assert.Equal(t, "", readClientAccountID)
 	assert.EqualError(t, err, "transaction sequence number must be 0")
@@ -1712,7 +1712,7 @@ func TestReadChallengeTx_invalidTimeboundsInfinite(t *testing.T) {
 	assert.NoError(t, err)
 	tx64, err := tx.Base64()
 	require.NoError(t, err)
-	readTx, readClientAccountID, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver")
+	readTx, readClientAccountID, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", "sep10.example.com")
 	assert.Equal(t, tx, readTx)
 	assert.Equal(t, "", readClientAccountID)
 	assert.EqualError(t, err, "transaction requires non-infinite timebounds")
@@ -1743,7 +1743,7 @@ func TestReadChallengeTx_invalidTimeboundsOutsideRange(t *testing.T) {
 	assert.NoError(t, err)
 	tx64, err := tx.Base64()
 	require.NoError(t, err)
-	readTx, readClientAccountID, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver")
+	readTx, readClientAccountID, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", "sep10.example.com")
 	assert.Equal(t, tx, readTx)
 	assert.Equal(t, "", readClientAccountID)
 	assert.Error(t, err)
@@ -1774,7 +1774,7 @@ func TestReadChallengeTx_invalidOperationWrongType(t *testing.T) {
 	assert.NoError(t, err)
 	tx64, err := tx.Base64()
 	require.NoError(t, err)
-	readTx, readClientAccountID, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver")
+	readTx, readClientAccountID, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", "sep10.example.com")
 	assert.Equal(t, tx, readTx)
 	assert.Equal(t, "", readClientAccountID)
 	assert.EqualError(t, err, "operation type should be manage_data")
@@ -1802,7 +1802,7 @@ func TestReadChallengeTx_invalidOperationNoSourceAccount(t *testing.T) {
 	assert.NoError(t, err)
 	tx64, err := tx.Base64()
 	require.NoError(t, err)
-	_, _, err = ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver")
+	_, _, err = ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", "sep10.example.com")
 	assert.EqualError(t, err, "operation should have a source account")
 }
 
@@ -1831,7 +1831,7 @@ func TestReadChallengeTx_invalidDataValueWrongEncodedLength(t *testing.T) {
 	assert.NoError(t, err)
 	tx64, err := tx.Base64()
 	require.NoError(t, err)
-	readTx, readClientAccountID, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver")
+	readTx, readClientAccountID, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", "sep10.example.com")
 	assert.Equal(t, tx, readTx)
 	assert.Equal(t, clientKP.Address(), readClientAccountID)
 	assert.EqualError(t, err, "random nonce encoded as base64 should be 64 bytes long")
@@ -1862,7 +1862,7 @@ func TestReadChallengeTx_invalidDataValueCorruptBase64(t *testing.T) {
 	assert.NoError(t, err)
 	tx64, err := tx.Base64()
 	require.NoError(t, err)
-	readTx, readClientAccountID, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver")
+	readTx, readClientAccountID, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", "sep10.example.com")
 	assert.Equal(t, tx, readTx)
 	assert.Equal(t, clientKP.Address(), readClientAccountID)
 	assert.EqualError(t, err, "failed to decode random nonce provided in manage_data operation: illegal base64 data at input byte 37")
@@ -1894,7 +1894,7 @@ func TestReadChallengeTx_invalidDataValueWrongByteLength(t *testing.T) {
 	tx64, err := tx.Base64()
 	assert.NoError(t, err)
 
-	readTx, readClientAccountID, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver")
+	readTx, readClientAccountID, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", "sep10.example.com")
 	assert.Equal(t, tx, readTx)
 	assert.Equal(t, clientKP.Address(), readClientAccountID)
 	assert.EqualError(t, err, "random nonce before encoding as base64 should be 48 bytes long")
@@ -1906,6 +1906,7 @@ func TestReadChallengeTx_acceptsV0AndV1Transactions(t *testing.T) {
 		kp0.Seed(),
 		kp0.Address(),
 		"SDF",
+		"sep10.example.com",
 		network.TestNetworkPassphrase,
 		time.Hour,
 	)
@@ -1927,6 +1928,7 @@ func TestReadChallengeTx_acceptsV0AndV1Transactions(t *testing.T) {
 			kp0.Address(),
 			network.TestNetworkPassphrase,
 			"SDF",
+			"sep10.example.com",
 		)
 		assert.NoError(t, err)
 
@@ -1944,6 +1946,7 @@ func TestReadChallengeTx_forbidsFeeBumpTransactions(t *testing.T) {
 		kp0.Seed(),
 		kp0.Address(),
 		"SDF",
+		"sep10.example.com",
 		network.TestNetworkPassphrase,
 		time.Hour,
 	)
@@ -1969,6 +1972,7 @@ func TestReadChallengeTx_forbidsFeeBumpTransactions(t *testing.T) {
 		kp0.Address(),
 		network.TestNetworkPassphrase,
 		"SDF",
+		"sep10.example.com",
 	)
 	assert.EqualError(t, err, "challenge cannot be a fee bump transaction")
 }
@@ -1979,6 +1983,7 @@ func TestReadChallengeTx_forbidsMuxedAccounts(t *testing.T) {
 		kp0.Seed(),
 		kp0.Address(),
 		"SDF",
+		"sep10.example.com",
 		network.TestNetworkPassphrase,
 		time.Hour,
 	)
@@ -2003,6 +2008,7 @@ func TestReadChallengeTx_forbidsMuxedAccounts(t *testing.T) {
 		kp0.Address(),
 		network.TestNetworkPassphrase,
 		"SDF",
+		"sep10.example.com",
 	)
 	errorMessage := "only valid Ed25519 accounts are allowed in challenge transactions"
 	assert.Contains(t, err.Error(), errorMessage)
@@ -2033,7 +2039,7 @@ func TestReadChallengeTx_doesNotVerifyHomeDomain(t *testing.T) {
 	assert.NoError(t, err)
 	tx64, err := tx.Base64()
 	require.NoError(t, err)
-	readTx, readClientAccountID, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "notvalidated")
+	readTx, readClientAccountID, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "notvalidated", "sep10.example.com")
 	assert.Equal(t, tx, readTx)
 	assert.Equal(t, clientKP.Address(), readClientAccountID)
 	assert.NoError(t, err)
@@ -2069,7 +2075,7 @@ func TestReadChallengeTx_allowsAdditionalManageDataOpsWithSourceAccountSetToServ
 	assert.NoError(t, err)
 	tx64, err := tx.Base64()
 	require.NoError(t, err)
-	readTx, readClientAccountID, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver")
+	readTx, readClientAccountID, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", "sep10.example.com")
 	assert.Equal(t, tx, readTx)
 	assert.Equal(t, clientKP.Address(), readClientAccountID)
 	assert.NoError(t, err)
@@ -2105,7 +2111,7 @@ func TestReadChallengeTx_disallowsAdditionalManageDataOpsWithoutSourceAccountSet
 	assert.NoError(t, err)
 	tx64, err := tx.Base64()
 	require.NoError(t, err)
-	_, _, err = ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver")
+	_, _, err = ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", "sep10.example.com")
 	assert.EqualError(t, err, "subsequent operations are unrecognized")
 }
 
@@ -2138,10 +2144,82 @@ func TestReadChallengeTx_disallowsAdditionalOpsOfOtherTypes(t *testing.T) {
 	assert.NoError(t, err)
 	tx64, err := tx.Base64()
 	require.NoError(t, err)
-	readTx, readClientAccountID, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver")
+	readTx, readClientAccountID, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", "sep10.example.com")
 	assert.Equal(t, tx, readTx)
 	assert.Equal(t, clientKP.Address(), readClientAccountID)
 	assert.EqualError(t, err, "operation type should be manage_data")
+}
+
+func TestReadChallengeTx_allowsServerHostnameOpThatMatches(t *testing.T) {
+	serverKP := newKeypair0()
+	clientKP := newKeypair1()
+	txSource := NewSimpleAccount(serverKP.Address(), -1)
+	opSource := NewSimpleAccount(clientKP.Address(), 0)
+	op1 := ManageData{
+		SourceAccount: &opSource,
+		Name:          "testserver auth",
+		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
+	}
+	op2 := ManageData{
+		SourceAccount: &txSource,
+		Name:          "server_hostname",
+		Value:         []byte("sep10.example.com"),
+	}
+	tx, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &txSource,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&op1, &op2},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewTimeout(1000),
+		},
+	)
+	assert.NoError(t, err)
+
+	tx, err = tx.Sign(network.TestNetworkPassphrase, serverKP)
+	assert.NoError(t, err)
+	tx64, err := tx.Base64()
+	require.NoError(t, err)
+	readTx, readClientAccountID, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", "sep10.example.com")
+	assert.Equal(t, tx, readTx)
+	assert.Equal(t, clientKP.Address(), readClientAccountID)
+	assert.NoError(t, err)
+}
+
+func TestReadChallengeTx_disallowsServerHostnameOpThatDoesNotMatch(t *testing.T) {
+	serverKP := newKeypair0()
+	clientKP := newKeypair1()
+	txSource := NewSimpleAccount(serverKP.Address(), -1)
+	opSource := NewSimpleAccount(clientKP.Address(), 0)
+	op1 := ManageData{
+		SourceAccount: &opSource,
+		Name:          "testserver auth",
+		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
+	}
+	op2 := ManageData{
+		SourceAccount: &txSource,
+		Name:          "server_hostname",
+		Value:         []byte("sep10.example.org"),
+	}
+	tx, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &txSource,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&op1, &op2},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewTimeout(1000),
+		},
+	)
+	assert.NoError(t, err)
+
+	tx, err = tx.Sign(network.TestNetworkPassphrase, serverKP)
+	assert.NoError(t, err)
+	tx64, err := tx.Base64()
+	require.NoError(t, err)
+	readTx, readClientAccountID, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", "sep10.example.com")
+	assert.Equal(t, tx, readTx)
+	assert.Equal(t, clientKP.Address(), readClientAccountID)
+	assert.EqualError(t, err, `server hostname mismatch: got "sep10.example.org" want "sep10.example.com"`)
 }
 
 func TestVerifyChallengeTxThreshold_invalidServer(t *testing.T) {
@@ -2172,7 +2250,7 @@ func TestVerifyChallengeTxThreshold_invalidServer(t *testing.T) {
 	signerSummary := SignerSummary{
 		clientKP.Address(): 1,
 	}
-	signersFound, err := VerifyChallengeTxThreshold(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", threshold, signerSummary)
+	signersFound, err := VerifyChallengeTxThreshold(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", "sep10.example.com", threshold, signerSummary)
 	assert.Empty(t, signersFound)
 	assert.EqualError(t, err, "transaction not signed by "+serverKP.Address())
 }
@@ -2208,7 +2286,7 @@ func TestVerifyChallengeTxThreshold_validServerAndClientKeyMeetingThreshold(t *t
 		clientKP.Address(),
 	}
 
-	signersFound, err := VerifyChallengeTxThreshold(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", threshold, signerSummary)
+	signersFound, err := VerifyChallengeTxThreshold(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", "sep10.example.com", threshold, signerSummary)
 	assert.ElementsMatch(t, wantSigners, signersFound)
 	assert.NoError(t, err)
 }
@@ -2247,7 +2325,7 @@ func TestVerifyChallengeTxThreshold_validServerAndMultipleClientKeyMeetingThresh
 		clientKP2.Address(),
 	}
 
-	signersFound, err := VerifyChallengeTxThreshold(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", threshold, signerSummary)
+	signersFound, err := VerifyChallengeTxThreshold(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", "sep10.example.com", threshold, signerSummary)
 	assert.ElementsMatch(t, wantSigners, signersFound)
 	assert.NoError(t, err)
 }
@@ -2288,7 +2366,7 @@ func TestVerifyChallengeTxThreshold_validServerAndMultipleClientKeyMeetingThresh
 	)
 	assert.NoError(t, err)
 
-	signersFound, err := VerifyChallengeTxThreshold(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", threshold, signerSummary)
+	signersFound, err := VerifyChallengeTxThreshold(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", "sep10.example.com", threshold, signerSummary)
 	assert.ElementsMatch(t, wantSigners, signersFound)
 	assert.NoError(t, err)
 }
@@ -2335,7 +2413,7 @@ func TestVerifyChallengeTxThreshold_validServerAndMultipleClientKeyMeetingThresh
 	)
 	assert.NoError(t, err)
 
-	signersFound, err := VerifyChallengeTxThreshold(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", threshold, signerSummary)
+	signersFound, err := VerifyChallengeTxThreshold(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", "sep10.example.com", threshold, signerSummary)
 	assert.ElementsMatch(t, wantSigners, signersFound)
 	assert.NoError(t, err)
 }
@@ -2372,7 +2450,7 @@ func TestVerifyChallengeTxThreshold_invalidServerAndMultipleClientKeyNotMeetingT
 	)
 	assert.NoError(t, err)
 
-	_, err = VerifyChallengeTxThreshold(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", threshold, signerSummary)
+	_, err = VerifyChallengeTxThreshold(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", "sep10.example.com", threshold, signerSummary)
 	assert.EqualError(t, err, "signers with weight 3 do not meet threshold 10")
 }
 
@@ -2407,7 +2485,7 @@ func TestVerifyChallengeTxThreshold_invalidClientKeyUnrecognized(t *testing.T) {
 	)
 	assert.NoError(t, err)
 
-	_, err = VerifyChallengeTxThreshold(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", threshold, signerSummary)
+	_, err = VerifyChallengeTxThreshold(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", "sep10.example.com", threshold, signerSummary)
 	assert.EqualError(t, err, "transaction has unrecognized signatures")
 }
 
@@ -2439,7 +2517,7 @@ func TestVerifyChallengeTxThreshold_invalidNoSigners(t *testing.T) {
 	)
 	assert.NoError(t, err)
 
-	_, err = VerifyChallengeTxThreshold(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", threshold, signerSummary)
+	_, err = VerifyChallengeTxThreshold(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", "sep10.example.com", threshold, signerSummary)
 	assert.EqualError(t, err, "no verifiable signers provided, at least one G... address must be provided")
 }
 
@@ -2477,7 +2555,7 @@ func TestVerifyChallengeTxThreshold_weightsAddToMoreThan8Bits(t *testing.T) {
 		clientKP2.Address(),
 	}
 
-	signersFound, err := VerifyChallengeTxThreshold(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", threshold, signerSummary)
+	signersFound, err := VerifyChallengeTxThreshold(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", "sep10.example.com", threshold, signerSummary)
 	assert.ElementsMatch(t, wantSigners, signersFound)
 	assert.NoError(t, err)
 }
@@ -2513,7 +2591,7 @@ func TestVerifyChallengeTxThreshold_doesNotVerifyHomeDomain(t *testing.T) {
 		clientKP.Address(),
 	}
 
-	signersFound, err := VerifyChallengeTxThreshold(tx64, serverKP.Address(), network.TestNetworkPassphrase, "notvalidated", threshold, signerSummary)
+	signersFound, err := VerifyChallengeTxThreshold(tx64, serverKP.Address(), network.TestNetworkPassphrase, "notvalidated", "sep10.example.com", threshold, signerSummary)
 	assert.ElementsMatch(t, wantSigners, signersFound)
 	assert.NoError(t, err)
 }
@@ -2554,7 +2632,7 @@ func TestVerifyChallengeTxThreshold_allowsAdditionalManageDataOpsWithSourceAccou
 		clientKP.Address(),
 	}
 
-	signersFound, err := VerifyChallengeTxThreshold(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", threshold, signerSummary)
+	signersFound, err := VerifyChallengeTxThreshold(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", "sep10.example.com", threshold, signerSummary)
 	assert.ElementsMatch(t, wantSigners, signersFound)
 	assert.NoError(t, err)
 }
@@ -2592,7 +2670,7 @@ func TestVerifyChallengeTxThreshold_disallowsAdditionalManageDataOpsWithoutSourc
 		clientKP.Address(): 1,
 	}
 
-	signersFound, err := VerifyChallengeTxThreshold(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", threshold, signerSummary)
+	signersFound, err := VerifyChallengeTxThreshold(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", "sep10.example.com", threshold, signerSummary)
 	assert.Empty(t, signersFound)
 	assert.EqualError(t, err, "subsequent operations are unrecognized")
 }
@@ -2629,9 +2707,94 @@ func TestVerifyChallengeTxThreshold_disallowsAdditionalOpsOfOtherTypes(t *testin
 		clientKP.Address(): 1,
 	}
 
-	signersFound, err := VerifyChallengeTxThreshold(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", threshold, signerSummary)
+	signersFound, err := VerifyChallengeTxThreshold(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", "sep10.example.com", threshold, signerSummary)
 	assert.Empty(t, signersFound)
 	assert.EqualError(t, err, "operation type should be manage_data")
+}
+
+func TestVerifyChallengeTxThreshold_allowsServerHostnameOpThatMatches(t *testing.T) {
+	serverKP := newKeypair0()
+	clientKP := newKeypair1()
+	txSource := NewSimpleAccount(serverKP.Address(), -1)
+	opSource := NewSimpleAccount(clientKP.Address(), 0)
+	op1 := ManageData{
+		SourceAccount: &opSource,
+		Name:          "testserver auth",
+		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
+	}
+	op2 := ManageData{
+		SourceAccount: &txSource,
+		Name:          "server_hostname",
+		Value:         []byte("sep10.example.com"),
+	}
+	tx, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &txSource,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&op1, &op2},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewTimeout(1000),
+		},
+	)
+	assert.NoError(t, err)
+
+	tx, err = tx.Sign(network.TestNetworkPassphrase, serverKP, clientKP)
+	assert.NoError(t, err)
+	tx64, err := tx.Base64()
+	require.NoError(t, err)
+
+	threshold := Threshold(1)
+	signerSummary := SignerSummary{
+		clientKP.Address(): 1,
+	}
+	wantSigners := []string{
+		clientKP.Address(),
+	}
+
+	signersFound, err := VerifyChallengeTxThreshold(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", "sep10.example.com", threshold, signerSummary)
+	assert.ElementsMatch(t, wantSigners, signersFound)
+	assert.NoError(t, err)
+}
+
+func TestVerifyChallengeTxThreshold_disallowsServerHostnameOpThatDoesNotMatch(t *testing.T) {
+	serverKP := newKeypair0()
+	clientKP := newKeypair1()
+	txSource := NewSimpleAccount(serverKP.Address(), -1)
+	opSource := NewSimpleAccount(clientKP.Address(), 0)
+	op1 := ManageData{
+		SourceAccount: &opSource,
+		Name:          "testserver auth",
+		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
+	}
+	op2 := ManageData{
+		SourceAccount: &txSource,
+		Name:          "server_hostname",
+		Value:         []byte("sep10.example.org"),
+	}
+	tx, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &txSource,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&op1, &op2},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewTimeout(1000),
+		},
+	)
+	assert.NoError(t, err)
+
+	tx, err = tx.Sign(network.TestNetworkPassphrase, serverKP)
+	assert.NoError(t, err)
+	tx64, err := tx.Base64()
+	require.NoError(t, err)
+
+	threshold := Threshold(1)
+	signerSummary := SignerSummary{
+		clientKP.Address(): 1,
+	}
+
+	signersFound, err := VerifyChallengeTxThreshold(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", "sep10.example.com", threshold, signerSummary)
+	assert.Empty(t, signersFound)
+	assert.EqualError(t, err, `server hostname mismatch: got "sep10.example.org" want "sep10.example.com"`)
 }
 
 func TestVerifyChallengeTxSigners_invalidServer(t *testing.T) {
@@ -2657,7 +2820,7 @@ func TestVerifyChallengeTxSigners_invalidServer(t *testing.T) {
 	)
 	assert.NoError(t, err)
 
-	signersFound, err := VerifyChallengeTxSigners(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", clientKP.Address())
+	signersFound, err := VerifyChallengeTxSigners(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", "sep10.example.com", clientKP.Address())
 	assert.Empty(t, signersFound)
 	assert.EqualError(t, err, "transaction not signed by "+serverKP.Address())
 }
@@ -2685,7 +2848,7 @@ func TestVerifyChallengeTxSigners_validServerAndClientMasterKey(t *testing.T) {
 	)
 	assert.NoError(t, err)
 
-	signersFound, err := VerifyChallengeTxSigners(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", clientKP.Address())
+	signersFound, err := VerifyChallengeTxSigners(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", "sep10.example.com", clientKP.Address())
 	assert.Equal(t, []string{clientKP.Address()}, signersFound)
 	assert.NoError(t, err)
 }
@@ -2713,7 +2876,7 @@ func TestVerifyChallengeTxSigners_invalidServerAndNoClient(t *testing.T) {
 	)
 	assert.NoError(t, err)
 
-	signersFound, err := VerifyChallengeTxSigners(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", clientKP.Address())
+	signersFound, err := VerifyChallengeTxSigners(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", "sep10.example.com", clientKP.Address())
 	assert.Empty(t, signersFound)
 	assert.EqualError(t, err, "transaction not signed by "+clientKP.Address())
 }
@@ -2742,7 +2905,7 @@ func TestVerifyChallengeTxSigners_invalidServerAndUnrecognizedClient(t *testing.
 	)
 	assert.NoError(t, err)
 
-	signersFound, err := VerifyChallengeTxSigners(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", clientKP.Address())
+	signersFound, err := VerifyChallengeTxSigners(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", "sep10.example.com", clientKP.Address())
 	assert.Empty(t, signersFound)
 	assert.EqualError(t, err, "transaction not signed by "+clientKP.Address())
 }
@@ -2771,7 +2934,7 @@ func TestVerifyChallengeTxSigners_validServerAndMultipleClientSigners(t *testing
 	)
 	assert.NoError(t, err)
 
-	signersFound, err := VerifyChallengeTxSigners(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", clientKP.Address(), clientKP2.Address())
+	signersFound, err := VerifyChallengeTxSigners(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", "sep10.example.com", clientKP.Address(), clientKP2.Address())
 	assert.Equal(t, []string{clientKP.Address(), clientKP2.Address()}, signersFound)
 	assert.NoError(t, err)
 }
@@ -2800,7 +2963,7 @@ func TestVerifyChallengeTxSigners_validServerAndMultipleClientSignersReverseOrde
 	)
 	assert.NoError(t, err)
 
-	signersFound, err := VerifyChallengeTxSigners(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", clientKP.Address(), clientKP2.Address())
+	signersFound, err := VerifyChallengeTxSigners(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", "sep10.example.com", clientKP.Address(), clientKP2.Address())
 	assert.Equal(t, []string{clientKP.Address(), clientKP2.Address()}, signersFound)
 	assert.NoError(t, err)
 }
@@ -2829,7 +2992,7 @@ func TestVerifyChallengeTxSigners_validServerAndClientSignersNotMasterKey(t *tes
 	)
 	assert.NoError(t, err)
 
-	signersFound, err := VerifyChallengeTxSigners(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", clientKP2.Address())
+	signersFound, err := VerifyChallengeTxSigners(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", "sep10.example.com", clientKP2.Address())
 	assert.Equal(t, []string{clientKP2.Address()}, signersFound)
 	assert.NoError(t, err)
 }
@@ -2858,7 +3021,7 @@ func TestVerifyChallengeTxSigners_validServerAndClientSignersIgnoresServerSigner
 	)
 	assert.NoError(t, err)
 
-	signersFound, err := VerifyChallengeTxSigners(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", serverKP.Address(), clientKP2.Address())
+	signersFound, err := VerifyChallengeTxSigners(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", "sep10.example.com", serverKP.Address(), clientKP2.Address())
 	assert.Equal(t, []string{clientKP2.Address()}, signersFound)
 	assert.NoError(t, err)
 }
@@ -2887,7 +3050,7 @@ func TestVerifyChallengeTxSigners_invalidServerNoClientSignersIgnoresServerSigne
 	)
 	assert.NoError(t, err)
 
-	signersFound, err := VerifyChallengeTxSigners(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", serverKP.Address(), clientKP2.Address())
+	signersFound, err := VerifyChallengeTxSigners(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", "sep10.example.com", serverKP.Address(), clientKP2.Address())
 	assert.Empty(t, signersFound)
 	assert.EqualError(t, err, "transaction not signed by "+clientKP2.Address())
 }
@@ -2916,7 +3079,7 @@ func TestVerifyChallengeTxSigners_validServerAndClientSignersIgnoresDuplicateSig
 	)
 	assert.NoError(t, err)
 
-	signersFound, err := VerifyChallengeTxSigners(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", clientKP2.Address(), clientKP2.Address())
+	signersFound, err := VerifyChallengeTxSigners(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", "sep10.example.com", clientKP2.Address(), clientKP2.Address())
 	assert.Equal(t, []string{clientKP2.Address()}, signersFound)
 	assert.NoError(t, err)
 }
@@ -2948,7 +3111,7 @@ func TestVerifyChallengeTxSigners_validIgnorePreauthTxHashAndXHash(t *testing.T)
 	)
 	assert.NoError(t, err)
 
-	signersFound, err := VerifyChallengeTxSigners(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", clientKP2.Address(), preauthTxHash, xHash, unknownSignerType)
+	signersFound, err := VerifyChallengeTxSigners(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", "sep10.example.com", clientKP2.Address(), preauthTxHash, xHash, unknownSignerType)
 	assert.Equal(t, []string{clientKP2.Address()}, signersFound)
 	assert.NoError(t, err)
 }
@@ -2977,7 +3140,7 @@ func TestVerifyChallengeTxSigners_invalidServerAndClientSignersIgnoresDuplicateS
 	)
 	assert.NoError(t, err)
 
-	signersFound, err := VerifyChallengeTxSigners(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", clientKP.Address(), clientKP.Address())
+	signersFound, err := VerifyChallengeTxSigners(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", "sep10.example.com", clientKP.Address(), clientKP.Address())
 	assert.Empty(t, signersFound)
 	assert.EqualError(t, err, "transaction not signed by "+clientKP.Address())
 }
@@ -3006,7 +3169,7 @@ func TestVerifyChallengeTxSigners_invalidServerAndClientSignersFailsDuplicateSig
 	)
 	assert.NoError(t, err)
 
-	signersFound, err := VerifyChallengeTxSigners(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", clientKP2.Address())
+	signersFound, err := VerifyChallengeTxSigners(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", "sep10.example.com", clientKP2.Address())
 	assert.Equal(t, []string{clientKP2.Address()}, signersFound)
 	assert.EqualError(t, err, "transaction has unrecognized signatures")
 }
@@ -3035,7 +3198,7 @@ func TestVerifyChallengeTxSigners_invalidServerAndClientSignersFailsSignerSeed(t
 	)
 	assert.NoError(t, err)
 
-	signersFound, err := VerifyChallengeTxSigners(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", clientKP2.Seed())
+	signersFound, err := VerifyChallengeTxSigners(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", "sep10.example.com", clientKP2.Seed())
 	assert.Empty(t, signersFound)
 	assert.EqualError(t, err, "no verifiable signers provided, at least one G... address must be provided")
 }
@@ -3063,7 +3226,7 @@ func TestVerifyChallengeTxSigners_invalidNoSigners(t *testing.T) {
 	)
 	assert.NoError(t, err)
 
-	_, err = VerifyChallengeTxSigners(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver")
+	_, err = VerifyChallengeTxSigners(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", "sep10.example.com")
 	assert.EqualError(t, err, "no verifiable signers provided, at least one G... address must be provided")
 }
 
@@ -3090,7 +3253,7 @@ func TestVerifyChallengeTxSigners_doesNotVerifyHomeDomain(t *testing.T) {
 	)
 	assert.NoError(t, err)
 
-	signersFound, err := VerifyChallengeTxSigners(tx64, serverKP.Address(), network.TestNetworkPassphrase, "notvalidated", clientKP.Address())
+	signersFound, err := VerifyChallengeTxSigners(tx64, serverKP.Address(), network.TestNetworkPassphrase, "notvalidated", "sep10.example.com", clientKP.Address())
 	assert.Equal(t, []string{clientKP.Address()}, signersFound)
 	assert.NoError(t, err)
 }
@@ -3123,7 +3286,7 @@ func TestVerifyChallengeTxSigners_allowsAdditionalManageDataOpsWithSourceAccount
 	)
 	assert.NoError(t, err)
 
-	signersFound, err := VerifyChallengeTxSigners(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", clientKP.Address())
+	signersFound, err := VerifyChallengeTxSigners(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", "sep10.example.com", clientKP.Address())
 	assert.Equal(t, []string{clientKP.Address()}, signersFound)
 	assert.NoError(t, err)
 }
@@ -3156,7 +3319,7 @@ func TestVerifyChallengeTxSigners_disallowsAdditionalManageDataOpsWithoutSourceA
 	)
 	assert.NoError(t, err)
 
-	signersFound, err := VerifyChallengeTxSigners(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", clientKP.Address())
+	signersFound, err := VerifyChallengeTxSigners(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", "sep10.example.com", clientKP.Address())
 	assert.Empty(t, signersFound)
 	assert.EqualError(t, err, "subsequent operations are unrecognized")
 }
@@ -3188,9 +3351,81 @@ func TestVerifyChallengeTxSigners_disallowsAdditionalOpsOfOtherTypes(t *testing.
 	)
 	assert.NoError(t, err)
 
-	signersFound, err := VerifyChallengeTxSigners(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", clientKP.Address())
+	signersFound, err := VerifyChallengeTxSigners(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", "sep10.example.com", clientKP.Address())
 	assert.Empty(t, signersFound)
 	assert.EqualError(t, err, "operation type should be manage_data")
+}
+
+func TestVerifyChallengeTxSigners_allowsServerHostnameOpThatMatches(t *testing.T) {
+	serverKP := newKeypair0()
+	clientKP := newKeypair1()
+	txSource := NewSimpleAccount(serverKP.Address(), -1)
+	opSource := NewSimpleAccount(clientKP.Address(), 0)
+	op1 := ManageData{
+		SourceAccount: &opSource,
+		Name:          "testserver auth",
+		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
+	}
+	op2 := ManageData{
+		SourceAccount: &txSource,
+		Name:          "server_hostname",
+		Value:         []byte("sep10.example.com"),
+	}
+	tx, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &txSource,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&op1, &op2},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewTimeout(1000),
+		},
+	)
+	assert.NoError(t, err)
+
+	tx, err = tx.Sign(network.TestNetworkPassphrase, serverKP, clientKP)
+	assert.NoError(t, err)
+	tx64, err := tx.Base64()
+	require.NoError(t, err)
+
+	signersFound, err := VerifyChallengeTxSigners(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", "sep10.example.com", clientKP.Address())
+	assert.Equal(t, []string{clientKP.Address()}, signersFound)
+	assert.NoError(t, err)
+}
+
+func TestVerifyChallengeTxSigners_disallowsServerHostnameOpThatDoesNotMatch(t *testing.T) {
+	serverKP := newKeypair0()
+	clientKP := newKeypair1()
+	txSource := NewSimpleAccount(serverKP.Address(), -1)
+	opSource := NewSimpleAccount(clientKP.Address(), 0)
+	op1 := ManageData{
+		SourceAccount: &opSource,
+		Name:          "testserver auth",
+		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
+	}
+	op2 := ManageData{
+		SourceAccount: &txSource,
+		Name:          "server_hostname",
+		Value:         []byte("sep10.example.org"),
+	}
+	tx, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &txSource,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&op1, &op2},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewTimeout(1000),
+		},
+	)
+	assert.NoError(t, err)
+
+	tx, err = tx.Sign(network.TestNetworkPassphrase, serverKP)
+	assert.NoError(t, err)
+	tx64, err := tx.Base64()
+	require.NoError(t, err)
+
+	signersFound, err := VerifyChallengeTxSigners(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testserver", "sep10.example.com", clientKP.Address())
+	assert.Empty(t, signersFound)
+	assert.EqualError(t, err, `server hostname mismatch: got "sep10.example.org" want "sep10.example.com"`)
 }
 
 func TestVerifyTxSignatureUnsignedTx(t *testing.T) {
