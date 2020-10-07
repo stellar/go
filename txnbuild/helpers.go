@@ -197,7 +197,7 @@ func NewValidationError(field, message string) *ValidationError {
 // https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0011.md#asset
 func ParseAssetString(canonical string) (Asset, error) {
 	assets, err := xdr.BuildAssets(canonical)
-	if err != nil {
+	if err != nil || len(assets) != 1 {
 		return nil, errors.Wrap(err, "error parsing asset string")
 	}
 
