@@ -1,11 +1,11 @@
-package test
+package integration
 
 import (
-	"archive/tar"
-	"bytes"
 	"context"
+	"github.com/spf13/cobra"
+	horizon "github.com/stellar/go/services/horizon/internal"
+	"github.com/stellar/go/support/db/dbtest"
 	"io"
-	"io/ioutil"
 	"os"
 	"os/signal"
 	"strconv"
@@ -28,7 +28,11 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-const IntegrationNetworkPassphrase = "Standalone Network ; February 2017"
+const (
+	IntegrationNetworkPassphrase = "Standalone Network ; February 2017"
+	stellarCorePostgresPassword  = "integration-tests-password"
+	adminPort                    = 6060
+)
 
 type IntegrationConfig struct {
 	ProtocolVersion       int32
@@ -41,6 +45,7 @@ type IntegrationTest struct {
 	cli       client.APIClient
 	hclient   *sdk.Client
 	container container.ContainerCreateCreatedBody
+	app       *horizon.App
 }
 
 // NewIntegrationTest starts a new environment for integration test at a given
@@ -48,17 +53,11 @@ type IntegrationTest struct {
 //
 // Warning: this requires:
 //  * Docker installed and all docker env variables set.
-//  * HORIZON_BIN_DIR env variable set to the directory with `horizon` binary to test.
-//  * Horizon binary must be built for GOOS=linux and GOARCH=amd64.
 //
 // Skips the test if HORIZON_INTEGRATION_TESTS env variable is not set.
 func NewIntegrationTest(t *testing.T, config IntegrationConfig) *IntegrationTest {
 	if os.Getenv("HORIZON_INTEGRATION_TESTS") == "" {
 		t.Skip("skipping integration test")
-	}
-
-	if os.Getenv("HORIZON_BIN_DIR") == "" {
-		t.Fatal("HORIZON_BIN_DIR env variable not set")
 	}
 
 	i := &IntegrationTest{t: t, config: config}
@@ -116,43 +115,17 @@ func NewIntegrationTest(t *testing.T, config IntegrationConfig) *IntegrationTest
 	}
 	defer cleanup()
 
-	horizonBinaryContents, err := ioutil.ReadFile(os.Getenv("HORIZON_BIN_DIR") + "/horizon")
-	if err != nil {
-		t.Fatal(errors.Wrap(err, "error reading horizon binary file"))
-	}
-
-	// Create a tar archive with horizon binary (required by docker API).
-	var buf bytes.Buffer
-	tw := tar.NewWriter(&buf)
-	hdr := &tar.Header{
-		Name: "stellar-horizon",
-		Mode: 0755,
-		Size: int64(len(horizonBinaryContents)),
-	}
-	if err = tw.WriteHeader(hdr); err != nil {
-		t.Fatal(errors.Wrap(err, "error writing tar header"))
-	}
-	if _, err = tw.Write(horizonBinaryContents); err != nil {
-		t.Fatal(errors.Wrap(err, "error writing tar contents"))
-	}
-	if err = tw.Close(); err != nil {
-		t.Fatal(errors.Wrap(err, "error closing tar archive"))
-	}
-
-	t.Log("Copying custom horizon binary...")
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	err = i.cli.CopyToContainer(ctx, i.container.ID, "/usr/bin/", &buf, types.CopyToContainerOptions{})
-	if err != nil {
-		t.Fatal(errors.Wrap(err, "error copying custom horizon binary"))
-	}
-
 	t.Log("Starting container...")
-	ctx, cancel = context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	err = i.cli.ContainerStart(ctx, i.container.ID, types.ContainerStartOptions{})
 	if err != nil {
 		t.Fatal(errors.Wrap(err, "error starting docker container"))
+	}
+
+	// only use horizon from quickstart container when *NOT* testing captive core
+	if os.Getenv("HORIZON_INTEGRATION_ENABLE_CAPTIVE_CORE") == "" {
+		i.startHorizon()
 	}
 
 	doCleanup = false
@@ -171,6 +144,63 @@ func NewIntegrationTest(t *testing.T, config IntegrationConfig) *IntegrationTest
 
 	i.waitForIngestionAndUpgrade()
 	return i
+}
+
+func (i *IntegrationTest) startHorizon() {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	info, err := i.cli.ContainerInspect(ctx, i.container.ID)
+	if err != nil {
+		i.t.Fatal(errors.Wrap(err, "error inspecting container"))
+	}
+
+	stellarCore := info.NetworkSettings.Ports["11626/tcp"][0]
+
+	stellarCorePostgres := info.NetworkSettings.Ports["5432/tcp"][0]
+	stellarCorePostgresURL := "postgres://stellar:" + stellarCorePostgresPassword + "@" + stellarCorePostgres.HostIP + ":" + stellarCorePostgres.HostPort + "/core"
+
+	historyArchive := info.NetworkSettings.Ports["1570/tcp"][0]
+
+	horizonPostgresURL := dbtest.Postgres(i.t).DSN
+
+	config, configOpts := horizon.Flags()
+
+	cmd := &cobra.Command{
+		Use:   "horizon",
+		Short: "client-facing api server for the stellar network",
+		Long:  "client-facing api server for the stellar network. It acts as the interface between Stellar Core and applications that want to access the Stellar network. It allows you to submit transactions to the network, check the status of accounts, subscribe to event streams and more.",
+		Run: func(cmd *cobra.Command, args []string) {
+			i.app = horizon.NewAppFromFlags(config, configOpts)
+		},
+	}
+	cmd.SetArgs([]string{
+		"--stellar-core-url",
+		"http://" + stellarCore.HostIP + ":" + stellarCore.HostPort,
+		"--history-archive-urls",
+		"http://" + historyArchive.HostIP + ":" + historyArchive.HostPort,
+		"--ingest",
+		"--db-url",
+		horizonPostgresURL,
+		"--stellar-core-db-url",
+		stellarCorePostgresURL,
+		"--network-passphrase",
+		IntegrationNetworkPassphrase,
+		"--apply-migrations",
+		"--admin-port",
+		strconv.Itoa(adminPort),
+	})
+	configOpts.Init(cmd)
+
+	if err = cmd.Execute(); err != nil {
+		i.t.Fatalf("cannot initialize horizon: %s", err)
+	}
+
+	if err = i.app.Ingestion().BuildGenesisState(); err != nil {
+		i.t.Fatalf("cannot build genesis state: %s", err)
+	}
+
+	go i.app.Serve()
 }
 
 func (i *IntegrationTest) waitForIngestionAndUpgrade() {
@@ -235,6 +265,10 @@ func (i *IntegrationTest) Close() {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
+	if i.app != nil {
+		i.app.Close()
+	}
+
 	skipCreation := os.Getenv("HORIZON_SKIP_CREATION") != ""
 	if !skipCreation {
 		i.t.Logf("Removing container %s\n", i.container.ID)
@@ -280,8 +314,8 @@ func createTestContainer(i *IntegrationTest, image string) error {
 			"--standalone",
 			"--protocol-version", strconv.FormatInt(int64(i.config.ProtocolVersion), 10),
 		},
-		ExposedPorts: nat.PortSet{"8000": struct{}{}, "6060": struct{}{}},
 	}
+	hostConfig := &container.HostConfig{}
 
 	if os.Getenv("HORIZON_INTEGRATION_ENABLE_CAPTIVE_CORE") != "" {
 		containerConfig.Env = append(containerConfig.Env,
@@ -289,17 +323,19 @@ func createTestContainer(i *IntegrationTest, image string) error {
 			"STELLAR_CORE_BINARY_PATH=/opt/stellar/core/bin/start",
 			"STELLAR_CORE_CONFIG_PATH=/opt/stellar/core/etc/stellar-core.cfg",
 		)
+		containerConfig.ExposedPorts = nat.PortSet{"8000": struct{}{}, "6060": struct{}{}}
+	} else {
+		containerConfig.Env = append(containerConfig.Env,
+			"POSTGRES_PASSWORD=" + stellarCorePostgresPassword,
+		)
+		containerConfig.ExposedPorts = nat.PortSet{"11626": struct{}{}, "5432": struct{}{}, "1570": struct{}{}}
+		hostConfig.PublishAllPorts = true
 	}
 
 	i.container, err = i.cli.ContainerCreate(
 		ctx,
 		containerConfig,
-		&container.HostConfig{
-			PortBindings: map[nat.Port][]nat.PortBinding{
-				nat.Port("8000"): {{HostIP: "127.0.0.1", HostPort: "8000"}},
-				nat.Port("6060"): {{HostIP: "127.0.0.1", HostPort: "6060"}},
-			},
-		},
+		hostConfig,
 		nil,
 		"horizon-integration",
 	)

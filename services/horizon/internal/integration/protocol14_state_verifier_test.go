@@ -2,6 +2,7 @@ package integration
 
 import (
 	"fmt"
+	"github.com/stellar/go/services/horizon/internal/test/integration"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -9,13 +10,12 @@ import (
 	"time"
 
 	"github.com/stellar/go/keypair"
-	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestProtocol14StateVerifier(t *testing.T) {
-	itest := test.NewIntegrationTest(t, protocol14Config)
+	itest := integration.NewIntegrationTest(t, protocol14Config)
 
 	sponsored := keypair.MustRandom()
 	sponsoredSource := &txnbuild.SimpleAccount{
