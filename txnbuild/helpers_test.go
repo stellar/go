@@ -403,10 +403,6 @@ func TestAssetStringParsing(t *testing.T) {
 	assert.Error(t, err)
 	assert.Equal(t, nil, result)
 
-	result, err = ParseAssetString("erroneous:" + kp0.Address())
-	assert.Error(t, err)
-	assert.Equal(t, nil, result)
-
 	result, err = ParseAssetString(fmt.Sprintf("ABCD:%s,EFGH:%s", kp0.Address(), kp1.Address()))
 	assert.Error(t, err)
 	assert.Equal(t, nil, result)
