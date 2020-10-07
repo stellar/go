@@ -394,4 +394,8 @@ func TestAssetStringParsing(t *testing.T) {
 	assert.True(t, compareAssets(native, assets[0]))
 	assert.True(t, compareAssets(cred4, assets[1]))
 	assert.True(t, compareAssets(cred12, assets[2]))
+
+	result, err := ParseAssetString("erroneous:maximus")
+	assert.Error(t, err)
+	assert.Equal(t, nil, result)
 }

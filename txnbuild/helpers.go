@@ -198,13 +198,13 @@ func NewValidationError(field, message string) *ValidationError {
 func ParseAssetString(canonical string) (Asset, error) {
 	assets, err := xdr.BuildAssets(canonical)
 	if err != nil {
-		return &NativeAsset{}, errors.Wrap(err, "error parsing asset string")
+		return nil, errors.Wrap(err, "error parsing asset string")
 	}
 
-	// It returns a list, so we'll need to grab the first element.
+	// The above returned a list, so we'll need to grab the first element.
 	asset, err := assetFromXDR(assets[0])
 	if err != nil {
-		return &NativeAsset{}, errors.Wrap(err, "error parsing asset string via XDR types")
+		return nil, errors.Wrap(err, "error parsing asset string via XDR types")
 	}
 
 	return asset, nil
