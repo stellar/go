@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this
 file.  This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
-* A new helper function `getAssetType()` has been introduced to make it easier to determine an asset type from an string in [canonical form](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0011.md#asset) ([insert PR number here](https://github.com/stellar/go/pull/xxxx)).
+* Expose a new helper function `GetAssetType()`, making it easier to determine an asset type from a string in [canonical form](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0011.md#asset) ([#3105](https://github.com/stellar/go/pull/3105)).
 
 ## [v4.0.1](https://github.com/stellar/go/releases/tag/horizonclient-v4.0.1) - 2020-10-02
 
