@@ -408,7 +408,7 @@ jobs:
           command: |
             cd ~/go/src/github.com/stellar/go
             docker pull stellar/quickstart:testing
-            go test -timeout 20m -v ./services/horizon/internal/integration/...
+            go test -timeout 25m -v ./services/horizon/internal/integration/...
 #-------------------------------------------------------------------------#
 # Workflows orchestrate jobs and make sure they run in the right sequence #
 #-------------------------------------------------------------------------#
