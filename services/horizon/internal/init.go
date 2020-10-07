@@ -226,11 +226,7 @@ func initGoMetrics(app *App) {
 // filesystem and on Microsoft Windows.
 func initProcessMetrics(app *App) {
 	app.prometheusRegistry.MustRegister(
-		prometheus.NewProcessCollector(
-			prometheus.ProcessCollectorOpts{
-				Namespace: "horizon",
-			},
-		),
+		prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{}),
 	)
 }
 
