@@ -352,3 +352,30 @@ func TestValidateOfferManageSellOffer(t *testing.T) {
 	expectedErrMsg := "Field: OfferID, Error: amount can not be negative"
 	require.EqualError(t, err, expectedErrMsg, "valid offerID is required")
 }
+
+func TestAssetStringParsing(t *testing.T) {
+	kp0, kp1 := newKeypair0(), newKeypair1()
+	cred4 := CreditAsset{Code: "ABCD", Issuer: kp0.Address()}
+	xdr, err := cred4.ToXDR()
+	assert.NoError(t, err)
+	cred4String := xdr.StringCanonical()
+
+	cred12 := CreditAsset{Code: "ABCD1234EFGH", Issuer: kp1.Address()}
+	xdr, err = cred12.ToXDR()
+	assert.NoError(t, err)
+	cred12String := xdr.StringCanonical()
+
+	native := NativeAsset{}
+	xdr, err = native.ToXDR()
+	nativeString := xdr.StringCanonical()
+
+	for input, expected := range map[string]AssetType{
+		nativeString: AssetTypeNative,
+		cred4String:  AssetTypeCreditAlphanum4,
+		cred12String: AssetTypeCreditAlphanum12,
+	} {
+		actual, err := getAssetType(input)
+		assert.NoError(t, err)
+		assert.Equal(t, expected, actual)
+	}
+}

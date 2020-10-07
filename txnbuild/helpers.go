@@ -192,3 +192,31 @@ func NewValidationError(field, message string) *ValidationError {
 		Message: message,
 	}
 }
+
+// Determines the type of an asset string in canonical form (SEP-11).
+//
+// Example:
+//     getAssetType("native") -> txnbuild.AssetTypeNative
+//     getAssetType("ABCD:G0000..[rest of issuer]") -> AssetTypeCreditAlphanum4
+//     getAssetType("ABCD1234EFGH:G0000..[rest of issuer]") -> AssetTypeCreditAlphanum12
+//
+func getAssetType(canonical string) (AssetType, error) {
+	defaultType := AssetTypeNative
+	assets, err := xdr.BuildAssets(canonical)
+	if err != nil {
+		return defaultType, errors.Wrap(err, "failed parsing: is it in canonical (SEP-11) form?")
+	}
+
+	// It returns a list, so you'll need to grab the first element.
+	asset, err := assetFromXDR(assets[0])
+	if err != nil {
+		return defaultType, errors.Wrap(err, "failed to create Asset from XDR")
+	}
+
+	t, err := asset.GetType()
+	if err != nil {
+		return t, errors.Wrap(err, "failed to determine asset type")
+	}
+
+	return t, nil
+}
