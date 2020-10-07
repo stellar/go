@@ -200,7 +200,8 @@ func NewValidationError(field, message string) *ValidationError {
 //     getAssetType("ABCD:G0000..[rest of issuer]") -> AssetTypeCreditAlphanum4
 //     getAssetType("ABCD1234EFGH:G0000..[rest of issuer]") -> AssetTypeCreditAlphanum12
 //
-func getAssetType(canonical string) (AssetType, error) {
+//lint:file-ignore U1000 Created as a helper in response to user feedback.
+func GetAssetType(canonical string) (AssetType, error) {
 	defaultType := AssetTypeNative
 	assets, err := xdr.BuildAssets(canonical)
 	if err != nil {
