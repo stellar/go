@@ -370,13 +370,28 @@ func TestAssetStringParsing(t *testing.T) {
 	assert.NoError(t, err)
 	nativeString := xdr.StringCanonical()
 
-	for input, expected := range map[string]AssetType{
-		nativeString: AssetTypeNative,
-		cred4String:  AssetTypeCreditAlphanum4,
-		cred12String: AssetTypeCreditAlphanum12,
-	} {
-		actual, err := GetAssetType(input)
+	assets := make([]Asset, 3)
+	for i, input := range []string{nativeString, cred4String, cred12String} {
+		actual, err := ParseAssetString(input)
 		assert.NoError(t, err)
-		assert.Equal(t, expected, actual)
+		assets[i] = actual
 	}
+
+	compareAssets := func(expected Asset, actual Asset) bool {
+		expXdr, err := expected.ToXDR()
+		if err != nil {
+			return false
+		}
+
+		actXdr, err := actual.ToXDR()
+		if err != nil {
+			return false
+		}
+
+		return expXdr.Equals(actXdr)
+	}
+
+	assert.True(t, compareAssets(native, assets[0]))
+	assert.True(t, compareAssets(cred4, assets[1]))
+	assert.True(t, compareAssets(cred12, assets[2]))
 }

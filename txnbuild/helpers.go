@@ -193,31 +193,19 @@ func NewValidationError(field, message string) *ValidationError {
 	}
 }
 
-// Determines the type of an asset string in canonical form (SEP-11).
-//
-// Example:
-//     getAssetType("native") -> txnbuild.AssetTypeNative
-//     getAssetType("ABCD:G0000..[rest of issuer]") -> AssetTypeCreditAlphanum4
-//     getAssetType("ABCD1234EFGH:G0000..[rest of issuer]") -> AssetTypeCreditAlphanum12
-//
-//lint:file-ignore U1000 Created as a helper in response to user feedback.
-func GetAssetType(canonical string) (AssetType, error) {
-	defaultType := AssetTypeNative
+// Parses an asset string in canonical form (SEP-11) into an Asset structure.
+// https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0011.md#asset
+func ParseAssetString(canonical string) (Asset, error) {
 	assets, err := xdr.BuildAssets(canonical)
 	if err != nil {
-		return defaultType, errors.Wrap(err, "failed parsing: is it in canonical (SEP-11) form?")
+		return &NativeAsset{}, errors.Wrap(err, "failed parsing: is it in canonical (SEP-11) form?")
 	}
 
-	// It returns a list, so you'll need to grab the first element.
+	// It returns a list, so we'll need to grab the first element.
 	asset, err := assetFromXDR(assets[0])
 	if err != nil {
-		return defaultType, errors.Wrap(err, "failed to create Asset from XDR")
+		return &NativeAsset{}, errors.Wrap(err, "failed to create Asset from XDR")
 	}
 
-	t, err := asset.GetType()
-	if err != nil {
-		return t, errors.Wrap(err, "failed to determine asset type")
-	}
-
-	return t, nil
+	return asset, nil
 }
