@@ -1,6 +1,7 @@
 package txnbuild
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stellar/go/keypair"
@@ -354,12 +355,13 @@ func TestValidateOfferManageSellOffer(t *testing.T) {
 }
 
 func TestAssetStringParsing(t *testing.T) {
-	kp0, kp1 := newKeypair0(), newKeypair1()
+	kp0 := newKeypair0()
 	cred4 := CreditAsset{Code: "ABCD", Issuer: kp0.Address()}
 	xdr, err := cred4.ToXDR()
 	assert.NoError(t, err)
 	cred4String := xdr.StringCanonical()
 
+	kp1 := newKeypair1()
 	cred12 := CreditAsset{Code: "ABCD1234EFGH", Issuer: kp1.Address()}
 	xdr, err = cred12.ToXDR()
 	assert.NoError(t, err)
@@ -395,7 +397,17 @@ func TestAssetStringParsing(t *testing.T) {
 	assert.True(t, compareAssets(cred4, assets[1]))
 	assert.True(t, compareAssets(cred12, assets[2]))
 
+	// Now sanity-check some basic error cases
+
 	result, err := ParseAssetString("erroneous:maximus")
+	assert.Error(t, err)
+	assert.Equal(t, nil, result)
+
+	result, err = ParseAssetString("erroneous:" + kp0.Address())
+	assert.Error(t, err)
+	assert.Equal(t, nil, result)
+
+	result, err = ParseAssetString(fmt.Sprintf("ABCD:%s,EFGH:%s", kp0.Address(), kp1.Address()))
 	assert.Error(t, err)
 	assert.Equal(t, nil, result)
 }
