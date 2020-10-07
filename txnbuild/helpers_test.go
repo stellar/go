@@ -372,19 +372,19 @@ func TestAssetStringParsing(t *testing.T) {
 
 	assets := make([]Asset, 3)
 	for i, input := range []string{nativeString, cred4String, cred12String} {
-		actual, err := ParseAssetString(input)
-		assert.NoError(t, err)
+		actual, innerErr := ParseAssetString(input)
+		assert.NoError(t, innerErr)
 		assets[i] = actual
 	}
 
 	compareAssets := func(expected Asset, actual Asset) bool {
-		expXdr, err := expected.ToXDR()
-		if err != nil {
+		expXdr, innerErr := expected.ToXDR()
+		if innerErr != nil {
 			return false
 		}
 
-		actXdr, err := actual.ToXDR()
-		if err != nil {
+		actXdr, innerErr := actual.ToXDR()
+		if innerErr != nil {
 			return false
 		}
 
