@@ -274,16 +274,26 @@ func createTestContainer(i *IntegrationTest, image string) error {
 	t.Log("Creating container...")
 	ctx, cancel = context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
+	containerConfig := &container.Config{
+		Image: image,
+		Cmd: []string{
+			"--standalone",
+			"--protocol-version", strconv.FormatInt(int64(i.config.ProtocolVersion), 10),
+		},
+		ExposedPorts: nat.PortSet{"8000": struct{}{}, "6060": struct{}{}},
+	}
+
+	if os.Getenv("HORIZON_INTEGRATION_ENABLE_CAPTIVE_CORE") != "" {
+		containerConfig.Env = append(containerConfig.Env,
+			"ENABLE_CAPTIVE_CORE_INGESTION=true",
+			"STELLAR_CORE_BINARY_PATH=/opt/stellar/core/bin/start",
+			"STELLAR_CORE_CONFIG_PATH=/opt/stellar/core/etc/stellar-core.cfg",
+		)
+	}
+
 	i.container, err = i.cli.ContainerCreate(
 		ctx,
-		&container.Config{
-			Image: image,
-			Cmd: []string{
-				"--standalone",
-				"--protocol-version", strconv.FormatInt(int64(i.config.ProtocolVersion), 10),
-			},
-			ExposedPorts: nat.PortSet{"8000": struct{}{}, "6060": struct{}{}},
-		},
+		containerConfig,
 		&container.HostConfig{
 			PortBindings: map[nat.Port][]nat.PortBinding{
 				nat.Port("8000"): {{HostIP: "127.0.0.1", HostPort: "8000"}},
