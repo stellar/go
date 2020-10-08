@@ -16,8 +16,6 @@ import (
 	"gopkg.in/square/go-jose.v2"
 )
 
-const stellarTomlMaxSize = 100 * 1024
-
 type Options struct {
 	Logger                      *supportlog.Entry
 	HorizonURL                  string
