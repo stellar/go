@@ -2,6 +2,7 @@ package integration
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"os"
 	"os/signal"
@@ -33,6 +34,18 @@ const (
 	stellarCorePostgresPassword = "integration-tests-password"
 	adminPort                   = 6060
 )
+
+var (
+	stellarCorePort         = mustPort("tcp", "11626")
+	stellarCorePostgresPort = mustPort("tcp", "5432")
+	historyArchivePort      = mustPort("tcp", "1570")
+)
+
+func mustPort(proto, port string) nat.Port {
+	p, err := nat.NewPort(proto, port)
+	panicIf(err)
+	return p
+}
 
 type Config struct {
 	ProtocolVersion       int32
@@ -155,12 +168,17 @@ func (i *Test) startHorizon() {
 		i.t.Fatal(errors.Wrap(err, "error inspecting container"))
 	}
 
-	stellarCore := info.NetworkSettings.Ports["11626/tcp"][0]
+	stellarCore := info.NetworkSettings.Ports[stellarCorePort][0]
 
-	stellarCorePostgres := info.NetworkSettings.Ports["5432/tcp"][0]
-	stellarCorePostgresURL := "postgres://stellar:" + stellarCorePostgresPassword + "@" + stellarCorePostgres.HostIP + ":" + stellarCorePostgres.HostPort + "/core"
+	stellarCorePostgres := info.NetworkSettings.Ports[stellarCorePostgresPort][0]
+	stellarCorePostgresURL := fmt.Sprintf(
+		"postgres://stellar:%s@%s:%s/core",
+		stellarCorePostgresPassword,
+		stellarCorePostgres.HostIP,
+		stellarCorePostgres.HostPort,
+	)
 
-	historyArchive := info.NetworkSettings.Ports["1570/tcp"][0]
+	historyArchive := info.NetworkSettings.Ports[historyArchivePort][0]
 
 	horizonPostgresURL := dbtest.Postgres(i.t).DSN
 
@@ -176,9 +194,9 @@ func (i *Test) startHorizon() {
 	}
 	cmd.SetArgs([]string{
 		"--stellar-core-url",
-		"http://" + stellarCore.HostIP + ":" + stellarCore.HostPort,
+		fmt.Sprintf("http://%s:%s", stellarCore.HostIP, stellarCore.HostPort),
 		"--history-archive-urls",
-		"http://" + historyArchive.HostIP + ":" + historyArchive.HostPort,
+		fmt.Sprintf("http://%s:%s", historyArchive.HostIP, historyArchive.HostPort),
 		"--ingest",
 		"--db-url",
 		horizonPostgresURL,
@@ -328,7 +346,11 @@ func createTestContainer(i *Test, image string) error {
 		containerConfig.Env = append(containerConfig.Env,
 			"POSTGRES_PASSWORD=" + stellarCorePostgresPassword,
 		)
-		containerConfig.ExposedPorts = nat.PortSet{"11626": struct{}{}, "5432": struct{}{}, "1570": struct{}{}}
+		containerConfig.ExposedPorts = nat.PortSet{
+			stellarCorePort: struct{}{},
+			stellarCorePostgresPort: struct{}{},
+			historyArchivePort: struct{}{},
+		}
 		hostConfig.PublishAllPorts = true
 	}
 
