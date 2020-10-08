@@ -14,7 +14,6 @@ package db
 import (
 	"context"
 	"database/sql"
-	stdLog "log"
 	"time"
 
 	"github.com/Masterminds/squirrel"
@@ -142,9 +141,6 @@ func pingDB(db *sqlx.DB) error {
 			return nil
 		}
 		time.Sleep(time.Second)
-		if attempt+1 < maxDBPingAttempts {
-			stdLog.Println("Waiting for a horizon DB connection...")
-		}
 	}
 
 	return errors.Wrapf(err, "failed to connect to DB after %v attempts", maxDBPingAttempts)
