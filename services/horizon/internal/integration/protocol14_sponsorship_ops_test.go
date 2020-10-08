@@ -13,14 +13,14 @@ import (
 	protocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/protocols/horizon/effects"
 	"github.com/stellar/go/protocols/horizon/operations"
+	"github.com/stellar/go/services/horizon/internal/test/integration"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stellar/go/xdr"
-	"github.com/stellar/go/services/horizon/internal/test/integration"
 )
 
 func TestSponsorships(t *testing.T) {
 	tt := assert.New(t)
-	itest := integration.NewIntegrationTest(t, protocol14Config)
+	itest := integration.NewTest(t, protocol14Config)
 	client := itest.Client()
 
 	/* Query helpers that can/should? probably be added to IntegrationTest. */
@@ -316,7 +316,7 @@ func TestSponsorships(t *testing.T) {
 		}
 		preaAuthTx, err := txnbuild.NewTransaction(txParams)
 		tt.NoError(err)
-		preAuthHash, err := preaAuthTx.Hash(integration.IntegrationNetworkPassphrase)
+		preAuthHash, err := preaAuthTx.Hash(integration.NetworkPassphrase)
 		tt.NoError(err)
 		preAuthTxB64, err := preaAuthTx.Base64()
 		tt.NoError(err)
@@ -766,7 +766,7 @@ func findOperationByID(needle string, haystack []operations.Operation) func() bo
 }
 
 // Retrieves the XLM balance for an account.
-func getAccountXLM(i *integration.IntegrationTest, account *keypair.Full) float64 {
+func getAccountXLM(i *integration.Test, account *keypair.Full) float64 {
 	details := i.MustGetAccount(account)
 	balance, err := strconv.ParseFloat(details.Balances[0].Balance, 64)
 	if err != nil {

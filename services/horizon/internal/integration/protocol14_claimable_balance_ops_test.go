@@ -1,7 +1,6 @@
 package integration
 
 import (
-	"github.com/stellar/go/services/horizon/internal/test/integration"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -9,13 +8,14 @@ import (
 	sdk "github.com/stellar/go/clients/horizonclient"
 	hEffects "github.com/stellar/go/protocols/horizon/effects"
 	"github.com/stellar/go/protocols/horizon/operations"
+	"github.com/stellar/go/services/horizon/internal/test/integration"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stellar/go/xdr"
 )
 
 func TestClaimableBalanceCreationOperationsAndEffects(t *testing.T) {
 	tt := assert.New(t)
-	itest := integration.NewIntegrationTest(t, protocol14Config)
+	itest := integration.NewTest(t, protocol14Config)
 	master := itest.Master()
 
 	t.Run("Successful", func(t *testing.T) {
