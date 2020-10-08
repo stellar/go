@@ -440,6 +440,12 @@ func (a *App) init() error {
 		a.prometheusRegistry.MustRegister(meter)
 	}
 
+	// go metrics
+	initGoMetrics(a)
+
+	// process metrics
+	initProcessMetrics(a)
+
 	// db-metrics
 	initDbMetrics(a)
 

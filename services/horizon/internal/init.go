@@ -215,6 +215,21 @@ func initDbMetrics(app *App) {
 	app.prometheusRegistry.MustRegister(app.orderBookStream.LatestLedgerGauge)
 }
 
+// initGoMetrics registers the Go collector provided by prometheus package which
+// includes Go-related metrics.
+func initGoMetrics(app *App) {
+	app.prometheusRegistry.MustRegister(prometheus.NewGoCollector())
+}
+
+// initProcessMetrics registers the process collector provided by prometheus
+// package. This is only available on operating systems with a Linux-style proc
+// filesystem and on Microsoft Windows.
+func initProcessMetrics(app *App) {
+	app.prometheusRegistry.MustRegister(
+		prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{}),
+	)
+}
+
 // initIngestMetrics registers the metrics for the ingestion into the provided
 // app's metrics registry.
 func initIngestMetrics(app *App) {
