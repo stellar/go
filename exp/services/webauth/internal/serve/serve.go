@@ -3,12 +3,10 @@ package serve
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"strings"
 	"time"
 
-	"github.com/BurntSushi/toml"
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/support/errors"
@@ -18,15 +16,12 @@ import (
 	"gopkg.in/square/go-jose.v2"
 )
 
-const stellarTomlMaxSize = 100 * 1024
-
 type Options struct {
 	Logger                      *supportlog.Entry
 	HorizonURL                  string
 	Port                        int
 	NetworkPassphrase           string
 	SigningKeys                 string
-	StellarTOMLDomain           string
 	AuthHomeDomains             string
 	ChallengeExpiresIn          time.Duration
 	JWK                         string
@@ -54,7 +49,7 @@ func Serve(opts Options) {
 }
 
 func handler(opts Options) (http.Handler, error) {
-	var signingKeyFull *keypair.Full
+	signingKeys := []*keypair.Full{}
 	signingKeyStrs := strings.Split(opts.SigningKeys, ",")
 	signingAddresses := make([]*keypair.FromAddress, 0, len(signingKeyStrs))
 
@@ -63,21 +58,7 @@ func handler(opts Options) (http.Handler, error) {
 		if err != nil {
 			return nil, errors.Wrap(err, "parsing signing key seed")
 		}
-
-		// Only the first key is used for signing. The rest is for verifying challenge transactions, if any.
-		if i == 0 {
-			var signingKeyPub string
-			signingKeyPub, err = getStellarTOMLSigningKey(opts.StellarTOMLDomain)
-			if err != nil {
-				opts.Logger.Errorf("Error reading SIGNING_KEY from domain %s: %v", opts.StellarTOMLDomain, err)
-			}
-
-			if err == nil && signingKey.Address() != signingKeyPub {
-				opts.Logger.Error("The configured signing key does not match the private key counterpart of the SIGNING_KEY in the stellar.toml file.")
-			}
-
-			signingKeyFull = signingKey
-		}
+		signingKeys = append(signingKeys, signingKey)
 		signingAddresses = append(signingAddresses, signingKey.FromAddress())
 		opts.Logger.Info("Signing key ", i, ": ", signingKey.Address())
 	}
@@ -117,7 +98,7 @@ func handler(opts Options) (http.Handler, error) {
 	mux.Get("/", challengeHandler{
 		Logger:             opts.Logger,
 		NetworkPassphrase:  opts.NetworkPassphrase,
-		SigningKey:         signingKeyFull,
+		SigningKey:         signingKeys[0],
 		ChallengeExpiresIn: opts.ChallengeExpiresIn,
 		HomeDomains:        trimmedHomeDomains,
 	}.ServeHTTP)
@@ -134,33 +115,4 @@ func handler(opts Options) (http.Handler, error) {
 	}.ServeHTTP)
 
 	return mux, nil
-}
-
-func getStellarTOMLSigningKey(domain string) (string, error) {
-	var signingKeyTOML struct {
-		SigningKey string `toml:"SIGNING_KEY"`
-	}
-
-	httpClient := &http.Client{
-		Timeout: 5 * time.Second,
-	}
-
-	domain = strings.TrimRight(domain, "./")
-	resp, err := httpClient.Get(fmt.Sprintf("https://%s/.well-known/stellar.toml", domain))
-	if err != nil {
-		return "", errors.Wrap(err, "sending http request")
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode/100 != 2 {
-		return "", errors.New("http request failed with non-200 status code")
-	}
-
-	safeResBody := io.LimitReader(resp.Body, stellarTomlMaxSize)
-	_, err = toml.DecodeReader(safeResBody, &signingKeyTOML)
-	if err != nil {
-		return "", errors.Wrap(err, "decoding signing key")
-	}
-
-	return signingKeyTOML.SigningKey, nil
 }
