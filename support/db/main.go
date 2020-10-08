@@ -147,7 +147,7 @@ func pingDB(db *sqlx.DB) error {
 		}
 	}
 
-	return errors.Wrapf(err, "failed to connect to horizon DB after %v attempts", maxDBPingAttempts)
+	return errors.Wrapf(err, "failed to connect to DB after %v attempts", maxDBPingAttempts)
 }
 
 // Open the database at `dsn` and returns a new *Session using it.
