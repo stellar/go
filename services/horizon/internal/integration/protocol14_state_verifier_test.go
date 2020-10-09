@@ -9,13 +9,13 @@ import (
 	"time"
 
 	"github.com/stellar/go/keypair"
-	"github.com/stellar/go/services/horizon/internal/test"
+	"github.com/stellar/go/services/horizon/internal/test/integration"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestProtocol14StateVerifier(t *testing.T) {
-	itest := test.NewIntegrationTest(t, protocol14Config)
+	itest := integration.NewTest(t, protocol14Config)
 
 	sponsored := keypair.MustRandom()
 	sponsoredSource := &txnbuild.SimpleAccount{

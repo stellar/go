@@ -1,9 +1,10 @@
-package test
+package integration
 
 import (
 	"archive/tar"
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -18,32 +19,52 @@ import (
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
+	"github.com/spf13/cobra"
 
 	sdk "github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
 	proto "github.com/stellar/go/protocols/horizon"
+	horizon "github.com/stellar/go/services/horizon/internal"
+	"github.com/stellar/go/support/db/dbtest"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
 )
 
-const IntegrationNetworkPassphrase = "Standalone Network ; February 2017"
+const (
+	NetworkPassphrase           = "Standalone Network ; February 2017"
+	stellarCorePostgresPassword = "integration-tests-password"
+	adminPort                   = 6060
+)
 
-type IntegrationConfig struct {
+var (
+	stellarCorePort         = mustPort("tcp", "11626")
+	stellarCorePostgresPort = mustPort("tcp", "5432")
+	historyArchivePort      = mustPort("tcp", "1570")
+)
+
+func mustPort(proto, port string) nat.Port {
+	p, err := nat.NewPort(proto, port)
+	panicIf(err)
+	return p
+}
+
+type Config struct {
 	ProtocolVersion       int32
 	SkipContainerCreation bool
 }
 
-type IntegrationTest struct {
+type Test struct {
 	t         *testing.T
-	config    IntegrationConfig
+	config    Config
 	cli       client.APIClient
 	hclient   *sdk.Client
 	container container.ContainerCreateCreatedBody
+	app       *horizon.App
 }
 
-// NewIntegrationTest starts a new environment for integration test at a given
+// NewTest starts a new environment for integration test at a given
 // protocol version and blocks until Horizon starts ingesting.
 //
 // Warning: this requires:
@@ -52,16 +73,12 @@ type IntegrationTest struct {
 //  * Horizon binary must be built for GOOS=linux and GOARCH=amd64.
 //
 // Skips the test if HORIZON_INTEGRATION_TESTS env variable is not set.
-func NewIntegrationTest(t *testing.T, config IntegrationConfig) *IntegrationTest {
+func NewTest(t *testing.T, config Config) *Test {
 	if os.Getenv("HORIZON_INTEGRATION_TESTS") == "" {
 		t.Skip("skipping integration test")
 	}
 
-	if os.Getenv("HORIZON_BIN_DIR") == "" {
-		t.Fatal("HORIZON_BIN_DIR env variable not set")
-	}
-
-	i := &IntegrationTest{t: t, config: config}
+	i := &Test{t: t, config: config}
 
 	var err error
 	i.cli, err = client.NewEnvClient()
@@ -116,43 +133,19 @@ func NewIntegrationTest(t *testing.T, config IntegrationConfig) *IntegrationTest
 	}
 	defer cleanup()
 
-	horizonBinaryContents, err := ioutil.ReadFile(os.Getenv("HORIZON_BIN_DIR") + "/horizon")
-	if err != nil {
-		t.Fatal(errors.Wrap(err, "error reading horizon binary file"))
-	}
-
-	// Create a tar archive with horizon binary (required by docker API).
-	var buf bytes.Buffer
-	tw := tar.NewWriter(&buf)
-	hdr := &tar.Header{
-		Name: "stellar-horizon",
-		Mode: 0755,
-		Size: int64(len(horizonBinaryContents)),
-	}
-	if err = tw.WriteHeader(hdr); err != nil {
-		t.Fatal(errors.Wrap(err, "error writing tar header"))
-	}
-	if _, err = tw.Write(horizonBinaryContents); err != nil {
-		t.Fatal(errors.Wrap(err, "error writing tar contents"))
-	}
-	if err = tw.Close(); err != nil {
-		t.Fatal(errors.Wrap(err, "error closing tar archive"))
-	}
-
-	t.Log("Copying custom horizon binary...")
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	err = i.cli.CopyToContainer(ctx, i.container.ID, "/usr/bin/", &buf, types.CopyToContainerOptions{})
-	if err != nil {
-		t.Fatal(errors.Wrap(err, "error copying custom horizon binary"))
-	}
+	i.setupHorizonBinary()
 
 	t.Log("Starting container...")
-	ctx, cancel = context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	err = i.cli.ContainerStart(ctx, i.container.ID, types.ContainerStartOptions{})
 	if err != nil {
 		t.Fatal(errors.Wrap(err, "error starting docker container"))
+	}
+
+	// only use horizon from quickstart container when testing captive core
+	if os.Getenv("HORIZON_INTEGRATION_ENABLE_CAPTIVE_CORE") == "" {
+		i.startHorizon()
 	}
 
 	doCleanup = false
@@ -173,7 +166,111 @@ func NewIntegrationTest(t *testing.T, config IntegrationConfig) *IntegrationTest
 	return i
 }
 
-func (i *IntegrationTest) waitForIngestionAndUpgrade() {
+func (i *Test) setupHorizonBinary() {
+	// only use horizon from quickstart container when testing captive core
+	if os.Getenv("HORIZON_INTEGRATION_ENABLE_CAPTIVE_CORE") == "" {
+		return
+	}
+
+	if os.Getenv("HORIZON_BIN_DIR") == "" {
+		i.t.Fatal("HORIZON_BIN_DIR env variable not set")
+	}
+
+	horizonBinaryContents, err := ioutil.ReadFile(os.Getenv("HORIZON_BIN_DIR") + "/horizon")
+	if err != nil {
+		i.t.Fatal(errors.Wrap(err, "error reading horizon binary file"))
+	}
+
+	// Create a tar archive with horizon binary (required by docker API).
+	var buf bytes.Buffer
+	tw := tar.NewWriter(&buf)
+	hdr := &tar.Header{
+		Name: "stellar-horizon",
+		Mode: 0755,
+		Size: int64(len(horizonBinaryContents)),
+	}
+	if err = tw.WriteHeader(hdr); err != nil {
+		i.t.Fatal(errors.Wrap(err, "error writing tar header"))
+	}
+	if _, err = tw.Write(horizonBinaryContents); err != nil {
+		i.t.Fatal(errors.Wrap(err, "error writing tar contents"))
+	}
+	if err = tw.Close(); err != nil {
+		i.t.Fatal(errors.Wrap(err, "error closing tar archive"))
+	}
+
+	i.t.Log("Copying custom horizon binary...")
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	err = i.cli.CopyToContainer(ctx, i.container.ID, "/usr/bin/", &buf, types.CopyToContainerOptions{})
+	if err != nil {
+		i.t.Fatal(errors.Wrap(err, "error copying custom horizon binary"))
+	}
+}
+
+func (i *Test) startHorizon() {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	info, err := i.cli.ContainerInspect(ctx, i.container.ID)
+	if err != nil {
+		i.t.Fatal(errors.Wrap(err, "error inspecting container"))
+	}
+
+	stellarCore := info.NetworkSettings.Ports[stellarCorePort][0]
+
+	stellarCorePostgres := info.NetworkSettings.Ports[stellarCorePostgresPort][0]
+	stellarCorePostgresURL := fmt.Sprintf(
+		"postgres://stellar:%s@%s:%s/core",
+		stellarCorePostgresPassword,
+		stellarCorePostgres.HostIP,
+		stellarCorePostgres.HostPort,
+	)
+
+	historyArchive := info.NetworkSettings.Ports[historyArchivePort][0]
+
+	horizonPostgresURL := dbtest.Postgres(i.t).DSN
+
+	config, configOpts := horizon.Flags()
+
+	cmd := &cobra.Command{
+		Use:   "horizon",
+		Short: "client-facing api server for the stellar network",
+		Long:  "client-facing api server for the stellar network. It acts as the interface between Stellar Core and applications that want to access the Stellar network. It allows you to submit transactions to the network, check the status of accounts, subscribe to event streams and more.",
+		Run: func(cmd *cobra.Command, args []string) {
+			i.app = horizon.NewAppFromFlags(config, configOpts)
+		},
+	}
+	cmd.SetArgs([]string{
+		"--stellar-core-url",
+		fmt.Sprintf("http://%s:%s", stellarCore.HostIP, stellarCore.HostPort),
+		"--history-archive-urls",
+		fmt.Sprintf("http://%s:%s", historyArchive.HostIP, historyArchive.HostPort),
+		"--ingest",
+		"--db-url",
+		horizonPostgresURL,
+		"--stellar-core-db-url",
+		stellarCorePostgresURL,
+		"--network-passphrase",
+		NetworkPassphrase,
+		"--apply-migrations",
+		"--admin-port",
+		strconv.Itoa(adminPort),
+	})
+	configOpts.Init(cmd)
+
+	if err = cmd.Execute(); err != nil {
+		i.t.Fatalf("cannot initialize horizon: %s", err)
+	}
+
+	if err = i.app.Ingestion().BuildGenesisState(); err != nil {
+		i.t.Fatalf("cannot build genesis state: %s", err)
+	}
+
+	go i.app.Serve()
+}
+
+func (i *Test) waitForIngestionAndUpgrade() {
 	for t := 30 * time.Second; t >= 0; t -= time.Second {
 		i.t.Log("Waiting for ingestion and protocol upgrade...")
 		root, _ := i.hclient.Root()
@@ -193,13 +290,13 @@ func (i *IntegrationTest) waitForIngestionAndUpgrade() {
 }
 
 // Client returns horizon.Client connected to started Horizon instance.
-func (i *IntegrationTest) Client() *sdk.Client {
+func (i *Test) Client() *sdk.Client {
 	return i.hclient
 }
 
 // LedgerIngested returns true if the ledger with a given sequence has been
 // ingested by Horizon. Panics in case of errors.
-func (i *IntegrationTest) LedgerIngested(sequence uint32) bool {
+func (i *Test) LedgerIngested(sequence uint32) bool {
 	root, err := i.Client().Root()
 	if err != nil {
 		panic(err)
@@ -209,16 +306,16 @@ func (i *IntegrationTest) LedgerIngested(sequence uint32) bool {
 }
 
 // AdminPort returns Horizon admin port.
-func (i *IntegrationTest) AdminPort() int {
+func (i *Test) AdminPort() int {
 	return 6060
 }
 
 // Master returns a keypair of the network master account.
-func (i *IntegrationTest) Master() *keypair.Full {
-	return keypair.Master(IntegrationNetworkPassphrase).(*keypair.Full)
+func (i *Test) Master() *keypair.Full {
+	return keypair.Master(NetworkPassphrase).(*keypair.Full)
 }
 
-func (i *IntegrationTest) MasterAccount() txnbuild.Account {
+func (i *Test) MasterAccount() txnbuild.Account {
 	master, client := i.Master(), i.Client()
 	request := sdk.AccountRequest{AccountID: master.Address()}
 	account, err := client.AccountDetail(request)
@@ -226,14 +323,18 @@ func (i *IntegrationTest) MasterAccount() txnbuild.Account {
 	return &account
 }
 
-func (i *IntegrationTest) CurrentTest() *testing.T {
+func (i *Test) CurrentTest() *testing.T {
 	return i.t
 }
 
 // Close stops and removes the docker container.
-func (i *IntegrationTest) Close() {
+func (i *Test) Close() {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
+
+	if i.app != nil {
+		i.app.Close()
+	}
 
 	skipCreation := os.Getenv("HORIZON_SKIP_CREATION") != ""
 	if !skipCreation {
@@ -247,7 +348,7 @@ func (i *IntegrationTest) Close() {
 	}
 }
 
-func createTestContainer(i *IntegrationTest, image string) error {
+func createTestContainer(i *Test, image string) error {
 	t := i.CurrentTest()
 	t.Logf("Pulling %s...", image)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
@@ -280,8 +381,8 @@ func createTestContainer(i *IntegrationTest, image string) error {
 			"--standalone",
 			"--protocol-version", strconv.FormatInt(int64(i.config.ProtocolVersion), 10),
 		},
-		ExposedPorts: nat.PortSet{"8000": struct{}{}, "6060": struct{}{}},
 	}
+	hostConfig := &container.HostConfig{}
 
 	if os.Getenv("HORIZON_INTEGRATION_ENABLE_CAPTIVE_CORE") != "" {
 		containerConfig.Env = append(containerConfig.Env,
@@ -289,17 +390,27 @@ func createTestContainer(i *IntegrationTest, image string) error {
 			"STELLAR_CORE_BINARY_PATH=/opt/stellar/core/bin/start",
 			"STELLAR_CORE_CONFIG_PATH=/opt/stellar/core/etc/stellar-core.cfg",
 		)
+		containerConfig.ExposedPorts = nat.PortSet{"8000": struct{}{}, "6060": struct{}{}}
+		hostConfig.PortBindings = map[nat.Port][]nat.PortBinding{
+			nat.Port("8000"): {{HostIP: "127.0.0.1", HostPort: "8000"}},
+			nat.Port("6060"): {{HostIP: "127.0.0.1", HostPort: "6060"}},
+		}
+	} else {
+		containerConfig.Env = append(containerConfig.Env,
+			"POSTGRES_PASSWORD="+stellarCorePostgresPassword,
+		)
+		containerConfig.ExposedPorts = nat.PortSet{
+			stellarCorePort:         struct{}{},
+			stellarCorePostgresPort: struct{}{},
+			historyArchivePort:      struct{}{},
+		}
+		hostConfig.PublishAllPorts = true
 	}
 
 	i.container, err = i.cli.ContainerCreate(
 		ctx,
 		containerConfig,
-		&container.HostConfig{
-			PortBindings: map[nat.Port][]nat.PortBinding{
-				nat.Port("8000"): {{HostIP: "127.0.0.1", HostPort: "8000"}},
-				nat.Port("6060"): {{HostIP: "127.0.0.1", HostPort: "6060"}},
-			},
-		},
+		hostConfig,
 		nil,
 		"horizon-integration",
 	)
@@ -318,7 +429,7 @@ func createTestContainer(i *IntegrationTest, image string) error {
 //
 // Note: panics on any errors, since we assume that tests cannot proceed without
 // this method succeeding.
-func (i *IntegrationTest) CreateAccounts(count int, initialBalance string) ([]*keypair.Full, []txnbuild.Account) {
+func (i *Test) CreateAccounts(count int, initialBalance string) ([]*keypair.Full, []txnbuild.Account) {
 	client := i.Client()
 	master := i.Master()
 
@@ -373,7 +484,7 @@ func (i *IntegrationTest) CreateAccounts(count int, initialBalance string) ([]*k
 }
 
 // Panics on any error establishing a trustline.
-func (i *IntegrationTest) MustEstablishTrustline(
+func (i *Test) MustEstablishTrustline(
 	truster *keypair.Full, account txnbuild.Account, asset txnbuild.Asset,
 ) (resp proto.Transaction) {
 	txResp, err := i.EstablishTrustline(truster, account, asset)
@@ -382,7 +493,7 @@ func (i *IntegrationTest) MustEstablishTrustline(
 }
 
 // Establishes a trustline for a given asset for a particular account.
-func (i *IntegrationTest) EstablishTrustline(
+func (i *Test) EstablishTrustline(
 	truster *keypair.Full, account txnbuild.Account, asset txnbuild.Asset,
 ) (proto.Transaction, error) {
 	if asset.IsNative() {
@@ -395,7 +506,7 @@ func (i *IntegrationTest) EstablishTrustline(
 }
 
 // Panics on any error creating a claimable balance.
-func (i *IntegrationTest) MustCreateClaimableBalance(
+func (i *Test) MustCreateClaimableBalance(
 	source *keypair.Full, asset txnbuild.Asset, amount string,
 	claimants ...txnbuild.Claimant,
 ) (claim proto.ClaimableBalance) {
@@ -424,7 +535,7 @@ func (i *IntegrationTest) MustCreateClaimableBalance(
 
 // Panics on any error retrieves an account's details from its key.
 // This means it must have previously been funded.
-func (i *IntegrationTest) MustGetAccount(source *keypair.Full) proto.Account {
+func (i *Test) MustGetAccount(source *keypair.Full) proto.Account {
 	client := i.Client()
 	account, err := client.AccountDetail(sdk.AccountRequest{AccountID: source.Address()})
 	panicIf(err)
@@ -441,7 +552,7 @@ func (i *IntegrationTest) MustGetAccount(source *keypair.Full) proto.Account {
 //
 // Note: We assume that transaction will be successful here so we panic in case
 // of all errors. To allow failures, use `SubmitOperations`.
-func (i *IntegrationTest) MustSubmitOperations(
+func (i *Test) MustSubmitOperations(
 	source txnbuild.Account, signer *keypair.Full, ops ...txnbuild.Operation,
 ) proto.Transaction {
 	tx, err := i.SubmitOperations(source, signer, ops...)
@@ -449,13 +560,13 @@ func (i *IntegrationTest) MustSubmitOperations(
 	return tx
 }
 
-func (i *IntegrationTest) SubmitOperations(
+func (i *Test) SubmitOperations(
 	source txnbuild.Account, signer *keypair.Full, ops ...txnbuild.Operation,
 ) (proto.Transaction, error) {
 	return i.SubmitMultiSigOperations(source, []*keypair.Full{signer}, ops...)
 }
 
-func (i *IntegrationTest) SubmitMultiSigOperations(
+func (i *Test) SubmitMultiSigOperations(
 	source txnbuild.Account, signers []*keypair.Full, ops ...txnbuild.Operation,
 ) (proto.Transaction, error) {
 	txParams := txnbuild.TransactionParams{
@@ -472,7 +583,7 @@ func (i *IntegrationTest) SubmitMultiSigOperations(
 	}
 
 	for _, signer := range signers {
-		tx, err = tx.Sign(IntegrationNetworkPassphrase, signer)
+		tx, err = tx.Sign(NetworkPassphrase, signer)
 		if err != nil {
 			return proto.Transaction{}, err
 		}
@@ -488,7 +599,7 @@ func (i *IntegrationTest) SubmitMultiSigOperations(
 
 // A convenience function to provide verbose information about a failing
 // transaction to the test output log, if it's expected to succeed.
-func (i *IntegrationTest) LogFailedTx(txResponse proto.Transaction, horizonResult error) {
+func (i *Test) LogFailedTx(txResponse proto.Transaction, horizonResult error) {
 	t := i.CurrentTest()
 	assert.NoErrorf(t, horizonResult, "Submitting the transaction failed")
 	if prob := sdk.GetError(horizonResult); prob != nil {

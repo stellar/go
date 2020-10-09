@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
+	horizon "github.com/stellar/go/services/horizon/internal"
 	"github.com/stellar/go/services/horizon/internal/db2/schema"
 	"github.com/stellar/go/services/horizon/internal/expingest"
 	support "github.com/stellar/go/support/config"
@@ -22,6 +23,15 @@ import (
 var dbCmd = &cobra.Command{
 	Use:   "db [command]",
 	Short: "commands to manage horizon's postgres db",
+}
+
+var dbURLConfigOption = support.ConfigOption{
+	Name:      "db-url",
+	EnvVar:    "DATABASE_URL",
+	ConfigKey: &config.DatabaseURL,
+	OptType:   types.String,
+	Required:  true,
+	Usage:     "horizon postgres database to connect with",
 }
 
 var dbInitCmd = &cobra.Command{
@@ -79,13 +89,12 @@ var dbMigrateCmd = &cobra.Command{
 		dbURLConfigOption.Require()
 		dbURLConfigOption.SetValue()
 
-		db, err := sql.Open("postgres", viper.GetString("db-url"))
+		dbConn, err := db.Open("postgres", viper.GetString("db-url"))
 		if err != nil {
 			log.Fatal(err)
 		}
-		pingDB(db)
 
-		numMigrationsRun, err := schema.Migrate(db, dir, count)
+		numMigrationsRun, err := schema.Migrate(dbConn.DB.DB, dir, count)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -103,7 +112,7 @@ var dbReapCmd = &cobra.Command{
 	Short: "reaps (i.e. removes) any reapable history data",
 	Long:  "reap removes any historical data that is earlier than the configured retention cutoff",
 	Run: func(cmd *cobra.Command, args []string) {
-		app := initApp()
+		app := horizon.NewAppFromFlags(config, flags)
 		app.UpdateLedgerState()
 		err := app.DeleteUnretainedHistory()
 		if err != nil {
@@ -202,7 +211,7 @@ var dbReingestRangeCmd = &cobra.Command{
 			argsInt32[i] = uint32(seq)
 		}
 
-		initRootConfig()
+		horizon.ApplyFlags(config, flags)
 
 		horizonSession, err := db.Open("postgres", config.DatabaseURL)
 		if err != nil {
@@ -222,7 +231,7 @@ var dbReingestRangeCmd = &cobra.Command{
 
 		if !ingestConfig.EnableCaptiveCore {
 			if config.StellarCoreDatabaseURL == "" {
-				log.Fatalf("flag --%s cannot be empty", stellarCoreDBURLFlagName)
+				log.Fatalf("flag --%s cannot be empty", horizon.StellarCoreDBURLFlagName)
 			}
 			coreSession, dbErr := db.Open("postgres", config.StellarCoreDatabaseURL)
 			if dbErr != nil {
