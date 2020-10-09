@@ -346,6 +346,65 @@ func (t *Transaction) Base64() (string, error) {
 	return marshallBase64(t.envelope, t.signatures)
 }
 
+// BalanceIDs returns a list of balance IDs for all possible CreateClaimableBalance
+// operations within this transaction.
+func (t *Transaction) BalanceIDs() []string {
+	var balances []string
+	for opIndex, operation := range t.operations {
+		creation, ok := operation.(*CreateClaimableBalance)
+		if !ok {
+			continue
+		}
+
+		// Use the operation's source account or the transaction's source if not.
+		var account Account
+		if creation.SourceAccount == nil {
+			account = &t.sourceAccount
+		} else {
+			account = creation.GetSourceAccount()
+		}
+
+		seq, err := account.GetSequenceNumber()
+		if err != nil {
+			panic(errors.Wrap(err, "failed to query account sequence num"))
+		}
+
+		// We mimic the relevant code from Stellar Core
+		// https://github.com/stellar/stellar-core/blob/9f3cc04e6ec02c38974c42545a86cdc79809252b/src/test/TestAccount.cpp#L285
+		operationId := xdr.OperationId{
+			Type: xdr.EnvelopeTypeEnvelopeTypeOpId,
+			Id: &xdr.OperationIdId{
+				SourceAccount: xdr.MustMuxedAddress(account.GetAccountID()),
+				SeqNum:        xdr.SequenceNumber(seq),
+				OpNum:         xdr.Uint32(opIndex),
+			},
+		}
+
+		binaryDump, err := operationId.MarshalBinary()
+		if err != nil {
+			panic(errors.Wrap(err, "invalid claimable balance operation"))
+		}
+
+		hash := sha256.Sum256(binaryDump)
+		balanceIdXdr, err := xdr.NewClaimableBalanceId(
+			// TODO: Determine the type programmatically
+			xdr.ClaimableBalanceIdTypeClaimableBalanceIdTypeV0,
+			xdr.Hash(hash))
+		if err != nil {
+			panic(errors.Wrap(err, "unable to parse balance ID as XDR"))
+		}
+
+		balanceIdHex, err := xdr.MarshalHex(balanceIdXdr)
+		if err != nil {
+			panic(errors.Wrap(err, "unable to parse balance ID as hex"))
+		}
+
+		balances = append(balances, balanceIdHex)
+	}
+
+	return balances
+}
+
 // FeeBumpTransaction represents a CAP 15 fee bump transaction.
 // Fee bump transactions allow an arbitrary account to pay the fee for a transaction.
 type FeeBumpTransaction struct {
