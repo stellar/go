@@ -1,9 +1,12 @@
 package integration
 
 import (
+	"archive/tar"
+	"bytes"
 	"context"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"os/signal"
 	"strconv"
@@ -66,6 +69,8 @@ type Test struct {
 //
 // Warning: this requires:
 //  * Docker installed and all docker env variables set.
+//  * HORIZON_BIN_DIR env variable set to the directory with `horizon` binary to test.
+//  * Horizon binary must be built for GOOS=linux and GOARCH=amd64.
 //
 // Skips the test if HORIZON_INTEGRATION_TESTS env variable is not set.
 func NewTest(t *testing.T, config Config) *Test {
@@ -128,6 +133,8 @@ func NewTest(t *testing.T, config Config) *Test {
 	}
 	defer cleanup()
 
+	i.setupHorizonBinary()
+
 	t.Log("Starting container...")
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -136,7 +143,7 @@ func NewTest(t *testing.T, config Config) *Test {
 		t.Fatal(errors.Wrap(err, "error starting docker container"))
 	}
 
-	// only use horizon from quickstart container when *NOT* testing captive core
+	// only use horizon from quickstart container when testing captive core
 	if os.Getenv("HORIZON_INTEGRATION_ENABLE_CAPTIVE_CORE") == "" {
 		i.startHorizon()
 	}
@@ -157,6 +164,48 @@ func NewTest(t *testing.T, config Config) *Test {
 
 	i.waitForIngestionAndUpgrade()
 	return i
+}
+
+func (i *Test) setupHorizonBinary() {
+	// only use horizon from quickstart container when testing captive core
+	if os.Getenv("HORIZON_INTEGRATION_ENABLE_CAPTIVE_CORE") == "" {
+		return
+	}
+
+	if os.Getenv("HORIZON_BIN_DIR") == "" {
+		i.t.Fatal("HORIZON_BIN_DIR env variable not set")
+	}
+
+	horizonBinaryContents, err := ioutil.ReadFile(os.Getenv("HORIZON_BIN_DIR") + "/horizon")
+	if err != nil {
+		i.t.Fatal(errors.Wrap(err, "error reading horizon binary file"))
+	}
+
+	// Create a tar archive with horizon binary (required by docker API).
+	var buf bytes.Buffer
+	tw := tar.NewWriter(&buf)
+	hdr := &tar.Header{
+		Name: "stellar-horizon",
+		Mode: 0755,
+		Size: int64(len(horizonBinaryContents)),
+	}
+	if err = tw.WriteHeader(hdr); err != nil {
+		i.t.Fatal(errors.Wrap(err, "error writing tar header"))
+	}
+	if _, err = tw.Write(horizonBinaryContents); err != nil {
+		i.t.Fatal(errors.Wrap(err, "error writing tar contents"))
+	}
+	if err = tw.Close(); err != nil {
+		i.t.Fatal(errors.Wrap(err, "error closing tar archive"))
+	}
+
+	i.t.Log("Copying custom horizon binary...")
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	err = i.cli.CopyToContainer(ctx, i.container.ID, "/usr/bin/", &buf, types.CopyToContainerOptions{})
+	if err != nil {
+		i.t.Fatal(errors.Wrap(err, "error copying custom horizon binary"))
+	}
 }
 
 func (i *Test) startHorizon() {
@@ -342,14 +391,18 @@ func createTestContainer(i *Test, image string) error {
 			"STELLAR_CORE_CONFIG_PATH=/opt/stellar/core/etc/stellar-core.cfg",
 		)
 		containerConfig.ExposedPorts = nat.PortSet{"8000": struct{}{}, "6060": struct{}{}}
+		hostConfig.PortBindings = map[nat.Port][]nat.PortBinding{
+			nat.Port("8000"): {{HostIP: "127.0.0.1", HostPort: "8000"}},
+			nat.Port("6060"): {{HostIP: "127.0.0.1", HostPort: "6060"}},
+		}
 	} else {
 		containerConfig.Env = append(containerConfig.Env,
-			"POSTGRES_PASSWORD=" + stellarCorePostgresPassword,
+			"POSTGRES_PASSWORD="+stellarCorePostgresPassword,
 		)
 		containerConfig.ExposedPorts = nat.PortSet{
-			stellarCorePort: struct{}{},
+			stellarCorePort:         struct{}{},
 			stellarCorePostgresPort: struct{}{},
-			historyArchivePort: struct{}{},
+			historyArchivePort:      struct{}{},
 		}
 		hostConfig.PublishAllPorts = true
 	}
