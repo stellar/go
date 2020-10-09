@@ -51,7 +51,6 @@ Flags:
       --network-passphrase string          Network passphrase of the Stellar network transactions should be signed for (NETWORK_PASSPHRASE) (default "Test SDF Network ; September 2015")
       --port int                           Port to listen and serve on (PORT) (default 8000)
       --signing-key string                 Stellar signing key(s) used for signing transactions comma separated (first key is used for signing, others used for verifying challenges) (SIGNING_KEY)
-      --stellar-toml-domain string         Domain where stellar.toml is served. The private key counterpart of the SIGNING_KEY specified in the stellar.toml file has to be provided via signing-key (STELLAR_TOML_DOMAIN)
 ```
 
 [SEP-10]: https://github.com/stellar/stellar-protocol/blob/28c636b4ef5074ca0c3d46bbe9bf0f3f38095233/ecosystem/sep-0010.md
