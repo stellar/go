@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/stellar/go/exp/ingest/io"
+	"github.com/stellar/go/ingest/io"
 	"github.com/stellar/go/xdr"
 )
 
