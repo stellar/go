@@ -68,7 +68,7 @@ func TestProtocol14Basics(t *testing.T) {
 		id2, err := tx.ClaimableBalanceID(1)
 		tt.NoError(err)
 		predictions := []string{id1, id2}
-		
+
 		var txResult xdr.TransactionResult
 		txResp, err := itest.SubmitTransaction(tx)
 		tt.NoError(err)
