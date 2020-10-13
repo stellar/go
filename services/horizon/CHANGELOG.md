@@ -5,10 +5,10 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).x
 
 ## v1.10.0
 
-**After upgrading Horizon will rebuild it's state. During this process (which can take several minutes) it will not ingest new ledgers.**
+**After upgrading Horizon will rebuild its state. During this process (which can take several minutes) it will not ingest new ledgers.**
 
 * Fixed a bug that caused a fresh instance of Horizon to be unable to sync with testnet (Protocol 14) correctly. ([#3100](https://github.com/stellar/go/pull/3100))
-* Add Golang and process related metrics. ([#3103](https://github.com/stellar/go/pull/3103))
+* Add Golang- and process-related metrics. ([#3103](https://github.com/stellar/go/pull/3103))
 * New `network_passphrase` field in History Archives (added in Stellar-Core 14.1.0) is now checked. Horizon will return error if incorrect archive is used. ([#3082](https://github.com/stellar/go/pull/3082))
 * Fixed a bug that caused some errors to be logged with `info` level instead of `error` level. ([#3094](https://github.com/stellar/go/pull/3094))
 * Fixed a bug in `/claimable_balances` that returned 500 error instead of 400 for some requests. ([#3088](https://github.com/stellar/go/pull/3088))
