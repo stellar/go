@@ -8,7 +8,7 @@ import (
 	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/protocols/horizon/operations"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/services/horizon/internal/expingest"
+	"github.com/stellar/go/services/horizon/internal/ingest"
 )
 
 // Moved to TestGetOperationsOnlyPayments
@@ -37,7 +37,7 @@ func TestPaymentActions(t *testing.T) {
 		q := history.Q{ht.HorizonSession()}
 		err := q.UpdateLastLedgerExpIngest(3)
 		ht.Assert.NoError(err)
-		err = q.UpdateExpIngestVersion(expingest.CurrentVersion)
+		err = q.UpdateExpIngestVersion(ingest.CurrentVersion)
 		ht.Assert.NoError(err)
 	}
 	initializeStateMiddleware()

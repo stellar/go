@@ -192,3 +192,24 @@ func NewValidationError(field, message string) *ValidationError {
 		Message: message,
 	}
 }
+
+// Parses an asset string in canonical form (SEP-11) into an Asset structure.
+// https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0011.md#asset
+func ParseAssetString(canonical string) (Asset, error) {
+	assets, err := xdr.BuildAssets(canonical)
+	if err != nil {
+		return nil, errors.Wrap(err, "error parsing asset string")
+	}
+
+	if len(assets) != 1 {
+		return nil, errors.New("error parsing out a single asset")
+	}
+
+	// The above returned a list, so we'll need to grab the first element.
+	asset, err := assetFromXDR(assets[0])
+	if err != nil {
+		return nil, errors.Wrap(err, "error parsing asset string via XDR types")
+	}
+
+	return asset, nil
+}

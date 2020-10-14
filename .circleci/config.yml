@@ -219,6 +219,10 @@ commands:
         type: boolean
         default: false
     steps:
+      - unless:
+          condition: << parameters.enable-captive-core >>
+          steps:
+            - run: docker run -d --env POSTGRES_HOST_AUTH_METHOD=trust -p 5432:5432 circleci/postgres:9.6.5-alpine
       - run:
           name: Run Horizon integration tests <<# parameters.enable-captive-core >>(With captive core)<</ parameters.enable-captive-core >>
           # Currently all integration tests are in a single directory.

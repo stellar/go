@@ -22,10 +22,8 @@ type ClaimableBalancesQuery struct {
 	Claimant  *xdr.AccountId
 }
 
-// ApplyCursor applies cursor to the given sql. For performance reason the limit
-// is not apply here. This allows us to hint the planner later to use the right
-// indexes.
-func (cbq ClaimableBalancesQuery) ApplyCursor(sql sq.SelectBuilder) (sq.SelectBuilder, error) {
+// Cursor validates and returns the query page cursor
+func (cbq ClaimableBalancesQuery) Cursor() (int64, *xdr.ClaimableBalanceId, error) {
 	p := cbq.PageQuery
 	var l int64
 	var r *xdr.ClaimableBalanceId
@@ -34,22 +32,35 @@ func (cbq ClaimableBalancesQuery) ApplyCursor(sql sq.SelectBuilder) (sq.SelectBu
 	if p.Cursor != "" {
 		parts := strings.SplitN(p.Cursor, "-", 2)
 		if len(parts) != 2 {
-			return sql, errors.New("Invalid cursor")
+			return l, r, errors.New("Invalid cursor")
 		}
 
 		l, err = strconv.ParseInt(parts[0], 10, 64)
 		if err != nil {
-			return sql, errors.Wrap(err, "Invalid cursor - first value should be higher than 0")
+			return l, r, errors.Wrap(err, "Invalid cursor - first value should be higher than 0")
 		}
 
 		var balanceID xdr.ClaimableBalanceId
 		if err = xdr.SafeUnmarshalHex(parts[1], &balanceID); err != nil {
-			return sql, errors.Wrap(err, "Invalid cursor - second value should be a valid claimable balance id")
+			return l, r, errors.Wrap(err, "Invalid cursor - second value should be a valid claimable balance id")
 		}
 		r = &balanceID
 		if l < 0 {
-			return sql, errors.Wrap(err, "Invalid cursor - first value should be higher than 0")
+			return l, r, errors.Wrap(err, "Invalid cursor - first value should be higher than 0")
 		}
+	}
+
+	return l, r, nil
+}
+
+// ApplyCursor applies cursor to the given sql. For performance reason the limit
+// is not apply here. This allows us to hint the planner later to use the right
+// indexes.
+func (cbq ClaimableBalancesQuery) ApplyCursor(sql sq.SelectBuilder) (sq.SelectBuilder, error) {
+	p := cbq.PageQuery
+	l, r, err := cbq.Cursor()
+	if err != nil {
+		return sql, err
 	}
 
 	switch p.Order {

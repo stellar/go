@@ -10,18 +10,18 @@ import (
 	proto "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/protocols/horizon/operations"
 	"github.com/stellar/go/services/horizon/internal/codes"
-	"github.com/stellar/go/services/horizon/internal/test"
+	"github.com/stellar/go/services/horizon/internal/test/integration"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
 )
 
-var protocol14Config = test.IntegrationConfig{ProtocolVersion: 14}
+var protocol14Config = integration.Config{ProtocolVersion: 14}
 
 func TestProtocol14Basics(t *testing.T) {
 	tt := assert.New(t)
 
-	itest := test.NewIntegrationTest(t, protocol14Config)
+	itest := integration.NewTest(t, protocol14Config)
 	master := itest.Master()
 
 	root, err := itest.Client().Root()
@@ -42,7 +42,7 @@ func TestProtocol14Basics(t *testing.T) {
 }
 
 func TestHappyClaimableBalances(t *testing.T) {
-	itest := test.NewIntegrationTest(t, protocol14Config)
+	itest := integration.NewTest(t, protocol14Config)
 	master, client := itest.Master(), itest.Client()
 
 	keys, accounts := itest.CreateAccounts(3, "1000")
@@ -234,7 +234,7 @@ func TestHappyClaimableBalances(t *testing.T) {
 
 // We want to ensure that users can't claim the same claimable balance twice.
 func TestDoubleClaim(t *testing.T) {
-	itest := test.NewIntegrationTest(t, protocol14Config)
+	itest := integration.NewTest(t, protocol14Config)
 	client := itest.Client()
 
 	// Create a couple of accounts to test the interactions.
@@ -294,7 +294,7 @@ func TestDoubleClaim(t *testing.T) {
 }
 
 func TestClaimableBalancePredicates(t *testing.T) {
-	itest := test.NewIntegrationTest(t, protocol14Config)
+	itest := integration.NewTest(t, protocol14Config)
 	_, client := itest.Master(), itest.Client()
 
 	// Create a couple of accounts to test the interactions.
@@ -496,7 +496,7 @@ func getOperationsErrorByIndex(err error, i int) string {
 }
 
 // Checks that filtering works for a particular claim.
-func checkFilters(i *test.IntegrationTest, claim proto.ClaimableBalance) {
+func checkFilters(i *integration.Test, claim proto.ClaimableBalance) {
 	client := i.Client()
 	t := i.CurrentTest()
 
