@@ -130,7 +130,7 @@ func TestProtocol14StateVerifier(t *testing.T) {
 	}
 }
 
-func waitForStateVerifications(t *testing.T, itest *test.IntegrationTest, count int) bool {
+func waitForStateVerifications(t *testing.T, itest *integration.Test, count int) bool {
 	// Check metrics until state verification run
 	for i := 0; i < 120; i++ {
 		t.Logf("Checking metrics (%d attempt)\n", i)
