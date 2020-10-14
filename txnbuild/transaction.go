@@ -359,7 +359,7 @@ func (t *Transaction) ClaimableBalanceID(operationIndex int) (string, error) {
 	}
 
 	// Use the operation's source account or the transaction's source if not.
-	account := &t.sourceAccount
+	var account Account = &t.sourceAccount
 	if operation.SourceAccount != nil {
 		account = operation.GetSourceAccount()
 	}
