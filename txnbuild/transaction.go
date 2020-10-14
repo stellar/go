@@ -346,7 +346,7 @@ func (t *Transaction) Base64() (string, error) {
 	return marshallBase64(t.envelope, t.signatures)
 }
 
-// Returns the (pre-calculated) claimable balance ID for the operation at the
+// ClaimableBalanceID returns the claimable balance ID for the operation at the given index within the transaction.
 // given index (which should be a `CreateClaimableBalance` operation).
 func (t *Transaction) ClaimableBalanceID(operationIndex int) (string, error) {
 	if operationIndex < 0 || operationIndex >= len(t.operations) {
@@ -359,10 +359,8 @@ func (t *Transaction) ClaimableBalanceID(operationIndex int) (string, error) {
 	}
 
 	// Use the operation's source account or the transaction's source if not.
-	var account Account
-	if operation.SourceAccount == nil {
-		account = &t.sourceAccount
-	} else {
+	account := &t.sourceAccount
+	if operation.SourceAccount != nil {
 		account = operation.GetSourceAccount()
 	}
 
@@ -389,7 +387,7 @@ func (t *Transaction) ClaimableBalanceID(operationIndex int) (string, error) {
 
 	hash := sha256.Sum256(binaryDump)
 	balanceIdXdr, err := xdr.NewClaimableBalanceId(
-		// Can this be determined programmatically from the operation structure?
+		// TODO: look into whether this be determined programmatically from the operation structure.
 		xdr.ClaimableBalanceIdTypeClaimableBalanceIdTypeV0,
 		xdr.Hash(hash))
 	if err != nil {

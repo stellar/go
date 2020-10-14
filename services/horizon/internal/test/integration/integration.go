@@ -589,13 +589,13 @@ func (i *Test) CreateSignedTransaction(
 
 	tx, err := txnbuild.NewTransaction(txParams)
 	if err != nil {
-		return tx, err
+		return nil, err
 	}
 
 	for _, signer := range signers {
 		tx, err = tx.Sign(NetworkPassphrase, signer)
 		if err != nil {
-			return tx, err
+			return nil, err
 		}
 	}
 
