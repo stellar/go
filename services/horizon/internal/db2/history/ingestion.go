@@ -10,6 +10,7 @@ func (q *Q) TruncateExpingestStateTables() error {
 		"accounts",
 		"accounts_data",
 		"accounts_signers",
+		"claimable_balances",
 		"exp_asset_stats",
 		"offers",
 		"trust_lines",

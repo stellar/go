@@ -46,7 +46,9 @@ const (
 	// - 10: Fixes a bug in meta processing (fees are now processed before
 	//      everything else).
 	// - 11: Protocol 14: CAP-23 and CAP-33.
-	CurrentVersion = 11
+	// - 12: Trigger state rebuild due to `absTime` -> `abs_time` rename
+	//       in ClaimableBalances predicates.
+	CurrentVersion = 12
 
 	// MaxDBConnections is the size of the postgres connection pool dedicated to Horizon ingestion:
 	//  * Ledger ingestion,
