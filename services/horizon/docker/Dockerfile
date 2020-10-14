@@ -8,7 +8,7 @@ RUN go install github.com/stellar/go/services/horizon
 
 FROM ubuntu:18.04
 
-ENV STELLAR_CORE_VERSION 13.0.0-1220-9ed3da29
+ENV STELLAR_CORE_VERSION 14.1.1-1355-5b2989d3
 #ENV STELLAR_CORE_BINARY_PATH /usr/local/bin/stellar-core
 
 # ca-certificates are required to make tls connections
