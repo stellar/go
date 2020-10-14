@@ -310,7 +310,7 @@ func (i *Test) LedgerIngested(sequence uint32) bool {
 // than LedgerIngested because it checks if the ledger was closed, not
 // necessarily ingested (ex. when rebuilding state Horizon does not ingest
 // recent ledgers).
-func (i *IntegrationTest) LedgerClosed(sequence uint32) bool {
+func (i *Test) LedgerClosed(sequence uint32) bool {
 	root, err := i.Client().Root()
 	if err != nil {
 		panic(err)
@@ -629,7 +629,7 @@ func (i *Test) LogFailedTx(txResponse proto.Transaction, horizonResult error) {
 		"Transaction doesn't have success code.")
 }
 
-func (i *IntegrationTest) RunHorizonCLICommand(cmd []string) {
+func (i *Test) RunHorizonCLICommand(cmd []string) {
 	fullCmd := append([]string{"/stellar/horizon/bin/horizon"}, cmd...)
 	id, err := i.cli.ContainerExecCreate(
 		context.Background(),
