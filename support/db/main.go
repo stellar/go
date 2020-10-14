@@ -14,6 +14,7 @@ package db
 import (
 	"context"
 	"database/sql"
+	"time"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/jmoiron/sqlx"
@@ -23,8 +24,11 @@ import (
 	_ "github.com/lib/pq"
 )
 
-// postgresQueryMaxParams defines the maximum number of parameters in a query.
-var postgresQueryMaxParams = 65535
+const (
+	// postgresQueryMaxParams defines the maximum number of parameters in a query.
+	postgresQueryMaxParams = 65535
+	maxDBPingAttempts      = 30
+)
 
 var (
 	// ErrCancelled is an error returned by Session methods when request has
@@ -130,11 +134,26 @@ type Table struct {
 	Session *Session
 }
 
+func pingDB(db *sqlx.DB) error {
+	var err error
+	for attempt := 0; attempt < maxDBPingAttempts; attempt++ {
+		if err = db.Ping(); err == nil {
+			return nil
+		}
+		time.Sleep(time.Second)
+	}
+
+	return errors.Wrapf(err, "failed to connect to DB after %v attempts", maxDBPingAttempts)
+}
+
 // Open the database at `dsn` and returns a new *Session using it.
 func Open(dialect, dsn string) (*Session, error) {
-	db, err := sqlx.Connect(dialect, dsn)
+	db, err := sqlx.Open(dialect, dsn)
 	if err != nil {
-		return nil, errors.Wrap(err, "connect failed")
+		return nil, errors.Wrap(err, "open failed")
+	}
+	if err = pingDB(db); err != nil {
+		return nil, errors.Wrap(err, "ping failed")
 	}
 
 	return &Session{DB: db, Ctx: context.Background()}, nil

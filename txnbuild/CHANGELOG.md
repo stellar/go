@@ -3,6 +3,9 @@
 All notable changes to this project will be documented in this
 file.  This project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+* Add helper function `ParseAssetString()`, making it easier to build an `Asset` structure from a string in [canonical form](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0011.md#asset) and check its various properties ([#3105](https://github.com/stellar/go/pull/3105)).
+
 ## [v4.0.1](https://github.com/stellar/go/releases/tag/horizonclient-v4.0.1) - 2020-10-02
 
 * Fixed bug in `TransactionFromXDR()` which occurs when parsing transaction XDR envelopes which contain Protocol 14 operations.

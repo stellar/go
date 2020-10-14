@@ -174,6 +174,11 @@ func (a *App) HistoryQ() *history.Q {
 	return a.historyQ
 }
 
+// Ingestion returns the ingestion system associated with this Horizon instance
+func (a *App) Ingestion() expingest.System {
+	return a.expingester
+}
+
 // HorizonSession returns a new session that loads data from the horizon
 // database. The returned session is bound to `ctx`.
 func (a *App) HorizonSession(ctx context.Context) *db.Session {
@@ -439,6 +444,12 @@ func (a *App) init() error {
 	for _, meter := range *logmetrics.DefaultMetrics {
 		a.prometheusRegistry.MustRegister(meter)
 	}
+
+	// go metrics
+	initGoMetrics(a)
+
+	// process metrics
+	initProcessMetrics(a)
 
 	// db-metrics
 	initDbMetrics(a)
