@@ -16,8 +16,8 @@ import (
 	horizonContext "github.com/stellar/go/services/horizon/internal/context"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/errors"
-	"github.com/stellar/go/services/horizon/internal/expingest"
 	"github.com/stellar/go/services/horizon/internal/hchi"
+	"github.com/stellar/go/services/horizon/internal/ingest"
 	"github.com/stellar/go/services/horizon/internal/ledger"
 	"github.com/stellar/go/services/horizon/internal/render"
 	hProblem "github.com/stellar/go/services/horizon/internal/render/problem"
@@ -281,7 +281,7 @@ func ingestionStatus(q *history.Q) (uint32, bool, error) {
 		return 0, false, supportErrors.Wrap(err, "Error running LatestLedger")
 	}
 
-	ready := version == expingest.CurrentVersion &&
+	ready := version == ingest.CurrentVersion &&
 		lastIngestedLedger > 0 &&
 		lastIngestedLedger == lastHistoryLedger
 

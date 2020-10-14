@@ -7,7 +7,7 @@ import (
 
 	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/services/horizon/internal/expingest"
+	"github.com/stellar/go/services/horizon/internal/ingest"
 	"github.com/stellar/go/xdr"
 )
 
@@ -18,7 +18,7 @@ func TestOfferActions_Show(t *testing.T) {
 
 	err := q.UpdateLastLedgerExpIngest(100)
 	ht.Assert.NoError(err)
-	err = q.UpdateExpIngestVersion(expingest.CurrentVersion)
+	err = q.UpdateExpIngestVersion(ingest.CurrentVersion)
 	ht.Assert.NoError(err)
 
 	ledgerCloseTime := time.Now().Unix()
