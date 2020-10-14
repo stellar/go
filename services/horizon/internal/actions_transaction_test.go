@@ -9,7 +9,7 @@ import (
 
 	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/services/horizon/internal/expingest"
+	"github.com/stellar/go/services/horizon/internal/ingest"
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/xdr"
 )
@@ -195,7 +195,7 @@ func TestTransactionActions_Index(t *testing.T) {
 	q := history.Q{ht.HorizonSession()}
 	err := q.UpdateLastLedgerExpIngest(100)
 	ht.Assert.NoError(err)
-	err = q.UpdateExpIngestVersion(expingest.CurrentVersion)
+	err = q.UpdateExpIngestVersion(ingest.CurrentVersion)
 	ht.Assert.NoError(err)
 
 	// checks if empty param returns 404 instead of all payments

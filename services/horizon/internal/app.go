@@ -16,8 +16,8 @@ import (
 	proto "github.com/stellar/go/protocols/stellarcore"
 	"github.com/stellar/go/services/horizon/internal/actions"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/services/horizon/internal/expingest"
 	"github.com/stellar/go/services/horizon/internal/httpx"
+	"github.com/stellar/go/services/horizon/internal/ingest"
 	"github.com/stellar/go/services/horizon/internal/ledger"
 	"github.com/stellar/go/services/horizon/internal/logmetrics"
 	"github.com/stellar/go/services/horizon/internal/operationfeestats"
@@ -59,10 +59,10 @@ type App struct {
 	cancel          func()
 	horizonVersion  string
 	coreSettings    coreSettingsStore
-	orderBookStream *expingest.OrderBookStream
+	orderBookStream *ingest.OrderBookStream
 	submitter       *txsub.System
 	paths           paths.Finder
-	expingester     expingest.System
+	ingester        ingest.System
 	reaper          *reap.System
 	ticks           *time.Ticker
 
@@ -116,10 +116,10 @@ func (a *App) Serve() {
 	// all services gracefully shutdown.
 	var wg sync.WaitGroup
 
-	if a.expingester != nil {
+	if a.ingester != nil {
 		wg.Add(1)
 		go func() {
-			a.expingester.Run()
+			a.ingester.Run()
 			wg.Done()
 		}()
 	}
@@ -155,8 +155,8 @@ func (a *App) waitForDone() {
 	defer cancel()
 	a.webServer.Shutdown(webShutdownCtx)
 	a.cancel()
-	if a.expingester != nil {
-		a.expingester.Shutdown()
+	if a.ingester != nil {
+		a.ingester.Shutdown()
 	}
 	a.ticks.Stop()
 }
@@ -175,8 +175,8 @@ func (a *App) HistoryQ() *history.Q {
 }
 
 // Ingestion returns the ingestion system associated with this Horizon instance
-func (a *App) Ingestion() expingest.System {
-	return a.expingester
+func (a *App) Ingestion() ingest.System {
+	return a.ingester
 }
 
 // HorizonSession returns a new session that loads data from the horizon
@@ -428,7 +428,7 @@ func (a *App) init() error {
 	mustInitHorizonDB(a)
 
 	if a.config.Ingest {
-		// expingester
+		// ingester
 		initExpIngester(a)
 	}
 	initPathFinder(a)

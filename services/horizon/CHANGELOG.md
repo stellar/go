@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this
 file. This project adheres to [Semantic Versioning](http://semver.org/).x
 
+## Unreleased
+
+* The `service` field emitted in ingestion logs has been changed from `expingest` to `ingest`.
+
 ## v1.10.0
 
 **After upgrading Horizon will rebuild its state. During this process (which can take several minutes) it will not ingest new ledgers.**

@@ -1,7 +1,7 @@
 package history
 
 import (
-	"github.com/stellar/go/exp/ingest/io"
+	"github.com/stellar/go/ingest/io"
 	"github.com/stretchr/testify/mock"
 )
 

@@ -14,8 +14,8 @@ import (
 	"github.com/stellar/go/services/horizon/internal/actions"
 	horizonContext "github.com/stellar/go/services/horizon/internal/context"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/services/horizon/internal/expingest"
 	"github.com/stellar/go/services/horizon/internal/httpx"
+	"github.com/stellar/go/services/horizon/internal/ingest"
 	"github.com/stellar/go/services/horizon/internal/ledger"
 	hProblem "github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/test"
@@ -183,7 +183,7 @@ func TestStateMiddleware(t *testing.T) {
 			stateInvalid:        true,
 			latestHistoryLedger: 2,
 			lastIngestedLedger:  2,
-			ingestionVersion:    expingest.CurrentVersion,
+			ingestionVersion:    ingest.CurrentVersion,
 			sseRequest:          false,
 			expectedStatus:      http.StatusInternalServerError,
 			expectTransaction:   false,
@@ -193,7 +193,7 @@ func TestStateMiddleware(t *testing.T) {
 			stateInvalid:        false,
 			latestHistoryLedger: 1,
 			lastIngestedLedger:  0,
-			ingestionVersion:    expingest.CurrentVersion,
+			ingestionVersion:    ingest.CurrentVersion,
 			sseRequest:          false,
 			expectedStatus:      hProblem.StillIngesting.Status,
 			expectTransaction:   false,
@@ -203,7 +203,7 @@ func TestStateMiddleware(t *testing.T) {
 			stateInvalid:        false,
 			latestHistoryLedger: 3,
 			lastIngestedLedger:  2,
-			ingestionVersion:    expingest.CurrentVersion,
+			ingestionVersion:    ingest.CurrentVersion,
 			sseRequest:          false,
 			expectedStatus:      hProblem.StillIngesting.Status,
 			expectTransaction:   false,
@@ -213,17 +213,17 @@ func TestStateMiddleware(t *testing.T) {
 			stateInvalid:        false,
 			latestHistoryLedger: 4,
 			lastIngestedLedger:  5,
-			ingestionVersion:    expingest.CurrentVersion,
+			ingestionVersion:    ingest.CurrentVersion,
 			sseRequest:          false,
 			expectedStatus:      hProblem.StillIngesting.Status,
 			expectTransaction:   false,
 		},
 		{
-			name:                "responds with still ingesting if version != expingest.CurrentVersion",
+			name:                "responds with still ingesting if version != ingest.CurrentVersion",
 			stateInvalid:        false,
 			latestHistoryLedger: 5,
 			lastIngestedLedger:  5,
-			ingestionVersion:    expingest.CurrentVersion - 1,
+			ingestionVersion:    ingest.CurrentVersion - 1,
 			sseRequest:          false,
 			expectedStatus:      hProblem.StillIngesting.Status,
 			expectTransaction:   false,
@@ -233,7 +233,7 @@ func TestStateMiddleware(t *testing.T) {
 			stateInvalid:        false,
 			latestHistoryLedger: 6,
 			lastIngestedLedger:  6,
-			ingestionVersion:    expingest.CurrentVersion,
+			ingestionVersion:    ingest.CurrentVersion,
 			sseRequest:          false,
 			expectedStatus:      http.StatusOK,
 			expectTransaction:   true,
@@ -243,7 +243,7 @@ func TestStateMiddleware(t *testing.T) {
 			stateInvalid:        false,
 			latestHistoryLedger: 7,
 			lastIngestedLedger:  7,
-			ingestionVersion:    expingest.CurrentVersion,
+			ingestionVersion:    ingest.CurrentVersion,
 			sseRequest:          true,
 			expectedStatus:      http.StatusOK,
 			expectTransaction:   false,
@@ -254,7 +254,7 @@ func TestStateMiddleware(t *testing.T) {
 			stateInvalid:        false,
 			latestHistoryLedger: 8,
 			lastIngestedLedger:  8,
-			ingestionVersion:    expingest.CurrentVersion,
+			ingestionVersion:    ingest.CurrentVersion,
 			sseRequest:          false,
 			expectedStatus:      http.StatusOK,
 			expectTransaction:   true,
@@ -265,7 +265,7 @@ func TestStateMiddleware(t *testing.T) {
 			stateInvalid:        true,
 			latestHistoryLedger: 9,
 			lastIngestedLedger:  9,
-			ingestionVersion:    expingest.CurrentVersion,
+			ingestionVersion:    ingest.CurrentVersion,
 			sseRequest:          false,
 			expectedStatus:      http.StatusOK,
 			expectTransaction:   true,
