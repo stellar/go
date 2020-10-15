@@ -893,11 +893,12 @@ func generateRandomNonce(n int) ([]byte, error) {
 // hosted on the service's homeDomain and ensure it matches the serverAccountID you
 // intend to pass.
 //
-// This function verifies that the home domain passed is included in the Manage Data
-// operation key and that the serverAccountID signed the challenge. If the
+// This function verifies the serverAccountID signed the challenge. If the
 // serverAccountID also matches the SIGNING_KEY included in the TOML file hosted the
 // service's homeDomain passed, malicious web services will not be able to use the
 // challenge transaction POSTed back to the authentication endpoint.
+//
+// The homeDomain field is reserved for future use and not used.
 //
 // It does not verify that the transaction has been signed by the client or
 // that any signatures other than the servers on the transaction are valid. Use
@@ -944,8 +945,8 @@ func ReadChallengeTx(challengeTx, serverAccountID, network, homeDomain string) (
 
 	// verify operation
 	operations := tx.Operations()
-	if len(operations) != 1 {
-		return tx, clientAccountID, errors.New("transaction requires a single manage_data operation")
+	if len(operations) < 1 {
+		return tx, clientAccountID, errors.New("transaction requires at least one manage_data operation")
 	}
 	op, ok := operations[0].(*ManageData)
 	if !ok {
@@ -961,11 +962,6 @@ func ReadChallengeTx(challengeTx, serverAccountID, network, homeDomain string) (
 		return tx, clientAccountID, err
 	}
 
-	// verify manage data key
-	if op.Name != homeDomain+" auth" {
-		return tx, clientAccountID, errors.New("manage data operation key does not match homeDomain passed")
-	}
-
 	// verify manage data value
 	nonceB64 := string(op.Value)
 	if len(nonceB64) != 64 {
@@ -977,6 +973,20 @@ func ReadChallengeTx(challengeTx, serverAccountID, network, homeDomain string) (
 	}
 	if len(nonceBytes) != 48 {
 		return tx, clientAccountID, errors.New("random nonce before encoding as base64 should be 48 bytes long")
+	}
+
+	// verify subsequent operations are manage data ops with source account set to server account
+	for _, op := range operations[1:] {
+		op, ok := op.(*ManageData)
+		if !ok {
+			return tx, clientAccountID, errors.New("operation type should be manage_data")
+		}
+		if op.SourceAccount == nil {
+			return tx, clientAccountID, errors.New("operation should have a source account")
+		}
+		if op.SourceAccount.GetAccountID() != serverAccountID {
+			return tx, clientAccountID, errors.New("subsequent operations are unrecognized")
+		}
 	}
 
 	err = verifyTxSignature(tx, network, serverAccountID)
@@ -996,6 +1006,8 @@ func ReadChallengeTx(challengeTx, serverAccountID, network, homeDomain string) (
 //
 // Signers that are not prefixed as an address/account ID strkey (G...) will be
 // ignored.
+//
+// The homeDomain field is reserved for future use and not used.
 //
 // Errors will be raised if:
 //  - The transaction is invalid according to ReadChallengeTx.
@@ -1036,6 +1048,8 @@ func VerifyChallengeTxThreshold(challengeTx, serverAccountID, network, homeDomai
 //
 // Signers that are not prefixed as an address/account ID strkey (G...) will be
 // ignored.
+//
+// The homeDomain field is reserved for future use and not used.
 //
 // Errors will be raised if:
 //  - The transaction is invalid according to ReadChallengeTx.
