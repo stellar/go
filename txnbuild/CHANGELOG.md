@@ -8,6 +8,10 @@ file.  This project adheres to [Semantic Versioning](http://semver.org/).
 
 * Add helper function `Transaction.ClaimableBalanceID()`, making it easier to calculate balance IDs for [claimable balances](https://developers.stellar.org/docs/glossary/claimable-balance/) without actually submitting the transaction ([#3122](https://github.com/stellar/go/pull/3122)).
 
+* Add support for SEP-10 v2.1.0.
+  * Remove verification of home domain. (Will be reintroduced and changed in a future release.)
+  * Allow additional manage data operations that have source account as the server key.
+
 ## [v4.0.1](https://github.com/stellar/go/releases/tag/horizonclient-v4.0.1) - 2020-10-02
 
 * Fixed bug in `TransactionFromXDR()` which occurs when parsing transaction XDR envelopes which contain Protocol 14 operations.
