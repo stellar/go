@@ -569,6 +569,16 @@ func (i *Test) SubmitOperations(
 func (i *Test) SubmitMultiSigOperations(
 	source txnbuild.Account, signers []*keypair.Full, ops ...txnbuild.Operation,
 ) (proto.Transaction, error) {
+	tx, err := i.CreateSignedTransaction(source, signers, ops...)
+	if err != nil {
+		return proto.Transaction{}, err
+	}
+	return i.SubmitTransaction(tx)
+}
+
+func (i *Test) CreateSignedTransaction(
+	source txnbuild.Account, signers []*keypair.Full, ops ...txnbuild.Operation,
+) (*txnbuild.Transaction, error) {
 	txParams := txnbuild.TransactionParams{
 		SourceAccount:        source,
 		Operations:           ops,
@@ -579,16 +589,20 @@ func (i *Test) SubmitMultiSigOperations(
 
 	tx, err := txnbuild.NewTransaction(txParams)
 	if err != nil {
-		return proto.Transaction{}, err
+		return nil, err
 	}
 
 	for _, signer := range signers {
 		tx, err = tx.Sign(NetworkPassphrase, signer)
 		if err != nil {
-			return proto.Transaction{}, err
+			return nil, err
 		}
 	}
 
+	return tx, nil
+}
+
+func (i *Test) SubmitTransaction(tx *txnbuild.Transaction) (proto.Transaction, error) {
 	txb64, err := tx.Base64()
 	if err != nil {
 		return proto.Transaction{}, err
