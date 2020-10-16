@@ -1,5 +1,7 @@
 package stellartoml
 
+import "net/http"
+
 // StellarTomlMaxSize is the maximum size of stellar.toml file
 const StellarTomlMaxSize = 100 * 1024
 
@@ -88,4 +90,18 @@ type Response struct {
 	Currencies					  []Currency  `toml:"CURRENCIES"`
 	// Validators
 	Validators					  []Validator `toml:"VALIDATORS"`
+}
+
+// DefaultClient is a default client using the default parameters
+var DefaultClient = &Client{HTTP: http.DefaultClient}
+
+// GetStellarToml returns stellar.toml file for a given domain
+func GetStellarToml(domain string) (*Response, error) {
+	return DefaultClient.GetStellarToml(domain)
+}
+
+// GetStellarTomlByAddress returns stellar.toml file of a domain fetched from a
+// given address
+func GetStellarTomlByAddress(addy string) (*Response, error) {
+	return DefaultClient.GetStellarTomlByAddress(addy)
 }

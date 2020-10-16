@@ -3,7 +3,6 @@ package stellartoml
 import (
 	"fmt"
 	"io"
-
 	"net/http"
 
 	"github.com/stellar/go/support/errors"
@@ -91,6 +90,3 @@ func (c *Client) url(domain string) string {
 
 	return fmt.Sprintf("%s://%s%s", scheme, domain, WellKnownPath)
 }
-
-// DefaultClient is a default client using the default parameters
-var DefaultClient = &Client{HTTP: http.DefaultClient}
