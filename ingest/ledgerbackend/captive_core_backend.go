@@ -1,6 +1,7 @@
 package ledgerbackend
 
 import (
+	"encoding/hex"
 	"io"
 	"sync"
 	"time"
@@ -228,14 +229,52 @@ func (c *CaptiveStellarCore) openOnlineReplaySubprocess(from uint32) error {
 			return errors.Wrap(err, "error creating stellar-core runner")
 		}
 	}
-	err = c.stellarCoreRunner.runFrom(from)
+
+	var runFrom uint32
+	var ledgerHash string
+	var nextLedger uint32
+
+	if (from+1)%ledgersPerCheckpoint == 0 {
+		// To start replaying ledger metadata from a checkpoint ledger
+		// (including that ledger), we need to start at the previous ledger
+		// which forces the stream to start at the first ledger in the
+		// checkpoint.
+		//
+		// If we start at the checkpoint ledger, then the first ledger metadata in the stream would be for L+1 (not L)
+		//
+		ledgerHeader, err := c.archive.GetLedgerHeader(from)
+		if err != nil {
+			return errors.Wrap(err, "error trying to read ledger header from HAS")
+		}
+		runFrom = runFrom - 1
+		ledgerHash = hex.EncodeToString(ledgerHeader.Header.PreviousLedgerHash[:])
+		nextLedger = roundDownToFirstReplayAfterCheckpointStart(runFrom)
+	} else {
+		// This is a workaround for now since we are not passing the ledger
+		// header hash.
+		//
+		// We need a way to get the hash from the previous ledger without having
+		// to rely on the history archive
+		//
+		// For now, we run stellar-core starting at the previous checkpoint
+		// ledger and then fast-forward to the desire ledger
+		//
+		//
+		runFrom = roundDownToFirstReplayAfterCheckpointStart(from) - 1
+		ledgerHeader, err := c.archive.GetLedgerHeader(runFrom)
+		if err != nil {
+			return errors.Wrap(err, "error trying to read ledger header from HAS")
+		}
+		ledgerHash = hex.EncodeToString(ledgerHeader.Hash[:])
+		nextLedger = runFrom + 1
+	}
+
+	err = c.stellarCoreRunner.runFrom(runFrom, ledgerHash)
 	if err != nil {
 		return errors.Wrap(err, "error running stellar-core")
 	}
 
-	// The next ledger should be the ledger actually requested because
-	// we run `catchup X/0` command in the online mode.
-	c.nextLedger = from
+	c.nextLedger = nextLedger
 	c.lastLedger = nil
 	c.blocking = false
 	c.processExit = false
@@ -246,6 +285,13 @@ func (c *CaptiveStellarCore) openOnlineReplaySubprocess(from uint32) error {
 	c.shutdown = make(chan struct{})
 	c.wait.Add(1)
 	go c.sendLedgerMeta(0)
+
+	// if nextLedger is behind - fast-forward until expected ledger
+	if c.nextLedger < from {
+		_, _, err := c.GetLedger(from)
+		return errors.Wrapf(err, "Error fast-forwarding to %s", from)
+	}
+
 	return nil
 }
 
