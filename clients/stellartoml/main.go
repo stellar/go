@@ -28,7 +28,7 @@ type Client struct {
 
 type ClientInterface interface {
 	GetStellarToml(domain string) (*Response, error)
-	GetStellarTomlByAddress(address string) (*Response, error)
+	GetStellarTomlByAddress(addr string) (*Response, error)
 }
 
 // DefaultClient is a default client using the default parameters
