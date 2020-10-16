@@ -7,7 +7,7 @@ import (
 
 	"github.com/stellar/go/support/errors"
 	"github.com/BurntSushi/toml"
-	StellarAddress "github.com/stellar/go/address"
+	"github.com/stellar/go/address"
 )
 
 // GetStellarToml returns stellar.toml file for a given domain
@@ -46,8 +46,8 @@ func (c *Client) GetStellarToml(domain string) (resp *Response, err error) {
 
 // GetStellarTomlByAddress returns stellar.toml file of a domain fetched from a
 // given address
-func (c *Client) GetStellarTomlByAddress(address string) (*Response, error) {
-	_, domain, err := StellarAddress.Split(address)
+func (c *Client) GetStellarTomlByAddress(addr string) (*Response, error) {
+	_, domain, err := address.Split(addr)
 	if err != nil {
 		return nil, errors.Wrap(err, "parse address failed")
 	}
