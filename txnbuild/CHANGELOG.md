@@ -3,7 +3,8 @@
 All notable changes to this project will be documented in this
 file.  This project adheres to [Semantic Versioning](http://semver.org/).
 
-## Unreleased
+## [v4.1.0](https://github.com/stellar/go/releases/tag/horizonclient-v4.1.0) - 2020-10-16
+
 * Add helper function `ParseAssetString()`, making it easier to build an `Asset` structure from a string in [canonical form](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0011.md#asset) and check its various properties ([#3105](https://github.com/stellar/go/pull/3105)).
 
 * Add helper function `Transaction.ClaimableBalanceID()`, making it easier to calculate balance IDs for [claimable balances](https://developers.stellar.org/docs/glossary/claimable-balance/) without actually submitting the transaction ([#3122](https://github.com/stellar/go/pull/3122)).
