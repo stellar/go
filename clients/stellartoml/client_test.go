@@ -1,9 +1,10 @@
 package stellartoml
 
 import (
-	"net/http"
 	"strings"
 	"testing"
+
+	"net/http"
 
 	"github.com/stellar/go/support/http/httptest"
 	"github.com/stretchr/testify/assert"
