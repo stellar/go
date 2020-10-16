@@ -121,6 +121,6 @@ func GetStellarToml(domain string) (*Response, error) {
 
 // GetStellarTomlByAddress returns stellar.toml file of a domain fetched from a
 // given address
-func GetStellarTomlByAddress(addy string) (*Response, error) {
-	return DefaultClient.GetStellarTomlByAddress(addy)
+func GetStellarTomlByAddress(addr string) (*Response, error) {
+	return DefaultClient.GetStellarTomlByAddress(addr)
 }
