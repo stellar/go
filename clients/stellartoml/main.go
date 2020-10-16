@@ -77,6 +77,8 @@ type Validator struct {
 	History     string `toml:"HISTORY"`
 }
 
+// SEP-1 commit
+// https://github.com/stellar/stellar-protocol/blob/f8993e36fa6b5b8bba1254c21c2174d250af4958/ecosystem/sep-0001.md
 type Response struct {
 	Version                       string      `toml:"VERSION"`
 	NetworkPassphrase             string      `toml:"NETWORK_PASSPHRASE"`
