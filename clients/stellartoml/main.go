@@ -9,6 +9,31 @@ const StellarTomlMaxSize = 100 * 1024
 // exist to conform to the federation protocol.
 const WellKnownPath = "/.well-known/stellar.toml"
 
+// HTTP represents the http client that a stellertoml resolver uses to make http
+// requests.
+type HTTP interface {
+	Get(url string) (*http.Response, error)
+}
+
+// Client represents a client that is capable of resolving a Stellar.toml file
+// using the internet.
+type Client struct {
+	// HTTP is the http client used when resolving a Stellar.toml file
+	HTTP HTTP
+
+	// UseHTTP forces the client to resolve against servers using plain HTTP.
+	// Useful for debugging.
+	UseHTTP bool
+}
+
+type ClientInterface interface {
+	GetStellarToml(domain string) (*Response, error)
+	GetStellarTomlByAddress(address string) (*Response, error)
+}
+
+// DefaultClient is a default client using the default parameters
+var DefaultClient = &Client{HTTP: http.DefaultClient}
+
 type Principal struct {
     Name                  string `toml:"name"`
     Email                 string `toml:"email"`
@@ -91,9 +116,6 @@ type Response struct {
     // Validators
     Validators                     []Validator `toml:"VALIDATORS"`
 }
-
-// DefaultClient is a default client using the default parameters
-var DefaultClient = &Client{HTTP: http.DefaultClient}
 
 // GetStellarToml returns stellar.toml file for a given domain
 func GetStellarToml(domain string) (*Response, error) {

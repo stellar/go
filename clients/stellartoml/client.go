@@ -10,28 +10,6 @@ import (
 	StellarAddress "github.com/stellar/go/address"
 )
 
-// HTTP represents the http client that a stellertoml resolver uses to make http
-// requests.
-type HTTP interface {
-	Get(url string) (*http.Response, error)
-}
-
-// Client represents a client that is capable of resolving a Stellar.toml file
-// using the internet.
-type Client struct {
-	// HTTP is the http client used when resolving a Stellar.toml file
-	HTTP HTTP
-
-	// UseHTTP forces the client to resolve against servers using plain HTTP.
-	// Useful for debugging.
-	UseHTTP bool
-}
-
-type ClientInterface interface {
-	GetStellarToml(domain string) (*Response, error)
-	GetStellarTomlByAddress(address string) (*Response, error)
-}
-
 // GetStellarToml returns stellar.toml file for a given domain
 func (c *Client) GetStellarToml(domain string) (resp *Response, err error) {
 	var hresp *http.Response
