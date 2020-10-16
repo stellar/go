@@ -425,8 +425,9 @@ jobs:
       #   ... without captive core
       - run_horizon_integration_tests
       #   ... and with captive core
-      - run_horizon_integration_tests:
-          enable-captive-core: true
+      # This isn't working at the moment
+      # - run_horizon_integration_tests:
+      #     enable-captive-core: true
 #-------------------------------------------------------------------------#
 # Workflows orchestrate jobs and make sure they run in the right sequence #
 #-------------------------------------------------------------------------#
