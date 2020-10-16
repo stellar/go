@@ -187,6 +187,7 @@ var ingestStressTestCmd = &cobra.Command{
 			NetworkPassphrase: config.NetworkPassphrase,
 			HistorySession:    horizonSession,
 			HistoryArchiveURL: config.HistoryArchiveURLs[0],
+			EnableCaptiveCore: config.EnableCaptiveCoreIngestion,
 		}
 
 		if config.EnableCaptiveCoreIngestion {
@@ -268,6 +269,7 @@ var ingestInitGenesisStateCmd = &cobra.Command{
 			NetworkPassphrase: config.NetworkPassphrase,
 			HistorySession:    horizonSession,
 			HistoryArchiveURL: config.HistoryArchiveURLs[0],
+			EnableCaptiveCore: config.EnableCaptiveCoreIngestion,
 		}
 
 		if config.EnableCaptiveCoreIngestion {
