@@ -5,9 +5,9 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/stellar/go/support/errors"
 	"github.com/BurntSushi/toml"
 	"github.com/stellar/go/address"
+	"github.com/stellar/go/support/errors"
 )
 
 // GetStellarToml returns stellar.toml file for a given domain

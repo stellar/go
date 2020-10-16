@@ -57,7 +57,7 @@ type Currency struct {
 	Image                       string   `toml:"image"`
 	FixedNumber                 int      `toml:"fixed_number"`
 	MaxNumber                   int      `toml:"max_number"`
-	IsUnlimited                 bool     `toml:"is_unlimited"`    
+	IsUnlimited                 bool     `toml:"is_unlimited"`
 	IsAssetAnchored             bool     `toml:"is_asset_anchored"`
 	AnchorAsset                 string   `toml:"anchor_asset"`
 	RedemptionInstructions      string   `toml:"redemption_instructions"`
@@ -78,43 +78,38 @@ type Validator struct {
 }
 
 type Response struct {
-	// General
-	Version                        string      `toml:"VERSION"`
-	NetworkPassphrase              string      `toml:"NETWORK_PASSPHRASE"`
-	FederationServer               string      `toml:"FEDERATION_SERVER"`
-	AuthServer                     string      `toml:"AUTH_SERVER"`
-	TransferServer                 string      `toml:"TRANSFER_SERVER"`
-	TransferServer0024             string      `toml:"TRANSFER_SERVER_0024"`
-	KycServer                      string      `toml:"KYC_SERVER"`
-	WebAuthEndpoint                string      `toml:"WEB_AUTH_ENDPOINT"`
-	SigningKey                     string      `toml:"SIGNING_KEY"`
-	HorizonUrl                     string      `toml:"HORIZON_URL"`
-	Accounts                       []string    `toml:"ACCOUNTS"`
-	UriRequestSigningKey           string      `toml:"URI_REQUEST_SIGNING_KEY"`
-	DirectPaymentServer            string      `toml:"DIRECT_PAYMENT_SERVER"`
-	// Organization
-	OrgName                        string      `toml:"ORG_NAME"`
-	OrgDba                         string      `toml:"ORG_DBA"`
-	OrgUrl                         string      `toml:"ORG_URL"`
-	OrgLogo                        string      `toml:"ORG_LOGO"`
-	OrgDescription                 string      `toml:"ORG_DESCRIPTION"`
-	OrgPhysicalAddress             string      `toml:"ORG_PHYSICAL_ADDRESS"`
-	OrgPhysicalAddressAttestation  string      `toml:"ORG_PHYSICAL_ADDRESS_ATTESTATION"`
-	OrgPhoneNumber                 string      `toml:"ORG_PHONE_NUMBER"`
-	OrgPhoneNumberAttestation      string      `toml:"ORG_PHONE_NUMBER_ATTESTATION"`
-	OrgKeybase                     string      `toml:"ORG_KEYBASE"`
-	OrgTwitter                     string      `toml:"ORG_TWITTER"`
-	OrgGithub                      string      `toml:"ORG_GITHUB"`
-	OrgOfficialEmail               string      `toml:"ORG_OFFICIAL_EMAIL"`
-	OrgLicensingAuthority          string      `toml:"ORG_LICENSING_AUTHORITY"`
-	OrgLicenseType                 string      `toml:"ORG_LICENSE_TYPE"`
-	OrgLicenseNumber               string      `toml:"ORG_LICENSE_NUMBER"`
- 	// Pricipals
-	Principals                     []Principal `toml:"PRINCIPALS"`
-	// Currencies
-	Currencies                     []Currency  `toml:"CURRENCIES"`
-	// Validators
-	Validators                     []Validator `toml:"VALIDATORS"`
+	Version                       string      `toml:"VERSION"`
+	NetworkPassphrase             string      `toml:"NETWORK_PASSPHRASE"`
+	FederationServer              string      `toml:"FEDERATION_SERVER"`
+	AuthServer                    string      `toml:"AUTH_SERVER"`
+	TransferServer                string      `toml:"TRANSFER_SERVER"`
+	TransferServer0024            string      `toml:"TRANSFER_SERVER_0024"`
+	KycServer                     string      `toml:"KYC_SERVER"`
+	WebAuthEndpoint               string      `toml:"WEB_AUTH_ENDPOINT"`
+	SigningKey                    string      `toml:"SIGNING_KEY"`
+	HorizonUrl                    string      `toml:"HORIZON_URL"`
+	Accounts                      []string    `toml:"ACCOUNTS"`
+	UriRequestSigningKey          string      `toml:"URI_REQUEST_SIGNING_KEY"`
+	DirectPaymentServer           string      `toml:"DIRECT_PAYMENT_SERVER"`
+	OrgName                       string      `toml:"ORG_NAME"`
+	OrgDba                        string      `toml:"ORG_DBA"`
+	OrgUrl                        string      `toml:"ORG_URL"`
+	OrgLogo                       string      `toml:"ORG_LOGO"`
+	OrgDescription                string      `toml:"ORG_DESCRIPTION"`
+	OrgPhysicalAddress            string      `toml:"ORG_PHYSICAL_ADDRESS"`
+	OrgPhysicalAddressAttestation string      `toml:"ORG_PHYSICAL_ADDRESS_ATTESTATION"`
+	OrgPhoneNumber                string      `toml:"ORG_PHONE_NUMBER"`
+	OrgPhoneNumberAttestation     string      `toml:"ORG_PHONE_NUMBER_ATTESTATION"`
+	OrgKeybase                    string      `toml:"ORG_KEYBASE"`
+	OrgTwitter                    string      `toml:"ORG_TWITTER"`
+	OrgGithub                     string      `toml:"ORG_GITHUB"`
+	OrgOfficialEmail              string      `toml:"ORG_OFFICIAL_EMAIL"`
+	OrgLicensingAuthority         string      `toml:"ORG_LICENSING_AUTHORITY"`
+	OrgLicenseType                string      `toml:"ORG_LICENSE_TYPE"`
+	OrgLicenseNumber              string      `toml:"ORG_LICENSE_NUMBER"`
+	Principals                    []Principal `toml:"PRINCIPALS"`
+	Currencies                    []Currency  `toml:"CURRENCIES"`
+	Validators                    []Validator `toml:"VALIDATORS"`
 }
 
 // GetStellarToml returns stellar.toml file for a given domain
