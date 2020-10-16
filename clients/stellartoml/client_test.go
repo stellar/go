@@ -11,12 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestDefaultClient(t *testing.T) {
-	c := DefaultClient
-	_, err := c.GetStellarToml("testanchor.stellar.org")
-	assert.Nil(t, err)
-}
-
 func TestClientURL(t *testing.T) {
 	//HACK:  we're testing an internal method rather than setting up a http client
 	//mock.
