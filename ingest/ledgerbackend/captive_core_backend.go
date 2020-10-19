@@ -231,6 +231,9 @@ func (c *CaptiveStellarCore) openOnlineReplaySubprocess(from uint32) error {
 	}
 
 	runFrom, ledgerHash, nextLedger, err := c.runFromParams(from)
+	if err != nil {
+		return errors.Wrap(err, "error calculating ledger and hash for stelar-core run")
+	}
 
 	err = c.stellarCoreRunner.runFrom(runFrom, ledgerHash)
 	if err != nil {
@@ -258,7 +261,7 @@ func (c *CaptiveStellarCore) openOnlineReplaySubprocess(from uint32) error {
 	return nil
 }
 
-// runFromParams receives a ledger and calculates the required values to call stellar-core run with --start-ledger and --start-hash
+// runFromParams receives a ledger sequence and calculates the required values to call stellar-core run with --start-ledger and --start-hash
 func (c *CaptiveStellarCore) runFromParams(from uint32) (runFrom uint32, ledgerHash string, nextLedger uint32, err error) {
 	if (from+1)%ledgersPerCheckpoint == 0 {
 		// To start replaying ledger metadata from a checkpoint ledger
@@ -268,11 +271,12 @@ func (c *CaptiveStellarCore) runFromParams(from uint32) (runFrom uint32, ledgerH
 		//
 		// If we start at the checkpoint ledger, then the first ledger metadata in the stream would be for L+1 (not L)
 		//
-		ledgerHeader, err := c.archive.GetLedgerHeader(from)
-		if err != nil {
-			return runFrom, ledgerHash, nextLedger, errors.Wrap(err, "error trying to read ledger header from HAS")
+		ledgerHeader, err2 := c.archive.GetLedgerHeader(from)
+		if err2 != nil {
+			err = errors.Wrapf(err2, "error trying to read ledger header %d from HAS", from)
+			return
 		}
-		runFrom = runFrom - 1
+		runFrom = from - 1
 		ledgerHash = hex.EncodeToString(ledgerHeader.Header.PreviousLedgerHash[:])
 		nextLedger = roundDownToFirstReplayAfterCheckpointStart(runFrom)
 	} else {
@@ -287,9 +291,10 @@ func (c *CaptiveStellarCore) runFromParams(from uint32) (runFrom uint32, ledgerH
 		//
 		//
 		runFrom = roundDownToFirstReplayAfterCheckpointStart(from) - 1
-		ledgerHeader, err := c.archive.GetLedgerHeader(runFrom)
-		if err != nil {
-			return runFrom, ledgerHash, nextLedger, errors.Wrap(err, "error trying to read ledger header from HAS")
+		ledgerHeader, err2 := c.archive.GetLedgerHeader(runFrom)
+		if err2 != nil {
+			err = errors.Wrapf(err2, "error trying to read ledger header %d from HAS", runFrom)
+			return
 		}
 		ledgerHash = hex.EncodeToString(ledgerHeader.Hash[:])
 		nextLedger = runFrom + 1
