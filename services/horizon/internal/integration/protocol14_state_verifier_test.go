@@ -14,8 +14,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestProtocol14StateVerifier(t *testing.T) {
-	itest := test.NewIntegrationTest(t, protocol14Config)
+func TestProtocol15StateVerifier(t *testing.T) {
+	itest := test.NewIntegrationTest(t, protocol15Config)
 
 	sponsored := keypair.MustRandom()
 	sponsoredSource := &txnbuild.SimpleAccount{

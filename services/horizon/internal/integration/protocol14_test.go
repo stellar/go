@@ -16,18 +16,18 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var protocol14Config = test.IntegrationConfig{ProtocolVersion: 14}
+var protocol15Config = test.IntegrationConfig{ProtocolVersion: 15}
 
-func TestProtocol14Basics(t *testing.T) {
+func TestProtocol15Basics(t *testing.T) {
 	tt := assert.New(t)
 
-	itest := test.NewIntegrationTest(t, protocol14Config)
+	itest := test.NewIntegrationTest(t, protocol15Config)
 	master := itest.Master()
 
 	root, err := itest.Client().Root()
 	tt.NoError(err)
-	tt.Equal(int32(14), root.CoreSupportedProtocolVersion)
-	tt.Equal(int32(14), root.CurrentProtocolVersion)
+	tt.Equal(int32(15), root.CoreSupportedProtocolVersion)
+	tt.Equal(int32(15), root.CurrentProtocolVersion)
 
 	// Submit a simple tx
 	op := txnbuild.Payment{
@@ -42,7 +42,7 @@ func TestProtocol14Basics(t *testing.T) {
 }
 
 func TestHappyClaimableBalances(t *testing.T) {
-	itest := test.NewIntegrationTest(t, protocol14Config)
+	itest := test.NewIntegrationTest(t, protocol15Config)
 	master, client := itest.Master(), itest.Client()
 
 	keys, accounts := itest.CreateAccounts(3, "1000")
@@ -234,7 +234,7 @@ func TestHappyClaimableBalances(t *testing.T) {
 
 // We want to ensure that users can't claim the same claimable balance twice.
 func TestDoubleClaim(t *testing.T) {
-	itest := test.NewIntegrationTest(t, protocol14Config)
+	itest := test.NewIntegrationTest(t, protocol15Config)
 	client := itest.Client()
 
 	// Create a couple of accounts to test the interactions.
@@ -294,7 +294,7 @@ func TestDoubleClaim(t *testing.T) {
 }
 
 func TestClaimableBalancePredicates(t *testing.T) {
-	itest := test.NewIntegrationTest(t, protocol14Config)
+	itest := test.NewIntegrationTest(t, protocol15Config)
 	_, client := itest.Master(), itest.Client()
 
 	// Create a couple of accounts to test the interactions.
