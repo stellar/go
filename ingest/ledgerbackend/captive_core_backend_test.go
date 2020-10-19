@@ -27,8 +27,8 @@ func (m *stellarCoreRunnerMock) catchup(from, to uint32) error {
 	return a.Error(0)
 }
 
-func (m *stellarCoreRunnerMock) runFrom(from uint32) error {
-	a := m.Called(from)
+func (m *stellarCoreRunnerMock) runFrom(from uint32, hash string) error {
+	a := m.Called(from, hash)
 	return a.Error(0)
 }
 
@@ -384,15 +384,19 @@ func TestCaptivePrepareRangeUnboundedRange_FromIsTooFarAheadOfLatestHAS(t *testi
 
 func TestCaptivePrepareRangeUnboundedRange_ErrRunFrom(t *testing.T) {
 	mockRunner := &stellarCoreRunnerMock{}
-	mockRunner.On("runFrom", uint32(65)).Return(errors.New("transient error")).Once()
+	mockRunner.On("runFrom", uint32(127), "0000000000000000000000000000000000000000000000000000000000000000").Return(errors.New("transient error")).Once()
 	mockRunner.On("close").Return(nil)
 
 	mockArchive := &historyarchive.MockArchive{}
 	mockArchive.
 		On("GetRootHAS").
 		Return(historyarchive.HistoryArchiveState{
-			CurrentLedger: uint32(64),
+			CurrentLedger: uint32(127),
 		}, nil)
+
+	mockArchive.
+		On("GetLedgerHeader", uint32(127)).
+		Return(xdr.LedgerHeaderHistoryEntry{}, nil)
 
 	captiveBackend := CaptiveStellarCore{
 		archive:           mockArchive,
@@ -400,7 +404,7 @@ func TestCaptivePrepareRangeUnboundedRange_ErrRunFrom(t *testing.T) {
 		stellarCoreRunner: mockRunner,
 	}
 
-	err := captiveBackend.PrepareRange(UnboundedRange(65))
+	err := captiveBackend.PrepareRange(UnboundedRange(128))
 	assert.EqualError(t, err, "opening subprocess: error running stellar-core: transient error")
 }
 
@@ -412,7 +416,7 @@ func TestCaptivePrepareRangeUnboundedRange_ErrClosingExistingSession(t *testing.
 	mockArchive.
 		On("GetRootHAS").
 		Return(historyarchive.HistoryArchiveState{
-			CurrentLedger: uint32(64),
+			CurrentLedger: uint32(127),
 		}, nil)
 
 	last := uint32(63)
@@ -435,7 +439,7 @@ func TestCaptivePrepareRangeUnboundedRange_ReuseSession(t *testing.T) {
 	}
 
 	mockRunner := &stellarCoreRunnerMock{}
-	mockRunner.On("runFrom", uint32(65)).Return(nil).Once()
+	mockRunner.On("runFrom", uint32(63), "0000000000000000000000000000000000000000000000000000000000000000").Return(nil).Once()
 	mockRunner.On("getMetaPipe").Return(&buf)
 	mockRunner.On("close").Return(nil)
 
@@ -445,6 +449,10 @@ func TestCaptivePrepareRangeUnboundedRange_ReuseSession(t *testing.T) {
 		Return(historyarchive.HistoryArchiveState{
 			CurrentLedger: uint32(129),
 		}, nil)
+	mockArchive.
+		On("GetLedgerHeader", uint32(63)).
+		Return(xdr.LedgerHeaderHistoryEntry{}, nil)
+
 	captiveBackend := CaptiveStellarCore{
 		archive:           mockArchive,
 		networkPassphrase: network.PublicNetworkPassphrase,
@@ -467,7 +475,7 @@ func TestGetLatestLedgerSequence(t *testing.T) {
 	}
 
 	mockRunner := &stellarCoreRunnerMock{}
-	mockRunner.On("runFrom", uint32(64)).Return(nil).Once()
+	mockRunner.On("runFrom", uint32(63), "0000000000000000000000000000000000000000000000000000000000000000").Return(nil).Once()
 	mockRunner.On("getMetaPipe").Return(&buf)
 	mockRunner.On("getProcessExitChan").Return(make(chan error))
 	mockRunner.On("close").Return(nil).Once()
@@ -478,6 +486,10 @@ func TestGetLatestLedgerSequence(t *testing.T) {
 		Return(historyarchive.HistoryArchiveState{
 			CurrentLedger: uint32(200),
 		}, nil)
+
+	mockArchive.
+		On("GetLedgerHeader", uint32(63)).
+		Return(xdr.LedgerHeaderHistoryEntry{}, nil)
 
 	captiveBackend := CaptiveStellarCore{
 		archive:           mockArchive,

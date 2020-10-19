@@ -230,44 +230,7 @@ func (c *CaptiveStellarCore) openOnlineReplaySubprocess(from uint32) error {
 		}
 	}
 
-	var runFrom uint32
-	var ledgerHash string
-	var nextLedger uint32
-
-	if (from+1)%ledgersPerCheckpoint == 0 {
-		// To start replaying ledger metadata from a checkpoint ledger
-		// (including that ledger), we need to start at the previous ledger
-		// which forces the stream to start at the first ledger in the
-		// checkpoint.
-		//
-		// If we start at the checkpoint ledger, then the first ledger metadata in the stream would be for L+1 (not L)
-		//
-		ledgerHeader, err := c.archive.GetLedgerHeader(from)
-		if err != nil {
-			return errors.Wrap(err, "error trying to read ledger header from HAS")
-		}
-		runFrom = runFrom - 1
-		ledgerHash = hex.EncodeToString(ledgerHeader.Header.PreviousLedgerHash[:])
-		nextLedger = roundDownToFirstReplayAfterCheckpointStart(runFrom)
-	} else {
-		// This is a workaround for now since we are not passing the ledger
-		// header hash.
-		//
-		// We need a way to get the hash from the previous ledger without having
-		// to rely on the history archive
-		//
-		// For now, we run stellar-core starting at the previous checkpoint
-		// ledger and then fast-forward to the desire ledger
-		//
-		//
-		runFrom = roundDownToFirstReplayAfterCheckpointStart(from) - 1
-		ledgerHeader, err := c.archive.GetLedgerHeader(runFrom)
-		if err != nil {
-			return errors.Wrap(err, "error trying to read ledger header from HAS")
-		}
-		ledgerHash = hex.EncodeToString(ledgerHeader.Hash[:])
-		nextLedger = runFrom + 1
-	}
+	runFrom, ledgerHash, nextLedger, err := c.runFromParams(from)
 
 	err = c.stellarCoreRunner.runFrom(runFrom, ledgerHash)
 	if err != nil {
@@ -289,10 +252,50 @@ func (c *CaptiveStellarCore) openOnlineReplaySubprocess(from uint32) error {
 	// if nextLedger is behind - fast-forward until expected ledger
 	if c.nextLedger < from {
 		_, _, err := c.GetLedger(from)
-		return errors.Wrapf(err, "Error fast-forwarding to %s", from)
+		return errors.Wrapf(err, "Error fast-forwarding to %d", from)
 	}
 
 	return nil
+}
+
+// runFromParams receives a ledger and calculates the required values to call stellar-core run with --start-ledger and --start-hash
+func (c *CaptiveStellarCore) runFromParams(from uint32) (runFrom uint32, ledgerHash string, nextLedger uint32, err error) {
+	if (from+1)%ledgersPerCheckpoint == 0 {
+		// To start replaying ledger metadata from a checkpoint ledger
+		// (including that ledger), we need to start at the previous ledger
+		// which forces the stream to start at the first ledger in the
+		// checkpoint.
+		//
+		// If we start at the checkpoint ledger, then the first ledger metadata in the stream would be for L+1 (not L)
+		//
+		ledgerHeader, err := c.archive.GetLedgerHeader(from)
+		if err != nil {
+			return runFrom, ledgerHash, nextLedger, errors.Wrap(err, "error trying to read ledger header from HAS")
+		}
+		runFrom = runFrom - 1
+		ledgerHash = hex.EncodeToString(ledgerHeader.Header.PreviousLedgerHash[:])
+		nextLedger = roundDownToFirstReplayAfterCheckpointStart(runFrom)
+	} else {
+		// This is a workaround for now since we are not passing the ledger
+		// header hash.
+		//
+		// We need a way to get the hash from the previous ledger without having
+		// to rely on the history archive
+		//
+		// For now, we run stellar-core starting at the previous checkpoint
+		// ledger and then fast-forward to the desire ledger
+		//
+		//
+		runFrom = roundDownToFirstReplayAfterCheckpointStart(from) - 1
+		ledgerHeader, err := c.archive.GetLedgerHeader(runFrom)
+		if err != nil {
+			return runFrom, ledgerHash, nextLedger, errors.Wrap(err, "error trying to read ledger header from HAS")
+		}
+		ledgerHash = hex.EncodeToString(ledgerHeader.Hash[:])
+		nextLedger = runFrom + 1
+	}
+
+	return
 }
 
 // sendLedgerMeta reads from the captive core pipe, decodes the ledger metadata
