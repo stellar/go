@@ -11,8 +11,9 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
+	horizon "github.com/stellar/go/services/horizon/internal"
 	"github.com/stellar/go/services/horizon/internal/db2/schema"
-	"github.com/stellar/go/services/horizon/internal/expingest"
+	"github.com/stellar/go/services/horizon/internal/ingest"
 	support "github.com/stellar/go/support/config"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
@@ -22,6 +23,15 @@ import (
 var dbCmd = &cobra.Command{
 	Use:   "db [command]",
 	Short: "commands to manage horizon's postgres db",
+}
+
+var dbURLConfigOption = support.ConfigOption{
+	Name:      "db-url",
+	EnvVar:    "DATABASE_URL",
+	ConfigKey: &config.DatabaseURL,
+	OptType:   types.String,
+	Required:  true,
+	Usage:     "horizon postgres database to connect with",
 }
 
 var dbInitCmd = &cobra.Command{
@@ -79,13 +89,12 @@ var dbMigrateCmd = &cobra.Command{
 		dbURLConfigOption.Require()
 		dbURLConfigOption.SetValue()
 
-		db, err := sql.Open("postgres", viper.GetString("db-url"))
+		dbConn, err := db.Open("postgres", viper.GetString("db-url"))
 		if err != nil {
 			log.Fatal(err)
 		}
-		pingDB(db)
 
-		numMigrationsRun, err := schema.Migrate(db, dir, count)
+		numMigrationsRun, err := schema.Migrate(dbConn.DB.DB, dir, count)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -103,7 +112,7 @@ var dbReapCmd = &cobra.Command{
 	Short: "reaps (i.e. removes) any reapable history data",
 	Long:  "reap removes any historical data that is earlier than the configured retention cutoff",
 	Run: func(cmd *cobra.Command, args []string) {
-		app := initApp()
+		app := horizon.NewAppFromFlags(config, flags)
 		app.UpdateLedgerState()
 		err := app.DeleteUnretainedHistory()
 		if err != nil {
@@ -202,27 +211,27 @@ var dbReingestRangeCmd = &cobra.Command{
 			argsInt32[i] = uint32(seq)
 		}
 
-		initRootConfig()
+		horizon.ApplyFlags(config, flags)
 
 		horizonSession, err := db.Open("postgres", config.DatabaseURL)
 		if err != nil {
 			log.Fatalf("cannot open Horizon DB: %v", err)
 		}
 
-		ingestConfig := expingest.Config{
+		ingestConfig := ingest.Config{
 			NetworkPassphrase:           config.NetworkPassphrase,
 			HistorySession:              horizonSession,
 			HistoryArchiveURL:           config.HistoryArchiveURLs[0],
 			MaxReingestRetries:          int(retries),
 			ReingestRetryBackoffSeconds: int(retryBackoffSeconds),
+			EnableCaptiveCore:           config.EnableCaptiveCoreIngestion,
+			StellarCoreBinaryPath:       config.StellarCoreBinaryPath,
+			RemoteCaptiveCoreURL:        config.RemoteCaptiveCoreURL,
 		}
 
-		if config.EnableCaptiveCoreIngestion {
-			ingestConfig.StellarCoreBinaryPath = config.StellarCoreBinaryPath
-			ingestConfig.RemoteCaptiveCoreURL = config.RemoteCaptiveCoreURL
-		} else {
+		if !ingestConfig.EnableCaptiveCore {
 			if config.StellarCoreDatabaseURL == "" {
-				log.Fatalf("flag --%s cannot be empty", stellarCoreDBURLFlagName)
+				log.Fatalf("flag --%s cannot be empty", horizon.StellarCoreDBURLFlagName)
 			}
 			coreSession, dbErr := db.Open("postgres", config.StellarCoreDatabaseURL)
 			if dbErr != nil {
@@ -232,7 +241,7 @@ var dbReingestRangeCmd = &cobra.Command{
 		}
 
 		if parallelWorkers < 2 {
-			system, systemErr := expingest.NewSystem(ingestConfig)
+			system, systemErr := ingest.NewSystem(ingestConfig)
 			if systemErr != nil {
 				log.Fatal(systemErr)
 			}
@@ -243,7 +252,7 @@ var dbReingestRangeCmd = &cobra.Command{
 				reingestForce,
 			)
 		} else {
-			system, systemErr := expingest.NewParallelSystems(ingestConfig, parallelWorkers)
+			system, systemErr := ingest.NewParallelSystems(ingestConfig, parallelWorkers)
 			if systemErr != nil {
 				log.Fatal(systemErr)
 			}
@@ -260,7 +269,7 @@ var dbReingestRangeCmd = &cobra.Command{
 			return
 		}
 
-		if errors.Cause(err) == expingest.ErrReingestRangeConflict {
+		if errors.Cause(err) == ingest.ErrReingestRangeConflict {
 			message := `
 			The range you have provided overlaps with Horizon's most recently ingested ledger.
 			It is not possible to run the reingest command on this range in parallel with

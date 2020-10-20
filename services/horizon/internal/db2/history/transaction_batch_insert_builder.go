@@ -12,7 +12,7 @@ import (
 
 	"github.com/guregu/null"
 	"github.com/lib/pq"
-	"github.com/stellar/go/exp/ingest/io"
+	"github.com/stellar/go/ingest/io"
 	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/services/horizon/internal/utf8"
 	"github.com/stellar/go/support/db"

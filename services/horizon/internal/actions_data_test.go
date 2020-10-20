@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/services/horizon/internal/expingest"
+	"github.com/stellar/go/services/horizon/internal/ingest"
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/xdr"
 )
@@ -55,7 +55,7 @@ func TestDataActions_Show(t *testing.T) {
 	// Makes StateMiddleware happy
 	err := q.UpdateLastLedgerExpIngest(100)
 	ht.Assert.NoError(err)
-	err = q.UpdateExpIngestVersion(expingest.CurrentVersion)
+	err = q.UpdateExpIngestVersion(ingest.CurrentVersion)
 	ht.Assert.NoError(err)
 	_, err = q.InsertLedger(xdr.LedgerHeaderHistoryEntry{
 		Header: xdr.LedgerHeader{

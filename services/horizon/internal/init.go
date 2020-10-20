@@ -9,7 +9,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stellar/go/exp/orderbook"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/services/horizon/internal/expingest"
+	"github.com/stellar/go/services/horizon/internal/ingest"
 	"github.com/stellar/go/services/horizon/internal/ledger"
 	"github.com/stellar/go/services/horizon/internal/simplepath"
 	"github.com/stellar/go/services/horizon/internal/txsub"
@@ -33,13 +33,13 @@ func mustInitHorizonDB(app *App) {
 	maxIdle := app.config.HorizonDBMaxIdleConnections
 	maxOpen := app.config.HorizonDBMaxOpenConnections
 	if app.config.Ingest {
-		maxIdle -= expingest.MaxDBConnections
-		maxOpen -= expingest.MaxDBConnections
+		maxIdle -= ingest.MaxDBConnections
+		maxOpen -= ingest.MaxDBConnections
 		if maxIdle <= 0 {
-			log.Fatalf("max idle connections to horizon db must be greater than %d", expingest.MaxDBConnections)
+			log.Fatalf("max idle connections to horizon db must be greater than %d", ingest.MaxDBConnections)
 		}
 		if maxOpen <= 0 {
-			log.Fatalf("max open connections to horizon db must be greater than %d", expingest.MaxDBConnections)
+			log.Fatalf("max open connections to horizon db must be greater than %d", ingest.MaxDBConnections)
 		}
 	}
 
@@ -52,12 +52,12 @@ func mustInitHorizonDB(app *App) {
 
 func initExpIngester(app *App) {
 	var err error
-	app.expingester, err = expingest.NewSystem(expingest.Config{
+	app.ingester, err = ingest.NewSystem(ingest.Config{
 		CoreSession: mustNewDBSession(
-			app.config.StellarCoreDatabaseURL, expingest.MaxDBConnections, expingest.MaxDBConnections,
+			app.config.StellarCoreDatabaseURL, ingest.MaxDBConnections, ingest.MaxDBConnections,
 		),
 		HistorySession: mustNewDBSession(
-			app.config.DatabaseURL, expingest.MaxDBConnections, expingest.MaxDBConnections,
+			app.config.DatabaseURL, ingest.MaxDBConnections, ingest.MaxDBConnections,
 		),
 		NetworkPassphrase: app.config.NetworkPassphrase,
 		// TODO:
@@ -69,6 +69,7 @@ func initExpIngester(app *App) {
 		StellarCoreBinaryPath:    app.config.StellarCoreBinaryPath,
 		StellarCoreConfigPath:    app.config.StellarCoreConfigPath,
 		RemoteCaptiveCoreURL:     app.config.RemoteCaptiveCoreURL,
+		EnableCaptiveCore:        app.config.EnableCaptiveCoreIngestion,
 		DisableStateVerification: app.config.IngestDisableStateVerification,
 	})
 
@@ -79,7 +80,7 @@ func initExpIngester(app *App) {
 
 func initPathFinder(app *App) {
 	orderBookGraph := orderbook.NewOrderBookGraph()
-	app.orderBookStream = expingest.NewOrderBookStream(
+	app.orderBookStream = ingest.NewOrderBookStream(
 		&history.Q{app.HorizonSession(app.ctx)},
 		orderBookGraph,
 	)
@@ -233,14 +234,14 @@ func initProcessMetrics(app *App) {
 // initIngestMetrics registers the metrics for the ingestion into the provided
 // app's metrics registry.
 func initIngestMetrics(app *App) {
-	if app.expingester == nil {
+	if app.ingester == nil {
 		return
 	}
 
 	app.ingestingGauge.Inc()
-	app.prometheusRegistry.MustRegister(app.expingester.Metrics().LedgerIngestionDuration)
-	app.prometheusRegistry.MustRegister(app.expingester.Metrics().StateVerifyDuration)
-	app.prometheusRegistry.MustRegister(app.expingester.Metrics().StateInvalidGauge)
+	app.prometheusRegistry.MustRegister(app.ingester.Metrics().LedgerIngestionDuration)
+	app.prometheusRegistry.MustRegister(app.ingester.Metrics().StateVerifyDuration)
+	app.prometheusRegistry.MustRegister(app.ingester.Metrics().StateInvalidGauge)
 }
 
 func initTxSubMetrics(app *App) {

@@ -9,8 +9,9 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/stellar/go/historyarchive"
+	horizon "github.com/stellar/go/services/horizon/internal"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/services/horizon/internal/expingest"
+	"github.com/stellar/go/services/horizon/internal/ingest"
 	support "github.com/stellar/go/support/config"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/log"
@@ -69,7 +70,7 @@ var ingestVerifyRangeCmd = &cobra.Command{
 			co.SetValue()
 		}
 
-		initRootConfig()
+		horizon.ApplyFlags(config, flags)
 
 		if ingestVerifyDebugServerPort != 0 {
 			go func() {
@@ -97,17 +98,18 @@ var ingestVerifyRangeCmd = &cobra.Command{
 			log.Fatal("`--to` must be a checkpoint ledger when `--verify-state` is set.")
 		}
 
-		ingestConfig := expingest.Config{
-			NetworkPassphrase: config.NetworkPassphrase,
-			HistorySession:    horizonSession,
-			HistoryArchiveURL: config.HistoryArchiveURLs[0],
+		ingestConfig := ingest.Config{
+			NetworkPassphrase:     config.NetworkPassphrase,
+			HistorySession:        horizonSession,
+			HistoryArchiveURL:     config.HistoryArchiveURLs[0],
+			EnableCaptiveCore:     config.EnableCaptiveCoreIngestion,
+			StellarCoreBinaryPath: config.StellarCoreBinaryPath,
+			RemoteCaptiveCoreURL:  config.RemoteCaptiveCoreURL,
 		}
-		if config.EnableCaptiveCoreIngestion {
-			ingestConfig.StellarCoreBinaryPath = config.StellarCoreBinaryPath
-			ingestConfig.RemoteCaptiveCoreURL = config.RemoteCaptiveCoreURL
-		} else {
+
+		if !ingestConfig.EnableCaptiveCore {
 			if config.StellarCoreDatabaseURL == "" {
-				log.Fatalf("flag --%s cannot be empty", stellarCoreDBURLFlagName)
+				log.Fatalf("flag --%s cannot be empty", horizon.StellarCoreDBURLFlagName)
 			}
 
 			coreSession, dbErr := db.Open("postgres", config.StellarCoreDatabaseURL)
@@ -117,7 +119,7 @@ var ingestVerifyRangeCmd = &cobra.Command{
 			ingestConfig.CoreSession = coreSession
 		}
 
-		system, err := expingest.NewSystem(ingestConfig)
+		system, err := ingest.NewSystem(ingestConfig)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -166,7 +168,7 @@ var ingestStressTestCmd = &cobra.Command{
 			co.SetValue()
 		}
 
-		initRootConfig()
+		horizon.ApplyFlags(config, flags)
 
 		horizonSession, err := db.Open("postgres", config.DatabaseURL)
 		if err != nil {
@@ -181,10 +183,11 @@ var ingestStressTestCmd = &cobra.Command{
 			log.Fatal("`--changes` must be positive")
 		}
 
-		ingestConfig := expingest.Config{
+		ingestConfig := ingest.Config{
 			NetworkPassphrase: config.NetworkPassphrase,
 			HistorySession:    horizonSession,
 			HistoryArchiveURL: config.HistoryArchiveURLs[0],
+			EnableCaptiveCore: config.EnableCaptiveCoreIngestion,
 		}
 
 		if config.EnableCaptiveCoreIngestion {
@@ -192,7 +195,7 @@ var ingestStressTestCmd = &cobra.Command{
 			ingestConfig.RemoteCaptiveCoreURL = config.RemoteCaptiveCoreURL
 		} else {
 			if config.StellarCoreDatabaseURL == "" {
-				log.Fatalf("flag --%s cannot be empty", stellarCoreDBURLFlagName)
+				log.Fatalf("flag --%s cannot be empty", horizon.StellarCoreDBURLFlagName)
 			}
 
 			coreSession, dbErr := db.Open("postgres", config.StellarCoreDatabaseURL)
@@ -202,7 +205,7 @@ var ingestStressTestCmd = &cobra.Command{
 			ingestConfig.CoreSession = coreSession
 		}
 
-		system, err := expingest.NewSystem(ingestConfig)
+		system, err := ingest.NewSystem(ingestConfig)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -223,7 +226,7 @@ var ingestTriggerStateRebuildCmd = &cobra.Command{
 	Use:   "trigger-state-rebuild",
 	Short: "updates a database to trigger state rebuild, state will be rebuilt by a running Horizon instance, DO NOT RUN production DB, some endpoints will be unavailable until state is rebuilt",
 	Run: func(cmd *cobra.Command, args []string) {
-		initRootConfig()
+		horizon.ApplyFlags(config, flags)
 
 		horizonSession, err := db.Open("postgres", config.DatabaseURL)
 		if err != nil {
@@ -244,7 +247,7 @@ var ingestInitGenesisStateCmd = &cobra.Command{
 	Use:   "init-genesis-state",
 	Short: "ingests genesis state (ledger 1)",
 	Run: func(cmd *cobra.Command, args []string) {
-		initRootConfig()
+		horizon.ApplyFlags(config, flags)
 
 		horizonSession, err := db.Open("postgres", config.DatabaseURL)
 		if err != nil {
@@ -262,17 +265,18 @@ var ingestInitGenesisStateCmd = &cobra.Command{
 			log.Fatalf("cannot run on non-empty DB")
 		}
 
-		ingestConfig := expingest.Config{
+		ingestConfig := ingest.Config{
 			NetworkPassphrase: config.NetworkPassphrase,
 			HistorySession:    horizonSession,
 			HistoryArchiveURL: config.HistoryArchiveURLs[0],
+			EnableCaptiveCore: config.EnableCaptiveCoreIngestion,
 		}
 
 		if config.EnableCaptiveCoreIngestion {
 			ingestConfig.StellarCoreBinaryPath = config.StellarCoreBinaryPath
 		} else {
 			if config.StellarCoreDatabaseURL == "" {
-				log.Fatalf("flag --%s cannot be empty", stellarCoreDBURLFlagName)
+				log.Fatalf("flag --%s cannot be empty", horizon.StellarCoreDBURLFlagName)
 			}
 
 			coreSession, dbErr := db.Open("postgres", config.StellarCoreDatabaseURL)
@@ -282,7 +286,7 @@ var ingestInitGenesisStateCmd = &cobra.Command{
 			ingestConfig.CoreSession = coreSession
 		}
 
-		system, err := expingest.NewSystem(ingestConfig)
+		system, err := ingest.NewSystem(ingestConfig)
 		if err != nil {
 			log.Fatal(err)
 		}

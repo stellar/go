@@ -8,14 +8,14 @@ import (
 	sdk "github.com/stellar/go/clients/horizonclient"
 	hEffects "github.com/stellar/go/protocols/horizon/effects"
 	"github.com/stellar/go/protocols/horizon/operations"
-	"github.com/stellar/go/services/horizon/internal/test"
+	"github.com/stellar/go/services/horizon/internal/test/integration"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stellar/go/xdr"
 )
 
 func TestClaimableBalanceCreationOperationsAndEffects(t *testing.T) {
 	tt := assert.New(t)
-	itest := test.NewIntegrationTest(t, protocol15Config)
+	itest := integration.NewTest(t, protocol15Config)
 	master := itest.Master()
 
 	t.Run("Successful", func(t *testing.T) {

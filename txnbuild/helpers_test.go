@@ -1,6 +1,7 @@
 package txnbuild
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stellar/go/keypair"
@@ -351,4 +352,58 @@ func TestValidateOfferManageSellOffer(t *testing.T) {
 	assert.Error(t, err)
 	expectedErrMsg := "Field: OfferID, Error: amount can not be negative"
 	require.EqualError(t, err, expectedErrMsg, "valid offerID is required")
+}
+
+func TestAssetStringParsing(t *testing.T) {
+	kp0 := newKeypair0()
+	cred4 := CreditAsset{Code: "ABCD", Issuer: kp0.Address()}
+	xdr, err := cred4.ToXDR()
+	assert.NoError(t, err)
+	cred4String := xdr.StringCanonical()
+
+	kp1 := newKeypair1()
+	cred12 := CreditAsset{Code: "ABCD1234EFGH", Issuer: kp1.Address()}
+	xdr, err = cred12.ToXDR()
+	assert.NoError(t, err)
+	cred12String := xdr.StringCanonical()
+
+	native := NativeAsset{}
+	xdr, err = native.ToXDR()
+	assert.NoError(t, err)
+	nativeString := xdr.StringCanonical()
+
+	assets := make([]Asset, 3)
+	for i, input := range []string{nativeString, cred4String, cred12String} {
+		actual, innerErr := ParseAssetString(input)
+		assert.NoError(t, innerErr)
+		assets[i] = actual
+	}
+
+	compareAssets := func(expected Asset, actual Asset) bool {
+		expXdr, innerErr := expected.ToXDR()
+		if innerErr != nil {
+			return false
+		}
+
+		actXdr, innerErr := actual.ToXDR()
+		if innerErr != nil {
+			return false
+		}
+
+		return expXdr.Equals(actXdr)
+	}
+
+	assert.True(t, compareAssets(native, assets[0]))
+	assert.True(t, compareAssets(cred4, assets[1]))
+	assert.True(t, compareAssets(cred12, assets[2]))
+
+	// Now sanity-check some basic error cases
+
+	result, err := ParseAssetString("erroneous:maximus")
+	assert.Error(t, err)
+	assert.Equal(t, nil, result)
+
+	result, err = ParseAssetString(fmt.Sprintf("ABCD:%s,EFGH:%s", kp0.Address(), kp1.Address()))
+	assert.Error(t, err)
+	assert.Equal(t, nil, result)
 }
