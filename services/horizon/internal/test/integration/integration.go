@@ -85,13 +85,6 @@ func NewTest(t *testing.T, config Config) *Test {
 		t.Fatal(errors.Wrap(err, "error creating docker client"))
 	}
 
-	startingDir, err := os.Getwd()
-	fatalIf(t, err)
-	defer func() {
-		os.Chdir(startingDir)
-	}()
-	i.t.Log("Started in", startingDir)
-
 	// Lets you check if a particular directory contains a file.
 	directoryContains := func(root string, needle string) bool {
 		files, innerErr := ioutil.ReadDir(root)
@@ -120,12 +113,8 @@ func NewTest(t *testing.T, config Config) *Test {
 	}
 
 	// Jump straight down to the directory containing the docker compose files
-	i.t.Log("Jumping to", current)
-	err = os.Chdir(path.Join(current, "./services/horizon/docker"))
-	fatalIf(t, err)
-
-	baseYaml := path.Join("", "docker-compose.yml")
-	standaloneYaml := path.Join("", "docker-compose.standalone.yml")
+	baseYaml := path.Join(current, "services/horizon/docker", "docker-compose.yml")
+	standaloneYaml := path.Join(current, "services/horizon/docker", "docker-compose.standalone.yml")
 
 	runComposeCommand := func(args ...string) {
 		cmdline := append([]string{"-f", baseYaml, "-f", standaloneYaml}, args...)
@@ -149,7 +138,7 @@ func NewTest(t *testing.T, config Config) *Test {
 	// Do we actually want to stop horizon-postgres? It might be better/cleaner
 	// to expect nothing from the executor of the test suite, preferring to keep
 	// as much self-contained as possible.
-	runComposeCommand("stop", "horizon horizon-postgres")
+	runComposeCommand("stop", "horizon", "horizon-postgres")
 
 	// only use horizon from quickstart container when testing captive core
 	// FIXME
