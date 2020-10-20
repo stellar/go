@@ -18,7 +18,7 @@ import (
 
 type stellarCoreRunnerInterface interface {
 	catchup(from, to uint32) error
-	runFrom(from uint32) error
+	runFrom(from uint32, hash string) error
 	getMetaPipe() io.Reader
 	getProcessExitChan() <-chan error
 	close() error
@@ -183,19 +183,13 @@ func (r *stellarCoreRunner) catchup(from, to uint32) error {
 	return nil
 }
 
-func (r *stellarCoreRunner) runFrom(from uint32) error {
+func (r *stellarCoreRunner) runFrom(from uint32, hash string) error {
 	var err error
-	if err = r.runCmd("new-db"); err != nil {
-		return errors.Wrap(err, "error waiting for `stellar-core new-db` subprocess")
-	}
-
-	// catchup to `from` ledger
-	if err = r.runCmd("catchup", fmt.Sprintf("%d/0", from-1)); err != nil {
-		return errors.Wrap(err, "error running `stellar-core catchup` subprocess")
-	}
-
 	r.cmd, err = r.createCmd(
 		"run",
+		"--in-memory",
+		"--start-at-ledger", fmt.Sprintf("%d", from),
+		"--start-at-hash", hash,
 		"--metadata-output-stream", r.getPipeName(),
 	)
 	if err != nil {
