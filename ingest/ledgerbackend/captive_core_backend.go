@@ -263,7 +263,7 @@ func (c *CaptiveStellarCore) openOnlineReplaySubprocess(from uint32) error {
 
 // runFromParams receives a ledger sequence and calculates the required values to call stellar-core run with --start-ledger and --start-hash
 func (c *CaptiveStellarCore) runFromParams(from uint32) (runFrom uint32, ledgerHash string, nextLedger uint32, err error) {
-	if (from+1)%ledgersPerCheckpoint == 0 {
+	if historyarchive.IsCheckpoint(from) {
 		// To start replaying ledger metadata from a checkpoint ledger
 		// (including that ledger), we need to start at the previous ledger
 		// which forces the stream to start at the first ledger in the
