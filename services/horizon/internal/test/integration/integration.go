@@ -90,9 +90,9 @@ func NewTest(t *testing.T, config Config) *Test {
 	defer func() {
 		os.Chdir(startingDir)
 	}()
+	i.t.Log("Started in", startingDir)
 
 	// Lets you check if a particular directory contains a file.
-	i.t.Log("Started in", startingDir)
 	directoryContains := func(root string, needle string) bool {
 		files, innerErr := ioutil.ReadDir(root)
 		fatalIf(t, innerErr)
@@ -106,7 +106,8 @@ func NewTest(t *testing.T, config Config) *Test {
 		return false
 	}
 
-	// Walk up to the root directory by continually checking for "go.mod".
+	// Walk up the tree until we find "go.mod", which we treat as the root
+	// directory of the project.
 	current, err := os.Getwd()
 	fatalIf(t, err)
 	for !directoryContains(current, "go.mod") {
@@ -118,7 +119,7 @@ func NewTest(t *testing.T, config Config) *Test {
 		}
 	}
 
-	// Jump down to the directory containing the docker compose files
+	// Jump straight down to the directory containing the docker compose files
 	i.t.Log("Jumping to", current)
 	err = os.Chdir(path.Join(current, "./services/horizon/docker"))
 	fatalIf(t, err)
@@ -130,6 +131,7 @@ func NewTest(t *testing.T, config Config) *Test {
 		cmdline := append([]string{"-f", baseYaml, "-f", standaloneYaml}, args...)
 		t.Log("Running", cmdline)
 		cmd := exec.Command("docker-compose", cmdline...)
+		// The networking mode on Docker for Linux is different.
 		if runtime.GOOS == "linux" {
 			cmd.Env = os.Environ()
 			cmd.Env = append(cmd.Env, "NETWORK_MODE=host")
@@ -138,13 +140,19 @@ func NewTest(t *testing.T, config Config) *Test {
 		fatalIf(t, innerErr)
 	}
 
+	// Maybe we don't want to do this "hard" cleanup?
 	runComposeCommand("stop")
 	runComposeCommand("rm", "-f")
+
 	runComposeCommand("up", "--detach", "--quiet-pull", "--no-color", "--build")
-	runComposeCommand("stop", "horizon")
-	runComposeCommand("stop", "horizon-postgres")
+
+	// Do we actually want to stop horizon-postgres? It might be better/cleaner
+	// to expect nothing from the executor of the test suite, preferring to keep
+	// as much self-contained as possible.
+	runComposeCommand("stop", "horizon horizon-postgres")
 
 	// only use horizon from quickstart container when testing captive core
+	// FIXME
 	// if os.Getenv("HORIZON_INTEGRATION_ENABLE_CAPTIVE_CORE") == "" {
 	i.startHorizon()
 	// }
@@ -182,6 +190,9 @@ of accounts, subscribe to event streams and more.`,
 			i.app = horizon.NewAppFromFlags(config, configOpts)
 		},
 	}
+
+	// Ideally, we'd pull the host/port information from the Docker Compose YAML
+	// file itself.
 	cmd.SetArgs([]string{
 		"--stellar-core-url",
 		fmt.Sprintf("http://host.docker.internal:%s", stellarCorePort.Port()),
