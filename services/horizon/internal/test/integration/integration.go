@@ -1,14 +1,15 @@
 package integration
 
 import (
-	"archive/tar"
-	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"os/signal"
+	"path"
+	"path/filepath"
+	"runtime"
 	"strconv"
 	"syscall"
 	"testing"
@@ -16,7 +17,6 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
 	"github.com/spf13/cobra"
@@ -34,13 +34,13 @@ import (
 
 const (
 	NetworkPassphrase           = "Standalone Network ; February 2017"
-	stellarCorePostgresPassword = "integration-tests-password"
+	stellarCorePostgresPassword = "mysecretpassword"
 	adminPort                   = 6060
 )
 
 var (
 	stellarCorePort         = mustPort("tcp", "11626")
-	stellarCorePostgresPort = mustPort("tcp", "5432")
+	stellarCorePostgresPort = mustPort("tcp", "5641")
 	historyArchivePort      = mustPort("tcp", "1570")
 )
 
@@ -78,77 +78,77 @@ func NewTest(t *testing.T, config Config) *Test {
 		t.Skip("skipping integration test")
 	}
 
-	i := &Test{t: t, config: config}
-
 	var err error
+	i := &Test{t: t, config: config}
 	i.cli, err = client.NewEnvClient()
 	if err != nil {
 		t.Fatal(errors.Wrap(err, "error creating docker client"))
 	}
 
-	image := "stellar/quickstart:testing"
-	skipCreation := os.Getenv("HORIZON_SKIP_CREATION") != ""
+	startingDir, err := os.Getwd()
+	fatalIf(t, err)
+	defer func() {
+		os.Chdir(startingDir)
+	}()
 
-	if skipCreation {
-		t.Log("Trying to skip container creation...")
-		containers, _ := i.cli.ContainerList(
-			context.Background(),
-			types.ContainerListOptions{All: true, Quiet: true})
+	// Lets you check if a particular directory contains a file.
+	i.t.Log("Started in", startingDir)
+	directoryContains := func(root string, needle string) bool {
+		files, err := ioutil.ReadDir(root)
+		fatalIf(t, err)
 
-		for _, container := range containers {
-			if container.Image == image {
-				i.container.ID = container.ID
-				break
+		for _, file := range files {
+			if file.Name() == needle {
+				return true
 			}
 		}
 
-		if i.container.ID != "" {
-			t.Logf("Found matching container: %s\n", i.container.ID)
-		} else {
-			t.Log("No matching container found.")
-			os.Unsetenv("HORIZON_SKIP_CREATION")
-			skipCreation = false
+		return false
+	}
+
+	// Walk up to the root directory by continually checking for "go.mod".
+	current, err := os.Getwd()
+	fatalIf(t, err)
+	for !directoryContains(current, "go.mod") {
+		current, err = filepath.Abs(path.Join(current, ".."))
+		fatalIf(t, err)
+
+		if filepath.Base(current)[0] == filepath.Separator {
+			i.t.Fatal("Unable to find root project directory.")
 		}
 	}
 
-	if !skipCreation {
-		err = createTestContainer(i, image)
-		if err != nil {
-			t.Fatal(errors.Wrap(err, "error creating docker container"))
+	// Jump down to the directory containing the docker compose files
+	i.t.Log("Jumping to", current)
+	err = os.Chdir(path.Join(current, "./services/horizon/docker"))
+	fatalIf(t, err)
+
+	baseYaml := path.Join("", "docker-compose.yml")
+	standaloneYaml := path.Join("", "docker-compose.standalone.yml")
+
+	runComposeCommand := func(args ...string) {
+		cmdline := append([]string{"-f", baseYaml, "-f", standaloneYaml}, args...)
+		t.Log("Running", cmdline)
+		cmd := exec.Command("docker-compose", cmdline...)
+		if runtime.GOOS == "linux" {
+			cmd.Env = os.Environ()
+			cmd.Env = append(cmd.Env, "NETWORK_MODE=host")
 		}
+		_, innerErr := cmd.Output()
+		fatalIf(t, innerErr)
 	}
 
-	// At this point, any of the following actions failing will cause the dead
-	// container to stick around, failing any subsequent tests. Thus, we track a
-	// flag to determine whether or not we should do this.
-	doCleanup := true
-	cleanup := func() {
-		if doCleanup {
-			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-			defer cancel()
-			i.cli.ContainerRemove(
-				ctx, i.container.ID,
-				types.ContainerRemoveOptions{Force: true})
-		}
-	}
-	defer cleanup()
-
-	i.setupHorizonBinary()
-
-	t.Log("Starting container...")
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-	err = i.cli.ContainerStart(ctx, i.container.ID, types.ContainerStartOptions{})
-	if err != nil {
-		t.Fatal(errors.Wrap(err, "error starting docker container"))
-	}
+	runComposeCommand("stop")
+	runComposeCommand("rm", "-f")
+	runComposeCommand("up", "--detach", "--quiet-pull", "--no-color", "--build")
+	runComposeCommand("stop", "horizon")
+	runComposeCommand("stop", "horizon-postgres")
 
 	// only use horizon from quickstart container when testing captive core
-	if os.Getenv("HORIZON_INTEGRATION_ENABLE_CAPTIVE_CORE") == "" {
-		i.startHorizon()
-	}
+	// if os.Getenv("HORIZON_INTEGRATION_ENABLE_CAPTIVE_CORE") == "" {
+	i.startHorizon()
+	// }
 
-	doCleanup = false
 	i.hclient = &sdk.Client{HorizonURL: "http://localhost:8000"}
 
 	// Register cleanup handlers (on panic and ctrl+c) so the container is
@@ -158,6 +158,7 @@ func NewTest(t *testing.T, config Config) *Test {
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-c
+		runComposeCommand("stop")
 		i.Close()
 		os.Exit(0)
 	}()
@@ -166,99 +167,45 @@ func NewTest(t *testing.T, config Config) *Test {
 	return i
 }
 
-func (i *Test) setupHorizonBinary() {
-	// only use horizon from quickstart container when testing captive core
-	if os.Getenv("HORIZON_INTEGRATION_ENABLE_CAPTIVE_CORE") == "" {
-		return
-	}
-
-	if os.Getenv("HORIZON_BIN_DIR") == "" {
-		i.t.Fatal("HORIZON_BIN_DIR env variable not set")
-	}
-
-	horizonBinaryContents, err := ioutil.ReadFile(os.Getenv("HORIZON_BIN_DIR") + "/horizon")
-	if err != nil {
-		i.t.Fatal(errors.Wrap(err, "error reading horizon binary file"))
-	}
-
-	// Create a tar archive with horizon binary (required by docker API).
-	var buf bytes.Buffer
-	tw := tar.NewWriter(&buf)
-	hdr := &tar.Header{
-		Name: "stellar-horizon",
-		Mode: 0755,
-		Size: int64(len(horizonBinaryContents)),
-	}
-	if err = tw.WriteHeader(hdr); err != nil {
-		i.t.Fatal(errors.Wrap(err, "error writing tar header"))
-	}
-	if _, err = tw.Write(horizonBinaryContents); err != nil {
-		i.t.Fatal(errors.Wrap(err, "error writing tar contents"))
-	}
-	if err = tw.Close(); err != nil {
-		i.t.Fatal(errors.Wrap(err, "error closing tar archive"))
-	}
-
-	i.t.Log("Copying custom horizon binary...")
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	err = i.cli.CopyToContainer(ctx, i.container.ID, "/usr/bin/", &buf, types.CopyToContainerOptions{})
-	if err != nil {
-		i.t.Fatal(errors.Wrap(err, "error copying custom horizon binary"))
-	}
-}
-
 func (i *Test) startHorizon() {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	info, err := i.cli.ContainerInspect(ctx, i.container.ID)
-	if err != nil {
-		i.t.Fatal(errors.Wrap(err, "error inspecting container"))
-	}
-
-	stellarCore := info.NetworkSettings.Ports[stellarCorePort][0]
-
-	stellarCorePostgres := info.NetworkSettings.Ports[stellarCorePostgresPort][0]
-	stellarCorePostgresURL := fmt.Sprintf(
-		"postgres://stellar:%s@%s:%s/core",
-		stellarCorePostgresPassword,
-		stellarCorePostgres.HostIP,
-		stellarCorePostgres.HostPort,
-	)
-
-	historyArchive := info.NetworkSettings.Ports[historyArchivePort][0]
-
 	horizonPostgresURL := dbtest.Postgres(i.t).DSN
 
 	config, configOpts := horizon.Flags()
-
 	cmd := &cobra.Command{
 		Use:   "horizon",
 		Short: "client-facing api server for the stellar network",
-		Long:  "client-facing api server for the stellar network. It acts as the interface between Stellar Core and applications that want to access the Stellar network. It allows you to submit transactions to the network, check the status of accounts, subscribe to event streams and more.",
+		Long: `client-facing api server for the stellar network. It acts as the
+interface between Stellar Core and applications that want to access the Stellar
+network. It allows you to submit transactions to the network, check the status
+of accounts, subscribe to event streams and more.`,
 		Run: func(cmd *cobra.Command, args []string) {
 			i.app = horizon.NewAppFromFlags(config, configOpts)
 		},
 	}
 	cmd.SetArgs([]string{
 		"--stellar-core-url",
-		fmt.Sprintf("http://%s:%s", stellarCore.HostIP, stellarCore.HostPort),
+		fmt.Sprintf("http://host.docker.internal:%s", stellarCorePort.Port()),
 		"--history-archive-urls",
-		fmt.Sprintf("http://%s:%s", historyArchive.HostIP, historyArchive.HostPort),
+		fmt.Sprintf("http://host.docker.internal:%s", historyArchivePort.Port()),
 		"--ingest",
 		"--db-url",
 		horizonPostgresURL,
 		"--stellar-core-db-url",
-		stellarCorePostgresURL,
+		fmt.Sprintf(
+			"postgres://postgres:%s@%s:%s/stellar?sslmode=disable",
+			stellarCorePostgresPassword,
+			"host.docker.internal",
+			stellarCorePostgresPort.Port(),
+		),
 		"--network-passphrase",
 		NetworkPassphrase,
 		"--apply-migrations",
 		"--admin-port",
-		strconv.Itoa(adminPort),
+		strconv.Itoa(i.AdminPort()),
 	})
 	configOpts.Init(cmd)
 
+	var err error
 	if err = cmd.Execute(); err != nil {
 		i.t.Fatalf("cannot initialize horizon: %s", err)
 	}
@@ -271,17 +218,20 @@ func (i *Test) startHorizon() {
 }
 
 func (i *Test) waitForIngestionAndUpgrade() {
-	for t := 30 * time.Second; t >= 0; t -= time.Second {
+	for t := 30; t >= 0; t -= 1 {
 		i.t.Log("Waiting for ingestion and protocol upgrade...")
 		root, _ := i.hclient.Root()
+		i.t.Logf("%+v", root)
+
 		// We ignore errors here because it's likely connection error due to
 		// Horizon not running. We ensure that's is up and correct by checking
 		// the root response.
-		if root.IngestSequence > 0 &&
-			root.HorizonSequence > 0 &&
-			root.CurrentProtocolVersion == i.config.ProtocolVersion {
-			i.t.Log("Horizon ingesting and protocol version matches...")
-			return
+		if root.IngestSequence > 0 && root.HorizonSequence > 0 {
+			i.t.Log("Horizon ingesting...")
+			if root.CurrentProtocolVersion == i.config.ProtocolVersion {
+				i.t.Log("Horizon protocol version matches...")
+				return
+			}
 		}
 		time.Sleep(time.Second)
 	}
@@ -298,16 +248,14 @@ func (i *Test) Client() *sdk.Client {
 // ingested by Horizon. Panics in case of errors.
 func (i *Test) LedgerIngested(sequence uint32) bool {
 	root, err := i.Client().Root()
-	if err != nil {
-		panic(err)
-	}
+	panicIf(err)
 
 	return root.IngestSequence >= sequence
 }
 
 // AdminPort returns Horizon admin port.
 func (i *Test) AdminPort() int {
-	return 6060
+	return adminPort
 }
 
 // Master returns a keypair of the network master account.
@@ -346,76 +294,6 @@ func (i *Test) Close() {
 		i.t.Logf("Stopping container %s\n", i.container.ID)
 		i.cli.ContainerStop(ctx, i.container.ID, nil)
 	}
-}
-
-func createTestContainer(i *Test, image string) error {
-	t := i.CurrentTest()
-	t.Logf("Pulling %s...", image)
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-	defer cancel()
-
-	// If your Internet (or docker.io) is down, integration tests should still try to run.
-	reader, err := i.cli.ImagePull(ctx, "docker.io/"+image, types.ImagePullOptions{})
-	if err != nil {
-		t.Log("  error pulling docker image")
-		t.Log("  trying to find local image (might be out-dated)")
-
-		args := filters.NewArgs()
-		args.Add("reference", "stellar/quickstart:testing")
-		list, innerErr := i.cli.ImageList(ctx, types.ImageListOptions{Filters: args})
-		if innerErr != nil || len(list) == 0 {
-			t.Fatal(errors.Wrap(err, "failed to find local image"))
-		}
-		t.Log("  using local", image)
-	} else {
-		defer reader.Close()
-		io.Copy(os.Stdout, reader)
-	}
-
-	t.Log("Creating container...")
-	ctx, cancel = context.WithTimeout(context.Background(), 5*time.Minute)
-	defer cancel()
-	containerConfig := &container.Config{
-		Image: image,
-		Cmd: []string{
-			"--standalone",
-			"--protocol-version", strconv.FormatInt(int64(i.config.ProtocolVersion), 10),
-		},
-	}
-	hostConfig := &container.HostConfig{}
-
-	if os.Getenv("HORIZON_INTEGRATION_ENABLE_CAPTIVE_CORE") != "" {
-		containerConfig.Env = append(containerConfig.Env,
-			"ENABLE_CAPTIVE_CORE_INGESTION=true",
-			"STELLAR_CORE_BINARY_PATH=/opt/stellar/core/bin/start",
-			"STELLAR_CORE_CONFIG_PATH=/opt/stellar/core/etc/stellar-core.cfg",
-		)
-		containerConfig.ExposedPorts = nat.PortSet{"8000": struct{}{}, "6060": struct{}{}}
-		hostConfig.PortBindings = map[nat.Port][]nat.PortBinding{
-			nat.Port("8000"): {{HostIP: "127.0.0.1", HostPort: "8000"}},
-			nat.Port("6060"): {{HostIP: "127.0.0.1", HostPort: "6060"}},
-		}
-	} else {
-		containerConfig.Env = append(containerConfig.Env,
-			"POSTGRES_PASSWORD="+stellarCorePostgresPassword,
-		)
-		containerConfig.ExposedPorts = nat.PortSet{
-			stellarCorePort:         struct{}{},
-			stellarCorePostgresPort: struct{}{},
-			historyArchivePort:      struct{}{},
-		}
-		hostConfig.PublishAllPorts = true
-	}
-
-	i.container, err = i.cli.ContainerCreate(
-		ctx,
-		containerConfig,
-		hostConfig,
-		nil,
-		"horizon-integration",
-	)
-
-	return err
 }
 
 /* Utility functions for easier test case creation. */
@@ -633,5 +511,11 @@ func (i *Test) LogFailedTx(txResponse proto.Transaction, horizonResult error) {
 func panicIf(err error) {
 	if err != nil {
 		panic(err)
+	}
+}
+
+func fatalIf(t *testing.T, err error) {
+	if err != nil {
+		t.Fatalf("error: %s", err)
 	}
 }
