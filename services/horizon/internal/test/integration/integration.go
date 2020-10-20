@@ -227,7 +227,6 @@ func (i *Test) waitForIngestionAndUpgrade() {
 	for t := 30; t >= 0; t -= 1 {
 		i.t.Log("Waiting for ingestion and protocol upgrade...")
 		root, _ := i.hclient.Root()
-		i.t.Logf("%+v", root)
 
 		// We ignore errors here because it's likely connection error due to
 		// Horizon not running. We ensure that's is up and correct by checking
