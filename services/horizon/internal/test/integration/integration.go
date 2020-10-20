@@ -120,11 +120,16 @@ func NewTest(t *testing.T, config Config) *Test {
 		cmdline := append([]string{"-f", baseYaml, "-f", standaloneYaml}, args...)
 		t.Log("Running", cmdline)
 		cmd := exec.Command("docker-compose", cmdline...)
+		cmd.Env = os.Environ()
+
 		// The networking mode on Docker for Linux is different.
 		if runtime.GOOS == "linux" {
-			cmd.Env = os.Environ()
 			cmd.Env = append(cmd.Env, "NETWORK_MODE=host")
 		}
+
+		cmd.Env = append(cmd.Env,
+			fmt.Sprintf("PROTOCOL_VERSION=%d", config.ProtocolVersion))
+
 		_, innerErr := cmd.Output()
 		fatalIf(t, innerErr)
 	}
