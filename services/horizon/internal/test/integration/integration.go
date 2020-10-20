@@ -94,8 +94,8 @@ func NewTest(t *testing.T, config Config) *Test {
 	// Lets you check if a particular directory contains a file.
 	i.t.Log("Started in", startingDir)
 	directoryContains := func(root string, needle string) bool {
-		files, err := ioutil.ReadDir(root)
-		fatalIf(t, err)
+		files, innerErr := ioutil.ReadDir(root)
+		fatalIf(t, innerErr)
 
 		for _, file := range files {
 			if file.Name() == needle {
