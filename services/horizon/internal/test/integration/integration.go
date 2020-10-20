@@ -123,11 +123,12 @@ func NewTest(t *testing.T, config Config) *Test {
 		cmd.Env = os.Environ()
 
 		// The networking mode on Docker for Linux is different.
+		networkEnv := "bridge"
 		if runtime.GOOS == "linux" {
-			cmd.Env = append(cmd.Env, "NETWORK_MODE=host")
+			networkEnv = "host"
 		}
 
-		cmd.Env = append(cmd.Env,
+		cmd.Env = append(cmd.Env, "NETWORK_MODE="+networkEnv,
 			fmt.Sprintf("PROTOCOL_VERSION=%d", config.ProtocolVersion))
 
 		_, innerErr := cmd.Output()
@@ -153,8 +154,8 @@ func NewTest(t *testing.T, config Config) *Test {
 
 	i.hclient = &sdk.Client{HorizonURL: "http://localhost:8000"}
 
-	// Register cleanup handlers (on panic and ctrl+c) so the container is
-	// removed even if ingestion or testing fails.
+	// Register cleanup handlers (on panic and ctrl+c) so the containers are
+	// stopped even if ingestion or testing fails.
 	i.t.Cleanup(i.Close)
 	c := make(chan os.Signal)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)

@@ -229,7 +229,7 @@ commands:
           # Pulling the image helps with test running time
           command: |
             cd ~/go/src/github.com/stellar/go
-            docker pull stellar/quickstart:testing
+            echo 127.0.0.1 host.docker.internal | sudo tee -a /etc/hosts
             <<# parameters.enable-captive-core >>HORIZON_INTEGRATION_ENABLE_CAPTIVE_CORE=true<</ parameters.enable-captive-core >> go test -timeout 20m -v ./services/horizon/internal/integration/...
 
 #-----------------------------------------------------------------------------#
