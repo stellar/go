@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this
 file.  This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [v4.1.0](https://github.com/stellar/go/releases/tag/horizonclient-v4.1.0) - 2020-10-16
+
+None
+
+## [v4.0.1](https://github.com/stellar/go/releases/tag/horizonclient-v4.0.1) - 2020-10-02
+
+None
+
 ## [v4.0.0](https://github.com/stellar/go/releases/tag/horizonclient-v4.0.0) - 2020-09-29
 
 Added new client methods and effects supporting [Protocol 14](https://github.com/stellar/go/issues/3035).

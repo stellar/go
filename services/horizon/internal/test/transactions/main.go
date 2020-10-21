@@ -5,7 +5,7 @@ import (
 	"encoding/hex"
 	"testing"
 
-	"github.com/stellar/go/exp/ingest/io"
+	"github.com/stellar/go/ingest/io"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
 )

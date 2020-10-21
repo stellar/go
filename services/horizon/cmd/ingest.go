@@ -11,7 +11,7 @@ import (
 	"github.com/stellar/go/historyarchive"
 	horizon "github.com/stellar/go/services/horizon/internal"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/services/horizon/internal/expingest"
+	"github.com/stellar/go/services/horizon/internal/ingest"
 	support "github.com/stellar/go/support/config"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/log"
@@ -98,7 +98,7 @@ var ingestVerifyRangeCmd = &cobra.Command{
 			log.Fatal("`--to` must be a checkpoint ledger when `--verify-state` is set.")
 		}
 
-		ingestConfig := expingest.Config{
+		ingestConfig := ingest.Config{
 			NetworkPassphrase:     config.NetworkPassphrase,
 			HistorySession:        horizonSession,
 			HistoryArchiveURL:     config.HistoryArchiveURLs[0],
@@ -119,7 +119,7 @@ var ingestVerifyRangeCmd = &cobra.Command{
 			ingestConfig.CoreSession = coreSession
 		}
 
-		system, err := expingest.NewSystem(ingestConfig)
+		system, err := ingest.NewSystem(ingestConfig)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -183,10 +183,11 @@ var ingestStressTestCmd = &cobra.Command{
 			log.Fatal("`--changes` must be positive")
 		}
 
-		ingestConfig := expingest.Config{
+		ingestConfig := ingest.Config{
 			NetworkPassphrase: config.NetworkPassphrase,
 			HistorySession:    horizonSession,
 			HistoryArchiveURL: config.HistoryArchiveURLs[0],
+			EnableCaptiveCore: config.EnableCaptiveCoreIngestion,
 		}
 
 		if config.EnableCaptiveCoreIngestion {
@@ -204,7 +205,7 @@ var ingestStressTestCmd = &cobra.Command{
 			ingestConfig.CoreSession = coreSession
 		}
 
-		system, err := expingest.NewSystem(ingestConfig)
+		system, err := ingest.NewSystem(ingestConfig)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -264,10 +265,11 @@ var ingestInitGenesisStateCmd = &cobra.Command{
 			log.Fatalf("cannot run on non-empty DB")
 		}
 
-		ingestConfig := expingest.Config{
+		ingestConfig := ingest.Config{
 			NetworkPassphrase: config.NetworkPassphrase,
 			HistorySession:    horizonSession,
 			HistoryArchiveURL: config.HistoryArchiveURLs[0],
+			EnableCaptiveCore: config.EnableCaptiveCoreIngestion,
 		}
 
 		if config.EnableCaptiveCoreIngestion {
@@ -284,7 +286,7 @@ var ingestInitGenesisStateCmd = &cobra.Command{
 			ingestConfig.CoreSession = coreSession
 		}
 
-		system, err := expingest.NewSystem(ingestConfig)
+		system, err := ingest.NewSystem(ingestConfig)
 		if err != nil {
 			log.Fatal(err)
 		}

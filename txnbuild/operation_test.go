@@ -34,7 +34,33 @@ func TestCreateAccountFromXDR(t *testing.T) {
 			assert.Equal(t, "198.0000000", ca.Amount, "starting balance should match")
 		}
 	}
+}
 
+func TestZeroBalanceAccount(t *testing.T) {
+	sponsor, sponsee := newKeypair0(), newKeypair1()
+	ops := []Operation{
+		&BeginSponsoringFutureReserves{SponsoredID: sponsee.Address()},
+		&CreateAccount{
+			Destination: sponsee.Address(),
+			Amount:      "0",
+		},
+		&EndSponsoringFutureReserves{
+			SourceAccount: &SimpleAccount{AccountID: sponsee.Address()},
+		},
+	}
+
+	sourceAccount := SimpleAccount{AccountID: sponsor.Address()}
+	_, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &sourceAccount,
+			Operations:           ops,
+			IncrementSequenceNum: true,
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(),
+		},
+	)
+
+	assert.NoErrorf(t, err, "zero-balance account creation should work")
 }
 
 func TestPaymentFromXDR(t *testing.T) {
