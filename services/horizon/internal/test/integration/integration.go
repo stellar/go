@@ -298,9 +298,7 @@ func (i *Test) Client() *sdk.Client {
 // ingested by Horizon. Panics in case of errors.
 func (i *Test) LedgerIngested(sequence uint32) bool {
 	root, err := i.Client().Root()
-	if err != nil {
-		panic(err)
-	}
+	panicIf(err)
 
 	return root.IngestSequence >= sequence
 }
@@ -312,9 +310,7 @@ func (i *Test) LedgerIngested(sequence uint32) bool {
 // recent ledgers).
 func (i *Test) LedgerClosed(sequence uint32) bool {
 	root, err := i.Client().Root()
-	if err != nil {
-		panic(err)
-	}
+	panicIf(err)
 
 	return root.CoreSequence >= int32(sequence)
 }
