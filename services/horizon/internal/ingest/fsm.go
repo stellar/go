@@ -2,8 +2,10 @@ package ingest
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stellar/go/ingest/ledgerbackend"
 
 	"github.com/stellar/go/ingest/io"
@@ -471,9 +473,25 @@ func (r resumeState) run(s *system) (transition, error) {
 
 	duration := time.Since(startTime).Seconds()
 	s.Metrics().LedgerIngestionDuration.Observe(float64(duration))
+
+	// Update stats metrics
+	changeStatsMap := changeStats.Map()
+	for stat, value := range changeStatsMap {
+		stat = strings.Replace(stat, "stats_", "change_", 1)
+		s.Metrics().LedgerStatsCounter.
+			With(prometheus.Labels{"type": stat}).Add(float64(value.(int64)))
+	}
+
+	ledgerTransactionStatsMap := ledgerTransactionStats.Map()
+	for stat, value := range ledgerTransactionStatsMap {
+		stat = strings.Replace(stat, "stats_", "ledger_", 1)
+		s.Metrics().LedgerStatsCounter.
+			With(prometheus.Labels{"type": stat}).Add(float64(value.(int64)))
+	}
+
 	log.
-		WithFields(changeStats.Map()).
-		WithFields(ledgerTransactionStats.Map()).
+		WithFields(changeStatsMap).
+		WithFields(ledgerTransactionStatsMap).
 		WithFields(logpkg.F{
 			"sequence": ingestLedger,
 			"duration": duration,

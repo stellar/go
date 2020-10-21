@@ -104,6 +104,9 @@ type Metrics struct {
 	// StateInvalidGauge exposes state invalid metric. 1 if state is invalid,
 	// 0 otherwise.
 	StateInvalidGauge prometheus.GaugeFunc
+
+	// LedgerStatsCounter exposes ledger stats counters (like number of ops/changes).
+	LedgerStatsCounter *prometheus.CounterVec
 }
 
 type System interface {
@@ -249,6 +252,14 @@ func (s *system) initMetrics() {
 			}
 			return invalidFloat
 		},
+	)
+
+	s.metrics.LedgerStatsCounter = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: "horizon", Subsystem: "ingest", Name: "ledger_stats_total",
+			Help: "counters of different ledger stats",
+		},
+		[]string{"type"},
 	)
 }
 
