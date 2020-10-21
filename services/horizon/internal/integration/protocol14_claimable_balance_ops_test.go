@@ -15,7 +15,7 @@ import (
 
 func TestClaimableBalanceCreationOperationsAndEffects(t *testing.T) {
 	tt := assert.New(t)
-	itest := integration.NewTest(t, protocol14Config)
+	itest := integration.NewTest(t, protocol15Config)
 	master := itest.Master()
 
 	t.Run("Successful", func(t *testing.T) {

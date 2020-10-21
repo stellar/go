@@ -15,7 +15,7 @@ import (
 )
 
 func TestProtocol14StateVerifier(t *testing.T) {
-	itest := integration.NewTest(t, protocol14Config)
+	itest := integration.NewTest(t, protocol15Config)
 
 	sponsored := keypair.MustRandom()
 	sponsoredSource := &txnbuild.SimpleAccount{
