@@ -7,6 +7,7 @@ import (
 	"time"
 
 	sdk "github.com/stellar/go/clients/horizonclient"
+	"github.com/stellar/go/keypair"
 	proto "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/protocols/horizon/operations"
 	"github.com/stellar/go/services/horizon/internal/codes"
@@ -16,33 +17,77 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var protocol14Config = integration.Config{ProtocolVersion: 14}
+var protocol15Config = integration.Config{ProtocolVersion: 15}
 
-func TestProtocol14Basics(t *testing.T) {
+func TestProtocol15Basics(t *testing.T) {
 	tt := assert.New(t)
-
-	itest := integration.NewTest(t, protocol14Config)
+	itest := integration.NewTest(t, protocol15Config)
 	master := itest.Master()
 
-	root, err := itest.Client().Root()
-	tt.NoError(err)
-	tt.Equal(int32(14), root.CoreSupportedProtocolVersion)
-	tt.Equal(int32(14), root.CurrentProtocolVersion)
+	t.Run("Sanity", func(t *testing.T) {
+		root, err := itest.Client().Root()
+		tt.NoError(err)
+		tt.Equal(int32(14), root.CoreSupportedProtocolVersion)
+		tt.Equal(int32(14), root.CurrentProtocolVersion)
 
-	// Submit a simple tx
-	op := txnbuild.Payment{
-		Destination: master.Address(),
-		Amount:      "10",
-		Asset:       txnbuild.NativeAsset{},
-	}
+		// Submit a simple tx
+		op := txnbuild.Payment{
+			Destination: master.Address(),
+			Amount:      "10",
+			Asset:       txnbuild.NativeAsset{},
+		}
 
-	txResp := itest.MustSubmitOperations(itest.MasterAccount(), master, &op)
-	tt.Equal(master.Address(), txResp.Account)
-	tt.Equal("1", txResp.AccountSequence)
+		txResp := itest.MustSubmitOperations(itest.MasterAccount(), master, &op)
+		tt.Equal(master.Address(), txResp.Account)
+		tt.Equal("1", txResp.AccountSequence)
+	})
+
+	// Ensure predicting claimable balances works.
+	t.Run("BalanceIDs", func(t *testing.T) {
+		tx, err := itest.CreateSignedTransaction(
+			itest.MasterAccount(),
+			[]*keypair.Full{master},
+			&txnbuild.CreateClaimableBalance{
+				Destinations: []txnbuild.Claimant{
+					txnbuild.NewClaimant(master.Address(), nil),
+				},
+				Asset:  txnbuild.NativeAsset{},
+				Amount: "42",
+			},
+			&txnbuild.CreateClaimableBalance{
+				Destinations: []txnbuild.Claimant{
+					txnbuild.NewClaimant(master.Address(), nil),
+				},
+				Asset:  txnbuild.NativeAsset{},
+				Amount: "24",
+			})
+		tt.NoError(err)
+
+		id1, err := tx.ClaimableBalanceID(0)
+		tt.NoError(err)
+		id2, err := tx.ClaimableBalanceID(1)
+		tt.NoError(err)
+		predictions := []string{id1, id2}
+
+		var txResult xdr.TransactionResult
+		txResp, err := itest.SubmitTransaction(tx)
+		tt.NoError(err)
+		xdr.SafeUnmarshalBase64(txResp.ResultXdr, &txResult)
+		opResults, ok := txResult.OperationResults()
+		tt.True(ok)
+		tt.Len(opResults, len(predictions))
+
+		for i, predictedId := range predictions {
+			claimCreationOp := opResults[i].MustTr().CreateClaimableBalanceResult
+			calculatedId, err := xdr.MarshalHex(claimCreationOp.BalanceId)
+			tt.NoError(err)
+			tt.Equal(predictedId, calculatedId)
+		}
+	})
 }
 
 func TestHappyClaimableBalances(t *testing.T) {
-	itest := integration.NewTest(t, protocol14Config)
+	itest := integration.NewTest(t, protocol15Config)
 	master, client := itest.Master(), itest.Client()
 
 	keys, accounts := itest.CreateAccounts(3, "1000")
@@ -234,7 +279,7 @@ func TestHappyClaimableBalances(t *testing.T) {
 
 // We want to ensure that users can't claim the same claimable balance twice.
 func TestDoubleClaim(t *testing.T) {
-	itest := integration.NewTest(t, protocol14Config)
+	itest := integration.NewTest(t, protocol15Config)
 	client := itest.Client()
 
 	// Create a couple of accounts to test the interactions.
@@ -294,7 +339,7 @@ func TestDoubleClaim(t *testing.T) {
 }
 
 func TestClaimableBalancePredicates(t *testing.T) {
-	itest := integration.NewTest(t, protocol14Config)
+	itest := integration.NewTest(t, protocol15Config)
 	_, client := itest.Master(), itest.Client()
 
 	// Create a couple of accounts to test the interactions.

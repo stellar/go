@@ -13,7 +13,7 @@ import (
 
 	horizon "github.com/stellar/go/services/horizon/internal"
 	"github.com/stellar/go/services/horizon/internal/db2/schema"
-	"github.com/stellar/go/services/horizon/internal/expingest"
+	"github.com/stellar/go/services/horizon/internal/ingest"
 	support "github.com/stellar/go/support/config"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
@@ -218,7 +218,7 @@ var dbReingestRangeCmd = &cobra.Command{
 			log.Fatalf("cannot open Horizon DB: %v", err)
 		}
 
-		ingestConfig := expingest.Config{
+		ingestConfig := ingest.Config{
 			NetworkPassphrase:           config.NetworkPassphrase,
 			HistorySession:              horizonSession,
 			HistoryArchiveURL:           config.HistoryArchiveURLs[0],
@@ -241,7 +241,7 @@ var dbReingestRangeCmd = &cobra.Command{
 		}
 
 		if parallelWorkers < 2 {
-			system, systemErr := expingest.NewSystem(ingestConfig)
+			system, systemErr := ingest.NewSystem(ingestConfig)
 			if systemErr != nil {
 				log.Fatal(systemErr)
 			}
@@ -252,7 +252,7 @@ var dbReingestRangeCmd = &cobra.Command{
 				reingestForce,
 			)
 		} else {
-			system, systemErr := expingest.NewParallelSystems(ingestConfig, parallelWorkers)
+			system, systemErr := ingest.NewParallelSystems(ingestConfig, parallelWorkers)
 			if systemErr != nil {
 				log.Fatal(systemErr)
 			}
@@ -269,7 +269,7 @@ var dbReingestRangeCmd = &cobra.Command{
 			return
 		}
 
-		if errors.Cause(err) == expingest.ErrReingestRangeConflict {
+		if errors.Cause(err) == ingest.ErrReingestRangeConflict {
 			message := `
 			The range you have provided overlaps with Horizon's most recently ingested ledger.
 			It is not possible to run the reingest command on this range in parallel with

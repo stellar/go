@@ -40,7 +40,7 @@ func (q *Q) GetLastLedgerExpIngestNonBlocking() (uint32, error) {
 	}
 }
 
-// GetLastLedgerExpIngest returns the last ledger ingested by expingest system
+// GetLastLedgerExpIngest returns the last ledger ingested by ingest system
 // in Horizon. Returns ErrKeyNotFound error if no value has been previously set.
 // This is using `SELECT ... FOR UPDATE` what means it's blocking the row for all other
 // transactions.This behaviour is critical in distributed ingestion so do not change
@@ -66,7 +66,7 @@ func (q *Q) GetLastLedgerExpIngest() (uint32, error) {
 	}
 }
 
-// UpdateLastLedgerExpIngest updates the last ledger ingested by expingest system.
+// UpdateLastLedgerExpIngest updates the last ledger ingested by ingest system.
 // Can be read using GetLastLedgerExpIngest.
 func (q *Q) UpdateLastLedgerExpIngest(ledgerSequence uint32) error {
 	return q.updateValueInStore(
