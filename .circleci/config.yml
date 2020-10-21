@@ -441,8 +441,6 @@ workflows:
       - test_code_1_14_postgres10
       - test_code_1_15
       - test_code_1_15_postgres10
-      # TODO: remove once integration_tests_nightly is confirmed to be working
-      - test_horizon_integration
       - publish_state_diff_docker_image:
           filters:
               branches:
