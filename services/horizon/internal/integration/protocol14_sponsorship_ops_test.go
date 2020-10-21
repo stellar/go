@@ -20,7 +20,7 @@ import (
 
 func TestSponsorships(t *testing.T) {
 	tt := assert.New(t)
-	itest := integration.NewTest(t, protocol14Config)
+	itest := integration.NewTest(t, protocol15Config)
 	client := itest.Client()
 
 	/* Query helpers that can/should? probably be added to IntegrationTest. */
