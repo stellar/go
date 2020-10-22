@@ -459,7 +459,7 @@ func (s *system) resetStateVerificationErrors() {
 }
 
 func (s *system) updateCursor(ledgerSequence uint32) error {
-	if s.stellarCoreClient == nil {
+	if s.stellarCoreClient == nil || s.config.EnableCaptiveCore {
 		return nil
 	}
 
