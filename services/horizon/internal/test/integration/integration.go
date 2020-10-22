@@ -14,8 +14,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/docker/docker/client"
-	"github.com/docker/go-connections/nat"
 	"github.com/spf13/cobra"
 
 	sdk "github.com/stellar/go/clients/horizonclient"
@@ -23,7 +21,6 @@ import (
 	proto "github.com/stellar/go/protocols/horizon"
 	horizon "github.com/stellar/go/services/horizon/internal"
 	"github.com/stellar/go/support/db/dbtest"
-	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
@@ -41,12 +38,6 @@ var (
 	historyArchivePort      = mustPort("tcp", "1570")
 )
 
-func mustPort(proto, port string) nat.Port {
-	p, err := nat.NewPort(proto, port)
-	panicIf(err)
-	return p
-}
-
 type Config struct {
 	ProtocolVersion       int32
 	SkipContainerCreation bool
@@ -55,7 +46,6 @@ type Config struct {
 type Test struct {
 	t       *testing.T
 	config  Config
-	cli     client.APIClient
 	hclient *sdk.Client
 	app     *horizon.App
 }
@@ -74,10 +64,7 @@ func NewTest(t *testing.T, config Config) *Test {
 		t.Skip("skipping integration test")
 	}
 
-	var err error
 	i := &Test{t: t, config: config}
-	i.cli, err = client.NewEnvClient()
-	fatalIf(t, errors.Wrap(err, "error creating docker client"))
 
 	// Lets you check if a particular directory contains a file.
 	directoryContains := func(root string, needle string) bool {
