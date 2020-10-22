@@ -320,6 +320,11 @@ func (i *Test) AdminPort() int {
 	return 6060
 }
 
+// Metrics URL returns Horizon metrics URL.
+func (i *Test) MetricsURL() string {
+	return fmt.Sprintf("http://localhost:%d/metrics", i.AdminPort())
+}
+
 // Master returns a keypair of the network master account.
 func (i *Test) Master() *keypair.Full {
 	return keypair.Master(NetworkPassphrase).(*keypair.Full)
@@ -639,7 +644,7 @@ func (i *Test) LogFailedTx(txResponse proto.Transaction, horizonResult error) {
 		"Transaction doesn't have success code.")
 }
 
-func (i *Test) RunHorizonCLICommand(cmd []string) {
+func (i *Test) RunHorizonCLICommand(cmd ...string) {
 	fullCmd := append([]string{"/stellar/horizon/bin/horizon"}, cmd...)
 	id, err := i.cli.ContainerExecCreate(
 		context.Background(),

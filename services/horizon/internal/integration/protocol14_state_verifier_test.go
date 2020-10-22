@@ -14,6 +14,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+const (
+	firstCheckpoint = (64 * (iota + 1)) - 1
+	secondCheckpoint
+	thirdCheckpoint
+)
+
 func TestProtocol14StateVerifier(t *testing.T) {
 	itest := integration.NewTest(t, protocol15Config)
 
@@ -99,42 +105,43 @@ func TestProtocol14StateVerifier(t *testing.T) {
 	assert.True(t, txResp.Successful)
 
 	// Wait for the first checkpoint ledger
-	for !itest.LedgerIngested(63) {
-		t.Log("First checkpoint ledger (63) not ingested yet...")
+	for !itest.LedgerIngested(firstCheckpoint) {
+		t.Log("First checkpoint ledger not ingested yet...")
 		time.Sleep(5 * time.Second)
 	}
 
-	verified := waitForStateVerifications(t, itest, 1)
+	verified := waitForStateVerifications(itest, 1)
 	if !verified {
 		t.Fatal("State verification not run...")
 	}
 
 	// Trigger state rebuild to check if ingesting from history archive works
-	itest.RunHorizonCLICommand([]string{"expingest", "trigger-state-rebuild"})
+	itest.RunHorizonCLICommand("expingest", "trigger-state-rebuild")
 
 	// Wait for the second checkpoint ledger and state rebuild
-	for !itest.LedgerClosed(127) {
-		t.Log("First checkpoint ledger (127) not closed yet...")
+	for !itest.LedgerClosed(secondCheckpoint) {
+		t.Log("Second checkpoint ledger not closed yet...")
 		time.Sleep(5 * time.Second)
 	}
 
 	// Wait for the third checkpoint ledger and state verification trigger
-	for !itest.LedgerIngested(191) {
-		t.Log("First checkpoint ledger (191) not ingested yet...")
+	for !itest.LedgerIngested(thirdCheckpoint) {
+		t.Log("Third checkpoint ledger not ingested yet...")
 		time.Sleep(5 * time.Second)
 	}
 
-	verified = waitForStateVerifications(t, itest, 2)
+	verified = waitForStateVerifications(itest, 2)
 	if !verified {
 		t.Fatal("State verification not run...")
 	}
 }
 
-func waitForStateVerifications(t *testing.T, itest *integration.Test, count int) bool {
+func waitForStateVerifications(itest *integration.Test, count int) bool {
+	t := itest.CurrentTest()
 	// Check metrics until state verification run
 	for i := 0; i < 120; i++ {
 		t.Logf("Checking metrics (%d attempt)\n", i)
-		res, err := http.Get(fmt.Sprintf("http://localhost:%d/metrics", itest.AdminPort()))
+		res, err := http.Get(itest.MetricsURL())
 		assert.NoError(t, err)
 
 		metricsBytes, err := ioutil.ReadAll(res.Body)
