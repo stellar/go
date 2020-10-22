@@ -52,10 +52,12 @@ func mustInitHorizonDB(app *App) {
 
 func initExpIngester(app *App) {
 	var err error
+	var coreSession *db.Session
+	if !app.config.EnableCaptiveCoreIngestion {
+		coreSession = mustNewDBSession(app.config.StellarCoreDatabaseURL, ingest.MaxDBConnections, ingest.MaxDBConnections)
+	}
 	app.ingester, err = ingest.NewSystem(ingest.Config{
-		CoreSession: mustNewDBSession(
-			app.config.StellarCoreDatabaseURL, ingest.MaxDBConnections, ingest.MaxDBConnections,
-		),
+		CoreSession: coreSession,
 		HistorySession: mustNewDBSession(
 			app.config.DatabaseURL, ingest.MaxDBConnections, ingest.MaxDBConnections,
 		),
