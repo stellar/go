@@ -77,9 +77,7 @@ func NewTest(t *testing.T, config Config) *Test {
 	var err error
 	i := &Test{t: t, config: config}
 	i.cli, err = client.NewEnvClient()
-	if err != nil {
-		t.Fatal(errors.Wrap(err, "error creating docker client"))
-	}
+	fatalIf(t, errors.Wrap(err, "error creating docker client"))
 
 	// Lets you check if a particular directory contains a file.
 	directoryContains := func(root string, needle string) bool {
@@ -101,17 +99,19 @@ func NewTest(t *testing.T, config Config) *Test {
 	fatalIf(t, err)
 	for !directoryContains(current, "go.mod") {
 		current, err = filepath.Abs(path.Join(current, ".."))
-		fatalIf(t, err)
 
-		if filepath.Base(current)[0] == filepath.Separator {
-			i.t.Fatal("Unable to find root project directory.")
+		// FIXME: This only works on *nix-like systems.
+		if err != nil || filepath.Base(current)[0] == filepath.Separator {
+			i.t.Fatal("Failed to establish project root directory.")
 		}
 	}
 
-	// Jump straight down to the directory containing the docker compose files
-	baseYaml := path.Join(current, "services/horizon/docker", "docker-compose.yml")
-	standaloneYaml := path.Join(current, "services/horizon/docker", "docker-compose.standalone.yml")
+	// Directly reference down to the folder containing the configs
+	composeDir := path.Join(current, "services", "horizon", "docker")
+	baseYaml := path.Join(composeDir, "docker-compose.yml")
+	standaloneYaml := path.Join(composeDir, "docker-compose.standalone.yml")
 
+	// Runs a docker-compose command applied to the above configs
 	runComposeCommand := func(args ...string) {
 		cmdline := append([]string{"-f", baseYaml, "-f", standaloneYaml}, args...)
 		t.Log("Running", cmdline)
@@ -124,8 +124,10 @@ func NewTest(t *testing.T, config Config) *Test {
 			networkEnv = "host"
 		}
 
-		cmd.Env = append(cmd.Env, "NETWORK_MODE="+networkEnv,
-			fmt.Sprintf("PROTOCOL_VERSION=%d", config.ProtocolVersion))
+		cmd.Env = append(cmd.Env,
+			"NETWORK_MODE="+networkEnv,
+			fmt.Sprintf("PROTOCOL_VERSION=%d", config.ProtocolVersion),
+		)
 
 		_, innerErr := cmd.Output()
 		fatalIf(t, innerErr)
@@ -185,13 +187,14 @@ of accounts, subscribe to event streams and more.`,
 		},
 	}
 
-	// Ideally, we'd pull the host/port information from the Docker Compose YAML
-	// file itself.
+	// Ideally, we'd be pulling host/port information from the Docker Compose
+	// YAML file itself rather than hardcoding it.
+	hostname := "host.docker.internal"
 	cmd.SetArgs([]string{
 		"--stellar-core-url",
-		fmt.Sprintf("http://host.docker.internal:%s", stellarCorePort.Port()),
+		fmt.Sprintf("http://%s:%s", hostname, stellarCorePort.Port()),
 		"--history-archive-urls",
-		fmt.Sprintf("http://host.docker.internal:%s", historyArchivePort.Port()),
+		fmt.Sprintf("http://%s:%s", hostname, historyArchivePort.Port()),
 		"--ingest",
 		"--db-url",
 		horizonPostgresURL,
@@ -199,7 +202,7 @@ of accounts, subscribe to event streams and more.`,
 		fmt.Sprintf(
 			"postgres://postgres:%s@%s:%s/stellar?sslmode=disable",
 			stellarCorePostgresPassword,
-			"host.docker.internal",
+			hostname,
 			stellarCorePostgresPort.Port(),
 		),
 		"--network-passphrase",
