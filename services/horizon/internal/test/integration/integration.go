@@ -1,7 +1,6 @@
 package integration
 
 import (
-	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -15,8 +14,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
 	"github.com/spf13/cobra"
@@ -56,12 +53,11 @@ type Config struct {
 }
 
 type Test struct {
-	t         *testing.T
-	config    Config
-	cli       client.APIClient
-	hclient   *sdk.Client
-	container container.ContainerCreateCreatedBody
-	app       *horizon.App
+	t       *testing.T
+	config  Config
+	cli     client.APIClient
+	hclient *sdk.Client
+	app     *horizon.App
 }
 
 // NewTest starts a new environment for integration test at a given
@@ -152,17 +148,20 @@ func NewTest(t *testing.T, config Config) *Test {
 	i.startHorizon()
 	// }
 
-	i.hclient = &sdk.Client{HorizonURL: "http://localhost:8000"}
+	i.hclient = &sdk.Client{HorizonURL: "http://host.docker.internal:8000"}
 
 	// Register cleanup handlers (on panic and ctrl+c) so the containers are
 	// stopped even if ingestion or testing fails.
-	i.t.Cleanup(i.Close)
+	//
+	// FIXME: The above `startHorizon()` triggers an infinite goroutine that I
+	//        need to figure out how to interrupt so this works properly.
+	cleanup := func() { runComposeCommand("stop") }
+	i.t.Cleanup(cleanup)
 	c := make(chan os.Signal)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-c
-		runComposeCommand("stop")
-		i.Close()
+		cleanup()
 		os.Exit(0)
 	}()
 
@@ -278,27 +277,6 @@ func (i *Test) MasterAccount() txnbuild.Account {
 
 func (i *Test) CurrentTest() *testing.T {
 	return i.t
-}
-
-// Close stops and removes the docker container.
-func (i *Test) Close() {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-	defer cancel()
-
-	if i.app != nil {
-		i.app.Close()
-	}
-
-	skipCreation := os.Getenv("HORIZON_SKIP_CREATION") != ""
-	if !skipCreation {
-		i.t.Logf("Removing container %s\n", i.container.ID)
-		i.cli.ContainerRemove(
-			ctx, i.container.ID,
-			types.ContainerRemoveOptions{Force: true})
-	} else {
-		i.t.Logf("Stopping container %s\n", i.container.ID)
-		i.cli.ContainerStop(ctx, i.container.ID, nil)
-	}
 }
 
 /* Utility functions for easier test case creation. */
