@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/docker/go-connections/nat"
 	"github.com/spf13/cobra"
 
 	sdk "github.com/stellar/go/clients/horizonclient"
@@ -37,6 +38,12 @@ var (
 	stellarCorePostgresPort = mustPort("tcp", "5641")
 	historyArchivePort      = mustPort("tcp", "1570")
 )
+
+func mustPort(proto, port string) nat.Port {
+	p, err := nat.NewPort(proto, port)
+	panicIf(err)
+	return p
+}
 
 type Config struct {
 	ProtocolVersion       int32
