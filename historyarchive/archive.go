@@ -151,15 +151,20 @@ func (a *Archive) CategoryCheckpointExists(cat string, chk uint32) (bool, error)
 	return a.backend.Exists(CategoryCheckpointPath(cat, chk))
 }
 
-func (a *Archive) GetLedgerHeader(chk uint32) (xdr.LedgerHeaderHistoryEntry, error) {
+func (a *Archive) GetLedgerHeader(ledger uint32) (xdr.LedgerHeaderHistoryEntry, error) {
+	checkpoint := ledger
+	if !IsCheckpoint(checkpoint) {
+		checkpoint = NextCheckpoint(ledger)
+	}
 	var ledgerHeader xdr.LedgerHeaderHistoryEntry
-	path := CategoryCheckpointPath("ledger", chk)
+	path := CategoryCheckpointPath("ledger", checkpoint)
 	xdrStream, err := a.GetXdrStream(path)
 	if err != nil {
 		return ledgerHeader, errors.Wrap(err, "error opening ledger stream")
 	}
 	defer xdrStream.Close()
 
+	found := false
 	for {
 		err = xdrStream.ReadOne(&ledgerHeader)
 		if err != nil {
@@ -168,6 +173,15 @@ func (a *Archive) GetLedgerHeader(chk uint32) (xdr.LedgerHeaderHistoryEntry, err
 			}
 			return ledgerHeader, errors.Wrap(err, "error reading from ledger stream")
 		}
+
+		if uint32(ledgerHeader.Header.LedgerSeq) == ledger {
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		return ledgerHeader, errors.New("ledger header not found in checkpoint")
 	}
 
 	return ledgerHeader, nil
