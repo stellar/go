@@ -6,6 +6,7 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).x
 ## Unreleased
 
 * The `service` field emitted in ingestion logs has been changed from `expingest` to `ingest`.
+* Ledger stats are now exported in `/metrics` in `horizon_ingest_ledger_stats_total` metric.
 
 ## v1.10.1
 

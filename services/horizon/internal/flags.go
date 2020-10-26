@@ -121,6 +121,7 @@ func Flags() (*Config, support.ConfigOptions) {
 			EnvVar:    "STELLAR_CORE_DATABASE_URL",
 			ConfigKey: &config.StellarCoreDatabaseURL,
 			OptType:   types.String,
+			Required:  false,
 			Usage:     "stellar-core postgres database to connect with",
 		},
 		&support.ConfigOption{
@@ -359,10 +360,8 @@ func NewAppFromFlags(config *Config, flags support.ConfigOptions) *App {
 	if config.StellarCoreURL == "" {
 		log.Fatalf("flag --%s cannot be empty", StellarCoreURLFlagName)
 	}
-	if config.Ingest {
-		if config.StellarCoreDatabaseURL == "" {
-			log.Fatalf("flag --%s cannot be empty", StellarCoreDBURLFlagName)
-		}
+	if config.Ingest && !config.EnableCaptiveCoreIngestion && config.StellarCoreDatabaseURL == "" {
+		log.Fatalf("flag --%s cannot be empty", StellarCoreDBURLFlagName)
 	}
 	app, err := NewApp(*config)
 	if err != nil {
