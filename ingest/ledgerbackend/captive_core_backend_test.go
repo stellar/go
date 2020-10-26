@@ -154,10 +154,14 @@ func TestCaptivePrepareRange(t *testing.T) {
 		archive:           mockArchive,
 		networkPassphrase: network.PublicNetworkPassphrase,
 		stellarCoreRunner: mockRunner,
+		stellarCoreRunnerFactory: func(configPath string) (stellarCoreRunnerInterface, error) {
+			return mockRunner, nil
+		},
 	}
 
 	err := captiveBackend.PrepareRange(BoundedRange(100, 200))
 	assert.NoError(t, err)
+	mockRunner.On("close").Return(nil).Once()
 	err = captiveBackend.Close()
 	assert.NoError(t, err)
 }
@@ -184,6 +188,9 @@ func TestCaptivePrepareRangeCrash(t *testing.T) {
 		archive:           mockArchive,
 		networkPassphrase: network.PublicNetworkPassphrase,
 		stellarCoreRunner: mockRunner,
+		stellarCoreRunnerFactory: func(configPath string) (stellarCoreRunnerInterface, error) {
+			return mockRunner, nil
+		},
 	}
 
 	err := captiveBackend.PrepareRange(BoundedRange(100, 200))
@@ -213,6 +220,9 @@ func TestCaptivePrepareRangeTerminated(t *testing.T) {
 		archive:           mockArchive,
 		networkPassphrase: network.PublicNetworkPassphrase,
 		stellarCoreRunner: mockRunner,
+		stellarCoreRunnerFactory: func(configPath string) (stellarCoreRunnerInterface, error) {
+			return mockRunner, nil
+		},
 	}
 
 	err := captiveBackend.PrepareRange(BoundedRange(100, 200))
@@ -310,6 +320,9 @@ func TestCaptivePrepareRange_ToIsAheadOfRootHAS(t *testing.T) {
 		archive:           mockArchive,
 		networkPassphrase: network.PublicNetworkPassphrase,
 		stellarCoreRunner: mockRunner,
+		stellarCoreRunnerFactory: func(configPath string) (stellarCoreRunnerInterface, error) {
+			return mockRunner, nil
+		},
 	}
 
 	err := captiveBackend.PrepareRange(BoundedRange(100, 200))
