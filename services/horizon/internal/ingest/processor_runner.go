@@ -206,7 +206,7 @@ func (s *ProcessorRunner) RunHistoryArchiveIngestion(checkpointLedger uint32) (i
 		}
 	} else {
 		if err = s.checkIfProtocolVersionSupported(checkpointLedger); err != nil {
-			return changeStats.GetResults(), errors.Wrap(err, "Protocol version not supported")
+			return changeStats.GetResults(), errors.Wrap(err, "Error while checking for supported protocol version")
 		}
 
 		if err = s.validateBucketList(checkpointLedger); err != nil {
@@ -279,7 +279,7 @@ func (s *ProcessorRunner) RunTransactionProcessorsOnLedger(ledger uint32) (io.St
 	}
 
 	if err = s.checkIfProtocolVersionSupported(ledger); err != nil {
-		return ledgerTransactionStats.GetResults(), errors.Wrap(err, "Protocol version not supported")
+		return ledgerTransactionStats.GetResults(), errors.Wrap(err, "Error while checking for supported protocol version")
 	}
 
 	txProcessor := s.buildTransactionProcessor(&ledgerTransactionStats, transactionReader.GetHeader())
@@ -301,7 +301,7 @@ func (s *ProcessorRunner) RunAllProcessorsOnLedger(sequence uint32) (io.StatsCha
 	var statsLedgerTransactionProcessorResults io.StatsLedgerTransactionProcessorResults
 
 	if err := s.checkIfProtocolVersionSupported(sequence); err != nil {
-		return changeStats.GetResults(), statsLedgerTransactionProcessorResults, errors.Wrap(err, "Protocol version not supported")
+		return changeStats.GetResults(), statsLedgerTransactionProcessorResults, errors.Wrap(err, "Error while checking for supported protocol version")
 	}
 
 	err := s.runChangeProcessorOnLedger(
