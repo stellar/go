@@ -238,17 +238,18 @@ func (r *stellarCoreRunner) close() error {
 	err2 = os.RemoveAll(r.tempDir)
 	r.tempDir = ""
 
-	if err1 != nil {
-		return errors.Wrap(err1, "error killing subprocess")
-	}
-	if err2 != nil {
-		return errors.Wrap(err2, "error removing subprocess tmpdir")
-	}
 	if r.started {
 		close(r.shutdown)
 		r.wg.Wait()
 		close(r.processExit)
 	}
 	r.started = false
+
+	if err1 != nil {
+		return errors.Wrap(err1, "error killing subprocess")
+	}
+	if err2 != nil {
+		return errors.Wrap(err2, "error removing subprocess tmpdir")
+	}
 	return nil
 }
