@@ -497,14 +497,12 @@ func (c *CaptiveStellarCore) isClosed() bool {
 // Close closes existing Stellar-Core process, streaming sessions and removes all
 // temporary files.
 func (c *CaptiveStellarCore) Close() error {
-	if c.isClosed() {
-		return nil
-	}
 	c.nextLedger = 0
 	c.lastLedger = nil
 
 	if c.shutdown != nil {
 		close(c.shutdown)
+		c.shutdown = nil
 		// discard pending data in case the goroutine is blocked writing to the channel,
 		// see: `sendLedgerMeta`.
 		select {
@@ -519,6 +517,7 @@ func (c *CaptiveStellarCore) Close() error {
 
 	if c.stellarCoreRunner != nil {
 		err := c.stellarCoreRunner.close()
+		c.stellarCoreRunner = nil
 		if err != nil {
 			return errors.Wrap(err, "error closing stellar-core subprocess")
 		}

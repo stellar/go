@@ -10,7 +10,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-// Posix-specific methods for the stellarCoreRunner type.
+// Posix-specific methods for the StellarCoreRunner type.
 
 func (c *stellarCoreRunner) getPipeName() string {
 	// The exec.Cmd.ExtraFiles field carries *io.File values that are assigned
@@ -37,9 +37,13 @@ func (c *stellarCoreRunner) start() (io.Reader, error) {
 		return readFile, errors.Wrap(err, "error starting stellar-core")
 	}
 
+	c.wg.Add(1)
 	go func() {
-		c.processExit <- c.cmd.Wait()
-		close(c.processExit)
+		select {
+		case c.processExit <- c.cmd.Wait():
+		case <-c.shutdown:
+		}
+		c.wg.Done()
 	}()
 
 	return readFile, nil
