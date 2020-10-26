@@ -16,6 +16,10 @@ type StatsChangeProcessorResults struct {
 	AccountsUpdated int64
 	AccountsRemoved int64
 
+	ClaimableBalancesCreated int64
+	ClaimableBalancesUpdated int64
+	ClaimableBalancesRemoved int64
+
 	DataCreated int64
 	DataUpdated int64
 	DataRemoved int64
@@ -39,6 +43,15 @@ func (p *StatsChangeProcessor) ProcessChange(change Change) error {
 			p.results.AccountsUpdated++
 		case xdr.LedgerEntryChangeTypeLedgerEntryRemoved:
 			p.results.AccountsRemoved++
+		}
+	case xdr.LedgerEntryTypeClaimableBalance:
+		switch change.LedgerEntryChangeType() {
+		case xdr.LedgerEntryChangeTypeLedgerEntryCreated:
+			p.results.ClaimableBalancesCreated++
+		case xdr.LedgerEntryChangeTypeLedgerEntryUpdated:
+			p.results.ClaimableBalancesUpdated++
+		case xdr.LedgerEntryChangeTypeLedgerEntryRemoved:
+			p.results.ClaimableBalancesRemoved++
 		}
 	case xdr.LedgerEntryTypeData:
 		switch change.LedgerEntryChangeType() {
@@ -81,6 +94,10 @@ func (stats *StatsChangeProcessorResults) Map() map[string]interface{} {
 		"stats_accounts_created": stats.AccountsCreated,
 		"stats_accounts_updated": stats.AccountsUpdated,
 		"stats_accounts_removed": stats.AccountsRemoved,
+
+		"stats_claimable_balances_created": stats.ClaimableBalancesCreated,
+		"stats_claimable_balances_updated": stats.ClaimableBalancesUpdated,
+		"stats_claimable_balances_removed": stats.ClaimableBalancesRemoved,
 
 		"stats_data_created": stats.DataCreated,
 		"stats_data_updated": stats.DataUpdated,
