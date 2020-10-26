@@ -345,6 +345,9 @@ func TestCaptivePrepareRange_ErrCatchup(t *testing.T) {
 		archive:           mockArchive,
 		networkPassphrase: network.PublicNetworkPassphrase,
 		stellarCoreRunner: mockRunner,
+		stellarCoreRunnerFactory: func(configPath string) (stellarCoreRunnerInterface, error) {
+			return mockRunner, nil
+		},
 	}
 
 	err := captiveBackend.PrepareRange(BoundedRange(100, 200))
