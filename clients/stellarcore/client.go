@@ -142,6 +142,43 @@ func (c *Client) WaitForNetworkSync(ctx context.Context) error {
 	}
 }
 
+// ManualClose closes a ledger when Core is running in `MANUAL_CLOSE` mode
+func (c *Client) ManualClose(ctx context.Context) (err error) {
+
+	q := url.Values{}
+
+	req, err := c.simpleGet(ctx, "manualclose", q)
+	if err != nil {
+		err = errors.Wrap(err, "failed to create request")
+		return
+	}
+
+	hresp, err := c.http().Do(req)
+	if err != nil {
+		err = errors.Wrap(err, "http request errored")
+		return
+	}
+	defer hresp.Body.Close()
+
+	if !(hresp.StatusCode >= 200 && hresp.StatusCode < 300) {
+		err = errors.New("http request failed with non-200 status code")
+	}
+
+	// verify there wasn't an exception
+	resp := struct {
+		Exception string `json:"exception"`
+	}{}
+	if decErr := json.NewDecoder(hresp.Body).Decode(&resp); decErr != nil {
+		return
+	}
+	if resp.Exception != "" {
+		err = fmt.Errorf("exception in response: %s", resp.Exception)
+		return
+	}
+
+	return
+}
+
 func (c *Client) http() HTTP {
 	if c.HTTP == nil {
 		return http.DefaultClient
