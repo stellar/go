@@ -129,15 +129,16 @@ func NewTest(t *testing.T, config Config) *Test {
 
 	// Run the latest version of stellar-core
 	runComposeCommand("pull", "core")
+
 	// Only run Stellar Core container and its dependencies
 	runComposeCommand("up", "--detach", "--quiet-pull", "--no-color", "core")
 
-	// only use horizon from quickstart container when testing captive core
-	// FIXME
-	// if os.Getenv("HORIZON_INTEGRATION_ENABLE_CAPTIVE_CORE") == "" {
-	i.startHorizon()
-	// }
+	// FIXME: Only use horizon from quickstart container when testing captive core
+	if os.Getenv("HORIZON_INTEGRATION_ENABLE_CAPTIVE_CORE") != "" {
+		t.Skip("Testing with captive core isn't working yet.")
+	}
 
+	i.startHorizon()
 	i.hclient = &sdk.Client{HorizonURL: "http://localhost:8000"}
 
 	// Register cleanup handlers (on panic and ctrl+c) so the containers are
