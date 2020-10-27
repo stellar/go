@@ -9,7 +9,7 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).x
 
 * The `service` field emitted in ingestion logs has been changed from `expingest` to  `ingest` ([#3118](https://github.com/stellar/go/pull/3118)).
 * Ledger stats are now exported in `/metrics` in `horizon_ingest_ledger_stats_total` metric ([#3148](https://github.com/stellar/go/pull/3148)).
-* Stellar Core database URL is not longer required when running in captive mode ([#3150](https://github.com/stellar/go/pull/3150)).
+* Stellar Core database URL is no longer required when running in captive mode ([#3150](https://github.com/stellar/go/pull/3150)).
 
 ## v1.10.1
 
