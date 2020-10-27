@@ -384,7 +384,7 @@ func TestCaptivePrepareRangeUnboundedRange_FromIsTooFarAheadOfLatestHAS(t *testi
 
 func TestCaptivePrepareRangeUnboundedRange_ErrRunFrom(t *testing.T) {
 	mockRunner := &stellarCoreRunnerMock{}
-	mockRunner.On("runFrom", uint32(127), "0000000000000000000000000000000000000000000000000000000000000000").Return(errors.New("transient error")).Once()
+	mockRunner.On("runFrom", uint32(126), "0000000000000000000000000000000000000000000000000000000000000000").Return(errors.New("transient error")).Once()
 	mockRunner.On("close").Return(nil)
 
 	mockArchive := &historyarchive.MockArchive{}
@@ -434,13 +434,15 @@ func TestCaptivePrepareRangeUnboundedRange_ErrClosingExistingSession(t *testing.
 func TestCaptivePrepareRangeUnboundedRange_ReuseSession(t *testing.T) {
 	var buf bytes.Buffer
 
-	for i := 60; i <= 65; i++ {
+	for i := 2; i <= 65; i++ {
 		writeLedgerHeader(&buf, uint32(i))
 	}
 
 	mockRunner := &stellarCoreRunnerMock{}
+	mockRunner.On("runFrom", uint32(62), "0000000000000000000000000000000000000000000000000000000000000000").Return(nil).Once()
 	mockRunner.On("runFrom", uint32(63), "0000000000000000000000000000000000000000000000000000000000000000").Return(nil).Once()
 	mockRunner.On("getMetaPipe").Return(&buf)
+	mockRunner.On("getProcessExitChan").Return(make(chan error))
 	mockRunner.On("close").Return(nil)
 
 	mockArchive := &historyarchive.MockArchive{}
@@ -470,12 +472,12 @@ func TestCaptivePrepareRangeUnboundedRange_ReuseSession(t *testing.T) {
 func TestGetLatestLedgerSequence(t *testing.T) {
 	var buf bytes.Buffer
 
-	for i := 64; i <= 99; i++ {
+	for i := 2; i <= 99; i++ {
 		writeLedgerHeader(&buf, uint32(i))
 	}
 
 	mockRunner := &stellarCoreRunnerMock{}
-	mockRunner.On("runFrom", uint32(63), "0000000000000000000000000000000000000000000000000000000000000000").Return(nil).Once()
+	mockRunner.On("runFrom", uint32(62), "0000000000000000000000000000000000000000000000000000000000000000").Return(nil).Once()
 	mockRunner.On("getMetaPipe").Return(&buf)
 	mockRunner.On("getProcessExitChan").Return(make(chan error))
 	mockRunner.On("close").Return(nil).Once()
@@ -505,8 +507,9 @@ func TestGetLatestLedgerSequence(t *testing.T) {
 
 	latest, err := captiveBackend.GetLatestLedgerSequence()
 	assert.NoError(t, err)
-	// readAheadBufferSize is 2 so 2 ledgers are buffered: 64 and 65
-	assert.Equal(t, uint32(65), latest)
+	// readAheadBufferSize is 2 so 2 ledgers are buffered: 65 and 66.
+	// 64 is already read and in the cache.
+	assert.Equal(t, uint32(66), latest)
 
 	exists, _, err := captiveBackend.GetLedger(64)
 	assert.NoError(t, err)
@@ -795,66 +798,56 @@ func TestCaptiveGetLedgerTerminated(t *testing.T) {
 }
 
 func TestCaptiveRunFromParams(t *testing.T) {
-	tt := assert.New(t)
-	mockRunner := &stellarCoreRunnerMock{}
-	mockArchive := &historyarchive.MockArchive{}
-	mockArchive.
-		On("GetLedgerHeader", uint32(63)).
-		Return(xdr.LedgerHeaderHistoryEntry{
-			Hash: xdr.Hash{1, 1, 1, 1},
-		}, nil)
+	var tests = []struct {
+		from           uint32
+		runFrom        uint32
+		ledgerArchives uint32
+		nextLedger     uint32
+	}{
+		// Before and including 1st checkpoint:
+		{2, 2, 3, 2},
+		{3, 2, 3, 2},
+		{3, 2, 3, 2},
+		{4, 2, 3, 2},
+		{62, 2, 3, 2},
+		{63, 2, 3, 2},
 
-	captiveBackend := CaptiveStellarCore{
-		archive:           mockArchive,
-		networkPassphrase: network.PublicNetworkPassphrase,
-		stellarCoreRunner: mockRunner,
+		// Starting from 64 we go normal path: between 1st and 2nd checkpoint:
+		{64, 62, 63, 2},
+		{65, 62, 63, 2},
+		{66, 62, 63, 2},
+		{126, 62, 63, 2},
+
+		// between 2nd and 3rd checkpoint... and so on.
+		{127, 126, 127, 64},
+		{128, 126, 127, 64},
+		{129, 126, 127, 64},
 	}
 
-	runFrom, ledgerHash, nextLedger, err := captiveBackend.runFromParams(70)
-	tt.NoError(err)
-	tt.Equal(uint32(63), runFrom)
-	tt.Equal("0101010100000000000000000000000000000000000000000000000000000000", ledgerHash)
-	tt.Equal(uint32(64), nextLedger)
+	for _, tc := range tests {
+		t.Run(fmt.Sprintf("from_%d", tc.from), func(t *testing.T) {
+			tt := assert.New(t)
+			mockRunner := &stellarCoreRunnerMock{}
+			mockArchive := &historyarchive.MockArchive{}
+			mockArchive.
+				On("GetLedgerHeader", uint32(tc.ledgerArchives)).
+				Return(xdr.LedgerHeaderHistoryEntry{
+					Header: xdr.LedgerHeader{
+						PreviousLedgerHash: xdr.Hash{1, 1, 1, 1},
+					},
+				}, nil)
 
-	runFrom, ledgerHash, nextLedger, err = captiveBackend.runFromParams(64)
-	tt.NoError(err)
-	tt.Equal(uint32(63), runFrom)
-	tt.Equal("0101010100000000000000000000000000000000000000000000000000000000", ledgerHash)
-	tt.Equal(uint32(64), nextLedger)
+			captiveBackend := CaptiveStellarCore{
+				archive:           mockArchive,
+				networkPassphrase: network.PublicNetworkPassphrase,
+				stellarCoreRunner: mockRunner,
+			}
 
-	mockArchive.
-		On("GetLedgerHeader", uint32(127)).
-		Return(xdr.LedgerHeaderHistoryEntry{
-			Header: xdr.LedgerHeader{
-				PreviousLedgerHash: xdr.Hash{1},
-			},
-		}, nil)
-
-	runFrom, ledgerHash, nextLedger, err = captiveBackend.runFromParams(127)
-	tt.NoError(err)
-	tt.Equal(uint32(126), runFrom)
-	tt.Equal("0100000000000000000000000000000000000000000000000000000000000000", ledgerHash)
-	tt.Equal(uint32(64), nextLedger)
-
-	mockArchive.
-		On("GetLedgerHeader", uint32(319)).
-		Return(xdr.LedgerHeaderHistoryEntry{
-			Header: xdr.LedgerHeader{
-				PreviousLedgerHash: xdr.Hash{1},
-			},
-		}, errors.New("missing ledger checkpoint"))
-
-	runFrom, ledgerHash, nextLedger, err = captiveBackend.runFromParams(319)
-	tt.EqualError(err, "error trying to read ledger header 319 from HAS: missing ledger checkpoint")
-
-	mockArchive.
-		On("GetLedgerHeader", uint32(191)).
-		Return(xdr.LedgerHeaderHistoryEntry{
-			Header: xdr.LedgerHeader{
-				PreviousLedgerHash: xdr.Hash{1},
-			},
-		}, errors.New("missing ledger checkpoint"))
-
-	runFrom, ledgerHash, nextLedger, err = captiveBackend.runFromParams(195)
-	tt.EqualError(err, "error trying to read ledger header 191 from HAS: missing ledger checkpoint")
+			runFrom, ledgerHash, nextLedger, err := captiveBackend.runFromParams(tc.from)
+			tt.NoError(err)
+			tt.Equal(tc.runFrom, runFrom, "runFrom")
+			tt.Equal("0101010100000000000000000000000000000000000000000000000000000000", ledgerHash)
+			tt.Equal(tc.nextLedger, nextLedger, "nextLedger")
+		})
+	}
 }
