@@ -86,6 +86,9 @@ type CaptiveStellarCore struct {
 	// wait is a waiting group waiting for a read-ahead buffer to return.
 	wait sync.WaitGroup
 
+	// For testing
+	stellarCoreRunnerFactory func(configPath string) (stellarCoreRunnerInterface, error)
+
 	stellarCoreRunner stellarCoreRunnerInterface
 	cachedMeta        *xdr.LedgerCloseMeta
 
@@ -124,11 +127,14 @@ func NewCaptive(executablePath, configPath, networkPassphrase string, historyURL
 	}
 
 	return &CaptiveStellarCore{
-		archive:                  archive,
-		executablePath:           executablePath,
-		configPath:               configPath,
-		historyURLs:              historyURLs,
-		networkPassphrase:        networkPassphrase,
+		archive:           archive,
+		executablePath:    executablePath,
+		configPath:        configPath,
+		historyURLs:       historyURLs,
+		networkPassphrase: networkPassphrase,
+		stellarCoreRunnerFactory: func(configPath2 string) (stellarCoreRunnerInterface, error) {
+			return newStellarCoreRunner(executablePath, configPath2, networkPassphrase, historyURLs)
+		},
 		waitIntervalPrepareRange: time.Second,
 	}, nil
 }
@@ -165,7 +171,7 @@ func (c *CaptiveStellarCore) openOfflineReplaySubprocess(from, to uint32) error 
 
 	if c.stellarCoreRunner == nil {
 		// configPath is empty in an offline mode because it's generated
-		c.stellarCoreRunner, err = newStellarCoreRunner(c.executablePath, "", c.networkPassphrase, c.historyURLs)
+		c.stellarCoreRunner, err = c.stellarCoreRunnerFactory("")
 		if err != nil {
 			return errors.Wrap(err, "error creating stellar-core runner")
 		}
@@ -224,7 +230,7 @@ func (c *CaptiveStellarCore) openOnlineReplaySubprocess(from uint32) error {
 		if c.configPath == "" {
 			return errors.New("stellar-core config file path cannot be empty in an online mode")
 		}
-		c.stellarCoreRunner, err = newStellarCoreRunner(c.executablePath, c.configPath, c.networkPassphrase, c.historyURLs)
+		c.stellarCoreRunner, err = c.stellarCoreRunnerFactory(c.configPath)
 		if err != nil {
 			return errors.Wrap(err, "error creating stellar-core runner")
 		}
@@ -345,10 +351,17 @@ func (c *CaptiveStellarCore) sendLedgerMeta(untilSequence uint32) {
 			}
 			// When `GetLedger` sees the error it will close the backend. We shouldn't
 			// close it now because there may be some ledgers in a buffer.
-			c.metaC <- metaResult{nil, err}
+			select {
+			case c.metaC <- metaResult{nil, err}:
+			case <-c.shutdown:
+			}
 			return
 		}
-		c.metaC <- metaResult{meta, nil}
+		select {
+		case c.metaC <- metaResult{meta, nil}:
+		case <-c.shutdown:
+			return
+		}
 
 		if untilSequence != 0 {
 			if meta.LedgerSequence() >= untilSequence {
@@ -560,31 +573,25 @@ func (c *CaptiveStellarCore) isClosed() bool {
 // Close closes existing Stellar-Core process, streaming sessions and removes all
 // temporary files.
 func (c *CaptiveStellarCore) Close() error {
-	if c.isClosed() {
-		return nil
-	}
 	c.nextLedger = 0
 	c.lastLedger = nil
 
 	if c.shutdown != nil {
 		close(c.shutdown)
-		// discard pending data in case the goroutine is blocked writing to the channel,
-		// see: `sendLedgerMeta`.
-		select {
-		case <-c.metaC:
-		default:
-		}
 		// Do not close the communication channel until we know
 		// the goroutine is done
 		c.wait.Wait()
 		close(c.metaC)
+		c.shutdown = nil
 	}
 
 	if c.stellarCoreRunner != nil {
 		err := c.stellarCoreRunner.close()
+		c.stellarCoreRunner = nil
 		if err != nil {
 			return errors.Wrap(err, "error closing stellar-core subprocess")
 		}
 	}
+
 	return nil
 }

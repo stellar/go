@@ -153,11 +153,14 @@ func TestCaptivePrepareRange(t *testing.T) {
 	captiveBackend := CaptiveStellarCore{
 		archive:           mockArchive,
 		networkPassphrase: network.PublicNetworkPassphrase,
-		stellarCoreRunner: mockRunner,
+		stellarCoreRunnerFactory: func(configPath string) (stellarCoreRunnerInterface, error) {
+			return mockRunner, nil
+		},
 	}
 
 	err := captiveBackend.PrepareRange(BoundedRange(100, 200))
 	assert.NoError(t, err)
+	mockRunner.On("close").Return(nil).Once()
 	err = captiveBackend.Close()
 	assert.NoError(t, err)
 }
@@ -183,7 +186,9 @@ func TestCaptivePrepareRangeCrash(t *testing.T) {
 	captiveBackend := CaptiveStellarCore{
 		archive:           mockArchive,
 		networkPassphrase: network.PublicNetworkPassphrase,
-		stellarCoreRunner: mockRunner,
+		stellarCoreRunnerFactory: func(configPath string) (stellarCoreRunnerInterface, error) {
+			return mockRunner, nil
+		},
 	}
 
 	err := captiveBackend.PrepareRange(BoundedRange(100, 200))
@@ -212,7 +217,9 @@ func TestCaptivePrepareRangeTerminated(t *testing.T) {
 	captiveBackend := CaptiveStellarCore{
 		archive:           mockArchive,
 		networkPassphrase: network.PublicNetworkPassphrase,
-		stellarCoreRunner: mockRunner,
+		stellarCoreRunnerFactory: func(configPath string) (stellarCoreRunnerInterface, error) {
+			return mockRunner, nil
+		},
 	}
 
 	err := captiveBackend.PrepareRange(BoundedRange(100, 200))
@@ -221,24 +228,13 @@ func TestCaptivePrepareRangeTerminated(t *testing.T) {
 }
 
 func TestCaptivePrepareRange_ErrClosingSession(t *testing.T) {
-	var buf bytes.Buffer
 	mockRunner := &stellarCoreRunnerMock{}
-	mockRunner.On("catchup", uint32(100), uint32(200)).Return(nil).Once()
-	mockRunner.On("getMetaPipe").Return(&buf)
 	mockRunner.On("close").Return(fmt.Errorf("transient error"))
 
-	mockArchive := &historyarchive.MockArchive{}
-	mockArchive.
-		On("GetRootHAS").
-		Return(historyarchive.HistoryArchiveState{
-			CurrentLedger: uint32(200),
-		}, nil)
-
 	captiveBackend := CaptiveStellarCore{
-		archive:           mockArchive,
 		networkPassphrase: network.PublicNetworkPassphrase,
-		stellarCoreRunner: mockRunner,
 		nextLedger:        300,
+		stellarCoreRunner: mockRunner,
 	}
 
 	err := captiveBackend.PrepareRange(BoundedRange(100, 200))
@@ -260,7 +256,6 @@ func TestCaptivePrepareRange_ErrGettingRootHAS(t *testing.T) {
 	captiveBackend := CaptiveStellarCore{
 		archive:           mockArchive,
 		networkPassphrase: network.PublicNetworkPassphrase,
-		stellarCoreRunner: mockRunner,
 	}
 
 	err := captiveBackend.PrepareRange(BoundedRange(100, 200))
@@ -284,7 +279,6 @@ func TestCaptivePrepareRange_FromIsAheadOfRootHAS(t *testing.T) {
 	captiveBackend := CaptiveStellarCore{
 		archive:           mockArchive,
 		networkPassphrase: network.PublicNetworkPassphrase,
-		stellarCoreRunner: mockRunner,
 	}
 
 	err := captiveBackend.PrepareRange(BoundedRange(100, 200))
@@ -309,7 +303,9 @@ func TestCaptivePrepareRange_ToIsAheadOfRootHAS(t *testing.T) {
 	captiveBackend := CaptiveStellarCore{
 		archive:           mockArchive,
 		networkPassphrase: network.PublicNetworkPassphrase,
-		stellarCoreRunner: mockRunner,
+		stellarCoreRunnerFactory: func(configPath string) (stellarCoreRunnerInterface, error) {
+			return mockRunner, nil
+		},
 	}
 
 	err := captiveBackend.PrepareRange(BoundedRange(100, 200))
@@ -331,7 +327,9 @@ func TestCaptivePrepareRange_ErrCatchup(t *testing.T) {
 	captiveBackend := CaptiveStellarCore{
 		archive:           mockArchive,
 		networkPassphrase: network.PublicNetworkPassphrase,
-		stellarCoreRunner: mockRunner,
+		stellarCoreRunnerFactory: func(configPath string) (stellarCoreRunnerInterface, error) {
+			return mockRunner, nil
+		},
 	}
 
 	err := captiveBackend.PrepareRange(BoundedRange(100, 200))
@@ -354,7 +352,6 @@ func TestCaptivePrepareRangeUnboundedRange_ErrGettingRootHAS(t *testing.T) {
 	captiveBackend := CaptiveStellarCore{
 		archive:           mockArchive,
 		networkPassphrase: network.PublicNetworkPassphrase,
-		stellarCoreRunner: mockRunner,
 	}
 
 	err := captiveBackend.PrepareRange(UnboundedRange(100))
@@ -375,7 +372,6 @@ func TestCaptivePrepareRangeUnboundedRange_FromIsTooFarAheadOfLatestHAS(t *testi
 	captiveBackend := CaptiveStellarCore{
 		archive:           mockArchive,
 		networkPassphrase: network.PublicNetworkPassphrase,
-		stellarCoreRunner: mockRunner,
 	}
 
 	err := captiveBackend.PrepareRange(UnboundedRange(193))
@@ -401,7 +397,10 @@ func TestCaptivePrepareRangeUnboundedRange_ErrRunFrom(t *testing.T) {
 	captiveBackend := CaptiveStellarCore{
 		archive:           mockArchive,
 		networkPassphrase: network.PublicNetworkPassphrase,
-		stellarCoreRunner: mockRunner,
+		configPath:        "foo",
+		stellarCoreRunnerFactory: func(configPath string) (stellarCoreRunnerInterface, error) {
+			return mockRunner, nil
+		},
 	}
 
 	err := captiveBackend.PrepareRange(UnboundedRange(128))
@@ -421,11 +420,10 @@ func TestCaptivePrepareRangeUnboundedRange_ErrClosingExistingSession(t *testing.
 
 	last := uint32(63)
 	captiveBackend := CaptiveStellarCore{
-		archive:           mockArchive,
 		networkPassphrase: network.PublicNetworkPassphrase,
-		stellarCoreRunner: mockRunner,
 		nextLedger:        63,
 		lastLedger:        &last,
+		stellarCoreRunner: mockRunner,
 	}
 
 	err := captiveBackend.PrepareRange(UnboundedRange(64))
@@ -458,7 +456,10 @@ func TestCaptivePrepareRangeUnboundedRange_ReuseSession(t *testing.T) {
 	captiveBackend := CaptiveStellarCore{
 		archive:           mockArchive,
 		networkPassphrase: network.PublicNetworkPassphrase,
-		stellarCoreRunner: mockRunner,
+		configPath:        "foo",
+		stellarCoreRunnerFactory: func(configPath string) (stellarCoreRunnerInterface, error) {
+			return mockRunner, nil
+		},
 	}
 
 	err := captiveBackend.PrepareRange(UnboundedRange(65))
@@ -496,7 +497,10 @@ func TestGetLatestLedgerSequence(t *testing.T) {
 	captiveBackend := CaptiveStellarCore{
 		archive:           mockArchive,
 		networkPassphrase: network.PublicNetworkPassphrase,
-		stellarCoreRunner: mockRunner,
+		configPath:        "foo",
+		stellarCoreRunnerFactory: func(configPath string) (stellarCoreRunnerInterface, error) {
+			return mockRunner, nil
+		},
 	}
 
 	err := captiveBackend.PrepareRange(UnboundedRange(64))
@@ -522,6 +526,7 @@ func TestGetLatestLedgerSequence(t *testing.T) {
 	// readAheadBufferSize is 2 so 2 ledgers are buffered: 65 and 66
 	assert.Equal(t, uint32(66), latest)
 
+	mockRunner.On("close").Return(nil).Once()
 	err = captiveBackend.Close()
 	assert.NoError(t, err)
 }
@@ -547,7 +552,9 @@ func TestCaptiveGetLedger(t *testing.T) {
 	captiveBackend := CaptiveStellarCore{
 		archive:           mockArchive,
 		networkPassphrase: network.PublicNetworkPassphrase,
-		stellarCoreRunner: mockRunner,
+		stellarCoreRunnerFactory: func(configPath string) (stellarCoreRunnerInterface, error) {
+			return mockRunner, nil
+		},
 	}
 
 	// requires PrepareRange
@@ -609,7 +616,9 @@ func TestCaptiveGetLedger_NextLedgerIsDifferentToLedgerFromBuffer(t *testing.T) 
 	captiveBackend := CaptiveStellarCore{
 		archive:           mockArchive,
 		networkPassphrase: network.PublicNetworkPassphrase,
-		stellarCoreRunner: mockRunner,
+		stellarCoreRunnerFactory: func(configPath string) (stellarCoreRunnerInterface, error) {
+			return mockRunner, nil
+		},
 	}
 
 	err := captiveBackend.PrepareRange(BoundedRange(65, 66))
@@ -638,7 +647,9 @@ func TestCaptiveGetLedger_ErrReadingMetaResult(t *testing.T) {
 	captiveBackend := CaptiveStellarCore{
 		archive:           mockArchive,
 		networkPassphrase: network.PublicNetworkPassphrase,
-		stellarCoreRunner: mockRunner,
+		stellarCoreRunnerFactory: func(configPath string) (stellarCoreRunnerInterface, error) {
+			return mockRunner, nil
+		},
 	}
 
 	err := captiveBackend.PrepareRange(BoundedRange(65, 66))
@@ -673,7 +684,9 @@ func TestCaptiveGetLedger_ErrClosingAfterLastLedger(t *testing.T) {
 	captiveBackend := CaptiveStellarCore{
 		archive:           mockArchive,
 		networkPassphrase: network.PublicNetworkPassphrase,
-		stellarCoreRunner: mockRunner,
+		stellarCoreRunnerFactory: func(configPath string) (stellarCoreRunnerInterface, error) {
+			return mockRunner, nil
+		},
 	}
 
 	err := captiveBackend.PrepareRange(BoundedRange(65, 66))
@@ -712,7 +725,9 @@ func TestGetLedgerBoundsCheck(t *testing.T) {
 	captiveBackend := CaptiveStellarCore{
 		archive:           mockArchive,
 		networkPassphrase: network.PublicNetworkPassphrase,
-		stellarCoreRunner: mockRunner,
+		stellarCoreRunnerFactory: func(configPath string) (stellarCoreRunnerInterface, error) {
+			return mockRunner, nil
+		},
 	}
 
 	err := captiveBackend.PrepareRange(BoundedRange(128, 130))
@@ -777,7 +792,9 @@ func TestCaptiveGetLedgerTerminated(t *testing.T) {
 	captiveBackend := CaptiveStellarCore{
 		archive:           mockArchive,
 		networkPassphrase: network.PublicNetworkPassphrase,
-		stellarCoreRunner: mockRunner,
+		stellarCoreRunnerFactory: func(configPath string) (stellarCoreRunnerInterface, error) {
+			return mockRunner, nil
+		},
 	}
 
 	go writeLedgerHeader(writer, 64)

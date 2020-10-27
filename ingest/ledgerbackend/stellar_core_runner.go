@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/pkg/errors"
@@ -30,6 +31,10 @@ type stellarCoreRunner struct {
 	networkPassphrase string
 	historyURLs       []string
 
+	started  bool
+	wg       sync.WaitGroup
+	shutdown chan struct{}
+
 	cmd *exec.Cmd
 	// processExit channel receives an error when the process exited with an error
 	// or nil if the process exited without an error.
@@ -42,20 +47,23 @@ type stellarCoreRunner struct {
 func newStellarCoreRunner(executablePath, configPath, networkPassphrase string, historyURLs []string) (*stellarCoreRunner, error) {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 
+	// Create temp dir
+	random := rand.New(rand.NewSource(time.Now().UnixNano()))
+	tempDir := filepath.Join(os.TempDir(), fmt.Sprintf("captive-stellar-core-%x", random.Uint64()))
+	err := os.MkdirAll(tempDir, 0755)
+	if err != nil {
+		return nil, errors.Wrap(err, "error creating subprocess tmpdir")
+	}
+
 	runner := &stellarCoreRunner{
 		executablePath:    executablePath,
 		configPath:        configPath,
 		networkPassphrase: networkPassphrase,
 		historyURLs:       historyURLs,
+		shutdown:          make(chan struct{}),
 		processExit:       make(chan error),
+		tempDir:           tempDir,
 		nonce:             fmt.Sprintf("captive-stellar-core-%x", r.Uint64()),
-	}
-
-	// Create temp dir
-	dir := runner.getTmpDir()
-	err := os.MkdirAll(dir, 0755)
-	if err != nil {
-		return nil, errors.Wrap(err, "error creating subprocess tmpdir")
 	}
 
 	if configPath == "" {
@@ -76,7 +84,7 @@ func (r *stellarCoreRunner) generateConfig() string {
 		"DISABLE_XDR_FSYNC=true",
 		"UNSAFE_QUORUM=true",
 		fmt.Sprintf(`NETWORK_PASSPHRASE="%s"`, r.networkPassphrase),
-		fmt.Sprintf(`BUCKET_DIR_PATH="%s"`, filepath.Join(r.getTmpDir(), "buckets")),
+		fmt.Sprintf(`BUCKET_DIR_PATH="%s"`, filepath.Join(r.tempDir, "buckets")),
 	}
 	for i, val := range r.historyURLs {
 		lines = append(lines, fmt.Sprintf("[HISTORY.h%d]", i))
@@ -95,7 +103,7 @@ func (r *stellarCoreRunner) getConfFileName() string {
 	if r.configPath != "" {
 		return r.configPath
 	}
-	return filepath.Join(r.getTmpDir(), "stellar-core.conf")
+	return filepath.Join(r.tempDir, "stellar-core.conf")
 }
 
 func (*stellarCoreRunner) getLogLineWriter() io.Writer {
@@ -116,15 +124,6 @@ func (*stellarCoreRunner) getLogLineWriter() io.Writer {
 	return w
 }
 
-func (r *stellarCoreRunner) getTmpDir() string {
-	if r.tempDir != "" {
-		return r.tempDir
-	}
-	random := rand.New(rand.NewSource(time.Now().UnixNano()))
-	r.tempDir = filepath.Join(os.TempDir(), fmt.Sprintf("captive-stellar-core-%x", random.Uint64()))
-	return r.tempDir
-}
-
 // Makes the temp directory and writes the config file to it; called by the
 // platform-specific captiveStellarCore.Start() methods.
 func (r *stellarCoreRunner) writeConf() error {
@@ -135,7 +134,7 @@ func (r *stellarCoreRunner) writeConf() error {
 func (r *stellarCoreRunner) createCmd(params ...string) (*exec.Cmd, error) {
 	allParams := append([]string{"--conf", r.getConfFileName()}, params...)
 	cmd := exec.Command(r.executablePath, allParams...)
-	cmd.Dir = r.getTmpDir()
+	cmd.Dir = r.tempDir
 	cmd.Stdout = r.getLogLineWriter()
 	cmd.Stderr = r.getLogLineWriter()
 	return cmd, nil
@@ -158,6 +157,9 @@ func (r *stellarCoreRunner) runCmd(params ...string) error {
 }
 
 func (r *stellarCoreRunner) catchup(from, to uint32) error {
+	if r.started {
+		return errors.New("runner already started")
+	}
 	if err := r.runCmd("new-db"); err != nil {
 		return errors.Wrap(err, "error waiting for `stellar-core new-db` subprocess")
 	}
@@ -176,6 +178,7 @@ func (r *stellarCoreRunner) catchup(from, to uint32) error {
 	if err != nil {
 		return errors.Wrap(err, "error starting `stellar-core catchup` subprocess")
 	}
+	r.started = true
 
 	// Do not remove bufio.Reader wrapping. Turns out that each read from a pipe
 	// adds an overhead time so it's better to preload data to a buffer.
@@ -184,6 +187,9 @@ func (r *stellarCoreRunner) catchup(from, to uint32) error {
 }
 
 func (r *stellarCoreRunner) runFrom(from uint32, hash string) error {
+	if r.started {
+		return errors.New("runner already started")
+	}
 	var err error
 	r.cmd, err = r.createCmd(
 		"run",
@@ -199,6 +205,7 @@ func (r *stellarCoreRunner) runFrom(from uint32, hash string) error {
 	if err != nil {
 		return errors.Wrap(err, "error starting `stellar-core run` subprocess")
 	}
+	r.started = true
 
 	// Do not remove bufio.Reader wrapping. Turns out that each read from a pipe
 	// adds an overhead time so it's better to preload data to a buffer.
@@ -222,7 +229,16 @@ func (r *stellarCoreRunner) close() error {
 		r.cmd.Wait()
 		r.cmd = nil
 	}
-	err2 = os.RemoveAll(r.getTmpDir())
+	err2 = os.RemoveAll(r.tempDir)
+	r.tempDir = ""
+
+	if r.started {
+		close(r.shutdown)
+		r.wg.Wait()
+		close(r.processExit)
+	}
+	r.started = false
+
 	if err1 != nil {
 		return errors.Wrap(err1, "error killing subprocess")
 	}

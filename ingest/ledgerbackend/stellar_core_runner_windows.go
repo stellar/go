@@ -29,9 +29,13 @@ func (c *stellarCoreRunner) start() (io.Reader, error) {
 		return io.Reader(nil), err
 	}
 
+	c.wg.Add(1)
 	go func() {
-		c.processExit <- c.cmd.Wait()
-		close(c.processExit)
+		select {
+		case c.processExit <- c.cmd.Wait():
+		case <-c.shutdown:
+		}
+		c.wg.Done()
 	}()
 
 	// Then accept on the server end.
