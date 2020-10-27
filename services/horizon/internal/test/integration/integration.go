@@ -127,16 +127,10 @@ func NewTest(t *testing.T, config Config) *Test {
 		fatalIf(t, innerErr)
 	}
 
-	// Maybe we don't want to do this "hard" cleanup?
-	runComposeCommand("stop")
-	runComposeCommand("rm", "-f")
-
-	runComposeCommand("up", "--detach", "--quiet-pull", "--no-color", "--build")
-
-	// Do we actually want to stop horizon-postgres? It might be better/cleaner
-	// to expect nothing from the executor of the test suite, preferring to keep
-	// as much self-contained as possible.
-	runComposeCommand("stop", "horizon", "horizon-postgres")
+	// Run the latest version of stellar-core
+	runComposeCommand("pull", "core")
+	// Only run Stellar Core container and its dependencies
+	runComposeCommand("up", "--detach", "--quiet-pull", "--no-color", "core")
 
 	// only use horizon from quickstart container when testing captive core
 	// FIXME
@@ -144,14 +138,16 @@ func NewTest(t *testing.T, config Config) *Test {
 	i.startHorizon()
 	// }
 
-	i.hclient = &sdk.Client{HorizonURL: "http://host.docker.internal:8000"}
+	i.hclient = &sdk.Client{HorizonURL: "http://localhost:8000"}
 
 	// Register cleanup handlers (on panic and ctrl+c) so the containers are
 	// stopped even if ingestion or testing fails.
-	//
-	// FIXME: The above `startHorizon()` triggers an infinite goroutine that I
-	//        need to figure out how to interrupt so this works properly.
-	cleanup := func() { runComposeCommand("stop") }
+	cleanup := func() {
+		if i.app != nil {
+			i.app.Close()
+		}
+		runComposeCommand("down", "-v", "--remove-orphans")
+	}
 	i.t.Cleanup(cleanup)
 	c := make(chan os.Signal)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
@@ -183,7 +179,7 @@ of accounts, subscribe to event streams and more.`,
 
 	// Ideally, we'd be pulling host/port information from the Docker Compose
 	// YAML file itself rather than hardcoding it.
-	hostname := "host.docker.internal"
+	hostname := "localhost"
 	cmd.SetArgs([]string{
 		"--stellar-core-url",
 		fmt.Sprintf("http://%s:%s", hostname, stellarCorePort.Port()),
