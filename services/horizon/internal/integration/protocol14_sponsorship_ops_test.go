@@ -363,7 +363,7 @@ func TestSponsorships(t *testing.T) {
 		// Submit the preauthorized transaction
 		var txResult xdr.TransactionResult
 		tt.NoError(err)
-		txResp, err = client.SubmitTransactionXDR(preAuthTxB64)
+		txResp, err = itest.SubmitTransactionXDR(preAuthTxB64)
 		tt.NoError(err)
 		err = xdr.SafeUnmarshalBase64(txResp.ResultXdr, &txResult)
 		tt.NoError(err)
@@ -716,11 +716,11 @@ func TestSponsorships(t *testing.T) {
 
 		// Check that effects populate.
 		expectedEffects := map[string][]uint{
-			effects.EffectTypeNames[effects.EffectClaimableBalanceSponsorshipCreated]: []uint{0, 1},
-			effects.EffectTypeNames[effects.EffectClaimableBalanceCreated]:            []uint{0, 1},
-			effects.EffectTypeNames[effects.EffectClaimableBalanceClaimantCreated]:    []uint{0, 2},
-			effects.EffectTypeNames[effects.EffectClaimableBalanceSponsorshipRemoved]: []uint{0, 1},
-			effects.EffectTypeNames[effects.EffectClaimableBalanceClaimed]:            []uint{0, 1},
+			effects.EffectTypeNames[effects.EffectClaimableBalanceSponsorshipCreated]: {0, 1},
+			effects.EffectTypeNames[effects.EffectClaimableBalanceCreated]:            {0, 1},
+			effects.EffectTypeNames[effects.EffectClaimableBalanceClaimantCreated]:    {0, 2},
+			effects.EffectTypeNames[effects.EffectClaimableBalanceSponsorshipRemoved]: {0, 1},
+			effects.EffectTypeNames[effects.EffectClaimableBalanceClaimed]:            {0, 1},
 		}
 
 		effectsPage, err := client.Effects(sdk.EffectRequest{Order: "desc", Limit: 100})
