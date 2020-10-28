@@ -1,6 +1,7 @@
 package ledgerbackend
 
 import (
+	"encoding/hex"
 	"io"
 	"sync"
 	"time"
@@ -85,6 +86,9 @@ type CaptiveStellarCore struct {
 	// wait is a waiting group waiting for a read-ahead buffer to return.
 	wait sync.WaitGroup
 
+	// For testing
+	stellarCoreRunnerFactory func(configPath string) (stellarCoreRunnerInterface, error)
+
 	stellarCoreRunner stellarCoreRunnerInterface
 	cachedMeta        *xdr.LedgerCloseMeta
 
@@ -123,11 +127,14 @@ func NewCaptive(executablePath, configPath, networkPassphrase string, historyURL
 	}
 
 	return &CaptiveStellarCore{
-		archive:                  archive,
-		executablePath:           executablePath,
-		configPath:               configPath,
-		historyURLs:              historyURLs,
-		networkPassphrase:        networkPassphrase,
+		archive:           archive,
+		executablePath:    executablePath,
+		configPath:        configPath,
+		historyURLs:       historyURLs,
+		networkPassphrase: networkPassphrase,
+		stellarCoreRunnerFactory: func(configPath2 string) (stellarCoreRunnerInterface, error) {
+			return newStellarCoreRunner(executablePath, configPath2, networkPassphrase, historyURLs)
+		},
 		waitIntervalPrepareRange: time.Second,
 	}, nil
 }
@@ -164,7 +171,7 @@ func (c *CaptiveStellarCore) openOfflineReplaySubprocess(from, to uint32) error 
 
 	if c.stellarCoreRunner == nil {
 		// configPath is empty in an offline mode because it's generated
-		c.stellarCoreRunner, err = newStellarCoreRunner(c.executablePath, "", c.networkPassphrase, c.historyURLs)
+		c.stellarCoreRunner, err = c.stellarCoreRunnerFactory("")
 		if err != nil {
 			return errors.Wrap(err, "error creating stellar-core runner")
 		}
@@ -223,19 +230,23 @@ func (c *CaptiveStellarCore) openOnlineReplaySubprocess(from uint32) error {
 		if c.configPath == "" {
 			return errors.New("stellar-core config file path cannot be empty in an online mode")
 		}
-		c.stellarCoreRunner, err = newStellarCoreRunner(c.executablePath, c.configPath, c.networkPassphrase, c.historyURLs)
+		c.stellarCoreRunner, err = c.stellarCoreRunnerFactory(c.configPath)
 		if err != nil {
 			return errors.Wrap(err, "error creating stellar-core runner")
 		}
 	}
-	err = c.stellarCoreRunner.runFrom(from)
+
+	runFrom, ledgerHash, nextLedger, err := c.runFromParams(from)
+	if err != nil {
+		return errors.Wrap(err, "error calculating ledger and hash for stelar-core run")
+	}
+
+	err = c.stellarCoreRunner.runFrom(runFrom, ledgerHash)
 	if err != nil {
 		return errors.Wrap(err, "error running stellar-core")
 	}
 
-	// The next ledger should be the ledger actually requested because
-	// we run `catchup X/0` command in the online mode.
-	c.nextLedger = from
+	c.nextLedger = nextLedger
 	c.lastLedger = nil
 	c.blocking = false
 	c.processExit = false
@@ -246,7 +257,65 @@ func (c *CaptiveStellarCore) openOnlineReplaySubprocess(from uint32) error {
 	c.shutdown = make(chan struct{})
 	c.wait.Add(1)
 	go c.sendLedgerMeta(0)
+
+	// if nextLedger is behind - fast-forward until expected ledger
+	if c.nextLedger < from {
+		// make GetFrom blocking temporarily
+		c.blocking = true
+		_, _, err := c.GetLedger(from)
+		c.blocking = false
+		if err != nil {
+			return errors.Wrapf(err, "Error fast-forwarding to %d", from)
+		}
+	}
+
 	return nil
+}
+
+// runFromParams receives a ledger sequence and calculates the required values to call stellar-core run with --start-ledger and --start-hash
+func (c *CaptiveStellarCore) runFromParams(from uint32) (runFrom uint32, ledgerHash string, nextLedger uint32, err error) {
+	if from == 1 {
+		// Trying to start-from 1 results in an error from Stellar-Core:
+		// Target ledger 1 is not newer than last closed ledger 1 - nothing to do
+		// TODO maybe we can fix it by generating 1st ledger meta
+		// like GenesisLedgerStateReader?
+		err = errors.New("CaptiveCore is unable to start from ledger 1, start from ledger 2")
+		return
+	}
+
+	if from <= 63 {
+		// For ledgers before (and including) first checkpoint, get/wait the first
+		// checkpoint to get the ledger header. It will always start streaming
+		// from ledger 2.
+		nextLedger = 2
+		// The line below is to support a special case for streaming ledger 2
+		// that works for all other ledgers <= 63 (fast-forward).
+		// We can't set from=2 because Stellar-Core will not allow starting from 1.
+		// To solve this we start from 3 and exploit the fast that Stellar-Core
+		// will stream data from 2 for the first checkpoint.
+		from = 3
+	} else {
+		// For ledgers after the first checkpoint, start at the previous checkpoint
+		// and fast-forward from there.
+		if !historyarchive.IsCheckpoint(from) {
+			from = historyarchive.PrevCheckpoint(from)
+		}
+		// Streaming will start from the previous checkpoint + 1
+		nextLedger = from - 63
+		if nextLedger < 2 {
+			// Stellar-Core always streams from ledger 2 at min.
+			nextLedger = 2
+		}
+	}
+
+	runFrom = from - 1
+	ledgerHeader, err2 := c.archive.GetLedgerHeader(from)
+	if err2 != nil {
+		err = errors.Wrapf(err2, "error trying to read ledger header %d from HAS", from)
+		return
+	}
+	ledgerHash = hex.EncodeToString(ledgerHeader.Header.PreviousLedgerHash[:])
+	return
 }
 
 // sendLedgerMeta reads from the captive core pipe, decodes the ledger metadata
@@ -282,10 +351,17 @@ func (c *CaptiveStellarCore) sendLedgerMeta(untilSequence uint32) {
 			}
 			// When `GetLedger` sees the error it will close the backend. We shouldn't
 			// close it now because there may be some ledgers in a buffer.
-			c.metaC <- metaResult{nil, err}
+			select {
+			case c.metaC <- metaResult{nil, err}:
+			case <-c.shutdown:
+			}
 			return
 		}
-		c.metaC <- metaResult{meta, nil}
+		select {
+		case c.metaC <- metaResult{meta, nil}:
+		case <-c.shutdown:
+			return
+		}
 
 		if untilSequence != 0 {
 			if meta.LedgerSequence() >= untilSequence {
@@ -497,31 +573,25 @@ func (c *CaptiveStellarCore) isClosed() bool {
 // Close closes existing Stellar-Core process, streaming sessions and removes all
 // temporary files.
 func (c *CaptiveStellarCore) Close() error {
-	if c.isClosed() {
-		return nil
-	}
 	c.nextLedger = 0
 	c.lastLedger = nil
 
 	if c.shutdown != nil {
 		close(c.shutdown)
-		// discard pending data in case the goroutine is blocked writing to the channel,
-		// see: `sendLedgerMeta`.
-		select {
-		case <-c.metaC:
-		default:
-		}
 		// Do not close the communication channel until we know
 		// the goroutine is done
 		c.wait.Wait()
 		close(c.metaC)
+		c.shutdown = nil
 	}
 
 	if c.stellarCoreRunner != nil {
 		err := c.stellarCoreRunner.close()
+		c.stellarCoreRunner = nil
 		if err != nil {
 			return errors.Wrap(err, "error closing stellar-core subprocess")
 		}
 	}
+
 	return nil
 }

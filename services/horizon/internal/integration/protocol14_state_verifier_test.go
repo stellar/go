@@ -104,10 +104,12 @@ func TestProtocol14StateVerifier(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, txResp.Successful)
 
-	// Wait for the first checkpoint ledger
+	// Reach the first checkpoint ledger
+	// Core will push to history archives *after* checkpoint ledger
+	itest.CloseCoreLedgersUntilSequence(firstCheckpoint + 1)
+	assert.NoError(t, err)
 	for !itest.LedgerIngested(firstCheckpoint) {
-		t.Log("First checkpoint ledger not ingested yet...")
-		time.Sleep(5 * time.Second)
+		time.Sleep(time.Second)
 	}
 
 	verified := waitForStateVerifications(itest, 1)
@@ -119,15 +121,16 @@ func TestProtocol14StateVerifier(t *testing.T) {
 	itest.RunHorizonCLICommand("expingest", "trigger-state-rebuild")
 
 	// Wait for the second checkpoint ledger and state rebuild
-	for !itest.LedgerClosed(secondCheckpoint) {
-		t.Log("Second checkpoint ledger not closed yet...")
-		time.Sleep(5 * time.Second)
-	}
+	// Core will push to history archives *after* checkpoint ledger
+	itest.CloseCoreLedgersUntilSequence(secondCheckpoint + 1)
+	assert.NoError(t, err)
 
 	// Wait for the third checkpoint ledger and state verification trigger
+	// Core will push to history archives *after* checkpoint ledger
+	itest.CloseCoreLedgersUntilSequence(thirdCheckpoint + 1)
+	assert.NoError(t, err)
 	for !itest.LedgerIngested(thirdCheckpoint) {
-		t.Log("Third checkpoint ledger not ingested yet...")
-		time.Sleep(5 * time.Second)
+		time.Sleep(time.Second)
 	}
 
 	verified = waitForStateVerifications(itest, 2)
