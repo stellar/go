@@ -789,7 +789,7 @@ func ExampleCreateClaimableBalance() {
 		Amount:       "420",
 	}
 
-	// Build, sign, and submit the transaction
+	// Build and sign the transaction
 	tx, err := NewTransaction(
 		TransactionParams{
 			SourceAccount:        &aAccount,
