@@ -231,7 +231,7 @@ func ExtractBalanceId(txResult xdr.TransactionResult, opIndex int) (string, erro
 	}
 
 	result := opResults[opIndex]
-	balanceId, err := xdr.MarshalHex(result.MustTr().MustCreateClaimableBalanceResult())
+	balanceId, err := xdr.MarshalHex(result.MustTr().MustCreateClaimableBalanceResult().BalanceId)
 	if err != nil {
 		return "", errors.Wrap(err, "Failed to determine balance ID")
 	}
