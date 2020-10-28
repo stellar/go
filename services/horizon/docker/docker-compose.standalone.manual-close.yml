@@ -1,0 +1,5 @@
+version: '3'
+services:
+  core:
+    volumes:
+      - ./stellar-core-standalone-manual-close.cfg:/stellar-core.cfg

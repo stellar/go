@@ -103,10 +103,11 @@ func NewTest(t *testing.T, config Config) *Test {
 	composeDir := path.Join(current, "services", "horizon", "docker")
 	baseYaml := path.Join(composeDir, "docker-compose.yml")
 	standaloneYaml := path.Join(composeDir, "docker-compose.standalone.yml")
+	manualCloseYaml := path.Join(composeDir, "docker-compose.standalone.manual-close.yml")
 
 	// Runs a docker-compose command applied to the above configs
 	runComposeCommand := func(args ...string) {
-		cmdline := append([]string{"-f", baseYaml, "-f", standaloneYaml}, args...)
+		cmdline := append([]string{"-f", baseYaml, "-f", standaloneYaml, "-f", manualCloseYaml}, args...)
 		t.Log("Running", cmdline)
 		cmd := exec.Command("docker-compose", cmdline...)
 		cmd.Env = os.Environ()
