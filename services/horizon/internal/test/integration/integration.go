@@ -1,3 +1,4 @@
+//lint:file-ignore U1001 Ignore all unused code, this is only used in tests.
 package integration
 
 import (
