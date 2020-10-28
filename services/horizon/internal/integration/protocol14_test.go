@@ -82,6 +82,10 @@ func TestProtocol15Basics(t *testing.T) {
 			calculatedId, err := xdr.MarshalHex(claimCreationOp.BalanceId)
 			tt.NoError(err)
 			tt.Equal(predictedId, calculatedId)
+
+			helperCalculatedId, err := txnbuild.ExtractBalanceId(txResult, i)
+			tt.NoError(err)
+			tt.Equal(helperCalculatedId, calculatedId)
 		}
 	})
 }
