@@ -23,6 +23,7 @@ import (
 	proto "github.com/stellar/go/protocols/horizon"
 	horizon "github.com/stellar/go/services/horizon/internal"
 	"github.com/stellar/go/support/db/dbtest"
+	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
@@ -563,7 +564,7 @@ func (i *Test) SubmitTransactionXDR(txb64 string) (proto.Transaction, error) {
 		// instrumenting Horizon to tell us when the transaction was sent to core.
 		time.Sleep(time.Millisecond * 100)
 		if err := i.CloseCoreLedger(); err != nil {
-			panicIf(err)
+			log.Fatalf("failed to CloseCoreLedger(): %s", err)
 		}
 	}()
 
