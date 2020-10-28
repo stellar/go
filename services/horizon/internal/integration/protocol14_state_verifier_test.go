@@ -98,10 +98,11 @@ func TestProtocol14StateVerifier(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, txResp.Successful)
 
-	// Wait for the first checkpoint ledger
+	// Reach the first checkpoint ledger
 	for !itest.LedgerIngested(63) {
-		t.Log("First checkpoint ledger (63) not closed yet...")
-		time.Sleep(5 * time.Second)
+		err := itest.CloseCoreLedger()
+		assert.NoError(t, err)
+		time.Sleep(50 * time.Millisecond)
 	}
 
 	var metrics string

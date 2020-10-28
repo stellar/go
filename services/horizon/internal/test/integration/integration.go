@@ -22,11 +22,13 @@ import (
 	"github.com/spf13/cobra"
 
 	sdk "github.com/stellar/go/clients/horizonclient"
+	"github.com/stellar/go/clients/stellarcore"
 	"github.com/stellar/go/keypair"
 	proto "github.com/stellar/go/protocols/horizon"
 	horizon "github.com/stellar/go/services/horizon/internal"
 	"github.com/stellar/go/support/db/dbtest"
 	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
@@ -60,6 +62,7 @@ type Test struct {
 	config    Config
 	cli       client.APIClient
 	hclient   *sdk.Client
+	cclient   *stellarcore.Client
 	container container.ContainerCreateCreatedBody
 	app       *horizon.App
 }
@@ -143,13 +146,23 @@ func NewTest(t *testing.T, config Config) *Test {
 		t.Fatal(errors.Wrap(err, "error starting docker container"))
 	}
 
+	ctx, cancel = context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	containerInfo, err := i.cli.ContainerInspect(ctx, i.container.ID)
+	if err != nil {
+		i.t.Fatal(errors.Wrap(err, "error inspecting container"))
+	}
+	stellarCoreBinding := containerInfo.NetworkSettings.Ports[stellarCorePort][0]
+	coreURL := fmt.Sprintf("http://%s:%s", stellarCoreBinding.HostIP, stellarCoreBinding.HostPort)
 	// only use horizon from quickstart container when testing captive core
 	if os.Getenv("HORIZON_INTEGRATION_ENABLE_CAPTIVE_CORE") == "" {
-		i.startHorizon()
+		i.startHorizon(containerInfo, coreURL)
 	}
 
 	doCleanup = false
 	i.hclient = &sdk.Client{HorizonURL: "http://localhost:8000"}
+	i.cclient = &stellarcore.Client{URL: coreURL}
 
 	// Register cleanup handlers (on panic and ctrl+c) so the container is
 	// removed even if ingestion or testing fails.
@@ -162,6 +175,7 @@ func NewTest(t *testing.T, config Config) *Test {
 		os.Exit(0)
 	}()
 
+	i.waitForCore()
 	i.waitForIngestionAndUpgrade()
 	return i
 }
@@ -208,18 +222,8 @@ func (i *Test) setupHorizonBinary() {
 	}
 }
 
-func (i *Test) startHorizon() {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	info, err := i.cli.ContainerInspect(ctx, i.container.ID)
-	if err != nil {
-		i.t.Fatal(errors.Wrap(err, "error inspecting container"))
-	}
-
-	stellarCore := info.NetworkSettings.Ports[stellarCorePort][0]
-
-	stellarCorePostgres := info.NetworkSettings.Ports[stellarCorePostgresPort][0]
+func (i *Test) startHorizon(containerInfo types.ContainerJSON, coreURL string) {
+	stellarCorePostgres := containerInfo.NetworkSettings.Ports[stellarCorePostgresPort][0]
 	stellarCorePostgresURL := fmt.Sprintf(
 		"postgres://stellar:%s@%s:%s/core",
 		stellarCorePostgresPassword,
@@ -227,7 +231,7 @@ func (i *Test) startHorizon() {
 		stellarCorePostgres.HostPort,
 	)
 
-	historyArchive := info.NetworkSettings.Ports[historyArchivePort][0]
+	historyArchive := containerInfo.NetworkSettings.Ports[historyArchivePort][0]
 
 	horizonPostgresURL := dbtest.Postgres(i.t).DSN
 
@@ -243,7 +247,7 @@ func (i *Test) startHorizon() {
 	}
 	cmd.SetArgs([]string{
 		"--stellar-core-url",
-		fmt.Sprintf("http://%s:%s", stellarCore.HostIP, stellarCore.HostPort),
+		coreURL,
 		"--history-archive-urls",
 		fmt.Sprintf("http://%s:%s", historyArchive.HostIP, historyArchive.HostPort),
 		"--ingest",
@@ -259,15 +263,46 @@ func (i *Test) startHorizon() {
 	})
 	configOpts.Init(cmd)
 
-	if err = cmd.Execute(); err != nil {
+	if err := cmd.Execute(); err != nil {
 		i.t.Fatalf("cannot initialize horizon: %s", err)
 	}
 
-	if err = i.app.Ingestion().BuildGenesisState(); err != nil {
+	if err := i.app.Ingestion().BuildGenesisState(); err != nil {
 		i.t.Fatalf("cannot build genesis state: %s", err)
 	}
 
 	go i.app.Serve()
+}
+
+// Wait for core to be up and manually close the first ledger
+func (i *Test) waitForCore() {
+	for t := 30 * time.Second; t >= 0; t -= time.Second {
+		i.t.Log("Waiting for core to be up...")
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		_, err := i.cclient.Info(ctx)
+		cancel()
+		if err == nil {
+			break
+		}
+		time.Sleep(time.Second)
+	}
+
+	// We need to wait for Core to be armed before closing the first ledger
+	// Otherwise, for some reason, the protocol version of the ledger stays at 0
+	// TODO: instead of sleeping we should ensure Core's status (in GET /info) is "Armed"
+	//       but, to do so, we should first expose it in Core's client.
+	time.Sleep(time.Second)
+	if err := i.CloseCoreLedger(); err != nil {
+		i.t.Fatalf("Failed to manually close the second ledger: %s", err)
+	}
+
+	// Make sure that the Sleep above was successful
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	info, err := i.cclient.Info(ctx)
+	cancel()
+	if err != nil || !info.IsSynced() {
+		log.Fatal("failed to wait for Core to be synced")
+	}
 }
 
 func (i *Test) waitForIngestionAndUpgrade() {
@@ -380,6 +415,7 @@ func createTestContainer(i *Test, image string) error {
 		Cmd: []string{
 			"--standalone",
 			"--protocol-version", strconv.FormatInt(int64(i.config.ProtocolVersion), 10),
+			"--enable-core-manual-close",
 		},
 	}
 	hostConfig := &container.HostConfig{}
@@ -602,11 +638,32 @@ func (i *Test) CreateSignedTransaction(
 	return tx, nil
 }
 
+func (i *Test) CloseCoreLedger() error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	return i.cclient.ManualClose(ctx)
+}
+
 func (i *Test) SubmitTransaction(tx *txnbuild.Transaction) (proto.Transaction, error) {
 	txb64, err := tx.Base64()
 	if err != nil {
 		return proto.Transaction{}, err
 	}
+	return i.SubmitTransactionXDR(txb64)
+}
+
+func (i *Test) SubmitTransactionXDR(txb64 string) (proto.Transaction, error) {
+	// Core runs in manual-close mode, so we need to close ledgers explicitly
+	// We need to close the ledger in parallel because Horizon's submission endpoint
+	// blocks until the transaction is in a closed ledger
+	go func() {
+		// This sleep is ugly, but a better approach would probably require
+		// instrumenting Horizon to tell us when the transaction was sent to core.
+		time.Sleep(time.Millisecond * 100)
+		if err := i.CloseCoreLedger(); err != nil {
+			log.Fatalf("failed to CloseCoreLedger(): %s", err)
+		}
+	}()
 
 	return i.Client().SubmitTransactionXDR(txb64)
 }
