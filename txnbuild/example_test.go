@@ -877,7 +877,7 @@ func ExampleBeginSponsoringFutureReserves() {
 			Line:          &test.Assets[0],
 			Limit:         MaxTrustlineLimit,
 		},
-		&EndSponsoringFutureReserves{SourceAccount: &test.Aaccount},
+		&EndSponsoringFutureReserves{},
 	}
 
 	// The sponsorer obviously must sign the tx, but so does the sponsoree, to
@@ -885,10 +885,10 @@ func ExampleBeginSponsoringFutureReserves() {
 	txb64, err := newSignedTransaction(
 		TransactionParams{
 			SourceAccount:        &test.Aaccount,
-			IncrementSequenceNum: true,
-			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
 			Operations:           sponsorTrustline,
+			Timebounds:           NewInfiniteTimeout(),
+			BaseFee:              MinBaseFee,
+			IncrementSequenceNum: true,
 		},
 		network.TestNetworkPassphrase,
 		test.S1,
@@ -897,7 +897,7 @@ func ExampleBeginSponsoringFutureReserves() {
 	check(err)
 	fmt.Println(txb64)
 
-	// Output: AAAAAgAAAAC0FS8Odh4yFSpaseK1sYMMVdTpVCJmylGJpMeYu9LOKAAAASwAAAAAAAAAAQAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMAAAAAAAAAEAAAAAC0FS8Odh4yFSpaseK1sYMMVdTpVCJmylGJpMeYu9LOKAAAAAEAAAAAtBUvDnYeMhUqWrHitbGDDFXU6VQiZspRiaTHmLvSzigAAAAGAAAAAUFCQ0QAAAAAfhHLNNY19eGrAtSgLD3VpaRm2AjNjxIBWQg9zS4VWZh//////////wAAAAEAAAAAtBUvDnYeMhUqWrHitbGDDFXU6VQiZspRiaTHmLvSzigAAAARAAAAAAAAAAIuFVmYAAAAQHK7HwogpwMnTmkNMnhYinvSdfivAXGr4W6sI5TM1m0Gzm8Ez5SPlvHTbV6xKOI7OERh2GCxNaIN5KCACRXxkwm70s4oAAAAQLC3YZhKWPBb6JVhMVKwxrcKeTfyQxLinT3gMl2qkm1yzC5obWPA96PzrleUfHlntun4aTGf10su1ZxhfdW/ZAk=
+	// Output: AAAAAgAAAAC0FS8Odh4yFSpaseK1sYMMVdTpVCJmylGJpMeYu9LOKAAAASwAAAAAAAAAAQAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMAAAAAAAAAEAAAAAC0FS8Odh4yFSpaseK1sYMMVdTpVCJmylGJpMeYu9LOKAAAAAEAAAAAtBUvDnYeMhUqWrHitbGDDFXU6VQiZspRiaTHmLvSzigAAAAGAAAAAUFCQ0QAAAAAfhHLNNY19eGrAtSgLD3VpaRm2AjNjxIBWQg9zS4VWZh//////////wAAAAAAAAARAAAAAAAAAAIuFVmYAAAAQARLe8wjGKq6WwdOPGkw2jo4eltp6dAHXEum4kYKzIjYx9fs4kdNJAaJE0s3Fy6JAIo1ttrGWp8zq6VX6P5CcAW70s4oAAAAQNpzu6NxKgcYd70mJl6EHyRPdjNTfxGm1w4XIIyIfZElRpmuZ6aWpXA0wwS6BimT3UQizK55T1kt1B2Pi3KyPAw=
 }
 
 func ExampleBeginSponsoringFutureReserves_transfer() {
@@ -923,10 +923,10 @@ func ExampleBeginSponsoringFutureReserves_transfer() {
 	txb64, err := newSignedTransaction(
 		TransactionParams{
 			SourceAccount:        &test.S1account,
-			IncrementSequenceNum: true,
-			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
 			Operations:           transferOps,
+			Timebounds:           NewInfiniteTimeout(),
+			BaseFee:              MinBaseFee,
+			IncrementSequenceNum: true,
 		},
 		network.TestNetworkPassphrase,
 		test.S1,
@@ -964,10 +964,10 @@ func ExampleRevokeSponsorship() {
 	txb64, err := newSignedTransaction(
 		TransactionParams{
 			SourceAccount:        &test.S2account,
-			IncrementSequenceNum: true,
-			BaseFee:              MinBaseFee,
-			Timebounds:           NewInfiniteTimeout(),
 			Operations:           revokeOps,
+			Timebounds:           NewInfiniteTimeout(),
+			BaseFee:              MinBaseFee,
+			IncrementSequenceNum: true,
 		},
 		network.TestNetworkPassphrase,
 		test.S2,
