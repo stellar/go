@@ -1,6 +1,7 @@
 package historyarchive
 
 import (
+	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/mock"
 )
 
@@ -27,6 +28,11 @@ func (m *MockArchive) BucketExists(bucket Hash) (bool, error) {
 func (m *MockArchive) CategoryCheckpointExists(cat string, chk uint32) (bool, error) {
 	a := m.Called(cat, chk)
 	return a.Get(0).(bool), a.Error(1)
+}
+
+func (m *MockArchive) GetLedgerHeader(chk uint32) (xdr.LedgerHeaderHistoryEntry, error) {
+	a := m.Called(chk)
+	return a.Get(0).(xdr.LedgerHeaderHistoryEntry), a.Error(1)
 }
 
 func (m *MockArchive) GetRootHAS() (HistoryArchiveState, error) {

@@ -20,6 +20,7 @@ import (
 	"sync"
 
 	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/xdr"
 )
 
 const hexPrefixPat = "/[0-9a-f]{2}/[0-9a-f]{2}/[0-9a-f]{2}/"
@@ -59,6 +60,7 @@ type ArchiveInterface interface {
 	PutPathHAS(path string, has HistoryArchiveState, opts *CommandOptions) error
 	BucketExists(bucket Hash) (bool, error)
 	CategoryCheckpointExists(cat string, chk uint32) (bool, error)
+	GetLedgerHeader(chk uint32) (xdr.LedgerHeaderHistoryEntry, error)
 	GetRootHAS() (HistoryArchiveState, error)
 	GetCheckpointHAS(chk uint32) (HistoryArchiveState, error)
 	PutCheckpointHAS(chk uint32, has HistoryArchiveState, opts *CommandOptions) error
@@ -147,6 +149,36 @@ func (a *Archive) BucketExists(bucket Hash) (bool, error) {
 
 func (a *Archive) CategoryCheckpointExists(cat string, chk uint32) (bool, error) {
 	return a.backend.Exists(CategoryCheckpointPath(cat, chk))
+}
+
+func (a *Archive) GetLedgerHeader(ledger uint32) (xdr.LedgerHeaderHistoryEntry, error) {
+	checkpoint := ledger
+	if !IsCheckpoint(checkpoint) {
+		checkpoint = NextCheckpoint(ledger)
+	}
+	path := CategoryCheckpointPath("ledger", checkpoint)
+	xdrStream, err := a.GetXdrStream(path)
+	if err != nil {
+		return xdr.LedgerHeaderHistoryEntry{}, errors.Wrap(err, "error opening ledger stream")
+	}
+	defer xdrStream.Close()
+
+	for {
+		var ledgerHeader xdr.LedgerHeaderHistoryEntry
+		err = xdrStream.ReadOne(&ledgerHeader)
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return ledgerHeader, errors.Wrap(err, "error reading from ledger stream")
+		}
+
+		if uint32(ledgerHeader.Header.LedgerSeq) == ledger {
+			return ledgerHeader, nil
+		}
+	}
+
+	return xdr.LedgerHeaderHistoryEntry{}, errors.New("ledger header not found in checkpoint")
 }
 
 func (a *Archive) GetRootHAS() (HistoryArchiveState, error) {

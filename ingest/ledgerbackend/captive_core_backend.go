@@ -1,6 +1,7 @@
 package ledgerbackend
 
 import (
+	"encoding/hex"
 	"io"
 	"sync"
 	"time"
@@ -234,14 +235,18 @@ func (c *CaptiveStellarCore) openOnlineReplaySubprocess(from uint32) error {
 			return errors.Wrap(err, "error creating stellar-core runner")
 		}
 	}
-	err = c.stellarCoreRunner.runFrom(from)
+
+	runFrom, ledgerHash, nextLedger, err := c.runFromParams(from)
+	if err != nil {
+		return errors.Wrap(err, "error calculating ledger and hash for stelar-core run")
+	}
+
+	err = c.stellarCoreRunner.runFrom(runFrom, ledgerHash)
 	if err != nil {
 		return errors.Wrap(err, "error running stellar-core")
 	}
 
-	// The next ledger should be the ledger actually requested because
-	// we run `catchup X/0` command in the online mode.
-	c.nextLedger = from
+	c.nextLedger = nextLedger
 	c.lastLedger = nil
 	c.blocking = false
 	c.processExit = false
@@ -252,7 +257,65 @@ func (c *CaptiveStellarCore) openOnlineReplaySubprocess(from uint32) error {
 	c.shutdown = make(chan struct{})
 	c.wait.Add(1)
 	go c.sendLedgerMeta(0)
+
+	// if nextLedger is behind - fast-forward until expected ledger
+	if c.nextLedger < from {
+		// make GetFrom blocking temporarily
+		c.blocking = true
+		_, _, err := c.GetLedger(from)
+		c.blocking = false
+		if err != nil {
+			return errors.Wrapf(err, "Error fast-forwarding to %d", from)
+		}
+	}
+
 	return nil
+}
+
+// runFromParams receives a ledger sequence and calculates the required values to call stellar-core run with --start-ledger and --start-hash
+func (c *CaptiveStellarCore) runFromParams(from uint32) (runFrom uint32, ledgerHash string, nextLedger uint32, err error) {
+	if from == 1 {
+		// Trying to start-from 1 results in an error from Stellar-Core:
+		// Target ledger 1 is not newer than last closed ledger 1 - nothing to do
+		// TODO maybe we can fix it by generating 1st ledger meta
+		// like GenesisLedgerStateReader?
+		err = errors.New("CaptiveCore is unable to start from ledger 1, start from ledger 2")
+		return
+	}
+
+	if from <= 63 {
+		// For ledgers before (and including) first checkpoint, get/wait the first
+		// checkpoint to get the ledger header. It will always start streaming
+		// from ledger 2.
+		nextLedger = 2
+		// The line below is to support a special case for streaming ledger 2
+		// that works for all other ledgers <= 63 (fast-forward).
+		// We can't set from=2 because Stellar-Core will not allow starting from 1.
+		// To solve this we start from 3 and exploit the fast that Stellar-Core
+		// will stream data from 2 for the first checkpoint.
+		from = 3
+	} else {
+		// For ledgers after the first checkpoint, start at the previous checkpoint
+		// and fast-forward from there.
+		if !historyarchive.IsCheckpoint(from) {
+			from = historyarchive.PrevCheckpoint(from)
+		}
+		// Streaming will start from the previous checkpoint + 1
+		nextLedger = from - 63
+		if nextLedger < 2 {
+			// Stellar-Core always streams from ledger 2 at min.
+			nextLedger = 2
+		}
+	}
+
+	runFrom = from - 1
+	ledgerHeader, err2 := c.archive.GetLedgerHeader(from)
+	if err2 != nil {
+		err = errors.Wrapf(err2, "error trying to read ledger header %d from HAS", from)
+		return
+	}
+	ledgerHash = hex.EncodeToString(ledgerHeader.Header.PreviousLedgerHash[:])
+	return
 }
 
 // sendLedgerMeta reads from the captive core pipe, decodes the ledger metadata

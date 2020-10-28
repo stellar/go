@@ -1,6 +1,8 @@
+//lint:file-ignore U1001 Ignore all unused code, this is only used in tests.
 package integration
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -13,11 +15,10 @@ import (
 	"syscall"
 	"testing"
 	"time"
-
 	"github.com/docker/go-connections/nat"
 	"github.com/spf13/cobra"
-
 	sdk "github.com/stellar/go/clients/horizonclient"
+	"github.com/stellar/go/clients/stellarcore"
 	"github.com/stellar/go/keypair"
 	proto "github.com/stellar/go/protocols/horizon"
 	horizon "github.com/stellar/go/services/horizon/internal"
@@ -31,12 +32,9 @@ const (
 	NetworkPassphrase           = "Standalone Network ; February 2017"
 	stellarCorePostgresPassword = "mysecretpassword"
 	adminPort                   = 6060
-)
-
-var (
-	stellarCorePort         = mustPort("tcp", "11626")
-	stellarCorePostgresPort = mustPort("tcp", "5641")
-	historyArchivePort      = mustPort("tcp", "1570")
+	stellarCorePort         = "11626"
+	stellarCorePostgresPort = "5641"
+	historyArchivePort      = "1570"
 )
 
 func mustPort(proto, port string) nat.Port {
@@ -54,6 +52,7 @@ type Test struct {
 	t       *testing.T
 	config  Config
 	hclient *sdk.Client
+	cclient   *stellarcore.Client
 	app     *horizon.App
 }
 
@@ -140,6 +139,7 @@ func NewTest(t *testing.T, config Config) *Test {
 
 	i.startHorizon()
 	i.hclient = &sdk.Client{HorizonURL: "http://localhost:8000"}
+	i.cclient = &stellarcore.Client{URL: "http://localhost:"+stellarCorePort}
 
 	// Register cleanup handlers (on panic and ctrl+c) so the containers are
 	// stopped even if ingestion or testing fails.
@@ -158,6 +158,7 @@ func NewTest(t *testing.T, config Config) *Test {
 		os.Exit(0)
 	}()
 
+	i.waitForCore()
 	i.waitForIngestionAndUpgrade()
 	return i
 }
@@ -183,9 +184,9 @@ of accounts, subscribe to event streams and more.`,
 	hostname := "localhost"
 	cmd.SetArgs([]string{
 		"--stellar-core-url",
-		fmt.Sprintf("http://%s:%s", hostname, stellarCorePort.Port()),
+		fmt.Sprintf("http://%s:%s", hostname, stellarCorePort),
 		"--history-archive-urls",
-		fmt.Sprintf("http://%s:%s", hostname, historyArchivePort.Port()),
+		fmt.Sprintf("http://%s:%s", hostname, historyArchivePort),
 		"--ingest",
 		"--db-url",
 		horizonPostgresURL,
@@ -194,7 +195,7 @@ of accounts, subscribe to event streams and more.`,
 			"postgres://postgres:%s@%s:%s/stellar?sslmode=disable",
 			stellarCorePostgresPassword,
 			hostname,
-			stellarCorePostgresPort.Port(),
+			stellarCorePostgresPort,
 		),
 		"--network-passphrase",
 		NetworkPassphrase,
@@ -214,6 +215,37 @@ of accounts, subscribe to event streams and more.`,
 	}
 
 	go i.app.Serve()
+}
+
+// Wait for core to be up and manually close the first ledger
+func (i *Test) waitForCore() {
+	for t := 30 * time.Second; t >= 0; t -= time.Second {
+		i.t.Log("Waiting for core to be up...")
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		_, err := i.cclient.Info(ctx)
+		cancel()
+		if err == nil {
+			break
+		}
+		time.Sleep(time.Second)
+	}
+
+	// We need to wait for Core to be armed before closing the first ledger
+	// Otherwise, for some reason, the protocol version of the ledger stays at 0
+	// TODO: instead of sleeping we should ensure Core's status (in GET /info) is "Armed"
+	//       but, to do so, we should first expose it in Core's client.
+	time.Sleep(time.Second)
+	if err := i.CloseCoreLedger(); err != nil {
+		i.t.Fatalf("Failed to manually close the second ledger: %s", err)
+	}
+
+	// Make sure that the Sleep above was successful
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	info, err := i.cclient.Info(ctx)
+	cancel()
+	if err != nil || !info.IsSynced() {
+		i.t.Fatal("failed to wait for Core to be synced")
+	}
 }
 
 func (i *Test) waitForIngestionAndUpgrade() {
@@ -242,6 +274,11 @@ func (i *Test) Client() *sdk.Client {
 	return i.hclient
 }
 
+// Horizon returns the horizon.App instance for the current integration test
+func (i *Test) Horizon() *horizon.App {
+	return i.app
+}
+
 // LedgerIngested returns true if the ledger with a given sequence has been
 // ingested by Horizon. Panics in case of errors.
 func (i *Test) LedgerIngested(sequence uint32) bool {
@@ -251,9 +288,26 @@ func (i *Test) LedgerIngested(sequence uint32) bool {
 	return root.IngestSequence >= sequence
 }
 
+// LedgerClosed returns true if the ledger with a given sequence has been
+// closed by Stellar-Core. Panics in case of errors. Note it's different
+// than LedgerIngested because it checks if the ledger was closed, not
+// necessarily ingested (ex. when rebuilding state Horizon does not ingest
+// recent ledgers).
+func (i *Test) LedgerClosed(sequence uint32) bool {
+	root, err := i.Client().Root()
+	panicIf(err)
+
+	return root.CoreSequence >= int32(sequence)
+}
+
 // AdminPort returns Horizon admin port.
 func (i *Test) AdminPort() int {
 	return adminPort
+}
+
+// Metrics URL returns Horizon metrics URL.
+func (i *Test) MetricsURL() string {
+	return fmt.Sprintf("http://localhost:%d/metrics", i.AdminPort())
 }
 
 // Master returns a keypair of the network master account.
@@ -457,11 +511,66 @@ func (i *Test) CreateSignedTransaction(
 	return tx, nil
 }
 
+// CloseCoreLedgersUntilSequence will close ledgers until sequence.
+// Note: because manualclose command doesn't block until ledger is actually
+// closed, after running this method the last sequence can be higher than seq.
+func (i *Test) CloseCoreLedgersUntilSequence(seq int) error {
+	for {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+		info, err := i.cclient.Info(ctx)
+		if err != nil {
+			return err
+		}
+
+		if info.Info.Ledger.Num >= seq {
+			return nil
+		}
+
+		i.t.Logf(
+			"Currently at ledger: %d, want: %d.",
+			info.Info.Ledger.Num,
+			seq,
+		)
+
+		err = i.CloseCoreLedger()
+		if err != nil {
+			return err
+		}
+		// manualclose command in core doesn't block until ledger is actually
+		// closed. Let's give it time to close the ledger.
+		time.Sleep(200 * time.Millisecond)
+	}
+}
+
+// CloseCoreLedgers will close one ledger.
+func (i *Test) CloseCoreLedger() error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	i.t.Log("Closing one ledger manually...")
+	return i.cclient.ManualClose(ctx)
+}
+
 func (i *Test) SubmitTransaction(tx *txnbuild.Transaction) (proto.Transaction, error) {
 	txb64, err := tx.Base64()
 	if err != nil {
 		return proto.Transaction{}, err
 	}
+	return i.SubmitTransactionXDR(txb64)
+}
+
+func (i *Test) SubmitTransactionXDR(txb64 string) (proto.Transaction, error) {
+	// Core runs in manual-close mode, so we need to close ledgers explicitly
+	// We need to close the ledger in parallel because Horizon's submission endpoint
+	// blocks until the transaction is in a closed ledger
+	go func() {
+		// This sleep is ugly, but a better approach would probably require
+		// instrumenting Horizon to tell us when the transaction was sent to core.
+		time.Sleep(time.Millisecond * 100)
+		if err := i.CloseCoreLedger(); err != nil {
+			i.t.Fatalf("failed to CloseCoreLedger(): %s", err)
+		}
+	}()
 
 	return i.Client().SubmitTransactionXDR(txb64)
 }
