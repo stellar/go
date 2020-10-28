@@ -70,7 +70,7 @@ require (
 	github.com/spf13/jwalterweatherman v0.0.0-20141219030609-3d60171a6431 // indirect
 	github.com/spf13/pflag v0.0.0-20161005214240-4bd69631f475
 	github.com/spf13/viper v0.0.0-20150621231900-db7ff930a189
-	github.com/stellar/go-xdr v0.0.0-20200331223602-71a1e6d555f2
+	github.com/stellar/go-xdr v0.0.0-20201028102745-f80a23dac78a
 	github.com/stellar/throttled v2.2.3-0.20190823235211-89d75816f59d+incompatible
 	github.com/stretchr/testify v1.5.1
 	github.com/tyler-smith/go-bip39 v0.0.0-20180618194314-52158e4697b8
