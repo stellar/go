@@ -868,6 +868,8 @@ func InitSponsorshipTestConfig() SponsorshipTestConfig {
 func ExampleBeginSponsoringFutureReserves() {
 	test := InitSponsorshipTestConfig()
 
+	// If the sponsoree submits the transaction, the `SourceAccount` fields can
+	// be omitted for the "sponsor sandwich" operations.
 	sponsorTrustline := []Operation{
 		&BeginSponsoringFutureReserves{SponsoredID: test.A.Address()},
 		&ChangeTrust{
@@ -878,7 +880,8 @@ func ExampleBeginSponsoringFutureReserves() {
 		&EndSponsoringFutureReserves{SourceAccount: &test.Aaccount},
 	}
 
-	// Note that while A can submit this transaction, both sign it.
+	// The sponsorer obviously must sign the tx, but so does the sponsoree, to
+	// consent to the sponsored operation.
 	txb64, err := newSignedTransaction(
 		TransactionParams{
 			SourceAccount:        &test.Aaccount,
@@ -916,6 +919,7 @@ func ExampleBeginSponsoringFutureReserves_transfer() {
 		&EndSponsoringFutureReserves{},
 	}
 
+	// For transfers, both the old and new sponsor need to sign.
 	txb64, err := newSignedTransaction(
 		TransactionParams{
 			SourceAccount:        &test.S1account,
@@ -956,7 +960,7 @@ func ExampleRevokeSponsorship() {
 		},
 	}
 
-	// Note that while A can submit this transaction, both sign it.
+	// With revocation, only the new sponsor needs to sign.
 	txb64, err := newSignedTransaction(
 		TransactionParams{
 			SourceAccount:        &test.S2account,
