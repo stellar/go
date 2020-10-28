@@ -563,7 +563,7 @@ func (i *Test) SubmitTransactionXDR(txb64 string) (proto.Transaction, error) {
 		// instrumenting Horizon to tell us when the transaction was sent to core.
 		time.Sleep(time.Millisecond * 100)
 		if err := i.CloseCoreLedger(); err != nil {
-			i.t.Fatalf("failed to CloseCoreLedger(): %s", err)
+			panicIf(err)
 		}
 	}()
 
