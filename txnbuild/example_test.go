@@ -760,7 +760,220 @@ func ExampleBuildChallengeTx() {
 
 	txeBase64, err := tx.Base64()
 	check(err)
-	_, err = checkChallengeTx(txeBase64, anchorName)
-
+	ok, err := checkChallengeTx(txeBase64, anchorName)
 	check(err)
+
+	fmt.Println(ok)
+	// Output: true
+}
+
+func ExampleCreateClaimableBalance() {
+	A := "SCZANGBA5YHTNYVVV4C3U252E2B6P6F5T3U6MM63WBSBZATAQI3EBTQ4"
+	B := "GA2C5RFPE6GCKMY3US5PAB6UZLKIGSPIUKSLRB6Q723BM2OARMDUYEJ5"
+
+	aKeys := keypair.MustParseFull(A)
+	aAccount := SimpleAccount{AccountID: aKeys.Address()}
+
+	soon := time.Now().Add(time.Second * 60)
+	bCanClaim := BeforeRelativeTimePredicate(60)
+	aCanReclaim := NotPredicate(BeforeAbsoluteTimePredicate(soon.Unix()))
+
+	claimants := []Claimant{
+		NewClaimant(B, &bCanClaim),
+		NewClaimant(aKeys.Address(), &aCanReclaim),
+	}
+
+	claimableBalanceEntry := CreateClaimableBalance{
+		Destinations: claimants,
+		Asset:        NativeAsset{},
+		Amount:       "420",
+	}
+
+	// Build and sign the transaction
+	tx, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &aAccount,
+			IncrementSequenceNum: true,
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(),
+			Operations:           []Operation{&claimableBalanceEntry},
+		},
+	)
+	check(err)
+	tx, err = tx.Sign(network.TestNetworkPassphrase, aKeys)
+	check(err)
+
+	balanceId, err := tx.ClaimableBalanceID(0)
+	check(err)
+	fmt.Println(balanceId)
+
+	// Output: 000000000bf0a78c7ca2a980768b66980ba97934f3b3b45a05ce7a5195a44b64b7dedadb
+}
+
+func ExampleClaimClaimableBalance() {
+	A := "SCZANGBA5YHTNYVVV4C3U252E2B6P6F5T3U6MM63WBSBZATAQI3EBTQ4"
+	aKeys := keypair.MustParseFull(A)
+	aAccount := SimpleAccount{AccountID: aKeys.Address()}
+
+	balanceId := "000000000bf0a78c7ca2a980768b66980ba97934f3b3b45a05ce7a5195a44b64b7dedadb"
+	claimBalance := ClaimClaimableBalance{BalanceID: balanceId}
+
+	txb64, err := newSignedTransaction(
+		TransactionParams{
+			SourceAccount:        &aAccount, // or Account B, depending on the condition!
+			IncrementSequenceNum: true,
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(),
+			Operations:           []Operation{&claimBalance},
+		},
+		network.TestNetworkPassphrase,
+		aKeys,
+	)
+	check(err)
+	fmt.Println(txb64)
+
+	// Output: AAAAAgAAAAC0FS8Odh4yFSpaseK1sYMMVdTpVCJmylGJpMeYu9LOKAAAAGQAAAAAAAAAAQAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAADwAAAAAL8KeMfKKpgHaLZpgLqXk087O0WgXOelGVpEtkt97a2wAAAAAAAAABu9LOKAAAAEAesnN9L5oVpoZloBoUYfafhhuGSXAsJL2q15zyyWysc7fOADPdiQXQTEuySp12/ciGYWbZhw/fvyzLJlTgqmsI
+}
+
+type SponsorshipTestConfig struct {
+	A  *keypair.Full
+	S1 *keypair.Full
+	S2 *keypair.Full
+
+	Aaccount  SimpleAccount
+	S1account SimpleAccount
+	S2account SimpleAccount
+
+	Assets []CreditAsset
+}
+
+func InitSponsorshipTestConfig() SponsorshipTestConfig {
+	A := keypair.MustParseFull("SCZANGBA5YHTNYVVV4C3U252E2B6P6F5T3U6MM63WBSBZATAQI3EBTQ4")
+	S1 := keypair.MustParseFull("SBZVMB74Z76QZ3ZOY7UTDFYKMEGKW5XFJEB6PFKBF4UYSSWHG4EDH7PY")
+	S2 := keypair.MustParseFull("SBPQUZ6G4FZNWFHKUWC5BEYWF6R52E3SEP7R3GWYSM2XTKGF5LNTWW4R")
+
+	return SponsorshipTestConfig{
+		A: A, S1: S1, S2: S2,
+		Aaccount:  SimpleAccount{AccountID: A.Address()},
+		S1account: SimpleAccount{AccountID: S1.Address()},
+		S2account: SimpleAccount{AccountID: S2.Address()},
+		Assets: []CreditAsset{
+			{Code: "ABCD", Issuer: S1.Address()},
+			{Code: "EFGH", Issuer: S1.Address()},
+			{Code: "IJKL", Issuer: S2.Address()},
+		},
+	}
+}
+
+func ExampleBeginSponsoringFutureReserves() {
+	test := InitSponsorshipTestConfig()
+
+	// If the sponsoree submits the transaction, the `SourceAccount` fields can
+	// be omitted for the "sponsor sandwich" operations.
+	sponsorTrustline := []Operation{
+		&BeginSponsoringFutureReserves{SponsoredID: test.A.Address()},
+		&ChangeTrust{
+			SourceAccount: &test.Aaccount,
+			Line:          &test.Assets[0],
+			Limit:         MaxTrustlineLimit,
+		},
+		&EndSponsoringFutureReserves{},
+	}
+
+	// The sponsorer obviously must sign the tx, but so does the sponsoree, to
+	// consent to the sponsored operation.
+	txb64, err := newSignedTransaction(
+		TransactionParams{
+			SourceAccount:        &test.Aaccount,
+			Operations:           sponsorTrustline,
+			Timebounds:           NewInfiniteTimeout(),
+			BaseFee:              MinBaseFee,
+			IncrementSequenceNum: true,
+		},
+		network.TestNetworkPassphrase,
+		test.S1,
+		test.A,
+	)
+	check(err)
+	fmt.Println(txb64)
+
+	// Output: AAAAAgAAAAC0FS8Odh4yFSpaseK1sYMMVdTpVCJmylGJpMeYu9LOKAAAASwAAAAAAAAAAQAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMAAAAAAAAAEAAAAAC0FS8Odh4yFSpaseK1sYMMVdTpVCJmylGJpMeYu9LOKAAAAAEAAAAAtBUvDnYeMhUqWrHitbGDDFXU6VQiZspRiaTHmLvSzigAAAAGAAAAAUFCQ0QAAAAAfhHLNNY19eGrAtSgLD3VpaRm2AjNjxIBWQg9zS4VWZh//////////wAAAAAAAAARAAAAAAAAAAIuFVmYAAAAQARLe8wjGKq6WwdOPGkw2jo4eltp6dAHXEum4kYKzIjYx9fs4kdNJAaJE0s3Fy6JAIo1ttrGWp8zq6VX6P5CcAW70s4oAAAAQNpzu6NxKgcYd70mJl6EHyRPdjNTfxGm1w4XIIyIfZElRpmuZ6aWpXA0wwS6BimT3UQizK55T1kt1B2Pi3KyPAw=
+}
+
+func ExampleBeginSponsoringFutureReserves_transfer() {
+	test := InitSponsorshipTestConfig()
+
+	transferOps := []Operation{
+		&BeginSponsoringFutureReserves{
+			SourceAccount: &test.S2account,
+			SponsoredID:   test.S1.Address(),
+		},
+		&RevokeSponsorship{
+			SponsorshipType: RevokeSponsorshipTypeTrustLine,
+			Account:         &test.Aaccount.AccountID,
+			TrustLine: &TrustLineID{
+				Account: test.A.Address(),
+				Asset:   test.Assets[1],
+			},
+		},
+		&EndSponsoringFutureReserves{},
+	}
+
+	// For transfers, both the old and new sponsor need to sign.
+	txb64, err := newSignedTransaction(
+		TransactionParams{
+			SourceAccount:        &test.S1account,
+			Operations:           transferOps,
+			Timebounds:           NewInfiniteTimeout(),
+			BaseFee:              MinBaseFee,
+			IncrementSequenceNum: true,
+		},
+		network.TestNetworkPassphrase,
+		test.S1,
+		test.S2,
+	)
+	check(err)
+	fmt.Println(txb64)
+
+	// Output: AAAAAgAAAAB+Ecs01jX14asC1KAsPdWlpGbYCM2PEgFZCD3NLhVZmAAAASwAAAAAAAAAAQAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMAAAABAAAAAODcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAEAAAAAB+Ecs01jX14asC1KAsPdWlpGbYCM2PEgFZCD3NLhVZmAAAAAAAAAASAAAAAAAAAAEAAAAAtBUvDnYeMhUqWrHitbGDDFXU6VQiZspRiaTHmLvSzigAAAABRUZHSAAAAAB+Ecs01jX14asC1KAsPdWlpGbYCM2PEgFZCD3NLhVZmAAAAAAAAAARAAAAAAAAAAIuFVmYAAAAQDx6tSWzDT5MCVpolKLvhBwM/PpV9d/Om8PlJ4GZekp+DY6H2XAZ+Rldlfa0DqK8KNuMF921Vha6fpmK7FY4/QrqLnLFAAAAQCxxzLrpHFwd+CS6xmAoytq+ORtrkxUy2k6B7wIuASrlJDnYAHZptf7bBKXPn5ImcpJIcB3E5Xl98s/lEA0+YAA=
+}
+
+func ExampleRevokeSponsorship() {
+	test := InitSponsorshipTestConfig()
+
+	revokeOps := []Operation{
+		&RevokeSponsorship{
+			SponsorshipType: RevokeSponsorshipTypeTrustLine,
+			Account:         &test.Aaccount.AccountID,
+			TrustLine: &TrustLineID{
+				Account: test.A.Address(),
+				Asset:   test.Assets[1],
+			},
+		},
+		&RevokeSponsorship{
+			SponsorshipType: RevokeSponsorshipTypeTrustLine,
+			Account:         &test.Aaccount.AccountID,
+			TrustLine: &TrustLineID{
+				Account: test.A.Address(),
+				Asset:   test.Assets[2],
+			},
+		},
+	}
+
+	// With revocation, only the new sponsor needs to sign.
+	txb64, err := newSignedTransaction(
+		TransactionParams{
+			SourceAccount:        &test.S2account,
+			Operations:           revokeOps,
+			Timebounds:           NewInfiniteTimeout(),
+			BaseFee:              MinBaseFee,
+			IncrementSequenceNum: true,
+		},
+		network.TestNetworkPassphrase,
+		test.S2,
+	)
+	check(err)
+	fmt.Println(txb64)
+
+	// Output: AAAAAgAAAADg3G3hclysZlFitS+s5zWyiiJD5B0STWy5LXCj6i5yxQAAAMgAAAAAAAAAAQAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAEgAAAAAAAAABAAAAALQVLw52HjIVKlqx4rWxgwxV1OlUImbKUYmkx5i70s4oAAAAAUVGR0gAAAAAfhHLNNY19eGrAtSgLD3VpaRm2AjNjxIBWQg9zS4VWZgAAAAAAAAAEgAAAAAAAAABAAAAALQVLw52HjIVKlqx4rWxgwxV1OlUImbKUYmkx5i70s4oAAAAAUlKS0wAAAAA4Nxt4XJcrGZRYrUvrOc1sooiQ+QdEk1suS1wo+oucsUAAAAAAAAAAeoucsUAAABA9YO+xRc5Vb8ueP1U8go7ka+u/gZJd2z075c2pdFxYb+4AvQUQGvg+N4wvtNll43lPwXq5XAz74BfP99wugplDQ==
 }
