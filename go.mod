@@ -12,7 +12,6 @@ require (
 	github.com/asaskevich/govalidator v0.0.0-20180319081651-7d2e70ef918f
 	github.com/aws/aws-sdk-go v1.25.25
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
-	github.com/docker/go-connections v0.4.0
 	github.com/elazarl/go-bindata-assetfs v1.0.0
 	github.com/fatih/structs v1.0.0 // indirect
 	github.com/gavv/monotime v0.0.0-20161010190848-47d58efa6955 // indirect

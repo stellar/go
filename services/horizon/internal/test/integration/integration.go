@@ -15,7 +15,7 @@ import (
 	"syscall"
 	"testing"
 	"time"
-	"github.com/docker/go-connections/nat"
+
 	"github.com/spf13/cobra"
 	sdk "github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/clients/stellarcore"
@@ -32,16 +32,10 @@ const (
 	NetworkPassphrase           = "Standalone Network ; February 2017"
 	stellarCorePostgresPassword = "mysecretpassword"
 	adminPort                   = 6060
-	stellarCorePort         = "11626"
-	stellarCorePostgresPort = "5641"
-	historyArchivePort      = "1570"
+	stellarCorePort             = "11626"
+	stellarCorePostgresPort     = "5641"
+	historyArchivePort          = "1570"
 )
-
-func mustPort(proto, port string) nat.Port {
-	p, err := nat.NewPort(proto, port)
-	panicIf(err)
-	return p
-}
 
 type Config struct {
 	ProtocolVersion       int32
@@ -52,7 +46,7 @@ type Test struct {
 	t       *testing.T
 	config  Config
 	hclient *sdk.Client
-	cclient   *stellarcore.Client
+	cclient *stellarcore.Client
 	app     *horizon.App
 }
 
@@ -140,7 +134,7 @@ func NewTest(t *testing.T, config Config) *Test {
 
 	i.startHorizon()
 	i.hclient = &sdk.Client{HorizonURL: "http://localhost:8000"}
-	i.cclient = &stellarcore.Client{URL: "http://localhost:"+stellarCorePort}
+	i.cclient = &stellarcore.Client{URL: "http://localhost:" + stellarCorePort}
 
 	// Register cleanup handlers (on panic and ctrl+c) so the containers are
 	// stopped even if ingestion or testing fails.
