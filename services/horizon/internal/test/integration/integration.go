@@ -1,3 +1,4 @@
+//lint:file-ignore U1001 Ignore all unused code, this is only used in tests.
 package integration
 
 import (
@@ -333,16 +334,31 @@ func (i *Test) Client() *sdk.Client {
 // ingested by Horizon. Panics in case of errors.
 func (i *Test) LedgerIngested(sequence uint32) bool {
 	root, err := i.Client().Root()
-	if err != nil {
-		panic(err)
-	}
+	panicIf(err)
 
 	return root.IngestSequence >= sequence
+}
+
+// LedgerClosed returns true if the ledger with a given sequence has been
+// closed by Stellar-Core. Panics in case of errors. Note it's different
+// than LedgerIngested because it checks if the ledger was closed, not
+// necessarily ingested (ex. when rebuilding state Horizon does not ingest
+// recent ledgers).
+func (i *Test) LedgerClosed(sequence uint32) bool {
+	root, err := i.Client().Root()
+	panicIf(err)
+
+	return root.CoreSequence >= int32(sequence)
 }
 
 // AdminPort returns Horizon admin port.
 func (i *Test) AdminPort() int {
 	return 6060
+}
+
+// Metrics URL returns Horizon metrics URL.
+func (i *Test) MetricsURL() string {
+	return fmt.Sprintf("http://localhost:%d/metrics", i.AdminPort())
 }
 
 // Master returns a keypair of the network master account.
@@ -638,9 +654,43 @@ func (i *Test) CreateSignedTransaction(
 	return tx, nil
 }
 
+// CloseCoreLedgersUntilSequence will close ledgers until sequence.
+// Note: because manualclose command doesn't block until ledger is actually
+// closed, after running this method the last sequence can be higher than seq.
+func (i *Test) CloseCoreLedgersUntilSequence(seq int) error {
+	for {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+		info, err := i.cclient.Info(ctx)
+		if err != nil {
+			return err
+		}
+
+		if info.Info.Ledger.Num >= seq {
+			return nil
+		}
+
+		i.t.Logf(
+			"Currently at ledger: %d, want: %d.",
+			info.Info.Ledger.Num,
+			seq,
+		)
+
+		err = i.CloseCoreLedger()
+		if err != nil {
+			return err
+		}
+		// manualclose command in core doesn't block until ledger is actually
+		// closed. Let's give it time to close the ledger.
+		time.Sleep(200 * time.Millisecond)
+	}
+}
+
+// CloseCoreLedgers will close one ledger.
 func (i *Test) CloseCoreLedger() error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
+	i.t.Log("Closing one ledger manually...")
 	return i.cclient.ManualClose(ctx)
 }
 
@@ -684,6 +734,20 @@ func (i *Test) LogFailedTx(txResponse proto.Transaction, horizonResult error) {
 	assert.NoErrorf(t, err, "Unmarshalling transaction failed.")
 	assert.Equalf(t, xdr.TransactionResultCodeTxSuccess, txResult.Result.Code,
 		"Transaction doesn't have success code.")
+}
+
+func (i *Test) RunHorizonCLICommand(cmd ...string) {
+	fullCmd := append([]string{"/stellar/horizon/bin/horizon"}, cmd...)
+	id, err := i.cli.ContainerExecCreate(
+		context.Background(),
+		i.container.ID,
+		types.ExecConfig{
+			Cmd: fullCmd,
+		},
+	)
+	panicIf(err)
+	err = i.cli.ContainerExecStart(context.Background(), id.ID, types.ExecStartCheck{})
+	panicIf(err)
 }
 
 // Cluttering code with if err != nil is absolute nonsense.

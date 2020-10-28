@@ -14,6 +14,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+const (
+	firstCheckpoint = (64 * (iota + 1)) - 1
+	secondCheckpoint
+	thirdCheckpoint
+)
+
 func TestProtocol14StateVerifier(t *testing.T) {
 	itest := integration.NewTest(t, protocol15Config)
 
@@ -99,36 +105,67 @@ func TestProtocol14StateVerifier(t *testing.T) {
 	assert.True(t, txResp.Successful)
 
 	// Reach the first checkpoint ledger
-	for !itest.LedgerIngested(63) {
-		err := itest.CloseCoreLedger()
-		assert.NoError(t, err)
-		time.Sleep(50 * time.Millisecond)
+	// Core will push to history archives *after* checkpoint ledger
+	itest.CloseCoreLedgersUntilSequence(firstCheckpoint + 1)
+	assert.NoError(t, err)
+	for !itest.LedgerIngested(firstCheckpoint) {
+		time.Sleep(time.Second)
 	}
 
-	var metrics string
+	verified := waitForStateVerifications(itest, 1)
+	if !verified {
+		t.Fatal("State verification not run...")
+	}
 
+	// Trigger state rebuild to check if ingesting from history archive works
+	itest.RunHorizonCLICommand("expingest", "trigger-state-rebuild")
+
+	// Wait for the second checkpoint ledger and state rebuild
+	// Core will push to history archives *after* checkpoint ledger
+	itest.CloseCoreLedgersUntilSequence(secondCheckpoint + 1)
+	assert.NoError(t, err)
+
+	// Wait for the third checkpoint ledger and state verification trigger
+	// Core will push to history archives *after* checkpoint ledger
+	itest.CloseCoreLedgersUntilSequence(thirdCheckpoint + 1)
+	assert.NoError(t, err)
+	for !itest.LedgerIngested(thirdCheckpoint) {
+		time.Sleep(time.Second)
+	}
+
+	verified = waitForStateVerifications(itest, 2)
+	if !verified {
+		t.Fatal("State verification not run...")
+	}
+}
+
+func waitForStateVerifications(itest *integration.Test, count int) bool {
+	t := itest.CurrentTest()
 	// Check metrics until state verification run
-	for i := 0; i < 60; i++ {
+	for i := 0; i < 120; i++ {
 		t.Logf("Checking metrics (%d attempt)\n", i)
-		res, err := http.Get(fmt.Sprintf("http://localhost:%d/metrics", itest.AdminPort()))
+		res, err := http.Get(itest.MetricsURL())
 		assert.NoError(t, err)
 
 		metricsBytes, err := ioutil.ReadAll(res.Body)
 		res.Body.Close()
 		assert.NoError(t, err)
-		metrics = string(metricsBytes)
+		metrics := string(metricsBytes)
 
 		stateInvalid := strings.Contains(metrics, "horizon_ingest_state_invalid 1")
 		assert.False(t, stateInvalid, "State is invalid!")
 
-		notVerifiedYet := strings.Contains(metrics, "horizon_ingest_state_verify_duration_seconds_count 0")
+		notVerifiedYet := strings.Contains(
+			metrics,
+			fmt.Sprintf("horizon_ingest_state_verify_duration_seconds_count %d", count-1),
+		)
 		if notVerifiedYet {
 			time.Sleep(time.Second)
 			continue
 		}
 
-		return
+		return true
 	}
 
-	t.Fatal("State verification not run...")
+	return false
 }
