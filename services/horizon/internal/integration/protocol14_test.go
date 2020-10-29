@@ -81,7 +81,11 @@ func TestProtocol15Basics(t *testing.T) {
 			claimCreationOp := opResults[i].MustTr().CreateClaimableBalanceResult
 			calculatedId, err := xdr.MarshalHex(claimCreationOp.BalanceId)
 			tt.NoError(err)
-			tt.Equal(predictedId, calculatedId)
+			tt.Equal(calculatedId, predictedId)
+
+			helperCalculatedId, err := txResult.ExtractBalanceIDHex(i)
+			tt.NoError(err)
+			tt.Equal(calculatedId, helperCalculatedId)
 		}
 	})
 }
