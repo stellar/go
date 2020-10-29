@@ -97,12 +97,11 @@ func NewTest(t *testing.T, config Config) *Test {
 	// Directly reference down to the folder containing the configs
 	composeDir := path.Join(current, "services", "horizon", "docker")
 	baseYaml := path.Join(composeDir, "docker-compose.yml")
-	standaloneYaml := path.Join(composeDir, "docker-compose.standalone.yml")
 	manualCloseYaml := path.Join(composeDir, "docker-compose.standalone.manual-close.yml")
 
 	// Runs a docker-compose command applied to the above configs
 	runComposeCommand := func(args ...string) {
-		cmdline := append([]string{"-f", baseYaml, "-f", standaloneYaml, "-f", manualCloseYaml}, args...)
+		cmdline := append([]string{"-f", baseYaml, "-f", manualCloseYaml}, args...)
 		t.Log("Running", cmdline)
 		cmd := exec.Command("docker-compose", cmdline...)
 		cmd.Env = os.Environ()
@@ -133,9 +132,11 @@ func NewTest(t *testing.T, config Config) *Test {
 		t.Skip("Testing with captive core isn't working yet.")
 	}
 
+	i.cclient = &stellarcore.Client{URL: "http://localhost:" + stellarCorePort}
+	i.waitForCore()
+
 	i.startHorizon()
 	i.hclient = &sdk.Client{HorizonURL: "http://localhost:8000"}
-	i.cclient = &stellarcore.Client{URL: "http://localhost:" + stellarCorePort}
 
 	// Register cleanup handlers (on panic and ctrl+c) so the containers are
 	// stopped even if ingestion or testing fails.
@@ -154,8 +155,7 @@ func NewTest(t *testing.T, config Config) *Test {
 		os.Exit(0)
 	}()
 
-	i.waitForCore()
-	i.waitForIngestionAndUpgrade()
+	i.waitForHorizon()
 	return i
 }
 
@@ -220,46 +220,57 @@ func (i *Test) waitForCore() {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		_, err := i.cclient.Info(ctx)
 		cancel()
-		if err == nil {
-			break
+		if err != nil {
+			i.t.Logf("could not obtain info response: %v", err)
+			time.Sleep(time.Second)
+			continue
 		}
-		time.Sleep(time.Second)
+		break
 	}
 
-	// We need to wait for Core to be armed before closing the first ledger
-	// Otherwise, for some reason, the protocol version of the ledger stays at 0
-	// TODO: instead of sleeping we should ensure Core's status (in GET /info) is "Armed"
-	//       but, to do so, we should first expose it in Core's client.
-	time.Sleep(time.Second)
+	{
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		err := i.cclient.Upgrade(ctx, int(i.config.ProtocolVersion))
+		cancel()
+		if err != nil {
+			i.t.Fatalf("could not upgrade protocol: %v", err)
+		}
+	}
+
 	if err := i.CloseCoreLedger(); err != nil {
 		i.t.Fatalf("Failed to manually close the second ledger: %s", err)
 	}
 
-	// Make sure that the Sleep above was successful
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	info, err := i.cclient.Info(ctx)
-	cancel()
-	if err != nil || !info.IsSynced() {
-		i.t.Fatal("failed to wait for Core to be synced")
+	{
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		info, err := i.cclient.Info(ctx)
+		cancel()
+		if err != nil || !info.IsSynced() {
+			i.t.Fatal("failed to wait for Core to be synced")
+		}
 	}
 }
 
-func (i *Test) waitForIngestionAndUpgrade() {
+func (i *Test) waitForHorizon() {
 	for t := 30; t >= 0; t -= 1 {
 		i.t.Log("Waiting for ingestion and protocol upgrade...")
-		root, _ := i.hclient.Root()
-
-		// We ignore errors here because it's likely connection error due to
-		// Horizon not running. We ensure that's is up and correct by checking
-		// the root response.
-		if root.IngestSequence > 0 && root.HorizonSequence > 0 {
-			i.t.Log("Horizon ingesting...")
-			if root.CurrentProtocolVersion == i.config.ProtocolVersion {
-				i.t.Log("Horizon protocol version matches...")
-				return
-			}
+		root, err := i.hclient.Root()
+		if err != nil {
+			i.t.Logf("could not obtain root response %v", err)
+			time.Sleep(time.Second)
+			continue
 		}
-		time.Sleep(time.Second)
+
+		if root.HorizonSequence == 0 || root.HorizonSequence < root.CoreSequence {
+			i.t.Logf("Horizon ingesting... %v", root)
+			time.Sleep(time.Second)
+			continue
+		}
+
+		if root.CurrentProtocolVersion == i.config.ProtocolVersion {
+			i.t.Log("Horizon protocol version matches...")
+			return
+		}
 	}
 
 	i.t.Fatal("Horizon not ingesting...")
