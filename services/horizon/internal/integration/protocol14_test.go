@@ -83,7 +83,7 @@ func TestProtocol15Basics(t *testing.T) {
 			tt.NoError(err)
 			tt.Equal(calculatedId, predictedId)
 
-			helperCalculatedId, err := txnbuild.ExtractBalanceId(txResult, i)
+			helperCalculatedId, err := txResult.ExtractBalanceID(i)
 			tt.NoError(err)
 			tt.Equal(calculatedId, helperCalculatedId)
 		}
