@@ -669,8 +669,8 @@ func (i *Test) CloseCoreLedgersUntilSequence(seq int) error {
 	return nil
 }
 
-// CloseCoreLedger will synchronously close one ledger.
-// Note: because manualclose command doesn't block until ledger is actually
+// CloseCoreLedger will synchronously close at least one ledger.
+// Note: because Core's manualclose endpoint doesn't block until ledger is actually
 // closed, this method may end up closing multiple ledgers
 func (i *Test) CloseCoreLedger() error {
 	i.t.Log("Closing one ledger manually...")
@@ -679,7 +679,7 @@ func (i *Test) CloseCoreLedger() error {
 		return err
 	}
 	targetLedgerNum := currentLedgerNum + 1
-	// manualclose command in core doesn't currently block until ledger is actually
+	// Core's manualclose endpoint doesn't currently block until the ledger is actually
 	// closed. So, we loop until we are certain it happened.
 	for {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -721,23 +721,37 @@ func (i *Test) SubmitTransaction(tx *txnbuild.Transaction) (proto.Transaction, e
 
 func (i *Test) SubmitTransactionXDR(txb64 string) (proto.Transaction, error) {
 	// Core runs in manual-close mode to run tests faster, so we need to explicitly
-	// close the ledgers after a submission is sent.
-	// We need to close the ledger in parallel to the submission,
-	// because Horizon's submission endpoint blocks until the transaction
-	// is in a closed ledger
+	// close a ledger after the transaction is submitted.
+	//
+	// Horizon's submission endpoint blocks until the transaction is in a closed ledger.
+	// Thus, we close the ledger in parallel to the submission.
+	submissionDone := make(chan struct{})
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		// Wait for Horizon to submit the transaction to Core.
-		// This sleep is ugly, but a better approach would probably require
+		// We manually-close in a loop to guarantee that (at some point)
+		// a ledger-close happens after Core receives the transaction.
+		// Otherwise there is a risk of the manual-close happening before the transaction
+		// reaches Core, consequently causing the SubmitTransaction() call below to block indefinitely.
+		//
+		// This approach is ugly, but a better approach would probably require
 		// instrumenting Horizon to tell us when the submission is done.
-		time.Sleep(time.Millisecond * 100)
-		if err := i.CloseCoreLedger(); err != nil {
-			log.Fatalf("failed to CloseCoreLedger(): %s", err)
+		for {
+			time.Sleep(time.Millisecond * 100)
+			if err := i.CloseCoreLedger(); err != nil {
+				log.Fatalf("failed to CloseCoreLedger(): %s", err)
+			}
+			select {
+			case <-submissionDone:
+				// The transaction reached a closed-ledger!
+				return
+			default:
+			}
 		}
 	}()
 	tx, err := i.Client().SubmitTransactionXDR(txb64)
+	close(submissionDone)
 	wg.Wait()
 	return tx, err
 }
