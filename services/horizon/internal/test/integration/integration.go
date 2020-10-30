@@ -246,7 +246,9 @@ func (i *Test) waitForHorizon() {
 			continue
 		}
 
-		if root.HorizonSequence == 0 || root.HorizonSequence < root.CoreSequence {
+		if root.HorizonSequence < 2 ||
+			int(root.HorizonSequence) != int(root.IngestSequence) ||
+			root.HorizonSequence < root.CoreSequence {
 			i.t.Logf("Horizon ingesting... %v", root)
 			time.Sleep(time.Second)
 			continue
