@@ -10,7 +10,6 @@ import (
 	"os/signal"
 	"path"
 	"path/filepath"
-	"runtime"
 	"strconv"
 	"sync"
 	"syscall"
@@ -97,33 +96,18 @@ func NewTest(t *testing.T, config Config) *Test {
 
 	// Directly reference down to the folder containing the configs
 	composeDir := path.Join(current, "services", "horizon", "docker")
-	baseYaml := path.Join(composeDir, "docker-compose.yml")
-	manualCloseYaml := path.Join(composeDir, "docker-compose.standalone.manual-close.yml")
+	manualCloseYaml := path.Join(composeDir, "docker-compose.integration-tests.yml")
 
 	// Runs a docker-compose command applied to the above configs
 	runComposeCommand := func(args ...string) {
-		cmdline := append([]string{"-f", baseYaml, "-f", manualCloseYaml}, args...)
+		cmdline := append([]string{"-f", manualCloseYaml}, args...)
 		t.Log("Running", cmdline)
 		cmd := exec.Command("docker-compose", cmdline...)
 		cmd.Env = os.Environ()
 
-		// The networking mode on Docker for Linux is different.
-		networkEnv := "bridge"
-		if runtime.GOOS == "linux" {
-			networkEnv = "host"
-		}
-
-		cmd.Env = append(cmd.Env,
-			"NETWORK_MODE="+networkEnv,
-			fmt.Sprintf("PROTOCOL_VERSION=%d", config.ProtocolVersion),
-		)
-
 		_, innerErr := cmd.Output()
 		fatalIf(t, innerErr)
 	}
-
-	// Run the latest version of stellar-core
-	runComposeCommand("pull", "core")
 
 	// Only run Stellar Core container and its dependencies
 	runComposeCommand("up", "--detach", "--quiet-pull", "--no-color", "core")
