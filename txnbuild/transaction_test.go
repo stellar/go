@@ -2034,7 +2034,7 @@ func TestReadChallengeTx_doesVerifyHomeDomainFailure(t *testing.T) {
 	tx64, err := tx.Base64()
 	require.NoError(t, err)
 	_, _, err = ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "willfail")
-	assert.EqualError(t, err, "operation key should contain homeDomain (homeDomain=\"willfail\", key=\"testanchor.stellar.org auth\")")
+	assert.EqualError(t, err, "operation key should contain homeDomain (key=\"testanchor.stellar.org auth\", homeDomain=\"willfail\")")
 }
 
 func TestReadChallengeTx_doesVerifyHomeDomainSuccess(t *testing.T) {
@@ -2538,7 +2538,7 @@ func TestVerifyChallengeTxThreshold_doesVerifyHomeDomainFailure(t *testing.T) {
 	}
 
 	_, err = VerifyChallengeTxThreshold(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testanchor.stellar.org", threshold, signerSummary)
-	assert.EqualError(t, err, "operation key should contain homeDomain (homeDomain=\"testanchor.stellar.org\", key=\"will fail auth\")")
+	assert.EqualError(t, err, "operation key should contain homeDomain (key=\"will fail auth\", homeDomain=\"testanchor.stellar.org\")")
 }
 
 func TestVerifyChallengeTxThreshold_doesVerifyHomeDomainSuccess(t *testing.T) {
@@ -3150,7 +3150,7 @@ func TestVerifyChallengeTxSigners_doesVerifyHomeDomainFailure(t *testing.T) {
 	assert.NoError(t, err)
 
 	_, err = VerifyChallengeTxSigners(tx64, serverKP.Address(), network.TestNetworkPassphrase, "validation failed", clientKP.Address())
-	assert.EqualError(t, err, "operation key should contain homeDomain (homeDomain=\"validation failed\", key=\"testanchor.stellar.org auth\")")
+	assert.EqualError(t, err, "operation key should contain homeDomain (key=\"testanchor.stellar.org auth\", homeDomain=\"validation failed\")")
 }
 
 func TestVerifyChallengeTxSigners_doesVerifyHomeDomainSuccess(t *testing.T) {
