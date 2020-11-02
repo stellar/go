@@ -26,11 +26,16 @@ func (t ISO8601Time) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON parses a JSON string into a ISO8601Time instance.
 func (t *ISO8601Time) UnmarshalJSON(b []byte) error {
+	if len(b) < 2 {
+		return fmt.Errorf("%s is too short", string(b))
+	}
+
 	if string(b) == "null" {
 		return nil
 	}
+
 	if b[0] != '"' || b[len(b)-1] != '"' {
-		return fmt.Errorf("%s does not begin and end with double quotes", b)
+		return fmt.Errorf("%s does not begin and end with double quotes", string(b))
 	}
 	trimmed := string(b[1 : len(b)-1])
 	m := reISO8601.FindStringSubmatch(trimmed)

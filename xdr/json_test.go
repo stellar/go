@@ -102,3 +102,54 @@ func TestAbsBeforeTimestamps(t *testing.T) {
 		assert.Equal(t, *parsed.AbsBefore, *source.AbsBefore)
 	}
 }
+
+func TestISO8601Time_UnmarshalJSON(t *testing.T) {
+	for _, testCase := range []struct {
+		name           string
+		timestamp      string
+		expectedParsed ISO8601Time
+		expectedError  string
+	}{
+		{
+			"null timestamp",
+			"null",
+			ISO8601Time{},
+			"",
+		},
+		{
+			"empty string",
+			"",
+			ISO8601Time{},
+			" is too short",
+		},
+		{
+			"too short",
+			"1",
+			ISO8601Time{},
+			"1 is too short",
+		},
+		{
+			"does not begin and end with double quotes",
+			"'1'",
+			ISO8601Time{},
+			"'1' does not begin and end with double quotes",
+		},
+		{
+			"could not extract time",
+			"\"2006-01-02aldfd\"",
+			ISO8601Time{},
+			"Could not extract time: parsing time \"2006-01-02aldfd\" as \"2006-01-02T15:04:05Z07:00\": cannot parse \"aldfd\" as \"T\"",
+		},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			ts := &ISO8601Time{}
+			err := ts.UnmarshalJSON([]byte(testCase.timestamp))
+			if len(testCase.expectedError) == 0 {
+				assert.NoError(t, err)
+				assert.Equal(t, *ts, testCase.expectedParsed)
+			} else {
+				assert.EqualError(t, err, testCase.expectedError)
+			}
+		})
+	}
+}
