@@ -5,8 +5,12 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).x
 
 ## Unreleased
 
-* The `service` field emitted in ingestion logs has been changed from `expingest` to `ingest`.
-* Ledger stats are now exported in `/metrics` in `horizon_ingest_ledger_stats_total` metric.
+## v1.11.0
+
+* The `service` field emitted in ingestion logs has been changed from `expingest` to  `ingest` ([#3118](https://github.com/stellar/go/pull/3118)).
+* Ledger stats are now exported in `/metrics` in `horizon_ingest_ledger_stats_total` metric ([#3148](https://github.com/stellar/go/pull/3148)).
+* Stellar Core database URL is no longer required when running in captive mode ([#3150](https://github.com/stellar/go/pull/3150)).
+* xdr: Add a custom marshaller for claim predicate timestamp  ([#3183](https://github.com/stellar/go/pull/3183)).
 
 ## v1.10.1
 
