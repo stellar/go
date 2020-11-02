@@ -10,8 +10,8 @@ import (
 	"github.com/stellar/go/support/errors"
 )
 
-// ISO8601Time is a timestamp which supports parsing dates which have a year outside the 0000..9999 range
-type ISO8601Time struct {
+// iso8601Time is a timestamp which supports parsing dates which have a year outside the 0000..9999 range
+type iso8601Time struct {
 	time.Time
 }
 
@@ -20,28 +20,30 @@ type ISO8601Time struct {
 var reISO8601 = regexp.MustCompile(`^([-+]?\d{4,})-(\d{2})-(\d{2})`)
 
 // MarshalJSON serializes the timestamp to a string
-func (t ISO8601Time) MarshalJSON() ([]byte, error) {
-	return []byte(fmt.Sprintf(`"%s"`, t.Format(time.RFC3339))), nil
-}
-
-// UnmarshalJSON parses a JSON string into a ISO8601Time instance.
-func (t *ISO8601Time) UnmarshalJSON(b []byte) error {
-	if len(b) < 2 {
-		return fmt.Errorf("%s is too short", string(b))
+func (t iso8601Time) MarshalJSON() ([]byte, error) {
+	ts := t.Format(time.RFC3339)
+	if t.Year() > 9999 {
+		ts = "+" + ts
 	}
 
-	if string(b) == "null" {
+	return json.Marshal(ts)
+}
+
+// UnmarshalJSON parses a JSON string into a iso8601Time instance.
+func (t *iso8601Time) UnmarshalJSON(b []byte) error {
+	var s *string
+	if err := json.Unmarshal(b, &s); err != nil {
+		return err
+	}
+	if s == nil {
 		return nil
 	}
 
-	if b[0] != '"' || b[len(b)-1] != '"' {
-		return fmt.Errorf("%s does not begin and end with double quotes", string(b))
-	}
-	trimmed := string(b[1 : len(b)-1])
-	m := reISO8601.FindStringSubmatch(trimmed)
+	text := *s
+	m := reISO8601.FindStringSubmatch(text)
 
 	if len(m) != 4 {
-		return fmt.Errorf("UnmarshalJSON: cannot parse %s", trimmed)
+		return fmt.Errorf("UnmarshalJSON: cannot parse %s", text)
 	}
 	// No need to check for errors since the regexp guarantees the matches
 	// are valid integers
@@ -49,7 +51,7 @@ func (t *ISO8601Time) UnmarshalJSON(b []byte) error {
 	month, _ := strconv.Atoi(m[2])
 	day, _ := strconv.Atoi(m[3])
 
-	ts, err := time.Parse(time.RFC3339, "2006-01-02"+trimmed[len(m[0]):])
+	ts, err := time.Parse(time.RFC3339, "2006-01-02"+text[len(m[0]):])
 	if err != nil {
 		return errors.Wrap(err, "Could not extract time")
 	}
@@ -63,7 +65,7 @@ type claimPredicateJSON struct {
 	Or            *[]claimPredicateJSON `json:"or,omitempty"`
 	Not           *claimPredicateJSON   `json:"not,omitempty"`
 	Unconditional bool                  `json:"unconditional,omitempty"`
-	AbsBefore     *ISO8601Time          `json:"abs_before,omitempty"`
+	AbsBefore     *iso8601Time          `json:"abs_before,omitempty"`
 	RelBefore     *int64                `json:"rel_before,string,omitempty"`
 }
 
@@ -150,8 +152,8 @@ func (c ClaimPredicate) toJSON() (claimPredicateJSON, error) {
 		payload.Not = new(claimPredicateJSON)
 		*payload.Not, err = c.MustNotPredicate().toJSON()
 	case ClaimPredicateTypeClaimPredicateBeforeAbsoluteTime:
-		payload.AbsBefore = new(ISO8601Time)
-		*payload.AbsBefore = ISO8601Time{time.Unix(int64(c.MustAbsBefore()), 0).UTC()}
+		payload.AbsBefore = new(iso8601Time)
+		*payload.AbsBefore = iso8601Time{time.Unix(int64(c.MustAbsBefore()), 0).UTC()}
 	case ClaimPredicateTypeClaimPredicateBeforeRelativeTime:
 		payload.RelBefore = new(int64)
 		*payload.RelBefore = int64(c.MustRelBefore())

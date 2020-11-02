@@ -75,16 +75,20 @@ func TestAbsBeforeTimestamps(t *testing.T) {
 		},
 		{
 			math.MaxInt64,
-			`{"abs_before":"292277026596-12-04T15:30:07Z"}`,
+			`{"abs_before":"+292277026596-12-04T15:30:07Z"}`,
 		},
 		{
 			-10,
 			`{"abs_before":"1969-12-31T23:59:50Z"}`,
 		},
 		{
+			-9000 * year,
+			`{"abs_before":"-7025-12-23T00:00:00Z"}`,
+		},
+		{
 			math.MinInt64,
 			// this serialization doesn't make sense but at least it doesn't crash the marshaller
-			`{"abs_before":"292277026596-12-04T15:30:08Z"}`,
+			`{"abs_before":"+292277026596-12-04T15:30:08Z"}`,
 		},
 	} {
 		xdrSec := Int64(testCase.unix)
@@ -107,42 +111,48 @@ func TestISO8601Time_UnmarshalJSON(t *testing.T) {
 	for _, testCase := range []struct {
 		name           string
 		timestamp      string
-		expectedParsed ISO8601Time
+		expectedParsed iso8601Time
 		expectedError  string
 	}{
 		{
 			"null timestamp",
 			"null",
-			ISO8601Time{},
+			iso8601Time{},
 			"",
 		},
 		{
 			"empty string",
 			"",
-			ISO8601Time{},
-			" is too short",
+			iso8601Time{},
+			"unexpected end of JSON input",
 		},
 		{
-			"too short",
+			"not string",
 			"1",
-			ISO8601Time{},
-			"1 is too short",
+			iso8601Time{},
+			"json: cannot unmarshal number into Go value of type string",
 		},
 		{
-			"does not begin and end with double quotes",
-			"'1'",
-			ISO8601Time{},
-			"'1' does not begin and end with double quotes",
+			"does not begin with double quotes",
+			"'1\"",
+			iso8601Time{},
+			"invalid character '\\'' looking for beginning of value",
+		},
+		{
+			"does not end with double quotes",
+			"\"1",
+			iso8601Time{},
+			"unexpected end of JSON input",
 		},
 		{
 			"could not extract time",
 			"\"2006-01-02aldfd\"",
-			ISO8601Time{},
+			iso8601Time{},
 			"Could not extract time: parsing time \"2006-01-02aldfd\" as \"2006-01-02T15:04:05Z07:00\": cannot parse \"aldfd\" as \"T\"",
 		},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
-			ts := &ISO8601Time{}
+			ts := &iso8601Time{}
 			err := ts.UnmarshalJSON([]byte(testCase.timestamp))
 			if len(testCase.expectedError) == 0 {
 				assert.NoError(t, err)
