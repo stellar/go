@@ -898,7 +898,8 @@ func generateRandomNonce(n int) ([]byte, error) {
 // service's homeDomain passed, malicious web services will not be able to use the
 // challenge transaction POSTed back to the authentication endpoint.
 //
-// The homeDomain field is reserved for future use and not used.
+// The challenge's first Manage Data operation is expected to contain the homeDomain
+// parameter passed to the function.
 //
 // It does not verify that the transaction has been signed by the client or
 // that any signatures other than the servers on the transaction are valid. Use
@@ -955,6 +956,11 @@ func ReadChallengeTx(challengeTx, serverAccountID, network, homeDomain string) (
 	if op.SourceAccount == nil {
 		return tx, clientAccountID, errors.New("operation should have a source account")
 	}
+	if strings.Split(op.Name, " ")[0] != homeDomain {
+		return tx, clientAccountID, errors.Errorf("operation key should contain homeDomain (homeDomain=\"%s\", key=\"%s\")",
+			homeDomain, op.Name)
+	}
+
 	clientAccountID = op.SourceAccount.GetAccountID()
 	rawOperations := tx.envelope.Operations()
 	if len(rawOperations) > 0 && rawOperations[0].SourceAccount.Type == xdr.CryptoKeyTypeKeyTypeMuxedEd25519 {
