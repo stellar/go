@@ -957,8 +957,7 @@ func ReadChallengeTx(challengeTx, serverAccountID, network, homeDomain string) (
 		return tx, clientAccountID, errors.New("operation should have a source account")
 	}
 	if strings.Split(op.Name, " ")[0] != homeDomain {
-		return tx, clientAccountID, errors.Errorf("operation key should contain homeDomain (homeDomain=\"%s\", key=\"%s\")",
-			homeDomain, op.Name)
+		return tx, clientAccountID, errors.Errorf("operation key should contain homeDomain (key=%q, homeDomain=%q)", homeDomain, op.Name)
 	}
 
 	clientAccountID = op.SourceAccount.GetAccountID()
