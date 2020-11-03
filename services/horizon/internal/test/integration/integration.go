@@ -54,10 +54,7 @@ type Test struct {
 // NewTest starts a new environment for integration test at a given
 // protocol version and blocks until Horizon starts ingesting.
 //
-// Warning: this requires:
-//  * Docker installed and all docker env variables set.
-//  * HORIZON_BIN_DIR env variable set to the directory with `horizon` binary to test.
-//  * Horizon binary must be built for GOOS=linux and GOARCH=amd64.
+// Warning: this requires Docker Compose installed
 //
 // Skips the test if HORIZON_INTEGRATION_TESTS env variable is not set.
 func NewTest(t *testing.T, config Config) *Test {
@@ -67,35 +64,7 @@ func NewTest(t *testing.T, config Config) *Test {
 
 	i := &Test{t: t, config: config}
 
-	// Lets you check if a particular directory contains a file.
-	directoryContains := func(root string, needle string) bool {
-		files, innerErr := ioutil.ReadDir(root)
-		fatalIf(t, innerErr)
-
-		for _, file := range files {
-			if file.Name() == needle {
-				return true
-			}
-		}
-
-		return false
-	}
-
-	// Walk up the tree until we find "go.mod", which we treat as the root
-	// directory of the project.
-	current, err := os.Getwd()
-	fatalIf(t, err)
-	for !directoryContains(current, "go.mod") {
-		current, err = filepath.Abs(path.Join(current, ".."))
-
-		// FIXME: This only works on *nix-like systems.
-		if err != nil || filepath.Base(current)[0] == filepath.Separator {
-			i.t.Fatal("Failed to establish project root directory.")
-		}
-	}
-
-	// Directly reference down to the folder containing the configs
-	composeDir := path.Join(current, "services", "horizon", "docker")
+	composeDir := findDockerComposePath()
 	manualCloseYaml := path.Join(composeDir, "docker-compose.integration-tests.yml")
 
 	// Runs a docker-compose command applied to the above configs
@@ -103,8 +72,6 @@ func NewTest(t *testing.T, config Config) *Test {
 		cmdline := append([]string{"-f", manualCloseYaml}, args...)
 		t.Log("Running", cmdline)
 		cmd := exec.Command("docker-compose", cmdline...)
-		cmd.Env = os.Environ()
-
 		_, innerErr := cmd.Output()
 		fatalIf(t, innerErr)
 	}
@@ -132,12 +99,13 @@ func NewTest(t *testing.T, config Config) *Test {
 		runComposeCommand("down", "-v", "--remove-orphans")
 	}
 	i.t.Cleanup(cleanup)
+
 	c := make(chan os.Signal)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-c
 		cleanup()
-		os.Exit(0)
+		os.Exit(int(syscall.SIGTERM))
 	}()
 
 	i.waitForHorizon()
@@ -635,4 +603,51 @@ func fatalIf(t *testing.T, err error) {
 	if err != nil {
 		t.Fatalf("error: %s", err)
 	}
+}
+
+// Performs a best-effort attempt to find the project's Docker Compose files.
+func findDockerComposePath() string {
+	// Lets you check if a particular directory contains a file.
+	directoryContainsFilename := func(dir string, filename string) bool {
+		files, innerErr := ioutil.ReadDir(dir)
+		panicIf(innerErr)
+
+		for _, file := range files {
+			if file.Name() == filename {
+				return true
+			}
+		}
+
+		return false
+	}
+
+	current, err := os.Getwd()
+	panicIf(err)
+
+	//
+	// We have a primary and backup attempt for finding the necessary docker
+	// files: via $GOPATH and via local directory traversal.
+	//
+
+	if gopath := os.Getenv("GOPATH"); gopath != "" {
+		monorepo := path.Join(gopath, "stellar", "go")
+		if _, err := os.Stat(monorepo); !os.IsNotExist(err) {
+			current = monorepo
+		}
+	}
+
+	// In either case, we try to walk up the tree until we find "go.mod",
+	// which we hope is the root directory of the project.
+	for !directoryContainsFilename(current, "go.mod") {
+		current, err = filepath.Abs(path.Join(current, ".."))
+
+		// FIXME: This only works on *nix-like systems.
+		if err != nil || filepath.Base(current)[0] == filepath.Separator {
+			fmt.Println("Failed to establish project root directory.")
+			panic(err)
+		}
+	}
+
+	// Directly jump down to the folder that should contain the configs
+	return path.Join(current, "services", "horizon", "docker")
 }
