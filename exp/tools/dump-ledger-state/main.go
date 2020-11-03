@@ -81,6 +81,11 @@ func (processor csvProcessor) ProcessChange(change io.Change) error {
 		return err
 	}
 
+	legerExt, err := xdr.MarshalBase64(change.Post.Ext)
+	if err != nil {
+		return err
+	}
+
 	switch change.Type {
 	case xdr.LedgerEntryTypeAccount:
 		account := change.Post.Data.MustAccount()
@@ -99,11 +104,9 @@ func (processor csvProcessor) ProcessChange(change io.Change) error {
 			}
 		}
 
-		var buyingLiabilities, sellingLiabilities int64
-
-		if account.Ext.V1 != nil {
-			buyingLiabilities = int64(account.Ext.V1.Liabilities.Buying)
-			sellingLiabilities = int64(account.Ext.V1.Liabilities.Selling)
+		accountExt, err := xdr.MarshalBase64(account.Ext)
+		if err != nil {
+			return err
 		}
 
 		csvWriter.Write([]string{
@@ -115,9 +118,9 @@ func (processor csvProcessor) ProcessChange(change io.Change) error {
 			base64.StdEncoding.EncodeToString([]byte(account.HomeDomain)),
 			base64.StdEncoding.EncodeToString(account.Thresholds[:]),
 			strconv.FormatInt(int64(account.Flags), 10),
-			strconv.FormatInt(buyingLiabilities, 10),
-			strconv.FormatInt(sellingLiabilities, 10),
+			accountExt,
 			signers,
+			legerExt,
 		})
 	case xdr.LedgerEntryTypeTrustline:
 		trustline := change.Post.Data.MustTrustLine()
@@ -125,11 +128,9 @@ func (processor csvProcessor) ProcessChange(change io.Change) error {
 		var assetType, assetCode, assetIssuer string
 		trustline.Asset.MustExtract(&assetType, &assetCode, &assetIssuer)
 
-		var buyingLiabilities, sellingLiabilities int64
-
-		if trustline.Ext.V1 != nil {
-			buyingLiabilities = int64(trustline.Ext.V1.Liabilities.Buying)
-			sellingLiabilities = int64(trustline.Ext.V1.Liabilities.Selling)
+		trustlineExt, err := xdr.MarshalBase64(trustline.Ext)
+		if err != nil {
+			return err
 		}
 
 		csvWriter.Write([]string{
@@ -140,8 +141,8 @@ func (processor csvProcessor) ProcessChange(change io.Change) error {
 			strconv.FormatInt(int64(trustline.Limit), 10),
 			strconv.FormatInt(int64(trustline.Balance), 10),
 			strconv.FormatInt(int64(trustline.Flags), 10),
-			strconv.FormatInt(buyingLiabilities, 10),
-			strconv.FormatInt(sellingLiabilities, 10),
+			trustlineExt,
+			legerExt,
 		})
 	case xdr.LedgerEntryTypeOffer:
 		offer := change.Post.Data.MustOffer()
@@ -156,6 +157,11 @@ func (processor csvProcessor) ProcessChange(change io.Change) error {
 			return err
 		}
 
+		offerExt, err := xdr.MarshalBase64(offer.Ext)
+		if err != nil {
+			return err
+		}
+
 		csvWriter.Write([]string{
 			offer.SellerId.Address(),
 			strconv.FormatInt(int64(offer.OfferId), 10),
@@ -165,13 +171,39 @@ func (processor csvProcessor) ProcessChange(change io.Change) error {
 			strconv.FormatInt(int64(offer.Price.N), 10),
 			strconv.FormatInt(int64(offer.Price.D), 10),
 			strconv.FormatInt(int64(offer.Flags), 10),
+			offerExt,
+			legerExt,
 		})
 	case xdr.LedgerEntryTypeData:
 		accountData := change.Post.Data.MustData()
+		accountDataExt, err := xdr.MarshalBase64(accountData.Ext)
+		if err != nil {
+			return err
+		}
+
 		csvWriter.Write([]string{
 			accountData.AccountId.Address(),
 			base64.StdEncoding.EncodeToString([]byte(accountData.DataName)),
 			base64.StdEncoding.EncodeToString(accountData.DataValue),
+			accountDataExt,
+			legerExt,
+		})
+	case xdr.LedgerEntryTypeClaimableBalance:
+		claimableBalance := change.Post.Data.MustClaimableBalance()
+
+		ledgerEntry, err := xdr.MarshalBase64(change.Post)
+		if err != nil {
+			return err
+		}
+
+		balanceID, err := xdr.MarshalBase64(claimableBalance.BalanceId)
+		if err != nil {
+			return err
+		}
+
+		csvWriter.Write([]string{
+			balanceID,
+			ledgerEntry,
 		})
 	default:
 		return errors.Errorf("Invalid LedgerEntryType: %d", change.Type)
@@ -203,10 +235,11 @@ func main() {
 	defer files.close()
 
 	for entryType, fileName := range map[xdr.LedgerEntryType]string{
-		xdr.LedgerEntryTypeAccount:   "./accounts.csv",
-		xdr.LedgerEntryTypeData:      "./accountdata.csv",
-		xdr.LedgerEntryTypeOffer:     "./offers.csv",
-		xdr.LedgerEntryTypeTrustline: "./trustlines.csv",
+		xdr.LedgerEntryTypeAccount:          "./accounts.csv",
+		xdr.LedgerEntryTypeData:             "./accountdata.csv",
+		xdr.LedgerEntryTypeOffer:            "./offers.csv",
+		xdr.LedgerEntryTypeTrustline:        "./trustlines.csv",
+		xdr.LedgerEntryTypeClaimableBalance: "./claimablebalances.csv",
 	} {
 		if err = files.put(entryType, fileName); err != nil {
 			log.WithField("err", err).
@@ -251,6 +284,7 @@ func main() {
 		"./accountdata_sorted.csv",
 		"./offers_sorted.csv",
 		"./trustlines_sorted.csv",
+		"./claimablebalances_sort.csv",
 	}
 	for _, file := range sortedFiles {
 		err := os.Remove(file)
