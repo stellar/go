@@ -223,7 +223,7 @@ func (i *Test) waitForHorizon() {
 		}
 
 		if root.CurrentProtocolVersion == i.config.ProtocolVersion {
-			i.t.Log("Horizon protocol version matches...")
+			i.t.Logf("Horizon protocol version matches... %v", root)
 			return
 		}
 	}
