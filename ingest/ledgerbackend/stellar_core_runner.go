@@ -133,16 +133,16 @@ func (runner *stellarCoreRunner) getLogLineWriter() io.Writer {
 
 			levelRx := regexp.MustCompile(`\[(\w+) ([A-Z]+)\]`)
 			indices := levelRx.FindStringSubmatchIndex(line)
-			if indices != nil {
-
+			if len(indices) >= 6 {
+				// Identify the indices that match our regex subexpressions
 				categoryIdx := indices[2:4]
 				levelIdx := indices[4:6]
 
+				// Extract the substrings from the log entry
 				category := line[categoryIdx[0]:categoryIdx[1]]
 				level := line[levelIdx[0]:levelIdx[1]]
 
-				end := indices[1]
-				line = line[end+1:] // dump the matched part of the line
+				line = line[indices[1]+1:] // dump the matched part of the line
 
 				levelMapping := map[string]func(string, ...interface{}){
 					"FATAL":   runner.Log.Errorf,
