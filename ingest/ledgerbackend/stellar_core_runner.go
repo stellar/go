@@ -131,21 +131,28 @@ func (runner *stellarCoreRunner) getLogLineWriter() io.Writer {
 				continue
 			}
 
-			levelRx := regexp.MustCompile(`\[(default )?([A-Z]+)\]`)
+			levelRx := regexp.MustCompile(`\[(\w+) ([A-Z]+)\]`)
 			indices := levelRx.FindStringSubmatchIndex(line)
 			if indices != nil {
-				loc := indices[len(indices)-2:] // last pair is the "level"
-				level := line[loc[0]:loc[1]]    // extract the substring
-				line = line[loc[1]+2:]          // dump the start of the line
+
+				categoryIdx := indices[2:4]
+				levelIdx := indices[4:6]
+
+				category := line[categoryIdx[0]:categoryIdx[1]]
+				level := line[levelIdx[0]:levelIdx[1]]
+
+				end := indices[1]
+				line = line[end+1:] // dump the matched part of the line
 
 				levelMapping := map[string]func(string, ...interface{}){
-					"ERROR": runner.Log.Errorf,
-					"FATAL": runner.Log.Errorf,
-					"WARN":  runner.Log.Warnf,
+					"FATAL":   runner.Log.Errorf,
+					"ERROR":   runner.Log.Errorf,
+					"WARNING": runner.Log.Warnf,
+					"INFO":    runner.Log.Infof,
 				}
 
-				if writer, ok := levelMapping[level]; ok {
-					writer(line)
+				if writer, ok := levelMapping[strings.ToUpper(level)]; ok {
+					writer("%s: %s", category, line)
 				} else {
 					runner.Log.Infof(line)
 				}
