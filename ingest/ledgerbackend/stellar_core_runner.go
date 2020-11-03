@@ -137,11 +137,16 @@ func (runner *stellarCoreRunner) getLogLineWriter() io.Writer {
 				loc := indices[len(indices)-2:] // last pair is the "level"
 				level := line[loc[0]:loc[1]]    // extract the substring
 				line = line[loc[1]+2:]          // dump the start of the line
-				switch level {
-				case "ERROR":
-				case "FATAL":
-					runner.Log.Errorf(line)
-				default:
+
+				levelMapping := map[string]func(string, ...interface{}){
+					"ERROR": runner.Log.Errorf,
+					"FATAL": runner.Log.Errorf,
+					"WARN":  runner.Log.Warnf,
+				}
+
+				if writer, ok := levelMapping[level]; ok {
+					writer(line)
+				} else {
 					runner.Log.Infof(line)
 				}
 			} else {
