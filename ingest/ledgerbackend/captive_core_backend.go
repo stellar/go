@@ -109,6 +109,8 @@ type CaptiveStellarCore struct {
 	// waitIntervalPrepareRange defines a time to wait between checking if the buffer
 	// is empty. Default 1s, lower in tests to make them faster.
 	waitIntervalPrepareRange time.Duration
+
+	log *log.Entry
 }
 
 // NewCaptive returns a new CaptiveStellarCore.
@@ -137,6 +139,10 @@ func NewCaptive(executablePath, configPath, networkPassphrase string, historyURL
 		},
 		waitIntervalPrepareRange: time.Second,
 	}, nil
+}
+
+func (c *CaptiveStellarCore) SetLogger(logger *log.Entry) {
+	c.log = logger
 }
 
 func (c *CaptiveStellarCore) getLatestCheckpointSequence() (uint32, error) {
@@ -175,6 +181,7 @@ func (c *CaptiveStellarCore) openOfflineReplaySubprocess(from, to uint32) error 
 		if err != nil {
 			return errors.Wrap(err, "error creating stellar-core runner")
 		}
+		c.stellarCoreRunner.setLogger(c.log)
 	}
 	err = c.stellarCoreRunner.catchup(from, to)
 	if err != nil {
@@ -234,6 +241,7 @@ func (c *CaptiveStellarCore) openOnlineReplaySubprocess(from uint32) error {
 		if err != nil {
 			return errors.Wrap(err, "error creating stellar-core runner")
 		}
+		c.stellarCoreRunner.setLogger(c.log)
 	}
 
 	runFrom, ledgerHash, nextLedger, err := c.runFromParams(from)

@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/stellar/go/support/log"
 )
 
 type stellarCoreRunnerInterface interface {
@@ -22,6 +23,7 @@ type stellarCoreRunnerInterface interface {
 	runFrom(from uint32, hash string) error
 	getMetaPipe() io.Reader
 	getProcessExitChan() <-chan error
+	setLogger(*log.Entry)
 	close() error
 }
 
@@ -42,6 +44,9 @@ type stellarCoreRunner struct {
 	metaPipe    io.Reader
 	tempDir     string
 	nonce       string
+
+	// Optionally, logging can be done to something other than stdout.
+	Log *log.Entry
 }
 
 func newStellarCoreRunner(executablePath, configPath, networkPassphrase string, historyURLs []string) (*stellarCoreRunner, error) {
@@ -219,6 +224,10 @@ func (r *stellarCoreRunner) getMetaPipe() io.Reader {
 
 func (r *stellarCoreRunner) getProcessExitChan() <-chan error {
 	return r.processExit
+}
+
+func (c *stellarCoreRunner) setLogger(logger *log.Entry) {
+	c.Log = logger.WithField("subservice", "stellar-core")
 }
 
 func (r *stellarCoreRunner) close() error {

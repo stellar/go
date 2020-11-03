@@ -171,8 +171,7 @@ func NewSystem(config Config) (System, error) {
 				return nil, errors.Wrap(err, "error creating captive core backend")
 			}
 		} else {
-			//
-			ledgerBackend, err = ledgerbackend.NewCaptive(
+			captiveCoreBackend, err := ledgerbackend.NewCaptive(
 				config.StellarCoreBinaryPath,
 				config.StellarCoreConfigPath,
 				config.NetworkPassphrase,
@@ -182,6 +181,8 @@ func NewSystem(config Config) (System, error) {
 				cancel()
 				return nil, errors.Wrap(err, "error creating captive core backend")
 			}
+			captiveCoreBackend.SetLogger(log)
+			ledgerBackend = captiveCoreBackend
 		}
 	} else {
 		coreSession := config.CoreSession.Clone()
