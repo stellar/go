@@ -110,6 +110,7 @@ type CaptiveStellarCore struct {
 	// is empty. Default 1s, lower in tests to make them faster.
 	waitIntervalPrepareRange time.Duration
 
+	// Optionally, pass along a custom logger to the underlying runner.
 	log *log.Entry
 }
 

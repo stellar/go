@@ -111,7 +111,7 @@ func (r *stellarCoreRunner) getConfFileName() string {
 	return filepath.Join(r.tempDir, "stellar-core.conf")
 }
 
-func (*stellarCoreRunner) getLogLineWriter() io.Writer {
+func (runner *stellarCoreRunner) getLogLineWriter() io.Writer {
 	r, w := io.Pipe()
 	br := bufio.NewReader(r)
 	// Strip timestamps from log lines from captive stellar-core. We emit our own.
@@ -123,7 +123,30 @@ func (*stellarCoreRunner) getLogLineWriter() io.Writer {
 				break
 			}
 			line = dateRx.ReplaceAllString(line, "")
-			fmt.Print(line)
+
+			// If there's a logger, we attempt to extract metadata about the log
+			// entry, then redirect it to the logger. Otherwise, we just use
+			// stdout.
+			if runner.Log != nil {
+				levelRx := regexp.MustCompile(`\[(default )?([A-Z]+)\]`)
+				indices := levelRx.FindStringSubmatchIndex(line)
+				if indices != nil {
+					loc := indices[len(indices)-2:] // last pair is the "level"
+					level := line[loc[0]:loc[1]]    // extract the substring
+					line = line[loc[1]+2:]          // dump the start of the line
+					switch level {
+					case "ERROR":
+					case "FATAL":
+						runner.Log.Errorf(line)
+					default:
+						runner.Log.Infof(line)
+					}
+				} else {
+					runner.Log.Infof(line)
+				}
+			} else {
+				fmt.Print(line)
+			}
 		}
 	}()
 	return w
