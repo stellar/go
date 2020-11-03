@@ -180,9 +180,6 @@ func (r *stellarCoreRunner) catchup(from, to uint32) error {
 	}
 	r.started = true
 
-	// Do not remove bufio.Reader wrapping. Turns out that each read from a pipe
-	// adds an overhead time so it's better to preload data to a buffer.
-	r.metaPipe = bufio.NewReaderSize(r.metaPipe, 1024*1024)
 	return nil
 }
 
@@ -207,9 +204,6 @@ func (r *stellarCoreRunner) runFrom(from uint32, hash string) error {
 	}
 	r.started = true
 
-	// Do not remove bufio.Reader wrapping. Turns out that each read from a pipe
-	// adds an overhead time so it's better to preload data to a buffer.
-	r.metaPipe = bufio.NewReaderSize(r.metaPipe, 1024*1024)
 	return nil
 }
 
