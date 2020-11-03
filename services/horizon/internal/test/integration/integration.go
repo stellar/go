@@ -631,7 +631,7 @@ func findDockerComposePath() string {
 
 	if gopath := os.Getenv("GOPATH"); gopath != "" {
 		monorepo := path.Join(gopath, "stellar", "go")
-		if _, err := os.Stat(monorepo); !os.IsNotExist(err) {
+		if _, err = os.Stat(monorepo); !os.IsNotExist(err) {
 			current = monorepo
 		}
 	}
