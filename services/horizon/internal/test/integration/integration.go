@@ -17,16 +17,18 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/stretchr/testify/assert"
+
 	sdk "github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/clients/stellarcore"
 	"github.com/stellar/go/keypair"
 	proto "github.com/stellar/go/protocols/horizon"
 	horizon "github.com/stellar/go/services/horizon/internal"
+	"github.com/stellar/go/services/horizon/internal/ledger"
 	"github.com/stellar/go/support/db/dbtest"
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stellar/go/xdr"
-	"github.com/stretchr/testify/assert"
 )
 
 const (
@@ -95,6 +97,9 @@ func NewTest(t *testing.T, config Config) *Test {
 	cleanup := func() {
 		if i.app != nil {
 			i.app.Close()
+			// Clear the ledger state otherwise the root response
+			// will contain ledger information from the previous test run
+			ledger.SetState(ledger.State{})
 		}
 		runComposeCommand("down", "-v", "--remove-orphans")
 	}
