@@ -171,7 +171,8 @@ func NewSystem(config Config) (System, error) {
 				return nil, errors.Wrap(err, "error creating captive core backend")
 			}
 		} else {
-			captiveCoreBackend, err := ledgerbackend.NewCaptive(
+			var captiveCoreBackend *ledgerbackend.CaptiveStellarCore
+			captiveCoreBackend, err = ledgerbackend.NewCaptive(
 				config.StellarCoreBinaryPath,
 				config.StellarCoreConfigPath,
 				config.NetworkPassphrase,
