@@ -125,27 +125,27 @@ func (runner *stellarCoreRunner) getLogLineWriter() io.Writer {
 			line = dateRx.ReplaceAllString(line, "")
 
 			// If there's a logger, we attempt to extract metadata about the log
-			// entry, then redirect it to the logger. Otherwise, we just use
-			// stdout.
-			if runner.Log != nil {
-				levelRx := regexp.MustCompile(`\[(default )?([A-Z]+)\]`)
-				indices := levelRx.FindStringSubmatchIndex(line)
-				if indices != nil {
-					loc := indices[len(indices)-2:] // last pair is the "level"
-					level := line[loc[0]:loc[1]]    // extract the substring
-					line = line[loc[1]+2:]          // dump the start of the line
-					switch level {
-					case "ERROR":
-					case "FATAL":
-						runner.Log.Errorf(line)
-					default:
-						runner.Log.Infof(line)
-					}
-				} else {
+			// entry, then redirect it to the logger. Otherwise, we just use stdout.
+			if runner.Log == nil {
+				fmt.Print(line)
+				continue
+			}
+
+			levelRx := regexp.MustCompile(`\[(default )?([A-Z]+)\]`)
+			indices := levelRx.FindStringSubmatchIndex(line)
+			if indices != nil {
+				loc := indices[len(indices)-2:] // last pair is the "level"
+				level := line[loc[0]:loc[1]]    // extract the substring
+				line = line[loc[1]+2:]          // dump the start of the line
+				switch level {
+				case "ERROR":
+				case "FATAL":
+					runner.Log.Errorf(line)
+				default:
 					runner.Log.Infof(line)
 				}
 			} else {
-				fmt.Print(line)
+				runner.Log.Infof(line)
 			}
 		}
 	}()
