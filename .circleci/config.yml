@@ -475,9 +475,9 @@ workflows:
       - publish_commit_hash_horizon_docker_image:
           filters:
             tags:
-              only: master
-            branches:
               ignore: /.*/
+            branches:
+              only: master
       - publish_horizon_docker_image:
           filters:
               tags:
