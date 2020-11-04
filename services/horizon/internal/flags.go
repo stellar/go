@@ -17,6 +17,8 @@ import (
 )
 
 const (
+	// DatabaseURLFlagName is the command line flag for configuring the Horizon postgres URL
+	DatabaseURLFlagName = "db-url"
 	// StellarCoreDBURLFlagName is the command line flag for configuring the postgres Stellar Core URL
 	StellarCoreDBURLFlagName = "stellar-core-db-url"
 	// StellarCoreDBURLFlagName is the command line flag for configuring the URL fore Stellar Core HTTP endpoint
@@ -71,19 +73,18 @@ func checkMigrations(config Config) {
 // Flags returns a Config instance and a list of commandline flags which modify the Config instance
 func Flags() (*Config, support.ConfigOptions) {
 	config := &Config{}
-	var dbURLConfigOption = &support.ConfigOption{
-		Name:      "db-url",
-		EnvVar:    "DATABASE_URL",
-		ConfigKey: &config.DatabaseURL,
-		OptType:   types.String,
-		Required:  true,
-		Usage:     "horizon postgres database to connect with",
-	}
 
 	// flags defines the complete flag configuration for horizon.
 	// Add a new entry here to connect a new field in the horizon.Config struct
 	var flags = support.ConfigOptions{
-		dbURLConfigOption,
+		&support.ConfigOption{
+			Name:      DatabaseURLFlagName,
+			EnvVar:    "DATABASE_URL",
+			ConfigKey: &config.DatabaseURL,
+			OptType:   types.String,
+			Required:  true,
+			Usage:     "horizon postgres database to connect with",
+		},
 		&support.ConfigOption{
 			Name:        "stellar-core-binary-path",
 			OptType:     types.String,
