@@ -406,6 +406,20 @@ jobs:
             docker build -f services/horizon/docker/Dockerfile -t stellar/horizon:latest .
             docker push stellar/horizon:latest
 
+  publish_commit_hash_horizon_docker_image:
+    docker:
+      - image: circleci/buildpack-deps:stretch
+    steps:
+      - checkout
+      - setup_remote_docker
+      - run:
+          name: Build and Push Docker image
+          command: |
+            echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+            TAG=$(git rev-parse --short HEAD)
+            docker build -f services/horizon/docker/Dockerfile -t stellar/horizon:$TAG .
+            docker push stellar/horizon:$TAG
+
   # test_horizon_integration performs Horizon integration tests, it's using
   # decicated vm machine to be able to start arbitrary docker containers.
   test_horizon_integration:
@@ -458,6 +472,12 @@ workflows:
                 ignore: snapshots
               branches:
                 ignore: /.*/
+      - publish_commit_hash_horizon_docker_image:
+          filters:
+            tags:
+              only: master
+            branches:
+              ignore: /.*/
       - publish_horizon_docker_image:
           filters:
               tags:
