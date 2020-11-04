@@ -8,18 +8,16 @@ RUN go install github.com/stellar/go/services/horizon
 
 FROM ubuntu:18.04
 
-ENV STELLAR_CORE_VERSION 14.1.1-1355-5b2989d3
+ENV STELLAR_CORE_VERSION 15.0.0-40
 ENV STELLAR_CORE_BINARY_PATH /usr/local/bin/stellar-core
 
+ENV DEBIAN_FRONTEND=noninteractive
 # ca-certificates are required to make tls connections
-RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates wget
-
-
-RUN apt-get install -y --no-install-recommends libpqxx-4.0v5 curl
-RUN wget -O stellar-core.deb https://s3.amazonaws.com/stellar.org/releases/stellar-core/stellar-core-${STELLAR_CORE_VERSION}_amd64.deb
-RUN dpkg -i stellar-core.deb
-RUN rm stellar-core.deb
-
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl wget gnupg apt-utils
+RUN wget -qO - https://apt.stellar.org/SDF.asc | APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=true apt-key add -
+RUN echo "deb https://apt.stellar.org xenial stable" >/etc/apt/sources.list.d/SDF.list
+RUN echo "deb https://apt.stellar.org xenial unstable" >/etc/apt/sources.list.d/SDF-unstable.list
+RUN apt-get update && apt-get install -y stellar-core=${STELLAR_CORE_VERSION}
 RUN apt-get clean
 
 COPY --from=builder /go/bin/horizon ./
