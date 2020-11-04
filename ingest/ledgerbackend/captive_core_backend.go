@@ -109,9 +109,6 @@ type CaptiveStellarCore struct {
 	// waitIntervalPrepareRange defines a time to wait between checking if the buffer
 	// is empty. Default 1s, lower in tests to make them faster.
 	waitIntervalPrepareRange time.Duration
-
-	// Optionally, pass along a custom logger to the underlying runner.
-	log *log.Entry
 }
 
 // NewCaptive returns a new CaptiveStellarCore.
@@ -143,7 +140,17 @@ func NewCaptive(executablePath, configPath, networkPassphrase string, historyURL
 }
 
 func (c *CaptiveStellarCore) SetLogger(logger *log.Entry) {
-	c.log = logger
+	// If the caller decides to set a custom logger, we recreate the factory to
+	// pass this along to all subsequently-created instances.
+	previousFactory := c.stellarCoreRunnerFactory
+	c.stellarCoreRunnerFactory = func(configPath string) (stellarCoreRunnerInterface, error) {
+		core, err := previousFactory(configPath)
+		if err != nil {
+			return core, err
+		}
+		core.setLogger(logger)
+		return core, nil
+	}
 }
 
 func (c *CaptiveStellarCore) getLatestCheckpointSequence() (uint32, error) {
@@ -182,7 +189,6 @@ func (c *CaptiveStellarCore) openOfflineReplaySubprocess(from, to uint32) error 
 		if err != nil {
 			return errors.Wrap(err, "error creating stellar-core runner")
 		}
-		c.stellarCoreRunner.setLogger(c.log)
 	}
 	err = c.stellarCoreRunner.catchup(from, to)
 	if err != nil {
@@ -242,7 +248,6 @@ func (c *CaptiveStellarCore) openOnlineReplaySubprocess(from uint32) error {
 		if err != nil {
 			return errors.Wrap(err, "error creating stellar-core runner")
 		}
-		c.stellarCoreRunner.setLogger(c.log)
 	}
 
 	runFrom, ledgerHash, nextLedger, err := c.runFromParams(from)
