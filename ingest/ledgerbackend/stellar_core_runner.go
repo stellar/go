@@ -261,8 +261,12 @@ func (r *stellarCoreRunner) getProcessExitChan() <-chan error {
 	return r.processExit
 }
 
-func (c *stellarCoreRunner) setLogger(logger *log.Entry) {
-	c.Log = logger.WithField("subservice", "stellar-core")
+func (r *stellarCoreRunner) setLogger(logger *log.Entry) {
+	if logger != nil {
+		r.Log = logger.WithField("subservice", "stellar-core")
+	} else {
+		r.Log = nil
+	}
 }
 
 func (r *stellarCoreRunner) close() error {
