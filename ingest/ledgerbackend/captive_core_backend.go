@@ -2,7 +2,6 @@ package ledgerbackend
 
 import (
 	"encoding/hex"
-	"sync"
 	"time"
 
 	"github.com/pkg/errors"
@@ -13,10 +12,6 @@ import (
 
 // Ensure CaptiveStellarCore implements LedgerBackend
 var _ LedgerBackend = (*CaptiveStellarCore)(nil)
-
-var (
-	errSessionClosed = errors.New("session is closed, call PrepareRange first")
-)
 
 func roundDownToFirstReplayAfterCheckpointStart(ledger uint32) uint32 {
 	v := (ledger / ledgersPerCheckpoint) * ledgersPerCheckpoint
@@ -72,8 +67,6 @@ type CaptiveStellarCore struct {
 	historyURLs       []string
 	archive           historyarchive.ArchiveInterface
 
-	// shutdown is a channel that triggers the backend shutdown by the user.
-	shutdown     chan struct{}
 	ledgerBuffer bufferedLedgerMetaReader
 
 	// For testing
@@ -91,10 +84,6 @@ type CaptiveStellarCore struct {
 
 	nextLedger uint32  // next ledger expected, error w/ restart if not seen
 	lastLedger *uint32 // end of current segment if offline, nil if online
-
-	processExitMutex sync.Mutex
-	processExit      bool
-	processErr       error
 
 	// waitIntervalPrepareRange defines a time to wait between checking if the buffer
 	// is empty. Default 1s, lower in tests to make them faster.
@@ -176,14 +165,10 @@ func (c *CaptiveStellarCore) openOfflineReplaySubprocess(from, to uint32) error 
 	c.nextLedger = roundDownToFirstReplayAfterCheckpointStart(from)
 	c.lastLedger = &to
 	c.blocking = true
-	c.processExit = false
-	c.processErr = nil
 
 	// read-ahead buffer
 	c.ledgerBuffer = newBufferedLedgerMetaReader(c.stellarCoreRunner)
 	go c.ledgerBuffer.Start(to)
-
-	c.shutdown = make(chan struct{})
 	return nil
 }
 
@@ -239,14 +224,10 @@ func (c *CaptiveStellarCore) openOnlineReplaySubprocess(from uint32) error {
 	c.nextLedger = nextLedger
 	c.lastLedger = nil
 	c.blocking = false
-	c.processExit = false
-	c.processErr = nil
 
 	// read-ahead buffer
 	c.ledgerBuffer = newBufferedLedgerMetaReader(c.stellarCoreRunner)
 	go c.ledgerBuffer.Start(0)
-
-	c.shutdown = make(chan struct{})
 
 	// if nextLedger is behind - fast-forward until expected ledger
 	if c.nextLedger < from {
@@ -342,7 +323,8 @@ func (c *CaptiveStellarCore) PrepareRange(ledgerRange Range) error {
 
 	for {
 		select {
-		case processErr := <-c.stellarCoreRunner.getProcessExitChan():
+		case <-c.stellarCoreRunner.getProcessExitChan():
+			processErr := c.stellarCoreRunner.getProcessExitError()
 			if processErr != nil {
 				err = errors.Wrap(processErr, "stellar-core process exited with an error")
 			} else {
@@ -407,7 +389,7 @@ func (c *CaptiveStellarCore) GetLedger(sequence uint32) (bool, xdr.LedgerCloseMe
 	}
 
 	if c.isClosed() {
-		return false, xdr.LedgerCloseMeta{}, errSessionClosed
+		return false, xdr.LedgerCloseMeta{}, errors.New("session is closed, call PrepareRange first")
 	}
 
 	if sequence < c.nextLedger {
@@ -429,7 +411,13 @@ loop:
 		var metaResult metaResult
 		select {
 		case <-c.stellarCoreRunner.getProcessExitChan():
-			return false, xdr.LedgerCloseMeta{}, errSessionClosed
+			processErr := c.stellarCoreRunner.getProcessExitError()
+			if processErr != nil {
+				errOut = errors.Wrap(processErr, "stellar-core process exited with an error")
+			} else {
+				errOut = errors.New("stellar-core process exited unexpectedly without an error")
+			}
+			break loop
 		case metaResult = <-c.ledgerBuffer.GetChannel():
 		}
 		if metaResult.err != nil {
