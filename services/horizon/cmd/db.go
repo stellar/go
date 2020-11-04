@@ -25,13 +25,15 @@ var dbCmd = &cobra.Command{
 	Short: "commands to manage horizon's postgres db",
 }
 
-var dbURLConfigOption = support.ConfigOption{
-	Name:      "db-url",
-	EnvVar:    "DATABASE_URL",
-	ConfigKey: &config.DatabaseURL,
-	OptType:   types.String,
-	Required:  true,
-	Usage:     "horizon postgres database to connect with",
+func requireAndSetFlag(name string) {
+	for _, flag := range flags {
+		if flag.Name == name {
+			flag.Require()
+			flag.SetValue()
+			return
+		}
+	}
+	log.Fatalf("could not find %s flag", name)
 }
 
 var dbInitCmd = &cobra.Command{
@@ -39,10 +41,9 @@ var dbInitCmd = &cobra.Command{
 	Short: "install schema",
 	Long:  "init initializes the postgres database used by horizon.",
 	Run: func(cmd *cobra.Command, args []string) {
-		dbURLConfigOption.Require()
-		dbURLConfigOption.SetValue()
+		requireAndSetFlag(horizon.DatabaseURLFlagName)
 
-		db, err := sql.Open("postgres", viper.GetString("db-url"))
+		db, err := sql.Open("postgres", config.DatabaseURL)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -65,6 +66,8 @@ var dbMigrateCmd = &cobra.Command{
 	Short: "migrate schema",
 	Long:  "performs a schema migration command",
 	Run: func(cmd *cobra.Command, args []string) {
+		requireAndSetFlag(horizon.DatabaseURLFlagName)
+
 		// Allow invokations with 1 or 2 args.  All other args counts are erroneous.
 		if len(args) < 1 || len(args) > 2 {
 			cmd.Usage()
@@ -86,10 +89,7 @@ var dbMigrateCmd = &cobra.Command{
 			}
 		}
 
-		dbURLConfigOption.Require()
-		dbURLConfigOption.SetValue()
-
-		dbConn, err := db.Open("postgres", viper.GetString("db-url"))
+		dbConn, err := db.Open("postgres", config.DatabaseURL)
 		if err != nil {
 			log.Fatal(err)
 		}
