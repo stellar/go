@@ -408,7 +408,7 @@ loop:
 			return false, xdr.LedgerCloseMeta{}, nil
 		}
 
-		var metaResult metaResult
+		var result metaResult
 		select {
 		case <-c.stellarCoreRunner.getProcessExitChan():
 			processErr := c.stellarCoreRunner.getProcessExitError()
@@ -418,14 +418,14 @@ loop:
 				errOut = errors.New("stellar-core process exited unexpectedly without an error")
 			}
 			break loop
-		case metaResult = <-c.ledgerBuffer.GetChannel():
+		case result = <-c.ledgerBuffer.GetChannel():
 		}
-		if metaResult.err != nil {
-			errOut = metaResult.err
+		if result.err != nil {
+			errOut = result.err
 			break loop
 		}
 
-		seq := metaResult.LedgerCloseMeta.LedgerSequence()
+		seq := result.LedgerCloseMeta.LedgerSequence()
 		if seq != c.nextLedger {
 			// We got something unexpected; close and reset
 			errOut = errors.Errorf("unexpected ledger (expected=%d actual=%d)", c.nextLedger, seq)
@@ -434,7 +434,7 @@ loop:
 		c.nextLedger++
 		if seq == sequence {
 			// Found the requested seq
-			c.cachedMeta = metaResult.LedgerCloseMeta
+			c.cachedMeta = result.LedgerCloseMeta
 
 			// If we got the _last_ ledger in a segment, close before returning.
 			if c.lastLedger != nil && *c.lastLedger == seq {
