@@ -111,9 +111,10 @@ func (r *stellarCoreRunner) getConfFileName() string {
 	return filepath.Join(r.tempDir, "stellar-core.conf")
 }
 
-func (runner *stellarCoreRunner) getLogLineWriter() io.Writer {
-	r, w := io.Pipe()
-	br := bufio.NewReader(r)
+func (r *stellarCoreRunner) getLogLineWriter() io.Writer {
+	rd, wr := io.Pipe()
+	br := bufio.NewReader(rd)
+
 	// Strip timestamps from log lines from captive stellar-core. We emit our own.
 	dateRx := regexp.MustCompile(`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3} `)
 	go func() {
@@ -126,7 +127,7 @@ func (runner *stellarCoreRunner) getLogLineWriter() io.Writer {
 
 			// If there's a logger, we attempt to extract metadata about the log
 			// entry, then redirect it to the logger. Otherwise, we just use stdout.
-			if runner.Log == nil {
+			if r.Log == nil {
 				fmt.Print(line)
 				continue
 			}
@@ -145,23 +146,23 @@ func (runner *stellarCoreRunner) getLogLineWriter() io.Writer {
 				line = line[indices[1]+1:] // dump the matched part of the line
 
 				levelMapping := map[string]func(string, ...interface{}){
-					"FATAL":   runner.Log.Errorf,
-					"ERROR":   runner.Log.Errorf,
-					"WARNING": runner.Log.Warnf,
-					"INFO":    runner.Log.Infof,
+					"FATAL":   r.Log.Errorf,
+					"ERROR":   r.Log.Errorf,
+					"WARNING": r.Log.Warnf,
+					"INFO":    r.Log.Infof,
 				}
 
 				if writer, ok := levelMapping[strings.ToUpper(level)]; ok {
 					writer("%s: %s", category, line)
 				} else {
-					runner.Log.Infof(line)
+					r.Log.Infof(line)
 				}
 			} else {
-				runner.Log.Infof(line)
+				r.Log.Infof(line)
 			}
 		}
 	}()
-	return w
+	return wr
 }
 
 // Makes the temp directory and writes the config file to it; called by the
