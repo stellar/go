@@ -5,6 +5,10 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).x
 
 ## Unreleased
 
+## v1.11.1
+
+* Fix bug in parsing `db-url` parameter in `horizon db migrate` and `horizon db init` commands ([#3192](https://github.com/stellar/go/pull/3192)).
+
 ## v1.11.0
 
 * The `service` field emitted in ingestion logs has been changed from `expingest` to  `ingest` ([#3118](https://github.com/stellar/go/pull/3118)).
