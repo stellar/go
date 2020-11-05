@@ -229,7 +229,6 @@ commands:
           # Pulling the image helps with test running time
           command: |
             cd ~/go/src/github.com/stellar/go
-            docker pull stellar/quickstart:testing
             <<# parameters.enable-captive-core >>HORIZON_INTEGRATION_ENABLE_CAPTIVE_CORE=true<</ parameters.enable-captive-core >> go test -timeout 25m -v ./services/horizon/internal/integration/...
 
 #-----------------------------------------------------------------------------#
@@ -433,6 +432,9 @@ jobs:
           command: |
             echo "export HORIZON_INTEGRATION_TESTS=true" >> $BASH_ENV
             echo "export HORIZON_BIN_DIR=~/go/src/github.com/stellar/go" >> $BASH_ENV
+      - run:
+          name: Pull latest Stellar Core image
+          command: docker pull stellar/stellar-core
       - install_golang
       - build_horizon
       # run the integration tests ...

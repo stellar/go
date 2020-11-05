@@ -14,10 +14,9 @@ services:
     environment:
       - HISTORY_ARCHIVE_URLS=http://host.docker.internal:1570
       - NETWORK_PASSPHRASE=Standalone Network ; February 2017
-  # this container will invoke a request to upgrade stellar core to protocol 13
+  # this container will invoke a request to upgrade stellar core to protocol 15 (by default)
   core-upgrade:
     restart: on-failure
     image: curlimages/curl:7.69.1
-    command: ["-v", "-f", "http://host.docker.internal:11626/upgrades?mode=set&upgradetime=1970-01-01T00:00:00Z&protocolversion=13"]
+    command: ["-v", "-f", "http://host.docker.internal:11626/upgrades?mode=set&upgradetime=1970-01-01T00:00:00Z&protocolversion=${PROTOCOL_VERSION:-15}"]
     network_mode: '${NETWORK_MODE:-bridge}'
-    

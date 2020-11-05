@@ -1,0 +1,25 @@
+version: '3'
+services:
+  core-postgres:
+    image: postgres:9.6.17-alpine
+    restart: on-failure
+    environment:
+      - POSTGRES_PASSWORD=mysecretpassword
+      - POSTGRES_DB=stellar
+    ports:
+      - "5641:5641"
+    command: ["-p", "5641"]
+  core:
+    image: stellar/stellar-core
+    depends_on:
+      - core-postgres
+    restart: on-failure
+    ports:
+      - "11625:11625"
+      - "11626:11626"
+      # add extra port for history archive server
+      - "1570:1570"
+    command: /start standalone
+    volumes:
+      - ./stellar-core-integration-tests.cfg:/stellar-core.cfg
+      - ./core-start.sh:/start
