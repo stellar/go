@@ -10,10 +10,7 @@ import (
 )
 
 // Fuzz is go-fuzz function for fuzzing xdr.ClaimPredicate JSON
-// marshaller and unmarshaller. To run:
-//   1. Install go-fuzz: https://github.com/dvyukov/go-fuzz
-//   2. go-fuzz-build
-//   3. go-fuzz
+// marshaller and unmarshaller.
 func Fuzz(data []byte) int {
 	// Ignore malformed ClaimPredicate
 	var p xdr.ClaimPredicate
