@@ -35,9 +35,9 @@ const (
 	NetworkPassphrase           = "Standalone Network ; February 2017"
 	stellarCorePostgresPassword = "mysecretpassword"
 	adminPort                   = 6060
-	stellarCorePort             = "11626"
-	stellarCorePostgresPort     = "5641"
-	historyArchivePort          = "1570"
+	stellarCorePort             = 11626
+	stellarCorePostgresPort     = 5641
+	historyArchivePort          = 1570
 )
 
 type Config struct {
@@ -86,7 +86,7 @@ func NewTest(t *testing.T, config Config) *Test {
 		t.Skip("Testing with captive core isn't working yet.")
 	}
 
-	i.cclient = &stellarcore.Client{URL: "http://localhost:" + stellarCorePort}
+	i.cclient = &stellarcore.Client{URL: "http://localhost:" + strconv.Itoa(stellarCorePort)}
 	i.waitForCore()
 
 	i.startHorizon()
@@ -138,15 +138,15 @@ of accounts, subscribe to event streams and more.`,
 	hostname := "localhost"
 	cmd.SetArgs([]string{
 		"--stellar-core-url",
-		fmt.Sprintf("http://%s:%s", hostname, stellarCorePort),
+		fmt.Sprintf("http://%s:%d", hostname, stellarCorePort),
 		"--history-archive-urls",
-		fmt.Sprintf("http://%s:%s", hostname, historyArchivePort),
+		fmt.Sprintf("http://%s:%d", hostname, historyArchivePort),
 		"--ingest",
 		"--db-url",
 		horizonPostgresURL,
 		"--stellar-core-db-url",
 		fmt.Sprintf(
-			"postgres://postgres:%s@%s:%s/stellar?sslmode=disable",
+			"postgres://postgres:%s@%s:%d/stellar?sslmode=disable",
 			stellarCorePostgresPassword,
 			hostname,
 			stellarCorePostgresPort,
@@ -157,9 +157,11 @@ of accounts, subscribe to event streams and more.`,
 		"--admin-port",
 		strconv.Itoa(i.AdminPort()),
 	})
-	configOpts.Init(cmd)
-
 	var err error
+	if err = configOpts.Init(cmd); err != nil {
+		i.t.Fatalf("Cannot initialize params: %s", err)
+	}
+
 	if err = cmd.Execute(); err != nil {
 		i.t.Fatalf("cannot initialize horizon: %s", err)
 	}
@@ -521,7 +523,6 @@ func (i *Test) CloseCoreLedger() error {
 		// pace ourselves
 		time.Sleep(50 * time.Millisecond)
 	}
-	return nil
 }
 
 func (i *Test) GetCurrentCoreLedgerSequence() (int, error) {
