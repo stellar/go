@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"strconv"
 	"strings"
 	"time"
 
@@ -24,6 +25,31 @@ type Client struct {
 
 	// URL of Stellar Core server to connect.
 	URL string
+}
+
+// Upgrade upgrades the protocol version running on the stellar core instance
+func (c *Client) Upgrade(ctx context.Context, version int) error {
+	queryParams := url.Values{}
+	queryParams.Add("mode", "set")
+	queryParams.Add("upgradetime", "1970-01-01T00:00:00Z")
+	queryParams.Add("protocolversion", strconv.Itoa(version))
+
+	req, err := c.simpleGet(ctx, "upgrades", queryParams)
+	if err != nil {
+		return errors.Wrap(err, "failed to create request")
+	}
+
+	hresp, err := c.http().Do(req)
+	if err != nil {
+		return errors.Wrap(err, "http request errored")
+	}
+	defer hresp.Body.Close()
+
+	if !(hresp.StatusCode >= 200 && hresp.StatusCode < 300) {
+		return errors.New("http request failed with non-200 status code")
+	}
+
+	return nil
 }
 
 // Info calls the `info` command on the connected stellar core and returns the
