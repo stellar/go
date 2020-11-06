@@ -182,7 +182,8 @@ func NewSystem(config Config) (System, error) {
 				cancel()
 				return nil, errors.Wrap(err, "error creating captive core backend")
 			}
-			captiveCoreBackend.SetLogger(log)
+			captiveCoreBackend.SetStellarCoreLogger(
+				log.WithField("subservice", "stellar-core"))
 			ledgerBackend = captiveCoreBackend
 		}
 	} else {
