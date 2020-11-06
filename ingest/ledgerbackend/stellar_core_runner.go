@@ -118,6 +118,7 @@ func (r *stellarCoreRunner) getLogLineWriter() io.Writer {
 	// Strip timestamps from log lines from captive stellar-core. We emit our own.
 	dateRx := regexp.MustCompile(`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3} `)
 	go func() {
+		levelRx := regexp.MustCompile(`\[(\w+) ([A-Z]+)\]`)
 		for {
 			line, err := br.ReadString('\n')
 			if err != nil {
@@ -132,18 +133,14 @@ func (r *stellarCoreRunner) getLogLineWriter() io.Writer {
 				continue
 			}
 
-			levelRx := regexp.MustCompile(`\[(\w+) ([A-Z]+)\]`)
-			indices := levelRx.FindStringSubmatchIndex(line)
-			if len(indices) >= 6 {
-				// Identify the indices that match our regex subexpressions
-				categoryIdx := indices[2:4]
-				levelIdx := indices[4:6]
-
+			matches := levelRx.FindStringSubmatch(line)
+			if len(matches) >= 3 {
 				// Extract the substrings from the log entry
-				category := line[categoryIdx[0]:categoryIdx[1]]
-				level := line[levelIdx[0]:levelIdx[1]]
+				category, level := matches[1], matches[2]
 
-				line = line[indices[1]+1:] // dump the matched part of the line
+				// Dump the matched part of the line
+				endIdx := levelRx.FindStringIndex(line)[1]
+				line = line[endIdx+1:]
 
 				levelMapping := map[string]func(string, ...interface{}){
 					"FATAL":   r.Log.Errorf,
