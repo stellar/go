@@ -109,6 +109,9 @@ type CaptiveStellarCore struct {
 	// waitIntervalPrepareRange defines a time to wait between checking if the buffer
 	// is empty. Default 1s, lower in tests to make them faster.
 	waitIntervalPrepareRange time.Duration
+
+	// Optionally, pass along a custom logger to the underlying runner.
+	Log *log.Entry
 }
 
 // NewCaptive returns a new CaptiveStellarCore.
@@ -126,31 +129,27 @@ func NewCaptive(executablePath, configPath, networkPassphrase string, historyURL
 		return nil, errors.Wrap(err, "error connecting to history archive")
 	}
 
-	return &CaptiveStellarCore{
-		archive:           archive,
-		executablePath:    executablePath,
-		configPath:        configPath,
-		historyURLs:       historyURLs,
-		networkPassphrase: networkPassphrase,
-		stellarCoreRunnerFactory: func(configPath2 string) (stellarCoreRunnerInterface, error) {
-			return newStellarCoreRunner(executablePath, configPath2, networkPassphrase, historyURLs)
-		},
+	c := &CaptiveStellarCore{
+		archive:                  archive,
+		executablePath:           executablePath,
+		configPath:               configPath,
+		historyURLs:              historyURLs,
+		networkPassphrase:        networkPassphrase,
 		waitIntervalPrepareRange: time.Second,
-	}, nil
+	}
+	c.stellarCoreRunnerFactory = func(configPath2 string) (stellarCoreRunnerInterface, error) {
+		runner, innerErr := newStellarCoreRunner(executablePath, configPath2, networkPassphrase, historyURLs)
+		if innerErr != nil {
+			return runner, innerErr
+		}
+		runner.setLogger(c.Log)
+		return runner, nil
+	}
+	return c, nil
 }
 
 func (c *CaptiveStellarCore) SetLogger(logger *log.Entry) {
-	// If the caller decides to set a custom logger, we recreate the factory to
-	// pass this along to all subsequently-created instances.
-	previousFactory := c.stellarCoreRunnerFactory
-	c.stellarCoreRunnerFactory = func(configPath string) (stellarCoreRunnerInterface, error) {
-		core, err := previousFactory(configPath)
-		if err != nil {
-			return core, err
-		}
-		core.setLogger(logger)
-		return core, nil
-	}
+	c.Log = logger
 }
 
 func (c *CaptiveStellarCore) getLatestCheckpointSequence() (uint32, error) {
