@@ -111,7 +111,7 @@ type CaptiveStellarCore struct {
 	waitIntervalPrepareRange time.Duration
 
 	// Optionally, pass along a custom logger to the underlying runner.
-	Log *log.Entry
+	log *log.Entry
 }
 
 // NewCaptive returns a new CaptiveStellarCore.
@@ -142,14 +142,14 @@ func NewCaptive(executablePath, configPath, networkPassphrase string, historyURL
 		if innerErr != nil {
 			return runner, innerErr
 		}
-		runner.setLogger(c.Log)
+		runner.setLogger(c.log)
 		return runner, nil
 	}
 	return c, nil
 }
 
-func (c *CaptiveStellarCore) SetLogger(logger *log.Entry) {
-	c.Log = logger
+func (c *CaptiveStellarCore) SetStellarCoreLogger(logger *log.Entry) {
+	c.log = logger
 }
 
 func (c *CaptiveStellarCore) getLatestCheckpointSequence() (uint32, error) {
