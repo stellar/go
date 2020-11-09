@@ -33,7 +33,7 @@ const (
 	// usually wait for a specific time duration before checking if the ledger is
 	// available. When catching up and small buffer this can increase the overall
 	// time because ledgers are not available.
-	ledgerReadAheadBufferSize = 100
+	ledgerReadAheadBufferSize = 20
 )
 
 type metaResult struct {
