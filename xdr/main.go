@@ -124,30 +124,39 @@ func MarshalFramed(w io.Writer, v interface{}) error {
 	return err
 }
 
+// ReadFrameLength returns a length of a framed XDR object.
+func ReadFrameLength(r io.Reader) (uint32, error) {
+	var frameLen uint32
+	n, e := Unmarshal(r, &frameLen)
+	if e != nil {
+		return 0, errors.Wrap(e, "unmarshalling XDR frame header")
+	}
+	if n != 4 {
+		return 0, errors.New("bad length of XDR frame header")
+	}
+	if (frameLen & 0x80000000) != 0x80000000 {
+		return 0, errors.New("malformed XDR frame header")
+	}
+	frameLen &= 0x7fffffff
+	return frameLen, nil
+}
+
 // XDR and RPC define a (minimal) framing format which our metadata arrives in: a 4-byte
 // big-endian length header that has the high bit set, followed by that length worth of
 // XDR data. Decoding this involves just a little more work than xdr.Unmarshal.
 func UnmarshalFramed(r io.Reader, v interface{}) (int, error) {
-	var frameLen uint32
-	n, e := Unmarshal(r, &frameLen)
-	if e != nil {
-		return n, errors.Wrap(e, "unmarshalling XDR frame header")
+	frameLen, err := ReadFrameLength(r)
+	if err != nil {
+		return 0, errors.Wrap(err, "unmarshalling XDR frame header")
 	}
-	if n != 4 {
-		return n, errors.New("bad length of XDR frame header")
-	}
-	if (frameLen & 0x80000000) != 0x80000000 {
-		return n, errors.New("malformed XDR frame header")
-	}
-	frameLen &= 0x7fffffff
 	m, err := xdr.Unmarshal(r, v)
 	if err != nil {
-		return n + m, errors.Wrap(err, "unmarshalling framed XDR")
+		return 0, errors.Wrap(err, "unmarshalling framed XDR")
 	}
 	if int64(m) != int64(frameLen) {
-		return n + m, errors.New("bad length of XDR frame body")
+		return 0, errors.New("bad length of XDR frame body")
 	}
-	return m + n, nil
+	return m + 4 /* frame size: uint32 */, nil
 }
 
 type countWriter struct {

@@ -21,7 +21,10 @@ type stellarCoreRunnerInterface interface {
 	catchup(from, to uint32) error
 	runFrom(from uint32, hash string) error
 	getMetaPipe() io.Reader
-	getProcessExitChan() <-chan error
+	// getProcessExitChan returns a channel that closes on process exit
+	getProcessExitChan() <-chan struct{}
+	// getProcessExitError returns an exit error of the process, can be nil
+	getProcessExitError() error
 	close() error
 }
 
@@ -38,10 +41,11 @@ type stellarCoreRunner struct {
 	cmd *exec.Cmd
 	// processExit channel receives an error when the process exited with an error
 	// or nil if the process exited without an error.
-	processExit chan error
-	metaPipe    io.Reader
-	tempDir     string
-	nonce       string
+	processExit      chan struct{}
+	processExitError error
+	metaPipe         io.Reader
+	tempDir          string
+	nonce            string
 }
 
 func newStellarCoreRunner(executablePath, configPath, networkPassphrase string, historyURLs []string) (*stellarCoreRunner, error) {
@@ -61,7 +65,8 @@ func newStellarCoreRunner(executablePath, configPath, networkPassphrase string, 
 		networkPassphrase: networkPassphrase,
 		historyURLs:       historyURLs,
 		shutdown:          make(chan struct{}),
-		processExit:       make(chan error),
+		processExit:       make(chan struct{}),
+		processExitError:  nil,
 		tempDir:           tempDir,
 		nonce:             fmt.Sprintf("captive-stellar-core-%x", r.Uint64()),
 	}
@@ -180,9 +185,6 @@ func (r *stellarCoreRunner) catchup(from, to uint32) error {
 	}
 	r.started = true
 
-	// Do not remove bufio.Reader wrapping. Turns out that each read from a pipe
-	// adds an overhead time so it's better to preload data to a buffer.
-	r.metaPipe = bufio.NewReaderSize(r.metaPipe, 1024*1024)
 	return nil
 }
 
@@ -207,9 +209,6 @@ func (r *stellarCoreRunner) runFrom(from uint32, hash string) error {
 	}
 	r.started = true
 
-	// Do not remove bufio.Reader wrapping. Turns out that each read from a pipe
-	// adds an overhead time so it's better to preload data to a buffer.
-	r.metaPipe = bufio.NewReaderSize(r.metaPipe, 1024*1024)
 	return nil
 }
 
@@ -217,8 +216,12 @@ func (r *stellarCoreRunner) getMetaPipe() io.Reader {
 	return r.metaPipe
 }
 
-func (r *stellarCoreRunner) getProcessExitChan() <-chan error {
+func (r *stellarCoreRunner) getProcessExitChan() <-chan struct{} {
 	return r.processExit
+}
+
+func (r *stellarCoreRunner) getProcessExitError() error {
+	return r.processExitError
 }
 
 func (r *stellarCoreRunner) close() error {
