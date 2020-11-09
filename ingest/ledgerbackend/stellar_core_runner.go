@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/stellar/go/support/log"
 )
 
 type stellarCoreRunnerInterface interface {
@@ -25,6 +26,7 @@ type stellarCoreRunnerInterface interface {
 	getProcessExitChan() <-chan struct{}
 	// getProcessExitError returns an exit error of the process, can be nil
 	getProcessExitError() error
+	setLogger(*log.Entry)
 	close() error
 }
 
@@ -39,6 +41,7 @@ type stellarCoreRunner struct {
 	shutdown chan struct{}
 
 	cmd *exec.Cmd
+
 	// processExit channel receives an error when the process exited with an error
 	// or nil if the process exited without an error.
 	processExit      chan struct{}
@@ -46,6 +49,9 @@ type stellarCoreRunner struct {
 	metaPipe         io.Reader
 	tempDir          string
 	nonce            string
+
+	// Optionally, logging can be done to something other than stdout.
+	Log *log.Entry
 }
 
 func newStellarCoreRunner(executablePath, configPath, networkPassphrase string, historyURLs []string) (*stellarCoreRunner, error) {
@@ -111,22 +117,52 @@ func (r *stellarCoreRunner) getConfFileName() string {
 	return filepath.Join(r.tempDir, "stellar-core.conf")
 }
 
-func (*stellarCoreRunner) getLogLineWriter() io.Writer {
-	r, w := io.Pipe()
-	br := bufio.NewReader(r)
+func (r *stellarCoreRunner) getLogLineWriter() io.Writer {
+	rd, wr := io.Pipe()
+	br := bufio.NewReader(rd)
+
 	// Strip timestamps from log lines from captive stellar-core. We emit our own.
 	dateRx := regexp.MustCompile(`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3} `)
 	go func() {
+		levelRx := regexp.MustCompile(`G[A-Z]{4} \[(\w+) ([A-Z]+)\] (.*)`)
 		for {
 			line, err := br.ReadString('\n')
 			if err != nil {
 				break
 			}
 			line = dateRx.ReplaceAllString(line, "")
-			fmt.Print(line)
+
+			// If there's a logger, we attempt to extract metadata about the log
+			// entry, then redirect it to the logger. Otherwise, we just use stdout.
+			if r.Log == nil {
+				fmt.Print(line)
+				continue
+			}
+
+			matches := levelRx.FindStringSubmatch(line)
+			if len(matches) >= 4 {
+				// Extract the substrings from the log entry and trim it
+				category, level := matches[1], matches[2]
+				line = matches[3]
+
+				levelMapping := map[string]func(string, ...interface{}){
+					"FATAL":   r.Log.Errorf,
+					"ERROR":   r.Log.Errorf,
+					"WARNING": r.Log.Warnf,
+					"INFO":    r.Log.Infof,
+				}
+
+				if writer, ok := levelMapping[strings.ToUpper(level)]; ok {
+					writer("%s: %s", category, line)
+				} else {
+					r.Log.Infof(line)
+				}
+			} else {
+				r.Log.Infof(line)
+			}
 		}
 	}()
-	return w
+	return wr
 }
 
 // Makes the temp directory and writes the config file to it; called by the
@@ -222,6 +258,10 @@ func (r *stellarCoreRunner) getProcessExitChan() <-chan struct{} {
 
 func (r *stellarCoreRunner) getProcessExitError() error {
 	return r.processExitError
+}
+
+func (r *stellarCoreRunner) setLogger(logger *log.Entry) {
+	r.Log = logger
 }
 
 func (r *stellarCoreRunner) close() error {

@@ -11,6 +11,7 @@ import (
 	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/network"
 	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -52,6 +53,8 @@ func (m *stellarCoreRunnerMock) close() error {
 	a := m.Called()
 	return a.Error(0)
 }
+
+func (m *stellarCoreRunnerMock) setLogger(*log.Entry) {}
 
 func buildLedgerCloseMeta(sequence uint32) xdr.LedgerCloseMeta {
 	opResults := []xdr.OperationResult{}

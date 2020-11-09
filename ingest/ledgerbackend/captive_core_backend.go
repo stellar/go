@@ -7,6 +7,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/stellar/go/historyarchive"
+	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/xdr"
 )
 
@@ -88,6 +89,9 @@ type CaptiveStellarCore struct {
 	// waitIntervalPrepareRange defines a time to wait between checking if the buffer
 	// is empty. Default 1s, lower in tests to make them faster.
 	waitIntervalPrepareRange time.Duration
+
+	// Optionally, pass along a custom logger to the underlying runner.
+	log *log.Entry
 }
 
 // NewCaptive returns a new CaptiveStellarCore.
@@ -105,17 +109,27 @@ func NewCaptive(executablePath, configPath, networkPassphrase string, historyURL
 		return nil, errors.Wrap(err, "error connecting to history archive")
 	}
 
-	return &CaptiveStellarCore{
-		archive:           archive,
-		executablePath:    executablePath,
-		configPath:        configPath,
-		historyURLs:       historyURLs,
-		networkPassphrase: networkPassphrase,
-		stellarCoreRunnerFactory: func(configPath2 string) (stellarCoreRunnerInterface, error) {
-			return newStellarCoreRunner(executablePath, configPath2, networkPassphrase, historyURLs)
-		},
+	c := &CaptiveStellarCore{
+		archive:                  archive,
+		executablePath:           executablePath,
+		configPath:               configPath,
+		historyURLs:              historyURLs,
+		networkPassphrase:        networkPassphrase,
 		waitIntervalPrepareRange: time.Second,
-	}, nil
+	}
+	c.stellarCoreRunnerFactory = func(configPath2 string) (stellarCoreRunnerInterface, error) {
+		runner, innerErr := newStellarCoreRunner(executablePath, configPath2, networkPassphrase, historyURLs)
+		if innerErr != nil {
+			return runner, innerErr
+		}
+		runner.setLogger(c.log)
+		return runner, nil
+	}
+	return c, nil
+}
+
+func (c *CaptiveStellarCore) SetStellarCoreLogger(logger *log.Entry) {
+	c.log = logger
 }
 
 func (c *CaptiveStellarCore) getLatestCheckpointSequence() (uint32, error) {
