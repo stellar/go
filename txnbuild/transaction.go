@@ -906,55 +906,55 @@ func generateRandomNonce(n int) ([]byte, error) {
 // one of the following functions to completely verify the transaction:
 // - VerifyChallengeTxThreshold
 // - VerifyChallengeTxSigners
-func ReadChallengeTx(challengeTx, serverAccountID, network, homeDomain string) (tx *Transaction, clientAccountID string, err error) {
+func ReadChallengeTx(challengeTx, serverAccountID, network string, homeDomains []string) (tx *Transaction, clientAccountID string, matchedHomeDomain string, err error) {
 	parsed, err := TransactionFromXDR(challengeTx)
 	if err != nil {
-		return tx, clientAccountID, errors.Wrap(err, "could not parse challenge")
+		return tx, clientAccountID, matchedHomeDomain, errors.Wrap(err, "could not parse challenge")
 	}
 
 	var isSimple bool
 	tx, isSimple = parsed.Transaction()
 	if !isSimple {
-		return tx, clientAccountID, errors.New("challenge cannot be a fee bump transaction")
+		return tx, clientAccountID, matchedHomeDomain, errors.New("challenge cannot be a fee bump transaction")
 	}
 
 	// Enforce no muxed accounts (at least until we understand their impact)
 	if tx.envelope.SourceAccount().Type == xdr.CryptoKeyTypeKeyTypeMuxedEd25519 {
 		err = errors.New("invalid source account: only valid Ed25519 accounts are allowed in challenge transactions")
-		return tx, clientAccountID, err
+		return tx, clientAccountID, matchedHomeDomain, err
 	}
 
 	// verify transaction source
 	if tx.SourceAccount().AccountID != serverAccountID {
-		return tx, clientAccountID, errors.New("transaction source account is not equal to server's account")
+		return tx, clientAccountID, matchedHomeDomain, errors.New("transaction source account is not equal to server's account")
 	}
 
 	// verify sequence number
 	if tx.SourceAccount().Sequence != 0 {
-		return tx, clientAccountID, errors.New("transaction sequence number must be 0")
+		return tx, clientAccountID, matchedHomeDomain, errors.New("transaction sequence number must be 0")
 	}
 
 	// verify timebounds
 	if tx.Timebounds().MaxTime == TimeoutInfinite {
-		return tx, clientAccountID, errors.New("transaction requires non-infinite timebounds")
+		return tx, clientAccountID, matchedHomeDomain, errors.New("transaction requires non-infinite timebounds")
 	}
 	currentTime := time.Now().UTC().Unix()
 	if currentTime < tx.Timebounds().MinTime || currentTime > tx.Timebounds().MaxTime {
-		return tx, clientAccountID, errors.Errorf("transaction is not within range of the specified timebounds (currentTime=%d, MinTime=%d, MaxTime=%d)",
+		return tx, clientAccountID, matchedHomeDomain, errors.Errorf("transaction is not within range of the specified timebounds (currentTime=%d, MinTime=%d, MaxTime=%d)",
 			currentTime, tx.Timebounds().MinTime, tx.Timebounds().MaxTime)
 	}
 
 	// verify operation
 	operations := tx.Operations()
 	if len(operations) < 1 {
-		return tx, clientAccountID, errors.New("transaction requires at least one manage_data operation")
+		return tx, clientAccountID, matchedHomeDomain, errors.New("transaction requires at least one manage_data operation")
 	}
 	op, ok := operations[0].(*ManageData)
 	if !ok {
-		return tx, clientAccountID, errors.New("operation type should be manage_data")
+		return tx, clientAccountID, matchedHomeDomain, errors.New("operation type should be manage_data")
 	}
 	if op.SourceAccount == nil {
-		return tx, clientAccountID, errors.New("operation should have a source account")
+		return tx, clientAccountID, matchedHomeDomain, errors.New("operation should have a source account")
 	}
 	if strings.Split(op.Name, " ")[0] != homeDomain {
 		return tx, clientAccountID, errors.Errorf("operation key should contain homeDomain (key=%q, homeDomain=%q)", op.Name, homeDomain)
@@ -964,42 +964,42 @@ func ReadChallengeTx(challengeTx, serverAccountID, network, homeDomain string) (
 	rawOperations := tx.envelope.Operations()
 	if len(rawOperations) > 0 && rawOperations[0].SourceAccount.Type == xdr.CryptoKeyTypeKeyTypeMuxedEd25519 {
 		err = errors.New("invalid operation source account: only valid Ed25519 accounts are allowed in challenge transactions")
-		return tx, clientAccountID, err
+		return tx, clientAccountID, matchedHomeDomain, err
 	}
 
 	// verify manage data value
 	nonceB64 := string(op.Value)
 	if len(nonceB64) != 64 {
-		return tx, clientAccountID, errors.New("random nonce encoded as base64 should be 64 bytes long")
+		return tx, clientAccountID, matchedHomeDomain, errors.New("random nonce encoded as base64 should be 64 bytes long")
 	}
 	nonceBytes, err := base64.StdEncoding.DecodeString(nonceB64)
 	if err != nil {
-		return tx, clientAccountID, errors.Wrap(err, "failed to decode random nonce provided in manage_data operation")
+		return tx, clientAccountID, matchedHomeDomain, errors.Wrap(err, "failed to decode random nonce provided in manage_data operation")
 	}
 	if len(nonceBytes) != 48 {
-		return tx, clientAccountID, errors.New("random nonce before encoding as base64 should be 48 bytes long")
+		return tx, clientAccountID, matchedHomeDomain, errors.New("random nonce before encoding as base64 should be 48 bytes long")
 	}
 
 	// verify subsequent operations are manage data ops with source account set to server account
 	for _, op := range operations[1:] {
 		op, ok := op.(*ManageData)
 		if !ok {
-			return tx, clientAccountID, errors.New("operation type should be manage_data")
+			return tx, clientAccountID, matchedHomeDomain, errors.New("operation type should be manage_data")
 		}
 		if op.SourceAccount == nil {
-			return tx, clientAccountID, errors.New("operation should have a source account")
+			return tx, clientAccountID, matchedHomeDomain, errors.New("operation should have a source account")
 		}
 		if op.SourceAccount.GetAccountID() != serverAccountID {
-			return tx, clientAccountID, errors.New("subsequent operations are unrecognized")
+			return tx, clientAccountID, matchedHomeDomain, errors.New("subsequent operations are unrecognized")
 		}
 	}
 
 	err = verifyTxSignature(tx, network, serverAccountID)
 	if err != nil {
-		return tx, clientAccountID, err
+		return tx, clientAccountID, matchedHomeDomain, err
 	}
 
-	return tx, clientAccountID, nil
+	return tx, clientAccountID, matchedHomeDomain, nil
 }
 
 // VerifyChallengeTxThreshold verifies that for a SEP 10 challenge transaction
