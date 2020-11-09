@@ -106,7 +106,7 @@ func TestProtocol14StateVerifier(t *testing.T) {
 
 	// Reach the first checkpoint ledger
 	// Core will push to history archives *after* checkpoint ledger
-	itest.CloseCoreLedgersUntilSequence(firstCheckpoint + 1)
+	err = itest.CloseCoreLedgersUntilSequence(firstCheckpoint + 1)
 	assert.NoError(t, err)
 	for !itest.LedgerIngested(firstCheckpoint) {
 		time.Sleep(time.Second)
@@ -118,16 +118,17 @@ func TestProtocol14StateVerifier(t *testing.T) {
 	}
 
 	// Trigger state rebuild to check if ingesting from history archive works
-	itest.RunHorizonCLICommand("expingest", "trigger-state-rebuild")
+	err = itest.Horizon().HistoryQ().UpdateExpIngestVersion(0)
+	assert.NoError(t, err)
 
 	// Wait for the second checkpoint ledger and state rebuild
 	// Core will push to history archives *after* checkpoint ledger
-	itest.CloseCoreLedgersUntilSequence(secondCheckpoint + 1)
+	err = itest.CloseCoreLedgersUntilSequence(secondCheckpoint + 1)
 	assert.NoError(t, err)
 
 	// Wait for the third checkpoint ledger and state verification trigger
 	// Core will push to history archives *after* checkpoint ledger
-	itest.CloseCoreLedgersUntilSequence(thirdCheckpoint + 1)
+	err = itest.CloseCoreLedgersUntilSequence(thirdCheckpoint + 1)
 	assert.NoError(t, err)
 	for !itest.LedgerIngested(thirdCheckpoint) {
 		time.Sleep(time.Second)
