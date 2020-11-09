@@ -31,8 +31,12 @@ func (c *stellarCoreRunner) start() (io.Reader, error) {
 
 	c.wg.Add(1)
 	go func() {
+		err := make(chan error, 1)
 		select {
-		case c.processExit <- c.cmd.Wait():
+		case err <- c.cmd.Wait():
+			c.processExitError = <-err
+			close(c.processExit)
+			close(err)
 		case <-c.shutdown:
 		}
 		c.wg.Done()
