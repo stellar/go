@@ -2567,6 +2567,78 @@ func TestVerifyChallengeTxThreshold_weightsAddToMoreThan8Bits(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestVerifyChallengeTxThreshold_matchesHomeDomain(t *testing.T) {
+	serverKP := newKeypair0()
+	clientKP := newKeypair1()
+	txSource := NewSimpleAccount(serverKP.Address(), -1)
+	opSource := NewSimpleAccount(clientKP.Address(), 0)
+	op1 := ManageData{
+		SourceAccount: &opSource,
+		Name:          "testanchor.stellar.org auth",
+		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
+	}
+	tx, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &txSource,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&op1},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewTimeout(300),
+		},
+	)
+	assert.NoError(t, err)
+	tx, err = tx.Sign(network.TestNetworkPassphrase, serverKP)
+	assert.NoError(t, err)
+	tx64, err := tx.Base64()
+	require.NoError(t, err)
+
+	threshold := Threshold(1)
+	signerSummary := SignerSummary{
+		clientKP.Address(): 1,
+	}
+
+	tx, err = tx.Sign(network.TestNetworkPassphrase, clientKP)
+	assert.NoError(t, err)
+	tx64, err = tx.Base64()
+
+	_, err = VerifyChallengeTxThreshold(tx64, serverKP.Address(), network.TestNetworkPassphrase, []string{"testanchor.stellar.org"}, threshold, signerSummary)
+	require.NoError(t, err)
+}
+
+func TestVerifyChallengeTxThreshold_doesNotMatchHomeDomain(t *testing.T) {
+	serverKP := newKeypair0()
+	clientKP := newKeypair1()
+	txSource := NewSimpleAccount(serverKP.Address(), -1)
+	opSource := NewSimpleAccount(clientKP.Address(), 0)
+	op1 := ManageData{
+		SourceAccount: &opSource,
+		Name:          "testanchor.stellar.org auth",
+		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
+	}
+	tx, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &txSource,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&op1},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewTimeout(300),
+		},
+	)
+	assert.NoError(t, err)
+	tx, err = tx.Sign(network.TestNetworkPassphrase, serverKP)
+	assert.NoError(t, err)
+	tx64, err := tx.Base64()
+	require.NoError(t, err)
+
+	threshold := Threshold(1)
+	signerSummary := SignerSummary{
+		clientKP.Address(): 1,
+	}
+
+	_, err = VerifyChallengeTxThreshold(tx64, serverKP.Address(), network.TestNetworkPassphrase, []string{"not", "going", "to", "match"}, threshold, signerSummary)
+	assert.EqualError(t, err, "operation key does not match any homeDomains passed (key=\"testanchor.stellar.org auth\", homeDomains=[not going to match])")
+}
+
 func TestVerifyChallengeTxThreshold_doesVerifyHomeDomainFailure(t *testing.T) {
 	serverKP := newKeypair0()
 	clientKP := newKeypair1()
@@ -3209,6 +3281,74 @@ func TestVerifyChallengeTxSigners_doesVerifyHomeDomainFailure(t *testing.T) {
 
 	_, err = VerifyChallengeTxSigners(tx64, serverKP.Address(), network.TestNetworkPassphrase, []string{"validation failed"}, clientKP.Address())
 	assert.EqualError(t, err, "operation key does not match any homeDomains passed (key=\"testanchor.stellar.org auth\", homeDomains=[validation failed])")
+}
+
+func TestVerifyChallengeTxSigners_matchesHomeDomain(t *testing.T) {
+	serverKP := newKeypair0()
+	clientKP := newKeypair1()
+	txSource := NewSimpleAccount(serverKP.Address(), -1)
+	opSource := NewSimpleAccount(clientKP.Address(), 0)
+	op1 := ManageData{
+		SourceAccount: &opSource,
+		Name:          "testanchor.stellar.org auth",
+		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
+	}
+	tx, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &txSource,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&op1},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewTimeout(300),
+		},
+	)
+	assert.NoError(t, err)
+	tx, err = tx.Sign(network.TestNetworkPassphrase, serverKP)
+	assert.NoError(t, err)
+	tx64, err := tx.Base64()
+	require.NoError(t, err)
+
+	signers := []string{clientKP.Address()}
+	tx, err = tx.Sign(network.TestNetworkPassphrase, clientKP)
+	tx64, err = tx.Base64()
+	assert.NoError(t, err)
+
+	_, err = VerifyChallengeTxSigners(tx64, serverKP.Address(), network.TestNetworkPassphrase, []string{"testanchor.stellar.org"}, signers...)
+	require.NoError(t, err)
+}
+
+func TestVerifyChallengeTxSigners_doesNotMatchHomeDomain(t *testing.T) {
+	serverKP := newKeypair0()
+	clientKP := newKeypair1()
+	txSource := NewSimpleAccount(serverKP.Address(), -1)
+	opSource := NewSimpleAccount(clientKP.Address(), 0)
+	op1 := ManageData{
+		SourceAccount: &opSource,
+		Name:          "testanchor.stellar.org auth",
+		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
+	}
+	tx, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &txSource,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&op1},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewTimeout(300),
+		},
+	)
+	assert.NoError(t, err)
+	tx, err = tx.Sign(network.TestNetworkPassphrase, serverKP)
+	assert.NoError(t, err)
+	tx64, err := tx.Base64()
+	require.NoError(t, err)
+
+	signers := []string{clientKP.Address()}
+	tx, err = tx.Sign(network.TestNetworkPassphrase, clientKP)
+	tx64, err = tx.Base64()
+	assert.NoError(t, err)
+
+	_, err = VerifyChallengeTxSigners(tx64, serverKP.Address(), network.TestNetworkPassphrase, []string{"not", "going", "to", "match"}, signers...)
+	assert.EqualError(t, err, "operation key does not match any homeDomains passed (key=\"testanchor.stellar.org auth\", homeDomains=[not going to match])")
 }
 
 func TestVerifyChallengeTxSigners_doesVerifyHomeDomainSuccess(t *testing.T) {
