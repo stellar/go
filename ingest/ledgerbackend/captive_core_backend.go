@@ -68,7 +68,7 @@ type CaptiveStellarCore struct {
 	historyURLs       []string
 	archive           historyarchive.ArchiveInterface
 
-	ledgerBuffer bufferedLedgerMetaReader
+	ledgerBuffer *bufferedLedgerMetaReader
 
 	// For testing
 	stellarCoreRunnerFactory func(configPath string) (stellarCoreRunnerInterface, error)
@@ -338,13 +338,7 @@ func (c *CaptiveStellarCore) PrepareRange(ledgerRange Range) error {
 	for {
 		select {
 		case <-c.stellarCoreRunner.getProcessExitChan():
-			processErr := c.stellarCoreRunner.getProcessExitError()
-			if processErr != nil {
-				err = errors.Wrap(processErr, "stellar-core process exited with an error")
-			} else {
-				err = errors.New("stellar-core process exited unexpectedly without an error")
-			}
-			return err
+			return wrapStellarCoreRunnerError(c.stellarCoreRunner)
 		default:
 		}
 		// Wait for the first ledger or an error
@@ -425,12 +419,7 @@ loop:
 		var result metaResult
 		select {
 		case <-c.stellarCoreRunner.getProcessExitChan():
-			processErr := c.stellarCoreRunner.getProcessExitError()
-			if processErr != nil {
-				errOut = errors.Wrap(processErr, "stellar-core process exited with an error")
-			} else {
-				errOut = errors.New("stellar-core process exited unexpectedly without an error")
-			}
+			errOut = wrapStellarCoreRunnerError(c.stellarCoreRunner)
 			break loop
 		case result = <-c.ledgerBuffer.GetChannel():
 		}
@@ -491,9 +480,6 @@ func (c *CaptiveStellarCore) isClosed() bool {
 // Close closes existing Stellar-Core process, streaming sessions and removes all
 // temporary files.
 func (c *CaptiveStellarCore) Close() error {
-	c.nextLedger = 0
-	c.lastLedger = nil
-
 	if c.stellarCoreRunner != nil {
 		// Closing stellarCoreRunner will automatically close bufferedLedgerMetaReader
 		// because it's listening for getProcessExitChan().
@@ -502,7 +488,22 @@ func (c *CaptiveStellarCore) Close() error {
 		if err != nil {
 			return errors.Wrap(err, "error closing stellar-core subprocess")
 		}
+
+		// Wait for bufferedLedgerMetaReader go routine to return.
+		c.ledgerBuffer.WaitForClose()
+		c.ledgerBuffer = nil
 	}
 
+	c.nextLedger = 0
+	c.lastLedger = nil
+
 	return nil
+}
+
+func wrapStellarCoreRunnerError(r stellarCoreRunnerInterface) error {
+	processErr := r.getProcessExitError()
+	if processErr != nil {
+		return errors.Wrap(processErr, "stellar-core process exited with an error")
+	}
+	return errors.New("stellar-core process exited unexpectedly without an error")
 }

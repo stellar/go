@@ -146,9 +146,10 @@ func TestCaptivePrepareRange(t *testing.T) {
 		writeLedgerHeader(&buf, uint32(i))
 	}
 
+	exitChan := make(chan struct{})
 	mockRunner := &stellarCoreRunnerMock{}
 	mockRunner.On("catchup", uint32(100), uint32(200)).Return(nil).Once()
-	mockRunner.On("getProcessExitChan").Return(make(chan struct{}))
+	mockRunner.On("getProcessExitChan").Return(exitChan)
 	mockRunner.On("getMetaPipe").Return(&buf)
 	mockRunner.On("close").Return(nil).Once()
 
@@ -170,6 +171,7 @@ func TestCaptivePrepareRange(t *testing.T) {
 	err := captiveBackend.PrepareRange(BoundedRange(100, 200))
 	assert.NoError(t, err)
 	mockRunner.On("close").Return(nil).Once()
+	close(exitChan)
 	err = captiveBackend.Close()
 	assert.NoError(t, err)
 }
@@ -488,10 +490,11 @@ func TestGetLatestLedgerSequence(t *testing.T) {
 		writeLedgerHeader(&buf, uint32(i))
 	}
 
+	exitChan := make(chan struct{})
 	mockRunner := &stellarCoreRunnerMock{}
 	mockRunner.On("runFrom", uint32(62), "0000000000000000000000000000000000000000000000000000000000000000").Return(nil).Once()
 	mockRunner.On("getMetaPipe").Return(&buf)
-	mockRunner.On("getProcessExitChan").Return(make(chan struct{}))
+	mockRunner.On("getProcessExitChan").Return(exitChan)
 	mockRunner.On("close").Return(nil).Once()
 
 	mockArchive := &historyarchive.MockArchive{}
@@ -537,6 +540,7 @@ func TestGetLatestLedgerSequence(t *testing.T) {
 	assert.Equal(t, uint32(64+ledgerReadAheadBufferSize), latest)
 
 	mockRunner.On("close").Return(nil).Once()
+	close(exitChan)
 	err = captiveBackend.Close()
 	assert.NoError(t, err)
 }
@@ -724,8 +728,9 @@ func TestGetLedgerBoundsCheck(t *testing.T) {
 	writeLedgerHeader(&buf, 130)
 
 	mockRunner := &stellarCoreRunnerMock{}
+	exitChan := make(chan struct{})
 	mockRunner.On("catchup", uint32(128), uint32(130)).Return(nil).Once()
-	mockRunner.On("getProcessExitChan").Return(make(chan struct{}))
+	mockRunner.On("getProcessExitChan").Return(exitChan).Maybe()
 	mockRunner.On("getMetaPipe").Return(&buf)
 	mockRunner.On("close").Return(nil).Once()
 
@@ -769,7 +774,9 @@ func TestGetLedgerBoundsCheck(t *testing.T) {
 	writeLedgerHeader(&buf, 64)
 	writeLedgerHeader(&buf, 65)
 	writeLedgerHeader(&buf, 66)
+
 	mockRunner.On("catchup", uint32(64), uint32(66)).Return(nil).Once()
+	mockRunner.On("getProcessExitChan").Return(exitChan)
 	mockRunner.On("getMetaPipe").Return(&buf)
 	mockRunner.On("close").Return(nil).Once()
 
@@ -781,6 +788,7 @@ func TestGetLedgerBoundsCheck(t *testing.T) {
 	assert.True(t, exists)
 	assert.Equal(t, uint32(64), meta.LedgerSequence())
 
+	close(exitChan)
 	err = captiveBackend.Close()
 	assert.NoError(t, err)
 	mockRunner.AssertExpectations(t)
