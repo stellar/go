@@ -84,7 +84,7 @@ type LedgerBackend interface {
 	GetLedger(sequence uint32) (bool, xdr.LedgerCloseMeta, error)
 	// PrepareRange prepares the given range (including from and to) to be loaded.
 	// Some backends (like captive stellar-core) need to initalize data to be
-	// able to stream ledgers.
+	// able to stream ledgers. Blocks until the first ledger is available.
 	PrepareRange(ledgerRange Range) error
 	// IsPrepared returns true if a given ledgerRange is prepared.
 	IsPrepared(ledgerRange Range) (bool, error)

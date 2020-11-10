@@ -2,6 +2,7 @@ package txnbuild
 
 import (
 	"fmt"
+
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/support/errors"
@@ -193,7 +194,7 @@ func NewValidationError(field, message string) *ValidationError {
 	}
 }
 
-// Parses an asset string in canonical form (SEP-11) into an Asset structure.
+// ParseAssetString parses an asset string in canonical form (SEP-11) into an Asset structure.
 // https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0011.md#asset
 func ParseAssetString(canonical string) (Asset, error) {
 	assets, err := xdr.BuildAssets(canonical)

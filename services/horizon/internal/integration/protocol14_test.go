@@ -81,7 +81,11 @@ func TestProtocol15Basics(t *testing.T) {
 			claimCreationOp := opResults[i].MustTr().CreateClaimableBalanceResult
 			calculatedId, err := xdr.MarshalHex(claimCreationOp.BalanceId)
 			tt.NoError(err)
-			tt.Equal(predictedId, calculatedId)
+			tt.Equal(calculatedId, predictedId)
+
+			helperCalculatedId, err := txResult.ExtractBalanceIDHex(i)
+			tt.NoError(err)
+			tt.Equal(calculatedId, helperCalculatedId)
 		}
 	})
 }
@@ -94,11 +98,11 @@ func TestHappyClaimableBalances(t *testing.T) {
 	a, b, c := keys[0], keys[1], keys[2]
 	accountA, accountB, accountC := accounts[0], accounts[1], accounts[2]
 
-	/*
-	 * Each sub-test is completely self-contained: at the end of the test, we
-	 * start with a clean slate for each account. This lets us check with
-	 * equality for things like "number of operations," etc.
-	 */
+	//
+	// Each sub-test is completely self-contained: at the end of the test, we
+	// start with a clean slate for each account. This lets us check with
+	// equality for things like "number of operations," etc.
+	//
 
 	// We start simple: native asset, single destination, no predicate.
 	t.Run("Simple/Native", func(t *testing.T) {
