@@ -956,8 +956,14 @@ func ReadChallengeTx(challengeTx, serverAccountID, network string, homeDomains [
 	if op.SourceAccount == nil {
 		return tx, clientAccountID, matchedHomeDomain, errors.New("operation should have a source account")
 	}
-	if strings.Split(op.Name, " ")[0] != homeDomain {
-		return tx, clientAccountID, errors.Errorf("operation key should contain homeDomain (key=%q, homeDomain=%q)", op.Name, homeDomain)
+	for _, homeDomain := range homeDomains {
+		if op.Name == fmt.Sprintf("%s auth", homeDomain) {
+			matchedHomeDomain = homeDomain
+			break
+		}
+	}
+	if matchedHomeDomain == "" {
+		return tx, clientAccountID, matchedHomeDomain, errors.Errorf("operation key does not match any homeDomains passed (key=%q, homeDomains=%v)", op.Name, homeDomains)
 	}
 
 	clientAccountID = op.SourceAccount.GetAccountID()
@@ -1020,13 +1026,13 @@ func ReadChallengeTx(challengeTx, serverAccountID, network string, homeDomains [
 //  - One or more signatures in the transaction are not identifiable as the
 //    server account or one of the signers provided in the arguments.
 //  - The signatures are all valid but do not meet the threshold.
-func VerifyChallengeTxThreshold(challengeTx, serverAccountID, network, homeDomain string, threshold Threshold, signerSummary SignerSummary) (signersFound []string, err error) {
+func VerifyChallengeTxThreshold(challengeTx, serverAccountID, network string, homeDomains []string, threshold Threshold, signerSummary SignerSummary) (signersFound []string, err error) {
 	signers := make([]string, 0, len(signerSummary))
 	for s := range signerSummary {
 		signers = append(signers, s)
 	}
 
-	signersFound, err = VerifyChallengeTxSigners(challengeTx, serverAccountID, network, homeDomain, signers...)
+	signersFound, err = VerifyChallengeTxSigners(challengeTx, serverAccountID, network, homeDomains, signers...)
 	if err != nil {
 		return nil, err
 	}
@@ -1061,9 +1067,9 @@ func VerifyChallengeTxThreshold(challengeTx, serverAccountID, network, homeDomai
 //  - No client signatures are found on the transaction.
 //  - One or more signatures in the transaction are not identifiable as the
 //    server account or one of the signers provided in the arguments.
-func VerifyChallengeTxSigners(challengeTx, serverAccountID, network, homeDomain string, signers ...string) ([]string, error) {
+func VerifyChallengeTxSigners(challengeTx, serverAccountID, network string, homeDomains []string, signers ...string) ([]string, error) {
 	// Read the transaction which validates its structure.
-	tx, _, err := ReadChallengeTx(challengeTx, serverAccountID, network, homeDomain)
+	tx, _, _, err := ReadChallengeTx(challengeTx, serverAccountID, network, homeDomains)
 	if err != nil {
 		return nil, err
 	}
