@@ -77,7 +77,7 @@ An easy-to-follow demonstration that exercises this SDK on the TestNet with actu
 * [Modules](https://github.com/golang/go/wiki/Modules) to manage dependencies
 
 ### Installing
-* `go get github.com/stellar/go/clients/txnbuild`
+* `go get github.com/stellar/go/txnbuild`
 
 ## Running the tests
 Run the unit tests from the package directory: `go test`
