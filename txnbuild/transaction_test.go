@@ -2171,6 +2171,64 @@ func TestReadChallengeTx_disallowsAdditionalOpsOfOtherTypes(t *testing.T) {
 	assert.EqualError(t, err, "operation type should be manage_data")
 }
 
+func TestReadChallengeTx_matchesHomeDomain(t *testing.T) {
+	serverKP := newKeypair0()
+	clientKP := newKeypair1()
+	txSource := NewSimpleAccount(serverKP.Address(), -1)
+	opSource := NewSimpleAccount(clientKP.Address(), 0)
+	op1 := ManageData{
+		SourceAccount: &opSource,
+		Name:          "testanchor.stellar.org auth",
+		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
+	}
+	tx, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &txSource,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&op1},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewTimeout(300),
+		},
+	)
+	assert.NoError(t, err)
+	tx, err = tx.Sign(network.TestNetworkPassphrase, serverKP)
+	assert.NoError(t, err)
+	tx64, err := tx.Base64()
+	require.NoError(t, err)
+	_, _, matchedHomeDomain, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, []string{"testanchor.stellar.org"})
+	require.NoError(t, err)
+	assert.Equal(t, matchedHomeDomain, "testanchor.stellar.org")
+}
+
+func TestReadChallengeTx_doesNotMatchHomeDomain(t *testing.T) {
+	serverKP := newKeypair0()
+	clientKP := newKeypair1()
+	txSource := NewSimpleAccount(serverKP.Address(), -1)
+	opSource := NewSimpleAccount(clientKP.Address(), 0)
+	op1 := ManageData{
+		SourceAccount: &opSource,
+		Name:          "testanchor.stellar.org auth",
+		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
+	}
+	tx, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &txSource,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&op1},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewTimeout(300),
+		},
+	)
+	assert.NoError(t, err)
+	tx, err = tx.Sign(network.TestNetworkPassphrase, serverKP)
+	assert.NoError(t, err)
+	tx64, err := tx.Base64()
+	require.NoError(t, err)
+	_, _, matchedHomeDomain, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, []string{"not", "going", "to", "match"})
+	assert.Equal(t, matchedHomeDomain, "")
+	assert.EqualError(t, err, "operation key does not match any homeDomains passed (key=\"testanchor.stellar.org auth\", homeDomains=[not going to match])")
+}
+
 func TestVerifyChallengeTxThreshold_invalidServer(t *testing.T) {
 	serverKP := newKeypair0()
 	clientKP := newKeypair1()
