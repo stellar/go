@@ -957,7 +957,7 @@ func ReadChallengeTx(challengeTx, serverAccountID, network string, homeDomains [
 		return tx, clientAccountID, matchedHomeDomain, errors.New("operation should have a source account")
 	}
 	for _, homeDomain := range homeDomains {
-		if op.Name == fmt.Sprintf("%s auth", homeDomain) {
+		if op.Name == homeDomain + " auth" {
 			matchedHomeDomain = homeDomain
 			break
 		}
