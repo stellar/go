@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/guregu/null"
+	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/xdr"
@@ -48,6 +49,26 @@ func TestLedgerQueries(t *testing.T) {
 		tt.Assert.Contains(foundSeqs, int32(2))
 		tt.Assert.Contains(foundSeqs, int32(3))
 	}
+
+	store := ledgerbackend.NewDBLedgerStore(tt.HorizonSession())
+	ledger, exists, err := store.LastLedger(100)
+	tt.Assert.NoError(err)
+	tt.Assert.True(exists)
+	tt.Assert.Equal(ledger.Sequence, uint32(3))
+
+	ledger, exists, err = store.LastLedger(3)
+	tt.Assert.NoError(err)
+	tt.Assert.True(exists)
+	tt.Assert.Equal(ledger.Sequence, uint32(2))
+
+	ledger, exists, err = store.LastLedger(2)
+	tt.Assert.NoError(err)
+	tt.Assert.True(exists)
+	tt.Assert.Equal(ledger.Sequence, uint32(1))
+
+	ledger, exists, err = store.LastLedger(1)
+	tt.Assert.NoError(err)
+	tt.Assert.False(exists)
 }
 
 func TestInsertLedger(t *testing.T) {

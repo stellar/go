@@ -126,6 +126,7 @@ func TestCaptiveNew(t *testing.T) {
 		configPath,
 		networkPassphrase,
 		historyURLs,
+		&MockLedgerStore{},
 	)
 
 	assert.NoError(t, err)
@@ -405,10 +406,15 @@ func TestCaptivePrepareRangeUnboundedRange_ErrRunFrom(t *testing.T) {
 		On("GetLedgerHeader", uint32(127)).
 		Return(xdr.LedgerHeaderHistoryEntry{}, nil)
 
+	mockLedgerStore := &MockLedgerStore{}
+	mockLedgerStore.On("LastLedger", uint32(128)).
+		Return(Ledger{}, false, nil).Once()
+
 	captiveBackend := CaptiveStellarCore{
 		archive:           mockArchive,
 		networkPassphrase: network.PublicNetworkPassphrase,
 		configPath:        "foo",
+		ledgerStore:       mockLedgerStore,
 		stellarCoreRunnerFactory: func(configPath string) (stellarCoreRunnerInterface, error) {
 			return mockRunner, nil
 		},
@@ -416,6 +422,7 @@ func TestCaptivePrepareRangeUnboundedRange_ErrRunFrom(t *testing.T) {
 
 	err := captiveBackend.PrepareRange(UnboundedRange(128))
 	assert.EqualError(t, err, "opening subprocess: error running stellar-core: transient error")
+	mockLedgerStore.AssertExpectations(t)
 }
 
 func TestCaptivePrepareRangeUnboundedRange_ErrClosingExistingSession(t *testing.T) {
@@ -464,8 +471,10 @@ func TestCaptivePrepareRangeUnboundedRange_ReuseSession(t *testing.T) {
 		On("GetLedgerHeader", uint32(63)).
 		Return(xdr.LedgerHeaderHistoryEntry{}, nil)
 
+	mockLedgerStore := &MockLedgerStore{}
 	captiveBackend := CaptiveStellarCore{
 		archive:           mockArchive,
+		ledgerStore:       mockLedgerStore,
 		networkPassphrase: network.PublicNetworkPassphrase,
 		configPath:        "foo",
 		stellarCoreRunnerFactory: func(configPath string) (stellarCoreRunnerInterface, error) {
@@ -473,12 +482,15 @@ func TestCaptivePrepareRangeUnboundedRange_ReuseSession(t *testing.T) {
 		},
 	}
 
+	mockLedgerStore.On("LastLedger", uint32(65)).
+		Return(Ledger{}, false, nil).Once()
 	err := captiveBackend.PrepareRange(UnboundedRange(65))
 	assert.NoError(t, err)
 
 	captiveBackend.nextLedger = 64
 	err = captiveBackend.PrepareRange(UnboundedRange(65))
 	assert.NoError(t, err)
+	mockLedgerStore.AssertExpectations(t)
 }
 
 func TestGetLatestLedgerSequence(t *testing.T) {
@@ -505,7 +517,12 @@ func TestGetLatestLedgerSequence(t *testing.T) {
 		On("GetLedgerHeader", uint32(63)).
 		Return(xdr.LedgerHeaderHistoryEntry{}, nil)
 
+	mockLedgerStore := &MockLedgerStore{}
+	mockLedgerStore.On("LastLedger", uint32(64)).
+		Return(Ledger{}, false, nil).Once()
+
 	captiveBackend := CaptiveStellarCore{
+		ledgerStore:       mockLedgerStore,
 		archive:           mockArchive,
 		networkPassphrase: network.PublicNetworkPassphrase,
 		configPath:        "foo",
@@ -539,6 +556,7 @@ func TestGetLatestLedgerSequence(t *testing.T) {
 	mockRunner.On("close").Return(nil).Once()
 	err = captiveBackend.Close()
 	assert.NoError(t, err)
+	mockLedgerStore.AssertExpectations(t)
 }
 func TestCaptiveGetLedger(t *testing.T) {
 	tt := assert.New(t)
@@ -836,6 +854,74 @@ func TestCaptiveGetLedgerTerminated(t *testing.T) {
 	assert.EqualError(t, err, "stellar-core process exited unexpectedly without an error")
 }
 
+func TestCaptiveUseOfLedgerStore(t *testing.T) {
+	mockRunner := &stellarCoreRunnerMock{}
+	mockArchive := &historyarchive.MockArchive{}
+	mockArchive.
+		On("GetLedgerHeader", uint32(255)).
+		Return(xdr.LedgerHeaderHistoryEntry{
+			Header: xdr.LedgerHeader{
+				PreviousLedgerHash: xdr.Hash{1, 1, 1, 1},
+			},
+		}, nil)
+
+	mockArchive.
+		On("GetLedgerHeader", uint32(3)).
+		Return(xdr.LedgerHeaderHistoryEntry{
+			Header: xdr.LedgerHeader{
+				PreviousLedgerHash: xdr.Hash{2},
+			},
+		}, nil)
+
+	mockLedgerStore := &MockLedgerStore{}
+	mockLedgerStore.On("LastLedger", uint32(300)).
+		Return(Ledger{Sequence: 19, Hash: "abc"}, true, nil).Once()
+	mockLedgerStore.On("LastLedger", uint32(24)).
+		Return(Ledger{Sequence: 19, Hash: "abc"}, true, nil).Once()
+	mockLedgerStore.On("LastLedger", uint32(14)).
+		Return(Ledger{}, true, fmt.Errorf("transient error")).Once()
+	mockLedgerStore.On("LastLedger", uint32(9)).
+		Return(Ledger{}, false, nil).Once()
+	mockLedgerStore.On("LastLedger", uint32(86)).
+		Return(Ledger{Sequence: 85, Hash: "cde"}, true, nil).Once()
+
+	captiveBackend := CaptiveStellarCore{
+		archive:           mockArchive,
+		networkPassphrase: network.PublicNetworkPassphrase,
+		stellarCoreRunner: mockRunner,
+		ledgerStore:       mockLedgerStore,
+	}
+
+	runFrom, ledgerHash, nextLedger, err := captiveBackend.runFromParams(24)
+	assert.NoError(t, err)
+	assert.Equal(t, uint32(19), runFrom)
+	assert.Equal(t, "abc", ledgerHash)
+	assert.Equal(t, uint32(2), nextLedger)
+
+	runFrom, ledgerHash, nextLedger, err = captiveBackend.runFromParams(86)
+	assert.NoError(t, err)
+	assert.Equal(t, uint32(85), runFrom)
+	assert.Equal(t, "cde", ledgerHash)
+	assert.Equal(t, uint32(64), nextLedger)
+
+	runFrom, ledgerHash, nextLedger, err = captiveBackend.runFromParams(14)
+	assert.EqualError(t, err, "Cannot fetch ledgers preceding 14: transient error")
+
+	runFrom, ledgerHash, nextLedger, err = captiveBackend.runFromParams(300)
+	assert.NoError(t, err)
+	assert.Equal(t, uint32(254), runFrom, "runFrom")
+	assert.Equal(t, "0101010100000000000000000000000000000000000000000000000000000000", ledgerHash)
+	assert.Equal(t, uint32(192), nextLedger, "nextLedger")
+
+	runFrom, ledgerHash, nextLedger, err = captiveBackend.runFromParams(9)
+	assert.NoError(t, err)
+	assert.Equal(t, uint32(2), runFrom, "runFrom")
+	assert.Equal(t, "0200000000000000000000000000000000000000000000000000000000000000", ledgerHash)
+	assert.Equal(t, uint32(2), nextLedger, "nextLedger")
+
+	mockLedgerStore.AssertExpectations(t)
+}
+
 func TestCaptiveRunFromParams(t *testing.T) {
 	var tests = []struct {
 		from           uint32
@@ -876,10 +962,15 @@ func TestCaptiveRunFromParams(t *testing.T) {
 					},
 				}, nil)
 
+			mockLedgerStore := &MockLedgerStore{}
+			mockLedgerStore.On("LastLedger", tc.from).
+				Return(Ledger{}, false, nil).Once()
+
 			captiveBackend := CaptiveStellarCore{
 				archive:           mockArchive,
 				networkPassphrase: network.PublicNetworkPassphrase,
 				stellarCoreRunner: mockRunner,
+				ledgerStore:       mockLedgerStore,
 			}
 
 			runFrom, ledgerHash, nextLedger, err := captiveBackend.runFromParams(tc.from)
@@ -891,6 +982,7 @@ func TestCaptiveRunFromParams(t *testing.T) {
 				tt.Equal("0101010100000000000000000000000000000000000000000000000000000000", ledgerHash)
 			}
 			tt.Equal(tc.nextLedger, nextLedger, "nextLedger")
+			mockLedgerStore.AssertExpectations(t)
 		})
 	}
 }

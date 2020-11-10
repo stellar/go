@@ -28,6 +28,7 @@ func check(ledger uint32) bool {
 		"stellar-core-standalone2.cfg",
 		"Standalone Network ; February 2017",
 		[]string{"http://localhost:1570"},
+		ledgerbackend.EmptyLedgerStore{},
 	)
 	if err != nil {
 		panic(err)

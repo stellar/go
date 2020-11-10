@@ -107,6 +107,7 @@ func Example_changes() {
 		"/opt/stellar-core.cfg",
 		networkPassphrase,
 		[]string{archiveURL},
+		ledgerbackend.EmptyLedgerStore{},
 	)
 	if err != nil {
 		panic(err)

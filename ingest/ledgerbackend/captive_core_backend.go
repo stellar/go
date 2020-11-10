@@ -67,6 +67,7 @@ type CaptiveStellarCore struct {
 	networkPassphrase string
 	historyURLs       []string
 	archive           historyarchive.ArchiveInterface
+	ledgerStore       LedgerStore
 
 	ledgerBuffer bufferedLedgerMetaReader
 
@@ -98,7 +99,7 @@ type CaptiveStellarCore struct {
 //
 // All parameters are required, except configPath which is not required when
 // working with BoundedRanges only.
-func NewCaptive(executablePath, configPath, networkPassphrase string, historyURLs []string) (*CaptiveStellarCore, error) {
+func NewCaptive(executablePath, configPath, networkPassphrase string, historyURLs []string, ledgerStore LedgerStore) (*CaptiveStellarCore, error) {
 	archive, err := historyarchive.Connect(
 		historyURLs[0],
 		historyarchive.ConnectOptions{
@@ -116,6 +117,7 @@ func NewCaptive(executablePath, configPath, networkPassphrase string, historyURL
 		historyURLs:              historyURLs,
 		networkPassphrase:        networkPassphrase,
 		waitIntervalPrepareRange: time.Second,
+		ledgerStore:              ledgerStore,
 	}
 	c.stellarCoreRunnerFactory = func(configPath2 string) (stellarCoreRunnerInterface, error) {
 		runner, innerErr := newStellarCoreRunner(executablePath, configPath2, networkPassphrase, historyURLs)
@@ -265,6 +267,34 @@ func (c *CaptiveStellarCore) runFromParams(from uint32) (runFrom uint32, ledgerH
 		// TODO maybe we can fix it by generating 1st ledger meta
 		// like GenesisLedgerStateReader?
 		err = errors.New("CaptiveCore is unable to start from ledger 1, start from ledger 2")
+		return
+	}
+
+	// try to get ledger hash from a trusted source before using the history archive checkpoints
+	ledger, exists, err := c.ledgerStore.LastLedger(from)
+	if err != nil {
+		err = errors.Wrapf(err, "Cannot fetch ledgers preceding %v", from)
+		return
+	}
+	if exists &&
+		ledger.Sequence > 1 && // stellar-core cannot run from ledger 1
+		// if the last ledger is too far behind, let's use the history archive instead
+		(from-ledger.Sequence) < 2*historyarchive.CheckpointFreq {
+		runFrom = ledger.Sequence
+		ledgerHash = ledger.Hash
+		if ledger.Sequence < 63 {
+			// if we run from a sequence which occurs before the first checkpoint
+			// the first ledger we will stream is 2
+			nextLedger = 2
+		} else if historyarchive.IsCheckpoint(ledger.Sequence) {
+			// if we run from a checkpoint sequence
+			// the first ledger we will stream is the next ledger
+			nextLedger = ledger.Sequence + 1
+		} else {
+			// if we run from a non-checkpoint sequence
+			// the first ledger we will stream is the first ledger in the checkpoint range which spans ledger.Sequence
+			nextLedger = historyarchive.PrevCheckpoint(ledger.Sequence) + 1
+		}
 		return
 	}
 

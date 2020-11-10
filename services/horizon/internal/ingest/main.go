@@ -177,6 +177,7 @@ func NewSystem(config Config) (System, error) {
 				config.StellarCoreConfigPath,
 				config.NetworkPassphrase,
 				[]string{config.HistoryArchiveURL},
+				ledgerbackend.NewDBLedgerStore(config.HistorySession),
 			)
 			if err != nil {
 				cancel()
