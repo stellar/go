@@ -53,19 +53,17 @@ func (h tokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		homeDomain      string
 	)
 	for _, s := range h.SigningAddresses {
-		for _, domain := range h.HomeDomains {
-			tx, clientAccountID, err = txnbuild.ReadChallengeTx(req.Transaction, s.Address(), h.NetworkPassphrase, domain)
-			if err == nil {
-				signingAddress = s
-				homeDomain = domain
-				break
-			}
-		}
-		if signingAddress != nil {
+		tx, clientAccountID, homeDomain, err = txnbuild.ReadChallengeTx(req.Transaction, s.Address(), h.NetworkPassphrase, h.HomeDomains)
+		if err == nil {
+			signingAddress = s
 			break
 		}
 	}
 	if signingAddress == nil {
+		badRequest.Render(w)
+		return
+	}
+	if homeDomain == "" {
 		badRequest.Render(w)
 		return
 	}
@@ -104,7 +102,7 @@ func (h tokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if clientAccountExists {
 		requiredThreshold := txnbuild.Threshold(clientAccount.Thresholds.HighThreshold)
 		clientSignerSummary := clientAccount.SignerSummary()
-		signersVerified, err = txnbuild.VerifyChallengeTxThreshold(req.Transaction, signingAddress.Address(), h.NetworkPassphrase, homeDomain, requiredThreshold, clientSignerSummary)
+		signersVerified, err = txnbuild.VerifyChallengeTxThreshold(req.Transaction, signingAddress.Address(), h.NetworkPassphrase, h.HomeDomains, requiredThreshold, clientSignerSummary)
 		if err != nil {
 			l.
 				WithField("signersCount", len(clientSignerSummary)).
@@ -120,7 +118,7 @@ func (h tokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			unauthorized.Render(w)
 			return
 		}
-		signersVerified, err = txnbuild.VerifyChallengeTxSigners(req.Transaction, signingAddress.Address(), h.NetworkPassphrase, homeDomain, clientAccountID)
+		signersVerified, err = txnbuild.VerifyChallengeTxSigners(req.Transaction, signingAddress.Address(), h.NetworkPassphrase, h.HomeDomains, clientAccountID)
 		if err != nil {
 			l.Infof("Failed to verify with account master key as signer.")
 			unauthorized.Render(w)
