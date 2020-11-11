@@ -440,10 +440,55 @@ func (t *FeeBumpTransaction) Hash(networkStr string) ([32]byte, error) {
 	return network.HashTransactionInEnvelope(t.envelope, networkStr)
 }
 
+// HashHex returns the network specific hash of this transaction
+// encoded as a hexadecimal string.
+func (t *FeeBumpTransaction) HashHex(network string) (string, error) {
+	return hashHex(t.envelope, network)
+}
+
 // Sign returns a new FeeBumpTransaction instance which extends the current instance
 // with additional signatures derived from the given list of keypair instances.
 func (t *FeeBumpTransaction) Sign(network string, kps ...*keypair.Full) (*FeeBumpTransaction, error) {
 	extendedSignatures, err := concatSignatures(t.envelope, network, t.signatures, kps...)
+	if err != nil {
+		return nil, err
+	}
+
+	newTx := new(FeeBumpTransaction)
+	*newTx = *t
+	newTx.signatures = extendedSignatures
+	return newTx, nil
+}
+
+// SignWithKeyString returns a new FeeBumpTransaction instance which extends the current instance
+// with additional signatures derived from the given list of private key strings.
+func (t *FeeBumpTransaction) SignWithKeyString(network string, keys ...string) (*FeeBumpTransaction, error) {
+	kps, err := stringsToKP(keys...)
+	if err != nil {
+		return nil, err
+	}
+	return t.Sign(network, kps...)
+}
+
+// SignHashX returns a new FeeBumpTransaction instance which extends the current instance
+// with HashX signature type.
+// See description here: https://www.stellar.org/developers/guides/concepts/multi-sig.html#hashx.
+func (t *FeeBumpTransaction) SignHashX(preimage []byte) (*FeeBumpTransaction, error) {
+	extendedSignatures, err := concatHashX(t.signatures, preimage)
+	if err != nil {
+		return nil, err
+	}
+
+	newTx := new(FeeBumpTransaction)
+	*newTx = *t
+	newTx.signatures = extendedSignatures
+	return newTx, nil
+}
+
+// AddSignatureBase64 returns a new FeeBumpTransaction instance which extends the current instance
+// with an additional signature derived from the given base64-encoded signature.
+func (t *FeeBumpTransaction) AddSignatureBase64(network, publicKey, signature string) (*FeeBumpTransaction, error) {
+	extendedSignatures, err := concatSignatureBase64(t.envelope, t.signatures, network, publicKey, signature)
 	if err != nil {
 		return nil, err
 	}

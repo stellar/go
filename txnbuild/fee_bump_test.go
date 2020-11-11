@@ -1,6 +1,7 @@
 package txnbuild
 
 import (
+	"crypto/sha256"
 	"encoding/base64"
 	"github.com/stellar/go/network"
 	"testing"
@@ -191,6 +192,161 @@ func TestFeeBumpAllowsFeeAccountToEqualInnerSourceAccount(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestFeeBumpSignWithKeyString(t *testing.T) {
+	kp0, kp1 := newKeypair0(), newKeypair1()
+	sourceAccount := NewSimpleAccount(kp0.Address(), 1)
+
+	tx, err := NewTransaction(
+		TransactionParams{
+			SourceAccount: &sourceAccount,
+			Operations:    []Operation{&Inflation{}},
+			BaseFee:       MinBaseFee,
+			Timebounds:    NewInfiniteTimeout(),
+		},
+	)
+	assert.NoError(t, err)
+	tx, err = tx.Sign(network.TestNetworkPassphrase, kp0)
+	assert.NoError(t, err)
+
+	feeBumpTx, err := NewFeeBumpTransaction(
+		FeeBumpTransactionParams{
+			FeeAccount: kp1.Address(),
+			BaseFee:    2 * MinBaseFee,
+			Inner:      tx,
+		},
+	)
+	assert.NoError(t, err)
+	feeBumpTx, err = feeBumpTx.Sign(network.TestNetworkPassphrase, kp1)
+	assert.NoError(t, err)
+	expectedBase64, err := feeBumpTx.Base64()
+	assert.NoError(t, err)
+
+	feeBumpTx, err = NewFeeBumpTransaction(
+		FeeBumpTransactionParams{
+			FeeAccount: kp1.Address(),
+			BaseFee:    2 * MinBaseFee,
+			Inner:      tx,
+		},
+	)
+	assert.NoError(t, err)
+	feeBumpTx, err = feeBumpTx.SignWithKeyString(network.TestNetworkPassphrase, kp1.Seed())
+	assert.NoError(t, err)
+	base64, err := feeBumpTx.Base64()
+	assert.NoError(t, err)
+
+	assert.Equal(t, expectedBase64, base64)
+}
+
+func TestFeeBumpSignHashX(t *testing.T) {
+	// 256 bit preimage
+	preimage := "this is a preimage for hashx transactions on the stellar network"
+	preimageHash := sha256.Sum256([]byte(preimage))
+
+	kp0, kp1 := newKeypair0(), newKeypair1()
+	payment := Payment{
+		Destination: "GCCOBXW2XQNUSL467IEILE6MMCNRR66SSVL4YQADUNYYNUVREF3FIV2Z",
+		Amount:      "10",
+		Asset:       NativeAsset{},
+	}
+	sourceAccount := NewSimpleAccount(kp0.Address(), int64(4353383146192899))
+
+	tx, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&payment},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(),
+		},
+	)
+	assert.NoError(t, err)
+	tx, err = tx.Sign(network.TestNetworkPassphrase, kp0)
+	assert.NoError(t, err)
+
+	feeBumpTx, err := NewFeeBumpTransaction(
+		FeeBumpTransactionParams{
+			FeeAccount: kp1.Address(),
+			BaseFee:    2 * MinBaseFee,
+			Inner:      tx,
+		},
+	)
+	assert.NoError(t, err)
+	feeBumpTx, err = feeBumpTx.SignHashX([]byte(preimage))
+	assert.NoError(t, err)
+
+	signatures := feeBumpTx.Signatures()
+	assert.Len(t, signatures, 1)
+	assert.Equal(t, xdr.Signature(preimage), signatures[0].Signature)
+	var expectedHint [4]byte
+	copy(expectedHint[:], preimageHash[28:])
+	assert.Equal(t, xdr.SignatureHint(expectedHint), signatures[0].Hint)
+}
+
+func TestFeeBumpAddSignatureBase64(t *testing.T) {
+	kp0 := newKeypair0()
+	kp1 := newKeypair1()
+	kp2 := newKeypair2()
+	txSource := NewSimpleAccount(kp0.Address(), int64(9605939170639897))
+	opSource := NewSimpleAccount(kp1.Address(), 0)
+	createAccount := CreateAccount{
+		Destination:   "GCCOBXW2XQNUSL467IEILE6MMCNRR66SSVL4YQADUNYYNUVREF3FIV2Z",
+		Amount:        "10",
+		SourceAccount: &opSource,
+	}
+
+	inner, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &txSource,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&createAccount},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(),
+		},
+	)
+	assert.NoError(t, err)
+	inner, err = inner.Sign(network.TestNetworkPassphrase, kp0)
+	assert.NoError(t, err)
+
+	tx, err := NewFeeBumpTransaction(
+		FeeBumpTransactionParams{
+			FeeAccount: kp1.Address(),
+			BaseFee:    2 * MinBaseFee,
+			Inner:      inner,
+		},
+	)
+	assert.NoError(t, err)
+	tx, err = tx.Sign(network.TestNetworkPassphrase, kp1, kp2)
+	assert.NoError(t, err)
+	expected, err := tx.Base64()
+	assert.NoError(t, err)
+	signatures := tx.Signatures()
+
+	otherTx, err := NewFeeBumpTransaction(
+		FeeBumpTransactionParams{
+			FeeAccount: kp1.Address(),
+			BaseFee:    2 * MinBaseFee,
+			Inner:      inner,
+		},
+	)
+	assert.NoError(t, err)
+	otherTx, err = otherTx.AddSignatureBase64(
+		network.TestNetworkPassphrase,
+		kp1.Address(),
+		base64.StdEncoding.EncodeToString(signatures[0].Signature),
+	)
+	assert.NoError(t, err)
+	otherTx, err = otherTx.AddSignatureBase64(
+		network.TestNetworkPassphrase,
+		kp2.Address(),
+		base64.StdEncoding.EncodeToString(signatures[1].Signature),
+	)
+	assert.NoError(t, err)
+	b64, err := tx.Base64()
+	assert.NoError(t, err)
+
+	assert.Equal(t, expected, b64)
+}
+
 func TestFeeBumpRoundTrip(t *testing.T) {
 	kp0, kp1 := newKeypair0(), newKeypair1()
 	sourceAccount := NewSimpleAccount(kp0.Address(), 1)
@@ -228,6 +384,9 @@ func TestFeeBumpRoundTrip(t *testing.T) {
 	assert.Equal(t, int64(2*MinBaseFee), feeBumpTx.BaseFee())
 	assert.Equal(t, int64(4*MinBaseFee), feeBumpTx.MaxFee())
 
+	outerHash, err := feeBumpTx.HashHex(network.TestNetworkPassphrase)
+	assert.NoError(t, err)
+
 	env, err := feeBumpTx.TxEnvelope()
 	assert.NoError(t, err)
 	assert.Equal(t, xdr.EnvelopeTypeEnvelopeTypeTxFeeBump, env.Type)
@@ -259,6 +418,9 @@ func TestFeeBumpRoundTrip(t *testing.T) {
 	_, ok = parsed.Transaction()
 	assert.False(t, ok)
 
+	parsedHash, err := parsedFeeBump.HashHex(network.TestNetworkPassphrase)
+	assert.NoError(t, err)
+
 	assert.Equal(t, feeBumpTx.Signatures(), parsedFeeBump.Signatures())
 	assert.Equal(t, kp1.Address(), parsedFeeBump.FeeAccount())
 	assert.Equal(t, int64(2*MinBaseFee), parsedFeeBump.BaseFee())
@@ -272,4 +434,5 @@ func TestFeeBumpRoundTrip(t *testing.T) {
 	b64, err = parsedFeeBump.Base64()
 	assert.NoError(t, err)
 	assert.Equal(t, expectedFeeBumpB64, b64)
+	assert.Equal(t, outerHash, parsedHash)
 }
