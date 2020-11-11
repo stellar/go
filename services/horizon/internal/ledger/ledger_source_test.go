@@ -1,19 +1,19 @@
 package ledger
 
 import (
+	"sync"
 	"testing"
 )
 
 func Test_HistoryDBLedgerSourceCurrentLedger(t *testing.T) {
-	state := State{
-		ExpHistoryLatest: 3,
+	cache := &Cache{
+		RWMutex: sync.RWMutex{},
+		current: State{ExpHistoryLatest: 3},
 	}
 
 	ledgerSource := HistoryDBSource{
 		updateFrequency: 0,
-		currentState: func() State {
-			return state
-		},
+		cache:           cache,
 	}
 
 	currentLedger := ledgerSource.CurrentLedger()
@@ -23,15 +23,14 @@ func Test_HistoryDBLedgerSourceCurrentLedger(t *testing.T) {
 }
 
 func Test_HistoryDBLedgerSourceNextLedger(t *testing.T) {
-	state := State{
-		ExpHistoryLatest: 3,
+	cache := &Cache{
+		RWMutex: sync.RWMutex{},
+		current: State{ExpHistoryLatest: 3},
 	}
 
 	ledgerSource := HistoryDBSource{
 		updateFrequency: 0,
-		currentState: func() State {
-			return state
-		},
+		cache:           cache,
 	}
 
 	ledgerChan := ledgerSource.NextLedger(0)

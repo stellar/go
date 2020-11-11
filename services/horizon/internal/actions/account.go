@@ -2,6 +2,7 @@ package actions
 
 import (
 	"context"
+	"github.com/stellar/go/services/horizon/internal/ledger"
 	"net/http"
 	"strings"
 
@@ -118,7 +119,9 @@ func (q AccountsQuery) Asset() *xdr.Asset {
 }
 
 // GetAccountsHandler is the action handler for the /accounts endpoint
-type GetAccountsHandler struct{}
+type GetAccountsHandler struct {
+	LedgerCache *ledger.Cache
+}
 
 // GetResourcePage returns a page containing the account records that have
 // `signer` as a signer or have a trustline to the given asset.
@@ -127,7 +130,7 @@ func (handler GetAccountsHandler) GetResourcePage(
 	r *http.Request,
 ) ([]hal.Pageable, error) {
 	ctx := r.Context()
-	pq, err := GetPageQuery(r, DisableCursorValidation)
+	pq, err := GetPageQuery(handler.LedgerCache, r, DisableCursorValidation)
 	if err != nil {
 		return nil, err
 	}

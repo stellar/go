@@ -3,6 +3,7 @@ package actions
 import (
 	"context"
 	"fmt"
+	"github.com/stellar/go/services/horizon/internal/ledger"
 	"net/http"
 	"strings"
 
@@ -129,6 +130,7 @@ func (q ClaimableBalancesQuery) URITemplate() string {
 }
 
 type GetClaimableBalancesHandler struct {
+	LedgerCache *ledger.Cache
 }
 
 // GetResourcePage returns a page of claimable balances.
@@ -143,7 +145,7 @@ func (handler GetClaimableBalancesHandler) GetResourcePage(
 		return nil, err
 	}
 
-	pq, err := GetPageQuery(r, DisableCursorValidation)
+	pq, err := GetPageQuery(handler.LedgerCache, r, DisableCursorValidation)
 	if err != nil {
 		return nil, err
 	}

@@ -1,18 +1,21 @@
 package reap
 
 import (
+	"github.com/stellar/go/services/horizon/internal/ledger"
 	"testing"
 
 	"github.com/stellar/go/services/horizon/internal/test"
 )
 
 func TestDeleteUnretainedHistory(t *testing.T) {
-	tt := test.Start(t).Scenario("kahuna")
+	tt := test.Start(t)
 	defer tt.Finish()
+	ledgerCache := &ledger.Cache{}
+	ledgerCache.SetState(tt.Scenario("kahuna"))
 
 	db := tt.HorizonSession()
 
-	sys := New(0, db)
+	sys := New(0, db, ledgerCache)
 
 	var (
 		prev int
@@ -28,7 +31,7 @@ func TestDeleteUnretainedHistory(t *testing.T) {
 		tt.Assert.Equal(prev, cur, "Ledgers deleted when RetentionCount == 0")
 	}
 
-	tt.UpdateLedgerState()
+	ledgerCache.SetState(tt.LoadLedgerState())
 	sys.RetentionCount = 10
 	err = sys.DeleteUnretainedHistory()
 	if tt.Assert.NoError(err) {
@@ -37,7 +40,7 @@ func TestDeleteUnretainedHistory(t *testing.T) {
 		tt.Assert.Equal(10, cur)
 	}
 
-	tt.UpdateLedgerState()
+	ledgerCache.SetState(tt.LoadLedgerState())
 	sys.RetentionCount = 1
 	err = sys.DeleteUnretainedHistory()
 	if tt.Assert.NoError(err) {

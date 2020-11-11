@@ -16,10 +16,11 @@ const lruCacheSize = 50000
 
 type historyLedgerSourceFactory struct {
 	updateFrequency time.Duration
+	ledgerCache     *ledger.Cache
 }
 
 func (f historyLedgerSourceFactory) Get() ledger.Source {
-	return ledger.NewHistoryDBSource(f.updateFrequency)
+	return ledger.NewHistoryDBSource(f.updateFrequency, f.ledgerCache)
 }
 
 func remoteAddrIP(r *http.Request) string {

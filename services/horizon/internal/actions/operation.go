@@ -59,6 +59,7 @@ func (qp OperationsQuery) Validate() error {
 
 // GetOperationsHandler is the action handler for all end-points returning a list of operations.
 type GetOperationsHandler struct {
+	LedgerCache  *ledger.Cache
 	OnlyPayments bool
 }
 
@@ -66,12 +67,12 @@ type GetOperationsHandler struct {
 func (handler GetOperationsHandler) GetResourcePage(w HeaderWriter, r *http.Request) ([]hal.Pageable, error) {
 	ctx := r.Context()
 
-	pq, err := GetPageQuery(r)
+	pq, err := GetPageQuery(handler.LedgerCache, r)
 	if err != nil {
 		return nil, err
 	}
 
-	err = validateCursorWithinHistory(pq)
+	err = validateCursorWithinHistory(handler.LedgerCache, pq)
 	if err != nil {
 		return nil, err
 	}
@@ -121,18 +122,21 @@ func (handler GetOperationsHandler) GetResourcePage(w HeaderWriter, r *http.Requ
 }
 
 // GetOperationByIDHandler is the action handler for all end-points returning a list of operations.
-type GetOperationByIDHandler struct{}
+type GetOperationByIDHandler struct {
+	LedgerCache *ledger.Cache
+}
 
 // OperationQuery query struct for operation/id end-point
 type OperationQuery struct {
-	Joinable `valid:"optional"`
-	ID       uint64 `schema:"id" valid:"-"`
+	LedgerCache *ledger.Cache `valid:"-"`
+	Joinable    `valid:"optional"`
+	ID          uint64 `schema:"id" valid:"-"`
 }
 
 // Validate runs extra validations on query parameters
 func (qp OperationQuery) Validate() error {
 	parsed := toid.Parse(int64(qp.ID))
-	if parsed.LedgerSequence < ledger.CurrentState().HistoryElder {
+	if parsed.LedgerSequence < qp.LedgerCache.CurrentState().HistoryElder {
 		return problem.BeforeHistory
 	}
 	return nil
@@ -141,7 +145,9 @@ func (qp OperationQuery) Validate() error {
 // GetResource returns an operation page.
 func (handler GetOperationByIDHandler) GetResource(w HeaderWriter, r *http.Request) (interface{}, error) {
 	ctx := r.Context()
-	qp := OperationQuery{}
+	qp := OperationQuery{
+		LedgerCache: handler.LedgerCache,
+	}
 	err := getParams(&qp, r)
 	if err != nil {
 		return nil, err

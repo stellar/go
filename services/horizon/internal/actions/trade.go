@@ -2,6 +2,7 @@ package actions
 
 import (
 	"fmt"
+	"github.com/stellar/go/services/horizon/internal/ledger"
 	"net/http"
 	"strconv"
 	gTime "time"
@@ -102,18 +103,19 @@ func (q TradesQuery) Validate() error {
 
 // GetTradesHandler is the action handler for all end-points returning a list of trades.
 type GetTradesHandler struct {
+	LedgerCache *ledger.Cache
 }
 
 // GetResourcePage returns a page of trades.
 func (handler GetTradesHandler) GetResourcePage(w HeaderWriter, r *http.Request) ([]hal.Pageable, error) {
 	ctx := r.Context()
 
-	pq, err := GetPageQuery(r)
+	pq, err := GetPageQuery(handler.LedgerCache, r)
 	if err != nil {
 		return nil, err
 	}
 
-	err = validateCursorWithinHistory(pq)
+	err = validateCursorWithinHistory(handler.LedgerCache, pq)
 	if err != nil {
 		return nil, err
 	}
@@ -235,16 +237,17 @@ func (q TradeAggregationsQuery) Validate() error {
 
 // GetTradeAggregationsHandler is the action handler for trade_aggregations
 type GetTradeAggregationsHandler struct {
+	LedgerCache *ledger.Cache
 }
 
 // GetResourcePage returns a page of trade aggregations
 func (handler GetTradeAggregationsHandler) GetResource(w HeaderWriter, r *http.Request) (interface{}, error) {
 	ctx := r.Context()
-	pq, err := GetPageQuery(r)
+	pq, err := GetPageQuery(handler.LedgerCache, r)
 	if err != nil {
 		return nil, err
 	}
-	err = validateCursorWithinHistory(pq)
+	err = validateCursorWithinHistory(handler.LedgerCache, pq)
 	if err != nil {
 		return nil, err
 	}
@@ -365,7 +368,7 @@ func (handler GetTradeAggregationsHandler) fetchRecords(historyQ *history.Q, qp 
 // BuildPage builds a custom hal page for this handler
 func (handler GetTradeAggregationsHandler) buildPage(r *http.Request, records []horizon.TradeAggregation) (hal.Page, error) {
 	ctx := r.Context()
-	pageQuery, err := GetPageQuery(r, DisableCursorValidation)
+	pageQuery, err := GetPageQuery(handler.LedgerCache, r, DisableCursorValidation)
 	if err != nil {
 		return hal.Page{}, err
 	}

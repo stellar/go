@@ -1,6 +1,7 @@
 package actions
 
 import (
+	"github.com/stellar/go/services/horizon/internal/ledger"
 	"net/http"
 
 	"github.com/stellar/go/services/horizon/internal/context"
@@ -42,15 +43,17 @@ func (qp EffectsQuery) Validate() error {
 	return nil
 }
 
-type GetEffectsHandler struct{}
+type GetEffectsHandler struct {
+	LedgerCache *ledger.Cache
+}
 
 func (handler GetEffectsHandler) GetResourcePage(w HeaderWriter, r *http.Request) ([]hal.Pageable, error) {
-	pq, err := GetPageQuery(r)
+	pq, err := GetPageQuery(handler.LedgerCache, r)
 	if err != nil {
 		return nil, err
 	}
 
-	err = validateCursorWithinHistory(pq)
+	err = validateCursorWithinHistory(handler.LedgerCache, pq)
 	if err != nil {
 		return nil, err
 	}

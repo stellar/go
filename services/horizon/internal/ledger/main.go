@@ -18,20 +18,24 @@ type State struct {
 	ExpHistoryLatest uint32 `db:"exp_history_latest"`
 }
 
+// Cache is an in-memory data structure which holds a current snapshot of both
+// horizon's and stellar-core's view of the the network
+type Cache struct {
+	sync.RWMutex
+	current State
+}
+
 // CurrentState returns the cached snapshot of ledger state
-func CurrentState() State {
-	lock.RLock()
-	ret := current
-	lock.RUnlock()
+func (c *Cache) CurrentState() State {
+	c.RLock()
+	defer c.RUnlock()
+	ret := c.current
 	return ret
 }
 
 // SetState updates the cached snapshot of the ledger state
-func SetState(next State) {
-	lock.Lock()
-	current = next
-	lock.Unlock()
+func (c *Cache) SetState(next State) {
+	c.Lock()
+	defer c.Unlock()
+	c.current = next
 }
-
-var current State
-var lock sync.RWMutex

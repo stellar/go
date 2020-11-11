@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"github.com/stellar/go/services/horizon/internal/ledger"
 	"net/http"
 	"sync"
 	"time"
@@ -56,7 +57,7 @@ func init() {
 	problem.RegisterError(db.ErrCancelled, hProblem.ServiceUnavailable)
 }
 
-func NewServer(serverConfig ServerConfig, routerConfig RouterConfig) (*Server, error) {
+func NewServer(serverConfig ServerConfig, routerConfig RouterConfig, ledgerCache *ledger.Cache) (*Server, error) {
 	sm := &ServerMetrics{
 		RequestDurationSummary: prometheus.NewSummaryVec(
 			prometheus.SummaryOpts{
@@ -66,7 +67,7 @@ func NewServer(serverConfig ServerConfig, routerConfig RouterConfig) (*Server, e
 			[]string{"status", "route", "streaming", "method"},
 		),
 	}
-	router, err := NewRouter(&routerConfig, sm)
+	router, err := NewRouter(&routerConfig, sm, ledgerCache)
 	if err != nil {
 		return nil, err
 	}

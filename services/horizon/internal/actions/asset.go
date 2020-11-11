@@ -2,6 +2,7 @@ package actions
 
 import (
 	"fmt"
+	"github.com/stellar/go/services/horizon/internal/ledger"
 	"net/http"
 	"strings"
 
@@ -18,6 +19,7 @@ import (
 
 // AssetStatsHandler is the action handler for the /asset endpoint
 type AssetStatsHandler struct {
+	LedgerCache *ledger.Cache
 }
 
 func (handler AssetStatsHandler) validateAssetParams(code, issuer string, pq db2.PageQuery) error {
@@ -123,7 +125,7 @@ func (handler AssetStatsHandler) GetResourcePage(
 		return nil, err
 	}
 
-	pq, err := GetPageQuery(r, DisableCursorValidation)
+	pq, err := GetPageQuery(handler.LedgerCache, r, DisableCursorValidation)
 	if err != nil {
 		return nil, err
 	}

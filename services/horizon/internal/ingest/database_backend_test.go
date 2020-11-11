@@ -9,7 +9,8 @@ import (
 )
 
 func TestGetLatestLedger(t *testing.T) {
-	tt := test.Start(t).ScenarioWithoutHorizon("base")
+	tt := test.Start(t)
+	tt.ScenarioWithoutHorizon("base")
 	defer tt.Finish()
 
 	backend, err := ledgerbackend.NewDatabaseBackendFromSession(tt.CoreSession(), network.TestNetworkPassphrase)
@@ -20,7 +21,8 @@ func TestGetLatestLedger(t *testing.T) {
 }
 
 func TestGetLatestLedgerNotFound(t *testing.T) {
-	tt := test.Start(t).ScenarioWithoutHorizon("base")
+	tt := test.Start(t)
+	tt.ScenarioWithoutHorizon("base")
 	defer tt.Finish()
 
 	_, err := tt.CoreDB.Exec(`DELETE FROM ledgerheaders`)

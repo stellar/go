@@ -27,8 +27,6 @@ func (t *T) CoreSession() *db.Session {
 // output
 func (t *T) Finish() {
 	RestoreLogger()
-	// Reset cached ledger state
-	ledger.SetState(ledger.State{})
 	operationfeestats.ResetState()
 
 	if t.LogBuffer.Len() > 0 {
@@ -57,19 +55,17 @@ func (t *T) loadScenario(scenarioName string, includeHorizon bool) {
 }
 
 // Scenario loads the named sql scenario into the database
-func (t *T) Scenario(name string) *T {
+func (t *T) Scenario(name string) ledger.State {
 	clearHorizonDB(t.T, t.HorizonDB)
 	t.loadScenario(name, true)
-	t.UpdateLedgerState()
-	return t
+	return t.LoadLedgerState()
 }
 
 // ScenarioWithoutHorizon loads the named sql scenario into the database
-func (t *T) ScenarioWithoutHorizon(name string) *T {
+func (t *T) ScenarioWithoutHorizon(name string) ledger.State {
 	t.loadScenario(name, false)
 	ResetHorizonDB(t.T, t.HorizonDB)
-	t.UpdateLedgerState()
-	return t
+	return t.LoadLedgerState()
 }
 
 // ResetHorizonDB sets up a new horizon database with empty tables
@@ -137,8 +133,8 @@ func (t *T) UnmarshalExtras(r io.Reader) map[string]string {
 	return resp.Extras
 }
 
-// UpdateLedgerState updates the cached ledger state (or panicing on failure).
-func (t *T) UpdateLedgerState() {
+// LoadLedgerState loads ledger state from the core db(or panicing on failure).
+func (t *T) LoadLedgerState() ledger.State {
 	var next ledger.State
 
 	err := t.CoreSession().GetRaw(&next, `
@@ -162,5 +158,5 @@ func (t *T) UpdateLedgerState() {
 		panic(err)
 	}
 
-	ledger.SetState(next)
+	return next
 }

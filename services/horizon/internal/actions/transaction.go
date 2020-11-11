@@ -1,6 +1,7 @@
 package actions
 
 import (
+	"github.com/stellar/go/services/horizon/internal/ledger"
 	"net/http"
 
 	"github.com/stellar/go/protocols/horizon"
@@ -83,18 +84,19 @@ func (qp TransactionsQuery) Validate() error {
 
 // GetTransactionsHandler is the action handler for all end-points returning a list of transactions.
 type GetTransactionsHandler struct {
+	LedgerCache *ledger.Cache
 }
 
 // GetResourcePage returns a page of transactions.
 func (handler GetTransactionsHandler) GetResourcePage(w HeaderWriter, r *http.Request) ([]hal.Pageable, error) {
 	ctx := r.Context()
 
-	pq, err := GetPageQuery(r)
+	pq, err := GetPageQuery(handler.LedgerCache, r)
 	if err != nil {
 		return nil, err
 	}
 
-	err = validateCursorWithinHistory(pq)
+	err = validateCursorWithinHistory(handler.LedgerCache, pq)
 	if err != nil {
 		return nil, err
 	}

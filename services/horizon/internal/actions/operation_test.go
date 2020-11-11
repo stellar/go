@@ -3,6 +3,7 @@ package actions
 import (
 	"database/sql"
 	"fmt"
+	"github.com/stellar/go/services/horizon/internal/ledger"
 	"net/http/httptest"
 
 	"testing"
@@ -515,7 +516,9 @@ func TestGetOperationsPagination(t *testing.T) {
 	tt.Scenario("base")
 
 	q := &history.Q{tt.HorizonSession()}
-	handler := GetOperationsHandler{}
+	handler := GetOperationsHandler{
+		LedgerCache: &ledger.Cache{},
+	}
 
 	records, err := handler.GetResourcePage(
 		httptest.NewRecorder(),
@@ -624,9 +627,11 @@ func TestGetOperations_IncludeTransactions(t *testing.T) {
 func TestGetOperation(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
-	tt.Scenario("base")
 
-	handler := GetOperationByIDHandler{}
+	handler := GetOperationByIDHandler{
+		LedgerCache: &ledger.Cache{},
+	}
+	handler.LedgerCache.SetState(tt.Scenario("base"))
 
 	record, err := handler.GetResource(
 		httptest.NewRecorder(),
@@ -662,7 +667,9 @@ func TestOperation_IncludeTransaction(t *testing.T) {
 	defer tt.Finish()
 	tt.Scenario("kahuna")
 
-	handler := GetOperationByIDHandler{}
+	handler := GetOperationByIDHandler{
+		LedgerCache: &ledger.Cache{},
+	}
 	record, err := handler.GetResource(
 		httptest.NewRecorder(),
 		makeRequest(

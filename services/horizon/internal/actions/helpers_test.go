@@ -66,18 +66,19 @@ func TestGetCursor(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
 
+	ledgerCache := &ledger.Cache{}
 	// now uses the ledger state
 	r := makeTestActionRequest("/?cursor=now", nil)
-	cursor, err := getCursor(r, "cursor")
+	cursor, err := getCursor(ledgerCache, r, "cursor")
 	if tt.Assert.NoError(err) {
-		expected := toid.AfterLedger(ledger.CurrentState().HistoryLatest).String()
+		expected := toid.AfterLedger(ledgerCache.CurrentState().HistoryLatest).String()
 		tt.Assert.Equal(expected, cursor)
 	}
 
 	//Last-Event-ID overrides cursor
 	r = makeFooBarTestActionRequest()
 	r.Header.Set("Last-Event-ID", "from_header")
-	cursor, err = getCursor(r, "cursor")
+	cursor, err = getCursor(ledgerCache, r, "cursor")
 	if tt.Assert.NoError(err) {
 		tt.Assert.Equal("from_header", cursor)
 	}
@@ -135,7 +136,7 @@ func TestValidateCursorWithinHistory(t *testing.T) {
 		t.Run(fmt.Sprintf("cursor: %s", tc.cursor), func(t *testing.T) {
 			pq, err := db2.NewPageQuery(tc.cursor, false, tc.order, 10)
 			tt.NoError(err)
-			err = validateCursorWithinHistory(pq)
+			err = validateCursorWithinHistory(&ledger.Cache{}, pq)
 
 			if tc.valid {
 				tt.NoError(err)
@@ -238,9 +239,10 @@ func TestActionGetPageQuery(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
 	r := makeFooBarTestActionRequest()
+	ledgerCache := &ledger.Cache{}
 
 	// happy path
-	pq, err := GetPageQuery(r)
+	pq, err := GetPageQuery(ledgerCache, r)
 	tt.Assert.NoError(err)
 	tt.Assert.Equal("123456", pq.Cursor)
 	tt.Assert.Equal(uint64(2), pq.Limit)
@@ -250,13 +252,13 @@ func TestActionGetPageQuery(t *testing.T) {
 	r = makeTestActionRequest("/?limit=foo", nil)
 	_, err = getLimit(r, "limit", 1, 200)
 	tt.Assert.Error(err)
-	_, err = GetPageQuery(r)
+	_, err = GetPageQuery(ledgerCache, r)
 	tt.Assert.Error(err)
 
 	// regression: https://github.com/stellar/go/services/horizon/internal/issues/372
 	// (limit of 0 turns into 10)
 	makeTestActionRequest("/?limit=0", nil)
-	_, err = GetPageQuery(r)
+	_, err = GetPageQuery(ledgerCache, r)
 	tt.Assert.Error(err)
 }
 
@@ -264,9 +266,10 @@ func TestGetPageQuery(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
 	r := makeFooBarTestActionRequest()
+	ledgerCache := &ledger.Cache{}
 
 	// happy path
-	pq, err := GetPageQuery(r)
+	pq, err := GetPageQuery(ledgerCache, r)
 	tt.Assert.NoError(err)
 	tt.Assert.Equal("123456", pq.Cursor)
 	tt.Assert.Equal(uint64(2), pq.Limit)
@@ -276,13 +279,13 @@ func TestGetPageQuery(t *testing.T) {
 	r = makeTestActionRequest("/?limit=foo", nil)
 	_, err = getLimit(r, "limit", 1, 200)
 	tt.Assert.Error(err)
-	_, err = GetPageQuery(r)
+	_, err = GetPageQuery(ledgerCache, r)
 	tt.Assert.Error(err)
 
 	// regression: https://github.com/stellar/go/services/horizon/internal/issues/372
 	// (limit of 0 turns into 10)
 	r = makeTestActionRequest("/?limit=0", nil)
-	_, err = GetPageQuery(r)
+	_, err = GetPageQuery(ledgerCache, r)
 	tt.Assert.Error(err)
 }
 
