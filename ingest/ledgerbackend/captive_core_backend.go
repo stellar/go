@@ -182,7 +182,7 @@ func (c *CaptiveStellarCore) openOfflineReplaySubprocess(from, to uint32) error 
 
 	// read-ahead buffer
 	c.ledgerBuffer = newBufferedLedgerMetaReader(c.stellarCoreRunner)
-	go c.ledgerBuffer.Start(to)
+	go c.ledgerBuffer.start(to)
 	return nil
 }
 
@@ -241,7 +241,7 @@ func (c *CaptiveStellarCore) openOnlineReplaySubprocess(from uint32) error {
 
 	// read-ahead buffer
 	c.ledgerBuffer = newBufferedLedgerMetaReader(c.stellarCoreRunner)
-	go c.ledgerBuffer.Start(0)
+	go c.ledgerBuffer.start(0)
 
 	// if nextLedger is behind - fast-forward until expected ledger
 	if c.nextLedger < from {
@@ -330,11 +330,6 @@ func (c *CaptiveStellarCore) PrepareRange(ledgerRange Range) error {
 		return errors.Wrap(err, "opening subprocess")
 	}
 
-	metaPipe := c.stellarCoreRunner.getMetaPipe()
-	if metaPipe == nil {
-		return errors.New("missing metadata pipe")
-	}
-
 	for {
 		select {
 		case <-c.stellarCoreRunner.getProcessExitChan():
@@ -342,7 +337,7 @@ func (c *CaptiveStellarCore) PrepareRange(ledgerRange Range) error {
 		default:
 		}
 		// Wait for the first ledger or an error
-		if len(c.ledgerBuffer.GetChannel()) > 0 {
+		if len(c.ledgerBuffer.getChannel()) > 0 {
 			break
 		}
 		time.Sleep(c.waitIntervalPrepareRange)
@@ -408,21 +403,25 @@ func (c *CaptiveStellarCore) GetLedger(sequence uint32) (bool, xdr.LedgerCloseMe
 		)
 	}
 
+	if c.lastLedger != nil && sequence > *c.lastLedger {
+		return false, xdr.LedgerCloseMeta{}, errors.Errorf(
+			"reading past bounded range (requested sequence=%d, last ledger in range=%d)",
+			sequence,
+			*c.lastLedger,
+		)
+	}
+
 	// Now loop along the range until we find the ledger we want.
 	var errOut error
 loop:
 	for {
-		if !c.blocking && len(c.ledgerBuffer.GetChannel()) == 0 {
+		if !c.blocking && len(c.ledgerBuffer.getChannel()) == 0 {
 			return false, xdr.LedgerCloseMeta{}, nil
 		}
 
-		var result metaResult
-		select {
-		case <-c.stellarCoreRunner.getProcessExitChan():
-			errOut = wrapStellarCoreRunnerError(c.stellarCoreRunner)
-			break loop
-		case result = <-c.ledgerBuffer.GetChannel():
-		}
+		// We don't have to handle getProcessExitChan() because this is handled
+		// in bufferedLedgerMetaReader (will send an error to the channel).
+		result := <-c.ledgerBuffer.getChannel()
 		if result.err != nil {
 			errOut = result.err
 			break loop
@@ -468,7 +467,7 @@ func (c *CaptiveStellarCore) GetLatestLedgerSequence() (uint32, error) {
 	}
 
 	if c.lastLedger == nil {
-		return c.nextLedger - 1 + uint32(len(c.ledgerBuffer.GetChannel())), nil
+		return c.nextLedger - 1 + uint32(len(c.ledgerBuffer.getChannel())), nil
 	}
 	return *c.lastLedger, nil
 }
@@ -490,7 +489,7 @@ func (c *CaptiveStellarCore) Close() error {
 		}
 
 		// Wait for bufferedLedgerMetaReader go routine to return.
-		c.ledgerBuffer.WaitForClose()
+		c.ledgerBuffer.waitForClose()
 		c.ledgerBuffer = nil
 	}
 
