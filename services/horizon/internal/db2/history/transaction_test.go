@@ -14,7 +14,8 @@ import (
 )
 
 func TestTransactionQueries(t *testing.T) {
-	tt := test.Start(t).Scenario("base")
+	tt := test.Start(t)
+	tt.Scenario("base")
 	defer tt.Finish()
 	q := &Q{tt.HorizonSession()}
 
@@ -34,7 +35,8 @@ func TestTransactionQueries(t *testing.T) {
 // If it's not enclosed in brackets, it may return incorrect result when mixed
 // with `ForAccount` or `ForLedger` filters.
 func TestTransactionSuccessfulOnly(t *testing.T) {
-	tt := test.Start(t).Scenario("failed_transactions")
+	tt := test.Start(t)
+	tt.Scenario("failed_transactions")
 	defer tt.Finish()
 
 	var transactions []Transaction
@@ -60,7 +62,8 @@ func TestTransactionSuccessfulOnly(t *testing.T) {
 
 // TestTransactionIncludeFailed tests `IncludeFailed` method.
 func TestTransactionIncludeFailed(t *testing.T) {
-	tt := test.Start(t).Scenario("failed_transactions")
+	tt := test.Start(t)
+	tt.Scenario("failed_transactions")
 	defer tt.Finish()
 
 	var transactions []Transaction
@@ -91,7 +94,8 @@ func TestTransactionIncludeFailed(t *testing.T) {
 }
 
 func TestExtraChecksTransactionSuccessfulTrueResultFalse(t *testing.T) {
-	tt := test.Start(t).Scenario("failed_transactions")
+	tt := test.Start(t)
+	tt.Scenario("failed_transactions")
 	defer tt.Finish()
 
 	// successful `true` but tx result `false`
@@ -113,7 +117,8 @@ func TestExtraChecksTransactionSuccessfulTrueResultFalse(t *testing.T) {
 }
 
 func TestExtraChecksTransactionSuccessfulFalseResultTrue(t *testing.T) {
-	tt := test.Start(t).Scenario("failed_transactions")
+	tt := test.Start(t)
+	tt.Scenario("failed_transactions")
 	defer tt.Finish()
 
 	// successful `false` but tx result `true`

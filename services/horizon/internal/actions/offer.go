@@ -7,6 +7,7 @@ import (
 	"github.com/stellar/go/protocols/horizon"
 	horizonContext "github.com/stellar/go/services/horizon/internal/context"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/services/horizon/internal/ledger"
 	"github.com/stellar/go/services/horizon/internal/resourceadapter"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/render/hal"
@@ -75,6 +76,7 @@ func (q OffersQuery) Validate() error {
 
 // GetOffersHandler is the action handler for the /offers endpoint
 type GetOffersHandler struct {
+	LedgerState *ledger.State
 }
 
 // GetResourcePage returns a page of offers.
@@ -89,7 +91,7 @@ func (handler GetOffersHandler) GetResourcePage(
 		return nil, err
 	}
 
-	pq, err := GetPageQuery(r)
+	pq, err := GetPageQuery(handler.LedgerState, r)
 	if err != nil {
 		return nil, err
 	}
@@ -132,10 +134,11 @@ type AccountOffersQuery struct {
 // GetAccountOffersHandler is the action handler for the
 // `/accounts/{account_id}/offers` endpoint when using experimental ingestion.
 type GetAccountOffersHandler struct {
+	LedgerState *ledger.State
 }
 
 func (handler GetAccountOffersHandler) parseOffersQuery(r *http.Request) (history.OffersQuery, error) {
-	pq, err := GetPageQuery(r)
+	pq, err := GetPageQuery(handler.LedgerState, r)
 	if err != nil {
 		return history.OffersQuery{}, err
 	}

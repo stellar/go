@@ -20,6 +20,7 @@ type CoreSettingsGetter interface {
 }
 
 type GetRootHandler struct {
+	LedgerState *ledger.State
 	CoreSettingsGetter
 	NetworkPassphrase string
 	FriendbotURL      *url.URL
@@ -39,7 +40,7 @@ func (handler GetRootHandler) GetResource(w HeaderWriter, r *http.Request) (inte
 	resourceadapter.PopulateRoot(
 		r.Context(),
 		&res,
-		ledger.CurrentState(),
+		handler.LedgerState.CurrentStatus(),
 		handler.HorizonVersion,
 		coreSettings.CoreVersion,
 		handler.NetworkPassphrase,

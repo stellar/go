@@ -6,6 +6,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/context"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/services/horizon/internal/ledger"
 	"github.com/stellar/go/services/horizon/internal/resourceadapter"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/render/hal"
@@ -42,15 +43,17 @@ func (qp EffectsQuery) Validate() error {
 	return nil
 }
 
-type GetEffectsHandler struct{}
+type GetEffectsHandler struct {
+	LedgerState *ledger.State
+}
 
 func (handler GetEffectsHandler) GetResourcePage(w HeaderWriter, r *http.Request) ([]hal.Pageable, error) {
-	pq, err := GetPageQuery(r)
+	pq, err := GetPageQuery(handler.LedgerState, r)
 	if err != nil {
 		return nil, err
 	}
 
-	err = validateCursorWithinHistory(pq)
+	err = validateCursorWithinHistory(handler.LedgerState, pq)
 	if err != nil {
 		return nil, err
 	}

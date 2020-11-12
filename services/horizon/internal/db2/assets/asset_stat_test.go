@@ -83,7 +83,8 @@ func TestAssetsStatsQExec(t *testing.T) {
 
 	for i, kase := range testCases {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
-			tt := test.Start(t).Scenario("ingest_asset_stats")
+			tt := test.Start(t)
+			tt.Scenario("ingest_asset_stats")
 			defer tt.Finish()
 
 			sql, err := kase.query.GetSQL()

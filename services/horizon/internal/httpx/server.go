@@ -12,6 +12,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/stellar/go/services/horizon/internal/db2"
+	"github.com/stellar/go/services/horizon/internal/ledger"
 	hProblem "github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/render/sse"
 	"github.com/stellar/go/services/horizon/internal/txsub/sequence"
@@ -56,7 +57,7 @@ func init() {
 	problem.RegisterError(db.ErrCancelled, hProblem.ServiceUnavailable)
 }
 
-func NewServer(serverConfig ServerConfig, routerConfig RouterConfig) (*Server, error) {
+func NewServer(serverConfig ServerConfig, routerConfig RouterConfig, ledgerState *ledger.State) (*Server, error) {
 	sm := &ServerMetrics{
 		RequestDurationSummary: prometheus.NewSummaryVec(
 			prometheus.SummaryOpts{
@@ -66,7 +67,7 @@ func NewServer(serverConfig ServerConfig, routerConfig RouterConfig) (*Server, e
 			[]string{"status", "route", "streaming", "method"},
 		),
 	}
-	router, err := NewRouter(&routerConfig, sm)
+	router, err := NewRouter(&routerConfig, sm, ledgerState)
 	if err != nil {
 		return nil, err
 	}

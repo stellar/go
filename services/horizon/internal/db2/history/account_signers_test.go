@@ -9,7 +9,8 @@ import (
 )
 
 func TestQueryEmptyAccountSigners(t *testing.T) {
-	tt := test.Start(t).Scenario("base")
+	tt := test.Start(t)
+	tt.Scenario("base")
 	defer tt.Finish()
 	q := &Q{tt.HorizonSession()}
 
@@ -20,7 +21,8 @@ func TestQueryEmptyAccountSigners(t *testing.T) {
 }
 
 func TestInsertAccountSigner(t *testing.T) {
-	tt := test.Start(t).Scenario("base")
+	tt := test.Start(t)
+	tt.Scenario("base")
 	defer tt.Finish()
 	q := &Q{tt.HorizonSession()}
 
@@ -48,7 +50,8 @@ func TestInsertAccountSigner(t *testing.T) {
 }
 
 func TestInsertAccountSignerSponsor(t *testing.T) {
-	tt := test.Start(t).Scenario("base")
+	tt := test.Start(t)
+	tt.Scenario("base")
 	defer tt.Finish()
 	q := &Q{tt.HorizonSession()}
 
@@ -73,7 +76,8 @@ func TestInsertAccountSignerSponsor(t *testing.T) {
 }
 
 func TestMultipleAccountsForSigner(t *testing.T) {
-	tt := test.Start(t).Scenario("base")
+	tt := test.Start(t)
+	tt.Scenario("base")
 	defer tt.Finish()
 	q := &Q{tt.HorizonSession()}
 
@@ -109,7 +113,8 @@ func TestMultipleAccountsForSigner(t *testing.T) {
 }
 
 func TestRemoveNonExistantAccountSigner(t *testing.T) {
-	tt := test.Start(t).Scenario("base")
+	tt := test.Start(t)
+	tt.Scenario("base")
 	defer tt.Finish()
 	q := &Q{tt.HorizonSession()}
 
@@ -121,7 +126,8 @@ func TestRemoveNonExistantAccountSigner(t *testing.T) {
 }
 
 func TestRemoveAccountSigner(t *testing.T) {
-	tt := test.Start(t).Scenario("base")
+	tt := test.Start(t)
+	tt.Scenario("base")
 	defer tt.Finish()
 	q := &Q{tt.HorizonSession()}
 
@@ -151,7 +157,8 @@ func TestRemoveAccountSigner(t *testing.T) {
 }
 
 func TestGetAccountSignersByAccountID(t *testing.T) {
-	tt := test.Start(t).Scenario("base")
+	tt := test.Start(t)
+	tt.Scenario("base")
 	defer tt.Finish()
 	q := &Q{tt.HorizonSession()}
 

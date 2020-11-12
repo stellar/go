@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/stellar/go/services/horizon/internal/errors"
-	"github.com/stellar/go/services/horizon/internal/ledger"
 	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/support/log"
 )
@@ -17,7 +16,7 @@ func (r *System) DeleteUnretainedHistory() error {
 	}
 
 	var (
-		latest      = ledger.CurrentState()
+		latest      = r.ledgerState.CurrentStatus()
 		targetElder = (latest.HistoryLatest - int32(r.RetentionCount)) + 1
 	)
 
