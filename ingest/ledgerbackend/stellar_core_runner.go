@@ -229,13 +229,17 @@ func (r *stellarCoreRunner) runFrom(from uint32, hash string) error {
 		return errors.New("runner already started")
 	}
 	var err error
-	r.cmd, err = r.createCmd(
+	args := []string{
 		"run",
 		"--in-memory",
 		"--start-at-ledger", fmt.Sprintf("%d", from),
-		"--start-at-hash", hash,
 		"--metadata-output-stream", r.getPipeName(),
-	)
+	}
+	if hash != "" {
+		args = append(args, "--start-at-hash", hash)
+	}
+
+	r.cmd, err = r.createCmd(args...)
 	if err != nil {
 		return errors.Wrap(err, "error creating `stellar-core run` subprocess")
 	}

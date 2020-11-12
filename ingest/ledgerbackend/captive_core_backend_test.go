@@ -885,7 +885,11 @@ func TestCaptiveRunFromParams(t *testing.T) {
 			runFrom, ledgerHash, nextLedger, err := captiveBackend.runFromParams(tc.from)
 			tt.NoError(err)
 			tt.Equal(tc.runFrom, runFrom, "runFrom")
-			tt.Equal("0101010100000000000000000000000000000000000000000000000000000000", ledgerHash)
+			if tc.from <= 63 {
+				tt.Empty(ledgerHash)
+			} else {
+				tt.Equal("0101010100000000000000000000000000000000000000000000000000000000", ledgerHash)
+			}
 			tt.Equal(tc.nextLedger, nextLedger, "nextLedger")
 		})
 	}
