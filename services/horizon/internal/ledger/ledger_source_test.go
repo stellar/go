@@ -6,14 +6,14 @@ import (
 )
 
 func Test_HistoryDBLedgerSourceCurrentLedger(t *testing.T) {
-	cache := &State{
+	state := &State{
 		RWMutex: sync.RWMutex{},
 		current: Status{ExpHistoryLatest: 3},
 	}
 
 	ledgerSource := HistoryDBSource{
 		updateFrequency: 0,
-		cache:           cache,
+		state:           state,
 	}
 
 	currentLedger := ledgerSource.CurrentLedger()
@@ -23,14 +23,14 @@ func Test_HistoryDBLedgerSourceCurrentLedger(t *testing.T) {
 }
 
 func Test_HistoryDBLedgerSourceNextLedger(t *testing.T) {
-	cache := &State{
+	state := &State{
 		RWMutex: sync.RWMutex{},
 		current: Status{ExpHistoryLatest: 3},
 	}
 
 	ledgerSource := HistoryDBSource{
 		updateFrequency: 0,
-		cache:           cache,
+		state:           state,
 	}
 
 	ledgerChan := ledgerSource.NextLedger(0)

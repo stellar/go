@@ -31,7 +31,7 @@ func TestDeleteUnretainedHistory(t *testing.T) {
 		tt.Assert.Equal(prev, cur, "Ledgers deleted when RetentionCount == 0")
 	}
 
-	ledgerState.SetStatus(tt.LoadLedgerState())
+	ledgerState.SetStatus(tt.LoadLedgerStatus())
 	sys.RetentionCount = 10
 	err = sys.DeleteUnretainedHistory()
 	if tt.Assert.NoError(err) {
@@ -40,7 +40,7 @@ func TestDeleteUnretainedHistory(t *testing.T) {
 		tt.Assert.Equal(10, cur)
 	}
 
-	ledgerState.SetStatus(tt.LoadLedgerState())
+	ledgerState.SetStatus(tt.LoadLedgerStatus())
 	sys.RetentionCount = 1
 	err = sys.DeleteUnretainedHistory()
 	if tt.Assert.NoError(err) {

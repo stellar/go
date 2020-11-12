@@ -58,14 +58,14 @@ func (t *T) loadScenario(scenarioName string, includeHorizon bool) {
 func (t *T) Scenario(name string) ledger.Status {
 	clearHorizonDB(t.T, t.HorizonDB)
 	t.loadScenario(name, true)
-	return t.LoadLedgerState()
+	return t.LoadLedgerStatus()
 }
 
 // ScenarioWithoutHorizon loads the named sql scenario into the database
 func (t *T) ScenarioWithoutHorizon(name string) ledger.Status {
 	t.loadScenario(name, false)
 	ResetHorizonDB(t.T, t.HorizonDB)
-	return t.LoadLedgerState()
+	return t.LoadLedgerStatus()
 }
 
 // ResetHorizonDB sets up a new horizon database with empty tables
@@ -133,8 +133,8 @@ func (t *T) UnmarshalExtras(r io.Reader) map[string]string {
 	return resp.Extras
 }
 
-// LoadLedgerState loads ledger state from the core db(or panicing on failure).
-func (t *T) LoadLedgerState() ledger.Status {
+// LoadLedgerStatus loads ledger state from the core db(or panicing on failure).
+func (t *T) LoadLedgerStatus() ledger.Status {
 	var next ledger.Status
 
 	err := t.CoreSession().GetRaw(&next, `
