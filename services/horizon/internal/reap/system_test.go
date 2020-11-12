@@ -1,9 +1,9 @@
 package reap
 
 import (
-	"github.com/stellar/go/services/horizon/internal/ledger"
 	"testing"
 
+	"github.com/stellar/go/services/horizon/internal/ledger"
 	"github.com/stellar/go/services/horizon/internal/test"
 )
 

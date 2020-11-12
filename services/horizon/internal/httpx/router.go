@@ -3,7 +3,6 @@ package httpx
 import (
 	"compress/flate"
 	"fmt"
-	"github.com/stellar/go/services/horizon/internal/ledger"
 	"net/http"
 	"net/http/pprof"
 	"net/url"
@@ -18,6 +17,7 @@ import (
 	"github.com/stellar/throttled"
 
 	"github.com/stellar/go/services/horizon/internal/actions"
+	"github.com/stellar/go/services/horizon/internal/ledger"
 	"github.com/stellar/go/services/horizon/internal/paths"
 	"github.com/stellar/go/services/horizon/internal/render/sse"
 	"github.com/stellar/go/services/horizon/internal/txsub"

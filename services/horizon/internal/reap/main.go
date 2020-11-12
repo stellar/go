@@ -5,10 +5,10 @@
 package reap
 
 import (
-	"github.com/stellar/go/services/horizon/internal/ledger"
 	"time"
 
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/services/horizon/internal/ledger"
 	"github.com/stellar/go/support/db"
 )
 
