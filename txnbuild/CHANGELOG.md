@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this
 file.  This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [v5.0.0](https://github.com/stellar/go/releases/tag/horizonclient-v5.0.0) - 2020-11-12
+
+### Breaking changes
+
+* Updates the SEP-10 helper function parameters and return values to support [SEP-10 v3.0](https://github.com/stellar/stellar-protocol/commit/9d121f98fd2201a5edfe0ed2befe92f4bf88bfe4)
+  * The following functions replaced the `homeDomain` parameter with `homeDomains` (note: plural):
+    * `ReadChallengeTx()`
+    * `VerifyChallengeTxThreshold()`
+    * `VerifyChallengeTxSigners()`
+  * `ReadChallengeTx()` now returns a third non-error value: `matchedHomeDomain`
+
 ## [v4.2.0](https://github.com/stellar/go/releases/tag/horizonclient-v4.2.0) - 2020-11-11
 
 * Add `HashHex()`, `SignWithKeyString()`, `SignHashX()`, and `AddSignatureBase64()` functions back to `FeeBumpTransaction`  ([#3199](https://github.com/stellar/go/pull/3199)).
