@@ -44,16 +44,16 @@ func (qp EffectsQuery) Validate() error {
 }
 
 type GetEffectsHandler struct {
-	LedgerCache *ledger.Cache
+	LedgerState *ledger.State
 }
 
 func (handler GetEffectsHandler) GetResourcePage(w HeaderWriter, r *http.Request) ([]hal.Pageable, error) {
-	pq, err := GetPageQuery(handler.LedgerCache, r)
+	pq, err := GetPageQuery(handler.LedgerState, r)
 	if err != nil {
 		return nil, err
 	}
 
-	err = validateCursorWithinHistory(handler.LedgerCache, pq)
+	err = validateCursorWithinHistory(handler.LedgerState, pq)
 	if err != nil {
 		return nil, err
 	}

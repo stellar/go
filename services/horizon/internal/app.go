@@ -65,7 +65,7 @@ type App struct {
 	ingester        ingest.System
 	reaper          *reap.System
 	ticks           *time.Ticker
-	ledgerCache     *ledger.Cache
+	ledgerState     *ledger.State
 
 	// metrics
 	prometheusRegistry         *prometheus.Registry
@@ -89,7 +89,7 @@ func (a *App) GetCoreSettings() actions.CoreSettings {
 func NewApp(config Config) (*App, error) {
 	a := &App{
 		config:         config,
-		ledgerCache:    &ledger.Cache{},
+		ledgerState:    &ledger.State{},
 		horizonVersion: app.Version(),
 		ticks:          time.NewTicker(1 * time.Second),
 		done:           make(chan struct{}),
@@ -190,7 +190,7 @@ func (a *App) HorizonSession(ctx context.Context) *db.Session {
 // UpdateLedgerState triggers a refresh of several metrics gauges, such as open
 // db connections and ledger state
 func (a *App) UpdateLedgerState() {
-	var next ledger.State
+	var next ledger.Status
 
 	logErr := func(err error, msg string) {
 		log.WithStack(err).WithField("err", err.Error()).Error(msg)
@@ -226,7 +226,7 @@ func (a *App) UpdateLedgerState() {
 		return
 	}
 
-	a.ledgerCache.SetState(next)
+	a.ledgerState.SetStatus(next)
 }
 
 // UpdateFeeStatsState triggers a refresh of several operation fee metrics.
@@ -439,7 +439,7 @@ func (a *App) init() error {
 	initSubmissionSystem(a)
 
 	// reaper
-	a.reaper = reap.New(a.config.HistoryRetentionCount, a.HorizonSession(context.Background()), a.ledgerCache)
+	a.reaper = reap.New(a.config.HistoryRetentionCount, a.HorizonSession(context.Background()), a.ledgerState)
 
 	// metrics and log.metrics
 	a.prometheusRegistry = prometheus.NewRegistry()
@@ -489,7 +489,7 @@ func (a *App) init() error {
 			KeyPath:  a.config.TLSKey,
 		}
 	}
-	a.webServer, err = httpx.NewServer(config, routerConfig, a.ledgerCache)
+	a.webServer, err = httpx.NewServer(config, routerConfig, a.ledgerState)
 	if err != nil {
 		return err
 	}

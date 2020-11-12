@@ -76,7 +76,7 @@ func (q OffersQuery) Validate() error {
 
 // GetOffersHandler is the action handler for the /offers endpoint
 type GetOffersHandler struct {
-	LedgerCache *ledger.Cache
+	LedgerState *ledger.State
 }
 
 // GetResourcePage returns a page of offers.
@@ -91,7 +91,7 @@ func (handler GetOffersHandler) GetResourcePage(
 		return nil, err
 	}
 
-	pq, err := GetPageQuery(handler.LedgerCache, r)
+	pq, err := GetPageQuery(handler.LedgerState, r)
 	if err != nil {
 		return nil, err
 	}
@@ -134,11 +134,11 @@ type AccountOffersQuery struct {
 // GetAccountOffersHandler is the action handler for the
 // `/accounts/{account_id}/offers` endpoint when using experimental ingestion.
 type GetAccountOffersHandler struct {
-	LedgerCache *ledger.Cache
+	LedgerState *ledger.State
 }
 
 func (handler GetAccountOffersHandler) parseOffersQuery(r *http.Request) (history.OffersQuery, error) {
-	pq, err := GetPageQuery(handler.LedgerCache, r)
+	pq, err := GetPageQuery(handler.LedgerState, r)
 	if err != nil {
 		return history.OffersQuery{}, err
 	}

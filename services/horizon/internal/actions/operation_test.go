@@ -517,7 +517,7 @@ func TestGetOperationsPagination(t *testing.T) {
 
 	q := &history.Q{tt.HorizonSession()}
 	handler := GetOperationsHandler{
-		LedgerCache: &ledger.Cache{},
+		LedgerState: &ledger.State{},
 	}
 
 	records, err := handler.GetResourcePage(
@@ -629,9 +629,9 @@ func TestGetOperation(t *testing.T) {
 	defer tt.Finish()
 
 	handler := GetOperationByIDHandler{
-		LedgerCache: &ledger.Cache{},
+		LedgerState: &ledger.State{},
 	}
-	handler.LedgerCache.SetState(tt.Scenario("base"))
+	handler.LedgerState.SetStatus(tt.Scenario("base"))
 
 	record, err := handler.GetResource(
 		httptest.NewRecorder(),
@@ -668,7 +668,7 @@ func TestOperation_IncludeTransaction(t *testing.T) {
 	tt.Scenario("kahuna")
 
 	handler := GetOperationByIDHandler{
-		LedgerCache: &ledger.Cache{},
+		LedgerState: &ledger.State{},
 	}
 	record, err := handler.GetResource(
 		httptest.NewRecorder(),

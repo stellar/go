@@ -19,7 +19,7 @@ import (
 
 // AssetStatsHandler is the action handler for the /asset endpoint
 type AssetStatsHandler struct {
-	LedgerCache *ledger.Cache
+	LedgerState *ledger.State
 }
 
 func (handler AssetStatsHandler) validateAssetParams(code, issuer string, pq db2.PageQuery) error {
@@ -125,7 +125,7 @@ func (handler AssetStatsHandler) GetResourcePage(
 		return nil, err
 	}
 
-	pq, err := GetPageQuery(handler.LedgerCache, r, DisableCursorValidation)
+	pq, err := GetPageQuery(handler.LedgerState, r, DisableCursorValidation)
 	if err != nil {
 		return nil, err
 	}

@@ -59,7 +59,7 @@ func (qp OperationsQuery) Validate() error {
 
 // GetOperationsHandler is the action handler for all end-points returning a list of operations.
 type GetOperationsHandler struct {
-	LedgerCache  *ledger.Cache
+	LedgerState  *ledger.State
 	OnlyPayments bool
 }
 
@@ -67,12 +67,12 @@ type GetOperationsHandler struct {
 func (handler GetOperationsHandler) GetResourcePage(w HeaderWriter, r *http.Request) ([]hal.Pageable, error) {
 	ctx := r.Context()
 
-	pq, err := GetPageQuery(handler.LedgerCache, r)
+	pq, err := GetPageQuery(handler.LedgerState, r)
 	if err != nil {
 		return nil, err
 	}
 
-	err = validateCursorWithinHistory(handler.LedgerCache, pq)
+	err = validateCursorWithinHistory(handler.LedgerState, pq)
 	if err != nil {
 		return nil, err
 	}
@@ -123,12 +123,12 @@ func (handler GetOperationsHandler) GetResourcePage(w HeaderWriter, r *http.Requ
 
 // GetOperationByIDHandler is the action handler for all end-points returning a list of operations.
 type GetOperationByIDHandler struct {
-	LedgerCache *ledger.Cache
+	LedgerState *ledger.State
 }
 
 // OperationQuery query struct for operation/id end-point
 type OperationQuery struct {
-	LedgerCache *ledger.Cache `valid:"-"`
+	LedgerState *ledger.State `valid:"-"`
 	Joinable    `valid:"optional"`
 	ID          uint64 `schema:"id" valid:"-"`
 }
@@ -136,7 +136,7 @@ type OperationQuery struct {
 // Validate runs extra validations on query parameters
 func (qp OperationQuery) Validate() error {
 	parsed := toid.Parse(int64(qp.ID))
-	if parsed.LedgerSequence < qp.LedgerCache.CurrentState().HistoryElder {
+	if parsed.LedgerSequence < qp.LedgerState.CurrentStatus().HistoryElder {
 		return problem.BeforeHistory
 	}
 	return nil
@@ -146,7 +146,7 @@ func (qp OperationQuery) Validate() error {
 func (handler GetOperationByIDHandler) GetResource(w HeaderWriter, r *http.Request) (interface{}, error) {
 	ctx := r.Context()
 	qp := OperationQuery{
-		LedgerCache: handler.LedgerCache,
+		LedgerState: handler.LedgerState,
 	}
 	err := getParams(&qp, r)
 	if err != nil {

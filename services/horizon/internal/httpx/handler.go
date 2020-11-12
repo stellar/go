@@ -156,23 +156,23 @@ type pageActionHandler struct {
 	streamable     bool
 	streamHandler  sse.StreamHandler
 	repeatableRead bool
-	ledgerCache    *ledger.Cache
+	ledgerState    *ledger.State
 }
 
-func restPageHandler(ledgerCache *ledger.Cache, action pageAction) pageActionHandler {
-	return pageActionHandler{action: action, ledgerCache: ledgerCache}
+func restPageHandler(ledgerState *ledger.State, action pageAction) pageActionHandler {
+	return pageActionHandler{action: action, ledgerState: ledgerState}
 }
 
 // streamableStatePageHandler creates a streamable page handler than generates
 // events within a REPEATABLE READ transaction.
 func streamableStatePageHandler(
-	ledgerCache *ledger.Cache,
+	ledgerState *ledger.State,
 	action pageAction,
 	streamHandler sse.StreamHandler,
 ) pageActionHandler {
 	return pageActionHandler{
 		action:         action,
-		ledgerCache:    ledgerCache,
+		ledgerState:    ledgerState,
 		streamable:     true,
 		streamHandler:  streamHandler,
 		repeatableRead: true,
@@ -182,13 +182,13 @@ func streamableStatePageHandler(
 // streamableStatePageHandler creates a streamable page handler than generates
 // events without starting a REPEATABLE READ transaction.
 func streamableHistoryPageHandler(
-	ledgerCache *ledger.Cache,
+	ledgerState *ledger.State,
 	action pageAction,
 	streamHandler sse.StreamHandler,
 ) pageActionHandler {
 	return pageActionHandler{
 		action:         action,
-		ledgerCache:    ledgerCache,
+		ledgerState:    ledgerState,
 		streamable:     true,
 		streamHandler:  streamHandler,
 		repeatableRead: false,
@@ -202,7 +202,7 @@ func (handler pageActionHandler) renderPage(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	page, err := buildPage(handler.ledgerCache, r, records)
+	page, err := buildPage(handler.ledgerState, r, records)
 
 	if err != nil {
 		problem.Render(r.Context(), w, err)
@@ -218,7 +218,7 @@ func (handler pageActionHandler) renderPage(w http.ResponseWriter, r *http.Reque
 
 func (handler pageActionHandler) renderStream(w http.ResponseWriter, r *http.Request) {
 	// Use pq to Get SSE limit.
-	pq, err := actions.GetPageQuery(handler.ledgerCache, r)
+	pq, err := actions.GetPageQuery(handler.ledgerState, r)
 	if err != nil {
 		problem.Render(r.Context(), w, err)
 		return
@@ -279,10 +279,10 @@ func (handler pageActionHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 	problem.Render(r.Context(), w, hProblem.NotAcceptable)
 }
 
-func buildPage(ledgerCache *ledger.Cache, r *http.Request, records []hal.Pageable) (hal.Page, error) {
+func buildPage(ledgerState *ledger.State, r *http.Request, records []hal.Pageable) (hal.Page, error) {
 	// Always DisableCursorValidation - we can assume it's valid since the
 	// validation is done in GetResourcePage.
-	pageQuery, err := actions.GetPageQuery(ledgerCache, r, actions.DisableCursorValidation)
+	pageQuery, err := actions.GetPageQuery(ledgerState, r, actions.DisableCursorValidation)
 	if err != nil {
 		return hal.Page{}, err
 	}

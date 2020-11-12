@@ -6,9 +6,9 @@ import (
 )
 
 func Test_HistoryDBLedgerSourceCurrentLedger(t *testing.T) {
-	cache := &Cache{
+	cache := &State{
 		RWMutex: sync.RWMutex{},
-		current: State{ExpHistoryLatest: 3},
+		current: Status{ExpHistoryLatest: 3},
 	}
 
 	ledgerSource := HistoryDBSource{
@@ -23,9 +23,9 @@ func Test_HistoryDBLedgerSourceCurrentLedger(t *testing.T) {
 }
 
 func Test_HistoryDBLedgerSourceNextLedger(t *testing.T) {
-	cache := &Cache{
+	cache := &State{
 		RWMutex: sync.RWMutex{},
-		current: State{ExpHistoryLatest: 3},
+		current: Status{ExpHistoryLatest: 3},
 	}
 
 	ledgerSource := HistoryDBSource{

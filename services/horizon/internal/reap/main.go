@@ -16,18 +16,18 @@ import (
 type System struct {
 	HistoryQ       *history.Q
 	RetentionCount uint
-	ledgerCache    *ledger.Cache
+	ledgerState    *ledger.State
 
 	nextRun time.Time
 }
 
 // New initializes the reaper, causing it to begin polling the stellar-core
 // database for now ledgers and ingesting data into the horizon database.
-func New(retention uint, dbSession *db.Session, ledgerCache *ledger.Cache) *System {
+func New(retention uint, dbSession *db.Session, ledgerState *ledger.State) *System {
 	r := &System{
 		HistoryQ:       &history.Q{dbSession},
 		RetentionCount: retention,
-		ledgerCache:    ledgerCache,
+		ledgerState:    ledgerState,
 	}
 
 	r.nextRun = time.Now().Add(1 * time.Hour)

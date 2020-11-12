@@ -10,12 +10,12 @@ import (
 func TestDeleteUnretainedHistory(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
-	ledgerCache := &ledger.Cache{}
-	ledgerCache.SetState(tt.Scenario("kahuna"))
+	ledgerState := &ledger.State{}
+	ledgerState.SetStatus(tt.Scenario("kahuna"))
 
 	db := tt.HorizonSession()
 
-	sys := New(0, db, ledgerCache)
+	sys := New(0, db, ledgerState)
 
 	var (
 		prev int
@@ -31,7 +31,7 @@ func TestDeleteUnretainedHistory(t *testing.T) {
 		tt.Assert.Equal(prev, cur, "Ledgers deleted when RetentionCount == 0")
 	}
 
-	ledgerCache.SetState(tt.LoadLedgerState())
+	ledgerState.SetStatus(tt.LoadLedgerState())
 	sys.RetentionCount = 10
 	err = sys.DeleteUnretainedHistory()
 	if tt.Assert.NoError(err) {
@@ -40,7 +40,7 @@ func TestDeleteUnretainedHistory(t *testing.T) {
 		tt.Assert.Equal(10, cur)
 	}
 
-	ledgerCache.SetState(tt.LoadLedgerState())
+	ledgerState.SetStatus(tt.LoadLedgerState())
 	sys.RetentionCount = 1
 	err = sys.DeleteUnretainedHistory()
 	if tt.Assert.NoError(err) {

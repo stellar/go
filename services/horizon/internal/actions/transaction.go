@@ -84,19 +84,19 @@ func (qp TransactionsQuery) Validate() error {
 
 // GetTransactionsHandler is the action handler for all end-points returning a list of transactions.
 type GetTransactionsHandler struct {
-	LedgerCache *ledger.Cache
+	LedgerState *ledger.State
 }
 
 // GetResourcePage returns a page of transactions.
 func (handler GetTransactionsHandler) GetResourcePage(w HeaderWriter, r *http.Request) ([]hal.Pageable, error) {
 	ctx := r.Context()
 
-	pq, err := GetPageQuery(handler.LedgerCache, r)
+	pq, err := GetPageQuery(handler.LedgerState, r)
 	if err != nil {
 		return nil, err
 	}
 
-	err = validateCursorWithinHistory(handler.LedgerCache, pq)
+	err = validateCursorWithinHistory(handler.LedgerState, pq)
 	if err != nil {
 		return nil, err
 	}

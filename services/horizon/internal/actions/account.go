@@ -120,7 +120,7 @@ func (q AccountsQuery) Asset() *xdr.Asset {
 
 // GetAccountsHandler is the action handler for the /accounts endpoint
 type GetAccountsHandler struct {
-	LedgerCache *ledger.Cache
+	LedgerState *ledger.State
 }
 
 // GetResourcePage returns a page containing the account records that have
@@ -130,7 +130,7 @@ func (handler GetAccountsHandler) GetResourcePage(
 	r *http.Request,
 ) ([]hal.Pageable, error) {
 	ctx := r.Context()
-	pq, err := GetPageQuery(handler.LedgerCache, r, DisableCursorValidation)
+	pq, err := GetPageQuery(handler.LedgerState, r, DisableCursorValidation)
 	if err != nil {
 		return nil, err
 	}

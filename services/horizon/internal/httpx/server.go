@@ -57,7 +57,7 @@ func init() {
 	problem.RegisterError(db.ErrCancelled, hProblem.ServiceUnavailable)
 }
 
-func NewServer(serverConfig ServerConfig, routerConfig RouterConfig, ledgerCache *ledger.Cache) (*Server, error) {
+func NewServer(serverConfig ServerConfig, routerConfig RouterConfig, ledgerState *ledger.State) (*Server, error) {
 	sm := &ServerMetrics{
 		RequestDurationSummary: prometheus.NewSummaryVec(
 			prometheus.SummaryOpts{
@@ -67,7 +67,7 @@ func NewServer(serverConfig ServerConfig, routerConfig RouterConfig, ledgerCache
 			[]string{"status", "route", "streaming", "method"},
 		),
 	}
-	router, err := NewRouter(&routerConfig, sm, ledgerCache)
+	router, err := NewRouter(&routerConfig, sm, ledgerState)
 	if err != nil {
 		return nil, err
 	}

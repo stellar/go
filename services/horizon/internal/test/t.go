@@ -55,14 +55,14 @@ func (t *T) loadScenario(scenarioName string, includeHorizon bool) {
 }
 
 // Scenario loads the named sql scenario into the database
-func (t *T) Scenario(name string) ledger.State {
+func (t *T) Scenario(name string) ledger.Status {
 	clearHorizonDB(t.T, t.HorizonDB)
 	t.loadScenario(name, true)
 	return t.LoadLedgerState()
 }
 
 // ScenarioWithoutHorizon loads the named sql scenario into the database
-func (t *T) ScenarioWithoutHorizon(name string) ledger.State {
+func (t *T) ScenarioWithoutHorizon(name string) ledger.Status {
 	t.loadScenario(name, false)
 	ResetHorizonDB(t.T, t.HorizonDB)
 	return t.LoadLedgerState()
@@ -134,8 +134,8 @@ func (t *T) UnmarshalExtras(r io.Reader) map[string]string {
 }
 
 // LoadLedgerState loads ledger state from the core db(or panicing on failure).
-func (t *T) LoadLedgerState() ledger.State {
-	var next ledger.State
+func (t *T) LoadLedgerState() ledger.Status {
+	var next ledger.Status
 
 	err := t.CoreSession().GetRaw(&next, `
 		SELECT

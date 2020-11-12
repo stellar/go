@@ -13,16 +13,16 @@ import (
 )
 
 type GetLedgersHandler struct {
-	LedgerCache *ledger.Cache
+	LedgerState *ledger.State
 }
 
 func (handler GetLedgersHandler) GetResourcePage(w HeaderWriter, r *http.Request) ([]hal.Pageable, error) {
-	pq, err := GetPageQuery(handler.LedgerCache, r)
+	pq, err := GetPageQuery(handler.LedgerState, r)
 	if err != nil {
 		return nil, err
 	}
 
-	err = validateCursorWithinHistory(handler.LedgerCache, pq)
+	err = validateCursorWithinHistory(handler.LedgerState, pq)
 	if err != nil {
 		return nil, err
 	}
@@ -56,7 +56,7 @@ type LedgerByIDQuery struct {
 }
 
 type GetLedgerByIDHandler struct {
-	LedgerCache *ledger.Cache
+	LedgerState *ledger.State
 }
 
 func (handler GetLedgerByIDHandler) GetResource(w HeaderWriter, r *http.Request) (interface{}, error) {
@@ -65,7 +65,7 @@ func (handler GetLedgerByIDHandler) GetResource(w HeaderWriter, r *http.Request)
 	if err != nil {
 		return nil, err
 	}
-	if int32(qp.LedgerID) < handler.LedgerCache.CurrentState().HistoryElder {
+	if int32(qp.LedgerID) < handler.LedgerState.CurrentStatus().HistoryElder {
 		return nil, problem.BeforeHistory
 	}
 	historyQ, err := context.HistoryQFromRequest(r)

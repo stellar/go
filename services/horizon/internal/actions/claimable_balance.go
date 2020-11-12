@@ -130,7 +130,7 @@ func (q ClaimableBalancesQuery) URITemplate() string {
 }
 
 type GetClaimableBalancesHandler struct {
-	LedgerCache *ledger.Cache
+	LedgerState *ledger.State
 }
 
 // GetResourcePage returns a page of claimable balances.
@@ -145,7 +145,7 @@ func (handler GetClaimableBalancesHandler) GetResourcePage(
 		return nil, err
 	}
 
-	pq, err := GetPageQuery(handler.LedgerCache, r, DisableCursorValidation)
+	pq, err := GetPageQuery(handler.LedgerState, r, DisableCursorValidation)
 	if err != nil {
 		return nil, err
 	}

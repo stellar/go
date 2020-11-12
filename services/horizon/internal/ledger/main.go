@@ -9,32 +9,32 @@ import (
 	"sync"
 )
 
-// State represents a snapshot of both horizon's and stellar-core's view of the
+// Status represents a snapshot of both horizon's and stellar-core's view of the
 // ledger.
-type State struct {
+type Status struct {
 	CoreLatest       int32  `db:"core_latest"`
 	HistoryLatest    int32  `db:"history_latest"`
 	HistoryElder     int32  `db:"history_elder"`
 	ExpHistoryLatest uint32 `db:"exp_history_latest"`
 }
 
-// Cache is an in-memory data structure which holds a current snapshot of both
+// State is an in-memory data structure which holds a snapshot of both
 // horizon's and stellar-core's view of the the network
-type Cache struct {
+type State struct {
 	sync.RWMutex
-	current State
+	current Status
 }
 
-// CurrentState returns the cached snapshot of ledger state
-func (c *Cache) CurrentState() State {
+// CurrentStatus returns the cached snapshot of ledger state
+func (c *State) CurrentStatus() Status {
 	c.RLock()
 	defer c.RUnlock()
 	ret := c.current
 	return ret
 }
 
-// SetState updates the cached snapshot of the ledger state
-func (c *Cache) SetState(next State) {
+// SetStatus updates the cached snapshot of the ledger state
+func (c *State) SetStatus(next Status) {
 	c.Lock()
 	defer c.Unlock()
 	c.current = next

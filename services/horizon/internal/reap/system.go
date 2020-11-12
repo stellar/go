@@ -16,7 +16,7 @@ func (r *System) DeleteUnretainedHistory() error {
 	}
 
 	var (
-		latest      = r.ledgerCache.CurrentState()
+		latest      = r.ledgerState.CurrentStatus()
 		targetElder = (latest.HistoryLatest - int32(r.RetentionCount)) + 1
 	)
 

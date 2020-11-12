@@ -33,7 +33,7 @@ func requestCacheHeadersMiddleware(h http.Handler) http.Handler {
 		// Before changing this read Stack Overflow answer about staled request
 		// in older versions of Chrome:
 		// https://stackoverflow.com/questions/27513994/chrome-stalls-when-making-multiple-requests-to-same-resource
-		w.Header().Set("Cache-Control", "no-cache, no-store, max-age=0")
+		w.Header().Set("State-Control", "no-cache, no-store, max-age=0")
 		h.ServeHTTP(w, r)
 	})
 }
@@ -219,12 +219,12 @@ func recoverMiddleware(h http.Handler) http.Handler {
 // NewHistoryMiddleware adds session to the request context and ensures Horizon
 // is not in a stale state, which is when the difference between latest core
 // ledger and latest history ledger is higher than the given threshold
-func NewHistoryMiddleware(ledgerCache *ledger.Cache, staleThreshold int32, session *db.Session) func(http.Handler) http.Handler {
+func NewHistoryMiddleware(ledgerState *ledger.State, staleThreshold int32, session *db.Session) func(http.Handler) http.Handler {
 	return func(h http.Handler) http.Handler {
 
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if staleThreshold > 0 {
-				ls := ledgerCache.CurrentState()
+				ls := ledgerState.CurrentStatus()
 				isStale := (ls.CoreLatest - ls.HistoryLatest) > int32(staleThreshold)
 				if isStale {
 					err := hProblem.StaleHistory
