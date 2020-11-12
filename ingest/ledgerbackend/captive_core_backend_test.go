@@ -865,14 +865,6 @@ func TestCaptiveUseOfLedgerStore(t *testing.T) {
 			},
 		}, nil)
 
-	mockArchive.
-		On("GetLedgerHeader", uint32(3)).
-		Return(xdr.LedgerHeaderHistoryEntry{
-			Header: xdr.LedgerHeader{
-				PreviousLedgerHash: xdr.Hash{2},
-			},
-		}, nil)
-
 	mockLedgerStore := &MockLedgerStore{}
 	mockLedgerStore.On("LastLedger", uint32(300)).
 		Return(Ledger{Sequence: 19, Hash: "abc"}, true, nil).Once()
@@ -884,6 +876,8 @@ func TestCaptiveUseOfLedgerStore(t *testing.T) {
 		Return(Ledger{}, false, nil).Once()
 	mockLedgerStore.On("LastLedger", uint32(86)).
 		Return(Ledger{Sequence: 85, Hash: "cde"}, true, nil).Once()
+	mockLedgerStore.On("LastLedger", uint32(128)).
+		Return(Ledger{Sequence: 127, Hash: "ghi"}, true, nil).Once()
 
 	captiveBackend := CaptiveStellarCore{
 		archive:           mockArchive,
@@ -894,8 +888,8 @@ func TestCaptiveUseOfLedgerStore(t *testing.T) {
 
 	runFrom, ledgerHash, nextLedger, err := captiveBackend.runFromParams(24)
 	assert.NoError(t, err)
-	assert.Equal(t, uint32(19), runFrom)
-	assert.Equal(t, "abc", ledgerHash)
+	assert.Equal(t, uint32(2), runFrom)
+	assert.Equal(t, "", ledgerHash)
 	assert.Equal(t, uint32(2), nextLedger)
 
 	runFrom, ledgerHash, nextLedger, err = captiveBackend.runFromParams(86)
@@ -903,6 +897,12 @@ func TestCaptiveUseOfLedgerStore(t *testing.T) {
 	assert.Equal(t, uint32(85), runFrom)
 	assert.Equal(t, "cde", ledgerHash)
 	assert.Equal(t, uint32(64), nextLedger)
+
+	runFrom, ledgerHash, nextLedger, err = captiveBackend.runFromParams(128)
+	assert.NoError(t, err)
+	assert.Equal(t, uint32(127), runFrom)
+	assert.Equal(t, "ghi", ledgerHash)
+	assert.Equal(t, uint32(128), nextLedger)
 
 	runFrom, ledgerHash, nextLedger, err = captiveBackend.runFromParams(14)
 	assert.EqualError(t, err, "Cannot fetch ledgers preceding 14: transient error")
@@ -916,7 +916,7 @@ func TestCaptiveUseOfLedgerStore(t *testing.T) {
 	runFrom, ledgerHash, nextLedger, err = captiveBackend.runFromParams(9)
 	assert.NoError(t, err)
 	assert.Equal(t, uint32(2), runFrom, "runFrom")
-	assert.Equal(t, "0200000000000000000000000000000000000000000000000000000000000000", ledgerHash)
+	assert.Equal(t, "", ledgerHash)
 	assert.Equal(t, uint32(2), nextLedger, "nextLedger")
 
 	mockLedgerStore.AssertExpectations(t)

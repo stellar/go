@@ -276,29 +276,11 @@ func (c *CaptiveStellarCore) runFromParams(from uint32) (runFrom uint32, ledgerH
 		err = errors.Wrapf(err, "Cannot fetch ledgers preceding %v", from)
 		return
 	}
-	if exists &&
-		ledger.Sequence > 1 && // stellar-core cannot run from ledger 1
+	useIngestedLedgerHash := exists &&
 		// if the last ledger is too far behind, let's use the history archive instead
-		(from-ledger.Sequence) < 2*historyarchive.CheckpointFreq {
-		runFrom = ledger.Sequence
-		ledgerHash = ledger.Hash
-		if ledger.Sequence < 63 {
-			// if we run from a sequence which occurs before the first checkpoint
-			// the first ledger we will stream is 2
-			nextLedger = 2
-		} else if historyarchive.IsCheckpoint(ledger.Sequence) {
-			// if we run from a checkpoint sequence
-			// the first ledger we will stream is the next ledger
-			nextLedger = ledger.Sequence + 1
-		} else {
-			// if we run from a non-checkpoint sequence
-			// the first ledger we will stream is the first ledger in the checkpoint range which spans ledger.Sequence
-			nextLedger = historyarchive.PrevCheckpoint(ledger.Sequence) + 1
-		}
-		return
-	}
+		(from-ledger.Sequence) < 2*historyarchive.CheckpointFreq
 
-	if from <= 63 {
+	if from <= 63 || (useIngestedLedgerHash && ledger.Sequence <= 63) {
 		// For ledgers before (and including) first checkpoint, we start streaming
 		// without providing a hash, to avoid waiting for the checkpoint.
 		// It will always start streaming from ledger 2.
@@ -310,6 +292,21 @@ func (c *CaptiveStellarCore) runFromParams(from uint32) (runFrom uint32, ledgerH
 		// To solve this we start from 3 and exploit the fast that Stellar-Core
 		// will stream data from 2 for the first checkpoint.
 		from = 3
+		return
+	}
+
+	if useIngestedLedgerHash {
+		runFrom = ledger.Sequence
+		ledgerHash = ledger.Hash
+		if historyarchive.IsCheckpoint(ledger.Sequence) {
+			// if we run from a checkpoint sequence
+			// the first ledger we will stream is the next ledger
+			nextLedger = ledger.Sequence + 1
+		} else {
+			// if we run from a non-checkpoint sequence
+			// the first ledger we will stream is the first ledger in the checkpoint range which spans ledger.Sequence
+			nextLedger = historyarchive.PrevCheckpoint(ledger.Sequence) + 1
+		}
 		return
 	}
 
