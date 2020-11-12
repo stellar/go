@@ -68,13 +68,17 @@ type CaptiveStellarCore struct {
 	historyURLs       []string
 	archive           historyarchive.ArchiveInterface
 
-	ledgerBuffer *bufferedLedgerMetaReader
+	// Quick note on how shutdown works:
+	// If Stellar-Core exits, the exit signal is "catched" by bufferedLedgerMetaReader
+	// (which ends it's go routine) and later propagated via metaResult to
+	// CaptiveStellarCore.
+	// If user calls CaptiveStellarCore.Close(), it kills Stellar-Core process
+	// and the rest is handles by the process explained above.
+	ledgerBuffer      *bufferedLedgerMetaReader
+	stellarCoreRunner stellarCoreRunnerInterface
 
 	// For testing
 	stellarCoreRunnerFactory func(configPath string) (stellarCoreRunnerInterface, error)
-
-	stellarCoreRunner stellarCoreRunnerInterface
-	cachedMeta        *xdr.LedgerCloseMeta
 
 	// Defines if the blocking mode (off by default) is on or off. In blocking mode,
 	// calling GetLedger blocks until the requested ledger is available. This is useful
@@ -82,6 +86,9 @@ type CaptiveStellarCore struct {
 	// and using `time.Sleep` when ledger is not available can actually slow entire
 	// ingestion process.
 	blocking bool
+
+	// cachedMeta keeps that ledger data of the last fetched ledger. Updated in GetLedger().
+	cachedMeta *xdr.LedgerCloseMeta
 
 	nextLedger uint32  // next ledger expected, error w/ restart if not seen
 	lastLedger *uint32 // end of current segment if offline, nil if online
