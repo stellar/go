@@ -7,7 +7,8 @@ import (
 )
 
 func TestLatestLedger(t *testing.T) {
-	tt := test.Start(t).Scenario("base")
+	tt := test.Start(t)
+	tt.Scenario("base")
 	defer tt.Finish()
 	q := &Q{tt.HorizonSession()}
 
@@ -31,7 +32,8 @@ func TestGetLatestLedgerEmptyDB(t *testing.T) {
 }
 
 func TestElderLedger(t *testing.T) {
-	tt := test.Start(t).Scenario("base")
+	tt := test.Start(t)
+	tt.Scenario("base")
 	defer tt.Finish()
 	q := &Q{tt.HorizonSession()}
 

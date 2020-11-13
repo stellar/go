@@ -11,7 +11,8 @@ import (
 )
 
 func TestGetTransactionsHandler(t *testing.T) {
-	tt := test.Start(t).Scenario("base")
+	tt := test.Start(t)
+	tt.Scenario("base")
 	defer tt.Finish()
 
 	q := &history.Q{tt.HorizonSession()}

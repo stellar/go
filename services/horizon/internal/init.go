@@ -10,7 +10,6 @@ import (
 	"github.com/stellar/go/exp/orderbook"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/ingest"
-	"github.com/stellar/go/services/horizon/internal/ledger"
 	"github.com/stellar/go/services/horizon/internal/simplepath"
 	"github.com/stellar/go/services/horizon/internal/txsub"
 	"github.com/stellar/go/services/horizon/internal/txsub/sequence"
@@ -142,7 +141,7 @@ func initDbMetrics(app *App) {
 	app.historyLatestLedgerCounter = prometheus.NewCounterFunc(
 		prometheus.CounterOpts{Namespace: "horizon", Subsystem: "history", Name: "latest_ledger"},
 		func() float64 {
-			ls := ledger.CurrentState()
+			ls := app.ledgerState.CurrentStatus()
 			return float64(ls.HistoryLatest)
 		},
 	)
@@ -151,7 +150,7 @@ func initDbMetrics(app *App) {
 	app.historyElderLedgerCounter = prometheus.NewCounterFunc(
 		prometheus.CounterOpts{Namespace: "horizon", Subsystem: "history", Name: "elder_ledger"},
 		func() float64 {
-			ls := ledger.CurrentState()
+			ls := app.ledgerState.CurrentStatus()
 			return float64(ls.HistoryElder)
 		},
 	)
@@ -160,7 +159,7 @@ func initDbMetrics(app *App) {
 	app.coreLatestLedgerCounter = prometheus.NewCounterFunc(
 		prometheus.CounterOpts{Namespace: "horizon", Subsystem: "stellar_core", Name: "latest_ledger"},
 		func() float64 {
-			ls := ledger.CurrentState()
+			ls := app.ledgerState.CurrentStatus()
 			return float64(ls.CoreLatest)
 		},
 	)

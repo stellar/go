@@ -14,7 +14,7 @@ import (
 func PopulateRoot(
 	ctx context.Context,
 	dest *horizon.Root,
-	ledgerState ledger.State,
+	ledgerState ledger.Status,
 	hVersion, cVersion string,
 	passphrase string,
 	currentProtocolVersion int32,

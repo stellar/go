@@ -5,6 +5,7 @@ COPY go.mod go.sum ./
 RUN go mod download
 COPY . ./
 RUN go install github.com/stellar/go/services/horizon
+RUN go install github.com/stellar/go/exp/services/captivecore
 
 FROM ubuntu:18.04
 
@@ -21,5 +22,6 @@ RUN apt-get update && apt-get install -y stellar-core=${STELLAR_CORE_VERSION}
 RUN apt-get clean
 
 COPY --from=builder /go/bin/horizon ./
+COPY --from=builder /go/bin/captivecore ./
 
 ENTRYPOINT ["./horizon"]

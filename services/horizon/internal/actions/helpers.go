@@ -58,7 +58,7 @@ func SetLastLedgerHeader(w HeaderWriter, lastLedger uint32) {
 
 // getCursor retrieves a string from either the URLParams, form or query string.
 // This method uses the priority (URLParams, Form, Query).
-func getCursor(r *http.Request, name string) (string, error) {
+func getCursor(ledgerState *ledger.State, r *http.Request, name string) (string, error) {
 	cursor, err := getString(r, name)
 
 	if err != nil {
@@ -66,7 +66,7 @@ func getCursor(r *http.Request, name string) (string, error) {
 	}
 
 	if cursor == "now" {
-		tid := toid.AfterLedger(ledger.CurrentState().HistoryLatest)
+		tid := toid.AfterLedger(ledgerState.CurrentStatus().HistoryLatest)
 		cursor = tid.String()
 	}
 
@@ -180,7 +180,7 @@ func getLimit(r *http.Request, name string, def uint64, max uint64) (uint64, err
 
 // GetPageQuery is a helper that returns a new db.PageQuery struct initialized
 // using the results from a call to GetPagingParams()
-func GetPageQuery(r *http.Request, opts ...Opt) (db2.PageQuery, error) {
+func GetPageQuery(ledgerState *ledger.State, r *http.Request, opts ...Opt) (db2.PageQuery, error) {
 	disableCursorValidation := false
 	for _, opt := range opts {
 		if opt == DisableCursorValidation {
@@ -188,7 +188,7 @@ func GetPageQuery(r *http.Request, opts ...Opt) (db2.PageQuery, error) {
 		}
 	}
 
-	cursor, err := getCursor(r, ParamCursor)
+	cursor, err := getCursor(ledgerState, r, ParamCursor)
 	if err != nil {
 		return db2.PageQuery{}, err
 	}
@@ -535,7 +535,7 @@ func validateAssetParams(aType, code, issuer, prefix string) error {
 // validateCursorWithinHistory compares the requested page of data against the
 // ledger state of the history database.  In the event that the cursor is
 // guaranteed to return no results, we return a 410 GONE http response.
-func validateCursorWithinHistory(pq db2.PageQuery) error {
+func validateCursorWithinHistory(ledgerState *ledger.State, pq db2.PageQuery) error {
 	// an ascending query should never return a gone response:  An ascending query
 	// prior to known history should return results at the beginning of history,
 	// and an ascending query beyond the end of history should not error out but
@@ -560,7 +560,7 @@ func validateCursorWithinHistory(pq db2.PageQuery) error {
 		return problem.MakeInvalidFieldProblem("cursor", errors.New("invalid value"))
 	}
 
-	elder := toid.New(ledger.CurrentState().HistoryElder, 0, 0)
+	elder := toid.New(ledgerState.CurrentStatus().HistoryElder, 0, 0)
 
 	if cursor <= elder.ToInt64() {
 		return &hProblem.BeforeHistory

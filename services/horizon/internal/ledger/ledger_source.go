@@ -14,30 +14,28 @@ type Source interface {
 	Close()
 }
 
-type currentStateFunc func() State
-
 // HistoryDBSource utility struct to pass the SSE update frequency and a
 // function to get the current ledger state.
 type HistoryDBSource struct {
 	updateFrequency time.Duration
-	currentState    currentStateFunc
+	state           *State
 
 	closedLock sync.Mutex
 	closed     bool
 }
 
 // NewHistoryDBSource constructs a new instance of HistoryDBSource
-func NewHistoryDBSource(updateFrequency time.Duration) *HistoryDBSource {
+func NewHistoryDBSource(updateFrequency time.Duration, state *State) *HistoryDBSource {
 	return &HistoryDBSource{
 		updateFrequency: updateFrequency,
-		currentState:    CurrentState,
+		state:           state,
 		closedLock:      sync.Mutex{},
 	}
 }
 
 // CurrentLedger returns the current ledger.
 func (source *HistoryDBSource) CurrentLedger() uint32 {
-	return source.currentState().ExpHistoryLatest
+	return source.state.CurrentStatus().ExpHistoryLatest
 }
 
 // NextLedger returns a channel which yields every time there is a new ledger with a sequence number larger than currentSequence.
@@ -59,7 +57,7 @@ func (source *HistoryDBSource) NextLedger(currentSequence uint32) chan uint32 {
 				return
 			}
 
-			currentLedgerState := source.currentState()
+			currentLedgerState := source.state.CurrentStatus()
 			if currentLedgerState.ExpHistoryLatest > currentSequence {
 				newLedgers <- currentLedgerState.ExpHistoryLatest
 				return

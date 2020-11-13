@@ -346,12 +346,13 @@ func TestCheckHistoryStaleMiddleware(t *testing.T) {
 		},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
-			state := ledger.State{
+			state := ledger.Status{
 				CoreLatest:    testCase.coreLatest,
 				HistoryLatest: testCase.historyLatest,
 			}
-			ledger.SetState(state)
-			historyMiddleware := httpx.NewHistoryMiddleware(testCase.staleThreshold, tt.HorizonSession())
+			ledgerState := &ledger.State{}
+			ledgerState.SetStatus(state)
+			historyMiddleware := httpx.NewHistoryMiddleware(ledgerState, testCase.staleThreshold, tt.HorizonSession())
 			handler := historyMiddleware(http.HandlerFunc(endpoint))
 			w := httptest.NewRecorder()
 			handler.ServeHTTP(w, request)
