@@ -366,7 +366,8 @@ func (c *CaptiveStellarCore) IsPrepared(ledgerRange Range) (bool, error) {
 	}
 
 	if c.lastLedger == nil {
-		return c.nextLedger <= ledgerRange.from, nil
+		return c.nextLedger <= ledgerRange.from ||
+			(c.cachedMeta != nil && c.cachedMeta.LedgerSequence() == ledgerRange.from), nil
 	}
 
 	// From now on: c.lastLedger != nil so current range is bounded
