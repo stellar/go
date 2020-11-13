@@ -173,11 +173,13 @@ func NewSystem(config Config) (System, error) {
 		} else {
 			var captiveCoreBackend *ledgerbackend.CaptiveStellarCore
 			captiveCoreBackend, err = ledgerbackend.NewCaptive(
-				config.StellarCoreBinaryPath,
-				config.StellarCoreConfigPath,
-				config.NetworkPassphrase,
-				[]string{config.HistoryArchiveURL},
-				ledgerbackend.NewDBLedgerStore(config.HistorySession),
+				ledgerbackend.CaptiveCoreConfig{
+					StellarCoreBinaryPath: config.StellarCoreBinaryPath,
+					StellarCoreConfigPath: config.StellarCoreConfigPath,
+					NetworkPassphrase:     config.NetworkPassphrase,
+					HistoryArchiveURLs:    []string{config.HistoryArchiveURL},
+					LedgerHashStore:       ledgerbackend.NewHorizonDBLedgerHashStore(config.HistorySession),
+				},
 			)
 			if err != nil {
 				cancel()

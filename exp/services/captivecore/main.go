@@ -103,20 +103,24 @@ func main() {
 			configOpts.SetValues()
 			logger.Level = logLevel
 
-			var ledgerStore ledgerbackend.LedgerStore
+			captiveConfig := ledgerbackend.CaptiveCoreConfig{
+				StellarCoreBinaryPath: binaryPath,
+				StellarCoreConfigPath: configPath,
+				NetworkPassphrase:     networkPassphrase,
+				HistoryArchiveURLs:    historyArchiveURLs,
+			}
+
 			var dbConn *db.Session
-			if len(dbURL) == 0 {
-				ledgerStore = ledgerbackend.EmptyLedgerStore{}
-			} else {
+			if len(dbURL) > 0 {
 				var err error
 				dbConn, err = db.Open("postgres", dbURL)
 				if err != nil {
 					logger.WithError(err).Fatal("Could not create db connection instance")
 				}
-				ledgerStore = ledgerbackend.NewDBLedgerStore(dbConn)
+				captiveConfig.LedgerHashStore = ledgerbackend.NewHorizonDBLedgerHashStore(dbConn)
 			}
 
-			core, err := ledgerbackend.NewCaptive(binaryPath, configPath, networkPassphrase, historyArchiveURLs, ledgerStore)
+			core, err := ledgerbackend.NewCaptive(captiveConfig)
 			if err != nil {
 				logger.WithError(err).Fatal("Could not create captive core instance")
 			}

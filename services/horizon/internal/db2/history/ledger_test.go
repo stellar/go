@@ -50,26 +50,6 @@ func TestLedgerQueries(t *testing.T) {
 		tt.Assert.Contains(foundSeqs, int32(2))
 		tt.Assert.Contains(foundSeqs, int32(3))
 	}
-
-	store := ledgerbackend.NewDBLedgerStore(tt.HorizonSession())
-	ledger, exists, err := store.LastLedger(100)
-	tt.Assert.NoError(err)
-	tt.Assert.True(exists)
-	tt.Assert.Equal(ledger.Sequence, uint32(3))
-
-	ledger, exists, err = store.LastLedger(3)
-	tt.Assert.NoError(err)
-	tt.Assert.True(exists)
-	tt.Assert.Equal(ledger.Sequence, uint32(2))
-
-	ledger, exists, err = store.LastLedger(2)
-	tt.Assert.NoError(err)
-	tt.Assert.True(exists)
-	tt.Assert.Equal(ledger.Sequence, uint32(1))
-
-	ledger, exists, err = store.LastLedger(1)
-	tt.Assert.NoError(err)
-	tt.Assert.False(exists)
 }
 
 func TestInsertLedger(t *testing.T) {
@@ -77,6 +57,11 @@ func TestInsertLedger(t *testing.T) {
 	defer tt.Finish()
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
+
+	ledgerHashStore := ledgerbackend.NewHorizonDBLedgerHashStore(tt.HorizonSession())
+	_, exists, err := ledgerHashStore.GetLedgerHash(100)
+	tt.Assert.NoError(err)
+	tt.Assert.False(exists)
 
 	expectedLedger := Ledger{
 		Sequence:                   69859,
@@ -157,4 +142,9 @@ func TestInsertLedger(t *testing.T) {
 	expectedLedger.ClosedAt = ledgerFromDB.ClosedAt
 
 	tt.Assert.Equal(expectedLedger, ledgerFromDB)
+
+	hash, exists, err := ledgerHashStore.GetLedgerHash(uint32(expectedLedger.Sequence))
+	tt.Assert.NoError(err)
+	tt.Assert.True(exists)
+	tt.Assert.Equal(expectedLedger.LedgerHash, hash)
 }
