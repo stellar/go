@@ -103,10 +103,12 @@ func Example_changes() {
 
 	// Requires Stellar-Core 13.2.0+
 	backend, err := ledgerbackend.NewCaptive(
-		"/bin/stellar-core",
-		"/opt/stellar-core.cfg",
-		networkPassphrase,
-		[]string{archiveURL},
+		ledgerbackend.CaptiveCoreConfig{
+			StellarCoreBinaryPath: "/bin/stellar-core",
+			StellarCoreConfigPath: "/opt/stellar-core.cfg",
+			NetworkPassphrase:     networkPassphrase,
+			HistoryArchiveURLs:    []string{archiveURL},
+		},
 	)
 	if err != nil {
 		panic(err)

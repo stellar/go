@@ -87,6 +87,7 @@ Usage:
   captivecore [flags]
 
 Flags:
+      --db-url                             Horizon Postgres URL (optional) used to lookup the ledger hash for sequence numbers
       --stellar-core-binary-path           Path to stellar core binary
       --stellar-core-config-path           Path to stellar core config file
       --history-archive-urls               Comma-separated list of stellar history archives to connect with

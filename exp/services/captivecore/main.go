@@ -13,13 +13,14 @@ import (
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/network"
 	"github.com/stellar/go/support/config"
+	"github.com/stellar/go/support/db"
 	supporthttp "github.com/stellar/go/support/http"
 	supportlog "github.com/stellar/go/support/log"
 )
 
 func main() {
 	var port int
-	var networkPassphrase, binaryPath, configPath string
+	var networkPassphrase, binaryPath, configPath, dbURL string
 	var historyArchiveURLs []string
 	var logLevel logrus.Level
 	logger := supportlog.New()
@@ -85,6 +86,14 @@ func main() {
 			},
 			Usage: "minimum log severity (debug, info, warn, error) to log",
 		},
+		&config.ConfigOption{
+			Name:      "db-url",
+			EnvVar:    "DATABASE_URL",
+			ConfigKey: &dbURL,
+			OptType:   types.String,
+			Required:  false,
+			Usage:     "horizon postgres database to connect with",
+		},
 	}
 	cmd := &cobra.Command{
 		Use:   "captivecore",
@@ -94,7 +103,24 @@ func main() {
 			configOpts.SetValues()
 			logger.Level = logLevel
 
-			core, err := ledgerbackend.NewCaptive(binaryPath, configPath, networkPassphrase, historyArchiveURLs)
+			captiveConfig := ledgerbackend.CaptiveCoreConfig{
+				StellarCoreBinaryPath: binaryPath,
+				StellarCoreConfigPath: configPath,
+				NetworkPassphrase:     networkPassphrase,
+				HistoryArchiveURLs:    historyArchiveURLs,
+			}
+
+			var dbConn *db.Session
+			if len(dbURL) > 0 {
+				var err error
+				dbConn, err = db.Open("postgres", dbURL)
+				if err != nil {
+					logger.WithError(err).Fatal("Could not create db connection instance")
+				}
+				captiveConfig.LedgerHashStore = ledgerbackend.NewHorizonDBLedgerHashStore(dbConn)
+			}
+
+			core, err := ledgerbackend.NewCaptive(captiveConfig)
 			if err != nil {
 				logger.WithError(err).Fatal("Could not create captive core instance")
 			}
@@ -108,6 +134,9 @@ func main() {
 				},
 				OnStopping: func() {
 					api.Shutdown()
+					if dbConn != nil {
+						dbConn.Close()
+					}
 				},
 			})
 		},

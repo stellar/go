@@ -24,10 +24,12 @@ func main() {
 
 func check(ledger uint32) bool {
 	c, err := ledgerbackend.NewCaptive(
-		"stellar-core",
-		"stellar-core-standalone2.cfg",
-		"Standalone Network ; February 2017",
-		[]string{"http://localhost:1570"},
+		ledgerbackend.CaptiveCoreConfig{
+			StellarCoreBinaryPath: "stellar-core",
+			StellarCoreConfigPath: "stellar-core-standalone2.cfg",
+			NetworkPassphrase:     "Standalone Network ; February 2017",
+			HistoryArchiveURLs:    []string{"http://localhost:1570"},
+		},
 	)
 	if err != nil {
 		panic(err)

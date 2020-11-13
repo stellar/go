@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/guregu/null"
+	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/xdr"
@@ -56,6 +57,11 @@ func TestInsertLedger(t *testing.T) {
 	defer tt.Finish()
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
+
+	ledgerHashStore := ledgerbackend.NewHorizonDBLedgerHashStore(tt.HorizonSession())
+	_, exists, err := ledgerHashStore.GetLedgerHash(100)
+	tt.Assert.NoError(err)
+	tt.Assert.False(exists)
 
 	expectedLedger := Ledger{
 		Sequence:                   69859,
@@ -136,4 +142,9 @@ func TestInsertLedger(t *testing.T) {
 	expectedLedger.ClosedAt = ledgerFromDB.ClosedAt
 
 	tt.Assert.Equal(expectedLedger, ledgerFromDB)
+
+	hash, exists, err := ledgerHashStore.GetLedgerHash(uint32(expectedLedger.Sequence))
+	tt.Assert.NoError(err)
+	tt.Assert.True(exists)
+	tt.Assert.Equal(expectedLedger.LedgerHash, hash)
 }

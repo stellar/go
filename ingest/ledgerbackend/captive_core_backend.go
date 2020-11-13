@@ -67,6 +67,7 @@ type CaptiveStellarCore struct {
 	networkPassphrase string
 	historyURLs       []string
 	archive           historyarchive.ArchiveInterface
+	ledgerHashStore   TrustedLedgerHashStore
 
 	ledgerBuffer bufferedLedgerMetaReader
 
@@ -94,15 +95,29 @@ type CaptiveStellarCore struct {
 	log *log.Entry
 }
 
+// CaptiveCoreConfig contains all the parameters required to create a CaptiveStellarCore instance
+type CaptiveCoreConfig struct {
+	// StellarCoreBinaryPath is the file path to the Stellar Core binary
+	StellarCoreBinaryPath string
+	// StellarCoreConfigPath is the file path to the Stellar Core configuration file used by captive core
+	StellarCoreConfigPath string
+	// NetworkPassphrase is the Stellar network passphrase used by captive core when connecting to the Stellar network
+	NetworkPassphrase string
+	// HistoryArchiveURLs are a list of history archive urls
+	HistoryArchiveURLs []string
+	// LedgerHashStore is an optional store used to obtain hashes for ledger sequences from a trusted source
+	LedgerHashStore TrustedLedgerHashStore
+}
+
 // NewCaptive returns a new CaptiveStellarCore.
 //
 // All parameters are required, except configPath which is not required when
 // working with BoundedRanges only.
-func NewCaptive(executablePath, configPath, networkPassphrase string, historyURLs []string) (*CaptiveStellarCore, error) {
+func NewCaptive(config CaptiveCoreConfig) (*CaptiveStellarCore, error) {
 	archive, err := historyarchive.Connect(
-		historyURLs[0],
+		config.HistoryArchiveURLs[0],
 		historyarchive.ConnectOptions{
-			NetworkPassphrase: networkPassphrase,
+			NetworkPassphrase: config.NetworkPassphrase,
 		},
 	)
 	if err != nil {
@@ -111,14 +126,20 @@ func NewCaptive(executablePath, configPath, networkPassphrase string, historyURL
 
 	c := &CaptiveStellarCore{
 		archive:                  archive,
-		executablePath:           executablePath,
-		configPath:               configPath,
-		historyURLs:              historyURLs,
-		networkPassphrase:        networkPassphrase,
+		executablePath:           config.StellarCoreBinaryPath,
+		configPath:               config.StellarCoreConfigPath,
+		historyURLs:              config.HistoryArchiveURLs,
+		networkPassphrase:        config.NetworkPassphrase,
 		waitIntervalPrepareRange: time.Second,
+		ledgerHashStore:          config.LedgerHashStore,
 	}
 	c.stellarCoreRunnerFactory = func(configPath2 string) (stellarCoreRunnerInterface, error) {
-		runner, innerErr := newStellarCoreRunner(executablePath, configPath2, networkPassphrase, historyURLs)
+		runner, innerErr := newStellarCoreRunner(
+			config.StellarCoreBinaryPath,
+			configPath2,
+			config.NetworkPassphrase,
+			config.HistoryArchiveURLs,
+		)
 		if innerErr != nil {
 			return runner, innerErr
 		}
@@ -296,6 +317,18 @@ func (c *CaptiveStellarCore) runFromParams(from uint32) (runFrom uint32, ledgerH
 	}
 
 	runFrom = from - 1
+	if c.ledgerHashStore != nil {
+		var exists bool
+		ledgerHash, exists, err = c.ledgerHashStore.GetLedgerHash(from)
+		if err != nil {
+			err = errors.Wrapf(err, "error trying to read ledger hash %d", from)
+			return
+		}
+		if exists {
+			return
+		}
+	}
+
 	ledgerHeader, err2 := c.archive.GetLedgerHeader(from)
 	if err2 != nil {
 		err = errors.Wrapf(err2, "error trying to read ledger header %d from HAS", from)
