@@ -244,6 +244,7 @@ func initIngestMetrics(app *App) {
 	app.prometheusRegistry.MustRegister(app.ingester.Metrics().StateVerifyDuration)
 	app.prometheusRegistry.MustRegister(app.ingester.Metrics().StateInvalidGauge)
 	app.prometheusRegistry.MustRegister(app.ingester.Metrics().LedgerStatsCounter)
+	app.prometheusRegistry.MustRegister(app.ingester.Metrics().ProcessorsRunDuration)
 }
 
 func initTxSubMetrics(app *App) {
