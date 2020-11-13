@@ -282,7 +282,6 @@ func (r *stellarCoreRunner) close() error {
 	if r.started {
 		close(r.shutdown)
 		r.wg.Wait()
-		close(r.processExit)
 	}
 	r.started = false
 
