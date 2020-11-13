@@ -9,6 +9,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/context"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/services/horizon/internal/ledger"
 	"github.com/stellar/go/services/horizon/internal/resourceadapter"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/render/hal"
@@ -18,6 +19,7 @@ import (
 
 // AssetStatsHandler is the action handler for the /asset endpoint
 type AssetStatsHandler struct {
+	LedgerState *ledger.State
 }
 
 func (handler AssetStatsHandler) validateAssetParams(code, issuer string, pq db2.PageQuery) error {
@@ -123,7 +125,7 @@ func (handler AssetStatsHandler) GetResourcePage(
 		return nil, err
 	}
 
-	pq, err := GetPageQuery(r, DisableCursorValidation)
+	pq, err := GetPageQuery(handler.LedgerState, r, DisableCursorValidation)
 	if err != nil {
 		return nil, err
 	}

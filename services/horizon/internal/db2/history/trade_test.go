@@ -13,7 +13,8 @@ import (
 )
 
 func TestTradeQueries(t *testing.T) {
-	tt := test.Start(t).Scenario("kahuna")
+	tt := test.Start(t)
+	tt.Scenario("kahuna")
 	defer tt.Finish()
 	q := &Q{tt.HorizonSession()}
 	var trades []Trade
@@ -315,7 +316,8 @@ func TestBatchInsertTrade(t *testing.T) {
 }
 
 func TestTradesQueryForAccount(t *testing.T) {
-	tt := test.Start(t).Scenario("kahuna")
+	tt := test.Start(t)
+	tt.Scenario("kahuna")
 	defer tt.Finish()
 	q := &Q{tt.HorizonSession()}
 	tradesQ := q.Trades()
@@ -362,7 +364,8 @@ func TestTradesQueryForAccount(t *testing.T) {
 }
 
 func TestTradesQueryForOffer(t *testing.T) {
-	tt := test.Start(t).Scenario("kahuna")
+	tt := test.Start(t)
+	tt.Scenario("kahuna")
 	defer tt.Finish()
 	q := &Q{tt.HorizonSession()}
 	tradesQ := q.Trades()

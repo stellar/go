@@ -74,7 +74,7 @@ func NewStreamablePageTest(
 	ledgerSource := ledger.NewTestingSource(currentLedger)
 	action.ledgerSource = ledgerSource
 	streamHandler := sse.StreamHandler{LedgerSourceFactory: &testingFactory{ledgerSource}}
-	handler := streamableStatePageHandler(action, streamHandler)
+	handler := streamableStatePageHandler(&ledger.State{}, action, streamHandler)
 
 	return newStreamTest(
 		handler.renderStream,

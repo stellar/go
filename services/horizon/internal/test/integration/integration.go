@@ -24,7 +24,6 @@ import (
 	"github.com/stellar/go/keypair"
 	proto "github.com/stellar/go/protocols/horizon"
 	horizon "github.com/stellar/go/services/horizon/internal"
-	"github.com/stellar/go/services/horizon/internal/ledger"
 	"github.com/stellar/go/support/db/dbtest"
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/txnbuild"
@@ -97,9 +96,6 @@ func NewTest(t *testing.T, config Config) *Test {
 	cleanup := func() {
 		if i.app != nil {
 			i.app.Close()
-			// Clear the ledger state otherwise the root response
-			// will contain ledger information from the previous test run
-			ledger.SetState(ledger.State{})
 		}
 		runComposeCommand("down", "-v", "--remove-orphans")
 	}
