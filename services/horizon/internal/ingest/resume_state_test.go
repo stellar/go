@@ -276,7 +276,13 @@ func (s *ResumeTestTestSuite) mockSuccessfulIngestion() {
 	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(102)).Return(true, nil).Once()
 	s.ledgerBackend.On("GetLatestLedgerSequence").Return(uint32(111), nil).Once()
 
-	s.runner.On("RunAllProcessorsOnLedger", uint32(102)).Return(io.StatsChangeProcessorResults{}, io.StatsLedgerTransactionProcessorResults{}, nil).Once()
+	s.runner.On("RunAllProcessorsOnLedger", uint32(102)).Return(
+		io.StatsChangeProcessorResults{},
+		processorsRunDurations{},
+		io.StatsLedgerTransactionProcessorResults{},
+		processorsRunDurations{},
+		nil,
+	).Once()
 	s.historyQ.On("UpdateLastLedgerExpIngest", uint32(102)).Return(nil).Once()
 	s.historyQ.On("Commit").Return(nil).Once()
 
@@ -340,7 +346,13 @@ func (s *ResumeTestTestSuite) TestErrorSettingCursorIgnored() {
 	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(101)).Return(true, nil).Once()
 	s.ledgerBackend.On("GetLatestLedgerSequence").Return(uint32(111), nil).Once()
 
-	s.runner.On("RunAllProcessorsOnLedger", uint32(101)).Return(io.StatsChangeProcessorResults{}, io.StatsLedgerTransactionProcessorResults{}, nil).Once()
+	s.runner.On("RunAllProcessorsOnLedger", uint32(101)).Return(
+		io.StatsChangeProcessorResults{},
+		processorsRunDurations{},
+		io.StatsLedgerTransactionProcessorResults{},
+		processorsRunDurations{},
+		nil,
+	).Once()
 	s.historyQ.On("UpdateLastLedgerExpIngest", uint32(101)).Return(nil).Once()
 	s.historyQ.On("Commit").Return(nil).Once()
 
