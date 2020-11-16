@@ -69,13 +69,17 @@ type CaptiveStellarCore struct {
 	archive           historyarchive.ArchiveInterface
 	ledgerHashStore   TrustedLedgerHashStore
 
-	ledgerBuffer bufferedLedgerMetaReader
+	// Quick note on how shutdown works:
+	// If Stellar-Core exits, the exit signal is "catched" by bufferedLedgerMetaReader
+	// (which ends it's go routine) and later propagated via metaResult to
+	// CaptiveStellarCore.
+	// If user calls CaptiveStellarCore.Close(), it kills Stellar-Core process
+	// and the rest is handles by the process explained above.
+	ledgerBuffer      *bufferedLedgerMetaReader
+	stellarCoreRunner stellarCoreRunnerInterface
 
 	// For testing
 	stellarCoreRunnerFactory func(configPath string) (stellarCoreRunnerInterface, error)
-
-	stellarCoreRunner stellarCoreRunnerInterface
-	cachedMeta        *xdr.LedgerCloseMeta
 
 	// Defines if the blocking mode (off by default) is on or off. In blocking mode,
 	// calling GetLedger blocks until the requested ledger is available. This is useful
@@ -83,6 +87,9 @@ type CaptiveStellarCore struct {
 	// and using `time.Sleep` when ledger is not available can actually slow entire
 	// ingestion process.
 	blocking bool
+
+	// cachedMeta keeps that ledger data of the last fetched ledger. Updated in GetLedger().
+	cachedMeta *xdr.LedgerCloseMeta
 
 	nextLedger uint32  // next ledger expected, error w/ restart if not seen
 	lastLedger *uint32 // end of current segment if offline, nil if online
@@ -203,7 +210,7 @@ func (c *CaptiveStellarCore) openOfflineReplaySubprocess(from, to uint32) error 
 
 	// read-ahead buffer
 	c.ledgerBuffer = newBufferedLedgerMetaReader(c.stellarCoreRunner)
-	go c.ledgerBuffer.Start(to)
+	go c.ledgerBuffer.start(to)
 	return nil
 }
 
@@ -262,7 +269,7 @@ func (c *CaptiveStellarCore) openOnlineReplaySubprocess(from uint32) error {
 
 	// read-ahead buffer
 	c.ledgerBuffer = newBufferedLedgerMetaReader(c.stellarCoreRunner)
-	go c.ledgerBuffer.Start(0)
+	go c.ledgerBuffer.start(0)
 
 	// if nextLedger is behind - fast-forward until expected ledger
 	if c.nextLedger < from {
@@ -365,25 +372,14 @@ func (c *CaptiveStellarCore) PrepareRange(ledgerRange Range) error {
 		return errors.Wrap(err, "opening subprocess")
 	}
 
-	metaPipe := c.stellarCoreRunner.getMetaPipe()
-	if metaPipe == nil {
-		return errors.New("missing metadata pipe")
-	}
-
 	for {
 		select {
 		case <-c.stellarCoreRunner.getProcessExitChan():
-			processErr := c.stellarCoreRunner.getProcessExitError()
-			if processErr != nil {
-				err = errors.Wrap(processErr, "stellar-core process exited with an error")
-			} else {
-				err = errors.New("stellar-core process exited unexpectedly without an error")
-			}
-			return err
+			return wrapStellarCoreRunnerError(c.stellarCoreRunner)
 		default:
 		}
 		// Wait for the first ledger or an error
-		if len(c.ledgerBuffer.GetChannel()) > 0 {
+		if len(c.ledgerBuffer.getChannel()) > 0 {
 			break
 		}
 		time.Sleep(c.waitIntervalPrepareRange)
@@ -449,26 +445,25 @@ func (c *CaptiveStellarCore) GetLedger(sequence uint32) (bool, xdr.LedgerCloseMe
 		)
 	}
 
+	if c.lastLedger != nil && sequence > *c.lastLedger {
+		return false, xdr.LedgerCloseMeta{}, errors.Errorf(
+			"reading past bounded range (requested sequence=%d, last ledger in range=%d)",
+			sequence,
+			*c.lastLedger,
+		)
+	}
+
 	// Now loop along the range until we find the ledger we want.
 	var errOut error
 loop:
 	for {
-		if !c.blocking && len(c.ledgerBuffer.GetChannel()) == 0 {
+		if !c.blocking && len(c.ledgerBuffer.getChannel()) == 0 {
 			return false, xdr.LedgerCloseMeta{}, nil
 		}
 
-		var result metaResult
-		select {
-		case <-c.stellarCoreRunner.getProcessExitChan():
-			processErr := c.stellarCoreRunner.getProcessExitError()
-			if processErr != nil {
-				errOut = errors.Wrap(processErr, "stellar-core process exited with an error")
-			} else {
-				errOut = errors.New("stellar-core process exited unexpectedly without an error")
-			}
-			break loop
-		case result = <-c.ledgerBuffer.GetChannel():
-		}
+		// We don't have to handle getProcessExitChan() because this is handled
+		// in bufferedLedgerMetaReader (will send an error to the channel).
+		result := <-c.ledgerBuffer.getChannel()
 		if result.err != nil {
 			errOut = result.err
 			break loop
@@ -514,7 +509,7 @@ func (c *CaptiveStellarCore) GetLatestLedgerSequence() (uint32, error) {
 	}
 
 	if c.lastLedger == nil {
-		return c.nextLedger - 1 + uint32(len(c.ledgerBuffer.GetChannel())), nil
+		return c.nextLedger - 1 + uint32(len(c.ledgerBuffer.getChannel())), nil
 	}
 	return *c.lastLedger, nil
 }
@@ -526,9 +521,6 @@ func (c *CaptiveStellarCore) isClosed() bool {
 // Close closes existing Stellar-Core process, streaming sessions and removes all
 // temporary files.
 func (c *CaptiveStellarCore) Close() error {
-	c.nextLedger = 0
-	c.lastLedger = nil
-
 	if c.stellarCoreRunner != nil {
 		// Closing stellarCoreRunner will automatically close bufferedLedgerMetaReader
 		// because it's listening for getProcessExitChan().
@@ -537,7 +529,22 @@ func (c *CaptiveStellarCore) Close() error {
 		if err != nil {
 			return errors.Wrap(err, "error closing stellar-core subprocess")
 		}
+
+		// Wait for bufferedLedgerMetaReader go routine to return.
+		c.ledgerBuffer.waitForClose()
+		c.ledgerBuffer = nil
 	}
 
+	c.nextLedger = 0
+	c.lastLedger = nil
+
 	return nil
+}
+
+func wrapStellarCoreRunnerError(r stellarCoreRunnerInterface) error {
+	processErr := r.getProcessExitError()
+	if processErr != nil {
+		return errors.Wrap(processErr, "stellar-core process exited with an error")
+	}
+	return errors.New("stellar-core process exited unexpectedly without an error")
 }

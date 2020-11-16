@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"testing"
-	"time"
 
 	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/network"
@@ -148,9 +147,11 @@ func TestCaptivePrepareRange(t *testing.T) {
 		writeLedgerHeader(&buf, uint32(i))
 	}
 
+	exitChan := make(chan struct{})
 	mockRunner := &stellarCoreRunnerMock{}
 	mockRunner.On("catchup", uint32(100), uint32(200)).Return(nil).Once()
-	mockRunner.On("getProcessExitChan").Return(make(chan struct{}))
+	mockRunner.On("getProcessExitChan").Return(exitChan)
+	mockRunner.On("getProcessExitError").Return(nil)
 	mockRunner.On("getMetaPipe").Return(&buf)
 	mockRunner.On("close").Return(nil).Once()
 
@@ -172,6 +173,7 @@ func TestCaptivePrepareRange(t *testing.T) {
 	err := captiveBackend.PrepareRange(BoundedRange(100, 200))
 	assert.NoError(t, err)
 	mockRunner.On("close").Return(nil).Once()
+	close(exitChan)
 	err = captiveBackend.Close()
 	assert.NoError(t, err)
 }
@@ -490,10 +492,12 @@ func TestGetLatestLedgerSequence(t *testing.T) {
 		writeLedgerHeader(&buf, uint32(i))
 	}
 
+	exitChan := make(chan struct{})
 	mockRunner := &stellarCoreRunnerMock{}
 	mockRunner.On("runFrom", uint32(62), "0000000000000000000000000000000000000000000000000000000000000000").Return(nil).Once()
 	mockRunner.On("getMetaPipe").Return(&buf)
-	mockRunner.On("getProcessExitChan").Return(make(chan struct{}))
+	mockRunner.On("getProcessExitChan").Return(exitChan)
+	mockRunner.On("getProcessExitError").Return(nil)
 	mockRunner.On("close").Return(nil).Once()
 
 	mockArchive := &historyarchive.MockArchive{}
@@ -539,6 +543,9 @@ func TestGetLatestLedgerSequence(t *testing.T) {
 	assert.Equal(t, uint32(64+ledgerReadAheadBufferSize), latest)
 
 	mockRunner.On("close").Return(nil).Once()
+
+	close(exitChan)
+
 	err = captiveBackend.Close()
 	assert.NoError(t, err)
 }
@@ -711,6 +718,113 @@ func TestCaptiveGetLedger_ErrClosingAfterLastLedger(t *testing.T) {
 	tt.EqualError(err, "error closing session: error closing stellar-core subprocess: transient error")
 }
 
+// TestCaptiveGetLedger_BoundedGetLedgerAfterCoreExit tests if GetLedger return
+// ledgers in a buffer after Stellar-Core process exits gracefully (because range
+// ledgers already streamed). This is checked to ensure Stellar-Core process exit
+// signal does not cause errors before getting all the ledgers from the range.
+func TestCaptiveGetLedger_BoundedGetLedgerAfterCoreExit(t *testing.T) {
+	tt := assert.New(t)
+	var buf bytes.Buffer
+	for i := 64; i <= 70; i++ {
+		writeLedgerHeader(&buf, uint32(i))
+	}
+
+	mockRunner := &stellarCoreRunnerMock{}
+	exitChan := make(chan struct{})
+	mockRunner.On("catchup", uint32(65), uint32(70)).Return(nil)
+	mockRunner.On("getProcessExitChan").Return(exitChan)
+	mockRunner.On("getProcessExitError").Return(nil)
+	mockRunner.On("getMetaPipe").Return(&buf)
+	mockRunner.On("close").Return(nil)
+
+	mockArchive := &historyarchive.MockArchive{}
+	mockArchive.
+		On("GetRootHAS").
+		Return(historyarchive.HistoryArchiveState{
+			CurrentLedger: uint32(200),
+		}, nil)
+
+	captiveBackend := CaptiveStellarCore{
+		archive:           mockArchive,
+		networkPassphrase: network.PublicNetworkPassphrase,
+		stellarCoreRunnerFactory: func(configPath string) (stellarCoreRunnerInterface, error) {
+			return mockRunner, nil
+		},
+	}
+
+	err := captiveBackend.PrepareRange(BoundedRange(65, 70))
+	assert.NoError(t, err)
+
+	waitForLedgersInBuffer(&captiveBackend, 70-64+1)
+
+	// All ledgers from bounded range buffered so Stellar-Core terminates.
+	close(exitChan)
+
+	for seq := uint32(66); seq <= 70; seq++ {
+		_, _, err = captiveBackend.GetLedger(seq)
+		tt.NoError(err)
+	}
+
+	err = captiveBackend.Close()
+	assert.NoError(t, err)
+}
+
+// TestCaptiveGetLedger_CloseBufferFull tests the case when ledger buffer is full
+// and waitForClose() reads items from a channel to make room so that go routine
+// can return.
+func TestCaptiveGetLedger_CloseBufferFull(t *testing.T) {
+	var buf bytes.Buffer
+	for i := 2; i <= 200; i++ {
+		writeLedgerHeader(&buf, uint32(i))
+	}
+
+	mockRunner := &stellarCoreRunnerMock{}
+	exitChan := make(chan struct{})
+	mockRunner.On("runFrom", uint32(62), "0000000000000000000000000000000000000000000000000000000000000000").Return(nil).Once()
+	mockRunner.On("getProcessExitChan").Return(exitChan)
+	mockRunner.On("getProcessExitError").Return(nil)
+	mockRunner.On("getMetaPipe").Return(&buf)
+	mockRunner.On("close").Return(nil)
+
+	mockArchive := &historyarchive.MockArchive{}
+	mockArchive.
+		On("GetRootHAS").
+		Return(historyarchive.HistoryArchiveState{
+			CurrentLedger: uint32(200),
+		}, nil)
+	mockArchive.
+		On("GetLedgerHeader", uint32(63)).
+		Return(xdr.LedgerHeaderHistoryEntry{}, nil)
+
+	captiveBackend := CaptiveStellarCore{
+		archive:           mockArchive,
+		configPath:        "foo",
+		networkPassphrase: network.PublicNetworkPassphrase,
+		stellarCoreRunnerFactory: func(configPath string) (stellarCoreRunnerInterface, error) {
+			return mockRunner, nil
+		},
+	}
+
+	err := captiveBackend.PrepareRange(UnboundedRange(65))
+	assert.NoError(t, err)
+
+	waitForBufferToFill(&captiveBackend)
+
+	// All ledgers from bounded range buffered so Stellar-Core terminates.
+	// close(exitChan)
+
+	err = captiveBackend.Close()
+	assert.NoError(t, err)
+}
+
+func waitForLedgersInBuffer(captiveBackend *CaptiveStellarCore, count int) {
+	for {
+		if len(captiveBackend.ledgerBuffer.c) == count {
+			break
+		}
+	}
+}
+
 func waitForBufferToFill(captiveBackend *CaptiveStellarCore) {
 	for {
 		if len(captiveBackend.ledgerBuffer.c) == ledgerReadAheadBufferSize {
@@ -726,8 +840,10 @@ func TestGetLedgerBoundsCheck(t *testing.T) {
 	writeLedgerHeader(&buf, 130)
 
 	mockRunner := &stellarCoreRunnerMock{}
+	exitChan := make(chan struct{})
 	mockRunner.On("catchup", uint32(128), uint32(130)).Return(nil).Once()
-	mockRunner.On("getProcessExitChan").Return(make(chan struct{}))
+	mockRunner.On("getProcessExitChan").Return(exitChan).Maybe()
+	mockRunner.On("getProcessExitError").Return(nil).Maybe()
 	mockRunner.On("getMetaPipe").Return(&buf)
 	mockRunner.On("close").Return(nil).Once()
 
@@ -771,7 +887,9 @@ func TestGetLedgerBoundsCheck(t *testing.T) {
 	writeLedgerHeader(&buf, 64)
 	writeLedgerHeader(&buf, 65)
 	writeLedgerHeader(&buf, 66)
+
 	mockRunner.On("catchup", uint32(64), uint32(66)).Return(nil).Once()
+	mockRunner.On("getProcessExitChan").Return(exitChan)
 	mockRunner.On("getMetaPipe").Return(&buf)
 	mockRunner.On("close").Return(nil).Once()
 
@@ -783,6 +901,7 @@ func TestGetLedgerBoundsCheck(t *testing.T) {
 	assert.True(t, exists)
 	assert.Equal(t, uint32(64), meta.LedgerSequence())
 
+	close(exitChan)
 	err = captiveBackend.Close()
 	assert.NoError(t, err)
 	mockRunner.AssertExpectations(t)
@@ -817,13 +936,6 @@ func TestCaptiveGetLedgerTerminated(t *testing.T) {
 	go writeLedgerHeader(writer, 64)
 	err := captiveBackend.PrepareRange(BoundedRange(64, 100))
 	assert.NoError(t, err)
-	for {
-		// Wait for ledger to appear in the buffer
-		if len(captiveBackend.ledgerBuffer.c) == 1 {
-			break
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
 
 	exists, meta, err := captiveBackend.GetLedger(64)
 	assert.NoError(t, err)

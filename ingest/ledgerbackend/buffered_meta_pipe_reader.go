@@ -65,15 +65,17 @@ type bufferedLedgerMetaReader struct {
 	r      *bufio.Reader
 	c      chan metaResult
 	runner stellarCoreRunnerInterface
+	closed chan struct{}
 }
 
 // newBufferedLedgerMetaReader creates a new meta reader that will shutdown
 // when stellar-core terminates.
-func newBufferedLedgerMetaReader(runner stellarCoreRunnerInterface) bufferedLedgerMetaReader {
-	return bufferedLedgerMetaReader{
+func newBufferedLedgerMetaReader(runner stellarCoreRunnerInterface) *bufferedLedgerMetaReader {
+	return &bufferedLedgerMetaReader{
 		c:      make(chan metaResult, ledgerReadAheadBufferSize),
 		r:      bufio.NewReaderSize(runner.getMetaPipe(), metaPipeBufferSize),
 		runner: runner,
+		closed: make(chan struct{}),
 	}
 }
 
@@ -87,7 +89,7 @@ func (b *bufferedLedgerMetaReader) readLedgerMetaFromPipe() (*xdr.LedgerCloseMet
 	if err != nil {
 		select {
 		case <-b.runner.getProcessExitChan():
-			return nil, errors.New("stellar-core process not-running")
+			return nil, wrapStellarCoreRunnerError(b.runner)
 		default:
 			return nil, errors.Wrap(err, "error reading frame length")
 		}
@@ -97,7 +99,7 @@ func (b *bufferedLedgerMetaReader) readLedgerMetaFromPipe() (*xdr.LedgerCloseMet
 		// Wait for LedgerCloseMeta buffer to be cleared to minimize memory usage.
 		select {
 		case <-b.runner.getProcessExitChan():
-			return nil, errors.New("stellar-core process not-running")
+			return nil, wrapStellarCoreRunnerError(b.runner)
 		case <-time.After(time.Second):
 		}
 	}
@@ -112,7 +114,7 @@ func (b *bufferedLedgerMetaReader) readLedgerMetaFromPipe() (*xdr.LedgerCloseMet
 
 		select {
 		case <-b.runner.getProcessExitChan():
-			return nil, errors.New("stellar-core process not-running")
+			return nil, wrapStellarCoreRunnerError(b.runner)
 		default:
 			return nil, err
 		}
@@ -120,16 +122,38 @@ func (b *bufferedLedgerMetaReader) readLedgerMetaFromPipe() (*xdr.LedgerCloseMet
 	return &xlcm, nil
 }
 
-func (b *bufferedLedgerMetaReader) GetChannel() <-chan metaResult {
+func (b *bufferedLedgerMetaReader) getChannel() <-chan metaResult {
 	return b.c
 }
 
-func (b *bufferedLedgerMetaReader) Start(untilSequence uint32) {
+func (b *bufferedLedgerMetaReader) waitForClose() {
+	// If buffer is full, keep reading to make sure it receives
+	// a shutdown signal from stellarCoreRunner.
+loop:
+	for {
+		select {
+		case <-b.c:
+		case <-b.closed:
+			break loop
+		}
+	}
+}
+
+// Start starts an internal go routine that reads binary ledger data into
+// internal buffers. The go routine returns when Stellar-Core process exits
+// however it won't happen instantly when data is read. A blocking method:
+// waitForClose() can be used to block until go routine returns.
+func (b *bufferedLedgerMetaReader) start(untilSequence uint32) {
 	printBufferOccupation := time.NewTicker(5 * time.Second)
-	defer printBufferOccupation.Stop()
+	defer func() {
+		printBufferOccupation.Stop()
+		close(b.closed)
+	}()
+
 	for {
 		select {
 		case <-b.runner.getProcessExitChan():
+			b.c <- metaResult{nil, wrapStellarCoreRunnerError(b.runner)}
 			return
 		case <-printBufferOccupation.C:
 			log.Debug("captive core read-ahead buffer occupation:", len(b.c))
@@ -140,15 +164,14 @@ func (b *bufferedLedgerMetaReader) Start(untilSequence uint32) {
 		if err != nil {
 			// When `GetLedger` sees the error it will close the backend. We shouldn't
 			// close it now because there may be some ledgers in a buffer.
-			select {
-			case b.c <- metaResult{nil, err}:
-			case <-b.runner.getProcessExitChan():
-			}
+			b.c <- metaResult{nil, err}
 			return
 		}
+
 		select {
 		case b.c <- metaResult{meta, nil}:
 		case <-b.runner.getProcessExitChan():
+			b.c <- metaResult{nil, wrapStellarCoreRunnerError(b.runner)}
 			return
 		}
 
