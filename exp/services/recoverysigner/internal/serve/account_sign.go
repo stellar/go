@@ -141,10 +141,18 @@ func (h accountSignHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if opSourceAccount == nil {
 			continue
 		}
+
 		if op.GetSourceAccount().GetAccountID() != req.Address.Address() {
-			l.Info("Operation's source account is not the account.")
-			badRequest.Render(w)
-			return
+			if beginSponsoringOp, ok := op.(*txnbuild.BeginSponsoringFutureReserves); ok {
+				if beginSponsoringOp.SponsoredID != req.Address.Address() {
+					l.Info("BeginSponsoringFutureReserves.SponsoredID is not the account.")
+					return
+				}
+			} else {
+				l.Info("Operation's source account is not the account.")
+				badRequest.Render(w)
+				return
+			}
 		}
 	}
 
