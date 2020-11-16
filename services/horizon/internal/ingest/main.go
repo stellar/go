@@ -107,6 +107,9 @@ type Metrics struct {
 
 	// LedgerStatsCounter exposes ledger stats counters (like number of ops/changes).
 	LedgerStatsCounter *prometheus.CounterVec
+
+	// ProcessorsRunDuration exposes processors run durations.
+	ProcessorsRunDuration *prometheus.CounterVec
 }
 
 type System interface {
@@ -266,6 +269,14 @@ func (s *system) initMetrics() {
 			Help: "counters of different ledger stats",
 		},
 		[]string{"type"},
+	)
+
+	s.metrics.ProcessorsRunDuration = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: "horizon", Subsystem: "ingest", Name: "processor_run_duration_seconds_total",
+			Help: "run durations of ingestion processors",
+		},
+		[]string{"name"},
 	)
 }
 
