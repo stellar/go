@@ -390,23 +390,37 @@ func (c *CaptiveStellarCore) PrepareRange(ledgerRange Range) error {
 
 // IsPrepared returns true if a given ledgerRange is prepared.
 func (c *CaptiveStellarCore) IsPrepared(ledgerRange Range) (bool, error) {
-	if c.nextLedger == 0 {
-		return false, nil
+	lastLedger := uint32(0)
+	if c.lastLedger != nil {
+		lastLedger = *c.lastLedger
 	}
 
-	if c.lastLedger == nil {
-		return c.nextLedger <= ledgerRange.from, nil
+	cachedLedger := uint32(0)
+	if c.cachedMeta != nil {
+		cachedLedger = c.cachedMeta.LedgerSequence()
 	}
 
-	// From now on: c.lastLedger != nil so current range is bounded
+	return c.isPrepared(c.nextLedger, lastLedger, cachedLedger, ledgerRange), nil
+}
+
+func (*CaptiveStellarCore) isPrepared(nextLedger, lastLedger, cachedLedger uint32, ledgerRange Range) bool {
+	if nextLedger == 0 {
+		return false
+	}
+
+	if lastLedger == 0 {
+		return nextLedger <= ledgerRange.from || cachedLedger == ledgerRange.from
+	}
+
+	// From now on: lastLedger != 0 so current range is bounded
 
 	if ledgerRange.bounded {
-		return c.nextLedger <= ledgerRange.from &&
-			c.nextLedger <= *c.lastLedger, nil
+		return (nextLedger <= ledgerRange.from || cachedLedger == ledgerRange.from) &&
+			lastLedger >= ledgerRange.to
 	}
 
 	// Requested range is unbounded but current one is bounded
-	return false, nil
+	return false
 }
 
 // GetLedger returns true when ledger is found and it's LedgerCloseMeta.

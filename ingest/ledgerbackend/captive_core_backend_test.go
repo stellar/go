@@ -1067,3 +1067,37 @@ func TestCaptiveRunFromParams(t *testing.T) {
 		})
 	}
 }
+
+func TestCaptiveIsPrepared(t *testing.T) {
+	var tests = []struct {
+		nextLedger   uint32
+		lastLedger   uint32
+		cachedLedger uint32
+		ledgerRange  Range
+		result       bool
+	}{
+		{0, 0, 0, UnboundedRange(100), false},
+		{100, 0, 0, UnboundedRange(101), true},
+		{101, 0, 100, UnboundedRange(100), true},
+		{100, 200, 0, UnboundedRange(100), false},
+
+		{100, 200, 0, BoundedRange(100, 200), true},
+		{100, 200, 0, BoundedRange(100, 201), false},
+		{100, 201, 0, BoundedRange(100, 200), true},
+		{101, 200, 100, BoundedRange(100, 200), true},
+	}
+
+	for _, tc := range tests {
+		t.Run(fmt.Sprintf("next_%d_last_%d_cached_%d_range_%v", tc.nextLedger, tc.lastLedger, tc.cachedLedger, tc.ledgerRange), func(t *testing.T) {
+			captiveBackend := CaptiveStellarCore{}
+
+			result := captiveBackend.isPrepared(
+				tc.nextLedger,
+				tc.lastLedger,
+				tc.cachedLedger,
+				tc.ledgerRange,
+			)
+			assert.Equal(t, tc.result, result)
+		})
+	}
+}
