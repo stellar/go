@@ -13,6 +13,7 @@ import (
 
 	"github.com/stellar/go/ingest/adapters"
 	ingestio "github.com/stellar/go/ingest/io"
+	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"
@@ -25,6 +26,7 @@ func TestVerifyRangeStateTestSuite(t *testing.T) {
 
 type VerifyRangeStateTestSuite struct {
 	suite.Suite
+	ledgerBackend  *ledgerbackend.MockDatabaseBackend
 	historyQ       *mockDBQ
 	historyAdapter *adapters.MockHistoryArchiveAdapter
 	runner         *mockProcessorsRunner
@@ -32,6 +34,7 @@ type VerifyRangeStateTestSuite struct {
 }
 
 func (s *VerifyRangeStateTestSuite) SetupTest() {
+	s.ledgerBackend = &ledgerbackend.MockDatabaseBackend{}
 	s.historyQ = &mockDBQ{}
 	s.historyAdapter = &adapters.MockHistoryArchiveAdapter{}
 	s.runner = &mockProcessorsRunner{}
@@ -39,6 +42,7 @@ func (s *VerifyRangeStateTestSuite) SetupTest() {
 		ctx:            context.Background(),
 		historyQ:       s.historyQ,
 		historyAdapter: s.historyAdapter,
+		ledgerBackend:  s.ledgerBackend,
 		runner:         s.runner,
 	}
 	s.system.initMetrics()
@@ -133,6 +137,7 @@ func (s *VerifyRangeStateTestSuite) TestGetLastLedgerExpIngestNonEmpty() {
 func (s *VerifyRangeStateTestSuite) TestRunHistoryArchiveIngestionReturnsError() {
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
+	s.ledgerBackend.On("PrepareRange", ledgerbackend.BoundedRange(100, 200)).Return(nil).Once()
 
 	s.runner.On("RunHistoryArchiveIngestion", uint32(100)).Return(ingestio.StatsChangeProcessorResults{}, errors.New("my error")).Once()
 
@@ -148,6 +153,7 @@ func (s *VerifyRangeStateTestSuite) TestRunHistoryArchiveIngestionReturnsError()
 func (s *VerifyRangeStateTestSuite) TestSuccess() {
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
+	s.ledgerBackend.On("PrepareRange", ledgerbackend.BoundedRange(100, 200)).Return(nil).Once()
 	s.runner.On("RunHistoryArchiveIngestion", uint32(100)).Return(ingestio.StatsChangeProcessorResults{}, nil).Once()
 	s.historyQ.On("UpdateLastLedgerExpIngest", uint32(100)).Return(nil).Once()
 	s.historyQ.On("Commit").Return(nil).Once()
@@ -171,6 +177,7 @@ func (s *VerifyRangeStateTestSuite) TestSuccess() {
 func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
+	s.ledgerBackend.On("PrepareRange", ledgerbackend.BoundedRange(100, 110)).Return(nil).Once()
 	s.runner.On("RunHistoryArchiveIngestion", uint32(100)).Return(ingestio.StatsChangeProcessorResults{}, nil).Once()
 	s.historyQ.On("UpdateLastLedgerExpIngest", uint32(100)).Return(nil).Once()
 	s.historyQ.On("Commit").Return(nil).Once()

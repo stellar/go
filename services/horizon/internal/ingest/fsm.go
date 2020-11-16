@@ -781,10 +781,21 @@ func (v verifyRangeState) run(s *system) (transition, error) {
 		return stop(), err
 	}
 
-	log.WithFields(logpkg.F{
-		"ledger": v.fromLedger,
-	}).Info("Processing state")
+	log.WithField("ledger", v.fromLedger).Info("Preparing range")
 	startTime := time.Now()
+
+	err = s.ledgerBackend.PrepareRange(ledgerbackend.BoundedRange(v.fromLedger, v.toLedger))
+	if err != nil {
+		return stop(), errors.Wrap(err, "Error preparing range")
+	}
+
+	log.WithFields(logpkg.F{
+		"ledger":   v.fromLedger,
+		"duration": time.Since(startTime).Seconds(),
+	}).Info("Range prepared")
+
+	log.WithField("ledger", v.fromLedger).Info("Processing state")
+	startTime = time.Now()
 
 	stats, err := s.runner.RunHistoryArchiveIngestion(v.fromLedger)
 	if err != nil {
