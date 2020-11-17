@@ -96,8 +96,8 @@ func (c *ServeCommand) Command() *cobra.Command {
 			Required:    false,
 		},
 		{
-			Name:      "cap33-allowed-source-accounts",
-			Usage:     "A comma-separated list of accounts that are not authorized by the signing key and are accepted as source account when signing transactions",
+			Name:      "allowed-source-accounts",
+			Usage:     "Stellar account(s) allowed as source accounts in transactions signed for all users in addition to the registered account comma separated (important: these accounts must never be registered accounts and must never have the signer configured that is a signing key used by this server)",
 			OptType:   types.String,
 			ConfigKey: &opts.CAP33AllowedSourceAccounts,
 			Required:  true,

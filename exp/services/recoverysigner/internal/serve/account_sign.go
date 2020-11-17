@@ -151,7 +151,7 @@ OUTER:
 				}
 			}
 
-			l.Info("Operation's source account is not the request account nor any known CAP-33 authorized account.")
+			l.Info("Operation's source account is not the account in the request and not any account that is configured to be allowed.")
 			badRequest.Render(w)
 			return
 		}
