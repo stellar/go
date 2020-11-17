@@ -13,11 +13,11 @@ import (
 )
 
 type accountSignHandler struct {
-	Logger                     *supportlog.Entry
-	SigningKeys                []*keypair.Full
-	NetworkPassphrase          string
-	AccountStore               account.Store
-	CAP33AllowedSourceAccounts []string
+	Logger                *supportlog.Entry
+	SigningKeys           []*keypair.Full
+	NetworkPassphrase     string
+	AccountStore          account.Store
+	AllowedSourceAccounts []string
 }
 
 type accountSignRequest struct {
@@ -145,7 +145,7 @@ OUTER:
 		}
 
 		if op.GetSourceAccount().GetAccountID() != req.Address.Address() {
-			for _, sa := range h.CAP33AllowedSourceAccounts {
+			for _, sa := range h.AllowedSourceAccounts {
 				if sa == op.GetSourceAccount().GetAccountID() {
 					continue OUTER
 				}

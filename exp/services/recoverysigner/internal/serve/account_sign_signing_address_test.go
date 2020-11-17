@@ -1006,8 +1006,8 @@ func TestAccountSign_signingAddressEmailOwnerAuthenticatedSignsCap33(t *testing.
 			keypair.MustParseFull("SBIB72S6JMTGJRC6LMKLC5XMHZ2IOHZSZH4SASTN47LECEEJ7QEB6EYK"), // GBOG4KF66M4AFRBUHOTJQJRO7BGGFCSGIICTI5BHXHKXCWV2C67QRN5H
 			keypair.MustParseFull("SBJGZKZ7LU2FQNEFBUOBW4LHCA5BOZCABIJTR7BQIFWQ3P763ZW7MYDD"), // GAPE22DOMALCH42VOR4S3HN6KIZZ643G7D3GNTYF4YOWWXP6UVRAF5JS
 		},
-		NetworkPassphrase:          network.TestNetworkPassphrase,
-		CAP33AllowedSourceAccounts: []string{"GDR3RJVOHYR5A4RSLZ7D3GOSTPBGD2FY7KJD7ZB7363ROOQHWYDVVULS"},
+		NetworkPassphrase:     network.TestNetworkPassphrase,
+		AllowedSourceAccounts: []string{"GDR3RJVOHYR5A4RSLZ7D3GOSTPBGD2FY7KJD7ZB7363ROOQHWYDVVULS"},
 	}
 
 	tx, err := txnbuild.NewTransaction(
@@ -1065,7 +1065,7 @@ func TestAccountSign_signingAddressEmailOwnerAuthenticatedSignsCap33(t *testing.
 	// request fails with 400 if the source account is not CAP-33 allowed
 	m = chi.NewMux()
 
-	h.CAP33AllowedSourceAccounts = nil
+	h.AllowedSourceAccounts = nil
 	m.Post("/{address}/sign/{signing-address}", h.ServeHTTP)
 
 	w = httptest.NewRecorder()
