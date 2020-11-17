@@ -1061,6 +1061,18 @@ func TestAccountSign_signingAddressEmailOwnerAuthenticatedSignsCap33(t *testing.
 	"network_passphrase": "Test SDF Network ; September 2015"
 }`
 	assert.JSONEq(t, wantBody, string(body))
+
+	// request fails with 400 if the source account is not CAP-33 allowed
+	m = chi.NewMux()
+
+	h.CAP33AllowedSourceAccounts = nil
+	m.Post("/{address}/sign/{signing-address}", h.ServeHTTP)
+
+	w = httptest.NewRecorder()
+	m.ServeHTTP(w, r)
+
+	resp = w.Result()
+	require.Equal(t, http.StatusBadRequest, resp.StatusCode)
 }
 
 // Test that when authenticated with a email signing is possible.
