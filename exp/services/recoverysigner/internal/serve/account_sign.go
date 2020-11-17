@@ -137,7 +137,6 @@ func (h accountSignHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		badRequest.Render(w)
 		return
 	}
-OUTER:
 	for _, op := range tx.Operations() {
 		opSourceAccount := op.GetSourceAccount()
 		if opSourceAccount == nil {
@@ -145,15 +144,19 @@ OUTER:
 		}
 
 		if op.GetSourceAccount().GetAccountID() != req.Address.Address() {
+			var opHasAllowedAccount bool
 			for _, sa := range h.AllowedSourceAccounts {
 				if sa.Address() == op.GetSourceAccount().GetAccountID() {
-					continue OUTER
+					opHasAllowedAccount = true
+					break
 				}
 			}
 
-			l.Info("Operation's source account is not the account in the request and not any account that is configured to be allowed.")
-			badRequest.Render(w)
-			return
+			if !opHasAllowedAccount {
+				l.Info("Operation's source account is not the account in the request and not any account that is configured to be allowed.")
+				badRequest.Render(w)
+				return
+			}
 		}
 	}
 
