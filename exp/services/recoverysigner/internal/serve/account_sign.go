@@ -17,7 +17,7 @@ type accountSignHandler struct {
 	SigningKeys           []*keypair.Full
 	NetworkPassphrase     string
 	AccountStore          account.Store
-	AllowedSourceAccounts []string
+	AllowedSourceAccounts []*keypair.FromAddress
 }
 
 type accountSignRequest struct {
@@ -146,7 +146,7 @@ OUTER:
 
 		if op.GetSourceAccount().GetAccountID() != req.Address.Address() {
 			for _, sa := range h.AllowedSourceAccounts {
-				if sa == op.GetSourceAccount().GetAccountID() {
+				if sa.Address() == op.GetSourceAccount().GetAccountID() {
 					continue OUTER
 				}
 			}

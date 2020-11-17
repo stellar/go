@@ -74,7 +74,7 @@ type handlerDeps struct {
 	SEP10JWTIssuer        string
 	FirebaseAuthClient    *firebaseauth.Client
 	MetricsRegistry       *prometheus.Registry
-	AllowedSourceAccounts []string
+	AllowedSourceAccounts []*keypair.FromAddress
 }
 
 func getHandlerDeps(opts Options) (handlerDeps, error) {
@@ -144,7 +144,14 @@ func getHandlerDeps(opts Options) (handlerDeps, error) {
 		opts.Logger.Warn("Error registering metric for accounts count: ", err)
 	}
 
-	allowedSourceAccounts := strings.Split(opts.AllowedSourceAccounts, ",")
+	var allowedSourceAccounts []*keypair.FromAddress
+	for _, addressStr := range strings.Split(opts.AllowedSourceAccounts, ",") {
+		accountAddress, err := keypair.ParseAddress(addressStr)
+		if err != nil {
+			return handlerDeps{}, errors.Wrap(err, "parsing allowed source accounts")
+		}
+		allowedSourceAccounts = append(allowedSourceAccounts, accountAddress)
+	}
 
 	deps := handlerDeps{
 		Logger:                opts.Logger,

@@ -1006,8 +1006,10 @@ func TestAccountSign_signingAddressEmailOwnerAuthenticatedSignsCap33(t *testing.
 			keypair.MustParseFull("SBIB72S6JMTGJRC6LMKLC5XMHZ2IOHZSZH4SASTN47LECEEJ7QEB6EYK"), // GBOG4KF66M4AFRBUHOTJQJRO7BGGFCSGIICTI5BHXHKXCWV2C67QRN5H
 			keypair.MustParseFull("SBJGZKZ7LU2FQNEFBUOBW4LHCA5BOZCABIJTR7BQIFWQ3P763ZW7MYDD"), // GAPE22DOMALCH42VOR4S3HN6KIZZ643G7D3GNTYF4YOWWXP6UVRAF5JS
 		},
-		NetworkPassphrase:     network.TestNetworkPassphrase,
-		AllowedSourceAccounts: []string{"GDR3RJVOHYR5A4RSLZ7D3GOSTPBGD2FY7KJD7ZB7363ROOQHWYDVVULS"},
+		NetworkPassphrase: network.TestNetworkPassphrase,
+		AllowedSourceAccounts: []*keypair.FromAddress{
+			keypair.MustParseAddress("GDR3RJVOHYR5A4RSLZ7D3GOSTPBGD2FY7KJD7ZB7363ROOQHWYDVVULS"),
+		},
 	}
 
 	tx, err := txnbuild.NewTransaction(
