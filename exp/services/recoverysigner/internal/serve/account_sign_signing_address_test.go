@@ -986,8 +986,9 @@ func TestAccountSign_signingAddressEmailOwnerAuthenticated(t *testing.T) {
 	assert.JSONEq(t, wantBody, string(body))
 }
 
-// Tests that transactions with cap-33 operations can be signed.
-func TestAccountSign_signingAddressEmailOwnerAuthenticatedSignsCap33(t *testing.T) {
+// Test that when the source account of the operation is listed in the allowed
+// source accounts a successful response is returned.
+func TestAccountSign_signingAddressEmailOwnerAuthenticatedOpSourceAccountIsAllowedSourceAccount(t *testing.T) {
 	s := &account.DBStore{DB: dbtest.Open(t).Open()}
 	s.Add(account.Account{
 		Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4",
@@ -1062,18 +1063,80 @@ func TestAccountSign_signingAddressEmailOwnerAuthenticatedSignsCap33(t *testing.
 		"network_passphrase": "Test SDF Network ; September 2015"
 	}`
 	assert.JSONEq(t, wantBody, string(body))
+}
 
-	// request fails with 400 if the source account is not CAP-33 allowed
-	m = chi.NewMux()
+// Test that when the source account of the operation is not the account sign
+// the request is calling sign on a bad request response is returned.
+func TestAccountSign_signingAddressEmailOwnerAuthenticatedOpSourceAccountInvalid(t *testing.T) {
+	s := &account.DBStore{DB: dbtest.Open(t).Open()}
+	s.Add(account.Account{
+		Address: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4",
+		Identities: []account.Identity{
+			{
+				Role: "sender",
+				AuthMethods: []account.AuthMethod{
+					{Type: account.AuthMethodTypeEmail, Value: "user1@example.com"},
+				},
+			},
+		},
+	})
+	h := accountSignHandler{
+		Logger:       supportlog.DefaultLogger,
+		AccountStore: s,
+		SigningKeys: []*keypair.Full{
+			keypair.MustParseFull("SBIB72S6JMTGJRC6LMKLC5XMHZ2IOHZSZH4SASTN47LECEEJ7QEB6EYK"), // GBOG4KF66M4AFRBUHOTJQJRO7BGGFCSGIICTI5BHXHKXCWV2C67QRN5H
+			keypair.MustParseFull("SBJGZKZ7LU2FQNEFBUOBW4LHCA5BOZCABIJTR7BQIFWQ3P763ZW7MYDD"), // GAPE22DOMALCH42VOR4S3HN6KIZZ643G7D3GNTYF4YOWWXP6UVRAF5JS
+		},
+		NetworkPassphrase:     network.TestNetworkPassphrase,
+		AllowedSourceAccounts: nil,
+	}
 
-	h.AllowedSourceAccounts = nil
+	tx, err := txnbuild.NewTransaction(
+		txnbuild.TransactionParams{
+			SourceAccount:        &txnbuild.SimpleAccount{AccountID: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4"},
+			IncrementSequenceNum: true,
+			Operations: []txnbuild.Operation{
+				&txnbuild.BeginSponsoringFutureReserves{
+					SponsoredID:   "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4",
+					SourceAccount: &txnbuild.SimpleAccount{AccountID: "GDR3RJVOHYR5A4RSLZ7D3GOSTPBGD2FY7KJD7ZB7363ROOQHWYDVVULS"},
+				},
+				&txnbuild.SetOptions{
+					Signer: &txnbuild.Signer{
+						Address: "GD7CGJSJ5OBOU5KOP2UQDH3MPY75UTEY27HVV5XPSL2X6DJ2VGTOSXEU",
+						Weight:  20,
+					},
+				},
+				&txnbuild.EndSponsoringFutureReserves{},
+			},
+			BaseFee:    txnbuild.MinBaseFee,
+			Timebounds: txnbuild.NewTimebounds(0, 1),
+		},
+	)
+	require.NoError(t, err)
+	txEnc, err := tx.Base64()
+	require.NoError(t, err)
+	t.Log("Tx:", txEnc)
+
+	ctx := context.Background()
+	ctx = auth.NewContext(ctx, auth.Auth{Email: "user1@example.com"})
+	req := fmt.Sprintf(`{"transaction": "%s"}`, txEnc)
+	r := httptest.NewRequest("POST", "/GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4/sign/GBOG4KF66M4AFRBUHOTJQJRO7BGGFCSGIICTI5BHXHKXCWV2C67QRN5H", strings.NewReader(req))
+	r = r.WithContext(ctx)
+
+	w := httptest.NewRecorder()
+	m := chi.NewMux()
 	m.Post("/{address}/sign/{signing-address}", h.ServeHTTP)
-
-	w = httptest.NewRecorder()
 	m.ServeHTTP(w, r)
+	resp := w.Result()
 
-	resp = w.Result()
 	require.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
+
+	body, err := ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	wantBody := `{"error": "The request was invalid in some way."}`
+	assert.JSONEq(t, wantBody, string(body))
 }
 
 // Test that when authenticated with a email signing is possible.
