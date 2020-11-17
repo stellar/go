@@ -2,6 +2,7 @@ package serve
 
 import (
 	"context"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -1040,9 +1041,7 @@ func TestAccountSign_signingAddressEmailOwnerAuthenticatedSignsCap33(t *testing.
 
 	ctx := context.Background()
 	ctx = auth.NewContext(ctx, auth.Auth{Email: "user1@example.com"})
-	req := `{
-	"transaction": "` + txEnc + `"
-}`
+	req := fmt.Sprintf(`{"transaction": "%s"}`, txEnc)
 	r := httptest.NewRequest("POST", "/GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4/sign/GBOG4KF66M4AFRBUHOTJQJRO7BGGFCSGIICTI5BHXHKXCWV2C67QRN5H", strings.NewReader(req))
 	r = r.WithContext(ctx)
 
@@ -1059,9 +1058,9 @@ func TestAccountSign_signingAddressEmailOwnerAuthenticatedSignsCap33(t *testing.
 	require.NoError(t, err)
 
 	wantBody := `{
-	"signature": "Tpl/yZoKkahakaX4fSrdIeBLL2oi4uKegs5bLXFj5fG6Rcfe2D4EeSHcjJmmO2ZscuY8pX8+YPo70AvCtfw9Ag==",
-	"network_passphrase": "Test SDF Network ; September 2015"
-}`
+		"signature": "Tpl/yZoKkahakaX4fSrdIeBLL2oi4uKegs5bLXFj5fG6Rcfe2D4EeSHcjJmmO2ZscuY8pX8+YPo70AvCtfw9Ag==",
+		"network_passphrase": "Test SDF Network ; September 2015"
+	}`
 	assert.JSONEq(t, wantBody, string(body))
 
 	// request fails with 400 if the source account is not CAP-33 allowed
