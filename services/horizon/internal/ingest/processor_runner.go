@@ -23,9 +23,13 @@ const (
 	logFrequency         = 100000
 )
 
+type horizonChangeProcessor interface {
+	io.ChangeProcessor
+	Commit() error
+}
+
 type horizonTransactionProcessor interface {
 	io.LedgerTransactionProcessor
-	// TODO maybe rename to Flush()
 	Commit() error
 }
 
@@ -51,11 +55,17 @@ type ProcessorRunnerInterface interface {
 	EnableMemoryStatsLogging()
 	DisableMemoryStatsLogging()
 	RunHistoryArchiveIngestion(checkpointLedger uint32) (io.StatsChangeProcessorResults, error)
-	RunTransactionProcessorsOnLedger(sequence uint32) (io.StatsLedgerTransactionProcessorResults, error)
+	RunTransactionProcessorsOnLedger(sequence uint32) (
+		transactionStats io.StatsLedgerTransactionProcessorResults,
+		transactionDurations processorsRunDurations,
+		err error,
+	)
 	RunAllProcessorsOnLedger(sequence uint32) (
-		io.StatsChangeProcessorResults,
-		io.StatsLedgerTransactionProcessorResults,
-		error,
+		changeStats io.StatsChangeProcessorResults,
+		changeDurations processorsRunDurations,
+		transactionStats io.StatsLedgerTransactionProcessorResults,
+		transactionDurations processorsRunDurations,
+		err error,
 	)
 }
 
@@ -91,13 +101,13 @@ func (s *ProcessorRunner) buildChangeProcessor(
 	changeStats *io.StatsChangeProcessor,
 	source ingestionSource,
 	sequence uint32,
-) horizonChangeProcessor {
+) *groupChangeProcessors {
 	statsChangeProcessor := &statsChangeProcessor{
 		StatsChangeProcessor: changeStats,
 	}
 
 	useLedgerCache := source == ledgerSource
-	return groupChangeProcessors{
+	return newGroupChangeProcessors([]horizonChangeProcessor{
 		statsChangeProcessor,
 		processors.NewAccountDataProcessor(s.historyQ),
 		processors.NewAccountsProcessor(s.historyQ),
@@ -106,19 +116,19 @@ func (s *ProcessorRunner) buildChangeProcessor(
 		processors.NewSignersProcessor(s.historyQ, useLedgerCache),
 		processors.NewTrustLinesProcessor(s.historyQ),
 		processors.NewClaimableBalancesProcessor(s.historyQ),
-	}
+	})
 }
 
 func (s *ProcessorRunner) buildTransactionProcessor(
 	ledgerTransactionStats *io.StatsLedgerTransactionProcessor,
 	ledger xdr.LedgerHeaderHistoryEntry,
-) horizonTransactionProcessor {
+) *groupTransactionProcessors {
 	statsLedgerTransactionProcessor := &statsLedgerTransactionProcessor{
 		StatsLedgerTransactionProcessor: ledgerTransactionStats,
 	}
 
 	sequence := uint32(ledger.Header.LedgerSeq)
-	return groupTransactionProcessors{
+	return newGroupTransactionProcessors([]horizonTransactionProcessor{
 		statsLedgerTransactionProcessor,
 		processors.NewEffectProcessor(s.historyQ, sequence),
 		processors.NewLedgerProcessor(s.historyQ, ledger, CurrentVersion),
@@ -126,7 +136,7 @@ func (s *ProcessorRunner) buildTransactionProcessor(
 		processors.NewTradeProcessor(s.historyQ, ledger),
 		processors.NewParticipantsProcessor(s.historyQ, sequence),
 		processors.NewTransactionProcessor(s.historyQ, sequence),
-	}
+	})
 }
 
 // checkIfProtocolVersionSupported checks if this Horizon version supports the
@@ -270,52 +280,73 @@ func (s *ProcessorRunner) runChangeProcessorOnLedger(
 	return nil
 }
 
-func (s *ProcessorRunner) RunTransactionProcessorsOnLedger(ledger uint32) (io.StatsLedgerTransactionProcessorResults, error) {
-	ledgerTransactionStats := io.StatsLedgerTransactionProcessor{}
+func (s *ProcessorRunner) RunTransactionProcessorsOnLedger(ledger uint32) (
+	transactionStats io.StatsLedgerTransactionProcessorResults,
+	transactionDurations processorsRunDurations,
+	err error,
+) {
+	var (
+		ledgerTransactionStats io.StatsLedgerTransactionProcessor
+		transactionReader      *io.LedgerTransactionReader
+	)
 
-	transactionReader, err := io.NewLedgerTransactionReader(s.ledgerBackend, s.config.NetworkPassphrase, ledger)
+	transactionReader, err = io.NewLedgerTransactionReader(s.ledgerBackend, s.config.NetworkPassphrase, ledger)
 	if err != nil {
-		return ledgerTransactionStats.GetResults(), errors.Wrap(err, "Error creating ledger reader")
+		err = errors.Wrap(err, "Error creating ledger reader")
+		return
 	}
 
 	if err = s.checkIfProtocolVersionSupported(ledger); err != nil {
-		return ledgerTransactionStats.GetResults(), errors.Wrap(err, "Error while checking for supported protocol version")
+		err = errors.Wrap(err, "Error while checking for supported protocol version")
+		return
 	}
 
-	txProcessor := s.buildTransactionProcessor(&ledgerTransactionStats, transactionReader.GetHeader())
-	err = io.StreamLedgerTransactions(txProcessor, transactionReader)
+	groupTransactionProcessors := s.buildTransactionProcessor(&ledgerTransactionStats, transactionReader.GetHeader())
+	err = io.StreamLedgerTransactions(groupTransactionProcessors, transactionReader)
 	if err != nil {
-		return ledgerTransactionStats.GetResults(), errors.Wrap(err, "Error streaming changes from ledger")
+		err = errors.Wrap(err, "Error streaming changes from ledger")
+		return
 	}
 
-	err = txProcessor.Commit()
+	err = groupTransactionProcessors.Commit()
 	if err != nil {
-		return ledgerTransactionStats.GetResults(), errors.Wrap(err, "Error commiting changes from processor")
+		err = errors.Wrap(err, "Error commiting changes from processor")
+		return
 	}
 
-	return ledgerTransactionStats.GetResults(), nil
+	transactionStats = ledgerTransactionStats.GetResults()
+	transactionDurations = groupTransactionProcessors.processorsRunDurations
+	return
 }
 
-func (s *ProcessorRunner) RunAllProcessorsOnLedger(sequence uint32) (io.StatsChangeProcessorResults, io.StatsLedgerTransactionProcessorResults, error) {
-	changeStats := io.StatsChangeProcessor{}
-	var statsLedgerTransactionProcessorResults io.StatsLedgerTransactionProcessorResults
+func (s *ProcessorRunner) RunAllProcessorsOnLedger(sequence uint32) (
+	changeStats io.StatsChangeProcessorResults,
+	changeDurations processorsRunDurations,
+	transactionStats io.StatsLedgerTransactionProcessorResults,
+	transactionDurations processorsRunDurations,
+	err error,
+) {
+	changeStatsProcessor := io.StatsChangeProcessor{}
 
-	if err := s.checkIfProtocolVersionSupported(sequence); err != nil {
-		return changeStats.GetResults(), statsLedgerTransactionProcessorResults, errors.Wrap(err, "Error while checking for supported protocol version")
+	if err = s.checkIfProtocolVersionSupported(sequence); err != nil {
+		err = errors.Wrap(err, "Error while checking for supported protocol version")
+		return
 	}
 
-	err := s.runChangeProcessorOnLedger(
-		s.buildChangeProcessor(&changeStats, ledgerSource, sequence),
-		sequence,
-	)
+	groupChangeProcessors := s.buildChangeProcessor(&changeStatsProcessor, ledgerSource, sequence)
+	err = s.runChangeProcessorOnLedger(groupChangeProcessors, sequence)
 	if err != nil {
-		return changeStats.GetResults(), statsLedgerTransactionProcessorResults, err
+		return
 	}
 
-	statsLedgerTransactionProcessorResults, err = s.RunTransactionProcessorsOnLedger(sequence)
+	changeStats = changeStatsProcessor.GetResults()
+	changeDurations = groupChangeProcessors.processorsRunDurations
+
+	transactionStats, transactionDurations, err =
+		s.RunTransactionProcessorsOnLedger(sequence)
 	if err != nil {
-		return changeStats.GetResults(), statsLedgerTransactionProcessorResults, err
+		return
 	}
 
-	return changeStats.GetResults(), statsLedgerTransactionProcessorResults, nil
+	return
 }

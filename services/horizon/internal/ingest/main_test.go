@@ -411,16 +411,30 @@ func (m *mockProcessorsRunner) RunHistoryArchiveIngestion(checkpointLedger uint3
 	return args.Get(0).(io.StatsChangeProcessorResults), args.Error(1)
 }
 
-func (m *mockProcessorsRunner) RunAllProcessorsOnLedger(sequence uint32) (io.StatsChangeProcessorResults, io.StatsLedgerTransactionProcessorResults, error) {
+func (m *mockProcessorsRunner) RunAllProcessorsOnLedger(sequence uint32) (
+	io.StatsChangeProcessorResults,
+	processorsRunDurations,
+	io.StatsLedgerTransactionProcessorResults,
+	processorsRunDurations,
+	error,
+) {
 	args := m.Called(sequence)
 	return args.Get(0).(io.StatsChangeProcessorResults),
-		args.Get(1).(io.StatsLedgerTransactionProcessorResults),
-		args.Error(2)
+		args.Get(1).(processorsRunDurations),
+		args.Get(2).(io.StatsLedgerTransactionProcessorResults),
+		args.Get(3).(processorsRunDurations),
+		args.Error(4)
 }
 
-func (m *mockProcessorsRunner) RunTransactionProcessorsOnLedger(sequence uint32) (io.StatsLedgerTransactionProcessorResults, error) {
+func (m *mockProcessorsRunner) RunTransactionProcessorsOnLedger(sequence uint32) (
+	io.StatsLedgerTransactionProcessorResults,
+	processorsRunDurations,
+	error,
+) {
 	args := m.Called(sequence)
-	return args.Get(0).(io.StatsLedgerTransactionProcessorResults), args.Error(1)
+	return args.Get(0).(io.StatsLedgerTransactionProcessorResults),
+		args.Get(1).(processorsRunDurations),
+		args.Error(2)
 }
 
 var _ ProcessorRunnerInterface = (*mockProcessorsRunner)(nil)

@@ -457,7 +457,8 @@ func (r resumeState) run(s *system) (transition, error) {
 		"commit":   true,
 	}).Info("Processing ledger")
 
-	changeStats, ledgerTransactionStats, err := s.runner.RunAllProcessorsOnLedger(ingestLedger)
+	changeStats, changeDurations, transactionStats, transactionDurations, err :=
+		s.runner.RunAllProcessorsOnLedger(ingestLedger)
 	if err != nil {
 		return retryResume(r), errors.Wrap(err, "Error running processors on ledger")
 	}
@@ -477,13 +478,15 @@ func (r resumeState) run(s *system) (transition, error) {
 	// Update stats metrics
 	changeStatsMap := changeStats.Map()
 	r.addLedgerStatsMetricFromMap(s, "change", changeStatsMap)
+	r.addProcessorDurationsMetricFromMap(s, changeDurations)
 
-	ledgerTransactionStatsMap := ledgerTransactionStats.Map()
-	r.addLedgerStatsMetricFromMap(s, "ledger", ledgerTransactionStatsMap)
+	transactionStatsMap := transactionStats.Map()
+	r.addLedgerStatsMetricFromMap(s, "ledger", transactionStatsMap)
+	r.addProcessorDurationsMetricFromMap(s, transactionDurations)
 
 	log.
 		WithFields(changeStatsMap).
-		WithFields(ledgerTransactionStatsMap).
+		WithFields(transactionStatsMap).
 		WithFields(logpkg.F{
 			"sequence": ingestLedger,
 			"duration": duration,
@@ -503,6 +506,15 @@ func (r resumeState) addLedgerStatsMetricFromMap(s *system, prefix string, m map
 		stat = strings.Replace(stat, "stats_", prefix+"_", 1)
 		s.Metrics().LedgerStatsCounter.
 			With(prometheus.Labels{"type": stat}).Add(float64(value.(int64)))
+	}
+}
+
+func (r resumeState) addProcessorDurationsMetricFromMap(s *system, m map[string]time.Duration) {
+	for processorName, value := range m {
+		// * is not accepted in Prometheus labels
+		processorName = strings.Replace(processorName, "*", "", -1)
+		s.Metrics().ProcessorsRunDuration.
+			With(prometheus.Labels{"name": processorName}).Add(value.Seconds())
 	}
 }
 
@@ -576,7 +588,7 @@ func runTransactionProcessorsOnLedger(s *system, ledger uint32) error {
 	}).Info("Processing ledger")
 	startTime := time.Now()
 
-	ledgerTransactionStats, err := s.runner.RunTransactionProcessorsOnLedger(ledger)
+	ledgerTransactionStats, _, err := s.runner.RunTransactionProcessorsOnLedger(ledger)
 	if err != nil {
 		return errors.Wrap(err, fmt.Sprintf("error processing ledger sequence=%d", ledger))
 	}
@@ -831,7 +843,7 @@ func (v verifyRangeState) run(s *system) (transition, error) {
 
 		var changeStats io.StatsChangeProcessorResults
 		var ledgerTransactionStats io.StatsLedgerTransactionProcessorResults
-		changeStats, ledgerTransactionStats, err = s.runner.RunAllProcessorsOnLedger(sequence)
+		changeStats, _, ledgerTransactionStats, _, err = s.runner.RunAllProcessorsOnLedger(sequence)
 		if err != nil {
 			err = errors.Wrap(err, "Error running processors on ledger")
 			return stop(), err
@@ -898,7 +910,7 @@ func (stressTestState) run(s *system) (transition, error) {
 	}).Info("Processing ledger")
 	startTime := time.Now()
 
-	changeStats, ledgerTransactionStats, err := s.runner.RunAllProcessorsOnLedger(sequence)
+	changeStats, _, ledgerTransactionStats, _, err := s.runner.RunAllProcessorsOnLedger(sequence)
 	if err != nil {
 		err = errors.Wrap(err, "Error running processors on ledger")
 		return stop(), err
