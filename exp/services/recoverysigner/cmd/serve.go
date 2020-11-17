@@ -95,6 +95,13 @@ func (c *ServeCommand) Command() *cobra.Command {
 			FlagDefault: "recoverysigner",
 			Required:    false,
 		},
+		{
+			Name:      "cap33-allowed-source-accounts",
+			Usage:     "A comma-separated list of accounts that are not authorized by the signing key and are accepted as source account when signing transactions",
+			OptType:   types.String,
+			ConfigKey: &opts.CAP33AllowedSourceAccounts,
+			Required:  true,
+		},
 	}
 	cmd := &cobra.Command{
 		Use:   "serve",

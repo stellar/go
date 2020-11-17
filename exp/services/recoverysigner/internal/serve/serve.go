@@ -33,6 +33,8 @@ type Options struct {
 
 	AdminPort        int
 	MetricsNamespace string
+
+	CAP33AllowedSourceAccounts string
 }
 
 func Serve(opts Options) {
@@ -63,15 +65,16 @@ func Serve(opts Options) {
 }
 
 type handlerDeps struct {
-	Logger             *supportlog.Entry
-	NetworkPassphrase  string
-	SigningKeys        []*keypair.Full
-	SigningAddresses   []*keypair.FromAddress
-	AccountStore       account.Store
-	SEP10JWKS          jose.JSONWebKeySet
-	SEP10JWTIssuer     string
-	FirebaseAuthClient *firebaseauth.Client
-	MetricsRegistry    *prometheus.Registry
+	Logger                     *supportlog.Entry
+	NetworkPassphrase          string
+	SigningKeys                []*keypair.Full
+	SigningAddresses           []*keypair.FromAddress
+	AccountStore               account.Store
+	SEP10JWKS                  jose.JSONWebKeySet
+	SEP10JWTIssuer             string
+	FirebaseAuthClient         *firebaseauth.Client
+	MetricsRegistry            *prometheus.Registry
+	CAP33AllowedSourceAccounts []string
 }
 
 func getHandlerDeps(opts Options) (handlerDeps, error) {
@@ -141,16 +144,19 @@ func getHandlerDeps(opts Options) (handlerDeps, error) {
 		opts.Logger.Warn("Error registering metric for accounts count: ", err)
 	}
 
+	cap33AllowedSourceAccounts := strings.Split(opts.CAP33AllowedSourceAccounts, ",")
+
 	deps := handlerDeps{
-		Logger:             opts.Logger,
-		NetworkPassphrase:  opts.NetworkPassphrase,
-		SigningKeys:        signingKeys,
-		SigningAddresses:   signingAddresses,
-		AccountStore:       accountStore,
-		SEP10JWKS:          sep10JWKS,
-		SEP10JWTIssuer:     opts.SEP10JWTIssuer,
-		FirebaseAuthClient: firebaseAuthClient,
-		MetricsRegistry:    metricsRegistry,
+		Logger:                     opts.Logger,
+		NetworkPassphrase:          opts.NetworkPassphrase,
+		SigningKeys:                signingKeys,
+		SigningAddresses:           signingAddresses,
+		AccountStore:               accountStore,
+		SEP10JWKS:                  sep10JWKS,
+		SEP10JWTIssuer:             opts.SEP10JWTIssuer,
+		FirebaseAuthClient:         firebaseAuthClient,
+		MetricsRegistry:            metricsRegistry,
+		CAP33AllowedSourceAccounts: cap33AllowedSourceAccounts,
 	}
 
 	return deps, nil
@@ -193,10 +199,11 @@ func handler(deps handlerDeps) http.Handler {
 				AccountStore:     deps.AccountStore,
 			}.ServeHTTP)
 			signHandler := accountSignHandler{
-				Logger:            deps.Logger,
-				SigningKeys:       deps.SigningKeys,
-				NetworkPassphrase: deps.NetworkPassphrase,
-				AccountStore:      deps.AccountStore,
+				Logger:                     deps.Logger,
+				SigningKeys:                deps.SigningKeys,
+				NetworkPassphrase:          deps.NetworkPassphrase,
+				AccountStore:               deps.AccountStore,
+				CAP33AllowedSourceAccounts: deps.CAP33AllowedSourceAccounts,
 			}
 			mux.Post("/sign", signHandler.ServeHTTP)
 			mux.Post("/sign/{signing-address}", signHandler.ServeHTTP)

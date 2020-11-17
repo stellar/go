@@ -13,10 +13,11 @@ import (
 )
 
 type accountSignHandler struct {
-	Logger            *supportlog.Entry
-	SigningKeys       []*keypair.Full
-	NetworkPassphrase string
-	AccountStore      account.Store
+	Logger                     *supportlog.Entry
+	SigningKeys                []*keypair.Full
+	NetworkPassphrase          string
+	AccountStore               account.Store
+	CAP33AllowedSourceAccounts []string
 }
 
 type accountSignRequest struct {
@@ -136,6 +137,7 @@ func (h accountSignHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		badRequest.Render(w)
 		return
 	}
+OUTER:
 	for _, op := range tx.Operations() {
 		opSourceAccount := op.GetSourceAccount()
 		if opSourceAccount == nil {
@@ -143,16 +145,15 @@ func (h accountSignHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if op.GetSourceAccount().GetAccountID() != req.Address.Address() {
-			if beginSponsoringOp, ok := op.(*txnbuild.BeginSponsoringFutureReserves); ok {
-				if beginSponsoringOp.SponsoredID != req.Address.Address() {
-					l.Info("BeginSponsoringFutureReserves.SponsoredID is not the account.")
-					return
+			for _, sa := range h.CAP33AllowedSourceAccounts {
+				if sa == op.GetSourceAccount().GetAccountID() {
+					continue OUTER
 				}
-			} else {
-				l.Info("Operation's source account is not the account.")
-				badRequest.Render(w)
-				return
 			}
+
+			l.Info("Operation's source account is not the request account nor any known CAP-33 authorized account.")
+			badRequest.Render(w)
+			return
 		}
 	}
 
