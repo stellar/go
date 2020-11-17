@@ -326,9 +326,9 @@ func (c *CaptiveStellarCore) runFromParams(from uint32) (runFrom uint32, ledgerH
 	runFrom = from - 1
 	if c.ledgerHashStore != nil {
 		var exists bool
-		ledgerHash, exists, err = c.ledgerHashStore.GetLedgerHash(from)
+		ledgerHash, exists, err = c.ledgerHashStore.GetLedgerHash(runFrom)
 		if err != nil {
-			err = errors.Wrapf(err, "error trying to read ledger hash %d", from)
+			err = errors.Wrapf(err, "error trying to read ledger hash %d", runFrom)
 			return
 		}
 		if exists {

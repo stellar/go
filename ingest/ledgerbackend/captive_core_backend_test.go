@@ -962,13 +962,13 @@ func TestCaptiveUseOfLedgerHashStore(t *testing.T) {
 		}, nil)
 
 	mockLedgerHashStore := &MockLedgerHashStore{}
-	mockLedgerHashStore.On("GetLedgerHash", uint32(1023)).
+	mockLedgerHashStore.On("GetLedgerHash", uint32(1022)).
 		Return("", false, fmt.Errorf("transient error")).Once()
-	mockLedgerHashStore.On("GetLedgerHash", uint32(255)).
+	mockLedgerHashStore.On("GetLedgerHash", uint32(254)).
 		Return("", false, nil).Once()
-	mockLedgerHashStore.On("GetLedgerHash", uint32(63)).
+	mockLedgerHashStore.On("GetLedgerHash", uint32(62)).
 		Return("cde", true, nil).Once()
-	mockLedgerHashStore.On("GetLedgerHash", uint32(127)).
+	mockLedgerHashStore.On("GetLedgerHash", uint32(126)).
 		Return("ghi", true, nil).Once()
 
 	captiveBackend := CaptiveStellarCore{
@@ -997,7 +997,7 @@ func TestCaptiveUseOfLedgerHashStore(t *testing.T) {
 	assert.Equal(t, uint32(64), nextLedger)
 
 	runFrom, ledgerHash, nextLedger, err = captiveBackend.runFromParams(1050)
-	assert.EqualError(t, err, "error trying to read ledger hash 1023: transient error")
+	assert.EqualError(t, err, "error trying to read ledger hash 1022: transient error")
 
 	runFrom, ledgerHash, nextLedger, err = captiveBackend.runFromParams(300)
 	assert.NoError(t, err)
