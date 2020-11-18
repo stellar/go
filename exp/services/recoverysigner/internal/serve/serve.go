@@ -144,7 +144,7 @@ func getHandlerDeps(opts Options) (handlerDeps, error) {
 		opts.Logger.Warn("Error registering metric for accounts count: ", err)
 	}
 
-	var allowedSourceAccounts []*keypair.FromAddress
+	allowedSourceAccounts := []*keypair.FromAddress{}
 	for _, addressStr := range strings.Split(opts.AllowedSourceAccounts, ",") {
 		accountAddress, err := keypair.ParseAddress(addressStr)
 		if err != nil {
