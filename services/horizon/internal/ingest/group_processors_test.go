@@ -56,10 +56,10 @@ func TestGroupChangeProcessorsTestSuiteLedger(t *testing.T) {
 func (s *GroupChangeProcessorsTestSuiteLedger) SetupTest() {
 	s.processorA = &mockHorizonChangeProcessor{}
 	s.processorB = &mockHorizonChangeProcessor{}
-	s.processors = &groupChangeProcessors{
+	s.processors = newGroupChangeProcessors([]horizonChangeProcessor{
 		s.processorA,
 		s.processorB,
-	}
+	})
 }
 
 func (s *GroupChangeProcessorsTestSuiteLedger) TearDownTest() {
@@ -127,10 +127,10 @@ func TestGroupTransactionProcessorsTestSuiteLedger(t *testing.T) {
 func (s *GroupTransactionProcessorsTestSuiteLedger) SetupTest() {
 	s.processorA = &mockHorizonTransactionProcessor{}
 	s.processorB = &mockHorizonTransactionProcessor{}
-	s.processors = &groupTransactionProcessors{
+	s.processors = newGroupTransactionProcessors([]horizonTransactionProcessor{
 		s.processorA,
 		s.processorB,
-	}
+	})
 }
 
 func (s *GroupTransactionProcessorsTestSuiteLedger) TearDownTest() {

@@ -160,8 +160,13 @@ func (s *VerifyRangeStateTestSuite) TestSuccess() {
 
 	for i := uint32(101); i <= 200; i++ {
 		s.historyQ.On("Begin").Return(nil).Once()
-		s.runner.On("RunAllProcessorsOnLedger", i).Return(ingestio.StatsChangeProcessorResults{},
-			ingestio.StatsLedgerTransactionProcessorResults{}, nil).Once()
+		s.runner.On("RunAllProcessorsOnLedger", i).Return(
+			ingestio.StatsChangeProcessorResults{},
+			processorsRunDurations{},
+			ingestio.StatsLedgerTransactionProcessorResults{},
+			processorsRunDurations{},
+			nil,
+		).Once()
 		s.historyQ.On("UpdateLastLedgerExpIngest", i).Return(nil).Once()
 		s.historyQ.On("Commit").Return(nil).Once()
 	}
@@ -184,8 +189,13 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 
 	for i := uint32(101); i <= 110; i++ {
 		s.historyQ.On("Begin").Return(nil).Once()
-		s.runner.On("RunAllProcessorsOnLedger", i).Return(ingestio.StatsChangeProcessorResults{},
-			ingestio.StatsLedgerTransactionProcessorResults{}, nil).Once()
+		s.runner.On("RunAllProcessorsOnLedger", i).Return(
+			ingestio.StatsChangeProcessorResults{},
+			processorsRunDurations{},
+			ingestio.StatsLedgerTransactionProcessorResults{},
+			processorsRunDurations{},
+			nil,
+		).Once()
 		s.historyQ.On("UpdateLastLedgerExpIngest", i).Return(nil).Once()
 		s.historyQ.On("Commit").Return(nil).Once()
 	}
