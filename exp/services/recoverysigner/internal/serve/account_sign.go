@@ -13,10 +13,11 @@ import (
 )
 
 type accountSignHandler struct {
-	Logger            *supportlog.Entry
-	SigningKeys       []*keypair.Full
-	NetworkPassphrase string
-	AccountStore      account.Store
+	Logger                *supportlog.Entry
+	SigningKeys           []*keypair.Full
+	NetworkPassphrase     string
+	AccountStore          account.Store
+	AllowedSourceAccounts []*keypair.FromAddress
 }
 
 type accountSignRequest struct {
@@ -141,10 +142,21 @@ func (h accountSignHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if opSourceAccount == nil {
 			continue
 		}
+
 		if op.GetSourceAccount().GetAccountID() != req.Address.Address() {
-			l.Info("Operation's source account is not the account.")
-			badRequest.Render(w)
-			return
+			var opHasAllowedAccount bool
+			for _, sa := range h.AllowedSourceAccounts {
+				if sa.Address() == op.GetSourceAccount().GetAccountID() {
+					opHasAllowedAccount = true
+					break
+				}
+			}
+
+			if !opHasAllowedAccount {
+				l.Info("Operation's source account is not the account in the request and not any account that is configured to be allowed.")
+				badRequest.Render(w)
+				return
+			}
 		}
 	}
 
