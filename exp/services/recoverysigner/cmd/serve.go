@@ -100,7 +100,7 @@ func (c *ServeCommand) Command() *cobra.Command {
 			Usage:     "Stellar account(s) allowed as source accounts in transactions signed for all users in addition to the registered account comma separated (important: these accounts must never be registered accounts and must never have the signer configured that is a signing key used by this server)",
 			OptType:   types.String,
 			ConfigKey: &opts.AllowedSourceAccounts,
-			Required:  true,
+			Required:  false,
 		},
 	}
 	cmd := &cobra.Command{
