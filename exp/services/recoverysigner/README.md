@@ -1,7 +1,7 @@
 # Recovery Signer
 
 This is an incomplete and work-in-progress implementation of the [SEP-30]
-Recovery Signer protocol v0.4.0.
+Recovery Signer protocol v0.7.0.
 
 A Recovery Signer is a server that can help a user regain control of a Stellar
 account if they have lost their secret key. A user registers their account with
@@ -74,5 +74,5 @@ Flags:
 Use "recoverysigner db [command] --help" for more information about a command.
 ```
 
-[SEP-30]: https://github.com/stellar/stellar-protocol/blob/600c326b210d71ee031d7f3a40ca88191b4cdf9c/ecosystem/sep-0030.md
+[SEP-30]: https://github.com/stellar/stellar-protocol/blob/3e05bb668f94793545588106af74699b8d6b02d6/ecosystem/sep-0030.md
 [README-Firebase.md]: README-Firebase.md
