@@ -160,10 +160,10 @@ func (r *stellarCoreRunner) getLogLineWriter() io.Writer {
 				if writer, ok := levelMapping[strings.ToUpper(level)]; ok {
 					writer("%s: %s", category, line)
 				} else {
-					r.Log.Infof(line)
+					r.Log.Info(line)
 				}
 			} else {
-				r.Log.Infof(line)
+				r.Log.Info(line)
 			}
 		}
 	}()
