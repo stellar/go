@@ -101,7 +101,7 @@ func main() {
 		Run: func(_ *cobra.Command, _ []string) {
 			configOpts.Require()
 			configOpts.SetValues()
-			logger.Level = logLevel
+			logger.SetLevel(logLevel)
 
 			captiveConfig := ledgerbackend.CaptiveCoreConfig{
 				StellarCoreBinaryPath: binaryPath,
@@ -124,7 +124,8 @@ func main() {
 			if err != nil {
 				logger.WithError(err).Fatal("Could not create captive core instance")
 			}
-			api := internal.NewCaptiveCoreAPI(core, logger)
+			core.SetStellarCoreLogger(logger.WithField("subservice", "stellar-core"))
+			api := internal.NewCaptiveCoreAPI(core, logger.WithField("subservice", "api"))
 
 			supporthttp.Run(supporthttp.Config{
 				ListenAddr: fmt.Sprintf(":%d", port),
