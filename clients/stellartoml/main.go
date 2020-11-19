@@ -57,8 +57,6 @@ type Currency struct {
 	Image                       string   `toml:"image"`
 	FixedNumber                 int      `toml:"fixed_number"`
 	MaxNumber                   int      `toml:"max_number"`
-	IsUnlimited                 bool     `toml:"is_unlimited"`
-	IsAssetAnchored             bool     `toml:"is_asset_anchored"`
 	AnchorAsset                 string   `toml:"anchor_asset"`
 	RedemptionInstructions      string   `toml:"redemption_instructions"`
 	CollateralAddresses         []string `toml:"collateral_addresses"`
