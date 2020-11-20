@@ -162,7 +162,7 @@ func (r *stellarCoreRunner) getLogLineWriter() io.Writer {
 				} else {
 					r.Log.Info(line)
 				}
-			} else if len(line) > 1 { // non-empty
+			} else {
 				r.Log.Info(line)
 			}
 		}
