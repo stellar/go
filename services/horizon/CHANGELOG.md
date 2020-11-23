@@ -1,9 +1,14 @@
 # Changelog
 
 All notable changes to this project will be documented in this
-file. This project adheres to [Semantic Versioning](http://semver.org/).x
+file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
+
+## v1.12.0
+
+* Add Prometheus metrics for the duration of ingestion processors ([#3224](https://github.com/stellar/go/pull/3224))
+* Many Captive Core improvements and fixes ([#3232](https://github.com/stellar/go/pull/3232), [#3223](https://github.com/stellar/go/pull/3223), [#3226](https://github.com/stellar/go/pull/3226), [#3203](https://github.com/stellar/go/pull/3203), [#3189](https://github.com/stellar/go/pull/3189),  [#3187](https://github.com/stellar/go/pull/3187))
 
 ## v1.11.1
 
