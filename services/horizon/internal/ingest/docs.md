@@ -5,8 +5,8 @@ The following states are possible:
   - `build`
   - `resume`
   - `stressTest`
-  - `verifyRangeState`
-  - `historyRangeState`
+  - `verifyRange`
+  - `historyRange`
   - `reingestHistoryRange`
   - `waitForCheckpoint`
 
@@ -16,7 +16,7 @@ There are some important terms that need to be defined for clarity as they're us
   - the `historyQ` field corresponds to **historical *time-series* data**, *not* to the history *archives* (which only contain *cumulative* data); I prefer to refer to it as the `TimeSeriesDB`.
   - the `lastIngestedLedger` thus corresponds to the last ledger that Horizon  ingested into the time-series tables
   - the `lastHistoryLedger`, however, corresponds to the last ledger that Core+Horizon are *aware* of, not necessarily *ingested*; I refer to it as the `lastKnownLedger`
-  - the `lastCheckpoint` corresponds to the last checkpoint ledger (reminder: a checkpoint ledger is one in which: `ledger# mod 64 == 0`) and thus to a matching history archive upload.
+  - the `lastCheckpoint` corresponds to the last checkpoint ledger (reminder: a checkpoint ledger is one in which: `(ledger# + 1) mod 64 == 0`) and thus to a matching history archive upload.
 
 
 
@@ -26,13 +26,13 @@ As you might expect, this state kicks off the FSM process.
 There are a few possible branches in this state.
 
 ##### DB upgrade or fresh start
-The "happiest path" is the following: either the ingestion database is empty, so we can start purely from scratch, or the ingestion database is outdated, meaning it needs to be upgraded and so can effectively be started from scratch after catch-up.
+The "happiest path" is the following: either the ingestion database is empty, so we can start purely from scratch, or the state data in a database is outdated, meaning it needs to be upgraded and so can effectively be started from scratch after catch-up.
 
 This branches differently depending on the last known ledger:
 
   - If it's newer than the last checkpoint, we need to wait for a new checkpoint to get the latest cumulative data. Note that though we probably *could* make incremental changes from block to block to the cumulative data, that would be more effort than it's worth relative to just waiting on the next history archive to get dumped. **Next state**: [`waitForCheckpoint`](#waitforcheckpoint-state).
 
-  - If it's older, however, then we can just grok the missing gap (i.e. until the next checkpoint) and build up (only) the time-series data. **Next state**: [`historyRange`](#historyrange-state).
+  - If it's older, however, then we can just grok the missing gap (i.e. until the latest checkpoint) and build up (only) the time-series data. **Next state**: [`historyRange`](#historyrange-state).
 
 In the other cases (matching last-known and last-checkpoint ledger, or no last-known), **next state**: [`build`](#build-state).
 
