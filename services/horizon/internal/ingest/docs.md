@@ -1,5 +1,4 @@
-Notes on the ingestion state finite state machine (FSM).
-
+# Ingestion Finite State Machine
 The following states are possible:
   - `start`
   - `stop`
@@ -11,7 +10,7 @@ The following states are possible:
   - `reingestHistoryRange`
   - `waitForCheckpoint`
 
-## Definitions 
+#### Definitions
 There are some important terms that need to be defined for clarity as they're used extensively in both the codebase and this breakdown:
 
   - the `historyQ` field corresponds to **historical *time-series* data**, *not* to the history *archives* (which only contain *cumulative* data); I prefer to refer to it as the `TimeSeriesDB`.
@@ -21,7 +20,7 @@ There are some important terms that need to be defined for clarity as they're us
 
 
 
-# `start` State 
+## `start` State 
 As you might expect, this state kicks off the FSM process.
 
 There are a few possible branches in this state.
@@ -47,17 +46,17 @@ If we can't have a clean slate to work with, we need to fix partial state. Speci
 **Next state**: [`resume`](#resume-state)
 
 
-# `build` state
+## `build` state
 This is the big kahuna of the state machine: there aren't many state transitions aside from success/failure, and all roads ultimately should lead to ~~Rome~~ `build` in order to get ingestion done. This state only establishes a baseline for the cumulative data, though.
 
 
-## Properties
+### Properties
 This state tracks the:
 
   - `checkpointLedger`, which is Horizon's last-known (though possibly-unprocessed) checkpoint ledger, and 
   - `stop`, which optionally (though *universally*) transitions to the [`stop`](#stop-state) after this state is complete.
 
-## Process
+### Process
 There's an important bit about this state: only one node should ever build, globally. Hence, there are a few checks at the start to ensure this.
 
 If any of the checks (incl. the aforementioned sync checks) fail, we'll move to the [`start` state](#start-state). Sometimes, though, we want to [`stop`](#stop-state), instead (see `buildState.stop`).
@@ -72,16 +71,16 @@ The actual ingestion involves a few steps:
 These are detailed later, in the [Ingestion](#ingestion) section. Suffice it to say that at the end of this state, either we've errored out (described above), stopped (on error **or** success, if `buildState.stop` is set), or [`resume`](#resume-state)d from the checkpoint ledger.
 
 
-# `resume` state
+## `resume` state
 This state ingests time-series data for a single ledger range, then loops back to itself for the next ledger range.
 
 
-## Properties
+### Properties
 This state just tracks one thing:
 
   - `latestSuccessfullyProcessedLedger`, whose name should be self-explanatory: this indicates the highest ledger number to be ingested.
 
-## Process
+### Process
 First, note the difference between `resumeState.latestSuccessfullyProcessedLedger` and the queried `lastIngestedLedger`: one of these is tied to the state machine, while the other is associated with the actual time-series database. 
 
 The following are problematic error conditions:
@@ -102,23 +101,23 @@ Otherwise, we can actually turn the ledger into time-series data: this is exactl
 **Next state**: [`resume`](#resume-state) again, except now targeting the *next* ledger.
 
 
-# `historyRange` state
+## `historyRange` state
 The purpose of this state is to ingest a particular ledger range into the time-series database.
 
-## Properties
+### Properties
 This tracks an inclusive ledger range: [`fromLedger`, `toLedger`].
 
 
-# `reingestHistoryRange` state
+## `reingestHistoryRange` state
 This state acts much like the [`historyRange` state](#historyrange-state).
 
 **Next state**: [`stop`](#stop-state)
 
-## Properties
+### Properties
 This tracks an inclusive ledger range: [`fromLedger`, `toLedger`], as well as a `force` flag that will override certain restrictions.
 
 
-# `waitForCheckpoint` state
+## `waitForCheckpoint` state
 This pauses the state machine for 10 seconds then tries again, in hopes that a new checkpoint ledger has been created (remember, checkpoints occur every 64 ledgers).
 
 **Next state**: [`start`](#start-state)
