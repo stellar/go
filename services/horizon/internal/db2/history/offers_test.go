@@ -219,7 +219,7 @@ func TestRemoveNonExistantOffer(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
-	numAffected, err := q.RemoveOffer(12345, 1236)
+	numAffected, err := q.RemoveOffers([]int64{12345}, 1236)
 	tt.Assert.NoError(err)
 	tt.Assert.Equal(int64(0), numAffected)
 }
@@ -238,7 +238,7 @@ func TestRemoveOffer(t *testing.T) {
 	tt.Assert.Equal(offers[0], eurOffer)
 
 	expectedUpdates := offers
-	rowsAffected, err := q.RemoveOffer(eurOffer.OfferID, 1236)
+	rowsAffected, err := q.RemoveOffers([]int64{eurOffer.OfferID}, 1236)
 	tt.Assert.Equal(int64(1), rowsAffected)
 	tt.Assert.NoError(err)
 	expectedUpdates[0].LastModifiedLedger = 1236
@@ -293,7 +293,7 @@ func TestGetOffers(t *testing.T) {
 	// check removed offers aren't included in GetOffer queries
 	err = insertOffer(q, threeEurOffer)
 	tt.Assert.NoError(err)
-	count, err := q.RemoveOffer(threeEurOffer.OfferID, 1235)
+	count, err := q.RemoveOffers([]int64{threeEurOffer.OfferID}, 1235)
 	tt.Assert.NoError(err)
 	tt.Assert.Equal(int64(1), count)
 

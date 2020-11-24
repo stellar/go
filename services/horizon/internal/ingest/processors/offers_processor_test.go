@@ -9,6 +9,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -276,7 +277,7 @@ func (s *OffersProcessorTestSuiteLedger) TestRemoveOffer() {
 	})
 	s.Assert().NoError(err)
 
-	s.mockQ.On("RemoveOffer", int64(3), s.sequence).Return(int64(1), nil).Once()
+	s.mockQ.On("RemoveOffers", []int64{3}, s.sequence).Return(int64(1), nil).Once()
 
 	s.mockBatchInsertBuilder.On("Exec").Return(nil).Once()
 	s.mockQ.On("CompactOffers", s.sequence-100).Return(int64(0), nil).Once()
@@ -346,7 +347,7 @@ func (s *OffersProcessorTestSuiteLedger) TestProcessUpgradeChange() {
 	s.Assert().NoError(s.processor.Commit())
 }
 
-func (s *OffersProcessorTestSuiteLedger) TestRemoveOfferNoRowsAffected() {
+func (s *OffersProcessorTestSuiteLedger) TestRemoveMultipleOffers() {
 	err := s.processor.ProcessChange(io.Change{
 		Type: xdr.LedgerEntryTypeOffer,
 		Pre: &xdr.LedgerEntry{
@@ -363,10 +364,30 @@ func (s *OffersProcessorTestSuiteLedger) TestRemoveOfferNoRowsAffected() {
 	})
 	s.Assert().NoError(err)
 
-	s.mockQ.On("RemoveOffer", int64(3), s.sequence).Return(int64(0), nil).Once()
+	err = s.processor.ProcessChange(io.Change{
+		Type: xdr.LedgerEntryTypeOffer,
+		Pre: &xdr.LedgerEntry{
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeOffer,
+				Offer: &xdr.OfferEntry{
+					SellerId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+					OfferId:  xdr.Int64(4),
+					Price:    xdr.Price{3, 1},
+				},
+			},
+		},
+		Post: nil,
+	})
+	s.Assert().NoError(err)
+
+	s.mockBatchInsertBuilder.On("Exec").Return(nil).Once()
+	s.mockQ.On("CompactOffers", s.sequence-100).Return(int64(0), nil).Once()
+	s.mockQ.On("RemoveOffers", mock.Anything, s.sequence).Run(func(args mock.Arguments) {
+		// To fix order issue due to using LedgerEntryChangeCache
+		ids := args.Get(0).([]int64)
+		s.Assert().ElementsMatch(ids, []int64{3, 4})
+	}).Return(int64(0), nil).Once()
 
 	err = s.processor.Commit()
-	s.Assert().Error(err)
-	s.Assert().IsType(ingesterrors.StateError{}, errors.Cause(err))
-	s.Assert().EqualError(err, "error flushing cache: 0 rows affected when removing offer 3")
+	s.Assert().NoError(err)
 }

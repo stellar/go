@@ -13,7 +13,7 @@ type QOffers interface {
 	GetUpdatedOffers(newerThanSequence uint32) ([]Offer, error)
 	NewOffersBatchInsertBuilder(maxBatchSize int) OffersBatchInsertBuilder
 	UpdateOffer(offer Offer) (int64, error)
-	RemoveOffer(offerID int64, lastModifiedLedger uint32) (int64, error)
+	RemoveOffers(offerIDs []int64, lastModifiedLedger uint32) (int64, error)
 	CompactOffers(cutOffSequence uint32) (int64, error)
 }
 
@@ -104,13 +104,13 @@ func (q *Q) UpdateOffer(offer Offer) (int64, error) {
 	return result.RowsAffected()
 }
 
-// RemoveOffer marks a row in the offers table as deleted.
+// RemoveOffers marks rows in the offers table as deleted.
 // Returns number of rows affected and error.
-func (q *Q) RemoveOffer(offerID int64, lastModifiedLedger uint32) (int64, error) {
+func (q *Q) RemoveOffers(offerIDs []int64, lastModifiedLedger uint32) (int64, error) {
 	sql := sq.Update("offers").
 		Set("deleted", true).
 		Set("last_modified_ledger", lastModifiedLedger).
-		Where("offer_id = ?", offerID)
+		Where(map[string]interface{}{"offer_id": offerIDs})
 
 	result, err := q.Exec(sql)
 	if err != nil {

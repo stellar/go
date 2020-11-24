@@ -39,8 +39,8 @@ func (m *MockQOffers) UpdateOffer(row Offer) (int64, error) {
 	return a.Get(0).(int64), a.Error(1)
 }
 
-func (m *MockQOffers) RemoveOffer(offerID int64, lastModifiedLedger uint32) (int64, error) {
-	a := m.Called(offerID, lastModifiedLedger)
+func (m *MockQOffers) RemoveOffers(offerIDs []int64, lastModifiedLedger uint32) (int64, error) {
+	a := m.Called(offerIDs, lastModifiedLedger)
 	return a.Get(0).(int64), a.Error(1)
 }
 

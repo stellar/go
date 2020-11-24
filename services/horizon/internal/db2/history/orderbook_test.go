@@ -280,7 +280,7 @@ func TestGetOrderBookSummaryExcludesRemovedOffers(t *testing.T) {
 
 	for i, offer := range offers {
 		var count int64
-		count, err = q.RemoveOffer(offer.OfferID, uint32(i+2))
+		count, err = q.RemoveOffers([]int64{offer.OfferID}, uint32(i+2))
 		assert.NoError(t, err)
 		assert.Equal(t, int64(1), count)
 	}
