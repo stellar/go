@@ -9,6 +9,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -381,7 +382,11 @@ func (s *OffersProcessorTestSuiteLedger) TestRemoveMultipleOffers() {
 
 	s.mockBatchInsertBuilder.On("Exec").Return(nil).Once()
 	s.mockQ.On("CompactOffers", s.sequence-100).Return(int64(0), nil).Once()
-	s.mockQ.On("RemoveOffers", []int64{3, 4}, s.sequence).Return(int64(0), nil).Once()
+	s.mockQ.On("RemoveOffers", mock.Anything, s.sequence).Run(func(args mock.Arguments) {
+		// To fix order issue due to using LedgerEntryChangeCache
+		ids := args.Get(0).([]int64)
+		s.Assert().ElementsMatch(ids, []int64{3, 4})
+	}).Return(int64(0), nil).Once()
 
 	err = s.processor.Commit()
 	s.Assert().NoError(err)
