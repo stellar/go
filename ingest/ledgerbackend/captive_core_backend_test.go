@@ -330,7 +330,7 @@ func TestCaptivePrepareRange_ToIsAheadOfRootHAS(t *testing.T) {
 func TestCaptivePrepareRange_ErrCatchup(t *testing.T) {
 	mockRunner := &stellarCoreRunnerMock{}
 	mockRunner.On("catchup", uint32(100), uint32(192)).Return(errors.New("transient error")).Once()
-	mockRunner.On("close").Return(nil)
+	mockRunner.On("close").Return(nil).Once()
 
 	mockArchive := &historyarchive.MockArchive{}
 	mockArchive.
@@ -350,6 +350,10 @@ func TestCaptivePrepareRange_ErrCatchup(t *testing.T) {
 	err := captiveBackend.PrepareRange(BoundedRange(100, 200))
 	assert.Error(t, err)
 	assert.EqualError(t, err, "opening subprocess: error running stellar-core: transient error")
+
+	// make sure we can Close without errors
+	assert.NoError(t, captiveBackend.Close())
+	mockRunner.AssertExpectations(t)
 }
 
 func TestCaptivePrepareRangeUnboundedRange_ErrGettingRootHAS(t *testing.T) {
@@ -396,7 +400,7 @@ func TestCaptivePrepareRangeUnboundedRange_FromIsTooFarAheadOfLatestHAS(t *testi
 func TestCaptivePrepareRangeUnboundedRange_ErrRunFrom(t *testing.T) {
 	mockRunner := &stellarCoreRunnerMock{}
 	mockRunner.On("runFrom", uint32(126), "0000000000000000000000000000000000000000000000000000000000000000").Return(errors.New("transient error")).Once()
-	mockRunner.On("close").Return(nil)
+	mockRunner.On("close").Return(nil).Once()
 
 	mockArchive := &historyarchive.MockArchive{}
 	mockArchive.
@@ -420,6 +424,10 @@ func TestCaptivePrepareRangeUnboundedRange_ErrRunFrom(t *testing.T) {
 
 	err := captiveBackend.PrepareRange(UnboundedRange(128))
 	assert.EqualError(t, err, "opening subprocess: error running stellar-core: transient error")
+
+	// make sure we can Close without errors
+	assert.NoError(t, captiveBackend.Close())
+	mockRunner.AssertExpectations(t)
 }
 
 func TestCaptivePrepareRangeUnboundedRange_ErrClosingExistingSession(t *testing.T) {
