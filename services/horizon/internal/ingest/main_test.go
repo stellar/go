@@ -221,7 +221,7 @@ func TestMaybeVerifyInternalDBErrCancelOrContextCanceled(t *testing.T) {
 	logged := done()
 
 	// it logs "State verification finished" twice, but no errors
-	assert.Len(t, logged, 2)
+	assert.Len(t, logged, 0)
 
 	historyQ.AssertExpectations(t)
 }
