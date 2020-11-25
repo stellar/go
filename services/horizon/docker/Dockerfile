@@ -10,7 +10,7 @@ RUN go install github.com/stellar/go/exp/services/captivecore
 FROM ubuntu:18.04
 
 ENV STELLAR_CORE_VERSION 15.0.0-40
-ENV STELLAR_CORE_BINARY_PATH /usr/local/bin/stellar-core
+ENV STELLAR_CORE_BINARY_PATH /usr/bin/stellar-core
 
 ENV DEBIAN_FRONTEND=noninteractive
 # ca-certificates are required to make tls connections
