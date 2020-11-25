@@ -544,9 +544,12 @@ func (c *CaptiveStellarCore) Close() error {
 			return errors.Wrap(err, "error closing stellar-core subprocess")
 		}
 
-		// Wait for bufferedLedgerMetaReader go routine to return.
-		c.ledgerBuffer.waitForClose()
-		c.ledgerBuffer = nil
+		// c.ledgerBuffer might be nil if stellarCoreRunner.runFrom / stellarCoreRunner.catchup responded with an error
+		if c.ledgerBuffer != nil {
+			// Wait for bufferedLedgerMetaReader go routine to return.
+			c.ledgerBuffer.waitForClose()
+			c.ledgerBuffer = nil
+		}
 	}
 
 	c.nextLedger = 0
