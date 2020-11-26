@@ -91,8 +91,9 @@ type CaptiveStellarCore struct {
 	// cachedMeta keeps that ledger data of the last fetched ledger. Updated in GetLedger().
 	cachedMeta *xdr.LedgerCloseMeta
 
-	nextLedger uint32  // next ledger expected, error w/ restart if not seen
-	lastLedger *uint32 // end of current segment if offline, nil if online
+	nextLedger         uint32  // next ledger expected, error w/ restart if not seen
+	lastLedger         *uint32 // end of current segment if offline, nil if online
+	previousLedgerHash *string
 
 	// waitIntervalPrepareRange defines a time to wait between checking if the buffer
 	// is empty. Default 1s, lower in tests to make them faster.
@@ -265,6 +266,18 @@ func (c *CaptiveStellarCore) openOnlineReplaySubprocess(from uint32) error {
 
 	c.nextLedger = nextLedger
 	c.lastLedger = nil
+
+	if c.ledgerHashStore != nil {
+		var exists bool
+		ledgerHash, exists, err = c.ledgerHashStore.GetLedgerHash(nextLedger - 1)
+		if err != nil {
+			return errors.Wrapf(err, "error trying to read ledger hash %d", nextLedger-1)
+		}
+		if exists {
+			c.previousLedgerHash = &ledgerHash
+		}
+	}
+
 	c.blocking = false
 
 	// read-ahead buffer
@@ -486,10 +499,30 @@ loop:
 		seq := result.LedgerCloseMeta.LedgerSequence()
 		if seq != c.nextLedger {
 			// We got something unexpected; close and reset
-			errOut = errors.Errorf("unexpected ledger (expected=%d actual=%d)", c.nextLedger, seq)
+			errOut = errors.Errorf(
+				"unexpected ledger sequence (expected=%d actual=%d)",
+				c.nextLedger,
+				seq,
+			)
 			break
 		}
+
+		newPreviousLedgerHash := result.LedgerCloseMeta.PreviousLedgerHash().HexString()
+		if c.previousLedgerHash != nil && *c.previousLedgerHash != newPreviousLedgerHash {
+			// We got something unexpected; close and reset
+			errOut = errors.Errorf(
+				"unexpected previous ledger hash for ledger %d (expected=%s actual=%s)",
+				seq,
+				*c.previousLedgerHash,
+				newPreviousLedgerHash,
+			)
+			break
+		}
+
 		c.nextLedger++
+		currentLedgerHash := result.LedgerCloseMeta.LedgerHash().HexString()
+		c.previousLedgerHash = &currentLedgerHash
+
 		if seq == sequence {
 			// Found the requested seq
 			c.cachedMeta = result.LedgerCloseMeta
@@ -554,6 +587,7 @@ func (c *CaptiveStellarCore) Close() error {
 
 	c.nextLedger = 0
 	c.lastLedger = nil
+	c.previousLedgerHash = nil
 
 	return nil
 }
