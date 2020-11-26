@@ -14,10 +14,13 @@ The following states are possible:
 There are some important terms that need to be defined for clarity as they're used extensively in both the codebase and this breakdown:
 
   - the `historyQ` field corresponds to **historical *time-series* data**, *not* to the history *archives* (which only contain *cumulative* data); I prefer to refer to it as the `TimeSeriesDB`.
-  - the `lastIngestedLedger` thus corresponds to the last ledger that Horizon  ingested into the time-series tables
-  - the `lastHistoryLedger`, however, corresponds to the last ledger that Core+Horizon are *aware* of, not necessarily *ingested*; I refer to it as the `lastKnownLedger`
+  - the `lastIngestedLedger` thus corresponds to the last ledger that Horizon  ingested into the time-series tables (coming from the `key_value_store` table)
+  - the `lastHistoryLedger`, however, corresponds to the last ledger that Core+Horizon are *aware* of, not necessarily *ingested* (coming from `history_ledgers` table); I'll usually refer to it as the `lastKnownLedger`
   - the `lastCheckpoint` corresponds to the last checkpoint ledger (reminder: a checkpoint ledger is one in which: `(ledger# + 1) mod 64 == 0`) and thus to a matching history archive upload.
 
+One of the most important jobs of the FSM described here is to make sure that `lastIngestedLedger` and `lastHistoryLedger` are equal: the [`historyRange`](#historyrange-state) updates the latter, but not the former, so that we can track when state data is behind history data.
+
+In general, only one node should ever be writing to a database at once, globally. Hence, there are a few checks at the start of most states to ensure this.
 
 
 ## `start` State 
@@ -32,7 +35,7 @@ This branches differently depending on the last known ledger:
 
   - If it's newer than the last checkpoint, we need to wait for a new checkpoint to get the latest cumulative data. Note that though we probably *could* make incremental changes from block to block to the cumulative data, that would be more effort than it's worth relative to just waiting on the next history archive to get dumped. **Next state**: [`waitForCheckpoint`](#waitforcheckpoint-state).
 
-  - If it's older, however, then we can just grok the missing gap (i.e. until the latest checkpoint) and build up (only) the time-series data. **Next state**: [`historyRange`](#historyrange-state).
+  - If it's older, however, then we can just grok the missing gap (i.e. until the *latest* checkpoint) and build up (only) the time-series data. **Next state**: [`historyRange`](#historyrange-state).
 
 In the other cases (matching last-known and last-checkpoint ledger, or no last-known), **next state**: [`build`](#build-state).
 
@@ -57,8 +60,6 @@ This state tracks the:
   - `stop`, which optionally (though *universally*) transitions to the [`stop`](#stop-state) after this state is complete.
 
 ### Process
-There's an important bit about this state: only one node should ever build, globally. Hence, there are a few checks at the start to ensure this.
-
 If any of the checks (incl. the aforementioned sync checks) fail, we'll move to the [`start` state](#start-state). Sometimes, though, we want to [`stop`](#stop-state), instead (see `buildState.stop`).
 
 The actual ingestion involves a few steps:
@@ -102,10 +103,12 @@ Otherwise, we can actually turn the ledger into time-series data: this is exactl
 
 
 ## `historyRange` state
-The purpose of this state is to ingest a particular ledger range into the time-series database.
+The purpose of this state is to ingest a particular ledger range into the cumulative database. Since the next state will be [start](#start-state), we will be rebuilding state in the future anyway.
 
 ### Properties
 This tracks an inclusive ledger range: [`fromLedger`, `toLedger`].
+
+**Next state**: [`start`](#start-state)
 
 
 ## `reingestHistoryRange` state
