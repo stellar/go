@@ -1163,6 +1163,7 @@ func TestCaptivePreviousLedgerCheck(t *testing.T) {
 	mockRunner.On("runFrom", uint32(254), "0101010100000000000000000000000000000000000000000000000000000000").Return(nil).Once()
 	mockRunner.On("getMetaPipe").Return(&buf)
 	mockRunner.On("getProcessExitChan").Return(ch)
+	mockRunner.On("getProcessExitError").Return(nil).Maybe()
 	mockRunner.On("close").Run(func(args mock.Arguments) {
 		close(ch)
 	}).Return(nil)
