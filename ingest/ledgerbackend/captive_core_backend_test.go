@@ -1163,7 +1163,9 @@ func TestCaptivePreviousLedgerCheck(t *testing.T) {
 	mockRunner.On("runFrom", uint32(254), "0101010100000000000000000000000000000000000000000000000000000000").Return(nil).Once()
 	mockRunner.On("getMetaPipe").Return(&buf)
 	mockRunner.On("getProcessExitChan").Return(ch)
-	mockRunner.On("close").Return(nil)
+	mockRunner.On("close").Run(func(args mock.Arguments) {
+		close(ch)
+	}).Return(nil)
 	defer mockRunner.AssertExpectations(t)
 
 	mockArchive := &historyarchive.MockArchive{}
@@ -1211,7 +1213,6 @@ func TestCaptivePreviousLedgerCheck(t *testing.T) {
 	_, _, err = captiveBackend.GetLedger(301)
 	assert.EqualError(t, err, "unexpected previous ledger hash for ledger 301 (expected=6f00000000000000000000000000000000000000000000000000000000000000 actual=0000000000000000000000000000000000000000000000000000000000000000)")
 
-	close(ch)
 	err = captiveBackend.Close()
 	assert.NoError(t, err)
 }
