@@ -100,6 +100,13 @@ func (b *bufferedLedgerMetaReader) readLedgerMetaFromPipe(untilSequence uint32) 
 		select {
 		case <-b.runner.getProcessExitChan():
 			if untilSequence != 0 {
+				// If untilSequence != 0 it's possible that Stellar-Core process
+				// exits but there are still ledgers in a buffer (catchup). In such
+				// case we ignore cases when Stellar-Core exited with no errors.
+				processErr := b.runner.getProcessExitError()
+				if processErr != nil {
+					return nil, errors.Wrap(processErr, "stellar-core process exited with an error")
+				}
 				time.Sleep(time.Second)
 				continue
 			}
