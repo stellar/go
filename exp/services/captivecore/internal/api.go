@@ -25,7 +25,7 @@ type rangeRequest struct {
 	readyDuration int
 	valid         bool
 	ready         bool
-	sync.RWMutex
+	sync.Mutex
 }
 
 // CaptiveCoreAPI manages a shared captive core subprocess and exposes an API for
@@ -141,8 +141,8 @@ func (c *CaptiveCoreAPI) PrepareRange(ledgerRange ledgerbackend.Range) (ledgerba
 
 // GetLatestLedgerSequence determines the latest ledger sequence available on the captive core instance.
 func (c *CaptiveCoreAPI) GetLatestLedgerSequence() (ledgerbackend.LatestLedgerSequenceResponse, error) {
-	c.activeRequest.RLock()
-	defer c.activeRequest.RUnlock()
+	c.activeRequest.Lock()
+	defer c.activeRequest.Unlock()
 
 	if !c.activeRequest.valid {
 		return ledgerbackend.LatestLedgerSequenceResponse{}, ErrMissingPrepareRange
@@ -152,13 +152,16 @@ func (c *CaptiveCoreAPI) GetLatestLedgerSequence() (ledgerbackend.LatestLedgerSe
 	}
 
 	seq, err := c.core.GetLatestLedgerSequence()
+	if err != nil {
+		c.activeRequest.valid = false
+	}
 	return ledgerbackend.LatestLedgerSequenceResponse{Sequence: seq}, err
 }
 
 // GetLedger fetches the ledger with the given sequence number from the captive core instance.
 func (c *CaptiveCoreAPI) GetLedger(sequence uint32) (ledgerbackend.LedgerResponse, error) {
-	c.activeRequest.RLock()
-	defer c.activeRequest.RUnlock()
+	c.activeRequest.Lock()
+	defer c.activeRequest.Unlock()
 
 	if !c.activeRequest.valid {
 		return ledgerbackend.LedgerResponse{}, ErrMissingPrepareRange
@@ -168,6 +171,9 @@ func (c *CaptiveCoreAPI) GetLedger(sequence uint32) (ledgerbackend.LedgerRespons
 	}
 
 	present, ledger, err := c.core.GetLedger(sequence)
+	if err != nil {
+		c.activeRequest.valid = false
+	}
 	return ledgerbackend.LedgerResponse{
 		Present: present,
 		Ledger:  ledgerbackend.Base64Ledger(ledger),
