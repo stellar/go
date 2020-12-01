@@ -23,6 +23,17 @@ One of the most important jobs of the FSM described here is to make sure that `l
 In general, only one node should ever be writing to a database at once, globally. Hence, there are a few checks at the start of most states to ensure this.
 
 
+#### Tables
+Within the Horizon database, there are a number of tables touched by ingestion that are worth differentiating explicitly. With these in mind, the subsequently-described states and their respective operations should be much clearer.
+
+The database contains:
+
+  - **History tables** -- all tables that contain historical time-series data, such as `history_transactions`, `history_operations`, etc.
+  - **Transaction processors** -- processors that ingest the history tables (described by the `io.LedgerTransaction` interface).
+  - **State tables** -- all tables that contain the current cumulative state, such as accounts, offers, etc.
+  - **Change processors** -- processors ingesting tx meta (time-series data) that update state tables. These aren't related to a particular *transaction*, but rather describe a *transition* of a ledger entry from one state to another (described by the `io.Change` interface).
+
+
 ## `start` State 
 As you might expect, this state kicks off the FSM process.
 
@@ -42,7 +53,7 @@ In the other cases (matching last-known and last-checkpoint ledger, or no last-k
 ##### Otherwise
 If we can't have a clean slate to work with, we need to fix partial state. Specifically,
 
-  - If the last-known ledger is ahead of the last-ingested ledger, then Horizon is aware of much more data than it has processed. Here, we'll reset the time-series database and start over. **Next state**: [`start`](#start-state), with `lastIngestedLedger == 0`.
+  - If the last-known ledger is ahead of the last-ingested ledger, then Horizon's cumulative state data is behind its historical time-series data in the database. Here, we'll reset the time-series DB and start over. **Next state**: [`start`](#start-state), with `lastIngestedLedger == 0`.
 
   - If the time-series database is newer than the last-known ledger (can occur if ingestion was done for a different range earlier, for example), then Horizon needs to become aware of the missing ledgers. **Next state**: [`historyRange`](#historyrange-state) from "last known" to "last stored" in time-series db.
 
@@ -89,9 +100,7 @@ The following are problematic error conditions:
   - the former is larger than the latter
   - the versions (of the DB and current ledgers) mismatch
   - the last-known ledger of the time-series db doesn't match the last-ingested ledger
-  - 
-
-**Next state**: [`start`](#start-state).
+  - **Next state**: [`start`](#start-state).
 
 Otherwise, we have `ingestLedger == lastIngestedLedger + 1`, and will proceed to process the range from `ingestLedger` onward.
 
