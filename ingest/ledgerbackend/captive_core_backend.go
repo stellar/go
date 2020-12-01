@@ -34,7 +34,7 @@ func roundDownToFirstReplayAfterCheckpointStart(ledger uint32) uint32 {
 //     keep ledger state in RAM. It requires around 3GB of RAM as of August 2020.
 //   * When a UnboundedRange is prepared it runs Stellar-Core catchup mode to
 //     sync with the first ledger and then runs it in a normal mode. This
-//     requires the configPath to be provided because a database connection is
+//     requires the quorumConfigPath to be provided because a database connection is
 //     required and quorum set needs to be selected.
 //
 // The database requirement for UnboundedRange will soon be removed when some
@@ -62,12 +62,9 @@ func roundDownToFirstReplayAfterCheckpointStart(ledger uint32) uint32 {
 //
 // Requires Stellar-Core v13.2.0+.
 type CaptiveStellarCore struct {
-	executablePath    string
-	configPath        string
-	networkPassphrase string
-	historyURLs       []string
-	archive           historyarchive.ArchiveInterface
-	ledgerHashStore   TrustedLedgerHashStore
+	quorumConfigPath string
+	archive          historyarchive.ArchiveInterface
+	ledgerHashStore  TrustedLedgerHashStore
 
 	// Quick note on how shutdown works:
 	// If Stellar-Core exits, the exit signal is "catched" by bufferedLedgerMetaReader
@@ -79,7 +76,7 @@ type CaptiveStellarCore struct {
 	stellarCoreRunner stellarCoreRunnerInterface
 
 	// For testing
-	stellarCoreRunnerFactory func(configPath string) (stellarCoreRunnerInterface, error)
+	stellarCoreRunnerFactory func(quorumConfigPath string) (stellarCoreRunnerInterface, error)
 
 	// Defines if the blocking mode (off by default) is on or off. In blocking mode,
 	// calling GetLedger blocks until the requested ledger is available. This is useful
@@ -107,19 +104,21 @@ type CaptiveStellarCore struct {
 type CaptiveCoreConfig struct {
 	// StellarCoreBinaryPath is the file path to the Stellar Core binary
 	StellarCoreBinaryPath string
-	// StellarCoreConfigPath is the file path to the Stellar Core configuration file used by captive core
-	StellarCoreConfigPath string
+	// QuorumConfigPath is the file path to the Stellar Core configuration file used by captive core
+	QuorumConfigPath string
 	// NetworkPassphrase is the Stellar network passphrase used by captive core when connecting to the Stellar network
 	NetworkPassphrase string
 	// HistoryArchiveURLs are a list of history archive urls
 	HistoryArchiveURLs []string
 	// LedgerHashStore is an optional store used to obtain hashes for ledger sequences from a trusted source
 	LedgerHashStore TrustedLedgerHashStore
+	// HTTPPort is the TCP port to listen for requests (defaults to 0, which disables the HTTP server)
+	HTTPPort uint16
 }
 
 // NewCaptive returns a new CaptiveStellarCore.
 //
-// All parameters are required, except configPath which is not required when
+// All parameters are required, except quorumConfigPath which is not required when
 // working with BoundedRanges only.
 func NewCaptive(config CaptiveCoreConfig) (*CaptiveStellarCore, error) {
 	archive, err := historyarchive.Connect(
@@ -134,10 +133,7 @@ func NewCaptive(config CaptiveCoreConfig) (*CaptiveStellarCore, error) {
 
 	c := &CaptiveStellarCore{
 		archive:                  archive,
-		executablePath:           config.StellarCoreBinaryPath,
-		configPath:               config.StellarCoreConfigPath,
-		historyURLs:              config.HistoryArchiveURLs,
-		networkPassphrase:        config.NetworkPassphrase,
+		quorumConfigPath:         config.QuorumConfigPath,
 		waitIntervalPrepareRange: time.Second,
 		ledgerHashStore:          config.LedgerHashStore,
 	}
@@ -146,6 +142,7 @@ func NewCaptive(config CaptiveCoreConfig) (*CaptiveStellarCore, error) {
 			config.StellarCoreBinaryPath,
 			configPath2,
 			config.NetworkPassphrase,
+			config.HTTPPort,
 			config.HistoryArchiveURLs,
 		)
 		if innerErr != nil {
@@ -192,7 +189,7 @@ func (c *CaptiveStellarCore) openOfflineReplaySubprocess(from, to uint32) error 
 	}
 
 	if c.stellarCoreRunner == nil {
-		// configPath is empty in an offline mode because it's generated
+		// quorumConfigPath is empty in an offline mode because it's generated
 		c.stellarCoreRunner, err = c.stellarCoreRunnerFactory("")
 		if err != nil {
 			return errors.Wrap(err, "error creating stellar-core runner")
@@ -245,10 +242,10 @@ func (c *CaptiveStellarCore) openOnlineReplaySubprocess(from uint32) error {
 	}
 
 	if c.stellarCoreRunner == nil {
-		if c.configPath == "" {
-			return errors.New("stellar-core config file path cannot be empty in an online mode")
+		if c.quorumConfigPath == "" {
+			return errors.New("stellar-core quorum config file path cannot be empty in online mode")
 		}
-		c.stellarCoreRunner, err = c.stellarCoreRunnerFactory(c.configPath)
+		c.stellarCoreRunner, err = c.stellarCoreRunnerFactory(c.quorumConfigPath)
 		if err != nil {
 			return errors.Wrap(err, "error creating stellar-core runner")
 		}

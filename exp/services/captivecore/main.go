@@ -20,8 +20,9 @@ import (
 
 func main() {
 	var port int
-	var networkPassphrase, binaryPath, configPath, dbURL string
+	var networkPassphrase, binaryPath, quorumConfigPath, dbURL string
 	var historyArchiveURLs []string
+	var stellarCoreHTTPPort uint16
 	var logLevel logrus.Level
 	logger := supportlog.New()
 
@@ -51,12 +52,12 @@ func main() {
 			ConfigKey:   &binaryPath,
 		},
 		&config.ConfigOption{
-			Name:        "stellar-core-config-path",
+			Name:        "stellar-captive-core-quorum-path",
 			OptType:     types.String,
 			FlagDefault: "",
 			Required:    false,
-			Usage:       "path to stellar core config file",
-			ConfigKey:   &configPath,
+			Usage:       "path to stellar core quorum config file (i.e. a stellar core config file with [QUORUM_SET] entries)",
+			ConfigKey:   &quorumConfigPath,
 		},
 		&config.ConfigOption{
 			Name:        "history-archive-urls",
@@ -94,6 +95,14 @@ func main() {
 			Required:  false,
 			Usage:     "horizon postgres database to connect with",
 		},
+		&config.ConfigOption{
+			Name:        "stellar-captive-core-http-port",
+			ConfigKey:   &stellarCoreHTTPPort,
+			OptType:     types.Uint16,
+			FlagDefault: uint16(11626),
+			Required:    false,
+			Usage:       "HTTP port for captive core to listen on (0 disables the http server)",
+		},
 	}
 	cmd := &cobra.Command{
 		Use:   "captivecore",
@@ -105,9 +114,10 @@ func main() {
 
 			captiveConfig := ledgerbackend.CaptiveCoreConfig{
 				StellarCoreBinaryPath: binaryPath,
-				StellarCoreConfigPath: configPath,
+				QuorumConfigPath:      quorumConfigPath,
 				NetworkPassphrase:     networkPassphrase,
 				HistoryArchiveURLs:    historyArchiveURLs,
+				HTTPPort:              stellarCoreHTTPPort,
 			}
 
 			var dbConn *db.Session
