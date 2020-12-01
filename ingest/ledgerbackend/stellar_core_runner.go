@@ -124,7 +124,7 @@ func (r *stellarCoreRunner) getLogLineWriter() io.Writer {
 	// Strip timestamps from log lines from captive stellar-core. We emit our own.
 	dateRx := regexp.MustCompile(`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3} `)
 	go func() {
-		levelRx := regexp.MustCompile(`G[A-Z0-9]{4} \[(\w+) ([A-Z]+)\] (.*)`)
+		levelRx := regexp.MustCompile(`\[(\w+) ([A-Z]+)\] (.*)`)
 		for {
 			line, err := br.ReadString('\n')
 			if err != nil {
@@ -160,10 +160,10 @@ func (r *stellarCoreRunner) getLogLineWriter() io.Writer {
 				if writer, ok := levelMapping[strings.ToUpper(level)]; ok {
 					writer("%s: %s", category, line)
 				} else {
-					r.Log.Infof(line)
+					r.Log.Info(line)
 				}
 			} else {
-				r.Log.Infof(line)
+				r.Log.Info(line)
 			}
 		}
 	}()
