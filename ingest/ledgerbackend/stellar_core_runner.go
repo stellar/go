@@ -2,6 +2,7 @@ package ledgerbackend
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -14,7 +15,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/BurntSushi/toml"
 	"github.com/pkg/errors"
+
 	"github.com/stellar/go/support/log"
 )
 
@@ -117,6 +120,16 @@ func (r *stellarCoreRunner) generateConfig() (string, error) {
 		if err != nil {
 			return "", errors.Wrap(err, "reading quorum config file")
 		}
+		var entries map[string]interface{}
+		if _, err := toml.DecodeReader(bytes.NewBuffer(quorumConfigContents), &entries); err != nil {
+			return "", errors.Wrap(err, "cannot parse quorum config file (make sure it only contains [QUORUM_SET] entries")
+		}
+		for k := range entries {
+			if k != "QUORUM_SET" {
+				return "", fmt.Errorf("incorrect quorum config file (%s entry found but only [QUORUM_SET] entries are accepted)", k)
+			}
+		}
+
 		result = result + "\n" + string(quorumConfigContents)
 	}
 	return result, nil
