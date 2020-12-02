@@ -388,7 +388,12 @@ func (c *CaptiveStellarCore) PrepareRange(ledgerRange Range) error {
 	for {
 		select {
 		case <-c.stellarCoreRunner.getProcessExitChan():
-			return wrapStellarCoreRunnerError(c.stellarCoreRunner)
+			// Return only in case of Stellar-Core process error. Normal exit
+			// is expected in catchup when all ledgers sent to a buffer.
+			processErr := c.stellarCoreRunner.getProcessExitError()
+			if processErr != nil {
+				return errors.Wrap(processErr, "stellar-core process exited with an error")
+			}
 		default:
 		}
 		// Wait for the first ledger or an error

@@ -84,7 +84,7 @@ func newBufferedLedgerMetaReader(runner stellarCoreRunnerInterface) *bufferedLed
 //   * Meta pipe buffer is full so it will wait until it refills.
 //   * The next ledger available in the buffer exceeds the meta pipe buffer size.
 //     In such case the method will block until LedgerCloseMeta buffer is empty.
-func (b *bufferedLedgerMetaReader) readLedgerMetaFromPipe() (*xdr.LedgerCloseMeta, error) {
+func (b *bufferedLedgerMetaReader) readLedgerMetaFromPipe(untilSequence uint32) (*xdr.LedgerCloseMeta, error) {
 	frameLength, err := xdr.ReadFrameLength(b.r)
 	if err != nil {
 		select {
@@ -99,6 +99,17 @@ func (b *bufferedLedgerMetaReader) readLedgerMetaFromPipe() (*xdr.LedgerCloseMet
 		// Wait for LedgerCloseMeta buffer to be cleared to minimize memory usage.
 		select {
 		case <-b.runner.getProcessExitChan():
+			if untilSequence != 0 {
+				// If untilSequence != 0 it's possible that Stellar-Core process
+				// exits but there are still ledgers in a buffer (catchup). In such
+				// case we ignore cases when Stellar-Core exited with no errors.
+				processErr := b.runner.getProcessExitError()
+				if processErr != nil {
+					return nil, errors.Wrap(processErr, "stellar-core process exited with an error")
+				}
+				time.Sleep(time.Second)
+				continue
+			}
 			return nil, wrapStellarCoreRunnerError(b.runner)
 		case <-time.After(time.Second):
 		}
@@ -152,15 +163,12 @@ func (b *bufferedLedgerMetaReader) start(untilSequence uint32) {
 
 	for {
 		select {
-		case <-b.runner.getProcessExitChan():
-			b.c <- metaResult{nil, wrapStellarCoreRunnerError(b.runner)}
-			return
 		case <-printBufferOccupation.C:
 			log.Debug("captive core read-ahead buffer occupation:", len(b.c))
 		default:
 		}
 
-		meta, err := b.readLedgerMetaFromPipe()
+		meta, err := b.readLedgerMetaFromPipe(untilSequence)
 		if err != nil {
 			// When `GetLedger` sees the error it will close the backend. We shouldn't
 			// close it now because there may be some ledgers in a buffer.
@@ -168,12 +176,7 @@ func (b *bufferedLedgerMetaReader) start(untilSequence uint32) {
 			return
 		}
 
-		select {
-		case b.c <- metaResult{meta, nil}:
-		case <-b.runner.getProcessExitChan():
-			b.c <- metaResult{nil, wrapStellarCoreRunnerError(b.runner)}
-			return
-		}
+		b.c <- metaResult{meta, nil}
 
 		if untilSequence != 0 {
 			if meta.LedgerSequence() >= untilSequence {

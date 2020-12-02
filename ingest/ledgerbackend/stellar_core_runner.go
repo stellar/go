@@ -140,7 +140,7 @@ func (r *stellarCoreRunner) getLogLineWriter() io.Writer {
 			// If there's a logger, we attempt to extract metadata about the log
 			// entry, then redirect it to the logger. Otherwise, we just use stdout.
 			if r.Log == nil {
-				fmt.Print(line)
+				fmt.Println(line)
 				continue
 			}
 
