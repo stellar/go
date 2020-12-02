@@ -123,7 +123,7 @@ func Flags() (*Config, support.ConfigOptions) {
 			OptType:     types.Uint16,
 			FlagDefault: uint16(11626),
 			Required:    false,
-			Usage:       "HTTP port for Captive Core to listen on (0 disables the http server)",
+			Usage:       "HTTP port for Captive Core to listen on (0 disables the HTTP server)",
 			ConfigKey:   &config.CaptiveCoreHTTPPort,
 		},
 		&support.ConfigOption{

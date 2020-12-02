@@ -13,7 +13,13 @@ Captive Stellar-Core can be used in both reingestion and normal Horizon operatio
 To enable captive mode three feature config variables are required:
 * `ENABLE_CAPTIVE_CORE_INGESTION=true`,
 * `STELLAR_CORE_BINARY_PATH` - defines a path to the `stellar-core` binary,
-* `STELLAR_CORE_CONFIG_PATH` - defines a path to the `stellar-core.cfg` file (not required when reingesting).
+* `STELLAR_CAPTIVE_CORE_QUORUM_PATH` - (not required when reingesting) defines a path to a stellar-core configuration file containing `[QUORUM_SET]` entries. For instance:
+  ```
+  [QUORUM_SET]
+  THRESHOLD_PERCENT=100
+  VALIDATORS=["GCZBOIAY4HLKAJVNJORXZOZRAY2BJDBZHKPBHZCRAIUR5IHC2UHBGCQR"]
+  ```
+* (optional) `STELLAR_CAPTIVE_CORE_HTTP_PORT` - HTTP port for Captive Core to listen on (0 disables the HTTP server)
 
 ### Requirements
 

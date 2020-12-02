@@ -101,7 +101,7 @@ func main() {
 			OptType:     types.Uint16,
 			FlagDefault: uint16(11626),
 			Required:    false,
-			Usage:       "HTTP port for captive core to listen on (0 disables the http server)",
+			Usage:       "HTTP port for captive core to listen on (0 disables the HTTP server)",
 		},
 	}
 	cmd := &cobra.Command{
