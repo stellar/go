@@ -96,7 +96,7 @@ func (r *stellarCoreRunner) generateConfig() (string, error) {
 		"UNSAFE_QUORUM=true",
 		fmt.Sprintf(`NETWORK_PASSPHRASE="%s"`, r.networkPassphrase),
 		fmt.Sprintf(`BUCKET_DIR_PATH="%s"`, filepath.Join(r.tempDir, "buckets")),
-		fmt.Sprintf(`HTTP_PORT="%d"`, r.httpPort),
+		fmt.Sprintf(`HTTP_PORT=%d`, r.httpPort),
 	}
 	for i, val := range r.historyURLs {
 		lines = append(lines, fmt.Sprintf("[HISTORY.h%d]", i))
