@@ -22,7 +22,7 @@ func main() {
 	var port int
 	var networkPassphrase, binaryPath, configAddendumPath, dbURL string
 	var historyArchiveURLs []string
-	var stellarCoreHTTPPort uint16
+	var stellarCoreHTTPPort uint
 	var logLevel logrus.Level
 	logger := supportlog.New()
 
@@ -98,8 +98,8 @@ func main() {
 		&config.ConfigOption{
 			Name:        "stellar-captive-core-http-port",
 			ConfigKey:   &stellarCoreHTTPPort,
-			OptType:     types.Uint16,
-			FlagDefault: uint16(11626),
+			OptType:     types.Uint,
+			FlagDefault: uint(11626),
 			Required:    false,
 			Usage:       "HTTP port for captive core to listen on (0 disables the HTTP server)",
 		},
