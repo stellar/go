@@ -24,6 +24,10 @@ const (
 	StellarCoreDBURLFlagName = "stellar-core-db-url"
 	// StellarCoreDBURLFlagName is the command line flag for configuring the URL fore Stellar Core HTTP endpoint
 	StellarCoreURLFlagName = "stellar-core-url"
+	// StellarCoreBinaryPathName is the command line flag for configuring the path to the stellar core binary
+	StellarCoreBinaryPathName = "stellar-core-binary-path"
+	// CaptiveCoreAdddendumPathName is the command line flag for configuring the path to the captive core configuration addendum
+	CaptiveCoreAdddendumPathName = "captive-core-addendum-path"
 )
 
 // validateBothOrNeither ensures that both options are provided, if either is provided.
@@ -87,7 +91,7 @@ func Flags() (*Config, support.ConfigOptions) {
 			Usage:     "horizon postgres database to connect with",
 		},
 		&support.ConfigOption{
-			Name:        "stellar-core-binary-path",
+			Name:        StellarCoreBinaryPathName,
 			OptType:     types.String,
 			FlagDefault: "",
 			Required:    false,
@@ -103,7 +107,7 @@ func Flags() (*Config, support.ConfigOptions) {
 			ConfigKey:   &config.RemoteCaptiveCoreURL,
 		},
 		&support.ConfigOption{
-			Name:        "captive-core-addendum-path",
+			Name:        CaptiveCoreAdddendumPathName,
 			OptType:     types.String,
 			FlagDefault: "",
 			Required:    false,
@@ -403,7 +407,7 @@ func ApplyFlags(config *Config, flags support.ConfigOptions) {
 	}
 
 	if config.EnableCaptiveCoreIngestion {
-		binaryPath := viper.GetString("stellar-core-binary-path")
+		binaryPath := viper.GetString(StellarCoreBinaryPathName)
 		remoteURL := viper.GetString("remote-captive-core-url")
 		if binaryPath == "" && remoteURL == "" {
 			stdLog.Fatalf("Invalid config: captive core requires that either --stellar-core-binary-path or --remote-captive-core-url is set")
@@ -416,7 +420,7 @@ func ApplyFlags(config *Config, flags support.ConfigOptions) {
 	}
 	if config.Ingest {
 		// When running live ingestion a config file is required too
-		validateBothOrNeither("stellar-core-binary-path", "stellar-core-config-path")
+		validateBothOrNeither(StellarCoreBinaryPathName, CaptiveCoreAdddendumPathName)
 	}
 
 	// Configure log file
