@@ -4,11 +4,12 @@ The following states are possible:
   - `stop`
   - `build`
   - `resume`
-  - `stressTest`
   - `verifyRange`
   - `historyRange`
   - `reingestHistoryRange`
   - `waitForCheckpoint`
+
+There is also the `stressTest` state, but that exists in its own world and is used only for testing ingestion, as its name implies.
 
 #### Definitions
 There are some important terms that need to be defined for clarity as they're used extensively in both the codebase and this breakdown:
