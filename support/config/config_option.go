@@ -134,8 +134,6 @@ func (co *ConfigOption) setFlag(cmd *cobra.Command) error {
 		cmd.PersistentFlags().Bool(co.Name, co.FlagDefault.(bool), co.UsageText())
 	case types.Uint:
 		cmd.PersistentFlags().Uint(co.Name, co.FlagDefault.(uint), co.UsageText())
-	case types.Uint16:
-		cmd.PersistentFlags().Uint16(co.Name, co.FlagDefault.(uint16), co.UsageText())
 	case types.Uint32:
 		cmd.PersistentFlags().Uint32(co.Name, co.FlagDefault.(uint32), co.UsageText())
 	default:

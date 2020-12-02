@@ -69,7 +69,7 @@ type Config struct {
 	EnableCaptiveCore           bool
 	StellarCoreBinaryPath       string
 	CaptiveCoreQuorumConfigPath string
-	CaptiveCoreHTTPPort         uint16
+	CaptiveCoreHTTPPort         uint
 	RemoteCaptiveCoreURL        string
 	NetworkPassphrase           string
 

@@ -113,7 +113,7 @@ type CaptiveCoreConfig struct {
 	// LedgerHashStore is an optional store used to obtain hashes for ledger sequences from a trusted source
 	LedgerHashStore TrustedLedgerHashStore
 	// HTTPPort is the TCP port to listen for requests (defaults to 0, which disables the HTTP server)
-	HTTPPort uint16
+	HTTPPort uint
 }
 
 // NewCaptive returns a new CaptiveStellarCore.

@@ -22,7 +22,7 @@ type Config struct {
 	StellarCoreDatabaseURL      string
 	StellarCoreURL              string
 	RemoteCaptiveCoreURL        string
-	CaptiveCoreHTTPPort         uint16
+	CaptiveCoreHTTPPort         uint
 
 	// MaxDBConnections has a priority over all 4 values below.
 	MaxDBConnections            int

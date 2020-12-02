@@ -36,7 +36,7 @@ type stellarCoreRunner struct {
 	coreConfigAddendumPath string
 	networkPassphrase      string
 	historyURLs            []string
-	httpPort               uint16
+	httpPort               uint
 
 	started  bool
 	wg       sync.WaitGroup
@@ -56,7 +56,7 @@ type stellarCoreRunner struct {
 	Log *log.Entry
 }
 
-func newStellarCoreRunner(executablePath, coreConfigAddendumPath, networkPassphrase string, httpPort uint16, historyURLs []string) (*stellarCoreRunner, error) {
+func newStellarCoreRunner(executablePath, coreConfigAddendumPath, networkPassphrase string, httpPort uint, historyURLs []string) (*stellarCoreRunner, error) {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	// Create temp dir
