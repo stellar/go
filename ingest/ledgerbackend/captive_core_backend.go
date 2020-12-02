@@ -34,7 +34,7 @@ func roundDownToFirstReplayAfterCheckpointStart(ledger uint32) uint32 {
 //     keep ledger state in RAM. It requires around 3GB of RAM as of August 2020.
 //   * When a UnboundedRange is prepared it runs Stellar-Core catchup mode to
 //     sync with the first ledger and then runs it in a normal mode. This
-//     requires the quorumConfigPath to be provided because a database connection is
+//     requires the coreConfigAddendumPath to be provided because a database connection is
 //     required and quorum set needs to be selected.
 //
 // The database requirement for UnboundedRange will soon be removed when some
@@ -62,9 +62,9 @@ func roundDownToFirstReplayAfterCheckpointStart(ledger uint32) uint32 {
 //
 // Requires Stellar-Core v13.2.0+.
 type CaptiveStellarCore struct {
-	quorumConfigPath string
-	archive          historyarchive.ArchiveInterface
-	ledgerHashStore  TrustedLedgerHashStore
+	coreConfigAddendumPath string
+	archive                historyarchive.ArchiveInterface
+	ledgerHashStore        TrustedLedgerHashStore
 
 	// Quick note on how shutdown works:
 	// If Stellar-Core exits, the exit signal is "catched" by bufferedLedgerMetaReader
@@ -104,8 +104,8 @@ type CaptiveStellarCore struct {
 type CaptiveCoreConfig struct {
 	// StellarCoreBinaryPath is the file path to the Stellar Core binary
 	StellarCoreBinaryPath string
-	// QuorumConfigPath is the file path to the Stellar Core configuration file used by captive core
-	QuorumConfigPath string
+	// CoreConfigAddendumPath is the file path to an addendum for the Stellar Core configuration file used by captive core
+	CoreConfigAddendumPath string
 	// NetworkPassphrase is the Stellar network passphrase used by captive core when connecting to the Stellar network
 	NetworkPassphrase string
 	// HistoryArchiveURLs are a list of history archive urls
@@ -118,7 +118,7 @@ type CaptiveCoreConfig struct {
 
 // NewCaptive returns a new CaptiveStellarCore.
 //
-// All parameters are required, except quorumConfigPath which is not required when
+// All parameters are required, except coreConfigAddendumPath which is not required when
 // working with BoundedRanges only.
 func NewCaptive(config CaptiveCoreConfig) (*CaptiveStellarCore, error) {
 	archive, err := historyarchive.Connect(
@@ -133,14 +133,14 @@ func NewCaptive(config CaptiveCoreConfig) (*CaptiveStellarCore, error) {
 
 	c := &CaptiveStellarCore{
 		archive:                  archive,
-		quorumConfigPath:         config.QuorumConfigPath,
+		coreConfigAddendumPath:   config.CoreConfigAddendumPath,
 		waitIntervalPrepareRange: time.Second,
 		ledgerHashStore:          config.LedgerHashStore,
 	}
-	c.stellarCoreRunnerFactory = func(configPath2 string) (stellarCoreRunnerInterface, error) {
+	c.stellarCoreRunnerFactory = func(coreConfigAddendumPath string) (stellarCoreRunnerInterface, error) {
 		runner, innerErr := newStellarCoreRunner(
 			config.StellarCoreBinaryPath,
-			configPath2,
+			coreConfigAddendumPath,
 			config.NetworkPassphrase,
 			config.HTTPPort,
 			config.HistoryArchiveURLs,
@@ -189,7 +189,7 @@ func (c *CaptiveStellarCore) openOfflineReplaySubprocess(from, to uint32) error 
 	}
 
 	if c.stellarCoreRunner == nil {
-		// quorumConfigPath is empty in an offline mode because it's generated
+		// coreConfigAddendumPath is empty in an offline mode because it's generated
 		c.stellarCoreRunner, err = c.stellarCoreRunnerFactory("")
 		if err != nil {
 			return errors.Wrap(err, "error creating stellar-core runner")
@@ -242,10 +242,10 @@ func (c *CaptiveStellarCore) openOnlineReplaySubprocess(from uint32) error {
 	}
 
 	if c.stellarCoreRunner == nil {
-		if c.quorumConfigPath == "" {
-			return errors.New("stellar-core quorum config file path cannot be empty in online mode")
+		if c.coreConfigAddendumPath == "" {
+			return errors.New("stellar-core addendum config file path cannot be empty in online mode")
 		}
-		c.stellarCoreRunner, err = c.stellarCoreRunnerFactory(c.quorumConfigPath)
+		c.stellarCoreRunner, err = c.stellarCoreRunnerFactory(c.coreConfigAddendumPath)
 		if err != nil {
 			return errors.Wrap(err, "error creating stellar-core runner")
 		}

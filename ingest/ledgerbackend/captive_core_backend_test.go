@@ -148,15 +148,15 @@ func TestCaptiveNew(t *testing.T) {
 
 	captiveStellarCore, err := NewCaptive(
 		CaptiveCoreConfig{
-			StellarCoreBinaryPath: executablePath,
-			QuorumConfigPath:      configPath,
-			NetworkPassphrase:     networkPassphrase,
-			HistoryArchiveURLs:    historyURLs,
+			StellarCoreBinaryPath:  executablePath,
+			CoreConfigAddendumPath: configPath,
+			NetworkPassphrase:      networkPassphrase,
+			HistoryArchiveURLs:     historyURLs,
 		},
 	)
 
 	assert.NoError(t, err)
-	assert.Equal(t, configPath, captiveStellarCore.quorumConfigPath)
+	assert.Equal(t, configPath, captiveStellarCore.coreConfigAddendumPath)
 	assert.Equal(t, uint32(0), captiveStellarCore.nextLedger)
 	assert.NotNil(t, captiveStellarCore.archive)
 }
@@ -426,8 +426,8 @@ func TestCaptivePrepareRangeUnboundedRange_ErrRunFrom(t *testing.T) {
 		Return(xdr.LedgerHeaderHistoryEntry{}, nil)
 
 	captiveBackend := CaptiveStellarCore{
-		archive:          mockArchive,
-		quorumConfigPath: "foo",
+		archive:                mockArchive,
+		coreConfigAddendumPath: "foo",
 		stellarCoreRunnerFactory: func(configPath string) (stellarCoreRunnerInterface, error) {
 			return mockRunner, nil
 		},
@@ -487,8 +487,8 @@ func TestCaptivePrepareRangeUnboundedRange_ReuseSession(t *testing.T) {
 		Return(xdr.LedgerHeaderHistoryEntry{}, nil)
 
 	captiveBackend := CaptiveStellarCore{
-		archive:          mockArchive,
-		quorumConfigPath: "foo",
+		archive:                mockArchive,
+		coreConfigAddendumPath: "foo",
 		stellarCoreRunnerFactory: func(configPath string) (stellarCoreRunnerInterface, error) {
 			return mockRunner, nil
 		},
@@ -529,8 +529,8 @@ func TestGetLatestLedgerSequence(t *testing.T) {
 		Return(xdr.LedgerHeaderHistoryEntry{}, nil)
 
 	captiveBackend := CaptiveStellarCore{
-		archive:          mockArchive,
-		quorumConfigPath: "foo",
+		archive:                mockArchive,
+		coreConfigAddendumPath: "foo",
 		stellarCoreRunnerFactory: func(configPath string) (stellarCoreRunnerInterface, error) {
 			return mockRunner, nil
 		},
@@ -808,8 +808,8 @@ func TestCaptiveGetLedger_CloseBufferFull(t *testing.T) {
 		Return(xdr.LedgerHeaderHistoryEntry{}, nil)
 
 	captiveBackend := CaptiveStellarCore{
-		archive:          mockArchive,
-		quorumConfigPath: "foo",
+		archive:                mockArchive,
+		coreConfigAddendumPath: "foo",
 		stellarCoreRunnerFactory: func(configPath string) (stellarCoreRunnerInterface, error) {
 			return mockRunner, nil
 		},
@@ -1164,8 +1164,8 @@ func TestCaptivePreviousLedgerCheck(t *testing.T) {
 	defer mockLedgerHashStore.AssertExpectations(t)
 
 	captiveBackend := CaptiveStellarCore{
-		quorumConfigPath: "stellar-core.cfg",
-		archive:          mockArchive,
+		coreConfigAddendumPath: "stellar-core.cfg",
+		archive:                mockArchive,
 		stellarCoreRunnerFactory: func(configPath string) (stellarCoreRunnerInterface, error) {
 			return mockRunner, nil
 		},

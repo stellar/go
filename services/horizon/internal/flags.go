@@ -103,11 +103,11 @@ func Flags() (*Config, support.ConfigOptions) {
 			ConfigKey:   &config.RemoteCaptiveCoreURL,
 		},
 		&support.ConfigOption{
-			Name:        "stellar-captive-core-quorum-path",
+			Name:        "captive-core-addendum-path",
 			OptType:     types.String,
 			FlagDefault: "",
 			Required:    false,
-			Usage:       "path to stellar core quorum config file (i.e. a stellar core config file with [QUORUM_SET] entries)",
+			Usage:       "path to an addendum for the Stellar Core configuration file used by captive core. It must, at least, include enough details to define a quorum set",
 			ConfigKey:   &config.CaptiveCoreQuorumConfigPath,
 		},
 		&support.ConfigOption{
@@ -119,7 +119,7 @@ func Flags() (*Config, support.ConfigOptions) {
 			ConfigKey:   &config.EnableCaptiveCoreIngestion,
 		},
 		&support.ConfigOption{
-			Name:        "stellar-captive-core-http-port",
+			Name:        "captive-core-http-port",
 			OptType:     types.Uint16,
 			FlagDefault: uint16(11626),
 			Required:    false,

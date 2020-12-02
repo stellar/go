@@ -1,7 +1,6 @@
 package ledgerbackend
 
 import (
-	"io"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -14,48 +13,21 @@ func TestGenerateConfig(t *testing.T) {
 	assert.NoError(t, err)
 	defer tmpFile.Close()
 	defer os.Remove(tmpFile.Name())
-	resetTmpFile := func() {
-		err := tmpFile.Truncate(0)
-		assert.NoError(t, err)
-		_, err = tmpFile.Seek(0, io.SeekStart)
-		assert.NoError(t, err)
-
-	}
 
 	r := stellarCoreRunner{
-		quorumConfigPath: tmpFile.Name(),
+		coreConfigAddendumPath: tmpFile.Name(),
 	}
 
-	tmpFile.WriteString(`[QUORUM_SET]
-THRESHOLD_PERCENT=100
-VALIDATORS=["GCZBOIAY4HLKAJVNJORXZOZRAY2BJDBZHKPBHZCRAIUR5IHC2UHBGCQR"]
+	tmpFile.WriteString(`[[HOME_DOMAINS]]
+HOME_DOMAIN="testnet.stellar.org"
+QUALITY="HIGH"
+
+[[VALIDATORS]]
+NAME="sdf_testnet_1"
+HOME_DOMAIN="testnet.stellar.org"
+PUBLIC_KEY="GDKXE2OZMJIPOSLNA6N6F2BVCI3O777I2OOC4BV7VOYUEHYX7RTRYA7Y"
+ADDRESS="core-testnet1.stellar.org"
 `)
 	_, err = r.generateConfig()
 	assert.NoError(t, err)
-
-	resetTmpFile()
-	tmpFile.WriteString(`QUORUM_SET=foo
-`)
-	_, err = r.generateConfig()
-	assert.Error(t, err)
-
-	resetTmpFile()
-	tmpFile.WriteString(`[QUORUM_SET.foo]
-THRESHOLD_PERCENT=100
-VALIDATORS=["GCZBOIAY4HLKAJVNJORXZOZRAY2BJDBZHKPBHZCRAIUR5IHC2UHBGCQR"]
-
-[QUORUM_SET.bar]
-THRESHOLD_PERCENT=100
-VALIDATORS=["GCZBOIAY4HLKAJVNJORXZOZRAY2BJDBZHKPBHZCRAIUR5IHC2UHBGCQR"]
-`)
-	_, err = r.generateConfig()
-	assert.NoError(t, err)
-
-	resetTmpFile()
-	tmpFile.WriteString(`[FOO]
-THRESHOLD_PERCENT=100
-VALIDATORS=["GCZBOIAY4HLKAJVNJORXZOZRAY2BJDBZHKPBHZCRAIUR5IHC2UHBGCQR"]
-`)
-	_, err = r.generateConfig()
-	assert.Error(t, err)
 }

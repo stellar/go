@@ -2,7 +2,6 @@ package ledgerbackend
 
 import (
 	"bufio"
-	"bytes"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -15,7 +14,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/BurntSushi/toml"
 	"github.com/pkg/errors"
 
 	"github.com/stellar/go/support/log"
@@ -34,11 +32,11 @@ type stellarCoreRunnerInterface interface {
 }
 
 type stellarCoreRunner struct {
-	executablePath    string
-	quorumConfigPath  string
-	networkPassphrase string
-	historyURLs       []string
-	httpPort          uint16
+	executablePath         string
+	coreConfigAddendumPath string
+	networkPassphrase      string
+	historyURLs            []string
+	httpPort               uint16
 
 	started  bool
 	wg       sync.WaitGroup
@@ -58,7 +56,7 @@ type stellarCoreRunner struct {
 	Log *log.Entry
 }
 
-func newStellarCoreRunner(executablePath, quorumConfigPath, networkPassphrase string, httpPort uint16, historyURLs []string) (*stellarCoreRunner, error) {
+func newStellarCoreRunner(executablePath, coreConfigAddendumPath, networkPassphrase string, httpPort uint16, historyURLs []string) (*stellarCoreRunner, error) {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	// Create temp dir
@@ -70,16 +68,16 @@ func newStellarCoreRunner(executablePath, quorumConfigPath, networkPassphrase st
 	}
 
 	runner := &stellarCoreRunner{
-		executablePath:    executablePath,
-		quorumConfigPath:  quorumConfigPath,
-		networkPassphrase: networkPassphrase,
-		historyURLs:       historyURLs,
-		httpPort:          httpPort,
-		shutdown:          make(chan struct{}),
-		processExit:       make(chan struct{}),
-		processExitError:  nil,
-		tempDir:           tempDir,
-		nonce:             fmt.Sprintf("captive-stellar-core-%x", r.Uint64()),
+		executablePath:         executablePath,
+		coreConfigAddendumPath: coreConfigAddendumPath,
+		networkPassphrase:      networkPassphrase,
+		historyURLs:            historyURLs,
+		httpPort:               httpPort,
+		shutdown:               make(chan struct{}),
+		processExit:            make(chan struct{}),
+		processExitError:       nil,
+		tempDir:                tempDir,
+		nonce:                  fmt.Sprintf("captive-stellar-core-%x", r.Uint64()),
 	}
 
 	if err := runner.writeConf(); err != nil {
@@ -104,7 +102,7 @@ func (r *stellarCoreRunner) generateConfig() (string, error) {
 		lines = append(lines, fmt.Sprintf("[HISTORY.h%d]", i))
 		lines = append(lines, fmt.Sprintf(`get="curl -sf %s/{0} -o {1}"`, val))
 	}
-	if r.quorumConfigPath == "" {
+	if r.coreConfigAddendumPath == "" {
 
 		// Add a fictional quorum -- necessary to convince core to start up;
 		// but not used at all for our purposes. Pubkey here is just random.
@@ -114,23 +112,12 @@ func (r *stellarCoreRunner) generateConfig() (string, error) {
 			`VALIDATORS=["GCZBOIAY4HLKAJVNJORXZOZRAY2BJDBZHKPBHZCRAIUR5IHC2UHBGCQR"]`)
 	}
 	result := strings.ReplaceAll(strings.Join(lines, "\n"), "\\", "\\\\")
-	if r.quorumConfigPath != "" {
-		// TODO: parse toml file and ensure it is a correct quorum config file
-		quorumConfigContents, err := ioutil.ReadFile(r.quorumConfigPath)
+	if r.coreConfigAddendumPath != "" {
+		addendumContents, err := ioutil.ReadFile(r.coreConfigAddendumPath)
 		if err != nil {
 			return "", errors.Wrap(err, "reading quorum config file")
 		}
-		var entries map[string]interface{}
-		if _, err := toml.DecodeReader(bytes.NewBuffer(quorumConfigContents), &entries); err != nil {
-			return "", errors.Wrap(err, "cannot parse quorum config file (make sure it only contains [QUORUM_SET] entries")
-		}
-		for k := range entries {
-			if k != "QUORUM_SET" {
-				return "", fmt.Errorf("incorrect quorum config file (%s entry found but only [QUORUM_SET] entries are accepted)", k)
-			}
-		}
-
-		result = result + "\n" + string(quorumConfigContents)
+		result = result + "\n" + string(addendumContents)
 	}
 	return result, nil
 }
