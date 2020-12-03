@@ -76,7 +76,7 @@ type CaptiveStellarCore struct {
 	stellarCoreRunner stellarCoreRunnerInterface
 
 	// For testing
-	stellarCoreRunnerFactory func(captiveCoreAddendumPath string) (stellarCoreRunnerInterface, error)
+	stellarCoreRunnerFactory func(mode stellarCoreRunnerMode, captiveCoreAddendumPath string) (stellarCoreRunnerInterface, error)
 
 	// Defines if the blocking mode (off by default) is on or off. In blocking mode,
 	// calling GetLedger blocks until the requested ledger is available. This is useful
@@ -137,13 +137,14 @@ func NewCaptive(config CaptiveCoreConfig) (*CaptiveStellarCore, error) {
 		waitIntervalPrepareRange: time.Second,
 		ledgerHashStore:          config.LedgerHashStore,
 	}
-	c.stellarCoreRunnerFactory = func(addendumPath string) (stellarCoreRunnerInterface, error) {
+	c.stellarCoreRunnerFactory = func(mode stellarCoreRunnerMode, addendumPath string) (stellarCoreRunnerInterface, error) {
 		runner, innerErr := newStellarCoreRunner(
 			config.BinaryPath,
 			addendumPath,
 			config.NetworkPassphrase,
 			config.HTTPPort,
 			config.HistoryArchiveURLs,
+			mode,
 		)
 		if innerErr != nil {
 			return runner, innerErr
@@ -190,7 +191,7 @@ func (c *CaptiveStellarCore) openOfflineReplaySubprocess(from, to uint32) error 
 
 	if c.stellarCoreRunner == nil {
 		// coreConfigAddendumPath is empty in an offline mode because it's generated
-		c.stellarCoreRunner, err = c.stellarCoreRunnerFactory("")
+		c.stellarCoreRunner, err = c.stellarCoreRunnerFactory(stellarCoreRunnerModeOffline, "")
 		if err != nil {
 			return errors.Wrap(err, "error creating stellar-core runner")
 		}
@@ -242,10 +243,7 @@ func (c *CaptiveStellarCore) openOnlineReplaySubprocess(from uint32) error {
 	}
 
 	if c.stellarCoreRunner == nil {
-		if c.coreConfigAddendumPath == "" {
-			return errors.New("stellar-core addendum config file path cannot be empty in online mode")
-		}
-		c.stellarCoreRunner, err = c.stellarCoreRunnerFactory(c.coreConfigAddendumPath)
+		c.stellarCoreRunner, err = c.stellarCoreRunnerFactory(stellarCoreRunnerModeOnline, c.coreConfigAddendumPath)
 		if err != nil {
 			return errors.Wrap(err, "error creating stellar-core runner")
 		}

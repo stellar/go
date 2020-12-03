@@ -187,7 +187,7 @@ func TestCaptivePrepareRange(t *testing.T) {
 
 	captiveBackend := CaptiveStellarCore{
 		archive: mockArchive,
-		stellarCoreRunnerFactory: func(configPath string) (stellarCoreRunnerInterface, error) {
+		stellarCoreRunnerFactory: func(_ stellarCoreRunnerMode, _ string) (stellarCoreRunnerInterface, error) {
 			return mockRunner, nil
 		},
 	}
@@ -221,7 +221,7 @@ func TestCaptivePrepareRangeCrash(t *testing.T) {
 
 	captiveBackend := CaptiveStellarCore{
 		archive: mockArchive,
-		stellarCoreRunnerFactory: func(configPath string) (stellarCoreRunnerInterface, error) {
+		stellarCoreRunnerFactory: func(_ stellarCoreRunnerMode, _ string) (stellarCoreRunnerInterface, error) {
 			return mockRunner, nil
 		},
 	}
@@ -252,7 +252,7 @@ func TestCaptivePrepareRangeTerminated(t *testing.T) {
 
 	captiveBackend := CaptiveStellarCore{
 		archive: mockArchive,
-		stellarCoreRunnerFactory: func(configPath string) (stellarCoreRunnerInterface, error) {
+		stellarCoreRunnerFactory: func(_ stellarCoreRunnerMode, _ string) (stellarCoreRunnerInterface, error) {
 			return mockRunner, nil
 		},
 	}
@@ -333,7 +333,7 @@ func TestCaptivePrepareRange_ToIsAheadOfRootHAS(t *testing.T) {
 
 	captiveBackend := CaptiveStellarCore{
 		archive: mockArchive,
-		stellarCoreRunnerFactory: func(configPath string) (stellarCoreRunnerInterface, error) {
+		stellarCoreRunnerFactory: func(_ stellarCoreRunnerMode, _ string) (stellarCoreRunnerInterface, error) {
 			return mockRunner, nil
 		},
 	}
@@ -356,7 +356,7 @@ func TestCaptivePrepareRange_ErrCatchup(t *testing.T) {
 
 	captiveBackend := CaptiveStellarCore{
 		archive: mockArchive,
-		stellarCoreRunnerFactory: func(configPath string) (stellarCoreRunnerInterface, error) {
+		stellarCoreRunnerFactory: func(_ stellarCoreRunnerMode, _ string) (stellarCoreRunnerInterface, error) {
 			return mockRunner, nil
 		},
 	}
@@ -428,7 +428,7 @@ func TestCaptivePrepareRangeUnboundedRange_ErrRunFrom(t *testing.T) {
 	captiveBackend := CaptiveStellarCore{
 		archive:                mockArchive,
 		coreConfigAddendumPath: "foo",
-		stellarCoreRunnerFactory: func(configPath string) (stellarCoreRunnerInterface, error) {
+		stellarCoreRunnerFactory: func(_ stellarCoreRunnerMode, _ string) (stellarCoreRunnerInterface, error) {
 			return mockRunner, nil
 		},
 	}
@@ -489,7 +489,7 @@ func TestCaptivePrepareRangeUnboundedRange_ReuseSession(t *testing.T) {
 	captiveBackend := CaptiveStellarCore{
 		archive:                mockArchive,
 		coreConfigAddendumPath: "foo",
-		stellarCoreRunnerFactory: func(configPath string) (stellarCoreRunnerInterface, error) {
+		stellarCoreRunnerFactory: func(_ stellarCoreRunnerMode, _ string) (stellarCoreRunnerInterface, error) {
 			return mockRunner, nil
 		},
 	}
@@ -531,7 +531,7 @@ func TestGetLatestLedgerSequence(t *testing.T) {
 	captiveBackend := CaptiveStellarCore{
 		archive:                mockArchive,
 		coreConfigAddendumPath: "foo",
-		stellarCoreRunnerFactory: func(configPath string) (stellarCoreRunnerInterface, error) {
+		stellarCoreRunnerFactory: func(_ stellarCoreRunnerMode, _ string) (stellarCoreRunnerInterface, error) {
 			return mockRunner, nil
 		},
 	}
@@ -587,7 +587,7 @@ func TestCaptiveGetLedger(t *testing.T) {
 
 	captiveBackend := CaptiveStellarCore{
 		archive: mockArchive,
-		stellarCoreRunnerFactory: func(configPath string) (stellarCoreRunnerInterface, error) {
+		stellarCoreRunnerFactory: func(_ stellarCoreRunnerMode, _ string) (stellarCoreRunnerInterface, error) {
 			return mockRunner, nil
 		},
 	}
@@ -651,7 +651,7 @@ func TestCaptiveGetLedger_NextLedgerIsDifferentToLedgerFromBuffer(t *testing.T) 
 
 	captiveBackend := CaptiveStellarCore{
 		archive: mockArchive,
-		stellarCoreRunnerFactory: func(configPath string) (stellarCoreRunnerInterface, error) {
+		stellarCoreRunnerFactory: func(_ stellarCoreRunnerMode, _ string) (stellarCoreRunnerInterface, error) {
 			return mockRunner, nil
 		},
 	}
@@ -681,7 +681,7 @@ func TestCaptiveGetLedger_ErrReadingMetaResult(t *testing.T) {
 
 	captiveBackend := CaptiveStellarCore{
 		archive: mockArchive,
-		stellarCoreRunnerFactory: func(configPath string) (stellarCoreRunnerInterface, error) {
+		stellarCoreRunnerFactory: func(_ stellarCoreRunnerMode, _ string) (stellarCoreRunnerInterface, error) {
 			return mockRunner, nil
 		},
 	}
@@ -718,7 +718,7 @@ func TestCaptiveGetLedger_ErrClosingAfterLastLedger(t *testing.T) {
 
 	captiveBackend := CaptiveStellarCore{
 		archive: mockArchive,
-		stellarCoreRunnerFactory: func(configPath string) (stellarCoreRunnerInterface, error) {
+		stellarCoreRunnerFactory: func(_ stellarCoreRunnerMode, _ string) (stellarCoreRunnerInterface, error) {
 			return mockRunner, nil
 		},
 	}
@@ -758,7 +758,7 @@ func TestCaptiveGetLedger_BoundedGetLedgerAfterCoreExit(t *testing.T) {
 
 	captiveBackend := CaptiveStellarCore{
 		archive: mockArchive,
-		stellarCoreRunnerFactory: func(configPath string) (stellarCoreRunnerInterface, error) {
+		stellarCoreRunnerFactory: func(_ stellarCoreRunnerMode, _ string) (stellarCoreRunnerInterface, error) {
 			return mockRunner, nil
 		},
 	}
@@ -810,7 +810,7 @@ func TestCaptiveGetLedger_CloseBufferFull(t *testing.T) {
 	captiveBackend := CaptiveStellarCore{
 		archive:                mockArchive,
 		coreConfigAddendumPath: "foo",
-		stellarCoreRunnerFactory: func(configPath string) (stellarCoreRunnerInterface, error) {
+		stellarCoreRunnerFactory: func(_ stellarCoreRunnerMode, _ string) (stellarCoreRunnerInterface, error) {
 			return mockRunner, nil
 		},
 	}
@@ -866,7 +866,7 @@ func TestGetLedgerBoundsCheck(t *testing.T) {
 
 	captiveBackend := CaptiveStellarCore{
 		archive: mockArchive,
-		stellarCoreRunnerFactory: func(configPath string) (stellarCoreRunnerInterface, error) {
+		stellarCoreRunnerFactory: func(_ stellarCoreRunnerMode, _ string) (stellarCoreRunnerInterface, error) {
 			return mockRunner, nil
 		},
 	}
@@ -936,7 +936,7 @@ func TestCaptiveGetLedgerTerminated(t *testing.T) {
 
 	captiveBackend := CaptiveStellarCore{
 		archive: mockArchive,
-		stellarCoreRunnerFactory: func(configPath string) (stellarCoreRunnerInterface, error) {
+		stellarCoreRunnerFactory: func(_ stellarCoreRunnerMode, _ string) (stellarCoreRunnerInterface, error) {
 			return mockRunner, nil
 		},
 	}
@@ -1166,7 +1166,7 @@ func TestCaptivePreviousLedgerCheck(t *testing.T) {
 	captiveBackend := CaptiveStellarCore{
 		coreConfigAddendumPath: "stellar-core.cfg",
 		archive:                mockArchive,
-		stellarCoreRunnerFactory: func(configPath string) (stellarCoreRunnerInterface, error) {
+		stellarCoreRunnerFactory: func(_ stellarCoreRunnerMode, _ string) (stellarCoreRunnerInterface, error) {
 			return mockRunner, nil
 		},
 		ledgerHashStore: mockLedgerHashStore,

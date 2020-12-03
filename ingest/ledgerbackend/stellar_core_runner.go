@@ -31,12 +31,20 @@ type stellarCoreRunnerInterface interface {
 	close() error
 }
 
+type stellarCoreRunnerMode int
+
+const (
+	stellarCoreRunnerModeOnline stellarCoreRunnerMode = iota
+	stellarCoreRunnerModeOffline
+)
+
 type stellarCoreRunner struct {
 	executablePath         string
 	coreConfigAddendumPath string
 	networkPassphrase      string
 	historyURLs            []string
 	httpPort               uint
+	mode                   stellarCoreRunnerMode
 
 	started  bool
 	wg       sync.WaitGroup
@@ -56,7 +64,7 @@ type stellarCoreRunner struct {
 	Log *log.Entry
 }
 
-func newStellarCoreRunner(executablePath, coreConfigAddendumPath, networkPassphrase string, httpPort uint, historyURLs []string) (*stellarCoreRunner, error) {
+func newStellarCoreRunner(executablePath, coreConfigAddendumPath, networkPassphrase string, httpPort uint, historyURLs []string, mode stellarCoreRunnerMode) (*stellarCoreRunner, error) {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	// Create temp dir
@@ -73,6 +81,7 @@ func newStellarCoreRunner(executablePath, coreConfigAddendumPath, networkPassphr
 		networkPassphrase:      networkPassphrase,
 		historyURLs:            historyURLs,
 		httpPort:               httpPort,
+		mode:                   mode,
 		shutdown:               make(chan struct{}),
 		processExit:            make(chan struct{}),
 		processExitError:       nil,
@@ -88,6 +97,9 @@ func newStellarCoreRunner(executablePath, coreConfigAddendumPath, networkPassphr
 }
 
 func (r *stellarCoreRunner) generateConfig() (string, error) {
+	if r.mode == stellarCoreRunnerModeOnline && r.coreConfigAddendumPath == "" {
+		return "", errors.New("stellar-core addendum config file path cannot be empty in online mode")
+	}
 	lines := []string{
 		"# Generated file -- do not edit",
 		"RUN_STANDALONE=true",
@@ -103,7 +115,6 @@ func (r *stellarCoreRunner) generateConfig() (string, error) {
 		lines = append(lines, fmt.Sprintf(`get="curl -sf %s/{0} -o {1}"`, val))
 	}
 	if r.coreConfigAddendumPath == "" {
-
 		// Add a fictional quorum -- necessary to convince core to start up;
 		// but not used at all for our purposes. Pubkey here is just random.
 		lines = append(lines,
