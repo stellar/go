@@ -105,16 +105,20 @@ func (r *stellarCoreRunner) generateConfig() (string, error) {
 		"RUN_STANDALONE=true",
 		"NODE_IS_VALIDATOR=false",
 		"DISABLE_XDR_FSYNC=true",
-		"UNSAFE_QUORUM=true",
 		fmt.Sprintf(`NETWORK_PASSPHRASE="%s"`, r.networkPassphrase),
 		fmt.Sprintf(`BUCKET_DIR_PATH="%s"`, filepath.Join(r.tempDir, "buckets")),
 		fmt.Sprintf(`HTTP_PORT=%d`, r.httpPort),
+	}
+
+	if r.mode == stellarCoreRunnerModeOffline {
+		// We don't need consensus when catching up
+		lines = append(lines, "UNSAFE_QUORUM=true")
 	}
 	for i, val := range r.historyURLs {
 		lines = append(lines, fmt.Sprintf("[HISTORY.h%d]", i))
 		lines = append(lines, fmt.Sprintf(`get="curl -sf %s/{0} -o {1}"`, val))
 	}
-	if r.coreConfigAddendumPath == "" {
+	if r.mode == stellarCoreRunnerModeOffline && r.coreConfigAddendumPath == "" {
 		// Add a fictional quorum -- necessary to convince core to start up;
 		// but not used at all for our purposes. Pubkey here is just random.
 		lines = append(lines,
@@ -197,6 +201,7 @@ func (r *stellarCoreRunner) writeConf() error {
 	if err != nil {
 		return err
 	}
+	r.Log.Debugf("captive core config file contents:\n%s", conf)
 	return ioutil.WriteFile(r.getConfFileName(), []byte(conf), 0644)
 }
 

@@ -26,19 +26,7 @@ To enable captive mode three feature config variables are required:
   ADDRESS="core-testnet1.stellar.org"
   ```
   
-  The base config file the addendum will be appended to is:
-  ```
-  # Generated file -- do not edit"
-  RUN_STANDALONE=true
-  NODE_IS_VALIDATOR=false
-  DISABLE_XDR_FSYNC=true
-  UNSAFE_QUORUM=true
-  NETWORK_PASSPHRASE=<value of --network-passphrase flag>
-  BUCKET_DIR_PATH=<temporary_directory_created_by_horizon>
-  HTTP_PORT=<value of --captive-core-http-port flag>
-  [HISTORY.hX]
-  get="curl -sf <Xth url in --history-archive-urls>/{0} -o {1}"
-  ```
+  The full configuration to be used will be printed out by Horizon when runnign horizon with `--log-level debug`
   
 * (optional) `CAPTIVE_CORE_HTTP_PORT` - HTTP port for Captive Core to listen on (0 disables the HTTP server)
 
