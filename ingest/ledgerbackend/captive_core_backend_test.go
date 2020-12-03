@@ -148,10 +148,10 @@ func TestCaptiveNew(t *testing.T) {
 
 	captiveStellarCore, err := NewCaptive(
 		CaptiveCoreConfig{
-			StellarCoreBinaryPath:  executablePath,
-			CoreConfigAddendumPath: configPath,
-			NetworkPassphrase:      networkPassphrase,
-			HistoryArchiveURLs:     historyURLs,
+			BinaryPath:         executablePath,
+			AddendumPath:       configPath,
+			NetworkPassphrase:  networkPassphrase,
+			HistoryArchiveURLs: historyURLs,
 		},
 	)
 

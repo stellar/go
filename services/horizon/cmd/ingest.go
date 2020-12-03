@@ -103,7 +103,7 @@ var ingestVerifyRangeCmd = &cobra.Command{
 			HistorySession:        horizonSession,
 			HistoryArchiveURL:     config.HistoryArchiveURLs[0],
 			EnableCaptiveCore:     config.EnableCaptiveCoreIngestion,
-			StellarCoreBinaryPath: config.StellarCoreBinaryPath,
+			CaptiveCoreBinaryPath: config.CaptiveCoreBinaryPath,
 			RemoteCaptiveCoreURL:  config.RemoteCaptiveCoreURL,
 		}
 
@@ -191,7 +191,7 @@ var ingestStressTestCmd = &cobra.Command{
 		}
 
 		if config.EnableCaptiveCoreIngestion {
-			ingestConfig.StellarCoreBinaryPath = config.StellarCoreBinaryPath
+			ingestConfig.CaptiveCoreBinaryPath = config.CaptiveCoreBinaryPath
 			ingestConfig.RemoteCaptiveCoreURL = config.RemoteCaptiveCoreURL
 		} else {
 			if config.StellarCoreDatabaseURL == "" {
@@ -273,7 +273,7 @@ var ingestInitGenesisStateCmd = &cobra.Command{
 		}
 
 		if config.EnableCaptiveCoreIngestion {
-			ingestConfig.StellarCoreBinaryPath = config.StellarCoreBinaryPath
+			ingestConfig.CaptiveCoreBinaryPath = config.CaptiveCoreBinaryPath
 		} else {
 			if config.StellarCoreDatabaseURL == "" {
 				log.Fatalf("flag --%s cannot be empty", horizon.StellarCoreDBURLFlagName)

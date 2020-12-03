@@ -76,7 +76,7 @@ type CaptiveStellarCore struct {
 	stellarCoreRunner stellarCoreRunnerInterface
 
 	// For testing
-	stellarCoreRunnerFactory func(quorumConfigPath string) (stellarCoreRunnerInterface, error)
+	stellarCoreRunnerFactory func(captiveCoreAddendumPath string) (stellarCoreRunnerInterface, error)
 
 	// Defines if the blocking mode (off by default) is on or off. In blocking mode,
 	// calling GetLedger blocks until the requested ledger is available. This is useful
@@ -102,10 +102,10 @@ type CaptiveStellarCore struct {
 
 // CaptiveCoreConfig contains all the parameters required to create a CaptiveStellarCore instance
 type CaptiveCoreConfig struct {
-	// StellarCoreBinaryPath is the file path to the Stellar Core binary
-	StellarCoreBinaryPath string
-	// CoreConfigAddendumPath is the file path to an addendum for the Stellar Core configuration file used by captive core
-	CoreConfigAddendumPath string
+	// BinaryPath is the file path to the Stellar Core binary
+	BinaryPath string
+	// AddendumPath is the file path to an addendum for the Stellar Core configuration file used by captive core
+	AddendumPath string
 	// NetworkPassphrase is the Stellar network passphrase used by captive core when connecting to the Stellar network
 	NetworkPassphrase string
 	// HistoryArchiveURLs are a list of history archive urls
@@ -133,14 +133,14 @@ func NewCaptive(config CaptiveCoreConfig) (*CaptiveStellarCore, error) {
 
 	c := &CaptiveStellarCore{
 		archive:                  archive,
-		coreConfigAddendumPath:   config.CoreConfigAddendumPath,
+		coreConfigAddendumPath:   config.AddendumPath,
 		waitIntervalPrepareRange: time.Second,
 		ledgerHashStore:          config.LedgerHashStore,
 	}
-	c.stellarCoreRunnerFactory = func(coreConfigAddendumPath string) (stellarCoreRunnerInterface, error) {
+	c.stellarCoreRunnerFactory = func(addendumPath string) (stellarCoreRunnerInterface, error) {
 		runner, innerErr := newStellarCoreRunner(
-			config.StellarCoreBinaryPath,
-			coreConfigAddendumPath,
+			config.BinaryPath,
+			addendumPath,
 			config.NetworkPassphrase,
 			config.HTTPPort,
 			config.HistoryArchiveURLs,

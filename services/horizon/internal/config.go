@@ -16,13 +16,14 @@ type Config struct {
 	Port               uint
 	AdminPort          uint
 
-	EnableCaptiveCoreIngestion  bool
-	StellarCoreBinaryPath       string
-	CaptiveCoreQuorumConfigPath string
-	StellarCoreDatabaseURL      string
-	StellarCoreURL              string
-	RemoteCaptiveCoreURL        string
-	CaptiveCoreHTTPPort         uint
+	EnableCaptiveCoreIngestion bool
+	CaptiveCoreBinaryPath      string
+	CaptiveCoreAddendumPath    string
+	RemoteCaptiveCoreURL       string
+	CaptiveCoreHTTPPort        uint
+
+	StellarCoreDatabaseURL string
+	StellarCoreURL         string
 
 	// MaxDBConnections has a priority over all 4 values below.
 	MaxDBConnections            int

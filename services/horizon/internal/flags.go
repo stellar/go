@@ -96,7 +96,7 @@ func Flags() (*Config, support.ConfigOptions) {
 			FlagDefault: "",
 			Required:    false,
 			Usage:       "path to stellar core binary (--remote-captive-core-url has higher precedence)",
-			ConfigKey:   &config.StellarCoreBinaryPath,
+			ConfigKey:   &config.CaptiveCoreBinaryPath,
 		},
 		&support.ConfigOption{
 			Name:        "remote-captive-core-url",
@@ -112,7 +112,7 @@ func Flags() (*Config, support.ConfigOptions) {
 			FlagDefault: "",
 			Required:    false,
 			Usage:       "path to an addendum for the Stellar Core configuration file used by captive core. It must, at least, include enough details to define a quorum set",
-			ConfigKey:   &config.CaptiveCoreQuorumConfigPath,
+			ConfigKey:   &config.CaptiveCoreAddendumPath,
 		},
 		&support.ConfigOption{
 			Name:        "enable-captive-core-ingestion",

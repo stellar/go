@@ -113,11 +113,11 @@ func main() {
 			logger.SetLevel(logLevel)
 
 			captiveConfig := ledgerbackend.CaptiveCoreConfig{
-				StellarCoreBinaryPath:  binaryPath,
-				CoreConfigAddendumPath: configAddendumPath,
-				NetworkPassphrase:      networkPassphrase,
-				HistoryArchiveURLs:     historyArchiveURLs,
-				HTTPPort:               stellarCoreHTTPPort,
+				BinaryPath:         binaryPath,
+				AddendumPath:       configAddendumPath,
+				NetworkPassphrase:  networkPassphrase,
+				HistoryArchiveURLs: historyArchiveURLs,
+				HTTPPort:           stellarCoreHTTPPort,
 			}
 
 			var dbConn *db.Session
