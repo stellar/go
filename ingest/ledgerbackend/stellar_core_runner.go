@@ -20,6 +20,7 @@ import (
 
 type stellarCoreRunnerInterface interface {
 	catchup(from, to uint32) error
+	run() error
 	runFrom(from uint32, hash string) error
 	getMetaPipe() io.Reader
 	// getProcessExitChan returns a channel that closes on process exit
@@ -239,6 +240,28 @@ func (r *stellarCoreRunner) runFrom(from uint32, hash string) error {
 		"--in-memory",
 		"--start-at-ledger", fmt.Sprintf("%d", from),
 		"--start-at-hash", hash,
+		"--metadata-output-stream", r.getPipeName(),
+	)
+	if err != nil {
+		return errors.Wrap(err, "error creating `stellar-core run` subprocess")
+	}
+	r.metaPipe, err = r.start()
+	if err != nil {
+		return errors.Wrap(err, "error starting `stellar-core run` subprocess")
+	}
+	r.started = true
+
+	return nil
+}
+
+func (r *stellarCoreRunner) run() error {
+	if r.started {
+		return errors.New("runner already started")
+	}
+	var err error
+	r.cmd, err = r.createCmd(
+		"run",
+		"--in-memory",
 		"--metadata-output-stream", r.getPipeName(),
 	)
 	if err != nil {
