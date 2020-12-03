@@ -14,9 +14,9 @@ There is also the `stressTest` state, but that exists in its own world and is us
 #### Definitions
 There are some important terms that need to be defined for clarity as they're used extensively in both the codebase and this breakdown:
 
-  - the `historyQ` field corresponds to **historical *time-series* data**, *not* to the history *archives* (which only contain *cumulative* data); I prefer to refer to it as the `TimeSeriesDB`.
-  - the `lastIngestedLedger` thus corresponds to the last ledger that Horizon  ingested into the time-series tables (coming from the `key_value_store` table)
-  - the `lastHistoryLedger`, however, corresponds to the last ledger that Core+Horizon are *aware* of, not necessarily *ingested* (coming from `history_ledgers` table); I'll usually refer to it as the `lastKnownLedger`
+  - the `historyQ` member provides an interface into both the **historical** data (*time-series*) as well as the **state** data (*cumulative*) in the database and does not refer to the history archives
+  - the `lastIngestedLedger` thus corresponds to the last ledger that Horizon fully ingested into the database (both time-series and cumulative data)
+  - the `lastHistoryLedger`, however, corresponds to the last ledger that Horizon ingested *only* into the time-series tables (coming from `history_ledgers` table); this can be not-equal to the `lastIngestedLedger` because time-series data can be ingested independently of cumulative data (via the `db reingest range` subcommand). I'll usually refer to it as the `lastKnownLedger`
   - the `lastCheckpoint` corresponds to the last checkpoint ledger (reminder: a checkpoint ledger is one in which: `(ledger# + 1) mod 64 == 0`) and thus to a matching history archive upload.
 
 One of the most important jobs of the FSM described here is to make sure that `lastIngestedLedger` and `lastHistoryLedger` are equal: the [`historyRange`](#historyrange-state) updates the latter, but not the former, so that we can track when state data is behind history data.
@@ -36,7 +36,7 @@ The database contains:
   - **History tables** -- all tables that contain historical time-series data, such as `history_transactions`, `history_operations`, etc.
   - **Transaction processors** -- processors that ingest the history tables (described by the `io.LedgerTransaction` interface).
   - **State tables** -- all tables that contain the current cumulative state, such as accounts, offers, etc.
-  - **Change processors** -- processors ingesting tx meta (time-series data) that update state tables. These aren't related to a particular *transaction*, but rather describe a *transition* of a ledger entry from one state to another (described by the `io.Change` interface).
+  - **Change processors** -- processors ingesting deltas update state tables. These aren't related to a particular *transaction*, but rather describe a *transition* of a ledger entry from one state to another (described by the `io.Change` interface). This can take the form of both tx meta (time-series data, where the "change" occurs from one ledger to the next) and history archives (cumulative data, where the "change" occurs from the genesis ledger to the checkpoint).
 
 
 ## `start` State 
