@@ -119,7 +119,7 @@ type System interface {
 	VerifyRange(fromLedger, toLedger uint32, verifyState bool) error
 	ReingestRange(fromLedger, toLedger uint32, force bool) error
 	BuildGenesisState() error
-	Shutdown()
+	Shutdown() error
 }
 
 type system struct {
@@ -495,7 +495,7 @@ func (s *system) updateCursor(ledgerSequence uint32) error {
 	return nil
 }
 
-func (s *system) Shutdown() {
+func (s *system) Shutdown() error {
 	log.Info("Shutting down ingestion system...")
 	s.stateVerificationMutex.Lock()
 	defer s.stateVerificationMutex.Unlock()
@@ -503,6 +503,13 @@ func (s *system) Shutdown() {
 		log.Info("Shutting down state verifier...")
 	}
 	s.cancel()
+
+	if s.ledgerBackend != nil {
+		err := s.ledgerBackend.Close()
+		return errors.Wrap(err, "error closing ledger backend")
+	}
+
+	return nil
 }
 
 func markStateInvalid(historyQ history.IngestionQ, err error) {

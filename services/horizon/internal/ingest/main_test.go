@@ -146,6 +146,22 @@ func TestContextCancel(t *testing.T) {
 	assert.NoError(t, system.runStateMachine(startState{}))
 }
 
+func TestShutdown(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	ledgerBackend := &mockLedgerBackend{}
+
+	system := &system{
+		cancel:        cancel,
+		ctx:           ctx,
+		ledgerBackend: ledgerBackend,
+	}
+
+	ledgerBackend.On("Close").Return(nil).Once()
+
+	err := system.Shutdown()
+	assert.NoError(t, err)
+}
+
 // TestStateMachineRunReturnsErrorWhenNextStateIsShutdownWithError checks if the
 // state that goes to shutdownState and returns an error will make `run` function
 // return that error. This is essential because some commands rely on this to return
@@ -483,8 +499,9 @@ func (m *mockSystem) BuildGenesisState() error {
 	return args.Error(0)
 }
 
-func (m *mockSystem) Shutdown() {
-	m.Called()
+func (m *mockSystem) Shutdown() error {
+	args := m.Called()
+	return args.Error(0)
 }
 
 var _ System = (*mockSystem)(nil)

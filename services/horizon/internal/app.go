@@ -158,7 +158,10 @@ func (a *App) waitForDone() {
 	a.webServer.Shutdown(webShutdownCtx)
 	a.cancel()
 	if a.ingester != nil {
-		a.ingester.Shutdown()
+		err := a.ingester.Shutdown()
+		if err != nil {
+			log.WithField("error", err).Warn("error in ingester.Shutdown()")
+		}
 	}
 	a.ticks.Stop()
 }
