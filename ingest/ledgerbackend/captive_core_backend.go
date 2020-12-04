@@ -254,26 +254,12 @@ func (c *CaptiveStellarCore) openOnlineReplaySubprocess(from uint32) error {
 		}
 	}
 
-	var nextLedger uint32
-	if latestCheckpointSequence == 0 {
-		if c.log != nil {
-			c.log.Info("checkpoint ledger has not been published, attempting to run from genesis ledger")
-		}
-		// we haven't published the first checkpoint ledger yet
-		// so we can run stellar-core run --in-memory without providing a starting point
-		// and captive core will start streaming from the genesis ledger
-		err = c.stellarCoreRunner.run()
-		nextLedger = 2
-	} else {
-		var runFrom uint32
-		var ledgerHash string
-		runFrom, ledgerHash, nextLedger, err = c.runFromParams(from)
-		if err != nil {
-			return errors.Wrap(err, "error calculating ledger and hash for stelar-core run")
-		}
-
-		err = c.stellarCoreRunner.runFrom(runFrom, ledgerHash)
+	runFrom, ledgerHash, nextLedger, err := c.runFromParams(from)
+	if err != nil {
+		return errors.Wrap(err, "error calculating ledger and hash for stelar-core run")
 	}
+
+	err = c.stellarCoreRunner.runFrom(runFrom, ledgerHash)
 	if err != nil {
 		return errors.Wrap(err, "error running stellar-core")
 	}
@@ -282,7 +268,8 @@ func (c *CaptiveStellarCore) openOnlineReplaySubprocess(from uint32) error {
 	c.lastLedger = nil
 
 	if c.ledgerHashStore != nil {
-		ledgerHash, exists, err := c.ledgerHashStore.GetLedgerHash(nextLedger - 1)
+		var exists bool
+		ledgerHash, exists, err = c.ledgerHashStore.GetLedgerHash(nextLedger - 1)
 		if err != nil {
 			return errors.Wrapf(err, "error trying to read ledger hash %d", nextLedger-1)
 		}

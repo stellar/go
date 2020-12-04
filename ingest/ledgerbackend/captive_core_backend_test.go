@@ -28,11 +28,6 @@ func (m *stellarCoreRunnerMock) catchup(from, to uint32) error {
 	return a.Error(0)
 }
 
-func (m *stellarCoreRunnerMock) run() error {
-	a := m.Called()
-	return a.Error(0)
-}
-
 func (m *stellarCoreRunnerMock) runFrom(from uint32, hash string) error {
 	a := m.Called(from, hash)
 	return a.Error(0)
@@ -405,47 +400,6 @@ func TestCaptivePrepareRangeUnboundedRange_ErrGettingRootHAS(t *testing.T) {
 
 	err := captiveBackend.PrepareRange(UnboundedRange(100))
 	assert.EqualError(t, err, "opening subprocess: error getting latest checkpoint sequence: error getting root HAS: transient error")
-}
-
-func TestCaptivePrepareRangeUnboundedRange_LatestCheckPointIsZero(t *testing.T) {
-	var buf bytes.Buffer
-	for i := 2; i <= 65; i++ {
-		writeLedgerHeader(&buf, testLedgerHeader{sequence: uint32(i)})
-	}
-
-	mockRunner := &stellarCoreRunnerMock{}
-	mockRunner.On("run").Return(nil).Once()
-	mockRunner.On("getMetaPipe").Return(&buf)
-	mockRunner.On("getProcessExitChan").Return(make(chan struct{}))
-	mockRunner.On("close").Return(nil).Once()
-
-	mockArchive := &historyarchive.MockArchive{}
-	mockArchive.
-		On("GetRootHAS").
-		Return(historyarchive.HistoryArchiveState{
-			CurrentLedger: uint32(0),
-		}, nil).Twice()
-
-	captiveBackend := CaptiveStellarCore{
-		archive:           mockArchive,
-		configPath:        "foo",
-		networkPassphrase: network.PublicNetworkPassphrase,
-		stellarCoreRunnerFactory: func(configPath string) (stellarCoreRunnerInterface, error) {
-			return mockRunner, nil
-		},
-	}
-
-	err := captiveBackend.PrepareRange(UnboundedRange(2))
-	assert.NoError(t, err)
-
-	assert.NoError(t, captiveBackend.Close())
-
-	mockRunner.On("run").Return(fmt.Errorf("transient error")).Once()
-	err = captiveBackend.PrepareRange(UnboundedRange(2))
-	assert.EqualError(t, err, "opening subprocess: error running stellar-core: transient error")
-
-	mockArchive.AssertExpectations(t)
-	mockRunner.AssertExpectations(t)
 }
 
 func TestCaptivePrepareRangeUnboundedRange_FromIsTooFarAheadOfLatestHAS(t *testing.T) {
@@ -1045,10 +999,8 @@ func TestCaptiveUseOfLedgerHashStore(t *testing.T) {
 		Return("", false, fmt.Errorf("transient error")).Once()
 	mockLedgerHashStore.On("GetLedgerHash", uint32(254)).
 		Return("", false, nil).Once()
-	mockLedgerHashStore.On("GetLedgerHash", uint32(2)).
-		Return("cde", true, nil).Once()
 	mockLedgerHashStore.On("GetLedgerHash", uint32(62)).
-		Return("jkl", true, nil).Once()
+		Return("cde", true, nil).Once()
 	mockLedgerHashStore.On("GetLedgerHash", uint32(126)).
 		Return("ghi", true, nil).Once()
 
@@ -1062,13 +1014,13 @@ func TestCaptiveUseOfLedgerHashStore(t *testing.T) {
 	runFrom, ledgerHash, nextLedger, err := captiveBackend.runFromParams(24)
 	assert.NoError(t, err)
 	assert.Equal(t, uint32(2), runFrom)
-	assert.Equal(t, "cde", ledgerHash)
+	assert.Equal(t, "", ledgerHash)
 	assert.Equal(t, uint32(2), nextLedger)
 
 	runFrom, ledgerHash, nextLedger, err = captiveBackend.runFromParams(86)
 	assert.NoError(t, err)
 	assert.Equal(t, uint32(62), runFrom)
-	assert.Equal(t, "jkl", ledgerHash)
+	assert.Equal(t, "cde", ledgerHash)
 	assert.Equal(t, uint32(2), nextLedger)
 
 	runFrom, ledgerHash, nextLedger, err = captiveBackend.runFromParams(128)
