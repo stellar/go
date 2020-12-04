@@ -105,7 +105,7 @@ func Example_changes() {
 	backend, err := ledgerbackend.NewCaptive(
 		ledgerbackend.CaptiveCoreConfig{
 			BinaryPath:         "/bin/stellar-core",
-			AddendumPath:       "/opt/stellar-core.cfg",
+			ConfigAppendPath:   "/opt/stellar-core.cfg",
 			NetworkPassphrase:  networkPassphrase,
 			HistoryArchiveURLs: []string{archiveURL},
 		},

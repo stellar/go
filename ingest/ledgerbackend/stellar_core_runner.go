@@ -39,12 +39,12 @@ const (
 )
 
 type stellarCoreRunner struct {
-	executablePath         string
-	coreConfigAddendumPath string
-	networkPassphrase      string
-	historyURLs            []string
-	httpPort               uint
-	mode                   stellarCoreRunnerMode
+	executablePath    string
+	configAppendPath  string
+	networkPassphrase string
+	historyURLs       []string
+	httpPort          uint
+	mode              stellarCoreRunnerMode
 
 	started  bool
 	wg       sync.WaitGroup
@@ -64,7 +64,7 @@ type stellarCoreRunner struct {
 	Log *log.Entry
 }
 
-func newStellarCoreRunner(executablePath, coreConfigAddendumPath, networkPassphrase string, httpPort uint, historyURLs []string, mode stellarCoreRunnerMode) (*stellarCoreRunner, error) {
+func newStellarCoreRunner(executablePath, coreConfigAppendPath, networkPassphrase string, httpPort uint, historyURLs []string, mode stellarCoreRunnerMode) (*stellarCoreRunner, error) {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	// Create temp dir
@@ -76,17 +76,17 @@ func newStellarCoreRunner(executablePath, coreConfigAddendumPath, networkPassphr
 	}
 
 	runner := &stellarCoreRunner{
-		executablePath:         executablePath,
-		coreConfigAddendumPath: coreConfigAddendumPath,
-		networkPassphrase:      networkPassphrase,
-		historyURLs:            historyURLs,
-		httpPort:               httpPort,
-		mode:                   mode,
-		shutdown:               make(chan struct{}),
-		processExit:            make(chan struct{}),
-		processExitError:       nil,
-		tempDir:                tempDir,
-		nonce:                  fmt.Sprintf("captive-stellar-core-%x", r.Uint64()),
+		executablePath:    executablePath,
+		configAppendPath:  coreConfigAppendPath,
+		networkPassphrase: networkPassphrase,
+		historyURLs:       historyURLs,
+		httpPort:          httpPort,
+		mode:              mode,
+		shutdown:          make(chan struct{}),
+		processExit:       make(chan struct{}),
+		processExitError:  nil,
+		tempDir:           tempDir,
+		nonce:             fmt.Sprintf("captive-stellar-core-%x", r.Uint64()),
 	}
 
 	if err := runner.writeConf(); err != nil {
@@ -97,8 +97,8 @@ func newStellarCoreRunner(executablePath, coreConfigAddendumPath, networkPassphr
 }
 
 func (r *stellarCoreRunner) generateConfig() (string, error) {
-	if r.mode == stellarCoreRunnerModeOnline && r.coreConfigAddendumPath == "" {
-		return "", errors.New("stellar-core addendum config file path cannot be empty in online mode")
+	if r.mode == stellarCoreRunnerModeOnline && r.configAppendPath == "" {
+		return "", errors.New("stellar-core append config file path cannot be empty in online mode")
 	}
 	lines := []string{
 		"# Generated file -- do not edit",
@@ -118,7 +118,7 @@ func (r *stellarCoreRunner) generateConfig() (string, error) {
 		lines = append(lines, fmt.Sprintf("[HISTORY.h%d]", i))
 		lines = append(lines, fmt.Sprintf(`get="curl -sf %s/{0} -o {1}"`, val))
 	}
-	if r.mode == stellarCoreRunnerModeOffline && r.coreConfigAddendumPath == "" {
+	if r.mode == stellarCoreRunnerModeOffline && r.configAppendPath == "" {
 		// Add a fictional quorum -- necessary to convince core to start up;
 		// but not used at all for our purposes. Pubkey here is just random.
 		lines = append(lines,
@@ -127,12 +127,12 @@ func (r *stellarCoreRunner) generateConfig() (string, error) {
 			`VALIDATORS=["GCZBOIAY4HLKAJVNJORXZOZRAY2BJDBZHKPBHZCRAIUR5IHC2UHBGCQR"]`)
 	}
 	result := strings.ReplaceAll(strings.Join(lines, "\n"), "\\", "\\\\")
-	if r.coreConfigAddendumPath != "" {
-		addendumContents, err := ioutil.ReadFile(r.coreConfigAddendumPath)
+	if r.configAppendPath != "" {
+		appendConfigContents, err := ioutil.ReadFile(r.configAppendPath)
 		if err != nil {
 			return "", errors.Wrap(err, "reading quorum config file")
 		}
-		result = result + "\n" + string(addendumContents)
+		result = result + "\n" + string(appendConfigContents)
 	}
 	return result, nil
 }

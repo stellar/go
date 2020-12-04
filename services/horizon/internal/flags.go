@@ -26,8 +26,8 @@ const (
 	StellarCoreURLFlagName = "stellar-core-url"
 	// StellarCoreBinaryPathName is the command line flag for configuring the path to the stellar core binary
 	StellarCoreBinaryPathName = "stellar-core-binary-path"
-	// CaptiveCoreAdddendumPathName is the command line flag for configuring the path to the captive core configuration addendum
-	CaptiveCoreAdddendumPathName = "captive-core-addendum-path"
+	// CaptiveCoreConfigAppendPathName is the command line flag for configuring the path to the captive core additional configuration
+	CaptiveCoreConfigAppendPathName = "captive-core-config-append-path"
 )
 
 // validateBothOrNeither ensures that both options are provided, if either is provided.
@@ -107,12 +107,12 @@ func Flags() (*Config, support.ConfigOptions) {
 			ConfigKey:   &config.RemoteCaptiveCoreURL,
 		},
 		&support.ConfigOption{
-			Name:        CaptiveCoreAdddendumPathName,
+			Name:        CaptiveCoreConfigAppendPathName,
 			OptType:     types.String,
 			FlagDefault: "",
 			Required:    false,
-			Usage:       "path to an addendum for the Stellar Core configuration file used by captive core. It must, at least, include enough details to define a quorum set",
-			ConfigKey:   &config.CaptiveCoreAddendumPath,
+			Usage:       "path to additional configuration for the Stellar Core configuration file used by captive core. It must, at least, include enough details to define a quorum set",
+			ConfigKey:   &config.CaptiveCoreConfigAppendPath,
 		},
 		&support.ConfigOption{
 			Name:        "enable-captive-core-ingestion",
@@ -420,7 +420,7 @@ func ApplyFlags(config *Config, flags support.ConfigOptions) {
 	}
 	if config.Ingest {
 		// When running live ingestion a config file is required too
-		validateBothOrNeither(StellarCoreBinaryPathName, CaptiveCoreAdddendumPathName)
+		validateBothOrNeither(StellarCoreBinaryPathName, CaptiveCoreConfigAppendPathName)
 	}
 
 	// Configure log file

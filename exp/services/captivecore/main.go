@@ -20,7 +20,7 @@ import (
 
 func main() {
 	var port int
-	var networkPassphrase, binaryPath, configAddendumPath, dbURL string
+	var networkPassphrase, binaryPath, configAppendPath, dbURL string
 	var historyArchiveURLs []string
 	var stellarCoreHTTPPort uint
 	var logLevel logrus.Level
@@ -52,12 +52,12 @@ func main() {
 			ConfigKey:   &binaryPath,
 		},
 		&config.ConfigOption{
-			Name:        "captive-core-addendum-path",
+			Name:        "captive-core-config-append-path",
 			OptType:     types.String,
 			FlagDefault: "",
 			Required:    false,
-			Usage:       "path to an addendum for the Stellar Core configuration file used by captive core. It must, at least, include enough details to define a quorum set",
-			ConfigKey:   &configAddendumPath,
+			Usage:       "path to additional configuration for the Stellar Core configuration file used by captive core. It must, at least, include enough details to define a quorum set",
+			ConfigKey:   &configAppendPath,
 		},
 		&config.ConfigOption{
 			Name:        "history-archive-urls",
@@ -114,7 +114,7 @@ func main() {
 
 			captiveConfig := ledgerbackend.CaptiveCoreConfig{
 				BinaryPath:         binaryPath,
-				AddendumPath:       configAddendumPath,
+				ConfigAppendPath:   configAppendPath,
 				NetworkPassphrase:  networkPassphrase,
 				HistoryArchiveURLs: historyArchiveURLs,
 				HTTPPort:           stellarCoreHTTPPort,

@@ -15,7 +15,7 @@ func TestGenerateConfig(t *testing.T) {
 	defer os.Remove(tmpFile.Name())
 
 	r := stellarCoreRunner{
-		coreConfigAddendumPath: tmpFile.Name(),
+		configAppendPath: tmpFile.Name(),
 	}
 
 	tmpFile.WriteString(`[[HOME_DOMAINS]]

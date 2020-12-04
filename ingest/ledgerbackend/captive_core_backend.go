@@ -34,7 +34,7 @@ func roundDownToFirstReplayAfterCheckpointStart(ledger uint32) uint32 {
 //     keep ledger state in RAM. It requires around 3GB of RAM as of August 2020.
 //   * When a UnboundedRange is prepared it runs Stellar-Core catchup mode to
 //     sync with the first ledger and then runs it in a normal mode. This
-//     requires the coreConfigAddendumPath to be provided because a database connection is
+//     requires the configAppendPath to be provided because a database connection is
 //     required and quorum set needs to be selected.
 //
 // The database requirement for UnboundedRange will soon be removed when some
@@ -62,9 +62,9 @@ func roundDownToFirstReplayAfterCheckpointStart(ledger uint32) uint32 {
 //
 // Requires Stellar-Core v13.2.0+.
 type CaptiveStellarCore struct {
-	coreConfigAddendumPath string
-	archive                historyarchive.ArchiveInterface
-	ledgerHashStore        TrustedLedgerHashStore
+	configAppendPath string
+	archive          historyarchive.ArchiveInterface
+	ledgerHashStore  TrustedLedgerHashStore
 
 	// Quick note on how shutdown works:
 	// If Stellar-Core exits, the exit signal is "catched" by bufferedLedgerMetaReader
@@ -76,7 +76,7 @@ type CaptiveStellarCore struct {
 	stellarCoreRunner stellarCoreRunnerInterface
 
 	// For testing
-	stellarCoreRunnerFactory func(mode stellarCoreRunnerMode, captiveCoreAddendumPath string) (stellarCoreRunnerInterface, error)
+	stellarCoreRunnerFactory func(mode stellarCoreRunnerMode, captiveCoreConfigAppendPath string) (stellarCoreRunnerInterface, error)
 
 	// Defines if the blocking mode (off by default) is on or off. In blocking mode,
 	// calling GetLedger blocks until the requested ledger is available. This is useful
@@ -104,8 +104,8 @@ type CaptiveStellarCore struct {
 type CaptiveCoreConfig struct {
 	// BinaryPath is the file path to the Stellar Core binary
 	BinaryPath string
-	// AddendumPath is the file path to an addendum for the Stellar Core configuration file used by captive core
-	AddendumPath string
+	// ConfigAppendPath is the file path to additional configuration for the Stellar Core configuration file used by captive core
+	ConfigAppendPath string
 	// NetworkPassphrase is the Stellar network passphrase used by captive core when connecting to the Stellar network
 	NetworkPassphrase string
 	// HistoryArchiveURLs are a list of history archive urls
@@ -118,7 +118,7 @@ type CaptiveCoreConfig struct {
 
 // NewCaptive returns a new CaptiveStellarCore.
 //
-// All parameters are required, except coreConfigAddendumPath which is not required when
+// All parameters are required, except configAppendPath which is not required when
 // working with BoundedRanges only.
 func NewCaptive(config CaptiveCoreConfig) (*CaptiveStellarCore, error) {
 	archive, err := historyarchive.Connect(
@@ -133,14 +133,14 @@ func NewCaptive(config CaptiveCoreConfig) (*CaptiveStellarCore, error) {
 
 	c := &CaptiveStellarCore{
 		archive:                  archive,
-		coreConfigAddendumPath:   config.AddendumPath,
+		configAppendPath:         config.ConfigAppendPath,
 		waitIntervalPrepareRange: time.Second,
 		ledgerHashStore:          config.LedgerHashStore,
 	}
-	c.stellarCoreRunnerFactory = func(mode stellarCoreRunnerMode, addendumPath string) (stellarCoreRunnerInterface, error) {
+	c.stellarCoreRunnerFactory = func(mode stellarCoreRunnerMode, appendConfigPath string) (stellarCoreRunnerInterface, error) {
 		runner, innerErr := newStellarCoreRunner(
 			config.BinaryPath,
-			addendumPath,
+			appendConfigPath,
 			config.NetworkPassphrase,
 			config.HTTPPort,
 			config.HistoryArchiveURLs,
@@ -190,7 +190,7 @@ func (c *CaptiveStellarCore) openOfflineReplaySubprocess(from, to uint32) error 
 	}
 
 	if c.stellarCoreRunner == nil {
-		// coreConfigAddendumPath is empty in an offline mode because it's generated
+		// configAppendPath is empty in an offline mode because it's generated
 		c.stellarCoreRunner, err = c.stellarCoreRunnerFactory(stellarCoreRunnerModeOffline, "")
 		if err != nil {
 			return errors.Wrap(err, "error creating stellar-core runner")
@@ -243,7 +243,7 @@ func (c *CaptiveStellarCore) openOnlineReplaySubprocess(from uint32) error {
 	}
 
 	if c.stellarCoreRunner == nil {
-		c.stellarCoreRunner, err = c.stellarCoreRunnerFactory(stellarCoreRunnerModeOnline, c.coreConfigAddendumPath)
+		c.stellarCoreRunner, err = c.stellarCoreRunnerFactory(stellarCoreRunnerModeOnline, c.configAppendPath)
 		if err != nil {
 			return errors.Wrap(err, "error creating stellar-core runner")
 		}

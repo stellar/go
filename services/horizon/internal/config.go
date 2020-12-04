@@ -16,11 +16,11 @@ type Config struct {
 	Port               uint
 	AdminPort          uint
 
-	EnableCaptiveCoreIngestion bool
-	CaptiveCoreBinaryPath      string
-	CaptiveCoreAddendumPath    string
-	RemoteCaptiveCoreURL       string
-	CaptiveCoreHTTPPort        uint
+	EnableCaptiveCoreIngestion  bool
+	CaptiveCoreBinaryPath       string
+	CaptiveCoreConfigAppendPath string
+	RemoteCaptiveCoreURL        string
+	CaptiveCoreHTTPPort         uint
 
 	StellarCoreDatabaseURL string
 	StellarCoreURL         string

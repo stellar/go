@@ -26,7 +26,7 @@ func check(ledger uint32) bool {
 	c, err := ledgerbackend.NewCaptive(
 		ledgerbackend.CaptiveCoreConfig{
 			BinaryPath:         "stellar-core",
-			AddendumPath:       "stellar-core-standalone2.cfg",
+			ConfigAppendPath:   "stellar-core-standalone2.cfg",
 			NetworkPassphrase:  "Standalone Network ; February 2017",
 			HistoryArchiveURLs: []string{"http://localhost:1570"},
 		},

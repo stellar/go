@@ -13,7 +13,7 @@ Captive Stellar-Core can be used in both reingestion and normal Horizon operatio
 To enable captive mode three feature config variables are required:
 * `ENABLE_CAPTIVE_CORE_INGESTION=true`,
 * `STELLAR_CORE_BINARY_PATH` - defines a path to the `stellar-core` binary,
-* `CAPTIVE_CORE_ADDENDUM_PATH` - (not required when running `horizon db reingest range`) defines a path to an addendum for the Stellar Core configuration file used by captive core. It must, at least, include enough details to define a quorum set. For instance, to connect to the Stellar testnet through `core-testnet1.stellar.org`:
+* `CAPTIVE_CORE_CONFIG_APPEND_PATH` - (not required when running `horizon db reingest range`) defines a path to a file to append to the Stellar Core configuration file used by captive core. It must, at least, include enough details to define a quorum set. For instance, to connect to the Stellar testnet through `core-testnet1.stellar.org`:
   ```
   [[HOME_DOMAINS]]
   HOME_DOMAIN="testnet.stellar.org"
