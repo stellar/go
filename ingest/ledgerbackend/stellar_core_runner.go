@@ -102,7 +102,6 @@ func (r *stellarCoreRunner) generateConfig() (string, error) {
 	}
 	lines := []string{
 		"# Generated file -- do not edit",
-		"RUN_STANDALONE=true",
 		"NODE_IS_VALIDATOR=false",
 		"DISABLE_XDR_FSYNC=true",
 		fmt.Sprintf(`NETWORK_PASSPHRASE="%s"`, r.networkPassphrase),
@@ -111,6 +110,8 @@ func (r *stellarCoreRunner) generateConfig() (string, error) {
 	}
 
 	if r.mode == stellarCoreRunnerModeOffline {
+		// In offline mode, there is no need to connect to peers
+		lines = append(lines, "RUN_STANDALONE=true")
 		// We don't need consensus when catching up
 		lines = append(lines, "UNSAFE_QUORUM=true")
 	}
