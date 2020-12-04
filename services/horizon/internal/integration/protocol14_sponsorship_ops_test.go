@@ -363,7 +363,7 @@ func TestSponsorships(t *testing.T) {
 		// Submit the preauthorized transaction
 		var txResult xdr.TransactionResult
 		tt.NoError(err)
-		txResp, err = itest.SubmitTransactionXDR(preAuthTxB64)
+		txResp, err = itest.Client().SubmitTransactionXDR(preAuthTxB64)
 		tt.NoError(err)
 		err = xdr.SafeUnmarshalBase64(txResp.ResultXdr, &txResult)
 		tt.NoError(err)
