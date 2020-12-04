@@ -305,30 +305,28 @@ func (c *CaptiveStellarCore) runFromParams(from uint32) (runFrom uint32, ledgerH
 	}
 
 	if from <= 63 {
-		// For ledgers before (and including) first checkpoint, we start streaming
-		// without providing a hash, to avoid waiting for the checkpoint.
-		// It will always start streaming from ledger 2.
+		// For ledgers before (and including) first checkpoint, get/wait the first
+		// checkpoint to get the ledger header. It will always start streaming
+		// from ledger 2.
 		nextLedger = 2
-		runFrom = 2
 		// The line below is to support a special case for streaming ledger 2
 		// that works for all other ledgers <= 63 (fast-forward).
 		// We can't set from=2 because Stellar-Core will not allow starting from 1.
 		// To solve this we start from 3 and exploit the fast that Stellar-Core
 		// will stream data from 2 for the first checkpoint.
 		from = 3
-		return
-	}
-
-	// For ledgers after the first checkpoint, start at the previous checkpoint
-	// and fast-forward from there.
-	if !historyarchive.IsCheckpoint(from) {
-		from = historyarchive.PrevCheckpoint(from)
-	}
-	// Streaming will start from the previous checkpoint + 1
-	nextLedger = from - 63
-	if nextLedger < 2 {
-		// Stellar-Core always streams from ledger 2 at min.
-		nextLedger = 2
+	} else {
+		// For ledgers after the first checkpoint, start at the previous checkpoint
+		// and fast-forward from there.
+		if !historyarchive.IsCheckpoint(from) {
+			from = historyarchive.PrevCheckpoint(from)
+		}
+		// Streaming will start from the previous checkpoint + 1
+		nextLedger = from - 63
+		if nextLedger < 2 {
+			// Stellar-Core always streams from ledger 2 at min.
+			nextLedger = 2
+		}
 	}
 
 	runFrom = from - 1

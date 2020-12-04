@@ -978,6 +978,8 @@ func TestCaptiveUseOfLedgerHashStore(t *testing.T) {
 		Return("cde", true, nil).Once()
 	mockLedgerHashStore.On("GetLedgerHash", uint32(126)).
 		Return("ghi", true, nil).Once()
+	mockLedgerHashStore.On("GetLedgerHash", uint32(2)).
+		Return("mnb", true, nil).Once()
 
 	captiveBackend := CaptiveStellarCore{
 		archive:           mockArchive,
@@ -988,7 +990,7 @@ func TestCaptiveUseOfLedgerHashStore(t *testing.T) {
 	runFrom, ledgerHash, nextLedger, err := captiveBackend.runFromParams(24)
 	assert.NoError(t, err)
 	assert.Equal(t, uint32(2), runFrom)
-	assert.Equal(t, "", ledgerHash)
+	assert.Equal(t, "mnb", ledgerHash)
 	assert.Equal(t, uint32(2), nextLedger)
 
 	runFrom, ledgerHash, nextLedger, err = captiveBackend.runFromParams(86)
@@ -1064,11 +1066,7 @@ func TestCaptiveRunFromParams(t *testing.T) {
 			runFrom, ledgerHash, nextLedger, err := captiveBackend.runFromParams(tc.from)
 			tt.NoError(err)
 			tt.Equal(tc.runFrom, runFrom, "runFrom")
-			if tc.from <= 63 {
-				tt.Empty(ledgerHash)
-			} else {
-				tt.Equal("0101010100000000000000000000000000000000000000000000000000000000", ledgerHash)
-			}
+			tt.Equal("0101010100000000000000000000000000000000000000000000000000000000", ledgerHash)
 			tt.Equal(tc.nextLedger, nextLedger, "nextLedger")
 		})
 	}
