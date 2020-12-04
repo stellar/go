@@ -225,7 +225,7 @@ var dbReingestRangeCmd = &cobra.Command{
 			MaxReingestRetries:          int(retries),
 			ReingestRetryBackoffSeconds: int(retryBackoffSeconds),
 			EnableCaptiveCore:           config.EnableCaptiveCoreIngestion,
-			StellarCoreBinaryPath:       config.StellarCoreBinaryPath,
+			CaptiveCoreBinaryPath:       config.CaptiveCoreBinaryPath,
 			RemoteCaptiveCoreURL:        config.RemoteCaptiveCoreURL,
 		}
 

@@ -1,6 +1,7 @@
 package horizon
 
 import (
+	"fmt"
 	"go/types"
 	stdLog "log"
 	"os"
@@ -23,6 +24,10 @@ const (
 	StellarCoreDBURLFlagName = "stellar-core-db-url"
 	// StellarCoreDBURLFlagName is the command line flag for configuring the URL fore Stellar Core HTTP endpoint
 	StellarCoreURLFlagName = "stellar-core-url"
+	// StellarCoreBinaryPathName is the command line flag for configuring the path to the stellar core binary
+	StellarCoreBinaryPathName = "stellar-core-binary-path"
+	// CaptiveCoreConfigAppendPathName is the command line flag for configuring the path to the captive core additional configuration
+	CaptiveCoreConfigAppendPathName = "captive-core-config-append-path"
 )
 
 // validateBothOrNeither ensures that both options are provided, if either is provided.
@@ -86,12 +91,12 @@ func Flags() (*Config, support.ConfigOptions) {
 			Usage:     "horizon postgres database to connect with",
 		},
 		&support.ConfigOption{
-			Name:        "stellar-core-binary-path",
+			Name:        StellarCoreBinaryPathName,
 			OptType:     types.String,
 			FlagDefault: "",
 			Required:    false,
 			Usage:       "path to stellar core binary (--remote-captive-core-url has higher precedence)",
-			ConfigKey:   &config.StellarCoreBinaryPath,
+			ConfigKey:   &config.CaptiveCoreBinaryPath,
 		},
 		&support.ConfigOption{
 			Name:        "remote-captive-core-url",
@@ -102,20 +107,28 @@ func Flags() (*Config, support.ConfigOptions) {
 			ConfigKey:   &config.RemoteCaptiveCoreURL,
 		},
 		&support.ConfigOption{
-			Name:        "stellar-core-config-path",
+			Name:        CaptiveCoreConfigAppendPathName,
 			OptType:     types.String,
 			FlagDefault: "",
 			Required:    false,
-			Usage:       "path to stellar core config file",
-			ConfigKey:   &config.StellarCoreConfigPath,
+			Usage:       "path to additional configuration for the Stellar Core configuration file used by captive core. It must, at least, include enough details to define a quorum set",
+			ConfigKey:   &config.CaptiveCoreConfigAppendPath,
 		},
 		&support.ConfigOption{
 			Name:        "enable-captive-core-ingestion",
 			OptType:     types.Bool,
 			FlagDefault: false,
 			Required:    false,
-			Usage:       "[experimental flag!] causes Horizon to ingest from a Stellar Core subprocess instead of a persistent Stellar Core database",
+			Usage:       "[experimental flag!] causes Horizon to ingest from a Stellar Core process instead of a persistent Stellar Core database",
 			ConfigKey:   &config.EnableCaptiveCoreIngestion,
+		},
+		&support.ConfigOption{
+			Name:        "captive-core-http-port",
+			OptType:     types.Uint,
+			FlagDefault: uint(11626),
+			Required:    false,
+			Usage:       "HTTP port for Captive Core to listen on (0 disables the HTTP server)",
+			ConfigKey:   &config.CaptiveCoreHTTPPort,
 		},
 		&support.ConfigOption{
 			Name:      StellarCoreDBURLFlagName,
@@ -129,7 +142,7 @@ func Flags() (*Config, support.ConfigOptions) {
 			Name:      StellarCoreURLFlagName,
 			ConfigKey: &config.StellarCoreURL,
 			OptType:   types.String,
-			Usage:     "stellar-core to connect with (for http commands)",
+			Usage:     "stellar-core to connect with (for http commands). If unset and the local Captive core is enabled, it will use http://localhost:<stellar_captive_core_http_port>",
 		},
 		&support.ConfigOption{
 			Name:        "history-archive-urls",
@@ -394,15 +407,20 @@ func ApplyFlags(config *Config, flags support.ConfigOptions) {
 	}
 
 	if config.EnableCaptiveCoreIngestion {
-		binaryPath := viper.GetString("stellar-core-binary-path")
+		binaryPath := viper.GetString(StellarCoreBinaryPathName)
 		remoteURL := viper.GetString("remote-captive-core-url")
 		if binaryPath == "" && remoteURL == "" {
 			stdLog.Fatalf("Invalid config: captive core requires that either --stellar-core-binary-path or --remote-captive-core-url is set")
 		}
+		if config.StellarCoreURL == "" && config.RemoteCaptiveCoreURL == "" && config.CaptiveCoreHTTPPort != 0 {
+			// If we don't supply an explicit core URL and we are running a local captive core process
+			// with the http port enabled, point to it.
+			config.StellarCoreURL = fmt.Sprintf("http://localhost:%d", config.CaptiveCoreHTTPPort)
+		}
 	}
 	if config.Ingest {
 		// When running live ingestion a config file is required too
-		validateBothOrNeither("stellar-core-binary-path", "stellar-core-config-path")
+		validateBothOrNeither(StellarCoreBinaryPathName, CaptiveCoreConfigAppendPathName)
 	}
 
 	// Configure log file
