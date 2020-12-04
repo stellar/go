@@ -70,7 +70,7 @@ func TestProtocol15Basics(t *testing.T) {
 		predictions := []string{id1, id2}
 
 		var txResult xdr.TransactionResult
-		txResp, err := itest.SubmitTransaction(tx)
+		txResp, err := itest.Client().SubmitTransaction(tx)
 		tt.NoError(err)
 		xdr.SafeUnmarshalBase64(txResp.ResultXdr, &txResult)
 		opResults, ok := txResult.OperationResults()

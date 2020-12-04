@@ -11,7 +11,6 @@ import (
 	"path"
 	"path/filepath"
 	"strconv"
-	"sync"
 	"syscall"
 	"testing"
 	"time"
@@ -25,7 +24,6 @@ import (
 	proto "github.com/stellar/go/protocols/horizon"
 	horizon "github.com/stellar/go/services/horizon/internal"
 	"github.com/stellar/go/support/db/dbtest"
-	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stellar/go/xdr"
 )
@@ -193,18 +191,18 @@ func (i *Test) waitForCore() {
 		}
 	}
 
-	if err := i.CloseCoreLedger(); err != nil {
-		i.t.Fatalf("Failed to manually close the second ledger: %s", err)
-	}
-
-	{
+	for t := 0; t < 5; t++ {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		info, err := i.cclient.Info(ctx)
 		cancel()
 		if err != nil || !info.IsSynced() {
-			i.t.Fatal("failed to wait for Core to be synced")
+			i.t.Logf("Core is still not synced: %v %v", err, info)
+			time.Sleep(time.Second)
+			continue
 		}
+		return
 	}
+	i.t.Fatal("Core could not sync after several attempts")
 }
 
 func (i *Test) waitForHorizon() {
@@ -242,27 +240,6 @@ func (i *Test) Client() *sdk.Client {
 // Horizon returns the horizon.App instance for the current integration test
 func (i *Test) Horizon() *horizon.App {
 	return i.app
-}
-
-// LedgerIngested returns true if the ledger with a given sequence has been
-// ingested by Horizon. Panics in case of errors.
-func (i *Test) LedgerIngested(sequence uint32) bool {
-	root, err := i.Client().Root()
-	panicIf(err)
-
-	return root.IngestSequence >= sequence
-}
-
-// LedgerClosed returns true if the ledger with a given sequence has been
-// closed by Stellar-Core. Panics in case of errors. Note it's different
-// than LedgerIngested because it checks if the ledger was closed, not
-// necessarily ingested (ex. when rebuilding state Horizon does not ingest
-// recent ledgers).
-func (i *Test) LedgerClosed(sequence uint32) bool {
-	root, err := i.Client().Root()
-	panicIf(err)
-
-	return root.CoreSequence >= int32(sequence)
 }
 
 // AdminPort returns Horizon admin port.
@@ -447,7 +424,7 @@ func (i *Test) SubmitMultiSigOperations(
 	if err != nil {
 		return proto.Transaction{}, err
 	}
-	return i.SubmitTransaction(tx)
+	return i.Client().SubmitTransaction(tx)
 }
 
 func (i *Test) CreateSignedTransaction(
@@ -476,51 +453,6 @@ func (i *Test) CreateSignedTransaction(
 	return tx, nil
 }
 
-// CloseCoreLedgersUntilSequence will close ledgers until sequence.
-func (i *Test) CloseCoreLedgersUntilSequence(seq int) error {
-	currentLedger, err := i.GetCurrentCoreLedgerSequence()
-	if err != nil {
-		return err
-	}
-	for ; currentLedger < seq; currentLedger++ {
-		if err = i.CloseCoreLedger(); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// CloseCoreLedger will synchronously close at least one ledger.
-// Note: because Core's manualclose endpoint doesn't block until ledger is actually
-// closed, this method may end up closing multiple ledgers
-func (i *Test) CloseCoreLedger() error {
-	i.t.Log("Closing one ledger manually...")
-	currentLedgerNum, err := i.GetCurrentCoreLedgerSequence()
-	if err != nil {
-		return err
-	}
-	targetLedgerNum := currentLedgerNum + 1
-	// Core's manualclose endpoint doesn't currently block until the ledger is actually
-	// closed. So, we loop until we are certain it happened.
-	for {
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-		err = i.cclient.ManualClose(ctx)
-		cancel()
-		if err != nil {
-			return err
-		}
-		currentLedgerNum, err = i.GetCurrentCoreLedgerSequence()
-		if err != nil {
-			return err
-		}
-		if currentLedgerNum >= targetLedgerNum {
-			return nil
-		}
-		// pace ourselves
-		time.Sleep(50 * time.Millisecond)
-	}
-}
-
 func (i *Test) GetCurrentCoreLedgerSequence() (int, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
@@ -529,51 +461,6 @@ func (i *Test) GetCurrentCoreLedgerSequence() (int, error) {
 		return 0, err
 	}
 	return info.Info.Ledger.Num, nil
-}
-
-func (i *Test) SubmitTransaction(tx *txnbuild.Transaction) (proto.Transaction, error) {
-	txb64, err := tx.Base64()
-	if err != nil {
-		return proto.Transaction{}, err
-	}
-	return i.SubmitTransactionXDR(txb64)
-}
-
-func (i *Test) SubmitTransactionXDR(txb64 string) (proto.Transaction, error) {
-	// Core runs in manual-close mode to run tests faster, so we need to explicitly
-	// close a ledger after the transaction is submitted.
-	//
-	// Horizon's submission endpoint blocks until the transaction is in a closed ledger.
-	// Thus, we close the ledger in parallel to the submission.
-	submissionDone := make(chan struct{})
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		// We manually-close in a loop to guarantee that (at some point)
-		// a ledger-close happens after Core receives the transaction.
-		// Otherwise there is a risk of the manual-close happening before the transaction
-		// reaches Core, consequently causing the SubmitTransaction() call below to block indefinitely.
-		//
-		// This approach is ugly, but a better approach would probably require
-		// instrumenting Horizon to tell us when the submission is done.
-		for {
-			time.Sleep(time.Millisecond * 100)
-			if err := i.CloseCoreLedger(); err != nil {
-				log.Fatalf("failed to CloseCoreLedger(): %s", err)
-			}
-			select {
-			case <-submissionDone:
-				// The transaction reached a closed-ledger!
-				return
-			default:
-			}
-		}
-	}()
-	tx, err := i.Client().SubmitTransactionXDR(txb64)
-	close(submissionDone)
-	wg.Wait()
-	return tx, err
 }
 
 // A convenience function to provide verbose information about a failing
