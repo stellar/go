@@ -14,12 +14,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-const (
-	firstCheckpoint = (64 * (iota + 1)) - 1
-	secondCheckpoint
-	thirdCheckpoint
-)
-
 func TestProtocol14StateVerifier(t *testing.T) {
 	itest := integration.NewTest(t, protocol15Config)
 
@@ -104,14 +98,6 @@ func TestProtocol14StateVerifier(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, txResp.Successful)
 
-	// Reach the first checkpoint ledger
-	// Core will push to history archives *after* checkpoint ledger
-	err = itest.CloseCoreLedgersUntilSequence(firstCheckpoint + 1)
-	assert.NoError(t, err)
-	for !itest.LedgerIngested(firstCheckpoint) {
-		time.Sleep(time.Second)
-	}
-
 	verified := waitForStateVerifications(itest, 1)
 	if !verified {
 		t.Fatal("State verification not run...")
@@ -120,19 +106,6 @@ func TestProtocol14StateVerifier(t *testing.T) {
 	// Trigger state rebuild to check if ingesting from history archive works
 	err = itest.Horizon().HistoryQ().UpdateExpIngestVersion(0)
 	assert.NoError(t, err)
-
-	// Wait for the second checkpoint ledger and state rebuild
-	// Core will push to history archives *after* checkpoint ledger
-	err = itest.CloseCoreLedgersUntilSequence(secondCheckpoint + 1)
-	assert.NoError(t, err)
-
-	// Wait for the third checkpoint ledger and state verification trigger
-	// Core will push to history archives *after* checkpoint ledger
-	err = itest.CloseCoreLedgersUntilSequence(thirdCheckpoint + 1)
-	assert.NoError(t, err)
-	for !itest.LedgerIngested(thirdCheckpoint) {
-		time.Sleep(time.Second)
-	}
 
 	verified = waitForStateVerifications(itest, 2)
 	if !verified {
