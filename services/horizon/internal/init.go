@@ -64,14 +64,15 @@ func initExpIngester(app *App) {
 		// TODO:
 		// Use the first archive for now. We don't have a mechanism to
 		// use multiple archives at the same time currently.
-		HistoryArchiveURL:        app.config.HistoryArchiveURLs[0],
-		StellarCoreURL:           app.config.StellarCoreURL,
-		StellarCoreCursor:        app.config.CursorName,
-		StellarCoreBinaryPath:    app.config.StellarCoreBinaryPath,
-		StellarCoreConfigPath:    app.config.StellarCoreConfigPath,
-		RemoteCaptiveCoreURL:     app.config.RemoteCaptiveCoreURL,
-		EnableCaptiveCore:        app.config.EnableCaptiveCoreIngestion,
-		DisableStateVerification: app.config.IngestDisableStateVerification,
+		HistoryArchiveURL:           app.config.HistoryArchiveURLs[0],
+		StellarCoreURL:              app.config.StellarCoreURL,
+		StellarCoreCursor:           app.config.CursorName,
+		CaptiveCoreBinaryPath:       app.config.CaptiveCoreBinaryPath,
+		CaptiveCoreConfigAppendPath: app.config.CaptiveCoreConfigAppendPath,
+		CaptiveCoreHTTPPort:         app.config.CaptiveCoreHTTPPort,
+		RemoteCaptiveCoreURL:        app.config.RemoteCaptiveCoreURL,
+		EnableCaptiveCore:           app.config.EnableCaptiveCoreIngestion,
+		DisableStateVerification:    app.config.IngestDisableStateVerification,
 	})
 
 	if err != nil {
