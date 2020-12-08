@@ -192,85 +192,27 @@ var dbReingestRangeCmd = &cobra.Command{
 			co.Require()
 			co.SetValue()
 		}
-		if reingestForce && parallelWorkers > 1 {
-			log.Fatal("--force is incompatible with --parallel-workers > 1")
-		}
 
 		if len(args) != 2 {
 			cmd.Usage()
 			os.Exit(1)
 		}
 
-		argsInt32 := make([]uint32, 2)
+		argsUInt32 := make([]uint32, 2)
 		for i, arg := range args {
 			seq, err := strconv.Atoi(arg)
 			if err != nil {
 				cmd.Usage()
 				log.Fatalf(`Invalid sequence number "%s"`, arg)
 			}
-			argsInt32[i] = uint32(seq)
+			argsUInt32[i] = uint32(seq)
 		}
 
 		horizon.ApplyFlags(config, flags)
-
-		horizonSession, err := db.Open("postgres", config.DatabaseURL)
+		err := RunDBReingestRange(argsUInt32[0], argsUInt32[1], reingestForce, parallelWorkers, *config)
 		if err != nil {
-			log.Fatalf("cannot open Horizon DB: %v", err)
-		}
-
-		ingestConfig := ingest.Config{
-			NetworkPassphrase:           config.NetworkPassphrase,
-			HistorySession:              horizonSession,
-			HistoryArchiveURL:           config.HistoryArchiveURLs[0],
-			MaxReingestRetries:          int(retries),
-			ReingestRetryBackoffSeconds: int(retryBackoffSeconds),
-			EnableCaptiveCore:           config.EnableCaptiveCoreIngestion,
-			CaptiveCoreBinaryPath:       config.CaptiveCoreBinaryPath,
-			RemoteCaptiveCoreURL:        config.RemoteCaptiveCoreURL,
-		}
-
-		if !ingestConfig.EnableCaptiveCore {
-			if config.StellarCoreDatabaseURL == "" {
-				log.Fatalf("flag --%s cannot be empty", horizon.StellarCoreDBURLFlagName)
-			}
-			coreSession, dbErr := db.Open("postgres", config.StellarCoreDatabaseURL)
-			if dbErr != nil {
-				log.Fatalf("cannot open Core DB: %v", dbErr)
-			}
-			ingestConfig.CoreSession = coreSession
-		}
-
-		if parallelWorkers < 2 {
-			system, systemErr := ingest.NewSystem(ingestConfig)
-			if systemErr != nil {
-				log.Fatal(systemErr)
-			}
-
-			err = system.ReingestRange(
-				argsInt32[0],
-				argsInt32[1],
-				reingestForce,
-			)
-		} else {
-			system, systemErr := ingest.NewParallelSystems(ingestConfig, parallelWorkers)
-			if systemErr != nil {
-				log.Fatal(systemErr)
-			}
-
-			err = system.ReingestRange(
-				argsInt32[0],
-				argsInt32[1],
-				parallelJobSize,
-			)
-		}
-
-		if err == nil {
-			hlog.Info("Range run successfully!")
-			return
-		}
-
-		if errors.Cause(err) == ingest.ErrReingestRangeConflict {
-			message := `
+			if errors.Cause(err) == ingest.ErrReingestRangeConflict {
+				message := `
 			The range you have provided overlaps with Horizon's most recently ingested ledger.
 			It is not possible to run the reingest command on this range in parallel with
 			Horizon's ingestion system.
@@ -278,11 +220,70 @@ var dbReingestRangeCmd = &cobra.Command{
 			or, use the force flag to ensure that Horizon's ingestion system is blocked until
 			the reingest command completes.
 			`
-			log.Fatal(message)
+				log.Fatal(message)
+			}
+
+			log.Fatal(err)
 		}
 
-		log.Fatal(err)
+		hlog.Info("Range run successfully!")
 	},
+}
+
+func RunDBReingestRange(from, to uint32, reingestForce bool, parallelWorkers uint, config horizon.Config) error {
+	if reingestForce && parallelWorkers > 1 {
+		return errors.New("--force is incompatible with --parallel-workers > 1")
+	}
+	horizonSession, err := db.Open("postgres", config.DatabaseURL)
+	if err != nil {
+		return fmt.Errorf("cannot open Horizon DB: %v", err)
+	}
+
+	ingestConfig := ingest.Config{
+		NetworkPassphrase:           config.NetworkPassphrase,
+		HistorySession:              horizonSession,
+		HistoryArchiveURL:           config.HistoryArchiveURLs[0],
+		MaxReingestRetries:          int(retries),
+		ReingestRetryBackoffSeconds: int(retryBackoffSeconds),
+		EnableCaptiveCore:           config.EnableCaptiveCoreIngestion,
+		CaptiveCoreBinaryPath:       config.CaptiveCoreBinaryPath,
+		RemoteCaptiveCoreURL:        config.RemoteCaptiveCoreURL,
+	}
+
+	if !ingestConfig.EnableCaptiveCore {
+		if config.StellarCoreDatabaseURL == "" {
+			return fmt.Errorf("flag --%s cannot be empty", horizon.StellarCoreDBURLFlagName)
+		}
+		coreSession, dbErr := db.Open("postgres", config.StellarCoreDatabaseURL)
+		if dbErr != nil {
+			return fmt.Errorf("cannot open Core DB: %v", dbErr)
+		}
+		ingestConfig.CoreSession = coreSession
+	}
+
+	if parallelWorkers > 1 {
+		system, systemErr := ingest.NewParallelSystems(ingestConfig, parallelWorkers)
+		if systemErr != nil {
+			return systemErr
+		}
+
+		return system.ReingestRange(
+			from,
+			to,
+			parallelJobSize,
+		)
+	}
+
+	system, systemErr := ingest.NewSystem(ingestConfig)
+	if systemErr != nil {
+		return systemErr
+	}
+
+	return system.ReingestRange(
+		from,
+		to,
+		reingestForce,
+	)
 }
 
 func init() {
