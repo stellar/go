@@ -11,7 +11,8 @@ type MockArchive struct {
 }
 
 func (m *MockArchive) GetCheckpointManager() CheckpointManager {
-	panic("implement me")
+	a := m.Called()
+	return a.Get(0).(CheckpointManager)
 }
 
 func (m *MockArchive) GetPathHAS(path string) (HistoryArchiveState, error) {

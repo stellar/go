@@ -16,6 +16,8 @@ import (
 	"github.com/stellar/go/support/errors"
 )
 
+const checkpointFrequency = uint32(64)
+
 func status(a string, opts *Options) {
 	arch := historyarchive.MustConnect(a, opts.ConnectOpts)
 	state, err := arch.GetRootHAS()
@@ -50,6 +52,7 @@ type Options struct {
 }
 
 func (opts *Options) SetRange(srcArch *historyarchive.Archive, dstArch *historyarchive.Archive) {
+	checkpointMgr := historyarchive.NewCheckpointManager(checkpointFrequency)
 	if srcArch != nil {
 
 		// If we got a src and dst archive and were passed --recent, we extract
@@ -61,7 +64,7 @@ func (opts *Options) SetRange(srcArch *historyarchive.Archive, dstArch *historya
 				low := dstState.CurrentLedger
 				high := srcState.CurrentLedger
 				opts.CommandOpts.Range =
-					historyarchive.MakeRange(low, high)
+					checkpointMgr.MakeRange(low, high)
 				return
 			}
 
@@ -75,7 +78,7 @@ func (opts *Options) SetRange(srcArch *historyarchive.Archive, dstArch *historya
 					low = state.CurrentLedger - uint32(opts.Last)
 				}
 				opts.CommandOpts.Range =
-					historyarchive.MakeRange(low, state.CurrentLedger)
+					checkpointMgr.MakeRange(low, state.CurrentLedger)
 				return
 			}
 		}
@@ -84,8 +87,7 @@ func (opts *Options) SetRange(srcArch *historyarchive.Archive, dstArch *historya
 	// Otherwise we fall back to the provided low and high, which further
 	// default to the entire numeric range of a uint32.
 	opts.CommandOpts.Range =
-		historyarchive.MakeRange(uint32(opts.Low),
-			uint32(opts.High))
+		checkpointMgr.MakeRange(uint32(opts.Low), uint32(opts.High))
 
 }
 
@@ -145,6 +147,7 @@ func repair(src string, dst string, opts *Options) {
 func main() {
 
 	var opts Options
+	opts.ConnectOpts.CheckpointFrequency = checkpointFrequency
 
 	rootCmd := &cobra.Command{
 		Use:   "stellar-archivist",

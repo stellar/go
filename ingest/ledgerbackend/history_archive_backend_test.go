@@ -82,6 +82,7 @@ func (s *HistoryArchiveBackendTestSuite) TestGetLedger() {
 		})
 	}
 
+	s.mockArchive.On("GetCheckpointManager").Return(historyarchive.NewCheckpointManager(64))
 	s.mockArchive.On("CategoryCheckpointExists", "ledger", uint32(127)).Return(true, nil).Once()
 	s.mockArchive.On("CategoryCheckpointExists", "transactions", uint32(127)).Return(true, nil).Once()
 	s.mockArchive.On("CategoryCheckpointExists", "results", uint32(127)).Return(true, nil).Once()
@@ -93,8 +94,8 @@ func (s *HistoryArchiveBackendTestSuite) TestGetLedger() {
 	exists, _, err := s.backend.GetLedger(100)
 	s.Require().NoError(err)
 	s.Assert().True(exists)
-	s.Assert().Equal(uint32(64), s.backend.rangeFrom)
-	s.Assert().Equal(uint32(127), s.backend.rangeTo)
+	s.Assert().Equal(uint32(64), s.backend.cachedRange.Low)
+	s.Assert().Equal(uint32(127), s.backend.cachedRange.High)
 
 	for sequence := uint32(64); sequence <= 127; sequence++ {
 		var err2 error
@@ -113,8 +114,8 @@ func (s *HistoryArchiveBackendTestSuite) TestGetLedger() {
 
 	err = s.backend.Close()
 	s.Require().NoError(err)
-	s.Assert().Zero(s.backend.rangeFrom)
-	s.Assert().Zero(s.backend.rangeTo)
+	s.Assert().Zero(s.backend.cachedRange.Low)
+	s.Assert().Zero(s.backend.cachedRange.High)
 	s.Assert().Empty(s.backend.cache)
 }
 
@@ -156,6 +157,7 @@ func (s *HistoryArchiveBackendTestSuite) TestGetLedgerFirstCheckpoint() {
 		})
 	}
 
+	s.mockArchive.On("GetCheckpointManager").Return(historyarchive.NewCheckpointManager(64))
 	s.mockArchive.On("CategoryCheckpointExists", "ledger", uint32(63)).Return(true, nil).Once()
 	s.mockArchive.On("CategoryCheckpointExists", "transactions", uint32(63)).Return(true, nil).Once()
 	s.mockArchive.On("CategoryCheckpointExists", "results", uint32(63)).Return(true, nil).Once()
@@ -167,8 +169,8 @@ func (s *HistoryArchiveBackendTestSuite) TestGetLedgerFirstCheckpoint() {
 	exists, _, err := s.backend.GetLedger(60)
 	s.Require().NoError(err)
 	s.Assert().True(exists)
-	s.Assert().Equal(uint32(1), s.backend.rangeFrom)
-	s.Assert().Equal(uint32(63), s.backend.rangeTo)
+	s.Assert().Equal(uint32(1), s.backend.cachedRange.Low)
+	s.Assert().Equal(uint32(63), s.backend.cachedRange.High)
 
 	for sequence := uint32(1); sequence <= 63; sequence++ {
 		var err2 error
@@ -187,8 +189,8 @@ func (s *HistoryArchiveBackendTestSuite) TestGetLedgerFirstCheckpoint() {
 
 	err = s.backend.Close()
 	s.Require().NoError(err)
-	s.Assert().Zero(s.backend.rangeFrom)
-	s.Assert().Zero(s.backend.rangeTo)
+	s.Assert().Zero(s.backend.cachedRange.Low)
+	s.Assert().Zero(s.backend.cachedRange.High)
 	s.Assert().Empty(s.backend.cache)
 }
 

@@ -221,7 +221,8 @@ func (c *CaptiveStellarCore) openOnlineReplaySubprocess(from uint32) error {
 	// checkpoints from now. Such requests are likely buggy.
 	// We should allow only one checkpoint here but sometimes there are up to a
 	// minute delays when updating root HAS by stellar-core.
-	maxLedger := c.checkpointManager.NextCheckpoint(c.checkpointManager.NextCheckpoint(latestCheckpointSequence))
+	twoCheckPointsLength := (c.checkpointManager.GetCheckpoint(0) + 1) * 2
+	maxLedger := latestCheckpointSequence + twoCheckPointsLength
 	if from > maxLedger {
 		return errors.Errorf(
 			"trying to start online mode too far (latest checkpoint=%d), only two checkpoints in the future allowed",

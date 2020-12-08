@@ -56,8 +56,13 @@ func (c CheckpointManager) GetCheckpoint(i uint32) uint32 {
 // GetCheckpointRange gets the range of the checkpoint containing information for the given ledger sequence
 func (c CheckpointManager) GetCheckpointRange(i uint32) Range {
 	checkpoint := c.GetCheckpoint(i)
+	low := checkpoint - c.checkpointFreq + 1
+	if low == 0 {
+		// ledger 0 does not exist
+		low++
+	}
 	return Range{
-		Low:  checkpoint - c.checkpointFreq + 1,
+		Low:  low,
 		High: checkpoint,
 	}
 }
