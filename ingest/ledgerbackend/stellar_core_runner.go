@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 
 	"github.com/stellar/go/support/log"
 )
@@ -27,7 +28,6 @@ type stellarCoreRunnerInterface interface {
 	getProcessExitChan() <-chan struct{}
 	// getProcessExitError returns an exit error of the process, can be nil
 	getProcessExitError() error
-	setLogger(*log.Entry)
 	close() error
 }
 
@@ -60,13 +60,11 @@ type stellarCoreRunner struct {
 	tempDir          string
 	nonce            string
 
-	// Optionally, logging can be done to something other than stdout.
-	Log *log.Entry
+	log *log.Entry
 }
 
-func newStellarCoreRunner(executablePath, coreConfigAppendPath, networkPassphrase string, httpPort uint, historyURLs []string, mode stellarCoreRunnerMode) (*stellarCoreRunner, error) {
+func newStellarCoreRunner(config CaptiveCoreConfig, mode stellarCoreRunnerMode) (*stellarCoreRunner, error) {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-
 	// Create temp dir
 	random := rand.New(rand.NewSource(time.Now().UnixNano()))
 	tempDir := filepath.Join(os.TempDir(), fmt.Sprintf("captive-stellar-core-%x", random.Uint64()))
@@ -75,18 +73,26 @@ func newStellarCoreRunner(executablePath, coreConfigAppendPath, networkPassphras
 		return nil, errors.Wrap(err, "error creating subprocess tmpdir")
 	}
 
+	coreLogger := config.Log
+	if coreLogger == nil {
+		coreLogger = log.New()
+		coreLogger.Logger.SetOutput(os.Stdout)
+		coreLogger.SetLevel(logrus.InfoLevel)
+	}
+
 	runner := &stellarCoreRunner{
-		executablePath:    executablePath,
-		configAppendPath:  coreConfigAppendPath,
-		networkPassphrase: networkPassphrase,
-		historyURLs:       historyURLs,
-		httpPort:          httpPort,
+		executablePath:    config.BinaryPath,
+		configAppendPath:  config.ConfigAppendPath,
+		networkPassphrase: config.NetworkPassphrase,
+		historyURLs:       config.HistoryArchiveURLs,
+		httpPort:          config.HTTPPort,
 		mode:              mode,
 		shutdown:          make(chan struct{}),
 		processExit:       make(chan struct{}),
 		processExitError:  nil,
 		tempDir:           tempDir,
 		nonce:             fmt.Sprintf("captive-stellar-core-%x", r.Uint64()),
+		log:               coreLogger,
 	}
 
 	if err := runner.writeConf(); err != nil {
@@ -162,13 +168,6 @@ func (r *stellarCoreRunner) getLogLineWriter() io.Writer {
 				continue
 			}
 
-			// If there's a logger, we attempt to extract metadata about the log
-			// entry, then redirect it to the logger. Otherwise, we just use stdout.
-			if r.Log == nil {
-				fmt.Println(line)
-				continue
-			}
-
 			matches := levelRx.FindStringSubmatch(line)
 			if len(matches) >= 4 {
 				// Extract the substrings from the log entry and trim it
@@ -176,19 +175,19 @@ func (r *stellarCoreRunner) getLogLineWriter() io.Writer {
 				line = matches[3]
 
 				levelMapping := map[string]func(string, ...interface{}){
-					"FATAL":   r.Log.Errorf,
-					"ERROR":   r.Log.Errorf,
-					"WARNING": r.Log.Warnf,
-					"INFO":    r.Log.Infof,
+					"FATAL":   r.log.Errorf,
+					"ERROR":   r.log.Errorf,
+					"WARNING": r.log.Warnf,
+					"INFO":    r.log.Infof,
 				}
 
 				if writer, ok := levelMapping[strings.ToUpper(level)]; ok {
 					writer("%s: %s", category, line)
 				} else {
-					r.Log.Info(line)
+					r.log.Info(line)
 				}
 			} else {
-				r.Log.Info(line)
+				r.log.Info(line)
 			}
 		}
 	}()
@@ -202,7 +201,7 @@ func (r *stellarCoreRunner) writeConf() error {
 	if err != nil {
 		return err
 	}
-	r.Log.Debugf("captive core config file contents:\n%s", conf)
+	r.log.Debugf("captive core config file contents:\n%s", conf)
 	return ioutil.WriteFile(r.getConfFileName(), []byte(conf), 0644)
 }
 
@@ -292,10 +291,6 @@ func (r *stellarCoreRunner) getProcessExitChan() <-chan struct{} {
 
 func (r *stellarCoreRunner) getProcessExitError() error {
 	return r.processExitError
-}
-
-func (r *stellarCoreRunner) setLogger(logger *log.Entry) {
-	r.Log = logger
 }
 
 func (r *stellarCoreRunner) close() error {
