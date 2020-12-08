@@ -95,9 +95,6 @@ type CaptiveStellarCore struct {
 	// waitIntervalPrepareRange defines a time to wait between checking if the buffer
 	// is empty. Default 1s, lower in tests to make them faster.
 	waitIntervalPrepareRange time.Duration
-
-	// Optionally, pass along a custom logger to the underlying runner.
-	log *log.Entry
 }
 
 // CaptiveCoreConfig contains all the parameters required to create a CaptiveStellarCore instance
@@ -114,6 +111,9 @@ type CaptiveCoreConfig struct {
 	LedgerHashStore TrustedLedgerHashStore
 	// HTTPPort is the TCP port to listen for requests (defaults to 0, which disables the HTTP server)
 	HTTPPort uint
+	// Log is an (optional) custom logger which will capture any output from the Stellar Core process.
+	// If Log is omitted then all output will be printed to stdout.
+	Log *log.Entry
 }
 
 // NewCaptive returns a new CaptiveStellarCore.
@@ -138,25 +138,13 @@ func NewCaptive(config CaptiveCoreConfig) (*CaptiveStellarCore, error) {
 		ledgerHashStore:          config.LedgerHashStore,
 	}
 	c.stellarCoreRunnerFactory = func(mode stellarCoreRunnerMode, appendConfigPath string) (stellarCoreRunnerInterface, error) {
-		runner, innerErr := newStellarCoreRunner(
-			config.BinaryPath,
-			appendConfigPath,
-			config.NetworkPassphrase,
-			config.HTTPPort,
-			config.HistoryArchiveURLs,
-			mode,
-		)
+		runner, innerErr := newStellarCoreRunner(config, mode)
 		if innerErr != nil {
 			return runner, innerErr
 		}
-		runner.setLogger(c.log)
 		return runner, nil
 	}
 	return c, nil
-}
-
-func (c *CaptiveStellarCore) SetStellarCoreLogger(logger *log.Entry) {
-	c.log = logger
 }
 
 func (c *CaptiveStellarCore) getLatestCheckpointSequence() (uint32, error) {
