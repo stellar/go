@@ -129,7 +129,7 @@ func (arch *Archive) AddRandomCheckpoint(chk uint32) error {
 }
 
 func (arch *Archive) PopulateRandomRange(rng Range) error {
-	for chk := range rng.Checkpoints() {
+	for chk := range rng.GenerateCheckpoints() {
 		if e := arch.AddRandomCheckpoint(chk); e != nil {
 			return e
 		}
@@ -162,7 +162,7 @@ func TestScanSize(t *testing.T) {
 	opts := testOptions()
 	arch := GetRandomPopulatedArchive()
 	arch.Scan(opts)
-	assert.Equal(t, opts.Range.Size(),
+	assert.Equal(t, opts.Range.SizeInCheckPoints(),
 		len(arch.checkpointFiles["history"]))
 }
 
@@ -173,7 +173,7 @@ func TestScanSizeSubrange(t *testing.T) {
 	opts.Range.Low = NextCheckpoint(opts.Range.Low)
 	opts.Range.High = PrevCheckpoint(opts.Range.High)
 	arch.Scan(opts)
-	assert.Equal(t, opts.Range.Size(),
+	assert.Equal(t, opts.Range.SizeInCheckPoints(),
 		len(arch.checkpointFiles["history"]))
 }
 
@@ -234,7 +234,7 @@ func TestMirrorThenRepair(t *testing.T) {
 	dst := GetTestArchive()
 	Mirror(src, dst, opts)
 	assert.Equal(t, 0, countMissing(dst, opts))
-	bad := opts.Range.Low + uint32(opts.Range.Size()/2)
+	bad := opts.Range.Low + uint32(opts.Range.SizeInCheckPoints()/2)
 	src.AddRandomCheckpoint(bad)
 	copyFile("history", bad, src, dst)
 	assert.NotEqual(t, 0, countMissing(dst, opts))
@@ -286,7 +286,7 @@ func TestDryRunNoRepair(t *testing.T) {
 	dst := GetTestArchive()
 	Mirror(src, dst, opts)
 	assert.Equal(t, 0, countMissing(dst, opts))
-	bad := opts.Range.Low + uint32(opts.Range.Size()/2)
+	bad := opts.Range.Low + uint32(opts.Range.SizeInCheckPoints()/2)
 	src.AddRandomCheckpoint(bad)
 	copyFile("history", bad, src, dst)
 	assert.NotEqual(t, 0, countMissing(dst, opts))

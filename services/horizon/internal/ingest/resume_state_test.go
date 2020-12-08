@@ -5,6 +5,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/ingest/adapters"
 	"github.com/stellar/go/ingest/io"
 	"github.com/stellar/go/ingest/ledgerbackend"
@@ -41,6 +42,7 @@ func (s *ResumeTestTestSuite) SetupTest() {
 		runner:            s.runner,
 		ledgerBackend:     s.ledgerBackend,
 		stellarCoreClient: s.stellarCoreClient,
+		checkpointManager: historyarchive.NewCheckpointManager(64),
 	}
 	s.system.initMetrics()
 

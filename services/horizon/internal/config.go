@@ -71,4 +71,6 @@ type Config struct {
 	// ApplyMigrations will apply pending migrations to the horizon database
 	// before starting the horizon service
 	ApplyMigrations bool
+	// CheckpointFrequency establishes how many ledgers exist between checkpoints
+	CheckpointFrequency uint32
 }

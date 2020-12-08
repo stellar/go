@@ -12,7 +12,7 @@ import (
 
 func (r Range) allCheckpoints() []uint32 {
 	var s []uint32
-	for chk := range r.Checkpoints() {
+	for chk := range r.GenerateCheckpoints() {
 		s = append(s, chk)
 	}
 	return s

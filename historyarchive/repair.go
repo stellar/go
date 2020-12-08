@@ -9,12 +9,14 @@ import (
 	"log"
 )
 
+// Repair repairs a destination archive based on a source archive, it assumes that the source and destination have the
+// same checkpoint ledger frequency
 func Repair(src *Archive, dst *Archive, opts *CommandOptions) error {
 	state, e := dst.GetRootHAS()
 	if e != nil {
 		return e
 	}
-	opts.Range = opts.Range.clamp(state.Range())
+	opts.Range = opts.Range.clamp(state.Range(), src.checkpointManager)
 
 	log.Printf("Starting scan for repair")
 	var errs uint32

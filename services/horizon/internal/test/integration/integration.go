@@ -181,6 +181,8 @@ of accounts, subscribe to event streams and more.`,
 		"--apply-migrations",
 		"--admin-port",
 		strconv.Itoa(i.AdminPort()),
+		"--checkpoint-frequency",
+		"8", // due to ARTIFICIALLY_ACCELERATE_TIME_FOR_TESTING
 	})
 	var err error
 	if err = configOpts.Init(cmd); err != nil {

@@ -145,10 +145,11 @@ func TestCaptiveNew(t *testing.T) {
 
 	captiveStellarCore, err := NewCaptive(
 		CaptiveCoreConfig{
-			BinaryPath:         executablePath,
-			ConfigAppendPath:   configPath,
-			NetworkPassphrase:  networkPassphrase,
-			HistoryArchiveURLs: historyURLs,
+			BinaryPath:          executablePath,
+			ConfigAppendPath:    configPath,
+			NetworkPassphrase:   networkPassphrase,
+			HistoryArchiveURLs:  historyURLs,
+			CheckpointFrequency: 64,
 		},
 	)
 

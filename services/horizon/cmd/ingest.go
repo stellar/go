@@ -89,12 +89,12 @@ var ingestVerifyRangeCmd = &cobra.Command{
 		if err != nil {
 			log.Fatalf("cannot open Horizon DB: %v", err)
 		}
-
-		if !historyarchive.IsCheckpoint(ingestVerifyFrom) && ingestVerifyFrom != 1 {
+		mngr := historyarchive.NewCheckpointManager(config.CheckpointFrequency)
+		if !mngr.IsCheckpoint(ingestVerifyFrom) && ingestVerifyFrom != 1 {
 			log.Fatal("`--from` must be a checkpoint ledger")
 		}
 
-		if ingestVerifyState && !historyarchive.IsCheckpoint(ingestVerifyTo) {
+		if ingestVerifyState && !mngr.IsCheckpoint(ingestVerifyTo) {
 			log.Fatal("`--to` must be a checkpoint ledger when `--verify-state` is set.")
 		}
 
@@ -105,6 +105,7 @@ var ingestVerifyRangeCmd = &cobra.Command{
 			EnableCaptiveCore:     config.EnableCaptiveCoreIngestion,
 			CaptiveCoreBinaryPath: config.CaptiveCoreBinaryPath,
 			RemoteCaptiveCoreURL:  config.RemoteCaptiveCoreURL,
+			CheckpointFrequency:   config.CheckpointFrequency,
 		}
 
 		if !ingestConfig.EnableCaptiveCore {
@@ -266,10 +267,11 @@ var ingestInitGenesisStateCmd = &cobra.Command{
 		}
 
 		ingestConfig := ingest.Config{
-			NetworkPassphrase: config.NetworkPassphrase,
-			HistorySession:    horizonSession,
-			HistoryArchiveURL: config.HistoryArchiveURLs[0],
-			EnableCaptiveCore: config.EnableCaptiveCoreIngestion,
+			NetworkPassphrase:   config.NetworkPassphrase,
+			HistorySession:      horizonSession,
+			HistoryArchiveURL:   config.HistoryArchiveURLs[0],
+			EnableCaptiveCore:   config.EnableCaptiveCoreIngestion,
+			CheckpointFrequency: config.CheckpointFrequency,
 		}
 
 		if config.EnableCaptiveCoreIngestion {

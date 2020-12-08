@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
+	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/ingest/adapters"
 	"github.com/stellar/go/ingest/io"
 	"github.com/stellar/go/ingest/ledgerbackend"
@@ -88,6 +89,7 @@ func TestNewSystem(t *testing.T) {
 		},
 		DisableStateVerification: true,
 		HistoryArchiveURL:        "https://history.stellar.org/prd/core-live/core_live_001",
+		CheckpointFrequency:      64,
 	}
 
 	sIface, err := NewSystem(config)
@@ -167,8 +169,9 @@ func TestStateMachineRunReturnsErrorWhenNextStateIsShutdownWithError(t *testing.
 func TestMaybeVerifyStateGetExpStateInvalidDBErrCancelOrContextCanceled(t *testing.T) {
 	historyQ := &mockDBQ{}
 	system := &system{
-		historyQ: historyQ,
-		ctx:      context.Background(),
+		historyQ:          historyQ,
+		ctx:               context.Background(),
+		checkpointManager: historyarchive.NewCheckpointManager(64),
 	}
 
 	var out bytes.Buffer
@@ -193,8 +196,9 @@ func TestMaybeVerifyStateGetExpStateInvalidDBErrCancelOrContextCanceled(t *testi
 func TestMaybeVerifyInternalDBErrCancelOrContextCanceled(t *testing.T) {
 	historyQ := &mockDBQ{}
 	system := &system{
-		historyQ: historyQ,
-		ctx:      context.Background(),
+		historyQ:          historyQ,
+		ctx:               context.Background(),
+		checkpointManager: historyarchive.NewCheckpointManager(64),
 	}
 
 	var out bytes.Buffer

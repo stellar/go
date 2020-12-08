@@ -83,6 +83,7 @@ func (s *DBTestSuite) SetupTest() {
 		HistorySession:           s.tt.HorizonSession(),
 		HistoryArchiveURL:        "http://ignore.test",
 		DisableStateVerification: false,
+		CheckpointFrequency:      64,
 	})
 	s.Assert().NoError(err)
 	s.system = sIface.(*system)
