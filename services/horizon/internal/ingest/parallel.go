@@ -52,6 +52,7 @@ func newParallelSystems(config Config, workerCount uint, systemFactory func(Conf
 }
 
 func (ps *ParallelSystems) runReingestWorker(s System, stop <-chan struct{}, reingestJobQueue <-chan ledgerRange) rangeError {
+
 	for {
 		select {
 		case <-stop:

@@ -11,6 +11,7 @@ import (
 	"path"
 	"path/filepath"
 	"strconv"
+	"sync"
 	"syscall"
 	"testing"
 	"time"
@@ -38,16 +39,20 @@ const (
 )
 
 type Config struct {
+	PostgresURL           string
 	ProtocolVersion       int32
 	SkipContainerCreation bool
 }
 
 type Test struct {
-	t       *testing.T
-	config  Config
-	hclient *sdk.Client
-	cclient *stellarcore.Client
-	app     *horizon.App
+	t             *testing.T
+	config        Config
+	horizonConfig horizon.Config
+	hclient       *sdk.Client
+	cclient       *stellarcore.Client
+	app           *horizon.App
+	shutdownOnce  sync.Once
+	shutdownCalls []func()
 }
 
 // NewTest starts a new environment for integration test at a given
@@ -64,11 +69,11 @@ func NewTest(t *testing.T, config Config) *Test {
 	i := &Test{t: t, config: config}
 
 	composeDir := findDockerComposePath()
-	manualCloseYaml := path.Join(composeDir, "docker-compose.integration-tests.yml")
+	integrationYaml := path.Join(composeDir, "docker-compose.integration-tests.yml")
 
 	// Runs a docker-compose command applied to the above configs
 	runComposeCommand := func(args ...string) {
-		cmdline := append([]string{"-f", manualCloseYaml}, args...)
+		cmdline := append([]string{"-f", integrationYaml}, args...)
 		t.Log("Running", cmdline)
 		cmd := exec.Command("docker-compose", cmdline...)
 		_, innerErr := cmd.Output()
@@ -78,7 +83,6 @@ func NewTest(t *testing.T, config Config) *Test {
 	// Only run Stellar Core container and its dependencies
 	runComposeCommand("up", "--detach", "--quiet-pull", "--no-color", "core")
 
-	// FIXME: Only use horizon from quickstart container when testing captive core
 	if os.Getenv("HORIZON_INTEGRATION_ENABLE_CAPTIVE_CORE") != "" {
 		t.Skip("Testing with captive core isn't working yet.")
 	}
@@ -86,24 +90,24 @@ func NewTest(t *testing.T, config Config) *Test {
 	i.cclient = &stellarcore.Client{URL: "http://localhost:" + strconv.Itoa(stellarCorePort)}
 	i.waitForCore()
 
+	i.shutdownCalls = append(i.shutdownCalls, func() {
+		if i.app != nil {
+			i.app.Close()
+		}
+		runComposeCommand("down", "-v", "--remove-orphans")
+	})
 	i.startHorizon()
 	i.hclient = &sdk.Client{HorizonURL: "http://localhost:8000"}
 
 	// Register cleanup handlers (on panic and ctrl+c) so the containers are
 	// stopped even if ingestion or testing fails.
-	cleanup := func() {
-		if i.app != nil {
-			i.app.Close()
-		}
-		runComposeCommand("down", "-v", "--remove-orphans")
-	}
-	i.t.Cleanup(cleanup)
+	i.t.Cleanup(i.Shutdown)
 
 	c := make(chan os.Signal)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-c
-		cleanup()
+		i.Shutdown()
 		os.Exit(int(syscall.SIGTERM))
 	}()
 
@@ -111,8 +115,34 @@ func NewTest(t *testing.T, config Config) *Test {
 	return i
 }
 
+func (i *Test) GetHorizonConfig() horizon.Config {
+	return i.horizonConfig
+}
+
+// Shutdown stops the integration tests and destroys all its associated resources.
+// Shutdown() will be implicitly called when the calling test (i.e. the `testing.Test` passed
+// to `New()`) is finished if it hasn't been explicitly called before.
+func (i *Test) Shutdown() {
+	i.shutdownOnce.Do(func() {
+		// run them in the opposite order in which they where added
+		for callI := len(i.shutdownCalls) - 1; callI >= 0; callI-- {
+			i.shutdownCalls[callI]()
+		}
+	})
+}
+
 func (i *Test) startHorizon() {
-	horizonPostgresURL := dbtest.Postgres(i.t).DSN
+	horizonPostgresURL := i.config.PostgresURL
+	if horizonPostgresURL == "" {
+		postgres := dbtest.Postgres(i.t)
+		i.shutdownCalls = append(i.shutdownCalls, func() {
+			// TODO: Unfortunately Horizon leaves open sessions behind leading to
+			//       a "database  is being accessed by other users"
+			//       error when trying to drop it
+			// postgres.Close()
+		})
+		horizonPostgresURL = postgres.DSN
+	}
 
 	config, configOpts := horizon.Flags()
 	cmd := &cobra.Command{
@@ -130,6 +160,7 @@ of accounts, subscribe to event streams and more.`,
 	// Ideally, we'd be pulling host/port information from the Docker Compose
 	// YAML file itself rather than hardcoding it.
 	hostname := "localhost"
+	// initialize core arguments
 	cmd.SetArgs([]string{
 		"--stellar-core-url",
 		fmt.Sprintf("http://%s:%d", hostname, stellarCorePort),
@@ -159,6 +190,7 @@ of accounts, subscribe to event streams and more.`,
 	if err = cmd.Execute(); err != nil {
 		i.t.Fatalf("cannot initialize horizon: %s", err)
 	}
+	i.horizonConfig = *config
 
 	if err = i.app.Ingestion().BuildGenesisState(); err != nil {
 		i.t.Fatalf("cannot build genesis state: %s", err)
