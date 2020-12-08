@@ -121,10 +121,7 @@ func (r *stellarCoreRunner) generateConfig() (string, error) {
 		// We don't need consensus when catching up
 		lines = append(lines, "UNSAFE_QUORUM=true")
 	}
-	for i, val := range r.historyURLs {
-		lines = append(lines, fmt.Sprintf("[HISTORY.h%d]", i))
-		lines = append(lines, fmt.Sprintf(`get="curl -sf %s/{0} -o {1}"`, val))
-	}
+
 	if r.mode == stellarCoreRunnerModeOffline && r.configAppendPath == "" {
 		// Add a fictional quorum -- necessary to convince core to start up;
 		// but not used at all for our purposes. Pubkey here is just random.
@@ -133,14 +130,23 @@ func (r *stellarCoreRunner) generateConfig() (string, error) {
 			"THRESHOLD_PERCENT=100",
 			`VALIDATORS=["GCZBOIAY4HLKAJVNJORXZOZRAY2BJDBZHKPBHZCRAIUR5IHC2UHBGCQR"]`)
 	}
+
 	result := strings.ReplaceAll(strings.Join(lines, "\n"), "\\", "\\\\")
 	if r.configAppendPath != "" {
 		appendConfigContents, err := ioutil.ReadFile(r.configAppendPath)
 		if err != nil {
 			return "", errors.Wrap(err, "reading quorum config file")
 		}
-		result = result + "\n" + string(appendConfigContents)
+		result = result + "\n" + string(appendConfigContents) + "\n\n"
 	}
+
+	lines = []string{}
+	for i, val := range r.historyURLs {
+		lines = append(lines, fmt.Sprintf("[HISTORY.h%d]", i))
+		lines = append(lines, fmt.Sprintf(`get="curl -sf %s/{0} -o {1}"`, val))
+	}
+	result += strings.Join(lines, "\n")
+
 	return result, nil
 }
 
