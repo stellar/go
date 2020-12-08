@@ -118,6 +118,7 @@ func main() {
 				NetworkPassphrase:  networkPassphrase,
 				HistoryArchiveURLs: historyArchiveURLs,
 				HTTPPort:           stellarCoreHTTPPort,
+				Log:                logger.WithField("subservice", "stellar-core"),
 			}
 
 			var dbConn *db.Session
@@ -134,7 +135,6 @@ func main() {
 			if err != nil {
 				logger.WithError(err).Fatal("Could not create captive core instance")
 			}
-			core.SetStellarCoreLogger(logger.WithField("subservice", "stellar-core"))
 			api := internal.NewCaptiveCoreAPI(core, logger.WithField("subservice", "api"))
 
 			supporthttp.Run(supporthttp.Config{
