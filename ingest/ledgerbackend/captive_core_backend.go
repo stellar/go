@@ -76,7 +76,7 @@ type CaptiveStellarCore struct {
 	stellarCoreRunner stellarCoreRunnerInterface
 
 	// For testing
-	stellarCoreRunnerFactory func(mode stellarCoreRunnerMode, captiveCoreConfigAppendPath string) (stellarCoreRunnerInterface, error)
+	stellarCoreRunnerFactory func(mode stellarCoreRunnerMode) (stellarCoreRunnerInterface, error)
 
 	// Defines if the blocking mode (off by default) is on or off. In blocking mode,
 	// calling GetLedger blocks until the requested ledger is available. This is useful
@@ -137,12 +137,8 @@ func NewCaptive(config CaptiveCoreConfig) (*CaptiveStellarCore, error) {
 		waitIntervalPrepareRange: time.Second,
 		ledgerHashStore:          config.LedgerHashStore,
 	}
-	c.stellarCoreRunnerFactory = func(mode stellarCoreRunnerMode, appendConfigPath string) (stellarCoreRunnerInterface, error) {
-		runner, innerErr := newStellarCoreRunner(config, mode)
-		if innerErr != nil {
-			return runner, innerErr
-		}
-		return runner, nil
+	c.stellarCoreRunnerFactory = func(mode stellarCoreRunnerMode) (stellarCoreRunnerInterface, error) {
+		return newStellarCoreRunner(config, mode)
 	}
 	return c, nil
 }
@@ -177,13 +173,11 @@ func (c *CaptiveStellarCore) openOfflineReplaySubprocess(from, to uint32) error 
 		to = latestCheckpointSequence
 	}
 
-	if c.stellarCoreRunner == nil {
-		// configAppendPath is empty in an offline mode because it's generated
-		c.stellarCoreRunner, err = c.stellarCoreRunnerFactory(stellarCoreRunnerModeOffline, "")
-		if err != nil {
-			return errors.Wrap(err, "error creating stellar-core runner")
-		}
+	c.stellarCoreRunner, err = c.stellarCoreRunnerFactory(stellarCoreRunnerModeOffline)
+	if err != nil {
+		return errors.Wrap(err, "error creating stellar-core runner")
 	}
+
 	err = c.stellarCoreRunner.catchup(from, to)
 	if err != nil {
 		return errors.Wrap(err, "error running stellar-core")
@@ -230,11 +224,9 @@ func (c *CaptiveStellarCore) openOnlineReplaySubprocess(from uint32) error {
 		)
 	}
 
-	if c.stellarCoreRunner == nil {
-		c.stellarCoreRunner, err = c.stellarCoreRunnerFactory(stellarCoreRunnerModeOnline, c.configAppendPath)
-		if err != nil {
-			return errors.Wrap(err, "error creating stellar-core runner")
-		}
+	c.stellarCoreRunner, err = c.stellarCoreRunnerFactory(stellarCoreRunnerModeOnline)
+	if err != nil {
+		return errors.Wrap(err, "error creating stellar-core runner")
 	}
 
 	runFrom, ledgerHash, nextLedger, err := c.runFromParams(from)
