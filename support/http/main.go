@@ -50,6 +50,7 @@ type Config struct {
 	ReadTimeout         time.Duration
 	WriteTimeout        time.Duration
 	IdleTimeout         time.Duration
+	TCPKeepAlive        time.Duration
 	OnStarting          func()
 	OnStopping          func()
 	OnStopped           func()
@@ -106,7 +107,8 @@ func setup(conf Config) *graceful.Server {
 	}
 
 	return &graceful.Server{
-		Timeout: conf.ShutdownGracePeriod,
+		Timeout:      conf.ShutdownGracePeriod,
+		TCPKeepAlive: conf.TCPKeepAlive,
 
 		Server: &stdhttp.Server{
 			Addr:         conf.ListenAddr,
