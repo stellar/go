@@ -7,6 +7,8 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## v1.13.0
 
+**Upgrading to this version from version before v1.10.0 will trigger state rebuild. During this process (which can take several minutes) it will not ingest new ledgers.**
+
 * Improved performance of `OfferProcessor` ([#3249](https://github.com/stellar/go/pull/3249)).
 * Improved speed of state verification startup time ([#3251](https://github.com/stellar/go/pull/3251)).
 * Multiple Captive Core improvements and fixes ([#3237](https://github.com/stellar/go/pull/3237), [#3257](https://github.com/stellar/go/pull/3257), [#3260](https://github.com/stellar/go/pull/3260), [#3264](https://github.com/stellar/go/pull/3264), [#3262](https://github.com/stellar/go/pull/3262), [#3265](https://github.com/stellar/go/pull/3265), [#3269](https://github.com/stellar/go/pull/3269), [#3271](https://github.com/stellar/go/pull/3271), [#3270](https://github.com/stellar/go/pull/3270), [#3272](https://github.com/stellar/go/pull/3272)).
