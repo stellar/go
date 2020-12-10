@@ -358,12 +358,13 @@ func (r *stellarCoreRunner) close() error {
 	r.lock.Lock()
 	started := r.started
 	tempDir := r.tempDir
-	r.tempDir = ""
 
 	if !started {
 		r.lock.Unlock()
 		return errors.New("runner has not started")
 	}
+
+	r.tempDir = ""
 
 	// check if we have already closed
 	if tempDir == "" {
