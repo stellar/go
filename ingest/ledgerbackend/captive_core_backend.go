@@ -517,7 +517,7 @@ func (c *CaptiveStellarCore) checkMetaPipeResult(result metaResult, ok bool) err
 	// There are 3 types of errors we check for:
 	// 1. User initiated shutdown by canceling the parent context or calling Close().
 	// 2. The stellar core process exited unexpectedly.
-	// 3. Some error was encountered while consuming the ledger stream emitted by captive core
+	// 3. Some error was encountered while consuming the ledgers emitted by captive core (e.g. parsing invalid xdr)
 	if err := c.stellarCoreRunner.context().Err(); err != nil {
 		// Case 1 - User initiated shutdown by canceling the parent context or calling Close()
 		return err
@@ -531,7 +531,7 @@ func (c *CaptiveStellarCore) checkMetaPipeResult(result metaResult, ok bool) err
 				return errors.Wrap(err, "stellar core exited unexpectedly")
 			}
 		} else if !ok {
-			// This case should never happen because the channel can only be closed
+			// This case should never happen because the ledger buffer channel can only be closed
 			// if and only if the process exits or the context is cancelled.
 			// However, we add this check for the sake of completeness
 			return errors.Errorf("meta pipe closed unexpectedly")
