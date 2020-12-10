@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/stellar/go/ingest/ledgerbackend"
@@ -25,11 +26,12 @@ func main() {
 func check(ledger uint32) bool {
 	c, err := ledgerbackend.NewCaptive(
 		ledgerbackend.CaptiveCoreConfig{
-			BinaryPath:          "stellar-core",
-			ConfigAppendPath:    "stellar-core-standalone2.cfg",
-			NetworkPassphrase:   "Standalone Network ; February 2017",
-			HistoryArchiveURLs:  []string{"http://localhost:1570"},
+			BinaryPath:         "stellar-core",
+			ConfigAppendPath:   "stellar-core-standalone2.cfg",
+			NetworkPassphrase:  "Standalone Network ; February 2017",
+			HistoryArchiveURLs: []string{"http://localhost:1570"},
 			CheckpointFrequency: 64,
+			Context:            context.Background(),
 		},
 	)
 	if err != nil {

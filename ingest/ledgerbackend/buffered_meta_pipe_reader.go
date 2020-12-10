@@ -2,6 +2,7 @@ package ledgerbackend
 
 import (
 	"bufio"
+	"context"
 	"io"
 	"time"
 
@@ -62,20 +63,18 @@ type metaResult struct {
 // until xdr.LedgerCloseMeta objects channel is empty. This prevents memory
 // exhaustion when network closes a series a large ledgers.
 type bufferedLedgerMetaReader struct {
-	r      *bufio.Reader
-	c      chan metaResult
-	runner stellarCoreRunnerInterface
-	closed chan struct{}
+	r   *bufio.Reader
+	c   chan metaResult
+	ctx context.Context
 }
 
 // newBufferedLedgerMetaReader creates a new meta reader that will shutdown
 // when stellar-core terminates.
-func newBufferedLedgerMetaReader(runner stellarCoreRunnerInterface) *bufferedLedgerMetaReader {
+func newBufferedLedgerMetaReader(ctx context.Context, reader io.ReadCloser) *bufferedLedgerMetaReader {
 	return &bufferedLedgerMetaReader{
-		c:      make(chan metaResult, ledgerReadAheadBufferSize),
-		r:      bufio.NewReaderSize(runner.getMetaPipe(), metaPipeBufferSize),
-		runner: runner,
-		closed: make(chan struct{}),
+		c:   make(chan metaResult, ledgerReadAheadBufferSize),
+		r:   bufio.NewReaderSize(reader, metaPipeBufferSize),
+		ctx: ctx,
 	}
 }
 
@@ -84,33 +83,17 @@ func newBufferedLedgerMetaReader(runner stellarCoreRunnerInterface) *bufferedLed
 //   * Meta pipe buffer is full so it will wait until it refills.
 //   * The next ledger available in the buffer exceeds the meta pipe buffer size.
 //     In such case the method will block until LedgerCloseMeta buffer is empty.
-func (b *bufferedLedgerMetaReader) readLedgerMetaFromPipe(untilSequence uint32) (*xdr.LedgerCloseMeta, error) {
+func (b *bufferedLedgerMetaReader) readLedgerMetaFromPipe() (*xdr.LedgerCloseMeta, error) {
 	frameLength, err := xdr.ReadFrameLength(b.r)
 	if err != nil {
-		select {
-		case <-b.runner.getProcessExitChan():
-			return nil, wrapStellarCoreRunnerError(b.runner)
-		default:
-			return nil, errors.Wrap(err, "error reading frame length")
-		}
+		return nil, errors.Wrap(err, "error reading frame length")
 	}
 
 	for frameLength > metaPipeBufferSize && len(b.c) > 0 {
 		// Wait for LedgerCloseMeta buffer to be cleared to minimize memory usage.
 		select {
-		case <-b.runner.getProcessExitChan():
-			if untilSequence != 0 {
-				// If untilSequence != 0 it's possible that Stellar-Core process
-				// exits but there are still ledgers in a buffer (catchup). In such
-				// case we ignore cases when Stellar-Core exited with no errors.
-				processErr := b.runner.getProcessExitError()
-				if processErr != nil {
-					return nil, errors.Wrap(processErr, "stellar-core process exited with an error")
-				}
-				time.Sleep(time.Second)
-				continue
-			}
-			return nil, wrapStellarCoreRunnerError(b.runner)
+		case <-b.ctx.Done():
+			return nil, b.ctx.Err()
 		case <-time.After(time.Second):
 		}
 	}
@@ -118,17 +101,7 @@ func (b *bufferedLedgerMetaReader) readLedgerMetaFromPipe(untilSequence uint32) 
 	var xlcm xdr.LedgerCloseMeta
 	_, err = xdr.Unmarshal(b.r, &xlcm)
 	if err != nil {
-		if err == io.EOF {
-			err = errors.Wrap(err, "got EOF from subprocess")
-		}
-		err = errors.Wrap(err, "unmarshalling framed LedgerCloseMeta")
-
-		select {
-		case <-b.runner.getProcessExitChan():
-			return nil, wrapStellarCoreRunnerError(b.runner)
-		default:
-			return nil, err
-		}
+		return nil, errors.Wrap(err, "unmarshalling framed LedgerCloseMeta")
 	}
 	return &xlcm, nil
 }
@@ -137,52 +110,29 @@ func (b *bufferedLedgerMetaReader) getChannel() <-chan metaResult {
 	return b.c
 }
 
-func (b *bufferedLedgerMetaReader) waitForClose() {
-	// If buffer is full, keep reading to make sure it receives
-	// a shutdown signal from stellarCoreRunner.
-loop:
-	for {
-		select {
-		case <-b.c:
-		case <-b.closed:
-			break loop
-		}
-	}
-}
-
 // Start starts an internal go routine that reads binary ledger data into
-// internal buffers. The go routine returns when Stellar-Core process exits
-// however it won't happen instantly when data is read. A blocking method:
-// waitForClose() can be used to block until go routine returns.
-func (b *bufferedLedgerMetaReader) start(untilSequence uint32) {
+// internal buffers. The go routine returns when it encounters an error (including io.EOF)
+// or its context is terminated.
+func (b *bufferedLedgerMetaReader) start() {
 	printBufferOccupation := time.NewTicker(5 * time.Second)
-	defer func() {
-		printBufferOccupation.Stop()
-		close(b.closed)
-	}()
+	defer printBufferOccupation.Stop()
+	defer close(b.c)
 
 	for {
 		select {
 		case <-printBufferOccupation.C:
 			log.Debug("captive core read-ahead buffer occupation:", len(b.c))
+		case <-b.ctx.Done():
+			return
 		default:
 		}
 
-		meta, err := b.readLedgerMetaFromPipe(untilSequence)
+		meta, err := b.readLedgerMetaFromPipe()
 		if err != nil {
-			// When `GetLedger` sees the error it will close the backend. We shouldn't
-			// close it now because there may be some ledgers in a buffer.
 			b.c <- metaResult{nil, err}
 			return
 		}
 
 		b.c <- metaResult{meta, nil}
-
-		if untilSequence != 0 {
-			if meta.LedgerSequence() >= untilSequence {
-				// we are done
-				return
-			}
-		}
 	}
 }
