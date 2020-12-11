@@ -3,11 +3,11 @@ package ledgerbackend
 import (
 	"context"
 	"encoding/hex"
-	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
 	"os"
 	"sync"
 
+	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/xdr"

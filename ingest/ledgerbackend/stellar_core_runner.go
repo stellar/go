@@ -242,6 +242,11 @@ func (r *stellarCoreRunner) catchup(from, to uint32) error {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
+	// check if we have already been closed
+	if r.ctx.Err() != nil {
+		return r.ctx.Err()
+	}
+
 	if r.started {
 		return errors.New("runner already started")
 	}
@@ -277,10 +282,15 @@ func (r *stellarCoreRunner) runFrom(from uint32, hash string) error {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
+	// check if we have already been closed
+	if r.ctx.Err() != nil {
+		return r.ctx.Err()
+	}
+
 	if r.started {
 		return errors.New("runner already started")
 	}
-	var err error
+
 	r.cmd = r.createCmd(
 		"run",
 		"--in-memory",
@@ -288,6 +298,8 @@ func (r *stellarCoreRunner) runFrom(from uint32, hash string) error {
 		"--start-at-hash", hash,
 		"--metadata-output-stream", r.getPipeName(),
 	)
+
+	var err error
 	r.pipe, err = r.start()
 	if err != nil {
 		r.closeLogLineWriters()
@@ -351,11 +363,6 @@ func (r *stellarCoreRunner) close() error {
 	started := r.started
 	tempDir := r.tempDir
 
-	if !started {
-		r.lock.Unlock()
-		return errors.New("runner has not started")
-	}
-
 	r.tempDir = ""
 
 	// check if we have already closed
@@ -367,17 +374,21 @@ func (r *stellarCoreRunner) close() error {
 	r.cancel()
 	r.lock.Unlock()
 
-	// wait for the stellar core process to terminate
-	r.wg.Wait()
+	// only reap captive core sub process and related go routines if we've started
+	// otherwise, just cleanup the temp dir
+	if started {
+		// wait for the stellar core process to terminate
+		r.wg.Wait()
 
-	// drain meta pipe channel to make sure the ledger buffer goroutine exits
-	for range r.getMetaPipe() {
+		// drain meta pipe channel to make sure the ledger buffer goroutine exits
+		for range r.getMetaPipe() {
 
+		}
+
+		// now it's safe to close the pipe reader
+		// because the ledger buffer is no longer reading from it
+		r.pipe.Reader.Close()
 	}
-
-	// now it's safe to close the pipe reader
-	// because the ledger buffer is no longer reading from it
-	r.pipe.Reader.Close()
 
 	return os.RemoveAll(tempDir)
 }
