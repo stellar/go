@@ -207,6 +207,7 @@ func (c *CaptiveStellarCore) openOfflineReplaySubprocess(from, to uint32) error 
 	c.nextLedger = c.roundDownToFirstReplayAfterCheckpointStart(from)
 	c.lastLedger = &to
 	c.blocking = true
+	c.previousLedgerHash = nil
 
 	return nil
 }
@@ -247,6 +248,7 @@ func (c *CaptiveStellarCore) openOnlineReplaySubprocess(from uint32) error {
 
 	c.nextLedger = nextLedger
 	c.lastLedger = nil
+	c.previousLedgerHash = nil
 
 	if c.ledgerHashStore != nil {
 		var exists bool
