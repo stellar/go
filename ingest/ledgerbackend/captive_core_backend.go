@@ -3,10 +3,10 @@ package ledgerbackend
 import (
 	"context"
 	"encoding/hex"
-	"sync"
-	"time"
-
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
+	"os"
+	"sync"
 
 	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/support/log"
@@ -64,10 +64,14 @@ func (c *CaptiveStellarCore) roundDownToFirstReplayAfterCheckpointStart(ledger u
 //
 // Requires Stellar-Core v13.2.0+.
 type CaptiveStellarCore struct {
-	configAppendPath  string
-	archive           historyarchive.ArchiveInterface
+	archive         historyarchive.ArchiveInterface
 	checkpointManager historyarchive.CheckpointManager
-	ledgerHashStore   TrustedLedgerHashStore
+	ledgerHashStore TrustedLedgerHashStore
+
+	// cancel is the CancelFunc for context which controls the lifetime of a CaptiveStellarCore instance.
+	// Once it is invoked CaptiveStellarCore will not be able to stream ledgers from Stellar Core or
+	// spawn new instances of Stellar Core.
+	cancel context.CancelFunc
 
 	stellarCoreRunner stellarCoreRunnerInterface
 	// stellarCoreLock protects access to stellarCoreRunner. When the read lock
@@ -91,10 +95,6 @@ type CaptiveStellarCore struct {
 	nextLedger         uint32  // next ledger expected, error w/ restart if not seen
 	lastLedger         *uint32 // end of current segment if offline, nil if online
 	previousLedgerHash *string
-
-	// waitIntervalPrepareRange defines a time to wait between checking if the buffer
-	// is empty. Default 1s, lower in tests to make them faster.
-	waitIntervalPrepareRange time.Duration
 }
 
 // CaptiveCoreConfig contains all the parameters required to create a CaptiveStellarCore instance
@@ -117,9 +117,9 @@ type CaptiveCoreConfig struct {
 	// Log is an (optional) custom logger which will capture any output from the Stellar Core process.
 	// If Log is omitted then all output will be printed to stdout.
 	Log *log.Entry
-	// Context is the context which controls the lifetime of a CaptiveStellarCore instance. Once the context is done
+	// Context is the (optional) context which controls the lifetime of a CaptiveStellarCore instance. Once the context is done
 	// the CaptiveStellarCore instance will not be able to stream ledgers from Stellar Core or spawn new
-	// instances of Stellar Core.
+	// instances of Stellar Core. If Context is omitted CaptiveStellarCore will default to using context.Background.
 	Context context.Context
 }
 
@@ -142,11 +142,23 @@ func NewCaptive(config CaptiveCoreConfig) (*CaptiveStellarCore, error) {
 
 	c := &CaptiveStellarCore{
 		archive:                  archive,
-		configAppendPath:         config.ConfigAppendPath,
-		waitIntervalPrepareRange: time.Second,
 		ledgerHashStore:          config.LedgerHashStore,
 		checkpointManager:        historyarchive.NewCheckpointManager(config.CheckpointFrequency),
 	}
+
+	// Here we set defaults in the config. Because config is not a pointer this code should
+	// not mutate the original CaptiveCoreConfig instance which was passed into NewCaptive()
+	if config.Log == nil {
+		config.Log = log.New()
+		config.Log.Logger.SetOutput(os.Stdout)
+		config.Log.SetLevel(logrus.InfoLevel)
+	}
+	parentCtx := config.Context
+	if parentCtx == nil {
+		parentCtx = context.Background()
+	}
+	config.Context, c.cancel = context.WithCancel(parentCtx)
+
 	c.stellarCoreRunnerFactory = func(mode stellarCoreRunnerMode) (stellarCoreRunnerInterface, error) {
 		return newStellarCoreRunner(config, mode)
 	}
@@ -507,7 +519,7 @@ func (c *CaptiveStellarCore) GetLedger(sequence uint32) (bool, xdr.LedgerCloseMe
 		}
 	}
 	// All paths above that break out of the loop (instead of return)
-	// set e to non-nil: there was an error and we should close and
+	// set errOut to non-nil: there was an error and we should close and
 	// reset state before retuning an error to our caller.
 	c.stellarCoreRunner.close()
 	return false, xdr.LedgerCloseMeta{}, errOut
@@ -569,11 +581,15 @@ func (c *CaptiveStellarCore) isClosed() bool {
 }
 
 // Close closes existing Stellar-Core process, streaming sessions and removes all
-// temporary files. Note, once a CaptiveStellarCore instance is closed it can still be used again
-// by calling PrepareRange().
+// temporary files. Note, once a CaptiveStellarCore instance is closed it can can no longer be used and
+// all subsequent calls to PrepareRange(), GetLedger(), etc will fail.
 func (c *CaptiveStellarCore) Close() error {
 	c.stellarCoreLock.RLock()
 	defer c.stellarCoreLock.RUnlock()
+
+	// after the CaptiveStellarCore context is canceled all subsequent calls to PrepareRange() will fail
+	c.cancel()
+
 	if c.stellarCoreRunner != nil {
 		return c.stellarCoreRunner.close()
 	}

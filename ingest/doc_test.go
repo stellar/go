@@ -109,7 +109,6 @@ func Example_changes() {
 			NetworkPassphrase:  networkPassphrase,
 			HistoryArchiveURLs: []string{archiveURL},
 			CheckpointFrequency: 64,
-			Context:            context.Background(),
 		},
 	)
 	if err != nil {

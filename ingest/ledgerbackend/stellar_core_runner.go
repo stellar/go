@@ -16,8 +16,6 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
-
 	"github.com/stellar/go/support/log"
 )
 
@@ -79,12 +77,6 @@ func newStellarCoreRunner(config CaptiveCoreConfig, mode stellarCoreRunnerMode) 
 		return nil, errors.Wrap(err, "error creating subprocess tmpdir")
 	}
 
-	coreLogger := config.Log
-	if coreLogger == nil {
-		coreLogger = log.New()
-		coreLogger.Logger.SetOutput(os.Stdout)
-		coreLogger.SetLevel(logrus.InfoLevel)
-	}
 	ctx, cancel := context.WithCancel(config.Context)
 
 	runner := &stellarCoreRunner{
@@ -98,7 +90,7 @@ func newStellarCoreRunner(config CaptiveCoreConfig, mode stellarCoreRunnerMode) 
 		cancel:            cancel,
 		tempDir:           tempDir,
 		nonce:             fmt.Sprintf("captive-stellar-core-%x", r.Uint64()),
-		log:               coreLogger,
+		log:               config.Log,
 	}
 
 	if err := runner.writeConf(); err != nil {

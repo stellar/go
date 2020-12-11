@@ -156,7 +156,6 @@ func TestCaptiveNew(t *testing.T) {
 	)
 
 	assert.NoError(t, err)
-	assert.Equal(t, configPath, captiveStellarCore.configAppendPath)
 	assert.Equal(t, uint32(0), captiveStellarCore.nextLedger)
 	assert.NotNil(t, captiveStellarCore.archive)
 }
@@ -431,8 +430,7 @@ func TestCaptivePrepareRangeUnboundedRange_ErrRunFrom(t *testing.T) {
 		Return(xdr.LedgerHeaderHistoryEntry{}, nil)
 
 	captiveBackend := CaptiveStellarCore{
-		archive:          mockArchive,
-		configAppendPath: "foo",
+		archive: mockArchive,
 		stellarCoreRunnerFactory: func(_ stellarCoreRunnerMode) (stellarCoreRunnerInterface, error) {
 			return mockRunner, nil
 		},
@@ -494,8 +492,7 @@ func TestCaptivePrepareRangeUnboundedRange_ReuseSession(t *testing.T) {
 		Return(xdr.LedgerHeaderHistoryEntry{}, nil)
 
 	captiveBackend := CaptiveStellarCore{
-		archive:          mockArchive,
-		configAppendPath: "foo",
+		archive: mockArchive,
 		stellarCoreRunnerFactory: func(_ stellarCoreRunnerMode) (stellarCoreRunnerInterface, error) {
 			return mockRunner, nil
 		},
@@ -537,8 +534,7 @@ func TestGetLatestLedgerSequence(t *testing.T) {
 		Return(xdr.LedgerHeaderHistoryEntry{}, nil)
 
 	captiveBackend := CaptiveStellarCore{
-		archive:          mockArchive,
-		configAppendPath: "foo",
+		archive: mockArchive,
 		stellarCoreRunnerFactory: func(_ stellarCoreRunnerMode) (stellarCoreRunnerInterface, error) {
 			return mockRunner, nil
 		},
@@ -822,8 +818,7 @@ func TestCaptiveGetLedger_CloseBufferFull(t *testing.T) {
 		Return(xdr.LedgerHeaderHistoryEntry{}, nil)
 
 	captiveBackend := CaptiveStellarCore{
-		archive:          mockArchive,
-		configAppendPath: "foo",
+		archive: mockArchive,
 		stellarCoreRunnerFactory: func(_ stellarCoreRunnerMode) (stellarCoreRunnerInterface, error) {
 			return mockRunner, nil
 		},
@@ -1181,8 +1176,7 @@ func TestCaptivePreviousLedgerCheck(t *testing.T) {
 	defer mockLedgerHashStore.AssertExpectations(t)
 
 	captiveBackend := CaptiveStellarCore{
-		configAppendPath: "stellar-core.cfg",
-		archive:          mockArchive,
+		archive: mockArchive,
 		stellarCoreRunnerFactory: func(_ stellarCoreRunnerMode) (stellarCoreRunnerInterface, error) {
 			return mockRunner, nil
 		},

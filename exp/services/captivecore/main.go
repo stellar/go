@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"go/types"
 	"strings"
@@ -121,7 +120,6 @@ func main() {
 			configOpts.Require()
 			configOpts.SetValues()
 			logger.SetLevel(logLevel)
-			ctx, cancel := context.WithCancel(context.Background())
 
 			captiveConfig := ledgerbackend.CaptiveCoreConfig{
 				BinaryPath:         binaryPath,
@@ -131,7 +129,6 @@ func main() {
 				CheckpointFrequency: checkpointFrequency,
 				HTTPPort:           stellarCoreHTTPPort,
 				Log:                logger.WithField("subservice", "stellar-core"),
-				Context:            ctx,
 			}
 
 			var dbConn *db.Session
@@ -157,7 +154,6 @@ func main() {
 					logger.Infof("Starting Captive Core server on %v", port)
 				},
 				OnStopping: func() {
-					cancel()
 					api.Shutdown()
 					if dbConn != nil {
 						dbConn.Close()
