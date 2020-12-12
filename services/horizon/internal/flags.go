@@ -368,7 +368,7 @@ func Flags() (*Config, support.ConfigOptions) {
 			OptType:     types.Uint32,
 			FlagDefault: uint32(64),
 			Required:    false,
-			Usage:       "establishes how many ledgers exist between checkpoints, do NOT change this if you really know what you are doing",
+			Usage:       "establishes how many ledgers exist between checkpoints, do NOT change this unless you really know what you are doing",
 		},
 	}
 
