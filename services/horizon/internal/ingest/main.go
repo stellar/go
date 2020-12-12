@@ -157,9 +157,6 @@ type system struct {
 }
 
 func NewSystem(config Config) (System, error) {
-	if config.CheckpointFrequency == 0 {
-		return nil, errors.New("uninitialized checkpoint frequency")
-	}
 	ctx, cancel := context.WithCancel(context.Background())
 
 	archive, err := historyarchive.Connect(

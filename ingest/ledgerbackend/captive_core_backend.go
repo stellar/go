@@ -109,6 +109,7 @@ type CaptiveCoreConfig struct {
 	// HistoryArchiveURLs are a list of history archive urls
 	HistoryArchiveURLs []string
 	// CheckpointFrequency is the number of ledgers between checkpoints
+	// if unset, DefaultCheckpointFrequency will be used
 	CheckpointFrequency uint32
 	// LedgerHashStore is an optional store used to obtain hashes for ledger sequences from a trusted source
 	LedgerHashStore TrustedLedgerHashStore

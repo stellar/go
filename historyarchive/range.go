@@ -10,6 +10,8 @@ import (
 	"strings"
 )
 
+const DefaultCheckpointFrequency = uint32(64)
+
 type Range struct {
 	Low  uint32
 	High uint32
@@ -19,7 +21,13 @@ type CheckpointManager struct {
 	checkpointFreq uint32
 }
 
+// NewCheckpointManager creates a CheckpointManager based on a checkpoint frequency
+// (the number of ledgers between ledger checkpoints). If checkpointFrequency is
+// 0 DefaultCheckpointFrequency will be used.
 func NewCheckpointManager(checkpointFrequency uint32) CheckpointManager {
+	if checkpointFrequency == 0 {
+		checkpointFrequency = DefaultCheckpointFrequency
+	}
 	return CheckpointManager{checkpointFrequency}
 }
 

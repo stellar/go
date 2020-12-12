@@ -44,7 +44,8 @@ type ConnectOptions struct {
 	S3Region          string
 	S3Endpoint        string
 	UnsignedRequests  bool
-	// The checkpoint frequency will be 64 unless you are using an exotic test setup.
+	// CheckpointFrequency is the number of ledgers between checkpoints
+	// if unset, DefaultCheckpointFrequency will be used
 	CheckpointFrequency uint32
 }
 
@@ -284,9 +285,6 @@ func (a *Archive) GetXdrStream(pth string) (*XdrStream, error) {
 }
 
 func Connect(u string, opts ConnectOptions) (*Archive, error) {
-	if opts.CheckpointFrequency == 0 {
-		return nil, errors.New("uninitialized checkpoint frequency")
-	}
 	arch := Archive{
 		networkPassphrase:       opts.NetworkPassphrase,
 		checkpointFiles:         make(map[string](map[uint32]bool)),

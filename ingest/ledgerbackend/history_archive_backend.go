@@ -31,7 +31,7 @@ const (
 
 // NewHistoryArchiveBackendFromURL builds a new HistoryArchiveBackend using
 // history archive URL.
-// The checkpoint frequency will be 64 unless you are using an exotic test setup.
+// If unsure, leave checkpointFrequency at 0, the DefaultCheckpointFrequency will be used
 func NewHistoryArchiveBackendFromURL(archiveURL string, checkpointFrequency uint32) (*HistoryArchiveBackend, error) {
 	archive, err := historyarchive.Connect(
 		archiveURL,
