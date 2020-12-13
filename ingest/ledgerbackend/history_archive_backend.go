@@ -17,9 +17,8 @@ import (
 type HistoryArchiveBackend struct {
 	archive historyarchive.ArchiveInterface
 
-	rangeFrom uint32
-	rangeTo   uint32
-	cache     map[uint32]*xdr.LedgerCloseMeta
+	cachedRange historyarchive.Range
+	cache       map[uint32]*xdr.LedgerCloseMeta
 }
 
 var _ LedgerBackend = (*HistoryArchiveBackend)(nil)
@@ -32,10 +31,14 @@ const (
 
 // NewHistoryArchiveBackendFromURL builds a new HistoryArchiveBackend using
 // history archive URL.
-func NewHistoryArchiveBackendFromURL(archiveURL string) (*HistoryArchiveBackend, error) {
+// If unsure, leave checkpointFrequency at 0, the DefaultCheckpointFrequency will be used
+func NewHistoryArchiveBackendFromURL(archiveURL string, checkpointFrequency uint32) (*HistoryArchiveBackend, error) {
 	archive, err := historyarchive.Connect(
 		archiveURL,
-		historyarchive.ConnectOptions{Context: context.Background()},
+		historyarchive.ConnectOptions{
+			Context:             context.Background(),
+			CheckpointFrequency: checkpointFrequency,
+		},
 	)
 	if err != nil {
 		return nil, err
@@ -85,9 +88,8 @@ func (hab *HistoryArchiveBackend) IsPrepared(ledgerRange Range) (bool, error) {
 // for other ledgers within the same checkpoint are fast, requesting another checkpoint is
 // slow again.
 func (hab *HistoryArchiveBackend) GetLedger(sequence uint32) (bool, xdr.LedgerCloseMeta, error) {
-	if !(sequence >= hab.rangeFrom && sequence <= hab.rangeTo) {
-		checkpointSequence := (sequence/ledgersPerCheckpoint)*ledgersPerCheckpoint + ledgersPerCheckpoint - 1
-		found, err := hab.loadTransactionsFromCheckpoint(checkpointSequence)
+	if !hab.cachedRange.InRange(sequence) {
+		found, err := hab.loadCheckpointTransactionsOf(sequence)
 		if err != nil {
 			return false, xdr.LedgerCloseMeta{}, err
 		}
@@ -103,9 +105,12 @@ func (hab *HistoryArchiveBackend) GetLedger(sequence uint32) (bool, xdr.LedgerCl
 	return true, *meta, nil
 }
 
-func (hab *HistoryArchiveBackend) loadTransactionsFromCheckpoint(checkpointSequence uint32) (bool, error) {
-	hab.rangeFrom = 0
-	hab.rangeTo = 0
+func (hab *HistoryArchiveBackend) loadCheckpointTransactionsOf(sequence uint32) (bool, error) {
+	// reset range
+	hab.cachedRange = historyarchive.Range{}
+
+	checkpointRange := hab.archive.GetCheckpointManager().GetCheckpointRange(sequence)
+	checkpointSequence := checkpointRange.High
 
 	ledgerExists, err := hab.archive.CategoryCheckpointExists("ledger", checkpointSequence)
 	if err != nil {
@@ -128,7 +133,7 @@ func (hab *HistoryArchiveBackend) loadTransactionsFromCheckpoint(checkpointSeque
 		return false, errors.New("history archive broken, some categories do not exist")
 	}
 
-	// ledger must be fetched first because it initalizes LedgerCloseMeta for
+	// ledger must be fetched first because it initializes LedgerCloseMeta for
 	// a given sequence.
 	categories := []string{ledgerCategory, transactionsCategory, resultsCategory}
 	for _, category := range categories {
@@ -138,12 +143,7 @@ func (hab *HistoryArchiveBackend) loadTransactionsFromCheckpoint(checkpointSeque
 		}
 	}
 
-	if checkpointSequence >= ledgersPerCheckpoint {
-		hab.rangeFrom = checkpointSequence - ledgersPerCheckpoint + 1
-	} else {
-		hab.rangeFrom = 1
-	}
-	hab.rangeTo = checkpointSequence
+	hab.cachedRange = checkpointRange
 
 	return true, nil
 }
@@ -195,8 +195,7 @@ func (hab *HistoryArchiveBackend) fetchCategory(category string, checkpointSeque
 
 // Close clears and resets internal state.
 func (hab *HistoryArchiveBackend) Close() error {
-	hab.rangeFrom = 0
-	hab.rangeTo = 0
+	hab.cachedRange = historyarchive.Range{}
 	hab.cache = make(map[uint32]*xdr.LedgerCloseMeta)
 	return nil
 }

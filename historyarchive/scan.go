@@ -28,7 +28,7 @@ func (arch *Archive) ScanCheckpoints(opts *CommandOptions) error {
 	if e != nil {
 		return e
 	}
-	opts.Range = opts.Range.clamp(state.Range())
+	opts.Range = opts.Range.clamp(state.Range(), arch.checkpointManager)
 
 	log.Printf("Scanning checkpoint files in range: %s", opts.Range)
 
@@ -58,7 +58,7 @@ func (arch *Archive) ScanCheckpointsSlow(opts *CommandOptions) error {
 	cats := Categories()
 	go func() {
 		for _, cat := range cats {
-			for chk := range opts.Range.Checkpoints() {
+			for chk := range opts.Range.GenerateCheckpoints(arch.checkpointManager) {
 				req <- scanCheckpointSlowReq{category: cat, checkpoint: chk}
 			}
 		}
@@ -206,8 +206,8 @@ func (arch *Archive) ScanBuckets(opts *CommandOptions) error {
 	doList := arch.backend.CanListFiles()
 	has, err := arch.GetRootHAS()
 	if err == nil {
-		fullRange := MakeRange(0, has.CurrentLedger)
-		doList = doList && opts.Range.Size() == fullRange.Size()
+		fullRange := arch.checkpointManager.MakeRange(0, has.CurrentLedger)
+		doList = doList && opts.Range.SizeInCheckPoints(arch.checkpointManager) == fullRange.SizeInCheckPoints(arch.checkpointManager)
 	} else {
 		log.Print("Error retrieving root archive state, possibly corrupt archive:", err)
 		log.Print("Continuing and will do an exists-check on each bucket as we go, this will be slower")
@@ -215,7 +215,7 @@ func (arch *Archive) ScanBuckets(opts *CommandOptions) error {
 	if doList {
 		errs += noteError(arch.ScanAllBuckets())
 	} else {
-		log.Printf("Scanning buckets for %d checkpoints", opts.Range.Size())
+		log.Printf("Scanning buckets for %d checkpoints", opts.Range.SizeInCheckPoints(arch.checkpointManager))
 	}
 
 	// Grab the set of checkpoints we have HASs for, to read references.
@@ -362,7 +362,7 @@ func (arch *Archive) CheckCheckpointFilesMissing(opts *CommandOptions) map[strin
 	missing := make(map[string][]uint32)
 	for _, cat := range Categories() {
 		missing[cat] = make([]uint32, 0)
-		for ix := range opts.Range.Checkpoints() {
+		for ix := range opts.Range.GenerateCheckpoints(arch.checkpointManager) {
 			_, ok := arch.checkpointFiles[cat][ix]
 			if !ok {
 				missing[cat] = append(missing[cat], ix)
@@ -398,7 +398,7 @@ func (arch *Archive) ReportMissing(opts *CommandOptions) error {
 			continue
 		}
 		if len(missing) != 0 {
-			s := fmtRangeList(missing)
+			s := fmtRangeList(missing, arch.checkpointManager)
 			missingCheckpoints = true
 			log.Printf("Missing %s (%d): %s", cat, len(missing), s)
 		}

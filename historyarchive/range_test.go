@@ -12,75 +12,83 @@ import (
 
 func (r Range) allCheckpoints() []uint32 {
 	var s []uint32
-	for chk := range r.Checkpoints() {
+	mgr := NewCheckpointManager(64)
+	for chk := range r.GenerateCheckpoints(mgr) {
 		s = append(s, chk)
 	}
 	return s
 }
 
 func TestRangeSize(t *testing.T) {
+	mgr := NewCheckpointManager(64)
+
 	assert.Equal(t, 1,
-		MakeRange(0x3f, 0x3f).Size())
+		mgr.MakeRange(0x3f, 0x3f).SizeInCheckPoints(mgr))
 
 	assert.Equal(t, 2,
-		MakeRange(0x3f, 0x7f).Size())
+		mgr.MakeRange(0x3f, 0x7f).SizeInCheckPoints(mgr))
 
 	assert.Equal(t, 2,
-		MakeRange(0, 100).Size())
+		mgr.MakeRange(0, 100).SizeInCheckPoints(mgr))
 
 	assert.Equal(t, 4,
-		MakeRange(0xff3f, 0xffff).Size())
+		mgr.MakeRange(0xff3f, 0xffff).SizeInCheckPoints(mgr))
 }
 
 func TestRangeEnumeration(t *testing.T) {
-	assert.Equal(t,
-		[]uint32{0x3f, 0x7f},
-		MakeRange(0x3f, 0x7f).allCheckpoints())
 
-	assert.Equal(t,
-		[]uint32{0x3f},
-		MakeRange(0x3f, 0x3f).allCheckpoints())
-
-	assert.Equal(t,
-		[]uint32{0x3f},
-		MakeRange(0, 0).allCheckpoints())
+	mgr := NewCheckpointManager(64)
 
 	assert.Equal(t,
 		[]uint32{0x3f, 0x7f},
-		MakeRange(0, 0x40).allCheckpoints())
+		mgr.MakeRange(0x3f, 0x7f).allCheckpoints())
+
+	assert.Equal(t,
+		[]uint32{0x3f},
+		mgr.MakeRange(0x3f, 0x3f).allCheckpoints())
+
+	assert.Equal(t,
+		[]uint32{0x3f},
+		mgr.MakeRange(0, 0).allCheckpoints())
+
+	assert.Equal(t,
+		[]uint32{0x3f, 0x7f},
+		mgr.MakeRange(0, 0x40).allCheckpoints())
 
 	assert.Equal(t,
 		[]uint32{0xff},
-		MakeRange(0xff, 0x40).allCheckpoints())
+		mgr.MakeRange(0xff, 0x40).allCheckpoints())
 }
 
 func TestFmtRangeList(t *testing.T) {
 
+	mgr := NewCheckpointManager(64)
+
 	assert.Equal(t,
 		"",
-		fmtRangeList([]uint32{}))
+		fmtRangeList([]uint32{}, mgr))
 
 	assert.Equal(t,
 		"0x0000003f",
-		fmtRangeList([]uint32{0x3f}))
+		fmtRangeList([]uint32{0x3f}, mgr))
 
 	assert.Equal(t,
 		"[0x0000003f-0x0000007f]",
-		fmtRangeList([]uint32{0x3f, 0x7f}))
+		fmtRangeList([]uint32{0x3f, 0x7f}, mgr))
 
 	assert.Equal(t,
 		"[0x0000003f-0x000000bf]",
-		fmtRangeList([]uint32{0x3f, 0x7f, 0xbf}))
+		fmtRangeList([]uint32{0x3f, 0x7f, 0xbf}, mgr))
 
 	assert.Equal(t,
 		"[0x0000003f-0x0000007f], 0x000000ff",
-		fmtRangeList([]uint32{0x3f, 0x7f, 0xff}))
+		fmtRangeList([]uint32{0x3f, 0x7f, 0xff}, mgr))
 
 	assert.Equal(t,
 		"[0x0000003f-0x0000007f], [0x000000ff-0x0000017f]",
-		fmtRangeList([]uint32{0x3f, 0x7f, 0xff, 0x13f, 0x17f}))
+		fmtRangeList([]uint32{0x3f, 0x7f, 0xff, 0x13f, 0x17f}, mgr))
 
 	assert.Equal(t,
 		"[0x0000003f-0x0000007f], 0x000000ff, [0x0000017f-0x000001bf]",
-		fmtRangeList([]uint32{0x3f, 0x7f, 0xff, 0x17f, 0x1bf}))
+		fmtRangeList([]uint32{0x3f, 0x7f, 0xff, 0x17f, 0x1bf}, mgr))
 }

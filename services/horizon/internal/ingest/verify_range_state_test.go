@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
+	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/ingest/adapters"
 	ingestio "github.com/stellar/go/ingest/io"
 	"github.com/stellar/go/ingest/ledgerbackend"
@@ -39,11 +40,12 @@ func (s *VerifyRangeStateTestSuite) SetupTest() {
 	s.historyAdapter = &adapters.MockHistoryArchiveAdapter{}
 	s.runner = &mockProcessorsRunner{}
 	s.system = &system{
-		ctx:            context.Background(),
-		historyQ:       s.historyQ,
-		historyAdapter: s.historyAdapter,
-		ledgerBackend:  s.ledgerBackend,
-		runner:         s.runner,
+		ctx:               context.Background(),
+		historyQ:          s.historyQ,
+		historyAdapter:    s.historyAdapter,
+		ledgerBackend:     s.ledgerBackend,
+		runner:            s.runner,
+		checkpointManager: historyarchive.NewCheckpointManager(64),
 	}
 	s.system.initMetrics()
 

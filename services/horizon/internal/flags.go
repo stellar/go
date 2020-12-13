@@ -362,6 +362,14 @@ func Flags() (*Config, support.ConfigOptions) {
 			Required:    false,
 			Usage:       "applies pending migrations before starting horizon",
 		},
+		&support.ConfigOption{
+			Name:        "checkpoint-frequency",
+			ConfigKey:   &config.CheckpointFrequency,
+			OptType:     types.Uint32,
+			FlagDefault: uint32(64),
+			Required:    false,
+			Usage:       "establishes how many ledgers exist between checkpoints, do NOT change this unless you really know what you are doing",
+		},
 	}
 
 	return config, flags

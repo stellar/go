@@ -14,14 +14,14 @@ import (
 // Ensure CaptiveStellarCore implements LedgerBackend
 var _ LedgerBackend = (*CaptiveStellarCore)(nil)
 
-func roundDownToFirstReplayAfterCheckpointStart(ledger uint32) uint32 {
-	v := (ledger / ledgersPerCheckpoint) * ledgersPerCheckpoint
-	if v == 0 {
+func (c *CaptiveStellarCore) roundDownToFirstReplayAfterCheckpointStart(ledger uint32) uint32 {
+	r := c.checkpointManager.GetCheckpointRange(ledger)
+	if r.Low == 0 {
 		// Stellar-Core doesn't stream ledger 1
 		return 2
 	}
 	// All other checkpoints start at the next multiple of 64
-	return v
+	return r.Low
 }
 
 // CaptiveStellarCore is a ledger backend that starts internal Stellar-Core
@@ -62,9 +62,10 @@ func roundDownToFirstReplayAfterCheckpointStart(ledger uint32) uint32 {
 //
 // Requires Stellar-Core v13.2.0+.
 type CaptiveStellarCore struct {
-	configAppendPath string
-	archive          historyarchive.ArchiveInterface
-	ledgerHashStore  TrustedLedgerHashStore
+	configAppendPath  string
+	archive           historyarchive.ArchiveInterface
+	checkpointManager historyarchive.CheckpointManager
+	ledgerHashStore   TrustedLedgerHashStore
 
 	// Quick note on how shutdown works:
 	// If Stellar-Core exits, the exit signal is "catched" by bufferedLedgerMetaReader
@@ -107,6 +108,9 @@ type CaptiveCoreConfig struct {
 	NetworkPassphrase string
 	// HistoryArchiveURLs are a list of history archive urls
 	HistoryArchiveURLs []string
+	// CheckpointFrequency is the number of ledgers between checkpoints
+	// if unset, DefaultCheckpointFrequency will be used
+	CheckpointFrequency uint32
 	// LedgerHashStore is an optional store used to obtain hashes for ledger sequences from a trusted source
 	LedgerHashStore TrustedLedgerHashStore
 	// HTTPPort is the TCP port to listen for requests (defaults to 0, which disables the HTTP server)
@@ -124,7 +128,8 @@ func NewCaptive(config CaptiveCoreConfig) (*CaptiveStellarCore, error) {
 	archive, err := historyarchive.Connect(
 		config.HistoryArchiveURLs[0],
 		historyarchive.ConnectOptions{
-			NetworkPassphrase: config.NetworkPassphrase,
+			NetworkPassphrase:   config.NetworkPassphrase,
+			CheckpointFrequency: config.CheckpointFrequency,
 		},
 	)
 	if err != nil {
@@ -136,6 +141,7 @@ func NewCaptive(config CaptiveCoreConfig) (*CaptiveStellarCore, error) {
 		configAppendPath:         config.ConfigAppendPath,
 		waitIntervalPrepareRange: time.Second,
 		ledgerHashStore:          config.LedgerHashStore,
+		checkpointManager:        historyarchive.NewCheckpointManager(config.CheckpointFrequency),
 	}
 	c.stellarCoreRunnerFactory = func(mode stellarCoreRunnerMode) (stellarCoreRunnerInterface, error) {
 		return newStellarCoreRunner(config, mode)
@@ -185,7 +191,7 @@ func (c *CaptiveStellarCore) openOfflineReplaySubprocess(from, to uint32) error 
 
 	// The next ledger should be the first ledger of the checkpoint containing
 	// the requested ledger
-	c.nextLedger = roundDownToFirstReplayAfterCheckpointStart(from)
+	c.nextLedger = c.roundDownToFirstReplayAfterCheckpointStart(from)
 	c.lastLedger = &to
 	c.blocking = true
 
@@ -216,7 +222,8 @@ func (c *CaptiveStellarCore) openOnlineReplaySubprocess(from uint32) error {
 	// checkpoints from now. Such requests are likely buggy.
 	// We should allow only one checkpoint here but sometimes there are up to a
 	// minute delays when updating root HAS by stellar-core.
-	maxLedger := latestCheckpointSequence + 2*64
+	twoCheckPointsLength := (c.checkpointManager.GetCheckpoint(0) + 1) * 2
+	maxLedger := latestCheckpointSequence + twoCheckPointsLength
 	if from > maxLedger {
 		return errors.Errorf(
 			"trying to start online mode too far (latest checkpoint=%d), only two checkpoints in the future allowed",
@@ -298,8 +305,8 @@ func (c *CaptiveStellarCore) runFromParams(from uint32) (runFrom uint32, ledgerH
 	} else {
 		// For ledgers after the first checkpoint, start at the previous checkpoint
 		// and fast-forward from there.
-		if !historyarchive.IsCheckpoint(from) {
-			from = historyarchive.PrevCheckpoint(from)
+		if !c.checkpointManager.IsCheckpoint(from) {
+			from = c.checkpointManager.PrevCheckpoint(from)
 		}
 		// Streaming will start from the previous checkpoint + 1
 		nextLedger = from - 63

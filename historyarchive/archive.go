@@ -44,6 +44,9 @@ type ConnectOptions struct {
 	S3Region          string
 	S3Endpoint        string
 	UnsignedRequests  bool
+	// CheckpointFrequency is the number of ledgers between checkpoints
+	// if unset, DefaultCheckpointFrequency will be used
+	CheckpointFrequency uint32
 }
 
 type ArchiveBackend interface {
@@ -71,6 +74,7 @@ type ArchiveInterface interface {
 	ListCategoryCheckpoints(cat string, pth string) (chan uint32, chan error)
 	GetXdrStreamForHash(hash Hash) (*XdrStream, error)
 	GetXdrStream(pth string) (*XdrStream, error)
+	GetCheckpointManager() CheckpointManager
 }
 
 var _ ArchiveInterface = &Archive{}
@@ -96,7 +100,13 @@ type Archive struct {
 	invalidTxSets       int
 	invalidTxResultSets int
 
+	checkpointManager CheckpointManager
+
 	backend ArchiveBackend
+}
+
+func (arch *Archive) GetCheckpointManager() CheckpointManager {
+	return arch.checkpointManager
 }
 
 func (a *Archive) GetPathHAS(path string) (HistoryArchiveState, error) {
@@ -153,8 +163,8 @@ func (a *Archive) CategoryCheckpointExists(cat string, chk uint32) (bool, error)
 
 func (a *Archive) GetLedgerHeader(ledger uint32) (xdr.LedgerHeaderHistoryEntry, error) {
 	checkpoint := ledger
-	if !IsCheckpoint(checkpoint) {
-		checkpoint = NextCheckpoint(ledger)
+	if !a.checkpointManager.IsCheckpoint(checkpoint) {
+		checkpoint = a.checkpointManager.NextCheckpoint(ledger)
 	}
 	path := CategoryCheckpointPath("ledger", checkpoint)
 	xdrStream, err := a.GetXdrStream(path)
@@ -286,6 +296,7 @@ func Connect(u string, opts ConnectOptions) (*Archive, error) {
 		actualTxSetHashes:       make(map[uint32]Hash),
 		expectTxResultSetHashes: make(map[uint32]Hash),
 		actualTxResultSetHashes: make(map[uint32]Hash),
+		checkpointManager:       NewCheckpointManager(opts.CheckpointFrequency),
 	}
 	for _, cat := range Categories() {
 		arch.checkpointFiles[cat] = make(map[uint32]bool)

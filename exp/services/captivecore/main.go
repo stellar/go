@@ -23,6 +23,7 @@ func main() {
 	var networkPassphrase, binaryPath, configAppendPath, dbURL string
 	var historyArchiveURLs []string
 	var stellarCoreHTTPPort uint
+	var checkpointFrequency uint32
 	var logLevel logrus.Level
 	logger := supportlog.New()
 
@@ -103,6 +104,14 @@ func main() {
 			Required:    false,
 			Usage:       "HTTP port for captive core to listen on (0 disables the HTTP server)",
 		},
+		&config.ConfigOption{
+			Name:        "checkpoint-frequency",
+			ConfigKey:   &checkpointFrequency,
+			OptType:     types.Uint32,
+			FlagDefault: uint32(64),
+			Required:    false,
+			Usage:       "establishes how many ledgers exist between checkpoints, do NOT change this unless you really know what you are doing",
+		},
 	}
 	cmd := &cobra.Command{
 		Use:   "captivecore",
@@ -113,12 +122,13 @@ func main() {
 			logger.SetLevel(logLevel)
 
 			captiveConfig := ledgerbackend.CaptiveCoreConfig{
-				BinaryPath:         binaryPath,
-				ConfigAppendPath:   configAppendPath,
-				NetworkPassphrase:  networkPassphrase,
-				HistoryArchiveURLs: historyArchiveURLs,
-				HTTPPort:           stellarCoreHTTPPort,
-				Log:                logger.WithField("subservice", "stellar-core"),
+				BinaryPath:          binaryPath,
+				ConfigAppendPath:    configAppendPath,
+				NetworkPassphrase:   networkPassphrase,
+				HistoryArchiveURLs:  historyArchiveURLs,
+				CheckpointFrequency: checkpointFrequency,
+				HTTPPort:            stellarCoreHTTPPort,
+				Log:                 logger.WithField("subservice", "stellar-core"),
 			}
 
 			var dbConn *db.Session

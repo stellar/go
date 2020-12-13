@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/guregu/null"
-	"github.com/stellar/go/historyarchive"
+
 	ingesterrors "github.com/stellar/go/ingest/errors"
 	"github.com/stellar/go/ingest/verify"
 	"github.com/stellar/go/services/horizon/internal/db2"
@@ -79,7 +79,7 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool) error {
 		"ledger":     ledgerSequence,
 	})
 
-	if !historyarchive.IsCheckpoint(ledgerSequence) {
+	if !s.checkpointManager.IsCheckpoint(ledgerSequence) {
 		localLog.Info("Current ledger is not a checkpoint ledger. Cancelling...")
 		return nil
 	}

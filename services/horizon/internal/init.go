@@ -65,6 +65,7 @@ func initExpIngester(app *App) {
 		// Use the first archive for now. We don't have a mechanism to
 		// use multiple archives at the same time currently.
 		HistoryArchiveURL:           app.config.HistoryArchiveURLs[0],
+		CheckpointFrequency:         app.config.CheckpointFrequency,
 		StellarCoreURL:              app.config.StellarCoreURL,
 		StellarCoreCursor:           app.config.CursorName,
 		CaptiveCoreBinaryPath:       app.config.CaptiveCoreBinaryPath,

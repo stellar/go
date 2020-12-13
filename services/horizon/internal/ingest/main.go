@@ -79,6 +79,9 @@ type Config struct {
 
 	MaxReingestRetries          int
 	ReingestRetryBackoffSeconds int
+
+	// The checkpoint frequency will be 64 unless you are using an exotic test setup.
+	CheckpointFrequency uint32
 }
 
 const (
@@ -149,6 +152,8 @@ type system struct {
 	stateVerificationErrors  int
 	stateVerificationRunning bool
 	disableStateVerification bool
+
+	checkpointManager historyarchive.CheckpointManager
 }
 
 func NewSystem(config Config) (System, error) {
@@ -157,8 +162,9 @@ func NewSystem(config Config) (System, error) {
 	archive, err := historyarchive.Connect(
 		config.HistoryArchiveURL,
 		historyarchive.ConnectOptions{
-			Context:           ctx,
-			NetworkPassphrase: config.NetworkPassphrase,
+			Context:             ctx,
+			NetworkPassphrase:   config.NetworkPassphrase,
+			CheckpointFrequency: config.CheckpointFrequency,
 		},
 	)
 	if err != nil {
@@ -226,6 +232,7 @@ func NewSystem(config Config) (System, error) {
 			historyAdapter: historyAdapter,
 			ledgerBackend:  ledgerBackend,
 		},
+		checkpointManager: historyarchive.NewCheckpointManager(config.CheckpointFrequency),
 	}
 
 	system.initMetrics()
@@ -432,7 +439,7 @@ func (s *system) maybeVerifyState(lastIngestedLedger uint32) {
 	// Run verification routine only when...
 	if !stateInvalid && // state has not been proved to be invalid...
 		!s.disableStateVerification && // state verification is not disabled...
-		historyarchive.IsCheckpoint(lastIngestedLedger) { // it's a checkpoint ledger.
+		s.checkpointManager.IsCheckpoint(lastIngestedLedger) { // it's a checkpoint ledger.
 		s.wg.Add(1)
 		go func() {
 			defer s.wg.Done()
