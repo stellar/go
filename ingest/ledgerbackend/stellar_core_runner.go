@@ -220,7 +220,7 @@ func (r *stellarCoreRunner) createCmd(params ...string) *exec.Cmd {
 
 func (r *stellarCoreRunner) runCmd(params ...string) error {
 	cmd := r.createCmd(params...)
-	defer r.closeLogLineWriters()
+	defer r.closeLogLineWriters(cmd)
 
 	if err := cmd.Start(); err != nil {
 		return errors.Wrapf(err, "could not start `stellar-core %v` cmd", params)
@@ -264,7 +264,7 @@ func (r *stellarCoreRunner) catchup(from, to uint32) error {
 	var err error
 	r.pipe, err = r.start()
 	if err != nil {
-		r.closeLogLineWriters()
+		r.closeLogLineWriters(r.cmd)
 		return errors.Wrap(err, "error starting `stellar-core catchup` subprocess")
 	}
 
@@ -302,7 +302,7 @@ func (r *stellarCoreRunner) runFrom(from uint32, hash string) error {
 	var err error
 	r.pipe, err = r.start()
 	if err != nil {
-		r.closeLogLineWriters()
+		r.closeLogLineWriters(r.cmd)
 		return errors.Wrap(err, "error starting `stellar-core run` subprocess")
 	}
 
@@ -318,7 +318,7 @@ func (r *stellarCoreRunner) runFrom(from uint32, hash string) error {
 func (r *stellarCoreRunner) wait() {
 	defer r.wg.Done()
 	waitErr := r.cmd.Wait()
-	r.closeLogLineWriters()
+	r.closeLogLineWriters(r.cmd)
 
 	r.lock.Lock()
 	defer r.lock.Unlock()
@@ -336,9 +336,9 @@ func (r *stellarCoreRunner) wait() {
 }
 
 // closeLogLineWriters closes the go routines created by getLogLineWriter()
-func (r *stellarCoreRunner) closeLogLineWriters() {
-	r.cmd.Stdout.(*io.PipeWriter).Close()
-	r.cmd.Stderr.(*io.PipeWriter).Close()
+func (r *stellarCoreRunner) closeLogLineWriters(cmd *exec.Cmd) {
+	cmd.Stdout.(*io.PipeWriter).Close()
+	cmd.Stderr.(*io.PipeWriter).Close()
 }
 
 // getMetaPipe returns a channel which contains ledgers streamed from the captive core subprocess
