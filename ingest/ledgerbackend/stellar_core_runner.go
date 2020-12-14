@@ -66,11 +66,8 @@ type stellarCoreRunner struct {
 }
 
 func newStellarCoreRunner(config CaptiveCoreConfig, mode stellarCoreRunnerMode) (*stellarCoreRunner, error) {
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	// Create temp dir
-	random := rand.New(rand.NewSource(time.Now().UnixNano()))
-	tempDir := filepath.Join(os.TempDir(), fmt.Sprintf("captive-stellar-core-%x", random.Uint64()))
-	err := os.MkdirAll(tempDir, 0755)
+	tempDir, err := ioutil.TempDir("", "captive-stellar-core")
 	if err != nil {
 		return nil, errors.Wrap(err, "error creating subprocess tmpdir")
 	}
@@ -87,8 +84,11 @@ func newStellarCoreRunner(config CaptiveCoreConfig, mode stellarCoreRunnerMode) 
 		ctx:               ctx,
 		cancel:            cancel,
 		tempDir:           tempDir,
-		nonce:             fmt.Sprintf("captive-stellar-core-%x", r.Uint64()),
-		log:               config.Log,
+		nonce: fmt.Sprintf(
+			"captive-stellar-core-%x",
+			rand.New(rand.NewSource(time.Now().UnixNano())).Uint64(),
+		),
+		log: config.Log,
 	}
 
 	if err := runner.writeConf(); err != nil {
