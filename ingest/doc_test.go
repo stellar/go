@@ -108,7 +108,6 @@ func Example_changes() {
 			ConfigAppendPath:   "/opt/stellar-core.cfg",
 			NetworkPassphrase:  networkPassphrase,
 			HistoryArchiveURLs: []string{archiveURL},
-			CheckpointFrequency: 64,
 		},
 	)
 	if err != nil {

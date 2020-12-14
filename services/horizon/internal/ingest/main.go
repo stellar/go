@@ -188,6 +188,7 @@ func NewSystem(config Config) (System, error) {
 					HTTPPort:           config.CaptiveCoreHTTPPort,
 					NetworkPassphrase:  config.NetworkPassphrase,
 					HistoryArchiveURLs: []string{config.HistoryArchiveURL},
+					CheckpointFrequency: config.CheckpointFrequency,
 					LedgerHashStore:    ledgerbackend.NewHorizonDBLedgerHashStore(config.HistorySession),
 					Log:                log.WithField("subservice", "stellar-core"),
 					Context:            ctx,
