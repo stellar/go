@@ -55,8 +55,6 @@ type stellarCoreRunner struct {
 	ledgerBuffer *bufferedLedgerMetaReader
 	pipe         pipe
 
-	cmd *exec.Cmd
-
 	lock             sync.Mutex
 	processExited    bool
 	processExitError error
@@ -255,16 +253,16 @@ func (r *stellarCoreRunner) catchup(from, to uint32) error {
 	}
 
 	rangeArg := fmt.Sprintf("%d/%d", to, to-from+1)
-	r.cmd = r.createCmd(
+	cmd := r.createCmd(
 		"catchup", rangeArg,
 		"--metadata-output-stream", r.getPipeName(),
 		"--replay-in-memory",
 	)
 
 	var err error
-	r.pipe, err = r.start()
+	r.pipe, err = r.start(cmd)
 	if err != nil {
-		r.closeLogLineWriters(r.cmd)
+		r.closeLogLineWriters(cmd)
 		return errors.Wrap(err, "error starting `stellar-core catchup` subprocess")
 	}
 
@@ -272,7 +270,7 @@ func (r *stellarCoreRunner) catchup(from, to uint32) error {
 	r.ledgerBuffer = newBufferedLedgerMetaReader(r.ctx, r.pipe.Reader)
 	go r.ledgerBuffer.start()
 	r.wg.Add(1)
-	go r.wait()
+	go r.handleExit(cmd)
 
 	return nil
 }
@@ -291,7 +289,7 @@ func (r *stellarCoreRunner) runFrom(from uint32, hash string) error {
 		return errors.New("runner already started")
 	}
 
-	r.cmd = r.createCmd(
+	cmd := r.createCmd(
 		"run",
 		"--in-memory",
 		"--start-at-ledger", fmt.Sprintf("%d", from),
@@ -300,9 +298,9 @@ func (r *stellarCoreRunner) runFrom(from uint32, hash string) error {
 	)
 
 	var err error
-	r.pipe, err = r.start()
+	r.pipe, err = r.start(cmd)
 	if err != nil {
-		r.closeLogLineWriters(r.cmd)
+		r.closeLogLineWriters(cmd)
 		return errors.Wrap(err, "error starting `stellar-core run` subprocess")
 	}
 
@@ -310,15 +308,15 @@ func (r *stellarCoreRunner) runFrom(from uint32, hash string) error {
 	r.ledgerBuffer = newBufferedLedgerMetaReader(r.ctx, r.pipe.Reader)
 	go r.ledgerBuffer.start()
 	r.wg.Add(1)
-	go r.wait()
+	go r.handleExit(cmd)
 
 	return nil
 }
 
-func (r *stellarCoreRunner) wait() {
+func (r *stellarCoreRunner) handleExit(cmd *exec.Cmd) {
 	defer r.wg.Done()
-	waitErr := r.cmd.Wait()
-	r.closeLogLineWriters(r.cmd)
+	exitErr := cmd.Wait()
+	r.closeLogLineWriters(cmd)
 
 	r.lock.Lock()
 	defer r.lock.Unlock()
@@ -332,7 +330,7 @@ func (r *stellarCoreRunner) wait() {
 	}
 
 	r.processExited = true
-	r.processExitError = waitErr
+	r.processExitError = exitErr
 }
 
 // closeLogLineWriters closes the go routines created by getLogLineWriter()

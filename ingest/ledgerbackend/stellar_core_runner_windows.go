@@ -4,6 +4,8 @@ package ledgerbackend
 
 import (
 	"fmt"
+	"os/exec"
+
 	"github.com/Microsoft/go-winio"
 )
 
@@ -13,7 +15,7 @@ func (c *stellarCoreRunner) getPipeName() string {
 	return fmt.Sprintf(`\\.\pipe\%s`, c.nonce)
 }
 
-func (c *stellarCoreRunner) start() (pipe, error) {
+func (c *stellarCoreRunner) start(cmd *exec.Cmd) (pipe, error) {
 	// First set up the server pipe.
 	listener, err := winio.ListenPipe(c.getPipeName(), nil)
 	if err != nil {
@@ -21,7 +23,7 @@ func (c *stellarCoreRunner) start() (pipe, error) {
 	}
 
 	// Then start the process.
-	err = c.cmd.Start()
+	err = cmd.Start()
 	if err != nil {
 		listener.Close()
 		return pipe{}, err
