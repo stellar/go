@@ -64,9 +64,9 @@ func (c *CaptiveStellarCore) roundDownToFirstReplayAfterCheckpointStart(ledger u
 //
 // Requires Stellar-Core v13.2.0+.
 type CaptiveStellarCore struct {
-	archive         historyarchive.ArchiveInterface
+	archive           historyarchive.ArchiveInterface
 	checkpointManager historyarchive.CheckpointManager
-	ledgerHashStore TrustedLedgerHashStore
+	ledgerHashStore   TrustedLedgerHashStore
 
 	// cancel is the CancelFunc for context which controls the lifetime of a CaptiveStellarCore instance.
 	// Once it is invoked CaptiveStellarCore will not be able to stream ledgers from Stellar Core or
@@ -133,7 +133,7 @@ func NewCaptive(config CaptiveCoreConfig) (*CaptiveStellarCore, error) {
 		historyarchive.ConnectOptions{
 			NetworkPassphrase:   config.NetworkPassphrase,
 			CheckpointFrequency: config.CheckpointFrequency,
-			Context:           config.Context,
+			Context:             config.Context,
 		},
 	)
 	if err != nil {
@@ -141,9 +141,9 @@ func NewCaptive(config CaptiveCoreConfig) (*CaptiveStellarCore, error) {
 	}
 
 	c := &CaptiveStellarCore{
-		archive:                  archive,
-		ledgerHashStore:          config.LedgerHashStore,
-		checkpointManager:        historyarchive.NewCheckpointManager(config.CheckpointFrequency),
+		archive:           archive,
+		ledgerHashStore:   config.LedgerHashStore,
+		checkpointManager: historyarchive.NewCheckpointManager(config.CheckpointFrequency),
 	}
 
 	// Here we set defaults in the config. Because config is not a pointer this code should

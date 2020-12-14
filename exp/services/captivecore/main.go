@@ -122,13 +122,13 @@ func main() {
 			logger.SetLevel(logLevel)
 
 			captiveConfig := ledgerbackend.CaptiveCoreConfig{
-				BinaryPath:         binaryPath,
-				ConfigAppendPath:   configAppendPath,
-				NetworkPassphrase:  networkPassphrase,
-				HistoryArchiveURLs: historyArchiveURLs,
+				BinaryPath:          binaryPath,
+				ConfigAppendPath:    configAppendPath,
+				NetworkPassphrase:   networkPassphrase,
+				HistoryArchiveURLs:  historyArchiveURLs,
 				CheckpointFrequency: checkpointFrequency,
-				HTTPPort:           stellarCoreHTTPPort,
-				Log:                logger.WithField("subservice", "stellar-core"),
+				HTTPPort:            stellarCoreHTTPPort,
+				Log:                 logger.WithField("subservice", "stellar-core"),
 			}
 
 			var dbConn *db.Session

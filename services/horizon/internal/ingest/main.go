@@ -183,15 +183,15 @@ func NewSystem(config Config) (System, error) {
 		} else {
 			ledgerBackend, err = ledgerbackend.NewCaptive(
 				ledgerbackend.CaptiveCoreConfig{
-					BinaryPath:         config.CaptiveCoreBinaryPath,
-					ConfigAppendPath:   config.CaptiveCoreConfigAppendPath,
-					HTTPPort:           config.CaptiveCoreHTTPPort,
-					NetworkPassphrase:  config.NetworkPassphrase,
-					HistoryArchiveURLs: []string{config.HistoryArchiveURL},
+					BinaryPath:          config.CaptiveCoreBinaryPath,
+					ConfigAppendPath:    config.CaptiveCoreConfigAppendPath,
+					HTTPPort:            config.CaptiveCoreHTTPPort,
+					NetworkPassphrase:   config.NetworkPassphrase,
+					HistoryArchiveURLs:  []string{config.HistoryArchiveURL},
 					CheckpointFrequency: config.CheckpointFrequency,
-					LedgerHashStore:    ledgerbackend.NewHorizonDBLedgerHashStore(config.HistorySession),
-					Log:                log.WithField("subservice", "stellar-core"),
-					Context:            ctx,
+					LedgerHashStore:     ledgerbackend.NewHorizonDBLedgerHashStore(config.HistorySession),
+					Log:                 log.WithField("subservice", "stellar-core"),
+					Context:             ctx,
 				},
 			)
 			if err != nil {
