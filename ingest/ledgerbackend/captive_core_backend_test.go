@@ -544,7 +544,7 @@ func TestGetLatestLedgerSequence(t *testing.T) {
 	err := captiveBackend.PrepareRange(UnboundedRange(64))
 	assert.NoError(t, err)
 
-	// To prevent flaky test runs handleExit for channel to fill.
+	// To prevent flaky test runs wait for channel to fill.
 	waitForBufferToFill(&captiveBackend)
 
 	latest, err := captiveBackend.GetLatestLedgerSequence()

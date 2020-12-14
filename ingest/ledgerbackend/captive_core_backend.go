@@ -192,9 +192,13 @@ func (c *CaptiveStellarCore) openOfflineReplaySubprocess(from, to uint32) error 
 		to = latestCheckpointSequence
 	}
 
-	c.stellarCoreRunner, err = c.stellarCoreRunnerFactory(stellarCoreRunnerModeOffline)
-	if err != nil {
+	var runner stellarCoreRunnerInterface
+	if runner, err = c.stellarCoreRunnerFactory(stellarCoreRunnerModeOffline); err != nil {
 		return errors.Wrap(err, "error creating stellar-core runner")
+	} else {
+		// only assign c.stellarCoreRunner if runner is not nil to avoid nil interface check
+		// see https://golang.org/doc/faq#nil_error
+		c.stellarCoreRunner = runner
 	}
 
 	err = c.stellarCoreRunner.catchup(from, to)
@@ -231,9 +235,13 @@ func (c *CaptiveStellarCore) openOnlineReplaySubprocess(from uint32) error {
 		)
 	}
 
-	c.stellarCoreRunner, err = c.stellarCoreRunnerFactory(stellarCoreRunnerModeOnline)
-	if err != nil {
+	var runner stellarCoreRunnerInterface
+	if runner, err = c.stellarCoreRunnerFactory(stellarCoreRunnerModeOnline); err != nil {
 		return errors.Wrap(err, "error creating stellar-core runner")
+	} else {
+		// only assign c.stellarCoreRunner if runner is not nil to avoid nil interface check
+		// see https://golang.org/doc/faq#nil_error
+		c.stellarCoreRunner = runner
 	}
 
 	runFrom, ledgerHash, nextLedger, err := c.runFromParams(from)
