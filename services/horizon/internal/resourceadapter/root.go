@@ -24,6 +24,7 @@ func PopulateRoot(
 ) {
 	dest.IngestSequence = ledgerState.ExpHistoryLatest
 	dest.HorizonSequence = ledgerState.HistoryLatest
+	dest.HorizonLatestClosedAt = ledgerState.HistoryLatestClosedAt
 	dest.HistoryElderSequence = ledgerState.HistoryElder
 	dest.CoreSequence = ledgerState.CoreLatest
 	dest.HorizonVersion = hVersion

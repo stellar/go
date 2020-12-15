@@ -45,10 +45,12 @@ func TestMetrics(t *testing.T) {
 	ht.Assert.Equal(200, w.Code)
 
 	hl := ht.App.historyLatestLedgerCounter
+	hlc := ht.App.historyLatestLedgerClosedAgoGauge
 	he := ht.App.historyElderLedgerCounter
 	cl := ht.App.coreLatestLedgerCounter
 
 	ht.Require.EqualValues(3, getMetricValue(hl).GetCounter().GetValue())
+	ht.Require.Less(float64(1000), getMetricValue(hlc).GetGauge().GetValue())
 	ht.Require.EqualValues(1, getMetricValue(he).GetCounter().GetValue())
 	ht.Require.EqualValues(64, getMetricValue(cl).GetCounter().GetValue())
 }
