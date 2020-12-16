@@ -155,6 +155,7 @@ func NewCaptive(config CaptiveCoreConfig) (*CaptiveStellarCore, error) {
 		},
 	)
 	if err != nil {
+		cancel()
 		return nil, errors.Wrap(err, "error connecting to history archive")
 	}
 
