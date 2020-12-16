@@ -229,7 +229,7 @@ commands:
           # Pulling the image helps with test running time
           command: |
             cd ~/go/src/github.com/stellar/go
-            <<# parameters.enable-captive-core >>HORIZON_INTEGRATION_ENABLE_CAPTIVE_CORE=true<</ parameters.enable-captive-core >> go test -timeout 25m -v ./services/horizon/internal/integration/...
+            <<^ parameters.enable-captive-core >>HORIZON_INTEGRATION_ENABLE_CAPTIVE_CORE=false<</ parameters.enable-captive-core >> go test -timeout 25m -v ./services/horizon/internal/integration/...
 
 #-----------------------------------------------------------------------------#
 # Jobs use the commands to accomplish a given task, and run through workflows #
