@@ -60,6 +60,11 @@ func (c *CaptiveStellarCore) roundDownToFirstReplayAfterCheckpointStart(ledger u
 //     has a very small internal buffer and Stellar-Core will not close the new
 //     ledger if it's not read.
 //
+// Except for the Close function, CaptiveStellarCore is not thread-safe and should
+// not be accessed by multiple go routines. Close is thread-safe and can be called
+// from another go routine. Once Close is called it will interrupt and cancel any
+// pending operations.
+//
 // Requires Stellar-Core v13.2.0+.
 type CaptiveStellarCore struct {
 	archive           historyarchive.ArchiveInterface
@@ -594,6 +599,7 @@ func (c *CaptiveStellarCore) isClosed() bool {
 // Close closes existing Stellar-Core process, streaming sessions and removes all
 // temporary files. Note, once a CaptiveStellarCore instance is closed it can can no longer be used and
 // all subsequent calls to PrepareRange(), GetLedger(), etc will fail.
+// Close is thread-safe and can be called from another go routine.
 func (c *CaptiveStellarCore) Close() error {
 	c.stellarCoreLock.RLock()
 	defer c.stellarCoreLock.RUnlock()
