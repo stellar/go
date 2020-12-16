@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/xdr"
 )
@@ -70,7 +71,7 @@ type bufferedLedgerMetaReader struct {
 
 // newBufferedLedgerMetaReader creates a new meta reader that will shutdown
 // when stellar-core terminates.
-func newBufferedLedgerMetaReader(ctx context.Context, reader io.ReadCloser) *bufferedLedgerMetaReader {
+func newBufferedLedgerMetaReader(ctx context.Context, reader io.Reader) *bufferedLedgerMetaReader {
 	return &bufferedLedgerMetaReader{
 		c:   make(chan metaResult, ledgerReadAheadBufferSize),
 		r:   bufio.NewReaderSize(reader, metaPipeBufferSize),
@@ -110,9 +111,8 @@ func (b *bufferedLedgerMetaReader) getChannel() <-chan metaResult {
 	return b.c
 }
 
-// Start starts an internal go routine that reads binary ledger data into
-// internal buffers. The go routine returns when it encounters an error (including io.EOF)
-// or its context is terminated.
+// Start starts a loop that reads binary ledger data into internal buffers.
+// The function returns when it encounters an error (including io.EOF) or its context is terminated.
 func (b *bufferedLedgerMetaReader) start() {
 	printBufferOccupation := time.NewTicker(5 * time.Second)
 	defer printBufferOccupation.Stop()

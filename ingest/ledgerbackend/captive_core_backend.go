@@ -8,6 +8,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+
 	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/xdr"
@@ -36,11 +37,8 @@ func (c *CaptiveStellarCore) roundDownToFirstReplayAfterCheckpointStart(ledger u
 //     keep ledger state in RAM. It requires around 3GB of RAM as of August 2020.
 //   * When a UnboundedRange is prepared it runs Stellar-Core catchup mode to
 //     sync with the first ledger and then runs it in a normal mode. This
-//     requires the configAppendPath to be provided because a database connection is
-//     required and quorum set needs to be selected.
-//
-// The database requirement for UnboundedRange will soon be removed when some
-// changes are implemented in Stellar-Core.
+//     requires the configAppendPath to be provided because a quorum set needs to
+//     be selected.
 //
 // When running CaptiveStellarCore will create a temporary folder to store
 // bucket files and other temporary files. The folder is removed when Close is
@@ -101,12 +99,16 @@ type CaptiveStellarCore struct {
 type CaptiveCoreConfig struct {
 	// BinaryPath is the file path to the Stellar Core binary
 	BinaryPath string
-	// ConfigAppendPath is the file path to additional configuration for the Stellar Core configuration file used by captive core
+	// ConfigAppendPath is the file path to additional configuration for the Stellar Core configuration file used
+	// by captive core. This field is only required when ingesting in online mode (e.g. UnboundedRange).
 	ConfigAppendPath string
 	// NetworkPassphrase is the Stellar network passphrase used by captive core when connecting to the Stellar network
 	NetworkPassphrase string
 	// HistoryArchiveURLs are a list of history archive urls
 	HistoryArchiveURLs []string
+
+	// Optional fields
+
 	// CheckpointFrequency is the number of ledgers between checkpoints
 	// if unset, DefaultCheckpointFrequency will be used
 	CheckpointFrequency uint32
@@ -123,11 +125,22 @@ type CaptiveCoreConfig struct {
 	Context context.Context
 }
 
-// NewCaptive returns a new CaptiveStellarCore.
-//
-// All parameters are required, except configAppendPath which is not required when
-// working with BoundedRanges only.
+// NewCaptive returns a new CaptiveStellarCore instance.
 func NewCaptive(config CaptiveCoreConfig) (*CaptiveStellarCore, error) {
+	// Here we set defaults in the config. Because config is not a pointer this code should
+	// not mutate the original CaptiveCoreConfig instance which was passed into NewCaptive()
+	if config.Log == nil {
+		config.Log = log.New()
+		config.Log.Logger.SetOutput(os.Stdout)
+		config.Log.SetLevel(logrus.InfoLevel)
+	}
+	parentCtx := config.Context
+	if parentCtx == nil {
+		parentCtx = context.Background()
+	}
+	var cancel context.CancelFunc
+	config.Context, cancel = context.WithCancel(parentCtx)
+
 	archive, err := historyarchive.Connect(
 		config.HistoryArchiveURLs[0],
 		historyarchive.ConnectOptions{
@@ -143,21 +156,9 @@ func NewCaptive(config CaptiveCoreConfig) (*CaptiveStellarCore, error) {
 	c := &CaptiveStellarCore{
 		archive:           archive,
 		ledgerHashStore:   config.LedgerHashStore,
+		cancel:            cancel,
 		checkpointManager: historyarchive.NewCheckpointManager(config.CheckpointFrequency),
 	}
-
-	// Here we set defaults in the config. Because config is not a pointer this code should
-	// not mutate the original CaptiveCoreConfig instance which was passed into NewCaptive()
-	if config.Log == nil {
-		config.Log = log.New()
-		config.Log.Logger.SetOutput(os.Stdout)
-		config.Log.SetLevel(logrus.InfoLevel)
-	}
-	parentCtx := config.Context
-	if parentCtx == nil {
-		parentCtx = context.Background()
-	}
-	config.Context, c.cancel = context.WithCancel(parentCtx)
 
 	c.stellarCoreRunnerFactory = func(mode stellarCoreRunnerMode) (stellarCoreRunnerInterface, error) {
 		return newStellarCoreRunner(config, mode)
