@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"runtime"
+	"time"
 
 	"github.com/getsentry/raven-go"
 	"github.com/prometheus/client_golang/prometheus"
@@ -148,6 +149,18 @@ func initDbMetrics(app *App) {
 		},
 	)
 	app.prometheusRegistry.MustRegister(app.historyLatestLedgerCounter)
+
+	app.historyLatestLedgerClosedAgoGauge = prometheus.NewGaugeFunc(
+		prometheus.GaugeOpts{
+			Namespace: "horizon", Subsystem: "history", Name: "latest_ledger_closed_ago_seconds",
+			Help: "seconds since the close of the last ingested ledger",
+		},
+		func() float64 {
+			ls := app.ledgerState.CurrentStatus()
+			return time.Since(ls.HistoryLatestClosedAt).Seconds()
+		},
+	)
+	app.prometheusRegistry.MustRegister(app.historyLatestLedgerClosedAgoGauge)
 
 	app.historyElderLedgerCounter = prometheus.NewCounterFunc(
 		prometheus.CounterOpts{Namespace: "horizon", Subsystem: "history", Name: "elder_ledger"},
