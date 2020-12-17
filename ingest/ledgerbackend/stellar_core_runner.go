@@ -134,13 +134,13 @@ func (r *stellarCoreRunner) generateConfig() (string, error) {
 			`VALIDATORS=["GCZBOIAY4HLKAJVNJORXZOZRAY2BJDBZHKPBHZCRAIUR5IHC2UHBGCQR"]`)
 	}
 
-	result := strings.ReplaceAll(strings.Join(lines, "\n"), "\\", "\\\\")
+	result := strings.ReplaceAll(strings.Join(lines, "\n"), `\`, `\\`) + "\n\n"
 	if r.configAppendPath != "" {
 		appendConfigContents, err := ioutil.ReadFile(r.configAppendPath)
 		if err != nil {
 			return "", errors.Wrap(err, "reading quorum config file")
 		}
-		result = result + "\n" + string(appendConfigContents) + "\n\n"
+		result += string(appendConfigContents) + "\n\n"
 	}
 
 	lines = []string{}
