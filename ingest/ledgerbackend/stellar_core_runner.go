@@ -131,7 +131,7 @@ func (r *stellarCoreRunner) generateConfig() (string, error) {
 			`VALIDATORS=["GCZBOIAY4HLKAJVNJORXZOZRAY2BJDBZHKPBHZCRAIUR5IHC2UHBGCQR"]`)
 	}
 
-	result := strings.ReplaceAll(strings.Join(lines, "\n"), "\\", "\\\\") + "\n\n"
+	result := strings.ReplaceAll(strings.Join(lines, "\n"), `\`, `\\`) + "\n\n"
 	if r.configAppendPath != "" {
 		appendConfigContents, err := ioutil.ReadFile(r.configAppendPath)
 		if err != nil {
