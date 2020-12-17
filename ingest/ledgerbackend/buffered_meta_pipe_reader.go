@@ -2,7 +2,6 @@ package ledgerbackend
 
 import (
 	"bufio"
-	"context"
 	"io"
 	"time"
 
@@ -64,18 +63,16 @@ type metaResult struct {
 // until xdr.LedgerCloseMeta objects channel is empty. This prevents memory
 // exhaustion when network closes a series a large ledgers.
 type bufferedLedgerMetaReader struct {
-	r   *bufio.Reader
-	c   chan metaResult
-	ctx context.Context
+	r *bufio.Reader
+	c chan metaResult
 }
 
 // newBufferedLedgerMetaReader creates a new meta reader that will shutdown
 // when stellar-core terminates.
-func newBufferedLedgerMetaReader(ctx context.Context, reader io.Reader) *bufferedLedgerMetaReader {
+func newBufferedLedgerMetaReader(reader io.Reader) *bufferedLedgerMetaReader {
 	return &bufferedLedgerMetaReader{
-		c:   make(chan metaResult, ledgerReadAheadBufferSize),
-		r:   bufio.NewReaderSize(reader, metaPipeBufferSize),
-		ctx: ctx,
+		c: make(chan metaResult, ledgerReadAheadBufferSize),
+		r: bufio.NewReaderSize(reader, metaPipeBufferSize),
 	}
 }
 
@@ -93,8 +90,6 @@ func (b *bufferedLedgerMetaReader) readLedgerMetaFromPipe() (*xdr.LedgerCloseMet
 	for frameLength > metaPipeBufferSize && len(b.c) > 0 {
 		// Wait for LedgerCloseMeta buffer to be cleared to minimize memory usage.
 		select {
-		case <-b.ctx.Done():
-			return nil, b.ctx.Err()
 		case <-time.After(time.Second):
 		}
 	}
@@ -112,7 +107,7 @@ func (b *bufferedLedgerMetaReader) getChannel() <-chan metaResult {
 }
 
 // Start starts a loop that reads binary ledger data into internal buffers.
-// The function returns when it encounters an error (including io.EOF) or its context is terminated.
+// The function returns when it encounters an error (including io.EOF).
 func (b *bufferedLedgerMetaReader) start() {
 	printBufferOccupation := time.NewTicker(5 * time.Second)
 	defer printBufferOccupation.Stop()
@@ -122,8 +117,6 @@ func (b *bufferedLedgerMetaReader) start() {
 		select {
 		case <-printBufferOccupation.C:
 			log.Debug("captive core read-ahead buffer occupation:", len(b.c))
-		case <-b.ctx.Done():
-			return
 		default:
 		}
 
