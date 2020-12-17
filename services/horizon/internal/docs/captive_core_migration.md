@@ -44,7 +44,7 @@ At this point, all that is left to do is to:
  - restart Horizon
 
 ### Configure Captive Core
-Captive Core runs with a trimmed down configuration "stub": at minimum, it must contain enough info to set up a quorum (see [above](#configuration)). **Your old configuration cannot be used directly**: Horizon needs special settings for Captive Core. Running Horizon will fail with the following error, or errors like it:
+Captive Core runs with a trimmed down configuration "stub": at minimum, it must contain enough info to set up a quorum (see [above](#configuration)). **Your old configuration cannot be used directly**: Horizon needs special settings for Captive Core. Otherwise, running Horizon will fail with the following error, or errors like it:
 
     default: Config from /tmp/captive-stellar-core-38cff455ad3469ec/stellar-core.conf
     default: Got an exception: Failed to parse '/tmp/captive-stellar-core-38cff455ad3469ec/stellar-core.conf' :Key HTTP_PORT already present at line 10 [CommandLine.cpp:1064]
@@ -81,7 +81,6 @@ HISTORY="curl -sf http://history.stellar.org/prd/core-testnet/core_testnet_003/{
 
 (We'll assume this stub lives at `/etc/default/stellar-captive-core.toml`.) The rest of the configuration will be generated automagically at runtime.
 
-
 ### Configure Horizon
 First, add the following lines to the Horizon configuration to enable a Captive Core subprocess:
 
@@ -90,11 +89,10 @@ echo "STELLAR_CORE_BINARY_PATH=$(which stellar-core)
 CAPTIVE_CORE_CONFIG_APPEND_PATH=/etc/default/stellar-captive-core.toml" | sudo tee -a /etc/default/stellar-horizon
 ```
 
-(Note that setting `ENABLE_CAPTIVE_CORE_INGESTION=1` is not necessary as of Horizon 2.0 because it's the default. TODO: This isn't true on master, so gotta make sure.)
+(Note that setting `ENABLE_CAPTIVE_CORE_INGESTION=true` is not necessary as of Horizon 2.0-beta because it's the default.)
 
 
 **Note**: Depending on the version you're migrating from, you may need to include an additional step here: manual reingestion. This can still be accomplished with Captive Core; see [below](#reingestion).
-
 
 ### Restarting Services
 Now, we can stop Core (which hopefully doesn't need an explanation) and restart Horizon:
@@ -107,14 +105,14 @@ The logs should show Captive Core running successfully as a subprocess, and even
 
 
 ## Multi-Machine Setup
-If you plan on running Horizon and Captive Core on separate machines, you'll need to change only a few things. Namely, rather than configuring the `STELLAR_CORE_BINARY` variable, you'll need to point Horizon at the Remote Captive Core instance via `REMOTE_CAPTIVE_CORE_URL`.
+If you plan on running Horizon and Captive Core on separate machines, you'll need to change only a few things. Namely, rather than configuring the `STELLAR_CORE_BINARY` variable, you'll need to point Horizon at the Remote Captive Core instance via `REMOTE_CAPTIVE_CORE_URL` (for the wrapper API) and `STELLAR_CORE_URL` (for the raw Core API).
 
 In this section, we'll work through a hypothetical architecture with two Horizon instances, one of which is an ingestion instance, and a single Captive Core instance.
 
 ### Remote Captive Core
 First, we need to start running the Captive Core server.
 
-The latest released (but experimental) version of the Captive Core API can be installed from the unstable repo:
+The latest released (but experimental) version of the Captive Core API can be installed from the [unstable repo](https://github.com/stellar/packages/blob/master/docs/adding-the-sdf-stable-repository-to-your-system.md#adding-the-bleeding-edge-unstable-repository):
 
 ```bash
 sudo apt install stellar-captive-core stellar-captive-core-api
@@ -139,7 +137,7 @@ export CAPTIVE_CORE_CONFIG_APPEND_PATH=/etc/default/stellar-captive-core.toml
 export STELLAR_CORE_BINARY_PATH=$(which stellar-core)
 ```
 
-(You can run these commands directly or `source` them into your shell from a script.) These parameters should all be familiar from earlier sections.
+(There's no `-cmd` wrapper à la Horizon/Core for this binary yet; you can run these commands directly or `source` them into your shell from a script.) The parameters should all be familiar from earlier sections.
 
 Finally, let's run the Captive Core instance:
 
@@ -159,7 +157,6 @@ echo "DATABASE_URL='postgres://postgres@host.docker.internal:5432/horizon?sslmod
 HISTORY_ARCHIVE_URLS='https://history.stellar.org/prd/core-testnet/core_testnet_001'
 NETWORK_PASSPHRASE='Test SDF Network ; September 2015'
 INGEST=true
-ENABLE_CAPTIVE_CORE_INGESTION=1
 STELLAR_CORE_URL='http://captivecore.local:11626'
 REMOTE_CAPTIVE_CORE_URL='http://captivecore.local:8000'
 " | sudo tee /etc/default/stellar-horizon
@@ -171,20 +168,18 @@ Then just run it as usual:
 stellar-horizon-cmd serve
 ```
 
-(We assume the other required parameters are configured appropriately in `/etc/default/stellar-horizon` as in a normal deployment.)
-
-
 ### Serving Instance
-This is the simplest instance, requiring none of the ingestion parameters:
+This configuration is almost identical, except we flip the ingestion parameters:
 
 ```bash
 echo "DATABASE_URL='postgres://postgres@host.docker.internal:5432/horizon?sslmode=disable'
 HISTORY_ARCHIVE_URLS='https://history.stellar.org/prd/core-testnet/core_testnet_001'
 NETWORK_PASSPHRASE='Test SDF Network ; September 2015'
+INGEST=false
+ENABLE_CAPTIVE_CORE_INGESTION=false
 STELLAR_CORE_URL='http://captivecore.local:11626'
 REMOTE_CAPTIVE_CORE_URL='http://captivecore.local:8000'
 " | sudo tee /etc/default/stellar-horizon
-
 stellar-horizon-cmd serve
 ```
 
