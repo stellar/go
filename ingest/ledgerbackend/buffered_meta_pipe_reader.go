@@ -89,9 +89,7 @@ func (b *bufferedLedgerMetaReader) readLedgerMetaFromPipe() (*xdr.LedgerCloseMet
 
 	for frameLength > metaPipeBufferSize && len(b.c) > 0 {
 		// Wait for LedgerCloseMeta buffer to be cleared to minimize memory usage.
-		select {
-		case <-time.After(time.Second):
-		}
+		<-time.After(time.Second)
 	}
 
 	var xlcm xdr.LedgerCloseMeta
