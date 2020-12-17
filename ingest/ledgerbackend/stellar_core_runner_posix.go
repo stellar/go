@@ -3,9 +3,8 @@
 package ledgerbackend
 
 import (
-	"io"
 	"os"
-	"syscall"
+	"os/exec"
 
 	"github.com/pkg/errors"
 )
@@ -19,42 +18,24 @@ func (c *stellarCoreRunner) getPipeName() string {
 	return "fd:3"
 }
 
-func (c *stellarCoreRunner) start() (io.Reader, error) {
+func (c *stellarCoreRunner) start(cmd *exec.Cmd) (pipe, error) {
 	// First make an anonymous pipe.
 	// Note io.File objects close-on-finalization.
 	readFile, writeFile, err := os.Pipe()
 	if err != nil {
-		return readFile, errors.Wrap(err, "error making a pipe")
+		return pipe{}, errors.Wrap(err, "error making a pipe")
 	}
-
-	defer writeFile.Close()
+	p := pipe{Reader: readFile, File: writeFile}
 
 	// Add the write-end to the set of inherited file handles. This is defined
 	// to be fd 3 on posix platforms.
-	c.cmd.ExtraFiles = []*os.File{writeFile}
-	err = c.cmd.Start()
+	cmd.ExtraFiles = []*os.File{writeFile}
+	err = cmd.Start()
 	if err != nil {
-		return readFile, errors.Wrap(err, "error starting stellar-core")
+		writeFile.Close()
+		readFile.Close()
+		return pipe{}, errors.Wrap(err, "error starting stellar-core")
 	}
 
-	c.wg.Add(1)
-	go func() {
-		err := make(chan error, 1)
-		select {
-		case err <- c.cmd.Wait():
-			c.processExitError = <-err
-			close(c.processExit)
-			close(err)
-		case <-c.shutdown:
-		}
-		c.wg.Done()
-	}()
-
-	return readFile, nil
-}
-
-func (c *stellarCoreRunner) processIsAlive() bool {
-	return c.cmd != nil &&
-		c.cmd.Process != nil &&
-		c.cmd.Process.Signal(syscall.Signal(0)) == nil
+	return p, nil
 }

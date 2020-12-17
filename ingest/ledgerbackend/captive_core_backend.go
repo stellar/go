@@ -1,10 +1,13 @@
 package ledgerbackend
 
 import (
+	"context"
 	"encoding/hex"
-	"time"
+	"os"
+	"sync"
 
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 
 	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/support/log"
@@ -34,11 +37,8 @@ func (c *CaptiveStellarCore) roundDownToFirstReplayAfterCheckpointStart(ledger u
 //     keep ledger state in RAM. It requires around 3GB of RAM as of August 2020.
 //   * When a UnboundedRange is prepared it runs Stellar-Core catchup mode to
 //     sync with the first ledger and then runs it in a normal mode. This
-//     requires the configAppendPath to be provided because a database connection is
-//     required and quorum set needs to be selected.
-//
-// The database requirement for UnboundedRange will soon be removed when some
-// changes are implemented in Stellar-Core.
+//     requires the configAppendPath to be provided because a quorum set needs to
+//     be selected.
 //
 // When running CaptiveStellarCore will create a temporary folder to store
 // bucket files and other temporary files. The folder is removed when Close is
@@ -60,21 +60,27 @@ func (c *CaptiveStellarCore) roundDownToFirstReplayAfterCheckpointStart(ledger u
 //     has a very small internal buffer and Stellar-Core will not close the new
 //     ledger if it's not read.
 //
+// Except for the Close function, CaptiveStellarCore is not thread-safe and should
+// not be accessed by multiple go routines. Close is thread-safe and can be called
+// from another go routine. Once Close is called it will interrupt and cancel any
+// pending operations.
+//
 // Requires Stellar-Core v13.2.0+.
 type CaptiveStellarCore struct {
-	configAppendPath  string
 	archive           historyarchive.ArchiveInterface
 	checkpointManager historyarchive.CheckpointManager
 	ledgerHashStore   TrustedLedgerHashStore
 
-	// Quick note on how shutdown works:
-	// If Stellar-Core exits, the exit signal is "catched" by bufferedLedgerMetaReader
-	// (which ends it's go routine) and later propagated via metaResult to
-	// CaptiveStellarCore.
-	// If user calls CaptiveStellarCore.Close(), it kills Stellar-Core process
-	// and the rest is handles by the process explained above.
-	ledgerBuffer      *bufferedLedgerMetaReader
+	// cancel is the CancelFunc for context which controls the lifetime of a CaptiveStellarCore instance.
+	// Once it is invoked CaptiveStellarCore will not be able to stream ledgers from Stellar Core or
+	// spawn new instances of Stellar Core.
+	cancel context.CancelFunc
+
 	stellarCoreRunner stellarCoreRunnerInterface
+	// stellarCoreLock protects access to stellarCoreRunner. When the read lock
+	// is acquired stellarCoreRunner can be accessed. When the write lock is acquired
+	// stellarCoreRunner can be updated.
+	stellarCoreLock sync.RWMutex
 
 	// For testing
 	stellarCoreRunnerFactory func(mode stellarCoreRunnerMode) (stellarCoreRunnerInterface, error)
@@ -92,22 +98,22 @@ type CaptiveStellarCore struct {
 	nextLedger         uint32  // next ledger expected, error w/ restart if not seen
 	lastLedger         *uint32 // end of current segment if offline, nil if online
 	previousLedgerHash *string
-
-	// waitIntervalPrepareRange defines a time to wait between checking if the buffer
-	// is empty. Default 1s, lower in tests to make them faster.
-	waitIntervalPrepareRange time.Duration
 }
 
 // CaptiveCoreConfig contains all the parameters required to create a CaptiveStellarCore instance
 type CaptiveCoreConfig struct {
 	// BinaryPath is the file path to the Stellar Core binary
 	BinaryPath string
-	// ConfigAppendPath is the file path to additional configuration for the Stellar Core configuration file used by captive core
+	// ConfigAppendPath is the file path to additional configuration for the Stellar Core configuration file used
+	// by captive core. This field is only required when ingesting in online mode (e.g. UnboundedRange).
 	ConfigAppendPath string
 	// NetworkPassphrase is the Stellar network passphrase used by captive core when connecting to the Stellar network
 	NetworkPassphrase string
 	// HistoryArchiveURLs are a list of history archive urls
 	HistoryArchiveURLs []string
+
+	// Optional fields
+
 	// CheckpointFrequency is the number of ledgers between checkpoints
 	// if unset, DefaultCheckpointFrequency will be used
 	CheckpointFrequency uint32
@@ -118,31 +124,48 @@ type CaptiveCoreConfig struct {
 	// Log is an (optional) custom logger which will capture any output from the Stellar Core process.
 	// If Log is omitted then all output will be printed to stdout.
 	Log *log.Entry
+	// Context is the (optional) context which controls the lifetime of a CaptiveStellarCore instance. Once the context is done
+	// the CaptiveStellarCore instance will not be able to stream ledgers from Stellar Core or spawn new
+	// instances of Stellar Core. If Context is omitted CaptiveStellarCore will default to using context.Background.
+	Context context.Context
 }
 
-// NewCaptive returns a new CaptiveStellarCore.
-//
-// All parameters are required, except configAppendPath which is not required when
-// working with BoundedRanges only.
+// NewCaptive returns a new CaptiveStellarCore instance.
 func NewCaptive(config CaptiveCoreConfig) (*CaptiveStellarCore, error) {
+	// Here we set defaults in the config. Because config is not a pointer this code should
+	// not mutate the original CaptiveCoreConfig instance which was passed into NewCaptive()
+	if config.Log == nil {
+		config.Log = log.New()
+		config.Log.Logger.SetOutput(os.Stdout)
+		config.Log.SetLevel(logrus.InfoLevel)
+	}
+	parentCtx := config.Context
+	if parentCtx == nil {
+		parentCtx = context.Background()
+	}
+	var cancel context.CancelFunc
+	config.Context, cancel = context.WithCancel(parentCtx)
+
 	archive, err := historyarchive.Connect(
 		config.HistoryArchiveURLs[0],
 		historyarchive.ConnectOptions{
 			NetworkPassphrase:   config.NetworkPassphrase,
 			CheckpointFrequency: config.CheckpointFrequency,
+			Context:             config.Context,
 		},
 	)
 	if err != nil {
+		cancel()
 		return nil, errors.Wrap(err, "error connecting to history archive")
 	}
 
 	c := &CaptiveStellarCore{
-		archive:                  archive,
-		configAppendPath:         config.ConfigAppendPath,
-		waitIntervalPrepareRange: time.Second,
-		ledgerHashStore:          config.LedgerHashStore,
-		checkpointManager:        historyarchive.NewCheckpointManager(config.CheckpointFrequency),
+		archive:           archive,
+		ledgerHashStore:   config.LedgerHashStore,
+		cancel:            cancel,
+		checkpointManager: historyarchive.NewCheckpointManager(config.CheckpointFrequency),
 	}
+
 	c.stellarCoreRunnerFactory = func(mode stellarCoreRunnerMode) (stellarCoreRunnerInterface, error) {
 		return newStellarCoreRunner(config, mode)
 	}
@@ -159,15 +182,11 @@ func (c *CaptiveStellarCore) getLatestCheckpointSequence() (uint32, error) {
 }
 
 func (c *CaptiveStellarCore) openOfflineReplaySubprocess(from, to uint32) error {
-	err := c.Close()
-	if err != nil {
-		return errors.Wrap(err, "error closing existing session")
-	}
-
 	latestCheckpointSequence, err := c.getLatestCheckpointSequence()
 	if err != nil {
 		return errors.Wrap(err, "error getting latest checkpoint sequence")
 	}
+
 	if from > latestCheckpointSequence {
 		return errors.Errorf(
 			"sequence: %d is greater than max available in history archives: %d",
@@ -175,13 +194,18 @@ func (c *CaptiveStellarCore) openOfflineReplaySubprocess(from, to uint32) error 
 			latestCheckpointSequence,
 		)
 	}
+
 	if to > latestCheckpointSequence {
 		to = latestCheckpointSequence
 	}
 
-	c.stellarCoreRunner, err = c.stellarCoreRunnerFactory(stellarCoreRunnerModeOffline)
-	if err != nil {
+	var runner stellarCoreRunnerInterface
+	if runner, err = c.stellarCoreRunnerFactory(stellarCoreRunnerModeOffline); err != nil {
 		return errors.Wrap(err, "error creating stellar-core runner")
+	} else {
+		// only assign c.stellarCoreRunner if runner is not nil to avoid nil interface check
+		// see https://golang.org/doc/faq#nil_error
+		c.stellarCoreRunner = runner
 	}
 
 	err = c.stellarCoreRunner.catchup(from, to)
@@ -194,25 +218,12 @@ func (c *CaptiveStellarCore) openOfflineReplaySubprocess(from, to uint32) error 
 	c.nextLedger = c.roundDownToFirstReplayAfterCheckpointStart(from)
 	c.lastLedger = &to
 	c.blocking = true
+	c.previousLedgerHash = nil
 
-	// read-ahead buffer
-	c.ledgerBuffer = newBufferedLedgerMetaReader(c.stellarCoreRunner)
-	go c.ledgerBuffer.start(to)
 	return nil
 }
 
 func (c *CaptiveStellarCore) openOnlineReplaySubprocess(from uint32) error {
-	// Check if existing session works for this request
-	if c.lastLedger == nil && c.nextLedger != 0 && c.nextLedger <= from {
-		// Use existing session, GetLedger will fast-forward
-		return nil
-	}
-
-	err := c.Close()
-	if err != nil {
-		return errors.Wrap(err, "error closing existing session")
-	}
-
 	latestCheckpointSequence, err := c.getLatestCheckpointSequence()
 	if err != nil {
 		return errors.Wrap(err, "error getting latest checkpoint sequence")
@@ -231,9 +242,13 @@ func (c *CaptiveStellarCore) openOnlineReplaySubprocess(from uint32) error {
 		)
 	}
 
-	c.stellarCoreRunner, err = c.stellarCoreRunnerFactory(stellarCoreRunnerModeOnline)
-	if err != nil {
+	var runner stellarCoreRunnerInterface
+	if runner, err = c.stellarCoreRunnerFactory(stellarCoreRunnerModeOnline); err != nil {
 		return errors.Wrap(err, "error creating stellar-core runner")
+	} else {
+		// only assign c.stellarCoreRunner if runner is not nil to avoid nil interface check
+		// see https://golang.org/doc/faq#nil_error
+		c.stellarCoreRunner = runner
 	}
 
 	runFrom, ledgerHash, nextLedger, err := c.runFromParams(from)
@@ -248,6 +263,7 @@ func (c *CaptiveStellarCore) openOnlineReplaySubprocess(from uint32) error {
 
 	c.nextLedger = nextLedger
 	c.lastLedger = nil
+	c.previousLedgerHash = nil
 
 	if c.ledgerHashStore != nil {
 		var exists bool
@@ -261,21 +277,6 @@ func (c *CaptiveStellarCore) openOnlineReplaySubprocess(from uint32) error {
 	}
 
 	c.blocking = false
-
-	// read-ahead buffer
-	c.ledgerBuffer = newBufferedLedgerMetaReader(c.stellarCoreRunner)
-	go c.ledgerBuffer.start(0)
-
-	// if nextLedger is behind - fast-forward until expected ledger
-	if c.nextLedger < from {
-		// make GetFrom blocking temporarily
-		c.blocking = true
-		_, _, err := c.GetLedger(from)
-		c.blocking = false
-		if err != nil {
-			return errors.Wrapf(err, "Error fast-forwarding to %d", from)
-		}
-	}
 
 	return nil
 }
@@ -338,6 +339,33 @@ func (c *CaptiveStellarCore) runFromParams(from uint32) (runFrom uint32, ledgerH
 	return
 }
 
+func (c *CaptiveStellarCore) startPreparingRange(ledgerRange Range) (bool, error) {
+	c.stellarCoreLock.Lock()
+	defer c.stellarCoreLock.Unlock()
+
+	if c.isPrepared(ledgerRange) {
+		return true, nil
+	}
+
+	if c.stellarCoreRunner != nil {
+		if err := c.stellarCoreRunner.close(); err != nil {
+			return false, errors.Wrap(err, "error closing existing session")
+		}
+	}
+
+	var err error
+	if ledgerRange.bounded {
+		err = c.openOfflineReplaySubprocess(ledgerRange.from, ledgerRange.to)
+	} else {
+		err = c.openOnlineReplaySubprocess(ledgerRange.from)
+	}
+	if err != nil {
+		return false, errors.Wrap(err, "opening subprocess")
+	}
+
+	return false, nil
+}
+
 // PrepareRange prepares the given range (including from and to) to be loaded.
 // Captive stellar-core backend needs to initalize Stellar-Core state to be
 // able to stream ledgers.
@@ -348,39 +376,19 @@ func (c *CaptiveStellarCore) runFromParams(from uint32) (runFrom uint32, ledgerH
 // Please note that using a BoundedRange, currently, requires a full-trust on
 // history archive. This issue is being fixed in Stellar-Core.
 func (c *CaptiveStellarCore) PrepareRange(ledgerRange Range) error {
-	// Range already prepared
-	if prepared, err := c.IsPrepared(ledgerRange); err != nil {
-		return errors.Wrap(err, "error in IsPrepared")
-	} else if prepared {
+	if alreadyPrepared, err := c.startPreparingRange(ledgerRange); err != nil {
+		return errors.Wrap(err, "error starting prepare range")
+	} else if alreadyPrepared {
 		return nil
 	}
 
-	var err error
-	if ledgerRange.bounded {
-		err = c.openOfflineReplaySubprocess(ledgerRange.from, ledgerRange.to)
-	} else {
-		err = c.openOnlineReplaySubprocess(ledgerRange.from)
-	}
-	if err != nil {
-		return errors.Wrap(err, "opening subprocess")
-	}
+	old := c.blocking
+	c.blocking = true
+	_, _, err := c.GetLedger(ledgerRange.from)
+	c.blocking = old
 
-	for {
-		select {
-		case <-c.stellarCoreRunner.getProcessExitChan():
-			// Return only in case of Stellar-Core process error. Normal exit
-			// is expected in catchup when all ledgers sent to a buffer.
-			processErr := c.stellarCoreRunner.getProcessExitError()
-			if processErr != nil {
-				return errors.Wrap(processErr, "stellar-core process exited with an error")
-			}
-		default:
-		}
-		// Wait for the first ledger or an error
-		if len(c.ledgerBuffer.getChannel()) > 0 {
-			break
-		}
-		time.Sleep(c.waitIntervalPrepareRange)
+	if err != nil {
+		return errors.Wrapf(err, "Error fast-forwarding to %d", ledgerRange.from)
 	}
 
 	return nil
@@ -388,6 +396,17 @@ func (c *CaptiveStellarCore) PrepareRange(ledgerRange Range) error {
 
 // IsPrepared returns true if a given ledgerRange is prepared.
 func (c *CaptiveStellarCore) IsPrepared(ledgerRange Range) (bool, error) {
+	c.stellarCoreLock.RLock()
+	defer c.stellarCoreLock.RUnlock()
+
+	return c.isPrepared(ledgerRange), nil
+}
+
+func (c *CaptiveStellarCore) isPrepared(ledgerRange Range) bool {
+	if c.isClosed() {
+		return false
+	}
+
 	lastLedger := uint32(0)
 	if c.lastLedger != nil {
 		lastLedger = *c.lastLedger
@@ -398,22 +417,18 @@ func (c *CaptiveStellarCore) IsPrepared(ledgerRange Range) (bool, error) {
 		cachedLedger = c.cachedMeta.LedgerSequence()
 	}
 
-	return c.isPrepared(c.nextLedger, lastLedger, cachedLedger, ledgerRange), nil
-}
-
-func (*CaptiveStellarCore) isPrepared(nextLedger, lastLedger, cachedLedger uint32, ledgerRange Range) bool {
-	if nextLedger == 0 {
+	if c.nextLedger == 0 {
 		return false
 	}
 
 	if lastLedger == 0 {
-		return nextLedger <= ledgerRange.from || cachedLedger == ledgerRange.from
+		return c.nextLedger <= ledgerRange.from || cachedLedger == ledgerRange.from
 	}
 
 	// From now on: lastLedger != 0 so current range is bounded
 
 	if ledgerRange.bounded {
-		return (nextLedger <= ledgerRange.from || cachedLedger == ledgerRange.from) &&
+		return (c.nextLedger <= ledgerRange.from || cachedLedger == ledgerRange.from) &&
 			lastLedger >= ledgerRange.to
 	}
 
@@ -439,6 +454,9 @@ func (*CaptiveStellarCore) isPrepared(nextLedger, lastLedger, cachedLedger uint3
 //     the first argument equal false.
 // This is done to provide maximum performance when streaming old ledgers.
 func (c *CaptiveStellarCore) GetLedger(sequence uint32) (bool, xdr.LedgerCloseMeta, error) {
+	c.stellarCoreLock.RLock()
+	defer c.stellarCoreLock.RUnlock()
+
 	if c.cachedMeta != nil && sequence == c.cachedMeta.LedgerSequence() {
 		// GetLedger can be called multiple times using the same sequence, ex. to create
 		// change and transaction readers. If we have this ledger buffered, let's return it.
@@ -467,18 +485,14 @@ func (c *CaptiveStellarCore) GetLedger(sequence uint32) (bool, xdr.LedgerCloseMe
 
 	// Now loop along the range until we find the ledger we want.
 	var errOut error
-loop:
 	for {
-		if !c.blocking && len(c.ledgerBuffer.getChannel()) == 0 {
+		if !c.blocking && len(c.stellarCoreRunner.getMetaPipe()) == 0 {
 			return false, xdr.LedgerCloseMeta{}, nil
 		}
 
-		// We don't have to handle getProcessExitChan() because this is handled
-		// in bufferedLedgerMetaReader (will send an error to the channel).
-		result := <-c.ledgerBuffer.getChannel()
-		if result.err != nil {
-			errOut = result.err
-			break loop
+		result, ok := <-c.stellarCoreRunner.getMetaPipe()
+		if errOut = c.checkMetaPipeResult(result, ok); errOut != nil {
+			break
 		}
 
 		seq := result.LedgerCloseMeta.LedgerSequence()
@@ -514,7 +528,7 @@ loop:
 
 			// If we got the _last_ ledger in a segment, close before returning.
 			if c.lastLedger != nil && *c.lastLedger == seq {
-				if err := c.Close(); err != nil {
+				if err := c.stellarCoreRunner.close(); err != nil {
 					return false, xdr.LedgerCloseMeta{}, errors.Wrap(err, "error closing session")
 				}
 			}
@@ -522,10 +536,40 @@ loop:
 		}
 	}
 	// All paths above that break out of the loop (instead of return)
-	// set e to non-nil: there was an error and we should close and
+	// set errOut to non-nil: there was an error and we should close and
 	// reset state before retuning an error to our caller.
-	c.Close()
+	c.stellarCoreRunner.close()
 	return false, xdr.LedgerCloseMeta{}, errOut
+}
+
+func (c *CaptiveStellarCore) checkMetaPipeResult(result metaResult, ok bool) error {
+	// There are 3 types of errors we check for:
+	// 1. User initiated shutdown by canceling the parent context or calling Close().
+	// 2. The stellar core process exited unexpectedly.
+	// 3. Some error was encountered while consuming the ledgers emitted by captive core (e.g. parsing invalid xdr)
+	if err := c.stellarCoreRunner.context().Err(); err != nil {
+		// Case 1 - User initiated shutdown by canceling the parent context or calling Close()
+		return err
+	}
+	if !ok || result.err != nil {
+		if exited, err := c.stellarCoreRunner.getProcessExitError(); exited {
+			// Case 2 - The stellar core process exited unexpectedly
+			if err == nil {
+				return errors.Errorf("stellar core exited unexpectedly")
+			} else {
+				return errors.Wrap(err, "stellar core exited unexpectedly")
+			}
+		} else if !ok {
+			// This case should never happen because the ledger buffer channel can only be closed
+			// if and only if the process exits or the context is cancelled.
+			// However, we add this check for the sake of completeness
+			return errors.Errorf("meta pipe closed unexpectedly")
+		} else {
+			// Case 3 - Some error was encountered while consuming the ledger stream emitted by captive core.
+			return result.err
+		}
+	}
+	return nil
 }
 
 // GetLatestLedgerSequence returns the sequence of the latest ledger available
@@ -536,51 +580,36 @@ loop:
 // the latest sequence closed by the network. It's always the last value available
 // in the backend.
 func (c *CaptiveStellarCore) GetLatestLedgerSequence() (uint32, error) {
+	c.stellarCoreLock.RLock()
+	defer c.stellarCoreLock.RUnlock()
+
 	if c.isClosed() {
 		return 0, errors.New("stellar-core must be opened to return latest available sequence")
 	}
 
 	if c.lastLedger == nil {
-		return c.nextLedger - 1 + uint32(len(c.ledgerBuffer.getChannel())), nil
+		return c.nextLedger - 1 + uint32(len(c.stellarCoreRunner.getMetaPipe())), nil
 	}
 	return *c.lastLedger, nil
 }
 
 func (c *CaptiveStellarCore) isClosed() bool {
-	return c.nextLedger == 0
+	return c.nextLedger == 0 || c.stellarCoreRunner == nil || c.stellarCoreRunner.context().Err() != nil
 }
 
 // Close closes existing Stellar-Core process, streaming sessions and removes all
-// temporary files.
+// temporary files. Note, once a CaptiveStellarCore instance is closed it can can no longer be used and
+// all subsequent calls to PrepareRange(), GetLedger(), etc will fail.
+// Close is thread-safe and can be called from another go routine.
 func (c *CaptiveStellarCore) Close() error {
+	c.stellarCoreLock.RLock()
+	defer c.stellarCoreLock.RUnlock()
+
+	// after the CaptiveStellarCore context is canceled all subsequent calls to PrepareRange() will fail
+	c.cancel()
+
 	if c.stellarCoreRunner != nil {
-		// Closing stellarCoreRunner will automatically close bufferedLedgerMetaReader
-		// because it's listening for getProcessExitChan().
-		err := c.stellarCoreRunner.close()
-		c.stellarCoreRunner = nil
-		if err != nil {
-			return errors.Wrap(err, "error closing stellar-core subprocess")
-		}
-
-		// c.ledgerBuffer might be nil if stellarCoreRunner.runFrom / stellarCoreRunner.catchup responded with an error
-		if c.ledgerBuffer != nil {
-			// Wait for bufferedLedgerMetaReader go routine to return.
-			c.ledgerBuffer.waitForClose()
-			c.ledgerBuffer = nil
-		}
+		return c.stellarCoreRunner.close()
 	}
-
-	c.nextLedger = 0
-	c.lastLedger = nil
-	c.previousLedgerHash = nil
-
 	return nil
-}
-
-func wrapStellarCoreRunnerError(r stellarCoreRunnerInterface) error {
-	processErr := r.getProcessExitError()
-	if processErr != nil {
-		return errors.Wrap(processErr, "stellar-core process exited with an error")
-	}
-	return errors.New("stellar-core process exited unexpectedly without an error")
 }

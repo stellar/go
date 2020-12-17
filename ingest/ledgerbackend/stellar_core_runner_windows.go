@@ -4,8 +4,7 @@ package ledgerbackend
 
 import (
 	"fmt"
-	"io"
-	"os"
+	"os/exec"
 
 	"github.com/Microsoft/go-winio"
 )
@@ -16,51 +15,26 @@ func (c *stellarCoreRunner) getPipeName() string {
 	return fmt.Sprintf(`\\.\pipe\%s`, c.nonce)
 }
 
-func (c *stellarCoreRunner) start() (io.Reader, error) {
+func (c *stellarCoreRunner) start(cmd *exec.Cmd) (pipe, error) {
 	// First set up the server pipe.
 	listener, err := winio.ListenPipe(c.getPipeName(), nil)
 	if err != nil {
-		return io.Reader(nil), err
+		return pipe{}, err
 	}
 
 	// Then start the process.
-	err = c.cmd.Start()
+	err = cmd.Start()
 	if err != nil {
-		return io.Reader(nil), err
+		listener.Close()
+		return pipe{}, err
 	}
-
-	c.wg.Add(1)
-	go func() {
-		err := make(chan error, 1)
-		select {
-		case err <- c.cmd.Wait():
-			c.processExitError = <-err
-			close(c.processExit)
-			close(err)
-		case <-c.shutdown:
-		}
-		c.wg.Done()
-	}()
 
 	// Then accept on the server end.
 	connection, err := listener.Accept()
 	if err != nil {
-		return connection, err
+		listener.Close()
+		return pipe{}, err
 	}
 
-	return connection, nil
-}
-
-func (c *stellarCoreRunner) processIsAlive() bool {
-	if c.cmd == nil {
-		return false
-	}
-	if c.cmd.Process == nil {
-		return false
-	}
-	p, err := os.FindProcess(c.cmd.Process.Pid)
-	if err != nil || p == nil {
-		return false
-	}
-	return true
+	return pipe{Reader: connection, File: listener}, nil
 }
