@@ -102,7 +102,7 @@ environment variable to "true". Since version 1.0.0 you can start multiple inges
 
 ### Ingesting historical data and reingesting Ledgers
 
-Reingesting older ledgers (due to a version upgrade) or ingesting ledgers closed by the network before Horizon was started is done through the `horizon db range [START_LEDGER] [END_LEDGER]` command. This can be run as follows:
+Reingesting older ledgers (due to a version upgrade) or ingesting ledgers closed by the network before Horizon was started is done through the `horizon db reingest range [START_LEDGER] [END_LEDGER]` command. This can be run as follows:
 
 ```
 horizon1> horizon db reingest range 1 10000
