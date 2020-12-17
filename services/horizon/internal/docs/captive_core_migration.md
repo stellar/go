@@ -36,18 +36,8 @@ At this point, all that is left to do is to:
  - stop the existing Stellar Core instance
  - restart Horizon
 
-
-### Configure Horizon
-First, add the following lines to the Horizon configuration to enable a Captive Core subprocess:
-
-```bash
-echo "STELLAR_CORE_BINARY_PATH=$(which stellar-core)
-CAPTIVE_CORE_CONFIG_APPEND_PATH=/etc/default/stellar-captive-core.cfg
-ENABLE_CAPTIVE_CORE_INGESTION=1" | sudo tee -a /etc/default/stellar-horizon
-```
-
 ### Configure Captive Core
-Captive Core runs with a trimmed down configuration "stub": at minimum, it must contain enough info to set up a quorum. For example,
+Captive Core runs with a trimmed down configuration "stub": at minimum, it must contain enough info to set up a quorum (see [above](#todo-fons-section-link)). For example, if relying exclusively on SDF's validators:
 
 ```toml
 [[HOME_DOMAINS]]
@@ -74,15 +64,27 @@ HOME_DOMAIN="testnet.stellar.org"
 PUBLIC_KEY="GC2V2EFSXN6SQTWVYA5EPJPBWWIMSD2XQNKUOHGEKB535AQE2I6IXV2Z"
 ADDRESS="core-testnet3.stellar.org"
 HISTORY="curl -sf http://history.stellar.org/prd/core-testnet/core_testnet_003/{0} -o {1}"
-
 ```
 
-The rest of the configuration will be generated automagically at runtime.
+(We'll assume this stub lives at `/etc/default/stellar-captive-core.toml`.) The rest of the configuration will be generated automagically at runtime.
 
 **Note:** Using your existing Stellar Core configuration will not work (**why not???**). Running Horizon will fail with the following error, or errors like it:
 
     default: Config from /tmp/captive-stellar-core-38cff455ad3469ec/stellar-core.conf
     default: Got an exception: Failed to parse '/tmp/captive-stellar-core-38cff455ad3469ec/stellar-core.conf' :Key HTTP_PORT already present at line 10 [CommandLine.cpp:1064]
+
+### Configure Horizon
+First, add the following lines to the Horizon configuration to enable a Captive Core subprocess:
+
+```bash
+echo "STELLAR_CORE_BINARY_PATH=$(which stellar-core)
+CAPTIVE_CORE_CONFIG_APPEND_PATH=/etc/default/stellar-captive-core.toml" | sudo tee -a /etc/default/stellar-horizon
+```
+
+(Note that setting `ENABLE_CAPTIVE_CORE_INGESTION=1` is not necessary as of Horizon 2.0 because it's the default. TODO: This isn't true on master, so gotta make sure.)
+
+
+**Note**: There may be an additional step necessary here if you aren't coming from v1.13, depending on the changelog: manual reingestion. You can still accomplish this with Captive Core, see [below](#reingestion).
 
 
 ### Restarting Services
