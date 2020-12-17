@@ -719,6 +719,21 @@ func (q *Q) LatestLedger(dest interface{}) error {
 	return q.GetRaw(dest, `SELECT COALESCE(MAX(sequence), 0) FROM history_ledgers`)
 }
 
+// LatestLedgerSequenceClosedAt loads the latest known ledger sequence and close time,
+// returns empty values if no ledgers in a DB.
+func (q *Q) LatestLedgerSequenceClosedAt() (int32, time.Time, error) {
+	ledger := struct {
+		Sequence int32     `db:"sequence"`
+		ClosedAt time.Time `db:"closed_at"`
+	}{}
+	err := q.GetRaw(&ledger, `SELECT sequence, closed_at FROM history_ledgers ORDER BY sequence DESC LIMIT 1`)
+	if err == sql.ErrNoRows {
+		// Will return empty values
+		return ledger.Sequence, ledger.ClosedAt, nil
+	}
+	return ledger.Sequence, ledger.ClosedAt, err
+}
+
 // LatestLedgerBaseFeeAndSequence loads the latest known ledger's base fee and
 // sequence number.
 func (q *Q) LatestLedgerBaseFeeAndSequence(dest interface{}) error {

@@ -309,15 +309,16 @@ type Root struct {
 		Transactions        hal.Link  `json:"transactions"`
 	} `json:"_links"`
 
-	HorizonVersion               string `json:"horizon_version"`
-	StellarCoreVersion           string `json:"core_version"`
-	IngestSequence               uint32 `json:"ingest_latest_ledger"`
-	HorizonSequence              int32  `json:"history_latest_ledger"`
-	HistoryElderSequence         int32  `json:"history_elder_ledger"`
-	CoreSequence                 int32  `json:"core_latest_ledger"`
-	NetworkPassphrase            string `json:"network_passphrase"`
-	CurrentProtocolVersion       int32  `json:"current_protocol_version"`
-	CoreSupportedProtocolVersion int32  `json:"core_supported_protocol_version"`
+	HorizonVersion               string    `json:"horizon_version"`
+	StellarCoreVersion           string    `json:"core_version"`
+	IngestSequence               uint32    `json:"ingest_latest_ledger"`
+	HorizonSequence              int32     `json:"history_latest_ledger"`
+	HorizonLatestClosedAt        time.Time `json:"history_latest_ledger_closed_at"`
+	HistoryElderSequence         int32     `json:"history_elder_ledger"`
+	CoreSequence                 int32     `json:"core_latest_ledger"`
+	NetworkPassphrase            string    `json:"network_passphrase"`
+	CurrentProtocolVersion       int32     `json:"current_protocol_version"`
+	CoreSupportedProtocolVersion int32     `json:"core_supported_protocol_version"`
 }
 
 // Signer represents one of an account's signers.
