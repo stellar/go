@@ -1,23 +1,21 @@
 # Migration 
-In this section, we'll discuss migrating existing systems running the [latest](https://github.com/stellar/go/releases/latest) stable version of Horizon ([1.13](https://github.com/stellar/go/releases/tag/horizon-v1.13.0) as of this writing) to the new 2.0 beta. 
+In this section, we'll discuss migrating existing systems running the pre-2.0 versions of Horizon to the new 2.x world.
 
 **Environment assumptions**:
 
   - We assume that the **PostgreSQL server** lives at the `db.local` hostname, and has a `horizon` database accessible by the `postgres:secret` username-password combo.
 
-  - We assume your machine has **enough memory** to hold Captive Core's in-memory database (~3GiB), which is a larger memory requirement than a traditional Core setup (which would have an on-disk database).
+  - We assume your machine has **enough extra RAM** to hold Captive Core's in-memory database (~3GiB), which is a larger memory requirement than a traditional Core setup (which would have an on-disk database).
 
   - The examples here refer to the testnet for safety; replace the appropriate references with the pubnet equivalents when you're ready.
 
-To start off simply, we assume a **single-machine Ubuntu setup** running both Horizon and Core with a single local PostgreSQL server. Then, this assumption is loosened in a [later section](#multi-machine-setup).
+  - In some places, packages need to be built from scratch. We assume a sane [Golang](https://golang.org/doc/install) development environment for this.
+
+To start off simply, we assume a **single-machine Ubuntu setup** running both Horizon and Core with a single local PostgreSQL server. This assumption is loosened in a [later section](#multi-machine-setup).
 
 
 ## Installing
-The process for upgrading both Stellar Core and Horizon are covered [here](https://github.com/stellar/packages/blob/master/docs/upgrading.md#upgrading); the only difference is that since we're migrating to Horizon v2.0-beta, we need to first add the unstable repository. This is described [here](https://github.com/stellar/packages/blob/master/docs/adding-the-sdf-stable-repository-to-your-system.md#adding-the-bleeding-edge-unstable-repository), but in brief, you just need to add the URL:
-
-```bash
-echo "deb https://apt.stellar.org xenial unstable" | sudo tee -a /etc/apt/sources.list.d/SDF-unstable.list
-```
+The process for upgrading both Stellar Core and Horizon are covered [here](https://github.com/stellar/packages/blob/master/docs/upgrading.md#upgrading). The only difference is that since we're migrating to a beta Horizon release, we need to first add the unstable repository; this is described [here](https://github.com/stellar/packages/blob/master/docs/adding-the-sdf-stable-repository-to-your-system.md#adding-the-bleeding-edge-unstable-repository).
 
 Then, you can install the Captive Core packages:
 
@@ -27,25 +25,32 @@ sudo apt install stellar-captive-core
 
 And you're ready to upgrade.
 
-**Note**: Until v2.0-beta is tagged & released, you'll need to build Horizon from master for this to actually render the latest binaries. That's done pretty simply, given a valid Go environment:
+**Note**: Until the v2.0-beta binaries are released, you'll need to build Horizon from the `release-horizon-v2.0.0-beta` branch. That's pretty simple, given a valid Go environment:
 
 ```bash
-git clone https://github.com/stellar/go && cd go
+git clone https://github.com/stellar/go monorepo && cd monorepo
+git checkout release-horizon-v2.0.0-beta
 go install -v ./services/horizon
-sudo cp $GOPATH/bin/horizon $(which stellar-horizon)
+sudo cp $(go env GOPATH)/bin/horizon $(which stellar-horizon)
 ```
 
 
 ## Upgrading
 At this point, all that is left to do is to:
 
- - modify the Horizon configuration to enable Captive Core (we will assume it lives in `/etc/default/stellar-horizon`, the default)
  - create a Captive Core configuration stub
+ - modify the Horizon configuration to enable Captive Core (we will assume it lives in `/etc/default/stellar-horizon`, the default)
  - stop the existing Stellar Core instance
  - restart Horizon
 
 ### Configure Captive Core
-Captive Core runs with a trimmed down configuration "stub": at minimum, it must contain enough info to set up a quorum (see [above](#todo-fons-section-link)). For example, if relying exclusively on SDF's validators:
+Captive Core runs with a trimmed down configuration "stub": at minimum, it must contain enough info to set up a quorum (see [above](#configuration)). **Your old configuration cannot be used directly**: Horizon needs special settings for Captive Core. Running Horizon will fail with the following error, or errors like it:
+
+    default: Config from /tmp/captive-stellar-core-38cff455ad3469ec/stellar-core.conf
+    default: Got an exception: Failed to parse '/tmp/captive-stellar-core-38cff455ad3469ec/stellar-core.conf' :Key HTTP_PORT already present at line 10 [CommandLine.cpp:1064]
+
+
+For example, if relying exclusively on SDF's validators:
 
 ```toml
 [[HOME_DOMAINS]]
@@ -76,10 +81,6 @@ HISTORY="curl -sf http://history.stellar.org/prd/core-testnet/core_testnet_003/{
 
 (We'll assume this stub lives at `/etc/default/stellar-captive-core.toml`.) The rest of the configuration will be generated automagically at runtime.
 
-**Note:** Using your existing Stellar Core configuration will not work (**why not???**). Running Horizon will fail with the following error, or errors like it:
-
-    default: Config from /tmp/captive-stellar-core-38cff455ad3469ec/stellar-core.conf
-    default: Got an exception: Failed to parse '/tmp/captive-stellar-core-38cff455ad3469ec/stellar-core.conf' :Key HTTP_PORT already present at line 10 [CommandLine.cpp:1064]
 
 ### Configure Horizon
 First, add the following lines to the Horizon configuration to enable a Captive Core subprocess:
@@ -92,7 +93,7 @@ CAPTIVE_CORE_CONFIG_APPEND_PATH=/etc/default/stellar-captive-core.toml" | sudo t
 (Note that setting `ENABLE_CAPTIVE_CORE_INGESTION=1` is not necessary as of Horizon 2.0 because it's the default. TODO: This isn't true on master, so gotta make sure.)
 
 
-**Note**: There may be an additional step necessary here if you aren't coming from v1.13, depending on the changelog: manual reingestion. You can still accomplish this with Captive Core, see [below](#reingestion).
+**Note**: Depending on the version you're migrating from, you may need to include an additional step here: manual reingestion. This can still be accomplished with Captive Core; see [below](#reingestion).
 
 
 ### Restarting Services
@@ -113,59 +114,78 @@ In this section, we'll work through a hypothetical architecture with two Horizon
 ### Remote Captive Core
 First, we need to start running the Captive Core server.
 
-This must be installed from source, as it's not a published package yet (TODO: right?). These instructions presume a "sane" Golang environment (namely, one with `$GOPATH` defined):
+The latest released (but experimental) version of the Captive Core API can be installed from the unstable repo:
 
 ```bash
-git clone https://github.com/stellar/go && cd go
+sudo apt install stellar-captive-core stellar-captive-core-api
+```
+
+Alternatively, you can install the bleeding edge from source:
+
+```bash
+git clone https://github.com/stellar/go monorepo && cd monorepo
+git checkout release-horizon-v2.0.0-beta
 go install -v ./exp/services/captivecore
-sudo cp $GOPATH/bin/captivecore /usr/bin/stellar-captive-core
+sudo cp $(go env GOPATH)/bin/captivecore /usr/bin/stellar-captive-core-api
 ```
 
-Now, let's run a Captive Core instance:
+Now, let's configure the Captive Core environment:
 
 ```bash
-stellar-captive-core \
-  --network-passphrase='Test SDF Network ; September 2015' \
-  --history-archive-urls='https://history.stellar.org/prd/core-testnet/core_testnet_001' \
-  --db-url='postgres://postgres:secret@db.local:5432/horizon?sslmode=disable' \
-  --port=8080 \
-  --stellar-core-binary-path=$(which stellar-core) \
-  --captive-core-config-append-path=/etc/default/stellar-captive-core.cfg
+export NETWORK_PASSPHRASE='Test SDF Network ; September 2015'
+export HISTORY_ARCHIVE_URLS='https://history.stellar.org/prd/core-testnet/core_testnet_001'
+export DATABASE_URL='postgres://postgres:secret@db.local:5432/horizon?sslmode=disable'
+export CAPTIVE_CORE_CONFIG_APPEND_PATH=/etc/default/stellar-captive-core.toml
+export STELLAR_CORE_BINARY_PATH=$(which stellar-core)
 ```
 
-(We use CLI parameters over environmental variables as well as values from the earlier sections here to maximize clarity.)
+(You can run these commands directly or `source` them into your shell from a script.) These parameters should all be familiar from earlier sections.
 
-This will start serving *two* endpoints: a Captive Core HTTP server on port 8080, which serves up processed ledgers and can be queried by Horizon, and the underlying Core HTTP endpoint on port 11626 (the default).
+Finally, let's run the Captive Core instance:
+
+```bash
+stellar-captive-core-api
+```
+
+This will start serving *two* endpoints: a Captive Core HTTP server on port 8000 (by default), which serves up processed ledgers and can be queried by Horizon, and the underlying Core HTTP endpoint on port 11626 (by default). See the `--help` for how to configure these.
 
 ### Ingestion Instance
-Returning to the Horizon instance that will be doing ingestion, we just need to supply the appropriate URLs and ports. If the above server can be resolved on the `captive-core.local` hostname, running Horizon would look like:
+Returning to the Horizon instance that will be doing ingestion, we just need to supply the appropriate URLs and ports. 
+
+Suppose the above server can be resolved on the `captivecore.local` hostname; then, we need to configure Horizon accordingly:
 
 ```bash
-stellar-horizon \
-  --network-passphrase='Test SDF Network ; September 2015' \
-  --history-archive-urls='https://history.stellar.org/prd/core-testnet/core_testnet_001' \
-  --db-url='postgres://postgres:secret@db.local:5432/horizon?sslmode=disable' \
-  --remote-captive-core-url=http://captive-core.local:8080 \
-  --stellar-core-url=http://captive-core.local:11626 \
-  --port=8001 \
-  --ingest=true \
-  --enable-captive-core-ingestion=true
+echo "DATABASE_URL='postgres://postgres@host.docker.internal:5432/horizon?sslmode=disable'
+HISTORY_ARCHIVE_URLS='https://history.stellar.org/prd/core-testnet/core_testnet_001'
+NETWORK_PASSPHRASE='Test SDF Network ; September 2015'
+INGEST=true
+ENABLE_CAPTIVE_CORE_INGESTION=1
+STELLAR_CORE_URL='http://captivecore.local:11626'
+REMOTE_CAPTIVE_CORE_URL='http://captivecore.local:8000'
+" | sudo tee /etc/default/stellar-horizon
 ```
 
-(Again, we prefer CLI parameters to avoid conflating the `/etc/default/stellar-horizon` we defined earlier for the single-machine case.)
+Then just run it as usual:
+
+```
+stellar-horizon-cmd serve
+```
+
+(We assume the other required parameters are configured appropriately in `/etc/default/stellar-horizon` as in a normal deployment.)
 
 
 ### Serving Instance
 This is the simplest instance, requiring none of the ingestion parameters:
 
 ```bash
-stellar-horizon \
-  --network-passphrase='Test SDF Network ; September 2015' \
-  --history-archive-urls='https://history.stellar.org/prd/core-testnet/core_testnet_001' \
-  --db-url='postgres://postgres:secret@db.local:5432/horizon?sslmode=disable' \
-  --remote-captive-core-url=http://captive-core.local:8080 \
-  --stellar-core-url=http://captive-core.local:11626 \
-  --port=8000
+echo "DATABASE_URL='postgres://postgres@host.docker.internal:5432/horizon?sslmode=disable'
+HISTORY_ARCHIVE_URLS='https://history.stellar.org/prd/core-testnet/core_testnet_001'
+NETWORK_PASSPHRASE='Test SDF Network ; September 2015'
+STELLAR_CORE_URL='http://captivecore.local:11626'
+REMOTE_CAPTIVE_CORE_URL='http://captivecore.local:8000'
+" | sudo tee /etc/default/stellar-horizon
+
+stellar-horizon-cmd serve
 ```
 
 At this point, you should be able to hit port 8000 on the above instance and watch the `ingest_latest_ledger` value grow.
