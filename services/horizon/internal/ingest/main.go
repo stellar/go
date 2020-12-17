@@ -183,13 +183,15 @@ func NewSystem(config Config) (System, error) {
 		} else {
 			ledgerBackend, err = ledgerbackend.NewCaptive(
 				ledgerbackend.CaptiveCoreConfig{
-					BinaryPath:         config.CaptiveCoreBinaryPath,
-					ConfigAppendPath:   config.CaptiveCoreConfigAppendPath,
-					HTTPPort:           config.CaptiveCoreHTTPPort,
-					NetworkPassphrase:  config.NetworkPassphrase,
-					HistoryArchiveURLs: []string{config.HistoryArchiveURL},
-					LedgerHashStore:    ledgerbackend.NewHorizonDBLedgerHashStore(config.HistorySession),
-					Log:                log.WithField("subservice", "stellar-core"),
+					BinaryPath:          config.CaptiveCoreBinaryPath,
+					ConfigAppendPath:    config.CaptiveCoreConfigAppendPath,
+					HTTPPort:            config.CaptiveCoreHTTPPort,
+					NetworkPassphrase:   config.NetworkPassphrase,
+					HistoryArchiveURLs:  []string{config.HistoryArchiveURL},
+					CheckpointFrequency: config.CheckpointFrequency,
+					LedgerHashStore:     ledgerbackend.NewHorizonDBLedgerHashStore(config.HistorySession),
+					Log:                 log.WithField("subservice", "stellar-core"),
+					Context:             ctx,
 				},
 			)
 			if err != nil {
@@ -378,7 +380,9 @@ func (s *system) BuildGenesisState() error {
 }
 
 func (s *system) runStateMachine(cur stateMachineNode) error {
+	s.wg.Add(1)
 	defer func() {
+		s.wg.Done()
 		s.wg.Wait()
 	}()
 
@@ -491,7 +495,7 @@ func (s *system) updateCursor(ledgerSequence uint32) error {
 		cursor = s.config.StellarCoreCursor
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(s.ctx, time.Second)
 	defer cancel()
 	err := s.stellarCoreClient.SetCursor(ctx, cursor, int32(ledgerSequence))
 	if err != nil {
@@ -504,11 +508,16 @@ func (s *system) updateCursor(ledgerSequence uint32) error {
 func (s *system) Shutdown() {
 	log.Info("Shutting down ingestion system...")
 	s.stateVerificationMutex.Lock()
-	defer s.stateVerificationMutex.Unlock()
 	if s.stateVerificationRunning {
 		log.Info("Shutting down state verifier...")
 	}
+	s.stateVerificationMutex.Unlock()
 	s.cancel()
+	// wait for ingestion state machine to terminate
+	s.wg.Wait()
+	if err := s.ledgerBackend.Close(); err != nil {
+		log.WithError(err).Info("could not close ledger backend")
+	}
 }
 
 func markStateInvalid(historyQ history.IngestionQ, err error) {
