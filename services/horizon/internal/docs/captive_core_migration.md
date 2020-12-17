@@ -1,15 +1,15 @@
-**TODO:** This should be merged into `captive_core.md` once @fons and I wrap up our individual portions (or decide how break into separate files; maybe we need a `captive_core/` doc subdirectory).
-
 # Migration 
 In this section, we'll discuss migrating existing systems running the [latest](https://github.com/stellar/go/releases/latest) stable version of Horizon ([1.13](https://github.com/stellar/go/releases/tag/horizon-v1.13.0) as of this writing) to the new 2.0 beta. 
 
 **Environment assumptions**:
 
-  - For simplicity, we assume a single-machine Ubuntu setup running both Horizon and Core with a single local PostgreSQL server. The URI in the configs outlined later give further insight into the setup. Loosening this assumption is covered briefly in a [later section](#multi-machine-setup).
+  - We assume that the **PostgreSQL server** lives at the `db.local` hostname, and has a `horizon` database accessible by the `postgres:secret` username-password combo.
 
-  - We assume your machine has enough memory to hold Captive Core's in-memory database (~3GiB), which is a larger memory requirement than a traditional Core setup (which would have an on-disk database).
+  - We assume your machine has **enough memory** to hold Captive Core's in-memory database (~3GiB), which is a larger memory requirement than a traditional Core setup (which would have an on-disk database).
 
-  - We assume that your node joined the Stellar network recently (that is, it has a few thousand ledgers synced / ingeste), though this doesn't really matter. This assumption can be easily relaxed to any range, but we clarify it here so the chosen ledger ranges below make sense.
+  - The examples here refer to the testnet for safety; replace the appropriate references with the pubnet equivalents when you're ready.
+
+To start off simply, we assume a **single-machine Ubuntu setup** running both Horizon and Core with a single local PostgreSQL server. Then, this assumption is loosened in a [later section](#multi-machine-setup).
 
 
 ## Installing
@@ -26,6 +26,14 @@ sudo apt install stellar-captive-core
 ```
 
 And you're ready to upgrade.
+
+**Note**: Until v2.0-beta is tagged & released, you'll need to build Horizon from master for this to actually render the latest binaries. That's done pretty simply, given a valid Go environment:
+
+```bash
+git clone https://github.com/stellar/go && cd go
+go install -v ./services/horizon
+sudo cp $GOPATH/bin/horizon $(which stellar-horizon)
+```
 
 
 ## Upgrading
