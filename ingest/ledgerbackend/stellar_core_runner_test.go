@@ -3,6 +3,7 @@ package ledgerbackend
 import (
 	"context"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -43,6 +44,8 @@ func TestGenerateConfig(t *testing.T) {
 				HistoryArchiveURLs: []string{"http://localhost:1170"},
 				Log:                log.New(),
 				ConfigAppendPath:   testCase.appendPath,
+				Context:            context.Background(),
+				NetworkPassphrase:  "Public Global Stellar Network ; September 2015",
 			}, testCase.mode)
 			assert.NoError(t, err)
 
