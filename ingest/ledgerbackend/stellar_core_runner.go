@@ -35,9 +35,16 @@ const (
 	stellarCoreRunnerModeOffline
 )
 
+// stellarCoreRunner uses a named pipe ( https://en.wikipedia.org/wiki/Named_pipe ) to stream ledgers directly
+// from Stellar Core
 type pipe struct {
+	// stellarCoreRunner will be reading ledgers emitted by Stellar Core from the pipe.
+	// After the Stellar Core process exits, stellarCoreRunner should eventually close the reader.
 	Reader io.ReadCloser
-	Writer io.Closer
+	// stellarCoreRunner is responsible for closing the named pipe file after the Stellar Core process exits.
+	// However, only the Stellar Core process will be writing to the pipe. stellarCoreRunner should not
+	// write anything to the named pipe file which is why the type of File is io.Closer.
+	File io.Closer
 }
 
 type stellarCoreRunner struct {
@@ -321,11 +328,10 @@ func (r *stellarCoreRunner) handleExit(cmd *exec.Cmd) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
-	// by closing the pipe writer we will send an EOF to the ledgerBuffer
-	// we need to do this operation with the lock to ensure that
-	// the processExitError is available when the ledgerBuffer channel
-	// is closed
-	if closeErr := r.pipe.Writer.Close(); closeErr != nil {
+	// By closing the pipe file we will send an EOF to the pipe reader used by ledgerBuffer.
+	// We need to do this operation with the lock to ensure that the processExitError is available
+	// when the ledgerBuffer channel is closed
+	if closeErr := r.pipe.File.Close(); closeErr != nil {
 		r.log.WithError(closeErr).Warn("could not close captive core write pipe")
 	}
 

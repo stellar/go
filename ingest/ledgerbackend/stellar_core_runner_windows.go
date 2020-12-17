@@ -36,5 +36,5 @@ func (c *stellarCoreRunner) start(cmd *exec.Cmd) (pipe, error) {
 		return pipe{}, err
 	}
 
-	return pipe{Reader: connection, Writer: listener}, nil
+	return pipe{Reader: connection, File: listener}, nil
 }

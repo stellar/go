@@ -25,7 +25,7 @@ func (c *stellarCoreRunner) start(cmd *exec.Cmd) (pipe, error) {
 	if err != nil {
 		return pipe{}, errors.Wrap(err, "error making a pipe")
 	}
-	p := pipe{Reader: readFile, Writer: writeFile}
+	p := pipe{Reader: readFile, File: writeFile}
 
 	// Add the write-end to the set of inherited file handles. This is defined
 	// to be fd 3 on posix platforms.
