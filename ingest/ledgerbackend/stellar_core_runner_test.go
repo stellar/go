@@ -1,6 +1,7 @@
 package ledgerbackend
 
 import (
+	"context"
 	"io/ioutil"
 	"path/filepath"
 	"testing"
@@ -60,4 +61,24 @@ func TestGenerateConfig(t *testing.T) {
 			assert.NoError(t, stellarCoreRunner.close())
 		})
 	}
+}
+
+func TestCloseBeforeStart(t *testing.T) {
+	runner, err := newStellarCoreRunner(CaptiveCoreConfig{
+		HistoryArchiveURLs: []string{"http://localhost"},
+		Log:                log.New(),
+		Context:            context.Background(),
+	}, stellarCoreRunnerModeOffline)
+	assert.NoError(t, err)
+
+	tempDir := runner.tempDir
+	info, err := os.Stat(tempDir)
+	assert.NoError(t, err)
+	assert.True(t, info.IsDir())
+
+	assert.NoError(t, runner.close())
+
+	_, err = os.Stat(tempDir)
+	assert.Error(t, err)
+	assert.True(t, os.IsNotExist(err))
 }
