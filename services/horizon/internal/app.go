@@ -68,17 +68,18 @@ type App struct {
 	ledgerState     *ledger.State
 
 	// metrics
-	prometheusRegistry         *prometheus.Registry
-	buildInfoGauge             *prometheus.GaugeVec
-	ingestingGauge             prometheus.Gauge
-	historyLatestLedgerCounter prometheus.CounterFunc
-	historyElderLedgerCounter  prometheus.CounterFunc
-	dbMaxOpenConnectionsGauge  prometheus.GaugeFunc
-	dbOpenConnectionsGauge     prometheus.GaugeFunc
-	dbInUseConnectionsGauge    prometheus.GaugeFunc
-	dbWaitCountCounter         prometheus.CounterFunc
-	dbWaitDurationCounter      prometheus.CounterFunc
-	coreLatestLedgerCounter    prometheus.CounterFunc
+	prometheusRegistry                *prometheus.Registry
+	buildInfoGauge                    *prometheus.GaugeVec
+	ingestingGauge                    prometheus.Gauge
+	historyLatestLedgerCounter        prometheus.CounterFunc
+	historyLatestLedgerClosedAgoGauge prometheus.GaugeFunc
+	historyElderLedgerCounter         prometheus.CounterFunc
+	dbMaxOpenConnectionsGauge         prometheus.GaugeFunc
+	dbOpenConnectionsGauge            prometheus.GaugeFunc
+	dbInUseConnectionsGauge           prometheus.GaugeFunc
+	dbWaitCountCounter                prometheus.CounterFunc
+	dbWaitDurationCounter             prometheus.CounterFunc
+	coreLatestLedgerCounter           prometheus.CounterFunc
 }
 
 func (a *App) GetCoreSettings() actions.CoreSettings {
@@ -208,7 +209,8 @@ func (a *App) UpdateLedgerState() {
 	}
 	next.CoreLatest = int32(coreInfo.Info.Ledger.Num)
 
-	err = a.HistoryQ().LatestLedger(&next.HistoryLatest)
+	next.HistoryLatest, next.HistoryLatestClosedAt, err =
+		a.HistoryQ().LatestLedgerSequenceClosedAt()
 	if err != nil {
 		logErr(err, "failed to load the latest known ledger state from history DB")
 		return

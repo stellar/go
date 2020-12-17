@@ -2,6 +2,7 @@ package ledgerbackend
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -15,19 +16,15 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
-
 	"github.com/stellar/go/support/log"
 )
 
 type stellarCoreRunnerInterface interface {
 	catchup(from, to uint32) error
 	runFrom(from uint32, hash string) error
-	getMetaPipe() io.Reader
-	// getProcessExitChan returns a channel that closes on process exit
-	getProcessExitChan() <-chan struct{}
-	// getProcessExitError returns an exit error of the process, can be nil
-	getProcessExitError() error
+	getMetaPipe() <-chan metaResult
+	context() context.Context
+	getProcessExitError() (bool, error)
 	close() error
 }
 
@@ -38,6 +35,18 @@ const (
 	stellarCoreRunnerModeOffline
 )
 
+// stellarCoreRunner uses a named pipe ( https://en.wikipedia.org/wiki/Named_pipe ) to stream ledgers directly
+// from Stellar Core
+type pipe struct {
+	// stellarCoreRunner will be reading ledgers emitted by Stellar Core from the pipe.
+	// After the Stellar Core process exits, stellarCoreRunner should eventually close the reader.
+	Reader io.ReadCloser
+	// stellarCoreRunner is responsible for closing the named pipe file after the Stellar Core process exits.
+	// However, only the Stellar Core process will be writing to the pipe. stellarCoreRunner should not
+	// write anything to the named pipe file which is why the type of File is io.Closer.
+	File io.Closer
+}
+
 type stellarCoreRunner struct {
 	executablePath    string
 	configAppendPath  string
@@ -46,39 +55,31 @@ type stellarCoreRunner struct {
 	httpPort          uint
 	mode              stellarCoreRunnerMode
 
-	started  bool
-	wg       sync.WaitGroup
-	shutdown chan struct{}
+	started      bool
+	wg           sync.WaitGroup
+	ctx          context.Context
+	cancel       context.CancelFunc
+	ledgerBuffer *bufferedLedgerMetaReader
+	pipe         pipe
 
-	cmd *exec.Cmd
-
-	// processExit channel receives an error when the process exited with an error
-	// or nil if the process exited without an error.
-	processExit      chan struct{}
+	lock             sync.Mutex
+	processExited    bool
 	processExitError error
-	metaPipe         io.Reader
-	tempDir          string
-	nonce            string
+
+	tempDir string
+	nonce   string
 
 	log *log.Entry
 }
 
 func newStellarCoreRunner(config CaptiveCoreConfig, mode stellarCoreRunnerMode) (*stellarCoreRunner, error) {
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	// Create temp dir
-	random := rand.New(rand.NewSource(time.Now().UnixNano()))
-	tempDir := filepath.Join(os.TempDir(), fmt.Sprintf("captive-stellar-core-%x", random.Uint64()))
-	err := os.MkdirAll(tempDir, 0755)
+	tempDir, err := ioutil.TempDir("", "captive-stellar-core")
 	if err != nil {
 		return nil, errors.Wrap(err, "error creating subprocess tmpdir")
 	}
 
-	coreLogger := config.Log
-	if coreLogger == nil {
-		coreLogger = log.New()
-		coreLogger.Logger.SetOutput(os.Stdout)
-		coreLogger.SetLevel(logrus.InfoLevel)
-	}
+	ctx, cancel := context.WithCancel(config.Context)
 
 	runner := &stellarCoreRunner{
 		executablePath:    config.BinaryPath,
@@ -87,12 +88,14 @@ func newStellarCoreRunner(config CaptiveCoreConfig, mode stellarCoreRunnerMode) 
 		historyURLs:       config.HistoryArchiveURLs,
 		httpPort:          config.HTTPPort,
 		mode:              mode,
-		shutdown:          make(chan struct{}),
-		processExit:       make(chan struct{}),
-		processExitError:  nil,
+		ctx:               ctx,
+		cancel:            cancel,
 		tempDir:           tempDir,
-		nonce:             fmt.Sprintf("captive-stellar-core-%x", r.Uint64()),
-		log:               coreLogger,
+		nonce: fmt.Sprintf(
+			"captive-stellar-core-%x",
+			rand.New(rand.NewSource(time.Now().UnixNano())).Uint64(),
+		),
+		log: config.Log,
 	}
 
 	if err := runner.writeConf(); err != nil {
@@ -131,13 +134,13 @@ func (r *stellarCoreRunner) generateConfig() (string, error) {
 			`VALIDATORS=["GCZBOIAY4HLKAJVNJORXZOZRAY2BJDBZHKPBHZCRAIUR5IHC2UHBGCQR"]`)
 	}
 
-	result := strings.ReplaceAll(strings.Join(lines, "\n"), "\\", "\\\\")
+	result := strings.ReplaceAll(strings.Join(lines, "\n"), `\`, `\\`) + "\n\n"
 	if r.configAppendPath != "" {
 		appendConfigContents, err := ioutil.ReadFile(r.configAppendPath)
 		if err != nil {
 			return "", errors.Wrap(err, "reading quorum config file")
 		}
-		result = result + "\n" + string(appendConfigContents) + "\n\n"
+		result += string(appendConfigContents) + "\n\n"
 	}
 
 	lines = []string{}
@@ -211,32 +214,44 @@ func (r *stellarCoreRunner) writeConf() error {
 	return ioutil.WriteFile(r.getConfFileName(), []byte(conf), 0644)
 }
 
-func (r *stellarCoreRunner) createCmd(params ...string) (*exec.Cmd, error) {
+func (r *stellarCoreRunner) createCmd(params ...string) *exec.Cmd {
 	allParams := append([]string{"--conf", r.getConfFileName()}, params...)
-	cmd := exec.Command(r.executablePath, allParams...)
+	cmd := exec.CommandContext(r.ctx, r.executablePath, allParams...)
 	cmd.Dir = r.tempDir
 	cmd.Stdout = r.getLogLineWriter()
 	cmd.Stderr = r.getLogLineWriter()
-	return cmd, nil
+	return cmd
 }
 
 func (r *stellarCoreRunner) runCmd(params ...string) error {
-	cmd, err := r.createCmd(params...)
-	if err != nil {
-		return errors.Wrapf(err, "could not create `stellar-core %v` cmd", params)
-	}
+	cmd := r.createCmd(params...)
+	defer r.closeLogLineWriters(cmd)
 
-	if err = cmd.Start(); err != nil {
+	if err := cmd.Start(); err != nil {
 		return errors.Wrapf(err, "could not start `stellar-core %v` cmd", params)
 	}
 
-	if err = cmd.Wait(); err != nil {
+	if err := cmd.Wait(); err != nil {
 		return errors.Wrapf(err, "error waiting for `stellar-core %v` subprocess", params)
 	}
 	return nil
 }
 
+// context returns the context.Context instance associated with the running captive core instance
+func (r *stellarCoreRunner) context() context.Context {
+	return r.ctx
+}
+
+// catchup executes the catchup command on the captive core subprocess
 func (r *stellarCoreRunner) catchup(from, to uint32) error {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
+	// check if we have already been closed
+	if r.ctx.Err() != nil {
+		return r.ctx.Err()
+	}
+
 	if r.started {
 		return errors.New("runner already started")
 	}
@@ -245,82 +260,139 @@ func (r *stellarCoreRunner) catchup(from, to uint32) error {
 	}
 
 	rangeArg := fmt.Sprintf("%d/%d", to, to-from+1)
-	cmd, err := r.createCmd(
+	cmd := r.createCmd(
 		"catchup", rangeArg,
 		"--metadata-output-stream", r.getPipeName(),
 		"--replay-in-memory",
 	)
+
+	var err error
+	r.pipe, err = r.start(cmd)
 	if err != nil {
-		return errors.Wrap(err, "error creating `stellar-core catchup` subprocess")
-	}
-	r.cmd = cmd
-	r.metaPipe, err = r.start()
-	if err != nil {
+		r.closeLogLineWriters(cmd)
 		return errors.Wrap(err, "error starting `stellar-core catchup` subprocess")
 	}
+
 	r.started = true
+	r.ledgerBuffer = newBufferedLedgerMetaReader(r.pipe.Reader)
+	go r.ledgerBuffer.start()
+	r.wg.Add(1)
+	go r.handleExit(cmd)
 
 	return nil
 }
 
+// runFrom executes the run command with a starting ledger on the captive core subprocess
 func (r *stellarCoreRunner) runFrom(from uint32, hash string) error {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
+	// check if we have already been closed
+	if r.ctx.Err() != nil {
+		return r.ctx.Err()
+	}
+
 	if r.started {
 		return errors.New("runner already started")
 	}
-	var err error
-	r.cmd, err = r.createCmd(
+
+	cmd := r.createCmd(
 		"run",
 		"--in-memory",
 		"--start-at-ledger", fmt.Sprintf("%d", from),
 		"--start-at-hash", hash,
 		"--metadata-output-stream", r.getPipeName(),
 	)
+
+	var err error
+	r.pipe, err = r.start(cmd)
 	if err != nil {
-		return errors.Wrap(err, "error creating `stellar-core run` subprocess")
-	}
-	r.metaPipe, err = r.start()
-	if err != nil {
+		r.closeLogLineWriters(cmd)
 		return errors.Wrap(err, "error starting `stellar-core run` subprocess")
 	}
+
 	r.started = true
+	r.ledgerBuffer = newBufferedLedgerMetaReader(r.pipe.Reader)
+	go r.ledgerBuffer.start()
+	r.wg.Add(1)
+	go r.handleExit(cmd)
 
 	return nil
 }
 
-func (r *stellarCoreRunner) getMetaPipe() io.Reader {
-	return r.metaPipe
-}
+func (r *stellarCoreRunner) handleExit(cmd *exec.Cmd) {
+	defer r.wg.Done()
+	exitErr := cmd.Wait()
+	r.closeLogLineWriters(cmd)
 
-func (r *stellarCoreRunner) getProcessExitChan() <-chan struct{} {
-	return r.processExit
-}
+	r.lock.Lock()
+	defer r.lock.Unlock()
 
-func (r *stellarCoreRunner) getProcessExitError() error {
-	return r.processExitError
-}
-
-func (r *stellarCoreRunner) close() error {
-	var err1, err2 error
-
-	if r.processIsAlive() {
-		err1 = r.cmd.Process.Kill()
-		r.cmd.Wait()
-		r.cmd = nil
+	// By closing the pipe file we will send an EOF to the pipe reader used by ledgerBuffer.
+	// We need to do this operation with the lock to ensure that the processExitError is available
+	// when the ledgerBuffer channel is closed
+	if closeErr := r.pipe.File.Close(); closeErr != nil {
+		r.log.WithError(closeErr).Warn("could not close captive core write pipe")
 	}
-	err2 = os.RemoveAll(r.tempDir)
+
+	r.processExited = true
+	r.processExitError = exitErr
+}
+
+// closeLogLineWriters closes the go routines created by getLogLineWriter()
+func (r *stellarCoreRunner) closeLogLineWriters(cmd *exec.Cmd) {
+	cmd.Stdout.(*io.PipeWriter).Close()
+	cmd.Stderr.(*io.PipeWriter).Close()
+}
+
+// getMetaPipe returns a channel which contains ledgers streamed from the captive core subprocess
+func (r *stellarCoreRunner) getMetaPipe() <-chan metaResult {
+	return r.ledgerBuffer.getChannel()
+}
+
+// getProcessExitError returns an exit error (can be nil) of the process and a bool indicating
+// if the process has exited yet
+// getProcessExitError is thread safe
+func (r *stellarCoreRunner) getProcessExitError() (bool, error) {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+	return r.processExited, r.processExitError
+}
+
+// close kills the captive core process if it is still running and performs
+// the necessary cleanup on the resources associated with the captive core process
+// close is both thread safe and idempotent
+func (r *stellarCoreRunner) close() error {
+	r.lock.Lock()
+	started := r.started
+	tempDir := r.tempDir
+
 	r.tempDir = ""
 
-	if r.started {
-		close(r.shutdown)
-		r.wg.Wait()
+	// check if we have already closed
+	if tempDir == "" {
+		r.lock.Unlock()
+		return nil
 	}
-	r.started = false
 
-	if err1 != nil {
-		return errors.Wrap(err1, "error killing subprocess")
+	r.cancel()
+	r.lock.Unlock()
+
+	// only reap captive core sub process and related go routines if we've started
+	// otherwise, just cleanup the temp dir
+	if started {
+		// wait for the stellar core process to terminate
+		r.wg.Wait()
+
+		// drain meta pipe channel to make sure the ledger buffer goroutine exits
+		for range r.getMetaPipe() {
+
+		}
+
+		// now it's safe to close the pipe reader
+		// because the ledger buffer is no longer reading from it
+		r.pipe.Reader.Close()
 	}
-	if err2 != nil {
-		return errors.Wrap(err2, "error removing subprocess tmpdir")
-	}
-	return nil
+
+	return os.RemoveAll(tempDir)
 }
