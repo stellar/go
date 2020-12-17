@@ -107,3 +107,77 @@ The logs should show Captive Core running successfully as a subprocess, and even
 
 ## Multi-Machine Setup
 If you plan on running Horizon and Captive Core on separate machines, you'll need to change only a few things. Namely, rather than configuring the `STELLAR_CORE_BINARY` variable, you'll need to point Horizon at the Remote Captive Core instance via `REMOTE_CAPTIVE_CORE_URL`.
+
+In this section, we'll work through a hypothetical architecture with two Horizon instances, one of which is an ingestion instance, and a single Captive Core instance.
+
+### Remote Captive Core
+First, we need to start running the Captive Core server.
+
+This must be installed from source, as it's not a published package yet (TODO: right?). These instructions presume a "sane" Golang environment (namely, one with `$GOPATH` defined):
+
+```bash
+git clone https://github.com/stellar/go && cd go
+go install -v ./exp/services/captivecore
+sudo cp $GOPATH/bin/captivecore /usr/bin/stellar-captive-core
+```
+
+Now, let's run a Captive Core instance:
+
+```bash
+stellar-captive-core \
+  --network-passphrase='Test SDF Network ; September 2015' \
+  --history-archive-urls='https://history.stellar.org/prd/core-testnet/core_testnet_001' \
+  --db-url='postgres://postgres:secret@db.local:5432/horizon?sslmode=disable' \
+  --port=8080 \
+  --stellar-core-binary-path=$(which stellar-core) \
+  --captive-core-config-append-path=/etc/default/stellar-captive-core.cfg
+```
+
+(We use CLI parameters over environmental variables as well as values from the earlier sections here to maximize clarity.)
+
+This will start serving *two* endpoints: a Captive Core HTTP server on port 8080, which serves up processed ledgers and can be queried by Horizon, and the underlying Core HTTP endpoint on port 11626 (the default).
+
+### Ingestion Instance
+Returning to the Horizon instance that will be doing ingestion, we just need to supply the appropriate URLs and ports. If the above server can be resolved on the `captive-core.local` hostname, running Horizon would look like:
+
+```bash
+stellar-horizon \
+  --network-passphrase='Test SDF Network ; September 2015' \
+  --history-archive-urls='https://history.stellar.org/prd/core-testnet/core_testnet_001' \
+  --db-url='postgres://postgres:secret@db.local:5432/horizon?sslmode=disable' \
+  --remote-captive-core-url=http://captive-core.local:8080 \
+  --stellar-core-url=http://captive-core.local:11626 \
+  --port=8001 \
+  --ingest=true \
+  --enable-captive-core-ingestion=true
+```
+
+(Again, we prefer CLI parameters to avoid conflating the `/etc/default/stellar-horizon` we defined earlier for the single-machine case.)
+
+
+### Serving Instance
+This is the simplest instance, requiring none of the ingestion parameters:
+
+```bash
+stellar-horizon \
+  --network-passphrase='Test SDF Network ; September 2015' \
+  --history-archive-urls='https://history.stellar.org/prd/core-testnet/core_testnet_001' \
+  --db-url='postgres://postgres:secret@db.local:5432/horizon?sslmode=disable' \
+  --remote-captive-core-url=http://captive-core.local:8080 \
+  --stellar-core-url=http://captive-core.local:11626 \
+  --port=8000
+```
+
+At this point, you should be able to hit port 8000 on the above instance and watch the `ingest_latest_ledger` value grow.
+
+
+# Reingestion
+If you need to manually reingest some ledgers (for example, you want history for some ledgers that closed before your asset got issued), you can still do this with Captive Core.
+
+For example, suppose we've ingested from ledger 811520, but would like another 1000 ledgers before it to be ingested as well.
+
+```bash
+stellar-horizon-cmd db reingest range 810520 811520
+```
+
+TODO: Finish this once Slack thread is resolved.
