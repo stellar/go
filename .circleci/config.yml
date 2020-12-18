@@ -142,6 +142,18 @@ commands:
           name: Check dependencies
           command: ./gomod.sh
 
+  # install_stellar_core installs the latest unstable version of stellar core.
+  install_stellar_core:
+    steps:
+      - run:
+          name: Install latest version of Stellar Core
+          command: |
+            sudo wget -qO - https://apt.stellar.org/SDF.asc | APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=true sudo apt-key add -
+            sudo bash -c 'echo "deb https://apt.stellar.org xenial unstable" > /etc/apt/sources.list.d/SDF-unstable.list'
+            sudo apt-get update && sudo apt-get install -y stellar-core
+            echo "using stellar core version $(stellar-core version)"
+            echo "export CAPTIVE_CORE_BIN=/usr/bin/stellar-core" >> $BASH_ENV
+
   check_ingest_state:
     steps:
       - run:
@@ -197,39 +209,12 @@ commands:
           name: Build release artifacts
           command: go run ./support/scripts/build_release_artifacts/main.go
 
-  # build_horizon builds horizon binary
-  build_horizon:
-    steps:
-      - run:
-          name: Build horizon binary
-          command: |
-            go build -v ./services/horizon
-
   # send_coverage_report sends coverage report to codecov.io
   send_coverage_report:
     steps:
       - run:
           name: Send report to codecov.io
           command: bash <(curl -s https://codecov.io/bash)
-
-  # run_horizon_integration_tests runs Horizon's integration tests
-  run_horizon_integration_tests:
-    parameters:
-      enable-captive-core:
-        type: boolean
-        default: false
-    steps:
-      - unless:
-          condition: << parameters.enable-captive-core >>
-          steps:
-            - run: docker run -d --env POSTGRES_HOST_AUTH_METHOD=trust -p 5432:5432 circleci/postgres:9.6.5-alpine
-      - run:
-          name: Run Horizon integration tests <<# parameters.enable-captive-core >>(With captive core)<</ parameters.enable-captive-core >>
-          # Currently all integration tests are in a single directory.
-          # Pulling the image helps with test running time
-          command: |
-            cd ~/go/src/github.com/stellar/go
-            <<# parameters.enable-captive-core >>HORIZON_INTEGRATION_ENABLE_CAPTIVE_CORE=true<</ parameters.enable-captive-core >> go test -timeout 25m -v ./services/horizon/internal/integration/...
 
 #-----------------------------------------------------------------------------#
 # Jobs use the commands to accomplish a given task, and run through workflows #
@@ -422,28 +407,37 @@ jobs:
   # test_horizon_integration performs Horizon integration tests, it's using
   # decicated vm machine to be able to start arbitrary docker containers.
   test_horizon_integration:
+    parameters:
+      enable-captive-core:
+        type: boolean
+        default: false
     working_directory: ~/go/src/github.com/stellar/go
     machine:
-      image: ubuntu-1604:201903-01
+      image: ubuntu-1604:202010-01
     steps:
       - checkout
       - run:
           name: Setting env variables
-          command: |
-            echo "export HORIZON_INTEGRATION_TESTS=true" >> $BASH_ENV
-            echo "export HORIZON_BIN_DIR=~/go/src/github.com/stellar/go" >> $BASH_ENV
+          command: echo "export HORIZON_INTEGRATION_TESTS=true" >> $BASH_ENV
       - run:
           name: Pull latest Stellar Core image
           command: docker pull stellar/stellar-core
       - install_golang
-      - build_horizon
-      # run the integration tests ...
-      #   ... without captive core
-      - run_horizon_integration_tests
-      #   ... and with captive core
-      # This isn't working at the moment
-      # - run_horizon_integration_tests:
-      #     enable-captive-core: true
+      - run:
+          name: Start Horizon Postgres DB
+          command: docker run -d --env POSTGRES_HOST_AUTH_METHOD=trust -p 5432:5432 circleci/postgres:9.6.5-alpine
+      - when:
+          condition: << parameters.enable-captive-core >>
+          steps:
+            - install_stellar_core
+      - run:
+          name: Run Horizon integration tests <<# parameters.enable-captive-core >>(With captive core)<</ parameters.enable-captive-core >>
+          # Currently all integration tests are in a single directory.
+          # Pulling the image helps with test running time
+          command: |
+            cd ~/go/src/github.com/stellar/go
+            <<# parameters.enable-captive-core >>HORIZON_INTEGRATION_ENABLE_CAPTIVE_CORE=true<</ parameters.enable-captive-core >> go test -timeout 25m -v ./services/horizon/internal/integration/...
+
 #-------------------------------------------------------------------------#
 # Workflows orchestrate jobs and make sure they run in the right sequence #
 #-------------------------------------------------------------------------#
@@ -458,8 +452,13 @@ workflows:
       - test_code_1_14_postgres10
       - test_code_1_15
       - test_code_1_15_postgres10
-      # TODO: remove once integration_tests_nightly is confirmed to be working
+      # run the integration tests ...
+      #   ... without captive core
       - test_horizon_integration
+      #   ... and with captive core
+      - test_horizon_integration:
+          name: test_horizon_integration_with_captive_core
+          enable-captive-core: true
       - publish_state_diff_docker_image:
           filters:
               branches:
@@ -504,16 +503,3 @@ workflows:
           # Pushing stellar/horizon:latest to docker hub requires manual approval
           requires:
             - hold
-
-  integration_tests_nightly:
-    triggers:
-      - schedule:
-          # Every day
-          cron: "0 0 * * *"
-          filters:
-            branches:
-              only:
-                - master
-                - /release-horizon-/
-    jobs:
-      - test_horizon_integration
