@@ -67,11 +67,18 @@ func TestReingestDB(t *testing.T) {
 	})
 	tt.NoError(err)
 
-	has, err := archive.GetRootHAS()
-	tt.NoError(err)
+	// make sure a full checkpoint has elapsed otherwise there will be nothing to reingest
+	var latestCheckpoint uint32
+	publishedFirstCheckpoint := func() bool {
+		has, err := archive.GetRootHAS()
+		tt.NoError(err)
+		latestCheckpoint = has.CurrentLedger
+		return latestCheckpoint > 1
+	}
+	tt.Eventually(publishedFirstCheckpoint, 10*time.Second, time.Second)
 
-	if toLedger > has.CurrentLedger {
-		toLedger = has.CurrentLedger
+	if toLedger > latestCheckpoint {
+		toLedger = latestCheckpoint
 	}
 
 	horizonConfig.CaptiveCoreConfigAppendPath = filepath.Join(

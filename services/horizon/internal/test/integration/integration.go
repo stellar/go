@@ -50,6 +50,7 @@ type Test struct {
 	hclient       *sdk.Client
 	cclient       *stellarcore.Client
 	app           *horizon.App
+	appStopped    chan struct{}
 	shutdownOnce  sync.Once
 	shutdownCalls []func()
 }
@@ -128,7 +129,7 @@ func (i *Test) RestartHorizon() {
 	i.app.Close()
 
 	// wait for horizon to shut down completely
-	time.Sleep(time.Second)
+	<-i.appStopped
 
 	i.startHorizon(
 		i.horizonConfig.CaptiveCoreBinaryPath,
@@ -156,7 +157,7 @@ func (i *Test) Shutdown() {
 }
 
 func (i *Test) startHorizon(
-	captiveCoreBinaryPath, captiveCoreConfigPath, horizonPostgresURL string, buildGenesisBlock bool,
+	captiveCoreBinaryPath, captiveCoreConfigPath, horizonPostgresURL string, buildGenesisState bool,
 ) {
 	if horizonPostgresURL == "" {
 		postgres := dbtest.Postgres(i.t)
@@ -205,20 +206,23 @@ of accounts, subscribe to event streams and more.`,
 		captiveCoreBinaryPath,
 		"--captive-core-config-append-path",
 		captiveCoreConfigPath,
+
+		// disable http port to not clash with the http port of the
+		// non-captive stellar core instance running in docker
 		"--captive-core-http-port",
 		"0",
+
+		"--enable-captive-core-ingestion=" + strconv.FormatBool(len(captiveCoreBinaryPath) > 0),
 
 		"--network-passphrase",
 		NetworkPassphrase,
 		"--apply-migrations",
 		"--admin-port",
 		strconv.Itoa(i.AdminPort()),
-		"--checkpoint-frequency",
-		"8", // due to ARTIFICIALLY_ACCELERATE_TIME_FOR_TESTING
-	}
 
-	if len(captiveCoreBinaryPath) > 0 {
-		args = append(args, "--enable-captive-core-ingestion")
+		// due to ARTIFICIALLY_ACCELERATE_TIME_FOR_TESTING
+		"--checkpoint-frequency",
+		"8",
 	}
 
 	// initialize core arguments
@@ -233,13 +237,18 @@ of accounts, subscribe to event streams and more.`,
 	}
 	i.horizonConfig = *config
 
-	if buildGenesisBlock {
+	if buildGenesisState {
 		if err = i.app.Ingestion().BuildGenesisState(); err != nil {
 			i.t.Fatalf("cannot build genesis state: %s", err)
 		}
 	}
 
-	go i.app.Serve()
+	done := make(chan struct{})
+	go func() {
+		i.app.Serve()
+		close(done)
+	}()
+	i.appStopped = done
 }
 
 // Wait for core to be up and manually close the first ledger
