@@ -153,7 +153,7 @@ Returning to the Horizon instance that will be doing ingestion, we just need to 
 Suppose the above server can be resolved on the `captivecore.local` hostname; then, we need to configure Horizon accordingly:
 
 ```bash
-echo "DATABASE_URL='postgres://postgres@host.docker.internal:5432/horizon?sslmode=disable'
+echo "DATABASE_URL='postgres://postgres@db.local:5432/horizon?sslmode=disable'
 HISTORY_ARCHIVE_URLS='https://history.stellar.org/prd/core-testnet/core_testnet_001'
 NETWORK_PASSPHRASE='Test SDF Network ; September 2015'
 INGEST=true
@@ -172,7 +172,7 @@ stellar-horizon-cmd serve
 This configuration is almost identical, except we flip the ingestion parameters:
 
 ```bash
-echo "DATABASE_URL='postgres://postgres@host.docker.internal:5432/horizon?sslmode=disable'
+echo "DATABASE_URL='postgres://postgres@db.local:5432/horizon?sslmode=disable'
 HISTORY_ARCHIVE_URLS='https://history.stellar.org/prd/core-testnet/core_testnet_001'
 NETWORK_PASSPHRASE='Test SDF Network ; September 2015'
 INGEST=false
