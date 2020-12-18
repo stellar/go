@@ -609,6 +609,45 @@ func TestCaptiveGetLedger(t *testing.T) {
 	mockRunner.AssertExpectations(t)
 }
 
+func TestCaptiveStellarCore_PrepareRangeAfterClose(t *testing.T) {
+	executablePath := "/etc/stellar-core"
+	networkPassphrase := network.PublicNetworkPassphrase
+	historyURLs := []string{"http://localhost"}
+
+	captiveStellarCore, err := NewCaptive(
+		CaptiveCoreConfig{
+			BinaryPath:         executablePath,
+			NetworkPassphrase:  networkPassphrase,
+			HistoryArchiveURLs: historyURLs,
+		},
+	)
+	assert.NoError(t, err)
+
+	assert.NoError(t, captiveStellarCore.Close())
+
+	assert.EqualError(
+		t,
+		captiveStellarCore.PrepareRange(BoundedRange(65, 66)),
+		"error starting prepare range: opening subprocess: error getting latest checkpoint sequence: "+
+			"error getting root HAS: Get \"http://localhost/.well-known/stellar-history.json\": context canceled",
+	)
+
+	// even if the request to fetch the latest checkpoint succeeds, we should fail at creating the subprocess
+	mockArchive := &historyarchive.MockArchive{}
+	mockArchive.
+		On("GetRootHAS").
+		Return(historyarchive.HistoryArchiveState{
+			CurrentLedger: uint32(200),
+		}, nil)
+	captiveStellarCore.archive = mockArchive
+	assert.EqualError(
+		t,
+		captiveStellarCore.PrepareRange(BoundedRange(65, 66)),
+		"error starting prepare range: opening subprocess: error running stellar-core: context canceled",
+	)
+	mockArchive.AssertExpectations(t)
+}
+
 func TestCaptiveGetLedger_NextLedgerIsDifferentToLedgerFromBuffer(t *testing.T) {
 	tt := assert.New(t)
 	metaChan := make(chan metaResult, 100)
