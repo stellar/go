@@ -4,31 +4,64 @@ replacement: https://developers.stellar.org/docs/horizon-captive-core/
 ---
 ## Using Captive Stellar-Core in Horizon
 
-Starting with version v1.6.0, Horizon contains an experimental feature to use Stellar-Core in the captive mode. In this mode Stellar-Core is started as a subprocess of Horizon and streams ledger data over a filesystem pipe. It completely eliminates all issues connected to ledgers missing in Stellar-Core's database but requires extra time to initialize the Stellar-Core subprocess.
+### Introduction
 
-Captive Stellar-Core can be used in both reingestion and normal Horizon operations.
+Starting with version v1.6.0, Horizon allows using Stellar-Core in captive mode. Core's captive mode is enabled by default
+since Horizon 2.0.
+
+When Captive Core mode is disabled, this is how Horizon interacts with Core.
+
+![Horizon without Captive Core](HorizonWithoutCaptiveCore.png)
+
+Captive Core mode relaxes Horizon's operational requirements. It allows running Horizon without a fully fledged Core instance and, most importantly, without a Core database. 
+
+Captive core is a specialized narrowed-down Stellar-Core instance with the sole aim of emitting metadata to Horizon.
+Captive Core does all the work in-memory, without a database. On the other hand, and for the same reason, it has higher memory requirements (which will be covered in a section below).
+
+The Captive core instance can be started as:
+
+ A. a subprocess of Horizon, streaming ledger data over a filesystem pipe. This is the default.
+    ![Horizon with Captive Core](HorizonWithCaptiveCore.png)
+    
+ B. an experimental remote captive core server, to which Horizon connects through HTTP (see Horizon's `--remote-captive-core-url` flag).
+    For more information on installing the remote Captive Core server, please take a look at
+    [https://github.com/stellar/go/exp/services/captivecore](https://github.com/stellar/go/tree/master/exp/services/captivecore).
+    ![Horizon with Remote Captive Core](HorizonWithRemoteCaptiveCore.png)
+    
+Captive Core completely eliminates all Horizon issues connected Stellar-Core's database but requires extra time to initialize the Stellar-Core subprocess.
+
+Captive Stellar-Core can be used in both reingestion (`horizon db reingest range`) and normal Horizon operation (`horizon` or `horizon serve`).
+In fact, using Captive Core to reingest historical data is considerably faster without Captive Core (i.e. filling in Core's database with `stellar-core catchup` followed by `horizon db reingest range`).
 
 ### Configuration
 
-To enable captive mode three feature config variables are required:
-* `ENABLE_CAPTIVE_CORE_INGESTION=true`,
-* `STELLAR_CORE_BINARY_PATH` - defines a path to the `stellar-core` binary,
-* `CAPTIVE_CORE_CONFIG_APPEND_PATH` - (not required when running `horizon db reingest range`) defines a path to a file to append to the Stellar Core configuration file used by captive core. It must, at least, include enough details to define a quorum set. For instance, to connect to the Stellar testnet through `core-testnet1.stellar.org`:
-  ```
-  [[HOME_DOMAINS]]
-  HOME_DOMAIN="testnet.stellar.org"
-  QUALITY="MEDIUM"
+To enable captive mode you will need to initialize some configuration variables:
+* (required) `ENABLE_CAPTIVE_CORE_INGESTION=true` (enabled by default since Horizon 2.0).
+* (required) If you run Captive core ...
 
-  [[VALIDATORS]]
-  NAME="sdf_testnet_1"
-  HOME_DOMAIN="testnet.stellar.org"
-  PUBLIC_KEY="GDKXE2OZMJIPOSLNA6N6F2BVCI3O777I2OOC4BV7VOYUEHYX7RTRYA7Y"
-  ADDRESS="core-testnet1.stellar.org"
-  ```
+  A. ... as a subprocess:
+     * `STELLAR_CORE_BINARY_PATH` - defines a path to the `stellar-core` binary,
+     * (not required when running `horizon db reingest range`) `CAPTIVE_CORE_CONFIG_APPEND_PATH` - defines a path to a file to append to the Stellar Core configuration file used by captive core.
+       It must, at least, include enough details to define a quorum set. For instance, to connect to the Stellar testnet through `core-testnet1.stellar.org`:
+       ```toml
+       [[HOME_DOMAINS]]
+       HOME_DOMAIN="testnet.stellar.org"
+       QUALITY="MEDIUM"
+
+       [[VALIDATORS]]
+       NAME="sdf_testnet_1"
+       HOME_DOMAIN="testnet.stellar.org"
+       PUBLIC_KEY="GDKXE2OZMJIPOSLNA6N6F2BVCI3O777I2OOC4BV7VOYUEHYX7RTRYA7Y"
+       ADDRESS="core-testnet1.stellar.org"
+       ```
   
-  The full configuration to be used will be printed out by Horizon when runnign horizon with `--log-level debug`
+       The full configuration to be used will be printed out by Horizon when running horizon with `--log-level debug`
+  
+  B. ... using the experimental captive core server:
+     * `REMOTE_CAPTIVE_CORE_URL` - url to access the remote captive core server
   
 * (optional) `CAPTIVE_CORE_HTTP_PORT` - HTTP port for Captive Core to listen on (0 disables the HTTP server)
+
 
 ### Requirements
 
