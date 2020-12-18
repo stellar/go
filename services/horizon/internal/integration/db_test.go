@@ -70,8 +70,8 @@ func TestReingestDB(t *testing.T) {
 	// make sure a full checkpoint has elapsed otherwise there will be nothing to reingest
 	var latestCheckpoint uint32
 	publishedFirstCheckpoint := func() bool {
-		has, err := archive.GetRootHAS()
-		tt.NoError(err)
+		has, requestErr := archive.GetRootHAS()
+		tt.NoError(requestErr)
 		latestCheckpoint = has.CurrentLedger
 		return latestCheckpoint > 1
 	}
