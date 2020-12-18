@@ -457,14 +457,14 @@ func (c *CaptiveStellarCore) GetLedger(sequence uint32) (bool, xdr.LedgerCloseMe
 	c.stellarCoreLock.RLock()
 	defer c.stellarCoreLock.RUnlock()
 
+	if c.isClosed() {
+		return false, xdr.LedgerCloseMeta{}, errors.New("session is closed, call PrepareRange first")
+	}
+
 	if c.cachedMeta != nil && sequence == c.cachedMeta.LedgerSequence() {
 		// GetLedger can be called multiple times using the same sequence, ex. to create
 		// change and transaction readers. If we have this ledger buffered, let's return it.
 		return true, *c.cachedMeta, nil
-	}
-
-	if c.isClosed() {
-		return false, xdr.LedgerCloseMeta{}, errors.New("session is closed, call PrepareRange first")
 	}
 
 	if sequence < c.nextLedger {
@@ -525,13 +525,6 @@ func (c *CaptiveStellarCore) GetLedger(sequence uint32) (bool, xdr.LedgerCloseMe
 		if seq == sequence {
 			// Found the requested seq
 			c.cachedMeta = result.LedgerCloseMeta
-
-			// If we got the _last_ ledger in a segment, close before returning.
-			if c.lastLedger != nil && *c.lastLedger == seq {
-				if err := c.stellarCoreRunner.close(); err != nil {
-					return false, xdr.LedgerCloseMeta{}, errors.Wrap(err, "error closing session")
-				}
-			}
 			return true, *c.cachedMeta, nil
 		}
 	}
