@@ -7,9 +7,9 @@ In this section, we'll discuss migrating existing systems running the pre-2.0 ve
 
   - We assume your machine has **enough extra RAM** to hold Captive Core's in-memory database (~3GiB), which is a larger memory requirement than a traditional Core setup (which would have an on-disk database).
 
-  - The examples here refer to the testnet for safety; replace the appropriate references with the pubnet equivalents when you're ready.
+  - The examples here refer to the **testnet for safety**; replace the appropriate references with the pubnet equivalents when you're ready.
 
-  - In some places, packages need to be built from scratch. We assume a sane [Golang](https://golang.org/doc/install) development environment for this.
+  - In some places, bleeding-edge versions of packages can be built from scratch. We assume a sane **[Golang](https://golang.org/doc/install) development environment** for this.
 
 To start off simply, we assume a **single-machine Ubuntu setup** running both Horizon and Core with a single local PostgreSQL server. This assumption is loosened in a [later section](#multi-machine-setup).
 
@@ -189,10 +189,10 @@ At this point, you should be able to hit port 8000 on the above instance and wat
 # Reingestion
 If you need to manually reingest some ledgers (for example, you want history for some ledgers that closed before your asset got issued), you can still do this with Captive Core.
 
-For example, suppose we've ingested from ledger 811520, but would like another 1000 ledgers before it to be ingested as well.
+For example, suppose we've ingested from ledger 811520, but would like another 1000 ledgers before it to be ingested as well. Nothing really changes from the execution perspective relative to the "old" way (given the configuration updates [from before](#configure-horizon) are done):
 
 ```bash
 stellar-horizon-cmd db reingest range 810520 811520
 ```
 
-TODO: Finish this once Slack thread is resolved.
+The biggest change is simply how much faster this gets done! :fire: For example, a [full reingestion](#using-captive-core-to-reingest-the-full-public-network-history) of the entire network only takes ~1.5 days (as opposed to weeks previously) on an [m5.8xlarge](https://aws.amazon.com/ec2/pricing/on-demand/) instance.
