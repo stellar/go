@@ -89,7 +89,7 @@ echo "STELLAR_CORE_BINARY_PATH=$(which stellar-core)
 CAPTIVE_CORE_CONFIG_APPEND_PATH=/etc/default/stellar-captive-core.toml" | sudo tee -a /etc/default/stellar-horizon
 ```
 
-(Note that setting `ENABLE_CAPTIVE_CORE_INGESTION=true` is not necessary as of Horizon 2.0-beta because it's the default.)
+(Note that setting `ENABLE_CAPTIVE_CORE_INGESTION=true` is not necessary in 2.x because it's the new default.)
 
 
 **Note**: Depending on the version you're migrating from, you may need to include an additional step here: manual reingestion. This can still be accomplished with Captive Core; see [below](#reingestion).
@@ -107,7 +107,7 @@ The logs should show Captive Core running successfully as a subprocess, and even
 ## Multi-Machine Setup
 If you plan on running Horizon and Captive Core on separate machines, you'll need to change only a few things. Namely, rather than configuring the `STELLAR_CORE_BINARY` variable, you'll need to point Horizon at the Remote Captive Core instance via `REMOTE_CAPTIVE_CORE_URL` (for the wrapper API) and `STELLAR_CORE_URL` (for the raw Core API).
 
-In this section, we'll work through a hypothetical architecture with two Horizon instances, one of which is an ingestion instance, and a single Captive Core instance.
+In this section, we'll work through a hypothetical architecture with two Horizon instances (only one of which does ingestion) and a single Captive Core instance.
 
 ### Remote Captive Core
 First, we need to start running the Captive Core server.
@@ -118,7 +118,7 @@ The latest released (but experimental) version of the Captive Core API can be in
 sudo apt install stellar-captive-core stellar-captive-core-api
 ```
 
-Alternatively, you can install the bleeding edge from source:
+Alternatively, you can install the bleeding edge [from source](https://github.com/stellar/go/exp/services/captivecore):
 
 ```bash
 git clone https://github.com/stellar/go monorepo && cd monorepo
@@ -145,7 +145,7 @@ Finally, let's run the Captive Core instance:
 stellar-captive-core-api
 ```
 
-This will start serving *two* endpoints: a Captive Core HTTP server on port 8000 (by default), which serves up processed ledgers and can be queried by Horizon, and the underlying Core HTTP endpoint on port 11626 (by default). See the `--help` for how to configure these.
+This will start serving *two* endpoints: a Captive Core wrapper API on port 8000 (by default), which serves up processed ledgers and can be queried by Horizon, and the underlying Core API on port 11626 (by default). See the `--help` for how to configure the ports.
 
 ### Ingestion Instance
 Returning to the Horizon instance that will be doing ingestion, we just need to supply the appropriate URLs and ports. 
@@ -195,4 +195,4 @@ For example, suppose we've ingested from ledger 811520, but would like another 1
 stellar-horizon-cmd db reingest range 810520 811520
 ```
 
-The biggest change is simply how much faster this gets done! :fire: For example, a [full reingestion](#using-captive-core-to-reingest-the-full-public-network-history) of the entire network only takes ~1.5 days (as opposed to weeks previously) on an [m5.8xlarge](https://aws.amazon.com/ec2/pricing/on-demand/) instance.
+The biggest change is simply how much faster this gets done! For example, a [full reingestion](#using-captive-core-to-reingest-the-full-public-network-history) of the entire network only takes ~1.5 days (as opposed to weeks previously) on an [m5.8xlarge](https://aws.amazon.com/ec2/pricing/on-demand/) instance. :fire:
