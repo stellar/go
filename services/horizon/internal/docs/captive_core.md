@@ -25,7 +25,7 @@ The Captive core instance can be started as:
     
  B. an experimental remote captive core server, to which Horizon connects through HTTP (see Horizon's `--remote-captive-core-url` flag).
     For more information on installing the remote Captive Core server, please take a look at
-    [https://github.com/stellar/go/exp/services](https://github.com/stellar/go/tree/master/exp/services/captivecore).
+    [https://github.com/stellar/go/exp/services/captivecore](https://github.com/stellar/go/tree/master/exp/services/captivecore).
     ![Horizon with Remote Captive Core](HorizonWithRemoteCaptiveCore.png)
     
 Captive Core completely eliminates all Horizon issues connected Stellar-Core's database but requires extra time to initialize the Stellar-Core subprocess.
@@ -38,11 +38,12 @@ In fact, using Captive Core to reingest historical data is considerably faster w
 To enable captive mode you will need to initialize some configuration variables:
 * (required) `ENABLE_CAPTIVE_CORE_INGESTION=true` (enabled by default since Horizon 2.0).
 * (required) If you run Captive core ...
+
   A. ... as a subprocess:
      * `STELLAR_CORE_BINARY_PATH` - defines a path to the `stellar-core` binary,
      * (not required when running `horizon db reingest range`) `CAPTIVE_CORE_CONFIG_APPEND_PATH` - defines a path to a file to append to the Stellar Core configuration file used by captive core.
        It must, at least, include enough details to define a quorum set. For instance, to connect to the Stellar testnet through `core-testnet1.stellar.org`:
-       ```
+       ```toml
        [[HOME_DOMAINS]]
        HOME_DOMAIN="testnet.stellar.org"
        QUALITY="MEDIUM"
@@ -54,7 +55,8 @@ To enable captive mode you will need to initialize some configuration variables:
        ADDRESS="core-testnet1.stellar.org"
        ```
   
-       The full configuration to be used will be printed out by Horizon when runnign horizon with `--log-level debug`
+       The full configuration to be used will be printed out by Horizon when running horizon with `--log-level debug`
+  
   B. ... using the experimental captive core server:
      * `REMOTE_CAPTIVE_CORE_URL` - url to access the remote captive core server
   
