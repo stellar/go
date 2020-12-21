@@ -102,7 +102,7 @@ As discussed earlier, Captive Stellar-Core provides much better decoupling for H
 
 To mitigate this we recommend running multiple ingesting Horizon servers in a single cluster. This allows other ingesting instances to maintain service without interruptions if a Captive Stellar-Core is restarted.
 
-### Migation
+### Migration
 
 In this section, we'll discuss migrating existing systems running the pre-2.0 versions of Horizon to the new 2.x world.
 
