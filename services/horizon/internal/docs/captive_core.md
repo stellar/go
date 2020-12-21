@@ -20,13 +20,15 @@ Captive Core does all the work in-memory, without a database. On the other hand,
 
 The Captive core instance can be started as:
 
- A. a subprocess of Horizon, streaming ledger data over a filesystem pipe. This is the default.
-    ![Horizon with Captive Core](HorizonWithCaptiveCore.png)
+A. a subprocess of Horizon, streaming ledger data over a filesystem pipe. This is the default.
+
+![Horizon with Captive Core](HorizonWithCaptiveCore.png)
     
- B. an experimental remote captive core server, to which Horizon connects through HTTP (see Horizon's `--remote-captive-core-url` flag).
+B. an experimental remote captive core server, to which Horizon connects through HTTP (see Horizon's `--remote-captive-core-url` flag).
     For more information on installing the remote Captive Core server, please take a look at
-    [https://github.com/stellar/go/exp/services/captivecore](https://github.com/stellar/go/tree/master/exp/services/captivecore).
-    ![Horizon with Remote Captive Core](HorizonWithRemoteCaptiveCore.png)
+    [captivecore](https://github.com/stellar/go/tree/master/exp/services/captivecore).
+
+![Horizon with Remote Captive Core](HorizonWithRemoteCaptiveCore.png)
     
 Captive Core completely eliminates all Horizon issues connected Stellar-Core's database but requires extra time to initialize the Stellar-Core subprocess.
 
