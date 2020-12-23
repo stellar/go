@@ -46,7 +46,7 @@ func (s *SingleLedgerStateReaderTestSuite) SetupTest() {
 		On("BucketExists", mock.AnythingOfType("historyarchive.Hash")).
 		Return(true, nil).Times(21)
 
-	s.reader, err = MakeSingleLedgerStateReader(
+	s.reader, err = NewSingleLedgerStateReader(
 		context.Background(),
 		s.mockArchive,
 		ledgerSeq,
@@ -280,7 +280,7 @@ func (s *BucketExistsTestSuite) SetupTest() {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	var err error
-	s.reader, err = MakeSingleLedgerStateReader(
+	s.reader, err = NewSingleLedgerStateReader(
 		ctx,
 		s.mockArchive,
 		ledgerSeq,
@@ -365,7 +365,7 @@ func (s *ReadBucketEntryTestSuite) SetupTest() {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	var err error
-	s.reader, err = MakeSingleLedgerStateReader(
+	s.reader, err = NewSingleLedgerStateReader(
 		ctx,
 		s.mockArchive,
 		ledgerSeq,

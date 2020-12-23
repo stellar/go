@@ -72,8 +72,8 @@ const (
 	sleepDuration = time.Second
 )
 
-// MakeSingleLedgerStateReader is a factory method for SingleLedgerStateReader.
-func MakeSingleLedgerStateReader(
+// NewSingleLedgerStateReader constructs a new SingleLedgerStateReader instance.
+func NewSingleLedgerStateReader(
 	ctx context.Context,
 	archive historyarchive.ArchiveInterface,
 	sequence uint32,
