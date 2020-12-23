@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/stellar/go/historyarchive"
-	"github.com/stellar/go/ingest/adapters"
 	"github.com/stellar/go/ingest/io"
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/support/errors"
@@ -23,7 +22,7 @@ type ResumeTestTestSuite struct {
 	suite.Suite
 	ledgerBackend     *ledgerbackend.MockDatabaseBackend
 	historyQ          *mockDBQ
-	historyAdapter    *adapters.MockHistoryArchiveAdapter
+	historyAdapter    *mockHistoryArchiveAdapter
 	runner            *mockProcessorsRunner
 	stellarCoreClient *mockStellarCoreClient
 	system            *system
@@ -32,7 +31,7 @@ type ResumeTestTestSuite struct {
 func (s *ResumeTestTestSuite) SetupTest() {
 	s.ledgerBackend = &ledgerbackend.MockDatabaseBackend{}
 	s.historyQ = &mockDBQ{}
-	s.historyAdapter = &adapters.MockHistoryArchiveAdapter{}
+	s.historyAdapter = &mockHistoryArchiveAdapter{}
 	s.runner = &mockProcessorsRunner{}
 	s.stellarCoreClient = &mockStellarCoreClient{}
 	s.system = &system{

@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/stellar/go/ingest/adapters"
 	"github.com/stellar/go/ingest/io"
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/services/horizon/internal/test"
@@ -60,7 +59,7 @@ type DBTestSuite struct {
 	sampleFile     string
 	sequence       uint32
 	ledgerBackend  *ledgerbackend.MockDatabaseBackend
-	historyAdapter *adapters.MockHistoryArchiveAdapter
+	historyAdapter *mockHistoryArchiveAdapter
 	system         *system
 	tt             *test.T
 }
@@ -76,7 +75,7 @@ func (s *DBTestSuite) SetupTest() {
 	s.sampleFile = filepath.Join("testdata", "sample-changes.xdr")
 
 	s.ledgerBackend = &ledgerbackend.MockDatabaseBackend{}
-	s.historyAdapter = &adapters.MockHistoryArchiveAdapter{}
+	s.historyAdapter = &mockHistoryArchiveAdapter{}
 	var err error
 	sIface, err := NewSystem(Config{
 		CoreSession:              s.tt.CoreSession(),

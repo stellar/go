@@ -12,7 +12,6 @@ import (
 
 	"github.com/stellar/go/clients/stellarcore"
 	"github.com/stellar/go/historyarchive"
-	"github.com/stellar/go/ingest/adapters"
 	ingesterrors "github.com/stellar/go/ingest/errors"
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
@@ -137,7 +136,7 @@ type system struct {
 	runner   ProcessorRunnerInterface
 
 	ledgerBackend  ledgerbackend.LedgerBackend
-	historyAdapter adapters.HistoryArchiveAdapterInterface
+	historyAdapter historyArchiveAdapterInterface
 
 	stellarCoreClient stellarCoreClient
 
@@ -212,7 +211,7 @@ func NewSystem(config Config) (System, error) {
 	historyQ := &history.Q{config.HistorySession.Clone()}
 	historyQ.Ctx = ctx
 
-	historyAdapter := adapters.MakeHistoryArchiveAdapter(archive)
+	historyAdapter := newHistoryArchiveAdapter(archive)
 
 	system := &system{
 		cancel:                      cancel,

@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/stellar/go/ingest/adapters"
 	"github.com/stellar/go/ingest/io"
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/services/horizon/internal/toid"
@@ -21,7 +20,7 @@ func TestIngestHistoryRangeStateTestSuite(t *testing.T) {
 type IngestHistoryRangeStateTestSuite struct {
 	suite.Suite
 	historyQ       *mockDBQ
-	historyAdapter *adapters.MockHistoryArchiveAdapter
+	historyAdapter *mockHistoryArchiveAdapter
 	ledgerBackend  *ledgerbackend.MockDatabaseBackend
 	runner         *mockProcessorsRunner
 	system         *system
@@ -30,7 +29,7 @@ type IngestHistoryRangeStateTestSuite struct {
 func (s *IngestHistoryRangeStateTestSuite) SetupTest() {
 	s.historyQ = &mockDBQ{}
 	s.ledgerBackend = &ledgerbackend.MockDatabaseBackend{}
-	s.historyAdapter = &adapters.MockHistoryArchiveAdapter{}
+	s.historyAdapter = &mockHistoryArchiveAdapter{}
 	s.runner = &mockProcessorsRunner{}
 	s.system = &system{
 		ctx:            context.Background(),
@@ -220,7 +219,7 @@ func TestReingestHistoryRangeStateTestSuite(t *testing.T) {
 type ReingestHistoryRangeStateTestSuite struct {
 	suite.Suite
 	historyQ       *mockDBQ
-	historyAdapter *adapters.MockHistoryArchiveAdapter
+	historyAdapter *mockHistoryArchiveAdapter
 	ledgerBackend  *mockLedgerBackend
 	runner         *mockProcessorsRunner
 	system         *system
@@ -228,7 +227,7 @@ type ReingestHistoryRangeStateTestSuite struct {
 
 func (s *ReingestHistoryRangeStateTestSuite) SetupTest() {
 	s.historyQ = &mockDBQ{}
-	s.historyAdapter = &adapters.MockHistoryArchiveAdapter{}
+	s.historyAdapter = &mockHistoryArchiveAdapter{}
 	s.ledgerBackend = &mockLedgerBackend{}
 	s.runner = &mockProcessorsRunner{}
 	s.system = &system{

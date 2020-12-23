@@ -1,4 +1,4 @@
-package adapters
+package ingest
 
 import (
 	"context"
@@ -15,7 +15,7 @@ func TestGetState_Read(t *testing.T) {
 	if !assert.NoError(t, e) {
 		return
 	}
-	haa := MakeHistoryArchiveAdapter(archive)
+	haa := newHistoryArchiveAdapter(archive)
 
 	sr, e := haa.GetState(context.Background(), 21686847)
 	if !assert.NoError(t, e) {

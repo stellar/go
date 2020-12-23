@@ -1,4 +1,4 @@
-package adapters
+package ingest
 
 import (
 	"context"
@@ -9,24 +9,24 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-// HistoryArchiveAdapter is an adapter for the historyarchive package to read from history archives
-type HistoryArchiveAdapter struct {
+// historyArchiveAdapter is an adapter for the historyarchive package to read from history archives
+type historyArchiveAdapter struct {
 	archive historyarchive.ArchiveInterface
 }
 
-type HistoryArchiveAdapterInterface interface {
+type historyArchiveAdapterInterface interface {
 	GetLatestLedgerSequence() (uint32, error)
 	BucketListHash(sequence uint32) (xdr.Hash, error)
 	GetState(ctx context.Context, sequence uint32) (io.ChangeReader, error)
 }
 
-// MakeHistoryArchiveAdapter is a factory method to make a HistoryArchiveAdapter
-func MakeHistoryArchiveAdapter(archive historyarchive.ArchiveInterface) HistoryArchiveAdapterInterface {
-	return &HistoryArchiveAdapter{archive: archive}
+// newHistoryArchiveAdapter is a constructor to make a historyArchiveAdapter
+func newHistoryArchiveAdapter(archive historyarchive.ArchiveInterface) historyArchiveAdapterInterface {
+	return &historyArchiveAdapter{archive: archive}
 }
 
 // GetLatestLedgerSequence returns the latest ledger sequence or an error
-func (haa *HistoryArchiveAdapter) GetLatestLedgerSequence() (uint32, error) {
+func (haa *historyArchiveAdapter) GetLatestLedgerSequence() (uint32, error) {
 	has, err := haa.archive.GetRootHAS()
 	if err != nil {
 		return 0, errors.Wrap(err, "could not get root HAS")
@@ -37,7 +37,7 @@ func (haa *HistoryArchiveAdapter) GetLatestLedgerSequence() (uint32, error) {
 
 // BucketListHash returns the bucket list hash to compare with hash in the
 // ledger header fetched from Stellar-Core.
-func (haa *HistoryArchiveAdapter) BucketListHash(sequence uint32) (xdr.Hash, error) {
+func (haa *historyArchiveAdapter) BucketListHash(sequence uint32) (xdr.Hash, error) {
 	exists, err := haa.archive.CategoryCheckpointExists("history", sequence)
 	if err != nil {
 		return xdr.Hash{}, errors.Wrap(err, "error checking if category checkpoint exists")
@@ -55,7 +55,7 @@ func (haa *HistoryArchiveAdapter) BucketListHash(sequence uint32) (xdr.Hash, err
 }
 
 // GetState returns a reader with the state of the ledger at the provided sequence number.
-func (haa *HistoryArchiveAdapter) GetState(ctx context.Context, sequence uint32) (io.ChangeReader, error) {
+func (haa *historyArchiveAdapter) GetState(ctx context.Context, sequence uint32) (io.ChangeReader, error) {
 	exists, err := haa.archive.CategoryCheckpointExists("history", sequence)
 	if err != nil {
 		return nil, errors.Wrap(err, "error checking if category checkpoint exists")

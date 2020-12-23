@@ -5,7 +5,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/stellar/go/ingest/adapters"
 	"github.com/stellar/go/ingest/io"
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/support/errors"
@@ -20,7 +19,7 @@ func TestBuildStateTestSuite(t *testing.T) {
 type BuildStateTestSuite struct {
 	suite.Suite
 	historyQ          *mockDBQ
-	historyAdapter    *adapters.MockHistoryArchiveAdapter
+	historyAdapter    *mockHistoryArchiveAdapter
 	ledgerBackend     *ledgerbackend.MockDatabaseBackend
 	system            *system
 	runner            *mockProcessorsRunner
@@ -32,7 +31,7 @@ type BuildStateTestSuite struct {
 func (s *BuildStateTestSuite) SetupTest() {
 	s.historyQ = &mockDBQ{}
 	s.runner = &mockProcessorsRunner{}
-	s.historyAdapter = &adapters.MockHistoryArchiveAdapter{}
+	s.historyAdapter = &mockHistoryArchiveAdapter{}
 	s.ledgerBackend = &ledgerbackend.MockDatabaseBackend{}
 	s.stellarCoreClient = &mockStellarCoreClient{}
 	s.checkpointLedger = uint32(63)
