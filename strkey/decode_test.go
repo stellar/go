@@ -88,6 +88,7 @@ func TestDecode(t *testing.T) {
 }
 
 func TestMalformed(t *testing.T) {
+	// found by go-fuzz
 	crashers := []string{
 		"\n\n5JY",
 		"UURL\xff\xff\xff\xff",
