@@ -40,7 +40,7 @@ B. an experimental remote captive core server, to which Horizon connects through
 
 Captive Core completely eliminates all Horizon issues connected Stellar-Core's database, but it requires extra time to initialize the Stellar-Core subprocess.
 
-Captive Stellar-Core can be used in both reingestion (`horizon db reingest range`) and normal Horizon operation (`horizon` or `horizon serve`). In fact, using Captive Core to reingest historical data is considerably faster without Captive Core (i.e. filling in Core's database with `stellar-core catchup` followed by `horizon db reingest range`).
+Captive Stellar-Core can be used in both reingestion (`horizon db reingest range`) and normal Horizon operation (`horizon` or `horizon serve`). In fact, using Captive Core to reingest historical data is considerably faster than without it (i.e. filling in Core's database with `stellar-core catchup` followed by `horizon db reingest range`).
 
 ### Configuration
 
