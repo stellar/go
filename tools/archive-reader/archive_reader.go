@@ -8,7 +8,7 @@ import (
 	"log"
 
 	"github.com/stellar/go/historyarchive"
-	"github.com/stellar/go/ingest/adapters"
+	"github.com/stellar/go/ingest/io"
 )
 
 func main() {
@@ -25,9 +25,8 @@ func main() {
 	if e != nil {
 		panic(e)
 	}
-	haa := adapters.MakeHistoryArchiveAdapter(archive)
 
-	sr, e := haa.GetState(context.Background(), seqNum)
+	sr, e := io.MakeSingleLedgerStateReader(context.Background(), archive, seqNum)
 	if e != nil {
 		panic(e)
 	}

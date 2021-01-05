@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/stellar/go/ingest/adapters"
 	"github.com/stellar/go/ingest/io"
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
@@ -51,7 +50,7 @@ func (statsLedgerTransactionProcessor) Commit() error {
 
 type ProcessorRunnerInterface interface {
 	SetLedgerBackend(ledgerBackend ledgerbackend.LedgerBackend)
-	SetHistoryAdapter(historyAdapter adapters.HistoryArchiveAdapterInterface)
+	SetHistoryAdapter(historyAdapter historyArchiveAdapterInterface)
 	EnableMemoryStatsLogging()
 	DisableMemoryStatsLogging()
 	RunHistoryArchiveIngestion(checkpointLedger uint32) (io.StatsChangeProcessorResults, error)
@@ -76,7 +75,7 @@ type ProcessorRunner struct {
 
 	ctx            context.Context
 	historyQ       history.IngestionQ
-	historyAdapter adapters.HistoryArchiveAdapterInterface
+	historyAdapter historyArchiveAdapterInterface
 	ledgerBackend  ledgerbackend.LedgerBackend
 	logMemoryStats bool
 }
@@ -85,7 +84,7 @@ func (s *ProcessorRunner) SetLedgerBackend(ledgerBackend ledgerbackend.LedgerBac
 	s.ledgerBackend = ledgerBackend
 }
 
-func (s *ProcessorRunner) SetHistoryAdapter(historyAdapter adapters.HistoryArchiveAdapterInterface) {
+func (s *ProcessorRunner) SetHistoryAdapter(historyAdapter historyArchiveAdapterInterface) {
 	s.historyAdapter = historyAdapter
 }
 
