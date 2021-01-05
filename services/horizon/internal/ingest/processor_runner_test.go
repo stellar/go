@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/guregu/null"
-	"github.com/stellar/go/ingest/adapters"
 	"github.com/stellar/go/ingest/io"
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/network"
@@ -91,7 +90,7 @@ func TestProcessorRunnerRunHistoryArchiveIngestionHistoryArchive(t *testing.T) {
 
 	q := &mockDBQ{}
 	defer mock.AssertExpectationsForObjects(t, q)
-	historyAdapter := &adapters.MockHistoryArchiveAdapter{}
+	historyAdapter := &mockHistoryArchiveAdapter{}
 	defer mock.AssertExpectationsForObjects(t, historyAdapter)
 	ledgerBackend := &ledgerbackend.MockDatabaseBackend{}
 	defer mock.AssertExpectationsForObjects(t, ledgerBackend)
@@ -196,7 +195,7 @@ func TestProcessorRunnerRunHistoryArchiveIngestionProtocolVersionNotSupported(t 
 
 	q := &mockDBQ{}
 	defer mock.AssertExpectationsForObjects(t, q)
-	historyAdapter := &adapters.MockHistoryArchiveAdapter{}
+	historyAdapter := &mockHistoryArchiveAdapter{}
 	defer mock.AssertExpectationsForObjects(t, historyAdapter)
 	ledgerBackend := &ledgerbackend.MockDatabaseBackend{}
 	defer mock.AssertExpectationsForObjects(t, ledgerBackend)

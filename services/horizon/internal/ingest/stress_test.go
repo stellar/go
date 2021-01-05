@@ -4,7 +4,6 @@ package ingest
 import (
 	"testing"
 
-	"github.com/stellar/go/ingest/adapters"
 	"github.com/stellar/go/ingest/io"
 	"github.com/stellar/go/support/errors"
 	"github.com/stretchr/testify/suite"
@@ -17,14 +16,14 @@ func TestStressTestStateTestSuite(t *testing.T) {
 type StressTestStateTestSuite struct {
 	suite.Suite
 	historyQ       *mockDBQ
-	historyAdapter *adapters.MockHistoryArchiveAdapter
+	historyAdapter *mockHistoryArchiveAdapter
 	runner         *mockProcessorsRunner
 	system         *system
 }
 
 func (s *StressTestStateTestSuite) SetupTest() {
 	s.historyQ = &mockDBQ{}
-	s.historyAdapter = &adapters.MockHistoryArchiveAdapter{}
+	s.historyAdapter = &mockHistoryArchiveAdapter{}
 	s.runner = &mockProcessorsRunner{}
 	s.system = &system{
 		historyQ:       s.historyQ,
