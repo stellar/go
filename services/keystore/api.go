@@ -14,6 +14,7 @@ import (
 	"github.com/rs/cors"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
+	"github.com/stellar/go/support/render/health"
 	"github.com/stellar/go/support/render/httpjson"
 	"github.com/stellar/go/support/render/problem"
 )
@@ -37,9 +38,7 @@ func (s *Service) wrapMiddleware(handler http.Handler) http.Handler {
 func ServeMux(s *Service) http.Handler {
 	mux := http.NewServeMux()
 	mux.Handle("/keys", s.wrapMiddleware(s.keysHTTPMethodHandler()))
-	mux.Handle("/health", s.wrapMiddleware(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	})))
+	mux.Handle("/health", s.wrapMiddleware(health.PassHandler{}))
 	return mux
 }
 
