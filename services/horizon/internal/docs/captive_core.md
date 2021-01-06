@@ -45,29 +45,16 @@ Captive Stellar-Core can be used in both reingestion (`horizon db reingest range
 ### Configuration
 
 To enable captive mode you will need to initialize some configuration variables:
+
 * (required) `ENABLE_CAPTIVE_CORE_INGESTION=true` (enabled by default since Horizon 2.0).
-* (required) If you run Captive core ...
+* (required) If you run Captive Core ...
 
   A. ... as a subprocess:
      * `STELLAR_CORE_BINARY_PATH` - defines a path to the `stellar-core` binary,
-     * (not required when running `horizon db reingest range`) `CAPTIVE_CORE_CONFIG_APPEND_PATH` - defines a path to a file to append to the Stellar Core configuration file used by captive core.
-       It must, at least, include enough details to define a quorum set. For instance, to connect to the Stellar testnet through `core-testnet1.stellar.org`:
-       ```toml
-       [[HOME_DOMAINS]]
-       HOME_DOMAIN="testnet.stellar.org"
-       QUALITY="MEDIUM"
-
-       [[VALIDATORS]]
-       NAME="sdf_testnet_1"
-       HOME_DOMAIN="testnet.stellar.org"
-       PUBLIC_KEY="GDKXE2OZMJIPOSLNA6N6F2BVCI3O777I2OOC4BV7VOYUEHYX7RTRYA7Y"
-       ADDRESS="core-testnet1.stellar.org"
-       ```
+     * (not required when running `horizon db reingest range`) `CAPTIVE_CORE_CONFIG_APPEND_PATH` - defines a path to a file to append to the Stellar Core configuration file used by captive core. It must, at least, include enough details to define a quorum set. Refer [below](#configure-captive-core) for an example stub connecting to the Stellar testnet SDF servers.
   
-       The full configuration to be used will be printed out by Horizon when running horizon with `--log-level debug`
-  
-  B. ... using the experimental captive core server:
-     * `REMOTE_CAPTIVE_CORE_URL` - url to access the remote captive core server
+  B. ... using the experimental Captive Core server:
+     * `REMOTE_CAPTIVE_CORE_URL` - URL to access the remote captive core server
   
 * (optional) `CAPTIVE_CORE_HTTP_PORT` - HTTP port for Captive Core to listen on (0 disables the HTTP server)
 
@@ -264,10 +251,12 @@ REMOTE_CAPTIVE_CORE_URL='http://captivecore.local:8000'
 " | sudo tee /etc/default/stellar-horizon
 ```
 
-Then just run it as usual:
+Then just run it as usual, directly from the command-line or as a service:
 
 ```
 stellar-horizon-cmd serve
+# or
+sudo systemctl restart stellar-horizon
 ```
 
 #### Serving Instance
@@ -282,7 +271,7 @@ ENABLE_CAPTIVE_CORE_INGESTION=false
 STELLAR_CORE_URL='http://captivecore.local:11626'
 REMOTE_CAPTIVE_CORE_URL='http://captivecore.local:8000'
 " | sudo tee /etc/default/stellar-horizon
-stellar-horizon-cmd serve
+sudo systemctl restart stellar-horizon
 ```
 
 At this point, you should be able to hit port 8000 on the above instance and watch the `ingest_latest_ledger` value grow.
