@@ -540,10 +540,11 @@ func TestCaptiveGetLedger(t *testing.T) {
 		}
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
 	mockRunner := &stellarCoreRunnerMock{}
 	mockRunner.On("catchup", uint32(65), uint32(66)).Return(nil)
 	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(metaChan))
-	mockRunner.On("context").Return(context.Background())
+	mockRunner.On("context").Return(ctx)
 
 	mockArchive := &historyarchive.MockArchive{}
 	mockArchive.
@@ -584,29 +585,45 @@ func TestCaptiveGetLedger(t *testing.T) {
 	// next sequence number didn't get consumed
 	tt.Equal(uint32(66), captiveBackend.nextLedger)
 
-	found, meta, err = captiveBackend.GetLedger(66)
+	mockRunner.On("close").Return(nil).Run(func(args mock.Arguments) {
+		cancel()
+	}).Once()
+
+	_, _, err = captiveBackend.GetLedger(66)
 	tt.NoError(err)
-	tt.True(found)
-	tt.Equal(xdr.Uint32(66), meta.V0.LedgerHeader.Header.LedgerSeq)
 
-	_, _, err = captiveBackend.GetLedger(67)
-	tt.Errorf(err, "reading past bounded range (requested sequence=67, last ledger in range=66)")
+	// closes after last ledger is consumed
+	tt.True(captiveBackend.isClosed())
 
-	// despite reading the last ledger, captiveBackend should *NOT* be closed
-	tt.False(captiveBackend.isClosed())
-
-	var latest uint32
-	latest, err = captiveBackend.GetLatestLedgerSequence()
+	// we should be able to call last ledger even after get ledger is closed
+	_, _, err = captiveBackend.GetLedger(66)
 	tt.NoError(err)
-	tt.Equal(latest, uint32(66))
-
-	var prepared bool
-	prepared, err = captiveBackend.IsPrepared(BoundedRange(66, 66))
-	tt.NoError(err)
-	tt.True(prepared)
 
 	mockArchive.AssertExpectations(t)
 	mockRunner.AssertExpectations(t)
+}
+
+func TestCaptiveGetLedger_NextLedgerIsDifferentToLedgerFromBuffer(t *testing.T) {
+	metaChan := make(chan metaResult, 100)
+
+	for i := 64; i <= 65; i++ {
+		meta := buildLedgerCloseMeta(testLedgerHeader{sequence: uint32(i)})
+		metaChan <- metaResult{
+			LedgerCloseMeta: &meta,
+		}
+	}
+	{
+		meta := buildLedgerCloseMeta(testLedgerHeader{sequence: uint32(68)})
+		metaChan <- metaResult{
+			LedgerCloseMeta: &meta,
+		}
+	}
+
+	mockRunner := &stellarCoreRunnerMock{}
+	mockRunner.On("catchup", uint32(65), uint32(66)).Return(nil)
+	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(metaChan))
+	mockRunner.On("context").Return(context.Background())
+	mockRunner.On("close").Return(nil)
 }
 
 func TestCaptiveStellarCore_PrepareRangeAfterClose(t *testing.T) {
@@ -648,54 +665,6 @@ func TestCaptiveStellarCore_PrepareRangeAfterClose(t *testing.T) {
 	mockArchive.AssertExpectations(t)
 }
 
-func TestCaptiveGetLedger_NextLedgerIsDifferentToLedgerFromBuffer(t *testing.T) {
-	tt := assert.New(t)
-	metaChan := make(chan metaResult, 100)
-
-	for i := 64; i <= 65; i++ {
-		meta := buildLedgerCloseMeta(testLedgerHeader{sequence: uint32(i)})
-		metaChan <- metaResult{
-			LedgerCloseMeta: &meta,
-		}
-	}
-	{
-		meta := buildLedgerCloseMeta(testLedgerHeader{sequence: uint32(68)})
-		metaChan <- metaResult{
-			LedgerCloseMeta: &meta,
-		}
-	}
-
-	mockRunner := &stellarCoreRunnerMock{}
-	mockRunner.On("catchup", uint32(65), uint32(66)).Return(nil)
-	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(metaChan))
-	mockRunner.On("context").Return(context.Background())
-	mockRunner.On("close").Return(nil)
-
-	mockArchive := &historyarchive.MockArchive{}
-	mockArchive.
-		On("GetRootHAS").
-		Return(historyarchive.HistoryArchiveState{
-			CurrentLedger: uint32(200),
-		}, nil)
-
-	captiveBackend := CaptiveStellarCore{
-		archive: mockArchive,
-		stellarCoreRunnerFactory: func(_ stellarCoreRunnerMode) (stellarCoreRunnerInterface, error) {
-			return mockRunner, nil
-		},
-		checkpointManager: historyarchive.NewCheckpointManager(64),
-	}
-
-	err := captiveBackend.PrepareRange(BoundedRange(65, 66))
-	assert.NoError(t, err)
-
-	_, _, err = captiveBackend.GetLedger(66)
-	tt.EqualError(err, "unexpected ledger sequence (expected=66 actual=68)")
-
-	mockArchive.AssertExpectations(t)
-	mockRunner.AssertExpectations(t)
-}
-
 func TestCaptiveGetLedger_ErrReadingMetaResult(t *testing.T) {
 	tt := assert.New(t)
 	metaChan := make(chan metaResult, 100)
@@ -720,6 +689,7 @@ func TestCaptiveGetLedger_ErrReadingMetaResult(t *testing.T) {
 		cancel()
 	}).Once()
 
+	// even if the request to fetch the latest checkpoint succeeds, we should fail at creating the subprocess
 	mockArchive := &historyarchive.MockArchive{}
 	mockArchive.
 		On("GetRootHAS").
@@ -749,6 +719,48 @@ func TestCaptiveGetLedger_ErrReadingMetaResult(t *testing.T) {
 
 	// closes if there is an error getting ledger
 	tt.True(captiveBackend.isClosed())
+
+	mockArchive.AssertExpectations(t)
+	mockRunner.AssertExpectations(t)
+}
+
+func TestCaptiveGetLedger_ErrClosingAfterLastLedger(t *testing.T) {
+	tt := assert.New(t)
+	metaChan := make(chan metaResult, 100)
+
+	for i := 64; i <= 66; i++ {
+		meta := buildLedgerCloseMeta(testLedgerHeader{sequence: uint32(i)})
+		metaChan <- metaResult{
+			LedgerCloseMeta: &meta,
+		}
+	}
+
+	mockRunner := &stellarCoreRunnerMock{}
+	mockRunner.On("catchup", uint32(65), uint32(66)).Return(nil)
+	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(metaChan))
+	mockRunner.On("context").Return(context.Background())
+	mockRunner.On("close").Return(fmt.Errorf("transient error")).Once()
+
+	mockArchive := &historyarchive.MockArchive{}
+	mockArchive.
+		On("GetRootHAS").
+		Return(historyarchive.HistoryArchiveState{
+			CurrentLedger: uint32(200),
+		}, nil)
+
+	captiveBackend := CaptiveStellarCore{
+		archive: mockArchive,
+		stellarCoreRunnerFactory: func(_ stellarCoreRunnerMode) (stellarCoreRunnerInterface, error) {
+			return mockRunner, nil
+		},
+		checkpointManager: historyarchive.NewCheckpointManager(64),
+	}
+
+	err := captiveBackend.PrepareRange(BoundedRange(65, 66))
+	assert.NoError(t, err)
+
+	_, _, err = captiveBackend.GetLedger(66)
+	tt.EqualError(err, "error closing session: transient error")
 
 	mockArchive.AssertExpectations(t)
 	mockRunner.AssertExpectations(t)
