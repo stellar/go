@@ -16,13 +16,13 @@ Building Horizon requires the following developer tools:
 - [mercurial](https://www.mercurial-scm.org/) (needed for `go-dep`)
 
 1. Set your [GOPATH](https://github.com/golang/go/wiki/GOPATH) environment variable, if you haven't already. The default `GOPATH` is `$HOME/go`. When building any Go package or application the binaries will be installed by default to `$GOPATH/bin`.
-2. Checkout the code into any directory you prefer:
+2. Clone the code into any directory you prefer:
    ```
-   git checkout https://github.com/stellar/go
+   git clone https://github.com/stellar/go
    ```
    Or if you prefer to develop inside `GOPATH` check it out to `$GOPATH/src/github.com/stellar/go`:
    ```
-   git checkout https://github.com/stellar/go $GOPATH/src/github.com/stellar/go
+   git clone https://github.com/stellar/go $GOPATH/src/github.com/stellar/go
    ```
    If developing inside `GOPATH` set the `GO111MODULE=on` environment variable to turn on Modules for managing dependencies. See the repository [README](../../../../README.md#dependencies) for more information.
 3. Change to the directory where the repository is checked out. e.g. `cd go`, or if developing inside the `GOPATH`, `cd $GOPATH/src/github.com/stellar/go`.
@@ -40,7 +40,8 @@ Horizon uses a Postgres database backend to store test fixtures and record infor
 ### Database problems?
 1. Depending on your installation's defaults, you may need to configure a Postgres DB user with appropriate permissions for Horizon to access the database you created. Refer to the [Postgres documentation](https://www.postgresql.org/docs/current/sql-createuser.html) for details. Note: Remember to restart the Postgres server after making any changes to `pg_hba.conf` (the Postgres configuration file), or your changes won't take effect!
 2. Make sure you pass the appropriate database name and user (and port, if using something non-standard) to Horizon using `--db-url`. One way is to use a Postgres URI with the following form: `postgres://USERNAME:PASSWORD@localhost:PORT/DB_NAME`.
-3. If you get the error `connect failed: pq: SSL is not enabled on the server`, add `?sslmode=disable` to the end of the Postgres URI to allow connecting without SSL.
+3. If you get the error `connect failed: pq: SSL is not enabled on the server`, add `?sslmode=disable` to the end of the Postgres URI to allow connecting without SSL. 
+If you get the error `zsh: no matches found: postgres://localhost/horizon_dev?sslmode=disable`, wrap the url with single quotes `horizon db init --db-url 'postgres://localhost/horizon_dev?sslmode=disable'`
 4. If your server is responding strangely, and you've exhausted all other options, reboot the machine. On some systems `service postgresql restart` or equivalent may not fully reset the state of the server.
 
 ## Run tests

@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
-	"io"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -129,13 +128,6 @@ type testLedgerHeader struct {
 	sequence           uint32
 	hash               string
 	previousLedgerHash string
-}
-
-func writeLedgerHeader(w io.Writer, header testLedgerHeader) {
-	err := xdr.MarshalFramed(w, buildLedgerCloseMeta(header))
-	if err != nil {
-		panic(err)
-	}
 }
 
 func TestCaptiveNew(t *testing.T) {
@@ -612,7 +604,6 @@ func TestCaptiveGetLedger(t *testing.T) {
 }
 
 func TestCaptiveGetLedger_NextLedgerIsDifferentToLedgerFromBuffer(t *testing.T) {
-	tt := assert.New(t)
 	metaChan := make(chan metaResult, 100)
 
 	for i := 64; i <= 65; i++ {
@@ -633,30 +624,45 @@ func TestCaptiveGetLedger_NextLedgerIsDifferentToLedgerFromBuffer(t *testing.T) 
 	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(metaChan))
 	mockRunner.On("context").Return(context.Background())
 	mockRunner.On("close").Return(nil)
+}
 
+func TestCaptiveStellarCore_PrepareRangeAfterClose(t *testing.T) {
+	executablePath := "/etc/stellar-core"
+	networkPassphrase := network.PublicNetworkPassphrase
+	historyURLs := []string{"http://localhost"}
+
+	captiveStellarCore, err := NewCaptive(
+		CaptiveCoreConfig{
+			BinaryPath:         executablePath,
+			NetworkPassphrase:  networkPassphrase,
+			HistoryArchiveURLs: historyURLs,
+		},
+	)
+	assert.NoError(t, err)
+
+	assert.NoError(t, captiveStellarCore.Close())
+
+	assert.EqualError(
+		t,
+		captiveStellarCore.PrepareRange(BoundedRange(65, 66)),
+		"error starting prepare range: opening subprocess: error getting latest checkpoint sequence: "+
+			"error getting root HAS: Get \"http://localhost/.well-known/stellar-history.json\": context canceled",
+	)
+
+	// even if the request to fetch the latest checkpoint succeeds, we should fail at creating the subprocess
 	mockArchive := &historyarchive.MockArchive{}
 	mockArchive.
 		On("GetRootHAS").
 		Return(historyarchive.HistoryArchiveState{
 			CurrentLedger: uint32(200),
 		}, nil)
-
-	captiveBackend := CaptiveStellarCore{
-		archive: mockArchive,
-		stellarCoreRunnerFactory: func(_ stellarCoreRunnerMode) (stellarCoreRunnerInterface, error) {
-			return mockRunner, nil
-		},
-		checkpointManager: historyarchive.NewCheckpointManager(64),
-	}
-
-	err := captiveBackend.PrepareRange(BoundedRange(65, 66))
-	assert.NoError(t, err)
-
-	_, _, err = captiveBackend.GetLedger(66)
-	tt.EqualError(err, "unexpected ledger sequence (expected=66 actual=68)")
-
+	captiveStellarCore.archive = mockArchive
+	assert.EqualError(
+		t,
+		captiveStellarCore.PrepareRange(BoundedRange(65, 66)),
+		"error starting prepare range: opening subprocess: error running stellar-core: context canceled",
+	)
 	mockArchive.AssertExpectations(t)
-	mockRunner.AssertExpectations(t)
 }
 
 func TestCaptiveGetLedger_ErrReadingMetaResult(t *testing.T) {
@@ -683,6 +689,7 @@ func TestCaptiveGetLedger_ErrReadingMetaResult(t *testing.T) {
 		cancel()
 	}).Once()
 
+	// even if the request to fetch the latest checkpoint succeeds, we should fail at creating the subprocess
 	mockArchive := &historyarchive.MockArchive{}
 	mockArchive.
 		On("GetRootHAS").
@@ -754,6 +761,60 @@ func TestCaptiveGetLedger_ErrClosingAfterLastLedger(t *testing.T) {
 
 	_, _, err = captiveBackend.GetLedger(66)
 	tt.EqualError(err, "error closing session: transient error")
+
+	mockArchive.AssertExpectations(t)
+	mockRunner.AssertExpectations(t)
+}
+
+func TestCaptiveAfterClose(t *testing.T) {
+	metaChan := make(chan metaResult, 100)
+
+	for i := 64; i <= 66; i++ {
+		meta := buildLedgerCloseMeta(testLedgerHeader{sequence: uint32(i)})
+		metaChan <- metaResult{
+			LedgerCloseMeta: &meta,
+		}
+	}
+
+	mockRunner := &stellarCoreRunnerMock{}
+	ctx, cancel := context.WithCancel(context.Background())
+	mockRunner.On("catchup", uint32(65), uint32(66)).Return(nil)
+	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(metaChan))
+	mockRunner.On("context").Return(ctx)
+	mockRunner.On("close").Return(nil).Once()
+
+	mockArchive := &historyarchive.MockArchive{}
+	mockArchive.
+		On("GetRootHAS").
+		Return(historyarchive.HistoryArchiveState{
+			CurrentLedger: uint32(200),
+		}, nil)
+
+	captiveBackend := CaptiveStellarCore{
+		archive: mockArchive,
+		stellarCoreRunnerFactory: func(_ stellarCoreRunnerMode) (stellarCoreRunnerInterface, error) {
+			return mockRunner, nil
+		},
+		checkpointManager: historyarchive.NewCheckpointManager(64),
+		cancel:            cancel,
+	}
+
+	boundedRange := BoundedRange(65, 66)
+	err := captiveBackend.PrepareRange(boundedRange)
+	assert.NoError(t, err)
+
+	assert.NoError(t, captiveBackend.Close())
+
+	_, _, err = captiveBackend.GetLedger(boundedRange.to)
+	assert.EqualError(t, err, "session is closed, call PrepareRange first")
+
+	var prepared bool
+	prepared, err = captiveBackend.IsPrepared(boundedRange)
+	assert.False(t, prepared)
+	assert.NoError(t, err)
+
+	_, err = captiveBackend.GetLatestLedgerSequence()
+	assert.EqualError(t, err, "stellar-core must be opened to return latest available sequence")
 
 	mockArchive.AssertExpectations(t)
 	mockRunner.AssertExpectations(t)

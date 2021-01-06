@@ -10,7 +10,6 @@ import (
 	"testing"
 
 	"github.com/stellar/go/historyarchive"
-	"github.com/stellar/go/ingest/adapters"
 	"github.com/stellar/go/ingest/io"
 	logpkg "github.com/stellar/go/support/log"
 	"github.com/stellar/go/xdr"
@@ -46,7 +45,7 @@ func newSampleChangeReader(output string, size int) (*sampleChangeReader, error)
 		return nil, err
 	}
 
-	historyAdapter := adapters.MakeHistoryArchiveAdapter(archive)
+	historyAdapter := newHistoryArchiveAdapter(archive)
 	checkpointLedger, err := historyAdapter.GetLatestLedgerSequence()
 	if err != nil {
 		return nil, err

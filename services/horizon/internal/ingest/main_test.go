@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/stellar/go/historyarchive"
-	"github.com/stellar/go/ingest/adapters"
 	"github.com/stellar/go/ingest/io"
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
@@ -398,7 +397,7 @@ func (m *mockProcessorsRunner) SetLedgerBackend(ledgerBackend ledgerbackend.Ledg
 	m.Called(ledgerBackend)
 }
 
-func (m *mockProcessorsRunner) SetHistoryAdapter(historyAdapter adapters.HistoryArchiveAdapterInterface) {
+func (m *mockProcessorsRunner) SetHistoryAdapter(historyAdapter historyArchiveAdapterInterface) {
 	m.Called(historyAdapter)
 }
 

@@ -1,11 +1,13 @@
 package integration
 
 import (
+	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/stellar/go/historyarchive"
 	horizoncmd "github.com/stellar/go/services/horizon/cmd"
 	"github.com/stellar/go/services/horizon/internal/db2/schema"
 	"github.com/stellar/go/services/horizon/internal/test/integration"
@@ -56,8 +58,36 @@ func TestReingestDB(t *testing.T) {
 	_, err = schema.Migrate(dbConn.DB.DB, schema.MigrateUp, 0)
 	tt.NoError(err)
 
+	// cap reachedLedger to the nearest checkpoint ledger because reingest range cannot ingest past the most
+	// recent checkpoint ledger when using captive core
+	toLedger := uint32(reachedLedger)
+	archive, err := historyarchive.Connect(horizonConfig.HistoryArchiveURLs[0], historyarchive.ConnectOptions{
+		NetworkPassphrase:   horizonConfig.NetworkPassphrase,
+		CheckpointFrequency: horizonConfig.CheckpointFrequency,
+	})
+	tt.NoError(err)
+
+	// make sure a full checkpoint has elapsed otherwise there will be nothing to reingest
+	var latestCheckpoint uint32
+	publishedFirstCheckpoint := func() bool {
+		has, requestErr := archive.GetRootHAS()
+		tt.NoError(requestErr)
+		latestCheckpoint = has.CurrentLedger
+		return latestCheckpoint > 1
+	}
+	tt.Eventually(publishedFirstCheckpoint, 10*time.Second, time.Second)
+
+	if toLedger > latestCheckpoint {
+		toLedger = latestCheckpoint
+	}
+
+	horizonConfig.CaptiveCoreConfigAppendPath = filepath.Join(
+		filepath.Dir(horizonConfig.CaptiveCoreConfigAppendPath),
+		"captive-core-reingest-range-integration-tests.cfg",
+	)
+
 	// Reingest into the DB
-	err = horizoncmd.RunDBReingestRange(1, uint32(reachedLedger), false, 1, horizonConfig)
+	err = horizoncmd.RunDBReingestRange(1, toLedger, false, 1, horizonConfig)
 	tt.NoError(err)
 }
 
@@ -69,9 +99,8 @@ func TestResumeFromInitializedDB(t *testing.T) {
 	oldDBURL := itest.GetHorizonConfig().DatabaseURL
 	itestConfig := protocol15Config
 	itestConfig.PostgresURL = oldDBURL
-	itest.Shutdown()
 
-	itest = integration.NewTest(t, itestConfig)
+	itest.RestartHorizon()
 
 	successfullyResumed := func() bool {
 		root, err := itest.Client().Root()
