@@ -5,6 +5,20 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+## v2.0.0 Beta
+
+**THIS IS A BETA RELEASE! DO NOT USE IN PRODUCTION. The release may contain critical bugs. It's not suitable for production use.**
+
+### Before you upgrade
+
+Please read the [Captive Core](https://github.com/stellar/go/blob/release-horizon-v2.0.0-beta/services/horizon/internal/docs/captive_core.md) doc which contains new requirements and migration guide.
+
+### Captive Stellar-Core
+
+Introducing the beta release with Captive Stellar-Core mode enabled by default. Captive mode relaxes Horizon's operational requirements. It allows running Horizon without a fully fledged Core instance and, most importantly, without a Core database. More information about this new mode can be found in [Captive Core](https://github.com/stellar/go/blob/release-horizon-v2.0.0-beta/services/horizon/internal/docs/captive_core.md) doc.
+
+This version may contain bugs. If you run into issues please check [Known Issues](https://github.com/stellar/go/blob/release-horizon-v2.0.0-beta/services/horizon/internal/docs/captive_core.md#known-issues) or [report an issue](https://github.com/stellar/go/issues/new/choose). Please ask questions in [Keybase](https://keybase.io/team/stellar.public) or [Stack Exchange](https://stellar.stackexchange.com/).
+
 ## v1.13.0
 
 **Upgrading to this version from version before v1.10.0 will trigger state rebuild. During this process (which can take several minutes) it will not ingest new ledgers.**
