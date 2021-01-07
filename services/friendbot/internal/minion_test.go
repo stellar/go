@@ -16,11 +16,11 @@ import (
 // in which Minion.Run() will try to send multiple messages to a channel that gets closed
 // immediately after receiving one message.
 func TestMinion_NoChannelErrors(t *testing.T) {
-	mockSubmitTransaction := func(minion *Minion, hclient *horizonclient.Client, tx string) (txn *hProtocol.Transaction, err error) {
+	mockSubmitTransaction := func(minion *Minion, hclient horizonclient.ClientInterface, tx string) (txn *hProtocol.Transaction, err error) {
 		return txn, nil
 	}
 
-	mockCheckSequenceRefresh := func(minion *Minion, hclient *horizonclient.Client) (err error) {
+	mockCheckSequenceRefresh := func(minion *Minion, hclient horizonclient.ClientInterface) (err error) {
 		return errors.New("could not refresh sequence")
 	}
 
@@ -78,14 +78,14 @@ func TestMinion_CorrectNumberOfTxSubmissions(t *testing.T) {
 		mux          sync.Mutex
 	)
 
-	mockSubmitTransaction := func(minion *Minion, hclient *horizonclient.Client, tx string) (txn *hProtocol.Transaction, err error) {
+	mockSubmitTransaction := func(minion *Minion, hclient horizonclient.ClientInterface, tx string) (txn *hProtocol.Transaction, err error) {
 		mux.Lock()
 		numTxSubmits++
 		mux.Unlock()
 		return txn, nil
 	}
 
-	mockCheckSequenceRefresh := func(minion *Minion, hclient *horizonclient.Client) (err error) {
+	mockCheckSequenceRefresh := func(minion *Minion, hclient horizonclient.ClientInterface) (err error) {
 		return nil
 	}
 

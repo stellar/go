@@ -20,14 +20,14 @@ type Minion struct {
 	Keypair         *keypair.Full
 	BotAccount      txnbuild.Account
 	BotKeypair      *keypair.Full
-	Horizon         *horizonclient.Client
+	Horizon         horizonclient.ClientInterface
 	Network         string
 	StartingBalance string
 	BaseFee         int64
 
 	// Mockable functions
-	SubmitTransaction    func(minion *Minion, hclient *horizonclient.Client, tx string) (*hProtocol.Transaction, error)
-	CheckSequenceRefresh func(minion *Minion, hclient *horizonclient.Client) error
+	SubmitTransaction    func(minion *Minion, hclient horizonclient.ClientInterface, tx string) (*hProtocol.Transaction, error)
+	CheckSequenceRefresh func(minion *Minion, hclient horizonclient.ClientInterface) error
 
 	// Uninitialized.
 	forceRefreshSequence bool
@@ -60,7 +60,7 @@ func (minion *Minion) Run(destAddress string, resultChan chan SubmitResult) {
 }
 
 // SubmitTransaction should be passed to the Minion.
-func SubmitTransaction(minion *Minion, hclient *horizonclient.Client, tx string) (*hProtocol.Transaction, error) {
+func SubmitTransaction(minion *Minion, hclient horizonclient.ClientInterface, tx string) (*hProtocol.Transaction, error) {
 	result, err := hclient.SubmitTransactionXDR(tx)
 	if err != nil {
 		errStr := "submitting tx to horizon"
@@ -84,7 +84,7 @@ func SubmitTransaction(minion *Minion, hclient *horizonclient.Client, tx string)
 
 // CheckSequenceRefresh establishes the minion's initial sequence number, if needed.
 // This should also be passed to the minion.
-func CheckSequenceRefresh(minion *Minion, hclient *horizonclient.Client) error {
+func CheckSequenceRefresh(minion *Minion, hclient horizonclient.ClientInterface) error {
 	if minion.Account.Sequence != 0 && !minion.forceRefreshSequence {
 		return nil
 	}

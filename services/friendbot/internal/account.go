@@ -30,7 +30,7 @@ func (a Account) GetSequenceNumber() (int64, error) {
 }
 
 // RefreshSequenceNumber gets an Account's correct in-memory sequence number from Horizon.
-func (a *Account) RefreshSequenceNumber(hclient *horizonclient.Client) error {
+func (a *Account) RefreshSequenceNumber(hclient horizonclient.ClientInterface) error {
 	accountRequest := horizonclient.AccountRequest{AccountID: a.GetAccountID()}
 	accountDetail, err := hclient.AccountDetail(accountRequest)
 	if err != nil {
