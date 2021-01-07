@@ -9,7 +9,7 @@ import (
 
 // Change is a developer friendly representation of LedgerEntryChanges.
 // It also provides some helper functions to quickly check if a given
-// change has occured in an entry.
+// change has occurred in an entry.
 //
 // If an entry is created: Pre is nil and Post is not nil.
 // If an entry is updated: Pre is not nil and Post is not nil.

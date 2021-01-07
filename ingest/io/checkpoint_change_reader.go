@@ -18,12 +18,10 @@ type readResult struct {
 	e           error
 }
 
-// SingleLedgerStateReader is a streaming implementation that reads ledger entries
-// from buckets for a given HistoryArchiveState (single ledger/checkpoint).
-// SingleLedgerStateReader hides internal structure of buckets from the user so
-// entries returned by `Read()` are exactly the ledger entries present at the given
-// ledger.
-type SingleLedgerStateReader struct {
+// CheckpointChangeReader is a ChangeReader which returns Changes from a history archive
+// snapshot. The Changes produced by a CheckpointChangeReader reflect the state of the Stellar
+// network at a particular checkpoint ledger sequence.
+type CheckpointChangeReader struct {
 	ctx        context.Context
 	has        *historyarchive.HistoryArchiveState
 	archive    historyarchive.ArchiveInterface
@@ -39,8 +37,8 @@ type SingleLedgerStateReader struct {
 	sleep                           func(time.Duration)
 }
 
-// Ensure SingleLedgerStateReader implements ChangeReader
-var _ ChangeReader = &SingleLedgerStateReader{}
+// Ensure CheckpointChangeReader implements ChangeReader
+var _ ChangeReader = &CheckpointChangeReader{}
 
 // tempSet is an interface that must be implemented by stores that
 // hold temporary set of objects for state reader. The implementation
@@ -72,12 +70,12 @@ const (
 	sleepDuration = time.Second
 )
 
-// NewSingleLedgerStateReader constructs a new SingleLedgerStateReader instance.
-func NewSingleLedgerStateReader(
+// NewCheckpointChangeReader constructs a new CheckpointChangeReader instance.
+func NewCheckpointChangeReader(
 	ctx context.Context,
 	archive historyarchive.ArchiveInterface,
 	sequence uint32,
-) (*SingleLedgerStateReader, error) {
+) (*CheckpointChangeReader, error) {
 	has, err := archive.GetCheckpointHAS(sequence)
 	if err != nil {
 		return nil, errors.Wrapf(err, "unable to get checkpoint HAS at ledger sequence %d", sequence)
@@ -89,7 +87,7 @@ func NewSingleLedgerStateReader(
 		return nil, errors.Wrap(err, "unable to get open temp store")
 	}
 
-	return &SingleLedgerStateReader{
+	return &CheckpointChangeReader{
 		ctx:        ctx,
 		has:        &has,
 		archive:    archive,
@@ -103,7 +101,7 @@ func NewSingleLedgerStateReader(
 	}, nil
 }
 
-func (msr *SingleLedgerStateReader) bucketExists(hash historyarchive.Hash) (bool, error) {
+func (msr *CheckpointChangeReader) bucketExists(hash historyarchive.Hash) (bool, error) {
 	duration := sleepDuration
 	var exists bool
 	var err error
@@ -144,7 +142,7 @@ func (msr *SingleLedgerStateReader) bucketExists(hash historyarchive.Hash) (bool
 // In such algorithm we just need to store a set of keys that require much less space.
 // The memory requirements will be lowered when CAP-0020 is live and older buckets are
 // rewritten. Then, we will only need to keep track of `DEADENTRY`.
-func (msr *SingleLedgerStateReader) streamBuckets() {
+func (msr *CheckpointChangeReader) streamBuckets() {
 	defer func() {
 		err := msr.tempStore.Close()
 		if err != nil {
@@ -200,7 +198,7 @@ func (msr *SingleLedgerStateReader) streamBuckets() {
 // If any errors are encountered while reading from `stream`, readBucketEntry will
 // retry the operation using a new *historyarchive.XdrStream.
 // The total number of retries will not exceed `maxStreamRetries`.
-func (msr *SingleLedgerStateReader) readBucketEntry(stream *historyarchive.XdrStream, hash historyarchive.Hash) (
+func (msr *CheckpointChangeReader) readBucketEntry(stream *historyarchive.XdrStream, hash historyarchive.Hash) (
 	xdr.BucketEntry,
 	error,
 ) {
@@ -244,7 +242,7 @@ func (msr *SingleLedgerStateReader) readBucketEntry(stream *historyarchive.XdrSt
 	return entry, err
 }
 
-func (msr *SingleLedgerStateReader) newXDRStream(hash historyarchive.Hash) (
+func (msr *CheckpointChangeReader) newXDRStream(hash historyarchive.Hash) (
 	*historyarchive.XdrStream,
 	error,
 ) {
@@ -259,7 +257,7 @@ func (msr *SingleLedgerStateReader) newXDRStream(hash historyarchive.Hash) (
 }
 
 // streamBucketContents pushes value onto the read channel, returning false when the channel needs to be closed otherwise true
-func (msr *SingleLedgerStateReader) streamBucketContents(hash historyarchive.Hash, oldestBucket bool) bool {
+func (msr *CheckpointChangeReader) streamBucketContents(hash historyarchive.Hash, oldestBucket bool) bool {
 	rdr, e := msr.newXDRStream(hash)
 	if e != nil {
 		msr.readChan <- msr.error(
@@ -466,7 +464,7 @@ LoopBucketEntry:
 }
 
 // Read returns a new ledger entry change on each call, returning io.EOF when the stream ends.
-func (msr *SingleLedgerStateReader) Read() (Change, error) {
+func (msr *CheckpointChangeReader) Read() (Change, error) {
 	msr.streamOnce.Do(func() {
 		go msr.streamBuckets()
 	})
@@ -487,16 +485,16 @@ func (msr *SingleLedgerStateReader) Read() (Change, error) {
 	}, nil
 }
 
-func (msr *SingleLedgerStateReader) error(err error) readResult {
+func (msr *CheckpointChangeReader) error(err error) readResult {
 	return readResult{xdr.LedgerEntryChange{}, err}
 }
 
-func (msr *SingleLedgerStateReader) close() {
+func (msr *CheckpointChangeReader) close() {
 	close(msr.done)
 }
 
 // Close should be called when reading is finished.
-func (msr *SingleLedgerStateReader) Close() error {
+func (msr *CheckpointChangeReader) Close() error {
 	msr.closeOnce.Do(msr.close)
 	return nil
 }

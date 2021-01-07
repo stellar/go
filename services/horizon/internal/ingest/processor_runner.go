@@ -170,7 +170,7 @@ func (s *ProcessorRunner) checkIfProtocolVersionSupported(ledgerSequence uint32)
 // (ex. you run it in your infrastructure).
 // The hashes of actual buckets of this HAS file are checked using
 // historyarchive.XdrStream.SetExpectedHash (this is done in
-// SingleLedgerStateReader).
+// CheckpointChangeReader).
 func (s *ProcessorRunner) validateBucketList(ledgerSequence uint32) error {
 	historyBucketListHash, err := s.historyAdapter.BucketListHash(ledgerSequence)
 	if err != nil {
