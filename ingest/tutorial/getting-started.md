@@ -1,0 +1,306 @@
+# Ingestion Library
+TODO
+
+
+
+# Architecture
+This is described in a little more detail in `doc.go`, its accompanying examples, and but from a high level, the ingestion library is broken down into a few modular components:
+
+
+```txt
+                 [ Processors ]
+                       |
+                      / \
+                     /   \
+                    /     \
+              [Change]   [Transaction]
+
+                [ Ledger Backend ]
+                        |
+                     one of...
+      --------|---------|-----------|----------|
+     |        |         |           |          |
+  Captive  Database   History    Remote       etc.
+  Core                Archive    Captive
+                                 Core 
+```
+
+
+
+# Hello, World!
+As is tradition, we'll start with a simplistic example that ingests a single ledger from the network. We're immediately faced with a decision, though: _What's the backend?_ We'll use a Captive Stellar-Core backend in this example because it requires no setup, but there are number of alternatives available. You could also use:
+
+  - a **database** (via `NewDatabaseBackend()`), which ...
+
+  - a **history archive** (via either `NewHistoryArchiveBackendFromURL()` if looking up a remote archive, or `NewHistoryArchiveBackendFromArchive()` if doing something a little more specialized), which ...
+
+  - a **remote Captive Core** instance (via `NewRemoteCaptive()`), which works much like Captive Core, but points to an instance that isn't (necessarily) running locally;
+
+  - TODO finish explaining these ^
+
+
+...or a completely customized backend, as long as it fulfills the interface requirements of `LedgerBackend`.
+
+With that in mind, here's a minimalist example of the ingestion library:
+
+```go
+package main
+
+import (
+  "fmt"
+  backends "github.com/stellar/go/ingest/ledgerbackend"
+)
+
+func main() {
+  captiveCore, err := backends.NewCaptive(config)
+  panicIf(err)
+  defer captiveCore.Close()
+
+  // Prepare a single ledger to be ingested,
+  captiveCore.PrepareRange(backends.BoundedRange(123456, 123457))
+
+  // then retrieve it:
+  ok, ledger, err := captiveCore.GetLedger(123456)
+
+  if !ok {
+    fmt.Errorf("The ledger doesn't exist on the backend.\n")
+    return
+  }
+
+  panicIf(err)
+
+  // Now `ledger` is a raw `xdr.LedgerCloseMeta` object containing the  
+  // transactions contained within this ledger.
+  fmt.Printf("\nHello, Protocol %d.\n",
+    ledger.V0.LedgerHeader.Header.LedgerVersion)
+}
+```
+
+_(The `panicIf` function is defined in the [footnotes](#footnotes); it's used here for error-checking brevity.)_
+
+Notice that the mysterious `config` variable isn't defined. This will be environment-specific and users should consult both the [Captive Core documentation](../services/horizon/internal/docs/captive-core.md) and the [config docs](./ledgerbackend/captive_core_backend.go#L104-L131) directly for more details if they want to use this in production. For now, though, we'll have some hardcoded values:
+
+```go
+config := backends.CaptiveCoreConfig{
+    BinaryPath:        "/usr/bin/stellar-core",
+    ConfigAppendPath:  "/etc/default/stellar-captive-core-stub.toml",
+    NetworkPassphrase: "Test SDF Network ; September 2015",
+    HistoryArchiveURLs: []string{
+      "https://history.stellar.org/prd/core-testnet/core_testnet_001",
+    },
+  }
+```
+
+Again, see the format of the stub file, etc. in the linked docs.
+
+Running this should dump a ton of logs while Captive Core boots up, downloads a history archive, and ultimately greets you with the latest version of the Stellar network:
+
+```
+$ go run ./start.go 
+INFO[...] default: Config from /tmp/captive-stellar-core365405852/stellar-core.conf  pid=20574
+INFO[...] default: RUN_STANDALONE enabled in configuration file - node will not function properly with most networks  pid=20574
+INFO[...] default: Generated QUORUM_SET: {              pid=20574
+INFO[...] "t" : 2,                                      pid=20574
+INFO[...] "v" : [ "sdf_testnet_2", "sdf_testnet_3", "sdf_testnet_1" ]  pid=20574
+INFO[...] }                                             pid=20574
+INFO[...] default: Assigning calculated value of 1 to FAILURE_SAFETY  pid=20574
+INFO[...] Database: Connecting to: sqlite3://:memory:   pid=20574
+INFO[...] SCP: LocalNode::LocalNode@GCVAA qSet: 59d361  pid=20574
+INFO[...] default: *                                    pid=20574
+INFO[...] default: * The database has been initialized  pid=20574
+INFO[...] default: *                                    pid=20574
+INFO[...] Database: Applying DB schema upgrade to version 13  pid=20574
+INFO[...] Database: Adding column 'ledgerext' to table 'accounts'  pid=20574
+...
+INFO[...] Ledger: Established genesis ledger, closing   pid=20574
+INFO[...] Ledger: Root account seed: SDHOAMBNLGCE2MV5ZKIVZAQD3VCLGP53P3OBSBI6UN5L5XZI5TKHFQL4  pid=20574
+INFO[...] default: *                                    pid=20574
+INFO[...] default: * The next launch will catchup from the network afresh.  pid=20574
+INFO[...] default: *                                    pid=20574
+INFO[...] default: Application destructing              pid=20574
+INFO[...] default: Application destroyed                pid=20574
+...
+INFO[...] History: Starting catchup with configuration: pid=20574
+INFO[...] lastClosedLedger: 1                           pid=20574
+INFO[...] toLedger: 123457                              pid=20574
+INFO[...] count: 2                                      pid=20574
+INFO[...] History: Catching up to ledger 123457: Downloading state file history/00/01/e2/history-0001e27f.json for ledger 123519  pid=20574
+...
+INFO[...] History: Catching up to ledger 123457: downloading and verifying buckets: 16/17 (94%)  pid=20574
+INFO[...] History: Verifying bucket d4db982884941c0b82422996e26ae0778b4a85385ef657ffacee9b11adf72882  pid=20574
+INFO[...] History: Catching up to ledger 123457: Succeeded: download-verify-buckets : 17/17 children completed  pid=20574
+INFO[...] History: Applying buckets                     pid=20574
+INFO[...] History: Catching up to ledger 123457: Applying buckets 0%. Currently on level 9  pid=20574
+...
+INFO[...] Bucket: Bucket-apply: 158366 entries in 17.12MB/17.12MB in 17/17 files (100%)  pid=20574
+INFO[...] History: Catching up to ledger 123457: Applying buckets 100%. Currently on level 0  pid=20574
+INFO[...] History: ApplyBuckets : done, restarting merges  pid=20574
+INFO[...] History: Catching up to ledger 123457: Succeeded: download-verify-apply-buckets  pid=20574
+INFO[...] History: Downloading, unzipping and applying transactions for checkpoint 123519  pid=20574
+INFO[...] History: Catching up to ledger 123457: Download & apply checkpoints: num checkpoints left to apply:1 (0% done)  pid=20574
+
+Hello, Protocol 15.
+```
+
+There's obviously much, *much* more we can do with the ingestion library. Let's work through a more comprehensive example.
+
+
+
+# **Example**: Tracking Ledger Statistics
+In this section, we'll demonstrate how to use backends and processors to actually learn something meaningful about the Stellar network. Again, we'll use a specific backend here (Captive Core, again), but the processing can be done with any of them.
+
+More specifically, we're going to analyze the ledgers and track some statistics about the success/failure of transactions and their relative operations. While this is technically pretty doable by manipulating the Horizon API and some fancy JSON parsing (feat. `jq`), it serves as a useful yet concise demonstration of the ingestion library's features.
+
+
+## Preamble
+Let's get the boilerplate out of the way first. Again, we presume `config` is some sensible Captive Core configuration.
+
+```go
+package main
+
+import (
+  "fmt"
+  "io"
+  "io/ioutil"
+
+  "github.com/sirupsen/logrus"
+  ingestio "github.com/stellar/go/ingest/io"
+  backends "github.com/stellar/go/ingest/ledgerbackend"
+  "github.com/stellar/go/support/log"
+)
+
+func main() {
+  backend, err := backends.NewCaptive(config)
+  panicIf(err)
+  defer backend.Close()
+
+  // ...
+```
+
+Now, let's identify a range of ledgers we wish to process. For simplicity, let's work on the first 10,000 ledgers on the network.
+
+```go
+  // Prepare a range to be ingested:
+  var startingSeq uint32 = 2 // can't start with genesis ledger
+  var ledgersToRead uint32 = 10000
+
+  fmt.Printf("Preparing %d ledgers for ingestion... ", ledgersToRead)
+  ledgerRange := backends.BoundedRange(startingSeq, startingSeq+ledgersToRead)
+  err = backend.PrepareRange(ledgerRange)
+  panicIf(err)
+```
+
+This part will take a while, as Captive Core (or whatever backend) processes these ledgers and prepares them for ingestion.
+
+Now, we'll actually use a `LedgerTransactionReader` object to use the backend and read the transactions ledger by ledger. It takes the backend, the network passphrase, and the ledger you'd like to process as parameters, giving you back an object that returns raw transaction objects row by row.
+
+```go
+  // These are the statistics that we're tracking.
+  var successfulTransactions, failedTransactions int
+  var operationsInSuccessful, operationsInFailed int
+
+  var delta uint32 = 0
+  for ; delta <= ledgersToRead; delta++ {
+    txReader, err := ingestio.NewLedgerTransactionReader(
+      backend, config.NetworkPassphrase, startingSeq+delta)
+    panicIf(err)
+    defer txReader.Close()
+```
+
+Each ledger likely has many transactions, so we nest in another loop to process them all:
+
+```go
+    for {
+      tx, err := txReader.Read()
+      if err == io.EOF {
+        break
+      }
+      panicIf(err)
+
+      envelope := tx.Envelope
+      operationCount := len(envelope.Operations())
+      if tx.Result.Successful() {
+        successfulTransactions++
+        operationsInSuccessful += operationCount
+      } else {
+        failedTransactions++
+        operationsInFailed += operationCount
+      }
+    }
+  } // outer loop
+```
+
+And that's it! We can print the statistics out of interest:
+
+```go
+  fmt.Println("Results:")
+  fmt.Printf("  - total transactions: %d\n", successfulTransactions+failedTransactions)
+  fmt.Printf("  - succeeded / failed: %d / %d\n", successfulTransactions, failedTransactions)
+  fmt.Printf("  - total operations:   %d\n", operationsInSuccessful+operationsInFailed)
+  fmt.Printf("  - succeeded / failed: %d / %d\n", operationsInSuccessful, operationsInFailed)
+} // end of main
+```
+
+As of this writing, the stats are as follows:
+
+    Results:
+      - total transactions: 24159
+      - succeeded / failed: 16037 / 8122
+      - total operations:   33845
+      - succeeded / failed: 25387 / 8458
+
+(Note that since the Stellar testnet undergoes periodic resets, this may not always be accurate.)
+
+The full runnable example is available [here](./example_statistics.go).
+
+
+# Snippets
+This section outlines a brief collection of common things you may want to do with the library. We assume a very generic `backend` variable where necessary that is one of the aforementioned `LedgerBackend` instances to avoid boilerplate.
+
+
+### Disabling output logs
+Certain backends (like Captive Core) can be very noisy. The backends will log to standard output by default; you can disable it by redirecting to `ioutil.Discard`, instead:
+
+```go
+package main
+
+import (
+  "fmt"
+  "time"
+
+  ingest "github.com/stellar/go/ingest/ledgerbackend"
+
+  "github.com/sirupsen/logrus"
+  "github.com/stellar/go/support/log"
+)
+
+func main() {
+  lg := log.New()
+  lg.SetLevel(logrus.InfoLevel)
+  lg.Entry.Logger.Out = ioutil.Discard
+  config.Log = lg // assume config is otherwise predefined
+
+  backend, err := ingest.NewCaptive(config)
+  panicIf(err)
+  defer backend.Close()
+
+  // ...
+}
+```
+
+
+#### Footnotes
+
+  1. The minimalist error handler (if `panic`king counts as "handling" an error)  `panicIf` used throughout this tutorial is defined simply as:
+
+```go
+func panicIf(err error) {
+  if err != nil {
+    panic(err)
+  }
+}
+```
+
+  Please don't use it in production code; it's provided here for completeness, convenience, and brevity of examples.
+
+  2. Some of the examples use the [`jq`](https://stedolan.github.io/jq/) application, which is a full-featured command-line JSON parser available on most platforms.
