@@ -110,9 +110,9 @@ func (s *VerifyRangeStateTestSuite) TestBeginReturnsError() {
 	)
 }
 
-func (s *VerifyRangeStateTestSuite) TestGetLastLedgerExpIngestReturnsError() {
+func (s *VerifyRangeStateTestSuite) TestGetLastLedgerIngestReturnsError() {
 	s.historyQ.On("Begin").Return(nil).Once()
-	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), errors.New("my error")).Once()
+	s.historyQ.On("GetLastLedgerIngest").Return(uint32(0), errors.New("my error")).Once()
 
 	next, err := verifyRangeState{fromLedger: 100, toLedger: 200}.run(s.system)
 	s.Assert().Error(err)
@@ -123,9 +123,9 @@ func (s *VerifyRangeStateTestSuite) TestGetLastLedgerExpIngestReturnsError() {
 	)
 }
 
-func (s *VerifyRangeStateTestSuite) TestGetLastLedgerExpIngestNonEmpty() {
+func (s *VerifyRangeStateTestSuite) TestGetLastLedgerIngestNonEmpty() {
 	s.historyQ.On("Begin").Return(nil).Once()
-	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(100), nil).Once()
+	s.historyQ.On("GetLastLedgerIngest").Return(uint32(100), nil).Once()
 
 	next, err := verifyRangeState{fromLedger: 100, toLedger: 200}.run(s.system)
 	s.Assert().Error(err)
@@ -138,7 +138,7 @@ func (s *VerifyRangeStateTestSuite) TestGetLastLedgerExpIngestNonEmpty() {
 
 func (s *VerifyRangeStateTestSuite) TestRunHistoryArchiveIngestionReturnsError() {
 	s.historyQ.On("Begin").Return(nil).Once()
-	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
+	s.historyQ.On("GetLastLedgerIngest").Return(uint32(0), nil).Once()
 	s.ledgerBackend.On("PrepareRange", ledgerbackend.BoundedRange(100, 200)).Return(nil).Once()
 
 	s.runner.On("RunHistoryArchiveIngestion", uint32(100)).Return(ingestio.StatsChangeProcessorResults{}, errors.New("my error")).Once()
@@ -154,10 +154,10 @@ func (s *VerifyRangeStateTestSuite) TestRunHistoryArchiveIngestionReturnsError()
 
 func (s *VerifyRangeStateTestSuite) TestSuccess() {
 	s.historyQ.On("Begin").Return(nil).Once()
-	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
+	s.historyQ.On("GetLastLedgerIngest").Return(uint32(0), nil).Once()
 	s.ledgerBackend.On("PrepareRange", ledgerbackend.BoundedRange(100, 200)).Return(nil).Once()
 	s.runner.On("RunHistoryArchiveIngestion", uint32(100)).Return(ingestio.StatsChangeProcessorResults{}, nil).Once()
-	s.historyQ.On("UpdateLastLedgerExpIngest", uint32(100)).Return(nil).Once()
+	s.historyQ.On("UpdateLastLedgerIngest", uint32(100)).Return(nil).Once()
 	s.historyQ.On("Commit").Return(nil).Once()
 
 	for i := uint32(101); i <= 200; i++ {
@@ -169,7 +169,7 @@ func (s *VerifyRangeStateTestSuite) TestSuccess() {
 			processorsRunDurations{},
 			nil,
 		).Once()
-		s.historyQ.On("UpdateLastLedgerExpIngest", i).Return(nil).Once()
+		s.historyQ.On("UpdateLastLedgerIngest", i).Return(nil).Once()
 		s.historyQ.On("Commit").Return(nil).Once()
 	}
 
@@ -183,10 +183,10 @@ func (s *VerifyRangeStateTestSuite) TestSuccess() {
 
 func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 	s.historyQ.On("Begin").Return(nil).Once()
-	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
+	s.historyQ.On("GetLastLedgerIngest").Return(uint32(0), nil).Once()
 	s.ledgerBackend.On("PrepareRange", ledgerbackend.BoundedRange(100, 110)).Return(nil).Once()
 	s.runner.On("RunHistoryArchiveIngestion", uint32(100)).Return(ingestio.StatsChangeProcessorResults{}, nil).Once()
-	s.historyQ.On("UpdateLastLedgerExpIngest", uint32(100)).Return(nil).Once()
+	s.historyQ.On("UpdateLastLedgerIngest", uint32(100)).Return(nil).Once()
 	s.historyQ.On("Commit").Return(nil).Once()
 
 	for i := uint32(101); i <= 110; i++ {
@@ -198,7 +198,7 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 			processorsRunDurations{},
 			nil,
 		).Once()
-		s.historyQ.On("UpdateLastLedgerExpIngest", i).Return(nil).Once()
+		s.historyQ.On("UpdateLastLedgerIngest", i).Return(nil).Once()
 		s.historyQ.On("Commit").Return(nil).Once()
 	}
 
@@ -211,7 +211,7 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 		s.Assert().True(arg.ReadOnly)
 	}).Return(nil).Once()
 	clonedQ.On("Rollback").Return(nil).Once()
-	clonedQ.On("GetLastLedgerExpIngestNonBlocking").Return(uint32(63), nil).Once()
+	clonedQ.On("GetLastLedgerIngestNonBlocking").Return(uint32(63), nil).Once()
 	mockChangeReader := &ingestio.MockChangeReader{}
 	mockChangeReader.On("Close").Return(nil).Once()
 	mockAccountID := "GACMZD5VJXTRLKVET72CETCYKELPNCOTTBDC6DHFEUPLG5DHEK534JQX"

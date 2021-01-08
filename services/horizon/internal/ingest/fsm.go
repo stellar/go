@@ -134,14 +134,14 @@ func (state startState) run(s *system) (transition, error) {
 	defer s.historyQ.Rollback()
 
 	// This will get the value `FOR UPDATE`, blocking it for other nodes.
-	lastIngestedLedger, err := s.historyQ.GetLastLedgerExpIngest()
+	lastIngestedLedger, err := s.historyQ.GetLastLedgerIngest()
 	if err != nil {
 		return start(), errors.Wrap(err, getLastIngestedErrMsg)
 	}
 
-	ingestVersion, err := s.historyQ.GetExpIngestVersion()
+	ingestVersion, err := s.historyQ.GetIngestVersion()
 	if err != nil {
-		return start(), errors.Wrap(err, getExpIngestVersionErrMsg)
+		return start(), errors.Wrap(err, getIngestVersionErrMsg)
 	}
 
 	if ingestVersion > CurrentVersion {
@@ -161,7 +161,7 @@ func (state startState) run(s *system) (transition, error) {
 		// This block is either starting from empty state or ingestion
 		// version upgrade.
 		// This will always run on a single instance due to the fact that
-		// `LastLedgerExpIngest` value is blocked for update and will always
+		// `LastLedgerIngest` value is blocked for update and will always
 		// be updated when leading instance finishes processing state.
 		// In case of errors it will start `Init` from the beginning.
 		var lastCheckpoint uint32
@@ -201,13 +201,13 @@ func (state startState) run(s *system) (transition, error) {
 
 	switch {
 	case lastHistoryLedger > lastIngestedLedger:
-		// Expingest was running at some point the past but was turned off.
+		// Ingestion was running at some point the past but was turned off.
 		// Now it's on by default but the latest history ledger is greater
 		// than the latest ingest ledger. We reset the exp ledger sequence
 		// so init state will rebuild the state correctly.
-		err = s.historyQ.UpdateLastLedgerExpIngest(0)
+		err = s.historyQ.UpdateLastLedgerIngest(0)
 		if err != nil {
-			return start(), errors.Wrap(err, updateLastLedgerExpIngestErrMsg)
+			return start(), errors.Wrap(err, updateLastLedgerIngestErrMsg)
 		}
 		err = s.historyQ.Commit()
 		if err != nil {
@@ -215,11 +215,11 @@ func (state startState) run(s *system) (transition, error) {
 		}
 		return start(), nil
 	// lastHistoryLedger != 0 check is here to check the case when one node ingested
-	// the state (so latest exp ingest is > 0) but no history has been ingested yet.
+	// the state (so latest ingestion is > 0) but no history has been ingested yet.
 	// In such case we execute default case and resume from the last ingested
 	// ledger.
 	case lastHistoryLedger != 0 && lastHistoryLedger < lastIngestedLedger:
-		// Expingest was running at some point the past but was turned off.
+		// Ingestion was running at some point the past but was turned off.
 		// Now it's on by default but the latest history ledger is less
 		// than the latest ingest ledger. We catchup history.
 		return historyRange(lastHistoryLedger+1, lastIngestedLedger), nil
@@ -260,14 +260,14 @@ func (b buildState) run(s *system) (transition, error) {
 
 	// We need to get this value `FOR UPDATE` so all other instances
 	// are blocked.
-	lastIngestedLedger, err := s.historyQ.GetLastLedgerExpIngest()
+	lastIngestedLedger, err := s.historyQ.GetLastLedgerIngest()
 	if err != nil {
 		return nextFailState, errors.Wrap(err, getLastIngestedErrMsg)
 	}
 
-	ingestVersion, err := s.historyQ.GetExpIngestVersion()
+	ingestVersion, err := s.historyQ.GetIngestVersion()
 	if err != nil {
-		return nextFailState, errors.Wrap(err, getExpIngestVersionErrMsg)
+		return nextFailState, errors.Wrap(err, getIngestVersionErrMsg)
 	}
 
 	// Double check if we should proceed with state ingestion. It's possible that
@@ -286,9 +286,9 @@ func (b buildState) run(s *system) (transition, error) {
 	log.Info("Starting ingestion system from empty state...")
 
 	// Clear last_ingested_ledger in key value store
-	err = s.historyQ.UpdateLastLedgerExpIngest(0)
+	err = s.historyQ.UpdateLastLedgerIngest(0)
 	if err != nil {
-		return nextFailState, errors.Wrap(err, updateLastLedgerExpIngestErrMsg)
+		return nextFailState, errors.Wrap(err, updateLastLedgerIngestErrMsg)
 	}
 
 	// Clear invalid state in key value store. It's possible that upgraded
@@ -299,7 +299,7 @@ func (b buildState) run(s *system) (transition, error) {
 	}
 
 	// State tables should be empty.
-	err = s.historyQ.TruncateExpingestStateTables()
+	err = s.historyQ.TruncateIngestStateTables()
 	if err != nil {
 		return nextFailState, errors.Wrap(err, "Error clearing ingest tables")
 	}
@@ -325,8 +325,8 @@ func (b buildState) run(s *system) (transition, error) {
 		return nextFailState, errors.Wrap(err, "Error ingesting history archive")
 	}
 
-	if err = s.historyQ.UpdateExpIngestVersion(CurrentVersion); err != nil {
-		return nextFailState, errors.Wrap(err, "Error updating ingest version")
+	if err = s.historyQ.UpdateIngestVersion(CurrentVersion); err != nil {
+		return nextFailState, errors.Wrap(err, "Error updating ingestion version")
 	}
 
 	if err = s.completeIngestion(b.checkpointLedger); err != nil {
@@ -368,7 +368,7 @@ func (r resumeState) run(s *system) (transition, error) {
 	defer s.historyQ.Rollback()
 
 	// This will get the value `FOR UPDATE`, blocking it for other nodes.
-	lastIngestedLedger, err := s.historyQ.GetLastLedgerExpIngest()
+	lastIngestedLedger, err := s.historyQ.GetLastLedgerIngest()
 	if err != nil {
 		return retryResume(r), errors.Wrap(err, getLastIngestedErrMsg)
 	}
@@ -385,9 +385,9 @@ func (r resumeState) run(s *system) (transition, error) {
 		ingestLedger = lastIngestedLedger + 1
 	}
 
-	ingestVersion, err := s.historyQ.GetExpIngestVersion()
+	ingestVersion, err := s.historyQ.GetIngestVersion()
 	if err != nil {
-		return retryResume(r), errors.Wrap(err, getExpIngestVersionErrMsg)
+		return retryResume(r), errors.Wrap(err, getIngestVersionErrMsg)
 	}
 
 	if ingestVersion != CurrentVersion {
@@ -544,7 +544,7 @@ func (h historyRangeState) run(s *system) (transition, error) {
 	defer s.historyQ.Rollback()
 
 	// acquire distributed lock so no one else can perform ingestion operations.
-	if _, err := s.historyQ.GetLastLedgerExpIngest(); err != nil {
+	if _, err := s.historyQ.GetLastLedgerIngest(); err != nil {
 		return start(), errors.Wrap(err, getLastIngestedErrMsg)
 	}
 
@@ -687,7 +687,7 @@ func (h reingestHistoryRangeState) run(s *system) (transition, error) {
 		defer s.historyQ.Rollback()
 
 		// acquire distributed lock so no one else can perform ingestion operations.
-		if _, err := s.historyQ.GetLastLedgerExpIngest(); err != nil {
+		if _, err := s.historyQ.GetLastLedgerIngest(); err != nil {
 			return stop(), errors.Wrap(err, getLastIngestedErrMsg)
 		}
 
@@ -699,7 +699,7 @@ func (h reingestHistoryRangeState) run(s *system) (transition, error) {
 			return stop(), errors.Wrap(err, commitErrMsg)
 		}
 	} else {
-		lastIngestedLedger, err := s.historyQ.GetLastLedgerExpIngestNonBlocking()
+		lastIngestedLedger, err := s.historyQ.GetLastLedgerIngestNonBlocking()
 		if err != nil {
 			return stop(), errors.Wrap(err, getLastIngestedErrMsg)
 		}
@@ -782,7 +782,7 @@ func (v verifyRangeState) run(s *system) (transition, error) {
 	defer s.historyQ.Rollback()
 
 	// Simple check if DB clean
-	lastIngestedLedger, err := s.historyQ.GetLastLedgerExpIngest()
+	lastIngestedLedger, err := s.historyQ.GetLastLedgerIngest()
 	if err != nil {
 		err = errors.Wrap(err, getLastIngestedErrMsg)
 		return stop(), err
@@ -887,7 +887,7 @@ func (stressTestState) run(s *system) (transition, error) {
 	defer s.historyQ.Rollback()
 
 	// Simple check if DB clean
-	lastIngestedLedger, err := s.historyQ.GetLastLedgerExpIngest()
+	lastIngestedLedger, err := s.historyQ.GetLastLedgerIngest()
 	if err != nil {
 		err = errors.Wrap(err, getLastIngestedErrMsg)
 		return stop(), err
@@ -943,8 +943,8 @@ func (s *system) completeIngestion(ledger uint32) error {
 		return errors.New("ledger must be positive")
 	}
 
-	if err := s.historyQ.UpdateLastLedgerExpIngest(ledger); err != nil {
-		err = errors.Wrap(err, updateLastLedgerExpIngestErrMsg)
+	if err := s.historyQ.UpdateLastLedgerIngest(ledger); err != nil {
+		err = errors.Wrap(err, updateLastLedgerIngestErrMsg)
 		return err
 	}
 

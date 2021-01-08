@@ -279,7 +279,7 @@ func (m *mockDBQ) GetTx() *sqlx.Tx {
 	return args.Get(0).(*sqlx.Tx)
 }
 
-func (m *mockDBQ) GetLastLedgerExpIngest() (uint32, error) {
+func (m *mockDBQ) GetLastLedgerIngest() (uint32, error) {
 	args := m.Called()
 	return args.Get(0).(uint32), args.Error(1)
 }
@@ -289,17 +289,17 @@ func (m *mockDBQ) GetOfferCompactionSequence() (uint32, error) {
 	return args.Get(0).(uint32), args.Error(1)
 }
 
-func (m *mockDBQ) GetLastLedgerExpIngestNonBlocking() (uint32, error) {
+func (m *mockDBQ) GetLastLedgerIngestNonBlocking() (uint32, error) {
 	args := m.Called()
 	return args.Get(0).(uint32), args.Error(1)
 }
 
-func (m *mockDBQ) GetExpIngestVersion() (int, error) {
+func (m *mockDBQ) GetIngestVersion() (int, error) {
 	args := m.Called()
 	return args.Get(0).(int), args.Error(1)
 }
 
-func (m *mockDBQ) UpdateLastLedgerExpIngest(sequence uint32) error {
+func (m *mockDBQ) UpdateLastLedgerIngest(sequence uint32) error {
 	args := m.Called(sequence)
 	return args.Error(0)
 }
@@ -309,7 +309,7 @@ func (m *mockDBQ) UpdateExpStateInvalid(invalid bool) error {
 	return args.Error(0)
 }
 
-func (m *mockDBQ) UpdateExpIngestVersion(version int) error {
+func (m *mockDBQ) UpdateIngestVersion(version int) error {
 	args := m.Called(version)
 	return args.Error(0)
 }
@@ -329,7 +329,7 @@ func (m *mockDBQ) GetLatestLedger() (uint32, error) {
 	return args.Get(0).(uint32), args.Error(1)
 }
 
-func (m *mockDBQ) TruncateExpingestStateTables() error {
+func (m *mockDBQ) TruncateIngestStateTables() error {
 	args := m.Called()
 	return args.Error(0)
 }

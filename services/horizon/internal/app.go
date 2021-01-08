@@ -222,7 +222,7 @@ func (a *App) UpdateLedgerState() {
 		return
 	}
 
-	next.ExpHistoryLatest, err = a.HistoryQ().GetLastLedgerExpIngestNonBlocking()
+	next.ExpHistoryLatest, err = a.HistoryQ().GetLastLedgerIngestNonBlocking()
 	if err != nil {
 		logErr(err, "failed to load the oldest known exp ledger state from history DB")
 		return
@@ -433,7 +433,7 @@ func (a *App) init() error {
 
 	if a.config.Ingest {
 		// ingester
-		initExpIngester(a)
+		initIngester(a)
 	}
 	initPathFinder(a)
 
