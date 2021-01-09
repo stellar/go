@@ -24,7 +24,7 @@ func TestSingleLedgerStateReaderTestSuite(t *testing.T) {
 type SingleLedgerStateReaderTestSuite struct {
 	suite.Suite
 	mockArchive          *historyarchive.MockArchive
-	reader               *SingleLedgerStateReader
+	reader               *CheckpointChangeReader
 	has                  historyarchive.HistoryArchiveState
 	mockBucketExistsCall *mock.Call
 }
@@ -46,7 +46,7 @@ func (s *SingleLedgerStateReaderTestSuite) SetupTest() {
 		On("BucketExists", mock.AnythingOfType("historyarchive.Hash")).
 		Return(true, nil).Times(21)
 
-	s.reader, err = MakeSingleLedgerStateReader(
+	s.reader, err = NewCheckpointChangeReader(
 		context.Background(),
 		s.mockArchive,
 		ledgerSeq,
@@ -265,7 +265,7 @@ func TestBucketExistsTestSuite(t *testing.T) {
 type BucketExistsTestSuite struct {
 	suite.Suite
 	mockArchive    *historyarchive.MockArchive
-	reader         *SingleLedgerStateReader
+	reader         *CheckpointChangeReader
 	cancel         context.CancelFunc
 	expectedSleeps []time.Duration
 }
@@ -280,7 +280,7 @@ func (s *BucketExistsTestSuite) SetupTest() {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	var err error
-	s.reader, err = MakeSingleLedgerStateReader(
+	s.reader, err = NewCheckpointChangeReader(
 		ctx,
 		s.mockArchive,
 		ledgerSeq,
@@ -351,7 +351,7 @@ func TestReadBucketEntryTestSuite(t *testing.T) {
 type ReadBucketEntryTestSuite struct {
 	suite.Suite
 	mockArchive *historyarchive.MockArchive
-	reader      *SingleLedgerStateReader
+	reader      *CheckpointChangeReader
 	cancel      context.CancelFunc
 }
 
@@ -365,7 +365,7 @@ func (s *ReadBucketEntryTestSuite) SetupTest() {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	var err error
-	s.reader, err = MakeSingleLedgerStateReader(
+	s.reader, err = NewCheckpointChangeReader(
 		ctx,
 		s.mockArchive,
 		ledgerSeq,

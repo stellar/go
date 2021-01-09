@@ -258,7 +258,7 @@ func main() {
 	log.WithField("ledger", ledgerSequence).
 		Info("Processing entries from History Archive Snapshot")
 
-	changeReader, err := io.MakeSingleLedgerStateReader(
+	changeReader, err := io.NewCheckpointChangeReader(
 		context.Background(),
 		archive,
 		uint32(ledgerSequence),

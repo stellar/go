@@ -26,7 +26,7 @@ func main() {
 		panic(e)
 	}
 
-	sr, e := io.MakeSingleLedgerStateReader(context.Background(), archive, seqNum)
+	sr, e := io.NewCheckpointChangeReader(context.Background(), archive, seqNum)
 	if e != nil {
 		panic(e)
 	}

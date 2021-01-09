@@ -25,7 +25,7 @@ func Example_ledgerentrieshistoryarchive() {
 	}
 
 	// Ledger must be a checkpoint ledger: (100031+1) mod 64 == 0.
-	reader, err := io.MakeSingleLedgerStateReader(context.TODO(), archive, 100031)
+	reader, err := io.NewCheckpointChangeReader(context.TODO(), archive, 100031)
 	if err != nil {
 		panic(err)
 	}
