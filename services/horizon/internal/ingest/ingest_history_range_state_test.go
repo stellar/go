@@ -3,14 +3,15 @@ package ingest
 
 import (
 	"context"
-	"github.com/stellar/go/ingest"
 	"testing"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/stretchr/testify/suite"
+
+	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/support/errors"
-	"github.com/stretchr/testify/suite"
 )
 
 func TestIngestHistoryRangeStateTestSuite(t *testing.T) {

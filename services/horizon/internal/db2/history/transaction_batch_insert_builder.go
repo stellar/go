@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
-	"github.com/stellar/go/ingest"
 	"math"
 	"strconv"
 	"strings"
@@ -13,6 +12,8 @@ import (
 
 	"github.com/guregu/null"
 	"github.com/lib/pq"
+
+	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/services/horizon/internal/utf8"
 	"github.com/stellar/go/support/db"

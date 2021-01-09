@@ -2,9 +2,9 @@ package ingest
 
 import (
 	"fmt"
-	"github.com/stellar/go/ingest"
 	"time"
 
+	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/support/errors"
 )
 

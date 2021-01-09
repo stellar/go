@@ -4,11 +4,11 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"github.com/stellar/go/ingest"
-	stdio "io"
+	"io"
 	"log"
 
 	"github.com/stellar/go/historyarchive"
+	"github.com/stellar/go/ingest"
 )
 
 func main() {
@@ -39,7 +39,7 @@ func main() {
 		if e != nil {
 			panic(e)
 		}
-		if e == stdio.EOF {
+		if e == io.EOF {
 			log.Printf("total seen %d entries of which %d were accounts", i, count)
 			return
 		}

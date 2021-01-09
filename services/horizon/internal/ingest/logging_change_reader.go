@@ -1,8 +1,9 @@
 package ingest
 
 import (
-	"github.com/stellar/go/ingest"
 	"runtime"
+
+	"github.com/stellar/go/ingest"
 )
 
 func bToMb(b uint64) uint64 {

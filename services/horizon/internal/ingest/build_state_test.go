@@ -3,9 +3,9 @@ package ingest
 
 import (
 	"context"
-	"github.com/stellar/go/ingest"
 	"testing"
 
+	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/support/errors"
 	"github.com/stretchr/testify/mock"

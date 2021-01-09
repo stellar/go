@@ -4,13 +4,13 @@ package ingest
 
 import (
 	"context"
-	"github.com/stellar/go/ingest"
 	"io/ioutil"
 	"math/rand"
 	"path/filepath"
 	"testing"
 
 	"github.com/stellar/go/historyarchive"
+	"github.com/stellar/go/ingest"
 	logpkg "github.com/stellar/go/support/log"
 	"github.com/stellar/go/xdr"
 )

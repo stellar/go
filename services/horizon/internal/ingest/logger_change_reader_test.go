@@ -2,11 +2,11 @@ package ingest
 
 import (
 	"errors"
-	"github.com/stellar/go/ingest"
 	"testing"
 
-	stdio "io"
+	"io"
 
+	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
 )
@@ -48,7 +48,7 @@ func TestLoggingChangeReader(t *testing.T) {
 		{
 			"empty list with no errors",
 			[]ingest.Change{},
-			stdio.EOF,
+			io.EOF,
 		},
 		{
 			"non empty list and error",
@@ -64,7 +64,7 @@ func TestLoggingChangeReader(t *testing.T) {
 				{Type: xdr.LedgerEntryTypeOffer},
 				{Type: xdr.LedgerEntryTypeAccount},
 			},
-			stdio.EOF,
+			io.EOF,
 		},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {

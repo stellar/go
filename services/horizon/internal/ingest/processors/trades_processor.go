@@ -1,9 +1,9 @@
 package processors
 
 import (
-	"github.com/stellar/go/ingest"
 	"time"
 
+	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/support/errors"

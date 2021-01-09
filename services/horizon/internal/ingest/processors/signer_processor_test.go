@@ -2,10 +2,11 @@
 package processors
 
 import (
-	"github.com/stellar/go/ingest"
 	"testing"
 
 	"github.com/guregu/null"
+
+	"github.com/stellar/go/ingest"
 	ingesterrors "github.com/stellar/go/ingest/errors"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"

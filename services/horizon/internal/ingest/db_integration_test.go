@@ -2,12 +2,12 @@
 package ingest
 
 import (
-	"github.com/stellar/go/ingest"
-	stdio "io"
+	"io"
 	"io/ioutil"
 	"path/filepath"
 	"testing"
 
+	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/xdr"
@@ -34,7 +34,7 @@ func loadChanges(path string) (*memoryChangeReader, error) {
 func (r *memoryChangeReader) Read() (ingest.Change, error) {
 	entryChanges := *r
 	if len(entryChanges) == 0 {
-		return ingest.Change{}, stdio.EOF
+		return ingest.Change{}, io.EOF
 	}
 
 	change := entryChanges[0]

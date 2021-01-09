@@ -4,7 +4,6 @@ package ingest
 import (
 	"context"
 	"database/sql"
-	"github.com/stellar/go/ingest"
 	"io"
 	"testing"
 
@@ -13,6 +12,7 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/stellar/go/historyarchive"
+	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/history"

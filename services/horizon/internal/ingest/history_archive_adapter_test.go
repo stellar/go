@@ -3,11 +3,11 @@ package ingest
 import (
 	"context"
 	"fmt"
-	"github.com/stellar/go/ingest"
 	stdio "io"
 	"testing"
 
 	"github.com/stellar/go/historyarchive"
+	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"

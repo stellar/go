@@ -3,9 +3,9 @@ package processors
 
 import (
 	"database/sql"
-	"github.com/stellar/go/ingest"
 	"testing"
 
+	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/suite"

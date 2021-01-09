@@ -3,12 +3,13 @@ package history
 import (
 	"encoding/hex"
 	"encoding/json"
-	"github.com/stellar/go/ingest"
 	"testing"
 	"time"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/guregu/null"
+
+	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/network"
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/services/horizon/internal/toid"

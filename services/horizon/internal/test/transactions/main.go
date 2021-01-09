@@ -3,9 +3,9 @@ package transactions
 
 import (
 	"encoding/hex"
-	"github.com/stellar/go/ingest"
 	"testing"
 
+	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
 )

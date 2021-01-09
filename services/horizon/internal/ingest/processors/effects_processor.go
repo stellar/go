@@ -4,11 +4,11 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/stellar/go/ingest"
 	"reflect"
 	"sort"
 
 	"github.com/stellar/go/amount"
+	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"

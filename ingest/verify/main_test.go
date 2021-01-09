@@ -2,10 +2,10 @@ package verify
 
 import (
 	"fmt"
-	"github.com/stellar/go/ingest"
-	stdio "io"
+	"io"
 	"testing"
 
+	"github.com/stellar/go/ingest"
 	ingesterrors "github.com/stellar/go/ingest/errors"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
@@ -44,7 +44,7 @@ func (s *StateVerifierTestSuite) TearDownTest() {
 }
 
 func (s *StateVerifierTestSuite) TestNoEntries() {
-	s.mockStateReader.On("Read").Return(ingest.Change{}, stdio.EOF).Once()
+	s.mockStateReader.On("Read").Return(ingest.Change{}, io.EOF).Once()
 
 	keys, err := s.verifier.GetLedgerKeys(10)
 	s.Assert().NoError(err)
@@ -99,7 +99,7 @@ func (s *StateVerifierTestSuite) TestTransformFunction() {
 			Post: &offerEntry,
 		}, nil).Once()
 
-	s.mockStateReader.On("Read").Return(ingest.Change{}, stdio.EOF).Once()
+	s.mockStateReader.On("Read").Return(ingest.Change{}, io.EOF).Once()
 
 	s.verifier.TransformFunction =
 		func(entry xdr.LedgerEntry) (ignore bool, newEntry xdr.LedgerEntry) {
@@ -255,7 +255,7 @@ func (s *StateVerifierTestSuite) TestVerifyCountersMatch() {
 			Post: &accountEntry,
 		}, nil).Once()
 
-	s.mockStateReader.On("Read").Return(ingest.Change{}, stdio.EOF).Once()
+	s.mockStateReader.On("Read").Return(ingest.Change{}, io.EOF).Once()
 
 	keys, err := s.verifier.GetLedgerKeys(2)
 	s.Assert().NoError(err)

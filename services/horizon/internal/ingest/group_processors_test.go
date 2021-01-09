@@ -3,11 +3,12 @@ package ingest
 
 import (
 	"errors"
-	"github.com/stellar/go/ingest"
 	"testing"
 
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/stellar/go/ingest"
 )
 
 var _ horizonChangeProcessor = (*mockHorizonChangeProcessor)(nil)

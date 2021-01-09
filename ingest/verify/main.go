@@ -5,9 +5,9 @@ package verify
 import (
 	"bytes"
 	"encoding/base64"
-	"github.com/stellar/go/ingest"
-	stdio "io"
+	"io"
 
+	"github.com/stellar/go/ingest"
 	ingesterrors "github.com/stellar/go/ingest/errors"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
@@ -62,7 +62,7 @@ func (v *StateVerifier) GetLedgerKeys(count int) ([]xdr.LedgerKey, error) {
 	for count > 0 {
 		entryChange, err := v.StateReader.Read()
 		if err != nil {
-			if err == stdio.EOF {
+			if err == io.EOF {
 				v.readingDone = true
 				return keys, nil
 			}

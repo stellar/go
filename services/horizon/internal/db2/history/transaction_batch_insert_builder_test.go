@@ -1,11 +1,11 @@
 package history
 
 import (
-	"github.com/stellar/go/ingest"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/xdr"
 )
 
