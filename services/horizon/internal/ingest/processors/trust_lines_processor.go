@@ -1,8 +1,8 @@
 package processors
 
 import (
+	"github.com/stellar/go/ingest"
 	ingesterrors "github.com/stellar/go/ingest/errors"
-	"github.com/stellar/go/ingest/io"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
@@ -11,7 +11,7 @@ import (
 type TrustLinesProcessor struct {
 	trustLinesQ history.QTrustLines
 
-	cache *io.LedgerEntryChangeCache
+	cache *ingest.LedgerEntryChangeCache
 }
 
 func NewTrustLinesProcessor(trustLinesQ history.QTrustLines) *TrustLinesProcessor {
@@ -21,10 +21,10 @@ func NewTrustLinesProcessor(trustLinesQ history.QTrustLines) *TrustLinesProcesso
 }
 
 func (p *TrustLinesProcessor) reset() {
-	p.cache = io.NewLedgerEntryChangeCache()
+	p.cache = ingest.NewLedgerEntryChangeCache()
 }
 
-func (p *TrustLinesProcessor) ProcessChange(change io.Change) error {
+func (p *TrustLinesProcessor) ProcessChange(change ingest.Change) error {
 	if change.Type != xdr.LedgerEntryTypeTrustline {
 		return nil
 	}

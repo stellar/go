@@ -2,11 +2,11 @@
 package processors
 
 import (
+	"github.com/stellar/go/ingest"
 	"testing"
 
 	"github.com/guregu/null"
 	ingesterrors "github.com/stellar/go/ingest/errors"
-	"github.com/stellar/go/ingest/io"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
@@ -55,7 +55,7 @@ func (s *AccountsSignerProcessorTestSuiteState) TestCreatesSigners() {
 			Weight:  int32(1),
 		}).Return(nil).Once()
 
-	err := s.processor.ProcessChange(io.Change{
+	err := s.processor.ProcessChange(ingest.Change{
 		Type: xdr.LedgerEntryTypeAccount,
 		Pre:  nil,
 		Post: &xdr.LedgerEntry{
@@ -77,7 +77,7 @@ func (s *AccountsSignerProcessorTestSuiteState) TestCreatesSigners() {
 			Weight:  int32(10),
 		}).Return(nil).Once()
 
-	err = s.processor.ProcessChange(io.Change{
+	err = s.processor.ProcessChange(ingest.Change{
 		Type: xdr.LedgerEntryTypeAccount,
 		Pre:  nil,
 		Post: &xdr.LedgerEntry{
@@ -110,7 +110,7 @@ func (s *AccountsSignerProcessorTestSuiteState) TestCreatesSignerWithSponsor() {
 
 	sponsorshipDescriptor := xdr.MustAddress("GDWZ6MKJP5ESVIB7O5RW4UFFGSCDILPEKDXWGG4HXXSHEZZPTKLR6UVG")
 
-	err := s.processor.ProcessChange(io.Change{
+	err := s.processor.ProcessChange(ingest.Change{
 		Type: xdr.LedgerEntryTypeAccount,
 		Pre:  nil,
 		Post: &xdr.LedgerEntry{
@@ -185,7 +185,7 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestNewAccount() {
 		).
 		Return(int64(1), nil).Once()
 
-	err := s.processor.ProcessChange(io.Change{
+	err := s.processor.ProcessChange(ingest.Change{
 		Type: xdr.LedgerEntryTypeAccount,
 		Pre:  nil,
 		Post: &xdr.LedgerEntry{
@@ -203,7 +203,7 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestNewAccount() {
 }
 
 func (s *AccountsSignerProcessorTestSuiteLedger) TestNoUpdatesWhenNoSignerChanges() {
-	err := s.processor.ProcessChange(io.Change{
+	err := s.processor.ProcessChange(ingest.Change{
 		Type: xdr.LedgerEntryTypeAccount,
 		Pre: &xdr.LedgerEntry{
 			Data: xdr.LedgerEntryData{
@@ -259,7 +259,7 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestNewSigner() {
 		).
 		Return(int64(1), nil).Once()
 
-	err := s.processor.ProcessChange(io.Change{
+	err := s.processor.ProcessChange(ingest.Change{
 		Type: xdr.LedgerEntryTypeAccount,
 		Pre: &xdr.LedgerEntry{
 			Data: xdr.LedgerEntryData{
@@ -327,7 +327,7 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestSignerRemoved() {
 		).
 		Return(int64(1), nil).Once()
 
-	err := s.processor.ProcessChange(io.Change{
+	err := s.processor.ProcessChange(ingest.Change{
 		Type: xdr.LedgerEntryTypeAccount,
 		Pre: &xdr.LedgerEntry{
 			Data: xdr.LedgerEntryData{
@@ -397,7 +397,7 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestSignerPreAuthTxRemovedTxFai
 		).
 		Return(int64(1), nil).Once()
 
-	err := s.processor.ProcessChange(io.Change{
+	err := s.processor.ProcessChange(ingest.Change{
 		Type: xdr.LedgerEntryTypeAccount,
 		Pre: &xdr.LedgerEntry{
 			Data: xdr.LedgerEntryData{
@@ -445,7 +445,7 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestRemoveAccount() {
 		).
 		Return(int64(1), nil).Once()
 
-	err := s.processor.ProcessChange(io.Change{
+	err := s.processor.ProcessChange(ingest.Change{
 		Type: xdr.LedgerEntryTypeAccount,
 		Pre: &xdr.LedgerEntry{
 			Data: xdr.LedgerEntryData{
@@ -473,7 +473,7 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestNewAccountNoRowsAffected() 
 		).
 		Return(int64(0), nil).Once()
 
-	err := s.processor.ProcessChange(io.Change{
+	err := s.processor.ProcessChange(ingest.Change{
 		Type: xdr.LedgerEntryTypeAccount,
 		Pre:  nil,
 		Post: &xdr.LedgerEntry{
@@ -508,7 +508,7 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestRemoveAccountNoRowsAffected
 		).
 		Return(int64(0), nil).Once()
 
-	err := s.processor.ProcessChange(io.Change{
+	err := s.processor.ProcessChange(ingest.Change{
 		Type: xdr.LedgerEntryTypeAccount,
 		Pre: &xdr.LedgerEntry{
 			Data: xdr.LedgerEntryData{
@@ -566,7 +566,7 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestProcessUpgradeChange() {
 		).
 		Return(int64(1), nil).Once()
 
-	err := s.processor.ProcessChange(io.Change{
+	err := s.processor.ProcessChange(ingest.Change{
 		Type: xdr.LedgerEntryTypeAccount,
 		Pre: &xdr.LedgerEntry{
 			Data: xdr.LedgerEntryData{
@@ -603,7 +603,7 @@ func (s *AccountsSignerProcessorTestSuiteLedger) TestProcessUpgradeChange() {
 	})
 	s.Assert().NoError(err)
 
-	err = s.processor.ProcessChange(io.Change{
+	err = s.processor.ProcessChange(ingest.Change{
 		Type: xdr.LedgerEntryTypeAccount,
 		Pre: &xdr.LedgerEntry{
 			LastModifiedLedgerSeq: 1000,

@@ -4,11 +4,11 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"github.com/stellar/go/ingest"
 	stdio "io"
 	"log"
 
 	"github.com/stellar/go/historyarchive"
-	"github.com/stellar/go/ingest/io"
 )
 
 func main() {
@@ -26,7 +26,7 @@ func main() {
 		panic(e)
 	}
 
-	sr, e := io.NewCheckpointChangeReader(context.Background(), archive, seqNum)
+	sr, e := ingest.NewCheckpointChangeReader(context.Background(), archive, seqNum)
 	if e != nil {
 		panic(e)
 	}

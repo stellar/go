@@ -3,10 +3,10 @@ package ingest
 
 import (
 	"context"
+	"github.com/stellar/go/ingest"
 	"testing"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/stellar/go/ingest/io"
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/support/errors"
@@ -127,7 +127,7 @@ func (s *IngestHistoryRangeStateTestSuite) TestRunTransactionProcessorsOnLedgerR
 
 	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(100)).Return(true, nil).Once()
 	s.runner.On("RunTransactionProcessorsOnLedger", uint32(100)).Return(
-		io.StatsLedgerTransactionProcessorResults{},
+		ingest.StatsLedgerTransactionProcessorResults{},
 		processorsRunDurations{},
 		errors.New("my error"),
 	).Once()
@@ -180,7 +180,7 @@ func (s *IngestHistoryRangeStateTestSuite) TestSuccess() {
 	for i := 100; i <= 200; i++ {
 		s.runner.On("RunTransactionProcessorsOnLedger", uint32(i)).
 			Return(
-				io.StatsLedgerTransactionProcessorResults{},
+				ingest.StatsLedgerTransactionProcessorResults{},
 				processorsRunDurations{},
 				nil,
 			).Once()
@@ -200,7 +200,7 @@ func (s *IngestHistoryRangeStateTestSuite) TestSuccessOneLedger() {
 
 	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(100)).Return(true, nil).Once()
 	s.runner.On("RunTransactionProcessorsOnLedger", uint32(100)).Return(
-		io.StatsLedgerTransactionProcessorResults{},
+		ingest.StatsLedgerTransactionProcessorResults{},
 		processorsRunDurations{},
 		nil,
 	).Once()
@@ -346,7 +346,7 @@ func (s *ReingestHistoryRangeStateTestSuite) TestRunTransactionProcessorsOnLedge
 
 	s.runner.On("RunTransactionProcessorsOnLedger", uint32(100)).
 		Return(
-			io.StatsLedgerTransactionProcessorResults{},
+			ingest.StatsLedgerTransactionProcessorResults{},
 			processorsRunDurations{},
 			errors.New("my error"),
 		).Once()
@@ -370,7 +370,7 @@ func (s *ReingestHistoryRangeStateTestSuite) TestCommitFails() {
 	).Return(nil).Once()
 
 	s.runner.On("RunTransactionProcessorsOnLedger", uint32(100)).Return(
-		io.StatsLedgerTransactionProcessorResults{},
+		ingest.StatsLedgerTransactionProcessorResults{},
 		processorsRunDurations{},
 		nil,
 	).Once()
@@ -398,7 +398,7 @@ func (s *ReingestHistoryRangeStateTestSuite) TestSuccess() {
 		).Return(nil).Once()
 
 		s.runner.On("RunTransactionProcessorsOnLedger", i).Return(
-			io.StatsLedgerTransactionProcessorResults{},
+			ingest.StatsLedgerTransactionProcessorResults{},
 			processorsRunDurations{},
 			nil,
 		).Once()
@@ -422,7 +422,7 @@ func (s *ReingestHistoryRangeStateTestSuite) TestSuccessOneLedger() {
 	).Return(nil).Once()
 
 	s.runner.On("RunTransactionProcessorsOnLedger", uint32(100)).Return(
-		io.StatsLedgerTransactionProcessorResults{},
+		ingest.StatsLedgerTransactionProcessorResults{},
 		processorsRunDurations{},
 		nil,
 	).Once()
@@ -456,7 +456,7 @@ func (s *ReingestHistoryRangeStateTestSuite) TestReingestRangeForce() {
 
 	for i := 100; i <= 200; i++ {
 		s.runner.On("RunTransactionProcessorsOnLedger", uint32(i)).Return(
-			io.StatsLedgerTransactionProcessorResults{},
+			ingest.StatsLedgerTransactionProcessorResults{},
 			processorsRunDurations{},
 			nil,
 		).Once()

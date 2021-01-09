@@ -1,8 +1,8 @@
 package processors
 
 import (
+	"github.com/stellar/go/ingest"
 	ingesterrors "github.com/stellar/go/ingest/errors"
-	"github.com/stellar/go/ingest/io"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
@@ -11,7 +11,7 @@ import (
 type AccountsProcessor struct {
 	accountsQ history.QAccounts
 
-	cache *io.LedgerEntryChangeCache
+	cache *ingest.LedgerEntryChangeCache
 }
 
 func NewAccountsProcessor(accountsQ history.QAccounts) *AccountsProcessor {
@@ -21,10 +21,10 @@ func NewAccountsProcessor(accountsQ history.QAccounts) *AccountsProcessor {
 }
 
 func (p *AccountsProcessor) reset() {
-	p.cache = io.NewLedgerEntryChangeCache()
+	p.cache = ingest.NewLedgerEntryChangeCache()
 }
 
-func (p *AccountsProcessor) ProcessChange(change io.Change) error {
+func (p *AccountsProcessor) ProcessChange(change ingest.Change) error {
 	if change.Type != xdr.LedgerEntryTypeAccount {
 		return nil
 	}

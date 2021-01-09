@@ -2,17 +2,17 @@ package ingest
 
 import (
 	"errors"
+	"github.com/stellar/go/ingest"
 	"testing"
 
 	stdio "io"
 
-	"github.com/stellar/go/ingest/io"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
 )
 
-func allChanges(changeReader io.ChangeReader) ([]io.Change, error) {
-	all := []io.Change{}
+func allChanges(changeReader ingest.ChangeReader) ([]ingest.Change, error) {
+	all := []ingest.Change{}
 	for {
 		change, err := changeReader.Read()
 		if err != nil {
@@ -22,14 +22,14 @@ func allChanges(changeReader io.ChangeReader) ([]io.Change, error) {
 	}
 }
 
-func createMockReader(changes []io.Change, err error) *io.MockChangeReader {
-	mockChangeReader := &io.MockChangeReader{}
+func createMockReader(changes []ingest.Change, err error) *ingest.MockChangeReader {
+	mockChangeReader := &ingest.MockChangeReader{}
 	for _, change := range changes {
 		mockChangeReader.On("Read").
 			Return(change, nil).Once()
 	}
 	mockChangeReader.On("Read").
-		Return(io.Change{}, err).Once()
+		Return(ingest.Change{}, err).Once()
 
 	return mockChangeReader
 }
@@ -37,22 +37,22 @@ func createMockReader(changes []io.Change, err error) *io.MockChangeReader {
 func TestLoggingChangeReader(t *testing.T) {
 	for _, testCase := range []struct {
 		name    string
-		changes []io.Change
+		changes []ingest.Change
 		err     error
 	}{
 		{
 			"empty list with error",
-			[]io.Change{},
+			[]ingest.Change{},
 			errors.New("test error"),
 		},
 		{
 			"empty list with no errors",
-			[]io.Change{},
+			[]ingest.Change{},
 			stdio.EOF,
 		},
 		{
 			"non empty list and error",
-			[]io.Change{
+			[]ingest.Change{
 				{Type: xdr.LedgerEntryTypeAccount},
 				{Type: xdr.LedgerEntryTypeOffer},
 			},
@@ -60,7 +60,7 @@ func TestLoggingChangeReader(t *testing.T) {
 		},
 		{
 			"non empty list with no errors",
-			[]io.Change{
+			[]ingest.Change{
 				{Type: xdr.LedgerEntryTypeOffer},
 				{Type: xdr.LedgerEntryTypeAccount},
 			},

@@ -3,9 +3,9 @@ package ingest
 
 import (
 	"errors"
+	"github.com/stellar/go/ingest"
 	"testing"
 
-	"github.com/stellar/go/ingest/io"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 )
@@ -16,7 +16,7 @@ type mockHorizonChangeProcessor struct {
 	mock.Mock
 }
 
-func (m *mockHorizonChangeProcessor) ProcessChange(change io.Change) error {
+func (m *mockHorizonChangeProcessor) ProcessChange(change ingest.Change) error {
 	args := m.Called(change)
 	return args.Error(0)
 }
@@ -32,7 +32,7 @@ type mockHorizonTransactionProcessor struct {
 	mock.Mock
 }
 
-func (m *mockHorizonTransactionProcessor) ProcessTransaction(transaction io.LedgerTransaction) error {
+func (m *mockHorizonTransactionProcessor) ProcessTransaction(transaction ingest.LedgerTransaction) error {
 	args := m.Called(transaction)
 	return args.Error(0)
 }
@@ -68,7 +68,7 @@ func (s *GroupChangeProcessorsTestSuiteLedger) TearDownTest() {
 }
 
 func (s *GroupChangeProcessorsTestSuiteLedger) TestProcessChangeFails() {
-	change := io.Change{}
+	change := ingest.Change{}
 	s.processorA.
 		On("ProcessChange", change).
 		Return(errors.New("transient error")).Once()
@@ -79,7 +79,7 @@ func (s *GroupChangeProcessorsTestSuiteLedger) TestProcessChangeFails() {
 }
 
 func (s *GroupChangeProcessorsTestSuiteLedger) TestProcessChangeSucceeds() {
-	change := io.Change{}
+	change := ingest.Change{}
 	s.processorA.
 		On("ProcessChange", change).
 		Return(nil).Once()
@@ -139,7 +139,7 @@ func (s *GroupTransactionProcessorsTestSuiteLedger) TearDownTest() {
 }
 
 func (s *GroupTransactionProcessorsTestSuiteLedger) TestProcessTransactionFails() {
-	transaction := io.LedgerTransaction{}
+	transaction := ingest.LedgerTransaction{}
 	s.processorA.
 		On("ProcessTransaction", transaction).
 		Return(errors.New("transient error")).Once()
@@ -150,7 +150,7 @@ func (s *GroupTransactionProcessorsTestSuiteLedger) TestProcessTransactionFails(
 }
 
 func (s *GroupTransactionProcessorsTestSuiteLedger) TestProcessTransactionSucceeds() {
-	transaction := io.LedgerTransaction{}
+	transaction := ingest.LedgerTransaction{}
 	s.processorA.
 		On("ProcessTransaction", transaction).
 		Return(nil).Once()

@@ -3,9 +3,9 @@ package processors
 
 import (
 	"encoding/json"
+	"github.com/stellar/go/ingest"
 	"testing"
 
-	"github.com/stellar/go/ingest/io"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
@@ -43,7 +43,7 @@ func (s *OperationsProcessorTestSuiteLedger) TearDownTest() {
 	s.mockBatchInsertBuilder.AssertExpectations(s.T())
 }
 
-func (s *OperationsProcessorTestSuiteLedger) mockBatchInsertAdds(txs []io.LedgerTransaction, sequence uint32) error {
+func (s *OperationsProcessorTestSuiteLedger) mockBatchInsertAdds(txs []ingest.LedgerTransaction, sequence uint32) error {
 	for _, t := range txs {
 		for i, op := range t.Envelope.Operations() {
 			expected := transactionOperationWrapper{
@@ -99,7 +99,7 @@ func (s *OperationsProcessorTestSuiteLedger) TestAddOperationSucceeds() {
 	secondTx := createTransaction(false, 3)
 	thirdTx := createTransaction(true, 4)
 
-	txs := []io.LedgerTransaction{
+	txs := []ingest.LedgerTransaction{
 		firstTx,
 		secondTx,
 		thirdTx,

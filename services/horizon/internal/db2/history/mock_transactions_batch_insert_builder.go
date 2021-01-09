@@ -1,7 +1,7 @@
 package history
 
 import (
-	"github.com/stellar/go/ingest/io"
+	"github.com/stellar/go/ingest"
 	"github.com/stretchr/testify/mock"
 )
 
@@ -9,7 +9,7 @@ type MockTransactionsBatchInsertBuilder struct {
 	mock.Mock
 }
 
-func (m *MockTransactionsBatchInsertBuilder) Add(transaction io.LedgerTransaction, sequence uint32) error {
+func (m *MockTransactionsBatchInsertBuilder) Add(transaction ingest.LedgerTransaction, sequence uint32) error {
 	a := m.Called(transaction, sequence)
 	return a.Error(0)
 }

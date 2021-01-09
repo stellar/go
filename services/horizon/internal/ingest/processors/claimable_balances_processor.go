@@ -1,8 +1,8 @@
 package processors
 
 import (
+	"github.com/stellar/go/ingest"
 	ingesterrors "github.com/stellar/go/ingest/errors"
-	"github.com/stellar/go/ingest/io"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
@@ -10,7 +10,7 @@ import (
 
 type ClaimableBalancesProcessor struct {
 	qClaimableBalances history.QClaimableBalances
-	cache              *io.LedgerEntryChangeCache
+	cache              *ingest.LedgerEntryChangeCache
 }
 
 func NewClaimableBalancesProcessor(Q history.QClaimableBalances) *ClaimableBalancesProcessor {
@@ -20,10 +20,10 @@ func NewClaimableBalancesProcessor(Q history.QClaimableBalances) *ClaimableBalan
 }
 
 func (p *ClaimableBalancesProcessor) reset() {
-	p.cache = io.NewLedgerEntryChangeCache()
+	p.cache = ingest.NewLedgerEntryChangeCache()
 }
 
-func (p *ClaimableBalancesProcessor) ProcessChange(change io.Change) error {
+func (p *ClaimableBalancesProcessor) ProcessChange(change ingest.Change) error {
 	if change.Type != xdr.LedgerEntryTypeClaimableBalance {
 		return nil
 	}
