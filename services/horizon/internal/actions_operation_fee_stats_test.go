@@ -326,8 +326,11 @@ func TestOperationFeeTestsActions_FeeBump(t *testing.T) {
 	defer ht.Finish()
 
 	// Update one tx to be a fee bump
-	_, err := ht.HorizonSession().ExecRaw("UPDATE history_transactions SET max_fee = 10, new_max_fee = 100 WHERE transaction_hash = '6a349e7331e93a251367287e274fb1699abaf723bde37aebe96248c76fd3071a'")
+	result, err := ht.HorizonSession().ExecRaw("UPDATE history_transactions SET max_fee = 10, new_max_fee = 100 WHERE transaction_hash = '6a349e7331e93a251367287e274fb1699abaf723bde37aebe96248c76fd3071a'")
 	ht.Require.NoError(err)
+	rowsAffecter, err := result.RowsAffected()
+	ht.Require.NoError(err)
+	ht.Require.Equal(int64(1), rowsAffecter)
 
 	ht.App.UpdateFeeStatsState()
 
