@@ -140,3 +140,6 @@ func (stats *StatsLedgerTransactionProcessorResults) Map() map[string]interface{
 		"stats_operations_revoke_sponsorship":               stats.OperationsRevokeSponsorship,
 	}
 }
+
+// Ensure the StatsChangeProcessor conforms to the ChangeProcessor interface.
+var _ LedgerTransactionProcessor = (*StatsLedgerTransactionProcessor)(nil)
