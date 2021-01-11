@@ -2,7 +2,6 @@ package processors
 
 import (
 	"github.com/stellar/go/ingest"
-	ingesterrors "github.com/stellar/go/ingest/errors"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
@@ -89,7 +88,7 @@ func (p *ClaimableBalancesProcessor) Commit() error {
 			if err != nil {
 				return errors.Wrap(err, "Error marshalling ledger key")
 			}
-			return ingesterrors.NewStateError(errors.Errorf(
+			return ingest.NewStateError(errors.Errorf(
 				"%d rows affected when %s claimable balance: %s",
 				rowsAffected,
 				action,

@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/stellar/go/ingest"
-	ingesterrors "github.com/stellar/go/ingest/errors"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
@@ -256,7 +255,7 @@ func (s *OffersProcessorTestSuiteLedger) TestUpdateOfferNoRowsAffected() {
 
 	err = s.processor.Commit()
 	s.Assert().Error(err)
-	s.Assert().IsType(ingesterrors.StateError{}, errors.Cause(err))
+	s.Assert().IsType(ingest.StateError{}, errors.Cause(err))
 	s.Assert().EqualError(err, "error flushing cache: 0 rows affected when updating offer 2")
 }
 

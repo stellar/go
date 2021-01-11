@@ -12,7 +12,7 @@ import (
 
 	"github.com/stellar/go/clients/stellarcore"
 	"github.com/stellar/go/historyarchive"
-	ingesterrors "github.com/stellar/go/ingest/errors"
+	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/db"
@@ -455,7 +455,7 @@ func (s *system) maybeVerifyState(lastIngestedLedger uint32) {
 
 				errorCount := s.incrementStateVerificationErrors()
 				switch errors.Cause(err).(type) {
-				case ingesterrors.StateError:
+				case ingest.StateError:
 					markStateInvalid(s.historyQ, err)
 				default:
 					logger := log.WithField("err", err).Warn

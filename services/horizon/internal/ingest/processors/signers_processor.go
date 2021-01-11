@@ -4,7 +4,6 @@ import (
 	"github.com/guregu/null"
 
 	"github.com/stellar/go/ingest"
-	ingesterrors "github.com/stellar/go/ingest/errors"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
@@ -106,7 +105,7 @@ func (p *SignersProcessor) Commit() error {
 				}
 
 				if rowsAffected != 1 {
-					return ingesterrors.NewStateError(errors.Errorf(
+					return ingest.NewStateError(errors.Errorf(
 						"Expected account=%s signer=%s in database but not found when removing (rows affected = %d)",
 						preAccountEntry.AccountId.Address(),
 						signer,
@@ -141,7 +140,7 @@ func (p *SignersProcessor) Commit() error {
 				}
 
 				if rowsAffected != 1 {
-					return ingesterrors.NewStateError(errors.Errorf(
+					return ingest.NewStateError(errors.Errorf(
 						"%d rows affected when inserting account=%s signer=%s to database",
 						rowsAffected,
 						postAccountEntry.AccountId.Address(),

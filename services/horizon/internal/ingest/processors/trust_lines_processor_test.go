@@ -8,7 +8,6 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/stellar/go/ingest"
-	ingesterrors "github.com/stellar/go/ingest/errors"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
@@ -550,6 +549,6 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestRemoveTrustlineNoRowsAffected()
 
 	err = s.processor.Commit()
 	s.Assert().Error(err)
-	s.Assert().IsType(ingesterrors.StateError{}, errors.Cause(err))
+	s.Assert().IsType(ingest.StateError{}, errors.Cause(err))
 	s.Assert().EqualError(err, "0 rows affected when removing trustline: GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB credit_alphanum4/EUR/GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
 }

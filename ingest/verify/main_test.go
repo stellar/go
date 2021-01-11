@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/stellar/go/ingest"
-	ingesterrors "github.com/stellar/go/ingest/errors"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
@@ -14,7 +13,7 @@ import (
 )
 
 func assertStateError(t *testing.T, err error, expectStateError bool) {
-	_, ok := err.(ingesterrors.StateError)
+	_, ok := err.(ingest.StateError)
 	if expectStateError {
 		assert.True(t, ok, "err should be StateError")
 	} else {
