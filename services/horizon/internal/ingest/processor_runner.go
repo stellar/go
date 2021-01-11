@@ -5,7 +5,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/stellar/go/ingest/io"
+	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/ingest/processors"
@@ -23,17 +23,17 @@ const (
 )
 
 type horizonChangeProcessor interface {
-	io.ChangeProcessor
+	ingest.ChangeProcessor
 	Commit() error
 }
 
 type horizonTransactionProcessor interface {
-	io.LedgerTransactionProcessor
+	ingest.LedgerTransactionProcessor
 	Commit() error
 }
 
 type statsChangeProcessor struct {
-	*io.StatsChangeProcessor
+	*ingest.StatsChangeProcessor
 }
 
 func (statsChangeProcessor) Commit() error {
@@ -41,7 +41,7 @@ func (statsChangeProcessor) Commit() error {
 }
 
 type statsLedgerTransactionProcessor struct {
-	*io.StatsLedgerTransactionProcessor
+	*ingest.StatsLedgerTransactionProcessor
 }
 
 func (statsLedgerTransactionProcessor) Commit() error {
@@ -53,16 +53,16 @@ type ProcessorRunnerInterface interface {
 	SetHistoryAdapter(historyAdapter historyArchiveAdapterInterface)
 	EnableMemoryStatsLogging()
 	DisableMemoryStatsLogging()
-	RunHistoryArchiveIngestion(checkpointLedger uint32) (io.StatsChangeProcessorResults, error)
+	RunHistoryArchiveIngestion(checkpointLedger uint32) (ingest.StatsChangeProcessorResults, error)
 	RunTransactionProcessorsOnLedger(sequence uint32) (
-		transactionStats io.StatsLedgerTransactionProcessorResults,
+		transactionStats ingest.StatsLedgerTransactionProcessorResults,
 		transactionDurations processorsRunDurations,
 		err error,
 	)
 	RunAllProcessorsOnLedger(sequence uint32) (
-		changeStats io.StatsChangeProcessorResults,
+		changeStats ingest.StatsChangeProcessorResults,
 		changeDurations processorsRunDurations,
-		transactionStats io.StatsLedgerTransactionProcessorResults,
+		transactionStats ingest.StatsLedgerTransactionProcessorResults,
 		transactionDurations processorsRunDurations,
 		err error,
 	)
@@ -97,7 +97,7 @@ func (s *ProcessorRunner) DisableMemoryStatsLogging() {
 }
 
 func (s *ProcessorRunner) buildChangeProcessor(
-	changeStats *io.StatsChangeProcessor,
+	changeStats *ingest.StatsChangeProcessor,
 	source ingestionSource,
 	sequence uint32,
 ) *groupChangeProcessors {
@@ -119,7 +119,7 @@ func (s *ProcessorRunner) buildChangeProcessor(
 }
 
 func (s *ProcessorRunner) buildTransactionProcessor(
-	ledgerTransactionStats *io.StatsLedgerTransactionProcessor,
+	ledgerTransactionStats *ingest.StatsLedgerTransactionProcessor,
 	ledger xdr.LedgerHeaderHistoryEntry,
 ) *groupTransactionProcessors {
 	statsLedgerTransactionProcessor := &statsLedgerTransactionProcessor{
@@ -202,15 +202,15 @@ func (s *ProcessorRunner) validateBucketList(ledgerSequence uint32) error {
 	return nil
 }
 
-func (s *ProcessorRunner) RunHistoryArchiveIngestion(checkpointLedger uint32) (io.StatsChangeProcessorResults, error) {
-	changeStats := io.StatsChangeProcessor{}
+func (s *ProcessorRunner) RunHistoryArchiveIngestion(checkpointLedger uint32) (ingest.StatsChangeProcessorResults, error) {
+	changeStats := ingest.StatsChangeProcessor{}
 	changeProcessor := s.buildChangeProcessor(&changeStats, historyArchiveSource, checkpointLedger)
 
-	var changeReader io.ChangeReader
+	var changeReader ingest.ChangeReader
 	var err error
 
 	if checkpointLedger == 1 {
-		changeReader = &io.GenesisLedgerStateReader{
+		changeReader = &ingest.GenesisLedgerStateReader{
 			NetworkPassphrase: s.config.NetworkPassphrase,
 		}
 	} else {
@@ -232,7 +232,7 @@ func (s *ProcessorRunner) RunHistoryArchiveIngestion(checkpointLedger uint32) (i
 	log.WithField("ledger", checkpointLedger).
 		Info("Processing entries from History Archive Snapshot")
 
-	err = io.StreamChanges(changeProcessor, newloggingChangeReader(
+	err = ingest.StreamChanges(changeProcessor, newloggingChangeReader(
 		changeReader,
 		"historyArchive",
 		checkpointLedger,
@@ -254,9 +254,9 @@ func (s *ProcessorRunner) RunHistoryArchiveIngestion(checkpointLedger uint32) (i
 func (s *ProcessorRunner) runChangeProcessorOnLedger(
 	changeProcessor horizonChangeProcessor, ledger uint32,
 ) error {
-	var changeReader io.ChangeReader
+	var changeReader ingest.ChangeReader
 	var err error
-	changeReader, err = io.NewLedgerChangeReader(s.ledgerBackend, s.config.NetworkPassphrase, ledger)
+	changeReader, err = ingest.NewLedgerChangeReader(s.ledgerBackend, s.config.NetworkPassphrase, ledger)
 	if err != nil {
 		return errors.Wrap(err, "Error creating ledger change reader")
 	}
@@ -267,7 +267,7 @@ func (s *ProcessorRunner) runChangeProcessorOnLedger(
 		logFrequency,
 		s.logMemoryStats,
 	)
-	if err = io.StreamChanges(changeProcessor, changeReader); err != nil {
+	if err = ingest.StreamChanges(changeProcessor, changeReader); err != nil {
 		return errors.Wrap(err, "Error streaming changes from ledger")
 	}
 
@@ -280,16 +280,16 @@ func (s *ProcessorRunner) runChangeProcessorOnLedger(
 }
 
 func (s *ProcessorRunner) RunTransactionProcessorsOnLedger(ledger uint32) (
-	transactionStats io.StatsLedgerTransactionProcessorResults,
+	transactionStats ingest.StatsLedgerTransactionProcessorResults,
 	transactionDurations processorsRunDurations,
 	err error,
 ) {
 	var (
-		ledgerTransactionStats io.StatsLedgerTransactionProcessor
-		transactionReader      *io.LedgerTransactionReader
+		ledgerTransactionStats ingest.StatsLedgerTransactionProcessor
+		transactionReader      *ingest.LedgerTransactionReader
 	)
 
-	transactionReader, err = io.NewLedgerTransactionReader(s.ledgerBackend, s.config.NetworkPassphrase, ledger)
+	transactionReader, err = ingest.NewLedgerTransactionReader(s.ledgerBackend, s.config.NetworkPassphrase, ledger)
 	if err != nil {
 		err = errors.Wrap(err, "Error creating ledger reader")
 		return
@@ -301,7 +301,7 @@ func (s *ProcessorRunner) RunTransactionProcessorsOnLedger(ledger uint32) (
 	}
 
 	groupTransactionProcessors := s.buildTransactionProcessor(&ledgerTransactionStats, transactionReader.GetHeader())
-	err = io.StreamLedgerTransactions(groupTransactionProcessors, transactionReader)
+	err = ingest.StreamLedgerTransactions(groupTransactionProcessors, transactionReader)
 	if err != nil {
 		err = errors.Wrap(err, "Error streaming changes from ledger")
 		return
@@ -319,13 +319,13 @@ func (s *ProcessorRunner) RunTransactionProcessorsOnLedger(ledger uint32) (
 }
 
 func (s *ProcessorRunner) RunAllProcessorsOnLedger(sequence uint32) (
-	changeStats io.StatsChangeProcessorResults,
+	changeStats ingest.StatsChangeProcessorResults,
 	changeDurations processorsRunDurations,
-	transactionStats io.StatsLedgerTransactionProcessorResults,
+	transactionStats ingest.StatsLedgerTransactionProcessorResults,
 	transactionDurations processorsRunDurations,
 	err error,
 ) {
-	changeStatsProcessor := io.StatsChangeProcessor{}
+	changeStatsProcessor := ingest.StatsChangeProcessor{}
 
 	if err = s.checkIfProtocolVersionSupported(sequence); err != nil {
 		err = errors.Wrap(err, "Error while checking for supported protocol version")

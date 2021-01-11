@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/stellar/go/historyarchive"
-	"github.com/stellar/go/ingest/io"
+	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/xdr"
@@ -69,10 +69,10 @@ func (c csvMap) close() {
 
 type csvProcessor struct {
 	files       csvMap
-	changeStats *io.StatsChangeProcessor
+	changeStats *ingest.StatsChangeProcessor
 }
 
-func (processor csvProcessor) ProcessChange(change io.Change) error {
+func (processor csvProcessor) ProcessChange(change ingest.Change) error {
 	csvWriter, ok := processor.files.get(change.Type)
 	if !ok {
 		return nil
@@ -258,7 +258,7 @@ func main() {
 	log.WithField("ledger", ledgerSequence).
 		Info("Processing entries from History Archive Snapshot")
 
-	changeReader, err := io.NewCheckpointChangeReader(
+	changeReader, err := ingest.NewCheckpointChangeReader(
 		context.Background(),
 		archive,
 		uint32(ledgerSequence),
@@ -268,9 +268,9 @@ func main() {
 	}
 	defer changeReader.Close()
 
-	changeStats := &io.StatsChangeProcessor{}
+	changeStats := &ingest.StatsChangeProcessor{}
 	doneStats := printPipelineStats(changeStats)
-	err = io.StreamChanges(
+	err = ingest.StreamChanges(
 		csvProcessor{files: files, changeStats: changeStats},
 		changeReader,
 	)
@@ -311,7 +311,7 @@ func archive(testnet bool) (*historyarchive.Archive, error) {
 	)
 }
 
-func printPipelineStats(reporter *io.StatsChangeProcessor) chan<- bool {
+func printPipelineStats(reporter *ingest.StatsChangeProcessor) chan<- bool {
 	startTime := time.Now()
 	done := make(chan bool)
 	ticker := time.NewTicker(10 * time.Second)

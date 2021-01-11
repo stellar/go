@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/stellar/go/ingest/ledgerbackend"
 
-	"github.com/stellar/go/ingest/io"
+	"github.com/stellar/go/ingest"
+	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/support/errors"
 	logpkg "github.com/stellar/go/support/log"
@@ -841,8 +841,8 @@ func (v verifyRangeState) run(s *system) (transition, error) {
 			return stop(), err
 		}
 
-		var changeStats io.StatsChangeProcessorResults
-		var ledgerTransactionStats io.StatsLedgerTransactionProcessorResults
+		var changeStats ingest.StatsChangeProcessorResults
+		var ledgerTransactionStats ingest.StatsLedgerTransactionProcessorResults
 		changeStats, _, ledgerTransactionStats, _, err = s.runner.RunAllProcessorsOnLedger(sequence)
 		if err != nil {
 			err = errors.Wrap(err, "Error running processors on ledger")

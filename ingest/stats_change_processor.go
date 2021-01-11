@@ -1,4 +1,4 @@
-package io
+package ingest
 
 import (
 	"github.com/stellar/go/xdr"

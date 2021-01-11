@@ -1,4 +1,4 @@
-package io
+package ingest
 
 // memoryTempSet is an in-memory implementation of TempSet interface.
 // As of July 2019 this requires up to ~4GB of memory for pubnet ledger

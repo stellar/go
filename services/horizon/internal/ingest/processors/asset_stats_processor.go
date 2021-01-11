@@ -4,8 +4,8 @@ import (
 	"database/sql"
 	"math/big"
 
+	"github.com/stellar/go/ingest"
 	ingesterrors "github.com/stellar/go/ingest/errors"
-	"github.com/stellar/go/ingest/io"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
@@ -14,7 +14,7 @@ import (
 type AssetStatsProcessor struct {
 	assetStatsQ history.QAssetStats
 
-	cache               *io.LedgerEntryChangeCache
+	cache               *ingest.LedgerEntryChangeCache
 	assetStatSet        AssetStatSet
 	useLedgerEntryCache bool
 }
@@ -37,11 +37,11 @@ func NewAssetStatsProcessor(
 }
 
 func (p *AssetStatsProcessor) reset() {
-	p.cache = io.NewLedgerEntryChangeCache()
+	p.cache = ingest.NewLedgerEntryChangeCache()
 	p.assetStatSet = AssetStatSet{}
 }
 
-func (p *AssetStatsProcessor) ProcessChange(change io.Change) error {
+func (p *AssetStatsProcessor) ProcessChange(change ingest.Change) error {
 	if change.Type != xdr.LedgerEntryTypeTrustline {
 		return nil
 	}

@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/stellar/go/historyarchive"
-	ingestio "github.com/stellar/go/ingest/io"
+	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
@@ -140,7 +140,7 @@ func (s *VerifyRangeStateTestSuite) TestRunHistoryArchiveIngestionReturnsError()
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
 	s.ledgerBackend.On("PrepareRange", ledgerbackend.BoundedRange(100, 200)).Return(nil).Once()
 
-	s.runner.On("RunHistoryArchiveIngestion", uint32(100)).Return(ingestio.StatsChangeProcessorResults{}, errors.New("my error")).Once()
+	s.runner.On("RunHistoryArchiveIngestion", uint32(100)).Return(ingest.StatsChangeProcessorResults{}, errors.New("my error")).Once()
 
 	next, err := verifyRangeState{fromLedger: 100, toLedger: 200}.run(s.system)
 	s.Assert().Error(err)
@@ -155,16 +155,16 @@ func (s *VerifyRangeStateTestSuite) TestSuccess() {
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
 	s.ledgerBackend.On("PrepareRange", ledgerbackend.BoundedRange(100, 200)).Return(nil).Once()
-	s.runner.On("RunHistoryArchiveIngestion", uint32(100)).Return(ingestio.StatsChangeProcessorResults{}, nil).Once()
+	s.runner.On("RunHistoryArchiveIngestion", uint32(100)).Return(ingest.StatsChangeProcessorResults{}, nil).Once()
 	s.historyQ.On("UpdateLastLedgerExpIngest", uint32(100)).Return(nil).Once()
 	s.historyQ.On("Commit").Return(nil).Once()
 
 	for i := uint32(101); i <= 200; i++ {
 		s.historyQ.On("Begin").Return(nil).Once()
 		s.runner.On("RunAllProcessorsOnLedger", i).Return(
-			ingestio.StatsChangeProcessorResults{},
+			ingest.StatsChangeProcessorResults{},
 			processorsRunDurations{},
-			ingestio.StatsLedgerTransactionProcessorResults{},
+			ingest.StatsLedgerTransactionProcessorResults{},
 			processorsRunDurations{},
 			nil,
 		).Once()
@@ -184,16 +184,16 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
 	s.ledgerBackend.On("PrepareRange", ledgerbackend.BoundedRange(100, 110)).Return(nil).Once()
-	s.runner.On("RunHistoryArchiveIngestion", uint32(100)).Return(ingestio.StatsChangeProcessorResults{}, nil).Once()
+	s.runner.On("RunHistoryArchiveIngestion", uint32(100)).Return(ingest.StatsChangeProcessorResults{}, nil).Once()
 	s.historyQ.On("UpdateLastLedgerExpIngest", uint32(100)).Return(nil).Once()
 	s.historyQ.On("Commit").Return(nil).Once()
 
 	for i := uint32(101); i <= 110; i++ {
 		s.historyQ.On("Begin").Return(nil).Once()
 		s.runner.On("RunAllProcessorsOnLedger", i).Return(
-			ingestio.StatsChangeProcessorResults{},
+			ingest.StatsChangeProcessorResults{},
 			processorsRunDurations{},
-			ingestio.StatsLedgerTransactionProcessorResults{},
+			ingest.StatsLedgerTransactionProcessorResults{},
 			processorsRunDurations{},
 			nil,
 		).Once()
@@ -211,7 +211,7 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 	}).Return(nil).Once()
 	clonedQ.On("Rollback").Return(nil).Once()
 	clonedQ.On("GetLastLedgerExpIngestNonBlocking").Return(uint32(63), nil).Once()
-	mockChangeReader := &ingestio.MockChangeReader{}
+	mockChangeReader := &ingest.MockChangeReader{}
 	mockChangeReader.On("Close").Return(nil).Once()
 	mockAccountID := "GACMZD5VJXTRLKVET72CETCYKELPNCOTTBDC6DHFEUPLG5DHEK534JQX"
 	sponsor := "GAREDQSXC7QZYJLVMTU7XZW4LSILQ4M5U4GNLO523LEWZ3JBRC5E4HLE"
@@ -220,7 +220,7 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 		"GA25GQLHJU3LPEJXEIAXK23AWEA5GWDUGRSHTQHDFT6HXHVMRULSQJUJ",
 		"GC6G3EQFKOKIIZFTJQSCHTSXBVC4XO3I64F5IBRQNS3E5SW3MO3KWGMT",
 	}
-	accountChange := ingestio.Change{
+	accountChange := ingest.Change{
 		Type: xdr.LedgerEntryTypeAccount,
 		Pre:  nil,
 		Post: &xdr.LedgerEntry{
@@ -276,7 +276,7 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 			},
 		},
 	}
-	offerChange := ingestio.Change{
+	offerChange := ingest.Change{
 		Type: xdr.LedgerEntryTypeOffer,
 		Pre:  nil,
 		Post: &xdr.LedgerEntry{
@@ -311,7 +311,7 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 		},
 		Sponsor: null.StringFrom("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
 	}
-	claimableBalanceChange := ingestio.Change{
+	claimableBalanceChange := ingest.Change{
 		Type: xdr.LedgerEntryTypeClaimableBalance,
 		Pre:  nil,
 		Post: &xdr.LedgerEntry{
@@ -345,8 +345,8 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 	mockChangeReader.On("Read").Return(accountChange, nil).Once()
 	mockChangeReader.On("Read").Return(offerChange, nil).Once()
 	mockChangeReader.On("Read").Return(claimableBalanceChange, nil).Once()
-	mockChangeReader.On("Read").Return(ingestio.Change{}, io.EOF).Once()
-	mockChangeReader.On("Read").Return(ingestio.Change{}, io.EOF).Once()
+	mockChangeReader.On("Read").Return(ingest.Change{}, io.EOF).Once()
+	mockChangeReader.On("Read").Return(ingest.Change{}, io.EOF).Once()
 	s.historyAdapter.On("GetState", mock.AnythingOfType("*context.emptyCtx"), uint32(63)).Return(mockChangeReader, nil).Once()
 	mockAccount := history.AccountEntry{
 		AccountID:          mockAccountID,

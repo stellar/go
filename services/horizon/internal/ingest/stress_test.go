@@ -4,7 +4,7 @@ package ingest
 import (
 	"testing"
 
-	"github.com/stellar/go/ingest/io"
+	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/support/errors"
 	"github.com/stretchr/testify/suite"
 )
@@ -92,9 +92,9 @@ func (s *StressTestStateTestSuite) TestRunAllProcessorsOnLedgerReturnsError() {
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
 	s.runner.On("RunAllProcessorsOnLedger", uint32(1)).Return(
-		io.StatsChangeProcessorResults{},
+		ingest.StatsChangeProcessorResults{},
 		processorsRunDurations{},
-		io.StatsLedgerTransactionProcessorResults{},
+		ingest.StatsLedgerTransactionProcessorResults{},
 		processorsRunDurations{},
 		errors.New("my error"),
 	).Once()
@@ -107,9 +107,9 @@ func (s *StressTestStateTestSuite) TestUpdateLastLedgerExpIngestReturnsError() {
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
 	s.runner.On("RunAllProcessorsOnLedger", uint32(1)).Return(
-		io.StatsChangeProcessorResults{},
+		ingest.StatsChangeProcessorResults{},
 		processorsRunDurations{},
-		io.StatsLedgerTransactionProcessorResults{},
+		ingest.StatsLedgerTransactionProcessorResults{},
 		processorsRunDurations{},
 		nil,
 	).Once()
@@ -123,9 +123,9 @@ func (s *StressTestStateTestSuite) TestCommitReturnsError() {
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
 	s.runner.On("RunAllProcessorsOnLedger", uint32(1)).Return(
-		io.StatsChangeProcessorResults{},
+		ingest.StatsChangeProcessorResults{},
 		processorsRunDurations{},
-		io.StatsLedgerTransactionProcessorResults{},
+		ingest.StatsLedgerTransactionProcessorResults{},
 		processorsRunDurations{},
 		nil,
 	).Once()
@@ -140,9 +140,9 @@ func (s *StressTestStateTestSuite) TestSucceeds() {
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
 	s.runner.On("RunAllProcessorsOnLedger", uint32(1)).Return(
-		io.StatsChangeProcessorResults{},
+		ingest.StatsChangeProcessorResults{},
 		processorsRunDurations{},
-		io.StatsLedgerTransactionProcessorResults{},
+		ingest.StatsLedgerTransactionProcessorResults{},
 		processorsRunDurations{},
 		nil,
 	).Once()

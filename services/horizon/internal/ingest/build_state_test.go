@@ -5,7 +5,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/stellar/go/ingest/io"
+	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/support/errors"
 	"github.com/stretchr/testify/mock"
@@ -240,7 +240,7 @@ func (s *BuildStateTestSuite) TestRunHistoryArchiveIngestionReturnsError() {
 	s.mockCommonHistoryQ()
 	s.runner.
 		On("RunHistoryArchiveIngestion", s.checkpointLedger).
-		Return(io.StatsChangeProcessorResults{}, errors.New("my error")).
+		Return(ingest.StatsChangeProcessorResults{}, errors.New("my error")).
 		Once()
 	next, err := buildState{checkpointLedger: s.checkpointLedger}.run(s.system)
 
@@ -253,7 +253,7 @@ func (s *BuildStateTestSuite) TestUpdateLastLedgerExpIngestAfterIngestReturnsErr
 	s.mockCommonHistoryQ()
 	s.runner.
 		On("RunHistoryArchiveIngestion", s.checkpointLedger).
-		Return(io.StatsChangeProcessorResults{}, nil).
+		Return(ingest.StatsChangeProcessorResults{}, nil).
 		Once()
 	s.historyQ.On("UpdateExpIngestVersion", CurrentVersion).
 		Return(nil).
@@ -272,7 +272,7 @@ func (s *BuildStateTestSuite) TestUpdateExpIngestVersionIngestReturnsError() {
 	s.mockCommonHistoryQ()
 	s.runner.
 		On("RunHistoryArchiveIngestion", s.checkpointLedger).
-		Return(io.StatsChangeProcessorResults{}, nil).
+		Return(ingest.StatsChangeProcessorResults{}, nil).
 		Once()
 	s.historyQ.On("UpdateExpIngestVersion", CurrentVersion).
 		Return(errors.New("my error")).
@@ -288,7 +288,7 @@ func (s *BuildStateTestSuite) TestUpdateCommitReturnsError() {
 	s.mockCommonHistoryQ()
 	s.runner.
 		On("RunHistoryArchiveIngestion", s.checkpointLedger).
-		Return(io.StatsChangeProcessorResults{}, nil).
+		Return(ingest.StatsChangeProcessorResults{}, nil).
 		Once()
 	s.historyQ.On("UpdateLastLedgerExpIngest", s.checkpointLedger).
 		Return(nil).
@@ -310,7 +310,7 @@ func (s *BuildStateTestSuite) TestBuildStateSucceeds() {
 	s.mockCommonHistoryQ()
 	s.runner.
 		On("RunHistoryArchiveIngestion", s.checkpointLedger).
-		Return(io.StatsChangeProcessorResults{}, nil).
+		Return(ingest.StatsChangeProcessorResults{}, nil).
 		Once()
 	s.historyQ.On("UpdateLastLedgerExpIngest", s.checkpointLedger).
 		Return(nil).
@@ -338,7 +338,7 @@ func (s *BuildStateTestSuite) TestUpdateCommitReturnsErrorStop() {
 	s.mockCommonHistoryQ()
 	s.runner.
 		On("RunHistoryArchiveIngestion", s.checkpointLedger).
-		Return(io.StatsChangeProcessorResults{}, nil).
+		Return(ingest.StatsChangeProcessorResults{}, nil).
 		Once()
 	s.historyQ.On("UpdateLastLedgerExpIngest", s.checkpointLedger).
 		Return(nil).
@@ -360,7 +360,7 @@ func (s *BuildStateTestSuite) TestBuildStateSucceedStop() {
 	s.mockCommonHistoryQ()
 	s.runner.
 		On("RunHistoryArchiveIngestion", s.checkpointLedger).
-		Return(io.StatsChangeProcessorResults{}, nil).
+		Return(ingest.StatsChangeProcessorResults{}, nil).
 		Once()
 	s.historyQ.On("UpdateLastLedgerExpIngest", s.checkpointLedger).
 		Return(nil).

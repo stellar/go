@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/stellar/go/ingest/io"
+	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/support/errors"
 )
 
@@ -26,7 +26,7 @@ func newGroupChangeProcessors(processors []horizonChangeProcessor) *groupChangeP
 	}
 }
 
-func (g groupChangeProcessors) ProcessChange(change io.Change) error {
+func (g groupChangeProcessors) ProcessChange(change ingest.Change) error {
 	for _, p := range g.processors {
 		startTime := time.Now()
 		if err := p.ProcessChange(change); err != nil {
@@ -60,7 +60,7 @@ func newGroupTransactionProcessors(processors []horizonTransactionProcessor) *gr
 	}
 }
 
-func (g groupTransactionProcessors) ProcessTransaction(tx io.LedgerTransaction) error {
+func (g groupTransactionProcessors) ProcessTransaction(tx ingest.LedgerTransaction) error {
 	for _, p := range g.processors {
 		startTime := time.Now()
 		if err := p.ProcessTransaction(tx); err != nil {

@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/stellar/go/historyarchive"
-	"github.com/stellar/go/ingest/io"
+	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
@@ -17,7 +17,7 @@ type historyArchiveAdapter struct {
 type historyArchiveAdapterInterface interface {
 	GetLatestLedgerSequence() (uint32, error)
 	BucketListHash(sequence uint32) (xdr.Hash, error)
-	GetState(ctx context.Context, sequence uint32) (io.ChangeReader, error)
+	GetState(ctx context.Context, sequence uint32) (ingest.ChangeReader, error)
 }
 
 // newHistoryArchiveAdapter is a constructor to make a historyArchiveAdapter
@@ -55,7 +55,7 @@ func (haa *historyArchiveAdapter) BucketListHash(sequence uint32) (xdr.Hash, err
 }
 
 // GetState returns a reader with the state of the ledger at the provided sequence number.
-func (haa *historyArchiveAdapter) GetState(ctx context.Context, sequence uint32) (io.ChangeReader, error) {
+func (haa *historyArchiveAdapter) GetState(ctx context.Context, sequence uint32) (ingest.ChangeReader, error) {
 	exists, err := haa.archive.CategoryCheckpointExists("history", sequence)
 	if err != nil {
 		return nil, errors.Wrap(err, "error checking if category checkpoint exists")
@@ -64,7 +64,7 @@ func (haa *historyArchiveAdapter) GetState(ctx context.Context, sequence uint32)
 		return nil, errors.Errorf("history checkpoint does not exist for ledger %d", sequence)
 	}
 
-	sr, e := io.NewCheckpointChangeReader(ctx, haa.archive, sequence)
+	sr, e := ingest.NewCheckpointChangeReader(ctx, haa.archive, sequence)
 	if e != nil {
 		return nil, errors.Wrap(e, "could not make memory state reader")
 	}

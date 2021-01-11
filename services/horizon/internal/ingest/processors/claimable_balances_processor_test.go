@@ -4,7 +4,7 @@ package processors
 import (
 	"testing"
 
-	"github.com/stellar/go/ingest/io"
+	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/suite"
@@ -63,7 +63,7 @@ func (s *ClaimableBalancesProcessorTestSuiteState) TestCreatesClaimableBalances(
 		},
 	}).Return(nil).Once()
 
-	err := s.processor.ProcessChange(io.Change{
+	err := s.processor.ProcessChange(ingest.Change{
 		Type: xdr.LedgerEntryTypeClaimableBalance,
 		Pre:  nil,
 		Post: &xdr.LedgerEntry{
@@ -133,7 +133,7 @@ func (s *ClaimableBalancesProcessorTestSuiteLedger) TestNewClaimableBalance() {
 			},
 		},
 	}
-	err := s.processor.ProcessChange(io.Change{
+	err := s.processor.ProcessChange(ingest.Change{
 		Type: xdr.LedgerEntryTypeClaimableBalance,
 		Pre:  nil,
 		Post: &entry,
@@ -156,7 +156,7 @@ func (s *ClaimableBalancesProcessorTestSuiteLedger) TestNewClaimableBalance() {
 	}
 
 	entry.LastModifiedLedgerSeq = entry.LastModifiedLedgerSeq - 1
-	err = s.processor.ProcessChange(io.Change{
+	err = s.processor.ProcessChange(ingest.Change{
 		Type: xdr.LedgerEntryTypeClaimableBalance,
 		Pre:  &entry,
 		Post: &updated,
@@ -211,7 +211,7 @@ func (s *ClaimableBalancesProcessorTestSuiteLedger) TestUpdateClaimableBalance()
 		},
 	}
 
-	err := s.processor.ProcessChange(io.Change{
+	err := s.processor.ProcessChange(ingest.Change{
 		Type: xdr.LedgerEntryTypeClaimableBalance,
 		Pre:  &pre,
 		Post: &updated,
@@ -248,7 +248,7 @@ func (s *ClaimableBalancesProcessorTestSuiteLedger) TestRemoveClaimableBalance()
 			},
 		},
 	}
-	err := s.processor.ProcessChange(io.Change{
+	err := s.processor.ProcessChange(ingest.Change{
 		Type: xdr.LedgerEntryTypeClaimableBalance,
 		Pre:  &pre,
 		Post: nil,
