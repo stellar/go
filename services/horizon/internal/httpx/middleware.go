@@ -261,17 +261,17 @@ type StateMiddleware struct {
 }
 
 func ingestionStatus(q *history.Q) (uint32, bool, error) {
-	version, err := q.GetExpIngestVersion()
+	version, err := q.GetIngestVersion()
 	if err != nil {
 		return 0, false, supportErrors.Wrap(
-			err, "Error running GetExpIngestVersion",
+			err, "Error running GetIngestVersion",
 		)
 	}
 
-	lastIngestedLedger, err := q.GetLastLedgerExpIngestNonBlocking()
+	lastIngestedLedger, err := q.GetLastLedgerIngestNonBlocking()
 	if err != nil {
 		return 0, false, supportErrors.Wrap(
-			err, "Error running GetLastLedgerExpIngestNonBlocking",
+			err, "Error running GetLastLedgerIngestNonBlocking",
 		)
 	}
 
@@ -306,7 +306,7 @@ func (m *StateMiddleware) WrapFunc(h http.HandlerFunc) http.HandlerFunc {
 			ReadOnly:  true,
 		})
 		if err != nil {
-			err = supportErrors.Wrap(err, "Error starting exp ingestion read transaction")
+			err = supportErrors.Wrap(err, "Error starting ingestion read transaction")
 			problem.Render(r.Context(), w, err)
 			return
 		}

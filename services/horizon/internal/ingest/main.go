@@ -85,11 +85,11 @@ type Config struct {
 }
 
 const (
-	getLastIngestedErrMsg           string = "Error getting last ingested ledger"
-	getExpIngestVersionErrMsg       string = "Error getting exp ingest version"
-	updateLastLedgerExpIngestErrMsg string = "Error updating last ingested ledger"
-	commitErrMsg                    string = "Error committing db transaction"
-	updateExpStateInvalidErrMsg     string = "Error updating state invalid value"
+	getLastIngestedErrMsg        string = "Error getting last ingested ledger"
+	getIngestVersionErrMsg       string = "Error getting ingestion version"
+	updateLastLedgerIngestErrMsg string = "Error updating last ingested ledger"
+	commitErrMsg                 string = "Error committing db transaction"
+	updateExpStateInvalidErrMsg  string = "Error updating state invalid value"
 )
 
 type stellarCoreClient interface {
@@ -305,7 +305,7 @@ func (s *system) Metrics() Metrics {
 // included in 1a.
 //
 // We ensure that only one instance is a leader because in each round instances
-// try to acquire a lock on `LastLedgerExpIngest value in key value store and only
+// try to acquire a lock on `LastLedgerIngest value in key value store and only
 // one instance will be able to acquire it. This happens in both initial processing
 // and ledger processing. So this solves 3a and 3b in both 1a and 1b.
 //

@@ -5,6 +5,8 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+* Breaking change: The `expingest` command has been renamed to `ingest` since the ingestion system is not experimental anymore.
+
 ## v2.0.0 Beta
 
 **THIS IS A BETA RELEASE! DO NOT USE IN PRODUCTION. The release may contain critical bugs. It's not suitable for production use.**
@@ -38,7 +40,7 @@ This version may contain bugs. If you run into issues please check [Known Issues
 
 ## v1.11.0
 
-* The `service` field emitted in ingestion logs has been changed from `expingest` to  `ingest` ([#3118](https://github.com/stellar/go/pull/3118)).
+* The `service` field emitted in ingestion logs has been changed from `expingest` to `ingest` ([#3118](https://github.com/stellar/go/pull/3118)).
 * Ledger stats are now exported in `/metrics` in `horizon_ingest_ledger_stats_total` metric ([#3148](https://github.com/stellar/go/pull/3148)).
 * Stellar Core database URL is no longer required when running in captive mode ([#3150](https://github.com/stellar/go/pull/3150)).
 * xdr: Add a custom marshaller for claim predicate timestamp  ([#3183](https://github.com/stellar/go/pull/3183)).

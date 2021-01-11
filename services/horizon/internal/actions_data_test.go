@@ -53,9 +53,9 @@ func TestDataActions_Show(t *testing.T) {
 	q := &history.Q{ht.HorizonSession()}
 
 	// Makes StateMiddleware happy
-	err := q.UpdateLastLedgerExpIngest(100)
+	err := q.UpdateLastLedgerIngest(100)
 	ht.Assert.NoError(err)
-	err = q.UpdateExpIngestVersion(ingest.CurrentVersion)
+	err = q.UpdateIngestVersion(ingest.CurrentVersion)
 	ht.Assert.NoError(err)
 	_, err = q.InsertLedger(xdr.LedgerHeaderHistoryEntry{
 		Header: xdr.LedgerHeader{
