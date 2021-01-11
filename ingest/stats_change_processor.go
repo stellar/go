@@ -112,3 +112,6 @@ func (stats *StatsChangeProcessorResults) Map() map[string]interface{} {
 		"stats_trust_lines_removed": stats.TrustLinesRemoved,
 	}
 }
+
+// Ensure the StatsChangeProcessor conforms to the ChangeProcessor interface.
+var _ ChangeProcessor = (*StatsChangeProcessor)(nil)
