@@ -3,7 +3,6 @@ package ingest
 import (
 	"sync"
 
-	ingesterrors "github.com/stellar/go/ingest/errors"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
@@ -99,12 +98,12 @@ func (c *LedgerEntryChangeCache) addCreatedChange(change Change) error {
 
 	switch existingChange.LedgerEntryChangeType() {
 	case xdr.LedgerEntryChangeTypeLedgerEntryCreated:
-		return ingesterrors.NewStateError(errors.Errorf(
+		return NewStateError(errors.Errorf(
 			"can't create an entry that already exists (ledger key = %s)",
 			ledgerKeyString,
 		))
 	case xdr.LedgerEntryChangeTypeLedgerEntryUpdated:
-		return ingesterrors.NewStateError(errors.Errorf(
+		return NewStateError(errors.Errorf(
 			"can't create an entry that already exists (ledger key = %s)",
 			ledgerKeyString,
 		))
@@ -153,7 +152,7 @@ func (c *LedgerEntryChangeCache) addUpdatedChange(change Change) error {
 			Post: change.Post,
 		}
 	case xdr.LedgerEntryChangeTypeLedgerEntryRemoved:
-		return ingesterrors.NewStateError(errors.Errorf(
+		return NewStateError(errors.Errorf(
 			"can't update an entry that was previously removed (ledger key = %s)",
 			ledgerKeyString,
 		))
@@ -190,7 +189,7 @@ func (c *LedgerEntryChangeCache) addRemovedChange(change Change) error {
 			Post: nil,
 		}
 	case xdr.LedgerEntryChangeTypeLedgerEntryRemoved:
-		return ingesterrors.NewStateError(errors.Errorf(
+		return NewStateError(errors.Errorf(
 			"can't remove an entry that was previously removed (ledger key = %s)",
 			ledgerKeyString,
 		))

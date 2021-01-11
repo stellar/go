@@ -3,6 +3,7 @@ package ingest
 import (
 	"context"
 	"fmt"
+	"io"
 
 	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/ingest/ledgerbackend"
@@ -32,7 +33,7 @@ func Example_ledgerentrieshistoryarchive() {
 	var accounts, data, trustlines, offers int
 	for {
 		entry, err := reader.Read()
-		if err == EOF {
+		if err == io.EOF {
 			break
 		}
 		if err != nil {
@@ -82,7 +83,7 @@ func Example_transactionshistoryarchive() {
 
 	for {
 		tx, err := txReader.Read()
-		if err == EOF {
+		if err == io.EOF {
 			break
 		}
 		if err != nil {
@@ -127,7 +128,7 @@ func Example_changes() {
 
 	for {
 		change, err := changeReader.Read()
-		if err == EOF {
+		if err == io.EOF {
 			break
 		}
 		if err != nil {

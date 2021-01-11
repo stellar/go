@@ -2,7 +2,6 @@ package processors
 
 import (
 	"github.com/stellar/go/ingest"
-	ingesterrors "github.com/stellar/go/ingest/errors"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
@@ -74,7 +73,7 @@ func (p *AccountsProcessor) Commit() error {
 			}
 
 			if rowsAffected != 1 {
-				return ingesterrors.NewStateError(errors.Errorf(
+				return ingest.NewStateError(errors.Errorf(
 					"%d No rows affected when removing account %s",
 					rowsAffected,
 					accountID,

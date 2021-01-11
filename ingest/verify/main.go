@@ -8,7 +8,6 @@ import (
 	"io"
 
 	"github.com/stellar/go/ingest"
-	ingesterrors "github.com/stellar/go/ingest/errors"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
@@ -112,7 +111,7 @@ func (v *StateVerifier) Write(entry xdr.LedgerEntry) error {
 
 	expectedEntry, exist := v.currentEntries[key]
 	if !exist {
-		return ingesterrors.NewStateError(errors.Errorf(
+		return ingest.NewStateError(errors.Errorf(
 			"Cannot find entry in currentEntries map: %s (key = %s)",
 			base64.StdEncoding.EncodeToString(actualEntryMarshaled),
 			key,
@@ -145,7 +144,7 @@ func (v *StateVerifier) Write(entry xdr.LedgerEntry) error {
 	}
 
 	if !bytes.Equal(actualEntryMarshaled, expectedEntryMarshaled) {
-		return ingesterrors.NewStateError(errors.Errorf(
+		return ingest.NewStateError(errors.Errorf(
 			"Entry does not match the fetched entry. Expected: %s (pretransform = %s), actual: %s",
 			base64.StdEncoding.EncodeToString(expectedEntryMarshaled),
 			base64.StdEncoding.EncodeToString(preTransformExpectedEntryMarshaled),
@@ -175,7 +174,7 @@ func (v *StateVerifier) Verify(countAll int) error {
 	}
 
 	if v.readEntries != countAll {
-		return ingesterrors.NewStateError(errors.Errorf(
+		return ingest.NewStateError(errors.Errorf(
 			"Number of entries read using GetEntries (%d) does not match number of entries in your storage (%d).",
 			v.readEntries,
 			countAll,
@@ -195,7 +194,7 @@ func (v *StateVerifier) checkUnreadEntries() error {
 
 		// Ignore error as StateError below is more important
 		entryString, _ := xdr.MarshalBase64(entry)
-		return ingesterrors.NewStateError(errors.Errorf(
+		return ingest.NewStateError(errors.Errorf(
 			"Entries (%d) not found locally, example: %s",
 			len(v.currentEntries),
 			entryString,
