@@ -206,45 +206,42 @@ func (s *ProcessorRunner) RunHistoryArchiveIngestion(checkpointLedger uint32) (i
 	changeStats := ingest.StatsChangeProcessor{}
 	changeProcessor := s.buildChangeProcessor(&changeStats, historyArchiveSource, checkpointLedger)
 
-	var changeReader ingest.ChangeReader
-	var err error
-
 	if checkpointLedger == 1 {
-		changeReader = &ingest.GenesisLedgerStateReader{
-			NetworkPassphrase: s.config.NetworkPassphrase,
+		if err := changeProcessor.ProcessChange(ingest.GenesisChange(s.config.NetworkPassphrase)); err != nil {
+			return changeStats.GetResults(), errors.Wrap(err, "Error ingesting genesis ledger")
 		}
 	} else {
-		if err = s.checkIfProtocolVersionSupported(checkpointLedger); err != nil {
+		if err := s.checkIfProtocolVersionSupported(checkpointLedger); err != nil {
 			return changeStats.GetResults(), errors.Wrap(err, "Error while checking for supported protocol version")
 		}
 
-		if err = s.validateBucketList(checkpointLedger); err != nil {
+		if err := s.validateBucketList(checkpointLedger); err != nil {
 			return changeStats.GetResults(), errors.Wrap(err, "Error validating bucket list from HAS")
 		}
 
-		changeReader, err = s.historyAdapter.GetState(s.ctx, checkpointLedger)
+		changeReader, err := s.historyAdapter.GetState(s.ctx, checkpointLedger)
 		if err != nil {
 			return changeStats.GetResults(), errors.Wrap(err, "Error creating HAS reader")
 		}
+
+		defer changeReader.Close()
+
+		log.WithField("ledger", checkpointLedger).
+			Info("Processing entries from History Archive Snapshot")
+
+		err = ingest.StreamChanges(changeProcessor, newloggingChangeReader(
+			changeReader,
+			"historyArchive",
+			checkpointLedger,
+			logFrequency,
+			s.logMemoryStats,
+		))
+		if err != nil {
+			return changeStats.GetResults(), errors.Wrap(err, "Error streaming changes from HAS")
+		}
 	}
-	defer changeReader.Close()
 
-	log.WithField("ledger", checkpointLedger).
-		Info("Processing entries from History Archive Snapshot")
-
-	err = ingest.StreamChanges(changeProcessor, newloggingChangeReader(
-		changeReader,
-		"historyArchive",
-		checkpointLedger,
-		logFrequency,
-		s.logMemoryStats,
-	))
-	if err != nil {
-		return changeStats.GetResults(), errors.Wrap(err, "Error streaming changes from HAS")
-	}
-
-	err = changeProcessor.Commit()
-	if err != nil {
+	if err := changeProcessor.Commit(); err != nil {
 		return changeStats.GetResults(), errors.Wrap(err, "Error commiting changes from processor")
 	}
 

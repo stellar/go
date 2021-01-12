@@ -2,6 +2,7 @@ package ingest
 
 import (
 	"context"
+	"io"
 	"reflect"
 	"testing"
 
@@ -99,6 +100,11 @@ func TestProcessorRunnerRunHistoryArchiveIngestionHistoryArchive(t *testing.T) {
 	historyAdapter.On("BucketListHash", uint32(63)).
 		Return(xdr.Hash([32]byte{0, 1, 2}), nil).Once()
 
+	m := &ingest.MockChangeReader{}
+	m.On("Read").Return(ingest.GenesisChange(network.PublicNetworkPassphrase), nil).Once()
+	m.On("Read").Return(ingest.Change{}, io.EOF).Once()
+	m.On("Close").Return(nil).Once()
+
 	historyAdapter.
 		On(
 			"GetState",
@@ -106,9 +112,7 @@ func TestProcessorRunnerRunHistoryArchiveIngestionHistoryArchive(t *testing.T) {
 			uint32(63),
 		).
 		Return(
-			&ingest.GenesisLedgerStateReader{
-				NetworkPassphrase: network.PublicNetworkPassphrase,
-			},
+			m,
 			nil,
 		).Once()
 
