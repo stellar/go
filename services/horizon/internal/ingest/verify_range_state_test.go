@@ -16,6 +16,7 @@ import (
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/services/horizon/internal/ingest/processors"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
@@ -164,7 +165,7 @@ func (s *VerifyRangeStateTestSuite) TestSuccess() {
 		s.runner.On("RunAllProcessorsOnLedger", i).Return(
 			ingest.StatsChangeProcessorResults{},
 			processorsRunDurations{},
-			ingest.StatsLedgerTransactionProcessorResults{},
+			processors.StatsLedgerTransactionProcessorResults{},
 			processorsRunDurations{},
 			nil,
 		).Once()
@@ -193,7 +194,7 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 		s.runner.On("RunAllProcessorsOnLedger", i).Return(
 			ingest.StatsChangeProcessorResults{},
 			processorsRunDurations{},
-			ingest.StatsLedgerTransactionProcessorResults{},
+			processors.StatsLedgerTransactionProcessorResults{},
 			processorsRunDurations{},
 			nil,
 		).Once()

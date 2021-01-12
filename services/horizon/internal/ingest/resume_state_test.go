@@ -5,13 +5,15 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/suite"
+
 	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/ingest/ledgerbackend"
+	"github.com/stellar/go/services/horizon/internal/ingest/processors"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
-	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/suite"
 )
 
 func TestResumeTestTestSuite(t *testing.T) {
@@ -280,7 +282,7 @@ func (s *ResumeTestTestSuite) mockSuccessfulIngestion() {
 	s.runner.On("RunAllProcessorsOnLedger", uint32(102)).Return(
 		ingest.StatsChangeProcessorResults{},
 		processorsRunDurations{},
-		ingest.StatsLedgerTransactionProcessorResults{},
+		processors.StatsLedgerTransactionProcessorResults{},
 		processorsRunDurations{},
 		nil,
 	).Once()
@@ -350,7 +352,7 @@ func (s *ResumeTestTestSuite) TestErrorSettingCursorIgnored() {
 	s.runner.On("RunAllProcessorsOnLedger", uint32(101)).Return(
 		ingest.StatsChangeProcessorResults{},
 		processorsRunDurations{},
-		ingest.StatsLedgerTransactionProcessorResults{},
+		processors.StatsLedgerTransactionProcessorResults{},
 		processorsRunDurations{},
 		nil,
 	).Once()

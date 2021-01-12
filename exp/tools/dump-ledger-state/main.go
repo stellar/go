@@ -6,6 +6,7 @@ import (
 	"encoding/csv"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"runtime"
 	"strconv"
@@ -270,12 +271,22 @@ func main() {
 
 	changeStats := &ingest.StatsChangeProcessor{}
 	doneStats := printPipelineStats(changeStats)
-	err = ingest.StreamChanges(
-		csvProcessor{files: files, changeStats: changeStats},
-		changeReader,
-	)
-	if err != nil {
+	changeProcessor := csvProcessor{files: files, changeStats: changeStats}
+	logFatalError := func(err error) {
 		log.WithField("err", err).Fatal("could not process all changes from HAS")
+	}
+	for {
+		change, err := changeReader.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			logFatalError(errors.Wrap(err, "could not read transaction"))
+		}
+
+		if err = changeProcessor.ProcessChange(change); err != nil {
+			logFatalError(errors.Wrap(err, "could not process change"))
+		}
 	}
 
 	// Remove sorted files

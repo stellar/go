@@ -11,6 +11,7 @@ import (
 
 	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/ingest"
+	"github.com/stellar/go/services/horizon/internal/ingest/processors"
 	logpkg "github.com/stellar/go/support/log"
 	"github.com/stellar/go/xdr"
 )
@@ -202,7 +203,7 @@ func TestUpdateSampleChanges(t *testing.T) {
 	}
 
 	changeStats := &ingest.StatsChangeProcessor{}
-	err = ingest.StreamChanges(changeStats, reader)
+	err = processors.StreamChanges(changeStats, reader)
 	if err != nil {
 		t.Fatalf("could not stream changes: %v", err)
 	}

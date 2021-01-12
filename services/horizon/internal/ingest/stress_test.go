@@ -4,9 +4,11 @@ package ingest
 import (
 	"testing"
 
-	"github.com/stellar/go/ingest"
-	"github.com/stellar/go/support/errors"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/stellar/go/ingest"
+	"github.com/stellar/go/services/horizon/internal/ingest/processors"
+	"github.com/stellar/go/support/errors"
 )
 
 func TestStressTestStateTestSuite(t *testing.T) {
@@ -94,7 +96,7 @@ func (s *StressTestStateTestSuite) TestRunAllProcessorsOnLedgerReturnsError() {
 	s.runner.On("RunAllProcessorsOnLedger", uint32(1)).Return(
 		ingest.StatsChangeProcessorResults{},
 		processorsRunDurations{},
-		ingest.StatsLedgerTransactionProcessorResults{},
+		processors.StatsLedgerTransactionProcessorResults{},
 		processorsRunDurations{},
 		errors.New("my error"),
 	).Once()
@@ -109,7 +111,7 @@ func (s *StressTestStateTestSuite) TestUpdateLastLedgerExpIngestReturnsError() {
 	s.runner.On("RunAllProcessorsOnLedger", uint32(1)).Return(
 		ingest.StatsChangeProcessorResults{},
 		processorsRunDurations{},
-		ingest.StatsLedgerTransactionProcessorResults{},
+		processors.StatsLedgerTransactionProcessorResults{},
 		processorsRunDurations{},
 		nil,
 	).Once()
@@ -125,7 +127,7 @@ func (s *StressTestStateTestSuite) TestCommitReturnsError() {
 	s.runner.On("RunAllProcessorsOnLedger", uint32(1)).Return(
 		ingest.StatsChangeProcessorResults{},
 		processorsRunDurations{},
-		ingest.StatsLedgerTransactionProcessorResults{},
+		processors.StatsLedgerTransactionProcessorResults{},
 		processorsRunDurations{},
 		nil,
 	).Once()
@@ -142,7 +144,7 @@ func (s *StressTestStateTestSuite) TestSucceeds() {
 	s.runner.On("RunAllProcessorsOnLedger", uint32(1)).Return(
 		ingest.StatsChangeProcessorResults{},
 		processorsRunDurations{},
-		ingest.StatsLedgerTransactionProcessorResults{},
+		processors.StatsLedgerTransactionProcessorResults{},
 		processorsRunDurations{},
 		nil,
 	).Once()

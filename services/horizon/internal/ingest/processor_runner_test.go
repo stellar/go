@@ -151,7 +151,7 @@ func TestProcessorRunnerRunHistoryArchiveIngestionHistoryArchive(t *testing.T) {
 		Return(mockClaimableBalancesBatchInsertBuilder).Once()
 
 	q.MockQAccounts.On("UpsertAccounts", []xdr.LedgerEntry{
-		xdr.LedgerEntry{
+		{
 			LastModifiedLedgerSeq: 1,
 			Data: xdr.LedgerEntryData{
 				Type: xdr.LedgerEntryTypeAccount,
@@ -326,7 +326,7 @@ func TestProcessorRunnerBuildTransactionProcessor(t *testing.T) {
 		historyQ: q,
 	}
 
-	stats := &ingest.StatsLedgerTransactionProcessor{}
+	stats := &processors.StatsLedgerTransactionProcessor{}
 	ledger := xdr.LedgerHeaderHistoryEntry{}
 	processor := runner.buildTransactionProcessor(stats, ledger)
 	assert.IsType(t, &groupTransactionProcessors{}, processor)
