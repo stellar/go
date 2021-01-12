@@ -210,7 +210,7 @@ func (s *ProcessorRunner) RunHistoryArchiveIngestion(checkpointLedger uint32) (i
 	var err error
 
 	if checkpointLedger == 1 {
-		changeReader = &ingest.GenesisLedgerStateReader{
+		changeReader = &ingest.GenesisChangeReader{
 			NetworkPassphrase: s.config.NetworkPassphrase,
 		}
 	} else {

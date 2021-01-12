@@ -9,7 +9,7 @@ import (
 )
 
 func TestGenesisLeaderStateReader(t *testing.T) {
-	stateReader := GenesisLedgerStateReader{
+	stateReader := GenesisChangeReader{
 		NetworkPassphrase: "Public Global Stellar Network ; September 2015",
 	}
 

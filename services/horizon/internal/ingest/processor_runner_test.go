@@ -106,7 +106,7 @@ func TestProcessorRunnerRunHistoryArchiveIngestionHistoryArchive(t *testing.T) {
 			uint32(63),
 		).
 		Return(
-			&ingest.GenesisLedgerStateReader{
+			&ingest.GenesisChangeReader{
 				NetworkPassphrase: network.PublicNetworkPassphrase,
 			},
 			nil,

@@ -9,20 +9,21 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-// GenesisLedgerStateReader is a streaming ledger entries for genesis ledger
-// (ledgerseq = 1) for of the network with the given passphrase.
-type GenesisLedgerStateReader struct {
+// GenesisChangeReader is a ChangeReader which produces the Change
+// occurring at the genesis ledger (ledgerseq = 1).
+// The NetworkPassphrase is required to construct a GenesisChangeReader.
+type GenesisChangeReader struct {
 	NetworkPassphrase string
 
 	mutex sync.Mutex
 	done  bool
 }
 
-// Ensure GenesisLedgerStateReader implements ChangeReader
-var _ ChangeReader = &GenesisLedgerStateReader{}
+// Ensure GenesisChangeReader implements ChangeReader
+var _ ChangeReader = &GenesisChangeReader{}
 
 // Read returns a new ledger entry change on each call, returning io.EOF when the stream ends.
-func (r *GenesisLedgerStateReader) Read() (Change, error) {
+func (r *GenesisChangeReader) Read() (Change, error) {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 
@@ -54,6 +55,6 @@ func (r *GenesisLedgerStateReader) Read() (Change, error) {
 }
 
 // Close should be called when reading is finished.
-func (r *GenesisLedgerStateReader) Close() error {
+func (r *GenesisChangeReader) Close() error {
 	return nil
 }
