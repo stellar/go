@@ -5,6 +5,12 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+## v1.13.1
+
+**Upgrading to this version from version before v1.10.0 will trigger state rebuild. During this process (which can take several minutes) it will not ingest new ledgers.**
+
+* Fixed a bug in `/fee_stats` endpoint that could calculate invalid stats if fee bump transactions were included in the ledger ([#3326](https://github.com/stellar/go/pull/3326))
+
 ## v2.0.0 Beta
 
 **THIS IS A BETA RELEASE! DO NOT USE IN PRODUCTION. The release may contain critical bugs. It's not suitable for production use.**

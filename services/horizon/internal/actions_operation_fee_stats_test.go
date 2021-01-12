@@ -320,3 +320,56 @@ func TestOperationFeeTestsActions_NotInterpolating(t *testing.T) {
 		ht.Assert.Equal(int64(100), result.FeeCharged.P99, "fee_charged_p99")
 	}
 }
+
+func TestOperationFeeTestsActions_FeeBump(t *testing.T) {
+	ht := StartHTTPTest(t, "operation_fee_stats_3")
+	defer ht.Finish()
+
+	// Update one tx to be a fee bump
+	result, err := ht.HorizonSession().ExecRaw("UPDATE history_transactions SET max_fee = 10, new_max_fee = 100 WHERE transaction_hash = '6a349e7331e93a251367287e274fb1699abaf723bde37aebe96248c76fd3071a'")
+	ht.Require.NoError(err)
+	rowsAffecter, err := result.RowsAffected()
+	ht.Require.NoError(err)
+	ht.Require.Equal(int64(1), rowsAffecter)
+
+	ht.App.UpdateFeeStatsState()
+
+	w := ht.Get("/fee_stats")
+
+	if ht.Assert.Equal(200, w.Code) {
+		var result hProtocol.FeeStats
+		err := json.Unmarshal(w.Body.Bytes(), &result)
+		ht.Require.NoError(err)
+		ht.Assert.Equal(int64(100), result.LastLedgerBaseFee, "base_fee")
+
+		ht.Assert.Equal(int64(400), result.MaxFee.Max, "max_fee_max")
+		ht.Assert.Equal(int64(100), result.MaxFee.Min, "max_fee_min")
+		ht.Assert.Equal(int64(400), result.MaxFee.Mode, "max_fee_mode")
+		ht.Assert.Equal(int64(100), result.MaxFee.P10, "max_fee_p10")
+		ht.Assert.Equal(int64(200), result.MaxFee.P20, "max_fee_p20")
+		ht.Assert.Equal(int64(300), result.MaxFee.P30, "max_fee_p30")
+		ht.Assert.Equal(int64(300), result.MaxFee.P40, "max_fee_p40")
+		ht.Assert.Equal(int64(400), result.MaxFee.P50, "max_fee_p50")
+		ht.Assert.Equal(int64(400), result.MaxFee.P60, "max_fee_p60")
+		ht.Assert.Equal(int64(400), result.MaxFee.P70, "max_fee_p70")
+		ht.Assert.Equal(int64(400), result.MaxFee.P80, "max_fee_p80")
+		ht.Assert.Equal(int64(400), result.MaxFee.P90, "max_fee_p90")
+		ht.Assert.Equal(int64(400), result.MaxFee.P95, "max_fee_p95")
+		ht.Assert.Equal(int64(400), result.MaxFee.P99, "max_fee_p99")
+
+		ht.Assert.Equal(int64(100), result.FeeCharged.Max, "fee_charged_max")
+		ht.Assert.Equal(int64(100), result.FeeCharged.Min, "fee_charged_min")
+		ht.Assert.Equal(int64(100), result.FeeCharged.Mode, "fee_charged_mode")
+		ht.Assert.Equal(int64(100), result.FeeCharged.P10, "fee_charged_p10")
+		ht.Assert.Equal(int64(100), result.FeeCharged.P20, "fee_charged_p20")
+		ht.Assert.Equal(int64(100), result.FeeCharged.P30, "fee_charged_p30")
+		ht.Assert.Equal(int64(100), result.FeeCharged.P40, "fee_charged_p40")
+		ht.Assert.Equal(int64(100), result.FeeCharged.P50, "fee_charged_p50")
+		ht.Assert.Equal(int64(100), result.FeeCharged.P60, "fee_charged_p60")
+		ht.Assert.Equal(int64(100), result.FeeCharged.P70, "fee_charged_p70")
+		ht.Assert.Equal(int64(100), result.FeeCharged.P80, "fee_charged_p80")
+		ht.Assert.Equal(int64(100), result.FeeCharged.P90, "fee_charged_p90")
+		ht.Assert.Equal(int64(100), result.FeeCharged.P95, "fee_charged_p95")
+		ht.Assert.Equal(int64(100), result.FeeCharged.P99, "fee_charged_p99")
+	}
+}
