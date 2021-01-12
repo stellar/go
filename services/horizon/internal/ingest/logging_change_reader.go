@@ -3,7 +3,7 @@ package ingest
 import (
 	"runtime"
 
-	"github.com/stellar/go/ingest/io"
+	"github.com/stellar/go/ingest"
 )
 
 func bToMb(b uint64) uint64 {
@@ -18,7 +18,7 @@ func getMemStats() (uint64, uint64) {
 }
 
 type loggingChangeReader struct {
-	io.ChangeReader
+	ingest.ChangeReader
 	profile    bool
 	entryCount int
 	// how often should the logger report
@@ -28,7 +28,7 @@ type loggingChangeReader struct {
 }
 
 func newloggingChangeReader(
-	reader io.ChangeReader,
+	reader ingest.ChangeReader,
 	source string,
 	sequence uint32,
 	every int,
@@ -44,7 +44,7 @@ func newloggingChangeReader(
 }
 
 // Read returns a new ledger entry change on each call, returning io.EOF when the stream ends.
-func (lcr *loggingChangeReader) Read() (io.Change, error) {
+func (lcr *loggingChangeReader) Read() (ingest.Change, error) {
 	change, err := lcr.ChangeReader.Read()
 
 	if err == nil {

@@ -243,11 +243,13 @@ func RunDBReingestRange(from, to uint32, reingestForce bool, parallelWorkers uin
 		NetworkPassphrase:           config.NetworkPassphrase,
 		HistorySession:              horizonSession,
 		HistoryArchiveURL:           config.HistoryArchiveURLs[0],
+		CheckpointFrequency:         config.CheckpointFrequency,
 		MaxReingestRetries:          int(retries),
 		ReingestRetryBackoffSeconds: int(retryBackoffSeconds),
 		EnableCaptiveCore:           config.EnableCaptiveCoreIngestion,
 		CaptiveCoreBinaryPath:       config.CaptiveCoreBinaryPath,
 		RemoteCaptiveCoreURL:        config.RemoteCaptiveCoreURL,
+		CaptiveCoreConfigAppendPath: config.CaptiveCoreConfigAppendPath,
 	}
 
 	if !ingestConfig.EnableCaptiveCore {

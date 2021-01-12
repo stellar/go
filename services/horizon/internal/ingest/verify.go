@@ -7,12 +7,12 @@ import (
 	"time"
 
 	"github.com/guregu/null"
-	"github.com/stellar/go/historyarchive"
-	ingesterrors "github.com/stellar/go/ingest/errors"
-	"github.com/stellar/go/ingest/verify"
+
+	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/ingest/processors"
+	"github.com/stellar/go/services/horizon/internal/ingest/verify"
 	"github.com/stellar/go/support/errors"
 	logpkg "github.com/stellar/go/support/log"
 	"github.com/stellar/go/xdr"
@@ -79,7 +79,7 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool) error {
 		"ledger":     ledgerSequence,
 	})
 
-	if !historyarchive.IsCheckpoint(ledgerSequence) {
+	if !s.checkpointManager.IsCheckpoint(ledgerSequence) {
 		localLog.Info("Current ledger is not a checkpoint ledger. Cancelling...")
 		return nil
 	}
@@ -273,7 +273,7 @@ func checkAssetStats(set processors.AssetStatSet, q history.IngestionQ) error {
 		for _, assetStat := range assetStats {
 			fromSet, removed := set.Remove(assetStat.AssetType, assetStat.AssetCode, assetStat.AssetIssuer)
 			if !removed {
-				return ingesterrors.NewStateError(
+				return ingest.NewStateError(
 					fmt.Errorf(
 						"db contains asset stat with code %s issuer %s which is missing from HAS",
 						assetStat.AssetCode, assetStat.AssetIssuer,
@@ -282,7 +282,7 @@ func checkAssetStats(set processors.AssetStatSet, q history.IngestionQ) error {
 			}
 
 			if fromSet != assetStat {
-				return ingesterrors.NewStateError(
+				return ingest.NewStateError(
 					fmt.Errorf(
 						"db asset stat with code %s issuer %s does not match asset stat from HAS",
 						assetStat.AssetCode, assetStat.AssetIssuer,
@@ -295,7 +295,7 @@ func checkAssetStats(set processors.AssetStatSet, q history.IngestionQ) error {
 	}
 
 	if len(set) > 0 {
-		return ingesterrors.NewStateError(
+		return ingest.NewStateError(
 			fmt.Errorf(
 				"HAS contains %d more asset stats than db",
 				len(set),
@@ -351,7 +351,7 @@ func addAccountsToStateVerifier(verifier *verify.StateVerifier, q history.Ingest
 
 		// Ensure master weight matches, if not it's a state error!
 		if int32(row.MasterWeight) != masterWeightMap[row.AccountID] {
-			return ingesterrors.NewStateError(
+			return ingest.NewStateError(
 				fmt.Errorf(
 					"Master key weight in account %s does not match (expected=%d, actual=%d)",
 					row.AccountID,
@@ -541,7 +541,7 @@ func addTrustLinesToStateVerifier(
 			return err
 		}
 		if err := assetStats.Add(trustline); err != nil {
-			return ingesterrors.NewStateError(
+			return ingest.NewStateError(
 				errors.Wrap(err, "could not add trustline to asset stats"),
 			)
 		}

@@ -6,15 +6,15 @@ import (
 	"testing"
 
 	"github.com/guregu/null"
-	"github.com/stellar/go/ingest/adapters"
-	"github.com/stellar/go/ingest/io"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+
+	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/network"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/ingest/processors"
 	"github.com/stellar/go/xdr"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
 
 func TestProcessorRunnerRunHistoryArchiveIngestionGenesis(t *testing.T) {
@@ -91,7 +91,7 @@ func TestProcessorRunnerRunHistoryArchiveIngestionHistoryArchive(t *testing.T) {
 
 	q := &mockDBQ{}
 	defer mock.AssertExpectationsForObjects(t, q)
-	historyAdapter := &adapters.MockHistoryArchiveAdapter{}
+	historyAdapter := &mockHistoryArchiveAdapter{}
 	defer mock.AssertExpectationsForObjects(t, historyAdapter)
 	ledgerBackend := &ledgerbackend.MockDatabaseBackend{}
 	defer mock.AssertExpectationsForObjects(t, ledgerBackend)
@@ -106,7 +106,7 @@ func TestProcessorRunnerRunHistoryArchiveIngestionHistoryArchive(t *testing.T) {
 			uint32(63),
 		).
 		Return(
-			&io.GenesisLedgerStateReader{
+			&ingest.GenesisLedgerStateReader{
 				NetworkPassphrase: network.PublicNetworkPassphrase,
 			},
 			nil,
@@ -196,7 +196,7 @@ func TestProcessorRunnerRunHistoryArchiveIngestionProtocolVersionNotSupported(t 
 
 	q := &mockDBQ{}
 	defer mock.AssertExpectationsForObjects(t, q)
-	historyAdapter := &adapters.MockHistoryArchiveAdapter{}
+	historyAdapter := &mockHistoryArchiveAdapter{}
 	defer mock.AssertExpectationsForObjects(t, historyAdapter)
 	ledgerBackend := &ledgerbackend.MockDatabaseBackend{}
 	defer mock.AssertExpectationsForObjects(t, ledgerBackend)
@@ -270,7 +270,7 @@ func TestProcessorRunnerBuildChangeProcessor(t *testing.T) {
 		historyQ: q,
 	}
 
-	stats := &io.StatsChangeProcessor{}
+	stats := &ingest.StatsChangeProcessor{}
 	processor := runner.buildChangeProcessor(stats, ledgerSource, 123)
 	assert.IsType(t, &groupChangeProcessors{}, processor)
 
@@ -322,7 +322,7 @@ func TestProcessorRunnerBuildTransactionProcessor(t *testing.T) {
 		historyQ: q,
 	}
 
-	stats := &io.StatsLedgerTransactionProcessor{}
+	stats := &ingest.StatsLedgerTransactionProcessor{}
 	ledger := xdr.LedgerHeaderHistoryEntry{}
 	processor := runner.buildTransactionProcessor(stats, ledger)
 	assert.IsType(t, &groupTransactionProcessors{}, processor)

@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stellar/go/ingest/io"
+	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/xdr"
@@ -38,7 +38,7 @@ type TradeProcessorTestSuiteLedger struct {
 	unmuxedAccountToID map[string]int64
 	assetToID          map[string]history.Asset
 
-	txs []io.LedgerTransaction
+	txs []ingest.LedgerTransaction
 }
 
 func TestTradeProcessorTestSuiteLedger(t *testing.T) {
@@ -417,7 +417,7 @@ func (s *TradeProcessorTestSuiteLedger) mockReadTradeTransactions(
 		},
 	}
 
-	tx := io.LedgerTransaction{
+	tx := ingest.LedgerTransaction{
 		Result: xdr.TransactionResultPair{
 			Result: xdr.TransactionResult{
 				Result: xdr.TransactionResultResult{
@@ -479,7 +479,7 @@ func (s *TradeProcessorTestSuiteLedger) mockReadTradeTransactions(
 		})
 	}
 
-	s.txs = []io.LedgerTransaction{
+	s.txs = []ingest.LedgerTransaction{
 		tx,
 	}
 

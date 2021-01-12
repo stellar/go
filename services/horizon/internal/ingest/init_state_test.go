@@ -5,7 +5,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/stellar/go/ingest/adapters"
 	"github.com/stellar/go/support/errors"
 	"github.com/stretchr/testify/suite"
 )
@@ -17,13 +16,13 @@ func TestInitStateTestSuite(t *testing.T) {
 type InitStateTestSuite struct {
 	suite.Suite
 	historyQ       *mockDBQ
-	historyAdapter *adapters.MockHistoryArchiveAdapter
+	historyAdapter *mockHistoryArchiveAdapter
 	system         *system
 }
 
 func (s *InitStateTestSuite) SetupTest() {
 	s.historyQ = &mockDBQ{}
-	s.historyAdapter = &adapters.MockHistoryArchiveAdapter{}
+	s.historyAdapter = &mockHistoryArchiveAdapter{}
 	s.system = &system{
 		ctx:            context.Background(),
 		historyQ:       s.historyQ,

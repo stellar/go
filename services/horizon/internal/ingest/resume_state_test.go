@@ -5,8 +5,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/stellar/go/ingest/adapters"
-	"github.com/stellar/go/ingest/io"
+	"github.com/stellar/go/historyarchive"
+	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
@@ -22,7 +22,7 @@ type ResumeTestTestSuite struct {
 	suite.Suite
 	ledgerBackend     *ledgerbackend.MockDatabaseBackend
 	historyQ          *mockDBQ
-	historyAdapter    *adapters.MockHistoryArchiveAdapter
+	historyAdapter    *mockHistoryArchiveAdapter
 	runner            *mockProcessorsRunner
 	stellarCoreClient *mockStellarCoreClient
 	system            *system
@@ -31,7 +31,7 @@ type ResumeTestTestSuite struct {
 func (s *ResumeTestTestSuite) SetupTest() {
 	s.ledgerBackend = &ledgerbackend.MockDatabaseBackend{}
 	s.historyQ = &mockDBQ{}
-	s.historyAdapter = &adapters.MockHistoryArchiveAdapter{}
+	s.historyAdapter = &mockHistoryArchiveAdapter{}
 	s.runner = &mockProcessorsRunner{}
 	s.stellarCoreClient = &mockStellarCoreClient{}
 	s.system = &system{
@@ -41,6 +41,7 @@ func (s *ResumeTestTestSuite) SetupTest() {
 		runner:            s.runner,
 		ledgerBackend:     s.ledgerBackend,
 		stellarCoreClient: s.stellarCoreClient,
+		checkpointManager: historyarchive.NewCheckpointManager(64),
 	}
 	s.system.initMetrics()
 
@@ -277,9 +278,9 @@ func (s *ResumeTestTestSuite) mockSuccessfulIngestion() {
 	s.ledgerBackend.On("GetLatestLedgerSequence").Return(uint32(111), nil).Once()
 
 	s.runner.On("RunAllProcessorsOnLedger", uint32(102)).Return(
-		io.StatsChangeProcessorResults{},
+		ingest.StatsChangeProcessorResults{},
 		processorsRunDurations{},
-		io.StatsLedgerTransactionProcessorResults{},
+		ingest.StatsLedgerTransactionProcessorResults{},
 		processorsRunDurations{},
 		nil,
 	).Once()
@@ -347,9 +348,9 @@ func (s *ResumeTestTestSuite) TestErrorSettingCursorIgnored() {
 	s.ledgerBackend.On("GetLatestLedgerSequence").Return(uint32(111), nil).Once()
 
 	s.runner.On("RunAllProcessorsOnLedger", uint32(101)).Return(
-		io.StatsChangeProcessorResults{},
+		ingest.StatsChangeProcessorResults{},
 		processorsRunDurations{},
-		io.StatsLedgerTransactionProcessorResults{},
+		ingest.StatsLedgerTransactionProcessorResults{},
 		processorsRunDurations{},
 		nil,
 	).Once()

@@ -5,7 +5,7 @@ import (
 	"encoding/hex"
 	"testing"
 
-	"github.com/stellar/go/ingest/io"
+	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
 )
@@ -21,8 +21,8 @@ type TestTransaction struct {
 }
 
 // BuildLedgerTransaction builds a ledger transaction
-func BuildLedgerTransaction(t *testing.T, tx TestTransaction) io.LedgerTransaction {
-	transaction := io.LedgerTransaction{
+func BuildLedgerTransaction(t *testing.T, tx TestTransaction) ingest.LedgerTransaction {
+	transaction := ingest.LedgerTransaction{
 		Index:      tx.Index,
 		Envelope:   xdr.TransactionEnvelope{},
 		Result:     xdr.TransactionResultPair{},

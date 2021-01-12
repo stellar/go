@@ -13,7 +13,7 @@ import (
 )
 
 func TestFriendbot_Pay(t *testing.T) {
-	mockSubmitTransaction := func(minion *Minion, hclient *horizonclient.Client, tx string) (*hProtocol.Transaction, error) {
+	mockSubmitTransaction := func(minion *Minion, hclient horizonclient.ClientInterface, tx string) (*hProtocol.Transaction, error) {
 		// Instead of submitting the tx, we emulate a success.
 		txSuccess := hProtocol.Transaction{EnvelopeXdr: tx, Successful: true}
 		return &txSuccess, nil

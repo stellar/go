@@ -12,7 +12,8 @@ import (
 
 	"github.com/guregu/null"
 	"github.com/lib/pq"
-	"github.com/stellar/go/ingest/io"
+
+	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/services/horizon/internal/utf8"
 	"github.com/stellar/go/support/db"
@@ -23,7 +24,7 @@ import (
 // TransactionBatchInsertBuilder is used to insert transactions into the
 // history_transactions table
 type TransactionBatchInsertBuilder interface {
-	Add(transaction io.LedgerTransaction, sequence uint32) error
+	Add(transaction ingest.LedgerTransaction, sequence uint32) error
 	Exec() error
 }
 
@@ -43,7 +44,7 @@ func (q *Q) NewTransactionBatchInsertBuilder(maxBatchSize int) TransactionBatchI
 }
 
 // Add adds a new transaction to the batch
-func (i *transactionBatchInsertBuilder) Add(transaction io.LedgerTransaction, sequence uint32) error {
+func (i *transactionBatchInsertBuilder) Add(transaction ingest.LedgerTransaction, sequence uint32) error {
 	row, err := transactionToRow(transaction, sequence)
 	if err != nil {
 		return err
@@ -118,7 +119,7 @@ func (t TimeBounds) Value() (driver.Value, error) {
 	return fmt.Sprintf("[%d, %d)", t.Lower.Int64, t.Upper.Int64), nil
 }
 
-func formatTimeBounds(transaction io.LedgerTransaction) TimeBounds {
+func formatTimeBounds(transaction ingest.LedgerTransaction) TimeBounds {
 	timeBounds := transaction.Envelope.TimeBounds()
 	if timeBounds == nil {
 		return TimeBounds{Null: true}
@@ -149,7 +150,7 @@ func signatures(xdrSignatures []xdr.DecoratedSignature) pq.StringArray {
 	return signatures
 }
 
-func memoType(transaction io.LedgerTransaction) string {
+func memoType(transaction ingest.LedgerTransaction) string {
 	switch transaction.Envelope.Memo().Type {
 	case xdr.MemoTypeMemoNone:
 		return "none"
@@ -166,7 +167,7 @@ func memoType(transaction io.LedgerTransaction) string {
 	}
 }
 
-func memo(transaction io.LedgerTransaction) null.String {
+func memo(transaction ingest.LedgerTransaction) null.String {
 	var (
 		value string
 		valid bool
@@ -225,7 +226,7 @@ type TransactionWithoutLedger struct {
 	InnerSignatures      pq.StringArray `db:"inner_signatures"`
 }
 
-func transactionToRow(transaction io.LedgerTransaction, sequence uint32) (TransactionWithoutLedger, error) {
+func transactionToRow(transaction ingest.LedgerTransaction, sequence uint32) (TransactionWithoutLedger, error) {
 	envelopeBase64, err := xdr.MarshalBase64(transaction.Envelope)
 	if err != nil {
 		return TransactionWithoutLedger{}, err

@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"runtime"
+	"time"
 
 	"github.com/getsentry/raven-go"
 	"github.com/prometheus/client_golang/prometheus"
@@ -65,6 +66,7 @@ func initExpIngester(app *App) {
 		// Use the first archive for now. We don't have a mechanism to
 		// use multiple archives at the same time currently.
 		HistoryArchiveURL:           app.config.HistoryArchiveURLs[0],
+		CheckpointFrequency:         app.config.CheckpointFrequency,
 		StellarCoreURL:              app.config.StellarCoreURL,
 		StellarCoreCursor:           app.config.CursorName,
 		CaptiveCoreBinaryPath:       app.config.CaptiveCoreBinaryPath,
@@ -147,6 +149,18 @@ func initDbMetrics(app *App) {
 		},
 	)
 	app.prometheusRegistry.MustRegister(app.historyLatestLedgerCounter)
+
+	app.historyLatestLedgerClosedAgoGauge = prometheus.NewGaugeFunc(
+		prometheus.GaugeOpts{
+			Namespace: "horizon", Subsystem: "history", Name: "latest_ledger_closed_ago_seconds",
+			Help: "seconds since the close of the last ingested ledger",
+		},
+		func() float64 {
+			ls := app.ledgerState.CurrentStatus()
+			return time.Since(ls.HistoryLatestClosedAt).Seconds()
+		},
+	)
+	app.prometheusRegistry.MustRegister(app.historyLatestLedgerClosedAgoGauge)
 
 	app.historyElderLedgerCounter = prometheus.NewCounterFunc(
 		prometheus.CounterOpts{Namespace: "horizon", Subsystem: "history", Name: "elder_ledger"},

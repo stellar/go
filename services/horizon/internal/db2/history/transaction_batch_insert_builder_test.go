@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/stellar/go/ingest/io"
+	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/xdr"
 )
 
@@ -26,7 +26,7 @@ func TestTransactionToMap_muxed(t *testing.T) {
 		},
 	}
 	feeSourceAccountID := feeSource.ToAccountId()
-	tx := io.LedgerTransaction{
+	tx := ingest.LedgerTransaction{
 		Index: 1,
 		Envelope: xdr.TransactionEnvelope{
 			Type: xdr.EnvelopeTypeEnvelopeTypeTxFeeBump,

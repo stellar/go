@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/stellar/go/ingest/ledgerbackend"
 
-	"github.com/stellar/go/ingest/io"
+	"github.com/stellar/go/ingest"
+	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/support/errors"
 	logpkg "github.com/stellar/go/support/log"
@@ -656,6 +656,11 @@ func (h reingestHistoryRangeState) run(s *system) (transition, error) {
 		return stop(), errors.Errorf("invalid range: [%d, %d]", h.fromLedger, h.toLedger)
 	}
 
+	if h.fromLedger == 1 {
+		log.Warn("Ledger 1 is pregenerated and not available, starting from ledger 2.")
+		h.fromLedger = 2
+	}
+
 	log.WithFields(logpkg.F{
 		"from": h.fromLedger,
 		"to":   h.toLedger,
@@ -672,11 +677,6 @@ func (h reingestHistoryRangeState) run(s *system) (transition, error) {
 		"to":       h.toLedger,
 		"duration": time.Since(startTime).Seconds(),
 	}).Info("Range ready")
-
-	if h.fromLedger == 1 {
-		log.Warn("Ledger 1 is pregenerated and not available, starting from ledger 2.")
-		h.fromLedger = 2
-	}
 
 	startTime = time.Now()
 
@@ -841,8 +841,8 @@ func (v verifyRangeState) run(s *system) (transition, error) {
 			return stop(), err
 		}
 
-		var changeStats io.StatsChangeProcessorResults
-		var ledgerTransactionStats io.StatsLedgerTransactionProcessorResults
+		var changeStats ingest.StatsChangeProcessorResults
+		var ledgerTransactionStats ingest.StatsLedgerTransactionProcessorResults
 		changeStats, _, ledgerTransactionStats, _, err = s.runner.RunAllProcessorsOnLedger(sequence)
 		if err != nil {
 			err = errors.Wrap(err, "Error running processors on ledger")

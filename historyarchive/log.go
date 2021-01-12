@@ -94,7 +94,7 @@ func (arch *Archive) Log(opts *CommandOptions) error {
 	if e != nil {
 		return e
 	}
-	opts.Range = opts.Range.clamp(state.Range())
+	opts.Range = opts.Range.clamp(state.Range(), arch.checkpointManager)
 
 	log.SetFlags(0)
 	log.Printf("Log of checkpoint files in range: %s", opts.Range)
@@ -102,12 +102,12 @@ func (arch *Archive) Log(opts *CommandOptions) error {
 	log.Printf("%10s | %10s | %20s | %5s | %s",
 		"ledger", "hex", "close time", "txs", "buckets changed")
 
-	prevHas, err := arch.GetCheckpointHAS(PrevCheckpoint(opts.Range.Low))
+	prevHas, err := arch.GetCheckpointHAS(arch.checkpointManager.PrevCheckpoint(opts.Range.Low))
 	if err != nil {
 		return err
 	}
 
-	for chk := range opts.Range.Checkpoints() {
+	for chk := range opts.Range.GenerateCheckpoints(arch.checkpointManager) {
 		has, err := arch.GetCheckpointHAS(chk)
 		if err != nil {
 			return err

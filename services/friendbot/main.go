@@ -19,14 +19,16 @@ import (
 
 // Config represents the configuration of a friendbot server
 type Config struct {
-	Port              int         `toml:"port" valid:"required"`
-	FriendbotSecret   string      `toml:"friendbot_secret" valid:"required"`
-	NetworkPassphrase string      `toml:"network_passphrase" valid:"required"`
-	HorizonURL        string      `toml:"horizon_url" valid:"required"`
-	StartingBalance   string      `toml:"starting_balance" valid:"required"`
-	TLS               *config.TLS `valid:"optional"`
-	NumMinions        int         `toml:"num_minions" valid:"optional"`
-	BaseFee           int64       `toml:"base_fee" valid:"optional"`
+	Port                   int         `toml:"port" valid:"required"`
+	FriendbotSecret        string      `toml:"friendbot_secret" valid:"required"`
+	NetworkPassphrase      string      `toml:"network_passphrase" valid:"required"`
+	HorizonURL             string      `toml:"horizon_url" valid:"required"`
+	StartingBalance        string      `toml:"starting_balance" valid:"required"`
+	TLS                    *config.TLS `valid:"optional"`
+	NumMinions             int         `toml:"num_minions" valid:"optional"`
+	BaseFee                int64       `toml:"base_fee" valid:"optional"`
+	MinionBatchSize        int         `toml:"minion_batch_size" valid:"optional"`
+	SubmitTxRetriesAllowed int         `toml:"submit_tx_retries_allowed" valid:"optional"`
 }
 
 func main() {
@@ -60,7 +62,8 @@ func run(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
-	fb, err := initFriendbot(cfg.FriendbotSecret, cfg.NetworkPassphrase, cfg.HorizonURL, cfg.StartingBalance, cfg.NumMinions, cfg.BaseFee)
+	fb, err := initFriendbot(cfg.FriendbotSecret, cfg.NetworkPassphrase, cfg.HorizonURL, cfg.StartingBalance,
+		cfg.NumMinions, cfg.BaseFee, cfg.MinionBatchSize, cfg.SubmitTxRetriesAllowed)
 	if err != nil {
 		log.Error(err)
 		os.Exit(1)

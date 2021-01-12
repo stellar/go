@@ -10,6 +10,11 @@ type MockArchive struct {
 	mock.Mock
 }
 
+func (m *MockArchive) GetCheckpointManager() CheckpointManager {
+	a := m.Called()
+	return a.Get(0).(CheckpointManager)
+}
+
 func (m *MockArchive) GetPathHAS(path string) (HistoryArchiveState, error) {
 	a := m.Called(path)
 	return a.Get(0).(HistoryArchiveState), a.Error(1)

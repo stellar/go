@@ -4,7 +4,7 @@ package processors
 import (
 	"testing"
 
-	"github.com/stellar/go/ingest/io"
+	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
@@ -21,7 +21,7 @@ type LedgersProcessorTestSuiteLedger struct {
 	failedCount   int
 	opCount       int
 	ingestVersion int
-	txs           []io.LedgerTransaction
+	txs           []ingest.LedgerTransaction
 	txSetOpCount  int
 }
 
@@ -29,7 +29,7 @@ func TestLedgersProcessorTestSuiteLedger(t *testing.T) {
 	suite.Run(t, new(LedgersProcessorTestSuiteLedger))
 }
 
-func createTransaction(successful bool, numOps int) io.LedgerTransaction {
+func createTransaction(successful bool, numOps int) ingest.LedgerTransaction {
 	code := xdr.TransactionResultCodeTxSuccess
 	if !successful {
 		code = xdr.TransactionResultCodeTxFailed
@@ -46,7 +46,7 @@ func createTransaction(successful bool, numOps int) io.LedgerTransaction {
 		})
 	}
 	sourceAID := xdr.MustAddress("GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY")
-	return io.LedgerTransaction{
+	return ingest.LedgerTransaction{
 		Result: xdr.TransactionResultPair{
 			TransactionHash: xdr.Hash{},
 			Result: xdr.TransactionResult{
@@ -89,7 +89,7 @@ func (s *LedgersProcessorTestSuiteLedger) SetupTest() {
 		s.ingestVersion,
 	)
 
-	s.txs = []io.LedgerTransaction{
+	s.txs = []ingest.LedgerTransaction{
 		createTransaction(true, 1),
 		createTransaction(false, 3),
 		createTransaction(true, 4),

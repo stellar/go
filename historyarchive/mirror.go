@@ -13,13 +13,14 @@ import (
 	"github.com/stellar/go/support/errors"
 )
 
+// Mirror mirrors an archive, it assumes that the source and destination have the same checkpoint ledger frequency
 func Mirror(src *Archive, dst *Archive, opts *CommandOptions) error {
 	rootHAS, e := src.GetRootHAS()
 	if e != nil {
 		return e
 	}
 
-	opts.Range = opts.Range.clamp(rootHAS.Range())
+	opts.Range = opts.Range.clamp(rootHAS.Range(), src.checkpointManager)
 
 	log.Printf("copying range %s\n", opts.Range)
 
@@ -31,7 +32,7 @@ func Mirror(src *Archive, dst *Archive, opts *CommandOptions) error {
 	var errs uint32
 	tick := makeTicker(func(ticks uint) {
 		bucketFetchMutex.Lock()
-		sz := opts.Range.Size()
+		sz := opts.Range.SizeInCheckPoints(src.checkpointManager)
 		log.Printf("Copied %d/%d checkpoints (%f%%), %d buckets",
 			ticks, sz,
 			100.0*float64(ticks)/float64(sz),
@@ -40,7 +41,7 @@ func Mirror(src *Archive, dst *Archive, opts *CommandOptions) error {
 	})
 
 	var wg sync.WaitGroup
-	checkpoints := opts.Range.Checkpoints()
+	checkpoints := opts.Range.GenerateCheckpoints(src.checkpointManager)
 	wg.Add(opts.Concurrency)
 	for i := 0; i < opts.Concurrency; i++ {
 		go func() {
@@ -91,7 +92,7 @@ func Mirror(src *Archive, dst *Archive, opts *CommandOptions) error {
 
 	wg.Wait()
 	log.Printf("copied %d checkpoints, %d buckets, range %s",
-		opts.Range.Size(), len(bucketFetch), opts.Range)
+		opts.Range.SizeInCheckPoints(src.checkpointManager), len(bucketFetch), opts.Range)
 	close(tick)
 	if rootHAS.CurrentLedger == opts.Range.High {
 		log.Printf("updating destination archive current-ledger pointer to 0x%8.8x",

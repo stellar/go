@@ -8,7 +8,7 @@ import (
 	"sort"
 
 	"github.com/stellar/go/amount"
-	"github.com/stellar/go/ingest/io"
+	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"
@@ -52,7 +52,7 @@ func (p *EffectProcessor) loadAccountIDs(accountSet map[string]int64) error {
 	return nil
 }
 
-func operationsEffects(transaction io.LedgerTransaction, sequence uint32) ([]effect, error) {
+func operationsEffects(transaction ingest.LedgerTransaction, sequence uint32) ([]effect, error) {
 	effects := []effect{}
 
 	for opi, op := range transaction.Envelope.Operations() {
@@ -107,7 +107,7 @@ func (p *EffectProcessor) insertDBOperationsEffects(effects []effect, accountSet
 	return nil
 }
 
-func (p *EffectProcessor) ProcessTransaction(transaction io.LedgerTransaction) (err error) {
+func (p *EffectProcessor) ProcessTransaction(transaction ingest.LedgerTransaction) (err error) {
 	// Failed transactions don't have operation effects
 	if !transaction.Result.Successful() {
 		return nil
@@ -265,7 +265,7 @@ var sponsoringEffectsTable = map[xdr.LedgerEntryType]struct {
 	// entries because we don't generate creation effects for them.
 }
 
-func (e *effectsWrapper) addSignerSponsorshipEffects(change io.Change) {
+func (e *effectsWrapper) addSignerSponsorshipEffects(change ingest.Change) {
 	if change.Type != xdr.LedgerEntryTypeAccount {
 		return
 	}
@@ -327,7 +327,7 @@ func (e *effectsWrapper) addSignerSponsorshipEffects(change io.Change) {
 	}
 }
 
-func (e *effectsWrapper) addLedgerEntrySponsorshipEffects(change io.Change) error {
+func (e *effectsWrapper) addLedgerEntrySponsorshipEffects(change ingest.Change) error {
 	effectsForEntryType, found := sponsoringEffectsTable[change.Type]
 	if !found {
 		return nil

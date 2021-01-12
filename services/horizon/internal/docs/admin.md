@@ -63,7 +63,7 @@ As you will see if you run the command above, Horizon defines a large number of 
 
 `--db-url` specifies the Horizon database, and its value should be a valid [PostgreSQL Connection URI](http://www.postgresql.org/docs/9.2/static/libpq-connect.html#AEN38419).  `--stellar-core-db-url` specifies a stellar-core database which will be used to load data about the stellar ledger.  Finally, `--stellar-core-url` specifies the HTTP control port for an instance of stellar-core.  This URL should be associated with the stellar-core that is writing to the database at `--stellar-core-db-url`.
 
-Specifying command line flags every time you invoke Horizon can be cumbersome, and so we recommend using environment variables.  There are many tools you can use to manage environment variables:  we recommend either [direnv](http://direnv.net/) or [dotenv](https://github.com/bkeepers/dotenv).  A template configuration that is compatible with dotenv can be found in the [Horizon git repo](https://github.com/stellar/go/blob/master/services/horizon/.env.template).
+Specifying command line flags every time you invoke Horizon can be cumbersome, and so we recommend using environment variables.  There are many tools you can use to manage environment variables:  we recommend either [direnv](http://direnv.net/) or [dotenv](https://github.com/bkeepers/dotenv).
 
 
 
@@ -102,9 +102,7 @@ environment variable to "true". Since version 1.0.0 you can start multiple inges
 
 ### Ingesting historical data and reingesting Ledgers
 
-To reingest older ledgers (due to a version upgrade) or to ingest ledgers closed by the network before you
-started Horizon. This is done through the `horizon db range [START_LEDGER] [END_LEDGER]` command, which could
-be run as follows:
+Reingesting older ledgers (due to a version upgrade) or ingesting ledgers closed by the network before Horizon was started is done through the `horizon db reingest range [START_LEDGER] [END_LEDGER]` command. This can be run as follows:
 
 ```
 horizon1> horizon db reingest range 1 10000
@@ -125,7 +123,7 @@ Horizon tries to maintain a gap-free window into the history of the stellar-netw
 
 To ensure that the metadata required by Horizon is maintained, you have several options: You may either set the `CATCHUP_COMPLETE` stellar-core configuration option to `true` or configure `CATCHUP_RECENT` to determine the amount of time your stellar-core can be offline without having to rebuild your Horizon database.
 
-Unless your node is a full validator and archive publisher we _do not_ recommend using the `CATCHUP_COMPLETE` method, as this will force stellar-core to apply every transaction from the beginning of the ledger, which will take an ever increasing amount of time. Instead, we recommend you set the `CATCHUP_RECENT` config value. To do this, determine how long of a downtime you would like to survive (expressed in seconds) and divide by ten.  This roughly equates to the number of ledgers that occur within your desired grace period (ledgers roughly close at a rate of one every ten seconds).  With this value set, stellar-core will replay transactions for ledgers that are recent enough, ensuring that the metadata needed by Horizon is present.
+Unless your node is a full validator and archive publisher we _do not_ recommend using the `CATCHUP_COMPLETE` method, as this will force stellar-core to apply every transaction from the beginning of the ledger, which will take an ever-increasing amount of time. Instead, we recommend you set the `CATCHUP_RECENT` config value. To do this, determine how long of a downtime you would like to survive (expressed in seconds) and divide by ten.  This roughly equates to the number of ledgers that occur within your desired grace period (ledgers roughly close at a rate of one every ten seconds).  With this value set, stellar-core will replay transactions for ledgers that are recent enough, ensuring that the metadata needed by Horizon is present.
 
 ### Correcting gaps in historical data
 
@@ -145,19 +143,19 @@ Endpoints that display state information are not available during initial state 
 
 ### State ingestion is taking a lot of time
 
-State ingestion shouldn't take more than a couple of minutes on an AWS `c5.xlarge` instance, or equivalent.
+State ingestion shouldn't take more than a couple of minutes on an AWS [`c5.xlarge` instance](https://aws.amazon.com/ec2/instance-types/c5/), or equivalent.
 
-It's possible that the progress logs (see below) will not show anything new for a longer period of time or print a lot of progress entries every few seconds. This happens because of the way history archives are designed. The ingestion is still working but it's processing entries of type `DEADENTRY`'. If there is a lot of them in the bucket, there are no _active_ entries to process. We plan to improve the progress logs to display actual percentage progress so it's easier to estimate ETA.
+It's possible that the progress logs (see below) will not show anything new for a longer period of time or print a lot of progress entries every few seconds. This happens because of the way history archives are designed. The ingestion is still working but it's processing entries of type `DEADENTRY`. If there are a lot of them in the bucket, there are no _active_ entries to process. We plan to improve the progress logs to display actual percentage progress so it's easier to estimate ETA.
 
 If you see that ingestion is not proceeding for a very long period of time:
-1. Check the RAM usage on the machine. It's possible that system run out of RAM and it using swap memory that is extremely slow.
-2. If above is not the case, file a new issue in this repository.
+1. Check the RAM usage on the machine. It's possible that the system ran out of RAM and is using swap memory, which is extremely slow.
+2. If above is not the case, file a [new issue](https://github.com/stellar/go/issues/new/choose) in this repository.
 
 ### CPU usage goes high every few minutes
 
 This is _by design_. Horizon runs a state verifier routine that compares state in local storage to history archives every 64 ledgers to ensure data changes are applied correctly. If data corruption is detected Horizon will block access to endpoints serving invalid data.
 
-We recommend to keep this security feature turned on however if it's causing problems (due to CPU usage) this can be disabled by `--ingest-disable-state-verification` CLI param or `INGEST-DISABLE-STATE-VERIFICATION` env variable.
+We recommend to keep this security feature turned on; however, if it's causing problems (due to CPU usage) this can be disabled with the `--ingest-disable-state-verification` CLI param or `INGEST_DISABLE_STATE_VERIFICATION` env variable.
 
 ### I see `Waiting for the next checkpoint...` messages
 

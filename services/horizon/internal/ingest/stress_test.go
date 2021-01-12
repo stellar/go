@@ -4,8 +4,7 @@ package ingest
 import (
 	"testing"
 
-	"github.com/stellar/go/ingest/adapters"
-	"github.com/stellar/go/ingest/io"
+	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/support/errors"
 	"github.com/stretchr/testify/suite"
 )
@@ -17,14 +16,14 @@ func TestStressTestStateTestSuite(t *testing.T) {
 type StressTestStateTestSuite struct {
 	suite.Suite
 	historyQ       *mockDBQ
-	historyAdapter *adapters.MockHistoryArchiveAdapter
+	historyAdapter *mockHistoryArchiveAdapter
 	runner         *mockProcessorsRunner
 	system         *system
 }
 
 func (s *StressTestStateTestSuite) SetupTest() {
 	s.historyQ = &mockDBQ{}
-	s.historyAdapter = &adapters.MockHistoryArchiveAdapter{}
+	s.historyAdapter = &mockHistoryArchiveAdapter{}
 	s.runner = &mockProcessorsRunner{}
 	s.system = &system{
 		historyQ:       s.historyQ,
@@ -93,9 +92,9 @@ func (s *StressTestStateTestSuite) TestRunAllProcessorsOnLedgerReturnsError() {
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
 	s.runner.On("RunAllProcessorsOnLedger", uint32(1)).Return(
-		io.StatsChangeProcessorResults{},
+		ingest.StatsChangeProcessorResults{},
 		processorsRunDurations{},
-		io.StatsLedgerTransactionProcessorResults{},
+		ingest.StatsLedgerTransactionProcessorResults{},
 		processorsRunDurations{},
 		errors.New("my error"),
 	).Once()
@@ -108,9 +107,9 @@ func (s *StressTestStateTestSuite) TestUpdateLastLedgerExpIngestReturnsError() {
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
 	s.runner.On("RunAllProcessorsOnLedger", uint32(1)).Return(
-		io.StatsChangeProcessorResults{},
+		ingest.StatsChangeProcessorResults{},
 		processorsRunDurations{},
-		io.StatsLedgerTransactionProcessorResults{},
+		ingest.StatsLedgerTransactionProcessorResults{},
 		processorsRunDurations{},
 		nil,
 	).Once()
@@ -124,9 +123,9 @@ func (s *StressTestStateTestSuite) TestCommitReturnsError() {
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
 	s.runner.On("RunAllProcessorsOnLedger", uint32(1)).Return(
-		io.StatsChangeProcessorResults{},
+		ingest.StatsChangeProcessorResults{},
 		processorsRunDurations{},
-		io.StatsLedgerTransactionProcessorResults{},
+		ingest.StatsLedgerTransactionProcessorResults{},
 		processorsRunDurations{},
 		nil,
 	).Once()
@@ -141,9 +140,9 @@ func (s *StressTestStateTestSuite) TestSucceeds() {
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
 	s.runner.On("RunAllProcessorsOnLedger", uint32(1)).Return(
-		io.StatsChangeProcessorResults{},
+		ingest.StatsChangeProcessorResults{},
 		processorsRunDurations{},
-		io.StatsLedgerTransactionProcessorResults{},
+		ingest.StatsLedgerTransactionProcessorResults{},
 		processorsRunDurations{},
 		nil,
 	).Once()

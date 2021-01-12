@@ -3,9 +3,9 @@ package ingest
 import (
 	"context"
 	"fmt"
+	"io"
 
 	"github.com/stellar/go/historyarchive"
-	"github.com/stellar/go/ingest/io"
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/network"
 	"github.com/stellar/go/xdr"
@@ -25,7 +25,7 @@ func Example_ledgerentrieshistoryarchive() {
 	}
 
 	// Ledger must be a checkpoint ledger: (100031+1) mod 64 == 0.
-	reader, err := io.MakeSingleLedgerStateReader(context.TODO(), archive, 100031)
+	reader, err := NewCheckpointChangeReader(context.TODO(), archive, 100031)
 	if err != nil {
 		panic(err)
 	}
@@ -76,7 +76,7 @@ func Example_transactionshistoryarchive() {
 	}
 
 	backend := ledgerbackend.NewHistoryArchiveBackendFromArchive(archive)
-	txReader, err := io.NewLedgerTransactionReader(backend, networkPassphrase, 30000000)
+	txReader, err := NewLedgerTransactionReader(backend, networkPassphrase, 30000000)
 	if err != nil {
 		panic(err)
 	}
@@ -121,7 +121,7 @@ func Example_changes() {
 		panic(err)
 	}
 
-	changeReader, err := io.NewLedgerChangeReader(backend, networkPassphrase, sequence)
+	changeReader, err := NewLedgerChangeReader(backend, networkPassphrase, sequence)
 	if err != nil {
 		panic(err)
 	}
