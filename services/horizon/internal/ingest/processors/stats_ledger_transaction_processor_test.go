@@ -1,17 +1,19 @@
-package ingest
+package processors
 
 import (
 	"testing"
 
-	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/stellar/go/ingest"
+	"github.com/stellar/go/xdr"
 )
 
 func TestStatsLedgerTransactionProcessor(t *testing.T) {
 	processor := &StatsLedgerTransactionProcessor{}
 
 	// Successful
-	assert.NoError(t, processor.ProcessTransaction(LedgerTransaction{
+	assert.NoError(t, processor.ProcessTransaction(ingest.LedgerTransaction{
 		Result: xdr.TransactionResultPair{
 			Result: xdr.TransactionResult{
 				Result: xdr.TransactionResultResult{
@@ -50,7 +52,7 @@ func TestStatsLedgerTransactionProcessor(t *testing.T) {
 	}))
 
 	// Failed
-	assert.NoError(t, processor.ProcessTransaction(LedgerTransaction{
+	assert.NoError(t, processor.ProcessTransaction(ingest.LedgerTransaction{
 		Result: xdr.TransactionResultPair{
 			Result: xdr.TransactionResult{
 				Result: xdr.TransactionResultResult{

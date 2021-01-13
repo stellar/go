@@ -9,6 +9,7 @@ import (
 
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/ingest/ledgerbackend"
+	"github.com/stellar/go/services/horizon/internal/ingest/processors"
 	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/support/errors"
 	logpkg "github.com/stellar/go/support/log"
@@ -842,7 +843,7 @@ func (v verifyRangeState) run(s *system) (transition, error) {
 		}
 
 		var changeStats ingest.StatsChangeProcessorResults
-		var ledgerTransactionStats ingest.StatsLedgerTransactionProcessorResults
+		var ledgerTransactionStats processors.StatsLedgerTransactionProcessorResults
 		changeStats, _, ledgerTransactionStats, _, err = s.runner.RunAllProcessorsOnLedger(sequence)
 		if err != nil {
 			err = errors.Wrap(err, "Error running processors on ledger")

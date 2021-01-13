@@ -1,19 +1,21 @@
-package ingest
+package processors
 
 import (
 	"testing"
 
-	"github.com/stellar/go/support/errors"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/stellar/go/ingest"
+	"github.com/stellar/go/support/errors"
 )
 
 func TestStreamReaderError(t *testing.T) {
 	tt := assert.New(t)
 
-	mockChangeReader := &MockChangeReader{}
+	mockChangeReader := &ingest.MockChangeReader{}
 	mockChangeReader.
 		On("Read").
-		Return(Change{}, errors.New("transient error")).Once()
+		Return(ingest.Change{}, errors.New("transient error")).Once()
 	mockChangeProcessor := &MockChangeProcessor{}
 
 	err := StreamChanges(mockChangeProcessor, mockChangeReader)
@@ -23,8 +25,8 @@ func TestStreamReaderError(t *testing.T) {
 func TestStreamChangeProcessorError(t *testing.T) {
 	tt := assert.New(t)
 
-	change := Change{}
-	mockChangeReader := &MockChangeReader{}
+	change := ingest.Change{}
+	mockChangeReader := &ingest.MockChangeReader{}
 	mockChangeReader.
 		On("Read").
 		Return(change, nil).Once()

@@ -14,6 +14,7 @@ import (
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/services/horizon/internal/ingest/processors"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 	logpkg "github.com/stellar/go/support/log"
@@ -417,25 +418,25 @@ func (m *mockProcessorsRunner) RunHistoryArchiveIngestion(checkpointLedger uint3
 func (m *mockProcessorsRunner) RunAllProcessorsOnLedger(sequence uint32) (
 	ingest.StatsChangeProcessorResults,
 	processorsRunDurations,
-	ingest.StatsLedgerTransactionProcessorResults,
+	processors.StatsLedgerTransactionProcessorResults,
 	processorsRunDurations,
 	error,
 ) {
 	args := m.Called(sequence)
 	return args.Get(0).(ingest.StatsChangeProcessorResults),
 		args.Get(1).(processorsRunDurations),
-		args.Get(2).(ingest.StatsLedgerTransactionProcessorResults),
+		args.Get(2).(processors.StatsLedgerTransactionProcessorResults),
 		args.Get(3).(processorsRunDurations),
 		args.Error(4)
 }
 
 func (m *mockProcessorsRunner) RunTransactionProcessorsOnLedger(sequence uint32) (
-	ingest.StatsLedgerTransactionProcessorResults,
+	processors.StatsLedgerTransactionProcessorResults,
 	processorsRunDurations,
 	error,
 ) {
 	args := m.Called(sequence)
-	return args.Get(0).(ingest.StatsLedgerTransactionProcessorResults),
+	return args.Get(0).(processors.StatsLedgerTransactionProcessorResults),
 		args.Get(1).(processorsRunDurations),
 		args.Error(2)
 }
