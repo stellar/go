@@ -60,40 +60,6 @@ func Example_ledgerentrieshistoryarchive() {
 	fmt.Println("offers", offers)
 }
 
-// Example_transactionshistoryarchive demonstrates how to stream transactions
-// for a specific ledger from history archives. Please note that transaction
-// meta IS NOT available in history archives.
-func Example_transactionshistoryarchive() {
-	archiveURL := "http://history.stellar.org/prd/core-live/core_live_001"
-	networkPassphrase := network.PublicNetworkPassphrase
-
-	archive, err := historyarchive.Connect(
-		archiveURL,
-		historyarchive.ConnectOptions{Context: context.TODO()},
-	)
-	if err != nil {
-		panic(err)
-	}
-
-	backend := ledgerbackend.NewHistoryArchiveBackendFromArchive(archive)
-	txReader, err := NewLedgerTransactionReader(backend, networkPassphrase, 30000000)
-	if err != nil {
-		panic(err)
-	}
-
-	for {
-		tx, err := txReader.Read()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			panic(err)
-		}
-
-		fmt.Printf("%d: %x (%d ops)\n", tx.Index, tx.Result.TransactionHash, len(tx.Envelope.Operations()))
-	}
-}
-
 // Example_changes demonstrates how to stream ledger entry changes
 // for a specific ledger using captive stellar-core. Please note that transaction
 // meta IS available when using this backend.
