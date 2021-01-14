@@ -1,5 +1,7 @@
 # Ingestion Library
-TODO
+The `ingest` package provides primitives for building custom ingestion engines.
+
+Very often, developers need features that are outside of Horizon's scope. While it provides APIs for building the most common applications, it's not possible to add all possible features. That's why this package was created.
 
 
 
@@ -46,37 +48,35 @@ package main
 
 import (
   "fmt"
+
   backends "github.com/stellar/go/ingest/ledgerbackend"
 )
 
 func main() {
-  captiveCore, err := backends.NewCaptive(config)
+  backend, err := backends.NewCaptive(config)
   panicIf(err)
-  defer captiveCore.Close()
+  defer backend.Close()
 
   // Prepare a single ledger to be ingested,
-  captiveCore.PrepareRange(backends.BoundedRange(123456, 123457))
+  backend.PrepareRange(backends.BoundedRange(123456, 123457))
 
   // then retrieve it:
-  ok, ledger, err := captiveCore.GetLedger(123456)
-
+  ok, ledger, err := backend.GetLedger(123456)
   if !ok {
-    fmt.Errorf("The ledger doesn't exist on the backend.\n")
-    return
+    err = fmt.Errorf("The ledger doesn't exist on the backend.")
   }
 
   panicIf(err)
 
-  // Now `ledger` is a raw `xdr.LedgerCloseMeta` object containing the  
+  // Now `ledger` is a raw `xdr.LedgerCloseMeta` object containing the
   // transactions contained within this ledger.
-  fmt.Printf("\nHello, Protocol %d.\n",
-    ledger.V0.LedgerHeader.Header.LedgerVersion)
+  fmt.Printf("\nHello, Sequence %d.\n", ledger.LedgerSequence())
 }
 ```
 
 _(The `panicIf` function is defined in the [footnotes](#footnotes); it's used here for error-checking brevity.)_
 
-Notice that the mysterious `config` variable isn't defined. This will be environment-specific and users should consult both the [Captive Core documentation](../services/horizon/internal/docs/captive-core.md) and the [config docs](./ledgerbackend/captive_core_backend.go#L104-L131) directly for more details if they want to use this in production. For now, though, we'll have some hardcoded values:
+Notice that the mysterious `config` variable above isn't defined. This will be environment-specific and users should consult both the [Captive Core documentation](../services/horizon/internal/docs/captive-core.md) and the [config docs](./ledgerbackend/captive_core_backend.go#L104-L131) directly for more details if they want to use this backend in production. For now, though, we'll have some hardcoded values:
 
 ```go
 config := backends.CaptiveCoreConfig{
@@ -91,10 +91,10 @@ config := backends.CaptiveCoreConfig{
 
 Again, see the format of the stub file, etc. in the linked docs.
 
-Running this should dump a ton of logs while Captive Core boots up, downloads a history archive, and ultimately greets you with the latest version of the Stellar network:
+Running this should dump a ton of logs while Captive Core boots up, downloads a history archive, and ultimately pops up the ledger sequence number we ingested:
 
 ```
-$ go run ./start.go 
+$ go run ./example.go
 INFO[...] default: Config from /tmp/captive-stellar-core365405852/stellar-core.conf  pid=20574
 INFO[...] default: RUN_STANDALONE enabled in configuration file - node will not function properly with most networks  pid=20574
 INFO[...] default: Generated QUORUM_SET: {              pid=20574
@@ -137,7 +137,7 @@ INFO[...] History: Catching up to ledger 123457: Succeeded: download-verify-appl
 INFO[...] History: Downloading, unzipping and applying transactions for checkpoint 123519  pid=20574
 INFO[...] History: Catching up to ledger 123457: Download & apply checkpoints: num checkpoints left to apply:1 (0% done)  pid=20574
 
-Hello, Protocol 15.
+Hello, Sequence 123456.
 ```
 
 There's obviously much, *much* more we can do with the ingestion library. Let's work through a more comprehensive example.

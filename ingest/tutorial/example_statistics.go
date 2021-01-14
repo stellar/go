@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 
 	"github.com/sirupsen/logrus"
 	"github.com/stellar/go/ingest"
@@ -24,9 +23,9 @@ var (
 )
 
 func main() {
+	// Only log errors from the backend to keep output cleaner.
 	lg := log.New()
-	lg.SetLevel(logrus.InfoLevel)
-	lg.Entry.Logger.Out = ioutil.Discard
+	lg.SetLevel(logrus.ErrorLevel)
 	config.Log = lg
 
 	backend, err := backends.NewCaptive(config)
@@ -37,26 +36,25 @@ func main() {
 	var startingSeq uint32 = 2 // can't start with genesis ledger
 	var ledgersToRead uint32 = 10000
 
-	fmt.Printf("Preparing range (%d ledgers)... ", ledgersToRead)
+	fmt.Println("Preparing range (%d ledgers)... ", ledgersToRead)
 	ledgerRange := backends.BoundedRange(startingSeq, startingSeq+ledgersToRead)
 	err = backend.PrepareRange(ledgerRange)
 	panicIf(err)
-	fmt.Println("done.")
 
 	// These are the statistics that we're tracking.
 	var successfulTransactions, failedTransactions int
 	var operationsInSuccessful, operationsInFailed int
 
-	var delta uint32 = 0
-	for ; delta <= ledgersToRead; delta++ {
-		fmt.Printf("Processed %d/%d ledgers (%0.1f%%)... ",
-			delta, ledgersToRead, 100*float32(delta)/float32(ledgersToRead))
+	for seq := startingSeq; seq <= startingSeq+ledgersToRead; seq++ {
+		fmt.Printf("Processed ledger %d...\r", seq)
 
 		txReader, err := ingest.NewLedgerTransactionReader(
-			backend, config.NetworkPassphrase, startingSeq+delta)
+			backend, config.NetworkPassphrase, seq)
 		panicIf(err)
 		defer txReader.Close()
 
+		// Read each transaction within the ledger, extract its operations, and
+		// accumulate the statistics we're interested in.
 		for {
 			tx, err := txReader.Read()
 			if err == io.EOF {
@@ -74,14 +72,9 @@ func main() {
 				operationsInFailed += operationCount
 			}
 		}
-
-		if delta < ledgersToRead {
-			fmt.Printf("\r")
-		}
 	}
 
-	fmt.Println("done.")
-	fmt.Println("Results:")
+	fmt.Println("\nDone. Results:")
 	fmt.Printf("  - total transactions: %d\n", successfulTransactions+failedTransactions)
 	fmt.Printf("  - succeeded / failed: %d / %d\n", successfulTransactions, failedTransactions)
 	fmt.Printf("  - total operations:   %d\n", operationsInSuccessful+operationsInFailed)

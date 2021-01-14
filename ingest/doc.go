@@ -1,21 +1,22 @@
 /*
 
-Package ingest provides primitives for building custom ingestion engines.
+The "ingest" package provides primitives for building custom ingestion engines.
 
-Very often developers need features that are outside of Horizon's scope. While it
-provides APIs for building the  most common apps, it's not possible to add all
+Very often developers need features that are outside of Horizon's scope. While
+it provides APIs for building the most common apps, it's not possible to add all
 possible features. This is why this package was created.
 
 Ledger Backend
 
 Ledger backends are sources of information about Stellar network ledgers. This
-can be either Stellar-Core DB, Captive Stellar-Core or History Archives.
-Please consult the ledgerbackend package docs for more information about each
-backend.
+can be, for example: a Stellar-Core database, (possibly-remote) Captive
+Stellar-Core instances, or History Archives. Please consult the "ledgerbackend"
+package docs for more information about each backend.
 
 Warning: Please note that ledger backends provide low-level xdr.LedgerCloseMeta
-that should not be used directly unless the developer really understands this data
-structure. Read on to understand how to use ledger backend in higher level objects.
+that should not be used directly unless the developer really understands this
+data structure. Read on to understand how to use ledger backend in higher level
+objects.
 
 Readers
 
@@ -30,8 +31,9 @@ Currently there are three types of readers (all in ingest/io package):
   * LedgerChangeReader reads all changes to ledger entries created as a result
     of transactions (fees and meta) and protocol upgrades in a given ledger.
 
-Warning: Please note that readers stream both successful and failed transactions.
-Please check transactions status in your application (if required).
+Warning: Please note that readers stream both successful and failed
+transactions. Please check transactions status in your application (if
+required).
 
 Processors
 
@@ -48,8 +50,8 @@ There are two types of processors (ingest/io package):
     (io.LedgerTransaction).
 
 For an object to be a processor, it needs to implement a single method:
-ProcessChange or ProcessTransaction. This is a very simple yet powerful interface
-that allows building many kinds of features.
+ProcessChange or ProcessTransaction. This is a very simple yet powerful
+interface that allows building many kinds of features.
 
 */
 package ingest
