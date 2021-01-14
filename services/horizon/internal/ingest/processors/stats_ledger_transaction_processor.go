@@ -1,8 +1,9 @@
-package io
+package processors
 
 import (
 	"fmt"
 
+	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/xdr"
 )
 
@@ -43,7 +44,7 @@ type StatsLedgerTransactionProcessorResults struct {
 	OperationsRevokeSponsorship             int64
 }
 
-func (p *StatsLedgerTransactionProcessor) ProcessTransaction(transaction LedgerTransaction) error {
+func (p *StatsLedgerTransactionProcessor) ProcessTransaction(transaction ingest.LedgerTransaction) error {
 	p.results.Transactions++
 	ops := int64(len(transaction.Envelope.Operations()))
 	p.results.Operations += ops
@@ -140,3 +141,6 @@ func (stats *StatsLedgerTransactionProcessorResults) Map() map[string]interface{
 		"stats_operations_revoke_sponsorship":               stats.OperationsRevokeSponsorship,
 	}
 }
+
+// Ensure the StatsChangeProcessor conforms to the ChangeProcessor interface.
+var _ LedgerTransactionProcessor = (*StatsLedgerTransactionProcessor)(nil)

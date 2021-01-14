@@ -2,12 +2,12 @@
 package ingest
 
 import (
-	stdio "io"
+	"io"
 	"io/ioutil"
 	"path/filepath"
 	"testing"
 
-	"github.com/stellar/go/ingest/io"
+	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/xdr"
@@ -31,15 +31,15 @@ func loadChanges(path string) (*memoryChangeReader, error) {
 	return &reader, nil
 }
 
-func (r *memoryChangeReader) Read() (io.Change, error) {
+func (r *memoryChangeReader) Read() (ingest.Change, error) {
 	entryChanges := *r
 	if len(entryChanges) == 0 {
-		return io.Change{}, stdio.EOF
+		return ingest.Change{}, io.EOF
 	}
 
 	change := entryChanges[0]
 	*r = entryChanges[1:]
-	return io.Change{
+	return ingest.Change{
 		Type: change.State.Data.Type,
 		Post: change.State,
 		Pre:  nil,
@@ -100,7 +100,7 @@ func (s *DBTestSuite) mockChangeReader() {
 	changeReader, err := loadChanges(s.sampleFile)
 	s.Assert().NoError(err)
 	s.historyAdapter.On("GetState", s.system.ctx, s.sequence).
-		Return(io.ChangeReader(changeReader), nil).Once()
+		Return(ingest.ChangeReader(changeReader), nil).Once()
 }
 func (s *DBTestSuite) setupMocksForBuildState() {
 	checkpointHash := xdr.Hash{1, 2, 3}

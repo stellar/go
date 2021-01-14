@@ -5,10 +5,9 @@ package verify
 import (
 	"bytes"
 	"encoding/base64"
-	stdio "io"
+	"io"
 
-	ingesterrors "github.com/stellar/go/ingest/errors"
-	"github.com/stellar/go/ingest/io"
+	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
@@ -22,7 +21,7 @@ import (
 type TransformLedgerEntryFunction func(xdr.LedgerEntry) (ignore bool, newEntry xdr.LedgerEntry)
 
 // StateVerifier verifies if ledger entries provided by Add method are the same
-// as in the checkpoint ledger entries provided by SingleLedgerStateReader.
+// as in the checkpoint ledger entries provided by CheckpointChangeReader.
 // The algorithm works in the following way:
 //   0. Develop TransformFunction. It should remove all fields and objects not
 //      stored in your app. For example, if you only store accounts, all other
@@ -36,7 +35,7 @@ type TransformLedgerEntryFunction func(xdr.LedgerEntry) (ignore bool, newEntry x
 // It's user responsibility to call `StateReader.Close()` when reading is done.
 // Check Horizon for an example how to use this tool.
 type StateVerifier struct {
-	StateReader io.ChangeReader
+	StateReader ingest.ChangeReader
 	// TransformFunction transforms (or ignores) ledger entries streamed from
 	// checkpoint buckets to match the form added by `Write`. Read
 	// TransformLedgerEntryFunction godoc for more information.
@@ -62,7 +61,7 @@ func (v *StateVerifier) GetLedgerKeys(count int) ([]xdr.LedgerKey, error) {
 	for count > 0 {
 		entryChange, err := v.StateReader.Read()
 		if err != nil {
-			if err == stdio.EOF {
+			if err == io.EOF {
 				v.readingDone = true
 				return keys, nil
 			}
@@ -112,7 +111,7 @@ func (v *StateVerifier) Write(entry xdr.LedgerEntry) error {
 
 	expectedEntry, exist := v.currentEntries[key]
 	if !exist {
-		return ingesterrors.NewStateError(errors.Errorf(
+		return ingest.NewStateError(errors.Errorf(
 			"Cannot find entry in currentEntries map: %s (key = %s)",
 			base64.StdEncoding.EncodeToString(actualEntryMarshaled),
 			key,
@@ -145,7 +144,7 @@ func (v *StateVerifier) Write(entry xdr.LedgerEntry) error {
 	}
 
 	if !bytes.Equal(actualEntryMarshaled, expectedEntryMarshaled) {
-		return ingesterrors.NewStateError(errors.Errorf(
+		return ingest.NewStateError(errors.Errorf(
 			"Entry does not match the fetched entry. Expected: %s (pretransform = %s), actual: %s",
 			base64.StdEncoding.EncodeToString(expectedEntryMarshaled),
 			base64.StdEncoding.EncodeToString(preTransformExpectedEntryMarshaled),
@@ -175,7 +174,7 @@ func (v *StateVerifier) Verify(countAll int) error {
 	}
 
 	if v.readEntries != countAll {
-		return ingesterrors.NewStateError(errors.Errorf(
+		return ingest.NewStateError(errors.Errorf(
 			"Number of entries read using GetEntries (%d) does not match number of entries in your storage (%d).",
 			v.readEntries,
 			countAll,
@@ -195,7 +194,7 @@ func (v *StateVerifier) checkUnreadEntries() error {
 
 		// Ignore error as StateError below is more important
 		entryString, _ := xdr.MarshalBase64(entry)
-		return ingesterrors.NewStateError(errors.Errorf(
+		return ingest.NewStateError(errors.Errorf(
 			"Entries (%d) not found locally, example: %s",
 			len(v.currentEntries),
 			entryString,

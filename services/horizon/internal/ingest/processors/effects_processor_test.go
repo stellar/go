@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/stellar/go/ingest/io"
+	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	. "github.com/stellar/go/services/horizon/internal/test/transactions"
 	"github.com/stellar/go/services/horizon/internal/toid"
@@ -22,10 +22,10 @@ type EffectsProcessorTestSuiteLedger struct {
 	mockQ                  *history.MockQEffects
 	mockBatchInsertBuilder *history.MockEffectBatchInsertBuilder
 
-	firstTx     io.LedgerTransaction
-	secondTx    io.LedgerTransaction
-	thirdTx     io.LedgerTransaction
-	failedTx    io.LedgerTransaction
+	firstTx     ingest.LedgerTransaction
+	secondTx    ingest.LedgerTransaction
+	thirdTx     ingest.LedgerTransaction
+	failedTx    ingest.LedgerTransaction
 	firstTxID   int64
 	secondTxID  int64
 	thirdTxID   int64
@@ -33,7 +33,7 @@ type EffectsProcessorTestSuiteLedger struct {
 	sequence    uint32
 	addresses   []string
 	addressToID map[string]int64
-	txs         []io.LedgerTransaction
+	txs         []ingest.LedgerTransaction
 }
 
 func TestEffectsProcessorTestSuiteLedger(t *testing.T) {
@@ -116,7 +116,7 @@ func (s *EffectsProcessorTestSuiteLedger) SetupTest() {
 		20,
 	)
 
-	s.txs = []io.LedgerTransaction{
+	s.txs = []ingest.LedgerTransaction{
 		s.firstTx,
 		s.secondTx,
 		s.thirdTx,
@@ -1484,7 +1484,7 @@ func TestOperationEffects(t *testing.T) {
 
 func TestOperationEffectsSetOptionsSignersOrder(t *testing.T) {
 	tt := assert.New(t)
-	transaction := io.LedgerTransaction{
+	transaction := ingest.LedgerTransaction{
 		Meta: createTransactionMeta([]xdr.OperationMeta{
 			{
 				Changes: []xdr.LedgerEntryChange{
@@ -1615,7 +1615,7 @@ func TestOperationEffectsSetOptionsSignersOrder(t *testing.T) {
 // Regression for https://github.com/stellar/go/issues/2136
 func TestOperationEffectsSetOptionsSignersNoUpdated(t *testing.T) {
 	tt := assert.New(t)
-	transaction := io.LedgerTransaction{
+	transaction := ingest.LedgerTransaction{
 		Meta: createTransactionMeta([]xdr.OperationMeta{
 			{
 				Changes: []xdr.LedgerEntryChange{
@@ -1736,7 +1736,7 @@ func TestOperationRegressionAccountTrustItself(t *testing.T) {
 	tt := assert.New(t)
 	// NOTE:  when an account trusts itself, the transaction is successful but
 	// no ledger entries are actually modified.
-	transaction := io.LedgerTransaction{
+	transaction := ingest.LedgerTransaction{
 		Meta: createTransactionMeta([]xdr.OperationMeta{}),
 	}
 	transaction.Index = 1
@@ -1788,7 +1788,7 @@ func TestOperationEffectsAllowTrustAuthorizedToMaintainLiabilities(t *testing.T)
 
 	operation := transactionOperationWrapper{
 		index: 0,
-		transaction: io.LedgerTransaction{
+		transaction: ingest.LedgerTransaction{
 			Meta: xdr.TransactionMeta{
 				V:  2,
 				V2: &xdr.TransactionMetaV2{},
@@ -1821,7 +1821,7 @@ func TestOperationEffectsAllowTrustAuthorizedToMaintainLiabilities(t *testing.T)
 type CreateClaimableBalanceEffectsTestSuite struct {
 	suite.Suite
 	ops []xdr.Operation
-	tx  io.LedgerTransaction
+	tx  ingest.LedgerTransaction
 }
 
 func (s *CreateClaimableBalanceEffectsTestSuite) SetupTest() {
@@ -1885,7 +1885,7 @@ func (s *CreateClaimableBalanceEffectsTestSuite) SetupTest() {
 	xdr.SafeUnmarshalBase64("AAAAANoNV9p9SFDn/BDSqdDrxzH3r7QFdMAzlbF9SRSbkfW+", &balanceIDOp1)
 	xdr.SafeUnmarshalBase64("AAAAALHcX0PDa9UefSAzitC6vQOUr802phH8OF2ahLzg6j1D", &balanceIDOp2)
 
-	s.tx = io.LedgerTransaction{
+	s.tx = ingest.LedgerTransaction{
 		Index: 0,
 		Envelope: xdr.TransactionEnvelope{
 			Type: xdr.EnvelopeTypeEnvelopeTypeTx,
@@ -2052,7 +2052,7 @@ func TestCreateClaimableBalanceEffectsTestSuite(t *testing.T) {
 type ClaimClaimableBalanceEffectsTestSuite struct {
 	suite.Suite
 	ops []xdr.Operation
-	tx  io.LedgerTransaction
+	tx  ingest.LedgerTransaction
 }
 
 func (s *ClaimClaimableBalanceEffectsTestSuite) SetupTest() {
@@ -2087,7 +2087,7 @@ func (s *ClaimClaimableBalanceEffectsTestSuite) SetupTest() {
 		},
 	}
 
-	s.tx = io.LedgerTransaction{
+	s.tx = ingest.LedgerTransaction{
 		Index: 0,
 		Envelope: xdr.TransactionEnvelope{
 			Type: xdr.EnvelopeTypeEnvelopeTypeTx,

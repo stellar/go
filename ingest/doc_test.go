@@ -3,9 +3,9 @@ package ingest
 import (
 	"context"
 	"fmt"
+	"io"
 
 	"github.com/stellar/go/historyarchive"
-	"github.com/stellar/go/ingest/io"
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/network"
 	"github.com/stellar/go/xdr"
@@ -25,7 +25,7 @@ func Example_ledgerentrieshistoryarchive() {
 	}
 
 	// Ledger must be a checkpoint ledger: (100031+1) mod 64 == 0.
-	reader, err := io.MakeSingleLedgerStateReader(context.TODO(), archive, 100031)
+	reader, err := NewCheckpointChangeReader(context.TODO(), archive, 100031)
 	if err != nil {
 		panic(err)
 	}
@@ -60,40 +60,6 @@ func Example_ledgerentrieshistoryarchive() {
 	fmt.Println("offers", offers)
 }
 
-// Example_transactionshistoryarchive demonstrates how to stream transactions
-// for a specific ledger from history archives. Please note that transaction
-// meta IS NOT available in history archives.
-func Example_transactionshistoryarchive() {
-	archiveURL := "http://history.stellar.org/prd/core-live/core_live_001"
-	networkPassphrase := network.PublicNetworkPassphrase
-
-	archive, err := historyarchive.Connect(
-		archiveURL,
-		historyarchive.ConnectOptions{Context: context.TODO()},
-	)
-	if err != nil {
-		panic(err)
-	}
-
-	backend := ledgerbackend.NewHistoryArchiveBackendFromArchive(archive)
-	txReader, err := io.NewLedgerTransactionReader(backend, networkPassphrase, 30000000)
-	if err != nil {
-		panic(err)
-	}
-
-	for {
-		tx, err := txReader.Read()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			panic(err)
-		}
-
-		fmt.Printf("%d: %x (%d ops)\n", tx.Index, tx.Result.TransactionHash, len(tx.Envelope.Operations()))
-	}
-}
-
 // Example_changes demonstrates how to stream ledger entry changes
 // for a specific ledger using captive stellar-core. Please note that transaction
 // meta IS available when using this backend.
@@ -121,7 +87,7 @@ func Example_changes() {
 		panic(err)
 	}
 
-	changeReader, err := io.NewLedgerChangeReader(backend, networkPassphrase, sequence)
+	changeReader, err := NewLedgerChangeReader(backend, networkPassphrase, sequence)
 	if err != nil {
 		panic(err)
 	}

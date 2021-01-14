@@ -1,8 +1,7 @@
 package processors
 
 import (
-	ingesterrors "github.com/stellar/go/ingest/errors"
-	"github.com/stellar/go/ingest/io"
+	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
@@ -11,7 +10,7 @@ import (
 type AccountDataProcessor struct {
 	dataQ history.QData
 
-	cache *io.LedgerEntryChangeCache
+	cache *ingest.LedgerEntryChangeCache
 }
 
 func NewAccountDataProcessor(dataQ history.QData) *AccountDataProcessor {
@@ -21,10 +20,10 @@ func NewAccountDataProcessor(dataQ history.QData) *AccountDataProcessor {
 }
 
 func (p *AccountDataProcessor) reset() {
-	p.cache = io.NewLedgerEntryChangeCache()
+	p.cache = ingest.NewLedgerEntryChangeCache()
 }
 
-func (p *AccountDataProcessor) ProcessChange(change io.Change) error {
+func (p *AccountDataProcessor) ProcessChange(change ingest.Change) error {
 	// We're interested in data only
 	if change.Type != xdr.LedgerEntryTypeData {
 		return nil
@@ -87,7 +86,7 @@ func (p *AccountDataProcessor) Commit() error {
 		}
 
 		if rowsAffected != 1 {
-			return ingesterrors.NewStateError(errors.Errorf(
+			return ingest.NewStateError(errors.Errorf(
 				"%d rows affected when %s data: %s %s",
 				rowsAffected,
 				action,

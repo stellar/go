@@ -1,20 +1,21 @@
+//lint:file-ignore U1001 Ignore all unused code, staticcheck doesn't understand testify/suite
 package verify
 
 import (
 	"fmt"
-	stdio "io"
+	"io"
 	"testing"
 
-	ingesterrors "github.com/stellar/go/ingest/errors"
-	"github.com/stellar/go/ingest/io"
-	"github.com/stellar/go/support/errors"
-	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/stellar/go/ingest"
+	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/xdr"
 )
 
 func assertStateError(t *testing.T, err error, expectStateError bool) {
-	_, ok := err.(ingesterrors.StateError)
+	_, ok := err.(ingest.StateError)
 	if expectStateError {
 		assert.True(t, ok, "err should be StateError")
 	} else {
@@ -29,11 +30,11 @@ func TestStateVerifierTestSuite(t *testing.T) {
 type StateVerifierTestSuite struct {
 	suite.Suite
 	verifier        *StateVerifier
-	mockStateReader *io.MockChangeReader
+	mockStateReader *ingest.MockChangeReader
 }
 
 func (s *StateVerifierTestSuite) SetupTest() {
-	s.mockStateReader = &io.MockChangeReader{}
+	s.mockStateReader = &ingest.MockChangeReader{}
 	s.verifier = &StateVerifier{
 		StateReader: s.mockStateReader,
 	}
@@ -44,7 +45,7 @@ func (s *StateVerifierTestSuite) TearDownTest() {
 }
 
 func (s *StateVerifierTestSuite) TestNoEntries() {
-	s.mockStateReader.On("Read").Return(io.Change{}, stdio.EOF).Once()
+	s.mockStateReader.On("Read").Return(ingest.Change{}, io.EOF).Once()
 
 	keys, err := s.verifier.GetLedgerKeys(10)
 	s.Assert().NoError(err)
@@ -52,7 +53,7 @@ func (s *StateVerifierTestSuite) TestNoEntries() {
 }
 
 func (s *StateVerifierTestSuite) TestReturnErrorOnStateReaderError() {
-	s.mockStateReader.On("Read").Return(io.Change{}, errors.New("Read error")).Once()
+	s.mockStateReader.On("Read").Return(ingest.Change{}, errors.New("Read error")).Once()
 
 	_, err := s.verifier.GetLedgerKeys(10)
 	s.Assert().EqualError(err, "Read error")
@@ -86,7 +87,7 @@ func (s *StateVerifierTestSuite) TestTransformFunction() {
 	accountEntry := makeAccountLedgerEntry()
 	s.mockStateReader.
 		On("Read").
-		Return(io.Change{
+		Return(ingest.Change{
 			Type: xdr.LedgerEntryTypeAccount,
 			Post: &accountEntry,
 		}, nil).Once()
@@ -94,12 +95,12 @@ func (s *StateVerifierTestSuite) TestTransformFunction() {
 	offerEntry := makeOfferLedgerEntry()
 	s.mockStateReader.
 		On("Read").
-		Return(io.Change{
+		Return(ingest.Change{
 			Type: xdr.LedgerEntryTypeOffer,
 			Post: &offerEntry,
 		}, nil).Once()
 
-	s.mockStateReader.On("Read").Return(io.Change{}, stdio.EOF).Once()
+	s.mockStateReader.On("Read").Return(ingest.Change{}, io.EOF).Once()
 
 	s.verifier.TransformFunction =
 		func(entry xdr.LedgerEntry) (ignore bool, newEntry xdr.LedgerEntry) {
@@ -137,7 +138,7 @@ func (s *StateVerifierTestSuite) TestOnlyRequestedNumberOfKeysReturned() {
 	accountEntry := makeAccountLedgerEntry()
 	s.mockStateReader.
 		On("Read").
-		Return(io.Change{
+		Return(ingest.Change{
 			Type: xdr.LedgerEntryTypeAccount,
 			Post: &accountEntry,
 		}, nil).Once()
@@ -183,7 +184,7 @@ func (s *StateVerifierTestSuite) TestTransformFunctionBuggyIgnore() {
 	accountEntry := makeAccountLedgerEntry()
 	s.mockStateReader.
 		On("Read").
-		Return(io.Change{
+		Return(ingest.Change{
 			Type: xdr.LedgerEntryTypeAccount,
 			Post: &accountEntry,
 		}, nil).Once()
@@ -217,7 +218,7 @@ func (s *StateVerifierTestSuite) TestActualExpectedEntryNotEqualWrite() {
 	expectedEntry := makeAccountLedgerEntry()
 	s.mockStateReader.
 		On("Read").
-		Return(io.Change{
+		Return(ingest.Change{
 			Type: xdr.LedgerEntryTypeAccount,
 			Post: &expectedEntry,
 		}, nil).Once()
@@ -250,12 +251,12 @@ func (s *StateVerifierTestSuite) TestVerifyCountersMatch() {
 	accountEntry := makeAccountLedgerEntry()
 	s.mockStateReader.
 		On("Read").
-		Return(io.Change{
+		Return(ingest.Change{
 			Type: xdr.LedgerEntryTypeAccount,
 			Post: &accountEntry,
 		}, nil).Once()
 
-	s.mockStateReader.On("Read").Return(io.Change{}, stdio.EOF).Once()
+	s.mockStateReader.On("Read").Return(ingest.Change{}, io.EOF).Once()
 
 	keys, err := s.verifier.GetLedgerKeys(2)
 	s.Assert().NoError(err)

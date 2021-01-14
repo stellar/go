@@ -5,13 +5,15 @@ import (
 	"context"
 	"testing"
 
-	"github.com/stellar/go/historyarchive"
-	"github.com/stellar/go/ingest/io"
-	"github.com/stellar/go/ingest/ledgerbackend"
-	"github.com/stellar/go/support/errors"
-	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/stellar/go/historyarchive"
+	"github.com/stellar/go/ingest"
+	"github.com/stellar/go/ingest/ledgerbackend"
+	"github.com/stellar/go/services/horizon/internal/ingest/processors"
+	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/xdr"
 )
 
 func TestResumeTestTestSuite(t *testing.T) {
@@ -278,9 +280,9 @@ func (s *ResumeTestTestSuite) mockSuccessfulIngestion() {
 	s.ledgerBackend.On("GetLatestLedgerSequence").Return(uint32(111), nil).Once()
 
 	s.runner.On("RunAllProcessorsOnLedger", uint32(102)).Return(
-		io.StatsChangeProcessorResults{},
+		ingest.StatsChangeProcessorResults{},
 		processorsRunDurations{},
-		io.StatsLedgerTransactionProcessorResults{},
+		processors.StatsLedgerTransactionProcessorResults{},
 		processorsRunDurations{},
 		nil,
 	).Once()
@@ -348,9 +350,9 @@ func (s *ResumeTestTestSuite) TestErrorSettingCursorIgnored() {
 	s.ledgerBackend.On("GetLatestLedgerSequence").Return(uint32(111), nil).Once()
 
 	s.runner.On("RunAllProcessorsOnLedger", uint32(101)).Return(
-		io.StatsChangeProcessorResults{},
+		ingest.StatsChangeProcessorResults{},
 		processorsRunDurations{},
-		io.StatsLedgerTransactionProcessorResults{},
+		processors.StatsLedgerTransactionProcessorResults{},
 		processorsRunDurations{},
 		nil,
 	).Once()
