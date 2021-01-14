@@ -6,16 +6,20 @@ Very often, developers need features that are outside of Horizon's scope. While 
 
 
 # Architecture
-This is described in a little more detail in `doc.go`, its accompanying examples, and but from a high level, the ingestion library is broken down into a few modular components:
+From a high level, the ingestion library is broken down into a few modular components:
 
-
-```txt
-                 [ Processors ]
-                       |
-                      / \
-                     /   \
-                    /     \
-              [Change]   [Transaction]
+```
+                  [ Processors ]
+                        |
+                       / \
+                      /   \
+                     /     \
+              [Change]      [Transaction]
+                 |               |
+            |---+---|            |
+       Checkpoint Ledger      Ledger
+         Change   Change    Transaction
+         Reader   Reader      Reader
 
                 [ Ledger Backend ]
                         |
@@ -27,6 +31,8 @@ This is described in a little more detail in `doc.go`, its accompanying examples
        Core                 Captive
                              Core 
 ```
+
+This is described in a little more detail in [`doc.go`](../doc.go), its accompanying examples, the documentation within this package, and the rest of this tutorial.
 
 
 
