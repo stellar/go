@@ -12,7 +12,7 @@ import (
 
 var (
 	config = backends.CaptiveCoreConfig{
-		// Change these based on your env:
+		// Change these based on your environment:
 		BinaryPath:        "/usr/local/bin/stellar-core",
 		ConfigAppendPath:  "stellar-core-stub.toml",
 		NetworkPassphrase: "Test SDF Network ; September 2015",
@@ -36,7 +36,7 @@ func main() {
 	var startingSeq uint32 = 2 // can't start with genesis ledger
 	var ledgersToRead uint32 = 10000
 
-	fmt.Println("Preparing range (%d ledgers)... ", ledgersToRead)
+	fmt.Printf("Preparing range (%d ledgers)...\n", ledgersToRead)
 	ledgerRange := backends.BoundedRange(startingSeq, startingSeq+ledgersToRead)
 	err = backend.PrepareRange(ledgerRange)
 	panicIf(err)

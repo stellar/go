@@ -58,7 +58,7 @@ func main() {
   defer backend.Close()
 
   // Prepare a single ledger to be ingested,
-  backend.PrepareRange(backends.BoundedRange(123456, 123457))
+  backend.PrepareRange(backends.BoundedRange(123456, 123456))
 
   // then retrieve it:
   ok, ledger, err := backend.GetLedger(123456)
@@ -70,7 +70,7 @@ func main() {
 
   // Now `ledger` is a raw `xdr.LedgerCloseMeta` object containing the
   // transactions contained within this ledger.
-  fmt.Printf("\nHello, Sequence %d.\n", ledger.LedgerSequence())
+  fmt.Printf("\nHello, Ledger #%d.\n", ledger.LedgerSequence())
 }
 ```
 
@@ -137,10 +137,10 @@ INFO[...] History: Catching up to ledger 123457: Succeeded: download-verify-appl
 INFO[...] History: Downloading, unzipping and applying transactions for checkpoint 123519  pid=20574
 INFO[...] History: Catching up to ledger 123457: Download & apply checkpoints: num checkpoints left to apply:1 (0% done)  pid=20574
 
-Hello, Sequence 123456.
+Hello, Ledger #123456.
 ```
 
-There's obviously much, *much* more we can do with the ingestion library. Let's work through a more comprehensive example.
+There's obviously much, *much* more we can do with the ingestion library. Let's work through some more comprehensive examples.
 
 
 
@@ -157,35 +157,33 @@ Let's get the boilerplate out of the way first. Again, we presume `config` is so
 package main
 
 import (
-  "fmt"
-  "io"
-  "io/ioutil"
+	"fmt"
+	"io"
 
-  "github.com/sirupsen/logrus"
-  ingestio "github.com/stellar/go/ingest/io"
-  backends "github.com/stellar/go/ingest/ledgerbackend"
-  "github.com/stellar/go/support/log"
+	"github.com/sirupsen/logrus"
+	"github.com/stellar/go/ingest"
+	backends "github.com/stellar/go/ingest/ledgerbackend"
+	"github.com/stellar/go/support/log"
 )
 
 func main() {
-  backend, err := backends.NewCaptive(config)
-  panicIf(err)
-  defer backend.Close()
+	backend, err := backends.NewCaptive(config)
+	panicIf(err)
+	defer backend.Close()
 
-  // ...
+	// ...
 ```
 
 Now, let's identify a range of ledgers we wish to process. For simplicity, let's work on the first 10,000 ledgers on the network.
 
 ```go
-  // Prepare a range to be ingested:
-  var startingSeq uint32 = 2 // can't start with genesis ledger
-  var ledgersToRead uint32 = 10000
+	// Prepare a range to be ingested:
+	var startingSeq uint32 = 2 // can't start with genesis ledger
+	var ledgersToRead uint32 = 10000
 
-  fmt.Printf("Preparing %d ledgers for ingestion... ", ledgersToRead)
-  ledgerRange := backends.BoundedRange(startingSeq, startingSeq+ledgersToRead)
-  err = backend.PrepareRange(ledgerRange)
-  panicIf(err)
+	ledgerRange := backends.BoundedRange(startingSeq, startingSeq+ledgersToRead)
+	err = backend.PrepareRange(ledgerRange)
+	panicIf(err)
 ```
 
 This part will take a while, as Captive Core (or whatever backend) processes these ledgers and prepares them for ingestion.
@@ -193,49 +191,52 @@ This part will take a while, as Captive Core (or whatever backend) processes the
 Now, we'll actually use a `LedgerTransactionReader` object to use the backend and read the transactions ledger by ledger. It takes the backend, the network passphrase, and the ledger you'd like to process as parameters, giving you back an object that returns raw transaction objects row by row.
 
 ```go
-  // These are the statistics that we're tracking.
-  var successfulTransactions, failedTransactions int
-  var operationsInSuccessful, operationsInFailed int
+	// These are the statistics that we're tracking.
+	var successfulTransactions, failedTransactions int
+	var operationsInSuccessful, operationsInFailed int
 
-  var delta uint32 = 0
-  for ; delta <= ledgersToRead; delta++ {
-    txReader, err := ingestio.NewLedgerTransactionReader(
-      backend, config.NetworkPassphrase, startingSeq+delta)
-    panicIf(err)
-    defer txReader.Close()
+	for seq := startingSeq; seq <= startingSeq+ledgersToRead; seq++ {
+		fmt.Printf("Processed ledger %d...\r", seq)
+
+		txReader, err := ingest.NewLedgerTransactionReader(
+			backend, config.NetworkPassphrase, seq)
+		panicIf(err)
+		defer txReader.Close()
 ```
 
 Each ledger likely has many transactions, so we nest in another loop to process them all:
 
 ```go
-    for {
-      tx, err := txReader.Read()
-      if err == io.EOF {
-        break
-      }
-      panicIf(err)
+		// Read each transaction within the ledger, extract its operations, and
+		// accumulate the statistics we're interested in.
+		for {
+			tx, err := txReader.Read()
+			if err == io.EOF {
+				break
+			}
+			panicIf(err)
 
-      envelope := tx.Envelope
-      operationCount := len(envelope.Operations())
-      if tx.Result.Successful() {
-        successfulTransactions++
-        operationsInSuccessful += operationCount
-      } else {
-        failedTransactions++
-        operationsInFailed += operationCount
-      }
-    }
-  } // outer loop
+			envelope := tx.Envelope
+			operationCount := len(envelope.Operations())
+			if tx.Result.Successful() {
+				successfulTransactions++
+				operationsInSuccessful += operationCount
+			} else {
+				failedTransactions++
+				operationsInFailed += operationCount
+			}
+		}
+	} // outer loop
 ```
 
 And that's it! We can print the statistics out of interest:
 
 ```go
-  fmt.Println("Results:")
-  fmt.Printf("  - total transactions: %d\n", successfulTransactions+failedTransactions)
-  fmt.Printf("  - succeeded / failed: %d / %d\n", successfulTransactions, failedTransactions)
-  fmt.Printf("  - total operations:   %d\n", operationsInSuccessful+operationsInFailed)
-  fmt.Printf("  - succeeded / failed: %d / %d\n", operationsInSuccessful, operationsInFailed)
+	fmt.Println("\nDone. Results:")
+	fmt.Printf("  - total transactions: %d\n", successfulTransactions+failedTransactions)
+	fmt.Printf("  - succeeded / failed: %d / %d\n", successfulTransactions, failedTransactions)
+	fmt.Printf("  - total operations:   %d\n", operationsInSuccessful+operationsInFailed)
+	fmt.Printf("  - succeeded / failed: %d / %d\n", operationsInSuccessful, operationsInFailed)
 } // end of main
 ```
 
@@ -249,7 +250,12 @@ As of this writing, the stats are as follows:
 
 (Note that since the Stellar testnet undergoes periodic resets, this may not always be accurate.)
 
-The full runnable example is available [here](./example_statistics.go).
+The full, runnable example is available [here](./example_statistics.go).
+
+
+# **Example**: 
+
+
 
 
 # Snippets
@@ -263,13 +269,9 @@ Certain backends (like Captive Core) can be very noisy. The backends will log to
 package main
 
 import (
-  "fmt"
-  "time"
-
   ingest "github.com/stellar/go/ingest/ledgerbackend"
-
-  "github.com/sirupsen/logrus"
   "github.com/stellar/go/support/log"
+  "github.com/sirupsen/logrus"
 )
 
 func main() {
@@ -279,12 +281,12 @@ func main() {
   config.Log = lg // assume config is otherwise predefined
 
   backend, err := ingest.NewCaptive(config)
-  panicIf(err)
-  defer backend.Close()
-
   // ...
 }
 ```
+
+
+### Ingesting a genesis ledger
 
 
 #### Footnotes
