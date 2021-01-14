@@ -31,15 +31,13 @@ This is described in a little more detail in `doc.go`, its accompanying examples
 
 
 # Hello, World!
-As is tradition, we'll start with a simplistic example that ingests a single ledger from the network. We're immediately faced with a decision, though: _What's the backend?_ We'll use a Captive Stellar-Core backend in this example because it requires no setup, but there are number of alternatives available. You could also use:
+As is tradition, we'll start with a simplistic example that ingests a single ledger from the network. We're immediately faced with a decision, though: _What's the backend?_ We'll use a **Captive Stellar-Core backend** in this example because it requires (little-to-)no setup, but there are number of alternatives available. You could also use:
 
-  - a **database** (via `NewDatabaseBackend()`), which ...
+  - a **database** (via `NewDatabaseBackend()`), which would ingest ledgers stored in a database (like Core's, for example);
 
   - a **remote Captive Core** instance (via `NewRemoteCaptive()`), which works much like Captive Core, but points to an instance that isn't (necessarily) running locally;
 
-  - TODO finish explaining these ^
-
-...or a completely customized backend, as long as it fulfills the interface requirements of `LedgerBackend`.
+...or even a completely customized backend that fits your architectural needs, as long as it fulfills the interface requirements of `LedgerBackend`.
 
 With that in mind, here's a minimalist example of the ingestion library:
 
@@ -264,16 +262,10 @@ import (
 	// ...
 	"github.com/stellar/go/historyarchive"
 )
-
-func main() {
-	backend, err := backends.NewCaptive(config)
-	panicIf(err)
-	defer backend.Close()
-
-	// ...
 ```
 
-Again, we assume the validity of `config`.
+This time, we don't need a `LedgerBackend` instance whatsoever. The ledger changes we want to process will be fed into the reader through a different means. In our example, the history archives have the ~droids~ ledgers that we are looking for.
+
 
 ## History Archive Connections
 First thing's first: we need to establish a connection to a history archive.

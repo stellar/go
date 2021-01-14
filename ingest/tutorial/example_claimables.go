@@ -6,11 +6,9 @@ import (
 	"io"
 	"time"
 
-	"github.com/sirupsen/logrus"
 	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/ingest"
 	backends "github.com/stellar/go/ingest/ledgerbackend"
-	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/xdr"
 )
 
@@ -27,15 +25,6 @@ var (
 )
 
 func main() {
-	// Only log errors from the backend to keep output cleaner.
-	lg := log.New()
-	lg.SetLevel(logrus.DebugLevel)
-	config.Log = lg
-
-	backend, err := backends.NewCaptive(config)
-	panicIf(err)
-	defer backend.Close()
-
 	// Open a history archive using our existing configuration details.
 	historyArchive, err := historyarchive.Connect(
 		config.HistoryArchiveURLs[0],
