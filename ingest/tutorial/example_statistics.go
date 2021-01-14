@@ -10,19 +10,7 @@ import (
 	"github.com/stellar/go/support/log"
 )
 
-var (
-	config = backends.CaptiveCoreConfig{
-		// Change these based on your environment:
-		BinaryPath:        "/usr/local/bin/stellar-core",
-		ConfigAppendPath:  "stellar-core-stub.toml",
-		NetworkPassphrase: "Test SDF Network ; September 2015",
-		HistoryArchiveURLs: []string{
-			"https://history.stellar.org/prd/core-testnet/core_testnet_001",
-		},
-	}
-)
-
-func main() {
+func statistics() {
 	// Only log errors from the backend to keep output cleaner.
 	lg := log.New()
 	lg.SetLevel(logrus.ErrorLevel)
@@ -79,10 +67,4 @@ func main() {
 	fmt.Printf("  - succeeded / failed: %d / %d\n", successfulTransactions, failedTransactions)
 	fmt.Printf("  - total operations:   %d\n", operationsInSuccessful+operationsInFailed)
 	fmt.Printf("  - succeeded / failed: %d / %d\n", operationsInSuccessful, operationsInFailed)
-}
-
-func panicIf(err error) {
-	if err != nil {
-		panic(fmt.Errorf("An error occurred, panicking: %s\n", err))
-	}
 }

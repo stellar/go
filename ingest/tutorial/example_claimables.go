@@ -8,23 +8,10 @@ import (
 
 	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/ingest"
-	backends "github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/xdr"
 )
 
-var (
-	config = backends.CaptiveCoreConfig{
-		// Change these based on your environment:
-		BinaryPath:        "/usr/local/bin/stellar-core",
-		ConfigAppendPath:  "stellar-core-stub.toml",
-		NetworkPassphrase: "Test SDF Network ; September 2015",
-		HistoryArchiveURLs: []string{
-			"https://history.stellar.org/prd/core-testnet/core_testnet_001",
-		},
-	}
-)
-
-func main() {
+func claimables() {
 	// Open a history archive using our existing configuration details.
 	historyArchive, err := historyarchive.Connect(
 		config.HistoryArchiveURLs[0],
@@ -80,10 +67,4 @@ func main() {
 
 	fmt.Println()
 	fmt.Printf("%d/%d created entries were claimable balances\n", newCBs, newTotal)
-}
-
-func panicIf(err error) {
-	if err != nil {
-		panic(fmt.Errorf("An error occurred, panicking: %s\n", err))
-	}
 }
