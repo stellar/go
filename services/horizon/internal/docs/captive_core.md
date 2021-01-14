@@ -276,6 +276,28 @@ sudo systemctl restart stellar-horizon
 
 At this point, you should be able to hit port 8000 on the above instance and watch the `ingest_latest_ledger` value grow.
 
+### Private Networks
+
+If you want your Captive Core instance to connect to a private Stellar network, you will need to specify the validator of the private network in the Captive Core append path.
+
+Assuming the validator of your private network has a public key of `GD5KD2KEZJIGTC63IGW6UMUSMVUVG5IHG64HUTFWCHVZH2N2IBOQN7PS` and can be accessed at `private1.validator.com`, then the Captive Core append path would consist of the following file:
+
+```toml
+UNSAFE_QUORUM=true
+FAILURE_SAFETY=0
+
+[[VALIDATORS]]
+NAME="private"
+HOME_DOMAIN="validator.com"
+PUBLIC_KEY="GD5KD2KEZJIGTC63IGW6UMUSMVUVG5IHG64HUTFWCHVZH2N2IBOQN7PS"
+ADDRESS="private1.validator.com"
+QUALITY="MEDIUM"
+```
+
+`UNSAFE_QUORUM=true` and `FAILURE_SAFETY=0` are required when there are too few validators in the private network to form a quorum.
+
+You will also need to set `RUN_STANDALONE=false` in the Stellar Core configuration for the validator.
+Otherwise, if `RUN_STANDALONE` is set to true, the validator will not accept connections on its peer port which means Captive Core will not be able to connect to the validator.
 
 ### Reingestion
 If you need to manually reingest some ledgers (for example, you want history for some ledgers that closed before your asset got issued), you can still do this with Captive Core.
