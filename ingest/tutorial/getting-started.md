@@ -18,11 +18,12 @@ This is described in a little more detail in `doc.go`, its accompanying examples
                 [ Ledger Backend ]
                         |
                      one of...
-      --------|---------|-----------|----------|
-     |        |         |           |          |
-  Captive  Database   History    Remote       etc.
-  Core                Archive    Captive
-                                 Core 
+                        |
+          --------|-----+------|----------|
+         |        |            |          |
+      Captive  Database      Remote      etc.
+       Core                 Captive
+                             Core 
 ```
 
 
@@ -32,12 +33,9 @@ As is tradition, we'll start with a simplistic example that ingests a single led
 
   - a **database** (via `NewDatabaseBackend()`), which ...
 
-  - a **history archive** (via either `NewHistoryArchiveBackendFromURL()` if looking up a remote archive, or `NewHistoryArchiveBackendFromArchive()` if doing something a little more specialized), which ...
-
   - a **remote Captive Core** instance (via `NewRemoteCaptive()`), which works much like Captive Core, but points to an instance that isn't (necessarily) running locally;
 
   - TODO finish explaining these ^
-
 
 ...or a completely customized backend, as long as it fulfills the interface requirements of `LedgerBackend`.
 
