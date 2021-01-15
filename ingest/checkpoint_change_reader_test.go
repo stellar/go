@@ -702,6 +702,32 @@ func (s *ReadBucketEntryTestSuite) TestReadEntryRetrySucceedsAfterDiscardError()
 	s.Require().Equal(io.EOF, err)
 }
 
+func TestCheckpointLedgersTestSuite(t *testing.T) {
+	suite.Run(t, new(CheckpointLedgersTestSuite))
+}
+
+type CheckpointLedgersTestSuite struct {
+	suite.Suite
+}
+
+// TestNonCheckpointLedger ensures that the reader errors on a non-checkpoint ledger
+func (s *CheckpointLedgersTestSuite) TestNonCheckpointLedger() {
+	mockArchive := &historyarchive.MockArchive{}
+	ledgerSeq := uint32(123456)
+
+	for _, freq := range []uint32{historyarchive.DefaultCheckpointFrequency, 5} {
+		mockArchive.
+			On("GetCheckpointManager").
+			Return(historyarchive.NewCheckpointManager(freq))
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		_, err := NewCheckpointChangeReader(ctx, mockArchive, ledgerSeq)
+		s.Require().Error(err)
+	}
+}
+
 func metaEntry(version uint32) xdr.BucketEntry {
 	return xdr.BucketEntry{
 		Type: xdr.BucketEntryTypeMetaentry,
