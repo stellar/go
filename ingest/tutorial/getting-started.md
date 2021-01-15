@@ -147,9 +147,9 @@ There's obviously much, *much* more we can do with the ingestion library. Let's 
 
 
 # **Example**: Ledger Statistics
-In this section, we'll demonstrate how to use backends and processors to actually learn something meaningful about the Stellar network. Again, we'll use a specific backend here (Captive Core, again), but the processing can be done with any of them.
+In this section, we'll demonstrate how to combine a backend with a reader to actually learn something meaningful about the Stellar network. Again, we'll use a specific backend here (Captive Core, again), but the processing can be done with any of them.
 
-More specifically, we're going to analyze the ledgers and track some statistics about the success/failure of transactions and their relative operations using `ingest.LedgerTransactionReader`. While this is technically pretty doable by manipulating the Horizon API and some fancy JSON parsing (feat. `jq`), it serves as a useful yet concise demonstration of the ingestion library's features.
+More specifically, we're going to analyze the ledgers and track some statistics about the success/failure of transactions and their relative operations using `LedgerTransactionReader`. While this is technically doable by manipulating the Horizon API and some fancy JSON parsing, it serves as a useful yet concise demonstration of the ingestion library's features.
 
 
 ## Preamble
@@ -382,8 +382,6 @@ func panicIf(err error) {
 
   **Please don't use it in production code**; it's provided here for completeness, convenience, and brevity of examples.
 
-  2. Some of the examples use the [`jq`](https://stedolan.github.io/jq/) application, which is a full-featured command-line JSON parser available on most platforms.
+  2. Since the Stellar testnet undergoes periodic resets, the example outputs from various sections (especially regarding networking statistics) may not always be accurate.
 
-  3. Since the Stellar testnet undergoes periodic resets, the example outputs from various sections (especially regarding networking statistics) may not always be accurate.
-
-  4. It's worth noting that even though the [second example](example-tracking-feature-popularity) could *also* be done by using the `LedgerTransactionReader` and inspecting the individual operations, that'd be bit redundant as far as examples go.
+  3. It's worth noting that even though the [second example](example-tracking-feature-popularity) could *also* be done by using the `LedgerTransactionReader` and inspecting the individual operations, that'd be bit redundant as far as examples go.
