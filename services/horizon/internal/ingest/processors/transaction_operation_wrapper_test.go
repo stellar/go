@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/stellar/go/ingest/io"
+	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	. "github.com/stellar/go/services/horizon/internal/test/transactions"
 	"github.com/stellar/go/xdr"
@@ -1027,7 +1027,7 @@ func TestTransactionOperationAllowTrustDetails(t *testing.T) {
 		t.Run(tc.desc, func(t *testing.T) {
 			operation := transactionOperationWrapper{
 				index: 0,
-				transaction: io.LedgerTransaction{
+				transaction: ingest.LedgerTransaction{
 					Meta: xdr.TransactionMeta{
 						V: 2,
 						V2: &xdr.TransactionMetaV2{
@@ -1157,7 +1157,7 @@ func (s *CreateClaimableBalanceOpTestSuite) TestDetails() {
 		s.T().Run(tc.desc, func(t *testing.T) {
 			operation := transactionOperationWrapper{
 				index: 0,
-				transaction: io.LedgerTransaction{
+				transaction: ingest.LedgerTransaction{
 					Meta: xdr.TransactionMeta{
 						V: 2,
 						V2: &xdr.TransactionMetaV2{
@@ -1204,7 +1204,7 @@ func (s *CreateClaimableBalanceOpTestSuite) TestParticipants() {
 		s.T().Run(tc.desc, func(t *testing.T) {
 			operation := transactionOperationWrapper{
 				index: 0,
-				transaction: io.LedgerTransaction{Meta: xdr.TransactionMeta{
+				transaction: ingest.LedgerTransaction{Meta: xdr.TransactionMeta{
 					V: 2,
 					V2: &xdr.TransactionMetaV2{
 						Operations: make([]xdr.OperationMeta, 1, 1),
@@ -1254,7 +1254,7 @@ func (s *ClaimClaimableBalanceOpTestSuite) TestDetails() {
 
 	operation := transactionOperationWrapper{
 		index: 0,
-		transaction: io.LedgerTransaction{
+		transaction: ingest.LedgerTransaction{
 			Meta: xdr.TransactionMeta{
 				V: 2,
 				V2: &xdr.TransactionMetaV2{
@@ -1273,7 +1273,7 @@ func (s *ClaimClaimableBalanceOpTestSuite) TestDetails() {
 func (s *ClaimClaimableBalanceOpTestSuite) TestParticipants() {
 	operation := transactionOperationWrapper{
 		index: 0,
-		transaction: io.LedgerTransaction{
+		transaction: ingest.LedgerTransaction{
 			Meta: xdr.TransactionMeta{
 				V: 2,
 				V2: &xdr.TransactionMetaV2{

@@ -1,7 +1,7 @@
 package processors
 
 import (
-	"github.com/stellar/go/ingest/io"
+	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
@@ -29,7 +29,7 @@ func NewLedgerProcessor(
 	}
 }
 
-func (p *LedgersProcessor) ProcessTransaction(transaction io.LedgerTransaction) (err error) {
+func (p *LedgersProcessor) ProcessTransaction(transaction ingest.LedgerTransaction) (err error) {
 	opCount := len(transaction.Envelope.Operations())
 	p.txSetOpCount += opCount
 	if transaction.Result.Successful() {

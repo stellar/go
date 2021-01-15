@@ -5,7 +5,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/stellar/go/ingest/io"
+	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/suite"
@@ -57,7 +57,7 @@ func (s *AccountsProcessorTestSuiteState) TestCreatesAccounts() {
 		},
 	).Return(nil).Once()
 
-	err := s.processor.ProcessChange(io.Change{
+	err := s.processor.ProcessChange(ingest.Change{
 		Type: xdr.LedgerEntryTypeAccount,
 		Pre:  nil,
 		Post: &xdr.LedgerEntry{
@@ -104,7 +104,7 @@ func (s *AccountsProcessorTestSuiteLedger) TestNewAccount() {
 	}
 	lastModifiedLedgerSeq := xdr.Uint32(123)
 
-	err := s.processor.ProcessChange(io.Change{
+	err := s.processor.ProcessChange(ingest.Change{
 		Type: xdr.LedgerEntryTypeAccount,
 		Pre:  nil,
 		Post: &xdr.LedgerEntry{
@@ -123,7 +123,7 @@ func (s *AccountsProcessorTestSuiteLedger) TestNewAccount() {
 		HomeDomain: "stellar.org",
 	}
 
-	err = s.processor.ProcessChange(io.Change{
+	err = s.processor.ProcessChange(ingest.Change{
 		Type: xdr.LedgerEntryTypeAccount,
 		Pre: &xdr.LedgerEntry{
 			LastModifiedLedgerSeq: lastModifiedLedgerSeq - 1,
@@ -163,7 +163,7 @@ func (s *AccountsProcessorTestSuiteLedger) TestRemoveAccount() {
 		"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
 	).Return(int64(1), nil).Once()
 
-	err := s.processor.ProcessChange(io.Change{
+	err := s.processor.ProcessChange(ingest.Change{
 		Type: xdr.LedgerEntryTypeAccount,
 		Pre: &xdr.LedgerEntry{
 			Data: xdr.LedgerEntryData{
@@ -186,7 +186,7 @@ func (s *AccountsProcessorTestSuiteLedger) TestProcessUpgradeChange() {
 	}
 	lastModifiedLedgerSeq := xdr.Uint32(123)
 
-	err := s.processor.ProcessChange(io.Change{
+	err := s.processor.ProcessChange(ingest.Change{
 		Type: xdr.LedgerEntryTypeAccount,
 		Pre:  nil,
 		Post: &xdr.LedgerEntry{
@@ -205,7 +205,7 @@ func (s *AccountsProcessorTestSuiteLedger) TestProcessUpgradeChange() {
 		HomeDomain: "stellar.org",
 	}
 
-	err = s.processor.ProcessChange(io.Change{
+	err = s.processor.ProcessChange(ingest.Change{
 		Type: xdr.LedgerEntryTypeAccount,
 		Pre: &xdr.LedgerEntry{
 			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
@@ -239,7 +239,7 @@ func (s *AccountsProcessorTestSuiteLedger) TestProcessUpgradeChange() {
 }
 
 func (s *AccountsProcessorTestSuiteLedger) TestFeeProcessedBeforeEverythingElse() {
-	err := s.processor.ProcessChange(io.Change{
+	err := s.processor.ProcessChange(ingest.Change{
 		Type: xdr.LedgerEntryTypeAccount,
 		Pre: &xdr.LedgerEntry{
 			Data: xdr.LedgerEntryData{
@@ -262,7 +262,7 @@ func (s *AccountsProcessorTestSuiteLedger) TestFeeProcessedBeforeEverythingElse(
 	})
 	s.Assert().NoError(err)
 
-	err = s.processor.ProcessChange(io.Change{
+	err = s.processor.ProcessChange(ingest.Change{
 		Type: xdr.LedgerEntryTypeAccount,
 		Pre: &xdr.LedgerEntry{
 			Data: xdr.LedgerEntryData{

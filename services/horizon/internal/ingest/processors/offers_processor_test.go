@@ -4,8 +4,7 @@ package processors
 import (
 	"testing"
 
-	ingesterrors "github.com/stellar/go/ingest/errors"
-	"github.com/stellar/go/ingest/io"
+	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
@@ -70,7 +69,7 @@ func (s *OffersProcessorTestSuiteState) TestCreateOffer() {
 		LastModifiedLedger: uint32(lastModifiedLedgerSeq),
 	}).Return(nil).Once()
 
-	err := s.processor.ProcessChange(io.Change{
+	err := s.processor.ProcessChange(ingest.Change{
 		Type: xdr.LedgerEntryTypeOffer,
 		Pre:  nil,
 		Post: &entry,
@@ -109,7 +108,7 @@ func (s *OffersProcessorTestSuiteLedger) TearDownTest() {
 
 func (s *OffersProcessorTestSuiteLedger) setupInsertOffer() {
 	// should be ignored because it's not an offer type
-	err := s.processor.ProcessChange(io.Change{
+	err := s.processor.ProcessChange(ingest.Change{
 		Type: xdr.LedgerEntryTypeAccount,
 		Pre:  nil,
 		Post: &xdr.LedgerEntry{
@@ -132,7 +131,7 @@ func (s *OffersProcessorTestSuiteLedger) setupInsertOffer() {
 	}
 	lastModifiedLedgerSeq := xdr.Uint32(1234)
 
-	err = s.processor.ProcessChange(io.Change{
+	err = s.processor.ProcessChange(ingest.Change{
 		Type: xdr.LedgerEntryTypeOffer,
 		Pre:  nil,
 		Post: &xdr.LedgerEntry{
@@ -159,7 +158,7 @@ func (s *OffersProcessorTestSuiteLedger) setupInsertOffer() {
 		},
 	}
 
-	err = s.processor.ProcessChange(io.Change{
+	err = s.processor.ProcessChange(ingest.Change{
 		Type: xdr.LedgerEntryTypeOffer,
 		Pre: &xdr.LedgerEntry{
 			LastModifiedLedgerSeq: lastModifiedLedgerSeq - 1,
@@ -232,7 +231,7 @@ func (s *OffersProcessorTestSuiteLedger) TestUpdateOfferNoRowsAffected() {
 		},
 	}
 
-	err := s.processor.ProcessChange(io.Change{
+	err := s.processor.ProcessChange(ingest.Change{
 		Type: xdr.LedgerEntryTypeOffer,
 		Pre: &xdr.LedgerEntry{
 			LastModifiedLedgerSeq: lastModifiedLedgerSeq - 1,
@@ -256,12 +255,12 @@ func (s *OffersProcessorTestSuiteLedger) TestUpdateOfferNoRowsAffected() {
 
 	err = s.processor.Commit()
 	s.Assert().Error(err)
-	s.Assert().IsType(ingesterrors.StateError{}, errors.Cause(err))
+	s.Assert().IsType(ingest.StateError{}, errors.Cause(err))
 	s.Assert().EqualError(err, "error flushing cache: 0 rows affected when updating offer 2")
 }
 
 func (s *OffersProcessorTestSuiteLedger) TestRemoveOffer() {
-	err := s.processor.ProcessChange(io.Change{
+	err := s.processor.ProcessChange(ingest.Change{
 		Type: xdr.LedgerEntryTypeOffer,
 		Pre: &xdr.LedgerEntry{
 			Data: xdr.LedgerEntryData{
@@ -293,7 +292,7 @@ func (s *OffersProcessorTestSuiteLedger) TestProcessUpgradeChange() {
 	}
 	lastModifiedLedgerSeq := xdr.Uint32(1234)
 
-	err := s.processor.ProcessChange(io.Change{
+	err := s.processor.ProcessChange(ingest.Change{
 		Type: xdr.LedgerEntryTypeOffer,
 		Post: &xdr.LedgerEntry{
 			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
@@ -319,7 +318,7 @@ func (s *OffersProcessorTestSuiteLedger) TestProcessUpgradeChange() {
 		},
 	}
 
-	err = s.processor.ProcessChange(io.Change{
+	err = s.processor.ProcessChange(ingest.Change{
 		Type: xdr.LedgerEntryTypeOffer,
 		Pre: &xdr.LedgerEntry{
 			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
@@ -348,7 +347,7 @@ func (s *OffersProcessorTestSuiteLedger) TestProcessUpgradeChange() {
 }
 
 func (s *OffersProcessorTestSuiteLedger) TestRemoveMultipleOffers() {
-	err := s.processor.ProcessChange(io.Change{
+	err := s.processor.ProcessChange(ingest.Change{
 		Type: xdr.LedgerEntryTypeOffer,
 		Pre: &xdr.LedgerEntry{
 			Data: xdr.LedgerEntryData{
@@ -364,7 +363,7 @@ func (s *OffersProcessorTestSuiteLedger) TestRemoveMultipleOffers() {
 	})
 	s.Assert().NoError(err)
 
-	err = s.processor.ProcessChange(io.Change{
+	err = s.processor.ProcessChange(ingest.Change{
 		Type: xdr.LedgerEntryTypeOffer,
 		Pre: &xdr.LedgerEntry{
 			Data: xdr.LedgerEntryData{

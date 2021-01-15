@@ -11,10 +11,10 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/stellar/go/historyarchive"
-	"github.com/stellar/go/ingest/adapters"
-	"github.com/stellar/go/ingest/io"
+	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/services/horizon/internal/ingest/processors"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 	logpkg "github.com/stellar/go/support/log"
@@ -398,7 +398,7 @@ func (m *mockProcessorsRunner) SetLedgerBackend(ledgerBackend ledgerbackend.Ledg
 	m.Called(ledgerBackend)
 }
 
-func (m *mockProcessorsRunner) SetHistoryAdapter(historyAdapter adapters.HistoryArchiveAdapterInterface) {
+func (m *mockProcessorsRunner) SetHistoryAdapter(historyAdapter historyArchiveAdapterInterface) {
 	m.Called(historyAdapter)
 }
 
@@ -410,33 +410,33 @@ func (m *mockProcessorsRunner) DisableMemoryStatsLogging() {
 	m.Called()
 }
 
-func (m *mockProcessorsRunner) RunHistoryArchiveIngestion(checkpointLedger uint32) (io.StatsChangeProcessorResults, error) {
+func (m *mockProcessorsRunner) RunHistoryArchiveIngestion(checkpointLedger uint32) (ingest.StatsChangeProcessorResults, error) {
 	args := m.Called(checkpointLedger)
-	return args.Get(0).(io.StatsChangeProcessorResults), args.Error(1)
+	return args.Get(0).(ingest.StatsChangeProcessorResults), args.Error(1)
 }
 
 func (m *mockProcessorsRunner) RunAllProcessorsOnLedger(sequence uint32) (
-	io.StatsChangeProcessorResults,
+	ingest.StatsChangeProcessorResults,
 	processorsRunDurations,
-	io.StatsLedgerTransactionProcessorResults,
+	processors.StatsLedgerTransactionProcessorResults,
 	processorsRunDurations,
 	error,
 ) {
 	args := m.Called(sequence)
-	return args.Get(0).(io.StatsChangeProcessorResults),
+	return args.Get(0).(ingest.StatsChangeProcessorResults),
 		args.Get(1).(processorsRunDurations),
-		args.Get(2).(io.StatsLedgerTransactionProcessorResults),
+		args.Get(2).(processors.StatsLedgerTransactionProcessorResults),
 		args.Get(3).(processorsRunDurations),
 		args.Error(4)
 }
 
 func (m *mockProcessorsRunner) RunTransactionProcessorsOnLedger(sequence uint32) (
-	io.StatsLedgerTransactionProcessorResults,
+	processors.StatsLedgerTransactionProcessorResults,
 	processorsRunDurations,
 	error,
 ) {
 	args := m.Called(sequence)
-	return args.Get(0).(io.StatsLedgerTransactionProcessorResults),
+	return args.Get(0).(processors.StatsLedgerTransactionProcessorResults),
 		args.Get(1).(processorsRunDurations),
 		args.Error(2)
 }

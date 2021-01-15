@@ -128,13 +128,22 @@ func (a *App) Serve() {
 	}
 
 	// configure shutdown signal handler
-	done := make(chan os.Signal, 1)
-	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+	signalChan := make(chan os.Signal, 1)
+	signal.Notify(signalChan, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
-		<-done
-		a.Close()
+		select {
+		case <-signalChan:
+			a.Close()
+		case <-a.done:
+			return
+		}
 	}()
-	go a.waitForDone()
+
+	wg.Add(1)
+	go func() {
+		a.waitForDone()
+		wg.Done()
+	}()
 
 	err := a.webServer.Serve()
 	if err != nil && err != http.ErrServerClosed {

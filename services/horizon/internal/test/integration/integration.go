@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
-	"path"
 	"path/filepath"
 	"strconv"
 	"sync"
@@ -51,6 +50,7 @@ type Test struct {
 	hclient       *sdk.Client
 	cclient       *stellarcore.Client
 	app           *horizon.App
+	appStopped    chan struct{}
 	shutdownOnce  sync.Once
 	shutdownCalls []func()
 }
@@ -69,7 +69,7 @@ func NewTest(t *testing.T, config Config) *Test {
 	i := &Test{t: t, config: config}
 
 	composeDir := findDockerComposePath()
-	integrationYaml := path.Join(composeDir, "docker-compose.integration-tests.yml")
+	integrationYaml := filepath.Join(composeDir, "docker-compose.integration-tests.yml")
 
 	// Runs a docker-compose command applied to the above configs
 	runComposeCommand := func(args ...string) {
@@ -80,12 +80,17 @@ func NewTest(t *testing.T, config Config) *Test {
 		fatalIf(t, innerErr)
 	}
 
+	var captiveCoreBinaryPath, captiveCoreConfigPath string
+	if os.Getenv("HORIZON_INTEGRATION_ENABLE_CAPTIVE_CORE") != "" {
+		captiveCoreBinaryPath = os.Getenv("CAPTIVE_CORE_BIN")
+		if len(captiveCoreBinaryPath) == 0 {
+			t.Fatal("CAPTIVE_CORE_BIN is not set")
+		}
+		captiveCoreConfigPath = filepath.Join(composeDir, "captive-core-integration-tests.cfg")
+	}
+
 	// Only run Stellar Core container and its dependencies
 	runComposeCommand("up", "--detach", "--quiet-pull", "--no-color", "core")
-
-	if os.Getenv("HORIZON_INTEGRATION_ENABLE_CAPTIVE_CORE") != "" {
-		t.Skip("Testing with captive core isn't working yet.")
-	}
 
 	i.cclient = &stellarcore.Client{URL: "http://localhost:" + strconv.Itoa(stellarCorePort)}
 	i.waitForCore()
@@ -96,7 +101,12 @@ func NewTest(t *testing.T, config Config) *Test {
 		}
 		runComposeCommand("down", "-v", "--remove-orphans")
 	})
-	i.startHorizon()
+	i.startHorizon(
+		captiveCoreBinaryPath,
+		captiveCoreConfigPath,
+		i.config.PostgresURL,
+		true,
+	)
 	i.hclient = &sdk.Client{HorizonURL: "http://localhost:8000"}
 
 	// Register cleanup handlers (on panic and ctrl+c) so the containers are
@@ -115,6 +125,21 @@ func NewTest(t *testing.T, config Config) *Test {
 	return i
 }
 
+func (i *Test) RestartHorizon() {
+	i.app.Close()
+
+	// wait for horizon to shut down completely
+	<-i.appStopped
+
+	i.startHorizon(
+		i.horizonConfig.CaptiveCoreBinaryPath,
+		i.horizonConfig.CaptiveCoreConfigAppendPath,
+		i.horizonConfig.DatabaseURL,
+		false,
+	)
+	i.waitForHorizon()
+}
+
 func (i *Test) GetHorizonConfig() horizon.Config {
 	return i.horizonConfig
 }
@@ -131,8 +156,9 @@ func (i *Test) Shutdown() {
 	})
 }
 
-func (i *Test) startHorizon() {
-	horizonPostgresURL := i.config.PostgresURL
+func (i *Test) startHorizon(
+	captiveCoreBinaryPath, captiveCoreConfigPath, horizonPostgresURL string, buildGenesisState bool,
+) {
 	if horizonPostgresURL == "" {
 		postgres := dbtest.Postgres(i.t)
 		i.shutdownCalls = append(i.shutdownCalls, func() {
@@ -160,8 +186,7 @@ of accounts, subscribe to event streams and more.`,
 	// Ideally, we'd be pulling host/port information from the Docker Compose
 	// YAML file itself rather than hardcoding it.
 	hostname := "localhost"
-	// initialize core arguments
-	cmd.SetArgs([]string{
+	args := []string{
 		"--stellar-core-url",
 		fmt.Sprintf("http://%s:%d", hostname, stellarCorePort),
 		"--history-archive-urls",
@@ -176,14 +201,32 @@ of accounts, subscribe to event streams and more.`,
 			hostname,
 			stellarCorePostgresPort,
 		),
+
+		"--stellar-core-binary-path",
+		captiveCoreBinaryPath,
+		"--captive-core-config-append-path",
+		captiveCoreConfigPath,
+
+		// disable http port to not clash with the http port of the
+		// non-captive stellar core instance running in docker
+		"--captive-core-http-port",
+		"0",
+
+		"--enable-captive-core-ingestion=" + strconv.FormatBool(len(captiveCoreBinaryPath) > 0),
+
 		"--network-passphrase",
 		NetworkPassphrase,
 		"--apply-migrations",
 		"--admin-port",
 		strconv.Itoa(i.AdminPort()),
+
+		// due to ARTIFICIALLY_ACCELERATE_TIME_FOR_TESTING
 		"--checkpoint-frequency",
-		"8", // due to ARTIFICIALLY_ACCELERATE_TIME_FOR_TESTING
-	})
+		"8",
+	}
+
+	// initialize core arguments
+	cmd.SetArgs(args)
 	var err error
 	if err = configOpts.Init(cmd); err != nil {
 		i.t.Fatalf("Cannot initialize params: %s", err)
@@ -194,11 +237,18 @@ of accounts, subscribe to event streams and more.`,
 	}
 	i.horizonConfig = *config
 
-	if err = i.app.Ingestion().BuildGenesisState(); err != nil {
-		i.t.Fatalf("cannot build genesis state: %s", err)
+	if buildGenesisState {
+		if err = i.app.Ingestion().BuildGenesisState(); err != nil {
+			i.t.Fatalf("cannot build genesis state: %s", err)
+		}
 	}
 
-	go i.app.Serve()
+	done := make(chan struct{})
+	go func() {
+		i.app.Serve()
+		close(done)
+	}()
+	i.appStopped = done
 }
 
 // Wait for core to be up and manually close the first ledger
@@ -240,7 +290,7 @@ func (i *Test) waitForCore() {
 }
 
 func (i *Test) waitForHorizon() {
-	for t := 30; t >= 0; t -= 1 {
+	for t := 200; t >= 0; t -= 1 {
 		i.t.Log("Waiting for ingestion and protocol upgrade...")
 		root, err := i.hclient.Root()
 		if err != nil {
@@ -552,7 +602,7 @@ func findDockerComposePath() string {
 	//
 
 	if gopath := os.Getenv("GOPATH"); gopath != "" {
-		monorepo := path.Join(gopath, "stellar", "go")
+		monorepo := filepath.Join(gopath, "stellar", "go")
 		if _, err = os.Stat(monorepo); !os.IsNotExist(err) {
 			current = monorepo
 		}
@@ -561,7 +611,7 @@ func findDockerComposePath() string {
 	// In either case, we try to walk up the tree until we find "go.mod",
 	// which we hope is the root directory of the project.
 	for !directoryContainsFilename(current, "go.mod") {
-		current, err = filepath.Abs(path.Join(current, ".."))
+		current, err = filepath.Abs(filepath.Join(current, ".."))
 
 		// FIXME: This only works on *nix-like systems.
 		if err != nil || filepath.Base(current)[0] == filepath.Separator {
@@ -571,5 +621,5 @@ func findDockerComposePath() string {
 	}
 
 	// Directly jump down to the folder that should contain the configs
-	return path.Join(current, "services", "horizon", "docker")
+	return filepath.Join(current, "services", "horizon", "docker")
 }

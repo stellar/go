@@ -8,7 +8,7 @@ import (
 	sq "github.com/Masterminds/squirrel"
 	"github.com/guregu/null"
 
-	"github.com/stellar/go/ingest/io"
+	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/services/horizon/internal/toid"
 )
@@ -265,7 +265,7 @@ func TestInsertTransaction(t *testing.T) {
 
 	for _, testCase := range []struct {
 		name     string
-		toInsert io.LedgerTransaction
+		toInsert ingest.LedgerTransaction
 		expected Transaction
 	}{
 		{
