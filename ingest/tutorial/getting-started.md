@@ -51,19 +51,19 @@ package main
 import (
   "fmt"
 
-  backends "github.com/stellar/go/ingest/ledgerbackend"
+  "github.com/stellar/go/ingest/ledgerbackend"
 )
 
 func main() {
-  backend, err := backends.NewCaptive(config)
+  backend, err := ledgerbackend.NewCaptive(config)
   panicIf(err)
   defer backend.Close()
 
   // Prepare a single ledger to be ingested,
-  backend.PrepareRange(backends.BoundedRange(123456, 123456))
+  backend.PrepareRange(ledgerbackend.BoundedRange(123456, 123456))
 
   // then retrieve it:
-  ok, ledger, err := backend.GetLedger(123456)
+  ok, ledger, err := ledgerbackend.GetLedger(123456)
   if !ok {
     err = fmt.Errorf("The ledger doesn't exist on the backend.")
   }
@@ -81,7 +81,7 @@ _(The `panicIf` function is defined in the [footnotes](#footnotes); it's used he
 Notice that the mysterious `config` variable above isn't defined. This will be environment-specific and users should consult both the [Captive Core documentation](../services/horizon/internal/docs/captive-core.md) and the [config docs](./ledgerbackend/captive_core_backend.go#L104-L131) directly for more details if they want to use this backend in production. For now, though, we'll have some hardcoded values for the SDF testnet:
 
 ```go
-config := backends.CaptiveCoreConfig{
+config := ledgerbackend.CaptiveCoreConfig{
     BinaryPath:        "/usr/bin/stellar-core",
     ConfigAppendPath:  "/etc/default/stellar-captive-core-stub.toml",
     NetworkPassphrase: "Test SDF Network ; September 2015",
@@ -164,12 +164,12 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"github.com/stellar/go/ingest"
-	backends "github.com/stellar/go/ingest/ledgerbackend"
+	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/support/log"
 )
 
 func main() {
-	backend, err := backends.NewCaptive(config)
+	backend, err := ledgerbackend.NewCaptive(config)
 	panicIf(err)
 	defer backend.Close()
 
@@ -184,7 +184,7 @@ Now, let's identify a range of ledgers we wish to process. For simplicity, let's
 	var startingSeq uint32 = 2 // can't start with genesis ledger
 	var ledgersToRead uint32 = 10000
 
-	ledgerRange := backends.BoundedRange(startingSeq, startingSeq+ledgersToRead)
+	ledgerRange := ledgerbackend.BoundedRange(startingSeq, startingSeq+ledgersToRead)
 	err = backend.PrepareRange(ledgerRange)
 	panicIf(err)
 ```
