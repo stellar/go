@@ -37,13 +37,11 @@ This is described in a little more detail in [`doc.go`](../doc.go), its accompan
 
 
 # Hello, World!
-As is tradition, we'll start with a simplistic example that ingests a single ledger from the network. We're immediately faced with a decision, though: _What's the backend?_ We'll use a **Captive Stellar-Core backend** in this example because it requires (little-to-)no setup, but there are number of alternatives available. You could also use:
+As is tradition, we'll start with a simplistic example that ingests a single ledger from the network. We're immediately faced with a decision, though: _What's the backend?_ We'll use a **Captive Stellar-Core backend** in this example because it requires (little-to-)no setup, but there are couple of alternatives available. You could also use:
 
-  - a **database** (via `NewDatabaseBackend()`), which would ingest ledgers stored in a database (like Core's, for example);
+  - a **database** (via `NewDatabaseBackend()`), which would ingest ledgers stored in a Stellar-Core database, or
 
-  - a **remote Captive Core** instance (via `NewRemoteCaptive()`), which works much like Captive Core, but points to an instance that isn't (necessarily) running locally;
-
-...or even a completely customized backend that fits your architectural needs, as long as it fulfills the interface requirements of `LedgerBackend`.
+  - a **remote Captive Core** instance (via `NewRemoteCaptive()`), which works much like Captive Core, but points to an instance that isn't (necessarily) running locally.
 
 With that in mind, here's a minimalist example of the ingestion library:
 
@@ -73,14 +71,14 @@ func main() {
   panicIf(err)
 
   // Now `ledger` is a raw `xdr.LedgerCloseMeta` object containing the
-  // transactions contained within this ledger.
+  // transactions included within this ledger.
   fmt.Printf("\nHello, Ledger #%d.\n", ledger.LedgerSequence())
 }
 ```
 
 _(The `panicIf` function is defined in the [footnotes](#footnotes); it's used here for error-checking brevity.)_
 
-Notice that the mysterious `config` variable above isn't defined. This will be environment-specific and users should consult both the [Captive Core documentation](../services/horizon/internal/docs/captive-core.md) and the [config docs](./ledgerbackend/captive_core_backend.go#L104-L131) directly for more details if they want to use this backend in production. For now, though, we'll have some hardcoded values:
+Notice that the mysterious `config` variable above isn't defined. This will be environment-specific and users should consult both the [Captive Core documentation](../services/horizon/internal/docs/captive-core.md) and the [config docs](./ledgerbackend/captive_core_backend.go#L104-L131) directly for more details if they want to use this backend in production. For now, though, we'll have some hardcoded values for the SDF testnet:
 
 ```go
 config := backends.CaptiveCoreConfig{
@@ -93,7 +91,7 @@ config := backends.CaptiveCoreConfig{
   }
 ```
 
-Again, see the format of the stub file, etc. in the linked docs.
+(Again, see the format of the stub file, etc. in the linked docs.)
 
 Running this should dump a ton of logs while Captive Core boots up, downloads a history archive, and ultimately pops up the ledger sequence number we ingested:
 
@@ -148,7 +146,7 @@ There's obviously much, *much* more we can do with the ingestion library. Let's 
 
 
 
-# **Example**: Tracking Ledger Statistics
+# **Example**: Ledger Statistics
 In this section, we'll demonstrate how to use backends and processors to actually learn something meaningful about the Stellar network. Again, we'll use a specific backend here (Captive Core, again), but the processing can be done with any of them.
 
 More specifically, we're going to analyze the ledgers and track some statistics about the success/failure of transactions and their relative operations using `ingest.LedgerTransactionReader`. While this is technically pretty doable by manipulating the Horizon API and some fancy JSON parsing (feat. `jq`), it serves as a useful yet concise demonstration of the ingestion library's features.
@@ -253,21 +251,16 @@ As of this writing, the stats are as follows:
       - total operations:   33845
       - succeeded / failed: 25387 / 8458
 
-(Note that since the Stellar testnet undergoes periodic resets, this may not always be accurate.)
-
 The full, runnable example is available [here](./example_statistics.go).
 
 
-# **Example**: Tracking Feature Popularity
+# **Example**: Feature Popularity
 In this example, we'll leverage the `CheckpointChangeReader` to determine the popularity of a feature introduced in [Protocol 15](https://www.stellar.org/blog/protocol-14-improvements): claimable balances. Specifically, we'll be investigating how many claimable balances were created in an arbitrary ledger range.
 
 Let's begin. As before, there's a bit of boilerplate necessary. There's only a single additional import necessary relative to the [previous Preamble](#preamble). Since we're working with checkpoint ledgers, history archives come into play:
 
 ```go
-import (
-	// ...
-	"github.com/stellar/go/historyarchive"
-)
+import "github.com/stellar/go/historyarchive"
 ```
 
 This time, we don't need a `LedgerBackend` instance whatsoever. The ledger changes we want to process will be fed into the reader through a different means. In our example, the history archives have the ~droids~ ledgers that we are looking for.
@@ -289,26 +282,26 @@ First thing's first: we need to establish a connection to a history archive.
 ```
 
 ## Tracking Changes
-Now we can use the history archive to actually read in all of the changes that have accumulated at a particular checkpoint. 
+Each history archive contains the current cumulative state of the entire network. 
 
-TODO: Is this the changes between one checkpoint and the previous checkpoint? Or is it the changes since the checkpoint and the genesis ledger? Gut says former but not sure.
+Now we can use the history archive to actually read in all of the changes that have accumulated in the entire network by a particular checkpoint.
 
 ```go
-	// First, we need to establish a safe fallback in case of any problems, so 
-	// we'll set a 10-second timeout.
-	ctx, canceller := context.WithTimeout(context.Background(), 10*time.Second)
-	defer canceller()
+	// First, we need to establish a safe fallback in case of any problems
+	// during history archive processing, so we'll set a 30-second timeout.
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 
 	reader, err := ingest.NewCheckpointChangeReader(ctx, historyArchive, 123455)
 	panicIf(err)
 ```
 
-Notice the importance of the sequence number: 123456 is a checkpoint ledger and thus exists in the history archive. This is based on the default checkpoint frequency of 64 ledgers (see `ingest.ConnectOptions`): `123456 mod 64 == 0`.  (Incompatible sequence numbers will likely result in 404 errors.)
+By default, checkpoints occur every 64 ledgers (see `historyarchive.ConnectOptions` for changing this). More specifically, given ledger `n`, if `n+1 mod 64 == 0`, then `n` is a checkpoint ledger. This is true above for `n == 123455`.
 
-We want the changes between 123455 and 123456: by passing this, our `ChangeReader` will spit out a list of all changes between this checkpoint and the last one. We can then process them and establish how many claimable balances were created in that period:
+Since history archives store global cumulative state, our `ChangeReader` will report every entry as being "new", reading out a list of *all* ledger entries. We can then process them and establish how many claimable balances have been created in the testnet's lifetime:
 
 ```go
-	entries, newTotal, newCBs := 0, 0, 0
+	entries, newCBs := 0, 0
 	for {
 		entry, err := reader.Read()
 		if err == io.EOF {
@@ -317,16 +310,10 @@ We want the changes between 123455 and 123456: by passing this, our `ChangeReade
 		panicIf(err)
 
 		entries++
-		isNewEntry := entry.LedgerEntryChangeType() == xdr.LedgerEntryChangeTypeLedgerEntryCreated
-		if isNewEntry {
-			newTotal++
-		}
 
 		switch entry.Type {
 		case xdr.LedgerEntryTypeClaimableBalance:
-			if isNewEntry {
-				newCBs++
-			}
+			newCBs++
 		// these are included for completeness of the demonstration
 		case xdr.LedgerEntryTypeAccount:
 		case xdr.LedgerEntryTypeData:
@@ -337,7 +324,7 @@ We want the changes between 123455 and 123456: by passing this, our `ChangeReade
 		}
 	}
 
-	fmt.Printf("%d/%d created entries were claimable balances\n", newCBs, newTotal)
+	fmt.Printf("%d/%d entries were claimable balances\n", newCBs, entries)
 } // end of main()
 ```
 
@@ -347,8 +334,10 @@ We want the changes between 123455 and 123456: by passing this, our `ChangeReade
 This section outlines a brief collection of common things you may want to do with the library. We assume a very generic `backend` variable where necessary that is one of the aforementioned `LedgerBackend` instances to avoid boilerplate.
 
 
-### Disabling output logs
-Certain backends (like Captive Core) can be very noisy. The backends will log to standard output by default; you can disable it by redirecting to `ioutil.Discard`, instead:
+### Controlling `LedgerBackend` log verbosity
+Certain backends (like Captive Core) can be very noisy; they will log to standard output by default at the "Info" level.
+
+You can suppress many logs by changing the level to only print warnings and errors:
 
 ```go
 package main
@@ -361,13 +350,18 @@ import (
 
 func main() {
   lg := log.New()
-  lg.SetLevel(logrus.InfoLevel)
-  lg.Entry.Logger.Out = ioutil.Discard
+  lg.SetLevel(logrus.WarnLevel)
   config.Log = lg // assume config is otherwise predefined
 
-  backend, err := ingest.NewCaptive(config)
+  backend, err := ingest.NewCaptive(config) // (or other backend)
   // ...
 }
+```
+
+Or even disable output entirely by redirecting to `ioutil.Discard`:
+
+```go
+lg.Entry.Logger.Out = ioutil.Discard
 ```
 
 
@@ -380,14 +374,16 @@ func main() {
 
 ```go
 func panicIf(err error) {
-  if err != nil {
-    panic(err)
-  }
+	if err != nil {
+		panic(err)
+	}
 }
 ```
 
-  Please don't use it in production code; it's provided here for completeness, convenience, and brevity of examples.
+  **Please don't use it in production code**; it's provided here for completeness, convenience, and brevity of examples.
 
   2. Some of the examples use the [`jq`](https://stedolan.github.io/jq/) application, which is a full-featured command-line JSON parser available on most platforms.
 
-  3. It's worth noting that even though the [second example](example-tracking-feature-popularity) could *also* be done by using the `LedgerTransactionReader` and inspecting the individual operations, that'd be bit redundant as far as examples go.
+  3. Since the Stellar testnet undergoes periodic resets, the example outputs from various sections (especially regarding networking statistics) may not always be accurate.
+
+  4. It's worth noting that even though the [second example](example-tracking-feature-popularity) could *also* be done by using the `LedgerTransactionReader` and inspecting the individual operations, that'd be bit redundant as far as examples go.

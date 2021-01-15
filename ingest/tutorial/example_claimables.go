@@ -23,10 +23,10 @@ func claimables() {
 	)
 	panicIf(err)
 
-	// First, we need to establish a safe fallback in case of any problems, so
-	// we'll set a 10-second timeout.
-	ctx, canceller := context.WithTimeout(context.Background(), 5*time.Second)
-	defer canceller()
+	// First, we need to establish a safe fallback in case of any problems
+	// during history archive processing, so we'll set a 30-second timeout.
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 
 	// We pass 123455 because given a checkpoint frequency of 64 ledgers (the
 	// default in `ConnectOptions`, above), 123455+1 mod 64 == 0. Incompatible
@@ -34,7 +34,7 @@ func claimables() {
 	reader, err := ingest.NewCheckpointChangeReader(ctx, historyArchive, 123455)
 	panicIf(err)
 
-	entries, newTotal, newCBs := 0, 0, 0
+	entries, newCBs := 0, 0
 	for {
 		entry, err := reader.Read()
 		if err == io.EOF {
@@ -43,16 +43,10 @@ func claimables() {
 		panicIf(err)
 
 		entries++
-		isNewEntry := entry.LedgerEntryChangeType() == xdr.LedgerEntryChangeTypeLedgerEntryCreated
-		if isNewEntry {
-			newTotal++
-		}
 
 		switch entry.Type {
 		case xdr.LedgerEntryTypeClaimableBalance:
-			if isNewEntry {
-				newCBs++
-			}
+			newCBs++
 		// these are included for completeness of the demonstration
 		case xdr.LedgerEntryTypeAccount:
 		case xdr.LedgerEntryTypeData:
@@ -66,5 +60,5 @@ func claimables() {
 	}
 
 	fmt.Println()
-	fmt.Printf("%d/%d created entries were claimable balances\n", newCBs, newTotal)
+	fmt.Printf("%d/%d created entries were claimable balances\n", newCBs, entries)
 }
