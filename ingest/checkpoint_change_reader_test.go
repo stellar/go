@@ -46,6 +46,11 @@ func (s *SingleLedgerStateReaderTestSuite) SetupTest() {
 		On("BucketExists", mock.AnythingOfType("historyarchive.Hash")).
 		Return(true, nil).Times(21)
 
+	s.mockArchive.
+		On("GetCheckpointManager").
+		Return(historyarchive.NewCheckpointManager(
+			historyarchive.DefaultCheckpointFrequency))
+
 	s.reader, err = NewCheckpointChangeReader(
 		context.Background(),
 		s.mockArchive,
@@ -278,6 +283,11 @@ func (s *BucketExistsTestSuite) SetupTest() {
 		On("GetCheckpointHAS", ledgerSeq).
 		Return(historyarchive.HistoryArchiveState{}, nil)
 
+	s.mockArchive.
+		On("GetCheckpointManager").
+		Return(historyarchive.NewCheckpointManager(
+			historyarchive.DefaultCheckpointFrequency))
+
 	ctx, cancel := context.WithCancel(context.Background())
 	var err error
 	s.reader, err = NewCheckpointChangeReader(
@@ -362,6 +372,11 @@ func (s *ReadBucketEntryTestSuite) SetupTest() {
 	s.mockArchive.
 		On("GetCheckpointHAS", ledgerSeq).
 		Return(historyarchive.HistoryArchiveState{}, nil)
+
+	s.mockArchive.
+		On("GetCheckpointManager").
+		Return(historyarchive.NewCheckpointManager(
+			historyarchive.DefaultCheckpointFrequency))
 
 	ctx, cancel := context.WithCancel(context.Background())
 	var err error
