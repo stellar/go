@@ -276,6 +276,38 @@ sudo systemctl restart stellar-horizon
 
 At this point, you should be able to hit port 8000 on the above instance and watch the `ingest_latest_ledger` value grow.
 
+### Private Networks
+
+If you want your Captive Core instance to connect to a private Stellar network, you will need to specify the validator of the private network in the Captive Core append path.
+
+Assuming the validator of your private network has a public key of `GD5KD2KEZJIGTC63IGW6UMUSMVUVG5IHG64HUTFWCHVZH2N2IBOQN7PS` and can be accessed at `private1.validator.com`, then the Captive Core append path would consist of the following file:
+
+```toml
+UNSAFE_QUORUM=true
+FAILURE_SAFETY=0
+
+[[VALIDATORS]]
+NAME="private"
+HOME_DOMAIN="validator.com"
+PUBLIC_KEY="GD5KD2KEZJIGTC63IGW6UMUSMVUVG5IHG64HUTFWCHVZH2N2IBOQN7PS"
+ADDRESS="private1.validator.com"
+QUALITY="MEDIUM"
+```
+
+`UNSAFE_QUORUM=true` and `FAILURE_SAFETY=0` are required when there are too few validators in the private network to form a quorum.
+
+You will also need to set `RUN_STANDALONE=false` in the Stellar Core configuration for the validator.
+Otherwise, if `RUN_STANDALONE` is set to true, the validator will not accept connections on its peer port which means Captive Core will not be able to connect to the validator.
+
+On a new Stellar network the first history archive snapshot is published after ledger 63 is closed.
+Captive Core depends on the history archives which means that Horizon ingestion via Captive Core will not begin until after ledger 63 is closed.
+Assuming the standard 5 second delay in between ledgers, it will take 5 minutes for the network to progress from the genesis ledger to ledger 63.
+
+There are cases where you may need to repeatedly create new private networks (e.g. spawning a private network during integration tests) and having a 5 minute delay is too costly.
+In that case you can consider including `ARTIFICIALLY_ACCELERATE_TIME_FOR_TESTING=true` in both the validator configuration and the Captive Core configuration.
+
+When `ARTIFICIALLY_ACCELERATE_TIME_FOR_TESTING` is set Stellar Core will publish a new ledger every second.
+It will also publish history archive snapshots every 8 ledgers so you will need to set Horizon's checkpoint frequency parameter (`--checkpoint-frequency` as a command line argument or `CHECKPOINT_FREQUENCY` as an environment variable) to 8.
 
 ### Reingestion
 If you need to manually reingest some ledgers (for example, you want history for some ledgers that closed before your asset got issued), you can still do this with Captive Core.
