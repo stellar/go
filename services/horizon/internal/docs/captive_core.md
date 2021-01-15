@@ -306,9 +306,8 @@ Assuming the standard 5 second delay in between ledgers, it will take 5 minutes 
 There are cases where you may need to repeatedly create new private networks (e.g. spawning a private network during integration tests) and having a 5 minute delay is too costly.
 In that case you can consider including `ARTIFICIALLY_ACCELERATE_TIME_FOR_TESTING=true` in both the validator configuration and the Captive Core configuration.
 
-When `ARTIFICIALLY_ACCELERATE_TIME_FOR_TESTING` is set Stellar Core will publish legers every second.
-It will also publish history archive snapshots every 8 ledgers.
-You will need to configure Horizon's checkpoint frequency parameter (`--checkpoint-frequency` as a command line argument or `CHECKPOINT_FREQUENCY` as an environment variable) to 8.
+When `ARTIFICIALLY_ACCELERATE_TIME_FOR_TESTING` is set Stellar Core will publish a new ledger every second.
+It will also publish history archive snapshots every 8 ledgers so you will need to set Horizon's checkpoint frequency parameter (`--checkpoint-frequency` as a command line argument or `CHECKPOINT_FREQUENCY` as an environment variable) to 8.
 
 ### Reingestion
 If you need to manually reingest some ledgers (for example, you want history for some ledgers that closed before your asset got issued), you can still do this with Captive Core.
