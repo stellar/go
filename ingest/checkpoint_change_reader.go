@@ -81,6 +81,10 @@ func NewCheckpointChangeReader(
 	archive historyarchive.ArchiveInterface,
 	sequence uint32,
 ) (*CheckpointChangeReader, error) {
+	if !archive.GetCheckpointManager().IsCheckpoint(sequence) {
+		return nil, NewCheckpointError(sequence, archive.GetCheckpointManager())
+	}
+
 	has, err := archive.GetCheckpointHAS(sequence)
 	if err != nil {
 		return nil, errors.Wrapf(err, "unable to get checkpoint HAS at ledger sequence %d", sequence)
