@@ -199,7 +199,7 @@ func (s ManageDataOp) GoString() string {
 }
 
 // GoString implements fmt.GoStringer.
-func (s AllowTrustOpAsset) GoString() string {
+func (s AssetCode) GoString() string {
 	var code string
 	switch s.Type {
 	case AssetTypeAssetTypeCreditAlphanum4:
@@ -209,7 +209,7 @@ func (s AllowTrustOpAsset) GoString() string {
 	default:
 		panic("Unknown type")
 	}
-	return fmt.Sprintf("xdr.MustNewAllowTrustAsset(%#v)", strings.TrimRight(code, string([]byte{0})))
+	return fmt.Sprintf("xdr.MustNewAssetCodeFromString(%#v)", strings.TrimRight(code, string([]byte{0})))
 }
 
 // GoString implements fmt.GoStringer.

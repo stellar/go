@@ -308,7 +308,7 @@ func TestChangeTrustFromXDR(t *testing.T) {
 
 func TestAllowTrustFromXDR(t *testing.T) {
 	xdrAsset := xdr.Asset{}
-	allowTrustAsset, err := xdrAsset.ToAllowTrustOpAsset("ABCXYZ")
+	allowTrustAsset, err := xdrAsset.ToAssetCode("ABCXYZ")
 	assert.NoError(t, err)
 
 	var opSource xdr.MuxedAccount

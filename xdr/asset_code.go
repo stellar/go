@@ -4,8 +4,8 @@ import (
 	"fmt"
 )
 
-// ToAsset for AllowTrustOpAsset converts the xdr.AllowTrustOpAsset to a standard xdr.Asset.
-func (a AllowTrustOpAsset) ToAsset(issuer AccountId) (asset Asset) {
+// ToAsset for AssetCode converts the xdr.AssetCode to a standard xdr.Asset.
+func (a AssetCode) ToAsset(issuer AccountId) (asset Asset) {
 	var err error
 
 	switch a.Type {
