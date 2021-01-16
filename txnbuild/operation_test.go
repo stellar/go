@@ -214,8 +214,8 @@ func TestSetOptionsFromXDR(t *testing.T) {
 	var opSource xdr.AccountId
 	err := opSource.SetAddress("GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H")
 	assert.NoError(t, err)
-	cFlags := xdr.Uint32(5)
-	sFlags := xdr.Uint32(7)
+	cFlags := xdr.Uint32(0b1101)
+	sFlags := xdr.Uint32(0b1111)
 	mw := xdr.Uint32(7)
 	lt := xdr.Uint32(2)
 	mt := xdr.Uint32(4)
@@ -264,8 +264,10 @@ func TestSetOptionsFromXDR(t *testing.T) {
 		assert.Equal(t, int(AuthRequired), int(so.SetFlags[0]), "Set AuthRequired flags should match")
 		assert.Equal(t, int(AuthRevocable), int(so.SetFlags[1]), "Set AuthRevocable flags should match")
 		assert.Equal(t, int(AuthImmutable), int(so.SetFlags[2]), "Set AuthImmutable flags should match")
+		assert.Equal(t, int(AuthClawbackEnabled), int(so.SetFlags[3]), "Set AuthClawbackEnabled flags should match")
 		assert.Equal(t, int(AuthRequired), int(so.ClearFlags[0]), "Clear AuthRequired flags should match")
 		assert.Equal(t, int(AuthImmutable), int(so.ClearFlags[1]), "Clear AuthImmutable flags should match")
+		assert.Equal(t, int(AuthClawbackEnabled), int(so.ClearFlags[2]), "Clear AuthClawbackEnabled flags should match")
 	}
 
 }

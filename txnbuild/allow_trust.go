@@ -14,6 +14,7 @@ type AllowTrust struct {
 	Type                           Asset
 	Authorize                      bool
 	AuthorizeToMaintainLiabilities bool
+	ClawbackEnabled                bool
 	SourceAccount                  Account
 }
 
@@ -46,6 +47,9 @@ func (at *AllowTrust) BuildXDR() (xdr.Operation, error) {
 	} else if at.AuthorizeToMaintainLiabilities {
 		xdrOp.Authorize = xdr.Uint32(xdr.TrustLineFlagsAuthorizedToMaintainLiabilitiesFlag)
 	}
+	if at.ClawbackEnabled {
+		xdrOp.Authorize |= xdr.Uint32(xdr.TrustLineFlagsTrustlineClawbackEnabledFlag)
+	}
 
 	opType := xdr.OperationTypeAllowTrust
 	body, err := xdr.NewOperationBody(opType, xdrOp)
@@ -69,6 +73,7 @@ func (at *AllowTrust) FromXDR(xdrOp xdr.Operation) error {
 	flag := xdr.TrustLineFlags(result.Authorize)
 	at.Authorize = flag.IsAuthorized()
 	at.AuthorizeToMaintainLiabilities = flag.IsAuthorizedToMaintainLiabilitiesFlag()
+	at.ClawbackEnabled = flag.IsClawbackEnabledFlag()
 	//Because AllowTrust has a special asset type, we don't use assetFromXDR() here.
 	if result.Asset.Type == xdr.AssetTypeAssetTypeCreditAlphanum4 {
 		code := bytes.Trim(result.Asset.AssetCode4[:], "\x00")

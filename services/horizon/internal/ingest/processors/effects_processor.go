@@ -686,6 +686,12 @@ func (e *effectsWrapper) addAllowTrustEffects() {
 			history.EffectTrustlineAuthorizedToMaintainLiabilities,
 			details,
 		)
+	case xdr.TrustLineFlags(op.Authorize).IsClawbackEnabledFlag():
+		e.add(
+			source.Address(),
+			history.EffectTrustlineClawbackEnabled,
+			details,
+		)
 	default:
 		e.add(source.Address(), history.EffectTrustlineDeauthorized, details)
 	}
@@ -932,6 +938,9 @@ func setEffectFlagDetails(flagDetails map[string]interface{}, flagPtr *xdr.Uint3
 		}
 		if flags&xdr.AccountFlagsAuthImmutableFlag != 0 {
 			flagDetails["auth_immutable_flag"] = setValue
+		}
+		if flags&xdr.AccountFlagsAuthClawbackEnabledFlag != 0 {
+			flagDetails["auth_clawback_enabled_flag"] = setValue
 		}
 	}
 }

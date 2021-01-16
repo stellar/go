@@ -23,6 +23,12 @@ func (trustLine TrustLine) IsAuthorizedToMaintainLiabilities() bool {
 	return xdr.TrustLineFlags(trustLine.Flags).IsAuthorizedToMaintainLiabilitiesFlag()
 }
 
+// IsClawbackEnabled returns true if issuer has authorized the account to claw
+// assets back
+func (trustLine TrustLine) IsClawbackEnabled() bool {
+	return xdr.TrustLineFlags(trustLine.Flags).IsClawbackEnabledFlag()
+}
+
 // AssetsForAddress returns a list of assets and balances for those assets held by
 // a given address.
 func (q *Q) AssetsForAddress(addy string) ([]xdr.Asset, []xdr.Int64, error) {

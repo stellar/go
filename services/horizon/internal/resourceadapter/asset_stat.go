@@ -33,6 +33,7 @@ func PopulateAssetStat(
 		(flags & int8(xdr.AccountFlagsAuthRequiredFlag)) != 0,
 		(flags & int8(xdr.AccountFlagsAuthRevocableFlag)) != 0,
 		(flags & int8(xdr.AccountFlagsAuthImmutableFlag)) != 0,
+		(flags & int8(xdr.AccountFlagsAuthClawbackEnabledFlag)) != 0,
 	}
 	res.PT = row.PagingToken()
 
