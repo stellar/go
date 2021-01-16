@@ -33,6 +33,8 @@ var TypeNames = map[xdr.OperationType]string{
 	xdr.OperationTypeBeginSponsoringFutureReserves: "begin_sponsoring_future_reserves",
 	xdr.OperationTypeEndSponsoringFutureReserves:   "end_sponsoring_future_reserves",
 	xdr.OperationTypeRevokeSponsorship:             "revoke_sponsorship",
+	xdr.OperationTypeClawback:                      "clawback",
+	xdr.OperationTypeClawbackClaimableBalance:      "clawback_claimable_balance",
 }
 
 // Base represents the common attributes of an operation resource
@@ -263,6 +265,22 @@ type RevokeSponsorship struct {
 	SignerKey          *string `json:"signer_key,omitempty"`
 }
 
+// Clawback is the json resource representing a single operation whose type is
+// Clawback.
+type Clawback struct {
+	Base
+	base.Asset
+	From   string `json:"from"`
+	Amount string `json:"amount"`
+}
+
+// Clawback is the json resource representing a single operation whose type is
+// Clawback.
+type ClawbackClaimableBalance struct {
+	Base
+	ClaimableBalanceID *string `json:"claimable_balance_id,omitempty"`
+}
+
 // Operation interface contains methods implemented by the operation types
 type Operation interface {
 	PagingToken() string
@@ -450,6 +468,18 @@ func UnmarshalOperation(operationTypeID int32, dataString []byte) (ops Operation
 		ops = op
 	case xdr.OperationTypeRevokeSponsorship:
 		var op RevokeSponsorship
+		if err = json.Unmarshal(dataString, &op); err != nil {
+			return
+		}
+		ops = op
+	case xdr.OperationTypeClawback:
+		var op Clawback
+		if err = json.Unmarshal(dataString, &op); err != nil {
+			return
+		}
+		ops = op
+	case xdr.OperationTypeClawbackClaimableBalance:
+		var op ClawbackClaimableBalance
 		if err = json.Unmarshal(dataString, &op); err != nil {
 			return
 		}
