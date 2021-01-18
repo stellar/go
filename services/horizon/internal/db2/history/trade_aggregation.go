@@ -28,15 +28,35 @@ var StrictResolutionFiltering = true
 
 // TradeAggregation represents an aggregation of trades from the trades table
 type TradeAggregation struct {
-	Timestamp     int64     `db:"timestamp"`
-	TradeCount    int64     `db:"count"`
-	BaseVolume    string    `db:"base_volume"`
-	CounterVolume string    `db:"counter_volume"`
-	Average       float64   `db:"avg"`
-	High          xdr.Price `db:"high"`
-	Low           xdr.Price `db:"low"`
-	Open          xdr.Price `db:"open"`
-	Close         xdr.Price `db:"close"`
+	Timestamp     int64   `db:"timestamp"`
+	TradeCount    int64   `db:"count"`
+	BaseVolume    string  `db:"base_volume"`
+	CounterVolume string  `db:"counter_volume"`
+	Average       float64 `db:"avg"`
+	HighN         int32   `db:"high_n"`
+	HighD         int32   `db:"high_d"`
+	LowN          int32   `db:"low_n"`
+	LowD          int32   `db:"low_d"`
+	OpenN         int32   `db:"open_n"`
+	OpenD         int32   `db:"open_d"`
+	CloseN        int32   `db:"close_n"`
+	CloseD        int32   `db:"close_d"`
+}
+
+func (t TradeAggregation) High() xdr.Price {
+	return xdr.Price{N: xdr.Int32(t.HighN), D: xdr.Int32(t.HighD)}
+}
+
+func (t TradeAggregation) Low() xdr.Price {
+	return xdr.Price{N: xdr.Int32(t.LowN), D: xdr.Int32(t.LowD)}
+}
+
+func (t TradeAggregation) Open() xdr.Price {
+	return xdr.Price{N: xdr.Int32(t.OpenN), D: xdr.Int32(t.OpenD)}
+}
+
+func (t TradeAggregation) Close() xdr.Price {
+	return xdr.Price{N: xdr.Int32(t.CloseN), D: xdr.Int32(t.CloseD)}
 }
 
 // TradeAggregationsQ is a helper struct to aid in configuring queries to
@@ -147,10 +167,16 @@ func (q *TradeAggregationsQ) GetSql() sq.SelectBuilder {
 		"sum(base_amount) as base_volume",
 		"sum(counter_amount) as counter_volume",
 		"sum(counter_amount)/sum(base_amount) as avg",
-		"max_price(price) as high",
-		"min_price(price) as low",
-		"first(price)  as open",
-		"last(price) as close",
+		// We fetch N, D here directly because of lib/pq bug (stellar/go#3345).
+		// (Note: [1] is the first array element)
+		"(max_price(price))[1] as high_n",
+		"(max_price(price))[2] as high_d",
+		"(min_price(price))[1] as low_n",
+		"(min_price(price))[2] as low_d",
+		"(first(price))[1] as open_n",
+		"(first(price))[2] as open_d",
+		"(last(price))[1] as close_n",
+		"(last(price))[2] as close_d",
 	).
 		FromSelect(bucketSQL, "htrd").
 		GroupBy("timestamp").
