@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this
 file.  This project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+
+### Breaking changes
+
+* `AllowTrustOpAsset` was renamed to `AssetCode`, `{Must}NewAllowTrustAsset` was renamed to `{Must}NewAssetCodeFromString`.
+
+
 ## [v5.0.0](https://github.com/stellar/go/releases/tag/horizonclient-v5.0.0) - 2020-11-12
 
 ### Breaking changes
