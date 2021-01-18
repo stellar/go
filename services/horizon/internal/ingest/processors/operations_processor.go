@@ -411,6 +411,19 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 			details["signer_account_id"] = op.Signer.AccountId.Address()
 			details["signer_key"] = op.Signer.SignerKey.Address()
 		}
+	case xdr.OperationTypeClawback:
+		op := operation.operation.Body.MustClawbackOp()
+		addAssetDetails(details, op.Asset.ToAsset(*source), "")
+		from := op.From.ToAccountId()
+		details["from"] = from.Address()
+		details["amount"] = amount.String(op.Amount)
+	case xdr.OperationTypeClawbackClaimableBalance:
+		op := operation.operation.Body.MustClawbackClaimableBalanceOp()
+		balanceID, err := xdr.MarshalHex(op.BalanceId)
+		if err != nil {
+			panic(fmt.Errorf("Invalid balanceId in op: %d", operation.index))
+		}
+		details["claimable_balance_id"] = balanceID
 	default:
 		panic(fmt.Errorf("Unknown operation type: %s", operation.OperationType()))
 	}
@@ -572,6 +585,11 @@ func (operation *transactionOperationWrapper) Participants() ([]xdr.AccountId, e
 			// We don't add signer as a participant because a signer can be arbitrary account.
 			// This can spam successful operations history of any account.
 		}
+	case xdr.OperationTypeClawback:
+		op := operation.operation.Body.MustClawbackOp()
+		participants = append(participants, op.From.ToAccountId())
+	case xdr.OperationTypeClawbackClaimableBalance:
+		// Nothing to do here
 	default:
 		return participants, fmt.Errorf("Unknown operation type: %s", op.Body.Type)
 	}

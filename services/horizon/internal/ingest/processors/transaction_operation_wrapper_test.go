@@ -599,7 +599,36 @@ func TestTransactionOperationDetails(t *testing.T) {
 				"claimable_balance_id": "00000000cafebabe00000000000000000000000000000000000000000000000000000000",
 			},
 		},
+		{
+			desc:          "clawback",
+			envelopeXDR:   "AAAAAgAAAADrAt1LkCV3iVpe6NkPVn9kb2Yh4hyn0m7QzbF5J9zTIgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAATAAAAAVVTRAAAAAAAgHx5MrwKqyn+j+nUvuOra8GmzrRKvG8ew8JfchFfAvIAAAAAAAAAFAAAAAAAAAAA",
+			resultXDR:     "AAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+			metaXDR:       "AAAAAgAAAAAAAAABAAAAAAAAAAA=",
+			feeChangesXDR: "AAAAAA==",
+			hash:          "c8a8890d5cae9051ef692ed3e867687e1c3e9869995328698c60bdb237194e83",
+			index:         0,
+			expected: map[string]interface{}{
+				"amount":       "0.0000020",
+				"asset_code":   "USD",
+				"asset_issuer": "GDVQFXKLSASXPCK2L3UNSD2WP5SG6ZRB4IOKPUTO2DG3C6JH3TJSEA7R",
+				"asset_type":   "credit_alphanum4",
+				"from":         "GCAHY6JSXQFKWKP6R7U5JPXDVNV4DJWOWRFLY3Y6YPBF64QRL4BPFDNS",
+			},
+		},
+		{
+			desc:          "clawbackClaimableBalance",
+			envelopeXDR:   "AAAAAgAAAADrAt1LkCV3iVpe6NkPVn9kb2Yh4hyn0m7QzbF5J9zTIgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAUAAAAAMr+ur7erb7vAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+			resultXDR:     "AAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+			metaXDR:       "AAAAAgAAAAAAAAABAAAAAAAAAAA=",
+			feeChangesXDR: "AAAAAA==",
+			hash:          "b803cd72c77fb1cf95dd94048b14e02abf8694ef9124b10e9620b83a8b15804f",
+			index:         0,
+			expected: map[string]interface{}{
+				"claimable_balance_id": "00000000cafebabedeadbeef000000000000000000000000000000000000000000000000",
+			},
+		},
 	}
+
 	for _, tc := range testCases {
 		t.Run(tc.desc, func(t *testing.T) {
 			tt := assert.New(t)
