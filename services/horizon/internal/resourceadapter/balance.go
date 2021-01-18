@@ -29,6 +29,10 @@ func PopulateBalance(dest *protocol.Balance, row history.TrustLine) (err error) 
 	if isAuthorizedToMaintainLiabilities {
 		dest.IsAuthorizedToMaintainLiabilities = &isAuthorizedToMaintainLiabilities
 	}
+	isClawbackEnabled := row.IsClawbackEnabled()
+	if isClawbackEnabled {
+		dest.IsClawbackEnabled = &isClawbackEnabled
+	}
 	if row.Sponsor.Valid {
 		dest.Sponsor = row.Sponsor.String
 	}

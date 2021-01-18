@@ -40,7 +40,8 @@ func TestPopulateExpAssetStat(t *testing.T) {
 
 	issuer.HomeDomain = ""
 	issuer.Flags = uint32(xdr.AccountFlagsAuthRequiredFlag) |
-		uint32(xdr.AccountFlagsAuthImmutableFlag)
+		uint32(xdr.AccountFlagsAuthImmutableFlag) |
+		uint32(xdr.AccountFlagsAuthClawbackEnabledFlag)
 
 	err = PopulateAssetStat(context.Background(), &res, row, issuer)
 	assert.NoError(t, err)
@@ -53,8 +54,9 @@ func TestPopulateExpAssetStat(t *testing.T) {
 	assert.Equal(
 		t,
 		horizon.AccountFlags{
-			AuthRequired:  true,
-			AuthImmutable: true,
+			AuthRequired:        true,
+			AuthImmutable:       true,
+			AuthClawbackEnabled: true,
 		},
 		res.Flags,
 	)

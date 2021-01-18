@@ -351,8 +351,13 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 		details["trustee"] = source.Address()
 		details["trustor"] = op.Trustor.Address()
 		details["authorize"] = xdr.TrustLineFlags(op.Authorize).IsAuthorized()
-		if xdr.TrustLineFlags(op.Authorize).IsAuthorizedToMaintainLiabilitiesFlag() {
-			details["authorize_to_maintain_liabilities"] = xdr.TrustLineFlags(op.Authorize).IsAuthorizedToMaintainLiabilitiesFlag()
+		authLiabilities := xdr.TrustLineFlags(op.Authorize).IsAuthorizedToMaintainLiabilitiesFlag()
+		if authLiabilities {
+			details["authorize_to_maintain_liabilities"] = authLiabilities
+		}
+		clawbackEnabled := xdr.TrustLineFlags(op.Authorize).IsClawbackEnabledFlag()
+		if clawbackEnabled {
+			details["clawback_enabled"] = clawbackEnabled
 		}
 	case xdr.OperationTypeAccountMerge:
 		aid := operation.operation.Body.MustDestination().ToAccountId()
@@ -482,6 +487,11 @@ func operationFlagDetails(result map[string]interface{}, f int32, prefix string)
 	if (f & int32(xdr.AccountFlagsAuthImmutableFlag)) > 0 {
 		n = append(n, int32(xdr.AccountFlagsAuthImmutableFlag))
 		s = append(s, "auth_immutable")
+	}
+
+	if (f & int32(xdr.AccountFlagsAuthClawbackEnabledFlag)) > 0 {
+		n = append(n, int32(xdr.AccountFlagsAuthClawbackEnabledFlag))
+		s = append(s, "auth_clawback_enabled")
 	}
 
 	result[prefix+"_flags"] = n

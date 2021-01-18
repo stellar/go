@@ -106,11 +106,13 @@ func TestAssetStats(t *testing.T) {
 	issuer := history.AccountEntry{
 		AccountID: "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
 		Flags: uint32(xdr.AccountFlagsAuthRequiredFlag) |
-			uint32(xdr.AccountFlagsAuthImmutableFlag),
+			uint32(xdr.AccountFlagsAuthImmutableFlag) |
+			uint32(xdr.AccountFlagsAuthClawbackEnabledFlag),
 	}
 	issuerFlags := horizon.AccountFlags{
-		AuthRequired:  true,
-		AuthImmutable: true,
+		AuthRequired:        true,
+		AuthImmutable:       true,
+		AuthClawbackEnabled: true,
 	}
 	otherIssuer := history.AccountEntry{
 		AccountID:  "GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2",

@@ -85,6 +85,10 @@ const (
 	// to true and it authorizes another account's trustline to maintain liabilities
 	EffectTrustlineAuthorizedToMaintainLiabilities EffectType = 25 // from allow_trust
 
+	// EffectTrustlineClawbackEnabled occurs when an anchor has AUTH_CLAWBACK_ENABLED flag set
+	// to true and creates and asset
+	EffectTrustlineClawbackEnabled EffectType = 26 // from allow_trust
+
 	// trading effects
 
 	// EffectOfferCreated occurs when an account offers to trade an asset

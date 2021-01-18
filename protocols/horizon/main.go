@@ -142,9 +142,10 @@ func (a *Account) SignerSummary() map[string]int32 {
 
 // AccountFlags represents the state of an account's flags
 type AccountFlags struct {
-	AuthRequired  bool `json:"auth_required"`
-	AuthRevocable bool `json:"auth_revocable"`
-	AuthImmutable bool `json:"auth_immutable"`
+	AuthRequired        bool `json:"auth_required"`
+	AuthRevocable       bool `json:"auth_revocable"`
+	AuthImmutable       bool `json:"auth_immutable"`
+	AuthClawbackEnabled bool `json:"auth_clawback_enabled"`
 }
 
 // AccountThresholds represents an accounts "thresholds", the numerical values
@@ -186,6 +187,7 @@ type Balance struct {
 	LastModifiedLedger                uint32 `json:"last_modified_ledger,omitempty"`
 	IsAuthorized                      *bool  `json:"is_authorized,omitempty"`
 	IsAuthorizedToMaintainLiabilities *bool  `json:"is_authorized_to_maintain_liabilities,omitempty"`
+	IsClawbackEnabled                 *bool  `json:"is_clawback_enabled,omitempty"`
 	base.Asset
 }
 
