@@ -1771,7 +1771,7 @@ func TestOperationRegressionAccountTrustItself(t *testing.T) {
 func TestOperationEffectsAllowTrustAuthorizedToMaintainLiabilities(t *testing.T) {
 	tt := assert.New(t)
 	asset := xdr.Asset{}
-	allowTrustAsset, err := asset.ToAllowTrustOpAsset("COP")
+	allowTrustAsset, err := asset.ToAssetCode("COP")
 	tt.NoError(err)
 	aid := xdr.MustAddress("GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD")
 	source := aid.ToMuxedAccount()
