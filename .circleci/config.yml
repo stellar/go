@@ -226,6 +226,20 @@ commands:
 #-----------------------------------------------------------------------------#
 
 jobs:
+  # check_code_1_16 performs code checks using Go 1.16.
+  check_code_1_16:
+    working_directory: /go/src/github.com/stellar/go
+    docker:
+      - image: golang:1.16beta1
+    steps:
+      - install_go_deps
+      - check_go_deps
+      - gofmt
+      - gogenerate
+      - govet
+      - staticcheck
+      - build_packages
+
   # check_code_1_15 performs code checks using Go 1.15.
   check_code_1_15:
     working_directory: /go/src/github.com/stellar/go
@@ -323,6 +337,47 @@ jobs:
       - test_packages
       - send_coverage_report
 
+  # test_code_1_16 performs all package tests using Go 1.16.
+  test_code_1_16:
+    working_directory: /go/src/github.com/stellar/go
+    docker:
+      - image: golang:1.16beta1
+        environment:
+          GO111MODULE: "on"
+          PGHOST: localhost
+          PGPORT: 5432
+          PGUSER: circleci
+          PGDATABASE: circle_test
+          MYSQL_HOST: 127.0.0.1
+          MYSQL_PORT: 3306
+      - image: circleci/postgres:9.6.5-alpine-ram
+        environment:
+          POSTGRES_USER: circleci
+    steps:
+      - install_go_deps
+      - test_packages
+
+  # test_code_1_16 performs all package tests using Go 1.16 and Postgres 10.
+  test_code_1_16_postgres10:
+    working_directory: /go/src/github.com/stellar/go
+    docker:
+      - image: golang:1.16beta1
+        environment:
+          GO111MODULE: "on"
+          PGHOST: localhost
+          PGPORT: 5432
+          PGUSER: circleci
+          PGDATABASE: circle_test
+          MYSQL_HOST: 127.0.0.1
+          MYSQL_PORT: 3306
+      - image: circleci/postgres:10-alpine-ram
+        environment:
+          POSTGRES_USER: circleci
+      - image: circleci/redis:5.0-alpine
+    steps:
+      - install_go_deps
+      - test_packages
+      - send_coverage_report
   # publish_artifacts builds and uploads artifacts to any tagged commit.
   #
   # NOTE: this commands relies on an env var called GITHUB_TOKEN which is a
@@ -453,10 +508,13 @@ workflows:
   check_code_and_test:
     jobs:
       - check_code_1_15
+      - check_code_1_16
       - test_code_1_14
       - test_code_1_14_postgres10
       - test_code_1_15
       - test_code_1_15_postgres10
+      - test_code_1_16
+      - test_code_1_16_postgres10
       # run the integration tests ...
       #   ... without captive core
       - test_horizon_integration
