@@ -582,12 +582,14 @@ func addClaimableBalanceToStateVerifier(
 			Claimants: claimants,
 			Asset:     row.Asset,
 			Amount:    row.Amount,
-			Ext: xdr.ClaimableBalanceEntryExt{
+		}
+		if row.Flags != 0 {
+			cBalance.Ext = xdr.ClaimableBalanceEntryExt{
 				V: 1,
 				V1: &xdr.ClaimableBalanceEntryExtensionV1{
 					Flags: xdr.Uint32(row.Flags),
 				},
-			},
+			}
 		}
 		entry := xdr.LedgerEntry{
 			LastModifiedLedgerSeq: xdr.Uint32(row.LastModifiedLedger),
