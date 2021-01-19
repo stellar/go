@@ -41,6 +41,10 @@ func PopulateClaimableBalance(
 		dest.LastModifiedTime = &ledger.ClosedAt
 	}
 
+	if xdr.ClaimableBalanceFlags(claimableBalance.Flags)&xdr.ClaimableBalanceFlagsClaimableBalanceClawbackEnabledFlag != 0 {
+		dest.Flags.ClaimableBalanceClawbackEnabled = true
+	}
+
 	lb := hal.LinkBuilder{Base: horizonContext.BaseURL(ctx)}
 	self := fmt.Sprintf("/claimable_balances/%s", dest.BalanceID)
 	dest.Links.Self = lb.Link(self)

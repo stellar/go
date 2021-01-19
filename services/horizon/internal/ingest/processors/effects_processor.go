@@ -161,6 +161,11 @@ func (operation *transactionOperationWrapper) effects() ([]effect, error) {
 		err error
 	)
 
+	changes, err := operation.transaction.GetOperationChanges(operation.index)
+	if err != nil {
+		return nil, err
+	}
+
 	wrapper := &effectsWrapper{
 		effects:   []effect{},
 		operation: operation,
@@ -196,19 +201,14 @@ func (operation *transactionOperationWrapper) effects() ([]effect, error) {
 	case xdr.OperationTypeBumpSequence:
 		err = wrapper.addBumpSequenceEffects()
 	case xdr.OperationTypeCreateClaimableBalance:
-		err = wrapper.addCreateClaimableBalanceEffects()
+		err = wrapper.addCreateClaimableBalanceEffects(changes)
 	case xdr.OperationTypeClaimClaimableBalance:
-		err = wrapper.addClaimClaimableBalanceEffects()
+		err = wrapper.addClaimClaimableBalanceEffects(changes)
 	case xdr.OperationTypeBeginSponsoringFutureReserves, xdr.OperationTypeEndSponsoringFutureReserves, xdr.OperationTypeRevokeSponsorship:
 		// The effects of these operations are obtained  indirectly from the ledger entries
 	default:
 		return nil, fmt.Errorf("Unknown operation type: %s", op.Body.Type)
 	}
-	if err != nil {
-		return nil, err
-	}
-
-	changes, err := operation.transaction.GetOperationChanges(operation.index)
 	if err != nil {
 		return nil, err
 	}
@@ -546,8 +546,8 @@ func (e *effectsWrapper) addSetOptionsEffects() error {
 	}
 
 	flagDetails := map[string]interface{}{}
-	setEffectFlagDetails(flagDetails, op.SetFlags, true)
-	setEffectFlagDetails(flagDetails, op.ClearFlags, false)
+	setAuthFlagDetails(flagDetails, op.SetFlags, true)
+	setAuthFlagDetails(flagDetails, op.ClearFlags, false)
 
 	if len(flagDetails) > 0 {
 		e.add(source.Address(), history.EffectAccountFlagsUpdated, flagDetails)
@@ -795,7 +795,14 @@ func (e *effectsWrapper) addBumpSequenceEffects() error {
 	return nil
 }
 
-func (e *effectsWrapper) addCreateClaimableBalanceEffects() error {
+func setClaimableBalanceFlagDetails(details map[string]interface{}, flags xdr.Uint32) {
+	if xdr.ClaimableBalanceFlags(flags)&xdr.ClaimableBalanceFlagsClaimableBalanceClawbackEnabledFlag != 0 {
+		details["claimable_balance_clawback_enabled_flag"] = true
+		return
+	}
+}
+
+func (e *effectsWrapper) addCreateClaimableBalanceEffects(changes []ingest.Change) error {
 	op := e.operation.operation.Body.MustCreateClaimableBalanceOp()
 
 	result := e.operation.OperationResult().MustCreateClaimableBalanceResult()
@@ -804,14 +811,22 @@ func (e *effectsWrapper) addCreateClaimableBalanceEffects() error {
 		return errors.Wrapf(err, "Invalid balanceId in op: %d", e.operation.index)
 	}
 
+	details := map[string]interface{}{
+		"balance_id": balanceID,
+		"amount":     amount.String(op.Amount),
+		"asset":      op.Asset.StringCanonical(),
+	}
+	for _, change := range changes {
+		if change.Type != xdr.LedgerEntryTypeClaimableBalance || change.Post == nil {
+			continue
+		}
+		setClaimableBalanceFlagDetails(details, change.Post.Data.ClaimableBalance.Flags())
+		break
+	}
 	e.add(
 		e.operation.SourceAccount().Address(),
 		history.EffectClaimableBalanceCreated,
-		map[string]interface{}{
-			"balance_id": balanceID,
-			"amount":     amount.String(op.Amount),
-			"asset":      op.Asset.StringCanonical(),
-		},
+		details,
 	)
 
 	for _, c := range op.Claimants {
@@ -828,7 +843,7 @@ func (e *effectsWrapper) addCreateClaimableBalanceEffects() error {
 		)
 	}
 
-	details := map[string]interface{}{
+	details = map[string]interface{}{
 		"amount": amount.String(op.Amount),
 	}
 	addAssetDetails(details, op.Asset, "")
@@ -841,7 +856,7 @@ func (e *effectsWrapper) addCreateClaimableBalanceEffects() error {
 	return nil
 }
 
-func (e *effectsWrapper) addClaimClaimableBalanceEffects() error {
+func (e *effectsWrapper) addClaimClaimableBalanceEffects(changes []ingest.Change) error {
 	op := e.operation.operation.Body.MustClaimClaimableBalanceOp()
 
 	balanceID, err := xdr.MarshalHex(op.BalanceId)
@@ -849,14 +864,9 @@ func (e *effectsWrapper) addClaimClaimableBalanceEffects() error {
 		return fmt.Errorf("Invalid balanceId in op: %d", e.operation.index)
 	}
 
-	changes, err := e.operation.transaction.GetOperationChanges(e.operation.index)
-	if err != nil {
-		return err
-	}
-
 	var cBalance xdr.ClaimableBalanceEntry
 	found := false
-
+	flags := xdr.Uint32(0)
 	for _, change := range changes {
 		if change.Type != xdr.LedgerEntryTypeClaimableBalance {
 			continue
@@ -868,6 +878,7 @@ func (e *effectsWrapper) addClaimClaimableBalanceEffects() error {
 			if err != nil {
 				return fmt.Errorf("Invalid balanceId in meta changes for op: %d", e.operation.index)
 			}
+			flags = cBalance.Flags()
 
 			if preBalanceID == balanceID {
 				found = true
@@ -880,17 +891,19 @@ func (e *effectsWrapper) addClaimClaimableBalanceEffects() error {
 		return fmt.Errorf("Change not found for balanceId : %s", balanceID)
 	}
 
+	details := map[string]interface{}{
+		"amount":     amount.String(cBalance.Amount),
+		"balance_id": balanceID,
+		"asset":      cBalance.Asset.StringCanonical(),
+	}
+	setClaimableBalanceFlagDetails(details, flags)
 	e.add(
 		e.operation.SourceAccount().Address(),
 		history.EffectClaimableBalanceClaimed,
-		map[string]interface{}{
-			"amount":     amount.String(cBalance.Amount),
-			"balance_id": balanceID,
-			"asset":      cBalance.Asset.StringCanonical(),
-		},
+		details,
 	)
 
-	details := map[string]interface{}{
+	details = map[string]interface{}{
 		"amount": amount.String(cBalance.Amount),
 	}
 	addAssetDetails(details, cBalance.Asset, "")
@@ -926,7 +939,7 @@ func (e *effectsWrapper) addIngestTradeEffects(buyer xdr.AccountId, claims []xdr
 	}
 }
 
-func setEffectFlagDetails(flagDetails map[string]interface{}, flagPtr *xdr.Uint32, setValue bool) {
+func setAuthFlagDetails(flagDetails map[string]interface{}, flagPtr *xdr.Uint32, setValue bool) {
 	if flagPtr != nil {
 		flags := xdr.AccountFlags(*flagPtr)
 

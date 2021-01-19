@@ -36,6 +36,12 @@ func TestAddClaimableBalance(t *testing.T) {
 		},
 		Asset:  asset,
 		Amount: 10,
+		Ext: xdr.ClaimableBalanceEntryExt{
+			V: 1,
+			V1: &xdr.ClaimableBalanceEntryExtensionV1{
+				Flags: xdr.Uint32(xdr.ClaimableBalanceFlagsClaimableBalanceClawbackEnabledFlag),
+			},
+		},
 	}
 	entry := xdr.LedgerEntry{
 		Data: xdr.LedgerEntryData{
@@ -73,5 +79,6 @@ func TestAddClaimableBalance(t *testing.T) {
 		tt.Assert.Equal(asset, cb.Asset)
 		tt.Assert.Equal(null.NewString("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML", true), cb.Sponsor)
 		tt.Assert.Equal(uint32(lastModifiedLedgerSeq), cb.LastModifiedLedger)
+		tt.Assert.Equal(uint32(xdr.ClaimableBalanceFlagsClaimableBalanceClawbackEnabledFlag), cb.Flags)
 	}
 }

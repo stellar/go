@@ -1925,8 +1925,35 @@ func (s *CreateClaimableBalanceEffectsTestSuite) SetupTest() {
 		},
 		FeeChanges: xdr.LedgerEntryChanges{},
 		Meta: xdr.TransactionMeta{
-			V:  2,
-			V2: &xdr.TransactionMetaV2{},
+			V: 2,
+			V2: &xdr.TransactionMetaV2{
+				Operations: []xdr.OperationMeta{
+					{
+						Changes: []xdr.LedgerEntryChange{
+							{
+								Type: xdr.LedgerEntryChangeTypeLedgerEntryCreated,
+								Created: &xdr.LedgerEntry{
+									Data: xdr.LedgerEntryData{
+										Type: xdr.LedgerEntryTypeClaimableBalance,
+										ClaimableBalance: &xdr.ClaimableBalanceEntry{
+											BalanceId: balanceIDOp1,
+											Ext: xdr.ClaimableBalanceEntryExt{
+												V: 1,
+												V1: &xdr.ClaimableBalanceEntryExtensionV1{
+													Flags: xdr.Uint32(xdr.ClaimableBalanceFlagsClaimableBalanceClawbackEnabledFlag),
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+					{
+						// Not used for the test
+					},
+				},
+			},
 		},
 	}
 }
@@ -1946,6 +1973,7 @@ func (s *CreateClaimableBalanceEffectsTestSuite) TestEffects() {
 						"asset":      "native",
 						"amount":     "10.0000000",
 						"balance_id": "00000000da0d57da7d4850e7fc10d2a9d0ebc731f7afb40574c03395b17d49149b91f5be",
+						"claimable_balance_clawback_enabled_flag": true,
 					},
 					effectType:  history.EffectClaimableBalanceCreated,
 					operationID: int64(4294967297),
@@ -2152,6 +2180,12 @@ func (s *ClaimClaimableBalanceEffectsTestSuite) SetupTest() {
 													},
 												},
 											},
+											Ext: xdr.ClaimableBalanceEntryExt{
+												V: 1,
+												V1: &xdr.ClaimableBalanceEntryExtensionV1{
+													Flags: xdr.Uint32(xdr.ClaimableBalanceFlagsClaimableBalanceClawbackEnabledFlag),
+												},
+											},
 										},
 									},
 								},
@@ -2235,6 +2269,7 @@ func (s *ClaimClaimableBalanceEffectsTestSuite) TestEffects() {
 						"asset":      "native",
 						"amount":     "10.0000000",
 						"balance_id": "00000000da0d57da7d4850e7fc10d2a9d0ebc731f7afb40574c03395b17d49149b91f5be",
+						"claimable_balance_clawback_enabled_flag": true,
 					},
 					effectType:  history.EffectClaimableBalanceClaimed,
 					operationID: int64(4294967297),
