@@ -10,7 +10,7 @@ import (
 type AccountsProcessor struct {
 	accountsQ history.QAccounts
 
-	cache *ingest.LedgerEntryChangeCache
+	cache *ingest.ChangeCompactor
 }
 
 func NewAccountsProcessor(accountsQ history.QAccounts) *AccountsProcessor {

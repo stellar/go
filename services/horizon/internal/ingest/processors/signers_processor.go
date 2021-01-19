@@ -12,7 +12,7 @@ import (
 type SignersProcessor struct {
 	signersQ history.QSigners
 
-	cache *ingest.LedgerEntryChangeCache
+	cache *ingest.ChangeCompactor
 	batch history.AccountSignersBatchInsertBuilder
 	// insertOnlyMode is a mode in which we don't use ledger cache and we just
 	// add signers to a batch, then we Exec all signers in one insert query.
