@@ -233,6 +233,8 @@ func String(code interface{}) (string, error) {
 			return "op_bad_signer", nil
 		case xdr.SetOptionsResultCodeSetOptionsInvalidHomeDomain:
 			return "op_invalid_home_domain", nil
+		case xdr.SetOptionsResultCodeSetOptionsAuthRevocableRequired:
+			return "op_auth_revocable_required", nil
 		}
 	case xdr.ChangeTrustResultCode:
 		switch code {

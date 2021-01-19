@@ -17,6 +17,7 @@ func TestString(t *testing.T) {
 		{xdr.OperationResultCodeOpBadAuth, "op_bad_auth", nil},
 		{xdr.CreateAccountResultCodeCreateAccountLowReserve, "op_low_reserve", nil},
 		{xdr.PaymentResultCodePaymentSrcNoTrust, "op_src_no_trust", nil},
+		{xdr.SetOptionsResultCodeSetOptionsAuthRevocableRequired, "op_auth_revocable_required", nil},
 		{0, "", ErrUnknownCode},
 	}
 
