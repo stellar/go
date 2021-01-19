@@ -183,7 +183,7 @@ commands:
     steps:
       - run:
           name: Install dockerize
-          command: wget https://github.com/jwilder/dockerize/releases/download/$DOCKERIZE_VERSION/dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz && sudo tar -C /usr/local/bin -xzvf dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz && rm dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz
+          command: wget https://github.com/jwilder/dockerize/releases/download/$DOCKERIZE_VERSION/dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz && tar -C /usr/local/bin -xzvf dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz && rm dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz
           environment:
             DOCKERIZE_VERSION: v0.3.0
       - run:
@@ -206,6 +206,11 @@ commands:
   build_packages:
     steps:
       - run:
+          name: Build release artifacts dependencies
+          command: |
+            apt-get update
+            apt-get install -y zip
+      - run:
           name: Build release artifacts
           command: go run ./support/scripts/build_release_artifacts/main.go
 
@@ -225,7 +230,7 @@ jobs:
   check_code_1_15:
     working_directory: /go/src/github.com/stellar/go
     docker:
-      - image: circleci/golang:1.15
+      - image: golang:1.15
     steps:
       - install_go_deps
       - check_go_deps
@@ -239,7 +244,7 @@ jobs:
   test_code_1_14:
     working_directory: /go/src/github.com/stellar/go
     docker:
-      - image: circleci/golang:1.14-stretch
+      - image: golang:1.14-stretch
         environment:
           GO111MODULE: "on"
           PGHOST: localhost
@@ -259,7 +264,7 @@ jobs:
   test_code_1_14_postgres10:
     working_directory: /go/src/github.com/stellar/go
     docker:
-      - image: circleci/golang:1.14-stretch
+      - image: golang:1.14-stretch
         environment:
           GO111MODULE: "on"
           PGHOST: localhost
@@ -280,7 +285,7 @@ jobs:
   test_code_1_15:
     working_directory: /go/src/github.com/stellar/go
     docker:
-      - image: circleci/golang:1.15
+      - image: golang:1.15
         environment:
           GO111MODULE: "on"
           PGHOST: localhost
@@ -300,7 +305,7 @@ jobs:
   test_code_1_15_postgres10:
     working_directory: /go/src/github.com/stellar/go
     docker:
-      - image: circleci/golang:1.15
+      - image: golang:1.15
         environment:
           GO111MODULE: "on"
           PGHOST: localhost
@@ -328,7 +333,7 @@ jobs:
       # Artifacts are built on Go 1.14 because a Go 1.15 Docker image for
       # Debian Stretch is currently not available. See
       # https://github.com/docker-library/golang/issues/344.
-      - image: circleci/golang:1.14-stretch
+      - image: golang:1.14-stretch
     steps:
       - check_deprecations
       - install_go_deps
@@ -363,7 +368,7 @@ jobs:
 
   publish_horizon_docker_image:
     docker:
-      - image: circleci/buildpack-deps:stretch
+      - image: buildpack-deps:stretch
     steps:
       - checkout
       - setup_remote_docker
@@ -379,7 +384,7 @@ jobs:
 
   publish_latest_horizon_docker_image:
     docker:
-      - image: circleci/buildpack-deps:stretch
+      - image: buildpack-deps:stretch
     steps:
       - checkout
       - setup_remote_docker
@@ -392,7 +397,7 @@ jobs:
 
   publish_commit_hash_horizon_docker_image:
     docker:
-      - image: circleci/buildpack-deps:stretch
+      - image: buildpack-deps:stretch
     steps:
       - checkout
       - setup_remote_docker
