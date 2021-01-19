@@ -13,7 +13,7 @@ import (
 type AssetStatsProcessor struct {
 	assetStatsQ history.QAssetStats
 
-	cache               *ingest.LedgerEntryChangeCache
+	cache               *ingest.ChangeCompactor
 	assetStatSet        AssetStatSet
 	useLedgerEntryCache bool
 }

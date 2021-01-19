@@ -10,7 +10,7 @@ import (
 type TrustLinesProcessor struct {
 	trustLinesQ history.QTrustLines
 
-	cache *ingest.LedgerEntryChangeCache
+	cache *ingest.ChangeCompactor
 }
 
 func NewTrustLinesProcessor(trustLinesQ history.QTrustLines) *TrustLinesProcessor {

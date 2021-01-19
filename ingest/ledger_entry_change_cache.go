@@ -7,7 +7,7 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-// LedgerEntryChangeCache is a cache of ledger entry changes that squashes all
+// ChangeCompactor is a cache of ledger entry changes that squashes all
 // changes within a single ledger. By doing this, it decreases number of DB
 // queries sent to a DB to update the current state of the ledger.
 // It has integrity checks built in so ex. removing an account that was
@@ -46,27 +46,27 @@ import (
 //       change means the entry exists in a DB.
 //    c. REMOVED it returns error because we can't remove an entry that was
 //       already removed.
-type LedgerEntryChangeCache struct {
+type ChangeCompactor struct {
 	// ledger key => Change
 	cache map[string]Change
 	mutex sync.Mutex
 }
 
-// NewLedgerEntryChangeCache returns a new LedgerEntryChangeCache.
-func NewLedgerEntryChangeCache() *LedgerEntryChangeCache {
-	return &LedgerEntryChangeCache{
+// NewLedgerEntryChangeCache returns a new ChangeCompactor.
+func NewLedgerEntryChangeCache() *ChangeCompactor {
+	return &ChangeCompactor{
 		cache: make(map[string]Change),
 	}
 }
 
-// AddChange adds a change to LedgerEntryChangeCache. All changes are stored
+// AddChange adds a change to ChangeCompactor. All changes are stored
 // in memory. To get the final, squashed changes call GetChanges.
 //
 // Please note that the current ledger capacity in pubnet (max 1000 ops/ledger)
-// makes LedgerEntryChangeCache safe to use in terms of memory usage. If the
+// makes ChangeCompactor safe to use in terms of memory usage. If the
 // cache takes too much memory, you apply changes returned by GetChanges and
-// create a new LedgerEntryChangeCache object to continue ingestion.
-func (c *LedgerEntryChangeCache) AddChange(change Change) error {
+// create a new ChangeCompactor object to continue ingestion.
+func (c *ChangeCompactor) AddChange(change Change) error {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
@@ -84,7 +84,7 @@ func (c *LedgerEntryChangeCache) AddChange(change Change) error {
 
 // addCreatedChange adds a change to the cache, but returns an error if create
 // change is unexpected.
-func (c *LedgerEntryChangeCache) addCreatedChange(change Change) error {
+func (c *ChangeCompactor) addCreatedChange(change Change) error {
 	ledgerKeyString, err := change.Post.LedgerKey().MarshalBinaryBase64()
 	if err != nil {
 		return errors.Wrap(err, "Error MarshalBinaryBase64")
@@ -124,7 +124,7 @@ func (c *LedgerEntryChangeCache) addCreatedChange(change Change) error {
 
 // addUpdatedChange adds a change to the cache, but returns an error if update
 // change is unexpected.
-func (c *LedgerEntryChangeCache) addUpdatedChange(change Change) error {
+func (c *ChangeCompactor) addUpdatedChange(change Change) error {
 	ledgerKeyString, err := change.Post.LedgerKey().MarshalBinaryBase64()
 	if err != nil {
 		return errors.Wrap(err, "Error MarshalBinaryBase64")
@@ -165,7 +165,7 @@ func (c *LedgerEntryChangeCache) addUpdatedChange(change Change) error {
 
 // addRemovedChange adds a change to the cache, but returns an error if remove
 // change is unexpected.
-func (c *LedgerEntryChangeCache) addRemovedChange(change Change) error {
+func (c *ChangeCompactor) addRemovedChange(change Change) error {
 	ledgerKeyString, err := change.Pre.LedgerKey().MarshalBinaryBase64()
 	if err != nil {
 		return errors.Wrap(err, "Error MarshalBinaryBase64")
@@ -202,7 +202,7 @@ func (c *LedgerEntryChangeCache) addRemovedChange(change Change) error {
 
 // GetChanges returns a slice of Changes in the cache. The order of changes is
 // random but each change is connected to a separate entry.
-func (c *LedgerEntryChangeCache) GetChanges() []Change {
+func (c *ChangeCompactor) GetChanges() []Change {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
@@ -216,7 +216,7 @@ func (c *LedgerEntryChangeCache) GetChanges() []Change {
 }
 
 // Size returns number of ledger entries in the cache.
-func (c *LedgerEntryChangeCache) Size() int {
+func (c *ChangeCompactor) Size() int {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 	return len(c.cache)

@@ -382,7 +382,7 @@ func (s *OffersProcessorTestSuiteLedger) TestRemoveMultipleOffers() {
 	s.mockBatchInsertBuilder.On("Exec").Return(nil).Once()
 	s.mockQ.On("CompactOffers", s.sequence-100).Return(int64(0), nil).Once()
 	s.mockQ.On("RemoveOffers", mock.Anything, s.sequence).Run(func(args mock.Arguments) {
-		// To fix order issue due to using LedgerEntryChangeCache
+		// To fix order issue due to using ChangeCompactor
 		ids := args.Get(0).([]int64)
 		s.Assert().ElementsMatch(ids, []int64{3, 4})
 	}).Return(int64(0), nil).Once()
