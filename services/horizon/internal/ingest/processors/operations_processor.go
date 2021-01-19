@@ -428,7 +428,7 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 		if err != nil {
 			panic(fmt.Errorf("Invalid balanceId in op: %d", operation.index))
 		}
-		details["claimable_balance_id"] = balanceID
+		details["balance_id"] = balanceID
 	default:
 		panic(fmt.Errorf("Unknown operation type: %s", operation.OperationType()))
 	}

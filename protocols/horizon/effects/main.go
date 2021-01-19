@@ -171,6 +171,13 @@ const (
 
 	// EffectSignerSponsorshipRemoved occurs when the sponsorship of a signer is removed
 	EffectSignerSponsorshipRemoved EffectType = 74 // from revoke_sponsorship
+
+	// EffectAssetClawedBack occurs when an asset is clawed back
+	EffectAssetClawedBack EffectType = 75 // from clawback
+
+	// EffectClaimableBalanceClawedBack occurs when a claimable balance is clawed back
+	EffectClaimableBalanceClawedBack EffectType = 76 // from clawback_claimable_balance
+
 )
 
 // Peter 30-04-2019: this is copied from the resourcadapter package
@@ -222,6 +229,8 @@ var EffectTypeNames = map[EffectType]string{
 	EffectSignerSponsorshipCreated:                 "signer_sponsorship_created",
 	EffectSignerSponsorshipUpdated:                 "signer_sponsorship_updated",
 	EffectSignerSponsorshipRemoved:                 "signer_sponsorship_removed",
+	EffectAssetClawedBack:                          "asset_clawed_back",
+	EffectClaimableBalanceClawedBack:               "claimable_balance_clawed_back",
 }
 
 // Base provides the common structure for any effect resource effect.
@@ -488,6 +497,18 @@ type SignerSponsorshipRemoved struct {
 	Base
 	Signer        string `json:"signer"`
 	FormerSponsor string `json:"former_sponsor"`
+}
+
+type AssetClawedBack struct {
+	Base
+	base.Asset
+	Amount string `json:"amount"`
+	From   string `json:"from"`
+}
+
+type ClaimableBalanceClawedBack struct {
+	Base
+	BalanceID string `json:"balance_id"`
 }
 
 // Effect contains methods that are implemented by all effect types.
@@ -783,6 +804,18 @@ func UnmarshalEffect(effectType string, dataString []byte) (effects Effect, err 
 		effects = effect
 	case EffectTypeNames[EffectSignerSponsorshipRemoved]:
 		var effect SignerSponsorshipRemoved
+		if err = json.Unmarshal(dataString, &effect); err != nil {
+			return
+		}
+		effects = effect
+	case EffectTypeNames[EffectAssetClawedBack]:
+		var effect AssetClawedBack
+		if err = json.Unmarshal(dataString, &effect); err != nil {
+			return
+		}
+		effects = effect
+	case EffectTypeNames[EffectClaimableBalanceClawedBack]:
+		var effect ClaimableBalanceClawedBack
 		if err = json.Unmarshal(dataString, &effect); err != nil {
 			return
 		}

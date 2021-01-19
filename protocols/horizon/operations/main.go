@@ -278,7 +278,7 @@ type Clawback struct {
 // Clawback.
 type ClawbackClaimableBalance struct {
 	Base
-	ClaimableBalanceID *string `json:"claimable_balance_id,omitempty"`
+	ClaimableBalanceID *string `json:"balance_id,omitempty"`
 }
 
 // Operation interface contains methods implemented by the operation types

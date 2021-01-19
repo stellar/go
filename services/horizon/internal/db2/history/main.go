@@ -177,6 +177,12 @@ const (
 
 	// EffectSignerSponsorshipRemoved occurs when the sponsorship of a signer is removed
 	EffectSignerSponsorshipRemoved EffectType = 74 // from revoke_sponsorship
+
+	// EffectAssetClawedBack occurs when an asset is clawed back
+	EffectAssetClawedBack EffectType = 75 // from clawback
+
+	// EffectClaimableBalanceClawedBack occurs when a claimable balance is clawed back
+	EffectClaimableBalanceClawedBack EffectType = 76 // from clawback_claimable_balance
 )
 
 // Account is a row of data from the `history_accounts` table
