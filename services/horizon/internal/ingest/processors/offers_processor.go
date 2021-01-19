@@ -15,7 +15,7 @@ type OffersProcessor struct {
 	offersQ  history.QOffers
 	sequence uint32
 
-	cache       *ingest.LedgerEntryChangeCache
+	cache       *ingest.ChangeCompactor
 	insertBatch history.OffersBatchInsertBuilder
 	removeBatch []int64
 }
