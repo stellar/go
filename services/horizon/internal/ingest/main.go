@@ -23,7 +23,7 @@ import (
 const (
 	// MaxSupportedProtocolVersion defines the maximum supported version of
 	// the Stellar protocol.
-	MaxSupportedProtocolVersion = 15
+	MaxSupportedProtocolVersion = 16
 
 	// CurrentVersion reflects the latest version of the ingestion
 	// algorithm. This value is stored in KV store and is used to decide

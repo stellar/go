@@ -9,7 +9,8 @@ RUN go install github.com/stellar/go/exp/services/captivecore
 
 FROM ubuntu:18.04
 
-ENV STELLAR_CORE_VERSION 15.0.0-40
+# TODO: change to a stable version when available
+ENV STELLAR_CORE_VERSION 15.2.0-441.620af1f.xenial~clawbackPR~buildtests
 ENV STELLAR_CORE_BINARY_PATH /usr/bin/stellar-core
 
 ENV DEBIAN_FRONTEND=noninteractive
