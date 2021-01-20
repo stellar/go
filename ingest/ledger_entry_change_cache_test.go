@@ -16,7 +16,7 @@ func TestLedgerEntryChangeCacheExistingCreated(t *testing.T) {
 // existing CREATED state in the cache.
 type TestLedgerEntryChangeCacheExistingCreatedSuite struct {
 	suite.Suite
-	cache *LedgerEntryChangeCache
+	cache *ChangeCompactor
 }
 
 func (s *TestLedgerEntryChangeCacheExistingCreatedSuite) SetupTest() {
@@ -116,7 +116,7 @@ func TestLedgerEntryChangeCacheExistingUpdated(t *testing.T) {
 // existing UPDATED state in the cache.
 type TestLedgerEntryChangeCacheExistingUpdatedSuite struct {
 	suite.Suite
-	cache *LedgerEntryChangeCache
+	cache *ChangeCompactor
 }
 
 func (s *TestLedgerEntryChangeCacheExistingUpdatedSuite) SetupTest() {
@@ -226,7 +226,7 @@ func TestLedgerEntryChangeCacheExistingRemoved(t *testing.T) {
 // existing REMOVED state in the cache.
 type TestLedgerEntryChangeCacheExistingRemovedSuite struct {
 	suite.Suite
-	cache *LedgerEntryChangeCache
+	cache *ChangeCompactor
 }
 
 func (s *TestLedgerEntryChangeCacheExistingRemovedSuite) SetupTest() {
