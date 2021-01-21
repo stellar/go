@@ -1819,6 +1819,114 @@ func TestOperationEffectsAllowTrustAuthorizedToMaintainLiabilities(t *testing.T)
 	tt.Equal(expected, effects)
 }
 
+func TestOperationEffectsClawback(t *testing.T) {
+	tt := assert.New(t)
+	asset := xdr.Asset{}
+	clawbackAsset, err := asset.ToAssetCode("COP")
+	tt.NoError(err)
+	aid := xdr.MustAddress("GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD")
+	source := aid.ToMuxedAccount()
+	op := xdr.Operation{
+		SourceAccount: &source,
+		Body: xdr.OperationBody{
+			Type: xdr.OperationTypeClawback,
+			ClawbackOp: &xdr.ClawbackOp{
+				Asset:  clawbackAsset,
+				From:   xdr.MustMuxedAddress("GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3"),
+				Amount: 34,
+			},
+		},
+	}
+
+	operation := transactionOperationWrapper{
+		index: 0,
+		transaction: ingest.LedgerTransaction{
+			Meta: xdr.TransactionMeta{
+				V:  2,
+				V2: &xdr.TransactionMetaV2{},
+			},
+		},
+		operation:      op,
+		ledgerSequence: 1,
+	}
+
+	effects, err := operation.effects()
+	tt.NoError(err)
+
+	expected := []effect{
+		{
+			address:     "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
+			operationID: 4294967297,
+			details: map[string]interface{}{
+				"asset_code":   "COP",
+				"asset_issuer": "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
+				"asset_type":   "credit_alphanum4",
+				"amount":       "0.0000034",
+			},
+			effectType: history.EffectAccountCredited,
+			order:      uint32(1),
+		},
+		{
+			address:     "GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3",
+			operationID: 4294967297,
+			details: map[string]interface{}{
+				"asset_code":   "COP",
+				"asset_issuer": "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
+				"asset_type":   "credit_alphanum4",
+				"amount":       "0.0000034",
+			},
+			effectType: history.EffectAccountDebited,
+			order:      uint32(2),
+		},
+	}
+	tt.Equal(expected, effects)
+}
+
+func TestOperationEffectsClawbackClaimableBalance(t *testing.T) {
+	tt := assert.New(t)
+	aid := xdr.MustAddress("GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD")
+	source := aid.ToMuxedAccount()
+	var balanceID xdr.ClaimableBalanceId
+	xdr.SafeUnmarshalBase64("AAAAANoNV9p9SFDn/BDSqdDrxzH3r7QFdMAzlbF9SRSbkfW+", &balanceID)
+	op := xdr.Operation{
+		SourceAccount: &source,
+		Body: xdr.OperationBody{
+			Type: xdr.OperationTypeClawbackClaimableBalance,
+			ClawbackClaimableBalanceOp: &xdr.ClawbackClaimableBalanceOp{
+				BalanceId: balanceID,
+			},
+		},
+	}
+
+	operation := transactionOperationWrapper{
+		index: 0,
+		transaction: ingest.LedgerTransaction{
+			Meta: xdr.TransactionMeta{
+				V:  2,
+				V2: &xdr.TransactionMetaV2{},
+			},
+		},
+		operation:      op,
+		ledgerSequence: 1,
+	}
+
+	effects, err := operation.effects()
+	tt.NoError(err)
+
+	expected := []effect{
+		{
+			address:     "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
+			operationID: 4294967297,
+			details: map[string]interface{}{
+				"balance_id": "00000000da0d57da7d4850e7fc10d2a9d0ebc731f7afb40574c03395b17d49149b91f5be",
+			},
+			effectType: history.EffectClaimableBalanceClawedBack,
+			order:      uint32(1),
+		},
+	}
+	tt.Equal(expected, effects)
+}
+
 type CreateClaimableBalanceEffectsTestSuite struct {
 	suite.Suite
 	ops []xdr.Operation

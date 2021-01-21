@@ -171,6 +171,10 @@ const (
 
 	// EffectSignerSponsorshipRemoved occurs when the sponsorship of a signer is removed
 	EffectSignerSponsorshipRemoved EffectType = 74 // from revoke_sponsorship
+
+	// EffectClaimableBalanceClawedBack occurs when a claimable balance is clawed back
+	EffectClaimableBalanceClawedBack EffectType = 80 // from clawback_claimable_balance
+
 )
 
 // Peter 30-04-2019: this is copied from the resourcadapter package
@@ -222,6 +226,7 @@ var EffectTypeNames = map[EffectType]string{
 	EffectSignerSponsorshipCreated:                 "signer_sponsorship_created",
 	EffectSignerSponsorshipUpdated:                 "signer_sponsorship_updated",
 	EffectSignerSponsorshipRemoved:                 "signer_sponsorship_removed",
+	EffectClaimableBalanceClawedBack:               "claimable_balance_clawed_back",
 }
 
 // Base provides the common structure for any effect resource effect.
@@ -488,6 +493,11 @@ type SignerSponsorshipRemoved struct {
 	Base
 	Signer        string `json:"signer"`
 	FormerSponsor string `json:"former_sponsor"`
+}
+
+type ClaimableBalanceClawedBack struct {
+	Base
+	BalanceID string `json:"balance_id"`
 }
 
 // Effect contains methods that are implemented by all effect types.
@@ -783,6 +793,12 @@ func UnmarshalEffect(effectType string, dataString []byte) (effects Effect, err 
 		effects = effect
 	case EffectTypeNames[EffectSignerSponsorshipRemoved]:
 		var effect SignerSponsorshipRemoved
+		if err = json.Unmarshal(dataString, &effect); err != nil {
+			return
+		}
+		effects = effect
+	case EffectTypeNames[EffectClaimableBalanceClawedBack]:
+		var effect ClaimableBalanceClawedBack
 		if err = json.Unmarshal(dataString, &effect); err != nil {
 			return
 		}

@@ -624,7 +624,7 @@ func TestTransactionOperationDetails(t *testing.T) {
 			hash:          "b803cd72c77fb1cf95dd94048b14e02abf8694ef9124b10e9620b83a8b15804f",
 			index:         0,
 			expected: map[string]interface{}{
-				"claimable_balance_id": "00000000cafebabedeadbeef000000000000000000000000000000000000000000000000",
+				"balance_id": "00000000cafebabedeadbeef000000000000000000000000000000000000000000000000",
 			},
 		},
 	}

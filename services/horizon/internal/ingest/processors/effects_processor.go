@@ -205,7 +205,11 @@ func (operation *transactionOperationWrapper) effects() ([]effect, error) {
 	case xdr.OperationTypeClaimClaimableBalance:
 		err = wrapper.addClaimClaimableBalanceEffects(changes)
 	case xdr.OperationTypeBeginSponsoringFutureReserves, xdr.OperationTypeEndSponsoringFutureReserves, xdr.OperationTypeRevokeSponsorship:
-		// The effects of these operations are obtained  indirectly from the ledger entries
+	// The effects of these operations are obtained  indirectly from the ledger entries
+	case xdr.OperationTypeClawback:
+		err = wrapper.addClawbackEffects()
+	case xdr.OperationTypeClawbackClaimableBalance:
+		err = wrapper.addClawbackClaimableBalanceEffects()
 	default:
 		return nil, fmt.Errorf("Unknown operation type: %s", op.Body.Type)
 	}
@@ -383,7 +387,7 @@ func (e *effectsWrapper) addLedgerEntrySponsorshipEffects(change ingest.Change) 
 		var err error
 		details["balance_id"], err = xdr.MarshalHex(data.MustClaimableBalance().BalanceId)
 		if err != nil {
-			return errors.Wrapf(err, "Invalid balanceId in change from op: %d", e.operation.index)
+			return errors.Wrapf(err, "Invalid balanceId in change from op %d", e.operation.index)
 		}
 	default:
 		return errors.Errorf("invalid sponsorship ledger entry type %v", change.Type.String())
@@ -934,6 +938,46 @@ func (e *effectsWrapper) addIngestTradeEffects(buyer xdr.AccountId, claims []xdr
 			sd,
 		)
 	}
+}
+
+func (e *effectsWrapper) addClawbackEffects() error {
+	op := e.operation.operation.Body.MustClawbackOp()
+	details := map[string]interface{}{
+		"amount": amount.String(op.Amount),
+	}
+	source := e.operation.SourceAccount()
+	addAssetDetails(details, op.Asset.ToAsset(*source), "")
+	e.add(
+		source.Address(),
+		history.EffectAccountCredited,
+		details,
+	)
+
+	from := op.From.ToAccountId()
+	e.add(
+		from.Address(),
+		history.EffectAccountDebited,
+		details,
+	)
+
+	return nil
+}
+
+func (e *effectsWrapper) addClawbackClaimableBalanceEffects() error {
+	op := e.operation.operation.Body.MustClawbackClaimableBalanceOp()
+	balanceId, err := xdr.MarshalHex(op.BalanceId)
+	if err != nil {
+		return errors.Wrapf(err, "Invalid balanceId in op %d", e.operation.index)
+	}
+	details := map[string]interface{}{
+		"balance_id": balanceId,
+	}
+	e.add(
+		e.operation.SourceAccount().Address(),
+		history.EffectClaimableBalanceClawedBack,
+		details,
+	)
+	return nil
 }
 
 func setAuthFlagDetails(flagDetails map[string]interface{}, flagPtr *xdr.Uint32, setValue bool) {
