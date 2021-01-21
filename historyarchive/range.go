@@ -31,6 +31,10 @@ func NewCheckpointManager(checkpointFrequency uint32) CheckpointManager {
 	return CheckpointManager{checkpointFrequency}
 }
 
+func (c CheckpointManager) GetCheckpointFrequency() uint32 {
+	return c.checkpointFreq
+}
+
 func (c CheckpointManager) IsCheckpoint(i uint32) bool {
 	return (i+1)%c.checkpointFreq == 0
 }
