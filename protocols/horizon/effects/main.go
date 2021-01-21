@@ -258,15 +258,13 @@ type AccountCreated struct {
 type AccountCredited struct {
 	Base
 	base.Asset
-	Amount     string `json:"amount"`
-	IsClawback *bool  `json:"is_clawback,omitempty"`
+	Amount string `json:"amount"`
 }
 
 type AccountDebited struct {
 	Base
 	base.Asset
-	Amount     string `json:"amount"`
-	IsClawback *bool  `json:"is_clawback,omitempty"`
+	Amount string `json:"amount"`
 }
 
 type AccountThresholdsUpdated struct {

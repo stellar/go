@@ -943,8 +943,7 @@ func (e *effectsWrapper) addIngestTradeEffects(buyer xdr.AccountId, claims []xdr
 func (e *effectsWrapper) addClawbackEffects() error {
 	op := e.operation.operation.Body.MustClawbackOp()
 	details := map[string]interface{}{
-		"amount":      amount.String(op.Amount),
-		"is_clawback": true,
+		"amount": amount.String(op.Amount),
 	}
 	source := e.operation.SourceAccount()
 	addAssetDetails(details, op.Asset.ToAsset(*source), "")
