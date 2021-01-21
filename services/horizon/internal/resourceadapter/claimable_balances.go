@@ -42,7 +42,7 @@ func PopulateClaimableBalance(
 	}
 
 	if xdr.ClaimableBalanceFlags(claimableBalance.Flags).IsClawbackEnabled() {
-		dest.Flags.ClawbackEnabled = true
+		dest.Flags.ClawbackEnabled = xdr.ClaimableBalanceFlags(claimableBalance.Flags).IsClawbackEnabled()
 	}
 
 	lb := hal.LinkBuilder{Base: horizonContext.BaseURL(ctx)}
