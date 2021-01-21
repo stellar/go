@@ -17,14 +17,18 @@ func claimables() {
 		config.HistoryArchiveURLs[0],
 		historyarchive.ConnectOptions{
 			NetworkPassphrase: config.NetworkPassphrase,
-			S3Region:          "eu-west-1",
+			S3Region:          "us-west-1",
 			UnsignedRequests:  false,
 		},
 	)
 	panicIf(err)
 
 	// First, we need to establish a safe fallback in case of any problems
-	// during history archive processing, so we'll set a 30-second timeout.
+	// during the history archive download+processing, so we'll set a 30-second
+	// timeout.
+	//
+	// NOTE: We're using the testnet here, whose archives are much smaller. For
+	//       the pubnet, a 30 *minute* timeout may be more appropriate.
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 

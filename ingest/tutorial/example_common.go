@@ -14,6 +14,8 @@ var (
 		NetworkPassphrase: "Test SDF Network ; September 2015",
 		HistoryArchiveURLs: []string{
 			"https://history.stellar.org/prd/core-testnet/core_testnet_001",
+			"https://history.stellar.org/prd/core-testnet/core_testnet_002",
+			"https://history.stellar.org/prd/core-testnet/core_testnet_003",
 		},
 	}
 )

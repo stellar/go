@@ -60,7 +60,8 @@ func main() {
   defer backend.Close()
 
   // Prepare a single ledger to be ingested,
-  backend.PrepareRange(ledgerbackend.BoundedRange(123456, 123456))
+  err = backend.PrepareRange(ledgerbackend.BoundedRange(123456, 123456))
+  panicIf(err)
 
   // then retrieve it:
   ok, ledger, err := ledgerbackend.GetLedger(123456)
@@ -275,7 +276,6 @@ First thing's first: we need to establish a connection to a history archive.
 		config.HistoryArchiveURLs[0],   // assumes a CaptiveCoreConfig
 		historyarchive.ConnectOptions{
 			NetworkPassphrase: config.NetworkPassphrase,
-			UnsignedRequests:  false,
 		},
 	)
 	panicIf(err)
@@ -296,7 +296,9 @@ Now we can use the history archive to actually read in all of the changes that h
 	panicIf(err)
 ```
 
-By default, checkpoints occur every 64 ledgers (see `historyarchive.ConnectOptions` for changing this). More specifically, given ledger `n`, if `n+1 mod 64 == 0`, then `n` is a checkpoint ledger. This is true above for `n == 123455`.
+In our examples, we refer to the testnet, whose archives are much smaller. When using the pubnet, a 30 *minute* timeout may be more appropriate (depending on system specs): Horizon takes around 15-20 minutes to process pubnet history archives.
+
+By default, checkpoints occur every 64 ledgers (see `historyarchive.ConnectOptions` for changing this). More specifically, given ledger `n`, if `n+1 mod 64 == 0`, then `n` is a checkpoint ledger. Alternatively, this is when `n*64 - 1` for `n = 1, 2, 3, ...` and so on. This is true above for `n == 123455`.
 
 Since history archives store global cumulative state, our `ChangeReader` will report every entry as being "new", reading out a list of *all* ledger entries. We can then process them and establish how many claimable balances have been created in the testnet's lifetime:
 

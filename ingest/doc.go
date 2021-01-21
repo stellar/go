@@ -1,6 +1,6 @@
 /*
 
-The "ingest" package provides primitives for building custom ingestion engines.
+Package ingest provides primitives for building custom ingestion engines.
 
 Very often developers need features that are outside of Horizon's scope. While
 it provides APIs for building the most common apps, it's not possible to add all

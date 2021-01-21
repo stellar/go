@@ -12,7 +12,8 @@ func helloworld() {
 	defer backend.Close()
 
 	// Prepare a single ledger to be ingested,
-	backend.PrepareRange(backends.BoundedRange(123456, 123456))
+	err = backend.PrepareRange(backends.BoundedRange(123456, 123456))
+	panicIf(err)
 
 	// then retrieve it:
 	ok, ledger, err := backend.GetLedger(123456)
