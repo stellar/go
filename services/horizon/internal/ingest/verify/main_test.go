@@ -229,6 +229,7 @@ func (s *StateVerifierTestSuite) TestActualExpectedEntryNotEqualWrite() {
 
 	actualEntry := makeAccountLedgerEntry()
 	actualEntry.Data.Account.Thresholds = [4]byte{1, 1, 1, 0}
+	actualEntry.Normalize()
 
 	expectedEntryBase64, err := xdr.MarshalBase64(expectedEntry)
 	s.Assert().NoError(err)
@@ -280,7 +281,7 @@ func (s *StateVerifierTestSuite) TestVerifyCountersMatch() {
 }
 
 func makeAccountLedgerEntry() xdr.LedgerEntry {
-	return xdr.LedgerEntry{
+	entry := xdr.LedgerEntry{
 		Data: xdr.LedgerEntryData{
 			Type: xdr.LedgerEntryTypeAccount,
 			Account: &xdr.AccountEntry{
@@ -289,10 +290,12 @@ func makeAccountLedgerEntry() xdr.LedgerEntry {
 			},
 		},
 	}
+	entry.Normalize()
+	return entry
 }
 
 func makeOfferLedgerEntry() xdr.LedgerEntry {
-	return xdr.LedgerEntry{
+	entry := xdr.LedgerEntry{
 		Data: xdr.LedgerEntryData{
 			Type: xdr.LedgerEntryTypeOffer,
 			Offer: &xdr.OfferEntry{
@@ -300,4 +303,6 @@ func makeOfferLedgerEntry() xdr.LedgerEntry {
 			},
 		},
 	}
+	entry.Normalize()
+	return entry
 }

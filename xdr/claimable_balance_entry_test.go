@@ -28,16 +28,3 @@ func TestClaimableBalanceEntry_Flags(t *testing.T) {
 
 	assert.Equal(t, xdr.ClaimableBalanceFlagsClaimableBalanceClawbackEnabledFlag, entry.Flags())
 }
-
-func TestNormalizeClaimableBalanceExtension(t *testing.T) {
-	input := xdr.ClaimableBalanceEntryExt{
-		V: 1,
-		V1: &xdr.ClaimableBalanceEntryExtensionV1{
-			Flags: 0,
-		},
-	}
-
-	output := xdr.NormalizeClaimableBalanceExtension(input)
-
-	assert.Equal(t, xdr.ClaimableBalanceEntryExt{V: 0}, output)
-}
