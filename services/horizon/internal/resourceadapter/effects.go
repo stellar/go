@@ -54,7 +54,7 @@ var EffectTypeNames = map[history.EffectType]string{
 	history.EffectSignerSponsorshipCreated:                 "signer_sponsorship_created",
 	history.EffectSignerSponsorshipUpdated:                 "signer_sponsorship_updated",
 	history.EffectSignerSponsorshipRemoved:                 "signer_sponsorship_removed",
-	history.EffectAssetClawedBack:                          "asset_clawed_back",
+	history.EffectClawedBack:                               "clawed_back",
 	history.EffectClaimableBalanceClawedBack:               "claimable_balance_clawed_back",
 }
 
@@ -239,8 +239,8 @@ func NewEffect(
 		e := effects.SignerSponsorshipRemoved{Base: basev}
 		err = row.UnmarshalDetails(&e)
 		result = e
-	case history.EffectAssetClawedBack:
-		e := effects.AssetClawedBack{Base: basev}
+	case history.EffectClawedBack:
+		e := effects.ClawedBack{Base: basev}
 		err = row.UnmarshalDetails(&e)
 		result = e
 	case history.EffectClaimableBalanceClawedBack:

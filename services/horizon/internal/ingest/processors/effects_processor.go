@@ -951,7 +951,7 @@ func (e *effectsWrapper) addClawbackEffects() error {
 	addAssetDetails(details, op.Asset.ToAsset(*source), "")
 	e.add(
 		source.Address(),
-		history.EffectAssetClawedBack,
+		history.EffectClawedBack,
 		details,
 	)
 	return nil

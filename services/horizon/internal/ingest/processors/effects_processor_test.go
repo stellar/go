@@ -1863,7 +1863,7 @@ func TestOperationEffectsClawback(t *testing.T) {
 				"amount":       "0.0000034",
 				"from":         "GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3",
 			},
-			effectType: history.EffectAssetClawedBack,
+			effectType: history.EffectClawedBack,
 			order:      uint32(1),
 		},
 	}
