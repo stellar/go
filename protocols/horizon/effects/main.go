@@ -172,11 +172,8 @@ const (
 	// EffectSignerSponsorshipRemoved occurs when the sponsorship of a signer is removed
 	EffectSignerSponsorshipRemoved EffectType = 74 // from revoke_sponsorship
 
-	// EffectClawedBack occurs when an asset is clawed back
-	EffectClawedBack EffectType = 80 // from clawback
-
 	// EffectClaimableBalanceClawedBack occurs when a claimable balance is clawed back
-	EffectClaimableBalanceClawedBack EffectType = 81 // from clawback_claimable_balance
+	EffectClaimableBalanceClawedBack EffectType = 80 // from clawback_claimable_balance
 
 )
 
@@ -229,7 +226,6 @@ var EffectTypeNames = map[EffectType]string{
 	EffectSignerSponsorshipCreated:                 "signer_sponsorship_created",
 	EffectSignerSponsorshipUpdated:                 "signer_sponsorship_updated",
 	EffectSignerSponsorshipRemoved:                 "signer_sponsorship_removed",
-	EffectClawedBack:                               "clawed_back",
 	EffectClaimableBalanceClawedBack:               "claimable_balance_clawed_back",
 }
 
@@ -262,13 +258,15 @@ type AccountCreated struct {
 type AccountCredited struct {
 	Base
 	base.Asset
-	Amount string `json:"amount"`
+	Amount     string `json:"amount"`
+	IsClawback *bool  `json:"is_clawback,omitempty"`
 }
 
 type AccountDebited struct {
 	Base
 	base.Asset
-	Amount string `json:"amount"`
+	Amount     string `json:"amount"`
+	IsClawback *bool  `json:"is_clawback,omitempty"`
 }
 
 type AccountThresholdsUpdated struct {
@@ -497,13 +495,6 @@ type SignerSponsorshipRemoved struct {
 	Base
 	Signer        string `json:"signer"`
 	FormerSponsor string `json:"former_sponsor"`
-}
-
-type ClawedBack struct {
-	Base
-	base.Asset
-	Amount string `json:"amount"`
-	From   string `json:"from"`
 }
 
 type ClaimableBalanceClawedBack struct {
@@ -804,12 +795,6 @@ func UnmarshalEffect(effectType string, dataString []byte) (effects Effect, err 
 		effects = effect
 	case EffectTypeNames[EffectSignerSponsorshipRemoved]:
 		var effect SignerSponsorshipRemoved
-		if err = json.Unmarshal(dataString, &effect); err != nil {
-			return
-		}
-		effects = effect
-	case EffectTypeNames[EffectClawedBack]:
-		var effect ClawedBack
 		if err = json.Unmarshal(dataString, &effect); err != nil {
 			return
 		}

@@ -1861,10 +1861,23 @@ func TestOperationEffectsClawback(t *testing.T) {
 				"asset_issuer": "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
 				"asset_type":   "credit_alphanum4",
 				"amount":       "0.0000034",
-				"from":         "GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3",
+				"is_clawback":  true,
 			},
-			effectType: history.EffectClawedBack,
+			effectType: history.EffectAccountCredited,
 			order:      uint32(1),
+		},
+		{
+			address:     "GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3",
+			operationID: 4294967297,
+			details: map[string]interface{}{
+				"asset_code":   "COP",
+				"asset_issuer": "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
+				"asset_type":   "credit_alphanum4",
+				"amount":       "0.0000034",
+				"is_clawback":  true,
+			},
+			effectType: history.EffectAccountDebited,
+			order:      uint32(2),
 		},
 	}
 	tt.Equal(expected, effects)
