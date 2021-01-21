@@ -38,6 +38,7 @@ func PopulateAccountEntry(
 	dest.Flags.AuthRequired = account.IsAuthRequired()
 	dest.Flags.AuthRevocable = account.IsAuthRevocable()
 	dest.Flags.AuthImmutable = account.IsAuthImmutable()
+	dest.Flags.AuthClawbackEnabled = account.IsAuthClawbackEnabled()
 
 	dest.Thresholds.LowThreshold = account.ThresholdLow
 	dest.Thresholds.MedThreshold = account.ThresholdMedium
