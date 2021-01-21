@@ -577,11 +577,19 @@ func addClaimableBalanceToStateVerifier(
 			})
 		}
 		claimants = xdr.SortClaimantsByDestination(claimants)
-		cBalance := xdr.ClaimableBalanceEntry{
+		var cBalance = xdr.ClaimableBalanceEntry{
 			BalanceId: row.BalanceID,
 			Claimants: claimants,
 			Asset:     row.Asset,
-			Amount:    xdr.Int64(row.Amount),
+			Amount:    row.Amount,
+		}
+		if row.Flags != 0 {
+			cBalance.Ext = xdr.ClaimableBalanceEntryExt{
+				V: 1,
+				V1: &xdr.ClaimableBalanceEntryExtensionV1{
+					Flags: xdr.Uint32(row.Flags),
+				},
+			}
 		}
 		entry := xdr.LedgerEntry{
 			LastModifiedLedgerSeq: xdr.Uint32(row.LastModifiedLedger),
@@ -691,6 +699,7 @@ func transformEntry(entry xdr.LedgerEntry) (bool, xdr.LedgerEntry) {
 	case xdr.LedgerEntryTypeClaimableBalance:
 		cBalance := entry.Data.ClaimableBalance
 		cBalance.Claimants = xdr.SortClaimantsByDestination(cBalance.Claimants)
+		cBalance.Ext = xdr.NormalizeClaimableBalanceExtension(cBalance.Ext)
 
 		return false, entry
 	default:

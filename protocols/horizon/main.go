@@ -658,20 +658,26 @@ type PathsPage struct {
 	} `json:"_embedded"`
 }
 
+// ClaimableBalanceFlags represents the state of a claimable balance's flags
+type ClaimableBalanceFlags struct {
+	ClawbackEnabled bool `json:"clawback_enabled"`
+}
+
 // ClaimableBalance represents a claimable balance
 type ClaimableBalance struct {
 	Links struct {
 		Self hal.Link `json:"self"`
 	} `json:"_links"`
 
-	BalanceID          string     `json:"id"`
-	Asset              string     `json:"asset"`
-	Amount             string     `json:"amount"`
-	Sponsor            string     `json:"sponsor,omitempty"`
-	LastModifiedLedger uint32     `json:"last_modified_ledger"`
-	LastModifiedTime   *time.Time `json:"last_modified_time"`
-	Claimants          []Claimant `json:"claimants"`
-	PT                 string     `json:"paging_token"`
+	BalanceID          string                `json:"id"`
+	Asset              string                `json:"asset"`
+	Amount             string                `json:"amount"`
+	Sponsor            string                `json:"sponsor,omitempty"`
+	LastModifiedLedger uint32                `json:"last_modified_ledger"`
+	LastModifiedTime   *time.Time            `json:"last_modified_time"`
+	Claimants          []Claimant            `json:"claimants"`
+	Flags              ClaimableBalanceFlags `json:"flags"`
+	PT                 string                `json:"paging_token"`
 }
 
 type ClaimableBalances struct {

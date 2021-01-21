@@ -35,6 +35,7 @@ func TestPopulateClaimableBalance(t *testing.T) {
 			},
 		},
 		LastModifiedLedger: 123,
+		Flags:              uint32(xdr.ClaimableBalanceFlagsClaimableBalanceClawbackEnabledFlag),
 	}
 
 	err := PopulateClaimableBalance(ctx, &resource, claimableBalance, nil)
@@ -48,6 +49,7 @@ func TestPopulateClaimableBalance(t *testing.T) {
 	tt.Len(resource.Claimants, 1)
 	tt.Equal("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML", resource.Claimants[0].Destination)
 	tt.Equal("123-000000000102030000000000000000000000000000000000000000000000000000000000", resource.PagingToken())
+	tt.True(resource.Flags.ClawbackEnabled)
 
 	links, err := json.Marshal(resource.Links)
 	tt.NoError(err)

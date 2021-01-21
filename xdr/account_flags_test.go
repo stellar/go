@@ -56,18 +56,18 @@ func TestIsAuthImmutable(t *testing.T) {
 	tt.False(flag.IsAuthImmutable())
 }
 
-func TestIsClawbackEnabled(t *testing.T) {
+func TestIsAuthClawbackEnabled(t *testing.T) {
 	tt := assert.New(t)
 
 	flag := xdr.AccountFlags(8)
-	tt.True(flag.IsClawbackEnabled())
+	tt.True(flag.IsAuthClawbackEnabled())
 
 	flag = xdr.AccountFlags(0)
-	tt.False(flag.IsClawbackEnabled())
+	tt.False(flag.IsAuthClawbackEnabled())
 
 	flag = xdr.AccountFlags(1)
-	tt.False(flag.IsClawbackEnabled())
+	tt.False(flag.IsAuthClawbackEnabled())
 
 	flag = xdr.AccountFlags(2)
-	tt.False(flag.IsClawbackEnabled())
+	tt.False(flag.IsAuthClawbackEnabled())
 }
