@@ -71,6 +71,11 @@ const (
 )
 
 // NewCheckpointChangeReader constructs a new CheckpointChangeReader instance.
+//
+// The ledger sequence must be a checkpoint ledger. By default (see
+// `historyarchive.ConnectOptions.CheckpointFrequency` for configuring this),
+// its next sequence number would have to be a multiple of 64, e.g.
+// sequence=100031 is a checkpoint ledger, since: (100031+1) mod 64 == 0
 func NewCheckpointChangeReader(
 	ctx context.Context,
 	archive historyarchive.ArchiveInterface,
