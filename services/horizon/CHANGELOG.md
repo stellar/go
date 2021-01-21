@@ -7,9 +7,9 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## v1.14.0
 
-* Add `--checkpoint-frequency` flag to configure how many ledgers span a history archive checkpoint ([#3273](https://github.com/stellar/go/pull/3273)). This is useful in the context of creating standalone Stellar networks in [integration tests](internal/docs/captive_core.md#private-networks).
-* Expose the timestamp of the most recently ingested ledger in the root resource response and in the `/metrics` response ([#3281](https://github.com/stellar/go/pull/3281))
 * Fix bug `/fee_stats` endpoint. The endpoint was not including the additional base fee charge for fee bump transactions ([#3354](https://github.com/stellar/go/pull/3354))
+* Expose the timestamp of the most recently ingested ledger in the root resource response and in the `/metrics` response ([#3281](https://github.com/stellar/go/pull/3281))
+* Add `--checkpoint-frequency` flag to configure how many ledgers span a history archive checkpoint ([#3273](https://github.com/stellar/go/pull/3273)). This is useful in the context of creating standalone Stellar networks in [integration tests](internal/docs/captive_core.md#private-networks).
 
 ## v1.13.1
 
