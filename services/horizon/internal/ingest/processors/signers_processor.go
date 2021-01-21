@@ -30,7 +30,7 @@ func NewSignersProcessor(
 
 func (p *SignersProcessor) reset() {
 	p.batch = p.signersQ.NewAccountSignersBatchInsertBuilder(maxBatchSize)
-	p.cache = ingest.NewLedgerEntryChangeCache()
+	p.cache = ingest.NewChangeCompactor()
 }
 
 func (p *SignersProcessor) ProcessChange(change ingest.Change) error {
