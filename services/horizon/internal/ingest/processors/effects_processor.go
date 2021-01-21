@@ -788,15 +788,14 @@ func (e *effectsWrapper) addBumpSequenceEffects() error {
 			details := map[string]interface{}{"new_seq": afterAccount.SeqNum}
 			e.add(source.Address(), history.EffectSequenceBumped, details)
 		}
-
 		break
 	}
 
 	return nil
 }
 
-func setClaimableBalanceFlagDetails(details map[string]interface{}, flags xdr.Uint32) {
-	if xdr.ClaimableBalanceFlags(flags)&xdr.ClaimableBalanceFlagsClaimableBalanceClawbackEnabledFlag != 0 {
+func setClaimableBalanceFlagDetails(details map[string]interface{}, flags xdr.ClaimableBalanceFlags) {
+	if flags.IsClawbackEnabled() {
 		details["claimable_balance_clawback_enabled_flag"] = true
 		return
 	}
@@ -866,7 +865,6 @@ func (e *effectsWrapper) addClaimClaimableBalanceEffects(changes []ingest.Change
 
 	var cBalance xdr.ClaimableBalanceEntry
 	found := false
-	flags := xdr.Uint32(0)
 	for _, change := range changes {
 		if change.Type != xdr.LedgerEntryTypeClaimableBalance {
 			continue
@@ -878,7 +876,6 @@ func (e *effectsWrapper) addClaimClaimableBalanceEffects(changes []ingest.Change
 			if err != nil {
 				return fmt.Errorf("Invalid balanceId in meta changes for op: %d", e.operation.index)
 			}
-			flags = cBalance.Flags()
 
 			if preBalanceID == balanceID {
 				found = true
@@ -896,7 +893,7 @@ func (e *effectsWrapper) addClaimClaimableBalanceEffects(changes []ingest.Change
 		"balance_id": balanceID,
 		"asset":      cBalance.Asset.StringCanonical(),
 	}
-	setClaimableBalanceFlagDetails(details, flags)
+	setClaimableBalanceFlagDetails(details, cBalance.Flags())
 	e.add(
 		e.operation.SourceAccount().Address(),
 		history.EffectClaimableBalanceClaimed,

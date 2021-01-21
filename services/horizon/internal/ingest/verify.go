@@ -699,6 +699,7 @@ func transformEntry(entry xdr.LedgerEntry) (bool, xdr.LedgerEntry) {
 	case xdr.LedgerEntryTypeClaimableBalance:
 		cBalance := entry.Data.ClaimableBalance
 		cBalance.Claimants = xdr.SortClaimantsByDestination(cBalance.Claimants)
+		cBalance.Ext = xdr.NormalizeClaimableBalanceExtension(cBalance.Ext)
 
 		return false, entry
 	default:

@@ -660,7 +660,7 @@ type PathsPage struct {
 
 // ClaimableBalanceFlags represents the state of a claimable balance's flags
 type ClaimableBalanceFlags struct {
-	ClaimableBalanceClawbackEnabled bool `json:"claimable_balance_clawback_enabled"`
+	ClawbackEnabled bool `json:"clawback_enabled"`
 }
 
 // ClaimableBalance represents a claimable balance
