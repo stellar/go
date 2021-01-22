@@ -36,7 +36,7 @@ func NewAssetStatsProcessor(
 }
 
 func (p *AssetStatsProcessor) reset() {
-	p.cache = ingest.NewLedgerEntryChangeCache()
+	p.cache = ingest.NewChangeCompactor()
 	p.assetStatSet = AssetStatSet{}
 }
 

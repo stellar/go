@@ -20,7 +20,7 @@ func NewAccountDataProcessor(dataQ history.QData) *AccountDataProcessor {
 }
 
 func (p *AccountDataProcessor) reset() {
-	p.cache = ingest.NewLedgerEntryChangeCache()
+	p.cache = ingest.NewChangeCompactor()
 }
 
 func (p *AccountDataProcessor) ProcessChange(change ingest.Change) error {
