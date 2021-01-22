@@ -52,8 +52,8 @@ type ChangeCompactor struct {
 	mutex sync.Mutex
 }
 
-// NewLedgerEntryChangeCache returns a new ChangeCompactor.
-func NewLedgerEntryChangeCache() *ChangeCompactor {
+// NewChangeCompactor returns a new ChangeCompactor.
+func NewChangeCompactor() *ChangeCompactor {
 	return &ChangeCompactor{
 		cache: make(map[string]Change),
 	}
