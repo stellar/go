@@ -42,6 +42,8 @@ type StatsLedgerTransactionProcessorResults struct {
 	OperationsBeginSponsoringFutureReserves int64
 	OperationsEndSponsoringFutureReserves   int64
 	OperationsRevokeSponsorship             int64
+	OperationsClawback                      int64
+	OperationsClawbackClaimableBalance      int64
 }
 
 func (p *StatsLedgerTransactionProcessor) ProcessTransaction(transaction ingest.LedgerTransaction) error {
@@ -98,6 +100,10 @@ func (p *StatsLedgerTransactionProcessor) ProcessTransaction(transaction ingest.
 			p.results.OperationsEndSponsoringFutureReserves++
 		case xdr.OperationTypeRevokeSponsorship:
 			p.results.OperationsRevokeSponsorship++
+		case xdr.OperationTypeClawback:
+			p.results.OperationsClawback++
+		case xdr.OperationTypeClawbackClaimableBalance:
+			p.results.OperationsClawbackClaimableBalance++
 		default:
 			panic(fmt.Sprintf("Unkown operation type: %d", op.Body.Type))
 		}
@@ -139,6 +145,8 @@ func (stats *StatsLedgerTransactionProcessorResults) Map() map[string]interface{
 		"stats_operations_begin_sponsoring_future_reserves": stats.OperationsBeginSponsoringFutureReserves,
 		"stats_operations_end_sponsoring_future_reserves":   stats.OperationsEndSponsoringFutureReserves,
 		"stats_operations_revoke_sponsorship":               stats.OperationsRevokeSponsorship,
+		"stats_operations_clawback":                         stats.OperationsClawback,
+		"stats_operations_clawback_claimable_balance":       stats.OperationsClawbackClaimableBalance,
 	}
 }
 
