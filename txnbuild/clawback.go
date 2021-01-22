@@ -25,9 +25,12 @@ func (cb *Clawback) BuildXDR() (xdr.Operation, error) {
 		return xdr.Operation{}, errors.Wrap(err, "failed to set from address")
 	}
 
+	if cb.Asset == nil {
+		return xdr.Operation{}, errors.New("you must specify an asset for the clawback")
+	}
 	// Validate this is an issued asset
 	if cb.Asset.IsNative() {
-		return xdr.Operation{}, errors.New("clawbacks don't apply to native (XLM) asset")
+		return xdr.Operation{}, errors.New("clawbacks don't support the native (XLM) asset")
 	}
 
 	xdrAmount, err := amount.Parse(cb.Amount)
@@ -35,10 +38,7 @@ func (cb *Clawback) BuildXDR() (xdr.Operation, error) {
 		return xdr.Operation{}, errors.Wrap(err, "failed to parse amount")
 	}
 
-	if cb.Asset == nil {
-		return xdr.Operation{}, errors.New("you must specify an asset for the clawback")
-	}
-	// Clawback has a special asset type - map to it
+	// Clawback uses an asset code, map to it
 	xdrAsset := xdr.Asset{}
 
 	assetCode, err := xdrAsset.ToAssetCode(cb.Asset.GetCode())
