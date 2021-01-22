@@ -409,7 +409,7 @@ jobs:
 
   publish_state_diff_docker_image:
     docker:
-      - image: circleci/buildpack-deps:stretch
+      - image: docker:18.04-git
     steps:
       - checkout
       - setup_remote_docker
@@ -423,7 +423,7 @@ jobs:
 
   publish_horizon_docker_image:
     docker:
-      - image: circleci/buildpack-deps:stretch
+      - image: docker:18.04-git
     steps:
       - checkout
       - setup_remote_docker
@@ -439,7 +439,7 @@ jobs:
 
   publish_latest_horizon_docker_image:
     docker:
-      - image: circleci/buildpack-deps:stretch
+      - image: docker:18.04-git
     steps:
       - checkout
       - setup_remote_docker
@@ -452,7 +452,7 @@ jobs:
 
   publish_commit_hash_horizon_docker_image:
     docker:
-      - image: circleci/buildpack-deps:stretch
+      - image: docker:18.04-git
     steps:
       - checkout
       - setup_remote_docker
