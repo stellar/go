@@ -9,6 +9,9 @@ file.  This project adheres to [Semantic Versioning](http://semver.org/).
 
 * `AllowTrustOpAsset` was renamed to `AssetCode`, `{Must}NewAllowTrustAsset` was renamed to `{Must}NewAssetCodeFromString`.
 
+### New features
+
+Add support for Stellar Protocol 16 (CAP35): `Clawback` operations.
 
 ## [v6.0.0](https://github.com/stellar/go/releases/tag/horizonclient-v6.0.0) - 2021-02-22
 
