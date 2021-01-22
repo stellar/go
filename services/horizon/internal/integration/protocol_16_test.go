@@ -22,7 +22,7 @@ func TestProtocol16Basics(t *testing.T) {
 	t.Run("Sanity", func(t *testing.T) {
 		root, err := itest.Client().Root()
 		tt.NoError(err)
-		tt.Equal(int32(16), root.CoreSupportedProtocolVersion)
+		tt.LessOrEqual(int32(16), root.CoreSupportedProtocolVersion)
 		tt.Equal(int32(16), root.CurrentProtocolVersion)
 
 		// Submit a simple tx
