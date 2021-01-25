@@ -10,7 +10,9 @@ services:
       - "5641:5641"
     command: ["-p", "5641"]
   core:
-    image: stellar/stellar-core
+    # TODO: update to the official image when ready
+    # The sources to build this image are at https://github.com/2opremio/docker-stellar-core/tree/cap35
+    image: 2opremio/stellar-core:cap35
     depends_on:
       - core-postgres
     restart: on-failure

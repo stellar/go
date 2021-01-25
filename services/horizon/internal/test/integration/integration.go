@@ -207,10 +207,8 @@ of accounts, subscribe to event streams and more.`,
 		"--captive-core-config-append-path",
 		captiveCoreConfigPath,
 
-		// disable http port to not clash with the http port of the
-		// non-captive stellar core instance running in docker
 		"--captive-core-http-port",
-		"0",
+		"21626",
 
 		"--enable-captive-core-ingestion=" + strconv.FormatBool(len(captiveCoreBinaryPath) > 0),
 
