@@ -71,11 +71,29 @@ const (
 )
 
 // NewCheckpointChangeReader constructs a new CheckpointChangeReader instance.
+//
+// The ledger sequence must be a checkpoint ledger. By default (see
+// `historyarchive.ConnectOptions.CheckpointFrequency` for configuring this),
+// its next sequence number would have to be a multiple of 64, e.g.
+// sequence=100031 is a checkpoint ledger, since: (100031+1) mod 64 == 0
 func NewCheckpointChangeReader(
 	ctx context.Context,
 	archive historyarchive.ArchiveInterface,
 	sequence uint32,
 ) (*CheckpointChangeReader, error) {
+	manager := archive.GetCheckpointManager()
+
+	// The nth ledger is a checkpoint ledger iff: n+1 mod f == 0, where f is the
+	// checkpoint frequency (64 by default).
+	if !manager.IsCheckpoint(sequence) {
+		return nil, errors.Errorf(
+			"%d is not a checkpoint ledger, try %d or %d "+
+				"(in general, try n where n+1 mod %d == 0)",
+			sequence, manager.PrevCheckpoint(sequence),
+			manager.NextCheckpoint(sequence),
+			manager.GetCheckpointFrequency())
+	}
+
 	has, err := archive.GetCheckpointHAS(sequence)
 	if err != nil {
 		return nil, errors.Wrapf(err, "unable to get checkpoint HAS at ledger sequence %d", sequence)

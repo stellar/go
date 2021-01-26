@@ -20,7 +20,7 @@ func NewTrustLinesProcessor(trustLinesQ history.QTrustLines) *TrustLinesProcesso
 }
 
 func (p *TrustLinesProcessor) reset() {
-	p.cache = ingest.NewLedgerEntryChangeCache()
+	p.cache = ingest.NewChangeCompactor()
 }
 
 func (p *TrustLinesProcessor) ProcessChange(change ingest.Change) error {
