@@ -1,8 +1,7 @@
 package processors
 
 import (
-	ingesterrors "github.com/stellar/go/ingest/errors"
-	"github.com/stellar/go/ingest/io"
+	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
@@ -11,7 +10,7 @@ import (
 type TrustLinesProcessor struct {
 	trustLinesQ history.QTrustLines
 
-	cache *io.LedgerEntryChangeCache
+	cache *ingest.ChangeCompactor
 }
 
 func NewTrustLinesProcessor(trustLinesQ history.QTrustLines) *TrustLinesProcessor {
@@ -21,10 +20,10 @@ func NewTrustLinesProcessor(trustLinesQ history.QTrustLines) *TrustLinesProcesso
 }
 
 func (p *TrustLinesProcessor) reset() {
-	p.cache = io.NewLedgerEntryChangeCache()
+	p.cache = ingest.NewChangeCompactor()
 }
 
-func (p *TrustLinesProcessor) ProcessChange(change io.Change) error {
+func (p *TrustLinesProcessor) ProcessChange(change ingest.Change) error {
 	if change.Type != xdr.LedgerEntryTypeTrustline {
 		return nil
 	}
@@ -73,7 +72,7 @@ func (p *TrustLinesProcessor) Commit() error {
 			}
 
 			if rowsAffected != 1 {
-				return ingesterrors.NewStateError(errors.Errorf(
+				return ingest.NewStateError(errors.Errorf(
 					"%d rows affected when %s trustline: %s %s",
 					rowsAffected,
 					action,
