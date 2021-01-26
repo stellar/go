@@ -48,7 +48,8 @@ enum OperationType
     END_SPONSORING_FUTURE_RESERVES = 17,
     REVOKE_SPONSORSHIP = 18,
     CLAWBACK = 19,
-    CLAWBACK_CLAIMABLE_BALANCE = 20
+    CLAWBACK_CLAIMABLE_BALANCE = 20,
+    SET_TRUST_LINE_FLAGS = 21
 };
 
 /* CreateAccount
@@ -391,6 +392,24 @@ struct ClawbackClaimableBalanceOp
     ClaimableBalanceID balanceID;
 };
 
+/* SetTrustLineFlagsOp
+
+   Updates the flags of an existing trust line.
+   This is called by the issuer of the related asset.
+
+   Threshold: low
+
+   Result: SetTrustLineFlagsResult
+*/
+struct SetTrustLineFlagsOp
+{
+    AccountID trustor;
+    AssetCode asset;
+
+    uint32* clearFlags; // which flags to clear
+    uint32* setFlags;   // which flags to set
+};
+
 /* An operation is the lowest unit of work that a transaction does */
 struct Operation
 {
@@ -443,6 +462,8 @@ struct Operation
         ClawbackOp clawbackOp;
     case CLAWBACK_CLAIMABLE_BALANCE:
         ClawbackClaimableBalanceOp clawbackClaimableBalanceOp;
+    case SET_TRUST_LINE_FLAGS:
+        SetTrustLineFlagsOp setTrustLineFlagsOp;
     }
     body;
 };
@@ -1181,6 +1202,28 @@ default:
     void;
 };
 
+/******* SetTrustLineFlags Result ********/
+
+enum SetTrustLineFlagsResultCode
+{
+    // codes considered as "success" for the operation
+    SET_TRUST_LINE_FLAGS_SUCCESS = 0,
+
+    // codes considered as "failure" for the operation
+    SET_TRUST_LINE_FLAGS_MALFORMED = -1,
+    SET_TRUST_LINE_FLAGS_NO_TRUST_LINE = -2,
+    SET_TRUST_LINE_FLAGS_CANT_REVOKE = -3,
+    SET_TRUST_LINE_FLAGS_INVALID_STATE = -4
+};
+
+union SetTrustLineFlagsResult switch (SetTrustLineFlagsResultCode code)
+{
+case SET_TRUST_LINE_FLAGS_SUCCESS:
+    void;
+default:
+    void;
+};
+
 /* High level Operation Result */
 enum OperationResultCode
 {
@@ -1241,6 +1284,8 @@ case opINNER:
         ClawbackResult clawbackResult;
     case CLAWBACK_CLAIMABLE_BALANCE:
         ClawbackClaimableBalanceResult clawbackClaimableBalanceResult;
+    case SET_TRUST_LINE_FLAGS:
+        SetTrustLineFlagsResult setTrustLineFlagsResult;
     }
     tr;
 default:
