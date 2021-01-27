@@ -146,14 +146,15 @@ func NewCaptive(config CaptiveCoreConfig) (*CaptiveStellarCore, error) {
 	var cancel context.CancelFunc
 	config.Context, cancel = context.WithCancel(parentCtx)
 
-	archive, err := historyarchive.Connect(
-		config.HistoryArchiveURLs[0],
+	archive, err := historyarchive.ConnectAny(
+		config.HistoryArchiveURLs,
 		historyarchive.ConnectOptions{
 			NetworkPassphrase:   config.NetworkPassphrase,
 			CheckpointFrequency: config.CheckpointFrequency,
 			Context:             config.Context,
 		},
 	)
+
 	if err != nil {
 		cancel()
 		return nil, errors.Wrap(err, "error connecting to history archive")

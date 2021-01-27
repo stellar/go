@@ -13,8 +13,8 @@ import (
 
 func claimables() {
 	// Open a history archive using our existing configuration details.
-	historyArchive, err := historyarchive.Connect(
-		config.HistoryArchiveURLs[0],
+	historyArchive, err := historyarchive.ConnectAny(
+		config.HistoryArchiveURLs,
 		historyarchive.ConnectOptions{
 			NetworkPassphrase: config.NetworkPassphrase,
 			S3Region:          "us-west-1",
