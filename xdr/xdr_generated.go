@@ -1575,9 +1575,15 @@ var (
 
 // MaskAccountFlags is an XDR Const defines as:
 //
-//   const MASK_ACCOUNT_FLAGS = 0xF;
+//   const MASK_ACCOUNT_FLAGS = 0x7;
 //
-const MaskAccountFlags = 0xF
+const MaskAccountFlags = 0x7
+
+// MaskAccountFlagsV16 is an XDR Const defines as:
+//
+//   const MASK_ACCOUNT_FLAGS_V16 = 0xF;
+//
+const MaskAccountFlagsV16 = 0xF
 
 // MaxSigners is an XDR Const defines as:
 //
@@ -8561,7 +8567,8 @@ var (
 //        END_SPONSORING_FUTURE_RESERVES = 17,
 //        REVOKE_SPONSORSHIP = 18,
 //        CLAWBACK = 19,
-//        CLAWBACK_CLAIMABLE_BALANCE = 20
+//        CLAWBACK_CLAIMABLE_BALANCE = 20,
+//        SET_TRUST_LINE_FLAGS = 21
 //    };
 //
 type OperationType int32
@@ -8588,6 +8595,7 @@ const (
 	OperationTypeRevokeSponsorship             OperationType = 18
 	OperationTypeClawback                      OperationType = 19
 	OperationTypeClawbackClaimableBalance      OperationType = 20
+	OperationTypeSetTrustLineFlags             OperationType = 21
 )
 
 var operationTypeMap = map[int32]string{
@@ -8612,6 +8620,7 @@ var operationTypeMap = map[int32]string{
 	18: "OperationTypeRevokeSponsorship",
 	19: "OperationTypeClawback",
 	20: "OperationTypeClawbackClaimableBalance",
+	21: "OperationTypeSetTrustLineFlags",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
@@ -9453,6 +9462,42 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ClawbackClaimableBalanceOp)(nil)
 )
 
+// SetTrustLineFlagsOp is an XDR Struct defines as:
+//
+//   struct SetTrustLineFlagsOp
+//    {
+//        AccountID trustor;
+//        AssetCode asset;
+//
+//        uint32* clearFlags; // which flags to clear
+//        uint32* setFlags;   // which flags to set
+//    };
+//
+type SetTrustLineFlagsOp struct {
+	Trustor    AccountId
+	Asset      AssetCode
+	ClearFlags *Uint32
+	SetFlags   *Uint32
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s SetTrustLineFlagsOp) MarshalBinary() ([]byte, error) {
+	b := new(bytes.Buffer)
+	_, err := Marshal(b, s)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *SetTrustLineFlagsOp) UnmarshalBinary(inp []byte) error {
+	_, err := Unmarshal(bytes.NewReader(inp), s)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*SetTrustLineFlagsOp)(nil)
+	_ encoding.BinaryUnmarshaler = (*SetTrustLineFlagsOp)(nil)
+)
+
 // OperationBody is an XDR NestedUnion defines as:
 //
 //   union switch (OperationType type)
@@ -9499,6 +9544,8 @@ var (
 //            ClawbackOp clawbackOp;
 //        case CLAWBACK_CLAIMABLE_BALANCE:
 //            ClawbackClaimableBalanceOp clawbackClaimableBalanceOp;
+//        case SET_TRUST_LINE_FLAGS:
+//            SetTrustLineFlagsOp setTrustLineFlagsOp;
 //        }
 //
 type OperationBody struct {
@@ -9522,6 +9569,7 @@ type OperationBody struct {
 	RevokeSponsorshipOp             *RevokeSponsorshipOp
 	ClawbackOp                      *ClawbackOp
 	ClawbackClaimableBalanceOp      *ClawbackClaimableBalanceOp
+	SetTrustLineFlagsOp             *SetTrustLineFlagsOp
 }
 
 // SwitchFieldName returns the field name in which this union's
@@ -9576,6 +9624,8 @@ func (u OperationBody) ArmForSwitch(sw int32) (string, bool) {
 		return "ClawbackOp", true
 	case OperationTypeClawbackClaimableBalance:
 		return "ClawbackClaimableBalanceOp", true
+	case OperationTypeSetTrustLineFlags:
+		return "SetTrustLineFlagsOp", true
 	}
 	return "-", false
 }
@@ -9721,6 +9771,13 @@ func NewOperationBody(aType OperationType, value interface{}) (result OperationB
 			return
 		}
 		result.ClawbackClaimableBalanceOp = &tv
+	case OperationTypeSetTrustLineFlags:
+		tv, ok := value.(SetTrustLineFlagsOp)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be SetTrustLineFlagsOp")
+			return
+		}
+		result.SetTrustLineFlagsOp = &tv
 	}
 	return
 }
@@ -10200,6 +10257,31 @@ func (u OperationBody) GetClawbackClaimableBalanceOp() (result ClawbackClaimable
 	return
 }
 
+// MustSetTrustLineFlagsOp retrieves the SetTrustLineFlagsOp value from the union,
+// panicing if the value is not set.
+func (u OperationBody) MustSetTrustLineFlagsOp() SetTrustLineFlagsOp {
+	val, ok := u.GetSetTrustLineFlagsOp()
+
+	if !ok {
+		panic("arm SetTrustLineFlagsOp is not set")
+	}
+
+	return val
+}
+
+// GetSetTrustLineFlagsOp retrieves the SetTrustLineFlagsOp value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u OperationBody) GetSetTrustLineFlagsOp() (result SetTrustLineFlagsOp, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "SetTrustLineFlagsOp" {
+		result = *u.SetTrustLineFlagsOp
+		ok = true
+	}
+
+	return
+}
+
 // MarshalBinary implements encoding.BinaryMarshaler.
 func (s OperationBody) MarshalBinary() ([]byte, error) {
 	b := new(bytes.Buffer)
@@ -10271,6 +10353,8 @@ var (
 //            ClawbackOp clawbackOp;
 //        case CLAWBACK_CLAIMABLE_BALANCE:
 //            ClawbackClaimableBalanceOp clawbackClaimableBalanceOp;
+//        case SET_TRUST_LINE_FLAGS:
+//            SetTrustLineFlagsOp setTrustLineFlagsOp;
 //        }
 //        body;
 //    };
@@ -14837,6 +14921,130 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ClawbackClaimableBalanceResult)(nil)
 )
 
+// SetTrustLineFlagsResultCode is an XDR Enum defines as:
+//
+//   enum SetTrustLineFlagsResultCode
+//    {
+//        // codes considered as "success" for the operation
+//        SET_TRUST_LINE_FLAGS_SUCCESS = 0,
+//
+//        // codes considered as "failure" for the operation
+//        SET_TRUST_LINE_FLAGS_MALFORMED = -1,
+//        SET_TRUST_LINE_FLAGS_NO_TRUST_LINE = -2,
+//        SET_TRUST_LINE_FLAGS_CANT_REVOKE = -3,
+//        SET_TRUST_LINE_FLAGS_INVALID_STATE = -4
+//    };
+//
+type SetTrustLineFlagsResultCode int32
+
+const (
+	SetTrustLineFlagsResultCodeSetTrustLineFlagsSuccess      SetTrustLineFlagsResultCode = 0
+	SetTrustLineFlagsResultCodeSetTrustLineFlagsMalformed    SetTrustLineFlagsResultCode = -1
+	SetTrustLineFlagsResultCodeSetTrustLineFlagsNoTrustLine  SetTrustLineFlagsResultCode = -2
+	SetTrustLineFlagsResultCodeSetTrustLineFlagsCantRevoke   SetTrustLineFlagsResultCode = -3
+	SetTrustLineFlagsResultCodeSetTrustLineFlagsInvalidState SetTrustLineFlagsResultCode = -4
+)
+
+var setTrustLineFlagsResultCodeMap = map[int32]string{
+	0:  "SetTrustLineFlagsResultCodeSetTrustLineFlagsSuccess",
+	-1: "SetTrustLineFlagsResultCodeSetTrustLineFlagsMalformed",
+	-2: "SetTrustLineFlagsResultCodeSetTrustLineFlagsNoTrustLine",
+	-3: "SetTrustLineFlagsResultCodeSetTrustLineFlagsCantRevoke",
+	-4: "SetTrustLineFlagsResultCodeSetTrustLineFlagsInvalidState",
+}
+
+// ValidEnum validates a proposed value for this enum.  Implements
+// the Enum interface for SetTrustLineFlagsResultCode
+func (e SetTrustLineFlagsResultCode) ValidEnum(v int32) bool {
+	_, ok := setTrustLineFlagsResultCodeMap[v]
+	return ok
+}
+
+// String returns the name of `e`
+func (e SetTrustLineFlagsResultCode) String() string {
+	name, _ := setTrustLineFlagsResultCodeMap[int32(e)]
+	return name
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s SetTrustLineFlagsResultCode) MarshalBinary() ([]byte, error) {
+	b := new(bytes.Buffer)
+	_, err := Marshal(b, s)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *SetTrustLineFlagsResultCode) UnmarshalBinary(inp []byte) error {
+	_, err := Unmarshal(bytes.NewReader(inp), s)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*SetTrustLineFlagsResultCode)(nil)
+	_ encoding.BinaryUnmarshaler = (*SetTrustLineFlagsResultCode)(nil)
+)
+
+// SetTrustLineFlagsResult is an XDR Union defines as:
+//
+//   union SetTrustLineFlagsResult switch (SetTrustLineFlagsResultCode code)
+//    {
+//    case SET_TRUST_LINE_FLAGS_SUCCESS:
+//        void;
+//    default:
+//        void;
+//    };
+//
+type SetTrustLineFlagsResult struct {
+	Code SetTrustLineFlagsResultCode
+}
+
+// SwitchFieldName returns the field name in which this union's
+// discriminant is stored
+func (u SetTrustLineFlagsResult) SwitchFieldName() string {
+	return "Code"
+}
+
+// ArmForSwitch returns which field name should be used for storing
+// the value for an instance of SetTrustLineFlagsResult
+func (u SetTrustLineFlagsResult) ArmForSwitch(sw int32) (string, bool) {
+	switch SetTrustLineFlagsResultCode(sw) {
+	case SetTrustLineFlagsResultCodeSetTrustLineFlagsSuccess:
+		return "", true
+	default:
+		return "", true
+	}
+}
+
+// NewSetTrustLineFlagsResult creates a new  SetTrustLineFlagsResult.
+func NewSetTrustLineFlagsResult(code SetTrustLineFlagsResultCode, value interface{}) (result SetTrustLineFlagsResult, err error) {
+	result.Code = code
+	switch SetTrustLineFlagsResultCode(code) {
+	case SetTrustLineFlagsResultCodeSetTrustLineFlagsSuccess:
+		// void
+	default:
+		// void
+	}
+	return
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s SetTrustLineFlagsResult) MarshalBinary() ([]byte, error) {
+	b := new(bytes.Buffer)
+	_, err := Marshal(b, s)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *SetTrustLineFlagsResult) UnmarshalBinary(inp []byte) error {
+	_, err := Unmarshal(bytes.NewReader(inp), s)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*SetTrustLineFlagsResult)(nil)
+	_ encoding.BinaryUnmarshaler = (*SetTrustLineFlagsResult)(nil)
+)
+
 // OperationResultCode is an XDR Enum defines as:
 //
 //   enum OperationResultCode
@@ -14950,6 +15158,8 @@ var (
 //            ClawbackResult clawbackResult;
 //        case CLAWBACK_CLAIMABLE_BALANCE:
 //            ClawbackClaimableBalanceResult clawbackClaimableBalanceResult;
+//        case SET_TRUST_LINE_FLAGS:
+//            SetTrustLineFlagsResult setTrustLineFlagsResult;
 //        }
 //
 type OperationResultTr struct {
@@ -14975,6 +15185,7 @@ type OperationResultTr struct {
 	RevokeSponsorshipResult             *RevokeSponsorshipResult
 	ClawbackResult                      *ClawbackResult
 	ClawbackClaimableBalanceResult      *ClawbackClaimableBalanceResult
+	SetTrustLineFlagsResult             *SetTrustLineFlagsResult
 }
 
 // SwitchFieldName returns the field name in which this union's
@@ -15029,6 +15240,8 @@ func (u OperationResultTr) ArmForSwitch(sw int32) (string, bool) {
 		return "ClawbackResult", true
 	case OperationTypeClawbackClaimableBalance:
 		return "ClawbackClaimableBalanceResult", true
+	case OperationTypeSetTrustLineFlags:
+		return "SetTrustLineFlagsResult", true
 	}
 	return "-", false
 }
@@ -15184,6 +15397,13 @@ func NewOperationResultTr(aType OperationType, value interface{}) (result Operat
 			return
 		}
 		result.ClawbackClaimableBalanceResult = &tv
+	case OperationTypeSetTrustLineFlags:
+		tv, ok := value.(SetTrustLineFlagsResult)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be SetTrustLineFlagsResult")
+			return
+		}
+		result.SetTrustLineFlagsResult = &tv
 	}
 	return
 }
@@ -15713,6 +15933,31 @@ func (u OperationResultTr) GetClawbackClaimableBalanceResult() (result ClawbackC
 	return
 }
 
+// MustSetTrustLineFlagsResult retrieves the SetTrustLineFlagsResult value from the union,
+// panicing if the value is not set.
+func (u OperationResultTr) MustSetTrustLineFlagsResult() SetTrustLineFlagsResult {
+	val, ok := u.GetSetTrustLineFlagsResult()
+
+	if !ok {
+		panic("arm SetTrustLineFlagsResult is not set")
+	}
+
+	return val
+}
+
+// GetSetTrustLineFlagsResult retrieves the SetTrustLineFlagsResult value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u OperationResultTr) GetSetTrustLineFlagsResult() (result SetTrustLineFlagsResult, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "SetTrustLineFlagsResult" {
+		result = *u.SetTrustLineFlagsResult
+		ok = true
+	}
+
+	return
+}
+
 // MarshalBinary implements encoding.BinaryMarshaler.
 func (s OperationResultTr) MarshalBinary() ([]byte, error) {
 	b := new(bytes.Buffer)
@@ -15780,6 +16025,8 @@ var (
 //            ClawbackResult clawbackResult;
 //        case CLAWBACK_CLAIMABLE_BALANCE:
 //            ClawbackClaimableBalanceResult clawbackClaimableBalanceResult;
+//        case SET_TRUST_LINE_FLAGS:
+//            SetTrustLineFlagsResult setTrustLineFlagsResult;
 //        }
 //        tr;
 //    default:

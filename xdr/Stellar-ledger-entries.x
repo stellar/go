@@ -118,7 +118,8 @@ enum AccountFlags
 };
 
 // mask for all valid flags
-const MASK_ACCOUNT_FLAGS = 0xF;
+const MASK_ACCOUNT_FLAGS = 0x7;
+const MASK_ACCOUNT_FLAGS_V16 = 0xF;
 
 // maximum number of signers
 const MAX_SIGNERS = 20;
