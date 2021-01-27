@@ -12,6 +12,7 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"math/rand"
 	"net/url"
 	"path"
 	"regexp"
@@ -417,6 +418,23 @@ func Connect(u string, opts ConnectOptions) (*Archive, error) {
 		err = errors.New("unknown URL scheme: '" + parsed.Scheme + "'")
 	}
 	return &arch, err
+}
+
+func ConnectAny(urls []string, opts ConnectOptions) (*Archive, error) {
+	var outerErr error
+	for len(urls) > 0 {
+		i := rand.Intn(len(urls))
+		archive, err := Connect(urls[i], opts)
+		if err != nil {
+			urls = append(urls[:i], urls[i+1:]...)
+			outerErr = err
+			continue
+		}
+
+		return archive, nil
+	}
+
+	return nil, outerErr
 }
 
 func MustConnect(u string, opts ConnectOptions) *Archive {
