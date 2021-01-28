@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this
 file.  This project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+
+### Breaking changes
+
+* Remove `TxEnvelope()` functions from `Transaction` and `FeeBumpTransaction` to simplify the API. `ToXDR()` should be used instead of `TxEnvelope()`  ([#3377](https://github.com/stellar/go/pull/3377))
+
 ## [v5.0.0](https://github.com/stellar/go/releases/tag/horizonclient-v5.0.0) - 2020-11-12
 
 ### Breaking changes

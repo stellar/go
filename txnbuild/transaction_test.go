@@ -1053,7 +1053,7 @@ func TestHashHex(t *testing.T) {
 	expected = "1b3905ba8c3c0ecc68ae812f2d77f27c697195e8daf568740fc0f5662f65f759"
 	assert.Equal(t, expected, hashHex, "hex encoded hash should match")
 
-	txEnv, err := tx.TxEnvelope()
+	txEnv := tx.ToXDR()
 	assert.NoError(t, err)
 	assert.NotNil(t, txEnv, "transaction xdr envelope should not be nil")
 	sourceAccountFromEnv := txEnv.SourceAccount().ToAccountId()
@@ -1983,7 +1983,7 @@ func TestReadChallengeTx_forbidsMuxedAccounts(t *testing.T) {
 		time.Hour,
 	)
 
-	env, err := tx.TxEnvelope()
+	env := tx.ToXDR()
 	assert.NoError(t, err)
 	aid := xdr.MustAddress(kp0.Address())
 	muxedAccount := xdr.MuxedAccount{

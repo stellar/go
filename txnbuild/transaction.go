@@ -182,19 +182,6 @@ func marshallBase64(e xdr.TransactionEnvelope, signatures []xdr.DecoratedSignatu
 	return base64.StdEncoding.EncodeToString(binary), nil
 }
 
-func cloneEnvelope(e xdr.TransactionEnvelope, signatures []xdr.DecoratedSignature) (xdr.TransactionEnvelope, error) {
-	var clone xdr.TransactionEnvelope
-	binary, err := marshallBinary(e, signatures)
-	if err != nil {
-		return clone, errors.Wrap(err, "could not marshall envelope")
-	}
-
-	if err = xdr.SafeUnmarshal(binary, &clone); err != nil {
-		return clone, errors.Wrap(err, "could not unmarshall envelope")
-	}
-	return clone, nil
-}
-
 // Transaction represents a Stellar transaction. See
 // https://www.stellar.org/developers/guides/concepts/transactions.html
 // A Transaction may be wrapped by a FeeBumpTransaction in which case
@@ -313,21 +300,19 @@ func (t *Transaction) AddSignatureBase64(network, publicKey, signature string) (
 	return newTx, nil
 }
 
-// TxEnvelope returns the a xdr.TransactionEnvelope instance which is
-// equivalent to this transaction.
-func (t *Transaction) TxEnvelope() (xdr.TransactionEnvelope, error) {
-	return cloneEnvelope(t.envelope, t.signatures)
-}
-
-// ToXDR is like TxEnvelope except that the transaction envelope returned by ToXDR
-// should not be modified because any changes applied to the transaction envelope may
+// ToXDR returns the a xdr.TransactionEnvelope which is equivalent to this transaction.
+// The envelope should not be modified because any changes applied may
 // affect the internals of the Transaction instance.
 func (t *Transaction) ToXDR() xdr.TransactionEnvelope {
 	env := t.envelope
 	switch env.Type {
 	case xdr.EnvelopeTypeEnvelopeTypeTx:
+		env.V1 = new(xdr.TransactionV1Envelope)
+		*env.V1 = *t.envelope.V1
 		env.V1.Signatures = t.signatures
 	case xdr.EnvelopeTypeEnvelopeTypeTxV0:
+		env.V0 = new(xdr.TransactionV0Envelope)
+		*env.V0 = *t.envelope.V0
 		env.V0.Signatures = t.signatures
 	default:
 		panic("invalid transaction type: " + env.Type.String())
@@ -499,19 +484,15 @@ func (t *FeeBumpTransaction) AddSignatureBase64(network, publicKey, signature st
 	return newTx, nil
 }
 
-// TxEnvelope returns the a xdr.TransactionEnvelope instance which is
-// equivalent to this transaction.
-func (t *FeeBumpTransaction) TxEnvelope() (xdr.TransactionEnvelope, error) {
-	return cloneEnvelope(t.envelope, t.signatures)
-}
-
-// ToXDR is like TxEnvelope except that the transaction envelope returned by ToXDR
-// should not be modified because any changes applied to the transaction envelope may
+// ToXDR returns the a xdr.TransactionEnvelope which is equivalent to this transaction.
+// The envelope should not be modified because any changes applied may
 // affect the internals of the FeeBumpTransaction instance.
 func (t *FeeBumpTransaction) ToXDR() xdr.TransactionEnvelope {
 	env := t.envelope
 	switch env.Type {
 	case xdr.EnvelopeTypeEnvelopeTypeTxFeeBump:
+		env.FeeBump = new(xdr.FeeBumpTransactionEnvelope)
+		*env.FeeBump = *t.envelope.FeeBump
 		env.FeeBump.Signatures = t.signatures
 	default:
 		panic("invalid transaction type: " + env.Type.String())
@@ -786,11 +767,15 @@ func NewFeeBumpTransaction(params FeeBumpTransactionParams) (*FeeBumpTransaction
 	if inner == nil {
 		return nil, errors.New("inner transaction is missing")
 	}
-	innerEnv, err := inner.TxEnvelope()
-	if err != nil {
-		return nil, errors.Wrap(err, "inner transaction envelope not found")
+	switch inner.envelope.Type {
+	case xdr.EnvelopeTypeEnvelopeTypeTx, xdr.EnvelopeTypeEnvelopeTypeTxV0:
+	default:
+		return nil, errors.Errorf("%s transactions cannot be fee bumped", inner.envelope.Type)
 	}
+
+	innerEnv := inner.ToXDR()
 	if innerEnv.Type == xdr.EnvelopeTypeEnvelopeTypeTxV0 {
+		var err error
 		inner, err = convertToV1(inner)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not upgrade transaction from v0 to v1")
