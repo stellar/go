@@ -420,12 +420,25 @@ func Connect(u string, opts ConnectOptions) (*Archive, error) {
 	return &arch, err
 }
 
+func MustConnect(u string, opts ConnectOptions) *Archive {
+	arch, err := Connect(u, opts)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return arch
+}
+
 func ConnectAny(urls []string, opts ConnectOptions) (*Archive, error) {
+	if len(urls) == 0 {
+		return nil, errors.New("No history archives provided")
+	}
+
 	var outerErr error
 	for len(urls) > 0 {
 		i := rand.Intn(len(urls))
 		archive, err := Connect(urls[i], opts)
 		if err != nil {
+			// Drop the failed archive from the list and try again
 			urls = append(urls[:i], urls[i+1:]...)
 			outerErr = err
 			continue
@@ -435,12 +448,4 @@ func ConnectAny(urls []string, opts ConnectOptions) (*Archive, error) {
 	}
 
 	return nil, outerErr
-}
-
-func MustConnect(u string, opts ConnectOptions) *Archive {
-	arch, err := Connect(u, opts)
-	if err != nil {
-		log.Fatal(err)
-	}
-	return arch
 }
