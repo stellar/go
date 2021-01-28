@@ -19,7 +19,7 @@ type PooledArchive struct {
 
 var _ ArchiveInterface = &PooledArchive{}
 
-func CreatePool(archives []ArchiveInterface) (*PooledArchive, error) {
+func CreatePool(archives ...ArchiveInterface) (*PooledArchive, error) {
 	if len(archives) <= 0 {
 		return nil, errors.New("No history archives provided")
 	}
