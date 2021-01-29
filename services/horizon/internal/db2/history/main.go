@@ -88,6 +88,10 @@ const (
 	// to true and it authorizes another account's trustline to maintain liabilities
 	EffectTrustlineAuthorizedToMaintainLiabilities EffectType = 25 // from allow_trust
 
+	// EffectTrustlineFlagsUpdated effects occur when a TrustLine changes its
+	// flags, either clearing or setting.
+	EffectTrustlineFlagsUpdated EffectType = 26 // from set_trust_line flags
+
 	// trading effects
 
 	// EffectOfferCreated occurs when an account offers to trade an asset
@@ -179,10 +183,6 @@ const (
 
 	// EffectClaimableBalanceClawedBack occurs when a claimable balance is clawed back
 	EffectClaimableBalanceClawedBack EffectType = 80 // from clawback_claimable_balance
-
-	// EffectTrustlineFlagsUpdated effects occur when a TrustLine changes its
-	// flags, either clearing or setting.
-	EffectTrustlineFlagsUpdated EffectType = 81 // from set_trust_line flags
 )
 
 // Account is a row of data from the `history_accounts` table

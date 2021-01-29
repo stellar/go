@@ -86,6 +86,10 @@ const (
 	// to true and it authorizes another account's trustline to maintain liabilities
 	EffectTrustlineAuthorizedToMaintainLiabilities EffectType = 25 // from allow_trust
 
+	// EffectTrustlineFlagsUpdated effects occur when a TrustLine changes its
+	// flags, either clearing or setting.
+	EffectTrustlineFlagsUpdated EffectType = 26 // from set_trust_line flags
+
 	// trading effects
 
 	// EffectOfferCreated occurs when an account offers to trade an asset
@@ -178,10 +182,6 @@ const (
 	// EffectClaimableBalanceClawedBack occurs when a claimable balance is clawed back
 	EffectClaimableBalanceClawedBack EffectType = 80 // from clawback_claimable_balance
 
-	// EffectTrustlineFlagsUpdated effects occur when a TrustLine changes its
-	// flags, either clearing or setting.
-	EffectTrustlineFlagsUpdated EffectType = 81 // from set_trust_line flags
-
 )
 
 // Peter 30-04-2019: this is copied from the resourcadapter package
@@ -207,6 +207,7 @@ var EffectTypeNames = map[EffectType]string{
 	EffectTrustlineAuthorized:                      "trustline_authorized",
 	EffectTrustlineAuthorizedToMaintainLiabilities: "trustline_authorized_to_maintain_liabilities",
 	EffectTrustlineDeauthorized:                    "trustline_deauthorized",
+	EffectTrustlineFlagsUpdated:                    "trustline_flags_updated",
 	EffectOfferCreated:                             "offer_created",
 	EffectOfferRemoved:                             "offer_removed",
 	EffectOfferUpdated:                             "offer_updated",
@@ -234,7 +235,6 @@ var EffectTypeNames = map[EffectType]string{
 	EffectSignerSponsorshipUpdated:                 "signer_sponsorship_updated",
 	EffectSignerSponsorshipRemoved:                 "signer_sponsorship_removed",
 	EffectClaimableBalanceClawedBack:               "claimable_balance_clawed_back",
-	EffectTrustlineFlagsUpdated:                    "trustline_flags_updated",
 }
 
 // Base provides the common structure for any effect resource effect.
@@ -673,6 +673,12 @@ func UnmarshalEffect(effectType string, dataString []byte) (effects Effect, err 
 			return
 		}
 		effects = effect
+	case EffectTypeNames[EffectTrustlineFlagsUpdated]:
+		var effect TrustlineFlagsUpdated
+		if err = json.Unmarshal(dataString, &effect); err != nil {
+			return
+		}
+		effects = effect
 	case EffectTypeNames[EffectTrustlineRemoved]:
 		var effect TrustlineRemoved
 		if err = json.Unmarshal(dataString, &effect); err != nil {
@@ -819,12 +825,6 @@ func UnmarshalEffect(effectType string, dataString []byte) (effects Effect, err 
 		effects = effect
 	case EffectTypeNames[EffectClaimableBalanceClawedBack]:
 		var effect ClaimableBalanceClawedBack
-		if err = json.Unmarshal(dataString, &effect); err != nil {
-			return
-		}
-		effects = effect
-	case EffectTypeNames[EffectTrustlineFlagsUpdated]:
-		var effect TrustlineFlagsUpdated
 		if err = json.Unmarshal(dataString, &effect); err != nil {
 			return
 		}
