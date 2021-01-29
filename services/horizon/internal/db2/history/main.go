@@ -73,21 +73,24 @@ const (
 	// EffectTrustlineUpdated occurs when an account changes a trustline's limit
 	EffectTrustlineUpdated EffectType = 22 // from change_trust, allow_trust
 
+	// Deprecated: use EffectTrustlineFlagsUpdated instead.
 	// EffectTrustlineAuthorized occurs when an anchor has AUTH_REQUIRED flag set
 	// to true and it authorizes another account's trustline
 	EffectTrustlineAuthorized EffectType = 23 // from allow_trust
 
+	// Deprecated: use EffectTrustlineFlagsUpdated instead.
 	// EffectTrustlineDeauthorized occurs when an anchor revokes access to a asset
 	// it issues.
 	EffectTrustlineDeauthorized EffectType = 24 // from allow_trust
 
+	// Deprecated: use EffectTrustlineFlagsUpdated instead.
 	// EffectTrustlineAuthorizedToMaintainLiabilities occurs when an anchor has AUTH_REQUIRED flag set
 	// to true and it authorizes another account's trustline to maintain liabilities
 	EffectTrustlineAuthorizedToMaintainLiabilities EffectType = 25 // from allow_trust
 
-	// EffectTrustlineClawbackEnabled occurs when an anchor has AUTH_CLAWBACK_ENABLED flag set
-	// to true and creates and asset
-	EffectTrustlineClawbackEnabled EffectType = 26 // from allow_trust
+	// EffectTrustlineFlagsUpdated effects occur when a TrustLine changes its
+	// flags, either clearing or setting.
+	EffectTrustlineFlagsUpdated EffectType = 26 // from set_trust_line flags
 
 	// trading effects
 
@@ -95,7 +98,7 @@ const (
 	EffectOfferCreated EffectType = 30 // from manage_offer, creat_passive_offer
 
 	// EffectOfferRemoved occurs when an account removes an offer
-	EffectOfferRemoved EffectType = 31 // from manage_offer, creat_passive_offer, path_payment
+	EffectOfferRemoved EffectType = 31 // from manage_offer, create_passive_offer, path_payment
 
 	// EffectOfferUpdated occurs when an offer is updated by the offering account.
 	EffectOfferUpdated EffectType = 32 // from manage_offer, creat_passive_offer, path_payment

@@ -28,6 +28,7 @@ var EffectTypeNames = map[history.EffectType]string{
 	history.EffectTrustlineAuthorized:                      "trustline_authorized",
 	history.EffectTrustlineAuthorizedToMaintainLiabilities: "trustline_authorized_to_maintain_liabilities",
 	history.EffectTrustlineDeauthorized:                    "trustline_deauthorized",
+	history.EffectTrustlineFlagsUpdated:                    "trustline_flags_updated",
 	history.EffectOfferCreated:                             "offer_created",
 	history.EffectOfferRemoved:                             "offer_removed",
 	history.EffectOfferUpdated:                             "offer_updated",
@@ -127,6 +128,10 @@ func NewEffect(
 		result = e
 	case history.EffectTrustlineDeauthorized:
 		e := effects.TrustlineDeauthorized{Base: basev}
+		err = row.UnmarshalDetails(&e)
+		result = e
+	case history.EffectTrustlineFlagsUpdated:
+		e := effects.TrustlineFlagsUpdated{Base: basev}
 		err = row.UnmarshalDetails(&e)
 		result = e
 	case history.EffectTrade:

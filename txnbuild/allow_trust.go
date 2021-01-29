@@ -8,6 +8,7 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
+// Deprecated: use SetTrustLineFlags instead.
 // AllowTrust represents the Stellar allow trust operation. See
 // https://www.stellar.org/developers/guides/concepts/list-of-operations.html
 type AllowTrust struct {
@@ -48,9 +49,6 @@ func (at *AllowTrust) BuildXDR() (xdr.Operation, error) {
 	} else if at.AuthorizeToMaintainLiabilities {
 		xdrOp.Authorize = xdr.Uint32(xdr.TrustLineFlagsAuthorizedToMaintainLiabilitiesFlag)
 	}
-	if at.ClawbackEnabled {
-		xdrOp.Authorize |= xdr.Uint32(xdr.TrustLineFlagsTrustlineClawbackEnabledFlag)
-	}
 
 	opType := xdr.OperationTypeAllowTrust
 	body, err := xdr.NewOperationBody(opType, xdrOp)
@@ -88,7 +86,6 @@ func (at *AllowTrust) FromXDR(xdrOp xdr.Operation) error {
 	flag := xdr.TrustLineFlags(result.Authorize)
 	at.Authorize = flag.IsAuthorized()
 	at.AuthorizeToMaintainLiabilities = flag.IsAuthorizedToMaintainLiabilitiesFlag()
-	at.ClawbackEnabled = flag.IsClawbackEnabledFlag()
 	t, err := assetCodeToCreditAsset(result.Asset)
 	if err != nil {
 		return errors.Wrap(err, "error parsing allow_trust operation from xdr")
