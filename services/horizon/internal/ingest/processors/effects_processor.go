@@ -210,6 +210,8 @@ func (operation *transactionOperationWrapper) effects() ([]effect, error) {
 		err = wrapper.addClawbackEffects()
 	case xdr.OperationTypeClawbackClaimableBalance:
 		err = wrapper.addClawbackClaimableBalanceEffects()
+	case xdr.OperationTypeSetTrustLineFlags:
+		err = wrapper.addSetTrustLineFlagsEffects()
 	default:
 		return nil, fmt.Errorf("Unknown operation type: %s", op.Body.Type)
 	}
@@ -550,8 +552,12 @@ func (e *effectsWrapper) addSetOptionsEffects() error {
 	}
 
 	flagDetails := map[string]interface{}{}
-	setAuthFlagDetails(flagDetails, op.SetFlags, true)
-	setAuthFlagDetails(flagDetails, op.ClearFlags, false)
+	if op.SetFlags != nil {
+		setAuthFlagDetails(flagDetails, xdr.AccountFlags(*op.SetFlags), true)
+	}
+	if op.ClearFlags != nil {
+		setAuthFlagDetails(flagDetails, xdr.AccountFlags(*op.ClearFlags), false)
+	}
 
 	if len(flagDetails) > 0 {
 		e.add(source.Address(), history.EffectAccountFlagsUpdated, flagDetails)
@@ -684,20 +690,23 @@ func (e *effectsWrapper) addAllowTrustEffects() {
 	switch {
 	case xdr.TrustLineFlags(op.Authorize).IsAuthorized():
 		e.add(source.Address(), history.EffectTrustlineAuthorized, details)
+		// Forward compatibility
+		setFlags := xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag)
+		e.addTrustLineFlagsEffect(source, &op.Trustor, op.Asset, &setFlags, nil)
 	case xdr.TrustLineFlags(op.Authorize).IsAuthorizedToMaintainLiabilitiesFlag():
 		e.add(
 			source.Address(),
 			history.EffectTrustlineAuthorizedToMaintainLiabilities,
 			details,
 		)
-	case xdr.TrustLineFlags(op.Authorize).IsClawbackEnabledFlag():
-		e.add(
-			source.Address(),
-			history.EffectTrustlineClawbackEnabled,
-			details,
-		)
+		// Forward compatibility
+		setFlags := xdr.Uint32(xdr.TrustLineFlagsAuthorizedToMaintainLiabilitiesFlag)
+		e.addTrustLineFlagsEffect(source, &op.Trustor, op.Asset, &setFlags, nil)
 	default:
 		e.add(source.Address(), history.EffectTrustlineDeauthorized, details)
+		// Forward compatibility, show both as cleared
+		clearFlags := xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag | xdr.TrustLineFlagsAuthorizedToMaintainLiabilitiesFlag)
+		e.addTrustLineFlagsEffect(source, &op.Trustor, op.Asset, nil, &clearFlags)
 	}
 }
 
@@ -980,22 +989,63 @@ func (e *effectsWrapper) addClawbackClaimableBalanceEffects() error {
 	return nil
 }
 
-func setAuthFlagDetails(flagDetails map[string]interface{}, flagPtr *xdr.Uint32, setValue bool) {
-	if flagPtr != nil {
-		flags := xdr.AccountFlags(*flagPtr)
+func (e *effectsWrapper) addSetTrustLineFlagsEffects() error {
+	source := e.operation.SourceAccount()
+	op := e.operation.operation.Body.MustSetTrustLineFlagsOp()
+	e.addTrustLineFlagsEffect(source, &op.Trustor, op.Asset, op.SetFlags, op.ClearFlags)
+	return nil
+}
 
-		if flags&xdr.AccountFlagsAuthRequiredFlag != 0 {
-			flagDetails["auth_required_flag"] = setValue
-		}
-		if flags&xdr.AccountFlagsAuthRevocableFlag != 0 {
-			flagDetails["auth_revocable_flag"] = setValue
-		}
-		if flags&xdr.AccountFlagsAuthImmutableFlag != 0 {
-			flagDetails["auth_immutable_flag"] = setValue
-		}
-		if flags&xdr.AccountFlagsAuthClawbackEnabledFlag != 0 {
-			flagDetails["auth_clawback_enabled_flag"] = setValue
-		}
+func (e *effectsWrapper) addTrustLineFlagsEffect(
+	account *xdr.AccountId,
+	trustor *xdr.AccountId,
+	assetCode xdr.AssetCode,
+	setFlags *xdr.Uint32,
+	clearFlags *xdr.Uint32) {
+	details := map[string]interface{}{
+		"trustor": trustor.Address(),
+	}
+	addAssetDetails(details, assetCode.ToAsset(*account), "")
+
+	var flagDetailsAdded bool
+	if setFlags != nil {
+		setTrustLineFlagDetails(details, xdr.TrustLineFlags(*setFlags), true)
+		flagDetailsAdded = true
+	}
+	if clearFlags != nil {
+		setTrustLineFlagDetails(details, xdr.TrustLineFlags(*clearFlags), false)
+		flagDetailsAdded = true
+	}
+
+	if flagDetailsAdded {
+		e.add(account.Address(), history.EffectTrustlineFlagsUpdated, details)
+	}
+}
+
+func setTrustLineFlagDetails(flagDetails map[string]interface{}, flags xdr.TrustLineFlags, setValue bool) {
+	if flags.IsAuthorized() {
+		flagDetails["authorized_flag"] = setValue
+	}
+	if flags.IsAuthorizedToMaintainLiabilitiesFlag() {
+		flagDetails["authorized_to_maintain_liabilites"] = setValue
+	}
+	if flags.IsClawbackEnabledFlag() {
+		flagDetails["clawback_enabled_flag"] = setValue
+	}
+}
+
+func setAuthFlagDetails(flagDetails map[string]interface{}, flags xdr.AccountFlags, setValue bool) {
+	if flags.IsAuthRequired() {
+		flagDetails["auth_required_flag"] = setValue
+	}
+	if flags.IsAuthRevocable() {
+		flagDetails["auth_revocable_flag"] = setValue
+	}
+	if flags.IsAuthImmutable() {
+		flagDetails["auth_immutable_flag"] = setValue
+	}
+	if flags.IsAuthClawbackEnabled() {
+		flagDetails["auth_clawback_enabled_flag"] = setValue
 	}
 }
 

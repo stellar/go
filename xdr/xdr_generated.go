@@ -8574,13 +8574,14 @@ var (
 type OperationType int32
 
 const (
-	OperationTypeCreateAccount                 OperationType = 0
-	OperationTypePayment                       OperationType = 1
-	OperationTypePathPaymentStrictReceive      OperationType = 2
-	OperationTypeManageSellOffer               OperationType = 3
-	OperationTypeCreatePassiveSellOffer        OperationType = 4
-	OperationTypeSetOptions                    OperationType = 5
-	OperationTypeChangeTrust                   OperationType = 6
+	OperationTypeCreateAccount            OperationType = 0
+	OperationTypePayment                  OperationType = 1
+	OperationTypePathPaymentStrictReceive OperationType = 2
+	OperationTypeManageSellOffer          OperationType = 3
+	OperationTypeCreatePassiveSellOffer   OperationType = 4
+	OperationTypeSetOptions               OperationType = 5
+	OperationTypeChangeTrust              OperationType = 6
+	// Deprecated: use OperationTypeSetTrustLineFlags
 	OperationTypeAllowTrust                    OperationType = 7
 	OperationTypeAccountMerge                  OperationType = 8
 	OperationTypeInflation                     OperationType = 9
@@ -9003,6 +9004,7 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ChangeTrustOp)(nil)
 )
 
+// Deprecated: use OperationTypeSetTrustLineFlags.
 // AllowTrustOp is an XDR Struct defines as:
 //
 //   struct AllowTrustOp

@@ -308,11 +308,11 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 		}
 
 		if op.SetFlags != nil && *op.SetFlags > 0 {
-			operationFlagDetails(details, int32(*op.SetFlags), "set")
+			addAuthFlagDetails(details, xdr.AccountFlags(*op.SetFlags), "set")
 		}
 
 		if op.ClearFlags != nil && *op.ClearFlags > 0 {
-			operationFlagDetails(details, int32(*op.ClearFlags), "clear")
+			addAuthFlagDetails(details, xdr.AccountFlags(*op.ClearFlags), "clear")
 		}
 
 		if op.MasterWeight != nil {
@@ -429,6 +429,17 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 			panic(fmt.Errorf("Invalid balanceId in op: %d", operation.index))
 		}
 		details["balance_id"] = balanceID
+	case xdr.OperationTypeSetTrustLineFlags:
+		op := operation.operation.Body.MustSetTrustLineFlagsOp()
+		details["trustor"] = op.Trustor.Address()
+		addAssetDetails(details, op.Asset.ToAsset(*source), "")
+		if op.SetFlags != nil && *op.SetFlags > 0 {
+			addTrustLineFlagDetails(details, xdr.TrustLineFlags(*op.SetFlags), "set")
+		}
+
+		if op.ClearFlags != nil && *op.ClearFlags > 0 {
+			addTrustLineFlagDetails(details, xdr.TrustLineFlags(*op.ClearFlags), "clear")
+		}
 	default:
 		panic(fmt.Errorf("Unknown operation type: %s", operation.OperationType()))
 	}
@@ -467,31 +478,57 @@ func addAssetDetails(result map[string]interface{}, a xdr.Asset, prefix string) 
 	return nil
 }
 
-// operationFlagDetails sets the account flag details for `f` on `result`.
-func operationFlagDetails(result map[string]interface{}, f int32, prefix string) {
+// addAuthFlagDetails adds the account flag details for `f` on `result`.
+func addAuthFlagDetails(result map[string]interface{}, f xdr.AccountFlags, prefix string) {
 	var (
 		n []int32
 		s []string
 	)
 
-	if (f & int32(xdr.AccountFlagsAuthRequiredFlag)) > 0 {
+	if f.IsAuthRequired() {
 		n = append(n, int32(xdr.AccountFlagsAuthRequiredFlag))
 		s = append(s, "auth_required")
 	}
 
-	if (f & int32(xdr.AccountFlagsAuthRevocableFlag)) > 0 {
+	if f.IsAuthRevocable() {
 		n = append(n, int32(xdr.AccountFlagsAuthRevocableFlag))
 		s = append(s, "auth_revocable")
 	}
 
-	if (f & int32(xdr.AccountFlagsAuthImmutableFlag)) > 0 {
+	if f.IsAuthImmutable() {
 		n = append(n, int32(xdr.AccountFlagsAuthImmutableFlag))
 		s = append(s, "auth_immutable")
 	}
 
-	if (f & int32(xdr.AccountFlagsAuthClawbackEnabledFlag)) > 0 {
+	if f.IsAuthClawbackEnabled() {
 		n = append(n, int32(xdr.AccountFlagsAuthClawbackEnabledFlag))
 		s = append(s, "auth_clawback_enabled")
+	}
+
+	result[prefix+"_flags"] = n
+	result[prefix+"_flags_s"] = s
+}
+
+// addTrustLineFlagDetails adds the trustline flag details for `f` on `result`.
+func addTrustLineFlagDetails(result map[string]interface{}, f xdr.TrustLineFlags, prefix string) {
+	var (
+		n []int32
+		s []string
+	)
+
+	if f.IsAuthorized() {
+		n = append(n, int32(xdr.TrustLineFlagsAuthorizedFlag))
+		s = append(s, "authorized")
+	}
+
+	if f.IsAuthorizedToMaintainLiabilitiesFlag() {
+		n = append(n, int32(xdr.TrustLineFlagsAuthorizedToMaintainLiabilitiesFlag))
+		s = append(s, "authorized_to_maintain_liabilites")
+	}
+
+	if f.IsClawbackEnabledFlag() {
+		n = append(n, int32(xdr.TrustLineFlagsTrustlineClawbackEnabledFlag))
+		s = append(s, "clawback_enabled")
 	}
 
 	result[prefix+"_flags"] = n
@@ -599,7 +636,10 @@ func (operation *transactionOperationWrapper) Participants() ([]xdr.AccountId, e
 		op := operation.operation.Body.MustClawbackOp()
 		participants = append(participants, op.From.ToAccountId())
 	case xdr.OperationTypeClawbackClaimableBalance:
-		// Nothing to do here
+	// Nothing to do here
+	case xdr.OperationTypeSetTrustLineFlags:
+		op := operation.operation.Body.MustSetTrustLineFlagsOp()
+		participants = append(participants, op.Trustor)
 	default:
 		return participants, fmt.Errorf("Unknown operation type: %s", op.Body.Type)
 	}

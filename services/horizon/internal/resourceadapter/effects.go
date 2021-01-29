@@ -55,6 +55,7 @@ var EffectTypeNames = map[history.EffectType]string{
 	history.EffectSignerSponsorshipUpdated:                 "signer_sponsorship_updated",
 	history.EffectSignerSponsorshipRemoved:                 "signer_sponsorship_removed",
 	history.EffectClaimableBalanceClawedBack:               "claimable_balance_clawed_back",
+	history.EffectTrustlineFlagsUpdated:                    "trustline_flags_updated",
 }
 
 // NewEffect creates a new effect resource from the provided database representation
@@ -240,6 +241,10 @@ func NewEffect(
 		result = e
 	case history.EffectClaimableBalanceClawedBack:
 		e := effects.ClaimableBalanceClawedBack{Base: basev}
+		err = row.UnmarshalDetails(&e)
+		result = e
+	case history.EffectTrustlineFlagsUpdated:
+		e := effects.TrustlineFlagsUpdated{Base: basev}
 		err = row.UnmarshalDetails(&e)
 		result = e
 	default:

@@ -194,6 +194,7 @@ type ChangeTrust struct {
 	Trustor string `json:"trustor"`
 }
 
+// Deprecated: use TrustlineFlagsUpdated instead.
 // AllowTrust is the json resource representing a single operation whose type is
 // AllowTrust.
 type AllowTrust struct {
@@ -274,11 +275,23 @@ type Clawback struct {
 	Amount string `json:"amount"`
 }
 
-// Clawback is the json resource representing a single operation whose type is
-// Clawback.
+// ClawbackClaimableBalance is the json resource representing a single operation whose type is
+// ClawbackClaimableBalance.
 type ClawbackClaimableBalance struct {
 	Base
 	ClaimableBalanceID *string `json:"balance_id,omitempty"`
+}
+
+// SetTrustLineFlags is the json resource representing a single operation whose type is
+// SetTrustLineFlags.
+type SetTrustLineFlags struct {
+	Base
+	base.Asset
+	Trustor     string   `json:"trustor"`
+	SetFlags    []int    `json:"set_flags,omitempty"`
+	SetFlagsS   []string `json:"set_flags_s,omitempty"`
+	ClearFlags  []int    `json:"clear_flags,omitempty"`
+	ClearFlagsS []string `json:"clear_flags_s,omitempty"`
 }
 
 // Operation interface contains methods implemented by the operation types
@@ -480,6 +493,12 @@ func UnmarshalOperation(operationTypeID int32, dataString []byte) (ops Operation
 		ops = op
 	case xdr.OperationTypeClawbackClaimableBalance:
 		var op ClawbackClaimableBalance
+		if err = json.Unmarshal(dataString, &op); err != nil {
+			return
+		}
+		ops = op
+	case xdr.OperationTypeSetTrustLineFlags:
+		var op SetTrustLineFlags
 		if err = json.Unmarshal(dataString, &op); err != nil {
 			return
 		}

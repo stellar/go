@@ -1,6 +1,8 @@
 package txnbuild
 
 import (
+	"fmt"
+
 	"github.com/stellar/go/xdr"
 )
 
@@ -64,6 +66,12 @@ func operationFromXDR(xdrOp xdr.Operation) (Operation, error) {
 		newOp = &ClaimClaimableBalance{}
 	case xdr.OperationTypeRevokeSponsorship:
 		newOp = &RevokeSponsorship{}
+	case xdr.OperationTypeClawback:
+		newOp = &Clawback{}
+	case xdr.OperationTypeSetTrustLineFlags:
+		newOp = &SetTrustLineFlags{}
+	default:
+		return nil, fmt.Errorf("unknown operation type: %d", xdrOp.Body.Type)
 	}
 
 	err := newOp.FromXDR(xdrOp)
