@@ -68,6 +68,8 @@ func operationFromXDR(xdrOp xdr.Operation) (Operation, error) {
 		newOp = &RevokeSponsorship{}
 	case xdr.OperationTypeClawback:
 		newOp = &Clawback{}
+	case xdr.OperationTypeClawbackClaimableBalance:
+		newOp = &ClawbackClaimableBalance{}
 	case xdr.OperationTypeSetTrustLineFlags:
 		newOp = &SetTrustLineFlags{}
 	default:

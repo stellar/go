@@ -94,7 +94,7 @@ func (cb *Clawback) Validate() error {
 		return NewValidationError("Amount", err.Error())
 	}
 
-	err = validateStellarAsset(cb.Asset)
+	err = validateAssetCode(cb.Asset)
 	if err != nil {
 		return NewValidationError("Asset", err.Error())
 	}
