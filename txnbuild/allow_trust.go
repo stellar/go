@@ -103,7 +103,7 @@ func (at *AllowTrust) Validate() error {
 		return NewValidationError("Trustor", err.Error())
 	}
 
-	err = validateAllowTrustAsset(at.Type)
+	err = validateAssetCode(at.Type)
 	if err != nil {
 		return NewValidationError("Type", err.Error())
 	}

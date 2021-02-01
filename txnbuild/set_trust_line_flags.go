@@ -119,7 +119,7 @@ func (stf *SetTrustLineFlags) Validate() error {
 		return NewValidationError("Trustor", err.Error())
 	}
 
-	err = validateAllowTrustAsset(stf.Asset)
+	err = validateAssetCode(stf.Asset)
 	if err != nil {
 		return NewValidationError("Asset", err.Error())
 	}
