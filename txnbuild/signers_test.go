@@ -440,7 +440,6 @@ type transactionCommon interface {
 	Signatures() []xdr.DecoratedSignature
 	Hash(networkStr string) ([32]byte, error)
 	Base64() (string, error)
-	TxEnvelope() (xdr.TransactionEnvelope, error)
 	ToXDR() xdr.TransactionEnvelope
 }
 
@@ -459,16 +458,10 @@ func assertBase64(t *testing.T, tx transactionCommon) string {
 	base64, err := tx.Base64()
 	assert.NoError(t, err)
 
-	envCopy, err := tx.TxEnvelope()
-	assert.NoError(t, err)
-	envCopyBase64, err := xdr.MarshalBase64(envCopy)
-	assert.NoError(t, err)
-
 	envRef := tx.ToXDR()
 	envRefBase64, err := xdr.MarshalBase64(envRef)
 	assert.NoError(t, err)
 
-	assert.Equal(t, base64, envCopyBase64)
 	assert.Equal(t, base64, envRefBase64)
 
 	return base64
@@ -489,6 +482,7 @@ func TestSigningImmutability(t *testing.T) {
 	root, err = root.Sign(network.TestNetworkPassphrase, kp0)
 	assert.NoError(t, err)
 	rootB64 := assertBase64(t, root)
+	rootXDR := root.ToXDR()
 
 	left, err := root.Sign(network.TestNetworkPassphrase, kp1)
 	assert.NoError(t, err)
@@ -517,6 +511,9 @@ func TestSigningImmutability(t *testing.T) {
 	verifySignatures(t, left, kp0, kp1)
 	assert.Equal(t, expectedRightB64, rightB64)
 	verifySignatures(t, right, kp0, kp2)
+
+	rootXDRB64, err := xdr.MarshalBase64(rootXDR)
+	assert.Equal(t, expectedRootB64, rootXDRB64)
 }
 
 func TestFeeBumpSigningImmutability(t *testing.T) {

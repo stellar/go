@@ -387,7 +387,7 @@ func TestFeeBumpRoundTrip(t *testing.T) {
 	outerHash, err := feeBumpTx.HashHex(network.TestNetworkPassphrase)
 	assert.NoError(t, err)
 
-	env, err := feeBumpTx.TxEnvelope()
+	env := feeBumpTx.ToXDR()
 	assert.NoError(t, err)
 	assert.Equal(t, xdr.EnvelopeTypeEnvelopeTypeTxFeeBump, env.Type)
 	assert.Equal(t, xdr.MustAddress(kp1.Address()), env.FeeBumpAccount().ToAccountId())
