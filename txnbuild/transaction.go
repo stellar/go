@@ -195,7 +195,6 @@ type Transaction struct {
 	operations    []Operation
 	memo          Memo
 	timebounds    Timebounds
-	signatures    []xdr.DecoratedSignature
 }
 
 // BaseFee returns the per operation fee for this transaction.
@@ -232,7 +231,7 @@ func (t *Transaction) Operations() []Operation {
 // Signatures returns the list of signatures attached to this transaction.
 // The contents of the returned slice should not be modified.
 func (t *Transaction) Signatures() []xdr.DecoratedSignature {
-	return t.signatures
+	return t.envelope.Signatures()
 }
 
 // Hash returns the network specific hash of this transaction
@@ -247,18 +246,36 @@ func (t *Transaction) HashHex(network string) (string, error) {
 	return hashHex(t.envelope, network)
 }
 
+func (t *Transaction) clone(signatures []xdr.DecoratedSignature) *Transaction {
+	newTx := new(Transaction)
+	*newTx = *t
+	newTx.envelope = t.envelope
+
+	switch newTx.envelope.Type {
+	case xdr.EnvelopeTypeEnvelopeTypeTx:
+		newTx.envelope.V1 = new(xdr.TransactionV1Envelope)
+		*newTx.envelope.V1 = *t.envelope.V1
+		newTx.envelope.V1.Signatures = signatures
+	case xdr.EnvelopeTypeEnvelopeTypeTxV0:
+		newTx.envelope.V0 = new(xdr.TransactionV0Envelope)
+		*newTx.envelope.V0 = *t.envelope.V0
+		newTx.envelope.V0.Signatures = signatures
+	default:
+		panic("invalid transaction type: " + newTx.envelope.Type.String())
+	}
+
+	return newTx
+}
+
 // Sign returns a new Transaction instance which extends the current instance
 // with additional signatures derived from the given list of keypair instances.
 func (t *Transaction) Sign(network string, kps ...*keypair.Full) (*Transaction, error) {
-	extendedSignatures, err := concatSignatures(t.envelope, network, t.signatures, kps...)
+	extendedSignatures, err := concatSignatures(t.envelope, network, t.Signatures(), kps...)
 	if err != nil {
 		return nil, err
 	}
 
-	newTx := new(Transaction)
-	*newTx = *t
-	newTx.signatures = extendedSignatures
-	return newTx, nil
+	return t.clone(extendedSignatures), nil
 }
 
 // SignWithKeyString returns a new Transaction instance which extends the current instance
@@ -275,60 +292,40 @@ func (t *Transaction) SignWithKeyString(network string, keys ...string) (*Transa
 // with HashX signature type.
 // See description here: https://www.stellar.org/developers/guides/concepts/multi-sig.html#hashx.
 func (t *Transaction) SignHashX(preimage []byte) (*Transaction, error) {
-	extendedSignatures, err := concatHashX(t.signatures, preimage)
+	extendedSignatures, err := concatHashX(t.Signatures(), preimage)
 	if err != nil {
 		return nil, err
 	}
 
-	newTx := new(Transaction)
-	*newTx = *t
-	newTx.signatures = extendedSignatures
-	return newTx, nil
+	return t.clone(extendedSignatures), nil
 }
 
 // AddSignatureBase64 returns a new Transaction instance which extends the current instance
 // with an additional signature derived from the given base64-encoded signature.
 func (t *Transaction) AddSignatureBase64(network, publicKey, signature string) (*Transaction, error) {
-	extendedSignatures, err := concatSignatureBase64(t.envelope, t.signatures, network, publicKey, signature)
+	extendedSignatures, err := concatSignatureBase64(t.envelope, t.Signatures(), network, publicKey, signature)
 	if err != nil {
 		return nil, err
 	}
 
-	newTx := new(Transaction)
-	*newTx = *t
-	newTx.signatures = extendedSignatures
-	return newTx, nil
+	return t.clone(extendedSignatures), nil
 }
 
 // ToXDR returns the a xdr.TransactionEnvelope which is equivalent to this transaction.
 // The envelope should not be modified because any changes applied may
 // affect the internals of the Transaction instance.
 func (t *Transaction) ToXDR() xdr.TransactionEnvelope {
-	env := t.envelope
-	switch env.Type {
-	case xdr.EnvelopeTypeEnvelopeTypeTx:
-		env.V1 = new(xdr.TransactionV1Envelope)
-		*env.V1 = *t.envelope.V1
-		env.V1.Signatures = t.signatures
-	case xdr.EnvelopeTypeEnvelopeTypeTxV0:
-		env.V0 = new(xdr.TransactionV0Envelope)
-		*env.V0 = *t.envelope.V0
-		env.V0.Signatures = t.signatures
-	default:
-		panic("invalid transaction type: " + env.Type.String())
-	}
-
-	return env
+	return t.envelope
 }
 
 // MarshalBinary returns the binary XDR representation of the transaction envelope.
 func (t *Transaction) MarshalBinary() ([]byte, error) {
-	return marshallBinary(t.envelope, t.signatures)
+	return marshallBinary(t.envelope, t.Signatures())
 }
 
 // Base64 returns the base 64 XDR representation of the transaction envelope.
 func (t *Transaction) Base64() (string, error) {
-	return marshallBase64(t.envelope, t.signatures)
+	return marshallBase64(t.envelope, t.Signatures())
 }
 
 // ClaimableBalanceID returns the claimable balance ID for the operation at the given index within the transaction.
@@ -395,7 +392,6 @@ type FeeBumpTransaction struct {
 	maxFee     int64
 	feeAccount string
 	inner      *Transaction
-	signatures []xdr.DecoratedSignature
 }
 
 // BaseFee returns the per operation fee for this transaction.
@@ -416,7 +412,7 @@ func (t *FeeBumpTransaction) FeeAccount() string {
 // Signatures returns the list of signatures attached to this transaction.
 // The contents of the returned slice should not be modified.
 func (t *FeeBumpTransaction) Signatures() []xdr.DecoratedSignature {
-	return t.signatures
+	return t.envelope.FeeBumpSignatures()
 }
 
 // Hash returns the network specific hash of this transaction
@@ -431,18 +427,24 @@ func (t *FeeBumpTransaction) HashHex(network string) (string, error) {
 	return hashHex(t.envelope, network)
 }
 
+func (t *FeeBumpTransaction) clone(signatures []xdr.DecoratedSignature) *FeeBumpTransaction {
+	newTx := new(FeeBumpTransaction)
+	*newTx = *t
+	newTx.envelope.FeeBump = new(xdr.FeeBumpTransactionEnvelope)
+	*newTx.envelope.FeeBump = *t.envelope.FeeBump
+	newTx.envelope.FeeBump.Signatures = signatures
+	return newTx
+}
+
 // Sign returns a new FeeBumpTransaction instance which extends the current instance
 // with additional signatures derived from the given list of keypair instances.
 func (t *FeeBumpTransaction) Sign(network string, kps ...*keypair.Full) (*FeeBumpTransaction, error) {
-	extendedSignatures, err := concatSignatures(t.envelope, network, t.signatures, kps...)
+	extendedSignatures, err := concatSignatures(t.envelope, network, t.Signatures(), kps...)
 	if err != nil {
 		return nil, err
 	}
 
-	newTx := new(FeeBumpTransaction)
-	*newTx = *t
-	newTx.signatures = extendedSignatures
-	return newTx, nil
+	return t.clone(extendedSignatures), nil
 }
 
 // SignWithKeyString returns a new FeeBumpTransaction instance which extends the current instance
@@ -459,56 +461,40 @@ func (t *FeeBumpTransaction) SignWithKeyString(network string, keys ...string) (
 // with HashX signature type.
 // See description here: https://www.stellar.org/developers/guides/concepts/multi-sig.html#hashx.
 func (t *FeeBumpTransaction) SignHashX(preimage []byte) (*FeeBumpTransaction, error) {
-	extendedSignatures, err := concatHashX(t.signatures, preimage)
+	extendedSignatures, err := concatHashX(t.Signatures(), preimage)
 	if err != nil {
 		return nil, err
 	}
 
-	newTx := new(FeeBumpTransaction)
-	*newTx = *t
-	newTx.signatures = extendedSignatures
-	return newTx, nil
+	return t.clone(extendedSignatures), nil
 }
 
 // AddSignatureBase64 returns a new FeeBumpTransaction instance which extends the current instance
 // with an additional signature derived from the given base64-encoded signature.
 func (t *FeeBumpTransaction) AddSignatureBase64(network, publicKey, signature string) (*FeeBumpTransaction, error) {
-	extendedSignatures, err := concatSignatureBase64(t.envelope, t.signatures, network, publicKey, signature)
+	extendedSignatures, err := concatSignatureBase64(t.envelope, t.Signatures(), network, publicKey, signature)
 	if err != nil {
 		return nil, err
 	}
 
-	newTx := new(FeeBumpTransaction)
-	*newTx = *t
-	newTx.signatures = extendedSignatures
-	return newTx, nil
+	return t.clone(extendedSignatures), nil
 }
 
 // ToXDR returns the a xdr.TransactionEnvelope which is equivalent to this transaction.
 // The envelope should not be modified because any changes applied may
 // affect the internals of the FeeBumpTransaction instance.
 func (t *FeeBumpTransaction) ToXDR() xdr.TransactionEnvelope {
-	env := t.envelope
-	switch env.Type {
-	case xdr.EnvelopeTypeEnvelopeTypeTxFeeBump:
-		env.FeeBump = new(xdr.FeeBumpTransactionEnvelope)
-		*env.FeeBump = *t.envelope.FeeBump
-		env.FeeBump.Signatures = t.signatures
-	default:
-		panic("invalid transaction type: " + env.Type.String())
-	}
-
-	return env
+	return t.envelope
 }
 
 // MarshalBinary returns the binary XDR representation of the transaction envelope.
 func (t *FeeBumpTransaction) MarshalBinary() ([]byte, error) {
-	return marshallBinary(t.envelope, t.signatures)
+	return marshallBinary(t.envelope, t.Signatures())
 }
 
 // Base64 returns the base 64 XDR representation of the transaction envelope.
 func (t *FeeBumpTransaction) Base64() (string, error) {
-	return marshallBase64(t.envelope, t.signatures)
+	return marshallBase64(t.envelope, t.Signatures())
 }
 
 // InnerTransaction returns the Transaction which is wrapped by
@@ -575,7 +561,6 @@ func transactionFromParsedXDR(xdrEnv xdr.TransactionEnvelope) (*GenericTransacti
 			maxFee:     xdrEnv.FeeBumpFee(),
 			inner:      innerTx.simple,
 			feeAccount: feeBumpAccount.Address(),
-			signatures: xdrEnv.FeeBumpSignatures(),
 		}
 		return newTx, nil
 	}
@@ -599,7 +584,6 @@ func transactionFromParsedXDR(xdrEnv xdr.TransactionEnvelope) (*GenericTransacti
 		operations: nil,
 		memo:       nil,
 		timebounds: Timebounds{},
-		signatures: xdrEnv.Signatures(),
 	}
 
 	if timeBounds := xdrEnv.TimeBounds(); timeBounds != nil {
@@ -661,7 +645,6 @@ func NewTransaction(params TransactionParams) (*Transaction, error) {
 		operations: params.Operations,
 		memo:       params.Memo,
 		timebounds: params.Timebounds,
-		signatures: nil,
 	}
 
 	accountID, err := xdr.AddressToAccountId(tx.sourceAccount.AccountID)
@@ -757,7 +740,7 @@ func convertToV1(tx *Transaction) (*Transaction, error) {
 	if err != nil {
 		return tx, err
 	}
-	tx.signatures = signatures
+	tx.envelope.V1.Signatures = signatures
 	return tx, nil
 }
 
