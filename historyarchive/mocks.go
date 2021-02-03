@@ -40,6 +40,11 @@ func (m *MockArchive) GetLedgerHeader(chk uint32) (xdr.LedgerHeaderHistoryEntry,
 	return a.Get(0).(xdr.LedgerHeaderHistoryEntry), a.Error(1)
 }
 
+func (m *MockArchive) GetLedgers(start, end uint32) (map[uint32]*xdr.LedgerCloseMeta, error) {
+	a := m.Called(start, end)
+	return a.Get(0).(map[uint32]*xdr.LedgerCloseMeta), a.Error(1)
+}
+
 func (m *MockArchive) GetRootHAS() (HistoryArchiveState, error) {
 	a := m.Called()
 	return a.Get(0).(HistoryArchiveState), a.Error(1)
