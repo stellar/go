@@ -2,7 +2,9 @@
 title: Metrics
 ---
 
-The metrics endpoint returns a host of [Prometheus](https://prometheus.io/) metrics for monitoring the health of the underlying Horizon process. 
+The metrics endpoint returns a host of [Prometheus](https://prometheus.io/) metrics for monitoring the health of the underlying Horizon process.
+
+There is an [official Grafana Dashboard](https://grafana.com/grafana/dashboards/13793) to easily visualize those metrics.
 
 Since Horizon 1.0.0 this endpoint is not part of the public API. It's available in the internal server (listening on the internal port set via `ADMIN_PORT` env variable or `--admin-port` CLI param).
 
