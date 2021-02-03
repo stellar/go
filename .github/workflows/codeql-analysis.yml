@@ -10,7 +10,7 @@ on:
     - 'master'
     - 'release-*'
   schedule:
-    - cron: '35 22 * * 6'
+    - cron: '30 17 * * 1,2,3,4,5'
 
 jobs:
   analyze:
