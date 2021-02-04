@@ -90,7 +90,7 @@ func build(pkg, dest, version, buildOS, buildArch string) {
 	cmd := exec.Command("go", "build",
 		"-trimpath",
 		"-o", dest,
-		"-ldflags", fmt.Sprintf("%s", versionFlag),
+		"-ldflags", versionFlag,
 		pkg,
 	)
 	cmd.Stderr = os.Stderr
