@@ -49,6 +49,12 @@ type ConnectOptions struct {
 	CheckpointFrequency uint32
 }
 
+type Ledger struct {
+	Header            xdr.LedgerHeaderHistoryEntry
+	Transaction       xdr.TransactionHistoryEntry
+	TransactionResult xdr.TransactionHistoryResultEntry
+}
+
 type ArchiveBackend interface {
 	Exists(path string) (bool, error)
 	Size(path string) (int64, error)
@@ -65,7 +71,7 @@ type ArchiveInterface interface {
 	CategoryCheckpointExists(cat string, chk uint32) (bool, error)
 	GetLedgerHeader(chk uint32) (xdr.LedgerHeaderHistoryEntry, error)
 	GetRootHAS() (HistoryArchiveState, error)
-	GetLedgers(start, end uint32) (map[uint32]*xdr.LedgerCloseMeta, error)
+	GetLedgers(start, end uint32) (map[uint32]Ledger, error)
 	GetCheckpointHAS(chk uint32) (HistoryArchiveState, error)
 	PutCheckpointHAS(chk uint32, has HistoryArchiveState, opts *CommandOptions) error
 	PutRootHAS(has HistoryArchiveState, opts *CommandOptions) error
@@ -196,15 +202,13 @@ func (a *Archive) GetRootHAS() (HistoryArchiveState, error) {
 	return a.GetPathHAS(rootHASPath)
 }
 
-func (a *Archive) GetLedgers(start, end uint32) (map[uint32]*xdr.LedgerCloseMeta, error) {
+func (a *Archive) GetLedgers(start, end uint32) (map[uint32]Ledger, error) {
 	if start > end {
 		return nil, errors.Errorf("range is invalid, start: %d end: %d", start, end)
 	}
 	checkpointRange := a.GetCheckpointManager().MakeRange(start, end)
-	cache := map[uint32]*xdr.LedgerCloseMeta{}
+	cache := map[uint32]Ledger{}
 	for cur := checkpointRange.Low; cur <= checkpointRange.High; cur = a.GetCheckpointManager().NextCheckpoint(cur) {
-		// ledger must be fetched first because it initializes LedgerCloseMeta for
-		// a given sequence.
 		for _, category := range []string{"ledgers", "transactions", "results"} {
 			if exists, err := a.CategoryCheckpointExists(category, cur); err != nil {
 				return nil, errors.Wrap(err, "could not check if category checkpoint exists")
@@ -221,7 +225,7 @@ func (a *Archive) GetLedgers(start, end uint32) (map[uint32]*xdr.LedgerCloseMeta
 	return cache, nil
 }
 
-func (a *Archive) fetchCategory(cache map[uint32]*xdr.LedgerCloseMeta, category string, checkpointSequence uint32) error {
+func (a *Archive) fetchCategory(cache map[uint32]Ledger, category string, checkpointSequence uint32) error {
 	checkpointPath := CategoryCheckpointPath(category, checkpointSequence)
 	xdrStream, err := a.GetXdrStream(checkpointPath)
 	if err != nil {
@@ -233,23 +237,24 @@ func (a *Archive) fetchCategory(cache map[uint32]*xdr.LedgerCloseMeta, category 
 		switch category {
 		case "ledger":
 			var object xdr.LedgerHeaderHistoryEntry
-			err = xdrStream.ReadOne(&object)
-			cache[uint32(object.Header.LedgerSeq)] = &xdr.LedgerCloseMeta{
-				V: 0,
-				V0: &xdr.LedgerCloseMetaV0{
-					LedgerHeader: object,
-				},
+			if err = xdrStream.ReadOne(&object); err != nil {
+				entry := cache[uint32(object.Header.LedgerSeq)]
+				entry.Header = object
+				cache[uint32(object.Header.LedgerSeq)] = entry
 			}
 		case "transactions":
 			var object xdr.TransactionHistoryEntry
-			err = xdrStream.ReadOne(&object)
-			cache[uint32(object.LedgerSeq)].V0.TxSet = object.TxSet
+			if err = xdrStream.ReadOne(&object); err != nil {
+				entry := cache[uint32(object.LedgerSeq)]
+				entry.Transaction = object
+				cache[uint32(object.LedgerSeq)] = entry
+			}
 		case "results":
 			var object xdr.TransactionHistoryResultEntry
-			err = xdrStream.ReadOne(&object)
-			cache[uint32(object.LedgerSeq)].V0.TxProcessing = make([]xdr.TransactionResultMeta, len(object.TxResultSet.Results))
-			for i := range object.TxResultSet.Results {
-				cache[uint32(object.LedgerSeq)].V0.TxProcessing[i].Result = object.TxResultSet.Results[i]
+			if err = xdrStream.ReadOne(&object); err != nil {
+				entry := cache[uint32(object.LedgerSeq)]
+				entry.TransactionResult = object
+				cache[uint32(object.LedgerSeq)] = entry
 			}
 		default:
 			panic("unknown category")
