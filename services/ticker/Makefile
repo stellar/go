@@ -8,7 +8,7 @@ BUILD_DATE := $(shell date --utc --rfc-3339=seconds)
 
 docker-build:
 	cd ../../ && \
-	$(SUDO) docker build --label org.opencontainers.image.created="$(BUILD_DATE)" \
+	$(SUDO) docker build --pull --label org.opencontainers.image.created="$(BUILD_DATE)" \
 	-f services/ticker/docker/Dockerfile -t $(TAG) .
 
 docker-push:
@@ -16,5 +16,5 @@ docker-push:
 	$(SUDO) docker push $(TAG)
 
 docker-build-dev:
-	$(SUDO) docker build --label org.opencontainers.image.created="$(BUILD_DATE)" \
+	$(SUDO) docker build --pull --label org.opencontainers.image.created="$(BUILD_DATE)" \
 	-f docker/Dockerfile-dev -t $(TAG) .
