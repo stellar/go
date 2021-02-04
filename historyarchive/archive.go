@@ -71,7 +71,7 @@ type ArchiveInterface interface {
 	CategoryCheckpointExists(cat string, chk uint32) (bool, error)
 	GetLedgerHeader(chk uint32) (xdr.LedgerHeaderHistoryEntry, error)
 	GetRootHAS() (HistoryArchiveState, error)
-	GetLedgers(start, end uint32) (map[uint32]Ledger, error)
+	GetLedgers(start, end uint32) (map[uint32]*Ledger, error)
 	GetCheckpointHAS(chk uint32) (HistoryArchiveState, error)
 	PutCheckpointHAS(chk uint32, has HistoryArchiveState, opts *CommandOptions) error
 	PutRootHAS(has HistoryArchiveState, opts *CommandOptions) error
@@ -202,12 +202,12 @@ func (a *Archive) GetRootHAS() (HistoryArchiveState, error) {
 	return a.GetPathHAS(rootHASPath)
 }
 
-func (a *Archive) GetLedgers(start, end uint32) (map[uint32]Ledger, error) {
+func (a *Archive) GetLedgers(start, end uint32) (map[uint32]*Ledger, error) {
 	if start > end {
 		return nil, errors.Errorf("range is invalid, start: %d end: %d", start, end)
 	}
 	checkpointRange := a.GetCheckpointManager().MakeRange(start, end)
-	cache := map[uint32]Ledger{}
+	cache := map[uint32]*Ledger{}
 	for cur := checkpointRange.Low; cur <= checkpointRange.High; cur = a.GetCheckpointManager().NextCheckpoint(cur) {
 		for _, category := range []string{"ledgers", "transactions", "results"} {
 			if exists, err := a.CategoryCheckpointExists(category, cur); err != nil {
@@ -225,7 +225,7 @@ func (a *Archive) GetLedgers(start, end uint32) (map[uint32]Ledger, error) {
 	return cache, nil
 }
 
-func (a *Archive) fetchCategory(cache map[uint32]Ledger, category string, checkpointSequence uint32) error {
+func (a *Archive) fetchCategory(cache map[uint32]*Ledger, category string, checkpointSequence uint32) error {
 	checkpointPath := CategoryCheckpointPath(category, checkpointSequence)
 	xdrStream, err := a.GetXdrStream(checkpointPath)
 	if err != nil {
@@ -239,6 +239,9 @@ func (a *Archive) fetchCategory(cache map[uint32]Ledger, category string, checkp
 			var object xdr.LedgerHeaderHistoryEntry
 			if err = xdrStream.ReadOne(&object); err != nil {
 				entry := cache[uint32(object.Header.LedgerSeq)]
+				if entry == nil {
+					entry = &Ledger{}
+				}
 				entry.Header = object
 				cache[uint32(object.Header.LedgerSeq)] = entry
 			}
@@ -246,6 +249,9 @@ func (a *Archive) fetchCategory(cache map[uint32]Ledger, category string, checkp
 			var object xdr.TransactionHistoryEntry
 			if err = xdrStream.ReadOne(&object); err != nil {
 				entry := cache[uint32(object.LedgerSeq)]
+				if entry == nil {
+					entry = &Ledger{}
+				}
 				entry.Transaction = object
 				cache[uint32(object.LedgerSeq)] = entry
 			}
@@ -253,6 +259,9 @@ func (a *Archive) fetchCategory(cache map[uint32]Ledger, category string, checkp
 			var object xdr.TransactionHistoryResultEntry
 			if err = xdrStream.ReadOne(&object); err != nil {
 				entry := cache[uint32(object.LedgerSeq)]
+				if entry == nil {
+					entry = &Ledger{}
+				}
 				entry.TransactionResult = object
 				cache[uint32(object.LedgerSeq)] = entry
 			}
