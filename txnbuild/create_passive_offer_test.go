@@ -116,14 +116,13 @@ func TestCreatePassiveSellOfferValidatePrice(t *testing.T) {
 
 func TestCreatePassiveSellOfferPrice(t *testing.T) {
 	kp0 := newKeypair0()
-	sourceAccount := NewSimpleAccount(kp0.Address(), int64(41137196761100))
 
 	offer := CreatePassiveSellOffer{
 		Selling:       CreditAsset{"ABCD", kp0.Address()},
 		Buying:        NativeAsset{},
 		Amount:        "1",
 		Price:         "0.000000001",
-		SourceAccount: &sourceAccount,
+		SourceAccount: kp0.Address(),
 	}
 
 	xdrOp, err := offer.BuildXDR()

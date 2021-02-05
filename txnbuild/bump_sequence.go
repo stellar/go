@@ -9,7 +9,7 @@ import (
 // https://www.stellar.org/developers/guides/concepts/list-of-operations.html
 type BumpSequence struct {
 	BumpTo        int64
-	SourceAccount Account
+	SourceAccount string
 }
 
 // BuildXDR for BumpSequence returns a fully configured XDR Operation.
@@ -47,8 +47,8 @@ func (bs *BumpSequence) Validate() error {
 	return nil
 }
 
-// GetSourceAccount returns the source account of the operation, or nil if not
+// GetSourceAccount returns the source account of the operation, or the empty string if not
 // set.
-func (bs *BumpSequence) GetSourceAccount() Account {
+func (bs *BumpSequence) GetSourceAccount() string {
 	return bs.SourceAccount
 }

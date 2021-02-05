@@ -114,11 +114,11 @@ func TestSponsorships(t *testing.T) {
 		t.Logf("Revoking & replacing sponsorship")
 		ops = []txnbuild.Operation{
 			&txnbuild.BeginSponsoringFutureReserves{
-				SourceAccount: newSponsor,
+				SourceAccount: newSponsor.GetAccountID(),
 				SponsoredID:   sponsorPair.Address(),
 			},
 			&txnbuild.RevokeSponsorship{
-				SourceAccount:   sponsor,
+				SourceAccount:   sponsor.GetAccountID(),
 				SponsorshipType: txnbuild.RevokeSponsorshipTypeAccount,
 				Account:         &newAccountID,
 			},
@@ -192,7 +192,7 @@ func TestSponsorships(t *testing.T) {
 		signerKey := keypair.MustRandom().Address() // unspecified signer
 
 		ops := sponsorOperations(newAccountPair.Address(), &txnbuild.SetOptions{
-			SourceAccount: newAccount,
+			SourceAccount: newAccount.GetAccountID(),
 			Signer: &txnbuild.Signer{
 				Address: signerKey,
 				Weight:  1,
@@ -233,7 +233,7 @@ func TestSponsorships(t *testing.T) {
 		newSponsorPair, newSponsor := keys[2], accounts[2]
 		ops = []txnbuild.Operation{
 			&txnbuild.BeginSponsoringFutureReserves{
-				SourceAccount: newSponsor,
+				SourceAccount: newSponsor.GetAccountID(),
 				SponsoredID:   sponsorPair.Address(),
 			},
 			&txnbuild.RevokeSponsorship{
@@ -328,7 +328,7 @@ func TestSponsorships(t *testing.T) {
 		}
 		ops := sponsorOperations(newAccountPair.Address(),
 			&txnbuild.SetOptions{
-				SourceAccount: newAccount,
+				SourceAccount: newAccount.GetAccountID(),
 				Signer: &txnbuild.Signer{
 					Address: preAuthSignerKey.Address(),
 					Weight:  1,
@@ -402,7 +402,7 @@ func TestSponsorships(t *testing.T) {
 			&txnbuild.ManageData{
 				Name:          "SponsoredData",
 				Value:         []byte("SponsoredValue"),
-				SourceAccount: newAccount,
+				SourceAccount: newAccount.GetAccountID(),
 			})
 
 		signers := []*keypair.Full{sponsorPair, newAccountPair}
@@ -441,7 +441,7 @@ func TestSponsorships(t *testing.T) {
 		newSponsorPair, newSponsor := keys[2], accounts[2]
 		ops = []txnbuild.Operation{
 			&txnbuild.BeginSponsoringFutureReserves{
-				SourceAccount: newSponsor,
+				SourceAccount: newSponsor.GetAccountID(),
 				SponsoredID:   sponsorPair.Address(),
 			},
 			&txnbuild.RevokeSponsorship{
@@ -507,12 +507,12 @@ func TestSponsorships(t *testing.T) {
 
 		ops := sponsorOperations(newAccountPair.Address(),
 			&txnbuild.ChangeTrust{
-				SourceAccount: newAccount,
+				SourceAccount: newAccount.GetAccountID(),
 				Line:          asset,
 				Limit:         txnbuild.MaxTrustlineLimit,
 			},
 			&txnbuild.ManageSellOffer{
-				SourceAccount: newAccount,
+				SourceAccount: newAccount.GetAccountID(),
 				Selling:       txnbuild.NativeAsset{},
 				Buying:        asset,
 				Amount:        "3",
@@ -572,7 +572,7 @@ func TestSponsorships(t *testing.T) {
 
 		ops = []txnbuild.Operation{
 			&txnbuild.BeginSponsoringFutureReserves{
-				SourceAccount: newSponsor,
+				SourceAccount: newSponsor.GetAccountID(),
 				SponsoredID:   sponsorPair.Address(),
 			},
 			&txnbuild.RevokeSponsorship{
@@ -653,11 +653,11 @@ func TestSponsorships(t *testing.T) {
 
 		ops := []txnbuild.Operation{
 			&txnbuild.BeginSponsoringFutureReserves{
-				SourceAccount: sponsor,
+				SourceAccount: sponsor.GetAccountID(),
 				SponsoredID:   sponsoreePair.Address(),
 			},
 			&txnbuild.CreateClaimableBalance{
-				SourceAccount: sponsoree,
+				SourceAccount: sponsoree.GetAccountID(),
 				Destinations: []txnbuild.Claimant{
 					txnbuild.NewClaimant(sponsorPair.Address(), nil),
 					txnbuild.NewClaimant(sponsoreePair.Address(), nil),
@@ -747,7 +747,7 @@ func sponsorOperations(account string, ops ...txnbuild.Operation) []txnbuild.Ope
 		},
 		ops...),
 		&txnbuild.EndSponsoringFutureReserves{
-			SourceAccount: &txnbuild.SimpleAccount{AccountID: account},
+			SourceAccount: account,
 		},
 	)
 }
