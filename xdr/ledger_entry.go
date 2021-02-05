@@ -56,10 +56,12 @@ func (entry *LedgerEntry) SponsoringID() SponsorshipDescriptor {
 	return sponsor
 }
 
-// Normalize return LedgerEntry with all the extensions set to default values.
+// Normalize overwrites LedgerEntry with all the extensions set to default values
+// (if extension is not present).
 // This is helpful to compare two ledger entries that are the same but for one of
 // them extensions are not set.
-func (entry *LedgerEntry) Normalize() {
+// Returns the same entry.
+func (entry *LedgerEntry) Normalize() *LedgerEntry {
 	// If ledgerEntry is V0, create ext=1 and add a nil sponsor
 	if entry.Ext.V == 0 {
 		entry.Ext = LedgerEntryExt{
@@ -73,8 +75,7 @@ func (entry *LedgerEntry) Normalize() {
 	switch entry.Data.Type {
 	case LedgerEntryTypeAccount:
 		accountEntry := entry.Data.Account
-		// Account can have ext=0. For those, create ext=1
-		// with 0 liabilities.
+		// Account can have ext=0. For those, create ext=1 with 0 liabilities.
 		if accountEntry.Ext.V == 0 {
 			accountEntry.Ext.V = 1
 			accountEntry.Ext.V1 = &AccountEntryExtensionV1{
@@ -84,7 +85,7 @@ func (entry *LedgerEntry) Normalize() {
 				},
 			}
 		}
-		// if AccountEntryExtensionV1Ext is v=0,  then create v2 with 0 values
+		// if AccountEntryExtensionV1Ext is v=0, then create v2 with 0 values
 		if accountEntry.Ext.V1.Ext.V == 0 {
 			accountEntry.Ext.V1.Ext.V = 2
 			accountEntry.Ext.V1.Ext.V2 = &AccountEntryExtensionV2{
@@ -136,4 +137,6 @@ func (entry *LedgerEntry) Normalize() {
 			}
 		}
 	}
+
+	return entry
 }

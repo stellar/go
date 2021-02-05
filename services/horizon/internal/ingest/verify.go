@@ -411,7 +411,6 @@ func addAccountsToStateVerifier(verifier *verify.StateVerifier, q history.Ingest
 			},
 		}
 		addLedgerEntrySponsor(&entry, row.Sponsor)
-		entry.Normalize()
 		err = verifier.Write(entry)
 		if err != nil {
 			return err
@@ -444,7 +443,6 @@ func addDataToStateVerifier(verifier *verify.StateVerifier, q history.IngestionQ
 			},
 		}
 		addLedgerEntrySponsor(&entry, row.Sponsor)
-		entry.Normalize()
 		err := verifier.Write(entry)
 		if err != nil {
 			return err
@@ -488,7 +486,6 @@ func addOffersToStateVerifier(
 			},
 		}
 		addLedgerEntrySponsor(&entry, row.Sponsor)
-		entry.Normalize()
 		err := verifier.Write(entry)
 		if err != nil {
 			return err
@@ -539,7 +536,6 @@ func addTrustLinesToStateVerifier(
 			},
 		}
 		addLedgerEntrySponsor(&entry, row.Sponsor)
-		entry.Normalize()
 		if err := verifier.Write(entry); err != nil {
 			return err
 		}
@@ -602,7 +598,6 @@ func addClaimableBalanceToStateVerifier(
 			},
 		}
 		addLedgerEntrySponsor(&entry, row.Sponsor)
-		entry.Normalize()
 		if err := verifier.Write(entry); err != nil {
 			return err
 		}
