@@ -7,12 +7,3 @@ func (entry *ClaimableBalanceEntry) Flags() ClaimableBalanceFlags {
 	}
 	return 0
 }
-
-func NormalizeClaimableBalanceExtension(ext ClaimableBalanceEntryExt) ClaimableBalanceEntryExt {
-	normalized := ext
-	if ext.V == 1 && ext.V1.Flags == 0 {
-		// If the flags equal 0 it is equivalent to Version 0
-		normalized = ClaimableBalanceEntryExt{V: 0}
-	}
-	return normalized
-}
