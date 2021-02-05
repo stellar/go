@@ -79,7 +79,7 @@ func main() {
 
 _(The `panicIf` function is defined in the [footnotes](#footnotes); it's used here for error-checking brevity.)_
 
-Notice that the mysterious `config` variable above isn't defined. This will be environment-specific and users should consult both the [Captive Core documentation](../services/horizon/internal/docs/captive-core.md) and the [config docs](./ledgerbackend/captive_core_backend.go#L104-L131) directly for more details if they want to use this backend in production. For now, though, we'll have some hardcoded values for the SDF testnet:
+Notice that the mysterious `config` variable above isn't defined. This will be environment-specific and users should consult both the [Captive Core documentation](../../services/horizon/internal/docs/captive_core.md) and the [config docs](./ledgerbackend/captive_core_backend.go#L104-L131) directly for more details if they want to use this backend in production. For now, though, we'll have some hardcoded values for the SDF testnet:
 
 ```go
 config := ledgerbackend.CaptiveCoreConfig{
