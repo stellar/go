@@ -335,6 +335,10 @@ func (t *Transaction) ClaimableBalanceID(operationIndex int) (string, error) {
 		return "", errors.New("invalid operation index")
 	}
 
+	if _, ok := t.operations[operationIndex].(*CreateClaimableBalance); !ok {
+		return "", errors.New("operation is not CreateClaimableBalance")
+	}
+
 	// We mimic the relevant code from Stellar Core
 	// https://github.com/stellar/stellar-core/blob/9f3cc04e6ec02c38974c42545a86cdc79809252b/src/test/TestAccount.cpp#L285
 	operationId := xdr.OperationId{
