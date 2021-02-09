@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/stellar/go/ingest/io"
+	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/support/errors"
@@ -21,15 +21,15 @@ type ParticipantsProcessorTestSuiteLedger struct {
 	mockBatchInsertBuilder           *history.MockTransactionParticipantsBatchInsertBuilder
 	mockOperationsBatchInsertBuilder *history.MockOperationParticipantBatchInsertBuilder
 
-	firstTx     io.LedgerTransaction
-	secondTx    io.LedgerTransaction
-	thirdTx     io.LedgerTransaction
+	firstTx     ingest.LedgerTransaction
+	secondTx    ingest.LedgerTransaction
+	thirdTx     ingest.LedgerTransaction
 	firstTxID   int64
 	secondTxID  int64
 	thirdTxID   int64
 	addresses   []string
 	addressToID map[string]int64
-	txs         []io.LedgerTransaction
+	txs         []ingest.LedgerTransaction
 }
 
 func TestParticipantsProcessorTestSuiteLedger(t *testing.T) {
@@ -83,7 +83,7 @@ func (s *ParticipantsProcessorTestSuiteLedger) SetupTest() {
 		sequence,
 	)
 
-	s.txs = []io.LedgerTransaction{
+	s.txs = []ingest.LedgerTransaction{
 		s.firstTx,
 		s.secondTx,
 		s.thirdTx,

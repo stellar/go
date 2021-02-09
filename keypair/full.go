@@ -2,12 +2,11 @@ package keypair
 
 import (
 	"bytes"
+	"crypto/ed25519"
 	"encoding/base64"
 
 	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/xdr"
-
-	"golang.org/x/crypto/ed25519"
 )
 
 type Full struct {

@@ -4,8 +4,7 @@ import (
 	"database/sql"
 	"math/big"
 
-	ingesterrors "github.com/stellar/go/ingest/errors"
-	"github.com/stellar/go/ingest/io"
+	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
@@ -14,7 +13,7 @@ import (
 type AssetStatsProcessor struct {
 	assetStatsQ history.QAssetStats
 
-	cache               *io.LedgerEntryChangeCache
+	cache               *ingest.ChangeCompactor
 	assetStatSet        AssetStatSet
 	useLedgerEntryCache bool
 }
@@ -37,11 +36,11 @@ func NewAssetStatsProcessor(
 }
 
 func (p *AssetStatsProcessor) reset() {
-	p.cache = io.NewLedgerEntryChangeCache()
+	p.cache = ingest.NewChangeCompactor()
 	p.assetStatSet = AssetStatSet{}
 }
 
-func (p *AssetStatsProcessor) ProcessChange(change io.Change) error {
+func (p *AssetStatsProcessor) ProcessChange(change ingest.Change) error {
 	if change.Type != xdr.LedgerEntryTypeTrustline {
 		return nil
 	}
@@ -124,7 +123,7 @@ func (p *AssetStatsProcessor) Commit() error {
 		if assetStatNotFound {
 			// Insert
 			if delta.NumAccounts < 0 {
-				return ingesterrors.NewStateError(errors.Errorf(
+				return ingest.NewStateError(errors.Errorf(
 					"NumAccounts negative but DB entry does not exist for asset: %s %s %s",
 					delta.AssetType,
 					delta.AssetCode,
@@ -155,7 +154,7 @@ func (p *AssetStatsProcessor) Commit() error {
 			if statAccounts == 0 {
 				// Remove stats
 				if statBalance.Cmp(big.NewInt(0)) != 0 {
-					return ingesterrors.NewStateError(errors.Errorf(
+					return ingest.NewStateError(errors.Errorf(
 						"Removing asset stat by final amount non-zero for: %s %s %s",
 						delta.AssetType,
 						delta.AssetCode,
@@ -186,7 +185,7 @@ func (p *AssetStatsProcessor) Commit() error {
 		}
 
 		if rowsAffected != 1 {
-			return ingesterrors.NewStateError(errors.Errorf(
+			return ingest.NewStateError(errors.Errorf(
 				"%d rows affected when adjusting asset stat for asset: %s %s %s",
 				rowsAffected,
 				delta.AssetType,
@@ -243,7 +242,7 @@ func (p *AssetStatsProcessor) adjustAssetStat(
 		// else, trustline was unauthorized and remains unauthorized
 		// so there is no change to accounts or balances
 	} else {
-		return ingesterrors.NewStateError(errors.New("both pre and post trustlines cannot be nil"))
+		return ingest.NewStateError(errors.New("both pre and post trustlines cannot be nil"))
 	}
 
 	err := p.assetStatSet.AddDelta(trustline.Asset, int64(deltaBalance), deltaAccounts)

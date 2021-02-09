@@ -17,61 +17,44 @@ replacement: https://developers.stellar.org/docs/horizon-captive-core/
 
 ### Introduction
 
-Starting with version v1.6.0, Horizon allows using Stellar-Core in captive mode. Core's captive mode is enabled by default
-since Horizon 2.0.
+Starting with version v1.6.0, Horizon allows using Stellar-Core in captive mode. Core's captive mode is enabled by default since Horizon 2.0.
 
-When Captive Core mode is disabled, this is how Horizon interacts with Core.
+When Captive Core mode is disabled, this is how Horizon interacts with Core:
 
 ![Horizon without Captive Core](HorizonWithoutCaptiveCore.png)
 
 Captive Core mode relaxes Horizon's operational requirements. It allows running Horizon without a fully fledged Core instance and, most importantly, without a Core database. 
 
-Captive core is a specialized narrowed-down Stellar-Core instance with the sole aim of emitting metadata to Horizon.
-Captive Core does all the work in-memory, without a database. On the other hand, and for the same reason, it has higher memory requirements (which will be covered in a section below).
+Captive Core is a specialized narrowed-down Stellar-Core instance with the sole aim of emitting transaction metadata (often abbreviated in documentation as "txmeta") to Horizon. Captive Core does all the work in-memory, without a database; for this reason, it has higher memory requirements (which will be covered in a section below) but is much more performant.
 
-The Captive core instance can be started as:
+The Captive Core instance can be started as:
 
-A. a subprocess of Horizon, streaming ledger data over a filesystem pipe. This is the default.
+A. a subprocess of Horizon, streaming ledger data over a filesystem pipe. This is the default:
 
 ![Horizon with Captive Core](HorizonWithCaptiveCore.png)
     
 B. an experimental remote captive core server, to which Horizon connects through HTTP (see Horizon's `--remote-captive-core-url` flag).
-    For more information on installing the remote Captive Core server, please take a look at
-    [captivecore](https://github.com/stellar/go/tree/master/exp/services/captivecore).
+    For more information on installing the remote Captive Core server, please take a look at [captivecore](https://github.com/stellar/go/tree/master/exp/services/captivecore):
 
 ![Horizon with Remote Captive Core](HorizonWithRemoteCaptiveCore.png)
-    
-Captive Core completely eliminates all Horizon issues connected Stellar-Core's database but requires extra time to initialize the Stellar-Core subprocess.
 
-Captive Stellar-Core can be used in both reingestion (`horizon db reingest range`) and normal Horizon operation (`horizon` or `horizon serve`).
-In fact, using Captive Core to reingest historical data is considerably faster without Captive Core (i.e. filling in Core's database with `stellar-core catchup` followed by `horizon db reingest range`).
+Captive Core completely eliminates all Horizon issues connected Stellar-Core's database, but it requires extra time to initialize the Stellar-Core subprocess.
+
+Captive Stellar-Core can be used in both reingestion (`horizon db reingest range`) and normal Horizon operation (`horizon` or `horizon serve`). In fact, using Captive Core to reingest historical data is considerably faster than without it (i.e. filling in Core's database with `stellar-core catchup` followed by `horizon db reingest range`).
 
 ### Configuration
 
 To enable captive mode you will need to initialize some configuration variables:
+
 * (required) `ENABLE_CAPTIVE_CORE_INGESTION=true` (enabled by default since Horizon 2.0).
-* (required) If you run Captive core ...
+* (required) If you run Captive Core ...
 
   A. ... as a subprocess:
      * `STELLAR_CORE_BINARY_PATH` - defines a path to the `stellar-core` binary,
-     * (not required when running `horizon db reingest range`) `CAPTIVE_CORE_CONFIG_APPEND_PATH` - defines a path to a file to append to the Stellar Core configuration file used by captive core.
-       It must, at least, include enough details to define a quorum set. For instance, to connect to the Stellar testnet through `core-testnet1.stellar.org`:
-       ```toml
-       [[HOME_DOMAINS]]
-       HOME_DOMAIN="testnet.stellar.org"
-       QUALITY="MEDIUM"
-
-       [[VALIDATORS]]
-       NAME="sdf_testnet_1"
-       HOME_DOMAIN="testnet.stellar.org"
-       PUBLIC_KEY="GDKXE2OZMJIPOSLNA6N6F2BVCI3O777I2OOC4BV7VOYUEHYX7RTRYA7Y"
-       ADDRESS="core-testnet1.stellar.org"
-       ```
+     * (not required when running `horizon db reingest range`) `CAPTIVE_CORE_CONFIG_APPEND_PATH` - defines a path to a file to append to the Stellar Core configuration file used by captive core. It must, at least, include enough details to define a quorum set. Refer [below](#configure-captive-core) for an example stub connecting to the Stellar testnet SDF servers.
   
-       The full configuration to be used will be printed out by Horizon when running horizon with `--log-level debug`
-  
-  B. ... using the experimental captive core server:
-     * `REMOTE_CAPTIVE_CORE_URL` - url to access the remote captive core server
+  B. ... using the experimental Captive Core server:
+     * `REMOTE_CAPTIVE_CORE_URL` - URL to access the remote captive core server
   
 * (optional) `CAPTIVE_CORE_HTTP_PORT` - HTTP port for Captive Core to listen on (0 disables the HTTP server)
 
@@ -88,16 +71,16 @@ When using Captive Stellar-Core, Horizon runs the `stellar-core` binary as a sub
 
 The behaviour is slightly different when reingesting old ledgers and when reading recently closed ledgers.
 
-When reingesting, Stellar-Core is started in a special `catchup` mode that simply replays the requested range of ledgers. This mode requires an additional 3GB of RAM because all ledger entries are stored in memory - making it extremely fast. This mode only depends on the history archives, so a `stellar-core.cfg` file is not required.
+When reingesting, Stellar-Core is started in a special `catchup` mode that simply replays the requested range of ledgers. This mode requires an additional 3GB of RAM because all ledger entries are stored in memory, making it extremely fast. This mode only depends on the history archives, so a Stellar-Core configuration file is not required.
 
-When reading recently closed ledgers, Stellar-Core is started with a normal `run` command. This requires a persistent database, so extra RAM is not needed, but it makes the initial stage of applying buckets slower than when reingesting. In this case a `stellar-core.cfg` file **is** required to configure a quorum set, so that Stellar-Core can connect to the Stellar network.
+When reading recently closed ledgers, Stellar-Core is started with a normal `run` command. This requires a persistent database, so extra RAM is not needed, but it makes the initial stage of applying buckets slower than when reingesting. In this case a Stellar-Core configuration file **is** required to configure a quorum set so that it can connect to the Stellar network.
 
 ### Known Issues
 
-As discussed earlier, Captive Stellar-Core provides much better decoupling for Horizon, at the expense of persistence. You should be aware of the following consequences:
+As discussed earlier, Captive Core provides much better decoupling for Horizon at the expense of persistence. You should be aware of the following consequences:
 
 * Captive Stellar-Core requires a couple of minutes to complete the apply buckets stage every time Horizon in started.
-* If Horizon process is terminated, Stellar-Core is also terminated.
+* If the Horizon process terminates, Stellar-Core is also terminated.
 * Requires extra RAM.
 
 To mitigate this we recommend running multiple ingesting Horizon servers in a single cluster. This allows other ingesting instances to maintain service without interruptions if a Captive Stellar-Core is restarted.
@@ -110,7 +93,7 @@ In this section, we'll discuss migrating existing systems running the pre-2.0 ve
 
   - We assume that the **PostgreSQL server** lives at the `db.local` hostname, and has a `horizon` database accessible by the `postgres:secret` username-password combo.
 
-  - We assume your machine has **enough extra RAM** to hold Captive Core's in-memory database (~3GiB), which is a larger memory requirement than a traditional Core setup (which would have an on-disk database).
+  - We assume your machine has **enough extra RAM** to hold Captive Core's in-memory database (~3GB), which is a larger memory requirement than a traditional Core setup (which would have an on-disk database).
 
   - The examples here refer to the **testnet for safety**; replace the appropriate references with the pubnet equivalents when you're ready.
 
@@ -200,10 +183,11 @@ CAPTIVE_CORE_CONFIG_APPEND_PATH=/etc/default/stellar-captive-core.toml" | sudo t
 **Note**: Depending on the version you're migrating from, you may need to include an additional step here: manual reingestion. This can still be accomplished with Captive Core; see [below](#reingestion).
 
 #### Restarting Services
-Now, we can stop Core (which hopefully doesn't need an explanation) and restart Horizon:
+Now, we can stop Core and restart Horizon:
 
 ```bash
-stellar-horizon-cmd serve
+sudo systemctl stop stellar-core
+sudo systemctl restart stellar-horizon
 ```
 
 The logs should show Captive Core running successfully as a subprocess, and eventually Horizon will be running as usual, except with Captive Core rapidly generating transaction metadata in-memory!
@@ -267,10 +251,12 @@ REMOTE_CAPTIVE_CORE_URL='http://captivecore.local:8000'
 " | sudo tee /etc/default/stellar-horizon
 ```
 
-Then just run it as usual:
+Then just run it as usual, directly from the command-line or as a service:
 
 ```
 stellar-horizon-cmd serve
+# or
+sudo systemctl restart stellar-horizon
 ```
 
 #### Serving Instance
@@ -285,11 +271,43 @@ ENABLE_CAPTIVE_CORE_INGESTION=false
 STELLAR_CORE_URL='http://captivecore.local:11626'
 REMOTE_CAPTIVE_CORE_URL='http://captivecore.local:8000'
 " | sudo tee /etc/default/stellar-horizon
-stellar-horizon-cmd serve
+sudo systemctl restart stellar-horizon
 ```
 
 At this point, you should be able to hit port 8000 on the above instance and watch the `ingest_latest_ledger` value grow.
 
+### Private Networks
+
+If you want your Captive Core instance to connect to a private Stellar network, you will need to specify the validator of the private network in the Captive Core append path.
+
+Assuming the validator of your private network has a public key of `GD5KD2KEZJIGTC63IGW6UMUSMVUVG5IHG64HUTFWCHVZH2N2IBOQN7PS` and can be accessed at `private1.validator.com`, then the Captive Core append path would consist of the following file:
+
+```toml
+UNSAFE_QUORUM=true
+FAILURE_SAFETY=0
+
+[[VALIDATORS]]
+NAME="private"
+HOME_DOMAIN="validator.com"
+PUBLIC_KEY="GD5KD2KEZJIGTC63IGW6UMUSMVUVG5IHG64HUTFWCHVZH2N2IBOQN7PS"
+ADDRESS="private1.validator.com"
+QUALITY="MEDIUM"
+```
+
+`UNSAFE_QUORUM=true` and `FAILURE_SAFETY=0` are required when there are too few validators in the private network to form a quorum.
+
+You will also need to set `RUN_STANDALONE=false` in the Stellar Core configuration for the validator.
+Otherwise, if `RUN_STANDALONE` is set to true, the validator will not accept connections on its peer port which means Captive Core will not be able to connect to the validator.
+
+On a new Stellar network the first history archive snapshot is published after ledger 63 is closed.
+Captive Core depends on the history archives which means that Horizon ingestion via Captive Core will not begin until after ledger 63 is closed.
+Assuming the standard 5 second delay in between ledgers, it will take 5 minutes for the network to progress from the genesis ledger to ledger 63.
+
+There are cases where you may need to repeatedly create new private networks (e.g. spawning a private network during integration tests) and having a 5 minute delay is too costly.
+In that case you can consider including `ARTIFICIALLY_ACCELERATE_TIME_FOR_TESTING=true` in both the validator configuration and the Captive Core configuration.
+
+When `ARTIFICIALLY_ACCELERATE_TIME_FOR_TESTING` is set Stellar Core will publish a new ledger every second.
+It will also publish history archive snapshots every 8 ledgers so you will need to set Horizon's checkpoint frequency parameter (`--checkpoint-frequency` as a command line argument or `CHECKPOINT_FREQUENCY` as an environment variable) to 8.
 
 ### Reingestion
 If you need to manually reingest some ledgers (for example, you want history for some ledgers that closed before your asset got issued), you can still do this with Captive Core.
@@ -368,13 +386,14 @@ memory consumption per woker).
 instance with 5TB of General Purpose SSD storage. Again, as the DB storage
 grows, a larger number of workers should be considered.
 
-In order to run the reingestion, first set the following environment variables:
-```
-export DATABASE_URL=postgres://postgres:<password>@<horizon_db_hostanme>:5432/horizon
+In order to run the reingestion, first set the following environment variables in the configuration:
+
+```bash
+export DATABASE_URL=postgres://postgres:secret@db.local:5432/horizon
 export APPLY_MIGRATIONS=true
 export HISTORY_ARCHIVE_URLS=https://s3-eu-west-1.amazonaws.com/history.stellar.org/prd/core-live/core_live_001
 export NETWORK_PASSPHRASE="Public Global Stellar Network ; September 2015"
-export STELLAR_CORE_BINARY_PATH=/usr/bin/stellar-core
+export STELLAR_CORE_BINARY_PATH=$(which stellar-core)
 export ENABLE_CAPTIVE_CORE_INGESTION=true
 # Number of ledgers per job sent to the workers
 # The larger the job, the better performance from Captive Core's perspective, but, you want to choose a job size which maximizes the time all workers are busy. 
@@ -384,8 +403,7 @@ export RETRIES=10
 export RETRY_BACKOFF_SECONDS=20
 ```
 
-If Horizon was previously running, ensure it is stopped. Then, run
-the following commands in parallel:
+(Naturally, you can also edit the configuration file at `/etc/default/stellar-horizon` directly.) If Horizon was previously running, ensure it is stopped. Then, run the following commands in parallel:
 
 1. `stellar-horizon db reingest range --parallel-workers=64 1 16999999`
 2. `stellar-horizon db reingest range --parallel-workers=24 17000000 <latest_ledger>`
@@ -396,25 +414,22 @@ When saturating an RDS instance with 15K IOPS capacity:
 
 (2) should take about 1.5 days to complete.
 
-
-Although there is a retry mechanism, reingestion may fail half-way. Horizon will
-print the recommended range to use in order to restart it. 
+Although there is a retry mechanism, reingestion may fail half-way. Horizon will print the recommended range to use in order to restart it. 
 
 
 ##### Monitoring reingestion process
 
-This script should help monitor the reingestion process by printing the
- ledger subranges being reingested:
- 
-```
+This script should help monitor the reingestion process by printing the ledger subranges being reingested:
+
+```bash
 #!/bin/bash
 echo "Current ledger ranges being reingested:"
 echo
 I=1
-for S in $(ps aux | grep stellar-core | grep catchup |  awk '{ print $15 }' | sort -n ); do
+for S in $(ps aux | grep stellar-core | grep catchup | awk '{print $15}' | sort -n); do
     printf '%15s' $S
-    if [ $(( I %  5 )) = 0 ]; then
-	echo
+    if [ $(( I % 5 )) = 0 ]; then
+      echo
     fi
     I=$(( I + 1))
 done

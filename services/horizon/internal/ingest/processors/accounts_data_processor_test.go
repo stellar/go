@@ -4,7 +4,7 @@ package processors
 import (
 	"testing"
 
-	"github.com/stellar/go/ingest/io"
+	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/suite"
@@ -60,7 +60,7 @@ func (s *AccountsDataProcessorTestSuiteState) TestCreatesAccounts() {
 	}
 	s.mockBatchInsertBuilder.On("Add", entry).Return(nil).Once()
 
-	err := s.processor.ProcessChange(io.Change{
+	err := s.processor.ProcessChange(ingest.Change{
 		Type: xdr.LedgerEntryTypeData,
 		Pre:  nil,
 		Post: &entry,
@@ -108,7 +108,7 @@ func (s *AccountsDataProcessorTestSuiteLedger) TestNewAccountData() {
 	}
 	lastModifiedLedgerSeq := xdr.Uint32(123)
 
-	err := s.processor.ProcessChange(io.Change{
+	err := s.processor.ProcessChange(ingest.Change{
 		Type: xdr.LedgerEntryTypeData,
 		Pre:  nil,
 		Post: &xdr.LedgerEntry{
@@ -135,7 +135,7 @@ func (s *AccountsDataProcessorTestSuiteLedger) TestNewAccountData() {
 		LastModifiedLedgerSeq: lastModifiedLedgerSeq,
 	}
 
-	err = s.processor.ProcessChange(io.Change{
+	err = s.processor.ProcessChange(ingest.Change{
 		Type: xdr.LedgerEntryTypeData,
 		Pre: &xdr.LedgerEntry{
 			Data: xdr.LedgerEntryData{
@@ -174,7 +174,7 @@ func (s *AccountsDataProcessorTestSuiteLedger) TestUpdateAccountData() {
 		LastModifiedLedgerSeq: lastModifiedLedgerSeq,
 	}
 
-	err := s.processor.ProcessChange(io.Change{
+	err := s.processor.ProcessChange(ingest.Change{
 		Type: xdr.LedgerEntryTypeData,
 		Pre: &xdr.LedgerEntry{
 			Data: xdr.LedgerEntryData{
@@ -191,7 +191,7 @@ func (s *AccountsDataProcessorTestSuiteLedger) TestUpdateAccountData() {
 }
 
 func (s *AccountsDataProcessorTestSuiteLedger) TestRemoveAccountData() {
-	err := s.processor.ProcessChange(io.Change{
+	err := s.processor.ProcessChange(ingest.Change{
 		Type: xdr.LedgerEntryTypeData,
 		Pre: &xdr.LedgerEntry{
 			Data: xdr.LedgerEntryData{

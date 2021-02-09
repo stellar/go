@@ -12,8 +12,7 @@ import (
 
 	"github.com/stellar/go/clients/stellarcore"
 	"github.com/stellar/go/historyarchive"
-	"github.com/stellar/go/ingest/adapters"
-	ingesterrors "github.com/stellar/go/ingest/errors"
+	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/db"
@@ -137,7 +136,7 @@ type system struct {
 	runner   ProcessorRunnerInterface
 
 	ledgerBackend  ledgerbackend.LedgerBackend
-	historyAdapter adapters.HistoryArchiveAdapterInterface
+	historyAdapter historyArchiveAdapterInterface
 
 	stellarCoreClient stellarCoreClient
 
@@ -212,7 +211,7 @@ func NewSystem(config Config) (System, error) {
 	historyQ := &history.Q{config.HistorySession.Clone()}
 	historyQ.Ctx = ctx
 
-	historyAdapter := adapters.MakeHistoryArchiveAdapter(archive)
+	historyAdapter := newHistoryArchiveAdapter(archive)
 
 	system := &system{
 		cancel:                      cancel,
@@ -456,7 +455,7 @@ func (s *system) maybeVerifyState(lastIngestedLedger uint32) {
 
 				errorCount := s.incrementStateVerificationErrors()
 				switch errors.Cause(err).(type) {
-				case ingesterrors.StateError:
+				case ingest.StateError:
 					markStateInvalid(s.historyQ, err)
 				default:
 					logger := log.WithField("err", err).Warn

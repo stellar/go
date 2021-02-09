@@ -1,8 +1,7 @@
 package processors
 
 import (
-	ingesterrors "github.com/stellar/go/ingest/errors"
-	"github.com/stellar/go/ingest/io"
+	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
@@ -11,7 +10,7 @@ import (
 type AccountsProcessor struct {
 	accountsQ history.QAccounts
 
-	cache *io.LedgerEntryChangeCache
+	cache *ingest.ChangeCompactor
 }
 
 func NewAccountsProcessor(accountsQ history.QAccounts) *AccountsProcessor {
@@ -21,10 +20,10 @@ func NewAccountsProcessor(accountsQ history.QAccounts) *AccountsProcessor {
 }
 
 func (p *AccountsProcessor) reset() {
-	p.cache = io.NewLedgerEntryChangeCache()
+	p.cache = ingest.NewChangeCompactor()
 }
 
-func (p *AccountsProcessor) ProcessChange(change io.Change) error {
+func (p *AccountsProcessor) ProcessChange(change ingest.Change) error {
 	if change.Type != xdr.LedgerEntryTypeAccount {
 		return nil
 	}
@@ -74,7 +73,7 @@ func (p *AccountsProcessor) Commit() error {
 			}
 
 			if rowsAffected != 1 {
-				return ingesterrors.NewStateError(errors.Errorf(
+				return ingest.NewStateError(errors.Errorf(
 					"%d No rows affected when removing account %s",
 					rowsAffected,
 					accountID,

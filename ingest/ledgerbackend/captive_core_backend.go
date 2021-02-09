@@ -19,7 +19,7 @@ var _ LedgerBackend = (*CaptiveStellarCore)(nil)
 
 func (c *CaptiveStellarCore) roundDownToFirstReplayAfterCheckpointStart(ledger uint32) uint32 {
 	r := c.checkpointManager.GetCheckpointRange(ledger)
-	if r.Low == 0 {
+	if r.Low <= 1 {
 		// Stellar-Core doesn't stream ledger 1
 		return 2
 	}

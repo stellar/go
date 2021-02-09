@@ -7,6 +7,18 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 * Breaking change: The `expingest` command has been renamed to `ingest` since the ingestion system is not experimental anymore.
 
+## v1.14.0
+
+* Fix bug `/fee_stats` endpoint. The endpoint was not including the additional base fee charge for fee bump transactions ([#3354](https://github.com/stellar/go/pull/3354))
+* Expose the timestamp of the most recently ingested ledger in the root resource response and in the `/metrics` response ([#3281](https://github.com/stellar/go/pull/3281))
+* Add `--checkpoint-frequency` flag to configure how many ledgers span a history archive checkpoint ([#3273](https://github.com/stellar/go/pull/3273)). This is useful in the context of creating standalone Stellar networks in [integration tests](internal/docs/captive_core.md#private-networks).
+
+## v1.13.1
+
+**Upgrading to this version from version before v1.10.0 will trigger state rebuild. During this process (which can take several minutes) it will not ingest new ledgers.**
+
+* Fixed a bug in `/fee_stats` endpoint that could calculate invalid stats if fee bump transactions were included in the ledger ([#3326](https://github.com/stellar/go/pull/3326))
+
 ## v2.0.0 Beta
 
 **THIS IS A BETA RELEASE! DO NOT USE IN PRODUCTION. The release may contain critical bugs. It's not suitable for production use.**

@@ -2,7 +2,7 @@
 package processors
 
 import (
-	"github.com/stellar/go/ingest/io"
+	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/support/errors"
@@ -138,7 +138,7 @@ func participantsForMeta(
 
 func participantsForTransaction(
 	sequence uint32,
-	transaction io.LedgerTransaction,
+	transaction ingest.LedgerTransaction,
 ) ([]xdr.AccountId, error) {
 	participants := []xdr.AccountId{
 		transaction.Envelope.SourceAccount().ToAccountId(),
@@ -182,7 +182,7 @@ func participantsForTransaction(
 func (p *ParticipantsProcessor) addTransactionParticipants(
 	participantSet map[string]participant,
 	sequence uint32,
-	transaction io.LedgerTransaction,
+	transaction ingest.LedgerTransaction,
 ) error {
 	transactionID := toid.New(int32(sequence), int32(transaction.Index), 0).ToInt64()
 	transactionParticipants, err := participantsForTransaction(
@@ -206,7 +206,7 @@ func (p *ParticipantsProcessor) addTransactionParticipants(
 func (p *ParticipantsProcessor) addOperationsParticipants(
 	participantSet map[string]participant,
 	sequence uint32,
-	transaction io.LedgerTransaction,
+	transaction ingest.LedgerTransaction,
 ) error {
 	participants, err := operationsParticipants(transaction, sequence)
 	if err != nil {
@@ -259,7 +259,7 @@ func (p *ParticipantsProcessor) insertDBOperationsParticipants(participantSet ma
 	return nil
 }
 
-func (p *ParticipantsProcessor) ProcessTransaction(transaction io.LedgerTransaction) (err error) {
+func (p *ParticipantsProcessor) ProcessTransaction(transaction ingest.LedgerTransaction) (err error) {
 	err = p.addTransactionParticipants(p.participantSet, p.sequence, transaction)
 	if err != nil {
 		return err

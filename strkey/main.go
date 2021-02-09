@@ -74,6 +74,11 @@ func Decode(expected VersionByte, src string) ([]byte, error) {
 		return nil, err
 	}
 
+	// check length
+	if len(raw) < 3 {
+		return nil, errors.New("decoded string is too short")
+	}
+
 	// decode into components
 	version := VersionByte(raw[0])
 	vp := raw[0 : len(raw)-2]

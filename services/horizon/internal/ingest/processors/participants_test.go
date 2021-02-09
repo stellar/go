@@ -1,12 +1,13 @@
 package processors
 
-import "testing"
+import (
+	"testing"
 
-import "github.com/stellar/go/ingest/io"
+	"github.com/stretchr/testify/assert"
 
-import "github.com/stretchr/testify/assert"
-
-import "github.com/stellar/go/xdr"
+	"github.com/stellar/go/ingest"
+	"github.com/stellar/go/xdr"
+)
 
 func TestParticipantsForTransaction(t *testing.T) {
 	var envelope xdr.TransactionEnvelope
@@ -36,7 +37,7 @@ func TestParticipantsForTransaction(t *testing.T) {
 
 	particpants, err := participantsForTransaction(
 		3,
-		io.LedgerTransaction{
+		ingest.LedgerTransaction{
 			Index:      1,
 			Envelope:   envelope,
 			FeeChanges: feeChanges,

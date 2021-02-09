@@ -1,8 +1,7 @@
 package processors
 
 import (
-	ingesterrors "github.com/stellar/go/ingest/errors"
-	"github.com/stellar/go/ingest/io"
+	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
@@ -16,7 +15,7 @@ type OffersProcessor struct {
 	offersQ  history.QOffers
 	sequence uint32
 
-	cache       *io.LedgerEntryChangeCache
+	cache       *ingest.ChangeCompactor
 	insertBatch history.OffersBatchInsertBuilder
 	removeBatch []int64
 }
@@ -28,12 +27,12 @@ func NewOffersProcessor(offersQ history.QOffers, sequence uint32) *OffersProcess
 }
 
 func (p *OffersProcessor) reset() {
-	p.cache = io.NewLedgerEntryChangeCache()
+	p.cache = ingest.NewChangeCompactor()
 	p.insertBatch = p.offersQ.NewOffersBatchInsertBuilder(maxBatchSize)
 	p.removeBatch = []int64{}
 }
 
-func (p *OffersProcessor) ProcessChange(change io.Change) error {
+func (p *OffersProcessor) ProcessChange(change ingest.Change) error {
 	if change.Type != xdr.LedgerEntryTypeOffer {
 		return nil
 	}
@@ -104,7 +103,7 @@ func (p *OffersProcessor) flushCache() error {
 		}
 
 		if rowsAffected != 1 {
-			return ingesterrors.NewStateError(errors.Errorf(
+			return ingest.NewStateError(errors.Errorf(
 				"%d rows affected when %s offer %d",
 				rowsAffected,
 				action,

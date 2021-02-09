@@ -1,12 +1,14 @@
 package history
 
 import (
+	"bytes"
 	"encoding/json"
+	"text/template"
 
 	sq "github.com/Masterminds/squirrel"
-	"github.com/go-errors/errors"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/toid"
+	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
 
@@ -24,49 +26,44 @@ func (r *Operation) UnmarshalDetails(dest interface{}) error {
 
 	err := json.Unmarshal([]byte(r.DetailsString.String), &dest)
 	if err != nil {
-		err = errors.Wrap(err, 1)
+		err = errors.Wrap(err, "error in unmarshal")
 	}
 
 	return err
 }
 
+var feeStatsQueryTemplate = template.Must(template.New("trade_aggregations_query").Parse(`
+{{define "operation_count"}}(CASE WHEN new_max_fee IS NULL THEN operation_count ELSE operation_count + 1 END){{end}}
+SELECT
+	{{range .}}
+	ceil(percentile_disc(0.{{ . }}) WITHIN GROUP (ORDER BY fee_charged/{{template "operation_count"}}))::bigint AS "fee_charged_p{{ . }}",
+	{{end}}
+	ceil(max(fee_charged/{{template "operation_count"}}))::bigint AS "fee_charged_max",
+	ceil(min(fee_charged/{{template "operation_count"}}))::bigint AS "fee_charged_min",
+	ceil(mode() within group (order by fee_charged/{{template "operation_count"}}))::bigint AS "fee_charged_mode",
+
+	{{range .}}
+	ceil(percentile_disc(0.{{ . }}) WITHIN GROUP (ORDER BY COALESCE(new_max_fee, max_fee)/{{template "operation_count"}}))::bigint AS "max_fee_p{{ . }}",
+	{{end}}
+	ceil(max(COALESCE(new_max_fee, max_fee)/{{template "operation_count"}}))::bigint AS "max_fee_max",
+	ceil(min(COALESCE(new_max_fee, max_fee)/{{template "operation_count"}}))::bigint AS "max_fee_min",
+	ceil(mode() within group (order by COALESCE(new_max_fee, max_fee)/{{template "operation_count"}}))::bigint AS "max_fee_mode"
+FROM history_transactions
+WHERE ledger_sequence > $1 AND ledger_sequence <= $2`))
+
 // FeeStats returns operation fee stats for the last 5 ledgers.
 // Currently, we hard code the query to return the last 5 ledgers worth of transactions.
 // TODO: make the number of ledgers configurable.
 func (q *Q) FeeStats(currentSeq int32, dest *FeeStats) error {
-	return q.GetRaw(dest, `
-		SELECT
-			ceil(max(fee_charged/operation_count))::bigint AS "fee_charged_max",
-			ceil(min(fee_charged/operation_count))::bigint AS "fee_charged_min",
-			ceil(mode() within group (order by fee_charged/operation_count))::bigint AS "fee_charged_mode",
-			ceil(percentile_disc(0.10) WITHIN GROUP (ORDER BY fee_charged/operation_count))::bigint AS "fee_charged_p10",
-			ceil(percentile_disc(0.20) WITHIN GROUP (ORDER BY fee_charged/operation_count))::bigint AS "fee_charged_p20",
-			ceil(percentile_disc(0.30) WITHIN GROUP (ORDER BY fee_charged/operation_count))::bigint AS "fee_charged_p30",
-			ceil(percentile_disc(0.40) WITHIN GROUP (ORDER BY fee_charged/operation_count))::bigint AS "fee_charged_p40",
-			ceil(percentile_disc(0.50) WITHIN GROUP (ORDER BY fee_charged/operation_count))::bigint AS "fee_charged_p50",
-			ceil(percentile_disc(0.60) WITHIN GROUP (ORDER BY fee_charged/operation_count))::bigint AS "fee_charged_p60",
-			ceil(percentile_disc(0.70) WITHIN GROUP (ORDER BY fee_charged/operation_count))::bigint AS "fee_charged_p70",
-			ceil(percentile_disc(0.80) WITHIN GROUP (ORDER BY fee_charged/operation_count))::bigint AS "fee_charged_p80",
-			ceil(percentile_disc(0.90) WITHIN GROUP (ORDER BY fee_charged/operation_count))::bigint AS "fee_charged_p90",
-			ceil(percentile_disc(0.95) WITHIN GROUP (ORDER BY fee_charged/operation_count))::bigint AS "fee_charged_p95",
-			ceil(percentile_disc(0.99) WITHIN GROUP (ORDER BY fee_charged/operation_count))::bigint AS "fee_charged_p99",
-			ceil(max(max_fee/operation_count))::bigint AS "max_fee_max",
-			ceil(min(max_fee/operation_count))::bigint AS "max_fee_min",
-			ceil(mode() within group (order by max_fee/operation_count))::bigint AS "max_fee_mode",
-			ceil(percentile_disc(0.10) WITHIN GROUP (ORDER BY max_fee/operation_count))::bigint AS "max_fee_p10",
-			ceil(percentile_disc(0.20) WITHIN GROUP (ORDER BY max_fee/operation_count))::bigint AS "max_fee_p20",
-			ceil(percentile_disc(0.30) WITHIN GROUP (ORDER BY max_fee/operation_count))::bigint AS "max_fee_p30",
-			ceil(percentile_disc(0.40) WITHIN GROUP (ORDER BY max_fee/operation_count))::bigint AS "max_fee_p40",
-			ceil(percentile_disc(0.50) WITHIN GROUP (ORDER BY max_fee/operation_count))::bigint AS "max_fee_p50",
-			ceil(percentile_disc(0.60) WITHIN GROUP (ORDER BY max_fee/operation_count))::bigint AS "max_fee_p60",
-			ceil(percentile_disc(0.70) WITHIN GROUP (ORDER BY max_fee/operation_count))::bigint AS "max_fee_p70",
-			ceil(percentile_disc(0.80) WITHIN GROUP (ORDER BY max_fee/operation_count))::bigint AS "max_fee_p80",
-			ceil(percentile_disc(0.90) WITHIN GROUP (ORDER BY max_fee/operation_count))::bigint AS "max_fee_p90",
-			ceil(percentile_disc(0.95) WITHIN GROUP (ORDER BY max_fee/operation_count))::bigint AS "max_fee_p95",
-			ceil(percentile_disc(0.99) WITHIN GROUP (ORDER BY max_fee/operation_count))::bigint AS "max_fee_p99"
-		FROM history_transactions
-		WHERE ledger_sequence > $1 AND ledger_sequence <= $2
-	`, currentSeq-5, currentSeq)
+	percentiles := []int{10, 20, 30, 40, 50, 60, 70, 80, 90, 95, 99}
+
+	var buf bytes.Buffer
+	err := feeStatsQueryTemplate.Execute(&buf, percentiles)
+	if err != nil {
+		return errors.Wrap(err, "error executing the query template")
+	}
+
+	return q.GetRaw(dest, buf.String(), currentSeq-5, currentSeq)
 }
 
 // Operations provides a helper to filter the operations table with pre-defined
