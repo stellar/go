@@ -86,7 +86,7 @@ func TestToken_formInputSuccess(t *testing.T) {
 		JWK:               jwk,
 		JWTIssuer:         "https://example.com",
 		JWTExpiresIn:      time.Minute,
-		Domain: domain,
+		Domain:            domain,
 		HomeDomains:       []string{homeDomain},
 	}
 
@@ -189,7 +189,7 @@ func TestToken_jsonInputSuccess(t *testing.T) {
 		JWK:               jwk,
 		JWTIssuer:         "https://example.com",
 		JWTExpiresIn:      time.Minute,
-		Domain: domain,
+		Domain:            domain,
 		HomeDomains:       []string{homeDomain},
 	}
 
@@ -295,7 +295,7 @@ func TestToken_jsonInputValidRotatingServerSigners(t *testing.T) {
 		JWK:               jwk,
 		JWTIssuer:         "https://example.com",
 		JWTExpiresIn:      time.Minute,
-		Domain: domain,
+		Domain:            domain,
 		HomeDomains:       []string{homeDomain},
 	}
 
@@ -441,7 +441,7 @@ func TestToken_jsonInputValidMultipleSigners(t *testing.T) {
 		JWK:               jwk,
 		JWTIssuer:         "https://example.com",
 		JWTExpiresIn:      time.Minute,
-		Domain: domain,
+		Domain:            domain,
 		HomeDomains:       []string{homeDomain},
 	}
 
@@ -548,7 +548,7 @@ func TestToken_jsonInputNotEnoughWeight(t *testing.T) {
 		JWK:               jwk,
 		JWTIssuer:         "https://example.com",
 		JWTExpiresIn:      time.Minute,
-		Domain: domain,
+		Domain:            domain,
 		HomeDomains:       []string{homeDomain},
 	}
 
@@ -634,7 +634,7 @@ func TestToken_jsonInputUnrecognizedSigner(t *testing.T) {
 		JWK:               jwk,
 		JWTIssuer:         "https://example.com",
 		JWTExpiresIn:      time.Minute,
-		Domain: domain,
+		Domain:            domain,
 		HomeDomains:       []string{homeDomain},
 	}
 
@@ -716,7 +716,7 @@ func TestToken_jsonInputAccountNotExistSuccess(t *testing.T) {
 		JWTIssuer:                   "https://example.com",
 		JWTExpiresIn:                time.Minute,
 		AllowAccountsThatDoNotExist: true,
-		Domain: domain,
+		Domain:                      domain,
 		HomeDomains:                 []string{homeDomain},
 	}
 
@@ -823,7 +823,7 @@ func TestToken_jsonInputAccountNotExistFail(t *testing.T) {
 		JWTIssuer:                   "https://example.com",
 		JWTExpiresIn:                time.Minute,
 		AllowAccountsThatDoNotExist: true,
-		Domain: domain,
+		Domain:                      domain,
 		HomeDomains:                 []string{homeDomain},
 	}
 
@@ -905,7 +905,7 @@ func TestToken_jsonInputAccountNotExistNotAllowed(t *testing.T) {
 		JWTIssuer:                   "https://example.com",
 		JWTExpiresIn:                time.Minute,
 		AllowAccountsThatDoNotExist: false,
-		Domain: domain,
+		Domain:                      domain,
 		HomeDomains:                 []string{homeDomain},
 	}
 
@@ -989,7 +989,7 @@ func TestToken_jsonInputUnrecognizedServerSigner(t *testing.T) {
 		JWTIssuer:                   "https://example.com",
 		JWTExpiresIn:                time.Minute,
 		AllowAccountsThatDoNotExist: false,
-		Domain: domain,
+		Domain:                      domain,
 		HomeDomains:                 []string{homeDomain},
 	}
 
@@ -1030,11 +1030,11 @@ func TestToken_jsonInputNoWebAuthDomainSuccess(t *testing.T) {
 	homeDomain := "example.com"
 	tx, err := txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
-			SourceAccount:        &txnbuild.SimpleAccount{ AccountID: serverKey.Address()},
+			SourceAccount:        &txnbuild.SimpleAccount{AccountID: serverKey.Address()},
 			IncrementSequenceNum: false,
 			Operations: []txnbuild.Operation{
 				&txnbuild.ManageData{
-					SourceAccount: &txnbuild.SimpleAccount{ AccountID: account.Address()},
+					SourceAccount: &txnbuild.SimpleAccount{AccountID: account.Address()},
 					Name:          homeDomain + " auth",
 					Value:         []byte("ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg"),
 				},
@@ -1081,7 +1081,7 @@ func TestToken_jsonInputNoWebAuthDomainSuccess(t *testing.T) {
 		JWTIssuer:                   "https://example.com",
 		JWTExpiresIn:                time.Minute,
 		AllowAccountsThatDoNotExist: true,
-		Domain: domain,
+		Domain:                      domain,
 		HomeDomains:                 []string{homeDomain},
 	}
 
@@ -1188,7 +1188,7 @@ func TestToken_jsonInputInvalidWebAuthDomainFail(t *testing.T) {
 		JWTIssuer:                   "https://example.com",
 		JWTExpiresIn:                time.Minute,
 		AllowAccountsThatDoNotExist: true,
-		Domain: domain,
+		Domain:                      domain,
 		HomeDomains:                 []string{homeDomain},
 	}
 

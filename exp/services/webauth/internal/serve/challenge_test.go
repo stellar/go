@@ -26,7 +26,7 @@ func TestChallenge(t *testing.T) {
 		NetworkPassphrase:  network.TestNetworkPassphrase,
 		SigningKey:         serverKey,
 		ChallengeExpiresIn: time.Minute,
-		Domain: "webauthdomain",
+		Domain:             "webauthdomain",
 		HomeDomains:        []string{"testdomain"},
 	}
 
@@ -82,7 +82,7 @@ func TestChallenge_anotherHomeDomain(t *testing.T) {
 		NetworkPassphrase:  network.TestNetworkPassphrase,
 		SigningKey:         serverKey,
 		ChallengeExpiresIn: time.Minute,
-		Domain: "webauthdomain",
+		Domain:             "webauthdomain",
 		HomeDomains:        []string{"testdomain", anotherDomain},
 	}
 

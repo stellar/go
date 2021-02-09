@@ -1049,7 +1049,7 @@ func ReadChallengeTx(challengeTx, serverAccountID, network, webAuthDomain string
 		if op.SourceAccount == nil {
 			return tx, clientAccountID, matchedHomeDomain, errors.New("operation should have a source account")
 		}
-		switch (op.Name) {
+		switch op.Name {
 		case "web_auth_domain":
 			if op.SourceAccount.GetAccountID() != serverAccountID {
 				return tx, clientAccountID, matchedHomeDomain, errors.New("web auth domain must have serve source account")

@@ -3924,7 +3924,7 @@ func TestVerifyChallengeTxSigners_validWhenWebAuthDomainMissing(t *testing.T) {
 	)
 	assert.NoError(t, err)
 
-	wantSigners :=[]string{clientKP.Address()}
+	wantSigners := []string{clientKP.Address()}
 
 	signersFound, err := VerifyChallengeTxSigners(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testwebauth.stellar.org", []string{"testanchor.stellar.org"}, clientKP.Address())
 	assert.ElementsMatch(t, wantSigners, signersFound)
