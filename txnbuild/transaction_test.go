@@ -1693,13 +1693,14 @@ func TestReadChallengeTx_invalidSeqNoNotZero(t *testing.T) {
 	clientKP := newKeypair1()
 	txSource := NewSimpleAccount(serverKP.Address(), 1234)
 	opSource := NewSimpleAccount(clientKP.Address(), 0)
+	webAuthDomainSource := NewSimpleAccount(serverKP.Address(), 0)
 	op := ManageData{
 		SourceAccount: &opSource,
 		Name:          "testanchor.stellar.org auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
 	webAuthDomainOp := ManageData{
-		SourceAccount: &txSource,
+		SourceAccount: &webAuthDomainSource,
 		Name:          "web_auth_domain",
 		Value:         []byte("testwebauth.stellar.org"),
 	}
@@ -1718,7 +1719,9 @@ func TestReadChallengeTx_invalidSeqNoNotZero(t *testing.T) {
 	assert.NoError(t, err)
 	tx64, err := tx.Base64()
 	require.NoError(t, err)
-	_, _, _, err = ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testwebauth.stellar.org", []string{"testanchor.stellar.org"})
+	readTx, readClientAccountID, _, err := ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testwebauth.stellar.org", []string{"testanchor.stellar.org"})
+	assert.Equal(t, tx, readTx)
+	assert.Equal(t, "", readClientAccountID)
 	assert.EqualError(t, err, "transaction sequence number must be 0")
 }
 
