@@ -9,7 +9,7 @@ import (
 // EndSponsoringFutureReserves represents the Stellar begin sponsoring future reserves operation. See
 // https://www.stellar.org/developers/guides/concepts/list-of-operations.html
 type EndSponsoringFutureReserves struct {
-	SourceAccount Account
+	SourceAccount string
 }
 
 // BuildXDR for EndSponsoringFutureReserves returns a fully configured XDR Operation.
@@ -40,8 +40,8 @@ func (es *EndSponsoringFutureReserves) Validate() error {
 	return nil
 }
 
-// GetSourceAccount returns the source account of the operation, or nil if not
+// GetSourceAccount returns the source account of the operation, or the empty string if not
 // set.
-func (es *EndSponsoringFutureReserves) GetSourceAccount() Account {
+func (es *EndSponsoringFutureReserves) GetSourceAccount() string {
 	return es.SourceAccount
 }

@@ -1270,7 +1270,7 @@ func TestFromXDR(t *testing.T) {
 	assert.IsType(t, newTx.Operations()[0], &Payment{}, "Operation types should match")
 	paymentOp, ok1 := newTx.Operations()[0].(*Payment)
 	assert.Equal(t, true, ok1)
-	assert.Equal(t, "GATBMIXTHXYKSUZSZUEJKACZ2OS2IYUWP2AIF3CA32PIDLJ67CH6Y5UY", paymentOp.SourceAccount.GetAccountID(), "Operation source should match")
+	assert.Equal(t, "GATBMIXTHXYKSUZSZUEJKACZ2OS2IYUWP2AIF3CA32PIDLJ67CH6Y5UY", paymentOp.SourceAccount, "Operation source should match")
 	assert.Equal(t, "GDGEQS64ISS6Y2KDM5V67B6LXALJX4E7VE4MIA54NANSUX5MKGKBZM5G", paymentOp.Destination, "Operation destination should match")
 	assert.Equal(t, "874.0000000", paymentOp.Amount, "Operation amount should match")
 
@@ -1295,7 +1295,7 @@ func TestFromXDR(t *testing.T) {
 	assert.IsType(t, newTx2.Operations()[1], &ManageData{}, "Operation types should match")
 	op1, ok1 := newTx2.Operations()[0].(*ChangeTrust)
 	assert.Equal(t, true, ok1)
-	assert.Equal(t, "GD4Q3HT4IMFTIYLYRPTJQ7XLKROGGEUV74WTL26KPEWUTF72AJKGSJS7", op1.SourceAccount.GetAccountID(), "Operation source should match")
+	assert.Equal(t, "GD4Q3HT4IMFTIYLYRPTJQ7XLKROGGEUV74WTL26KPEWUTF72AJKGSJS7", op1.SourceAccount, "Operation source should match")
 	assetType, err := op1.Line.GetType()
 	assert.NoError(t, err)
 
@@ -1306,7 +1306,7 @@ func TestFromXDR(t *testing.T) {
 
 	op2, ok2 := newTx2.Operations()[1].(*ManageData)
 	assert.Equal(t, true, ok2)
-	assert.Equal(t, nil, op2.SourceAccount, "Operation source should match")
+	assert.Equal(t, "", op2.SourceAccount, "Operation source should match")
 	assert.Equal(t, "test", op2.Name, "Name should match")
 	assert.Equal(t, "value", string(op2.Value), "Value should match")
 }
@@ -1399,11 +1399,10 @@ func TestSignWithSecretKey(t *testing.T) {
 	kp1 := newKeypair1()
 	txSource := NewSimpleAccount(kp0.Address(), int64(9605939170639897))
 	tx1Source := NewSimpleAccount(kp0.Address(), int64(9605939170639897))
-	opSource := NewSimpleAccount(kp1.Address(), 0)
 	createAccount := CreateAccount{
 		Destination:   "GCCOBXW2XQNUSL467IEILE6MMCNRR66SSVL4YQADUNYYNUVREF3FIV2Z",
 		Amount:        "10",
-		SourceAccount: &opSource,
+		SourceAccount: kp1.Address(),
 	}
 
 	expected, err := newSignedTransaction(
@@ -1447,11 +1446,10 @@ func TestAddSignatureBase64(t *testing.T) {
 	kp1 := newKeypair1()
 	txSource := NewSimpleAccount(kp0.Address(), int64(9605939170639897))
 	tx1Source := NewSimpleAccount(kp0.Address(), int64(9605939170639897))
-	opSource := NewSimpleAccount(kp1.Address(), 0)
 	createAccount := CreateAccount{
 		Destination:   "GCCOBXW2XQNUSL467IEILE6MMCNRR66SSVL4YQADUNYYNUVREF3FIV2Z",
 		Amount:        "10",
-		SourceAccount: &opSource,
+		SourceAccount: kp1.Address(),
 	}
 
 	expected, err := newSignedTransaction(
@@ -1500,9 +1498,8 @@ func TestReadChallengeTx_validSignedByServerAndClient(t *testing.T) {
 	serverKP := newKeypair0()
 	clientKP := newKeypair1()
 	txSource := NewSimpleAccount(serverKP.Address(), -1)
-	opSource := NewSimpleAccount(clientKP.Address(), 0)
 	op := ManageData{
-		SourceAccount: &opSource,
+		SourceAccount: clientKP.Address(),
 		Name:          "testanchor.stellar.org auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
@@ -1532,9 +1529,8 @@ func TestReadChallengeTx_validSignedByServer(t *testing.T) {
 	serverKP := newKeypair0()
 	clientKP := newKeypair1()
 	txSource := NewSimpleAccount(serverKP.Address(), -1)
-	opSource := NewSimpleAccount(clientKP.Address(), 0)
 	op := ManageData{
-		SourceAccount: &opSource,
+		SourceAccount: clientKP.Address(),
 		Name:          "testanchor.stellar.org auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
@@ -1563,9 +1559,8 @@ func TestReadChallengeTx_invalidNotSignedByServer(t *testing.T) {
 	serverKP := newKeypair0()
 	clientKP := newKeypair1()
 	txSource := NewSimpleAccount(serverKP.Address(), -1)
-	opSource := NewSimpleAccount(clientKP.Address(), 0)
 	op := ManageData{
-		SourceAccount: &opSource,
+		SourceAccount: clientKP.Address(),
 		Name:          "testanchor.stellar.org auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
@@ -1592,9 +1587,8 @@ func TestReadChallengeTx_invalidCorrupted(t *testing.T) {
 	serverKP := newKeypair0()
 	clientKP := newKeypair1()
 	txSource := NewSimpleAccount(serverKP.Address(), -1)
-	opSource := NewSimpleAccount(clientKP.Address(), 0)
 	op := ManageData{
-		SourceAccount: &opSource,
+		SourceAccount: clientKP.Address(),
 		Name:          "testanchor.stellar.org auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
@@ -1629,9 +1623,8 @@ func TestReadChallengeTx_invalidServerAccountIDMismatch(t *testing.T) {
 	serverKP := newKeypair0()
 	clientKP := newKeypair1()
 	txSource := NewSimpleAccount(newKeypair2().Address(), -1)
-	opSource := NewSimpleAccount(clientKP.Address(), 0)
 	op := ManageData{
-		SourceAccount: &opSource,
+		SourceAccount: clientKP.Address(),
 		Name:          "testanchor.stellar.org auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
@@ -1660,9 +1653,8 @@ func TestReadChallengeTx_invalidSeqNoNotZero(t *testing.T) {
 	serverKP := newKeypair0()
 	clientKP := newKeypair1()
 	txSource := NewSimpleAccount(serverKP.Address(), 1234)
-	opSource := NewSimpleAccount(clientKP.Address(), 0)
 	op := ManageData{
-		SourceAccount: &opSource,
+		SourceAccount: clientKP.Address(),
 		Name:          "testanchor.stellar.org auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
@@ -1691,9 +1683,8 @@ func TestReadChallengeTx_invalidTimeboundsInfinite(t *testing.T) {
 	serverKP := newKeypair0()
 	clientKP := newKeypair1()
 	txSource := NewSimpleAccount(serverKP.Address(), -1)
-	opSource := NewSimpleAccount(clientKP.Address(), 0)
 	op := ManageData{
-		SourceAccount: &opSource,
+		SourceAccount: clientKP.Address(),
 		Name:          "testanchor.stellar.org auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
@@ -1722,9 +1713,8 @@ func TestReadChallengeTx_invalidTimeboundsOutsideRange(t *testing.T) {
 	serverKP := newKeypair0()
 	clientKP := newKeypair1()
 	txSource := NewSimpleAccount(serverKP.Address(), -1)
-	opSource := NewSimpleAccount(clientKP.Address(), 0)
 	op := ManageData{
-		SourceAccount: &opSource,
+		SourceAccount: clientKP.Address(),
 		Name:          "testanchor.stellar.org auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
@@ -1754,9 +1744,8 @@ func TestReadChallengeTx_invalidOperationWrongType(t *testing.T) {
 	serverKP := newKeypair0()
 	clientKP := newKeypair1()
 	txSource := NewSimpleAccount(serverKP.Address(), -1)
-	opSource := NewSimpleAccount(clientKP.Address(), 0)
 	op := BumpSequence{
-		SourceAccount: &opSource,
+		SourceAccount: clientKP.Address(),
 		BumpTo:        0,
 	}
 	tx, err := NewTransaction(
@@ -1810,9 +1799,8 @@ func TestReadChallengeTx_invalidDataValueWrongEncodedLength(t *testing.T) {
 	serverKP := newKeypair0()
 	clientKP := newKeypair1()
 	txSource := NewSimpleAccount(serverKP.Address(), -1)
-	opSource := NewSimpleAccount(clientKP.Address(), 0)
 	op := ManageData{
-		SourceAccount: &opSource,
+		SourceAccount: clientKP.Address(),
 		Name:          "testanchor.stellar.org auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 45))),
 	}
@@ -1841,9 +1829,8 @@ func TestReadChallengeTx_invalidDataValueCorruptBase64(t *testing.T) {
 	serverKP := newKeypair0()
 	clientKP := newKeypair1()
 	txSource := NewSimpleAccount(serverKP.Address(), -1)
-	opSource := NewSimpleAccount(clientKP.Address(), 0)
 	op := ManageData{
-		SourceAccount: &opSource,
+		SourceAccount: clientKP.Address(),
 		Name:          "testanchor.stellar.org auth",
 		Value:         []byte("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA?AAAAAAAAAAAAAAAAAAAAAAAAAA"),
 	}
@@ -1872,9 +1859,8 @@ func TestReadChallengeTx_invalidDataValueWrongByteLength(t *testing.T) {
 	serverKP := newKeypair0()
 	clientKP := newKeypair1()
 	txSource := NewSimpleAccount(serverKP.Address(), -1)
-	opSource := NewSimpleAccount(clientKP.Address(), 0)
 	op := ManageData{
-		SourceAccount: &opSource,
+		SourceAccount: clientKP.Address(),
 		Name:          "testanchor.stellar.org auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 47))),
 	}
@@ -2012,9 +1998,8 @@ func TestReadChallengeTx_doesVerifyHomeDomainFailure(t *testing.T) {
 	serverKP := newKeypair0()
 	clientKP := newKeypair1()
 	txSource := NewSimpleAccount(serverKP.Address(), -1)
-	opSource := NewSimpleAccount(clientKP.Address(), 0)
 	op := ManageData{
-		SourceAccount: &opSource,
+		SourceAccount: clientKP.Address(),
 		Name:          "testanchor.stellar.org auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
@@ -2041,9 +2026,8 @@ func TestReadChallengeTx_doesVerifyHomeDomainSuccess(t *testing.T) {
 	serverKP := newKeypair0()
 	clientKP := newKeypair1()
 	txSource := NewSimpleAccount(serverKP.Address(), -1)
-	opSource := NewSimpleAccount(clientKP.Address(), 0)
 	op := ManageData{
-		SourceAccount: &opSource,
+		SourceAccount: clientKP.Address(),
 		Name:          "testanchor.stellar.org auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
@@ -2070,14 +2054,13 @@ func TestReadChallengeTx_allowsAdditionalManageDataOpsWithSourceAccountSetToServ
 	serverKP := newKeypair0()
 	clientKP := newKeypair1()
 	txSource := NewSimpleAccount(serverKP.Address(), -1)
-	opSource := NewSimpleAccount(clientKP.Address(), 0)
 	op1 := ManageData{
-		SourceAccount: &opSource,
+		SourceAccount: clientKP.Address(),
 		Name:          "testanchor.stellar.org auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
 	op2 := ManageData{
-		SourceAccount: &txSource,
+		SourceAccount: txSource.AccountID,
 		Name:          "testanchor.stellar.org auth",
 		Value:         []byte("a value"),
 	}
@@ -2106,14 +2089,13 @@ func TestReadChallengeTx_disallowsAdditionalManageDataOpsWithoutSourceAccountSet
 	serverKP := newKeypair0()
 	clientKP := newKeypair1()
 	txSource := NewSimpleAccount(serverKP.Address(), -1)
-	opSource := NewSimpleAccount(clientKP.Address(), 0)
 	op1 := ManageData{
-		SourceAccount: &opSource,
+		SourceAccount: clientKP.Address(),
 		Name:          "testanchor.stellar.org auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
 	op2 := ManageData{
-		SourceAccount: &opSource,
+		SourceAccount: clientKP.Address(),
 		Name:          "a key",
 		Value:         []byte("a value"),
 	}
@@ -2140,14 +2122,13 @@ func TestReadChallengeTx_disallowsAdditionalOpsOfOtherTypes(t *testing.T) {
 	serverKP := newKeypair0()
 	clientKP := newKeypair1()
 	txSource := NewSimpleAccount(serverKP.Address(), -1)
-	opSource := NewSimpleAccount(clientKP.Address(), 0)
 	op1 := ManageData{
-		SourceAccount: &opSource,
+		SourceAccount: clientKP.Address(),
 		Name:          "testanchor.stellar.org auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
 	op2 := BumpSequence{
-		SourceAccount: &txSource,
+		SourceAccount: txSource.AccountID,
 		BumpTo:        0,
 	}
 	tx, err := NewTransaction(
@@ -2175,9 +2156,8 @@ func TestReadChallengeTx_matchesHomeDomain(t *testing.T) {
 	serverKP := newKeypair0()
 	clientKP := newKeypair1()
 	txSource := NewSimpleAccount(serverKP.Address(), -1)
-	opSource := NewSimpleAccount(clientKP.Address(), 0)
 	op1 := ManageData{
-		SourceAccount: &opSource,
+		SourceAccount: clientKP.Address(),
 		Name:          "testanchor.stellar.org auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
@@ -2204,9 +2184,8 @@ func TestReadChallengeTx_doesNotMatchHomeDomain(t *testing.T) {
 	serverKP := newKeypair0()
 	clientKP := newKeypair1()
 	txSource := NewSimpleAccount(serverKP.Address(), -1)
-	opSource := NewSimpleAccount(clientKP.Address(), 0)
 	op1 := ManageData{
-		SourceAccount: &opSource,
+		SourceAccount: clientKP.Address(),
 		Name:          "testanchor.stellar.org auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
@@ -2233,9 +2212,8 @@ func TestVerifyChallengeTxThreshold_invalidServer(t *testing.T) {
 	serverKP := newKeypair0()
 	clientKP := newKeypair1()
 	txSource := NewSimpleAccount(serverKP.Address(), -1)
-	opSource := NewSimpleAccount(clientKP.Address(), 0)
 	op := ManageData{
-		SourceAccount: &opSource,
+		SourceAccount: clientKP.Address(),
 		Name:          "testanchor.stellar.org auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
@@ -2266,9 +2244,8 @@ func TestVerifyChallengeTxThreshold_validServerAndClientKeyMeetingThreshold(t *t
 	serverKP := newKeypair0()
 	clientKP := newKeypair1()
 	txSource := NewSimpleAccount(serverKP.Address(), -1)
-	opSource := NewSimpleAccount(clientKP.Address(), 0)
 	op := ManageData{
-		SourceAccount: &opSource,
+		SourceAccount: clientKP.Address(),
 		Name:          "testanchor.stellar.org auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
@@ -2303,9 +2280,8 @@ func TestVerifyChallengeTxThreshold_validServerAndMultipleClientKeyMeetingThresh
 	clientKP1 := newKeypair1()
 	clientKP2 := newKeypair2()
 	txSource := NewSimpleAccount(serverKP.Address(), -1)
-	opSource := NewSimpleAccount(clientKP1.Address(), 0)
 	op := ManageData{
-		SourceAccount: &opSource,
+		SourceAccount: clientKP1.Address(),
 		Name:          "testanchor.stellar.org auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
@@ -2343,9 +2319,8 @@ func TestVerifyChallengeTxThreshold_validServerAndMultipleClientKeyMeetingThresh
 	clientKP2 := newKeypair2()
 	clientKP3 := keypair.MustRandom()
 	txSource := NewSimpleAccount(serverKP.Address(), -1)
-	opSource := NewSimpleAccount(clientKP1.Address(), 0)
 	op := ManageData{
-		SourceAccount: &opSource,
+		SourceAccount: clientKP1.Address(),
 		Name:          "testanchor.stellar.org auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
@@ -2387,9 +2362,8 @@ func TestVerifyChallengeTxThreshold_validServerAndMultipleClientKeyMeetingThresh
 	xHash := "XDRPF6NZRR7EEVO7ESIWUDXHAOMM2QSKIQQBJK6I2FB7YKDZES5UCLWD"
 	unknownSignerType := "?ARPF6NZRR7EEVO7ESIWUDXHAOMM2QSKIQQBJK6I2FB7YKDZES5UCLWD"
 	txSource := NewSimpleAccount(serverKP.Address(), -1)
-	opSource := NewSimpleAccount(clientKP1.Address(), 0)
 	op := ManageData{
-		SourceAccount: &opSource,
+		SourceAccount: clientKP1.Address(),
 		Name:          "testanchor.stellar.org auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
@@ -2431,9 +2405,8 @@ func TestVerifyChallengeTxThreshold_invalidServerAndMultipleClientKeyNotMeetingT
 	clientKP2 := newKeypair2()
 	clientKP3 := keypair.MustRandom()
 	txSource := NewSimpleAccount(serverKP.Address(), -1)
-	opSource := NewSimpleAccount(clientKP1.Address(), 0)
 	op := ManageData{
-		SourceAccount: &opSource,
+		SourceAccount: clientKP1.Address(),
 		Name:          "testanchor.stellar.org auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
@@ -2467,9 +2440,8 @@ func TestVerifyChallengeTxThreshold_invalidClientKeyUnrecognized(t *testing.T) {
 	clientKP2 := newKeypair2()
 	clientKP3 := keypair.MustRandom()
 	txSource := NewSimpleAccount(serverKP.Address(), -1)
-	opSource := NewSimpleAccount(clientKP1.Address(), 0)
 	op := ManageData{
-		SourceAccount: &opSource,
+		SourceAccount: clientKP1.Address(),
 		Name:          "testanchor.stellar.org auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
@@ -2502,9 +2474,8 @@ func TestVerifyChallengeTxThreshold_invalidNoSigners(t *testing.T) {
 	clientKP2 := newKeypair2()
 	clientKP3 := keypair.MustRandom()
 	txSource := NewSimpleAccount(serverKP.Address(), -1)
-	opSource := NewSimpleAccount(clientKP1.Address(), 0)
 	op := ManageData{
-		SourceAccount: &opSource,
+		SourceAccount: clientKP1.Address(),
 		Name:          "testanchor.stellar.org auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
@@ -2533,9 +2504,8 @@ func TestVerifyChallengeTxThreshold_weightsAddToMoreThan8Bits(t *testing.T) {
 	clientKP1 := newKeypair1()
 	clientKP2 := newKeypair2()
 	txSource := NewSimpleAccount(serverKP.Address(), -1)
-	opSource := NewSimpleAccount(clientKP1.Address(), 0)
 	op := ManageData{
-		SourceAccount: &opSource,
+		SourceAccount: clientKP1.Address(),
 		Name:          "testanchor.stellar.org auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
@@ -2571,9 +2541,8 @@ func TestVerifyChallengeTxThreshold_matchesHomeDomain(t *testing.T) {
 	serverKP := newKeypair0()
 	clientKP := newKeypair1()
 	txSource := NewSimpleAccount(serverKP.Address(), -1)
-	opSource := NewSimpleAccount(clientKP.Address(), 0)
 	op1 := ManageData{
-		SourceAccount: &opSource,
+		SourceAccount: clientKP.Address(),
 		Name:          "testanchor.stellar.org auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
@@ -2609,9 +2578,8 @@ func TestVerifyChallengeTxThreshold_doesNotMatchHomeDomain(t *testing.T) {
 	serverKP := newKeypair0()
 	clientKP := newKeypair1()
 	txSource := NewSimpleAccount(serverKP.Address(), -1)
-	opSource := NewSimpleAccount(clientKP.Address(), 0)
 	op1 := ManageData{
-		SourceAccount: &opSource,
+		SourceAccount: clientKP.Address(),
 		Name:          "testanchor.stellar.org auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
@@ -2643,9 +2611,8 @@ func TestVerifyChallengeTxThreshold_doesVerifyHomeDomainFailure(t *testing.T) {
 	serverKP := newKeypair0()
 	clientKP := newKeypair1()
 	txSource := NewSimpleAccount(serverKP.Address(), -1)
-	opSource := NewSimpleAccount(clientKP.Address(), 0)
 	op := ManageData{
-		SourceAccount: &opSource,
+		SourceAccount: clientKP.Address(),
 		Name:          "will fail auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
@@ -2675,9 +2642,8 @@ func TestVerifyChallengeTxThreshold_doesVerifyHomeDomainSuccess(t *testing.T) {
 	serverKP := newKeypair0()
 	clientKP := newKeypair1()
 	txSource := NewSimpleAccount(serverKP.Address(), -1)
-	opSource := NewSimpleAccount(clientKP.Address(), 0)
 	op := ManageData{
-		SourceAccount: &opSource,
+		SourceAccount: clientKP.Address(),
 		Name:          "testanchor.stellar.org auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
@@ -2711,14 +2677,14 @@ func TestVerifyChallengeTxThreshold_allowsAdditionalManageDataOpsWithSourceAccou
 	serverKP := newKeypair0()
 	clientKP := newKeypair1()
 	txSource := NewSimpleAccount(serverKP.Address(), -1)
-	opSource := NewSimpleAccount(clientKP.Address(), 0)
+
 	op1 := ManageData{
-		SourceAccount: &opSource,
+		SourceAccount: clientKP.Address(),
 		Name:          "testanchor.stellar.org auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
 	op2 := ManageData{
-		SourceAccount: &txSource,
+		SourceAccount: txSource.AccountID,
 		Name:          "a key",
 		Value:         []byte("a value"),
 	}
@@ -2752,14 +2718,14 @@ func TestVerifyChallengeTxThreshold_disallowsAdditionalManageDataOpsWithoutSourc
 	serverKP := newKeypair0()
 	clientKP := newKeypair1()
 	txSource := NewSimpleAccount(serverKP.Address(), -1)
-	opSource := NewSimpleAccount(clientKP.Address(), 0)
+
 	op1 := ManageData{
-		SourceAccount: &opSource,
+		SourceAccount: clientKP.Address(),
 		Name:          "testanchor.stellar.org auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
 	op2 := ManageData{
-		SourceAccount: &opSource,
+		SourceAccount: clientKP.Address(),
 		Name:          "a key",
 		Value:         []byte("a value"),
 	}
@@ -2790,14 +2756,14 @@ func TestVerifyChallengeTxThreshold_disallowsAdditionalOpsOfOtherTypes(t *testin
 	serverKP := newKeypair0()
 	clientKP := newKeypair1()
 	txSource := NewSimpleAccount(serverKP.Address(), -1)
-	opSource := NewSimpleAccount(clientKP.Address(), 0)
+
 	op1 := ManageData{
-		SourceAccount: &opSource,
+		SourceAccount: clientKP.Address(),
 		Name:          "testanchor.stellar.org auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
 	op2 := BumpSequence{
-		SourceAccount: &txSource,
+		SourceAccount: txSource.AccountID,
 		BumpTo:        0,
 	}
 	tx64, err := newSignedTransaction(
@@ -2827,9 +2793,9 @@ func TestVerifyChallengeTxSigners_invalidServer(t *testing.T) {
 	serverKP := newKeypair0()
 	clientKP := newKeypair1()
 	txSource := NewSimpleAccount(serverKP.Address(), -1)
-	opSource := NewSimpleAccount(clientKP.Address(), 0)
+
 	op := ManageData{
-		SourceAccount: &opSource,
+		SourceAccount: clientKP.Address(),
 		Name:          "testanchor.stellar.org auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
@@ -2855,9 +2821,9 @@ func TestVerifyChallengeTxSigners_validServerAndClientMasterKey(t *testing.T) {
 	serverKP := newKeypair0()
 	clientKP := newKeypair1()
 	txSource := NewSimpleAccount(serverKP.Address(), -1)
-	opSource := NewSimpleAccount(clientKP.Address(), 0)
+
 	op := ManageData{
-		SourceAccount: &opSource,
+		SourceAccount: clientKP.Address(),
 		Name:          "testanchor.stellar.org auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
@@ -2883,9 +2849,9 @@ func TestVerifyChallengeTxSigners_invalidServerAndNoClient(t *testing.T) {
 	serverKP := newKeypair0()
 	clientKP := newKeypair1()
 	txSource := NewSimpleAccount(serverKP.Address(), -1)
-	opSource := NewSimpleAccount(clientKP.Address(), 0)
+
 	op := ManageData{
-		SourceAccount: &opSource,
+		SourceAccount: clientKP.Address(),
 		Name:          "testanchor.stellar.org auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
@@ -2912,9 +2878,9 @@ func TestVerifyChallengeTxSigners_invalidServerAndUnrecognizedClient(t *testing.
 	clientKP := newKeypair1()
 	unrecognizedKP := newKeypair2()
 	txSource := NewSimpleAccount(serverKP.Address(), -1)
-	opSource := NewSimpleAccount(clientKP.Address(), 0)
+
 	op := ManageData{
-		SourceAccount: &opSource,
+		SourceAccount: clientKP.Address(),
 		Name:          "testanchor.stellar.org auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
@@ -2941,9 +2907,9 @@ func TestVerifyChallengeTxSigners_validServerAndMultipleClientSigners(t *testing
 	clientKP := newKeypair1()
 	clientKP2 := newKeypair2()
 	txSource := NewSimpleAccount(serverKP.Address(), -1)
-	opSource := NewSimpleAccount(clientKP.Address(), 0)
+
 	op := ManageData{
-		SourceAccount: &opSource,
+		SourceAccount: clientKP.Address(),
 		Name:          "testanchor.stellar.org auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
@@ -2970,9 +2936,9 @@ func TestVerifyChallengeTxSigners_validServerAndMultipleClientSignersReverseOrde
 	clientKP := newKeypair1()
 	clientKP2 := newKeypair2()
 	txSource := NewSimpleAccount(serverKP.Address(), -1)
-	opSource := NewSimpleAccount(clientKP.Address(), 0)
+
 	op := ManageData{
-		SourceAccount: &opSource,
+		SourceAccount: clientKP.Address(),
 		Name:          "testanchor.stellar.org auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
@@ -2999,9 +2965,9 @@ func TestVerifyChallengeTxSigners_validServerAndClientSignersNotMasterKey(t *tes
 	clientKP := newKeypair1()
 	clientKP2 := newKeypair2()
 	txSource := NewSimpleAccount(serverKP.Address(), -1)
-	opSource := NewSimpleAccount(clientKP.Address(), 0)
+
 	op := ManageData{
-		SourceAccount: &opSource,
+		SourceAccount: clientKP.Address(),
 		Name:          "testanchor.stellar.org auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
@@ -3028,9 +2994,9 @@ func TestVerifyChallengeTxSigners_validServerAndClientSignersIgnoresServerSigner
 	clientKP := newKeypair1()
 	clientKP2 := newKeypair2()
 	txSource := NewSimpleAccount(serverKP.Address(), -1)
-	opSource := NewSimpleAccount(clientKP.Address(), 0)
+
 	op := ManageData{
-		SourceAccount: &opSource,
+		SourceAccount: clientKP.Address(),
 		Name:          "testanchor.stellar.org auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
@@ -3057,9 +3023,9 @@ func TestVerifyChallengeTxSigners_invalidServerNoClientSignersIgnoresServerSigne
 	clientKP := newKeypair1()
 	clientKP2 := newKeypair2()
 	txSource := NewSimpleAccount(serverKP.Address(), -1)
-	opSource := NewSimpleAccount(clientKP.Address(), 0)
+
 	op := ManageData{
-		SourceAccount: &opSource,
+		SourceAccount: clientKP.Address(),
 		Name:          "testanchor.stellar.org auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
@@ -3086,9 +3052,9 @@ func TestVerifyChallengeTxSigners_validServerAndClientSignersIgnoresDuplicateSig
 	clientKP := newKeypair1()
 	clientKP2 := newKeypair2()
 	txSource := NewSimpleAccount(serverKP.Address(), -1)
-	opSource := NewSimpleAccount(clientKP.Address(), 0)
+
 	op := ManageData{
-		SourceAccount: &opSource,
+		SourceAccount: clientKP.Address(),
 		Name:          "testanchor.stellar.org auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
@@ -3118,9 +3084,9 @@ func TestVerifyChallengeTxSigners_validIgnorePreauthTxHashAndXHash(t *testing.T)
 	xHash := "XDRPF6NZRR7EEVO7ESIWUDXHAOMM2QSKIQQBJK6I2FB7YKDZES5UCLWD"
 	unknownSignerType := "?ARPF6NZRR7EEVO7ESIWUDXHAOMM2QSKIQQBJK6I2FB7YKDZES5UCLWD"
 	txSource := NewSimpleAccount(serverKP.Address(), -1)
-	opSource := NewSimpleAccount(clientKP.Address(), 0)
+
 	op := ManageData{
-		SourceAccount: &opSource,
+		SourceAccount: clientKP.Address(),
 		Name:          "testanchor.stellar.org auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
@@ -3147,9 +3113,9 @@ func TestVerifyChallengeTxSigners_invalidServerAndClientSignersIgnoresDuplicateS
 	clientKP := newKeypair1()
 	clientKP2 := newKeypair2()
 	txSource := NewSimpleAccount(serverKP.Address(), -1)
-	opSource := NewSimpleAccount(clientKP.Address(), 0)
+
 	op := ManageData{
-		SourceAccount: &opSource,
+		SourceAccount: clientKP.Address(),
 		Name:          "testanchor.stellar.org auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
@@ -3176,9 +3142,9 @@ func TestVerifyChallengeTxSigners_invalidServerAndClientSignersFailsDuplicateSig
 	clientKP := newKeypair1()
 	clientKP2 := newKeypair2()
 	txSource := NewSimpleAccount(serverKP.Address(), -1)
-	opSource := NewSimpleAccount(clientKP.Address(), 0)
+
 	op := ManageData{
-		SourceAccount: &opSource,
+		SourceAccount: clientKP.Address(),
 		Name:          "testanchor.stellar.org auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
@@ -3205,9 +3171,9 @@ func TestVerifyChallengeTxSigners_invalidServerAndClientSignersFailsSignerSeed(t
 	clientKP := newKeypair1()
 	clientKP2 := newKeypair2()
 	txSource := NewSimpleAccount(serverKP.Address(), -1)
-	opSource := NewSimpleAccount(clientKP.Address(), 0)
+
 	op := ManageData{
-		SourceAccount: &opSource,
+		SourceAccount: clientKP.Address(),
 		Name:          "testanchor.stellar.org auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
@@ -3233,9 +3199,9 @@ func TestVerifyChallengeTxSigners_invalidNoSigners(t *testing.T) {
 	serverKP := newKeypair0()
 	clientKP := newKeypair1()
 	txSource := NewSimpleAccount(serverKP.Address(), -1)
-	opSource := NewSimpleAccount(clientKP.Address(), 0)
+
 	op := ManageData{
-		SourceAccount: &opSource,
+		SourceAccount: clientKP.Address(),
 		Name:          "testanchor.stellar.org auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
@@ -3260,9 +3226,9 @@ func TestVerifyChallengeTxSigners_doesVerifyHomeDomainFailure(t *testing.T) {
 	serverKP := newKeypair0()
 	clientKP := newKeypair1()
 	txSource := NewSimpleAccount(serverKP.Address(), -1)
-	opSource := NewSimpleAccount(clientKP.Address(), 0)
+
 	op := ManageData{
-		SourceAccount: &opSource,
+		SourceAccount: clientKP.Address(),
 		Name:          "testanchor.stellar.org auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
@@ -3287,9 +3253,9 @@ func TestVerifyChallengeTxSigners_matchesHomeDomain(t *testing.T) {
 	serverKP := newKeypair0()
 	clientKP := newKeypair1()
 	txSource := NewSimpleAccount(serverKP.Address(), -1)
-	opSource := NewSimpleAccount(clientKP.Address(), 0)
+
 	op1 := ManageData{
-		SourceAccount: &opSource,
+		SourceAccount: clientKP.Address(),
 		Name:          "testanchor.stellar.org auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
@@ -3321,9 +3287,9 @@ func TestVerifyChallengeTxSigners_doesNotMatchHomeDomain(t *testing.T) {
 	serverKP := newKeypair0()
 	clientKP := newKeypair1()
 	txSource := NewSimpleAccount(serverKP.Address(), -1)
-	opSource := NewSimpleAccount(clientKP.Address(), 0)
+
 	op1 := ManageData{
-		SourceAccount: &opSource,
+		SourceAccount: clientKP.Address(),
 		Name:          "testanchor.stellar.org auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
@@ -3355,9 +3321,9 @@ func TestVerifyChallengeTxSigners_doesVerifyHomeDomainSuccess(t *testing.T) {
 	serverKP := newKeypair0()
 	clientKP := newKeypair1()
 	txSource := NewSimpleAccount(serverKP.Address(), -1)
-	opSource := NewSimpleAccount(clientKP.Address(), 0)
+
 	op := ManageData{
-		SourceAccount: &opSource,
+		SourceAccount: clientKP.Address(),
 		Name:          "testanchor.stellar.org auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
@@ -3382,14 +3348,14 @@ func TestVerifyChallengeTxSigners_allowsAdditionalManageDataOpsWithSourceAccount
 	serverKP := newKeypair0()
 	clientKP := newKeypair1()
 	txSource := NewSimpleAccount(serverKP.Address(), -1)
-	opSource := NewSimpleAccount(clientKP.Address(), 0)
+
 	op1 := ManageData{
-		SourceAccount: &opSource,
+		SourceAccount: clientKP.Address(),
 		Name:          "testanchor.stellar.org auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
 	op2 := ManageData{
-		SourceAccount: &txSource,
+		SourceAccount: txSource.AccountID,
 		Name:          "a key",
 		Value:         []byte("a value"),
 	}
@@ -3415,14 +3381,14 @@ func TestVerifyChallengeTxSigners_disallowsAdditionalManageDataOpsWithoutSourceA
 	serverKP := newKeypair0()
 	clientKP := newKeypair1()
 	txSource := NewSimpleAccount(serverKP.Address(), -1)
-	opSource := NewSimpleAccount(clientKP.Address(), 0)
+
 	op1 := ManageData{
-		SourceAccount: &opSource,
+		SourceAccount: clientKP.Address(),
 		Name:          "testanchor.stellar.org auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
 	op2 := ManageData{
-		SourceAccount: &opSource,
+		SourceAccount: clientKP.Address(),
 		Name:          "a key",
 		Value:         []byte("a value"),
 	}
@@ -3448,14 +3414,14 @@ func TestVerifyChallengeTxSigners_disallowsAdditionalOpsOfOtherTypes(t *testing.
 	serverKP := newKeypair0()
 	clientKP := newKeypair1()
 	txSource := NewSimpleAccount(serverKP.Address(), -1)
-	opSource := NewSimpleAccount(clientKP.Address(), 0)
+
 	op1 := ManageData{
-		SourceAccount: &opSource,
+		SourceAccount: clientKP.Address(),
 		Name:          "testanchor.stellar.org auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
 	op2 := BumpSequence{
-		SourceAccount: &txSource,
+		SourceAccount: txSource.AccountID,
 		BumpTo:        0,
 	}
 	tx64, err := newSignedTransaction(
@@ -3480,11 +3446,10 @@ func TestVerifyTxSignatureUnsignedTx(t *testing.T) {
 	kp0 := newKeypair0()
 	kp1 := newKeypair1()
 	txSource := NewSimpleAccount(kp0.Address(), int64(9605939170639897))
-	opSource := NewSimpleAccount(kp1.Address(), 0)
 	createAccount := CreateAccount{
 		Destination:   "GCCOBXW2XQNUSL467IEILE6MMCNRR66SSVL4YQADUNYYNUVREF3FIV2Z",
 		Amount:        "10",
-		SourceAccount: &opSource,
+		SourceAccount: kp1.Address(),
 	}
 	tx, err := NewTransaction(
 		TransactionParams{
@@ -3507,11 +3472,10 @@ func TestVerifyTxSignatureSingle(t *testing.T) {
 	kp0 := newKeypair0()
 	kp1 := newKeypair1()
 	txSource := NewSimpleAccount(kp0.Address(), int64(9605939170639897))
-	opSource := NewSimpleAccount(kp1.Address(), 0)
 	createAccount := CreateAccount{
 		Destination:   "GCCOBXW2XQNUSL467IEILE6MMCNRR66SSVL4YQADUNYYNUVREF3FIV2Z",
 		Amount:        "10",
-		SourceAccount: &opSource,
+		SourceAccount: kp1.Address(),
 	}
 	tx, err := NewTransaction(
 		TransactionParams{
@@ -3534,11 +3498,10 @@ func TestVerifyTxSignatureMultiple(t *testing.T) {
 	kp0 := newKeypair0()
 	kp1 := newKeypair1()
 	txSource := NewSimpleAccount(kp0.Address(), int64(9605939170639897))
-	opSource := NewSimpleAccount(kp1.Address(), 0)
 	createAccount := CreateAccount{
 		Destination:   "GCCOBXW2XQNUSL467IEILE6MMCNRR66SSVL4YQADUNYYNUVREF3FIV2Z",
 		Amount:        "10",
-		SourceAccount: &opSource,
+		SourceAccount: kp1.Address(),
 	}
 	tx, err := NewTransaction(
 		TransactionParams{
@@ -3563,11 +3526,10 @@ func TestVerifyTxSignatureInvalid(t *testing.T) {
 	kp0 := newKeypair0()
 	kp1 := newKeypair1()
 	txSource := NewSimpleAccount(kp0.Address(), int64(9605939170639897))
-	opSource := NewSimpleAccount(kp1.Address(), 0)
 	createAccount := CreateAccount{
 		Destination:   "GCCOBXW2XQNUSL467IEILE6MMCNRR66SSVL4YQADUNYYNUVREF3FIV2Z",
 		Amount:        "10",
-		SourceAccount: &opSource,
+		SourceAccount: kp1.Address(),
 	}
 	tx, err := NewTransaction(
 		TransactionParams{

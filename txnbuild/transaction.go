@@ -335,20 +335,8 @@ func (t *Transaction) ClaimableBalanceID(operationIndex int) (string, error) {
 		return "", errors.New("invalid operation index")
 	}
 
-	operation, ok := t.operations[operationIndex].(*CreateClaimableBalance)
-	if !ok {
+	if _, ok := t.operations[operationIndex].(*CreateClaimableBalance); !ok {
 		return "", errors.New("operation is not CreateClaimableBalance")
-	}
-
-	// Use the operation's source account or the transaction's source if not.
-	var account Account = &t.sourceAccount
-	if operation.SourceAccount != nil {
-		account = operation.GetSourceAccount()
-	}
-
-	seq, err := account.GetSequenceNumber()
-	if err != nil {
-		return "", errors.Wrap(err, "failed to retrieve account sequence number")
 	}
 
 	// We mimic the relevant code from Stellar Core
@@ -356,8 +344,8 @@ func (t *Transaction) ClaimableBalanceID(operationIndex int) (string, error) {
 	operationId := xdr.OperationId{
 		Type: xdr.EnvelopeTypeEnvelopeTypeOpId,
 		Id: &xdr.OperationIdId{
-			SourceAccount: xdr.MustMuxedAddress(account.GetAccountID()),
-			SeqNum:        xdr.SequenceNumber(seq),
+			SourceAccount: xdr.MustMuxedAddress(t.sourceAccount.AccountID),
+			SeqNum:        xdr.SequenceNumber(t.sourceAccount.Sequence),
 			OpNum:         xdr.Uint32(operationIndex),
 		},
 	}
@@ -850,11 +838,6 @@ func BuildChallengeTx(serverSignerSecret, clientAccountID, homeDomain, network s
 		Sequence:  0,
 	}
 
-	// represent client account as SimpleAccount
-	ca := SimpleAccount{
-		AccountID: clientAccountID,
-	}
-
 	currentTime := time.Now().UTC()
 	maxTime := currentTime.Add(timebound)
 
@@ -866,7 +849,7 @@ func BuildChallengeTx(serverSignerSecret, clientAccountID, homeDomain, network s
 			IncrementSequenceNum: false,
 			Operations: []Operation{
 				&ManageData{
-					SourceAccount: &ca,
+					SourceAccount: clientAccountID,
 					Name:          homeDomain + " auth",
 					Value:         []byte(randomNonceToString),
 				},
@@ -966,7 +949,7 @@ func ReadChallengeTx(challengeTx, serverAccountID, network string, homeDomains [
 	if !ok {
 		return tx, clientAccountID, matchedHomeDomain, errors.New("operation type should be manage_data")
 	}
-	if op.SourceAccount == nil {
+	if op.SourceAccount == "" {
 		return tx, clientAccountID, matchedHomeDomain, errors.New("operation should have a source account")
 	}
 	for _, homeDomain := range homeDomains {
@@ -979,7 +962,7 @@ func ReadChallengeTx(challengeTx, serverAccountID, network string, homeDomains [
 		return tx, clientAccountID, matchedHomeDomain, errors.Errorf("operation key does not match any homeDomains passed (key=%q, homeDomains=%v)", op.Name, homeDomains)
 	}
 
-	clientAccountID = op.SourceAccount.GetAccountID()
+	clientAccountID = op.SourceAccount
 	rawOperations := tx.envelope.Operations()
 	if len(rawOperations) > 0 && rawOperations[0].SourceAccount.Type == xdr.CryptoKeyTypeKeyTypeMuxedEd25519 {
 		err = errors.New("invalid operation source account: only valid Ed25519 accounts are allowed in challenge transactions")
@@ -1005,10 +988,10 @@ func ReadChallengeTx(challengeTx, serverAccountID, network string, homeDomains [
 		if !ok {
 			return tx, clientAccountID, matchedHomeDomain, errors.New("operation type should be manage_data")
 		}
-		if op.SourceAccount == nil {
+		if op.SourceAccount == "" {
 			return tx, clientAccountID, matchedHomeDomain, errors.New("operation should have a source account")
 		}
-		if op.SourceAccount.GetAccountID() != serverAccountID {
+		if op.SourceAccount != serverAccountID {
 			return tx, clientAccountID, matchedHomeDomain, errors.New("subsequent operations are unrecognized")
 		}
 	}

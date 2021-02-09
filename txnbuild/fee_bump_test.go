@@ -287,11 +287,10 @@ func TestFeeBumpAddSignatureBase64(t *testing.T) {
 	kp1 := newKeypair1()
 	kp2 := newKeypair2()
 	txSource := NewSimpleAccount(kp0.Address(), int64(9605939170639897))
-	opSource := NewSimpleAccount(kp1.Address(), 0)
 	createAccount := CreateAccount{
 		Destination:   "GCCOBXW2XQNUSL467IEILE6MMCNRR66SSVL4YQADUNYYNUVREF3FIV2Z",
 		Amount:        "10",
-		SourceAccount: &opSource,
+		SourceAccount: kp1.Address(),
 	}
 
 	inner, err := NewTransaction(

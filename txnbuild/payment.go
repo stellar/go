@@ -12,7 +12,7 @@ type Payment struct {
 	Destination   string
 	Amount        string
 	Asset         Asset
-	SourceAccount Account
+	SourceAccount string
 }
 
 // BuildXDR for Payment returns a fully configured XDR Operation.
@@ -94,8 +94,8 @@ func (p *Payment) Validate() error {
 	return nil
 }
 
-// GetSourceAccount returns the source account of the operation, or nil if not
+// GetSourceAccount returns the source account of the operation, or the empty string if not
 // set.
-func (p *Payment) GetSourceAccount() Account {
+func (p *Payment) GetSourceAccount() string {
 	return p.SourceAccount
 }

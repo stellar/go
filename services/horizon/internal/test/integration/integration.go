@@ -391,7 +391,7 @@ func (i *Test) CreateAccounts(count int, initialBalance string) ([]*keypair.Full
 		pairs[i] = pair
 
 		ops[i] = &txnbuild.CreateAccount{
-			SourceAccount: &masterAccount,
+			SourceAccount: masterAccount.AccountID,
 			Destination:   pair.Address(),
 			Amount:        initialBalance,
 		}
