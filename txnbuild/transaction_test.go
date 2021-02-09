@@ -981,15 +981,18 @@ func TestBuildChallengeTx(t *testing.T) {
 		err = xdr.SafeUnmarshalBase64(txeBase64, &txXDR)
 		assert.NoError(t, err)
 		assert.Equal(t, int64(0), txXDR.SeqNum(), "sequence number should be 0")
-		assert.Equal(t, uint32(100), txXDR.Fee(), "Fee should be 100")
-		assert.Equal(t, 1, len(txXDR.Operations()), "number operations should be 1")
+		assert.Equal(t, uint32(200), txXDR.Fee(), "Fee should be 100")
+		assert.Equal(t, 2, len(txXDR.Operations()), "number operations should be 2")
 		timeDiff := txXDR.TimeBounds().MaxTime - txXDR.TimeBounds().MinTime
 		assert.Equal(t, int64(60), int64(timeDiff), "time difference should be 300 seconds")
 		op := txXDR.Operations()[0]
 		assert.Equal(t, xdr.OperationTypeManageData, op.Body.Type, "operation type should be manage data")
 		assert.Equal(t, xdr.String64("testanchor.stellar.org auth"), op.Body.ManageDataOp.DataName, "DataName should be 'testanchor.stellar.org auth'")
 		assert.Equal(t, 64, len(*op.Body.ManageDataOp.DataValue), "DataValue should be 64 bytes")
-
+		webAuthOp := txXDR.Operations()[1]
+		assert.Equal(t, xdr.OperationTypeManageData, webAuthOp.Body.Type, "operation type should be manage data")
+		assert.Equal(t, xdr.String64("web_auth_domain"), webAuthOp.Body.ManageDataOp.DataName, "DataName should be 'web_auth_domain'")
+		assert.Equal(t, "testwebauth.stellar.org", string(*webAuthOp.Body.ManageDataOp.DataValue), "DataValue should be 'testwebauth.stellar.org'")
 	}
 
 	{
@@ -1002,8 +1005,8 @@ func TestBuildChallengeTx(t *testing.T) {
 		err = xdr.SafeUnmarshalBase64(txeBase64, &txXDR1)
 		assert.NoError(t, err)
 		assert.Equal(t, int64(0), txXDR1.SeqNum(), "sequence number should be 0")
-		assert.Equal(t, uint32(100), txXDR1.Fee(), "Fee should be 100")
-		assert.Equal(t, 1, len(txXDR1.Operations()), "number operations should be 1")
+		assert.Equal(t, uint32(200), txXDR1.Fee(), "Fee should be 100")
+		assert.Equal(t, 2, len(txXDR1.Operations()), "number operations should be 2")
 
 		timeDiff := txXDR1.TimeBounds().MaxTime - txXDR1.TimeBounds().MinTime
 		assert.Equal(t, int64(300), int64(timeDiff), "time difference should be 300 seconds")
@@ -1011,6 +1014,10 @@ func TestBuildChallengeTx(t *testing.T) {
 		assert.Equal(t, xdr.OperationTypeManageData, op1.Body.Type, "operation type should be manage data")
 		assert.Equal(t, xdr.String64("testanchor.stellar.org auth"), op1.Body.ManageDataOp.DataName, "DataName should be 'testanchor.stellar.org auth'")
 		assert.Equal(t, 64, len(*op1.Body.ManageDataOp.DataValue), "DataValue should be 64 bytes")
+		webAuthOp := txXDR1.Operations()[1]
+		assert.Equal(t, xdr.OperationTypeManageData, webAuthOp.Body.Type, "operation type should be manage data")
+		assert.Equal(t, xdr.String64("web_auth_domain"), webAuthOp.Body.ManageDataOp.DataName, "DataName should be 'web_auth_domain'")
+		assert.Equal(t, "testwebauth.stellar.org", string(*webAuthOp.Body.ManageDataOp.DataValue), "DataValue should be 'testwebauth.stellar.org'")
 	}
 
 	//transaction with infinite timebound
@@ -2323,6 +2330,67 @@ func TestReadChallengeTx_doesNotMatchHomeDomain(t *testing.T) {
 	assert.EqualError(t, err, "operation key does not match any homeDomains passed (key=\"testanchor.stellar.org auth\", homeDomains=[not going to match])")
 }
 
+func TestReadChallengeTx_validWhenWebAuthDomainMissing(t *testing.T) {
+	serverKP := newKeypair0()
+	clientKP := newKeypair1()
+	txSource := NewSimpleAccount(serverKP.Address(), -1)
+	opSource := NewSimpleAccount(clientKP.Address(), 0)
+	op1 := ManageData{
+		SourceAccount: &opSource,
+		Name:          "testanchor.stellar.org auth",
+		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
+	}
+	tx, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &txSource,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&op1},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewTimeout(300),
+		},
+	)
+	assert.NoError(t, err)
+	tx, err = tx.Sign(network.TestNetworkPassphrase, serverKP)
+	assert.NoError(t, err)
+	tx64, err := tx.Base64()
+	require.NoError(t, err)
+	_, _, _, err = ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testwebauth.stellar.org", []string{"testanchor.stellar.org"})
+	assert.NoError(t, err)
+}
+
+func TestReadChallengeTx_invalidWebAuthDomain(t *testing.T) {
+	serverKP := newKeypair0()
+	clientKP := newKeypair1()
+	txSource := NewSimpleAccount(serverKP.Address(), -1)
+	opSource := NewSimpleAccount(clientKP.Address(), 0)
+	op1 := ManageData{
+		SourceAccount: &opSource,
+		Name:          "testanchor.stellar.org auth",
+		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
+	}
+	webAuthDomainOp := ManageData{
+		SourceAccount: &txSource,
+		Name:          "web_auth_domain",
+		Value:         []byte("testwebauth.example.org"),
+	}
+	tx, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &txSource,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&op1, &webAuthDomainOp},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewTimeout(300),
+		},
+	)
+	assert.NoError(t, err)
+	tx, err = tx.Sign(network.TestNetworkPassphrase, serverKP)
+	assert.NoError(t, err)
+	tx64, err := tx.Base64()
+	require.NoError(t, err)
+	_, _, _, err = ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testwebauth.stellar.org", []string{"testanchor.stellar.org"})
+	assert.EqualError(t, err, `web auth domain is "testwebauth.example.org" but require "testwebauth.stellar.org"`)
+}
+
 func TestVerifyChallengeTxThreshold_invalidServer(t *testing.T) {
 	serverKP := newKeypair0()
 	clientKP := newKeypair1()
@@ -2995,6 +3063,79 @@ func TestVerifyChallengeTxThreshold_disallowsAdditionalOpsOfOtherTypes(t *testin
 	signersFound, err := VerifyChallengeTxThreshold(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testwebauth.stellar.org", []string{"testanchor.stellar.org"}, threshold, signerSummary)
 	assert.Empty(t, signersFound)
 	assert.EqualError(t, err, "operation type should be manage_data")
+}
+
+func TestVerifyChallengeTxThreshold_validWhenWebAuthDomainMissing(t *testing.T) {
+	serverKP := newKeypair0()
+	clientKP := newKeypair1()
+	txSource := NewSimpleAccount(serverKP.Address(), -1)
+	opSource := NewSimpleAccount(clientKP.Address(), 0)
+	op := ManageData{
+		SourceAccount: &opSource,
+		Name:          "testanchor.stellar.org auth",
+		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
+	}
+	tx64, err := newSignedTransaction(
+		TransactionParams{
+			SourceAccount:        &txSource,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&op},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewTimeout(1000),
+		},
+		network.TestNetworkPassphrase,
+		serverKP, clientKP,
+	)
+	assert.NoError(t, err)
+
+	threshold := Threshold(1)
+	signerSummary := SignerSummary{
+		clientKP.Address(): 1,
+	}
+	wantSigners := []string{
+		clientKP.Address(),
+	}
+
+	signersFound, err := VerifyChallengeTxThreshold(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testwebauth.stellar.org", []string{"testanchor.stellar.org"}, threshold, signerSummary)
+	assert.ElementsMatch(t, wantSigners, signersFound)
+	assert.NoError(t, err)
+}
+
+func TestVerifyChallengeTxThreshold_invalidWebAuthDomain(t *testing.T) {
+	serverKP := newKeypair0()
+	clientKP := newKeypair1()
+	txSource := NewSimpleAccount(serverKP.Address(), -1)
+	opSource := NewSimpleAccount(clientKP.Address(), 0)
+	op := ManageData{
+		SourceAccount: &opSource,
+		Name:          "testanchor.stellar.org auth",
+		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
+	}
+	webAuthDomainOp := ManageData{
+		SourceAccount: &txSource,
+		Name:          "web_auth_domain",
+		Value:         []byte("testwebauth.example.org"),
+	}
+	tx64, err := newSignedTransaction(
+		TransactionParams{
+			SourceAccount:        &txSource,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&op, &webAuthDomainOp},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewTimeout(1000),
+		},
+		network.TestNetworkPassphrase,
+		serverKP, clientKP,
+	)
+	assert.NoError(t, err)
+
+	threshold := Threshold(1)
+	signerSummary := SignerSummary{
+		clientKP.Address(): 1,
+	}
+
+	_, err = VerifyChallengeTxThreshold(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testwebauth.stellar.org", []string{"testanchor.stellar.org"}, threshold, signerSummary)
+	assert.EqualError(t, err, `web auth domain is "testwebauth.example.org" but require "testwebauth.stellar.org"`)
 }
 
 func TestVerifyChallengeTxSigners_invalidServer(t *testing.T) {
@@ -3758,6 +3899,68 @@ func TestVerifyChallengeTxSigners_disallowsAdditionalOpsOfOtherTypes(t *testing.
 	signersFound, err := VerifyChallengeTxSigners(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testwebauth.stellar.org", []string{"testanchor.stellar.org"}, clientKP.Address())
 	assert.Empty(t, signersFound)
 	assert.EqualError(t, err, "operation type should be manage_data")
+}
+
+func TestVerifyChallengeTxSigners_validWhenWebAuthDomainMissing(t *testing.T) {
+	serverKP := newKeypair0()
+	clientKP := newKeypair1()
+	txSource := NewSimpleAccount(serverKP.Address(), -1)
+	opSource := NewSimpleAccount(clientKP.Address(), 0)
+	op := ManageData{
+		SourceAccount: &opSource,
+		Name:          "testanchor.stellar.org auth",
+		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
+	}
+	tx64, err := newSignedTransaction(
+		TransactionParams{
+			SourceAccount:        &txSource,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&op},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewTimeout(1000),
+		},
+		network.TestNetworkPassphrase,
+		serverKP, clientKP,
+	)
+	assert.NoError(t, err)
+
+	wantSigners :=[]string{clientKP.Address()}
+
+	signersFound, err := VerifyChallengeTxSigners(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testwebauth.stellar.org", []string{"testanchor.stellar.org"}, clientKP.Address())
+	assert.ElementsMatch(t, wantSigners, signersFound)
+	assert.NoError(t, err)
+}
+
+func TestVerifyChallengeTxSigners_invalidWebAuthDomain(t *testing.T) {
+	serverKP := newKeypair0()
+	clientKP := newKeypair1()
+	txSource := NewSimpleAccount(serverKP.Address(), -1)
+	opSource := NewSimpleAccount(clientKP.Address(), 0)
+	op := ManageData{
+		SourceAccount: &opSource,
+		Name:          "testanchor.stellar.org auth",
+		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
+	}
+	webAuthDomainOp := ManageData{
+		SourceAccount: &txSource,
+		Name:          "web_auth_domain",
+		Value:         []byte("testwebauth.example.org"),
+	}
+	tx64, err := newSignedTransaction(
+		TransactionParams{
+			SourceAccount:        &txSource,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&op, &webAuthDomainOp},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewTimeout(1000),
+		},
+		network.TestNetworkPassphrase,
+		serverKP, clientKP,
+	)
+	assert.NoError(t, err)
+
+	_, err = VerifyChallengeTxSigners(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testwebauth.stellar.org", []string{"testanchor.stellar.org"}, clientKP.Address())
+	assert.EqualError(t, err, `web auth domain is "testwebauth.example.org" but require "testwebauth.stellar.org"`)
 }
 
 func TestVerifyTxSignatureUnsignedTx(t *testing.T) {

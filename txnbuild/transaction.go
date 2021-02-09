@@ -902,6 +902,11 @@ func BuildChallengeTx(serverSignerSecret, clientAccountID, webAuthDomain, homeDo
 					Name:          homeDomain + " auth",
 					Value:         []byte(randomNonceToString),
 				},
+				&ManageData{
+					SourceAccount: &sa,
+					Name:          "web_auth_domain",
+					Value:         []byte(webAuthDomain),
+				},
 			},
 			BaseFee:    MinBaseFee,
 			Memo:       nil,
@@ -1035,7 +1040,7 @@ func ReadChallengeTx(challengeTx, serverAccountID, network, webAuthDomain string
 		return tx, clientAccountID, matchedHomeDomain, errors.New("random nonce before encoding as base64 should be 48 bytes long")
 	}
 
-	// verify subsequent operations are manage data ops with source account set to server account
+	// verify subsequent operations are manage data ops and known, or unknown with source account set to server account
 	for _, op := range operations[1:] {
 		op, ok := op.(*ManageData)
 		if !ok {
@@ -1044,8 +1049,19 @@ func ReadChallengeTx(challengeTx, serverAccountID, network, webAuthDomain string
 		if op.SourceAccount == nil {
 			return tx, clientAccountID, matchedHomeDomain, errors.New("operation should have a source account")
 		}
-		if op.SourceAccount.GetAccountID() != serverAccountID {
-			return tx, clientAccountID, matchedHomeDomain, errors.New("subsequent operations are unrecognized")
+		switch (op.Name) {
+		case "web_auth_domain":
+			if op.SourceAccount.GetAccountID() != serverAccountID {
+				return tx, clientAccountID, matchedHomeDomain, errors.New("web auth domain must have serve source account")
+			}
+			if !bytes.Equal(op.Value, []byte(webAuthDomain)) {
+				return tx, clientAccountID, matchedHomeDomain, errors.Errorf("web auth domain is %q but require %q", string(op.Value), webAuthDomain)
+			}
+		default:
+			// verify unknown subsequent operations are manage data ops with source account set to server account
+			if op.SourceAccount.GetAccountID() != serverAccountID {
+				return tx, clientAccountID, matchedHomeDomain, errors.New("subsequent operations are unrecognized")
+			}
 		}
 	}
 
