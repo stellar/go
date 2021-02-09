@@ -37,10 +37,12 @@ func TestToken_formInputSuccess(t *testing.T) {
 	account := keypair.MustRandom()
 	t.Logf("Client account: %s", account.Address())
 
+	domain := "webauth.example.com"
 	homeDomain := "example.com"
 	tx, err := txnbuild.BuildChallengeTx(
 		serverKey.Seed(),
 		account.Address(),
+		domain,
 		homeDomain,
 		network.TestNetworkPassphrase,
 		time.Minute,
@@ -137,10 +139,12 @@ func TestToken_jsonInputSuccess(t *testing.T) {
 	account := keypair.MustRandom()
 	t.Logf("Client account: %s", account.Address())
 
+	domain := "webauth.example.com"
 	homeDomain := "example.com"
 	tx, err := txnbuild.BuildChallengeTx(
 		serverKey.Seed(),
 		account.Address(),
+		domain,
 		homeDomain,
 		network.TestNetworkPassphrase,
 		time.Minute,
@@ -279,6 +283,7 @@ func TestToken_jsonInputValidRotatingServerSigners(t *testing.T) {
 			nil,
 		)
 
+	domain := "webauth.example.com"
 	homeDomain := "example.com"
 	h := tokenHandler{
 		Logger:            supportlog.DefaultLogger,
@@ -297,6 +302,7 @@ func TestToken_jsonInputValidRotatingServerSigners(t *testing.T) {
 			tx, err := txnbuild.BuildChallengeTx(
 				serverKey.Seed(),
 				account.Address(),
+				domain,
 				homeDomain,
 				network.TestNetworkPassphrase,
 				time.Minute,
@@ -379,10 +385,12 @@ func TestToken_jsonInputValidMultipleSigners(t *testing.T) {
 	accountSigner2 := keypair.MustRandom()
 	t.Logf("Client account signer 2: %s", accountSigner2.Address())
 
+	domain := "webauth.example.com"
 	homeDomain := "example.com"
 	tx, err := txnbuild.BuildChallengeTx(
 		serverKey.Seed(),
 		account.Address(),
+		domain,
 		homeDomain,
 		network.TestNetworkPassphrase,
 		time.Minute,
@@ -487,10 +495,12 @@ func TestToken_jsonInputNotEnoughWeight(t *testing.T) {
 	account := keypair.MustRandom()
 	t.Logf("Client account: %s", account.Address())
 
+	domain := "webauth.example.com"
 	homeDomain := "example.com"
 	tx, err := txnbuild.BuildChallengeTx(
 		serverKey.Seed(),
 		account.Address(),
+		domain,
 		homeDomain,
 		network.TestNetworkPassphrase,
 		time.Minute,
@@ -570,10 +580,12 @@ func TestToken_jsonInputUnrecognizedSigner(t *testing.T) {
 	account := keypair.MustRandom()
 	t.Logf("Client account: %s", account.Address())
 
+	domain := "webauth.example.com"
 	homeDomain := "example.com"
 	tx, err := txnbuild.BuildChallengeTx(
 		serverKey.Seed(),
 		account.Address(),
+		domain,
 		homeDomain,
 		network.TestNetworkPassphrase,
 		time.Minute,
@@ -653,10 +665,12 @@ func TestToken_jsonInputAccountNotExistSuccess(t *testing.T) {
 	account := keypair.MustRandom()
 	t.Logf("Client account: %s", account.Address())
 
+	domain := "webauth.example.com"
 	homeDomain := "example.com"
 	tx, err := txnbuild.BuildChallengeTx(
 		serverKey.Seed(),
 		account.Address(),
+		domain,
 		homeDomain,
 		network.TestNetworkPassphrase,
 		time.Minute,
@@ -757,10 +771,12 @@ func TestToken_jsonInputAccountNotExistFail(t *testing.T) {
 	otherSigner := keypair.MustRandom()
 	t.Logf("Other signer: %s", otherSigner.Address())
 
+	domain := "webauth.example.com"
 	homeDomain := "example.com"
 	tx, err := txnbuild.BuildChallengeTx(
 		serverKey.Seed(),
 		account.Address(),
+		domain,
 		homeDomain,
 		network.TestNetworkPassphrase,
 		time.Minute,
@@ -836,10 +852,12 @@ func TestToken_jsonInputAccountNotExistNotAllowed(t *testing.T) {
 	account := keypair.MustRandom()
 	t.Logf("Client account: %s", account.Address())
 
+	domain := "webauth.example.com"
 	homeDomain := "example.com"
 	tx, err := txnbuild.BuildChallengeTx(
 		serverKey.Seed(),
 		account.Address(),
+		domain,
 		homeDomain,
 		network.TestNetworkPassphrase,
 		time.Minute,
@@ -917,10 +935,12 @@ func TestToken_jsonInputUnrecognizedServerSigner(t *testing.T) {
 	account := keypair.MustRandom()
 	t.Logf("Client account: %s", account.Address())
 
+	domain := "webauth.example.com"
 	homeDomain := "example.com"
 	tx, err := txnbuild.BuildChallengeTx(
 		serverKey1.Seed(),
 		account.Address(),
+		domain,
 		homeDomain,
 		network.TestNetworkPassphrase,
 		time.Minute,

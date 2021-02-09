@@ -44,6 +44,7 @@ Flags:
       --allow-accounts-that-do-not-exist   Allow accounts that do not exist (ALLOW_ACCOUNTS_THAT_DO_NOT_EXIST)
       --auth-home-domain string            Home domain(s) of the service(s) requiring SEP-10 authentication comma separated (first domain is the default domain) (AUTH_HOME_DOMAIN)
       --challenge-expires-in int           The time period in seconds after which the challenge transaction expires (CHALLENGE_EXPIRES_IN) (default 300)
+      --domain string                      Domain that this service is hosted at (DOMAIN)
       --horizon-url string                 Horizon URL used for looking up account details (HORIZON_URL) (default "https://horizon-testnet.stellar.org/")
       --jwk string                         JSON Web Key (JWK) used for signing JWTs (if the key is an asymmetric key that has separate public and private key, the JWK must contain the private key) (JWK)
       --jwt-expires-in int                 The time period in seconds after which the JWT expires (JWT_EXPIRES_IN) (default 300)
