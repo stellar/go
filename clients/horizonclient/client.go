@@ -119,7 +119,7 @@ func (c *Client) sendRequestURL(requestURL string, method string, a interface{})
 	if c.horizonTimeout == 0 {
 		c.horizonTimeout = HorizonTimeout
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*c.horizonTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), c.horizonTimeout)
 	resp, err := c.HTTP.Do(req.WithContext(ctx))
 	if err != nil {
 		cancel()

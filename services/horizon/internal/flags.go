@@ -5,6 +5,7 @@ import (
 	"go/types"
 	stdLog "log"
 	"os"
+	"os/exec"
 	"strings"
 
 	"github.com/sirupsen/logrus"
@@ -95,7 +96,7 @@ func Flags() (*Config, support.ConfigOptions) {
 			OptType:     types.String,
 			FlagDefault: "",
 			Required:    false,
-			Usage:       "path to stellar core binary (--remote-captive-core-url has higher precedence)",
+			Usage:       "path to stellar core binary (--remote-captive-core-url has higher precedence). If captive core is enabled, look for the stellar-core binary in $PATH by default.",
 			ConfigKey:   &config.CaptiveCoreBinaryPath,
 		},
 		&support.ConfigOption{
@@ -416,16 +417,34 @@ func ApplyFlags(config *Config, flags support.ConfigOptions) {
 
 	if config.EnableCaptiveCoreIngestion {
 		binaryPath := viper.GetString(StellarCoreBinaryPathName)
+
+		// If the user didn't specify a Stellar Core binary, we can check the
+		// $PATH and possibly fill it in for them.
+		if binaryPath == "" {
+			if result, err := exec.LookPath("stellar-core"); err == nil {
+				binaryPath = result
+				viper.Set(StellarCoreBinaryPathName, binaryPath)
+				config.CaptiveCoreBinaryPath = binaryPath
+			}
+		}
+
 		remoteURL := viper.GetString("remote-captive-core-url")
+
+		// NOTE: If both of these are set (regardless of user- or PATH-supplied
+		//       defaults for the binary path), the Remote Captive Core URL
+		//       takes precedence.
 		if binaryPath == "" && remoteURL == "" {
 			stdLog.Fatalf("Invalid config: captive core requires that either --stellar-core-binary-path or --remote-captive-core-url is set")
 		}
+
+		// If we don't supply an explicit core URL and we are running a local
+		// captive core process with the http port enabled, point to it.
 		if config.StellarCoreURL == "" && config.RemoteCaptiveCoreURL == "" && config.CaptiveCoreHTTPPort != 0 {
-			// If we don't supply an explicit core URL and we are running a local captive core process
-			// with the http port enabled, point to it.
 			config.StellarCoreURL = fmt.Sprintf("http://localhost:%d", config.CaptiveCoreHTTPPort)
+			viper.Set(StellarCoreURLFlagName, config.StellarCoreURL)
 		}
 	}
+
 	if config.Ingest {
 		// When running live ingestion a config file is required too
 		validateBothOrNeither(StellarCoreBinaryPathName, CaptiveCoreConfigAppendPathName)

@@ -46,6 +46,11 @@ func (s *SingleLedgerStateReaderTestSuite) SetupTest() {
 		On("BucketExists", mock.AnythingOfType("historyarchive.Hash")).
 		Return(true, nil).Times(21)
 
+	s.mockArchive.
+		On("GetCheckpointManager").
+		Return(historyarchive.NewCheckpointManager(
+			historyarchive.DefaultCheckpointFrequency))
+
 	s.reader, err = NewCheckpointChangeReader(
 		context.Background(),
 		s.mockArchive,
@@ -278,6 +283,11 @@ func (s *BucketExistsTestSuite) SetupTest() {
 		On("GetCheckpointHAS", ledgerSeq).
 		Return(historyarchive.HistoryArchiveState{}, nil)
 
+	s.mockArchive.
+		On("GetCheckpointManager").
+		Return(historyarchive.NewCheckpointManager(
+			historyarchive.DefaultCheckpointFrequency))
+
 	ctx, cancel := context.WithCancel(context.Background())
 	var err error
 	s.reader, err = NewCheckpointChangeReader(
@@ -362,6 +372,11 @@ func (s *ReadBucketEntryTestSuite) SetupTest() {
 	s.mockArchive.
 		On("GetCheckpointHAS", ledgerSeq).
 		Return(historyarchive.HistoryArchiveState{}, nil)
+
+	s.mockArchive.
+		On("GetCheckpointManager").
+		Return(historyarchive.NewCheckpointManager(
+			historyarchive.DefaultCheckpointFrequency))
 
 	ctx, cancel := context.WithCancel(context.Background())
 	var err error
@@ -685,6 +700,32 @@ func (s *ReadBucketEntryTestSuite) TestReadEntryRetrySucceedsAfterDiscardError()
 
 	_, err = s.reader.readBucketEntry(stream, emptyHash)
 	s.Require().Equal(io.EOF, err)
+}
+
+func TestCheckpointLedgersTestSuite(t *testing.T) {
+	suite.Run(t, new(CheckpointLedgersTestSuite))
+}
+
+type CheckpointLedgersTestSuite struct {
+	suite.Suite
+}
+
+// TestNonCheckpointLedger ensures that the reader errors on a non-checkpoint ledger
+func (s *CheckpointLedgersTestSuite) TestNonCheckpointLedger() {
+	mockArchive := &historyarchive.MockArchive{}
+	ledgerSeq := uint32(123456)
+
+	for _, freq := range []uint32{historyarchive.DefaultCheckpointFrequency, 5} {
+		mockArchive.
+			On("GetCheckpointManager").
+			Return(historyarchive.NewCheckpointManager(freq))
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		_, err := NewCheckpointChangeReader(ctx, mockArchive, ledgerSeq)
+		s.Require().Error(err)
+	}
 }
 
 func metaEntry(version uint32) xdr.BucketEntry {

@@ -8,19 +8,19 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-func TestLedgerEntryChangeCacheExistingCreated(t *testing.T) {
-	suite.Run(t, new(TestLedgerEntryChangeCacheExistingCreatedSuite))
+func TestChangeCompactorExistingCreated(t *testing.T) {
+	suite.Run(t, new(TestChangeCompactorExistingCreatedSuite))
 }
 
-// TestLedgerEntryChangeCacheExistingCreatedSuite tests transitions from
+// TestChangeCompactorExistingCreatedSuite tests transitions from
 // existing CREATED state in the cache.
-type TestLedgerEntryChangeCacheExistingCreatedSuite struct {
+type TestChangeCompactorExistingCreatedSuite struct {
 	suite.Suite
 	cache *ChangeCompactor
 }
 
-func (s *TestLedgerEntryChangeCacheExistingCreatedSuite) SetupTest() {
-	s.cache = NewLedgerEntryChangeCache()
+func (s *TestChangeCompactorExistingCreatedSuite) SetupTest() {
+	s.cache = NewChangeCompactor()
 
 	change := Change{
 		Type: xdr.LedgerEntryTypeAccount,
@@ -41,7 +41,7 @@ func (s *TestLedgerEntryChangeCacheExistingCreatedSuite) SetupTest() {
 	s.Assert().Equal(changes[0].LedgerEntryChangeType(), xdr.LedgerEntryChangeTypeLedgerEntryCreated)
 }
 
-func (s *TestLedgerEntryChangeCacheExistingCreatedSuite) TestChangeCreated() {
+func (s *TestChangeCompactorExistingCreatedSuite) TestChangeCreated() {
 	change := Change{
 		Type: xdr.LedgerEntryTypeAccount,
 		Pre:  nil,
@@ -61,7 +61,7 @@ func (s *TestLedgerEntryChangeCacheExistingCreatedSuite) TestChangeCreated() {
 	)
 }
 
-func (s *TestLedgerEntryChangeCacheExistingCreatedSuite) TestChangeUpdated() {
+func (s *TestChangeCompactorExistingCreatedSuite) TestChangeUpdated() {
 	change := Change{
 		Type: xdr.LedgerEntryTypeAccount,
 		Pre: &xdr.LedgerEntry{
@@ -89,7 +89,7 @@ func (s *TestLedgerEntryChangeCacheExistingCreatedSuite) TestChangeUpdated() {
 	s.Assert().Equal(changes[0].LedgerEntryChangeType(), xdr.LedgerEntryChangeTypeLedgerEntryCreated)
 }
 
-func (s *TestLedgerEntryChangeCacheExistingCreatedSuite) TestChangeRemoved() {
+func (s *TestChangeCompactorExistingCreatedSuite) TestChangeRemoved() {
 	change := Change{
 		Type: xdr.LedgerEntryTypeAccount,
 		Pre: &xdr.LedgerEntry{
@@ -109,18 +109,18 @@ func (s *TestLedgerEntryChangeCacheExistingCreatedSuite) TestChangeRemoved() {
 }
 
 func TestLedgerEntryChangeCacheExistingUpdated(t *testing.T) {
-	suite.Run(t, new(TestLedgerEntryChangeCacheExistingUpdatedSuite))
+	suite.Run(t, new(TestChangeCompactorExistingUpdatedSuite))
 }
 
-// TestLedgerEntryChangeCacheExistingUpdatedSuite tests transitions from
-// existing UPDATED state in the cache.
-type TestLedgerEntryChangeCacheExistingUpdatedSuite struct {
+// TestChangeCompactorExistingUpdatedSuite tests transitions from existing
+// UPDATED state in the cache.
+type TestChangeCompactorExistingUpdatedSuite struct {
 	suite.Suite
 	cache *ChangeCompactor
 }
 
-func (s *TestLedgerEntryChangeCacheExistingUpdatedSuite) SetupTest() {
-	s.cache = NewLedgerEntryChangeCache()
+func (s *TestChangeCompactorExistingUpdatedSuite) SetupTest() {
+	s.cache = NewChangeCompactor()
 
 	change := Change{
 		Type: xdr.LedgerEntryTypeAccount,
@@ -149,7 +149,7 @@ func (s *TestLedgerEntryChangeCacheExistingUpdatedSuite) SetupTest() {
 	s.Assert().Equal(changes[0].LedgerEntryChangeType(), xdr.LedgerEntryChangeTypeLedgerEntryUpdated)
 }
 
-func (s *TestLedgerEntryChangeCacheExistingUpdatedSuite) TestChangeCreated() {
+func (s *TestChangeCompactorExistingUpdatedSuite) TestChangeCreated() {
 	change := Change{
 		Type: xdr.LedgerEntryTypeAccount,
 		Pre:  nil,
@@ -169,7 +169,7 @@ func (s *TestLedgerEntryChangeCacheExistingUpdatedSuite) TestChangeCreated() {
 	)
 }
 
-func (s *TestLedgerEntryChangeCacheExistingUpdatedSuite) TestChangeUpdated() {
+func (s *TestChangeCompactorExistingUpdatedSuite) TestChangeUpdated() {
 	change := Change{
 		Type: xdr.LedgerEntryTypeAccount,
 		Pre: &xdr.LedgerEntry{
@@ -198,7 +198,7 @@ func (s *TestLedgerEntryChangeCacheExistingUpdatedSuite) TestChangeUpdated() {
 	s.Assert().Equal(changes[0].Post.LastModifiedLedgerSeq, xdr.Uint32(12))
 }
 
-func (s *TestLedgerEntryChangeCacheExistingUpdatedSuite) TestChangeRemoved() {
+func (s *TestChangeCompactorExistingUpdatedSuite) TestChangeRemoved() {
 	change := Change{
 		Type: xdr.LedgerEntryTypeAccount,
 		Pre: &xdr.LedgerEntry{
@@ -218,19 +218,19 @@ func (s *TestLedgerEntryChangeCacheExistingUpdatedSuite) TestChangeRemoved() {
 	s.Assert().Equal(changes[0].LedgerEntryChangeType(), xdr.LedgerEntryChangeTypeLedgerEntryRemoved)
 }
 
-func TestLedgerEntryChangeCacheExistingRemoved(t *testing.T) {
-	suite.Run(t, new(TestLedgerEntryChangeCacheExistingRemovedSuite))
+func TestChangeCompactorExistingRemoved(t *testing.T) {
+	suite.Run(t, new(TestChangeCompactorExistingRemovedSuite))
 }
 
-// TestLedgerEntryChangeCacheExistingRemovedSuite tests transitions from
-// existing REMOVED state in the cache.
-type TestLedgerEntryChangeCacheExistingRemovedSuite struct {
+// TestChangeCompactorExistingRemovedSuite tests transitions from existing
+// REMOVED state in the cache.
+type TestChangeCompactorExistingRemovedSuite struct {
 	suite.Suite
 	cache *ChangeCompactor
 }
 
-func (s *TestLedgerEntryChangeCacheExistingRemovedSuite) SetupTest() {
-	s.cache = NewLedgerEntryChangeCache()
+func (s *TestChangeCompactorExistingRemovedSuite) SetupTest() {
+	s.cache = NewChangeCompactor()
 
 	change := Change{
 		Type: xdr.LedgerEntryTypeAccount,
@@ -251,7 +251,7 @@ func (s *TestLedgerEntryChangeCacheExistingRemovedSuite) SetupTest() {
 	s.Assert().Equal(changes[0].LedgerEntryChangeType(), xdr.LedgerEntryChangeTypeLedgerEntryRemoved)
 }
 
-func (s *TestLedgerEntryChangeCacheExistingRemovedSuite) TestChangeCreated() {
+func (s *TestChangeCompactorExistingRemovedSuite) TestChangeCreated() {
 	change := Change{
 		Type: xdr.LedgerEntryTypeAccount,
 		Pre:  nil,
@@ -272,7 +272,7 @@ func (s *TestLedgerEntryChangeCacheExistingRemovedSuite) TestChangeCreated() {
 	s.Assert().Equal(changes[0].Post.LastModifiedLedgerSeq, xdr.Uint32(12))
 }
 
-func (s *TestLedgerEntryChangeCacheExistingRemovedSuite) TestChangeUpdated() {
+func (s *TestChangeCompactorExistingRemovedSuite) TestChangeUpdated() {
 	change := Change{
 		Type: xdr.LedgerEntryTypeAccount,
 		Pre: &xdr.LedgerEntry{
@@ -300,7 +300,7 @@ func (s *TestLedgerEntryChangeCacheExistingRemovedSuite) TestChangeUpdated() {
 	)
 }
 
-func (s *TestLedgerEntryChangeCacheExistingRemovedSuite) TestChangeRemoved() {
+func (s *TestChangeCompactorExistingRemovedSuite) TestChangeRemoved() {
 	change := Change{
 		Type: xdr.LedgerEntryTypeAccount,
 		Pre: &xdr.LedgerEntry{
@@ -320,13 +320,14 @@ func (s *TestLedgerEntryChangeCacheExistingRemovedSuite) TestChangeRemoved() {
 	)
 }
 
-// TestLedgerEntryChangeCacheSquashMultiplePayments simulates sending multiple
-// payments between two accounts. Ledger cache should squash multiple changes
-// into just two.
+// TestChangeCompactorSquashMultiplePayments simulates sending multiple payments
+// between two accounts. Ledger cache should squash multiple changes into just
+// two.
+//
 // GAJ2T6NQ6TDZRVRSNWM3JC7L3TG4H7UBCVK3GUHKP3TQ5NQ3LM4JGBTJ sends money
 // GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML receives money
-func TestLedgerEntryChangeCacheSquashMultiplePayments(t *testing.T) {
-	cache := NewLedgerEntryChangeCache()
+func TestChangeCompactorSquashMultiplePayments(t *testing.T) {
+	cache := NewChangeCompactor()
 
 	for i := 1; i <= 1000; i++ {
 		change := Change{
