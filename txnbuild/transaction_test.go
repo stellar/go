@@ -2338,6 +2338,38 @@ func TestReadChallengeTx_validWhenWebAuthDomainMissing(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestReadChallengeTx_invalidWebAuthDomainSourceAccount(t *testing.T) {
+	serverKP := newKeypair0()
+	clientKP := newKeypair1()
+	txSource := NewSimpleAccount(serverKP.Address(), -1)
+	op1 := ManageData{
+		SourceAccount: clientKP.Address(),
+		Name:          "testanchor.stellar.org auth",
+		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
+	}
+	webAuthDomainOp := ManageData{
+		SourceAccount: clientKP.Address(),
+		Name:          "web_auth_domain",
+		Value:         []byte("testwebauth.stellar.org"),
+	}
+	tx, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &txSource,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&op1, &webAuthDomainOp},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewTimeout(300),
+		},
+	)
+	assert.NoError(t, err)
+	tx, err = tx.Sign(network.TestNetworkPassphrase, serverKP)
+	assert.NoError(t, err)
+	tx64, err := tx.Base64()
+	require.NoError(t, err)
+	_, _, _, err = ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testwebauth.stellar.org", []string{"testanchor.stellar.org"})
+	assert.EqualError(t, err, `web auth domain operation must have server source account`)
+}
+
 func TestReadChallengeTx_invalidWebAuthDomain(t *testing.T) {
 	serverKP := newKeypair0()
 	clientKP := newKeypair1()
@@ -2367,7 +2399,7 @@ func TestReadChallengeTx_invalidWebAuthDomain(t *testing.T) {
 	tx64, err := tx.Base64()
 	require.NoError(t, err)
 	_, _, _, err = ReadChallengeTx(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testwebauth.stellar.org", []string{"testanchor.stellar.org"})
-	assert.EqualError(t, err, `web auth domain is "testwebauth.example.org" but require "testwebauth.stellar.org"`)
+	assert.EqualError(t, err, `web auth domain operation value is "testwebauth.example.org" but expect "testwebauth.stellar.org"`)
 }
 
 func TestVerifyChallengeTxThreshold_invalidServer(t *testing.T) {
@@ -3067,6 +3099,42 @@ func TestVerifyChallengeTxThreshold_validWhenWebAuthDomainMissing(t *testing.T) 
 	assert.NoError(t, err)
 }
 
+func TestVerifyChallengeTxThreshold_invalidWebAuthDomainSourceAccount(t *testing.T) {
+	serverKP := newKeypair0()
+	clientKP := newKeypair1()
+	txSource := NewSimpleAccount(serverKP.Address(), -1)
+	op := ManageData{
+		SourceAccount: clientKP.Address(),
+		Name:          "testanchor.stellar.org auth",
+		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
+	}
+	webAuthDomainOp := ManageData{
+		SourceAccount: clientKP.Address(),
+		Name:          "web_auth_domain",
+		Value:         []byte("testwebauth.stellar.org"),
+	}
+	tx64, err := newSignedTransaction(
+		TransactionParams{
+			SourceAccount:        &txSource,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&op, &webAuthDomainOp},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewTimeout(1000),
+		},
+		network.TestNetworkPassphrase,
+		serverKP, clientKP,
+	)
+	assert.NoError(t, err)
+
+	threshold := Threshold(1)
+	signerSummary := SignerSummary{
+		clientKP.Address(): 1,
+	}
+
+	_, err = VerifyChallengeTxThreshold(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testwebauth.stellar.org", []string{"testanchor.stellar.org"}, threshold, signerSummary)
+	assert.EqualError(t, err, `web auth domain operation must have server source account`)
+}
+
 func TestVerifyChallengeTxThreshold_invalidWebAuthDomain(t *testing.T) {
 	serverKP := newKeypair0()
 	clientKP := newKeypair1()
@@ -3100,7 +3168,7 @@ func TestVerifyChallengeTxThreshold_invalidWebAuthDomain(t *testing.T) {
 	}
 
 	_, err = VerifyChallengeTxThreshold(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testwebauth.stellar.org", []string{"testanchor.stellar.org"}, threshold, signerSummary)
-	assert.EqualError(t, err, `web auth domain is "testwebauth.example.org" but require "testwebauth.stellar.org"`)
+	assert.EqualError(t, err, `web auth domain operation value is "testwebauth.example.org" but expect "testwebauth.stellar.org"`)
 }
 
 func TestVerifyChallengeTxSigners_invalidServer(t *testing.T) {
@@ -3894,6 +3962,37 @@ func TestVerifyChallengeTxSigners_validWhenWebAuthDomainMissing(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestVerifyChallengeTxSigners_invalidWebAuthDomainSourceAccount(t *testing.T) {
+	serverKP := newKeypair0()
+	clientKP := newKeypair1()
+	txSource := NewSimpleAccount(serverKP.Address(), -1)
+	op := ManageData{
+		SourceAccount: clientKP.Address(),
+		Name:          "testanchor.stellar.org auth",
+		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
+	}
+	webAuthDomainOp := ManageData{
+		SourceAccount: clientKP.Address(),
+		Name:          "web_auth_domain",
+		Value:         []byte("testwebauth.stellar.org"),
+	}
+	tx64, err := newSignedTransaction(
+		TransactionParams{
+			SourceAccount:        &txSource,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&op, &webAuthDomainOp},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewTimeout(1000),
+		},
+		network.TestNetworkPassphrase,
+		serverKP, clientKP,
+	)
+	assert.NoError(t, err)
+
+	_, err = VerifyChallengeTxSigners(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testwebauth.stellar.org", []string{"testanchor.stellar.org"}, clientKP.Address())
+	assert.EqualError(t, err, `web auth domain operation must have server source account`)
+}
+
 func TestVerifyChallengeTxSigners_invalidWebAuthDomain(t *testing.T) {
 	serverKP := newKeypair0()
 	clientKP := newKeypair1()
@@ -3922,7 +4021,7 @@ func TestVerifyChallengeTxSigners_invalidWebAuthDomain(t *testing.T) {
 	assert.NoError(t, err)
 
 	_, err = VerifyChallengeTxSigners(tx64, serverKP.Address(), network.TestNetworkPassphrase, "testwebauth.stellar.org", []string{"testanchor.stellar.org"}, clientKP.Address())
-	assert.EqualError(t, err, `web auth domain is "testwebauth.example.org" but require "testwebauth.stellar.org"`)
+	assert.EqualError(t, err, `web auth domain operation value is "testwebauth.example.org" but expect "testwebauth.stellar.org"`)
 }
 
 func TestVerifyTxSignatureUnsignedTx(t *testing.T) {

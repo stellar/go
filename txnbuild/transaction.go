@@ -1003,10 +1003,10 @@ func ReadChallengeTx(challengeTx, serverAccountID, network, webAuthDomain string
 		switch op.Name {
 		case "web_auth_domain":
 			if op.SourceAccount != serverAccountID {
-				return tx, clientAccountID, matchedHomeDomain, errors.New("web auth domain must have serve source account")
+				return tx, clientAccountID, matchedHomeDomain, errors.New("web auth domain operation must have server source account")
 			}
 			if !bytes.Equal(op.Value, []byte(webAuthDomain)) {
-				return tx, clientAccountID, matchedHomeDomain, errors.Errorf("web auth domain is %q but require %q", string(op.Value), webAuthDomain)
+				return tx, clientAccountID, matchedHomeDomain, errors.Errorf("web auth domain operation value is %q but expect %q", string(op.Value), webAuthDomain)
 			}
 		default:
 			// verify unknown subsequent operations are manage data ops with source account set to server account
