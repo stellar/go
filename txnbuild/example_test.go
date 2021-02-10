@@ -874,7 +874,7 @@ func ExampleBeginSponsoringFutureReserves() {
 	sponsorTrustline := []Operation{
 		&BeginSponsoringFutureReserves{SponsoredID: test.A.Address()},
 		&ChangeTrust{
-			SourceAccount: &test.Aaccount,
+			SourceAccount: test.Aaccount.AccountID,
 			Line:          &test.Assets[0],
 			Limit:         MaxTrustlineLimit,
 		},
@@ -906,7 +906,7 @@ func ExampleBeginSponsoringFutureReserves_transfer() {
 
 	transferOps := []Operation{
 		&BeginSponsoringFutureReserves{
-			SourceAccount: &test.S2account,
+			SourceAccount: test.S2account.AccountID,
 			SponsoredID:   test.S1.Address(),
 		},
 		&RevokeSponsorship{

@@ -9,7 +9,7 @@ import (
 //CreateOfferOp returns a ManageSellOffer operation to create a new offer, by
 // setting the OfferID to "0". The sourceAccount is optional, and if not provided,
 // will be that of the surrounding transaction.
-func CreateOfferOp(selling, buying Asset, amount, price string, sourceAccount ...Account) (ManageSellOffer, error) {
+func CreateOfferOp(selling, buying Asset, amount, price string, sourceAccount ...string) (ManageSellOffer, error) {
 	if len(sourceAccount) > 1 {
 		return ManageSellOffer{}, errors.New("offer can't have multiple source accounts")
 	}
@@ -29,7 +29,7 @@ func CreateOfferOp(selling, buying Asset, amount, price string, sourceAccount ..
 // UpdateOfferOp returns a ManageSellOffer operation to update an offer.
 // The sourceAccount is optional, and if not provided, will be that of
 // the surrounding transaction.
-func UpdateOfferOp(selling, buying Asset, amount, price string, offerID int64, sourceAccount ...Account) (ManageSellOffer, error) {
+func UpdateOfferOp(selling, buying Asset, amount, price string, offerID int64, sourceAccount ...string) (ManageSellOffer, error) {
 	if len(sourceAccount) > 1 {
 		return ManageSellOffer{}, errors.New("offer can't have multiple source accounts")
 	}
@@ -49,7 +49,7 @@ func UpdateOfferOp(selling, buying Asset, amount, price string, offerID int64, s
 //DeleteOfferOp returns a ManageSellOffer operation to delete an offer, by
 // setting the Amount to "0". The sourceAccount is optional, and if not provided,
 // will be that of the surrounding transaction.
-func DeleteOfferOp(offerID int64, sourceAccount ...Account) (ManageSellOffer, error) {
+func DeleteOfferOp(offerID int64, sourceAccount ...string) (ManageSellOffer, error) {
 	// It turns out Stellar core doesn't care about any of these fields except the amount.
 	// However, Horizon will reject ManageSellOffer if it is missing fields.
 	// Horizon will also reject if Buying == Selling.
@@ -79,7 +79,7 @@ type ManageSellOffer struct {
 	Price         string
 	price         price
 	OfferID       int64
-	SourceAccount Account
+	SourceAccount string
 }
 
 // BuildXDR for ManageSellOffer returns a fully configured XDR Operation.
@@ -157,6 +157,6 @@ func (mo *ManageSellOffer) Validate() error {
 
 // GetSourceAccount returns the source account of the operation, or nil if not
 // set.
-func (mo *ManageSellOffer) GetSourceAccount() Account {
+func (mo *ManageSellOffer) GetSourceAccount() string {
 	return mo.SourceAccount
 }

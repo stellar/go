@@ -14,7 +14,7 @@ import (
 type ChangeTrust struct {
 	Line          Asset
 	Limit         string
-	SourceAccount Account
+	SourceAccount string
 }
 
 // MaxTrustlineLimit represents the maximum value that can be set as a trustline limit.
@@ -97,8 +97,8 @@ func (ct *ChangeTrust) Validate() error {
 	return nil
 }
 
-// GetSourceAccount returns the source account of the operation, or nil if not
+// GetSourceAccount returns the source account of the operation, or the empty string if not
 // set.
-func (ct *ChangeTrust) GetSourceAccount() Account {
+func (ct *ChangeTrust) GetSourceAccount() string {
 	return ct.SourceAccount
 }

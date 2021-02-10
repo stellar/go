@@ -13,7 +13,7 @@ type CreateClaimableBalance struct {
 	Amount        string
 	Asset         Asset
 	Destinations  []Claimant
-	SourceAccount Account
+	SourceAccount string
 }
 
 // Claimant represents a claimable balance claimant
@@ -186,8 +186,8 @@ func (cb *CreateClaimableBalance) Validate() error {
 	return nil
 }
 
-// GetSourceAccount returns the source account of the operation, or nil if not
+// GetSourceAccount returns the source account of the operation, or the empty string if not
 // set.
-func (cb *CreateClaimableBalance) GetSourceAccount() Account {
+func (cb *CreateClaimableBalance) GetSourceAccount() string {
 	return cb.SourceAccount
 }
