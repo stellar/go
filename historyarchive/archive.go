@@ -433,13 +433,14 @@ func ConnectAny(urls []string, opts ConnectOptions) (*Archive, error) {
 		return nil, errors.New("No history archives provided")
 	}
 
+	urlsCopy := urls
 	var outerErr error
-	for len(urls) > 0 {
-		i := rand.Intn(len(urls))
-		archive, err := Connect(urls[i], opts)
+	for len(urlsCopy) > 0 {
+		i := rand.Intn(len(urlsCopy))
+		archive, err := Connect(urlsCopy[i], opts)
 		if err != nil {
 			// Drop the failed archive from the list and try again
-			urls = append(urls[:i], urls[i+1:]...)
+			urlsCopy = append(urlsCopy[:i], urlsCopy[i+1:]...)
 			outerErr = err
 			continue
 		}
