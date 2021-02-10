@@ -159,6 +159,7 @@ func NewCaptive(config CaptiveCoreConfig) (*CaptiveStellarCore, error) {
 		)
 
 		if err != nil {
+			config.Log.Warnf("Error connecting to history archive (%s): %s", url, err)
 			continue
 		}
 
@@ -168,6 +169,7 @@ func NewCaptive(config CaptiveCoreConfig) (*CaptiveStellarCore, error) {
 	pool, err := historyarchive.CreatePool(validArchives...)
 	if err != nil {
 		cancel()
+		config.Log.Error("Error connecting to ALL history archives.")
 		return nil, err
 	}
 
