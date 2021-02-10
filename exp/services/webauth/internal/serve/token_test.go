@@ -1034,7 +1034,7 @@ func TestToken_jsonInputNoWebAuthDomainSuccess(t *testing.T) {
 			IncrementSequenceNum: false,
 			Operations: []txnbuild.Operation{
 				&txnbuild.ManageData{
-					SourceAccount: &txnbuild.SimpleAccount{AccountID: account.Address()},
+					SourceAccount: account.Address(),
 					Name:          homeDomain + " auth",
 					Value:         []byte("ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg"),
 				},

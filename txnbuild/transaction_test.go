@@ -1511,7 +1511,7 @@ func TestReadChallengeTx_validSignedByServerAndClient(t *testing.T) {
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
 	webAuthDomainOp := ManageData{
-		SourceAccount: &txSource,
+		SourceAccount: serverKP.Address(),
 		Name:          "web_auth_domain",
 		Value:         []byte("testwebauth.stellar.org"),
 	}
@@ -1547,7 +1547,7 @@ func TestReadChallengeTx_validSignedByServer(t *testing.T) {
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
 	webAuthDomainOp := ManageData{
-		SourceAccount: &txSource,
+		SourceAccount: serverKP.Address(),
 		Name:          "web_auth_domain",
 		Value:         []byte("testwebauth.stellar.org"),
 	}
@@ -1582,7 +1582,7 @@ func TestReadChallengeTx_invalidNotSignedByServer(t *testing.T) {
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
 	webAuthDomainOp := ManageData{
-		SourceAccount: &txSource,
+		SourceAccount: serverKP.Address(),
 		Name:          "web_auth_domain",
 		Value:         []byte("testwebauth.stellar.org"),
 	}
@@ -1615,7 +1615,7 @@ func TestReadChallengeTx_invalidCorrupted(t *testing.T) {
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
 	webAuthDomainOp := ManageData{
-		SourceAccount: &txSource,
+		SourceAccount: serverKP.Address(),
 		Name:          "web_auth_domain",
 		Value:         []byte("testwebauth.stellar.org"),
 	}
@@ -1656,7 +1656,7 @@ func TestReadChallengeTx_invalidServerAccountIDMismatch(t *testing.T) {
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
 	webAuthDomainOp := ManageData{
-		SourceAccount: &txSource,
+		SourceAccount: serverKP.Address(),
 		Name:          "web_auth_domain",
 		Value:         []byte("testwebauth.stellar.org"),
 	}
@@ -1726,7 +1726,7 @@ func TestReadChallengeTx_invalidTimeboundsInfinite(t *testing.T) {
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
 	webAuthDomainOp := ManageData{
-		SourceAccount: &txSource,
+		SourceAccount: serverKP.Address(),
 		Name:          "web_auth_domain",
 		Value:         []byte("testwebauth.stellar.org"),
 	}
@@ -1761,7 +1761,7 @@ func TestReadChallengeTx_invalidTimeboundsOutsideRange(t *testing.T) {
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
 	webAuthDomainOp := ManageData{
-		SourceAccount: &txSource,
+		SourceAccount: serverKP.Address(),
 		Name:          "web_auth_domain",
 		Value:         []byte("testwebauth.stellar.org"),
 	}
@@ -1852,7 +1852,7 @@ func TestReadChallengeTx_invalidDataValueWrongEncodedLength(t *testing.T) {
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 45))),
 	}
 	webAuthDomainOp := ManageData{
-		SourceAccount: &txSource,
+		SourceAccount: serverKP.Address(),
 		Name:          "web_auth_domain",
 		Value:         []byte("testwebauth.stellar.org"),
 	}
@@ -1887,7 +1887,7 @@ func TestReadChallengeTx_invalidDataValueCorruptBase64(t *testing.T) {
 		Value:         []byte("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA?AAAAAAAAAAAAAAAAAAAAAAAAAA"),
 	}
 	webAuthDomainOp := ManageData{
-		SourceAccount: &txSource,
+		SourceAccount: serverKP.Address(),
 		Name:          "web_auth_domain",
 		Value:         []byte("testwebauth.stellar.org"),
 	}
@@ -1922,7 +1922,7 @@ func TestReadChallengeTx_invalidDataValueWrongByteLength(t *testing.T) {
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 47))),
 	}
 	webAuthDomainOp := ManageData{
-		SourceAccount: &txSource,
+		SourceAccount: serverKP.Address(),
 		Name:          "web_auth_domain",
 		Value:         []byte("testwebauth.stellar.org"),
 	}
@@ -2072,7 +2072,7 @@ func TestReadChallengeTx_doesVerifyHomeDomainFailure(t *testing.T) {
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
 	webAuthDomainOp := ManageData{
-		SourceAccount: &txSource,
+		SourceAccount: serverKP.Address(),
 		Name:          "web_auth_domain",
 		Value:         []byte("testwebauth.stellar.org"),
 	}
@@ -2105,7 +2105,7 @@ func TestReadChallengeTx_doesVerifyHomeDomainSuccess(t *testing.T) {
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
 	webAuthDomainOp := ManageData{
-		SourceAccount: &txSource,
+		SourceAccount: serverKP.Address(),
 		Name:          "web_auth_domain",
 		Value:         []byte("testwebauth.stellar.org"),
 	}
@@ -2143,7 +2143,7 @@ func TestReadChallengeTx_allowsAdditionalManageDataOpsWithSourceAccountSetToServ
 		Value:         []byte("a value"),
 	}
 	webAuthDomainOp := ManageData{
-		SourceAccount: &txSource,
+		SourceAccount: serverKP.Address(),
 		Name:          "web_auth_domain",
 		Value:         []byte("testwebauth.stellar.org"),
 	}
@@ -2183,7 +2183,7 @@ func TestReadChallengeTx_disallowsAdditionalManageDataOpsWithoutSourceAccountSet
 		Value:         []byte("a value"),
 	}
 	webAuthDomainOp := ManageData{
-		SourceAccount: &txSource,
+		SourceAccount: serverKP.Address(),
 		Name:          "web_auth_domain",
 		Value:         []byte("testwebauth.stellar.org"),
 	}
@@ -2220,7 +2220,7 @@ func TestReadChallengeTx_disallowsAdditionalOpsOfOtherTypes(t *testing.T) {
 		BumpTo:        0,
 	}
 	webAuthDomainOp := ManageData{
-		SourceAccount: &txSource,
+		SourceAccount: serverKP.Address(),
 		Name:          "web_auth_domain",
 		Value:         []byte("testwebauth.stellar.org"),
 	}
@@ -2255,7 +2255,7 @@ func TestReadChallengeTx_matchesHomeDomain(t *testing.T) {
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
 	webAuthDomainOp := ManageData{
-		SourceAccount: &txSource,
+		SourceAccount: serverKP.Address(),
 		Name:          "web_auth_domain",
 		Value:         []byte("testwebauth.stellar.org"),
 	}
@@ -2288,7 +2288,7 @@ func TestReadChallengeTx_doesNotMatchHomeDomain(t *testing.T) {
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
 	webAuthDomainOp := ManageData{
-		SourceAccount: &txSource,
+		SourceAccount: serverKP.Address(),
 		Name:          "web_auth_domain",
 		Value:         []byte("testwebauth.stellar.org"),
 	}
@@ -2315,9 +2315,8 @@ func TestReadChallengeTx_validWhenWebAuthDomainMissing(t *testing.T) {
 	serverKP := newKeypair0()
 	clientKP := newKeypair1()
 	txSource := NewSimpleAccount(serverKP.Address(), -1)
-	opSource := NewSimpleAccount(clientKP.Address(), 0)
 	op1 := ManageData{
-		SourceAccount: &opSource,
+		SourceAccount: clientKP.Address(),
 		Name:          "testanchor.stellar.org auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
@@ -2343,14 +2342,13 @@ func TestReadChallengeTx_invalidWebAuthDomain(t *testing.T) {
 	serverKP := newKeypair0()
 	clientKP := newKeypair1()
 	txSource := NewSimpleAccount(serverKP.Address(), -1)
-	opSource := NewSimpleAccount(clientKP.Address(), 0)
 	op1 := ManageData{
-		SourceAccount: &opSource,
+		SourceAccount: clientKP.Address(),
 		Name:          "testanchor.stellar.org auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
 	webAuthDomainOp := ManageData{
-		SourceAccount: &txSource,
+		SourceAccount: serverKP.Address(),
 		Name:          "web_auth_domain",
 		Value:         []byte("testwebauth.example.org"),
 	}
@@ -2382,7 +2380,7 @@ func TestVerifyChallengeTxThreshold_invalidServer(t *testing.T) {
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
 	webAuthDomainOp := ManageData{
-		SourceAccount: &txSource,
+		SourceAccount: serverKP.Address(),
 		Name:          "web_auth_domain",
 		Value:         []byte("testwebauth.stellar.org"),
 	}
@@ -2419,7 +2417,7 @@ func TestVerifyChallengeTxThreshold_validServerAndClientKeyMeetingThreshold(t *t
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
 	webAuthDomainOp := ManageData{
-		SourceAccount: &txSource,
+		SourceAccount: serverKP.Address(),
 		Name:          "web_auth_domain",
 		Value:         []byte("testwebauth.stellar.org"),
 	}
@@ -2460,7 +2458,7 @@ func TestVerifyChallengeTxThreshold_validServerAndMultipleClientKeyMeetingThresh
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
 	webAuthDomainOp := ManageData{
-		SourceAccount: &txSource,
+		SourceAccount: serverKP.Address(),
 		Name:          "web_auth_domain",
 		Value:         []byte("testwebauth.stellar.org"),
 	}
@@ -2504,7 +2502,7 @@ func TestVerifyChallengeTxThreshold_validServerAndMultipleClientKeyMeetingThresh
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
 	webAuthDomainOp := ManageData{
-		SourceAccount: &txSource,
+		SourceAccount: serverKP.Address(),
 		Name:          "web_auth_domain",
 		Value:         []byte("testwebauth.stellar.org"),
 	}
@@ -2552,7 +2550,7 @@ func TestVerifyChallengeTxThreshold_validServerAndMultipleClientKeyMeetingThresh
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
 	webAuthDomainOp := ManageData{
-		SourceAccount: &txSource,
+		SourceAccount: serverKP.Address(),
 		Name:          "web_auth_domain",
 		Value:         []byte("testwebauth.stellar.org"),
 	}
@@ -2600,7 +2598,7 @@ func TestVerifyChallengeTxThreshold_invalidServerAndMultipleClientKeyNotMeetingT
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
 	webAuthDomainOp := ManageData{
-		SourceAccount: &txSource,
+		SourceAccount: serverKP.Address(),
 		Name:          "web_auth_domain",
 		Value:         []byte("testwebauth.stellar.org"),
 	}
@@ -2640,7 +2638,7 @@ func TestVerifyChallengeTxThreshold_invalidClientKeyUnrecognized(t *testing.T) {
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
 	webAuthDomainOp := ManageData{
-		SourceAccount: &txSource,
+		SourceAccount: serverKP.Address(),
 		Name:          "web_auth_domain",
 		Value:         []byte("testwebauth.stellar.org"),
 	}
@@ -2679,7 +2677,7 @@ func TestVerifyChallengeTxThreshold_invalidNoSigners(t *testing.T) {
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
 	webAuthDomainOp := ManageData{
-		SourceAccount: &txSource,
+		SourceAccount: serverKP.Address(),
 		Name:          "web_auth_domain",
 		Value:         []byte("testwebauth.stellar.org"),
 	}
@@ -2714,7 +2712,7 @@ func TestVerifyChallengeTxThreshold_weightsAddToMoreThan8Bits(t *testing.T) {
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
 	webAuthDomainOp := ManageData{
-		SourceAccount: &txSource,
+		SourceAccount: serverKP.Address(),
 		Name:          "web_auth_domain",
 		Value:         []byte("testwebauth.stellar.org"),
 	}
@@ -2756,7 +2754,7 @@ func TestVerifyChallengeTxThreshold_matchesHomeDomain(t *testing.T) {
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
 	webAuthDomainOp := ManageData{
-		SourceAccount: &txSource,
+		SourceAccount: serverKP.Address(),
 		Name:          "web_auth_domain",
 		Value:         []byte("testwebauth.stellar.org"),
 	}
@@ -2798,7 +2796,7 @@ func TestVerifyChallengeTxThreshold_doesNotMatchHomeDomain(t *testing.T) {
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
 	webAuthDomainOp := ManageData{
-		SourceAccount: &txSource,
+		SourceAccount: serverKP.Address(),
 		Name:          "web_auth_domain",
 		Value:         []byte("testwebauth.stellar.org"),
 	}
@@ -2836,7 +2834,7 @@ func TestVerifyChallengeTxThreshold_doesVerifyHomeDomainFailure(t *testing.T) {
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
 	webAuthDomainOp := ManageData{
-		SourceAccount: &txSource,
+		SourceAccount: serverKP.Address(),
 		Name:          "web_auth_domain",
 		Value:         []byte("testwebauth.stellar.org"),
 	}
@@ -2872,7 +2870,7 @@ func TestVerifyChallengeTxThreshold_doesVerifyHomeDomainSuccess(t *testing.T) {
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
 	webAuthDomainOp := ManageData{
-		SourceAccount: &txSource,
+		SourceAccount: serverKP.Address(),
 		Name:          "web_auth_domain",
 		Value:         []byte("testwebauth.stellar.org"),
 	}
@@ -2918,7 +2916,7 @@ func TestVerifyChallengeTxThreshold_allowsAdditionalManageDataOpsWithSourceAccou
 		Value:         []byte("a value"),
 	}
 	webAuthDomainOp := ManageData{
-		SourceAccount: &txSource,
+		SourceAccount: serverKP.Address(),
 		Name:          "web_auth_domain",
 		Value:         []byte("testwebauth.stellar.org"),
 	}
@@ -2964,7 +2962,7 @@ func TestVerifyChallengeTxThreshold_disallowsAdditionalManageDataOpsWithoutSourc
 		Value:         []byte("a value"),
 	}
 	webAuthDomainOp := ManageData{
-		SourceAccount: &txSource,
+		SourceAccount: serverKP.Address(),
 		Name:          "web_auth_domain",
 		Value:         []byte("testwebauth.stellar.org"),
 	}
@@ -3006,7 +3004,7 @@ func TestVerifyChallengeTxThreshold_disallowsAdditionalOpsOfOtherTypes(t *testin
 		BumpTo:        0,
 	}
 	webAuthDomainOp := ManageData{
-		SourceAccount: &txSource,
+		SourceAccount: serverKP.Address(),
 		Name:          "web_auth_domain",
 		Value:         []byte("testwebauth.stellar.org"),
 	}
@@ -3073,14 +3071,13 @@ func TestVerifyChallengeTxThreshold_invalidWebAuthDomain(t *testing.T) {
 	serverKP := newKeypair0()
 	clientKP := newKeypair1()
 	txSource := NewSimpleAccount(serverKP.Address(), -1)
-	opSource := NewSimpleAccount(clientKP.Address(), 0)
 	op := ManageData{
-		SourceAccount: &opSource,
+		SourceAccount: clientKP.Address(),
 		Name:          "testanchor.stellar.org auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
 	webAuthDomainOp := ManageData{
-		SourceAccount: &txSource,
+		SourceAccount: serverKP.Address(),
 		Name:          "web_auth_domain",
 		Value:         []byte("testwebauth.example.org"),
 	}
@@ -3110,14 +3107,13 @@ func TestVerifyChallengeTxSigners_invalidServer(t *testing.T) {
 	serverKP := newKeypair0()
 	clientKP := newKeypair1()
 	txSource := NewSimpleAccount(serverKP.Address(), -1)
-	opSource := NewSimpleAccount(clientKP.Address(), 0)
 	op := ManageData{
-		SourceAccount: &opSource,
+		SourceAccount: clientKP.Address(),
 		Name:          "testanchor.stellar.org auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
 	webAuthDomainOp := ManageData{
-		SourceAccount: &txSource,
+		SourceAccount: serverKP.Address(),
 		Name:          "web_auth_domain",
 		Value:         []byte("testwebauth.stellar.org"),
 	}
@@ -3150,7 +3146,7 @@ func TestVerifyChallengeTxSigners_validServerAndClientMasterKey(t *testing.T) {
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
 	webAuthDomainOp := ManageData{
-		SourceAccount: &txSource,
+		SourceAccount: serverKP.Address(),
 		Name:          "web_auth_domain",
 		Value:         []byte("testwebauth.stellar.org"),
 	}
@@ -3183,7 +3179,7 @@ func TestVerifyChallengeTxSigners_invalidServerAndNoClient(t *testing.T) {
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
 	webAuthDomainOp := ManageData{
-		SourceAccount: &txSource,
+		SourceAccount: serverKP.Address(),
 		Name:          "web_auth_domain",
 		Value:         []byte("testwebauth.stellar.org"),
 	}
@@ -3217,7 +3213,7 @@ func TestVerifyChallengeTxSigners_invalidServerAndUnrecognizedClient(t *testing.
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
 	webAuthDomainOp := ManageData{
-		SourceAccount: &txSource,
+		SourceAccount: serverKP.Address(),
 		Name:          "web_auth_domain",
 		Value:         []byte("testwebauth.stellar.org"),
 	}
@@ -3251,7 +3247,7 @@ func TestVerifyChallengeTxSigners_validServerAndMultipleClientSigners(t *testing
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
 	webAuthDomainOp := ManageData{
-		SourceAccount: &txSource,
+		SourceAccount: serverKP.Address(),
 		Name:          "web_auth_domain",
 		Value:         []byte("testwebauth.stellar.org"),
 	}
@@ -3285,7 +3281,7 @@ func TestVerifyChallengeTxSigners_validServerAndMultipleClientSignersReverseOrde
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
 	webAuthDomainOp := ManageData{
-		SourceAccount: &txSource,
+		SourceAccount: serverKP.Address(),
 		Name:          "web_auth_domain",
 		Value:         []byte("testwebauth.stellar.org"),
 	}
@@ -3319,7 +3315,7 @@ func TestVerifyChallengeTxSigners_validServerAndClientSignersNotMasterKey(t *tes
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
 	webAuthDomainOp := ManageData{
-		SourceAccount: &txSource,
+		SourceAccount: serverKP.Address(),
 		Name:          "web_auth_domain",
 		Value:         []byte("testwebauth.stellar.org"),
 	}
@@ -3353,7 +3349,7 @@ func TestVerifyChallengeTxSigners_validServerAndClientSignersIgnoresServerSigner
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
 	webAuthDomainOp := ManageData{
-		SourceAccount: &txSource,
+		SourceAccount: serverKP.Address(),
 		Name:          "web_auth_domain",
 		Value:         []byte("testwebauth.stellar.org"),
 	}
@@ -3387,7 +3383,7 @@ func TestVerifyChallengeTxSigners_invalidServerNoClientSignersIgnoresServerSigne
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
 	webAuthDomainOp := ManageData{
-		SourceAccount: &txSource,
+		SourceAccount: serverKP.Address(),
 		Name:          "web_auth_domain",
 		Value:         []byte("testwebauth.stellar.org"),
 	}
@@ -3421,7 +3417,7 @@ func TestVerifyChallengeTxSigners_validServerAndClientSignersIgnoresDuplicateSig
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
 	webAuthDomainOp := ManageData{
-		SourceAccount: &txSource,
+		SourceAccount: serverKP.Address(),
 		Name:          "web_auth_domain",
 		Value:         []byte("testwebauth.stellar.org"),
 	}
@@ -3458,7 +3454,7 @@ func TestVerifyChallengeTxSigners_validIgnorePreauthTxHashAndXHash(t *testing.T)
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
 	webAuthDomainOp := ManageData{
-		SourceAccount: &txSource,
+		SourceAccount: serverKP.Address(),
 		Name:          "web_auth_domain",
 		Value:         []byte("testwebauth.stellar.org"),
 	}
@@ -3492,7 +3488,7 @@ func TestVerifyChallengeTxSigners_invalidServerAndClientSignersIgnoresDuplicateS
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
 	webAuthDomainOp := ManageData{
-		SourceAccount: &txSource,
+		SourceAccount: serverKP.Address(),
 		Name:          "web_auth_domain",
 		Value:         []byte("testwebauth.stellar.org"),
 	}
@@ -3526,7 +3522,7 @@ func TestVerifyChallengeTxSigners_invalidServerAndClientSignersFailsDuplicateSig
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
 	webAuthDomainOp := ManageData{
-		SourceAccount: &txSource,
+		SourceAccount: serverKP.Address(),
 		Name:          "web_auth_domain",
 		Value:         []byte("testwebauth.stellar.org"),
 	}
@@ -3560,7 +3556,7 @@ func TestVerifyChallengeTxSigners_invalidServerAndClientSignersFailsSignerSeed(t
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
 	webAuthDomainOp := ManageData{
-		SourceAccount: &txSource,
+		SourceAccount: serverKP.Address(),
 		Name:          "web_auth_domain",
 		Value:         []byte("testwebauth.stellar.org"),
 	}
@@ -3593,7 +3589,7 @@ func TestVerifyChallengeTxSigners_invalidNoSigners(t *testing.T) {
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
 	webAuthDomainOp := ManageData{
-		SourceAccount: &txSource,
+		SourceAccount: serverKP.Address(),
 		Name:          "web_auth_domain",
 		Value:         []byte("testwebauth.stellar.org"),
 	}
@@ -3625,7 +3621,7 @@ func TestVerifyChallengeTxSigners_doesVerifyHomeDomainFailure(t *testing.T) {
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
 	webAuthDomainOp := ManageData{
-		SourceAccount: &txSource,
+		SourceAccount: serverKP.Address(),
 		Name:          "web_auth_domain",
 		Value:         []byte("testwebauth.stellar.org"),
 	}
@@ -3657,7 +3653,7 @@ func TestVerifyChallengeTxSigners_matchesHomeDomain(t *testing.T) {
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
 	webAuthDomainOp := ManageData{
-		SourceAccount: &txSource,
+		SourceAccount: serverKP.Address(),
 		Name:          "web_auth_domain",
 		Value:         []byte("testwebauth.stellar.org"),
 	}
@@ -3696,7 +3692,7 @@ func TestVerifyChallengeTxSigners_doesNotMatchHomeDomain(t *testing.T) {
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
 	webAuthDomainOp := ManageData{
-		SourceAccount: &txSource,
+		SourceAccount: serverKP.Address(),
 		Name:          "web_auth_domain",
 		Value:         []byte("testwebauth.stellar.org"),
 	}
@@ -3735,7 +3731,7 @@ func TestVerifyChallengeTxSigners_doesVerifyHomeDomainSuccess(t *testing.T) {
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
 	webAuthDomainOp := ManageData{
-		SourceAccount: &txSource,
+		SourceAccount: serverKP.Address(),
 		Name:          "web_auth_domain",
 		Value:         []byte("testwebauth.stellar.org"),
 	}
@@ -3772,7 +3768,7 @@ func TestVerifyChallengeTxSigners_allowsAdditionalManageDataOpsWithSourceAccount
 		Value:         []byte("a value"),
 	}
 	webAuthDomainOp := ManageData{
-		SourceAccount: &txSource,
+		SourceAccount: serverKP.Address(),
 		Name:          "web_auth_domain",
 		Value:         []byte("testwebauth.stellar.org"),
 	}
@@ -3810,7 +3806,7 @@ func TestVerifyChallengeTxSigners_disallowsAdditionalManageDataOpsWithoutSourceA
 		Value:         []byte("a value"),
 	}
 	webAuthDomainOp := ManageData{
-		SourceAccount: &txSource,
+		SourceAccount: serverKP.Address(),
 		Name:          "web_auth_domain",
 		Value:         []byte("testwebauth.stellar.org"),
 	}
@@ -3847,7 +3843,7 @@ func TestVerifyChallengeTxSigners_disallowsAdditionalOpsOfOtherTypes(t *testing.
 		BumpTo:        0,
 	}
 	webAuthDomainOp := ManageData{
-		SourceAccount: &txSource,
+		SourceAccount: serverKP.Address(),
 		Name:          "web_auth_domain",
 		Value:         []byte("testwebauth.stellar.org"),
 	}
@@ -3873,9 +3869,8 @@ func TestVerifyChallengeTxSigners_validWhenWebAuthDomainMissing(t *testing.T) {
 	serverKP := newKeypair0()
 	clientKP := newKeypair1()
 	txSource := NewSimpleAccount(serverKP.Address(), -1)
-	opSource := NewSimpleAccount(clientKP.Address(), 0)
 	op := ManageData{
-		SourceAccount: &opSource,
+		SourceAccount: clientKP.Address(),
 		Name:          "testanchor.stellar.org auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
@@ -3903,14 +3898,13 @@ func TestVerifyChallengeTxSigners_invalidWebAuthDomain(t *testing.T) {
 	serverKP := newKeypair0()
 	clientKP := newKeypair1()
 	txSource := NewSimpleAccount(serverKP.Address(), -1)
-	opSource := NewSimpleAccount(clientKP.Address(), 0)
 	op := ManageData{
-		SourceAccount: &opSource,
+		SourceAccount: clientKP.Address(),
 		Name:          "testanchor.stellar.org auth",
 		Value:         []byte(base64.StdEncoding.EncodeToString(make([]byte, 48))),
 	}
 	webAuthDomainOp := ManageData{
-		SourceAccount: &txSource,
+		SourceAccount: serverKP.Address(),
 		Name:          "web_auth_domain",
 		Value:         []byte("testwebauth.example.org"),
 	}

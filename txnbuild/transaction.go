@@ -854,7 +854,7 @@ func BuildChallengeTx(serverSignerSecret, clientAccountID, webAuthDomain, homeDo
 					Value:         []byte(randomNonceToString),
 				},
 				&ManageData{
-					SourceAccount: &sa,
+					SourceAccount: serverKP.Address(),
 					Name:          "web_auth_domain",
 					Value:         []byte(webAuthDomain),
 				},
