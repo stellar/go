@@ -1,6 +1,4 @@
 #!/bin/bash
-# apt-get update && apt-get install -y stellar-horizon
-
 mkdir released
 cd released
 
@@ -28,3 +26,6 @@ do
     shasum -a 256 ./released/$TAG-$S
     shasum -a 256 ./dist/$TAG-$S
 done
+
+apt-get update && apt-get install -y stellar-horizon
+shasum -a 256 $(which stellar-core)
