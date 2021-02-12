@@ -28,4 +28,4 @@ do
 done
 
 apt-get update && apt-get install -y stellar-horizon
-shasum -a 256 $(which stellar-core)
+shasum -a 256 $(which stellar-horizon)
