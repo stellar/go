@@ -153,7 +153,7 @@ func (s *DBTestSuite) TestVersionMismatchTriggersRebuild() {
 	s.TestBuildState()
 
 	s.Assert().NoError(
-		s.system.historyQ.UpdateExpIngestVersion(CurrentVersion - 1),
+		s.system.historyQ.UpdateIngestVersion(CurrentVersion - 1),
 	)
 
 	s.setupMocksForBuildState()

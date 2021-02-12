@@ -50,7 +50,7 @@ func mustInitHorizonDB(app *App) {
 	)}
 }
 
-func initExpIngester(app *App) {
+func initIngester(app *App) {
 	var err error
 	var coreSession *db.Session
 	if !app.config.EnableCaptiveCoreIngestion {

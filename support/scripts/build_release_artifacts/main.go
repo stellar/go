@@ -81,7 +81,14 @@ func binNamesForDir(dir string) []string {
 }
 
 func build(pkg, dest, version, buildOS, buildArch string) {
-	versionFlag := fmt.Sprintf("-X github.com/stellar/go/support/app.version=%s", version)
+	// Note: verison string should match other build pipelines to create
+	// reproducible builds for Horizon (and other projects in the future).
+	rev := runOutput("git", "rev-parse", "HEAD")
+	versionString := version[1:] // Remove letter `v`
+	versionFlag := fmt.Sprintf(
+		"-X github.com/stellar/go/support/app.version=%s-%s",
+		versionString, rev,
+	)
 
 	if buildOS == "windows" {
 		dest = dest + ".exe"

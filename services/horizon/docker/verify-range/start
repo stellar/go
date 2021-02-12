@@ -72,7 +72,7 @@ git log -1
 
 /usr/local/go/bin/go build -v ./services/horizon
 ./horizon db migrate up
-./horizon expingest verify-range --from $FROM --to $TO --verify-state
+./horizon ingest verify-range --from $FROM --to $TO --verify-state
 
 function compare() {
   local expected="$1"
