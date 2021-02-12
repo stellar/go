@@ -353,18 +353,12 @@ func (t *Transaction) ClaimableBalanceID(operationIndex int) (string, error) {
 		return "", errors.New("invalid operation index")
 	}
 
-	operation, ok := t.operations[operationIndex].(*CreateClaimableBalance)
+	_, ok := t.operations[operationIndex].(*CreateClaimableBalance)
 	if !ok {
 		return "", errors.New("operation is not CreateClaimableBalance")
 	}
 
-	// Use the operation's source account or the transaction's source if not.
-	var account Account = &t.sourceAccount
-	if operation.SourceAccount != nil {
-		account = operation.GetSourceAccount()
-	}
-
-	seq, err := account.GetSequenceNumber()
+	seq, err := t.sourceAccount.GetSequenceNumber()
 	if err != nil {
 		return "", errors.Wrap(err, "failed to retrieve account sequence number")
 	}
@@ -374,7 +368,7 @@ func (t *Transaction) ClaimableBalanceID(operationIndex int) (string, error) {
 	operationId := xdr.OperationId{
 		Type: xdr.EnvelopeTypeEnvelopeTypeOpId,
 		Id: &xdr.OperationIdId{
-			SourceAccount: xdr.MustMuxedAddress(account.GetAccountID()),
+			SourceAccount: xdr.MustMuxedAddress(t.sourceAccount.GetAccountID()),
 			SeqNum:        xdr.SequenceNumber(seq),
 			OpNum:         xdr.Uint32(operationIndex),
 		},
