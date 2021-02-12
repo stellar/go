@@ -16,16 +16,35 @@ cd -
 
 git pull origin --tags
 git checkout $TAG
-CIRCLE_TAG=$TAG go run -v ./support/scripts/build_release_artifacts
+# -keep: artifact directories are not removed after packaging
+CIRCLE_TAG=$TAG go run -v ./support/scripts/build_release_artifacts -keep
 
-suffixes=(darwin-amd64.tar.gz linux-amd64.tar.gz linux-arm.tar.gz windows-amd64.zip)
+suffixes=(darwin-amd64 linux-amd64 linux-arm windows-amd64)
+
+apt-get update && apt-get install -y stellar-horizon
 
 for S in "${suffixes[@]}"
 do
 	echo $TAG-$S
-    shasum -a 256 ./released/$TAG-$S
-    shasum -a 256 ./dist/$TAG-$S
+    
+    if [ -f "./released/$TAG-$S.tar.gz" ]; then
+        shasum -a 256 ./released/$TAG-$S.tar.gz
+        shasum -a 256 ./released/$TAG-$S/horizon
+    else
+        # windows
+        shasum -a 256 ./released/$TAG-$S.zip
+        shasum -a 256 ./released/$TAG-$S/horizon.exe
+    fi
+
+    if [ -f "./dist/$TAG-$S.tar.gz" ]; then
+        shasum -a 256 ./dist/$TAG-$S.tar.gz
+        shasum -a 256 ./dist/$TAG-$S/horizon
+    else
+        # windows
+        shasum -a 256 ./dist/$TAG-$S.zip
+        shasum -a 256 ./dist/$TAG-$S/horizon.exe
+    fi
 done
 
-apt-get update && apt-get install -y stellar-horizon
+echo "debian package"
 shasum -a 256 $(which stellar-horizon)
