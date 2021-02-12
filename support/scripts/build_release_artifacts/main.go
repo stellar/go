@@ -12,8 +12,6 @@ import (
 	"regexp"
 	"strings"
 
-	"time"
-
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
 )
@@ -83,10 +81,6 @@ func binNamesForDir(dir string) []string {
 }
 
 func build(pkg, dest, version, buildOS, buildArch string) {
-	buildTime := time.Now().Format(time.RFC3339)
-
-	timeFlag := fmt.Sprintf("-X github.com/stellar/go/support/app.buildTime=%s", buildTime)
-
 	// Note: verison string should match other build pipelines to create
 	// reproducible builds for Horizon (and other projects in the future).
 	rev := runOutput("git", "rev-parse", "HEAD")
@@ -101,8 +95,9 @@ func build(pkg, dest, version, buildOS, buildArch string) {
 	}
 
 	cmd := exec.Command("go", "build",
+		"-trimpath",
 		"-o", dest,
-		"-ldflags", fmt.Sprintf("%s %s", timeFlag, versionFlag),
+		"-ldflags", versionFlag,
 		pkg,
 	)
 	cmd.Stderr = os.Stderr
@@ -110,6 +105,7 @@ func build(pkg, dest, version, buildOS, buildArch string) {
 
 	cmd.Env = append(
 		os.Environ(),
+		"CGO_ENABLED=0",
 		fmt.Sprintf("GOOS=%s", buildOS),
 		fmt.Sprintf("GOARCH=%s", buildArch),
 	)
