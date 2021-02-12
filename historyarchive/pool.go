@@ -11,9 +11,9 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-// A PooledArchive is just a collection of `ArchiveInterface`s so that we can
+// A ArchivePool is just a collection of `ArchiveInterface`s so that we can
 // distribute requests fairly throughout the pool.
-type PooledArchive []ArchiveInterface
+type ArchivePool []ArchiveInterface
 
 // CreatePool tries connecting to each of the provided history archive URLs,
 // returning a pool of valid archives.
@@ -24,7 +24,7 @@ type PooledArchive []ArchiveInterface
 //
 // Possible FIXME for the above limitation: return []error instead? but then
 // users need to check `len(pool) > 0` instead of `err == nil`.
-func CreatePool(archiveURLs []string, config ConnectOptions) (PooledArchive, error) {
+func CreatePool(archiveURLs []string, config ConnectOptions) (ArchivePool, error) {
 	if len(archiveURLs) <= 0 {
 		return nil, errors.New("No history archives provided")
 	}
@@ -32,7 +32,7 @@ func CreatePool(archiveURLs []string, config ConnectOptions) (PooledArchive, err
 	var lastErr error = nil
 
 	// Try connecting to all of the listed archives, but only store valid ones.
-	var validArchives PooledArchive
+	var validArchives ArchivePool
 	for _, url := range archiveURLs {
 		archive, err := Connect(
 			url,
@@ -59,78 +59,78 @@ func CreatePool(archiveURLs []string, config ConnectOptions) (PooledArchive, err
 }
 
 // Ensure the pool conforms to the ArchiveInterface
-var _ ArchiveInterface = PooledArchive{}
+var _ ArchiveInterface = ArchivePool{}
 
 // Below are the ArchiveInterface method implementations.
 
-func (pa PooledArchive) GetAnyArchive() ArchiveInterface {
+func (pa ArchivePool) GetAnyArchive() ArchiveInterface {
 	return pa[rand.Intn(len(pa))]
 }
 
-func (pa PooledArchive) GetPathHAS(path string) (HistoryArchiveState, error) {
+func (pa ArchivePool) GetPathHAS(path string) (HistoryArchiveState, error) {
 	return pa.GetAnyArchive().GetPathHAS(path)
 }
 
-func (pa PooledArchive) PutPathHAS(path string, has HistoryArchiveState, opts *CommandOptions) error {
+func (pa ArchivePool) PutPathHAS(path string, has HistoryArchiveState, opts *CommandOptions) error {
 	return pa.GetAnyArchive().PutPathHAS(path, has, opts)
 }
 
-func (pa PooledArchive) BucketExists(bucket Hash) (bool, error) {
+func (pa ArchivePool) BucketExists(bucket Hash) (bool, error) {
 	return pa.GetAnyArchive().BucketExists(bucket)
 }
 
-func (pa PooledArchive) CategoryCheckpointExists(cat string, chk uint32) (bool, error) {
+func (pa ArchivePool) CategoryCheckpointExists(cat string, chk uint32) (bool, error) {
 	return pa.GetAnyArchive().CategoryCheckpointExists(cat, chk)
 }
 
-func (pa PooledArchive) GetLedgerHeader(chk uint32) (xdr.LedgerHeaderHistoryEntry, error) {
+func (pa ArchivePool) GetLedgerHeader(chk uint32) (xdr.LedgerHeaderHistoryEntry, error) {
 	return pa.GetAnyArchive().GetLedgerHeader(chk)
 }
 
-func (pa PooledArchive) GetRootHAS() (HistoryArchiveState, error) {
+func (pa ArchivePool) GetRootHAS() (HistoryArchiveState, error) {
 	return pa.GetAnyArchive().GetRootHAS()
 }
 
-func (pa PooledArchive) GetLedgers(start, end uint32) (map[uint32]*Ledger, error) {
+func (pa ArchivePool) GetLedgers(start, end uint32) (map[uint32]*Ledger, error) {
 	return pa.GetAnyArchive().GetLedgers(start, end)
 }
 
-func (pa PooledArchive) GetCheckpointHAS(chk uint32) (HistoryArchiveState, error) {
+func (pa ArchivePool) GetCheckpointHAS(chk uint32) (HistoryArchiveState, error) {
 	return pa.GetAnyArchive().GetCheckpointHAS(chk)
 }
 
-func (pa PooledArchive) PutCheckpointHAS(chk uint32, has HistoryArchiveState, opts *CommandOptions) error {
+func (pa ArchivePool) PutCheckpointHAS(chk uint32, has HistoryArchiveState, opts *CommandOptions) error {
 	return pa.GetAnyArchive().PutCheckpointHAS(chk, has, opts)
 }
 
-func (pa PooledArchive) PutRootHAS(has HistoryArchiveState, opts *CommandOptions) error {
+func (pa ArchivePool) PutRootHAS(has HistoryArchiveState, opts *CommandOptions) error {
 	return pa.GetAnyArchive().PutRootHAS(has, opts)
 }
 
-func (pa PooledArchive) ListBucket(dp DirPrefix) (chan string, chan error) {
+func (pa ArchivePool) ListBucket(dp DirPrefix) (chan string, chan error) {
 	return pa.GetAnyArchive().ListBucket(dp)
 }
 
-func (pa PooledArchive) ListAllBuckets() (chan string, chan error) {
+func (pa ArchivePool) ListAllBuckets() (chan string, chan error) {
 	return pa.GetAnyArchive().ListAllBuckets()
 }
 
-func (pa PooledArchive) ListAllBucketHashes() (chan Hash, chan error) {
+func (pa ArchivePool) ListAllBucketHashes() (chan Hash, chan error) {
 	return pa.GetAnyArchive().ListAllBucketHashes()
 }
 
-func (pa PooledArchive) ListCategoryCheckpoints(cat string, pth string) (chan uint32, chan error) {
+func (pa ArchivePool) ListCategoryCheckpoints(cat string, pth string) (chan uint32, chan error) {
 	return pa.GetAnyArchive().ListCategoryCheckpoints(cat, pth)
 }
 
-func (pa PooledArchive) GetXdrStreamForHash(hash Hash) (*XdrStream, error) {
+func (pa ArchivePool) GetXdrStreamForHash(hash Hash) (*XdrStream, error) {
 	return pa.GetAnyArchive().GetXdrStreamForHash(hash)
 }
 
-func (pa PooledArchive) GetXdrStream(pth string) (*XdrStream, error) {
+func (pa ArchivePool) GetXdrStream(pth string) (*XdrStream, error) {
 	return pa.GetAnyArchive().GetXdrStream(pth)
 }
 
-func (pa PooledArchive) GetCheckpointManager() CheckpointManager {
+func (pa ArchivePool) GetCheckpointManager() CheckpointManager {
 	return pa.GetAnyArchive().GetCheckpointManager()
 }
