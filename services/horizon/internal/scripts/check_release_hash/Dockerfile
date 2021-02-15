@@ -1,5 +1,5 @@
 # Change to Go version used in CI or rebuild with --build-arg.
-ARG GO_IMAGE=golang:1.14.14-stretch
+ARG GO_IMAGE=golang:1.14.15-stretch
 FROM $GO_IMAGE
 
 WORKDIR /go/src/github.com/stellar/go

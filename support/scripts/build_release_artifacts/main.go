@@ -86,7 +86,7 @@ func build(pkg, dest, version, buildOS, buildArch string) {
 	rev := runOutput("git", "rev-parse", "HEAD")
 	versionString := version[1:] // Remove letter `v`
 	versionFlag := fmt.Sprintf(
-		"-X github.com/stellar/go/support/app.version=%s-%s",
+		"-X=github.com/stellar/go/support/app.version=%s-%s",
 		versionString, rev,
 	)
 
@@ -97,7 +97,6 @@ func build(pkg, dest, version, buildOS, buildArch string) {
 	cmd := exec.Command("go", "build",
 		"-trimpath",
 		"-o", dest,
-		"-ldflags", versionFlag,
 		pkg,
 	)
 	cmd.Stderr = os.Stderr
@@ -106,6 +105,7 @@ func build(pkg, dest, version, buildOS, buildArch string) {
 	cmd.Env = append(
 		os.Environ(),
 		"CGO_ENABLED=0",
+		fmt.Sprintf("GOFLAGS=-ldflags=%s", versionFlag),
 		fmt.Sprintf("GOOS=%s", buildOS),
 		fmt.Sprintf("GOARCH=%s", buildArch),
 	)
