@@ -3,9 +3,9 @@
 All notable changes to this project will be documented in this
 file.  This project adheres to [Semantic Versioning](http://semver.org/).
 
-## [v5.0.1](https://github.com/stellar/go/releases/tag/horizonclient-v5.0.1) - 2021-02-12
+## [v5.0.1](https://github.com/stellar/go/releases/tag/horizonclient-v5.0.1) - 2021-02-16
 
-* Fix a bug in `ClaimableBalanceID()` where the wrong account was used to derive the claimable balance id ([#3404](https://github.com/stellar/go/pull/3404))
+* Fix a bug in `ClaimableBalanceID()` where the wrong account was used to derive the claimable balance id ([#3406](https://github.com/stellar/go/pull/3406))
 
 ## [v5.0.0](https://github.com/stellar/go/releases/tag/horizonclient-v5.0.0) - 2020-11-12
 
