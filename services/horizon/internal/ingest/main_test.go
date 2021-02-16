@@ -10,10 +10,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	"github.com/stellar/go/ingest/adapters"
-	"github.com/stellar/go/ingest/io"
+	"github.com/stellar/go/historyarchive"
+	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
+	"github.com/stellar/go/services/horizon/internal/ingest/processors"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 	logpkg "github.com/stellar/go/support/log"
@@ -88,6 +89,7 @@ func TestNewSystem(t *testing.T) {
 		},
 		DisableStateVerification: true,
 		HistoryArchiveURL:        "https://history.stellar.org/prd/core-live/core_live_001",
+		CheckpointFrequency:      64,
 	}
 
 	sIface, err := NewSystem(config)
@@ -167,8 +169,9 @@ func TestStateMachineRunReturnsErrorWhenNextStateIsShutdownWithError(t *testing.
 func TestMaybeVerifyStateGetExpStateInvalidDBErrCancelOrContextCanceled(t *testing.T) {
 	historyQ := &mockDBQ{}
 	system := &system{
-		historyQ: historyQ,
-		ctx:      context.Background(),
+		historyQ:          historyQ,
+		ctx:               context.Background(),
+		checkpointManager: historyarchive.NewCheckpointManager(64),
 	}
 
 	var out bytes.Buffer
@@ -193,8 +196,9 @@ func TestMaybeVerifyStateGetExpStateInvalidDBErrCancelOrContextCanceled(t *testi
 func TestMaybeVerifyInternalDBErrCancelOrContextCanceled(t *testing.T) {
 	historyQ := &mockDBQ{}
 	system := &system{
-		historyQ: historyQ,
-		ctx:      context.Background(),
+		historyQ:          historyQ,
+		ctx:               context.Background(),
+		checkpointManager: historyarchive.NewCheckpointManager(64),
 	}
 
 	var out bytes.Buffer
@@ -221,7 +225,7 @@ func TestMaybeVerifyInternalDBErrCancelOrContextCanceled(t *testing.T) {
 	logged := done()
 
 	// it logs "State verification finished" twice, but no errors
-	assert.Len(t, logged, 2)
+	assert.Len(t, logged, 0)
 
 	historyQ.AssertExpectations(t)
 }
@@ -394,7 +398,7 @@ func (m *mockProcessorsRunner) SetLedgerBackend(ledgerBackend ledgerbackend.Ledg
 	m.Called(ledgerBackend)
 }
 
-func (m *mockProcessorsRunner) SetHistoryAdapter(historyAdapter adapters.HistoryArchiveAdapterInterface) {
+func (m *mockProcessorsRunner) SetHistoryAdapter(historyAdapter historyArchiveAdapterInterface) {
 	m.Called(historyAdapter)
 }
 
@@ -406,21 +410,35 @@ func (m *mockProcessorsRunner) DisableMemoryStatsLogging() {
 	m.Called()
 }
 
-func (m *mockProcessorsRunner) RunHistoryArchiveIngestion(checkpointLedger uint32) (io.StatsChangeProcessorResults, error) {
+func (m *mockProcessorsRunner) RunHistoryArchiveIngestion(checkpointLedger uint32) (ingest.StatsChangeProcessorResults, error) {
 	args := m.Called(checkpointLedger)
-	return args.Get(0).(io.StatsChangeProcessorResults), args.Error(1)
+	return args.Get(0).(ingest.StatsChangeProcessorResults), args.Error(1)
 }
 
-func (m *mockProcessorsRunner) RunAllProcessorsOnLedger(sequence uint32) (io.StatsChangeProcessorResults, io.StatsLedgerTransactionProcessorResults, error) {
+func (m *mockProcessorsRunner) RunAllProcessorsOnLedger(sequence uint32) (
+	ingest.StatsChangeProcessorResults,
+	processorsRunDurations,
+	processors.StatsLedgerTransactionProcessorResults,
+	processorsRunDurations,
+	error,
+) {
 	args := m.Called(sequence)
-	return args.Get(0).(io.StatsChangeProcessorResults),
-		args.Get(1).(io.StatsLedgerTransactionProcessorResults),
+	return args.Get(0).(ingest.StatsChangeProcessorResults),
+		args.Get(1).(processorsRunDurations),
+		args.Get(2).(processors.StatsLedgerTransactionProcessorResults),
+		args.Get(3).(processorsRunDurations),
+		args.Error(4)
+}
+
+func (m *mockProcessorsRunner) RunTransactionProcessorsOnLedger(sequence uint32) (
+	processors.StatsLedgerTransactionProcessorResults,
+	processorsRunDurations,
+	error,
+) {
+	args := m.Called(sequence)
+	return args.Get(0).(processors.StatsLedgerTransactionProcessorResults),
+		args.Get(1).(processorsRunDurations),
 		args.Error(2)
-}
-
-func (m *mockProcessorsRunner) RunTransactionProcessorsOnLedger(sequence uint32) (io.StatsLedgerTransactionProcessorResults, error) {
-	args := m.Called(sequence)
-	return args.Get(0).(io.StatsLedgerTransactionProcessorResults), args.Error(1)
 }
 
 var _ ProcessorRunnerInterface = (*mockProcessorsRunner)(nil)

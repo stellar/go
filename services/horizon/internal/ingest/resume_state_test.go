@@ -5,13 +5,15 @@ import (
 	"context"
 	"testing"
 
-	"github.com/stellar/go/ingest/adapters"
-	"github.com/stellar/go/ingest/io"
-	"github.com/stellar/go/ingest/ledgerbackend"
-	"github.com/stellar/go/support/errors"
-	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/stellar/go/historyarchive"
+	"github.com/stellar/go/ingest"
+	"github.com/stellar/go/ingest/ledgerbackend"
+	"github.com/stellar/go/services/horizon/internal/ingest/processors"
+	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/xdr"
 )
 
 func TestResumeTestTestSuite(t *testing.T) {
@@ -22,7 +24,7 @@ type ResumeTestTestSuite struct {
 	suite.Suite
 	ledgerBackend     *ledgerbackend.MockDatabaseBackend
 	historyQ          *mockDBQ
-	historyAdapter    *adapters.MockHistoryArchiveAdapter
+	historyAdapter    *mockHistoryArchiveAdapter
 	runner            *mockProcessorsRunner
 	stellarCoreClient *mockStellarCoreClient
 	system            *system
@@ -31,7 +33,7 @@ type ResumeTestTestSuite struct {
 func (s *ResumeTestTestSuite) SetupTest() {
 	s.ledgerBackend = &ledgerbackend.MockDatabaseBackend{}
 	s.historyQ = &mockDBQ{}
-	s.historyAdapter = &adapters.MockHistoryArchiveAdapter{}
+	s.historyAdapter = &mockHistoryArchiveAdapter{}
 	s.runner = &mockProcessorsRunner{}
 	s.stellarCoreClient = &mockStellarCoreClient{}
 	s.system = &system{
@@ -41,6 +43,7 @@ func (s *ResumeTestTestSuite) SetupTest() {
 		runner:            s.runner,
 		ledgerBackend:     s.ledgerBackend,
 		stellarCoreClient: s.stellarCoreClient,
+		checkpointManager: historyarchive.NewCheckpointManager(64),
 	}
 	s.system.initMetrics()
 
@@ -276,7 +279,13 @@ func (s *ResumeTestTestSuite) mockSuccessfulIngestion() {
 	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(102)).Return(true, nil).Once()
 	s.ledgerBackend.On("GetLatestLedgerSequence").Return(uint32(111), nil).Once()
 
-	s.runner.On("RunAllProcessorsOnLedger", uint32(102)).Return(io.StatsChangeProcessorResults{}, io.StatsLedgerTransactionProcessorResults{}, nil).Once()
+	s.runner.On("RunAllProcessorsOnLedger", uint32(102)).Return(
+		ingest.StatsChangeProcessorResults{},
+		processorsRunDurations{},
+		processors.StatsLedgerTransactionProcessorResults{},
+		processorsRunDurations{},
+		nil,
+	).Once()
 	s.historyQ.On("UpdateLastLedgerExpIngest", uint32(102)).Return(nil).Once()
 	s.historyQ.On("Commit").Return(nil).Once()
 
@@ -340,7 +349,13 @@ func (s *ResumeTestTestSuite) TestErrorSettingCursorIgnored() {
 	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(101)).Return(true, nil).Once()
 	s.ledgerBackend.On("GetLatestLedgerSequence").Return(uint32(111), nil).Once()
 
-	s.runner.On("RunAllProcessorsOnLedger", uint32(101)).Return(io.StatsChangeProcessorResults{}, io.StatsLedgerTransactionProcessorResults{}, nil).Once()
+	s.runner.On("RunAllProcessorsOnLedger", uint32(101)).Return(
+		ingest.StatsChangeProcessorResults{},
+		processorsRunDurations{},
+		processors.StatsLedgerTransactionProcessorResults{},
+		processorsRunDurations{},
+		nil,
+	).Once()
 	s.historyQ.On("UpdateLastLedgerExpIngest", uint32(101)).Return(nil).Once()
 	s.historyQ.On("Commit").Return(nil).Once()
 

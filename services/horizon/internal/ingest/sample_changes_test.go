@@ -10,8 +10,8 @@ import (
 	"testing"
 
 	"github.com/stellar/go/historyarchive"
-	"github.com/stellar/go/ingest/adapters"
-	"github.com/stellar/go/ingest/io"
+	"github.com/stellar/go/ingest"
+	"github.com/stellar/go/services/horizon/internal/ingest/processors"
 	logpkg "github.com/stellar/go/support/log"
 	"github.com/stellar/go/xdr"
 )
@@ -30,7 +30,7 @@ type sampleChangeReader struct {
 
 	allAccounts map[string]*xdr.LedgerEntry
 	allChanges  xdr.LedgerEntryChanges
-	inner       io.ChangeReader
+	inner       ingest.ChangeReader
 	random      *rand.Rand
 	output      string
 }
@@ -46,7 +46,7 @@ func newSampleChangeReader(output string, size int) (*sampleChangeReader, error)
 		return nil, err
 	}
 
-	historyAdapter := adapters.MakeHistoryArchiveAdapter(archive)
+	historyAdapter := newHistoryArchiveAdapter(archive)
 	checkpointLedger, err := historyAdapter.GetLatestLedgerSequence()
 	if err != nil {
 		return nil, err
@@ -79,7 +79,7 @@ func newSampleChangeReader(output string, size int) (*sampleChangeReader, error)
 	return r, nil
 }
 
-func (r *sampleChangeReader) Read() (io.Change, error) {
+func (r *sampleChangeReader) Read() (ingest.Change, error) {
 	change, err := r.inner.Read()
 	if err != nil {
 		return change, err
@@ -202,8 +202,8 @@ func TestUpdateSampleChanges(t *testing.T) {
 		t.Fatalf("could not create sample change reader: %v", err)
 	}
 
-	changeStats := &io.StatsChangeProcessor{}
-	err = io.StreamChanges(changeStats, reader)
+	changeStats := &ingest.StatsChangeProcessor{}
+	err = processors.StreamChanges(changeStats, reader)
 	if err != nil {
 		t.Fatalf("could not stream changes: %v", err)
 	}

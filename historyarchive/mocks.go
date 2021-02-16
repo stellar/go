@@ -10,6 +10,11 @@ type MockArchive struct {
 	mock.Mock
 }
 
+func (m *MockArchive) GetCheckpointManager() CheckpointManager {
+	a := m.Called()
+	return a.Get(0).(CheckpointManager)
+}
+
 func (m *MockArchive) GetPathHAS(path string) (HistoryArchiveState, error) {
 	a := m.Called(path)
 	return a.Get(0).(HistoryArchiveState), a.Error(1)
@@ -33,6 +38,11 @@ func (m *MockArchive) CategoryCheckpointExists(cat string, chk uint32) (bool, er
 func (m *MockArchive) GetLedgerHeader(chk uint32) (xdr.LedgerHeaderHistoryEntry, error) {
 	a := m.Called(chk)
 	return a.Get(0).(xdr.LedgerHeaderHistoryEntry), a.Error(1)
+}
+
+func (m *MockArchive) GetLedgers(start, end uint32) (map[uint32]*Ledger, error) {
+	a := m.Called(start, end)
+	return a.Get(0).(map[uint32]*Ledger), a.Error(1)
 }
 
 func (m *MockArchive) GetRootHAS() (HistoryArchiveState, error) {

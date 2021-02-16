@@ -86,3 +86,21 @@ func TestDecode(t *testing.T) {
 	_, err = Decode(VersionByteAccountID, "GA3D5KRYM6CB7OWOOOORR3Z4T7GNZLKERYNZGGA5SOAOPIFY6YQHES5")
 	assert.Error(t, err)
 }
+
+func TestMalformed(t *testing.T) {
+	// found by go-fuzz
+	crashers := []string{
+		"\n\n5JY",
+		"UURL\xff\xff\xff\xff",
+		"\r\r222",
+	}
+
+	for _, c := range crashers {
+		t.Run("crashers "+c, func(t *testing.T) {
+			assert.NotPanics(t, func() {
+				_, err := Decode(VersionByteAccountID, c)
+				assert.Error(t, err)
+			})
+		})
+	}
+}

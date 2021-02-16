@@ -7,15 +7,17 @@ package ledger
 
 import (
 	"sync"
+	"time"
 )
 
 // Status represents a snapshot of both horizon's and stellar-core's view of the
 // ledger.
 type Status struct {
-	CoreLatest       int32  `db:"core_latest"`
-	HistoryLatest    int32  `db:"history_latest"`
-	HistoryElder     int32  `db:"history_elder"`
-	ExpHistoryLatest uint32 `db:"exp_history_latest"`
+	CoreLatest            int32     `db:"core_latest"`
+	HistoryLatest         int32     `db:"history_latest"`
+	HistoryLatestClosedAt time.Time `db:"history_latest_closed_at"`
+	HistoryElder          int32     `db:"history_elder"`
+	ExpHistoryLatest      uint32    `db:"exp_history_latest"`
 }
 
 // State is an in-memory data structure which holds a snapshot of both

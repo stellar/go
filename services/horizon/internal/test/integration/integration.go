@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
-	"path"
 	"path/filepath"
 	"strconv"
 	"sync"
@@ -25,7 +24,6 @@ import (
 	proto "github.com/stellar/go/protocols/horizon"
 	horizon "github.com/stellar/go/services/horizon/internal"
 	"github.com/stellar/go/support/db/dbtest"
-	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stellar/go/xdr"
 )
@@ -40,16 +38,21 @@ const (
 )
 
 type Config struct {
+	PostgresURL           string
 	ProtocolVersion       int32
 	SkipContainerCreation bool
 }
 
 type Test struct {
-	t       *testing.T
-	config  Config
-	hclient *sdk.Client
-	cclient *stellarcore.Client
-	app     *horizon.App
+	t             *testing.T
+	config        Config
+	horizonConfig horizon.Config
+	hclient       *sdk.Client
+	cclient       *stellarcore.Client
+	app           *horizon.App
+	appStopped    chan struct{}
+	shutdownOnce  sync.Once
+	shutdownCalls []func()
 }
 
 // NewTest starts a new environment for integration test at a given
@@ -66,46 +69,55 @@ func NewTest(t *testing.T, config Config) *Test {
 	i := &Test{t: t, config: config}
 
 	composeDir := findDockerComposePath()
-	manualCloseYaml := path.Join(composeDir, "docker-compose.integration-tests.yml")
+	integrationYaml := filepath.Join(composeDir, "docker-compose.integration-tests.yml")
 
 	// Runs a docker-compose command applied to the above configs
 	runComposeCommand := func(args ...string) {
-		cmdline := append([]string{"-f", manualCloseYaml}, args...)
+		cmdline := append([]string{"-f", integrationYaml}, args...)
 		t.Log("Running", cmdline)
 		cmd := exec.Command("docker-compose", cmdline...)
 		_, innerErr := cmd.Output()
 		fatalIf(t, innerErr)
 	}
 
+	var captiveCoreBinaryPath, captiveCoreConfigPath string
+	if os.Getenv("HORIZON_INTEGRATION_ENABLE_CAPTIVE_CORE") != "" {
+		captiveCoreBinaryPath = os.Getenv("CAPTIVE_CORE_BIN")
+		if len(captiveCoreBinaryPath) == 0 {
+			t.Fatal("CAPTIVE_CORE_BIN is not set")
+		}
+		captiveCoreConfigPath = filepath.Join(composeDir, "captive-core-integration-tests.cfg")
+	}
+
 	// Only run Stellar Core container and its dependencies
 	runComposeCommand("up", "--detach", "--quiet-pull", "--no-color", "core")
-
-	// FIXME: Only use horizon from quickstart container when testing captive core
-	if os.Getenv("HORIZON_INTEGRATION_ENABLE_CAPTIVE_CORE") != "" {
-		t.Skip("Testing with captive core isn't working yet.")
-	}
 
 	i.cclient = &stellarcore.Client{URL: "http://localhost:" + strconv.Itoa(stellarCorePort)}
 	i.waitForCore()
 
-	i.startHorizon()
-	i.hclient = &sdk.Client{HorizonURL: "http://localhost:8000"}
-
-	// Register cleanup handlers (on panic and ctrl+c) so the containers are
-	// stopped even if ingestion or testing fails.
-	cleanup := func() {
+	i.shutdownCalls = append(i.shutdownCalls, func() {
 		if i.app != nil {
 			i.app.Close()
 		}
 		runComposeCommand("down", "-v", "--remove-orphans")
-	}
-	i.t.Cleanup(cleanup)
+	})
+	i.startHorizon(
+		captiveCoreBinaryPath,
+		captiveCoreConfigPath,
+		i.config.PostgresURL,
+		true,
+	)
+	i.hclient = &sdk.Client{HorizonURL: "http://localhost:8000"}
+
+	// Register cleanup handlers (on panic and ctrl+c) so the containers are
+	// stopped even if ingestion or testing fails.
+	i.t.Cleanup(i.Shutdown)
 
 	c := make(chan os.Signal)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-c
-		cleanup()
+		i.Shutdown()
 		os.Exit(int(syscall.SIGTERM))
 	}()
 
@@ -113,8 +125,50 @@ func NewTest(t *testing.T, config Config) *Test {
 	return i
 }
 
-func (i *Test) startHorizon() {
-	horizonPostgresURL := dbtest.Postgres(i.t).DSN
+func (i *Test) RestartHorizon() {
+	i.app.Close()
+
+	// wait for horizon to shut down completely
+	<-i.appStopped
+
+	i.startHorizon(
+		i.horizonConfig.CaptiveCoreBinaryPath,
+		i.horizonConfig.CaptiveCoreConfigAppendPath,
+		i.horizonConfig.DatabaseURL,
+		false,
+	)
+	i.waitForHorizon()
+}
+
+func (i *Test) GetHorizonConfig() horizon.Config {
+	return i.horizonConfig
+}
+
+// Shutdown stops the integration tests and destroys all its associated resources.
+// Shutdown() will be implicitly called when the calling test (i.e. the `testing.Test` passed
+// to `New()`) is finished if it hasn't been explicitly called before.
+func (i *Test) Shutdown() {
+	i.shutdownOnce.Do(func() {
+		// run them in the opposite order in which they where added
+		for callI := len(i.shutdownCalls) - 1; callI >= 0; callI-- {
+			i.shutdownCalls[callI]()
+		}
+	})
+}
+
+func (i *Test) startHorizon(
+	captiveCoreBinaryPath, captiveCoreConfigPath, horizonPostgresURL string, buildGenesisState bool,
+) {
+	if horizonPostgresURL == "" {
+		postgres := dbtest.Postgres(i.t)
+		i.shutdownCalls = append(i.shutdownCalls, func() {
+			// TODO: Unfortunately Horizon leaves open sessions behind leading to
+			//       a "database  is being accessed by other users"
+			//       error when trying to drop it
+			// postgres.Close()
+		})
+		horizonPostgresURL = postgres.DSN
+	}
 
 	config, configOpts := horizon.Flags()
 	cmd := &cobra.Command{
@@ -132,7 +186,7 @@ of accounts, subscribe to event streams and more.`,
 	// Ideally, we'd be pulling host/port information from the Docker Compose
 	// YAML file itself rather than hardcoding it.
 	hostname := "localhost"
-	cmd.SetArgs([]string{
+	args := []string{
 		"--stellar-core-url",
 		fmt.Sprintf("http://%s:%d", hostname, stellarCorePort),
 		"--history-archive-urls",
@@ -147,12 +201,32 @@ of accounts, subscribe to event streams and more.`,
 			hostname,
 			stellarCorePostgresPort,
 		),
+
+		"--stellar-core-binary-path",
+		captiveCoreBinaryPath,
+		"--captive-core-config-append-path",
+		captiveCoreConfigPath,
+
+		// disable http port to not clash with the http port of the
+		// non-captive stellar core instance running in docker
+		"--captive-core-http-port",
+		"0",
+
+		"--enable-captive-core-ingestion=" + strconv.FormatBool(len(captiveCoreBinaryPath) > 0),
+
 		"--network-passphrase",
 		NetworkPassphrase,
 		"--apply-migrations",
 		"--admin-port",
 		strconv.Itoa(i.AdminPort()),
-	})
+
+		// due to ARTIFICIALLY_ACCELERATE_TIME_FOR_TESTING
+		"--checkpoint-frequency",
+		"8",
+	}
+
+	// initialize core arguments
+	cmd.SetArgs(args)
 	var err error
 	if err = configOpts.Init(cmd); err != nil {
 		i.t.Fatalf("Cannot initialize params: %s", err)
@@ -161,12 +235,20 @@ of accounts, subscribe to event streams and more.`,
 	if err = cmd.Execute(); err != nil {
 		i.t.Fatalf("cannot initialize horizon: %s", err)
 	}
+	i.horizonConfig = *config
 
-	if err = i.app.Ingestion().BuildGenesisState(); err != nil {
-		i.t.Fatalf("cannot build genesis state: %s", err)
+	if buildGenesisState {
+		if err = i.app.Ingestion().BuildGenesisState(); err != nil {
+			i.t.Fatalf("cannot build genesis state: %s", err)
+		}
 	}
 
-	go i.app.Serve()
+	done := make(chan struct{})
+	go func() {
+		i.app.Serve()
+		close(done)
+	}()
+	i.appStopped = done
 }
 
 // Wait for core to be up and manually close the first ledger
@@ -193,22 +275,22 @@ func (i *Test) waitForCore() {
 		}
 	}
 
-	if err := i.CloseCoreLedger(); err != nil {
-		i.t.Fatalf("Failed to manually close the second ledger: %s", err)
-	}
-
-	{
+	for t := 0; t < 5; t++ {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		info, err := i.cclient.Info(ctx)
 		cancel()
 		if err != nil || !info.IsSynced() {
-			i.t.Fatal("failed to wait for Core to be synced")
+			i.t.Logf("Core is still not synced: %v %v", err, info)
+			time.Sleep(time.Second)
+			continue
 		}
+		return
 	}
+	i.t.Fatal("Core could not sync after several attempts")
 }
 
 func (i *Test) waitForHorizon() {
-	for t := 30; t >= 0; t -= 1 {
+	for t := 200; t >= 0; t -= 1 {
 		i.t.Log("Waiting for ingestion and protocol upgrade...")
 		root, err := i.hclient.Root()
 		if err != nil {
@@ -217,9 +299,8 @@ func (i *Test) waitForHorizon() {
 			continue
 		}
 
-		if root.HorizonSequence < 2 ||
-			int(root.HorizonSequence) != int(root.IngestSequence) ||
-			root.HorizonSequence < root.CoreSequence {
+		if root.HorizonSequence < 3 ||
+			int(root.HorizonSequence) != int(root.IngestSequence) {
 			i.t.Logf("Horizon ingesting... %v", root)
 			time.Sleep(time.Second)
 			continue
@@ -242,27 +323,6 @@ func (i *Test) Client() *sdk.Client {
 // Horizon returns the horizon.App instance for the current integration test
 func (i *Test) Horizon() *horizon.App {
 	return i.app
-}
-
-// LedgerIngested returns true if the ledger with a given sequence has been
-// ingested by Horizon. Panics in case of errors.
-func (i *Test) LedgerIngested(sequence uint32) bool {
-	root, err := i.Client().Root()
-	panicIf(err)
-
-	return root.IngestSequence >= sequence
-}
-
-// LedgerClosed returns true if the ledger with a given sequence has been
-// closed by Stellar-Core. Panics in case of errors. Note it's different
-// than LedgerIngested because it checks if the ledger was closed, not
-// necessarily ingested (ex. when rebuilding state Horizon does not ingest
-// recent ledgers).
-func (i *Test) LedgerClosed(sequence uint32) bool {
-	root, err := i.Client().Root()
-	panicIf(err)
-
-	return root.CoreSequence >= int32(sequence)
 }
 
 // AdminPort returns Horizon admin port.
@@ -331,7 +391,7 @@ func (i *Test) CreateAccounts(count int, initialBalance string) ([]*keypair.Full
 		pairs[i] = pair
 
 		ops[i] = &txnbuild.CreateAccount{
-			SourceAccount: &masterAccount,
+			SourceAccount: masterAccount.AccountID,
 			Destination:   pair.Address(),
 			Amount:        initialBalance,
 		}
@@ -447,7 +507,7 @@ func (i *Test) SubmitMultiSigOperations(
 	if err != nil {
 		return proto.Transaction{}, err
 	}
-	return i.SubmitTransaction(tx)
+	return i.Client().SubmitTransaction(tx)
 }
 
 func (i *Test) CreateSignedTransaction(
@@ -476,51 +536,6 @@ func (i *Test) CreateSignedTransaction(
 	return tx, nil
 }
 
-// CloseCoreLedgersUntilSequence will close ledgers until sequence.
-func (i *Test) CloseCoreLedgersUntilSequence(seq int) error {
-	currentLedger, err := i.GetCurrentCoreLedgerSequence()
-	if err != nil {
-		return err
-	}
-	for ; currentLedger < seq; currentLedger++ {
-		if err = i.CloseCoreLedger(); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// CloseCoreLedger will synchronously close at least one ledger.
-// Note: because Core's manualclose endpoint doesn't block until ledger is actually
-// closed, this method may end up closing multiple ledgers
-func (i *Test) CloseCoreLedger() error {
-	i.t.Log("Closing one ledger manually...")
-	currentLedgerNum, err := i.GetCurrentCoreLedgerSequence()
-	if err != nil {
-		return err
-	}
-	targetLedgerNum := currentLedgerNum + 1
-	// Core's manualclose endpoint doesn't currently block until the ledger is actually
-	// closed. So, we loop until we are certain it happened.
-	for {
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-		err = i.cclient.ManualClose(ctx)
-		cancel()
-		if err != nil {
-			return err
-		}
-		currentLedgerNum, err = i.GetCurrentCoreLedgerSequence()
-		if err != nil {
-			return err
-		}
-		if currentLedgerNum >= targetLedgerNum {
-			return nil
-		}
-		// pace ourselves
-		time.Sleep(50 * time.Millisecond)
-	}
-}
-
 func (i *Test) GetCurrentCoreLedgerSequence() (int, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
@@ -529,51 +544,6 @@ func (i *Test) GetCurrentCoreLedgerSequence() (int, error) {
 		return 0, err
 	}
 	return info.Info.Ledger.Num, nil
-}
-
-func (i *Test) SubmitTransaction(tx *txnbuild.Transaction) (proto.Transaction, error) {
-	txb64, err := tx.Base64()
-	if err != nil {
-		return proto.Transaction{}, err
-	}
-	return i.SubmitTransactionXDR(txb64)
-}
-
-func (i *Test) SubmitTransactionXDR(txb64 string) (proto.Transaction, error) {
-	// Core runs in manual-close mode to run tests faster, so we need to explicitly
-	// close a ledger after the transaction is submitted.
-	//
-	// Horizon's submission endpoint blocks until the transaction is in a closed ledger.
-	// Thus, we close the ledger in parallel to the submission.
-	submissionDone := make(chan struct{})
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		// We manually-close in a loop to guarantee that (at some point)
-		// a ledger-close happens after Core receives the transaction.
-		// Otherwise there is a risk of the manual-close happening before the transaction
-		// reaches Core, consequently causing the SubmitTransaction() call below to block indefinitely.
-		//
-		// This approach is ugly, but a better approach would probably require
-		// instrumenting Horizon to tell us when the submission is done.
-		for {
-			time.Sleep(time.Millisecond * 100)
-			if err := i.CloseCoreLedger(); err != nil {
-				log.Fatalf("failed to CloseCoreLedger(): %s", err)
-			}
-			select {
-			case <-submissionDone:
-				// The transaction reached a closed-ledger!
-				return
-			default:
-			}
-		}
-	}()
-	tx, err := i.Client().SubmitTransactionXDR(txb64)
-	close(submissionDone)
-	wg.Wait()
-	return tx, err
 }
 
 // A convenience function to provide verbose information about a failing
@@ -632,7 +602,7 @@ func findDockerComposePath() string {
 	//
 
 	if gopath := os.Getenv("GOPATH"); gopath != "" {
-		monorepo := path.Join(gopath, "stellar", "go")
+		monorepo := filepath.Join(gopath, "stellar", "go")
 		if _, err = os.Stat(monorepo); !os.IsNotExist(err) {
 			current = monorepo
 		}
@@ -641,7 +611,7 @@ func findDockerComposePath() string {
 	// In either case, we try to walk up the tree until we find "go.mod",
 	// which we hope is the root directory of the project.
 	for !directoryContainsFilename(current, "go.mod") {
-		current, err = filepath.Abs(path.Join(current, ".."))
+		current, err = filepath.Abs(filepath.Join(current, ".."))
 
 		// FIXME: This only works on *nix-like systems.
 		if err != nil || filepath.Base(current)[0] == filepath.Separator {
@@ -651,5 +621,5 @@ func findDockerComposePath() string {
 	}
 
 	// Directly jump down to the folder that should contain the configs
-	return path.Join(current, "services", "horizon", "docker")
+	return filepath.Join(current, "services", "horizon", "docker")
 }

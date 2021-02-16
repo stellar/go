@@ -89,12 +89,12 @@ var ingestVerifyRangeCmd = &cobra.Command{
 		if err != nil {
 			log.Fatalf("cannot open Horizon DB: %v", err)
 		}
-
-		if !historyarchive.IsCheckpoint(ingestVerifyFrom) && ingestVerifyFrom != 1 {
+		mngr := historyarchive.NewCheckpointManager(config.CheckpointFrequency)
+		if !mngr.IsCheckpoint(ingestVerifyFrom) && ingestVerifyFrom != 1 {
 			log.Fatal("`--from` must be a checkpoint ledger")
 		}
 
-		if ingestVerifyState && !historyarchive.IsCheckpoint(ingestVerifyTo) {
+		if ingestVerifyState && !mngr.IsCheckpoint(ingestVerifyTo) {
 			log.Fatal("`--to` must be a checkpoint ledger when `--verify-state` is set.")
 		}
 
@@ -103,8 +103,9 @@ var ingestVerifyRangeCmd = &cobra.Command{
 			HistorySession:        horizonSession,
 			HistoryArchiveURL:     config.HistoryArchiveURLs[0],
 			EnableCaptiveCore:     config.EnableCaptiveCoreIngestion,
-			StellarCoreBinaryPath: config.StellarCoreBinaryPath,
+			CaptiveCoreBinaryPath: config.CaptiveCoreBinaryPath,
 			RemoteCaptiveCoreURL:  config.RemoteCaptiveCoreURL,
+			CheckpointFrequency:   config.CheckpointFrequency,
 		}
 
 		if !ingestConfig.EnableCaptiveCore {
@@ -191,7 +192,7 @@ var ingestStressTestCmd = &cobra.Command{
 		}
 
 		if config.EnableCaptiveCoreIngestion {
-			ingestConfig.StellarCoreBinaryPath = config.StellarCoreBinaryPath
+			ingestConfig.CaptiveCoreBinaryPath = config.CaptiveCoreBinaryPath
 			ingestConfig.RemoteCaptiveCoreURL = config.RemoteCaptiveCoreURL
 		} else {
 			if config.StellarCoreDatabaseURL == "" {
@@ -266,14 +267,15 @@ var ingestInitGenesisStateCmd = &cobra.Command{
 		}
 
 		ingestConfig := ingest.Config{
-			NetworkPassphrase: config.NetworkPassphrase,
-			HistorySession:    horizonSession,
-			HistoryArchiveURL: config.HistoryArchiveURLs[0],
-			EnableCaptiveCore: config.EnableCaptiveCoreIngestion,
+			NetworkPassphrase:   config.NetworkPassphrase,
+			HistorySession:      horizonSession,
+			HistoryArchiveURL:   config.HistoryArchiveURLs[0],
+			EnableCaptiveCore:   config.EnableCaptiveCoreIngestion,
+			CheckpointFrequency: config.CheckpointFrequency,
 		}
 
 		if config.EnableCaptiveCoreIngestion {
-			ingestConfig.StellarCoreBinaryPath = config.StellarCoreBinaryPath
+			ingestConfig.CaptiveCoreBinaryPath = config.CaptiveCoreBinaryPath
 		} else {
 			if config.StellarCoreDatabaseURL == "" {
 				log.Fatalf("flag --%s cannot be empty", horizon.StellarCoreDBURLFlagName)

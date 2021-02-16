@@ -34,11 +34,11 @@ func GetTestS3Archive() *Archive {
 	if env_region := os.Getenv("ARCHIVIST_TEST_S3_REGION"); env_region != "" {
 		region = env_region
 	}
-	return MustConnect(bucket, ConnectOptions{S3Region: region})
+	return MustConnect(bucket, ConnectOptions{S3Region: region, CheckpointFrequency: 64})
 }
 
 func GetTestMockArchive() *Archive {
-	return MustConnect("mock://test", ConnectOptions{})
+	return MustConnect("mock://test", ConnectOptions{CheckpointFrequency: 64})
 }
 
 var tmpdirs []string
@@ -53,7 +53,7 @@ func GetTestFileArchive() *Archive {
 	} else {
 		tmpdirs = append(tmpdirs, d)
 	}
-	return MustConnect("file://"+d, ConnectOptions{})
+	return MustConnect("file://"+d, ConnectOptions{CheckpointFrequency: 64})
 }
 
 func cleanup() {
@@ -129,7 +129,7 @@ func (arch *Archive) AddRandomCheckpoint(chk uint32) error {
 }
 
 func (arch *Archive) PopulateRandomRange(rng Range) error {
-	for chk := range rng.Checkpoints() {
+	for chk := range rng.GenerateCheckpoints(arch.checkpointManager) {
 		if e := arch.AddRandomCheckpoint(chk); e != nil {
 			return e
 		}
@@ -162,7 +162,7 @@ func TestScanSize(t *testing.T) {
 	opts := testOptions()
 	arch := GetRandomPopulatedArchive()
 	arch.Scan(opts)
-	assert.Equal(t, opts.Range.Size(),
+	assert.Equal(t, opts.Range.SizeInCheckPoints(arch.checkpointManager),
 		len(arch.checkpointFiles["history"]))
 }
 
@@ -170,10 +170,10 @@ func TestScanSizeSubrange(t *testing.T) {
 	defer cleanup()
 	opts := testOptions()
 	arch := GetRandomPopulatedArchive()
-	opts.Range.Low = NextCheckpoint(opts.Range.Low)
-	opts.Range.High = PrevCheckpoint(opts.Range.High)
+	opts.Range.Low = arch.checkpointManager.NextCheckpoint(opts.Range.Low)
+	opts.Range.High = arch.checkpointManager.PrevCheckpoint(opts.Range.High)
 	arch.Scan(opts)
-	assert.Equal(t, opts.Range.Size(),
+	assert.Equal(t, opts.Range.SizeInCheckPoints(arch.checkpointManager),
 		len(arch.checkpointFiles["history"]))
 }
 
@@ -234,7 +234,7 @@ func TestMirrorThenRepair(t *testing.T) {
 	dst := GetTestArchive()
 	Mirror(src, dst, opts)
 	assert.Equal(t, 0, countMissing(dst, opts))
-	bad := opts.Range.Low + uint32(opts.Range.Size()/2)
+	bad := opts.Range.Low + uint32(opts.Range.SizeInCheckPoints(src.checkpointManager)/2)
 	src.AddRandomCheckpoint(bad)
 	copyFile("history", bad, src, dst)
 	assert.NotEqual(t, 0, countMissing(dst, opts))
@@ -258,7 +258,7 @@ func TestMirrorSubsetDoPointerUpdate(t *testing.T) {
 	Mirror(src, dst, opts)
 	oldHigh := opts.Range.High
 	assert.Equal(t, oldHigh, dst.MustGetRootHAS().CurrentLedger)
-	opts.Range.High = NextCheckpoint(oldHigh)
+	opts.Range.High = src.checkpointManager.NextCheckpoint(oldHigh)
 	src.AddRandomCheckpoint(opts.Range.High)
 	Mirror(src, dst, opts)
 	assert.Equal(t, opts.Range.High, dst.MustGetRootHAS().CurrentLedger)
@@ -272,7 +272,7 @@ func TestMirrorSubsetNoPointerUpdate(t *testing.T) {
 	Mirror(src, dst, opts)
 	oldHigh := opts.Range.High
 	assert.Equal(t, oldHigh, dst.MustGetRootHAS().CurrentLedger)
-	src.AddRandomCheckpoint(NextCheckpoint(oldHigh))
+	src.AddRandomCheckpoint(src.checkpointManager.NextCheckpoint(oldHigh))
 	opts.Range.Low = 0x7f
 	opts.Range.High = 0xff
 	Mirror(src, dst, opts)
@@ -286,7 +286,7 @@ func TestDryRunNoRepair(t *testing.T) {
 	dst := GetTestArchive()
 	Mirror(src, dst, opts)
 	assert.Equal(t, 0, countMissing(dst, opts))
-	bad := opts.Range.Low + uint32(opts.Range.Size()/2)
+	bad := opts.Range.Low + uint32(opts.Range.SizeInCheckPoints(src.checkpointManager)/2)
 	src.AddRandomCheckpoint(bad)
 	copyFile("history", bad, src, dst)
 	assert.NotEqual(t, 0, countMissing(dst, opts))
@@ -316,7 +316,7 @@ func TestNetworkPassphrase(t *testing.T) {
 	}
 
 	// No network passphrase set in options
-	archive := MustConnect("mock://test", ConnectOptions{})
+	archive := MustConnect("mock://test", ConnectOptions{CheckpointFrequency: 64})
 	err := archive.backend.PutFile("has.json", makeHASReader())
 	assert.NoError(t, err)
 	_, err = archive.GetPathHAS("has.json")
@@ -324,7 +324,8 @@ func TestNetworkPassphrase(t *testing.T) {
 
 	// No network passphrase set in HAS
 	archive = MustConnect("mock://test", ConnectOptions{
-		NetworkPassphrase: "Public Global Stellar Network ; September 2015",
+		NetworkPassphrase:   "Public Global Stellar Network ; September 2015",
+		CheckpointFrequency: 64,
 	})
 	err = archive.backend.PutFile("has.json", makeHASReaderNoNetwork())
 	assert.NoError(t, err)
@@ -333,7 +334,8 @@ func TestNetworkPassphrase(t *testing.T) {
 
 	// Correct network passphrase set in options
 	archive = MustConnect("mock://test", ConnectOptions{
-		NetworkPassphrase: "Public Global Stellar Network ; September 2015",
+		NetworkPassphrase:   "Public Global Stellar Network ; September 2015",
+		CheckpointFrequency: 64,
 	})
 	err = archive.backend.PutFile("has.json", makeHASReader())
 	assert.NoError(t, err)
@@ -342,7 +344,8 @@ func TestNetworkPassphrase(t *testing.T) {
 
 	// Incorrect network passphrase set in options
 	archive = MustConnect("mock://test", ConnectOptions{
-		NetworkPassphrase: "Test SDF Network ; September 2015",
+		NetworkPassphrase:   "Test SDF Network ; September 2015",
+		CheckpointFrequency: 64,
 	})
 	err = archive.backend.PutFile("has.json", makeHASReader())
 	assert.NoError(t, err)

@@ -8,7 +8,8 @@ import (
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/guregu/null"
-	"github.com/stellar/go/ingest/io"
+
+	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/network"
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/services/horizon/internal/toid"
@@ -49,8 +50,8 @@ type testTransaction struct {
 	hash          string
 }
 
-func buildLedgerTransaction(t *testing.T, tx testTransaction) io.LedgerTransaction {
-	transaction := io.LedgerTransaction{
+func buildLedgerTransaction(t *testing.T, tx testTransaction) ingest.LedgerTransaction {
+	transaction := ingest.LedgerTransaction{
 		Index:      tx.index,
 		Envelope:   xdr.TransactionEnvelope{},
 		Result:     xdr.TransactionResultPair{},

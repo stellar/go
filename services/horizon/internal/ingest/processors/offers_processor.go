@@ -1,8 +1,7 @@
 package processors
 
 import (
-	ingesterrors "github.com/stellar/go/ingest/errors"
-	"github.com/stellar/go/ingest/io"
+	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
@@ -16,8 +15,9 @@ type OffersProcessor struct {
 	offersQ  history.QOffers
 	sequence uint32
 
-	cache *io.LedgerEntryChangeCache
-	batch history.OffersBatchInsertBuilder
+	cache       *ingest.ChangeCompactor
+	insertBatch history.OffersBatchInsertBuilder
+	removeBatch []int64
 }
 
 func NewOffersProcessor(offersQ history.QOffers, sequence uint32) *OffersProcessor {
@@ -27,11 +27,12 @@ func NewOffersProcessor(offersQ history.QOffers, sequence uint32) *OffersProcess
 }
 
 func (p *OffersProcessor) reset() {
-	p.batch = p.offersQ.NewOffersBatchInsertBuilder(maxBatchSize)
-	p.cache = io.NewLedgerEntryChangeCache()
+	p.cache = ingest.NewChangeCompactor()
+	p.insertBatch = p.offersQ.NewOffersBatchInsertBuilder(maxBatchSize)
+	p.removeBatch = []int64{}
 }
 
-func (p *OffersProcessor) ProcessChange(change io.Change) error {
+func (p *OffersProcessor) ProcessChange(change ingest.Change) error {
 	if change.Type != xdr.LedgerEntryTypeOffer {
 		return nil
 	}
@@ -80,14 +81,14 @@ func (p *OffersProcessor) flushCache() error {
 			// Created
 			action = "inserting"
 			row := p.ledgerEntryToRow(change.Post)
-			err = p.batch.Add(row)
+			err = p.insertBatch.Add(row)
 			rowsAffected = 1 // We don't track this when batch inserting
 		case change.Pre != nil && change.Post == nil:
 			// Removed
 			action = "removing"
 			offer := change.Pre.Data.MustOffer()
-			offerID = offer.OfferId
-			rowsAffected, err = p.offersQ.RemoveOffer(int64(offer.OfferId), p.sequence)
+			p.removeBatch = append(p.removeBatch, int64(offer.OfferId))
+			rowsAffected = 1 // We don't track this when batch removing
 		default:
 			// Updated
 			action = "updating"
@@ -102,7 +103,7 @@ func (p *OffersProcessor) flushCache() error {
 		}
 
 		if rowsAffected != 1 {
-			return ingesterrors.NewStateError(errors.Errorf(
+			return ingest.NewStateError(errors.Errorf(
 				"%d rows affected when %s offer %d",
 				rowsAffected,
 				action,
@@ -111,10 +112,18 @@ func (p *OffersProcessor) flushCache() error {
 		}
 	}
 
-	err := p.batch.Exec()
+	err := p.insertBatch.Exec()
 	if err != nil {
 		return errors.Wrap(err, "error executing batch")
 	}
+
+	if len(p.removeBatch) > 0 {
+		_, err = p.offersQ.RemoveOffers(p.removeBatch, p.sequence)
+		if err != nil {
+			return errors.Wrap(err, "error in RemoveOffers")
+		}
+	}
+
 	return nil
 }
 

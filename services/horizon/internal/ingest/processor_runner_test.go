@@ -2,19 +2,20 @@ package ingest
 
 import (
 	"context"
+	"io"
 	"reflect"
 	"testing"
 
 	"github.com/guregu/null"
-	"github.com/stellar/go/ingest/adapters"
-	"github.com/stellar/go/ingest/io"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+
+	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/network"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/ingest/processors"
 	"github.com/stellar/go/xdr"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
 
 func TestProcessorRunnerRunHistoryArchiveIngestionGenesis(t *testing.T) {
@@ -91,13 +92,18 @@ func TestProcessorRunnerRunHistoryArchiveIngestionHistoryArchive(t *testing.T) {
 
 	q := &mockDBQ{}
 	defer mock.AssertExpectationsForObjects(t, q)
-	historyAdapter := &adapters.MockHistoryArchiveAdapter{}
+	historyAdapter := &mockHistoryArchiveAdapter{}
 	defer mock.AssertExpectationsForObjects(t, historyAdapter)
 	ledgerBackend := &ledgerbackend.MockDatabaseBackend{}
 	defer mock.AssertExpectationsForObjects(t, ledgerBackend)
 
 	historyAdapter.On("BucketListHash", uint32(63)).
 		Return(xdr.Hash([32]byte{0, 1, 2}), nil).Once()
+
+	m := &ingest.MockChangeReader{}
+	m.On("Read").Return(ingest.GenesisChange(network.PublicNetworkPassphrase), nil).Once()
+	m.On("Read").Return(ingest.Change{}, io.EOF).Once()
+	m.On("Close").Return(nil).Once()
 
 	historyAdapter.
 		On(
@@ -106,9 +112,7 @@ func TestProcessorRunnerRunHistoryArchiveIngestionHistoryArchive(t *testing.T) {
 			uint32(63),
 		).
 		Return(
-			&io.GenesisLedgerStateReader{
-				NetworkPassphrase: network.PublicNetworkPassphrase,
-			},
+			m,
 			nil,
 		).Once()
 
@@ -147,7 +151,7 @@ func TestProcessorRunnerRunHistoryArchiveIngestionHistoryArchive(t *testing.T) {
 		Return(mockClaimableBalancesBatchInsertBuilder).Once()
 
 	q.MockQAccounts.On("UpsertAccounts", []xdr.LedgerEntry{
-		xdr.LedgerEntry{
+		{
 			LastModifiedLedgerSeq: 1,
 			Data: xdr.LedgerEntryData{
 				Type: xdr.LedgerEntryTypeAccount,
@@ -196,7 +200,7 @@ func TestProcessorRunnerRunHistoryArchiveIngestionProtocolVersionNotSupported(t 
 
 	q := &mockDBQ{}
 	defer mock.AssertExpectationsForObjects(t, q)
-	historyAdapter := &adapters.MockHistoryArchiveAdapter{}
+	historyAdapter := &mockHistoryArchiveAdapter{}
 	defer mock.AssertExpectationsForObjects(t, historyAdapter)
 	ledgerBackend := &ledgerbackend.MockDatabaseBackend{}
 	defer mock.AssertExpectationsForObjects(t, ledgerBackend)
@@ -270,40 +274,40 @@ func TestProcessorRunnerBuildChangeProcessor(t *testing.T) {
 		historyQ: q,
 	}
 
-	stats := &io.StatsChangeProcessor{}
+	stats := &ingest.StatsChangeProcessor{}
 	processor := runner.buildChangeProcessor(stats, ledgerSource, 123)
-	assert.IsType(t, groupChangeProcessors{}, processor)
+	assert.IsType(t, &groupChangeProcessors{}, processor)
 
-	assert.IsType(t, &statsChangeProcessor{}, processor.(groupChangeProcessors)[0])
-	assert.IsType(t, &processors.AccountDataProcessor{}, processor.(groupChangeProcessors)[1])
-	assert.IsType(t, &processors.AccountsProcessor{}, processor.(groupChangeProcessors)[2])
-	assert.IsType(t, &processors.OffersProcessor{}, processor.(groupChangeProcessors)[3])
-	assert.IsType(t, &processors.AssetStatsProcessor{}, processor.(groupChangeProcessors)[4])
-	assert.True(t, reflect.ValueOf(processor.(groupChangeProcessors)[4]).
+	assert.IsType(t, &statsChangeProcessor{}, processor.processors[0])
+	assert.IsType(t, &processors.AccountDataProcessor{}, processor.processors[1])
+	assert.IsType(t, &processors.AccountsProcessor{}, processor.processors[2])
+	assert.IsType(t, &processors.OffersProcessor{}, processor.processors[3])
+	assert.IsType(t, &processors.AssetStatsProcessor{}, processor.processors[4])
+	assert.True(t, reflect.ValueOf(processor.processors[4]).
 		Elem().FieldByName("useLedgerEntryCache").Bool())
-	assert.IsType(t, &processors.SignersProcessor{}, processor.(groupChangeProcessors)[5])
-	assert.True(t, reflect.ValueOf(processor.(groupChangeProcessors)[5]).
+	assert.IsType(t, &processors.SignersProcessor{}, processor.processors[5])
+	assert.True(t, reflect.ValueOf(processor.processors[5]).
 		Elem().FieldByName("useLedgerEntryCache").Bool())
-	assert.IsType(t, &processors.TrustLinesProcessor{}, processor.(groupChangeProcessors)[6])
+	assert.IsType(t, &processors.TrustLinesProcessor{}, processor.processors[6])
 
 	runner = ProcessorRunner{
 		historyQ: q,
 	}
 
 	processor = runner.buildChangeProcessor(stats, historyArchiveSource, 456)
-	assert.IsType(t, groupChangeProcessors{}, processor)
+	assert.IsType(t, &groupChangeProcessors{}, processor)
 
-	assert.IsType(t, &statsChangeProcessor{}, processor.(groupChangeProcessors)[0])
-	assert.IsType(t, &processors.AccountDataProcessor{}, processor.(groupChangeProcessors)[1])
-	assert.IsType(t, &processors.AccountsProcessor{}, processor.(groupChangeProcessors)[2])
-	assert.IsType(t, &processors.OffersProcessor{}, processor.(groupChangeProcessors)[3])
-	assert.IsType(t, &processors.AssetStatsProcessor{}, processor.(groupChangeProcessors)[4])
-	assert.False(t, reflect.ValueOf(processor.(groupChangeProcessors)[4]).
+	assert.IsType(t, &statsChangeProcessor{}, processor.processors[0])
+	assert.IsType(t, &processors.AccountDataProcessor{}, processor.processors[1])
+	assert.IsType(t, &processors.AccountsProcessor{}, processor.processors[2])
+	assert.IsType(t, &processors.OffersProcessor{}, processor.processors[3])
+	assert.IsType(t, &processors.AssetStatsProcessor{}, processor.processors[4])
+	assert.False(t, reflect.ValueOf(processor.processors[4]).
 		Elem().FieldByName("useLedgerEntryCache").Bool())
-	assert.IsType(t, &processors.SignersProcessor{}, processor.(groupChangeProcessors)[5])
-	assert.False(t, reflect.ValueOf(processor.(groupChangeProcessors)[5]).
+	assert.IsType(t, &processors.SignersProcessor{}, processor.processors[5])
+	assert.False(t, reflect.ValueOf(processor.processors[5]).
 		Elem().FieldByName("useLedgerEntryCache").Bool())
-	assert.IsType(t, &processors.TrustLinesProcessor{}, processor.(groupChangeProcessors)[6])
+	assert.IsType(t, &processors.TrustLinesProcessor{}, processor.processors[6])
 }
 
 func TestProcessorRunnerBuildTransactionProcessor(t *testing.T) {
@@ -322,18 +326,18 @@ func TestProcessorRunnerBuildTransactionProcessor(t *testing.T) {
 		historyQ: q,
 	}
 
-	stats := &io.StatsLedgerTransactionProcessor{}
+	stats := &processors.StatsLedgerTransactionProcessor{}
 	ledger := xdr.LedgerHeaderHistoryEntry{}
 	processor := runner.buildTransactionProcessor(stats, ledger)
-	assert.IsType(t, groupTransactionProcessors{}, processor)
+	assert.IsType(t, &groupTransactionProcessors{}, processor)
 
-	assert.IsType(t, &statsLedgerTransactionProcessor{}, processor.(groupTransactionProcessors)[0])
-	assert.IsType(t, &processors.EffectProcessor{}, processor.(groupTransactionProcessors)[1])
-	assert.IsType(t, &processors.LedgersProcessor{}, processor.(groupTransactionProcessors)[2])
-	assert.IsType(t, &processors.OperationProcessor{}, processor.(groupTransactionProcessors)[3])
-	assert.IsType(t, &processors.TradeProcessor{}, processor.(groupTransactionProcessors)[4])
-	assert.IsType(t, &processors.ParticipantsProcessor{}, processor.(groupTransactionProcessors)[5])
-	assert.IsType(t, &processors.TransactionProcessor{}, processor.(groupTransactionProcessors)[6])
+	assert.IsType(t, &statsLedgerTransactionProcessor{}, processor.processors[0])
+	assert.IsType(t, &processors.EffectProcessor{}, processor.processors[1])
+	assert.IsType(t, &processors.LedgersProcessor{}, processor.processors[2])
+	assert.IsType(t, &processors.OperationProcessor{}, processor.processors[3])
+	assert.IsType(t, &processors.TradeProcessor{}, processor.processors[4])
+	assert.IsType(t, &processors.ParticipantsProcessor{}, processor.processors[5])
+	assert.IsType(t, &processors.TransactionProcessor{}, processor.processors[6])
 }
 
 func TestProcessorRunnerRunAllProcessorsOnLedger(t *testing.T) {
@@ -415,7 +419,7 @@ func TestProcessorRunnerRunAllProcessorsOnLedger(t *testing.T) {
 		ledgerBackend: ledgerBackend,
 	}
 
-	_, _, err := runner.RunAllProcessorsOnLedger(63)
+	_, _, _, _, err := runner.RunAllProcessorsOnLedger(63)
 	assert.NoError(t, err)
 }
 
@@ -486,6 +490,6 @@ func TestProcessorRunnerRunAllProcessorsOnLedgerProtocolVersionNotSupported(t *t
 		ledgerBackend: ledgerBackend,
 	}
 
-	_, _, err := runner.RunAllProcessorsOnLedger(63)
+	_, _, _, _, err := runner.RunAllProcessorsOnLedger(63)
 	assert.EqualError(t, err, "Error while checking for supported protocol version: This Horizon version does not support protocol version 200. The latest supported protocol version is 15. Please upgrade to the latest Horizon version.")
 }

@@ -2,6 +2,7 @@ package derivation
 
 import (
 	"bytes"
+	"crypto/ed25519"
 	"crypto/hmac"
 	"crypto/sha512"
 	"encoding/binary"
@@ -9,8 +10,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-
-	"golang.org/x/crypto/ed25519"
 )
 
 const (

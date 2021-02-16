@@ -14,12 +14,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-const (
-	firstCheckpoint = (64 * (iota + 1)) - 1
-	secondCheckpoint
-	thirdCheckpoint
-)
-
 func TestProtocol14StateVerifier(t *testing.T) {
 	itest := integration.NewTest(t, protocol15Config)
 
@@ -45,24 +39,24 @@ func TestProtocol14StateVerifier(t *testing.T) {
 			Amount:      "100",
 		},
 		&txnbuild.ChangeTrust{
-			SourceAccount: sponsoredSource,
+			SourceAccount: sponsoredSource.AccountID,
 			Line:          txnbuild.CreditAsset{"ABCD", master.Address()},
 			Limit:         txnbuild.MaxTrustlineLimit,
 		},
 		&txnbuild.ManageSellOffer{
-			SourceAccount: sponsoredSource,
+			SourceAccount: sponsoredSource.AccountID,
 			Selling:       txnbuild.NativeAsset{},
 			Buying:        txnbuild.CreditAsset{"ABCD", master.Address()},
 			Amount:        "3",
 			Price:         "1",
 		},
 		&txnbuild.ManageData{
-			SourceAccount: sponsoredSource,
+			SourceAccount: sponsoredSource.AccountID,
 			Name:          "test",
 			Value:         []byte("test"),
 		},
 		&txnbuild.CreateClaimableBalance{
-			SourceAccount: sponsoredSource,
+			SourceAccount: sponsoredSource.AccountID,
 			Amount:        "2",
 			Asset:         txnbuild.NativeAsset{},
 			Destinations: []txnbuild.Claimant{
@@ -70,10 +64,10 @@ func TestProtocol14StateVerifier(t *testing.T) {
 			},
 		},
 		&txnbuild.EndSponsoringFutureReserves{
-			SourceAccount: sponsoredSource,
+			SourceAccount: sponsoredSource.AccountID,
 		},
 		&txnbuild.SetOptions{
-			SourceAccount: sponsoredSource,
+			SourceAccount: sponsoredSource.AccountID,
 			Signer: &txnbuild.Signer{
 				Address: signer1.Address(),
 				Weight:  3,
@@ -83,17 +77,17 @@ func TestProtocol14StateVerifier(t *testing.T) {
 			SponsoredID: sponsored.Address(),
 		},
 		&txnbuild.SetOptions{
-			SourceAccount: sponsoredSource,
+			SourceAccount: sponsoredSource.AccountID,
 			Signer: &txnbuild.Signer{
 				Address: signer2.Address(),
 				Weight:  3,
 			},
 		},
 		&txnbuild.EndSponsoringFutureReserves{
-			SourceAccount: sponsoredSource,
+			SourceAccount: sponsoredSource.AccountID,
 		},
 		&txnbuild.SetOptions{
-			SourceAccount: sponsoredSource,
+			SourceAccount: sponsoredSource.AccountID,
 			Signer: &txnbuild.Signer{
 				Address: signer3.Address(),
 				Weight:  3,
@@ -104,14 +98,6 @@ func TestProtocol14StateVerifier(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, txResp.Successful)
 
-	// Reach the first checkpoint ledger
-	// Core will push to history archives *after* checkpoint ledger
-	err = itest.CloseCoreLedgersUntilSequence(firstCheckpoint + 1)
-	assert.NoError(t, err)
-	for !itest.LedgerIngested(firstCheckpoint) {
-		time.Sleep(time.Second)
-	}
-
 	verified := waitForStateVerifications(itest, 1)
 	if !verified {
 		t.Fatal("State verification not run...")
@@ -120,19 +106,6 @@ func TestProtocol14StateVerifier(t *testing.T) {
 	// Trigger state rebuild to check if ingesting from history archive works
 	err = itest.Horizon().HistoryQ().UpdateExpIngestVersion(0)
 	assert.NoError(t, err)
-
-	// Wait for the second checkpoint ledger and state rebuild
-	// Core will push to history archives *after* checkpoint ledger
-	err = itest.CloseCoreLedgersUntilSequence(secondCheckpoint + 1)
-	assert.NoError(t, err)
-
-	// Wait for the third checkpoint ledger and state verification trigger
-	// Core will push to history archives *after* checkpoint ledger
-	err = itest.CloseCoreLedgersUntilSequence(thirdCheckpoint + 1)
-	assert.NoError(t, err)
-	for !itest.LedgerIngested(thirdCheckpoint) {
-		time.Sleep(time.Second)
-	}
 
 	verified = waitForStateVerifications(itest, 2)
 	if !verified {

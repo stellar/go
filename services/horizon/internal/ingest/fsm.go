@@ -6,9 +6,10 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/stellar/go/ingest/ledgerbackend"
 
-	"github.com/stellar/go/ingest/io"
+	"github.com/stellar/go/ingest"
+	"github.com/stellar/go/ingest/ledgerbackend"
+	"github.com/stellar/go/services/horizon/internal/ingest/processors"
 	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/support/errors"
 	logpkg "github.com/stellar/go/support/log"
@@ -457,7 +458,8 @@ func (r resumeState) run(s *system) (transition, error) {
 		"commit":   true,
 	}).Info("Processing ledger")
 
-	changeStats, ledgerTransactionStats, err := s.runner.RunAllProcessorsOnLedger(ingestLedger)
+	changeStats, changeDurations, transactionStats, transactionDurations, err :=
+		s.runner.RunAllProcessorsOnLedger(ingestLedger)
 	if err != nil {
 		return retryResume(r), errors.Wrap(err, "Error running processors on ledger")
 	}
@@ -477,13 +479,15 @@ func (r resumeState) run(s *system) (transition, error) {
 	// Update stats metrics
 	changeStatsMap := changeStats.Map()
 	r.addLedgerStatsMetricFromMap(s, "change", changeStatsMap)
+	r.addProcessorDurationsMetricFromMap(s, changeDurations)
 
-	ledgerTransactionStatsMap := ledgerTransactionStats.Map()
-	r.addLedgerStatsMetricFromMap(s, "ledger", ledgerTransactionStatsMap)
+	transactionStatsMap := transactionStats.Map()
+	r.addLedgerStatsMetricFromMap(s, "ledger", transactionStatsMap)
+	r.addProcessorDurationsMetricFromMap(s, transactionDurations)
 
 	log.
 		WithFields(changeStatsMap).
-		WithFields(ledgerTransactionStatsMap).
+		WithFields(transactionStatsMap).
 		WithFields(logpkg.F{
 			"sequence": ingestLedger,
 			"duration": duration,
@@ -503,6 +507,15 @@ func (r resumeState) addLedgerStatsMetricFromMap(s *system, prefix string, m map
 		stat = strings.Replace(stat, "stats_", prefix+"_", 1)
 		s.Metrics().LedgerStatsCounter.
 			With(prometheus.Labels{"type": stat}).Add(float64(value.(int64)))
+	}
+}
+
+func (r resumeState) addProcessorDurationsMetricFromMap(s *system, m map[string]time.Duration) {
+	for processorName, value := range m {
+		// * is not accepted in Prometheus labels
+		processorName = strings.Replace(processorName, "*", "", -1)
+		s.Metrics().ProcessorsRunDuration.
+			With(prometheus.Labels{"name": processorName}).Add(value.Seconds())
 	}
 }
 
@@ -576,7 +589,7 @@ func runTransactionProcessorsOnLedger(s *system, ledger uint32) error {
 	}).Info("Processing ledger")
 	startTime := time.Now()
 
-	ledgerTransactionStats, err := s.runner.RunTransactionProcessorsOnLedger(ledger)
+	ledgerTransactionStats, _, err := s.runner.RunTransactionProcessorsOnLedger(ledger)
 	if err != nil {
 		return errors.Wrap(err, fmt.Sprintf("error processing ledger sequence=%d", ledger))
 	}
@@ -644,6 +657,11 @@ func (h reingestHistoryRangeState) run(s *system) (transition, error) {
 		return stop(), errors.Errorf("invalid range: [%d, %d]", h.fromLedger, h.toLedger)
 	}
 
+	if h.fromLedger == 1 {
+		log.Warn("Ledger 1 is pregenerated and not available, starting from ledger 2.")
+		h.fromLedger = 2
+	}
+
 	log.WithFields(logpkg.F{
 		"from": h.fromLedger,
 		"to":   h.toLedger,
@@ -660,11 +678,6 @@ func (h reingestHistoryRangeState) run(s *system) (transition, error) {
 		"to":       h.toLedger,
 		"duration": time.Since(startTime).Seconds(),
 	}).Info("Range ready")
-
-	if h.fromLedger == 1 {
-		log.Warn("Ledger 1 is pregenerated and not available, starting from ledger 2.")
-		h.fromLedger = 2
-	}
 
 	startTime = time.Now()
 
@@ -781,10 +794,21 @@ func (v verifyRangeState) run(s *system) (transition, error) {
 		return stop(), err
 	}
 
-	log.WithFields(logpkg.F{
-		"ledger": v.fromLedger,
-	}).Info("Processing state")
+	log.WithField("ledger", v.fromLedger).Info("Preparing range")
 	startTime := time.Now()
+
+	err = s.ledgerBackend.PrepareRange(ledgerbackend.BoundedRange(v.fromLedger, v.toLedger))
+	if err != nil {
+		return stop(), errors.Wrap(err, "Error preparing range")
+	}
+
+	log.WithFields(logpkg.F{
+		"ledger":   v.fromLedger,
+		"duration": time.Since(startTime).Seconds(),
+	}).Info("Range prepared")
+
+	log.WithField("ledger", v.fromLedger).Info("Processing state")
+	startTime = time.Now()
 
 	stats, err := s.runner.RunHistoryArchiveIngestion(v.fromLedger)
 	if err != nil {
@@ -818,9 +842,9 @@ func (v verifyRangeState) run(s *system) (transition, error) {
 			return stop(), err
 		}
 
-		var changeStats io.StatsChangeProcessorResults
-		var ledgerTransactionStats io.StatsLedgerTransactionProcessorResults
-		changeStats, ledgerTransactionStats, err = s.runner.RunAllProcessorsOnLedger(sequence)
+		var changeStats ingest.StatsChangeProcessorResults
+		var ledgerTransactionStats processors.StatsLedgerTransactionProcessorResults
+		changeStats, _, ledgerTransactionStats, _, err = s.runner.RunAllProcessorsOnLedger(sequence)
 		if err != nil {
 			err = errors.Wrap(err, "Error running processors on ledger")
 			return stop(), err
@@ -887,7 +911,7 @@ func (stressTestState) run(s *system) (transition, error) {
 	}).Info("Processing ledger")
 	startTime := time.Now()
 
-	changeStats, ledgerTransactionStats, err := s.runner.RunAllProcessorsOnLedger(sequence)
+	changeStats, _, ledgerTransactionStats, _, err := s.runner.RunAllProcessorsOnLedger(sequence)
 	if err != nil {
 		err = errors.Wrap(err, "Error running processors on ledger")
 		return stop(), err

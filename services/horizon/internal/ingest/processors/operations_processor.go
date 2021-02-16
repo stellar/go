@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/stellar/go/amount"
-	"github.com/stellar/go/ingest/io"
+	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/support/errors"
@@ -30,7 +30,7 @@ func NewOperationProcessor(operationsQ history.QOperations, sequence uint32) *Op
 }
 
 // ProcessTransaction process the given transaction
-func (p *OperationProcessor) ProcessTransaction(transaction io.LedgerTransaction) error {
+func (p *OperationProcessor) ProcessTransaction(transaction ingest.LedgerTransaction) error {
 	for i, op := range transaction.Envelope.Operations() {
 		operation := transactionOperationWrapper{
 			index:          uint32(i),
@@ -70,7 +70,7 @@ func (p *OperationProcessor) Commit() error {
 // transactionOperationWrapper represents the data for a single operation within a transaction
 type transactionOperationWrapper struct {
 	index          uint32
-	transaction    io.LedgerTransaction
+	transaction    ingest.LedgerTransaction
 	operation      xdr.Operation
 	ledgerSequence uint32
 }
@@ -112,7 +112,7 @@ func (operation *transactionOperationWrapper) OperationType() xdr.OperationType 
 	return operation.operation.Body.Type
 }
 
-func (operation *transactionOperationWrapper) getSignerSponsorInChange(signerKey string, change io.Change) xdr.SponsorshipDescriptor {
+func (operation *transactionOperationWrapper) getSignerSponsorInChange(signerKey string, change ingest.Change) xdr.SponsorshipDescriptor {
 	if change.Type != xdr.LedgerEntryTypeAccount || change.Post == nil {
 		return nil
 	}
@@ -601,7 +601,7 @@ func dedupe(in []xdr.AccountId) (out []xdr.AccountId) {
 }
 
 // OperationsParticipants returns a map with all participants per operation
-func operationsParticipants(transaction io.LedgerTransaction, sequence uint32) (map[int64][]xdr.AccountId, error) {
+func operationsParticipants(transaction ingest.LedgerTransaction, sequence uint32) (map[int64][]xdr.AccountId, error) {
 	participants := map[int64][]xdr.AccountId{}
 
 	for opi, op := range transaction.Envelope.Operations() {

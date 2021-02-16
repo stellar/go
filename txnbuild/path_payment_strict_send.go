@@ -15,7 +15,7 @@ type PathPaymentStrictSend struct {
 	DestAsset     Asset
 	DestMin       string
 	Path          []Asset
-	SourceAccount Account
+	SourceAccount string
 }
 
 // BuildXDR for Payment returns a fully configured XDR Operation.
@@ -154,8 +154,8 @@ func (pp *PathPaymentStrictSend) Validate() error {
 	return nil
 }
 
-// GetSourceAccount returns the source account of the operation, or nil if not
+// GetSourceAccount returns the source account of the operation, or the empty string if not
 // set.
-func (pp *PathPaymentStrictSend) GetSourceAccount() Account {
+func (pp *PathPaymentStrictSend) GetSourceAccount() string {
 	return pp.SourceAccount
 }

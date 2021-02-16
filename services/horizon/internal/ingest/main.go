@@ -12,8 +12,7 @@ import (
 
 	"github.com/stellar/go/clients/stellarcore"
 	"github.com/stellar/go/historyarchive"
-	"github.com/stellar/go/ingest/adapters"
-	ingesterrors "github.com/stellar/go/ingest/errors"
+	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/db"
@@ -63,14 +62,15 @@ const (
 var log = logpkg.DefaultLogger.WithField("service", "ingest")
 
 type Config struct {
-	CoreSession           *db.Session
-	StellarCoreURL        string
-	StellarCoreCursor     string
-	EnableCaptiveCore     bool
-	StellarCoreBinaryPath string
-	StellarCoreConfigPath string
-	RemoteCaptiveCoreURL  string
-	NetworkPassphrase     string
+	CoreSession                 *db.Session
+	StellarCoreURL              string
+	StellarCoreCursor           string
+	EnableCaptiveCore           bool
+	CaptiveCoreBinaryPath       string
+	CaptiveCoreConfigAppendPath string
+	CaptiveCoreHTTPPort         uint
+	RemoteCaptiveCoreURL        string
+	NetworkPassphrase           string
 
 	HistorySession           *db.Session
 	HistoryArchiveURL        string
@@ -78,6 +78,9 @@ type Config struct {
 
 	MaxReingestRetries          int
 	ReingestRetryBackoffSeconds int
+
+	// The checkpoint frequency will be 64 unless you are using an exotic test setup.
+	CheckpointFrequency uint32
 }
 
 const (
@@ -107,6 +110,9 @@ type Metrics struct {
 
 	// LedgerStatsCounter exposes ledger stats counters (like number of ops/changes).
 	LedgerStatsCounter *prometheus.CounterVec
+
+	// ProcessorsRunDuration exposes processors run durations.
+	ProcessorsRunDuration *prometheus.CounterVec
 }
 
 type System interface {
@@ -130,7 +136,7 @@ type system struct {
 	runner   ProcessorRunnerInterface
 
 	ledgerBackend  ledgerbackend.LedgerBackend
-	historyAdapter adapters.HistoryArchiveAdapterInterface
+	historyAdapter historyArchiveAdapterInterface
 
 	stellarCoreClient stellarCoreClient
 
@@ -145,6 +151,8 @@ type system struct {
 	stateVerificationErrors  int
 	stateVerificationRunning bool
 	disableStateVerification bool
+
+	checkpointManager historyarchive.CheckpointManager
 }
 
 func NewSystem(config Config) (System, error) {
@@ -153,8 +161,9 @@ func NewSystem(config Config) (System, error) {
 	archive, err := historyarchive.Connect(
 		config.HistoryArchiveURL,
 		historyarchive.ConnectOptions{
-			Context:           ctx,
-			NetworkPassphrase: config.NetworkPassphrase,
+			Context:             ctx,
+			NetworkPassphrase:   config.NetworkPassphrase,
+			CheckpointFrequency: config.CheckpointFrequency,
 		},
 	)
 	if err != nil {
@@ -171,20 +180,23 @@ func NewSystem(config Config) (System, error) {
 				return nil, errors.Wrap(err, "error creating captive core backend")
 			}
 		} else {
-			var captiveCoreBackend *ledgerbackend.CaptiveStellarCore
-			captiveCoreBackend, err = ledgerbackend.NewCaptive(
-				config.StellarCoreBinaryPath,
-				config.StellarCoreConfigPath,
-				config.NetworkPassphrase,
-				[]string{config.HistoryArchiveURL},
+			ledgerBackend, err = ledgerbackend.NewCaptive(
+				ledgerbackend.CaptiveCoreConfig{
+					BinaryPath:          config.CaptiveCoreBinaryPath,
+					ConfigAppendPath:    config.CaptiveCoreConfigAppendPath,
+					HTTPPort:            config.CaptiveCoreHTTPPort,
+					NetworkPassphrase:   config.NetworkPassphrase,
+					HistoryArchiveURLs:  []string{config.HistoryArchiveURL},
+					CheckpointFrequency: config.CheckpointFrequency,
+					LedgerHashStore:     ledgerbackend.NewHorizonDBLedgerHashStore(config.HistorySession),
+					Log:                 log.WithField("subservice", "stellar-core"),
+					Context:             ctx,
+				},
 			)
 			if err != nil {
 				cancel()
 				return nil, errors.Wrap(err, "error creating captive core backend")
 			}
-			captiveCoreBackend.SetStellarCoreLogger(
-				log.WithField("subservice", "stellar-core"))
-			ledgerBackend = captiveCoreBackend
 		}
 	} else {
 		coreSession := config.CoreSession.Clone()
@@ -199,7 +211,7 @@ func NewSystem(config Config) (System, error) {
 	historyQ := &history.Q{config.HistorySession.Clone()}
 	historyQ.Ctx = ctx
 
-	historyAdapter := adapters.MakeHistoryArchiveAdapter(archive)
+	historyAdapter := newHistoryArchiveAdapter(archive)
 
 	system := &system{
 		cancel:                      cancel,
@@ -221,6 +233,7 @@ func NewSystem(config Config) (System, error) {
 			historyAdapter: historyAdapter,
 			ledgerBackend:  ledgerBackend,
 		},
+		checkpointManager: historyarchive.NewCheckpointManager(config.CheckpointFrequency),
 	}
 
 	system.initMetrics()
@@ -263,6 +276,14 @@ func (s *system) initMetrics() {
 			Help: "counters of different ledger stats",
 		},
 		[]string{"type"},
+	)
+
+	s.metrics.ProcessorsRunDuration = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: "horizon", Subsystem: "ingest", Name: "processor_run_duration_seconds_total",
+			Help: "run durations of ingestion processors",
+		},
+		[]string{"name"},
 	)
 }
 
@@ -358,7 +379,9 @@ func (s *system) BuildGenesisState() error {
 }
 
 func (s *system) runStateMachine(cur stateMachineNode) error {
+	s.wg.Add(1)
 	defer func() {
+		s.wg.Done()
 		s.wg.Wait()
 	}()
 
@@ -419,7 +442,7 @@ func (s *system) maybeVerifyState(lastIngestedLedger uint32) {
 	// Run verification routine only when...
 	if !stateInvalid && // state has not been proved to be invalid...
 		!s.disableStateVerification && // state verification is not disabled...
-		historyarchive.IsCheckpoint(lastIngestedLedger) { // it's a checkpoint ledger.
+		s.checkpointManager.IsCheckpoint(lastIngestedLedger) { // it's a checkpoint ledger.
 		s.wg.Add(1)
 		go func() {
 			defer s.wg.Done()
@@ -432,7 +455,7 @@ func (s *system) maybeVerifyState(lastIngestedLedger uint32) {
 
 				errorCount := s.incrementStateVerificationErrors()
 				switch errors.Cause(err).(type) {
-				case ingesterrors.StateError:
+				case ingest.StateError:
 					markStateInvalid(s.historyQ, err)
 				default:
 					logger := log.WithField("err", err).Warn
@@ -471,7 +494,7 @@ func (s *system) updateCursor(ledgerSequence uint32) error {
 		cursor = s.config.StellarCoreCursor
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(s.ctx, time.Second)
 	defer cancel()
 	err := s.stellarCoreClient.SetCursor(ctx, cursor, int32(ledgerSequence))
 	if err != nil {
@@ -484,11 +507,16 @@ func (s *system) updateCursor(ledgerSequence uint32) error {
 func (s *system) Shutdown() {
 	log.Info("Shutting down ingestion system...")
 	s.stateVerificationMutex.Lock()
-	defer s.stateVerificationMutex.Unlock()
 	if s.stateVerificationRunning {
 		log.Info("Shutting down state verifier...")
 	}
+	s.stateVerificationMutex.Unlock()
 	s.cancel()
+	// wait for ingestion state machine to terminate
+	s.wg.Wait()
+	if err := s.ledgerBackend.Close(); err != nil {
+		log.WithError(err).Info("could not close ledger backend")
+	}
 }
 
 func markStateInvalid(historyQ history.IngestionQ, err error) {

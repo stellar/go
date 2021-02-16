@@ -70,7 +70,7 @@ func TestProtocol15Basics(t *testing.T) {
 		predictions := []string{id1, id2}
 
 		var txResult xdr.TransactionResult
-		txResp, err := itest.SubmitTransaction(tx)
+		txResp, err := itest.Client().SubmitTransaction(tx)
 		tt.NoError(err)
 		xdr.SafeUnmarshalBase64(txResp.ResultXdr, &txResult)
 		opResults, ok := txResult.OperationResults()
@@ -381,7 +381,7 @@ func TestClaimableBalancePredicates(t *testing.T) {
 			t.Logf("  amount: %d, predicate: %+v", amount, predicate.Type)
 
 			createClaimOps[i] = &txnbuild.CreateClaimableBalance{
-				SourceAccount: accountA,
+				SourceAccount: accountA.GetAccountID(),
 				Destinations:  []txnbuild.Claimant{claimant},
 				Amount:        fmt.Sprintf("%d.0000000", amount),
 				Asset:         txnbuild.NativeAsset{},

@@ -6,12 +6,12 @@ import (
 	"testing"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/stellar/go/ingest/adapters"
-	"github.com/stellar/go/ingest/io"
+	"github.com/stretchr/testify/suite"
+
 	"github.com/stellar/go/ingest/ledgerbackend"
+	"github.com/stellar/go/services/horizon/internal/ingest/processors"
 	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/support/errors"
-	"github.com/stretchr/testify/suite"
 )
 
 func TestIngestHistoryRangeStateTestSuite(t *testing.T) {
@@ -21,7 +21,7 @@ func TestIngestHistoryRangeStateTestSuite(t *testing.T) {
 type IngestHistoryRangeStateTestSuite struct {
 	suite.Suite
 	historyQ       *mockDBQ
-	historyAdapter *adapters.MockHistoryArchiveAdapter
+	historyAdapter *mockHistoryArchiveAdapter
 	ledgerBackend  *ledgerbackend.MockDatabaseBackend
 	runner         *mockProcessorsRunner
 	system         *system
@@ -30,7 +30,7 @@ type IngestHistoryRangeStateTestSuite struct {
 func (s *IngestHistoryRangeStateTestSuite) SetupTest() {
 	s.historyQ = &mockDBQ{}
 	s.ledgerBackend = &ledgerbackend.MockDatabaseBackend{}
-	s.historyAdapter = &adapters.MockHistoryArchiveAdapter{}
+	s.historyAdapter = &mockHistoryArchiveAdapter{}
 	s.runner = &mockProcessorsRunner{}
 	s.system = &system{
 		ctx:            context.Background(),
@@ -127,7 +127,11 @@ func (s *IngestHistoryRangeStateTestSuite) TestRunTransactionProcessorsOnLedgerR
 	s.historyQ.On("GetLatestLedger").Return(uint32(99), nil).Once()
 
 	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(100)).Return(true, nil).Once()
-	s.runner.On("RunTransactionProcessorsOnLedger", uint32(100)).Return(io.StatsLedgerTransactionProcessorResults{}, errors.New("my error")).Once()
+	s.runner.On("RunTransactionProcessorsOnLedger", uint32(100)).Return(
+		processors.StatsLedgerTransactionProcessorResults{},
+		processorsRunDurations{},
+		errors.New("my error"),
+	).Once()
 
 	next, err := historyRangeState{fromLedger: 100, toLedger: 200}.run(s.system)
 	s.Assert().Error(err)
@@ -175,7 +179,12 @@ func (s *IngestHistoryRangeStateTestSuite) TestSuccess() {
 
 	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(100)).Return(true, nil).Once()
 	for i := 100; i <= 200; i++ {
-		s.runner.On("RunTransactionProcessorsOnLedger", uint32(i)).Return(io.StatsLedgerTransactionProcessorResults{}, nil).Once()
+		s.runner.On("RunTransactionProcessorsOnLedger", uint32(i)).
+			Return(
+				processors.StatsLedgerTransactionProcessorResults{},
+				processorsRunDurations{},
+				nil,
+			).Once()
 	}
 
 	s.historyQ.On("Commit").Return(nil).Once()
@@ -191,7 +200,11 @@ func (s *IngestHistoryRangeStateTestSuite) TestSuccessOneLedger() {
 	s.historyQ.On("GetLatestLedger").Return(uint32(99), nil).Once()
 
 	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(100)).Return(true, nil).Once()
-	s.runner.On("RunTransactionProcessorsOnLedger", uint32(100)).Return(io.StatsLedgerTransactionProcessorResults{}, nil).Once()
+	s.runner.On("RunTransactionProcessorsOnLedger", uint32(100)).Return(
+		processors.StatsLedgerTransactionProcessorResults{},
+		processorsRunDurations{},
+		nil,
+	).Once()
 
 	s.historyQ.On("Commit").Return(nil).Once()
 
@@ -207,7 +220,7 @@ func TestReingestHistoryRangeStateTestSuite(t *testing.T) {
 type ReingestHistoryRangeStateTestSuite struct {
 	suite.Suite
 	historyQ       *mockDBQ
-	historyAdapter *adapters.MockHistoryArchiveAdapter
+	historyAdapter *mockHistoryArchiveAdapter
 	ledgerBackend  *mockLedgerBackend
 	runner         *mockProcessorsRunner
 	system         *system
@@ -215,7 +228,7 @@ type ReingestHistoryRangeStateTestSuite struct {
 
 func (s *ReingestHistoryRangeStateTestSuite) SetupTest() {
 	s.historyQ = &mockDBQ{}
-	s.historyAdapter = &adapters.MockHistoryArchiveAdapter{}
+	s.historyAdapter = &mockHistoryArchiveAdapter{}
 	s.ledgerBackend = &mockLedgerBackend{}
 	s.runner = &mockProcessorsRunner{}
 	s.system = &system{
@@ -333,7 +346,11 @@ func (s *ReingestHistoryRangeStateTestSuite) TestRunTransactionProcessorsOnLedge
 	).Return(nil).Once()
 
 	s.runner.On("RunTransactionProcessorsOnLedger", uint32(100)).
-		Return(io.StatsLedgerTransactionProcessorResults{}, errors.New("my error")).Once()
+		Return(
+			processors.StatsLedgerTransactionProcessorResults{},
+			processorsRunDurations{},
+			errors.New("my error"),
+		).Once()
 	s.historyQ.On("Rollback").Return(nil).Once()
 
 	err := s.system.ReingestRange(100, 200, false)
@@ -353,7 +370,11 @@ func (s *ReingestHistoryRangeStateTestSuite) TestCommitFails() {
 		"DeleteRangeAll", toidFrom.ToInt64(), toidTo.ToInt64(),
 	).Return(nil).Once()
 
-	s.runner.On("RunTransactionProcessorsOnLedger", uint32(100)).Return(io.StatsLedgerTransactionProcessorResults{}, nil).Once()
+	s.runner.On("RunTransactionProcessorsOnLedger", uint32(100)).Return(
+		processors.StatsLedgerTransactionProcessorResults{},
+		processorsRunDurations{},
+		nil,
+	).Once()
 
 	s.historyQ.On("Commit").Return(errors.New("my error")).Once()
 	s.historyQ.On("Rollback").Return(nil).Once()
@@ -377,7 +398,11 @@ func (s *ReingestHistoryRangeStateTestSuite) TestSuccess() {
 			"DeleteRangeAll", toidFrom.ToInt64(), toidTo.ToInt64(),
 		).Return(nil).Once()
 
-		s.runner.On("RunTransactionProcessorsOnLedger", i).Return(io.StatsLedgerTransactionProcessorResults{}, nil).Once()
+		s.runner.On("RunTransactionProcessorsOnLedger", i).Return(
+			processors.StatsLedgerTransactionProcessorResults{},
+			processorsRunDurations{},
+			nil,
+		).Once()
 
 		s.historyQ.On("Commit").Return(nil).Once()
 		s.historyQ.On("Rollback").Return(nil).Once()
@@ -397,7 +422,11 @@ func (s *ReingestHistoryRangeStateTestSuite) TestSuccessOneLedger() {
 		"DeleteRangeAll", toidFrom.ToInt64(), toidTo.ToInt64(),
 	).Return(nil).Once()
 
-	s.runner.On("RunTransactionProcessorsOnLedger", uint32(100)).Return(io.StatsLedgerTransactionProcessorResults{}, nil).Once()
+	s.runner.On("RunTransactionProcessorsOnLedger", uint32(100)).Return(
+		processors.StatsLedgerTransactionProcessorResults{},
+		processorsRunDurations{},
+		nil,
+	).Once()
 	s.historyQ.On("Commit").Return(nil).Once()
 
 	// Recreate mock in this single test to remove previous assertion.
@@ -427,7 +456,11 @@ func (s *ReingestHistoryRangeStateTestSuite) TestReingestRangeForce() {
 	).Return(nil).Once()
 
 	for i := 100; i <= 200; i++ {
-		s.runner.On("RunTransactionProcessorsOnLedger", uint32(i)).Return(io.StatsLedgerTransactionProcessorResults{}, nil).Once()
+		s.runner.On("RunTransactionProcessorsOnLedger", uint32(i)).Return(
+			processors.StatsLedgerTransactionProcessorResults{},
+			processorsRunDurations{},
+			nil,
+		).Once()
 	}
 
 	s.historyQ.On("Commit").Return(nil).Once()

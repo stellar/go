@@ -3,7 +3,7 @@ package processors
 import (
 	"time"
 
-	"github.com/stellar/go/ingest/io"
+	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/support/errors"
@@ -29,7 +29,7 @@ func NewTradeProcessor(tradesQ history.QTrades, ledger xdr.LedgerHeaderHistoryEn
 }
 
 // ProcessTransaction process the given transaction
-func (p *TradeProcessor) ProcessTransaction(transaction io.LedgerTransaction) (err error) {
+func (p *TradeProcessor) ProcessTransaction(transaction ingest.LedgerTransaction) (err error) {
 	if !transaction.Result.Successful() {
 		return nil
 	}
@@ -87,7 +87,7 @@ func (p *TradeProcessor) Commit() error {
 }
 
 func (p *TradeProcessor) findTradeSellPrice(
-	transaction io.LedgerTransaction,
+	transaction ingest.LedgerTransaction,
 	opidx int,
 	trade xdr.ClaimOfferAtom,
 ) (xdr.Price, error) {
@@ -101,7 +101,7 @@ func (p *TradeProcessor) findTradeSellPrice(
 	}
 
 	found := false
-	var change io.Change
+	var change ingest.Change
 	for i := len(changes) - 1; i >= 0; i-- {
 		change = changes[i]
 		if change.Pre != nil && key.Equals(change.Pre.LedgerKey()) {
@@ -119,7 +119,7 @@ func (p *TradeProcessor) findTradeSellPrice(
 
 func (p *TradeProcessor) extractTrades(
 	ledger xdr.LedgerHeaderHistoryEntry,
-	transaction io.LedgerTransaction,
+	transaction ingest.LedgerTransaction,
 ) ([]history.InsertTrade, []string, error) {
 	var inserts []history.InsertTrade
 	var buyerAccounts []string

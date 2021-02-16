@@ -2,8 +2,8 @@ package processors
 
 import (
 	"github.com/guregu/null"
-	ingesterrors "github.com/stellar/go/ingest/errors"
-	"github.com/stellar/go/ingest/io"
+
+	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
@@ -12,7 +12,7 @@ import (
 type SignersProcessor struct {
 	signersQ history.QSigners
 
-	cache *io.LedgerEntryChangeCache
+	cache *ingest.ChangeCompactor
 	batch history.AccountSignersBatchInsertBuilder
 	// insertOnlyMode is a mode in which we don't use ledger cache and we just
 	// add signers to a batch, then we Exec all signers in one insert query.
@@ -30,10 +30,10 @@ func NewSignersProcessor(
 
 func (p *SignersProcessor) reset() {
 	p.batch = p.signersQ.NewAccountSignersBatchInsertBuilder(maxBatchSize)
-	p.cache = io.NewLedgerEntryChangeCache()
+	p.cache = ingest.NewChangeCompactor()
 }
 
-func (p *SignersProcessor) ProcessChange(change io.Change) error {
+func (p *SignersProcessor) ProcessChange(change ingest.Change) error {
 	if change.Type != xdr.LedgerEntryTypeAccount {
 		return nil
 	}
@@ -105,7 +105,7 @@ func (p *SignersProcessor) Commit() error {
 				}
 
 				if rowsAffected != 1 {
-					return ingesterrors.NewStateError(errors.Errorf(
+					return ingest.NewStateError(errors.Errorf(
 						"Expected account=%s signer=%s in database but not found when removing (rows affected = %d)",
 						preAccountEntry.AccountId.Address(),
 						signer,
@@ -140,7 +140,7 @@ func (p *SignersProcessor) Commit() error {
 				}
 
 				if rowsAffected != 1 {
-					return ingesterrors.NewStateError(errors.Errorf(
+					return ingest.NewStateError(errors.Errorf(
 						"%d rows affected when inserting account=%s signer=%s to database",
 						rowsAffected,
 						postAccountEntry.AccountId.Address(),

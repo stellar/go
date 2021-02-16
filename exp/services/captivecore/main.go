@@ -13,14 +13,17 @@ import (
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/network"
 	"github.com/stellar/go/support/config"
+	"github.com/stellar/go/support/db"
 	supporthttp "github.com/stellar/go/support/http"
 	supportlog "github.com/stellar/go/support/log"
 )
 
 func main() {
 	var port int
-	var networkPassphrase, binaryPath, configPath string
+	var networkPassphrase, binaryPath, configAppendPath, dbURL string
 	var historyArchiveURLs []string
+	var stellarCoreHTTPPort uint
+	var checkpointFrequency uint32
 	var logLevel logrus.Level
 	logger := supportlog.New()
 
@@ -50,12 +53,12 @@ func main() {
 			ConfigKey:   &binaryPath,
 		},
 		&config.ConfigOption{
-			Name:        "stellar-core-config-path",
+			Name:        "captive-core-config-append-path",
 			OptType:     types.String,
 			FlagDefault: "",
 			Required:    false,
-			Usage:       "path to stellar core config file",
-			ConfigKey:   &configPath,
+			Usage:       "path to additional configuration for the Stellar Core configuration file used by captive core. It must, at least, include enough details to define a quorum set",
+			ConfigKey:   &configAppendPath,
 		},
 		&config.ConfigOption{
 			Name:        "history-archive-urls",
@@ -85,6 +88,30 @@ func main() {
 			},
 			Usage: "minimum log severity (debug, info, warn, error) to log",
 		},
+		&config.ConfigOption{
+			Name:      "db-url",
+			EnvVar:    "DATABASE_URL",
+			ConfigKey: &dbURL,
+			OptType:   types.String,
+			Required:  false,
+			Usage:     "horizon postgres database to connect with",
+		},
+		&config.ConfigOption{
+			Name:        "stellar-captive-core-http-port",
+			ConfigKey:   &stellarCoreHTTPPort,
+			OptType:     types.Uint,
+			FlagDefault: uint(11626),
+			Required:    false,
+			Usage:       "HTTP port for captive core to listen on (0 disables the HTTP server)",
+		},
+		&config.ConfigOption{
+			Name:        "checkpoint-frequency",
+			ConfigKey:   &checkpointFrequency,
+			OptType:     types.Uint32,
+			FlagDefault: uint32(64),
+			Required:    false,
+			Usage:       "establishes how many ledgers exist between checkpoints, do NOT change this unless you really know what you are doing",
+		},
 	}
 	cmd := &cobra.Command{
 		Use:   "captivecore",
@@ -92,13 +119,33 @@ func main() {
 		Run: func(_ *cobra.Command, _ []string) {
 			configOpts.Require()
 			configOpts.SetValues()
-			logger.Level = logLevel
+			logger.SetLevel(logLevel)
 
-			core, err := ledgerbackend.NewCaptive(binaryPath, configPath, networkPassphrase, historyArchiveURLs)
+			captiveConfig := ledgerbackend.CaptiveCoreConfig{
+				BinaryPath:          binaryPath,
+				ConfigAppendPath:    configAppendPath,
+				NetworkPassphrase:   networkPassphrase,
+				HistoryArchiveURLs:  historyArchiveURLs,
+				CheckpointFrequency: checkpointFrequency,
+				HTTPPort:            stellarCoreHTTPPort,
+				Log:                 logger.WithField("subservice", "stellar-core"),
+			}
+
+			var dbConn *db.Session
+			if len(dbURL) > 0 {
+				var err error
+				dbConn, err = db.Open("postgres", dbURL)
+				if err != nil {
+					logger.WithError(err).Fatal("Could not create db connection instance")
+				}
+				captiveConfig.LedgerHashStore = ledgerbackend.NewHorizonDBLedgerHashStore(dbConn)
+			}
+
+			core, err := ledgerbackend.NewCaptive(captiveConfig)
 			if err != nil {
 				logger.WithError(err).Fatal("Could not create captive core instance")
 			}
-			api := internal.NewCaptiveCoreAPI(core, logger)
+			api := internal.NewCaptiveCoreAPI(core, logger.WithField("subservice", "api"))
 
 			supporthttp.Run(supporthttp.Config{
 				ListenAddr: fmt.Sprintf(":%d", port),
@@ -108,6 +155,9 @@ func main() {
 				},
 				OnStopping: func() {
 					api.Shutdown()
+					if dbConn != nil {
+						dbConn.Close()
+					}
 				},
 			})
 		},
