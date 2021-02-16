@@ -15,16 +15,13 @@ import (
 // distribute requests fairly throughout the pool.
 type ArchivePool []ArchiveInterface
 
-// CreatePool tries connecting to each of the provided history archive URLs,
+// NewArchivePool tries connecting to each of the provided history archive URLs,
 // returning a pool of valid archives.
 //
 // If none of the archives work, this returns the error message of the last
 // failed archive. Note that the errors for each individual archive are hard to
 // track if there's success overall.
-//
-// Possible FIXME for the above limitation: return []error instead? but then
-// users need to check `len(pool) > 0` instead of `err == nil`.
-func CreatePool(archiveURLs []string, config ConnectOptions) (ArchivePool, error) {
+func NewArchivePool(archiveURLs []string, config ConnectOptions) (ArchivePool, error) {
 	if len(archiveURLs) <= 0 {
 		return nil, errors.New("No history archives provided")
 	}

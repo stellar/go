@@ -146,7 +146,7 @@ func NewCaptive(config CaptiveCoreConfig) (*CaptiveStellarCore, error) {
 	var cancel context.CancelFunc
 	config.Context, cancel = context.WithCancel(parentCtx)
 
-	archivePool, err := historyarchive.CreatePool(
+	archivePool, err := historyarchive.NewArchivePool(
 		config.HistoryArchiveURLs,
 		historyarchive.ConnectOptions{
 			NetworkPassphrase:   config.NetworkPassphrase,
