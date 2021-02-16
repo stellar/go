@@ -146,21 +146,22 @@ func NewCaptive(config CaptiveCoreConfig) (*CaptiveStellarCore, error) {
 	var cancel context.CancelFunc
 	config.Context, cancel = context.WithCancel(parentCtx)
 
-	archive, err := historyarchive.Connect(
-		config.HistoryArchiveURLs[0],
+	archivePool, err := historyarchive.NewArchivePool(
+		config.HistoryArchiveURLs,
 		historyarchive.ConnectOptions{
 			NetworkPassphrase:   config.NetworkPassphrase,
 			CheckpointFrequency: config.CheckpointFrequency,
 			Context:             config.Context,
 		},
 	)
+
 	if err != nil {
 		cancel()
-		return nil, errors.Wrap(err, "error connecting to history archive")
+		return nil, errors.Wrap(err, "Error connecting to ALL history archives.")
 	}
 
 	c := &CaptiveStellarCore{
-		archive:           archive,
+		archive:           &archivePool,
 		ledgerHashStore:   config.LedgerHashStore,
 		cancel:            cancel,
 		checkpointManager: historyarchive.NewCheckpointManager(config.CheckpointFrequency),
