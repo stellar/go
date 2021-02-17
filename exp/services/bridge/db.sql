@@ -1,0 +1,9 @@
+DROP SCHEMA public CASCADE;
+CREATE SCHEMA public;
+
+CREATE TABLE accounts (
+  memo_id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  username TEXT NOT NULL
+);
+
+CREATE UNIQUE INDEX username_idx ON accounts (username);
