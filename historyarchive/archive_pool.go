@@ -56,7 +56,7 @@ func NewArchivePool(archiveURLs []string, config ConnectOptions) (ArchivePool, e
 }
 
 // Ensure the pool conforms to the ArchiveInterface
-var _ ArchiveInterface = &ArchivePool{}
+var _ ArchiveInterface = ArchivePool{}
 
 // Below are the ArchiveInterface method implementations.
 
@@ -64,70 +64,70 @@ func (pa ArchivePool) GetAnyArchive() ArchiveInterface {
 	return pa[rand.Intn(len(pa))]
 }
 
-func (pa *ArchivePool) GetPathHAS(path string) (HistoryArchiveState, error) {
+func (pa ArchivePool) GetPathHAS(path string) (HistoryArchiveState, error) {
 	return pa.GetAnyArchive().GetPathHAS(path)
 }
 
-func (pa *ArchivePool) PutPathHAS(path string, has HistoryArchiveState, opts *CommandOptions) error {
+func (pa ArchivePool) PutPathHAS(path string, has HistoryArchiveState, opts *CommandOptions) error {
 	return pa.GetAnyArchive().PutPathHAS(path, has, opts)
 }
 
-func (pa *ArchivePool) BucketExists(bucket Hash) (bool, error) {
+func (pa ArchivePool) BucketExists(bucket Hash) (bool, error) {
 	return pa.GetAnyArchive().BucketExists(bucket)
 }
 
-func (pa *ArchivePool) CategoryCheckpointExists(cat string, chk uint32) (bool, error) {
+func (pa ArchivePool) CategoryCheckpointExists(cat string, chk uint32) (bool, error) {
 	return pa.GetAnyArchive().CategoryCheckpointExists(cat, chk)
 }
 
-func (pa *ArchivePool) GetLedgerHeader(chk uint32) (xdr.LedgerHeaderHistoryEntry, error) {
+func (pa ArchivePool) GetLedgerHeader(chk uint32) (xdr.LedgerHeaderHistoryEntry, error) {
 	return pa.GetAnyArchive().GetLedgerHeader(chk)
 }
 
-func (pa *ArchivePool) GetRootHAS() (HistoryArchiveState, error) {
+func (pa ArchivePool) GetRootHAS() (HistoryArchiveState, error) {
 	return pa.GetAnyArchive().GetRootHAS()
 }
 
-func (pa *ArchivePool) GetLedgers(start, end uint32) (map[uint32]*Ledger, error) {
+func (pa ArchivePool) GetLedgers(start, end uint32) (map[uint32]*Ledger, error) {
 	return pa.GetAnyArchive().GetLedgers(start, end)
 }
 
-func (pa *ArchivePool) GetCheckpointHAS(chk uint32) (HistoryArchiveState, error) {
+func (pa ArchivePool) GetCheckpointHAS(chk uint32) (HistoryArchiveState, error) {
 	return pa.GetAnyArchive().GetCheckpointHAS(chk)
 }
 
-func (pa *ArchivePool) PutCheckpointHAS(chk uint32, has HistoryArchiveState, opts *CommandOptions) error {
+func (pa ArchivePool) PutCheckpointHAS(chk uint32, has HistoryArchiveState, opts *CommandOptions) error {
 	return pa.GetAnyArchive().PutCheckpointHAS(chk, has, opts)
 }
 
-func (pa *ArchivePool) PutRootHAS(has HistoryArchiveState, opts *CommandOptions) error {
+func (pa ArchivePool) PutRootHAS(has HistoryArchiveState, opts *CommandOptions) error {
 	return pa.GetAnyArchive().PutRootHAS(has, opts)
 }
 
-func (pa *ArchivePool) ListBucket(dp DirPrefix) (chan string, chan error) {
+func (pa ArchivePool) ListBucket(dp DirPrefix) (chan string, chan error) {
 	return pa.GetAnyArchive().ListBucket(dp)
 }
 
-func (pa *ArchivePool) ListAllBuckets() (chan string, chan error) {
+func (pa ArchivePool) ListAllBuckets() (chan string, chan error) {
 	return pa.GetAnyArchive().ListAllBuckets()
 }
 
-func (pa *ArchivePool) ListAllBucketHashes() (chan Hash, chan error) {
+func (pa ArchivePool) ListAllBucketHashes() (chan Hash, chan error) {
 	return pa.GetAnyArchive().ListAllBucketHashes()
 }
 
-func (pa *ArchivePool) ListCategoryCheckpoints(cat string, pth string) (chan uint32, chan error) {
+func (pa ArchivePool) ListCategoryCheckpoints(cat string, pth string) (chan uint32, chan error) {
 	return pa.GetAnyArchive().ListCategoryCheckpoints(cat, pth)
 }
 
-func (pa *ArchivePool) GetXdrStreamForHash(hash Hash) (*XdrStream, error) {
+func (pa ArchivePool) GetXdrStreamForHash(hash Hash) (*XdrStream, error) {
 	return pa.GetAnyArchive().GetXdrStreamForHash(hash)
 }
 
-func (pa *ArchivePool) GetXdrStream(pth string) (*XdrStream, error) {
+func (pa ArchivePool) GetXdrStream(pth string) (*XdrStream, error) {
 	return pa.GetAnyArchive().GetXdrStream(pth)
 }
 
-func (pa *ArchivePool) GetCheckpointManager() CheckpointManager {
+func (pa ArchivePool) GetCheckpointManager() CheckpointManager {
 	return pa.GetAnyArchive().GetCheckpointManager()
 }
