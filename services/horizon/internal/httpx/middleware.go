@@ -159,7 +159,7 @@ func logEndOfRequest(ctx context.Context, r *http.Request, requestDurationSummar
 		"status":         mw.Status(),
 		"streaming":      streaming,
 		"referer":        referer,
-	}).Info("HTTP request")
+	}).Info("Finished request")
 
 	requestDurationSummary.With(prometheus.Labels{
 		"status":    strconv.FormatInt(int64(mw.Status()), 10),
