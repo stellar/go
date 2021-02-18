@@ -206,10 +206,11 @@ func (a *Archive) GetLedgers(start, end uint32) (map[uint32]*Ledger, error) {
 	if start > end {
 		return nil, errors.Errorf("range is invalid, start: %d end: %d", start, end)
 	}
-	checkpointRange := a.GetCheckpointManager().MakeRange(start, end)
+	startCheckpoint := a.GetCheckpointManager().GetCheckpoint(start)
+	endCheckpoint := a.GetCheckpointManager().GetCheckpoint(end)
 	cache := map[uint32]*Ledger{}
-	for cur := checkpointRange.Low; cur <= checkpointRange.High; cur = a.GetCheckpointManager().NextCheckpoint(cur) {
-		for _, category := range []string{"ledgers", "transactions", "results"} {
+	for cur := startCheckpoint; cur <= endCheckpoint; cur += a.GetCheckpointManager().GetCheckpointFrequency() {
+		for _, category := range []string{"ledger", "transactions", "results"} {
 			if exists, err := a.CategoryCheckpointExists(category, cur); err != nil {
 				return nil, errors.Wrap(err, "could not check if category checkpoint exists")
 			} else if !exists {
@@ -237,7 +238,7 @@ func (a *Archive) fetchCategory(cache map[uint32]*Ledger, category string, check
 		switch category {
 		case "ledger":
 			var object xdr.LedgerHeaderHistoryEntry
-			if err = xdrStream.ReadOne(&object); err != nil {
+			if err = xdrStream.ReadOne(&object); err == nil {
 				entry := cache[uint32(object.Header.LedgerSeq)]
 				if entry == nil {
 					entry = &Ledger{}
@@ -247,7 +248,7 @@ func (a *Archive) fetchCategory(cache map[uint32]*Ledger, category string, check
 			}
 		case "transactions":
 			var object xdr.TransactionHistoryEntry
-			if err = xdrStream.ReadOne(&object); err != nil {
+			if err = xdrStream.ReadOne(&object); err == nil {
 				entry := cache[uint32(object.LedgerSeq)]
 				if entry == nil {
 					entry = &Ledger{}
@@ -257,7 +258,7 @@ func (a *Archive) fetchCategory(cache map[uint32]*Ledger, category string, check
 			}
 		case "results":
 			var object xdr.TransactionHistoryResultEntry
-			if err = xdrStream.ReadOne(&object); err != nil {
+			if err = xdrStream.ReadOne(&object); err == nil {
 				entry := cache[uint32(object.LedgerSeq)]
 				if entry == nil {
 					entry = &Ledger{}

@@ -6,6 +6,7 @@ package historyarchive
 
 import (
 	"bytes"
+	"compress/gzip"
 	"crypto/rand"
 	"crypto/sha256"
 	"fmt"
@@ -429,4 +430,126 @@ func TestXdrDecode(t *testing.T) {
 
 	assert.Equal(t, out.Len(), n)
 	assert.Equal(t, out.Bytes(), xdrbytes)
+}
+
+type xdrEntry interface {
+	MarshalBinary() ([]byte, error)
+}
+
+func writeCategoryFile(t *testing.T, backend ArchiveBackend, path string, entries []xdrEntry) {
+	file := &bytes.Buffer{}
+	writer := gzip.NewWriter(file)
+
+	for _, entry := range entries {
+		assert.NoError(t, xdr.MarshalFramed(writer, entry))
+	}
+	assert.NoError(t, writer.Close())
+
+	assert.NoError(t, backend.PutFile(path, ioutil.NopCloser(file)))
+}
+
+func assertXdrEquals(t *testing.T, a, b xdrEntry) {
+	b64, err := xdr.MarshalBase64(a)
+	assert.NoError(t, err)
+	other, err := xdr.MarshalBase64(b)
+	assert.NoError(t, err)
+	assert.Equal(t, b64, other)
+}
+
+func TestGetLedgers(t *testing.T) {
+	archive := GetTestMockArchive()
+	_, err := archive.GetLedgers(1000, 1002)
+	assert.EqualError(t, err, "checkpoint 1023 is not published")
+
+	ledgerHeaders := []xdr.LedgerHeaderHistoryEntry{
+		{
+			Hash: xdr.Hash{1},
+			Header: xdr.LedgerHeader{
+				LedgerSeq: 1000,
+			},
+		},
+		{
+			Hash: xdr.Hash{2},
+			Header: xdr.LedgerHeader{
+				LedgerSeq: 1001,
+			},
+		},
+		{
+			Hash: xdr.Hash{3},
+			Header: xdr.LedgerHeader{
+				LedgerSeq: 1002,
+			},
+		},
+	}
+	writeCategoryFile(
+		t, archive.backend, "ledger/00/00/03/ledger-000003ff.xdr.gz",
+		[]xdrEntry{ledgerHeaders[0], ledgerHeaders[1], ledgerHeaders[2]},
+	)
+
+	transactions := []xdr.TransactionHistoryEntry{
+		{
+			LedgerSeq: 1000,
+			TxSet: xdr.TransactionSet{
+				PreviousLedgerHash: xdr.Hash{10},
+			},
+		},
+		{
+			LedgerSeq: 1001,
+			TxSet: xdr.TransactionSet{
+				PreviousLedgerHash: xdr.Hash{11},
+			},
+		},
+		{
+			LedgerSeq: 1002,
+			TxSet: xdr.TransactionSet{
+				PreviousLedgerHash: xdr.Hash{12},
+			},
+		},
+	}
+	writeCategoryFile(
+		t, archive.backend, "transactions/00/00/03/transactions-000003ff.xdr.gz",
+		[]xdrEntry{transactions[0], transactions[1], transactions[2]},
+	)
+
+	result := xdr.TransactionResult{Result: xdr.TransactionResultResult{Code: xdr.TransactionResultCodeTxBadSeq}}
+	results := []xdr.TransactionHistoryResultEntry{
+		{
+			LedgerSeq: 1000,
+			TxResultSet: xdr.TransactionResultSet{
+				Results: []xdr.TransactionResultPair{
+					{TransactionHash: xdr.Hash{213}, Result: result},
+				},
+			},
+		},
+		{
+			LedgerSeq: 1001,
+			TxResultSet: xdr.TransactionResultSet{
+				Results: []xdr.TransactionResultPair{
+					{TransactionHash: xdr.Hash{198}, Result: result},
+				},
+			},
+		},
+		{
+			LedgerSeq: 1002,
+			TxResultSet: xdr.TransactionResultSet{
+				Results: []xdr.TransactionResultPair{
+					{TransactionHash: xdr.Hash{131}, Result: result},
+				},
+			},
+		},
+	}
+	writeCategoryFile(
+		t, archive.backend, "results/00/00/03/results-000003ff.xdr.gz",
+		[]xdrEntry{results[0], results[1], results[2]},
+	)
+
+	ledgers, err := archive.GetLedgers(1000, 1002)
+	assert.NoError(t, err)
+	assert.Len(t, ledgers, 3)
+	for i, seq := range []uint32{1000, 1001, 1002} {
+		ledger := ledgers[seq]
+		assertXdrEquals(t, ledgerHeaders[i], ledger.Header)
+		assertXdrEquals(t, transactions[i], ledger.Transaction)
+		assertXdrEquals(t, results[i], ledger.TransactionResult)
+	}
 }
