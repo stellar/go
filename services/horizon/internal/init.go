@@ -255,6 +255,7 @@ func initIngestMetrics(app *App) {
 	}
 
 	app.ingestingGauge.Inc()
+	app.prometheusRegistry.MustRegister(app.ingester.Metrics().LocalLatestLedger)
 	app.prometheusRegistry.MustRegister(app.ingester.Metrics().LedgerIngestionDuration)
 	app.prometheusRegistry.MustRegister(app.ingester.Metrics().StateVerifyDuration)
 	app.prometheusRegistry.MustRegister(app.ingester.Metrics().StateInvalidGauge)

@@ -362,6 +362,8 @@ func (r resumeState) run(s *system) (transition, error) {
 		return start(), errors.New("unexpected latestSuccessfullyProcessedLedger value")
 	}
 
+	s.metrics.LocalLatestLedger.Set(float64(r.latestSuccessfullyProcessedLedger))
+
 	if err := s.historyQ.Begin(); err != nil {
 		return retryResume(r),
 			errors.Wrap(err, "Error starting a transaction")

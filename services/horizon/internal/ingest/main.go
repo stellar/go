@@ -96,6 +96,9 @@ type stellarCoreClient interface {
 }
 
 type Metrics struct {
+	// LocalLedger exposes the last ingested ledger by this ingesting instance.
+	LocalLatestLedger prometheus.Gauge
+
 	// LedgerIngestionDuration exposes timing metrics about the rate and
 	// duration of ledger ingestion (including updating DB and graph).
 	LedgerIngestionDuration prometheus.Summary
@@ -241,6 +244,11 @@ func NewSystem(config Config) (System, error) {
 }
 
 func (s *system) initMetrics() {
+	s.metrics.LocalLatestLedger = prometheus.NewGauge(prometheus.GaugeOpts{
+		Namespace: "horizon", Subsystem: "ingest", Name: "local_latest_ledger",
+		Help: "sequence number of the latest ledger ingested by this ingesting instance",
+	})
+
 	s.metrics.LedgerIngestionDuration = prometheus.NewSummary(prometheus.SummaryOpts{
 		Namespace: "horizon", Subsystem: "ingest", Name: "ledger_ingestion_duration_seconds",
 		Help: "ledger ingestion durations, sliding window = 10m",
