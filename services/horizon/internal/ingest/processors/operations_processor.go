@@ -418,7 +418,7 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 		}
 	case xdr.OperationTypeClawback:
 		op := operation.operation.Body.MustClawbackOp()
-		addAssetDetails(details, op.Asset.ToAsset(*source), "")
+		addAssetDetails(details, op.Asset, "")
 		from := op.From.ToAccountId()
 		details["from"] = from.Address()
 		details["amount"] = amount.String(op.Amount)
@@ -432,7 +432,7 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 	case xdr.OperationTypeSetTrustLineFlags:
 		op := operation.operation.Body.MustSetTrustLineFlagsOp()
 		details["trustor"] = op.Trustor.Address()
-		addAssetDetails(details, op.Asset.ToAsset(*source), "")
+		addAssetDetails(details, op.Asset, "")
 		if op.SetFlags != nil && *op.SetFlags > 0 {
 			addTrustLineFlagDetails(details, xdr.TrustLineFlags(*op.SetFlags), "set")
 		}

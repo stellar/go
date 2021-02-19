@@ -692,7 +692,7 @@ func (e *effectsWrapper) addAllowTrustEffects() {
 		e.add(source.Address(), history.EffectTrustlineAuthorized, details)
 		// Forward compatibility
 		setFlags := xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag)
-		e.addTrustLineFlagsEffect(source, &op.Trustor, op.Asset, &setFlags, nil)
+		e.addTrustLineFlagsEffect(source, &op.Trustor, op.Asset.ToAsset(*source), &setFlags, nil)
 	case xdr.TrustLineFlags(op.Authorize).IsAuthorizedToMaintainLiabilitiesFlag():
 		e.add(
 			source.Address(),
@@ -701,12 +701,12 @@ func (e *effectsWrapper) addAllowTrustEffects() {
 		)
 		// Forward compatibility
 		setFlags := xdr.Uint32(xdr.TrustLineFlagsAuthorizedToMaintainLiabilitiesFlag)
-		e.addTrustLineFlagsEffect(source, &op.Trustor, op.Asset, &setFlags, nil)
+		e.addTrustLineFlagsEffect(source, &op.Trustor, op.Asset.ToAsset(*source), &setFlags, nil)
 	default:
 		e.add(source.Address(), history.EffectTrustlineDeauthorized, details)
 		// Forward compatibility, show both as cleared
 		clearFlags := xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag | xdr.TrustLineFlagsAuthorizedToMaintainLiabilitiesFlag)
-		e.addTrustLineFlagsEffect(source, &op.Trustor, op.Asset, nil, &clearFlags)
+		e.addTrustLineFlagsEffect(source, &op.Trustor, op.Asset.ToAsset(*source), nil, &clearFlags)
 	}
 }
 
@@ -955,7 +955,7 @@ func (e *effectsWrapper) addClawbackEffects() error {
 		"amount": amount.String(op.Amount),
 	}
 	source := e.operation.SourceAccount()
-	addAssetDetails(details, op.Asset.ToAsset(*source), "")
+	addAssetDetails(details, op.Asset, "")
 	e.add(
 		source.Address(),
 		history.EffectAccountCredited,
@@ -999,13 +999,13 @@ func (e *effectsWrapper) addSetTrustLineFlagsEffects() error {
 func (e *effectsWrapper) addTrustLineFlagsEffect(
 	account *xdr.AccountId,
 	trustor *xdr.AccountId,
-	assetCode xdr.AssetCode,
+	asset xdr.Asset,
 	setFlags *xdr.Uint32,
 	clearFlags *xdr.Uint32) {
 	details := map[string]interface{}{
 		"trustor": trustor.Address(),
 	}
-	addAssetDetails(details, assetCode.ToAsset(*account), "")
+	addAssetDetails(details, asset, "")
 
 	var flagDetailsAdded bool
 	if setFlags != nil {

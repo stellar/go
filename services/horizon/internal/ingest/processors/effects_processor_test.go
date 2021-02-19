@@ -1847,9 +1847,6 @@ func TestOperationEffectsAllowTrustAuthorizedToMaintainLiabilities(t *testing.T)
 
 func TestOperationEffectsClawback(t *testing.T) {
 	tt := assert.New(t)
-	asset := xdr.Asset{}
-	clawbackAsset, err := asset.ToAssetCode("COP")
-	tt.NoError(err)
 	aid := xdr.MustAddress("GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD")
 	source := aid.ToMuxedAccount()
 	op := xdr.Operation{
@@ -1857,7 +1854,7 @@ func TestOperationEffectsClawback(t *testing.T) {
 		Body: xdr.OperationBody{
 			Type: xdr.OperationTypeClawback,
 			ClawbackOp: &xdr.ClawbackOp{
-				Asset:  clawbackAsset,
+				Asset:  xdr.MustNewCreditAsset("COP", "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD"),
 				From:   xdr.MustMuxedAddress("GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3"),
 				Amount: 34,
 			},
@@ -1966,7 +1963,7 @@ func TestOperationEffectsSetTrustLineFlags(t *testing.T) {
 			Type: xdr.OperationTypeSetTrustLineFlags,
 			SetTrustLineFlagsOp: &xdr.SetTrustLineFlagsOp{
 				Trustor:    trustor,
-				Asset:      xdr.MustNewAssetCodeFromString("USD"),
+				Asset:      xdr.MustNewCreditAsset("USD", "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD"),
 				ClearFlags: &clearFlags,
 				SetFlags:   &setFlags,
 			},

@@ -1486,7 +1486,7 @@ func (s *SetTrustLineFlagsTestSuite) SetupTest() {
 			Type: xdr.OperationTypeSetTrustLineFlags,
 			SetTrustLineFlagsOp: &xdr.SetTrustLineFlagsOp{
 				Trustor:    trustor,
-				Asset:      xdr.MustNewAssetCodeFromString("USD"),
+				Asset:      xdr.MustNewCreditAsset("USD", "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD"),
 				ClearFlags: &clearFlags,
 				SetFlags:   &setFlags,
 			},
