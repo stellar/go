@@ -753,9 +753,10 @@ func ExampleBuildChallengeTx() {
 	serverSignerSeed := "SBZVMB74Z76QZ3ZOY7UTDFYKMEGKW5XFJEB6PFKBF4UYSSWHG4EDH7PY"
 	clientAccountID := "GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3"
 	anchorName := "SDF"
+	webAuthDomain := "webauthdomain.example.org"
 	timebound := time.Duration(5 * time.Minute)
 
-	tx, err := BuildChallengeTx(serverSignerSeed, clientAccountID, anchorName, network.TestNetworkPassphrase, timebound)
+	tx, err := BuildChallengeTx(serverSignerSeed, clientAccountID, webAuthDomain, anchorName, network.TestNetworkPassphrase, timebound)
 	check(err)
 
 	txeBase64, err := tx.Base64()
