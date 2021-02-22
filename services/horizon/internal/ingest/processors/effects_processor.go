@@ -692,7 +692,7 @@ func (e *effectsWrapper) addAllowTrustEffects() {
 		e.add(source.Address(), history.EffectTrustlineAuthorized, details)
 		// Forward compatibility
 		setFlags := xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag)
-		e.addTrustLineFlagsEffect(source, &op.Trustor, op.Asset.ToAsset(*source), &setFlags, nil)
+		e.addTrustLineFlagsEffect(source, &op.Trustor, asset, &setFlags, nil)
 	case xdr.TrustLineFlags(op.Authorize).IsAuthorizedToMaintainLiabilitiesFlag():
 		e.add(
 			source.Address(),
@@ -701,12 +701,12 @@ func (e *effectsWrapper) addAllowTrustEffects() {
 		)
 		// Forward compatibility
 		setFlags := xdr.Uint32(xdr.TrustLineFlagsAuthorizedToMaintainLiabilitiesFlag)
-		e.addTrustLineFlagsEffect(source, &op.Trustor, op.Asset.ToAsset(*source), &setFlags, nil)
+		e.addTrustLineFlagsEffect(source, &op.Trustor, asset, &setFlags, nil)
 	default:
 		e.add(source.Address(), history.EffectTrustlineDeauthorized, details)
 		// Forward compatibility, show both as cleared
 		clearFlags := xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag | xdr.TrustLineFlagsAuthorizedToMaintainLiabilitiesFlag)
-		e.addTrustLineFlagsEffect(source, &op.Trustor, op.Asset.ToAsset(*source), nil, &clearFlags)
+		e.addTrustLineFlagsEffect(source, &op.Trustor, asset, nil, &clearFlags)
 	}
 }
 
