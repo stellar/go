@@ -15,7 +15,7 @@ type ManageBuyOffer struct {
 	Price         string
 	price         price
 	OfferID       int64
-	SourceAccount Account
+	SourceAccount string
 }
 
 // BuildXDR for ManageBuyOffer returns a fully configured XDR Operation.
@@ -91,8 +91,8 @@ func (mo *ManageBuyOffer) Validate() error {
 	return validateOffer(mo.Buying, mo.Selling, mo.Amount, mo.Price, mo.OfferID)
 }
 
-// GetSourceAccount returns the source account of the operation, or nil if not
+// GetSourceAccount returns the source account of the operation, or the empty string if not
 // set.
-func (mo *ManageBuyOffer) GetSourceAccount() Account {
+func (mo *ManageBuyOffer) GetSourceAccount() string {
 	return mo.SourceAccount
 }

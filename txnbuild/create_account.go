@@ -11,7 +11,7 @@ import (
 type CreateAccount struct {
 	Destination   string
 	Amount        string
-	SourceAccount Account
+	SourceAccount string
 }
 
 // BuildXDR for CreateAccount returns a fully configured XDR Operation.
@@ -68,8 +68,8 @@ func (ca *CreateAccount) Validate() error {
 	return nil
 }
 
-// GetSourceAccount returns the source account of the operation, or nil if not
+// GetSourceAccount returns the source account of the operation, or the empty string if not
 // set.
-func (ca *CreateAccount) GetSourceAccount() Account {
+func (ca *CreateAccount) GetSourceAccount() string {
 	return ca.SourceAccount
 }

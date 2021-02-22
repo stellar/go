@@ -19,6 +19,7 @@ type challengeHandler struct {
 	NetworkPassphrase  string
 	SigningKey         *keypair.Full
 	ChallengeExpiresIn time.Duration
+	Domain             string
 	HomeDomains        []string
 }
 
@@ -59,6 +60,7 @@ func (h challengeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	tx, err := txnbuild.BuildChallengeTx(
 		h.SigningKey.Seed(),
 		account,
+		h.Domain,
 		homeDomain,
 		h.NetworkPassphrase,
 		h.ChallengeExpiresIn,

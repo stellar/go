@@ -32,11 +32,7 @@ func TestRevokeSponsorship(t *testing.T) {
 			op: RevokeSponsorship{
 				SponsorshipType: RevokeSponsorshipTypeAccount,
 				Account:         &accountAddress,
-				SourceAccount: &SimpleAccount{
-					AccountID: accountAddress2,
-					// We intentionally don't set the sequence, since it isn't directly expressed in the XDR
-					// Sequence:  1,
-				},
+				SourceAccount:   accountAddress2,
 			},
 		},
 		{

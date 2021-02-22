@@ -11,7 +11,7 @@ import (
 // https://www.stellar.org/developers/guides/concepts/list-of-operations.html
 type ClaimClaimableBalance struct {
 	BalanceID     string
-	SourceAccount Account
+	SourceAccount string
 }
 
 // BuildXDR for ClaimClaimableBalance returns a fully configured XDR Operation.
@@ -64,8 +64,8 @@ func (cb *ClaimClaimableBalance) Validate() error {
 	return nil
 }
 
-// GetSourceAccount returns the source account of the operation, or nil if not
+// GetSourceAccount returns the source account of the operation, or the empty string if not
 // set.
-func (cb *ClaimClaimableBalance) GetSourceAccount() Account {
+func (cb *ClaimClaimableBalance) GetSourceAccount() string {
 	return cb.SourceAccount
 }

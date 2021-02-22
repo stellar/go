@@ -14,7 +14,7 @@ type AllowTrust struct {
 	Type                           Asset
 	Authorize                      bool
 	AuthorizeToMaintainLiabilities bool
-	SourceAccount                  Account
+	SourceAccount                  string
 }
 
 // BuildXDR for AllowTrust returns a fully configured XDR Operation.
@@ -97,8 +97,8 @@ func (at *AllowTrust) Validate() error {
 	return nil
 }
 
-// GetSourceAccount returns the source account of the operation, or nil if not
+// GetSourceAccount returns the source account of the operation, or the empty string if not
 // set.
-func (at *AllowTrust) GetSourceAccount() Account {
+func (at *AllowTrust) GetSourceAccount() string {
 	return at.SourceAccount
 }

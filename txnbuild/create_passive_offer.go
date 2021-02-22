@@ -14,7 +14,7 @@ type CreatePassiveSellOffer struct {
 	Amount        string
 	Price         string
 	price         price
-	SourceAccount Account
+	SourceAccount string
 }
 
 // BuildXDR for CreatePassiveSellOffer returns a fully configured XDR Operation.
@@ -88,8 +88,8 @@ func (cpo *CreatePassiveSellOffer) Validate() error {
 	return validatePassiveOffer(cpo.Buying, cpo.Selling, cpo.Amount, cpo.Price)
 }
 
-// GetSourceAccount returns the source account of the operation, or nil if not
+// GetSourceAccount returns the source account of the operation, or the empty string if not
 // set.
-func (cpo *CreatePassiveSellOffer) GetSourceAccount() Account {
+func (cpo *CreatePassiveSellOffer) GetSourceAccount() string {
 	return cpo.SourceAccount
 }

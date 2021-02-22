@@ -381,7 +381,7 @@ func TestClaimableBalancePredicates(t *testing.T) {
 			t.Logf("  amount: %d, predicate: %+v", amount, predicate.Type)
 
 			createClaimOps[i] = &txnbuild.CreateClaimableBalance{
-				SourceAccount: accountA,
+				SourceAccount: accountA.GetAccountID(),
 				Destinations:  []txnbuild.Claimant{claimant},
 				Amount:        fmt.Sprintf("%d.0000000", amount),
 				Asset:         txnbuild.NativeAsset{},

@@ -182,19 +182,6 @@ func marshallBase64(e xdr.TransactionEnvelope, signatures []xdr.DecoratedSignatu
 	return base64.StdEncoding.EncodeToString(binary), nil
 }
 
-func cloneEnvelope(e xdr.TransactionEnvelope, signatures []xdr.DecoratedSignature) (xdr.TransactionEnvelope, error) {
-	var clone xdr.TransactionEnvelope
-	binary, err := marshallBinary(e, signatures)
-	if err != nil {
-		return clone, errors.Wrap(err, "could not marshall envelope")
-	}
-
-	if err = xdr.SafeUnmarshal(binary, &clone); err != nil {
-		return clone, errors.Wrap(err, "could not unmarshall envelope")
-	}
-	return clone, nil
-}
-
 // Transaction represents a Stellar transaction. See
 // https://www.stellar.org/developers/guides/concepts/transactions.html
 // A Transaction may be wrapped by a FeeBumpTransaction in which case
@@ -208,7 +195,6 @@ type Transaction struct {
 	operations    []Operation
 	memo          Memo
 	timebounds    Timebounds
-	signatures    []xdr.DecoratedSignature
 }
 
 // BaseFee returns the per operation fee for this transaction.
@@ -245,7 +231,7 @@ func (t *Transaction) Operations() []Operation {
 // Signatures returns the list of signatures attached to this transaction.
 // The contents of the returned slice should not be modified.
 func (t *Transaction) Signatures() []xdr.DecoratedSignature {
-	return t.signatures
+	return t.envelope.Signatures()
 }
 
 // Hash returns the network specific hash of this transaction
@@ -260,18 +246,36 @@ func (t *Transaction) HashHex(network string) (string, error) {
 	return hashHex(t.envelope, network)
 }
 
+func (t *Transaction) clone(signatures []xdr.DecoratedSignature) *Transaction {
+	newTx := new(Transaction)
+	*newTx = *t
+	newTx.envelope = t.envelope
+
+	switch newTx.envelope.Type {
+	case xdr.EnvelopeTypeEnvelopeTypeTx:
+		newTx.envelope.V1 = new(xdr.TransactionV1Envelope)
+		*newTx.envelope.V1 = *t.envelope.V1
+		newTx.envelope.V1.Signatures = signatures
+	case xdr.EnvelopeTypeEnvelopeTypeTxV0:
+		newTx.envelope.V0 = new(xdr.TransactionV0Envelope)
+		*newTx.envelope.V0 = *t.envelope.V0
+		newTx.envelope.V0.Signatures = signatures
+	default:
+		panic("invalid transaction type: " + newTx.envelope.Type.String())
+	}
+
+	return newTx
+}
+
 // Sign returns a new Transaction instance which extends the current instance
 // with additional signatures derived from the given list of keypair instances.
 func (t *Transaction) Sign(network string, kps ...*keypair.Full) (*Transaction, error) {
-	extendedSignatures, err := concatSignatures(t.envelope, network, t.signatures, kps...)
+	extendedSignatures, err := concatSignatures(t.envelope, network, t.Signatures(), kps...)
 	if err != nil {
 		return nil, err
 	}
 
-	newTx := new(Transaction)
-	*newTx = *t
-	newTx.signatures = extendedSignatures
-	return newTx, nil
+	return t.clone(extendedSignatures), nil
 }
 
 // SignWithKeyString returns a new Transaction instance which extends the current instance
@@ -288,62 +292,40 @@ func (t *Transaction) SignWithKeyString(network string, keys ...string) (*Transa
 // with HashX signature type.
 // See description here: https://www.stellar.org/developers/guides/concepts/multi-sig.html#hashx.
 func (t *Transaction) SignHashX(preimage []byte) (*Transaction, error) {
-	extendedSignatures, err := concatHashX(t.signatures, preimage)
+	extendedSignatures, err := concatHashX(t.Signatures(), preimage)
 	if err != nil {
 		return nil, err
 	}
 
-	newTx := new(Transaction)
-	*newTx = *t
-	newTx.signatures = extendedSignatures
-	return newTx, nil
+	return t.clone(extendedSignatures), nil
 }
 
 // AddSignatureBase64 returns a new Transaction instance which extends the current instance
 // with an additional signature derived from the given base64-encoded signature.
 func (t *Transaction) AddSignatureBase64(network, publicKey, signature string) (*Transaction, error) {
-	extendedSignatures, err := concatSignatureBase64(t.envelope, t.signatures, network, publicKey, signature)
+	extendedSignatures, err := concatSignatureBase64(t.envelope, t.Signatures(), network, publicKey, signature)
 	if err != nil {
 		return nil, err
 	}
 
-	newTx := new(Transaction)
-	*newTx = *t
-	newTx.signatures = extendedSignatures
-	return newTx, nil
+	return t.clone(extendedSignatures), nil
 }
 
-// TxEnvelope returns the a xdr.TransactionEnvelope instance which is
-// equivalent to this transaction.
-func (t *Transaction) TxEnvelope() (xdr.TransactionEnvelope, error) {
-	return cloneEnvelope(t.envelope, t.signatures)
-}
-
-// ToXDR is like TxEnvelope except that the transaction envelope returned by ToXDR
-// should not be modified because any changes applied to the transaction envelope may
+// ToXDR returns the a xdr.TransactionEnvelope which is equivalent to this transaction.
+// The envelope should not be modified because any changes applied may
 // affect the internals of the Transaction instance.
 func (t *Transaction) ToXDR() xdr.TransactionEnvelope {
-	env := t.envelope
-	switch env.Type {
-	case xdr.EnvelopeTypeEnvelopeTypeTx:
-		env.V1.Signatures = t.signatures
-	case xdr.EnvelopeTypeEnvelopeTypeTxV0:
-		env.V0.Signatures = t.signatures
-	default:
-		panic("invalid transaction type: " + env.Type.String())
-	}
-
-	return env
+	return t.envelope
 }
 
 // MarshalBinary returns the binary XDR representation of the transaction envelope.
 func (t *Transaction) MarshalBinary() ([]byte, error) {
-	return marshallBinary(t.envelope, t.signatures)
+	return marshallBinary(t.envelope, t.Signatures())
 }
 
 // Base64 returns the base 64 XDR representation of the transaction envelope.
 func (t *Transaction) Base64() (string, error) {
-	return marshallBase64(t.envelope, t.signatures)
+	return marshallBase64(t.envelope, t.Signatures())
 }
 
 // ClaimableBalanceID returns the claimable balance ID for the operation at the given index within the transaction.
@@ -353,20 +335,8 @@ func (t *Transaction) ClaimableBalanceID(operationIndex int) (string, error) {
 		return "", errors.New("invalid operation index")
 	}
 
-	operation, ok := t.operations[operationIndex].(*CreateClaimableBalance)
-	if !ok {
+	if _, ok := t.operations[operationIndex].(*CreateClaimableBalance); !ok {
 		return "", errors.New("operation is not CreateClaimableBalance")
-	}
-
-	// Use the operation's source account or the transaction's source if not.
-	var account Account = &t.sourceAccount
-	if operation.SourceAccount != nil {
-		account = operation.GetSourceAccount()
-	}
-
-	seq, err := account.GetSequenceNumber()
-	if err != nil {
-		return "", errors.Wrap(err, "failed to retrieve account sequence number")
 	}
 
 	// We mimic the relevant code from Stellar Core
@@ -374,8 +344,8 @@ func (t *Transaction) ClaimableBalanceID(operationIndex int) (string, error) {
 	operationId := xdr.OperationId{
 		Type: xdr.EnvelopeTypeEnvelopeTypeOpId,
 		Id: &xdr.OperationIdId{
-			SourceAccount: xdr.MustMuxedAddress(account.GetAccountID()),
-			SeqNum:        xdr.SequenceNumber(seq),
+			SourceAccount: xdr.MustMuxedAddress(t.sourceAccount.AccountID),
+			SeqNum:        xdr.SequenceNumber(t.sourceAccount.Sequence),
 			OpNum:         xdr.Uint32(operationIndex),
 		},
 	}
@@ -410,7 +380,6 @@ type FeeBumpTransaction struct {
 	maxFee     int64
 	feeAccount string
 	inner      *Transaction
-	signatures []xdr.DecoratedSignature
 }
 
 // BaseFee returns the per operation fee for this transaction.
@@ -431,7 +400,7 @@ func (t *FeeBumpTransaction) FeeAccount() string {
 // Signatures returns the list of signatures attached to this transaction.
 // The contents of the returned slice should not be modified.
 func (t *FeeBumpTransaction) Signatures() []xdr.DecoratedSignature {
-	return t.signatures
+	return t.envelope.FeeBumpSignatures()
 }
 
 // Hash returns the network specific hash of this transaction
@@ -446,18 +415,24 @@ func (t *FeeBumpTransaction) HashHex(network string) (string, error) {
 	return hashHex(t.envelope, network)
 }
 
+func (t *FeeBumpTransaction) clone(signatures []xdr.DecoratedSignature) *FeeBumpTransaction {
+	newTx := new(FeeBumpTransaction)
+	*newTx = *t
+	newTx.envelope.FeeBump = new(xdr.FeeBumpTransactionEnvelope)
+	*newTx.envelope.FeeBump = *t.envelope.FeeBump
+	newTx.envelope.FeeBump.Signatures = signatures
+	return newTx
+}
+
 // Sign returns a new FeeBumpTransaction instance which extends the current instance
 // with additional signatures derived from the given list of keypair instances.
 func (t *FeeBumpTransaction) Sign(network string, kps ...*keypair.Full) (*FeeBumpTransaction, error) {
-	extendedSignatures, err := concatSignatures(t.envelope, network, t.signatures, kps...)
+	extendedSignatures, err := concatSignatures(t.envelope, network, t.Signatures(), kps...)
 	if err != nil {
 		return nil, err
 	}
 
-	newTx := new(FeeBumpTransaction)
-	*newTx = *t
-	newTx.signatures = extendedSignatures
-	return newTx, nil
+	return t.clone(extendedSignatures), nil
 }
 
 // SignWithKeyString returns a new FeeBumpTransaction instance which extends the current instance
@@ -474,60 +449,40 @@ func (t *FeeBumpTransaction) SignWithKeyString(network string, keys ...string) (
 // with HashX signature type.
 // See description here: https://www.stellar.org/developers/guides/concepts/multi-sig.html#hashx.
 func (t *FeeBumpTransaction) SignHashX(preimage []byte) (*FeeBumpTransaction, error) {
-	extendedSignatures, err := concatHashX(t.signatures, preimage)
+	extendedSignatures, err := concatHashX(t.Signatures(), preimage)
 	if err != nil {
 		return nil, err
 	}
 
-	newTx := new(FeeBumpTransaction)
-	*newTx = *t
-	newTx.signatures = extendedSignatures
-	return newTx, nil
+	return t.clone(extendedSignatures), nil
 }
 
 // AddSignatureBase64 returns a new FeeBumpTransaction instance which extends the current instance
 // with an additional signature derived from the given base64-encoded signature.
 func (t *FeeBumpTransaction) AddSignatureBase64(network, publicKey, signature string) (*FeeBumpTransaction, error) {
-	extendedSignatures, err := concatSignatureBase64(t.envelope, t.signatures, network, publicKey, signature)
+	extendedSignatures, err := concatSignatureBase64(t.envelope, t.Signatures(), network, publicKey, signature)
 	if err != nil {
 		return nil, err
 	}
 
-	newTx := new(FeeBumpTransaction)
-	*newTx = *t
-	newTx.signatures = extendedSignatures
-	return newTx, nil
+	return t.clone(extendedSignatures), nil
 }
 
-// TxEnvelope returns the a xdr.TransactionEnvelope instance which is
-// equivalent to this transaction.
-func (t *FeeBumpTransaction) TxEnvelope() (xdr.TransactionEnvelope, error) {
-	return cloneEnvelope(t.envelope, t.signatures)
-}
-
-// ToXDR is like TxEnvelope except that the transaction envelope returned by ToXDR
-// should not be modified because any changes applied to the transaction envelope may
+// ToXDR returns the a xdr.TransactionEnvelope which is equivalent to this transaction.
+// The envelope should not be modified because any changes applied may
 // affect the internals of the FeeBumpTransaction instance.
 func (t *FeeBumpTransaction) ToXDR() xdr.TransactionEnvelope {
-	env := t.envelope
-	switch env.Type {
-	case xdr.EnvelopeTypeEnvelopeTypeTxFeeBump:
-		env.FeeBump.Signatures = t.signatures
-	default:
-		panic("invalid transaction type: " + env.Type.String())
-	}
-
-	return env
+	return t.envelope
 }
 
 // MarshalBinary returns the binary XDR representation of the transaction envelope.
 func (t *FeeBumpTransaction) MarshalBinary() ([]byte, error) {
-	return marshallBinary(t.envelope, t.signatures)
+	return marshallBinary(t.envelope, t.Signatures())
 }
 
 // Base64 returns the base 64 XDR representation of the transaction envelope.
 func (t *FeeBumpTransaction) Base64() (string, error) {
-	return marshallBase64(t.envelope, t.signatures)
+	return marshallBase64(t.envelope, t.Signatures())
 }
 
 // InnerTransaction returns the Transaction which is wrapped by
@@ -594,7 +549,6 @@ func transactionFromParsedXDR(xdrEnv xdr.TransactionEnvelope) (*GenericTransacti
 			maxFee:     xdrEnv.FeeBumpFee(),
 			inner:      innerTx.simple,
 			feeAccount: feeBumpAccount.Address(),
-			signatures: xdrEnv.FeeBumpSignatures(),
 		}
 		return newTx, nil
 	}
@@ -618,7 +572,6 @@ func transactionFromParsedXDR(xdrEnv xdr.TransactionEnvelope) (*GenericTransacti
 		operations: nil,
 		memo:       nil,
 		timebounds: Timebounds{},
-		signatures: xdrEnv.Signatures(),
 	}
 
 	if timeBounds := xdrEnv.TimeBounds(); timeBounds != nil {
@@ -680,7 +633,6 @@ func NewTransaction(params TransactionParams) (*Transaction, error) {
 		operations: params.Operations,
 		memo:       params.Memo,
 		timebounds: params.Timebounds,
-		signatures: nil,
 	}
 
 	accountID, err := xdr.AddressToAccountId(tx.sourceAccount.AccountID)
@@ -776,7 +728,7 @@ func convertToV1(tx *Transaction) (*Transaction, error) {
 	if err != nil {
 		return tx, err
 	}
-	tx.signatures = signatures
+	tx.envelope.V1.Signatures = signatures
 	return tx, nil
 }
 
@@ -786,11 +738,15 @@ func NewFeeBumpTransaction(params FeeBumpTransactionParams) (*FeeBumpTransaction
 	if inner == nil {
 		return nil, errors.New("inner transaction is missing")
 	}
-	innerEnv, err := inner.TxEnvelope()
-	if err != nil {
-		return nil, errors.Wrap(err, "inner transaction envelope not found")
+	switch inner.envelope.Type {
+	case xdr.EnvelopeTypeEnvelopeTypeTx, xdr.EnvelopeTypeEnvelopeTypeTxV0:
+	default:
+		return nil, errors.Errorf("%s transactions cannot be fee bumped", inner.envelope.Type)
 	}
+
+	innerEnv := inner.ToXDR()
 	if innerEnv.Type == xdr.EnvelopeTypeEnvelopeTypeTxV0 {
+		var err error
 		inner, err = convertToV1(inner)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not upgrade transaction from v0 to v1")
@@ -851,7 +807,7 @@ func NewFeeBumpTransaction(params FeeBumpTransactionParams) (*FeeBumpTransaction
 // BuildChallengeTx is a factory method that creates a valid SEP 10 challenge, for use in web authentication.
 // "timebound" is the time duration the transaction should be valid for, and must be greater than 1s (300s is recommended).
 // More details on SEP 10: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0010.md
-func BuildChallengeTx(serverSignerSecret, clientAccountID, homeDomain, network string, timebound time.Duration) (*Transaction, error) {
+func BuildChallengeTx(serverSignerSecret, clientAccountID, webAuthDomain, homeDomain, network string, timebound time.Duration) (*Transaction, error) {
 	if timebound < time.Second {
 		return nil, errors.New("provided timebound must be at least 1s (300s is recommended)")
 	}
@@ -882,11 +838,6 @@ func BuildChallengeTx(serverSignerSecret, clientAccountID, homeDomain, network s
 		Sequence:  0,
 	}
 
-	// represent client account as SimpleAccount
-	ca := SimpleAccount{
-		AccountID: clientAccountID,
-	}
-
 	currentTime := time.Now().UTC()
 	maxTime := currentTime.Add(timebound)
 
@@ -898,9 +849,14 @@ func BuildChallengeTx(serverSignerSecret, clientAccountID, homeDomain, network s
 			IncrementSequenceNum: false,
 			Operations: []Operation{
 				&ManageData{
-					SourceAccount: &ca,
+					SourceAccount: clientAccountID,
 					Name:          homeDomain + " auth",
 					Value:         []byte(randomNonceToString),
+				},
+				&ManageData{
+					SourceAccount: serverKP.Address(),
+					Name:          "web_auth_domain",
+					Value:         []byte(webAuthDomain),
 				},
 			},
 			BaseFee:    MinBaseFee,
@@ -946,12 +902,16 @@ func generateRandomNonce(n int) ([]byte, error) {
 // The challenge's first Manage Data operation is expected to contain the homeDomain
 // parameter passed to the function.
 //
+// If the challenge contains a subsequent Manage Data operation with key
+// web_auth_domain the value will be checked to match the webAuthDomain
+// provided. If it does not match the function will return an error.
+//
 // It does not verify that the transaction has been signed by the client or
 // that any signatures other than the servers on the transaction are valid. Use
 // one of the following functions to completely verify the transaction:
 // - VerifyChallengeTxThreshold
 // - VerifyChallengeTxSigners
-func ReadChallengeTx(challengeTx, serverAccountID, network string, homeDomains []string) (tx *Transaction, clientAccountID string, matchedHomeDomain string, err error) {
+func ReadChallengeTx(challengeTx, serverAccountID, network, webAuthDomain string, homeDomains []string) (tx *Transaction, clientAccountID string, matchedHomeDomain string, err error) {
 	parsed, err := TransactionFromXDR(challengeTx)
 	if err != nil {
 		return tx, clientAccountID, matchedHomeDomain, errors.Wrap(err, "could not parse challenge")
@@ -998,7 +958,7 @@ func ReadChallengeTx(challengeTx, serverAccountID, network string, homeDomains [
 	if !ok {
 		return tx, clientAccountID, matchedHomeDomain, errors.New("operation type should be manage_data")
 	}
-	if op.SourceAccount == nil {
+	if op.SourceAccount == "" {
 		return tx, clientAccountID, matchedHomeDomain, errors.New("operation should have a source account")
 	}
 	for _, homeDomain := range homeDomains {
@@ -1011,7 +971,7 @@ func ReadChallengeTx(challengeTx, serverAccountID, network string, homeDomains [
 		return tx, clientAccountID, matchedHomeDomain, errors.Errorf("operation key does not match any homeDomains passed (key=%q, homeDomains=%v)", op.Name, homeDomains)
 	}
 
-	clientAccountID = op.SourceAccount.GetAccountID()
+	clientAccountID = op.SourceAccount
 	rawOperations := tx.envelope.Operations()
 	if len(rawOperations) > 0 && rawOperations[0].SourceAccount.Type == xdr.CryptoKeyTypeKeyTypeMuxedEd25519 {
 		err = errors.New("invalid operation source account: only valid Ed25519 accounts are allowed in challenge transactions")
@@ -1031,17 +991,28 @@ func ReadChallengeTx(challengeTx, serverAccountID, network string, homeDomains [
 		return tx, clientAccountID, matchedHomeDomain, errors.New("random nonce before encoding as base64 should be 48 bytes long")
 	}
 
-	// verify subsequent operations are manage data ops with source account set to server account
+	// verify subsequent operations are manage data ops and known, or unknown with source account set to server account
 	for _, op := range operations[1:] {
 		op, ok := op.(*ManageData)
 		if !ok {
 			return tx, clientAccountID, matchedHomeDomain, errors.New("operation type should be manage_data")
 		}
-		if op.SourceAccount == nil {
+		if op.SourceAccount == "" {
 			return tx, clientAccountID, matchedHomeDomain, errors.New("operation should have a source account")
 		}
-		if op.SourceAccount.GetAccountID() != serverAccountID {
-			return tx, clientAccountID, matchedHomeDomain, errors.New("subsequent operations are unrecognized")
+		switch op.Name {
+		case "web_auth_domain":
+			if op.SourceAccount != serverAccountID {
+				return tx, clientAccountID, matchedHomeDomain, errors.New("web auth domain operation must have server source account")
+			}
+			if !bytes.Equal(op.Value, []byte(webAuthDomain)) {
+				return tx, clientAccountID, matchedHomeDomain, errors.Errorf("web auth domain operation value is %q but expect %q", string(op.Value), webAuthDomain)
+			}
+		default:
+			// verify unknown subsequent operations are manage data ops with source account set to server account
+			if op.SourceAccount != serverAccountID {
+				return tx, clientAccountID, matchedHomeDomain, errors.New("subsequent operations are unrecognized")
+			}
 		}
 	}
 
@@ -1065,19 +1036,23 @@ func ReadChallengeTx(challengeTx, serverAccountID, network string, homeDomains [
 //
 // The homeDomain field is reserved for future use and not used.
 //
+// If the challenge contains a subsequent Manage Data operation with key
+// web_auth_domain the value will be checked to match the webAuthDomain
+// provided. If it does not match the function will return an error.
+//
 // Errors will be raised if:
 //  - The transaction is invalid according to ReadChallengeTx.
 //  - No client signatures are found on the transaction.
 //  - One or more signatures in the transaction are not identifiable as the
 //    server account or one of the signers provided in the arguments.
 //  - The signatures are all valid but do not meet the threshold.
-func VerifyChallengeTxThreshold(challengeTx, serverAccountID, network string, homeDomains []string, threshold Threshold, signerSummary SignerSummary) (signersFound []string, err error) {
+func VerifyChallengeTxThreshold(challengeTx, serverAccountID, network, webAuthDomain string, homeDomains []string, threshold Threshold, signerSummary SignerSummary) (signersFound []string, err error) {
 	signers := make([]string, 0, len(signerSummary))
 	for s := range signerSummary {
 		signers = append(signers, s)
 	}
 
-	signersFound, err = VerifyChallengeTxSigners(challengeTx, serverAccountID, network, homeDomains, signers...)
+	signersFound, err = VerifyChallengeTxSigners(challengeTx, serverAccountID, network, webAuthDomain, homeDomains, signers...)
 	if err != nil {
 		return nil, err
 	}
@@ -1107,14 +1082,18 @@ func VerifyChallengeTxThreshold(challengeTx, serverAccountID, network string, ho
 //
 // The homeDomain field is reserved for future use and not used.
 //
+// If the challenge contains a subsequent Manage Data operation with key
+// web_auth_domain the value will be checked to match the webAuthDomain
+// provided. If it does not match the function will return an error.
+//
 // Errors will be raised if:
 //  - The transaction is invalid according to ReadChallengeTx.
 //  - No client signatures are found on the transaction.
 //  - One or more signatures in the transaction are not identifiable as the
 //    server account or one of the signers provided in the arguments.
-func VerifyChallengeTxSigners(challengeTx, serverAccountID, network string, homeDomains []string, signers ...string) ([]string, error) {
+func VerifyChallengeTxSigners(challengeTx, serverAccountID, network, webAuthDomain string, homeDomains []string, signers ...string) ([]string, error) {
 	// Read the transaction which validates its structure.
-	tx, _, _, err := ReadChallengeTx(challengeTx, serverAccountID, network, homeDomains)
+	tx, _, _, err := ReadChallengeTx(challengeTx, serverAccountID, network, webAuthDomain, homeDomains)
 	if err != nil {
 		return nil, err
 	}

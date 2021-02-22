@@ -9,7 +9,7 @@ import (
 // https://www.stellar.org/developers/guides/concepts/list-of-operations.html
 type AccountMerge struct {
 	Destination   string
-	SourceAccount Account
+	SourceAccount string
 }
 
 // BuildXDR for AccountMerge returns a fully configured XDR Operation.
@@ -56,8 +56,8 @@ func (am *AccountMerge) Validate() error {
 	return nil
 }
 
-// GetSourceAccount returns the source account of the operation, or nil if not
+// GetSourceAccount returns the source account of the operation, or the empty string if not
 // set.
-func (am *AccountMerge) GetSourceAccount() Account {
+func (am *AccountMerge) GetSourceAccount() string {
 	return am.SourceAccount
 }

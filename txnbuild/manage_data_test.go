@@ -93,7 +93,7 @@ func TestManageDataRoundTrip(t *testing.T) {
 			)
 			assert.NoError(t, err)
 
-			envelope, err := tx.TxEnvelope()
+			envelope := tx.ToXDR()
 			assert.NoError(t, err)
 			assert.Len(t, envelope.Operations(), 1)
 			assert.Equal(t, xdr.String64(manageData.Name), envelope.Operations()[0].Body.ManageDataOp.DataName)

@@ -103,6 +103,7 @@ func newSignedFeeBumpTransaction(
 }
 
 func convertToV0(tx *Transaction) {
+	signatures := tx.Signatures()
 	tx.envelope.V0 = &xdr.TransactionV0Envelope{
 		Tx: xdr.TransactionV0{
 			SourceAccountEd25519: *tx.envelope.SourceAccount().Ed25519,
@@ -112,6 +113,7 @@ func convertToV0(tx *Transaction) {
 			Memo:                 tx.envelope.Memo(),
 			Operations:           tx.envelope.Operations(),
 		},
+		Signatures: signatures,
 	}
 	tx.envelope.V1 = nil
 	tx.envelope.Type = xdr.EnvelopeTypeEnvelopeTypeTxV0

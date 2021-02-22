@@ -139,14 +139,14 @@ func (h accountSignHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	for _, op := range tx.Operations() {
 		opSourceAccount := op.GetSourceAccount()
-		if opSourceAccount == nil {
+		if opSourceAccount == "" {
 			continue
 		}
 
-		if op.GetSourceAccount().GetAccountID() != req.Address.Address() {
+		if op.GetSourceAccount() != req.Address.Address() {
 			var opHasAllowedAccount bool
 			for _, sa := range h.AllowedSourceAccounts {
-				if sa.Address() == op.GetSourceAccount().GetAccountID() {
+				if sa.Address() == op.GetSourceAccount() {
 					opHasAllowedAccount = true
 					break
 				}
