@@ -5,6 +5,8 @@ package ingest
 
 import (
 	"context"
+	"fmt"
+	"net/http"
 	"sync"
 	"time"
 
@@ -116,6 +118,10 @@ type Metrics struct {
 
 	// ProcessorsRunDuration exposes processors run durations.
 	ProcessorsRunDuration *prometheus.CounterVec
+
+	// CaptiveStellarCoreSynced exposes synced status of Captive Stellar-Core.
+	// 1 if sync, 0 if not synced, -1 if unable to connect or HTTP server disabled.
+	CaptiveStellarCoreSynced prometheus.GaugeFunc
 }
 
 type System interface {
@@ -292,6 +298,37 @@ func (s *system) initMetrics() {
 			Help: "run durations of ingestion processors",
 		},
 		[]string{"name"},
+	)
+
+	s.metrics.CaptiveStellarCoreSynced = prometheus.NewGaugeFunc(
+		prometheus.GaugeOpts{
+			Namespace: "horizon", Subsystem: "ingest", Name: "captive_stellar_core_synced",
+			Help: "1 if sync, 0 if not synced, -1 if unable to connect or HTTP server disabled.",
+		},
+		func() float64 {
+			if !s.config.EnableCaptiveCore || s.config.CaptiveCoreHTTPPort == 0 {
+				return -1
+			}
+
+			client := stellarcore.Client{
+				HTTP: &http.Client{
+					Timeout: 2 * time.Second,
+				},
+				URL: fmt.Sprintf("http://localhost:%d", s.config.CaptiveCoreHTTPPort),
+			}
+
+			info, err := client.Info(s.ctx)
+			if err != nil {
+				log.WithError(err).Error("Cannot connect to Captive Stellar-Core HTTP server")
+				return -1
+			}
+
+			if info.IsSynced() {
+				return 1
+			} else {
+				return 0
+			}
+		},
 	)
 }
 

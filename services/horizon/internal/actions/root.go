@@ -10,6 +10,7 @@ import (
 )
 
 type CoreSettings struct {
+	Synced                       bool
 	CurrentProtocolVersion       int32
 	CoreSupportedProtocolVersion int32
 	CoreVersion                  string
