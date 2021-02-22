@@ -85,7 +85,7 @@ func TestClawbackRoundTrip(t *testing.T) {
 	clawback := Clawback{
 		From:   "GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H",
 		Amount: "10.0000000",
-		Asset:  CreditAsset{"USD", ""},
+		Asset:  CreditAsset{"USD", "GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU"},
 	}
 
 	testOperationsMarshallingRoundtrip(t, []Operation{&clawback})

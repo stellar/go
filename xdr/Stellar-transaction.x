@@ -376,7 +376,7 @@ case REVOKE_SPONSORSHIP_SIGNER:
 */
 struct ClawbackOp
 {
-    AssetCode asset;
+    Asset asset;
     MuxedAccount from;
     int64 amount;
 };
@@ -404,7 +404,7 @@ struct ClawbackClaimableBalanceOp
 struct SetTrustLineFlagsOp
 {
     AccountID trustor;
-    AssetCode asset;
+    Asset asset;
 
     uint32* clearFlags; // which flags to clear
     uint32* setFlags;   // which flags to set

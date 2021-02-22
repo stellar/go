@@ -43,10 +43,9 @@ func (stf *SetTrustLineFlags) BuildXDR() (xdr.Operation, error) {
 		return xdr.Operation{}, errors.New("trustline doesn't exist for a native (XLM) asset")
 	}
 
-	xdrAsset := xdr.Asset{}
-	xdrOp.Asset, err = xdrAsset.ToAssetCode(stf.Asset.GetCode())
+	xdrOp.Asset, err = stf.Asset.ToXDR()
 	if err != nil {
-		return xdr.Operation{}, errors.Wrap(err, "can't convert asset for trustline to allow trust asset type")
+		return xdr.Operation{}, errors.Wrap(err, "can't convert asset to XDR")
 	}
 
 	xdrOp.ClearFlags = trustLineFlagsToXDR(stf.ClearFlags)
@@ -82,9 +81,9 @@ func (stf *SetTrustLineFlags) FromXDR(xdrOp xdr.Operation) error {
 
 	stf.SourceAccount = accountFromXDR(xdrOp.SourceAccount)
 	stf.Trustor = op.Trustor.Address()
-	asset, err := assetCodeToCreditAsset(op.Asset)
+	asset, err := assetFromXDR(op.Asset)
 	if err != nil {
-		return errors.Wrap(err, "error parsing allow_trust operation from xdr")
+		return errors.Wrap(err, "error parsing asset from xdr")
 	}
 	stf.Asset = asset
 	stf.ClearFlags = fromXDRTrustlineFlag(op.ClearFlags)

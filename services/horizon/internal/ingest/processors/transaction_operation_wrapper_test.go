@@ -600,22 +600,6 @@ func TestTransactionOperationDetails(t *testing.T) {
 			},
 		},
 		{
-			desc:          "clawback",
-			envelopeXDR:   "AAAAAgAAAADrAt1LkCV3iVpe6NkPVn9kb2Yh4hyn0m7QzbF5J9zTIgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAATAAAAAVVTRAAAAAAAgHx5MrwKqyn+j+nUvuOra8GmzrRKvG8ew8JfchFfAvIAAAAAAAAAFAAAAAAAAAAA",
-			resultXDR:     "AAAAAAAAAAAAAAAAAAAAAAAAAAA=",
-			metaXDR:       "AAAAAgAAAAAAAAABAAAAAAAAAAA=",
-			feeChangesXDR: "AAAAAA==",
-			hash:          "c8a8890d5cae9051ef692ed3e867687e1c3e9869995328698c60bdb237194e83",
-			index:         0,
-			expected: map[string]interface{}{
-				"amount":       "0.0000020",
-				"asset_code":   "USD",
-				"asset_issuer": "GDVQFXKLSASXPCK2L3UNSD2WP5SG6ZRB4IOKPUTO2DG3C6JH3TJSEA7R",
-				"asset_type":   "credit_alphanum4",
-				"from":         "GCAHY6JSXQFKWKP6R7U5JPXDVNV4DJWOWRFLY3Y6YPBF64QRL4BPFDNS",
-			},
-		},
-		{
 			desc:          "clawbackClaimableBalance",
 			envelopeXDR:   "AAAAAgAAAADrAt1LkCV3iVpe6NkPVn9kb2Yh4hyn0m7QzbF5J9zTIgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAUAAAAAMr+ur7erb7vAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
 			resultXDR:     "AAAAAAAAAAAAAAAAAAAAAAAAAAA=",
@@ -1468,6 +1452,81 @@ func TestSponsoredSandwichTransaction_Participants(t *testing.T) {
 	)
 }
 
+type ClawbackTestSuite struct {
+	suite.Suite
+	op        xdr.Operation
+	balanceID string
+}
+
+func (s *ClawbackTestSuite) SetupTest() {
+	aid := xdr.MustAddress("GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD")
+	source := aid.ToMuxedAccount()
+	s.op = xdr.Operation{
+		SourceAccount: &source,
+		Body: xdr.OperationBody{
+			Type: xdr.OperationTypeClawback,
+			ClawbackOp: &xdr.ClawbackOp{
+				Asset:  xdr.MustNewCreditAsset("USD", "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD"),
+				From:   xdr.MustMuxedAddress("GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY"),
+				Amount: 20,
+			},
+		},
+	}
+}
+func (s *ClawbackTestSuite) TestDetails() {
+	expected := map[string]interface{}{
+		"asset_code":   "USD",
+		"asset_issuer": "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
+		"asset_type":   "credit_alphanum4",
+		"amount":       "0.0000020",
+		"from":         "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+	}
+
+	operation := transactionOperationWrapper{
+		index: 0,
+		transaction: ingest.LedgerTransaction{
+			Meta: xdr.TransactionMeta{
+				V: 2,
+				V2: &xdr.TransactionMetaV2{
+					Operations: make([]xdr.OperationMeta, 1, 1),
+				},
+			}},
+		operation:      s.op,
+		ledgerSequence: 1,
+	}
+
+	details, err := operation.Details()
+	s.Assert().NoError(err)
+	s.Assert().Equal(expected, details)
+}
+
+func (s *ClawbackTestSuite) TestParticipants() {
+	operation := transactionOperationWrapper{
+		index: 0,
+		transaction: ingest.LedgerTransaction{
+			Meta: xdr.TransactionMeta{
+				V: 2,
+				V2: &xdr.TransactionMetaV2{
+					Operations: make([]xdr.OperationMeta, 1, 1),
+				},
+			},
+		},
+		operation:      s.op,
+		ledgerSequence: 1,
+	}
+
+	participants, err := operation.Participants()
+	s.Assert().NoError(err)
+	s.Assert().ElementsMatch([]xdr.AccountId{
+		xdr.MustAddress("GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD"),
+		xdr.MustAddress("GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY"),
+	}, participants)
+}
+
+func TestClawbackTestSuite(t *testing.T) {
+	suite.Run(t, new(ClawbackTestSuite))
+}
+
 type SetTrustLineFlagsTestSuite struct {
 	suite.Suite
 	op        xdr.Operation
@@ -1486,7 +1545,7 @@ func (s *SetTrustLineFlagsTestSuite) SetupTest() {
 			Type: xdr.OperationTypeSetTrustLineFlags,
 			SetTrustLineFlagsOp: &xdr.SetTrustLineFlagsOp{
 				Trustor:    trustor,
-				Asset:      xdr.MustNewAssetCodeFromString("USD"),
+				Asset:      xdr.MustNewCreditAsset("USD", "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD"),
 				ClearFlags: &clearFlags,
 				SetFlags:   &setFlags,
 			},

@@ -9406,13 +9406,13 @@ var (
 //
 //   struct ClawbackOp
 //    {
-//        AssetCode asset;
+//        Asset asset;
 //        MuxedAccount from;
 //        int64 amount;
 //    };
 //
 type ClawbackOp struct {
-	Asset  AssetCode
+	Asset  Asset
 	From   MuxedAccount
 	Amount Int64
 }
@@ -9469,7 +9469,7 @@ var (
 //   struct SetTrustLineFlagsOp
 //    {
 //        AccountID trustor;
-//        AssetCode asset;
+//        Asset asset;
 //
 //        uint32* clearFlags; // which flags to clear
 //        uint32* setFlags;   // which flags to set
@@ -9477,7 +9477,7 @@ var (
 //
 type SetTrustLineFlagsOp struct {
 	Trustor    AccountId
-	Asset      AssetCode
+	Asset      Asset
 	ClearFlags *Uint32
 	SetFlags   *Uint32
 }

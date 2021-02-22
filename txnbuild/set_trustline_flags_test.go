@@ -9,7 +9,7 @@ import (
 )
 
 func TestSetTrustLineFlags(t *testing.T) {
-	asset := CreditAsset{"ABCD", ""}
+	asset := CreditAsset{"ABCD", "GAEJJMDDCRYF752PKIJICUVL7MROJBNXDV2ZB455T7BAFHU2LCLSE2LW"}
 	source := &SimpleAccount{
 		AccountID: "GBUKBCG5VLRKAVYAIREJRUJHOKLIADZJOICRW43WVJCLES52BDOTCQZU",
 	}

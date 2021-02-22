@@ -38,19 +38,16 @@ func (cb *Clawback) BuildXDR() (xdr.Operation, error) {
 		return xdr.Operation{}, errors.Wrap(err, "failed to parse amount")
 	}
 
-	// Clawback uses an asset code, map to it
-	xdrAsset := xdr.Asset{}
-
-	assetCode, err := xdrAsset.ToAssetCode(cb.Asset.GetCode())
+	xdrAsset, err := cb.Asset.ToXDR()
 	if err != nil {
-		return xdr.Operation{}, errors.Wrap(err, "can't convert asset to asset code")
+		return xdr.Operation{}, errors.Wrap(err, "can't convert asset to XDR")
 	}
 
 	opType := xdr.OperationTypeClawback
 	xdrOp := xdr.ClawbackOp{
 		From:   fromMuxedAccount,
 		Amount: xdrAmount,
-		Asset:  assetCode,
+		Asset:  xdrAsset,
 	}
 	body, err := xdr.NewOperationBody(opType, xdrOp)
 	if err != nil {
@@ -72,9 +69,9 @@ func (cb *Clawback) FromXDR(xdrOp xdr.Operation) error {
 	fromAID := result.From.ToAccountId()
 	cb.From = fromAID.Address()
 	cb.Amount = amount.String(result.Amount)
-	asset, err := assetCodeToCreditAsset(result.Asset)
+	asset, err := assetFromXDR(result.Asset)
 	if err != nil {
-		return errors.Wrap(err, "error parsing clawback operation from xdr")
+		return errors.Wrap(err, "error parsing clawback operation from XDR")
 	}
 	cb.Asset = asset
 
