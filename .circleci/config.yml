@@ -151,7 +151,7 @@ commands:
             sudo wget -qO - https://apt.stellar.org/SDF.asc | APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=true sudo apt-key add -
             sudo bash -c 'echo "deb https://apt.stellar.org xenial unstable" > /etc/apt/sources.list.d/SDF-unstable.list'
             # TODO: replace by the stable version when ready
-            sudo apt-get update && sudo apt-get install -y stellar-core=11.4.0-467.e1dfff1.xenial~clawbackCompleteTest~buildtests
+            sudo apt-get update && sudo apt-get install -y stellar-core=11.4.0-472.84cd6a0.xenial~cap35FonsTest~buildtests
             echo "using stellar core version $(stellar-core version)"
             echo "export CAPTIVE_CORE_BIN=/usr/bin/stellar-core" >> $BASH_ENV
 
