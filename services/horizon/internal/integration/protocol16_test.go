@@ -241,12 +241,16 @@ func TestHappyClawbackClaimableBalance(t *testing.T) {
 	})
 	tt.NoError(err)
 
-	if tt.Len(effectsResponse.Embedded.Records, 2) {
+	if tt.Len(effectsResponse.Embedded.Records, 3) {
 		claimableBalanceClawedBack := effectsResponse.Embedded.Records[0].(effects.ClaimableBalanceClawedBack)
+		tt.Equal(master.Address(), claimableBalanceClawedBack.Account)
 		tt.Equal(cbID, claimableBalanceClawedBack.BalanceID)
-		cbSponsorshipRemoved := effectsResponse.Embedded.Records[1].(effects.ClaimableBalanceSponsorshipRemoved)
+		accountCredited := effectsResponse.Embedded.Records[1].(effects.AccountCredited)
+		tt.Equal(master.Address(), accountCredited.Account)
+		tt.Equal("10.0000000", accountCredited.Amount)
+		cbSponsorshipRemoved := effectsResponse.Embedded.Records[2].(effects.ClaimableBalanceSponsorshipRemoved)
+		tt.Equal(master.Address(), cbSponsorshipRemoved.Account)
 		tt.Equal(cbID, cbSponsorshipRemoved.BalanceID)
 		tt.Equal(master.Address(), cbSponsorshipRemoved.FormerSponsor)
 	}
-
 }
