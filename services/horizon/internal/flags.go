@@ -422,7 +422,8 @@ func ApplyFlags(config *Config, flags support.ConfigOptions) {
 		//       defaults for the binary path), the Remote Captive Core URL
 		//       takes precedence.
 		if binaryPath == "" && remoteURL == "" {
-			stdLog.Fatalf("Invalid config: captive core requires that either --stellar-core-binary-path or --remote-captive-core-url is set")
+			stdLog.Fatalf("Invalid config: captive core requires that either --stellar-core-binary-path or --remote-captive-core-url is set. " +
+				"If you are migrating from Horizon 1.x.y read the Migration Guide here: https://github.com/stellar/go/blob/master/services/horizon/internal/docs/captive_core.md")
 		}
 
 		// If we don't supply an explicit core URL and we are running a local
