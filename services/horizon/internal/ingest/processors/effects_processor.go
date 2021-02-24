@@ -209,7 +209,7 @@ func (operation *transactionOperationWrapper) effects() ([]effect, error) {
 	case xdr.OperationTypeClawback:
 		err = wrapper.addClawbackEffects()
 	case xdr.OperationTypeClawbackClaimableBalance:
-		err = wrapper.addClawbackClaimableBalanceEffects()
+		err = wrapper.addClawbackClaimableBalanceEffects(changes)
 	case xdr.OperationTypeSetTrustLineFlags:
 		err = wrapper.addSetTrustLineFlagsEffects()
 	default:
@@ -956,6 +956,8 @@ func (e *effectsWrapper) addClawbackEffects() error {
 	}
 	source := e.operation.SourceAccount()
 	addAssetDetails(details, op.Asset, "")
+
+	// The funds will be burned, but even with that, we generated an account credited effect
 	e.add(
 		source.Address(),
 		history.EffectAccountCredited,
@@ -972,7 +974,7 @@ func (e *effectsWrapper) addClawbackEffects() error {
 	return nil
 }
 
-func (e *effectsWrapper) addClawbackClaimableBalanceEffects() error {
+func (e *effectsWrapper) addClawbackClaimableBalanceEffects(changes []ingest.Change) error {
 	op := e.operation.operation.Body.MustClawbackClaimableBalanceOp()
 	balanceId, err := xdr.MarshalHex(op.BalanceId)
 	if err != nil {
@@ -986,6 +988,22 @@ func (e *effectsWrapper) addClawbackClaimableBalanceEffects() error {
 		history.EffectClaimableBalanceClawedBack,
 		details,
 	)
+
+	// Generate the account credited effect (although the funds will be burned) for the asset issuer
+	for _, c := range changes {
+		if c.Type == xdr.LedgerEntryTypeClaimableBalance && c.Post == nil && c.Pre != nil {
+			cb := c.Pre.Data.ClaimableBalance
+			details = map[string]interface{}{"amount": amount.String(cb.Amount)}
+			addAssetDetails(details, cb.Asset, "")
+			e.add(
+				e.operation.SourceAccount().Address(),
+				history.EffectAccountCredited,
+				details,
+			)
+			break
+		}
+	}
+
 	return nil
 }
 
