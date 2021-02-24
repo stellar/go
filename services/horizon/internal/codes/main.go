@@ -442,7 +442,7 @@ func String(code interface{}) (string, error) {
 	return "", errors.New(ErrUnknownCode)
 }
 
-// ForOperationResult returns the strong represtation used by horizon for the
+// ForOperationResult returns the strong representation used by horizon for the
 // error code `opr`
 func ForOperationResult(opr xdr.OperationResult) (string, error) {
 	if opr.Code != xdr.OperationResultCodeOpInner {
@@ -491,6 +491,12 @@ func ForOperationResult(opr xdr.OperationResult) (string, error) {
 		ic = ir.MustEndSponsoringFutureReservesResult().Code
 	case xdr.OperationTypeRevokeSponsorship:
 		ic = ir.MustRevokeSponsorshipResult().Code
+	case xdr.OperationTypeClawback:
+		ic = ir.MustClawbackResult().Code
+	case xdr.OperationTypeClawbackClaimableBalance:
+		ic = ir.MustClawbackClaimableBalanceResult().Code
+	case xdr.OperationTypeSetTrustLineFlags:
+		ic = ir.MustSetTrustLineFlagsResult().Code
 	}
 
 	return String(ic)

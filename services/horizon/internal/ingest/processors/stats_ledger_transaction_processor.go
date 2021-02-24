@@ -44,6 +44,7 @@ type StatsLedgerTransactionProcessorResults struct {
 	OperationsRevokeSponsorship             int64
 	OperationsClawback                      int64
 	OperationsClawbackClaimableBalance      int64
+	OperationsSetTrustLineFlags             int64
 }
 
 func (p *StatsLedgerTransactionProcessor) ProcessTransaction(transaction ingest.LedgerTransaction) error {
@@ -104,6 +105,8 @@ func (p *StatsLedgerTransactionProcessor) ProcessTransaction(transaction ingest.
 			p.results.OperationsClawback++
 		case xdr.OperationTypeClawbackClaimableBalance:
 			p.results.OperationsClawbackClaimableBalance++
+		case xdr.OperationTypeSetTrustLineFlags:
+			p.results.OperationsSetTrustLineFlags++
 		default:
 			panic(fmt.Sprintf("Unkown operation type: %d", op.Body.Type))
 		}
