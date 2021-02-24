@@ -993,8 +993,8 @@ func (e *effectsWrapper) addClawbackClaimableBalanceEffects(changes []ingest.Cha
 	for _, c := range changes {
 		if c.Type == xdr.LedgerEntryTypeClaimableBalance && c.Post == nil && c.Pre != nil {
 			cb := c.Pre.Data.ClaimableBalance
+			details = map[string]interface{}{"amount": amount.String(cb.Amount)}
 			addAssetDetails(details, cb.Asset, "")
-			details := map[string]interface{}{"amount": amount.String(cb.Amount)}
 			e.add(
 				e.operation.SourceAccount().Address(),
 				history.EffectAccountCredited,

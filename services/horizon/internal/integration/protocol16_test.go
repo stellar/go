@@ -248,6 +248,8 @@ func TestHappyClawbackClaimableBalance(t *testing.T) {
 		accountCredited := effectsResponse.Embedded.Records[1].(effects.AccountCredited)
 		tt.Equal(master.Address(), accountCredited.Account)
 		tt.Equal("10.0000000", accountCredited.Amount)
+		tt.Equal(accountCredited.Issuer, master.Address())
+		tt.Equal(accountCredited.Code, "PTS")
 		cbSponsorshipRemoved := effectsResponse.Embedded.Records[2].(effects.ClaimableBalanceSponsorshipRemoved)
 		tt.Equal(master.Address(), cbSponsorshipRemoved.Account)
 		tt.Equal(cbID, cbSponsorshipRemoved.BalanceID)
