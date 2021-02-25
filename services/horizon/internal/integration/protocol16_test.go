@@ -63,10 +63,7 @@ func TestHappyClawback(t *testing.T) {
 
 	// Make sure the clawback flag was set
 
-	accountDetails, err := itest.Client().AccountDetail(horizonclient.AccountRequest{
-		AccountID: master.Address(),
-	})
-	tt.NoError(err)
+	accountDetails := itest.MustGetAccount(master)
 	tt.True(accountDetails.Flags.AuthClawbackEnabled)
 
 	// Create another account from which to claw an asset back
@@ -87,10 +84,7 @@ func TestHappyClawback(t *testing.T) {
 	}
 	itest.MustSubmitOperations(itest.MasterAccount(), master, &pesetasPayment)
 
-	accountDetails, err = itest.Client().AccountDetail(horizonclient.AccountRequest{
-		AccountID: accountKeyPair.Address(),
-	})
-	tt.NoError(err)
+	accountDetails = itest.MustGetAccount(accountKeyPair)
 	if tt.Len(accountDetails.Balances, 2) {
 		pts := accountDetails.Balances[0]
 		tt.Equal("PTS", pts.Code)
@@ -109,10 +103,7 @@ func TestHappyClawback(t *testing.T) {
 	submissionResp := itest.MustSubmitOperations(itest.MasterAccount(), master, &pesetasClawback)
 
 	// Check that the balance was clawed back (the account's balance should be at 0)
-	accountDetails, err = itest.Client().AccountDetail(horizonclient.AccountRequest{
-		AccountID: accountKeyPair.Address(),
-	})
-	tt.NoError(err)
+	accountDetails = itest.MustGetAccount(accountKeyPair)
 	if tt.Len(accountDetails.Balances, 2) {
 		pts := accountDetails.Balances[0]
 		tt.Equal("PTS", pts.Code)
@@ -178,10 +169,7 @@ func TestHappyClawbackClaimableBalance(t *testing.T) {
 	itest.MustSubmitOperations(itest.MasterAccount(), master, &setClawBackFlag)
 
 	// Make sure the clawback flag was set
-	accountDetails, err := itest.Client().AccountDetail(horizonclient.AccountRequest{
-		AccountID: master.Address(),
-	})
-	tt.NoError(err)
+	accountDetails := itest.MustGetAccount(master)
 	tt.True(accountDetails.Flags.AuthClawbackEnabled)
 
 	// Create another account as a claimable balance claimant
@@ -282,10 +270,7 @@ func TestHappySetTrustLineFlags(t *testing.T) {
 	itest.MustSubmitOperations(itest.MasterAccount(), master, &setClawBackFlag)
 
 	// Make sure the clawback flag was set
-	accountDetails, err := itest.Client().AccountDetail(horizonclient.AccountRequest{
-		AccountID: master.Address(),
-	})
-	tt.NoError(err)
+	accountDetails := itest.MustGetAccount(master)
 	tt.True(accountDetails.Flags.AuthClawbackEnabled)
 
 	// Create another account fot the Trustline
@@ -297,10 +282,7 @@ func TestHappySetTrustLineFlags(t *testing.T) {
 	pesetasAsset := txnbuild.CreditAsset{Code: "PTS", Issuer: master.Address()}
 	itest.MustEstablishTrustline(accountKeyPair, account, pesetasAsset)
 	// Confirm that the Trustline has the clawback flag
-	accountDetails, err = itest.Client().AccountDetail(horizonclient.AccountRequest{
-		AccountID: accountKeyPair.Address(),
-	})
-	tt.NoError(err)
+	accountDetails = itest.MustGetAccount(accountKeyPair)
 	if tt.Len(accountDetails.Balances, 2) {
 		pts := accountDetails.Balances[0]
 		tt.Equal("PTS", pts.Code)
@@ -320,10 +302,7 @@ func TestHappySetTrustLineFlags(t *testing.T) {
 	itest.MustSubmitOperations(itest.MasterAccount(), master, &setTrustlineFlags)
 
 	// make sure it was cleared
-	accountDetails, err = itest.Client().AccountDetail(horizonclient.AccountRequest{
-		AccountID: accountKeyPair.Address(),
-	})
-	tt.NoError(err)
+	accountDetails = itest.MustGetAccount(accountKeyPair)
 	if tt.Len(accountDetails.Balances, 2) {
 		pts := accountDetails.Balances[0]
 		tt.Equal("PTS", pts.Code)
@@ -338,12 +317,14 @@ func TestHappySetTrustLineFlags(t *testing.T) {
 			txnbuild.TrustLineClawbackEnabled,
 		},
 	}
-	_, err = itest.SubmitOperations(itest.MasterAccount(), master, &setTrustlineFlags)
+	_, err := itest.SubmitOperations(itest.MasterAccount(), master, &setTrustlineFlags)
 	if tt.Error(err) {
 		clientErr, ok := err.(*horizonclient.Error)
 		if tt.True(ok) {
 			tt.Equal(400, clientErr.Problem.Status)
-			tt.Equal(codes.OpMalformed, clientErr.Problem.Extras["result_codes"].(map[string]interface{})["operations"].([]interface{})[0].(string))
+			resCodes, err := clientErr.ResultCodes()
+			tt.NoError(err)
+			tt.Equal(codes.OpMalformed, resCodes.OperationCodes[0])
 		}
 
 	}
