@@ -8,6 +8,7 @@ import (
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/protocols/horizon/effects"
 	"github.com/stellar/go/protocols/horizon/operations"
+	"github.com/stellar/go/services/horizon/internal/codes"
 	"github.com/stellar/go/services/horizon/internal/test/integration"
 	"github.com/stellar/go/txnbuild"
 )
@@ -62,10 +63,7 @@ func TestHappyClawback(t *testing.T) {
 
 	// Make sure the clawback flag was set
 
-	accountDetails, err := itest.Client().AccountDetail(horizonclient.AccountRequest{
-		AccountID: master.Address(),
-	})
-	tt.NoError(err)
+	accountDetails := itest.MustGetAccount(master)
 	tt.True(accountDetails.Flags.AuthClawbackEnabled)
 
 	// Create another account from which to claw an asset back
@@ -86,10 +84,7 @@ func TestHappyClawback(t *testing.T) {
 	}
 	itest.MustSubmitOperations(itest.MasterAccount(), master, &pesetasPayment)
 
-	accountDetails, err = itest.Client().AccountDetail(horizonclient.AccountRequest{
-		AccountID: accountKeyPair.Address(),
-	})
-	tt.NoError(err)
+	accountDetails = itest.MustGetAccount(accountKeyPair)
 	if tt.Len(accountDetails.Balances, 2) {
 		pts := accountDetails.Balances[0]
 		tt.Equal("PTS", pts.Code)
@@ -108,10 +103,7 @@ func TestHappyClawback(t *testing.T) {
 	submissionResp := itest.MustSubmitOperations(itest.MasterAccount(), master, &pesetasClawback)
 
 	// Check that the balance was clawed back (the account's balance should be at 0)
-	accountDetails, err = itest.Client().AccountDetail(horizonclient.AccountRequest{
-		AccountID: accountKeyPair.Address(),
-	})
-	tt.NoError(err)
+	accountDetails = itest.MustGetAccount(accountKeyPair)
 	if tt.Len(accountDetails.Balances, 2) {
 		pts := accountDetails.Balances[0]
 		tt.Equal("PTS", pts.Code)
@@ -177,9 +169,7 @@ func TestHappyClawbackClaimableBalance(t *testing.T) {
 	itest.MustSubmitOperations(itest.MasterAccount(), master, &setClawBackFlag)
 
 	// Make sure the clawback flag was set
-	accountDetails, err := itest.Client().AccountDetail(horizonclient.AccountRequest{
-		AccountID: master.Address(),
-	})
+	accountDetails := itest.MustGetAccount(master)
 	tt.True(accountDetails.Flags.AuthClawbackEnabled)
 
 	// Create another account as a claimable balance claimant
@@ -255,4 +245,88 @@ func TestHappyClawbackClaimableBalance(t *testing.T) {
 		tt.Equal(cbID, cbSponsorshipRemoved.BalanceID)
 		tt.Equal(master.Address(), cbSponsorshipRemoved.FormerSponsor)
 	}
+}
+
+func TestHappySetTrustLineFlags(t *testing.T) {
+	tt := assert.New(t)
+	itest := integration.NewTest(t, protocol16Config)
+	master := itest.Master()
+
+	// Give the master account the revocable flag (needed to set the clawback flag)
+	setRevocableFlag := txnbuild.SetOptions{
+		SetFlags: []txnbuild.AccountFlag{
+			txnbuild.AuthRevocable,
+		},
+	}
+
+	itest.MustSubmitOperations(itest.MasterAccount(), master, &setRevocableFlag)
+
+	// Give the master account the clawback flag
+	setClawBackFlag := txnbuild.SetOptions{
+		SetFlags: []txnbuild.AccountFlag{
+			txnbuild.AuthClawbackEnabled,
+		},
+	}
+	itest.MustSubmitOperations(itest.MasterAccount(), master, &setClawBackFlag)
+
+	// Make sure the clawback flag was set
+	accountDetails := itest.MustGetAccount(master)
+	tt.True(accountDetails.Flags.AuthClawbackEnabled)
+
+	// Create another account fot the Trustline
+	keyPairs, accounts := itest.CreateAccounts(1, "100")
+	accountKeyPair := keyPairs[0]
+	account := accounts[0]
+
+	// Time machine to Spain before Euros were a thing
+	pesetasAsset := txnbuild.CreditAsset{Code: "PTS", Issuer: master.Address()}
+	itest.MustEstablishTrustline(accountKeyPair, account, pesetasAsset)
+	// Confirm that the Trustline has the clawback flag
+	accountDetails = itest.MustGetAccount(accountKeyPair)
+	if tt.Len(accountDetails.Balances, 2) {
+		pts := accountDetails.Balances[0]
+		tt.Equal("PTS", pts.Code)
+		if tt.NotNil(pts.IsClawbackEnabled) {
+			tt.True(*pts.IsClawbackEnabled)
+		}
+	}
+
+	// Clear the clawback flag
+	setTrustlineFlags := txnbuild.SetTrustLineFlags{
+		Trustor: accountKeyPair.Address(),
+		Asset:   pesetasAsset,
+		ClearFlags: []txnbuild.TrustLineFlag{
+			txnbuild.TrustLineClawbackEnabled,
+		},
+	}
+	itest.MustSubmitOperations(itest.MasterAccount(), master, &setTrustlineFlags)
+
+	// make sure it was cleared
+	accountDetails = itest.MustGetAccount(accountKeyPair)
+	if tt.Len(accountDetails.Balances, 2) {
+		pts := accountDetails.Balances[0]
+		tt.Equal("PTS", pts.Code)
+		tt.Nil(pts.IsClawbackEnabled)
+	}
+
+	// Try to set the clawback flag (we shouldn't be able to)
+	setTrustlineFlags = txnbuild.SetTrustLineFlags{
+		Trustor: accountKeyPair.Address(),
+		Asset:   pesetasAsset,
+		SetFlags: []txnbuild.TrustLineFlag{
+			txnbuild.TrustLineClawbackEnabled,
+		},
+	}
+	_, err := itest.SubmitOperations(itest.MasterAccount(), master, &setTrustlineFlags)
+	if tt.Error(err) {
+		clientErr, ok := err.(*horizonclient.Error)
+		if tt.True(ok) {
+			tt.Equal(400, clientErr.Problem.Status)
+			resCodes, err := clientErr.ResultCodes()
+			tt.NoError(err)
+			tt.Equal(codes.OpMalformed, resCodes.OperationCodes[0])
+		}
+
+	}
+
 }
