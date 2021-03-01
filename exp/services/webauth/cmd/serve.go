@@ -52,6 +52,13 @@ func (c *ServeCommand) Command() *cobra.Command {
 			Required:  true,
 		},
 		{
+			Name:      "domain",
+			Usage:     "Domain that this this service is hosted at",
+			OptType:   types.String,
+			ConfigKey: &opts.Domain,
+			Required:  true,
+		},
+		{
 			Name:      "auth-home-domain",
 			Usage:     "Home domain(s) of the service(s) requiring SEP-10 authentication comma separated (first domain is the default domain)",
 			OptType:   types.String,

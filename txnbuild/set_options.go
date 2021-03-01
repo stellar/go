@@ -60,7 +60,7 @@ type SetOptions struct {
 	HomeDomain           *string
 	Signer               *Signer
 	xdrOp                xdr.SetOptionsOp
-	SourceAccount        Account
+	SourceAccount        string
 }
 
 // BuildXDR for SetOptions returns a fully configured XDR Operation.
@@ -318,8 +318,8 @@ func (so *SetOptions) Validate() error {
 	return nil
 }
 
-// GetSourceAccount returns the source account of the operation, or nil if not
+// GetSourceAccount returns the source account of the operation, or the empty string if not
 // set.
-func (so *SetOptions) GetSourceAccount() Account {
+func (so *SetOptions) GetSourceAccount() string {
 	return so.SourceAccount
 }

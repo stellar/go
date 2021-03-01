@@ -2,6 +2,11 @@ package txnbuild
 
 import (
 	"testing"
+	"time"
+
+	"github.com/stellar/go/keypair"
+	"github.com/stellar/go/network"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestCreateClaimableBalanceRoundTrip(t *testing.T) {
@@ -30,4 +35,46 @@ func TestCreateClaimableBalanceRoundTrip(t *testing.T) {
 	}
 
 	roundTrip(t, []Operation{createNativeBalance, createAssetBalance})
+}
+
+func TestClaimableBalanceID(t *testing.T) {
+	A := "SCZANGBA5YHTNYVVV4C3U252E2B6P6F5T3U6MM63WBSBZATAQI3EBTQ4"
+	B := "GA2C5RFPE6GCKMY3US5PAB6UZLKIGSPIUKSLRB6Q723BM2OARMDUYEJ5"
+
+	aKeys := keypair.MustParseFull(A)
+	aAccount := SimpleAccount{AccountID: aKeys.Address(), Sequence: 123}
+
+	soon := time.Now().Add(time.Second * 60)
+	bCanClaim := BeforeRelativeTimePredicate(60)
+	aCanReclaim := NotPredicate(BeforeAbsoluteTimePredicate(soon.Unix()))
+
+	claimants := []Claimant{
+		NewClaimant(B, &bCanClaim),
+		NewClaimant(aKeys.Address(), &aCanReclaim),
+	}
+
+	claimableBalanceEntry := CreateClaimableBalance{
+		Destinations:  claimants,
+		Asset:         NativeAsset{},
+		Amount:        "420",
+		SourceAccount: "GB56OJGSA6VHEUFZDX6AL2YDVG2TS5JDZYQJHDYHBDH7PCD5NIQKLSDO",
+	}
+
+	// Build and sign the transaction
+	tx, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &aAccount,
+			IncrementSequenceNum: true,
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(),
+			Operations:           []Operation{&claimableBalanceEntry},
+		},
+	)
+	assert.NoError(t, err)
+	tx, err = tx.Sign(network.TestNetworkPassphrase, aKeys)
+	assert.NoError(t, err)
+
+	balanceId, err := tx.ClaimableBalanceID(0)
+	assert.NoError(t, err)
+	assert.Equal(t, "0000000095001252ab3b4d16adbfa5364ce526dfcda03cb2258b827edbb2e0450087be51", balanceId)
 }

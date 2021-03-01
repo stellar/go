@@ -10,7 +10,7 @@ import (
 type ManageData struct {
 	Name          string
 	Value         []byte
-	SourceAccount Account
+	SourceAccount string
 }
 
 // BuildXDR for ManageData returns a fully configured XDR Operation.
@@ -65,8 +65,8 @@ func (md *ManageData) Validate() error {
 	return nil
 }
 
-// GetSourceAccount returns the source account of the operation, or nil if not
+// GetSourceAccount returns the source account of the operation, or the empty string if not
 // set.
-func (md *ManageData) GetSourceAccount() Account {
+func (md *ManageData) GetSourceAccount() string {
 	return md.SourceAccount
 }

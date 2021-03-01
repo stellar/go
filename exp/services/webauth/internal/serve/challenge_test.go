@@ -26,6 +26,7 @@ func TestChallenge(t *testing.T) {
 		NetworkPassphrase:  network.TestNetworkPassphrase,
 		SigningKey:         serverKey,
 		ChallengeExpiresIn: time.Minute,
+		Domain:             "webauthdomain",
 		HomeDomains:        []string{"testdomain"},
 	}
 
@@ -53,11 +54,16 @@ func TestChallenge(t *testing.T) {
 	assert.Equal(t, serverKey.Address(), sourceAccount.Address())
 	assert.Equal(t, tx.SeqNum(), int64(0))
 	assert.Equal(t, time.Unix(int64(tx.TimeBounds().MaxTime), 0).Sub(time.Unix(int64(tx.TimeBounds().MinTime), 0)), time.Minute)
-	assert.Len(t, tx.Operations(), 1)
-	opSourceAccount := tx.Operations()[0].SourceAccount.ToAccountId()
-	assert.Equal(t, account.Address(), opSourceAccount.Address())
+	assert.Len(t, tx.Operations(), 2)
+	op0SourceAccount := tx.Operations()[0].SourceAccount.ToAccountId()
+	assert.Equal(t, account.Address(), op0SourceAccount.Address())
 	assert.Equal(t, xdr.OperationTypeManageData, tx.Operations()[0].Body.Type)
 	assert.Regexp(t, "^testdomain auth", tx.Operations()[0].Body.ManageDataOp.DataName)
+	op1SourceAccount := tx.Operations()[1].SourceAccount.ToAccountId()
+	assert.Equal(t, sourceAccount.Address(), op1SourceAccount.Address())
+	assert.Equal(t, xdr.OperationTypeManageData, tx.Operations()[1].Body.Type)
+	assert.Equal(t, "web_auth_domain", string(tx.Operations()[1].Body.ManageDataOp.DataName))
+	assert.Equal(t, "webauthdomain", string(*tx.Operations()[1].Body.ManageDataOp.DataValue))
 
 	hash, err := network.HashTransactionInEnvelope(tx, res.NetworkPassphrase)
 	require.NoError(t, err)
@@ -76,6 +82,7 @@ func TestChallenge_anotherHomeDomain(t *testing.T) {
 		NetworkPassphrase:  network.TestNetworkPassphrase,
 		SigningKey:         serverKey,
 		ChallengeExpiresIn: time.Minute,
+		Domain:             "webauthdomain",
 		HomeDomains:        []string{"testdomain", anotherDomain},
 	}
 
@@ -103,11 +110,16 @@ func TestChallenge_anotherHomeDomain(t *testing.T) {
 	assert.Equal(t, serverKey.Address(), sourceAccount.Address())
 	assert.Equal(t, tx.SeqNum(), int64(0))
 	assert.Equal(t, time.Unix(int64(tx.TimeBounds().MaxTime), 0).Sub(time.Unix(int64(tx.TimeBounds().MinTime), 0)), time.Minute)
-	assert.Len(t, tx.Operations(), 1)
-	opSourceAccount := tx.Operations()[0].SourceAccount.ToAccountId()
-	assert.Equal(t, account.Address(), opSourceAccount.Address())
+	assert.Len(t, tx.Operations(), 2)
+	op0SourceAccount := tx.Operations()[0].SourceAccount.ToAccountId()
+	assert.Equal(t, account.Address(), op0SourceAccount.Address())
 	assert.Equal(t, xdr.OperationTypeManageData, tx.Operations()[0].Body.Type)
 	assert.Regexp(t, "^anotherdomain auth", tx.Operations()[0].Body.ManageDataOp.DataName)
+	op1SourceAccount := tx.Operations()[1].SourceAccount.ToAccountId()
+	assert.Equal(t, sourceAccount.Address(), op1SourceAccount.Address())
+	assert.Equal(t, xdr.OperationTypeManageData, tx.Operations()[1].Body.Type)
+	assert.Equal(t, "web_auth_domain", string(tx.Operations()[1].Body.ManageDataOp.DataName))
+	assert.Equal(t, "webauthdomain", string(*tx.Operations()[1].Body.ManageDataOp.DataValue))
 
 	hash, err := network.HashTransactionInEnvelope(tx, res.NetworkPassphrase)
 	require.NoError(t, err)

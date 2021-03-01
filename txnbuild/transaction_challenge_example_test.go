@@ -37,7 +37,7 @@ func ExampleVerifyChallengeTxThreshold() {
 	// Server builds challenge transaction
 	var challengeTx string
 	{
-		tx, err := txnbuild.BuildChallengeTx(serverAccount.Seed(), clientAccount.Address(), "test", network.TestNetworkPassphrase, time.Minute)
+		tx, err := txnbuild.BuildChallengeTx(serverAccount.Seed(), clientAccount.Address(), "webauthdomain.stellar.org", "test", network.TestNetworkPassphrase, time.Minute)
 		if err != nil {
 			fmt.Println("Error:", err)
 			return
@@ -52,7 +52,7 @@ func ExampleVerifyChallengeTxThreshold() {
 	// Client reads and signs challenge transaction
 	var signedChallengeTx string
 	{
-		tx, txClientAccountID, _, err := txnbuild.ReadChallengeTx(challengeTx, serverAccount.Address(), network.TestNetworkPassphrase, []string{"test"})
+		tx, txClientAccountID, _, err := txnbuild.ReadChallengeTx(challengeTx, serverAccount.Address(), network.TestNetworkPassphrase, "webauthdomain.stellar.org", []string{"test"})
 		if err != nil {
 			fmt.Println("Error:", err)
 			return
@@ -75,7 +75,7 @@ func ExampleVerifyChallengeTxThreshold() {
 
 	// Server verifies signed challenge transaction
 	{
-		_, txClientAccountID, _, err := txnbuild.ReadChallengeTx(challengeTx, serverAccount.Address(), network.TestNetworkPassphrase, []string{"test"})
+		_, txClientAccountID, _, err := txnbuild.ReadChallengeTx(challengeTx, serverAccount.Address(), network.TestNetworkPassphrase, "webauthdomain.stellar.org", []string{"test"})
 		if err != nil {
 			fmt.Println("Error:", err)
 			return
@@ -102,7 +102,7 @@ func ExampleVerifyChallengeTxThreshold() {
 			threshold := txnbuild.Threshold(horizonClientAccount.Thresholds.MedThreshold)
 
 			// Server verifies threshold is met
-			signers, err := txnbuild.VerifyChallengeTxThreshold(signedChallengeTx, serverAccount.Address(), network.TestNetworkPassphrase, []string{"test"}, threshold, signerSummary)
+			signers, err := txnbuild.VerifyChallengeTxThreshold(signedChallengeTx, serverAccount.Address(), network.TestNetworkPassphrase, "webauthdomain.stellar.org", []string{"test"}, threshold, signerSummary)
 			if err != nil {
 				fmt.Println("Error:", err)
 				return
@@ -114,7 +114,7 @@ func ExampleVerifyChallengeTxThreshold() {
 			}
 		} else {
 			// Server verifies that master key has signed challenge transaction
-			signersFound, err := txnbuild.VerifyChallengeTxSigners(signedChallengeTx, serverAccount.Address(), network.TestNetworkPassphrase, []string{"test"}, txClientAccountID)
+			signersFound, err := txnbuild.VerifyChallengeTxSigners(signedChallengeTx, serverAccount.Address(), network.TestNetworkPassphrase, "webauthdomain.stellar.org", []string{"test"}, txClientAccountID)
 			if err != nil {
 				fmt.Println("Error:", err)
 				return

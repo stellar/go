@@ -19,6 +19,8 @@ replacement: https://developers.stellar.org/docs/horizon-captive-core/
 
 Starting with version v1.6.0, Horizon allows using Stellar-Core in captive mode. Core's captive mode is enabled by default since Horizon 2.0.
 
+> Please note that Horizon team is going to support the previous non-captive mode for 6 months. To use the previous method set `ENABLE_CAPTIVE_CORE_INGESTION=false` in your ingesting instances. After 6 months, this feature flag will be removed.
+
 When Captive Core mode is disabled, this is how Horizon interacts with Core:
 
 ![Horizon without Captive Core](HorizonWithoutCaptiveCore.png)

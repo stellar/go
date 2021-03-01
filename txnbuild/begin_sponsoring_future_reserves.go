@@ -11,7 +11,7 @@ import (
 // https://www.stellar.org/developers/guides/concepts/list-of-operations.html
 type BeginSponsoringFutureReserves struct {
 	SponsoredID   string
-	SourceAccount Account
+	SourceAccount string
 }
 
 // BuildXDR for BeginSponsoringFutureReserves returns a fully configured XDR Operation.
@@ -54,8 +54,8 @@ func (bs *BeginSponsoringFutureReserves) Validate() error {
 	return nil
 }
 
-// GetSourceAccount returns the source account of the operation, or nil if not
+// GetSourceAccount returns the source account of the operation, or the empty string if not
 // set.
-func (bs *BeginSponsoringFutureReserves) GetSourceAccount() Account {
+func (bs *BeginSponsoringFutureReserves) GetSourceAccount() string {
 	return bs.SourceAccount
 }

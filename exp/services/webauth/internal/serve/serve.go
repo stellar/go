@@ -22,6 +22,7 @@ type Options struct {
 	Port                        int
 	NetworkPassphrase           string
 	SigningKeys                 string
+	Domain                      string
 	AuthHomeDomains             string
 	ChallengeExpiresIn          time.Duration
 	JWK                         string
@@ -100,6 +101,7 @@ func handler(opts Options) (http.Handler, error) {
 		NetworkPassphrase:  opts.NetworkPassphrase,
 		SigningKey:         signingKeys[0],
 		ChallengeExpiresIn: opts.ChallengeExpiresIn,
+		Domain:             opts.Domain,
 		HomeDomains:        trimmedHomeDomains,
 	}.ServeHTTP)
 	mux.Post("/", tokenHandler{
@@ -111,6 +113,7 @@ func handler(opts Options) (http.Handler, error) {
 		JWTIssuer:                   opts.JWTIssuer,
 		JWTExpiresIn:                opts.JWTExpiresIn,
 		AllowAccountsThatDoNotExist: opts.AllowAccountsThatDoNotExist,
+		Domain:                      opts.Domain,
 		HomeDomains:                 trimmedHomeDomains,
 	}.ServeHTTP)
 

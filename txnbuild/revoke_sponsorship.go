@@ -23,7 +23,7 @@ const (
 // SponsorshipType stablishes which sponsorship is being revoked.
 // The other fields should be ignored.
 type RevokeSponsorship struct {
-	SourceAccount   Account
+	SourceAccount   string
 	SponsorshipType RevokeSponsorshipType
 	// Account ID (strkey)
 	Account   *string
@@ -278,6 +278,6 @@ func (r *RevokeSponsorship) Validate() error {
 	return nil
 }
 
-func (r *RevokeSponsorship) GetSourceAccount() Account {
+func (r *RevokeSponsorship) GetSourceAccount() string {
 	return r.SourceAccount
 }
