@@ -50,7 +50,7 @@ func mustInitHorizonDB(app *App) {
 	)}
 }
 
-func initExpIngester(app *App) {
+func initIngester(app *App) {
 	var err error
 	var coreSession *db.Session
 	if !app.config.EnableCaptiveCoreIngestion {
@@ -180,6 +180,21 @@ func initDbMetrics(app *App) {
 	)
 	app.prometheusRegistry.MustRegister(app.coreLatestLedgerCounter)
 
+	app.coreSynced = prometheus.NewGaugeFunc(
+		prometheus.GaugeOpts{
+			Namespace: "horizon", Subsystem: "stellar_core", Name: "synced",
+			Help: "determines if Stellar-Core defined by --stellar-core-url is synced with the network",
+		},
+		func() float64 {
+			if app.coreSettings.Synced {
+				return 1
+			} else {
+				return 0
+			}
+		},
+	)
+	app.prometheusRegistry.MustRegister(app.coreSynced)
+
 	app.dbMaxOpenConnectionsGauge = prometheus.NewGaugeFunc(
 		prometheus.GaugeOpts{Namespace: "horizon", Subsystem: "db", Name: "max_open_connections"},
 		func() float64 {
@@ -255,11 +270,13 @@ func initIngestMetrics(app *App) {
 	}
 
 	app.ingestingGauge.Inc()
+	app.prometheusRegistry.MustRegister(app.ingester.Metrics().LocalLatestLedger)
 	app.prometheusRegistry.MustRegister(app.ingester.Metrics().LedgerIngestionDuration)
 	app.prometheusRegistry.MustRegister(app.ingester.Metrics().StateVerifyDuration)
 	app.prometheusRegistry.MustRegister(app.ingester.Metrics().StateInvalidGauge)
 	app.prometheusRegistry.MustRegister(app.ingester.Metrics().LedgerStatsCounter)
 	app.prometheusRegistry.MustRegister(app.ingester.Metrics().ProcessorsRunDuration)
+	app.prometheusRegistry.MustRegister(app.ingester.Metrics().CaptiveStellarCoreSynced)
 }
 
 func initTxSubMetrics(app *App) {

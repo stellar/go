@@ -104,7 +104,7 @@ func TestProtocol14StateVerifier(t *testing.T) {
 	}
 
 	// Trigger state rebuild to check if ingesting from history archive works
-	err = itest.Horizon().HistoryQ().UpdateExpIngestVersion(0)
+	err = itest.Horizon().HistoryQ().UpdateIngestVersion(0)
 	assert.NoError(t, err)
 
 	verified = waitForStateVerifications(itest, 2)

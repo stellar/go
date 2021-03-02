@@ -18,11 +18,11 @@ const (
 	offerCompactionSequence = "offer_compaction_sequence"
 )
 
-// GetLastLedgerExpIngestNonBlocking works like GetLastLedgerExpIngest but
+// GetLastLedgerIngestNonBlocking works like GetLastLedgerIngest but
 // it does not block the value and does not return error if the value
 // has not been previously set.
 // This is used in status reporting (ex. in root resource of Horizon).
-func (q *Q) GetLastLedgerExpIngestNonBlocking() (uint32, error) {
+func (q *Q) GetLastLedgerIngestNonBlocking() (uint32, error) {
 	lastIngestedLedger, err := q.getValueFromStore(lastLedgerKey, false)
 	if err != nil {
 		return 0, err
@@ -40,13 +40,13 @@ func (q *Q) GetLastLedgerExpIngestNonBlocking() (uint32, error) {
 	}
 }
 
-// GetLastLedgerExpIngest returns the last ledger ingested by ingest system
+// GetLastLedgerIngest returns the last ledger ingested by ingest system
 // in Horizon. Returns ErrKeyNotFound error if no value has been previously set.
 // This is using `SELECT ... FOR UPDATE` what means it's blocking the row for all other
 // transactions.This behaviour is critical in distributed ingestion so do not change
 // it unless you know what you are doing.
-// The value can be set using UpdateLastLedgerExpIngest.
-func (q *Q) GetLastLedgerExpIngest() (uint32, error) {
+// The value can be set using UpdateLastLedgerIngest.
+func (q *Q) GetLastLedgerIngest() (uint32, error) {
 	lastIngestedLedger, err := q.getValueFromStore(lastLedgerKey, true)
 	if err != nil {
 		return 0, err
@@ -66,18 +66,18 @@ func (q *Q) GetLastLedgerExpIngest() (uint32, error) {
 	}
 }
 
-// UpdateLastLedgerExpIngest updates the last ledger ingested by ingest system.
+// UpdateLastLedgerIngest updates the last ledger ingested by ingest system.
 // Can be read using GetLastLedgerExpIngest.
-func (q *Q) UpdateLastLedgerExpIngest(ledgerSequence uint32) error {
+func (q *Q) UpdateLastLedgerIngest(ledgerSequence uint32) error {
 	return q.updateValueInStore(
 		lastLedgerKey,
 		strconv.FormatUint(uint64(ledgerSequence), 10),
 	)
 }
 
-// GetExpIngestVersion returns the exp ingest version. Returns zero
+// GetIngestVersion returns the ingestion version. Returns zero
 // if there is no value.
-func (q *Q) GetExpIngestVersion() (int, error) {
+func (q *Q) GetIngestVersion() (int, error) {
 	expVersion, err := q.getValueFromStore(ingestVersion, false)
 	if err != nil {
 		return 0, err
@@ -95,8 +95,8 @@ func (q *Q) GetExpIngestVersion() (int, error) {
 	}
 }
 
-// UpdateExpIngestVersion updates the exp ingest version.
-func (q *Q) UpdateExpIngestVersion(version int) error {
+// UpdateIngestVersion updates the ingestion version.
+func (q *Q) UpdateIngestVersion(version int) error {
 	return q.updateValueInStore(
 		ingestVersion,
 		strconv.FormatUint(uint64(version), 10),

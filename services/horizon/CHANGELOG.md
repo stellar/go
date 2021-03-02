@@ -5,6 +5,45 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+## v2.0.0
+
+### Before you upgrade
+
+Please read the [Captive Core](https://github.com/stellar/go/blob/master/services/horizon/internal/docs/captive_core.md) doc which contains new requirements and migration guide.
+
+### Captive Stellar-Core
+
+Introducing the stable release with Captive Stellar-Core mode enabled by default. Captive mode relaxes Horizon's operational requirements. It allows running Horizon without a fully fledged Core instance and, most importantly, without a Core database. More information about this new mode can be found in [Captive Core](https://github.com/stellar/go/blob/master/services/horizon/internal/docs/captive_core.md) doc.
+
+If you run into issues please check [Known Issues](https://github.com/stellar/go/blob/master/services/horizon/internal/docs/captive_core.md#known-issues) or [report an issue](https://github.com/stellar/go/issues/new/choose). Please ask questions in [Keybase](https://keybase.io/team/stellar.public) or [Stack Exchange](https://stellar.stackexchange.com/).
+
+### Breaking changes
+
+* There are new config params (below) required by Captive Stellar-Core. Please check the [Captive Core](https://github.com/stellar/go/blob/master/services/horizon/internal/docs/captive_core.md) guide for migration tips.
+  * `STELLAR_CORE_BINARY_PATH` - a path to Stellar-Core binary,
+  * `CAPTIVE_CORE_CONFIG_APPEND_PATH` - defines a path to a file to append to the Stellar Core configuration file used by captive core.
+* The `expingest` command has been renamed to `ingest` since the ingestion system is not experimental anymore.
+* Removed `--rate-limit-redis-key` and `--redis-url` configuration flags.
+
+## v2.0.0 Release Candidate
+
+**This is a release candidate: while SDF is confident that there are no critical bugs and release candidate is safe to use in production we encourage organizations to deploy it to production only after org-specific testing.**
+
+### Before you upgrade
+
+Please read the [Captive Core](https://github.com/stellar/go/blob/release-horizon-v2.0.0-beta/services/horizon/internal/docs/captive_core.md) doc which contains new requirements and migration guide.
+
+### Captive Stellar-Core
+
+Introducing the release candidate with Captive Stellar-Core mode enabled by default. Captive mode relaxes Horizon's operational requirements. It allows running Horizon without a fully fledged Core instance and, most importantly, without a Core database. More information about this new mode can be found in [Captive Core](https://github.com/stellar/go/blob/release-horizon-v2.0.0-beta/services/horizon/internal/docs/captive_core.md) doc.
+
+If you run into issues please check [Known Issues](https://github.com/stellar/go/blob/release-horizon-v2.0.0-beta/services/horizon/internal/docs/captive_core.md#known-issues) or [report an issue](https://github.com/stellar/go/issues/new/choose). Please ask questions in [Keybase](https://keybase.io/team/stellar.public) or [Stack Exchange](https://stellar.stackexchange.com/).
+
+### Breaking changes
+
+* The `expingest` command has been renamed to `ingest` since the ingestion system is not experimental anymore.
+* Removed `--rate-limit-redis-key` and `--redis-url` configuration flags.
+
 ## v1.14.0
 
 * Fix bug `/fee_stats` endpoint. The endpoint was not including the additional base fee charge for fee bump transactions ([#3354](https://github.com/stellar/go/pull/3354))
@@ -50,7 +89,7 @@ This version may contain bugs. If you run into issues please check [Known Issues
 
 ## v1.11.0
 
-* The `service` field emitted in ingestion logs has been changed from `expingest` to  `ingest` ([#3118](https://github.com/stellar/go/pull/3118)).
+* The `service` field emitted in ingestion logs has been changed from `expingest` to `ingest` ([#3118](https://github.com/stellar/go/pull/3118)).
 * Ledger stats are now exported in `/metrics` in `horizon_ingest_ledger_stats_total` metric ([#3148](https://github.com/stellar/go/pull/3148)).
 * Stellar Core database URL is no longer required when running in captive mode ([#3150](https://github.com/stellar/go/pull/3150)).
 * xdr: Add a custom marshaller for claim predicate timestamp  ([#3183](https://github.com/stellar/go/pull/3183)).
