@@ -1,4 +1,8 @@
 #!/bin/bash
+set -e
+
+apt-get clean && apt-get update && apt-get install -y stellar-horizon=$PACKAGE_VERSION
+
 mkdir released
 cd released
 
@@ -20,8 +24,6 @@ git checkout $TAG
 CIRCLE_TAG=$TAG go run -v ./support/scripts/build_release_artifacts -keep
 
 suffixes=(darwin-amd64 linux-amd64 linux-arm windows-amd64)
-
-apt-get update && apt-get install -y stellar-horizon
 
 for S in "${suffixes[@]}"
 do
