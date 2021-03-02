@@ -35,9 +35,9 @@ func TestPaymentActions(t *testing.T) {
 	// Makes StateMiddleware happy
 	initializeStateMiddleware := func() {
 		q := history.Q{ht.HorizonSession()}
-		err := q.UpdateLastLedgerExpIngest(3)
+		err := q.UpdateLastLedgerIngest(3)
 		ht.Assert.NoError(err)
-		err = q.UpdateExpIngestVersion(ingest.CurrentVersion)
+		err = q.UpdateIngestVersion(ingest.CurrentVersion)
 		ht.Assert.NoError(err)
 	}
 	initializeStateMiddleware()

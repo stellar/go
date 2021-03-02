@@ -51,7 +51,7 @@ func (t *IngestionStatusTestSuite) TestGetLatestLedgerError() {
 	t.Assert().EqualError(err, "Error from GetLatestLedger: latest ledger error")
 }
 
-func (t *IngestionStatusTestSuite) TestGetLastLedgerExpIngestNonBlockingError() {
+func (t *IngestionStatusTestSuite) TestGetLastLedgerIngestNonBlockingError() {
 	t.historyQ.On("GetExpStateInvalid").
 		Return(false, nil).
 		Once()
@@ -60,12 +60,12 @@ func (t *IngestionStatusTestSuite) TestGetLastLedgerExpIngestNonBlockingError() 
 		Return(uint32(200), nil).
 		Once()
 
-	t.historyQ.On("GetLastLedgerExpIngestNonBlocking").
-		Return(uint32(0), fmt.Errorf("exp ingest error")).
+	t.historyQ.On("GetLastLedgerIngestNonBlocking").
+		Return(uint32(0), fmt.Errorf("ingest error")).
 		Once()
 
 	_, err := t.stream.getIngestionStatus()
-	t.Assert().EqualError(err, "Error from GetLastLedgerExpIngestNonBlocking: exp ingest error")
+	t.Assert().EqualError(err, "Error from GetLastLedgerIngestNonBlocking: ingest error")
 }
 
 func (t *IngestionStatusTestSuite) TestGetOfferCompactionSequenceError() {
@@ -77,7 +77,7 @@ func (t *IngestionStatusTestSuite) TestGetOfferCompactionSequenceError() {
 		Return(uint32(200), nil).
 		Once()
 
-	t.historyQ.On("GetLastLedgerExpIngestNonBlocking").
+	t.historyQ.On("GetLastLedgerIngestNonBlocking").
 		Return(uint32(200), nil).
 		Once()
 
@@ -98,7 +98,7 @@ func (t *IngestionStatusTestSuite) TestStateInvalid() {
 		Return(uint32(200), nil).
 		Once()
 
-	t.historyQ.On("GetLastLedgerExpIngestNonBlocking").
+	t.historyQ.On("GetLastLedgerIngestNonBlocking").
 		Return(uint32(200), nil).
 		Once()
 
@@ -125,7 +125,7 @@ func (t *IngestionStatusTestSuite) TestHistoryInconsistentWithState() {
 		Return(uint32(200), nil).
 		Once()
 
-	t.historyQ.On("GetLastLedgerExpIngestNonBlocking").
+	t.historyQ.On("GetLastLedgerIngestNonBlocking").
 		Return(uint32(201), nil).
 		Once()
 
@@ -152,7 +152,7 @@ func (t *IngestionStatusTestSuite) TestHistoryLatestLedgerZero() {
 		Return(uint32(0), nil).
 		Once()
 
-	t.historyQ.On("GetLastLedgerExpIngestNonBlocking").
+	t.historyQ.On("GetLastLedgerIngestNonBlocking").
 		Return(uint32(201), nil).
 		Once()
 

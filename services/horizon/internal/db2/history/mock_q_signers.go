@@ -9,17 +9,17 @@ type MockQSigners struct {
 	mock.Mock
 }
 
-func (m *MockQSigners) GetLastLedgerExpIngestNonBlocking() (uint32, error) {
+func (m *MockQSigners) GetLastLedgerIngestNonBlocking() (uint32, error) {
 	a := m.Called()
 	return a.Get(0).(uint32), a.Error(1)
 }
 
-func (m *MockQSigners) GetLastLedgerExpIngest() (uint32, error) {
+func (m *MockQSigners) GetLastLedgerIngest() (uint32, error) {
 	a := m.Called()
 	return a.Get(0).(uint32), a.Error(1)
 }
 
-func (m *MockQSigners) UpdateLastLedgerExpIngest(ledgerSequence uint32) error {
+func (m *MockQSigners) UpdateLastLedgerIngest(ledgerSequence uint32) error {
 	a := m.Called(ledgerSequence)
 	return a.Error(0)
 }

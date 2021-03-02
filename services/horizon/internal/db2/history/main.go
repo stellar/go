@@ -234,13 +234,13 @@ type IngestionQ interface {
 	CloneIngestionQ() IngestionQ
 	Rollback() error
 	GetTx() *sqlx.Tx
-	GetExpIngestVersion() (int, error)
+	GetIngestVersion() (int, error)
 	UpdateExpStateInvalid(bool) error
-	UpdateExpIngestVersion(int) error
+	UpdateIngestVersion(int) error
 	GetExpStateInvalid() (bool, error)
 	GetLatestLedger() (uint32, error)
 	GetOfferCompactionSequence() (uint32, error)
-	TruncateExpingestStateTables() error
+	TruncateIngestStateTables() error
 	DeleteRangeAll(start, end int64) error
 }
 
@@ -538,9 +538,9 @@ type Q struct {
 
 // QSigners defines signer related queries.
 type QSigners interface {
-	GetLastLedgerExpIngestNonBlocking() (uint32, error)
-	GetLastLedgerExpIngest() (uint32, error)
-	UpdateLastLedgerExpIngest(ledgerSequence uint32) error
+	GetLastLedgerIngestNonBlocking() (uint32, error)
+	GetLastLedgerIngest() (uint32, error)
+	UpdateLastLedgerIngest(ledgerSequence uint32) error
 	AccountsForSigner(signer string, page db2.PageQuery) ([]AccountSigner, error)
 	NewAccountSignersBatchInsertBuilder(maxBatchSize int) AccountSignersBatchInsertBuilder
 	CreateAccountSigner(account, signer string, weight int32, sponsor *string) (int64, error)

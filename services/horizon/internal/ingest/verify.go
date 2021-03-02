@@ -69,9 +69,9 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool) error {
 	}
 
 	// Ensure the ledger is a checkpoint ledger
-	ledgerSequence, err := historyQ.GetLastLedgerExpIngestNonBlocking()
+	ledgerSequence, err := historyQ.GetLastLedgerIngestNonBlocking()
 	if err != nil {
-		return errors.Wrap(err, "Error running historyQ.GetLastLedgerExpIngestNonBlocking")
+		return errors.Wrap(err, "Error running historyQ.GetLastLedgerIngestNonBlocking")
 	}
 
 	localLog := log.WithFields(logpkg.F{

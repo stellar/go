@@ -12,8 +12,6 @@ import (
 	"regexp"
 	"strings"
 
-	"time"
-
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
 )
@@ -83,18 +81,22 @@ func binNamesForDir(dir string) []string {
 }
 
 func build(pkg, dest, version, buildOS, buildArch string) {
-	buildTime := time.Now().Format(time.RFC3339)
-
-	timeFlag := fmt.Sprintf("-X github.com/stellar/go/support/app.buildTime=%s", buildTime)
-	versionFlag := fmt.Sprintf("-X github.com/stellar/go/support/app.version=%s", version)
+	// Note: verison string should match other build pipelines to create
+	// reproducible builds for Horizon (and other projects in the future).
+	rev := runOutput("git", "rev-parse", "HEAD")
+	versionString := version[1:] // Remove letter `v`
+	versionFlag := fmt.Sprintf(
+		"-X=github.com/stellar/go/support/app.version=%s-%s",
+		versionString, rev,
+	)
 
 	if buildOS == "windows" {
 		dest = dest + ".exe"
 	}
 
 	cmd := exec.Command("go", "build",
+		"-trimpath",
 		"-o", dest,
-		"-ldflags", fmt.Sprintf("%s %s", timeFlag, versionFlag),
 		pkg,
 	)
 	cmd.Stderr = os.Stderr
@@ -102,6 +104,8 @@ func build(pkg, dest, version, buildOS, buildArch string) {
 
 	cmd.Env = append(
 		os.Environ(),
+		"CGO_ENABLED=0",
+		fmt.Sprintf("GOFLAGS=-ldflags=%s", versionFlag),
 		fmt.Sprintf("GOOS=%s", buildOS),
 		fmt.Sprintf("GOARCH=%s", buildArch),
 	)

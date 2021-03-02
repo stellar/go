@@ -90,9 +90,9 @@ func (s *ResumeTestTestSuite) TestBeginReturnsError() {
 	)
 }
 
-func (s *ResumeTestTestSuite) TestGetLastLedgerExpIngestReturnsError() {
+func (s *ResumeTestTestSuite) TestGetLastLedgerIngestReturnsError() {
 	s.historyQ.On("Begin").Return(nil).Once()
-	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), errors.New("my error")).Once()
+	s.historyQ.On("GetLastLedgerIngest").Return(uint32(0), errors.New("my error")).Once()
 
 	next, err := resumeState{latestSuccessfullyProcessedLedger: 100}.run(s.system)
 	s.Assert().Error(err)
@@ -108,7 +108,7 @@ func (s *ResumeTestTestSuite) TestGetLastLedgerExpIngestReturnsError() {
 
 func (s *ResumeTestTestSuite) TestGetLatestLedgerLessThanCurrent() {
 	s.historyQ.On("Begin").Return(nil).Once()
-	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(99), nil).Once()
+	s.historyQ.On("GetLastLedgerIngest").Return(uint32(99), nil).Once()
 
 	next, err := resumeState{latestSuccessfullyProcessedLedger: 100}.run(s.system)
 	s.Assert().Error(err)
@@ -121,12 +121,12 @@ func (s *ResumeTestTestSuite) TestGetLatestLedgerLessThanCurrent() {
 
 func (s *ResumeTestTestSuite) TestGetIngestionVersionError() {
 	s.historyQ.On("Begin").Return(nil).Once()
-	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(100), nil).Once()
-	s.historyQ.On("GetExpIngestVersion").Return(0, errors.New("my error")).Once()
+	s.historyQ.On("GetLastLedgerIngest").Return(uint32(100), nil).Once()
+	s.historyQ.On("GetIngestVersion").Return(0, errors.New("my error")).Once()
 
 	next, err := resumeState{latestSuccessfullyProcessedLedger: 100}.run(s.system)
 	s.Assert().Error(err)
-	s.Assert().EqualError(err, "Error getting exp ingest version: my error")
+	s.Assert().EqualError(err, "Error getting ingestion version: my error")
 	s.Assert().Equal(
 		transition{
 			node:          resumeState{latestSuccessfullyProcessedLedger: 100},
@@ -138,8 +138,8 @@ func (s *ResumeTestTestSuite) TestGetIngestionVersionError() {
 
 func (s *ResumeTestTestSuite) TestIngestionVersionLessThanCurrentVersion() {
 	s.historyQ.On("Begin").Return(nil).Once()
-	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(100), nil).Once()
-	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion-1, nil).Once()
+	s.historyQ.On("GetLastLedgerIngest").Return(uint32(100), nil).Once()
+	s.historyQ.On("GetIngestVersion").Return(CurrentVersion-1, nil).Once()
 
 	next, err := resumeState{latestSuccessfullyProcessedLedger: 100}.run(s.system)
 	s.Assert().NoError(err)
@@ -151,8 +151,8 @@ func (s *ResumeTestTestSuite) TestIngestionVersionLessThanCurrentVersion() {
 
 func (s *ResumeTestTestSuite) TestIngestionVersionGreaterThanCurrentVersion() {
 	s.historyQ.On("Begin").Return(nil).Once()
-	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(100), nil).Once()
-	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion+1, nil).Once()
+	s.historyQ.On("GetLastLedgerIngest").Return(uint32(100), nil).Once()
+	s.historyQ.On("GetIngestVersion").Return(CurrentVersion+1, nil).Once()
 
 	next, err := resumeState{latestSuccessfullyProcessedLedger: 100}.run(s.system)
 	s.Assert().NoError(err)
@@ -164,8 +164,8 @@ func (s *ResumeTestTestSuite) TestIngestionVersionGreaterThanCurrentVersion() {
 
 func (s *ResumeTestTestSuite) TestGetLatestLedgerError() {
 	s.historyQ.On("Begin").Return(nil).Once()
-	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(100), nil).Once()
-	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion, nil).Once()
+	s.historyQ.On("GetLastLedgerIngest").Return(uint32(100), nil).Once()
+	s.historyQ.On("GetIngestVersion").Return(CurrentVersion, nil).Once()
 	s.historyQ.On("GetLatestLedger").Return(uint32(0), errors.New("my error"))
 
 	next, err := resumeState{latestSuccessfullyProcessedLedger: 100}.run(s.system)
@@ -182,8 +182,8 @@ func (s *ResumeTestTestSuite) TestGetLatestLedgerError() {
 
 func (s *ResumeTestTestSuite) TestLatestHistoryLedgerLessThanIngestLedger() {
 	s.historyQ.On("Begin").Return(nil).Once()
-	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(100), nil).Once()
-	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion, nil).Once()
+	s.historyQ.On("GetLastLedgerIngest").Return(uint32(100), nil).Once()
+	s.historyQ.On("GetIngestVersion").Return(CurrentVersion, nil).Once()
 	s.historyQ.On("GetLatestLedger").Return(uint32(99), nil)
 
 	next, err := resumeState{latestSuccessfullyProcessedLedger: 100}.run(s.system)
@@ -196,8 +196,8 @@ func (s *ResumeTestTestSuite) TestLatestHistoryLedgerLessThanIngestLedger() {
 
 func (s *ResumeTestTestSuite) TestLatestHistoryLedgerGreaterThanIngestLedger() {
 	s.historyQ.On("Begin").Return(nil).Once()
-	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(100), nil).Once()
-	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion, nil).Once()
+	s.historyQ.On("GetLastLedgerIngest").Return(uint32(100), nil).Once()
+	s.historyQ.On("GetIngestVersion").Return(CurrentVersion, nil).Once()
 	s.historyQ.On("GetLatestLedger").Return(uint32(101), nil)
 
 	next, err := resumeState{latestSuccessfullyProcessedLedger: 100}.run(s.system)
@@ -210,8 +210,8 @@ func (s *ResumeTestTestSuite) TestLatestHistoryLedgerGreaterThanIngestLedger() {
 
 func (s *ResumeTestTestSuite) TestRangeNotPreparedFailPrepare() {
 	s.historyQ.On("Begin").Return(nil).Once()
-	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(101), nil).Once()
-	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion, nil).Once()
+	s.historyQ.On("GetLastLedgerIngest").Return(uint32(101), nil).Once()
+	s.historyQ.On("GetIngestVersion").Return(CurrentVersion, nil).Once()
 	s.historyQ.On("GetLatestLedger").Return(uint32(101), nil)
 
 	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(102)).Return(false, nil).Once()
@@ -231,8 +231,8 @@ func (s *ResumeTestTestSuite) TestRangeNotPreparedFailPrepare() {
 
 func (s *ResumeTestTestSuite) TestRangeNotPreparedSuccessPrepare() {
 	s.historyQ.On("Begin").Return(nil).Once()
-	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(101), nil).Once()
-	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion, nil).Once()
+	s.historyQ.On("GetLastLedgerIngest").Return(uint32(101), nil).Once()
+	s.historyQ.On("GetIngestVersion").Return(CurrentVersion, nil).Once()
 	s.historyQ.On("GetLatestLedger").Return(uint32(101), nil)
 
 	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(102)).Return(false, nil).Once()
@@ -251,8 +251,8 @@ func (s *ResumeTestTestSuite) TestRangeNotPreparedSuccessPrepare() {
 
 func (s *ResumeTestTestSuite) TestFastForwardCaptiveCore() {
 	s.historyQ.On("Begin").Return(nil).Once()
-	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(101), nil).Once()
-	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion, nil).Once()
+	s.historyQ.On("GetLastLedgerIngest").Return(uint32(101), nil).Once()
+	s.historyQ.On("GetIngestVersion").Return(CurrentVersion, nil).Once()
 	s.historyQ.On("GetLatestLedger").Return(uint32(101), nil)
 
 	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(102)).Return(true, nil).Once()
@@ -273,8 +273,8 @@ func (s *ResumeTestTestSuite) TestFastForwardCaptiveCore() {
 
 func (s *ResumeTestTestSuite) mockSuccessfulIngestion() {
 	s.historyQ.On("Begin").Return(nil).Once()
-	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(101), nil).Once()
-	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion, nil).Once()
+	s.historyQ.On("GetLastLedgerIngest").Return(uint32(101), nil).Once()
+	s.historyQ.On("GetIngestVersion").Return(CurrentVersion, nil).Once()
 	s.historyQ.On("GetLatestLedger").Return(uint32(101), nil)
 
 	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(102)).Return(true, nil).Once()
@@ -287,7 +287,7 @@ func (s *ResumeTestTestSuite) mockSuccessfulIngestion() {
 		processorsRunDurations{},
 		nil,
 	).Once()
-	s.historyQ.On("UpdateLastLedgerExpIngest", uint32(102)).Return(nil).Once()
+	s.historyQ.On("UpdateLastLedgerIngest", uint32(102)).Return(nil).Once()
 	s.historyQ.On("Commit").Return(nil).Once()
 
 	s.stellarCoreClient.On(
@@ -313,7 +313,7 @@ func (s *ResumeTestTestSuite) TestBumpIngestLedger() {
 	)
 }
 
-func (s *ResumeTestTestSuite) TestBumpIngestLedgerWhenIngestLedgerEqualsLastLedgerExpIngest() {
+func (s *ResumeTestTestSuite) TestBumpIngestLedgerWhenIngestLedgerEqualsLastLedgerIngest() {
 	s.mockSuccessfulIngestion()
 
 	next, err := resumeState{latestSuccessfullyProcessedLedger: 100}.run(s.system)
@@ -343,8 +343,8 @@ func (s *ResumeTestTestSuite) TestIngestAllMasterNode() {
 
 func (s *ResumeTestTestSuite) TestErrorSettingCursorIgnored() {
 	s.historyQ.On("Begin").Return(nil).Once()
-	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(100), nil).Once()
-	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion, nil).Once()
+	s.historyQ.On("GetLastLedgerIngest").Return(uint32(100), nil).Once()
+	s.historyQ.On("GetIngestVersion").Return(CurrentVersion, nil).Once()
 	s.historyQ.On("GetLatestLedger").Return(uint32(0), nil)
 
 	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(101)).Return(true, nil).Once()
@@ -357,7 +357,7 @@ func (s *ResumeTestTestSuite) TestErrorSettingCursorIgnored() {
 		processorsRunDurations{},
 		nil,
 	).Once()
-	s.historyQ.On("UpdateLastLedgerExpIngest", uint32(101)).Return(nil).Once()
+	s.historyQ.On("UpdateLastLedgerIngest", uint32(101)).Return(nil).Once()
 	s.historyQ.On("Commit").Return(nil).Once()
 
 	s.stellarCoreClient.On(
@@ -382,8 +382,8 @@ func (s *ResumeTestTestSuite) TestErrorSettingCursorIgnored() {
 
 func (s *ResumeTestTestSuite) TestNoNewLedgers() {
 	s.historyQ.On("Begin").Return(nil).Once()
-	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(100), nil).Once()
-	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion, nil).Once()
+	s.historyQ.On("GetLastLedgerIngest").Return(uint32(100), nil).Once()
+	s.historyQ.On("GetIngestVersion").Return(CurrentVersion, nil).Once()
 	s.historyQ.On("GetLatestLedger").Return(uint32(0), nil)
 
 	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(101)).Return(true, nil).Once()
@@ -406,8 +406,8 @@ func (s *ResumeTestTestSuite) TestNoNewLedgers() {
 
 func (s *ResumeTestTestSuite) TestFarBehind() {
 	s.historyQ.On("Begin").Return(nil).Once()
-	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(200), nil).Once()
-	s.historyQ.On("GetExpIngestVersion").Return(CurrentVersion, nil).Once()
+	s.historyQ.On("GetLastLedgerIngest").Return(uint32(200), nil).Once()
+	s.historyQ.On("GetIngestVersion").Return(CurrentVersion, nil).Once()
 	s.historyQ.On("GetLatestLedger").Return(uint32(0), nil)
 
 	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(201)).Return(true, nil).Once()

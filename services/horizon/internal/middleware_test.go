@@ -283,8 +283,8 @@ func TestStateMiddleware(t *testing.T) {
 				},
 			}, 0, 0, 0, 0, 0)
 			tt.Assert.NoError(err)
-			tt.Assert.NoError(q.UpdateLastLedgerExpIngest(testCase.lastIngestedLedger))
-			tt.Assert.NoError(q.UpdateExpIngestVersion(testCase.ingestionVersion))
+			tt.Assert.NoError(q.UpdateLastLedgerIngest(testCase.lastIngestedLedger))
+			tt.Assert.NoError(q.UpdateIngestVersion(testCase.ingestionVersion))
 
 			if testCase.sseRequest {
 				request.Header.Set("Accept", "text/event-stream")
