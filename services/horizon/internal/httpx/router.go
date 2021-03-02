@@ -42,6 +42,7 @@ type RouterConfig struct {
 	CoreGetter         actions.CoreSettingsGetter
 	HorizonVersion     string
 	FriendbotURL       *url.URL
+	HealthCheck        http.Handler
 }
 
 type Router struct {
@@ -104,6 +105,8 @@ func (r *Router) addRoutes(config *RouterConfig, rateLimiter *throttled.HTTPRate
 		HorizonSession: config.DBSession,
 	}
 
+	r.Method(http.MethodGet, "/health", config.HealthCheck)
+
 	r.Method(http.MethodGet, "/", ObjectActionHandler{Action: actions.GetRootHandler{
 		LedgerState:        ledgerState,
 		CoreSettingsGetter: config.CoreGetter,
@@ -118,7 +121,6 @@ func (r *Router) addRoutes(config *RouterConfig, rateLimiter *throttled.HTTPRate
 	}
 
 	historyMiddleware := NewHistoryMiddleware(ledgerState, int32(config.StaleThreshold), config.DBSession)
-
 	// State endpoints behind stateMiddleware
 	r.Group(func(r chi.Router) {
 		r.Use(stateMiddleware.Wrap)

@@ -87,3 +87,7 @@ func (m *MockSession) NoRows(err error) bool {
 	args := m.Called(err)
 	return args.Get(0).(bool)
 }
+
+func (m *MockSession) Ping() error {
+	return m.Called().Error(0)
+}
