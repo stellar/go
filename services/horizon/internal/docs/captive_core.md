@@ -1,8 +1,3 @@
----
-title: Using Captive Stellar-Core in Horizon
-replacement: https://developers.stellar.org/docs/horizon-captive-core/
----
-
 ## Using Captive Stellar-Core in Horizon
 
 ### Table of Contents
