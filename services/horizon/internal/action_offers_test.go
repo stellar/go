@@ -16,9 +16,9 @@ func TestOfferActions_Show(t *testing.T) {
 	defer ht.Finish()
 	q := &history.Q{ht.HorizonSession()}
 
-	err := q.UpdateLastLedgerExpIngest(100)
+	err := q.UpdateLastLedgerIngest(100)
 	ht.Assert.NoError(err)
-	err = q.UpdateExpIngestVersion(ingest.CurrentVersion)
+	err = q.UpdateIngestVersion(ingest.CurrentVersion)
 	ht.Assert.NoError(err)
 
 	ledgerCloseTime := time.Now().Unix()

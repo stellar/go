@@ -18,7 +18,7 @@ import (
 )
 
 var ingestCmd = &cobra.Command{
-	Use:   "expingest",
+	Use:   "ingest",
 	Short: "ingestion related commands",
 }
 
@@ -235,7 +235,7 @@ var ingestTriggerStateRebuildCmd = &cobra.Command{
 		}
 
 		historyQ := &history.Q{horizonSession}
-		err = historyQ.UpdateExpIngestVersion(0)
+		err = historyQ.UpdateIngestVersion(0)
 		if err != nil {
 			log.Fatalf("cannot trigger state rebuild: %v", err)
 		}
@@ -257,7 +257,7 @@ var ingestInitGenesisStateCmd = &cobra.Command{
 
 		historyQ := &history.Q{horizonSession}
 
-		lastIngestedLedger, err := historyQ.GetLastLedgerExpIngestNonBlocking()
+		lastIngestedLedger, err := historyQ.GetLastLedgerIngestNonBlocking()
 		if err != nil {
 			log.Fatalf("cannot get last ledger value: %v", err)
 		}

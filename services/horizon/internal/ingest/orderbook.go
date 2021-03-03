@@ -69,9 +69,9 @@ func (o *OrderBookStream) getIngestionStatus() (ingestionStatus, error) {
 	if err != nil {
 		return status, errors.Wrap(err, "Error from GetLatestLedger")
 	}
-	status.LastIngestedLedger, err = o.historyQ.GetLastLedgerExpIngestNonBlocking()
+	status.LastIngestedLedger, err = o.historyQ.GetLastLedgerIngestNonBlocking()
 	if err != nil {
-		return status, errors.Wrap(err, "Error from GetLastLedgerExpIngestNonBlocking")
+		return status, errors.Wrap(err, "Error from GetLastLedgerIngestNonBlocking")
 	}
 	status.LastOfferCompactionLedger, err = o.historyQ.GetOfferCompactionSequence()
 	if err != nil {

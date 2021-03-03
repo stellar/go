@@ -5,6 +5,8 @@ package ingest
 
 import (
 	"context"
+	"fmt"
+	"net/http"
 	"sync"
 	"time"
 
@@ -84,11 +86,11 @@ type Config struct {
 }
 
 const (
-	getLastIngestedErrMsg           string = "Error getting last ingested ledger"
-	getExpIngestVersionErrMsg       string = "Error getting exp ingest version"
-	updateLastLedgerExpIngestErrMsg string = "Error updating last ingested ledger"
-	commitErrMsg                    string = "Error committing db transaction"
-	updateExpStateInvalidErrMsg     string = "Error updating state invalid value"
+	getLastIngestedErrMsg        string = "Error getting last ingested ledger"
+	getIngestVersionErrMsg       string = "Error getting ingestion version"
+	updateLastLedgerIngestErrMsg string = "Error updating last ingested ledger"
+	commitErrMsg                 string = "Error committing db transaction"
+	updateExpStateInvalidErrMsg  string = "Error updating state invalid value"
 )
 
 type stellarCoreClient interface {
@@ -96,6 +98,9 @@ type stellarCoreClient interface {
 }
 
 type Metrics struct {
+	// LocalLedger exposes the last ingested ledger by this ingesting instance.
+	LocalLatestLedger prometheus.Gauge
+
 	// LedgerIngestionDuration exposes timing metrics about the rate and
 	// duration of ledger ingestion (including updating DB and graph).
 	LedgerIngestionDuration prometheus.Summary
@@ -113,6 +118,10 @@ type Metrics struct {
 
 	// ProcessorsRunDuration exposes processors run durations.
 	ProcessorsRunDuration *prometheus.CounterVec
+
+	// CaptiveStellarCoreSynced exposes synced status of Captive Stellar-Core.
+	// 1 if sync, 0 if not synced, -1 if unable to connect or HTTP server disabled.
+	CaptiveStellarCoreSynced prometheus.GaugeFunc
 }
 
 type System interface {
@@ -241,6 +250,11 @@ func NewSystem(config Config) (System, error) {
 }
 
 func (s *system) initMetrics() {
+	s.metrics.LocalLatestLedger = prometheus.NewGauge(prometheus.GaugeOpts{
+		Namespace: "horizon", Subsystem: "ingest", Name: "local_latest_ledger",
+		Help: "sequence number of the latest ledger ingested by this ingesting instance",
+	})
+
 	s.metrics.LedgerIngestionDuration = prometheus.NewSummary(prometheus.SummaryOpts{
 		Namespace: "horizon", Subsystem: "ingest", Name: "ledger_ingestion_duration_seconds",
 		Help: "ledger ingestion durations, sliding window = 10m",
@@ -285,6 +299,37 @@ func (s *system) initMetrics() {
 		},
 		[]string{"name"},
 	)
+
+	s.metrics.CaptiveStellarCoreSynced = prometheus.NewGaugeFunc(
+		prometheus.GaugeOpts{
+			Namespace: "horizon", Subsystem: "ingest", Name: "captive_stellar_core_synced",
+			Help: "1 if sync, 0 if not synced, -1 if unable to connect or HTTP server disabled.",
+		},
+		func() float64 {
+			if !s.config.EnableCaptiveCore || s.config.CaptiveCoreHTTPPort == 0 {
+				return -1
+			}
+
+			client := stellarcore.Client{
+				HTTP: &http.Client{
+					Timeout: 2 * time.Second,
+				},
+				URL: fmt.Sprintf("http://localhost:%d", s.config.CaptiveCoreHTTPPort),
+			}
+
+			info, err := client.Info(s.ctx)
+			if err != nil {
+				log.WithError(err).Error("Cannot connect to Captive Stellar-Core HTTP server")
+				return -1
+			}
+
+			if info.IsSynced() {
+				return 1
+			} else {
+				return 0
+			}
+		},
+	)
 }
 
 func (s *system) Metrics() Metrics {
@@ -304,7 +349,7 @@ func (s *system) Metrics() Metrics {
 // included in 1a.
 //
 // We ensure that only one instance is a leader because in each round instances
-// try to acquire a lock on `LastLedgerExpIngest value in key value store and only
+// try to acquire a lock on `LastLedgerIngest value in key value store and only
 // one instance will be able to acquire it. This happens in both initial processing
 // and ledger processing. So this solves 3a and 3b in both 1a and 1b.
 //

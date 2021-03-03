@@ -75,17 +75,17 @@ func (s *StressTestStateTestSuite) TestBeginReturnsError() {
 	s.Assert().EqualError(err, "Error starting a transaction: my error")
 }
 
-func (s *StressTestStateTestSuite) TestGetLastLedgerExpIngestReturnsError() {
+func (s *StressTestStateTestSuite) TestGetLastLedgerIngestReturnsError() {
 	s.historyQ.On("Begin").Return(nil).Once()
-	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), errors.New("my error")).Once()
+	s.historyQ.On("GetLastLedgerIngest").Return(uint32(0), errors.New("my error")).Once()
 
 	err := s.system.StressTest(10, 4)
 	s.Assert().EqualError(err, "Error getting last ingested ledger: my error")
 }
 
-func (s *StressTestStateTestSuite) TestGetLastLedgerExpIngestNonEmpty() {
+func (s *StressTestStateTestSuite) TestGetLastLedgerIngestNonEmpty() {
 	s.historyQ.On("Begin").Return(nil).Once()
-	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(100), nil).Once()
+	s.historyQ.On("GetLastLedgerIngest").Return(uint32(100), nil).Once()
 
 	err := s.system.StressTest(10, 4)
 	s.Assert().EqualError(err, "Database not empty")
@@ -93,7 +93,7 @@ func (s *StressTestStateTestSuite) TestGetLastLedgerExpIngestNonEmpty() {
 
 func (s *StressTestStateTestSuite) TestRunAllProcessorsOnLedgerReturnsError() {
 	s.historyQ.On("Begin").Return(nil).Once()
-	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
+	s.historyQ.On("GetLastLedgerIngest").Return(uint32(0), nil).Once()
 	s.runner.On("RunAllProcessorsOnLedger", uint32(1)).Return(
 		ingest.StatsChangeProcessorResults{},
 		processorsRunDurations{},
@@ -106,9 +106,9 @@ func (s *StressTestStateTestSuite) TestRunAllProcessorsOnLedgerReturnsError() {
 	s.Assert().EqualError(err, "Error running processors on ledger: my error")
 }
 
-func (s *StressTestStateTestSuite) TestUpdateLastLedgerExpIngestReturnsError() {
+func (s *StressTestStateTestSuite) TestUpdateLastLedgerIngestReturnsError() {
 	s.historyQ.On("Begin").Return(nil).Once()
-	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
+	s.historyQ.On("GetLastLedgerIngest").Return(uint32(0), nil).Once()
 	s.runner.On("RunAllProcessorsOnLedger", uint32(1)).Return(
 		ingest.StatsChangeProcessorResults{},
 		processorsRunDurations{},
@@ -116,7 +116,7 @@ func (s *StressTestStateTestSuite) TestUpdateLastLedgerExpIngestReturnsError() {
 		processorsRunDurations{},
 		nil,
 	).Once()
-	s.historyQ.On("UpdateLastLedgerExpIngest", uint32(1)).Return(errors.New("my error")).Once()
+	s.historyQ.On("UpdateLastLedgerIngest", uint32(1)).Return(errors.New("my error")).Once()
 
 	err := s.system.StressTest(10, 4)
 	s.Assert().EqualError(err, "Error updating last ingested ledger: my error")
@@ -124,7 +124,7 @@ func (s *StressTestStateTestSuite) TestUpdateLastLedgerExpIngestReturnsError() {
 
 func (s *StressTestStateTestSuite) TestCommitReturnsError() {
 	s.historyQ.On("Begin").Return(nil).Once()
-	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
+	s.historyQ.On("GetLastLedgerIngest").Return(uint32(0), nil).Once()
 	s.runner.On("RunAllProcessorsOnLedger", uint32(1)).Return(
 		ingest.StatsChangeProcessorResults{},
 		processorsRunDurations{},
@@ -132,7 +132,7 @@ func (s *StressTestStateTestSuite) TestCommitReturnsError() {
 		processorsRunDurations{},
 		nil,
 	).Once()
-	s.historyQ.On("UpdateLastLedgerExpIngest", uint32(1)).Return(nil).Once()
+	s.historyQ.On("UpdateLastLedgerIngest", uint32(1)).Return(nil).Once()
 	s.historyQ.On("Commit").Return(errors.New("my error")).Once()
 
 	err := s.system.StressTest(10, 4)
@@ -141,7 +141,7 @@ func (s *StressTestStateTestSuite) TestCommitReturnsError() {
 
 func (s *StressTestStateTestSuite) TestSucceeds() {
 	s.historyQ.On("Begin").Return(nil).Once()
-	s.historyQ.On("GetLastLedgerExpIngest").Return(uint32(0), nil).Once()
+	s.historyQ.On("GetLastLedgerIngest").Return(uint32(0), nil).Once()
 	s.runner.On("RunAllProcessorsOnLedger", uint32(1)).Return(
 		ingest.StatsChangeProcessorResults{},
 		processorsRunDurations{},
@@ -149,7 +149,7 @@ func (s *StressTestStateTestSuite) TestSucceeds() {
 		processorsRunDurations{},
 		nil,
 	).Once()
-	s.historyQ.On("UpdateLastLedgerExpIngest", uint32(1)).Return(nil).Once()
+	s.historyQ.On("UpdateLastLedgerIngest", uint32(1)).Return(nil).Once()
 	s.historyQ.On("Commit").Return(nil).Once()
 
 	err := s.system.StressTest(10, 4)
