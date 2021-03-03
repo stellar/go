@@ -496,6 +496,7 @@ func (a *App) init() error {
 				HTTP: &http.Client{Timeout: 5 * time.Second},
 				URL:  a.config.StellarCoreURL,
 			},
+			cache: newHealthCache(500 * time.Millisecond),
 		},
 	}
 
