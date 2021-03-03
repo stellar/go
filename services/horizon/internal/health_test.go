@@ -160,7 +160,7 @@ func TestHealthCheckCache(t *testing.T) {
 			response:   cachedResponse,
 			lastUpdate: time.Unix(0, 0),
 			ttl:        5 * time.Second,
-			lock:       sync.RWMutex{},
+			lock:       sync.Mutex{},
 		},
 	}
 

@@ -22,25 +22,19 @@ type healthCache struct {
 	lastUpdate time.Time
 	ttl        time.Duration
 	clock      clock.Clock
-	lock       sync.RWMutex
+	lock       sync.Mutex
 }
 
-func (h *healthCache) get() (healthResponse, bool) {
-	h.lock.RLock()
-	defer h.lock.RUnlock()
-
-	if h.clock.Now().Sub(h.lastUpdate) > h.ttl {
-		return healthResponse{}, false
-	}
-	return h.response, true
-}
-
-func (h *healthCache) set(response healthResponse) {
+func (h *healthCache) get(runCheck func() healthResponse) healthResponse {
 	h.lock.Lock()
 	defer h.lock.Unlock()
 
-	h.lastUpdate = h.clock.Now()
-	h.response = response
+	if h.clock.Now().Sub(h.lastUpdate) > h.ttl {
+		h.response = runCheck()
+		h.lastUpdate = h.clock.Now()
+	}
+
+	return h.response
 }
 
 func newHealthCache(ttl time.Duration) *healthCache {
@@ -60,27 +54,29 @@ type healthResponse struct {
 	CoreSynced        bool `json:"core_synced"`
 }
 
-func (h healthCheck) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	response, ok := h.cache.get()
-	if !ok {
-		response = healthResponse{
-			DatabaseConnected: true,
-			CoreUp:            true,
-			CoreSynced:        true,
-		}
-		if err := h.session.Ping(); err != nil {
-			log.Warnf("could ping db: %s", err)
-			response.DatabaseConnected = false
-		}
-		if resp, err := h.core.Info(h.ctx); err != nil {
-			log.Warnf("request to stellar core failed: %s", err)
-			response.CoreUp = false
-			response.CoreSynced = false
-		} else {
-			response.CoreSynced = resp.IsSynced()
-		}
-		h.cache.set(response)
+func (h healthCheck) runCheck() healthResponse {
+	response := healthResponse{
+		DatabaseConnected: true,
+		CoreUp:            true,
+		CoreSynced:        true,
 	}
+	if err := h.session.Ping(); err != nil {
+		log.Warnf("could ping db: %s", err)
+		response.DatabaseConnected = false
+	}
+	if resp, err := h.core.Info(h.ctx); err != nil {
+		log.Warnf("request to stellar core failed: %s", err)
+		response.CoreUp = false
+		response.CoreSynced = false
+	} else {
+		response.CoreSynced = resp.IsSynced()
+	}
+
+	return response
+}
+
+func (h healthCheck) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	response := h.cache.get(h.runCheck)
 
 	if !response.DatabaseConnected || !response.CoreSynced || !response.CoreUp {
 		w.WriteHeader(http.StatusServiceUnavailable)
