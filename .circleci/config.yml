@@ -240,20 +240,6 @@ jobs:
       - staticcheck
       - build_packages
 
-  # check_code_1_15 performs code checks using Go 1.15.
-  check_code_1_15:
-    working_directory: /go/src/github.com/stellar/go
-    docker:
-      - image: golang:1.15.8
-    steps:
-      - install_go_deps
-      - check_go_deps
-      - gofmt
-      - gogenerate
-      - govet
-      - staticcheck
-      - build_packages
-
   # test_code_1_14 performs all package tests using Go 1.14.
   test_code_1_14:
     working_directory: /go/src/github.com/stellar/go
