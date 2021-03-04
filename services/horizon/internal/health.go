@@ -19,6 +19,8 @@ const (
 	healthCacheTTL     = 500 * time.Millisecond
 )
 
+var healthLogger = log.WithField("service", "healthCheck")
+
 type stellarCoreClient interface {
 	Info(ctx context.Context) (*stellarcore.InfoResponse, error)
 }
@@ -67,11 +69,11 @@ func (h healthCheck) runCheck() healthResponse {
 		CoreSynced:        true,
 	}
 	if err := h.session.Ping(dbPingTimeout); err != nil {
-		log.WithField("service", "healthCheck").Warnf("could not ping db: %s", err)
+		healthLogger.Warnf("could not ping db: %s", err)
 		response.DatabaseConnected = false
 	}
 	if resp, err := h.core.Info(h.ctx); err != nil {
-		log.WithField("service", "healthCheck").Warnf("request to stellar core failed: %s", err)
+		healthLogger.Warnf("request to stellar core failed: %s", err)
 		response.CoreUp = false
 		response.CoreSynced = false
 	} else {
@@ -89,6 +91,6 @@ func (h healthCheck) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewEncoder(w).Encode(response); err != nil {
-		log.WithField("service", "healthCheck").Warnf("could not write response: %s", err)
+		healthLogger.Warnf("could not write response: %s", err)
 	}
 }
