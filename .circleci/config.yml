@@ -490,7 +490,6 @@ workflows:
 
   check_code_and_test:
     jobs:
-      - check_code_1_15
       - check_code_1_16
       - test_code_1_14
       - test_code_1_14_postgres10
