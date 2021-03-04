@@ -230,7 +230,7 @@ jobs:
   check_code_1_16:
     working_directory: /go/src/github.com/stellar/go
     docker:
-      - image: golang:1.16rc1
+      - image: golang:1.16
     steps:
       - install_go_deps
       - check_go_deps
@@ -341,7 +341,7 @@ jobs:
   test_code_1_16:
     working_directory: /go/src/github.com/stellar/go
     docker:
-      - image: golang:1.16rc1
+      - image: golang:1.16
         environment:
           GO111MODULE: "on"
           PGHOST: localhost
@@ -361,7 +361,7 @@ jobs:
   test_code_1_16_postgres10:
     working_directory: /go/src/github.com/stellar/go
     docker:
-      - image: golang:1.16rc1
+      - image: golang:1.16
         environment:
           GO111MODULE: "on"
           PGHOST: localhost
