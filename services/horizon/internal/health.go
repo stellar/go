@@ -13,6 +13,12 @@ import (
 	"github.com/stellar/go/support/log"
 )
 
+const (
+	dbPingTimeout      = 5 * time.Second
+	infoRequestTimeout = 5 * time.Second
+	healthCacheTTL     = 500 * time.Millisecond
+)
+
 type stellarCoreClient interface {
 	Info(ctx context.Context) (*stellarcore.InfoResponse, error)
 }
@@ -60,12 +66,12 @@ func (h healthCheck) runCheck() healthResponse {
 		CoreUp:            true,
 		CoreSynced:        true,
 	}
-	if err := h.session.Ping(); err != nil {
-		log.Warnf("could ping db: %s", err)
+	if err := h.session.Ping(dbPingTimeout); err != nil {
+		log.WithField("component", "healthCheck").Warnf("could not ping db: %s", err)
 		response.DatabaseConnected = false
 	}
 	if resp, err := h.core.Info(h.ctx); err != nil {
-		log.Warnf("request to stellar core failed: %s", err)
+		log.WithField("component", "healthCheck").Warnf("request to stellar core failed: %s", err)
 		response.CoreUp = false
 		response.CoreSynced = false
 	} else {

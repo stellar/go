@@ -2,6 +2,7 @@ package db
 
 import (
 	"database/sql"
+	"time"
 
 	"github.com/Masterminds/squirrel"
 	sq "github.com/Masterminds/squirrel"
@@ -88,6 +89,6 @@ func (m *MockSession) NoRows(err error) bool {
 	return args.Get(0).(bool)
 }
 
-func (m *MockSession) Ping() error {
-	return m.Called().Error(0)
+func (m *MockSession) Ping(timeout time.Duration) error {
+	return m.Called(timeout).Error(0)
 }

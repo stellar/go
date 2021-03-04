@@ -493,10 +493,10 @@ func (a *App) init() error {
 			session: a.historyQ.Session,
 			ctx:     a.ctx,
 			core: &stellarcore.Client{
-				HTTP: &http.Client{Timeout: 5 * time.Second},
+				HTTP: &http.Client{Timeout: infoRequestTimeout},
 				URL:  a.config.StellarCoreURL,
 			},
-			cache: newHealthCache(500 * time.Millisecond),
+			cache: newHealthCache(healthCacheTTL),
 		},
 	}
 

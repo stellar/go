@@ -123,7 +123,7 @@ type SessionInterface interface {
 	Exec(query squirrel.Sqlizer) (sql.Result, error)
 	ExecRaw(query string, args ...interface{}) (sql.Result, error)
 	NoRows(err error) bool
-	Ping() error
+	Ping(timeout time.Duration) error
 }
 
 // Table helps to build sql queries against a given table.  It logically
