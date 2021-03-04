@@ -48,7 +48,7 @@ services:
     build:
       # set build context to the root directory of the go monorepo
       context: ../../../
-      dockerfile: services/horizon/docker/Dockerfile
+      dockerfile: services/horizon/docker/Dockerfile.dev
     restart: on-failure
     ports:
       - "8000:8000"

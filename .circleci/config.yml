@@ -434,7 +434,7 @@ jobs:
             # CIRCLE_TAG will be prefixed by "horizon-v", here we build the horizon docker image and tag it with stellar/horizon:$VERSION
             # where version is CIRCLE_TAG without the "horizon-v" prefix
             VERSION=${CIRCLE_TAG#horizon-v}
-            docker build -f services/horizon/docker/Dockerfile -t stellar/horizon:$VERSION .
+            docker build -f services/horizon/docker/Dockerfile.dev -t stellar/horizon:$VERSION .
             docker push stellar/horizon:$VERSION
 
   publish_latest_horizon_docker_image:
@@ -447,7 +447,7 @@ jobs:
           name: Build and Push Docker image
           command: |
             echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
-            docker build -f services/horizon/docker/Dockerfile -t stellar/horizon:latest .
+            docker build -f services/horizon/docker/Dockerfile.dev -t stellar/horizon:latest .
             docker push stellar/horizon:latest
 
   publish_commit_hash_horizon_docker_image:
@@ -461,7 +461,7 @@ jobs:
           command: |
             echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
             TAG=$(git rev-parse --short HEAD)
-            docker build -f services/horizon/docker/Dockerfile -t stellar/horizon:$TAG .
+            docker build -f services/horizon/docker/Dockerfile.dev -t stellar/horizon:$TAG .
             docker push stellar/horizon:$TAG
 
   # test_horizon_integration performs Horizon integration tests, it's using
