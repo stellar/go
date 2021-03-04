@@ -46,7 +46,7 @@ func (handler AssetStatsHandler) validateAssetParams(code, issuer string, pq db2
 		if len(parts) != 3 {
 			return problem.MakeInvalidFieldProblem(
 				"cursor",
-				errors.New("cursor must contain exactly one colon"),
+				errors.New("the cursor is not a valid paging_token"),
 			)
 		}
 

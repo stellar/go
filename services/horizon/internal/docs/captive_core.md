@@ -110,11 +110,11 @@ sudo apt install stellar-captive-core
 
 And you're ready to upgrade.
 
-**Note**: Until the v2.0-beta binaries are released, you'll need to build Horizon from the `release-horizon-v2.0.0-beta` branch. That's pretty simple, given a valid Go environment:
+**Note**: To avoid building the bleeding edge from the `master` branch, you'll need to build Horizon from the stable `horizon-v2.0.0` branch. That's pretty simple, given a valid Go environment:
 
 ```bash
 git clone https://github.com/stellar/go monorepo && cd monorepo
-git checkout release-horizon-v2.0.0-beta
+git checkout horizon-v2.0.0
 go install -v ./services/horizon
 sudo cp $(go env GOPATH)/bin/horizon $(which stellar-horizon)
 ```
@@ -164,14 +164,14 @@ ADDRESS="core-testnet3.stellar.org"
 HISTORY="curl -sf http://history.stellar.org/prd/core-testnet/core_testnet_003/{0} -o {1}"
 ```
 
-(We'll assume this stub lives at `/etc/default/stellar-captive-core.toml`.) The rest of the configuration will be generated automagically at runtime.
+(We'll assume this stub lives at `/etc/default/stellar-captive-core-stub.toml`.) The rest of the configuration will be generated automagically at runtime.
 
 #### Configure Horizon
 First, add the following lines to the Horizon configuration to enable a Captive Core subprocess:
 
 ```bash
 echo "STELLAR_CORE_BINARY_PATH=$(which stellar-core)
-CAPTIVE_CORE_CONFIG_APPEND_PATH=/etc/default/stellar-captive-core.toml" | sudo tee -a /etc/default/stellar-horizon
+CAPTIVE_CORE_CONFIG_APPEND_PATH=/etc/default/stellar-captive-core-stub.toml" | sudo tee -a /etc/default/stellar-horizon
 ```
 
 (Note that setting `ENABLE_CAPTIVE_CORE_INGESTION=true` is not necessary in 2.x because it's the new default.)
@@ -198,7 +198,7 @@ In this section, we'll work through a hypothetical architecture with two Horizon
 #### Remote Captive Core
 First, we need to start running the Captive Core server.
 
-The latest released (but experimental) version of the Captive Core API can be installed from the [unstable repo](https://github.com/stellar/packages/blob/master/docs/adding-the-sdf-stable-repository-to-your-system.md#adding-the-bleeding-edge-unstable-repository):
+The latest version of the Captive Core API can be installed from the [stable repo](https://github.com/stellar/packages/blob/master/docs/adding-the-sdf-stable-repository-to-your-system.md#adding-the-sdf-stable-repository-to-your-system):
 
 ```bash
 sudo apt install stellar-captive-core stellar-captive-core-api
@@ -219,7 +219,7 @@ Now, let's configure the Captive Core environment:
 export NETWORK_PASSPHRASE='Test SDF Network ; September 2015'
 export HISTORY_ARCHIVE_URLS='https://history.stellar.org/prd/core-testnet/core_testnet_001'
 export DATABASE_URL='postgres://postgres:secret@db.local:5432/horizon?sslmode=disable'
-export CAPTIVE_CORE_CONFIG_APPEND_PATH=/etc/default/stellar-captive-core.toml
+export CAPTIVE_CORE_CONFIG_APPEND_PATH=/etc/default/stellar-captive-core-stub.toml
 export STELLAR_CORE_BINARY_PATH=$(which stellar-core)
 ```
 
