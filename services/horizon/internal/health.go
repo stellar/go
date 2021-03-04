@@ -67,11 +67,11 @@ func (h healthCheck) runCheck() healthResponse {
 		CoreSynced:        true,
 	}
 	if err := h.session.Ping(dbPingTimeout); err != nil {
-		log.WithField("component", "healthCheck").Warnf("could not ping db: %s", err)
+		log.WithField("service", "healthCheck").Warnf("could not ping db: %s", err)
 		response.DatabaseConnected = false
 	}
 	if resp, err := h.core.Info(h.ctx); err != nil {
-		log.WithField("component", "healthCheck").Warnf("request to stellar core failed: %s", err)
+		log.WithField("service", "healthCheck").Warnf("request to stellar core failed: %s", err)
 		response.CoreUp = false
 		response.CoreSynced = false
 	} else {
@@ -88,5 +88,7 @@ func (h healthCheck) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusServiceUnavailable)
 	}
 
-	json.NewEncoder(w).Encode(response)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		log.WithField("service", "healthCheck").Warnf("could not write response: %s", err)
+	}
 }
