@@ -491,7 +491,7 @@ jobs:
                   # Install the default version of stellar core
                   - install_stellar_core
             - when:
-                contition: <<parameters.enable-cap-35-tests>>
+                condition: <<parameters.enable-cap-35-tests>>
                 steps:
                   # Install a Stellar Core version with CAP35 support
                   - install_stellar_core:
