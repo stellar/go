@@ -1,34 +1,5 @@
 version: '3'
 services:
-  core-postgres:
-    image: postgres:9.6.17-alpine
-    restart: on-failure
-    environment:
-      - POSTGRES_PASSWORD=mysecretpassword
-      - POSTGRES_DB=stellar
-    ports:
-      - "5641:5641"
-    command: ["-p", "5641"]
-    volumes:
-      - "core-db-data:/var/lib/postgresql/data"
-    network_mode: '${NETWORK_MODE:-bridge}'
-
-  core:
-    # to use a specific version of stellar core
-    # image: stellar/stellar-core:$VERSION
-    image: stellar/stellar-core
-    depends_on:
-      - core-postgres
-    restart: on-failure
-    ports:
-      - "11625:11625"
-      - "11626:11626"
-    command: /start
-    volumes:
-      - ./stellar-core-testnet.cfg:/stellar-core.cfg
-      - ./core-start.sh:/start
-    network_mode: '${NETWORK_MODE:-bridge}'
-
   horizon-postgres:
     image: postgres:9.6.17-alpine
     restart: on-failure
@@ -44,7 +15,6 @@ services:
   horizon:
     depends_on:
       - horizon-postgres
-      - core
     build:
       # set build context to the root directory of the go monorepo
       context: ../../../
@@ -52,17 +22,18 @@ services:
     restart: on-failure
     ports:
       - "8000:8000"
+      - "11725:11725"
     environment:
       - DATABASE_URL=postgres://postgres@host.docker.internal:5432/horizon?sslmode=disable
-      - STELLAR_CORE_DATABASE_URL=postgres://postgres:mysecretpassword@host.docker.internal:5641/stellar?sslmode=disable
+      - CAPTIVE_CORE_CONFIG_APPEND_PATH=/captive-core-testnet.cfg
       - HISTORY_ARCHIVE_URLS=https://history.stellar.org/prd/core-testnet/core_testnet_001
       - NETWORK_PASSPHRASE=Test SDF Network ; September 2015
-      - STELLAR_CORE_URL=http://host.docker.internal:11626
       - INGEST=true
       - PER_HOUR_RATE_LIMIT=0
+    volumes:
+      - ./captive-core-testnet.cfg:/captive-core-testnet.cfg
     network_mode: '${NETWORK_MODE:-bridge}'
     command: ["--apply-migrations"]
 
 volumes:
-  core-db-data:
   horizon-db-data:

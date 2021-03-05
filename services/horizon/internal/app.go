@@ -489,6 +489,15 @@ func (a *App) init() error {
 		CoreGetter:         a,
 		HorizonVersion:     a.horizonVersion,
 		FriendbotURL:       a.config.FriendbotURL,
+		HealthCheck: healthCheck{
+			session: a.historyQ.Session,
+			ctx:     a.ctx,
+			core: &stellarcore.Client{
+				HTTP: &http.Client{Timeout: infoRequestTimeout},
+				URL:  a.config.StellarCoreURL,
+			},
+			cache: newHealthCache(healthCacheTTL),
+		},
 	}
 
 	var err error
