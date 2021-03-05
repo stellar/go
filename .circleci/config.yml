@@ -115,8 +115,8 @@ commands:
           name: Download and install golang
           command: |
             sudo rm -rf /usr/local/go
-            wget https://dl.google.com/go/go1.14.15.linux-amd64.tar.gz
-            sudo tar -C /usr/local -xzf go1.14.15.linux-amd64.tar.gz
+            wget https://dl.google.com/go/go1.16.linux-amd64.tar.gz
+            sudo tar -C /usr/local -xzf go1.16.linux-amd64.tar.gz
 
   # install_go_deps installs the go dependencies of the project.
   install_go_deps:
@@ -231,20 +231,6 @@ jobs:
     working_directory: /go/src/github.com/stellar/go
     docker:
       - image: golang:1.16
-    steps:
-      - install_go_deps
-      - check_go_deps
-      - gofmt
-      - gogenerate
-      - govet
-      - staticcheck
-      - build_packages
-
-  # check_code_1_15 performs code checks using Go 1.15.
-  check_code_1_15:
-    working_directory: /go/src/github.com/stellar/go
-    docker:
-      - image: golang:1.15.8
     steps:
       - install_go_deps
       - check_go_deps
@@ -385,10 +371,7 @@ jobs:
   publish_artifacts:
     working_directory: /go/src/github.com/stellar/go
     docker:
-      # Artifacts are built on Go 1.14 because a Go 1.15 Docker image for
-      # Debian Stretch is currently not available. See
-      # https://github.com/docker-library/golang/issues/344.
-      - image: golang:1.14.15-stretch
+      - image: golang:1.16
     steps:
       - check_deprecations
       - install_go_deps
@@ -507,7 +490,6 @@ workflows:
 
   check_code_and_test:
     jobs:
-      - check_code_1_15
       - check_code_1_16
       - test_code_1_14
       - test_code_1_14_postgres10

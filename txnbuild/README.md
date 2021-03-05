@@ -73,7 +73,7 @@ This library is aimed at developers building Go applications on top of the [Stel
 An easy-to-follow demonstration that exercises this SDK on the TestNet with actual accounts is also included! See the [Demo](#demo) section below.
 
 ### Prerequisites
-* Go 1.14 or greater
+* Go (this repository is officially supported on the last two releases of Go)
 * [Modules](https://github.com/golang/go/wiki/Modules) to manage dependencies
 
 ### Installing
