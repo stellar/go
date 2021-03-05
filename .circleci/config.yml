@@ -147,14 +147,14 @@ commands:
     parameters:
       core-version:
         type: string
-        default: 15.0.0-40
+        default: ""
     steps:
       - run:
-          name: Install latest version of Stellar Core
+          name: Install Stellar core <<#parameters.core-version>> (version <<parameters.core-version>>)<</parameters.core-version>>
           command: |
             sudo wget -qO - https://apt.stellar.org/SDF.asc | APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=true sudo apt-key add -
             sudo bash -c 'echo "deb https://apt.stellar.org xenial unstable" > /etc/apt/sources.list.d/SDF-unstable.list'
-            sudo apt-get update && sudo apt-get install -y stellar-core=<<parameters.core-version>>
+            sudo apt-get update && sudo apt-get install -y stellar-core<<#parameters.core-version>>=<<parameters.core-version>><</parameters.core-version>>
             echo "using stellar core version $(stellar-core version)"
             echo "export CAPTIVE_CORE_BIN=/usr/bin/stellar-core" >> $BASH_ENV
 
