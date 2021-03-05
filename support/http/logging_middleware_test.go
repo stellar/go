@@ -17,6 +17,7 @@ func TestHTTPMiddleware(t *testing.T) {
 
 	mux.Use(middleware.RequestID)
 	mux.Use(LoggingMiddleware)
+	mux.Use(LoggingMiddlewareWithOptions("test"))
 
 	mux.Get("/path/{value}", stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 		log.Ctx(r.Context()).Info("handler log line")

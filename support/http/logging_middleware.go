@@ -44,6 +44,31 @@ func LoggingMiddleware(next stdhttp.Handler) stdhttp.Handler {
 	})
 }
 
+// LoggingMiddlewareWithOptions is a middleware that logs requests to the logger.
+// With extra headers
+func LoggingMiddlewareWithOptions(extraHeaders ...string) func(stdhttp.Handler) stdhttp.Handler {
+	return func(next stdhttp.Handler) stdhttp.Handler {
+		return stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+			mw := mutil.WrapWriter(w)
+			ctx := log.PushContext(r.Context(), func(l *log.Entry) *log.Entry {
+				return l.WithFields(log.F{
+					"req": middleware.GetReqID(r.Context()),
+				})
+			})
+
+			r = r.WithContext(ctx)
+
+			logStartOfRequest(r, extraHeaders...)
+
+			then := time.Now()
+			next.ServeHTTP(mw, r)
+			duration := time.Since(then)
+
+			logEndOfRequest(r, duration, mw)
+		})
+	}
+}
+
 // logStartOfRequest emits the logline that reports that an http request is
 // beginning processing.
 func logStartOfRequest(
