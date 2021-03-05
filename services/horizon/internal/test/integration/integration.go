@@ -75,11 +75,11 @@ func NewTest(t *testing.T, config Config) *Test {
 	// Runs a docker-compose command applied to the above configs
 	runComposeCommand := func(args ...string) {
 		cmdline := append([]string{"-f", integrationYaml}, args...)
-		t.Log("Running", cmdline)
 		cmd := exec.Command("docker-compose", cmdline...)
 		if config.CoreDockerImage != "" {
 			cmd.Env = append(cmd.Env, fmt.Sprintf("CORE_IMAGE=%s", config.CoreDockerImage))
 		}
+		t.Log("Running", cmd.Env, cmdline)
 		_, innerErr := cmd.Output()
 		fatalIf(t, innerErr)
 	}
