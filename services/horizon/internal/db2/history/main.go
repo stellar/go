@@ -321,11 +321,12 @@ type Asset struct {
 
 // ExpAssetStat is a row in the exp_asset_stats table representing the stats per Asset
 type ExpAssetStat struct {
-	AssetType   xdr.AssetType `db:"asset_type"`
-	AssetCode   string        `db:"asset_code"`
-	AssetIssuer string        `db:"asset_issuer"`
-	Amount      string        `db:"amount"`
-	NumAccounts int32         `db:"num_accounts"`
+	AssetType      xdr.AssetType      `db:"asset_type"`
+	AssetCode      string             `db:"asset_code"`
+	AssetIssuer    string             `db:"asset_issuer"`
+	Amount         string             `db:"amount"`
+	NumAccounts    int32              `db:"num_accounts"`
+	TrustLineFlags xdr.TrustLineFlags `db:"trust_line_flags"`
 }
 
 // PagingToken returns a cursor for this asset stat

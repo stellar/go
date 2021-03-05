@@ -14,8 +14,9 @@ type assetStatKey struct {
 	assetIssuer string
 }
 type assetStatValue struct {
-	amount      *big.Int
-	numAccounts int32
+	amount         *big.Int
+	numAccounts    int32
+	trustLineFlags xdr.TrustLineFlags
 }
 
 // AssetStatSet represents a collection of asset stats
@@ -24,15 +25,11 @@ type AssetStatSet map[assetStatKey]*assetStatValue
 // Add updates the set with a trustline entry from a history archive snapshot
 // if the trustline is authorized.
 func (s AssetStatSet) Add(trustLine xdr.TrustLineEntry) error {
-	if !xdr.TrustLineFlags(trustLine.Flags).IsAuthorized() {
-		return nil
-	}
-
-	return s.AddDelta(trustLine.Asset, int64(trustLine.Balance), 1)
+	return s.AddDelta(trustLine.Asset, int64(trustLine.Balance), 1, xdr.TrustLineFlags(trustLine.Flags))
 }
 
 // AddDelta adds a delta balance and delta accounts to a given asset.
-func (s AssetStatSet) AddDelta(asset xdr.Asset, deltaBalance int64, deltaAccounts int32) error {
+func (s AssetStatSet) AddDelta(asset xdr.Asset, deltaBalance int64, deltaAccounts int32, deltaTrustLineFlags xdr.TrustLineFlags) error {
 	if deltaBalance == 0 && deltaAccounts == 0 {
 		return nil
 	}
@@ -45,8 +42,9 @@ func (s AssetStatSet) AddDelta(asset xdr.Asset, deltaBalance int64, deltaAccount
 	current, ok := s[key]
 	if !ok {
 		s[key] = &assetStatValue{
-			amount:      big.NewInt(int64(deltaBalance)),
-			numAccounts: deltaAccounts,
+			amount:         big.NewInt(int64(deltaBalance)),
+			numAccounts:    deltaAccounts,
+			trustLineFlags: deltaTrustLineFlags,
 		}
 	} else {
 		current.amount.Add(current.amount, big.NewInt(int64(deltaBalance)))
@@ -74,11 +72,12 @@ func (s AssetStatSet) Remove(assetType xdr.AssetType, assetCode string, assetIss
 	delete(s, key)
 
 	return history.ExpAssetStat{
-		AssetType:   key.assetType,
-		AssetCode:   key.assetCode,
-		AssetIssuer: key.assetIssuer,
-		Amount:      value.amount.String(),
-		NumAccounts: value.numAccounts,
+		AssetType:      key.assetType,
+		AssetCode:      key.assetCode,
+		AssetIssuer:    key.assetIssuer,
+		Amount:         value.amount.String(),
+		NumAccounts:    value.numAccounts,
+		TrustLineFlags: value.trustLineFlags,
 	}, true
 }
 
@@ -87,11 +86,12 @@ func (s AssetStatSet) All() []history.ExpAssetStat {
 	assetStats := make([]history.ExpAssetStat, 0, len(s))
 	for key, value := range s {
 		assetStats = append(assetStats, history.ExpAssetStat{
-			AssetType:   key.assetType,
-			AssetCode:   key.assetCode,
-			AssetIssuer: key.assetIssuer,
-			Amount:      value.amount.String(),
-			NumAccounts: value.numAccounts,
+			AssetType:      key.assetType,
+			AssetCode:      key.assetCode,
+			AssetIssuer:    key.assetIssuer,
+			Amount:         value.amount.String(),
+			NumAccounts:    value.numAccounts,
+			TrustLineFlags: value.trustLineFlags,
 		})
 	}
 	return assetStats

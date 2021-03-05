@@ -172,11 +172,12 @@ func (p *AssetStatsProcessor) Commit() error {
 			} else {
 				// Update
 				rowsAffected, err = p.assetStatsQ.UpdateAssetStat(history.ExpAssetStat{
-					AssetType:   delta.AssetType,
-					AssetCode:   delta.AssetCode,
-					AssetIssuer: delta.AssetIssuer,
-					Amount:      statBalance.String(),
-					NumAccounts: statAccounts,
+					AssetType:      delta.AssetType,
+					AssetCode:      delta.AssetCode,
+					AssetIssuer:    delta.AssetIssuer,
+					Amount:         statBalance.String(),
+					NumAccounts:    statAccounts,
+					TrustLineFlags: delta.TrustLineFlags,
 				})
 				if err != nil {
 					return errors.Wrap(err, "could not update asset stat")
@@ -206,46 +207,27 @@ func (p *AssetStatsProcessor) adjustAssetStat(
 	var deltaAccounts int32
 	var trustline xdr.TrustLineEntry
 
-	if preTrustline != nil && postTrustline == nil {
-		trustline = *preTrustline
-		// removing a trustline
-		if xdr.TrustLineFlags(preTrustline.Flags).IsAuthorized() {
-			deltaAccounts = -1
-			deltaBalance = -preTrustline.Balance
-		}
-	} else if preTrustline == nil && postTrustline != nil {
-		trustline = *postTrustline
+	switch {
+	case preTrustline == nil && postTrustline != nil:
 		// adding a trustline
-		if xdr.TrustLineFlags(postTrustline.Flags).IsAuthorized() {
-			deltaAccounts = 1
-			deltaBalance = postTrustline.Balance
-		}
-	} else if preTrustline != nil && postTrustline != nil {
 		trustline = *postTrustline
+		deltaAccounts = 1
+		deltaBalance = postTrustline.Balance
+	case preTrustline != nil && postTrustline != nil:
 		// updating a trustline
-		if xdr.TrustLineFlags(preTrustline.Flags).IsAuthorized() &&
-			xdr.TrustLineFlags(postTrustline.Flags).IsAuthorized() {
-			// trustline remains authorized
-			deltaAccounts = 0
-			deltaBalance = postTrustline.Balance - preTrustline.Balance
-		} else if xdr.TrustLineFlags(preTrustline.Flags).IsAuthorized() &&
-			!xdr.TrustLineFlags(postTrustline.Flags).IsAuthorized() {
-			// trustline was authorized and became unauthorized
-			deltaAccounts = -1
-			deltaBalance = -preTrustline.Balance
-		} else if !xdr.TrustLineFlags(preTrustline.Flags).IsAuthorized() &&
-			xdr.TrustLineFlags(postTrustline.Flags).IsAuthorized() {
-			// trustline was unauthorized and became authorized
-			deltaAccounts = 1
-			deltaBalance = postTrustline.Balance
-		}
-		// else, trustline was unauthorized and remains unauthorized
-		// so there is no change to accounts or balances
-	} else {
+		trustline = *postTrustline
+		deltaAccounts = 0
+		deltaBalance = postTrustline.Balance - preTrustline.Balance
+	case preTrustline != nil && postTrustline == nil:
+		// removing a trustline
+		trustline = *preTrustline
+		deltaAccounts = -1
+		deltaBalance = -preTrustline.Balance
+	default:
 		return ingest.NewStateError(errors.New("both pre and post trustlines cannot be nil"))
 	}
 
-	err := p.assetStatSet.AddDelta(trustline.Asset, int64(deltaBalance), deltaAccounts)
+	err := p.assetStatSet.AddDelta(trustline.Asset, int64(deltaBalance), deltaAccounts, xdr.TrustLineFlags(trustline.Flags))
 	if err != nil {
 		return errors.Wrap(err, "error running AssetStatSet.AddDelta")
 	}
