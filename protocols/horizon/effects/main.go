@@ -517,7 +517,7 @@ type TrustlineFlagsUpdated struct {
 	Trustor                         string `json:"trustor"`
 	Authorized                      *bool  `json:"authorized_flag,omitempty"`
 	AuthorizedToMaintainLiabilities *bool  `json:"authorized_to_maintain_liabilites_flag,omitempty"`
-	ClawbackEnabled                 *bool  `json:"claback_enabled_flag,omitempty"`
+	ClawbackEnabled                 *bool  `json:"clawback_enabled_flag,omitempty"`
 }
 
 // Effect contains methods that are implemented by all effect types.
