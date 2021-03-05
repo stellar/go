@@ -48,6 +48,7 @@ func LoggingMiddleware(next stdhttp.Handler) stdhttp.Handler {
 // beginning processing.
 func logStartOfRequest(
 	r *stdhttp.Request,
+	extraHeaders ...string,
 ) {
 	l := log.Ctx(r.Context()).WithFields(log.F{
 		"subsys":    "http",
