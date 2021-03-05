@@ -25,7 +25,7 @@ type SetTrustLineFlags struct {
 	Asset         Asset
 	SetFlags      []TrustLineFlag
 	ClearFlags    []TrustLineFlag
-	SourceAccount Account
+	SourceAccount string
 }
 
 // BuildXDR for ASetTrustLineFlags  returns a fully configured XDR Operation.
@@ -127,6 +127,6 @@ func (stf *SetTrustLineFlags) Validate() error {
 
 // GetSourceAccount returns the source account of the operation, or nil if not
 // set.
-func (stf *SetTrustLineFlags) GetSourceAccount() Account {
+func (stf *SetTrustLineFlags) GetSourceAccount() string {
 	return stf.SourceAccount
 }

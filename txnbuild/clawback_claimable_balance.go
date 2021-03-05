@@ -10,7 +10,7 @@ import (
 // https://www.stellar.org/developers/guides/concepts/list-of-operations.html
 type ClawbackClaimableBalance struct {
 	BalanceID     string
-	SourceAccount Account
+	SourceAccount string
 }
 
 // BuildXDR for ClawbackClaimableBalance returns a fully configured XDR Operation.
@@ -65,6 +65,6 @@ func (cb *ClawbackClaimableBalance) Validate() error {
 
 // GetSourceAccount returns the source account of the operation, or nil if not
 // set.
-func (cb *ClawbackClaimableBalance) GetSourceAccount() Account {
+func (cb *ClawbackClaimableBalance) GetSourceAccount() string {
 	return cb.SourceAccount
 }

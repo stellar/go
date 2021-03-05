@@ -13,7 +13,7 @@ type Clawback struct {
 	From          string
 	Amount        string
 	Asset         Asset
-	SourceAccount Account
+	SourceAccount string
 }
 
 // BuildXDR for Clawback returns a fully configured XDR Operation.
@@ -101,6 +101,6 @@ func (cb *Clawback) Validate() error {
 
 // GetSourceAccount returns the source account of the operation, or nil if not
 // set.
-func (cb *Clawback) GetSourceAccount() Account {
+func (cb *Clawback) GetSourceAccount() string {
 	return cb.SourceAccount
 }
