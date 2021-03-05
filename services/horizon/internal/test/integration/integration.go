@@ -41,6 +41,7 @@ type Config struct {
 	PostgresURL           string
 	ProtocolVersion       int32
 	SkipContainerCreation bool
+	CoreDockerImage       string
 }
 
 type Test struct {
@@ -76,6 +77,9 @@ func NewTest(t *testing.T, config Config) *Test {
 		cmdline := append([]string{"-f", integrationYaml}, args...)
 		t.Log("Running", cmdline)
 		cmd := exec.Command("docker-compose", cmdline...)
+		if config.CoreDockerImage != "" {
+			cmd.Env = append(cmd.Env, fmt.Sprintf("CORE_IMAGE=%s", config.CoreDockerImage))
+		}
 		_, innerErr := cmd.Output()
 		fatalIf(t, innerErr)
 	}
