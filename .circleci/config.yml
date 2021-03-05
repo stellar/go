@@ -147,7 +147,7 @@ commands:
     parameters:
       core-version:
         type: string
-        default: ""
+        default: "" # latest version by default
     steps:
       - run:
           name: Install Stellar Core <<#parameters.core-version>> (version <<parameters.core-version>>)<</parameters.core-version>>
