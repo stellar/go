@@ -79,8 +79,12 @@ func NewTest(t *testing.T, config Config) *Test {
 		if config.CoreDockerImage != "" {
 			cmd.Env = append(cmd.Env, fmt.Sprintf("CORE_IMAGE=%s", config.CoreDockerImage))
 		}
-		t.Log("Running", cmd.Env, cmdline)
-		_, innerErr := cmd.Output()
+		t.Log("Running", cmd.Env, cmd.Path, cmd.Args)
+		out, innerErr := cmd.Output()
+		if exitErr, ok := innerErr.(*exec.ExitError); ok {
+			fmt.Printf("stdout:\n%s\n", string(out))
+			fmt.Printf("stderr:\n%s\n", string(exitErr.Stderr))
+		}
 		fatalIf(t, innerErr)
 	}
 
