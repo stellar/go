@@ -57,6 +57,7 @@ github.com/jmespath/go-jmespath v0.0.0-20180206201540-c2b33e8439af
 github.com/jmoiron/sqlx v1.2.0
 github.com/jtolds/gls v4.20.0+incompatible
 github.com/julienschmidt/httprouter v1.2.0
+github.com/k0kubun/colorstring v0.0.0-20150214042306-9440f1994b88
 github.com/kisielk/gotool v1.0.0
 github.com/klauspost/compress v0.0.0-20161106143436-e3b7981a12dd
 github.com/klauspost/cpuid v0.0.0-20160302075316-09cded8978dc
