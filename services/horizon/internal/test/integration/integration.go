@@ -77,6 +77,7 @@ func NewTest(t *testing.T, config Config) *Test {
 		cmdline := append([]string{"-f", integrationYaml}, args...)
 		cmd := exec.Command("docker-compose", cmdline...)
 		if config.CoreDockerImage != "" {
+			cmd.Env = os.Environ()
 			cmd.Env = append(cmd.Env, fmt.Sprintf("CORE_IMAGE=%s", config.CoreDockerImage))
 		}
 		t.Log("Running", cmd.Env, cmd.Args)
