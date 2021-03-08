@@ -34,7 +34,7 @@ func TestCreateClaimableBalanceRoundTrip(t *testing.T) {
 		},
 	}
 
-	roundTrip(t, []Operation{createNativeBalance, createAssetBalance})
+	testOperationsMarshallingRoundtrip(t, []Operation{createNativeBalance, createAssetBalance})
 }
 
 func TestClaimableBalanceID(t *testing.T) {

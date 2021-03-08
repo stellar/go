@@ -44,9 +44,9 @@ func MustNewCreditAsset(code string, issuer string) Asset {
 	return a
 }
 
-// NewAllowTrustAsset returns a new allow trust asset, panicking if it can't.
-func NewAllowTrustAsset(code string) (AllowTrustOpAsset, error) {
-	a := AllowTrustOpAsset{}
+// NewAssetCodeFromString returns a new allow trust asset, panicking if it can't.
+func NewAssetCodeFromString(code string) (AssetCode, error) {
+	a := AssetCode{}
 	length := len(code)
 	switch {
 	case length >= 1 && length <= 4:
@@ -66,9 +66,9 @@ func NewAllowTrustAsset(code string) (AllowTrustOpAsset, error) {
 	return a, nil
 }
 
-// MustNewAllowTrustAsset returns a new allow trust asset, panicking if it can't.
-func MustNewAllowTrustAsset(code string) AllowTrustOpAsset {
-	a, err := NewAllowTrustAsset(code)
+// MustNewAssetCodeFromString returns a new allow trust asset, panicking if it can't.
+func MustNewAssetCodeFromString(code string) AssetCode {
+	a, err := NewAssetCodeFromString(code)
 	if err != nil {
 		panic(err)
 	}
@@ -220,9 +220,9 @@ func (a *Asset) SetNative() error {
 	return nil
 }
 
-// ToAllowTrustOpAsset for Asset converts the Asset to a corresponding XDR
+// ToAssetCode for Asset converts the Asset to a corresponding XDR
 // "allow trust" asset, used by the XDR allow trust operation.
-func (a *Asset) ToAllowTrustOpAsset(code string) (AllowTrustOpAsset, error) {
+func (a *Asset) ToAssetCode(code string) (AssetCode, error) {
 	length := len(code)
 
 	switch {
@@ -230,14 +230,14 @@ func (a *Asset) ToAllowTrustOpAsset(code string) (AllowTrustOpAsset, error) {
 		var bytecode AssetCode4
 		byteArray := []byte(code)
 		copy(bytecode[:], byteArray[0:length])
-		return NewAllowTrustOpAsset(AssetTypeAssetTypeCreditAlphanum4, bytecode)
+		return NewAssetCode(AssetTypeAssetTypeCreditAlphanum4, bytecode)
 	case length >= 5 && length <= 12:
 		var bytecode AssetCode12
 		byteArray := []byte(code)
 		copy(bytecode[:], byteArray[0:length])
-		return NewAllowTrustOpAsset(AssetTypeAssetTypeCreditAlphanum12, bytecode)
+		return NewAssetCode(AssetTypeAssetTypeCreditAlphanum12, bytecode)
 	default:
-		return AllowTrustOpAsset{}, errors.New("Asset code length is invalid")
+		return AssetCode{}, errors.New("Asset code length is invalid")
 	}
 }
 

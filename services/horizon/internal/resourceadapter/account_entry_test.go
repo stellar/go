@@ -45,7 +45,7 @@ var (
 		SequenceNumber:       223456789,
 		NumSubEntries:        10,
 		InflationDestination: inflationDest.Address(),
-		Flags:                1,
+		Flags:                0b1001, // required and clawback
 		HomeDomain:           "stellar.org",
 		ThresholdLow:         1,
 		ThresholdMedium:      2,
@@ -152,9 +152,10 @@ func TestPopulateAccountEntry(t *testing.T) {
 	tt.Equal(wantAccountThresholds, hAccount.Thresholds)
 
 	wantFlags := AccountFlags{
-		AuthRequired:  account.IsAuthRequired(),
-		AuthRevocable: account.IsAuthRevocable(),
-		AuthImmutable: account.IsAuthImmutable(),
+		AuthRequired:        account.IsAuthRequired(),
+		AuthRevocable:       account.IsAuthRevocable(),
+		AuthImmutable:       account.IsAuthImmutable(),
+		AuthClawbackEnabled: account.IsAuthClawbackEnabled(),
 	}
 
 	tt.Equal(wantFlags, hAccount.Flags)

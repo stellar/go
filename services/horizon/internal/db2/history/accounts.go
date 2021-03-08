@@ -28,6 +28,12 @@ func (account AccountEntry) IsAuthImmutable() bool {
 	return xdr.AccountFlags(account.Flags).IsAuthImmutable()
 }
 
+// IsAuthClawbackEnabled returns true if the account has the "AUTH_CLAWBACK_ENABLED" option
+// turned on.
+func (account AccountEntry) IsAuthClawbackEnabled() bool {
+	return xdr.AccountFlags(account.Flags).IsAuthClawbackEnabled()
+}
+
 func (q *Q) CountAccounts() (int, error) {
 	sql := sq.Select("count(*)").From("accounts")
 

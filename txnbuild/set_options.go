@@ -20,6 +20,9 @@ const AuthRevocable = AccountFlag(xdr.AccountFlagsAuthRevocableFlag)
 // set, and prevents the account from ever being merged (deleted).
 const AuthImmutable = AccountFlag(xdr.AccountFlagsAuthImmutableFlag)
 
+// AuthClawbackEnabled is a flag that if set allows clawing back assets.
+const AuthClawbackEnabled = AccountFlag(xdr.AccountFlagsAuthClawbackEnabledFlag)
+
 // Threshold is the datatype for MasterWeight, Signer.Weight, and Thresholds. Each is a number
 // between 0-255 inclusive.
 type Threshold uint8
@@ -134,7 +137,7 @@ func (so *SetOptions) handleSetFlags() {
 // See https://www.stellar.org/developers/guides/concepts/accounts.html
 func (so *SetOptions) handleSetFlagsXDR(flags *xdr.Uint32) {
 	if flags != nil {
-		for _, f := range []AccountFlag{AuthRequired, AuthRevocable, AuthImmutable} {
+		for _, f := range []AccountFlag{AuthRequired, AuthRevocable, AuthImmutable, AuthClawbackEnabled} {
 			if f&AccountFlag(*flags) != 0 {
 				so.SetFlags = append(so.SetFlags, f)
 			}
@@ -158,7 +161,7 @@ func (so *SetOptions) handleClearFlags() {
 // See https://www.stellar.org/developers/guides/concepts/accounts.html
 func (so *SetOptions) handleClearFlagsXDR(flags *xdr.Uint32) {
 	if flags != nil {
-		for _, f := range []AccountFlag{AuthRequired, AuthRevocable, AuthImmutable} {
+		for _, f := range []AccountFlag{AuthRequired, AuthRevocable, AuthImmutable, AuthClawbackEnabled} {
 			if f&AccountFlag(*flags) != 0 {
 				so.ClearFlags = append(so.ClearFlags, f)
 			}

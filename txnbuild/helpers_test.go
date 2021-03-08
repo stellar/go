@@ -208,19 +208,19 @@ func TestValidateAmountInvalidValue(t *testing.T) {
 }
 
 func TestValidateAllowTrustAsset(t *testing.T) {
-	err := validateAllowTrustAsset(nil)
+	err := validateAssetCode(nil)
 	assert.Error(t, err)
 	expectedErrMsg := "asset is undefined"
 	require.EqualError(t, err, expectedErrMsg, "An asset is required")
 
-	err = validateAllowTrustAsset(NativeAsset{})
+	err = validateAssetCode(NativeAsset{})
 	assert.Error(t, err)
 	expectedErrMsg = "native (XLM) asset type is not allowed"
 	require.EqualError(t, err, expectedErrMsg, "An asset is required")
 
 	// allow trust asset does not require asset issuer
 	atAsset := CreditAsset{Code: "ABCD"}
-	err = validateAllowTrustAsset(atAsset)
+	err = validateAssetCode(atAsset)
 	assert.NoError(t, err)
 }
 

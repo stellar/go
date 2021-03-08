@@ -144,13 +144,17 @@ commands:
 
   # install_stellar_core installs the latest unstable version of stellar core.
   install_stellar_core:
+    parameters:
+      core-version:
+        type: string
+        default: "" # latest version by default
     steps:
       - run:
-          name: Install latest version of Stellar Core
+          name: Install Stellar Core <<#parameters.core-version>> (version <<parameters.core-version>>)<</parameters.core-version>>
           command: |
             sudo wget -qO - https://apt.stellar.org/SDF.asc | APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=true sudo apt-key add -
             sudo bash -c 'echo "deb https://apt.stellar.org xenial unstable" > /etc/apt/sources.list.d/SDF-unstable.list'
-            sudo apt-get update && sudo apt-get install -y stellar-core
+            sudo apt-get update && sudo apt-get install -y stellar-core<<#parameters.core-version>>=<<parameters.core-version>><</parameters.core-version>>
             echo "using stellar core version $(stellar-core version)"
             echo "export CAPTIVE_CORE_BIN=/usr/bin/stellar-core" >> $BASH_ENV
 
@@ -454,6 +458,10 @@ jobs:
       enable-captive-core:
         type: boolean
         default: false
+      # TODO: remove once a stellar core version with cap-35 is released
+      enable-cap-35-tests:
+        type: boolean
+        default: false
     working_directory: ~/go/src/github.com/stellar/go
     machine:
       image: ubuntu-1604:202010-01
@@ -470,16 +478,35 @@ jobs:
           name: Start Horizon Postgres DB
           command: docker run -d --env POSTGRES_HOST_AUTH_METHOD=trust -p 5432:5432 circleci/postgres:9.6.5-alpine
       - when:
-          condition: << parameters.enable-captive-core >>
+          condition: <<parameters.enable-captive-core>>
           steps:
-            - install_stellar_core
+            - unless:
+                condition: <<parameters.enable-cap-35-tests>>
+                steps:
+                  # Install the default version of stellar core
+                  - install_stellar_core
+            - when:
+                condition: <<parameters.enable-cap-35-tests>>
+                steps:
+                  # Install a Stellar Core version with CAP35 support
+                  - install_stellar_core:
+                      core-version: 11.4.0-472.84cd6a0.xenial~cap35FonsTest~buildtests
+            - run:
+                name: Setting Captive Core env variables
+                command: echo "export HORIZON_INTEGRATION_ENABLE_CAPTIVE_CORE=true" >> $BASH_ENV
+      - when:
+          condition: <<parameters.enable-cap-35-tests>>
+          steps:
+            - run:
+                name: Setting CAP35 env variables
+                command: echo "export HORIZON_INTEGRATION_ENABLE_CAP_35=true" >> $BASH_ENV
       - run:
-          name: Run Horizon integration tests <<# parameters.enable-captive-core >>(With captive core)<</ parameters.enable-captive-core >>
+          name: Run Horizon integration tests <<#parameters.enable-captive-core>>(With captive core)<</parameters.enable-captive-core>> <<#parameters.enable-cap-35-tests>>(With CAP35)<</parameters.enable-cap-35-tests>>
           # Currently all integration tests are in a single directory.
           # Pulling the image helps with test running time
           command: |
             cd ~/go/src/github.com/stellar/go
-            <<# parameters.enable-captive-core >>HORIZON_INTEGRATION_ENABLE_CAPTIVE_CORE=true<</ parameters.enable-captive-core >> go test -timeout 25m -v ./services/horizon/internal/integration/...
+            go test -timeout 25m -v ./services/horizon/internal/integration/...
 
 #-------------------------------------------------------------------------#
 # Workflows orchestrate jobs and make sure they run in the right sequence #
@@ -504,6 +531,11 @@ workflows:
       - test_horizon_integration:
           name: test_horizon_integration_with_captive_core
           enable-captive-core: true
+      # ... and cap35 with captive core
+      - test_horizon_integration:
+          name: test_horizon_integration_cap35_with_captive_core
+          enable-captive-core: true
+          enable-cap-35-tests: true
       - publish_state_diff_docker_image:
           filters:
               branches:

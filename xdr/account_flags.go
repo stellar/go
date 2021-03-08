@@ -17,3 +17,9 @@ func (accountFlags AccountFlags) IsAuthRevocable() bool {
 func (accountFlags AccountFlags) IsAuthImmutable() bool {
 	return (accountFlags & AccountFlagsAuthImmutableFlag) != 0
 }
+
+// IsAuthClawbackEnabled returns true if the account has the "AUTH_CLAWBACK_ENABLED" option
+// turned on.
+func (accountFlags AccountFlags) IsAuthClawbackEnabled() bool {
+	return (accountFlags & AccountFlagsAuthClawbackEnabledFlag) != 0
+}

@@ -312,6 +312,7 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 			},
 		},
 		Sponsor: null.StringFrom("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
+		Flags:   uint32(xdr.ClaimableBalanceFlagsClaimableBalanceClawbackEnabledFlag),
 	}
 	claimableBalanceChange := ingest.Change{
 		Type: xdr.LedgerEntryTypeClaimableBalance,
@@ -332,6 +333,12 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 					},
 					Asset:  claimableBalance.Asset,
 					Amount: claimableBalance.Amount,
+					Ext: xdr.ClaimableBalanceEntryExt{
+						V: 1,
+						V1: &xdr.ClaimableBalanceEntryExtensionV1{
+							Flags: xdr.Uint32(xdr.ClaimableBalanceFlagsClaimableBalanceClawbackEnabledFlag),
+						},
+					},
 				},
 			},
 			LastModifiedLedgerSeq: xdr.Uint32(62),

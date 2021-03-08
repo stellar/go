@@ -33,6 +33,9 @@ var TypeNames = map[xdr.OperationType]string{
 	xdr.OperationTypeBeginSponsoringFutureReserves: "begin_sponsoring_future_reserves",
 	xdr.OperationTypeEndSponsoringFutureReserves:   "end_sponsoring_future_reserves",
 	xdr.OperationTypeRevokeSponsorship:             "revoke_sponsorship",
+	xdr.OperationTypeClawback:                      "clawback",
+	xdr.OperationTypeClawbackClaimableBalance:      "clawback_claimable_balance",
+	xdr.OperationTypeSetTrustLineFlags:             "set_trust_line_flags",
 }
 
 // Base represents the common attributes of an operation resource
@@ -192,6 +195,7 @@ type ChangeTrust struct {
 	Trustor string `json:"trustor"`
 }
 
+// Deprecated: use TrustlineFlagsUpdated instead.
 // AllowTrust is the json resource representing a single operation whose type is
 // AllowTrust.
 type AllowTrust struct {
@@ -261,6 +265,34 @@ type RevokeSponsorship struct {
 	TrustlineAsset     *string `json:"trustline_asset,omitempty"`
 	SignerAccountID    *string `json:"signer_account_id,omitempty"`
 	SignerKey          *string `json:"signer_key,omitempty"`
+}
+
+// Clawback is the json resource representing a single operation whose type is
+// Clawback.
+type Clawback struct {
+	Base
+	base.Asset
+	From   string `json:"from"`
+	Amount string `json:"amount"`
+}
+
+// ClawbackClaimableBalance is the json resource representing a single operation whose type is
+// ClawbackClaimableBalance.
+type ClawbackClaimableBalance struct {
+	Base
+	ClaimableBalanceID *string `json:"balance_id,omitempty"`
+}
+
+// SetTrustLineFlags is the json resource representing a single operation whose type is
+// SetTrustLineFlags.
+type SetTrustLineFlags struct {
+	Base
+	base.Asset
+	Trustor     string   `json:"trustor"`
+	SetFlags    []int    `json:"set_flags,omitempty"`
+	SetFlagsS   []string `json:"set_flags_s,omitempty"`
+	ClearFlags  []int    `json:"clear_flags,omitempty"`
+	ClearFlagsS []string `json:"clear_flags_s,omitempty"`
 }
 
 // Operation interface contains methods implemented by the operation types
@@ -450,6 +482,24 @@ func UnmarshalOperation(operationTypeID int32, dataString []byte) (ops Operation
 		ops = op
 	case xdr.OperationTypeRevokeSponsorship:
 		var op RevokeSponsorship
+		if err = json.Unmarshal(dataString, &op); err != nil {
+			return
+		}
+		ops = op
+	case xdr.OperationTypeClawback:
+		var op Clawback
+		if err = json.Unmarshal(dataString, &op); err != nil {
+			return
+		}
+		ops = op
+	case xdr.OperationTypeClawbackClaimableBalance:
+		var op ClawbackClaimableBalance
+		if err = json.Unmarshal(dataString, &op); err != nil {
+			return
+		}
+		ops = op
+	case xdr.OperationTypeSetTrustLineFlags:
+		var op SetTrustLineFlags
 		if err = json.Unmarshal(dataString, &op); err != nil {
 			return
 		}

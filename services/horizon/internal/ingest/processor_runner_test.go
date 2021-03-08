@@ -253,7 +253,7 @@ func TestProcessorRunnerRunHistoryArchiveIngestionProtocolVersionNotSupported(t 
 	}
 
 	_, err := runner.RunHistoryArchiveIngestion(100)
-	assert.EqualError(t, err, "Error while checking for supported protocol version: This Horizon version does not support protocol version 200. The latest supported protocol version is 15. Please upgrade to the latest Horizon version.")
+	assert.EqualError(t, err, "Error while checking for supported protocol version: This Horizon version does not support protocol version 200. The latest supported protocol version is 16. Please upgrade to the latest Horizon version.")
 }
 
 func TestProcessorRunnerBuildChangeProcessor(t *testing.T) {
@@ -491,5 +491,5 @@ func TestProcessorRunnerRunAllProcessorsOnLedgerProtocolVersionNotSupported(t *t
 	}
 
 	_, _, _, _, err := runner.RunAllProcessorsOnLedger(63)
-	assert.EqualError(t, err, "Error while checking for supported protocol version: This Horizon version does not support protocol version 200. The latest supported protocol version is 15. Please upgrade to the latest Horizon version.")
+	assert.EqualError(t, err, "Error while checking for supported protocol version: This Horizon version does not support protocol version 200. The latest supported protocol version is 16. Please upgrade to the latest Horizon version.")
 }
