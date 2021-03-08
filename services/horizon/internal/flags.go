@@ -120,7 +120,7 @@ func Flags() (*Config, support.ConfigOptions) {
 			OptType:     types.Bool,
 			FlagDefault: true,
 			Required:    false,
-			Usage:       "[experimental flag!] causes Horizon to ingest from a Stellar Core process instead of a persistent Stellar Core database",
+			Usage:       "causes Horizon to ingest from a Captive Stellar Core process instead of a persistent Stellar Core database",
 			ConfigKey:   &config.EnableCaptiveCoreIngestion,
 		},
 		&support.ConfigOption{

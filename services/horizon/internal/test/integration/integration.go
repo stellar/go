@@ -182,11 +182,11 @@ func (i *Test) startHorizon(
 	config, configOpts := horizon.Flags()
 	cmd := &cobra.Command{
 		Use:   "horizon",
-		Short: "client-facing api server for the stellar network",
-		Long: `client-facing api server for the stellar network. It acts as the
+		Short: "client-facing api server for the Stellar network",
+		Long: `Client-facing API server for the Stellar network. It acts as the
 interface between Stellar Core and applications that want to access the Stellar
 network. It allows you to submit transactions to the network, check the status
-of accounts, subscribe to event streams and more.`,
+of accounts, subscribe to event streams, and more.`,
 		Run: func(cmd *cobra.Command, args []string) {
 			i.app = horizon.NewAppFromFlags(config, configOpts)
 		},
