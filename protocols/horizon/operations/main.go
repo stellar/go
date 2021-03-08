@@ -35,6 +35,7 @@ var TypeNames = map[xdr.OperationType]string{
 	xdr.OperationTypeRevokeSponsorship:             "revoke_sponsorship",
 	xdr.OperationTypeClawback:                      "clawback",
 	xdr.OperationTypeClawbackClaimableBalance:      "clawback_claimable_balance",
+	xdr.OperationTypeSetTrustLineFlags:             "set_trust_line_flags",
 }
 
 // Base represents the common attributes of an operation resource

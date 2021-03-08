@@ -11,6 +11,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/codes"
 	"github.com/stellar/go/services/horizon/internal/test/integration"
 	"github.com/stellar/go/txnbuild"
+	"github.com/stellar/go/xdr"
 )
 
 var protocol16Config = integration.Config{ProtocolVersion: 16}
@@ -125,7 +126,7 @@ func TestHappyClawback(t *testing.T) {
 		tt.Equal("10.0000000", clawbackOp.Amount)
 	}
 
-	// Check the operation details
+	// Check the operation effects
 	effectsResponse, err := itest.Client().Effects(horizonclient.EffectRequest{
 		ForTransaction: submissionResp.Hash,
 	})
@@ -133,15 +134,15 @@ func TestHappyClawback(t *testing.T) {
 
 	if tt.Len(effectsResponse.Embedded.Records, 2) {
 		accountCredited := effectsResponse.Embedded.Records[0].(effects.AccountCredited)
-		tt.Equal(accountCredited.Account, master.Address())
-		tt.Equal(accountCredited.Amount, "10.0000000")
-		tt.Equal(accountCredited.Issuer, master.Address())
-		tt.Equal(accountCredited.Code, "PTS")
+		tt.Equal(master.Address(), accountCredited.Account)
+		tt.Equal("10.0000000", accountCredited.Amount)
+		tt.Equal(master.Address(), accountCredited.Issuer)
+		tt.Equal("PTS", accountCredited.Code)
 		accountDebited := effectsResponse.Embedded.Records[1].(effects.AccountDebited)
-		tt.Equal(accountDebited.Account, accountKeyPair.Address())
-		tt.Equal(accountDebited.Amount, "10.0000000")
-		tt.Equal(accountDebited.Issuer, master.Address())
-		tt.Equal(accountDebited.Code, "PTS")
+		tt.Equal(accountKeyPair.Address(), accountDebited.Account)
+		tt.Equal("10.0000000", accountDebited.Amount)
+		tt.Equal(master.Address(), accountDebited.Issuer)
+		tt.Equal("PTS", accountDebited.Code)
 	}
 
 }
@@ -299,7 +300,7 @@ func TestHappySetTrustLineFlags(t *testing.T) {
 			txnbuild.TrustLineClawbackEnabled,
 		},
 	}
-	itest.MustSubmitOperations(itest.MasterAccount(), master, &setTrustlineFlags)
+	submissionResp := itest.MustSubmitOperations(itest.MasterAccount(), master, &setTrustlineFlags)
 
 	// make sure it was cleared
 	accountDetails = itest.MustGetAccount(accountKeyPair)
@@ -307,6 +308,44 @@ func TestHappySetTrustLineFlags(t *testing.T) {
 		pts := accountDetails.Balances[0]
 		tt.Equal("PTS", pts.Code)
 		tt.Nil(pts.IsClawbackEnabled)
+	}
+
+	// Check the operation details
+	opDetailsResponse, err := itest.Client().Operations(horizonclient.OperationRequest{
+		ForTransaction: submissionResp.Hash,
+	})
+	tt.NoError(err)
+	if tt.Len(opDetailsResponse.Embedded.Records, 1) {
+		setTrustlineFlagsDetails := opDetailsResponse.Embedded.Records[0].(operations.SetTrustLineFlags)
+		tt.Equal("PTS", setTrustlineFlagsDetails.Code)
+		tt.Equal(master.Address(), setTrustlineFlagsDetails.Issuer)
+		tt.Equal(accountKeyPair.Address(), setTrustlineFlagsDetails.Trustor)
+		if tt.Len(setTrustlineFlagsDetails.ClearFlags, 1) {
+			tt.True(xdr.TrustLineFlags(setTrustlineFlagsDetails.ClearFlags[0]).IsClawbackEnabledFlag())
+		}
+		if tt.Len(setTrustlineFlagsDetails.ClearFlagsS, 1) {
+			tt.Equal(setTrustlineFlagsDetails.ClearFlagsS[0], "clawback_enabled")
+		}
+		tt.Len(setTrustlineFlagsDetails.SetFlags, 0)
+		tt.Len(setTrustlineFlagsDetails.SetFlagsS, 0)
+	}
+
+	// Check the operation effects
+	effectsResponse, err := itest.Client().Effects(horizonclient.EffectRequest{
+		ForTransaction: submissionResp.Hash,
+	})
+	tt.NoError(err)
+
+	if tt.Len(effectsResponse.Embedded.Records, 1) {
+		trustlineFlagsUpdated := effectsResponse.Embedded.Records[0].(effects.TrustlineFlagsUpdated)
+		tt.Equal(master.Address(), trustlineFlagsUpdated.Account)
+		tt.Equal(master.Address(), trustlineFlagsUpdated.Issuer)
+		tt.Equal("PTS", trustlineFlagsUpdated.Code)
+		tt.Nil(trustlineFlagsUpdated.Authorized)
+		tt.Nil(trustlineFlagsUpdated.AuthorizedToMaintainLiabilities)
+		if tt.NotNil(trustlineFlagsUpdated.ClawbackEnabled) {
+			tt.False(*trustlineFlagsUpdated.ClawbackEnabled)
+		}
 	}
 
 	// Try to set the clawback flag (we shouldn't be able to)
@@ -317,7 +356,7 @@ func TestHappySetTrustLineFlags(t *testing.T) {
 			txnbuild.TrustLineClawbackEnabled,
 		},
 	}
-	_, err := itest.SubmitOperations(itest.MasterAccount(), master, &setTrustlineFlags)
+	_, err = itest.SubmitOperations(itest.MasterAccount(), master, &setTrustlineFlags)
 	if tt.Error(err) {
 		clientErr, ok := err.(*horizonclient.Error)
 		if tt.True(ok) {
