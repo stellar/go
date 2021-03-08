@@ -92,11 +92,7 @@ func logStartOfRequest(
 	fields["useragent"] = r.Header.Get("User-Agent")
 	l := log.Ctx(r.Context()).WithFields(fields)
 
-	message := "starting request"
-	if len(fields) > 6 {
-		message = message + " w/Options"
-	}
-	l.Info(message)
+	l.Info("starting request")
 }
 
 // logEndOfRequest emits the logline for the end of the request
