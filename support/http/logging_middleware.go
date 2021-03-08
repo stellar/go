@@ -75,15 +75,23 @@ func logStartOfRequest(
 	r *stdhttp.Request,
 	extraHeaders ...string,
 ) {
-	l := log.Ctx(r.Context()).WithFields(log.F{
-		"subsys":    "http",
-		"path":      r.URL.String(),
-		"method":    r.Method,
-		"ip":        r.RemoteAddr,
-		"host":      r.Host,
-		"useragent": r.Header.Get("User-Agent"),
-	})
-	l.Info("starting request")
+	fields := log.F{}
+	for _, header := range extraHeaders {
+		fields[header] = r.Header.Get(header)
+	}
+	fields["subsys"] = "http"
+	fields["path"] = r.URL.String()
+	fields["method"] = r.Method
+	fields["ip"] = r.RemoteAddr
+	fields["host"] = r.Host
+	fields["useragent"] = r.Header.Get("User-Agent")
+	l := log.Ctx(r.Context()).WithFields(fields)
+
+	message := "starting request"
+	if len(fields) > 6 {
+		message = message + " w/Options"
+	}
+	l.Info(message)
 }
 
 // logEndOfRequest emits the logline for the end of the request
