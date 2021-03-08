@@ -11,13 +11,27 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// set "X-Forwarded-For" header to test LoggingMiddlewareWithOptions
+func setXFFMiddleWare(next stdhttp.Handler) stdhttp.Handler {
+	return stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		r.Header.Set("X-Forwarded-For", "203.0.113.195")
+		next.ServeHTTP(w, r)
+	})
+}
+
+// set "Content-MD5" header to test LoggingMiddlewareWithOptions
+func setCMDFiveMiddleWare(next stdhttp.Handler) stdhttp.Handler {
+	return stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		r.Header.Set("Content-MD5", "Q2hlY2sgSW50ZWdyaXR5IQ==")
+		next.ServeHTTP(w, r)
+	})
+}
 func TestHTTPMiddleware(t *testing.T) {
 	done := log.DefaultLogger.StartTest(log.InfoLevel)
 	mux := chi.NewMux()
 
 	mux.Use(middleware.RequestID)
 	mux.Use(LoggingMiddleware)
-	mux.Use(LoggingMiddlewareWithOptions("test"))
 
 	mux.Get("/path/{value}", stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 		log.Ctx(r.Context()).Info("handler log line")
@@ -72,6 +86,85 @@ func TestHTTPMiddleware(t *testing.T) {
 		assert.NotEmpty(t, logged[5].Data["req"])
 		assert.NotEmpty(t, logged[5].Data["path"])
 		assert.Equal(t, "Go-http-client/1.1", logged[5].Data["useragent"])
+		req3 := logged[5].Data["req"]
+
+		assert.Equal(t, "finished request", logged[6].Message)
+		assert.Equal(t, "http", logged[6].Data["subsys"])
+		assert.Equal(t, "GET", logged[6].Data["method"])
+		assert.Equal(t, req3, logged[6].Data["req"])
+		assert.Equal(t, "/really_not_found", logged[6].Data["path"])
+		assert.Equal(t, "", logged[6].Data["route"])
+	}
+}
+func TestHTTPMiddlewareWithOptions(t *testing.T) {
+	done := log.DefaultLogger.StartTest(log.InfoLevel)
+	mux := chi.NewMux()
+
+	mux.Use(setXFFMiddleWare)
+	mux.Use(setCMDFiveMiddleWare)
+	mux.Use(middleware.RequestID)
+	extraHeaders := []string{"X-Forwarded-For", "Content-MD5"}
+	mux.Use(LoggingMiddlewareWithOptions(extraHeaders...))
+
+	mux.Get("/path/{value}", stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		log.Ctx(r.Context()).Info("handler log line")
+	}))
+	mux.Handle("/not_found", stdhttp.NotFoundHandler())
+
+	src := httptest.NewServer(t, mux)
+	src.GET("/path/1234").Expect().Status(stdhttp.StatusOK)
+	src.GET("/not_found").Expect().Status(stdhttp.StatusNotFound)
+	src.GET("/really_not_found").Expect().Status(stdhttp.StatusNotFound)
+
+	// get the log buffer and ensure it has both the start and end log lines for
+	// each request
+	logged := done()
+	if assert.Len(t, logged, 7, "unexpected log line count") {
+		assert.Equal(t, "starting request w/Options", logged[0].Message)
+		assert.Equal(t, "http", logged[0].Data["subsys"])
+		assert.Equal(t, "GET", logged[0].Data["method"])
+		assert.NotEmpty(t, logged[0].Data["req"])
+		assert.Equal(t, "/path/1234", logged[0].Data["path"])
+		assert.Equal(t, "Go-http-client/1.1", logged[0].Data["useragent"])
+		assert.Equal(t, "203.0.113.195", logged[0].Data["X-Forwarded-For"])
+		assert.Equal(t, "Q2hlY2sgSW50ZWdyaXR5IQ==", logged[0].Data["Content-MD5"])
+		req1 := logged[0].Data["req"]
+
+		assert.Equal(t, "handler log line", logged[1].Message)
+		assert.Equal(t, req1, logged[1].Data["req"])
+
+		assert.Equal(t, "finished request", logged[2].Message)
+		assert.Equal(t, "http", logged[2].Data["subsys"])
+		assert.Equal(t, "GET", logged[2].Data["method"])
+		assert.Equal(t, req1, logged[2].Data["req"])
+		assert.Equal(t, "/path/1234", logged[2].Data["path"])
+		assert.Equal(t, "/path/{value}", logged[2].Data["route"])
+
+		assert.Equal(t, "starting request w/Options", logged[3].Message)
+		assert.Equal(t, "http", logged[3].Data["subsys"])
+		assert.Equal(t, "GET", logged[3].Data["method"])
+		assert.NotEmpty(t, logged[3].Data["req"])
+		assert.NotEmpty(t, logged[3].Data["path"])
+		assert.Equal(t, "Go-http-client/1.1", logged[3].Data["useragent"])
+		assert.Equal(t, "203.0.113.195", logged[3].Data["X-Forwarded-For"])
+		assert.Equal(t, "Q2hlY2sgSW50ZWdyaXR5IQ==", logged[3].Data["Content-MD5"])
+		req2 := logged[3].Data["req"]
+
+		assert.Equal(t, "finished request", logged[4].Message)
+		assert.Equal(t, "http", logged[4].Data["subsys"])
+		assert.Equal(t, "GET", logged[4].Data["method"])
+		assert.Equal(t, req2, logged[4].Data["req"])
+		assert.Equal(t, "/not_found", logged[4].Data["path"])
+		assert.Equal(t, "/not_found", logged[4].Data["route"])
+
+		assert.Equal(t, "starting request w/Options", logged[5].Message)
+		assert.Equal(t, "http", logged[5].Data["subsys"])
+		assert.Equal(t, "GET", logged[5].Data["method"])
+		assert.NotEmpty(t, logged[5].Data["req"])
+		assert.NotEmpty(t, logged[5].Data["path"])
+		assert.Equal(t, "Go-http-client/1.1", logged[5].Data["useragent"])
+		assert.Equal(t, "203.0.113.195", logged[5].Data["X-Forwarded-For"])
+		assert.Equal(t, "Q2hlY2sgSW50ZWdyaXR5IQ==", logged[5].Data["Content-MD5"])
 		req3 := logged[5].Data["req"]
 
 		assert.Equal(t, "finished request", logged[6].Message)
