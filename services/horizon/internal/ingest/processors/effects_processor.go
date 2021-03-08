@@ -161,6 +161,11 @@ func (operation *transactionOperationWrapper) effects() ([]effect, error) {
 		err error
 	)
 
+	changes, err := operation.transaction.GetOperationChanges(operation.index)
+	if err != nil {
+		return nil, err
+	}
+
 	wrapper := &effectsWrapper{
 		effects:   []effect{},
 		operation: operation,
@@ -196,19 +201,20 @@ func (operation *transactionOperationWrapper) effects() ([]effect, error) {
 	case xdr.OperationTypeBumpSequence:
 		err = wrapper.addBumpSequenceEffects()
 	case xdr.OperationTypeCreateClaimableBalance:
-		err = wrapper.addCreateClaimableBalanceEffects()
+		err = wrapper.addCreateClaimableBalanceEffects(changes)
 	case xdr.OperationTypeClaimClaimableBalance:
-		err = wrapper.addClaimClaimableBalanceEffects()
+		err = wrapper.addClaimClaimableBalanceEffects(changes)
 	case xdr.OperationTypeBeginSponsoringFutureReserves, xdr.OperationTypeEndSponsoringFutureReserves, xdr.OperationTypeRevokeSponsorship:
-		// The effects of these operations are obtained  indirectly from the ledger entries
+	// The effects of these operations are obtained  indirectly from the ledger entries
+	case xdr.OperationTypeClawback:
+		err = wrapper.addClawbackEffects()
+	case xdr.OperationTypeClawbackClaimableBalance:
+		err = wrapper.addClawbackClaimableBalanceEffects(changes)
+	case xdr.OperationTypeSetTrustLineFlags:
+		err = wrapper.addSetTrustLineFlagsEffects()
 	default:
 		return nil, fmt.Errorf("Unknown operation type: %s", op.Body.Type)
 	}
-	if err != nil {
-		return nil, err
-	}
-
-	changes, err := operation.transaction.GetOperationChanges(operation.index)
 	if err != nil {
 		return nil, err
 	}
@@ -383,7 +389,7 @@ func (e *effectsWrapper) addLedgerEntrySponsorshipEffects(change ingest.Change) 
 		var err error
 		details["balance_id"], err = xdr.MarshalHex(data.MustClaimableBalance().BalanceId)
 		if err != nil {
-			return errors.Wrapf(err, "Invalid balanceId in change from op: %d", e.operation.index)
+			return errors.Wrapf(err, "Invalid balanceId in change from op %d", e.operation.index)
 		}
 	default:
 		return errors.Errorf("invalid sponsorship ledger entry type %v", change.Type.String())
@@ -546,8 +552,12 @@ func (e *effectsWrapper) addSetOptionsEffects() error {
 	}
 
 	flagDetails := map[string]interface{}{}
-	setEffectFlagDetails(flagDetails, op.SetFlags, true)
-	setEffectFlagDetails(flagDetails, op.ClearFlags, false)
+	if op.SetFlags != nil {
+		setAuthFlagDetails(flagDetails, xdr.AccountFlags(*op.SetFlags), true)
+	}
+	if op.ClearFlags != nil {
+		setAuthFlagDetails(flagDetails, xdr.AccountFlags(*op.ClearFlags), false)
+	}
 
 	if len(flagDetails) > 0 {
 		e.add(source.Address(), history.EffectAccountFlagsUpdated, flagDetails)
@@ -680,14 +690,23 @@ func (e *effectsWrapper) addAllowTrustEffects() {
 	switch {
 	case xdr.TrustLineFlags(op.Authorize).IsAuthorized():
 		e.add(source.Address(), history.EffectTrustlineAuthorized, details)
+		// Forward compatibility
+		setFlags := xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag)
+		e.addTrustLineFlagsEffect(source, &op.Trustor, asset, &setFlags, nil)
 	case xdr.TrustLineFlags(op.Authorize).IsAuthorizedToMaintainLiabilitiesFlag():
 		e.add(
 			source.Address(),
 			history.EffectTrustlineAuthorizedToMaintainLiabilities,
 			details,
 		)
+		// Forward compatibility
+		setFlags := xdr.Uint32(xdr.TrustLineFlagsAuthorizedToMaintainLiabilitiesFlag)
+		e.addTrustLineFlagsEffect(source, &op.Trustor, asset, &setFlags, nil)
 	default:
 		e.add(source.Address(), history.EffectTrustlineDeauthorized, details)
+		// Forward compatibility, show both as cleared
+		clearFlags := xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag | xdr.TrustLineFlagsAuthorizedToMaintainLiabilitiesFlag)
+		e.addTrustLineFlagsEffect(source, &op.Trustor, asset, nil, &clearFlags)
 	}
 }
 
@@ -782,14 +801,20 @@ func (e *effectsWrapper) addBumpSequenceEffects() error {
 			details := map[string]interface{}{"new_seq": afterAccount.SeqNum}
 			e.add(source.Address(), history.EffectSequenceBumped, details)
 		}
-
 		break
 	}
 
 	return nil
 }
 
-func (e *effectsWrapper) addCreateClaimableBalanceEffects() error {
+func setClaimableBalanceFlagDetails(details map[string]interface{}, flags xdr.ClaimableBalanceFlags) {
+	if flags.IsClawbackEnabled() {
+		details["claimable_balance_clawback_enabled_flag"] = true
+		return
+	}
+}
+
+func (e *effectsWrapper) addCreateClaimableBalanceEffects(changes []ingest.Change) error {
 	op := e.operation.operation.Body.MustCreateClaimableBalanceOp()
 
 	result := e.operation.OperationResult().MustCreateClaimableBalanceResult()
@@ -798,14 +823,22 @@ func (e *effectsWrapper) addCreateClaimableBalanceEffects() error {
 		return errors.Wrapf(err, "Invalid balanceId in op: %d", e.operation.index)
 	}
 
+	details := map[string]interface{}{
+		"balance_id": balanceID,
+		"amount":     amount.String(op.Amount),
+		"asset":      op.Asset.StringCanonical(),
+	}
+	for _, change := range changes {
+		if change.Type != xdr.LedgerEntryTypeClaimableBalance || change.Post == nil {
+			continue
+		}
+		setClaimableBalanceFlagDetails(details, change.Post.Data.ClaimableBalance.Flags())
+		break
+	}
 	e.add(
 		e.operation.SourceAccount().Address(),
 		history.EffectClaimableBalanceCreated,
-		map[string]interface{}{
-			"balance_id": balanceID,
-			"amount":     amount.String(op.Amount),
-			"asset":      op.Asset.StringCanonical(),
-		},
+		details,
 	)
 
 	for _, c := range op.Claimants {
@@ -822,7 +855,7 @@ func (e *effectsWrapper) addCreateClaimableBalanceEffects() error {
 		)
 	}
 
-	details := map[string]interface{}{
+	details = map[string]interface{}{
 		"amount": amount.String(op.Amount),
 	}
 	addAssetDetails(details, op.Asset, "")
@@ -835,7 +868,7 @@ func (e *effectsWrapper) addCreateClaimableBalanceEffects() error {
 	return nil
 }
 
-func (e *effectsWrapper) addClaimClaimableBalanceEffects() error {
+func (e *effectsWrapper) addClaimClaimableBalanceEffects(changes []ingest.Change) error {
 	op := e.operation.operation.Body.MustClaimClaimableBalanceOp()
 
 	balanceID, err := xdr.MarshalHex(op.BalanceId)
@@ -843,14 +876,8 @@ func (e *effectsWrapper) addClaimClaimableBalanceEffects() error {
 		return fmt.Errorf("Invalid balanceId in op: %d", e.operation.index)
 	}
 
-	changes, err := e.operation.transaction.GetOperationChanges(e.operation.index)
-	if err != nil {
-		return err
-	}
-
 	var cBalance xdr.ClaimableBalanceEntry
 	found := false
-
 	for _, change := range changes {
 		if change.Type != xdr.LedgerEntryTypeClaimableBalance {
 			continue
@@ -874,17 +901,19 @@ func (e *effectsWrapper) addClaimClaimableBalanceEffects() error {
 		return fmt.Errorf("Change not found for balanceId : %s", balanceID)
 	}
 
+	details := map[string]interface{}{
+		"amount":     amount.String(cBalance.Amount),
+		"balance_id": balanceID,
+		"asset":      cBalance.Asset.StringCanonical(),
+	}
+	setClaimableBalanceFlagDetails(details, cBalance.Flags())
 	e.add(
 		e.operation.SourceAccount().Address(),
 		history.EffectClaimableBalanceClaimed,
-		map[string]interface{}{
-			"amount":     amount.String(cBalance.Amount),
-			"balance_id": balanceID,
-			"asset":      cBalance.Asset.StringCanonical(),
-		},
+		details,
 	)
 
-	details := map[string]interface{}{
+	details = map[string]interface{}{
 		"amount": amount.String(cBalance.Amount),
 	}
 	addAssetDetails(details, cBalance.Asset, "")
@@ -920,19 +949,121 @@ func (e *effectsWrapper) addIngestTradeEffects(buyer xdr.AccountId, claims []xdr
 	}
 }
 
-func setEffectFlagDetails(flagDetails map[string]interface{}, flagPtr *xdr.Uint32, setValue bool) {
-	if flagPtr != nil {
-		flags := xdr.AccountFlags(*flagPtr)
+func (e *effectsWrapper) addClawbackEffects() error {
+	op := e.operation.operation.Body.MustClawbackOp()
+	details := map[string]interface{}{
+		"amount": amount.String(op.Amount),
+	}
+	source := e.operation.SourceAccount()
+	addAssetDetails(details, op.Asset, "")
 
-		if flags&xdr.AccountFlagsAuthRequiredFlag != 0 {
-			flagDetails["auth_required_flag"] = setValue
+	// The funds will be burned, but even with that, we generated an account credited effect
+	e.add(
+		source.Address(),
+		history.EffectAccountCredited,
+		details,
+	)
+
+	from := op.From.ToAccountId()
+	e.add(
+		from.Address(),
+		history.EffectAccountDebited,
+		details,
+	)
+
+	return nil
+}
+
+func (e *effectsWrapper) addClawbackClaimableBalanceEffects(changes []ingest.Change) error {
+	op := e.operation.operation.Body.MustClawbackClaimableBalanceOp()
+	balanceId, err := xdr.MarshalHex(op.BalanceId)
+	if err != nil {
+		return errors.Wrapf(err, "Invalid balanceId in op %d", e.operation.index)
+	}
+	details := map[string]interface{}{
+		"balance_id": balanceId,
+	}
+	e.add(
+		e.operation.SourceAccount().Address(),
+		history.EffectClaimableBalanceClawedBack,
+		details,
+	)
+
+	// Generate the account credited effect (although the funds will be burned) for the asset issuer
+	for _, c := range changes {
+		if c.Type == xdr.LedgerEntryTypeClaimableBalance && c.Post == nil && c.Pre != nil {
+			cb := c.Pre.Data.ClaimableBalance
+			details = map[string]interface{}{"amount": amount.String(cb.Amount)}
+			addAssetDetails(details, cb.Asset, "")
+			e.add(
+				e.operation.SourceAccount().Address(),
+				history.EffectAccountCredited,
+				details,
+			)
+			break
 		}
-		if flags&xdr.AccountFlagsAuthRevocableFlag != 0 {
-			flagDetails["auth_revocable_flag"] = setValue
-		}
-		if flags&xdr.AccountFlagsAuthImmutableFlag != 0 {
-			flagDetails["auth_immutable_flag"] = setValue
-		}
+	}
+
+	return nil
+}
+
+func (e *effectsWrapper) addSetTrustLineFlagsEffects() error {
+	source := e.operation.SourceAccount()
+	op := e.operation.operation.Body.MustSetTrustLineFlagsOp()
+	e.addTrustLineFlagsEffect(source, &op.Trustor, op.Asset, op.SetFlags, op.ClearFlags)
+	return nil
+}
+
+func (e *effectsWrapper) addTrustLineFlagsEffect(
+	account *xdr.AccountId,
+	trustor *xdr.AccountId,
+	asset xdr.Asset,
+	setFlags *xdr.Uint32,
+	clearFlags *xdr.Uint32) {
+	details := map[string]interface{}{
+		"trustor": trustor.Address(),
+	}
+	addAssetDetails(details, asset, "")
+
+	var flagDetailsAdded bool
+	if setFlags != nil {
+		setTrustLineFlagDetails(details, xdr.TrustLineFlags(*setFlags), true)
+		flagDetailsAdded = true
+	}
+	if clearFlags != nil {
+		setTrustLineFlagDetails(details, xdr.TrustLineFlags(*clearFlags), false)
+		flagDetailsAdded = true
+	}
+
+	if flagDetailsAdded {
+		e.add(account.Address(), history.EffectTrustlineFlagsUpdated, details)
+	}
+}
+
+func setTrustLineFlagDetails(flagDetails map[string]interface{}, flags xdr.TrustLineFlags, setValue bool) {
+	if flags.IsAuthorized() {
+		flagDetails["authorized_flag"] = setValue
+	}
+	if flags.IsAuthorizedToMaintainLiabilitiesFlag() {
+		flagDetails["authorized_to_maintain_liabilites"] = setValue
+	}
+	if flags.IsClawbackEnabledFlag() {
+		flagDetails["clawback_enabled_flag"] = setValue
+	}
+}
+
+func setAuthFlagDetails(flagDetails map[string]interface{}, flags xdr.AccountFlags, setValue bool) {
+	if flags.IsAuthRequired() {
+		flagDetails["auth_required_flag"] = setValue
+	}
+	if flags.IsAuthRevocable() {
+		flagDetails["auth_revocable_flag"] = setValue
+	}
+	if flags.IsAuthImmutable() {
+		flagDetails["auth_immutable_flag"] = setValue
+	}
+	if flags.IsAuthClawbackEnabled() {
+		flagDetails["auth_clawback_enabled_flag"] = setValue
 	}
 }
 

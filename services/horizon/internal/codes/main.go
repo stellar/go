@@ -33,6 +33,8 @@ const (
 	OpNoTrust = "op_no_trust"
 	// OpNotAuthorized occurs when a trust line is not authorized
 	OpNotAuthorized = "op_not_authorized"
+	// OpDoesNotExist occurs when claimable balance or sponsorship does not exist
+	OpDoesNotExist = "op_does_not_exist"
 )
 
 //String returns the appropriate string representation of the provided result code
@@ -233,6 +235,8 @@ func String(code interface{}) (string, error) {
 			return "op_bad_signer", nil
 		case xdr.SetOptionsResultCodeSetOptionsInvalidHomeDomain:
 			return "op_invalid_home_domain", nil
+		case xdr.SetOptionsResultCodeSetOptionsAuthRevocableRequired:
+			return "op_auth_revocable_required", nil
 		}
 	case xdr.ChangeTrustResultCode:
 		switch code {
@@ -355,7 +359,7 @@ func String(code interface{}) (string, error) {
 		case xdr.ClaimClaimableBalanceResultCodeClaimClaimableBalanceSuccess:
 			return OpSuccess, nil
 		case xdr.ClaimClaimableBalanceResultCodeClaimClaimableBalanceDoesNotExist:
-			return "op_does_not_exist", nil
+			return OpDoesNotExist, nil
 		case xdr.ClaimClaimableBalanceResultCodeClaimClaimableBalanceCannotClaim:
 			return "op_cannot_claim", nil
 		case xdr.ClaimClaimableBalanceResultCodeClaimClaimableBalanceLineFull:
@@ -388,7 +392,7 @@ func String(code interface{}) (string, error) {
 		case xdr.RevokeSponsorshipResultCodeRevokeSponsorshipSuccess:
 			return OpSuccess, nil
 		case xdr.RevokeSponsorshipResultCodeRevokeSponsorshipDoesNotExist:
-			return "op_does_not_exist", nil
+			return OpDoesNotExist, nil
 		case xdr.RevokeSponsorshipResultCodeRevokeSponsorshipNotSponsor:
 			return "op_not_sponsor", nil
 		case xdr.RevokeSponsorshipResultCodeRevokeSponsorshipLowReserve:
@@ -396,12 +400,49 @@ func String(code interface{}) (string, error) {
 		case xdr.RevokeSponsorshipResultCodeRevokeSponsorshipOnlyTransferable:
 			return "op_only_transferable", nil
 		}
+	case xdr.ClawbackResultCode:
+		switch code {
+		case xdr.ClawbackResultCodeClawbackSuccess:
+			return OpSuccess, nil
+		case xdr.ClawbackResultCodeClawbackMalformed:
+			return OpMalformed, nil
+		case xdr.ClawbackResultCodeClawbackNotClawbackEnabled:
+			return "op_not_clawback_enabled", nil
+		case xdr.ClawbackResultCodeClawbackNoTrust:
+			return OpNoTrust, nil
+		case xdr.ClawbackResultCodeClawbackUnderfunded:
+			return OpUnderfunded, nil
+		}
+	case xdr.ClawbackClaimableBalanceResultCode:
+		switch code {
+		case xdr.ClawbackClaimableBalanceResultCodeClawbackClaimableBalanceSuccess:
+			return OpSuccess, nil
+		case xdr.ClawbackClaimableBalanceResultCodeClawbackClaimableBalanceDoesNotExist:
+			return OpDoesNotExist, nil
+		case xdr.ClawbackClaimableBalanceResultCodeClawbackClaimableBalanceNotIssuer:
+			return OpNoIssuer, nil
+		case xdr.ClawbackClaimableBalanceResultCodeClawbackClaimableBalanceNotClawbackEnabled:
+			return "op_not_clawback_enabled", nil
+		}
+	case xdr.SetTrustLineFlagsResultCode:
+		switch code {
+		case xdr.SetTrustLineFlagsResultCodeSetTrustLineFlagsSuccess:
+			return OpSuccess, nil
+		case xdr.SetTrustLineFlagsResultCodeSetTrustLineFlagsMalformed:
+			return OpMalformed, nil
+		case xdr.SetTrustLineFlagsResultCodeSetTrustLineFlagsNoTrustLine:
+			return OpNoTrust, nil
+		case xdr.SetTrustLineFlagsResultCodeSetTrustLineFlagsCantRevoke:
+			return "op_cant_revoke", nil
+		case xdr.SetTrustLineFlagsResultCodeSetTrustLineFlagsInvalidState:
+			return "op_invalid_state", nil
+		}
 	}
 
 	return "", errors.New(ErrUnknownCode)
 }
 
-// ForOperationResult returns the strong represtation used by horizon for the
+// ForOperationResult returns the strong representation used by horizon for the
 // error code `opr`
 func ForOperationResult(opr xdr.OperationResult) (string, error) {
 	if opr.Code != xdr.OperationResultCodeOpInner {
@@ -450,6 +491,12 @@ func ForOperationResult(opr xdr.OperationResult) (string, error) {
 		ic = ir.MustEndSponsoringFutureReservesResult().Code
 	case xdr.OperationTypeRevokeSponsorship:
 		ic = ir.MustRevokeSponsorshipResult().Code
+	case xdr.OperationTypeClawback:
+		ic = ir.MustClawbackResult().Code
+	case xdr.OperationTypeClawbackClaimableBalance:
+		ic = ir.MustClawbackClaimableBalanceResult().Code
+	case xdr.OperationTypeSetTrustLineFlags:
+		ic = ir.MustSetTrustLineFlagsResult().Code
 	}
 
 	return String(ic)

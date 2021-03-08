@@ -214,8 +214,8 @@ func TestSetOptionsFromXDR(t *testing.T) {
 	var opSource xdr.AccountId
 	err := opSource.SetAddress("GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H")
 	assert.NoError(t, err)
-	cFlags := xdr.Uint32(5)
-	sFlags := xdr.Uint32(7)
+	cFlags := xdr.Uint32(0b1101)
+	sFlags := xdr.Uint32(0b1111)
 	mw := xdr.Uint32(7)
 	lt := xdr.Uint32(2)
 	mt := xdr.Uint32(4)
@@ -264,8 +264,10 @@ func TestSetOptionsFromXDR(t *testing.T) {
 		assert.Equal(t, int(AuthRequired), int(so.SetFlags[0]), "Set AuthRequired flags should match")
 		assert.Equal(t, int(AuthRevocable), int(so.SetFlags[1]), "Set AuthRevocable flags should match")
 		assert.Equal(t, int(AuthImmutable), int(so.SetFlags[2]), "Set AuthImmutable flags should match")
+		assert.Equal(t, int(AuthClawbackEnabled), int(so.SetFlags[3]), "Set AuthClawbackEnabled flags should match")
 		assert.Equal(t, int(AuthRequired), int(so.ClearFlags[0]), "Clear AuthRequired flags should match")
 		assert.Equal(t, int(AuthImmutable), int(so.ClearFlags[1]), "Clear AuthImmutable flags should match")
+		assert.Equal(t, int(AuthClawbackEnabled), int(so.ClearFlags[2]), "Clear AuthClawbackEnabled flags should match")
 	}
 
 }
@@ -308,7 +310,7 @@ func TestChangeTrustFromXDR(t *testing.T) {
 
 func TestAllowTrustFromXDR(t *testing.T) {
 	xdrAsset := xdr.Asset{}
-	allowTrustAsset, err := xdrAsset.ToAllowTrustOpAsset("ABCXYZ")
+	allowTrustAsset, err := xdrAsset.ToAssetCode("ABCXYZ")
 	assert.NoError(t, err)
 
 	var opSource xdr.MuxedAccount
@@ -440,5 +442,35 @@ func TestBumpSequenceFromXDR(t *testing.T) {
 	if assert.NoError(t, err) {
 		assert.Equal(t, "GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H", bs.SourceAccount, "source accounts should match")
 		assert.Equal(t, int64(45), bs.BumpTo, "BumpTo should match")
+	}
+}
+
+func testOperationsMarshallingRoundtrip(t *testing.T, operations []Operation) {
+	kp1 := newKeypair1()
+	sourceAccount := NewSimpleAccount(kp1.Address(), int64(9606132444168199))
+
+	tx, err := NewTransaction(
+		TransactionParams{
+			SourceAccount: &sourceAccount,
+			Operations:    operations,
+			Timebounds:    NewInfiniteTimeout(),
+			BaseFee:       MinBaseFee,
+		},
+	)
+	assert.NoError(t, err)
+
+	var b64 string
+	b64, err = tx.Base64()
+	assert.NoError(t, err)
+
+	var parsedTx *GenericTransaction
+	parsedTx, err = TransactionFromXDR(b64)
+	assert.NoError(t, err)
+	var ok bool
+	tx, ok = parsedTx.Transaction()
+	assert.True(t, ok)
+
+	for i := 0; i < len(operations); i++ {
+		assert.Equal(t, operations[i], tx.Operations()[i])
 	}
 }

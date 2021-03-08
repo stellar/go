@@ -41,6 +41,7 @@ type Config struct {
 	PostgresURL           string
 	ProtocolVersion       int32
 	SkipContainerCreation bool
+	CoreDockerImage       string
 }
 
 type Test struct {
@@ -74,9 +75,17 @@ func NewTest(t *testing.T, config Config) *Test {
 	// Runs a docker-compose command applied to the above configs
 	runComposeCommand := func(args ...string) {
 		cmdline := append([]string{"-f", integrationYaml}, args...)
-		t.Log("Running", cmdline)
 		cmd := exec.Command("docker-compose", cmdline...)
-		_, innerErr := cmd.Output()
+		if config.CoreDockerImage != "" {
+			cmd.Env = os.Environ()
+			cmd.Env = append(cmd.Env, fmt.Sprintf("CORE_IMAGE=%s", config.CoreDockerImage))
+		}
+		t.Log("Running", cmd.Env, cmd.Args)
+		out, innerErr := cmd.Output()
+		if exitErr, ok := innerErr.(*exec.ExitError); ok {
+			fmt.Printf("stdout:\n%s\n", string(out))
+			fmt.Printf("stderr:\n%s\n", string(exitErr.Stderr))
+		}
 		fatalIf(t, innerErr)
 	}
 
@@ -207,10 +216,8 @@ of accounts, subscribe to event streams and more.`,
 		"--captive-core-config-append-path",
 		captiveCoreConfigPath,
 
-		// disable http port to not clash with the http port of the
-		// non-captive stellar core instance running in docker
 		"--captive-core-http-port",
-		"0",
+		"21626",
 
 		"--enable-captive-core-ingestion=" + strconv.FormatBool(len(captiveCoreBinaryPath) > 0),
 

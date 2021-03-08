@@ -11,3 +11,9 @@ func (e TrustLineFlags) IsAuthorized() bool {
 func (e TrustLineFlags) IsAuthorizedToMaintainLiabilitiesFlag() bool {
 	return (e & TrustLineFlagsAuthorizedToMaintainLiabilitiesFlag) != 0
 }
+
+// IsClawbackEnabledFlag returns true if the issuer has authorized
+// the account to claw assets back
+func (e TrustLineFlags) IsClawbackEnabledFlag() bool {
+	return (e & TrustLineFlagsTrustlineClawbackEnabledFlag) != 0
+}

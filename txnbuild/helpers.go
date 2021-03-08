@@ -84,10 +84,10 @@ func validateAmount(n interface{}) error {
 	return nil
 }
 
-// validateAllowTrustAsset checks if the provided asset is valid for use in AllowTrust operation.
+// validateAssetCode checks if the provided asset is valid as an asset code.
 // It returns an error if the asset is invalid.
 // The asset must be non native (XLM) with a valid asset code.
-func validateAllowTrustAsset(asset Asset) error {
+func validateAssetCode(asset Asset) error {
 	// Note: we are not using validateStellarAsset() function for AllowTrust operations because it requires the
 	//  following :
 	// - asset is non-native
@@ -117,7 +117,7 @@ func validateChangeTrustAsset(asset Asset) error {
 	// - asset is non-native
 	// - asset code is valid
 	// - asset issuer is valid
-	err := validateAllowTrustAsset(asset)
+	err := validateAssetCode(asset)
 	if err != nil {
 		return err
 	}

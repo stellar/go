@@ -45,6 +45,8 @@ func TestStatsLedgerTransactionProcessor(t *testing.T) {
 						{Body: xdr.OperationBody{Type: xdr.OperationTypeBeginSponsoringFutureReserves}},
 						{Body: xdr.OperationBody{Type: xdr.OperationTypeEndSponsoringFutureReserves}},
 						{Body: xdr.OperationBody{Type: xdr.OperationTypeRevokeSponsorship}},
+						{Body: xdr.OperationBody{Type: xdr.OperationTypeClawback}},
+						{Body: xdr.OperationBody{Type: xdr.OperationTypeClawbackClaimableBalance}},
 					},
 				},
 			},
@@ -84,6 +86,8 @@ func TestStatsLedgerTransactionProcessor(t *testing.T) {
 						{Body: xdr.OperationBody{Type: xdr.OperationTypeBeginSponsoringFutureReserves}},
 						{Body: xdr.OperationBody{Type: xdr.OperationTypeEndSponsoringFutureReserves}},
 						{Body: xdr.OperationBody{Type: xdr.OperationTypeRevokeSponsorship}},
+						{Body: xdr.OperationBody{Type: xdr.OperationTypeClawback}},
+						{Body: xdr.OperationBody{Type: xdr.OperationTypeClawbackClaimableBalance}},
 					},
 				},
 			},
@@ -96,9 +100,9 @@ func TestStatsLedgerTransactionProcessor(t *testing.T) {
 	assert.Equal(t, int64(1), results.TransactionsSuccessful)
 	assert.Equal(t, int64(1), results.TransactionsFailed)
 
-	assert.Equal(t, int64(19*2), results.Operations)
-	assert.Equal(t, int64(19), results.OperationsInSuccessful)
-	assert.Equal(t, int64(19), results.OperationsInFailed)
+	assert.Equal(t, int64(21*2), results.Operations)
+	assert.Equal(t, int64(21), results.OperationsInSuccessful)
+	assert.Equal(t, int64(21), results.OperationsInFailed)
 
 	assert.Equal(t, int64(2), results.OperationsCreateAccount)
 	assert.Equal(t, int64(2), results.OperationsPayment)
@@ -119,4 +123,6 @@ func TestStatsLedgerTransactionProcessor(t *testing.T) {
 	assert.Equal(t, int64(2), results.OperationsBeginSponsoringFutureReserves)
 	assert.Equal(t, int64(2), results.OperationsEndSponsoringFutureReserves)
 	assert.Equal(t, int64(2), results.OperationsRevokeSponsorship)
+	assert.Equal(t, int64(2), results.OperationsClawback)
+	assert.Equal(t, int64(2), results.OperationsClawbackClaimableBalance)
 }

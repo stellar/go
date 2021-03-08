@@ -128,6 +128,18 @@ func NewOperation(
 		e := operations.RevokeSponsorship{Base: base}
 		err = operationRow.UnmarshalDetails(&e)
 		result = e
+	case xdr.OperationTypeClawback:
+		e := operations.Clawback{Base: base}
+		err = operationRow.UnmarshalDetails(&e)
+		result = e
+	case xdr.OperationTypeClawbackClaimableBalance:
+		e := operations.ClawbackClaimableBalance{Base: base}
+		err = operationRow.UnmarshalDetails(&e)
+		result = e
+	case xdr.OperationTypeSetTrustLineFlags:
+		e := operations.SetTrustLineFlags{Base: base}
+		err = operationRow.UnmarshalDetails(&e)
+		result = e
 	default:
 		result = base
 	}

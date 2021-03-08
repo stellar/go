@@ -1248,6 +1248,19 @@ func TestOperationEffects(t *testing.T) {
 						"asset_issuer": "GD4SMOE3VPSF7ZR3CTEQ3P5UNTBMEJDA2GLXTHR7MMARANKKJDZ7RPGF",
 					},
 				},
+				{
+					address:     "GD4SMOE3VPSF7ZR3CTEQ3P5UNTBMEJDA2GLXTHR7MMARANKKJDZ7RPGF",
+					effectType:  history.EffectTrustlineFlagsUpdated,
+					order:       uint32(2),
+					operationID: int64(176093663233),
+					details: map[string]interface{}{
+						"asset_code":      "USD",
+						"asset_issuer":    "GD4SMOE3VPSF7ZR3CTEQ3P5UNTBMEJDA2GLXTHR7MMARANKKJDZ7RPGF",
+						"asset_type":      "credit_alphanum4",
+						"authorized_flag": true,
+						"trustor":         "GCVW5LCRZFP7PENXTAGOVIQXADDNUXXZJCNKF4VQB2IK7W2LPJWF73UG",
+					},
+				},
 			},
 		},
 		{
@@ -1771,7 +1784,7 @@ func TestOperationRegressionAccountTrustItself(t *testing.T) {
 func TestOperationEffectsAllowTrustAuthorizedToMaintainLiabilities(t *testing.T) {
 	tt := assert.New(t)
 	asset := xdr.Asset{}
-	allowTrustAsset, err := asset.ToAllowTrustOpAsset("COP")
+	allowTrustAsset, err := asset.ToAssetCode("COP")
 	tt.NoError(err)
 	aid := xdr.MustAddress("GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD")
 	source := aid.ToMuxedAccount()
@@ -1813,6 +1826,179 @@ func TestOperationEffectsAllowTrustAuthorizedToMaintainLiabilities(t *testing.T)
 				"trustor":      "GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3",
 			},
 			effectType: history.EffectTrustlineAuthorizedToMaintainLiabilities,
+			order:      uint32(1),
+		},
+		{
+			address:     "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
+			operationID: int64(4294967297),
+			details: map[string]interface{}{
+				"asset_code":                        "COP",
+				"asset_issuer":                      "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
+				"asset_type":                        "credit_alphanum4",
+				"authorized_to_maintain_liabilites": true,
+				"trustor":                           "GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3",
+			},
+			effectType: history.EffectTrustlineFlagsUpdated,
+			order:      uint32(2),
+		},
+	}
+	tt.Equal(expected, effects)
+}
+
+func TestOperationEffectsClawback(t *testing.T) {
+	tt := assert.New(t)
+	aid := xdr.MustAddress("GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD")
+	source := aid.ToMuxedAccount()
+	op := xdr.Operation{
+		SourceAccount: &source,
+		Body: xdr.OperationBody{
+			Type: xdr.OperationTypeClawback,
+			ClawbackOp: &xdr.ClawbackOp{
+				Asset:  xdr.MustNewCreditAsset("COP", "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD"),
+				From:   xdr.MustMuxedAddress("GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3"),
+				Amount: 34,
+			},
+		},
+	}
+
+	operation := transactionOperationWrapper{
+		index: 0,
+		transaction: ingest.LedgerTransaction{
+			Meta: xdr.TransactionMeta{
+				V:  2,
+				V2: &xdr.TransactionMetaV2{},
+			},
+		},
+		operation:      op,
+		ledgerSequence: 1,
+	}
+
+	effects, err := operation.effects()
+	tt.NoError(err)
+
+	expected := []effect{
+		{
+			address:     "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
+			operationID: 4294967297,
+			details: map[string]interface{}{
+				"asset_code":   "COP",
+				"asset_issuer": "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
+				"asset_type":   "credit_alphanum4",
+				"amount":       "0.0000034",
+			},
+			effectType: history.EffectAccountCredited,
+			order:      uint32(1),
+		},
+		{
+			address:     "GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3",
+			operationID: 4294967297,
+			details: map[string]interface{}{
+				"asset_code":   "COP",
+				"asset_issuer": "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
+				"asset_type":   "credit_alphanum4",
+				"amount":       "0.0000034",
+			},
+			effectType: history.EffectAccountDebited,
+			order:      uint32(2),
+		},
+	}
+	tt.Equal(expected, effects)
+}
+
+func TestOperationEffectsClawbackClaimableBalance(t *testing.T) {
+	tt := assert.New(t)
+	aid := xdr.MustAddress("GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD")
+	source := aid.ToMuxedAccount()
+	var balanceID xdr.ClaimableBalanceId
+	xdr.SafeUnmarshalBase64("AAAAANoNV9p9SFDn/BDSqdDrxzH3r7QFdMAzlbF9SRSbkfW+", &balanceID)
+	op := xdr.Operation{
+		SourceAccount: &source,
+		Body: xdr.OperationBody{
+			Type: xdr.OperationTypeClawbackClaimableBalance,
+			ClawbackClaimableBalanceOp: &xdr.ClawbackClaimableBalanceOp{
+				BalanceId: balanceID,
+			},
+		},
+	}
+
+	operation := transactionOperationWrapper{
+		index: 0,
+		transaction: ingest.LedgerTransaction{
+			Meta: xdr.TransactionMeta{
+				V:  2,
+				V2: &xdr.TransactionMetaV2{},
+			},
+		},
+		operation:      op,
+		ledgerSequence: 1,
+	}
+
+	effects, err := operation.effects()
+	tt.NoError(err)
+
+	expected := []effect{
+		{
+			address:     "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
+			operationID: 4294967297,
+			details: map[string]interface{}{
+				"balance_id": "00000000da0d57da7d4850e7fc10d2a9d0ebc731f7afb40574c03395b17d49149b91f5be",
+			},
+			effectType: history.EffectClaimableBalanceClawedBack,
+			order:      uint32(1),
+		},
+	}
+	tt.Equal(expected, effects)
+}
+
+func TestOperationEffectsSetTrustLineFlags(t *testing.T) {
+	tt := assert.New(t)
+	aid := xdr.MustAddress("GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD")
+	source := aid.ToMuxedAccount()
+	trustor := xdr.MustAddress("GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY")
+	setFlags := xdr.Uint32(xdr.TrustLineFlagsAuthorizedToMaintainLiabilitiesFlag)
+	clearFlags := xdr.Uint32(xdr.TrustLineFlagsTrustlineClawbackEnabledFlag | xdr.TrustLineFlagsAuthorizedFlag)
+	op := xdr.Operation{
+		SourceAccount: &source,
+		Body: xdr.OperationBody{
+			Type: xdr.OperationTypeSetTrustLineFlags,
+			SetTrustLineFlagsOp: &xdr.SetTrustLineFlagsOp{
+				Trustor:    trustor,
+				Asset:      xdr.MustNewCreditAsset("USD", "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD"),
+				ClearFlags: &clearFlags,
+				SetFlags:   &setFlags,
+			},
+		},
+	}
+
+	operation := transactionOperationWrapper{
+		index: 0,
+		transaction: ingest.LedgerTransaction{
+			Meta: xdr.TransactionMeta{
+				V:  2,
+				V2: &xdr.TransactionMetaV2{},
+			},
+		},
+		operation:      op,
+		ledgerSequence: 1,
+	}
+
+	effects, err := operation.effects()
+	tt.NoError(err)
+
+	expected := []effect{
+		{
+			address:     "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
+			operationID: 4294967297,
+			details: map[string]interface{}{
+				"asset_code":                        "USD",
+				"asset_issuer":                      "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
+				"asset_type":                        "credit_alphanum4",
+				"authorized_flag":                   false,
+				"authorized_to_maintain_liabilites": true,
+				"clawback_enabled_flag":             false,
+				"trustor":                           "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+			},
+			effectType: history.EffectTrustlineFlagsUpdated,
 			order:      uint32(1),
 		},
 	}
@@ -1926,8 +2112,35 @@ func (s *CreateClaimableBalanceEffectsTestSuite) SetupTest() {
 		},
 		FeeChanges: xdr.LedgerEntryChanges{},
 		Meta: xdr.TransactionMeta{
-			V:  2,
-			V2: &xdr.TransactionMetaV2{},
+			V: 2,
+			V2: &xdr.TransactionMetaV2{
+				Operations: []xdr.OperationMeta{
+					{
+						Changes: []xdr.LedgerEntryChange{
+							{
+								Type: xdr.LedgerEntryChangeTypeLedgerEntryCreated,
+								Created: &xdr.LedgerEntry{
+									Data: xdr.LedgerEntryData{
+										Type: xdr.LedgerEntryTypeClaimableBalance,
+										ClaimableBalance: &xdr.ClaimableBalanceEntry{
+											BalanceId: balanceIDOp1,
+											Ext: xdr.ClaimableBalanceEntryExt{
+												V: 1,
+												V1: &xdr.ClaimableBalanceEntryExtensionV1{
+													Flags: xdr.Uint32(xdr.ClaimableBalanceFlagsClaimableBalanceClawbackEnabledFlag),
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+					{
+						// Not used for the test
+					},
+				},
+			},
 		},
 	}
 }
@@ -1947,6 +2160,7 @@ func (s *CreateClaimableBalanceEffectsTestSuite) TestEffects() {
 						"asset":      "native",
 						"amount":     "10.0000000",
 						"balance_id": "00000000da0d57da7d4850e7fc10d2a9d0ebc731f7afb40574c03395b17d49149b91f5be",
+						"claimable_balance_clawback_enabled_flag": true,
 					},
 					effectType:  history.EffectClaimableBalanceCreated,
 					operationID: int64(4294967297),
@@ -2153,6 +2367,12 @@ func (s *ClaimClaimableBalanceEffectsTestSuite) SetupTest() {
 													},
 												},
 											},
+											Ext: xdr.ClaimableBalanceEntryExt{
+												V: 1,
+												V1: &xdr.ClaimableBalanceEntryExtensionV1{
+													Flags: xdr.Uint32(xdr.ClaimableBalanceFlagsClaimableBalanceClawbackEnabledFlag),
+												},
+											},
 										},
 									},
 								},
@@ -2236,6 +2456,7 @@ func (s *ClaimClaimableBalanceEffectsTestSuite) TestEffects() {
 						"asset":      "native",
 						"amount":     "10.0000000",
 						"balance_id": "00000000da0d57da7d4850e7fc10d2a9d0ebc731f7afb40574c03395b17d49149b91f5be",
+						"claimable_balance_clawback_enabled_flag": true,
 					},
 					effectType:  history.EffectClaimableBalanceClaimed,
 					operationID: int64(4294967297),

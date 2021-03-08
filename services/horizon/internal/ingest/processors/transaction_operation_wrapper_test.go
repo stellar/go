@@ -599,7 +599,20 @@ func TestTransactionOperationDetails(t *testing.T) {
 				"claimable_balance_id": "00000000cafebabe00000000000000000000000000000000000000000000000000000000",
 			},
 		},
+		{
+			desc:          "clawbackClaimableBalance",
+			envelopeXDR:   "AAAAAgAAAADrAt1LkCV3iVpe6NkPVn9kb2Yh4hyn0m7QzbF5J9zTIgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAUAAAAAMr+ur7erb7vAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+			resultXDR:     "AAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+			metaXDR:       "AAAAAgAAAAAAAAABAAAAAAAAAAA=",
+			feeChangesXDR: "AAAAAA==",
+			hash:          "b803cd72c77fb1cf95dd94048b14e02abf8694ef9124b10e9620b83a8b15804f",
+			index:         0,
+			expected: map[string]interface{}{
+				"balance_id": "00000000cafebabedeadbeef000000000000000000000000000000000000000000000000",
+			},
+		},
 	}
+
 	for _, tc := range testCases {
 		t.Run(tc.desc, func(t *testing.T) {
 			tt := assert.New(t)
@@ -945,7 +958,7 @@ func TestOperationParticipants(t *testing.T) {
 func TestTransactionOperationAllowTrustDetails(t *testing.T) {
 	tt := assert.New(t)
 	asset := xdr.Asset{}
-	allowTrustAsset, err := asset.ToAllowTrustOpAsset("COP")
+	allowTrustAsset, err := asset.ToAssetCode("COP")
 	tt.NoError(err)
 
 	aid := xdr.MustAddress("GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD")
@@ -1288,7 +1301,7 @@ func (s *ClaimClaimableBalanceOpTestSuite) TestParticipants() {
 
 	participants, err := operation.Participants()
 	s.Assert().NoError(err)
-	s.Assert().Equal([]xdr.AccountId{
+	s.Assert().ElementsMatch([]xdr.AccountId{
 		xdr.MustAddress("GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD"),
 	}, participants)
 }
@@ -1437,4 +1450,161 @@ func TestSponsoredSandwichTransaction_Participants(t *testing.T) {
 		},
 		participants,
 	)
+}
+
+type ClawbackTestSuite struct {
+	suite.Suite
+	op        xdr.Operation
+	balanceID string
+}
+
+func (s *ClawbackTestSuite) SetupTest() {
+	aid := xdr.MustAddress("GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD")
+	source := aid.ToMuxedAccount()
+	s.op = xdr.Operation{
+		SourceAccount: &source,
+		Body: xdr.OperationBody{
+			Type: xdr.OperationTypeClawback,
+			ClawbackOp: &xdr.ClawbackOp{
+				Asset:  xdr.MustNewCreditAsset("USD", "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD"),
+				From:   xdr.MustMuxedAddress("GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY"),
+				Amount: 20,
+			},
+		},
+	}
+}
+func (s *ClawbackTestSuite) TestDetails() {
+	expected := map[string]interface{}{
+		"asset_code":   "USD",
+		"asset_issuer": "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
+		"asset_type":   "credit_alphanum4",
+		"amount":       "0.0000020",
+		"from":         "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+	}
+
+	operation := transactionOperationWrapper{
+		index: 0,
+		transaction: ingest.LedgerTransaction{
+			Meta: xdr.TransactionMeta{
+				V: 2,
+				V2: &xdr.TransactionMetaV2{
+					Operations: make([]xdr.OperationMeta, 1, 1),
+				},
+			}},
+		operation:      s.op,
+		ledgerSequence: 1,
+	}
+
+	details, err := operation.Details()
+	s.Assert().NoError(err)
+	s.Assert().Equal(expected, details)
+}
+
+func (s *ClawbackTestSuite) TestParticipants() {
+	operation := transactionOperationWrapper{
+		index: 0,
+		transaction: ingest.LedgerTransaction{
+			Meta: xdr.TransactionMeta{
+				V: 2,
+				V2: &xdr.TransactionMetaV2{
+					Operations: make([]xdr.OperationMeta, 1, 1),
+				},
+			},
+		},
+		operation:      s.op,
+		ledgerSequence: 1,
+	}
+
+	participants, err := operation.Participants()
+	s.Assert().NoError(err)
+	s.Assert().ElementsMatch([]xdr.AccountId{
+		xdr.MustAddress("GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD"),
+		xdr.MustAddress("GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY"),
+	}, participants)
+}
+
+func TestClawbackTestSuite(t *testing.T) {
+	suite.Run(t, new(ClawbackTestSuite))
+}
+
+type SetTrustLineFlagsTestSuite struct {
+	suite.Suite
+	op        xdr.Operation
+	balanceID string
+}
+
+func (s *SetTrustLineFlagsTestSuite) SetupTest() {
+	aid := xdr.MustAddress("GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD")
+	source := aid.ToMuxedAccount()
+	trustor := xdr.MustAddress("GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY")
+	setFlags := xdr.Uint32(xdr.TrustLineFlagsAuthorizedToMaintainLiabilitiesFlag)
+	clearFlags := xdr.Uint32(xdr.TrustLineFlagsTrustlineClawbackEnabledFlag | xdr.TrustLineFlagsAuthorizedFlag)
+	s.op = xdr.Operation{
+		SourceAccount: &source,
+		Body: xdr.OperationBody{
+			Type: xdr.OperationTypeSetTrustLineFlags,
+			SetTrustLineFlagsOp: &xdr.SetTrustLineFlagsOp{
+				Trustor:    trustor,
+				Asset:      xdr.MustNewCreditAsset("USD", "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD"),
+				ClearFlags: &clearFlags,
+				SetFlags:   &setFlags,
+			},
+		},
+	}
+}
+func (s *SetTrustLineFlagsTestSuite) TestDetails() {
+	expected := map[string]interface{}{
+		"asset_code":    "USD",
+		"asset_issuer":  "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
+		"asset_type":    "credit_alphanum4",
+		"clear_flags":   []int32{1, 4},
+		"clear_flags_s": []string{"authorized", "clawback_enabled"},
+		"set_flags":     []int32{2},
+		"set_flags_s":   []string{"authorized_to_maintain_liabilites"},
+		"trustor":       "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+	}
+
+	operation := transactionOperationWrapper{
+		index: 0,
+		transaction: ingest.LedgerTransaction{
+			Meta: xdr.TransactionMeta{
+				V: 2,
+				V2: &xdr.TransactionMetaV2{
+					Operations: make([]xdr.OperationMeta, 1, 1),
+				},
+			}},
+		operation:      s.op,
+		ledgerSequence: 1,
+	}
+
+	details, err := operation.Details()
+	s.Assert().NoError(err)
+	s.Assert().Equal(expected, details)
+}
+
+func (s *SetTrustLineFlagsTestSuite) TestParticipants() {
+	operation := transactionOperationWrapper{
+		index: 0,
+		transaction: ingest.LedgerTransaction{
+			Meta: xdr.TransactionMeta{
+				V: 2,
+				V2: &xdr.TransactionMetaV2{
+					Operations: make([]xdr.OperationMeta, 1, 1),
+				},
+			},
+		},
+		operation:      s.op,
+		ledgerSequence: 1,
+	}
+
+	participants, err := operation.Participants()
+	s.Assert().NoError(err)
+	s.Assert().ElementsMatch([]xdr.AccountId{
+		xdr.MustAddress("GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD"),
+		xdr.MustAddress("GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY"),
+	}, participants)
+}
+
+func TestSetTrustLineFlagsTestSuite(t *testing.T) {
+	suite.Run(t, new(SetTrustLineFlagsTestSuite))
 }
