@@ -1,6 +1,7 @@
 package integration
 
 import (
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -14,11 +15,21 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-var protocol16Config = integration.Config{ProtocolVersion: 16}
+func NewProtocol16Test(t *testing.T) *integration.Test {
+	// TODO, this should be removed once a core version with CAP 35 is released
+	if os.Getenv("HORIZON_INTEGRATION_ENABLE_CAP_35") != "true" {
+		t.Skip("skipping CAP35 test, set HORIZON_INTEGRATION_ENABLE_CAP_35=true if you want to run it")
+	}
+	config := integration.Config{
+		ProtocolVersion: 16,
+		CoreDockerImage: "2opremio/stellar-core:cap35",
+	}
+	return integration.NewTest(t, config)
+}
 
 func TestProtocol16Basics(t *testing.T) {
 	tt := assert.New(t)
-	itest := integration.NewTest(t, protocol16Config)
+	itest := NewProtocol16Test(t)
 	master := itest.Master()
 
 	t.Run("Sanity", func(t *testing.T) {
@@ -42,7 +53,7 @@ func TestProtocol16Basics(t *testing.T) {
 
 func TestHappyClawback(t *testing.T) {
 	tt := assert.New(t)
-	itest := integration.NewTest(t, protocol16Config)
+	itest := NewProtocol16Test(t)
 	master := itest.Master()
 
 	// Give the master account the revocable flag (needed to set the clawback flag)
@@ -149,7 +160,7 @@ func TestHappyClawback(t *testing.T) {
 
 func TestHappyClawbackClaimableBalance(t *testing.T) {
 	tt := assert.New(t)
-	itest := integration.NewTest(t, protocol16Config)
+	itest := NewProtocol16Test(t)
 	master := itest.Master()
 
 	// Give the master account the revocable flag (needed to set the clawback flag)
@@ -250,7 +261,7 @@ func TestHappyClawbackClaimableBalance(t *testing.T) {
 
 func TestHappySetTrustLineFlags(t *testing.T) {
 	tt := assert.New(t)
-	itest := integration.NewTest(t, protocol16Config)
+	itest := NewProtocol16Test(t)
 	master := itest.Master()
 
 	// Give the master account the revocable flag (needed to set the clawback flag)
