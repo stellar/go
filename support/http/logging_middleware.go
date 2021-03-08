@@ -10,6 +10,11 @@ import (
 	"github.com/stellar/go/support/log"
 )
 
+// Options allow the middleware logger to accept additional information.
+type Options struct {
+	extraHeaders []string
+}
+
 // SetLogger is a middleware that sets a logger on the context.
 func SetLoggerMiddleware(l *log.Entry) func(stdhttp.Handler) stdhttp.Handler {
 	return func(next stdhttp.Handler) stdhttp.Handler {
@@ -45,8 +50,8 @@ func LoggingMiddleware(next stdhttp.Handler) stdhttp.Handler {
 }
 
 // LoggingMiddlewareWithOptions is a middleware that logs requests to the logger.
-// With extra headers
-func LoggingMiddlewareWithOptions(extraHeaders ...string) func(stdhttp.Handler) stdhttp.Handler {
+// Requires an Options struct to accept additional information.
+func LoggingMiddlewareWithOptions(options *Options) func(stdhttp.Handler) stdhttp.Handler {
 	return func(next stdhttp.Handler) stdhttp.Handler {
 		return stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 			mw := mutil.WrapWriter(w)
@@ -58,7 +63,7 @@ func LoggingMiddlewareWithOptions(extraHeaders ...string) func(stdhttp.Handler) 
 
 			r = r.WithContext(ctx)
 
-			logStartOfRequest(r, extraHeaders...)
+			logStartOfRequest(r, options.extraHeaders...)
 
 			then := time.Now()
 			next.ServeHTTP(mw, r)
