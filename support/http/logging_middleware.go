@@ -2,7 +2,6 @@ package http
 
 import (
 	stdhttp "net/http"
-	"regexp"
 	"strings"
 	"time"
 
@@ -69,14 +68,11 @@ func logStartOfRequest(
 	extraHeaders ...string,
 ) {
 	fields := log.F{}
-	reg, err := regexp.Compile("[^a-zA-Z0-9]+")
-	if err != nil {
-		panic(err)
-	}
-
 	for _, header := range extraHeaders {
-		var headerkey = reg.ReplaceAllString(header, "")
-		fields[strings.ToLower(headerkey)] = r.Header.Get(header)
+		// Strips "-" characters and lowercases new logrus.Fields keys to be uniform with the other keys in the logger.
+		// Simplifies querying extended fields.
+		var headerkey = strings.ToLower(strings.ReplaceAll(header, "-", ""))
+		fields[headerkey] = r.Header.Get(header)
 	}
 	fields["subsys"] = "http"
 	fields["path"] = r.URL.String()
