@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// setXFFMiddleware sets "X-Forwarded-For" header to test LoggingMiddlewareWithOptions
+// setXFFMiddleware sets "X-Forwarded-For" header to test LoggingMiddlewareWithOptions.
 func setXFFMiddleware(next stdhttp.Handler) stdhttp.Handler {
 	return stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 		r.Header.Set("X-Forwarded-For", "203.0.113.195")
@@ -19,7 +19,7 @@ func setXFFMiddleware(next stdhttp.Handler) stdhttp.Handler {
 	})
 }
 
-// setContentMD5MiddleWare sets header to test LoggingMiddlewareWithOptions
+// setContentMD5MiddleWare sets header to test LoggingMiddlewareWithOptions.
 func setContentMD5Middleware(next stdhttp.Handler) stdhttp.Handler {
 	return stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 		r.Header.Set("Content-MD5", "U3RlbGxhciBpcyBBd2Vzb21lIQ==")
