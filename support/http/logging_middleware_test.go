@@ -129,10 +129,12 @@ func TestHTTPMiddlewareWithOptions(t *testing.T) {
 		assert.Equal(t, "Go-http-client/1.1", logged[0].Data["useragent"])
 		assert.Equal(t, "203.0.113.195", logged[0].Data["xforwardedfor"])
 		assert.Equal(t, "U3RlbGxhciBpcyBBd2Vzb21lIQ==", logged[0].Data["contentmd5"])
+		assert.Equal(t, 10, len(logged[0].Data))
 		req1 := logged[0].Data["req"]
 
 		assert.Equal(t, "handler log line", logged[1].Message)
 		assert.Equal(t, req1, logged[1].Data["req"])
+		assert.Equal(t, 2, len(logged[1].Data))
 
 		assert.Equal(t, "finished request", logged[2].Message)
 		assert.Equal(t, "http", logged[2].Data["subsys"])
@@ -140,6 +142,7 @@ func TestHTTPMiddlewareWithOptions(t *testing.T) {
 		assert.Equal(t, req1, logged[2].Data["req"])
 		assert.Equal(t, "/path/1234", logged[2].Data["path"])
 		assert.Equal(t, "/path/{value}", logged[2].Data["route"])
+		assert.Equal(t, 9, len(logged[2].Data))
 
 		assert.Equal(t, "starting request", logged[3].Message)
 		assert.Equal(t, "http", logged[3].Data["subsys"])
@@ -149,6 +152,7 @@ func TestHTTPMiddlewareWithOptions(t *testing.T) {
 		assert.Equal(t, "Go-http-client/1.1", logged[3].Data["useragent"])
 		assert.Equal(t, "203.0.113.195", logged[3].Data["xforwardedfor"])
 		assert.Equal(t, "U3RlbGxhciBpcyBBd2Vzb21lIQ==", logged[3].Data["contentmd5"])
+		assert.Equal(t, 10, len(logged[3].Data))
 		req2 := logged[3].Data["req"]
 
 		assert.Equal(t, "finished request", logged[4].Message)
@@ -157,6 +161,7 @@ func TestHTTPMiddlewareWithOptions(t *testing.T) {
 		assert.Equal(t, req2, logged[4].Data["req"])
 		assert.Equal(t, "/not_found", logged[4].Data["path"])
 		assert.Equal(t, "/not_found", logged[4].Data["route"])
+		assert.Equal(t, 9, len(logged[4].Data))
 
 		assert.Equal(t, "starting request", logged[5].Message)
 		assert.Equal(t, "http", logged[5].Data["subsys"])
@@ -166,6 +171,7 @@ func TestHTTPMiddlewareWithOptions(t *testing.T) {
 		assert.Equal(t, "Go-http-client/1.1", logged[5].Data["useragent"])
 		assert.Equal(t, "203.0.113.195", logged[5].Data["xforwardedfor"])
 		assert.Equal(t, "U3RlbGxhciBpcyBBd2Vzb21lIQ==", logged[5].Data["contentmd5"])
+		assert.Equal(t, 10, len(logged[5].Data))
 		req3 := logged[5].Data["req"]
 
 		assert.Equal(t, "finished request", logged[6].Message)
@@ -174,6 +180,7 @@ func TestHTTPMiddlewareWithOptions(t *testing.T) {
 		assert.Equal(t, req3, logged[6].Data["req"])
 		assert.Equal(t, "/really_not_found", logged[6].Data["path"])
 		assert.Equal(t, "", logged[6].Data["route"])
+		assert.Equal(t, 9, len(logged[6].Data))
 	}
 }
 
