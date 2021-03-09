@@ -11,18 +11,18 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// set "X-Forwarded-For" header to test LoggingMiddlewareWithOptions
-func setXFFMiddleWare(next stdhttp.Handler) stdhttp.Handler {
+// setXFFMiddleware sets "X-Forwarded-For" header to test LoggingMiddlewareWithOptions
+func setXFFMiddleware(next stdhttp.Handler) stdhttp.Handler {
 	return stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 		r.Header.Set("X-Forwarded-For", "203.0.113.195")
 		next.ServeHTTP(w, r)
 	})
 }
 
-// set "Content-MD5" header to test LoggingMiddlewareWithOptions
-func setCMDFiveMiddleWare(next stdhttp.Handler) stdhttp.Handler {
+// setContentMD5MiddleWare sets header to test LoggingMiddlewareWithOptions
+func setContentMD5Middleware(next stdhttp.Handler) stdhttp.Handler {
 	return stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
-		r.Header.Set("Content-MD5", "Q2hlY2sgSW50ZWdyaXR5IQ==")
+		r.Header.Set("Content-MD5", "U3RlbGxhciBpcyBBd2Vzb21lIQ==")
 		next.ServeHTTP(w, r)
 	})
 }
@@ -100,11 +100,12 @@ func TestHTTPMiddlewareWithOptions(t *testing.T) {
 	done := log.DefaultLogger.StartTest(log.InfoLevel)
 	mux := chi.NewMux()
 
-	mux.Use(setXFFMiddleWare)
-	mux.Use(setCMDFiveMiddleWare)
+	mux.Use(setXFFMiddleware)
+	mux.Use(setContentMD5Middleware)
 	mux.Use(middleware.RequestID)
 	extraHeaders := []string{"X-Forwarded-For", "Content-MD5"}
-	mux.Use(LoggingMiddlewareWithOptions(extraHeaders...))
+	options := &Options{extraHeaders: extraHeaders}
+	mux.Use(LoggingMiddlewareWithOptions(options))
 
 	mux.Get("/path/{value}", stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 		log.Ctx(r.Context()).Info("handler log line")
