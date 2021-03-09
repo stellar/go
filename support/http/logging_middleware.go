@@ -2,6 +2,8 @@ package http
 
 import (
 	stdhttp "net/http"
+	"regexp"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi"
@@ -81,8 +83,14 @@ func logStartOfRequest(
 	extraHeaders ...string,
 ) {
 	fields := log.F{}
+	reg, err := regexp.Compile("[^a-zA-Z0-9]+")
+	if err != nil {
+		panic(err)
+	}
+
 	for _, header := range extraHeaders {
-		fields[header] = r.Header.Get(header)
+		var headerkey = reg.ReplaceAllString(header, "")
+		fields[strings.ToLower(headerkey)] = r.Header.Get(header)
 	}
 	fields["subsys"] = "http"
 	fields["path"] = r.URL.String()
