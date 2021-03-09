@@ -5,12 +5,12 @@ Varsion: v0.0.1
 Status: unreleased
 ```
 
-This is a [SEP-8] Approval Server **demo** based on SEP-8 v1.6.1. It is being
-concieved to:
+This is a [SEP-8] Approval Server reference implementation based on SEP-8 v1.6.1
+intended for **testing only**. It is being concieved to:
 
 1. Be used as an example of how regulated assets transactions can be validated
    and revised by an anchor.
-2. serve as a demo server where wallets can test and validate their SEP-8
+2. Serve as a demo server where wallets can test and validate their SEP-8
    implementation.
 
 Please be aware this is a demo and its code is not mean to be used in a
