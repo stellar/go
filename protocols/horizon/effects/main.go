@@ -71,17 +71,24 @@ const (
 	// EffectTrustlineUpdated occurs when an account changes a trustline's limit
 	EffectTrustlineUpdated EffectType = 22 // from change_trust, allow_trust
 
+	// Deprecated: use EffectTrustlineFlagsUpdated instead
 	// EffectTrustlineAuthorized occurs when an anchor has AUTH_REQUIRED flag set
 	// to true and it authorizes another account's trustline
 	EffectTrustlineAuthorized EffectType = 23 // from allow_trust
 
+	// Deprecated: use EffectTrustlineFlagsUpdated instead
 	// EffectTrustlineDeauthorized occurs when an anchor revokes access to a asset
 	// it issues.
 	EffectTrustlineDeauthorized EffectType = 24 // from allow_trust
 
+	// Deprecated: use EffectTrustlineFlagsUpdated instead
 	// EffectTrustlineAuthorizedToMaintainLiabilities occurs when an anchor has AUTH_REQUIRED flag set
 	// to true and it authorizes another account's trustline to maintain liabilities
 	EffectTrustlineAuthorizedToMaintainLiabilities EffectType = 25 // from allow_trust
+
+	// EffectTrustlineFlagsUpdated effects occur when a TrustLine changes its
+	// flags, either clearing or setting.
+	EffectTrustlineFlagsUpdated EffectType = 26 // from set_trust_line flags
 
 	// trading effects
 
@@ -171,6 +178,10 @@ const (
 
 	// EffectSignerSponsorshipRemoved occurs when the sponsorship of a signer is removed
 	EffectSignerSponsorshipRemoved EffectType = 74 // from revoke_sponsorship
+
+	// EffectClaimableBalanceClawedBack occurs when a claimable balance is clawed back
+	EffectClaimableBalanceClawedBack EffectType = 80 // from clawback_claimable_balance
+
 )
 
 // Peter 30-04-2019: this is copied from the resourcadapter package
@@ -196,6 +207,7 @@ var EffectTypeNames = map[EffectType]string{
 	EffectTrustlineAuthorized:                      "trustline_authorized",
 	EffectTrustlineAuthorizedToMaintainLiabilities: "trustline_authorized_to_maintain_liabilities",
 	EffectTrustlineDeauthorized:                    "trustline_deauthorized",
+	EffectTrustlineFlagsUpdated:                    "trustline_flags_updated",
 	EffectOfferCreated:                             "offer_created",
 	EffectOfferRemoved:                             "offer_removed",
 	EffectOfferUpdated:                             "offer_updated",
@@ -222,6 +234,7 @@ var EffectTypeNames = map[EffectType]string{
 	EffectSignerSponsorshipCreated:                 "signer_sponsorship_created",
 	EffectSignerSponsorshipUpdated:                 "signer_sponsorship_updated",
 	EffectSignerSponsorshipRemoved:                 "signer_sponsorship_removed",
+	EffectClaimableBalanceClawedBack:               "claimable_balance_clawed_back",
 }
 
 // Base provides the common structure for any effect resource effect.
@@ -341,6 +354,7 @@ type TrustlineUpdated struct {
 	Limit string `json:"limit"`
 }
 
+// Deprecated: use TrustlineFlagsUpdated instead
 type TrustlineAuthorized struct {
 	Base
 	Trustor   string `json:"trustor"`
@@ -348,6 +362,7 @@ type TrustlineAuthorized struct {
 	AssetCode string `json:"asset_code,omitempty"`
 }
 
+// Deprecated: use TrustlineFlagsUpdated instead
 type TrustlineAuthorizedToMaintainLiabilities struct {
 	Base
 	Trustor   string `json:"trustor"`
@@ -355,6 +370,7 @@ type TrustlineAuthorizedToMaintainLiabilities struct {
 	AssetCode string `json:"asset_code,omitempty"`
 }
 
+// Deprecated: use TrustlineFlagsUpdated instead
 type TrustlineDeauthorized struct {
 	Base
 	Trustor   string `json:"trustor"`
@@ -488,6 +504,20 @@ type SignerSponsorshipRemoved struct {
 	Base
 	Signer        string `json:"signer"`
 	FormerSponsor string `json:"former_sponsor"`
+}
+
+type ClaimableBalanceClawedBack struct {
+	Base
+	BalanceID string `json:"balance_id"`
+}
+
+type TrustlineFlagsUpdated struct {
+	Base
+	base.Asset
+	Trustor                         string `json:"trustor"`
+	Authorized                      *bool  `json:"authorized_flag,omitempty"`
+	AuthorizedToMaintainLiabilities *bool  `json:"authorized_to_maintain_liabilites_flag,omitempty"`
+	ClawbackEnabled                 *bool  `json:"clawback_enabled_flag,omitempty"`
 }
 
 // Effect contains methods that are implemented by all effect types.
@@ -643,6 +673,12 @@ func UnmarshalEffect(effectType string, dataString []byte) (effects Effect, err 
 			return
 		}
 		effects = effect
+	case EffectTypeNames[EffectTrustlineFlagsUpdated]:
+		var effect TrustlineFlagsUpdated
+		if err = json.Unmarshal(dataString, &effect); err != nil {
+			return
+		}
+		effects = effect
 	case EffectTypeNames[EffectTrustlineRemoved]:
 		var effect TrustlineRemoved
 		if err = json.Unmarshal(dataString, &effect); err != nil {
@@ -783,6 +819,12 @@ func UnmarshalEffect(effectType string, dataString []byte) (effects Effect, err 
 		effects = effect
 	case EffectTypeNames[EffectSignerSponsorshipRemoved]:
 		var effect SignerSponsorshipRemoved
+		if err = json.Unmarshal(dataString, &effect); err != nil {
+			return
+		}
+		effects = effect
+	case EffectTypeNames[EffectClaimableBalanceClawedBack]:
+		var effect ClaimableBalanceClawedBack
 		if err = json.Unmarshal(dataString, &effect); err != nil {
 			return
 		}

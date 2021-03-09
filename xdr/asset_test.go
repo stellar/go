@@ -211,7 +211,7 @@ func TestAssetSetCredit(t *testing.T) {
 
 func TestToAllowTrustOpAsset_AlphaNum4(t *testing.T) {
 	a := &Asset{}
-	at, err := a.ToAllowTrustOpAsset("ABCD")
+	at, err := a.ToAssetCode("ABCD")
 	if assert.NoError(t, err) {
 		code, ok := at.GetAssetCode4()
 		assert.True(t, ok)
@@ -223,7 +223,7 @@ func TestToAllowTrustOpAsset_AlphaNum4(t *testing.T) {
 
 func TestToAllowTrustOpAsset_AlphaNum12(t *testing.T) {
 	a := &Asset{}
-	at, err := a.ToAllowTrustOpAsset("ABCDEFGHIJKL")
+	at, err := a.ToAssetCode("ABCDEFGHIJKL")
 	if assert.NoError(t, err) {
 		code, ok := at.GetAssetCode12()
 		assert.True(t, ok)
@@ -235,7 +235,7 @@ func TestToAllowTrustOpAsset_AlphaNum12(t *testing.T) {
 
 func TestToAllowTrustOpAsset_Error(t *testing.T) {
 	a := &Asset{}
-	_, err := a.ToAllowTrustOpAsset("")
+	_, err := a.ToAssetCode("")
 	assert.EqualError(t, err, "Asset code length is invalid")
 }
 

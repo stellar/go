@@ -84,6 +84,7 @@ func (v *StateVerifier) GetLedgerKeys(count int) ([]xdr.LedgerKey, error) {
 		}
 
 		keys = append(keys, ledgerKey)
+		entry.Normalize()
 		v.currentEntries[key] = entry
 
 		count--
@@ -96,9 +97,10 @@ func (v *StateVerifier) GetLedgerKeys(count int) ([]xdr.LedgerKey, error) {
 // Write compares the entry with entries in the latest batch of entries fetched
 // using `GetEntries`. Entries don't need to follow the order in entries returned
 // by `GetEntries`.
+// Warning: Write will call Normalize() on `entry` that can modify it!
 // Any `StateError` returned by this method indicates invalid state!
 func (v *StateVerifier) Write(entry xdr.LedgerEntry) error {
-	actualEntry := entry
+	actualEntry := entry.Normalize()
 	actualEntryMarshaled, err := actualEntry.MarshalBinary()
 	if err != nil {
 		return errors.Wrap(err, "Error marshaling actualEntry")

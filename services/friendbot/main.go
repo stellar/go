@@ -36,7 +36,7 @@ func main() {
 	rootCmd := &cobra.Command{
 		Use:   "friendbot",
 		Short: "friendbot for the Stellar Test Network",
-		Long:  "client-facing api server for the friendbot service on the Stellar Test Network",
+		Long:  "Client-facing API server for the friendbot service on the Stellar Test Network",
 		Run:   run,
 	}
 

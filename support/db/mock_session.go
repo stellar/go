@@ -2,6 +2,7 @@ package db
 
 import (
 	"database/sql"
+	"time"
 
 	"github.com/Masterminds/squirrel"
 	sq "github.com/Masterminds/squirrel"
@@ -86,4 +87,8 @@ func (m *MockSession) ExecRaw(query string, args ...interface{}) (sql.Result, er
 func (m *MockSession) NoRows(err error) bool {
 	args := m.Called(err)
 	return args.Get(0).(bool)
+}
+
+func (m *MockSession) Ping(timeout time.Duration) error {
+	return m.Called(timeout).Error(0)
 }

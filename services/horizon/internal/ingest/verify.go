@@ -145,8 +145,7 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool) error {
 	defer stateReader.Close()
 
 	verifier := &verify.StateVerifier{
-		StateReader:       stateReader,
-		TransformFunction: transformEntry,
+		StateReader: stateReader,
 	}
 
 	assetStats := processors.AssetStatSet{}
@@ -577,11 +576,19 @@ func addClaimableBalanceToStateVerifier(
 			})
 		}
 		claimants = xdr.SortClaimantsByDestination(claimants)
-		cBalance := xdr.ClaimableBalanceEntry{
+		var cBalance = xdr.ClaimableBalanceEntry{
 			BalanceId: row.BalanceID,
 			Claimants: claimants,
 			Asset:     row.Asset,
-			Amount:    xdr.Int64(row.Amount),
+			Amount:    row.Amount,
+		}
+		if row.Flags != 0 {
+			cBalance.Ext = xdr.ClaimableBalanceEntryExt{
+				V: 1,
+				V1: &xdr.ClaimableBalanceEntryExtensionV1{
+					Flags: xdr.Uint32(row.Flags),
+				},
+			}
 		}
 		entry := xdr.LedgerEntry{
 			LastModifiedLedgerSeq: xdr.Uint32(row.LastModifiedLedger),
@@ -610,90 +617,5 @@ func addLedgerEntrySponsor(entry *xdr.LedgerEntry, sponsor null.String) {
 		V1: &xdr.LedgerEntryExtensionV1{
 			SponsoringId: ledgerEntrySponsor,
 		},
-	}
-}
-
-func transformEntry(entry xdr.LedgerEntry) (bool, xdr.LedgerEntry) {
-	// If ledgerEntry is V0, create ext=1 and add a nil sponsor
-	if entry.Ext.V == 0 {
-		entry.Ext = xdr.LedgerEntryExt{
-			V: 1,
-			V1: &xdr.LedgerEntryExtensionV1{
-				SponsoringId: nil,
-			},
-		}
-	}
-
-	switch entry.Data.Type {
-	case xdr.LedgerEntryTypeAccount:
-		accountEntry := entry.Data.Account
-		// Account can have ext=0. For those, create ext=1
-		// with 0 liabilities.
-		if accountEntry.Ext.V == 0 {
-			accountEntry.Ext.V = 1
-			accountEntry.Ext.V1 = &xdr.AccountEntryExtensionV1{
-				Liabilities: xdr.Liabilities{
-					Buying:  0,
-					Selling: 0,
-				},
-			}
-		}
-		// if AccountEntryExtensionV1Ext is v=0,  then create v2 with 0 values
-		if accountEntry.Ext.V1.Ext.V == 0 {
-			accountEntry.Ext.V1.Ext.V = 2
-			accountEntry.Ext.V1.Ext.V2 = &xdr.AccountEntryExtensionV2{
-				NumSponsored:        xdr.Uint32(0),
-				NumSponsoring:       xdr.Uint32(0),
-				SignerSponsoringIDs: make([]xdr.SponsorshipDescriptor, len(accountEntry.Signers)),
-			}
-		}
-
-		signerSponsoringIDs := accountEntry.Ext.V1.Ext.V2.SignerSponsoringIDs
-
-		// Map sponsors (signer => xdr.SponsorshipDescriptor)
-		sponsorsMap := make(map[string]xdr.SponsorshipDescriptor)
-		for i, signer := range accountEntry.Signers {
-			sponsorsMap[signer.Key.Address()] = signerSponsoringIDs[i]
-		}
-
-		// Sort signers
-		accountEntry.Signers = xdr.SortSignersByKey(accountEntry.Signers)
-
-		// Recreate sponsors for sorted signers
-		signerSponsoringIDs = make([]xdr.SponsorshipDescriptor, len(accountEntry.Signers))
-		for i, signer := range accountEntry.Signers {
-			signerSponsoringIDs[i] = sponsorsMap[signer.Key.Address()]
-		}
-
-		accountEntry.Ext.V1.Ext.V2.SignerSponsoringIDs = signerSponsoringIDs
-		return false, entry
-	case xdr.LedgerEntryTypeOffer:
-		// Full check of offer object
-		return false, entry
-	case xdr.LedgerEntryTypeTrustline:
-		// Trust line can have ext=0. For those, create ext=1
-		// with 0 liabilities.
-		trustLineEntry := entry.Data.TrustLine
-		if trustLineEntry.Ext.V == 0 {
-			trustLineEntry.Ext.V = 1
-			trustLineEntry.Ext.V1 = &xdr.TrustLineEntryV1{
-				Liabilities: xdr.Liabilities{
-					Buying:  0,
-					Selling: 0,
-				},
-			}
-		}
-
-		return false, entry
-	case xdr.LedgerEntryTypeData:
-		// Full check of data object
-		return false, entry
-	case xdr.LedgerEntryTypeClaimableBalance:
-		cBalance := entry.Data.ClaimableBalance
-		cBalance.Claimants = xdr.SortClaimantsByDestination(cBalance.Claimants)
-
-		return false, entry
-	default:
-		panic("Invalid type")
 	}
 }

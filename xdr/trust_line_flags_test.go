@@ -32,3 +32,16 @@ func TestIsAuthorizedToMaintainLiabilitiesFlag(t *testing.T) {
 	flag = xdr.TrustLineFlags(2)
 	tt.True(flag.IsAuthorizedToMaintainLiabilitiesFlag())
 }
+
+func TestIsClawbackEnabledFlag(t *testing.T) {
+	tt := assert.New(t)
+
+	flag := xdr.TrustLineFlags(1)
+	tt.False(flag.IsClawbackEnabledFlag())
+
+	flag = xdr.TrustLineFlags(0)
+	tt.False(flag.IsClawbackEnabledFlag())
+
+	flag = xdr.TrustLineFlags(4)
+	tt.True(flag.IsClawbackEnabledFlag())
+}

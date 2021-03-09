@@ -92,6 +92,7 @@ type ClaimableBalance struct {
 	Amount             xdr.Int64              `db:"amount"`
 	Sponsor            null.String            `db:"sponsor"`
 	LastModifiedLedger uint32                 `db:"last_modified_ledger"`
+	Flags              uint32                 `db:"flags"`
 }
 
 type Claimants []Claimant
@@ -262,6 +263,7 @@ func (i *claimableBalancesBatchInsertBuilder) Add(entry *xdr.LedgerEntry) error 
 		Amount:             cBalance.Amount,
 		Sponsor:            ledgerEntrySponsorToNullString(*entry),
 		LastModifiedLedger: uint32(entry.LastModifiedLedgerSeq),
+		Flags:              uint32(cBalance.Flags()),
 	}
 	return i.builder.RowStruct(row)
 }
@@ -275,6 +277,7 @@ var claimableBalancesSelectStatement = "cb.id, " +
 	"cb.asset, " +
 	"cb.amount, " +
 	"cb.sponsor, " +
-	"cb.last_modified_ledger"
+	"cb.last_modified_ledger, " +
+	"cb.flags"
 
 var selectClaimableBalances = sq.Select(claimableBalancesSelectStatement).From("claimable_balances cb")
