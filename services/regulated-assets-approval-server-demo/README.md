@@ -19,6 +19,7 @@ production application.
 ## Usage
 
 ```
+$ go install
 $ regulated-assets-approval-server-demo --help
 SEP-8 Approval Server Demo
 
@@ -35,6 +36,7 @@ Use "regulated-assets-approval-server-demo [command] --help" for more informatio
 ## Usage: Serve
 
 ```
+$ go install
 $ regulated-assets-approval-server-demo serve --help
 Run the SEP-8 Approval Server Demo
 
