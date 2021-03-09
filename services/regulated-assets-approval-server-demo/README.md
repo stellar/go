@@ -2,7 +2,7 @@
 
 ```
 Varsion: v0.0.1
-Status: not functional
+Status: unreleased
 ```
 
 This is a [SEP-8] Approval Server **demo** based on SEP-8 v1.6.1. It is being
