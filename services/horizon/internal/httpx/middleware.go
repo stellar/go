@@ -130,11 +130,22 @@ func getClientData(r *http.Request, headerName string) string {
 	return value
 }
 
-var routeRegexp = regexp.MustCompile("{(([^:}]*)?:[^}]*|().*)}")
+var routeRegexp = regexp.MustCompile("{([^:}]*):[^}]*}")
+
+// https://prometheus.io/docs/instrumenting/exposition_formats/
+// label_value can be any sequence of UTF-8 characters, but the backslash (\),
+// double-quote ("), and line feed (\n) characters have to be escaped as \\,
+// \", and \n, respectively.
+func sanitizeMetricRoute(routePattern string) string {
+	route := routeRegexp.ReplaceAllString(routePattern, "{$1}")
+	route = strings.ReplaceAll(route, "\\", "\\\\")
+	route = strings.ReplaceAll(route, "\"", "\\\"")
+	route = strings.ReplaceAll(route, "\n", "\\n")
+	return route
+}
 
 func logEndOfRequest(ctx context.Context, r *http.Request, requestDurationSummary *prometheus.SummaryVec, duration time.Duration, mw middleware.WrapResponseWriter, streaming bool) {
-	routePattern := chi.RouteContext(r.Context()).RoutePattern()
-	route := routeRegexp.ReplaceAllString(routePattern, "$2")
+	route := sanitizeMetricRoute(chi.RouteContext(r.Context()).RoutePattern())
 	// Can be empty when request did not reached the final route (ex. blocked by
 	// a middleware). More info: https://github.com/go-chi/chi/issues/270
 	if route == "" {

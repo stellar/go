@@ -11,25 +11,36 @@ func TestMiddlewareSanitizesRoutesForPrometheus(t *testing.T) {
 		expected string
 	}{
 		{
-			"normal routes are unaffected",
+			"normal routes",
 			"/accounts",
 			"/accounts",
 		},
 		{
-			"named regexes are replaced with their name",
+			"non-regex params",
+			"/claimable_balances/{id}",
+			"/claimable_balances/{id}",
+		},
+		{
+			"named regexes",
 			"/accounts/{account_id:\\w+}/effects",
-			"/accounts/account_id/effects",
+			"/accounts/{account_id}/effects",
 		},
 		{
-			"unnamed regexes are removed",
+			"unnamed regexes",
 			"/accounts/{\\w+}/effects",
-			"/accounts//effects",
+			"/accounts/{\\\\w+}/effects",
+		},
+		{
+			// Not likely used in routes, but just safer for prom metrics anyway
+			"quotes",
+			"/{\"}",
+			"/{\\\"}",
 		},
 	} {
 		t.Run(setup.name, func(t *testing.T) {
-			result := routeRegexp.ReplaceAllString(setup.route, "$2")
+			result := sanitizeMetricRoute(setup.route)
 			if result != setup.expected {
-				t.Errorf("Expected %q to be sanitized to %q, but got %q", setup.route, setup.expected, result)
+				t.Errorf("\nInput:    %s\nExpected: %s\nGot:      %s", setup.route, setup.expected, result)
 			}
 		})
 	}
