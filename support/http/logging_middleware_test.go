@@ -121,14 +121,14 @@ func TestHTTPMiddlewareWithOptions(t *testing.T) {
 	// each request
 	logged := done()
 	if assert.Len(t, logged, 7, "unexpected log line count") {
-		assert.Equal(t, "starting request w/Options", logged[0].Message)
+		assert.Equal(t, "starting request", logged[0].Message)
 		assert.Equal(t, "http", logged[0].Data["subsys"])
 		assert.Equal(t, "GET", logged[0].Data["method"])
 		assert.NotEmpty(t, logged[0].Data["req"])
 		assert.Equal(t, "/path/1234", logged[0].Data["path"])
 		assert.Equal(t, "Go-http-client/1.1", logged[0].Data["useragent"])
-		assert.Equal(t, "203.0.113.195", logged[0].Data["X-Forwarded-For"])
-		assert.Equal(t, "Q2hlY2sgSW50ZWdyaXR5IQ==", logged[0].Data["Content-MD5"])
+		assert.Equal(t, "203.0.113.195", logged[0].Data["xforwardedfor"])
+		assert.Equal(t, "U3RlbGxhciBpcyBBd2Vzb21lIQ==", logged[0].Data["contentmd5"])
 		req1 := logged[0].Data["req"]
 
 		assert.Equal(t, "handler log line", logged[1].Message)
@@ -141,14 +141,14 @@ func TestHTTPMiddlewareWithOptions(t *testing.T) {
 		assert.Equal(t, "/path/1234", logged[2].Data["path"])
 		assert.Equal(t, "/path/{value}", logged[2].Data["route"])
 
-		assert.Equal(t, "starting request w/Options", logged[3].Message)
+		assert.Equal(t, "starting request", logged[3].Message)
 		assert.Equal(t, "http", logged[3].Data["subsys"])
 		assert.Equal(t, "GET", logged[3].Data["method"])
 		assert.NotEmpty(t, logged[3].Data["req"])
 		assert.NotEmpty(t, logged[3].Data["path"])
 		assert.Equal(t, "Go-http-client/1.1", logged[3].Data["useragent"])
-		assert.Equal(t, "203.0.113.195", logged[3].Data["X-Forwarded-For"])
-		assert.Equal(t, "Q2hlY2sgSW50ZWdyaXR5IQ==", logged[3].Data["Content-MD5"])
+		assert.Equal(t, "203.0.113.195", logged[3].Data["xforwardedfor"])
+		assert.Equal(t, "U3RlbGxhciBpcyBBd2Vzb21lIQ==", logged[3].Data["contentmd5"])
 		req2 := logged[3].Data["req"]
 
 		assert.Equal(t, "finished request", logged[4].Message)
@@ -158,14 +158,14 @@ func TestHTTPMiddlewareWithOptions(t *testing.T) {
 		assert.Equal(t, "/not_found", logged[4].Data["path"])
 		assert.Equal(t, "/not_found", logged[4].Data["route"])
 
-		assert.Equal(t, "starting request w/Options", logged[5].Message)
+		assert.Equal(t, "starting request", logged[5].Message)
 		assert.Equal(t, "http", logged[5].Data["subsys"])
 		assert.Equal(t, "GET", logged[5].Data["method"])
 		assert.NotEmpty(t, logged[5].Data["req"])
 		assert.NotEmpty(t, logged[5].Data["path"])
 		assert.Equal(t, "Go-http-client/1.1", logged[5].Data["useragent"])
-		assert.Equal(t, "203.0.113.195", logged[5].Data["X-Forwarded-For"])
-		assert.Equal(t, "Q2hlY2sgSW50ZWdyaXR5IQ==", logged[5].Data["Content-MD5"])
+		assert.Equal(t, "203.0.113.195", logged[5].Data["xforwardedfor"])
+		assert.Equal(t, "U3RlbGxhciBpcyBBd2Vzb21lIQ==", logged[5].Data["contentmd5"])
 		req3 := logged[5].Data["req"]
 
 		assert.Equal(t, "finished request", logged[6].Message)
