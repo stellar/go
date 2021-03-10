@@ -29,11 +29,11 @@ func Serve(opts Options) {
 		WriteTimeout:        time.Second * 35,
 		IdleTimeout:         time.Minute * 2,
 		OnStarting: func() {
-			log.Info("Starting SEP-8 Approval Server Demo")
+			log.Info("Starting SEP-8 Approval Server")
 			log.Infof("Listening on %s", listenAddr)
 		},
 		OnStopping: func() {
-			log.Info("Stopping SEP-8 Approval Server Demo")
+			log.Info("Stopping SEP-8 Approval Server")
 		},
 	}
 	supporthttp.Run(serverConfig)
