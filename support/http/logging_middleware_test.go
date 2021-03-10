@@ -26,6 +26,7 @@ func setContentMD5Middleware(next stdhttp.Handler) stdhttp.Handler {
 		next.ServeHTTP(w, r)
 	})
 }
+
 func TestHTTPMiddleware(t *testing.T) {
 	done := log.DefaultLogger.StartTest(log.InfoLevel)
 	mux := chi.NewMux()
@@ -96,6 +97,7 @@ func TestHTTPMiddleware(t *testing.T) {
 		assert.Equal(t, "", logged[6].Data["route"])
 	}
 }
+
 func TestHTTPMiddlewareWithOptions(t *testing.T) {
 	done := log.DefaultLogger.StartTest(log.InfoLevel)
 	mux := chi.NewMux()
