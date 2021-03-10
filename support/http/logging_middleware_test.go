@@ -103,8 +103,7 @@ func TestHTTPMiddlewareWithOptions(t *testing.T) {
 	mux.Use(setXFFMiddleware)
 	mux.Use(setContentMD5Middleware)
 	mux.Use(middleware.RequestID)
-	extraHeaders := []string{"X-Forwarded-For", "Content-MD5"}
-	options := &Options{extraHeaders: extraHeaders}
+	options := Options{ExtraHeaders: []string{"X-Forwarded-For", "Content-MD5"}}
 	mux.Use(LoggingMiddlewareWithOptions(options))
 
 	mux.Get("/path/{value}", stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {

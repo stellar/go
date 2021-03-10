@@ -30,12 +30,12 @@ func SetLoggerMiddleware(l *log.Entry) func(stdhttp.Handler) stdhttp.Handler {
 
 // LoggingMiddleware is a middleware that logs requests to the logger.
 func LoggingMiddleware(next stdhttp.Handler) stdhttp.Handler {
-	return LoggingMiddlewareWithOptions(nil)(next)
+	return LoggingMiddlewareWithOptions(Options{})(next)
 }
 
 // LoggingMiddlewareWithOptions is a middleware that logs requests to the logger.
 // Requires an Options struct to accept additional information.
-func LoggingMiddlewareWithOptions(options *Options) func(stdhttp.Handler) stdhttp.Handler {
+func LoggingMiddlewareWithOptions(options Options) func(stdhttp.Handler) stdhttp.Handler {
 	return func(next stdhttp.Handler) stdhttp.Handler {
 		return stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 			mw := mutil.WrapWriter(w)
@@ -46,11 +46,7 @@ func LoggingMiddlewareWithOptions(options *Options) func(stdhttp.Handler) stdhtt
 			})
 			r = r.WithContext(ctx)
 
-			extraHeaders := []string{}
-			if options != nil {
-				extraHeaders = options.extraHeaders
-			}
-			logStartOfRequest(r, extraHeaders...)
+			logStartOfRequest(r, options.ExtraHeaders)
 
 			then := time.Now()
 			next.ServeHTTP(mw, r)
@@ -65,7 +61,7 @@ func LoggingMiddlewareWithOptions(options *Options) func(stdhttp.Handler) stdhtt
 // beginning processing.
 func logStartOfRequest(
 	r *stdhttp.Request,
-	extraHeaders ...string,
+	extraHeaders []string,
 ) {
 	fields := log.F{}
 	for _, header := range extraHeaders {
