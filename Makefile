@@ -17,5 +17,5 @@ webauth:
 recoverysigner:
 	$(MAKE) -C exp/services/recoverysigner/ docker-build
 
-regulated-assets-approval-server-demo:
-	$(MAKE) -C services/regulated-assets-approval-server-demo/ docker-build
+regulated-assets-approval-server:
+	$(MAKE) -C services/regulated-assets-approval-server/ docker-build
