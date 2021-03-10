@@ -2,6 +2,8 @@ package httpx
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestMiddlewareSanitizesRoutesForPrometheus(t *testing.T) {
@@ -38,10 +40,7 @@ func TestMiddlewareSanitizesRoutesForPrometheus(t *testing.T) {
 		},
 	} {
 		t.Run(setup.name, func(t *testing.T) {
-			result := sanitizeMetricRoute(setup.route)
-			if result != setup.expected {
-				t.Errorf("\nInput:    %s\nExpected: %s\nGot:      %s", setup.route, setup.expected, result)
-			}
+			assert.Equal(t, setup.expected, sanitizeMetricRoute(setup.route))
 		})
 	}
 
