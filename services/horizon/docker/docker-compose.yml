@@ -22,8 +22,10 @@ services:
     restart: on-failure
     ports:
       - "8000:8000"
+      - "9091:9091"
       - "11725:11725"
     environment:
+      - ADMIN_PORT=9091
       - DATABASE_URL=postgres://postgres@host.docker.internal:5432/horizon?sslmode=disable
       - CAPTIVE_CORE_CONFIG_APPEND_PATH=/captive-core-testnet.cfg
       - HISTORY_ARCHIVE_URLS=https://history.stellar.org/prd/core-testnet/core_testnet_001
@@ -34,6 +36,19 @@ services:
       - ./captive-core-testnet.cfg:/captive-core-testnet.cfg
     network_mode: '${NETWORK_MODE:-bridge}'
     command: ["--apply-migrations"]
+
+  prometheus:
+    depends_on:
+      - horizon
+    image: prom/prometheus
+    restart: on-failure
+    ports:
+      - "9090:9090"
+    network_mode: '${NETWORK_MODE:-bridge}'
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
 
 volumes:
   horizon-db-data:
