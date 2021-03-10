@@ -13,7 +13,7 @@ import (
 
 // Options allow the middleware logger to accept additional information.
 type Options struct {
-	extraHeaders []string
+	ExtraHeaders []string
 }
 
 // SetLogger is a middleware that sets a logger on the context.
