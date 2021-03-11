@@ -6,6 +6,7 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 ## Unreleased
 
 * Add an endpoint which determines if Horizon is healthy enough to receive traffic ([3435](https://github.com/stellar/go/pull/3435)).
+* Sanitize route regular expressions for Prometheus metrics ([3459](https://github.com/stellar/go/pull/3459)).
 
 ## v2.0.0
 
