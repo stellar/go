@@ -116,6 +116,7 @@ func (r *stellarCoreRunner) generateConfig() (string, error) {
 		fmt.Sprintf(`NETWORK_PASSPHRASE="%s"`, r.networkPassphrase),
 		fmt.Sprintf(`BUCKET_DIR_PATH="%s"`, filepath.Join(r.tempDir, "buckets")),
 		fmt.Sprintf(`HTTP_PORT=%d`, r.httpPort),
+		`LOG_FILE_PATH=""`,
 	}
 
 	if r.mode == stellarCoreRunnerModeOffline {
