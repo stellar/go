@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -129,12 +130,26 @@ func getClientData(r *http.Request, headerName string) string {
 	return value
 }
 
+var routeRegexp = regexp.MustCompile("{([^:}]*):[^}]*}")
+
+// https://prometheus.io/docs/instrumenting/exposition_formats/
+// label_value can be any sequence of UTF-8 characters, but the backslash (\),
+// double-quote ("), and line feed (\n) characters have to be escaped as \\,
+// \", and \n, respectively.
+func sanitizeMetricRoute(routePattern string) string {
+	route := routeRegexp.ReplaceAllString(routePattern, "{$1}")
+	route = strings.ReplaceAll(route, "\\", "\\\\")
+	route = strings.ReplaceAll(route, "\"", "\\\"")
+	route = strings.ReplaceAll(route, "\n", "\\n")
+	return route
+}
+
 func logEndOfRequest(ctx context.Context, r *http.Request, requestDurationSummary *prometheus.SummaryVec, duration time.Duration, mw middleware.WrapResponseWriter, streaming bool) {
-	routePattern := chi.RouteContext(r.Context()).RoutePattern()
+	route := sanitizeMetricRoute(chi.RouteContext(r.Context()).RoutePattern())
 	// Can be empty when request did not reached the final route (ex. blocked by
 	// a middleware). More info: https://github.com/go-chi/chi/issues/270
-	if routePattern == "" {
-		routePattern = "undefined"
+	if route == "" {
+		route = "undefined"
 	}
 
 	referer := r.Referer()
@@ -155,7 +170,7 @@ func logEndOfRequest(ctx context.Context, r *http.Request, requestDurationSummar
 		"ip_port":        r.RemoteAddr,
 		"method":         r.Method,
 		"path":           r.URL.String(),
-		"route":          routePattern,
+		"route":          route,
 		"status":         mw.Status(),
 		"streaming":      streaming,
 		"referer":        referer,
@@ -163,7 +178,7 @@ func logEndOfRequest(ctx context.Context, r *http.Request, requestDurationSummar
 
 	requestDurationSummary.With(prometheus.Labels{
 		"status":    strconv.FormatInt(int64(mw.Status()), 10),
-		"route":     routePattern,
+		"route":     route,
 		"streaming": strconv.FormatBool(streaming),
 		"method":    r.Method,
 	}).Observe(float64(duration.Seconds()))
