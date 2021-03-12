@@ -12,10 +12,11 @@ import (
 )
 
 type Options struct {
-	Port              int
-	HorizonURL        string
-	NetworkPassphrase string
-	SigningKeys       string
+	Port                int
+	HorizonURL          string
+	NetworkPassphrase   string
+	AccountIssuerSecret string
+	AssetCode           string
 }
 
 func Serve(opts Options) {

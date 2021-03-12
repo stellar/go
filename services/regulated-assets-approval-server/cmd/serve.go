@@ -16,6 +16,20 @@ func (c *ServeCommand) Command() *cobra.Command {
 	opts := serve.Options{}
 	configOpts := config.ConfigOptions{
 		{
+			Name:      "asset-code",
+			Usage:     "The code of the reguated asset",
+			OptType:   types.String,
+			ConfigKey: &opts.AssetCode,
+			Required:  true,
+		},
+		{
+			Name:      "account-issuer-secret",
+			Usage:     "Secret key of the asset issuer's stellar account.",
+			OptType:   types.String,
+			ConfigKey: &opts.AccountIssuerSecret,
+			Required:  true,
+		},
+		{
 			Name:        "port",
 			Usage:       "Port to listen and serve on",
 			OptType:     types.Int,

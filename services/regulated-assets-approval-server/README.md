@@ -41,9 +41,11 @@ Usage:
   regulated-assets-approval-server serve [flags]
 
 Flags:
-      --horizon-url string          Horizon URL used for looking up account details (HORIZON_URL) (default "https://horizon-testnet.stellar.org/")
-      --network-passphrase string   Network passphrase of the Stellar network transactions should be signed for (NETWORK_PASSPHRASE) (default "Test SDF Network ; September 2015")
-      --port int                    Port to listen and serve on (PORT) (default 8000)
+      --account-issuer-secret string   Secret key of the asset issuer's stellar account. (ACCOUNT_ISSUER_SECRET)
+      --asset-code string              The code of the reguated asset (ASSET_CODE)
+      --horizon-url string             Horizon URL used for looking up account details (HORIZON_URL) (default "https://horizon-testnet.stellar.org/")
+      --network-passphrase string      Network passphrase of the Stellar network transactions should be signed for (NETWORK_PASSPHRASE) (default "Test SDF Network ; September 2015")
+      --port int                       Port to listen and serve on (PORT) (default 8000)
 ```
 
 [SEP-8]: https://github.com/stellar/stellar-protocol/blob/7c795bb9abc606cd1e34764c4ba07900d58fe26e/ecosystem/sep-0008.md
