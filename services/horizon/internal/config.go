@@ -73,4 +73,11 @@ type Config struct {
 	ApplyMigrations bool
 	// CheckpointFrequency establishes how many ledgers exist between checkpoints
 	CheckpointFrequency uint32
+	// BehindCloudflare determines if Horizon instance is behind Cloudflare. In
+	// such case http.Request.RemoteAddr will be replaced with Cloudflare header.
+	BehindCloudflare bool
+	// BehindAWSLoadBalancer determines if Horizon instance is behind AWS load
+	// balances like ELB or ALB. In such case http.Request.RemoteAddr will be
+	// replaced with the last IP in X-Forwarded-For header.
+	BehindAWSLoadBalancer bool
 }

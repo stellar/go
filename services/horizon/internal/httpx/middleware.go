@@ -143,22 +143,22 @@ func logEndOfRequest(ctx context.Context, r *http.Request, requestDurationSummar
 	}
 
 	log.Ctx(ctx).WithFields(log.F{
-		"bytes":          mw.BytesWritten(),
-		"client_name":    getClientData(r, clientNameHeader),
-		"client_version": getClientData(r, clientVersionHeader),
-		"app_name":       getClientData(r, appNameHeader),
-		"app_version":    getClientData(r, appVersionHeader),
-		"duration":       duration.Seconds(),
-		"forwarded_ip":   firstXForwardedFor(r),
-		"host":           r.Host,
-		"ip":             remoteAddrIP(r),
-		"ip_port":        r.RemoteAddr,
-		"method":         r.Method,
-		"path":           r.URL.String(),
-		"route":          routePattern,
-		"status":         mw.Status(),
-		"streaming":      streaming,
-		"referer":        referer,
+		"bytes":           mw.BytesWritten(),
+		"client_name":     getClientData(r, clientNameHeader),
+		"client_version":  getClientData(r, clientVersionHeader),
+		"app_name":        getClientData(r, appNameHeader),
+		"app_version":     getClientData(r, appVersionHeader),
+		"duration":        duration.Seconds(),
+		"x_forwarder_for": r.Header.Get("X-Forwarded-For"),
+		"host":            r.Host,
+		"ip":              remoteAddrIP(r),
+		"ip_port":         r.RemoteAddr,
+		"method":          r.Method,
+		"path":            r.URL.String(),
+		"route":           routePattern,
+		"status":          mw.Status(),
+		"streaming":       streaming,
+		"referer":         referer,
 	}).Info("Finished request")
 
 	requestDurationSummary.With(prometheus.Labels{
@@ -167,10 +167,6 @@ func logEndOfRequest(ctx context.Context, r *http.Request, requestDurationSummar
 		"streaming": strconv.FormatBool(streaming),
 		"method":    r.Method,
 	}).Observe(float64(duration.Seconds()))
-}
-
-func firstXForwardedFor(r *http.Request) string {
-	return strings.TrimSpace(strings.SplitN(r.Header.Get("X-Forwarded-For"), ",", 2)[0])
 }
 
 // recoverMiddleware helps the server recover from panics. It ensures that

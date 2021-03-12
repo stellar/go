@@ -131,10 +131,6 @@ func (suite *RateLimitMiddlewareTestSuite) TestRateLimit_XForwardedFor() {
 	w = suite.rh.Get("/", requestHelperRemoteAddr("4.4.4.3"))
 	assert.Equal(suite.T(), 200, w.Code)
 
-	// Ignores leading private ips
-	w = suite.rh.Get("/", requestHelperXFF("10.0.0.1, 4.4.4.4"))
-	assert.Equal(suite.T(), 429, w.Code)
-
 	// Ignores trailing ips
 	w = suite.rh.Get("/", requestHelperXFF("4.4.4.4, 4.4.4.5, 127.0.0.1"))
 	assert.Equal(suite.T(), 429, w.Code)
