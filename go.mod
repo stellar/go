@@ -54,7 +54,6 @@ require (
 	github.com/rs/cors v0.0.0-20160617231935-a62a804a8a00
 	github.com/rs/xhandler v0.0.0-20160618193221-ed27b6fd6521 // indirect
 	github.com/rubenv/sql-migrate v0.0.0-20190717103323-87ce952f7079
-	github.com/sebest/xff v0.0.0-20150611211316-7a36e3a787b5
 	github.com/segmentio/go-loggly v0.5.1-0.20171222203950-eb91657e62b2
 	github.com/sergi/go-diff v0.0.0-20161205080420-83532ca1c1ca // indirect
 	github.com/shurcooL/httpfs v0.0.0-20190707220628-8d4bc4ba7749
