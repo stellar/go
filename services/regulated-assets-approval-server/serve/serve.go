@@ -6,6 +6,8 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
+	"github.com/stellar/go/clients/horizonclient"
+	"github.com/stellar/go/network"
 	supporthttp "github.com/stellar/go/support/http"
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/support/render/health"
@@ -50,6 +52,26 @@ func handleHTTP(opts Options) *chi.Mux {
 
 	mux.Get("/health", health.PassHandler{}.ServeHTTP)
 	mux.Get("/.well-known/stellar.toml", stellarTOMLHandler(opts))
+	mux.Get("/friendbot", friendbotHandler{
+		assetCode:           opts.AssetCode,
+		accountIssuerSecret: opts.AccountIssuerSecret,
+		horizonClient:       opts.horizonClient(),
+		horizonURL:          opts.HorizonURL,
+		networkPassphrase:   opts.NetworkPassphrase,
+	}.ServeHTTP)
 
 	return mux
+}
+
+func (opts Options) horizonClient() horizonclient.ClientInterface {
+	var client *horizonclient.Client
+	if opts.NetworkPassphrase == network.PublicNetworkPassphrase {
+		client = horizonclient.DefaultPublicNetClient
+	} else {
+		client = horizonclient.DefaultTestNetClient
+	}
+
+	client.HorizonURL = opts.HorizonURL
+
+	return client
 }
