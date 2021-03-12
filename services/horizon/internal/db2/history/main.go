@@ -12,6 +12,7 @@ import (
 	"github.com/guregu/null"
 	"github.com/jmoiron/sqlx"
 
+	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
@@ -321,12 +322,13 @@ type Asset struct {
 
 // ExpAssetStat is a row in the exp_asset_stats table representing the stats per Asset
 type ExpAssetStat struct {
-	AssetType      xdr.AssetType      `db:"asset_type"`
-	AssetCode      string             `db:"asset_code"`
-	AssetIssuer    string             `db:"asset_issuer"`
-	Amount         string             `db:"amount"`
-	NumAccounts    int32              `db:"num_accounts"`
-	TrustLineFlags xdr.TrustLineFlags `db:"trust_line_flags"`
+	AssetType   xdr.AssetType                `db:"asset_type"`
+	AssetCode   string                       `db:"asset_code"`
+	AssetIssuer string                       `db:"asset_issuer"`
+	Accounts    horizon.AssetStatNumAccounts `db:"accounts"`
+	Balances    horizon.AssetStatBalances    `db:"balances"`
+	Amount      string                       `db:"amount"`
+	NumAccounts int32                        `db:"num_accounts"`
 }
 
 // PagingToken returns a cursor for this asset stat

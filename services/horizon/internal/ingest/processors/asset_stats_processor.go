@@ -172,12 +172,13 @@ func (p *AssetStatsProcessor) Commit() error {
 			} else {
 				// Update
 				rowsAffected, err = p.assetStatsQ.UpdateAssetStat(history.ExpAssetStat{
-					AssetType:      delta.AssetType,
-					AssetCode:      delta.AssetCode,
-					AssetIssuer:    delta.AssetIssuer,
-					Amount:         statBalance.String(),
-					NumAccounts:    statAccounts,
-					TrustLineFlags: delta.TrustLineFlags,
+					AssetType:   delta.AssetType,
+					AssetCode:   delta.AssetCode,
+					AssetIssuer: delta.AssetIssuer,
+					Accounts:    statAccounts,
+					Balances:    statBalances,
+					Amount:      statBalances.Authorized.String(),
+					NumAccounts: statAccounts.Authorized,
 				})
 				if err != nil {
 					return errors.Wrap(err, "could not update asset stat")

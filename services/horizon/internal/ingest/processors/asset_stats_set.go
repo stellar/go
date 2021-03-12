@@ -3,6 +3,7 @@ package processors
 import (
 	"math/big"
 
+	protocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
@@ -13,10 +14,38 @@ type assetStatKey struct {
 	assetCode   string
 	assetIssuer string
 }
+
 type assetStatValue struct {
-	amount         *big.Int
-	numAccounts    int32
-	trustLineFlags xdr.TrustLineFlags
+	assetStatKey
+	balances assetStatBalances
+	accounts assetStatNumAccounts
+}
+type assetStatBalances struct {
+	Authorized                      *big.Int
+	AuthorizedToMaintainLiabilities *big.Int
+	Unauthorized                    *big.Int
+}
+type assetStatNumAccounts struct {
+	Authorized                      int32
+	AuthorizedToMaintainLiabilities int32
+	Unauthorized                    int32
+}
+
+func (value assetStatValue) Finish() history.ExpAssetStat {
+	balances := protocol.AssetStatBalances{
+		Authorized:                      value.balances.Authorized.String(),
+		AuthorizedToMaintainLiabilities: value.balances.AuthorizedToMaintainLiabilities.String(),
+		Unauthorized:                    value.balances.Unauthorized.String(),
+	}
+	return history.ExpAssetStat{
+		AssetType:   value.assetType,
+		AssetCode:   value.assetCode,
+		AssetIssuer: value.assetIssuer,
+		Accounts:    protocol.AssetStatNumAccounts(value.accounts),
+		Balances:    balances,
+		Amount:      balances.Authorized,
+		NumAccounts: value.accounts.Authorized,
+	}
 }
 
 // AssetStatSet represents a collection of asset stats
@@ -28,8 +57,8 @@ func (s AssetStatSet) Add(trustLine xdr.TrustLineEntry) error {
 	return s.AddDelta(trustLine.Asset, int64(trustLine.Balance), 1, xdr.TrustLineFlags(trustLine.Flags))
 }
 
-// AddDelta adds a delta balance and delta accounts to a given asset.
-func (s AssetStatSet) AddDelta(asset xdr.Asset, deltaBalance int64, deltaAccounts int32, deltaTrustLineFlags xdr.TrustLineFlags) error {
+// AddDelta adds a delta balance and delta accounts to a given asset trustline.
+func (s AssetStatSet) AddDelta(asset xdr.Asset, deltaBalance int64, deltaAccounts int32, flags xdr.TrustLineFlags) error {
 	if deltaBalance == 0 && deltaAccounts == 0 {
 		return nil
 	}
@@ -41,21 +70,33 @@ func (s AssetStatSet) AddDelta(asset xdr.Asset, deltaBalance int64, deltaAccount
 
 	current, ok := s[key]
 	if !ok {
-		s[key] = &assetStatValue{
-			amount:         big.NewInt(int64(deltaBalance)),
-			numAccounts:    deltaAccounts,
-			trustLineFlags: deltaTrustLineFlags,
-		}
+		current = &assetStatValue{assetStatKey: key}
+		s[key] = current
+	}
+
+	// TODO: Do we need to handle clawback authorized here?
+	if flags.IsAuthorized() {
+		current.balances.Authorized.Add(current.balances.Authorized, big.NewInt(int64(deltaBalance)))
+		current.accounts.Authorized += deltaAccounts
+	} else if flags.IsAuthorizedToMaintainLiabilitiesFlag() {
+		current.balances.AuthorizedToMaintainLiabilities.Add(current.balances.AuthorizedToMaintainLiabilities, big.NewInt(int64(deltaBalance)))
+		current.accounts.AuthorizedToMaintainLiabilities += deltaAccounts
 	} else {
-		current.amount.Add(current.amount, big.NewInt(int64(deltaBalance)))
-		current.numAccounts += deltaAccounts
-		// Note: it's possible that after operations above:
-		// numAccounts != 0 && amount == 0 (ex. two accounts send some of their assets to third account)
-		//  OR
-		// numAccounts == 0 && amount != 0 (ex. issuer issued an asset)
-		if current.numAccounts == 0 && current.amount.Cmp(big.NewInt(0)) == 0 {
-			delete(s, key)
-		}
+		current.balances.Unauthorized.Add(current.balances.Unauthorized, big.NewInt(int64(deltaBalance)))
+		current.accounts.Unauthorized += deltaAccounts
+	}
+
+	// Note: it's possible that after operations above:
+	// numAccounts != 0 && amount == 0 (ex. two accounts send some of their assets to third account)
+	//  OR
+	// numAccounts == 0 && amount != 0 (ex. issuer issued an asset)
+	if current.balances.Authorized.Cmp(big.NewInt(0)) == 0 &&
+		current.balances.AuthorizedToMaintainLiabilities.Cmp(big.NewInt(0)) == 0 &&
+		current.balances.Unauthorized.Cmp(big.NewInt(0)) == 0 &&
+		current.accounts.Authorized == 0 &&
+		current.accounts.AuthorizedToMaintainLiabilities == 0 &&
+		current.accounts.Unauthorized == 0 {
+		delete(s, key)
 	}
 
 	return nil
@@ -71,28 +112,14 @@ func (s AssetStatSet) Remove(assetType xdr.AssetType, assetCode string, assetIss
 
 	delete(s, key)
 
-	return history.ExpAssetStat{
-		AssetType:      key.assetType,
-		AssetCode:      key.assetCode,
-		AssetIssuer:    key.assetIssuer,
-		Amount:         value.amount.String(),
-		NumAccounts:    value.numAccounts,
-		TrustLineFlags: value.trustLineFlags,
-	}, true
+	return value.Finish(), true
 }
 
 // All returns a list of all `history.ExpAssetStat` contained within the set
 func (s AssetStatSet) All() []history.ExpAssetStat {
 	assetStats := make([]history.ExpAssetStat, 0, len(s))
-	for key, value := range s {
-		assetStats = append(assetStats, history.ExpAssetStat{
-			AssetType:      key.assetType,
-			AssetCode:      key.assetCode,
-			AssetIssuer:    key.assetIssuer,
-			Amount:         value.amount.String(),
-			NumAccounts:    value.numAccounts,
-			TrustLineFlags: value.trustLineFlags,
-		})
+	for _, value := range s {
+		assetStats = append(assetStats, value.Finish())
 	}
 	return assetStats
 }

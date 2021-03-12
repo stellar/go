@@ -1,11 +1,16 @@
 -- +migrate Up
 
 ALTER TABLE asset_stats
-ADD COLUMN trust_line_flags integer DEFAULT 0;
+ADD COLUMN accounts JSONB;
+ADD COLUMN balances JSONB;
 -- Previously, all the asset_stats we stored were authorized.
-UPDATE asset_stats SET trust_line_flags = 1;
+UPDATE asset_stats
+  SET
+    accounts = jsonb_build_object('authorized', num_accounts),
+    balances = jsonb_build_object('authorized', amount);
 
 -- +migrate Down
 
 ALTER TABLE asset_stats
-DROP COLUMN trust_line_flags;
+DROP COLUMN accounts;
+DROP COLUMN balances;

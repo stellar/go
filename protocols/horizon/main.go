@@ -166,15 +166,31 @@ type AssetStat struct {
 	} `json:"_links"`
 
 	base.Asset
-	PT          string       `json:"paging_token"`
-	Amount      string       `json:"amount"`
-	NumAccounts int32        `json:"num_accounts"`
-	Flags       AccountFlags `json:"flags"`
+	PT          string               `json:"paging_token"`
+	Accounts    AssetStatNumAccounts `json:"accounts"`
+	Amount      string               `json:"amount"`
+	Balances    AssetStatBalances    `json:"balances"`
+	NumAccounts int32                `json:"num_accounts"`
+	Flags       AccountFlags         `json:"flags"`
 }
 
 // PagingToken implementation for hal.Pageable
 func (res AssetStat) PagingToken() string {
 	return res.PT
+}
+
+// AssetStatBalances represents the summarized balances for a single Asset
+type AssetStatBalances struct {
+	Authorized                      string `json:"authorized"`
+	AuthorizedToMaintainLiabilities string `json:"authorized_to_maintain_liabilities"`
+	Unauthorized                    string `json:"unauthorized"`
+}
+
+// AssetStatNumAccounts represents the summarized acount numbers for a single Asset
+type AssetStatNumAccounts struct {
+	Authorized                      int32 `json:"authorized"`
+	AuthorizedToMaintainLiabilities int32 `json:"authorized_to_maintain_liabilities"`
+	Unauthorized                    int32 `json:"unauthorized"`
 }
 
 // Balance represents an account's holdings for a single currency type
