@@ -10,12 +10,72 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/stellar/go/clients/horizonclient"
+	"github.com/stellar/go/network"
 	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestFriendbotHandler_validate(t *testing.T) {
+	// missing secret seed
+	fh := friendbotHandler{}
+	err := fh.validate()
+	require.EqualError(t, err, "issuer secret cannot be empty")
+
+	// invalid secret seed
+	fh = friendbotHandler{
+		accountIssuerSecret: "foo bar",
+	}
+	err = fh.validate()
+	require.EqualError(t, err, "the provided string \"foo bar\" is not a valid Stellar account seed")
+
+	// missing asset code
+	fh = friendbotHandler{
+		accountIssuerSecret: "SB6SFUY6ZJ2ETQHTY456GDAQ547R6NDAU74DTI2CKVVI4JERTUXKB2R4",
+	}
+	err = fh.validate()
+	require.EqualError(t, err, "asset code cannot be empty")
+
+	// missing horizon client
+	fh = friendbotHandler{
+		accountIssuerSecret: "SB6SFUY6ZJ2ETQHTY456GDAQ547R6NDAU74DTI2CKVVI4JERTUXKB2R4",
+		assetCode:           "FOO",
+	}
+	err = fh.validate()
+	require.EqualError(t, err, "horizon client cannot be nil")
+
+	// missing horizon URL
+	fh = friendbotHandler{
+		accountIssuerSecret: "SB6SFUY6ZJ2ETQHTY456GDAQ547R6NDAU74DTI2CKVVI4JERTUXKB2R4",
+		assetCode:           "FOO",
+		horizonClient:       horizonclient.DefaultTestNetClient,
+	}
+	err = fh.validate()
+	require.EqualError(t, err, "horizon url cannot be emtpy")
+
+	// missing network passphrase
+	fh = friendbotHandler{
+		accountIssuerSecret: "SB6SFUY6ZJ2ETQHTY456GDAQ547R6NDAU74DTI2CKVVI4JERTUXKB2R4",
+		assetCode:           "FOO",
+		horizonClient:       horizonclient.DefaultTestNetClient,
+		horizonURL:          "https://horizon-testnet.stellar.org/",
+	}
+	err = fh.validate()
+	require.EqualError(t, err, "network passphrase cannot be emtpy")
+
+	// success!
+	fh = friendbotHandler{
+		accountIssuerSecret: "SB6SFUY6ZJ2ETQHTY456GDAQ547R6NDAU74DTI2CKVVI4JERTUXKB2R4",
+		assetCode:           "FOO",
+		horizonClient:       horizonclient.DefaultTestNetClient,
+		horizonURL:          "https://horizon-testnet.stellar.org/",
+		networkPassphrase:   network.TestNetworkPassphrase,
+	}
+	err = fh.validate()
+	require.NoError(t, err)
+}
 
 func TestFriendbotHandler_serveHTTP_missingAddress(t *testing.T) {
 	ctx := context.Background()

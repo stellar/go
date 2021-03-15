@@ -23,7 +23,30 @@ type friendbotHandler struct {
 }
 
 func (h friendbotHandler) validate() error {
-	// TODO: validation
+	if h.accountIssuerSecret == "" {
+		return errors.New("issuer secret cannot be empty")
+	}
+
+	if !strkey.IsValidEd25519SecretSeed(h.accountIssuerSecret) {
+		return errors.Errorf("the provided string %q is not a valid Stellar account seed", h.accountIssuerSecret)
+	}
+
+	if h.assetCode == "" {
+		return errors.New("asset code cannot be empty")
+	}
+
+	if h.horizonClient == nil {
+		return errors.New("horizon client cannot be nil")
+	}
+
+	if h.horizonURL == "" {
+		return errors.New("horizon url cannot be emtpy")
+	}
+
+	if h.networkPassphrase == "" {
+		return errors.New("network passphrase cannot be emtpy")
+	}
+
 	return nil
 }
 
@@ -34,10 +57,15 @@ type friendbotRequest struct {
 // TODO: tests
 
 func (h friendbotHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	err := h.validate()
+	if err != nil {
+		log.Error(errors.Wrap(err, "validating friendbotHandler"))
+	}
+
 	ctx := r.Context()
 
 	in := friendbotRequest{}
-	err := httpdecode.Decode(r, &in)
+	err = httpdecode.Decode(r, &in)
 	if err != nil || in.Address == "" {
 		makeBadRequestError(`Missing query paramater "addr".`).Render(w)
 		return
