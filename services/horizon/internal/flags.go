@@ -359,6 +359,22 @@ func Flags() (*Config, support.ConfigOptions) {
 			Required:    false,
 			Usage:       "establishes how many ledgers exist between checkpoints, do NOT change this unless you really know what you are doing",
 		},
+		&support.ConfigOption{
+			Name:        "behind-cloudflare",
+			ConfigKey:   &config.BehindCloudflare,
+			OptType:     types.Bool,
+			FlagDefault: false,
+			Required:    false,
+			Usage:       "determines if Horizon instance is behind Cloudflare, in such case client IP in the logs will be replaced with Cloudflare header (cannot be used with --behind-aws-load-balancer)",
+		},
+		&support.ConfigOption{
+			Name:        "behind-aws-load-balancer",
+			ConfigKey:   &config.BehindAWSLoadBalancer,
+			OptType:     types.Bool,
+			FlagDefault: false,
+			Required:    false,
+			Usage:       "determines if Horizon instance is behind AWS load balances like ELB or ALB, in such case client IP in the logs will be replaced with the last IP in X-Forwarded-For header (cannot be used with --behind-cloudflare)",
+		},
 	}
 
 	return config, flags
@@ -457,5 +473,9 @@ func ApplyFlags(config *Config, flags support.ConfigOptions) {
 	if config.MaxDBConnections != 0 {
 		config.HorizonDBMaxOpenConnections = config.MaxDBConnections
 		config.HorizonDBMaxIdleConnections = config.MaxDBConnections
+	}
+
+	if config.BehindCloudflare && config.BehindAWSLoadBalancer {
+		stdLog.Fatal("Invalid config: Only one option of --behind-cloudflare and --behind-aws-load-balancer is allowed. If Horizon is behind both, use --behind-cloudflare only.")
 	}
 }

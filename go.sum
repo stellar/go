@@ -175,8 +175,6 @@ github.com/rs/xhandler v0.0.0-20160618193221-ed27b6fd6521 h1:3hxavr+IHMsQBrYUPQM
 github.com/rs/xhandler v0.0.0-20160618193221-ed27b6fd6521/go.mod h1:RvLn4FgxWubrpZHtQLnOf6EwhN2hEMusxZOhcW9H3UQ=
 github.com/rubenv/sql-migrate v0.0.0-20190717103323-87ce952f7079 h1:xPeaaIHjF9j8jbYQ5xdvLnFp+lpmGYFG1uBPtXNBHno=
 github.com/rubenv/sql-migrate v0.0.0-20190717103323-87ce952f7079/go.mod h1:WS0rl9eEliYI8DPnr3TOwz4439pay+qNgzJoVya/DmY=
-github.com/sebest/xff v0.0.0-20150611211316-7a36e3a787b5 h1:MqIPVG2sHTgcQxFwZ+iHZSQ869PVP42SgEEeI1+X4Y8=
-github.com/sebest/xff v0.0.0-20150611211316-7a36e3a787b5/go.mod h1:wozgYq9WEBQBaIJe4YZ0qTSFAMxmcwBhQH0fO0R34Z0=
 github.com/segmentio/go-loggly v0.5.1-0.20171222203950-eb91657e62b2 h1:S4OC0+OBKz6mJnzuHioeEat74PuQ4Sgvbf8eus695sc=
 github.com/segmentio/go-loggly v0.5.1-0.20171222203950-eb91657e62b2/go.mod h1:8zLRYR5npGjaOXgPSKat5+oOh+UHd8OdbS18iqX9F6Y=
 github.com/sergi/go-diff v0.0.0-20161205080420-83532ca1c1ca h1:oR/RycYTFTVXzND5r4FdsvbnBn0HJXSVeNAnwaTXRwk=
