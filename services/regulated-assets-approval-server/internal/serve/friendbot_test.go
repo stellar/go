@@ -14,6 +14,7 @@ import (
 	"github.com/stellar/go/protocols/horizon/base"
 	"github.com/stellar/go/support/errors"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
 
@@ -250,6 +251,58 @@ func TestFriendbotHandler_serveHTTP_issuerAccountDoesntExist(t *testing.T) {
 	require.NoError(t, err)
 	wantBody := `{
 		"error":"Please make sure the issuer account address already exists in the network."
+	}`
+	require.JSONEq(t, wantBody, string(body))
+}
+
+func TestFriendbotHandler_serveHTTP(t *testing.T) {
+	ctx := context.Background()
+
+	// mock account that doesn't  exist on ledger
+	horizonMock := horizonclient.MockClient{}
+	horizonMock.
+		On("AccountDetail", horizonclient.AccountRequest{AccountID: "GA2ILZPZAQ4R5PRKZ2X2AFAZK3ND6AGA4VFBQGR66BH36PV3VKMWLLZP"}).
+		Return(horizon.Account{
+			Balances: []horizon.Balance{
+				{
+					Asset:   base.Asset{Code: "FOO", Issuer: "GDDIO6SFRD4SJEQFJOSKPIDYTDM7LM4METFBKN4NFGVR5DTGB7H75N5S"},
+					Balance: "0",
+				},
+			},
+		}, nil)
+	horizonMock.
+		On("AccountDetail", horizonclient.AccountRequest{AccountID: "GDDIO6SFRD4SJEQFJOSKPIDYTDM7LM4METFBKN4NFGVR5DTGB7H75N5S"}).
+		Return(horizon.Account{
+			AccountID: "GDDIO6SFRD4SJEQFJOSKPIDYTDM7LM4METFBKN4NFGVR5DTGB7H75N5S",
+			Sequence:  "1",
+		}, nil)
+	horizonMock.
+		On("SubmitTransaction", mock.AnythingOfType("*txnbuild.Transaction")).
+		Return(horizon.Transaction{}, nil)
+
+	handler := friendbotHandler{
+		accountIssuerSecret: "SDVFEIZ3WH5F6GHGK56QITTC5IO6QJ2UIQDWCHE72DAFZFSXYPIHQ6EV", // GDDIO6SFRD4SJEQFJOSKPIDYTDM7LM4METFBKN4NFGVR5DTGB7H75N5S
+		assetCode:           "FOO",
+		horizonClient:       &horizonMock,
+		horizonURL:          "https://horizon-testnet.stellar.org/",
+		networkPassphrase:   network.TestNetworkPassphrase,
+	}
+
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest("GET", "/friendbot?addr=GA2ILZPZAQ4R5PRKZ2X2AFAZK3ND6AGA4VFBQGR66BH36PV3VKMWLLZP", nil)
+	r = r.WithContext(ctx)
+	m := chi.NewMux()
+	m.Get("/friendbot", handler.ServeHTTP)
+	m.ServeHTTP(w, r)
+
+	resp := w.Result()
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
+
+	body, err := ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	wantBody := `{
+		"message":"ok"
 	}`
 	require.JSONEq(t, wantBody, string(body))
 }
