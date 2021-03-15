@@ -57,14 +57,14 @@ type friendbotRequest struct {
 // TODO: tests
 
 func (h friendbotHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
 	err := h.validate()
 	if err != nil {
-		log.Error(errors.Wrap(err, "validating friendbotHandler"))
+		log.Ctx(ctx).Error(errors.Wrap(err, "validating friendbotHandler"))
 		serverError.Render(w)
 		return
 	}
-
-	ctx := r.Context()
 
 	in := friendbotRequest{}
 	err = httpdecode.Decode(r, &in)
