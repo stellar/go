@@ -37,7 +37,7 @@
 // migrations/40_fix_inner_tx_max_fee_constraint.sql (392B)
 // migrations/41_add_sponsor_to_state_tables.sql (800B)
 // migrations/42_add_num_sponsored_and_num_sponsoring_to_accounts.sql (276B)
-// migrations/43_add_claimable_balances_flags.sql (135B)
+// migrations/43_add_claimable_balances_flags.sql (145B)
 // migrations/4_add_protocol_version.sql (188B)
 // migrations/5_create_trades_table.sql (1.1kB)
 // migrations/6_create_assets_table.sql (366B)
@@ -853,7 +853,7 @@ func migrations42_add_num_sponsored_and_num_sponsoring_to_accountsSql() (*asset,
 	return a, nil
 }
 
-var _migrations43_add_claimable_balances_flagsSql = []byte("\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff\xd2\xd5\x55\xd0\xce\xcd\x4c\x2f\x4a\x2c\x49\x55\x08\x2d\xe0\xe2\xe2\x72\xf4\x09\x71\x0d\x52\x08\x71\x74\xf2\x71\x55\x48\xce\x49\xcc\xcc\x4d\x4c\xca\x49\x8d\x4f\x4a\xcc\x49\xcc\x4b\x4e\x2d\x56\x70\x74\x71\x51\x48\xcb\x49\x4c\x2f\x56\xc8\xcc\x2b\x51\xf0\xf3\x0f\x51\xf0\x0b\xf5\xf1\xb1\xe6\xe2\x42\x36\xc8\x25\xbf\x3c\x8f\xa0\x49\x2e\x41\xfe\x01\x10\xa3\xac\xb9\xb8\x00\x01\x00\x00\xff\xff\xb7\xf0\x2e\x26\x87\x00\x00\x00")
+var _migrations43_add_claimable_balances_flagsSql = []byte("\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff\xd2\xd5\x55\xd0\xce\xcd\x4c\x2f\x4a\x2c\x49\x55\x08\x2d\xe0\xe2\xe2\x72\xf4\x09\x71\x0d\x52\x08\x71\x74\xf2\x71\x55\x48\xce\x49\xcc\xcc\x4d\x4c\xca\x49\x8d\x4f\x4a\xcc\x49\xcc\x4b\x4e\x2d\x56\x70\x74\x71\x51\x48\xcb\x49\x4c\x2f\x56\xc8\xcc\x2b\x51\xf0\xf3\x0f\x51\xf0\x0b\xf5\xf1\x51\x70\x71\x75\x73\x0c\xf5\x09\x51\x30\xb0\xe6\xe2\x42\x36\xd2\x25\xbf\x3c\x8f\xa0\x99\x2e\x41\xfe\x01\x10\x43\xad\xb9\xb8\x00\x01\x00\x00\xff\xff\x88\xef\xa8\x21\x91\x00\x00\x00")
 
 func migrations43_add_claimable_balances_flagsSqlBytes() ([]byte, error) {
 	return bindataRead(
@@ -869,7 +869,7 @@ func migrations43_add_claimable_balances_flagsSql() (*asset, error) {
 	}
 
 	info := bindataFileInfo{name: "migrations/43_add_claimable_balances_flags.sql", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
-	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0xd, 0x81, 0x29, 0x92, 0x69, 0x66, 0xd, 0xcd, 0x77, 0x2a, 0xe7, 0x6a, 0x73, 0x12, 0x8d, 0x77, 0xc0, 0x20, 0x6b, 0x35, 0x44, 0x7e, 0x3c, 0x77, 0x46, 0x8f, 0xa9, 0xd1, 0x77, 0x7e, 0xc, 0xdc}}
+	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0x91, 0x91, 0xc9, 0xa3, 0x4d, 0x66, 0x59, 0x6d, 0xbe, 0x30, 0xcb, 0x9d, 0x9b, 0x73, 0x1f, 0xc5, 0x98, 0xda, 0x39, 0x5c, 0x24, 0x99, 0x93, 0xa9, 0xd9, 0x47, 0xd3, 0x31, 0xf, 0x28, 0xc8, 0x12}}
 	return a, nil
 }
 
