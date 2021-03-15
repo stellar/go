@@ -154,9 +154,5 @@ func (h friendbotHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	httpjson.Render(w, nil, httpjson.JSON)
-
-	// h.Render(w, *result)
-	// httpjson.RenderStatus(w, e.Status, e, httpjson.JSON)
-	// httpjson.Render(w, resp, httpjson.JSON)
+	httpjson.Render(w, httpjson.DefaultResponse, httpjson.JSON)
 }
