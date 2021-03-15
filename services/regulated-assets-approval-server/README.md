@@ -26,7 +26,6 @@ Usage:
 
 Available Commands:
   configure-asset-issuer       Configure asset issuer to use SEP-8 regulated assets.
-  create-regulated-asset-offer Create a sell offer from the issuing account selling ASSET_CODE for XLM at 1:1.
   serve                        Serve the SEP-8 Approval Server
 
 Use "regulated-assets-approval-server [command] --help" for more information about a command.
@@ -44,23 +43,6 @@ Usage:
 
 Flags:
       --account-issuer-secret string   Secret key of the asset issuer's stellar account. (ACCOUNT_ISSUER_SECRET)
-      --horizon-url string             Horizon URL used for looking up account details (HORIZON_URL) (default "https://horizon-testnet.stellar.org/")
-      --network-passphrase string      Network passphrase of the Stellar network transactions should be signed for (NETWORK_PASSPHRASE) (default "Test SDF Network ; September 2015")
-```
-
-### Usage: `create-regulated-asset-offer`
-
-```sh
-$ go install
-$ regulated-assets-approval-server serve --help
-Create a sell offer from the issuing account selling ASSET_CODE for XLM at 1:1.
-
-Usage:
-  regulated-assets-approval-server create-regulated-asset-offer [flags]
-
-Flags:
-      --account-issuer-secret string   Secret key of the asset issuer's stellar account. (ACCOUNT_ISSUER_SECRET)
-      --asset-code string              The code of the reguated asset (ASSET_CODE)
       --horizon-url string             Horizon URL used for looking up account details (HORIZON_URL) (default "https://horizon-testnet.stellar.org/")
       --network-passphrase string      Network passphrase of the Stellar network transactions should be signed for (NETWORK_PASSPHRASE) (default "Test SDF Network ; September 2015")
 ```
