@@ -54,8 +54,6 @@ type friendbotRequest struct {
 	Address string `query:"addr"`
 }
 
-// TODO: tests
-
 func (h friendbotHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -108,26 +106,31 @@ func (h friendbotHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	issuerAcc, err := h.horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: kp.Address()})
+	if err != nil {
+		log.Ctx(ctx).Error(errors.Wrapf(err, "getting detail for issuer account %s", kp.Address()))
+		makeBadRequestError(`Please make sure the issuer account address already exists in the network.`).Render(w)
+		return
+	}
+
 	tx, err := txnbuild.NewTransaction(txnbuild.TransactionParams{
-		SourceAccount:        &txnbuild.SimpleAccount{AccountID: kp.Address()},
+		SourceAccount:        &issuerAcc,
 		IncrementSequenceNum: true,
 		Operations: []txnbuild.Operation{
-			&txnbuild.SetTrustLineFlags{
-				Trustor: in.Address,
-				Asset:   asset,
-				SetFlags: []txnbuild.TrustLineFlag{
-					txnbuild.TrustLineAuthorized,
-				},
+			&txnbuild.AllowTrust{
+				Trustor:   in.Address,
+				Type:      asset,
+				Authorize: true,
 			},
 			&txnbuild.Payment{
 				Destination: in.Address,
 				Amount:      "10000",
 				Asset:       asset,
 			},
-			&txnbuild.SetTrustLineFlags{
-				Trustor:  in.Address,
-				Asset:    asset,
-				SetFlags: []txnbuild.TrustLineFlag{},
+			&txnbuild.AllowTrust{
+				Trustor:   in.Address,
+				Type:      asset,
+				Authorize: false,
 			},
 		},
 		BaseFee:    300,
