@@ -5,7 +5,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 
 	"github.com/go-chi/chi"
@@ -13,7 +12,6 @@ import (
 	"github.com/stellar/go/network"
 	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/support/errors"
-	"github.com/stellar/go/support/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -80,11 +78,19 @@ func TestFriendbotHandler_validate(t *testing.T) {
 func TestFriendbotHandler_serveHTTP_missingAddress(t *testing.T) {
 	ctx := context.Background()
 
+	handler := friendbotHandler{
+		accountIssuerSecret: "SB6SFUY6ZJ2ETQHTY456GDAQ547R6NDAU74DTI2CKVVI4JERTUXKB2R4",
+		assetCode:           "FOO",
+		horizonClient:       horizonclient.DefaultTestNetClient,
+		horizonURL:          "https://horizon-testnet.stellar.org/",
+		networkPassphrase:   network.TestNetworkPassphrase,
+	}
+
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest("GET", "/friendbot", nil)
 	r = r.WithContext(ctx)
 	m := chi.NewMux()
-	m.Get("/friendbot", friendbotHandler{}.ServeHTTP)
+	m.Get("/friendbot", handler.ServeHTTP)
 	m.ServeHTTP(w, r)
 
 	resp := w.Result()
@@ -102,11 +108,19 @@ func TestFriendbotHandler_serveHTTP_missingAddress(t *testing.T) {
 func TestFriendbotHandler_serveHTTP_invalidAddress(t *testing.T) {
 	ctx := context.Background()
 
+	handler := friendbotHandler{
+		accountIssuerSecret: "SB6SFUY6ZJ2ETQHTY456GDAQ547R6NDAU74DTI2CKVVI4JERTUXKB2R4",
+		assetCode:           "FOO",
+		horizonClient:       horizonclient.DefaultTestNetClient,
+		horizonURL:          "https://horizon-testnet.stellar.org/",
+		networkPassphrase:   network.TestNetworkPassphrase,
+	}
+
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest("GET", "/friendbot?addr=123", nil)
 	r = r.WithContext(ctx)
 	m := chi.NewMux()
-	m.Get("/friendbot", friendbotHandler{}.ServeHTTP)
+	m.Get("/friendbot", handler.ServeHTTP)
 	m.ServeHTTP(w, r)
 
 	resp := w.Result()
@@ -131,7 +145,11 @@ func TestFriendbotHandler_serveHTTP_accountDoesntExist(t *testing.T) {
 		Return(horizon.Account{}, errors.New("something went wrong"))
 
 	handler := friendbotHandler{
-		horizonClient: &horizonMock,
+		accountIssuerSecret: "SB6SFUY6ZJ2ETQHTY456GDAQ547R6NDAU74DTI2CKVVI4JERTUXKB2R4",
+		assetCode:           "FOO",
+		horizonClient:       &horizonMock,
+		horizonURL:          "https://horizon-testnet.stellar.org/",
+		networkPassphrase:   network.TestNetworkPassphrase,
 	}
 
 	w := httptest.NewRecorder()
@@ -153,12 +171,8 @@ func TestFriendbotHandler_serveHTTP_accountDoesntExist(t *testing.T) {
 	require.JSONEq(t, wantBody, string(body))
 }
 
-func TestFriendbotHandler_serveHTTP_invalidSecret(t *testing.T) {
+func TestFriendbotHandler_serveHTTP_missingTrustline(t *testing.T) {
 	ctx := context.Background()
-
-	buf := new(strings.Builder)
-	log.DefaultLogger.Logger.SetOutput(buf)
-	log.DefaultLogger.Logger.SetLevel(log.InfoLevel)
 
 	// mock account that doesn't  exist on ledger
 	horizonMock := horizonclient.MockClient{}
@@ -167,7 +181,11 @@ func TestFriendbotHandler_serveHTTP_invalidSecret(t *testing.T) {
 		Return(horizon.Account{}, nil)
 
 	handler := friendbotHandler{
-		horizonClient: &horizonMock,
+		accountIssuerSecret: "SB6SFUY6ZJ2ETQHTY456GDAQ547R6NDAU74DTI2CKVVI4JERTUXKB2R4",
+		assetCode:           "FOO",
+		horizonClient:       &horizonMock,
+		horizonURL:          "https://horizon-testnet.stellar.org/",
+		networkPassphrase:   network.TestNetworkPassphrase,
 	}
 
 	w := httptest.NewRecorder()
@@ -178,14 +196,13 @@ func TestFriendbotHandler_serveHTTP_invalidSecret(t *testing.T) {
 	m.ServeHTTP(w, r)
 
 	resp := w.Result()
-	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
 
 	body, err := ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 	wantBody := `{
-		"error":"An error occurred while processing this request."
+		"error":"Address GA2ILZPZAQ4R5PRKZ2X2AFAZK3ND6AGA4VFBQGR66BH36PV3VKMWLLZP doesn't have a trustline for FOO:GDCRZMSHZGQYSRXPWDMIUNUQW36SV2NIC3C7R6WWT6XDO267WCI2TTBR"
 	}`
 	require.JSONEq(t, wantBody, string(body))
-	require.Contains(t, buf.String(), "parsing secret:")
 }

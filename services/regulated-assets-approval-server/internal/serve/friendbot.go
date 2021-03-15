@@ -60,6 +60,8 @@ func (h friendbotHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	err := h.validate()
 	if err != nil {
 		log.Error(errors.Wrap(err, "validating friendbotHandler"))
+		serverError.Render(w)
+		return
 	}
 
 	ctx := r.Context()
