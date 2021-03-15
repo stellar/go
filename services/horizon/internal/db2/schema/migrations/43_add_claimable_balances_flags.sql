@@ -1,7 +1,7 @@
 -- +migrate Up
 
 
-ALTER TABLE claimable_balances ADD flags int NOT NULL;
+ALTER TABLE claimable_balances ADD flags int NOT NULL DEFAULT 0;
 
 -- +migrate Down
 
