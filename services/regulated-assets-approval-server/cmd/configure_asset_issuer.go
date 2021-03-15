@@ -6,14 +6,14 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/network"
-	"github.com/stellar/go/services/regulated-assets-approval-server/internal/configureassetissuer"
+	"github.com/stellar/go/services/regulated-assets-approval-server/internal/assetissuer"
 	"github.com/stellar/go/support/config"
 )
 
 type ConfigureAssetIssuer struct{}
 
 func (c *ConfigureAssetIssuer) Command() *cobra.Command {
-	opts := configureassetissuer.Options{}
+	opts := assetissuer.Options{}
 	configOpts := config.ConfigOptions{
 		{
 			Name:      "account-issuer-secret",
@@ -52,6 +52,6 @@ func (c *ConfigureAssetIssuer) Command() *cobra.Command {
 	return cmd
 }
 
-func (c *ConfigureAssetIssuer) Run(opts configureassetissuer.Options) {
-	configureassetissuer.Configure(opts)
+func (c *ConfigureAssetIssuer) Run(opts assetissuer.Options) {
+	assetissuer.Configure(opts)
 }

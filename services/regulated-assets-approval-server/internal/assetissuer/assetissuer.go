@@ -1,4 +1,4 @@
-package configureassetissuer
+package assetissuer
 
 import (
 	"github.com/stellar/go/clients/horizonclient"
