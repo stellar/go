@@ -128,7 +128,7 @@ func (h friendbotHandler) topUpAccountWithRegulatedAsset(ctx context.Context, in
 	issuerAcc, err := h.horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: kp.Address()})
 	if err != nil {
 		log.Ctx(ctx).Error(errors.Wrapf(err, "getting detail for issuer account %s", kp.Address()))
-		return NewHTTPError(http.StatusBadRequest, `Please make sure the issuer account address already exists in the network.`)
+		return serverError
 	}
 
 	tx, err := txnbuild.NewTransaction(txnbuild.TransactionParams{

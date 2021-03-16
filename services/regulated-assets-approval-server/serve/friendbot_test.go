@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/go-chi/chi"
@@ -13,6 +14,7 @@ import (
 	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/protocols/horizon/base"
 	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/support/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -210,6 +212,11 @@ func TestFriendbotHandler_serveHTTP_missingTrustline(t *testing.T) {
 func TestFriendbotHandler_serveHTTP_issuerAccountDoesntExist(t *testing.T) {
 	ctx := context.Background()
 
+	// declare a logging buffer to validate output logs
+	buf := new(strings.Builder)
+	log.DefaultLogger.Logger.SetOutput(buf)
+	log.DefaultLogger.Logger.SetLevel(log.InfoLevel)
+
 	horizonMock := horizonclient.MockClient{}
 	horizonMock.
 		On("AccountDetail", horizonclient.AccountRequest{AccountID: "GA2ILZPZAQ4R5PRKZ2X2AFAZK3ND6AGA4VFBQGR66BH36PV3VKMWLLZP"}).
@@ -241,15 +248,16 @@ func TestFriendbotHandler_serveHTTP_issuerAccountDoesntExist(t *testing.T) {
 	m.ServeHTTP(w, r)
 
 	resp := w.Result()
-	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
 	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
 
 	body, err := ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 	wantBody := `{
-		"error":"Please make sure the issuer account address already exists in the network."
+		"error":"An error occurred while processing this request."
 	}`
 	require.JSONEq(t, wantBody, string(body))
+	require.Contains(t, buf.String(), "getting detail for issuer account")
 }
 
 func TestFriendbotHandler_serveHTTP(t *testing.T) {
