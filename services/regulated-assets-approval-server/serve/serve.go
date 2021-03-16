@@ -2,12 +2,12 @@ package serve
 
 import (
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/stellar/go/clients/horizonclient"
-	"github.com/stellar/go/network"
 	supporthttp "github.com/stellar/go/support/http"
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/support/render/health"
@@ -64,14 +64,8 @@ func handleHTTP(opts Options) *chi.Mux {
 }
 
 func (opts Options) horizonClient() horizonclient.ClientInterface {
-	var client *horizonclient.Client
-	if opts.NetworkPassphrase == network.PublicNetworkPassphrase {
-		client = horizonclient.DefaultPublicNetClient
-	} else {
-		client = horizonclient.DefaultTestNetClient
+	return &horizonclient.Client{
+		HorizonURL: opts.HorizonURL,
+		HTTP:       &http.Client{Timeout: 30 * time.Second},
 	}
-
-	client.HorizonURL = opts.HorizonURL
-
-	return client
 }
