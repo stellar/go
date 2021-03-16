@@ -61,7 +61,8 @@ func (h friendbotHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	in := friendbotRequest{}
 	err := httpdecode.Decode(r, &in)
 	if err != nil {
-		httpErr := NewHTTPError(http.StatusBadRequest, "Invalid JSON")
+		log.Ctx(ctx).Error(errors.Wrap(err, "decoding input parameters"))
+		httpErr := NewHTTPError(http.StatusBadRequest, "Invalid input parameters")
 		httpErr.Render(w)
 		return
 	}
