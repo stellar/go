@@ -48,6 +48,14 @@ Flags:
       --port int                       Port to listen and serve on (PORT) (default 8000)
 ```
 
+### API Spec
+
+#### `GET /friendbot?addr=GDDIO6SFRD4SJEQFJOSKPIDYTDM7LM4METFBKN4NFGVR5DTGB7H75N5S`
+
+Send a payment of 10,000 regulated assets to that address. Please be aware the
+address mus first establish a trustline to the regulated asset in order to
+receive a payment.
+
 ## Account Setup
 
 In order to properly use this server for regulated assets, the account whose
