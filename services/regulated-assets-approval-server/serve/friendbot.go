@@ -114,15 +114,15 @@ func (h friendbotHandler) topUpAccountWithRegulatedAsset(ctx context.Context, in
 		Issuer: kp.Address(),
 	}
 
-	var hasRegulatedAssetTrustline bool
+	var accountHasTrustline bool
 	for _, b := range account.Balances {
 		if b.Asset.Code == asset.Code && b.Asset.Issuer == asset.Issuer {
-			hasRegulatedAssetTrustline = true
+			accountHasTrustline = true
 			break
 		}
 	}
-	if !hasRegulatedAssetTrustline {
-		return NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Address %s doesn't have a trustline for %s:%s", in.Address, asset.Code, asset.Issuer))
+	if !accountHasTrustline {
+		return NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Account with address %s doesn't have a trustline for %s:%s", in.Address, asset.Code, asset.Issuer))
 	}
 
 	issuerAcc, err := h.horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: kp.Address()})

@@ -140,11 +140,10 @@ func TestFriendbotHandler_serveHTTP_invalidAddress(t *testing.T) {
 func TestFriendbotHandler_serveHTTP_accountDoesntExist(t *testing.T) {
 	ctx := context.Background()
 
-	// mock account that doesn't  exist on ledger
 	horizonMock := horizonclient.MockClient{}
 	horizonMock.
 		On("AccountDetail", horizonclient.AccountRequest{AccountID: "GA2ILZPZAQ4R5PRKZ2X2AFAZK3ND6AGA4VFBQGR66BH36PV3VKMWLLZP"}).
-		Return(horizon.Account{}, errors.New("something went wrong"))
+		Return(horizon.Account{}, errors.New("something went wrong")) // account doesn't exist on ledger
 
 	handler := friendbotHandler{
 		accountIssuerSecret: "SB6SFUY6ZJ2ETQHTY456GDAQ547R6NDAU74DTI2CKVVI4JERTUXKB2R4",
@@ -176,7 +175,6 @@ func TestFriendbotHandler_serveHTTP_accountDoesntExist(t *testing.T) {
 func TestFriendbotHandler_serveHTTP_missingTrustline(t *testing.T) {
 	ctx := context.Background()
 
-	// mock account that doesn't  exist on ledger
 	horizonMock := horizonclient.MockClient{}
 	horizonMock.
 		On("AccountDetail", horizonclient.AccountRequest{AccountID: "GA2ILZPZAQ4R5PRKZ2X2AFAZK3ND6AGA4VFBQGR66BH36PV3VKMWLLZP"}).
@@ -204,7 +202,7 @@ func TestFriendbotHandler_serveHTTP_missingTrustline(t *testing.T) {
 	body, err := ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 	wantBody := `{
-		"error":"Address GA2ILZPZAQ4R5PRKZ2X2AFAZK3ND6AGA4VFBQGR66BH36PV3VKMWLLZP doesn't have a trustline for FOO:GDCRZMSHZGQYSRXPWDMIUNUQW36SV2NIC3C7R6WWT6XDO267WCI2TTBR"
+		"error":"Account with address GA2ILZPZAQ4R5PRKZ2X2AFAZK3ND6AGA4VFBQGR66BH36PV3VKMWLLZP doesn't have a trustline for FOO:GDCRZMSHZGQYSRXPWDMIUNUQW36SV2NIC3C7R6WWT6XDO267WCI2TTBR"
 	}`
 	require.JSONEq(t, wantBody, string(body))
 }
@@ -212,7 +210,6 @@ func TestFriendbotHandler_serveHTTP_missingTrustline(t *testing.T) {
 func TestFriendbotHandler_serveHTTP_issuerAccountDoesntExist(t *testing.T) {
 	ctx := context.Background()
 
-	// mock account that doesn't  exist on ledger
 	horizonMock := horizonclient.MockClient{}
 	horizonMock.
 		On("AccountDetail", horizonclient.AccountRequest{AccountID: "GA2ILZPZAQ4R5PRKZ2X2AFAZK3ND6AGA4VFBQGR66BH36PV3VKMWLLZP"}).
@@ -226,7 +223,7 @@ func TestFriendbotHandler_serveHTTP_issuerAccountDoesntExist(t *testing.T) {
 		}, nil)
 	horizonMock.
 		On("AccountDetail", horizonclient.AccountRequest{AccountID: "GDDIO6SFRD4SJEQFJOSKPIDYTDM7LM4METFBKN4NFGVR5DTGB7H75N5S"}).
-		Return(horizon.Account{}, errors.New("account doesn't exist"))
+		Return(horizon.Account{}, errors.New("account doesn't exist")) // issuer account doesn't exist on ledger
 
 	handler := friendbotHandler{
 		accountIssuerSecret: "SDVFEIZ3WH5F6GHGK56QITTC5IO6QJ2UIQDWCHE72DAFZFSXYPIHQ6EV", // GDDIO6SFRD4SJEQFJOSKPIDYTDM7LM4METFBKN4NFGVR5DTGB7H75N5S
@@ -258,7 +255,6 @@ func TestFriendbotHandler_serveHTTP_issuerAccountDoesntExist(t *testing.T) {
 func TestFriendbotHandler_serveHTTP(t *testing.T) {
 	ctx := context.Background()
 
-	// mock account that doesn't  exist on ledger
 	horizonMock := horizonclient.MockClient{}
 	horizonMock.
 		On("AccountDetail", horizonclient.AccountRequest{AccountID: "GA2ILZPZAQ4R5PRKZ2X2AFAZK3ND6AGA4VFBQGR66BH36PV3VKMWLLZP"}).
