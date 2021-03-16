@@ -14,11 +14,11 @@ import (
 )
 
 type Options struct {
-	Port                int
-	HorizonURL          string
-	NetworkPassphrase   string
 	AccountIssuerSecret string
 	AssetCode           string
+	HorizonURL          string
+	NetworkPassphrase   string
+	Port                int
 }
 
 func Serve(opts Options) {
