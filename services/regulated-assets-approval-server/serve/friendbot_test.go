@@ -53,7 +53,7 @@ func TestFriendbotHandler_validate(t *testing.T) {
 		horizonClient:       horizonclient.DefaultTestNetClient,
 	}
 	err = fh.validate()
-	require.EqualError(t, err, "horizon url cannot be emtpy")
+	require.EqualError(t, err, "horizon url cannot be empty")
 
 	// missing network passphrase
 	fh = friendbotHandler{
@@ -63,7 +63,7 @@ func TestFriendbotHandler_validate(t *testing.T) {
 		horizonURL:          "https://horizon-testnet.stellar.org/",
 	}
 	err = fh.validate()
-	require.EqualError(t, err, "network passphrase cannot be emtpy")
+	require.EqualError(t, err, "network passphrase cannot be empty")
 
 	// success!
 	fh = friendbotHandler{

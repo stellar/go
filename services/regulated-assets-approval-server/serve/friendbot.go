@@ -40,11 +40,11 @@ func (h friendbotHandler) validate() error {
 	}
 
 	if h.horizonURL == "" {
-		return errors.New("horizon url cannot be emtpy")
+		return errors.New("horizon url cannot be empty")
 	}
 
 	if h.networkPassphrase == "" {
-		return errors.New("network passphrase cannot be emtpy")
+		return errors.New("network passphrase cannot be empty")
 	}
 
 	return nil
@@ -89,6 +89,7 @@ func (h friendbotHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		serverError.Render(w)
 		return
 	}
+
 	asset := txnbuild.CreditAsset{
 		Code:   h.assetCode,
 		Issuer: kp.Address(),
