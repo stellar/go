@@ -1,6 +1,6 @@
 # regulated-assets-approval-server
 
-```
+```sh
 Varsion: v0.0.1
 Status: unreleased
 ```
@@ -30,7 +30,7 @@ Available Commands:
 Use "regulated-assets-approval-server [command] --help" for more information about a command.
 ```
 
-## Usage: Serve
+### Usage: Serve
 
 ```sh
 $ go install
@@ -48,4 +48,18 @@ Flags:
       --port int                       Port to listen and serve on (PORT) (default 8000)
 ```
 
+## Account Setup
+
+In order to properly use this server for regulated assets, the account whose
+secret was added in `--account-issuer-secret (ACCOUNT_ISSUER_SECRET)` needs to
+be configured according with SEP-8 [authorization flags] by setting both
+`Authorization Required` and `Authorization Revocable` flags. This allows the
+issuer to grant and revoke authorization to transact the asset at will.
+
+You can use [this
+link](https://laboratory.stellar.org/#txbuilder?params=eyJhdHRyaWJ1dGVzIjp7ImZlZSI6IjEwMCIsImJhc2VGZWUiOiIxMDAiLCJtaW5GZWUiOiIxMDAifSwiZmVlQnVtcEF0dHJpYnV0ZXMiOnsibWF4RmVlIjoiMTAwIn0sIm9wZXJhdGlvbnMiOlt7ImlkIjowLCJhdHRyaWJ1dGVzIjp7InNldEZsYWdzIjozfSwibmFtZSI6InNldE9wdGlvbnMifV19)
+to set those flags. Just click the link, fulfill the account address, sequence
+number, then the account secret and submit the transaction.
+
 [SEP-8]: https://github.com/stellar/stellar-protocol/blob/7c795bb9abc606cd1e34764c4ba07900d58fe26e/ecosystem/sep-0008.md
+[authorization flags]: https://github.com/stellar/stellar-protocol/blob/7c795bb9abc606cd1e34764c4ba07900d58fe26e/ecosystem/sep-0008.md#authorization-flags
