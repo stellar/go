@@ -1,6 +1,7 @@
 package serve
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 
@@ -57,37 +58,54 @@ type friendbotRequest struct {
 func (h friendbotHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	err := h.validate()
+	in := friendbotRequest{}
+	err := httpdecode.Decode(r, &in)
 	if err != nil {
-		log.Ctx(ctx).Error(errors.Wrap(err, "validating friendbotHandler"))
-		serverError.Render(w)
+		httpErr := NewHTTPError(http.StatusBadRequest, "Invalid JSON")
+		httpErr.Render(w)
 		return
 	}
 
-	in := friendbotRequest{}
-	err = httpdecode.Decode(r, &in)
-	if err != nil || in.Address == "" {
-		makeBadRequestError(`Missing query paramater "addr".`).Render(w)
+	err = h.topUpAccountWithRegulatedAsset(ctx, in)
+	if err != nil {
+		httpErr, ok := err.(*httpError)
+		if !ok {
+			httpErr = serverError
+		}
+		httpErr.Render(w)
 		return
+	}
+
+	httpjson.Render(w, httpjson.DefaultResponse, httpjson.JSON)
+}
+
+func (h friendbotHandler) topUpAccountWithRegulatedAsset(ctx context.Context, in friendbotRequest) error {
+	err := h.validate()
+	if err != nil {
+		err = errors.Wrap(err, "validating friendbotHandler")
+		log.Ctx(ctx).Error(err)
+		return err
+	}
+
+	if in.Address == "" {
+		return NewHTTPError(http.StatusBadRequest, `Missing query paramater "addr".`)
 	}
 
 	if !strkey.IsValidEd25519PublicKey(in.Address) {
-		makeBadRequestError(`"addr" is not a valid Stellar address.`).Render(w)
-		return
+		return NewHTTPError(http.StatusBadRequest, `"addr" is not a valid Stellar address.`)
 	}
 
 	account, err := h.horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: in.Address})
 	if err != nil {
 		log.Ctx(ctx).Error(errors.Wrapf(err, "getting detail for account %s", in.Address))
-		makeBadRequestError(`Please make sure the provided account address already exists in the network.`).Render(w)
-		return
+		return NewHTTPError(http.StatusBadRequest, `Please make sure the provided account address already exists in the network.`)
 	}
 
 	kp, err := keypair.ParseFull(h.accountIssuerSecret)
 	if err != nil {
-		log.Ctx(ctx).Error(errors.Wrap(err, "parsing secret"))
-		serverError.Render(w)
-		return
+		err = errors.Wrap(err, "parsing secret")
+		log.Ctx(ctx).Error(err)
+		return err
 	}
 
 	asset := txnbuild.CreditAsset{
@@ -103,15 +121,13 @@ func (h friendbotHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if !hasRegulatedAssetTrustline {
-		makeBadRequestError(fmt.Sprintf("Address %s doesn't have a trustline for %s:%s", in.Address, asset.Code, asset.Issuer)).Render(w)
-		return
+		return NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Address %s doesn't have a trustline for %s:%s", in.Address, asset.Code, asset.Issuer))
 	}
 
 	issuerAcc, err := h.horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: kp.Address()})
 	if err != nil {
 		log.Ctx(ctx).Error(errors.Wrapf(err, "getting detail for issuer account %s", kp.Address()))
-		makeBadRequestError(`Please make sure the issuer account address already exists in the network.`).Render(w)
-		return
+		return NewHTTPError(http.StatusBadRequest, `Please make sure the issuer account address already exists in the network.`)
 	}
 
 	tx, err := txnbuild.NewTransaction(txnbuild.TransactionParams{
@@ -138,25 +154,24 @@ func (h friendbotHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Timebounds: txnbuild.NewTimeout(300),
 	})
 	if err != nil {
-		log.Ctx(ctx).Error(errors.Wrap(err, "building transaction"))
-		serverError.Render(w)
-		return
+		err = errors.Wrap(err, "building transaction")
+		log.Ctx(ctx).Error(err)
+		return err
 	}
 
 	tx, err = tx.Sign(h.networkPassphrase, kp)
 	if err != nil {
-		log.Ctx(ctx).Error(errors.Wrap(err, "signing transaction"))
-		serverError.Render(w)
-		return
+		err = errors.Wrap(err, "signing transaction")
+		log.Ctx(ctx).Error(err)
+		return err
 	}
 
 	_, err = h.horizonClient.SubmitTransaction(tx)
 	if err != nil {
 		err = parseHorizonError(err)
 		log.Ctx(ctx).Error(err)
-		serverError.Render(w)
-		return
+		return err
 	}
 
-	httpjson.Render(w, httpjson.DefaultResponse, httpjson.JSON)
+	return nil
 }
