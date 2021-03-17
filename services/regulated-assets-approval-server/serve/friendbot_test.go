@@ -67,6 +67,17 @@ func TestFriendbotHandler_validate(t *testing.T) {
 	err = fh.validate()
 	require.EqualError(t, err, "network passphrase cannot be empty")
 
+	// missing payment amount
+	fh = friendbotHandler{
+		issuerAccountSecret: "SB6SFUY6ZJ2ETQHTY456GDAQ547R6NDAU74DTI2CKVVI4JERTUXKB2R4",
+		assetCode:           "FOO",
+		horizonClient:       horizonclient.DefaultTestNetClient,
+		horizonURL:          "https://horizon-testnet.stellar.org/",
+		networkPassphrase:   network.TestNetworkPassphrase,
+	}
+	err = fh.validate()
+	require.EqualError(t, err, "payment amount must be greater than zero")
+
 	// success!
 	fh = friendbotHandler{
 		issuerAccountSecret: "SB6SFUY6ZJ2ETQHTY456GDAQ547R6NDAU74DTI2CKVVI4JERTUXKB2R4",
@@ -74,6 +85,7 @@ func TestFriendbotHandler_validate(t *testing.T) {
 		horizonClient:       horizonclient.DefaultTestNetClient,
 		horizonURL:          "https://horizon-testnet.stellar.org/",
 		networkPassphrase:   network.TestNetworkPassphrase,
+		paymentAmount:       1,
 	}
 	err = fh.validate()
 	require.NoError(t, err)
@@ -88,6 +100,7 @@ func TestFriendbotHandler_serveHTTP_missingAddress(t *testing.T) {
 		horizonClient:       horizonclient.DefaultTestNetClient,
 		horizonURL:          "https://horizon-testnet.stellar.org/",
 		networkPassphrase:   network.TestNetworkPassphrase,
+		paymentAmount:       10000,
 	}
 
 	w := httptest.NewRecorder()
@@ -118,6 +131,7 @@ func TestFriendbotHandler_serveHTTP_invalidAddress(t *testing.T) {
 		horizonClient:       horizonclient.DefaultTestNetClient,
 		horizonURL:          "https://horizon-testnet.stellar.org/",
 		networkPassphrase:   network.TestNetworkPassphrase,
+		paymentAmount:       10000,
 	}
 
 	w := httptest.NewRecorder()
@@ -153,6 +167,7 @@ func TestFriendbotHandler_serveHTTP_accountDoesntExist(t *testing.T) {
 		horizonClient:       &horizonMock,
 		horizonURL:          "https://horizon-testnet.stellar.org/",
 		networkPassphrase:   network.TestNetworkPassphrase,
+		paymentAmount:       10000,
 	}
 
 	w := httptest.NewRecorder()
@@ -188,6 +203,7 @@ func TestFriendbotHandler_serveHTTP_missingTrustline(t *testing.T) {
 		horizonClient:       &horizonMock,
 		horizonURL:          "https://horizon-testnet.stellar.org/",
 		networkPassphrase:   network.TestNetworkPassphrase,
+		paymentAmount:       10000,
 	}
 
 	w := httptest.NewRecorder()
@@ -238,6 +254,7 @@ func TestFriendbotHandler_serveHTTP_issuerAccountDoesntExist(t *testing.T) {
 		horizonClient:       &horizonMock,
 		horizonURL:          "https://horizon-testnet.stellar.org/",
 		networkPassphrase:   network.TestNetworkPassphrase,
+		paymentAmount:       10000,
 	}
 
 	w := httptest.NewRecorder()
@@ -290,6 +307,7 @@ func TestFriendbotHandler_serveHTTP(t *testing.T) {
 		horizonClient:       &horizonMock,
 		horizonURL:          "https://horizon-testnet.stellar.org/",
 		networkPassphrase:   network.TestNetworkPassphrase,
+		paymentAmount:       10000,
 	}
 
 	w := httptest.NewRecorder()

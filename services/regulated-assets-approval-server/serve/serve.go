@@ -14,11 +14,12 @@ import (
 )
 
 type Options struct {
-	IssuerAccountSecret string
-	AssetCode           string
-	HorizonURL          string
-	NetworkPassphrase   string
-	Port                int
+	IssuerAccountSecret    string
+	AssetCode              string
+	FriendbotPaymentAmount int
+	HorizonURL             string
+	NetworkPassphrase      string
+	Port                   int
 }
 
 func Serve(opts Options) {
@@ -58,6 +59,7 @@ func handleHTTP(opts Options) *chi.Mux {
 		horizonClient:       opts.horizonClient(),
 		horizonURL:          opts.HorizonURL,
 		networkPassphrase:   opts.NetworkPassphrase,
+		paymentAmount:       opts.FriendbotPaymentAmount,
 	}.ServeHTTP)
 
 	return mux

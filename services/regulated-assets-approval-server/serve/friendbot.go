@@ -21,6 +21,7 @@ type friendbotHandler struct {
 	horizonClient       horizonclient.ClientInterface
 	horizonURL          string
 	networkPassphrase   string
+	paymentAmount       int
 }
 
 func (h friendbotHandler) validate() error {
@@ -46,6 +47,10 @@ func (h friendbotHandler) validate() error {
 
 	if h.networkPassphrase == "" {
 		return errors.New("network passphrase cannot be empty")
+	}
+
+	if h.paymentAmount == 0 {
+		return errors.New("payment amount must be greater than zero")
 	}
 
 	return nil
@@ -142,7 +147,7 @@ func (h friendbotHandler) topUpAccountWithRegulatedAsset(ctx context.Context, in
 			},
 			&txnbuild.Payment{
 				Destination: in.Address,
-				Amount:      "10000",
+				Amount:      fmt.Sprintf("%d", h.paymentAmount),
 				Asset:       asset,
 			},
 			&txnbuild.AllowTrust{

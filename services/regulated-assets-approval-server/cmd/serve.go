@@ -30,6 +30,14 @@ func (c *ServeCommand) Command() *cobra.Command {
 			Required:  true,
 		},
 		{
+			Name:        "friendbot-payment-amount",
+			Usage:       "The amount of regulated assets the friendbot will be distributing",
+			OptType:     types.Int,
+			ConfigKey:   &opts.FriendbotPaymentAmount,
+			FlagDefault: 10000,
+			Required:    true,
+		},
+		{
 			Name:        "horizon-url",
 			Usage:       "Horizon URL used for looking up account details",
 			OptType:     types.String,
