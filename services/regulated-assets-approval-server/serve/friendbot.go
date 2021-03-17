@@ -16,7 +16,7 @@ import (
 )
 
 type friendbotHandler struct {
-	accountIssuerSecret string
+	issuerAccountSecret string
 	assetCode           string
 	horizonClient       horizonclient.ClientInterface
 	horizonURL          string
@@ -24,12 +24,12 @@ type friendbotHandler struct {
 }
 
 func (h friendbotHandler) validate() error {
-	if h.accountIssuerSecret == "" {
+	if h.issuerAccountSecret == "" {
 		return errors.New("issuer secret cannot be empty")
 	}
 
-	if !strkey.IsValidEd25519SecretSeed(h.accountIssuerSecret) {
-		return errors.Errorf("the provided string %q is not a valid Stellar account seed", h.accountIssuerSecret)
+	if !strkey.IsValidEd25519SecretSeed(h.issuerAccountSecret) {
+		return errors.Errorf("the provided string %q is not a valid Stellar account seed", h.issuerAccountSecret)
 	}
 
 	if h.assetCode == "" {
@@ -102,7 +102,7 @@ func (h friendbotHandler) topUpAccountWithRegulatedAsset(ctx context.Context, in
 		return NewHTTPError(http.StatusBadRequest, `Please make sure the provided account address already exists in the network.`)
 	}
 
-	kp, err := keypair.ParseFull(h.accountIssuerSecret)
+	kp, err := keypair.ParseFull(h.issuerAccountSecret)
 	if err != nil {
 		err = errors.Wrap(err, "parsing secret")
 		log.Ctx(ctx).Error(err)

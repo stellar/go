@@ -40,7 +40,7 @@ Usage:
   regulated-assets-approval-server serve [flags]
 
 Flags:
-      --account-issuer-secret string   Secret key of the asset issuer's stellar account. (ACCOUNT_ISSUER_SECRET)
+      --issuer-account-secret string   Secret key of the asset issuer's stellar account. (ACCOUNT_ISSUER_SECRET)
       --asset-code string              The code of the regulated asset (ASSET_CODE)
       --horizon-url string             Horizon URL used for looking up account details (HORIZON_URL) (default "https://horizon-testnet.stellar.org/")
       --network-passphrase string      Network passphrase of the Stellar network transactions should be signed for (NETWORK_PASSPHRASE) (default "Test SDF Network ; September 2015")
@@ -60,7 +60,7 @@ to do that in Stellar Laboratory.
 ## Account Setup
 
 In order to properly use this server for regulated assets, the account whose
-secret was added in `--account-issuer-secret (ACCOUNT_ISSUER_SECRET)` needs to
+secret was added in `--issuer-account-secret (ACCOUNT_ISSUER_SECRET)` needs to
 be configured according with SEP-8 [authorization flags] by setting both
 `Authorization Required` and `Authorization Revocable` flags. This allows the
 issuer to grant and revoke authorization to transact the asset at will.

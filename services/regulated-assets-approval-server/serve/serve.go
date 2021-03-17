@@ -14,7 +14,7 @@ import (
 )
 
 type Options struct {
-	AccountIssuerSecret string
+	IssuerAccountSecret string
 	AssetCode           string
 	HorizonURL          string
 	NetworkPassphrase   string
@@ -54,7 +54,7 @@ func handleHTTP(opts Options) *chi.Mux {
 	mux.Get("/.well-known/stellar.toml", stellarTOMLHandler(opts))
 	mux.Get("/friendbot", friendbotHandler{
 		assetCode:           opts.AssetCode,
-		accountIssuerSecret: opts.AccountIssuerSecret,
+		issuerAccountSecret: opts.IssuerAccountSecret,
 		horizonClient:       opts.horizonClient(),
 		horizonURL:          opts.HorizonURL,
 		networkPassphrase:   opts.NetworkPassphrase,

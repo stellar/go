@@ -16,10 +16,10 @@ func (c *ServeCommand) Command() *cobra.Command {
 	opts := serve.Options{}
 	configOpts := config.ConfigOptions{
 		{
-			Name:      "account-issuer-secret",
+			Name:      "issuer-account-secret",
 			Usage:     "Secret key of the asset issuer's stellar account.",
 			OptType:   types.String,
-			ConfigKey: &opts.AccountIssuerSecret,
+			ConfigKey: &opts.IssuerAccountSecret,
 			Required:  true,
 		},
 		{

@@ -28,21 +28,21 @@ func TestFriendbotHandler_validate(t *testing.T) {
 
 	// invalid secret seed
 	fh = friendbotHandler{
-		accountIssuerSecret: "foo bar",
+		issuerAccountSecret: "foo bar",
 	}
 	err = fh.validate()
 	require.EqualError(t, err, "the provided string \"foo bar\" is not a valid Stellar account seed")
 
 	// missing asset code
 	fh = friendbotHandler{
-		accountIssuerSecret: "SB6SFUY6ZJ2ETQHTY456GDAQ547R6NDAU74DTI2CKVVI4JERTUXKB2R4",
+		issuerAccountSecret: "SB6SFUY6ZJ2ETQHTY456GDAQ547R6NDAU74DTI2CKVVI4JERTUXKB2R4",
 	}
 	err = fh.validate()
 	require.EqualError(t, err, "asset code cannot be empty")
 
 	// missing horizon client
 	fh = friendbotHandler{
-		accountIssuerSecret: "SB6SFUY6ZJ2ETQHTY456GDAQ547R6NDAU74DTI2CKVVI4JERTUXKB2R4",
+		issuerAccountSecret: "SB6SFUY6ZJ2ETQHTY456GDAQ547R6NDAU74DTI2CKVVI4JERTUXKB2R4",
 		assetCode:           "FOO",
 	}
 	err = fh.validate()
@@ -50,7 +50,7 @@ func TestFriendbotHandler_validate(t *testing.T) {
 
 	// missing horizon URL
 	fh = friendbotHandler{
-		accountIssuerSecret: "SB6SFUY6ZJ2ETQHTY456GDAQ547R6NDAU74DTI2CKVVI4JERTUXKB2R4",
+		issuerAccountSecret: "SB6SFUY6ZJ2ETQHTY456GDAQ547R6NDAU74DTI2CKVVI4JERTUXKB2R4",
 		assetCode:           "FOO",
 		horizonClient:       horizonclient.DefaultTestNetClient,
 	}
@@ -59,7 +59,7 @@ func TestFriendbotHandler_validate(t *testing.T) {
 
 	// missing network passphrase
 	fh = friendbotHandler{
-		accountIssuerSecret: "SB6SFUY6ZJ2ETQHTY456GDAQ547R6NDAU74DTI2CKVVI4JERTUXKB2R4",
+		issuerAccountSecret: "SB6SFUY6ZJ2ETQHTY456GDAQ547R6NDAU74DTI2CKVVI4JERTUXKB2R4",
 		assetCode:           "FOO",
 		horizonClient:       horizonclient.DefaultTestNetClient,
 		horizonURL:          "https://horizon-testnet.stellar.org/",
@@ -69,7 +69,7 @@ func TestFriendbotHandler_validate(t *testing.T) {
 
 	// success!
 	fh = friendbotHandler{
-		accountIssuerSecret: "SB6SFUY6ZJ2ETQHTY456GDAQ547R6NDAU74DTI2CKVVI4JERTUXKB2R4",
+		issuerAccountSecret: "SB6SFUY6ZJ2ETQHTY456GDAQ547R6NDAU74DTI2CKVVI4JERTUXKB2R4",
 		assetCode:           "FOO",
 		horizonClient:       horizonclient.DefaultTestNetClient,
 		horizonURL:          "https://horizon-testnet.stellar.org/",
@@ -83,7 +83,7 @@ func TestFriendbotHandler_serveHTTP_missingAddress(t *testing.T) {
 	ctx := context.Background()
 
 	handler := friendbotHandler{
-		accountIssuerSecret: "SB6SFUY6ZJ2ETQHTY456GDAQ547R6NDAU74DTI2CKVVI4JERTUXKB2R4",
+		issuerAccountSecret: "SB6SFUY6ZJ2ETQHTY456GDAQ547R6NDAU74DTI2CKVVI4JERTUXKB2R4",
 		assetCode:           "FOO",
 		horizonClient:       horizonclient.DefaultTestNetClient,
 		horizonURL:          "https://horizon-testnet.stellar.org/",
@@ -113,7 +113,7 @@ func TestFriendbotHandler_serveHTTP_invalidAddress(t *testing.T) {
 	ctx := context.Background()
 
 	handler := friendbotHandler{
-		accountIssuerSecret: "SB6SFUY6ZJ2ETQHTY456GDAQ547R6NDAU74DTI2CKVVI4JERTUXKB2R4",
+		issuerAccountSecret: "SB6SFUY6ZJ2ETQHTY456GDAQ547R6NDAU74DTI2CKVVI4JERTUXKB2R4",
 		assetCode:           "FOO",
 		horizonClient:       horizonclient.DefaultTestNetClient,
 		horizonURL:          "https://horizon-testnet.stellar.org/",
@@ -148,7 +148,7 @@ func TestFriendbotHandler_serveHTTP_accountDoesntExist(t *testing.T) {
 		Return(horizon.Account{}, errors.New("something went wrong")) // account doesn't exist on ledger
 
 	handler := friendbotHandler{
-		accountIssuerSecret: "SB6SFUY6ZJ2ETQHTY456GDAQ547R6NDAU74DTI2CKVVI4JERTUXKB2R4",
+		issuerAccountSecret: "SB6SFUY6ZJ2ETQHTY456GDAQ547R6NDAU74DTI2CKVVI4JERTUXKB2R4",
 		assetCode:           "FOO",
 		horizonClient:       &horizonMock,
 		horizonURL:          "https://horizon-testnet.stellar.org/",
@@ -183,7 +183,7 @@ func TestFriendbotHandler_serveHTTP_missingTrustline(t *testing.T) {
 		Return(horizon.Account{}, nil)
 
 	handler := friendbotHandler{
-		accountIssuerSecret: "SB6SFUY6ZJ2ETQHTY456GDAQ547R6NDAU74DTI2CKVVI4JERTUXKB2R4",
+		issuerAccountSecret: "SB6SFUY6ZJ2ETQHTY456GDAQ547R6NDAU74DTI2CKVVI4JERTUXKB2R4",
 		assetCode:           "FOO",
 		horizonClient:       &horizonMock,
 		horizonURL:          "https://horizon-testnet.stellar.org/",
@@ -233,7 +233,7 @@ func TestFriendbotHandler_serveHTTP_issuerAccountDoesntExist(t *testing.T) {
 		Return(horizon.Account{}, errors.New("account doesn't exist")) // issuer account doesn't exist on ledger
 
 	handler := friendbotHandler{
-		accountIssuerSecret: "SDVFEIZ3WH5F6GHGK56QITTC5IO6QJ2UIQDWCHE72DAFZFSXYPIHQ6EV", // GDDIO6SFRD4SJEQFJOSKPIDYTDM7LM4METFBKN4NFGVR5DTGB7H75N5S
+		issuerAccountSecret: "SDVFEIZ3WH5F6GHGK56QITTC5IO6QJ2UIQDWCHE72DAFZFSXYPIHQ6EV", // GDDIO6SFRD4SJEQFJOSKPIDYTDM7LM4METFBKN4NFGVR5DTGB7H75N5S
 		assetCode:           "FOO",
 		horizonClient:       &horizonMock,
 		horizonURL:          "https://horizon-testnet.stellar.org/",
@@ -285,7 +285,7 @@ func TestFriendbotHandler_serveHTTP(t *testing.T) {
 		Return(horizon.Transaction{}, nil)
 
 	handler := friendbotHandler{
-		accountIssuerSecret: "SDVFEIZ3WH5F6GHGK56QITTC5IO6QJ2UIQDWCHE72DAFZFSXYPIHQ6EV", // GDDIO6SFRD4SJEQFJOSKPIDYTDM7LM4METFBKN4NFGVR5DTGB7H75N5S
+		issuerAccountSecret: "SDVFEIZ3WH5F6GHGK56QITTC5IO6QJ2UIQDWCHE72DAFZFSXYPIHQ6EV", // GDDIO6SFRD4SJEQFJOSKPIDYTDM7LM4METFBKN4NFGVR5DTGB7H75N5S
 		assetCode:           "FOO",
 		horizonClient:       &horizonMock,
 		horizonURL:          "https://horizon-testnet.stellar.org/",
