@@ -1,7 +1,6 @@
 # regulated-assets-approval-server
 
 ```sh
-Varsion: v0.0.1
 Status: unreleased
 ```
 
