@@ -42,7 +42,7 @@ Usage:
 
 Flags:
       --account-issuer-secret string   Secret key of the asset issuer's stellar account. (ACCOUNT_ISSUER_SECRET)
-      --asset-code string              The code of the reguated asset (ASSET_CODE)
+      --asset-code string              The code of the regulated asset (ASSET_CODE)
       --horizon-url string             Horizon URL used for looking up account details (HORIZON_URL) (default "https://horizon-testnet.stellar.org/")
       --network-passphrase string      Network passphrase of the Stellar network transactions should be signed for (NETWORK_PASSPHRASE) (default "Test SDF Network ; September 2015")
       --port int                       Port to listen and serve on (PORT) (default 8000)

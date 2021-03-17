@@ -24,7 +24,7 @@ func (c *ServeCommand) Command() *cobra.Command {
 		},
 		{
 			Name:      "asset-code",
-			Usage:     "The code of the reguated asset",
+			Usage:     "The code of the regulated asset",
 			OptType:   types.String,
 			ConfigKey: &opts.AssetCode,
 			Required:  true,
