@@ -60,6 +60,12 @@ func handleHTTP(opts Options) *chi.Mux {
 		horizonURL:          opts.HorizonURL,
 		networkPassphrase:   opts.NetworkPassphrase,
 		paymentAmount:       opts.FriendbotPaymentAmount,
+	mux.Post("/tx_approve", txApproveHandler{
+		assetCode:           opts.AssetCode,
+		accountIssuerSecret: opts.AccountIssuerSecret,
+		horizonClient:       opts.horizonClient(),
+		horizonURL:          opts.HorizonURL,
+		networkPassphrase:   opts.NetworkPassphrase,
 	}.ServeHTTP)
 
 	return mux
