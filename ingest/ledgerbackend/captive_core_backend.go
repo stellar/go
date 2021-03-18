@@ -3,7 +3,6 @@ package ledgerbackend
 import (
 	"context"
 	"encoding/hex"
-	"io/ioutil"
 	"os"
 	"sync"
 
@@ -140,18 +139,11 @@ func NewCaptive(config CaptiveCoreConfig) (*CaptiveStellarCore, error) {
 	// Here we set defaults in the config. Because config is not a pointer this code should
 	// not mutate the original CaptiveCoreConfig instance which was passed into NewCaptive()
 
-	// Create a default logging instance for Captive Core's output if no other
-	// logging configuration was specified.
+	// Log Captive Core straight to stdout by default
 	if config.Log == nil {
 		config.Log = log.New()
-		if config.LogPath != "" {
-			// We still create an empty logger instance so there's no nil
-			// pointer floating around beyond this call.
-			config.Log.Logger.SetOutput(ioutil.Discard)
-		} else {
-			config.Log.Logger.SetOutput(os.Stdout)
-			config.Log.SetLevel(logrus.InfoLevel)
-		}
+		config.Log.Logger.SetOutput(os.Stdout)
+		config.Log.SetLevel(logrus.InfoLevel)
 	}
 
 	parentCtx := config.Context

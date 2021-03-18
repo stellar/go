@@ -190,16 +190,7 @@ func NewSystem(config Config) (System, error) {
 				return nil, errors.Wrap(err, "error creating captive core backend")
 			}
 		} else {
-			// If the user wants a custom logging location for Captive Core (set
-			// via Core's LOG_FILE_PATH), it takes priority over Horizon's
-			// internal logging.
-			//
-			// https://github.com/stellar/go/issues/3438#issuecomment-797690998
-			var logger *logpkg.Entry = nil
-			if config.CaptiveCoreLogPath == "" {
-				logger = log.WithField("subservice", "stellar-core")
-			}
-
+			logger := log.WithField("subservice", "stellar-core")
 			ledgerBackend, err = ledgerbackend.NewCaptive(
 				ledgerbackend.CaptiveCoreConfig{
 					LogPath:             config.CaptiveCoreLogPath,
