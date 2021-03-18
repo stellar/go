@@ -16,11 +16,25 @@ func (c *ServeCommand) Command() *cobra.Command {
 	opts := serve.Options{}
 	configOpts := config.ConfigOptions{
 		{
-			Name:        "port",
-			Usage:       "Port to listen and serve on",
+			Name:      "issuer-account-secret",
+			Usage:     "Secret key of the asset issuer's stellar account.",
+			OptType:   types.String,
+			ConfigKey: &opts.IssuerAccountSecret,
+			Required:  true,
+		},
+		{
+			Name:      "asset-code",
+			Usage:     "The code of the regulated asset",
+			OptType:   types.String,
+			ConfigKey: &opts.AssetCode,
+			Required:  true,
+		},
+		{
+			Name:        "friendbot-payment-amount",
+			Usage:       "The amount of regulated assets the friendbot will be distributing",
 			OptType:     types.Int,
-			ConfigKey:   &opts.Port,
-			FlagDefault: 8000,
+			ConfigKey:   &opts.FriendbotPaymentAmount,
+			FlagDefault: 10000,
 			Required:    true,
 		},
 		{
@@ -37,6 +51,14 @@ func (c *ServeCommand) Command() *cobra.Command {
 			OptType:     types.String,
 			ConfigKey:   &opts.NetworkPassphrase,
 			FlagDefault: network.TestNetworkPassphrase,
+			Required:    true,
+		},
+		{
+			Name:        "port",
+			Usage:       "Port to listen and serve on",
+			OptType:     types.Int,
+			ConfigKey:   &opts.Port,
+			FlagDefault: 8000,
 			Required:    true,
 		},
 	}
