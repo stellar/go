@@ -25,6 +25,53 @@ type assetStatBalances struct {
 	AuthorizedToMaintainLiabilities *big.Int
 	Unauthorized                    *big.Int
 }
+
+func (a *assetStatBalances) Parse(b *protocol.AssetStatBalances) error {
+	authorized, ok := new(big.Int).SetString(b.Authorized, 10)
+	if !ok {
+		return errors.New("Error parsing: " + b.Authorized)
+	}
+	a.Authorized = authorized
+
+	authorizedToMaintainLiabilities, ok := new(big.Int).SetString(b.AuthorizedToMaintainLiabilities, 10)
+	if !ok {
+		return errors.New("Error parsing: " + b.AuthorizedToMaintainLiabilities)
+	}
+	a.AuthorizedToMaintainLiabilities = authorizedToMaintainLiabilities
+
+	unauthorized, ok := new(big.Int).SetString(b.Unauthorized, 10)
+	if !ok {
+		return errors.New("Error parsing: " + b.Unauthorized)
+	}
+	a.Unauthorized = unauthorized
+
+	return nil
+}
+
+func (a assetStatBalances) Add(b assetStatBalances) assetStatBalances {
+	return assetStatBalances{
+		Authorized:                      big.NewInt(0).Add(a.Authorized, b.Authorized),
+		AuthorizedToMaintainLiabilities: big.NewInt(0).Add(a.AuthorizedToMaintainLiabilities, b.AuthorizedToMaintainLiabilities),
+		Unauthorized:                    big.NewInt(0).Add(a.Unauthorized, b.Unauthorized),
+	}
+}
+
+func (a assetStatBalances) Sum() *big.Int {
+	sum := big.NewInt(0)
+	sum = sum.Add(sum, a.Authorized)
+	sum = sum.Add(sum, a.AuthorizedToMaintainLiabilities)
+	sum = sum.Add(sum, a.Unauthorized)
+	return sum
+}
+
+func (a assetStatBalances) Finish() protocol.AssetStatBalances {
+	return protocol.AssetStatBalances{
+		Authorized:                      a.Authorized.String(),
+		AuthorizedToMaintainLiabilities: a.AuthorizedToMaintainLiabilities.String(),
+		Unauthorized:                    a.Unauthorized.String(),
+	}
+}
+
 type assetStatNumAccounts struct {
 	Authorized                      int32
 	AuthorizedToMaintainLiabilities int32
@@ -32,11 +79,7 @@ type assetStatNumAccounts struct {
 }
 
 func (value assetStatValue) Finish() history.ExpAssetStat {
-	balances := protocol.AssetStatBalances{
-		Authorized:                      value.balances.Authorized.String(),
-		AuthorizedToMaintainLiabilities: value.balances.AuthorizedToMaintainLiabilities.String(),
-		Unauthorized:                    value.balances.Unauthorized.String(),
-	}
+	balances := value.balances.Finish()
 	return history.ExpAssetStat{
 		AssetType:   value.assetType,
 		AssetCode:   value.assetCode,
@@ -54,12 +97,31 @@ type AssetStatSet map[assetStatKey]*assetStatValue
 // Add updates the set with a trustline entry from a history archive snapshot
 // if the trustline is authorized.
 func (s AssetStatSet) Add(trustLine xdr.TrustLineEntry) error {
-	return s.AddDelta(trustLine.Asset, int64(trustLine.Balance), 1, xdr.TrustLineFlags(trustLine.Flags))
+	flags := trustLine.Flags
+	return s.AddDelta(
+		trustLine.Asset,
+		map[xdr.Uint32]int64{flags: int64(trustLine.Balance)},
+		map[xdr.Uint32]int32{flags: 1},
+	)
 }
 
 // AddDelta adds a delta balance and delta accounts to a given asset trustline.
-func (s AssetStatSet) AddDelta(asset xdr.Asset, deltaBalance int64, deltaAccounts int32, flags xdr.TrustLineFlags) error {
-	if deltaBalance == 0 && deltaAccounts == 0 {
+func (s AssetStatSet) AddDelta(asset xdr.Asset, deltaBalances map[xdr.Uint32]int64, deltaAccounts map[xdr.Uint32]int32) error {
+	accountsEmpty := true
+	for _, v := range deltaAccounts {
+		if v != 0 {
+			accountsEmpty = false
+			break
+		}
+	}
+	balancesEmpty := true
+	for _, v := range deltaBalances {
+		if v != 0 {
+			balancesEmpty = false
+			break
+		}
+	}
+	if accountsEmpty && balancesEmpty {
 		return nil
 	}
 
@@ -70,20 +132,37 @@ func (s AssetStatSet) AddDelta(asset xdr.Asset, deltaBalance int64, deltaAccount
 
 	current, ok := s[key]
 	if !ok {
-		current = &assetStatValue{assetStatKey: key}
+		current = &assetStatValue{assetStatKey: key, balances: assetStatBalances{
+			Authorized:                      big.NewInt(0),
+			AuthorizedToMaintainLiabilities: big.NewInt(0),
+			Unauthorized:                    big.NewInt(0),
+		}}
 		s[key] = current
 	}
 
 	// TODO: Do we need to handle clawback authorized here?
-	if flags.IsAuthorized() {
-		current.balances.Authorized.Add(current.balances.Authorized, big.NewInt(int64(deltaBalance)))
-		current.accounts.Authorized += deltaAccounts
-	} else if flags.IsAuthorizedToMaintainLiabilitiesFlag() {
-		current.balances.AuthorizedToMaintainLiabilities.Add(current.balances.AuthorizedToMaintainLiabilities, big.NewInt(int64(deltaBalance)))
-		current.accounts.AuthorizedToMaintainLiabilities += deltaAccounts
-	} else {
-		current.balances.Unauthorized.Add(current.balances.Unauthorized, big.NewInt(int64(deltaBalance)))
-		current.accounts.Unauthorized += deltaAccounts
+	for k, v := range deltaAccounts {
+		flags := xdr.TrustLineFlags(k)
+		if flags.IsAuthorized() {
+			current.accounts.Authorized += v
+		} else if flags.IsAuthorizedToMaintainLiabilitiesFlag() {
+			current.accounts.AuthorizedToMaintainLiabilities += v
+		} else {
+			current.accounts.Unauthorized += v
+		}
+	}
+
+	// TODO: Do we need to handle clawback authorized here?
+	for k, v := range deltaBalances {
+		flags := xdr.TrustLineFlags(k)
+		bigV := big.NewInt(v)
+		if flags.IsAuthorized() {
+			current.balances.Authorized.Add(current.balances.Authorized, bigV)
+		} else if flags.IsAuthorizedToMaintainLiabilitiesFlag() {
+			current.balances.AuthorizedToMaintainLiabilities.Add(current.balances.AuthorizedToMaintainLiabilities, bigV)
+		} else {
+			current.balances.Unauthorized.Add(current.balances.Unauthorized, bigV)
+		}
 	}
 
 	// Note: it's possible that after operations above:

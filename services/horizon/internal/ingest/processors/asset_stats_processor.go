@@ -121,39 +121,55 @@ func (p *AssetStatsProcessor) Commit() error {
 		}
 
 		if assetStatNotFound {
-			// Insert
-			if delta.NumAccounts < 0 {
+			// Safety checks
+			if delta.Accounts.Authorized < 0 {
 				return ingest.NewStateError(errors.Errorf(
-					"NumAccounts negative but DB entry does not exist for asset: %s %s %s",
+					"Authorized accounts negative but DB entry does not exist for asset: %s %s %s",
+					delta.AssetType,
+					delta.AssetCode,
+					delta.AssetIssuer,
+				))
+			} else if delta.Accounts.AuthorizedToMaintainLiabilities < 0 {
+				return ingest.NewStateError(errors.Errorf(
+					"AuthorizedToMaintainLiabilities accounts negative but DB entry does not exist for asset: %s %s %s",
+					delta.AssetType,
+					delta.AssetCode,
+					delta.AssetIssuer,
+				))
+			} else if delta.Accounts.Unauthorized < 0 {
+				return ingest.NewStateError(errors.Errorf(
+					"Unauthorized accounts negative but DB entry does not exist for asset: %s %s %s",
 					delta.AssetType,
 					delta.AssetCode,
 					delta.AssetIssuer,
 				))
 			}
 
+			// Insert
 			var errInsert error
 			rowsAffected, errInsert = p.assetStatsQ.InsertAssetStat(delta)
 			if errInsert != nil {
 				return errors.Wrap(errInsert, "could not insert asset stat")
 			}
 		} else {
-			statBalance, ok := new(big.Int).SetString(stat.Amount, 10)
-			if !ok {
-				return errors.New("Error parsing: " + stat.Amount)
+			var statBalances assetStatBalances
+			if err := statBalances.Parse(&stat.Balances); err != nil {
+				return errors.Wrap(err, "Error parsing balances")
 			}
 
-			deltaBalance, ok := new(big.Int).SetString(delta.Amount, 10)
-			if !ok {
-				return errors.New("Error parsing: " + stat.Amount)
+			var deltaBalances assetStatBalances
+			if err := deltaBalances.Parse(&delta.Balances); err != nil {
+				return errors.Wrap(err, "Error parsing balances")
 			}
 
-			// statBalance = statBalance + deltaBalance
-			statBalance.Add(statBalance, deltaBalance)
-			statAccounts := stat.NumAccounts + delta.NumAccounts
+			statBalances = statBalances.Add(deltaBalances)
+			statAccounts := stat.Accounts.Add(delta.Accounts)
 
-			if statAccounts == 0 {
+			// TODO: Sum is not really what we want here. We want to check they're
+			// all 0.
+			if statAccounts.Sum() == 0 {
 				// Remove stats
-				if statBalance.Cmp(big.NewInt(0)) != 0 {
+				if statBalances.Sum().Cmp(big.NewInt(0)) != 0 {
 					return ingest.NewStateError(errors.Errorf(
 						"Removing asset stat by final amount non-zero for: %s %s %s",
 						delta.AssetType,
@@ -176,7 +192,7 @@ func (p *AssetStatsProcessor) Commit() error {
 					AssetCode:   delta.AssetCode,
 					AssetIssuer: delta.AssetIssuer,
 					Accounts:    statAccounts,
-					Balances:    statBalances,
+					Balances:    statBalances.Finish(),
 					Amount:      statBalances.Authorized.String(),
 					NumAccounts: statAccounts.Authorized,
 				})
@@ -204,31 +220,37 @@ func (p *AssetStatsProcessor) adjustAssetStat(
 	preTrustline *xdr.TrustLineEntry,
 	postTrustline *xdr.TrustLineEntry,
 ) error {
-	var deltaBalance xdr.Int64
-	var deltaAccounts int32
+	deltaAccounts := map[xdr.Uint32]int32{}
+	deltaBalances := map[xdr.Uint32]int64{}
 	var trustline xdr.TrustLineEntry
 
 	switch {
 	case preTrustline == nil && postTrustline != nil:
 		// adding a trustline
 		trustline = *postTrustline
-		deltaAccounts = 1
-		deltaBalance = postTrustline.Balance
+		deltaAccounts[trustline.Flags] = 1
+		deltaBalances[trustline.Flags] = int64(postTrustline.Balance)
 	case preTrustline != nil && postTrustline != nil:
 		// updating a trustline
 		trustline = *postTrustline
-		deltaAccounts = 0
-		deltaBalance = postTrustline.Balance - preTrustline.Balance
+		if preTrustline.Flags == postTrustline.Flags {
+			deltaBalances[trustline.Flags] = int64(postTrustline.Balance - preTrustline.Balance)
+		} else {
+			deltaAccounts[preTrustline.Flags] = -1
+			deltaBalances[preTrustline.Flags] = int64(-preTrustline.Balance)
+			deltaAccounts[postTrustline.Flags] = 1
+			deltaBalances[postTrustline.Flags] = int64(postTrustline.Balance)
+		}
 	case preTrustline != nil && postTrustline == nil:
 		// removing a trustline
 		trustline = *preTrustline
-		deltaAccounts = -1
-		deltaBalance = -preTrustline.Balance
+		deltaAccounts[trustline.Flags] = -1
+		deltaBalances[trustline.Flags] = int64(-preTrustline.Balance)
 	default:
 		return ingest.NewStateError(errors.New("both pre and post trustlines cannot be nil"))
 	}
 
-	err := p.assetStatSet.AddDelta(trustline.Asset, int64(deltaBalance), deltaAccounts, xdr.TrustLineFlags(trustline.Flags))
+	err := p.assetStatSet.AddDelta(trustline.Asset, deltaBalances, deltaAccounts)
 	if err != nil {
 		return errors.Wrap(err, "error running AssetStatSet.AddDelta")
 	}

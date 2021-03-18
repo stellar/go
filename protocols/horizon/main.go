@@ -193,6 +193,18 @@ type AssetStatAccounts struct {
 	Unauthorized                    int32 `json:"unauthorized"`
 }
 
+func (a AssetStatAccounts) Add(b AssetStatAccounts) AssetStatAccounts {
+	return AssetStatAccounts{
+		Authorized:                      a.Authorized + b.Authorized,
+		AuthorizedToMaintainLiabilities: a.AuthorizedToMaintainLiabilities + b.AuthorizedToMaintainLiabilities,
+		Unauthorized:                    a.Unauthorized + b.Unauthorized,
+	}
+}
+
+func (a AssetStatAccounts) Sum() int32 {
+	return a.Authorized + a.AuthorizedToMaintainLiabilities + a.Unauthorized
+}
+
 // Balance represents an account's holdings for a single currency type
 type Balance struct {
 	Balance                           string `json:"balance"`
