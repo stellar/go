@@ -2,20 +2,24 @@ package serve
 
 import (
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
+	"github.com/stellar/go/clients/horizonclient"
 	supporthttp "github.com/stellar/go/support/http"
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/support/render/health"
 )
 
 type Options struct {
-	Port              int
-	HorizonURL        string
-	NetworkPassphrase string
-	SigningKeys       string
+	IssuerAccountSecret    string
+	AssetCode              string
+	FriendbotPaymentAmount int
+	HorizonURL             string
+	NetworkPassphrase      string
+	Port                   int
 }
 
 func Serve(opts Options) {
@@ -49,6 +53,21 @@ func handleHTTP(opts Options) *chi.Mux {
 
 	mux.Get("/health", health.PassHandler{}.ServeHTTP)
 	mux.Get("/.well-known/stellar.toml", stellarTOMLHandler(opts))
+	mux.Get("/friendbot", friendbotHandler{
+		assetCode:           opts.AssetCode,
+		issuerAccountSecret: opts.IssuerAccountSecret,
+		horizonClient:       opts.horizonClient(),
+		horizonURL:          opts.HorizonURL,
+		networkPassphrase:   opts.NetworkPassphrase,
+		paymentAmount:       opts.FriendbotPaymentAmount,
+	}.ServeHTTP)
 
 	return mux
+}
+
+func (opts Options) horizonClient() horizonclient.ClientInterface {
+	return &horizonclient.Client{
+		HorizonURL: opts.HorizonURL,
+		HTTP:       &http.Client{Timeout: 30 * time.Second},
+	}
 }
