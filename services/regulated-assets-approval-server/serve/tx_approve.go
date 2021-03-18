@@ -5,20 +5,13 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/http/httpdecode"
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/support/render/httpjson"
 )
 
-type txApproveHandler struct {
-	accountIssuerSecret string
-	assetCode           string
-	horizonClient       horizonclient.ClientInterface
-	horizonURL          string
-	networkPassphrase   string
-}
+type txApproveHandler struct{}
 
 type txApproveRequest struct {
 	Transaction string `json:"tx" form:"tx"`
