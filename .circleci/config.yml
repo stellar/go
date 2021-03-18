@@ -244,52 +244,11 @@ jobs:
       - staticcheck
       - build_packages
 
-  # test_code_1_14 performs all package tests using Go 1.14.
-  test_code_1_14:
-    working_directory: /go/src/github.com/stellar/go
-    docker:
-      - image: golang:1.14.15-stretch
-        environment:
-          GO111MODULE: "on"
-          PGHOST: localhost
-          PGPORT: 5432
-          PGUSER: circleci
-          PGDATABASE: circle_test
-          MYSQL_HOST: 127.0.0.1
-          MYSQL_PORT: 3306
-      - image: circleci/postgres:9.6.5-alpine-ram
-        environment:
-          POSTGRES_USER: circleci
-    steps:
-      - install_go_deps
-      - test_packages
-
-  # test_code_1_14_postgres10 performs all package tests using Go 1.14 and Postgres 10.
-  test_code_1_14_postgres10:
-    working_directory: /go/src/github.com/stellar/go
-    docker:
-      - image: golang:1.14.15-stretch
-        environment:
-          GO111MODULE: "on"
-          PGHOST: localhost
-          PGPORT: 5432
-          PGUSER: circleci
-          PGDATABASE: circle_test
-          MYSQL_HOST: 127.0.0.1
-          MYSQL_PORT: 3306
-      - image: circleci/postgres:10-alpine-ram
-        environment:
-          POSTGRES_USER: circleci
-      - image: circleci/redis:5.0-alpine
-    steps:
-      - install_go_deps
-      - test_packages
-
   # test_code_1_15 performs all package tests using Go 1.15.
   test_code_1_15:
     working_directory: /go/src/github.com/stellar/go
     docker:
-      - image: golang:1.15.8
+      - image: golang:1.15.10
         environment:
           GO111MODULE: "on"
           PGHOST: localhost
@@ -309,7 +268,7 @@ jobs:
   test_code_1_15_postgres10:
     working_directory: /go/src/github.com/stellar/go
     docker:
-      - image: golang:1.15.8
+      - image: golang:1.15.10
         environment:
           GO111MODULE: "on"
           PGHOST: localhost
@@ -331,7 +290,7 @@ jobs:
   test_code_1_16:
     working_directory: /go/src/github.com/stellar/go
     docker:
-      - image: golang:1.16
+      - image: golang:1.16.2
         environment:
           GO111MODULE: "on"
           PGHOST: localhost
@@ -351,7 +310,7 @@ jobs:
   test_code_1_16_postgres10:
     working_directory: /go/src/github.com/stellar/go
     docker:
-      - image: golang:1.16
+      - image: golang:1.16.2
         environment:
           GO111MODULE: "on"
           PGHOST: localhost
@@ -375,7 +334,7 @@ jobs:
   publish_artifacts:
     working_directory: /go/src/github.com/stellar/go
     docker:
-      - image: golang:1.16
+      - image: golang:1.16.2
     steps:
       - check_deprecations
       - install_go_deps
@@ -518,8 +477,6 @@ workflows:
   check_code_and_test:
     jobs:
       - check_code_1_16
-      - test_code_1_14
-      - test_code_1_14_postgres10
       - test_code_1_15
       - test_code_1_15_postgres10
       - test_code_1_16

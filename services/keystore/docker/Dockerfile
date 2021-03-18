@@ -1,11 +1,11 @@
-FROM golang:1.14-stretch as build
+FROM golang:1.16.2 as build
 
 ADD . /src/keystore
 WORKDIR /src/keystore
 RUN go build -o /bin/keystored ./services/keystore/cmd/keystored
 
 
-FROM ubuntu:16.04
+FROM ubuntu:18.04
 
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
 ADD ./services/keystore/migrations/ /app/migrations/
