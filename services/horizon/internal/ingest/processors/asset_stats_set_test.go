@@ -5,7 +5,6 @@ import (
 	"sort"
 	"testing"
 
-	protocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/xdr"
 )
@@ -48,10 +47,10 @@ func TestAddAndRemoveAssetStats(t *testing.T) {
 		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
 		AssetCode:   eur,
 		AssetIssuer: trustLineIssuer.Address(),
-		Accounts: protocol.AssetStatAccounts{
+		Accounts: history.ExpAssetStatAccounts{
 			Authorized: 1,
 		},
-		Balances: protocol.AssetStatBalances{
+		Balances: history.ExpAssetStatBalances{
 			Authorized:                      "1",
 			AuthorizedToMaintainLiabilities: "0",
 			Unauthorized:                    "0",
@@ -135,12 +134,12 @@ func TestAddAndRemoveAssetStats(t *testing.T) {
 			AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum12,
 			AssetCode:   ether,
 			AssetIssuer: trustLineIssuer.Address(),
-			Accounts: protocol.AssetStatAccounts{
+			Accounts: history.ExpAssetStatAccounts{
 				Authorized:                      1,
 				AuthorizedToMaintainLiabilities: 1,
 				Unauthorized:                    1,
 			},
-			Balances: protocol.AssetStatBalances{
+			Balances: history.ExpAssetStatBalances{
 				Authorized:                      "3",
 				AuthorizedToMaintainLiabilities: "4",
 				Unauthorized:                    "5",
@@ -153,10 +152,10 @@ func TestAddAndRemoveAssetStats(t *testing.T) {
 			AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
 			AssetCode:   usd,
 			AssetIssuer: trustLineIssuer.Address(),
-			Accounts: protocol.AssetStatAccounts{
+			Accounts: history.ExpAssetStatAccounts{
 				Authorized: 1,
 			},
-			Balances: protocol.AssetStatBalances{
+			Balances: history.ExpAssetStatBalances{
 				Authorized:                      "10",
 				AuthorizedToMaintainLiabilities: "0",
 				Unauthorized:                    "0",
@@ -201,10 +200,10 @@ func TestOverflowAssetStatSet(t *testing.T) {
 		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
 		AssetCode:   eur,
 		AssetIssuer: trustLineIssuer.Address(),
-		Accounts: protocol.AssetStatAccounts{
+		Accounts: history.ExpAssetStatAccounts{
 			Authorized: 1,
 		},
-		Balances: protocol.AssetStatBalances{
+		Balances: history.ExpAssetStatBalances{
 			Authorized:                      "9223372036854775807",
 			AuthorizedToMaintainLiabilities: "0",
 			Unauthorized:                    "0",
@@ -234,10 +233,10 @@ func TestOverflowAssetStatSet(t *testing.T) {
 		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
 		AssetCode:   eur,
 		AssetIssuer: trustLineIssuer.Address(),
-		Accounts: protocol.AssetStatAccounts{
+		Accounts: history.ExpAssetStatAccounts{
 			Authorized: 2,
 		},
-		Balances: protocol.AssetStatBalances{
+		Balances: history.ExpAssetStatBalances{
 			Authorized:                      "18446744073709551614",
 			AuthorizedToMaintainLiabilities: "0",
 			Unauthorized:                    "0",

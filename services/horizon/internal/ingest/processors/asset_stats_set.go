@@ -3,7 +3,6 @@ package processors
 import (
 	"math/big"
 
-	protocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
@@ -18,15 +17,16 @@ type assetStatKey struct {
 type assetStatValue struct {
 	assetStatKey
 	balances assetStatBalances
-	accounts assetStatNumAccounts
+	accounts assetStatAccounts
 }
+
 type assetStatBalances struct {
 	Authorized                      *big.Int
 	AuthorizedToMaintainLiabilities *big.Int
 	Unauthorized                    *big.Int
 }
 
-func (a *assetStatBalances) Parse(b *protocol.AssetStatBalances) error {
+func (a *assetStatBalances) Parse(b *history.ExpAssetStatBalances) error {
 	authorized, ok := new(big.Int).SetString(b.Authorized, 10)
 	if !ok {
 		return errors.New("Error parsing: " + b.Authorized)
@@ -64,18 +64,30 @@ func (a assetStatBalances) Sum() *big.Int {
 	return sum
 }
 
-func (a assetStatBalances) Finish() protocol.AssetStatBalances {
-	return protocol.AssetStatBalances{
+func (a assetStatBalances) Finish() history.ExpAssetStatBalances {
+	return history.ExpAssetStatBalances{
 		Authorized:                      a.Authorized.String(),
 		AuthorizedToMaintainLiabilities: a.AuthorizedToMaintainLiabilities.String(),
 		Unauthorized:                    a.Unauthorized.String(),
 	}
 }
 
-type assetStatNumAccounts struct {
+type assetStatAccounts struct {
 	Authorized                      int32
 	AuthorizedToMaintainLiabilities int32
 	Unauthorized                    int32
+}
+
+func (a assetStatAccounts) Add(b assetStatAccounts) assetStatAccounts {
+	return assetStatAccounts{
+		Authorized:                      a.Authorized + b.Authorized,
+		AuthorizedToMaintainLiabilities: a.AuthorizedToMaintainLiabilities + b.AuthorizedToMaintainLiabilities,
+		Unauthorized:                    a.Unauthorized + b.Unauthorized,
+	}
+}
+
+func (a assetStatAccounts) Sum() int32 {
+	return a.Authorized + a.AuthorizedToMaintainLiabilities + a.Unauthorized
 }
 
 func (value assetStatValue) Finish() history.ExpAssetStat {
@@ -84,7 +96,7 @@ func (value assetStatValue) Finish() history.ExpAssetStat {
 		AssetType:   value.assetType,
 		AssetCode:   value.assetCode,
 		AssetIssuer: value.assetIssuer,
-		Accounts:    protocol.AssetStatAccounts(value.accounts),
+		Accounts:    history.ExpAssetStatAccounts(value.accounts),
 		Balances:    balances,
 		Amount:      balances.Authorized,
 		NumAccounts: value.accounts.Authorized,

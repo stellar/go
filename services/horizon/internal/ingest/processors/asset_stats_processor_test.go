@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/stellar/go/ingest"
-	protocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/suite"
@@ -59,8 +58,8 @@ func (s *AssetStatsProcessorTestSuiteState) TestCreateTrustLine() {
 			AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
 			AssetIssuer: trustLineIssuer.Address(),
 			AssetCode:   "EUR",
-			Accounts:    protocol.AssetStatAccounts{Authorized: 1},
-			Balances: protocol.AssetStatBalances{
+			Accounts:    history.ExpAssetStatAccounts{Authorized: 1},
+			Balances: history.ExpAssetStatBalances{
 				Authorized:                      "0",
 				AuthorizedToMaintainLiabilities: "0",
 				Unauthorized:                    "0",
@@ -95,8 +94,8 @@ func (s *AssetStatsProcessorTestSuiteState) TestCreateTrustLineUnauthorized() {
 			AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
 			AssetIssuer: trustLineIssuer.Address(),
 			AssetCode:   "EUR",
-			Accounts:    protocol.AssetStatAccounts{Unauthorized: 1},
-			Balances: protocol.AssetStatBalances{
+			Accounts:    history.ExpAssetStatAccounts{Unauthorized: 1},
+			Balances: history.ExpAssetStatBalances{
 				Authorized:                      "0",
 				AuthorizedToMaintainLiabilities: "0",
 				Unauthorized:                    "0",
@@ -243,10 +242,10 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestInsertTrustLine() {
 		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
 		AssetIssuer: trustLineIssuer.Address(),
 		AssetCode:   "EUR",
-		Accounts: protocol.AssetStatAccounts{
+		Accounts: history.ExpAssetStatAccounts{
 			Authorized: 1,
 		},
-		Balances: protocol.AssetStatBalances{
+		Balances: history.ExpAssetStatBalances{
 			Authorized:                      "10",
 			AuthorizedToMaintainLiabilities: "0",
 			Unauthorized:                    "0",
@@ -264,10 +263,10 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestInsertTrustLine() {
 		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
 		AssetIssuer: trustLineIssuer.Address(),
 		AssetCode:   "USD",
-		Accounts: protocol.AssetStatAccounts{
+		Accounts: history.ExpAssetStatAccounts{
 			Unauthorized: 1,
 		},
-		Balances: protocol.AssetStatBalances{
+		Balances: history.ExpAssetStatBalances{
 			Authorized:                      "0",
 			AuthorizedToMaintainLiabilities: "0",
 			Unauthorized:                    "10",
@@ -322,8 +321,8 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateTrustLine() {
 		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
 		AssetIssuer: trustLineIssuer.Address(),
 		AssetCode:   "EUR",
-		Accounts:    protocol.AssetStatAccounts{Authorized: 1},
-		Balances: protocol.AssetStatBalances{
+		Accounts:    history.ExpAssetStatAccounts{Authorized: 1},
+		Balances: history.ExpAssetStatBalances{
 			Authorized:                      "100",
 			AuthorizedToMaintainLiabilities: "0",
 			Unauthorized:                    "0",
@@ -335,8 +334,8 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateTrustLine() {
 		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
 		AssetIssuer: trustLineIssuer.Address(),
 		AssetCode:   "EUR",
-		Accounts:    protocol.AssetStatAccounts{Authorized: 1},
-		Balances: protocol.AssetStatBalances{
+		Accounts:    history.ExpAssetStatAccounts{Authorized: 1},
+		Balances: history.ExpAssetStatBalances{
 			Authorized:                      "110",
 			AuthorizedToMaintainLiabilities: "0",
 			Unauthorized:                    "0",
@@ -456,10 +455,10 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateTrustLineAuthorization() 
 		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
 		AssetIssuer: trustLineIssuer.Address(),
 		AssetCode:   "EUR",
-		Accounts: protocol.AssetStatAccounts{
+		Accounts: history.ExpAssetStatAccounts{
 			Unauthorized: 1,
 		},
-		Balances: protocol.AssetStatBalances{
+		Balances: history.ExpAssetStatBalances{
 			Authorized:                      "0",
 			AuthorizedToMaintainLiabilities: "0",
 			Unauthorized:                    "100",
@@ -471,10 +470,10 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateTrustLineAuthorization() 
 		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
 		AssetIssuer: trustLineIssuer.Address(),
 		AssetCode:   "EUR",
-		Accounts: protocol.AssetStatAccounts{
+		Accounts: history.ExpAssetStatAccounts{
 			Authorized: 1,
 		},
-		Balances: protocol.AssetStatBalances{
+		Balances: history.ExpAssetStatBalances{
 			Authorized:                      "10",
 			AuthorizedToMaintainLiabilities: "0",
 			Unauthorized:                    "0",
@@ -491,10 +490,10 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateTrustLineAuthorization() 
 		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
 		AssetIssuer: trustLineIssuer.Address(),
 		AssetCode:   "USD",
-		Accounts: protocol.AssetStatAccounts{
+		Accounts: history.ExpAssetStatAccounts{
 			Authorized: 1,
 		},
-		Balances: protocol.AssetStatBalances{
+		Balances: history.ExpAssetStatBalances{
 			Authorized:                      "100",
 			AuthorizedToMaintainLiabilities: "0",
 			Unauthorized:                    "0",
@@ -506,10 +505,10 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateTrustLineAuthorization() 
 		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
 		AssetIssuer: trustLineIssuer.Address(),
 		AssetCode:   "USD",
-		Accounts: protocol.AssetStatAccounts{
+		Accounts: history.ExpAssetStatAccounts{
 			Unauthorized: 1,
 		},
-		Balances: protocol.AssetStatBalances{
+		Balances: history.ExpAssetStatBalances{
 			Authorized:                      "0",
 			AuthorizedToMaintainLiabilities: "0",
 			Unauthorized:                    "10",
@@ -526,10 +525,10 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateTrustLineAuthorization() 
 		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
 		AssetIssuer: trustLineIssuer.Address(),
 		AssetCode:   "ETH",
-		Accounts: protocol.AssetStatAccounts{
+		Accounts: history.ExpAssetStatAccounts{
 			Authorized: 1,
 		},
-		Balances: protocol.AssetStatBalances{
+		Balances: history.ExpAssetStatBalances{
 			Authorized:                      "100",
 			AuthorizedToMaintainLiabilities: "0",
 			Unauthorized:                    "0",
@@ -541,10 +540,10 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateTrustLineAuthorization() 
 		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
 		AssetIssuer: trustLineIssuer.Address(),
 		AssetCode:   "ETH",
-		Accounts: protocol.AssetStatAccounts{
+		Accounts: history.ExpAssetStatAccounts{
 			AuthorizedToMaintainLiabilities: 1,
 		},
-		Balances: protocol.AssetStatBalances{
+		Balances: history.ExpAssetStatBalances{
 			Authorized:                      "0",
 			AuthorizedToMaintainLiabilities: "10",
 			Unauthorized:                    "0",
@@ -601,10 +600,10 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveTrustLine() {
 		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
 		AssetIssuer: trustLineIssuer.Address(),
 		AssetCode:   "EUR",
-		Accounts: protocol.AssetStatAccounts{
+		Accounts: history.ExpAssetStatAccounts{
 			Authorized: 1,
 		},
-		Balances: protocol.AssetStatBalances{
+		Balances: history.ExpAssetStatBalances{
 			Authorized:                      "0",
 			AuthorizedToMaintainLiabilities: "0",
 			Unauthorized:                    "0",
@@ -626,10 +625,10 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveTrustLine() {
 		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
 		AssetIssuer: trustLineIssuer.Address(),
 		AssetCode:   "USD",
-		Accounts: protocol.AssetStatAccounts{
+		Accounts: history.ExpAssetStatAccounts{
 			Authorized: 1,
 		},
-		Balances: protocol.AssetStatBalances{
+		Balances: history.ExpAssetStatBalances{
 			Authorized:                      "0",
 			AuthorizedToMaintainLiabilities: "0",
 			Unauthorized:                    "0",
@@ -703,10 +702,10 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestProcessUpgradeChange() {
 		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
 		AssetIssuer: trustLineIssuer.Address(),
 		AssetCode:   "EUR",
-		Accounts: protocol.AssetStatAccounts{
+		Accounts: history.ExpAssetStatAccounts{
 			Authorized: 1,
 		},
-		Balances: protocol.AssetStatBalances{
+		Balances: history.ExpAssetStatBalances{
 			Authorized:                      "10",
 			AuthorizedToMaintainLiabilities: "0",
 			Unauthorized:                    "0",
