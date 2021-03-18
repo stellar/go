@@ -23,7 +23,7 @@ func PopulateAssetStat(
 	res.Asset.Type = xdr.AssetTypeToString[row.AssetType]
 	res.Asset.Code = row.AssetCode
 	res.Asset.Issuer = row.AssetIssuer
-	res.Accounts = protocol.AssetStatNumAccounts(row.Accounts)
+	res.Accounts = protocol.AssetStatAccounts(row.Accounts)
 	res.Amount, err = amount.IntStringToAmount(row.Amount)
 	if err != nil {
 		return errors.Wrap(err, "Invalid amount in PopulateAssetStat")

@@ -41,7 +41,7 @@ func (value assetStatValue) Finish() history.ExpAssetStat {
 		AssetType:   value.assetType,
 		AssetCode:   value.assetCode,
 		AssetIssuer: value.assetIssuer,
-		Accounts:    protocol.AssetStatNumAccounts(value.accounts),
+		Accounts:    protocol.AssetStatAccounts(value.accounts),
 		Balances:    balances,
 		Amount:      balances.Authorized,
 		NumAccounts: value.accounts.Authorized,
