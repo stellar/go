@@ -123,10 +123,9 @@ type CaptiveCoreConfig struct {
 	HTTPPort uint
 	// Log is an (optional) custom logger which will capture any output from the Stellar Core process.
 	// If Log is omitted then all output will be printed to stdout.
-	// However, if LogPath (optional, below) is set, no logging will be done to this.
 	Log *log.Entry
 	// LogPath is the (optional) path in which to store Core logs, passed along
-	// to Stellar-Core's LOG_FILE_PATH
+	// to Stellar Core's LOG_FILE_PATH
 	LogPath string
 	// Context is the (optional) context which controls the lifetime of a CaptiveStellarCore instance. Once the context is done
 	// the CaptiveStellarCore instance will not be able to stream ledgers from Stellar Core or spawn new
