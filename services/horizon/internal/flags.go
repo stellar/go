@@ -256,6 +256,12 @@ func Flags() (*Config, support.ConfigOptions) {
 			Usage:     "name of the file where logs will be saved (leave empty to send logs to stdout)",
 		},
 		&support.ConfigOption{
+			Name:      "captive-core-log-path",
+			ConfigKey: &config.CaptiveCoreLogPath,
+			OptType:   types.String,
+			Usage:     "name of the path for Core logs (leave empty to log w/ Horizon only)",
+		},
+		&support.ConfigOption{
 			Name:        "max-path-length",
 			ConfigKey:   &config.MaxPathLength,
 			OptType:     types.Uint,

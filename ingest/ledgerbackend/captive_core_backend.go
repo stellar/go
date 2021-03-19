@@ -124,6 +124,9 @@ type CaptiveCoreConfig struct {
 	// Log is an (optional) custom logger which will capture any output from the Stellar Core process.
 	// If Log is omitted then all output will be printed to stdout.
 	Log *log.Entry
+	// LogPath is the (optional) path in which to store Core logs, passed along
+	// to Stellar Core's LOG_FILE_PATH
+	LogPath string
 	// Context is the (optional) context which controls the lifetime of a CaptiveStellarCore instance. Once the context is done
 	// the CaptiveStellarCore instance will not be able to stream ledgers from Stellar Core or spawn new
 	// instances of Stellar Core. If Context is omitted CaptiveStellarCore will default to using context.Background.
@@ -134,11 +137,14 @@ type CaptiveCoreConfig struct {
 func NewCaptive(config CaptiveCoreConfig) (*CaptiveStellarCore, error) {
 	// Here we set defaults in the config. Because config is not a pointer this code should
 	// not mutate the original CaptiveCoreConfig instance which was passed into NewCaptive()
+
+	// Log Captive Core straight to stdout by default
 	if config.Log == nil {
 		config.Log = log.New()
 		config.Log.Logger.SetOutput(os.Stdout)
 		config.Log.SetLevel(logrus.InfoLevel)
 	}
+
 	parentCtx := config.Context
 	if parentCtx == nil {
 		parentCtx = context.Background()

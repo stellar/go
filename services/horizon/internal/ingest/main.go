@@ -71,6 +71,7 @@ type Config struct {
 	CaptiveCoreBinaryPath       string
 	CaptiveCoreConfigAppendPath string
 	CaptiveCoreHTTPPort         uint
+	CaptiveCoreLogPath          string
 	RemoteCaptiveCoreURL        string
 	NetworkPassphrase           string
 
@@ -189,8 +190,10 @@ func NewSystem(config Config) (System, error) {
 				return nil, errors.Wrap(err, "error creating captive core backend")
 			}
 		} else {
+			logger := log.WithField("subservice", "stellar-core")
 			ledgerBackend, err = ledgerbackend.NewCaptive(
 				ledgerbackend.CaptiveCoreConfig{
+					LogPath:             config.CaptiveCoreLogPath,
 					BinaryPath:          config.CaptiveCoreBinaryPath,
 					ConfigAppendPath:    config.CaptiveCoreConfigAppendPath,
 					HTTPPort:            config.CaptiveCoreHTTPPort,
@@ -198,7 +201,7 @@ func NewSystem(config Config) (System, error) {
 					HistoryArchiveURLs:  []string{config.HistoryArchiveURL},
 					CheckpointFrequency: config.CheckpointFrequency,
 					LedgerHashStore:     ledgerbackend.NewHorizonDBLedgerHashStore(config.HistorySession),
-					Log:                 log.WithField("subservice", "stellar-core"),
+					Log:                 logger,
 					Context:             ctx,
 				},
 			)
