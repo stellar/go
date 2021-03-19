@@ -168,9 +168,9 @@ type AssetStat struct {
 	base.Asset
 	PT          string            `json:"paging_token"`
 	Accounts    AssetStatAccounts `json:"accounts"`
-	Amount      string            `json:"amount"`
+	Amount      string            `json:"amount"` // Deprecated
 	Balances    AssetStatBalances `json:"balances"`
-	NumAccounts int32             `json:"num_accounts"`
+	NumAccounts int32             `json:"num_accounts"` // Deprecated
 	Flags       AccountFlags      `json:"flags"`
 }
 

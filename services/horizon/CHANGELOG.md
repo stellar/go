@@ -7,6 +7,8 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 * Add an endpoint which determines if Horizon is healthy enough to receive traffic ([3435](https://github.com/stellar/go/pull/3435)).
 * Sanitize route regular expressions for Prometheus metrics ([3459](https://github.com/stellar/go/pull/3459)).
+* Add asset stat summaries per trust-line flag category ([3454](https://github.com/stellar/go/pull/3454)).
+  - The `amount`, and `num_accounts` fields in `/assets` endpoint are deprecated. Fields will be removed in Horizon 3.0. You can find the same data under `balances.authorized`, and `accounts.authorized`, respectively.
 
 ## v2.0.0
 
