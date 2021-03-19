@@ -8,9 +8,6 @@ replacement: https://developers.stellar.org/api/resources/assets/
 This endpoint represents all [assets](../resources/asset.md).
 It will give you all the assets in the system along with various statistics about each.
 
-### Notes
-- The attribute `num_accounts` includes authorized trust lines only.
-
 ## Request
 
 ```
@@ -81,8 +78,16 @@ If called normally this endpoint responds with a [page](../resources/page.md) of
         "asset_code": "BANANA",
         "asset_issuer": "GDSBCQO34HWPGUGQSP3QBFEXVTSR2PW46UIGTHVWGWJGQKH3AFNHXHXN",
         "paging_token": "BANANA_GDSBCQO34HWPGUGQSP3QBFEXVTSR2PW46UIGTHVWGWJGQKH3AFNHXHXN_credit_alphanum4",
-        "amount": "10000.0000000",
-        "num_accounts": 2126,
+        "accounts": {
+          "authorized": 2126,
+          "authorized_to_maintain_liabilities": 32,
+          "unauthorized": 5
+        },
+        "balances": {
+          "authorized": "10000.0000000",
+          "authorized_to_maintain_liabilities": "3000.0000000",
+          "unauthorized": "4000.0000000"
+        },
         "flags": {
           "auth_required": true,
           "auth_revocable": false
@@ -98,8 +103,16 @@ If called normally this endpoint responds with a [page](../resources/page.md) of
         "asset_code": "BTC",
         "asset_issuer": "GBAUUA74H4XOQYRSOW2RZUA4QL5PB37U3JS5NE3RTB2ELJVMIF5RLMAG",
         "paging_token": "BTC_GBAUUA74H4XOQYRSOW2RZUA4QL5PB37U3JS5NE3RTB2ELJVMIF5RLMAG_credit_alphanum4",
-        "amount": "5000.0000000",
-        "num_accounts": 32,
+        "accounts": {
+          "authorized": 32,
+          "authorized_to_maintain_liabilities": 124,
+          "unauthorized": 6
+        },
+        "balances": {
+          "authorized": "5000.0000000",
+          "authorized_to_maintain_liabilities": "8000.0000000",
+          "unauthorized": "2000.0000000"
+        },
         "flags": {
           "auth_required": false,
           "auth_revocable": false
@@ -115,8 +128,16 @@ If called normally this endpoint responds with a [page](../resources/page.md) of
         "asset_code": "USD",
         "asset_issuer": "GBAUUA74H4XOQYRSOW2RZUA4QL5PB37U3JS5NE3RTB2ELJVMIF5RLMAG",
         "paging_token": "USD_GBAUUA74H4XOQYRSOW2RZUA4QL5PB37U3JS5NE3RTB2ELJVMIF5RLMAG_credit_alphanum4",
-        "amount": "1000000000.0000000",
-        "num_accounts": 91547871,
+        "accounts": {
+          "authorized": 91547871,
+          "authorized_to_maintain_liabilities": 45773935,
+          "unauthorized": 22886967
+        },
+        "balances": {
+          "authorized": "1000000000.0000000",
+          "authorized_to_maintain_liabilities": "500000000.0000000",
+          "unauthorized": "250000000.0000000"
+        },
         "flags": {
           "auth_required": false,
           "auth_revocable": false

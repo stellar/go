@@ -16,8 +16,8 @@ To learn more about the concept of assets in the Stellar network, take a look at
 | asset_type               | string | The type of this asset: "credit_alphanum4", or "credit_alphanum12". |
 | asset_code               | string | The code of this asset.   |
 | asset_issuer             | string | The issuer of this asset. |
-| amount                   | number | The number of units of credit issued. |
-| num_accounts             | number | The number of accounts that: 1) trust this asset and 2) where if the asset has the auth_required flag then the account is authorized to hold the asset. |
+| accounts                 | object | The number of accounts holding this asset, summarized by each state of the trust line flags. |
+| balances                 | object | The number of units of credit issued, summarized by each state of the trust line flags. |
 | flags                    | object | The flags denote the enabling/disabling of certain asset issuer privileges. |
 | paging_token             | string | A [paging token](./page.md) suitable for use as the `cursor` parameter to transaction collection resources.                   |
 
@@ -46,8 +46,16 @@ To learn more about the concept of assets in the Stellar network, take a look at
   "asset_code": "USD",
   "asset_issuer": "GBAUUA74H4XOQYRSOW2RZUA4QL5PB37U3JS5NE3RTB2ELJVMIF5RLMAG",
   "paging_token": "USD_GBAUUA74H4XOQYRSOW2RZUA4QL5PB37U3JS5NE3RTB2ELJVMIF5RLMAG_credit_alphanum4",
-  "amount": "100.0000000",
-  "num_accounts": 91547871,
+  "accounts": {
+    "authorized": 91547871,
+    "authorized_to_maintain_liabilities": 45773935,
+    "unauthorized": 22886967
+  },
+  "balances": {
+    "authorized": "100.0000000",
+    "authorized_to_maintain_liabilities": "50.0000000",
+    "unauthorized": "25.0000000"
+  },
   "flags": {
     "auth_required": false,
     "auth_revocable": false
