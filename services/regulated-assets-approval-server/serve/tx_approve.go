@@ -82,27 +82,23 @@ func (h txApproveHandler) isRejected(ctx context.Context, in txApproveRequest) (
 		}, NewHTTPError(http.StatusBadRequest, `Transaction is not a simple transaction.`)
 	}
 	log.Ctx(ctx).Info(tx) //!DEBUG REMOVE
-	// 	l.Info("Transaction is not a simple transaction.")
-	// 	badRequest.Render(w)
-	// 	return
-	// }
-	// hashHex, err := tx.HashHex(h.NetworkPassphrase)
-	// if err != nil {
-	// 	l.Error("Error hashing transaction:", err)
-	// 	serverError.Render(w)
-	// 	return
-	// }
 
-	// l = l.WithField("transaction_hash", hashHex)
+	// Check that the transaction's source account and any operations it
+	// contains references only to this account.
+	if tx.SourceAccount().AccountID == h.DistributionAccount {
+		log.Ctx(ctx).Error(errors.Wrapf(err,
+			"Transaction %s sourceAccount %s the same as the server distribution account %s",
+			in.Transaction,
+			tx.SourceAccount().AccountID,
+			h.DistributionAccount))
+		return &txApproveResponse{
+			Status:  Rejected,
+			Message: "The source account is invalid.",
+		}, NewHTTPError(http.StatusBadRequest, `Transaction sourceAccount the same as the server distribution account.`)
 
-	// l.Info("Signing transaction.")
-
-	// // Check that the transaction's source account and any operations it
-	// // contains references only to this account.
-	// if tx.SourceAccount().AccountID != req.Address.Address() {
-	// 	l.Info("Transaction's source account is not the account in the request.")
-	// 	badRequest.Render(w)
-	// 	return
-	// }
-	return nil, nil
+	}
+	return return &txApproveResponse{
+		Status:  Rejected,
+		Message: "Not implemented.",
+	}, NewHTTPError(http.StatusBadRequest, `Not implemented.`)
 }

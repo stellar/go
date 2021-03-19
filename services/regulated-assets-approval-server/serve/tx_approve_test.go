@@ -95,6 +95,19 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 		},
 	)
 	require.NoError(t, err)
+	txEnc, err := tx.Base64()
+	t.Log("Tx:", txEnc)
+	req = txApproveRequest{
+		Transaction: txEnc,
+	}
+	rejectedResponse, err = txApproveHandler{DistributionAccount: distAccKeyPair.Address()}.isRejected(ctx, req)
+	require.EqualError(t, err, "Transaction sourceAccount the same as the server distribution account.")
+	wantRejectedResponse = txApproveResponse{
+		Status:  Rejected,
+		Message: "The source account is invalid.",
+	}
+	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
+
 }
 
 //! Mute until TestTxApproveHandler_isRejected is complete
