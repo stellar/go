@@ -626,7 +626,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveTrustLine() {
 		AssetIssuer: trustLineIssuer.Address(),
 		AssetCode:   "USD",
 		Accounts: history.ExpAssetStatAccounts{
-			Authorized: 1,
+			Unauthorized: 1,
 		},
 		Balances: history.ExpAssetStatBalances{
 			Authorized:                      "0",
@@ -634,7 +634,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveTrustLine() {
 			Unauthorized:                    "0",
 		},
 		Amount:      "0",
-		NumAccounts: 1,
+		NumAccounts: 0,
 	}, nil).Once()
 	s.mockQ.On("RemoveAssetStat",
 		xdr.AssetTypeAssetTypeCreditAlphanum4,

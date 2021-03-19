@@ -2,7 +2,6 @@ package processors
 
 import (
 	"database/sql"
-	"math/big"
 
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
@@ -167,11 +166,9 @@ func (p *AssetStatsProcessor) Commit() error {
 			statBalances = statBalances.Add(deltaBalances)
 			statAccounts := stat.Accounts.Add(delta.Accounts)
 
-			// TODO: Sum is not really what we want here. We want to check they're
-			// all 0.
-			if statAccounts.Sum() == 0 {
+			if statAccounts.IsZero() {
 				// Remove stats
-				if statBalances.Sum().Cmp(big.NewInt(0)) != 0 {
+				if !statBalances.IsZero() {
 					return ingest.NewStateError(errors.Errorf(
 						"Removing asset stat by final amount non-zero for: %s %s %s",
 						delta.AssetType,

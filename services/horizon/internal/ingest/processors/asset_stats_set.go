@@ -56,12 +56,8 @@ func (a assetStatBalances) Add(b assetStatBalances) assetStatBalances {
 	}
 }
 
-func (a assetStatBalances) Sum() *big.Int {
-	sum := big.NewInt(0)
-	sum = sum.Add(sum, a.Authorized)
-	sum = sum.Add(sum, a.AuthorizedToMaintainLiabilities)
-	sum = sum.Add(sum, a.Unauthorized)
-	return sum
+func (a assetStatBalances) IsZero() bool {
+	return a.Authorized.Cmp(big.NewInt(0)) == 0 && a.AuthorizedToMaintainLiabilities.Cmp(big.NewInt(0)) == 0 && a.Unauthorized.Cmp(big.NewInt(0)) == 0
 }
 
 func (a assetStatBalances) Finish() history.ExpAssetStatBalances {
@@ -76,18 +72,6 @@ type assetStatAccounts struct {
 	Authorized                      int32
 	AuthorizedToMaintainLiabilities int32
 	Unauthorized                    int32
-}
-
-func (a assetStatAccounts) Add(b assetStatAccounts) assetStatAccounts {
-	return assetStatAccounts{
-		Authorized:                      a.Authorized + b.Authorized,
-		AuthorizedToMaintainLiabilities: a.AuthorizedToMaintainLiabilities + b.AuthorizedToMaintainLiabilities,
-		Unauthorized:                    a.Unauthorized + b.Unauthorized,
-	}
-}
-
-func (a assetStatAccounts) Sum() int32 {
-	return a.Authorized + a.AuthorizedToMaintainLiabilities + a.Unauthorized
 }
 
 func (value assetStatValue) Finish() history.ExpAssetStat {

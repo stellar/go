@@ -371,8 +371,8 @@ func (a ExpAssetStatAccounts) Add(b ExpAssetStatAccounts) ExpAssetStatAccounts {
 	}
 }
 
-func (a ExpAssetStatAccounts) Sum() int32 {
-	return a.Authorized + a.AuthorizedToMaintainLiabilities + a.Unauthorized
+func (a ExpAssetStatAccounts) IsZero() bool {
+	return a.Authorized == 0 && a.AuthorizedToMaintainLiabilities == 0 && a.Unauthorized == 0
 }
 
 // ExpAssetStatBalances represents the summarized balances for a single Asset
