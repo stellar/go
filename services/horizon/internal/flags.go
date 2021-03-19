@@ -259,7 +259,7 @@ func Flags() (*Config, support.ConfigOptions) {
 			Name:      "captive-core-log-path",
 			ConfigKey: &config.CaptiveCoreLogPath,
 			OptType:   types.String,
-			Usage:     "name of the path for Core logs (leave empty to log w/ Horizon)",
+			Usage:     "name of the path for Core logs (leave empty to log w/ Horizon only)",
 		},
 		&support.ConfigOption{
 			Name:        "max-path-length",
