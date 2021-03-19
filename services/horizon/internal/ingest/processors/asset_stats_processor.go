@@ -109,8 +109,10 @@ func (p *AssetStatsProcessor) Commit() error {
 	assetStatsDeltas := p.assetStatSet.All()
 	for _, delta := range assetStatsDeltas {
 		var rowsAffected int64
+		var stat history.ExpAssetStat
+		var err error
 
-		stat, err := p.assetStatsQ.GetAssetStat(
+		stat, err = p.assetStatsQ.GetAssetStat(
 			delta.AssetType,
 			delta.AssetCode,
 			delta.AssetIssuer,
@@ -153,12 +155,12 @@ func (p *AssetStatsProcessor) Commit() error {
 			}
 		} else {
 			var statBalances assetStatBalances
-			if err := statBalances.Parse(&stat.Balances); err != nil {
+			if err = statBalances.Parse(&stat.Balances); err != nil {
 				return errors.Wrap(err, "Error parsing balances")
 			}
 
 			var deltaBalances assetStatBalances
-			if err := deltaBalances.Parse(&delta.Balances); err != nil {
+			if err = deltaBalances.Parse(&delta.Balances); err != nil {
 				return errors.Wrap(err, "Error parsing balances")
 			}
 
