@@ -2,7 +2,6 @@ package serve
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 
 	"github.com/stellar/go/support/errors"
@@ -11,10 +10,19 @@ import (
 	"github.com/stellar/go/support/render/httpjson"
 )
 
+const (
+	Rejected = "rejected"
+)
+
 type txApproveHandler struct{}
 
 type txApproveRequest struct {
 	Transaction string `json:"tx" form:"tx"`
+}
+
+type txApproveResponse struct {
+	Status  string `json:"status"`
+	Message string `json:"message"`
 }
 
 func (h txApproveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -28,7 +36,7 @@ func (h txApproveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		httpErr.Render(w)
 		return
 	}
-	rejected, err := h.isRejected(ctx, in)
+	rejectedResponse, err := h.isRejected(ctx, in)
 	if err != nil {
 		httpErr, ok := err.(*httpError)
 		if !ok {
@@ -37,16 +45,18 @@ func (h txApproveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		httpErr.Render(w)
 		return
 	}
-	if rejected {
-		httpjson.Render(w, json.RawMessage(`{
-			"status": "rejected",
-			"error": "The destination account is blocked."
-		  }`), httpjson.JSON)
+	if rejectedResponse != nil {
+		httpjson.Render(w, rejectedResponse, httpjson.JSON)
 	}
-	httpjson.Render(w, httpjson.DefaultResponse, httpjson.JSON)
 }
 
-func (h txApproveHandler) isRejected(ctx context.Context, in txApproveRequest) (bool, error) {
+func (h txApproveHandler) isRejected(ctx context.Context, in txApproveRequest) (*txApproveResponse, error) {
 	log.Ctx(ctx).Info(in.Transaction)
-	return false, nil
+	if in.Transaction == "" {
+		return &txApproveResponse{
+			Status:  Rejected,
+			Message: "Missing parameter \"tx\"",
+		}, nil
+	}
+	return nil, nil
 }

@@ -10,7 +10,6 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/stellar/go/clients/horizonclient"
-	"github.com/stellar/go/network"
 	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/protocols/horizon/base"
 	"github.com/stellar/go/txnbuild"
@@ -19,6 +18,44 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestTxApproveHandler_isRejected(t *testing.T) {
+	ctx := context.Background()
+
+	req1 := txApproveRequest{
+		Transaction: "",
+	}
+	rejectedResponse, err := txApproveHandler{}.isRejected(ctx, req1)
+	require.NoError(t, err)
+	wantRejectedResponse := txApproveResponse{
+		Status:  Rejected,
+		Message: "Missing parameter \"tx\"",
+	}
+	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
+	// wantResponse := ``
+	// 	tx, err := txnbuild.NewTransaction(
+	// 		txnbuild.TransactionParams{
+	// 			SourceAccount:        &txnbuild.SimpleAccount{AccountID: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4"},
+	// 			IncrementSequenceNum: true,
+	// 			Operations: []txnbuild.Operation{
+	// 				&txnbuild.SetOptions{
+	// 					Signer: &txnbuild.Signer{
+	// 						Address: "GD7CGJSJ5OBOU5KOP2UQDH3MPY75UTEY27HVV5XPSL2X6DJ2VGTOSXEU",
+	// 						Weight:  20,
+	// 					},
+	// 				},
+	// 			},
+	// 			BaseFee:    txnbuild.MinBaseFee,
+	// 			Timebounds: txnbuild.NewTimebounds(0, 1),
+	// 		},
+	// 	)
+	// 	require.NoError(t, err)
+	// 	txEnc, err := tx.Base64()
+	// 	require.NoError(t, err)
+	// 	t.Log("Tx:", txEnc)
+	// 	req := `{
+	// 	"tx": "` + txEnc + `"
+	// }`
+}
 func TestTxApproveHandler_serveHTTP(t *testing.T) {
 	ctx := context.Background()
 
@@ -43,13 +80,7 @@ func TestTxApproveHandler_serveHTTP(t *testing.T) {
 		On("SubmitTransaction", mock.AnythingOfType("*txnbuild.Transaction")).
 		Return(horizon.Transaction{}, nil)
 
-	handler := txApproveHandler{
-		accountIssuerSecret: "SDVFEIZ3WH5F6GHGK56QITTC5IO6QJ2UIQDWCHE72DAFZFSXYPIHQ6EV", // GDDIO6SFRD4SJEQFJOSKPIDYTDM7LM4METFBKN4NFGVR5DTGB7H75N5S
-		assetCode:           "FOO",
-		horizonClient:       &horizonMock,
-		horizonURL:          "https://horizon-testnet.stellar.org/",
-		networkPassphrase:   network.TestNetworkPassphrase,
-	}
+	handler := txApproveHandler{}
 	tx, err := txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount:        &txnbuild.SimpleAccount{AccountID: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4"},
