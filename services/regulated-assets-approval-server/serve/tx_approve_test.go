@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -11,11 +12,11 @@ import (
 
 func TestTxApproveHandler_isRejected(t *testing.T) {
 	ctx := context.Background()
-
+	distAccKeyPair := keypair.MustRandom()
 	req := txApproveRequest{
 		Transaction: "",
 	}
-	rejectedResponse, err := txApproveHandler{}.isRejected(ctx, req)
+	rejectedResponse, err := txApproveHandler{DistributionAccount: distAccKeyPair.Address()}.isRejected(ctx, req)
 	require.NoError(t, err)
 	wantRejectedResponse := txApproveResponse{
 		Status:  Rejected,
@@ -37,38 +38,39 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 	}
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
 	// Test if a "fee bump" transaction fails
+	kp01 := keypair.MustRandom()
+	kp02 := keypair.MustRandom()
 	tx, err := txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
-			SourceAccount:        &txnbuild.SimpleAccount{AccountID: "GD7CGJSJ5OBOU5KOP2UQDH3MPY75UTEY27HVV5XPSL2X6DJ2VGTOSXEU"},
+			SourceAccount:        &txnbuild.SimpleAccount{AccountID: kp01.Address()},
 			IncrementSequenceNum: true,
 			Operations: []txnbuild.Operation{
-				&txnbuild.SetOptions{
-					Signer: &txnbuild.Signer{
-						Address: "GD7CGJSJ5OBOU5KOP2UQDH3MPY75UTEY27HVV5XPSL2X6DJ2VGTOSXEU",
-						Weight:  20,
-					},
+				&txnbuild.Payment{
+					Destination: kp02.Address(),
+					Amount:      "1",
+					Asset:       txnbuild.NativeAsset{},
 				},
 			},
 			BaseFee:    txnbuild.MinBaseFee,
-			Timebounds: txnbuild.NewTimebounds(0, 1),
+			Timebounds: txnbuild.NewInfiniteTimeout(),
 		},
 	)
 	require.NoError(t, err)
 	feeBumpTx, err := txnbuild.NewFeeBumpTransaction(
 		txnbuild.FeeBumpTransactionParams{
 			Inner:      tx,
-			FeeAccount: "GD7CGJSJ5OBOU5KOP2UQDH3MPY75UTEY27HVV5XPSL2X6DJ2VGTOSXEU",
+			FeeAccount: kp02.Address(),
 			BaseFee:    2 * txnbuild.MinBaseFee,
 		},
 	)
 	require.NoError(t, err)
-	txEnc, err := feeBumpTx.Base64()
+	feeBumpTxEnc, err := feeBumpTx.Base64()
 	require.NoError(t, err)
-	t.Log("Tx:", txEnc)
+	t.Log("Tx:", feeBumpTxEnc)
 	req = txApproveRequest{
-		Transaction: txEnc,
+		Transaction: feeBumpTxEnc,
 	}
-	rejectedResponse, err = txApproveHandler{}.isRejected(ctx, req)
+	rejectedResponse, err = txApproveHandler{DistributionAccount: distAccKeyPair.Address()}.isRejected(ctx, req)
 	require.EqualError(t, err, "Transaction is not a simple transaction.")
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
 	// 	tx, err := txnbuild.NewTransaction(
