@@ -23,6 +23,13 @@ func (c *ServeCommand) Command() *cobra.Command {
 			Required:  true,
 		},
 		{
+			Name:      "distribution-account-id",
+			Usage:     "Public id of the asset distributor's stellar account.",
+			OptType:   types.String,
+			ConfigKey: &opts.DistributionAccount,
+			Required:  true,
+		},
+		{
 			Name:      "asset-code",
 			Usage:     "The code of the regulated asset",
 			OptType:   types.String,

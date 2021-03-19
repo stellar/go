@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stellar/go/txnbuild"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -29,11 +30,46 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 		Transaction: "BADXDRTRANSACTIONENVELOPE",
 	}
 	rejectedResponse, err = txApproveHandler{}.isRejected(ctx, req)
-	require.NoError(t, err)
+	require.EqualError(t, err, "Parsing transaction failed.")
 	wantRejectedResponse = txApproveResponse{
 		Status:  Rejected,
 		Message: "Invalid parameter \"tx\"",
 	}
+	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
+	// Test if a "fee bump" transaction fails
+	tx, err := txnbuild.NewTransaction(
+		txnbuild.TransactionParams{
+			SourceAccount:        &txnbuild.SimpleAccount{AccountID: "GD7CGJSJ5OBOU5KOP2UQDH3MPY75UTEY27HVV5XPSL2X6DJ2VGTOSXEU"},
+			IncrementSequenceNum: true,
+			Operations: []txnbuild.Operation{
+				&txnbuild.SetOptions{
+					Signer: &txnbuild.Signer{
+						Address: "GD7CGJSJ5OBOU5KOP2UQDH3MPY75UTEY27HVV5XPSL2X6DJ2VGTOSXEU",
+						Weight:  20,
+					},
+				},
+			},
+			BaseFee:    txnbuild.MinBaseFee,
+			Timebounds: txnbuild.NewTimebounds(0, 1),
+		},
+	)
+	require.NoError(t, err)
+	feeBumpTx, err := txnbuild.NewFeeBumpTransaction(
+		txnbuild.FeeBumpTransactionParams{
+			Inner:      tx,
+			FeeAccount: "GD7CGJSJ5OBOU5KOP2UQDH3MPY75UTEY27HVV5XPSL2X6DJ2VGTOSXEU",
+			BaseFee:    2 * txnbuild.MinBaseFee,
+		},
+	)
+	require.NoError(t, err)
+	txEnc, err := feeBumpTx.Base64()
+	require.NoError(t, err)
+	t.Log("Tx:", txEnc)
+	req = txApproveRequest{
+		Transaction: txEnc,
+	}
+	rejectedResponse, err = txApproveHandler{}.isRejected(ctx, req)
+	require.EqualError(t, err, "Transaction is not a simple transaction.")
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
 	// 	tx, err := txnbuild.NewTransaction(
 	// 		txnbuild.TransactionParams{
