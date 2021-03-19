@@ -13,6 +13,12 @@ import (
 func TestTxApproveHandler_isRejected(t *testing.T) {
 	ctx := context.Background()
 	distAccKeyPair := keypair.MustRandom()
+	issuerAccKeyPair := keypair.MustRandom()
+	assetGOAT := txnbuild.CreditAsset{
+		Code:   "GOAT",
+		Issuer: issuerAccKeyPair.Address(),
+	}
+
 	req := txApproveRequest{
 		Transaction: "",
 	}
@@ -48,7 +54,7 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 				&txnbuild.Payment{
 					Destination: kp02.Address(),
 					Amount:      "1",
-					Asset:       txnbuild.NativeAsset{},
+					Asset:       assetGOAT,
 				},
 			},
 			BaseFee:    txnbuild.MinBaseFee,
@@ -73,29 +79,22 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 	rejectedResponse, err = txApproveHandler{DistributionAccount: distAccKeyPair.Address()}.isRejected(ctx, req)
 	require.EqualError(t, err, "Transaction is not a simple transaction.")
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
-	// 	tx, err := txnbuild.NewTransaction(
-	// 		txnbuild.TransactionParams{
-	// 			SourceAccount:        &txnbuild.SimpleAccount{AccountID: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4"},
-	// 			IncrementSequenceNum: true,
-	// 			Operations: []txnbuild.Operation{
-	// 				&txnbuild.SetOptions{
-	// 					Signer: &txnbuild.Signer{
-	// 						Address: "GD7CGJSJ5OBOU5KOP2UQDH3MPY75UTEY27HVV5XPSL2X6DJ2VGTOSXEU",
-	// 						Weight:  20,
-	// 					},
-	// 				},
-	// 			},
-	// 			BaseFee:    txnbuild.MinBaseFee,
-	// 			Timebounds: txnbuild.NewTimebounds(0, 1),
-	// 		},
-	// 	)
-	// 	require.NoError(t, err)
-	// 	txEnc, err := tx.Base64()
-	// 	require.NoError(t, err)
-	// 	t.Log("Tx:", txEnc)
-	// 	req := `{
-	// 	"tx": "` + txEnc + `"
-	// }`
+	tx, err = txnbuild.NewTransaction(
+		txnbuild.TransactionParams{
+			SourceAccount:        &txnbuild.SimpleAccount{AccountID: distAccKeyPair.Address()},
+			IncrementSequenceNum: true,
+			Operations: []txnbuild.Operation{
+				&txnbuild.Payment{
+					Destination: kp01.Address(),
+					Amount:      "1",
+					Asset:       assetGOAT,
+				},
+			},
+			BaseFee:    txnbuild.MinBaseFee,
+			Timebounds: txnbuild.NewInfiniteTimeout(),
+		},
+	)
+	require.NoError(t, err)
 }
 
 //! Mute until TestTxApproveHandler_isRejected is complete
