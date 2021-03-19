@@ -97,7 +97,7 @@ func (h txApproveHandler) isRejected(ctx context.Context, in txApproveRequest) (
 		}, NewHTTPError(http.StatusBadRequest, `Transaction sourceAccount the same as the server distribution account.`)
 
 	}
-	return return &txApproveResponse{
+	return &txApproveResponse{
 		Status:  Rejected,
 		Message: "Not implemented.",
 	}, NewHTTPError(http.StatusBadRequest, `Not implemented.`)
