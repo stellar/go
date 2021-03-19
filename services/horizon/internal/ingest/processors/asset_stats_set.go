@@ -136,7 +136,6 @@ func (s AssetStatSet) AddDelta(asset xdr.Asset, deltaBalances map[xdr.Uint32]int
 		s[key] = current
 	}
 
-	// TODO: Do we need to handle clawback authorized here?
 	for k, v := range deltaAccounts {
 		flags := xdr.TrustLineFlags(k)
 		if flags.IsAuthorized() {
@@ -148,7 +147,6 @@ func (s AssetStatSet) AddDelta(asset xdr.Asset, deltaBalances map[xdr.Uint32]int
 		}
 	}
 
-	// TODO: Do we need to handle clawback authorized here?
 	for k, v := range deltaBalances {
 		flags := xdr.TrustLineFlags(k)
 		bigV := big.NewInt(v)
