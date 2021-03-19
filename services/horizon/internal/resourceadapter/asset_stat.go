@@ -28,7 +28,10 @@ func PopulateAssetStat(
 	if err != nil {
 		return errors.Wrap(err, "Invalid amount in PopulateAssetStat")
 	}
-	res.Balances = protocol.AssetStatBalances(row.Balances)
+	err = populateAssetStatBalances(&res.Balances, row.Balances)
+	if err != nil {
+		return err
+	}
 	res.NumAccounts = row.NumAccounts
 	flags := int8(issuer.Flags)
 	res.Flags = protocol.AccountFlags{
@@ -46,4 +49,23 @@ func PopulateAssetStat(
 	}
 	res.Links.Toml = hal.NewLink(toml)
 	return
+}
+
+func populateAssetStatBalances(res *protocol.AssetStatBalances, row history.ExpAssetStatBalances) (err error) {
+	res.Authorized, err = amount.IntStringToAmount(row.Authorized)
+	if err != nil {
+		return errors.Wrapf(err, "Invalid amount in PopulateAssetStatBalances: %q", row.Authorized)
+	}
+
+	res.AuthorizedToMaintainLiabilities, err = amount.IntStringToAmount(row.AuthorizedToMaintainLiabilities)
+	if err != nil {
+		return errors.Wrapf(err, "Invalid amount in PopulateAssetStatBalances: %q", row.AuthorizedToMaintainLiabilities)
+	}
+
+	res.Unauthorized, err = amount.IntStringToAmount(row.Unauthorized)
+	if err != nil {
+		return errors.Wrapf(err, "Invalid amount in PopulateAssetStatBalances: %q", row.Unauthorized)
+	}
+
+	return nil
 }
