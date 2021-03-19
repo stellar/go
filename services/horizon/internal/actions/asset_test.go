@@ -5,6 +5,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/protocols/horizon/base"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
@@ -311,23 +313,12 @@ func TestAssetStats(t *testing.T) {
 		t.Run(testCase.name, func(t *testing.T) {
 			r := makeRequest(t, testCase.queryParams, map[string]string{}, q.Session)
 			results, err := handler.GetResourcePage(httptest.NewRecorder(), r)
-			if err != nil {
-				t.Fatalf("unexpected error %v", err)
-			}
+			assert.NoError(t, err)
 
-			if len(results) != len(testCase.expected) {
-				t.Fatalf(
-					"expectes results to have length %v but got %v",
-					len(results),
-					len(testCase.expected),
-				)
-			}
-
+			assert.Len(t, results, len(testCase.expected))
 			for i, item := range results {
 				assetStat := item.(horizon.AssetStat)
-				if assetStat != testCase.expected[i] {
-					t.Fatalf("expected %v but got %v", testCase.expected[i], assetStat)
-				}
+				assert.Equal(t, testCase.expected[i], assetStat)
 			}
 		})
 	}
