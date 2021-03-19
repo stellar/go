@@ -5,6 +5,7 @@ package ingest
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"io"
 	"testing"
 
@@ -15,6 +16,7 @@ import (
 	"github.com/stellar/go/historyarchive"
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/ingest/ledgerbackend"
+	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/ingest/processors"
@@ -432,4 +434,48 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 		next,
 	)
 	clonedQ.AssertExpectations(s.T())
+}
+
+func (s *VerifyRangeStateTestSuite) TestVerifyFailsWhenAssetStatsMismatch() {
+	set := processors.AssetStatSet{}
+
+	trustLineIssuer := xdr.MustAddress("GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
+	set.Add(xdr.TrustLineEntry{
+		AccountId: xdr.MustAddress(keypair.MustRandom().Address()),
+		Balance:   123,
+		Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()),
+		Flags:     xdr.Uint32(xdr.TrustLineFlagsAuthorizedToMaintainLiabilitiesFlag),
+	})
+
+	stat := history.ExpAssetStat{
+		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
+		AssetCode:   "EUR",
+		AssetIssuer: trustLineIssuer.Address(),
+		Accounts: history.ExpAssetStatAccounts{
+			Unauthorized: 1,
+		},
+		Balances: history.ExpAssetStatBalances{
+			Authorized:                      "0",
+			AuthorizedToMaintainLiabilities: "0",
+			Unauthorized:                    "123",
+		},
+		Amount:      "0",
+		NumAccounts: 0,
+	}
+
+	s.historyQ.MockQAssetStats.On("GetAssetStats", "", "", db2.PageQuery{
+		Order: "asc",
+		Limit: assetStatsBatchSize,
+	}).Return([]history.ExpAssetStat{stat}, nil).Once()
+	s.historyQ.MockQAssetStats.On("GetAssetStats", "", "", db2.PageQuery{
+		Cursor: stat.PagingToken(),
+		Order:  "asc",
+		Limit:  assetStatsBatchSize,
+	}).Return([]history.ExpAssetStat{}, nil).Once()
+
+	err := checkAssetStats(set, s.historyQ)
+	s.Assert().EqualError(err, fmt.Sprintf("db asset stat with code EUR issuer %s does not match asset stat from HAS", trustLineIssuer.Address()))
+
+	// Satisfy the mock
+	s.historyQ.Rollback()
 }
