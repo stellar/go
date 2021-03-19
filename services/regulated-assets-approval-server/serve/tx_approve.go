@@ -4,6 +4,8 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/stellar/go/txnbuild"
+
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/http/httpdecode"
 	"github.com/stellar/go/support/log"
@@ -56,6 +58,13 @@ func (h txApproveHandler) isRejected(ctx context.Context, in txApproveRequest) (
 		return &txApproveResponse{
 			Status:  Rejected,
 			Message: "Missing parameter \"tx\"",
+		}, nil
+	}
+	_, err := txnbuild.TransactionFromXDR(in.Transaction)
+	if err != nil {
+		return &txApproveResponse{
+			Status:  Rejected,
+			Message: "Invalid parameter \"tx\"",
 		}, nil
 	}
 	return nil, nil
