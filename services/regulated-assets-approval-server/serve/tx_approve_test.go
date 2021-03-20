@@ -119,6 +119,40 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 		Message: "The source account is invalid.",
 	}
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
+
+	// Test if the transaction's operation sourceaccount the same as the server issuer account
+	tx, err = txnbuild.NewTransaction(
+		txnbuild.TransactionParams{
+			SourceAccount:        &txnbuild.SimpleAccount{AccountID: kp01.Address()},
+			IncrementSequenceNum: true,
+			Operations: []txnbuild.Operation{
+				&txnbuild.Payment{
+					SourceAccount: issuerAccKeyPair.Address(),
+					Destination:   kp01.Address(),
+					Amount:        "1",
+					Asset:         assetGOAT,
+				},
+			},
+			BaseFee:    txnbuild.MinBaseFee,
+			Timebounds: txnbuild.NewInfiniteTimeout(),
+		},
+	)
+	require.NoError(t, err)
+	txEnc, err = tx.Base64()
+	t.Log("Tx:", txEnc)
+	req = txApproveRequest{
+		Transaction: txEnc,
+	}
+	rejectedResponse, err = txApproveHandler{
+		issuerAccountSecret: issuerAccKeyPair.Seed(),
+		assetCode:           assetGOAT.GetCode(),
+	}.isRejected(ctx, req)
+	require.EqualError(t, err, "There is one or more unauthorized operations in the provided transaction.")
+	wantRejectedResponse = txApproveResponse{
+		Status:  Rejected,
+		Message: "There is one or more unauthorized operations in the provided transaction",
+	}
+	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
 }
 
 //! Mute until TestTxApproveHandler_isRejected is complete

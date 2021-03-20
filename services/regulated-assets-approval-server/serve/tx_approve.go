@@ -86,8 +86,7 @@ func (h txApproveHandler) isRejected(ctx context.Context, in txApproveRequest) (
 	}
 	log.Ctx(ctx).Info(tx) //!DEBUG REMOVE
 
-	// Check that the transaction's source account and any operations it
-	// contains references only to this account.
+	// Check if transaction's sourceaccount is the same as the server issuer account.
 	issuerKP, err := keypair.Parse(h.issuerAccountSecret)
 	if err != nil {
 		log.Ctx(ctx).Error(errors.Wrap(err, "Parsing issuer secret failed."))
@@ -107,6 +106,23 @@ func (h txApproveHandler) isRejected(ctx context.Context, in txApproveRequest) (
 			Message: "The source account is invalid.",
 		}, NewHTTPError(http.StatusBadRequest, `Transaction sourceAccount the same as the server issuer account.`)
 
+	}
+
+	// Check if transaction's operation(s)' sourceaccount is the same as the server issuer account.
+	for _, op := range tx.Operations() {
+		opSourceAccount := op.GetSourceAccount()
+		if opSourceAccount == "" {
+			continue
+		}
+		if op.GetSourceAccount() == issuerKP.Address() {
+			log.Ctx(ctx).Error(errors.Wrapf(err,
+				"Unauthorized operation from %s in the provided transaction",
+				op.GetSourceAccount()))
+			return &txApproveResponse{
+				Status:  Rejected,
+				Message: "There is one or more unauthorized operations in the provided transaction",
+			}, NewHTTPError(http.StatusBadRequest, `There is one or more unauthorized operations in the provided transaction.`)
+		}
 	}
 
 	return &txApproveResponse{
