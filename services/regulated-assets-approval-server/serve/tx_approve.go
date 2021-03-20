@@ -65,6 +65,7 @@ func (h txApproveHandler) isRejected(ctx context.Context, in txApproveRequest) (
 			Message: "Missing parameter \"tx\"",
 		}, nil
 	}
+
 	// Decode the request transaction.
 	parsed, err := txnbuild.TransactionFromXDR(in.Transaction)
 	if err != nil {
@@ -88,6 +89,13 @@ func (h txApproveHandler) isRejected(ctx context.Context, in txApproveRequest) (
 	// Check that the transaction's source account and any operations it
 	// contains references only to this account.
 	issuerKP, err := keypair.Parse(h.issuerAccountSecret)
+	if err != nil {
+		log.Ctx(ctx).Error(errors.Wrap(err, "Parsing issuer secret failed."))
+		return &txApproveResponse{
+			Status:  Rejected,
+			Message: "Internal Error",
+		}, NewHTTPError(http.StatusBadRequest, `Parsing issuer secret failed.`)
+	}
 	if tx.SourceAccount().AccountID == issuerKP.Address() {
 		log.Ctx(ctx).Error(errors.Wrapf(err,
 			"Transaction %s sourceAccount %s the same as the server issuer account %s",
@@ -100,6 +108,7 @@ func (h txApproveHandler) isRejected(ctx context.Context, in txApproveRequest) (
 		}, NewHTTPError(http.StatusBadRequest, `Transaction sourceAccount the same as the server issuer account.`)
 
 	}
+
 	return &txApproveResponse{
 		Status:  Rejected,
 		Message: "Not implemented.",

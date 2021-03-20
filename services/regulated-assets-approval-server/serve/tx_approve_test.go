@@ -17,7 +17,7 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 		Code:   "GOAT",
 		Issuer: issuerAccKeyPair.Address(),
 	}
-
+	// Test if no transaction is submitted.
 	req := txApproveRequest{
 		Transaction: "",
 	}
@@ -32,10 +32,7 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 	}
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
 
-	wantRejectedResponse = txApproveResponse{
-		Status:  Rejected,
-		Message: "Missing parameter \"tx\"",
-	}
+	// Test if can't parse XDR.
 	req = txApproveRequest{
 		Transaction: "BADXDRTRANSACTIONENVELOPE",
 	}
@@ -49,7 +46,8 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 		Message: "Invalid parameter \"tx\"",
 	}
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
-	// Test if a "fee bump" transaction fails
+
+	// Test if a non generic transaction fails, same result as malformed XDR.
 	kp01 := keypair.MustRandom()
 	kp02 := keypair.MustRandom()
 	tx, err := txnbuild.NewTransaction(
@@ -87,7 +85,9 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 		assetCode:           assetGOAT.GetCode(),
 	}.isRejected(ctx, req)
 	require.EqualError(t, err, "Transaction is not a simple transaction.")
-	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
+	assert.Equal(t, &wantRejectedResponse, rejectedResponse) // wantRejectedResponse is identical to "if can't parse XDR".
+
+	// Test if the transaction sourceAccount the same as the server issuer account
 	tx, err = txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount:        &txnbuild.SimpleAccount{AccountID: issuerAccKeyPair.Address()},
