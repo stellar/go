@@ -4,6 +4,8 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/stellar/go/keypair"
+
 	"github.com/stellar/go/txnbuild"
 
 	"github.com/stellar/go/support/errors"
@@ -17,7 +19,8 @@ const (
 )
 
 type txApproveHandler struct {
-	DistributionAccount string
+	issuerAccountSecret string
+	assetCode           string
 }
 
 type txApproveRequest struct {
@@ -72,7 +75,6 @@ func (h txApproveHandler) isRejected(ctx context.Context, in txApproveRequest) (
 		}, NewHTTPError(http.StatusBadRequest, `Parsing transaction failed.`)
 	}
 	log.Ctx(ctx).Info(parsed) //!DEBUG REMOVE
-	//! From services/recoverysigner/internal/serve/account_sign.go 109,17
 	tx, ok := parsed.Transaction()
 	if !ok {
 		log.Ctx(ctx).Error(errors.Wrapf(err, "Transaction %s is not a simple transaction.", in.Transaction))
@@ -85,16 +87,17 @@ func (h txApproveHandler) isRejected(ctx context.Context, in txApproveRequest) (
 
 	// Check that the transaction's source account and any operations it
 	// contains references only to this account.
-	if tx.SourceAccount().AccountID == h.DistributionAccount {
+	issuerKP, err := keypair.Parse(h.issuerAccountSecret)
+	if tx.SourceAccount().AccountID == issuerKP.Address() {
 		log.Ctx(ctx).Error(errors.Wrapf(err,
-			"Transaction %s sourceAccount %s the same as the server distribution account %s",
+			"Transaction %s sourceAccount %s the same as the server issuer account %s",
 			in.Transaction,
 			tx.SourceAccount().AccountID,
-			h.DistributionAccount))
+			issuerKP.Address()))
 		return &txApproveResponse{
 			Status:  Rejected,
 			Message: "The source account is invalid.",
-		}, NewHTTPError(http.StatusBadRequest, `Transaction sourceAccount the same as the server distribution account.`)
+		}, NewHTTPError(http.StatusBadRequest, `Transaction sourceAccount the same as the server issuer account.`)
 
 	}
 	return &txApproveResponse{

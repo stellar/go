@@ -12,7 +12,6 @@ import (
 
 func TestTxApproveHandler_isRejected(t *testing.T) {
 	ctx := context.Background()
-	distAccKeyPair := keypair.MustRandom()
 	issuerAccKeyPair := keypair.MustRandom()
 	assetGOAT := txnbuild.CreditAsset{
 		Code:   "GOAT",
@@ -22,13 +21,17 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 	req := txApproveRequest{
 		Transaction: "",
 	}
-	rejectedResponse, err := txApproveHandler{DistributionAccount: distAccKeyPair.Address()}.isRejected(ctx, req)
+	rejectedResponse, err := txApproveHandler{
+		issuerAccountSecret: issuerAccKeyPair.Seed(),
+		assetCode:           assetGOAT.GetCode(),
+	}.isRejected(ctx, req)
 	require.NoError(t, err)
 	wantRejectedResponse := txApproveResponse{
 		Status:  Rejected,
 		Message: "Missing parameter \"tx\"",
 	}
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
+
 	wantRejectedResponse = txApproveResponse{
 		Status:  Rejected,
 		Message: "Missing parameter \"tx\"",
@@ -36,7 +39,10 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 	req = txApproveRequest{
 		Transaction: "BADXDRTRANSACTIONENVELOPE",
 	}
-	rejectedResponse, err = txApproveHandler{}.isRejected(ctx, req)
+	rejectedResponse, err = txApproveHandler{
+		issuerAccountSecret: issuerAccKeyPair.Seed(),
+		assetCode:           assetGOAT.GetCode(),
+	}.isRejected(ctx, req)
 	require.EqualError(t, err, "Parsing transaction failed.")
 	wantRejectedResponse = txApproveResponse{
 		Status:  Rejected,
@@ -76,12 +82,15 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 	req = txApproveRequest{
 		Transaction: feeBumpTxEnc,
 	}
-	rejectedResponse, err = txApproveHandler{DistributionAccount: distAccKeyPair.Address()}.isRejected(ctx, req)
+	rejectedResponse, err = txApproveHandler{
+		issuerAccountSecret: issuerAccKeyPair.Seed(),
+		assetCode:           assetGOAT.GetCode(),
+	}.isRejected(ctx, req)
 	require.EqualError(t, err, "Transaction is not a simple transaction.")
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
 	tx, err = txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
-			SourceAccount:        &txnbuild.SimpleAccount{AccountID: distAccKeyPair.Address()},
+			SourceAccount:        &txnbuild.SimpleAccount{AccountID: issuerAccKeyPair.Address()},
 			IncrementSequenceNum: true,
 			Operations: []txnbuild.Operation{
 				&txnbuild.Payment{
@@ -100,14 +109,16 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 	req = txApproveRequest{
 		Transaction: txEnc,
 	}
-	rejectedResponse, err = txApproveHandler{DistributionAccount: distAccKeyPair.Address()}.isRejected(ctx, req)
-	require.EqualError(t, err, "Transaction sourceAccount the same as the server distribution account.")
+	rejectedResponse, err = txApproveHandler{
+		issuerAccountSecret: issuerAccKeyPair.Seed(),
+		assetCode:           assetGOAT.GetCode(),
+	}.isRejected(ctx, req)
+	require.EqualError(t, err, "Transaction sourceAccount the same as the server issuer account.")
 	wantRejectedResponse = txApproveResponse{
 		Status:  Rejected,
 		Message: "The source account is invalid.",
 	}
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
-
 }
 
 //! Mute until TestTxApproveHandler_isRejected is complete
