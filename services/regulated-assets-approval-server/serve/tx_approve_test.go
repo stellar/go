@@ -153,6 +153,40 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 		Message: "There is one or more unauthorized operations in the provided transaction",
 	}
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
+
+	// Test "not implemented"
+	tx, err = txnbuild.NewTransaction(
+		txnbuild.TransactionParams{
+			SourceAccount:        &txnbuild.SimpleAccount{AccountID: kp01.Address()},
+			IncrementSequenceNum: true,
+			Operations: []txnbuild.Operation{
+				&txnbuild.Payment{
+					SourceAccount: kp01.Address(),
+					Destination:   kp02.Address(),
+					Amount:        "1",
+					Asset:         assetGOAT,
+				},
+			},
+			BaseFee:    txnbuild.MinBaseFee,
+			Timebounds: txnbuild.NewInfiniteTimeout(),
+		},
+	)
+	require.NoError(t, err)
+	txEnc, err = tx.Base64()
+	t.Log("Tx:", txEnc)
+	req = txApproveRequest{
+		Transaction: txEnc,
+	}
+	rejectedResponse, err = txApproveHandler{
+		issuerAccountSecret: issuerAccKeyPair.Seed(),
+		assetCode:           assetGOAT.GetCode(),
+	}.isRejected(ctx, req)
+	require.EqualError(t, err, "Not implemented.")
+	wantRejectedResponse = txApproveResponse{
+		Status:  Rejected,
+		Message: "Not implemented.",
+	}
+	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
 }
 
 //! Mute until TestTxApproveHandler_isRejected is complete
