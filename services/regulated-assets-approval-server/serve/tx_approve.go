@@ -56,10 +56,9 @@ func (h txApproveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			httpErr = serverError
 		}
 		httpErr.Render(w)
-		return
 	}
 	if rejectedResponse != nil {
-		httpjson.Render(w, rejectedResponse, httpjson.JSON)
+		httpjson.RenderStatus(w, 400, rejectedResponse, httpjson.JSON)
 	}
 }
 
@@ -78,7 +77,7 @@ func (h txApproveHandler) isRejected(ctx context.Context, in txApproveRequest) (
 		return &txApproveResponse{
 			Status:  RejectedStatus,
 			Message: InvalidParamMsg,
-		}, NewHTTPError(http.StatusBadRequest, `Parsing transaction failed.`)
+		}, nil
 	}
 	tx, ok := parsed.Transaction()
 	if !ok {
@@ -86,7 +85,7 @@ func (h txApproveHandler) isRejected(ctx context.Context, in txApproveRequest) (
 		return &txApproveResponse{
 			Status:  RejectedStatus,
 			Message: InvalidParamMsg,
-		}, NewHTTPError(http.StatusBadRequest, `Transaction is not a simple transaction.`)
+		}, nil
 	}
 
 	// Check if transaction's sourceaccount is the same as the server issuer account.
@@ -107,7 +106,7 @@ func (h txApproveHandler) isRejected(ctx context.Context, in txApproveRequest) (
 		return &txApproveResponse{
 			Status:  RejectedStatus,
 			Message: InvalidSrcAccMsg,
-		}, NewHTTPError(http.StatusBadRequest, `Transaction sourceAccount the same as the server issuer account.`)
+		}, nil
 
 	}
 
@@ -124,12 +123,12 @@ func (h txApproveHandler) isRejected(ctx context.Context, in txApproveRequest) (
 			return &txApproveResponse{
 				Status:  RejectedStatus,
 				Message: UnauthorizedOpMsg,
-			}, NewHTTPError(http.StatusBadRequest, UnauthorizedOpMsg)
+			}, nil
 		}
 	}
 
 	return &txApproveResponse{
 		Status:  RejectedStatus,
 		Message: NotImplementedMsg,
-	}, NewHTTPError(http.StatusBadRequest, NotImplementedMsg)
+	}, nil
 }
