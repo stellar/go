@@ -5,13 +5,11 @@ import (
 	"net/http"
 
 	"github.com/stellar/go/keypair"
-
-	"github.com/stellar/go/txnbuild"
-
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/http/httpdecode"
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/support/render/httpjson"
+	"github.com/stellar/go/txnbuild"
 )
 
 const (
