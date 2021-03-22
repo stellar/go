@@ -221,32 +221,21 @@ func (p *AssetStatsProcessor) adjustAssetStat(
 ) error {
 	deltaAccounts := map[xdr.Uint32]int32{}
 	deltaBalances := map[xdr.Uint32]int64{}
-	var trustline xdr.TrustLineEntry
 
-	switch {
-	case preTrustline == nil && postTrustline != nil:
-		// adding a trustline
-		trustline = *postTrustline
-		deltaAccounts[trustline.Flags] = 1
-		deltaBalances[trustline.Flags] = int64(postTrustline.Balance)
-	case preTrustline != nil && postTrustline != nil:
-		// updating a trustline
-		trustline = *postTrustline
-		if preTrustline.Flags == postTrustline.Flags {
-			deltaBalances[trustline.Flags] = int64(postTrustline.Balance - preTrustline.Balance)
-		} else {
-			deltaAccounts[preTrustline.Flags] = -1
-			deltaBalances[preTrustline.Flags] = int64(-preTrustline.Balance)
-			deltaAccounts[postTrustline.Flags] = 1
-			deltaBalances[postTrustline.Flags] = int64(postTrustline.Balance)
-		}
-	case preTrustline != nil && postTrustline == nil:
-		// removing a trustline
-		trustline = *preTrustline
-		deltaAccounts[trustline.Flags] = -1
-		deltaBalances[trustline.Flags] = int64(-preTrustline.Balance)
-	default:
+	if preTrustline == nil && postTrustline == nil {
 		return ingest.NewStateError(errors.New("both pre and post trustlines cannot be nil"))
+	}
+
+	var trustline xdr.TrustLineEntry
+	if preTrustline != nil {
+		trustline = *preTrustline
+		deltaAccounts[preTrustline.Flags] -= 1
+		deltaBalances[preTrustline.Flags] -= int64(preTrustline.Balance)
+	}
+	if postTrustline != nil {
+		trustline = *postTrustline
+		deltaAccounts[postTrustline.Flags] += 1
+		deltaBalances[postTrustline.Flags] += int64(postTrustline.Balance)
 	}
 
 	err := p.assetStatSet.AddDelta(trustline.Asset, deltaBalances, deltaAccounts)
