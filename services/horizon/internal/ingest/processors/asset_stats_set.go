@@ -17,7 +17,7 @@ type assetStatKey struct {
 type assetStatValue struct {
 	assetStatKey
 	balances assetStatBalances
-	accounts assetStatAccounts
+	accounts history.ExpAssetStatAccounts
 }
 
 type assetStatBalances struct {
@@ -68,19 +68,13 @@ func (a assetStatBalances) ConvertToHistoryObject() history.ExpAssetStatBalances
 	}
 }
 
-type assetStatAccounts struct {
-	Authorized                      int32
-	AuthorizedToMaintainLiabilities int32
-	Unauthorized                    int32
-}
-
 func (value assetStatValue) ConvertToHistoryObject() history.ExpAssetStat {
 	balances := value.balances.ConvertToHistoryObject()
 	return history.ExpAssetStat{
 		AssetType:   value.assetType,
 		AssetCode:   value.assetCode,
 		AssetIssuer: value.assetIssuer,
-		Accounts:    history.ExpAssetStatAccounts(value.accounts),
+		Accounts:    value.accounts,
 		Balances:    balances,
 		Amount:      balances.Authorized,
 		NumAccounts: value.accounts.Authorized,
