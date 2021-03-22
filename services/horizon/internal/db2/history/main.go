@@ -4,6 +4,8 @@ package history
 
 import (
 	"database/sql"
+	"database/sql/driver"
+	"encoding/json"
 	"fmt"
 	"sync"
 	"time"
@@ -321,11 +323,13 @@ type Asset struct {
 
 // ExpAssetStat is a row in the exp_asset_stats table representing the stats per Asset
 type ExpAssetStat struct {
-	AssetType   xdr.AssetType `db:"asset_type"`
-	AssetCode   string        `db:"asset_code"`
-	AssetIssuer string        `db:"asset_issuer"`
-	Amount      string        `db:"amount"`
-	NumAccounts int32         `db:"num_accounts"`
+	AssetType   xdr.AssetType        `db:"asset_type"`
+	AssetCode   string               `db:"asset_code"`
+	AssetIssuer string               `db:"asset_issuer"`
+	Accounts    ExpAssetStatAccounts `db:"accounts"`
+	Balances    ExpAssetStatBalances `db:"balances"`
+	Amount      string               `db:"amount"`
+	NumAccounts int32                `db:"num_accounts"`
 }
 
 // PagingToken returns a cursor for this asset stat
@@ -336,6 +340,58 @@ func (e ExpAssetStat) PagingToken() string {
 		e.AssetIssuer,
 		xdr.AssetTypeToString[e.AssetType],
 	)
+}
+
+// ExpAssetStatAccounts represents the summarized acount numbers for a single Asset
+type ExpAssetStatAccounts struct {
+	Authorized                      int32 `json:"authorized"`
+	AuthorizedToMaintainLiabilities int32 `json:"authorized_to_maintain_liabilities"`
+	Unauthorized                    int32 `json:"unauthorized"`
+}
+
+func (e ExpAssetStatAccounts) Value() (driver.Value, error) {
+	return json.Marshal(e)
+}
+
+func (e *ExpAssetStatAccounts) Scan(src interface{}) error {
+	source, ok := src.([]byte)
+	if !ok {
+		return errors.New("Type assertion .([]byte) failed.")
+	}
+
+	return json.Unmarshal(source, &e)
+}
+
+func (a ExpAssetStatAccounts) Add(b ExpAssetStatAccounts) ExpAssetStatAccounts {
+	return ExpAssetStatAccounts{
+		Authorized:                      a.Authorized + b.Authorized,
+		AuthorizedToMaintainLiabilities: a.AuthorizedToMaintainLiabilities + b.AuthorizedToMaintainLiabilities,
+		Unauthorized:                    a.Unauthorized + b.Unauthorized,
+	}
+}
+
+func (a ExpAssetStatAccounts) IsZero() bool {
+	return a.Authorized == 0 && a.AuthorizedToMaintainLiabilities == 0 && a.Unauthorized == 0
+}
+
+// ExpAssetStatBalances represents the summarized balances for a single Asset
+type ExpAssetStatBalances struct {
+	Authorized                      string `json:"authorized"`
+	AuthorizedToMaintainLiabilities string `json:"authorized_to_maintain_liabilities"`
+	Unauthorized                    string `json:"unauthorized"`
+}
+
+func (e ExpAssetStatBalances) Value() (driver.Value, error) {
+	return json.Marshal(e)
+}
+
+func (e *ExpAssetStatBalances) Scan(src interface{}) error {
+	source, ok := src.([]byte)
+	if !ok {
+		return errors.New("Type assertion .([]byte) failed.")
+	}
+
+	return json.Unmarshal(source, &e)
 }
 
 // QAssetStats defines exp_asset_stats related queries.

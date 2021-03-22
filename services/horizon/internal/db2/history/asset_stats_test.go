@@ -21,6 +21,16 @@ func TestInsertAssetStats(t *testing.T) {
 			AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
 			AssetIssuer: "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
 			AssetCode:   "USD",
+			Accounts: ExpAssetStatAccounts{
+				Authorized:                      2,
+				AuthorizedToMaintainLiabilities: 3,
+				Unauthorized:                    4,
+			},
+			Balances: ExpAssetStatBalances{
+				Authorized:                      "1",
+				AuthorizedToMaintainLiabilities: "2",
+				Unauthorized:                    "3",
+			},
 			Amount:      "1",
 			NumAccounts: 2,
 		},
@@ -28,6 +38,16 @@ func TestInsertAssetStats(t *testing.T) {
 			AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum12,
 			AssetIssuer: "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
 			AssetCode:   "ETHER",
+			Accounts: ExpAssetStatAccounts{
+				Authorized:                      1,
+				AuthorizedToMaintainLiabilities: 3,
+				Unauthorized:                    4,
+			},
+			Balances: ExpAssetStatBalances{
+				Authorized:                      "23",
+				AuthorizedToMaintainLiabilities: "2",
+				Unauthorized:                    "3",
+			},
 			Amount:      "23",
 			NumAccounts: 1,
 		},
@@ -52,6 +72,16 @@ func TestInsertAssetStat(t *testing.T) {
 			AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
 			AssetIssuer: "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
 			AssetCode:   "USD",
+			Accounts: ExpAssetStatAccounts{
+				Authorized:                      2,
+				AuthorizedToMaintainLiabilities: 3,
+				Unauthorized:                    4,
+			},
+			Balances: ExpAssetStatBalances{
+				Authorized:                      "1",
+				AuthorizedToMaintainLiabilities: "2",
+				Unauthorized:                    "3",
+			},
 			Amount:      "1",
 			NumAccounts: 2,
 		},
@@ -59,6 +89,16 @@ func TestInsertAssetStat(t *testing.T) {
 			AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum12,
 			AssetIssuer: "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
 			AssetCode:   "ETHER",
+			Accounts: ExpAssetStatAccounts{
+				Authorized:                      1,
+				AuthorizedToMaintainLiabilities: 3,
+				Unauthorized:                    4,
+			},
+			Balances: ExpAssetStatBalances{
+				Authorized:                      "23",
+				AuthorizedToMaintainLiabilities: "2",
+				Unauthorized:                    "3",
+			},
 			Amount:      "23",
 			NumAccounts: 1,
 		},
@@ -85,6 +125,16 @@ func TestInsertAssetStatAlreadyExistsError(t *testing.T) {
 		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
 		AssetIssuer: "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
 		AssetCode:   "USD",
+		Accounts: ExpAssetStatAccounts{
+			Authorized:                      2,
+			AuthorizedToMaintainLiabilities: 3,
+			Unauthorized:                    4,
+		},
+		Balances: ExpAssetStatBalances{
+			Authorized:                      "1",
+			AuthorizedToMaintainLiabilities: "2",
+			Unauthorized:                    "3",
+		},
 		Amount:      "1",
 		NumAccounts: 2,
 	}
@@ -120,6 +170,16 @@ func TestUpdateAssetStatDoesNotExistsError(t *testing.T) {
 		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
 		AssetIssuer: "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
 		AssetCode:   "USD",
+		Accounts: ExpAssetStatAccounts{
+			Authorized:                      2,
+			AuthorizedToMaintainLiabilities: 3,
+			Unauthorized:                    4,
+		},
+		Balances: ExpAssetStatBalances{
+			Authorized:                      "1",
+			AuthorizedToMaintainLiabilities: "2",
+			Unauthorized:                    "3",
+		},
 		Amount:      "1",
 		NumAccounts: 2,
 	}
@@ -143,6 +203,16 @@ func TestUpdateStat(t *testing.T) {
 		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
 		AssetIssuer: "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
 		AssetCode:   "USD",
+		Accounts: ExpAssetStatAccounts{
+			Authorized:                      2,
+			AuthorizedToMaintainLiabilities: 3,
+			Unauthorized:                    4,
+		},
+		Balances: ExpAssetStatBalances{
+			Authorized:                      "1",
+			AuthorizedToMaintainLiabilities: "2",
+			Unauthorized:                    "3",
+		},
 		Amount:      "1",
 		NumAccounts: 2,
 	}
@@ -177,6 +247,16 @@ func TestGetAssetStatDoesNotExist(t *testing.T) {
 		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
 		AssetIssuer: "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
 		AssetCode:   "USD",
+		Accounts: ExpAssetStatAccounts{
+			Authorized:                      2,
+			AuthorizedToMaintainLiabilities: 3,
+			Unauthorized:                    4,
+		},
+		Balances: ExpAssetStatBalances{
+			Authorized:                      "1",
+			AuthorizedToMaintainLiabilities: "2",
+			Unauthorized:                    "3",
+		},
 		Amount:      "1",
 		NumAccounts: 2,
 	}
@@ -196,6 +276,16 @@ func TestRemoveAssetStat(t *testing.T) {
 		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
 		AssetIssuer: "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
 		AssetCode:   "USD",
+		Accounts: ExpAssetStatAccounts{
+			Authorized:                      2,
+			AuthorizedToMaintainLiabilities: 3,
+			Unauthorized:                    4,
+		},
+		Balances: ExpAssetStatBalances{
+			Authorized:                      "1",
+			AuthorizedToMaintainLiabilities: "2",
+			Unauthorized:                    "3",
+		},
 		Amount:      "1",
 		NumAccounts: 2,
 	}
@@ -320,6 +410,16 @@ func TestGetAssetStatsFiltersAndCursor(t *testing.T) {
 		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
 		AssetIssuer: "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
 		AssetCode:   "USD",
+		Accounts: ExpAssetStatAccounts{
+			Authorized:                      2,
+			AuthorizedToMaintainLiabilities: 3,
+			Unauthorized:                    4,
+		},
+		Balances: ExpAssetStatBalances{
+			Authorized:                      "1",
+			AuthorizedToMaintainLiabilities: "2",
+			Unauthorized:                    "3",
+		},
 		Amount:      "1",
 		NumAccounts: 2,
 	}
@@ -327,6 +427,16 @@ func TestGetAssetStatsFiltersAndCursor(t *testing.T) {
 		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum12,
 		AssetIssuer: "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
 		AssetCode:   "ETHER",
+		Accounts: ExpAssetStatAccounts{
+			Authorized:                      1,
+			AuthorizedToMaintainLiabilities: 3,
+			Unauthorized:                    4,
+		},
+		Balances: ExpAssetStatBalances{
+			Authorized:                      "23",
+			AuthorizedToMaintainLiabilities: "2",
+			Unauthorized:                    "3",
+		},
 		Amount:      "23",
 		NumAccounts: 1,
 	}
@@ -334,6 +444,16 @@ func TestGetAssetStatsFiltersAndCursor(t *testing.T) {
 		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
 		AssetIssuer: "GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2",
 		AssetCode:   "USD",
+		Accounts: ExpAssetStatAccounts{
+			Authorized:                      2,
+			AuthorizedToMaintainLiabilities: 3,
+			Unauthorized:                    4,
+		},
+		Balances: ExpAssetStatBalances{
+			Authorized:                      "1",
+			AuthorizedToMaintainLiabilities: "2",
+			Unauthorized:                    "3",
+		},
 		Amount:      "1",
 		NumAccounts: 2,
 	}
@@ -341,6 +461,16 @@ func TestGetAssetStatsFiltersAndCursor(t *testing.T) {
 		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
 		AssetIssuer: "GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2",
 		AssetCode:   "EUR",
+		Accounts: ExpAssetStatAccounts{
+			Authorized:                      3,
+			AuthorizedToMaintainLiabilities: 2,
+			Unauthorized:                    4,
+		},
+		Balances: ExpAssetStatBalances{
+			Authorized:                      "111",
+			AuthorizedToMaintainLiabilities: "2",
+			Unauthorized:                    "3",
+		},
 		Amount:      "111",
 		NumAccounts: 3,
 	}

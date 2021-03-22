@@ -40,21 +40,6 @@ func assertAllEquals(t *testing.T, set AssetStatSet, expected []history.ExpAsset
 	}
 }
 
-func TestAssetStatSetIgnoresUnauthorizedTrustlines(t *testing.T) {
-	set := AssetStatSet{}
-	err := set.Add(xdr.TrustLineEntry{
-		AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
-		Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()),
-		Balance:   1,
-	})
-	if err != nil {
-		t.Fatalf("unexpected error %v", err)
-	}
-	if all := set.All(); len(all) != 0 {
-		t.Fatalf("expected empty list but got %v", all)
-	}
-}
-
 func TestAddAndRemoveAssetStats(t *testing.T) {
 	set := AssetStatSet{}
 	eur := "EUR"
@@ -62,6 +47,14 @@ func TestAddAndRemoveAssetStats(t *testing.T) {
 		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
 		AssetCode:   eur,
 		AssetIssuer: trustLineIssuer.Address(),
+		Accounts: history.ExpAssetStatAccounts{
+			Authorized: 1,
+		},
+		Balances: history.ExpAssetStatBalances{
+			Authorized:                      "1",
+			AuthorizedToMaintainLiabilities: "0",
+			Unauthorized:                    "0",
+		},
 		Amount:      "1",
 		NumAccounts: 1,
 	}
@@ -87,7 +80,9 @@ func TestAddAndRemoveAssetStats(t *testing.T) {
 		t.Fatalf("unexpected error %v", err)
 	}
 
+	eurAssetStat.Balances.Authorized = "25"
 	eurAssetStat.Amount = "25"
+	eurAssetStat.Accounts.Authorized++
 	eurAssetStat.NumAccounts++
 	assertAllEquals(t, set, []history.ExpAssetStat{eurAssetStat})
 
@@ -113,19 +108,58 @@ func TestAddAndRemoveAssetStats(t *testing.T) {
 		t.Fatalf("unexpected error %v", err)
 	}
 
+	// Add an authorized_to_maintain_liabilities trust line
+	err = set.Add(xdr.TrustLineEntry{
+		AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
+		Asset:     xdr.MustNewCreditAsset(ether, trustLineIssuer.Address()),
+		Balance:   4,
+		Flags:     xdr.Uint32(xdr.TrustLineFlagsAuthorizedToMaintainLiabilitiesFlag),
+	})
+	if err != nil {
+		t.Fatalf("unexpected error %v", err)
+	}
+
+	// Add an unauthorized trust line
+	err = set.Add(xdr.TrustLineEntry{
+		AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
+		Asset:     xdr.MustNewCreditAsset(ether, trustLineIssuer.Address()),
+		Balance:   5,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error %v", err)
+	}
+
 	expected := []history.ExpAssetStat{
-		history.ExpAssetStat{
+		{
 			AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum12,
 			AssetCode:   ether,
 			AssetIssuer: trustLineIssuer.Address(),
+			Accounts: history.ExpAssetStatAccounts{
+				Authorized:                      1,
+				AuthorizedToMaintainLiabilities: 1,
+				Unauthorized:                    1,
+			},
+			Balances: history.ExpAssetStatBalances{
+				Authorized:                      "3",
+				AuthorizedToMaintainLiabilities: "4",
+				Unauthorized:                    "5",
+			},
 			Amount:      "3",
 			NumAccounts: 1,
 		},
 		eurAssetStat,
-		history.ExpAssetStat{
+		{
 			AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
 			AssetCode:   usd,
 			AssetIssuer: trustLineIssuer.Address(),
+			Accounts: history.ExpAssetStatAccounts{
+				Authorized: 1,
+			},
+			Balances: history.ExpAssetStatBalances{
+				Authorized:                      "10",
+				AuthorizedToMaintainLiabilities: "0",
+				Unauthorized:                    "0",
+			},
 			Amount:      "10",
 			NumAccounts: 1,
 		},
@@ -166,6 +200,14 @@ func TestOverflowAssetStatSet(t *testing.T) {
 		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
 		AssetCode:   eur,
 		AssetIssuer: trustLineIssuer.Address(),
+		Accounts: history.ExpAssetStatAccounts{
+			Authorized: 1,
+		},
+		Balances: history.ExpAssetStatBalances{
+			Authorized:                      "9223372036854775807",
+			AuthorizedToMaintainLiabilities: "0",
+			Unauthorized:                    "0",
+		},
 		Amount:      "9223372036854775807",
 		NumAccounts: 1,
 	}
@@ -191,6 +233,14 @@ func TestOverflowAssetStatSet(t *testing.T) {
 		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
 		AssetCode:   eur,
 		AssetIssuer: trustLineIssuer.Address(),
+		Accounts: history.ExpAssetStatAccounts{
+			Authorized: 2,
+		},
+		Balances: history.ExpAssetStatBalances{
+			Authorized:                      "18446744073709551614",
+			AuthorizedToMaintainLiabilities: "0",
+			Unauthorized:                    "0",
+		},
 		Amount:      "18446744073709551614",
 		NumAccounts: 2,
 	}
