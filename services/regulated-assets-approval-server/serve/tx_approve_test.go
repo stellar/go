@@ -82,7 +82,6 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 	require.NoError(t, err)
 	feeBumpTxEnc, err := feeBumpTx.Base64()
 	require.NoError(t, err)
-	t.Log("Tx:", feeBumpTxEnc)
 	req = txApproveRequest{
 		Transaction: feeBumpTxEnc,
 	}
@@ -111,7 +110,6 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 	)
 	require.NoError(t, err)
 	txEnc, err := tx.Base64()
-	t.Log("Tx:", txEnc)
 	req = txApproveRequest{
 		Transaction: txEnc,
 	}
@@ -145,7 +143,6 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 	)
 	require.NoError(t, err)
 	txEnc, err = tx.Base64()
-	t.Log("Tx:", txEnc)
 	req = txApproveRequest{
 		Transaction: txEnc,
 	}
@@ -179,7 +176,6 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 	)
 	require.NoError(t, err)
 	txEnc, err = tx.Base64()
-	t.Log("Tx:", txEnc)
 	req = txApproveRequest{
 		Transaction: txEnc,
 	}
@@ -282,7 +278,6 @@ func TestTxApproveHandler_serveHTTPJson(t *testing.T) {
 	require.NoError(t, err)
 	feeBumpTxEnc, err := feeBumpTx.Base64()
 	require.NoError(t, err)
-	t.Log("Tx:", feeBumpTxEnc)
 	req = `{
 		"tx": "` + feeBumpTxEnc + `"
 	}`
@@ -323,7 +318,6 @@ func TestTxApproveHandler_serveHTTPJson(t *testing.T) {
 	)
 	require.NoError(t, err)
 	txEnc, err := tx.Base64()
-	t.Log("Tx:", txEnc)
 	req = `{
 		"tx": "` + txEnc + `"
 	}`
@@ -365,7 +359,6 @@ func TestTxApproveHandler_serveHTTPJson(t *testing.T) {
 	)
 	require.NoError(t, err)
 	txEnc, err = tx.Base64()
-	t.Log("Tx:", txEnc)
 	req = `{
 		"tx": "` + txEnc + `"
 	}`
@@ -407,7 +400,6 @@ func TestTxApproveHandler_serveHTTPJson(t *testing.T) {
 	)
 	require.NoError(t, err)
 	txEnc, err = tx.Base64()
-	t.Log("Tx:", txEnc)
 	req = `{
 		"tx": "` + txEnc + `"
 	}`
@@ -518,7 +510,6 @@ func TestTxApproveHandler_serveHTTPForm(t *testing.T) {
 	require.NoError(t, err)
 	feeBumpTxEnc, err := feeBumpTx.Base64()
 	require.NoError(t, err)
-	t.Log("Tx:", feeBumpTxEnc)
 	req.Set("tx", feeBumpTxEnc)
 	r = httptest.NewRequest("POST", "/tx_approve", strings.NewReader(req.Encode()))
 	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -558,7 +549,6 @@ func TestTxApproveHandler_serveHTTPForm(t *testing.T) {
 	)
 	require.NoError(t, err)
 	txEnc, err := tx.Base64()
-	t.Log("Tx:", txEnc)
 	req.Set("tx", txEnc)
 	r = httptest.NewRequest("POST", "/tx_approve", strings.NewReader(req.Encode()))
 	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -599,7 +589,6 @@ func TestTxApproveHandler_serveHTTPForm(t *testing.T) {
 	)
 	require.NoError(t, err)
 	txEnc, err = tx.Base64()
-	t.Log("Tx:", txEnc)
 	req.Set("tx", txEnc)
 	r = httptest.NewRequest("POST", "/tx_approve", strings.NewReader(req.Encode()))
 	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -640,7 +629,6 @@ func TestTxApproveHandler_serveHTTPForm(t *testing.T) {
 	)
 	require.NoError(t, err)
 	txEnc, err = tx.Base64()
-	t.Log("Tx:", txEnc)
 	req.Set("tx", txEnc)
 	r = httptest.NewRequest("POST", "/tx_approve", strings.NewReader(req.Encode()))
 	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
