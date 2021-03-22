@@ -77,6 +77,7 @@ func (h txApproveHandler) isRejected(ctx context.Context, in txApproveRequest) (
 			Message: invalidParamMsg,
 		}, nil
 	}
+
 	tx, ok := parsed.Transaction()
 	if !ok {
 		log.Ctx(ctx).Error(errors.Wrapf(err, "Transaction %s is not a simple transaction.", in.Transaction))
@@ -86,7 +87,6 @@ func (h txApproveHandler) isRejected(ctx context.Context, in txApproveRequest) (
 		}, nil
 	}
 
-	// Check if transaction's sourceaccount is the same as the server issuer account.
 	issuerKP, err := keypair.Parse(h.issuerAccountSecret)
 	if err != nil {
 		log.Ctx(ctx).Error(errors.Wrap(err, "Parsing issuer secret failed."))
@@ -95,6 +95,8 @@ func (h txApproveHandler) isRejected(ctx context.Context, in txApproveRequest) (
 			Message: internalErrMsg,
 		}, NewHTTPError(http.StatusBadRequest, `Parsing issuer secret failed.`)
 	}
+
+	// Check if transaction's sourceaccount is the same as the server issuer account.
 	if tx.SourceAccount().AccountID == issuerKP.Address() {
 		log.Ctx(ctx).Error(errors.Wrapf(err,
 			"Transaction %s sourceAccount %s the same as the server issuer account %s",
