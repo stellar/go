@@ -33,8 +33,8 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 	}.isRejected(ctx, req)
 	require.NoError(t, err)
 	wantRejectedResponse := txApproveResponse{
-		Status:  rejectedStatus,
-		Message: missingParamMsg,
+		Status: rejectedStatus,
+		Error:  missingParamErr,
 	}
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
 
@@ -48,8 +48,8 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 	}.isRejected(ctx, req)
 	require.NoError(t, err)
 	wantRejectedResponse = txApproveResponse{
-		Status:  rejectedStatus,
-		Message: invalidParamMsg,
+		Status: rejectedStatus,
+		Error:  invalidParamErr,
 	}
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
 
@@ -119,8 +119,8 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 	}.isRejected(ctx, req)
 	require.NoError(t, err)
 	wantRejectedResponse = txApproveResponse{
-		Status:  rejectedStatus,
-		Message: invalidSrcAccMsg,
+		Status: rejectedStatus,
+		Error:  invalidSrcAccErr,
 	}
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
 
@@ -152,8 +152,8 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 	}.isRejected(ctx, req)
 	require.NoError(t, err)
 	wantRejectedResponse = txApproveResponse{
-		Status:  rejectedStatus,
-		Message: unauthorizedOpMsg,
+		Status: rejectedStatus,
+		Error:  unauthorizedOpErr,
 	}
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
 
@@ -185,8 +185,8 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 	}.isRejected(ctx, req)
 	require.NoError(t, err)
 	wantRejectedResponse = txApproveResponse{
-		Status:  rejectedStatus,
-		Message: notImplementedMsg,
+		Status: rejectedStatus,
+		Error:  notImplementedErr,
 	}
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
 }
@@ -222,7 +222,7 @@ func TestTxApproveHandler_serveHTTPJson(t *testing.T) {
 	body, err := ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 	wantBody := `{
-		"status":"rejected", "message":"Missing parameter \"tx\"."
+		"status":"rejected", "error":"Missing parameter \"tx\"."
 	}`
 	require.JSONEq(t, wantBody, string(body))
 
@@ -245,7 +245,7 @@ func TestTxApproveHandler_serveHTTPJson(t *testing.T) {
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 	wantBody = `{
-		"status":"rejected", "message":"Invalid parameter \"tx\"."
+		"status":"rejected", "error":"Invalid parameter \"tx\"."
 	}`
 	require.JSONEq(t, wantBody, string(body))
 
@@ -296,7 +296,7 @@ func TestTxApproveHandler_serveHTTPJson(t *testing.T) {
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 	wantBody = `{
-		"status":"rejected", "message":"Invalid parameter \"tx\"."
+		"status":"rejected", "error":"Invalid parameter \"tx\"."
 	}`
 	require.JSONEq(t, wantBody, string(body))
 
@@ -336,7 +336,7 @@ func TestTxApproveHandler_serveHTTPJson(t *testing.T) {
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 	wantBody = `{
-		"status":"rejected", "message":"The source account is invalid."
+		"status":"rejected", "error":"The source account is invalid."
 	}`
 	require.JSONEq(t, wantBody, string(body))
 
@@ -377,7 +377,7 @@ func TestTxApproveHandler_serveHTTPJson(t *testing.T) {
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 	wantBody = `{
-		"status":"rejected", "message":"There is one or more unauthorized operations in the provided transaction."
+		"status":"rejected", "error":"There is one or more unauthorized operations in the provided transaction."
 	}`
 	require.JSONEq(t, wantBody, string(body))
 
@@ -418,7 +418,7 @@ func TestTxApproveHandler_serveHTTPJson(t *testing.T) {
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 	wantBody = `{
-		"status":"rejected", "message":"Not implemented."
+		"status":"rejected", "error":"Not implemented."
 	}`
 	require.JSONEq(t, wantBody, string(body))
 }
@@ -455,7 +455,7 @@ func TestTxApproveHandler_serveHTTPForm(t *testing.T) {
 	body, err := ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 	wantBody := `{
-		"status":"rejected", "message":"Missing parameter \"tx\"."
+		"status":"rejected", "error":"Missing parameter \"tx\"."
 	}`
 	require.JSONEq(t, wantBody, string(body))
 
@@ -477,7 +477,7 @@ func TestTxApproveHandler_serveHTTPForm(t *testing.T) {
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 	wantBody = `{
-		"status":"rejected", "message":"Invalid parameter \"tx\"."
+		"status":"rejected", "error":"Invalid parameter \"tx\"."
 		}`
 	require.JSONEq(t, wantBody, string(body))
 
@@ -527,7 +527,7 @@ func TestTxApproveHandler_serveHTTPForm(t *testing.T) {
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 	wantBody = `{
-			"status":"rejected", "message":"Invalid parameter \"tx\"."
+			"status":"rejected", "error":"Invalid parameter \"tx\"."
 			}`
 	require.JSONEq(t, wantBody, string(body))
 
@@ -566,7 +566,7 @@ func TestTxApproveHandler_serveHTTPForm(t *testing.T) {
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 	wantBody = `{
-				"status":"rejected", "message":"The source account is invalid."
+				"status":"rejected", "error":"The source account is invalid."
 				}`
 	require.JSONEq(t, wantBody, string(body))
 
@@ -606,7 +606,7 @@ func TestTxApproveHandler_serveHTTPForm(t *testing.T) {
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 	wantBody = `{
-			"status":"rejected", "message":"There is one or more unauthorized operations in the provided transaction."
+			"status":"rejected", "error":"There is one or more unauthorized operations in the provided transaction."
 			}`
 	require.JSONEq(t, wantBody, string(body))
 
@@ -646,7 +646,7 @@ func TestTxApproveHandler_serveHTTPForm(t *testing.T) {
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 	wantBody = `{
-			"status":"rejected", "message":"Not implemented."
+			"status":"rejected", "error":"Not implemented."
 		}`
 	require.JSONEq(t, wantBody, string(body))
 }
