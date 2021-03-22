@@ -90,8 +90,7 @@ func (value assetStatValue) Finish() history.ExpAssetStat {
 // AssetStatSet represents a collection of asset stats
 type AssetStatSet map[assetStatKey]*assetStatValue
 
-// Add updates the set with a trustline entry from a history archive snapshot
-// if the trustline is authorized.
+// Add updates the set with a trustline entry from a history archive snapshot.
 func (s AssetStatSet) Add(trustLine xdr.TrustLineEntry) error {
 	flags := trustLine.Flags
 	return s.AddDelta(
