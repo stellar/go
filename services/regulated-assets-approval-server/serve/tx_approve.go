@@ -13,13 +13,13 @@ import (
 )
 
 const (
-	RejectedStatus    = "rejected"
-	MissingParamMsg   = "Missing parameter \"tx\"."
-	InvalidParamMsg   = "Invalid parameter \"tx\"."
-	InternalErrMsg    = "Internal Error."
-	InvalidSrcAccMsg  = "The source account is invalid."
-	UnauthorizedOpMsg = "There is one or more unauthorized operations in the provided transaction."
-	NotImplementedMsg = "Not implemented."
+	rejectedStatus    = "rejected"
+	missingParamMsg   = "Missing parameter \"tx\"."
+	invalidParamMsg   = "Invalid parameter \"tx\"."
+	internalErrMsg    = "Internal Error."
+	invalidSrcAccMsg  = "The source account is invalid."
+	unauthorizedOpMsg = "There is one or more unauthorized operations in the provided transaction."
+	notImplementedMsg = "Not implemented."
 )
 
 type txApproveHandler struct {
@@ -63,8 +63,8 @@ func (h txApproveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (h txApproveHandler) isRejected(ctx context.Context, in txApproveRequest) (*txApproveResponse, error) {
 	if in.Transaction == "" {
 		return &txApproveResponse{
-			Status:  RejectedStatus,
-			Message: MissingParamMsg,
+			Status:  rejectedStatus,
+			Message: missingParamMsg,
 		}, nil
 	}
 
@@ -73,16 +73,16 @@ func (h txApproveHandler) isRejected(ctx context.Context, in txApproveRequest) (
 	if err != nil {
 		log.Ctx(ctx).Error(errors.Wrapf(err, "Parsing transaction %s failed", in.Transaction))
 		return &txApproveResponse{
-			Status:  RejectedStatus,
-			Message: InvalidParamMsg,
+			Status:  rejectedStatus,
+			Message: invalidParamMsg,
 		}, nil
 	}
 	tx, ok := parsed.Transaction()
 	if !ok {
 		log.Ctx(ctx).Error(errors.Wrapf(err, "Transaction %s is not a simple transaction.", in.Transaction))
 		return &txApproveResponse{
-			Status:  RejectedStatus,
-			Message: InvalidParamMsg,
+			Status:  rejectedStatus,
+			Message: invalidParamMsg,
 		}, nil
 	}
 
@@ -91,8 +91,8 @@ func (h txApproveHandler) isRejected(ctx context.Context, in txApproveRequest) (
 	if err != nil {
 		log.Ctx(ctx).Error(errors.Wrap(err, "Parsing issuer secret failed."))
 		return &txApproveResponse{
-			Status:  RejectedStatus,
-			Message: InternalErrMsg,
+			Status:  rejectedStatus,
+			Message: internalErrMsg,
 		}, NewHTTPError(http.StatusBadRequest, `Parsing issuer secret failed.`)
 	}
 	if tx.SourceAccount().AccountID == issuerKP.Address() {
@@ -102,8 +102,8 @@ func (h txApproveHandler) isRejected(ctx context.Context, in txApproveRequest) (
 			tx.SourceAccount().AccountID,
 			issuerKP.Address()))
 		return &txApproveResponse{
-			Status:  RejectedStatus,
-			Message: InvalidSrcAccMsg,
+			Status:  rejectedStatus,
+			Message: invalidSrcAccMsg,
 		}, nil
 
 	}
@@ -119,14 +119,14 @@ func (h txApproveHandler) isRejected(ctx context.Context, in txApproveRequest) (
 				"Unauthorized operation from %s in the provided transaction",
 				op.GetSourceAccount()))
 			return &txApproveResponse{
-				Status:  RejectedStatus,
-				Message: UnauthorizedOpMsg,
+				Status:  rejectedStatus,
+				Message: unauthorizedOpMsg,
 			}, nil
 		}
 	}
 
 	return &txApproveResponse{
-		Status:  RejectedStatus,
-		Message: NotImplementedMsg,
+		Status:  rejectedStatus,
+		Message: notImplementedMsg,
 	}, nil
 }

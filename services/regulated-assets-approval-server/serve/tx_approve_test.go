@@ -33,8 +33,8 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 	}.isRejected(ctx, req)
 	require.NoError(t, err)
 	wantRejectedResponse := txApproveResponse{
-		Status:  RejectedStatus,
-		Message: MissingParamMsg,
+		Status:  rejectedStatus,
+		Message: missingParamMsg,
 	}
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
 
@@ -48,8 +48,8 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 	}.isRejected(ctx, req)
 	require.NoError(t, err)
 	wantRejectedResponse = txApproveResponse{
-		Status:  RejectedStatus,
-		Message: InvalidParamMsg,
+		Status:  rejectedStatus,
+		Message: invalidParamMsg,
 	}
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
 
@@ -119,8 +119,8 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 	}.isRejected(ctx, req)
 	require.NoError(t, err)
 	wantRejectedResponse = txApproveResponse{
-		Status:  RejectedStatus,
-		Message: InvalidSrcAccMsg,
+		Status:  rejectedStatus,
+		Message: invalidSrcAccMsg,
 	}
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
 
@@ -152,8 +152,8 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 	}.isRejected(ctx, req)
 	require.NoError(t, err)
 	wantRejectedResponse = txApproveResponse{
-		Status:  RejectedStatus,
-		Message: UnauthorizedOpMsg,
+		Status:  rejectedStatus,
+		Message: unauthorizedOpMsg,
 	}
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
 
@@ -185,8 +185,8 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 	}.isRejected(ctx, req)
 	require.NoError(t, err)
 	wantRejectedResponse = txApproveResponse{
-		Status:  RejectedStatus,
-		Message: NotImplementedMsg,
+		Status:  rejectedStatus,
+		Message: notImplementedMsg,
 	}
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
 }
