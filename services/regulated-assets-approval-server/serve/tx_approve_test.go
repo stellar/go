@@ -27,8 +27,8 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 	}.isRejected(ctx, req)
 	require.NoError(t, err)
 	wantRejectedResponse := txApproveResponse{
-		Status:  Rejected,
-		Message: "Missing parameter \"tx\"",
+		Status:  RejectedStatus,
+		Message: MissingParamMsg,
 	}
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
 
@@ -42,8 +42,8 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 	}.isRejected(ctx, req)
 	require.EqualError(t, err, "Parsing transaction failed.")
 	wantRejectedResponse = txApproveResponse{
-		Status:  Rejected,
-		Message: "Invalid parameter \"tx\"",
+		Status:  RejectedStatus,
+		Message: InvalidParamMsg,
 	}
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
 
@@ -115,8 +115,8 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 	}.isRejected(ctx, req)
 	require.EqualError(t, err, "Transaction sourceAccount the same as the server issuer account.")
 	wantRejectedResponse = txApproveResponse{
-		Status:  Rejected,
-		Message: "The source account is invalid.",
+		Status:  RejectedStatus,
+		Message: InvalidSrcAccMsg,
 	}
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
 
@@ -149,8 +149,8 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 	}.isRejected(ctx, req)
 	require.EqualError(t, err, "There is one or more unauthorized operations in the provided transaction.")
 	wantRejectedResponse = txApproveResponse{
-		Status:  Rejected,
-		Message: "There is one or more unauthorized operations in the provided transaction",
+		Status:  RejectedStatus,
+		Message: UnauthorizedOpMsg,
 	}
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
 
@@ -183,8 +183,8 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 	}.isRejected(ctx, req)
 	require.EqualError(t, err, "Not implemented.")
 	wantRejectedResponse = txApproveResponse{
-		Status:  Rejected,
-		Message: "Not implemented.",
+		Status:  RejectedStatus,
+		Message: NotImplementedMsg,
 	}
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
 }

@@ -15,13 +15,13 @@ import (
 )
 
 const (
-	RejectedStatus = "rejected",
-	MissingParamMsg = "Missing parameter \"tx\"",
-	InvalidParamMsg = "Invalid parameter \"tx\"",
-	InternalErrMsg = "Internal Error",
-	InvalidSrcAccMsg = "The source account is invalid.",
-	UnauthorizedOpMsg = "There is one or more unauthorized operations in the provided transaction",
-	NotImplementedMsg = "Not implemented.",
+	RejectedStatus    = "rejected"
+	MissingParamMsg   = "Missing parameter \"tx\"."
+	InvalidParamMsg   = "Invalid parameter \"tx\"."
+	InternalErrMsg    = "Internal Error."
+	InvalidSrcAccMsg  = "The source account is invalid."
+	UnauthorizedOpMsg = "There is one or more unauthorized operations in the provided transaction."
+	NotImplementedMsg = "Not implemented."
 )
 
 type txApproveHandler struct {
