@@ -29,6 +29,8 @@ const (
 	StellarCoreBinaryPathName = "stellar-core-binary-path"
 	// CaptiveCoreConfigAppendPathName is the command line flag for configuring the path to the captive core additional configuration
 	CaptiveCoreConfigAppendPathName = "captive-core-config-append-path"
+
+	captiveCoreMigrationHint = "If you are migrating from Horizon 1.x.y read the Migration Guide here: https://github.com/stellar/go/blob/master/services/horizon/internal/docs/captive_core.md"
 )
 
 // validateBothOrNeither ensures that both options are provided, if either is provided.
@@ -256,6 +258,12 @@ func Flags() (*Config, support.ConfigOptions) {
 			Usage:     "name of the file where logs will be saved (leave empty to send logs to stdout)",
 		},
 		&support.ConfigOption{
+			Name:      "captive-core-log-path",
+			ConfigKey: &config.CaptiveCoreLogPath,
+			OptType:   types.String,
+			Usage:     "name of the path for Core logs (leave empty to log w/ Horizon only)",
+		},
+		&support.ConfigOption{
 			Name:        "max-path-length",
 			ConfigKey:   &config.MaxPathLength,
 			OptType:     types.Uint,
@@ -413,46 +421,56 @@ func ApplyFlags(config *Config, flags support.ConfigOptions) {
 	// Validate options that should be provided together
 	validateBothOrNeither("tls-cert", "tls-key")
 
-	// config.HistoryArchiveURLs contains a single empty value when empty so using
-	// viper.GetString is easier.
-	if config.Ingest && viper.GetString("history-archive-urls") == "" {
-		stdLog.Fatalf("--history-archive-urls must be set when --ingest is set")
-	}
-
-	if config.EnableCaptiveCoreIngestion {
-		binaryPath := viper.GetString(StellarCoreBinaryPathName)
-
-		// If the user didn't specify a Stellar Core binary, we can check the
-		// $PATH and possibly fill it in for them.
-		if binaryPath == "" {
-			if result, err := exec.LookPath("stellar-core"); err == nil {
-				binaryPath = result
-				viper.Set(StellarCoreBinaryPathName, binaryPath)
-				config.CaptiveCoreBinaryPath = binaryPath
-			}
-		}
-
-		remoteURL := viper.GetString("remote-captive-core-url")
-
-		// NOTE: If both of these are set (regardless of user- or PATH-supplied
-		//       defaults for the binary path), the Remote Captive Core URL
-		//       takes precedence.
-		if binaryPath == "" && remoteURL == "" {
-			stdLog.Fatalf("Invalid config: captive core requires that either --stellar-core-binary-path or --remote-captive-core-url is set. " +
-				"If you are migrating from Horizon 1.x.y read the Migration Guide here: https://github.com/stellar/go/blob/master/services/horizon/internal/docs/captive_core.md")
-		}
-
-		// If we don't supply an explicit core URL and we are running a local
-		// captive core process with the http port enabled, point to it.
-		if config.StellarCoreURL == "" && config.RemoteCaptiveCoreURL == "" && config.CaptiveCoreHTTPPort != 0 {
-			config.StellarCoreURL = fmt.Sprintf("http://localhost:%d", config.CaptiveCoreHTTPPort)
-			viper.Set(StellarCoreURLFlagName, config.StellarCoreURL)
-		}
-	}
-
 	if config.Ingest {
 		// When running live ingestion a config file is required too
 		validateBothOrNeither(StellarCoreBinaryPathName, CaptiveCoreConfigAppendPathName)
+
+		// config.HistoryArchiveURLs contains a single empty value when empty so using
+		// viper.GetString is easier.
+		if len(config.HistoryArchiveURLs) == 0 {
+			stdLog.Fatalf("--history-archive-urls must be set when --ingest is set")
+		}
+
+		if config.EnableCaptiveCoreIngestion {
+			binaryPath := viper.GetString(StellarCoreBinaryPathName)
+
+			// If the user didn't specify a Stellar Core binary, we can check the
+			// $PATH and possibly fill it in for them.
+			if binaryPath == "" {
+				if result, err := exec.LookPath("stellar-core"); err == nil {
+					binaryPath = result
+					viper.Set(StellarCoreBinaryPathName, binaryPath)
+					config.CaptiveCoreBinaryPath = binaryPath
+				}
+			}
+
+			// NOTE: If both of these are set (regardless of user- or PATH-supplied
+			//       defaults for the binary path), the Remote Captive Core URL
+			//       takes precedence.
+			if binaryPath == "" && config.RemoteCaptiveCoreURL == "" {
+				stdLog.Fatalf("Invalid config: captive core requires that either --stellar-core-binary-path or --remote-captive-core-url is set. " + captiveCoreMigrationHint)
+			}
+
+			if config.CaptiveCoreBinaryPath == "" || config.CaptiveCoreConfigAppendPath == "" {
+				stdLog.Fatalf("Invalid config: captive core requires that both --%s and --%s are set. "+captiveCoreMigrationHint,
+					StellarCoreBinaryPathName, CaptiveCoreConfigAppendPathName)
+			}
+
+			// If we don't supply an explicit core URL and we are running a local
+			// captive core process with the http port enabled, point to it.
+			if config.StellarCoreURL == "" && config.RemoteCaptiveCoreURL == "" && config.CaptiveCoreHTTPPort != 0 {
+				config.StellarCoreURL = fmt.Sprintf("http://localhost:%d", config.CaptiveCoreHTTPPort)
+				viper.Set(StellarCoreURLFlagName, config.StellarCoreURL)
+			}
+		}
+	} else {
+		if config.CaptiveCoreBinaryPath != "" || config.CaptiveCoreConfigAppendPath != "" {
+			stdLog.Fatalf("Invalid config: one or more captive core params passed (--%s or --%s) but --ingest not set. "+captiveCoreMigrationHint,
+				StellarCoreBinaryPathName, CaptiveCoreConfigAppendPathName)
+		}
+		if config.StellarCoreDatabaseURL != "" {
+			stdLog.Fatalf("Invalid config: --%s passed but --ingest not set. ", StellarCoreDBURLFlagName)
+		}
 	}
 
 	// Configure log file

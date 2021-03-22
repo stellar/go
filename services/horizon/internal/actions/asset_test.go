@@ -5,6 +5,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/protocols/horizon/base"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
@@ -123,10 +125,30 @@ func TestAssetStats(t *testing.T) {
 		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
 		AssetIssuer: issuer.AccountID,
 		AssetCode:   "USD",
+		Accounts: history.ExpAssetStatAccounts{
+			Authorized:                      2,
+			AuthorizedToMaintainLiabilities: 3,
+			Unauthorized:                    4,
+		},
+		Balances: history.ExpAssetStatBalances{
+			Authorized:                      "1",
+			AuthorizedToMaintainLiabilities: "2",
+			Unauthorized:                    "3",
+		},
 		Amount:      "1",
 		NumAccounts: 2,
 	}
 	usdAssetStatResponse := horizon.AssetStat{
+		Accounts: horizon.AssetStatAccounts{
+			Authorized:                      usdAssetStat.Accounts.Authorized,
+			AuthorizedToMaintainLiabilities: usdAssetStat.Accounts.AuthorizedToMaintainLiabilities,
+			Unauthorized:                    usdAssetStat.Accounts.Unauthorized,
+		},
+		Balances: horizon.AssetStatBalances{
+			Authorized:                      "0.0000001",
+			AuthorizedToMaintainLiabilities: "0.0000002",
+			Unauthorized:                    "0.0000003",
+		},
 		Amount:      "0.0000001",
 		NumAccounts: usdAssetStat.NumAccounts,
 		Asset: base.Asset{
@@ -142,10 +164,30 @@ func TestAssetStats(t *testing.T) {
 		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
 		AssetIssuer: issuer.AccountID,
 		AssetCode:   "ETHER",
+		Accounts: history.ExpAssetStatAccounts{
+			Authorized:                      1,
+			AuthorizedToMaintainLiabilities: 2,
+			Unauthorized:                    3,
+		},
+		Balances: history.ExpAssetStatBalances{
+			Authorized:                      "23",
+			AuthorizedToMaintainLiabilities: "46",
+			Unauthorized:                    "92",
+		},
 		Amount:      "23",
 		NumAccounts: 1,
 	}
 	etherAssetStatResponse := horizon.AssetStat{
+		Accounts: horizon.AssetStatAccounts{
+			Authorized:                      etherAssetStat.Accounts.Authorized,
+			AuthorizedToMaintainLiabilities: etherAssetStat.Accounts.AuthorizedToMaintainLiabilities,
+			Unauthorized:                    etherAssetStat.Accounts.Unauthorized,
+		},
+		Balances: horizon.AssetStatBalances{
+			Authorized:                      "0.0000023",
+			AuthorizedToMaintainLiabilities: "0.0000046",
+			Unauthorized:                    "0.0000092",
+		},
 		Amount:      "0.0000023",
 		NumAccounts: etherAssetStat.NumAccounts,
 		Asset: base.Asset{
@@ -161,10 +203,30 @@ func TestAssetStats(t *testing.T) {
 		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
 		AssetIssuer: otherIssuer.AccountID,
 		AssetCode:   "USD",
+		Accounts: history.ExpAssetStatAccounts{
+			Authorized:                      2,
+			AuthorizedToMaintainLiabilities: 3,
+			Unauthorized:                    4,
+		},
+		Balances: history.ExpAssetStatBalances{
+			Authorized:                      "1",
+			AuthorizedToMaintainLiabilities: "2",
+			Unauthorized:                    "3",
+		},
 		Amount:      "1",
 		NumAccounts: 2,
 	}
 	otherUSDAssetStatResponse := horizon.AssetStat{
+		Accounts: horizon.AssetStatAccounts{
+			Authorized:                      otherUSDAssetStat.Accounts.Authorized,
+			AuthorizedToMaintainLiabilities: otherUSDAssetStat.Accounts.AuthorizedToMaintainLiabilities,
+			Unauthorized:                    otherUSDAssetStat.Accounts.Unauthorized,
+		},
+		Balances: horizon.AssetStatBalances{
+			Authorized:                      "0.0000001",
+			AuthorizedToMaintainLiabilities: "0.0000002",
+			Unauthorized:                    "0.0000003",
+		},
 		Amount:      "0.0000001",
 		NumAccounts: otherUSDAssetStat.NumAccounts,
 		Asset: base.Asset{
@@ -182,10 +244,30 @@ func TestAssetStats(t *testing.T) {
 		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
 		AssetIssuer: otherIssuer.AccountID,
 		AssetCode:   "EUR",
+		Accounts: history.ExpAssetStatAccounts{
+			Authorized:                      3,
+			AuthorizedToMaintainLiabilities: 4,
+			Unauthorized:                    5,
+		},
+		Balances: history.ExpAssetStatBalances{
+			Authorized:                      "111",
+			AuthorizedToMaintainLiabilities: "222",
+			Unauthorized:                    "333",
+		},
 		Amount:      "111",
 		NumAccounts: 3,
 	}
 	eurAssetStatResponse := horizon.AssetStat{
+		Accounts: horizon.AssetStatAccounts{
+			Authorized:                      eurAssetStat.Accounts.Authorized,
+			AuthorizedToMaintainLiabilities: eurAssetStat.Accounts.AuthorizedToMaintainLiabilities,
+			Unauthorized:                    eurAssetStat.Accounts.Unauthorized,
+		},
+		Balances: horizon.AssetStatBalances{
+			Authorized:                      "0.0000111",
+			AuthorizedToMaintainLiabilities: "0.0000222",
+			Unauthorized:                    "0.0000333",
+		},
 		Amount:      "0.0000111",
 		NumAccounts: eurAssetStat.NumAccounts,
 		Asset: base.Asset{
@@ -311,23 +393,12 @@ func TestAssetStats(t *testing.T) {
 		t.Run(testCase.name, func(t *testing.T) {
 			r := makeRequest(t, testCase.queryParams, map[string]string{}, q.Session)
 			results, err := handler.GetResourcePage(httptest.NewRecorder(), r)
-			if err != nil {
-				t.Fatalf("unexpected error %v", err)
-			}
+			assert.NoError(t, err)
 
-			if len(results) != len(testCase.expected) {
-				t.Fatalf(
-					"expectes results to have length %v but got %v",
-					len(results),
-					len(testCase.expected),
-				)
-			}
-
+			assert.Len(t, results, len(testCase.expected))
 			for i, item := range results {
 				assetStat := item.(horizon.AssetStat)
-				if assetStat != testCase.expected[i] {
-					t.Fatalf("expected %v but got %v", testCase.expected[i], assetStat)
-				}
+				assert.Equal(t, testCase.expected[i], assetStat)
 			}
 		})
 	}
@@ -344,6 +415,16 @@ func TestAssetStatsIssuerDoesNotExist(t *testing.T) {
 		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
 		AssetIssuer: "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
 		AssetCode:   "USD",
+		Accounts: history.ExpAssetStatAccounts{
+			Authorized:                      2,
+			AuthorizedToMaintainLiabilities: 3,
+			Unauthorized:                    4,
+		},
+		Balances: history.ExpAssetStatBalances{
+			Authorized:                      "1",
+			AuthorizedToMaintainLiabilities: "2",
+			Unauthorized:                    "3",
+		},
 		Amount:      "1",
 		NumAccounts: 2,
 	}
@@ -356,6 +437,16 @@ func TestAssetStatsIssuerDoesNotExist(t *testing.T) {
 	tt.Assert.NoError(err)
 
 	expectedAssetStatResponse := horizon.AssetStat{
+		Accounts: horizon.AssetStatAccounts{
+			Authorized:                      2,
+			AuthorizedToMaintainLiabilities: 3,
+			Unauthorized:                    4,
+		},
+		Balances: horizon.AssetStatBalances{
+			Authorized:                      "0.0000001",
+			AuthorizedToMaintainLiabilities: "0.0000002",
+			Unauthorized:                    "0.0000003",
+		},
 		Amount:      "0.0000001",
 		NumAccounts: usdAssetStat.NumAccounts,
 		Asset: base.Asset{

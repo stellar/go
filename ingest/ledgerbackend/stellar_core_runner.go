@@ -48,6 +48,7 @@ type pipe struct {
 }
 
 type stellarCoreRunner struct {
+	logPath           string
 	executablePath    string
 	configAppendPath  string
 	networkPassphrase string
@@ -82,6 +83,7 @@ func newStellarCoreRunner(config CaptiveCoreConfig, mode stellarCoreRunnerMode) 
 	ctx, cancel := context.WithCancel(config.Context)
 
 	runner := &stellarCoreRunner{
+		logPath:           config.LogPath,
 		executablePath:    config.BinaryPath,
 		configAppendPath:  config.ConfigAppendPath,
 		networkPassphrase: config.NetworkPassphrase,
@@ -116,7 +118,7 @@ func (r *stellarCoreRunner) generateConfig() (string, error) {
 		fmt.Sprintf(`NETWORK_PASSPHRASE="%s"`, r.networkPassphrase),
 		fmt.Sprintf(`BUCKET_DIR_PATH="%s"`, filepath.Join(r.tempDir, "buckets")),
 		fmt.Sprintf(`HTTP_PORT=%d`, r.httpPort),
-		`LOG_FILE_PATH=""`,
+		fmt.Sprintf(`LOG_FILE_PATH="%s"`, r.logPath),
 	}
 
 	if r.mode == stellarCoreRunnerModeOffline {

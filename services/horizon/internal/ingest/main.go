@@ -49,7 +49,8 @@ const (
 	// - 11: Protocol 14: CAP-23 and CAP-33.
 	// - 12: Trigger state rebuild due to `absTime` -> `abs_time` rename
 	//       in ClaimableBalances predicates.
-	CurrentVersion = 12
+	// - 13: Trigger state rebuild to include more than just authorized assets.
+	CurrentVersion = 13
 
 	// MaxDBConnections is the size of the postgres connection pool dedicated to Horizon ingestion:
 	//  * Ledger ingestion,
@@ -71,6 +72,7 @@ type Config struct {
 	CaptiveCoreBinaryPath       string
 	CaptiveCoreConfigAppendPath string
 	CaptiveCoreHTTPPort         uint
+	CaptiveCoreLogPath          string
 	RemoteCaptiveCoreURL        string
 	NetworkPassphrase           string
 
@@ -189,8 +191,10 @@ func NewSystem(config Config) (System, error) {
 				return nil, errors.Wrap(err, "error creating captive core backend")
 			}
 		} else {
+			logger := log.WithField("subservice", "stellar-core")
 			ledgerBackend, err = ledgerbackend.NewCaptive(
 				ledgerbackend.CaptiveCoreConfig{
+					LogPath:             config.CaptiveCoreLogPath,
 					BinaryPath:          config.CaptiveCoreBinaryPath,
 					ConfigAppendPath:    config.CaptiveCoreConfigAppendPath,
 					HTTPPort:            config.CaptiveCoreHTTPPort,
@@ -198,7 +202,7 @@ func NewSystem(config Config) (System, error) {
 					HistoryArchiveURLs:  []string{config.HistoryArchiveURL},
 					CheckpointFrequency: config.CheckpointFrequency,
 					LedgerHashStore:     ledgerbackend.NewHorizonDBLedgerHashStore(config.HistorySession),
-					Log:                 log.WithField("subservice", "stellar-core"),
+					Log:                 logger,
 					Context:             ctx,
 				},
 			)

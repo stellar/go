@@ -166,8 +166,12 @@ type AssetStat struct {
 	} `json:"_links"`
 
 	base.Asset
-	PT          string       `json:"paging_token"`
-	Amount      string       `json:"amount"`
+	PT       string            `json:"paging_token"`
+	Accounts AssetStatAccounts `json:"accounts"`
+	// Action needed in release: horizon-v3.0.0: deprecated field
+	Amount   string            `json:"amount"`
+	Balances AssetStatBalances `json:"balances"`
+	// Action needed in release: horizon-v3.0.0: deprecated field
 	NumAccounts int32        `json:"num_accounts"`
 	Flags       AccountFlags `json:"flags"`
 }
@@ -175,6 +179,20 @@ type AssetStat struct {
 // PagingToken implementation for hal.Pageable
 func (res AssetStat) PagingToken() string {
 	return res.PT
+}
+
+// AssetStatBalances represents the summarized balances for a single Asset
+type AssetStatBalances struct {
+	Authorized                      string `json:"authorized"`
+	AuthorizedToMaintainLiabilities string `json:"authorized_to_maintain_liabilities"`
+	Unauthorized                    string `json:"unauthorized"`
+}
+
+// AssetStatAccounts represents the summarized acount numbers for a single Asset
+type AssetStatAccounts struct {
+	Authorized                      int32 `json:"authorized"`
+	AuthorizedToMaintainLiabilities int32 `json:"authorized_to_maintain_liabilities"`
+	Unauthorized                    int32 `json:"unauthorized"`
 }
 
 // Balance represents an account's holdings for a single currency type
