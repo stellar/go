@@ -56,7 +56,7 @@ func (h txApproveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		httpErr.Render(w)
 	}
 	if rejectedResponse != nil {
-		httpjson.RenderStatus(w, 400, rejectedResponse, httpjson.JSON)
+		httpjson.RenderStatus(w, http.StatusBadRequest, rejectedResponse, httpjson.JSON)
 	}
 }
 
