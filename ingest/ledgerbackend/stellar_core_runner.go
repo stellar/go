@@ -174,7 +174,8 @@ func (r *stellarCoreRunner) generateConfig() (string, error) {
 }
 
 func (r *stellarCoreRunner) getConfFileName() string {
-	return filepath.Join(r.storagePath, "stellar-core.conf")
+	path, _ := filepath.Abs(filepath.Join(r.storagePath, "stellar-core.conf"))
+	return path
 }
 
 func (r *stellarCoreRunner) getLogLineWriter() io.Writer {
