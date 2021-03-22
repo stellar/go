@@ -64,7 +64,6 @@ func (h txApproveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h txApproveHandler) isRejected(ctx context.Context, in txApproveRequest) (*txApproveResponse, error) {
-	log.Ctx(ctx).Info(in.Transaction) //!DEBUG REMOVE
 	if in.Transaction == "" {
 		return &txApproveResponse{
 			Status:  RejectedStatus,
@@ -81,7 +80,6 @@ func (h txApproveHandler) isRejected(ctx context.Context, in txApproveRequest) (
 			Message: InvalidParamMsg,
 		}, NewHTTPError(http.StatusBadRequest, `Parsing transaction failed.`)
 	}
-	log.Ctx(ctx).Info(parsed) //!DEBUG REMOVE
 	tx, ok := parsed.Transaction()
 	if !ok {
 		log.Ctx(ctx).Error(errors.Wrapf(err, "Transaction %s is not a simple transaction.", in.Transaction))
@@ -90,7 +88,6 @@ func (h txApproveHandler) isRejected(ctx context.Context, in txApproveRequest) (
 			Message: InvalidParamMsg,
 		}, NewHTTPError(http.StatusBadRequest, `Transaction is not a simple transaction.`)
 	}
-	log.Ctx(ctx).Info(tx) //!DEBUG REMOVE
 
 	// Check if transaction's sourceaccount is the same as the server issuer account.
 	issuerKP, err := keypair.Parse(h.issuerAccountSecret)
