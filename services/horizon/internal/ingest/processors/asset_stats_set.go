@@ -60,7 +60,7 @@ func (a assetStatBalances) IsZero() bool {
 	return a.Authorized.Cmp(big.NewInt(0)) == 0 && a.AuthorizedToMaintainLiabilities.Cmp(big.NewInt(0)) == 0 && a.Unauthorized.Cmp(big.NewInt(0)) == 0
 }
 
-func (a assetStatBalances) Finish() history.ExpAssetStatBalances {
+func (a assetStatBalances) ConvertToHistoryObject() history.ExpAssetStatBalances {
 	return history.ExpAssetStatBalances{
 		Authorized:                      a.Authorized.String(),
 		AuthorizedToMaintainLiabilities: a.AuthorizedToMaintainLiabilities.String(),
@@ -74,8 +74,8 @@ type assetStatAccounts struct {
 	Unauthorized                    int32
 }
 
-func (value assetStatValue) Finish() history.ExpAssetStat {
-	balances := value.balances.Finish()
+func (value assetStatValue) ConvertToHistoryObject() history.ExpAssetStat {
+	balances := value.balances.ConvertToHistoryObject()
 	return history.ExpAssetStat{
 		AssetType:   value.assetType,
 		AssetCode:   value.assetCode,
@@ -184,14 +184,14 @@ func (s AssetStatSet) Remove(assetType xdr.AssetType, assetCode string, assetIss
 
 	delete(s, key)
 
-	return value.Finish(), true
+	return value.ConvertToHistoryObject(), true
 }
 
 // All returns a list of all `history.ExpAssetStat` contained within the set
 func (s AssetStatSet) All() []history.ExpAssetStat {
 	assetStats := make([]history.ExpAssetStat, 0, len(s))
 	for _, value := range s {
-		assetStats = append(assetStats, value.Finish())
+		assetStats = append(assetStats, value.ConvertToHistoryObject())
 	}
 	return assetStats
 }

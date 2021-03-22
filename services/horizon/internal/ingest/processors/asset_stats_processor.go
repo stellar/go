@@ -191,7 +191,7 @@ func (p *AssetStatsProcessor) Commit() error {
 					AssetCode:   delta.AssetCode,
 					AssetIssuer: delta.AssetIssuer,
 					Accounts:    statAccounts,
-					Balances:    statBalances.Finish(),
+					Balances:    statBalances.ConvertToHistoryObject(),
 					Amount:      statBalances.Authorized.String(),
 					NumAccounts: statAccounts.Authorized,
 				})
