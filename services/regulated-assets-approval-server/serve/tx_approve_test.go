@@ -246,64 +246,186 @@ func TestTxApproveHandler_serveHTTP(t *testing.T) {
 	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
 
 	body, err = ioutil.ReadAll(resp.Body)
-	// require.NoError(t, err)
+	require.NoError(t, err)
 	wantBody = `{
 		"status":"rejected", "message":"Invalid parameter \"tx\"."
 	}`
 	require.JSONEq(t, wantBody, string(body))
-	/*
-			tx, err := txnbuild.NewTransaction(
-				txnbuild.TransactionParams{
-					SourceAccount:        &txnbuild.SimpleAccount{AccountID: "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4"},
-					IncrementSequenceNum: true,
-					Operations: []txnbuild.Operation{
-						&txnbuild.SetOptions{
-							Signer: &txnbuild.Signer{
-								Address: "GD7CGJSJ5OBOU5KOP2UQDH3MPY75UTEY27HVV5XPSL2X6DJ2VGTOSXEU",
-								Weight:  20,
-							},
-						},
-					},
-					BaseFee:    txnbuild.MinBaseFee,
-					Timebounds: txnbuild.NewTimebounds(0, 1),
+
+	// Test if a non generic transaction fails, same result as malformed XDR.
+	kp01 := keypair.MustRandom()
+	kp02 := keypair.MustRandom()
+	tx, err := txnbuild.NewTransaction(
+		txnbuild.TransactionParams{
+			SourceAccount:        &txnbuild.SimpleAccount{AccountID: kp01.Address()},
+			IncrementSequenceNum: true,
+			Operations: []txnbuild.Operation{
+				&txnbuild.Payment{
+					Destination: kp02.Address(),
+					Amount:      "1",
+					Asset:       assetGOAT,
 				},
-			)
-			require.NoError(t, err)
-			txEnc, err := tx.Base64()
-			require.NoError(t, err)
-			t.Log("Tx:", txEnc)
-			req := `{
-			"tx": "` + txEnc + `"
-		}`
-			r := httptest.NewRequest("POST", "/tx_approve", strings.NewReader(req))
-			r = r.WithContext(ctx)
+			},
+			BaseFee:    txnbuild.MinBaseFee,
+			Timebounds: txnbuild.NewInfiniteTimeout(),
+		},
+	)
+	require.NoError(t, err)
+	feeBumpTx, err := txnbuild.NewFeeBumpTransaction(
+		txnbuild.FeeBumpTransactionParams{
+			Inner:      tx,
+			FeeAccount: kp02.Address(),
+			BaseFee:    2 * txnbuild.MinBaseFee,
+		},
+	)
+	require.NoError(t, err)
+	feeBumpTxEnc, err := feeBumpTx.Base64()
+	require.NoError(t, err)
+	t.Log("Tx:", feeBumpTxEnc)
+	req = `{
+		"tx": "` + feeBumpTxEnc + `"
+	}`
+	r = httptest.NewRequest("POST", "/tx_approve", strings.NewReader(req))
+	r = r.WithContext(ctx)
 
-			w := httptest.NewRecorder()
-			m := chi.NewMux()
-			m.Post("/tx_approve", handler.ServeHTTP)
-			m.ServeHTTP(w, r)
-			resp := w.Result()
+	w = httptest.NewRecorder()
+	m = chi.NewMux()
+	m.Post("/tx_approve", handler.ServeHTTP)
+	m.ServeHTTP(w, r)
+	resp = w.Result()
 
-			assert.Equal(t, http.StatusOK, resp.StatusCode)
-			assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
+	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
 
-			req = `{
-				"tx": "brokenXDR"
-			}`
-			r = httptest.NewRequest("POST", "/tx_approve", strings.NewReader(req))
-			r = r.WithContext(ctx)
+	body, err = ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	wantBody = `{
+		"status":"rejected", "message":"Invalid parameter \"tx\"."
+	}`
+	require.JSONEq(t, wantBody, string(body))
 
-			w = httptest.NewRecorder()
-			m = chi.NewMux()
-			m.Post("/tx_approve", handler.ServeHTTP)
-			m.ServeHTTP(w, r)
-			resp = w.Result()
+	// Test if the transaction sourceAccount the same as the server issuer account
+	tx, err = txnbuild.NewTransaction(
+		txnbuild.TransactionParams{
+			SourceAccount:        &txnbuild.SimpleAccount{AccountID: issuerAccKeyPair.Address()},
+			IncrementSequenceNum: true,
+			Operations: []txnbuild.Operation{
+				&txnbuild.Payment{
+					Destination: kp01.Address(),
+					Amount:      "1",
+					Asset:       assetGOAT,
+				},
+			},
+			BaseFee:    txnbuild.MinBaseFee,
+			Timebounds: txnbuild.NewInfiniteTimeout(),
+		},
+	)
+	require.NoError(t, err)
+	txEnc, err := tx.Base64()
+	t.Log("Tx:", txEnc)
+	req = `{
+		"tx": "` + txEnc + `"
+	}`
+	r = httptest.NewRequest("POST", "/tx_approve", strings.NewReader(req))
+	r = r.WithContext(ctx)
 
-			body, err := ioutil.ReadAll(resp.Body)
-			require.NoError(t, err)
-			wantBody := `{
-				{"status":"rejected", "error":"Invalid parameter \"tx\""}
-			}`
-			require.JSONEq(t, wantBody, string(body))
-	*/
+	w = httptest.NewRecorder()
+	m = chi.NewMux()
+	m.Post("/tx_approve", handler.ServeHTTP)
+	m.ServeHTTP(w, r)
+	resp = w.Result()
+
+	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
+
+	body, err = ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	wantBody = `{
+		"status":"rejected", "message":"The source account is invalid."
+	}`
+	require.JSONEq(t, wantBody, string(body))
+
+	// Test if the transaction's operation sourceaccount the same as the server issuer account
+	tx, err = txnbuild.NewTransaction(
+		txnbuild.TransactionParams{
+			SourceAccount:        &txnbuild.SimpleAccount{AccountID: kp01.Address()},
+			IncrementSequenceNum: true,
+			Operations: []txnbuild.Operation{
+				&txnbuild.Payment{
+					SourceAccount: issuerAccKeyPair.Address(),
+					Destination:   kp01.Address(),
+					Amount:        "1",
+					Asset:         assetGOAT,
+				},
+			},
+			BaseFee:    txnbuild.MinBaseFee,
+			Timebounds: txnbuild.NewInfiniteTimeout(),
+		},
+	)
+	require.NoError(t, err)
+	txEnc, err = tx.Base64()
+	t.Log("Tx:", txEnc)
+	req = `{
+		"tx": "` + txEnc + `"
+	}`
+	r = httptest.NewRequest("POST", "/tx_approve", strings.NewReader(req))
+	r = r.WithContext(ctx)
+
+	w = httptest.NewRecorder()
+	m = chi.NewMux()
+	m.Post("/tx_approve", handler.ServeHTTP)
+	m.ServeHTTP(w, r)
+	resp = w.Result()
+
+	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
+
+	body, err = ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	wantBody = `{
+		"status":"rejected", "message":"There is one or more unauthorized operations in the provided transaction."
+	}`
+	require.JSONEq(t, wantBody, string(body))
+
+	// Test "not implemented"
+	tx, err = txnbuild.NewTransaction(
+		txnbuild.TransactionParams{
+			SourceAccount:        &txnbuild.SimpleAccount{AccountID: kp01.Address()},
+			IncrementSequenceNum: true,
+			Operations: []txnbuild.Operation{
+				&txnbuild.Payment{
+					SourceAccount: kp01.Address(),
+					Destination:   kp02.Address(),
+					Amount:        "1",
+					Asset:         assetGOAT,
+				},
+			},
+			BaseFee:    txnbuild.MinBaseFee,
+			Timebounds: txnbuild.NewInfiniteTimeout(),
+		},
+	)
+	require.NoError(t, err)
+	txEnc, err = tx.Base64()
+	t.Log("Tx:", txEnc)
+	req = `{
+		"tx": "` + txEnc + `"
+	}`
+	r = httptest.NewRequest("POST", "/tx_approve", strings.NewReader(req))
+	r = r.WithContext(ctx)
+
+	w = httptest.NewRecorder()
+	m = chi.NewMux()
+	m.Post("/tx_approve", handler.ServeHTTP)
+	m.ServeHTTP(w, r)
+	resp = w.Result()
+
+	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
+
+	body, err = ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	wantBody = `{
+		"status":"rejected", "message":"Not implemented."
+	}`
+	require.JSONEq(t, wantBody, string(body))
 }
