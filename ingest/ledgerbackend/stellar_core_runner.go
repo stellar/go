@@ -9,6 +9,7 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -74,21 +75,26 @@ type stellarCoreRunner struct {
 }
 
 func newStellarCoreRunner(config CaptiveCoreConfig, mode stellarCoreRunnerMode) (*stellarCoreRunner, error) {
-	// Use the specified directory to store Captive Core's data
-	// https://github.com/stellar/go/issues/3437
-	info, err := os.Stat(config.StoragePath)
+	// Use the specified directory to store Captive Core's data:
+	//    https://github.com/stellar/go/issues/3437
+	//
+	// However, first we ALWAYS append something to the base storage path,
+	// because we will delete the directory entirely when Horizon stops.
+	fullStoragePath := path.Join(config.StoragePath, "captive-core")
+
+	info, err := os.Stat(fullStoragePath)
 	if os.IsNotExist(err) {
-		innerErr := os.MkdirAll(config.StoragePath, os.FileMode(int(0744))) // rwx|r|r
+		innerErr := os.MkdirAll(fullStoragePath, os.FileMode(int(0744))) // rwx|r|r
 		if innerErr != nil {
 			return nil, errors.Wrap(innerErr, fmt.Sprintf(
-				"failed to create storage directory (%s)", config.StoragePath))
+				"failed to create storage directory (%s)", fullStoragePath))
 		}
 	} else if !info.IsDir() {
 		return nil, errors.New(fmt.Sprintf(
-			"%s is not a directory", config.StoragePath))
+			"%s is not a directory", fullStoragePath))
 	} else if err != nil {
 		return nil, errors.Wrap(err, fmt.Sprintf(
-			"error accessing storage directory: %s", config.StoragePath))
+			"error accessing storage directory: %s", fullStoragePath))
 	}
 
 	ctx, cancel := context.WithCancel(config.Context)
@@ -103,7 +109,7 @@ func newStellarCoreRunner(config CaptiveCoreConfig, mode stellarCoreRunnerMode) 
 		mode:              mode,
 		ctx:               ctx,
 		cancel:            cancel,
-		storagePath:       config.StoragePath,
+		storagePath:       fullStoragePath,
 		nonce: fmt.Sprintf(
 			"captive-stellar-core-%x",
 			rand.New(rand.NewSource(time.Now().UnixNano())).Uint64(),
