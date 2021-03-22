@@ -15,7 +15,6 @@ import (
 
 type Options struct {
 	IssuerAccountSecret    string
-	DistributionAccount    string
 	AssetCode              string
 	FriendbotPaymentAmount int
 	HorizonURL             string
