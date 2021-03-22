@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/hex"
 	"os"
+	"path"
+	"path/filepath"
 	"sync"
 
 	"github.com/pkg/errors"
@@ -131,6 +133,11 @@ type CaptiveCoreConfig struct {
 	// the CaptiveStellarCore instance will not be able to stream ledgers from Stellar Core or spawn new
 	// instances of Stellar Core. If Context is omitted CaptiveStellarCore will default to using context.Background.
 	Context context.Context
+	// StoragePath is the (optional) base path passed along to Core's
+	// BUCKET_DIR_PATH which specifies where various bucket data should be
+	// stored. We always append /captive-core to this directory, since we clean
+	// it up entirely on shutdown.
+	StoragePath string
 }
 
 // NewCaptive returns a new CaptiveStellarCore instance.
@@ -144,6 +151,14 @@ func NewCaptive(config CaptiveCoreConfig) (*CaptiveStellarCore, error) {
 		config.Log.Logger.SetOutput(os.Stdout)
 		config.Log.SetLevel(logrus.InfoLevel)
 	}
+
+	// ALWAYS append something to the base storage path, because we will delete
+	// the directory entirely when Horizon stops.
+	fullStoragePath, err := filepath.Abs(path.Join(config.StoragePath, "captive-core"))
+	if err != nil {
+		return nil, errors.Wrap(err, "bad storage directory")
+	}
+	config.StoragePath = fullStoragePath
 
 	parentCtx := config.Context
 	if parentCtx == nil {

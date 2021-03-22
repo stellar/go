@@ -22,6 +22,7 @@ type Config struct {
 	RemoteCaptiveCoreURL        string
 	CaptiveCoreHTTPPort         uint
 	CaptiveCoreLogPath          string
+	CaptiveCoreStoragePath      string
 
 	StellarCoreDatabaseURL string
 	StellarCoreURL         string

@@ -134,6 +134,14 @@ func Flags() (*Config, support.ConfigOptions) {
 			ConfigKey:   &config.CaptiveCoreHTTPPort,
 		},
 		&support.ConfigOption{
+			Name:        "captive-core-storage-path",
+			OptType:     types.String,
+			FlagDefault: "./",
+			Required:    false,
+			Usage:       "Storage location for Captive Core bucket data",
+			ConfigKey:   &config.CaptiveCoreStoragePath,
+		},
+		&support.ConfigOption{
 			Name:      StellarCoreDBURLFlagName,
 			EnvVar:    "STELLAR_CORE_DATABASE_URL",
 			ConfigKey: &config.StellarCoreDatabaseURL,
