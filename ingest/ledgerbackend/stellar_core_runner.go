@@ -176,7 +176,19 @@ func (r *stellarCoreRunner) generateConfig() (string, error) {
 }
 
 func (r *stellarCoreRunner) getConfFileName() string {
-	path, _ := filepath.Abs(filepath.Join(r.storagePath, "stellar-core.conf"))
+	joinedPath := filepath.Join(r.storagePath, "stellar-core.conf")
+
+	// Given that `storagePath` can be anything, we need the full, absolute path
+	// here so that everything Core needs is created under the storagePath
+	// subdirectory.
+	//
+	// If the path *can't* be absolutely resolved (bizarre), we can still try
+	// recovering by using the path the user specified directly.
+	path, err := filepath.Abs(joinedPath)
+	if err != nil {
+		r.log.Warnf("Failed to resolve %s as an absolute path: %s", joinedPath, err)
+		return joinedPath
+	}
 	return path
 }
 
