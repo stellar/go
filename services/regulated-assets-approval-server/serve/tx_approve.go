@@ -30,10 +30,6 @@ const (
 	revisedHappyPathMsg = "Authorization and deauthorization operations were added."
 )
 
-var (
-	txnBuildPaymentType = reflect.TypeOf((*txnbuild.Payment)(nil))
-)
-
 type txApproveHandler struct {
 	issuerKP  *keypair.Full
 	assetCode string
@@ -182,7 +178,7 @@ func (h txApproveHandler) Approve(ctx context.Context, in txApproveRequest) (*tx
 			},
 		},
 		BaseFee:    tx.BaseFee(),
-		Timebounds: txnbuild.NewTimeout(300),
+		Timebounds: tx.Timebounds(),
 	})
 	if err != nil {
 		log.Ctx(ctx).Error(errors.Wrap(err, "building transaction"))
