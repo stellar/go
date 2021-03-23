@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/go-chi/chi"
+	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stretchr/testify/assert"
@@ -216,6 +217,20 @@ func TestTxApproveHandler_Approve(t *testing.T) {
 			Timebounds: txnbuild.NewInfiniteTimeout(),
 		},
 	)
+	// tx, err := txnbuild.NewTransaction(
+	// 	txnbuild.TransactionParams{
+	// 		SourceAccount:        &txnbuild.SimpleAccount{AccountID: kp01.Address()},
+	// 		IncrementSequenceNum: true,
+	// 		Operations: []txnbuild.Operation{
+	// 			&txnbuild.BeginSponsoringFutureReserves{
+	// 				SponsoredID:   "GA6HNE7O2N2IXIOBZNZ4IPTS2P6DSAJJF5GD5PDLH5GYOZ6WMPSKCXD4",
+	// 				SourceAccount: "GDR3RJVOHYR5A4RSLZ7D3GOSTPBGD2FY7KJD7ZB7363ROOQHWYDVVULS",
+	// 			},
+	// 		},
+	// 		BaseFee:    txnbuild.MinBaseFee,
+	// 		Timebounds: txnbuild.NewInfiniteTimeout(),
+	// 	},
+	// )
 	require.NoError(t, err)
 	txEnc, err := tx.Base64()
 	req := txApproveRequest{
@@ -225,6 +240,7 @@ func TestTxApproveHandler_Approve(t *testing.T) {
 	rejectedResponse, err := txApproveHandler{
 		issuerAccountSecret: issuerAccKeyPair.Seed(),
 		assetCode:           assetGOAT.GetCode(),
+		horizonClient:       horizonclient.DefaultTestNetClient,
 	}.Approve(ctx, req)
 	require.NoError(t, err)
 	wantApproveResponse := txApproveResponse{

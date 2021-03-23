@@ -3,7 +3,9 @@ package serve
 import (
 	"context"
 	"net/http"
+	"reflect"
 
+	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/http/httpdecode"
@@ -24,9 +26,14 @@ const (
 	notImplementedErr   = "Not implemented."
 )
 
+var (
+	txnBuildPaymentType = reflect.TypeOf((*txnbuild.Payment)(nil))
+)
+
 type txApproveHandler struct {
 	issuerAccountSecret string
 	assetCode           string
+	horizonClient       horizonclient.ClientInterface
 }
 
 type txApproveRequest struct {
@@ -156,5 +163,57 @@ func (h txApproveHandler) Approve(ctx context.Context, in txApproveRequest) (*tx
 	}
 
 	log.Ctx(ctx).Debug(issuerKP)
+
+	// Check if transaction has only one operation. The happy path requirement for now
+	if len(tx.Operations()) > 1 {
+		log.Ctx(ctx).Error(errors.Wrapf(nil, "Transaction has %d operations.", len(tx.Operations())))
+		return nil, NewHTTPError(http.StatusBadRequest, `Too many operations in transaction.`)
+	}
+	// Check if operation is a payment. The happy path requirement for now
+	op, ok := tx.Operations()[0].(*txnbuild.Payment)
+	if !ok {
+		log.Ctx(ctx).Error(errors.Wrapf(nil, "Transaction contains a %q operation.", reflect.TypeOf(op)))
+		return nil, NewHTTPError(http.StatusBadRequest, `Not a payment operation.`)
+	}
+	asset := txnbuild.CreditAsset{
+		Code:   h.assetCode,
+		Issuer: issuerKP.Address(),
+	}
+
+	tx, err = txnbuild.NewTransaction(txnbuild.TransactionParams{
+		SourceAccount:        &txnbuild.SimpleAccount{AccountID: tx.SourceAccount().AccountID},
+		IncrementSequenceNum: true,
+		Operations: []txnbuild.Operation{
+			&txnbuild.AllowTrust{
+				Trustor:   tx.SourceAccount().AccountID,
+				Type:      asset,
+				Authorize: true,
+			},
+			&txnbuild.AllowTrust{
+				Trustor:   op.Destination,
+				Type:      asset,
+				Authorize: true,
+			},
+			op,
+			&txnbuild.AllowTrust{
+				Trustor:   tx.SourceAccount().AccountID,
+				Type:      asset,
+				Authorize: false,
+			},
+			&txnbuild.AllowTrust{
+				Trustor:   op.Destination,
+				Type:      asset,
+				Authorize: false,
+			},
+		},
+		BaseFee:    tx.BaseFee(),
+		Timebounds: txnbuild.NewTimeout(300),
+	})
+	if err != nil {
+		err = errors.Wrap(err, "building transaction")
+		log.Ctx(ctx).Error(err)
+		return nil, nil
+	}
+
 	return nil, nil
 }
