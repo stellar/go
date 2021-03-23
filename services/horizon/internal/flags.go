@@ -134,6 +134,14 @@ func Flags() (*Config, support.ConfigOptions) {
 			ConfigKey:   &config.CaptiveCoreHTTPPort,
 		},
 		&support.ConfigOption{
+			Name:        "captive-core-peer-port",
+			OptType:     types.Uint,
+			FlagDefault: uint(11625),
+			Required:    false,
+			Usage:       "port for Captive Core to bind to for connecting to the Stellar swarm",
+			ConfigKey:   &config.CaptiveCorePeerPort,
+		},
+		&support.ConfigOption{
 			Name:      StellarCoreDBURLFlagName,
 			EnvVar:    "STELLAR_CORE_DATABASE_URL",
 			ConfigKey: &config.StellarCoreDatabaseURL,

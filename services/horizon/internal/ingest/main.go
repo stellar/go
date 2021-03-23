@@ -72,6 +72,7 @@ type Config struct {
 	CaptiveCoreBinaryPath       string
 	CaptiveCoreConfigAppendPath string
 	CaptiveCoreHTTPPort         uint
+	CaptiveCorePeerPort         uint
 	CaptiveCoreLogPath          string
 	RemoteCaptiveCoreURL        string
 	NetworkPassphrase           string
@@ -198,6 +199,7 @@ func NewSystem(config Config) (System, error) {
 					BinaryPath:          config.CaptiveCoreBinaryPath,
 					ConfigAppendPath:    config.CaptiveCoreConfigAppendPath,
 					HTTPPort:            config.CaptiveCoreHTTPPort,
+					PeerPort:            config.CaptiveCorePeerPort,
 					NetworkPassphrase:   config.NetworkPassphrase,
 					HistoryArchiveURLs:  []string{config.HistoryArchiveURL},
 					CheckpointFrequency: config.CheckpointFrequency,
