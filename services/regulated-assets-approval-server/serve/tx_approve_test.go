@@ -147,7 +147,7 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 	}
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
 
-	// Test "not implemented"
+	// Test revisable transaction
 	tx, err = txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount:        &txnbuild.SimpleAccount{AccountID: kp01.Address()},
@@ -448,7 +448,7 @@ func TestTxApproveHandler_serveHTTPJson(t *testing.T) {
 	}`
 	require.JSONEq(t, wantBody, string(body))
 
-	// Test "not implemented"
+	// Test revisable transaction
 	tx, err = txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount:        &txnbuild.SimpleAccount{AccountID: kp01.Address()},
@@ -479,15 +479,11 @@ func TestTxApproveHandler_serveHTTPJson(t *testing.T) {
 	m.ServeHTTP(w, r)
 	resp = w.Result()
 
-	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
-	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
-	wantBody = `{
-		"status":"rejected", "error":"Not implemented."
-	}`
-	require.JSONEq(t, wantBody, string(body))
+	assert.Empty(t, string(body))
 }
 
 func TestTxApproveHandler_serveHTTPForm(t *testing.T) {
@@ -677,7 +673,7 @@ func TestTxApproveHandler_serveHTTPForm(t *testing.T) {
 			}`
 	require.JSONEq(t, wantBody, string(body))
 
-	// Test "not implemented"
+	// Test revisable transaction
 	tx, err = txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount:        &txnbuild.SimpleAccount{AccountID: kp01.Address()},
@@ -707,13 +703,9 @@ func TestTxApproveHandler_serveHTTPForm(t *testing.T) {
 	m.ServeHTTP(w, r)
 	resp = w.Result()
 
-	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
-	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
-	wantBody = `{
-			"status":"rejected", "error":"Not implemented."
-		}`
-	require.JSONEq(t, wantBody, string(body))
+	assert.Empty(t, string(body))
 }

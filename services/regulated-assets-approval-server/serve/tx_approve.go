@@ -42,9 +42,9 @@ type txApproveRequest struct {
 
 type txApproveResponse struct {
 	Status sep8Status `json:"status"`
-	Error  string     `json:"error"`
-	Message     string `json:"message"`
-	Transaction string `json:"tx"`
+	Message     string `json:"message,omitempty"`
+	Transaction string `json:"tx,omitempty"`
+	Error       string `json:"error,omitempty"`
 }
 
 func NewRejectedTXApproveResponse(errorMessage string) *txApproveResponse {
