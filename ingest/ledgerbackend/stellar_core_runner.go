@@ -128,12 +128,14 @@ func (r *stellarCoreRunner) generateConfig() (string, error) {
 	if r.mode == stellarCoreRunnerModeOnline && r.configAppendPath == "" {
 		return "", errors.New("stellar-core append config file path cannot be empty in online mode")
 	}
+
 	lines := []string{
 		"# Generated file -- do not edit",
 		"NODE_IS_VALIDATOR=false",
 		"DISABLE_XDR_FSYNC=true",
 		fmt.Sprintf(`NETWORK_PASSPHRASE="%s"`, r.networkPassphrase),
-		fmt.Sprintf(`BUCKET_DIR_PATH="%s"`, filepath.Join(r.storagePath, "buckets")),
+		// Note: We don't pass BUCKET_DIR_PATH here because it's created
+		// *relative* to the storage path (i.e. where the config lives).
 		fmt.Sprintf(`HTTP_PORT=%d`, r.httpPort),
 		fmt.Sprintf(`LOG_FILE_PATH="%s"`, r.logPath),
 	}
