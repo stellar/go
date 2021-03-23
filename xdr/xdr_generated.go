@@ -9471,15 +9471,15 @@ var (
 //        AccountID trustor;
 //        Asset asset;
 //
-//        uint32* clearFlags; // which flags to clear
-//        uint32* setFlags;   // which flags to set
+//        uint32 clearFlags; // which flags to clear
+//        uint32 setFlags;   // which flags to set
 //    };
 //
 type SetTrustLineFlagsOp struct {
 	Trustor    AccountId
 	Asset      Asset
-	ClearFlags *Uint32
-	SetFlags   *Uint32
+	ClearFlags Uint32
+	SetFlags   Uint32
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler.
