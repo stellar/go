@@ -72,8 +72,10 @@ func handleHTTP(opts Options) http.Handler {
 		paymentAmount:       opts.FriendbotPaymentAmount,
 	}.ServeHTTP)
 	mux.Post("/tx_approve", txApproveHandler{
-		assetCode: opts.AssetCode,
-		issuerKP:  issuerKP,
+		assetCode:         opts.AssetCode,
+		issuerKP:          issuerKP,
+		assetCode:         opts.AssetCode,
+		networkPassphrase: opts.NetworkPassphrase,
 	}.ServeHTTP)
 	return mux
 }
