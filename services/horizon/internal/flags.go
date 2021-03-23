@@ -136,9 +136,9 @@ func Flags() (*Config, support.ConfigOptions) {
 		&support.ConfigOption{
 			Name:        "captive-core-peer-port",
 			OptType:     types.Uint,
-			FlagDefault: uint(11625),
+			FlagDefault: uint(0),
 			Required:    false,
-			Usage:       "port for Captive Core to bind to for connecting to the Stellar swarm",
+			Usage:       "port for Captive Core to bind to for connecting to the Stellar swarm (0 uses Stellar Core's default)",
 			ConfigKey:   &config.CaptiveCorePeerPort,
 		},
 		&support.ConfigOption{
