@@ -13,13 +13,15 @@ import (
 )
 
 const (
-	rejectedStatus    = "rejected"
-	missingParamErr   = "Missing parameter \"tx\"."
-	invalidParamErr   = "Invalid parameter \"tx\"."
-	internalErrErr    = "Internal Error."
-	invalidSrcAccErr  = "The source account is invalid."
-	unauthorizedOpErr = "There is one or more unauthorized operations in the provided transaction."
-	notImplementedErr = "Not implemented."
+	rejectedStatus      = "rejected"
+	revisedStatus       = "revised"
+	revisedHappyPathMsg = "Authorization and deauthorization operations were added."
+	missingParamErr     = "Missing parameter \"tx\"."
+	invalidParamErr     = "Invalid parameter \"tx\"."
+	internalErrErr      = "Internal Error."
+	invalidSrcAccErr    = "The source account is invalid."
+	unauthorizedOpErr   = "There is one or more unauthorized operations in the provided transaction."
+	notImplementedErr   = "Not implemented."
 )
 
 type txApproveHandler struct {
@@ -32,8 +34,10 @@ type txApproveRequest struct {
 }
 
 type txApproveResponse struct {
-	Status string `json:"status"`
-	Error  string `json:"error"`
+	Status      string `json:"status"`
+	Message     string `json:"message"`
+	Transaction string `json:"tx"`
+	Error       string `json:"error"`
 }
 
 func (h txApproveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -127,8 +131,30 @@ func (h txApproveHandler) isRejected(ctx context.Context, in txApproveRequest) (
 		}
 	}
 
-	return &txApproveResponse{
-		Status: rejectedStatus,
-		Error:  notImplementedErr,
-	}, nil
+	return nil, nil
+}
+
+func (h txApproveHandler) Approve(ctx context.Context, in txApproveRequest) (*txApproveResponse, error) {
+	// Decode the request transaction.
+	parsed, err := txnbuild.TransactionFromXDR(in.Transaction)
+	if err != nil {
+		log.Ctx(ctx).Error(errors.Wrapf(err, "Parsing transaction %s failed", in.Transaction))
+		return nil, NewHTTPError(http.StatusBadRequest, `Parsing transaction failed.`)
+	}
+
+	tx, ok := parsed.Transaction()
+	if !ok {
+		log.Ctx(ctx).Error(errors.Wrapf(err, "Transaction %s is not a simple transaction.", in.Transaction))
+		return nil, NewHTTPError(http.StatusBadRequest, `Transaction submitted is not a simple transaction.`)
+	}
+	log.Ctx(ctx).Debug(tx)
+
+	issuerKP, err := keypair.Parse(h.issuerAccountSecret)
+	if err != nil {
+		log.Ctx(ctx).Error(errors.Wrap(err, "Parsing issuer secret failed."))
+		return nil, NewHTTPError(http.StatusBadRequest, `Parsing issuer secret failed.`)
+	}
+
+	log.Ctx(ctx).Debug(issuerKP)
+	return nil, nil
 }

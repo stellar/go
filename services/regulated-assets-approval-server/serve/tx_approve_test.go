@@ -191,6 +191,49 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
 }
 
+func TestTxApproveHandler_Approve(t *testing.T) {
+	ctx := context.Background()
+	issuerAccKeyPair := keypair.MustRandom()
+	assetGOAT := txnbuild.CreditAsset{
+		Code:   "GOAT",
+		Issuer: issuerAccKeyPair.Address(),
+	}
+	kp01 := keypair.MustRandom()
+	kp02 := keypair.MustRandom()
+	tx, err := txnbuild.NewTransaction(
+		txnbuild.TransactionParams{
+			SourceAccount:        &txnbuild.SimpleAccount{AccountID: kp01.Address()},
+			IncrementSequenceNum: true,
+			Operations: []txnbuild.Operation{
+				&txnbuild.Payment{
+					SourceAccount: kp01.Address(),
+					Destination:   kp02.Address(),
+					Amount:        "1",
+					Asset:         assetGOAT,
+				},
+			},
+			BaseFee:    txnbuild.MinBaseFee,
+			Timebounds: txnbuild.NewInfiniteTimeout(),
+		},
+	)
+	require.NoError(t, err)
+	txEnc, err := tx.Base64()
+	req := txApproveRequest{
+		Transaction: txEnc,
+	}
+
+	rejectedResponse, err := txApproveHandler{
+		issuerAccountSecret: issuerAccKeyPair.Seed(),
+		assetCode:           assetGOAT.GetCode(),
+	}.Approve(ctx, req)
+	require.NoError(t, err)
+	wantApproveResponse := txApproveResponse{
+		Status:  revisedStatus,
+		Message: revisedHappyPathMsg,
+	}
+	assert.Equal(t, &wantApproveResponse, rejectedResponse)
+}
+
 func TestTxApproveHandler_serveHTTPJson(t *testing.T) {
 	ctx := context.Background()
 	issuerAccKeyPair := keypair.MustRandom()
