@@ -200,7 +200,7 @@ func TestTxApproveHandler_Approve(t *testing.T) {
 				},
 			},
 			BaseFee:    txnbuild.MinBaseFee,
-			Timebounds: txnbuild.NewInfiniteTimeout(),
+			Timebounds: txnbuild.NewTimeout(400),
 		},
 	)
 	require.NoError(t, err)
@@ -215,7 +215,47 @@ func TestTxApproveHandler_Approve(t *testing.T) {
 		networkPassphrase:   network.TestNetworkPassphrase,
 	}.Approve(ctx, req)
 	require.NoError(t, err)
-	assert.NotEmpty(t, rejectedResponse) //! Must replace with actual assertion.
+
+	// Decode the request transaction.
+	parsed, err := txnbuild.TransactionFromXDR(rejectedResponse.Transaction)
+	require.NoError(t, err)
+	tx, ok := parsed.Transaction()
+	require.True(t, ok)
+
+	// Check if revised transaction only has 5 operations.
+	require.Len(t, tx.Operations(), 5)
+
+	// Check Operation 1: AllowTrust op where issuer fully authorizes account A, asset X.
+	op1, ok := tx.Operations()[0].(*txnbuild.AllowTrust)
+	require.True(t, ok)
+	assert.Equal(t, op1.Trustor, kp01.Address())
+	assert.Equal(t, op1.Type.GetCode(), assetGOAT.GetCode())
+	require.True(t, op1.Authorize)
+	// Check  Operation 2: AllowTrust op where issuer fully authorizes account B, asset X.
+	op2, ok := tx.Operations()[1].(*txnbuild.AllowTrust)
+	require.True(t, ok)
+	assert.Equal(t, op2.Trustor, kp02.Address())
+	assert.Equal(t, op2.Type.GetCode(), assetGOAT.GetCode())
+	require.True(t, op2.Authorize)
+	// Check Operation 3: Payment from A to B
+	op3, ok := tx.Operations()[2].(*txnbuild.Payment)
+	require.True(t, ok)
+	assert.Equal(t, op3.SourceAccount, kp01.Address())
+	assert.Equal(t, op3.Destination, kp02.Address())
+	assert.Equal(t, op3.Asset, assetGOAT)
+
+	// Check Operation 4: AllowTrust op where issuer fully deauthorizes account B, asset X.
+	op4, ok := tx.Operations()[3].(*txnbuild.AllowTrust)
+	require.True(t, ok)
+	assert.Equal(t, op4.Trustor, kp01.Address())
+	assert.Equal(t, op4.Type.GetCode(), assetGOAT.GetCode())
+	require.False(t, op4.Authorize)
+	// Check Operation 5: AllowTrust op where issuer fully deauthorizes account A, asset X.
+	op5, ok := tx.Operations()[4].(*txnbuild.AllowTrust)
+	require.True(t, ok)
+	assert.Equal(t, op5.Trustor, kp02.Address())
+	assert.Equal(t, op5.Type.GetCode(), assetGOAT.GetCode())
+	require.False(t, op5.Authorize)
 }
 
 func TestTxApproveHandler_serveHTTPJson(t *testing.T) {
