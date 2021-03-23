@@ -1010,7 +1010,7 @@ func (e *effectsWrapper) addClawbackClaimableBalanceEffects(changes []ingest.Cha
 func (e *effectsWrapper) addSetTrustLineFlagsEffects() error {
 	source := e.operation.SourceAccount()
 	op := e.operation.operation.Body.MustSetTrustLineFlagsOp()
-	e.addTrustLineFlagsEffect(source, &op.Trustor, op.Asset, op.SetFlags, op.ClearFlags)
+	e.addTrustLineFlagsEffect(source, &op.Trustor, op.Asset, &op.SetFlags, &op.ClearFlags)
 	return nil
 }
 

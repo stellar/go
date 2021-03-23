@@ -44,6 +44,7 @@ func TestGenerateConfig(t *testing.T) {
 				HistoryArchiveURLs: []string{"http://localhost:1170"},
 				Log:                log.New(),
 				ConfigAppendPath:   testCase.appendPath,
+				PeerPort:           12345,
 				Context:            context.Background(),
 				NetworkPassphrase:  "Public Global Stellar Network ; September 2015",
 			}, testCase.mode)

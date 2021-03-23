@@ -72,6 +72,7 @@ func initIngester(app *App) {
 		CaptiveCoreBinaryPath:       app.config.CaptiveCoreBinaryPath,
 		CaptiveCoreConfigAppendPath: app.config.CaptiveCoreConfigAppendPath,
 		CaptiveCoreHTTPPort:         app.config.CaptiveCoreHTTPPort,
+		CaptiveCorePeerPort:         app.config.CaptiveCorePeerPort,
 		CaptiveCoreLogPath:          app.config.CaptiveCoreLogPath,
 		RemoteCaptiveCoreURL:        app.config.RemoteCaptiveCoreURL,
 		EnableCaptiveCore:           app.config.EnableCaptiveCoreIngestion,
