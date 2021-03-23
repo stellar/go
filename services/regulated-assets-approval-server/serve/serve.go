@@ -64,6 +64,7 @@ func handleHTTP(opts Options) *chi.Mux {
 	mux.Post("/tx_approve", txApproveHandler{
 		assetCode:           opts.AssetCode,
 		issuerAccountSecret: opts.IssuerAccountSecret,
+		networkPassphrase:   opts.NetworkPassphrase,
 	}.ServeHTTP)
 	return mux
 }

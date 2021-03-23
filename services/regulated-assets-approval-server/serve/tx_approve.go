@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"reflect"
 
-	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/http/httpdecode"
@@ -33,7 +32,7 @@ var (
 type txApproveHandler struct {
 	issuerAccountSecret string
 	assetCode           string
-	horizonClient       horizonclient.ClientInterface
+	networkPassphrase   string
 }
 
 type txApproveRequest struct {
@@ -156,7 +155,7 @@ func (h txApproveHandler) Approve(ctx context.Context, in txApproveRequest) (*tx
 	}
 	log.Ctx(ctx).Debug(tx)
 
-	issuerKP, err := keypair.Parse(h.issuerAccountSecret)
+	issuerKP, err := keypair.ParseFull(h.issuerAccountSecret)
 	if err != nil {
 		log.Ctx(ctx).Error(errors.Wrap(err, "Parsing issuer secret failed."))
 		return nil, NewHTTPError(http.StatusBadRequest, `Parsing issuer secret failed.`)
@@ -210,10 +209,24 @@ func (h txApproveHandler) Approve(ctx context.Context, in txApproveRequest) (*tx
 		Timebounds: txnbuild.NewTimeout(300),
 	})
 	if err != nil {
-		err = errors.Wrap(err, "building transaction")
-		log.Ctx(ctx).Error(err)
-		return nil, nil
+		log.Ctx(ctx).Error(errors.Wrap(err, "building transaction"))
+		return nil, NewHTTPError(http.StatusBadRequest, `Failed to build and sandwich transaction.`)
 	}
 
-	return nil, nil
+	tx, err = tx.Sign(h.networkPassphrase, issuerKP)
+	if err != nil {
+		log.Ctx(ctx).Error(errors.Wrap(err, "signing transaction"))
+		return nil, NewHTTPError(http.StatusBadRequest, `Failed to sign transaction.`)
+	}
+
+	txEnc, err := tx.Base64()
+	if err != nil {
+		log.Ctx(ctx).Error(errors.Wrap(err, "unable to serialize tx"))
+		return nil, NewHTTPError(http.StatusBadRequest, `unable to serialize tx.`)
+	}
+	return &txApproveResponse{
+		Status:      revisedStatus,
+		Message:     revisedHappyPathMsg,
+		Transaction: txEnc,
+	}, nil
 }
