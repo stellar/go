@@ -449,7 +449,7 @@ jobs:
                 steps:
                   # Install a Stellar Core version with CAP35 support
                   - install_stellar_core:
-                      core-version: 11.4.0-472.84cd6a0.xenial~cap35FonsTest~buildtests
+                      core-version: 15.3.0-498.7a7f18c.xenial~SetTrustlineFlagsPR~buildtests
             - run:
                 name: Setting Captive Core env variables
                 command: echo "export HORIZON_INTEGRATION_ENABLE_CAPTIVE_CORE=true" >> $BASH_ENV

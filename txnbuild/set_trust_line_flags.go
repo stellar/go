@@ -61,15 +61,12 @@ func (stf *SetTrustLineFlags) BuildXDR() (xdr.Operation, error) {
 	return op, nil
 }
 
-func trustLineFlagsToXDR(flags []TrustLineFlag) *xdr.Uint32 {
-	if len(flags) == 0 {
-		return nil
-	}
+func trustLineFlagsToXDR(flags []TrustLineFlag) xdr.Uint32 {
 	var result xdr.Uint32
 	for _, flag := range flags {
 		result = result | xdr.Uint32(flag)
 	}
-	return &result
+	return result
 }
 
 // FromXDR for SetTrustLineFlags  initialises the txnbuild struct from the corresponding xdr Operation.
@@ -92,11 +89,8 @@ func (stf *SetTrustLineFlags) FromXDR(xdrOp xdr.Operation) error {
 	return nil
 }
 
-func fromXDRTrustlineFlag(flags *xdr.Uint32) []TrustLineFlag {
-	if flags == nil {
-		return nil
-	}
-	flagsValue := xdr.TrustLineFlags(*flags)
+func fromXDRTrustlineFlag(flags xdr.Uint32) []TrustLineFlag {
+	flagsValue := xdr.TrustLineFlags(flags)
 	var result []TrustLineFlag
 	if flagsValue.IsAuthorized() {
 		result = append(result, TrustLineAuthorized)
