@@ -37,9 +37,9 @@ type txApproveRequest struct {
 
 type txApproveResponse struct {
 	Status      string `json:"status"`
-	Message     string `json:"message"`
-	Transaction string `json:"tx"`
-	Error       string `json:"error"`
+	Message     string `json:"message,omitempty"`
+	Transaction string `json:"tx,omitempty"`
+	Error       string `json:"error,omitempty"`
 }
 
 func (h txApproveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
