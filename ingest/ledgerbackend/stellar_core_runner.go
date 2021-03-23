@@ -84,7 +84,7 @@ func newStellarCoreRunner(config CaptiveCoreConfig, mode stellarCoreRunnerMode) 
 
 	info, err := os.Stat(fullStoragePath)
 	if os.IsNotExist(err) {
-		innerErr := os.MkdirAll(fullStoragePath, os.FileMode(int(0744))) // rwx|r|r
+		innerErr := os.MkdirAll(fullStoragePath, os.FileMode(int(0755))) // rwx|rx|rx
 		if innerErr != nil {
 			return nil, errors.Wrap(innerErr, fmt.Sprintf(
 				"failed to create storage directory (%s)", fullStoragePath))
