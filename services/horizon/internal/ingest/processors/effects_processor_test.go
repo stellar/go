@@ -1964,8 +1964,8 @@ func TestOperationEffectsSetTrustLineFlags(t *testing.T) {
 			SetTrustLineFlagsOp: &xdr.SetTrustLineFlagsOp{
 				Trustor:    trustor,
 				Asset:      xdr.MustNewCreditAsset("USD", "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD"),
-				ClearFlags: &clearFlags,
-				SetFlags:   &setFlags,
+				ClearFlags: clearFlags,
+				SetFlags:   setFlags,
 			},
 		},
 	}
