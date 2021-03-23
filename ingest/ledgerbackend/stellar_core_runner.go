@@ -159,8 +159,6 @@ func (r *stellarCoreRunner) generateConfig() (string, error) {
 	}
 	result += strings.Join(lines, "\n")
 
-	fmt.Println(result)
-
 	return result, nil
 }
 
