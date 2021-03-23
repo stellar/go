@@ -8,6 +8,8 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/stellar/go/clients/horizonclient"
+	"github.com/stellar/go/keypair"
+	"github.com/stellar/go/support/errors"
 	supporthttp "github.com/stellar/go/support/http"
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/support/render/health"
@@ -23,10 +25,16 @@ type Options struct {
 }
 
 func Serve(opts Options) {
+	handler, err := handleHTTP(opts)
+	if err != nil {
+		err = errors.Wrap(err, "parsing secret")
+		log.Fatal(err)
+		return
+	}
 	listenAddr := fmt.Sprintf(":%d", opts.Port)
 	serverConfig := supporthttp.Config{
 		ListenAddr:          listenAddr,
-		Handler:             handleHTTP(opts),
+		Handler:             handler,
 		TCPKeepAlive:        time.Minute * 3,
 		ShutdownGracePeriod: time.Second * 50,
 		ReadTimeout:         time.Second * 5,
@@ -43,7 +51,13 @@ func Serve(opts Options) {
 	supporthttp.Run(serverConfig)
 }
 
-func handleHTTP(opts Options) *chi.Mux {
+func handleHTTP(opts Options) (http.Handler, error) {
+	issuerKP, err := keypair.ParseFull(opts.IssuerAccountSecret)
+	if err != nil {
+		err = errors.Wrap(err, "parsing secret")
+		log.Error(err)
+		return nil, err
+	}
 	mux := chi.NewMux()
 
 	mux.Use(middleware.RequestID)
@@ -62,10 +76,10 @@ func handleHTTP(opts Options) *chi.Mux {
 		paymentAmount:       opts.FriendbotPaymentAmount,
 	}.ServeHTTP)
 	mux.Post("/tx_approve", txApproveHandler{
-		assetCode:           opts.AssetCode,
-		issuerAccountSecret: opts.IssuerAccountSecret,
+		assetCode: opts.AssetCode,
+		issuerKP:  issuerKP,
 	}.ServeHTTP)
-	return mux
+	return mux, nil
 }
 
 func (opts Options) horizonClient() horizonclient.ClientInterface {

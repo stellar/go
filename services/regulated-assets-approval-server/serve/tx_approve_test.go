@@ -28,8 +28,8 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 		Transaction: "",
 	}
 	rejectedResponse, err := txApproveHandler{
-		issuerAccountSecret: issuerAccKeyPair.Seed(),
-		assetCode:           assetGOAT.GetCode(),
+		issuerKP:  issuerAccKeyPair,
+		assetCode: assetGOAT.GetCode(),
 	}.isRejected(ctx, req)
 	require.NoError(t, err)
 	wantRejectedResponse := txApproveResponse{
@@ -43,8 +43,8 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 		Transaction: "BADXDRTRANSACTIONENVELOPE",
 	}
 	rejectedResponse, err = txApproveHandler{
-		issuerAccountSecret: issuerAccKeyPair.Seed(),
-		assetCode:           assetGOAT.GetCode(),
+		issuerKP:  issuerAccKeyPair,
+		assetCode: assetGOAT.GetCode(),
 	}.isRejected(ctx, req)
 	require.NoError(t, err)
 	wantRejectedResponse = txApproveResponse{
@@ -86,8 +86,8 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 		Transaction: feeBumpTxEnc,
 	}
 	rejectedResponse, err = txApproveHandler{
-		issuerAccountSecret: issuerAccKeyPair.Seed(),
-		assetCode:           assetGOAT.GetCode(),
+		issuerKP:  issuerAccKeyPair,
+		assetCode: assetGOAT.GetCode(),
 	}.isRejected(ctx, req)
 	require.NoError(t, err)
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse) // wantRejectedResponse is identical to "if can't parse XDR".
@@ -114,8 +114,8 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 		Transaction: txEnc,
 	}
 	rejectedResponse, err = txApproveHandler{
-		issuerAccountSecret: issuerAccKeyPair.Seed(),
-		assetCode:           assetGOAT.GetCode(),
+		issuerKP:  issuerAccKeyPair,
+		assetCode: assetGOAT.GetCode(),
 	}.isRejected(ctx, req)
 	require.NoError(t, err)
 	wantRejectedResponse = txApproveResponse{
@@ -147,8 +147,8 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 		Transaction: txEnc,
 	}
 	rejectedResponse, err = txApproveHandler{
-		issuerAccountSecret: issuerAccKeyPair.Seed(),
-		assetCode:           assetGOAT.GetCode(),
+		issuerKP:  issuerAccKeyPair,
+		assetCode: assetGOAT.GetCode(),
 	}.isRejected(ctx, req)
 	require.NoError(t, err)
 	wantRejectedResponse = txApproveResponse{
@@ -180,8 +180,8 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 		Transaction: txEnc,
 	}
 	rejectedResponse, err = txApproveHandler{
-		issuerAccountSecret: issuerAccKeyPair.Seed(),
-		assetCode:           assetGOAT.GetCode(),
+		issuerKP:  issuerAccKeyPair,
+		assetCode: assetGOAT.GetCode(),
 	}.isRejected(ctx, req)
 	require.NoError(t, err)
 	wantRejectedResponse = txApproveResponse{
@@ -199,8 +199,8 @@ func TestTxApproveHandler_serveHTTPJson(t *testing.T) {
 		Issuer: issuerAccKeyPair.Address(),
 	}
 	handler := txApproveHandler{
-		issuerAccountSecret: issuerAccKeyPair.Seed(),
-		assetCode:           assetGOAT.GetCode(),
+		issuerKP:  issuerAccKeyPair,
+		assetCode: assetGOAT.GetCode(),
 	}
 
 	// Test if no transaction is submitted.
@@ -431,8 +431,8 @@ func TestTxApproveHandler_serveHTTPForm(t *testing.T) {
 		Issuer: issuerAccKeyPair.Address(),
 	}
 	handler := txApproveHandler{
-		issuerAccountSecret: issuerAccKeyPair.Seed(),
-		assetCode:           assetGOAT.GetCode(),
+		issuerKP:  issuerAccKeyPair,
+		assetCode: assetGOAT.GetCode(),
 	}
 
 	// Test if no transaction is submitted.

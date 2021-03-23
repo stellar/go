@@ -23,8 +23,8 @@ const (
 )
 
 type txApproveHandler struct {
-	issuerAccountSecret string
-	assetCode           string
+	issuerKP  *keypair.Full
+	assetCode string
 }
 
 type txApproveRequest struct {
@@ -87,7 +87,6 @@ func (h txApproveHandler) isRejected(ctx context.Context, in txApproveRequest) (
 		}, nil
 	}
 
-	issuerKP, err := keypair.Parse(h.issuerAccountSecret)
 	if err != nil {
 		log.Ctx(ctx).Error(errors.Wrap(err, "Parsing issuer secret failed."))
 		return &txApproveResponse{
@@ -97,12 +96,12 @@ func (h txApproveHandler) isRejected(ctx context.Context, in txApproveRequest) (
 	}
 
 	// Check if transaction's sourceaccount is the same as the server issuer account.
-	if tx.SourceAccount().AccountID == issuerKP.Address() {
+	if tx.SourceAccount().AccountID == h.issuerKP.Address() {
 		log.Ctx(ctx).Error(errors.Wrapf(err,
 			"Transaction %s sourceAccount %s the same as the server issuer account %s",
 			in.Transaction,
 			tx.SourceAccount().AccountID,
-			issuerKP.Address()))
+			h.issuerKP.Address()))
 		return &txApproveResponse{
 			Status: rejectedStatus,
 			Error:  invalidSrcAccErr,
@@ -116,7 +115,7 @@ func (h txApproveHandler) isRejected(ctx context.Context, in txApproveRequest) (
 		if opSourceAccount == "" {
 			continue
 		}
-		if op.GetSourceAccount() == issuerKP.Address() {
+		if op.GetSourceAccount() == h.issuerKP.Address() {
 			log.Ctx(ctx).Error(errors.Wrapf(err,
 				"Unauthorized operation from %s in the provided transaction",
 				op.GetSourceAccount()))
