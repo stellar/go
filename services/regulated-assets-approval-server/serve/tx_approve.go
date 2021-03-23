@@ -54,6 +54,7 @@ func (h txApproveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			httpErr = serverError
 		}
 		httpErr.Render(w)
+		return
 	}
 	if rejectedResponse != nil {
 		httpjson.RenderStatus(w, http.StatusBadRequest, rejectedResponse, httpjson.JSON)
@@ -85,14 +86,6 @@ func (h txApproveHandler) isRejected(ctx context.Context, in txApproveRequest) (
 			Status: rejectedStatus,
 			Error:  invalidParamErr,
 		}, nil
-	}
-
-	if err != nil {
-		log.Ctx(ctx).Error(errors.Wrap(err, "Parsing issuer secret failed."))
-		return &txApproveResponse{
-			Status: rejectedStatus,
-			Error:  internalErrErr,
-		}, NewHTTPError(http.StatusBadRequest, `Parsing issuer secret failed.`)
 	}
 
 	// Check if transaction's sourceaccount is the same as the server issuer account.
