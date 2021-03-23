@@ -136,10 +136,20 @@ func Flags() (*Config, support.ConfigOptions) {
 		&support.ConfigOption{
 			Name:        "captive-core-storage-path",
 			OptType:     types.String,
-			FlagDefault: "./",
-			Required:    false,
-			Usage:       "Storage location for Captive Core bucket data",
-			ConfigKey:   &config.CaptiveCoreStoragePath,
+			FlagDefault: "",
+			CustomSetValue: func(opt *support.ConfigOption) {
+				existingValue := *opt.ConfigKey.(*string)
+				if existingValue == "" || existingValue == "." {
+					cwd, err := os.Getwd()
+					if err != nil {
+						stdLog.Fatalf("Unable to determine the current directory: %s", err)
+					}
+					*opt.ConfigKey.(*string) = cwd
+				}
+			},
+			Required:  false,
+			Usage:     "Storage location for Captive Core bucket data",
+			ConfigKey: &config.CaptiveCoreStoragePath,
 		},
 		&support.ConfigOption{
 			Name:      StellarCoreDBURLFlagName,
