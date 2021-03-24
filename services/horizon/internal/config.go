@@ -21,6 +21,7 @@ type Config struct {
 	CaptiveCoreConfigAppendPath string
 	RemoteCaptiveCoreURL        string
 	CaptiveCoreHTTPPort         uint
+	CaptiveCorePeerPort         uint
 	CaptiveCoreLogPath          string
 	CaptiveCoreStoragePath      string
 

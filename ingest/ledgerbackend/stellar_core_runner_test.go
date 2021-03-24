@@ -45,6 +45,7 @@ func TestGenerateConfig(t *testing.T) {
 				Log:                log.New(),
 				ConfigAppendPath:   testCase.appendPath,
 				StoragePath:        "./test-temp-dir",
+				PeerPort:           12345,
 				Context:            context.Background(),
 				NetworkPassphrase:  "Public Global Stellar Network ; September 2015",
 			}, testCase.mode)
