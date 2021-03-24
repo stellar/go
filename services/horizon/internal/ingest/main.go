@@ -70,6 +70,7 @@ type Config struct {
 	StellarCoreCursor           string
 	EnableCaptiveCore           bool
 	CaptiveCoreBinaryPath       string
+	CaptiveCoreStoragePath      string
 	CaptiveCoreConfigAppendPath string
 	CaptiveCoreHTTPPort         uint
 	CaptiveCorePeerPort         uint
@@ -197,6 +198,7 @@ func NewSystem(config Config) (System, error) {
 				ledgerbackend.CaptiveCoreConfig{
 					LogPath:             config.CaptiveCoreLogPath,
 					BinaryPath:          config.CaptiveCoreBinaryPath,
+					StoragePath:         config.CaptiveCoreStoragePath,
 					ConfigAppendPath:    config.CaptiveCoreConfigAppendPath,
 					HTTPPort:            config.CaptiveCoreHTTPPort,
 					PeerPort:            config.CaptiveCorePeerPort,

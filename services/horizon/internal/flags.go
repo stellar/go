@@ -134,6 +134,25 @@ func Flags() (*Config, support.ConfigOptions) {
 			ConfigKey:   &config.CaptiveCoreHTTPPort,
 		},
 		&support.ConfigOption{
+			Name:        "captive-core-storage-path",
+			OptType:     types.String,
+			FlagDefault: "",
+			CustomSetValue: func(opt *support.ConfigOption) {
+				existingValue := viper.GetString(opt.Name)
+				if existingValue == "" || existingValue == "." {
+					cwd, err := os.Getwd()
+					if err != nil {
+						stdLog.Fatalf("Unable to determine the current directory: %s", err)
+					}
+					existingValue = cwd
+				}
+				*opt.ConfigKey.(*string) = existingValue
+			},
+			Required:  false,
+			Usage:     "Storage location for Captive Core bucket data",
+			ConfigKey: &config.CaptiveCoreStoragePath,
+		},
+		&support.ConfigOption{
 			Name:        "captive-core-peer-port",
 			OptType:     types.Uint,
 			FlagDefault: uint(0),

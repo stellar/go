@@ -9,6 +9,7 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -68,17 +69,44 @@ type stellarCoreRunner struct {
 	processExited    bool
 	processExitError error
 
-	tempDir string
-	nonce   string
+	storagePath string
+	nonce       string
 
 	log *log.Entry
 }
 
+func createRandomHexString(n int) string {
+	hex := []rune("abcdef1234567890")
+	b := make([]rune, n)
+	for i := range b {
+		b[i] = hex[rand.Intn(len(hex))]
+	}
+	return string(b)
+}
+
 func newStellarCoreRunner(config CaptiveCoreConfig, mode stellarCoreRunnerMode) (*stellarCoreRunner, error) {
-	// Create temp dir
-	tempDir, err := ioutil.TempDir("", "captive-stellar-core")
-	if err != nil {
-		return nil, errors.Wrap(err, "error creating subprocess tmpdir")
+	// Use the specified directory to store Captive Core's data:
+	//    https://github.com/stellar/go/issues/3437
+	//
+	// However, first we ALWAYS append something to the base storage path,
+	// because we will delete the directory entirely when Horizon stops. We also
+	// add a random suffix in order to ensure that there aren't naming
+	// conflicts.
+	fullStoragePath := path.Join(config.StoragePath, "captive-core-"+createRandomHexString(8))
+
+	info, err := os.Stat(fullStoragePath)
+	if os.IsNotExist(err) {
+		innerErr := os.MkdirAll(fullStoragePath, os.FileMode(int(0755))) // rwx|rx|rx
+		if innerErr != nil {
+			return nil, errors.Wrap(innerErr, fmt.Sprintf(
+				"failed to create storage directory (%s)", fullStoragePath))
+		}
+	} else if !info.IsDir() {
+		return nil, errors.New(fmt.Sprintf(
+			"%s is not a directory", fullStoragePath))
+	} else if err != nil {
+		return nil, errors.Wrap(err, fmt.Sprintf(
+			"error accessing storage directory: %s", fullStoragePath))
 	}
 
 	ctx, cancel := context.WithCancel(config.Context)
@@ -94,7 +122,7 @@ func newStellarCoreRunner(config CaptiveCoreConfig, mode stellarCoreRunnerMode) 
 		mode:              mode,
 		ctx:               ctx,
 		cancel:            cancel,
-		tempDir:           tempDir,
+		storagePath:       fullStoragePath,
 		nonce: fmt.Sprintf(
 			"captive-stellar-core-%x",
 			rand.New(rand.NewSource(time.Now().UnixNano())).Uint64(),
@@ -113,12 +141,14 @@ func (r *stellarCoreRunner) generateConfig() (string, error) {
 	if r.mode == stellarCoreRunnerModeOnline && r.configAppendPath == "" {
 		return "", errors.New("stellar-core append config file path cannot be empty in online mode")
 	}
+
 	lines := []string{
 		"# Generated file -- do not edit",
 		"NODE_IS_VALIDATOR=false",
 		"DISABLE_XDR_FSYNC=true",
 		fmt.Sprintf(`NETWORK_PASSPHRASE="%s"`, r.networkPassphrase),
-		fmt.Sprintf(`BUCKET_DIR_PATH="%s"`, filepath.Join(r.tempDir, "buckets")),
+		// Note: We don't pass BUCKET_DIR_PATH here because it's created
+		// *relative* to the storage path (i.e. where the config lives).
 		fmt.Sprintf(`HTTP_PORT=%d`, r.httpPort),
 		fmt.Sprintf(`LOG_FILE_PATH="%s"`, r.logPath),
 	}
@@ -163,7 +193,20 @@ func (r *stellarCoreRunner) generateConfig() (string, error) {
 }
 
 func (r *stellarCoreRunner) getConfFileName() string {
-	return filepath.Join(r.tempDir, "stellar-core.conf")
+	joinedPath := filepath.Join(r.storagePath, "stellar-core.conf")
+
+	// Given that `storagePath` can be anything, we need the full, absolute path
+	// here so that everything Core needs is created under the storagePath
+	// subdirectory.
+	//
+	// If the path *can't* be absolutely resolved (bizarre), we can still try
+	// recovering by using the path the user specified directly.
+	path, err := filepath.Abs(joinedPath)
+	if err != nil {
+		r.log.Warnf("Failed to resolve %s as an absolute path: %s", joinedPath, err)
+		return joinedPath
+	}
+	return path
 }
 
 func (r *stellarCoreRunner) getLogLineWriter() io.Writer {
@@ -226,7 +269,7 @@ func (r *stellarCoreRunner) writeConf() error {
 func (r *stellarCoreRunner) createCmd(params ...string) *exec.Cmd {
 	allParams := append([]string{"--conf", r.getConfFileName()}, params...)
 	cmd := exec.CommandContext(r.ctx, r.executablePath, allParams...)
-	cmd.Dir = r.tempDir
+	cmd.Dir = r.storagePath
 	cmd.Stdout = r.getLogLineWriter()
 	cmd.Stderr = r.getLogLineWriter()
 	return cmd
@@ -374,12 +417,12 @@ func (r *stellarCoreRunner) getProcessExitError() (bool, error) {
 func (r *stellarCoreRunner) close() error {
 	r.lock.Lock()
 	started := r.started
-	tempDir := r.tempDir
+	storagePath := r.storagePath
 
-	r.tempDir = ""
+	r.storagePath = ""
 
 	// check if we have already closed
-	if tempDir == "" {
+	if storagePath == "" {
 		r.lock.Unlock()
 		return nil
 	}
@@ -403,5 +446,5 @@ func (r *stellarCoreRunner) close() error {
 		r.pipe.Reader.Close()
 	}
 
-	return os.RemoveAll(tempDir)
+	return os.RemoveAll(storagePath)
 }
