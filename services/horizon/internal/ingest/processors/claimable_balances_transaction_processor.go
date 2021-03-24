@@ -90,6 +90,22 @@ func claimableBalancesForTransaction(
 	return dedupeClaimableBalances(cbs)
 }
 
+func dedupeClaimableBalances(in []xdr.ClaimableBalanceId) (out []xdr.ClaimableBalanceId, err error) {
+	set := map[string]xdr.ClaimableBalanceId{}
+	for _, id := range in {
+		hexID, err := xdr.MarshalHex(id)
+		if err != nil {
+			return out, errors.New("error parsing BalanceID")
+		}
+		set[hexID] = id
+	}
+
+	for _, id := range set {
+		out = append(out, id)
+	}
+	return
+}
+
 func claimableBalancesForChanges(
 	changes []ingest.Change,
 ) ([]xdr.ClaimableBalanceId, error) {
