@@ -223,6 +223,7 @@ type IngestionQ interface {
 	QAccounts
 	QAssetStats
 	QClaimableBalances
+	QHistoryClaimableBalances
 	QData
 	QEffects
 	QLedgers

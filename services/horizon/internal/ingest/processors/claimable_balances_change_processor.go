@@ -7,22 +7,24 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-type ClaimableBalancesProcessor struct {
+type ClaimableBalancesChangeProcessor struct {
 	qClaimableBalances history.QClaimableBalances
 	cache              *ingest.ChangeCompactor
 }
 
-func NewClaimableBalancesProcessor(Q history.QClaimableBalances) *ClaimableBalancesProcessor {
-	p := &ClaimableBalancesProcessor{qClaimableBalances: Q}
+func NewClaimableBalancesChangeProcessor(Q history.QClaimableBalances) *ClaimableBalancesChangeProcessor {
+	p := &ClaimableBalancesChangeProcessor{
+		qClaimableBalances: Q,
+	}
 	p.reset()
 	return p
 }
 
-func (p *ClaimableBalancesProcessor) reset() {
+func (p *ClaimableBalancesChangeProcessor) reset() {
 	p.cache = ingest.NewChangeCompactor()
 }
 
-func (p *ClaimableBalancesProcessor) ProcessChange(change ingest.Change) error {
+func (p *ClaimableBalancesChangeProcessor) ProcessChange(change ingest.Change) error {
 	if change.Type != xdr.LedgerEntryTypeClaimableBalance {
 		return nil
 	}
@@ -43,7 +45,7 @@ func (p *ClaimableBalancesProcessor) ProcessChange(change ingest.Change) error {
 	return nil
 }
 
-func (p *ClaimableBalancesProcessor) Commit() error {
+func (p *ClaimableBalancesChangeProcessor) Commit() error {
 	batch := p.qClaimableBalances.NewClaimableBalancesBatchInsertBuilder(maxBatchSize)
 
 	changes := p.cache.GetChanges()

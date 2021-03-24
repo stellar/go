@@ -216,6 +216,21 @@ func TestHappyClawbackClaimableBalance(t *testing.T) {
 		tt.Equal(master.Address(), cb.Sponsor)
 	}
 
+	// check that its operations and transactions can be obtained
+	transactionsResp, err := itest.Client().Transactions(horizonclient.TransactionRequest{
+		ForClaimableBalance: cbID,
+	})
+	assert.NoError(t, err)
+	assert.Len(t, transactionsResp.Embedded.Records, 1)
+
+	operationsResp, err := itest.Client().Operations(horizonclient.OperationRequest{
+		ForClaimableBalance: cbID,
+	})
+	assert.NoError(t, err)
+	if assert.Len(t, operationsResp.Embedded.Records, 1) {
+		assert.IsType(t, operationsResp.Embedded.Records[0], operations.CreateClaimableBalance{})
+	}
+
 	// Clawback the claimable balance
 	pesetasClawbackCB := txnbuild.ClawbackClaimableBalance{
 		BalanceID: cbID,
@@ -226,6 +241,22 @@ func TestHappyClawbackClaimableBalance(t *testing.T) {
 	_, err = itest.Client().ClaimableBalance(cbID)
 	// Not found
 	tt.Error(err)
+
+	// check that its operations and transactions can still be obtained
+	transactionsResp, err = itest.Client().Transactions(horizonclient.TransactionRequest{
+		ForClaimableBalance: cbID,
+	})
+	assert.NoError(t, err)
+	assert.Len(t, transactionsResp.Embedded.Records, 2)
+
+	operationsResp, err = itest.Client().Operations(horizonclient.OperationRequest{
+		ForClaimableBalance: cbID,
+	})
+	assert.NoError(t, err)
+	if assert.Len(t, operationsResp.Embedded.Records, 2) {
+		assert.IsType(t, operationsResp.Embedded.Records[0], operations.CreateClaimableBalance{})
+		assert.IsType(t, operationsResp.Embedded.Records[1], operations.ClawbackClaimableBalance{})
+	}
 
 	// Check the operation details
 	opDetailsResponse, err := itest.Client().Operations(horizonclient.OperationRequest{

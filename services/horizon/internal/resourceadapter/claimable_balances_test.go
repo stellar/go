@@ -57,6 +57,14 @@ func TestPopulateClaimableBalance(t *testing.T) {
 	{
 	  "self": {
 		"href": "/claimable_balances/000000000102030000000000000000000000000000000000000000000000000000000000"
+	  },
+	  "operations": {
+		"href": "/claimable_balances/000000000102030000000000000000000000000000000000000000000000000000000000/operations{?cursor,limit,order}",
+        "templated": true
+	  },
+	  "transactions": {
+		"href": "/claimable_balances/000000000102030000000000000000000000000000000000000000000000000000000000/transactions{?cursor,limit,order}",
+        "templated": true
 	  }
 	}
 	`

@@ -304,16 +304,17 @@ type OfferRequest struct {
 // are provided, the default is to return all operations.
 // The query parameters (Order, Cursor, Limit and IncludeFailed) are optional. All or none can be set.
 type OperationRequest struct {
-	ForAccount     string
-	ForLedger      uint
-	ForTransaction string
-	forOperationID string
-	Order          Order
-	Cursor         string
-	Limit          uint
-	IncludeFailed  bool
-	Join           string
-	endpoint       string
+	ForAccount          string
+	ForClaimableBalance string
+	ForLedger           uint
+	ForTransaction      string
+	forOperationID      string
+	Order               Order
+	Cursor              string
+	Limit               uint
+	IncludeFailed       bool
+	Join                string
+	endpoint            string
 }
 
 type submitRequest struct {
@@ -322,17 +323,18 @@ type submitRequest struct {
 }
 
 // TransactionRequest struct contains data for getting transaction details from a horizon server.
-// "ForAccount", "ForLedger": Only one of these can be set at a time. If none are provided, the
-// default is to return all transactions.
+// "ForAccount", "ForClaimableBalance", "ForLedger": Only one of these can be set at a time.
+// If none are provided, the default is to return all transactions.
 // The query parameters (Order, Cursor, Limit and IncludeFailed) are optional. All or none can be set.
 type TransactionRequest struct {
-	ForAccount         string
-	ForLedger          uint
-	forTransactionHash string
-	Order              Order
-	Cursor             string
-	Limit              uint
-	IncludeFailed      bool
+	ForAccount          string
+	ForClaimableBalance string
+	ForLedger           uint
+	forTransactionHash  string
+	Order               Order
+	Cursor              string
+	Limit               uint
+	IncludeFailed       bool
 }
 
 // OrderBookRequest struct contains data for getting the orderbook for an asset pair from a horizon server.

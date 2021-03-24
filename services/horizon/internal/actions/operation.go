@@ -30,6 +30,7 @@ func (qp Joinable) IncludeTransactions() bool {
 type OperationsQuery struct {
 	Joinable                  `valid:"optional"`
 	AccountID                 string `schema:"account_id" valid:"accountID,optional"`
+	ClaimableBalanceID        string `schema:"claimable_balance_id" valid:"claimableBalanceID,optional"`
 	TransactionHash           string `schema:"tx_id" valid:"transactionHash,optional"`
 	IncludeFailedTransactions bool   `schema:"include_failed" valid:"-"`
 	LedgerID                  uint32 `schema:"ledger_id" valid:"-"`
@@ -39,6 +40,7 @@ type OperationsQuery struct {
 func (qp OperationsQuery) Validate() error {
 	filters, err := countNonEmpty(
 		qp.AccountID,
+		qp.ClaimableBalanceID,
 		qp.LedgerID,
 		qp.TransactionHash,
 	)
@@ -93,6 +95,12 @@ func (handler GetOperationsHandler) GetResourcePage(w HeaderWriter, r *http.Requ
 	switch {
 	case qp.AccountID != "":
 		query.ForAccount(qp.AccountID)
+	case qp.ClaimableBalanceID != "":
+		cbID, parseErr := balanceIDHex2XDR(qp.ClaimableBalanceID, "claimable_balance_id")
+		if parseErr != nil {
+			return nil, parseErr
+		}
+		query.ForClaimableBalance(cbID)
 	case qp.LedgerID > 0:
 		query.ForLedger(int32(qp.LedgerID))
 	case qp.TransactionHash != "":

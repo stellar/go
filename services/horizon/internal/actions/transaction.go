@@ -57,6 +57,7 @@ func (handler GetTransactionByHashHandler) GetResource(w HeaderWriter, r *http.R
 // TransactionsQuery query struct for transactions end-points
 type TransactionsQuery struct {
 	AccountID                 string `schema:"account_id" valid:"accountID,optional"`
+	ClaimableBalanceID        string `schema:"claimable_balance_id" valid:"claimableBalanceID,optional"`
 	IncludeFailedTransactions bool   `schema:"include_failed" valid:"-"`
 	LedgerID                  uint32 `schema:"ledger_id" valid:"-"`
 }
@@ -65,6 +66,7 @@ type TransactionsQuery struct {
 func (qp TransactionsQuery) Validate() error {
 	filters, err := countNonEmpty(
 		qp.AccountID,
+		qp.ClaimableBalanceID,
 		qp.LedgerID,
 	)
 
@@ -75,7 +77,7 @@ func (qp TransactionsQuery) Validate() error {
 	if filters > 1 {
 		return supportProblem.MakeInvalidFieldProblem(
 			"filters",
-			errors.New("Use a single filter for transaction, you can only use one of account_id or ledger_id"),
+			errors.New("Use a single filter for transaction, you can only use one of account_id, claimable_balance_id or ledger_id"),
 		)
 	}
 
@@ -112,7 +114,16 @@ func (handler GetTransactionsHandler) GetResourcePage(w HeaderWriter, r *http.Re
 		return nil, err
 	}
 
-	records, err := loadTransactionRecords(historyQ, qp.AccountID, int32(qp.LedgerID), qp.IncludeFailedTransactions, pq)
+	var cbID *xdr.ClaimableBalanceId
+	if qp.ClaimableBalanceID != "" {
+		var cb xdr.ClaimableBalanceId
+		cb, err = balanceIDHex2XDR(qp.ClaimableBalanceID, "claimable_balance_id")
+		if err != nil {
+			return nil, err
+		}
+		cbID = &cb
+	}
+	records, err := loadTransactionRecords(historyQ, qp.AccountID, cbID, int32(qp.LedgerID), qp.IncludeFailedTransactions, pq)
 	if err != nil {
 		return nil, errors.Wrap(err, "loading transaction records")
 	}
@@ -134,7 +145,7 @@ func (handler GetTransactionsHandler) GetResourcePage(w HeaderWriter, r *http.Re
 // loadTransactionRecords returns a slice of transaction records of an
 // account/ledger identified by accountID/ledgerID based on pq and
 // includeFailedTx.
-func loadTransactionRecords(hq *history.Q, accountID string, ledgerID int32, includeFailedTx bool, pq db2.PageQuery) ([]history.Transaction, error) {
+func loadTransactionRecords(hq *history.Q, accountID string, cbID *xdr.ClaimableBalanceId, ledgerID int32, includeFailedTx bool, pq db2.PageQuery) ([]history.Transaction, error) {
 	if accountID != "" && ledgerID != 0 {
 		return nil, errors.New("conflicting exclusive fields are present: account_id and ledger_id")
 	}
@@ -145,6 +156,8 @@ func loadTransactionRecords(hq *history.Q, accountID string, ledgerID int32, inc
 	switch {
 	case accountID != "":
 		txs.ForAccount(accountID)
+	case cbID != nil:
+		txs.ForClaimableBalance(*cbID)
 	case ledgerID > 0:
 		txs.ForLedger(ledgerID)
 	}

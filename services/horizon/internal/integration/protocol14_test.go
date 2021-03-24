@@ -159,6 +159,21 @@ func TestHappyClaimableBalances(t *testing.T) {
 			assert.Len(t, balances.Embedded.Records, 0)
 		}
 
+		// check that its operations and transactions can be obtained
+		transactionsResp, err := client.Transactions(sdk.TransactionRequest{
+			ForClaimableBalance: claim.BalanceID,
+		})
+		assert.NoError(t, err)
+		assert.Len(t, transactionsResp.Embedded.Records, 1)
+
+		operationsResp, err := client.Operations(sdk.OperationRequest{
+			ForClaimableBalance: claim.BalanceID,
+		})
+		assert.NoError(t, err)
+		if assert.Len(t, operationsResp.Embedded.Records, 1) {
+			assert.IsType(t, operationsResp.Embedded.Records[0], operations.CreateClaimableBalance{})
+		}
+
 		//
 		// Now, actually try to *claim* the CB to remove it from the global list.
 		//
@@ -177,11 +192,27 @@ func TestHappyClaimableBalances(t *testing.T) {
 		assert.NoError(t, err)
 		t.Log("  claimed")
 
-		// Ensure the claimable balance is gone now.
+		// Ensure the claimable balance is gone now ...
 		balances, err = client.ClaimableBalances(sdk.ClaimableBalanceRequest{Sponsor: a.Address()})
 		assert.NoError(t, err)
 		assert.Len(t, balances.Embedded.Records, 0)
 		t.Log("  gone")
+
+		// ... but that its operations and transactions can still be obtained
+		transactionsResp, err = client.Transactions(sdk.TransactionRequest{
+			ForClaimableBalance: claim.BalanceID,
+		})
+		assert.NoError(t, err)
+		assert.Len(t, transactionsResp.Embedded.Records, 2)
+
+		operationsResp, err = client.Operations(sdk.OperationRequest{
+			ForClaimableBalance: claim.BalanceID,
+		})
+		assert.NoError(t, err)
+		if assert.Len(t, operationsResp.Embedded.Records, 2) {
+			assert.IsType(t, operationsResp.Embedded.Records[0], operations.CreateClaimableBalance{})
+			assert.IsType(t, operationsResp.Embedded.Records[1], operations.ClaimClaimableBalance{})
+		}
 
 		// Ensure the actual account has a higher balance, now!
 		request := sdk.AccountRequest{AccountID: b.Address()}

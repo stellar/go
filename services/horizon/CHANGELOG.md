@@ -9,7 +9,15 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 * Sanitize route regular expressions for Prometheus metrics ([3459](https://github.com/stellar/go/pull/3459)).
 * Add asset stat summaries per trust-line flag category ([3454](https://github.com/stellar/go/pull/3454)).
   - The `amount`, and `num_accounts` fields in `/assets` endpoint are deprecated. Fields will be removed in Horizon 3.0. You can find the same data under `balances.authorized`, and `accounts.authorized`, respectively.
-* Add a flag `--captive-core-peer-port`/`CAPTIVE_CORE_PEER_PORT` that allows users to control which port the Captive Core subprocess will bind to for connecting to the Stellar swarm. ([3483](https://github.com/stellar/go/pull/3484)). 
+* Add a flag `--captive-core-peer-port`/`CAPTIVE_CORE_PEER_PORT` that allows users to control which port the Captive Core subprocess will bind to for connecting to the Stellar swarm. ([3483](https://github.com/stellar/go/pull/3484)).
+* Add 2 new HTTP endpoints `GET claimable_balances/{id}/transactions` and `GET claimable_balances/{id}/operations`, which respectively return the transactions and operations related to a provided Claimable Balance Identifier `{id}`.
+
+### Migration
+
+* Internal DB represenatation change: the `claimable_balances` table now represents the claimable balance identifiers as an hexadecimal string (as opposed to base64).
+  
+**The migration will be performed by the ingestion system and, thus, if some of your Horizon nodes are not ingestors (i.e. no `--ingestion` flag enabled) you may experience 500s in the `GET /claimable_balances/` requests until an ingestion node is upgraded. Also, it's worth noting that the rebuild process will take several minutes and no new ledgers will be ingested until the rebuild is finished.**
+ 
 
 ## v2.0.0
 

@@ -23,6 +23,9 @@ func (tr TransactionRequest) BuildURL() (endpoint string, err error) {
 	if tr.ForAccount != "" {
 		endpoint = fmt.Sprintf("accounts/%s/transactions", tr.ForAccount)
 	}
+	if tr.ForClaimableBalance != "" {
+		endpoint = fmt.Sprintf("claimable_balances/%s/transactions", tr.ForClaimableBalance)
+	}
 	if tr.ForLedger > 0 {
 		endpoint = fmt.Sprintf("ledgers/%d/transactions", tr.ForLedger)
 	}

@@ -127,6 +127,26 @@ func (q *OperationsQ) ForAccount(aid string) *OperationsQ {
 	return q
 }
 
+// ForClaimableBalance filters the query to only operations pertaining to a
+// claimable balance, specified by the claimable balance's hex-encoded id.
+func (q *OperationsQ) ForClaimableBalance(cbID xdr.ClaimableBalanceId) *OperationsQ {
+	var hCB HistoryClaimableBalance
+	hCB, q.Err = q.parent.ClaimableBalanceByID(cbID)
+	if q.Err != nil {
+		return q
+	}
+
+	q.sql = q.sql.Join(
+		"history_operation_claimable_balances hocb ON "+
+			"hocb.history_operation_id = hop.id",
+	).Where("hocb.history_claimable_balance_id = ?", hCB.InternalID)
+
+	// in order to use hocb.history_claimable_balance_id index
+	q.opIdCol = "hocb.history_claimable_balance_id"
+
+	return q
+}
+
 // ForLedger filters the query to a only operations in a specific ledger,
 // specified by its sequence.
 func (q *OperationsQ) ForLedger(seq int32) *OperationsQ {
@@ -147,7 +167,7 @@ func (q *OperationsQ) ForLedger(seq int32) *OperationsQ {
 	return q
 }
 
-// ForTransaction filters the query to a only operations in a specific
+// ForTransaction filters the query to only operations in a specific
 // transaction, specified by the transactions's hex-encoded hash.
 func (q *OperationsQ) ForTransaction(hash string) *OperationsQ {
 	var tx Transaction

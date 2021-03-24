@@ -39,6 +39,7 @@
 // migrations/42_add_num_sponsored_and_num_sponsoring_to_accounts.sql (276B)
 // migrations/43_add_claimable_balances_flags.sql (145B)
 // migrations/44_asset_stat_accounts_and_balances.sql (439B)
+// migrations/45_add_claimable_balances_history.sql (2.163kB)
 // migrations/4_add_protocol_version.sql (188B)
 // migrations/5_create_trades_table.sql (1.1kB)
 // migrations/6_create_assets_table.sql (366B)
@@ -894,6 +895,26 @@ func migrations44_asset_stat_accounts_and_balancesSql() (*asset, error) {
 	return a, nil
 }
 
+var _migrations45_add_claimable_balances_historySql = []byte("\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff\xbc\x95\x41\xb3\x9a\x30\x14\x85\xf7\xfc\x8a\x3b\x6e\x94\xa9\x2e\xdc\xca\x0a\x21\xad\xcc\x60\xa8\x98\xb4\x76\xc5\x04\xc8\xd8\xcc\x20\x58\xc8\xb4\xf6\xdf\x77\xea\x53\x11\x8d\x01\x7c\xce\x5b\x92\xb9\xb9\xe7\x9c\xfb\x85\x64\x32\x81\x4f\x3b\xb1\x2d\x99\xe4\x40\xf7\x86\xe1\x84\xc8\x26\x08\xd6\x68\x45\x11\x76\x10\xfc\x14\x95\x2c\xca\xbf\x51\x92\x31\xb1\x63\x71\xc6\xa3\x98\x65\x2c\x4f\x78\x15\x89\x34\xaa\xf8\x2f\x03\x00\x60\x4d\xec\x90\xc0\x77\x8f\x2c\x60\x7a\x5c\xf0\xb0\x13\xa2\x25\xc2\x04\xe6\x3f\x4e\x4b\x38\x80\xa5\x87\xbf\xd9\x3e\x45\x97\x6f\x7b\x53\x7f\x3b\xb6\xb3\x40\x30\xb5\x2e\x1e\x88\x3d\xf7\x75\x06\x60\x74\xdc\x27\x52\x88\xc5\x56\xe4\x12\x70\x40\x00\x53\xdf\x07\x17\x7d\xb6\xa9\x4f\x20\xe7\x07\xf9\x9b\x65\xa3\x61\x6b\x8a\xe1\x6c\x56\xf2\x6d\x92\xb1\xaa\x32\xc7\xc7\xb6\x77\xa5\x91\x48\x41\xf2\x43\x2d\x63\x98\xb5\x57\x8a\xbd\x15\x45\xe0\x61\x17\x6d\x60\x20\xf2\x94\x1f\x22\x8d\x68\x91\x47\x22\x1d\x40\x80\x75\xf1\xe8\xda\xc3\x5f\x20\x96\x25\xe7\x30\x12\xa9\x69\x3d\x2f\xa6\x0a\xd3\x4b\x5e\xd5\xc0\x7c\x84\xaa\xd8\xf3\x92\x49\xa1\xd2\x3d\x43\xbb\x2f\xbd\xc7\x38\x6e\x54\x2a\x79\xdc\xec\xe8\x4a\x44\x67\xf0\x8d\x4d\xd5\x98\x8e\x36\x50\x63\x4e\xca\x5c\x63\x6d\x88\x9a\xeb\x53\x5e\xaf\x95\x5e\x68\xfa\x21\x5c\x59\xb2\xbc\x62\x49\x37\xbc\xd7\xc5\x1f\x09\x58\x6f\x52\x85\xb8\x25\x96\x72\x5e\x37\xe9\xde\x85\xb9\xdd\x71\x53\xed\xc5\xe6\xff\xcf\xf5\xfa\x29\x70\x8b\x3f\xb9\x61\xb8\x61\xf0\xb5\xe7\x9d\x66\xf5\xde\xa4\xbc\x9b\xac\x93\x78\xdb\x1b\x70\xae\xeb\xfe\x5e\x59\xba\x58\x5d\x2e\x06\x5d\xc2\x5e\x3f\xab\x3a\xa3\xae\x85\xd6\x7b\xb7\x33\xaf\x73\xdf\xfb\x0c\xaa\x13\xe8\xdb\x58\xc6\xbf\x00\x00\x00\xff\xff\xc3\x12\xac\xa0\x73\x08\x00\x00")
+
+func migrations45_add_claimable_balances_historySqlBytes() ([]byte, error) {
+	return bindataRead(
+		_migrations45_add_claimable_balances_historySql,
+		"migrations/45_add_claimable_balances_history.sql",
+	)
+}
+
+func migrations45_add_claimable_balances_historySql() (*asset, error) {
+	bytes, err := migrations45_add_claimable_balances_historySqlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "migrations/45_add_claimable_balances_history.sql", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0xb5, 0xa0, 0x1c, 0x80, 0x4f, 0x5b, 0xf9, 0xa6, 0x5d, 0xfe, 0x14, 0xd4, 0xa9, 0xaa, 0xf3, 0x89, 0x10, 0x6e, 0x23, 0x33, 0x86, 0xa3, 0xab, 0x1a, 0x71, 0x69, 0xd4, 0x53, 0x2c, 0x4a, 0x1, 0xe4}}
+	return a, nil
+}
+
 var _migrations4_add_protocol_versionSql = []byte("\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff\x84\xcd\xb1\x0a\xc2\x30\x10\x06\xe0\x3d\x4f\xf1\xef\x52\x70\xef\x14\x4d\x9d\xce\x44\x4a\x32\x38\x15\xd1\xa3\x06\x6a\xae\x5c\x82\xe2\xdb\xbb\xba\x88\x4f\xf0\x75\x1d\x36\x8f\x3c\xeb\xa5\x31\xd2\x6a\x2c\xc5\x61\x44\xb4\x3b\x1a\x10\x3c\x9d\x71\xcf\xb5\x89\xbe\xa7\x85\x6f\x33\x6b\x85\x01\xac\x73\xd8\x07\x4a\x47\x8f\x55\xa5\xc9\x55\x96\xe9\xc9\x5a\xb3\x14\xe4\xd2\x78\x66\x85\x1b\x0e\x36\x51\xc4\x16\x3e\x44\xf8\x44\xd4\x1b\xf3\x6d\x39\x79\x95\xff\x9a\x1b\xc3\xe9\x97\xd5\x9b\x4f\x00\x00\x00\xff\xff\x83\xbb\x30\x2e\xbc\x00\x00\x00")
 
 func migrations4_add_protocol_versionSqlBytes() ([]byte, error) {
@@ -1164,6 +1185,7 @@ var _bindata = map[string]func() (*asset, error){
 	"migrations/42_add_num_sponsored_and_num_sponsoring_to_accounts.sql": migrations42_add_num_sponsored_and_num_sponsoring_to_accountsSql,
 	"migrations/43_add_claimable_balances_flags.sql":                     migrations43_add_claimable_balances_flagsSql,
 	"migrations/44_asset_stat_accounts_and_balances.sql":                 migrations44_asset_stat_accounts_and_balancesSql,
+	"migrations/45_add_claimable_balances_history.sql":                   migrations45_add_claimable_balances_historySql,
 	"migrations/4_add_protocol_version.sql":                              migrations4_add_protocol_versionSql,
 	"migrations/5_create_trades_table.sql":                               migrations5_create_trades_tableSql,
 	"migrations/6_create_assets_table.sql":                               migrations6_create_assets_tableSql,
@@ -1254,6 +1276,7 @@ var _bintree = &bintree{nil, map[string]*bintree{
 		"42_add_num_sponsored_and_num_sponsoring_to_accounts.sql": &bintree{migrations42_add_num_sponsored_and_num_sponsoring_to_accountsSql, map[string]*bintree{}},
 		"43_add_claimable_balances_flags.sql":                     &bintree{migrations43_add_claimable_balances_flagsSql, map[string]*bintree{}},
 		"44_asset_stat_accounts_and_balances.sql":                 &bintree{migrations44_asset_stat_accounts_and_balancesSql, map[string]*bintree{}},
+		"45_add_claimable_balances_history.sql":                   &bintree{migrations45_add_claimable_balances_historySql, map[string]*bintree{}},
 		"4_add_protocol_version.sql":                              &bintree{migrations4_add_protocol_versionSql, map[string]*bintree{}},
 		"5_create_trades_table.sql":                               &bintree{migrations5_create_trades_tableSql, map[string]*bintree{}},
 		"6_create_assets_table.sql":                               &bintree{migrations6_create_assets_tableSql, map[string]*bintree{}},

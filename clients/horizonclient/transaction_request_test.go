@@ -25,6 +25,13 @@ func TestTransactionRequestBuildUrl(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "accounts/GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU/transactions", endpoint)
 
+	tr = TransactionRequest{ForClaimableBalance: "00000000178826fbfe339e1f5c53417c6fedfe2c05e8bec14303143ec46b38981b09c3f9"}
+	endpoint, err = tr.BuildURL()
+
+	// It should return valid account transactions endpoint and no errors
+	require.NoError(t, err)
+	assert.Equal(t, "claimable_balances/00000000178826fbfe339e1f5c53417c6fedfe2c05e8bec14303143ec46b38981b09c3f9/transactions", endpoint)
+
 	tr = TransactionRequest{ForLedger: 123}
 	endpoint, err = tr.BuildURL()
 
