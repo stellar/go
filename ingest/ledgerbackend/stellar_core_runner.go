@@ -89,9 +89,8 @@ func newStellarCoreRunner(config CaptiveCoreConfig, mode stellarCoreRunnerMode) 
 	//    https://github.com/stellar/go/issues/3437
 	//
 	// However, first we ALWAYS append something to the base storage path,
-	// because we will delete the directory entirely when Horizon stops.
-	//
-	// We also add a random suffix in order to ensure that there aren't naming
+	// because we will delete the directory entirely when Horizon stops. We also
+	// add a random suffix in order to ensure that there aren't naming
 	// conflicts.
 	fullStoragePath := path.Join(config.StoragePath, "captive-core-"+createRandomHexString(8))
 

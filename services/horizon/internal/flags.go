@@ -138,14 +138,15 @@ func Flags() (*Config, support.ConfigOptions) {
 			OptType:     types.String,
 			FlagDefault: "",
 			CustomSetValue: func(opt *support.ConfigOption) {
-				existingValue := *opt.ConfigKey.(*string)
+				existingValue := viper.GetString(opt.Name)
 				if existingValue == "" || existingValue == "." {
 					cwd, err := os.Getwd()
 					if err != nil {
 						stdLog.Fatalf("Unable to determine the current directory: %s", err)
 					}
-					*opt.ConfigKey.(*string) = cwd
+					existingValue = cwd
 				}
+				*opt.ConfigKey.(*string) = existingValue
 			},
 			Required:  false,
 			Usage:     "Storage location for Captive Core bucket data",
