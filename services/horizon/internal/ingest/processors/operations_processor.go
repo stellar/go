@@ -652,11 +652,11 @@ func (operation *transactionOperationWrapper) Participants() ([]xdr.AccountId, e
 		participants = append(participants, *sponsor)
 	}
 
-	return dedupe(participants), nil
+	return dedupeParticipants(participants), nil
 }
 
-// dedupe remove any duplicate ids from `in`
-func dedupe(in []xdr.AccountId) (out []xdr.AccountId) {
+// dedupeParticipants remove any duplicate ids from `in`
+func dedupeParticipants(in []xdr.AccountId) (out []xdr.AccountId) {
 	set := map[string]xdr.AccountId{}
 	for _, id := range in {
 		set[id.Address()] = id

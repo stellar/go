@@ -107,7 +107,7 @@ func TestGetTransactionsHandler(t *testing.T) {
 	tt.Assert.Equal("bad_request", p.Type)
 	tt.Assert.Equal("filters", p.Extras["invalid_field"])
 	tt.Assert.Equal(
-		"Use a single filter for transaction, you can only use one of account_id or ledger_id",
+		"Use a single filter for transaction, you can only use one of account_id, claimable_balance_id or ledger_id",
 		p.Extras["reason"],
 	)
 }

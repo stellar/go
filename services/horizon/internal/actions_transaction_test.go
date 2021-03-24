@@ -218,8 +218,16 @@ func TestTransactionActions_Index(t *testing.T) {
 		ht.Assert.PageOf(2, w.Body)
 	}
 
+	// filtering by claimable balance
+	w = ht.Get("/claimable_balances/00000000178826fbfe339e1f5c53417c6fedfe2c05e8bec14303143ec46b38981b09c3f9/transactions")
+	if ht.Assert.Equal(200, w.Code) {
+		ht.Assert.PageOf(2, w.Body)
+	}
+
 	// Check extra params
 	w = ht.Get("/ledgers/100/transactions?account_id=GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
+	ht.Assert.Equal(400, w.Code)
+	w = ht.Get("/ledgers/100/transactions?claimable_balance_id=00000000178826fbfe339e1f5c53417c6fedfe2c05e8bec14303143ec46b38981b09c3f9")
 	ht.Assert.Equal(400, w.Code)
 	w = ht.Get("/accounts/GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU/transactions?ledger_id=5")
 	ht.Assert.Equal(400, w.Code)

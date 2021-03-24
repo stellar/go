@@ -335,6 +335,47 @@ CREATE TABLE history_accounts (
 );
 
 
+-- history_claimable_balances (manually added)
+CREATE SEQUENCE history_claimable_balances_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+CREATE TABLE history_claimable_balances (
+    id bigint NOT NULL DEFAULT nextval('history_claimable_balances_id_seq'::regclass),
+    claimable_balance_id text NOT NULL
+);
+
+CREATE UNIQUE INDEX "index_history_claimable_balances_on_id" ON history_claimable_balances USING btree (id);
+CREATE UNIQUE INDEX "index_history_claimable_balances_on_claimable_balance_id" ON history_claimable_balances USING btree (claimable_balance_id);
+
+CREATE TABLE history_operation_claimable_balances (
+    history_operation_id bigint NOT NULL,
+    history_claimable_balance_id bigint NOT NULL
+);
+
+CREATE UNIQUE INDEX "index_history_operation_claimable_balances_on_ids" ON history_operation_claimable_balances USING btree (history_operation_id , history_claimable_balance_id);
+CREATE INDEX "index_history_operation_claimable_balances_on_operation_id" ON history_operation_claimable_balances USING btree (history_operation_id);
+
+CREATE TABLE history_transaction_claimable_balances (
+    history_transaction_id bigint NOT NULL,
+    history_claimable_balance_id bigint NOT NULL
+);
+
+CREATE UNIQUE INDEX "index_history_transaction_claimable_balances_on_ids" ON history_transaction_claimable_balances USING btree (history_transaction_id , history_claimable_balance_id);
+CREATE INDEX "index_history_transaction_claimable_balances_on_transaction_id" ON history_transaction_claimable_balances USING btree (history_transaction_id);
+
+
+INSERT INTO history_claimable_balances VALUES (1, '00000000178826fbfe339e1f5c53417c6fedfe2c05e8bec14303143ec46b38981b09c3f9');
+SELECT pg_catalog.setval('history_claimable_balances_id_seq', 1, true);
+-- The operations/transactions are going to be unrelated to claimable balances, but it doesn't matter for testing
+INSERT INTO history_operation_claimable_balances VALUES (12884905985, 1);
+INSERT INTO history_operation_claimable_balances VALUES (8589938689, 1);
+INSERT INTO history_transaction_claimable_balances VALUES (12884905984, 1);
+INSERT INTO history_transaction_claimable_balances VALUES (8589938688, 1);
+
 --
 -- Name: history_assets; Type: TABLE; Schema: public; Owner: -
 --
@@ -666,6 +707,12 @@ INSERT INTO gorp_migrations VALUES ('22_trust_lines.sql', '2019-10-31 14:19:49.1
 INSERT INTO gorp_migrations VALUES ('23_exp_asset_stats.sql', '2019-10-31 14:19:49.15222+01');
 INSERT INTO gorp_migrations VALUES ('24_accounts.sql', '2019-10-31 14:19:49.160844+01');
 INSERT INTO gorp_migrations VALUES ('25_expingest_rename_columns.sql', '2019-10-31 14:19:49.163717+01');
+INSERT INTO gorp_migrations VALUES ('33_remove_unused.sql', '2019-11-30 10:19:49.163718+01');
+INSERT INTO gorp_migrations VALUES ('34_fee_bump_transactions.sql', '2019-11-30 11:19:49.163718+01');
+INSERT INTO gorp_migrations VALUES ('35_drop_participant_id.sql', '2019-11-30 14:19:49.163728+01');
+INSERT INTO gorp_migrations VALUES ('37_add_tx_set_operation_count_to_ledgers.sql', '2019-11-30 12:19:49.163728+01');
+INSERT INTO gorp_migrations VALUES ('41_add_sponsor_to_state_tables.sql', '2019-11-30 13:19:49.163718+01');
+INSERT INTO gorp_migrations VALUES ('45_add_claimable_balances_history.sql', '2019-11-30 14:19:49.163718+01');
 
 
 --
@@ -1314,3 +1361,32 @@ ALTER TABLE ONLY history_trades
 -- PostgreSQL database dump complete
 --
 
+
+-- needed for migrations to work
+ALTER TABLE accounts ADD sponsor TEXT;
+CREATE INDEX accounts_by_sponsor ON accounts USING BTREE(sponsor);
+
+ALTER TABLE accounts_data ADD sponsor TEXT;
+CREATE INDEX accounts_data_by_sponsor ON accounts_data USING BTREE(sponsor);
+
+ALTER TABLE trust_lines ADD sponsor TEXT;
+CREATE INDEX trust_lines_by_sponsor ON trust_lines USING BTREE(sponsor);
+
+ALTER TABLE offers ADD sponsor TEXT;
+CREATE INDEX offers_by_sponsor ON offers USING BTREE(sponsor);
+
+ALTER TABLE history_operation_participants
+    DROP COLUMN id;
+
+ALTER TABLE history_transaction_participants
+    DROP COLUMN id;
+
+DROP TABLE asset_stats cascade;
+
+DROP INDEX exp_asset_stats_by_code;
+
+DROP INDEX index_history_transactions_on_id;
+
+DROP INDEX index_history_ledgers_on_id;
+
+DROP INDEX asset_by_code;

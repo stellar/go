@@ -684,7 +684,9 @@ type ClaimableBalanceFlags struct {
 // ClaimableBalance represents a claimable balance
 type ClaimableBalance struct {
 	Links struct {
-		Self hal.Link `json:"self"`
+		Self         hal.Link `json:"self"`
+		Transactions hal.Link `json:"transactions"`
+		Operations   hal.Link `json:"operations"`
 	} `json:"_links"`
 
 	BalanceID          string                `json:"id"`

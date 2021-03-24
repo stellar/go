@@ -177,7 +177,7 @@ func participantsForTransaction(
 		participants = append(participants, p...)
 	}
 
-	return dedupe(participants), nil
+	return dedupeParticipants(participants), nil
 }
 
 func (p *ParticipantsProcessor) addTransactionParticipants(

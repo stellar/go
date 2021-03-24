@@ -227,6 +227,15 @@ func (r *Router) addRoutes(config *RouterConfig, rateLimiter *throttled.HTTPRate
 			})
 		})
 	})
+	// claimable balance actions
+	r.Group(func(r chi.Router) {
+		r.Use(historyMiddleware)
+		r.Method(http.MethodGet, "/claimable_balances/{claimable_balance_id:\\w+}/operations", streamableHistoryPageHandler(ledgerState, actions.GetOperationsHandler{
+			LedgerState:  ledgerState,
+			OnlyPayments: false,
+		}, streamHandler))
+		r.Method(http.MethodGet, "/claimable_balances/{claimable_balance_id:\\w+}/transactions", streamableHistoryPageHandler(ledgerState, actions.GetTransactionsHandler{LedgerState: ledgerState}, streamHandler))
+	})
 
 	// transaction history actions
 	r.Route("/transactions", func(r chi.Router) {

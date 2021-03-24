@@ -54,6 +54,12 @@ func TestOperationActions_Index(t *testing.T) {
 		ht.Assert.PageOf(2, w.Body)
 	}
 
+	// filtered by claimable balance
+	w = ht.Get("/claimable_balances/00000000178826fbfe339e1f5c53417c6fedfe2c05e8bec14303143ec46b38981b09c3f9/operations")
+	if ht.Assert.Equal(200, w.Code) {
+		ht.Assert.PageOf(2, w.Body)
+	}
+
 	// filtered by transaction
 	w = ht.Get("/transactions/2374e99349b9ef7dba9a5db3339b78fda8f34777b1af33ba468ad5c0df946d4d/operations")
 	if ht.Assert.Equal(200, w.Code) {
