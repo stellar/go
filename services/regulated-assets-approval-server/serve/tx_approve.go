@@ -93,7 +93,6 @@ func (h txApproveHandler) isRejected(ctx context.Context, in txApproveRequest) (
 		log.Ctx(ctx).Error(errors.Wrapf(err,
 			"Transaction %s sourceAccount is the same as the server issuer account %s",
 			in.Transaction,
-			tx.SourceAccount().AccountID,
 			h.issuerKP.Address()))
 		return &txApproveResponse{
 			Status: rejectedStatus,
