@@ -27,10 +27,11 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 	req := txApproveRequest{
 		Transaction: "",
 	}
-	rejectedResponse, err := txApproveHandler{
+	handler := txApproveHandler{
 		issuerKP:  issuerAccKeyPair,
 		assetCode: assetGOAT.GetCode(),
-	}.isRejected(ctx, req)
+	}
+	rejectedResponse, err := handler.isRejected(ctx, req)
 	require.NoError(t, err)
 	wantRejectedResponse := txApproveResponse{
 		Status: rejectedStatus,
@@ -42,10 +43,7 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 	req = txApproveRequest{
 		Transaction: "BADXDRTRANSACTIONENVELOPE",
 	}
-	rejectedResponse, err = txApproveHandler{
-		issuerKP:  issuerAccKeyPair,
-		assetCode: assetGOAT.GetCode(),
-	}.isRejected(ctx, req)
+	rejectedResponse, err = handler.isRejected(ctx, req)
 	require.NoError(t, err)
 	wantRejectedResponse = txApproveResponse{
 		Status: rejectedStatus,
@@ -85,10 +83,7 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 	req = txApproveRequest{
 		Transaction: feeBumpTxEnc,
 	}
-	rejectedResponse, err = txApproveHandler{
-		issuerKP:  issuerAccKeyPair,
-		assetCode: assetGOAT.GetCode(),
-	}.isRejected(ctx, req)
+	rejectedResponse, err = handler.isRejected(ctx, req)
 	require.NoError(t, err)
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse) // wantRejectedResponse is identical to "if can't parse XDR".
 
@@ -113,10 +108,7 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 	req = txApproveRequest{
 		Transaction: txEnc,
 	}
-	rejectedResponse, err = txApproveHandler{
-		issuerKP:  issuerAccKeyPair,
-		assetCode: assetGOAT.GetCode(),
-	}.isRejected(ctx, req)
+	rejectedResponse, err = handler.isRejected(ctx, req)
 	require.NoError(t, err)
 	wantRejectedResponse = txApproveResponse{
 		Status: rejectedStatus,
@@ -146,10 +138,7 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 	req = txApproveRequest{
 		Transaction: txEnc,
 	}
-	rejectedResponse, err = txApproveHandler{
-		issuerKP:  issuerAccKeyPair,
-		assetCode: assetGOAT.GetCode(),
-	}.isRejected(ctx, req)
+	rejectedResponse, err = handler.isRejected(ctx, req)
 	require.NoError(t, err)
 	wantRejectedResponse = txApproveResponse{
 		Status: rejectedStatus,
@@ -179,10 +168,7 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 	req = txApproveRequest{
 		Transaction: txEnc,
 	}
-	rejectedResponse, err = txApproveHandler{
-		issuerKP:  issuerAccKeyPair,
-		assetCode: assetGOAT.GetCode(),
-	}.isRejected(ctx, req)
+	rejectedResponse, err = handler.isRejected(ctx, req)
 	require.NoError(t, err)
 	wantRejectedResponse = txApproveResponse{
 		Status: rejectedStatus,
