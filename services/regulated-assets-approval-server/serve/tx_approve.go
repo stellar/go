@@ -75,6 +75,7 @@ func (h txApproveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	if resp != nil {
 		httpjson.RenderStatus(w, http.StatusBadRequest, resp, httpjson.JSON)
+		return
 	}
 	resp, err = h.Approve(ctx, in)
 	if err != nil {
@@ -83,9 +84,11 @@ func (h txApproveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			httpErr = serverError
 		}
 		httpErr.Render(w)
+		return
 	}
 	if resp != nil {
-		httpjson.RenderStatus(w, http.StatusBadRequest, resp, httpjson.JSON)
+		httpjson.RenderStatus(w, http.StatusOK, resp, httpjson.JSON)
+		return
 	}
 }
 

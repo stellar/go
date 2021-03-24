@@ -269,8 +269,9 @@ func TestTxApproveHandler_serveHTTPJson(t *testing.T) {
 		Issuer: issuerAccKeyPair.Address(),
 	}
 	handler := txApproveHandler{
-		issuerKP:  issuerAccKeyPair,
-		assetCode: assetGOAT.GetCode(),
+		issuerKP:          issuerAccKeyPair,
+		assetCode:         assetGOAT.GetCode(),
+		networkPassphrase: network.TestNetworkPassphrase,
 	}
 
 	// Test if no transaction is submitted.
@@ -483,10 +484,6 @@ func TestTxApproveHandler_serveHTTPJson(t *testing.T) {
 	resp = w.Result()
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
-
-	body, err = ioutil.ReadAll(resp.Body)
-	require.NoError(t, err)
-	assert.Empty(t, string(body))
 }
 
 func TestTxApproveHandler_serveHTTPForm(t *testing.T) {
@@ -497,8 +494,9 @@ func TestTxApproveHandler_serveHTTPForm(t *testing.T) {
 		Issuer: issuerAccKeyPair.Address(),
 	}
 	handler := txApproveHandler{
-		issuerKP:  issuerAccKeyPair,
-		assetCode: assetGOAT.GetCode(),
+		issuerKP:          issuerAccKeyPair,
+		assetCode:         assetGOAT.GetCode(),
+		networkPassphrase: network.TestNetworkPassphrase,
 	}
 
 	// Test if no transaction is submitted.
@@ -707,8 +705,4 @@ func TestTxApproveHandler_serveHTTPForm(t *testing.T) {
 	resp = w.Result()
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
-
-	body, err = ioutil.ReadAll(resp.Body)
-	require.NoError(t, err)
-	assert.Empty(t, string(body))
 }
