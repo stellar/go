@@ -2,6 +2,7 @@ package serve
 
 import (
 	"context"
+	"encoding/json"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -484,6 +485,22 @@ func TestTxApproveHandler_serveHTTPJson(t *testing.T) {
 	resp = w.Result()
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	body, err = ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	var response map[string]string
+	err = json.Unmarshal([]byte(string(body)), &response)
+
+	_, exists := response["status"]
+	require.NoError(t, err)
+	assert.True(t, exists)
+	assert.Equal(t, response["status"], "revised")
+	_, exists = response["status"]
+	require.NoError(t, err)
+	assert.True(t, exists)
+	assert.Equal(t, response["message"], "Authorization and deauthorization operations were added.")
+	_, exists = response["tx"]
+	require.NoError(t, err)
+	assert.True(t, exists)
 }
 
 func TestTxApproveHandler_serveHTTPForm(t *testing.T) {
@@ -705,4 +722,21 @@ func TestTxApproveHandler_serveHTTPForm(t *testing.T) {
 	resp = w.Result()
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	body, err = ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	var response map[string]string
+	err = json.Unmarshal([]byte(string(body)), &response)
+
+	_, exists := response["status"]
+	require.NoError(t, err)
+	assert.True(t, exists)
+	assert.Equal(t, response["status"], "revised")
+	_, exists = response["status"]
+	require.NoError(t, err)
+	assert.True(t, exists)
+	assert.Equal(t, response["message"], "Authorization and deauthorization operations were added.")
+	// Cant test the tx result due to the the hash being nondeterministic
+	_, exists = response["tx"]
+	require.NoError(t, err)
+	assert.True(t, exists)
 }
