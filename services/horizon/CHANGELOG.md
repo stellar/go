@@ -9,6 +9,7 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 * Sanitize route regular expressions for Prometheus metrics ([3459](https://github.com/stellar/go/pull/3459)).
 * Add asset stat summaries per trust-line flag category ([3454](https://github.com/stellar/go/pull/3454)).
   - The `amount`, and `num_accounts` fields in `/assets` endpoint are deprecated. Fields will be removed in Horizon 3.0. You can find the same data under `balances.authorized`, and `accounts.authorized`, respectively.
+* Add a flag `--captive-core-peer-port`/`CAPTIVE_CORE_PEER_PORT` that allows users to control which port the Captive Core subprocess will bind to for connecting to the Stellar swarm. ([3483](https://github.com/stellar/go/pull/3484)). 
 
 ## v2.0.0
 

@@ -121,6 +121,10 @@ type CaptiveCoreConfig struct {
 	LedgerHashStore TrustedLedgerHashStore
 	// HTTPPort is the TCP port to listen for requests (defaults to 0, which disables the HTTP server)
 	HTTPPort uint
+	// PeerPort is the TCP port to bind to for connecting to the Stellar network
+	// (defaults to 11625). It may be useful for example when there's >1 Stellar-Core
+	// instance running on a machine.
+	PeerPort uint
 	// Log is an (optional) custom logger which will capture any output from the Stellar Core process.
 	// If Log is omitted then all output will be printed to stdout.
 	Log *log.Entry

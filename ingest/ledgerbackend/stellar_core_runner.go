@@ -54,6 +54,7 @@ type stellarCoreRunner struct {
 	networkPassphrase string
 	historyURLs       []string
 	httpPort          uint
+	peerPort          uint
 	mode              stellarCoreRunnerMode
 
 	started      bool
@@ -89,6 +90,7 @@ func newStellarCoreRunner(config CaptiveCoreConfig, mode stellarCoreRunnerMode) 
 		networkPassphrase: config.NetworkPassphrase,
 		historyURLs:       config.HistoryArchiveURLs,
 		httpPort:          config.HTTPPort,
+		peerPort:          config.PeerPort,
 		mode:              mode,
 		ctx:               ctx,
 		cancel:            cancel,
@@ -119,6 +121,10 @@ func (r *stellarCoreRunner) generateConfig() (string, error) {
 		fmt.Sprintf(`BUCKET_DIR_PATH="%s"`, filepath.Join(r.tempDir, "buckets")),
 		fmt.Sprintf(`HTTP_PORT=%d`, r.httpPort),
 		fmt.Sprintf(`LOG_FILE_PATH="%s"`, r.logPath),
+	}
+
+	if r.peerPort > 0 {
+		lines = append(lines, fmt.Sprintf(`PEER_PORT=%d`, r.peerPort))
 	}
 
 	if r.mode == stellarCoreRunnerModeOffline {
