@@ -23,6 +23,7 @@ type Config struct {
 	CaptiveCoreHTTPPort         uint
 	CaptiveCorePeerPort         uint
 	CaptiveCoreLogPath          string
+	CaptiveCoreStoragePath      string
 
 	StellarCoreDatabaseURL string
 	StellarCoreURL         string

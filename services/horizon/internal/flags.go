@@ -134,6 +134,25 @@ func Flags() (*Config, support.ConfigOptions) {
 			ConfigKey:   &config.CaptiveCoreHTTPPort,
 		},
 		&support.ConfigOption{
+			Name:        "captive-core-storage-path",
+			OptType:     types.String,
+			FlagDefault: "",
+			CustomSetValue: func(opt *support.ConfigOption) {
+				existingValue := viper.GetString(opt.Name)
+				if existingValue == "" || existingValue == "." {
+					cwd, err := os.Getwd()
+					if err != nil {
+						stdLog.Fatalf("Unable to determine the current directory: %s", err)
+					}
+					existingValue = cwd
+				}
+				*opt.ConfigKey.(*string) = existingValue
+			},
+			Required:  false,
+			Usage:     "Storage location for Captive Core bucket data",
+			ConfigKey: &config.CaptiveCoreStoragePath,
+		},
+		&support.ConfigOption{
 			Name:        "captive-core-peer-port",
 			OptType:     types.Uint,
 			FlagDefault: uint(0),
@@ -430,6 +449,18 @@ func ApplyFlags(config *Config, flags support.ConfigOptions) {
 	validateBothOrNeither("tls-cert", "tls-key")
 
 	if config.Ingest {
+		binaryPath := viper.GetString(StellarCoreBinaryPathName)
+
+		// If the user didn't specify a Stellar Core binary, we can check the
+		// $PATH and possibly fill it in for them.
+		if binaryPath == "" {
+			if result, err := exec.LookPath("stellar-core"); err == nil {
+				binaryPath = result
+				viper.Set(StellarCoreBinaryPathName, binaryPath)
+				config.CaptiveCoreBinaryPath = binaryPath
+			}
+		}
+
 		// When running live ingestion a config file is required too
 		validateBothOrNeither(StellarCoreBinaryPathName, CaptiveCoreConfigAppendPathName)
 
@@ -440,28 +471,17 @@ func ApplyFlags(config *Config, flags support.ConfigOptions) {
 		}
 
 		if config.EnableCaptiveCoreIngestion {
-			binaryPath := viper.GetString(StellarCoreBinaryPathName)
-
-			// If the user didn't specify a Stellar Core binary, we can check the
-			// $PATH and possibly fill it in for them.
-			if binaryPath == "" {
-				if result, err := exec.LookPath("stellar-core"); err == nil {
-					binaryPath = result
-					viper.Set(StellarCoreBinaryPathName, binaryPath)
-					config.CaptiveCoreBinaryPath = binaryPath
-				}
-			}
-
 			// NOTE: If both of these are set (regardless of user- or PATH-supplied
 			//       defaults for the binary path), the Remote Captive Core URL
 			//       takes precedence.
 			if binaryPath == "" && config.RemoteCaptiveCoreURL == "" {
-				stdLog.Fatalf("Invalid config: captive core requires that either --stellar-core-binary-path or --remote-captive-core-url is set. " + captiveCoreMigrationHint)
+				stdLog.Fatalf("Invalid config: captive core requires that either --%s or --remote-captive-core-url is set. %s",
+					StellarCoreBinaryPathName, captiveCoreMigrationHint)
 			}
 
-			if config.CaptiveCoreBinaryPath == "" || config.CaptiveCoreConfigAppendPath == "" {
-				stdLog.Fatalf("Invalid config: captive core requires that both --%s and --%s are set. "+captiveCoreMigrationHint,
-					StellarCoreBinaryPathName, CaptiveCoreConfigAppendPathName)
+			if binaryPath == "" || config.CaptiveCoreConfigAppendPath == "" {
+				stdLog.Fatalf("Invalid config: captive core requires that both --%s and --%s are set. %s",
+					StellarCoreBinaryPathName, CaptiveCoreConfigAppendPathName, captiveCoreMigrationHint)
 			}
 
 			// If we don't supply an explicit core URL and we are running a local

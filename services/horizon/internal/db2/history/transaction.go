@@ -75,6 +75,22 @@ func (q *TransactionsQ) ForAccount(aid string) *TransactionsQ {
 	return q
 }
 
+// ForClaimableBalance filters the transactions collection to a specific claimable balance
+func (q *TransactionsQ) ForClaimableBalance(cbID xdr.ClaimableBalanceId) *TransactionsQ {
+
+	var hCB HistoryClaimableBalance
+	hCB, q.Err = q.parent.ClaimableBalanceByID(cbID)
+	if q.Err != nil {
+		return q
+	}
+
+	q.sql = q.sql.
+		Join("history_transaction_claimable_balances htcb ON htcb.history_transaction_id = ht.id").
+		Where("htcb.history_claimable_balance_id = ?", hCB.InternalID)
+
+	return q
+}
+
 // ForLedger filters the query to a only transactions in a specific ledger,
 // specified by its sequence.
 func (q *TransactionsQ) ForLedger(seq int32) *TransactionsQ {

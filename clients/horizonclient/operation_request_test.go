@@ -25,6 +25,13 @@ func TestOperationRequestBuildUrl(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "accounts/GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU/operations", endpoint)
 
+	op = OperationRequest{ForClaimableBalance: "00000000178826fbfe339e1f5c53417c6fedfe2c05e8bec14303143ec46b38981b09c3f9", endpoint: "operations"}
+	endpoint, err = op.BuildURL()
+
+	// It should return valid account transactions endpoint and no errors
+	require.NoError(t, err)
+	assert.Equal(t, "claimable_balances/00000000178826fbfe339e1f5c53417c6fedfe2c05e8bec14303143ec46b38981b09c3f9/operations", endpoint)
+
 	op = OperationRequest{ForLedger: 123, endpoint: "operations"}
 	endpoint, err = op.BuildURL()
 

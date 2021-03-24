@@ -1,7 +1,7 @@
 package xdr
 
 // MarshalBinaryCompress marshals ClaimableBalanceId to []byte but unlike
-// MarshalBinary() it removes all unnecessary bytes, exploting the fact
+// MarshalBinary() it removes all unnecessary bytes, exploiting the fact
 // that XDR is padding data to 4 bytes in union discriminants etc.
 // It's primary use is in ingest/io.StateReader that keep LedgerKeys in
 // memory so this function decrease memory requirements.

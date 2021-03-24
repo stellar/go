@@ -23,19 +23,21 @@ func init() {
 	govalidator.TagMap["amount"] = isAmount
 	govalidator.TagMap["assetType"] = isAssetType
 	govalidator.TagMap["asset"] = isAsset
+	govalidator.TagMap["claimableBalanceID"] = isClaimableBalanceID
 	govalidator.TagMap["transactionHash"] = isTransactionHash
 }
 
 var customTagsErrorMessages = map[string]string{
-	"accountID":       "Account ID must start with `G` and contain 56 alphanum characters",
-	"amount":          "Amount must be positive",
-	"asset":           "Asset must be the string \"native\" or a string of the form \"Code:IssuerAccountID\" for issued assets.",
-	"assetType":       "Asset type must be native, credit_alphanum4 or credit_alphanum12",
-	"bool":            "Filter should be true or false",
-	"ledger_id":       "Ledger ID must be an integer higher than 0",
-	"offer_id":        "Offer ID must be an integer higher than 0",
-	"op_id":           "Operation ID must be an integer higher than 0",
-	"transactionHash": "Transaction hash must be a hex-encoded, lowercase SHA-256 hash",
+	"accountID":            "Account ID must start with `G` and contain 56 alphanum characters",
+	"amount":               "Amount must be positive",
+	"asset":                "Asset must be the string \"native\" or a string of the form \"Code:IssuerAccountID\" for issued assets.",
+	"assetType":            "Asset type must be native, credit_alphanum4 or credit_alphanum12",
+	"bool":                 "Filter should be true or false",
+	"claimable_balance_id": "Claimable Balance ID must be the hex-encoded XDR representation of a Claimable Balance ID",
+	"ledger_id":            "Ledger ID must be an integer higher than 0",
+	"offer_id":             "Offer ID must be an integer higher than 0",
+	"op_id":                "Operation ID must be an integer higher than 0",
+	"transactionHash":      "Transaction hash must be a hex-encoded, lowercase SHA-256 hash",
 }
 
 // isAsset validates if string contains a valid SEP11 asset
@@ -146,4 +148,10 @@ func isAmount(str string) bool {
 	}
 
 	return true
+}
+
+func isClaimableBalanceID(str string) bool {
+	var cbID xdr.ClaimableBalanceId
+	err := xdr.SafeUnmarshalHex(str, &cbID)
+	return err == nil
 }

@@ -28,19 +28,19 @@ type ClaimableBalanceQuery struct {
 
 // Validate validates the balance id
 func (q ClaimableBalanceQuery) Validate() error {
-	if _, err := q.BalanceID(); err != nil {
+	if _, err := balanceIDHex2XDR(q.ID, "id"); err != nil {
 		return err
 	}
 	return nil
 }
 
-// BalanceID returns the xdr.ClaimableBalanceId from the request query
-func (q ClaimableBalanceQuery) BalanceID() (xdr.ClaimableBalanceId, error) {
+// balanceIDHex2XDR returns the xdr.ClaimableBalanceId from it's hex representation
+func balanceIDHex2XDR(claimableBalanceID string, fieldName string) (xdr.ClaimableBalanceId, error) {
 	var balanceID xdr.ClaimableBalanceId
-	err := xdr.SafeUnmarshalHex(q.ID, &balanceID)
+	err := xdr.SafeUnmarshalHex(claimableBalanceID, &balanceID)
 	if err != nil {
 		return balanceID, problem.MakeInvalidFieldProblem(
-			"id",
+			fieldName,
 			fmt.Errorf("Invalid claimable balance ID"),
 		)
 	}
@@ -60,7 +60,7 @@ func (handler GetClaimableBalanceByIDHandler) GetResource(w HeaderWriter, r *htt
 	if err != nil {
 		return nil, err
 	}
-	balanceID, err := qp.BalanceID()
+	balanceID, err := balanceIDHex2XDR(qp.ID, "id")
 	if err != nil {
 		return nil, err
 	}

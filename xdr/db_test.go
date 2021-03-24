@@ -103,7 +103,7 @@ var _ = Describe("sql.Scanner implementations", func() {
 
 			Expect(scanned).To(Equal(val))
 		},
-		Entry("default", "AAAAAAECAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", ClaimableBalanceId{
+		Entry("default", "000000000102030000000000000000000000000000000000000000000000000000000000", ClaimableBalanceId{
 			Type: ClaimableBalanceIdTypeClaimableBalanceIdTypeV0,
 			V0:   &Hash{1, 2, 3},
 		}, true),
@@ -132,9 +132,7 @@ var _ = Describe("sql.Scanner implementations", func() {
 			err := dest.(sql.Scanner).Scan(in)
 			Expect(err).To(BeNil())
 		},
-		Entry("ClaimableBalanace", &ClaimableBalanceId{},
-			"AAAAAAECAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"),
-		Entry("ClaimablPredicate", &ClaimPredicate{},
+		Entry("ClaimablePredicate", &ClaimPredicate{},
 			"AAAAAA=="),
 		Entry("LedgerEntryChanges", &LedgerEntryChanges{},
 			"AAAAAgAAAAMAAAABAAAAAAAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9w3gtrOnZAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAAAACAAAAAAAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9w3gtrOnY/+cAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA=="),
@@ -150,5 +148,14 @@ var _ = Describe("sql.Scanner implementations", func() {
 			"AAAAAAAAAAEAAAACAAAAAAAAAAIAAAAAAAAAAOQRQdvh7PNQ0JP3AJSXrOUdPtz1EGmetjWSaCj7AVp7AAAAAlQL5AAAAAACAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAIAAAAAAAAAAGL8HQvQkbK2HA3WVjRrKmjX00fG8sLI7m0ERwJW/AX3DeC2sVNYGtQAAAAAAAAAAwAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAA"),
 		Entry("TransactionResult", &TransactionResult{},
 			"AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAA="),
+	)
+
+	DescribeTable("Scanning hex strings (happy paths only)",
+		func(dest interface{}, in string) {
+			err := dest.(sql.Scanner).Scan(in)
+			Expect(err).To(BeNil())
+		},
+		Entry("ClaimableBalance", &ClaimableBalanceId{},
+			"000000000102030000000000000000000000000000000000000000000000000000000000"),
 	)
 })

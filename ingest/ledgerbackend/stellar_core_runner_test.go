@@ -44,14 +44,12 @@ func TestGenerateConfig(t *testing.T) {
 				HistoryArchiveURLs: []string{"http://localhost:1170"},
 				Log:                log.New(),
 				ConfigAppendPath:   testCase.appendPath,
+				StoragePath:        "./test-temp-dir",
 				PeerPort:           12345,
 				Context:            context.Background(),
 				NetworkPassphrase:  "Public Global Stellar Network ; September 2015",
 			}, testCase.mode)
 			assert.NoError(t, err)
-
-			tempDir := stellarCoreRunner.tempDir
-			stellarCoreRunner.tempDir = "/test-temp-dir"
 
 			config, err := stellarCoreRunner.generateConfig()
 			assert.NoError(t, err)
@@ -61,7 +59,6 @@ func TestGenerateConfig(t *testing.T) {
 
 			assert.Equal(t, config, string(expectedByte))
 
-			stellarCoreRunner.tempDir = tempDir
 			assert.NoError(t, stellarCoreRunner.close())
 		})
 	}
@@ -75,7 +72,7 @@ func TestCloseBeforeStart(t *testing.T) {
 	}, stellarCoreRunnerModeOffline)
 	assert.NoError(t, err)
 
-	tempDir := runner.tempDir
+	tempDir := runner.storagePath
 	info, err := os.Stat(tempDir)
 	assert.NoError(t, err)
 	assert.True(t, info.IsDir())
