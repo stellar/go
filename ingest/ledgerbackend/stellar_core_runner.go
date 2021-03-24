@@ -75,13 +75,25 @@ type stellarCoreRunner struct {
 	log *log.Entry
 }
 
+func createRandomHexString(n int) string {
+	hex := []rune("abcdef1234567890")
+	b := make([]rune, n)
+	for i := range b {
+		b[i] = hex[rand.Intn(len(hex))]
+	}
+	return string(b)
+}
+
 func newStellarCoreRunner(config CaptiveCoreConfig, mode stellarCoreRunnerMode) (*stellarCoreRunner, error) {
 	// Use the specified directory to store Captive Core's data:
 	//    https://github.com/stellar/go/issues/3437
 	//
 	// However, first we ALWAYS append something to the base storage path,
 	// because we will delete the directory entirely when Horizon stops.
-	fullStoragePath := path.Join(config.StoragePath, "captive-core")
+	//
+	// We also add a random suffix in order to ensure that there aren't naming
+	// conflicts.
+	fullStoragePath := path.Join(config.StoragePath, "captive-core-"+createRandomHexString(8))
 
 	info, err := os.Stat(fullStoragePath)
 	if os.IsNotExist(err) {
