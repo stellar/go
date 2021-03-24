@@ -53,7 +53,7 @@ func (h txApproveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		httpErr.Render(w)
 		return
 	}
-	rejectedResponse, err := h.isRejected(ctx, in)
+	resp, err := h.isRejected(ctx, in)
 	if err != nil {
 		httpErr, ok := err.(*httpError)
 		if !ok {
@@ -61,8 +61,19 @@ func (h txApproveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		httpErr.Render(w)
 	}
-	if rejectedResponse != nil {
-		httpjson.RenderStatus(w, http.StatusBadRequest, rejectedResponse, httpjson.JSON)
+	if resp != nil {
+		httpjson.RenderStatus(w, http.StatusBadRequest, resp, httpjson.JSON)
+	}
+	resp, err = h.Approve(ctx, in)
+	if err != nil {
+		httpErr, ok := err.(*httpError)
+		if !ok {
+			httpErr = serverError
+		}
+		httpErr.Render(w)
+	}
+	if resp != nil {
+		httpjson.RenderStatus(w, http.StatusBadRequest, resp, httpjson.JSON)
 	}
 }
 
