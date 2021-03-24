@@ -231,12 +231,14 @@ func TestTxApproveHandler_Approve(t *testing.T) {
 	assert.Equal(t, op1.Trustor, kp01.Address())
 	assert.Equal(t, op1.Type.GetCode(), assetGOAT.GetCode())
 	require.True(t, op1.Authorize)
+
 	// Check  Operation 2: AllowTrust op where issuer fully authorizes account B, asset X.
 	op2, ok := tx.Operations()[1].(*txnbuild.AllowTrust)
 	require.True(t, ok)
 	assert.Equal(t, op2.Trustor, kp02.Address())
 	assert.Equal(t, op2.Type.GetCode(), assetGOAT.GetCode())
 	require.True(t, op2.Authorize)
+
 	// Check Operation 3: Payment from A to B
 	op3, ok := tx.Operations()[2].(*txnbuild.Payment)
 	require.True(t, ok)
@@ -250,6 +252,7 @@ func TestTxApproveHandler_Approve(t *testing.T) {
 	assert.Equal(t, op4.Trustor, kp01.Address())
 	assert.Equal(t, op4.Type.GetCode(), assetGOAT.GetCode())
 	require.False(t, op4.Authorize)
+
 	// Check Operation 5: AllowTrust op where issuer fully deauthorizes account A, asset X.
 	op5, ok := tx.Operations()[4].(*txnbuild.AllowTrust)
 	require.True(t, ok)
