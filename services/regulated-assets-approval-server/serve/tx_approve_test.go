@@ -478,7 +478,7 @@ func TestTxApproveHandler_serveHTTPForm(t *testing.T) {
 	require.NoError(t, err)
 	wantBody = `{
 		"status":"rejected", "error":"Invalid parameter \"tx\"."
-		}`
+	}`
 	require.JSONEq(t, wantBody, string(body))
 
 	// Test if a non generic transaction fails, same result as malformed XDR.
