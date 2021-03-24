@@ -79,27 +79,44 @@ func claimableBalancesForTransaction(
 	sequence uint32,
 	transaction ingest.LedgerTransaction,
 ) ([]xdr.ClaimableBalanceId, error) {
-	cbs := []xdr.ClaimableBalanceId{}
-	for opi, op := range transaction.Envelope.Operations() {
-		operation := transactionOperationWrapper{
-			index:          uint32(opi),
-			transaction:    transaction,
-			operation:      op,
-			ledgerSequence: sequence,
-		}
-
-		c, err := operation.ClaimableBalances()
-		if err != nil {
-			return cbs, errors.Wrapf(err, "reading operation %v claimable balances", operation.ID())
-		}
-		cbs = append(cbs, c...)
+	changes, err := transaction.GetChanges()
+	if err != nil {
+		return nil, err
 	}
-
+	cbs, err := claimableBalancesForChanges(changes)
+	if err != nil {
+		return nil, errors.Wrapf(err, "reading transaction %v claimable balances", transaction.Index)
+	}
 	return dedupeClaimableBalances(cbs)
 }
 
+func claimableBalancesForChanges(
+	changes []ingest.Change,
+) ([]xdr.ClaimableBalanceId, error) {
+	var cbs []xdr.ClaimableBalanceId
+
+	for _, c := range changes {
+		if c.Type != xdr.LedgerEntryTypeClaimableBalance {
+			continue
+		}
+
+		if c.Pre == nil && c.Post == nil {
+			return nil, errors.New("Invalid io.Change: change.Pre == nil && change.Post == nil")
+		}
+
+		if c.Pre != nil {
+			cbs = append(cbs, c.Pre.Data.MustClaimableBalance().BalanceId)
+		}
+		if c.Post != nil {
+			cbs = append(cbs, c.Post.Data.MustClaimableBalance().BalanceId)
+		}
+	}
+
+	return cbs, nil
+}
+
 func (p *ClaimableBalancesTransactionProcessor) addOperationClaimableBalances(cbSet map[xdr.ClaimableBalanceId]claimableBalance, sequence uint32, transaction ingest.LedgerTransaction) error {
-	claimableBalances, err := operationsClaimableBalances(transaction, sequence)
+	claimableBalances, err := claimableBalancesForOperations(transaction, sequence)
 	if err != nil {
 		return errors.Wrap(err, "could not determine operation claimable balances")
 	}
@@ -115,7 +132,7 @@ func (p *ClaimableBalancesTransactionProcessor) addOperationClaimableBalances(cb
 	return nil
 }
 
-func operationsClaimableBalances(transaction ingest.LedgerTransaction, sequence uint32) (map[int64][]xdr.ClaimableBalanceId, error) {
+func claimableBalancesForOperations(transaction ingest.LedgerTransaction, sequence uint32) (map[int64][]xdr.ClaimableBalanceId, error) {
 	cbs := map[int64][]xdr.ClaimableBalanceId{}
 
 	for opi, op := range transaction.Envelope.Operations() {
@@ -126,11 +143,15 @@ func operationsClaimableBalances(transaction ingest.LedgerTransaction, sequence 
 			ledgerSequence: sequence,
 		}
 
-		cb, err := operation.ClaimableBalances()
+		changes, err := transaction.GetOperationChanges(uint32(opi))
+		if err != nil {
+			return cbs, err
+		}
+		c, err := claimableBalancesForChanges(changes)
 		if err != nil {
 			return cbs, errors.Wrapf(err, "reading operation %v claimable balances", operation.ID())
 		}
-		cbs[operation.ID()] = cb
+		cbs[operation.ID()] = c
 	}
 
 	return cbs, nil

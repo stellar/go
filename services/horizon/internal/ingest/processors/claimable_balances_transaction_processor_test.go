@@ -59,11 +59,28 @@ func (s *ClaimableBalancesTransactionProcessorTestSuiteLedger) TestEmptyClaimabl
 	s.Assert().NoError(err)
 }
 
-func (s *ClaimableBalancesTransactionProcessorTestSuiteLedger) testOperationInserts(balanceID xdr.ClaimableBalanceId, body xdr.OperationBody) {
+func (s *ClaimableBalancesTransactionProcessorTestSuiteLedger) testOperationInserts(balanceID xdr.ClaimableBalanceId, body xdr.OperationBody, change xdr.LedgerEntryChange) {
 	// Setup the transaction
 	internalID := int64(1234)
 	txn := createTransaction(true, 1)
 	txn.Envelope.Operations()[0].Body = body
+	txn.Meta.V = 2
+	txn.Meta.V2.Operations = []xdr.OperationMeta{
+		{Changes: xdr.LedgerEntryChanges{
+			{
+				Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
+				State: &xdr.LedgerEntry{
+					Data: xdr.LedgerEntryData{
+						Type: xdr.LedgerEntryTypeClaimableBalance,
+						ClaimableBalance: &xdr.ClaimableBalanceEntry{
+							BalanceId: balanceID,
+						},
+					},
+				},
+			},
+			change,
+		}},
+	}
 
 	if body.Type == xdr.OperationTypeCreateClaimableBalance {
 		// For insert test
@@ -134,7 +151,16 @@ func (s *ClaimableBalancesTransactionProcessorTestSuiteLedger) TestIngestClaimab
 		ClaimClaimableBalanceOp: &xdr.ClaimClaimableBalanceOp{
 			BalanceId: balanceID,
 		},
-	})
+	},
+		xdr.LedgerEntryChange{
+			Type: xdr.LedgerEntryChangeTypeLedgerEntryRemoved,
+			Removed: &xdr.LedgerKey{
+				Type: xdr.LedgerEntryTypeClaimableBalance,
+				ClaimableBalance: &xdr.LedgerKeyClaimableBalance{
+					BalanceId: balanceID,
+				},
+			},
+		})
 }
 
 func (s *ClaimableBalancesTransactionProcessorTestSuiteLedger) TestIngestClaimableBalancesInsertsClawbackClaimableBalance() {
@@ -147,6 +173,16 @@ func (s *ClaimableBalancesTransactionProcessorTestSuiteLedger) TestIngestClaimab
 		ClawbackClaimableBalanceOp: &xdr.ClawbackClaimableBalanceOp{
 			BalanceId: balanceID,
 		},
+	}, xdr.LedgerEntryChange{
+		Type: xdr.LedgerEntryChangeTypeLedgerEntryUpdated,
+		Updated: &xdr.LedgerEntry{
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeClaimableBalance,
+				ClaimableBalance: &xdr.ClaimableBalanceEntry{
+					BalanceId: balanceID,
+				},
+			},
+		},
 	})
 }
 
@@ -158,5 +194,15 @@ func (s *ClaimableBalancesTransactionProcessorTestSuiteLedger) TestIngestClaimab
 	s.testOperationInserts(balanceID, xdr.OperationBody{
 		Type:                     xdr.OperationTypeCreateClaimableBalance,
 		CreateClaimableBalanceOp: &xdr.CreateClaimableBalanceOp{},
+	}, xdr.LedgerEntryChange{
+		Type: xdr.LedgerEntryChangeTypeLedgerEntryCreated,
+		Created: &xdr.LedgerEntry{
+			Data: xdr.LedgerEntryData{
+				Type: xdr.LedgerEntryTypeClaimableBalance,
+				ClaimableBalance: &xdr.ClaimableBalanceEntry{
+					BalanceId: balanceID,
+				},
+			},
+		},
 	})
 }
