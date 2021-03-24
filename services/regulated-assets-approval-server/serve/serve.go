@@ -53,8 +53,7 @@ func handleHTTP(opts Options) (http.Handler, error) {
 	issuerKP, err := keypair.ParseFull(opts.IssuerAccountSecret)
 	if err != nil {
 		err = errors.Wrap(err, "parsing secret")
-		log.Error(err)
-		return nil, err
+		log.Fatal(err)
 	}
 	mux := chi.NewMux()
 
