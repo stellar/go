@@ -13,7 +13,7 @@ func stellarTOMLHandler(cfg Options) http.HandlerFunc {
 		if err != nil {
 			return
 		}
-		approvalCriteria := fmt.Sprintf("Currently %q is not approving any %q transactions at this time", r.Host, cfg.AssetCode)
+		approvalCriteria := fmt.Sprintf("Currently %q is not approving any %q transactions", r.Host, cfg.AssetCode)
 		approvalServer := fmt.Sprintf("%s/tx_approve", r.Host)
 		fmt.Fprintf(rw, "NETWORK_PASSPHRASE=%q\n", cfg.NetworkPassphrase)
 		fmt.Fprintf(rw, "[[CURRENCIES]]\n")

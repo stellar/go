@@ -88,10 +88,10 @@ func (h txApproveHandler) isRejected(ctx context.Context, in txApproveRequest) (
 		}, nil
 	}
 
-	// Check if transaction's sourceaccount is the same as the server issuer account.
+	// Check if transaction's source account is the same as the server issuer account.
 	if tx.SourceAccount().AccountID == h.issuerKP.Address() {
 		log.Ctx(ctx).Error(errors.Wrapf(err,
-			"Transaction %s sourceAccount %s the same as the server issuer account %s",
+			"Transaction %s sourceAccount is the same as the server issuer account %s",
 			in.Transaction,
 			tx.SourceAccount().AccountID,
 			h.issuerKP.Address()))
@@ -109,9 +109,6 @@ func (h txApproveHandler) isRejected(ctx context.Context, in txApproveRequest) (
 			continue
 		}
 		if op.GetSourceAccount() == h.issuerKP.Address() {
-			log.Ctx(ctx).Error(errors.Wrapf(err,
-				"Unauthorized operation from %s in the provided transaction",
-				op.GetSourceAccount()))
 			return &txApproveResponse{
 				Status: rejectedStatus,
 				Error:  unauthorizedOpErr,

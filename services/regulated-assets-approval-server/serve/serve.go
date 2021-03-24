@@ -27,9 +27,7 @@ type Options struct {
 func Serve(opts Options) {
 	handler, err := handleHTTP(opts)
 	if err != nil {
-		err = errors.Wrap(err, "parsing secret")
-		log.Fatal(err)
-		return
+		log.Fatal(errors.Wrap(err, "parsing secret"))
 	}
 	listenAddr := fmt.Sprintf(":%d", opts.Port)
 	serverConfig := supporthttp.Config{
