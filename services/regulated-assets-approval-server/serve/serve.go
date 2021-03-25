@@ -25,14 +25,10 @@ type Options struct {
 }
 
 func Serve(opts Options) {
-	handler, err := handleHTTP(opts)
-	if err != nil {
-		log.Fatal(errors.Wrap(err, "parsing secret"))
-	}
 	listenAddr := fmt.Sprintf(":%d", opts.Port)
 	serverConfig := supporthttp.Config{
 		ListenAddr:          listenAddr,
-		Handler:             handler,
+		Handler:             handleHTTP(opts),
 		TCPKeepAlive:        time.Minute * 3,
 		ShutdownGracePeriod: time.Second * 50,
 		ReadTimeout:         time.Second * 5,
@@ -49,7 +45,7 @@ func Serve(opts Options) {
 	supporthttp.Run(serverConfig)
 }
 
-func handleHTTP(opts Options) (http.Handler, error) {
+func handleHTTP(opts Options) http.Handler {
 	issuerKP, err := keypair.ParseFull(opts.IssuerAccountSecret)
 	if err != nil {
 		err = errors.Wrap(err, "parsing secret")
@@ -76,7 +72,7 @@ func handleHTTP(opts Options) (http.Handler, error) {
 		assetCode: opts.AssetCode,
 		issuerKP:  issuerKP,
 	}.ServeHTTP)
-	return mux, nil
+	return mux
 }
 
 func (opts Options) horizonClient() horizonclient.ClientInterface {
