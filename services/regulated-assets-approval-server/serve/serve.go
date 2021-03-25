@@ -58,7 +58,11 @@ func handleHTTP(opts Options) http.Handler {
 	mux.Use(corsHandler)
 
 	mux.Get("/health", health.PassHandler{}.ServeHTTP)
-	mux.Get("/.well-known/stellar.toml", stellarTOMLHandler(opts))
+	mux.Get("/.well-known/stellar.toml", stellarTOMLHandler{
+		assetCode:         opts.AssetCode,
+		issuerAddress:     issuerKP.Address(),
+		networkPassphrase: opts.NetworkPassphrase,
+	}.ServeHTTP)
 	mux.Get("/friendbot", friendbotHandler{
 		assetCode:           opts.AssetCode,
 		issuerAccountSecret: opts.IssuerAccountSecret,
