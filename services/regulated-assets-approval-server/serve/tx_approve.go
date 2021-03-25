@@ -101,10 +101,6 @@ func (h txApproveHandler) isRejected(ctx context.Context, in txApproveRequest) (
 
 	// Check if transaction's operation(s)' sourceaccount is the same as the server issuer account.
 	for _, op := range tx.Operations() {
-		opSourceAccount := op.GetSourceAccount()
-		if opSourceAccount == "" {
-			continue
-		}
 		if op.GetSourceAccount() == h.issuerKP.Address() {
 			return &txApproveResponse{
 				Status: rejectedStatus,
