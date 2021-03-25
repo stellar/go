@@ -20,20 +20,20 @@ const (
 )
 
 const (
-	missingParamErr   = "Missing parameter \"tx\"."
-	invalidParamErr   = "Invalid parameter \"tx\"."
-	internalErrErr    = "Internal Error."
-	invalidSrcAccErr  = "The source account is invalid."
-	unauthorizedOpErr = "There is one or more unauthorized operations in the provided transaction."
-	notImplementedErr = "Not implemented."
+	missingParamErr     = "Missing parameter \"tx\"."
+	invalidParamErr     = "Invalid parameter \"tx\"."
+	internalErrErr      = "Internal Error."
+	invalidSrcAccErr    = "The source account is invalid."
+	unauthorizedOpErr   = "There is one or more unauthorized operations in the provided transaction."
+	notImplementedErr   = "Not implemented."
 	revisedStatus       = "revised"
 	revisedHappyPathMsg = "Authorization and deauthorization operations were added."
 )
 
 type txApproveHandler struct {
-	issuerKP  *keypair.Full
-	assetCode string
-	networkPassphrase   string
+	issuerKP          *keypair.Full
+	assetCode         string
+	networkPassphrase string
 }
 
 type txApproveRequest struct {
@@ -41,10 +41,10 @@ type txApproveRequest struct {
 }
 
 type txApproveResponse struct {
-	Status sep8Status `json:"status"`
-	Message     string `json:"message,omitempty"`
-	Transaction string `json:"tx,omitempty"`
-	Error       string `json:"error,omitempty"`
+	Status      sep8Status `json:"status"`
+	Message     string     `json:"message,omitempty"`
+	Transaction string     `json:"tx,omitempty"`
+	Error       string     `json:"error,omitempty"`
 }
 
 func NewRejectedTXApproveResponse(errorMessage string) *txApproveResponse {
@@ -52,6 +52,7 @@ func NewRejectedTXApproveResponse(errorMessage string) *txApproveResponse {
 		Status: Sep8StatusRejected,
 		Error:  errorMessage,
 	}
+}
 
 func (h txApproveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
@@ -125,7 +126,7 @@ func (h txApproveHandler) isRejected(ctx context.Context, in txApproveRequest) (
 		}
 	}
 
-	return NewRejectedTXApproveResponse(notImplementedErr), nil
+	return nil, nil
 }
 
 func (h txApproveHandler) Approve(ctx context.Context, in txApproveRequest) (*txApproveResponse, error) {
@@ -143,14 +144,6 @@ func (h txApproveHandler) Approve(ctx context.Context, in txApproveRequest) (*tx
 	}
 	log.Ctx(ctx).Debug(tx)
 
-	issuerKP, err := keypair.ParseFull(h.issuerAccountSecret)
-	if err != nil {
-		log.Ctx(ctx).Error(errors.Wrap(err, "Parsing issuer secret failed."))
-		return nil, NewHTTPError(http.StatusBadRequest, `Parsing issuer secret failed.`)
-	}
-
-	log.Ctx(ctx).Debug(issuerKP)
-
 	// Check if transaction has only one operation. The happy path requirement for now
 	if len(tx.Operations()) > 1 {
 		log.Ctx(ctx).Error(errors.Wrapf(nil, "Transaction has %d operations.", len(tx.Operations())))
@@ -164,7 +157,7 @@ func (h txApproveHandler) Approve(ctx context.Context, in txApproveRequest) (*tx
 	}
 	asset := txnbuild.CreditAsset{
 		Code:   h.assetCode,
-		Issuer: issuerKP.Address(),
+		Issuer: h.issuerKP.Address(),
 	}
 
 	tx, err = txnbuild.NewTransaction(txnbuild.TransactionParams{
@@ -201,7 +194,7 @@ func (h txApproveHandler) Approve(ctx context.Context, in txApproveRequest) (*tx
 		return nil, NewHTTPError(http.StatusBadRequest, `Failed to build and sandwich transaction.`)
 	}
 
-	tx, err = tx.Sign(h.networkPassphrase, issuerKP)
+	tx, err = tx.Sign(h.networkPassphrase, h.issuerKP)
 	if err != nil {
 		log.Ctx(ctx).Error(errors.Wrap(err, "signing transaction"))
 		return nil, NewHTTPError(http.StatusBadRequest, `Failed to sign transaction.`)

@@ -74,7 +74,6 @@ func handleHTTP(opts Options) http.Handler {
 	mux.Post("/tx_approve", txApproveHandler{
 		assetCode:         opts.AssetCode,
 		issuerKP:          issuerKP,
-		assetCode:         opts.AssetCode,
 		networkPassphrase: opts.NetworkPassphrase,
 	}.ServeHTTP)
 	return mux

@@ -172,11 +172,7 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 	}
 	rejectedResponse, err = handler.isRejected(ctx, req)
 	require.NoError(t, err)
-	wantRejectedResponse = txApproveResponse{
-		Status: Sep8StatusRejected,
-		Error:  notImplementedErr,
-	}
-	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
+	assert.Nil(t, rejectedResponse)
 }
 
 func TestTxApproveHandler_Approve(t *testing.T) {
@@ -211,9 +207,9 @@ func TestTxApproveHandler_Approve(t *testing.T) {
 	}
 
 	rejectedResponse, err := txApproveHandler{
-		issuerAccountSecret: issuerAccKeyPair.Seed(),
-		assetCode:           assetGOAT.GetCode(),
-		networkPassphrase:   network.TestNetworkPassphrase,
+		issuerKP:          issuerAccKeyPair,
+		assetCode:         assetGOAT.GetCode(),
+		networkPassphrase: network.TestNetworkPassphrase,
 	}.Approve(ctx, req)
 	require.NoError(t, err)
 
