@@ -36,6 +36,13 @@ type txApproveResponse struct {
 	Error  string `json:"error"`
 }
 
+func (h txApproveHandler) craftTXApproveResponse(status string, errorMessage string) *txApproveResponse {
+	return &txApproveResponse{
+		Status: status,
+		Error:  errorMessage,
+	}
+}
+
 func (h txApproveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -61,29 +68,20 @@ func (h txApproveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (h txApproveHandler) isRejected(ctx context.Context, in txApproveRequest) (*txApproveResponse, error) {
 	if in.Transaction == "" {
-		return &txApproveResponse{
-			Status: rejectedStatus,
-			Error:  missingParamErr,
-		}, nil
+		return h.craftTXApproveResponse(rejectedStatus, missingParamErr), nil
 	}
 
 	// Decode the request transaction.
 	parsed, err := txnbuild.TransactionFromXDR(in.Transaction)
 	if err != nil {
 		log.Ctx(ctx).Error(errors.Wrapf(err, "Parsing transaction %s failed", in.Transaction))
-		return &txApproveResponse{
-			Status: rejectedStatus,
-			Error:  invalidParamErr,
-		}, nil
+		return h.craftTXApproveResponse(rejectedStatus, invalidParamErr), nil
 	}
 
 	tx, ok := parsed.Transaction()
 	if !ok {
 		log.Ctx(ctx).Errorf("Transaction %s is not a simple transaction.", in.Transaction)
-		return &txApproveResponse{
-			Status: rejectedStatus,
-			Error:  invalidParamErr,
-		}, nil
+		return h.craftTXApproveResponse(rejectedStatus, invalidParamErr), nil
 	}
 
 	// Check if transaction's source account is the same as the server issuer account.
@@ -92,25 +90,15 @@ func (h txApproveHandler) isRejected(ctx context.Context, in txApproveRequest) (
 			"Transaction %s sourceAccount is the same as the server issuer account %s",
 			in.Transaction,
 			h.issuerKP.Address()))
-		return &txApproveResponse{
-			Status: rejectedStatus,
-			Error:  invalidSrcAccErr,
-		}, nil
-
+		return h.craftTXApproveResponse(rejectedStatus, invalidSrcAccErr), nil
 	}
 
 	// Check if transaction's operation(s)' sourceaccount is the same as the server issuer account.
 	for _, op := range tx.Operations() {
 		if op.GetSourceAccount() == h.issuerKP.Address() {
-			return &txApproveResponse{
-				Status: rejectedStatus,
-				Error:  unauthorizedOpErr,
-			}, nil
+			return h.craftTXApproveResponse(rejectedStatus, unauthorizedOpErr), nil
 		}
 	}
 
-	return &txApproveResponse{
-		Status: rejectedStatus,
-		Error:  notImplementedErr,
-	}, nil
+	return h.craftTXApproveResponse(rejectedStatus, notImplementedErr), nil
 }
