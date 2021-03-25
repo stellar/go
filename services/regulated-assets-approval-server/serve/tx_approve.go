@@ -86,10 +86,9 @@ func (h txApproveHandler) isRejected(ctx context.Context, in txApproveRequest) (
 
 	// Check if transaction's source account is the same as the server issuer account.
 	if tx.SourceAccount().AccountID == h.issuerKP.Address() {
-		log.Ctx(ctx).Error(errors.Wrapf(err,
-			"Transaction %s sourceAccount is the same as the server issuer account %s",
+		log.Ctx(ctx).Errorf("Transaction %s sourceAccount is the same as the server issuer account %s",
 			in.Transaction,
-			h.issuerKP.Address()))
+			h.issuerKP.Address())
 		return h.craftTXApproveResponse(rejectedStatus, invalidSrcAccErr), nil
 	}
 
