@@ -81,7 +81,7 @@ func (h txApproveHandler) isRejected(ctx context.Context, in txApproveRequest) (
 
 	tx, ok := parsed.Transaction()
 	if !ok {
-		log.Ctx(ctx).Error(errors.Wrapf(err, "Transaction %s is not a simple transaction.", in.Transaction))
+		log.Ctx(ctx).Errorf("Transaction %s is not a simple transaction.", in.Transaction)
 		return &txApproveResponse{
 			Status: rejectedStatus,
 			Error:  invalidParamErr,
