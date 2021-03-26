@@ -89,7 +89,7 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse) // wantRejectedResponse is identical to "if can't parse XDR".
 
-	// Test if the transaction sourceAccount the same as the server issuer account
+	// Test if the transaction sourceAccount the same as the server issuer account.
 	tx, err = txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount:        &txnbuild.SimpleAccount{AccountID: issuerAccKeyPair.Address()},
@@ -118,7 +118,7 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 	}
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
 
-	// Test if the transaction's operation if operation is a payment
+	// Test if the transaction's operation if operation is a payment.
 	tx, err = txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount:        &txnbuild.SimpleAccount{AccountID: kp01.Address()},
@@ -150,7 +150,7 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 	}
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
 
-	// Test if the transaction's has more than one operation
+	// Test if the transaction's has more than one operation.
 	tx, err = txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount:        &txnbuild.SimpleAccount{AccountID: kp01.Address()},
@@ -306,7 +306,7 @@ func TestTxApproveHandler_Approve(t *testing.T) {
 	assert.Equal(t, op2.Type.GetCode(), assetGOAT.GetCode())
 	require.True(t, op2.Authorize)
 
-	// Check Operation 3: Payment from A to B
+	// Check Operation 3: Payment from A to B.
 	op3, ok := tx.Operations()[2].(*txnbuild.Payment)
 	require.True(t, ok)
 	assert.Equal(t, op3.SourceAccount, kp01.Address())
@@ -438,7 +438,7 @@ func TestTxApproveHandler_serveHTTPJson(t *testing.T) {
 	}`
 	require.JSONEq(t, wantBody, string(body))
 
-	// Test if the transaction sourceAccount the same as the server issuer account
+	// Test if the transaction sourceAccount the same as the server issuer account.
 	tx, err = txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount:        &txnbuild.SimpleAccount{AccountID: issuerAccKeyPair.Address()},
@@ -478,7 +478,7 @@ func TestTxApproveHandler_serveHTTPJson(t *testing.T) {
 	}`
 	require.JSONEq(t, wantBody, string(body))
 
-	// Test if the transaction's operation sourceAccount the same as the server issuer account
+	// Test if the transaction's operation sourceAccount the same as the server issuer account.
 	tx, err = txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount:        &txnbuild.SimpleAccount{AccountID: kp01.Address()},
@@ -519,7 +519,7 @@ func TestTxApproveHandler_serveHTTPJson(t *testing.T) {
 	}`
 	require.JSONEq(t, wantBody, string(body))
 
-	// Test revisable transaction
+	// Test revisable transaction.
 	tx, err = txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount:        &txnbuild.SimpleAccount{AccountID: kp01.Address()},
@@ -678,7 +678,7 @@ func TestTxApproveHandler_serveHTTPForm(t *testing.T) {
 			}`
 	require.JSONEq(t, wantBody, string(body))
 
-	// Test if the transaction sourceAccount the same as the server issuer account
+	// Test if the transaction sourceAccount the same as the server issuer account.
 	tx, err = txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount:        &txnbuild.SimpleAccount{AccountID: issuerAccKeyPair.Address()},
@@ -717,7 +717,7 @@ func TestTxApproveHandler_serveHTTPForm(t *testing.T) {
 				}`
 	require.JSONEq(t, wantBody, string(body))
 
-	// Test if the transaction's operation sourceaccount the same as the server issuer account
+	// Test if the transaction's operation sourceaccount the same as the server issuer account.
 	tx, err = txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount:        &txnbuild.SimpleAccount{AccountID: kp01.Address()},
@@ -757,7 +757,7 @@ func TestTxApproveHandler_serveHTTPForm(t *testing.T) {
 			}`
 	require.JSONEq(t, wantBody, string(body))
 
-	// Test revisable transaction
+	// Test revisable transaction.
 	tx, err = txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount:        &txnbuild.SimpleAccount{AccountID: kp01.Address()},
@@ -801,7 +801,7 @@ func TestTxApproveHandler_serveHTTPForm(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, exists)
 	assert.Equal(t, response["message"], "Authorization and deauthorization operations were added.")
-	// Cant test the tx result due to the the hash being nondeterministic
+	// Cant test the tx result due to the the hash being nondeterministic.
 	_, exists = response["tx"]
 	require.NoError(t, err)
 	assert.True(t, exists)
