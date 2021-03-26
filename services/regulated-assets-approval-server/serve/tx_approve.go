@@ -17,6 +17,7 @@ type sep8Status string
 
 const (
 	Sep8StatusRejected sep8Status = "rejected"
+	Sep8StatusRevised  sep8Status = "revised"
 )
 
 const (
@@ -26,7 +27,6 @@ const (
 	invalidSrcAccErr    = "The source account is invalid."
 	unauthorizedOpErr   = "There is one or more unauthorized operations in the provided transaction."
 	notImplementedErr   = "Not implemented."
-	revisedStatus       = "revised"
 	revisedHappyPathMsg = "Authorization and deauthorization operations were added."
 )
 
@@ -51,6 +51,15 @@ func NewRejectedTXApproveResponse(errorMessage string) *txApproveResponse {
 	return &txApproveResponse{
 		Status: Sep8StatusRejected,
 		Error:  errorMessage,
+	}
+
+}
+
+func NewRevisedTXApproveResponse(message string, tx string) *txApproveResponse {
+	return &txApproveResponse{
+		Status:      Sep8StatusRevised,
+		Message:     message,
+		Transaction: tx,
 	}
 }
 
@@ -205,9 +214,6 @@ func (h txApproveHandler) Approve(ctx context.Context, in txApproveRequest) (*tx
 		log.Ctx(ctx).Error(errors.Wrap(err, "unable to serialize tx"))
 		return nil, NewHTTPError(http.StatusBadRequest, `unable to serialize tx.`)
 	}
-	return &txApproveResponse{
-		Status:      revisedStatus,
-		Message:     revisedHappyPathMsg,
-		Transaction: txEnc,
-	}, nil
+
+	return NewRevisedTXApproveResponse(revisedHappyPathMsg, txEnc), nil
 }
