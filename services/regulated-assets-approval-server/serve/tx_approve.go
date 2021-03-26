@@ -26,6 +26,7 @@ const (
 	internalErrErr      = "Internal Error."
 	invalidSrcAccErr    = "The source account is invalid."
 	unauthorizedOpErr   = "There is one or more unauthorized operations in the provided transaction."
+	exceededOpsLenErr   = "There are too many operations in the provided transaction."
 	notImplementedErr   = "Not implemented."
 	revisedHappyPathMsg = "Authorization and deauthorization operations were added."
 )
@@ -128,11 +129,23 @@ func (h txApproveHandler) isRejected(ctx context.Context, in txApproveRequest) (
 		return NewRejectedTXApproveResponse(invalidSrcAccErr), nil
 	}
 
-	// Check if transaction's operation(s)' sourceaccount is the same as the server issuer account.
-	for _, op := range tx.Operations() {
-		if op.GetSourceAccount() == h.issuerKP.Address() {
-			return NewRejectedTXApproveResponse(unauthorizedOpErr), nil
-		}
+	// Check if transaction has only one operation.
+	if len(tx.Operations()) > 1 {
+		log.Ctx(ctx).Errorf("Transaction has %d operations.", len(tx.Operations()))
+		return NewRejectedTXApproveResponse(exceededOpsLenErr), nil
+	}
+
+	// Check if operation is a payment.
+	op, ok := tx.Operations()[0].(*txnbuild.Payment)
+	if !ok {
+		log.Ctx(ctx).Errorf("Transaction contains a %q operation.", reflect.TypeOf(op))
+		return NewRejectedTXApproveResponse(unauthorizedOpErr), nil
+	}
+
+	// Check if transaction's operation sourceaccount is the same as the server issuer account.
+	if op.GetSourceAccount() == h.issuerKP.Address() {
+		log.Ctx(ctx).Errorf("Transaction's operation sourceaccount %q is the same as issuer account.", op.GetSourceAccount())
+		return NewRejectedTXApproveResponse(unauthorizedOpErr), nil
 	}
 
 	return nil, nil
@@ -151,20 +164,13 @@ func (h txApproveHandler) Approve(ctx context.Context, in txApproveRequest) (*tx
 		log.Ctx(ctx).Errorf("Transaction %s is not a simple transaction.", in.Transaction)
 		return nil, NewHTTPError(http.StatusBadRequest, `Transaction submitted is not a simple transaction.`)
 	}
-	log.Ctx(ctx).Debug(tx)
 
-	// Check if transaction has only one operation. The happy path requirement for now
-	if len(tx.Operations()) > 1 {
-		log.Ctx(ctx).Errorf("Transaction has %d operations.", len(tx.Operations()))
-		return nil, NewHTTPError(http.StatusBadRequest, `Too many operations in transaction.`)
-	}
-
-	// Check if operation is a payment. The happy path requirement for now
 	op, ok := tx.Operations()[0].(*txnbuild.Payment)
 	if !ok {
 		log.Ctx(ctx).Errorf("Transaction contains a %q operation.", reflect.TypeOf(op))
-		return nil, NewHTTPError(http.StatusBadRequest, `Not a payment operation.`)
+		return nil, NewHTTPError(http.StatusBadRequest, `Transaction contains is not a Payment operation.`)
 	}
+
 	asset := txnbuild.CreditAsset{
 		Code:   h.assetCode,
 		Issuer: h.issuerKP.Address(),

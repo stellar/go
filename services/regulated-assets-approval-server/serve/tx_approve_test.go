@@ -118,6 +118,76 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 	}
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
 
+	// Test if the transaction's operation if operation is a payment
+	tx, err = txnbuild.NewTransaction(
+		txnbuild.TransactionParams{
+			SourceAccount:        &txnbuild.SimpleAccount{AccountID: kp01.Address()},
+			IncrementSequenceNum: true,
+			Operations: []txnbuild.Operation{
+				&txnbuild.CreateClaimableBalance{
+					SourceAccount: issuerAccKeyPair.Address(),
+					Asset:         assetGOAT,
+					Amount:        "1",
+					Destinations: []txnbuild.Claimant{
+						txnbuild.NewClaimant(kp02.Address(), nil),
+					},
+				},
+			},
+			BaseFee:    txnbuild.MinBaseFee,
+			Timebounds: txnbuild.NewInfiniteTimeout(),
+		},
+	)
+	require.NoError(t, err)
+	txEnc, err = tx.Base64()
+	req = txApproveRequest{
+		Transaction: txEnc,
+	}
+	rejectedResponse, err = handler.isRejected(ctx, req)
+	require.NoError(t, err)
+	wantRejectedResponse = txApproveResponse{
+		Status: Sep8StatusRejected,
+		Error:  unauthorizedOpErr,
+	}
+	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
+
+	// Test if the transaction's operation sourceAccount the same as the server issuer account
+	tx, err = txnbuild.NewTransaction(
+		txnbuild.TransactionParams{
+			SourceAccount:        &txnbuild.SimpleAccount{AccountID: kp01.Address()},
+			IncrementSequenceNum: true,
+			Operations: []txnbuild.Operation{
+				&txnbuild.Payment{
+					SourceAccount: issuerAccKeyPair.Address(),
+					Destination:   kp01.Address(),
+					Amount:        "1",
+					Asset:         assetGOAT,
+				},
+				&txnbuild.CreateClaimableBalance{
+					SourceAccount: issuerAccKeyPair.Address(),
+					Asset:         assetGOAT,
+					Amount:        "1",
+					Destinations: []txnbuild.Claimant{
+						txnbuild.NewClaimant(kp02.Address(), nil),
+					},
+				},
+			},
+			BaseFee:    txnbuild.MinBaseFee,
+			Timebounds: txnbuild.NewInfiniteTimeout(),
+		},
+	)
+	require.NoError(t, err)
+	txEnc, err = tx.Base64()
+	req = txApproveRequest{
+		Transaction: txEnc,
+	}
+	rejectedResponse, err = handler.isRejected(ctx, req)
+	require.NoError(t, err)
+	wantRejectedResponse = txApproveResponse{
+		Status: Sep8StatusRejected,
+		Error:  exceededOpsLenErr,
+	}
+	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
+
 	// Test if the transaction's operation sourceAccount the same as the server issuer account
 	tx, err = txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
@@ -206,7 +276,7 @@ func TestTxApproveHandler_Approve(t *testing.T) {
 		Transaction: txEnc,
 	}
 
-	rejectedResponse, err := txApproveHandler{
+	approvedResponse, err := txApproveHandler{
 		issuerKP:          issuerAccKeyPair,
 		assetCode:         assetGOAT.GetCode(),
 		networkPassphrase: network.TestNetworkPassphrase,
@@ -214,7 +284,7 @@ func TestTxApproveHandler_Approve(t *testing.T) {
 	require.NoError(t, err)
 
 	// Decode the request transaction.
-	parsed, err := txnbuild.TransactionFromXDR(rejectedResponse.Transaction)
+	parsed, err := txnbuild.TransactionFromXDR(approvedResponse.Transaction)
 	require.NoError(t, err)
 	tx, ok := parsed.Transaction()
 	require.True(t, ok)
