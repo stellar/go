@@ -150,7 +150,7 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 	}
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
 
-	// Test if the transaction's operation sourceAccount the same as the server issuer account
+	// Test if the transaction's has more than one operation
 	tx, err = txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount:        &txnbuild.SimpleAccount{AccountID: kp01.Address()},
