@@ -148,20 +148,21 @@ func (h txApproveHandler) Approve(ctx context.Context, in txApproveRequest) (*tx
 
 	tx, ok := parsed.Transaction()
 	if !ok {
-		log.Ctx(ctx).Error(errors.Wrapf(err, "Transaction %s is not a simple transaction.", in.Transaction))
+		log.Ctx(ctx).Errorf("Transaction %s is not a simple transaction.", in.Transaction)
 		return nil, NewHTTPError(http.StatusBadRequest, `Transaction submitted is not a simple transaction.`)
 	}
 	log.Ctx(ctx).Debug(tx)
 
 	// Check if transaction has only one operation. The happy path requirement for now
 	if len(tx.Operations()) > 1 {
-		log.Ctx(ctx).Error(errors.Wrapf(nil, "Transaction has %d operations.", len(tx.Operations())))
+		log.Ctx(ctx).Errorf("Transaction has %d operations.", len(tx.Operations()))
 		return nil, NewHTTPError(http.StatusBadRequest, `Too many operations in transaction.`)
 	}
+
 	// Check if operation is a payment. The happy path requirement for now
 	op, ok := tx.Operations()[0].(*txnbuild.Payment)
 	if !ok {
-		log.Ctx(ctx).Error(errors.Wrapf(nil, "Transaction contains a %q operation.", reflect.TypeOf(op)))
+		log.Ctx(ctx).Errorf("Transaction contains a %q operation.", reflect.TypeOf(op))
 		return nil, NewHTTPError(http.StatusBadRequest, `Not a payment operation.`)
 	}
 	asset := txnbuild.CreditAsset{
