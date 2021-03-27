@@ -89,7 +89,7 @@ function compare() {
   fi
 }
 
-BASE_BRANCH=${BASE_BRANCH:-horizon-v1.4.0}
+BASE_BRANCH=${BASE_BRANCH:-horizon-v2.0.0}
 
 if [ ! -z "$VERIFY_HISTORY" ]; then
 	dump_horizon_db "exp_history"
