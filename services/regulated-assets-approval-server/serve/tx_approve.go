@@ -3,7 +3,6 @@ package serve
 import (
 	"context"
 	"net/http"
-	"reflect"
 
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/support/errors"
@@ -135,7 +134,7 @@ func (h txApproveHandler) isRejected(ctx context.Context, in txApproveRequest) (
 	// Check if operation is a payment.
 	op, ok := tx.Operations()[0].(*txnbuild.Payment)
 	if !ok {
-		log.Ctx(ctx).Errorf("Transaction contains a %q operation.", reflect.TypeOf(op))
+		log.Ctx(ctx).Errorf("Transaction contains a %T operation.", op)
 		return NewRejectedTXApproveResponse(unauthorizedOpErr), nil
 	}
 
@@ -164,7 +163,7 @@ func (h txApproveHandler) Approve(ctx context.Context, in txApproveRequest) (*tx
 
 	op, ok := tx.Operations()[0].(*txnbuild.Payment)
 	if !ok {
-		log.Ctx(ctx).Errorf("Transaction contains a %q operation.", reflect.TypeOf(op))
+		log.Ctx(ctx).Errorf("Transaction contains a %T operation.", op)
 		return nil, NewHTTPError(http.StatusBadRequest, `Transaction contains is not a Payment operation.`)
 	}
 
