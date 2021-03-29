@@ -97,10 +97,7 @@ func (h txApproveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		httpErr.Render(w)
 		return
 	}
-	if resp != nil {
-		httpjson.RenderStatus(w, http.StatusOK, resp, httpjson.JSON)
-		return
-	}
+	httpjson.RenderStatus(w, http.StatusOK, resp, httpjson.JSON)
 }
 
 func (h txApproveHandler) isRejected(ctx context.Context, in txApproveRequest) (*txApproveResponse, error) {
