@@ -10,7 +10,7 @@ type LedgerBackend interface {
 	// in the backend.
 	GetLatestLedgerSequence() (sequence uint32, err error)
 	// The first returned value is false when the ledger does not exist in a backend.
-	GetLedger(sequence uint32) (bool, xdr.LedgerCloseMeta, error)
+	GetLedger(sequence uint32) (bool, *xdr.LedgerCloseMeta, error)
 	// PrepareRange prepares the given range (including from and to) to be loaded.
 	// Some backends (like captive stellar-core) need to initalize data to be
 	// able to stream ledgers. Blocks until the first ledger is available.

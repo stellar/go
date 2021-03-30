@@ -119,7 +119,7 @@ func sortByHash(transactions []xdr.TransactionEnvelope, passphrase string) error
 
 // GetLedger returns the LedgerCloseMeta for the given ledger sequence number.
 // The first returned value is false when the ledger does not exist in the database.
-func (dbb *DatabaseBackend) GetLedger(sequence uint32) (bool, xdr.LedgerCloseMeta, error) {
+func (dbb *DatabaseBackend) GetLedger(sequence uint32) (bool, *xdr.LedgerCloseMeta, error) {
 	lcm := xdr.LedgerCloseMeta{
 		V0: &xdr.LedgerCloseMetaV0{},
 	}
@@ -133,9 +133,9 @@ func (dbb *DatabaseBackend) GetLedger(sequence uint32) (bool, xdr.LedgerCloseMet
 		switch err {
 		case sql.ErrNoRows:
 			// Ledger was not found
-			return false, xdr.LedgerCloseMeta{}, nil
+			return false, &xdr.LedgerCloseMeta{}, nil
 		default:
-			return false, xdr.LedgerCloseMeta{}, errors.Wrap(err, "Error getting ledger header")
+			return false, &xdr.LedgerCloseMeta{}, errors.Wrap(err, "Error getting ledger header")
 		}
 	}
 
@@ -151,14 +151,14 @@ func (dbb *DatabaseBackend) GetLedger(sequence uint32) (bool, xdr.LedgerCloseMet
 	err = dbb.session.SelectRaw(&txhRows, txHistoryQuery+orderBy, sequence)
 	// Return errors...
 	if err != nil {
-		return false, lcm, errors.Wrap(err, "Error getting txHistory")
+		return false, &lcm, errors.Wrap(err, "Error getting txHistory")
 	}
 
 	// ...otherwise store the data
 	for i, tx := range txhRows {
 		// Sanity check index. Note that first TXIndex in a ledger is 1
 		if i != int(tx.TXIndex)-1 {
-			return false, xdr.LedgerCloseMeta{}, errors.New("transactions read from DB history table are misordered")
+			return false, &xdr.LedgerCloseMeta{}, errors.New("transactions read from DB history table are misordered")
 		}
 
 		lcm.V0.TxSet.Txs = append(lcm.V0.TxSet.Txs, tx.TXBody)
@@ -169,7 +169,7 @@ func (dbb *DatabaseBackend) GetLedger(sequence uint32) (bool, xdr.LedgerCloseMet
 	}
 
 	if err = sortByHash(lcm.V0.TxSet.Txs, dbb.networkPassphrase); err != nil {
-		return false, xdr.LedgerCloseMeta{}, errors.Wrap(err, "could not sort txset")
+		return false, &xdr.LedgerCloseMeta{}, errors.Wrap(err, "could not sort txset")
 	}
 
 	// Query - txfeehistory
@@ -177,14 +177,14 @@ func (dbb *DatabaseBackend) GetLedger(sequence uint32) (bool, xdr.LedgerCloseMet
 	err = dbb.session.SelectRaw(&txfhRows, txFeeHistoryQuery+orderBy, sequence)
 	// Return errors...
 	if err != nil {
-		return false, lcm, errors.Wrap(err, "Error getting txFeeHistory")
+		return false, &lcm, errors.Wrap(err, "Error getting txFeeHistory")
 	}
 
 	// ...otherwise store the data
 	for i, tx := range txfhRows {
 		// Sanity check index. Note that first TXIndex in a ledger is 1
 		if i != int(tx.TXIndex)-1 {
-			return false, xdr.LedgerCloseMeta{}, errors.New("transactions read from DB fee history table are misordered")
+			return false, &xdr.LedgerCloseMeta{}, errors.New("transactions read from DB fee history table are misordered")
 		}
 		lcm.V0.TxProcessing[i].FeeProcessing = tx.TXChanges
 	}
@@ -194,7 +194,7 @@ func (dbb *DatabaseBackend) GetLedger(sequence uint32) (bool, xdr.LedgerCloseMet
 	err = dbb.session.SelectRaw(&upgradeHistoryRows, upgradeHistoryQuery, sequence)
 	// Return errors...
 	if err != nil {
-		return false, lcm, errors.Wrap(err, "Error getting upgradeHistoryRows")
+		return false, &lcm, errors.Wrap(err, "Error getting upgradeHistoryRows")
 	}
 
 	// ...otherwise store the data
@@ -206,7 +206,7 @@ func (dbb *DatabaseBackend) GetLedger(sequence uint32) (bool, xdr.LedgerCloseMet
 		}
 	}
 
-	return true, lcm, nil
+	return true, &lcm, nil
 }
 
 // CreateSession returns a new db.Session that connects to the given DB settings.

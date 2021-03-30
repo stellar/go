@@ -98,7 +98,7 @@ func fakeOffer(offerID int64) xdr.LedgerEntryChange {
 	}
 }
 
-func (f fakeLedgerBackend) GetLedger(sequence uint32) (bool, xdr.LedgerCloseMeta, error) {
+func (f fakeLedgerBackend) GetLedger(sequence uint32) (bool, *xdr.LedgerCloseMeta, error) {
 	ledgerCloseMeta := xdr.LedgerCloseMeta{
 		V0: &xdr.LedgerCloseMetaV0{
 			LedgerHeader: xdr.LedgerHeaderHistoryEntry{
@@ -196,7 +196,7 @@ func (f fakeLedgerBackend) GetLedger(sequence uint32) (bool, xdr.LedgerCloseMeta
 		"accountData":       accountData,
 		"totalChanges":      total,
 	}).Info("Finished creating fake ledger")
-	return true, ledgerCloseMeta, nil
+	return true, &ledgerCloseMeta, nil
 }
 
 func (fakeLedgerBackend) Close() error {

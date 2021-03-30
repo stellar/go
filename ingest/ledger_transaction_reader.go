@@ -13,13 +13,13 @@ import (
 // LedgerTransactionReader reads transactions for a given ledger sequence from a backend.
 // Use NewTransactionReader to create a new instance.
 type LedgerTransactionReader struct {
-	ledgerCloseMeta xdr.LedgerCloseMeta
+	ledgerCloseMeta *xdr.LedgerCloseMeta
 	transactions    []LedgerTransaction
 	readIdx         int
 }
 
 // NewLedgerTransactionReader creates a new TransactionReader instance.
-// Note that TransactionReader is not thread safe and should not be shared by multiple goroutines
+// Note that TransactionReader is not thread safe and should not be shared by multiple goroutines.
 func NewLedgerTransactionReader(backend ledgerbackend.LedgerBackend, networkPassphrase string, sequence uint32) (*LedgerTransactionReader, error) {
 	exists, ledgerCloseMeta, err := backend.GetLedger(sequence)
 	if err != nil {
@@ -30,8 +30,14 @@ func NewLedgerTransactionReader(backend ledgerbackend.LedgerBackend, networkPass
 		return nil, ErrNotFound
 	}
 
+	return NewLedgerTransactionReaderFromLedgerCloseMeta(networkPassphrase, ledgerCloseMeta)
+}
+
+// NewLedgerTransactionReaderFromXdr creates a new TransactionReader instance from xdr.LedgerCloseMeta.
+// Note that TransactionReader is not thread safe and should not be shared by multiple goroutines.
+func NewLedgerTransactionReaderFromLedgerCloseMeta(networkPassphrase string, ledgerCloseMeta *xdr.LedgerCloseMeta) (*LedgerTransactionReader, error) {
 	reader := &LedgerTransactionReader{ledgerCloseMeta: ledgerCloseMeta}
-	if err = reader.storeTransactions(ledgerCloseMeta, networkPassphrase); err != nil {
+	if err := reader.storeTransactions(ledgerCloseMeta, networkPassphrase); err != nil {
 		return nil, errors.Wrap(err, "error extracting transactions from ledger close meta")
 	}
 	return reader, nil
@@ -64,7 +70,7 @@ func (reader *LedgerTransactionReader) Rewind() {
 
 // storeTransactions maps the close meta data into a slice of LedgerTransaction structs, to provide
 // a per-transaction view of the data when Read() is called.
-func (reader *LedgerTransactionReader) storeTransactions(lcm xdr.LedgerCloseMeta, networkPassphrase string) error {
+func (reader *LedgerTransactionReader) storeTransactions(lcm *xdr.LedgerCloseMeta, networkPassphrase string) error {
 	byHash := map[xdr.Hash]xdr.TransactionEnvelope{}
 	for i, tx := range lcm.V0.TxSet.Txs {
 		hash, err := network.HashTransactionInEnvelope(tx, networkPassphrase)

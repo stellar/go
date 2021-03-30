@@ -248,7 +248,6 @@ func NewSystem(config Config) (System, error) {
 			config:         config,
 			historyQ:       historyQ,
 			historyAdapter: historyAdapter,
-			ledgerBackend:  ledgerBackend,
 		},
 		checkpointManager: historyarchive.NewCheckpointManager(config.CheckpointFrequency),
 	}
@@ -386,10 +385,10 @@ func (s *system) StressTest(numTransactions, changesPerTransaction int) error {
 	}
 
 	s.runner.EnableMemoryStatsLogging()
-	s.runner.SetLedgerBackend(fakeLedgerBackend{
+	s.ledgerBackend = &fakeLedgerBackend{
 		numTransactions:       numTransactions,
 		changesPerTransaction: changesPerTransaction,
-	})
+	}
 	return s.runStateMachine(stressTestState{})
 }
 
