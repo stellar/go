@@ -218,6 +218,35 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 	}
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
 
+	tx, err = txnbuild.NewTransaction(
+		txnbuild.TransactionParams{
+			SourceAccount:        &txnbuild.SimpleAccount{AccountID: kp01.Address()},
+			IncrementSequenceNum: false,
+			Operations: []txnbuild.Operation{
+				&txnbuild.Payment{
+					SourceAccount: kp01.Address(),
+					Destination:   kp02.Address(),
+					Amount:        "1",
+					Asset:         assetGOAT,
+				},
+			},
+			BaseFee:    txnbuild.MinBaseFee,
+			Timebounds: txnbuild.NewInfiniteTimeout(),
+		},
+	)
+	require.NoError(t, err)
+	txEnc, err = tx.Base64()
+	req = txApproveRequest{
+		Transaction: txEnc,
+	}
+	rejectedResponse, err = handler.isRejected(ctx, req)
+	require.NoError(t, err)
+	wantRejectedResponse = txApproveResponse{
+		Status: Sep8StatusRejected,
+		Error:  unauthorizedOpErr,
+	}
+	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
+
 	// Test revisable transaction
 	tx, err = txnbuild.NewTransaction(
 		txnbuild.TransactionParams{

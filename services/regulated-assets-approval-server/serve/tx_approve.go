@@ -144,6 +144,14 @@ func (h txApproveHandler) isRejected(ctx context.Context, in txApproveRequest) (
 		return NewRejectedTXApproveResponse(unauthorizedOpErr), nil
 	}
 
+	// Check if transaction's sequence number is the same as the user account sequence number + 1
+	srcAccount := &txnbuild.SimpleAccount{AccountID: op.GetSourceAccount()}
+	srcAccountSeq, _ := srcAccount.GetSequenceNumber()
+	if tx.SourceAccount().Sequence != srcAccountSeq+1 {
+		log.Ctx(ctx).Error("Transaction's sequence number is not same as the user account sequence number + 1")
+		return NewRejectedTXApproveResponse(unauthorizedOpErr), nil
+	}
+
 	return nil, nil
 }
 
