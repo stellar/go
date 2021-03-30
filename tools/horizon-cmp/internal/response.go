@@ -72,6 +72,11 @@ var replaceRegexps = []replace{
 		`\nretry:.*\nevent:.*\ndata:.*\n`),
 		``,
 	},
+	// Removes clawback, fixed in horizon 2.1.0
+	{regexp.MustCompile(
+		`,\s*"auth_clawback_enabled":\s*false`),
+		``,
+	},
 }
 
 var newAccountDetailsPathWithLastestLedger = regexp.MustCompile(`^/accounts/[A-Z0-9]+/(transactions|operations|payments|effects|trades)/?`)
