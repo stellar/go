@@ -160,19 +160,19 @@ func (h txApproveHandler) Approve(ctx context.Context, in txApproveRequest) (*tx
 	parsed, err := txnbuild.TransactionFromXDR(in.Transaction)
 	if err != nil {
 		log.Ctx(ctx).Error(errors.Wrapf(err, "parsing transaction %s failed", in.Transaction))
-		return nil, NewHTTPError(http.StatusBadRequest, `Parsing transaction failed.`)
+		return nil, NewHTTPError(http.StatusInternalServerError, `Parsing transaction failed.`)
 	}
 
 	tx, ok := parsed.Transaction()
 	if !ok {
 		log.Ctx(ctx).Errorf("transaction %s is not a simple transaction", in.Transaction)
-		return nil, NewHTTPError(http.StatusBadRequest, `Transaction submitted is not a simple transaction.`)
+		return nil, NewHTTPError(http.StatusInternalServerError, `Transaction submitted is not a simple transaction.`)
 	}
 
 	op, ok := tx.Operations()[0].(*txnbuild.Payment)
 	if !ok {
 		log.Ctx(ctx).Errorf("transaction contains a %T operation", op)
-		return nil, NewHTTPError(http.StatusBadRequest, `Transaction contains is not a Payment operation.`)
+		return nil, NewHTTPError(http.StatusInternalServerError, `Transaction contains is not a Payment operation.`)
 	}
 
 	asset := txnbuild.CreditAsset{
@@ -211,19 +211,19 @@ func (h txApproveHandler) Approve(ctx context.Context, in txApproveRequest) (*tx
 	})
 	if err != nil {
 		log.Ctx(ctx).Error(errors.Wrap(err, "building transaction"))
-		return nil, NewHTTPError(http.StatusBadRequest, `Failed to build and sandwich transaction.`)
+		return nil, NewHTTPError(http.StatusInternalServerError, `Failed to build and sandwich transaction.`)
 	}
 
 	tx, err = tx.Sign(h.networkPassphrase, h.issuerKP)
 	if err != nil {
 		log.Ctx(ctx).Error(errors.Wrap(err, "signing transaction"))
-		return nil, NewHTTPError(http.StatusBadRequest, `Failed to sign transaction.`)
+		return nil, NewHTTPError(http.StatusInternalServerError, `Failed to sign transaction.`)
 	}
 
 	txEnc, err := tx.Base64()
 	if err != nil {
 		log.Ctx(ctx).Error(errors.Wrap(err, "unable to serialize tx"))
-		return nil, NewHTTPError(http.StatusBadRequest, `unable to serialize tx.`)
+		return nil, NewHTTPError(http.StatusInternalServerError, `unable to serialize tx.`)
 	}
 
 	return NewRevisedTXApproveResponse(revisedHappyPathMsg, txEnc), nil
