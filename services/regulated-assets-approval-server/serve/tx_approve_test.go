@@ -80,10 +80,10 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 		},
 	)
 	require.NoError(t, err)
-	feeBumpTxEnc, err := feeBumpTx.Base64()
+	feeBumpXDR, err := feeBumpTx.Base64()
 	require.NoError(t, err)
 	req = txApproveRequest{
-		Transaction: feeBumpTxEnc,
+		Transaction: feeBumpXDR,
 	}
 	rejectedResponse, err = handler.isRejected(ctx, req)
 	require.NoError(t, err)
@@ -106,9 +106,9 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 		},
 	)
 	require.NoError(t, err)
-	txEnc, err := tx.Base64()
+	xdr, err := tx.Base64()
 	req = txApproveRequest{
-		Transaction: txEnc,
+		Transaction: xdr,
 	}
 	rejectedResponse, err = handler.isRejected(ctx, req)
 	require.NoError(t, err)
@@ -138,9 +138,9 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 		},
 	)
 	require.NoError(t, err)
-	txEnc, err = tx.Base64()
+	xdr, err = tx.Base64()
 	req = txApproveRequest{
-		Transaction: txEnc,
+		Transaction: xdr,
 	}
 	rejectedResponse, err = handler.isRejected(ctx, req)
 	require.NoError(t, err)
@@ -176,9 +176,9 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 		},
 	)
 	require.NoError(t, err)
-	txEnc, err = tx.Base64()
+	xdr, err = tx.Base64()
 	req = txApproveRequest{
-		Transaction: txEnc,
+		Transaction: xdr,
 	}
 	rejectedResponse, err = handler.isRejected(ctx, req)
 	require.NoError(t, err)
@@ -206,9 +206,9 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 		},
 	)
 	require.NoError(t, err)
-	txEnc, err = tx.Base64()
+	xdr, err = tx.Base64()
 	req = txApproveRequest{
-		Transaction: txEnc,
+		Transaction: xdr,
 	}
 	rejectedResponse, err = handler.isRejected(ctx, req)
 	require.NoError(t, err)
@@ -235,9 +235,9 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 		},
 	)
 	require.NoError(t, err)
-	txEnc, err = tx.Base64()
+	xdr, err = tx.Base64()
 	req = txApproveRequest{
-		Transaction: txEnc,
+		Transaction: xdr,
 	}
 	rejectedResponse, err = handler.isRejected(ctx, req)
 	require.NoError(t, err)
@@ -265,9 +265,9 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 		},
 	)
 	require.NoError(t, err)
-	txEnc, err = tx.Base64()
+	xdr, err = tx.Base64()
 	req = txApproveRequest{
-		Transaction: txEnc,
+		Transaction: xdr,
 	}
 	rejectedResponse, err = handler.isRejected(ctx, req)
 	require.NoError(t, err)
@@ -300,9 +300,9 @@ func TestTxApproveHandler_Approve(t *testing.T) {
 		},
 	)
 	require.NoError(t, err)
-	txEnc, err := tx.Base64()
+	xdr, err := tx.Base64()
 	req := txApproveRequest{
-		Transaction: txEnc,
+		Transaction: xdr,
 	}
 
 	approvedResponse, err := txApproveHandler{
@@ -443,10 +443,10 @@ func TestTxApproveHandler_serveHTTPJson(t *testing.T) {
 		},
 	)
 	require.NoError(t, err)
-	feeBumpTxEnc, err := feeBumpTx.Base64()
+	feeBumpXDR, err := feeBumpTx.Base64()
 	require.NoError(t, err)
 	req = `{
-		"tx": "` + feeBumpTxEnc + `"
+		"tx": "` + feeBumpXDR + `"
 	}`
 	r = httptest.NewRequest("POST", "/tx_approve", strings.NewReader(req))
 	r = r.WithContext(ctx)
@@ -484,9 +484,9 @@ func TestTxApproveHandler_serveHTTPJson(t *testing.T) {
 		},
 	)
 	require.NoError(t, err)
-	txEnc, err := tx.Base64()
+	xdr, err := tx.Base64()
 	req = `{
-		"tx": "` + txEnc + `"
+		"tx": "` + xdr + `"
 	}`
 	r = httptest.NewRequest("POST", "/tx_approve", strings.NewReader(req))
 	r = r.WithContext(ctx)
@@ -525,9 +525,9 @@ func TestTxApproveHandler_serveHTTPJson(t *testing.T) {
 		},
 	)
 	require.NoError(t, err)
-	txEnc, err = tx.Base64()
+	xdr, err = tx.Base64()
 	req = `{
-		"tx": "` + txEnc + `"
+		"tx": "` + xdr + `"
 	}`
 	r = httptest.NewRequest("POST", "/tx_approve", strings.NewReader(req))
 	r = r.WithContext(ctx)
@@ -566,9 +566,9 @@ func TestTxApproveHandler_serveHTTPJson(t *testing.T) {
 		},
 	)
 	require.NoError(t, err)
-	txEnc, err = tx.Base64()
+	xdr, err = tx.Base64()
 	req = `{
-		"tx": "` + txEnc + `"
+		"tx": "` + xdr + `"
 	}`
 	r = httptest.NewRequest("POST", "/tx_approve", strings.NewReader(req))
 	r = r.WithContext(ctx)
@@ -684,9 +684,9 @@ func TestTxApproveHandler_serveHTTPForm(t *testing.T) {
 		},
 	)
 	require.NoError(t, err)
-	feeBumpTxEnc, err := feeBumpTx.Base64()
+	feeBumpXDR, err := feeBumpTx.Base64()
 	require.NoError(t, err)
-	req.Set("tx", feeBumpTxEnc)
+	req.Set("tx", feeBumpXDR)
 	r = httptest.NewRequest("POST", "/tx_approve", strings.NewReader(req.Encode()))
 	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	r = r.WithContext(ctx)
@@ -724,8 +724,8 @@ func TestTxApproveHandler_serveHTTPForm(t *testing.T) {
 		},
 	)
 	require.NoError(t, err)
-	txEnc, err := tx.Base64()
-	req.Set("tx", txEnc)
+	xdr, err := tx.Base64()
+	req.Set("tx", xdr)
 	r = httptest.NewRequest("POST", "/tx_approve", strings.NewReader(req.Encode()))
 	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	r = r.WithContext(ctx)
@@ -764,8 +764,8 @@ func TestTxApproveHandler_serveHTTPForm(t *testing.T) {
 		},
 	)
 	require.NoError(t, err)
-	txEnc, err = tx.Base64()
-	req.Set("tx", txEnc)
+	xdr, err = tx.Base64()
+	req.Set("tx", xdr)
 	r = httptest.NewRequest("POST", "/tx_approve", strings.NewReader(req.Encode()))
 	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	r = r.WithContext(ctx)
@@ -804,8 +804,8 @@ func TestTxApproveHandler_serveHTTPForm(t *testing.T) {
 		},
 	)
 	require.NoError(t, err)
-	txEnc, err = tx.Base64()
-	req.Set("tx", txEnc)
+	xdr, err = tx.Base64()
+	req.Set("tx", xdr)
 	r = httptest.NewRequest("POST", "/tx_approve", strings.NewReader(req.Encode()))
 	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	r = r.WithContext(ctx)

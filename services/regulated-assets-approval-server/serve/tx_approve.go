@@ -55,11 +55,11 @@ func NewRejectedTXApproveResponse(errorMessage string) *txApproveResponse {
 
 }
 
-func NewRevisedTXApproveResponse(message string, tx string) *txApproveResponse {
+func NewRevisedTXApproveResponse(message string, xdr string) *txApproveResponse {
 	return &txApproveResponse{
 		Status:      Sep8StatusRevised,
 		Message:     message,
-		Transaction: tx,
+		Transaction: xdr,
 	}
 }
 
@@ -220,11 +220,11 @@ func (h txApproveHandler) Approve(ctx context.Context, in txApproveRequest) (*tx
 		return nil, NewHTTPError(http.StatusInternalServerError, `Failed to sign transaction.`)
 	}
 
-	txEnc, err := tx.Base64()
+	xdr, err := tx.Base64()
 	if err != nil {
 		log.Ctx(ctx).Error(errors.Wrap(err, "unable to serialize tx"))
 		return nil, NewHTTPError(http.StatusInternalServerError, `unable to serialize tx.`)
 	}
 
-	return NewRevisedTXApproveResponse(revisedHappyPathMsg, txEnc), nil
+	return NewRevisedTXApproveResponse(revisedHappyPathMsg, xdr), nil
 }
