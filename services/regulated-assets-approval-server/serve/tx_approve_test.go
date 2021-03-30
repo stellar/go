@@ -345,14 +345,14 @@ func TestTxApproveHandler_Approve(t *testing.T) {
 	// Check Operation 4: AllowTrust op where issuer fully deauthorizes account B, asset X.
 	op4, ok := tx.Operations()[3].(*txnbuild.AllowTrust)
 	require.True(t, ok)
-	assert.Equal(t, op4.Trustor, kp01.Address())
+	assert.Equal(t, op4.Trustor, kp02.Address())
 	assert.Equal(t, op4.Type.GetCode(), assetGOAT.GetCode())
 	require.False(t, op4.Authorize)
 
 	// Check Operation 5: AllowTrust op where issuer fully deauthorizes account A, asset X.
 	op5, ok := tx.Operations()[4].(*txnbuild.AllowTrust)
 	require.True(t, ok)
-	assert.Equal(t, op5.Trustor, kp02.Address())
+	assert.Equal(t, op5.Trustor, kp01.Address())
 	assert.Equal(t, op5.Type.GetCode(), assetGOAT.GetCode())
 	require.False(t, op5.Authorize)
 }

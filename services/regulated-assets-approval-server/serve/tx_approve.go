@@ -196,12 +196,12 @@ func (h txApproveHandler) Approve(ctx context.Context, in txApproveRequest) (*tx
 			},
 			op,
 			&txnbuild.AllowTrust{
-				Trustor:   op.SourceAccount,
+				Trustor:   op.Destination,
 				Type:      asset,
 				Authorize: false,
 			},
 			&txnbuild.AllowTrust{
-				Trustor:   op.Destination,
+				Trustor:   op.SourceAccount,
 				Type:      asset,
 				Authorize: false,
 			},
