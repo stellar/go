@@ -107,19 +107,19 @@ func (h txApproveHandler) isRejected(ctx context.Context, in txApproveRequest) (
 	// Decode the request transaction.
 	parsed, err := txnbuild.TransactionFromXDR(in.Transaction)
 	if err != nil {
-		log.Ctx(ctx).Error(errors.Wrapf(err, "Parsing transaction %s failed", in.Transaction))
+		log.Ctx(ctx).Error(errors.Wrapf(err, "parsing transaction %s failed", in.Transaction))
 		return NewRejectedTXApproveResponse(invalidParamErr), nil
 	}
 
 	tx, ok := parsed.Transaction()
 	if !ok {
-		log.Ctx(ctx).Errorf("Transaction %s is not a simple transaction.", in.Transaction)
+		log.Ctx(ctx).Errorf("transaction %s is not a simple transaction", in.Transaction)
 		return NewRejectedTXApproveResponse(invalidParamErr), nil
 	}
 
 	// Check if transaction's source account is the same as the server issuer account.
 	if tx.SourceAccount().AccountID == h.issuerKP.Address() {
-		log.Ctx(ctx).Errorf("Transaction %s sourceAccount is the same as the server issuer account %s",
+		log.Ctx(ctx).Errorf("transaction %s sourceAccount is the same as the server issuer account %s",
 			in.Transaction,
 			h.issuerKP.Address())
 		return NewRejectedTXApproveResponse(invalidSrcAccErr), nil
@@ -127,20 +127,20 @@ func (h txApproveHandler) isRejected(ctx context.Context, in txApproveRequest) (
 
 	// Check if transaction has only one operation.
 	if len(tx.Operations()) > 1 {
-		log.Ctx(ctx).Errorf("Transaction has %d operations.", len(tx.Operations()))
+		log.Ctx(ctx).Errorf("transaction has %d operations", len(tx.Operations()))
 		return NewRejectedTXApproveResponse(exceededOpsLenErr), nil
 	}
 
 	// Check if operation is a payment.
 	op, ok := tx.Operations()[0].(*txnbuild.Payment)
 	if !ok {
-		log.Ctx(ctx).Errorf("Transaction contains a %T operation.", op)
+		log.Ctx(ctx).Errorf("transaction contains a %T operation", op)
 		return NewRejectedTXApproveResponse(unauthorizedOpErr), nil
 	}
 
 	// Check if transaction's operation sourceaccount is the same as the server issuer account.
 	if op.GetSourceAccount() == h.issuerKP.Address() {
-		log.Ctx(ctx).Errorf("Transaction's operation sourceaccount %q is the same as issuer account.", op.GetSourceAccount())
+		log.Ctx(ctx).Errorf("transaction's operation sourceaccount %q is the same as issuer account", op.GetSourceAccount())
 		return NewRejectedTXApproveResponse(unauthorizedOpErr), nil
 	}
 
@@ -148,7 +148,7 @@ func (h txApproveHandler) isRejected(ctx context.Context, in txApproveRequest) (
 	srcAccount := &txnbuild.SimpleAccount{AccountID: op.GetSourceAccount()}
 	srcAccountSeq, _ := srcAccount.GetSequenceNumber()
 	if tx.SourceAccount().Sequence != srcAccountSeq+1 {
-		log.Ctx(ctx).Error("Transaction's sequence number is not same as the user account sequence number + 1")
+		log.Ctx(ctx).Error("transaction's sequence number is not same as the user account sequence number + 1")
 		return NewRejectedTXApproveResponse(unauthorizedOpErr), nil
 	}
 
@@ -159,19 +159,19 @@ func (h txApproveHandler) Approve(ctx context.Context, in txApproveRequest) (*tx
 	// Decode the request transaction.
 	parsed, err := txnbuild.TransactionFromXDR(in.Transaction)
 	if err != nil {
-		log.Ctx(ctx).Error(errors.Wrapf(err, "Parsing transaction %s failed", in.Transaction))
+		log.Ctx(ctx).Error(errors.Wrapf(err, "parsing transaction %s failed", in.Transaction))
 		return nil, NewHTTPError(http.StatusBadRequest, `Parsing transaction failed.`)
 	}
 
 	tx, ok := parsed.Transaction()
 	if !ok {
-		log.Ctx(ctx).Errorf("Transaction %s is not a simple transaction.", in.Transaction)
+		log.Ctx(ctx).Errorf("transaction %s is not a simple transaction", in.Transaction)
 		return nil, NewHTTPError(http.StatusBadRequest, `Transaction submitted is not a simple transaction.`)
 	}
 
 	op, ok := tx.Operations()[0].(*txnbuild.Payment)
 	if !ok {
-		log.Ctx(ctx).Errorf("Transaction contains a %T operation.", op)
+		log.Ctx(ctx).Errorf("transaction contains a %T operation", op)
 		return nil, NewHTTPError(http.StatusBadRequest, `Transaction contains is not a Payment operation.`)
 	}
 
