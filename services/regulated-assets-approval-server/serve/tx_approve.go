@@ -181,11 +181,11 @@ func (h txApproveHandler) Approve(ctx context.Context, in txApproveRequest) (*tx
 	}
 
 	tx, err = txnbuild.NewTransaction(txnbuild.TransactionParams{
-		SourceAccount:        &txnbuild.SimpleAccount{AccountID: tx.SourceAccount().AccountID},
+		SourceAccount:        &txnbuild.SimpleAccount{AccountID: op.SourceAccount},
 		IncrementSequenceNum: true,
 		Operations: []txnbuild.Operation{
 			&txnbuild.AllowTrust{
-				Trustor:   tx.SourceAccount().AccountID,
+				Trustor:   op.SourceAccount,
 				Type:      asset,
 				Authorize: true,
 			},
@@ -196,7 +196,7 @@ func (h txApproveHandler) Approve(ctx context.Context, in txApproveRequest) (*tx
 			},
 			op,
 			&txnbuild.AllowTrust{
-				Trustor:   tx.SourceAccount().AccountID,
+				Trustor:   op.SourceAccount,
 				Type:      asset,
 				Authorize: false,
 			},
