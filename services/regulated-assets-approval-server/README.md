@@ -5,7 +5,7 @@ Status: unreleased
 ```
 
 This is a [SEP-8] Approval Server reference implementation based on SEP-8 v1.6.1
-intended for **testing only**. It is being concieved to:
+intended for **testing only**. It is being conceived to:
 
 1. Be used as an example of how regulated assets transactions can be validated
    and revised by an anchor.
