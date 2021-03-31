@@ -36,8 +36,7 @@ echo "FROM: $FROM TO: $TO"
 
 dump_horizon_db() {
 	echo "dumping history_effects"
-	# Remove "where type != 26" after Horizon 2.1.0 release!
-	psql "postgres://postgres:postgres@localhost:5432/horizon?sslmode=disable" -t -A -F"," --variable="FETCH_COUNT=100" -c "select history_effects.history_operation_id, history_effects.order, type, details, history_accounts.address from history_effects left join history_accounts on history_accounts.id = history_effects.history_account_id where type != 26 order by history_operation_id asc, \"order\" asc" > "${1}_effects"
+	psql "postgres://postgres:postgres@localhost:5432/horizon?sslmode=disable" -t -A -F"," --variable="FETCH_COUNT=100" -c "select history_effects.history_operation_id, history_effects.order, type, details, history_accounts.address from history_effects left join history_accounts on history_accounts.id = history_effects.history_account_id order by history_operation_id asc, \"order\" asc" > "${1}_effects"
 	echo "dumping history_ledgers"
 	psql "postgres://postgres:postgres@localhost:5432/horizon?sslmode=disable" -t -A -F"," --variable="FETCH_COUNT=100" -c "select sequence, ledger_hash, previous_ledger_hash, transaction_count, operation_count, closed_at, id, total_coins, fee_pool, base_fee, base_reserve, max_tx_set_size, protocol_version, ledger_header, successful_transaction_count, failed_transaction_count from history_ledgers order by sequence asc" > "${1}_ledgers"
 	echo "dumping history_operations"
