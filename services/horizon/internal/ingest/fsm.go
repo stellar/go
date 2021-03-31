@@ -479,7 +479,9 @@ func (r resumeState) run(s *system) (transition, error) {
 		log.WithField("ingestLedger", ingestLedger).
 			WithField("lastIngestedLedger", lastIngestedLedger).
 			Info("bumping ingest ledger to next ledger after ingested ledger in db")
-		ingestLedger = lastIngestedLedger + 1
+		return retryResume(resumeState{
+			latestSuccessfullyProcessedLedger: lastIngestedLedger,
+		}), nil
 	}
 
 	ingestVersion, err := s.historyQ.GetIngestVersion()

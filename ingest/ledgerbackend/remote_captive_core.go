@@ -273,6 +273,5 @@ func (c RemoteCaptiveStellarCore) GetLedger(sequence uint32) (bool, xdr.LedgerCl
 		return false, xdr.LedgerCloseMeta{}, err
 	}
 
-	meta := xdr.LedgerCloseMeta(parsed.Ledger)
-	return parsed.Present, meta, nil
+	return parsed.Present, xdr.LedgerCloseMeta(parsed.Ledger), nil
 }
