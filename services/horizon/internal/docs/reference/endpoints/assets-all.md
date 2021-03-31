@@ -114,7 +114,7 @@ If called normally this endpoint responds with a [page](../resources/page.md) of
         "balances": {
           "authorized": "5000.0000000",
           "authorized_to_maintain_liabilities": "8000.0000000",
-          "unauthorized": "2000.0000000"
+          "unauthorized": "2000.0000000",
           "claimable_balances": "1200.0000000"
         },
         "flags": {
