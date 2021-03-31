@@ -61,7 +61,7 @@ func NewLedgerChangeReader(backend ledgerbackend.LedgerBackend, networkPassphras
 // NewLedgerChangeReaderFromLedgerCloseMeta constructs a new LedgerChangeReader instance bound to the given ledger.
 // Note that the returned LedgerChangeReader is not thread safe and should not be shared
 // by multiple goroutines.
-func NewLedgerChangeReaderFromLedgerCloseMeta(networkPassphrase string, ledger *xdr.LedgerCloseMeta) (*LedgerChangeReader, error) {
+func NewLedgerChangeReaderFromLedgerCloseMeta(networkPassphrase string, ledger xdr.LedgerCloseMeta) (*LedgerChangeReader, error) {
 	transactionReader, err := NewLedgerTransactionReaderFromLedgerCloseMeta(networkPassphrase, ledger)
 	if err != nil {
 		return nil, err

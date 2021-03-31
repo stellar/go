@@ -259,20 +259,20 @@ func (c RemoteCaptiveStellarCore) IsPrepared(ledgerRange Range) (bool, error) {
 //   * UnboundedRange makes GetLedger non-blocking. The method will return with
 //     the first argument equal false.
 // This is done to provide maximum performance when streaming old ledgers.
-func (c RemoteCaptiveStellarCore) GetLedger(sequence uint32) (bool, *xdr.LedgerCloseMeta, error) {
+func (c RemoteCaptiveStellarCore) GetLedger(sequence uint32) (bool, xdr.LedgerCloseMeta, error) {
 	u := *c.url
 	u.Path = path.Join(u.Path, "ledger", strconv.FormatUint(uint64(sequence), 10))
 
 	response, err := c.client.Get(u.String())
 	if err != nil {
-		return false, &xdr.LedgerCloseMeta{}, errors.Wrap(err, "failed to execute request")
+		return false, xdr.LedgerCloseMeta{}, errors.Wrap(err, "failed to execute request")
 	}
 
 	var parsed LedgerResponse
 	if err = decodeResponse(response, &parsed); err != nil {
-		return false, &xdr.LedgerCloseMeta{}, err
+		return false, xdr.LedgerCloseMeta{}, err
 	}
 
 	meta := xdr.LedgerCloseMeta(parsed.Ledger)
-	return parsed.Present, &meta, nil
+	return parsed.Present, meta, nil
 }

@@ -260,7 +260,7 @@ func (b buildState) run(s *system) (transition, error) {
 	// In the long term we should probably create artificial xdr.LedgerCloseMeta
 	// for ledger #1 instead of using `ingest.GenesisChange` reader in
 	// ProcessorRunner.RunHistoryArchiveIngestion().
-	var ledgerCloseMeta *xdr.LedgerCloseMeta
+	var ledgerCloseMeta xdr.LedgerCloseMeta
 	if b.checkpointLedger != 1 {
 		var exists bool
 		var err error
@@ -651,7 +651,7 @@ func (h historyRangeState) run(s *system) (transition, error) {
 	return start(), nil
 }
 
-func runTransactionProcessorsOnLedger(s *system, ledger *xdr.LedgerCloseMeta) error {
+func runTransactionProcessorsOnLedger(s *system, ledger xdr.LedgerCloseMeta) error {
 	log.WithFields(logpkg.F{
 		"sequence": ledger.LedgerSequence(),
 		"state":    false,
@@ -1104,12 +1104,12 @@ func (s *system) maybePrepareRange(from uint32) (bool, error) {
 
 // getLedgerFromBackend gets ledger from the backend. If range is not prepared
 // it will prepare it.
-func (s *system) getLedgerFromBackend(sequence uint32) (bool, *xdr.LedgerCloseMeta, error) {
+func (s *system) getLedgerFromBackend(sequence uint32) (bool, xdr.LedgerCloseMeta, error) {
 	ledgerRange := ledgerbackend.UnboundedRange(sequence)
 
 	prepared, err := s.ledgerBackend.IsPrepared(ledgerRange)
 	if err != nil {
-		return false, &xdr.LedgerCloseMeta{}, errors.Wrap(err, "error checking prepared range")
+		return false, xdr.LedgerCloseMeta{}, errors.Wrap(err, "error checking prepared range")
 	}
 
 	if !prepared {
@@ -1118,7 +1118,7 @@ func (s *system) getLedgerFromBackend(sequence uint32) (bool, *xdr.LedgerCloseMe
 
 		err = s.ledgerBackend.PrepareRange(ledgerRange)
 		if err != nil {
-			return false, &xdr.LedgerCloseMeta{}, errors.Wrap(err, "error preparing range")
+			return false, xdr.LedgerCloseMeta{}, errors.Wrap(err, "error preparing range")
 		}
 
 		log.WithFields(logpkg.F{
@@ -1126,7 +1126,7 @@ func (s *system) getLedgerFromBackend(sequence uint32) (bool, *xdr.LedgerCloseMe
 			"duration": time.Since(startTime).Seconds(),
 		}).Info("Range prepared")
 
-		return false, &xdr.LedgerCloseMeta{}, nil
+		return false, xdr.LedgerCloseMeta{}, nil
 	}
 
 	return s.ledgerBackend.GetLedger(sequence)

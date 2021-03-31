@@ -57,12 +57,12 @@ type ProcessorRunnerInterface interface {
 		ledgerProtocolVersion uint32,
 		bucketListHash xdr.Hash,
 	) (ingest.StatsChangeProcessorResults, error)
-	RunTransactionProcessorsOnLedger(ledger *xdr.LedgerCloseMeta) (
+	RunTransactionProcessorsOnLedger(ledger xdr.LedgerCloseMeta) (
 		transactionStats processors.StatsLedgerTransactionProcessorResults,
 		transactionDurations processorsRunDurations,
 		err error,
 	)
-	RunAllProcessorsOnLedger(ledger *xdr.LedgerCloseMeta) (
+	RunAllProcessorsOnLedger(ledger xdr.LedgerCloseMeta) (
 		changeStats ingest.StatsChangeProcessorResults,
 		changeDurations processorsRunDurations,
 		transactionStats processors.StatsLedgerTransactionProcessorResults,
@@ -231,7 +231,7 @@ func (s *ProcessorRunner) RunHistoryArchiveIngestion(
 }
 
 func (s *ProcessorRunner) runChangeProcessorOnLedger(
-	changeProcessor horizonChangeProcessor, ledger *xdr.LedgerCloseMeta,
+	changeProcessor horizonChangeProcessor, ledger xdr.LedgerCloseMeta,
 ) error {
 	var changeReader ingest.ChangeReader
 	var err error
@@ -258,7 +258,7 @@ func (s *ProcessorRunner) runChangeProcessorOnLedger(
 	return nil
 }
 
-func (s *ProcessorRunner) RunTransactionProcessorsOnLedger(ledger *xdr.LedgerCloseMeta) (
+func (s *ProcessorRunner) RunTransactionProcessorsOnLedger(ledger xdr.LedgerCloseMeta) (
 	transactionStats processors.StatsLedgerTransactionProcessorResults,
 	transactionDurations processorsRunDurations,
 	err error,
@@ -297,7 +297,7 @@ func (s *ProcessorRunner) RunTransactionProcessorsOnLedger(ledger *xdr.LedgerClo
 	return
 }
 
-func (s *ProcessorRunner) RunAllProcessorsOnLedger(ledger *xdr.LedgerCloseMeta) (
+func (s *ProcessorRunner) RunAllProcessorsOnLedger(ledger xdr.LedgerCloseMeta) (
 	changeStats ingest.StatsChangeProcessorResults,
 	changeDurations processorsRunDurations,
 	transactionStats processors.StatsLedgerTransactionProcessorResults,

@@ -469,22 +469,22 @@ func (c *CaptiveStellarCore) isPrepared(ledgerRange Range) bool {
 //   * UnboundedRange makes GetLedger non-blocking. The method will return with
 //     the first argument equal false.
 // This is done to provide maximum performance when streaming old ledgers.
-func (c *CaptiveStellarCore) GetLedger(sequence uint32) (bool, *xdr.LedgerCloseMeta, error) {
+func (c *CaptiveStellarCore) GetLedger(sequence uint32) (bool, xdr.LedgerCloseMeta, error) {
 	c.stellarCoreLock.RLock()
 	defer c.stellarCoreLock.RUnlock()
 
 	if c.cachedMeta != nil && sequence == c.cachedMeta.LedgerSequence() {
 		// GetLedger can be called multiple times using the same sequence, ex. to create
 		// change and transaction readers. If we have this ledger buffered, let's return it.
-		return true, c.cachedMeta, nil
+		return true, *c.cachedMeta, nil
 	}
 
 	if c.isClosed() {
-		return false, nil, errors.New("session is closed, call PrepareRange first")
+		return false, xdr.LedgerCloseMeta{}, errors.New("session is closed, call PrepareRange first")
 	}
 
 	if sequence < c.nextLedger {
-		return false, nil, errors.Errorf(
+		return false, xdr.LedgerCloseMeta{}, errors.Errorf(
 			"requested ledger %d is behind the captive core stream (expected=%d)",
 			sequence,
 			c.nextLedger,
@@ -492,7 +492,7 @@ func (c *CaptiveStellarCore) GetLedger(sequence uint32) (bool, *xdr.LedgerCloseM
 	}
 
 	if c.lastLedger != nil && sequence > *c.lastLedger {
-		return false, nil, errors.Errorf(
+		return false, xdr.LedgerCloseMeta{}, errors.Errorf(
 			"reading past bounded range (requested sequence=%d, last ledger in range=%d)",
 			sequence,
 			*c.lastLedger,
@@ -503,7 +503,7 @@ func (c *CaptiveStellarCore) GetLedger(sequence uint32) (bool, *xdr.LedgerCloseM
 	var errOut error
 	for {
 		if !c.blocking && len(c.stellarCoreRunner.getMetaPipe()) == 0 {
-			return false, nil, nil
+			return false, xdr.LedgerCloseMeta{}, nil
 		}
 
 		result, ok := <-c.stellarCoreRunner.getMetaPipe()
@@ -546,17 +546,17 @@ func (c *CaptiveStellarCore) GetLedger(sequence uint32) (bool, *xdr.LedgerCloseM
 			// If we got the _last_ ledger in a segment, close before returning.
 			if c.lastLedger != nil && *c.lastLedger == seq {
 				if err := c.stellarCoreRunner.close(); err != nil {
-					return false, nil, errors.Wrap(err, "error closing session")
+					return false, xdr.LedgerCloseMeta{}, errors.Wrap(err, "error closing session")
 				}
 			}
-			return true, c.cachedMeta, nil
+			return true, *c.cachedMeta, nil
 		}
 	}
 	// All paths above that break out of the loop (instead of return)
 	// set errOut to non-nil: there was an error and we should close and
 	// reset state before retuning an error to our caller.
 	c.stellarCoreRunner.close()
-	return false, nil, errOut
+	return false, xdr.LedgerCloseMeta{}, errOut
 }
 
 func (c *CaptiveStellarCore) checkMetaPipeResult(result metaResult, ok bool) error {
