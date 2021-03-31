@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this
 file. This project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+
+* Add `claimable_balances` to asset stat summaries at `/assets` ([3502](https://github.com/stellar/go/pull/3502)).
+
 ## v2.1.0
 
 ### DB State Migration
@@ -13,7 +17,6 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 ### New features
 
-* Add `claimable_balances` to asset stat summaries at `/assets` ([3502](https://github.com/stellar/go/pull/3502)).
 * Add an endpoint which determines if Horizon is healthy enough to receive traffic ([3435](https://github.com/stellar/go/pull/3435)).
 * Sanitize route regular expressions for Prometheus metrics ([3459](https://github.com/stellar/go/pull/3459)).
 * Add asset stat summaries per trust-line flag category ([3454](https://github.com/stellar/go/pull/3454)).
