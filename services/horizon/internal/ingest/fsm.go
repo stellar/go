@@ -262,46 +262,21 @@ func (b buildState) run(s *system) (transition, error) {
 	// ProcessorRunner.RunHistoryArchiveIngestion().
 	var ledgerCloseMeta xdr.LedgerCloseMeta
 	if b.checkpointLedger != 1 {
-		var exists bool
-		var err error
-		exists, ledgerCloseMeta, err = s.getLedgerFromBackend(b.checkpointLedger)
+		_, err := s.maybePrepareRange(b.checkpointLedger)
 		if err != nil {
-			return nextFailState, err
+			return nextFailState, errors.Wrap(err, "error preparing range")
 		}
 
-		// Check if ledger is closed
-		latestLedgerCore, err := s.ledgerBackend.GetLatestLedgerSequence()
+		log.WithField("ledger", b.checkpointLedger).Info("Waiting for ledger to be available in the backend...")
+		startTime := time.Now()
+		ledgerCloseMeta, err = s.ledgerBackend.GetLedgerBlocking(b.checkpointLedger)
 		if err != nil {
-			return nextFailState, errors.Wrap(err, "Error getting lastest ledger in stellar-core")
+			return nextFailState, errors.Wrap(err, "error getting ledger blocking")
 		}
-
-		logger := log.WithFields(logpkg.F{
-			"ingest_sequence": b.checkpointLedger,
-			"core_sequence":   latestLedgerCore,
-		})
-
-		if latestLedgerCore < b.checkpointLedger {
-			// Will fast-forward to the latest ledger in a buffer in case of captive core...
-			// but don't skip too much.
-			forwardTo := latestLedgerCore
-			if latestLedgerCore > b.checkpointLedger {
-				forwardTo = b.checkpointLedger
-			}
-
-			_, _, err = s.ledgerBackend.GetLedger(forwardTo)
-			if err != nil {
-				return nextFailState, errors.Wrap(err, "Error fast-forwarding to the latest ledger in stellar-core")
-			}
-
-			logger.Info("Fast-forward to the latest ledger ingested in the cluster")
-
-			return nextFailState, nil
-		}
-
-		if !exists {
-			logger.Info("Fast-forward to the latest ledger ingested in the cluster")
-			return nextFailState, nil
-		}
+		log.WithFields(logpkg.F{
+			"ledger":   b.checkpointLedger,
+			"duration": time.Since(startTime).Seconds(),
+		}).Info("Ledger returned from the backend")
 	}
 
 	if err := s.historyQ.Begin(); err != nil {
@@ -415,50 +390,21 @@ func (r resumeState) run(s *system) (transition, error) {
 
 	ingestLedger := r.latestSuccessfullyProcessedLedger + 1
 
-	exists, ledgerCloseMeta, err := s.getLedgerFromBackend(ingestLedger)
+	_, err := s.maybePrepareRange(ingestLedger)
 	if err != nil {
-		return retryResume(r), err
+		return start(), errors.Wrap(err, "error preparing range")
 	}
 
-	// Check if ledger is closed
-	latestLedgerCore, err := s.ledgerBackend.GetLatestLedgerSequence()
+	log.WithField("ledger", ingestLedger).Info("Waiting for ledger to be available in the backend...")
+	startTime := time.Now()
+	ledgerCloseMeta, err := s.ledgerBackend.GetLedgerBlocking(ingestLedger)
 	if err != nil {
-		return retryResume(r), errors.Wrap(err, "Error getting lastest ledger in stellar-core")
+		return start(), errors.Wrap(err, "error getting ledger blocking")
 	}
-
-	logger := log.WithFields(logpkg.F{
-		"ingest_sequence": ingestLedger,
-		"core_sequence":   latestLedgerCore,
-	})
-
-	if latestLedgerCore < ingestLedger {
-		// Will fast-forward to the latest ledger in a buffer in case of captive core...
-		// but don't skip too much.
-		forwardTo := latestLedgerCore
-		if latestLedgerCore > ingestLedger {
-			forwardTo = ingestLedger
-		}
-
-		_, _, err = s.ledgerBackend.GetLedger(forwardTo)
-		if err != nil {
-			return retryResume(r), errors.Wrap(err, "Error fast-forwarding to the latest ledger in stellar-core")
-		}
-
-		if latestLedgerCore == ingestLedger-1 {
-			logger.Info("Waiting for ledger to be available in stellar-core")
-		} else {
-			logger.Info("Fast-forward to the latest ledger ingested in the cluster")
-		}
-
-		return retryResume(resumeState{
-			latestSuccessfullyProcessedLedger: forwardTo,
-		}), nil
-	}
-
-	if !exists {
-		logger.Info("Fast-forward to the latest ledger ingested in the cluster")
-		return retryResume(r), nil
-	}
+	log.WithFields(logpkg.F{
+		"ledger":   ingestLedger,
+		"duration": time.Since(startTime).Seconds(),
+	}).Info("Ledger returned from the backend")
 
 	if err := s.historyQ.Begin(); err != nil {
 		return retryResume(r),
@@ -513,7 +459,7 @@ func (r resumeState) run(s *system) (transition, error) {
 		return start(), nil
 	}
 
-	startTime := time.Now()
+	startTime = time.Now()
 
 	log.WithFields(logpkg.F{
 		"sequence": ingestLedger,
@@ -626,8 +572,11 @@ func (h historyRangeState) run(s *system) (transition, error) {
 		return start(), nil
 	}
 
-	lockReleased, err := s.maybePrepareRange(h.fromLedger)
-	if lockReleased || err != nil {
+	didPrepare, err := s.maybePrepareRange(h.fromLedger)
+	if didPrepare || err != nil {
+		// Release distributed ingestion lock and prepare the range
+		s.historyQ.Rollback()
+		log.Info("Released ingestion lock to prepare range")
 		return start(), err
 	}
 
@@ -664,7 +613,7 @@ func runTransactionProcessorsOnLedger(s *system, ledger xdr.LedgerCloseMeta) err
 
 	ledgerTransactionStats, _, err := s.runner.RunTransactionProcessorsOnLedger(ledger)
 	if err != nil {
-		return errors.Wrap(err, fmt.Sprintf("error processing ledger sequence=%d", ledger))
+		return errors.Wrap(err, fmt.Sprintf("error processing ledger sequence=%d", ledger.LedgerSequence()))
 	}
 
 	log.
@@ -1070,9 +1019,8 @@ func (s *system) completeIngestion(ledger uint32) error {
 	return nil
 }
 
-// maybePrepareRange checks if the range is prepared and returns false in that case.
-// If the range is not prepared, maybePrepareRange() releases the distributed ingestion lock,
-// prepares the range, and returns true.
+// maybePrepareRange checks if the range is prepared and, if not, prepares it.
+// Returns true if `LedgerBackend.PrepareRange` was called.
 func (s *system) maybePrepareRange(from uint32) (bool, error) {
 	ledgerRange := ledgerbackend.UnboundedRange(from)
 
@@ -1082,9 +1030,6 @@ func (s *system) maybePrepareRange(from uint32) (bool, error) {
 	}
 
 	if !prepared {
-		// Release distributed ingestion lock and prepare the range
-		s.historyQ.Rollback()
-		log.Info("Released ingestion lock to prepare range")
 		log.WithFields(logpkg.F{"ledger": from}).Info("Preparing range")
 		startTime := time.Now()
 
@@ -1102,34 +1047,4 @@ func (s *system) maybePrepareRange(from uint32) (bool, error) {
 	}
 
 	return false, nil
-}
-
-// getLedgerFromBackend gets ledger from the backend. If range is not prepared
-// it will prepare it.
-func (s *system) getLedgerFromBackend(sequence uint32) (bool, xdr.LedgerCloseMeta, error) {
-	ledgerRange := ledgerbackend.UnboundedRange(sequence)
-
-	prepared, err := s.ledgerBackend.IsPrepared(ledgerRange)
-	if err != nil {
-		return false, xdr.LedgerCloseMeta{}, errors.Wrap(err, "error checking prepared range")
-	}
-
-	if !prepared {
-		log.WithFields(logpkg.F{"ledger": sequence}).Info("Preparing range")
-		startTime := time.Now()
-
-		err = s.ledgerBackend.PrepareRange(ledgerRange)
-		if err != nil {
-			return false, xdr.LedgerCloseMeta{}, errors.Wrap(err, "error preparing range")
-		}
-
-		log.WithFields(logpkg.F{
-			"ledger":   sequence,
-			"duration": time.Since(startTime).Seconds(),
-		}).Info("Range prepared")
-
-		return false, xdr.LedgerCloseMeta{}, nil
-	}
-
-	return s.ledgerBackend.GetLedger(sequence)
 }
