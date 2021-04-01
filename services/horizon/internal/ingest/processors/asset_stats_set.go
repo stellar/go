@@ -163,12 +163,16 @@ func (s AssetStatSet) addDelta(asset xdr.Asset, deltaBalances, deltaAccounts del
 }
 
 // AddTrustline updates the set to account for how a given trustline has changed.
-// pre is the trustline before the change (nil indicates that this change introduced the trustline into the ledger)
-// post is the trustline after the change (nil indicates that this change removed the trustline from the ledger)
-func (s AssetStatSet) AddTrustline(
-	pre *xdr.TrustLineEntry,
-	post *xdr.TrustLineEntry,
-) error {
+// change must be a xdr.LedgerEntryTypeTrustLine type.
+func (s AssetStatSet) AddTrustline(change ingest.Change) error {
+	var pre, post *xdr.TrustLineEntry
+	if change.Pre != nil {
+		pre = change.Pre.Data.TrustLine
+	}
+	if change.Post != nil {
+		post = change.Post.Data.TrustLine
+	}
+
 	deltaAccounts := delta{}
 	deltaBalances := delta{}
 
@@ -196,14 +200,16 @@ func (s AssetStatSet) AddTrustline(
 }
 
 // AddClaimableBalance updates the set to account for how a given claimable balance has changed.
-// pre is the claimable balance before the change (nil indicates that this change introduced the
-// claimable balance into the ledger)
-// post is the claimable balance after the change (nil indicates that this change removed the
-// claimable balance from the ledger)
-func (s AssetStatSet) AddClaimableBalance(
-	pre *xdr.ClaimableBalanceEntry,
-	post *xdr.ClaimableBalanceEntry,
-) error {
+// change must be a xdr.LedgerEntryTypeClaimableBalance type.
+func (s AssetStatSet) AddClaimableBalance(change ingest.Change) error {
+	var pre, post *xdr.ClaimableBalanceEntry
+	if change.Pre != nil {
+		pre = change.Pre.Data.ClaimableBalance
+	}
+	if change.Post != nil {
+		post = change.Post.Data.ClaimableBalance
+	}
+
 	deltaAccounts := delta{}
 	deltaBalances := delta{}
 

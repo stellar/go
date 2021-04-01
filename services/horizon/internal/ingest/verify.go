@@ -539,7 +539,15 @@ func addTrustLinesToStateVerifier(
 		if err := verifier.Write(entry); err != nil {
 			return err
 		}
-		if err := assetStats.AddTrustline(nil, &trustline); err != nil {
+		if err := assetStats.AddTrustline(
+			ingest.Change{
+				Post: &xdr.LedgerEntry{
+					Data: xdr.LedgerEntryData{
+						TrustLine: &trustline,
+					},
+				},
+			},
+		); err != nil {
 			return ingest.NewStateError(
 				errors.Wrap(err, "could not add trustline to asset stats"),
 			)
@@ -601,7 +609,16 @@ func addClaimableBalanceToStateVerifier(
 		if err := verifier.Write(entry); err != nil {
 			return err
 		}
-		if err := assetStats.AddClaimableBalance(nil, &cBalance); err != nil {
+
+		if err := assetStats.AddClaimableBalance(
+			ingest.Change{
+				Post: &xdr.LedgerEntry{
+					Data: xdr.LedgerEntryData{
+						ClaimableBalance: &cBalance,
+					},
+				},
+			},
+		); err != nil {
 			return ingest.NewStateError(
 				errors.Wrap(err, "could not add claimable balance to asset stats"),
 			)

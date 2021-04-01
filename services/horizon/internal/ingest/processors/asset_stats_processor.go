@@ -52,9 +52,9 @@ func (p *AssetStatsProcessor) ProcessChange(change ingest.Change) error {
 
 	switch change.Type {
 	case xdr.LedgerEntryTypeClaimableBalance:
-		return p.assetStatSet.AddClaimableBalance(nil, change.Post.Data.ClaimableBalance)
+		return p.assetStatSet.AddClaimableBalance(change)
 	case xdr.LedgerEntryTypeTrustline:
-		return p.assetStatSet.AddTrustline(nil, change.Post.Data.TrustLine)
+		return p.assetStatSet.AddTrustline(change)
 	default:
 		return nil
 	}
@@ -76,38 +76,6 @@ func (p *AssetStatsProcessor) addToCache(change ingest.Change) error {
 	return nil
 }
 
-func (p *AssetStatsProcessor) commitClaimableBalanceChange(change ingest.Change) error {
-	switch {
-	case change.Pre == nil && change.Post != nil:
-		// Created
-		return p.assetStatSet.AddClaimableBalance(nil, change.Post.Data.ClaimableBalance)
-	case change.Pre != nil && change.Post != nil:
-		// Updated
-		return p.assetStatSet.AddClaimableBalance(change.Pre.Data.ClaimableBalance, change.Post.Data.ClaimableBalance)
-	case change.Pre != nil && change.Post == nil:
-		// Removed
-		return p.assetStatSet.AddClaimableBalance(change.Pre.Data.ClaimableBalance, nil)
-	default:
-		return errors.New("Invalid io.Change: change.Pre == nil && change.Post == nil")
-	}
-}
-
-func (p *AssetStatsProcessor) commitTrustlineChange(change ingest.Change) error {
-	switch {
-	case change.Pre == nil && change.Post != nil:
-		// Created
-		return p.assetStatSet.AddTrustline(nil, change.Post.Data.TrustLine)
-	case change.Pre != nil && change.Post != nil:
-		// Updated
-		return p.assetStatSet.AddTrustline(change.Pre.Data.TrustLine, change.Post.Data.TrustLine)
-	case change.Pre != nil && change.Post == nil:
-		// Removed
-		return p.assetStatSet.AddTrustline(change.Pre.Data.TrustLine, nil)
-	default:
-		return errors.New("Invalid io.Change: change.Pre == nil && change.Post == nil")
-	}
-}
-
 func (p *AssetStatsProcessor) Commit() error {
 	if !p.useLedgerEntryCache {
 		return p.assetStatsQ.InsertAssetStats(p.assetStatSet.All(), maxBatchSize)
@@ -118,9 +86,9 @@ func (p *AssetStatsProcessor) Commit() error {
 		var err error
 		switch change.Type {
 		case xdr.LedgerEntryTypeClaimableBalance:
-			err = p.commitClaimableBalanceChange(change)
+			err = p.assetStatSet.AddClaimableBalance(change)
 		case xdr.LedgerEntryTypeTrustline:
-			err = p.commitTrustlineChange(change)
+			err = p.assetStatSet.AddTrustline(change)
 		default:
 			return errors.Errorf("Change type %v is unexpected", change.Type)
 		}
