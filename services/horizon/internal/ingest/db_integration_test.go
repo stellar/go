@@ -94,7 +94,6 @@ func (s *DBTestSuite) SetupTest() {
 	s.system.historyAdapter = s.historyAdapter
 	s.system.ledgerBackend = s.ledgerBackend
 	s.system.runner.SetHistoryAdapter(s.historyAdapter)
-	s.system.runner.SetLedgerBackend(s.ledgerBackend)
 }
 
 func (s *DBTestSuite) mockChangeReader() {

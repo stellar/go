@@ -395,10 +395,6 @@ type mockProcessorsRunner struct {
 	mock.Mock
 }
 
-func (m *mockProcessorsRunner) SetLedgerBackend(ledgerBackend ledgerbackend.LedgerBackend) {
-	m.Called(ledgerBackend)
-}
-
 func (m *mockProcessorsRunner) SetHistoryAdapter(historyAdapter historyArchiveAdapterInterface) {
 	m.Called(historyAdapter)
 }
@@ -411,19 +407,28 @@ func (m *mockProcessorsRunner) DisableMemoryStatsLogging() {
 	m.Called()
 }
 
-func (m *mockProcessorsRunner) RunHistoryArchiveIngestion(checkpointLedger uint32) (ingest.StatsChangeProcessorResults, error) {
-	args := m.Called(checkpointLedger)
+func (m *mockProcessorsRunner) RunGenesisStateIngestion() (ingest.StatsChangeProcessorResults, error) {
+	args := m.Called()
 	return args.Get(0).(ingest.StatsChangeProcessorResults), args.Error(1)
 }
 
-func (m *mockProcessorsRunner) RunAllProcessorsOnLedger(sequence uint32) (
+func (m *mockProcessorsRunner) RunHistoryArchiveIngestion(
+	checkpointLedger uint32,
+	ledgerProtocolVersion uint32,
+	bucketListHash xdr.Hash,
+) (ingest.StatsChangeProcessorResults, error) {
+	args := m.Called(checkpointLedger, ledgerProtocolVersion, bucketListHash)
+	return args.Get(0).(ingest.StatsChangeProcessorResults), args.Error(1)
+}
+
+func (m *mockProcessorsRunner) RunAllProcessorsOnLedger(ledger xdr.LedgerCloseMeta) (
 	ingest.StatsChangeProcessorResults,
 	processorsRunDurations,
 	processors.StatsLedgerTransactionProcessorResults,
 	processorsRunDurations,
 	error,
 ) {
-	args := m.Called(sequence)
+	args := m.Called(ledger)
 	return args.Get(0).(ingest.StatsChangeProcessorResults),
 		args.Get(1).(processorsRunDurations),
 		args.Get(2).(processors.StatsLedgerTransactionProcessorResults),
@@ -431,12 +436,12 @@ func (m *mockProcessorsRunner) RunAllProcessorsOnLedger(sequence uint32) (
 		args.Error(4)
 }
 
-func (m *mockProcessorsRunner) RunTransactionProcessorsOnLedger(sequence uint32) (
+func (m *mockProcessorsRunner) RunTransactionProcessorsOnLedger(ledger xdr.LedgerCloseMeta) (
 	processors.StatsLedgerTransactionProcessorResults,
 	processorsRunDurations,
 	error,
 ) {
-	args := m.Called(sequence)
+	args := m.Called(ledger)
 	return args.Get(0).(processors.StatsLedgerTransactionProcessorResults),
 		args.Get(1).(processorsRunDurations),
 		args.Error(2)

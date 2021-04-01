@@ -85,6 +85,36 @@ func (s *BuildStateTestSuite) TestCheckPointLedgerIsZero() {
 	s.Assert().Equal(transition{node: startState{}, sleepDuration: defaultSleep}, next)
 }
 
+func (s *BuildStateTestSuite) TestRangeNotPreparedFailPrepare() {
+	// Recreate mock in this single test to remove Rollback assertion.
+	*s.historyQ = mockDBQ{}
+
+	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(63)).Return(false, nil).Once()
+	s.ledgerBackend.On("PrepareRange", ledgerbackend.UnboundedRange(63)).Return(errors.New("my error")).Once()
+
+	next, err := buildState{checkpointLedger: s.checkpointLedger}.run(s.system)
+
+	s.Assert().Error(err)
+	s.Assert().EqualError(err, "error preparing range: my error")
+	s.Assert().Equal(transition{node: startState{}, sleepDuration: defaultSleep}, next)
+}
+
+func (s *BuildStateTestSuite) TestRangeNotPreparedSuccessPrepareGetLedgerFail() {
+	// Recreate mock in this single test to remove Rollback assertion.
+	*s.historyQ = mockDBQ{}
+
+	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(63)).Return(false, nil).Once()
+	s.ledgerBackend.On("PrepareRange", ledgerbackend.UnboundedRange(63)).Return(nil).Once()
+
+	next, err := buildState{checkpointLedger: s.checkpointLedger}.run(s.system)
+
+	s.Assert().NoError(err)
+	s.Assert().Equal(transition{node: startState{
+		// suggestedCheckpoint is set. See startSuggestedCheckpoint for more info.
+		suggestedCheckpoint: 63,
+	}, sleepDuration: defaultSleep}, next)
+}
+
 func (s *BuildStateTestSuite) TestBeginReturnsError() {
 	// Recreate mock in this single test to remove Rollback assertion.
 	*s.historyQ = mockDBQ{}
@@ -179,62 +209,6 @@ func (s *BuildStateTestSuite) TestTruncateIngestStateTablesReturnsError() {
 	s.Assert().Error(err)
 	s.Assert().EqualError(err, "Error clearing ingest tables: my error")
 	s.Assert().Equal(transition{node: startState{}, sleepDuration: defaultSleep}, next)
-}
-
-func (s *BuildStateTestSuite) TestRangeNotPreparedFailPrepare() {
-	s.historyQ.On("GetLastLedgerIngest").Return(s.lastLedger, nil).Once()
-	s.historyQ.On("GetIngestVersion").Return(CurrentVersion, nil).Once()
-	s.historyQ.On("UpdateLastLedgerIngest", s.lastLedger).Return(nil).Once()
-	s.historyQ.On("UpdateExpStateInvalid", false).Return(nil).Once()
-	s.historyQ.On("TruncateIngestStateTables").Return(nil).Once()
-
-	s.stellarCoreClient.On(
-		"SetCursor",
-		mock.AnythingOfType("*context.timerCtx"),
-		defaultCoreCursorName,
-		int32(62),
-	).Return(nil).Once()
-
-	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(63)).Return(false, nil).Once()
-	s.ledgerBackend.On("PrepareRange", ledgerbackend.UnboundedRange(63)).Return(errors.New("my error")).Once()
-	// Rollback twice (first one mocked in SetupTest) because we want to release
-	// a distributed ingestion lock.
-	s.historyQ.On("Rollback").Return(nil).Once()
-
-	next, err := buildState{checkpointLedger: s.checkpointLedger}.run(s.system)
-
-	s.Assert().Error(err)
-	s.Assert().EqualError(err, "error preparing range: my error")
-	s.Assert().Equal(transition{node: startState{}, sleepDuration: defaultSleep}, next)
-}
-
-func (s *BuildStateTestSuite) TestRangeNotPreparedSuccessPrepare() {
-	s.historyQ.On("GetLastLedgerIngest").Return(s.lastLedger, nil).Once()
-	s.historyQ.On("GetIngestVersion").Return(CurrentVersion, nil).Once()
-	s.historyQ.On("UpdateLastLedgerIngest", s.lastLedger).Return(nil).Once()
-	s.historyQ.On("UpdateExpStateInvalid", false).Return(nil).Once()
-	s.historyQ.On("TruncateIngestStateTables").Return(nil).Once()
-
-	s.stellarCoreClient.On(
-		"SetCursor",
-		mock.AnythingOfType("*context.timerCtx"),
-		defaultCoreCursorName,
-		int32(62),
-	).Return(nil).Once()
-
-	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(63)).Return(false, nil).Once()
-	s.ledgerBackend.On("PrepareRange", ledgerbackend.UnboundedRange(63)).Return(nil).Once()
-	// Rollback twice (first one mocked in SetupTest) because we want to release
-	// a distributed ingestion lock.
-	s.historyQ.On("Rollback").Return(nil).Once()
-
-	next, err := buildState{checkpointLedger: s.checkpointLedger}.run(s.system)
-
-	s.Assert().NoError(err)
-	s.Assert().Equal(transition{node: startState{
-		// suggestedCheckpoint is set. See startSuggestedCheckpoint for more info.
-		suggestedCheckpoint: 63,
-	}, sleepDuration: defaultSleep}, next)
 }
 
 func (s *BuildStateTestSuite) TestRunHistoryArchiveIngestionReturnsError() {
