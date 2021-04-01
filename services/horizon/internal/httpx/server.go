@@ -46,6 +46,7 @@ type Server struct {
 
 func init() {
 	// register problems
+	problem.SetLogFilter(problem.LogUnknownErrors)
 	problem.RegisterError(sql.ErrNoRows, problem.NotFound)
 	problem.RegisterError(sequence.ErrNoMoreRoom, hProblem.ServerOverCapacity)
 	problem.RegisterError(db2.ErrInvalidCursor, problem.BadRequest)
