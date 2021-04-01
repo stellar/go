@@ -440,12 +440,20 @@ func (s *VerifyRangeStateTestSuite) TestVerifyFailsWhenAssetStatsMismatch() {
 	set := processors.AssetStatSet{}
 
 	trustLineIssuer := xdr.MustAddress("GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
-	set.Add(xdr.TrustLineEntry{
-		AccountId: xdr.MustAddress(keypair.MustRandom().Address()),
-		Balance:   123,
-		Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()),
-		Flags:     xdr.Uint32(xdr.TrustLineFlagsAuthorizedToMaintainLiabilitiesFlag),
-	})
+	set.AddTrustline(
+		ingest.Change{
+			Post: &xdr.LedgerEntry{
+				Data: xdr.LedgerEntryData{
+					TrustLine: &xdr.TrustLineEntry{
+						AccountId: xdr.MustAddress(keypair.MustRandom().Address()),
+						Balance:   123,
+						Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()),
+						Flags:     xdr.Uint32(xdr.TrustLineFlagsAuthorizedToMaintainLiabilitiesFlag),
+					},
+				},
+			},
+		},
+	)
 
 	stat := history.ExpAssetStat{
 		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,

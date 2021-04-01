@@ -81,12 +81,14 @@ If called normally this endpoint responds with a [page](../resources/page.md) of
         "accounts": {
           "authorized": 2126,
           "authorized_to_maintain_liabilities": 32,
-          "unauthorized": 5
+          "unauthorized": 5,
+          "claimable_balances": 18
         },
         "balances": {
           "authorized": "10000.0000000",
           "authorized_to_maintain_liabilities": "3000.0000000",
-          "unauthorized": "4000.0000000"
+          "unauthorized": "4000.0000000",
+          "claimable_balances": "2380.0000000"
         },
         "flags": {
           "auth_required": true,
@@ -106,12 +108,14 @@ If called normally this endpoint responds with a [page](../resources/page.md) of
         "accounts": {
           "authorized": 32,
           "authorized_to_maintain_liabilities": 124,
-          "unauthorized": 6
+          "unauthorized": 6,
+          "claimable_balances": 18
         },
         "balances": {
           "authorized": "5000.0000000",
           "authorized_to_maintain_liabilities": "8000.0000000",
-          "unauthorized": "2000.0000000"
+          "unauthorized": "2000.0000000",
+          "claimable_balances": "1200.0000000"
         },
         "flags": {
           "auth_required": false,
@@ -131,12 +135,14 @@ If called normally this endpoint responds with a [page](../resources/page.md) of
         "accounts": {
           "authorized": 91547871,
           "authorized_to_maintain_liabilities": 45773935,
-          "unauthorized": 22886967
+          "unauthorized": 22886967,
+          "claimable_balances": 11443483
         },
         "balances": {
           "authorized": "1000000000.0000000",
           "authorized_to_maintain_liabilities": "500000000.0000000",
-          "unauthorized": "250000000.0000000"
+          "unauthorized": "250000000.0000000",
+          "claimable_balances": "12500000.0000000"
         },
         "flags": {
           "auth_required": false,
