@@ -37,6 +37,11 @@ func IsKnownError(err error) error {
 	return Default.IsKnownError(err)
 }
 
+// SetLogFilter sets log filter of the default Problem
+func SetLogFilter(filter LogFilter) {
+	Default.SetLogFilter(filter)
+}
+
 // UnRegisterErrors removes all registered errors
 func UnRegisterErrors() {
 	Default.UnRegisterErrors()

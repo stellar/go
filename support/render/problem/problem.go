@@ -131,6 +131,11 @@ func (ps *Problem) IsKnownError(err error) error {
 	}
 }
 
+// SetLogFilter sets log filter
+func (ps *Problem) SetLogFilter(filter LogFilter) {
+	ps.filter = filter
+}
+
 // UnRegisterErrors removes all registered errors
 func (ps *Problem) UnRegisterErrors() {
 	ps.errToProblemMap = map[error]P{}
