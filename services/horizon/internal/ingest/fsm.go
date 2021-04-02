@@ -406,7 +406,7 @@ func (r resumeState) run(s *system) (transition, error) {
 		"duration": time.Since(startTime).Seconds(),
 	}).Info("Ledger returned from the backend")
 
-	if err := s.historyQ.Begin(); err != nil {
+	if err = s.historyQ.Begin(); err != nil {
 		return retryResume(r),
 			errors.Wrap(err, "Error starting a transaction")
 	}
@@ -554,13 +554,13 @@ func (h historyRangeState) run(s *system) (transition, error) {
 		return start(), err
 	}
 
-	if err := s.historyQ.Begin(); err != nil {
+	if err = s.historyQ.Begin(); err != nil {
 		return start(), errors.Wrap(err, "Error starting a transaction")
 	}
 	defer s.historyQ.Rollback()
 
 	// acquire distributed lock so no one else can perform ingestion operations.
-	if _, err := s.historyQ.GetLastLedgerIngest(); err != nil {
+	if _, err = s.historyQ.GetLastLedgerIngest(); err != nil {
 		return start(), errors.Wrap(err, getLastIngestedErrMsg)
 	}
 
@@ -578,7 +578,9 @@ func (h historyRangeState) run(s *system) (transition, error) {
 	}
 
 	for cur := h.fromLedger; cur <= h.toLedger; cur++ {
-		exists, ledgerCloseMeta, err := s.ledgerBackend.GetLedger(cur)
+		var exists bool
+		var ledgerCloseMeta xdr.LedgerCloseMeta
+		exists, ledgerCloseMeta, err = s.ledgerBackend.GetLedger(cur)
 		if err != nil {
 			return start(), errors.Wrap(err, "error getting ledger")
 		}
@@ -883,7 +885,9 @@ func (v verifyRangeState) run(s *system) (transition, error) {
 			return stop(), err
 		}
 
-		exists, ledgerCloseMeta, err := s.ledgerBackend.GetLedger(sequence)
+		var exists bool
+		var ledgerCloseMeta xdr.LedgerCloseMeta
+		exists, ledgerCloseMeta, err = s.ledgerBackend.GetLedger(sequence)
 		if err != nil {
 			return stop(), errors.Wrap(err, "error getting ledger")
 		}
