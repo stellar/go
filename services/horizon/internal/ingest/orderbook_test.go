@@ -44,11 +44,11 @@ func (t *IngestionStatusTestSuite) TestGetLatestLedgerError() {
 		Return(false, nil).
 		Once()
 
-	t.historyQ.On("GetLatestLedger").
+	t.historyQ.On("GetLatestHistoryLedger").
 		Return(uint32(0), fmt.Errorf("latest ledger error")).
 		Once()
 	_, err := t.stream.getIngestionStatus()
-	t.Assert().EqualError(err, "Error from GetLatestLedger: latest ledger error")
+	t.Assert().EqualError(err, "Error from GetLatestHistoryLedger: latest ledger error")
 }
 
 func (t *IngestionStatusTestSuite) TestGetLastLedgerIngestNonBlockingError() {
@@ -56,7 +56,7 @@ func (t *IngestionStatusTestSuite) TestGetLastLedgerIngestNonBlockingError() {
 		Return(false, nil).
 		Once()
 
-	t.historyQ.On("GetLatestLedger").
+	t.historyQ.On("GetLatestHistoryLedger").
 		Return(uint32(200), nil).
 		Once()
 
@@ -73,7 +73,7 @@ func (t *IngestionStatusTestSuite) TestGetOfferCompactionSequenceError() {
 		Return(false, nil).
 		Once()
 
-	t.historyQ.On("GetLatestLedger").
+	t.historyQ.On("GetLatestHistoryLedger").
 		Return(uint32(200), nil).
 		Once()
 
@@ -94,7 +94,7 @@ func (t *IngestionStatusTestSuite) TestStateInvalid() {
 		Return(true, nil).
 		Once()
 
-	t.historyQ.On("GetLatestLedger").
+	t.historyQ.On("GetLatestHistoryLedger").
 		Return(uint32(200), nil).
 		Once()
 
@@ -121,7 +121,7 @@ func (t *IngestionStatusTestSuite) TestHistoryInconsistentWithState() {
 		Return(true, nil).
 		Once()
 
-	t.historyQ.On("GetLatestLedger").
+	t.historyQ.On("GetLatestHistoryLedger").
 		Return(uint32(200), nil).
 		Once()
 
@@ -148,7 +148,7 @@ func (t *IngestionStatusTestSuite) TestHistoryLatestLedgerZero() {
 		Return(false, nil).
 		Once()
 
-	t.historyQ.On("GetLatestLedger").
+	t.historyQ.On("GetLatestHistoryLedger").
 		Return(uint32(0), nil).
 		Once()
 

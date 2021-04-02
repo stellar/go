@@ -154,7 +154,7 @@ func (state startState) run(s *system) (transition, error) {
 		return stop(), nil
 	}
 
-	lastHistoryLedger, err := s.historyQ.GetLatestLedger()
+	lastHistoryLedger, err := s.historyQ.GetLatestHistoryLedger()
 	if err != nil {
 		return start(), errors.Wrap(err, "Error getting last history ledger sequence")
 	}
@@ -264,7 +264,7 @@ func (b buildState) run(s *system) (transition, error) {
 	if b.checkpointLedger != 1 {
 		err := s.maybePrepareRange(b.checkpointLedger)
 		if err != nil {
-			return nextFailState, errors.Wrap(err, "error preparing range")
+			return nextFailState, err
 		}
 
 		log.WithField("ledger", b.checkpointLedger).Info("Waiting for ledger to be available in the backend...")
@@ -392,7 +392,7 @@ func (r resumeState) run(s *system) (transition, error) {
 
 	err := s.maybePrepareRange(ingestLedger)
 	if err != nil {
-		return start(), errors.Wrap(err, "error preparing range")
+		return start(), err
 	}
 
 	log.WithField("ledger", ingestLedger).Info("Waiting for ledger to be available in the backend...")
@@ -443,7 +443,7 @@ func (r resumeState) run(s *system) (transition, error) {
 		return start(), nil
 	}
 
-	lastHistoryLedger, err := s.historyQ.GetLatestLedger()
+	lastHistoryLedger, err := s.historyQ.GetLatestHistoryLedger()
 	if err != nil {
 		return retryResume(r), errors.Wrap(err, "could not get latest history ledger")
 	}
@@ -564,7 +564,7 @@ func (h historyRangeState) run(s *system) (transition, error) {
 		return start(), errors.Wrap(err, getLastIngestedErrMsg)
 	}
 
-	lastHistoryLedger, err := s.historyQ.GetLatestLedger()
+	lastHistoryLedger, err := s.historyQ.GetLatestHistoryLedger()
 	if err != nil {
 		return start(), errors.Wrap(err, "could not get latest history ledger")
 	}

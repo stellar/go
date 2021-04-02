@@ -111,20 +111,20 @@ func (s *DBTestSuite) setupMocksForBuildState() {
 		Return(checkpointHash, nil).Once()
 
 	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(s.sequence)).Return(true, nil).Once()
-	s.ledgerBackend.On("GetLedger", s.sequence).
+	s.ledgerBackend.On("GetLedgerBlocking", s.sequence).
 		Return(
-			true,
 			xdr.LedgerCloseMeta{
 				V0: &xdr.LedgerCloseMetaV0{
 					LedgerHeader: xdr.LedgerHeaderHistoryEntry{
 						Header: xdr.LedgerHeader{
+							LedgerSeq:      xdr.Uint32(s.sequence),
 							BucketListHash: checkpointHash,
 						},
 					},
 				},
 			},
 			nil,
-		).Twice()
+		).Once()
 }
 
 func (s *DBTestSuite) TearDownTest() {

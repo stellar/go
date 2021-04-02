@@ -325,7 +325,7 @@ func (m *mockDBQ) GetAllOffers() ([]history.Offer, error) {
 	return args.Get(0).([]history.Offer), args.Error(1)
 }
 
-func (m *mockDBQ) GetLatestLedger() (uint32, error) {
+func (m *mockDBQ) GetLatestHistoryLedger() (uint32, error) {
 	args := m.Called()
 	return args.Get(0).(uint32), args.Error(1)
 }
@@ -374,6 +374,11 @@ func (m *mockLedgerBackend) GetLatestLedgerSequence() (sequence uint32, err erro
 func (m *mockLedgerBackend) GetLedger(sequence uint32) (bool, xdr.LedgerCloseMeta, error) {
 	args := m.Called(sequence)
 	return args.Get(0).(bool), args.Get(1).(xdr.LedgerCloseMeta), args.Error(2)
+}
+
+func (m *mockLedgerBackend) GetLedgerBlocking(sequence uint32) (xdr.LedgerCloseMeta, error) {
+	args := m.Called(sequence)
+	return args.Get(0).(xdr.LedgerCloseMeta), args.Error(1)
 }
 
 func (m *mockLedgerBackend) PrepareRange(ledgerRange ledgerbackend.Range) error {
