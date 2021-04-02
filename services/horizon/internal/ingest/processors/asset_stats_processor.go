@@ -40,36 +40,39 @@ func (p *AssetStatsProcessor) reset() {
 }
 
 func (p *AssetStatsProcessor) ProcessChange(change ingest.Change) error {
-	if change.Type != xdr.LedgerEntryTypeTrustline {
+	if change.Type != xdr.LedgerEntryTypeClaimableBalance && change.Type != xdr.LedgerEntryTypeTrustline {
 		return nil
 	}
-
 	if p.useLedgerEntryCache {
-		err := p.cache.AddChange(change)
-		if err != nil {
-			return errors.Wrap(err, "error adding to ledgerCache")
-		}
-
-		if p.cache.Size() > maxBatchSize {
-			err = p.Commit()
-			if err != nil {
-				return errors.Wrap(err, "error in Commit")
-			}
-			p.reset()
-		}
-		return nil
+		return p.addToCache(change)
 	}
-
-	if !(change.Pre == nil && change.Post != nil) {
+	if change.Pre != nil || change.Post == nil {
 		return errors.New("AssetStatsProcessor is in insert only mode")
 	}
 
-	postTrustLine := change.Post.Data.MustTrustLine()
-	err := p.adjustAssetStat(nil, &postTrustLine)
+	switch change.Type {
+	case xdr.LedgerEntryTypeClaimableBalance:
+		return p.assetStatSet.AddClaimableBalance(change)
+	case xdr.LedgerEntryTypeTrustline:
+		return p.assetStatSet.AddTrustline(change)
+	default:
+		return nil
+	}
+}
+
+func (p *AssetStatsProcessor) addToCache(change ingest.Change) error {
+	err := p.cache.AddChange(change)
 	if err != nil {
-		return errors.Wrap(err, "Error adjusting asset stat")
+		return errors.Wrap(err, "error adding to ledgerCache")
 	}
 
+	if p.cache.Size() > maxBatchSize {
+		err = p.Commit()
+		if err != nil {
+			return errors.Wrap(err, "error in Commit")
+		}
+		p.reset()
+	}
 	return nil
 }
 
@@ -81,23 +84,13 @@ func (p *AssetStatsProcessor) Commit() error {
 	changes := p.cache.GetChanges()
 	for _, change := range changes {
 		var err error
-
-		switch {
-		case change.Pre == nil && change.Post != nil:
-			// Created
-			postTrustLine := change.Post.Data.MustTrustLine()
-			err = p.adjustAssetStat(nil, &postTrustLine)
-		case change.Pre != nil && change.Post != nil:
-			// Updated
-			preTrustLine := change.Pre.Data.MustTrustLine()
-			postTrustLine := change.Post.Data.MustTrustLine()
-			err = p.adjustAssetStat(&preTrustLine, &postTrustLine)
-		case change.Pre != nil && change.Post == nil:
-			// Removed
-			preTrustLine := change.Pre.Data.MustTrustLine()
-			err = p.adjustAssetStat(&preTrustLine, nil)
+		switch change.Type {
+		case xdr.LedgerEntryTypeClaimableBalance:
+			err = p.assetStatSet.AddClaimableBalance(change)
+		case xdr.LedgerEntryTypeTrustline:
+			err = p.assetStatSet.AddTrustline(change)
 		default:
-			return errors.New("Invalid io.Change: change.Pre == nil && change.Post == nil")
+			return errors.Errorf("Change type %v is unexpected", change.Type)
 		}
 
 		if err != nil {
@@ -140,6 +133,13 @@ func (p *AssetStatsProcessor) Commit() error {
 			} else if delta.Accounts.Unauthorized < 0 {
 				return ingest.NewStateError(errors.Errorf(
 					"Unauthorized accounts negative but DB entry does not exist for asset: %s %s %s",
+					delta.AssetType,
+					delta.AssetCode,
+					delta.AssetIssuer,
+				))
+			} else if delta.Accounts.ClaimableBalances < 0 {
+				return ingest.NewStateError(errors.Errorf(
+					"Claimable balance accounts negative but DB entry does not exist for asset: %s %s %s",
 					delta.AssetType,
 					delta.AssetCode,
 					delta.AssetIssuer,
@@ -212,35 +212,5 @@ func (p *AssetStatsProcessor) Commit() error {
 		}
 	}
 
-	return nil
-}
-
-func (p *AssetStatsProcessor) adjustAssetStat(
-	preTrustline *xdr.TrustLineEntry,
-	postTrustline *xdr.TrustLineEntry,
-) error {
-	deltaAccounts := map[xdr.Uint32]int32{}
-	deltaBalances := map[xdr.Uint32]int64{}
-
-	if preTrustline == nil && postTrustline == nil {
-		return ingest.NewStateError(errors.New("both pre and post trustlines cannot be nil"))
-	}
-
-	var trustline xdr.TrustLineEntry
-	if preTrustline != nil {
-		trustline = *preTrustline
-		deltaAccounts[preTrustline.Flags] -= 1
-		deltaBalances[preTrustline.Flags] -= int64(preTrustline.Balance)
-	}
-	if postTrustline != nil {
-		trustline = *postTrustline
-		deltaAccounts[postTrustline.Flags] += 1
-		deltaBalances[postTrustline.Flags] += int64(postTrustline.Balance)
-	}
-
-	err := p.assetStatSet.AddDelta(trustline.Asset, deltaBalances, deltaAccounts)
-	if err != nil {
-		return errors.Wrap(err, "error running AssetStatSet.AddDelta")
-	}
 	return nil
 }

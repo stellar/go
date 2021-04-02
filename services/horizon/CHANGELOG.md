@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this
 file. This project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+
+* Add `claimable_balances` to asset stat summaries at `/assets` ([3502](https://github.com/stellar/go/pull/3502)).
+
 ## v2.1.0
 
 ### DB State Migration
