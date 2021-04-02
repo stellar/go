@@ -41,25 +41,6 @@ func start() transition {
 	return transition{node: startState{}, sleepDuration: defaultSleep}
 }
 
-// startSuggestedCheckpoint is a transition to start `state` but with a suggested
-// checkpoint to use if the following step is `buildState`.
-// This is required because some ledger backends (like captive core) require some
-// time to prepare a requested range and have a small buffer of ledgers available
-// to fetch using GetLedger.
-// It's possible that a new checkpoint will be created while a range is prepared.
-// Because ledgers are kept in a buffer `GetLatestLedgerSequence` returns the latest
-// sequence available in a buffer, not in a network. This would make bucket hash
-// verification failures because the code would wrongly assume that the ledger is
-// not available.
-func startSuggestedCheckpoint(checkpoint uint32) transition {
-	return transition{
-		node: startState{
-			suggestedCheckpoint: checkpoint,
-		},
-		sleepDuration: defaultSleep,
-	}
-}
-
 func rebuild(checkpointLedger uint32) transition {
 	return transition{
 		node: buildState{
