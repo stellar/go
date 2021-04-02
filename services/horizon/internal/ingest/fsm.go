@@ -262,7 +262,7 @@ func (b buildState) run(s *system) (transition, error) {
 	// ProcessorRunner.RunHistoryArchiveIngestion().
 	var ledgerCloseMeta xdr.LedgerCloseMeta
 	if b.checkpointLedger != 1 {
-		_, err := s.maybePrepareRange(b.checkpointLedger)
+		err := s.maybePrepareRange(b.checkpointLedger)
 		if err != nil {
 			return nextFailState, errors.Wrap(err, "error preparing range")
 		}
@@ -390,7 +390,7 @@ func (r resumeState) run(s *system) (transition, error) {
 
 	ingestLedger := r.latestSuccessfullyProcessedLedger + 1
 
-	_, err := s.maybePrepareRange(ingestLedger)
+	err := s.maybePrepareRange(ingestLedger)
 	if err != nil {
 		return start(), errors.Wrap(err, "error preparing range")
 	}
@@ -549,6 +549,11 @@ func (h historyRangeState) run(s *system) (transition, error) {
 		return start(), errors.Errorf("invalid range: [%d, %d]", h.fromLedger, h.toLedger)
 	}
 
+	err := s.maybePrepareRange(h.fromLedger)
+	if err != nil {
+		return start(), err
+	}
+
 	if err := s.historyQ.Begin(); err != nil {
 		return start(), errors.Wrap(err, "Error starting a transaction")
 	}
@@ -570,14 +575,6 @@ func (h historyRangeState) run(s *system) (transition, error) {
 	// we should go back to the init state
 	if lastHistoryLedger != h.fromLedger-1 {
 		return start(), nil
-	}
-
-	didPrepare, err := s.maybePrepareRange(h.fromLedger)
-	if didPrepare || err != nil {
-		// Release distributed ingestion lock and prepare the range
-		s.historyQ.Rollback()
-		log.Info("Released ingestion lock to prepare range")
-		return start(), err
 	}
 
 	for cur := h.fromLedger; cur <= h.toLedger; cur++ {
@@ -1020,31 +1017,30 @@ func (s *system) completeIngestion(ledger uint32) error {
 }
 
 // maybePrepareRange checks if the range is prepared and, if not, prepares it.
-// Returns true if `LedgerBackend.PrepareRange` was called.
-func (s *system) maybePrepareRange(from uint32) (bool, error) {
+func (s *system) maybePrepareRange(from uint32) error {
 	ledgerRange := ledgerbackend.UnboundedRange(from)
 
 	prepared, err := s.ledgerBackend.IsPrepared(ledgerRange)
 	if err != nil {
-		return false, errors.Wrap(err, "error checking prepared range")
+		return errors.Wrap(err, "error checking prepared range")
 	}
 
 	if !prepared {
-		log.WithFields(logpkg.F{"ledger": from}).Info("Preparing range")
+		log.WithFields(logpkg.F{"from": from}).Info("Preparing range")
 		startTime := time.Now()
 
 		err = s.ledgerBackend.PrepareRange(ledgerRange)
 		if err != nil {
-			return true, errors.Wrap(err, "error preparing range")
+			return errors.Wrap(err, "error preparing range")
 		}
 
 		log.WithFields(logpkg.F{
-			"ledger":   from,
+			"from":     from,
 			"duration": time.Since(startTime).Seconds(),
 		}).Info("Range prepared")
 
-		return true, nil
+		return nil
 	}
 
-	return false, nil
+	return nil
 }
