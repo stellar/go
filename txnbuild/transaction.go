@@ -514,18 +514,33 @@ func (t GenericTransaction) FeeBump() (*FeeBumpTransaction, bool) {
 	return t.feeBump, t.feeBump != nil
 }
 
+type TransactionOption int
+
+const (
+	TransactionEnableSEP23 = iota
+)
+
+func isSEP23Enabled(options []TransactionOption) bool {
+	for _, opt := range options {
+		if opt == TransactionEnableSEP23 {
+			return true
+		}
+	}
+	return false
+}
+
 // TransactionFromXDR parses the supplied transaction envelope in base64 XDR
 // and returns a GenericTransaction instance.
-func TransactionFromXDR(txeB64 string) (*GenericTransaction, error) {
+func TransactionFromXDR(txeB64 string, options ...TransactionOption) (*GenericTransaction, error) {
 	var xdrEnv xdr.TransactionEnvelope
 	err := xdr.SafeUnmarshalBase64(txeB64, &xdrEnv)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to unmarshal transaction envelope")
 	}
-	return transactionFromParsedXDR(xdrEnv)
+	return transactionFromParsedXDR(xdrEnv, isSEP23Enabled(options))
 }
 
-func transactionFromParsedXDR(xdrEnv xdr.TransactionEnvelope) (*GenericTransaction, error) {
+func transactionFromParsedXDR(xdrEnv xdr.TransactionEnvelope, withSEP23 bool) (*GenericTransaction, error) {
 	var err error
 	newTx := &GenericTransaction{}
 
@@ -534,11 +549,19 @@ func transactionFromParsedXDR(xdrEnv xdr.TransactionEnvelope) (*GenericTransacti
 		innerTx, err = transactionFromParsedXDR(xdr.TransactionEnvelope{
 			Type: xdr.EnvelopeTypeEnvelopeTypeTx,
 			V1:   xdrEnv.FeeBump.Tx.InnerTx.V1,
-		})
+		}, withSEP23)
 		if err != nil {
 			return newTx, errors.New("could not parse inner transaction")
 		}
-		feeBumpAccount := xdrEnv.FeeBumpAccount().ToAccountId()
+		var feeAccount string
+		if withSEP23 {
+			feeBumpAccount := xdrEnv.FeeBumpAccount()
+			feeAccount = feeBumpAccount.SEP23Address()
+		} else {
+			feeBumpAccount := xdrEnv.FeeBumpAccount().ToAccountId()
+			feeAccount = feeBumpAccount.Address()
+		}
+
 		newTx.feeBump = &FeeBumpTransaction{
 			envelope: xdrEnv,
 			// A fee-bump transaction has an effective number of operations equal to one plus the
@@ -548,12 +571,19 @@ func transactionFromParsedXDR(xdrEnv xdr.TransactionEnvelope) (*GenericTransacti
 			baseFee:    xdrEnv.FeeBumpFee() / int64(len(innerTx.simple.operations)+1),
 			maxFee:     xdrEnv.FeeBumpFee(),
 			inner:      innerTx.simple,
-			feeAccount: feeBumpAccount.Address(),
+			feeAccount: feeAccount,
 		}
+
 		return newTx, nil
 	}
-
-	sourceAccount := xdrEnv.SourceAccount().ToAccountId()
+	var accountID string
+	if withSEP23 {
+		sourceAccount := xdrEnv.SourceAccount()
+		accountID = sourceAccount.SEP23Address()
+	} else {
+		sourceAccount := xdrEnv.SourceAccount().ToAccountId()
+		accountID = sourceAccount.Address()
+	}
 
 	totalFee := int64(xdrEnv.Fee())
 	baseFee := totalFee
@@ -566,7 +596,7 @@ func transactionFromParsedXDR(xdrEnv xdr.TransactionEnvelope) (*GenericTransacti
 		baseFee:  baseFee,
 		maxFee:   totalFee,
 		sourceAccount: SimpleAccount{
-			AccountID: sourceAccount.Address(),
+			AccountID: accountID,
 			Sequence:  xdrEnv.SeqNum(),
 		},
 		operations: nil,
@@ -585,7 +615,7 @@ func transactionFromParsedXDR(xdrEnv xdr.TransactionEnvelope) (*GenericTransacti
 
 	operations := xdrEnv.Operations()
 	for _, op := range operations {
-		newOp, err := operationFromXDR(op)
+		newOp, err := operationFromXDR(op, withSEP23)
 		if err != nil {
 			return nil, err
 		}
@@ -604,6 +634,7 @@ type TransactionParams struct {
 	BaseFee              int64
 	Memo                 Memo
 	Timebounds           Timebounds
+	Options              []TransactionOption
 }
 
 // NewTransaction returns a new Transaction instance
@@ -634,10 +665,18 @@ func NewTransaction(params TransactionParams) (*Transaction, error) {
 		memo:       params.Memo,
 		timebounds: params.Timebounds,
 	}
-
-	accountID, err := xdr.AddressToAccountId(tx.sourceAccount.AccountID)
-	if err != nil {
-		return nil, errors.Wrap(err, "account id is not valid")
+	withSEP23 := isSEP23Enabled(params.Options)
+	var sourceAccount xdr.MuxedAccount
+	if withSEP23 {
+		if err := sourceAccount.SetAddressWithSEP23(tx.sourceAccount.AccountID); err != nil {
+			return nil, errors.Wrap(err, "account id is not valid")
+		}
+	} else {
+		accountID, err := xdr.AddressToAccountId(tx.sourceAccount.AccountID)
+		if err != nil {
+			return nil, errors.Wrap(err, "account id is not valid")
+		}
+		sourceAccount = accountID.ToMuxedAccount()
 	}
 
 	if tx.baseFee < MinBaseFee {
@@ -669,7 +708,7 @@ func NewTransaction(params TransactionParams) (*Transaction, error) {
 		Type: xdr.EnvelopeTypeEnvelopeTypeTx,
 		V1: &xdr.TransactionV1Envelope{
 			Tx: xdr.Transaction{
-				SourceAccount: accountID.ToMuxedAccount(),
+				SourceAccount: sourceAccount,
 				Fee:           xdr.Uint32(tx.maxFee),
 				SeqNum:        xdr.SequenceNumber(sequence),
 				TimeBounds: &xdr.TimeBounds{
@@ -694,8 +733,15 @@ func NewTransaction(params TransactionParams) (*Transaction, error) {
 		if verr := op.Validate(); verr != nil {
 			return nil, errors.Wrap(verr, fmt.Sprintf("validation failed for %T operation", op))
 		}
-
-		xdrOperation, err2 := op.BuildXDR()
+		var (
+			err2         error
+			xdrOperation xdr.Operation
+		)
+		if withSEP23 {
+			xdrOperation, err2 = op.BuildXDRWithSEP23()
+		} else {
+			xdrOperation, err2 = op.BuildXDR()
+		}
 		if err2 != nil {
 			return nil, errors.Wrap(err2, fmt.Sprintf("failed to build operation %T", op))
 		}
@@ -712,6 +758,7 @@ type FeeBumpTransactionParams struct {
 	Inner      *Transaction
 	FeeAccount string
 	BaseFee    int64
+	Options    []TransactionOption
 }
 
 func convertToV1(tx *Transaction) (*Transaction, error) {
@@ -782,16 +829,23 @@ func NewFeeBumpTransaction(params FeeBumpTransactionParams) (*FeeBumpTransaction
 		)
 	}
 
-	accountID, err := xdr.AddressToAccountId(tx.feeAccount)
-	if err != nil {
-		return tx, errors.Wrap(err, "fee account is not a valid address")
+	var feeSource xdr.MuxedAccount
+	if isSEP23Enabled(params.Options) {
+		if err := feeSource.SetAddressWithSEP23(tx.feeAccount); err != nil {
+			return tx, errors.Wrap(err, "fee account is not a valid address")
+		}
+	} else {
+		accountID, err := xdr.AddressToAccountId(tx.feeAccount)
+		if err != nil {
+			return tx, errors.Wrap(err, "fee account is not a valid address")
+		}
+		feeSource = accountID.ToMuxedAccount()
 	}
-
 	tx.envelope = xdr.TransactionEnvelope{
 		Type: xdr.EnvelopeTypeEnvelopeTypeTxFeeBump,
 		FeeBump: &xdr.FeeBumpTransactionEnvelope{
 			Tx: xdr.FeeBumpTransaction{
-				FeeSource: accountID.ToMuxedAccount(),
+				FeeSource: feeSource,
 				Fee:       xdr.Int64(tx.maxFee),
 				InnerTx: xdr.FeeBumpTransactionInnerTx{
 					Type: xdr.EnvelopeTypeEnvelopeTypeTx,

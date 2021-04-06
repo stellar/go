@@ -12,6 +12,9 @@ type Operation interface {
 	FromXDR(xdrOp xdr.Operation) error
 	Validate() error
 	GetSourceAccount() string
+	BuildXDRWithSEP23() (xdr.Operation, error)
+	FromXDRWithSEP23(xdrOp xdr.Operation) error
+	ValidateWithSEP23() error
 }
 
 // SetOpSourceAccount sets the source account ID on an Operation.
@@ -24,8 +27,18 @@ func SetOpSourceAccount(op *xdr.Operation, sourceAccount string) {
 	op.SourceAccount = &opSourceAccountID
 }
 
+// SetOpSourceAccount sets the source account ID on an Operation, allowing M-strkeys (as defined in SEP23).
+func SetOpSourceAccountWithSEP23(op *xdr.Operation, sourceAccount string) {
+	if sourceAccount == "" {
+		return
+	}
+	var opSourceAccountID xdr.MuxedAccount
+	opSourceAccountID.SetAddressWithSEP23(sourceAccount)
+	op.SourceAccount = &opSourceAccountID
+}
+
 // operationFromXDR returns a txnbuild Operation from its corresponding XDR operation
-func operationFromXDR(xdrOp xdr.Operation) (Operation, error) {
+func operationFromXDR(xdrOp xdr.Operation, withSEP23 bool) (Operation, error) {
 	var newOp Operation
 	switch xdrOp.Body.Type {
 	case xdr.OperationTypeCreateAccount:
@@ -75,15 +88,23 @@ func operationFromXDR(xdrOp xdr.Operation) (Operation, error) {
 	default:
 		return nil, fmt.Errorf("unknown operation type: %d", xdrOp.Body.Type)
 	}
-
-	err := newOp.FromXDR(xdrOp)
+	var err error
+	if withSEP23 {
+		err = newOp.FromXDRWithSEP23(xdrOp)
+	} else {
+		err = newOp.FromXDR(xdrOp)
+	}
 	return newOp, err
 }
 
-func accountFromXDR(account *xdr.MuxedAccount) string {
+func accountFromXDR(account *xdr.MuxedAccount, withSEP23 bool) string {
 	if account != nil {
-		aid := account.ToAccountId()
-		return aid.Address()
+		if withSEP23 {
+			return account.SEP23Address()
+		} else {
+			aid := account.ToAccountId()
+			return aid.Address()
+		}
 	}
 	return ""
 }

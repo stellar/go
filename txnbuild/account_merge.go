@@ -14,9 +14,18 @@ type AccountMerge struct {
 
 // BuildXDR for AccountMerge returns a fully configured XDR Operation.
 func (am *AccountMerge) BuildXDR() (xdr.Operation, error) {
-	var xdrOp xdr.MuxedAccount
+	return am.buildXDR(false)
+}
 
-	err := xdrOp.SetAddress(am.Destination)
+// BuildXDR for AccountMerge returns a fully configured XDR Operation.
+func (am *AccountMerge) buildXDR(withSEP23 bool) (xdr.Operation, error) {
+	var xdrOp xdr.MuxedAccount
+	var err error
+	if withSEP23 {
+		err = xdrOp.SetAddressWithSEP23(am.Destination)
+	} else {
+		err = xdrOp.SetAddress(am.Destination)
+	}
 	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "failed to set destination address")
 	}
@@ -27,7 +36,11 @@ func (am *AccountMerge) BuildXDR() (xdr.Operation, error) {
 		return xdr.Operation{}, errors.Wrap(err, "failed to build XDR OperationBody")
 	}
 	op := xdr.Operation{Body: body}
-	SetOpSourceAccount(&op, am.SourceAccount)
+	if withSEP23 {
+		SetOpSourceAccountWithSEP23(&op, am.SourceAccount)
+	} else {
+		SetOpSourceAccount(&op, am.SourceAccount)
+	}
 	return op, nil
 }
 
@@ -37,10 +50,22 @@ func (am *AccountMerge) FromXDR(xdrOp xdr.Operation) error {
 		return errors.New("error parsing account_merge operation from xdr")
 	}
 
-	am.SourceAccount = accountFromXDR(xdrOp.SourceAccount)
+	return am.fromXDR(xdrOp, false)
+}
+
+func (am *AccountMerge) fromXDR(xdrOp xdr.Operation, withSEP23 bool) error {
+	if xdrOp.Body.Type != xdr.OperationTypeAccountMerge {
+		return errors.New("error parsing account_merge operation from xdr")
+	}
+
+	am.SourceAccount = accountFromXDR(xdrOp.SourceAccount, withSEP23)
 	if xdrOp.Body.Destination != nil {
-		aid := xdrOp.Body.Destination.ToAccountId()
-		am.Destination = aid.Address()
+		if withSEP23 {
+			am.Destination = xdrOp.Body.Destination.SEP23Address()
+		} else {
+			aid := xdrOp.Body.Destination.ToAccountId()
+			am.Destination = aid.Address()
+		}
 	}
 
 	return nil
@@ -49,7 +74,16 @@ func (am *AccountMerge) FromXDR(xdrOp xdr.Operation) error {
 // Validate for AccountMerge validates the required struct fields. It returns an error if any of the fields are
 // invalid. Otherwise, it returns nil.
 func (am *AccountMerge) Validate() error {
-	_, err := xdr.AddressToAccountId(am.Destination)
+	return am.validate(false)
+}
+
+func (am *AccountMerge) validate(withSEP23 bool) error {
+	var err error
+	if withSEP23 {
+		_, err = xdr.AddressToAccountId(am.Destination)
+	} else {
+		_, err = xdr.SEP23AddressToMuxedAccount(am.Destination)
+	}
 	if err != nil {
 		return NewValidationError("Destination", err.Error())
 	}
@@ -60,4 +94,16 @@ func (am *AccountMerge) Validate() error {
 // set.
 func (am *AccountMerge) GetSourceAccount() string {
 	return am.SourceAccount
+}
+
+func (am *AccountMerge) BuildXDRWithSEP23() (xdr.Operation, error) {
+	return am.buildXDR(true)
+}
+
+func (am *AccountMerge) FromXDRWithSEP23(xdrOp xdr.Operation) error {
+	return am.fromXDR(xdrOp, true)
+}
+
+func (am *AccountMerge) ValidateWithSEP23() error {
+	return am.validate(true)
 }
