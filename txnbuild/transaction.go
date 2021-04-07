@@ -514,15 +514,15 @@ func (t GenericTransaction) FeeBump() (*FeeBumpTransaction, bool) {
 	return t.feeBump, t.feeBump != nil
 }
 
-type TransactionOption int
+type ParseXDROption int
 
 const (
-	TransactionEnableSEP23 = iota
+	ParseXDROptionEnableMuxedAccounts ParseXDROption = iota
 )
 
-func isSEP23Enabled(options []TransactionOption) bool {
+func areMuxedAccountsEnabled(options []ParseXDROption) bool {
 	for _, opt := range options {
-		if opt == TransactionEnableSEP23 {
+		if opt == ParseXDROptionEnableMuxedAccounts {
 			return true
 		}
 	}
@@ -531,16 +531,16 @@ func isSEP23Enabled(options []TransactionOption) bool {
 
 // TransactionFromXDR parses the supplied transaction envelope in base64 XDR
 // and returns a GenericTransaction instance.
-func TransactionFromXDR(txeB64 string, options ...TransactionOption) (*GenericTransaction, error) {
+func TransactionFromXDR(txeB64 string, options ...ParseXDROption) (*GenericTransaction, error) {
 	var xdrEnv xdr.TransactionEnvelope
 	err := xdr.SafeUnmarshalBase64(txeB64, &xdrEnv)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to unmarshal transaction envelope")
 	}
-	return transactionFromParsedXDR(xdrEnv, isSEP23Enabled(options))
+	return transactionFromParsedXDR(xdrEnv, areMuxedAccountsEnabled(options))
 }
 
-func transactionFromParsedXDR(xdrEnv xdr.TransactionEnvelope, withSEP23 bool) (*GenericTransaction, error) {
+func transactionFromParsedXDR(xdrEnv xdr.TransactionEnvelope, withMuxedAccounts bool) (*GenericTransaction, error) {
 	var err error
 	newTx := &GenericTransaction{}
 
@@ -549,12 +549,12 @@ func transactionFromParsedXDR(xdrEnv xdr.TransactionEnvelope, withSEP23 bool) (*
 		innerTx, err = transactionFromParsedXDR(xdr.TransactionEnvelope{
 			Type: xdr.EnvelopeTypeEnvelopeTypeTx,
 			V1:   xdrEnv.FeeBump.Tx.InnerTx.V1,
-		}, withSEP23)
+		}, withMuxedAccounts)
 		if err != nil {
 			return newTx, errors.New("could not parse inner transaction")
 		}
 		var feeAccount string
-		if withSEP23 {
+		if withMuxedAccounts {
 			feeBumpAccount := xdrEnv.FeeBumpAccount()
 			feeAccount = feeBumpAccount.SEP23Address()
 		} else {
@@ -577,7 +577,7 @@ func transactionFromParsedXDR(xdrEnv xdr.TransactionEnvelope, withSEP23 bool) (*
 		return newTx, nil
 	}
 	var accountID string
-	if withSEP23 {
+	if withMuxedAccounts {
 		sourceAccount := xdrEnv.SourceAccount()
 		accountID = sourceAccount.SEP23Address()
 	} else {
@@ -615,7 +615,7 @@ func transactionFromParsedXDR(xdrEnv xdr.TransactionEnvelope, withSEP23 bool) (*
 
 	operations := xdrEnv.Operations()
 	for _, op := range operations {
-		newOp, err := operationFromXDR(op, withSEP23)
+		newOp, err := operationFromXDR(op, withMuxedAccounts)
 		if err != nil {
 			return nil, err
 		}
@@ -634,7 +634,7 @@ type TransactionParams struct {
 	BaseFee              int64
 	Memo                 Memo
 	Timebounds           Timebounds
-	Options              []TransactionOption
+	EnableMuxedAccounts  bool
 }
 
 // NewTransaction returns a new Transaction instance
@@ -665,9 +665,8 @@ func NewTransaction(params TransactionParams) (*Transaction, error) {
 		memo:       params.Memo,
 		timebounds: params.Timebounds,
 	}
-	withSEP23 := isSEP23Enabled(params.Options)
 	var sourceAccount xdr.MuxedAccount
-	if withSEP23 {
+	if params.EnableMuxedAccounts {
 		if err := sourceAccount.SetAddressWithSEP23(tx.sourceAccount.AccountID); err != nil {
 			return nil, errors.Wrap(err, "account id is not valid")
 		}
@@ -737,7 +736,7 @@ func NewTransaction(params TransactionParams) (*Transaction, error) {
 			err2         error
 			xdrOperation xdr.Operation
 		)
-		if withSEP23 {
+		if params.EnableMuxedAccounts {
 			xdrOperation, err2 = op.BuildXDRWithSEP23()
 		} else {
 			xdrOperation, err2 = op.BuildXDR()
@@ -755,10 +754,10 @@ func NewTransaction(params TransactionParams) (*Transaction, error) {
 // FeeBumpTransactionParams is a container for parameters
 // which are used to construct new FeeBumpTransaction instances
 type FeeBumpTransactionParams struct {
-	Inner      *Transaction
-	FeeAccount string
-	BaseFee    int64
-	Options    []TransactionOption
+	Inner               *Transaction
+	FeeAccount          string
+	BaseFee             int64
+	EnableMuxedAccounts bool
 }
 
 func convertToV1(tx *Transaction) (*Transaction, error) {
@@ -830,7 +829,7 @@ func NewFeeBumpTransaction(params FeeBumpTransactionParams) (*FeeBumpTransaction
 	}
 
 	var feeSource xdr.MuxedAccount
-	if isSEP23Enabled(params.Options) {
+	if params.EnableMuxedAccounts {
 		if err := feeSource.SetAddressWithSEP23(tx.feeAccount); err != nil {
 			return tx, errors.Wrap(err, "fee account is not a valid address")
 		}
