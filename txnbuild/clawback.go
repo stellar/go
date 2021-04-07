@@ -17,10 +17,14 @@ type Clawback struct {
 }
 
 // BuildXDR for Clawback returns a fully configured XDR Operation.
-func (cb *Clawback) BuildXDR(bool) (xdr.Operation, error) {
+func (cb *Clawback) BuildXDR(withMuxedAccounts bool) (xdr.Operation, error) {
 	var fromMuxedAccount xdr.MuxedAccount
-
-	err := fromMuxedAccount.SetAddress(cb.From)
+	var err error
+	if withMuxedAccounts {
+		err = fromMuxedAccount.SetAddressWithSEP23(cb.From)
+	} else {
+		err = fromMuxedAccount.SetAddress(cb.From)
+	}
 	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "failed to set from address")
 	}
@@ -65,9 +69,13 @@ func (cb *Clawback) FromXDR(xdrOp xdr.Operation, withMuxedAccounts bool) error {
 		return errors.New("error parsing clawback operation from xdr")
 	}
 
-	cb.SourceAccount = accountFromXDR(xdrOp.SourceAccount)
-	fromAID := result.From.ToAccountId()
-	cb.From = fromAID.Address()
+	cb.SourceAccount = accountFromXDR(xdrOp.SourceAccount, withMuxedAccounts)
+	if withMuxedAccounts {
+		cb.From = result.From.SEP23Address()
+	} else {
+		fromAID := result.From.ToAccountId()
+		cb.From = fromAID.Address()
+	}
 	cb.Amount = amount.String(result.Amount)
 	asset, err := assetFromXDR(result.Asset)
 	if err != nil {
@@ -80,8 +88,13 @@ func (cb *Clawback) FromXDR(xdrOp xdr.Operation, withMuxedAccounts bool) error {
 
 // Validate for Clawback validates the required struct fields. It returns an error if any
 // of the fields are invalid. Otherwise, it returns nil.
-func (cb *Clawback) Validate(bool) error {
-	_, err := xdr.AddressToAccountId(cb.From)
+func (cb *Clawback) Validate(withMuxedAccounts bool) error {
+	var err error
+	if withMuxedAccounts {
+		_, err = xdr.SEP23AddressToMuxedAccount(cb.From)
+	} else {
+		_, err = xdr.AddressToAccountId(cb.From)
+	}
 	if err != nil {
 		return NewValidationError("From", err.Error())
 	}

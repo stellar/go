@@ -15,7 +15,7 @@ type ClaimClaimableBalance struct {
 }
 
 // BuildXDR for ClaimClaimableBalance returns a fully configured XDR Operation.
-func (cb *ClaimClaimableBalance) BuildXDR(bool) (xdr.Operation, error) {
+func (cb *ClaimClaimableBalance) BuildXDR(withMuxedAccounts bool) (xdr.Operation, error) {
 	var xdrBalanceID xdr.ClaimableBalanceId
 	err := xdr.SafeUnmarshalHex(cb.BalanceID, &xdrBalanceID)
 	if err != nil {
@@ -31,7 +31,11 @@ func (cb *ClaimClaimableBalance) BuildXDR(bool) (xdr.Operation, error) {
 		return xdr.Operation{}, errors.Wrap(err, "failed to build XDR OperationBody")
 	}
 	op := xdr.Operation{Body: body}
-	SetOpSourceAccount(&op, cb.SourceAccount)
+	if withMuxedAccounts {
+		SetOpSourceMuxedAccount(&op, cb.SourceAccount)
+	} else {
+		SetOpSourceAccount(&op, cb.SourceAccount)
+	}
 	return op, nil
 }
 
@@ -42,7 +46,7 @@ func (cb *ClaimClaimableBalance) FromXDR(xdrOp xdr.Operation, withMuxedAccounts 
 		return errors.New("error parsing claim_claimable_balance operation from xdr")
 	}
 
-	cb.SourceAccount = accountFromXDR(xdrOp.SourceAccount)
+	cb.SourceAccount = accountFromXDR(xdrOp.SourceAccount, withMuxedAccounts)
 	balanceID, err := xdr.MarshalHex(result.BalanceId)
 	if err != nil {
 		return errors.New("error parsing BalanceID in claim_claimable_balance operation from xdr")

@@ -367,7 +367,7 @@ func TestAccountMergeFromXDR(t *testing.T) {
 	}
 
 	var am AccountMerge
-	err = am.FromXDR(xdrOp)
+	err = am.FromXDR(xdrOp, false)
 	if assert.NoError(t, err) {
 		assert.Equal(t, "GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H", am.SourceAccount, "source accounts should match")
 		assert.Equal(t, "GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3", am.Destination, "destination accounts should match")

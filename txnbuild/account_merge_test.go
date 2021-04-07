@@ -23,7 +23,7 @@ func TestAccountMergeValidate(t *testing.T) {
 		},
 	)
 	if assert.Error(t, err) {
-		expected := "strkey is 4 bytes long; minimum valid length is 5"
+		expected := "invalid address"
 		assert.Contains(t, err.Error(), expected)
 	}
 }

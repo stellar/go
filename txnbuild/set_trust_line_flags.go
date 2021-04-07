@@ -29,7 +29,7 @@ type SetTrustLineFlags struct {
 }
 
 // BuildXDR for ASetTrustLineFlags  returns a fully configured XDR Operation.
-func (stf *SetTrustLineFlags) BuildXDR(bool) (xdr.Operation, error) {
+func (stf *SetTrustLineFlags) BuildXDR(withMuxedAccounts bool) (xdr.Operation, error) {
 	var xdrOp xdr.SetTrustLineFlagsOp
 
 	// Set XDR address associated with the trustline
@@ -57,7 +57,11 @@ func (stf *SetTrustLineFlags) BuildXDR(bool) (xdr.Operation, error) {
 		return xdr.Operation{}, errors.Wrap(err, "failed to build XDR OperationBody")
 	}
 	op := xdr.Operation{Body: body}
-	SetOpSourceAccount(&op, stf.SourceAccount)
+	if withMuxedAccounts {
+		SetOpSourceMuxedAccount(&op, stf.SourceAccount)
+	} else {
+		SetOpSourceAccount(&op, stf.SourceAccount)
+	}
 	return op, nil
 }
 
@@ -76,7 +80,7 @@ func (stf *SetTrustLineFlags) FromXDR(xdrOp xdr.Operation, withMuxedAccounts boo
 		return errors.New("error parsing allow_trust operation from xdr")
 	}
 
-	stf.SourceAccount = accountFromXDR(xdrOp.SourceAccount)
+	stf.SourceAccount = accountFromXDR(xdrOp.SourceAccount, withMuxedAccounts)
 	stf.Trustor = op.Trustor.Address()
 	asset, err := assetFromXDR(op.Asset)
 	if err != nil {
