@@ -667,12 +667,12 @@ func NewTransaction(params TransactionParams) (*Transaction, error) {
 	}
 	var sourceAccount xdr.MuxedAccount
 	if params.EnableMuxedAccounts {
-		if err := sourceAccount.SetAddressWithSEP23(tx.sourceAccount.AccountID); err != nil {
+		if err = sourceAccount.SetAddressWithSEP23(tx.sourceAccount.AccountID); err != nil {
 			return nil, errors.Wrap(err, "account id is not valid")
 		}
 	} else {
-		accountID, err := xdr.AddressToAccountId(tx.sourceAccount.AccountID)
-		if err != nil {
+		accountID, err2 := xdr.AddressToAccountId(tx.sourceAccount.AccountID)
+		if err2 != nil {
 			return nil, errors.Wrap(err, "account id is not valid")
 		}
 		sourceAccount = accountID.ToMuxedAccount()
