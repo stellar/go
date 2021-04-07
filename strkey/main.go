@@ -164,8 +164,6 @@ func Version(src string) (VersionByte, error) {
 // is not one of the defined valid version byte constants.
 func checkValidVersionByte(version VersionByte) error {
 	switch version {
-	// intentionally disallow M-strkeys  (versionByteMuxedAccount)
-	// until SEP23 leaves the Draft status.
 	case VersionByteAccountID, VersionByteMuxedAccount, VersionByteSeed, VersionByteHashTx, VersionByteHashX:
 		return nil
 	default:

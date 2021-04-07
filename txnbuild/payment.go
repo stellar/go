@@ -16,7 +16,7 @@ type Payment struct {
 }
 
 // BuildXDR for Payment returns a fully configured XDR Operation.
-func (p *Payment) BuildXDR() (xdr.Operation, error) {
+func (p *Payment) BuildXDR(bool) (xdr.Operation, error) {
 	var destMuxedAccount xdr.MuxedAccount
 
 	err := destMuxedAccount.SetAddress(p.Destination)
@@ -53,7 +53,7 @@ func (p *Payment) BuildXDR() (xdr.Operation, error) {
 }
 
 // FromXDR for Payment initialises the txnbuild struct from the corresponding xdr Operation.
-func (p *Payment) FromXDR(xdrOp xdr.Operation) error {
+func (p *Payment) FromXDR(xdrOp xdr.Operation, withMuxedAccounts bool) error {
 	result, ok := xdrOp.Body.GetPaymentOp()
 	if !ok {
 		return errors.New("error parsing payment operation from xdr")
@@ -75,7 +75,7 @@ func (p *Payment) FromXDR(xdrOp xdr.Operation) error {
 
 // Validate for Payment validates the required struct fields. It returns an error if any
 // of the fields are invalid. Otherwise, it returns nil.
-func (p *Payment) Validate() error {
+func (p *Payment) Validate(bool) error {
 	_, err := xdr.AddressToAccountId(p.Destination)
 	if err != nil {
 		return NewValidationError("Destination", err.Error())

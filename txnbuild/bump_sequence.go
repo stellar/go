@@ -13,7 +13,7 @@ type BumpSequence struct {
 }
 
 // BuildXDR for BumpSequence returns a fully configured XDR Operation.
-func (bs *BumpSequence) BuildXDR() (xdr.Operation, error) {
+func (bs *BumpSequence) BuildXDR(bool) (xdr.Operation, error) {
 	opType := xdr.OperationTypeBumpSequence
 	xdrOp := xdr.BumpSequenceOp{BumpTo: xdr.SequenceNumber(bs.BumpTo)}
 	body, err := xdr.NewOperationBody(opType, xdrOp)
@@ -26,7 +26,7 @@ func (bs *BumpSequence) BuildXDR() (xdr.Operation, error) {
 }
 
 // FromXDR for BumpSequence initialises the txnbuild struct from the corresponding xdr Operation.
-func (bs *BumpSequence) FromXDR(xdrOp xdr.Operation) error {
+func (bs *BumpSequence) FromXDR(xdrOp xdr.Operation, withMuxedAccounts bool) error {
 	result, ok := xdrOp.Body.GetBumpSequenceOp()
 	if !ok {
 		return errors.New("error parsing bump_sequence operation from xdr")
@@ -39,7 +39,7 @@ func (bs *BumpSequence) FromXDR(xdrOp xdr.Operation) error {
 
 // Validate for BumpSequence validates the required struct fields. It returns an error if any of the fields are
 // invalid. Otherwise, it returns nil.
-func (bs *BumpSequence) Validate() error {
+func (bs *BumpSequence) Validate(bool) error {
 	err := validateAmount(bs.BumpTo)
 	if err != nil {
 		return NewValidationError("BumpTo", err.Error())

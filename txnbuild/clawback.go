@@ -17,7 +17,7 @@ type Clawback struct {
 }
 
 // BuildXDR for Clawback returns a fully configured XDR Operation.
-func (cb *Clawback) BuildXDR() (xdr.Operation, error) {
+func (cb *Clawback) BuildXDR(bool) (xdr.Operation, error) {
 	var fromMuxedAccount xdr.MuxedAccount
 
 	err := fromMuxedAccount.SetAddress(cb.From)
@@ -59,7 +59,7 @@ func (cb *Clawback) BuildXDR() (xdr.Operation, error) {
 }
 
 // FromXDR for Clawback initialises the txnbuild struct from the corresponding xdr Operation.
-func (cb *Clawback) FromXDR(xdrOp xdr.Operation) error {
+func (cb *Clawback) FromXDR(xdrOp xdr.Operation, withMuxedAccounts bool) error {
 	result, ok := xdrOp.Body.GetClawbackOp()
 	if !ok {
 		return errors.New("error parsing clawback operation from xdr")
@@ -80,7 +80,7 @@ func (cb *Clawback) FromXDR(xdrOp xdr.Operation) error {
 
 // Validate for Clawback validates the required struct fields. It returns an error if any
 // of the fields are invalid. Otherwise, it returns nil.
-func (cb *Clawback) Validate() error {
+func (cb *Clawback) Validate(bool) error {
 	_, err := xdr.AddressToAccountId(cb.From)
 	if err != nil {
 		return NewValidationError("From", err.Error())

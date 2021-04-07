@@ -15,7 +15,7 @@ type CreateAccount struct {
 }
 
 // BuildXDR for CreateAccount returns a fully configured XDR Operation.
-func (ca *CreateAccount) BuildXDR() (xdr.Operation, error) {
+func (ca *CreateAccount) BuildXDR(bool) (xdr.Operation, error) {
 	var xdrOp xdr.CreateAccountOp
 
 	err := xdrOp.Destination.SetAddress(ca.Destination)
@@ -39,7 +39,7 @@ func (ca *CreateAccount) BuildXDR() (xdr.Operation, error) {
 }
 
 // FromXDR for CreateAccount initialises the txnbuild struct from the corresponding xdr Operation.
-func (ca *CreateAccount) FromXDR(xdrOp xdr.Operation) error {
+func (ca *CreateAccount) FromXDR(xdrOp xdr.Operation, withMuxedAccounts bool) error {
 	result, ok := xdrOp.Body.GetCreateAccountOp()
 	if !ok {
 		return errors.New("error parsing create_account operation from xdr")
@@ -54,7 +54,7 @@ func (ca *CreateAccount) FromXDR(xdrOp xdr.Operation) error {
 
 // Validate for CreateAccount validates the required struct fields. It returns an error if any of the fields are
 // invalid. Otherwise, it returns nil.
-func (ca *CreateAccount) Validate() error {
+func (ca *CreateAccount) Validate(bool) error {
 	err := validateStellarPublicKey(ca.Destination)
 	if err != nil {
 		return NewValidationError("Destination", err.Error())

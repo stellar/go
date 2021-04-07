@@ -14,7 +14,7 @@ type ClawbackClaimableBalance struct {
 }
 
 // BuildXDR for ClawbackClaimableBalance returns a fully configured XDR Operation.
-func (cb *ClawbackClaimableBalance) BuildXDR() (xdr.Operation, error) {
+func (cb *ClawbackClaimableBalance) BuildXDR(bool) (xdr.Operation, error) {
 	var xdrBalanceID xdr.ClaimableBalanceId
 	err := xdr.SafeUnmarshalHex(cb.BalanceID, &xdrBalanceID)
 	if err != nil {
@@ -35,7 +35,7 @@ func (cb *ClawbackClaimableBalance) BuildXDR() (xdr.Operation, error) {
 }
 
 // FromXDR for ClawbackClaimableBalance initializes the txnbuild struct from the corresponding xdr Operation.
-func (cb *ClawbackClaimableBalance) FromXDR(xdrOp xdr.Operation) error {
+func (cb *ClawbackClaimableBalance) FromXDR(xdrOp xdr.Operation, withMuxedAccounts bool) error {
 	result, ok := xdrOp.Body.GetClawbackClaimableBalanceOp()
 	if !ok {
 		return errors.New("error parsing clawback_claimable_balance operation from xdr")
@@ -53,7 +53,7 @@ func (cb *ClawbackClaimableBalance) FromXDR(xdrOp xdr.Operation) error {
 
 // Validate for ClawbackClaimableBalance validates the required struct fields. It returns an error if any of the fields are
 // invalid. Otherwise, it returns nil.
-func (cb *ClawbackClaimableBalance) Validate() error {
+func (cb *ClawbackClaimableBalance) Validate(bool) error {
 	var xdrBalanceID xdr.ClaimableBalanceId
 	err := xdr.SafeUnmarshalHex(cb.BalanceID, &xdrBalanceID)
 	if err != nil {

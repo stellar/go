@@ -729,7 +729,7 @@ func NewTransaction(params TransactionParams) (*Transaction, error) {
 	}
 
 	for _, op := range tx.operations {
-		if verr := op.Validate(); verr != nil {
+		if verr := op.Validate(false); verr != nil {
 			return nil, errors.Wrap(verr, fmt.Sprintf("validation failed for %T operation", op))
 		}
 		var (
@@ -739,7 +739,7 @@ func NewTransaction(params TransactionParams) (*Transaction, error) {
 		if params.EnableMuxedAccounts {
 			xdrOperation, err2 = op.BuildXDRWithSEP23()
 		} else {
-			xdrOperation, err2 = op.BuildXDR()
+			xdrOperation, err2 = op.BuildXDR(false)
 		}
 		if err2 != nil {
 			return nil, errors.Wrap(err2, fmt.Sprintf("failed to build operation %T", op))

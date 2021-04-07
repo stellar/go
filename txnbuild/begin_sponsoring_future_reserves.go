@@ -15,7 +15,7 @@ type BeginSponsoringFutureReserves struct {
 }
 
 // BuildXDR for BeginSponsoringFutureReserves returns a fully configured XDR Operation.
-func (bs *BeginSponsoringFutureReserves) BuildXDR() (xdr.Operation, error) {
+func (bs *BeginSponsoringFutureReserves) BuildXDR(bool) (xdr.Operation, error) {
 	xdrOp := xdr.BeginSponsoringFutureReservesOp{}
 	err := xdrOp.SponsoredId.SetAddress(bs.SponsoredID)
 	if err != nil {
@@ -32,7 +32,7 @@ func (bs *BeginSponsoringFutureReserves) BuildXDR() (xdr.Operation, error) {
 }
 
 // FromXDR for BeginSponsoringFutureReserves initializes the txnbuild struct from the corresponding xdr Operation.
-func (bs *BeginSponsoringFutureReserves) FromXDR(xdrOp xdr.Operation) error {
+func (bs *BeginSponsoringFutureReserves) FromXDR(xdrOp xdr.Operation, withMuxedAccounts bool) error {
 	result, ok := xdrOp.Body.GetBeginSponsoringFutureReservesOp()
 	if !ok {
 		return errors.New("error parsing begin_sponsoring_future_reserves operation from xdr")
@@ -45,7 +45,7 @@ func (bs *BeginSponsoringFutureReserves) FromXDR(xdrOp xdr.Operation) error {
 
 // Validate for BeginSponsoringFutureReserves validates the required struct fields. It returns an error if any of the fields are
 // invalid. Otherwise, it returns nil.
-func (bs *BeginSponsoringFutureReserves) Validate() error {
+func (bs *BeginSponsoringFutureReserves) Validate(bool) error {
 	err := validateStellarPublicKey(bs.SponsoredID)
 	if err != nil {
 		return NewValidationError("SponsoredID", err.Error())

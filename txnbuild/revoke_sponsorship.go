@@ -55,7 +55,7 @@ type SignerID struct {
 	SignerAddress string
 }
 
-func (r *RevokeSponsorship) BuildXDR() (xdr.Operation, error) {
+func (r *RevokeSponsorship) BuildXDR(bool) (xdr.Operation, error) {
 	xdrOp := xdr.RevokeSponsorshipOp{}
 	switch r.SponsorshipType {
 	case RevokeSponsorshipTypeAccount:
@@ -157,7 +157,7 @@ func (r *RevokeSponsorship) BuildXDR() (xdr.Operation, error) {
 	return op, nil
 }
 
-func (r *RevokeSponsorship) FromXDR(xdrOp xdr.Operation) error {
+func (r *RevokeSponsorship) FromXDR(xdrOp xdr.Operation, withMuxedAccounts bool) error {
 	r.SourceAccount = accountFromXDR(xdrOp.SourceAccount)
 	op, ok := xdrOp.Body.GetRevokeSponsorshipOp()
 	if !ok {
@@ -222,7 +222,7 @@ func (r *RevokeSponsorship) FromXDR(xdrOp xdr.Operation) error {
 	return nil
 }
 
-func (r *RevokeSponsorship) Validate() error {
+func (r *RevokeSponsorship) Validate(bool) error {
 	switch r.SponsorshipType {
 	case RevokeSponsorshipTypeAccount:
 		if r.Account == nil {

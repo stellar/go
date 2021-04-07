@@ -14,7 +14,7 @@ type EndSponsoringFutureReserves struct {
 }
 
 // BuildXDR for EndSponsoringFutureReserves returns a fully configured XDR Operation.
-func (es *EndSponsoringFutureReserves) BuildXDR() (xdr.Operation, error) {
+func (es *EndSponsoringFutureReserves) BuildXDR(bool) (xdr.Operation, error) {
 	opType := xdr.OperationTypeEndSponsoringFutureReserves
 	body, err := xdr.NewOperationBody(opType, nil)
 	if err != nil {
@@ -26,7 +26,7 @@ func (es *EndSponsoringFutureReserves) BuildXDR() (xdr.Operation, error) {
 }
 
 // FromXDR for EndSponsoringFutureReserves initializes the txnbuild struct from the corresponding xdr Operation.
-func (es *EndSponsoringFutureReserves) FromXDR(xdrOp xdr.Operation) error {
+func (es *EndSponsoringFutureReserves) FromXDR(xdrOp xdr.Operation, withMuxedAccounts bool) error {
 	if xdrOp.Body.Type != xdr.OperationTypeEndSponsoringFutureReserves {
 		return errors.New("error parsing end_sponsoring_future_reserves operation from xdr")
 	}
@@ -37,7 +37,7 @@ func (es *EndSponsoringFutureReserves) FromXDR(xdrOp xdr.Operation) error {
 
 // Validate for EndSponsoringFutureReserves validates the required struct fields. It returns an error if any of the fields are
 // invalid. Otherwise, it returns nil.
-func (es *EndSponsoringFutureReserves) Validate() error {
+func (es *EndSponsoringFutureReserves) Validate(bool) error {
 	return nil
 }
 

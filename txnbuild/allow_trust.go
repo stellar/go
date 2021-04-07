@@ -21,7 +21,7 @@ type AllowTrust struct {
 }
 
 // BuildXDR for AllowTrust returns a fully configured XDR Operation.
-func (at *AllowTrust) BuildXDR() (xdr.Operation, error) {
+func (at *AllowTrust) BuildXDR(bool) (xdr.Operation, error) {
 	var xdrOp xdr.AllowTrustOp
 
 	// Set XDR address associated with the trustline
@@ -75,7 +75,7 @@ func assetCodeToCreditAsset(assetCode xdr.AssetCode) (CreditAsset, error) {
 }
 
 // FromXDR for AllowTrust initialises the txnbuild struct from the corresponding xdr Operation.
-func (at *AllowTrust) FromXDR(xdrOp xdr.Operation) error {
+func (at *AllowTrust) FromXDR(xdrOp xdr.Operation, withMuxedAccounts bool) error {
 	result, ok := xdrOp.Body.GetAllowTrustOp()
 	if !ok {
 		return errors.New("error parsing allow_trust operation from xdr")
@@ -97,7 +97,7 @@ func (at *AllowTrust) FromXDR(xdrOp xdr.Operation) error {
 
 // Validate for AllowTrust validates the required struct fields. It returns an error if any of the fields are
 // invalid. Otherwise, it returns nil.
-func (at *AllowTrust) Validate() error {
+func (at *AllowTrust) Validate(bool) error {
 	err := validateStellarPublicKey(at.Trustor)
 	if err != nil {
 		return NewValidationError("Trustor", err.Error())

@@ -83,7 +83,7 @@ type ManageSellOffer struct {
 }
 
 // BuildXDR for ManageSellOffer returns a fully configured XDR Operation.
-func (mo *ManageSellOffer) BuildXDR() (xdr.Operation, error) {
+func (mo *ManageSellOffer) BuildXDR(bool) (xdr.Operation, error) {
 	xdrSelling, err := mo.Selling.ToXDR()
 	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "failed to set XDR 'Selling' field")
@@ -122,7 +122,7 @@ func (mo *ManageSellOffer) BuildXDR() (xdr.Operation, error) {
 }
 
 // FromXDR for ManageSellOffer initialises the txnbuild struct from the corresponding xdr Operation.
-func (mo *ManageSellOffer) FromXDR(xdrOp xdr.Operation) error {
+func (mo *ManageSellOffer) FromXDR(xdrOp xdr.Operation, withMuxedAccounts bool) error {
 	result, ok := xdrOp.Body.GetManageSellOfferOp()
 	if !ok {
 		return errors.New("error parsing manage_sell_offer operation from xdr")
@@ -151,7 +151,7 @@ func (mo *ManageSellOffer) FromXDR(xdrOp xdr.Operation) error {
 
 // Validate for ManageSellOffer validates the required struct fields. It returns an error if any
 // of the fields are invalid. Otherwise, it returns nil.
-func (mo *ManageSellOffer) Validate() error {
+func (mo *ManageSellOffer) Validate(bool) error {
 	return validateOffer(mo.Buying, mo.Selling, mo.Amount, mo.Price, mo.OfferID)
 }
 

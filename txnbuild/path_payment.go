@@ -25,7 +25,7 @@ type PathPaymentStrictReceive struct {
 }
 
 // BuildXDR for PathPaymentStrictReceive returns a fully configured XDR Operation.
-func (pp *PathPaymentStrictReceive) BuildXDR() (xdr.Operation, error) {
+func (pp *PathPaymentStrictReceive) BuildXDR(bool) (xdr.Operation, error) {
 	// Set XDR send asset
 	if pp.SendAsset == nil {
 		return xdr.Operation{}, errors.New("you must specify an asset to send for payment")
@@ -93,7 +93,7 @@ func (pp *PathPaymentStrictReceive) BuildXDR() (xdr.Operation, error) {
 }
 
 // FromXDR for PathPaymentStrictReceive initialises the txnbuild struct from the corresponding xdr Operation.
-func (pp *PathPaymentStrictReceive) FromXDR(xdrOp xdr.Operation) error {
+func (pp *PathPaymentStrictReceive) FromXDR(xdrOp xdr.Operation, withMuxedAccounts bool) error {
 	result, ok := xdrOp.Body.GetPathPaymentStrictReceiveOp()
 	if !ok {
 		return errors.New("error parsing path_payment operation from xdr")
@@ -131,7 +131,7 @@ func (pp *PathPaymentStrictReceive) FromXDR(xdrOp xdr.Operation) error {
 
 // Validate for PathPaymentStrictReceive validates the required struct fields. It returns an error if any
 // of the fields are invalid. Otherwise, it returns nil.
-func (pp *PathPaymentStrictReceive) Validate() error {
+func (pp *PathPaymentStrictReceive) Validate(bool) error {
 	_, err := xdr.AddressToAccountId(pp.Destination)
 	if err != nil {
 		return NewValidationError("Destination", err.Error())
