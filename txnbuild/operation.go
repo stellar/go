@@ -25,7 +25,7 @@ func SetOpSourceAccount(op *xdr.Operation, sourceAccount string) {
 }
 
 // SetOpSourceAccount sets the source account ID on an Operation, allowing M-strkeys (as defined in SEP23).
-func SetOpMuxedSourceAccount(op *xdr.Operation, sourceAccount string) {
+func SetOpSourceMuxedAccount(op *xdr.Operation, sourceAccount string) {
 	if sourceAccount == "" {
 		return
 	}

@@ -16,10 +16,16 @@ type Payment struct {
 }
 
 // BuildXDR for Payment returns a fully configured XDR Operation.
-func (p *Payment) BuildXDR(bool) (xdr.Operation, error) {
+
+func (p *Payment) BuildXDR(withMuxedAccounts bool) (xdr.Operation, error) {
 	var destMuxedAccount xdr.MuxedAccount
 
-	err := destMuxedAccount.SetAddress(p.Destination)
+	var err error
+	if withMuxedAccounts {
+		err = destMuxedAccount.SetAddressWithSEP23(p.Destination)
+	} else {
+		err = destMuxedAccount.SetAddress(p.Destination)
+	}
 	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "failed to set destination address")
 	}
@@ -48,7 +54,11 @@ func (p *Payment) BuildXDR(bool) (xdr.Operation, error) {
 		return xdr.Operation{}, errors.Wrap(err, "failed to build XDR Operation")
 	}
 	op := xdr.Operation{Body: body}
-	SetOpSourceAccount(&op, p.SourceAccount)
+	if withMuxedAccounts {
+		SetOpSourceMuxedAccount(&op, p.SourceAccount)
+	} else {
+		SetOpSourceAccount(&op, p.SourceAccount)
+	}
 	return op, nil
 }
 
@@ -59,9 +69,15 @@ func (p *Payment) FromXDR(xdrOp xdr.Operation, withMuxedAccounts bool) error {
 		return errors.New("error parsing payment operation from xdr")
 	}
 
-	p.SourceAccount = accountFromXDR(xdrOp.SourceAccount)
-	destAID := result.Destination.ToAccountId()
-	p.Destination = destAID.Address()
+	p.SourceAccount = accountFromXDR(xdrOp.SourceAccount, withMuxedAccounts)
+	if withMuxedAccounts {
+		p.Destination = xdrOp.Body.Destination.SEP23Address()
+	} else {
+		destAID := result.Destination.ToAccountId()
+		p.Destination = destAID.Address()
+		p.Destination = destAID.Address()
+	}
+
 	p.Amount = amount.String(result.Amount)
 
 	asset, err := assetFromXDR(result.Asset)
@@ -75,8 +91,14 @@ func (p *Payment) FromXDR(xdrOp xdr.Operation, withMuxedAccounts bool) error {
 
 // Validate for Payment validates the required struct fields. It returns an error if any
 // of the fields are invalid. Otherwise, it returns nil.
-func (p *Payment) Validate(bool) error {
-	_, err := xdr.AddressToAccountId(p.Destination)
+func (p *Payment) Validate(withMuxedAccounts bool) error {
+	var err error
+	if withMuxedAccounts {
+		_, err = xdr.AddressToAccountId(p.Destination)
+	} else {
+		_, err = xdr.SEP23AddressToMuxedAccount(p.Destination)
+	}
+
 	if err != nil {
 		return NewValidationError("Destination", err.Error())
 	}

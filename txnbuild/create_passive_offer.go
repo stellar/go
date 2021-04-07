@@ -18,7 +18,7 @@ type CreatePassiveSellOffer struct {
 }
 
 // BuildXDR for CreatePassiveSellOffer returns a fully configured XDR Operation.
-func (cpo *CreatePassiveSellOffer) BuildXDR(bool) (xdr.Operation, error) {
+func (cpo *CreatePassiveSellOffer) BuildXDR(withMuxedAccounts bool) (xdr.Operation, error) {
 	xdrSelling, err := cpo.Selling.ToXDR()
 	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "failed to set XDR 'Selling' field")
@@ -51,7 +51,11 @@ func (cpo *CreatePassiveSellOffer) BuildXDR(bool) (xdr.Operation, error) {
 		return xdr.Operation{}, errors.Wrap(err, "failed to build XDR OperationBody")
 	}
 	op := xdr.Operation{Body: body}
-	SetOpSourceAccount(&op, cpo.SourceAccount)
+	if withMuxedAccounts {
+		SetOpSourceAccount(&op, cpo.SourceAccount)
+	} else {
+		SetOpSourceMuxedAccount(&op, cpo.SourceAccount)
+	}
 	return op, nil
 }
 
@@ -62,7 +66,7 @@ func (cpo *CreatePassiveSellOffer) FromXDR(xdrOp xdr.Operation, withMuxedAccount
 		return errors.New("error parsing create_passive_sell_offer operation from xdr")
 	}
 
-	cpo.SourceAccount = accountFromXDR(xdrOp.SourceAccount)
+	cpo.SourceAccount = accountFromXDR(xdrOp.SourceAccount, withMuxedAccounts)
 	cpo.Amount = amount.String(result.Amount)
 	if result.Price != (xdr.Price{}) {
 		cpo.price.fromXDR(result.Price)

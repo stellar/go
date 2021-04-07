@@ -15,7 +15,7 @@ type BeginSponsoringFutureReserves struct {
 }
 
 // BuildXDR for BeginSponsoringFutureReserves returns a fully configured XDR Operation.
-func (bs *BeginSponsoringFutureReserves) BuildXDR(bool) (xdr.Operation, error) {
+func (bs *BeginSponsoringFutureReserves) BuildXDR(withMuxedAccounts bool) (xdr.Operation, error) {
 	xdrOp := xdr.BeginSponsoringFutureReservesOp{}
 	err := xdrOp.SponsoredId.SetAddress(bs.SponsoredID)
 	if err != nil {
@@ -37,7 +37,7 @@ func (bs *BeginSponsoringFutureReserves) FromXDR(xdrOp xdr.Operation, withMuxedA
 	if !ok {
 		return errors.New("error parsing begin_sponsoring_future_reserves operation from xdr")
 	}
-	bs.SourceAccount = accountFromXDR(xdrOp.SourceAccount)
+	bs.SourceAccount = accountFromXDR(xdrOp.SourceAccount, withMuxedAccounts)
 	bs.SponsoredID = result.SponsoredId.Address()
 
 	return nil

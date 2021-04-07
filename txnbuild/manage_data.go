@@ -14,7 +14,7 @@ type ManageData struct {
 }
 
 // BuildXDR for ManageData returns a fully configured XDR Operation.
-func (md *ManageData) BuildXDR(bool) (xdr.Operation, error) {
+func (md *ManageData) BuildXDR(withMuxedAccounts bool) (xdr.Operation, error) {
 	xdrOp := xdr.ManageDataOp{DataName: xdr.String64(md.Name)}
 
 	// No data value clears the named data entry on the account
@@ -31,7 +31,11 @@ func (md *ManageData) BuildXDR(bool) (xdr.Operation, error) {
 		return xdr.Operation{}, errors.Wrap(err, "failed to build XDR OperationBody")
 	}
 	op := xdr.Operation{Body: body}
-	SetOpSourceAccount(&op, md.SourceAccount)
+	if withMuxedAccounts {
+		SetOpSourceMuxedAccount(&op, md.SourceAccount)
+	} else {
+		SetOpSourceAccount(&op, md.SourceAccount)
+	}
 	return op, nil
 }
 
@@ -42,7 +46,7 @@ func (md *ManageData) FromXDR(xdrOp xdr.Operation, withMuxedAccounts bool) error
 		return errors.New("error parsing create_account operation from xdr")
 	}
 
-	md.SourceAccount = accountFromXDR(xdrOp.SourceAccount)
+	md.SourceAccount = accountFromXDR(xdrOp.SourceAccount, withMuxedAccounts)
 	md.Name = string(result.DataName)
 	if result.DataValue != nil {
 		md.Value = *result.DataValue

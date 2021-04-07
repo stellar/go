@@ -32,7 +32,7 @@ func (am *AccountMerge) BuildXDR(withSEP23 bool) (xdr.Operation, error) {
 	}
 	op := xdr.Operation{Body: body}
 	if withSEP23 {
-		SetOpMuxedSourceAccount(&op, am.SourceAccount)
+		SetOpSourceMuxedAccount(&op, am.SourceAccount)
 	} else {
 		SetOpSourceAccount(&op, am.SourceAccount)
 	}

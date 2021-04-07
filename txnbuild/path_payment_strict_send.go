@@ -19,7 +19,7 @@ type PathPaymentStrictSend struct {
 }
 
 // BuildXDR for Payment returns a fully configured XDR Operation.
-func (pp *PathPaymentStrictSend) BuildXDR(bool) (xdr.Operation, error) {
+func (pp *PathPaymentStrictSend) BuildXDR(withMuxedAccounts bool) (xdr.Operation, error) {
 	// Set XDR send asset
 	if pp.SendAsset == nil {
 		return xdr.Operation{}, errors.New("you must specify an asset to send for payment")
@@ -37,7 +37,11 @@ func (pp *PathPaymentStrictSend) BuildXDR(bool) (xdr.Operation, error) {
 
 	// Set XDR destination
 	var xdrDestination xdr.MuxedAccount
-	err = xdrDestination.SetAddress(pp.Destination)
+	if withMuxedAccounts {
+		err = xdrDestination.SetAddressWithSEP23(pp.Destination)
+	} else {
+		err = xdrDestination.SetAddress(pp.Destination)
+	}
 	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "failed to set destination address")
 	}
@@ -82,7 +86,11 @@ func (pp *PathPaymentStrictSend) BuildXDR(bool) (xdr.Operation, error) {
 		return xdr.Operation{}, errors.Wrap(err, "failed to build XDR OperationBody")
 	}
 	op := xdr.Operation{Body: body}
-	SetOpSourceAccount(&op, pp.SourceAccount)
+	if withMuxedAccounts {
+		SetOpSourceAccount(&op, pp.SourceAccount)
+	} else {
+		SetOpSourceMuxedAccount(&op, pp.SourceAccount)
+	}
 	return op, nil
 }
 
@@ -93,9 +101,13 @@ func (pp *PathPaymentStrictSend) FromXDR(xdrOp xdr.Operation, withMuxedAccounts 
 		return errors.New("error parsing path_payment operation from xdr")
 	}
 
-	pp.SourceAccount = accountFromXDR(xdrOp.SourceAccount)
-	destAID := result.Destination.ToAccountId()
-	pp.Destination = destAID.Address()
+	pp.SourceAccount = accountFromXDR(xdrOp.SourceAccount, withMuxedAccounts)
+	if withMuxedAccounts {
+		destAID := result.Destination.ToAccountId()
+		pp.Destination = destAID.Address()
+	} else {
+		pp.Destination = result.Destination.SEP23Address()
+	}
 	pp.SendAmount = amount.String(result.SendAmount)
 	pp.DestMin = amount.String(result.DestMin)
 
@@ -125,8 +137,13 @@ func (pp *PathPaymentStrictSend) FromXDR(xdrOp xdr.Operation, withMuxedAccounts 
 
 // Validate for PathPaymentStrictSend validates the required struct fields. It returns an error if any
 // of the fields are invalid. Otherwise, it returns nil.
-func (pp *PathPaymentStrictSend) Validate(bool) error {
-	_, err := xdr.AddressToAccountId(pp.Destination)
+func (pp *PathPaymentStrictSend) Validate(withMuxedAccounts bool) error {
+	var err error
+	if withMuxedAccounts {
+		_, err = xdr.AddressToAccountId(pp.Destination)
+	} else {
+		_, err = xdr.SEP23AddressToMuxedAccount(pp.Destination)
+	}
 	if err != nil {
 		return NewValidationError("Destination", err.Error())
 	}

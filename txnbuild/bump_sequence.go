@@ -13,7 +13,7 @@ type BumpSequence struct {
 }
 
 // BuildXDR for BumpSequence returns a fully configured XDR Operation.
-func (bs *BumpSequence) BuildXDR(bool) (xdr.Operation, error) {
+func (bs *BumpSequence) BuildXDR(withMuxedAccounts bool) (xdr.Operation, error) {
 	opType := xdr.OperationTypeBumpSequence
 	xdrOp := xdr.BumpSequenceOp{BumpTo: xdr.SequenceNumber(bs.BumpTo)}
 	body, err := xdr.NewOperationBody(opType, xdrOp)
@@ -21,7 +21,11 @@ func (bs *BumpSequence) BuildXDR(bool) (xdr.Operation, error) {
 		return xdr.Operation{}, errors.Wrap(err, "failed to build XDR OperationBody")
 	}
 	op := xdr.Operation{Body: body}
-	SetOpSourceAccount(&op, bs.SourceAccount)
+	if withMuxedAccounts {
+		SetOpSourceMuxedAccount(&op, bs.SourceAccount)
+	} else {
+		SetOpSourceAccount(&op, bs.SourceAccount)
+	}
 	return op, nil
 }
 
@@ -32,7 +36,7 @@ func (bs *BumpSequence) FromXDR(xdrOp xdr.Operation, withMuxedAccounts bool) err
 		return errors.New("error parsing bump_sequence operation from xdr")
 	}
 
-	bs.SourceAccount = accountFromXDR(xdrOp.SourceAccount)
+	bs.SourceAccount = accountFromXDR(xdrOp.SourceAccount, withMuxedAccounts)
 	bs.BumpTo = int64(result.BumpTo)
 	return nil
 }

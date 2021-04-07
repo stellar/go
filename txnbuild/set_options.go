@@ -67,7 +67,7 @@ type SetOptions struct {
 }
 
 // BuildXDR for SetOptions returns a fully configured XDR Operation.
-func (so *SetOptions) BuildXDR(bool) (xdr.Operation, error) {
+func (so *SetOptions) BuildXDR(withMuxedAccounts bool) (xdr.Operation, error) {
 	err := so.handleInflation()
 	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "failed to set inflation destination address")
@@ -95,7 +95,11 @@ func (so *SetOptions) BuildXDR(bool) (xdr.Operation, error) {
 	}
 
 	op := xdr.Operation{Body: body}
-	SetOpSourceAccount(&op, so.SourceAccount)
+	if withMuxedAccounts {
+		SetOpSourceMuxedAccount(&op, so.SourceAccount)
+	} else {
+		SetOpSourceAccount(&op, so.SourceAccount)
+	}
 	return op, nil
 }
 
@@ -299,7 +303,7 @@ func (so *SetOptions) FromXDR(xdrOp xdr.Operation, withMuxedAccounts bool) error
 		return errors.New("error parsing set_options operation from xdr")
 	}
 
-	so.SourceAccount = accountFromXDR(xdrOp.SourceAccount)
+	so.SourceAccount = accountFromXDR(xdrOp.SourceAccount, withMuxedAccounts)
 	so.handleInflationXDR(result.InflationDest)
 	so.handleClearFlagsXDR(result.ClearFlags)
 	so.handleSetFlagsXDR(result.SetFlags)

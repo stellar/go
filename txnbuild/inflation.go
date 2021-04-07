@@ -12,14 +12,18 @@ type Inflation struct {
 }
 
 // BuildXDR for Inflation returns a fully configured XDR Operation.
-func (inf *Inflation) BuildXDR(bool) (xdr.Operation, error) {
+func (inf *Inflation) BuildXDR(withMuxedAccounts bool) (xdr.Operation, error) {
 	opType := xdr.OperationTypeInflation
 	body, err := xdr.NewOperationBody(opType, nil)
 	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "failed to build XDR OperationBody")
 	}
 	op := xdr.Operation{Body: body}
-	SetOpSourceAccount(&op, inf.SourceAccount)
+	if withMuxedAccounts {
+		SetOpSourceMuxedAccount(&op, inf.SourceAccount)
+	} else {
+		SetOpSourceAccount(&op, inf.SourceAccount)
+	}
 	return op, nil
 }
 
@@ -28,7 +32,7 @@ func (inf *Inflation) FromXDR(xdrOp xdr.Operation, withMuxedAccounts bool) error
 	if xdrOp.Body.Type != xdr.OperationTypeInflation {
 		return errors.New("error parsing inflation operation from xdr")
 	}
-	inf.SourceAccount = accountFromXDR(xdrOp.SourceAccount)
+	inf.SourceAccount = accountFromXDR(xdrOp.SourceAccount, withMuxedAccounts)
 	return nil
 }
 
