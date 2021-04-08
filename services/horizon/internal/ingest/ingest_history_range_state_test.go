@@ -230,6 +230,38 @@ func (s *IngestHistoryRangeStateTestSuite) TestSuccessOneLedger() {
 	s.Assert().Equal(transition{node: startState{}, sleepDuration: defaultSleep}, next)
 }
 
+func (s *IngestHistoryRangeStateTestSuite) TestCommitsWorkOnLedgerBackendFailure() {
+	s.historyQ.On("Begin").Return(nil).Once()
+	s.historyQ.On("GetLastLedgerIngest").Return(uint32(0), nil).Once()
+	s.historyQ.On("GetLatestHistoryLedger").Return(uint32(99), nil).Once()
+
+	meta := xdr.LedgerCloseMeta{
+		V0: &xdr.LedgerCloseMetaV0{
+			LedgerHeader: xdr.LedgerHeaderHistoryEntry{
+				Header: xdr.LedgerHeader{
+					LedgerSeq: xdr.Uint32(100),
+				},
+			},
+		},
+	}
+	s.ledgerBackend.On("GetLedgerBlocking", uint32(100)).Return(meta, nil).Once()
+	s.ledgerBackend.On("GetLedgerBlocking", uint32(101)).
+		Return(xdr.LedgerCloseMeta{}, errors.New("my error")).Once()
+
+	s.runner.On("RunTransactionProcessorsOnLedger", meta).Return(
+		processors.StatsLedgerTransactionProcessorResults{},
+		processorsRunDurations{},
+		nil,
+	).Once()
+
+	s.historyQ.On("Commit").Return(nil).Once()
+
+	next, err := historyRangeState{fromLedger: 100, toLedger: 102}.run(s.system)
+	s.Assert().Error(err)
+	s.Assert().EqualError(err, "error getting ledger: my error")
+	s.Assert().Equal(transition{node: startState{}, sleepDuration: defaultSleep}, next)
+}
+
 func TestReingestHistoryRangeStateTestSuite(t *testing.T) {
 	suite.Run(t, new(ReingestHistoryRangeStateTestSuite))
 }
