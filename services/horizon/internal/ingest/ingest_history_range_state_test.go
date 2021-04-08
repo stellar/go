@@ -156,7 +156,7 @@ func (s *IngestHistoryRangeStateTestSuite) TestRunTransactionProcessorsOnLedgerR
 			},
 		},
 	}
-	s.ledgerBackend.On("GetLedger", uint32(100)).Return(true, meta, nil).Once()
+	s.ledgerBackend.On("GetLedgerBlocking", uint32(100)).Return(meta, nil).Once()
 
 	s.runner.On("RunTransactionProcessorsOnLedger", meta).Return(
 		processors.StatsLedgerTransactionProcessorResults{},
@@ -185,7 +185,7 @@ func (s *IngestHistoryRangeStateTestSuite) TestSuccess() {
 				},
 			},
 		}
-		s.ledgerBackend.On("GetLedger", uint32(i)).Return(true, meta, nil).Once()
+		s.ledgerBackend.On("GetLedgerBlocking", uint32(i)).Return(meta, nil).Once()
 
 		s.runner.On("RunTransactionProcessorsOnLedger", meta).Return(
 			processors.StatsLedgerTransactionProcessorResults{},
@@ -215,7 +215,7 @@ func (s *IngestHistoryRangeStateTestSuite) TestSuccessOneLedger() {
 			},
 		},
 	}
-	s.ledgerBackend.On("GetLedger", uint32(100)).Return(true, meta, nil).Once()
+	s.ledgerBackend.On("GetLedgerBlocking", uint32(100)).Return(meta, nil).Once()
 
 	s.runner.On("RunTransactionProcessorsOnLedger", meta).Return(
 		processors.StatsLedgerTransactionProcessorResults{},

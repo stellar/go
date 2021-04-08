@@ -559,16 +559,20 @@ func (h historyRangeState) run(s *system) (transition, error) {
 	}
 
 	for cur := h.fromLedger; cur <= h.toLedger; cur++ {
-		var exists bool
 		var ledgerCloseMeta xdr.LedgerCloseMeta
-		exists, ledgerCloseMeta, err = s.ledgerBackend.GetLedger(cur)
+
+		log.WithField("ledger", cur).Info("Waiting for ledger to be available in the backend...")
+		startTime := time.Now()
+
+		ledgerCloseMeta, err = s.ledgerBackend.GetLedgerBlocking(cur)
 		if err != nil {
 			return start(), errors.Wrap(err, "error getting ledger")
 		}
 
-		if !exists {
-			return start(), errors.New("error getting ledger: ledger does not exist")
-		}
+		log.WithFields(logpkg.F{
+			"ledger":   cur,
+			"duration": time.Since(startTime).Seconds(),
+		}).Info("Ledger returned from the backend")
 
 		if err = runTransactionProcessorsOnLedger(s, ledgerCloseMeta); err != nil {
 			return start(), err
