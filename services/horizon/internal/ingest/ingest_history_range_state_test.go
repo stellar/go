@@ -185,7 +185,7 @@ func (s *IngestHistoryRangeStateTestSuite) TestRunTransactionProcessorsRetryFail
 
 	next, err := historyRangeState{fromLedger: 100, toLedger: 200}.run(s.system)
 	s.Assert().Error(err)
-	s.Assert().EqualError(err, "Could not obtain ledger 100 after 4 attempts: error processing ledger sequence=100: layer2: layer1: ledger not found")
+	s.Assert().EqualError(err, "Could not obtain ledger 100 after 5 attempts: error processing ledger sequence=100: layer2: layer1: ledger not found")
 	s.Assert().Equal(transition{node: startState{}, sleepDuration: defaultSleep}, next)
 }
 
