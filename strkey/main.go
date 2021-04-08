@@ -207,6 +207,10 @@ func decodeString(src string) ([]byte, error) {
 	//    which we have for checked above). If there are any leftover bits, they should be set to 0
 	if leftoverBits > 0 {
 		lastChar := srcBytes[len(srcBytes)-1]
+		if int(lastChar) >= len(decodingTable) {
+			// let's output an error matching the errors from the base32 decoder invocation below
+			return nil, errors.Wrap(base32.CorruptInputError(len(srcBytes)), "base32 decode failed")
+		}
 		decodedLastChar := decodingTable[lastChar]
 		leftoverBitsMask := byte(0x0f) >> (4 - leftoverBits)
 		if decodedLastChar&leftoverBitsMask != 0 {
