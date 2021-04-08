@@ -24,7 +24,6 @@ func TestDecode(t *testing.T) {
 				0xec, 0x9c, 0x07, 0x3d, 0x05, 0xc7, 0xb1, 0x03,
 			},
 		},
-
 		{
 			Name:                "MuxedAccount",
 			Address:             "MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVAAAAAAAAAAAAAJLK",

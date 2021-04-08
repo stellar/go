@@ -1,9 +1,9 @@
 package xdr
 
 import (
-	"errors"
 	"fmt"
 
+	"github.com/pkg/errors"
 	"github.com/stellar/go/strkey"
 )
 
@@ -35,14 +35,14 @@ func (m *MuxedAccount) SetAddress(address string) error {
 			return err
 		}
 		if len(raw) != 32 {
-			return errors.New("invalid address")
+			return fmt.Errorf("invalid binary length: %d", len(raw))
 		}
 		var ui Uint256
 		copy(ui[:], raw)
 		*m, err = NewMuxedAccount(CryptoKeyTypeKeyTypeEd25519, ui)
 		return err
 	default:
-		return errors.New("invalid address")
+		return errors.New("invalid address length")
 	}
 
 }
@@ -63,17 +63,17 @@ func (m *MuxedAccount) SetAddressWithSEP23(address string) error {
 			return err
 		}
 		if len(raw) != 40 {
-			return errors.New("invalid muxed address")
+			return fmt.Errorf("invalid binary length: %d", len(raw))
 		}
 		var muxed MuxedAccountMed25519
-		if err = muxed.Id.UnmarshalBinary(raw[:8]); err != nil {
+		copy(muxed.Ed25519[:], raw[:32])
+		if err = muxed.Id.UnmarshalBinary(raw[32:]); err != nil {
 			return err
 		}
-		copy(muxed.Ed25519[:], raw[8:])
 		*m, err = NewMuxedAccount(CryptoKeyTypeKeyTypeMuxedEd25519, muxed)
 		return err
 	default:
-		return errors.New("invalid address")
+		return errors.New("invalid address length")
 	}
 
 }
@@ -114,21 +114,21 @@ func (m *MuxedAccount) GetSEP23Address() (string, error) {
 	case CryptoKeyTypeKeyTypeEd25519:
 		ed, ok := m.GetEd25519()
 		if !ok {
-			return "", fmt.Errorf("Could not get Ed25519")
+			return "", errors.New("could not get Ed25519")
 		}
 		raw = append(raw, ed[:]...)
 		return strkey.Encode(strkey.VersionByteAccountID, raw)
 	case CryptoKeyTypeKeyTypeMuxedEd25519:
 		ed, ok := m.GetMed25519()
 		if !ok {
-			return "", fmt.Errorf("Could not get Med25519")
+			return "", errors.New("could not get Med25519")
 		}
 		idBytes, err := ed.Id.MarshalBinary()
 		if err != nil {
-			return "", fmt.Errorf("Could not marshal ID")
+			return "", errors.Wrap(err, "could not marshal ID")
 		}
-		raw = append(raw, idBytes...)
 		raw = append(raw, ed.Ed25519[:]...)
+		raw = append(raw, idBytes...)
 		return strkey.Encode(strkey.VersionByteMuxedAccount, raw)
 	default:
 		return "", fmt.Errorf("Unknown muxed account type: %v", m.Type)
