@@ -181,7 +181,7 @@ func (s *IngestHistoryRangeStateTestSuite) TestRunTransactionProcessorsRetryFail
 		processors.StatsLedgerTransactionProcessorResults{},
 		processorsRunDurations{},
 		errors.Wrap(errors.Wrap(ingest.ErrNotFound, "layer1"), "layer2"),
-	).Times(4)
+	).Times(maxledgerNotFoundRetries)
 
 	next, err := historyRangeState{fromLedger: 100, toLedger: 200}.run(s.system)
 	s.Assert().Error(err)

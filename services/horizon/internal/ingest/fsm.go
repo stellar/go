@@ -535,7 +535,7 @@ func (h historyRangeState) String() string {
 }
 
 var (
-	maxledgerNotFoundRetries   = 4
+	maxledgerNotFoundRetries   = 5
 	ledgerNotFoundRetryBackOff = 3 * time.Second
 )
 
