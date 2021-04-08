@@ -5,7 +5,7 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## v2.1.1
 
-* When ingesting a backlog of ledgers, Horizon sometimes consumes ledgers faster than the rate which Captive Core emits them. Previously this scenario caused failures in the ingestion system. That is now fixed in ([3531](https://github.com/stellar/go/pull/3531)).
+* When ingesting a backlog of ledgers, Horizon sometimes consumes ledgers faster than the rate at which Captive Core emits them. Previously this scenario caused failures in the ingestion system. That is now fixed in ([3531](https://github.com/stellar/go/pull/3531)).
 
 ## v2.1.0
 
