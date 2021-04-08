@@ -575,11 +575,11 @@ func (h historyRangeState) run(s *system) (transition, error) {
 	}
 
 	for cur := h.fromLedger; cur <= h.toLedger; cur++ {
-		for attempt := 0; attempt < maxledgerNotFoundRetries; attempt++ {
+		for attempt := 1; attempt <= maxledgerNotFoundRetries; attempt++ {
 			if err = runTransactionProcessorsOnLedger(s, cur); err == nil {
 				break
 			} else if errors.Cause(err) == ingest.ErrNotFound {
-				if attempt == maxledgerNotFoundRetries-1 {
+				if attempt == maxledgerNotFoundRetries {
 					return start(), errors.Wrapf(
 						err,
 						"Could not obtain ledger %v after %v attempts",
