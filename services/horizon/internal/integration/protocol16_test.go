@@ -92,21 +92,39 @@ func TestHappyClawbackAccountSellingLiabilities(t *testing.T) {
 	itest := NewProtocol16Test(t)
 	master := itest.Master()
 
-	asset, fromKey, _ := setupClawbackAccountTest(tt, itest, master)
+	asset, fromKey, fromAccount := setupClawbackAccountTest(tt, itest, master)
 
-	// Partial clawback of the asset
-	submissionResp := itest.MustSubmitOperations(itest.MasterAccount(), master,
-		&txnbuild.AllowTrust{
-			Trustor: fromAccount,
-			// TODO: Fill this
+	// Add a selling liability
+	eur := txnbuild.CreditAsset{Code: "EUR", Issuer: master.Address()}
+	submissionResp := itest.MustSubmitOperations(fromAccount, fromKey, &txnbuild.ManageSellOffer{
+		Buying:        eur,
+		Selling:       asset,
+		Amount:        "5",
+		Price:         "1",
+		SourceAccount: fromKey.Address(),
+	})
+	tt.True(submissionResp.Successful)
+
+	// Full clawback of the asset, with a deauthorize/reauthorize sandwich
+	submissionResp = itest.MustSubmitOperations(itest.MasterAccount(), master,
+		&txnbuild.SetTrustLineFlags{
+			Trustor:    fromAccount.GetAccountID(),
+			Asset:      asset,
+			ClearFlags: []txnbuild.TrustLineFlag{txnbuild.TrustLineAuthorized},
 		},
 		&txnbuild.Clawback{
 			From:   fromKey.Address(),
-			Amount: "5",
+			Amount: "10",
 			Asset:  asset,
-		})
+		},
+		&txnbuild.SetTrustLineFlags{
+			Trustor:  fromAccount.GetAccountID(),
+			Asset:    asset,
+			SetFlags: []txnbuild.TrustLineFlag{txnbuild.TrustLineAuthorized},
+		},
+	)
 
-	assertClawbackAccountSuccess(tt, itest, master, fromKey, "5.0000000", submissionResp)
+	assertClawbackAccountSuccess(tt, itest, master, fromKey, "0.0000000", submissionResp)
 }
 
 func TestSadClawbackAccountInsufficientFunds(t *testing.T) {
@@ -130,8 +148,9 @@ func TestSadClawbackAccountSufficientFundsSellingLiabilities(t *testing.T) {
 	master := itest.Master()
 
 	asset, fromKey, fromAccount := setupClawbackAccountTest(tt, itest, master)
-	eur := txnbuild.CreditAsset{Code: "EUR", Issuer: master.Address()}
+
 	// Add a selling liability
+	eur := txnbuild.CreditAsset{Code: "EUR", Issuer: master.Address()}
 	submissionResp := itest.MustSubmitOperations(fromAccount, fromKey, &txnbuild.ManageSellOffer{
 		Buying:        eur,
 		Selling:       asset,
@@ -216,6 +235,7 @@ func assertClawbackAccountSuccess(tt *assert.Assertions, itest *integration.Test
 	}
 
 	// Check the operation details
+	/* TODO: Enable these.
 	opDetailsResponse, err := itest.Client().Operations(horizonclient.OperationRequest{
 		ForTransaction: submissionResp.Hash,
 	})
@@ -245,6 +265,7 @@ func assertClawbackAccountSuccess(tt *assert.Assertions, itest *integration.Test
 		tt.Equal(master.Address(), accountDebited.Issuer)
 		tt.Equal("PTS", accountDebited.Code)
 	}
+	*/
 }
 
 func assertClawbackAccountFailed(tt *assert.Assertions, itest *integration.Test, master, accountKeyPair *keypair.Full, submissionResp protocol.Transaction) {
