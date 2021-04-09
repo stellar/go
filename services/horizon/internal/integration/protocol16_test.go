@@ -51,7 +51,7 @@ func TestProtocol16Basics(t *testing.T) {
 	})
 }
 
-func TestHappyClawback(t *testing.T) {
+func TestHappyClawbackAccount(t *testing.T) {
 	tt := assert.New(t)
 	itest := NewProtocol16Test(t)
 	master := itest.Master()
@@ -106,13 +106,32 @@ func TestHappyClawback(t *testing.T) {
 		tt.Equal("10.0000000", pts.Balance)
 	}
 
-	// Finally, clawback the asset
+	// Clawback part of the the asset
 	pesetasClawback := txnbuild.Clawback{
 		From:   accountKeyPair.Address(),
-		Amount: "10",
+		Amount: "5",
 		Asset:  pesetasAsset,
 	}
 	submissionResp := itest.MustSubmitOperations(itest.MasterAccount(), master, &pesetasClawback)
+
+	// Check that the balance was clawed back (the account's balance should be at 5)
+	accountDetails = itest.MustGetAccount(accountKeyPair)
+	if tt.Len(accountDetails.Balances, 2) {
+		pts := accountDetails.Balances[0]
+		tt.Equal("PTS", pts.Code)
+		if tt.NotNil(pts.IsClawbackEnabled) {
+			tt.True(*pts.IsClawbackEnabled)
+		}
+		tt.Equal("5.0000000", pts.Balance)
+	}
+
+	// Finally, clawback the remainder of the asset
+	pesetasClawback = txnbuild.Clawback{
+		From:   accountKeyPair.Address(),
+		Amount: "5",
+		Asset:  pesetasAsset,
+	}
+	submissionResp = itest.MustSubmitOperations(itest.MasterAccount(), master, &pesetasClawback)
 
 	// Check that the balance was clawed back (the account's balance should be at 0)
 	accountDetails = itest.MustGetAccount(accountKeyPair)
