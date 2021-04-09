@@ -67,7 +67,7 @@ func TestHappyClawbackAccount(t *testing.T) {
 		Asset:  asset,
 	})
 
-	assertClawbackAccountSuccess(tt, itest, master, fromKey, "10.0000000", submissionResp)
+	assertClawbackAccountSuccess(tt, itest, master, fromKey, "0.0000000", submissionResp)
 }
 
 func TestHappyClawbackAccountPartial(t *testing.T) {
