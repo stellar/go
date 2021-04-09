@@ -7,6 +7,7 @@ export HORIZON_INTEGRATION_TESTS=true
 export HORIZON_INTEGRATION_ENABLE_CAP_35=${HORIZON_INTEGRATION_ENABLE_CAP_35:-}
 export HORIZON_INTEGRATION_ENABLE_CAPTIVE_CORE=${HORIZON_INTEGRATION_ENABLE_CAPTIVE_CORE:-}
 export CAPTIVE_CORE_BIN=${CAPTIVE_CORE_BIN:-/usr/bin/stellar-core}
+export TRACY_NO_INVARIANT_CHECK=1 # This fails on my dev vm. - Paul
 
 # launch postgres if it's not already.
 if [[ "$(docker inspect integration_postgres -f '{{.State.Running}}')" != "true" ]]; then
