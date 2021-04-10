@@ -78,14 +78,6 @@ commands:
           name: Check generated code
           command: ./gogenerate.sh
 
-  # checkgoxdr validates that any goxdr generated code has been updated if needed.
-  checkgoxdr:
-    steps:
-      - checkout
-      - run:
-          name: Check goxdr generated code
-          command: ./checkgoxdr.sh
-
   # govet does govet checks in the entire codebase.
   govet:
     steps:
@@ -248,7 +240,6 @@ jobs:
       - check_go_deps
       - gofmt
       - gogenerate
-      - checkgoxdr
       - govet
       - staticcheck
       - build_packages
