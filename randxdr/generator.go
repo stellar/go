@@ -22,9 +22,9 @@ type Generator struct {
 
 const (
 	// DefaultMaxBytesSize is the MaxBytesSize value in the Generator returned by NewGenerator()
-	DefaultMaxBytesSize = 256
+	DefaultMaxBytesSize = 1024
 	// DefaultMaxVecLen is the MaxVecLen value in the Generator returned by NewGenerator()
-	DefaultMaxVecLen = 5
+	DefaultMaxVecLen = 10
 	// DefaultSeed is the seed for the Source value in the Generator returned by NewGenerator()
 	DefaultSeed = 99
 )

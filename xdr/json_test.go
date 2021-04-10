@@ -65,7 +65,7 @@ func TestClaimPredicateJSON(t *testing.T) {
 
 func TestRandClaimPredicateJSON(t *testing.T) {
 	gen := randxdr.NewGenerator()
-	for i := 0; i < 1000; i++ {
+	for i := 0; i < 10000; i++ {
 		cp := &ClaimPredicate{}
 		shape := &gxdr.ClaimPredicate{}
 		gen.Next(
