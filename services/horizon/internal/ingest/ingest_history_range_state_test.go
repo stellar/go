@@ -9,11 +9,11 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/services/horizon/internal/ingest/processors"
 	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/xdr"
 )
 
 func TestIngestHistoryRangeStateTestSuite(t *testing.T) {
@@ -43,10 +43,10 @@ func (s *IngestHistoryRangeStateTestSuite) SetupTest() {
 	}
 	s.system.initMetrics()
 
-	// configure back off to 0 so we can speed up tests
-	ledgerNotFoundRetryBackOff = 0
-
 	s.historyQ.On("Rollback").Return(nil).Once()
+
+	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(100)).Return(false, nil).Once()
+	s.ledgerBackend.On("PrepareRange", ledgerbackend.UnboundedRange(100)).Return(nil).Once()
 }
 
 func (s *IngestHistoryRangeStateTestSuite) TearDownTest() {
@@ -60,6 +60,7 @@ func (s *IngestHistoryRangeStateTestSuite) TearDownTest() {
 func (s *IngestHistoryRangeStateTestSuite) TestInvalidRange() {
 	// Recreate mock in this single test to remove Rollback assertion.
 	*s.historyQ = mockDBQ{}
+	*s.ledgerBackend = ledgerbackend.MockDatabaseBackend{}
 
 	next, err := historyRangeState{fromLedger: 0, toLedger: 0}.run(s.system)
 	s.Assert().Error(err)
@@ -82,9 +83,24 @@ func (s *IngestHistoryRangeStateTestSuite) TestInvalidRange() {
 	s.Assert().Equal(transition{node: startState{}, sleepDuration: defaultSleep}, next)
 }
 
+func (s *IngestHistoryRangeStateTestSuite) TestRangeNotPreparedFailPrepare() {
+	// Recreate mock in this single test to remove assertions.
+	*s.historyQ = mockDBQ{}
+	*s.ledgerBackend = ledgerbackend.MockDatabaseBackend{}
+
+	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(100)).Return(false, nil).Once()
+	s.ledgerBackend.On("PrepareRange", ledgerbackend.UnboundedRange(100)).Return(errors.New("my error")).Once()
+
+	next, err := historyRangeState{fromLedger: 100, toLedger: 200}.run(s.system)
+	s.Assert().Error(err)
+	s.Assert().EqualError(err, "error preparing range: my error")
+	s.Assert().Equal(transition{node: startState{}, sleepDuration: defaultSleep}, next)
+}
+
 func (s *IngestHistoryRangeStateTestSuite) TestBeginReturnsError() {
 	// Recreate mock in this single test to remove Rollback assertion.
 	*s.historyQ = mockDBQ{}
+
 	s.historyQ.On("Begin").Return(errors.New("my error")).Once()
 
 	next, err := historyRangeState{fromLedger: 100, toLedger: 200}.run(s.system)
@@ -106,7 +122,7 @@ func (s *IngestHistoryRangeStateTestSuite) TestGetLastLedgerIngestReturnsError()
 func (s *IngestHistoryRangeStateTestSuite) TestGetLatestLedgerReturnsError() {
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerIngest").Return(uint32(0), nil).Once()
-	s.historyQ.On("GetLatestLedger").Return(uint32(0), errors.New("my error")).Once()
+	s.historyQ.On("GetLatestHistoryLedger").Return(uint32(0), errors.New("my error")).Once()
 
 	next, err := historyRangeState{fromLedger: 100, toLedger: 200}.run(s.system)
 	s.Assert().Error(err)
@@ -119,7 +135,7 @@ func (s *IngestHistoryRangeStateTestSuite) TestGetLatestLedgerReturnsError() {
 func (s *IngestHistoryRangeStateTestSuite) TestAnotherNodeIngested() {
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerIngest").Return(uint32(0), nil).Once()
-	s.historyQ.On("GetLatestLedger").Return(uint32(200), nil).Once()
+	s.historyQ.On("GetLatestHistoryLedger").Return(uint32(200), nil).Once()
 
 	next, err := historyRangeState{fromLedger: 100, toLedger: 200}.run(s.system)
 	s.Assert().NoError(err)
@@ -129,10 +145,20 @@ func (s *IngestHistoryRangeStateTestSuite) TestAnotherNodeIngested() {
 func (s *IngestHistoryRangeStateTestSuite) TestRunTransactionProcessorsOnLedgerReturnsError() {
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerIngest").Return(uint32(0), nil).Once()
-	s.historyQ.On("GetLatestLedger").Return(uint32(99), nil).Once()
+	s.historyQ.On("GetLatestHistoryLedger").Return(uint32(99), nil).Once()
 
-	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(100)).Return(true, nil).Once()
-	s.runner.On("RunTransactionProcessorsOnLedger", uint32(100)).Return(
+	meta := xdr.LedgerCloseMeta{
+		V0: &xdr.LedgerCloseMetaV0{
+			LedgerHeader: xdr.LedgerHeaderHistoryEntry{
+				Header: xdr.LedgerHeader{
+					LedgerSeq: 100,
+				},
+			},
+		},
+	}
+	s.ledgerBackend.On("GetLedgerBlocking", uint32(100)).Return(meta, nil).Once()
+
+	s.runner.On("RunTransactionProcessorsOnLedger", meta).Return(
 		processors.StatsLedgerTransactionProcessorResults{},
 		processorsRunDurations{},
 		errors.New("my error"),
@@ -144,97 +170,28 @@ func (s *IngestHistoryRangeStateTestSuite) TestRunTransactionProcessorsOnLedgerR
 	s.Assert().Equal(transition{node: startState{}, sleepDuration: defaultSleep}, next)
 }
 
-func (s *IngestHistoryRangeStateTestSuite) TestRunTransactionProcessorsRetrySucceeds() {
-	s.historyQ.On("Begin").Return(nil).Once()
-	s.historyQ.On("GetLastLedgerIngest").Return(uint32(0), nil).Once()
-	s.historyQ.On("GetLatestLedger").Return(uint32(99), nil).Once()
-
-	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(100)).Return(true, nil).Once()
-	s.system.maxReingestRetries = 2
-	s.runner.On("RunTransactionProcessorsOnLedger", uint32(100)).Return(
-		processors.StatsLedgerTransactionProcessorResults{},
-		processorsRunDurations{},
-		errors.Wrap(errors.Wrap(ingest.ErrNotFound, "layer1"), "layer2"),
-	).Once()
-
-	s.runner.On("RunTransactionProcessorsOnLedger", uint32(100)).Return(
-		processors.StatsLedgerTransactionProcessorResults{},
-		processorsRunDurations{},
-		nil,
-	).Once()
-
-	s.historyQ.On("Commit").Return(nil).Once()
-
-	next, err := historyRangeState{fromLedger: 100, toLedger: 100}.run(s.system)
-	s.Assert().NoError(err)
-	s.Assert().Equal(transition{node: startState{}, sleepDuration: defaultSleep}, next)
-}
-
-func (s *IngestHistoryRangeStateTestSuite) TestRunTransactionProcessorsRetryFails() {
-	s.historyQ.On("Begin").Return(nil).Once()
-	s.historyQ.On("GetLastLedgerIngest").Return(uint32(0), nil).Once()
-	s.historyQ.On("GetLatestLedger").Return(uint32(99), nil).Once()
-
-	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(100)).Return(true, nil).Once()
-	s.system.maxReingestRetries = 2
-	s.runner.On("RunTransactionProcessorsOnLedger", uint32(100)).Return(
-		processors.StatsLedgerTransactionProcessorResults{},
-		processorsRunDurations{},
-		errors.Wrap(errors.Wrap(ingest.ErrNotFound, "layer1"), "layer2"),
-	).Times(maxledgerNotFoundRetries)
-
-	next, err := historyRangeState{fromLedger: 100, toLedger: 200}.run(s.system)
-	s.Assert().Error(err)
-	s.Assert().EqualError(err, "Could not obtain ledger 100 after 5 attempts: error processing ledger sequence=100: layer2: layer1: ledger not found")
-	s.Assert().Equal(transition{node: startState{}, sleepDuration: defaultSleep}, next)
-}
-
-func (s *IngestHistoryRangeStateTestSuite) TestRangeNotPreparedFailPrepare() {
-	s.historyQ.On("Begin").Return(nil).Once()
-	s.historyQ.On("GetLastLedgerIngest").Return(uint32(0), nil).Once()
-	s.historyQ.On("GetLatestLedger").Return(uint32(99), nil).Once()
-
-	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(100)).Return(false, nil).Once()
-	s.ledgerBackend.On("PrepareRange", ledgerbackend.UnboundedRange(100)).Return(errors.New("my error")).Once()
-	// Rollback twice (first one mocked in SetupTest) because we want to release
-	// a distributed ingestion lock.
-	s.historyQ.On("Rollback").Return(nil).Once()
-
-	next, err := historyRangeState{fromLedger: 100, toLedger: 200}.run(s.system)
-	s.Assert().Error(err)
-	s.Assert().EqualError(err, "error preparing range: my error")
-	s.Assert().Equal(transition{node: startState{}, sleepDuration: defaultSleep}, next)
-}
-
-func (s *IngestHistoryRangeStateTestSuite) TestRangeNotPreparedSuccessPrepare() {
-	s.historyQ.On("Begin").Return(nil).Once()
-	s.historyQ.On("GetLastLedgerIngest").Return(uint32(0), nil).Once()
-	s.historyQ.On("GetLatestLedger").Return(uint32(99), nil).Once()
-
-	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(100)).Return(false, nil).Once()
-	s.ledgerBackend.On("PrepareRange", ledgerbackend.UnboundedRange(100)).Return(nil).Once()
-	// Rollback twice (first one mocked in SetupTest) because we want to release
-	// a distributed ingestion lock.
-	s.historyQ.On("Rollback").Return(nil).Once()
-
-	next, err := historyRangeState{fromLedger: 100, toLedger: 200}.run(s.system)
-	s.Assert().NoError(err)
-	s.Assert().Equal(transition{node: startState{}, sleepDuration: defaultSleep}, next)
-}
-
 func (s *IngestHistoryRangeStateTestSuite) TestSuccess() {
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerIngest").Return(uint32(0), nil).Once()
-	s.historyQ.On("GetLatestLedger").Return(uint32(99), nil).Once()
+	s.historyQ.On("GetLatestHistoryLedger").Return(uint32(99), nil).Once()
 
-	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(100)).Return(true, nil).Once()
 	for i := 100; i <= 200; i++ {
-		s.runner.On("RunTransactionProcessorsOnLedger", uint32(i)).
-			Return(
-				processors.StatsLedgerTransactionProcessorResults{},
-				processorsRunDurations{},
-				nil,
-			).Once()
+		meta := xdr.LedgerCloseMeta{
+			V0: &xdr.LedgerCloseMetaV0{
+				LedgerHeader: xdr.LedgerHeaderHistoryEntry{
+					Header: xdr.LedgerHeader{
+						LedgerSeq: xdr.Uint32(i),
+					},
+				},
+			},
+		}
+		s.ledgerBackend.On("GetLedgerBlocking", uint32(i)).Return(meta, nil).Once()
+
+		s.runner.On("RunTransactionProcessorsOnLedger", meta).Return(
+			processors.StatsLedgerTransactionProcessorResults{},
+			processorsRunDurations{},
+			nil,
+		).Once()
 	}
 
 	s.historyQ.On("Commit").Return(nil).Once()
@@ -247,10 +204,20 @@ func (s *IngestHistoryRangeStateTestSuite) TestSuccess() {
 func (s *IngestHistoryRangeStateTestSuite) TestSuccessOneLedger() {
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerIngest").Return(uint32(0), nil).Once()
-	s.historyQ.On("GetLatestLedger").Return(uint32(99), nil).Once()
+	s.historyQ.On("GetLatestHistoryLedger").Return(uint32(99), nil).Once()
 
-	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(100)).Return(true, nil).Once()
-	s.runner.On("RunTransactionProcessorsOnLedger", uint32(100)).Return(
+	meta := xdr.LedgerCloseMeta{
+		V0: &xdr.LedgerCloseMetaV0{
+			LedgerHeader: xdr.LedgerHeaderHistoryEntry{
+				Header: xdr.LedgerHeader{
+					LedgerSeq: xdr.Uint32(100),
+				},
+			},
+		},
+	}
+	s.ledgerBackend.On("GetLedgerBlocking", uint32(100)).Return(meta, nil).Once()
+
+	s.runner.On("RunTransactionProcessorsOnLedger", meta).Return(
 		processors.StatsLedgerTransactionProcessorResults{},
 		processorsRunDurations{},
 		nil,
@@ -260,6 +227,38 @@ func (s *IngestHistoryRangeStateTestSuite) TestSuccessOneLedger() {
 
 	next, err := historyRangeState{fromLedger: 100, toLedger: 100}.run(s.system)
 	s.Assert().NoError(err)
+	s.Assert().Equal(transition{node: startState{}, sleepDuration: defaultSleep}, next)
+}
+
+func (s *IngestHistoryRangeStateTestSuite) TestCommitsWorkOnLedgerBackendFailure() {
+	s.historyQ.On("Begin").Return(nil).Once()
+	s.historyQ.On("GetLastLedgerIngest").Return(uint32(0), nil).Once()
+	s.historyQ.On("GetLatestHistoryLedger").Return(uint32(99), nil).Once()
+
+	meta := xdr.LedgerCloseMeta{
+		V0: &xdr.LedgerCloseMetaV0{
+			LedgerHeader: xdr.LedgerHeaderHistoryEntry{
+				Header: xdr.LedgerHeader{
+					LedgerSeq: xdr.Uint32(100),
+				},
+			},
+		},
+	}
+	s.ledgerBackend.On("GetLedgerBlocking", uint32(100)).Return(meta, nil).Once()
+	s.ledgerBackend.On("GetLedgerBlocking", uint32(101)).
+		Return(xdr.LedgerCloseMeta{}, errors.New("my error")).Once()
+
+	s.runner.On("RunTransactionProcessorsOnLedger", meta).Return(
+		processors.StatsLedgerTransactionProcessorResults{},
+		processorsRunDurations{},
+		nil,
+	).Once()
+
+	s.historyQ.On("Commit").Return(nil).Once()
+
+	next, err := historyRangeState{fromLedger: 100, toLedger: 102}.run(s.system)
+	s.Assert().Error(err)
+	s.Assert().EqualError(err, "error getting ledger: my error")
 	s.Assert().Equal(transition{node: startState{}, sleepDuration: defaultSleep}, next)
 }
 
@@ -395,7 +394,18 @@ func (s *ReingestHistoryRangeStateTestSuite) TestRunTransactionProcessorsOnLedge
 		"DeleteRangeAll", toidFrom.ToInt64(), toidTo.ToInt64(),
 	).Return(nil).Once()
 
-	s.runner.On("RunTransactionProcessorsOnLedger", uint32(100)).
+	meta := xdr.LedgerCloseMeta{
+		V0: &xdr.LedgerCloseMetaV0{
+			LedgerHeader: xdr.LedgerHeaderHistoryEntry{
+				Header: xdr.LedgerHeader{
+					LedgerSeq: xdr.Uint32(100),
+				},
+			},
+		},
+	}
+	s.ledgerBackend.On("GetLedger", uint32(100)).Return(true, meta, nil).Once()
+
+	s.runner.On("RunTransactionProcessorsOnLedger", meta).
 		Return(
 			processors.StatsLedgerTransactionProcessorResults{},
 			processorsRunDurations{},
@@ -420,7 +430,18 @@ func (s *ReingestHistoryRangeStateTestSuite) TestCommitFails() {
 		"DeleteRangeAll", toidFrom.ToInt64(), toidTo.ToInt64(),
 	).Return(nil).Once()
 
-	s.runner.On("RunTransactionProcessorsOnLedger", uint32(100)).Return(
+	meta := xdr.LedgerCloseMeta{
+		V0: &xdr.LedgerCloseMetaV0{
+			LedgerHeader: xdr.LedgerHeaderHistoryEntry{
+				Header: xdr.LedgerHeader{
+					LedgerSeq: xdr.Uint32(100),
+				},
+			},
+		},
+	}
+	s.ledgerBackend.On("GetLedger", uint32(100)).Return(true, meta, nil).Once()
+
+	s.runner.On("RunTransactionProcessorsOnLedger", meta).Return(
 		processors.StatsLedgerTransactionProcessorResults{},
 		processorsRunDurations{},
 		nil,
@@ -448,7 +469,18 @@ func (s *ReingestHistoryRangeStateTestSuite) TestSuccess() {
 			"DeleteRangeAll", toidFrom.ToInt64(), toidTo.ToInt64(),
 		).Return(nil).Once()
 
-		s.runner.On("RunTransactionProcessorsOnLedger", i).Return(
+		meta := xdr.LedgerCloseMeta{
+			V0: &xdr.LedgerCloseMetaV0{
+				LedgerHeader: xdr.LedgerHeaderHistoryEntry{
+					Header: xdr.LedgerHeader{
+						LedgerSeq: xdr.Uint32(i),
+					},
+				},
+			},
+		}
+		s.ledgerBackend.On("GetLedger", uint32(i)).Return(true, meta, nil).Once()
+
+		s.runner.On("RunTransactionProcessorsOnLedger", meta).Return(
 			processors.StatsLedgerTransactionProcessorResults{},
 			processorsRunDurations{},
 			nil,
@@ -472,7 +504,17 @@ func (s *ReingestHistoryRangeStateTestSuite) TestSuccessOneLedger() {
 		"DeleteRangeAll", toidFrom.ToInt64(), toidTo.ToInt64(),
 	).Return(nil).Once()
 
-	s.runner.On("RunTransactionProcessorsOnLedger", uint32(100)).Return(
+	meta := xdr.LedgerCloseMeta{
+		V0: &xdr.LedgerCloseMetaV0{
+			LedgerHeader: xdr.LedgerHeaderHistoryEntry{
+				Header: xdr.LedgerHeader{
+					LedgerSeq: xdr.Uint32(100),
+				},
+			},
+		},
+	}
+
+	s.runner.On("RunTransactionProcessorsOnLedger", meta).Return(
 		processors.StatsLedgerTransactionProcessorResults{},
 		processorsRunDurations{},
 		nil,
@@ -482,6 +524,7 @@ func (s *ReingestHistoryRangeStateTestSuite) TestSuccessOneLedger() {
 	// Recreate mock in this single test to remove previous assertion.
 	*s.ledgerBackend = mockLedgerBackend{}
 	s.ledgerBackend.On("PrepareRange", ledgerbackend.BoundedRange(100, 100)).Return(nil).Once()
+	s.ledgerBackend.On("GetLedger", uint32(100)).Return(true, meta, nil).Once()
 
 	err := s.system.ReingestRange(100, 100, false)
 	s.Assert().NoError(err)
@@ -506,7 +549,18 @@ func (s *ReingestHistoryRangeStateTestSuite) TestReingestRangeForce() {
 	).Return(nil).Once()
 
 	for i := 100; i <= 200; i++ {
-		s.runner.On("RunTransactionProcessorsOnLedger", uint32(i)).Return(
+		meta := xdr.LedgerCloseMeta{
+			V0: &xdr.LedgerCloseMetaV0{
+				LedgerHeader: xdr.LedgerHeaderHistoryEntry{
+					Header: xdr.LedgerHeader{
+						LedgerSeq: xdr.Uint32(i),
+					},
+				},
+			},
+		}
+		s.ledgerBackend.On("GetLedger", uint32(i)).Return(true, meta, nil).Once()
+
+		s.runner.On("RunTransactionProcessorsOnLedger", meta).Return(
 			processors.StatsLedgerTransactionProcessorResults{},
 			processorsRunDurations{},
 			nil,

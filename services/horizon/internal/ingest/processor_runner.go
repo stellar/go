@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"github.com/stellar/go/ingest"
-	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/ingest/processors"
 	"github.com/stellar/go/support/errors"
@@ -49,17 +48,21 @@ func (statsLedgerTransactionProcessor) Commit() error {
 }
 
 type ProcessorRunnerInterface interface {
-	SetLedgerBackend(ledgerBackend ledgerbackend.LedgerBackend)
 	SetHistoryAdapter(historyAdapter historyArchiveAdapterInterface)
 	EnableMemoryStatsLogging()
 	DisableMemoryStatsLogging()
-	RunHistoryArchiveIngestion(checkpointLedger uint32) (ingest.StatsChangeProcessorResults, error)
-	RunTransactionProcessorsOnLedger(sequence uint32) (
+	RunGenesisStateIngestion() (ingest.StatsChangeProcessorResults, error)
+	RunHistoryArchiveIngestion(
+		checkpointLedger uint32,
+		ledgerProtocolVersion uint32,
+		bucketListHash xdr.Hash,
+	) (ingest.StatsChangeProcessorResults, error)
+	RunTransactionProcessorsOnLedger(ledger xdr.LedgerCloseMeta) (
 		transactionStats processors.StatsLedgerTransactionProcessorResults,
 		transactionDurations processorsRunDurations,
 		err error,
 	)
-	RunAllProcessorsOnLedger(sequence uint32) (
+	RunAllProcessorsOnLedger(ledger xdr.LedgerCloseMeta) (
 		changeStats ingest.StatsChangeProcessorResults,
 		changeDurations processorsRunDurations,
 		transactionStats processors.StatsLedgerTransactionProcessorResults,
@@ -76,12 +79,7 @@ type ProcessorRunner struct {
 	ctx            context.Context
 	historyQ       history.IngestionQ
 	historyAdapter historyArchiveAdapterInterface
-	ledgerBackend  ledgerbackend.LedgerBackend
 	logMemoryStats bool
-}
-
-func (s *ProcessorRunner) SetLedgerBackend(ledgerBackend ledgerbackend.LedgerBackend) {
-	s.ledgerBackend = ledgerBackend
 }
 
 func (s *ProcessorRunner) SetHistoryAdapter(historyAdapter historyArchiveAdapterInterface) {
@@ -99,7 +97,7 @@ func (s *ProcessorRunner) DisableMemoryStatsLogging() {
 func (s *ProcessorRunner) buildChangeProcessor(
 	changeStats *ingest.StatsChangeProcessor,
 	source ingestionSource,
-	sequence uint32,
+	ledgerSequence uint32,
 ) *groupChangeProcessors {
 	statsChangeProcessor := &statsChangeProcessor{
 		StatsChangeProcessor: changeStats,
@@ -110,7 +108,7 @@ func (s *ProcessorRunner) buildChangeProcessor(
 		statsChangeProcessor,
 		processors.NewAccountDataProcessor(s.historyQ),
 		processors.NewAccountsProcessor(s.historyQ),
-		processors.NewOffersProcessor(s.historyQ, sequence),
+		processors.NewOffersProcessor(s.historyQ, ledgerSequence),
 		processors.NewAssetStatsProcessor(s.historyQ, useLedgerCache),
 		processors.NewSignersProcessor(s.historyQ, useLedgerCache),
 		processors.NewTrustLinesProcessor(s.historyQ),
@@ -141,23 +139,12 @@ func (s *ProcessorRunner) buildTransactionProcessor(
 
 // checkIfProtocolVersionSupported checks if this Horizon version supports the
 // protocol version of a ledger with the given sequence number.
-func (s *ProcessorRunner) checkIfProtocolVersionSupported(ledgerSequence uint32) error {
-	exists, ledgerCloseMeta, err := s.ledgerBackend.GetLedger(ledgerSequence)
-	if err != nil {
-		return errors.Wrap(err, "Error getting ledger")
-	}
-
-	if !exists {
-		return errors.New("cannot check if protocol version supported: ledger does not exist")
-	}
-
-	ledgerVersion := ledgerCloseMeta.V0.LedgerHeader.Header.LedgerVersion
-
-	if ledgerVersion > MaxSupportedProtocolVersion {
+func (s *ProcessorRunner) checkIfProtocolVersionSupported(ledgerProtocolVersion uint32) error {
+	if ledgerProtocolVersion > MaxSupportedProtocolVersion {
 		return fmt.Errorf(
 			"This Horizon version does not support protocol version %d. "+
 				"The latest supported protocol version is %d. Please upgrade to the latest Horizon version.",
-			ledgerVersion,
+			ledgerProtocolVersion,
 			MaxSupportedProtocolVersion,
 		)
 	}
@@ -172,25 +159,11 @@ func (s *ProcessorRunner) checkIfProtocolVersionSupported(ledgerSequence uint32)
 // The hashes of actual buckets of this HAS file are checked using
 // historyarchive.XdrStream.SetExpectedHash (this is done in
 // CheckpointChangeReader).
-func (s *ProcessorRunner) validateBucketList(ledgerSequence uint32) error {
+func (s *ProcessorRunner) validateBucketList(ledgerSequence uint32, ledgerBucketHashList xdr.Hash) error {
 	historyBucketListHash, err := s.historyAdapter.BucketListHash(ledgerSequence)
 	if err != nil {
 		return errors.Wrap(err, "Error getting bucket list hash")
 	}
-
-	exists, ledgerCloseMeta, err := s.ledgerBackend.GetLedger(ledgerSequence)
-	if err != nil {
-		return errors.Wrap(err, "Error getting ledger")
-	}
-
-	if !exists {
-		return fmt.Errorf(
-			"cannot validate bucket hash list. Checkpoint ledger (%d) must exist in Stellar-Core database.",
-			ledgerSequence,
-		)
-	}
-
-	ledgerBucketHashList := ledgerCloseMeta.V0.LedgerHeader.Header.BucketListHash
 
 	if !bytes.Equal(historyBucketListHash[:], ledgerBucketHashList[:]) {
 		return fmt.Errorf(
@@ -203,7 +176,15 @@ func (s *ProcessorRunner) validateBucketList(ledgerSequence uint32) error {
 	return nil
 }
 
-func (s *ProcessorRunner) RunHistoryArchiveIngestion(checkpointLedger uint32) (ingest.StatsChangeProcessorResults, error) {
+func (s *ProcessorRunner) RunGenesisStateIngestion() (ingest.StatsChangeProcessorResults, error) {
+	return s.RunHistoryArchiveIngestion(1, 0, xdr.Hash{})
+}
+
+func (s *ProcessorRunner) RunHistoryArchiveIngestion(
+	checkpointLedger uint32,
+	ledgerProtocolVersion uint32,
+	bucketListHash xdr.Hash,
+) (ingest.StatsChangeProcessorResults, error) {
 	changeStats := ingest.StatsChangeProcessor{}
 	changeProcessor := s.buildChangeProcessor(&changeStats, historyArchiveSource, checkpointLedger)
 
@@ -212,11 +193,11 @@ func (s *ProcessorRunner) RunHistoryArchiveIngestion(checkpointLedger uint32) (i
 			return changeStats.GetResults(), errors.Wrap(err, "Error ingesting genesis ledger")
 		}
 	} else {
-		if err := s.checkIfProtocolVersionSupported(checkpointLedger); err != nil {
+		if err := s.checkIfProtocolVersionSupported(ledgerProtocolVersion); err != nil {
 			return changeStats.GetResults(), errors.Wrap(err, "Error while checking for supported protocol version")
 		}
 
-		if err := s.validateBucketList(checkpointLedger); err != nil {
+		if err := s.validateBucketList(checkpointLedger, bucketListHash); err != nil {
 			return changeStats.GetResults(), errors.Wrap(err, "Error validating bucket list from HAS")
 		}
 
@@ -250,18 +231,18 @@ func (s *ProcessorRunner) RunHistoryArchiveIngestion(checkpointLedger uint32) (i
 }
 
 func (s *ProcessorRunner) runChangeProcessorOnLedger(
-	changeProcessor horizonChangeProcessor, ledger uint32,
+	changeProcessor horizonChangeProcessor, ledger xdr.LedgerCloseMeta,
 ) error {
 	var changeReader ingest.ChangeReader
 	var err error
-	changeReader, err = ingest.NewLedgerChangeReader(s.ledgerBackend, s.config.NetworkPassphrase, ledger)
+	changeReader, err = ingest.NewLedgerChangeReaderFromLedgerCloseMeta(s.config.NetworkPassphrase, ledger)
 	if err != nil {
 		return errors.Wrap(err, "Error creating ledger change reader")
 	}
 	changeReader = newloggingChangeReader(
 		changeReader,
 		"ledger",
-		ledger,
+		ledger.LedgerSequence(),
 		logFrequency,
 		s.logMemoryStats,
 	)
@@ -277,7 +258,7 @@ func (s *ProcessorRunner) runChangeProcessorOnLedger(
 	return nil
 }
 
-func (s *ProcessorRunner) RunTransactionProcessorsOnLedger(ledger uint32) (
+func (s *ProcessorRunner) RunTransactionProcessorsOnLedger(ledger xdr.LedgerCloseMeta) (
 	transactionStats processors.StatsLedgerTransactionProcessorResults,
 	transactionDurations processorsRunDurations,
 	err error,
@@ -287,13 +268,13 @@ func (s *ProcessorRunner) RunTransactionProcessorsOnLedger(ledger uint32) (
 		transactionReader      *ingest.LedgerTransactionReader
 	)
 
-	transactionReader, err = ingest.NewLedgerTransactionReader(s.ledgerBackend, s.config.NetworkPassphrase, ledger)
+	transactionReader, err = ingest.NewLedgerTransactionReaderFromLedgerCloseMeta(s.config.NetworkPassphrase, ledger)
 	if err != nil {
 		err = errors.Wrap(err, "Error creating ledger reader")
 		return
 	}
 
-	if err = s.checkIfProtocolVersionSupported(ledger); err != nil {
+	if err = s.checkIfProtocolVersionSupported(ledger.ProtocolVersion()); err != nil {
 		err = errors.Wrap(err, "Error while checking for supported protocol version")
 		return
 	}
@@ -316,7 +297,7 @@ func (s *ProcessorRunner) RunTransactionProcessorsOnLedger(ledger uint32) (
 	return
 }
 
-func (s *ProcessorRunner) RunAllProcessorsOnLedger(sequence uint32) (
+func (s *ProcessorRunner) RunAllProcessorsOnLedger(ledger xdr.LedgerCloseMeta) (
 	changeStats ingest.StatsChangeProcessorResults,
 	changeDurations processorsRunDurations,
 	transactionStats processors.StatsLedgerTransactionProcessorResults,
@@ -325,13 +306,13 @@ func (s *ProcessorRunner) RunAllProcessorsOnLedger(sequence uint32) (
 ) {
 	changeStatsProcessor := ingest.StatsChangeProcessor{}
 
-	if err = s.checkIfProtocolVersionSupported(sequence); err != nil {
+	if err = s.checkIfProtocolVersionSupported(ledger.ProtocolVersion()); err != nil {
 		err = errors.Wrap(err, "Error while checking for supported protocol version")
 		return
 	}
 
-	groupChangeProcessors := s.buildChangeProcessor(&changeStatsProcessor, ledgerSource, sequence)
-	err = s.runChangeProcessorOnLedger(groupChangeProcessors, sequence)
+	groupChangeProcessors := s.buildChangeProcessor(&changeStatsProcessor, ledgerSource, ledger.LedgerSequence())
+	err = s.runChangeProcessorOnLedger(groupChangeProcessors, ledger)
 	if err != nil {
 		return
 	}
@@ -340,7 +321,7 @@ func (s *ProcessorRunner) RunAllProcessorsOnLedger(sequence uint32) (
 	changeDurations = groupChangeProcessors.processorsRunDurations
 
 	transactionStats, transactionDurations, err =
-		s.RunTransactionProcessorsOnLedger(sequence)
+		s.RunTransactionProcessorsOnLedger(ledger)
 	if err != nil {
 		return
 	}

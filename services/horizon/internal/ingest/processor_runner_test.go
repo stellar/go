@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/stellar/go/ingest"
-	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/network"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/ingest/processors"
@@ -79,7 +78,7 @@ func TestProcessorRunnerRunHistoryArchiveIngestionGenesis(t *testing.T) {
 		historyQ: q,
 	}
 
-	_, err := runner.RunHistoryArchiveIngestion(1)
+	_, err := runner.RunGenesisStateIngestion()
 	assert.NoError(t, err)
 }
 
@@ -94,11 +93,9 @@ func TestProcessorRunnerRunHistoryArchiveIngestionHistoryArchive(t *testing.T) {
 	defer mock.AssertExpectationsForObjects(t, q)
 	historyAdapter := &mockHistoryArchiveAdapter{}
 	defer mock.AssertExpectationsForObjects(t, historyAdapter)
-	ledgerBackend := &ledgerbackend.MockDatabaseBackend{}
-	defer mock.AssertExpectationsForObjects(t, ledgerBackend)
 
-	historyAdapter.On("BucketListHash", uint32(63)).
-		Return(xdr.Hash([32]byte{0, 1, 2}), nil).Once()
+	bucketListHash := xdr.Hash([32]byte{0, 1, 2})
+	historyAdapter.On("BucketListHash", uint32(63)).Return(bucketListHash, nil).Once()
 
 	m := &ingest.MockChangeReader{}
 	m.On("Read").Return(ingest.GenesisChange(network.PublicNetworkPassphrase), nil).Once()
@@ -115,21 +112,6 @@ func TestProcessorRunnerRunHistoryArchiveIngestionHistoryArchive(t *testing.T) {
 			m,
 			nil,
 		).Once()
-
-	ledgerBackend.On("GetLedger", uint32(63)).
-		Return(
-			true,
-			xdr.LedgerCloseMeta{
-				V0: &xdr.LedgerCloseMetaV0{
-					LedgerHeader: xdr.LedgerHeaderHistoryEntry{
-						Header: xdr.LedgerHeader{
-							BucketListHash: xdr.Hash([32]byte{0, 1, 2}),
-						},
-					},
-				},
-			},
-			nil,
-		).Twice() // 2nd time for protocol version check
 
 	// Batches
 	mockOffersBatchInsertBuilder := &history.MockOffersBatchInsertBuilder{}
@@ -184,10 +166,9 @@ func TestProcessorRunnerRunHistoryArchiveIngestionHistoryArchive(t *testing.T) {
 		config:         config,
 		historyQ:       q,
 		historyAdapter: historyAdapter,
-		ledgerBackend:  ledgerBackend,
 	}
 
-	_, err := runner.RunHistoryArchiveIngestion(63)
+	_, err := runner.RunHistoryArchiveIngestion(63, MaxSupportedProtocolVersion, bucketListHash)
 	assert.NoError(t, err)
 }
 
@@ -202,23 +183,6 @@ func TestProcessorRunnerRunHistoryArchiveIngestionProtocolVersionNotSupported(t 
 	defer mock.AssertExpectationsForObjects(t, q)
 	historyAdapter := &mockHistoryArchiveAdapter{}
 	defer mock.AssertExpectationsForObjects(t, historyAdapter)
-	ledgerBackend := &ledgerbackend.MockDatabaseBackend{}
-	defer mock.AssertExpectationsForObjects(t, ledgerBackend)
-
-	ledgerBackend.On("GetLedger", uint32(100)).
-		Return(
-			true,
-			xdr.LedgerCloseMeta{
-				V0: &xdr.LedgerCloseMetaV0{
-					LedgerHeader: xdr.LedgerHeaderHistoryEntry{
-						Header: xdr.LedgerHeader{
-							LedgerVersion: 200,
-						},
-					},
-				},
-			},
-			nil,
-		).Once()
 
 	// Batches
 	mockOffersBatchInsertBuilder := &history.MockOffersBatchInsertBuilder{}
@@ -249,10 +213,9 @@ func TestProcessorRunnerRunHistoryArchiveIngestionProtocolVersionNotSupported(t 
 		config:         config,
 		historyQ:       q,
 		historyAdapter: historyAdapter,
-		ledgerBackend:  ledgerBackend,
 	}
 
-	_, err := runner.RunHistoryArchiveIngestion(100)
+	_, err := runner.RunHistoryArchiveIngestion(100, 200, xdr.Hash{})
 	assert.EqualError(t, err, "Error while checking for supported protocol version: This Horizon version does not support protocol version 200. The latest supported protocol version is 16. Please upgrade to the latest Horizon version.")
 }
 
@@ -349,29 +312,16 @@ func TestProcessorRunnerRunAllProcessorsOnLedger(t *testing.T) {
 
 	q := &mockDBQ{}
 	defer mock.AssertExpectationsForObjects(t, q)
-	ledgerBackend := &ledgerbackend.MockDatabaseBackend{}
-	defer mock.AssertExpectationsForObjects(t, ledgerBackend)
 
-	ledger := xdr.LedgerHeaderHistoryEntry{
-		Header: xdr.LedgerHeader{
-			BucketListHash: xdr.Hash([32]byte{0, 1, 2}),
-		},
-	}
-
-	// Method called 4 times:
-	// - Protocol version check,
-	// - Changes reader,
-	// - Transactions reader (includes protocol check again because it's a public method).
-	ledgerBackend.On("GetLedger", uint32(63)).
-		Return(
-			true,
-			xdr.LedgerCloseMeta{
-				V0: &xdr.LedgerCloseMetaV0{
-					LedgerHeader: ledger,
+	ledger := xdr.LedgerCloseMeta{
+		V0: &xdr.LedgerCloseMetaV0{
+			LedgerHeader: xdr.LedgerHeaderHistoryEntry{
+				Header: xdr.LedgerHeader{
+					BucketListHash: xdr.Hash([32]byte{0, 1, 2}),
 				},
 			},
-			nil,
-		).Times(4)
+		},
+	}
 
 	// Batches
 	mockOffersBatchInsertBuilder := &history.MockOffersBatchInsertBuilder{}
@@ -409,17 +359,16 @@ func TestProcessorRunnerRunAllProcessorsOnLedger(t *testing.T) {
 	q.MockQClaimableBalances.On("NewClaimableBalancesBatchInsertBuilder", maxBatchSize).
 		Return(mockClaimableBalancesBatchInsertBuilder).Once()
 
-	q.MockQLedgers.On("InsertLedger", ledger, 0, 0, 0, 0, CurrentVersion).
+	q.MockQLedgers.On("InsertLedger", ledger.V0.LedgerHeader, 0, 0, 0, 0, CurrentVersion).
 		Return(int64(1), nil).Once()
 
 	runner := ProcessorRunner{
-		ctx:           context.Background(),
-		config:        config,
-		historyQ:      q,
-		ledgerBackend: ledgerBackend,
+		ctx:      context.Background(),
+		config:   config,
+		historyQ: q,
 	}
 
-	_, _, _, _, err := runner.RunAllProcessorsOnLedger(63)
+	_, _, _, _, err := runner.RunAllProcessorsOnLedger(ledger)
 	assert.NoError(t, err)
 }
 
@@ -432,25 +381,16 @@ func TestProcessorRunnerRunAllProcessorsOnLedgerProtocolVersionNotSupported(t *t
 
 	q := &mockDBQ{}
 	defer mock.AssertExpectationsForObjects(t, q)
-	ledgerBackend := &ledgerbackend.MockDatabaseBackend{}
-	defer mock.AssertExpectationsForObjects(t, ledgerBackend)
 
-	ledger := xdr.LedgerHeaderHistoryEntry{
-		Header: xdr.LedgerHeader{
-			LedgerVersion: 200,
-		},
-	}
-
-	ledgerBackend.On("GetLedger", uint32(63)).
-		Return(
-			true,
-			xdr.LedgerCloseMeta{
-				V0: &xdr.LedgerCloseMetaV0{
-					LedgerHeader: ledger,
+	ledger := xdr.LedgerCloseMeta{
+		V0: &xdr.LedgerCloseMetaV0{
+			LedgerHeader: xdr.LedgerHeaderHistoryEntry{
+				Header: xdr.LedgerHeader{
+					LedgerVersion: 200,
 				},
 			},
-			nil,
-		).Once()
+		},
+	}
 
 	// Batches
 	mockOffersBatchInsertBuilder := &history.MockOffersBatchInsertBuilder{}
@@ -484,12 +424,11 @@ func TestProcessorRunnerRunAllProcessorsOnLedgerProtocolVersionNotSupported(t *t
 		Return(mockClaimableBalancesBatchInsertBuilder).Once()
 
 	runner := ProcessorRunner{
-		ctx:           context.Background(),
-		config:        config,
-		historyQ:      q,
-		ledgerBackend: ledgerBackend,
+		ctx:      context.Background(),
+		config:   config,
+		historyQ: q,
 	}
 
-	_, _, _, _, err := runner.RunAllProcessorsOnLedger(63)
+	_, _, _, _, err := runner.RunAllProcessorsOnLedger(ledger)
 	assert.EqualError(t, err, "Error while checking for supported protocol version: This Horizon version does not support protocol version 200. The latest supported protocol version is 16. Please upgrade to the latest Horizon version.")
 }

@@ -25,7 +25,7 @@ import (
 const (
 	// MaxSupportedProtocolVersion defines the maximum supported version of
 	// the Stellar protocol.
-	MaxSupportedProtocolVersion = 16
+	MaxSupportedProtocolVersion uint32 = 16
 
 	// CurrentVersion reflects the latest version of the ingestion
 	// algorithm. This value is stored in KV store and is used to decide
@@ -249,7 +249,6 @@ func NewSystem(config Config) (System, error) {
 			config:         config,
 			historyQ:       historyQ,
 			historyAdapter: historyAdapter,
-			ledgerBackend:  ledgerBackend,
 		},
 		checkpointManager: historyarchive.NewCheckpointManager(config.CheckpointFrequency),
 	}
@@ -387,10 +386,10 @@ func (s *system) StressTest(numTransactions, changesPerTransaction int) error {
 	}
 
 	s.runner.EnableMemoryStatsLogging()
-	s.runner.SetLedgerBackend(fakeLedgerBackend{
+	s.ledgerBackend = &fakeLedgerBackend{
 		numTransactions:       numTransactions,
 		changesPerTransaction: changesPerTransaction,
-	})
+	}
 	return s.runStateMachine(stressTestState{})
 }
 

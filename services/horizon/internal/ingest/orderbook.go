@@ -65,9 +65,9 @@ func (o *OrderBookStream) getIngestionStatus() (ingestionStatus, error) {
 	}
 
 	var lastHistoryLedger uint32
-	lastHistoryLedger, err = o.historyQ.GetLatestLedger()
+	lastHistoryLedger, err = o.historyQ.GetLatestHistoryLedger()
 	if err != nil {
-		return status, errors.Wrap(err, "Error from GetLatestLedger")
+		return status, errors.Wrap(err, "Error from GetLatestHistoryLedger")
 	}
 	status.LastIngestedLedger, err = o.historyQ.GetLastLedgerIngestNonBlocking()
 	if err != nil {

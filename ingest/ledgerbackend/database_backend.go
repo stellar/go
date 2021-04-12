@@ -3,6 +3,7 @@ package ledgerbackend
 import (
 	"database/sql"
 	"sort"
+	"time"
 
 	"github.com/stellar/go/network"
 	"github.com/stellar/go/support/db"
@@ -115,6 +116,25 @@ func sortByHash(transactions []xdr.TransactionEnvelope, passphrase string) error
 		transactions[i] = txByHash[hash]
 	}
 	return nil
+}
+
+// GetLedgerBlocking works as GetLedger but will block until the ledger is
+// available in the backend (even for UnaboundedRange).
+// Please note that requesting a ledger sequence far after current ledger will
+// block the execution for a long time.
+func (dbb *DatabaseBackend) GetLedgerBlocking(sequence uint32) (xdr.LedgerCloseMeta, error) {
+	for {
+		exists, meta, err := dbb.GetLedger(sequence)
+		if err != nil {
+			return xdr.LedgerCloseMeta{}, err
+		}
+
+		if exists {
+			return meta, nil
+		} else {
+			time.Sleep(time.Second)
+		}
+	}
 }
 
 // GetLedger returns the LedgerCloseMeta for the given ledger sequence number.
