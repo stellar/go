@@ -43,9 +43,6 @@ func (s *IngestHistoryRangeStateTestSuite) SetupTest() {
 	}
 	s.system.initMetrics()
 
-	// configure back off to 0 so we can speed up tests
-	ledgerNotFoundRetryBackOff = 0
-
 	s.historyQ.On("Rollback").Return(nil).Once()
 
 	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(100)).Return(false, nil).Once()
