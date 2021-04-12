@@ -208,6 +208,11 @@ func decodeString(src string) ([]byte, error) {
 	if leftoverBits > 0 {
 		lastChar := srcBytes[len(srcBytes)-1]
 		decodedLastChar := decodingTable[lastChar]
+		if decodedLastChar == 0xff {
+			// The last character from the input wasn't in the expected input alphabet.
+			// Let's output an error matching the errors from the base32 decoder invocation below
+			return nil, errors.Wrap(base32.CorruptInputError(len(srcBytes)), "base32 decode failed")
+		}
 		leftoverBitsMask := byte(0x0f) >> (4 - leftoverBits)
 		if decodedLastChar&leftoverBitsMask != 0 {
 			return nil, errors.New("non-canonical strkey; unused bits should be set to 0")
