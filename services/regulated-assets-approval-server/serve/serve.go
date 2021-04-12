@@ -8,6 +8,8 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/stellar/go/clients/horizonclient"
+	"github.com/stellar/go/keypair"
+	"github.com/stellar/go/support/errors"
 	supporthttp "github.com/stellar/go/support/http"
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/support/render/health"
@@ -43,7 +45,11 @@ func Serve(opts Options) {
 	supporthttp.Run(serverConfig)
 }
 
-func handleHTTP(opts Options) *chi.Mux {
+func handleHTTP(opts Options) http.Handler {
+	issuerKP, err := keypair.ParseFull(opts.IssuerAccountSecret)
+	if err != nil {
+		log.Fatal(errors.Wrap(err, "parsing secret"))
+	}
 	mux := chi.NewMux()
 
 	mux.Use(middleware.RequestID)
@@ -52,7 +58,11 @@ func handleHTTP(opts Options) *chi.Mux {
 	mux.Use(corsHandler)
 
 	mux.Get("/health", health.PassHandler{}.ServeHTTP)
-	mux.Get("/.well-known/stellar.toml", stellarTOMLHandler(opts))
+	mux.Get("/.well-known/stellar.toml", stellarTOMLHandler{
+		assetCode:         opts.AssetCode,
+		issuerAddress:     issuerKP.Address(),
+		networkPassphrase: opts.NetworkPassphrase,
+	}.ServeHTTP)
 	mux.Get("/friendbot", friendbotHandler{
 		assetCode:           opts.AssetCode,
 		issuerAccountSecret: opts.IssuerAccountSecret,
@@ -61,7 +71,10 @@ func handleHTTP(opts Options) *chi.Mux {
 		networkPassphrase:   opts.NetworkPassphrase,
 		paymentAmount:       opts.FriendbotPaymentAmount,
 	}.ServeHTTP)
-
+	mux.Post("/tx_approve", txApproveHandler{
+		assetCode: opts.AssetCode,
+		issuerKP:  issuerKP,
+	}.ServeHTTP)
 	return mux
 }
 

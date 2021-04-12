@@ -347,6 +347,7 @@ func (e ExpAssetStat) PagingToken() string {
 type ExpAssetStatAccounts struct {
 	Authorized                      int32 `json:"authorized"`
 	AuthorizedToMaintainLiabilities int32 `json:"authorized_to_maintain_liabilities"`
+	ClaimableBalances               int32 `json:"claimable_balances"`
 	Unauthorized                    int32 `json:"unauthorized"`
 }
 
@@ -367,18 +368,20 @@ func (a ExpAssetStatAccounts) Add(b ExpAssetStatAccounts) ExpAssetStatAccounts {
 	return ExpAssetStatAccounts{
 		Authorized:                      a.Authorized + b.Authorized,
 		AuthorizedToMaintainLiabilities: a.AuthorizedToMaintainLiabilities + b.AuthorizedToMaintainLiabilities,
+		ClaimableBalances:               a.ClaimableBalances + b.ClaimableBalances,
 		Unauthorized:                    a.Unauthorized + b.Unauthorized,
 	}
 }
 
 func (a ExpAssetStatAccounts) IsZero() bool {
-	return a.Authorized == 0 && a.AuthorizedToMaintainLiabilities == 0 && a.Unauthorized == 0
+	return a == ExpAssetStatAccounts{}
 }
 
 // ExpAssetStatBalances represents the summarized balances for a single Asset
 type ExpAssetStatBalances struct {
 	Authorized                      string `json:"authorized"`
 	AuthorizedToMaintainLiabilities string `json:"authorized_to_maintain_liabilities"`
+	ClaimableBalances               string `json:"claimable_balances"`
 	Unauthorized                    string `json:"unauthorized"`
 }
 
@@ -570,7 +573,7 @@ type Offer struct {
 	Pricen             int32       `db:"pricen"`
 	Priced             int32       `db:"priced"`
 	Price              float64     `db:"price"`
-	Flags              uint32      `db:"flags"`
+	Flags              int32       `db:"flags"`
 	Deleted            bool        `db:"deleted"`
 	LastModifiedLedger uint32      `db:"last_modified_ledger"`
 	Sponsor            null.String `db:"sponsor"`

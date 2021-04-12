@@ -50,7 +50,8 @@ const (
 	// - 12: Trigger state rebuild due to `absTime` -> `abs_time` rename
 	//       in ClaimableBalances predicates.
 	// - 13: Trigger state rebuild to include more than just authorized assets.
-	CurrentVersion = 13
+	// - 14: Trigger state rebuild to include claimable balances in the asset stats processor.
+	CurrentVersion = 14
 
 	// MaxDBConnections is the size of the postgres connection pool dedicated to Horizon ingestion:
 	//  * Ledger ingestion,

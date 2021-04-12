@@ -348,8 +348,8 @@ func (arch *Archive) NoteExistingBucket(bucket Hash) {
 func (arch *Archive) NoteReferencedBucket(bucket Hash) bool {
 	arch.mutex.Lock()
 	defer arch.mutex.Unlock()
-	_, exists := arch.referencedBuckets[bucket]
-	if exists {
+	_, mapEntryExists := arch.referencedBuckets[bucket]
+	if mapEntryExists {
 		return false
 	}
 	arch.referencedBuckets[bucket] = true
@@ -363,8 +363,8 @@ func (arch *Archive) CheckCheckpointFilesMissing(opts *CommandOptions) map[strin
 	for _, cat := range Categories() {
 		missing[cat] = make([]uint32, 0)
 		for ix := range opts.Range.GenerateCheckpoints(arch.checkpointManager) {
-			_, ok := arch.checkpointFiles[cat][ix]
-			if !ok {
+			fileExists := arch.checkpointFiles[cat][ix]
+			if !fileExists {
 				missing[cat] = append(missing[cat], ix)
 			}
 		}
@@ -377,8 +377,8 @@ func (arch *Archive) CheckBucketsMissing() map[Hash]bool {
 	defer arch.mutex.Unlock()
 	missing := make(map[Hash]bool)
 	for k := range arch.referencedBuckets {
-		_, ok := arch.allBuckets[k]
-		if !ok {
+		bucketExists := arch.allBuckets[k]
+		if !bucketExists {
 			missing[k] = true
 		}
 	}

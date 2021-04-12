@@ -16,8 +16,8 @@ To learn more about the concept of assets in the Stellar network, take a look at
 | asset_type               | string | The type of this asset: "credit_alphanum4", or "credit_alphanum12". |
 | asset_code               | string | The code of this asset.   |
 | asset_issuer             | string | The issuer of this asset. |
-| accounts                 | object | The number of accounts holding this asset, summarized by each state of the trust line flags. |
-| balances                 | object | The number of units of credit issued, summarized by each state of the trust line flags. |
+| accounts                 | object | The number of accounts and claimable balances holding this asset. Accounts are summarized by each state of the trust line flags. |
+| balances                 | object | The number of units of credit issued, summarized by each state of the trust line flags, or if they are in a claimable balance. |
 | flags                    | object | The flags denote the enabling/disabling of certain asset issuer privileges. |
 | paging_token             | string | A [paging token](./page.md) suitable for use as the `cursor` parameter to transaction collection resources.                   |
 
@@ -49,12 +49,14 @@ To learn more about the concept of assets in the Stellar network, take a look at
   "accounts": {
     "authorized": 91547871,
     "authorized_to_maintain_liabilities": 45773935,
-    "unauthorized": 22886967
+    "unauthorized": 22886967,
+    "claimable_balances": 11443483
   },
   "balances": {
     "authorized": "100.0000000",
     "authorized_to_maintain_liabilities": "50.0000000",
-    "unauthorized": "25.0000000"
+    "unauthorized": "25.0000000",
+    "claimable_balances": "12.5000000"
   },
   "flags": {
     "auth_required": false,

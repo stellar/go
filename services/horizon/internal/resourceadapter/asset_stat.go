@@ -23,16 +23,17 @@ func PopulateAssetStat(
 	res.Asset.Type = xdr.AssetTypeToString[row.AssetType]
 	res.Asset.Code = row.AssetCode
 	res.Asset.Issuer = row.AssetIssuer
-	res.Accounts = protocol.AssetStatAccounts(row.Accounts)
-	res.Amount, err = amount.IntStringToAmount(row.Amount)
-	if err != nil {
-		return errors.Wrap(err, "Invalid amount in PopulateAssetStat")
+	res.Accounts = protocol.AssetStatAccounts{
+		Authorized:                      row.Accounts.Authorized,
+		AuthorizedToMaintainLiabilities: row.Accounts.AuthorizedToMaintainLiabilities,
+		Unauthorized:                    row.Accounts.Unauthorized,
 	}
-	err = populateAssetStatBalances(&res.Balances, row.Balances)
+	res.NumClaimableBalances = row.Accounts.ClaimableBalances
+	res.NumAccounts = row.NumAccounts
+	err = populateAssetStatBalances(res, row.Balances)
 	if err != nil {
 		return err
 	}
-	res.NumAccounts = row.NumAccounts
 	flags := int8(issuer.Flags)
 	res.Flags = protocol.AccountFlags{
 		(flags & int8(xdr.AccountFlagsAuthRequiredFlag)) != 0,
@@ -51,18 +52,28 @@ func PopulateAssetStat(
 	return
 }
 
-func populateAssetStatBalances(res *protocol.AssetStatBalances, row history.ExpAssetStatBalances) (err error) {
-	res.Authorized, err = amount.IntStringToAmount(row.Authorized)
+func populateAssetStatBalances(res *protocol.AssetStat, row history.ExpAssetStatBalances) (err error) {
+	res.Amount, err = amount.IntStringToAmount(row.Authorized)
+	if err != nil {
+		return errors.Wrap(err, "Invalid amount in PopulateAssetStat")
+	}
+
+	res.Balances.Authorized, err = amount.IntStringToAmount(row.Authorized)
 	if err != nil {
 		return errors.Wrapf(err, "Invalid amount in PopulateAssetStatBalances: %q", row.Authorized)
 	}
 
-	res.AuthorizedToMaintainLiabilities, err = amount.IntStringToAmount(row.AuthorizedToMaintainLiabilities)
+	res.Balances.AuthorizedToMaintainLiabilities, err = amount.IntStringToAmount(row.AuthorizedToMaintainLiabilities)
 	if err != nil {
 		return errors.Wrapf(err, "Invalid amount in PopulateAssetStatBalances: %q", row.AuthorizedToMaintainLiabilities)
 	}
 
-	res.Unauthorized, err = amount.IntStringToAmount(row.Unauthorized)
+	res.Balances.Unauthorized, err = amount.IntStringToAmount(row.Unauthorized)
+	if err != nil {
+		return errors.Wrapf(err, "Invalid amount in PopulateAssetStatBalances: %q", row.Unauthorized)
+	}
+
+	res.ClaimableBalancesAmount, err = amount.IntStringToAmount(row.ClaimableBalances)
 	if err != nil {
 		return errors.Wrapf(err, "Invalid amount in PopulateAssetStatBalances: %q", row.Unauthorized)
 	}

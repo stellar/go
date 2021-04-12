@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this
 file. This project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+
+* Add `claimable_balances` to asset stat summaries at `/assets` ([3502](https://github.com/stellar/go/pull/3502)).
+
 ## v2.1.1
 
 * When ingesting a backlog of ledgers, Horizon sometimes consumes ledgers faster than the rate at which Captive Core emits them. Previously this scenario caused failures in the ingestion system. That is now fixed in ([3531](https://github.com/stellar/go/pull/3531)).
@@ -22,7 +26,7 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 * Add asset stat summaries per trust-line flag category ([3454](https://github.com/stellar/go/pull/3454)).
   - The `amount`, and `num_accounts` fields in `/assets` endpoint are deprecated. Fields will be removed in Horizon 3.0. You can find the same data under `balances.authorized`, and `accounts.authorized`, respectively.
 * Add a flag `--captive-core-peer-port`/`CAPTIVE_CORE_PEER_PORT` that allows users to control which port the Captive Core subprocess will bind to for connecting to the Stellar swarm. ([3483](https://github.com/stellar/go/pull/3484)).
-* Add a flag `--captive-core-storage-path/CAPTIVE_CORE_STORAGE_PORT` that a llows users to control the storage location for Captive Core bucket data ([3479](https://github.com/stellar/go/pull/3479)).  
+* Add a flag `--captive-core-storage-path/CAPTIVE_CORE_STORAGE_PATH` that allows users to control the storage location for Captive Core bucket data ([3479](https://github.com/stellar/go/pull/3479)).  
 * Add 2 new HTTP endpoints `GET claimable_balances/{id}/transactions` and `GET claimable_balances/{id}/operations`, which respectively return the transactions and operations related to a provided Claimable Balance Identifier `{id}`.
 * Add Stellar Protocol 16 support. This release comes with support for Protocol 16 ([CAP 35](https://github.com/stellar/stellar-protocol/blob/master/core/cap-0035.md): asset clawback). See [the downstream SDK issue template](https://gist.github.com/2opremio/89c4775104635382d51b6f5e41cbf6d5) for details on what changed on Horizon's side. For full details, please read [CAP 35](https://github.com/stellar/stellar-protocol/blob/master/core/cap-0035.md).
 

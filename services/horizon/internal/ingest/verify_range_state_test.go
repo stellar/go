@@ -406,7 +406,7 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 		Pricen:             int32(eurOffer.Price.N),
 		Priced:             int32(eurOffer.Price.D),
 		Price:              float64(eurOffer.Price.N) / float64(eurOffer.Price.N),
-		Flags:              uint32(eurOffer.Flags),
+		Flags:              int32(eurOffer.Flags),
 		LastModifiedLedger: 62,
 		Sponsor:            null.StringFrom("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
 	}
@@ -440,12 +440,20 @@ func (s *VerifyRangeStateTestSuite) TestVerifyFailsWhenAssetStatsMismatch() {
 	set := processors.AssetStatSet{}
 
 	trustLineIssuer := xdr.MustAddress("GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")
-	set.Add(xdr.TrustLineEntry{
-		AccountId: xdr.MustAddress(keypair.MustRandom().Address()),
-		Balance:   123,
-		Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()),
-		Flags:     xdr.Uint32(xdr.TrustLineFlagsAuthorizedToMaintainLiabilitiesFlag),
-	})
+	set.AddTrustline(
+		ingest.Change{
+			Post: &xdr.LedgerEntry{
+				Data: xdr.LedgerEntryData{
+					TrustLine: &xdr.TrustLineEntry{
+						AccountId: xdr.MustAddress(keypair.MustRandom().Address()),
+						Balance:   123,
+						Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()),
+						Flags:     xdr.Uint32(xdr.TrustLineFlagsAuthorizedToMaintainLiabilitiesFlag),
+					},
+				},
+			},
+		},
+	)
 
 	stat := history.ExpAssetStat{
 		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,

@@ -1,9 +1,13 @@
 package xdr
 
 import (
+	"bytes"
 	"encoding/json"
 	"math"
 	"testing"
+
+	"github.com/stellar/go/gxdr"
+	"github.com/stellar/go/randxdr"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -57,6 +61,34 @@ func TestClaimPredicateJSON(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, serializedBase64, parsedBase64)
+}
+
+func TestRandClaimPredicateJSON(t *testing.T) {
+	gen := randxdr.NewGenerator()
+	for i := 0; i < 10000; i++ {
+		cp := &ClaimPredicate{}
+		shape := &gxdr.ClaimPredicate{}
+		gen.Next(
+			shape,
+			[]randxdr.Preset{
+				{randxdr.IsPtr, randxdr.SetPtrToPresent},
+			},
+		)
+		assert.NoError(t, gxdr.Convert(shape, cp))
+
+		serializedJSON, err := json.Marshal(cp)
+		assert.NoError(t, err)
+
+		serializedBytes, err := cp.MarshalBinary()
+		assert.NoError(t, err)
+
+		var parsed ClaimPredicate
+		assert.NoError(t, json.Unmarshal(serializedJSON, &parsed))
+		parsedBin, err := parsed.MarshalBinary()
+		assert.NoError(t, err)
+
+		assert.True(t, bytes.Equal(serializedBytes, parsedBin))
+	}
 }
 
 func TestAbsBeforeTimestamps(t *testing.T) {
