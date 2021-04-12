@@ -406,7 +406,7 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 		Pricen:             int32(eurOffer.Price.N),
 		Priced:             int32(eurOffer.Price.D),
 		Price:              float64(eurOffer.Price.N) / float64(eurOffer.Price.N),
-		Flags:              uint32(eurOffer.Flags),
+		Flags:              int32(eurOffer.Flags),
 		LastModifiedLedger: 62,
 		Sponsor:            null.StringFrom("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
 	}
