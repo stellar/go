@@ -20,7 +20,7 @@ func SetOpSourceAccount(op *xdr.Operation, sourceAccount string) {
 		return
 	}
 	var opSourceAccountID xdr.MuxedAccount
-	opSourceAccountID.SetAddress(sourceAccount)
+	opSourceAccountID.SetEd25519Address(sourceAccount)
 	op.SourceAccount = &opSourceAccountID
 }
 
@@ -30,7 +30,7 @@ func SetOpSourceMuxedAccount(op *xdr.Operation, sourceAccount string) {
 		return
 	}
 	var opSourceAccountID xdr.MuxedAccount
-	opSourceAccountID.SetAddressWithSEP23(sourceAccount)
+	opSourceAccountID.SetAddress(sourceAccount)
 	op.SourceAccount = &opSourceAccountID
 }
 
@@ -93,7 +93,7 @@ func operationFromXDR(xdrOp xdr.Operation, withMuxedAccounts bool) (Operation, e
 func accountFromXDR(account *xdr.MuxedAccount, withMuxedAccounts bool) string {
 	if account != nil {
 		if withMuxedAccounts {
-			return account.SEP23Address()
+			return account.Address()
 		} else {
 			aid := account.ToAccountId()
 			return aid.Address()

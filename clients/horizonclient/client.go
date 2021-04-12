@@ -65,7 +65,7 @@ func (c *Client) checkMemoRequired(transaction *txnbuild.Transaction) error {
 			continue
 		}
 
-		muxed, err := xdr.SEP23AddressToMuxedAccount(destination)
+		muxed, err := xdr.AddressToMuxedAccount(destination)
 		if err != nil {
 			return errors.Wrapf(err, "destination %v is not a valid address", destination)
 		}

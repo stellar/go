@@ -17,9 +17,9 @@ func (am *AccountMerge) BuildXDR(withSEP23 bool) (xdr.Operation, error) {
 	var xdrOp xdr.MuxedAccount
 	var err error
 	if withSEP23 {
-		err = xdrOp.SetAddressWithSEP23(am.Destination)
-	} else {
 		err = xdrOp.SetAddress(am.Destination)
+	} else {
+		err = xdrOp.SetEd25519Address(am.Destination)
 	}
 	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "failed to set destination address")
@@ -48,7 +48,7 @@ func (am *AccountMerge) FromXDR(xdrOp xdr.Operation, withMuxedAccounts bool) err
 	am.SourceAccount = accountFromXDR(xdrOp.SourceAccount, withMuxedAccounts)
 	if xdrOp.Body.Destination != nil {
 		if withMuxedAccounts {
-			am.Destination = xdrOp.Body.Destination.SEP23Address()
+			am.Destination = xdrOp.Body.Destination.Address()
 		} else {
 			aid := xdrOp.Body.Destination.ToAccountId()
 			am.Destination = aid.Address()
@@ -65,7 +65,7 @@ func (am *AccountMerge) Validate(withMuxedAccounts bool) error {
 	if withMuxedAccounts {
 		_, err = xdr.AddressToAccountId(am.Destination)
 	} else {
-		_, err = xdr.SEP23AddressToMuxedAccount(am.Destination)
+		_, err = xdr.AddressToMuxedAccount(am.Destination)
 	}
 	if err != nil {
 		return NewValidationError("Destination", err.Error())

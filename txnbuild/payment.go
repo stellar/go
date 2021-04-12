@@ -22,9 +22,9 @@ func (p *Payment) BuildXDR(withMuxedAccounts bool) (xdr.Operation, error) {
 
 	var err error
 	if withMuxedAccounts {
-		err = destMuxedAccount.SetAddressWithSEP23(p.Destination)
-	} else {
 		err = destMuxedAccount.SetAddress(p.Destination)
+	} else {
+		err = destMuxedAccount.SetEd25519Address(p.Destination)
 	}
 	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "failed to set destination address")
@@ -71,7 +71,7 @@ func (p *Payment) FromXDR(xdrOp xdr.Operation, withMuxedAccounts bool) error {
 
 	p.SourceAccount = accountFromXDR(xdrOp.SourceAccount, withMuxedAccounts)
 	if withMuxedAccounts {
-		p.Destination = xdrOp.Body.Destination.SEP23Address()
+		p.Destination = xdrOp.Body.Destination.Address()
 	} else {
 		destAID := result.Destination.ToAccountId()
 		p.Destination = destAID.Address()
@@ -96,7 +96,7 @@ func (p *Payment) Validate(withMuxedAccounts bool) error {
 	if withMuxedAccounts {
 		_, err = xdr.AddressToAccountId(p.Destination)
 	} else {
-		_, err = xdr.SEP23AddressToMuxedAccount(p.Destination)
+		_, err = xdr.AddressToMuxedAccount(p.Destination)
 	}
 
 	if err != nil {

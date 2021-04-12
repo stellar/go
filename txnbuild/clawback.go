@@ -21,9 +21,9 @@ func (cb *Clawback) BuildXDR(withMuxedAccounts bool) (xdr.Operation, error) {
 	var fromMuxedAccount xdr.MuxedAccount
 	var err error
 	if withMuxedAccounts {
-		err = fromMuxedAccount.SetAddressWithSEP23(cb.From)
-	} else {
 		err = fromMuxedAccount.SetAddress(cb.From)
+	} else {
+		err = fromMuxedAccount.SetEd25519Address(cb.From)
 	}
 	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "failed to set from address")
@@ -70,12 +70,7 @@ func (cb *Clawback) FromXDR(xdrOp xdr.Operation, withMuxedAccounts bool) error {
 	}
 
 	cb.SourceAccount = accountFromXDR(xdrOp.SourceAccount, withMuxedAccounts)
-	if withMuxedAccounts {
-		cb.From = result.From.SEP23Address()
-	} else {
-		fromAID := result.From.ToAccountId()
-		cb.From = fromAID.Address()
-	}
+	cb.From = accountFromXDR(&result.From, withMuxedAccounts)
 	cb.Amount = amount.String(result.Amount)
 	asset, err := assetFromXDR(result.Asset)
 	if err != nil {
@@ -91,7 +86,7 @@ func (cb *Clawback) FromXDR(xdrOp xdr.Operation, withMuxedAccounts bool) error {
 func (cb *Clawback) Validate(withMuxedAccounts bool) error {
 	var err error
 	if withMuxedAccounts {
-		_, err = xdr.SEP23AddressToMuxedAccount(cb.From)
+		_, err = xdr.AddressToMuxedAccount(cb.From)
 	} else {
 		_, err = xdr.AddressToAccountId(cb.From)
 	}

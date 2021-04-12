@@ -556,7 +556,7 @@ func transactionFromParsedXDR(xdrEnv xdr.TransactionEnvelope, withMuxedAccounts 
 		var feeAccount string
 		if withMuxedAccounts {
 			feeBumpAccount := xdrEnv.FeeBumpAccount()
-			feeAccount = feeBumpAccount.SEP23Address()
+			feeAccount = feeBumpAccount.Address()
 		} else {
 			feeBumpAccount := xdrEnv.FeeBumpAccount().ToAccountId()
 			feeAccount = feeBumpAccount.Address()
@@ -579,7 +579,7 @@ func transactionFromParsedXDR(xdrEnv xdr.TransactionEnvelope, withMuxedAccounts 
 	var accountID string
 	if withMuxedAccounts {
 		sourceAccount := xdrEnv.SourceAccount()
-		accountID = sourceAccount.SEP23Address()
+		accountID = sourceAccount.Address()
 	} else {
 		sourceAccount := xdrEnv.SourceAccount().ToAccountId()
 		accountID = sourceAccount.Address()
@@ -667,7 +667,7 @@ func NewTransaction(params TransactionParams) (*Transaction, error) {
 	}
 	var sourceAccount xdr.MuxedAccount
 	if params.EnableMuxedAccounts {
-		if err = sourceAccount.SetAddressWithSEP23(tx.sourceAccount.AccountID); err != nil {
+		if err = sourceAccount.SetAddress(tx.sourceAccount.AccountID); err != nil {
 			return nil, errors.Wrap(err, "account id is not valid")
 		}
 	} else {
@@ -729,7 +729,7 @@ func NewTransaction(params TransactionParams) (*Transaction, error) {
 	}
 
 	for _, op := range tx.operations {
-		if verr := op.Validate(false); verr != nil {
+		if verr := op.Validate(params.EnableMuxedAccounts); verr != nil {
 			return nil, errors.Wrap(verr, fmt.Sprintf("validation failed for %T operation", op))
 		}
 		xdrOperation, err2 := op.BuildXDR(params.EnableMuxedAccounts)
@@ -822,7 +822,7 @@ func NewFeeBumpTransaction(params FeeBumpTransactionParams) (*FeeBumpTransaction
 
 	var feeSource xdr.MuxedAccount
 	if params.EnableMuxedAccounts {
-		if err := feeSource.SetAddressWithSEP23(tx.feeAccount); err != nil {
+		if err := feeSource.SetAddress(tx.feeAccount); err != nil {
 			return tx, errors.Wrap(err, "fee account is not a valid address")
 		}
 	} else {

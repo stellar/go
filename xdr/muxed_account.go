@@ -9,7 +9,7 @@ import (
 
 func MustMuxedAddress(address string) MuxedAccount {
 	muxed := MuxedAccount{}
-	err := muxed.SetAddress(address)
+	err := muxed.SetEd25519Address(address)
 	if err != nil {
 		panic(err)
 	}
@@ -21,9 +21,9 @@ func MustMuxedAddressPtr(address string) *MuxedAccount {
 	return &muxed
 }
 
-// SetAddress modifies the receiver, setting it's value to the MuxedAccount form
-// of the provided G-address.
-func (m *MuxedAccount) SetAddress(address string) error {
+// SetEd25519Address modifies the receiver, setting it's value to the MuxedAccount form
+// of the provided G-address. Unlike SetAddress(), it only supports G-addresses.
+func (m *MuxedAccount) SetEd25519Address(address string) error {
 	if m == nil {
 		return nil
 	}
@@ -47,16 +47,16 @@ func (m *MuxedAccount) SetAddress(address string) error {
 
 }
 
-// SetAddressWithSEP23 modifies the receiver, setting it's value to the MuxedAccount form
+// SetAddress modifies the receiver, setting it's value to the MuxedAccount form
 // of the provided strkey G-address or M-address, as described in SEP23.
-func (m *MuxedAccount) SetAddressWithSEP23(address string) error {
+func (m *MuxedAccount) SetAddress(address string) error {
 	if m == nil {
 		return nil
 	}
 
 	switch len(address) {
 	case 56:
-		return m.SetAddress(address)
+		return m.SetEd25519Address(address)
 	case 69:
 		raw, err := strkey.Decode(strkey.VersionByteMuxedAccount, address)
 		if err != nil {
@@ -78,33 +78,33 @@ func (m *MuxedAccount) SetAddressWithSEP23(address string) error {
 
 }
 
-// SEP23AddressToMuxedAccount returns an MuxedAccount for a given address string
+// AddressToMuxedAccount returns an MuxedAccount for a given address string
 // or SEP23 M-address.
 // If the address is not valid the error returned will not be nil
-func SEP23AddressToMuxedAccount(address string) (MuxedAccount, error) {
+func AddressToMuxedAccount(address string) (MuxedAccount, error) {
 	result := MuxedAccount{}
-	err := result.SetAddressWithSEP23(address)
+	err := result.SetAddress(address)
 
 	return result, err
 }
 
-// SEP23Address returns the strkey-encoded form of this MuxedAccount. In particular, it will
+// Address returns the strkey-encoded form of this MuxedAccount. In particular, it will
 // return an M- strkey representation for CryptoKeyTypeKeyTypeMuxedEd25519 variants of the account
 // (according to SEP23). This method will panic if the MuxedAccount is backed by a public key of an
 // unknown type.
-func (m *MuxedAccount) SEP23Address() string {
-	address, err := m.GetSEP23Address()
+func (m *MuxedAccount) Address() string {
+	address, err := m.GetAddress()
 	if err != nil {
 		panic(err)
 	}
 	return address
 }
 
-// GetSEP23Address returns the strkey-encoded form of this MuxedAccount. In particular, it will
+// GetAddress returns the strkey-encoded form of this MuxedAccount. In particular, it will
 // return an M-strkey representation for CryptoKeyTypeKeyTypeMuxedEd25519 variants of the account
 // (according to SEP23). In addition it will return an error if the MuxedAccount is backed by a
 // public key of an unknown type.
-func (m *MuxedAccount) GetSEP23Address() (string, error) {
+func (m *MuxedAccount) GetAddress() (string, error) {
 	if m == nil {
 		return "", nil
 	}
