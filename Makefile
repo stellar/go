@@ -27,5 +27,5 @@ regulated-assets-approval-server:
 	$(MAKE) -C services/regulated-assets-approval-server/ docker-build
 
 gxdr/xdr_generated.go: $(XDRS)
-	go run github.com/xdrpp/goxdr/cmd/goxdr -p gxdr -enum-comments -o $@~ $(XDRS)
-	cmp $@~ $@ 2> /dev/null || mv -f $@~ $@
+	go run github.com/xdrpp/goxdr/cmd/goxdr -p gxdr -enum-comments -o $@ $(XDRS)
+	go fmt $@
