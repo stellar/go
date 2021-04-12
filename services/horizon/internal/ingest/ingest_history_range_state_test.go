@@ -9,6 +9,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/stretchr/testify/suite"
 
+	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/services/horizon/internal/ingest/processors"
 	"github.com/stellar/go/services/horizon/internal/toid"
@@ -41,6 +42,9 @@ func (s *IngestHistoryRangeStateTestSuite) SetupTest() {
 		runner:         s.runner,
 	}
 	s.system.initMetrics()
+
+	// configure back off to 0 so we can speed up tests
+	ledgerNotFoundRetryBackOff = 0
 
 	s.historyQ.On("Rollback").Return(nil).Once()
 }
@@ -137,6 +141,51 @@ func (s *IngestHistoryRangeStateTestSuite) TestRunTransactionProcessorsOnLedgerR
 	next, err := historyRangeState{fromLedger: 100, toLedger: 200}.run(s.system)
 	s.Assert().Error(err)
 	s.Assert().EqualError(err, "error processing ledger sequence=100: my error")
+	s.Assert().Equal(transition{node: startState{}, sleepDuration: defaultSleep}, next)
+}
+
+func (s *IngestHistoryRangeStateTestSuite) TestRunTransactionProcessorsRetrySucceeds() {
+	s.historyQ.On("Begin").Return(nil).Once()
+	s.historyQ.On("GetLastLedgerIngest").Return(uint32(0), nil).Once()
+	s.historyQ.On("GetLatestLedger").Return(uint32(99), nil).Once()
+
+	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(100)).Return(true, nil).Once()
+	s.system.maxReingestRetries = 2
+	s.runner.On("RunTransactionProcessorsOnLedger", uint32(100)).Return(
+		processors.StatsLedgerTransactionProcessorResults{},
+		processorsRunDurations{},
+		errors.Wrap(errors.Wrap(ingest.ErrNotFound, "layer1"), "layer2"),
+	).Once()
+
+	s.runner.On("RunTransactionProcessorsOnLedger", uint32(100)).Return(
+		processors.StatsLedgerTransactionProcessorResults{},
+		processorsRunDurations{},
+		nil,
+	).Once()
+
+	s.historyQ.On("Commit").Return(nil).Once()
+
+	next, err := historyRangeState{fromLedger: 100, toLedger: 100}.run(s.system)
+	s.Assert().NoError(err)
+	s.Assert().Equal(transition{node: startState{}, sleepDuration: defaultSleep}, next)
+}
+
+func (s *IngestHistoryRangeStateTestSuite) TestRunTransactionProcessorsRetryFails() {
+	s.historyQ.On("Begin").Return(nil).Once()
+	s.historyQ.On("GetLastLedgerIngest").Return(uint32(0), nil).Once()
+	s.historyQ.On("GetLatestLedger").Return(uint32(99), nil).Once()
+
+	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(100)).Return(true, nil).Once()
+	s.system.maxReingestRetries = 2
+	s.runner.On("RunTransactionProcessorsOnLedger", uint32(100)).Return(
+		processors.StatsLedgerTransactionProcessorResults{},
+		processorsRunDurations{},
+		errors.Wrap(errors.Wrap(ingest.ErrNotFound, "layer1"), "layer2"),
+	).Times(maxledgerNotFoundRetries)
+
+	next, err := historyRangeState{fromLedger: 100, toLedger: 200}.run(s.system)
+	s.Assert().Error(err)
+	s.Assert().EqualError(err, "Could not obtain ledger 100 after 5 attempts: error processing ledger sequence=100: layer2: layer1: ledger not found")
 	s.Assert().Equal(transition{node: startState{}, sleepDuration: defaultSleep}, next)
 }
 

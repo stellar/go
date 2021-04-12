@@ -7,6 +7,10 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 * Add `claimable_balances` to asset stat summaries at `/assets` ([3502](https://github.com/stellar/go/pull/3502)).
 
+## v2.1.1
+
+* When ingesting a backlog of ledgers, Horizon sometimes consumes ledgers faster than the rate at which Captive Core emits them. Previously this scenario caused failures in the ingestion system. That is now fixed in ([3531](https://github.com/stellar/go/pull/3531)).
+
 ## v2.1.0
 
 ### DB State Migration

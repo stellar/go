@@ -534,6 +534,11 @@ func (h historyRangeState) String() string {
 	)
 }
 
+var (
+	maxledgerNotFoundRetries   = 5
+	ledgerNotFoundRetryBackOff = 3 * time.Second
+)
+
 // historyRangeState is used when catching up history data
 func (h historyRangeState) run(s *system) (transition, error) {
 	if h.fromLedger == 0 || h.toLedger == 0 ||
@@ -570,8 +575,22 @@ func (h historyRangeState) run(s *system) (transition, error) {
 	}
 
 	for cur := h.fromLedger; cur <= h.toLedger; cur++ {
-		if err = runTransactionProcessorsOnLedger(s, cur); err != nil {
-			return start(), err
+		for attempt := 1; attempt <= maxledgerNotFoundRetries; attempt++ {
+			if err = runTransactionProcessorsOnLedger(s, cur); err == nil {
+				break
+			} else if errors.Cause(err) == ingest.ErrNotFound {
+				if attempt == maxledgerNotFoundRetries {
+					return start(), errors.Wrapf(
+						err,
+						"Could not obtain ledger %v after %v attempts",
+						cur,
+						maxledgerNotFoundRetries,
+					)
+				}
+				time.Sleep(ledgerNotFoundRetryBackOff)
+			} else {
+				return start(), err
+			}
 		}
 	}
 
