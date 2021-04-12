@@ -42,13 +42,13 @@ func TestLatestLedgerSequenceClosedAt(t *testing.T) {
 	}
 }
 
-func TestGetLatestLedgerEmptyDB(t *testing.T) {
+func TestGetLatestHistoryLedgerEmptyDB(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
-	value, err := q.GetLatestLedger()
+	value, err := q.GetLatestHistoryLedger()
 	tt.Assert.NoError(err)
 	tt.Assert.Equal(uint32(0), value)
 }

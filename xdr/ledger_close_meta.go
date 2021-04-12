@@ -11,3 +11,11 @@ func (l LedgerCloseMeta) LedgerHash() Hash {
 func (l LedgerCloseMeta) PreviousLedgerHash() Hash {
 	return l.MustV0().LedgerHeader.Header.PreviousLedgerHash
 }
+
+func (l LedgerCloseMeta) ProtocolVersion() uint32 {
+	return uint32(l.MustV0().LedgerHeader.Header.LedgerVersion)
+}
+
+func (l LedgerCloseMeta) BucketListHash() Hash {
+	return l.MustV0().LedgerHeader.Header.BucketListHash
+}

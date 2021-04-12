@@ -94,7 +94,6 @@ func (s *DBTestSuite) SetupTest() {
 	s.system.historyAdapter = s.historyAdapter
 	s.system.ledgerBackend = s.ledgerBackend
 	s.system.runner.SetHistoryAdapter(s.historyAdapter)
-	s.system.runner.SetLedgerBackend(s.ledgerBackend)
 }
 
 func (s *DBTestSuite) mockChangeReader() {
@@ -112,20 +111,20 @@ func (s *DBTestSuite) setupMocksForBuildState() {
 		Return(checkpointHash, nil).Once()
 
 	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(s.sequence)).Return(true, nil).Once()
-	s.ledgerBackend.On("GetLedger", s.sequence).
+	s.ledgerBackend.On("GetLedgerBlocking", s.sequence).
 		Return(
-			true,
 			xdr.LedgerCloseMeta{
 				V0: &xdr.LedgerCloseMetaV0{
 					LedgerHeader: xdr.LedgerHeaderHistoryEntry{
 						Header: xdr.LedgerHeader{
+							LedgerSeq:      xdr.Uint32(s.sequence),
 							BucketListHash: checkpointHash,
 						},
 					},
 				},
 			},
 			nil,
-		).Twice()
+		).Once()
 }
 
 func (s *DBTestSuite) TearDownTest() {

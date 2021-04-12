@@ -86,7 +86,7 @@ func (s *InitStateTestSuite) TestGetLatestLedgerReturnsError() {
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerIngest").Return(uint32(0), nil).Once()
 	s.historyQ.On("GetIngestVersion").Return(0, nil).Once()
-	s.historyQ.On("GetLatestLedger").Return(uint32(0), errors.New("my error")).Once()
+	s.historyQ.On("GetLatestHistoryLedger").Return(uint32(0), errors.New("my error")).Once()
 
 	next, err := startState{}.run(s.system)
 	s.Assert().Error(err)
@@ -98,7 +98,7 @@ func (s *InitStateTestSuite) TestBuildStateEmptyDatabase() {
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerIngest").Return(uint32(0), nil).Once()
 	s.historyQ.On("GetIngestVersion").Return(0, nil).Once()
-	s.historyQ.On("GetLatestLedger").Return(uint32(0), nil).Once()
+	s.historyQ.On("GetLatestHistoryLedger").Return(uint32(0), nil).Once()
 
 	s.historyAdapter.On("GetLatestLedgerSequence").Return(uint32(63), nil).Once()
 
@@ -114,7 +114,7 @@ func (s *InitStateTestSuite) TestBuildStateEmptyDatabaseFromSuggestedCheckpoint(
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerIngest").Return(uint32(0), nil).Once()
 	s.historyQ.On("GetIngestVersion").Return(0, nil).Once()
-	s.historyQ.On("GetLatestLedger").Return(uint32(0), nil).Once()
+	s.historyQ.On("GetLatestHistoryLedger").Return(uint32(0), nil).Once()
 
 	next, err := startState{suggestedCheckpoint: 127}.run(s.system)
 	s.Assert().NoError(err)
@@ -131,7 +131,7 @@ func (s *InitStateTestSuite) TestBuildStateWait() {
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerIngest").Return(uint32(100), nil).Once()
 	s.historyQ.On("GetIngestVersion").Return(0, nil).Once()
-	s.historyQ.On("GetLatestLedger").Return(uint32(100), nil).Once()
+	s.historyQ.On("GetLatestHistoryLedger").Return(uint32(100), nil).Once()
 
 	s.historyAdapter.On("GetLatestLedgerSequence").Return(uint32(63), nil).Once()
 
@@ -150,7 +150,7 @@ func (s *InitStateTestSuite) TestBuildStateCatchup() {
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerIngest").Return(uint32(100), nil).Once()
 	s.historyQ.On("GetIngestVersion").Return(0, nil).Once()
-	s.historyQ.On("GetLatestLedger").Return(uint32(100), nil).Once()
+	s.historyQ.On("GetLatestHistoryLedger").Return(uint32(100), nil).Once()
 
 	s.historyAdapter.On("GetLatestLedgerSequence").Return(uint32(127), nil).Once()
 
@@ -172,7 +172,7 @@ func (s *InitStateTestSuite) TestBuildStateOldHistory() {
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerIngest").Return(uint32(127), nil).Once()
 	s.historyQ.On("GetIngestVersion").Return(0, nil).Once()
-	s.historyQ.On("GetLatestLedger").Return(uint32(127), nil).Once()
+	s.historyQ.On("GetLatestHistoryLedger").Return(uint32(127), nil).Once()
 
 	s.historyAdapter.On("GetLatestLedgerSequence").Return(uint32(127), nil).Once()
 
@@ -194,7 +194,7 @@ func (s *InitStateTestSuite) TestResumeStateInFront() {
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerIngest").Return(uint32(100), nil).Once()
 	s.historyQ.On("GetIngestVersion").Return(CurrentVersion, nil).Once()
-	s.historyQ.On("GetLatestLedger").Return(uint32(130), nil).Once()
+	s.historyQ.On("GetLatestHistoryLedger").Return(uint32(130), nil).Once()
 
 	s.historyQ.On("UpdateLastLedgerIngest", uint32(0)).Return(nil).Once()
 	s.historyQ.On("Commit").Return(nil).Once()
@@ -211,7 +211,7 @@ func (s *InitStateTestSuite) TestResumeStateBehind() {
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerIngest").Return(uint32(130), nil).Once()
 	s.historyQ.On("GetIngestVersion").Return(CurrentVersion, nil).Once()
-	s.historyQ.On("GetLatestLedger").Return(uint32(100), nil).Once()
+	s.historyQ.On("GetLatestHistoryLedger").Return(uint32(100), nil).Once()
 
 	next, err := startState{}.run(s.system)
 	s.Assert().NoError(err)
@@ -232,7 +232,7 @@ func (s *InitStateTestSuite) TestResumeStateBehindHistory0() {
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerIngest").Return(uint32(130), nil).Once()
 	s.historyQ.On("GetIngestVersion").Return(CurrentVersion, nil).Once()
-	s.historyQ.On("GetLatestLedger").Return(uint32(0), nil).Once()
+	s.historyQ.On("GetLatestHistoryLedger").Return(uint32(0), nil).Once()
 
 	next, err := startState{}.run(s.system)
 	s.Assert().NoError(err)
@@ -252,7 +252,7 @@ func (s *InitStateTestSuite) TestResumeStateSync() {
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerIngest").Return(uint32(130), nil).Once()
 	s.historyQ.On("GetIngestVersion").Return(CurrentVersion, nil).Once()
-	s.historyQ.On("GetLatestLedger").Return(uint32(130), nil).Once()
+	s.historyQ.On("GetLatestHistoryLedger").Return(uint32(130), nil).Once()
 
 	next, err := startState{}.run(s.system)
 	s.Assert().NoError(err)

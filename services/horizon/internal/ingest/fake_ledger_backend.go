@@ -199,6 +199,11 @@ func (f fakeLedgerBackend) GetLedger(sequence uint32) (bool, xdr.LedgerCloseMeta
 	return true, ledgerCloseMeta, nil
 }
 
+func (f *fakeLedgerBackend) GetLedgerBlocking(sequence uint32) (xdr.LedgerCloseMeta, error) {
+	_, meta, err := f.GetLedger(sequence)
+	return meta, err
+}
+
 func (fakeLedgerBackend) Close() error {
 	return nil
 }

@@ -31,6 +31,11 @@ func (m *MockDatabaseBackend) GetLedger(sequence uint32) (bool, xdr.LedgerCloseM
 	return args.Bool(0), args.Get(1).(xdr.LedgerCloseMeta), args.Error(2)
 }
 
+func (m *MockDatabaseBackend) GetLedgerBlocking(sequence uint32) (xdr.LedgerCloseMeta, error) {
+	args := m.Called(sequence)
+	return args.Get(0).(xdr.LedgerCloseMeta), args.Error(1)
+}
+
 func (m *MockDatabaseBackend) Close() error {
 	args := m.Called()
 	return args.Error(0)
