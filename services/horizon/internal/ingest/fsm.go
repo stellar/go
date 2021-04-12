@@ -523,11 +523,6 @@ func (h historyRangeState) String() string {
 	)
 }
 
-var (
-	maxledgerNotFoundRetries   = 5
-	ledgerNotFoundRetryBackOff = 3 * time.Second
-)
-
 // historyRangeState is used when catching up history data
 func (h historyRangeState) run(s *system) (transition, error) {
 	if h.fromLedger == 0 || h.toLedger == 0 ||
