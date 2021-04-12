@@ -4,6 +4,7 @@ import (
 	"io"
 
 	"github.com/stellar/go/ingest/ledgerbackend"
+	"github.com/stellar/go/xdr"
 )
 
 // ChangeReader provides convenient, streaming access to a sequence of Changes.
@@ -47,6 +48,21 @@ var _ ChangeReader = (*LedgerChangeReader)(nil)
 // by multiple goroutines.
 func NewLedgerChangeReader(backend ledgerbackend.LedgerBackend, networkPassphrase string, sequence uint32) (*LedgerChangeReader, error) {
 	transactionReader, err := NewLedgerTransactionReader(backend, networkPassphrase, sequence)
+	if err != nil {
+		return nil, err
+	}
+
+	return &LedgerChangeReader{
+		LedgerTransactionReader: transactionReader,
+		state:                   feeChangesState,
+	}, nil
+}
+
+// NewLedgerChangeReaderFromLedgerCloseMeta constructs a new LedgerChangeReader instance bound to the given ledger.
+// Note that the returned LedgerChangeReader is not thread safe and should not be shared
+// by multiple goroutines.
+func NewLedgerChangeReaderFromLedgerCloseMeta(networkPassphrase string, ledger xdr.LedgerCloseMeta) (*LedgerChangeReader, error) {
+	transactionReader, err := NewLedgerTransactionReaderFromLedgerCloseMeta(networkPassphrase, ledger)
 	if err != nil {
 		return nil, err
 	}

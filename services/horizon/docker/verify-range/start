@@ -58,7 +58,11 @@ stellar-core catchup $TO/$LEDGER_COUNT
 export NETWORK_PASSPHRASE="Public Global Stellar Network ; September 2015"
 export HISTORY_ARCHIVE_URLS="https://s3-eu-west-1.amazonaws.com/history.stellar.org/prd/core-live/core_live_001"
 export DATABASE_URL="postgres://postgres:postgres@localhost:5432/horizon?sslmode=disable"
-export INGEST="false"
+export INGEST="true"
+export ENABLE_CAPTIVE_CORE_INGESTION="false"
+# This is needed due to problems config flag issues with Horizon 2.0 (base branch) and https://github.com/stellar/go/issues/3507
+export CAPTIVE_CORE_CONFIG_APPEND_PATH=/dev/null
+export STELLAR_CORE_BINARY_PATH=/usr/bin/stellar-core
 export INGEST_FAILED_TRANSACTIONS=true
 export STELLAR_CORE_URL="http://localhost:11626"
 export STELLAR_CORE_DATABASE_URL="postgres://postgres:postgres@localhost:5432/core?sslmode=disable"
@@ -89,7 +93,7 @@ function compare() {
   fi
 }
 
-BASE_BRANCH=${BASE_BRANCH:-horizon-v1.4.0}
+BASE_BRANCH=${BASE_BRANCH:-horizon-v2.0.0}
 
 if [ ! -z "$VERIFY_HISTORY" ]; then
 	dump_horizon_db "exp_history"

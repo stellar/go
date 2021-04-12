@@ -25,7 +25,7 @@ import (
 const (
 	// MaxSupportedProtocolVersion defines the maximum supported version of
 	// the Stellar protocol.
-	MaxSupportedProtocolVersion = 16
+	MaxSupportedProtocolVersion uint32 = 17
 
 	// CurrentVersion reflects the latest version of the ingestion
 	// algorithm. This value is stored in KV store and is used to decide
@@ -50,7 +50,8 @@ const (
 	// - 12: Trigger state rebuild due to `absTime` -> `abs_time` rename
 	//       in ClaimableBalances predicates.
 	// - 13: Trigger state rebuild to include more than just authorized assets.
-	CurrentVersion = 13
+	// - 14: Trigger state rebuild to include claimable balances in the asset stats processor.
+	CurrentVersion = 14
 
 	// MaxDBConnections is the size of the postgres connection pool dedicated to Horizon ingestion:
 	//  * Ledger ingestion,
@@ -248,7 +249,6 @@ func NewSystem(config Config) (System, error) {
 			config:         config,
 			historyQ:       historyQ,
 			historyAdapter: historyAdapter,
-			ledgerBackend:  ledgerBackend,
 		},
 		checkpointManager: historyarchive.NewCheckpointManager(config.CheckpointFrequency),
 	}
@@ -386,10 +386,10 @@ func (s *system) StressTest(numTransactions, changesPerTransaction int) error {
 	}
 
 	s.runner.EnableMemoryStatsLogging()
-	s.runner.SetLedgerBackend(fakeLedgerBackend{
+	s.ledgerBackend = &fakeLedgerBackend{
 		numTransactions:       numTransactions,
 		changesPerTransaction: changesPerTransaction,
-	})
+	}
 	return s.runStateMachine(stressTestState{})
 }
 

@@ -251,7 +251,7 @@ type IngestionQ interface {
 	UpdateExpStateInvalid(bool) error
 	UpdateIngestVersion(int) error
 	GetExpStateInvalid() (bool, error)
-	GetLatestLedger() (uint32, error)
+	GetLatestHistoryLedger() (uint32, error)
 	GetOfferCompactionSequence() (uint32, error)
 	TruncateIngestStateTables() error
 	DeleteRangeAll(start, end int64) error
@@ -347,6 +347,7 @@ func (e ExpAssetStat) PagingToken() string {
 type ExpAssetStatAccounts struct {
 	Authorized                      int32 `json:"authorized"`
 	AuthorizedToMaintainLiabilities int32 `json:"authorized_to_maintain_liabilities"`
+	ClaimableBalances               int32 `json:"claimable_balances"`
 	Unauthorized                    int32 `json:"unauthorized"`
 }
 
@@ -367,18 +368,20 @@ func (a ExpAssetStatAccounts) Add(b ExpAssetStatAccounts) ExpAssetStatAccounts {
 	return ExpAssetStatAccounts{
 		Authorized:                      a.Authorized + b.Authorized,
 		AuthorizedToMaintainLiabilities: a.AuthorizedToMaintainLiabilities + b.AuthorizedToMaintainLiabilities,
+		ClaimableBalances:               a.ClaimableBalances + b.ClaimableBalances,
 		Unauthorized:                    a.Unauthorized + b.Unauthorized,
 	}
 }
 
 func (a ExpAssetStatAccounts) IsZero() bool {
-	return a.Authorized == 0 && a.AuthorizedToMaintainLiabilities == 0 && a.Unauthorized == 0
+	return a == ExpAssetStatAccounts{}
 }
 
 // ExpAssetStatBalances represents the summarized balances for a single Asset
 type ExpAssetStatBalances struct {
 	Authorized                      string `json:"authorized"`
 	AuthorizedToMaintainLiabilities string `json:"authorized_to_maintain_liabilities"`
+	ClaimableBalances               string `json:"claimable_balances"`
 	Unauthorized                    string `json:"unauthorized"`
 }
 
@@ -570,7 +573,7 @@ type Offer struct {
 	Pricen             int32       `db:"pricen"`
 	Priced             int32       `db:"priced"`
 	Price              float64     `db:"price"`
-	Flags              uint32      `db:"flags"`
+	Flags              int32       `db:"flags"`
 	Deleted            bool        `db:"deleted"`
 	LastModifiedLedger uint32      `db:"last_modified_ledger"`
 	Sponsor            null.String `db:"sponsor"`
@@ -773,9 +776,9 @@ func (q *Q) ElderLedger(dest interface{}) error {
 	return q.GetRaw(dest, `SELECT COALESCE(MIN(sequence), 0) FROM history_ledgers`)
 }
 
-// GetLatestLedger loads the latest known ledger. Returns 0 if no ledgers in
+// GetLatestHistoryLedger loads the latest known ledger. Returns 0 if no ledgers in
 // `history_ledgers` table.
-func (q *Q) GetLatestLedger() (uint32, error) {
+func (q *Q) GetLatestHistoryLedger() (uint32, error) {
 	var value uint32
 	err := q.LatestLedger(&value)
 	return value, err

@@ -20,11 +20,13 @@ func TestPopulateExpAssetStat(t *testing.T) {
 			Authorized:                      429,
 			AuthorizedToMaintainLiabilities: 214,
 			Unauthorized:                    107,
+			ClaimableBalances:               12,
 		},
 		Balances: history.ExpAssetStatBalances{
 			Authorized:                      "100000000000000000000",
 			AuthorizedToMaintainLiabilities: "50000000000000000000",
 			Unauthorized:                    "2500000000000000000",
+			ClaimableBalances:               "1200000000000000000",
 		},
 		Amount:      "100000000000000000000", // 10T
 		NumAccounts: 429,
@@ -45,9 +47,11 @@ func TestPopulateExpAssetStat(t *testing.T) {
 	assert.Equal(t, int32(429), res.Accounts.Authorized)
 	assert.Equal(t, int32(214), res.Accounts.AuthorizedToMaintainLiabilities)
 	assert.Equal(t, int32(107), res.Accounts.Unauthorized)
+	assert.Equal(t, int32(12), res.NumClaimableBalances)
 	assert.Equal(t, "10000000000000.0000000", res.Balances.Authorized)
 	assert.Equal(t, "5000000000000.0000000", res.Balances.AuthorizedToMaintainLiabilities)
 	assert.Equal(t, "250000000000.0000000", res.Balances.Unauthorized)
+	assert.Equal(t, "120000000000.0000000", res.ClaimableBalancesAmount)
 	assert.Equal(t, "10000000000000.0000000", res.Amount)
 	assert.Equal(t, int32(429), res.NumAccounts)
 	assert.Equal(t, horizon.AccountFlags{}, res.Flags)

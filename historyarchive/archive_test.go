@@ -138,6 +138,18 @@ func (arch *Archive) PopulateRandomRange(rng Range) error {
 	return nil
 }
 
+func (arch *Archive) PopulateRandomRangeWithGap(rng Range, gap uint32) error {
+	for chk := range rng.GenerateCheckpoints(arch.checkpointManager) {
+		if chk == gap {
+			continue
+		}
+		if e := arch.AddRandomCheckpoint(chk); e != nil {
+			return e
+		}
+	}
+	return nil
+}
+
 func testRange() Range {
 	return Range{Low: 63, High: 0x3bf}
 }
@@ -149,6 +161,12 @@ func testOptions() *CommandOptions {
 func GetRandomPopulatedArchive() *Archive {
 	a := GetTestArchive()
 	a.PopulateRandomRange(testRange())
+	return a
+}
+
+func GetRandomPopulatedArchiveWithGapAt(gap uint32) *Archive {
+	a := GetTestArchive()
+	a.PopulateRandomRangeWithGap(testRange(), gap)
 	return a
 }
 
@@ -206,6 +224,18 @@ func countMissing(arch *Archive, opts *CommandOptions) int {
 	}
 	n += len(arch.CheckBucketsMissing())
 	return n
+}
+
+func TestScanSlowMissing(t *testing.T) {
+	defer cleanup()
+	opts := testOptions()
+	arch := GetRandomPopulatedArchiveWithGapAt(0x1bf)
+	arch.ScanCheckpointsSlow(opts)
+	n := 0
+	for _, missing := range arch.CheckCheckpointFilesMissing(opts) {
+		n += len(missing)
+	}
+	assert.Equal(t, 5, n)
 }
 
 func TestMirror(t *testing.T) {

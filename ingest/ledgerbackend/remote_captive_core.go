@@ -275,3 +275,18 @@ func (c RemoteCaptiveStellarCore) GetLedger(sequence uint32) (bool, xdr.LedgerCl
 
 	return parsed.Present, xdr.LedgerCloseMeta(parsed.Ledger), nil
 }
+
+func (c RemoteCaptiveStellarCore) GetLedgerBlocking(sequence uint32) (xdr.LedgerCloseMeta, error) {
+	for {
+		exists, meta, err := c.GetLedger(sequence)
+		if err != nil {
+			return xdr.LedgerCloseMeta{}, err
+		}
+
+		if exists {
+			return meta, nil
+		} else {
+			time.Sleep(time.Second)
+		}
+	}
+}
