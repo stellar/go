@@ -7,6 +7,8 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/stellar/go/clients/horizonclient"
+	"github.com/stellar/go/keypair"
+	protocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/protocols/horizon/effects"
 	"github.com/stellar/go/protocols/horizon/operations"
 	"github.com/stellar/go/services/horizon/internal/codes"
@@ -51,11 +53,154 @@ func TestProtocol16Basics(t *testing.T) {
 	})
 }
 
-func TestHappyClawback(t *testing.T) {
+func TestHappyClawbackAccount(t *testing.T) {
 	tt := assert.New(t)
 	itest := NewProtocol16Test(t)
 	master := itest.Master()
 
+	asset, fromKey, _ := setupClawbackAccountTest(tt, itest, master)
+
+	// Clawback all of the asset
+	submissionResp := itest.MustSubmitOperations(itest.MasterAccount(), master, &txnbuild.Clawback{
+		From:   fromKey.Address(),
+		Amount: "10",
+		Asset:  asset,
+	})
+
+	assertClawbackAccountSuccess(tt, itest, master, fromKey, "0.0000000", submissionResp)
+
+	// Check the operation details
+	opDetailsResponse, err := itest.Client().Operations(horizonclient.OperationRequest{
+		ForTransaction: submissionResp.Hash,
+	})
+	tt.NoError(err)
+	if tt.Len(opDetailsResponse.Embedded.Records, 1) {
+		clawbackOp := opDetailsResponse.Embedded.Records[0].(operations.Clawback)
+		tt.Equal("PTS", clawbackOp.Code)
+		tt.Equal(fromKey.Address(), clawbackOp.From)
+		tt.Equal("10.0000000", clawbackOp.Amount)
+	}
+
+	// Check the operation effects
+	effectsResponse, err := itest.Client().Effects(horizonclient.EffectRequest{
+		ForTransaction: submissionResp.Hash,
+	})
+	tt.NoError(err)
+
+	if tt.Len(effectsResponse.Embedded.Records, 2) {
+		accountCredited := effectsResponse.Embedded.Records[0].(effects.AccountCredited)
+		tt.Equal(master.Address(), accountCredited.Account)
+		tt.Equal("10.0000000", accountCredited.Amount)
+		tt.Equal(master.Address(), accountCredited.Issuer)
+		tt.Equal("PTS", accountCredited.Code)
+		accountDebited := effectsResponse.Embedded.Records[1].(effects.AccountDebited)
+		tt.Equal(fromKey.Address(), accountDebited.Account)
+		tt.Equal("10.0000000", accountDebited.Amount)
+		tt.Equal(master.Address(), accountDebited.Issuer)
+		tt.Equal("PTS", accountDebited.Code)
+	}
+}
+
+func TestHappyClawbackAccountPartial(t *testing.T) {
+	tt := assert.New(t)
+	itest := NewProtocol16Test(t)
+	master := itest.Master()
+
+	asset, fromKey, _ := setupClawbackAccountTest(tt, itest, master)
+
+	// Partial clawback of the asset
+	submissionResp := itest.MustSubmitOperations(itest.MasterAccount(), master, &txnbuild.Clawback{
+		From:   fromKey.Address(),
+		Amount: "5",
+		Asset:  asset,
+	})
+
+	assertClawbackAccountSuccess(tt, itest, master, fromKey, "5.0000000", submissionResp)
+}
+
+func TestHappyClawbackAccountSellingLiabilities(t *testing.T) {
+	tt := assert.New(t)
+	itest := NewProtocol16Test(t)
+	master := itest.Master()
+
+	asset, fromKey, fromAccount := setupClawbackAccountTest(tt, itest, master)
+
+	// Add a selling liability
+	submissionResp := itest.MustSubmitOperations(fromAccount, fromKey, &txnbuild.ManageSellOffer{
+		Buying:        txnbuild.NativeAsset{},
+		Selling:       asset,
+		Amount:        "5",
+		Price:         "1",
+		SourceAccount: fromAccount.GetAccountID(),
+	})
+	tt.True(submissionResp.Successful)
+
+	// Full clawback of the asset, with a deauthorize/reauthorize sandwich
+	submissionResp = itest.MustSubmitOperations(itest.MasterAccount(), master,
+		&txnbuild.SetTrustLineFlags{
+			Trustor:    fromAccount.GetAccountID(),
+			Asset:      asset,
+			ClearFlags: []txnbuild.TrustLineFlag{txnbuild.TrustLineAuthorized},
+		},
+		&txnbuild.Clawback{
+			From:   fromKey.Address(),
+			Amount: "10",
+			Asset:  asset,
+		},
+		&txnbuild.SetTrustLineFlags{
+			Trustor:  fromAccount.GetAccountID(),
+			Asset:    asset,
+			SetFlags: []txnbuild.TrustLineFlag{txnbuild.TrustLineAuthorized},
+		},
+	)
+
+	assertClawbackAccountSuccess(tt, itest, master, fromKey, "0.0000000", submissionResp)
+}
+
+func TestSadClawbackAccountInsufficientFunds(t *testing.T) {
+	tt := assert.New(t)
+	itest := NewProtocol16Test(t)
+	master := itest.Master()
+
+	asset, fromKey, _ := setupClawbackAccountTest(tt, itest, master)
+	// Attempt to clawback more than the account holds.
+	submissionResp, err := itest.SubmitOperations(itest.MasterAccount(), master, &txnbuild.Clawback{
+		From:   fromKey.Address(),
+		Amount: "20",
+		Asset:  asset,
+	})
+	tt.Error(err)
+	assertClawbackAccountFailed(tt, itest, master, fromKey, submissionResp)
+}
+
+func TestSadClawbackAccountSufficientFundsSellingLiabilities(t *testing.T) {
+	tt := assert.New(t)
+	itest := NewProtocol16Test(t)
+	master := itest.Master()
+
+	asset, fromKey, fromAccount := setupClawbackAccountTest(tt, itest, master)
+
+	// Add a selling liability
+	submissionResp := itest.MustSubmitOperations(fromAccount, fromKey, &txnbuild.ManageSellOffer{
+		Buying:        txnbuild.NativeAsset{},
+		Selling:       asset,
+		Amount:        "5",
+		Price:         "1",
+		SourceAccount: fromAccount.GetAccountID(),
+	})
+
+	// Attempt to clawback more than is available.
+	submissionResp, err := itest.SubmitOperations(itest.MasterAccount(), master, &txnbuild.Clawback{
+		From:   fromKey.Address(),
+		Amount: "10",
+		Asset:  asset,
+	})
+	tt.Error(err)
+
+	assertClawbackAccountFailed(tt, itest, master, fromKey, submissionResp)
+}
+
+func setupClawbackAccountTest(tt *assert.Assertions, itest *integration.Test, master *keypair.Full) (txnbuild.CreditAsset, *keypair.Full, txnbuild.Account) {
 	// Give the master account the revocable flag (needed to set the clawback flag)
 	setRevocableFlag := txnbuild.SetOptions{
 		SetFlags: []txnbuild.AccountFlag{
@@ -74,17 +219,15 @@ func TestHappyClawback(t *testing.T) {
 	itest.MustSubmitOperations(itest.MasterAccount(), master, &setClawBackFlag)
 
 	// Make sure the clawback flag was set
-
 	accountDetails := itest.MustGetAccount(master)
 	tt.True(accountDetails.Flags.AuthClawbackEnabled)
 
 	// Create another account from which to claw an asset back
-
 	keyPairs, accounts := itest.CreateAccounts(1, "100")
 	accountKeyPair := keyPairs[0]
 	account := accounts[0]
 
-	// Make a payment to the account with asset which allows clawback
+	// Add some assets to the account with asset which allows clawback
 
 	// Time machine to Spain before Euros were a thing
 	pesetasAsset := txnbuild.CreditAsset{Code: "PTS", Issuer: master.Address()}
@@ -106,56 +249,29 @@ func TestHappyClawback(t *testing.T) {
 		tt.Equal("10.0000000", pts.Balance)
 	}
 
-	// Finally, clawback the asset
-	pesetasClawback := txnbuild.Clawback{
-		From:   accountKeyPair.Address(),
-		Amount: "10",
-		Asset:  pesetasAsset,
-	}
-	submissionResp := itest.MustSubmitOperations(itest.MasterAccount(), master, &pesetasClawback)
+	return pesetasAsset, accountKeyPair, account
+}
 
-	// Check that the balance was clawed back (the account's balance should be at 0)
-	accountDetails = itest.MustGetAccount(accountKeyPair)
+func assertClawbackAccountSuccess(tt *assert.Assertions, itest *integration.Test, master, accountKeyPair *keypair.Full, expectedBalance string, submissionResp protocol.Transaction) {
+	tt.True(submissionResp.Successful)
+	assertAccountBalance(tt, itest, accountKeyPair, expectedBalance)
+}
+
+func assertClawbackAccountFailed(tt *assert.Assertions, itest *integration.Test, master, accountKeyPair *keypair.Full, submissionResp protocol.Transaction) {
+	tt.False(submissionResp.Successful)
+	assertAccountBalance(tt, itest, accountKeyPair, "10.0000000")
+}
+
+func assertAccountBalance(tt *assert.Assertions, itest *integration.Test, accountKeyPair *keypair.Full, expectedBalance string) {
+	accountDetails := itest.MustGetAccount(accountKeyPair)
 	if tt.Len(accountDetails.Balances, 2) {
 		pts := accountDetails.Balances[0]
 		tt.Equal("PTS", pts.Code)
 		if tt.NotNil(pts.IsClawbackEnabled) {
 			tt.True(*pts.IsClawbackEnabled)
 		}
-		tt.Equal("0.0000000", pts.Balance)
+		tt.Equal(expectedBalance, pts.Balance)
 	}
-
-	// Check the operation details
-	opDetailsResponse, err := itest.Client().Operations(horizonclient.OperationRequest{
-		ForTransaction: submissionResp.Hash,
-	})
-	tt.NoError(err)
-	if tt.Len(opDetailsResponse.Embedded.Records, 1) {
-		clawbackOp := opDetailsResponse.Embedded.Records[0].(operations.Clawback)
-		tt.Equal("PTS", clawbackOp.Code)
-		tt.Equal(accountKeyPair.Address(), clawbackOp.From)
-		tt.Equal("10.0000000", clawbackOp.Amount)
-	}
-
-	// Check the operation effects
-	effectsResponse, err := itest.Client().Effects(horizonclient.EffectRequest{
-		ForTransaction: submissionResp.Hash,
-	})
-	tt.NoError(err)
-
-	if tt.Len(effectsResponse.Embedded.Records, 2) {
-		accountCredited := effectsResponse.Embedded.Records[0].(effects.AccountCredited)
-		tt.Equal(master.Address(), accountCredited.Account)
-		tt.Equal("10.0000000", accountCredited.Amount)
-		tt.Equal(master.Address(), accountCredited.Issuer)
-		tt.Equal("PTS", accountCredited.Code)
-		accountDebited := effectsResponse.Embedded.Records[1].(effects.AccountDebited)
-		tt.Equal(accountKeyPair.Address(), accountDebited.Account)
-		tt.Equal("10.0000000", accountDebited.Amount)
-		tt.Equal(master.Address(), accountDebited.Issuer)
-		tt.Equal("PTS", accountDebited.Code)
-	}
-
 }
 
 func TestHappyClawbackClaimableBalance(t *testing.T) {

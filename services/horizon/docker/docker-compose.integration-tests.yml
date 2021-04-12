@@ -14,6 +14,8 @@ services:
     depends_on:
       - core-postgres
     restart: on-failure
+    environment:
+      - TRACY_NO_INVARIANT_CHECK=1
     ports:
       - "11625:11625"
       - "11626:11626"
