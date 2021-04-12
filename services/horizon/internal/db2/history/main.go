@@ -573,7 +573,7 @@ type Offer struct {
 	Pricen             int32       `db:"pricen"`
 	Priced             int32       `db:"priced"`
 	Price              float64     `db:"price"`
-	Flags              uint32      `db:"flags"`
+	Flags              int32       `db:"flags"`
 	Deleted            bool        `db:"deleted"`
 	LastModifiedLedger uint32      `db:"last_modified_ledger"`
 	Sponsor            null.String `db:"sponsor"`

@@ -62,7 +62,7 @@ func (p *OffersProcessor) ledgerEntryToRow(entry *xdr.LedgerEntry) history.Offer
 		Pricen:             int32(offer.Price.N),
 		Priced:             int32(offer.Price.D),
 		Price:              float64(offer.Price.N) / float64(offer.Price.D),
-		Flags:              uint32(offer.Flags),
+		Flags:              int32(offer.Flags),
 		LastModifiedLedger: uint32(entry.LastModifiedLedgerSeq),
 		Sponsor:            ledgerEntrySponsorToNullString(*entry),
 	}
