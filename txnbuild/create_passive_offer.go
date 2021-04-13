@@ -52,9 +52,9 @@ func (cpo *CreatePassiveSellOffer) BuildXDR(withMuxedAccounts bool) (xdr.Operati
 	}
 	op := xdr.Operation{Body: body}
 	if withMuxedAccounts {
-		SetOpSourceAccount(&op, cpo.SourceAccount)
-	} else {
 		SetOpSourceMuxedAccount(&op, cpo.SourceAccount)
+	} else {
+		SetOpSourceAccount(&op, cpo.SourceAccount)
 	}
 	return op, nil
 }

@@ -87,9 +87,9 @@ func (pp *PathPaymentStrictSend) BuildXDR(withMuxedAccounts bool) (xdr.Operation
 	}
 	op := xdr.Operation{Body: body}
 	if withMuxedAccounts {
-		SetOpSourceAccount(&op, pp.SourceAccount)
-	} else {
 		SetOpSourceMuxedAccount(&op, pp.SourceAccount)
+	} else {
+		SetOpSourceAccount(&op, pp.SourceAccount)
 	}
 	return op, nil
 }
@@ -103,10 +103,10 @@ func (pp *PathPaymentStrictSend) FromXDR(xdrOp xdr.Operation, withMuxedAccounts 
 
 	pp.SourceAccount = accountFromXDR(xdrOp.SourceAccount, withMuxedAccounts)
 	if withMuxedAccounts {
+		pp.Destination = result.Destination.Address()
+	} else {
 		destAID := result.Destination.ToAccountId()
 		pp.Destination = destAID.Address()
-	} else {
-		pp.Destination = result.Destination.Address()
 	}
 	pp.SendAmount = amount.String(result.SendAmount)
 	pp.DestMin = amount.String(result.DestMin)
@@ -140,9 +140,9 @@ func (pp *PathPaymentStrictSend) FromXDR(xdrOp xdr.Operation, withMuxedAccounts 
 func (pp *PathPaymentStrictSend) Validate(withMuxedAccounts bool) error {
 	var err error
 	if withMuxedAccounts {
-		_, err = xdr.AddressToAccountId(pp.Destination)
-	} else {
 		_, err = xdr.AddressToMuxedAccount(pp.Destination)
+	} else {
+		_, err = xdr.AddressToAccountId(pp.Destination)
 	}
 	if err != nil {
 		return NewValidationError("Destination", err.Error())

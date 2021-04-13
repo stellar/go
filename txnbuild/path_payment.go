@@ -109,13 +109,11 @@ func (pp *PathPaymentStrictReceive) FromXDR(xdrOp xdr.Operation, withMuxedAccoun
 
 	pp.SourceAccount = accountFromXDR(xdrOp.SourceAccount, withMuxedAccounts)
 	if withMuxedAccounts {
-		pp.Destination = xdrOp.Body.Destination.Address()
+		pp.Destination = result.Destination.Address()
 	} else {
 		destAID := result.Destination.ToAccountId()
 		pp.Destination = destAID.Address()
 	}
-	destAID := result.Destination.ToAccountId()
-	pp.Destination = destAID.Address()
 	pp.DestAmount = amount.String(result.DestAmount)
 	pp.SendMax = amount.String(result.SendMax)
 
@@ -148,9 +146,9 @@ func (pp *PathPaymentStrictReceive) FromXDR(xdrOp xdr.Operation, withMuxedAccoun
 func (pp *PathPaymentStrictReceive) Validate(withMuxedAccounts bool) error {
 	var err error
 	if withMuxedAccounts {
-		_, err = xdr.AddressToAccountId(pp.Destination)
-	} else {
 		_, err = xdr.AddressToMuxedAccount(pp.Destination)
+	} else {
+		_, err = xdr.AddressToAccountId(pp.Destination)
 	}
 
 	if err != nil {
