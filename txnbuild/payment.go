@@ -71,10 +71,9 @@ func (p *Payment) FromXDR(xdrOp xdr.Operation, withMuxedAccounts bool) error {
 
 	p.SourceAccount = accountFromXDR(xdrOp.SourceAccount, withMuxedAccounts)
 	if withMuxedAccounts {
-		p.Destination = xdrOp.Body.Destination.Address()
+		p.Destination = result.Destination.Address()
 	} else {
 		destAID := result.Destination.ToAccountId()
-		p.Destination = destAID.Address()
 		p.Destination = destAID.Address()
 	}
 

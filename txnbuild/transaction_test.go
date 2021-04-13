@@ -178,9 +178,10 @@ func TestPaymentMuxedAccounts(t *testing.T) {
 	sourceAccount := NewSimpleAccount(mx.Address(), int64(9605939170639898))
 
 	payment := Payment{
-		Destination: "MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVAAAAAAAAAAAAAJLK",
-		Amount:      "10",
-		Asset:       NativeAsset{},
+		Destination:   "MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVAAAAAAAAAAAAAJLK",
+		Amount:        "10",
+		Asset:         NativeAsset{},
+		SourceAccount: sourceAccount.AccountID,
 	}
 
 	received, err := newSignedTransaction(
@@ -197,7 +198,7 @@ func TestPaymentMuxedAccounts(t *testing.T) {
 	)
 	assert.NoError(t, err)
 
-	expected := "AAAAAgAAAQAAAAAAyv66vuDcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAiII0AAAAbAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAABAAABAIAAAAAAAAAAPww0v5OtDZlx0EzMkPcFURyDiq2XNKSi+w16A/x/6JoAAAAAAAAAAAX14QAAAAAAAAAAAeoucsUAAABAKFlZsd3f3LJKm+mzxzNyTb8Q7477tk9XWFYXPGN5vVJir5wOoFMU4X3dd2Um8Z8ByfvxcaM/gr2zVsTBCYuaAA=="
+	expected := "AAAAAgAAAQAAAAAAyv66vuDcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAiII0AAAAbAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAEAAAEAAAAAAMr+ur7g3G3hclysZlFitS+s5zWyiiJD5B0STWy5LXCj6i5yxQAAAAEAAAEAgAAAAAAAAAA/DDS/k60NmXHQTMyQ9wVRHIOKrZc0pKL7DXoD/H/omgAAAAAAAAAABfXhAAAAAAAAAAAB6i5yxQAAAED4Wkvwf/BJV+fqa6Kvi+T/7ZL82pOinN68GlvEi9qK4klH+qITyvN3jRj5Nfz0+VrE2xBJPVc8sS/qN9LlznoC"
 	assert.Equal(t, expected, received, "Base 64 XDR should match")
 }
 
@@ -1385,6 +1386,32 @@ func TestFromXDR(t *testing.T) {
 	assert.Equal(t, "", op2.SourceAccount, "Operation source should match")
 	assert.Equal(t, "test", op2.Name, "Name should match")
 	assert.Equal(t, "value", string(op2.Value), "Value should match")
+
+	// Muxed accounts
+	txB64WithMuxedAccounts := "AAAAAgAAAQAAAAAAyv66vuDcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAiII0AAAAbAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAEAAAEAAAAAAMr+ur7g3G3hclysZlFitS+s5zWyiiJD5B0STWy5LXCj6i5yxQAAAAEAAAEAgAAAAAAAAAA/DDS/k60NmXHQTMyQ9wVRHIOKrZc0pKL7DXoD/H/omgAAAAAAAAAABfXhAAAAAAAAAAAB6i5yxQAAAED4Wkvwf/BJV+fqa6Kvi+T/7ZL82pOinN68GlvEi9qK4klH+qITyvN3jRj5Nfz0+VrE2xBJPVc8sS/qN9LlznoC"
+
+	// It provides M-addreses when enabling muxed accounts
+	tx3, err := TransactionFromXDR(txB64WithMuxedAccounts, TransactionFromXDROptionEnableMuxedAccounts)
+	assert.NoError(t, err)
+	newTx3, ok := tx3.Transaction()
+	assert.True(t, ok)
+	assert.Equal(t, "MDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKAAAAAAMV7V2XYGQO", newTx3.sourceAccount.AccountID)
+	op3, ok3 := newTx3.Operations()[0].(*Payment)
+	assert.True(t, ok3)
+	assert.Equal(t, "MDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKAAAAAAMV7V2XYGQO", op3.SourceAccount)
+	assert.Equal(t, "MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVAAAAAAAAAAAAAJLK", op3.Destination)
+
+	// It does provide G-addreses when not enabling muxed accounts
+	tx3, err = TransactionFromXDR(txB64WithMuxedAccounts)
+	assert.NoError(t, err)
+	newTx3, ok = tx3.Transaction()
+	assert.True(t, ok)
+	assert.Equal(t, "GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3", newTx3.sourceAccount.AccountID)
+	op3, ok3 = newTx3.Operations()[0].(*Payment)
+	assert.True(t, ok3)
+	assert.Equal(t, "GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3", op3.SourceAccount)
+	assert.Equal(t, "GA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVSGZ", op3.Destination)
+
 }
 
 func TestBuild(t *testing.T) {
