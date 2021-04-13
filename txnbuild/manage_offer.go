@@ -155,7 +155,7 @@ func (mo *ManageSellOffer) FromXDR(xdrOp xdr.Operation, withMuxedAccounts bool) 
 
 // Validate for ManageSellOffer validates the required struct fields. It returns an error if any
 // of the fields are invalid. Otherwise, it returns nil.
-func (mo *ManageSellOffer) Validate(bool) error {
+func (mo *ManageSellOffer) Validate(withMuxedAccounts bool) error {
 	return validateOffer(mo.Buying, mo.Selling, mo.Amount, mo.Price, mo.OfferID)
 }
 

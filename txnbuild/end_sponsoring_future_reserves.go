@@ -41,7 +41,7 @@ func (es *EndSponsoringFutureReserves) FromXDR(xdrOp xdr.Operation, withMuxedAcc
 
 // Validate for EndSponsoringFutureReserves validates the required struct fields. It returns an error if any of the fields are
 // invalid. Otherwise, it returns nil.
-func (es *EndSponsoringFutureReserves) Validate(bool) error {
+func (es *EndSponsoringFutureReserves) Validate(withMuxedAccounts bool) error {
 	return nil
 }
 

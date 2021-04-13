@@ -88,7 +88,7 @@ func (cpo *CreatePassiveSellOffer) FromXDR(xdrOp xdr.Operation, withMuxedAccount
 
 // Validate for CreatePassiveSellOffer validates the required struct fields. It returns an error if any
 // of the fields are invalid. Otherwise, it returns nil.
-func (cpo *CreatePassiveSellOffer) Validate(bool) error {
+func (cpo *CreatePassiveSellOffer) Validate(withMuxedAccounts bool) error {
 	return validatePassiveOffer(cpo.Buying, cpo.Selling, cpo.Amount, cpo.Price)
 }
 

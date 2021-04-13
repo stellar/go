@@ -170,7 +170,7 @@ func (cb *CreateClaimableBalance) FromXDR(xdrOp xdr.Operation, withMuxedAccounts
 
 // Validate for CreateClaimableBalance validates the required struct fields. It returns an error if any of the fields are
 // invalid. Otherwise, it returns nil.
-func (cb *CreateClaimableBalance) Validate(bool) error {
+func (cb *CreateClaimableBalance) Validate(withMuxedAccounts bool) error {
 	for _, d := range cb.Destinations {
 		err := validateStellarPublicKey(d.Destination)
 		if err != nil {

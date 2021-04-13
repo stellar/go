@@ -58,7 +58,7 @@ func (cb *ClaimClaimableBalance) FromXDR(xdrOp xdr.Operation, withMuxedAccounts 
 
 // Validate for ClaimClaimableBalance validates the required struct fields. It returns an error if any of the fields are
 // invalid. Otherwise, it returns nil.
-func (cb *ClaimClaimableBalance) Validate(bool) error {
+func (cb *ClaimClaimableBalance) Validate(withMuxedAccounts bool) error {
 	var xdrBalanceID xdr.ClaimableBalanceId
 	err := xdr.SafeUnmarshalHex(cb.BalanceID, &xdrBalanceID)
 	if err != nil {

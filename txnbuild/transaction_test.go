@@ -165,6 +165,75 @@ func TestPayment(t *testing.T) {
 	assert.Equal(t, expected, received, "Base 64 XDR should match")
 }
 
+func TestPaymentMuxedAccounts(t *testing.T) {
+	kp0 := newKeypair0()
+	accountID := xdr.MustAddress(kp0.Address())
+	mx := xdr.MuxedAccount{
+		Type: xdr.CryptoKeyTypeKeyTypeMuxedEd25519,
+		Med25519: &xdr.MuxedAccountMed25519{
+			Id:      0xcafebabe,
+			Ed25519: *accountID.Ed25519,
+		},
+	}
+	sourceAccount := NewSimpleAccount(mx.Address(), int64(9605939170639898))
+
+	payment := Payment{
+		Destination: "MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVAAAAAAAAAAAAAJLK",
+		Amount:      "10",
+		Asset:       NativeAsset{},
+	}
+
+	received, err := newSignedTransaction(
+		TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&payment},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(),
+			EnableMuxedAccounts:  true,
+		},
+		network.TestNetworkPassphrase,
+		kp0,
+	)
+	assert.NoError(t, err)
+
+	expected := "AAAAAgAAAQAAAAAAyv66vuDcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAiII0AAAAbAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAABAAABAIAAAAAAAAAAPww0v5OtDZlx0EzMkPcFURyDiq2XNKSi+w16A/x/6JoAAAAAAAAAAAX14QAAAAAAAAAAAeoucsUAAABAKFlZsd3f3LJKm+mzxzNyTb8Q7477tk9XWFYXPGN5vVJir5wOoFMU4X3dd2Um8Z8ByfvxcaM/gr2zVsTBCYuaAA=="
+	assert.Equal(t, expected, received, "Base 64 XDR should match")
+}
+
+func TestPaymentFailsMuxedAccountsIfNotEnabled(t *testing.T) {
+	kp0 := newKeypair0()
+	accountID := xdr.MustAddress(kp0.Address())
+	mx := xdr.MuxedAccount{
+		Type: xdr.CryptoKeyTypeKeyTypeMuxedEd25519,
+		Med25519: &xdr.MuxedAccountMed25519{
+			Id:      0xcafebabe,
+			Ed25519: *accountID.Ed25519,
+		},
+	}
+	sourceAccount := NewSimpleAccount(mx.Address(), int64(9605939170639898))
+
+	payment := Payment{
+		Destination: "MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVAAAAAAAAAAAAAJLK",
+		Amount:      "10",
+		Asset:       NativeAsset{},
+	}
+
+	_, err := newSignedTransaction(
+		TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&payment},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(),
+			EnableMuxedAccounts:  false,
+		},
+		network.TestNetworkPassphrase,
+		kp0,
+	)
+	assert.Error(t, err)
+}
+
 func TestPaymentFailsIfNoAssetSpecified(t *testing.T) {
 	kp0 := newKeypair0()
 	sourceAccount := NewSimpleAccount(kp0.Address(), int64(9605939170639898))

@@ -226,7 +226,7 @@ func (r *RevokeSponsorship) FromXDR(xdrOp xdr.Operation, withMuxedAccounts bool)
 	return nil
 }
 
-func (r *RevokeSponsorship) Validate(bool) error {
+func (r *RevokeSponsorship) Validate(withMuxedAccounts bool) error {
 	switch r.SponsorshipType {
 	case RevokeSponsorshipTypeAccount:
 		if r.Account == nil {

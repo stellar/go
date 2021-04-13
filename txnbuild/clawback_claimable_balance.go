@@ -57,7 +57,7 @@ func (cb *ClawbackClaimableBalance) FromXDR(xdrOp xdr.Operation, withMuxedAccoun
 
 // Validate for ClawbackClaimableBalance validates the required struct fields. It returns an error if any of the fields are
 // invalid. Otherwise, it returns nil.
-func (cb *ClawbackClaimableBalance) Validate(bool) error {
+func (cb *ClawbackClaimableBalance) Validate(withMuxedAccounts bool) error {
 	var xdrBalanceID xdr.ClaimableBalanceId
 	err := xdr.SafeUnmarshalHex(cb.BalanceID, &xdrBalanceID)
 	if err != nil {

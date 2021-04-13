@@ -94,9 +94,9 @@ func (p *Payment) FromXDR(xdrOp xdr.Operation, withMuxedAccounts bool) error {
 func (p *Payment) Validate(withMuxedAccounts bool) error {
 	var err error
 	if withMuxedAccounts {
-		_, err = xdr.AddressToAccountId(p.Destination)
-	} else {
 		_, err = xdr.AddressToMuxedAccount(p.Destination)
+	} else {
+		_, err = xdr.AddressToAccountId(p.Destination)
 	}
 
 	if err != nil {

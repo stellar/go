@@ -110,7 +110,7 @@ func fromXDRTrustlineFlag(flags xdr.Uint32) []TrustLineFlag {
 
 // Validate for SetTrustLineFlags  validates the required struct fields. It returns an error if any of the fields are
 // invalid. Otherwise, it returns nil.
-func (stf *SetTrustLineFlags) Validate(bool) error {
+func (stf *SetTrustLineFlags) Validate(withMuxedAccounts bool) error {
 	err := validateStellarPublicKey(stf.Trustor)
 	if err != nil {
 		return NewValidationError("Trustor", err.Error())

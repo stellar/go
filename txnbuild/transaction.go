@@ -514,15 +514,15 @@ func (t GenericTransaction) FeeBump() (*FeeBumpTransaction, bool) {
 	return t.feeBump, t.feeBump != nil
 }
 
-type ParseXDROption int
+type TransactionFromXDROption int
 
 const (
-	ParseXDROptionEnableMuxedAccounts ParseXDROption = iota
+	TransactionFromXDROptionEnableMuxedAccounts TransactionFromXDROption = iota
 )
 
-func areMuxedAccountsEnabled(options []ParseXDROption) bool {
+func areMuxedAccountsEnabled(options []TransactionFromXDROption) bool {
 	for _, opt := range options {
-		if opt == ParseXDROptionEnableMuxedAccounts {
+		if opt == TransactionFromXDROptionEnableMuxedAccounts {
 			return true
 		}
 	}
@@ -531,7 +531,7 @@ func areMuxedAccountsEnabled(options []ParseXDROption) bool {
 
 // TransactionFromXDR parses the supplied transaction envelope in base64 XDR
 // and returns a GenericTransaction instance.
-func TransactionFromXDR(txeB64 string, options ...ParseXDROption) (*GenericTransaction, error) {
+func TransactionFromXDR(txeB64 string, options ...TransactionFromXDROption) (*GenericTransaction, error) {
 	var xdrEnv xdr.TransactionEnvelope
 	err := xdr.SafeUnmarshalBase64(txeB64, &xdrEnv)
 	if err != nil {
@@ -673,7 +673,7 @@ func NewTransaction(params TransactionParams) (*Transaction, error) {
 	} else {
 		accountID, err2 := xdr.AddressToAccountId(tx.sourceAccount.AccountID)
 		if err2 != nil {
-			return nil, errors.Wrap(err, "account id is not valid")
+			return nil, errors.Wrap(err2, "account id is not valid")
 		}
 		sourceAccount = accountID.ToMuxedAccount()
 	}

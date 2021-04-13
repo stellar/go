@@ -45,7 +45,7 @@ func (bs *BeginSponsoringFutureReserves) FromXDR(xdrOp xdr.Operation, withMuxedA
 
 // Validate for BeginSponsoringFutureReserves validates the required struct fields. It returns an error if any of the fields are
 // invalid. Otherwise, it returns nil.
-func (bs *BeginSponsoringFutureReserves) Validate(bool) error {
+func (bs *BeginSponsoringFutureReserves) Validate(withMuxedAccounts bool) error {
 	err := validateStellarPublicKey(bs.SponsoredID)
 	if err != nil {
 		return NewValidationError("SponsoredID", err.Error())

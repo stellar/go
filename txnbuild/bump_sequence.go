@@ -43,7 +43,7 @@ func (bs *BumpSequence) FromXDR(xdrOp xdr.Operation, withMuxedAccounts bool) err
 
 // Validate for BumpSequence validates the required struct fields. It returns an error if any of the fields are
 // invalid. Otherwise, it returns nil.
-func (bs *BumpSequence) Validate(bool) error {
+func (bs *BumpSequence) Validate(withMuxedAccounts bool) error {
 	err := validateAmount(bs.BumpTo)
 	if err != nil {
 		return NewValidationError("BumpTo", err.Error())

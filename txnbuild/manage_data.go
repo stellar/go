@@ -58,7 +58,7 @@ func (md *ManageData) FromXDR(xdrOp xdr.Operation, withMuxedAccounts bool) error
 
 // Validate for ManageData validates the required struct fields. It returns an error if any
 // of the fields are invalid. Otherwise, it returns nil.
-func (md *ManageData) Validate(bool) error {
+func (md *ManageData) Validate(withMuxedAccounts bool) error {
 	if len(md.Name) > 64 {
 		return NewValidationError("Name", "maximum length is 64 characters")
 	}
