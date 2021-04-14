@@ -346,92 +346,59 @@ func TestFeeBumpAddSignatureBase64(t *testing.T) {
 	assert.Equal(t, expected, b64)
 }
 
-func TestFeeBumpRoundTrip(t *testing.T) {
+func TestFeeBumpMuxedAccounts(t *testing.T) {
 	kp0, kp1 := newKeypair0(), newKeypair1()
-	sourceAccount := NewSimpleAccount(kp0.Address(), 1)
-
+	accountID0 := xdr.MustAddress(kp0.Address())
+	mx0 := xdr.MuxedAccount{
+		Type: xdr.CryptoKeyTypeKeyTypeMuxedEd25519,
+		Med25519: &xdr.MuxedAccountMed25519{
+			Id:      0xcafebabe,
+			Ed25519: *accountID0.Ed25519,
+		},
+	}
+	sourceAccount := NewSimpleAccount(mx0.Address(), 1)
 	tx, err := NewTransaction(
 		TransactionParams{
-			SourceAccount: &sourceAccount,
-			Operations:    []Operation{&Inflation{}},
-			BaseFee:       MinBaseFee,
-			Timebounds:    NewInfiniteTimeout(),
+			SourceAccount:       &sourceAccount,
+			Operations:          []Operation{&Inflation{}},
+			BaseFee:             MinBaseFee,
+			Timebounds:          NewInfiniteTimeout(),
+			EnableMuxedAccounts: true,
 		},
 	)
 	assert.NoError(t, err)
 	tx, err = tx.Sign(network.TestNetworkPassphrase, kp0)
 	assert.NoError(t, err)
-	expectedInnerB64, err := tx.Base64()
-	assert.NoError(t, err)
 
+	accountID1 := xdr.MustAddress(kp1.Address())
+	mx1 := xdr.MuxedAccount{
+		Type: xdr.CryptoKeyTypeKeyTypeMuxedEd25519,
+		Med25519: &xdr.MuxedAccountMed25519{
+			Id:      0xdeadbeef,
+			Ed25519: *accountID1.Ed25519,
+		},
+	}
 	feeBumpTx, err := NewFeeBumpTransaction(
 		FeeBumpTransactionParams{
-			FeeAccount: kp1.Address(),
-			BaseFee:    2 * MinBaseFee,
-			Inner:      tx,
+			FeeAccount:          mx1.Address(),
+			BaseFee:             2 * MinBaseFee,
+			Inner:               tx,
+			EnableMuxedAccounts: true,
 		},
 	)
 	assert.NoError(t, err)
-	feeBumpTx, err = feeBumpTx.Sign(network.TestNetworkPassphrase, kp1)
-	assert.NoError(t, err)
+	assert.Equal(t, mx0.Address(), feeBumpTx.InnerTransaction().sourceAccount.AccountID)
+	assert.Equal(t, mx1.Address(), feeBumpTx.FeeAccount())
 
-	innerB64, err := feeBumpTx.InnerTransaction().Base64()
-	assert.NoError(t, err)
-	assert.Equal(t, expectedInnerB64, innerB64)
-
-	assert.Equal(t, kp1.Address(), feeBumpTx.FeeAccount())
-	assert.Equal(t, int64(2*MinBaseFee), feeBumpTx.BaseFee())
-	assert.Equal(t, int64(4*MinBaseFee), feeBumpTx.MaxFee())
-
-	outerHash, err := feeBumpTx.HashHex(network.TestNetworkPassphrase)
-	assert.NoError(t, err)
-
-	env := feeBumpTx.ToXDR()
-	assert.NoError(t, err)
-	assert.Equal(t, xdr.EnvelopeTypeEnvelopeTypeTxFeeBump, env.Type)
-	assert.Equal(t, xdr.MustAddress(kp1.Address()), env.FeeBumpAccount().ToAccountId())
-	assert.Equal(t, int64(4*MinBaseFee), env.FeeBumpFee())
-	assert.Equal(t, feeBumpTx.Signatures(), env.FeeBumpSignatures())
-	innerB64, err = xdr.MarshalBase64(xdr.TransactionEnvelope{
-		Type: xdr.EnvelopeTypeEnvelopeTypeTx,
-		V1:   env.FeeBump.Tx.InnerTx.V1,
-	})
-	assert.NoError(t, err)
-	assert.Equal(t, expectedInnerB64, innerB64)
-
-	expectedFeeBumpB64, err := xdr.MarshalBase64(env)
-	assert.NoError(t, err)
-
-	b64, err := feeBumpTx.Base64()
-	assert.NoError(t, err)
-	assert.Equal(t, expectedFeeBumpB64, b64)
-
-	binary, err := feeBumpTx.MarshalBinary()
-	assert.NoError(t, err)
-	assert.Equal(t, expectedFeeBumpB64, base64.StdEncoding.EncodeToString(binary))
-
-	parsed, err := TransactionFromXDR(expectedFeeBumpB64)
-	assert.NoError(t, err)
-	parsedFeeBump, ok := parsed.FeeBump()
-	assert.True(t, ok)
-	_, ok = parsed.Transaction()
-	assert.False(t, ok)
-
-	parsedHash, err := parsedFeeBump.HashHex(network.TestNetworkPassphrase)
-	assert.NoError(t, err)
-
-	assert.Equal(t, feeBumpTx.Signatures(), parsedFeeBump.Signatures())
-	assert.Equal(t, kp1.Address(), parsedFeeBump.FeeAccount())
-	assert.Equal(t, int64(2*MinBaseFee), parsedFeeBump.BaseFee())
-	assert.Equal(t, int64(4*MinBaseFee), parsedFeeBump.MaxFee())
-	innerB64, err = xdr.MarshalBase64(xdr.TransactionEnvelope{
-		Type: xdr.EnvelopeTypeEnvelopeTypeTx,
-		V1:   parsedFeeBump.envelope.FeeBump.Tx.InnerTx.V1,
-	})
-	assert.NoError(t, err)
-	assert.Equal(t, expectedInnerB64, innerB64)
-	b64, err = parsedFeeBump.Base64()
-	assert.NoError(t, err)
-	assert.Equal(t, expectedFeeBumpB64, b64)
-	assert.Equal(t, outerHash, parsedHash)
+	// It fails when not enabling muxed accounts
+	feeBumpTx, err = NewFeeBumpTransaction(
+		FeeBumpTransactionParams{
+			FeeAccount:          mx1.Address(),
+			BaseFee:             2 * MinBaseFee,
+			Inner:               tx,
+			EnableMuxedAccounts: false,
+		},
+	)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid version byte")
 }

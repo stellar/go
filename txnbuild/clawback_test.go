@@ -83,10 +83,19 @@ func TestClawbackValidateAsset(t *testing.T) {
 
 func TestClawbackRoundTrip(t *testing.T) {
 	clawback := Clawback{
-		From:   "GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H",
-		Amount: "10.0000000",
-		Asset:  CreditAsset{"USD", "GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU"},
+		SourceAccount: "GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H",
+		From:          "GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H",
+		Amount:        "10.0000000",
+		Asset:         CreditAsset{"USD", "GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU"},
 	}
+	testOperationsMarshallingRoundtrip(t, []Operation{&clawback}, false)
 
-	testOperationsMarshallingRoundtrip(t, []Operation{&clawback})
+	// with muxed accounts
+	clawback = Clawback{
+		SourceAccount: "MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVAAAAAAAAAAAAAJLK",
+		From:          "MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVAAAAAAAAAAAAAJLK",
+		Amount:        "10.0000000",
+		Asset:         CreditAsset{"USD", "GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU"},
+	}
+	testOperationsMarshallingRoundtrip(t, []Operation{&clawback}, true)
 }

@@ -19,7 +19,7 @@ type ManageBuyOffer struct {
 }
 
 // BuildXDR for ManageBuyOffer returns a fully configured XDR Operation.
-func (mo *ManageBuyOffer) BuildXDR() (xdr.Operation, error) {
+func (mo *ManageBuyOffer) BuildXDR(withMuxedAccounts bool) (xdr.Operation, error) {
 	xdrSelling, err := mo.Selling.ToXDR()
 	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "failed to set XDR 'Selling' field")
@@ -53,18 +53,22 @@ func (mo *ManageBuyOffer) BuildXDR() (xdr.Operation, error) {
 	}
 
 	op := xdr.Operation{Body: body}
-	SetOpSourceAccount(&op, mo.SourceAccount)
+	if withMuxedAccounts {
+		SetOpSourceMuxedAccount(&op, mo.SourceAccount)
+	} else {
+		SetOpSourceAccount(&op, mo.SourceAccount)
+	}
 	return op, nil
 }
 
 // FromXDR for ManageBuyOffer initialises the txnbuild struct from the corresponding xdr Operation.
-func (mo *ManageBuyOffer) FromXDR(xdrOp xdr.Operation) error {
+func (mo *ManageBuyOffer) FromXDR(xdrOp xdr.Operation, withMuxedAccounts bool) error {
 	result, ok := xdrOp.Body.GetManageBuyOfferOp()
 	if !ok {
 		return errors.New("error parsing manage_buy_offer operation from xdr")
 	}
 
-	mo.SourceAccount = accountFromXDR(xdrOp.SourceAccount)
+	mo.SourceAccount = accountFromXDR(xdrOp.SourceAccount, withMuxedAccounts)
 	mo.OfferID = int64(result.OfferId)
 	mo.Amount = amount.String(result.BuyAmount)
 	if result.Price != (xdr.Price{}) {
@@ -87,7 +91,7 @@ func (mo *ManageBuyOffer) FromXDR(xdrOp xdr.Operation) error {
 
 // Validate for ManageBuyOffer validates the required struct fields. It returns an error if any
 // of the fields are invalid. Otherwise, it returns nil.
-func (mo *ManageBuyOffer) Validate() error {
+func (mo *ManageBuyOffer) Validate(withMuxedAccounts bool) error {
 	return validateOffer(mo.Buying, mo.Selling, mo.Amount, mo.Price, mo.OfferID)
 }
 

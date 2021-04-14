@@ -8,9 +8,9 @@ import (
 
 // Operation represents the operation types of the Stellar network.
 type Operation interface {
-	BuildXDR() (xdr.Operation, error)
-	FromXDR(xdrOp xdr.Operation) error
-	Validate() error
+	BuildXDR(withMuxedAccounts bool) (xdr.Operation, error)
+	FromXDR(xdrOp xdr.Operation, withMuxedAccounts bool) error
+	Validate(withMuxedAccounts bool) error
 	GetSourceAccount() string
 }
 
@@ -20,12 +20,22 @@ func SetOpSourceAccount(op *xdr.Operation, sourceAccount string) {
 		return
 	}
 	var opSourceAccountID xdr.MuxedAccount
+	opSourceAccountID.SetEd25519Address(sourceAccount)
+	op.SourceAccount = &opSourceAccountID
+}
+
+// SetOpSourceAccount sets the source account ID on an Operation, allowing M-strkeys (as defined in SEP23).
+func SetOpSourceMuxedAccount(op *xdr.Operation, sourceAccount string) {
+	if sourceAccount == "" {
+		return
+	}
+	var opSourceAccountID xdr.MuxedAccount
 	opSourceAccountID.SetAddress(sourceAccount)
 	op.SourceAccount = &opSourceAccountID
 }
 
 // operationFromXDR returns a txnbuild Operation from its corresponding XDR operation
-func operationFromXDR(xdrOp xdr.Operation) (Operation, error) {
+func operationFromXDR(xdrOp xdr.Operation, withMuxedAccounts bool) (Operation, error) {
 	var newOp Operation
 	switch xdrOp.Body.Type {
 	case xdr.OperationTypeCreateAccount:
@@ -76,14 +86,18 @@ func operationFromXDR(xdrOp xdr.Operation) (Operation, error) {
 		return nil, fmt.Errorf("unknown operation type: %d", xdrOp.Body.Type)
 	}
 
-	err := newOp.FromXDR(xdrOp)
+	err := newOp.FromXDR(xdrOp, withMuxedAccounts)
 	return newOp, err
 }
 
-func accountFromXDR(account *xdr.MuxedAccount) string {
+func accountFromXDR(account *xdr.MuxedAccount, withMuxedAccounts bool) string {
 	if account != nil {
-		aid := account.ToAccountId()
-		return aid.Address()
+		if withMuxedAccounts {
+			return account.Address()
+		} else {
+			aid := account.ToAccountId()
+			return aid.Address()
+		}
 	}
 	return ""
 }

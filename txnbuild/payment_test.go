@@ -80,3 +80,22 @@ func TestPaymentValidateAsset(t *testing.T) {
 		assert.Contains(t, err.Error(), expected)
 	}
 }
+
+func TestPaymentRoundtrip(t *testing.T) {
+	payment := Payment{
+		SourceAccount: "GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H",
+		Destination:   "GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H",
+		Amount:        "10.0000000",
+		Asset:         NativeAsset{},
+	}
+	testOperationsMarshallingRoundtrip(t, []Operation{&payment}, false)
+
+	// with muxed accounts
+	payment = Payment{
+		SourceAccount: "MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVAAAAAAAAAAAAAJLK",
+		Destination:   "MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVAAAAAAAAAAAAAJLK",
+		Amount:        "10.0000000",
+		Asset:         NativeAsset{},
+	}
+	testOperationsMarshallingRoundtrip(t, []Operation{&payment}, true)
+}

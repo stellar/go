@@ -15,7 +15,7 @@ type ClaimClaimableBalance struct {
 }
 
 // BuildXDR for ClaimClaimableBalance returns a fully configured XDR Operation.
-func (cb *ClaimClaimableBalance) BuildXDR() (xdr.Operation, error) {
+func (cb *ClaimClaimableBalance) BuildXDR(withMuxedAccounts bool) (xdr.Operation, error) {
 	var xdrBalanceID xdr.ClaimableBalanceId
 	err := xdr.SafeUnmarshalHex(cb.BalanceID, &xdrBalanceID)
 	if err != nil {
@@ -31,18 +31,22 @@ func (cb *ClaimClaimableBalance) BuildXDR() (xdr.Operation, error) {
 		return xdr.Operation{}, errors.Wrap(err, "failed to build XDR OperationBody")
 	}
 	op := xdr.Operation{Body: body}
-	SetOpSourceAccount(&op, cb.SourceAccount)
+	if withMuxedAccounts {
+		SetOpSourceMuxedAccount(&op, cb.SourceAccount)
+	} else {
+		SetOpSourceAccount(&op, cb.SourceAccount)
+	}
 	return op, nil
 }
 
 // FromXDR for ClaimClaimableBalance initializes the txnbuild struct from the corresponding xdr Operation.
-func (cb *ClaimClaimableBalance) FromXDR(xdrOp xdr.Operation) error {
+func (cb *ClaimClaimableBalance) FromXDR(xdrOp xdr.Operation, withMuxedAccounts bool) error {
 	result, ok := xdrOp.Body.GetClaimClaimableBalanceOp()
 	if !ok {
 		return errors.New("error parsing claim_claimable_balance operation from xdr")
 	}
 
-	cb.SourceAccount = accountFromXDR(xdrOp.SourceAccount)
+	cb.SourceAccount = accountFromXDR(xdrOp.SourceAccount, withMuxedAccounts)
 	balanceID, err := xdr.MarshalHex(result.BalanceId)
 	if err != nil {
 		return errors.New("error parsing BalanceID in claim_claimable_balance operation from xdr")
@@ -54,7 +58,7 @@ func (cb *ClaimClaimableBalance) FromXDR(xdrOp xdr.Operation) error {
 
 // Validate for ClaimClaimableBalance validates the required struct fields. It returns an error if any of the fields are
 // invalid. Otherwise, it returns nil.
-func (cb *ClaimClaimableBalance) Validate() error {
+func (cb *ClaimClaimableBalance) Validate(withMuxedAccounts bool) error {
 	var xdrBalanceID xdr.ClaimableBalanceId
 	err := xdr.SafeUnmarshalHex(cb.BalanceID, &xdrBalanceID)
 	if err != nil {

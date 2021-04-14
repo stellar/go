@@ -126,3 +126,20 @@ func TestManageDataRoundTrip(t *testing.T) {
 		})
 	}
 }
+
+func TestManageDataRoundtrip(t *testing.T) {
+	manageData := ManageData{
+		SourceAccount: "GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H",
+		Name:          "foo",
+		Value:         []byte("bar"),
+	}
+	testOperationsMarshallingRoundtrip(t, []Operation{&manageData}, false)
+
+	// with muxed accounts
+	manageData = ManageData{
+		SourceAccount: "MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVAAAAAAAAAAAAAJLK",
+		Name:          "foo",
+		Value:         []byte("bar"),
+	}
+	testOperationsMarshallingRoundtrip(t, []Operation{&manageData}, true)
+}

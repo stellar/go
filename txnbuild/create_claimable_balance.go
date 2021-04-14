@@ -96,7 +96,7 @@ func BeforeRelativeTimePredicate(secondsBefore int64) xdr.ClaimPredicate {
 }
 
 // BuildXDR for CreateClaimableBalance returns a fully configured XDR Operation.
-func (cb *CreateClaimableBalance) BuildXDR() (xdr.Operation, error) {
+func (cb *CreateClaimableBalance) BuildXDR(withMuxedAccounts bool) (xdr.Operation, error) {
 	xdrAsset, err := cb.Asset.ToXDR()
 	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "failed to set XDR 'Asset' field")
@@ -134,18 +134,22 @@ func (cb *CreateClaimableBalance) BuildXDR() (xdr.Operation, error) {
 		return xdr.Operation{}, errors.Wrap(err, "failed to build XDR OperationBody")
 	}
 	op := xdr.Operation{Body: body}
-	SetOpSourceAccount(&op, cb.SourceAccount)
+	if withMuxedAccounts {
+		SetOpSourceMuxedAccount(&op, cb.SourceAccount)
+	} else {
+		SetOpSourceAccount(&op, cb.SourceAccount)
+	}
 	return op, nil
 }
 
 // FromXDR for CreateClaimableBalance initializes the txnbuild struct from the corresponding xdr Operation.
-func (cb *CreateClaimableBalance) FromXDR(xdrOp xdr.Operation) error {
+func (cb *CreateClaimableBalance) FromXDR(xdrOp xdr.Operation, withMuxedAccounts bool) error {
 	result, ok := xdrOp.Body.GetCreateClaimableBalanceOp()
 	if !ok {
 		return errors.New("error parsing create_claimable_balance operation from xdr")
 	}
 
-	cb.SourceAccount = accountFromXDR(xdrOp.SourceAccount)
+	cb.SourceAccount = accountFromXDR(xdrOp.SourceAccount, withMuxedAccounts)
 	for _, c := range result.Claimants {
 		claimant := c.MustV0()
 		cb.Destinations = append(cb.Destinations, Claimant{
@@ -166,7 +170,7 @@ func (cb *CreateClaimableBalance) FromXDR(xdrOp xdr.Operation) error {
 
 // Validate for CreateClaimableBalance validates the required struct fields. It returns an error if any of the fields are
 // invalid. Otherwise, it returns nil.
-func (cb *CreateClaimableBalance) Validate() error {
+func (cb *CreateClaimableBalance) Validate(withMuxedAccounts bool) error {
 	for _, d := range cb.Destinations {
 		err := validateStellarPublicKey(d.Destination)
 		if err != nil {
