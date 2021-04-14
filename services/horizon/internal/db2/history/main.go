@@ -251,7 +251,7 @@ type IngestionQ interface {
 	UpdateExpStateInvalid(bool) error
 	UpdateIngestVersion(int) error
 	GetExpStateInvalid() (bool, error)
-	GetLatestLedger() (uint32, error)
+	GetLatestHistoryLedger() (uint32, error)
 	GetOfferCompactionSequence() (uint32, error)
 	TruncateIngestStateTables() error
 	DeleteRangeAll(start, end int64) error
@@ -573,7 +573,7 @@ type Offer struct {
 	Pricen             int32       `db:"pricen"`
 	Priced             int32       `db:"priced"`
 	Price              float64     `db:"price"`
-	Flags              uint32      `db:"flags"`
+	Flags              int32       `db:"flags"`
 	Deleted            bool        `db:"deleted"`
 	LastModifiedLedger uint32      `db:"last_modified_ledger"`
 	Sponsor            null.String `db:"sponsor"`
@@ -776,9 +776,9 @@ func (q *Q) ElderLedger(dest interface{}) error {
 	return q.GetRaw(dest, `SELECT COALESCE(MIN(sequence), 0) FROM history_ledgers`)
 }
 
-// GetLatestLedger loads the latest known ledger. Returns 0 if no ledgers in
+// GetLatestHistoryLedger loads the latest known ledger. Returns 0 if no ledgers in
 // `history_ledgers` table.
-func (q *Q) GetLatestLedger() (uint32, error) {
+func (q *Q) GetLatestHistoryLedger() (uint32, error) {
 	var value uint32
 	err := q.LatestLedger(&value)
 	return value, err

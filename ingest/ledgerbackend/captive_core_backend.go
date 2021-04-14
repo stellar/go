@@ -90,7 +90,9 @@ type CaptiveStellarCore struct {
 	// for scenarios when Horizon consumes ledgers faster than Stellar-Core produces them
 	// and using `time.Sleep` when ledger is not available can actually slow entire
 	// ingestion process.
-	blocking bool
+	// blockingLock locks access to blocking.
+	blockingLock sync.Mutex
+	blocking     bool
 
 	// cachedMeta keeps that ledger data of the last fetched ledger. Updated in GetLedger().
 	cachedMeta *xdr.LedgerCloseMeta
@@ -233,7 +235,7 @@ func (c *CaptiveStellarCore) openOfflineReplaySubprocess(from, to uint32) error 
 	// the requested ledger
 	c.nextLedger = c.roundDownToFirstReplayAfterCheckpointStart(from)
 	c.lastLedger = &to
-	c.blocking = true
+	c.setBlocking(true)
 	c.previousLedgerHash = nil
 
 	return nil
@@ -292,7 +294,7 @@ func (c *CaptiveStellarCore) openOnlineReplaySubprocess(from uint32) error {
 		}
 	}
 
-	c.blocking = false
+	c.setBlocking(false)
 
 	return nil
 }
@@ -398,10 +400,10 @@ func (c *CaptiveStellarCore) PrepareRange(ledgerRange Range) error {
 		return nil
 	}
 
-	old := c.blocking
-	c.blocking = true
+	old := c.isBlocking()
+	c.setBlocking(true)
 	_, _, err := c.GetLedger(ledgerRange.from)
-	c.blocking = old
+	c.setBlocking(old)
 
 	if err != nil {
 		return errors.Wrapf(err, "Error fast-forwarding to %d", ledgerRange.from)
@@ -450,6 +452,18 @@ func (c *CaptiveStellarCore) isPrepared(ledgerRange Range) bool {
 
 	// Requested range is unbounded but current one is bounded
 	return false
+}
+
+// GetLedgerBlocking works as GetLedger but will block until the ledger is
+// available in the backend (even for UnboundedRange).
+// Please note that requesting a ledger sequence far after current ledger will
+// block the execution for a long time.
+func (c *CaptiveStellarCore) GetLedgerBlocking(sequence uint32) (xdr.LedgerCloseMeta, error) {
+	old := c.isBlocking()
+	c.setBlocking(true)
+	_, meta, err := c.GetLedger(sequence)
+	c.setBlocking(old)
+	return meta, err
 }
 
 // GetLedger returns true when ledger is found and it's LedgerCloseMeta.
@@ -502,7 +516,7 @@ func (c *CaptiveStellarCore) GetLedger(sequence uint32) (bool, xdr.LedgerCloseMe
 	// Now loop along the range until we find the ledger we want.
 	var errOut error
 	for {
-		if !c.blocking && len(c.stellarCoreRunner.getMetaPipe()) == 0 {
+		if !c.isBlocking() && len(c.stellarCoreRunner.getMetaPipe()) == 0 {
 			return false, xdr.LedgerCloseMeta{}, nil
 		}
 
@@ -538,10 +552,11 @@ func (c *CaptiveStellarCore) GetLedger(sequence uint32) (bool, xdr.LedgerCloseMe
 		currentLedgerHash := result.LedgerCloseMeta.LedgerHash().HexString()
 		c.previousLedgerHash = &currentLedgerHash
 
-		if seq == sequence {
-			// Found the requested seq
-			c.cachedMeta = result.LedgerCloseMeta
+		// Update cache with the latest value because we incremented nextLedger.
+		// TODO add test for this case!
+		c.cachedMeta = result.LedgerCloseMeta
 
+		if seq == sequence {
 			// If we got the _last_ ledger in a segment, close before returning.
 			if c.lastLedger != nil && *c.lastLedger == seq {
 				if err := c.stellarCoreRunner.close(); err != nil {
@@ -611,6 +626,18 @@ func (c *CaptiveStellarCore) GetLatestLedgerSequence() (uint32, error) {
 
 func (c *CaptiveStellarCore) isClosed() bool {
 	return c.nextLedger == 0 || c.stellarCoreRunner == nil || c.stellarCoreRunner.context().Err() != nil
+}
+
+func (c *CaptiveStellarCore) isBlocking() bool {
+	c.blockingLock.Lock()
+	defer c.blockingLock.Unlock()
+	return c.blocking
+}
+
+func (c *CaptiveStellarCore) setBlocking(val bool) {
+	c.blockingLock.Lock()
+	c.blocking = val
+	c.blockingLock.Unlock()
 }
 
 // Close closes existing Stellar-Core process, streaming sessions and removes all

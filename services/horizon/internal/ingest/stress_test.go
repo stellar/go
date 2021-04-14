@@ -5,6 +5,7 @@ package ingest
 import (
 	"testing"
 
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/stellar/go/ingest"
@@ -38,11 +39,6 @@ func (s *StressTestStateTestSuite) SetupTest() {
 	s.historyQ.On("GetTx").Return(nil).Once()
 	s.historyQ.On("Rollback").Return(nil).Once()
 	s.runner.On("EnableMemoryStatsLogging").Return()
-	s.runner.On("SetLedgerBackend", fakeLedgerBackend{
-		numTransactions:       10,
-		changesPerTransaction: 4,
-	}).Return()
-
 }
 
 func (s *StressTestStateTestSuite) TearDownTest() {
@@ -94,7 +90,8 @@ func (s *StressTestStateTestSuite) TestGetLastLedgerIngestNonEmpty() {
 func (s *StressTestStateTestSuite) TestRunAllProcessorsOnLedgerReturnsError() {
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerIngest").Return(uint32(0), nil).Once()
-	s.runner.On("RunAllProcessorsOnLedger", uint32(1)).Return(
+
+	s.runner.On("RunAllProcessorsOnLedger", mock.AnythingOfType("xdr.LedgerCloseMeta")).Return(
 		ingest.StatsChangeProcessorResults{},
 		processorsRunDurations{},
 		processors.StatsLedgerTransactionProcessorResults{},
@@ -109,7 +106,7 @@ func (s *StressTestStateTestSuite) TestRunAllProcessorsOnLedgerReturnsError() {
 func (s *StressTestStateTestSuite) TestUpdateLastLedgerIngestReturnsError() {
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerIngest").Return(uint32(0), nil).Once()
-	s.runner.On("RunAllProcessorsOnLedger", uint32(1)).Return(
+	s.runner.On("RunAllProcessorsOnLedger", mock.AnythingOfType("xdr.LedgerCloseMeta")).Return(
 		ingest.StatsChangeProcessorResults{},
 		processorsRunDurations{},
 		processors.StatsLedgerTransactionProcessorResults{},
@@ -125,7 +122,7 @@ func (s *StressTestStateTestSuite) TestUpdateLastLedgerIngestReturnsError() {
 func (s *StressTestStateTestSuite) TestCommitReturnsError() {
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerIngest").Return(uint32(0), nil).Once()
-	s.runner.On("RunAllProcessorsOnLedger", uint32(1)).Return(
+	s.runner.On("RunAllProcessorsOnLedger", mock.AnythingOfType("xdr.LedgerCloseMeta")).Return(
 		ingest.StatsChangeProcessorResults{},
 		processorsRunDurations{},
 		processors.StatsLedgerTransactionProcessorResults{},
@@ -142,7 +139,7 @@ func (s *StressTestStateTestSuite) TestCommitReturnsError() {
 func (s *StressTestStateTestSuite) TestSucceeds() {
 	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerIngest").Return(uint32(0), nil).Once()
-	s.runner.On("RunAllProcessorsOnLedger", uint32(1)).Return(
+	s.runner.On("RunAllProcessorsOnLedger", mock.AnythingOfType("xdr.LedgerCloseMeta")).Return(
 		ingest.StatsChangeProcessorResults{},
 		processorsRunDurations{},
 		processors.StatsLedgerTransactionProcessorResults{},
