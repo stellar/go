@@ -445,16 +445,30 @@ func TestBumpSequenceFromXDR(t *testing.T) {
 	}
 }
 
-func testOperationsMarshallingRoundtrip(t *testing.T, operations []Operation) {
+func testOperationsMarshallingRoundtrip(t *testing.T, operations []Operation, withMuxedAccounts bool) {
 	kp1 := newKeypair1()
-	sourceAccount := NewSimpleAccount(kp1.Address(), int64(9606132444168199))
+	accountID := xdr.MustAddress(kp1.Address())
+	mx := xdr.MuxedAccount{
+		Type: xdr.CryptoKeyTypeKeyTypeMuxedEd25519,
+		Med25519: &xdr.MuxedAccountMed25519{
+			Id:      0xcafebabe,
+			Ed25519: *accountID.Ed25519,
+		},
+	}
+	var sourceAccount SimpleAccount
+	if withMuxedAccounts {
+		sourceAccount = NewSimpleAccount(mx.Address(), int64(9605939170639898))
+	} else {
+		sourceAccount = NewSimpleAccount(kp1.Address(), int64(9606132444168199))
+	}
 
 	tx, err := NewTransaction(
 		TransactionParams{
-			SourceAccount: &sourceAccount,
-			Operations:    operations,
-			Timebounds:    NewInfiniteTimeout(),
-			BaseFee:       MinBaseFee,
+			SourceAccount:       &sourceAccount,
+			Operations:          operations,
+			Timebounds:          NewInfiniteTimeout(),
+			BaseFee:             MinBaseFee,
+			EnableMuxedAccounts: withMuxedAccounts,
 		},
 	)
 	assert.NoError(t, err)
@@ -464,7 +478,11 @@ func testOperationsMarshallingRoundtrip(t *testing.T, operations []Operation) {
 	assert.NoError(t, err)
 
 	var parsedTx *GenericTransaction
-	parsedTx, err = TransactionFromXDR(b64)
+	if withMuxedAccounts {
+		parsedTx, err = TransactionFromXDR(b64, TransactionFromXDROptionEnableMuxedAccounts)
+	} else {
+		parsedTx, err = TransactionFromXDR(b64)
+	}
 	assert.NoError(t, err)
 	var ok bool
 	tx, ok = parsedTx.Transaction()

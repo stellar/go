@@ -27,3 +27,17 @@ func TestAccountMergeValidate(t *testing.T) {
 		assert.Contains(t, err.Error(), expected)
 	}
 }
+
+func TestAccountMergeRoundtrip(t *testing.T) {
+	accountMerge := AccountMerge{
+		SourceAccount: "GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H",
+		Destination:   "GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H",
+	}
+	testOperationsMarshallingRoundtrip(t, []Operation{&accountMerge}, false)
+
+	accountMerge = AccountMerge{
+		SourceAccount: "MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVAAAAAAAAAAAAAJLK",
+		Destination:   "GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H",
+	}
+	testOperationsMarshallingRoundtrip(t, []Operation{&accountMerge}, true)
+}

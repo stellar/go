@@ -170,3 +170,26 @@ func TestManageBuyOfferPrice(t *testing.T) {
 	assert.Equal(t, mbo.Price, parsed.Price)
 	assert.Equal(t, mbo.price, parsed.price)
 }
+
+func TestManageBuyOfferRoundtrip(t *testing.T) {
+	manageBuyOffer := ManageBuyOffer{
+		SourceAccount: "GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H",
+		Selling:       CreditAsset{"USD", "GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H"},
+		Buying:        NativeAsset{},
+		Amount:        "100.0000000",
+		Price:         "0.01",
+		OfferID:       0,
+	}
+	testOperationsMarshallingRoundtrip(t, []Operation{&manageBuyOffer}, false)
+
+	// with muxed accounts
+	manageBuyOffer = ManageBuyOffer{
+		SourceAccount: "MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVAAAAAAAAAAAAAJLK",
+		Selling:       CreditAsset{"USD", "GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H"},
+		Buying:        NativeAsset{},
+		Amount:        "100.0000000",
+		Price:         "0.01",
+		OfferID:       0,
+	}
+	testOperationsMarshallingRoundtrip(t, []Operation{&manageBuyOffer}, true)
+}
