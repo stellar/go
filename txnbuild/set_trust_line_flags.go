@@ -29,7 +29,7 @@ type SetTrustLineFlags struct {
 }
 
 // BuildXDR for ASetTrustLineFlags  returns a fully configured XDR Operation.
-func (stf *SetTrustLineFlags) BuildXDR() (xdr.Operation, error) {
+func (stf *SetTrustLineFlags) BuildXDR(withMuxedAccounts bool) (xdr.Operation, error) {
 	var xdrOp xdr.SetTrustLineFlagsOp
 
 	// Set XDR address associated with the trustline
@@ -57,7 +57,11 @@ func (stf *SetTrustLineFlags) BuildXDR() (xdr.Operation, error) {
 		return xdr.Operation{}, errors.Wrap(err, "failed to build XDR OperationBody")
 	}
 	op := xdr.Operation{Body: body}
-	SetOpSourceAccount(&op, stf.SourceAccount)
+	if withMuxedAccounts {
+		SetOpSourceMuxedAccount(&op, stf.SourceAccount)
+	} else {
+		SetOpSourceAccount(&op, stf.SourceAccount)
+	}
 	return op, nil
 }
 
@@ -70,13 +74,13 @@ func trustLineFlagsToXDR(flags []TrustLineFlag) xdr.Uint32 {
 }
 
 // FromXDR for SetTrustLineFlags  initialises the txnbuild struct from the corresponding xdr Operation.
-func (stf *SetTrustLineFlags) FromXDR(xdrOp xdr.Operation) error {
+func (stf *SetTrustLineFlags) FromXDR(xdrOp xdr.Operation, withMuxedAccounts bool) error {
 	op, ok := xdrOp.Body.GetSetTrustLineFlagsOp()
 	if !ok {
 		return errors.New("error parsing allow_trust operation from xdr")
 	}
 
-	stf.SourceAccount = accountFromXDR(xdrOp.SourceAccount)
+	stf.SourceAccount = accountFromXDR(xdrOp.SourceAccount, withMuxedAccounts)
 	stf.Trustor = op.Trustor.Address()
 	asset, err := assetFromXDR(op.Asset)
 	if err != nil {
@@ -106,7 +110,7 @@ func fromXDRTrustlineFlag(flags xdr.Uint32) []TrustLineFlag {
 
 // Validate for SetTrustLineFlags  validates the required struct fields. It returns an error if any of the fields are
 // invalid. Otherwise, it returns nil.
-func (stf *SetTrustLineFlags) Validate() error {
+func (stf *SetTrustLineFlags) Validate(withMuxedAccounts bool) error {
 	err := validateStellarPublicKey(stf.Trustor)
 	if err != nil {
 		return NewValidationError("Trustor", err.Error())
