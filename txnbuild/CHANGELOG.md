@@ -17,7 +17,7 @@ file.  This project adheres to [Semantic Versioning](http://semver.org/).
 * Add opt-in support for [SEP23](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0023.md) M-strkeys for `MuxedAccount`s:
   * Some methods from the `Operation` interface (`BuildXDR()`,`FromXDR()` and `Validate()`) now take an additional `bool` parameter (`withMuxedAccounts`)
   * The parameters from `NewFeeBumpTransaction()` and `NewTransaction()` now include a new field (`EnableMuxedAccounts`) to enable M-strekeys.
-  * `TransactionFromXDR()` now allows passing a `ParseXDROptionEnableMuxedAccounts` option, to enable M-strkey parsing.
+  * `TransactionFromXDR()` now allows passing a `TransactionFromXDROptionEnableMuxedAccounts` option, to enable M-strkey parsing.
 ## [v6.0.0](https://github.com/stellar/go/releases/tag/horizonclient-v6.0.0) - 2021-02-22
 
 ### Breaking changes
