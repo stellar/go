@@ -9,7 +9,7 @@ import (
 
 func MustMuxedAddress(address string) MuxedAccount {
 	muxed := MuxedAccount{}
-	err := muxed.SetEd25519Address(address)
+	err := muxed.SetAddress(address)
 	if err != nil {
 		panic(err)
 	}

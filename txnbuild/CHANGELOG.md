@@ -13,7 +13,7 @@ file.  This project adheres to [Semantic Versioning](http://semver.org/).
 
 ### New features
 
-* Add support for Stellar Protocol 16 (CAP35): `Clawback`, `ClawbackClaimableBalance` and `SetTrustlineFlags` operations.
+* Add support for Stellar Protocol 17 (CAP35): `Clawback`, `ClawbackClaimableBalance` and `SetTrustlineFlags` operations.
 * Add opt-in support for [SEP23](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0023.md) M-strkeys for `MuxedAccount`s:
   * Some methods from the `Operation` interface (`BuildXDR()`,`FromXDR()` and `Validate()`) now take an additional `bool` parameter (`withMuxedAccounts`)
   * The parameters from `NewFeeBumpTransaction()` and `NewTransaction()` now include a new field (`EnableMuxedAccounts`) to enable M-strekeys.
