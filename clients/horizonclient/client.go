@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/stellar/go/txnbuild"
+	"github.com/stellar/go/xdr"
 
 	"github.com/manucorporat/sse"
 
@@ -47,7 +48,7 @@ func (c *Client) checkMemoRequired(transaction *txnbuild.Transaction) error {
 	for i, op := range transaction.Operations() {
 		var destination string
 
-		if err := op.Validate(); err != nil {
+		if err := op.Validate(true); err != nil {
 			return err
 		}
 
@@ -64,10 +65,15 @@ func (c *Client) checkMemoRequired(transaction *txnbuild.Transaction) error {
 			continue
 		}
 
-		// TODO: once we support M-strkeys (SEP23), also check whether the destination
-		//       is a muxed account with a memo ID.
+		muxed, err := xdr.AddressToMuxedAccount(destination)
+		if err != nil {
+			return errors.Wrapf(err, "destination %v is not a valid address", destination)
+		}
+		// Skip destination addresses with a memo id because the address has a memo
+		// encoded within it
+		destinationHasMemoID := muxed.Type == xdr.CryptoKeyTypeKeyTypeMuxedEd25519
 
-		if destinations[destination] {
+		if destinations[destination] || destinationHasMemoID {
 			continue
 		}
 		destinations[destination] = true

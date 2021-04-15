@@ -34,7 +34,19 @@ func TestCreateClaimableBalanceRoundTrip(t *testing.T) {
 		},
 	}
 
-	testOperationsMarshallingRoundtrip(t, []Operation{createNativeBalance, createAssetBalance})
+	testOperationsMarshallingRoundtrip(t, []Operation{createNativeBalance, createAssetBalance}, false)
+
+	createNativeBalanceWithMuxedAcounts := &CreateClaimableBalance{
+		SourceAccount: "MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVAAAAAAAAAAAAAJLK",
+		Amount:        "1234.0000000",
+		Asset:         NativeAsset{},
+		Destinations: []Claimant{
+			NewClaimant(newKeypair1().Address(), &UnconditionalPredicate),
+			NewClaimant(newKeypair1().Address(), &and),
+		},
+	}
+
+	testOperationsMarshallingRoundtrip(t, []Operation{createNativeBalanceWithMuxedAcounts}, true)
 }
 
 func TestClaimableBalanceID(t *testing.T) {
