@@ -5,6 +5,8 @@ file.  This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+## [v7.0.0](https://github.com/stellar/go/releases/tag/horizonclient-v7.0.0) - 2021-05-15
+
 ### Breaking changes
 
 * `AllowTrustOpAsset` was renamed to `AssetCode`, `{Must}NewAllowTrustAsset` was renamed to `{Must}NewAssetCodeFromString`.
@@ -18,6 +20,7 @@ file.  This project adheres to [Semantic Versioning](http://semver.org/).
   * Some methods from the `Operation` interface (`BuildXDR()`,`FromXDR()` and `Validate()`) now take an additional `bool` parameter (`withMuxedAccounts`)
   * The parameters from `NewFeeBumpTransaction()` and `NewTransaction()` now include a new field (`EnableMuxedAccounts`) to enable M-strekeys.
   * `TransactionFromXDR()` now allows passing a `TransactionFromXDROptionEnableMuxedAccounts` option, to enable M-strkey parsing.
+
 ## [v6.0.0](https://github.com/stellar/go/releases/tag/horizonclient-v6.0.0) - 2021-02-22
 
 ### Breaking changes
