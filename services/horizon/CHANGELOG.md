@@ -22,9 +22,9 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 ### Breaking changes
 
 * Add a flag `--captive-core-storage-path/CAPTIVE_CORE_STORAGE_PATH` that allows users to control the storage location for Captive Core bucket data ([3479](https://github.com/stellar/go/pull/3479)).
-  If the captive core storage path is not configured Horizon will default to using the current working directory.
-  Previously, the `TMPDIR` environment variable was used to configure the storage location. Now, `TMPDIR` is ignored.
+  Previously, Horizon created a directory in `/tmp` to store Captive Core bucket data. Now, if the captive core storage path flag is not set, Horizon will default to using the current working directory.
 * Add a flag `--captive-core-log-path`/`CAPTIVE_CORE_LOG_PATH` that allows users to control the location of the logs emitted by Captive Core ([3472](https://github.com/stellar/go/pull/3472)). If you have a `LOG_FILE_PATH` entry in your Captive Core toml file remove that entry and use the horizon flag instead.
+* `--stellar-core-db-url` / `STELLAR_CORE_DATABASE_URL` should only be configured if Horizon ingestion is enabled otherwise Horizon will not start ([3477](https://github.com/stellar/go/pull/3477)).
 
 ### New features
 
