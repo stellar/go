@@ -1,6 +1,7 @@
 package processors
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -29,13 +30,13 @@ func NewEffectProcessor(effectsQ history.QEffects, sequence uint32) *EffectProce
 	}
 }
 
-func (p *EffectProcessor) loadAccountIDs(accountSet map[string]int64) error {
+func (p *EffectProcessor) loadAccountIDs(ctx context.Context, accountSet map[string]int64) error {
 	addresses := make([]string, 0, len(accountSet))
 	for address := range accountSet {
 		addresses = append(addresses, address)
 	}
 
-	addressToID, err := p.effectsQ.CreateAccounts(addresses, maxBatchSize)
+	addressToID, err := p.effectsQ.CreateAccounts(ctx, addresses, maxBatchSize)
 	if err != nil {
 		return errors.Wrap(err, "Could not create account ids")
 	}
@@ -73,7 +74,7 @@ func operationsEffects(transaction ingest.LedgerTransaction, sequence uint32) ([
 	return effects, nil
 }
 
-func (p *EffectProcessor) insertDBOperationsEffects(effects []effect, accountSet map[string]int64) error {
+func (p *EffectProcessor) insertDBOperationsEffects(ctx context.Context, effects []effect, accountSet map[string]int64) error {
 	batch := p.effectsQ.NewEffectBatchInsertBuilder(maxBatchSize)
 
 	for _, effect := range effects {
@@ -90,7 +91,7 @@ func (p *EffectProcessor) insertDBOperationsEffects(effects []effect, accountSet
 			return errors.Wrapf(err, "Error marshaling details for operation effect %v", effect.operationID)
 		}
 
-		if err := batch.Add(
+		if err := batch.Add(ctx,
 			accountID,
 			effect.operationID,
 			effect.order,
@@ -101,13 +102,13 @@ func (p *EffectProcessor) insertDBOperationsEffects(effects []effect, accountSet
 		}
 	}
 
-	if err := batch.Exec(); err != nil {
+	if err := batch.Exec(ctx); err != nil {
 		return errors.Wrap(err, "could not flush operation effects to db")
 	}
 	return nil
 }
 
-func (p *EffectProcessor) ProcessTransaction(transaction ingest.LedgerTransaction) (err error) {
+func (p *EffectProcessor) ProcessTransaction(ctx context.Context, transaction ingest.LedgerTransaction) (err error) {
 	// Failed transactions don't have operation effects
 	if !transaction.Result.Successful() {
 		return nil
@@ -123,7 +124,7 @@ func (p *EffectProcessor) ProcessTransaction(transaction ingest.LedgerTransactio
 	return nil
 }
 
-func (p *EffectProcessor) Commit() (err error) {
+func (p *EffectProcessor) Commit(ctx context.Context) (err error) {
 	if len(p.effects) > 0 {
 		accountSet := map[string]int64{}
 
@@ -131,11 +132,11 @@ func (p *EffectProcessor) Commit() (err error) {
 			accountSet[effect.address] = 0
 		}
 
-		if err = p.loadAccountIDs(accountSet); err != nil {
+		if err = p.loadAccountIDs(ctx, accountSet); err != nil {
 			return err
 		}
 
-		if err = p.insertDBOperationsEffects(p.effects, accountSet); err != nil {
+		if err = p.insertDBOperationsEffects(ctx, p.effects, accountSet); err != nil {
 			return err
 		}
 	}

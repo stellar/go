@@ -1,6 +1,8 @@
 package ledgerbackend
 
 import (
+	"context"
+
 	sq "github.com/Masterminds/squirrel"
 	"github.com/stretchr/testify/mock"
 
@@ -27,11 +29,12 @@ func NewHorizonDBLedgerHashStore(session *db.Session) TrustedLedgerHashStore {
 
 // GetLedgerHash returns the ledger hash for the given sequence number
 func (h HorizonDBLedgerHashStore) GetLedgerHash(seq uint32) (string, bool, error) {
+	ctx := context.TODO()
 	sql := sq.Select("hl.ledger_hash").From("history_ledgers hl").
 		Limit(1).Where("sequence = ?", seq)
 
 	var hash string
-	err := h.session.Get(&hash, sql)
+	err := h.session.Get(ctx, &hash, sql)
 	if h.session.NoRows(err) {
 		return hash, false, nil
 	}

@@ -39,7 +39,7 @@ func Handler(api CaptiveCoreAPI) http.Handler {
 	mux := supporthttp.NewMux(api.log)
 
 	mux.Get("/latest-sequence", func(w http.ResponseWriter, r *http.Request) {
-		response, err := api.GetLatestLedgerSequence()
+		response, err := api.GetLatestLedgerSequence(r.Context())
 		serializeResponse(api.log, w, r, response, err)
 	})
 
@@ -51,7 +51,7 @@ func Handler(api CaptiveCoreAPI) http.Handler {
 			return
 		}
 
-		response, err := api.GetLedger(req.Sequence)
+		response, err := api.GetLedger(r.Context(), req.Sequence)
 		serializeResponse(api.log, w, r, response, err)
 	})
 
@@ -63,7 +63,7 @@ func Handler(api CaptiveCoreAPI) http.Handler {
 			return
 		}
 
-		response, err := api.PrepareRange(ledgerRange)
+		response, err := api.PrepareRange(r.Context(), ledgerRange)
 		serializeResponse(api.log, w, r, response, err)
 	})
 

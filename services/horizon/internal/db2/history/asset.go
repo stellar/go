@@ -1,6 +1,7 @@
 package history
 
 import (
+	"context"
 	"sort"
 
 	sq "github.com/Masterminds/squirrel"
@@ -10,7 +11,7 @@ import (
 )
 
 // GetAssetID fetches the id for an Asset
-func (q *Q) GetAssetID(asset xdr.Asset) (id int64, err error) {
+func (q *Q) GetAssetID(ctx context.Context, asset xdr.Asset) (id int64, err error) {
 	var (
 		assetType   string
 		assetCode   string
@@ -27,12 +28,12 @@ func (q *Q) GetAssetID(asset xdr.Asset) (id int64, err error) {
 		"asset_code":   assetCode,
 		"asset_issuer": assetIssuer})
 
-	err = q.Get(&id, sql)
+	err = q.Get(ctx, &id, sql)
 	return
 }
 
 // CreateAssets creates rows in the history_assets table for a given list of assets.
-func (q *Q) CreateAssets(assets []xdr.Asset, batchSize int) (map[string]Asset, error) {
+func (q *Q) CreateAssets(ctx context.Context, assets []xdr.Asset, batchSize int) (map[string]Asset, error) {
 	searchStrings := make([]string, 0, len(assets))
 	assetToKey := map[[3]string]string{}
 
@@ -54,7 +55,7 @@ func (q *Q) CreateAssets(assets []xdr.Asset, batchSize int) (map[string]Asset, e
 			return nil, errors.Wrap(err, "could not extract asset details")
 		}
 
-		err = builder.Row(map[string]interface{}{
+		err = builder.Row(ctx, map[string]interface{}{
 			"asset_type":   assetType,
 			"asset_code":   assetCode,
 			"asset_issuer": assetIssuer,
@@ -74,7 +75,7 @@ func (q *Q) CreateAssets(assets []xdr.Asset, batchSize int) (map[string]Asset, e
 		}
 	}
 
-	err := builder.Exec()
+	err := builder.Exec(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not exec asset insert builder")
 	}
@@ -89,7 +90,7 @@ func (q *Q) CreateAssets(assets []xdr.Asset, batchSize int) (map[string]Asset, e
 		}
 		subset := searchStrings[i:end]
 
-		err = q.Select(&rows, sq.Select("*").From("history_assets").Where(sq.Eq{
+		err = q.Select(ctx, &rows, sq.Select("*").From("history_assets").Where(sq.Eq{
 			"concat(asset_type, '/', asset_code, '/', asset_issuer)": subset,
 		}))
 		if err != nil {

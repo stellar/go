@@ -47,22 +47,22 @@ func TestRemoveClaimableBalance(t *testing.T) {
 
 	builder := q.NewClaimableBalancesBatchInsertBuilder(2)
 
-	err := builder.Add(&entry)
+	err := builder.Add(tt.Ctx, &entry)
 	tt.Assert.NoError(err)
 
-	err = builder.Exec()
+	err = builder.Exec(tt.Ctx)
 	tt.Assert.NoError(err)
 
-	r, err := q.FindClaimableBalanceByID(cBalance.BalanceId)
+	r, err := q.FindClaimableBalanceByID(tt.Ctx, cBalance.BalanceId)
 	tt.Assert.NoError(err)
 	tt.Assert.NotNil(r)
 
-	removed, err := q.RemoveClaimableBalance(cBalance)
+	removed, err := q.RemoveClaimableBalance(tt.Ctx, cBalance)
 	tt.Assert.NoError(err)
 	tt.Assert.Equal(int64(1), removed)
 
 	cbs := []ClaimableBalance{}
-	err = q.Select(&cbs, selectClaimableBalances)
+	err = q.Select(tt.Ctx, &cbs, selectClaimableBalances)
 
 	if tt.Assert.NoError(err) {
 		tt.Assert.Len(cbs, 0)
@@ -110,7 +110,7 @@ func TestFindClaimableBalancesByDestination(t *testing.T) {
 
 	builder := q.NewClaimableBalancesBatchInsertBuilder(2)
 
-	err := builder.Add(&entry)
+	err := builder.Add(tt.Ctx, &entry)
 	tt.Assert.NoError(err)
 
 	balanceID = xdr.ClaimableBalanceId{
@@ -150,10 +150,10 @@ func TestFindClaimableBalancesByDestination(t *testing.T) {
 		LastModifiedLedgerSeq: lastModifiedLedgerSeq,
 	}
 
-	err = builder.Add(&entry)
+	err = builder.Add(tt.Ctx, &entry)
 	tt.Assert.NoError(err)
 
-	err = builder.Exec()
+	err = builder.Exec(tt.Ctx)
 	tt.Assert.NoError(err)
 
 	query := ClaimableBalancesQuery{
@@ -161,7 +161,7 @@ func TestFindClaimableBalancesByDestination(t *testing.T) {
 		Claimant:  xdr.MustAddressPtr(dest1),
 	}
 
-	cbs, err := q.GetClaimableBalances(query)
+	cbs, err := q.GetClaimableBalances(tt.Ctx, query)
 	tt.Assert.NoError(err)
 	tt.Assert.Len(cbs, 2)
 
@@ -170,7 +170,7 @@ func TestFindClaimableBalancesByDestination(t *testing.T) {
 	}
 
 	query.Claimant = xdr.MustAddressPtr(dest2)
-	cbs, err = q.GetClaimableBalances(query)
+	cbs, err = q.GetClaimableBalances(tt.Ctx, query)
 	tt.Assert.NoError(err)
 	tt.Assert.Len(cbs, 1)
 	tt.Assert.Equal(dest2, cbs[0].Claimants[1].Destination)
@@ -215,10 +215,10 @@ func TestUpdateClaimableBalance(t *testing.T) {
 
 	builder := q.NewClaimableBalancesBatchInsertBuilder(1)
 
-	err := builder.Add(&entry)
+	err := builder.Add(tt.Ctx, &entry)
 	tt.Assert.NoError(err)
 
-	err = builder.Exec()
+	err = builder.Exec(tt.Ctx)
 	tt.Assert.NoError(err)
 
 	entry = xdr.LedgerEntry{
@@ -235,12 +235,12 @@ func TestUpdateClaimableBalance(t *testing.T) {
 		},
 	}
 
-	updated, err := q.UpdateClaimableBalance(entry)
+	updated, err := q.UpdateClaimableBalance(tt.Ctx, entry)
 	tt.Assert.NoError(err)
 	tt.Assert.Equal(int64(1), updated)
 
 	cbs := []ClaimableBalance{}
-	err = q.Select(&cbs, selectClaimableBalances)
+	err = q.Select(tt.Ctx, &cbs, selectClaimableBalances)
 	tt.Assert.NoError(err)
 	tt.Assert.Equal("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML", cbs[0].Sponsor.String)
 	tt.Assert.Equal(uint32(lastModifiedLedgerSeq+1), cbs[0].LastModifiedLedger)
@@ -285,13 +285,13 @@ func TestFindClaimableBalance(t *testing.T) {
 
 	builder := q.NewClaimableBalancesBatchInsertBuilder(2)
 
-	err := builder.Add(&entry)
+	err := builder.Add(tt.Ctx, &entry)
 	tt.Assert.NoError(err)
 
-	err = builder.Exec()
+	err = builder.Exec(tt.Ctx)
 	tt.Assert.NoError(err)
 
-	cb, err := q.FindClaimableBalanceByID(cBalance.BalanceId)
+	cb, err := q.FindClaimableBalanceByID(tt.Ctx, cBalance.BalanceId)
 	tt.Assert.NoError(err)
 
 	tt.Assert.Equal(cBalance.BalanceId, cb.BalanceID)
@@ -344,21 +344,21 @@ func TestGetClaimableBalancesByID(t *testing.T) {
 
 	builder := q.NewClaimableBalancesBatchInsertBuilder(2)
 
-	err := builder.Add(&entry)
+	err := builder.Add(tt.Ctx, &entry)
 	tt.Assert.NoError(err)
 
-	err = builder.Exec()
+	err = builder.Exec(tt.Ctx)
 	tt.Assert.NoError(err)
 
-	r, err := q.GetClaimableBalancesByID([]xdr.ClaimableBalanceId{cBalance.BalanceId})
+	r, err := q.GetClaimableBalancesByID(tt.Ctx, []xdr.ClaimableBalanceId{cBalance.BalanceId})
 	tt.Assert.NoError(err)
 	tt.Assert.Len(r, 1)
 
-	removed, err := q.RemoveClaimableBalance(cBalance)
+	removed, err := q.RemoveClaimableBalance(tt.Ctx, cBalance)
 	tt.Assert.NoError(err)
 	tt.Assert.Equal(int64(1), removed)
 
-	r, err = q.GetClaimableBalancesByID([]xdr.ClaimableBalanceId{cBalance.BalanceId})
+	r, err = q.GetClaimableBalancesByID(tt.Ctx, []xdr.ClaimableBalanceId{cBalance.BalanceId})
 	tt.Assert.NoError(err)
 	tt.Assert.Len(r, 0)
 }

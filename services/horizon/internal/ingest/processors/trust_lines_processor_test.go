@@ -3,6 +3,7 @@
 package processors
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/mock"
@@ -22,17 +23,19 @@ func TestTrustLinesProcessorTestSuiteState(t *testing.T) {
 
 type TrustLinesProcessorTestSuiteState struct {
 	suite.Suite
+	ctx       context.Context
 	processor *TrustLinesProcessor
 	mockQ     *history.MockQTrustLines
 }
 
 func (s *TrustLinesProcessorTestSuiteState) SetupTest() {
+	s.ctx = context.Background()
 	s.mockQ = &history.MockQTrustLines{}
 	s.processor = NewTrustLinesProcessor(s.mockQ)
 }
 
 func (s *TrustLinesProcessorTestSuiteState) TearDownTest() {
-	s.Assert().NoError(s.processor.Commit())
+	s.Assert().NoError(s.processor.Commit(s.ctx))
 	s.mockQ.AssertExpectations(s.T())
 }
 
@@ -44,7 +47,7 @@ func (s *TrustLinesProcessorTestSuiteState) TestCreateTrustLine() {
 	}
 	lastModifiedLedgerSeq := xdr.Uint32(123)
 
-	err := s.processor.ProcessChange(ingest.Change{
+	err := s.processor.ProcessChange(s.ctx, ingest.Change{
 		Type: xdr.LedgerEntryTypeTrustline,
 		Pre:  nil,
 		Post: &xdr.LedgerEntry{
@@ -59,6 +62,7 @@ func (s *TrustLinesProcessorTestSuiteState) TestCreateTrustLine() {
 
 	s.mockQ.On(
 		"UpsertTrustLines",
+		s.ctx,
 		[]xdr.LedgerEntry{
 			{
 				LastModifiedLedgerSeq: lastModifiedLedgerSeq,
@@ -77,7 +81,7 @@ func (s *TrustLinesProcessorTestSuiteState) TestCreateTrustLineUnauthorized() {
 		Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()),
 	}
 	lastModifiedLedgerSeq := xdr.Uint32(123)
-	err := s.processor.ProcessChange(ingest.Change{
+	err := s.processor.ProcessChange(s.ctx, ingest.Change{
 		Type: xdr.LedgerEntryTypeTrustline,
 		Pre:  nil,
 		Post: &xdr.LedgerEntry{
@@ -92,6 +96,7 @@ func (s *TrustLinesProcessorTestSuiteState) TestCreateTrustLineUnauthorized() {
 
 	s.mockQ.On(
 		"UpsertTrustLines",
+		s.ctx,
 		[]xdr.LedgerEntry{
 			{
 				LastModifiedLedgerSeq: lastModifiedLedgerSeq,
@@ -110,11 +115,13 @@ func TestTrustLinesProcessorTestSuiteLedger(t *testing.T) {
 
 type TrustLinesProcessorTestSuiteLedger struct {
 	suite.Suite
+	ctx       context.Context
 	processor *TrustLinesProcessor
 	mockQ     *history.MockQTrustLines
 }
 
 func (s *TrustLinesProcessorTestSuiteLedger) SetupTest() {
+	s.ctx = context.Background()
 	s.mockQ = &history.MockQTrustLines{}
 	s.processor = NewTrustLinesProcessor(s.mockQ)
 }
@@ -125,12 +132,12 @@ func (s *TrustLinesProcessorTestSuiteLedger) TearDownTest() {
 
 func (s *TrustLinesProcessorTestSuiteLedger) TestNoIngestUpdateState() {
 	// Nothing processed, assertions in TearDownTest.
-	s.Assert().NoError(s.processor.Commit())
+	s.Assert().NoError(s.processor.Commit(s.ctx))
 }
 
 func (s *TrustLinesProcessorTestSuiteLedger) TestInsertTrustLine() {
 	// should be ignored because it's not an trust line type
-	err := s.processor.ProcessChange(ingest.Change{
+	err := s.processor.ProcessChange(s.ctx, ingest.Change{
 		Type: xdr.LedgerEntryTypeAccount,
 		Pre:  nil,
 		Post: &xdr.LedgerEntry{
@@ -159,7 +166,7 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestInsertTrustLine() {
 	}
 	lastModifiedLedgerSeq := xdr.Uint32(1234)
 
-	err = s.processor.ProcessChange(ingest.Change{
+	err = s.processor.ProcessChange(s.ctx, ingest.Change{
 		Type: xdr.LedgerEntryTypeTrustline,
 		Pre:  nil,
 		Post: &xdr.LedgerEntry{
@@ -172,7 +179,7 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestInsertTrustLine() {
 	})
 	s.Assert().NoError(err)
 
-	err = s.processor.ProcessChange(ingest.Change{
+	err = s.processor.ProcessChange(s.ctx, ingest.Change{
 		Type: xdr.LedgerEntryTypeTrustline,
 		Pre:  nil,
 		Post: &xdr.LedgerEntry{
@@ -197,7 +204,7 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestInsertTrustLine() {
 		Balance:   10,
 	}
 
-	err = s.processor.ProcessChange(ingest.Change{
+	err = s.processor.ProcessChange(s.ctx, ingest.Change{
 		Type: xdr.LedgerEntryTypeTrustline,
 		Pre: &xdr.LedgerEntry{
 			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
@@ -216,7 +223,7 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestInsertTrustLine() {
 	})
 	s.Assert().NoError(err)
 
-	err = s.processor.ProcessChange(ingest.Change{
+	err = s.processor.ProcessChange(s.ctx, ingest.Change{
 		Type: xdr.LedgerEntryTypeTrustline,
 		Pre: &xdr.LedgerEntry{
 			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
@@ -237,9 +244,10 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestInsertTrustLine() {
 
 	s.mockQ.On(
 		"UpsertTrustLines",
+		s.ctx,
 		mock.AnythingOfType("[]xdr.LedgerEntry"),
 	).Run(func(args mock.Arguments) {
-		arg := args.Get(0).([]xdr.LedgerEntry)
+		arg := args.Get(1).([]xdr.LedgerEntry)
 		s.Assert().ElementsMatch(
 			[]xdr.LedgerEntry{
 				{
@@ -260,7 +268,7 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestInsertTrustLine() {
 			arg,
 		)
 	}).Return(nil).Once()
-	s.Assert().NoError(s.processor.Commit())
+	s.Assert().NoError(s.processor.Commit(s.ctx))
 }
 
 func (s *TrustLinesProcessorTestSuiteLedger) TestUpdateTrustLine() {
@@ -279,7 +287,7 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestUpdateTrustLine() {
 		Flags:     xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag),
 	}
 
-	err := s.processor.ProcessChange(ingest.Change{
+	err := s.processor.ProcessChange(s.ctx, ingest.Change{
 		Type: xdr.LedgerEntryTypeTrustline,
 		Pre: &xdr.LedgerEntry{
 			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
@@ -300,6 +308,7 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestUpdateTrustLine() {
 
 	s.mockQ.On(
 		"UpsertTrustLines",
+		s.ctx,
 		[]xdr.LedgerEntry{
 			{
 				LastModifiedLedgerSeq: lastModifiedLedgerSeq,
@@ -310,7 +319,7 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestUpdateTrustLine() {
 			},
 		},
 	).Return(nil).Once()
-	s.Assert().NoError(s.processor.Commit())
+	s.Assert().NoError(s.processor.Commit(s.ctx))
 }
 
 func (s *TrustLinesProcessorTestSuiteLedger) TestUpdateTrustLineAuthorization() {
@@ -340,7 +349,7 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestUpdateTrustLineAuthorization() 
 		Balance:   10,
 	}
 
-	err := s.processor.ProcessChange(ingest.Change{
+	err := s.processor.ProcessChange(s.ctx, ingest.Change{
 		Type: xdr.LedgerEntryTypeTrustline,
 		Pre: &xdr.LedgerEntry{
 			LastModifiedLedgerSeq: lastModifiedLedgerSeq - 1,
@@ -359,7 +368,7 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestUpdateTrustLineAuthorization() 
 	})
 	s.Assert().NoError(err)
 
-	err = s.processor.ProcessChange(ingest.Change{
+	err = s.processor.ProcessChange(s.ctx, ingest.Change{
 		Type: xdr.LedgerEntryTypeTrustline,
 		Pre: &xdr.LedgerEntry{
 			LastModifiedLedgerSeq: lastModifiedLedgerSeq - 1,
@@ -380,9 +389,10 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestUpdateTrustLineAuthorization() 
 
 	s.mockQ.On(
 		"UpsertTrustLines",
+		s.ctx,
 		mock.AnythingOfType("[]xdr.LedgerEntry"),
 	).Run(func(args mock.Arguments) {
-		arg := args.Get(0).([]xdr.LedgerEntry)
+		arg := args.Get(1).([]xdr.LedgerEntry)
 		s.Assert().ElementsMatch(
 			[]xdr.LedgerEntry{
 				{
@@ -403,7 +413,7 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestUpdateTrustLineAuthorization() 
 			arg,
 		)
 	}).Return(nil).Once()
-	s.Assert().NoError(s.processor.Commit())
+	s.Assert().NoError(s.processor.Commit(s.ctx))
 }
 
 func (s *TrustLinesProcessorTestSuiteLedger) TestRemoveTrustLine() {
@@ -413,7 +423,7 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestRemoveTrustLine() {
 		Balance:   0,
 	}
 
-	err := s.processor.ProcessChange(ingest.Change{
+	err := s.processor.ProcessChange(s.ctx, ingest.Change{
 		Type: xdr.LedgerEntryTypeTrustline,
 		Pre: &xdr.LedgerEntry{
 			Data: xdr.LedgerEntryData{
@@ -430,7 +440,7 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestRemoveTrustLine() {
 	})
 	s.Assert().NoError(err)
 
-	err = s.processor.ProcessChange(ingest.Change{
+	err = s.processor.ProcessChange(s.ctx, ingest.Change{
 		Type: xdr.LedgerEntryTypeTrustline,
 		Pre: &xdr.LedgerEntry{
 			Data: xdr.LedgerEntryData{
@@ -443,20 +453,20 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestRemoveTrustLine() {
 	s.Assert().NoError(err)
 
 	s.mockQ.On(
-		"RemoveTrustLine",
+		"RemoveTrustLine", s.ctx,
 		xdr.LedgerKeyTrustLine{
 			AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
 			Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()),
 		},
 	).Return(int64(1), nil).Once()
 	s.mockQ.On(
-		"RemoveTrustLine",
+		"RemoveTrustLine", s.ctx,
 		xdr.LedgerKeyTrustLine{
 			AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
 			Asset:     xdr.MustNewCreditAsset("USD", trustLineIssuer.Address()),
 		},
 	).Return(int64(1), nil).Once()
-	s.Assert().NoError(s.processor.Commit())
+	s.Assert().NoError(s.processor.Commit(s.ctx))
 }
 
 func (s *TrustLinesProcessorTestSuiteLedger) TestProcessUpgradeChange() {
@@ -469,7 +479,7 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestProcessUpgradeChange() {
 		Flags:     xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag),
 	}
 
-	err := s.processor.ProcessChange(ingest.Change{
+	err := s.processor.ProcessChange(s.ctx, ingest.Change{
 		Type: xdr.LedgerEntryTypeTrustline,
 		Post: &xdr.LedgerEntry{
 			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
@@ -488,7 +498,7 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestProcessUpgradeChange() {
 		Flags:     xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag),
 	}
 
-	err = s.processor.ProcessChange(ingest.Change{
+	err = s.processor.ProcessChange(s.ctx, ingest.Change{
 		Type: xdr.LedgerEntryTypeTrustline,
 		Pre: &xdr.LedgerEntry{
 			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
@@ -508,7 +518,7 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestProcessUpgradeChange() {
 	s.Assert().NoError(err)
 
 	s.mockQ.On(
-		"UpsertTrustLines",
+		"UpsertTrustLines", s.ctx,
 		[]xdr.LedgerEntry{
 			{
 				LastModifiedLedgerSeq: lastModifiedLedgerSeq,
@@ -519,11 +529,11 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestProcessUpgradeChange() {
 			},
 		},
 	).Return(nil).Once()
-	s.Assert().NoError(s.processor.Commit())
+	s.Assert().NoError(s.processor.Commit(s.ctx))
 }
 
 func (s *TrustLinesProcessorTestSuiteLedger) TestRemoveTrustlineNoRowsAffected() {
-	err := s.processor.ProcessChange(ingest.Change{
+	err := s.processor.ProcessChange(s.ctx, ingest.Change{
 		Type: xdr.LedgerEntryTypeTrustline,
 		Pre: &xdr.LedgerEntry{
 			Data: xdr.LedgerEntryData{
@@ -541,14 +551,14 @@ func (s *TrustLinesProcessorTestSuiteLedger) TestRemoveTrustlineNoRowsAffected()
 	s.Assert().NoError(err)
 
 	s.mockQ.On(
-		"RemoveTrustLine",
+		"RemoveTrustLine", s.ctx,
 		xdr.LedgerKeyTrustLine{
 			AccountId: xdr.MustAddress("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"),
 			Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()),
 		},
 	).Return(int64(0), nil).Once()
 
-	err = s.processor.Commit()
+	err = s.processor.Commit(s.ctx)
 	s.Assert().Error(err)
 	s.Assert().IsType(ingest.StateError{}, errors.Cause(err))
 	s.Assert().EqualError(err, "0 rows affected when removing trustline: GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB credit_alphanum4/EUR/GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H")

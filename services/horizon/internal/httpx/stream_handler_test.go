@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/go-chi/chi"
+	"github.com/stretchr/testify/mock"
 
 	"github.com/stellar/go/services/horizon/internal/actions"
 	horizonContext "github.com/stellar/go/services/horizon/internal/context"
@@ -477,17 +478,17 @@ func TestRepeatableReadStream(t *testing.T) {
 		}
 
 		session := &db.MockSession{}
-		session.On("BeginTx", &sql.TxOptions{
+		session.On("BeginTx", mock.Anything, &sql.TxOptions{
 			Isolation: sql.LevelRepeatableRead,
 			ReadOnly:  true,
 		}).Return(nil).Once()
-		session.On("Rollback").Return(nil).Once()
+		session.On("Rollback", mock.Anything).Return(nil).Once()
 
-		session.On("BeginTx", &sql.TxOptions{
+		session.On("BeginTx", mock.Anything, &sql.TxOptions{
 			Isolation: sql.LevelRepeatableRead,
 			ReadOnly:  true,
 		}).Return(nil).Once()
-		session.On("Rollback").Return(nil).Once()
+		session.On("Rollback", mock.Anything).Return(nil).Once()
 
 		request := streamRequest(t, "limit=2")
 		request = request.WithContext(context.WithValue(
@@ -516,17 +517,17 @@ func TestRepeatableReadStream(t *testing.T) {
 		}
 
 		session := &db.MockSession{}
-		session.On("BeginTx", &sql.TxOptions{
+		session.On("BeginTx", mock.Anything, &sql.TxOptions{
 			Isolation: sql.LevelRepeatableRead,
 			ReadOnly:  true,
 		}).Return(nil).Once()
-		session.On("Rollback").Return(nil).Once()
+		session.On("Rollback", mock.Anything).Return(nil).Once()
 
-		session.On("BeginTx", &sql.TxOptions{
+		session.On("BeginTx", mock.Anything, &sql.TxOptions{
 			Isolation: sql.LevelRepeatableRead,
 			ReadOnly:  true,
 		}).Return(nil).Once()
-		session.On("Rollback").Return(nil).Once()
+		session.On("Rollback", mock.Anything).Return(nil).Once()
 
 		request := streamRequest(t, "")
 		request = request.WithContext(context.WithValue(

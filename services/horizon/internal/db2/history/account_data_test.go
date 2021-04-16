@@ -47,11 +47,11 @@ func TestInsertAccountData(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
-	rows, err := q.InsertAccountData(data1)
+	rows, err := q.InsertAccountData(tt.Ctx, data1)
 	assert.NoError(t, err)
 	tt.Assert.Equal(int64(1), rows)
 
-	rows, err = q.InsertAccountData(data2)
+	rows, err = q.InsertAccountData(tt.Ctx, data2)
 	assert.NoError(t, err)
 	tt.Assert.Equal(int64(1), rows)
 
@@ -60,7 +60,7 @@ func TestInsertAccountData(t *testing.T) {
 		{AccountId: data2.Data.Data.AccountId, DataName: data2.Data.Data.DataName},
 	}
 
-	datas, err := q.GetAccountDataByKeys(keys)
+	datas, err := q.GetAccountDataByKeys(tt.Ctx, keys)
 	assert.NoError(t, err)
 	assert.Len(t, datas, 2)
 
@@ -79,21 +79,21 @@ func TestUpdateAccountData(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
-	rows, err := q.InsertAccountData(data1)
+	rows, err := q.InsertAccountData(tt.Ctx, data1)
 	assert.NoError(t, err)
 	tt.Assert.Equal(int64(1), rows)
 
 	modifiedData := data1
 	modifiedData.Data.Data.DataValue[0] = 1
 
-	rows, err = q.UpdateAccountData(modifiedData)
+	rows, err = q.UpdateAccountData(tt.Ctx, modifiedData)
 	assert.NoError(t, err)
 	tt.Assert.Equal(int64(1), rows)
 
 	keys := []xdr.LedgerKeyData{
 		{AccountId: data1.Data.Data.AccountId, DataName: data1.Data.Data.DataName},
 	}
-	datas, err := q.GetAccountDataByKeys(keys)
+	datas, err := q.GetAccountDataByKeys(tt.Ctx, keys)
 	assert.NoError(t, err)
 	assert.Len(t, datas, 1)
 
@@ -108,21 +108,21 @@ func TestRemoveAccountData(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
-	rows, err := q.InsertAccountData(data1)
+	rows, err := q.InsertAccountData(tt.Ctx, data1)
 	assert.NoError(t, err)
 	tt.Assert.Equal(int64(1), rows)
 
 	key := xdr.LedgerKeyData{AccountId: data1.Data.Data.AccountId, DataName: data1.Data.Data.DataName}
-	rows, err = q.RemoveAccountData(key)
+	rows, err = q.RemoveAccountData(tt.Ctx, key)
 	assert.NoError(t, err)
 	tt.Assert.Equal(int64(1), rows)
 
-	datas, err := q.GetAccountDataByKeys([]xdr.LedgerKeyData{key})
+	datas, err := q.GetAccountDataByKeys(tt.Ctx, []xdr.LedgerKeyData{key})
 	assert.NoError(t, err)
 	assert.Len(t, datas, 0)
 
 	// Doesn't exist anymore
-	rows, err = q.RemoveAccountData(key)
+	rows, err = q.RemoveAccountData(tt.Ctx, key)
 	assert.NoError(t, err)
 	tt.Assert.Equal(int64(0), rows)
 }
@@ -133,16 +133,16 @@ func TestGetAccountDataByAccountsID(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
-	_, err := q.InsertAccountData(data1)
+	_, err := q.InsertAccountData(tt.Ctx, data1)
 	assert.NoError(t, err)
-	_, err = q.InsertAccountData(data2)
+	_, err = q.InsertAccountData(tt.Ctx, data2)
 	assert.NoError(t, err)
 
 	ids := []string{
 		data1.Data.Data.AccountId.Address(),
 		data2.Data.Data.AccountId.Address(),
 	}
-	datas, err := q.GetAccountDataByAccountsID(ids)
+	datas, err := q.GetAccountDataByAccountsID(tt.Ctx, ids)
 	assert.NoError(t, err)
 	assert.Len(t, datas, 2)
 
@@ -159,12 +159,12 @@ func TestGetAccountDataByAccountID(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
-	_, err := q.InsertAccountData(data1)
+	_, err := q.InsertAccountData(tt.Ctx, data1)
 	assert.NoError(t, err)
-	_, err = q.InsertAccountData(data2)
+	_, err = q.InsertAccountData(tt.Ctx, data2)
 	assert.NoError(t, err)
 
-	records, err := q.GetAccountDataByAccountID(data1.Data.Data.AccountId.Address())
+	records, err := q.GetAccountDataByAccountID(tt.Ctx, data1.Data.Data.AccountId.Address())
 	assert.NoError(t, err)
 	assert.Len(t, records, 2)
 
@@ -181,17 +181,17 @@ func TestGetAccountDataByName(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
-	_, err := q.InsertAccountData(data1)
+	_, err := q.InsertAccountData(tt.Ctx, data1)
 	assert.NoError(t, err)
-	_, err = q.InsertAccountData(data2)
+	_, err = q.InsertAccountData(tt.Ctx, data2)
 	assert.NoError(t, err)
 
-	record, err := q.GetAccountDataByName(data1.Data.Data.AccountId.Address(), string(data1.Data.Data.DataName))
+	record, err := q.GetAccountDataByName(tt.Ctx, data1.Data.Data.AccountId.Address(), string(data1.Data.Data.DataName))
 	assert.NoError(t, err)
 	tt.Assert.Equal(data1.Data.Data.DataName, xdr.String64(record.Name))
 	tt.Assert.Equal([]byte(data1.Data.Data.DataValue), []byte(record.Value))
 
-	record, err = q.GetAccountDataByName(data1.Data.Data.AccountId.Address(), string(data2.Data.Data.DataName))
+	record, err = q.GetAccountDataByName(tt.Ctx, data1.Data.Data.AccountId.Address(), string(data2.Data.Data.DataName))
 	assert.NoError(t, err)
 	tt.Assert.Equal(data2.Data.Data.DataName, xdr.String64(record.Name))
 	tt.Assert.Equal([]byte(data2.Data.Data.DataValue), []byte(record.Value))

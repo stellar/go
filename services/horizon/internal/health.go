@@ -68,7 +68,7 @@ func (h healthCheck) runCheck() healthResponse {
 		CoreUp:            true,
 		CoreSynced:        true,
 	}
-	if err := h.session.Ping(dbPingTimeout); err != nil {
+	if err := h.session.Ping(h.ctx, dbPingTimeout); err != nil {
 		healthLogger.Warnf("could not ping db: %s", err)
 		response.DatabaseConnected = false
 	}

@@ -55,25 +55,25 @@ type ingestionStatus struct {
 	LastOfferCompactionLedger  uint32
 }
 
-func (o *OrderBookStream) getIngestionStatus() (ingestionStatus, error) {
+func (o *OrderBookStream) getIngestionStatus(ctx context.Context) (ingestionStatus, error) {
 	var status ingestionStatus
 	var err error
 
-	status.StateInvalid, err = o.historyQ.GetExpStateInvalid()
+	status.StateInvalid, err = o.historyQ.GetExpStateInvalid(ctx)
 	if err != nil {
 		return status, errors.Wrap(err, "Error from GetExpStateInvalid")
 	}
 
 	var lastHistoryLedger uint32
-	lastHistoryLedger, err = o.historyQ.GetLatestHistoryLedger()
+	lastHistoryLedger, err = o.historyQ.GetLatestHistoryLedger(ctx)
 	if err != nil {
 		return status, errors.Wrap(err, "Error from GetLatestHistoryLedger")
 	}
-	status.LastIngestedLedger, err = o.historyQ.GetLastLedgerIngestNonBlocking()
+	status.LastIngestedLedger, err = o.historyQ.GetLastLedgerIngestNonBlocking(ctx)
 	if err != nil {
 		return status, errors.Wrap(err, "Error from GetLastLedgerIngestNonBlocking")
 	}
-	status.LastOfferCompactionLedger, err = o.historyQ.GetOfferCompactionSequence()
+	status.LastOfferCompactionLedger, err = o.historyQ.GetOfferCompactionSequence(ctx)
 	if err != nil {
 		return status, errors.Wrap(err, "Error from GetOfferCompactionSequence")
 	}
@@ -103,7 +103,7 @@ func addOfferToGraph(graph orderbook.OBGraph, offer history.Offer) {
 }
 
 // update returns true if the order book graph was reset
-func (o *OrderBookStream) update(status ingestionStatus) (bool, error) {
+func (o *OrderBookStream) update(ctx context.Context, status ingestionStatus) (bool, error) {
 	reset := o.lastLedger == 0
 	if status.StateInvalid {
 		log.WithField("status", status).Warn("ingestion state is invalid")
@@ -135,7 +135,7 @@ func (o *OrderBookStream) update(status ingestionStatus) (bool, error) {
 
 		defer o.graph.Discard()
 
-		offers, err := o.historyQ.GetAllOffers()
+		offers, err := o.historyQ.GetAllOffers(ctx)
 		if err != nil {
 			return true, errors.Wrap(err, "Error from GetAllOffers")
 		}
@@ -159,7 +159,7 @@ func (o *OrderBookStream) update(status ingestionStatus) (bool, error) {
 
 	defer o.graph.Discard()
 
-	offers, err := o.historyQ.GetUpdatedOffers(o.lastLedger)
+	offers, err := o.historyQ.GetUpdatedOffers(ctx, o.lastLedger)
 	if err != nil {
 		return false, errors.Wrap(err, "Error from GetUpdatedOffers")
 	}
@@ -180,9 +180,9 @@ func (o *OrderBookStream) update(status ingestionStatus) (bool, error) {
 	return false, nil
 }
 
-func (o *OrderBookStream) verifyAllOffers() {
+func (o *OrderBookStream) verifyAllOffers(ctx context.Context) {
 	offers := o.graph.Offers()
-	ingestionOffers, err := o.historyQ.GetAllOffers()
+	ingestionOffers, err := o.historyQ.GetAllOffers(ctx)
 	if err != nil {
 		if !isCancelledError(err) {
 			log.WithError(err).Info("Could not verify offers because of error from GetAllOffers")
@@ -231,18 +231,18 @@ func (o *OrderBookStream) verifyAllOffers() {
 // last time Update() was called. Those changes will then be applied to the in memory order book graph.
 // After calling this function, the the in memory order book graph should be consistent with the
 // Horizon DB (assuming no error is returned).
-func (o *OrderBookStream) Update() error {
-	if err := o.historyQ.BeginTx(&sql.TxOptions{ReadOnly: true, Isolation: sql.LevelRepeatableRead}); err != nil {
+func (o *OrderBookStream) Update(ctx context.Context) error {
+	if err := o.historyQ.BeginTx(ctx, &sql.TxOptions{ReadOnly: true, Isolation: sql.LevelRepeatableRead}); err != nil {
 		return errors.Wrap(err, "Error starting repeatable read transaction")
 	}
-	defer o.historyQ.Rollback()
+	defer o.historyQ.Rollback(ctx)
 
-	status, err := o.getIngestionStatus()
+	status, err := o.getIngestionStatus(ctx)
 	if err != nil {
 		return errors.Wrap(err, "Error obtaining ingestion status")
 	}
 
-	if reset, err := o.update(status); err != nil {
+	if reset, err := o.update(ctx, status); err != nil {
 		return errors.Wrap(err, "Error updating")
 	} else if reset {
 		return nil
@@ -255,7 +255,7 @@ func (o *OrderBookStream) Update() error {
 		time.Since(o.lastVerification) >= verificationFrequency+jitter
 
 	if requiresVerification {
-		o.verifyAllOffers()
+		o.verifyAllOffers(ctx)
 	}
 	return nil
 }
@@ -268,7 +268,7 @@ func (o *OrderBookStream) Run(ctx context.Context) {
 	for {
 		select {
 		case <-ticker.C:
-			if err := o.Update(); err != nil && !isCancelledError(err) {
+			if err := o.Update(ctx); err != nil && !isCancelledError(err) {
 				log.WithError(err).Error("could not apply updates from order book stream")
 			}
 		case <-ctx.Done():

@@ -3,6 +3,7 @@
 package ingest
 
 import (
+	"context"
 	"io"
 	"io/ioutil"
 	"path/filepath"
@@ -57,6 +58,7 @@ func TestDBTestSuite(t *testing.T) {
 
 type DBTestSuite struct {
 	suite.Suite
+	ctx            context.Context
 	sampleFile     string
 	sequence       uint32
 	ledgerBackend  *ledgerbackend.MockDatabaseBackend
@@ -87,6 +89,7 @@ func (s *DBTestSuite) SetupTest() {
 	})
 	s.Assert().NoError(err)
 	s.system = sIface.(*system)
+	s.ctx = s.system.ctx
 
 	s.sequence = uint32(28660351)
 	s.setupMocksForBuildState()
@@ -99,7 +102,7 @@ func (s *DBTestSuite) SetupTest() {
 func (s *DBTestSuite) mockChangeReader() {
 	changeReader, err := loadChanges(s.sampleFile)
 	s.Assert().NoError(err)
-	s.historyAdapter.On("GetState", s.system.ctx, s.sequence).
+	s.historyAdapter.On("GetState", s.ctx, s.sequence).
 		Return(ingest.ChangeReader(changeReader), nil).Once()
 }
 func (s *DBTestSuite) setupMocksForBuildState() {
@@ -153,7 +156,7 @@ func (s *DBTestSuite) TestVersionMismatchTriggersRebuild() {
 	s.TestBuildState()
 
 	s.Assert().NoError(
-		s.system.historyQ.UpdateIngestVersion(CurrentVersion - 1),
+		s.system.historyQ.UpdateIngestVersion(context.Background(), CurrentVersion-1),
 	)
 
 	s.setupMocksForBuildState()

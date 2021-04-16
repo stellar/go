@@ -1,6 +1,7 @@
 package ingest
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -26,10 +27,10 @@ func newGroupChangeProcessors(processors []horizonChangeProcessor) *groupChangeP
 	}
 }
 
-func (g groupChangeProcessors) ProcessChange(change ingest.Change) error {
+func (g groupChangeProcessors) ProcessChange(ctx context.Context, change ingest.Change) error {
 	for _, p := range g.processors {
 		startTime := time.Now()
-		if err := p.ProcessChange(change); err != nil {
+		if err := p.ProcessChange(ctx, change); err != nil {
 			return errors.Wrapf(err, "error in %T.ProcessChange", p)
 		}
 		g.AddRunDuration(fmt.Sprintf("%T", p), startTime)
@@ -37,10 +38,10 @@ func (g groupChangeProcessors) ProcessChange(change ingest.Change) error {
 	return nil
 }
 
-func (g groupChangeProcessors) Commit() error {
+func (g groupChangeProcessors) Commit(ctx context.Context) error {
 	for _, p := range g.processors {
 		startTime := time.Now()
-		if err := p.Commit(); err != nil {
+		if err := p.Commit(ctx); err != nil {
 			return errors.Wrapf(err, "error in %T.Commit", p)
 		}
 		g.AddRunDuration(fmt.Sprintf("%T", p), startTime)
@@ -60,10 +61,10 @@ func newGroupTransactionProcessors(processors []horizonTransactionProcessor) *gr
 	}
 }
 
-func (g groupTransactionProcessors) ProcessTransaction(tx ingest.LedgerTransaction) error {
+func (g groupTransactionProcessors) ProcessTransaction(ctx context.Context, tx ingest.LedgerTransaction) error {
 	for _, p := range g.processors {
 		startTime := time.Now()
-		if err := p.ProcessTransaction(tx); err != nil {
+		if err := p.ProcessTransaction(ctx, tx); err != nil {
 			return errors.Wrapf(err, "error in %T.ProcessTransaction", p)
 		}
 		g.AddRunDuration(fmt.Sprintf("%T", p), startTime)
@@ -71,10 +72,10 @@ func (g groupTransactionProcessors) ProcessTransaction(tx ingest.LedgerTransacti
 	return nil
 }
 
-func (g groupTransactionProcessors) Commit() error {
+func (g groupTransactionProcessors) Commit(ctx context.Context) error {
 	for _, p := range g.processors {
 		startTime := time.Now()
-		if err := p.Commit(); err != nil {
+		if err := p.Commit(ctx); err != nil {
 			return errors.Wrapf(err, "error in %T.Commit", p)
 		}
 		g.AddRunDuration(fmt.Sprintf("%T", p), startTime)

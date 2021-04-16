@@ -15,7 +15,7 @@ func TestAddEffect(t *testing.T) {
 	q := &Q{tt.HorizonSession()}
 
 	address := "GBXGQJWVLWOYHFLVTKWV5FGHA3LNYY2JQKM7OAJAUEQFU6LPCSEFVXON"
-	accounIDs, err := q.CreateAccounts([]string{address}, 1)
+	accounIDs, err := q.CreateAccounts(tt.Ctx, []string{address}, 1)
 	tt.Assert.NoError(err)
 
 	builder := q.NewEffectBatchInsertBuilder(2)
@@ -25,7 +25,7 @@ func TestAddEffect(t *testing.T) {
 		"asset_type": "native",
 	})
 
-	err = builder.Add(
+	err = builder.Add(tt.Ctx,
 		accounIDs[address],
 		toid.New(sequence, 1, 1).ToInt64(),
 		1,
@@ -34,11 +34,11 @@ func TestAddEffect(t *testing.T) {
 	)
 	tt.Assert.NoError(err)
 
-	err = builder.Exec()
+	err = builder.Exec(tt.Ctx)
 	tt.Assert.NoError(err)
 
 	effects := []Effect{}
-	tt.Assert.NoError(q.Effects().Select(&effects))
+	tt.Assert.NoError(q.Effects().Select(tt.Ctx, &effects))
 	tt.Assert.Len(effects, 1)
 
 	effect := effects[0]

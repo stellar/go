@@ -3,6 +3,7 @@
 package processors
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stellar/go/ingest"
@@ -17,12 +18,14 @@ func TestAccountsDataProcessorTestSuiteState(t *testing.T) {
 
 type AccountsDataProcessorTestSuiteState struct {
 	suite.Suite
+	ctx                    context.Context
 	processor              *AccountDataProcessor
 	mockQ                  *history.MockQData
 	mockBatchInsertBuilder *history.MockAccountDataBatchInsertBuilder
 }
 
 func (s *AccountsDataProcessorTestSuiteState) SetupTest() {
+	s.ctx = context.Background()
 	s.mockQ = &history.MockQData{}
 	s.mockBatchInsertBuilder = &history.MockAccountDataBatchInsertBuilder{}
 
@@ -34,8 +37,8 @@ func (s *AccountsDataProcessorTestSuiteState) SetupTest() {
 }
 
 func (s *AccountsDataProcessorTestSuiteState) TearDownTest() {
-	s.mockBatchInsertBuilder.On("Exec").Return(nil).Once()
-	s.Assert().NoError(s.processor.Commit())
+	s.mockBatchInsertBuilder.On("Exec", s.ctx).Return(nil).Once()
+	s.Assert().NoError(s.processor.Commit(s.ctx))
 
 	s.mockQ.AssertExpectations(s.T())
 	s.mockBatchInsertBuilder.AssertExpectations(s.T())
@@ -59,9 +62,9 @@ func (s *AccountsDataProcessorTestSuiteState) TestCreatesAccounts() {
 		},
 		LastModifiedLedgerSeq: lastModifiedLedgerSeq,
 	}
-	s.mockBatchInsertBuilder.On("Add", entry).Return(nil).Once()
+	s.mockBatchInsertBuilder.On("Add", s.ctx, entry).Return(nil).Once()
 
-	err := s.processor.ProcessChange(ingest.Change{
+	err := s.processor.ProcessChange(s.ctx, ingest.Change{
 		Type: xdr.LedgerEntryTypeData,
 		Pre:  nil,
 		Post: &entry,
@@ -75,12 +78,14 @@ func TestAccountsDataProcessorTestSuiteLedger(t *testing.T) {
 
 type AccountsDataProcessorTestSuiteLedger struct {
 	suite.Suite
+	ctx                    context.Context
 	processor              *AccountDataProcessor
 	mockQ                  *history.MockQData
 	mockBatchInsertBuilder *history.MockAccountDataBatchInsertBuilder
 }
 
 func (s *AccountsDataProcessorTestSuiteLedger) SetupTest() {
+	s.ctx = context.Background()
 	s.mockQ = &history.MockQData{}
 	s.mockBatchInsertBuilder = &history.MockAccountDataBatchInsertBuilder{}
 
@@ -92,8 +97,8 @@ func (s *AccountsDataProcessorTestSuiteLedger) SetupTest() {
 }
 
 func (s *AccountsDataProcessorTestSuiteLedger) TearDownTest() {
-	s.mockBatchInsertBuilder.On("Exec").Return(nil).Once()
-	s.Assert().NoError(s.processor.Commit())
+	s.mockBatchInsertBuilder.On("Exec", s.ctx).Return(nil).Once()
+	s.Assert().NoError(s.processor.Commit(s.ctx))
 	s.mockQ.AssertExpectations(s.T())
 }
 
@@ -109,7 +114,7 @@ func (s *AccountsDataProcessorTestSuiteLedger) TestNewAccountData() {
 	}
 	lastModifiedLedgerSeq := xdr.Uint32(123)
 
-	err := s.processor.ProcessChange(ingest.Change{
+	err := s.processor.ProcessChange(s.ctx, ingest.Change{
 		Type: xdr.LedgerEntryTypeData,
 		Pre:  nil,
 		Post: &xdr.LedgerEntry{
@@ -136,7 +141,7 @@ func (s *AccountsDataProcessorTestSuiteLedger) TestNewAccountData() {
 		LastModifiedLedgerSeq: lastModifiedLedgerSeq,
 	}
 
-	err = s.processor.ProcessChange(ingest.Change{
+	err = s.processor.ProcessChange(s.ctx, ingest.Change{
 		Type: xdr.LedgerEntryTypeData,
 		Pre: &xdr.LedgerEntry{
 			Data: xdr.LedgerEntryData{
@@ -150,7 +155,7 @@ func (s *AccountsDataProcessorTestSuiteLedger) TestNewAccountData() {
 	s.Assert().NoError(err)
 
 	// We use LedgerEntryChangesCache so all changes are squashed
-	s.mockBatchInsertBuilder.On("Add", updatedEntry).Return(nil).Once()
+	s.mockBatchInsertBuilder.On("Add", s.ctx, updatedEntry).Return(nil).Once()
 }
 
 func (s *AccountsDataProcessorTestSuiteLedger) TestUpdateAccountData() {
@@ -175,7 +180,7 @@ func (s *AccountsDataProcessorTestSuiteLedger) TestUpdateAccountData() {
 		LastModifiedLedgerSeq: lastModifiedLedgerSeq,
 	}
 
-	err := s.processor.ProcessChange(ingest.Change{
+	err := s.processor.ProcessChange(s.ctx, ingest.Change{
 		Type: xdr.LedgerEntryTypeData,
 		Pre: &xdr.LedgerEntry{
 			Data: xdr.LedgerEntryData{
@@ -188,11 +193,11 @@ func (s *AccountsDataProcessorTestSuiteLedger) TestUpdateAccountData() {
 	})
 	s.Assert().NoError(err)
 
-	s.mockQ.On("UpdateAccountData", updatedEntry).Return(int64(1), nil).Once()
+	s.mockQ.On("UpdateAccountData", s.ctx, updatedEntry).Return(int64(1), nil).Once()
 }
 
 func (s *AccountsDataProcessorTestSuiteLedger) TestRemoveAccountData() {
-	err := s.processor.ProcessChange(ingest.Change{
+	err := s.processor.ProcessChange(s.ctx, ingest.Change{
 		Type: xdr.LedgerEntryTypeData,
 		Pre: &xdr.LedgerEntry{
 			Data: xdr.LedgerEntryData{
@@ -210,6 +215,7 @@ func (s *AccountsDataProcessorTestSuiteLedger) TestRemoveAccountData() {
 
 	s.mockQ.On(
 		"RemoveAccountData",
+		s.ctx,
 		xdr.LedgerKeyData{
 			AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
 			DataName:  "test",

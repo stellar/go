@@ -16,12 +16,12 @@ import (
 )
 
 // Begin binds this session to a new transaction.
-func (s *Session) Begin() error {
+func (s *Session) Begin(ctx context.Context) error {
 	if s.tx != nil {
 		return errors.New("already in transaction")
 	}
 
-	tx, err := s.DB.BeginTxx(s.Ctx, nil)
+	tx, err := s.DB.BeginTxx(ctx, nil)
 	if err != nil {
 		if s.cancelled(err) {
 			return ErrCancelled
@@ -29,8 +29,7 @@ func (s *Session) Begin() error {
 
 		return errors.Wrap(err, "beginx failed")
 	}
-	s.logBegin()
-
+	log.Ctx(ctx).Debug("sql: begin")
 	s.tx = tx
 	s.txOptions = nil
 	return nil
@@ -38,12 +37,12 @@ func (s *Session) Begin() error {
 
 // BeginTx binds this session to a new transaction which is configured with the
 // given transaction options
-func (s *Session) BeginTx(opts *sql.TxOptions) error {
+func (s *Session) BeginTx(ctx context.Context, opts *sql.TxOptions) error {
 	if s.tx != nil {
 		return errors.New("already in transaction")
 	}
 
-	tx, err := s.DB.BeginTxx(s.Ctx, opts)
+	tx, err := s.DB.BeginTxx(ctx, opts)
 	if err != nil {
 		if s.cancelled(err) {
 			return ErrCancelled
@@ -51,7 +50,7 @@ func (s *Session) BeginTx(opts *sql.TxOptions) error {
 
 		return errors.Wrap(err, "beginTx failed")
 	}
-	s.logBegin()
+	log.Ctx(ctx).Debug("sql: begin")
 
 	s.tx = tx
 	s.txOptions = opts
@@ -71,8 +70,7 @@ func (s *Session) GetTxOptions() *sql.TxOptions {
 // source is currently within.
 func (s *Session) Clone() *Session {
 	return &Session{
-		DB:  s.DB,
-		Ctx: s.Ctx,
+		DB: s.DB,
 	}
 }
 
@@ -84,13 +82,13 @@ func (s *Session) Close() error {
 }
 
 // Commit commits the current transaction
-func (s *Session) Commit() error {
+func (s *Session) Commit(ctx context.Context) error {
 	if s.tx == nil {
 		return errors.New("not in transaction")
 	}
 
 	err := s.tx.Commit()
-	s.logCommit()
+	log.Ctx(ctx).Debug("sql: commit")
 	s.tx = nil
 	s.txOptions = nil
 	return err
@@ -104,6 +102,7 @@ func (s *Session) Dialect() string {
 // DeleteRange deletes a range of rows from a sql table between `start` and
 // `end` (exclusive).
 func (s *Session) DeleteRange(
+	ctx context.Context,
 	start, end int64,
 	table string,
 	idCol string,
@@ -113,31 +112,31 @@ func (s *Session) DeleteRange(
 		start,
 		end,
 	)
-	_, err := s.Exec(del)
+	_, err := s.Exec(ctx, del)
 	return err
 }
 
 // Get runs `query`, setting the first result found on `dest`, if
 // any.
-func (s *Session) Get(dest interface{}, query sq.Sqlizer) error {
+func (s *Session) Get(ctx context.Context, dest interface{}, query sq.Sqlizer) error {
 	sql, args, err := s.build(query)
 	if err != nil {
 		return err
 	}
-	return s.GetRaw(dest, sql, args...)
+	return s.GetRaw(ctx, dest, sql, args...)
 }
 
 // GetRaw runs `query` with `args`, setting the first result found on
 // `dest`, if any.
-func (s *Session) GetRaw(dest interface{}, query string, args ...interface{}) error {
+func (s *Session) GetRaw(ctx context.Context, dest interface{}, query string, args ...interface{}) error {
 	query, err := s.ReplacePlaceholders(query)
 	if err != nil {
 		return errors.Wrap(err, "replace placeholders failed")
 	}
 
 	start := time.Now()
-	err = s.conn().GetContext(s.Ctx, dest, query, args...)
-	s.log("get", start, query, args)
+	err = s.conn().GetContext(ctx, dest, query, args...)
+	s.log(ctx, "get", start, query, args)
 
 	if err == nil {
 		return nil
@@ -162,51 +161,51 @@ func (s *Session) GetTable(name string) *Table {
 	}
 }
 
-func (s *Session) TruncateTables(tables []string) error {
+func (s *Session) TruncateTables(ctx context.Context, tables []string) error {
 	truncateCmd := fmt.Sprintf("truncate %s restart identity cascade", strings.Join(tables[:], ","))
-	_, err := s.ExecRaw(truncateCmd)
+	_, err := s.ExecRaw(ctx, truncateCmd)
 	return err
 }
 
 // Exec runs `query`
-func (s *Session) Exec(query sq.Sqlizer) (sql.Result, error) {
+func (s *Session) Exec(ctx context.Context, query sq.Sqlizer) (sql.Result, error) {
 	sql, args, err := s.build(query)
 	if err != nil {
 		return nil, err
 	}
-	return s.ExecRaw(sql, args...)
+	return s.ExecRaw(ctx, sql, args...)
 }
 
 // ExecAll runs all sql commands in `script` against `r` within a single
 // transaction.
-func (s *Session) ExecAll(script string) error {
-	err := s.Begin()
+func (s *Session) ExecAll(ctx context.Context, script string) error {
+	err := s.Begin(ctx)
 	if err != nil {
 		return err
 	}
 
-	defer s.Rollback()
+	defer s.Rollback(ctx)
 
 	for _, cmd := range sqlutils.AllStatements(script) {
-		_, err = s.ExecRaw(cmd)
+		_, err = s.ExecRaw(ctx, cmd)
 		if err != nil {
 			return err
 		}
 	}
 
-	return s.Commit()
+	return s.Commit(ctx)
 }
 
 // ExecRaw runs `query` with `args`
-func (s *Session) ExecRaw(query string, args ...interface{}) (sql.Result, error) {
+func (s *Session) ExecRaw(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
 	query, err := s.ReplacePlaceholders(query)
 	if err != nil {
 		return nil, errors.Wrap(err, "replace placeholders failed")
 	}
 
 	start := time.Now()
-	result, err := s.conn().ExecContext(s.Ctx, query, args...)
-	s.log("exec", start, query, args)
+	result, err := s.conn().ExecContext(ctx, query, args...)
+	s.log(ctx, "exec", start, query, args)
 
 	if err == nil {
 		return result, nil
@@ -235,24 +234,24 @@ func (s *Session) cancelled(err error) bool {
 }
 
 // Query runs `query`, returns a *sqlx.Rows instance
-func (s *Session) Query(query sq.Sqlizer) (*sqlx.Rows, error) {
+func (s *Session) Query(ctx context.Context, query sq.Sqlizer) (*sqlx.Rows, error) {
 	sql, args, err := s.build(query)
 	if err != nil {
 		return nil, err
 	}
-	return s.QueryRaw(sql, args...)
+	return s.QueryRaw(ctx, sql, args...)
 }
 
 // QueryRaw runs `query` with `args`
-func (s *Session) QueryRaw(query string, args ...interface{}) (*sqlx.Rows, error) {
+func (s *Session) QueryRaw(ctx context.Context, query string, args ...interface{}) (*sqlx.Rows, error) {
 	query, err := s.ReplacePlaceholders(query)
 	if err != nil {
 		return nil, errors.Wrap(err, "replace placeholders failed")
 	}
 
 	start := time.Now()
-	result, err := s.conn().QueryxContext(s.Ctx, query, args...)
-	s.log("query", start, query, args)
+	result, err := s.conn().QueryxContext(ctx, query, args...)
+	s.log(ctx, "query", start, query, args)
 
 	if err == nil {
 		return result, nil
@@ -282,13 +281,13 @@ func (s *Session) ReplacePlaceholders(query string) (string, error) {
 }
 
 // Rollback rolls back the current transaction
-func (s *Session) Rollback() error {
+func (s *Session) Rollback(ctx context.Context) error {
 	if s.tx == nil {
 		return errors.New("not in transaction")
 	}
 
 	err := s.tx.Rollback()
-	s.logRollback()
+	log.Ctx(ctx).Debug("sql: rollback")
 	s.tx = nil
 	s.txOptions = nil
 	return err
@@ -296,23 +295,24 @@ func (s *Session) Rollback() error {
 
 // Ping verifies a connection to the database is still alive,
 // establishing a connection if necessary.
-func (s *Session) Ping(timeout time.Duration) error {
-	ctx, cancel := context.WithTimeout(s.Ctx, timeout)
+func (s *Session) Ping(ctx context.Context, timeout time.Duration) error {
+	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 	return s.DB.PingContext(ctx)
 }
 
 // Select runs `query`, setting the results found on `dest`.
-func (s *Session) Select(dest interface{}, query sq.Sqlizer) error {
+func (s *Session) Select(ctx context.Context, dest interface{}, query sq.Sqlizer) error {
 	sql, args, err := s.build(query)
 	if err != nil {
 		return err
 	}
-	return s.SelectRaw(dest, sql, args...)
+	return s.SelectRaw(ctx, dest, sql, args...)
 }
 
 // SelectRaw runs `query` with `args`, setting the results found on `dest`.
 func (s *Session) SelectRaw(
+	ctx context.Context,
 	dest interface{},
 	query string,
 	args ...interface{},
@@ -324,8 +324,8 @@ func (s *Session) SelectRaw(
 	}
 
 	start := time.Now()
-	err = s.conn().SelectContext(s.Ctx, dest, query, args...)
-	s.log("select", start, query, args)
+	err = s.conn().SelectContext(ctx, dest, query, args...)
+	s.log(ctx, "select", start, query, args)
 
 	if err == nil {
 		return nil
@@ -382,31 +382,10 @@ func (s *Session) conn() Conn {
 	return s.DB
 }
 
-func (s *Session) log(typ string, start time.Time, query string, args []interface{}) {
+func (s *Session) log(ctx context.Context, typ string, start time.Time, query string, args []interface{}) {
 	log.
-		Ctx(s.logCtx()).
 		WithField("args", args).
 		WithField("sql", query).
 		WithField("dur", time.Since(start).String()).
 		Debugf("sql: %s", typ)
-}
-
-func (s *Session) logBegin() {
-	log.Ctx(s.logCtx()).Debug("sql: begin")
-}
-
-func (s *Session) logCommit() {
-	log.Ctx(s.logCtx()).Debug("sql: commit")
-}
-
-func (s *Session) logRollback() {
-	log.Ctx(s.logCtx()).Debug("sql: rollback")
-}
-
-func (s *Session) logCtx() context.Context {
-	if s.Ctx != nil {
-		return s.Ctx
-	}
-
-	return context.Background()
 }

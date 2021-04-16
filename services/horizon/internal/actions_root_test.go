@@ -28,8 +28,8 @@ func TestRootAction(t *testing.T) {
 
 	ht.App.config.StellarCoreURL = server.URL
 	ht.App.config.NetworkPassphrase = "test"
-	ht.App.UpdateStellarCoreInfo()
-	ht.App.UpdateLedgerState()
+	ht.App.UpdateStellarCoreInfo(ht.Ctx)
+	ht.App.UpdateLedgerState(ht.Ctx)
 
 	w := ht.Get("/")
 
@@ -94,7 +94,7 @@ func TestRootCoreClientInfoErrored(t *testing.T) {
 	defer server.Close()
 
 	ht.App.config.StellarCoreURL = server.URL
-	ht.App.UpdateLedgerState()
+	ht.App.UpdateLedgerState(ht.Ctx)
 
 	w := ht.Get("/")
 

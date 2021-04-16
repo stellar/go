@@ -241,7 +241,7 @@ func (c *CaptiveStellarCore) openOfflineReplaySubprocess(from, to uint32) error 
 	return nil
 }
 
-func (c *CaptiveStellarCore) openOnlineReplaySubprocess(from uint32) error {
+func (c *CaptiveStellarCore) openOnlineReplaySubprocess(ctx context.Context, from uint32) error {
 	latestCheckpointSequence, err := c.getLatestCheckpointSequence()
 	if err != nil {
 		return errors.Wrap(err, "error getting latest checkpoint sequence")
@@ -269,7 +269,7 @@ func (c *CaptiveStellarCore) openOnlineReplaySubprocess(from uint32) error {
 		c.stellarCoreRunner = runner
 	}
 
-	runFrom, ledgerHash, nextLedger, err := c.runFromParams(from)
+	runFrom, ledgerHash, nextLedger, err := c.runFromParams(ctx, from)
 	if err != nil {
 		return errors.Wrap(err, "error calculating ledger and hash for stelar-core run")
 	}
@@ -300,7 +300,7 @@ func (c *CaptiveStellarCore) openOnlineReplaySubprocess(from uint32) error {
 }
 
 // runFromParams receives a ledger sequence and calculates the required values to call stellar-core run with --start-ledger and --start-hash
-func (c *CaptiveStellarCore) runFromParams(from uint32) (runFrom uint32, ledgerHash string, nextLedger uint32, err error) {
+func (c *CaptiveStellarCore) runFromParams(ctx context.Context, from uint32) (runFrom uint32, ledgerHash string, nextLedger uint32, err error) {
 	if from == 1 {
 		// Trying to start-from 1 results in an error from Stellar-Core:
 		// Target ledger 1 is not newer than last closed ledger 1 - nothing to do
@@ -357,7 +357,7 @@ func (c *CaptiveStellarCore) runFromParams(from uint32) (runFrom uint32, ledgerH
 	return
 }
 
-func (c *CaptiveStellarCore) startPreparingRange(ledgerRange Range) (bool, error) {
+func (c *CaptiveStellarCore) startPreparingRange(ctx context.Context, ledgerRange Range) (bool, error) {
 	c.stellarCoreLock.Lock()
 	defer c.stellarCoreLock.Unlock()
 
@@ -375,7 +375,7 @@ func (c *CaptiveStellarCore) startPreparingRange(ledgerRange Range) (bool, error
 	if ledgerRange.bounded {
 		err = c.openOfflineReplaySubprocess(ledgerRange.from, ledgerRange.to)
 	} else {
-		err = c.openOnlineReplaySubprocess(ledgerRange.from)
+		err = c.openOnlineReplaySubprocess(ctx, ledgerRange.from)
 	}
 	if err != nil {
 		return false, errors.Wrap(err, "opening subprocess")
@@ -394,7 +394,8 @@ func (c *CaptiveStellarCore) startPreparingRange(ledgerRange Range) (bool, error
 // Please note that using a BoundedRange, currently, requires a full-trust on
 // history archive. This issue is being fixed in Stellar-Core.
 func (c *CaptiveStellarCore) PrepareRange(ledgerRange Range) error {
-	if alreadyPrepared, err := c.startPreparingRange(ledgerRange); err != nil {
+	ctx := context.TODO()
+	if alreadyPrepared, err := c.startPreparingRange(ctx, ledgerRange); err != nil {
 		return errors.Wrap(err, "error starting prepare range")
 	} else if alreadyPrepared {
 		return nil

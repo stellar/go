@@ -574,19 +574,19 @@ func TestOrderbookGetResource(t *testing.T) {
 		otherSellEurOffer,
 	}
 
-	assert.NoError(t, q.TruncateTables([]string{"offers"}))
+	assert.NoError(t, q.TruncateTables(tt.Ctx, []string{"offers"}))
 
 	batch := q.NewOffersBatchInsertBuilder(0)
 	for _, offer := range offers {
-		assert.NoError(t, batch.Add(offer))
+		assert.NoError(t, batch.Add(tt.Ctx, offer))
 	}
-	assert.NoError(t, batch.Exec())
+	assert.NoError(t, batch.Exec(tt.Ctx))
 
-	assert.NoError(t, q.BeginTx(&sql.TxOptions{
+	assert.NoError(t, q.BeginTx(tt.Ctx, &sql.TxOptions{
 		Isolation: sql.LevelRepeatableRead,
 		ReadOnly:  true,
 	}))
-	defer q.Rollback()
+	defer q.Rollback(tt.Ctx)
 
 	fullResponse := empty
 	fullResponse.Asks = []protocol.PriceLevel{

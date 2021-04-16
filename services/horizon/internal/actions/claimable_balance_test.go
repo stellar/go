@@ -52,10 +52,10 @@ func TestGetClaimableBalanceByID(t *testing.T) {
 
 	builder := q.NewClaimableBalancesBatchInsertBuilder(2)
 
-	err := builder.Add(&entry)
+	err := builder.Add(tt.Ctx, &entry)
 	tt.Assert.NoError(err)
 
-	err = builder.Exec()
+	err = builder.Exec(tt.Ctx)
 	tt.Assert.NoError(err)
 
 	tt.Assert.NoError(err)
@@ -200,11 +200,11 @@ func TestGetClaimableBalances(t *testing.T) {
 	for _, e := range entriesMeta {
 		entry := buildClaimableBalance(e.id, e.accountID, e.ledger, e.asset)
 		entries = append(entries, entry)
-		err := builder.Add(&entry)
+		err := builder.Add(tt.Ctx, &entry)
 		tt.Assert.NoError(err)
 	}
 
-	err := builder.Exec()
+	err := builder.Exec(tt.Ctx)
 	tt.Assert.NoError(err)
 
 	handler := GetClaimableBalancesHandler{}
@@ -293,7 +293,7 @@ func TestGetClaimableBalances(t *testing.T) {
 		SponsoringId: xdr.MustAddressPtr("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
 	}
 	entryToBeUpdated.LastModifiedLedgerSeq = xdr.Uint32(1238)
-	q.UpdateClaimableBalance(entryToBeUpdated)
+	q.UpdateClaimableBalance(tt.Ctx, entryToBeUpdated)
 
 	entriesMeta = []struct {
 		id        xdr.Hash
@@ -319,10 +319,10 @@ func TestGetClaimableBalances(t *testing.T) {
 	for _, e := range entriesMeta {
 		entry := buildClaimableBalance(e.id, e.accountID, e.ledger, e.asset)
 		entries = append(entries, entry)
-		tt.Assert.NoError(builder.Add(&entry))
+		tt.Assert.NoError(builder.Add(tt.Ctx, &entry))
 	}
 
-	err = builder.Exec()
+	err = builder.Exec(tt.Ctx)
 	tt.Assert.NoError(err)
 
 	response, err = handler.GetResourcePage(httptest.NewRecorder(), makeRequest(

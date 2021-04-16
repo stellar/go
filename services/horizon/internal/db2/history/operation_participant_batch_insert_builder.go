@@ -1,6 +1,8 @@
 package history
 
 import (
+	"context"
+
 	"github.com/stellar/go/support/db"
 )
 
@@ -8,10 +10,11 @@ import (
 // history_operations table
 type OperationParticipantBatchInsertBuilder interface {
 	Add(
+		ctx context.Context,
 		operationID int64,
 		accountID int64,
 	) error
-	Exec() error
+	Exec(ctx context.Context) error
 }
 
 // operationParticipantBatchInsertBuilder is a simple wrapper around db.BatchInsertBuilder
@@ -31,15 +34,16 @@ func (q *Q) NewOperationParticipantBatchInsertBuilder(maxBatchSize int) Operatio
 
 // Add adds an operation participant to the batch
 func (i *operationParticipantBatchInsertBuilder) Add(
+	ctx context.Context,
 	operationID int64,
 	accountID int64,
 ) error {
-	return i.builder.Row(map[string]interface{}{
+	return i.builder.Row(ctx, map[string]interface{}{
 		"history_operation_id": operationID,
 		"history_account_id":   accountID,
 	})
 }
 
-func (i *operationParticipantBatchInsertBuilder) Exec() error {
-	return i.builder.Exec()
+func (i *operationParticipantBatchInsertBuilder) Exec(ctx context.Context) error {
+	return i.builder.Exec(ctx)
 }

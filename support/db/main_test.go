@@ -1,7 +1,6 @@
 package db
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stellar/go/support/db/dbtest"
@@ -18,7 +17,7 @@ type person struct {
 func TestGetTable(t *testing.T) {
 	db := dbtest.Postgres(t).Load(testSchema)
 	defer db.Close()
-	sess := &Session{DB: db.Open(), Ctx: context.Background()}
+	sess := &Session{DB: db.Open()}
 	defer sess.DB.Close()
 
 	tbl := sess.GetTable("users")

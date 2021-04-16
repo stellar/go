@@ -3,6 +3,7 @@
 package processors
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/mock"
@@ -17,6 +18,7 @@ import (
 
 type ParticipantsProcessorTestSuiteLedger struct {
 	suite.Suite
+	ctx                              context.Context
 	processor                        *ParticipantsProcessor
 	mockQ                            *history.MockQParticipants
 	mockBatchInsertBuilder           *history.MockTransactionParticipantsBatchInsertBuilder
@@ -38,6 +40,7 @@ func TestParticipantsProcessorTestSuiteLedger(t *testing.T) {
 }
 
 func (s *ParticipantsProcessorTestSuiteLedger) SetupTest() {
+	s.ctx = context.Background()
 	s.mockQ = &history.MockQParticipants{}
 	s.mockBatchInsertBuilder = &history.MockTransactionParticipantsBatchInsertBuilder{}
 	s.mockOperationsBatchInsertBuilder = &history.MockOperationParticipantBatchInsertBuilder{}
@@ -99,37 +102,37 @@ func (s *ParticipantsProcessorTestSuiteLedger) TearDownTest() {
 
 func (s *ParticipantsProcessorTestSuiteLedger) mockSuccessfulTransactionBatchAdds() {
 	s.mockBatchInsertBuilder.On(
-		"Add", s.firstTxID, s.addressToID[s.addresses[0]],
+		"Add", s.ctx, s.firstTxID, s.addressToID[s.addresses[0]],
 	).Return(nil).Once()
 
 	s.mockBatchInsertBuilder.On(
-		"Add", s.secondTxID, s.addressToID[s.addresses[1]],
+		"Add", s.ctx, s.secondTxID, s.addressToID[s.addresses[1]],
 	).Return(nil).Once()
 	s.mockBatchInsertBuilder.On(
-		"Add", s.secondTxID, s.addressToID[s.addresses[2]],
+		"Add", s.ctx, s.secondTxID, s.addressToID[s.addresses[2]],
 	).Return(nil).Once()
 
 	s.mockBatchInsertBuilder.On(
-		"Add", s.thirdTxID, s.addressToID[s.addresses[0]],
+		"Add", s.ctx, s.thirdTxID, s.addressToID[s.addresses[0]],
 	).Return(nil).Once()
 }
 
 func (s *ParticipantsProcessorTestSuiteLedger) mockSuccessfulOperationBatchAdds() {
 	s.mockOperationsBatchInsertBuilder.On(
-		"Add", s.firstTxID+1, s.addressToID[s.addresses[0]],
+		"Add", s.ctx, s.firstTxID+1, s.addressToID[s.addresses[0]],
 	).Return(nil).Once()
 	s.mockOperationsBatchInsertBuilder.On(
-		"Add", s.secondTxID+1, s.addressToID[s.addresses[1]],
+		"Add", s.ctx, s.secondTxID+1, s.addressToID[s.addresses[1]],
 	).Return(nil).Once()
 	s.mockOperationsBatchInsertBuilder.On(
-		"Add", s.secondTxID+1, s.addressToID[s.addresses[2]],
+		"Add", s.ctx, s.secondTxID+1, s.addressToID[s.addresses[2]],
 	).Return(nil).Once()
 	s.mockOperationsBatchInsertBuilder.On(
-		"Add", s.thirdTxID+1, s.addressToID[s.addresses[0]],
+		"Add", s.ctx, s.thirdTxID+1, s.addressToID[s.addresses[0]],
 	).Return(nil).Once()
 }
 func (s *ParticipantsProcessorTestSuiteLedger) TestEmptyParticipants() {
-	err := s.processor.Commit()
+	err := s.processor.Commit(s.ctx)
 	s.Assert().NoError(err)
 }
 
@@ -168,9 +171,9 @@ func (s *ParticipantsProcessorTestSuiteLedger) TestFeeBumptransaction() {
 		addresses[0]: s.addressToID[addresses[0]],
 		addresses[1]: s.addressToID[addresses[1]],
 	}
-	s.mockQ.On("CreateAccounts", mock.AnythingOfType("[]string"), maxBatchSize).
+	s.mockQ.On("CreateAccounts", s.ctx, mock.AnythingOfType("[]string"), maxBatchSize).
 		Run(func(args mock.Arguments) {
-			arg := args.Get(0).([]string)
+			arg := args.Get(1).([]string)
 			s.Assert().ElementsMatch(
 				addresses,
 				arg,
@@ -182,23 +185,23 @@ func (s *ParticipantsProcessorTestSuiteLedger) TestFeeBumptransaction() {
 		Return(s.mockOperationsBatchInsertBuilder).Once()
 
 	s.mockBatchInsertBuilder.On(
-		"Add", feeBumpTxID, addressToID[addresses[0]],
+		"Add", s.ctx, feeBumpTxID, addressToID[addresses[0]],
 	).Return(nil).Once()
 	s.mockBatchInsertBuilder.On(
-		"Add", feeBumpTxID, addressToID[addresses[1]],
+		"Add", s.ctx, feeBumpTxID, addressToID[addresses[1]],
 	).Return(nil).Once()
 
-	s.mockBatchInsertBuilder.On("Exec").Return(nil).Once()
-	s.mockOperationsBatchInsertBuilder.On("Exec").Return(nil).Once()
+	s.mockBatchInsertBuilder.On("Exec", s.ctx).Return(nil).Once()
+	s.mockOperationsBatchInsertBuilder.On("Exec", s.ctx).Return(nil).Once()
 
-	s.Assert().NoError(s.processor.ProcessTransaction(feeBumpTx))
-	s.Assert().NoError(s.processor.Commit())
+	s.Assert().NoError(s.processor.ProcessTransaction(s.ctx, feeBumpTx))
+	s.Assert().NoError(s.processor.Commit(s.ctx))
 }
 
 func (s *ParticipantsProcessorTestSuiteLedger) TestIngestParticipantsSucceeds() {
-	s.mockQ.On("CreateAccounts", mock.AnythingOfType("[]string"), maxBatchSize).
+	s.mockQ.On("CreateAccounts", s.ctx, mock.AnythingOfType("[]string"), maxBatchSize).
 		Run(func(args mock.Arguments) {
-			arg := args.Get(0).([]string)
+			arg := args.Get(1).([]string)
 			s.Assert().ElementsMatch(
 				s.addresses,
 				arg,
@@ -212,32 +215,32 @@ func (s *ParticipantsProcessorTestSuiteLedger) TestIngestParticipantsSucceeds() 
 	s.mockSuccessfulTransactionBatchAdds()
 	s.mockSuccessfulOperationBatchAdds()
 
-	s.mockBatchInsertBuilder.On("Exec").Return(nil).Once()
-	s.mockOperationsBatchInsertBuilder.On("Exec").Return(nil).Once()
+	s.mockBatchInsertBuilder.On("Exec", s.ctx).Return(nil).Once()
+	s.mockOperationsBatchInsertBuilder.On("Exec", s.ctx).Return(nil).Once()
 
 	for _, tx := range s.txs {
-		err := s.processor.ProcessTransaction(tx)
+		err := s.processor.ProcessTransaction(s.ctx, tx)
 		s.Assert().NoError(err)
 	}
-	err := s.processor.Commit()
+	err := s.processor.Commit(s.ctx)
 	s.Assert().NoError(err)
 }
 
 func (s *ParticipantsProcessorTestSuiteLedger) TestCreateAccountsFails() {
-	s.mockQ.On("CreateAccounts", mock.AnythingOfType("[]string"), maxBatchSize).
+	s.mockQ.On("CreateAccounts", s.ctx, mock.AnythingOfType("[]string"), maxBatchSize).
 		Return(s.addressToID, errors.New("transient error")).Once()
 	for _, tx := range s.txs {
-		err := s.processor.ProcessTransaction(tx)
+		err := s.processor.ProcessTransaction(s.ctx, tx)
 		s.Assert().NoError(err)
 	}
-	err := s.processor.Commit()
+	err := s.processor.Commit(s.ctx)
 	s.Assert().EqualError(err, "Could not create account ids: transient error")
 }
 
 func (s *ParticipantsProcessorTestSuiteLedger) TestBatchAddFails() {
-	s.mockQ.On("CreateAccounts", mock.AnythingOfType("[]string"), maxBatchSize).
+	s.mockQ.On("CreateAccounts", s.ctx, mock.AnythingOfType("[]string"), maxBatchSize).
 		Run(func(args mock.Arguments) {
-			arg := args.Get(0).([]string)
+			arg := args.Get(1).([]string)
 			s.Assert().ElementsMatch(
 				s.addresses,
 				arg,
@@ -247,31 +250,31 @@ func (s *ParticipantsProcessorTestSuiteLedger) TestBatchAddFails() {
 		Return(s.mockBatchInsertBuilder).Once()
 
 	s.mockBatchInsertBuilder.On(
-		"Add", s.firstTxID, s.addressToID[s.addresses[0]],
+		"Add", s.ctx, s.firstTxID, s.addressToID[s.addresses[0]],
 	).Return(errors.New("transient error")).Once()
 
 	s.mockBatchInsertBuilder.On(
-		"Add", s.secondTxID, s.addressToID[s.addresses[1]],
+		"Add", s.ctx, s.secondTxID, s.addressToID[s.addresses[1]],
 	).Return(nil).Maybe()
 	s.mockBatchInsertBuilder.On(
-		"Add", s.secondTxID, s.addressToID[s.addresses[2]],
+		"Add", s.ctx, s.secondTxID, s.addressToID[s.addresses[2]],
 	).Return(nil).Maybe()
 
 	s.mockBatchInsertBuilder.On(
-		"Add", s.thirdTxID, s.addressToID[s.addresses[0]],
+		"Add", s.ctx, s.thirdTxID, s.addressToID[s.addresses[0]],
 	).Return(nil).Maybe()
 	for _, tx := range s.txs {
-		err := s.processor.ProcessTransaction(tx)
+		err := s.processor.ProcessTransaction(s.ctx, tx)
 		s.Assert().NoError(err)
 	}
-	err := s.processor.Commit()
+	err := s.processor.Commit(s.ctx)
 	s.Assert().EqualError(err, "Could not insert transaction participant in db: transient error")
 }
 
 func (s *ParticipantsProcessorTestSuiteLedger) TestOperationParticipantsBatchAddFails() {
-	s.mockQ.On("CreateAccounts", mock.AnythingOfType("[]string"), maxBatchSize).
+	s.mockQ.On("CreateAccounts", s.ctx, mock.AnythingOfType("[]string"), maxBatchSize).
 		Run(func(args mock.Arguments) {
-			arg := args.Get(0).([]string)
+			arg := args.Get(1).([]string)
 			s.Assert().ElementsMatch(
 				s.addresses,
 				arg,
@@ -285,32 +288,32 @@ func (s *ParticipantsProcessorTestSuiteLedger) TestOperationParticipantsBatchAdd
 	s.mockSuccessfulTransactionBatchAdds()
 
 	s.mockOperationsBatchInsertBuilder.On(
-		"Add", s.firstTxID+1, s.addressToID[s.addresses[0]],
+		"Add", s.ctx, s.firstTxID+1, s.addressToID[s.addresses[0]],
 	).Return(errors.New("transient error")).Once()
 	s.mockOperationsBatchInsertBuilder.On(
-		"Add", s.secondTxID+1, s.addressToID[s.addresses[1]],
+		"Add", s.ctx, s.secondTxID+1, s.addressToID[s.addresses[1]],
 	).Return(nil).Maybe()
 	s.mockOperationsBatchInsertBuilder.On(
-		"Add", s.secondTxID+1, s.addressToID[s.addresses[2]],
+		"Add", s.ctx, s.secondTxID+1, s.addressToID[s.addresses[2]],
 	).Return(nil).Maybe()
 	s.mockOperationsBatchInsertBuilder.On(
-		"Add", s.thirdTxID+1, s.addressToID[s.addresses[0]],
+		"Add", s.ctx, s.thirdTxID+1, s.addressToID[s.addresses[0]],
 	).Return(nil).Maybe()
 
-	s.mockBatchInsertBuilder.On("Exec").Return(nil).Once()
+	s.mockBatchInsertBuilder.On("Exec", s.ctx).Return(nil).Once()
 
 	for _, tx := range s.txs {
-		err := s.processor.ProcessTransaction(tx)
+		err := s.processor.ProcessTransaction(s.ctx, tx)
 		s.Assert().NoError(err)
 	}
-	err := s.processor.Commit()
+	err := s.processor.Commit(s.ctx)
 	s.Assert().EqualError(err, "could not insert operation participant in db: transient error")
 }
 
 func (s *ParticipantsProcessorTestSuiteLedger) TestBatchAddExecFails() {
-	s.mockQ.On("CreateAccounts", mock.AnythingOfType("[]string"), maxBatchSize).
+	s.mockQ.On("CreateAccounts", s.ctx, mock.AnythingOfType("[]string"), maxBatchSize).
 		Run(func(args mock.Arguments) {
-			arg := args.Get(0).([]string)
+			arg := args.Get(1).([]string)
 			s.Assert().ElementsMatch(
 				s.addresses,
 				arg,
@@ -321,20 +324,20 @@ func (s *ParticipantsProcessorTestSuiteLedger) TestBatchAddExecFails() {
 
 	s.mockSuccessfulTransactionBatchAdds()
 
-	s.mockBatchInsertBuilder.On("Exec").Return(errors.New("transient error")).Once()
+	s.mockBatchInsertBuilder.On("Exec", s.ctx).Return(errors.New("transient error")).Once()
 
 	for _, tx := range s.txs {
-		err := s.processor.ProcessTransaction(tx)
+		err := s.processor.ProcessTransaction(s.ctx, tx)
 		s.Assert().NoError(err)
 	}
-	err := s.processor.Commit()
+	err := s.processor.Commit(s.ctx)
 	s.Assert().EqualError(err, "Could not flush transaction participants to db: transient error")
 }
 
 func (s *ParticipantsProcessorTestSuiteLedger) TestOpeartionBatchAddExecFails() {
-	s.mockQ.On("CreateAccounts", mock.AnythingOfType("[]string"), maxBatchSize).
+	s.mockQ.On("CreateAccounts", s.ctx, mock.AnythingOfType("[]string"), maxBatchSize).
 		Run(func(args mock.Arguments) {
-			arg := args.Get(0).([]string)
+			arg := args.Get(1).([]string)
 			s.Assert().ElementsMatch(
 				s.addresses,
 				arg,
@@ -348,13 +351,13 @@ func (s *ParticipantsProcessorTestSuiteLedger) TestOpeartionBatchAddExecFails() 
 	s.mockSuccessfulTransactionBatchAdds()
 	s.mockSuccessfulOperationBatchAdds()
 
-	s.mockBatchInsertBuilder.On("Exec").Return(nil).Once()
-	s.mockOperationsBatchInsertBuilder.On("Exec").Return(errors.New("transient error")).Once()
+	s.mockBatchInsertBuilder.On("Exec", s.ctx).Return(nil).Once()
+	s.mockOperationsBatchInsertBuilder.On("Exec", s.ctx).Return(errors.New("transient error")).Once()
 
 	for _, tx := range s.txs {
-		err := s.processor.ProcessTransaction(tx)
+		err := s.processor.ProcessTransaction(s.ctx, tx)
 		s.Assert().NoError(err)
 	}
-	err := s.processor.Commit()
+	err := s.processor.Commit(s.ctx)
 	s.Assert().EqualError(err, "could not flush operation participants to db: transient error")
 }

@@ -1,6 +1,7 @@
 package reap
 
 import (
+	"context"
 	"time"
 
 	"github.com/stellar/go/services/horizon/internal/errors"
@@ -9,7 +10,7 @@ import (
 )
 
 // DeleteUnretainedHistory removes all data associated with unretained ledgers.
-func (r *System) DeleteUnretainedHistory() error {
+func (r *System) DeleteUnretainedHistory(ctx context.Context) error {
 	// RetentionCount of 0 indicates "keep all history"
 	if r.RetentionCount == 0 {
 		return nil
@@ -24,7 +25,7 @@ func (r *System) DeleteUnretainedHistory() error {
 		return nil
 	}
 
-	err := r.clearBefore(targetElder)
+	err := r.clearBefore(ctx, targetElder)
 	if err != nil {
 		return err
 	}
@@ -38,16 +39,16 @@ func (r *System) DeleteUnretainedHistory() error {
 
 // Tick triggers the reaper system to update itself, deleted unretained history
 // if it is the appropriate time.
-func (r *System) Tick() {
+func (r *System) Tick(ctx context.Context) {
 	if time.Now().Before(r.nextRun) {
 		return
 	}
 
-	r.runOnce()
+	r.runOnce(ctx)
 	r.nextRun = time.Now().Add(1 * time.Hour)
 }
 
-func (r *System) runOnce() {
+func (r *System) runOnce(ctx context.Context) {
 	defer func() {
 		if rec := recover(); rec != nil {
 			err := errors.FromPanic(rec)
@@ -56,13 +57,13 @@ func (r *System) runOnce() {
 		}
 	}()
 
-	err := r.DeleteUnretainedHistory()
+	err := r.DeleteUnretainedHistory(ctx)
 	if err != nil {
 		log.Errorf("reaper failed: %s", err)
 	}
 }
 
-func (r *System) clearBefore(seq int32) error {
+func (r *System) clearBefore(ctx context.Context, seq int32) error {
 	log.WithField("new_elder", seq).Info("reaper: clearing")
 
 	start, end, err := toid.LedgerRangeInclusive(1, seq-1)
@@ -70,7 +71,7 @@ func (r *System) clearBefore(seq int32) error {
 		return err
 	}
 
-	err = r.HistoryQ.DeleteRangeAll(start, end)
+	err = r.HistoryQ.DeleteRangeAll(ctx, start, end)
 	if err != nil {
 		return err
 	}

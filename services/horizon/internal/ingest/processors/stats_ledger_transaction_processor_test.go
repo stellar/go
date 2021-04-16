@@ -1,6 +1,7 @@
 package processors
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -13,7 +14,7 @@ func TestStatsLedgerTransactionProcessor(t *testing.T) {
 	processor := &StatsLedgerTransactionProcessor{}
 
 	// Successful
-	assert.NoError(t, processor.ProcessTransaction(ingest.LedgerTransaction{
+	assert.NoError(t, processor.ProcessTransaction(context.Background(), ingest.LedgerTransaction{
 		Result: xdr.TransactionResultPair{
 			Result: xdr.TransactionResult{
 				Result: xdr.TransactionResultResult{
@@ -54,7 +55,7 @@ func TestStatsLedgerTransactionProcessor(t *testing.T) {
 	}))
 
 	// Failed
-	assert.NoError(t, processor.ProcessTransaction(ingest.LedgerTransaction{
+	assert.NoError(t, processor.ProcessTransaction(context.Background(), ingest.LedgerTransaction{
 		Result: xdr.TransactionResultPair{
 			Result: xdr.TransactionResult{
 				Result: xdr.TransactionResultResult{

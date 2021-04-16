@@ -1,13 +1,14 @@
 package actions
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"strconv"
 	gTime "time"
 
 	"github.com/stellar/go/protocols/horizon"
-	"github.com/stellar/go/services/horizon/internal/context"
+	horizonContext "github.com/stellar/go/services/horizon/internal/context"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/ledger"
@@ -125,7 +126,7 @@ func (handler GetTradesHandler) GetResourcePage(w HeaderWriter, r *http.Request)
 		return nil, err
 	}
 
-	historyQ, err := context.HistoryQFromRequest(r)
+	historyQ, err := horizonContext.HistoryQFromRequest(r)
 	if err != nil {
 		return nil, err
 	}
@@ -133,7 +134,7 @@ func (handler GetTradesHandler) GetResourcePage(w HeaderWriter, r *http.Request)
 	trades := historyQ.Trades()
 
 	if qp.AccountID != "" {
-		trades.ForAccount(qp.AccountID)
+		trades.ForAccount(ctx, qp.AccountID)
 	}
 
 	baseAsset, err := qp.Base()
@@ -142,7 +143,7 @@ func (handler GetTradesHandler) GetResourcePage(w HeaderWriter, r *http.Request)
 	}
 
 	if baseAsset != nil {
-		baseAssetID, err2 := historyQ.GetAssetID(*baseAsset)
+		baseAssetID, err2 := historyQ.GetAssetID(ctx, *baseAsset)
 		if err2 != nil {
 			return nil, err2
 		}
@@ -152,7 +153,7 @@ func (handler GetTradesHandler) GetResourcePage(w HeaderWriter, r *http.Request)
 			return nil, err2
 		}
 
-		counterAssetID, err2 := historyQ.GetAssetID(*counterAsset)
+		counterAssetID, err2 := historyQ.GetAssetID(ctx, *counterAsset)
 		if err2 != nil {
 			return nil, err2
 		}
@@ -164,7 +165,7 @@ func (handler GetTradesHandler) GetResourcePage(w HeaderWriter, r *http.Request)
 	}
 
 	var records []history.Trade
-	if err = trades.Page(pq).Select(&records); err != nil {
+	if err = trades.Page(ctx, pq).Select(ctx, &records); err != nil {
 		return nil, err
 	}
 	var response []hal.Pageable
@@ -256,12 +257,12 @@ func (handler GetTradeAggregationsHandler) GetResource(w HeaderWriter, r *http.R
 		return nil, err
 	}
 
-	historyQ, err := context.HistoryQFromRequest(r)
+	historyQ, err := horizonContext.HistoryQFromRequest(r)
 	if err != nil {
 		return nil, err
 	}
 
-	records, err := handler.fetchRecords(historyQ, qp, pq)
+	records, err := handler.fetchRecords(ctx, historyQ, qp, pq)
 	if err != nil {
 		return nil, err
 	}
@@ -279,13 +280,13 @@ func (handler GetTradeAggregationsHandler) GetResource(w HeaderWriter, r *http.R
 	return handler.buildPage(r, aggregations)
 }
 
-func (handler GetTradeAggregationsHandler) fetchRecords(historyQ *history.Q, qp TradeAggregationsQuery, pq db2.PageQuery) ([]history.TradeAggregation, error) {
+func (handler GetTradeAggregationsHandler) fetchRecords(ctx context.Context, historyQ *history.Q, qp TradeAggregationsQuery, pq db2.PageQuery) ([]history.TradeAggregation, error) {
 	baseAsset, err := qp.Base()
 	if err != nil {
 		return nil, err
 	}
 
-	baseAssetID, err := historyQ.GetAssetID(*baseAsset)
+	baseAssetID, err := historyQ.GetAssetID(ctx, *baseAsset)
 	if err != nil {
 		p := problem.BadRequest
 		if historyQ.NoRows(err) {
@@ -304,7 +305,7 @@ func (handler GetTradeAggregationsHandler) fetchRecords(historyQ *history.Q, qp 
 		return nil, err
 	}
 
-	counterAssetID, err := historyQ.GetAssetID(*counterAsset)
+	counterAssetID, err := historyQ.GetAssetID(ctx, *counterAsset)
 	if err != nil {
 		p := problem.BadRequest
 		if historyQ.NoRows(err) {
@@ -358,7 +359,7 @@ func (handler GetTradeAggregationsHandler) fetchRecords(historyQ *history.Q, qp 
 	}
 
 	var records []history.TradeAggregation
-	err = historyQ.Select(&records, tradeAggregationsQ.GetSql())
+	err = historyQ.Select(ctx, &records, tradeAggregationsQ.GetSql())
 	if err != nil {
 		return nil, err
 	}

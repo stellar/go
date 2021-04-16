@@ -1,6 +1,8 @@
 package ledgerbackend
 
 import (
+	"context"
+
 	"github.com/stellar/go/xdr"
 )
 
@@ -25,8 +27,8 @@ type LedgerBackend interface {
 // session is the interface needed to access a persistent database session.
 // TODO can't use this until we add Close() to the existing db.Session object
 type session interface {
-	GetRaw(dest interface{}, query string, args ...interface{}) error
-	SelectRaw(dest interface{}, query string, args ...interface{}) error
+	GetRaw(ctx context.Context, dest interface{}, query string, args ...interface{}) error
+	SelectRaw(ctx context.Context, dest interface{}, query string, args ...interface{}) error
 	Close() error
 }
 

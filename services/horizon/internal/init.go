@@ -88,7 +88,7 @@ func initIngester(app *App) {
 func initPathFinder(app *App) {
 	orderBookGraph := orderbook.NewOrderBookGraph()
 	app.orderBookStream = ingest.NewOrderBookStream(
-		&history.Q{app.HorizonSession(app.ctx)},
+		&history.Q{app.HorizonSession()},
 		orderBookGraph,
 	)
 
@@ -304,7 +304,7 @@ func initSubmissionSystem(app *App) {
 		Submitter:       txsub.NewDefaultSubmitter(http.DefaultClient, app.config.StellarCoreURL),
 		SubmissionQueue: sequence.NewManager(),
 		DB: func(ctx context.Context) txsub.HorizonDB {
-			return &history.Q{Session: app.HorizonSession(ctx)}
+			return &history.Q{Session: app.HorizonSession()}
 		},
 	}
 }

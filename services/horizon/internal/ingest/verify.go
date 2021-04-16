@@ -59,8 +59,8 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool) error {
 	}
 
 	historyQ := s.historyQ.CloneIngestionQ()
-	defer historyQ.Rollback()
-	err := historyQ.BeginTx(&sql.TxOptions{
+	defer historyQ.Rollback(s.ctx)
+	err := historyQ.BeginTx(s.ctx, &sql.TxOptions{
 		Isolation: sql.LevelRepeatableRead,
 		ReadOnly:  true,
 	})
@@ -69,7 +69,7 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool) error {
 	}
 
 	// Ensure the ledger is a checkpoint ledger
-	ledgerSequence, err := historyQ.GetLastLedgerIngestNonBlocking()
+	ledgerSequence, err := historyQ.GetLastLedgerIngestNonBlocking(s.ctx)
 	if err != nil {
 		return errors.Wrap(err, "Error running historyQ.GetLastLedgerIngestNonBlocking")
 	}
@@ -183,27 +183,27 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool) error {
 			}
 		}
 
-		err = addAccountsToStateVerifier(verifier, historyQ, accounts)
+		err = addAccountsToStateVerifier(s.ctx, verifier, historyQ, accounts)
 		if err != nil {
 			return errors.Wrap(err, "addAccountsToStateVerifier failed")
 		}
 
-		err = addDataToStateVerifier(verifier, historyQ, data)
+		err = addDataToStateVerifier(s.ctx, verifier, historyQ, data)
 		if err != nil {
 			return errors.Wrap(err, "addDataToStateVerifier failed")
 		}
 
-		err = addOffersToStateVerifier(verifier, historyQ, offers)
+		err = addOffersToStateVerifier(s.ctx, verifier, historyQ, offers)
 		if err != nil {
 			return errors.Wrap(err, "addOffersToStateVerifier failed")
 		}
 
-		err = addTrustLinesToStateVerifier(verifier, assetStats, historyQ, trustLines)
+		err = addTrustLinesToStateVerifier(s.ctx, verifier, assetStats, historyQ, trustLines)
 		if err != nil {
 			return errors.Wrap(err, "addTrustLinesToStateVerifier failed")
 		}
 
-		err = addClaimableBalanceToStateVerifier(verifier, assetStats, historyQ, cBalances)
+		err = addClaimableBalanceToStateVerifier(s.ctx, verifier, assetStats, historyQ, cBalances)
 		if err != nil {
 			return errors.Wrap(err, "addClaimableBalanceToStateVerifier failed")
 		}
@@ -214,27 +214,27 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool) error {
 
 	localLog.WithField("total", total).Info("Finished writing to StateVerifier")
 
-	countAccounts, err := historyQ.CountAccounts()
+	countAccounts, err := historyQ.CountAccounts(s.ctx)
 	if err != nil {
 		return errors.Wrap(err, "Error running historyQ.CountAccounts")
 	}
 
-	countData, err := historyQ.CountAccountsData()
+	countData, err := historyQ.CountAccountsData(s.ctx)
 	if err != nil {
 		return errors.Wrap(err, "Error running historyQ.CountData")
 	}
 
-	countOffers, err := historyQ.CountOffers()
+	countOffers, err := historyQ.CountOffers(s.ctx)
 	if err != nil {
 		return errors.Wrap(err, "Error running historyQ.CountOffers")
 	}
 
-	countTrustLines, err := historyQ.CountTrustLines()
+	countTrustLines, err := historyQ.CountTrustLines(s.ctx)
 	if err != nil {
 		return errors.Wrap(err, "Error running historyQ.CountTrustLines")
 	}
 
-	countClaimableBalances, err := historyQ.CountClaimableBalances()
+	countClaimableBalances, err := historyQ.CountClaimableBalances(s.ctx)
 	if err != nil {
 		return errors.Wrap(err, "Error running historyQ.CountClaimableBalances")
 	}
@@ -244,7 +244,7 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool) error {
 		return errors.Wrap(err, "verifier.Verify failed")
 	}
 
-	err = checkAssetStats(assetStats, historyQ)
+	err = checkAssetStats(s.ctx, assetStats, historyQ)
 	if err != nil {
 		return errors.Wrap(err, "checkAssetStats failed")
 	}
@@ -254,14 +254,14 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool) error {
 	return nil
 }
 
-func checkAssetStats(set processors.AssetStatSet, q history.IngestionQ) error {
+func checkAssetStats(ctx context.Context, set processors.AssetStatSet, q history.IngestionQ) error {
 	page := db2.PageQuery{
 		Order: "asc",
 		Limit: assetStatsBatchSize,
 	}
 
 	for {
-		assetStats, err := q.GetAssetStats("", "", page)
+		assetStats, err := q.GetAssetStats(ctx, "", "", page)
 		if err != nil {
 			return errors.Wrap(err, "could not fetch asset stats from db")
 		}
@@ -304,17 +304,17 @@ func checkAssetStats(set processors.AssetStatSet, q history.IngestionQ) error {
 	return nil
 }
 
-func addAccountsToStateVerifier(verifier *verify.StateVerifier, q history.IngestionQ, ids []string) error {
+func addAccountsToStateVerifier(ctx context.Context, verifier *verify.StateVerifier, q history.IngestionQ, ids []string) error {
 	if len(ids) == 0 {
 		return nil
 	}
 
-	accounts, err := q.GetAccountsByIDs(ids)
+	accounts, err := q.GetAccountsByIDs(ctx, ids)
 	if err != nil {
 		return errors.Wrap(err, "Error running history.Q.GetAccountsByIDs")
 	}
 
-	signers, err := q.SignersForAccounts(ids)
+	signers, err := q.SignersForAccounts(ctx, ids)
 	if err != nil {
 		return errors.Wrap(err, "Error running history.Q.SignersForAccounts")
 	}
@@ -420,12 +420,12 @@ func addAccountsToStateVerifier(verifier *verify.StateVerifier, q history.Ingest
 	return nil
 }
 
-func addDataToStateVerifier(verifier *verify.StateVerifier, q history.IngestionQ, keys []xdr.LedgerKeyData) error {
+func addDataToStateVerifier(ctx context.Context, verifier *verify.StateVerifier, q history.IngestionQ, keys []xdr.LedgerKeyData) error {
 	if len(keys) == 0 {
 		return nil
 	}
 
-	data, err := q.GetAccountDataByKeys(keys)
+	data, err := q.GetAccountDataByKeys(ctx, keys)
 	if err != nil {
 		return errors.Wrap(err, "Error running history.Q.GetAccountDataByKeys")
 	}
@@ -453,6 +453,7 @@ func addDataToStateVerifier(verifier *verify.StateVerifier, q history.IngestionQ
 }
 
 func addOffersToStateVerifier(
+	ctx context.Context,
 	verifier *verify.StateVerifier,
 	q history.IngestionQ,
 	ids []int64,
@@ -461,7 +462,7 @@ func addOffersToStateVerifier(
 		return nil
 	}
 
-	offers, err := q.GetOffersByIDs(ids)
+	offers, err := q.GetOffersByIDs(ctx, ids)
 	if err != nil {
 		return errors.Wrap(err, "Error running history.Q.GetOfferByIDs")
 	}
@@ -496,6 +497,7 @@ func addOffersToStateVerifier(
 }
 
 func addTrustLinesToStateVerifier(
+	ctx context.Context,
 	verifier *verify.StateVerifier,
 	assetStats processors.AssetStatSet,
 	q history.IngestionQ,
@@ -505,7 +507,7 @@ func addTrustLinesToStateVerifier(
 		return nil
 	}
 
-	trustLines, err := q.GetTrustLinesByKeys(keys)
+	trustLines, err := q.GetTrustLinesByKeys(ctx, keys)
 	if err != nil {
 		return errors.Wrap(err, "Error running history.Q.GetTrustLinesByKeys")
 	}
@@ -558,6 +560,7 @@ func addTrustLinesToStateVerifier(
 }
 
 func addClaimableBalanceToStateVerifier(
+	ctx context.Context,
 	verifier *verify.StateVerifier,
 	assetStats processors.AssetStatSet,
 	q history.IngestionQ,
@@ -567,7 +570,7 @@ func addClaimableBalanceToStateVerifier(
 		return nil
 	}
 
-	cBalances, err := q.GetClaimableBalancesByID(ids)
+	cBalances, err := q.GetClaimableBalancesByID(ctx, ids)
 	if err != nil {
 		return errors.Wrap(err, "Error running history.Q.GetClaimableBalancesByID")
 	}

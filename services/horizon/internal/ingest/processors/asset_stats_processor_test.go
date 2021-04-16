@@ -3,6 +3,7 @@
 package processors
 
 import (
+	"context"
 	"database/sql"
 	"testing"
 
@@ -18,17 +19,19 @@ func TestAssetStatsProcessorTestSuiteState(t *testing.T) {
 
 type AssetStatsProcessorTestSuiteState struct {
 	suite.Suite
+	ctx       context.Context
 	processor *AssetStatsProcessor
 	mockQ     *history.MockQAssetStats
 }
 
 func (s *AssetStatsProcessorTestSuiteState) SetupTest() {
+	s.ctx = context.Background()
 	s.mockQ = &history.MockQAssetStats{}
 	s.processor = NewAssetStatsProcessor(s.mockQ, false)
 }
 
 func (s *AssetStatsProcessorTestSuiteState) TearDownTest() {
-	s.Assert().NoError(s.processor.Commit())
+	s.Assert().NoError(s.processor.Commit(s.ctx))
 	s.mockQ.AssertExpectations(s.T())
 }
 
@@ -40,7 +43,7 @@ func (s *AssetStatsProcessorTestSuiteState) TestCreateTrustLine() {
 	}
 	lastModifiedLedgerSeq := xdr.Uint32(123)
 
-	err := s.processor.ProcessChange(ingest.Change{
+	err := s.processor.ProcessChange(s.ctx, ingest.Change{
 		Type: xdr.LedgerEntryTypeTrustline,
 		Pre:  nil,
 		Post: &xdr.LedgerEntry{
@@ -53,7 +56,7 @@ func (s *AssetStatsProcessorTestSuiteState) TestCreateTrustLine() {
 	})
 	s.Assert().NoError(err)
 
-	s.mockQ.On("InsertAssetStats", []history.ExpAssetStat{
+	s.mockQ.On("InsertAssetStats", s.ctx, []history.ExpAssetStat{
 		{
 			AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
 			AssetIssuer: trustLineIssuer.Address(),
@@ -77,7 +80,7 @@ func (s *AssetStatsProcessorTestSuiteState) TestCreateTrustLineUnauthorized() {
 		Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()),
 	}
 	lastModifiedLedgerSeq := xdr.Uint32(123)
-	err := s.processor.ProcessChange(ingest.Change{
+	err := s.processor.ProcessChange(s.ctx, ingest.Change{
 		Type: xdr.LedgerEntryTypeTrustline,
 		Pre:  nil,
 		Post: &xdr.LedgerEntry{
@@ -90,7 +93,7 @@ func (s *AssetStatsProcessorTestSuiteState) TestCreateTrustLineUnauthorized() {
 	})
 	s.Assert().NoError(err)
 
-	s.mockQ.On("InsertAssetStats", []history.ExpAssetStat{
+	s.mockQ.On("InsertAssetStats", s.ctx, []history.ExpAssetStat{
 		{
 			AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
 			AssetIssuer: trustLineIssuer.Address(),
@@ -114,11 +117,13 @@ func TestAssetStatsProcessorTestSuiteLedger(t *testing.T) {
 
 type AssetStatsProcessorTestSuiteLedger struct {
 	suite.Suite
+	ctx       context.Context
 	processor *AssetStatsProcessor
 	mockQ     *history.MockQAssetStats
 }
 
 func (s *AssetStatsProcessorTestSuiteLedger) SetupTest() {
+	s.ctx = context.Background()
 	s.mockQ = &history.MockQAssetStats{}
 
 	s.processor = NewAssetStatsProcessor(s.mockQ, true)
@@ -150,7 +155,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestInsertClaimableBalance() {
 
 	// test inserts
 
-	err := s.processor.ProcessChange(ingest.Change{
+	err := s.processor.ProcessChange(s.ctx, ingest.Change{
 		Type: xdr.LedgerEntryTypeClaimableBalance,
 		Pre:  nil,
 		Post: &xdr.LedgerEntry{
@@ -163,7 +168,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestInsertClaimableBalance() {
 	})
 	s.Assert().NoError(err)
 
-	err = s.processor.ProcessChange(ingest.Change{
+	err = s.processor.ProcessChange(s.ctx, ingest.Change{
 		Type: xdr.LedgerEntryTypeClaimableBalance,
 		Pre:  nil,
 		Post: &xdr.LedgerEntry{
@@ -185,7 +190,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestInsertClaimableBalance() {
 		},
 	}
 
-	err = s.processor.ProcessChange(ingest.Change{
+	err = s.processor.ProcessChange(s.ctx, ingest.Change{
 		Type: xdr.LedgerEntryTypeClaimableBalance,
 		Pre:  nil,
 		Post: &xdr.LedgerEntry{
@@ -203,7 +208,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestInsertClaimableBalance() {
 	updatedClaimableBalance := claimableBalance
 	updatedClaimableBalance.Amount *= 2
 
-	err = s.processor.ProcessChange(ingest.Change{
+	err = s.processor.ProcessChange(s.ctx, ingest.Change{
 		Type: xdr.LedgerEntryTypeClaimableBalance,
 		Pre: &xdr.LedgerEntry{
 			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
@@ -222,12 +227,12 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestInsertClaimableBalance() {
 	})
 	s.Assert().NoError(err)
 
-	s.mockQ.On("GetAssetStat",
+	s.mockQ.On("GetAssetStat", s.ctx,
 		xdr.AssetTypeAssetTypeCreditAlphanum4,
 		"EUR",
 		trustLineIssuer.Address(),
 	).Return(history.ExpAssetStat{}, sql.ErrNoRows).Once()
-	s.mockQ.On("InsertAssetStat", history.ExpAssetStat{
+	s.mockQ.On("InsertAssetStat", s.ctx, history.ExpAssetStat{
 		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
 		AssetIssuer: trustLineIssuer.Address(),
 		AssetCode:   "EUR",
@@ -244,12 +249,12 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestInsertClaimableBalance() {
 		NumAccounts: 0,
 	}).Return(int64(1), nil).Once()
 
-	s.mockQ.On("GetAssetStat",
+	s.mockQ.On("GetAssetStat", s.ctx,
 		xdr.AssetTypeAssetTypeCreditAlphanum4,
 		"USD",
 		trustLineIssuer.Address(),
 	).Return(history.ExpAssetStat{}, sql.ErrNoRows).Once()
-	s.mockQ.On("InsertAssetStat", history.ExpAssetStat{
+	s.mockQ.On("InsertAssetStat", s.ctx, history.ExpAssetStat{
 		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
 		AssetIssuer: trustLineIssuer.Address(),
 		AssetCode:   "USD",
@@ -266,12 +271,12 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestInsertClaimableBalance() {
 		NumAccounts: 0,
 	}).Return(int64(1), nil).Once()
 
-	s.Assert().NoError(s.processor.Commit())
+	s.Assert().NoError(s.processor.Commit(s.ctx))
 }
 
 func (s *AssetStatsProcessorTestSuiteLedger) TestInsertTrustLine() {
 	// should be ignored because it's not an trust line type
-	err := s.processor.ProcessChange(ingest.Change{
+	err := s.processor.ProcessChange(s.ctx, ingest.Change{
 		Type: xdr.LedgerEntryTypeAccount,
 		Pre:  nil,
 		Post: &xdr.LedgerEntry{
@@ -300,7 +305,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestInsertTrustLine() {
 	}
 	lastModifiedLedgerSeq := xdr.Uint32(1234)
 
-	err = s.processor.ProcessChange(ingest.Change{
+	err = s.processor.ProcessChange(s.ctx, ingest.Change{
 		Type: xdr.LedgerEntryTypeTrustline,
 		Pre:  nil,
 		Post: &xdr.LedgerEntry{
@@ -313,7 +318,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestInsertTrustLine() {
 	})
 	s.Assert().NoError(err)
 
-	err = s.processor.ProcessChange(ingest.Change{
+	err = s.processor.ProcessChange(s.ctx, ingest.Change{
 		Type: xdr.LedgerEntryTypeTrustline,
 		Pre:  nil,
 		Post: &xdr.LedgerEntry{
@@ -338,7 +343,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestInsertTrustLine() {
 		Balance:   10,
 	}
 
-	err = s.processor.ProcessChange(ingest.Change{
+	err = s.processor.ProcessChange(s.ctx, ingest.Change{
 		Type: xdr.LedgerEntryTypeTrustline,
 		Pre: &xdr.LedgerEntry{
 			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
@@ -357,7 +362,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestInsertTrustLine() {
 	})
 	s.Assert().NoError(err)
 
-	err = s.processor.ProcessChange(ingest.Change{
+	err = s.processor.ProcessChange(s.ctx, ingest.Change{
 		Type: xdr.LedgerEntryTypeTrustline,
 		Pre: &xdr.LedgerEntry{
 			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
@@ -376,12 +381,12 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestInsertTrustLine() {
 	})
 	s.Assert().NoError(err)
 
-	s.mockQ.On("GetAssetStat",
+	s.mockQ.On("GetAssetStat", s.ctx,
 		xdr.AssetTypeAssetTypeCreditAlphanum4,
 		"EUR",
 		trustLineIssuer.Address(),
 	).Return(history.ExpAssetStat{}, sql.ErrNoRows).Once()
-	s.mockQ.On("InsertAssetStat", history.ExpAssetStat{
+	s.mockQ.On("InsertAssetStat", s.ctx, history.ExpAssetStat{
 		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
 		AssetIssuer: trustLineIssuer.Address(),
 		AssetCode:   "EUR",
@@ -398,12 +403,12 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestInsertTrustLine() {
 		NumAccounts: 1,
 	}).Return(int64(1), nil).Once()
 
-	s.mockQ.On("GetAssetStat",
+	s.mockQ.On("GetAssetStat", s.ctx,
 		xdr.AssetTypeAssetTypeCreditAlphanum4,
 		"USD",
 		trustLineIssuer.Address(),
 	).Return(history.ExpAssetStat{}, sql.ErrNoRows).Once()
-	s.mockQ.On("InsertAssetStat", history.ExpAssetStat{
+	s.mockQ.On("InsertAssetStat", s.ctx, history.ExpAssetStat{
 		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
 		AssetIssuer: trustLineIssuer.Address(),
 		AssetCode:   "USD",
@@ -420,7 +425,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestInsertTrustLine() {
 		NumAccounts: 0,
 	}).Return(int64(1), nil).Once()
 
-	s.Assert().NoError(s.processor.Commit())
+	s.Assert().NoError(s.processor.Commit(s.ctx))
 }
 
 func (s *AssetStatsProcessorTestSuiteLedger) TestInsertClaimableBalanceAndTrustline() {
@@ -441,7 +446,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestInsertClaimableBalanceAndTrustl
 	}
 	lastModifiedLedgerSeq := xdr.Uint32(1234)
 
-	err := s.processor.ProcessChange(ingest.Change{
+	err := s.processor.ProcessChange(s.ctx, ingest.Change{
 		Type: xdr.LedgerEntryTypeClaimableBalance,
 		Pre:  nil,
 		Post: &xdr.LedgerEntry{
@@ -454,7 +459,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestInsertClaimableBalanceAndTrustl
 	})
 	s.Assert().NoError(err)
 
-	err = s.processor.ProcessChange(ingest.Change{
+	err = s.processor.ProcessChange(s.ctx, ingest.Change{
 		Type: xdr.LedgerEntryTypeTrustline,
 		Pre:  nil,
 		Post: &xdr.LedgerEntry{
@@ -467,12 +472,12 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestInsertClaimableBalanceAndTrustl
 	})
 	s.Assert().NoError(err)
 
-	s.mockQ.On("GetAssetStat",
+	s.mockQ.On("GetAssetStat", s.ctx,
 		xdr.AssetTypeAssetTypeCreditAlphanum4,
 		"EUR",
 		trustLineIssuer.Address(),
 	).Return(history.ExpAssetStat{}, sql.ErrNoRows).Once()
-	s.mockQ.On("InsertAssetStat", history.ExpAssetStat{
+	s.mockQ.On("InsertAssetStat", s.ctx, history.ExpAssetStat{
 		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
 		AssetIssuer: trustLineIssuer.Address(),
 		AssetCode:   "EUR",
@@ -490,7 +495,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestInsertClaimableBalanceAndTrustl
 		NumAccounts: 1,
 	}).Return(int64(1), nil).Once()
 
-	s.Assert().NoError(s.processor.Commit())
+	s.Assert().NoError(s.processor.Commit(s.ctx))
 }
 
 func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateTrustLine() {
@@ -509,7 +514,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateTrustLine() {
 		Flags:     xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag),
 	}
 
-	err := s.processor.ProcessChange(ingest.Change{
+	err := s.processor.ProcessChange(s.ctx, ingest.Change{
 		Type: xdr.LedgerEntryTypeTrustline,
 		Pre: &xdr.LedgerEntry{
 			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
@@ -528,7 +533,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateTrustLine() {
 	})
 	s.Assert().NoError(err)
 
-	s.mockQ.On("GetAssetStat",
+	s.mockQ.On("GetAssetStat", s.ctx,
 		xdr.AssetTypeAssetTypeCreditAlphanum4,
 		"EUR",
 		trustLineIssuer.Address(),
@@ -546,7 +551,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateTrustLine() {
 		Amount:      "100",
 		NumAccounts: 1,
 	}, nil).Once()
-	s.mockQ.On("UpdateAssetStat", history.ExpAssetStat{
+	s.mockQ.On("UpdateAssetStat", s.ctx, history.ExpAssetStat{
 		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
 		AssetIssuer: trustLineIssuer.Address(),
 		AssetCode:   "EUR",
@@ -561,7 +566,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateTrustLine() {
 		NumAccounts: 1,
 	}).Return(int64(1), nil).Once()
 
-	s.Assert().NoError(s.processor.Commit())
+	s.Assert().NoError(s.processor.Commit(s.ctx))
 }
 
 func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateTrustLineAuthorization() {
@@ -607,7 +612,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateTrustLineAuthorization() 
 		Flags:     xdr.Uint32(xdr.TrustLineFlagsAuthorizedToMaintainLiabilitiesFlag),
 	}
 
-	err := s.processor.ProcessChange(ingest.Change{
+	err := s.processor.ProcessChange(s.ctx, ingest.Change{
 		Type: xdr.LedgerEntryTypeTrustline,
 		Pre: &xdr.LedgerEntry{
 			LastModifiedLedgerSeq: lastModifiedLedgerSeq - 1,
@@ -626,7 +631,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateTrustLineAuthorization() 
 	})
 	s.Assert().NoError(err)
 
-	err = s.processor.ProcessChange(ingest.Change{
+	err = s.processor.ProcessChange(s.ctx, ingest.Change{
 		Type: xdr.LedgerEntryTypeTrustline,
 		Pre: &xdr.LedgerEntry{
 			LastModifiedLedgerSeq: lastModifiedLedgerSeq - 1,
@@ -645,7 +650,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateTrustLineAuthorization() 
 	})
 	s.Assert().NoError(err)
 
-	err = s.processor.ProcessChange(ingest.Change{
+	err = s.processor.ProcessChange(s.ctx, ingest.Change{
 		Type: xdr.LedgerEntryTypeTrustline,
 		Pre: &xdr.LedgerEntry{
 			LastModifiedLedgerSeq: lastModifiedLedgerSeq - 1,
@@ -664,7 +669,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateTrustLineAuthorization() 
 	})
 	s.Assert().NoError(err)
 
-	s.mockQ.On("GetAssetStat",
+	s.mockQ.On("GetAssetStat", s.ctx,
 		xdr.AssetTypeAssetTypeCreditAlphanum4,
 		"EUR",
 		trustLineIssuer.Address(),
@@ -684,7 +689,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateTrustLineAuthorization() 
 		Amount:      "0",
 		NumAccounts: 0,
 	}, nil).Once()
-	s.mockQ.On("UpdateAssetStat", history.ExpAssetStat{
+	s.mockQ.On("UpdateAssetStat", s.ctx, history.ExpAssetStat{
 		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
 		AssetIssuer: trustLineIssuer.Address(),
 		AssetCode:   "EUR",
@@ -701,7 +706,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateTrustLineAuthorization() 
 		NumAccounts: 1,
 	}).Return(int64(1), nil).Once()
 
-	s.mockQ.On("GetAssetStat",
+	s.mockQ.On("GetAssetStat", s.ctx,
 		xdr.AssetTypeAssetTypeCreditAlphanum4,
 		"USD",
 		trustLineIssuer.Address(),
@@ -721,7 +726,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateTrustLineAuthorization() 
 		Amount:      "100",
 		NumAccounts: 1,
 	}, nil).Once()
-	s.mockQ.On("UpdateAssetStat", history.ExpAssetStat{
+	s.mockQ.On("UpdateAssetStat", s.ctx, history.ExpAssetStat{
 		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
 		AssetIssuer: trustLineIssuer.Address(),
 		AssetCode:   "USD",
@@ -738,7 +743,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateTrustLineAuthorization() 
 		NumAccounts: 0,
 	}).Return(int64(1), nil).Once()
 
-	s.mockQ.On("GetAssetStat",
+	s.mockQ.On("GetAssetStat", s.ctx,
 		xdr.AssetTypeAssetTypeCreditAlphanum4,
 		"ETH",
 		trustLineIssuer.Address(),
@@ -758,7 +763,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateTrustLineAuthorization() 
 		Amount:      "100",
 		NumAccounts: 1,
 	}, nil).Once()
-	s.mockQ.On("UpdateAssetStat", history.ExpAssetStat{
+	s.mockQ.On("UpdateAssetStat", s.ctx, history.ExpAssetStat{
 		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
 		AssetIssuer: trustLineIssuer.Address(),
 		AssetCode:   "ETH",
@@ -775,7 +780,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestUpdateTrustLineAuthorization() 
 		NumAccounts: 0,
 	}).Return(int64(1), nil).Once()
 
-	s.Assert().NoError(s.processor.Commit())
+	s.Assert().NoError(s.processor.Commit(s.ctx))
 }
 
 func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveClaimableBalance() {
@@ -796,7 +801,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveClaimableBalance() {
 		},
 	}
 
-	err := s.processor.ProcessChange(ingest.Change{
+	err := s.processor.ProcessChange(s.ctx, ingest.Change{
 		Type: xdr.LedgerEntryTypeClaimableBalance,
 		Pre: &xdr.LedgerEntry{
 			Data: xdr.LedgerEntryData{
@@ -808,7 +813,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveClaimableBalance() {
 	})
 	s.Assert().NoError(err)
 
-	err = s.processor.ProcessChange(ingest.Change{
+	err = s.processor.ProcessChange(s.ctx, ingest.Change{
 		Type: xdr.LedgerEntryTypeClaimableBalance,
 		Pre: &xdr.LedgerEntry{
 			Data: xdr.LedgerEntryData{
@@ -820,7 +825,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveClaimableBalance() {
 	})
 	s.Assert().NoError(err)
 
-	s.mockQ.On("GetAssetStat",
+	s.mockQ.On("GetAssetStat", s.ctx,
 		xdr.AssetTypeAssetTypeCreditAlphanum4,
 		"EUR",
 		trustLineIssuer.Address(),
@@ -840,13 +845,13 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveClaimableBalance() {
 		Amount:      "0",
 		NumAccounts: 0,
 	}, nil).Once()
-	s.mockQ.On("RemoveAssetStat",
+	s.mockQ.On("RemoveAssetStat", s.ctx,
 		xdr.AssetTypeAssetTypeCreditAlphanum4,
 		"EUR",
 		trustLineIssuer.Address(),
 	).Return(int64(1), nil).Once()
 
-	s.mockQ.On("GetAssetStat",
+	s.mockQ.On("GetAssetStat", s.ctx,
 		xdr.AssetTypeAssetTypeCreditAlphanum4,
 		"USD",
 		trustLineIssuer.Address(),
@@ -867,7 +872,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveClaimableBalance() {
 		Amount:      "0",
 		NumAccounts: 0,
 	}, nil).Once()
-	s.mockQ.On("UpdateAssetStat", history.ExpAssetStat{
+	s.mockQ.On("UpdateAssetStat", s.ctx, history.ExpAssetStat{
 		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
 		AssetIssuer: trustLineIssuer.Address(),
 		AssetCode:   "USD",
@@ -882,7 +887,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveClaimableBalance() {
 		NumAccounts: 0,
 	}).Return(int64(1), nil).Once()
 
-	s.Assert().NoError(s.processor.Commit())
+	s.Assert().NoError(s.processor.Commit(s.ctx))
 }
 
 func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveTrustLine() {
@@ -898,7 +903,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveTrustLine() {
 		Balance:   0,
 	}
 
-	err := s.processor.ProcessChange(ingest.Change{
+	err := s.processor.ProcessChange(s.ctx, ingest.Change{
 		Type: xdr.LedgerEntryTypeTrustline,
 		Pre: &xdr.LedgerEntry{
 			Data: xdr.LedgerEntryData{
@@ -910,7 +915,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveTrustLine() {
 	})
 	s.Assert().NoError(err)
 
-	err = s.processor.ProcessChange(ingest.Change{
+	err = s.processor.ProcessChange(s.ctx, ingest.Change{
 		Type: xdr.LedgerEntryTypeTrustline,
 		Pre: &xdr.LedgerEntry{
 			Data: xdr.LedgerEntryData{
@@ -922,7 +927,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveTrustLine() {
 	})
 	s.Assert().NoError(err)
 
-	s.mockQ.On("GetAssetStat",
+	s.mockQ.On("GetAssetStat", s.ctx,
 		xdr.AssetTypeAssetTypeCreditAlphanum4,
 		"EUR",
 		trustLineIssuer.Address(),
@@ -942,13 +947,13 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveTrustLine() {
 		Amount:      "0",
 		NumAccounts: 1,
 	}, nil).Once()
-	s.mockQ.On("RemoveAssetStat",
+	s.mockQ.On("RemoveAssetStat", s.ctx,
 		xdr.AssetTypeAssetTypeCreditAlphanum4,
 		"EUR",
 		trustLineIssuer.Address(),
 	).Return(int64(1), nil).Once()
 
-	s.mockQ.On("GetAssetStat",
+	s.mockQ.On("GetAssetStat", s.ctx,
 		xdr.AssetTypeAssetTypeCreditAlphanum4,
 		"USD",
 		trustLineIssuer.Address(),
@@ -968,13 +973,13 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestRemoveTrustLine() {
 		Amount:      "0",
 		NumAccounts: 0,
 	}, nil).Once()
-	s.mockQ.On("RemoveAssetStat",
+	s.mockQ.On("RemoveAssetStat", s.ctx,
 		xdr.AssetTypeAssetTypeCreditAlphanum4,
 		"USD",
 		trustLineIssuer.Address(),
 	).Return(int64(1), nil).Once()
 
-	s.Assert().NoError(s.processor.Commit())
+	s.Assert().NoError(s.processor.Commit(s.ctx))
 }
 
 func (s *AssetStatsProcessorTestSuiteLedger) TestProcessUpgradeChange() {
@@ -987,7 +992,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestProcessUpgradeChange() {
 		Flags:     xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag),
 	}
 
-	err := s.processor.ProcessChange(ingest.Change{
+	err := s.processor.ProcessChange(s.ctx, ingest.Change{
 		Type: xdr.LedgerEntryTypeTrustline,
 		Post: &xdr.LedgerEntry{
 			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
@@ -1006,7 +1011,7 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestProcessUpgradeChange() {
 		Flags:     xdr.Uint32(xdr.TrustLineFlagsAuthorizedFlag),
 	}
 
-	err = s.processor.ProcessChange(ingest.Change{
+	err = s.processor.ProcessChange(s.ctx, ingest.Change{
 		Type: xdr.LedgerEntryTypeTrustline,
 		Pre: &xdr.LedgerEntry{
 			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
@@ -1025,12 +1030,12 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestProcessUpgradeChange() {
 	})
 	s.Assert().NoError(err)
 
-	s.mockQ.On("GetAssetStat",
+	s.mockQ.On("GetAssetStat", s.ctx,
 		xdr.AssetTypeAssetTypeCreditAlphanum4,
 		"EUR",
 		trustLineIssuer.Address(),
 	).Return(history.ExpAssetStat{}, sql.ErrNoRows).Once()
-	s.mockQ.On("InsertAssetStat", history.ExpAssetStat{
+	s.mockQ.On("InsertAssetStat", s.ctx, history.ExpAssetStat{
 		AssetType:   xdr.AssetTypeAssetTypeCreditAlphanum4,
 		AssetIssuer: trustLineIssuer.Address(),
 		AssetCode:   "EUR",
@@ -1046,5 +1051,5 @@ func (s *AssetStatsProcessorTestSuiteLedger) TestProcessUpgradeChange() {
 		Amount:      "10",
 		NumAccounts: 1,
 	}).Return(int64(1), nil).Once()
-	s.Assert().NoError(s.processor.Commit())
+	s.Assert().NoError(s.processor.Commit(s.ctx))
 }

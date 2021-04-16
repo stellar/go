@@ -128,10 +128,17 @@ func decodeResponse(response *http.Response, payload interface{}) error {
 // the latest sequence closed by the network. It's always the last value available
 // in the backend.
 func (c RemoteCaptiveStellarCore) GetLatestLedgerSequence() (sequence uint32, err error) {
+	// TODO: Should we use c.createContext here?
+	ctx := context.TODO()
 	u := *c.url
 	u.Path = path.Join(u.Path, "latest-sequence")
 
-	response, err := c.client.Get(u.String())
+	request, err := http.NewRequestWithContext(ctx, "GET", u.String(), nil)
+	if err != nil {
+		return 0, errors.Wrap(err, "failed to build request")
+	}
+
+	response, err := c.client.Do(request)
 	if err != nil {
 		return 0, errors.Wrap(err, "failed to execute request")
 	}
@@ -154,7 +161,7 @@ func (c RemoteCaptiveStellarCore) Close() error {
 	return nil
 }
 
-func (c RemoteCaptiveStellarCore) createContext() context.Context {
+func (c RemoteCaptiveStellarCore) createContext(background context.Context) context.Context {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
@@ -162,7 +169,7 @@ func (c RemoteCaptiveStellarCore) createContext() context.Context {
 		c.cancel()
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(background)
 	c.cancel = cancel
 	return ctx
 }
@@ -177,7 +184,7 @@ func (c RemoteCaptiveStellarCore) createContext() context.Context {
 // Please note that using a BoundedRange, currently, requires a full-trust on
 // history archive. This issue is being fixed in Stellar-Core.
 func (c RemoteCaptiveStellarCore) PrepareRange(ledgerRange Range) error {
-	ctx := c.createContext()
+	ctx := c.createContext(context.TODO())
 	u := *c.url
 	u.Path = path.Join(u.Path, "prepare-range")
 	rangeBytes, err := json.Marshal(ledgerRange)
@@ -220,6 +227,8 @@ func (c RemoteCaptiveStellarCore) PrepareRange(ledgerRange Range) error {
 
 // IsPrepared returns true if a given ledgerRange is prepared.
 func (c RemoteCaptiveStellarCore) IsPrepared(ledgerRange Range) (bool, error) {
+	ctx := c.createContext(context.TODO())
+
 	u := *c.url
 	u.Path = path.Join(u.Path, "prepare-range")
 	rangeBytes, err := json.Marshal(ledgerRange)
@@ -227,9 +236,14 @@ func (c RemoteCaptiveStellarCore) IsPrepared(ledgerRange Range) (bool, error) {
 		return false, errors.Wrap(err, "cannot serialize range")
 	}
 	body := bytes.NewReader(rangeBytes)
+	req, err := http.NewRequestWithContext(ctx, "POST", u.String(), body)
+	if err != nil {
+		return false, errors.Wrap(err, "failed to build request")
+	}
+	req.Header.Add("Content-Type", "application/json; charset=utf-8")
 
 	var response *http.Response
-	response, err = c.client.Post(u.String(), "application/json; charset=utf-8", body)
+	response, err = c.client.Do(req)
 	if err != nil {
 		return false, errors.Wrap(err, "failed to execute request")
 	}
@@ -260,10 +274,16 @@ func (c RemoteCaptiveStellarCore) IsPrepared(ledgerRange Range) (bool, error) {
 //     the first argument equal false.
 // This is done to provide maximum performance when streaming old ledgers.
 func (c RemoteCaptiveStellarCore) GetLedger(sequence uint32) (bool, xdr.LedgerCloseMeta, error) {
+	ctx := c.createContext(context.TODO())
+
 	u := *c.url
 	u.Path = path.Join(u.Path, "ledger", strconv.FormatUint(uint64(sequence), 10))
+	req, err := http.NewRequestWithContext(ctx, "GET", u.String(), nil)
+	if err != nil {
+		return false, xdr.LedgerCloseMeta{}, errors.Wrap(err, "failed to build request")
+	}
 
-	response, err := c.client.Get(u.String())
+	response, err := c.client.Do(req)
 	if err != nil {
 		return false, xdr.LedgerCloseMeta{}, errors.Wrap(err, "failed to execute request")
 	}

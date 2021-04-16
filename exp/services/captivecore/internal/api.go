@@ -63,7 +63,7 @@ func (c *CaptiveCoreAPI) Shutdown() {
 	c.core.Close()
 }
 
-func (c *CaptiveCoreAPI) startPrepareRange(ledgerRange ledgerbackend.Range) {
+func (c *CaptiveCoreAPI) startPrepareRange(ctx context.Context, ledgerRange ledgerbackend.Range) {
 	defer c.wg.Done()
 
 	err := c.core.PrepareRange(ledgerRange)
@@ -100,7 +100,7 @@ func (c *CaptiveCoreAPI) startPrepareRange(ledgerRange ledgerbackend.Range) {
 }
 
 // PrepareRange executes the PrepareRange operation on the captive core instance.
-func (c *CaptiveCoreAPI) PrepareRange(ledgerRange ledgerbackend.Range) (ledgerbackend.PrepareRangeResponse, error) {
+func (c *CaptiveCoreAPI) PrepareRange(ctx context.Context, ledgerRange ledgerbackend.Range) (ledgerbackend.PrepareRangeResponse, error) {
 	c.activeRequest.Lock()
 	defer c.activeRequest.Unlock()
 	if c.ctx.Err() != nil {
@@ -121,7 +121,7 @@ func (c *CaptiveCoreAPI) PrepareRange(ledgerRange ledgerbackend.Range) (ledgerba
 		c.activeRequest.valid = true
 
 		c.wg.Add(1)
-		go c.startPrepareRange(ledgerRange)
+		go c.startPrepareRange(ctx, ledgerRange)
 
 		return ledgerbackend.PrepareRangeResponse{
 			LedgerRange:   ledgerRange,
@@ -140,7 +140,7 @@ func (c *CaptiveCoreAPI) PrepareRange(ledgerRange ledgerbackend.Range) (ledgerba
 }
 
 // GetLatestLedgerSequence determines the latest ledger sequence available on the captive core instance.
-func (c *CaptiveCoreAPI) GetLatestLedgerSequence() (ledgerbackend.LatestLedgerSequenceResponse, error) {
+func (c *CaptiveCoreAPI) GetLatestLedgerSequence(ctx context.Context) (ledgerbackend.LatestLedgerSequenceResponse, error) {
 	c.activeRequest.Lock()
 	defer c.activeRequest.Unlock()
 
@@ -159,7 +159,7 @@ func (c *CaptiveCoreAPI) GetLatestLedgerSequence() (ledgerbackend.LatestLedgerSe
 }
 
 // GetLedger fetches the ledger with the given sequence number from the captive core instance.
-func (c *CaptiveCoreAPI) GetLedger(sequence uint32) (ledgerbackend.LedgerResponse, error) {
+func (c *CaptiveCoreAPI) GetLedger(ctx context.Context, sequence uint32) (ledgerbackend.LedgerResponse, error) {
 	c.activeRequest.Lock()
 	defer c.activeRequest.Unlock()
 
