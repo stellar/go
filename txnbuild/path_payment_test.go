@@ -156,3 +156,28 @@ func TestPathPaymentValidateDestAmount(t *testing.T) {
 		assert.Contains(t, err.Error(), expected)
 	}
 }
+
+func TestPathPaymentRoundtrip(t *testing.T) {
+	pathPayment := PathPayment{
+		SourceAccount: "GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H",
+		SendAsset:     NativeAsset{},
+		SendMax:       "10.0000000",
+		Destination:   "GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H",
+		DestAsset:     CreditAsset{"ABCD", "GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H"},
+		DestAmount:    "1.0000000",
+		Path:          []Asset{CreditAsset{"ABCD", "GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H"}},
+	}
+	testOperationsMarshallingRoundtrip(t, []Operation{&pathPayment}, false)
+
+	// with muxed accounts
+	pathPayment = PathPayment{
+		SourceAccount: "MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVAAAAAAAAAAAAAJLK",
+		SendAsset:     NativeAsset{},
+		SendMax:       "10.0000000",
+		Destination:   "MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVAAAAAAAAAAAAAJLK",
+		DestAsset:     CreditAsset{"ABCD", "GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H"},
+		DestAmount:    "1.0000000",
+		Path:          []Asset{CreditAsset{"ABCD", "GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H"}},
+	}
+	testOperationsMarshallingRoundtrip(t, []Operation{&pathPayment}, true)
+}

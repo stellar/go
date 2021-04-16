@@ -57,3 +57,22 @@ func TestAllowTrustValidateTrustor(t *testing.T) {
 		assert.Contains(t, err.Error(), expected)
 	}
 }
+
+func TestAllowTrustRoundtrip(t *testing.T) {
+	allowTrust := AllowTrust{
+		SourceAccount: "GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H",
+		Trustor:       "GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H",
+		Type:          CreditAsset{"USD", ""},
+		Authorize:     true,
+	}
+	testOperationsMarshallingRoundtrip(t, []Operation{&allowTrust}, false)
+
+	// with muxed accounts
+	allowTrust = AllowTrust{
+		SourceAccount: "MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVAAAAAAAAAAAAAJLK",
+		Trustor:       "GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H",
+		Type:          CreditAsset{"USD", ""},
+		Authorize:     true,
+	}
+	testOperationsMarshallingRoundtrip(t, []Operation{&allowTrust}, true)
+}

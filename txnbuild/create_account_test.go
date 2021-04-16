@@ -54,3 +54,21 @@ func TestCreateAccountValidateAmount(t *testing.T) {
 		assert.Contains(t, err.Error(), expected)
 	}
 }
+
+func TestCreateAccountRoundtrip(t *testing.T) {
+	createAccount := CreateAccount{
+		SourceAccount: "GDYNXQFHU6W5RBW2CCCDDAAU3TMTSU2RMGIBM6HGHAR4NJJKY3IJETHT",
+		Destination:   "GDYNXQFHU6W5RBW2CCCDDAAU3TMTSU2RMGIBM6HGHAR4NJJKY3IJETHT",
+		Amount:        "1.0000000",
+	}
+	testOperationsMarshallingRoundtrip(t, []Operation{&createAccount}, false)
+
+	// with muxed accounts
+	createAccount = CreateAccount{
+		SourceAccount: "MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVAAAAAAAAAAAAAJLK",
+		Destination:   "GDYNXQFHU6W5RBW2CCCDDAAU3TMTSU2RMGIBM6HGHAR4NJJKY3IJETHT",
+		Amount:        "1.0000000",
+	}
+	testOperationsMarshallingRoundtrip(t, []Operation{&createAccount}, true)
+
+}

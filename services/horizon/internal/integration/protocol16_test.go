@@ -381,7 +381,7 @@ func TestHappyClawbackClaimableBalance(t *testing.T) {
 	tt.NoError(err)
 	if tt.Len(opDetailsResponse.Embedded.Records, 1) {
 		clawbackOp := opDetailsResponse.Embedded.Records[0].(operations.ClawbackClaimableBalance)
-		tt.Equal(cbID, *clawbackOp.ClaimableBalanceID)
+		tt.Equal(cbID, clawbackOp.BalanceID)
 	}
 
 	// Check the operation effects
