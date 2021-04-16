@@ -6,7 +6,7 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-//CreateOfferOp returns a ManageSellOffer operation to create a new offer, by
+// CreateOfferOp returns a ManageSellOffer operation to create a new offer, by
 // setting the OfferID to "0". The sourceAccount is optional, and if not provided,
 // will be that of the surrounding transaction.
 func CreateOfferOp(selling, buying Asset, amount, price string, sourceAccount ...string) (ManageSellOffer, error) {
@@ -46,7 +46,7 @@ func UpdateOfferOp(selling, buying Asset, amount, price string, offerID int64, s
 	return offer, nil
 }
 
-//DeleteOfferOp returns a ManageSellOffer operation to delete an offer, by
+// DeleteOfferOp returns a ManageSellOffer operation to delete an offer, by
 // setting the Amount to "0". The sourceAccount is optional, and if not provided,
 // will be that of the surrounding transaction.
 func DeleteOfferOp(offerID int64, sourceAccount ...string) (ManageSellOffer, error) {
@@ -83,7 +83,7 @@ type ManageSellOffer struct {
 }
 
 // BuildXDR for ManageSellOffer returns a fully configured XDR Operation.
-func (mo *ManageSellOffer) BuildXDR() (xdr.Operation, error) {
+func (mo *ManageSellOffer) BuildXDR(withMuxedAccounts bool) (xdr.Operation, error) {
 	xdrSelling, err := mo.Selling.ToXDR()
 	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "failed to set XDR 'Selling' field")
@@ -117,18 +117,22 @@ func (mo *ManageSellOffer) BuildXDR() (xdr.Operation, error) {
 	}
 
 	op := xdr.Operation{Body: body}
-	SetOpSourceAccount(&op, mo.SourceAccount)
+	if withMuxedAccounts {
+		SetOpSourceMuxedAccount(&op, mo.SourceAccount)
+	} else {
+		SetOpSourceAccount(&op, mo.SourceAccount)
+	}
 	return op, nil
 }
 
 // FromXDR for ManageSellOffer initialises the txnbuild struct from the corresponding xdr Operation.
-func (mo *ManageSellOffer) FromXDR(xdrOp xdr.Operation) error {
+func (mo *ManageSellOffer) FromXDR(xdrOp xdr.Operation, withMuxedAccounts bool) error {
 	result, ok := xdrOp.Body.GetManageSellOfferOp()
 	if !ok {
 		return errors.New("error parsing manage_sell_offer operation from xdr")
 	}
 
-	mo.SourceAccount = accountFromXDR(xdrOp.SourceAccount)
+	mo.SourceAccount = accountFromXDR(xdrOp.SourceAccount, withMuxedAccounts)
 	mo.OfferID = int64(result.OfferId)
 	mo.Amount = amount.String(result.Amount)
 	if result.Price != (xdr.Price{}) {
@@ -151,7 +155,7 @@ func (mo *ManageSellOffer) FromXDR(xdrOp xdr.Operation) error {
 
 // Validate for ManageSellOffer validates the required struct fields. It returns an error if any
 // of the fields are invalid. Otherwise, it returns nil.
-func (mo *ManageSellOffer) Validate() error {
+func (mo *ManageSellOffer) Validate(withMuxedAccounts bool) error {
 	return validateOffer(mo.Buying, mo.Selling, mo.Amount, mo.Price, mo.OfferID)
 }
 

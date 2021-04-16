@@ -14,7 +14,7 @@ type ManageData struct {
 }
 
 // BuildXDR for ManageData returns a fully configured XDR Operation.
-func (md *ManageData) BuildXDR() (xdr.Operation, error) {
+func (md *ManageData) BuildXDR(withMuxedAccounts bool) (xdr.Operation, error) {
 	xdrOp := xdr.ManageDataOp{DataName: xdr.String64(md.Name)}
 
 	// No data value clears the named data entry on the account
@@ -31,18 +31,22 @@ func (md *ManageData) BuildXDR() (xdr.Operation, error) {
 		return xdr.Operation{}, errors.Wrap(err, "failed to build XDR OperationBody")
 	}
 	op := xdr.Operation{Body: body}
-	SetOpSourceAccount(&op, md.SourceAccount)
+	if withMuxedAccounts {
+		SetOpSourceMuxedAccount(&op, md.SourceAccount)
+	} else {
+		SetOpSourceAccount(&op, md.SourceAccount)
+	}
 	return op, nil
 }
 
 // FromXDR for ManageData initialises the txnbuild struct from the corresponding xdr Operation.
-func (md *ManageData) FromXDR(xdrOp xdr.Operation) error {
+func (md *ManageData) FromXDR(xdrOp xdr.Operation, withMuxedAccounts bool) error {
 	result, ok := xdrOp.Body.GetManageDataOp()
 	if !ok {
 		return errors.New("error parsing create_account operation from xdr")
 	}
 
-	md.SourceAccount = accountFromXDR(xdrOp.SourceAccount)
+	md.SourceAccount = accountFromXDR(xdrOp.SourceAccount, withMuxedAccounts)
 	md.Name = string(result.DataName)
 	if result.DataValue != nil {
 		md.Value = *result.DataValue
@@ -54,7 +58,7 @@ func (md *ManageData) FromXDR(xdrOp xdr.Operation) error {
 
 // Validate for ManageData validates the required struct fields. It returns an error if any
 // of the fields are invalid. Otherwise, it returns nil.
-func (md *ManageData) Validate() error {
+func (md *ManageData) Validate(withMuxedAccounts bool) error {
 	if len(md.Name) > 64 {
 		return NewValidationError("Name", "maximum length is 64 characters")
 	}
