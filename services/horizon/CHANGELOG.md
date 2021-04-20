@@ -3,9 +3,12 @@
 All notable changes to this project will be documented in this
 file. This project adheres to [Semantic Versioning](http://semver.org/).
 
-## Unreleased
+## v2.2.0
 
-* Add `claimable_balances` to asset stat summaries at `/assets` ([3502](https://github.com/stellar/go/pull/3502)).
+**Upgrading to this version will trigger state rebuild. During this process (which can take up to 20 minutes) it will not ingest new ledgers.**
+
+* Add `num_claimable_balances` and `claimable_balances_amount` fields to asset stat summaries at `/assets` ([3502](https://github.com/stellar/go/pull/3502)).
+* Improve ingestion reliability when running multiple Horizon ingestion instances ([3518](https://github.com/stellar/go/pull/3518)).
 
 ## v2.1.1
 
