@@ -280,7 +280,7 @@ type Clawback struct {
 // ClawbackClaimableBalance.
 type ClawbackClaimableBalance struct {
 	Base
-	ClaimableBalanceID *string `json:"balance_id,omitempty"`
+	BalanceID string `json:"balance_id"`
 }
 
 // SetTrustLineFlags is the json resource representing a single operation whose type is

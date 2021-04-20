@@ -154,7 +154,7 @@ func TestManageSellOfferPrice(t *testing.T) {
 		OfferID: 1,
 	}
 
-	xdrOp, err := mso.BuildXDR()
+	xdrOp, err := mso.BuildXDR(false)
 	assert.NoError(t, err)
 	expectedPrice := xdr.Price{N: 1, D: 1000000000}
 	assert.Equal(t, expectedPrice, xdrOp.Body.ManageSellOfferOp.Price)
@@ -162,7 +162,30 @@ func TestManageSellOfferPrice(t *testing.T) {
 	assert.Equal(t, expectedPrice, mso.price.toXDR())
 
 	parsed := ManageSellOffer{}
-	assert.NoError(t, parsed.FromXDR(xdrOp))
+	assert.NoError(t, parsed.FromXDR(xdrOp, false))
 	assert.Equal(t, mso.Price, parsed.Price)
 	assert.Equal(t, mso.price, parsed.price)
+}
+
+func TestManageSellOfferRoundtrip(t *testing.T) {
+	manageSellOffer := ManageSellOffer{
+		SourceAccount: "GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H",
+		Selling:       CreditAsset{"USD", "GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H"},
+		Buying:        NativeAsset{},
+		Amount:        "100.0000000",
+		Price:         "0.01",
+		OfferID:       0,
+	}
+	testOperationsMarshallingRoundtrip(t, []Operation{&manageSellOffer}, false)
+
+	// with muxed accounts
+	manageSellOffer = ManageSellOffer{
+		SourceAccount: "MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVAAAAAAAAAAAAAJLK",
+		Selling:       CreditAsset{"USD", "GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H"},
+		Buying:        NativeAsset{},
+		Amount:        "100.0000000",
+		Price:         "0.01",
+		OfferID:       0,
+	}
+	testOperationsMarshallingRoundtrip(t, []Operation{&manageSellOffer}, true)
 }

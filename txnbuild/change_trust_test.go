@@ -78,3 +78,20 @@ func TestChangeTrustValidateInvalidLimit(t *testing.T) {
 		assert.Contains(t, err.Error(), expected)
 	}
 }
+
+func TestChangeTrustRoundtrip(t *testing.T) {
+	changeTrust := ChangeTrust{
+		SourceAccount: "GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H",
+		Line:          CreditAsset{"ABCD", "GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H"},
+		Limit:         "1.0000000",
+	}
+	testOperationsMarshallingRoundtrip(t, []Operation{&changeTrust}, false)
+
+	// with muxed accounts
+	changeTrust = ChangeTrust{
+		SourceAccount: "MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVAAAAAAAAAAAAAJLK",
+		Line:          CreditAsset{"ABCD", "GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H"},
+		Limit:         "1.0000000",
+	}
+	testOperationsMarshallingRoundtrip(t, []Operation{&changeTrust}, true)
+}

@@ -13,10 +13,14 @@ type AccountMerge struct {
 }
 
 // BuildXDR for AccountMerge returns a fully configured XDR Operation.
-func (am *AccountMerge) BuildXDR() (xdr.Operation, error) {
+func (am *AccountMerge) BuildXDR(withMuxedAccounts bool) (xdr.Operation, error) {
 	var xdrOp xdr.MuxedAccount
-
-	err := xdrOp.SetAddress(am.Destination)
+	var err error
+	if withMuxedAccounts {
+		err = xdrOp.SetAddress(am.Destination)
+	} else {
+		err = xdrOp.SetEd25519Address(am.Destination)
+	}
 	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "failed to set destination address")
 	}
@@ -27,20 +31,28 @@ func (am *AccountMerge) BuildXDR() (xdr.Operation, error) {
 		return xdr.Operation{}, errors.Wrap(err, "failed to build XDR OperationBody")
 	}
 	op := xdr.Operation{Body: body}
-	SetOpSourceAccount(&op, am.SourceAccount)
+	if withMuxedAccounts {
+		SetOpSourceMuxedAccount(&op, am.SourceAccount)
+	} else {
+		SetOpSourceAccount(&op, am.SourceAccount)
+	}
 	return op, nil
 }
 
 // FromXDR for AccountMerge initialises the txnbuild struct from the corresponding xdr Operation.
-func (am *AccountMerge) FromXDR(xdrOp xdr.Operation) error {
+func (am *AccountMerge) FromXDR(xdrOp xdr.Operation, withMuxedAccounts bool) error {
 	if xdrOp.Body.Type != xdr.OperationTypeAccountMerge {
 		return errors.New("error parsing account_merge operation from xdr")
 	}
 
-	am.SourceAccount = accountFromXDR(xdrOp.SourceAccount)
+	am.SourceAccount = accountFromXDR(xdrOp.SourceAccount, withMuxedAccounts)
 	if xdrOp.Body.Destination != nil {
-		aid := xdrOp.Body.Destination.ToAccountId()
-		am.Destination = aid.Address()
+		if withMuxedAccounts {
+			am.Destination = xdrOp.Body.Destination.Address()
+		} else {
+			aid := xdrOp.Body.Destination.ToAccountId()
+			am.Destination = aid.Address()
+		}
 	}
 
 	return nil
@@ -48,8 +60,13 @@ func (am *AccountMerge) FromXDR(xdrOp xdr.Operation) error {
 
 // Validate for AccountMerge validates the required struct fields. It returns an error if any of the fields are
 // invalid. Otherwise, it returns nil.
-func (am *AccountMerge) Validate() error {
-	_, err := xdr.AddressToAccountId(am.Destination)
+func (am *AccountMerge) Validate(withMuxedAccounts bool) error {
+	var err error
+	if withMuxedAccounts {
+		_, err = xdr.AddressToAccountId(am.Destination)
+	} else {
+		_, err = xdr.AddressToMuxedAccount(am.Destination)
+	}
 	if err != nil {
 		return NewValidationError("Destination", err.Error())
 	}

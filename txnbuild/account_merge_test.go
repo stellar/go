@@ -23,7 +23,21 @@ func TestAccountMergeValidate(t *testing.T) {
 		},
 	)
 	if assert.Error(t, err) {
-		expected := "strkey is 4 bytes long; minimum valid length is 5"
+		expected := "invalid address"
 		assert.Contains(t, err.Error(), expected)
 	}
+}
+
+func TestAccountMergeRoundtrip(t *testing.T) {
+	accountMerge := AccountMerge{
+		SourceAccount: "GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H",
+		Destination:   "GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H",
+	}
+	testOperationsMarshallingRoundtrip(t, []Operation{&accountMerge}, false)
+
+	accountMerge = AccountMerge{
+		SourceAccount: "MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVAAAAAAAAAAAAAJLK",
+		Destination:   "GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H",
+	}
+	testOperationsMarshallingRoundtrip(t, []Operation{&accountMerge}, true)
 }

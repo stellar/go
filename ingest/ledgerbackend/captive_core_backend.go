@@ -553,7 +553,6 @@ func (c *CaptiveStellarCore) GetLedger(sequence uint32) (bool, xdr.LedgerCloseMe
 		c.previousLedgerHash = &currentLedgerHash
 
 		// Update cache with the latest value because we incremented nextLedger.
-		// TODO add test for this case!
 		c.cachedMeta = result.LedgerCloseMeta
 
 		if seq == sequence {

@@ -18,7 +18,7 @@ type CreatePassiveSellOffer struct {
 }
 
 // BuildXDR for CreatePassiveSellOffer returns a fully configured XDR Operation.
-func (cpo *CreatePassiveSellOffer) BuildXDR() (xdr.Operation, error) {
+func (cpo *CreatePassiveSellOffer) BuildXDR(withMuxedAccounts bool) (xdr.Operation, error) {
 	xdrSelling, err := cpo.Selling.ToXDR()
 	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "failed to set XDR 'Selling' field")
@@ -51,18 +51,22 @@ func (cpo *CreatePassiveSellOffer) BuildXDR() (xdr.Operation, error) {
 		return xdr.Operation{}, errors.Wrap(err, "failed to build XDR OperationBody")
 	}
 	op := xdr.Operation{Body: body}
-	SetOpSourceAccount(&op, cpo.SourceAccount)
+	if withMuxedAccounts {
+		SetOpSourceMuxedAccount(&op, cpo.SourceAccount)
+	} else {
+		SetOpSourceAccount(&op, cpo.SourceAccount)
+	}
 	return op, nil
 }
 
 // FromXDR for CreatePassiveSellOffer initialises the txnbuild struct from the corresponding xdr Operation.
-func (cpo *CreatePassiveSellOffer) FromXDR(xdrOp xdr.Operation) error {
+func (cpo *CreatePassiveSellOffer) FromXDR(xdrOp xdr.Operation, withMuxedAccounts bool) error {
 	result, ok := xdrOp.Body.GetCreatePassiveSellOfferOp()
 	if !ok {
 		return errors.New("error parsing create_passive_sell_offer operation from xdr")
 	}
 
-	cpo.SourceAccount = accountFromXDR(xdrOp.SourceAccount)
+	cpo.SourceAccount = accountFromXDR(xdrOp.SourceAccount, withMuxedAccounts)
 	cpo.Amount = amount.String(result.Amount)
 	if result.Price != (xdr.Price{}) {
 		cpo.price.fromXDR(result.Price)
@@ -84,7 +88,7 @@ func (cpo *CreatePassiveSellOffer) FromXDR(xdrOp xdr.Operation) error {
 
 // Validate for CreatePassiveSellOffer validates the required struct fields. It returns an error if any
 // of the fields are invalid. Otherwise, it returns nil.
-func (cpo *CreatePassiveSellOffer) Validate() error {
+func (cpo *CreatePassiveSellOffer) Validate(withMuxedAccounts bool) error {
 	return validatePassiveOffer(cpo.Buying, cpo.Selling, cpo.Amount, cpo.Price)
 }
 
