@@ -1,7 +1,6 @@
 package internal
 
 import (
-	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -19,13 +18,11 @@ func TestAPITestSuite(t *testing.T) {
 
 type APITestSuite struct {
 	suite.Suite
-	ctx           context.Context
 	ledgerBackend *ledgerbackend.MockDatabaseBackend
 	api           CaptiveCoreAPI
 }
 
 func (s *APITestSuite) SetupTest() {
-	s.ctx = context.Background()
 	s.ledgerBackend = &ledgerbackend.MockDatabaseBackend{}
 	s.api = NewCaptiveCoreAPI(s.ledgerBackend, log.New())
 }
@@ -35,12 +32,12 @@ func (s *APITestSuite) TearDownTest() {
 }
 
 func (s *APITestSuite) TestLatestSeqActiveRequestInvalid() {
-	_, err := s.api.GetLatestLedgerSequence(s.ctx)
+	_, err := s.api.GetLatestLedgerSequence()
 	s.Assert().Equal(err, ErrMissingPrepareRange)
 }
 
 func (s *APITestSuite) TestGetLedgerActiveRequestInvalid() {
-	_, err := s.api.GetLedger(s.ctx, 64)
+	_, err := s.api.GetLedger(64)
 	s.Assert().Equal(err, ErrMissingPrepareRange)
 }
 
@@ -51,7 +48,7 @@ func (s *APITestSuite) runBeforeReady(prepareRangeErr error, f func()) {
 		WaitUntil(waitChan).
 		Return(prepareRangeErr).Once()
 
-	response, err := s.api.PrepareRange(s.ctx, ledgerRange)
+	response, err := s.api.PrepareRange(ledgerRange)
 	s.Assert().NoError(err)
 	s.Assert().False(response.Ready)
 	s.Assert().Equal(response.LedgerRange, ledgerRange)
@@ -64,14 +61,14 @@ func (s *APITestSuite) runBeforeReady(prepareRangeErr error, f func()) {
 
 func (s *APITestSuite) TestLatestSeqActiveRequestNotReady() {
 	s.runBeforeReady(nil, func() {
-		_, err := s.api.GetLatestLedgerSequence(s.ctx)
+		_, err := s.api.GetLatestLedgerSequence()
 		s.Assert().Equal(err, ErrPrepareRangeNotReady)
 	})
 }
 
 func (s *APITestSuite) TestGetLedgerNotReady() {
 	s.runBeforeReady(nil, func() {
-		_, err := s.api.GetLedger(s.ctx, 64)
+		_, err := s.api.GetLedger(64)
 		s.Assert().Equal(err, ErrPrepareRangeNotReady)
 	})
 }
@@ -80,7 +77,7 @@ func (s *APITestSuite) waitUntilReady(ledgerRange ledgerbackend.Range) {
 	s.ledgerBackend.On("PrepareRange", ledgerRange).
 		Return(nil).Once()
 
-	response, err := s.api.PrepareRange(s.ctx, ledgerRange)
+	response, err := s.api.PrepareRange(ledgerRange)
 	s.Assert().NoError(err)
 	s.Assert().False(response.Ready)
 	s.Assert().Equal(response.LedgerRange, ledgerRange)
@@ -94,7 +91,7 @@ func (s *APITestSuite) TestLatestSeqError() {
 	expectedErr := fmt.Errorf("test error")
 	s.ledgerBackend.On("GetLatestLedgerSequence").Return(uint32(0), expectedErr).Once()
 
-	_, err := s.api.GetLatestLedgerSequence(s.ctx)
+	_, err := s.api.GetLatestLedgerSequence()
 	s.Assert().Equal(err, expectedErr)
 }
 
@@ -105,7 +102,7 @@ func (s *APITestSuite) TestGetLedgerError() {
 	s.ledgerBackend.On("GetLedger", uint32(64)).
 		Return(false, xdr.LedgerCloseMeta{}, expectedErr).Once()
 
-	_, err := s.api.GetLedger(s.ctx, 64)
+	_, err := s.api.GetLedger(64)
 	s.Assert().Equal(err, expectedErr)
 }
 
@@ -114,7 +111,7 @@ func (s *APITestSuite) TestLatestSeqSucceeds() {
 
 	expectedSeq := uint32(100)
 	s.ledgerBackend.On("GetLatestLedgerSequence").Return(expectedSeq, nil).Once()
-	seq, err := s.api.GetLatestLedgerSequence(s.ctx)
+	seq, err := s.api.GetLatestLedgerSequence()
 	s.Assert().NoError(err)
 	s.Assert().Equal(seq, ledgerbackend.LatestLedgerSequenceResponse{Sequence: expectedSeq})
 }
@@ -133,7 +130,7 @@ func (s *APITestSuite) TestGetLedgerSucceeds() {
 	}
 	s.ledgerBackend.On("GetLedger", uint32(64)).
 		Return(true, expectedLedger, nil).Once()
-	seq, err := s.api.GetLedger(s.ctx, 64)
+	seq, err := s.api.GetLedger(64)
 
 	s.Assert().NoError(err)
 	s.Assert().Equal(seq, ledgerbackend.LedgerResponse{
@@ -145,7 +142,7 @@ func (s *APITestSuite) TestGetLedgerSucceeds() {
 func (s *APITestSuite) TestShutDownBeforePrepareRange() {
 	s.ledgerBackend.On("Close").Return(nil).Once()
 	s.api.Shutdown()
-	_, err := s.api.PrepareRange(s.ctx, ledgerbackend.UnboundedRange(63))
+	_, err := s.api.PrepareRange(ledgerbackend.UnboundedRange(63))
 	s.Assert().EqualError(err, "Cannot prepare range when shut down")
 }
 
@@ -229,7 +226,7 @@ func (s *APITestSuite) TestRangeAlreadyPrepared() {
 		ledgerbackend.UnboundedRange(100),
 		ledgerbackend.BoundedRange(63, 70),
 	} {
-		response, err := s.api.PrepareRange(s.ctx, ledgerRange)
+		response, err := s.api.PrepareRange(ledgerRange)
 		s.Assert().NoError(err)
 		s.Assert().True(response.Ready)
 		s.Assert().Equal(superSetRange, response.LedgerRange)
