@@ -33,19 +33,19 @@ type DatabaseBackend struct {
 	session           session
 }
 
-func NewDatabaseBackend(dataSourceName, networkPassphrase string) (*DatabaseBackend, error) {
+func NewDatabaseBackend(ctx context.Context, dataSourceName, networkPassphrase string) (*DatabaseBackend, error) {
 	session, err := createSession(dataSourceName)
 	if err != nil {
 		return nil, err
 	}
 
-	return NewDatabaseBackendFromSession(session, networkPassphrase)
+	return NewDatabaseBackendFromSession(ctx, session, networkPassphrase)
 }
 
-func NewDatabaseBackendFromSession(session *db.Session, networkPassphrase string) (*DatabaseBackend, error) {
+func NewDatabaseBackendFromSession(ctx context.Context, session *db.Session, networkPassphrase string) (*DatabaseBackend, error) {
 	// TODO: To avoid changing the LedgerBackend interface in this call we create
 	// a context once for this, so that Close() can cancel any in-progress method-calls.
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(ctx)
 
 	return &DatabaseBackend{
 		cancel:            cancel,

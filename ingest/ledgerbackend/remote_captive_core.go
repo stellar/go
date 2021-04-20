@@ -67,6 +67,7 @@ type RemoteCaptiveStellarCore struct {
 	client                   *http.Client
 	lock                     *sync.Mutex
 	cancel                   context.CancelFunc
+	parentCtx                context.Context
 	prepareRangePollInterval time.Duration
 }
 
@@ -84,7 +85,7 @@ func PrepareRangePollInterval(d time.Duration) RemoteCaptiveOption {
 // NewRemoteCaptive returns a new RemoteCaptiveStellarCore instance.
 //
 // Only the captiveCoreURL parameter is required.
-func NewRemoteCaptive(captiveCoreURL string, options ...RemoteCaptiveOption) (RemoteCaptiveStellarCore, error) {
+func NewRemoteCaptive(ctx context.Context, captiveCoreURL string, options ...RemoteCaptiveOption) (RemoteCaptiveStellarCore, error) {
 	u, err := url.Parse(captiveCoreURL)
 	if err != nil {
 		return RemoteCaptiveStellarCore{}, errors.Wrap(err, "unparseable url")
@@ -95,6 +96,7 @@ func NewRemoteCaptive(captiveCoreURL string, options ...RemoteCaptiveOption) (Re
 		url:                      u,
 		client:                   &http.Client{Timeout: 5 * time.Second},
 		lock:                     &sync.Mutex{},
+		parentCtx:                ctx,
 	}
 	for _, option := range options {
 		option(&client)
@@ -160,11 +162,13 @@ func (c RemoteCaptiveStellarCore) createContext() context.Context {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
+	// Cancel any outstanding PrepareRange request
 	if c.cancel != nil {
 		c.cancel()
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	// Make a new context for this new request.
+	ctx, cancel := context.WithCancel(c.parentCtx)
 	c.cancel = cancel
 	return ctx
 }

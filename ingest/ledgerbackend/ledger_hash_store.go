@@ -26,8 +26,8 @@ type HorizonDBLedgerHashStore struct {
 }
 
 // NewHorizonDBLedgerHashStore constructs a new TrustedLedgerHashStore backed by the horizon db
-func NewHorizonDBLedgerHashStore(session *db.Session) TrustedLedgerHashStore {
-	ctx, cancel := context.WithCancel(context.Background())
+func NewHorizonDBLedgerHashStore(ctx context.Context, session *db.Session) TrustedLedgerHashStore {
+	ctx, cancel := context.WithCancel(ctx)
 	return HorizonDBLedgerHashStore{
 		cancel:  cancel,
 		ctx:     ctx,
