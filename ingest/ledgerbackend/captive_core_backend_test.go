@@ -1083,7 +1083,6 @@ func TestCaptiveUseOfLedgerHashStore(t *testing.T) {
 			},
 		}, nil)
 
-	ctx := context.Background()
 	mockLedgerHashStore := &MockLedgerHashStore{}
 	mockLedgerHashStore.On("GetLedgerHash", uint32(1022)).
 		Return("", false, fmt.Errorf("transient error")).Once()
@@ -1102,28 +1101,28 @@ func TestCaptiveUseOfLedgerHashStore(t *testing.T) {
 		checkpointManager: historyarchive.NewCheckpointManager(64),
 	}
 
-	runFrom, ledgerHash, nextLedger, err := captiveBackend.runFromParams(ctx, 24)
+	runFrom, ledgerHash, nextLedger, err := captiveBackend.runFromParams(24)
 	assert.NoError(t, err)
 	assert.Equal(t, uint32(2), runFrom)
 	assert.Equal(t, "mnb", ledgerHash)
 	assert.Equal(t, uint32(2), nextLedger)
 
-	runFrom, ledgerHash, nextLedger, err = captiveBackend.runFromParams(ctx, 86)
+	runFrom, ledgerHash, nextLedger, err = captiveBackend.runFromParams(86)
 	assert.NoError(t, err)
 	assert.Equal(t, uint32(62), runFrom)
 	assert.Equal(t, "cde", ledgerHash)
 	assert.Equal(t, uint32(2), nextLedger)
 
-	runFrom, ledgerHash, nextLedger, err = captiveBackend.runFromParams(ctx, 128)
+	runFrom, ledgerHash, nextLedger, err = captiveBackend.runFromParams(128)
 	assert.NoError(t, err)
 	assert.Equal(t, uint32(126), runFrom)
 	assert.Equal(t, "ghi", ledgerHash)
 	assert.Equal(t, uint32(64), nextLedger)
 
-	runFrom, ledgerHash, nextLedger, err = captiveBackend.runFromParams(ctx, 1050)
+	runFrom, ledgerHash, nextLedger, err = captiveBackend.runFromParams(1050)
 	assert.EqualError(t, err, "error trying to read ledger hash 1022: transient error")
 
-	runFrom, ledgerHash, nextLedger, err = captiveBackend.runFromParams(ctx, 300)
+	runFrom, ledgerHash, nextLedger, err = captiveBackend.runFromParams(300)
 	assert.NoError(t, err)
 	assert.Equal(t, uint32(254), runFrom, "runFrom")
 	assert.Equal(t, "0101010100000000000000000000000000000000000000000000000000000000", ledgerHash)
@@ -1163,7 +1162,6 @@ func TestCaptiveRunFromParams(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(fmt.Sprintf("from_%d", tc.from), func(t *testing.T) {
 			tt := assert.New(t)
-			ctx := context.Background()
 			mockArchive := &historyarchive.MockArchive{}
 			mockArchive.
 				On("GetLedgerHeader", uint32(tc.ledgerArchives)).
@@ -1178,7 +1176,7 @@ func TestCaptiveRunFromParams(t *testing.T) {
 				checkpointManager: historyarchive.NewCheckpointManager(64),
 			}
 
-			runFrom, ledgerHash, nextLedger, err := captiveBackend.runFromParams(ctx, tc.from)
+			runFrom, ledgerHash, nextLedger, err := captiveBackend.runFromParams(tc.from)
 			tt.NoError(err)
 			tt.Equal(tc.runFrom, runFrom, "runFrom")
 			tt.Equal("0101010100000000000000000000000000000000000000000000000000000000", ledgerHash)

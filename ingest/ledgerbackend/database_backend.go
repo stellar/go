@@ -27,6 +27,8 @@ var _ LedgerBackend = (*DatabaseBackend)(nil)
 
 // DatabaseBackend implements a database data store.
 type DatabaseBackend struct {
+	cancel            context.CancelFunc
+	ctx               context.Context
 	networkPassphrase string
 	session           session
 }
@@ -37,11 +39,20 @@ func NewDatabaseBackend(dataSourceName, networkPassphrase string) (*DatabaseBack
 		return nil, err
 	}
 
-	return &DatabaseBackend{session: session, networkPassphrase: networkPassphrase}, nil
+	return NewDatabaseBackendFromSession(session, networkPassphrase)
 }
 
 func NewDatabaseBackendFromSession(session *db.Session, networkPassphrase string) (*DatabaseBackend, error) {
-	return &DatabaseBackend{session: session, networkPassphrase: networkPassphrase}, nil
+	// TODO: To avoid changing the LedgerBackend interface in this call we create
+	// a context once for this, so that Close() can cancel any in-progress method-calls.
+	ctx, cancel := context.WithCancel(context.Background())
+
+	return &DatabaseBackend{
+		cancel:            cancel,
+		ctx:               ctx,
+		session:           session,
+		networkPassphrase: networkPassphrase,
+	}, nil
 }
 
 func (dbb *DatabaseBackend) PrepareRange(ledgerRange Range) error {
@@ -75,9 +86,8 @@ func (*DatabaseBackend) IsPrepared(ledgerRange Range) (bool, error) {
 
 // GetLatestLedgerSequence returns the most recent ledger sequence number present in the database.
 func (dbb *DatabaseBackend) GetLatestLedgerSequence() (uint32, error) {
-	ctx := context.TODO()
 	var ledger []ledgerHeader
-	err := dbb.session.SelectRaw(ctx, &ledger, latestLedgerSeqQuery)
+	err := dbb.session.SelectRaw(dbb.ctx, &ledger, latestLedgerSeqQuery)
 	if err != nil {
 		return 0, errors.Wrap(err, "couldn't select ledger sequence")
 	}
@@ -142,7 +152,6 @@ func (dbb *DatabaseBackend) GetLedgerBlocking(sequence uint32) (xdr.LedgerCloseM
 // GetLedger returns the LedgerCloseMeta for the given ledger sequence number.
 // The first returned value is false when the ledger does not exist in the database.
 func (dbb *DatabaseBackend) GetLedger(sequence uint32) (bool, xdr.LedgerCloseMeta, error) {
-	ctx := context.TODO()
 	lcm := xdr.LedgerCloseMeta{
 		V0: &xdr.LedgerCloseMetaV0{},
 	}
@@ -150,7 +159,7 @@ func (dbb *DatabaseBackend) GetLedger(sequence uint32) (bool, xdr.LedgerCloseMet
 	// Query - ledgerheader
 	var lRow ledgerHeaderHistory
 
-	err := dbb.session.GetRaw(ctx, &lRow, ledgerHeaderQuery, sequence)
+	err := dbb.session.GetRaw(dbb.ctx, &lRow, ledgerHeaderQuery, sequence)
 	// Return errors...
 	if err != nil {
 		switch err {
@@ -171,7 +180,7 @@ func (dbb *DatabaseBackend) GetLedger(sequence uint32) (bool, xdr.LedgerCloseMet
 
 	// Query - txhistory
 	var txhRows []txHistory
-	err = dbb.session.SelectRaw(ctx, &txhRows, txHistoryQuery+orderBy, sequence)
+	err = dbb.session.SelectRaw(dbb.ctx, &txhRows, txHistoryQuery+orderBy, sequence)
 	// Return errors...
 	if err != nil {
 		return false, lcm, errors.Wrap(err, "Error getting txHistory")
@@ -197,7 +206,7 @@ func (dbb *DatabaseBackend) GetLedger(sequence uint32) (bool, xdr.LedgerCloseMet
 
 	// Query - txfeehistory
 	var txfhRows []txFeeHistory
-	err = dbb.session.SelectRaw(ctx, &txfhRows, txFeeHistoryQuery+orderBy, sequence)
+	err = dbb.session.SelectRaw(dbb.ctx, &txfhRows, txFeeHistoryQuery+orderBy, sequence)
 	// Return errors...
 	if err != nil {
 		return false, lcm, errors.Wrap(err, "Error getting txFeeHistory")
@@ -214,7 +223,7 @@ func (dbb *DatabaseBackend) GetLedger(sequence uint32) (bool, xdr.LedgerCloseMet
 
 	// Query - upgradehistory
 	var upgradeHistoryRows []upgradeHistory
-	err = dbb.session.SelectRaw(ctx, &upgradeHistoryRows, upgradeHistoryQuery, sequence)
+	err = dbb.session.SelectRaw(dbb.ctx, &upgradeHistoryRows, upgradeHistoryQuery, sequence)
 	// Return errors...
 	if err != nil {
 		return false, lcm, errors.Wrap(err, "Error getting upgradeHistoryRows")
@@ -243,5 +252,6 @@ func createSession(dataSourceName string) (*db.Session, error) {
 
 // Close disconnects an active database session.
 func (dbb *DatabaseBackend) Close() error {
+	dbb.cancel()
 	return dbb.session.Close()
 }
