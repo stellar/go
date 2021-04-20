@@ -1095,10 +1095,14 @@ func TestCaptiveUseOfLedgerHashStore(t *testing.T) {
 	mockLedgerHashStore.On("GetLedgerHash", uint32(2)).
 		Return("mnb", true, nil).Once()
 
+	cancelCalled := false
 	captiveBackend := CaptiveStellarCore{
 		archive:           mockArchive,
 		ledgerHashStore:   mockLedgerHashStore,
 		checkpointManager: historyarchive.NewCheckpointManager(64),
+		cancel: context.CancelFunc(func() {
+			cancelCalled = true
+		}),
 	}
 
 	runFrom, ledgerHash, nextLedger, err := captiveBackend.runFromParams(24)
@@ -1128,6 +1132,10 @@ func TestCaptiveUseOfLedgerHashStore(t *testing.T) {
 	assert.Equal(t, "0101010100000000000000000000000000000000000000000000000000000000", ledgerHash)
 	assert.Equal(t, uint32(192), nextLedger, "nextLedger")
 
+	mockLedgerHashStore.On("Close").Return(nil).Once()
+	err = captiveBackend.Close()
+	assert.NoError(t, err)
+	assert.True(t, cancelCalled)
 	mockLedgerHashStore.AssertExpectations(t)
 	mockArchive.AssertExpectations(t)
 }
