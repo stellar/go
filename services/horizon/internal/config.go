@@ -74,6 +74,9 @@ type Config struct {
 	// ApplyMigrations will apply pending migrations to the horizon database
 	// before starting the horizon service
 	ApplyMigrations bool
+	// SkipMigrationsCheck will skip checking if there are any migrations
+	// required
+	SkipMigrationsCheck bool
 	// CheckpointFrequency establishes how many ledgers exist between checkpoints
 	CheckpointFrequency uint32
 	// BehindCloudflare determines if Horizon instance is behind Cloudflare. In
