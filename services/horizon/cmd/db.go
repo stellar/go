@@ -1,11 +1,16 @@
 package cmd
 
 import (
+	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
 	"fmt"
 	"go/types"
+	"io/ioutil"
 	"log"
 	"os"
+	"path/filepath"
+	"sort"
 	"strconv"
 
 	"github.com/spf13/cobra"
@@ -103,6 +108,41 @@ var dbMigrateCmd = &cobra.Command{
 			log.Println("No migrations applied.")
 		} else {
 			log.Printf("Successfully applied %d migrations.\n", numMigrationsRun)
+		}
+	},
+}
+
+var dbMigrateHashCmd = &cobra.Command{
+	Use:   "migrate-hash",
+	Short: "outputs hash for each migration file",
+	Long:  "migrate-hash hashes each migration file of the database and outputs it",
+	Run: func(cmd *cobra.Command, args []string) {
+		migrationFolder := "./services/horizon/internal/db2/schema/migrations/"
+		hasher := sha256.New()
+		var files []string
+
+		err := filepath.Walk(migrationFolder, func(path string, info os.FileInfo, err error) error {
+			files = append(files, path)
+			return nil
+		})
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		// This is an alphabetical sorting of numbers, but this is fine since it is still deterministic.
+		files = sort.StringSlice(files)
+
+		for _, path := range files {
+			extension := filepath.Ext(path)
+			if extension == ".sql" {
+				data, err := ioutil.ReadFile(path)
+				if err != nil {
+					log.Fatal(err)
+				}
+				hasher.Write([]byte(data))
+				hashed := hex.EncodeToString(hasher.Sum(nil))
+				fmt.Println(path + ": " + hashed)
+			}
 		}
 	},
 }
@@ -302,6 +342,7 @@ func init() {
 	dbCmd.AddCommand(
 		dbInitCmd,
 		dbMigrateCmd,
+		dbMigrateHashCmd,
 		dbReapCmd,
 		dbReingestCmd,
 	)
