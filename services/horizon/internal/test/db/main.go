@@ -10,7 +10,7 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	// pq enables postgres support
-	_ "github.com/lib/pq"
+	_ "github.com/jackc/pgx/stdlib"
 	db "github.com/stellar/go/support/db/dbtest"
 )
 

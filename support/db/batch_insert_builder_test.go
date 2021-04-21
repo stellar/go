@@ -137,7 +137,7 @@ func TestBatchInsertBuilder(t *testing.T) {
 	err = insertBuilder.Exec()
 	assert.NoError(t, err)
 
-	err = sess.SelectRaw(&found, `SELECT * FROM people WHERE name like 'bubba%'`)
+	err = sess.SelectRaw(&found, `SELECT * FROM people WHERE name like 'bubba%' ORDER BY name DESC`)
 
 	require.NoError(t, err)
 	assert.Equal(
