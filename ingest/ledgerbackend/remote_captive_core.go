@@ -66,8 +66,6 @@ type RemoteCaptiveStellarCore struct {
 	url                      *url.URL
 	client                   *http.Client
 	lock                     *sync.Mutex
-	cancel                   context.CancelFunc
-	parentCtx                context.Context
 	prepareRangePollInterval time.Duration
 }
 
@@ -85,7 +83,7 @@ func PrepareRangePollInterval(d time.Duration) RemoteCaptiveOption {
 // NewRemoteCaptive returns a new RemoteCaptiveStellarCore instance.
 //
 // Only the captiveCoreURL parameter is required.
-func NewRemoteCaptive(ctx context.Context, captiveCoreURL string, options ...RemoteCaptiveOption) (RemoteCaptiveStellarCore, error) {
+func NewRemoteCaptive(captiveCoreURL string, options ...RemoteCaptiveOption) (RemoteCaptiveStellarCore, error) {
 	u, err := url.Parse(captiveCoreURL)
 	if err != nil {
 		return RemoteCaptiveStellarCore{}, errors.Wrap(err, "unparseable url")
@@ -96,7 +94,6 @@ func NewRemoteCaptive(ctx context.Context, captiveCoreURL string, options ...Rem
 		url:                      u,
 		client:                   &http.Client{Timeout: 5 * time.Second},
 		lock:                     &sync.Mutex{},
-		parentCtx:                ctx,
 	}
 	for _, option := range options {
 		option(&client)
@@ -129,13 +126,17 @@ func decodeResponse(response *http.Response, payload interface{}) error {
 // Note that for UnboundedRange the returned sequence number is not necessarily
 // the latest sequence closed by the network. It's always the last value available
 // in the backend.
-func (c RemoteCaptiveStellarCore) GetLatestLedgerSequence() (sequence uint32, err error) {
+func (c RemoteCaptiveStellarCore) GetLatestLedgerSequence(ctx context.Context) (sequence uint32, err error) {
 	// TODO: Have a context on this request so we can cancel all outstanding
 	// requests, not just PrepareRange.
 	u := *c.url
 	u.Path = path.Join(u.Path, "latest-sequence")
+	request, err := http.NewRequestWithContext(ctx, "GET", u.String(), nil)
+	if err != nil {
+		return 0, errors.Wrap(err, "cannot construct http request")
+	}
 
-	response, err := c.client.Get(u.String())
+	response, err := c.client.Do(request)
 	if err != nil {
 		return 0, errors.Wrap(err, "failed to execute request")
 	}
@@ -150,27 +151,7 @@ func (c RemoteCaptiveStellarCore) GetLatestLedgerSequence() (sequence uint32, er
 
 // Close cancels any pending PrepareRange requests.
 func (c RemoteCaptiveStellarCore) Close() error {
-	c.lock.Lock()
-	defer c.lock.Unlock()
-	if c.cancel != nil {
-		c.cancel()
-	}
 	return nil
-}
-
-func (c RemoteCaptiveStellarCore) createContext() context.Context {
-	c.lock.Lock()
-	defer c.lock.Unlock()
-
-	// Cancel any outstanding PrepareRange request
-	if c.cancel != nil {
-		c.cancel()
-	}
-
-	// Make a new context for this new request.
-	ctx, cancel := context.WithCancel(c.parentCtx)
-	c.cancel = cancel
-	return ctx
 }
 
 // PrepareRange prepares the given range (including from and to) to be loaded.
@@ -182,8 +163,10 @@ func (c RemoteCaptiveStellarCore) createContext() context.Context {
 //     it normally (including connecting to the Stellar network).
 // Please note that using a BoundedRange, currently, requires a full-trust on
 // history archive. This issue is being fixed in Stellar-Core.
-func (c RemoteCaptiveStellarCore) PrepareRange(ledgerRange Range) error {
-	ctx := c.createContext()
+func (c RemoteCaptiveStellarCore) PrepareRange(ctx context.Context, ledgerRange Range) error {
+	// TODO: removing createContext call here means we could technically have
+	// multiple prepareRange requests happening at the same time. Do we still
+	// need to enforce that?
 	u := *c.url
 	u.Path = path.Join(u.Path, "prepare-range")
 	rangeBytes, err := json.Marshal(ledgerRange)
@@ -225,7 +208,7 @@ func (c RemoteCaptiveStellarCore) PrepareRange(ledgerRange Range) error {
 }
 
 // IsPrepared returns true if a given ledgerRange is prepared.
-func (c RemoteCaptiveStellarCore) IsPrepared(ledgerRange Range) (bool, error) {
+func (c RemoteCaptiveStellarCore) IsPrepared(ctx context.Context, ledgerRange Range) (bool, error) {
 	// TODO: Have a context on this request so we can cancel all outstanding
 	// requests, not just PrepareRange.
 	u := *c.url
@@ -235,9 +218,14 @@ func (c RemoteCaptiveStellarCore) IsPrepared(ledgerRange Range) (bool, error) {
 		return false, errors.Wrap(err, "cannot serialize range")
 	}
 	body := bytes.NewReader(rangeBytes)
+	request, err := http.NewRequestWithContext(ctx, "POST", u.String(), body)
+	if err != nil {
+		return false, errors.Wrap(err, "cannot construct http request")
+	}
+	request.Header.Add("Content-Type", "application/json; charset=utf-8")
 
 	var response *http.Response
-	response, err = c.client.Post(u.String(), "application/json; charset=utf-8", body)
+	response, err = c.client.Do(request)
 	if err != nil {
 		return false, errors.Wrap(err, "failed to execute request")
 	}
@@ -267,13 +255,17 @@ func (c RemoteCaptiveStellarCore) IsPrepared(ledgerRange Range) (bool, error) {
 //   * UnboundedRange makes GetLedger non-blocking. The method will return with
 //     the first argument equal false.
 // This is done to provide maximum performance when streaming old ledgers.
-func (c RemoteCaptiveStellarCore) GetLedger(sequence uint32) (bool, xdr.LedgerCloseMeta, error) {
+func (c RemoteCaptiveStellarCore) GetLedger(ctx context.Context, sequence uint32) (bool, xdr.LedgerCloseMeta, error) {
 	// TODO: Have a context on this request so we can cancel all outstanding
 	// requests, not just PrepareRange.
 	u := *c.url
 	u.Path = path.Join(u.Path, "ledger", strconv.FormatUint(uint64(sequence), 10))
+	request, err := http.NewRequestWithContext(ctx, "GET", u.String(), nil)
+	if err != nil {
+		return false, xdr.LedgerCloseMeta{}, errors.Wrap(err, "cannot construct http request")
+	}
 
-	response, err := c.client.Get(u.String())
+	response, err := c.client.Do(request)
 	if err != nil {
 		return false, xdr.LedgerCloseMeta{}, errors.Wrap(err, "failed to execute request")
 	}
@@ -286,9 +278,9 @@ func (c RemoteCaptiveStellarCore) GetLedger(sequence uint32) (bool, xdr.LedgerCl
 	return parsed.Present, xdr.LedgerCloseMeta(parsed.Ledger), nil
 }
 
-func (c RemoteCaptiveStellarCore) GetLedgerBlocking(sequence uint32) (xdr.LedgerCloseMeta, error) {
+func (c RemoteCaptiveStellarCore) GetLedgerBlocking(ctx context.Context, sequence uint32) (xdr.LedgerCloseMeta, error) {
 	for {
-		exists, meta, err := c.GetLedger(sequence)
+		exists, meta, err := c.GetLedger(ctx, sequence)
 		if err != nil {
 			return xdr.LedgerCloseMeta{}, err
 		}

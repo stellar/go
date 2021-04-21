@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"go/types"
 	"strings"
@@ -155,6 +154,8 @@ func main() {
 					logger.Infof("Starting Captive Core server on %v", port)
 				},
 				OnStopping: func() {
+					// TODO: Check this aborts in-progress requests instead of letting
+					// them finish, to preserve existing behaviour.
 					api.Shutdown()
 					if dbConn != nil {
 						dbConn.Close()
