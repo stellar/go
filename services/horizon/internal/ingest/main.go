@@ -206,7 +206,7 @@ func NewSystem(config Config) (System, error) {
 					NetworkPassphrase:   config.NetworkPassphrase,
 					HistoryArchiveURLs:  []string{config.HistoryArchiveURL},
 					CheckpointFrequency: config.CheckpointFrequency,
-					LedgerHashStore:     ledgerbackend.NewHorizonDBLedgerHashStore(ctx, config.HistorySession),
+					LedgerHashStore:     ledgerbackend.NewHorizonDBLedgerHashStore(config.HistorySession),
 					Log:                 logger,
 					Context:             ctx,
 				},

@@ -139,7 +139,7 @@ func main() {
 				if err != nil {
 					logger.WithError(err).Fatal("Could not create db connection instance")
 				}
-				captiveConfig.LedgerHashStore = ledgerbackend.NewHorizonDBLedgerHashStore(context.Background(), dbConn)
+				captiveConfig.LedgerHashStore = ledgerbackend.NewHorizonDBLedgerHashStore(dbConn)
 			}
 
 			core, err := ledgerbackend.NewCaptive(captiveConfig)
