@@ -6,6 +6,7 @@ import (
 	"math"
 	"net/http"
 	"net/url"
+	"strconv"
 	"testing"
 
 	"github.com/go-chi/chi"
@@ -302,6 +303,105 @@ func TestGetString(t *testing.T) {
 	cursor, err = getString(r, "cursor")
 	tt.Assert.NoError(err)
 	tt.Assert.Equal("goodbye", cursor)
+}
+
+func TestGetBool_query(t *testing.T) {
+	testCases := []struct {
+		DefaultValue bool
+		URL          string
+		Name         string
+		WantValue    bool
+		WantErr      string
+	}{
+		// not present
+		{DefaultValue: false, URL: "/foo-bar/blah", Name: "feature", WantValue: false},
+		{DefaultValue: true, URL: "/foo-bar/blah", Name: "feature", WantValue: true},
+
+		// simple variations on value and default
+		{DefaultValue: false, URL: "/foo-bar/blah?feature=false", Name: "feature", WantValue: false},
+		{DefaultValue: true, URL: "/foo-bar/blah?feature=false", Name: "feature", WantValue: false},
+		{DefaultValue: false, URL: "/foo-bar/blah?feature=true", Name: "feature", WantValue: true},
+		{DefaultValue: true, URL: "/foo-bar/blah?feature=true", Name: "feature", WantValue: true},
+		{DefaultValue: false, URL: "/foo-bar/blah?feature=0", Name: "feature", WantValue: false},
+		{DefaultValue: true, URL: "/foo-bar/blah?feature=0", Name: "feature", WantValue: false},
+		{DefaultValue: false, URL: "/foo-bar/blah?feature=1", Name: "feature", WantValue: true},
+		{DefaultValue: true, URL: "/foo-bar/blah?feature=1", Name: "feature", WantValue: true},
+
+		// invalid values
+		{DefaultValue: false, URL: "/foo-bar/blah?feature=a", Name: "feature", WantValue: false, WantErr: "problem: bad_request"},
+		{DefaultValue: true, URL: "/foo-bar/blah?feature=b", Name: "feature", WantValue: false, WantErr: "problem: bad_request"},
+
+		// other keys present
+		{DefaultValue: false, URL: "/foo-bar/blah?asdf=zxcv&feature=true", Name: "feature", WantValue: true},
+
+		// duplicate keys present resolves to first
+		{DefaultValue: false, URL: "/foo-bar/blah?feature=true&feature=false", Name: "feature", WantValue: true},
+		{DefaultValue: false, URL: "/foo-bar/blah?feature=false&feature=true", Name: "feature", WantValue: false},
+	}
+	for i, tc := range testCases {
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			tt := test.Start(t)
+			defer tt.Finish()
+			r := makeTestActionRequest(tc.URL, testURLParams())
+			value, err := getBool(r, tc.Name, tc.DefaultValue)
+			if tc.WantErr == "" {
+				tt.Assert.NoError(err)
+			} else {
+				tt.Assert.EqualError(err, tc.WantErr)
+			}
+			tt.Assert.Equal(tc.WantValue, value)
+		})
+	}
+}
+
+func TestGetBool_form(t *testing.T) {
+	testCases := []struct {
+		DefaultValue bool
+		Form         url.Values
+		Name         string
+		WantValue    bool
+		WantErr      string
+	}{
+		// not present
+		{DefaultValue: false, Form: url.Values{}, Name: "feature", WantValue: false},
+		{DefaultValue: true, Form: url.Values{}, Name: "feature", WantValue: true},
+
+		// simple variations on value and default
+		{DefaultValue: false, Form: url.Values{"feature": {"false"}}, Name: "feature", WantValue: false},
+		{DefaultValue: true, Form: url.Values{"feature": {"false"}}, Name: "feature", WantValue: false},
+		{DefaultValue: false, Form: url.Values{"feature": {"true"}}, Name: "feature", WantValue: true},
+		{DefaultValue: true, Form: url.Values{"feature": {"true"}}, Name: "feature", WantValue: true},
+		{DefaultValue: false, Form: url.Values{"feature": {"0"}}, Name: "feature", WantValue: false},
+		{DefaultValue: true, Form: url.Values{"feature": {"0"}}, Name: "feature", WantValue: false},
+		{DefaultValue: false, Form: url.Values{"feature": {"1"}}, Name: "feature", WantValue: true},
+		{DefaultValue: true, Form: url.Values{"feature": {"1"}}, Name: "feature", WantValue: true},
+
+		// invalid values
+		{DefaultValue: false, Form: url.Values{"feature": {"a"}}, Name: "feature", WantValue: false, WantErr: "problem: bad_request"},
+		{DefaultValue: true, Form: url.Values{"feature": {"b"}}, Name: "feature", WantValue: false, WantErr: "problem: bad_request"},
+
+		// other keys present
+		{DefaultValue: false, Form: url.Values{"asdf": {"zxcv"}, "feature": {"true"}}, Name: "feature", WantValue: true},
+
+		// duplicate keys present resolves to first
+		{DefaultValue: false, Form: url.Values{"feature": {"true", "false"}}, Name: "feature", WantValue: true},
+		{DefaultValue: false, Form: url.Values{"feature": {"false", "false"}}, Name: "feature", WantValue: false},
+	}
+	for i, tc := range testCases {
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			tt := test.Start(t)
+			defer tt.Finish()
+			r := makeTestActionRequest("/foo-bar/blah", testURLParams())
+			r.Form = tc.Form
+			value, err := getBool(r, tc.Name, tc.DefaultValue)
+			if tc.WantErr == "" {
+				tt.Assert.NoError(err)
+			} else {
+				tt.Assert.EqualError(err, tc.WantErr)
+			}
+			tt.Assert.Equal(tc.WantValue, value)
+		})
+	}
 }
 
 func TestPath(t *testing.T) {

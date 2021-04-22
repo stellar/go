@@ -41,8 +41,16 @@ func (handler ObjectActionHandler) ServeHTTP(
 			return
 		}
 
-		httpjson.Render(
+		// If the response provides a StatusCode() function use the status code
+		// returned by it, otherwise assume 200 status OK.
+		status := http.StatusOK
+		if statusCoder, ok := response.(interface{ StatusCode() int }); ok {
+			status = statusCoder.StatusCode()
+		}
+
+		httpjson.RenderStatus(
 			w,
+			status,
 			response,
 			httpjson.HALJSON,
 		)

@@ -5,6 +5,7 @@ package horizon
 import (
 	"encoding/base64"
 	"encoding/json"
+	"net/http"
 	"strconv"
 	"time"
 
@@ -471,6 +472,23 @@ type Transaction struct {
 	ValidBefore        string              `json:"valid_before,omitempty"`
 	FeeBumpTransaction *FeeBumpTransaction `json:"fee_bump_transaction,omitempty"`
 	InnerTransaction   *InnerTransaction   `json:"inner_transaction,omitempty"`
+}
+
+// PendingTransaction represents a pending transaction submitted asynchronously.
+type PendingTransaction struct {
+	Links struct {
+		Self hal.Link `json:"self"`
+	} `json:"_links"`
+	ID      string `json:"id"`
+	Hash    string `json:"hash"`
+	Pending bool   `json:"pending"`
+}
+
+// StatusCode returns the status code returned for the pending transaction,
+// which is always 202 Accepted, to indicate that the request has been accepted
+// but not processed.
+func (pt PendingTransaction) StatusCode() int {
+	return http.StatusAccepted
 }
 
 // FeeBumpTransaction contains information about a fee bump transaction

@@ -7,6 +7,7 @@ import (
 
 	"github.com/stellar/go/network"
 	"github.com/stellar/go/protocols/horizon"
+	horizonContext "github.com/stellar/go/services/horizon/internal/context"
 	hProblem "github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/resourceadapter"
 	"github.com/stellar/go/services/horizon/internal/txsub"
@@ -60,27 +61,46 @@ func (handler SubmitTransactionHandler) validateBodyType(r *http.Request) error 
 	return nil
 }
 
-func (handler SubmitTransactionHandler) response(r *http.Request, info envelopeInfo, result txsub.Result) (hal.Pageable, error) {
-	if result.Err == nil {
-		var resource horizon.Transaction
-		err := resourceadapter.PopulateTransaction(
-			r.Context(),
-			info.hash,
-			&resource,
-			result.Transaction,
-		)
-		return resource, err
+func (handler SubmitTransactionHandler) responseAsync(r *http.Request, info envelopeInfo, result txsub.SubmissionResult) (*horizon.PendingTransaction, error) {
+	if result.Err != nil {
+		return nil, handler.responseErr(r, info, result.Err)
 	}
 
-	if result.Err == txsub.ErrTimeout {
-		return nil, &hProblem.Timeout
+	resource := &horizon.PendingTransaction{
+		ID:      info.hash,
+		Hash:    info.hash,
+		Pending: true,
+	}
+	lb := hal.LinkBuilder{Base: horizonContext.BaseURL(r.Context())}
+	resource.Links.Self = lb.Link("/transactions", resource.ID)
+	return resource, nil
+}
+
+func (handler SubmitTransactionHandler) responseSync(r *http.Request, info envelopeInfo, result txsub.Result) (hal.Pageable, error) {
+	if result.Err != nil {
+		return nil, handler.responseErr(r, info, result.Err)
 	}
 
-	if result.Err == txsub.ErrCanceled {
-		return nil, &hProblem.Timeout
+	var resource horizon.Transaction
+	err := resourceadapter.PopulateTransaction(
+		r.Context(),
+		info.hash,
+		&resource,
+		result.Transaction,
+	)
+	return resource, err
+}
+
+func (handler SubmitTransactionHandler) responseErr(r *http.Request, info envelopeInfo, resultErr error) error {
+	if resultErr == txsub.ErrTimeout {
+		return &hProblem.Timeout
 	}
 
-	switch err := result.Err.(type) {
+	if resultErr == txsub.ErrCanceled {
+		return &hProblem.Timeout
+	}
+
+	switch err := resultErr.(type) {
 	case *txsub.FailedTransactionError:
 		rcr := horizon.TransactionResultCodes{}
 		resourceadapter.PopulateTransactionResultCodes(
@@ -90,7 +110,7 @@ func (handler SubmitTransactionHandler) response(r *http.Request, info envelopeI
 			err,
 		)
 
-		return nil, &problem.P{
+		return &problem.P{
 			Type:   "transaction_failed",
 			Title:  "Transaction Failed",
 			Status: http.StatusBadRequest,
@@ -106,7 +126,7 @@ func (handler SubmitTransactionHandler) response(r *http.Request, info envelopeI
 		}
 	}
 
-	return nil, result.Err
+	return resultErr
 }
 
 func (handler SubmitTransactionHandler) GetResource(w HeaderWriter, r *http.Request) (interface{}, error) {
@@ -136,6 +156,16 @@ func (handler SubmitTransactionHandler) GetResource(w HeaderWriter, r *http.Requ
 		}
 	}
 
+	async, err := getBool(r, "async", false)
+	if err != nil {
+		return nil, err
+	}
+
+	if async {
+		result := handler.Submitter.Submitter.Submit(r.Context(), info.raw)
+		return handler.responseAsync(r, info, result)
+	}
+
 	submission := handler.Submitter.Submit(
 		r.Context(),
 		info.raw,
@@ -145,7 +175,7 @@ func (handler SubmitTransactionHandler) GetResource(w HeaderWriter, r *http.Requ
 
 	select {
 	case result := <-submission:
-		return handler.response(r, info, result)
+		return handler.responseSync(r, info, result)
 	case <-r.Context().Done():
 		return nil, &hProblem.Timeout
 	}

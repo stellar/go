@@ -146,6 +146,28 @@ func getString(r *http.Request, name string) (string, error) {
 	return value, nil
 }
 
+// getBool retrieves a bool value from the action parameter of the given name.
+// The default value is used if the parameter is not set in the request.
+// Populates err if the value is not a valid bool and the zero value for bool is
+// returned.
+func getBool(r *http.Request, name string, def bool) (bool, error) {
+	str, err := getString(r, name)
+	if err != nil {
+		return false, err
+	}
+
+	if str == "" {
+		return def, nil
+	}
+
+	asBool, err := strconv.ParseBool(str)
+	if err != nil {
+		return false, problem.MakeInvalidFieldProblem(name, errors.New("unparseable value"))
+	}
+
+	return asBool, nil
+}
+
 // getLimit retrieves a uint64 limit from the action parameter of the given
 // name. Populates err if the value is not a valid limit.  Uses the provided
 // default value if the limit parameter is a blank string.
