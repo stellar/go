@@ -97,14 +97,13 @@ const (
 
 	// trading effects
 
+	// unused
 	// EffectOfferCreated occurs when an account offers to trade an asset
-	EffectOfferCreated EffectType = 30 // from manage_offer, creat_passive_offer
-
+	// EffectOfferCreated EffectType = 30 // from manage_offer, creat_passive_offer
 	// EffectOfferRemoved occurs when an account removes an offer
-	EffectOfferRemoved EffectType = 31 // from manage_offer, create_passive_offer, path_payment
-
+	// EffectOfferRemoved EffectType = 31 // from manage_offer, create_passive_offer, path_payment
 	// EffectOfferUpdated occurs when an offer is updated by the offering account.
-	EffectOfferUpdated EffectType = 32 // from manage_offer, creat_passive_offer, path_payment
+	// EffectOfferUpdated EffectType = 32 // from manage_offer, creat_passive_offer, path_payment
 
 	// EffectTrade occurs when a trade is initiated because of a path payment or
 	// offer operation.
