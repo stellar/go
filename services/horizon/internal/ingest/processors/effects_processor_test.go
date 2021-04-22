@@ -1509,7 +1509,7 @@ func TestOperationEffects(t *testing.T) {
 func TestOperationEffectsSetOptionsSignersOrder(t *testing.T) {
 	tt := assert.New(t)
 	transaction := ingest.LedgerTransaction{
-		Meta: createTransactionMeta([]xdr.OperationMeta{
+		UnsafeMeta: createTransactionMeta([]xdr.OperationMeta{
 			{
 				Changes: []xdr.LedgerEntryChange{
 					// State
@@ -1640,7 +1640,7 @@ func TestOperationEffectsSetOptionsSignersOrder(t *testing.T) {
 func TestOperationEffectsSetOptionsSignersNoUpdated(t *testing.T) {
 	tt := assert.New(t)
 	transaction := ingest.LedgerTransaction{
-		Meta: createTransactionMeta([]xdr.OperationMeta{
+		UnsafeMeta: createTransactionMeta([]xdr.OperationMeta{
 			{
 				Changes: []xdr.LedgerEntryChange{
 					// State
@@ -1761,7 +1761,7 @@ func TestOperationRegressionAccountTrustItself(t *testing.T) {
 	// NOTE:  when an account trusts itself, the transaction is successful but
 	// no ledger entries are actually modified.
 	transaction := ingest.LedgerTransaction{
-		Meta: createTransactionMeta([]xdr.OperationMeta{}),
+		UnsafeMeta: createTransactionMeta([]xdr.OperationMeta{}),
 	}
 	transaction.Index = 1
 	transaction.Envelope.Type = xdr.EnvelopeTypeEnvelopeTypeTx
@@ -1813,7 +1813,7 @@ func TestOperationEffectsAllowTrustAuthorizedToMaintainLiabilities(t *testing.T)
 	operation := transactionOperationWrapper{
 		index: 0,
 		transaction: ingest.LedgerTransaction{
-			Meta: xdr.TransactionMeta{
+			UnsafeMeta: xdr.TransactionMeta{
 				V:  2,
 				V2: &xdr.TransactionMetaV2{},
 			},
@@ -1874,7 +1874,7 @@ func TestOperationEffectsClawback(t *testing.T) {
 	operation := transactionOperationWrapper{
 		index: 0,
 		transaction: ingest.LedgerTransaction{
-			Meta: xdr.TransactionMeta{
+			UnsafeMeta: xdr.TransactionMeta{
 				V:  2,
 				V2: &xdr.TransactionMetaV2{},
 			},
@@ -1934,7 +1934,7 @@ func TestOperationEffectsClawbackClaimableBalance(t *testing.T) {
 	operation := transactionOperationWrapper{
 		index: 0,
 		transaction: ingest.LedgerTransaction{
-			Meta: xdr.TransactionMeta{
+			UnsafeMeta: xdr.TransactionMeta{
 				V:  2,
 				V2: &xdr.TransactionMetaV2{},
 			},
@@ -1983,7 +1983,7 @@ func TestOperationEffectsSetTrustLineFlags(t *testing.T) {
 	operation := transactionOperationWrapper{
 		index: 0,
 		transaction: ingest.LedgerTransaction{
-			Meta: xdr.TransactionMeta{
+			UnsafeMeta: xdr.TransactionMeta{
 				V:  2,
 				V2: &xdr.TransactionMetaV2{},
 			},
@@ -2121,7 +2121,7 @@ func (s *CreateClaimableBalanceEffectsTestSuite) SetupTest() {
 			},
 		},
 		FeeChanges: xdr.LedgerEntryChanges{},
-		Meta: xdr.TransactionMeta{
+		UnsafeMeta: xdr.TransactionMeta{
 			V: 2,
 			V2: &xdr.TransactionMetaV2{
 				Operations: []xdr.OperationMeta{
@@ -2349,7 +2349,7 @@ func (s *ClaimClaimableBalanceEffectsTestSuite) SetupTest() {
 			},
 		},
 		FeeChanges: xdr.LedgerEntryChanges{},
-		Meta: xdr.TransactionMeta{
+		UnsafeMeta: xdr.TransactionMeta{
 			V: 2,
 			V2: &xdr.TransactionMetaV2{
 				Operations: []xdr.OperationMeta{

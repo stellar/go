@@ -41,7 +41,7 @@ func TestParticipantsForTransaction(t *testing.T) {
 			Index:      1,
 			Envelope:   envelope,
 			FeeChanges: feeChanges,
-			Meta:       meta,
+			UnsafeMeta: meta,
 			Result: xdr.TransactionResultPair{
 				Result: xdr.TransactionResult{
 					Result: xdr.TransactionResultResult{

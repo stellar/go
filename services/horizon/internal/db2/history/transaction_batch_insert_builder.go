@@ -236,7 +236,7 @@ func transactionToRow(transaction ingest.LedgerTransaction, sequence uint32) (Tr
 	if err != nil {
 		return TransactionWithoutLedger{}, err
 	}
-	metaBase64, err := xdr.MarshalBase64(transaction.Meta)
+	metaBase64, err := xdr.MarshalBase64(transaction.UnsafeMeta)
 	if err != nil {
 		return TransactionWithoutLedger{}, err
 	}

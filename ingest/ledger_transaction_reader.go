@@ -102,7 +102,7 @@ func (reader *LedgerTransactionReader) storeTransactions(lcm xdr.LedgerCloseMeta
 			Index:      uint32(i + 1), // Transactions start at '1'
 			Envelope:   envelope,
 			Result:     result,
-			Meta:       lcm.V0.TxProcessing[i].TxApplyProcessing,
+			UnsafeMeta: lcm.V0.TxProcessing[i].TxApplyProcessing,
 			FeeChanges: lcm.V0.TxProcessing[i].FeeProcessing,
 		})
 	}

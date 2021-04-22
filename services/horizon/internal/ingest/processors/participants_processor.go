@@ -149,7 +149,7 @@ func participantsForTransaction(
 		participants = append(participants, transaction.Envelope.FeeBumpAccount().ToAccountId())
 	}
 
-	p, err := participantsForMeta(transaction.Meta)
+	p, err := participantsForMeta(transaction.UnsafeMeta)
 	if err != nil {
 		return nil, err
 	}
