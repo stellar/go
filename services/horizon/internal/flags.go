@@ -387,6 +387,14 @@ func Flags() (*Config, support.ConfigOptions) {
 			Usage:       "applies pending migrations before starting horizon",
 		},
 		&support.ConfigOption{
+			Name:        "skip-migrations-check",
+			ConfigKey:   &config.SkipMigrationsCheck,
+			OptType:     types.Bool,
+			FlagDefault: false,
+			Required:    false,
+			Usage:       "skips checking if there are migrations required",
+		},
+		&support.ConfigOption{
 			Name:        "checkpoint-frequency",
 			ConfigKey:   &config.CheckpointFrequency,
 			OptType:     types.Uint32,
@@ -443,7 +451,9 @@ func ApplyFlags(config *Config, flags support.ConfigOptions) {
 	}
 
 	// Migrations should be checked as early as possible
-	checkMigrations(*config)
+	if !config.SkipMigrationsCheck {
+		checkMigrations(*config)
+	}
 
 	// Validate options that should be provided together
 	validateBothOrNeither("tls-cert", "tls-key")
