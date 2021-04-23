@@ -67,6 +67,7 @@ type RemoteCaptiveStellarCore struct {
 	client                   *http.Client
 	lock                     *sync.Mutex
 	cancel                   context.CancelFunc
+	parentCtx                context.Context
 	prepareRangePollInterval time.Duration
 }
 
@@ -84,7 +85,7 @@ func PrepareRangePollInterval(d time.Duration) RemoteCaptiveOption {
 // NewRemoteCaptive returns a new RemoteCaptiveStellarCore instance.
 //
 // Only the captiveCoreURL parameter is required.
-func NewRemoteCaptive(captiveCoreURL string, options ...RemoteCaptiveOption) (RemoteCaptiveStellarCore, error) {
+func NewRemoteCaptive(ctx context.Context, captiveCoreURL string, options ...RemoteCaptiveOption) (RemoteCaptiveStellarCore, error) {
 	u, err := url.Parse(captiveCoreURL)
 	if err != nil {
 		return RemoteCaptiveStellarCore{}, errors.Wrap(err, "unparseable url")
@@ -95,6 +96,7 @@ func NewRemoteCaptive(captiveCoreURL string, options ...RemoteCaptiveOption) (Re
 		url:                      u,
 		client:                   &http.Client{Timeout: 5 * time.Second},
 		lock:                     &sync.Mutex{},
+		parentCtx:                ctx,
 	}
 	for _, option := range options {
 		option(&client)
@@ -128,6 +130,8 @@ func decodeResponse(response *http.Response, payload interface{}) error {
 // the latest sequence closed by the network. It's always the last value available
 // in the backend.
 func (c RemoteCaptiveStellarCore) GetLatestLedgerSequence() (sequence uint32, err error) {
+	// TODO: Have a context on this request so we can cancel all outstanding
+	// requests, not just PrepareRange.
 	u := *c.url
 	u.Path = path.Join(u.Path, "latest-sequence")
 
@@ -158,11 +162,13 @@ func (c RemoteCaptiveStellarCore) createContext() context.Context {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
+	// Cancel any outstanding PrepareRange request
 	if c.cancel != nil {
 		c.cancel()
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	// Make a new context for this new request.
+	ctx, cancel := context.WithCancel(c.parentCtx)
 	c.cancel = cancel
 	return ctx
 }
@@ -220,6 +226,8 @@ func (c RemoteCaptiveStellarCore) PrepareRange(ledgerRange Range) error {
 
 // IsPrepared returns true if a given ledgerRange is prepared.
 func (c RemoteCaptiveStellarCore) IsPrepared(ledgerRange Range) (bool, error) {
+	// TODO: Have a context on this request so we can cancel all outstanding
+	// requests, not just PrepareRange.
 	u := *c.url
 	u.Path = path.Join(u.Path, "prepare-range")
 	rangeBytes, err := json.Marshal(ledgerRange)
@@ -260,6 +268,8 @@ func (c RemoteCaptiveStellarCore) IsPrepared(ledgerRange Range) (bool, error) {
 //     the first argument equal false.
 // This is done to provide maximum performance when streaming old ledgers.
 func (c RemoteCaptiveStellarCore) GetLedger(sequence uint32) (bool, xdr.LedgerCloseMeta, error) {
+	// TODO: Have a context on this request so we can cancel all outstanding
+	// requests, not just PrepareRange.
 	u := *c.url
 	u.Path = path.Join(u.Path, "ledger", strconv.FormatUint(uint64(sequence), 10))
 

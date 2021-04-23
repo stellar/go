@@ -20,7 +20,7 @@ func TestTradeQueries(t *testing.T) {
 	var trades []Trade
 
 	// All trades
-	err := q.Trades().Page(db2.MustPageQuery("", false, "asc", 100)).Select(&trades)
+	err := q.Trades().Page(tt.Ctx, db2.MustPageQuery("", false, "asc", 100)).Select(tt.Ctx, &trades)
 	if tt.Assert.NoError(err) {
 		tt.Assert.Len(trades, 4)
 	}
@@ -29,7 +29,7 @@ func TestTradeQueries(t *testing.T) {
 	pq := db2.MustPageQuery(trades[0].PagingToken(), false, "asc", 1)
 	var pt []Trade
 
-	err = q.Trades().Page(pq).Select(&pt)
+	err = q.Trades().Page(tt.Ctx, pq).Select(tt.Ctx, &pt)
 	if tt.Assert.NoError(err) {
 		if tt.Assert.Len(pt, 1) {
 			tt.Assert.Equal(trades[1], pt[0])
@@ -38,25 +38,25 @@ func TestTradeQueries(t *testing.T) {
 
 	// Cursor bounds checking
 	pq = db2.MustPageQuery("", false, "desc", 1)
-	err = q.Trades().Page(pq).Select(&pt)
+	err = q.Trades().Page(tt.Ctx, pq).Select(tt.Ctx, &pt)
 	tt.Require.NoError(err)
 
 	// test for asset pairs
-	lumen, err := q.GetAssetID(xdr.MustNewNativeAsset())
+	lumen, err := q.GetAssetID(tt.Ctx, xdr.MustNewNativeAsset())
 	tt.Require.NoError(err)
-	assetUSD, err := q.GetAssetID(xdr.MustNewCreditAsset("USD", "GB2QIYT2IAUFMRXKLSLLPRECC6OCOGJMADSPTRK7TGNT2SFR2YGWDARD"))
+	assetUSD, err := q.GetAssetID(tt.Ctx, xdr.MustNewCreditAsset("USD", "GB2QIYT2IAUFMRXKLSLLPRECC6OCOGJMADSPTRK7TGNT2SFR2YGWDARD"))
 	tt.Require.NoError(err)
-	assetEUR, err := q.GetAssetID(xdr.MustNewCreditAsset("EUR", "GAXMF43TGZHW3QN3REOUA2U5PW5BTARXGGYJ3JIFHW3YT6QRKRL3CPPU"))
+	assetEUR, err := q.GetAssetID(tt.Ctx, xdr.MustNewCreditAsset("EUR", "GAXMF43TGZHW3QN3REOUA2U5PW5BTARXGGYJ3JIFHW3YT6QRKRL3CPPU"))
 	tt.Require.NoError(err)
 
-	err = q.TradesForAssetPair(assetUSD, assetEUR).Page(db2.MustPageQuery("", false, "asc", 100)).Select(&trades)
+	err = q.TradesForAssetPair(assetUSD, assetEUR).Page(tt.Ctx, db2.MustPageQuery("", false, "asc", 100)).Select(tt.Ctx, &trades)
 	tt.Require.NoError(err)
 	tt.Assert.Len(trades, 0)
 
-	assetUSD, err = q.GetAssetID(xdr.MustNewCreditAsset("USD", "GAXMF43TGZHW3QN3REOUA2U5PW5BTARXGGYJ3JIFHW3YT6QRKRL3CPPU"))
+	assetUSD, err = q.GetAssetID(tt.Ctx, xdr.MustNewCreditAsset("USD", "GAXMF43TGZHW3QN3REOUA2U5PW5BTARXGGYJ3JIFHW3YT6QRKRL3CPPU"))
 	tt.Require.NoError(err)
 
-	err = q.TradesForAssetPair(lumen, assetUSD).Page(db2.MustPageQuery("", false, "asc", 100)).Select(&trades)
+	err = q.TradesForAssetPair(lumen, assetUSD).Page(tt.Ctx, db2.MustPageQuery("", false, "asc", 100)).Select(tt.Ctx, &trades)
 	tt.Require.NoError(err)
 	tt.Assert.Len(trades, 1)
 
@@ -65,7 +65,7 @@ func TestTradeQueries(t *testing.T) {
 	tt.Assert.Equal(true, trades[0].BaseIsSeller)
 
 	// reverse assets
-	err = q.TradesForAssetPair(assetUSD, lumen).Page(db2.MustPageQuery("", false, "asc", 100)).Select(&trades)
+	err = q.TradesForAssetPair(assetUSD, lumen).Page(tt.Ctx, db2.MustPageQuery("", false, "asc", 100)).Select(tt.Ctx, &trades)
 	tt.Require.NoError(err)
 	tt.Assert.Len(trades, 1)
 
@@ -130,7 +130,7 @@ func createInsertTrades(
 func createAccountsAndAssets(
 	tt *test.T, q *Q, accounts []string, assets []xdr.Asset,
 ) ([]int64, []int64) {
-	addressToAccounts, err := q.CreateAccounts(accounts, 2)
+	addressToAccounts, err := q.CreateAccounts(tt.Ctx, accounts, 2)
 	tt.Assert.NoError(err)
 
 	accountIDs := []int64{}
@@ -138,7 +138,7 @@ func createAccountsAndAssets(
 		accountIDs = append(accountIDs, addressToAccounts[account])
 	}
 
-	assetMap, err := q.CreateAssets(assets, 2)
+	assetMap, err := q.CreateAssets(tt.Ctx, assets, 2)
 	tt.Assert.NoError(err)
 
 	assetIDs := []int64{}
@@ -195,12 +195,12 @@ func TestBatchInsertTrade(t *testing.T) {
 
 	builder := q.NewTradeBatchInsertBuilder(1)
 	tt.Assert.NoError(
-		builder.Add(first, second, third),
+		builder.Add(tt.Ctx, first, second, third),
 	)
-	tt.Assert.NoError(builder.Exec())
+	tt.Assert.NoError(builder.Exec(tt.Ctx))
 
 	var rows []Trade
-	tt.Assert.NoError(q.Trades().Page(db2.MustPageQuery("", false, "asc", 100)).Select(&rows))
+	tt.Assert.NoError(q.Trades().Page(tt.Ctx, db2.MustPageQuery("", false, "asc", 100)).Select(tt.Ctx, &rows))
 
 	idToAccount := buildIDtoAccountMapping(addresses, accountIDs)
 	idToAsset := buildIDtoAssetMapping(assets, assetIDs)
@@ -324,11 +324,11 @@ func TestTradesQueryForAccount(t *testing.T) {
 	var trades []Trade
 
 	account := "GAXMF43TGZHW3QN3REOUA2U5PW5BTARXGGYJ3JIFHW3YT6QRKRL3CPPU"
-	tradesQ.ForAccount(account)
+	tradesQ.ForAccount(tt.Ctx, account)
 	tt.Assert.Equal(int64(15), tradesQ.forAccountID)
 	tt.Assert.Equal(int64(0), tradesQ.forOfferID)
 
-	tradesQ.Page(db2.MustPageQuery("", false, "desc", 100))
+	tradesQ.Page(tt.Ctx, db2.MustPageQuery("", false, "desc", 100))
 	_, _, err := tradesQ.sql.ToSql()
 	// q.sql was reset in Page so should return error
 	tt.Assert.EqualError(err, "select statements must have at least one result column")
@@ -346,7 +346,7 @@ func TestTradesQueryForAccount(t *testing.T) {
 			)) ORDER BY htrd.history_operation_id desc, htrd.order desc) ORDER BY history_operation_id desc, "order" desc LIMIT 100`
 	tt.Assert.Equal(expectedRawSQL, tradesQ.rawSQL)
 
-	err = tradesQ.Select(&trades)
+	err = tradesQ.Select(tt.Ctx, &trades)
 	tt.Assert.NoError(err)
 	tt.Assert.Len(trades, 3)
 
@@ -376,7 +376,7 @@ func TestTradesQueryForOffer(t *testing.T) {
 	tt.Assert.Equal(int64(0), tradesQ.forAccountID)
 	tt.Assert.Equal(int64(2), tradesQ.forOfferID)
 
-	tradesQ.Page(db2.MustPageQuery("", false, "asc", 100))
+	tradesQ.Page(tt.Ctx, db2.MustPageQuery("", false, "asc", 100))
 	_, _, err := tradesQ.sql.ToSql()
 	// q.sql was reset in Page so should return error
 	tt.Assert.EqualError(err, "select statements must have at least one result column")
@@ -394,7 +394,7 @@ func TestTradesQueryForOffer(t *testing.T) {
 			)) ORDER BY htrd.history_operation_id asc, htrd.order asc) ORDER BY history_operation_id asc, "order" asc LIMIT 100`
 	tt.Assert.Equal(expectedRawSQL, tradesQ.rawSQL)
 
-	err = tradesQ.Select(&trades)
+	err = tradesQ.Select(tt.Ctx, &trades)
 	tt.Assert.NoError(err)
 	tt.Assert.Len(trades, 2)
 

@@ -1,7 +1,10 @@
 package history
 
 import (
+	"context"
+
 	sq "github.com/Masterminds/squirrel"
+
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/support/errors"
@@ -10,7 +13,7 @@ import (
 
 // TransactionByHash is a query that loads a single row from the
 // `history_transactions` table based upon the provided hash.
-func (q *Q) TransactionByHash(dest interface{}, hash string) error {
+func (q *Q) TransactionByHash(ctx context.Context, dest interface{}, hash string) error {
 	byHash := selectTransaction.
 		Where("ht.transaction_hash = ?", hash)
 	byInnerHash := selectTransaction.
@@ -22,12 +25,12 @@ func (q *Q) TransactionByHash(dest interface{}, hash string) error {
 	}
 	union := byHash.Suffix("UNION ALL "+byInnerHashString, args...)
 
-	return q.Get(dest, union)
+	return q.Get(ctx, dest, union)
 }
 
 // TransactionsByIDs fetches transactions from the `history_transactions` table
 // which match the given ids
-func (q *Q) TransactionsByIDs(ids ...int64) (map[int64]Transaction, error) {
+func (q *Q) TransactionsByIDs(ctx context.Context, ids ...int64) (map[int64]Transaction, error) {
 	if len(ids) == 0 {
 		return nil, errors.New("no id arguments provided")
 	}
@@ -37,7 +40,7 @@ func (q *Q) TransactionsByIDs(ids ...int64) (map[int64]Transaction, error) {
 	})
 
 	var transactions []Transaction
-	if err := q.Select(&transactions, sql); err != nil {
+	if err := q.Select(ctx, &transactions, sql); err != nil {
 		return nil, err
 	}
 
@@ -61,9 +64,9 @@ func (q *Q) Transactions() *TransactionsQ {
 }
 
 // ForAccount filters the transactions collection to a specific account
-func (q *TransactionsQ) ForAccount(aid string) *TransactionsQ {
+func (q *TransactionsQ) ForAccount(ctx context.Context, aid string) *TransactionsQ {
 	var account Account
-	q.Err = q.parent.AccountByAddress(&account, aid)
+	q.Err = q.parent.AccountByAddress(ctx, &account, aid)
 	if q.Err != nil {
 		return q
 	}
@@ -76,10 +79,10 @@ func (q *TransactionsQ) ForAccount(aid string) *TransactionsQ {
 }
 
 // ForClaimableBalance filters the transactions collection to a specific claimable balance
-func (q *TransactionsQ) ForClaimableBalance(cbID xdr.ClaimableBalanceId) *TransactionsQ {
+func (q *TransactionsQ) ForClaimableBalance(ctx context.Context, cbID xdr.ClaimableBalanceId) *TransactionsQ {
 
 	var hCB HistoryClaimableBalance
-	hCB, q.Err = q.parent.ClaimableBalanceByID(cbID)
+	hCB, q.Err = q.parent.ClaimableBalanceByID(ctx, cbID)
 	if q.Err != nil {
 		return q
 	}
@@ -93,9 +96,9 @@ func (q *TransactionsQ) ForClaimableBalance(cbID xdr.ClaimableBalanceId) *Transa
 
 // ForLedger filters the query to a only transactions in a specific ledger,
 // specified by its sequence.
-func (q *TransactionsQ) ForLedger(seq int32) *TransactionsQ {
+func (q *TransactionsQ) ForLedger(ctx context.Context, seq int32) *TransactionsQ {
 	var ledger Ledger
-	q.Err = q.parent.LedgerBySequence(&ledger, seq)
+	q.Err = q.parent.LedgerBySequence(ctx, &ledger, seq)
 	if q.Err != nil {
 		return q
 	}
@@ -128,7 +131,7 @@ func (q *TransactionsQ) Page(page db2.PageQuery) *TransactionsQ {
 }
 
 // Select loads the results of the query specified by `q` into `dest`.
-func (q *TransactionsQ) Select(dest interface{}) error {
+func (q *TransactionsQ) Select(ctx context.Context, dest interface{}) error {
 	if q.Err != nil {
 		return q.Err
 	}
@@ -138,7 +141,7 @@ func (q *TransactionsQ) Select(dest interface{}) error {
 			Where("(ht.successful = true OR ht.successful IS NULL)")
 	}
 
-	q.Err = q.parent.Select(dest, q.sql)
+	q.Err = q.parent.Select(ctx, dest, q.sql)
 	if q.Err != nil {
 		return q.Err
 	}

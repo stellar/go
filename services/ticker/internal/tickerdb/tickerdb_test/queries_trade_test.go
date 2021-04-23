@@ -20,8 +20,8 @@ func TestBulkInsertTrades(t *testing.T) {
 
 	var session tickerdb.TickerSession
 	session.DB = db.Open()
-	session.Ctx = context.Background()
 	defer session.DB.Close()
+	ctx := context.Background()
 
 	// Run migrations to make sure the tests are run
 	// on the most updated schema version
@@ -36,10 +36,10 @@ func TestBulkInsertTrades(t *testing.T) {
 	_, err = tbl.Insert(tickerdb.Issuer{
 		PublicKey: "GCF3TQXKZJNFJK7HCMNE2O2CUNKCJH2Y2ROISTBPLC7C5EIA5NNG2XZB",
 		Name:      "FOO BAR",
-	}).IgnoreCols("id").Exec()
+	}).IgnoreCols("id").Exec(ctx)
 	require.NoError(t, err)
 	var issuer tickerdb.Issuer
-	err = session.GetRaw(&issuer, `
+	err = session.GetRaw(ctx, &issuer, `
 		SELECT *
 		FROM issuers
 		ORDER BY id DESC
@@ -48,13 +48,13 @@ func TestBulkInsertTrades(t *testing.T) {
 	require.NoError(t, err)
 
 	// Adding a seed asset to be used later:
-	err = session.InsertOrUpdateAsset(&tickerdb.Asset{
+	err = session.InsertOrUpdateAsset(ctx, &tickerdb.Asset{
 		Code:     "XLM",
 		IssuerID: issuer.ID,
 	}, []string{"code", "issuer_id"})
 	require.NoError(t, err)
 	var asset1 tickerdb.Asset
-	err = session.GetRaw(&asset1, `
+	err = session.GetRaw(ctx, &asset1, `
 		SELECT *
 		FROM assets
 		ORDER BY id DESC
@@ -63,13 +63,13 @@ func TestBulkInsertTrades(t *testing.T) {
 	require.NoError(t, err)
 
 	// Adding another asset to be used later:
-	err = session.InsertOrUpdateAsset(&tickerdb.Asset{
+	err = session.InsertOrUpdateAsset(ctx, &tickerdb.Asset{
 		Code:     "BTC",
 		IssuerID: issuer.ID,
 	}, []string{"code", "issuer_id"})
 	require.NoError(t, err)
 	var asset2 tickerdb.Asset
-	err = session.GetRaw(&asset2, `
+	err = session.GetRaw(ctx, &asset2, `
 		SELECT *
 		FROM assets
 		ORDER BY id DESC
@@ -95,11 +95,11 @@ func TestBulkInsertTrades(t *testing.T) {
 			LedgerCloseTime: time.Now(),
 		},
 	}
-	err = session.BulkInsertTrades(trades)
+	err = session.BulkInsertTrades(ctx, trades)
 	require.NoError(t, err)
 
 	// Ensure only two were created:
-	rows, err := session.QueryRaw("SELECT * FROM trades")
+	rows, err := session.QueryRaw(ctx, "SELECT * FROM trades")
 	require.NoError(t, err)
 	rowsCount := 0
 	for rows.Next() {
@@ -108,10 +108,10 @@ func TestBulkInsertTrades(t *testing.T) {
 	assert.Equal(t, 2, rowsCount)
 
 	// Re-insert the same trades and check if count remains = 2:
-	err = session.BulkInsertTrades(trades)
+	err = session.BulkInsertTrades(ctx, trades)
 	require.NoError(t, err)
 
-	rows, err = session.QueryRaw("SELECT * FROM trades")
+	rows, err = session.QueryRaw(ctx, "SELECT * FROM trades")
 	require.NoError(t, err)
 	rowsCount2 := 0
 	for rows.Next() {
@@ -126,8 +126,8 @@ func TestGetLastTrade(t *testing.T) {
 
 	var session tickerdb.TickerSession
 	session.DB = db.Open()
-	session.Ctx = context.Background()
 	defer session.DB.Close()
+	ctx := context.Background()
 
 	// Run migrations to make sure the tests are run
 	// on the most updated schema version
@@ -138,7 +138,7 @@ func TestGetLastTrade(t *testing.T) {
 	require.NoError(t, err)
 
 	// Sanity Check (there are no trades in the database)
-	_, err = session.GetLastTrade()
+	_, err = session.GetLastTrade(ctx)
 	require.Error(t, err)
 
 	// Adding a seed issuer to be used later:
@@ -146,10 +146,10 @@ func TestGetLastTrade(t *testing.T) {
 	_, err = tbl.Insert(tickerdb.Issuer{
 		PublicKey: "GCF3TQXKZJNFJK7HCMNE2O2CUNKCJH2Y2ROISTBPLC7C5EIA5NNG2XZB",
 		Name:      "FOO BAR",
-	}).IgnoreCols("id").Exec()
+	}).IgnoreCols("id").Exec(ctx)
 	require.NoError(t, err)
 	var issuer tickerdb.Issuer
-	err = session.GetRaw(&issuer, `
+	err = session.GetRaw(ctx, &issuer, `
 		SELECT *
 		FROM issuers
 		ORDER BY id DESC
@@ -158,13 +158,13 @@ func TestGetLastTrade(t *testing.T) {
 	require.NoError(t, err)
 
 	// Adding a seed asset to be used later:
-	err = session.InsertOrUpdateAsset(&tickerdb.Asset{
+	err = session.InsertOrUpdateAsset(ctx, &tickerdb.Asset{
 		Code:     "XLM",
 		IssuerID: issuer.ID,
 	}, []string{"code", "issuer_id"})
 	require.NoError(t, err)
 	var asset1 tickerdb.Asset
-	err = session.GetRaw(&asset1, `
+	err = session.GetRaw(ctx, &asset1, `
 		SELECT *
 		FROM assets
 		ORDER BY id DESC
@@ -173,13 +173,13 @@ func TestGetLastTrade(t *testing.T) {
 	require.NoError(t, err)
 
 	// Adding another asset to be used later:
-	err = session.InsertOrUpdateAsset(&tickerdb.Asset{
+	err = session.InsertOrUpdateAsset(ctx, &tickerdb.Asset{
 		Code:     "BTC",
 		IssuerID: issuer.ID,
 	}, []string{"code", "issuer_id"})
 	require.NoError(t, err)
 	var asset2 tickerdb.Asset
-	err = session.GetRaw(&asset2, `
+	err = session.GetRaw(ctx, &asset2, `
 		SELECT *
 		FROM assets
 		ORDER BY id DESC
@@ -216,10 +216,10 @@ func TestGetLastTrade(t *testing.T) {
 	}
 
 	// Re-insert the same trades and check if count remains = 2:
-	err = session.BulkInsertTrades(trades)
+	err = session.BulkInsertTrades(ctx, trades)
 	require.NoError(t, err)
 
-	lastTrade, err := session.GetLastTrade()
+	lastTrade, err := session.GetLastTrade(ctx)
 	require.NoError(t, err)
 	assert.WithinDuration(t, now.Local(), lastTrade.LedgerCloseTime.Local(), 10*time.Millisecond)
 }
@@ -230,8 +230,8 @@ func TestDeleteOldTrades(t *testing.T) {
 
 	var session tickerdb.TickerSession
 	session.DB = db.Open()
-	session.Ctx = context.Background()
 	defer session.DB.Close()
+	ctx := context.Background()
 
 	// Run migrations to make sure the tests are run
 	// on the most updated schema version
@@ -246,10 +246,10 @@ func TestDeleteOldTrades(t *testing.T) {
 	_, err = tbl.Insert(tickerdb.Issuer{
 		PublicKey: "GCF3TQXKZJNFJK7HCMNE2O2CUNKCJH2Y2ROISTBPLC7C5EIA5NNG2XZB",
 		Name:      "FOO BAR",
-	}).IgnoreCols("id").Exec()
+	}).IgnoreCols("id").Exec(ctx)
 	require.NoError(t, err)
 	var issuer tickerdb.Issuer
-	err = session.GetRaw(&issuer, `
+	err = session.GetRaw(ctx, &issuer, `
 		SELECT *
 		FROM issuers
 		ORDER BY id DESC
@@ -258,13 +258,13 @@ func TestDeleteOldTrades(t *testing.T) {
 	require.NoError(t, err)
 
 	// Adding a seed asset to be used later:
-	err = session.InsertOrUpdateAsset(&tickerdb.Asset{
+	err = session.InsertOrUpdateAsset(ctx, &tickerdb.Asset{
 		Code:     "XLM",
 		IssuerID: issuer.ID,
 	}, []string{"code", "issuer_id"})
 	require.NoError(t, err)
 	var asset1 tickerdb.Asset
-	err = session.GetRaw(&asset1, `
+	err = session.GetRaw(ctx, &asset1, `
 		SELECT *
 		FROM assets
 		ORDER BY id DESC
@@ -273,13 +273,13 @@ func TestDeleteOldTrades(t *testing.T) {
 	require.NoError(t, err)
 
 	// Adding another asset to be used later:
-	err = session.InsertOrUpdateAsset(&tickerdb.Asset{
+	err = session.InsertOrUpdateAsset(ctx, &tickerdb.Asset{
 		Code:     "BTC",
 		IssuerID: issuer.ID,
 	}, []string{"code", "issuer_id"})
 	require.NoError(t, err)
 	var asset2 tickerdb.Asset
-	err = session.GetRaw(&asset2, `
+	err = session.GetRaw(ctx, &asset2, `
 		SELECT *
 		FROM assets
 		ORDER BY id DESC
@@ -323,16 +323,16 @@ func TestDeleteOldTrades(t *testing.T) {
 			LedgerCloseTime: oneYearAgo,
 		},
 	}
-	err = session.BulkInsertTrades(trades)
+	err = session.BulkInsertTrades(ctx, trades)
 	require.NoError(t, err)
 
 	// Deleting trades older than 1 day ago:
-	err = session.DeleteOldTrades(oneDayAgo)
+	err = session.DeleteOldTrades(ctx, oneDayAgo)
 	require.NoError(t, err)
 
 	var dbTrades []tickerdb.Trade
 	var trade1, trade2 tickerdb.Trade
-	err = session.SelectRaw(&dbTrades, "SELECT * FROM trades")
+	err = session.SelectRaw(ctx, &dbTrades, "SELECT * FROM trades")
 	require.NoError(t, err)
 	assert.Equal(t, 2, len(dbTrades))
 

@@ -3,6 +3,7 @@
 package processors
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -19,6 +20,7 @@ import (
 
 type EffectsProcessorTestSuiteLedger struct {
 	suite.Suite
+	ctx                    context.Context
 	processor              *EffectProcessor
 	mockQ                  *history.MockQEffects
 	mockBatchInsertBuilder *history.MockEffectBatchInsertBuilder
@@ -42,6 +44,7 @@ func TestEffectsProcessorTestSuiteLedger(t *testing.T) {
 }
 
 func (s *EffectsProcessorTestSuiteLedger) SetupTest() {
+	s.ctx = context.Background()
 	s.mockQ = &history.MockQEffects{}
 	s.mockBatchInsertBuilder = &history.MockEffectBatchInsertBuilder{}
 
@@ -131,6 +134,7 @@ func (s *EffectsProcessorTestSuiteLedger) TearDownTest() {
 func (s *EffectsProcessorTestSuiteLedger) mockSuccessfulEffectBatchAdds() {
 	s.mockBatchInsertBuilder.On(
 		"Add",
+		s.ctx,
 		s.addressToID[s.addresses[2]],
 		toid.New(int32(s.sequence), 1, 1).ToInt64(),
 		uint32(1),
@@ -139,6 +143,7 @@ func (s *EffectsProcessorTestSuiteLedger) mockSuccessfulEffectBatchAdds() {
 	).Return(nil).Once()
 	s.mockBatchInsertBuilder.On(
 		"Add",
+		s.ctx,
 		s.addressToID[s.addresses[2]],
 		toid.New(int32(s.sequence), 2, 1).ToInt64(),
 		uint32(1),
@@ -147,6 +152,7 @@ func (s *EffectsProcessorTestSuiteLedger) mockSuccessfulEffectBatchAdds() {
 	).Return(nil).Once()
 	s.mockBatchInsertBuilder.On(
 		"Add",
+		s.ctx,
 		s.addressToID[s.addresses[1]],
 		toid.New(int32(s.sequence), 2, 1).ToInt64(),
 		uint32(2),
@@ -155,6 +161,7 @@ func (s *EffectsProcessorTestSuiteLedger) mockSuccessfulEffectBatchAdds() {
 	).Return(nil).Once()
 	s.mockBatchInsertBuilder.On(
 		"Add",
+		s.ctx,
 		s.addressToID[s.addresses[2]],
 		toid.New(int32(s.sequence), 2, 1).ToInt64(),
 		uint32(3),
@@ -164,6 +171,7 @@ func (s *EffectsProcessorTestSuiteLedger) mockSuccessfulEffectBatchAdds() {
 
 	s.mockBatchInsertBuilder.On(
 		"Add",
+		s.ctx,
 		s.addressToID[s.addresses[0]],
 		toid.New(int32(s.sequence), 3, 1).ToInt64(),
 		uint32(1),
@@ -173,6 +181,7 @@ func (s *EffectsProcessorTestSuiteLedger) mockSuccessfulEffectBatchAdds() {
 
 	s.mockBatchInsertBuilder.On(
 		"Add",
+		s.ctx,
 		s.addressToID[s.addresses[0]],
 		toid.New(int32(s.sequence), 3, 1).ToInt64(),
 		uint32(2),
@@ -184,16 +193,17 @@ func (s *EffectsProcessorTestSuiteLedger) mockSuccessfulEffectBatchAdds() {
 func (s *EffectsProcessorTestSuiteLedger) mockSuccessfulCreateAccounts() {
 	s.mockQ.On(
 		"CreateAccounts",
+		s.ctx,
 		mock.AnythingOfType("[]string"),
 		maxBatchSize,
 	).Run(func(args mock.Arguments) {
-		arg := args.Get(0).([]string)
+		arg := args.Get(1).([]string)
 		s.Assert().ElementsMatch(s.addresses, arg)
 	}).Return(s.addressToID, nil).Once()
 }
 
 func (s *EffectsProcessorTestSuiteLedger) TestEmptyEffects() {
-	err := s.processor.Commit()
+	err := s.processor.Commit(context.Background())
 	s.Assert().NoError(err)
 }
 
@@ -204,25 +214,25 @@ func (s *EffectsProcessorTestSuiteLedger) TestIngestEffectsSucceeds() {
 
 	s.mockSuccessfulEffectBatchAdds()
 
-	s.mockBatchInsertBuilder.On("Exec").Return(nil).Once()
+	s.mockBatchInsertBuilder.On("Exec", s.ctx).Return(nil).Once()
 
 	for _, tx := range s.txs {
-		err := s.processor.ProcessTransaction(tx)
+		err := s.processor.ProcessTransaction(s.ctx, tx)
 		s.Assert().NoError(err)
 	}
-	err := s.processor.Commit()
+	err := s.processor.Commit(s.ctx)
 	s.Assert().NoError(err)
 }
 
 func (s *EffectsProcessorTestSuiteLedger) TestCreateAccountsFails() {
-	s.mockQ.On("CreateAccounts", mock.AnythingOfType("[]string"), maxBatchSize).
+	s.mockQ.On("CreateAccounts", s.ctx, mock.AnythingOfType("[]string"), maxBatchSize).
 		Return(s.addressToID, errors.New("transient error")).Once()
 
 	for _, tx := range s.txs {
-		err := s.processor.ProcessTransaction(tx)
+		err := s.processor.ProcessTransaction(s.ctx, tx)
 		s.Assert().NoError(err)
 	}
-	err := s.processor.Commit()
+	err := s.processor.Commit(s.ctx)
 	s.Assert().EqualError(err, "Could not create account ids: transient error")
 }
 
@@ -232,7 +242,7 @@ func (s *EffectsProcessorTestSuiteLedger) TestBatchAddFails() {
 		Return(s.mockBatchInsertBuilder).Once()
 
 	s.mockBatchInsertBuilder.On(
-		"Add",
+		"Add", s.ctx,
 		s.addressToID[s.addresses[2]],
 		toid.New(int32(s.sequence), 1, 1).ToInt64(),
 		uint32(1),
@@ -240,10 +250,10 @@ func (s *EffectsProcessorTestSuiteLedger) TestBatchAddFails() {
 		[]byte("{\"new_seq\":300000000000}"),
 	).Return(errors.New("transient error")).Once()
 	for _, tx := range s.txs {
-		err := s.processor.ProcessTransaction(tx)
+		err := s.processor.ProcessTransaction(s.ctx, tx)
 		s.Assert().NoError(err)
 	}
-	err := s.processor.Commit()
+	err := s.processor.Commit(s.ctx)
 	s.Assert().EqualError(err, "could not insert operation effect in db: transient error")
 }
 

@@ -1,6 +1,7 @@
 package ingest
 
 import (
+	"context"
 	"github.com/stellar/go/xdr"
 )
 
@@ -33,7 +34,7 @@ type StatsChangeProcessorResults struct {
 	TrustLinesRemoved int64
 }
 
-func (p *StatsChangeProcessor) ProcessChange(change Change) error {
+func (p *StatsChangeProcessor) ProcessChange(ctx context.Context, change Change) error {
 	switch change.Type {
 	case xdr.LedgerEntryTypeAccount:
 		switch change.LedgerEntryChangeType() {

@@ -108,11 +108,11 @@ func TestInsertTrustLine(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
-	rows, err := q.InsertTrustLine(eurTrustLine)
+	rows, err := q.InsertTrustLine(tt.Ctx, eurTrustLine)
 	assert.NoError(t, err)
 	assert.Equal(t, int64(1), rows)
 
-	rows, err = q.InsertTrustLine(usdTrustLine)
+	rows, err = q.InsertTrustLine(tt.Ctx, usdTrustLine)
 	assert.NoError(t, err)
 	assert.Equal(t, int64(1), rows)
 
@@ -121,7 +121,7 @@ func TestInsertTrustLine(t *testing.T) {
 		{Asset: usdTrustLine.Data.TrustLine.Asset, AccountId: usdTrustLine.Data.TrustLine.AccountId},
 	}
 
-	lines, err := q.GetTrustLinesByKeys(keys)
+	lines, err := q.GetTrustLinesByKeys(tt.Ctx, keys)
 	assert.NoError(t, err)
 	assert.Len(t, lines, 2)
 
@@ -134,7 +134,7 @@ func TestUpdateTrustLine(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
-	rows, err := q.InsertTrustLine(eurTrustLine)
+	rows, err := q.InsertTrustLine(tt.Ctx, eurTrustLine)
 	assert.NoError(t, err)
 	assert.Equal(t, int64(1), rows)
 
@@ -145,14 +145,14 @@ func TestUpdateTrustLine(t *testing.T) {
 	modifiedTrustLine.Ext.V1 = &v1Copy
 	modifiedTrustLine.Data.TrustLine.Balance = 30000
 
-	rows, err = q.UpdateTrustLine(modifiedTrustLine)
+	rows, err = q.UpdateTrustLine(tt.Ctx, modifiedTrustLine)
 	assert.NoError(t, err)
 	assert.Equal(t, int64(1), rows)
 
 	keys := []xdr.LedgerKeyTrustLine{
 		{Asset: eurTrustLine.Data.TrustLine.Asset, AccountId: eurTrustLine.Data.TrustLine.AccountId},
 	}
-	lines, err := q.GetTrustLinesByKeys(keys)
+	lines, err := q.GetTrustLinesByKeys(tt.Ctx, keys)
 	assert.NoError(t, err)
 	assert.Len(t, lines, 1)
 
@@ -189,25 +189,25 @@ func TestUpsertTrustLines(t *testing.T) {
 	q := &Q{tt.HorizonSession()}
 
 	// Upserting nothing is no op
-	err := q.UpsertTrustLines([]xdr.LedgerEntry{})
+	err := q.UpsertTrustLines(tt.Ctx, []xdr.LedgerEntry{})
 	assert.NoError(t, err)
 
 	ledgerEntries := []xdr.LedgerEntry{eurTrustLine, usdTrustLine}
 
-	err = q.UpsertTrustLines(ledgerEntries)
+	err = q.UpsertTrustLines(tt.Ctx, ledgerEntries)
 	assert.NoError(t, err)
 
 	keys := []xdr.LedgerKeyTrustLine{
 		{Asset: eurTrustLine.Data.TrustLine.Asset, AccountId: eurTrustLine.Data.TrustLine.AccountId},
 	}
-	lines, err := q.GetTrustLinesByKeys(keys)
+	lines, err := q.GetTrustLinesByKeys(tt.Ctx, keys)
 	assert.NoError(t, err)
 	assert.Len(t, lines, 1)
 
 	keys = []xdr.LedgerKeyTrustLine{
 		{Asset: usdTrustLine.Data.TrustLine.Asset, AccountId: usdTrustLine.Data.TrustLine.AccountId},
 	}
-	lines, err = q.GetTrustLinesByKeys(keys)
+	lines, err = q.GetTrustLinesByKeys(tt.Ctx, keys)
 	assert.NoError(t, err)
 	assert.Len(t, lines, 1)
 
@@ -216,13 +216,13 @@ func TestUpsertTrustLines(t *testing.T) {
 
 	ledgerEntries = []xdr.LedgerEntry{modifiedTrustLine}
 
-	err = q.UpsertTrustLines(ledgerEntries)
+	err = q.UpsertTrustLines(tt.Ctx, ledgerEntries)
 	assert.NoError(t, err)
 
 	keys = []xdr.LedgerKeyTrustLine{
 		{Asset: eurTrustLine.Data.TrustLine.Asset, AccountId: eurTrustLine.Data.TrustLine.AccountId},
 	}
-	lines, err = q.GetTrustLinesByKeys(keys)
+	lines, err = q.GetTrustLinesByKeys(tt.Ctx, keys)
 	assert.NoError(t, err)
 	assert.Len(t, lines, 1)
 
@@ -267,7 +267,7 @@ func TestUpsertTrustLines(t *testing.T) {
 	keys = []xdr.LedgerKeyTrustLine{
 		{Asset: usdTrustLine.Data.TrustLine.Asset, AccountId: usdTrustLine.Data.TrustLine.AccountId},
 	}
-	lines, err = q.GetTrustLinesByKeys(keys)
+	lines, err = q.GetTrustLinesByKeys(tt.Ctx, keys)
 	assert.NoError(t, err)
 	assert.Len(t, lines, 1)
 
@@ -309,21 +309,21 @@ func TestRemoveTrustLine(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
-	rows, err := q.InsertTrustLine(eurTrustLine)
+	rows, err := q.InsertTrustLine(tt.Ctx, eurTrustLine)
 	assert.NoError(t, err)
 	assert.Equal(t, int64(1), rows)
 
 	key := xdr.LedgerKeyTrustLine{Asset: eurTrustLine.Data.TrustLine.Asset, AccountId: eurTrustLine.Data.TrustLine.AccountId}
-	rows, err = q.RemoveTrustLine(key)
+	rows, err = q.RemoveTrustLine(tt.Ctx, key)
 	assert.NoError(t, err)
 	assert.Equal(t, int64(1), rows)
 
-	lines, err := q.GetTrustLinesByKeys([]xdr.LedgerKeyTrustLine{key})
+	lines, err := q.GetTrustLinesByKeys(tt.Ctx, []xdr.LedgerKeyTrustLine{key})
 	assert.NoError(t, err)
 	assert.Len(t, lines, 0)
 
 	// Doesn't exist anymore
-	rows, err = q.RemoveTrustLine(key)
+	rows, err = q.RemoveTrustLine(tt.Ctx, key)
 	assert.NoError(t, err)
 	assert.Equal(t, int64(0), rows)
 }
@@ -333,11 +333,11 @@ func TestGetSortedTrustLinesByAccountsID(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
-	_, err := q.InsertTrustLine(eurTrustLine)
+	_, err := q.InsertTrustLine(tt.Ctx, eurTrustLine)
 	tt.Assert.NoError(err)
-	_, err = q.InsertTrustLine(usdTrustLine)
+	_, err = q.InsertTrustLine(tt.Ctx, usdTrustLine)
 	tt.Assert.NoError(err)
-	_, err = q.InsertTrustLine(usdTrustLine2)
+	_, err = q.InsertTrustLine(tt.Ctx, usdTrustLine2)
 	tt.Assert.NoError(err)
 
 	ids := []string{
@@ -345,7 +345,7 @@ func TestGetSortedTrustLinesByAccountsID(t *testing.T) {
 		usdTrustLine.Data.TrustLine.AccountId.Address(),
 	}
 
-	records, err := q.GetSortedTrustLinesByAccountIDs(ids)
+	records, err := q.GetSortedTrustLinesByAccountIDs(tt.Ctx, ids)
 	tt.Assert.NoError(err)
 	tt.Assert.Len(records, 2)
 
@@ -378,10 +378,10 @@ func TestGetTrustLinesByAccountID(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
-	_, err := q.InsertTrustLine(eurTrustLine)
+	_, err := q.InsertTrustLine(tt.Ctx, eurTrustLine)
 	tt.Assert.NoError(err)
 
-	record, err := q.GetSortedTrustLinesByAccountID(eurTrustLine.Data.TrustLine.AccountId.Address())
+	record, err := q.GetSortedTrustLinesByAccountID(tt.Ctx, eurTrustLine.Data.TrustLine.AccountId.Address())
 	tt.Assert.NoError(err)
 
 	asset := xdr.MustNewCreditAsset(record[0].AssetCode, record[0].AssetIssuer)
@@ -401,13 +401,13 @@ func TestAssetsForAddressRequiresTransaction(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
-	_, _, err := q.AssetsForAddress(eurTrustLine.Data.TrustLine.AccountId.Address())
+	_, _, err := q.AssetsForAddress(tt.Ctx, eurTrustLine.Data.TrustLine.AccountId.Address())
 	assert.EqualError(t, err, "cannot be called outside of a transaction")
 
-	assert.NoError(t, q.Begin())
-	defer q.Rollback()
+	assert.NoError(t, q.Begin(tt.Ctx))
+	defer q.Rollback(tt.Ctx)
 
-	_, _, err = q.AssetsForAddress(eurTrustLine.Data.TrustLine.AccountId.Address())
+	_, _, err = q.AssetsForAddress(tt.Ctx, eurTrustLine.Data.TrustLine.AccountId.Address())
 	assert.EqualError(t, err, "should only be called in a repeatable read transaction")
 }
 
@@ -419,10 +419,10 @@ func TestAssetsForAddress(t *testing.T) {
 
 	ledgerEntries := []xdr.LedgerEntry{account1}
 
-	err := q.UpsertAccounts(ledgerEntries)
+	err := q.UpsertAccounts(tt.Ctx, ledgerEntries)
 	assert.NoError(t, err)
 
-	_, err = q.InsertTrustLine(eurTrustLine)
+	_, err = q.InsertTrustLine(tt.Ctx, eurTrustLine)
 	tt.Assert.NoError(err)
 
 	brlTrustLine := xdr.LedgerEntry{
@@ -448,22 +448,22 @@ func TestAssetsForAddress(t *testing.T) {
 		},
 	}
 
-	_, err = q.InsertTrustLine(brlTrustLine)
+	_, err = q.InsertTrustLine(tt.Ctx, brlTrustLine)
 	tt.Assert.NoError(err)
 
-	err = q.BeginTx(&sql.TxOptions{
+	err = q.BeginTx(tt.Ctx, &sql.TxOptions{
 		Isolation: sql.LevelRepeatableRead,
 		ReadOnly:  true,
 	})
 	assert.NoError(t, err)
-	defer q.Rollback()
+	defer q.Rollback(tt.Ctx)
 
-	assets, balances, err := q.AssetsForAddress(usdTrustLine.Data.TrustLine.AccountId.Address())
+	assets, balances, err := q.AssetsForAddress(tt.Ctx, usdTrustLine.Data.TrustLine.AccountId.Address())
 	tt.Assert.NoError(err)
 	tt.Assert.Empty(assets)
 	tt.Assert.Empty(balances)
 
-	assets, balances, err = q.AssetsForAddress(account1.Data.Account.AccountId.Address())
+	assets, balances, err = q.AssetsForAddress(tt.Ctx, account1.Data.Account.AccountId.Address())
 	tt.Assert.NoError(err)
 
 	assetsToBalance := map[string]xdr.Int64{}

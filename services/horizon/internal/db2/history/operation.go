@@ -2,6 +2,7 @@ package history
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"text/template"
 
@@ -54,7 +55,7 @@ WHERE ledger_sequence > $1 AND ledger_sequence <= $2`))
 // FeeStats returns operation fee stats for the last 5 ledgers.
 // Currently, we hard code the query to return the last 5 ledgers worth of transactions.
 // TODO: make the number of ledgers configurable.
-func (q *Q) FeeStats(currentSeq int32, dest *FeeStats) error {
+func (q *Q) FeeStats(ctx context.Context, currentSeq int32, dest *FeeStats) error {
 	percentiles := []int{10, 20, 30, 40, 50, 60, 70, 80, 90, 95, 99}
 
 	var buf bytes.Buffer
@@ -63,7 +64,7 @@ func (q *Q) FeeStats(currentSeq int32, dest *FeeStats) error {
 		return errors.Wrap(err, "error executing the query template")
 	}
 
-	return q.GetRaw(dest, buf.String(), currentSeq-5, currentSeq)
+	return q.GetRaw(ctx, dest, buf.String(), currentSeq-5, currentSeq)
 }
 
 // Operations provides a helper to filter the operations table with pre-defined
@@ -81,20 +82,20 @@ func (q *Q) Operations() *OperationsQ {
 }
 
 // OperationByID returns an Operation and optionally a Transaction given an operation id
-func (q *Q) OperationByID(includeTransactions bool, id int64) (Operation, *Transaction, error) {
+func (q *Q) OperationByID(ctx context.Context, includeTransactions bool, id int64) (Operation, *Transaction, error) {
 	sql := selectOperation.
 		Limit(1).
 		Where("hop.id = ?", id)
 
 	var operation Operation
-	err := q.Get(&operation, sql)
+	err := q.Get(ctx, &operation, sql)
 	if err != nil {
 		return operation, nil, err
 	}
 
 	if includeTransactions {
 		var transaction Transaction
-		if err = q.TransactionByHash(&transaction, operation.TransactionHash); err != nil {
+		if err = q.TransactionByHash(ctx, &transaction, operation.TransactionHash); err != nil {
 			return operation, nil, err
 		}
 
@@ -109,9 +110,9 @@ func (q *Q) OperationByID(includeTransactions bool, id int64) (Operation, *Trans
 }
 
 // ForAccount filters the operations collection to a specific account
-func (q *OperationsQ) ForAccount(aid string) *OperationsQ {
+func (q *OperationsQ) ForAccount(ctx context.Context, aid string) *OperationsQ {
 	var account Account
-	q.Err = q.parent.AccountByAddress(&account, aid)
+	q.Err = q.parent.AccountByAddress(ctx, &account, aid)
 	if q.Err != nil {
 		return q
 	}
@@ -129,9 +130,9 @@ func (q *OperationsQ) ForAccount(aid string) *OperationsQ {
 
 // ForClaimableBalance filters the query to only operations pertaining to a
 // claimable balance, specified by the claimable balance's hex-encoded id.
-func (q *OperationsQ) ForClaimableBalance(cbID xdr.ClaimableBalanceId) *OperationsQ {
+func (q *OperationsQ) ForClaimableBalance(ctx context.Context, cbID xdr.ClaimableBalanceId) *OperationsQ {
 	var hCB HistoryClaimableBalance
-	hCB, q.Err = q.parent.ClaimableBalanceByID(cbID)
+	hCB, q.Err = q.parent.ClaimableBalanceByID(ctx, cbID)
 	if q.Err != nil {
 		return q
 	}
@@ -149,9 +150,9 @@ func (q *OperationsQ) ForClaimableBalance(cbID xdr.ClaimableBalanceId) *Operatio
 
 // ForLedger filters the query to a only operations in a specific ledger,
 // specified by its sequence.
-func (q *OperationsQ) ForLedger(seq int32) *OperationsQ {
+func (q *OperationsQ) ForLedger(ctx context.Context, seq int32) *OperationsQ {
 	var ledger Ledger
-	q.Err = q.parent.LedgerBySequence(&ledger, seq)
+	q.Err = q.parent.LedgerBySequence(ctx, &ledger, seq)
 	if q.Err != nil {
 		return q
 	}
@@ -169,9 +170,9 @@ func (q *OperationsQ) ForLedger(seq int32) *OperationsQ {
 
 // ForTransaction filters the query to only operations in a specific
 // transaction, specified by the transactions's hex-encoded hash.
-func (q *OperationsQ) ForTransaction(hash string) *OperationsQ {
+func (q *OperationsQ) ForTransaction(ctx context.Context, hash string) *OperationsQ {
 	var tx Transaction
-	q.Err = q.parent.TransactionByHash(&tx, hash)
+	q.Err = q.parent.TransactionByHash(ctx, &tx, hash)
 	if q.Err != nil {
 		return q
 	}
@@ -225,7 +226,7 @@ func (q *OperationsQ) Page(page db2.PageQuery) *OperationsQ {
 }
 
 // Fetch returns results specified by a filtered operations query
-func (q *OperationsQ) Fetch() ([]Operation, []Transaction, error) {
+func (q *OperationsQ) Fetch(ctx context.Context) ([]Operation, []Transaction, error) {
 	if q.Err != nil {
 		return nil, nil, q.Err
 	}
@@ -237,7 +238,7 @@ func (q *OperationsQ) Fetch() ([]Operation, []Transaction, error) {
 
 	var operations []Operation
 	var transactions []Transaction
-	q.Err = q.parent.Select(&operations, q.sql)
+	q.Err = q.parent.Select(ctx, &operations, q.sql)
 	if q.Err != nil {
 		return nil, nil, q.Err
 	}
@@ -277,7 +278,7 @@ func (q *OperationsQ) Fetch() ([]Operation, []Transaction, error) {
 	}
 
 	if q.includeTransactions && len(transactionIDs) > 0 {
-		transactionsByID, err := q.parent.TransactionsByIDs(transactionIDs...)
+		transactionsByID, err := q.parent.TransactionsByIDs(ctx, transactionIDs...)
 		if err != nil {
 			return nil, nil, err
 		}

@@ -79,7 +79,7 @@ func TestGetOfferByIDHandler(t *testing.T) {
 	handler := GetOfferByID{}
 
 	ledgerCloseTime := time.Now().Unix()
-	_, err := q.InsertLedger(xdr.LedgerHeaderHistoryEntry{
+	_, err := q.InsertLedger(tt.Ctx, xdr.LedgerHeaderHistoryEntry{
 		Header: xdr.LedgerHeader{
 			LedgerSeq: 3,
 			ScpValue: xdr.StellarValue{
@@ -90,11 +90,11 @@ func TestGetOfferByIDHandler(t *testing.T) {
 	tt.Assert.NoError(err)
 
 	batch := q.NewOffersBatchInsertBuilder(0)
-	err = batch.Add(eurOffer)
+	err = batch.Add(tt.Ctx, eurOffer)
 	tt.Assert.NoError(err)
-	err = batch.Add(usdOffer)
+	err = batch.Add(tt.Ctx, usdOffer)
 	tt.Assert.NoError(err)
-	tt.Assert.NoError(batch.Exec())
+	tt.Assert.NoError(batch.Exec(tt.Ctx))
 
 	for _, testCase := range []struct {
 		name          string
@@ -190,7 +190,7 @@ func TestGetOffersHandler(t *testing.T) {
 	handler := GetOffersHandler{}
 
 	ledgerCloseTime := time.Now().Unix()
-	_, err := q.InsertLedger(xdr.LedgerHeaderHistoryEntry{
+	_, err := q.InsertLedger(tt.Ctx, xdr.LedgerHeaderHistoryEntry{
 		Header: xdr.LedgerHeader{
 			LedgerSeq: 3,
 			ScpValue: xdr.StellarValue{
@@ -201,13 +201,13 @@ func TestGetOffersHandler(t *testing.T) {
 	tt.Assert.NoError(err)
 
 	batch := q.NewOffersBatchInsertBuilder(0)
-	err = batch.Add(eurOffer)
+	err = batch.Add(tt.Ctx, eurOffer)
 	tt.Assert.NoError(err)
-	err = batch.Add(twoEurOffer)
+	err = batch.Add(tt.Ctx, twoEurOffer)
 	tt.Assert.NoError(err)
-	err = batch.Add(usdOffer)
+	err = batch.Add(tt.Ctx, usdOffer)
 	tt.Assert.NoError(err)
-	tt.Assert.NoError(batch.Exec())
+	tt.Assert.NoError(batch.Exec(tt.Ctx))
 
 	t.Run("No filter", func(t *testing.T) {
 		records, err := handler.GetResourcePage(
@@ -478,12 +478,12 @@ func TestGetAccountOffersHandler(t *testing.T) {
 	handler := GetAccountOffersHandler{}
 
 	batch := q.NewOffersBatchInsertBuilder(0)
-	err := batch.Add(eurOffer)
-	err = batch.Add(twoEurOffer)
+	err := batch.Add(tt.Ctx, eurOffer)
+	err = batch.Add(tt.Ctx, twoEurOffer)
 	tt.Assert.NoError(err)
-	err = batch.Add(usdOffer)
+	err = batch.Add(tt.Ctx, usdOffer)
 	tt.Assert.NoError(err)
-	tt.Assert.NoError(batch.Exec())
+	tt.Assert.NoError(batch.Exec(tt.Ctx))
 
 	records, err := handler.GetResourcePage(
 		httptest.NewRecorder(),

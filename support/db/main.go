@@ -92,38 +92,33 @@ type UpdateBuilder struct {
 }
 
 // Session provides helper methods for making queries against `DB` and provides
-// utilities such as automatic query logging and transaction management.  NOTE:
-// A Session is designed to be lightweight and temporarily lived (usually
-// request scoped) which is one reason it is acceptable for it to store a
-// context.  It is not presently intended to cross goroutine boundaries and is
-// not concurrency safe.
+// utilities such as automatic query logging and transaction management. NOTE:
+// Because transaction-handling is stateful, it is not presently intended to
+// cross goroutine boundaries and is not concurrency safe.
 type Session struct {
 	// DB is the database connection that queries should be executed against.
 	DB *sqlx.DB
-
-	// Ctx is the context in which the repo is operating under.
-	Ctx context.Context
 
 	tx        *sqlx.Tx
 	txOptions *sql.TxOptions
 }
 
 type SessionInterface interface {
-	BeginTx(opts *sql.TxOptions) error
-	Begin() error
-	Rollback() error
-	TruncateTables(tables []string) error
+	BeginTx(ctx context.Context, opts *sql.TxOptions) error
+	Begin(ctx context.Context) error
+	Rollback(ctx context.Context) error
+	TruncateTables(ctx context.Context, tables []string) error
 	Clone() *Session
 	Close() error
-	Get(dest interface{}, query squirrel.Sqlizer) error
-	GetRaw(dest interface{}, query string, args ...interface{}) error
-	Select(dest interface{}, query squirrel.Sqlizer) error
-	SelectRaw(dest interface{}, query string, args ...interface{}) error
+	Get(ctx context.Context, dest interface{}, query squirrel.Sqlizer) error
+	GetRaw(ctx context.Context, dest interface{}, query string, args ...interface{}) error
+	Select(ctx context.Context, dest interface{}, query squirrel.Sqlizer) error
+	SelectRaw(ctx context.Context, dest interface{}, query string, args ...interface{}) error
 	GetTable(name string) *Table
-	Exec(query squirrel.Sqlizer) (sql.Result, error)
-	ExecRaw(query string, args ...interface{}) (sql.Result, error)
+	Exec(ctx context.Context, query squirrel.Sqlizer) (sql.Result, error)
+	ExecRaw(ctx context.Context, query string, args ...interface{}) (sql.Result, error)
 	NoRows(err error) bool
-	Ping(timeout time.Duration) error
+	Ping(ctx context.Context, timeout time.Duration) error
 }
 
 // Table helps to build sql queries against a given table.  It logically
@@ -157,7 +152,7 @@ func Open(dialect, dsn string) (*Session, error) {
 		return nil, errors.Wrap(err, "ping failed")
 	}
 
-	return &Session{DB: db, Ctx: context.Background()}, nil
+	return &Session{DB: db}, nil
 }
 
 // Wrap wraps a bare *sql.DB (from the database/sql stdlib package) in a
@@ -165,7 +160,7 @@ func Open(dialect, dsn string) (*Session, error) {
 // control the instantiation of the database connection, but would still like to
 // leverage the facilities provided in Session.
 func Wrap(base *sql.DB, dialect string) *Session {
-	return &Session{DB: sqlx.NewDb(base, dialect), Ctx: context.Background()}
+	return &Session{DB: sqlx.NewDb(base, dialect)}
 }
 
 // ensure various types conform to Conn interface

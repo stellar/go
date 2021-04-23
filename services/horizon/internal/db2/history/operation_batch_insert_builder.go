@@ -1,6 +1,8 @@
 package history
 
 import (
+	"context"
+
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/xdr"
 )
@@ -9,6 +11,7 @@ import (
 // history_operations table
 type OperationBatchInsertBuilder interface {
 	Add(
+		ctx context.Context,
 		id int64,
 		transactionID int64,
 		applicationOrder uint32,
@@ -16,7 +19,7 @@ type OperationBatchInsertBuilder interface {
 		details []byte,
 		sourceAccount string,
 	) error
-	Exec() error
+	Exec(ctx context.Context) error
 }
 
 // operationBatchInsertBuilder is a simple wrapper around db.BatchInsertBuilder
@@ -36,6 +39,7 @@ func (q *Q) NewOperationBatchInsertBuilder(maxBatchSize int) OperationBatchInser
 
 // Add adds a transaction's operations to the batch
 func (i *operationBatchInsertBuilder) Add(
+	ctx context.Context,
 	id int64,
 	transactionID int64,
 	applicationOrder uint32,
@@ -43,7 +47,7 @@ func (i *operationBatchInsertBuilder) Add(
 	details []byte,
 	sourceAccount string,
 ) error {
-	return i.builder.Row(map[string]interface{}{
+	return i.builder.Row(ctx, map[string]interface{}{
 		"id":                id,
 		"transaction_id":    transactionID,
 		"application_order": applicationOrder,
@@ -54,6 +58,6 @@ func (i *operationBatchInsertBuilder) Add(
 
 }
 
-func (i *operationBatchInsertBuilder) Exec() error {
-	return i.builder.Exec()
+func (i *operationBatchInsertBuilder) Exec(ctx context.Context) error {
+	return i.builder.Exec(ctx)
 }

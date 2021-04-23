@@ -188,7 +188,7 @@ func NewSystem(config Config) (System, error) {
 	var ledgerBackend ledgerbackend.LedgerBackend
 	if config.EnableCaptiveCore {
 		if len(config.RemoteCaptiveCoreURL) > 0 {
-			ledgerBackend, err = ledgerbackend.NewRemoteCaptive(config.RemoteCaptiveCoreURL)
+			ledgerBackend, err = ledgerbackend.NewRemoteCaptive(ctx, config.RemoteCaptiveCoreURL)
 			if err != nil {
 				cancel()
 				return nil, errors.Wrap(err, "error creating captive core backend")
@@ -206,7 +206,7 @@ func NewSystem(config Config) (System, error) {
 					NetworkPassphrase:   config.NetworkPassphrase,
 					HistoryArchiveURLs:  []string{config.HistoryArchiveURL},
 					CheckpointFrequency: config.CheckpointFrequency,
-					LedgerHashStore:     ledgerbackend.NewHorizonDBLedgerHashStore(config.HistorySession),
+					LedgerHashStore:     ledgerbackend.NewHorizonDBLedgerHashStore(ctx, config.HistorySession),
 					Log:                 logger,
 					Context:             ctx,
 				},
@@ -218,8 +218,7 @@ func NewSystem(config Config) (System, error) {
 		}
 	} else {
 		coreSession := config.CoreSession.Clone()
-		coreSession.Ctx = ctx
-		ledgerBackend, err = ledgerbackend.NewDatabaseBackendFromSession(coreSession, config.NetworkPassphrase)
+		ledgerBackend, err = ledgerbackend.NewDatabaseBackendFromSession(ctx, coreSession, config.NetworkPassphrase)
 		if err != nil {
 			cancel()
 			return nil, errors.Wrap(err, "error creating ledger backend")
@@ -227,7 +226,6 @@ func NewSystem(config Config) (System, error) {
 	}
 
 	historyQ := &history.Q{config.HistorySession.Clone()}
-	historyQ.Ctx = ctx
 
 	historyAdapter := newHistoryArchiveAdapter(archive)
 
@@ -279,7 +277,7 @@ func (s *system) initMetrics() {
 			Help: "equals 1 if state invalid, 0 otherwise",
 		},
 		func() float64 {
-			invalid, err := s.historyQ.CloneIngestionQ().GetExpStateInvalid()
+			invalid, err := s.historyQ.CloneIngestionQ().GetExpStateInvalid(s.ctx)
 			if err != nil {
 				log.WithError(err).Error("Error in initMetrics/GetExpStateInvalid")
 				return 0
@@ -487,7 +485,7 @@ func (s *system) runStateMachine(cur stateMachineNode) error {
 }
 
 func (s *system) maybeVerifyState(lastIngestedLedger uint32) {
-	stateInvalid, err := s.historyQ.GetExpStateInvalid()
+	stateInvalid, err := s.historyQ.GetExpStateInvalid(s.ctx)
 	if err != nil && !isCancelledError(err) {
 		log.WithField("err", err).Error("Error getting state invalid value")
 	}
@@ -509,7 +507,7 @@ func (s *system) maybeVerifyState(lastIngestedLedger uint32) {
 				errorCount := s.incrementStateVerificationErrors()
 				switch errors.Cause(err).(type) {
 				case ingest.StateError:
-					markStateInvalid(s.historyQ, err)
+					markStateInvalid(s.ctx, s.historyQ, err)
 				default:
 					logger := log.WithField("err", err).Warn
 					if errorCount >= stateVerificationErrorThreshold {
@@ -572,10 +570,10 @@ func (s *system) Shutdown() {
 	}
 }
 
-func markStateInvalid(historyQ history.IngestionQ, err error) {
+func markStateInvalid(ctx context.Context, historyQ history.IngestionQ, err error) {
 	log.WithField("err", err).Error("STATE IS INVALID!")
 	q := historyQ.CloneIngestionQ()
-	if err := q.UpdateExpStateInvalid(true); err != nil {
+	if err := q.UpdateExpStateInvalid(ctx, true); err != nil {
 		log.WithField("err", err).Error(updateExpStateInvalidErrMsg)
 	}
 }

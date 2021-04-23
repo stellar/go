@@ -13,7 +13,7 @@ func TestGetLatestLedger(t *testing.T) {
 	tt.ScenarioWithoutHorizon("base")
 	defer tt.Finish()
 
-	backend, err := ledgerbackend.NewDatabaseBackendFromSession(tt.CoreSession(), network.TestNetworkPassphrase)
+	backend, err := ledgerbackend.NewDatabaseBackendFromSession(tt.Ctx, tt.CoreSession(), network.TestNetworkPassphrase)
 	tt.Assert.NoError(err)
 	seq, err := backend.GetLatestLedgerSequence()
 	tt.Assert.NoError(err)
@@ -28,7 +28,7 @@ func TestGetLatestLedgerNotFound(t *testing.T) {
 	_, err := tt.CoreDB.Exec(`DELETE FROM ledgerheaders`)
 	tt.Assert.NoError(err, "failed to remove ledgerheaders")
 
-	backend, err := ledgerbackend.NewDatabaseBackendFromSession(tt.CoreSession(), network.TestNetworkPassphrase)
+	backend, err := ledgerbackend.NewDatabaseBackendFromSession(tt.Ctx, tt.CoreSession(), network.TestNetworkPassphrase)
 	tt.Assert.NoError(err)
 	_, err = backend.GetLatestLedgerSequence()
 	tt.Assert.EqualError(err, "no ledgers exist in ledgerheaders table")

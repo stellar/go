@@ -1,6 +1,7 @@
 package ticker
 
 import (
+	"context"
 	"encoding/json"
 	"time"
 
@@ -40,8 +41,9 @@ func GenerateMarketSummary(s *tickerdb.TickerSession) (ms MarketSummary, err err
 	now := time.Now()
 	nowMillis := utils.TimeToUnixEpoch(now)
 	nowRFC339 := utils.TimeToRFC3339(now)
+	ctx := context.Background()
 
-	dbMarkets, err := s.RetrieveMarketData()
+	dbMarkets, err := s.RetrieveMarketData(ctx)
 	if err != nil {
 		return
 	}

@@ -1,16 +1,18 @@
 package history
 
 import (
+	"context"
+
 	sq "github.com/Masterminds/squirrel"
 
 	"github.com/stellar/go/support/errors"
 )
 
-func (q *Q) GetSequenceNumbers(addresses []string) (map[string]uint64, error) {
+func (q *Q) GetSequenceNumbers(ctx context.Context, addresses []string) (map[string]uint64, error) {
 	var accounts []AccountEntry
 	sql := sq.Select("account_id, sequence_number").From("accounts").
 		Where(map[string]interface{}{"accounts.account_id": addresses})
-	if err := q.Select(&accounts, sql); err != nil {
+	if err := q.Select(ctx, &accounts, sql); err != nil {
 		return nil, errors.Wrap(err, "could not query accounts")
 	}
 

@@ -1,6 +1,7 @@
 package history
 
 import (
+	"context"
 	"database/sql"
 	"encoding/base64"
 
@@ -31,7 +32,7 @@ func (trustLine TrustLine) IsClawbackEnabled() bool {
 
 // AssetsForAddress returns a list of assets and balances for those assets held by
 // a given address.
-func (q *Q) AssetsForAddress(addy string) ([]xdr.Asset, []xdr.Int64, error) {
+func (q *Q) AssetsForAddress(ctx context.Context, addy string) ([]xdr.Asset, []xdr.Int64, error) {
 	if tx := q.GetTx(); tx == nil {
 		return nil, nil, errors.New("cannot be called outside of a transaction")
 	}
@@ -39,7 +40,7 @@ func (q *Q) AssetsForAddress(addy string) ([]xdr.Asset, []xdr.Int64, error) {
 		return nil, nil, errors.New("should only be called in a repeatable read transaction")
 	}
 
-	account, err := q.GetAccountByID(addy)
+	account, err := q.GetAccountByID(ctx, addy)
 
 	if q.NoRows(err) {
 		// if there is no account for the given address then
@@ -50,7 +51,7 @@ func (q *Q) AssetsForAddress(addy string) ([]xdr.Asset, []xdr.Int64, error) {
 	}
 
 	var tls []TrustLine
-	err = q.Select(&tls, selectTrustLines.Where(sq.Eq{"account_id": addy}))
+	err = q.Select(ctx, &tls, selectTrustLines.Where(sq.Eq{"account_id": addy}))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -68,23 +69,23 @@ func (q *Q) AssetsForAddress(addy string) ([]xdr.Asset, []xdr.Int64, error) {
 	return assets, balances, err
 }
 
-func (q *Q) CountTrustLines() (int, error) {
+func (q *Q) CountTrustLines(ctx context.Context) (int, error) {
 	sql := sq.Select("count(*)").From("trust_lines")
 
 	var count int
-	if err := q.Get(&count, sql); err != nil {
+	if err := q.Get(ctx, &count, sql); err != nil {
 		return 0, errors.Wrap(err, "could not run select query")
 	}
 
 	return count, nil
 }
 
-func (q *Q) GetSortedTrustLinesByAccountID(id string) ([]TrustLine, error) {
-	return q.GetSortedTrustLinesByAccountIDs([]string{id})
+func (q *Q) GetSortedTrustLinesByAccountID(ctx context.Context, id string) ([]TrustLine, error) {
+	return q.GetSortedTrustLinesByAccountIDs(ctx, []string{id})
 }
 
 // GetTrustLinesByKeys loads a row from the `trust_lines` table, selected by multiple keys.
-func (q *Q) GetTrustLinesByKeys(keys []xdr.LedgerKeyTrustLine) ([]TrustLine, error) {
+func (q *Q) GetTrustLinesByKeys(ctx context.Context, keys []xdr.LedgerKeyTrustLine) ([]TrustLine, error) {
 	var trustLines []TrustLine
 	lkeys := make([]string, 0, len(keys))
 	for _, key := range keys {
@@ -95,13 +96,13 @@ func (q *Q) GetTrustLinesByKeys(keys []xdr.LedgerKeyTrustLine) ([]TrustLine, err
 		lkeys = append(lkeys, lkey)
 	}
 	sql := selectTrustLines.Where(map[string]interface{}{"trust_lines.ledger_key": lkeys})
-	err := q.Select(&trustLines, sql)
+	err := q.Select(ctx, &trustLines, sql)
 	return trustLines, err
 }
 
 // InsertTrustLine creates a row in the trust lines table.
 // Returns number of rows affected and error.
-func (q *Q) InsertTrustLine(entry xdr.LedgerEntry) (int64, error) {
+func (q *Q) InsertTrustLine(ctx context.Context, entry xdr.LedgerEntry) (int64, error) {
 	m := trustLineToMap(entry)
 
 	// Add lkey only when inserting rows
@@ -112,7 +113,7 @@ func (q *Q) InsertTrustLine(entry xdr.LedgerEntry) (int64, error) {
 	m["ledger_key"] = key
 
 	sql := sq.Insert("trust_lines").SetMap(m)
-	result, err := q.Exec(sql)
+	result, err := q.Exec(ctx, sql)
 	if err != nil {
 		return 0, err
 	}
@@ -122,7 +123,7 @@ func (q *Q) InsertTrustLine(entry xdr.LedgerEntry) (int64, error) {
 
 // UpdateTrustLine updates a row in the trust lines table.
 // Returns number of rows affected and error.
-func (q *Q) UpdateTrustLine(entry xdr.LedgerEntry) (int64, error) {
+func (q *Q) UpdateTrustLine(ctx context.Context, entry xdr.LedgerEntry) (int64, error) {
 	key, err := trustLineEntryToLedgerKeyString(entry)
 	if err != nil {
 		return 0, errors.Wrap(err, "Error running trustLineEntryToLedgerKeyString")
@@ -131,7 +132,7 @@ func (q *Q) UpdateTrustLine(entry xdr.LedgerEntry) (int64, error) {
 	sql := sq.Update("trust_lines").
 		SetMap(trustLineToMap(entry)).
 		Where(map[string]interface{}{"ledger_key": key})
-	result, err := q.Exec(sql)
+	result, err := q.Exec(ctx, sql)
 	if err != nil {
 		return 0, err
 	}
@@ -143,7 +144,7 @@ func (q *Q) UpdateTrustLine(entry xdr.LedgerEntry) (int64, error) {
 // There's currently no limit of the number of trust lines this method can
 // accept other than 2GB limit of the query string length what should be enough
 // for each ledger with the current limits.
-func (q *Q) UpsertTrustLines(trustLines []xdr.LedgerEntry) error {
+func (q *Q) UpsertTrustLines(ctx context.Context, trustLines []xdr.LedgerEntry) error {
 	var ledgerKey, accountID, assetIssuer, assetCode []string
 	var balance, limit, buyingLiabilities, sellingLiabilities []xdr.Int64
 	var flags, lastModifiedLedger []xdr.Uint32
@@ -220,7 +221,7 @@ func (q *Q) UpsertTrustLines(trustLines []xdr.LedgerEntry) error {
 		last_modified_ledger = excluded.last_modified_ledger,
 		sponsor = excluded.sponsor`
 
-	_, err := q.ExecRaw(sql,
+	_, err := q.ExecRaw(ctx, sql,
 		pq.Array(ledgerKey),
 		pq.Array(accountID),
 		pq.Array(assetType),
@@ -238,7 +239,7 @@ func (q *Q) UpsertTrustLines(trustLines []xdr.LedgerEntry) error {
 
 // RemoveTrustLine deletes a row in the trust lines table.
 // Returns number of rows affected and error.
-func (q *Q) RemoveTrustLine(ledgerKey xdr.LedgerKeyTrustLine) (int64, error) {
+func (q *Q) RemoveTrustLine(ctx context.Context, ledgerKey xdr.LedgerKeyTrustLine) (int64, error) {
 	key, err := ledgerKeyTrustLineToString(ledgerKey)
 	if err != nil {
 		return 0, errors.Wrap(err, "Error ledgerKeyTrustLineToString MarshalBinaryCompress")
@@ -246,7 +247,7 @@ func (q *Q) RemoveTrustLine(ledgerKey xdr.LedgerKeyTrustLine) (int64, error) {
 
 	sql := sq.Delete("trust_lines").
 		Where(map[string]interface{}{"ledger_key": key})
-	result, err := q.Exec(sql)
+	result, err := q.Exec(ctx, sql)
 	if err != nil {
 		return 0, err
 	}
@@ -255,10 +256,10 @@ func (q *Q) RemoveTrustLine(ledgerKey xdr.LedgerKeyTrustLine) (int64, error) {
 }
 
 // GetSortedTrustLinesByAccountIDs loads trust lines for a list of accounts ID, ordered by asset and issuer
-func (q *Q) GetSortedTrustLinesByAccountIDs(id []string) ([]TrustLine, error) {
+func (q *Q) GetSortedTrustLinesByAccountIDs(ctx context.Context, id []string) ([]TrustLine, error) {
 	var data []TrustLine
 	sql := selectTrustLines.Where(sq.Eq{"account_id": id}).OrderBy("asset_code", "asset_issuer")
-	err := q.Select(&data, sql)
+	err := q.Select(ctx, &data, sql)
 	return data, err
 }
 

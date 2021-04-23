@@ -3,6 +3,7 @@
 package processors
 
 import (
+	"context"
 	"encoding/json"
 	"testing"
 
@@ -17,6 +18,7 @@ import (
 
 type OperationsProcessorTestSuiteLedger struct {
 	suite.Suite
+	ctx                    context.Context
 	processor              *OperationProcessor
 	mockQ                  *history.MockQOperations
 	mockBatchInsertBuilder *history.MockOperationsBatchInsertBuilder
@@ -27,6 +29,7 @@ func TestOperationProcessorTestSuiteLedger(t *testing.T) {
 }
 
 func (s *OperationsProcessorTestSuiteLedger) SetupTest() {
+	s.ctx = context.Background()
 	s.mockQ = &history.MockQOperations{}
 	s.mockBatchInsertBuilder = &history.MockOperationsBatchInsertBuilder{}
 	s.mockQ.
@@ -64,6 +67,7 @@ func (s *OperationsProcessorTestSuiteLedger) mockBatchInsertAdds(txs []ingest.Le
 
 			s.mockBatchInsertBuilder.On(
 				"Add",
+				s.ctx,
 				expected.ID(),
 				expected.TransactionID(),
 				expected.Order(),
@@ -110,11 +114,11 @@ func (s *OperationsProcessorTestSuiteLedger) TestAddOperationSucceeds() {
 
 	err = s.mockBatchInsertAdds(txs, uint32(56))
 	s.Assert().NoError(err)
-	s.mockBatchInsertBuilder.On("Exec").Return(nil).Once()
-	s.Assert().NoError(s.processor.Commit())
+	s.mockBatchInsertBuilder.On("Exec", s.ctx).Return(nil).Once()
+	s.Assert().NoError(s.processor.Commit(s.ctx))
 
 	for _, tx := range txs {
-		err = s.processor.ProcessTransaction(tx)
+		err = s.processor.ProcessTransaction(s.ctx, tx)
 		s.Assert().NoError(err)
 	}
 }
@@ -124,7 +128,7 @@ func (s *OperationsProcessorTestSuiteLedger) TestAddOperationFails() {
 
 	s.mockBatchInsertBuilder.
 		On(
-			"Add",
+			"Add", s.ctx,
 			mock.Anything,
 			mock.Anything,
 			mock.Anything,
@@ -133,14 +137,14 @@ func (s *OperationsProcessorTestSuiteLedger) TestAddOperationFails() {
 			mock.Anything,
 		).Return(errors.New("transient error")).Once()
 
-	err := s.processor.ProcessTransaction(tx)
+	err := s.processor.ProcessTransaction(s.ctx, tx)
 	s.Assert().Error(err)
 	s.Assert().EqualError(err, "Error batch inserting operation rows: transient error")
 }
 
 func (s *OperationsProcessorTestSuiteLedger) TestExecFails() {
-	s.mockBatchInsertBuilder.On("Exec").Return(errors.New("transient error")).Once()
-	err := s.processor.Commit()
+	s.mockBatchInsertBuilder.On("Exec", s.ctx).Return(errors.New("transient error")).Once()
+	err := s.processor.Commit(s.ctx)
 	s.Assert().Error(err)
 	s.Assert().EqualError(err, "transient error")
 }

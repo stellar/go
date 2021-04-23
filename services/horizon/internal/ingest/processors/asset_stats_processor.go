@@ -1,6 +1,7 @@
 package processors
 
 import (
+	"context"
 	"database/sql"
 
 	"github.com/stellar/go/ingest"
@@ -39,12 +40,12 @@ func (p *AssetStatsProcessor) reset() {
 	p.assetStatSet = AssetStatSet{}
 }
 
-func (p *AssetStatsProcessor) ProcessChange(change ingest.Change) error {
+func (p *AssetStatsProcessor) ProcessChange(ctx context.Context, change ingest.Change) error {
 	if change.Type != xdr.LedgerEntryTypeClaimableBalance && change.Type != xdr.LedgerEntryTypeTrustline {
 		return nil
 	}
 	if p.useLedgerEntryCache {
-		return p.addToCache(change)
+		return p.addToCache(ctx, change)
 	}
 	if change.Pre != nil || change.Post == nil {
 		return errors.New("AssetStatsProcessor is in insert only mode")
@@ -60,14 +61,14 @@ func (p *AssetStatsProcessor) ProcessChange(change ingest.Change) error {
 	}
 }
 
-func (p *AssetStatsProcessor) addToCache(change ingest.Change) error {
+func (p *AssetStatsProcessor) addToCache(ctx context.Context, change ingest.Change) error {
 	err := p.cache.AddChange(change)
 	if err != nil {
 		return errors.Wrap(err, "error adding to ledgerCache")
 	}
 
 	if p.cache.Size() > maxBatchSize {
-		err = p.Commit()
+		err = p.Commit(ctx)
 		if err != nil {
 			return errors.Wrap(err, "error in Commit")
 		}
@@ -76,9 +77,9 @@ func (p *AssetStatsProcessor) addToCache(change ingest.Change) error {
 	return nil
 }
 
-func (p *AssetStatsProcessor) Commit() error {
+func (p *AssetStatsProcessor) Commit(ctx context.Context) error {
 	if !p.useLedgerEntryCache {
-		return p.assetStatsQ.InsertAssetStats(p.assetStatSet.All(), maxBatchSize)
+		return p.assetStatsQ.InsertAssetStats(ctx, p.assetStatSet.All(), maxBatchSize)
 	}
 
 	changes := p.cache.GetChanges()
@@ -104,7 +105,7 @@ func (p *AssetStatsProcessor) Commit() error {
 		var stat history.ExpAssetStat
 		var err error
 
-		stat, err = p.assetStatsQ.GetAssetStat(
+		stat, err = p.assetStatsQ.GetAssetStat(ctx,
 			delta.AssetType,
 			delta.AssetCode,
 			delta.AssetIssuer,
@@ -148,7 +149,7 @@ func (p *AssetStatsProcessor) Commit() error {
 
 			// Insert
 			var errInsert error
-			rowsAffected, errInsert = p.assetStatsQ.InsertAssetStat(delta)
+			rowsAffected, errInsert = p.assetStatsQ.InsertAssetStat(ctx, delta)
 			if errInsert != nil {
 				return errors.Wrap(errInsert, "could not insert asset stat")
 			}
@@ -176,7 +177,7 @@ func (p *AssetStatsProcessor) Commit() error {
 						delta.AssetIssuer,
 					))
 				}
-				rowsAffected, err = p.assetStatsQ.RemoveAssetStat(
+				rowsAffected, err = p.assetStatsQ.RemoveAssetStat(ctx,
 					delta.AssetType,
 					delta.AssetCode,
 					delta.AssetIssuer,
@@ -186,7 +187,7 @@ func (p *AssetStatsProcessor) Commit() error {
 				}
 			} else {
 				// Update
-				rowsAffected, err = p.assetStatsQ.UpdateAssetStat(history.ExpAssetStat{
+				rowsAffected, err = p.assetStatsQ.UpdateAssetStat(ctx, history.ExpAssetStat{
 					AssetType:   delta.AssetType,
 					AssetCode:   delta.AssetCode,
 					AssetIssuer: delta.AssetIssuer,

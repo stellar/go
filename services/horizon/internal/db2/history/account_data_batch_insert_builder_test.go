@@ -35,13 +35,13 @@ func TestDataBatchInsertBuilderAdd(t *testing.T) {
 
 	builder := q.NewAccountDataBatchInsertBuilder(2)
 
-	err := builder.Add(entry)
+	err := builder.Add(tt.Ctx, entry)
 	tt.Assert.NoError(err)
 
-	err = builder.Exec()
+	err = builder.Exec(tt.Ctx)
 	tt.Assert.NoError(err)
 
-	record, err := q.GetAccountDataByName(accountID.Address(), "foo")
+	record, err := q.GetAccountDataByName(tt.Ctx, accountID.Address(), "foo")
 	tt.Assert.NoError(err)
 
 	tt.Assert.Equal(data.DataName, xdr.String64(record.Name))

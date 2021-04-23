@@ -22,11 +22,11 @@ func TestTransactionQueries(t *testing.T) {
 	// Test TransactionByHash
 	var tx Transaction
 	real := "2374e99349b9ef7dba9a5db3339b78fda8f34777b1af33ba468ad5c0df946d4d"
-	err := q.TransactionByHash(&tx, real)
+	err := q.TransactionByHash(tt.Ctx, &tx, real)
 	tt.Assert.NoError(err)
 
 	fake := "not_real"
-	err = q.TransactionByHash(&tx, fake)
+	err = q.TransactionByHash(tt.Ctx, &tx, fake)
 	tt.Assert.Equal(err, sql.ErrNoRows)
 }
 
@@ -43,9 +43,9 @@ func TestTransactionSuccessfulOnly(t *testing.T) {
 
 	q := &Q{tt.HorizonSession()}
 	query := q.Transactions().
-		ForAccount("GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2")
+		ForAccount(tt.Ctx, "GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2")
 
-	err := query.Select(&transactions)
+	err := query.Select(tt.Ctx, &transactions)
 	tt.Assert.NoError(err)
 
 	tt.Assert.Equal(3, len(transactions))
@@ -70,10 +70,10 @@ func TestTransactionIncludeFailed(t *testing.T) {
 
 	q := &Q{tt.HorizonSession()}
 	query := q.Transactions().
-		ForAccount("GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2").
+		ForAccount(tt.Ctx, "GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2").
 		IncludeFailed()
 
-	err := query.Select(&transactions)
+	err := query.Select(tt.Ctx, &transactions)
 	tt.Assert.NoError(err)
 
 	var failed, successful int
@@ -108,10 +108,10 @@ func TestExtraChecksTransactionSuccessfulTrueResultFalse(t *testing.T) {
 
 	q := &Q{tt.HorizonSession()}
 	query := q.Transactions().
-		ForAccount("GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2").
+		ForAccount(tt.Ctx, "GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2").
 		IncludeFailed()
 
-	err = query.Select(&transactions)
+	err = query.Select(tt.Ctx, &transactions)
 	tt.Assert.Error(err)
 	tt.Assert.Contains(err.Error(), "Corrupted data! `successful=true` but returned transaction is not success")
 }
@@ -131,10 +131,10 @@ func TestExtraChecksTransactionSuccessfulFalseResultTrue(t *testing.T) {
 
 	q := &Q{tt.HorizonSession()}
 	query := q.Transactions().
-		ForAccount("GBXGQJWVLWOYHFLVTKWV5FGHA3LNYY2JQKM7OAJAUEQFU6LPCSEFVXON").
+		ForAccount(tt.Ctx, "GBXGQJWVLWOYHFLVTKWV5FGHA3LNYY2JQKM7OAJAUEQFU6LPCSEFVXON").
 		IncludeFailed()
 
-	err = query.Select(&transactions)
+	err = query.Select(tt.Ctx, &transactions)
 	tt.Assert.Error(err)
 	tt.Assert.Contains(err.Error(), "Corrupted data! `successful=false` but returned transaction is success")
 }
@@ -165,12 +165,12 @@ func TestInsertTransactionDoesNotAllowDuplicateIndex(t *testing.T) {
 		hash:          "7e2def20d5a21a56be2a457b648f702ee1af889d3df65790e92a05081e9fabf1",
 	})
 
-	tt.Assert.NoError(insertBuilder.Add(firstTransaction, sequence))
-	tt.Assert.NoError(insertBuilder.Exec())
+	tt.Assert.NoError(insertBuilder.Add(tt.Ctx, firstTransaction, sequence))
+	tt.Assert.NoError(insertBuilder.Exec(tt.Ctx))
 
-	tt.Assert.NoError(insertBuilder.Add(secondTransaction, sequence))
+	tt.Assert.NoError(insertBuilder.Add(tt.Ctx, secondTransaction, sequence))
 	tt.Assert.EqualError(
-		insertBuilder.Exec(),
+		insertBuilder.Exec(tt.Ctx),
 		"error adding values while inserting to history_transactions: "+
 			"exec failed: pq: duplicate key value violates unique constraint "+
 			"\"hs_transaction_by_id\"",
@@ -197,11 +197,11 @@ func TestInsertTransactionDoesNotAllowDuplicateIndex(t *testing.T) {
 	}
 	*ledger.SuccessfulTransactionCount = 12
 	*ledger.FailedTransactionCount = 3
-	_, err := q.Exec(sq.Insert("history_ledgers").SetMap(ledgerToMap(ledger)))
+	_, err := q.Exec(tt.Ctx, sq.Insert("history_ledgers").SetMap(ledgerToMap(ledger)))
 	tt.Assert.NoError(err)
 
 	var transactions []Transaction
-	tt.Assert.NoError(q.Transactions().Select(&transactions))
+	tt.Assert.NoError(q.Transactions().Select(tt.Ctx, &transactions))
 	tt.Assert.Len(transactions, 1)
 	tt.Assert.Equal(
 		"19aaa18db88605aedec04659fb45e06f240b022eb2d429e05133e4d53cd945ba",
@@ -237,7 +237,7 @@ func TestInsertTransaction(t *testing.T) {
 	}
 	*ledger.SuccessfulTransactionCount = 12
 	*ledger.FailedTransactionCount = 3
-	_, err := q.Exec(sq.Insert("history_ledgers").SetMap(ledgerToMap(ledger)))
+	_, err := q.Exec(tt.Ctx, sq.Insert("history_ledgers").SetMap(ledgerToMap(ledger)))
 	tt.Assert.NoError(err)
 
 	insertBuilder := q.NewTransactionBatchInsertBuilder(0)
@@ -692,11 +692,11 @@ func TestInsertTransaction(t *testing.T) {
 		},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
-			tt.Assert.NoError(insertBuilder.Add(testCase.toInsert, sequence))
-			tt.Assert.NoError(insertBuilder.Exec())
+			tt.Assert.NoError(insertBuilder.Add(tt.Ctx, testCase.toInsert, sequence))
+			tt.Assert.NoError(insertBuilder.Exec(tt.Ctx))
 
 			var transactions []Transaction
-			tt.Assert.NoError(q.Transactions().IncludeFailed().Select(&transactions))
+			tt.Assert.NoError(q.Transactions().IncludeFailed().Select(tt.Ctx, &transactions))
 			tt.Assert.Len(transactions, 1)
 
 			transaction := transactions[0]
@@ -712,7 +712,7 @@ func TestInsertTransaction(t *testing.T) {
 			tt.Assert.True(closedAt.Equal(testCase.expected.LedgerCloseTime))
 			tt.Assert.Equal(transaction, testCase.expected)
 
-			_, err = q.Exec(sq.Delete("history_transactions"))
+			_, err = q.Exec(tt.Ctx, sq.Delete("history_transactions"))
 			tt.Assert.NoError(err)
 		})
 	}
@@ -727,20 +727,20 @@ func TestFetchFeeBumpTransaction(t *testing.T) {
 	fixture := FeeBumpScenario(tt, q, true)
 
 	var byOuterhash, byInnerHash Transaction
-	tt.Assert.NoError(q.TransactionByHash(&byOuterhash, fixture.OuterHash))
-	tt.Assert.NoError(q.TransactionByHash(&byInnerHash, fixture.InnerHash))
+	tt.Assert.NoError(q.TransactionByHash(tt.Ctx, &byOuterhash, fixture.OuterHash))
+	tt.Assert.NoError(q.TransactionByHash(tt.Ctx, &byInnerHash, fixture.InnerHash))
 
 	tt.Assert.Equal(byOuterhash, byInnerHash)
 	tt.Assert.Equal(byOuterhash, fixture.Transaction)
 
 	outerOps, outerTransactions, err := q.Operations().IncludeTransactions().
-		ForTransaction(fixture.OuterHash).Fetch()
+		ForTransaction(tt.Ctx, fixture.OuterHash).Fetch(tt.Ctx)
 	tt.Assert.NoError(err)
 	tt.Assert.Len(outerTransactions, 1)
 	tt.Assert.Len(outerOps, 1)
 
 	innerOps, innerTransactions, err := q.Operations().IncludeTransactions().
-		ForTransaction(fixture.InnerHash).Fetch()
+		ForTransaction(tt.Ctx, fixture.InnerHash).Fetch(tt.Ctx)
 	tt.Assert.NoError(err)
 	tt.Assert.Len(innerTransactions, 1)
 	tt.Assert.Equal(innerOps, outerOps)
@@ -754,11 +754,11 @@ func TestFetchFeeBumpTransaction(t *testing.T) {
 	}
 
 	var outerEffects, innerEffects []Effect
-	err = q.Effects().ForTransaction(fixture.OuterHash).Select(&outerEffects)
+	err = q.Effects().ForTransaction(tt.Ctx, fixture.OuterHash).Select(tt.Ctx, &outerEffects)
 	tt.Assert.NoError(err)
 	tt.Assert.Len(outerEffects, 1)
 
-	err = q.Effects().ForTransaction(fixture.InnerHash).Select(&innerEffects)
+	err = q.Effects().ForTransaction(tt.Ctx, fixture.InnerHash).Select(tt.Ctx, &innerEffects)
 	tt.Assert.NoError(err)
 	tt.Assert.Equal(outerEffects, innerEffects)
 }

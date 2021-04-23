@@ -1,8 +1,9 @@
 package ledgerbackend
 
 import (
-	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/mock"
+
+	"github.com/stellar/go/xdr"
 )
 
 var _ LedgerBackend = (*MockDatabaseBackend)(nil)

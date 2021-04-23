@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -35,6 +36,7 @@ func (s *ServerTestSuite) SetupTest() {
 	s.server = httptest.NewServer(s.handler)
 	var err error
 	s.client, err = ledgerbackend.NewRemoteCaptive(
+		context.Background(),
 		s.server.URL,
 		ledgerbackend.PrepareRangePollInterval(time.Millisecond),
 	)

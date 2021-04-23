@@ -35,13 +35,14 @@ func (handler GetOfferByID) GetResource(w HeaderWriter, r *http.Request) (interf
 		return nil, err
 	}
 
-	record, err := historyQ.GetOfferByID(int64(qp.OfferID))
+	record, err := historyQ.GetOfferByID(r.Context(), int64(qp.OfferID))
 	if err != nil {
 		return nil, err
 	}
 
 	ledger := &history.Ledger{}
 	err = historyQ.LedgerBySequence(
+		r.Context(),
 		ledger,
 		int32(record.LastModifiedLedger),
 	)
@@ -181,7 +182,7 @@ func (handler GetAccountOffersHandler) GetResourcePage(
 }
 
 func getOffersPage(ctx context.Context, historyQ *history.Q, query history.OffersQuery) ([]hal.Pageable, error) {
-	records, err := historyQ.GetOffers(query)
+	records, err := historyQ.GetOffers(ctx, query)
 	if err != nil {
 		return nil, err
 	}
@@ -191,7 +192,7 @@ func getOffersPage(ctx context.Context, historyQ *history.Q, query history.Offer
 		ledgerCache.Queue(int32(record.LastModifiedLedger))
 	}
 
-	if err := ledgerCache.Load(historyQ); err != nil {
+	if err := ledgerCache.Load(ctx, historyQ); err != nil {
 		return nil, errors.Wrap(err, "failed to load ledger batch")
 	}
 

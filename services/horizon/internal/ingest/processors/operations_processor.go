@@ -1,6 +1,7 @@
 package processors
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -30,7 +31,7 @@ func NewOperationProcessor(operationsQ history.QOperations, sequence uint32) *Op
 }
 
 // ProcessTransaction process the given transaction
-func (p *OperationProcessor) ProcessTransaction(transaction ingest.LedgerTransaction) error {
+func (p *OperationProcessor) ProcessTransaction(ctx context.Context, transaction ingest.LedgerTransaction) error {
 	for i, op := range transaction.Envelope.Operations() {
 		operation := transactionOperationWrapper{
 			index:          uint32(i),
@@ -48,7 +49,7 @@ func (p *OperationProcessor) ProcessTransaction(transaction ingest.LedgerTransac
 			return errors.Wrapf(err, "Error marshaling details for operation %v", operation.ID())
 		}
 
-		if err := p.batch.Add(
+		if err := p.batch.Add(ctx,
 			operation.ID(),
 			operation.TransactionID(),
 			operation.Order(),
@@ -63,8 +64,8 @@ func (p *OperationProcessor) ProcessTransaction(transaction ingest.LedgerTransac
 	return nil
 }
 
-func (p *OperationProcessor) Commit() error {
-	return p.batch.Exec()
+func (p *OperationProcessor) Commit(ctx context.Context) error {
+	return p.batch.Exec(ctx)
 }
 
 // transactionOperationWrapper represents the data for a single operation within a transaction

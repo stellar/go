@@ -1,6 +1,7 @@
 package history
 
 import (
+	"context"
 	"fmt"
 	"math"
 
@@ -77,9 +78,9 @@ func (q *TradesQ) forAssetPair(baseAssetId int64, counterAssetId int64) *TradesQ
 }
 
 // ForAccount filter Trades by account id
-func (q *TradesQ) ForAccount(aid string) *TradesQ {
+func (q *TradesQ) ForAccount(ctx context.Context, aid string) *TradesQ {
 	var account Account
-	q.Err = q.parent.AccountByAddress(&account, aid)
+	q.Err = q.parent.AccountByAddress(ctx, &account, aid)
 	if q.Err != nil {
 		return q
 	}
@@ -89,7 +90,7 @@ func (q *TradesQ) ForAccount(aid string) *TradesQ {
 }
 
 // Page specifies the paging constraints for the query being built by `q`.
-func (q *TradesQ) Page(page db2.PageQuery) *TradesQ {
+func (q *TradesQ) Page(ctx context.Context, page db2.PageQuery) *TradesQ {
 	if q.Err != nil {
 		return q
 	}
@@ -119,8 +120,8 @@ func (q *TradesQ) Page(page db2.PageQuery) *TradesQ {
 			secondSelect = q.sql.Where("htrd.counter_offer_id = ?", q.forOfferID)
 		}
 
-		firstSelect = q.appendOrdering(firstSelect, op, idx, page.Order)
-		secondSelect = q.appendOrdering(secondSelect, op, idx, page.Order)
+		firstSelect = q.appendOrdering(ctx, firstSelect, op, idx, page.Order)
+		secondSelect = q.appendOrdering(ctx, secondSelect, op, idx, page.Order)
 
 		firstSQL, firstArgs, err := firstSelect.ToSql()
 		if err != nil {
@@ -149,13 +150,13 @@ func (q *TradesQ) Page(page db2.PageQuery) *TradesQ {
 		// Reset sql so it's not used accidentally
 		q.sql = sq.SelectBuilder{}
 	} else {
-		q.sql = q.appendOrdering(q.sql, op, idx, page.Order)
+		q.sql = q.appendOrdering(ctx, q.sql, op, idx, page.Order)
 		q.sql = q.sql.Limit(page.Limit)
 	}
 	return q
 }
 
-func (q *TradesQ) appendOrdering(sel sq.SelectBuilder, op, idx int64, order string) sq.SelectBuilder {
+func (q *TradesQ) appendOrdering(ctx context.Context, sel sq.SelectBuilder, op, idx int64, order string) sq.SelectBuilder {
 	// NOTE: Remember to test the queries below with EXPLAIN / EXPLAIN ANALYZE
 	// before changing them.
 	// This condition is using multicolumn index and it's easy to write it in a way that
@@ -185,7 +186,7 @@ func (q *TradesQ) appendOrdering(sel sq.SelectBuilder, op, idx int64, order stri
 }
 
 // Select loads the results of the query specified by `q` into `dest`.
-func (q *TradesQ) Select(dest interface{}) error {
+func (q *TradesQ) Select(ctx context.Context, dest interface{}) error {
 	if q.Err != nil {
 		return q.Err
 	}
@@ -195,9 +196,9 @@ func (q *TradesQ) Select(dest interface{}) error {
 	}
 
 	if q.rawSQL != "" {
-		q.Err = q.parent.SelectRaw(dest, q.rawSQL, q.rawArgs...)
+		q.Err = q.parent.SelectRaw(ctx, dest, q.rawSQL, q.rawArgs...)
 	} else {
-		q.Err = q.parent.Select(dest, q.sql)
+		q.Err = q.parent.Select(ctx, dest, q.sql)
 	}
 	return q.Err
 }
@@ -269,5 +270,5 @@ func getCanonicalAssetOrder(assetId1 int64, assetId2 int64) (orderPreserved bool
 type QTrades interface {
 	QCreateAccountsHistory
 	NewTradeBatchInsertBuilder(maxBatchSize int) TradeBatchInsertBuilder
-	CreateAssets(assets []xdr.Asset, maxBatchSize int) (map[string]Asset, error)
+	CreateAssets(ctx context.Context, assets []xdr.Asset, maxBatchSize int) (map[string]Asset, error)
 }
