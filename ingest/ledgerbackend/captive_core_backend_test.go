@@ -574,23 +574,22 @@ func TestCaptiveGetLedger(t *testing.T) {
 	}
 
 	// requires PrepareRange
-	_, _, err := captiveBackend.GetLedger(ctx, 64)
+	_, err := captiveBackend.GetLedgerBlocking(ctx, 64)
 	tt.EqualError(err, "session is closed, call PrepareRange first")
 
 	err = captiveBackend.PrepareRange(ctx, BoundedRange(65, 66))
 	assert.NoError(t, err)
 
-	_, _, err = captiveBackend.GetLedger(ctx, 64)
+	_, err = captiveBackend.GetLedgerBlocking(ctx, 64)
 	tt.Error(err, "requested ledger 64 is behind the captive core stream (expected=66)")
 
 	// reads value from buffer
-	found, meta, err := captiveBackend.GetLedger(ctx, 65)
+	meta, err := captiveBackend.GetLedgerBlocking(ctx, 65)
 	tt.NoError(err)
-	tt.True(found)
 	tt.Equal(xdr.Uint32(65), meta.V0.LedgerHeader.Header.LedgerSeq)
 
 	// reads value from cachedMeta
-	_, cachedMeta, err := captiveBackend.GetLedger(ctx, 65)
+	cachedMeta, err := captiveBackend.GetLedgerBlocking(ctx, 65)
 	tt.NoError(err)
 	tt.Equal(meta, cachedMeta)
 
@@ -601,14 +600,14 @@ func TestCaptiveGetLedger(t *testing.T) {
 		cancel()
 	}).Once()
 
-	_, _, err = captiveBackend.GetLedger(ctx, 66)
+	_, err = captiveBackend.GetLedgerBlocking(ctx, 66)
 	tt.NoError(err)
 
 	// closes after last ledger is consumed
 	tt.True(captiveBackend.isClosed())
 
 	// we should be able to call last ledger even after get ledger is closed
-	_, _, err = captiveBackend.GetLedger(ctx, 66)
+	_, err = captiveBackend.GetLedgerBlocking(ctx, 66)
 	tt.NoError(err)
 
 	mockArchive.AssertExpectations(t)
@@ -622,6 +621,8 @@ func TestCaptiveGetLedger(t *testing.T) {
 //
 // Before 3d97762 this test failed because cachedMeta was only updated when
 // the ledger with a requested sequence was reached while streaming meta.
+//
+// TODO: Not sure this test is really valid or worth it anymore, now that GetLedger is always blocking.
 func TestCaptiveGetLedgerCacheLatestLedger(t *testing.T) {
 	tt := assert.New(t)
 	metaChan := make(chan metaResult, 300)
@@ -666,15 +667,14 @@ func TestCaptiveGetLedgerCacheLatestLedger(t *testing.T) {
 	err := captiveBackend.PrepareRange(ctx, UnboundedRange(66))
 	assert.NoError(t, err)
 
-	found, _, err := captiveBackend.GetLedger(ctx, 68)
-	tt.NoError(err)
-	tt.False(found)
-	tt.Equal(uint32(67), captiveBackend.cachedMeta.LedgerSequence())
-	tt.Equal(uint32(68), captiveBackend.nextLedger)
+	// found, _, err := captiveBackend.GetLedger(ctx, 68)
+	// tt.NoError(err)
+	// tt.False(found)
+	// tt.Equal(uint32(67), captiveBackend.cachedMeta.LedgerSequence())
+	// tt.Equal(uint32(68), captiveBackend.nextLedger)
 
-	found, meta, err := captiveBackend.GetLedger(ctx, 67)
+	meta, err := captiveBackend.GetLedgerBlocking(ctx, 67)
 	tt.NoError(err)
-	tt.True(found)
 	tt.Equal(uint32(67), meta.LedgerSequence())
 
 	mockArchive.AssertExpectations(t)
@@ -722,7 +722,7 @@ func TestCaptiveGetLedger_NextLedgerIsDifferentToLedgerFromBuffer(t *testing.T) 
 	err := captiveBackend.PrepareRange(ctx, BoundedRange(65, 66))
 	assert.NoError(t, err)
 
-	_, _, err = captiveBackend.GetLedger(ctx, 66)
+	_, err = captiveBackend.GetLedgerBlocking(ctx, 66)
 	assert.EqualError(t, err, "unexpected ledger sequence (expected=66 actual=68)")
 
 	mockArchive.AssertExpectations(t)
@@ -813,13 +813,12 @@ func TestCaptiveGetLedger_ErrReadingMetaResult(t *testing.T) {
 	err := captiveBackend.PrepareRange(ctx, BoundedRange(65, 66))
 	assert.NoError(t, err)
 
-	found, meta, err := captiveBackend.GetLedger(ctx, 65)
+	meta, err := captiveBackend.GetLedgerBlocking(ctx, 65)
 	tt.NoError(err)
-	tt.True(found)
 	tt.Equal(xdr.Uint32(65), meta.V0.LedgerHeader.Header.LedgerSeq)
 
 	// try reading from an empty buffer
-	_, _, err = captiveBackend.GetLedger(ctx, 66)
+	_, err = captiveBackend.GetLedgerBlocking(ctx, 66)
 	tt.EqualError(err, "unmarshalling error")
 
 	// closes if there is an error getting ledger
@@ -865,7 +864,7 @@ func TestCaptiveGetLedger_ErrClosingAfterLastLedger(t *testing.T) {
 	err := captiveBackend.PrepareRange(ctx, BoundedRange(65, 66))
 	assert.NoError(t, err)
 
-	_, _, err = captiveBackend.GetLedger(ctx, 66)
+	_, err = captiveBackend.GetLedgerBlocking(ctx, 66)
 	tt.EqualError(err, "error closing session: transient error")
 
 	mockArchive.AssertExpectations(t)
@@ -911,7 +910,7 @@ func TestCaptiveAfterClose(t *testing.T) {
 
 	assert.NoError(t, captiveBackend.Close())
 
-	_, _, err = captiveBackend.GetLedger(ctx, boundedRange.to)
+	_, err = captiveBackend.GetLedgerBlocking(ctx, boundedRange.to)
 	assert.EqualError(t, err, "session is closed, call PrepareRange first")
 
 	var prepared bool
@@ -960,18 +959,16 @@ func TestGetLedgerBoundsCheck(t *testing.T) {
 	err := captiveBackend.PrepareRange(ctx, BoundedRange(128, 130))
 	assert.NoError(t, err)
 
-	exists, meta, err := captiveBackend.GetLedger(ctx, 128)
+	meta, err := captiveBackend.GetLedgerBlocking(ctx, 128)
 	assert.NoError(t, err)
-	assert.True(t, exists)
 	assert.Equal(t, uint32(128), meta.LedgerSequence())
 
 	prev := meta
-	exists, meta, err = captiveBackend.GetLedger(ctx, 128)
+	meta, err = captiveBackend.GetLedgerBlocking(ctx, 128)
 	assert.NoError(t, err)
-	assert.True(t, exists)
 	assert.Equal(t, prev, meta)
 
-	_, _, err = captiveBackend.GetLedger(ctx, 64)
+	_, err = captiveBackend.GetLedgerBlocking(ctx, 64)
 	assert.EqualError(t, err, "requested ledger 64 is behind the captive core stream (expected=129)")
 
 	mockArchive.AssertExpectations(t)
@@ -1064,12 +1061,11 @@ func TestCaptiveGetLedgerTerminatedUnexpectedly(t *testing.T) {
 			err := captiveBackend.PrepareRange(ctx, BoundedRange(64, 100))
 			assert.NoError(t, err)
 
-			exists, meta, err := captiveBackend.GetLedger(ctx, 64)
+			meta, err := captiveBackend.GetLedgerBlocking(ctx, 64)
 			assert.NoError(t, err)
-			assert.True(t, exists)
 			assert.Equal(t, uint32(64), meta.LedgerSequence())
 
-			_, _, err = captiveBackend.GetLedger(ctx, 65)
+			_, err = captiveBackend.GetLedgerBlocking(ctx, 65)
 			assert.EqualError(t, err, testCase.expectedError)
 
 			mockArchive.AssertExpectations(t)
@@ -1316,14 +1312,13 @@ func TestCaptivePreviousLedgerCheck(t *testing.T) {
 	err := captiveBackend.PrepareRange(ctx, UnboundedRange(300))
 	assert.NoError(t, err)
 
-	exists, meta, err := captiveBackend.GetLedger(ctx, 300)
+	meta, err := captiveBackend.GetLedgerBlocking(ctx, 300)
 	assert.NoError(t, err)
-	assert.True(t, exists)
 	assert.NotNil(t, captiveBackend.previousLedgerHash)
 	assert.Equal(t, uint32(301), captiveBackend.nextLedger)
 	assert.Equal(t, meta.LedgerHash().HexString(), *captiveBackend.previousLedgerHash)
 
-	_, _, err = captiveBackend.GetLedger(ctx, 301)
+	_, err = captiveBackend.GetLedgerBlocking(ctx, 301)
 	assert.EqualError(t, err, "unexpected previous ledger hash for ledger 301 (expected=6f00000000000000000000000000000000000000000000000000000000000000 actual=0000000000000000000000000000000000000000000000000000000000000000)")
 
 	mockRunner.AssertExpectations(t)

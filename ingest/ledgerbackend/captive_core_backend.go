@@ -400,11 +400,7 @@ func (c *CaptiveStellarCore) PrepareRange(ctx context.Context, ledgerRange Range
 		return nil
 	}
 
-	old := c.isBlocking()
-	c.setBlocking(true)
-	_, _, err := c.GetLedger(ctx, ledgerRange.from)
-	c.setBlocking(old)
-
+	_, err := c.GetLedgerBlocking(ctx, ledgerRange.from)
 	if err != nil {
 		return errors.Wrapf(err, "Error fast-forwarding to %d", ledgerRange.from)
 	}

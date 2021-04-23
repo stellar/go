@@ -102,8 +102,8 @@ func (s *APITestSuite) TestGetLedgerError() {
 	s.waitUntilReady(ledgerbackend.UnboundedRange(63))
 
 	expectedErr := fmt.Errorf("test error")
-	s.ledgerBackend.On("GetLedger", s.ctx, uint32(64)).
-		Return(false, xdr.LedgerCloseMeta{}, expectedErr).Once()
+	s.ledgerBackend.On("GetLedgerBlocking", s.ctx, uint32(64)).
+		Return(xdr.LedgerCloseMeta{}, expectedErr).Once()
 
 	_, err := s.api.GetLedger(s.ctx, 64)
 	s.Assert().Equal(err, expectedErr)
@@ -131,8 +131,8 @@ func (s *APITestSuite) TestGetLedgerSucceeds() {
 			},
 		},
 	}
-	s.ledgerBackend.On("GetLedger", s.ctx, uint32(64)).
-		Return(true, expectedLedger, nil).Once()
+	s.ledgerBackend.On("GetLedgerBlocking", s.ctx, uint32(64)).
+		Return(expectedLedger, nil).Once()
 	seq, err := s.api.GetLedger(s.ctx, 64)
 
 	s.Assert().NoError(err)

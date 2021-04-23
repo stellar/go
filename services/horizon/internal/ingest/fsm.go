@@ -656,13 +656,9 @@ func (h reingestHistoryRangeState) ingestRange(s *system, fromLedger, toLedger u
 	}
 
 	for cur := fromLedger; cur <= toLedger; cur++ {
-		exists, ledgerCloseMeta, err := s.ledgerBackend.GetLedger(s.ctx, cur)
+		ledgerCloseMeta, err := s.ledgerBackend.GetLedgerBlocking(s.ctx, cur)
 		if err != nil {
 			return errors.Wrap(err, "error getting ledger")
-		}
-
-		if !exists {
-			return errors.New("error getting ledger: ledger does not exist")
 		}
 
 		if err = runTransactionProcessorsOnLedger(s, ledgerCloseMeta); err != nil {
@@ -833,13 +829,9 @@ func (v verifyRangeState) run(s *system) (transition, error) {
 	log.WithField("ledger", v.fromLedger).Info("Processing state")
 	startTime = time.Now()
 
-	exists, ledgerCloseMeta, err := s.ledgerBackend.GetLedger(s.ctx, v.fromLedger)
+	ledgerCloseMeta, err := s.ledgerBackend.GetLedgerBlocking(s.ctx, v.fromLedger)
 	if err != nil {
 		return stop(), errors.Wrap(err, "error getting ledger")
-	}
-
-	if !exists {
-		return stop(), errors.New("error getting ledger: ledger does not exist")
 	}
 
 	stats, err := s.runner.RunHistoryArchiveIngestion(
@@ -878,15 +870,10 @@ func (v verifyRangeState) run(s *system) (transition, error) {
 			return stop(), err
 		}
 
-		var exists bool
 		var ledgerCloseMeta xdr.LedgerCloseMeta
-		exists, ledgerCloseMeta, err = s.ledgerBackend.GetLedger(s.ctx, sequence)
+		ledgerCloseMeta, err = s.ledgerBackend.GetLedgerBlocking(s.ctx, sequence)
 		if err != nil {
 			return stop(), errors.Wrap(err, "error getting ledger")
-		}
-
-		if !exists {
-			return stop(), errors.New("error getting ledger: ledger does not exist")
 		}
 
 		var changeStats ingest.StatsChangeProcessorResults
@@ -959,13 +946,9 @@ func (stressTestState) run(s *system) (transition, error) {
 	}).Info("Processing ledger")
 	startTime := time.Now()
 
-	exists, ledgerCloseMeta, err := s.ledgerBackend.GetLedger(s.ctx, sequence)
+	ledgerCloseMeta, err := s.ledgerBackend.GetLedgerBlocking(s.ctx, sequence)
 	if err != nil {
 		return stop(), errors.Wrap(err, "error getting ledger")
-	}
-
-	if !exists {
-		return stop(), errors.New("error getting ledger: ledger does not exist")
 	}
 
 	changeStats, _, ledgerTransactionStats, _, err := s.runner.RunAllProcessorsOnLedger(ledgerCloseMeta)

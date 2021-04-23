@@ -66,11 +66,7 @@ func main() {
 
   // then retrieve it:
   ctx := context.Background()
-  ok, ledger, err := ledgerbackend.GetLedger(ctx, 123456)
-  if !ok {
-    err = fmt.Errorf("The ledger doesn't exist on the backend.")
-  }
-
+  ledger, err := ledgerbackend.GetLedgerBlocking(ctx, 123456)
   panicIf(err)
 
   // Now `ledger` is a raw `xdr.LedgerCloseMeta` object containing the

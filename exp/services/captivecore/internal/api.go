@@ -174,12 +174,14 @@ func (c *CaptiveCoreAPI) GetLedger(ctx context.Context, sequence uint32) (ledger
 		return ledgerbackend.LedgerResponse{}, ErrPrepareRangeNotReady
 	}
 
-	present, ledger, err := c.core.GetLedger(ctx, sequence)
+	ledger, err := c.core.GetLedgerBlocking(ctx, sequence)
 	if err != nil {
 		c.activeRequest.valid = false
 	}
+	// TODO: We are always true here now, so this changes the semantics of this
+	// call a bit. We need to change the client to long-poll this endpoint.
 	return ledgerbackend.LedgerResponse{
-		Present: present,
+		Present: true,
 		Ledger:  ledgerbackend.Base64Ledger(ledger),
 	}, err
 }

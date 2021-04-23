@@ -407,7 +407,7 @@ func (s *ReingestHistoryRangeStateTestSuite) TestRunTransactionProcessorsOnLedge
 			},
 		},
 	}
-	s.ledgerBackend.On("GetLedger", s.ctx, uint32(100)).Return(true, meta, nil).Once()
+	s.ledgerBackend.On("GetLedgerBlocking", s.ctx, uint32(100)).Return(meta, nil).Once()
 
 	s.runner.On("RunTransactionProcessorsOnLedger", meta).
 		Return(
@@ -443,7 +443,7 @@ func (s *ReingestHistoryRangeStateTestSuite) TestCommitFails() {
 			},
 		},
 	}
-	s.ledgerBackend.On("GetLedger", s.ctx, uint32(100)).Return(true, meta, nil).Once()
+	s.ledgerBackend.On("GetLedgerBlocking", s.ctx, uint32(100)).Return(meta, nil).Once()
 
 	s.runner.On("RunTransactionProcessorsOnLedger", meta).Return(
 		processors.StatsLedgerTransactionProcessorResults{},
@@ -482,7 +482,7 @@ func (s *ReingestHistoryRangeStateTestSuite) TestSuccess() {
 				},
 			},
 		}
-		s.ledgerBackend.On("GetLedger", s.ctx, uint32(i)).Return(true, meta, nil).Once()
+		s.ledgerBackend.On("GetLedgerBlocking", s.ctx, uint32(i)).Return(meta, nil).Once()
 
 		s.runner.On("RunTransactionProcessorsOnLedger", meta).Return(
 			processors.StatsLedgerTransactionProcessorResults{},
@@ -528,7 +528,7 @@ func (s *ReingestHistoryRangeStateTestSuite) TestSuccessOneLedger() {
 	// Recreate mock in this single test to remove previous assertion.
 	*s.ledgerBackend = mockLedgerBackend{}
 	s.ledgerBackend.On("PrepareRange", s.ctx, ledgerbackend.BoundedRange(100, 100)).Return(nil).Once()
-	s.ledgerBackend.On("GetLedger", s.ctx, uint32(100)).Return(true, meta, nil).Once()
+	s.ledgerBackend.On("GetLedgerBlocking", s.ctx, uint32(100)).Return(meta, nil).Once()
 
 	err := s.system.ReingestRange(100, 100, false)
 	s.Assert().NoError(err)
@@ -562,7 +562,7 @@ func (s *ReingestHistoryRangeStateTestSuite) TestReingestRangeForce() {
 				},
 			},
 		}
-		s.ledgerBackend.On("GetLedger", s.ctx, uint32(i)).Return(true, meta, nil).Once()
+		s.ledgerBackend.On("GetLedgerBlocking", s.ctx, uint32(i)).Return(meta, nil).Once()
 
 		s.runner.On("RunTransactionProcessorsOnLedger", meta).Return(
 			processors.StatsLedgerTransactionProcessorResults{},

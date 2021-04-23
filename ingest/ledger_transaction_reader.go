@@ -22,13 +22,9 @@ type LedgerTransactionReader struct {
 // NewLedgerTransactionReader creates a new TransactionReader instance.
 // Note that TransactionReader is not thread safe and should not be shared by multiple goroutines.
 func NewLedgerTransactionReader(ctx context.Context, backend ledgerbackend.LedgerBackend, networkPassphrase string, sequence uint32) (*LedgerTransactionReader, error) {
-	exists, ledgerCloseMeta, err := backend.GetLedger(ctx, sequence)
+	ledgerCloseMeta, err := backend.GetLedgerBlocking(ctx, sequence)
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting ledger from the backend")
-	}
-
-	if !exists {
-		return nil, ErrNotFound
 	}
 
 	return NewLedgerTransactionReaderFromLedgerCloseMeta(networkPassphrase, ledgerCloseMeta)

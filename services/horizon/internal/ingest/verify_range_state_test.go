@@ -157,7 +157,7 @@ func (s *VerifyRangeStateTestSuite) TestRunHistoryArchiveIngestionReturnsError()
 			},
 		},
 	}
-	s.ledgerBackend.On("GetLedger", s.ctx, uint32(100)).Return(true, meta, nil).Once()
+	s.ledgerBackend.On("GetLedgerBlocking", s.ctx, uint32(100)).Return(meta, nil).Once()
 	s.runner.On("RunHistoryArchiveIngestion", uint32(100), MaxSupportedProtocolVersion, xdr.Hash{1, 2, 3}).Return(ingest.StatsChangeProcessorResults{}, errors.New("my error")).Once()
 
 	next, err := verifyRangeState{fromLedger: 100, toLedger: 200}.run(s.system)
@@ -185,7 +185,7 @@ func (s *VerifyRangeStateTestSuite) TestSuccess() {
 			},
 		},
 	}
-	s.ledgerBackend.On("GetLedger", s.ctx, uint32(100)).Return(true, meta, nil).Once()
+	s.ledgerBackend.On("GetLedgerBlocking", s.ctx, uint32(100)).Return(meta, nil).Once()
 	s.runner.On("RunHistoryArchiveIngestion", uint32(100), MaxSupportedProtocolVersion, xdr.Hash{1, 2, 3}).Return(ingest.StatsChangeProcessorResults{}, nil).Once()
 
 	s.historyQ.On("UpdateLastLedgerIngest", s.ctx, uint32(100)).Return(nil).Once()
@@ -203,7 +203,7 @@ func (s *VerifyRangeStateTestSuite) TestSuccess() {
 				},
 			},
 		}
-		s.ledgerBackend.On("GetLedger", s.ctx, uint32(i)).Return(true, meta, nil).Once()
+		s.ledgerBackend.On("GetLedgerBlocking", s.ctx, uint32(i)).Return(meta, nil).Once()
 
 		s.runner.On("RunAllProcessorsOnLedger", meta).Return(
 			ingest.StatsChangeProcessorResults{},
@@ -240,7 +240,7 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 			},
 		},
 	}
-	s.ledgerBackend.On("GetLedger", s.ctx, uint32(100)).Return(true, meta, nil).Once()
+	s.ledgerBackend.On("GetLedgerBlocking", s.ctx, uint32(100)).Return(meta, nil).Once()
 	s.runner.On("RunHistoryArchiveIngestion", uint32(100), MaxSupportedProtocolVersion, xdr.Hash{1, 2, 3}).Return(ingest.StatsChangeProcessorResults{}, nil).Once()
 
 	s.historyQ.On("UpdateLastLedgerIngest", s.ctx, uint32(100)).Return(nil).Once()
@@ -258,7 +258,7 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 				},
 			},
 		}
-		s.ledgerBackend.On("GetLedger", s.ctx, uint32(i)).Return(true, meta, nil).Once()
+		s.ledgerBackend.On("GetLedgerBlocking", s.ctx, uint32(i)).Return(meta, nil).Once()
 
 		s.runner.On("RunAllProcessorsOnLedger", meta).Return(
 			ingest.StatsChangeProcessorResults{},

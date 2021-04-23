@@ -48,23 +48,15 @@ func NewDatabaseBackendFromSession(session *db.Session, networkPassphrase string
 }
 
 func (dbb *DatabaseBackend) PrepareRange(ctx context.Context, ledgerRange Range) error {
-	fromExists, _, err := dbb.GetLedger(ctx, ledgerRange.from)
+	_, err := dbb.GetLedgerBlocking(ctx, ledgerRange.from)
 	if err != nil {
 		return errors.Wrap(err, "error getting ledger")
 	}
 
-	if !fromExists {
-		return errors.New("`from` ledger does not exist")
-	}
-
 	if ledgerRange.bounded {
-		toExists, _, err := dbb.GetLedger(ctx, ledgerRange.to)
+		_, err := dbb.GetLedgerBlocking(ctx, ledgerRange.to)
 		if err != nil {
 			return errors.Wrap(err, "error getting ledger")
-		}
-
-		if !toExists {
-			return errors.New("`to` ledger does not exist")
 		}
 	}
 
