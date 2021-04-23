@@ -11,10 +11,8 @@ type LedgerBackend interface {
 	// GetLatestLedgerSequence returns the sequence of the latest ledger available
 	// in the backend.
 	GetLatestLedgerSequence(ctx context.Context) (sequence uint32, err error)
-	// The first returned value is false when the ledger does not exist in a backend.
-	GetLedger(ctx context.Context, sequence uint32) (bool, xdr.LedgerCloseMeta, error)
-	// Works like GetLedger but will block until the ledger is available.
-	GetLedgerBlocking(ctx context.Context, sequence uint32) (xdr.LedgerCloseMeta, error)
+	// GetLedger will block until the ledger is available.
+	GetLedger(ctx context.Context, sequence uint32) (xdr.LedgerCloseMeta, error)
 	// PrepareRange prepares the given range (including from and to) to be loaded.
 	// Some backends (like captive stellar-core) need to initalize data to be
 	// able to stream ledgers. Blocks until the first ledger is available.

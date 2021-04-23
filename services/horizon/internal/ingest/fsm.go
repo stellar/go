@@ -251,7 +251,7 @@ func (b buildState) run(s *system) (transition, error) {
 
 		log.WithField("ledger", b.checkpointLedger).Info("Waiting for ledger to be available in the backend...")
 		startTime := time.Now()
-		ledgerCloseMeta, err = s.ledgerBackend.GetLedgerBlocking(s.ctx, b.checkpointLedger)
+		ledgerCloseMeta, err = s.ledgerBackend.GetLedger(s.ctx, b.checkpointLedger)
 		if err != nil {
 			return nextFailState, errors.Wrap(err, "error getting ledger blocking")
 		}
@@ -379,7 +379,7 @@ func (r resumeState) run(s *system) (transition, error) {
 
 	log.WithField("ledger", ingestLedger).Info("Waiting for ledger to be available in the backend...")
 	startTime := time.Now()
-	ledgerCloseMeta, err := s.ledgerBackend.GetLedgerBlocking(s.ctx, ingestLedger)
+	ledgerCloseMeta, err := s.ledgerBackend.GetLedger(s.ctx, ingestLedger)
 	if err != nil {
 		return start(), errors.Wrap(err, "error getting ledger blocking")
 	}
@@ -565,7 +565,7 @@ func (h historyRangeState) run(s *system) (transition, error) {
 		log.WithField("ledger", cur).Info("Waiting for ledger to be available in the backend...")
 		startTime := time.Now()
 
-		ledgerCloseMeta, err = s.ledgerBackend.GetLedgerBlocking(s.ctx, cur)
+		ledgerCloseMeta, err = s.ledgerBackend.GetLedger(s.ctx, cur)
 		if err != nil {
 			// Commit finished work in case of ledger backend error.
 			commitErr := s.historyQ.Commit(s.ctx)
@@ -656,7 +656,7 @@ func (h reingestHistoryRangeState) ingestRange(s *system, fromLedger, toLedger u
 	}
 
 	for cur := fromLedger; cur <= toLedger; cur++ {
-		ledgerCloseMeta, err := s.ledgerBackend.GetLedgerBlocking(s.ctx, cur)
+		ledgerCloseMeta, err := s.ledgerBackend.GetLedger(s.ctx, cur)
 		if err != nil {
 			return errors.Wrap(err, "error getting ledger")
 		}
@@ -829,7 +829,7 @@ func (v verifyRangeState) run(s *system) (transition, error) {
 	log.WithField("ledger", v.fromLedger).Info("Processing state")
 	startTime = time.Now()
 
-	ledgerCloseMeta, err := s.ledgerBackend.GetLedgerBlocking(s.ctx, v.fromLedger)
+	ledgerCloseMeta, err := s.ledgerBackend.GetLedger(s.ctx, v.fromLedger)
 	if err != nil {
 		return stop(), errors.Wrap(err, "error getting ledger")
 	}
@@ -871,7 +871,7 @@ func (v verifyRangeState) run(s *system) (transition, error) {
 		}
 
 		var ledgerCloseMeta xdr.LedgerCloseMeta
-		ledgerCloseMeta, err = s.ledgerBackend.GetLedgerBlocking(s.ctx, sequence)
+		ledgerCloseMeta, err = s.ledgerBackend.GetLedger(s.ctx, sequence)
 		if err != nil {
 			return stop(), errors.Wrap(err, "error getting ledger")
 		}
@@ -946,7 +946,7 @@ func (stressTestState) run(s *system) (transition, error) {
 	}).Info("Processing ledger")
 	startTime := time.Now()
 
-	ledgerCloseMeta, err := s.ledgerBackend.GetLedgerBlocking(s.ctx, sequence)
+	ledgerCloseMeta, err := s.ledgerBackend.GetLedger(s.ctx, sequence)
 	if err != nil {
 		return stop(), errors.Wrap(err, "error getting ledger")
 	}

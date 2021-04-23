@@ -66,7 +66,7 @@ func main() {
 
   // then retrieve it:
   ctx := context.Background()
-  ledger, err := ledgerbackend.GetLedgerBlocking(ctx, 123456)
+  ledger, err := ledgerbackend.GetLedger(ctx, 123456)
   panicIf(err)
 
   // Now `ledger` is a raw `xdr.LedgerCloseMeta` object containing the

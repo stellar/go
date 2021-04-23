@@ -365,12 +365,7 @@ func (m *mockLedgerBackend) GetLatestLedgerSequence(ctx context.Context) (sequen
 	return args.Get(0).(uint32), args.Error(1)
 }
 
-func (m *mockLedgerBackend) GetLedger(ctx context.Context, sequence uint32) (bool, xdr.LedgerCloseMeta, error) {
-	args := m.Called(ctx, sequence)
-	return args.Get(0).(bool), args.Get(1).(xdr.LedgerCloseMeta), args.Error(2)
-}
-
-func (m *mockLedgerBackend) GetLedgerBlocking(ctx context.Context, sequence uint32) (xdr.LedgerCloseMeta, error) {
+func (m *mockLedgerBackend) GetLedger(ctx context.Context, sequence uint32) (xdr.LedgerCloseMeta, error) {
 	args := m.Called(ctx, sequence)
 	return args.Get(0).(xdr.LedgerCloseMeta), args.Error(1)
 }

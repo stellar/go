@@ -114,7 +114,7 @@ func (s *DBTestSuite) setupMocksForBuildState() {
 		Return(checkpointHash, nil).Once()
 
 	s.ledgerBackend.On("IsPrepared", s.ctx, ledgerbackend.UnboundedRange(s.sequence)).Return(true, nil).Once()
-	s.ledgerBackend.On("GetLedgerBlocking", s.ctx, s.sequence).
+	s.ledgerBackend.On("GetLedger", s.ctx, s.sequence).
 		Return(
 			xdr.LedgerCloseMeta{
 				V0: &xdr.LedgerCloseMetaV0{

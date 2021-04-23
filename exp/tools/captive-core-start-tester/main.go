@@ -44,7 +44,7 @@ func check(ledger uint32) bool {
 		return false
 	}
 
-	meta, err := c.GetLedgerBlocking(ctx, ledger)
+	meta, err := c.GetLedger(ctx, ledger)
 	if err != nil {
 		fmt.Println(err)
 		return false

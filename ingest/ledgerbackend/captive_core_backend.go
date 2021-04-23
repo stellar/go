@@ -400,7 +400,7 @@ func (c *CaptiveStellarCore) PrepareRange(ctx context.Context, ledgerRange Range
 		return nil
 	}
 
-	_, err := c.GetLedgerBlocking(ctx, ledgerRange.from)
+	_, err := c.GetLedger(ctx, ledgerRange.from)
 	if err != nil {
 		return errors.Wrapf(err, "Error fast-forwarding to %d", ledgerRange.from)
 	}
@@ -450,14 +450,14 @@ func (c *CaptiveStellarCore) isPrepared(ledgerRange Range) bool {
 	return false
 }
 
-// GetLedgerBlocking works as GetLedger but will block until the ledger is
-// available in the backend (even for UnboundedRange).
-// Please note that requesting a ledger sequence far after current ledger will
-// block the execution for a long time.
-func (c *CaptiveStellarCore) GetLedgerBlocking(ctx context.Context, sequence uint32) (xdr.LedgerCloseMeta, error) {
+// GetLedger will block until the ledger is available in the backend
+// (even for UnboundedRange).
+// Please note that requesting a ledger sequence far after current
+// ledger will block the execution for a long time.
+func (c *CaptiveStellarCore) GetLedger(ctx context.Context, sequence uint32) (xdr.LedgerCloseMeta, error) {
 	old := c.isBlocking()
 	c.setBlocking(true)
-	_, meta, err := c.GetLedger(ctx, sequence)
+	_, meta, err := c.getLedgerAsync(ctx, sequence)
 	c.setBlocking(old)
 	return meta, err
 }
@@ -479,7 +479,7 @@ func (c *CaptiveStellarCore) GetLedgerBlocking(ctx context.Context, sequence uin
 //   * UnboundedRange makes GetLedger non-blocking. The method will return with
 //     the first argument equal false.
 // This is done to provide maximum performance when streaming old ledgers.
-func (c *CaptiveStellarCore) GetLedger(ctx context.Context, sequence uint32) (bool, xdr.LedgerCloseMeta, error) {
+func (c *CaptiveStellarCore) getLedgerAsync(ctx context.Context, sequence uint32) (bool, xdr.LedgerCloseMeta, error) {
 	c.stellarCoreLock.RLock()
 	defer c.stellarCoreLock.RUnlock()
 

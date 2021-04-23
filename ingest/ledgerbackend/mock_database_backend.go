@@ -29,12 +29,7 @@ func (m *MockDatabaseBackend) IsPrepared(ctx context.Context, ledgerRange Range)
 	return args.Bool(0), args.Error(1)
 }
 
-func (m *MockDatabaseBackend) GetLedger(ctx context.Context, sequence uint32) (bool, xdr.LedgerCloseMeta, error) {
-	args := m.Called(ctx, sequence)
-	return args.Bool(0), args.Get(1).(xdr.LedgerCloseMeta), args.Error(2)
-}
-
-func (m *MockDatabaseBackend) GetLedgerBlocking(ctx context.Context, sequence uint32) (xdr.LedgerCloseMeta, error) {
+func (m *MockDatabaseBackend) GetLedger(ctx context.Context, sequence uint32) (xdr.LedgerCloseMeta, error) {
 	args := m.Called(ctx, sequence)
 	return args.Get(0).(xdr.LedgerCloseMeta), args.Error(1)
 }

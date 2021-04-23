@@ -54,7 +54,7 @@ func (s *ResumeTestTestSuite) SetupTest() {
 
 	s.ledgerBackend.On("IsPrepared", s.ctx, ledgerbackend.UnboundedRange(101)).Return(false, nil).Once()
 	s.ledgerBackend.On("PrepareRange", s.ctx, ledgerbackend.UnboundedRange(101)).Return(nil).Once()
-	s.ledgerBackend.On("GetLedgerBlocking", s.ctx, uint32(101)).Return(xdr.LedgerCloseMeta{
+	s.ledgerBackend.On("GetLedger", s.ctx, uint32(101)).Return(xdr.LedgerCloseMeta{
 		V0: &xdr.LedgerCloseMetaV0{
 			LedgerHeader: xdr.LedgerHeaderHistoryEntry{
 				Header: xdr.LedgerHeader{
@@ -114,7 +114,7 @@ func (s *ResumeTestTestSuite) TestRangeNotPreparedSuccessPrepareGetLedgerFail() 
 
 	s.ledgerBackend.On("IsPrepared", s.ctx, ledgerbackend.UnboundedRange(101)).Return(false, nil).Once()
 	s.ledgerBackend.On("PrepareRange", s.ctx, ledgerbackend.UnboundedRange(101)).Return(nil).Once()
-	s.ledgerBackend.On("GetLedgerBlocking", s.ctx, uint32(101)).Return(xdr.LedgerCloseMeta{}, errors.New("my error")).Once()
+	s.ledgerBackend.On("GetLedger", s.ctx, uint32(101)).Return(xdr.LedgerCloseMeta{}, errors.New("my error")).Once()
 
 	next, err := resumeState{latestSuccessfullyProcessedLedger: 100}.run(s.system)
 	s.Assert().Error(err)
@@ -293,7 +293,7 @@ func (s *ResumeTestTestSuite) TestBumpIngestLedger() {
 
 	s.ledgerBackend.On("IsPrepared", s.ctx, ledgerbackend.UnboundedRange(100)).Return(false, nil).Once()
 	s.ledgerBackend.On("PrepareRange", s.ctx, ledgerbackend.UnboundedRange(100)).Return(nil).Once()
-	s.ledgerBackend.On("GetLedgerBlocking", s.ctx, uint32(100)).Return(xdr.LedgerCloseMeta{
+	s.ledgerBackend.On("GetLedger", s.ctx, uint32(100)).Return(xdr.LedgerCloseMeta{
 		V0: &xdr.LedgerCloseMetaV0{
 			LedgerHeader: xdr.LedgerHeaderHistoryEntry{
 				Header: xdr.LedgerHeader{

@@ -174,7 +174,7 @@ func (c *CaptiveCoreAPI) GetLedger(ctx context.Context, sequence uint32) (ledger
 		return ledgerbackend.LedgerResponse{}, ErrPrepareRangeNotReady
 	}
 
-	ledger, err := c.core.GetLedgerBlocking(ctx, sequence)
+	ledger, err := c.core.GetLedger(ctx, sequence)
 	if err != nil {
 		c.activeRequest.valid = false
 	}

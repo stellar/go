@@ -129,10 +129,10 @@ func (s *ServerTestSuite) TestGetLedgerError() {
 	s.api.activeRequest.ready = true
 
 	expectedErr := fmt.Errorf("test error")
-	s.ledgerBackend.On("GetLedgerBlocking", mock.Anything, uint32(64)).
+	s.ledgerBackend.On("GetLedger", mock.Anything, uint32(64)).
 		Return(xdr.LedgerCloseMeta{}, expectedErr).Once()
 
-	_, err := s.client.GetLedgerBlocking(s.ctx, 64)
+	_, err := s.client.GetLedger(s.ctx, 64)
 	s.Assert().EqualError(err, "test error")
 }
 
@@ -149,10 +149,10 @@ func (s *ServerTestSuite) TestGetLedgerSucceeds() {
 			},
 		},
 	}
-	s.ledgerBackend.On("GetLedgerBlocking", mock.Anything, uint32(64)).
+	s.ledgerBackend.On("GetLedger", mock.Anything, uint32(64)).
 		Return(expectedLedger, nil).Once()
 
-	ledger, err := s.client.GetLedgerBlocking(s.ctx, 64)
+	ledger, err := s.client.GetLedger(s.ctx, 64)
 	s.Assert().NoError(err)
 	s.Assert().Equal(expectedLedger, ledger)
 }

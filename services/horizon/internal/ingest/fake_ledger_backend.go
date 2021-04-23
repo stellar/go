@@ -100,7 +100,7 @@ func fakeOffer(offerID int64) xdr.LedgerEntryChange {
 	}
 }
 
-func (f fakeLedgerBackend) GetLedger(ctx context.Context, sequence uint32) (bool, xdr.LedgerCloseMeta, error) {
+func (f fakeLedgerBackend) getLedgerAsync(ctx context.Context, sequence uint32) (bool, xdr.LedgerCloseMeta, error) {
 	ledgerCloseMeta := xdr.LedgerCloseMeta{
 		V0: &xdr.LedgerCloseMetaV0{
 			LedgerHeader: xdr.LedgerHeaderHistoryEntry{
@@ -201,8 +201,8 @@ func (f fakeLedgerBackend) GetLedger(ctx context.Context, sequence uint32) (bool
 	return true, ledgerCloseMeta, nil
 }
 
-func (f *fakeLedgerBackend) GetLedgerBlocking(ctx context.Context, sequence uint32) (xdr.LedgerCloseMeta, error) {
-	_, meta, err := f.GetLedger(ctx, sequence)
+func (f *fakeLedgerBackend) GetLedger(ctx context.Context, sequence uint32) (xdr.LedgerCloseMeta, error) {
+	_, meta, err := f.getLedgerAsync(ctx, sequence)
 	return meta, err
 }
 

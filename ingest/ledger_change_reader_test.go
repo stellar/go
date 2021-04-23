@@ -23,7 +23,7 @@ func TestNewLedgerChangeReaderFails(t *testing.T) {
 	ctx := context.Background()
 	mock := &ledgerbackend.MockDatabaseBackend{}
 	seq := uint32(123)
-	mock.On("GetLedgerBlocking", ctx, seq).Return(
+	mock.On("GetLedger", ctx, seq).Return(
 		xdr.LedgerCloseMeta{},
 		fmt.Errorf("ledger error"),
 	).Once()
@@ -47,7 +47,7 @@ func TestNewLedgerChangeReaderSucceeds(t *testing.T) {
 		},
 	}
 
-	mock.On("GetLedgerBlocking", ctx, seq).Return(
+	mock.On("GetLedger", ctx, seq).Return(
 		xdr.LedgerCloseMeta{
 			V0: &xdr.LedgerCloseMetaV0{
 				LedgerHeader: header,
@@ -222,7 +222,7 @@ func TestLedgerChangeReaderOrder(t *testing.T) {
 			},
 		},
 	}
-	mock.On("GetLedgerBlocking", ctx, seq).Return(ledger, nil).Once()
+	mock.On("GetLedger", ctx, seq).Return(ledger, nil).Once()
 
 	assertChangesEqual(t, ctx, seq, mock, []balanceEntry{
 		{feeAddress, 100},
@@ -240,7 +240,7 @@ func TestLedgerChangeReaderOrder(t *testing.T) {
 	mock.AssertExpectations(t)
 
 	ledger.V0.LedgerHeader.Header.LedgerVersion = 8
-	mock.On("GetLedgerBlocking", ctx, seq).Return(ledger, nil).Once()
+	mock.On("GetLedger", ctx, seq).Return(ledger, nil).Once()
 	_, err = NewLedgerChangeReader(ctx, mock, network.TestNetworkPassphrase, seq)
 	assert.EqualError(
 		t,
@@ -253,7 +253,7 @@ func TestLedgerChangeReaderOrder(t *testing.T) {
 	ledger.V0.LedgerHeader.Header.LedgerVersion = 9
 	ledger.V0.TxProcessing[0].FeeProcessing = xdr.LedgerEntryChanges{}
 	ledger.V0.TxProcessing[1].FeeProcessing = xdr.LedgerEntryChanges{}
-	mock.On("GetLedgerBlocking", ctx, seq).Return(ledger, nil).Once()
+	mock.On("GetLedger", ctx, seq).Return(ledger, nil).Once()
 
 	assertChangesEqual(t, ctx, seq, mock, []balanceEntry{
 		{metaAddress, 300},
@@ -270,7 +270,7 @@ func TestLedgerChangeReaderOrder(t *testing.T) {
 	ledger.V0.LedgerHeader.Header.LedgerVersion = 10
 	ledger.V0.TxProcessing[0].FeeProcessing = xdr.LedgerEntryChanges{}
 	ledger.V0.TxProcessing[1].FeeProcessing = xdr.LedgerEntryChanges{}
-	mock.On("GetLedgerBlocking", ctx, seq).Return(ledger, nil).Once()
+	mock.On("GetLedger", ctx, seq).Return(ledger, nil).Once()
 
 	assertChangesEqual(t, ctx, seq, mock, []balanceEntry{
 		{metaAddress, 300},
@@ -292,7 +292,7 @@ func TestLedgerChangeReaderOrder(t *testing.T) {
 			Changes: xdr.LedgerEntryChanges{},
 		},
 	}
-	mock.On("GetLedgerBlocking", ctx, seq).Return(ledger, nil).Once()
+	mock.On("GetLedger", ctx, seq).Return(ledger, nil).Once()
 
 	assertChangesEqual(t, ctx, seq, mock, []balanceEntry{
 		{metaAddress, 300},
@@ -316,7 +316,7 @@ func TestLedgerChangeReaderOrder(t *testing.T) {
 			Operations: []xdr.OperationMeta{},
 		},
 	}
-	mock.On("GetLedgerBlocking", ctx, seq).Return(ledger, nil).Once()
+	mock.On("GetLedger", ctx, seq).Return(ledger, nil).Once()
 
 	assertChangesEqual(t, ctx, seq, mock, []balanceEntry{})
 	mock.AssertExpectations(t)

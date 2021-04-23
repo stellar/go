@@ -18,7 +18,7 @@ func helloworld() {
 	panicIf(err)
 
 	// then retrieve it:
-	ledger, err := backend.GetLedgerBlocking(ctx, 123456)
+	ledger, err := backend.GetLedger(ctx, 123456)
 	panicIf(err)
 
 	// Now `ledger` is a raw `xdr.LedgerCloseMeta` object containing the
