@@ -92,7 +92,7 @@ func NewRemoteCaptive(captiveCoreURL string, options ...RemoteCaptiveOption) (Re
 	client := RemoteCaptiveStellarCore{
 		prepareRangePollInterval: time.Second,
 		url:                      u,
-		client:                   &http.Client{Timeout: 5 * time.Second},
+		client:                   &http.Client{Timeout: 10 * time.Second},
 		lock:                     &sync.Mutex{},
 	}
 	for _, option := range options {
@@ -262,6 +262,13 @@ func (c RemoteCaptiveStellarCore) GetLedger(ctx context.Context, sequence uint32
 		response, err := c.client.Do(request)
 		if err != nil {
 			return xdr.LedgerCloseMeta{}, errors.Wrap(err, "failed to execute request")
+		}
+
+		// TODO: Check this is the right status code we'll get back.
+		if response.StatusCode == http.StatusRequestTimeout {
+			response.Body.Close()
+			// This request timed out. Retry.
+			continue
 		}
 
 		var parsed LedgerResponse
