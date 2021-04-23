@@ -120,7 +120,7 @@ func sortByHash(transactions []xdr.TransactionEnvelope, passphrase string) error
 // block the execution for a long time.
 func (dbb *DatabaseBackend) GetLedger(ctx context.Context, sequence uint32) (xdr.LedgerCloseMeta, error) {
 	for {
-		exists, meta, err := dbb.getLedgerAsync(ctx, sequence)
+		exists, meta, err := dbb.getLedgerQuery(ctx, sequence)
 		if err != nil {
 			return xdr.LedgerCloseMeta{}, err
 		}
@@ -133,9 +133,9 @@ func (dbb *DatabaseBackend) GetLedger(ctx context.Context, sequence uint32) (xdr
 	}
 }
 
-// GetLedger returns the LedgerCloseMeta for the given ledger sequence number.
+// getLedgerQuery returns the LedgerCloseMeta for the given ledger sequence number.
 // The first returned value is false when the ledger does not exist in the database.
-func (dbb *DatabaseBackend) getLedgerAsync(ctx context.Context, sequence uint32) (bool, xdr.LedgerCloseMeta, error) {
+func (dbb *DatabaseBackend) getLedgerQuery(ctx context.Context, sequence uint32) (bool, xdr.LedgerCloseMeta, error) {
 	lcm := xdr.LedgerCloseMeta{
 		V0: &xdr.LedgerCloseMetaV0{},
 	}

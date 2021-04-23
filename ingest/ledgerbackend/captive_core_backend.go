@@ -451,50 +451,38 @@ func (c *CaptiveStellarCore) isPrepared(ledgerRange Range) bool {
 }
 
 // GetLedger will block until the ledger is available in the backend
-// (even for UnboundedRange).
-// Please note that requesting a ledger sequence far after current
-// ledger will block the execution for a long time.
-func (c *CaptiveStellarCore) GetLedger(ctx context.Context, sequence uint32) (xdr.LedgerCloseMeta, error) {
-	old := c.isBlocking()
-	c.setBlocking(true)
-	_, meta, err := c.getLedgerAsync(ctx, sequence)
-	c.setBlocking(old)
-	return meta, err
-}
-
-// GetLedger returns true when ledger is found and it's LedgerCloseMeta.
-// Call PrepareRange first to instruct the backend which ledgers to fetch.
+// (even for UnboundedRange), then return it's LedgerCloseMeta.
 //
+// Call PrepareRange first to instruct the backend which ledgers to fetch.
 // CaptiveStellarCore requires PrepareRange call first to initialize Stellar-Core.
 // Requesting a ledger on non-prepared backend will return an error.
 //
-// Because data is streamed from Stellar-Core ledger after ledger user should
+// Please note that requesting a ledger sequence far after current
+// ledger will block the execution for a long time.
+//
+// Because ledger data is streamed from Stellar-Core sequentially, users should
 // request sequences in a non-decreasing order. If the requested sequence number
 // is less than the last requested sequence number, an error will be returned.
 //
 // This function behaves differently for bounded and unbounded ranges:
-//   * BoundedRange makes GetLedger blocking if the requested ledger is not yet
-//     available in the ledger. After getting the last ledger in a range this
-//     method will also Close() the backend.
-//   * UnboundedRange makes GetLedger non-blocking. The method will return with
-//     the first argument equal false.
-// This is done to provide maximum performance when streaming old ledgers.
-func (c *CaptiveStellarCore) getLedgerAsync(ctx context.Context, sequence uint32) (bool, xdr.LedgerCloseMeta, error) {
+//   * BoundedRange: After getting the last ledger in a range this method will
+//     also Close() the backend.
+func (c *CaptiveStellarCore) GetLedger(ctx context.Context, sequence uint32) (xdr.LedgerCloseMeta, error) {
 	c.stellarCoreLock.RLock()
 	defer c.stellarCoreLock.RUnlock()
 
 	if c.cachedMeta != nil && sequence == c.cachedMeta.LedgerSequence() {
 		// GetLedger can be called multiple times using the same sequence, ex. to create
 		// change and transaction readers. If we have this ledger buffered, let's return it.
-		return true, *c.cachedMeta, nil
+		return *c.cachedMeta, nil
 	}
 
 	if c.isClosed() {
-		return false, xdr.LedgerCloseMeta{}, errors.New("session is closed, call PrepareRange first")
+		return xdr.LedgerCloseMeta{}, errors.New("session is closed, call PrepareRange first")
 	}
 
 	if sequence < c.nextLedger {
-		return false, xdr.LedgerCloseMeta{}, errors.Errorf(
+		return xdr.LedgerCloseMeta{}, errors.Errorf(
 			"requested ledger %d is behind the captive core stream (expected=%d)",
 			sequence,
 			c.nextLedger,
@@ -502,7 +490,7 @@ func (c *CaptiveStellarCore) getLedgerAsync(ctx context.Context, sequence uint32
 	}
 
 	if c.lastLedger != nil && sequence > *c.lastLedger {
-		return false, xdr.LedgerCloseMeta{}, errors.Errorf(
+		return xdr.LedgerCloseMeta{}, errors.Errorf(
 			"reading past bounded range (requested sequence=%d, last ledger in range=%d)",
 			sequence,
 			*c.lastLedger,
@@ -511,17 +499,13 @@ func (c *CaptiveStellarCore) getLedgerAsync(ctx context.Context, sequence uint32
 
 	// Now loop along the range until we find the ledger we want.
 	for {
-		if !c.isBlocking() && len(c.stellarCoreRunner.getMetaPipe()) == 0 {
-			return false, xdr.LedgerCloseMeta{}, nil
-		}
-
 		select {
 		case <-ctx.Done():
-			return false, xdr.LedgerCloseMeta{}, ctx.Err()
+			return xdr.LedgerCloseMeta{}, ctx.Err()
 		case result, ok := <-c.stellarCoreRunner.getMetaPipe():
 			found, ledger, err := c.handleMetaPipeResult(sequence, result, ok)
 			if found || err != nil {
-				return found, ledger, err
+				return ledger, err
 			}
 		}
 	}

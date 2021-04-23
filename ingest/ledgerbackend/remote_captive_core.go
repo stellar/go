@@ -209,8 +209,8 @@ func (c RemoteCaptiveStellarCore) PrepareRange(ctx context.Context, ledgerRange 
 
 // IsPrepared returns true if a given ledgerRange is prepared.
 func (c RemoteCaptiveStellarCore) IsPrepared(ctx context.Context, ledgerRange Range) (bool, error) {
-	// TODO: Have a context on this request so we can cancel all outstanding
-	// requests, not just PrepareRange.
+	// TODO: Have some way to cancel all outstanding requests, not just
+	// PrepareRange.
 	u := *c.url
 	u.Path = path.Join(u.Path, "prepare-range")
 	rangeBytes, err := json.Marshal(ledgerRange)
@@ -238,57 +238,37 @@ func (c RemoteCaptiveStellarCore) IsPrepared(ctx context.Context, ledgerRange Ra
 	return parsed.Ready, nil
 }
 
-// GetLedger returns true when ledger is found and it's LedgerCloseMeta.
+// GetLedger long-polls a remote stellar core backend, until the requested
+// ledger is ready.
+
 // Call PrepareRange first to instruct the backend which ledgers to fetch.
 //
-// CaptiveStellarCore requires PrepareRange call first to initialize Stellar-Core.
 // Requesting a ledger on non-prepared backend will return an error.
 //
 // Because data is streamed from Stellar-Core ledger after ledger user should
 // request sequences in a non-decreasing order. If the requested sequence number
 // is less than the last requested sequence number, an error will be returned.
-//
-// This function behaves differently for bounded and unbounded ranges:
-//   * BoundedRange makes GetLedger blocking if the requested ledger is not yet
-//     available in the ledger. After getting the last ledger in a range this
-//     method will also Close() the backend.
-//   * UnboundedRange makes GetLedger non-blocking. The method will return with
-//     the first argument equal false.
-// This is done to provide maximum performance when streaming old ledgers.
-func (c RemoteCaptiveStellarCore) getLedgerAsync(ctx context.Context, sequence uint32) (bool, xdr.LedgerCloseMeta, error) {
-	// TODO: Have a context on this request so we can cancel all outstanding
-	// requests, not just PrepareRange.
-	u := *c.url
-	u.Path = path.Join(u.Path, "ledger", strconv.FormatUint(uint64(sequence), 10))
-	request, err := http.NewRequestWithContext(ctx, "GET", u.String(), nil)
-	if err != nil {
-		return false, xdr.LedgerCloseMeta{}, errors.Wrap(err, "cannot construct http request")
-	}
-
-	response, err := c.client.Do(request)
-	if err != nil {
-		return false, xdr.LedgerCloseMeta{}, errors.Wrap(err, "failed to execute request")
-	}
-
-	var parsed LedgerResponse
-	if err = decodeResponse(response, &parsed); err != nil {
-		return false, xdr.LedgerCloseMeta{}, err
-	}
-
-	return parsed.Present, xdr.LedgerCloseMeta(parsed.Ledger), nil
-}
-
 func (c RemoteCaptiveStellarCore) GetLedger(ctx context.Context, sequence uint32) (xdr.LedgerCloseMeta, error) {
 	for {
-		exists, meta, err := c.getLedgerAsync(ctx, sequence)
+		// TODO: Have some way to cancel all outstanding requests, not just
+		// PrepareRange.
+		u := *c.url
+		u.Path = path.Join(u.Path, "ledger", strconv.FormatUint(uint64(sequence), 10))
+		request, err := http.NewRequestWithContext(ctx, "GET", u.String(), nil)
 		if err != nil {
+			return xdr.LedgerCloseMeta{}, errors.Wrap(err, "cannot construct http request")
+		}
+
+		response, err := c.client.Do(request)
+		if err != nil {
+			return xdr.LedgerCloseMeta{}, errors.Wrap(err, "failed to execute request")
+		}
+
+		var parsed LedgerResponse
+		if err = decodeResponse(response, &parsed); err != nil {
 			return xdr.LedgerCloseMeta{}, err
 		}
 
-		if exists {
-			return meta, nil
-		} else {
-			time.Sleep(time.Second)
-		}
+		return xdr.LedgerCloseMeta(parsed.Ledger), nil
 	}
 }
