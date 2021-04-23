@@ -405,3 +405,51 @@ func TestPostFailedFeeBumpTransaction(t *testing.T) {
 	ht.Assert.Contains(string(w.Body.Bytes()), "tx_bad_auth")
 	ht.Assert.NotContains(string(w.Body.Bytes()), "tx_fee_bump_inner_failed")
 }
+
+func TestTransactionActions_AsyncPost(t *testing.T) {
+	ht := StartHTTPTest(t, "base")
+	defer ht.Finish()
+
+	tx := xdr.TransactionEnvelope{
+		Type: xdr.EnvelopeTypeEnvelopeTypeTxV0,
+		V0: &xdr.TransactionV0Envelope{
+			Tx: xdr.TransactionV0{
+				SourceAccountEd25519: *xdr.MustAddress("GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H").Ed25519,
+				Fee:                  100,
+				SeqNum:               1,
+				Operations: []xdr.Operation{
+					{
+						Body: xdr.OperationBody{
+							Type: xdr.OperationTypeCreateAccount,
+							CreateAccountOp: &xdr.CreateAccountOp{
+								Destination:     xdr.MustAddress("GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU"),
+								StartingBalance: 1000000000,
+							},
+						},
+					},
+				},
+			},
+			Signatures: []xdr.DecoratedSignature{
+				{
+					Hint:      xdr.SignatureHint{86, 252, 5, 247},
+					Signature: xdr.Signature{131, 206, 171, 228, 64, 20, 40, 52, 2, 98, 124, 244, 87, 14, 130, 225, 190, 220, 156, 79, 121, 69, 60, 36, 57, 214, 9, 29, 176, 81, 218, 4, 213, 176, 211, 148, 191, 86, 21, 180, 94, 9, 43, 208, 32, 79, 19, 131, 90, 21, 93, 138, 153, 203, 55, 103, 2, 230, 137, 190, 19, 70, 179, 11},
+				},
+			},
+		},
+	}
+
+	txStr, err := xdr.MarshalBase64(tx)
+	assert.NoError(t, err)
+	form := url.Values{
+		"async": []string{"true"},
+		"tx":    []string{txStr},
+	}
+
+	ht.coreServer = test.NewStaticMockServer(`{}`)
+	t.Log(ht.coreServer.URL)
+	ht.App.config.StellarCoreURL = ht.coreServer.URL
+
+	// existing transaction
+	w := ht.Post("/transactions", form)
+	ht.Assert.Equal(202, w.Code)
+}
