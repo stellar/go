@@ -29,33 +29,34 @@ var EffectTypeNames = map[history.EffectType]string{
 	history.EffectTrustlineAuthorizedToMaintainLiabilities: "trustline_authorized_to_maintain_liabilities",
 	history.EffectTrustlineDeauthorized:                    "trustline_deauthorized",
 	history.EffectTrustlineFlagsUpdated:                    "trustline_flags_updated",
-	history.EffectOfferCreated:                             "offer_created",
-	history.EffectOfferRemoved:                             "offer_removed",
-	history.EffectOfferUpdated:                             "offer_updated",
-	history.EffectTrade:                                    "trade",
-	history.EffectDataCreated:                              "data_created",
-	history.EffectDataRemoved:                              "data_removed",
-	history.EffectDataUpdated:                              "data_updated",
-	history.EffectSequenceBumped:                           "sequence_bumped",
-	history.EffectClaimableBalanceCreated:                  "claimable_balance_created",
-	history.EffectClaimableBalanceClaimantCreated:          "claimable_balance_claimant_created",
-	history.EffectClaimableBalanceClaimed:                  "claimable_balance_claimed",
-	history.EffectAccountSponsorshipCreated:                "account_sponsorship_created",
-	history.EffectAccountSponsorshipUpdated:                "account_sponsorship_updated",
-	history.EffectAccountSponsorshipRemoved:                "account_sponsorship_removed",
-	history.EffectTrustlineSponsorshipCreated:              "trustline_sponsorship_created",
-	history.EffectTrustlineSponsorshipUpdated:              "trustline_sponsorship_updated",
-	history.EffectTrustlineSponsorshipRemoved:              "trustline_sponsorship_removed",
-	history.EffectDataSponsorshipCreated:                   "data_sponsorship_created",
-	history.EffectDataSponsorshipUpdated:                   "data_sponsorship_updated",
-	history.EffectDataSponsorshipRemoved:                   "data_sponsorship_removed",
-	history.EffectClaimableBalanceSponsorshipCreated:       "claimable_balance_sponsorship_created",
-	history.EffectClaimableBalanceSponsorshipUpdated:       "claimable_balance_sponsorship_updated",
-	history.EffectClaimableBalanceSponsorshipRemoved:       "claimable_balance_sponsorship_removed",
-	history.EffectSignerSponsorshipCreated:                 "signer_sponsorship_created",
-	history.EffectSignerSponsorshipUpdated:                 "signer_sponsorship_updated",
-	history.EffectSignerSponsorshipRemoved:                 "signer_sponsorship_removed",
-	history.EffectClaimableBalanceClawedBack:               "claimable_balance_clawed_back",
+	// unused
+	// history.EffectOfferCreated:                             "offer_created",
+	// history.EffectOfferRemoved:                             "offer_removed",
+	// history.EffectOfferUpdated:                             "offer_updated",
+	history.EffectTrade:                              "trade",
+	history.EffectDataCreated:                        "data_created",
+	history.EffectDataRemoved:                        "data_removed",
+	history.EffectDataUpdated:                        "data_updated",
+	history.EffectSequenceBumped:                     "sequence_bumped",
+	history.EffectClaimableBalanceCreated:            "claimable_balance_created",
+	history.EffectClaimableBalanceClaimantCreated:    "claimable_balance_claimant_created",
+	history.EffectClaimableBalanceClaimed:            "claimable_balance_claimed",
+	history.EffectAccountSponsorshipCreated:          "account_sponsorship_created",
+	history.EffectAccountSponsorshipUpdated:          "account_sponsorship_updated",
+	history.EffectAccountSponsorshipRemoved:          "account_sponsorship_removed",
+	history.EffectTrustlineSponsorshipCreated:        "trustline_sponsorship_created",
+	history.EffectTrustlineSponsorshipUpdated:        "trustline_sponsorship_updated",
+	history.EffectTrustlineSponsorshipRemoved:        "trustline_sponsorship_removed",
+	history.EffectDataSponsorshipCreated:             "data_sponsorship_created",
+	history.EffectDataSponsorshipUpdated:             "data_sponsorship_updated",
+	history.EffectDataSponsorshipRemoved:             "data_sponsorship_removed",
+	history.EffectClaimableBalanceSponsorshipCreated: "claimable_balance_sponsorship_created",
+	history.EffectClaimableBalanceSponsorshipUpdated: "claimable_balance_sponsorship_updated",
+	history.EffectClaimableBalanceSponsorshipRemoved: "claimable_balance_sponsorship_removed",
+	history.EffectSignerSponsorshipCreated:           "signer_sponsorship_created",
+	history.EffectSignerSponsorshipUpdated:           "signer_sponsorship_updated",
+	history.EffectSignerSponsorshipRemoved:           "signer_sponsorship_removed",
+	history.EffectClaimableBalanceClawedBack:         "claimable_balance_clawed_back",
 }
 
 // NewEffect creates a new effect resource from the provided database representation
@@ -247,6 +248,9 @@ func NewEffect(
 		e := effects.ClaimableBalanceClawedBack{Base: basev}
 		err = row.UnmarshalDetails(&e)
 		result = e
+	case history.EffectAccountRemoved:
+		// there is no explicit data structure for account removed
+		fallthrough
 	default:
 		result = basev
 	}
