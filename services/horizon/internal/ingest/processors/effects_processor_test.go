@@ -436,7 +436,7 @@ func TestEffectsCoversAllOperationTypes(t *testing.T) {
 		operation := transactionOperationWrapper{
 			index: 0,
 			transaction: ingest.LedgerTransaction{
-				Meta: xdr.TransactionMeta{
+				UnsafeMeta: xdr.TransactionMeta{
 					V:  2,
 					V2: &xdr.TransactionMetaV2{},
 				},
@@ -468,7 +468,7 @@ func TestEffectsCoversAllOperationTypes(t *testing.T) {
 	operation := transactionOperationWrapper{
 		index: 0,
 		transaction: ingest.LedgerTransaction{
-			Meta: xdr.TransactionMeta{
+			UnsafeMeta: xdr.TransactionMeta{
 				V:  2,
 				V2: &xdr.TransactionMetaV2{},
 			},

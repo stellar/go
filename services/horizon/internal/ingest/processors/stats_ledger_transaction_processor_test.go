@@ -28,7 +28,7 @@ func TestStatsLedgerTransactionProcessoAllOpTypesCovered(t *testing.T) {
 		txTemplate.Envelope.V1.Tx.Operations[0].Body.Type = xdr.OperationType(typ)
 		f := func() {
 			var p StatsLedgerTransactionProcessor
-			p.ProcessTransaction(tx)
+			p.ProcessTransaction(context.Background(), tx)
 		}
 		assert.NotPanics(t, f, s)
 	}
@@ -38,7 +38,7 @@ func TestStatsLedgerTransactionProcessoAllOpTypesCovered(t *testing.T) {
 	txTemplate.Envelope.V1.Tx.Operations[0].Body.Type = 20000
 	f := func() {
 		var p StatsLedgerTransactionProcessor
-		p.ProcessTransaction(tx)
+		p.ProcessTransaction(context.Background(), tx)
 	}
 	assert.Panics(t, f)
 }
