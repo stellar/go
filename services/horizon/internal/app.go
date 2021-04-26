@@ -88,13 +88,16 @@ func (a *App) GetCoreSettings() actions.CoreSettings {
 	return a.coreSettings.get()
 }
 
+const tickerMaxFrequency = 1 * time.Second
+const tickerMaxDuration = 10 * time.Second
+
 // NewApp constructs an new App instance from the provided config.
 func NewApp(config Config) (*App, error) {
 	a := &App{
 		config:         config,
 		ledgerState:    &ledger.State{},
 		horizonVersion: app.Version(),
-		ticks:          time.NewTicker(1 * time.Second),
+		ticks:          time.NewTicker(tickerMaxFrequency),
 		done:           make(chan struct{}),
 	}
 
@@ -402,22 +405,24 @@ func (a *App) DeleteUnretainedHistory(ctx context.Context) error {
 
 // Tick triggers horizon to update all of it's background processes such as
 // transaction submission, metrics, ingestion and reaping.
-func (a *App) Tick() {
+func (a *App) Tick(ctx context.Context) error {
 	var wg sync.WaitGroup
 	log.Debug("ticking app")
+
 	// update ledger state, operation fee state, and stellar-core info in parallel
 	wg.Add(3)
-	go func() { a.UpdateLedgerState(a.ctx); wg.Done() }()
-	go func() { a.UpdateFeeStatsState(a.ctx); wg.Done() }()
-	go func() { a.UpdateStellarCoreInfo(a.ctx); wg.Done() }()
+	go func() { a.UpdateLedgerState(ctx); wg.Done() }()
+	go func() { a.UpdateFeeStatsState(ctx); wg.Done() }()
+	go func() { a.UpdateStellarCoreInfo(ctx); wg.Done() }()
 	wg.Wait()
 
 	wg.Add(2)
-	go func() { a.reaper.Tick(a.ctx); wg.Done() }()
-	go func() { a.submitter.Tick(a.ctx); wg.Done() }()
+	go func() { a.reaper.Tick(ctx); wg.Done() }()
+	go func() { a.submitter.Tick(ctx); wg.Done() }()
 	wg.Wait()
 
 	log.Debug("finished ticking app")
+	return ctx.Err()
 }
 
 // Init initializes app, using the config to populate db connections and
@@ -530,7 +535,12 @@ func (a *App) run() {
 	for {
 		select {
 		case <-a.ticks.C:
-			a.Tick()
+			ctx, cancel := context.WithTimeout(a.ctx, tickerMaxDuration)
+			err := a.Tick(ctx)
+			if err != nil {
+				log.Warnf("error ticking app: %s", err)
+			}
+			cancel() // Release timer
 		case <-a.ctx.Done():
 			log.Info("finished background ticker")
 			return
