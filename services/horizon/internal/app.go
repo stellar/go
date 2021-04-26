@@ -88,7 +88,8 @@ func (a *App) GetCoreSettings() actions.CoreSettings {
 	return a.coreSettings.get()
 }
 
-const tickerDuration = 1 * time.Second
+const tickerMaxFrequency = 1 * time.Second
+const tickerMaxDuration = 10 * time.Second
 
 // NewApp constructs an new App instance from the provided config.
 func NewApp(config Config) (*App, error) {
@@ -96,7 +97,7 @@ func NewApp(config Config) (*App, error) {
 		config:         config,
 		ledgerState:    &ledger.State{},
 		horizonVersion: app.Version(),
-		ticks:          time.NewTicker(tickerDuration),
+		ticks:          time.NewTicker(tickerMaxFrequency),
 		done:           make(chan struct{}),
 	}
 
@@ -534,7 +535,7 @@ func (a *App) run() {
 	for {
 		select {
 		case <-a.ticks.C:
-			ctx, cancel := context.WithTimeout(a.ctx, tickerDuration)
+			ctx, cancel := context.WithTimeout(a.ctx, tickerMaxDuration)
 			err := a.Tick(ctx)
 			if err != nil {
 				log.Warnf("error ticking app: %s", err)
