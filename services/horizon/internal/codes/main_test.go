@@ -18,7 +18,7 @@ func TestForOperationResultCoversForAllOpTypes(t *testing.T) {
 		f := func() {
 			ForOperationResult(result)
 		}
-		// it must panic because the operation restult is not set
+		// it must panic because the operation result is not set
 		assert.Panics(t, f, s)
 	}
 	// make sure the check works for an unknown operation type
@@ -31,7 +31,7 @@ func TestForOperationResultCoversForAllOpTypes(t *testing.T) {
 	f := func() {
 		ForOperationResult(result)
 	}
-	// it doesn'' panic because it doesn't branch out into the operation type
+	// it doesn't panic because it doesn't branch out into the operation type
 	assert.NotPanics(t, f)
 }
 

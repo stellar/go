@@ -21,11 +21,11 @@ func TestUnmarshalOperationAllCovered(t *testing.T) {
 	for typ, s := range xdr.OperationTypeToStringMap {
 		_, err := UnmarshalOperation(typ, []byte{})
 		assert.Error(t, err, s)
-		// it shoudl be a parsing error, not the default branch
+		// it should be a parsing error, not the default branch
 		assert.NotEqual(t, mistmatchErr, err, s)
 	}
 
-	// make sure the check works for an unreasonable operation type
+	// make sure the check works for an unknown operation type
 	_, err := UnmarshalOperation(200000, []byte{})
 	assert.Error(t, err)
 	assert.Equal(t, mistmatchErr, err)
