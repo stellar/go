@@ -68,7 +68,7 @@ func createTransaction(successful bool, numOps int) ingest.LedgerTransaction {
 				},
 			},
 		},
-		Meta: xdr.TransactionMeta{
+		UnsafeMeta: xdr.TransactionMeta{
 			V: 2,
 			V2: &xdr.TransactionMetaV2{
 				Operations: make([]xdr.OperationMeta, numOps, numOps),

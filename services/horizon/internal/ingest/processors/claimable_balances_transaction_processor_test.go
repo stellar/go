@@ -67,8 +67,8 @@ func (s *ClaimableBalancesTransactionProcessorTestSuiteLedger) testOperationInse
 	internalID := int64(1234)
 	txn := createTransaction(true, 1)
 	txn.Envelope.Operations()[0].Body = body
-	txn.Meta.V = 2
-	txn.Meta.V2.Operations = []xdr.OperationMeta{
+	txn.UnsafeMeta.V = 2
+	txn.UnsafeMeta.V2.Operations = []xdr.OperationMeta{
 		{Changes: xdr.LedgerEntryChanges{
 			{
 				Type: xdr.LedgerEntryChangeTypeLedgerEntryState,

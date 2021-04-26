@@ -440,7 +440,7 @@ func (s *TradeProcessorTestSuiteLedger) mockReadTradeTransactions(
 		},
 		Index:      1,
 		FeeChanges: []xdr.LedgerEntryChange{},
-		Meta: xdr.TransactionMeta{
+		UnsafeMeta: xdr.TransactionMeta{
 			V: 2,
 			V2: &xdr.TransactionMetaV2{
 				Operations: []xdr.OperationMeta{
@@ -453,7 +453,7 @@ func (s *TradeProcessorTestSuiteLedger) mockReadTradeTransactions(
 	}
 
 	for i, trade := range s.allTrades {
-		tx.Meta.V2.Operations = append(tx.Meta.V2.Operations, xdr.OperationMeta{
+		tx.UnsafeMeta.V2.Operations = append(tx.UnsafeMeta.V2.Operations, xdr.OperationMeta{
 			Changes: xdr.LedgerEntryChanges{
 				xdr.LedgerEntryChange{
 					Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
