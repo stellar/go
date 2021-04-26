@@ -7,6 +7,34 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestForOperationResultCoversForAllOpTypes(t *testing.T) {
+	for typ, s := range xdr.OperationTypeToStringMap {
+		result := xdr.OperationResult{
+			Code: xdr.OperationResultCodeOpInner,
+			Tr: &xdr.OperationResultTr{
+				Type: xdr.OperationType(typ),
+			},
+		}
+		f := func() {
+			ForOperationResult(result)
+		}
+		// it must panic because the operation result is not set
+		assert.Panics(t, f, s)
+	}
+	// make sure the check works for an unknown operation type
+	result := xdr.OperationResult{
+		Code: xdr.OperationResultCodeOpInner,
+		Tr: &xdr.OperationResultTr{
+			Type: xdr.OperationType(200000),
+		},
+	}
+	f := func() {
+		ForOperationResult(result)
+	}
+	// it doesn't panic because it doesn't branch out into the operation type
+	assert.NotPanics(t, f)
+}
+
 func TestString(t *testing.T) {
 	tests := []struct {
 		Input    interface{}

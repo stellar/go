@@ -1608,3 +1608,123 @@ func (s *SetTrustLineFlagsTestSuite) TestParticipants() {
 func TestSetTrustLineFlagsTestSuite(t *testing.T) {
 	suite.Run(t, new(SetTrustLineFlagsTestSuite))
 }
+
+func TestParticipantsCoversAllOperationTypes(t *testing.T) {
+	source := xdr.MustMuxedAddress("GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD")
+	for typ, s := range xdr.OperationTypeToStringMap {
+		op := xdr.Operation{
+			SourceAccount: &source,
+			Body: xdr.OperationBody{
+				Type: xdr.OperationType(typ),
+			},
+		}
+		operation := transactionOperationWrapper{
+			index: 0,
+			transaction: ingest.LedgerTransaction{
+				UnsafeMeta: xdr.TransactionMeta{
+					V:  2,
+					V2: &xdr.TransactionMetaV2{},
+				},
+			},
+			operation:      op,
+			ledgerSequence: 1,
+		}
+		// calling Participants should either panic (because the operation field is set to nil)
+		// or not error
+		func() {
+			var err error
+			defer func() {
+				err2 := recover()
+				if err != nil {
+					assert.NotContains(t, err.Error(), "Unknown operation type")
+				}
+				assert.True(t, err2 != nil || err == nil, s)
+			}()
+			_, err = operation.Participants()
+		}()
+	}
+
+	// make sure the check works for an unknown operation type
+	op := xdr.Operation{
+		SourceAccount: &source,
+		Body: xdr.OperationBody{
+			Type: xdr.OperationType(20000),
+		},
+	}
+	operation := transactionOperationWrapper{
+		index: 0,
+		transaction: ingest.LedgerTransaction{
+			UnsafeMeta: xdr.TransactionMeta{
+				V:  2,
+				V2: &xdr.TransactionMetaV2{},
+			},
+		},
+		operation:      op,
+		ledgerSequence: 1,
+	}
+	// calling Participants should error due to the unknown operation
+	_, err := operation.Participants()
+	assert.Contains(t, err.Error(), "Unknown operation type")
+}
+
+func TestDetailsCoversAllOperationTypes(t *testing.T) {
+	source := xdr.MustMuxedAddress("GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD")
+	for typ, s := range xdr.OperationTypeToStringMap {
+		op := xdr.Operation{
+			SourceAccount: &source,
+			Body: xdr.OperationBody{
+				Type: xdr.OperationType(typ),
+			},
+		}
+		operation := transactionOperationWrapper{
+			index: 0,
+			transaction: ingest.LedgerTransaction{
+				UnsafeMeta: xdr.TransactionMeta{
+					V:  2,
+					V2: &xdr.TransactionMetaV2{},
+				},
+			},
+			operation:      op,
+			ledgerSequence: 1,
+		}
+		// calling Details should either panic (because the operation field is set to nil)
+		// or not error
+		func() {
+			var err error
+			defer func() {
+				err2 := recover()
+				if err2 != nil {
+					if err3, ok := err2.(error); ok {
+						assert.NotContains(t, "Unknown operation type", err3.Error())
+					}
+				}
+				assert.True(t, err2 != nil || err == nil, s)
+			}()
+			_, err = operation.Details()
+		}()
+	}
+
+	// make sure the check works for an unknown operation type
+	op := xdr.Operation{
+		SourceAccount: &source,
+		Body: xdr.OperationBody{
+			Type: xdr.OperationType(20000),
+		},
+	}
+	operation := transactionOperationWrapper{
+		index: 0,
+		transaction: ingest.LedgerTransaction{
+			UnsafeMeta: xdr.TransactionMeta{
+				V:  2,
+				V2: &xdr.TransactionMetaV2{},
+			},
+		},
+		operation:      op,
+		ledgerSequence: 1,
+	}
+	// calling Details should panic with unknown operation type
+	f := func() {
+		operation.Details()
+	}
+	assert.PanicsWithError(t, "Unknown operation type: ", f)
+}

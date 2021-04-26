@@ -1,6 +1,7 @@
 package resourceadapter
 
 import (
+	"context"
 	"encoding/json"
 	"testing"
 
@@ -11,6 +12,29 @@ import (
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/assert"
 )
+
+func TestNewOperationAllTypesCovered(t *testing.T) {
+	for typ, s := range xdr.OperationTypeToStringMap {
+		row := history.Operation{
+			Type: xdr.OperationType(typ),
+		}
+		op, err := NewOperation(context.Background(), row, "foo", &history.Transaction{}, history.Ledger{})
+		assert.NoError(t, err, s)
+		// if we got a base type, the operation is not covered
+		if _, ok := op.(operations.Base); ok {
+			assert.Fail(t, s)
+		}
+	}
+
+	// make sure the check works for an unreasonable operation type
+	row := history.Operation{
+		Type: xdr.OperationType(200000),
+	}
+	op, err := NewOperation(context.Background(), row, "foo", &history.Transaction{}, history.Ledger{})
+	assert.NoError(t, err)
+	assert.IsType(t, op, operations.Base{})
+
+}
 
 // TestPopulateOperation_Successful tests operation object population.
 func TestPopulateOperation_Successful(t *testing.T) {

@@ -426,6 +426,61 @@ func getRevokeSponsorshipMeta(t *testing.T) (string, []effect) {
 	return b64, expectedEffects
 }
 
+func TestEffectsCoversAllOperationTypes(t *testing.T) {
+	for typ, s := range xdr.OperationTypeToStringMap {
+		op := xdr.Operation{
+			Body: xdr.OperationBody{
+				Type: xdr.OperationType(typ),
+			},
+		}
+		operation := transactionOperationWrapper{
+			index: 0,
+			transaction: ingest.LedgerTransaction{
+				UnsafeMeta: xdr.TransactionMeta{
+					V:  2,
+					V2: &xdr.TransactionMetaV2{},
+				},
+			},
+			operation:      op,
+			ledgerSequence: 1,
+		}
+		// calling effects should either panic (because the operation field is set to nil)
+		// or not error
+		func() {
+			var err error
+			defer func() {
+				err2 := recover()
+				if err != nil {
+					assert.NotContains(t, err.Error(), "Unknown operation type")
+				}
+				assert.True(t, err2 != nil || err == nil, s)
+			}()
+			_, err = operation.effects()
+		}()
+	}
+
+	// make sure the check works for an unknown operation type
+	op := xdr.Operation{
+		Body: xdr.OperationBody{
+			Type: xdr.OperationType(20000),
+		},
+	}
+	operation := transactionOperationWrapper{
+		index: 0,
+		transaction: ingest.LedgerTransaction{
+			UnsafeMeta: xdr.TransactionMeta{
+				V:  2,
+				V2: &xdr.TransactionMetaV2{},
+			},
+		},
+		operation:      op,
+		ledgerSequence: 1,
+	}
+	// calling effects should error due to the unknown operation
+	_, err := operation.effects()
+	assert.Contains(t, err.Error(), "Unknown operation type")
+}
+
 func TestOperationEffects(t *testing.T) {
 
 	sourceAID := xdr.MustAddress("GD3MMHD2YZWL5RAUWG6O3RMA5HTZYM7S3JLSZ2Z35JNJAWTDIKXY737V")
