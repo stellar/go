@@ -15,8 +15,8 @@ import (
 
 func TestNewEffectAllEffectsCovered(t *testing.T) {
 	for typ, s := range EffectTypeNames {
-		if typ == history.EffectAccountRemoved {
-			// account removed uses the base effect
+		if typ == history.EffectAccountRemoved || typ == history.EffectAccountInflationDestinationUpdated {
+			// these effects use the base representation
 			continue
 		}
 		e := history.Effect{

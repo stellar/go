@@ -46,7 +46,7 @@ const (
 	// unused
 	// EffectAccountInflationDestinationUpdated effects occur when an account changes its
 	// inflation destination.
-	// EffectAccountInflationDestinationUpdated EffectType = 7 // from set_options
+	EffectAccountInflationDestinationUpdated EffectType = 7 // from set_options
 
 	// signer effects
 
@@ -190,15 +190,14 @@ const (
 
 // EffectTypeNames stores a map of effect type ID and names
 var EffectTypeNames = map[EffectType]string{
-	EffectAccountCreated:           "account_created",
-	EffectAccountRemoved:           "account_removed",
-	EffectAccountCredited:          "account_credited",
-	EffectAccountDebited:           "account_debited",
-	EffectAccountThresholdsUpdated: "account_thresholds_updated",
-	EffectAccountHomeDomainUpdated: "account_home_domain_updated",
-	EffectAccountFlagsUpdated:      "account_flags_updated",
-	// unused
-	// EffectAccountInflationDestinationUpdated:       "account_inflation_destination_updated",
+	EffectAccountCreated:                           "account_created",
+	EffectAccountRemoved:                           "account_removed",
+	EffectAccountCredited:                          "account_credited",
+	EffectAccountDebited:                           "account_debited",
+	EffectAccountThresholdsUpdated:                 "account_thresholds_updated",
+	EffectAccountHomeDomainUpdated:                 "account_home_domain_updated",
+	EffectAccountFlagsUpdated:                      "account_flags_updated",
+	EffectAccountInflationDestinationUpdated:       "account_inflation_destination_updated",
 	EffectSignerCreated:                            "signer_created",
 	EffectSignerRemoved:                            "signer_removed",
 	EffectSignerUpdated:                            "signer_updated",

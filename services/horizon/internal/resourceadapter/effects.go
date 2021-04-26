@@ -11,15 +11,14 @@ import (
 )
 
 var EffectTypeNames = map[history.EffectType]string{
-	history.EffectAccountCreated:           "account_created",
-	history.EffectAccountRemoved:           "account_removed",
-	history.EffectAccountCredited:          "account_credited",
-	history.EffectAccountDebited:           "account_debited",
-	history.EffectAccountThresholdsUpdated: "account_thresholds_updated",
-	history.EffectAccountHomeDomainUpdated: "account_home_domain_updated",
-	history.EffectAccountFlagsUpdated:      "account_flags_updated",
-	// unused
-	// history.EffectAccountInflationDestinationUpdated:       "account_inflation_destination_updated",
+	history.EffectAccountCreated:                           "account_created",
+	history.EffectAccountRemoved:                           "account_removed",
+	history.EffectAccountCredited:                          "account_credited",
+	history.EffectAccountDebited:                           "account_debited",
+	history.EffectAccountThresholdsUpdated:                 "account_thresholds_updated",
+	history.EffectAccountHomeDomainUpdated:                 "account_home_domain_updated",
+	history.EffectAccountFlagsUpdated:                      "account_flags_updated",
+	history.EffectAccountInflationDestinationUpdated:       "account_inflation_destination_updated",
 	history.EffectSignerCreated:                            "signer_created",
 	history.EffectSignerRemoved:                            "signer_removed",
 	history.EffectSignerUpdated:                            "signer_updated",
