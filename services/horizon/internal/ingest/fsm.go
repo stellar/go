@@ -1,6 +1,7 @@
 package ingest
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -111,18 +112,18 @@ func (startState) String() string {
 }
 
 func (state startState) run(s *system) (transition, error) {
-	if err := s.historyQ.Begin(); err != nil {
+	if err := s.historyQ.Begin(s.ctx); err != nil {
 		return start(), errors.Wrap(err, "Error starting a transaction")
 	}
-	defer s.historyQ.Rollback()
+	defer s.historyQ.Rollback(s.ctx)
 
 	// This will get the value `FOR UPDATE`, blocking it for other nodes.
-	lastIngestedLedger, err := s.historyQ.GetLastLedgerIngest()
+	lastIngestedLedger, err := s.historyQ.GetLastLedgerIngest(s.ctx)
 	if err != nil {
 		return start(), errors.Wrap(err, getLastIngestedErrMsg)
 	}
 
-	ingestVersion, err := s.historyQ.GetIngestVersion()
+	ingestVersion, err := s.historyQ.GetIngestVersion(s.ctx)
 	if err != nil {
 		return start(), errors.Wrap(err, getIngestVersionErrMsg)
 	}
@@ -135,7 +136,7 @@ func (state startState) run(s *system) (transition, error) {
 		return stop(), nil
 	}
 
-	lastHistoryLedger, err := s.historyQ.GetLatestHistoryLedger()
+	lastHistoryLedger, err := s.historyQ.GetLatestHistoryLedger(s.ctx)
 	if err != nil {
 		return start(), errors.Wrap(err, "Error getting last history ledger sequence")
 	}
@@ -188,11 +189,11 @@ func (state startState) run(s *system) (transition, error) {
 		// Now it's on by default but the latest history ledger is greater
 		// than the latest ingest ledger. We reset the exp ledger sequence
 		// so init state will rebuild the state correctly.
-		err = s.historyQ.UpdateLastLedgerIngest(0)
+		err = s.historyQ.UpdateLastLedgerIngest(s.ctx, 0)
 		if err != nil {
 			return start(), errors.Wrap(err, updateLastLedgerIngestErrMsg)
 		}
-		err = s.historyQ.Commit()
+		err = s.historyQ.Commit(s.ctx)
 		if err != nil {
 			return start(), errors.Wrap(err, commitErrMsg)
 		}
@@ -243,7 +244,7 @@ func (b buildState) run(s *system) (transition, error) {
 	// ProcessorRunner.RunHistoryArchiveIngestion().
 	var ledgerCloseMeta xdr.LedgerCloseMeta
 	if b.checkpointLedger != 1 {
-		err := s.maybePrepareRange(b.checkpointLedger)
+		err := s.maybePrepareRange(s.ctx, b.checkpointLedger)
 		if err != nil {
 			return nextFailState, err
 		}
@@ -260,19 +261,19 @@ func (b buildState) run(s *system) (transition, error) {
 		}).Info("Ledger returned from the backend")
 	}
 
-	if err := s.historyQ.Begin(); err != nil {
+	if err := s.historyQ.Begin(s.ctx); err != nil {
 		return nextFailState, errors.Wrap(err, "Error starting a transaction")
 	}
-	defer s.historyQ.Rollback()
+	defer s.historyQ.Rollback(s.ctx)
 
 	// We need to get this value `FOR UPDATE` so all other instances
 	// are blocked.
-	lastIngestedLedger, err := s.historyQ.GetLastLedgerIngest()
+	lastIngestedLedger, err := s.historyQ.GetLastLedgerIngest(s.ctx)
 	if err != nil {
 		return nextFailState, errors.Wrap(err, getLastIngestedErrMsg)
 	}
 
-	ingestVersion, err := s.historyQ.GetIngestVersion()
+	ingestVersion, err := s.historyQ.GetIngestVersion(s.ctx)
 	if err != nil {
 		return nextFailState, errors.Wrap(err, getIngestVersionErrMsg)
 	}
@@ -293,20 +294,20 @@ func (b buildState) run(s *system) (transition, error) {
 	log.Info("Starting ingestion system from empty state...")
 
 	// Clear last_ingested_ledger in key value store
-	err = s.historyQ.UpdateLastLedgerIngest(0)
+	err = s.historyQ.UpdateLastLedgerIngest(s.ctx, 0)
 	if err != nil {
 		return nextFailState, errors.Wrap(err, updateLastLedgerIngestErrMsg)
 	}
 
 	// Clear invalid state in key value store. It's possible that upgraded
 	// ingestion is fixing it.
-	err = s.historyQ.UpdateExpStateInvalid(false)
+	err = s.historyQ.UpdateExpStateInvalid(s.ctx, false)
 	if err != nil {
 		return nextFailState, errors.Wrap(err, updateExpStateInvalidErrMsg)
 	}
 
 	// State tables should be empty.
-	err = s.historyQ.TruncateIngestStateTables()
+	err = s.historyQ.TruncateIngestStateTables(s.ctx)
 	if err != nil {
 		return nextFailState, errors.Wrap(err, "Error clearing ingest tables")
 	}
@@ -331,11 +332,11 @@ func (b buildState) run(s *system) (transition, error) {
 		return nextFailState, errors.Wrap(err, "Error ingesting history archive")
 	}
 
-	if err = s.historyQ.UpdateIngestVersion(CurrentVersion); err != nil {
+	if err = s.historyQ.UpdateIngestVersion(s.ctx, CurrentVersion); err != nil {
 		return nextFailState, errors.Wrap(err, "Error updating ingestion version")
 	}
 
-	if err = s.completeIngestion(b.checkpointLedger); err != nil {
+	if err = s.completeIngestion(s.ctx, b.checkpointLedger); err != nil {
 		return nextFailState, err
 	}
 
@@ -371,7 +372,7 @@ func (r resumeState) run(s *system) (transition, error) {
 
 	ingestLedger := r.latestSuccessfullyProcessedLedger + 1
 
-	err := s.maybePrepareRange(ingestLedger)
+	err := s.maybePrepareRange(s.ctx, ingestLedger)
 	if err != nil {
 		return start(), err
 	}
@@ -387,14 +388,14 @@ func (r resumeState) run(s *system) (transition, error) {
 		"duration": time.Since(startTime).Seconds(),
 	}).Info("Ledger returned from the backend")
 
-	if err = s.historyQ.Begin(); err != nil {
+	if err = s.historyQ.Begin(s.ctx); err != nil {
 		return retryResume(r),
 			errors.Wrap(err, "Error starting a transaction")
 	}
-	defer s.historyQ.Rollback()
+	defer s.historyQ.Rollback(s.ctx)
 
 	// This will get the value `FOR UPDATE`, blocking it for other nodes.
-	lastIngestedLedger, err := s.historyQ.GetLastLedgerIngest()
+	lastIngestedLedger, err := s.historyQ.GetLastLedgerIngest(s.ctx)
 	if err != nil {
 		return retryResume(r), errors.Wrap(err, getLastIngestedErrMsg)
 	}
@@ -411,7 +412,7 @@ func (r resumeState) run(s *system) (transition, error) {
 		}), nil
 	}
 
-	ingestVersion, err := s.historyQ.GetIngestVersion()
+	ingestVersion, err := s.historyQ.GetIngestVersion(s.ctx)
 	if err != nil {
 		return retryResume(r), errors.Wrap(err, getIngestVersionErrMsg)
 	}
@@ -424,7 +425,7 @@ func (r resumeState) run(s *system) (transition, error) {
 		return start(), nil
 	}
 
-	lastHistoryLedger, err := s.historyQ.GetLatestHistoryLedger()
+	lastHistoryLedger, err := s.historyQ.GetLatestHistoryLedger(s.ctx)
 	if err != nil {
 		return retryResume(r), errors.Wrap(err, "could not get latest history ledger")
 	}
@@ -455,7 +456,7 @@ func (r resumeState) run(s *system) (transition, error) {
 		return retryResume(r), errors.Wrap(err, "Error running processors on ledger")
 	}
 
-	if err = s.completeIngestion(ingestLedger); err != nil {
+	if err = s.completeIngestion(s.ctx, ingestLedger); err != nil {
 		return retryResume(r), err
 	}
 
@@ -530,22 +531,22 @@ func (h historyRangeState) run(s *system) (transition, error) {
 		return start(), errors.Errorf("invalid range: [%d, %d]", h.fromLedger, h.toLedger)
 	}
 
-	err := s.maybePrepareRange(h.fromLedger)
+	err := s.maybePrepareRange(s.ctx, h.fromLedger)
 	if err != nil {
 		return start(), err
 	}
 
-	if err = s.historyQ.Begin(); err != nil {
+	if err = s.historyQ.Begin(s.ctx); err != nil {
 		return start(), errors.Wrap(err, "Error starting a transaction")
 	}
-	defer s.historyQ.Rollback()
+	defer s.historyQ.Rollback(s.ctx)
 
 	// acquire distributed lock so no one else can perform ingestion operations.
-	if _, err = s.historyQ.GetLastLedgerIngest(); err != nil {
+	if _, err = s.historyQ.GetLastLedgerIngest(s.ctx); err != nil {
 		return start(), errors.Wrap(err, getLastIngestedErrMsg)
 	}
 
-	lastHistoryLedger, err := s.historyQ.GetLatestHistoryLedger()
+	lastHistoryLedger, err := s.historyQ.GetLatestHistoryLedger(s.ctx)
 	if err != nil {
 		return start(), errors.Wrap(err, "could not get latest history ledger")
 	}
@@ -567,7 +568,7 @@ func (h historyRangeState) run(s *system) (transition, error) {
 		ledgerCloseMeta, err = s.ledgerBackend.GetLedgerBlocking(cur)
 		if err != nil {
 			// Commit finished work in case of ledger backend error.
-			commitErr := s.historyQ.Commit()
+			commitErr := s.historyQ.Commit(s.ctx)
 			if commitErr != nil {
 				log.WithError(commitErr).Error("Error commiting partial range results")
 			} else {
@@ -586,7 +587,7 @@ func (h historyRangeState) run(s *system) (transition, error) {
 		}
 	}
 
-	if err = s.historyQ.Commit(); err != nil {
+	if err = s.historyQ.Commit(s.ctx); err != nil {
 		return start(), errors.Wrap(err, commitErrMsg)
 	}
 
@@ -649,7 +650,7 @@ func (h reingestHistoryRangeState) ingestRange(s *system, fromLedger, toLedger u
 		return errors.Wrap(err, "Invalid range")
 	}
 
-	err = s.historyQ.DeleteRangeAll(start, end)
+	err = s.historyQ.DeleteRangeAll(s.ctx, start, end)
 	if err != nil {
 		return errors.Wrap(err, "error in DeleteRangeAll")
 	}
@@ -704,13 +705,13 @@ func (h reingestHistoryRangeState) run(s *system) (transition, error) {
 	startTime = time.Now()
 
 	if h.force {
-		if err := s.historyQ.Begin(); err != nil {
+		if err := s.historyQ.Begin(s.ctx); err != nil {
 			return stop(), errors.Wrap(err, "Error starting a transaction")
 		}
-		defer s.historyQ.Rollback()
+		defer s.historyQ.Rollback(s.ctx)
 
 		// acquire distributed lock so no one else can perform ingestion operations.
-		if _, err := s.historyQ.GetLastLedgerIngest(); err != nil {
+		if _, err := s.historyQ.GetLastLedgerIngest(s.ctx); err != nil {
 			return stop(), errors.Wrap(err, getLastIngestedErrMsg)
 		}
 
@@ -718,11 +719,11 @@ func (h reingestHistoryRangeState) run(s *system) (transition, error) {
 			return stop(), err
 		}
 
-		if err := s.historyQ.Commit(); err != nil {
+		if err := s.historyQ.Commit(s.ctx); err != nil {
 			return stop(), errors.Wrap(err, commitErrMsg)
 		}
 	} else {
-		lastIngestedLedger, err := s.historyQ.GetLastLedgerIngestNonBlocking()
+		lastIngestedLedger, err := s.historyQ.GetLastLedgerIngestNonBlocking(s.ctx)
 		if err != nil {
 			return stop(), errors.Wrap(err, getLastIngestedErrMsg)
 		}
@@ -733,10 +734,10 @@ func (h reingestHistoryRangeState) run(s *system) (transition, error) {
 
 		for cur := h.fromLedger; cur <= h.toLedger; cur++ {
 			err := func(ledger uint32) error {
-				if err := s.historyQ.Begin(); err != nil {
+				if err := s.historyQ.Begin(s.ctx); err != nil {
 					return errors.Wrap(err, "Error starting a transaction")
 				}
-				defer s.historyQ.Rollback()
+				defer s.historyQ.Rollback(s.ctx)
 
 				// ingest each ledger in a separate transaction to prevent deadlocks
 				// when acquiring ShareLocks from multiple parallel reingest range processes
@@ -744,7 +745,7 @@ func (h reingestHistoryRangeState) run(s *system) (transition, error) {
 					return err
 				}
 
-				if err := s.historyQ.Commit(); err != nil {
+				if err := s.historyQ.Commit(s.ctx); err != nil {
 					return errors.Wrap(err, commitErrMsg)
 				}
 
@@ -798,14 +799,14 @@ func (v verifyRangeState) run(s *system) (transition, error) {
 		return stop(), errors.Errorf("invalid range: [%d, %d]", v.fromLedger, v.toLedger)
 	}
 
-	if err := s.historyQ.Begin(); err != nil {
+	if err := s.historyQ.Begin(s.ctx); err != nil {
 		err = errors.Wrap(err, "Error starting a transaction")
 		return stop(), err
 	}
-	defer s.historyQ.Rollback()
+	defer s.historyQ.Rollback(s.ctx)
 
 	// Simple check if DB clean
-	lastIngestedLedger, err := s.historyQ.GetLastLedgerIngest()
+	lastIngestedLedger, err := s.historyQ.GetLastLedgerIngest(s.ctx)
 	if err != nil {
 		err = errors.Wrap(err, getLastIngestedErrMsg)
 		return stop(), err
@@ -851,7 +852,7 @@ func (v verifyRangeState) run(s *system) (transition, error) {
 		return stop(), err
 	}
 
-	if err = s.completeIngestion(v.fromLedger); err != nil {
+	if err = s.completeIngestion(s.ctx, v.fromLedger); err != nil {
 		return stop(), err
 	}
 
@@ -872,7 +873,7 @@ func (v verifyRangeState) run(s *system) (transition, error) {
 		}).Info("Processing ledger")
 		startTime := time.Now()
 
-		if err = s.historyQ.Begin(); err != nil {
+		if err = s.historyQ.Begin(s.ctx); err != nil {
 			err = errors.Wrap(err, "Error starting a transaction")
 			return stop(), err
 		}
@@ -897,7 +898,7 @@ func (v verifyRangeState) run(s *system) (transition, error) {
 			return stop(), err
 		}
 
-		if err = s.completeIngestion(sequence); err != nil {
+		if err = s.completeIngestion(s.ctx, sequence); err != nil {
 			return stop(), err
 		}
 
@@ -928,14 +929,14 @@ func (stressTestState) String() string {
 }
 
 func (stressTestState) run(s *system) (transition, error) {
-	if err := s.historyQ.Begin(); err != nil {
+	if err := s.historyQ.Begin(s.ctx); err != nil {
 		err = errors.Wrap(err, "Error starting a transaction")
 		return stop(), err
 	}
-	defer s.historyQ.Rollback()
+	defer s.historyQ.Rollback(s.ctx)
 
 	// Simple check if DB clean
-	lastIngestedLedger, err := s.historyQ.GetLastLedgerIngest()
+	lastIngestedLedger, err := s.historyQ.GetLastLedgerIngest(s.ctx)
 	if err != nil {
 		err = errors.Wrap(err, getLastIngestedErrMsg)
 		return stop(), err
@@ -973,7 +974,7 @@ func (stressTestState) run(s *system) (transition, error) {
 		return stop(), err
 	}
 
-	if err = s.completeIngestion(sequence); err != nil {
+	if err = s.completeIngestion(s.ctx, sequence); err != nil {
 		return stop(), err
 	}
 
@@ -995,17 +996,17 @@ func (stressTestState) run(s *system) (transition, error) {
 	return stop(), nil
 }
 
-func (s *system) completeIngestion(ledger uint32) error {
+func (s *system) completeIngestion(ctx context.Context, ledger uint32) error {
 	if ledger == 0 {
 		return errors.New("ledger must be positive")
 	}
 
-	if err := s.historyQ.UpdateLastLedgerIngest(ledger); err != nil {
+	if err := s.historyQ.UpdateLastLedgerIngest(ctx, ledger); err != nil {
 		err = errors.Wrap(err, updateLastLedgerIngestErrMsg)
 		return err
 	}
 
-	if err := s.historyQ.Commit(); err != nil {
+	if err := s.historyQ.Commit(ctx); err != nil {
 		return errors.Wrap(err, commitErrMsg)
 	}
 
@@ -1013,7 +1014,7 @@ func (s *system) completeIngestion(ledger uint32) error {
 }
 
 // maybePrepareRange checks if the range is prepared and, if not, prepares it.
-func (s *system) maybePrepareRange(from uint32) error {
+func (s *system) maybePrepareRange(ctx context.Context, from uint32) error {
 	ledgerRange := ledgerbackend.UnboundedRange(from)
 
 	prepared, err := s.ledgerBackend.IsPrepared(ledgerRange)

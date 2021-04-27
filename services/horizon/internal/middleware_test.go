@@ -3,6 +3,7 @@
 package horizon
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -270,8 +271,8 @@ func TestStateMiddleware(t *testing.T) {
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			stateMiddleware.NoStateVerification = testCase.noStateVerification
-			tt.Assert.NoError(q.UpdateExpStateInvalid(testCase.stateInvalid))
-			_, err = q.InsertLedger(xdr.LedgerHeaderHistoryEntry{
+			tt.Assert.NoError(q.UpdateExpStateInvalid(context.Background(), testCase.stateInvalid))
+			_, err = q.InsertLedger(context.Background(), xdr.LedgerHeaderHistoryEntry{
 				Hash: xdr.Hash{byte(i)},
 				Header: xdr.LedgerHeader{
 					LedgerSeq:          testCase.latestHistoryLedger,
@@ -279,8 +280,8 @@ func TestStateMiddleware(t *testing.T) {
 				},
 			}, 0, 0, 0, 0, 0)
 			tt.Assert.NoError(err)
-			tt.Assert.NoError(q.UpdateLastLedgerIngest(testCase.lastIngestedLedger))
-			tt.Assert.NoError(q.UpdateIngestVersion(testCase.ingestionVersion))
+			tt.Assert.NoError(q.UpdateLastLedgerIngest(context.Background(), testCase.lastIngestedLedger))
+			tt.Assert.NoError(q.UpdateIngestVersion(context.Background(), testCase.ingestionVersion))
 
 			if testCase.sseRequest {
 				request.Header.Set("Accept", "text/event-stream")

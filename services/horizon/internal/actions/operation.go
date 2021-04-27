@@ -94,17 +94,17 @@ func (handler GetOperationsHandler) GetResourcePage(w HeaderWriter, r *http.Requ
 
 	switch {
 	case qp.AccountID != "":
-		query.ForAccount(qp.AccountID)
+		query.ForAccount(ctx, qp.AccountID)
 	case qp.ClaimableBalanceID != "":
 		cbID, parseErr := balanceIDHex2XDR(qp.ClaimableBalanceID, "claimable_balance_id")
 		if parseErr != nil {
 			return nil, parseErr
 		}
-		query.ForClaimableBalance(cbID)
+		query.ForClaimableBalance(ctx, cbID)
 	case qp.LedgerID > 0:
-		query.ForLedger(int32(qp.LedgerID))
+		query.ForLedger(ctx, int32(qp.LedgerID))
 	case qp.TransactionHash != "":
-		query.ForTransaction(qp.TransactionHash)
+		query.ForTransaction(ctx, qp.TransactionHash)
 	}
 	// When querying operations for transaction return both successful
 	// and failed operations. We assume that because the user is querying
@@ -121,7 +121,7 @@ func (handler GetOperationsHandler) GetResourcePage(w HeaderWriter, r *http.Requ
 		query.OnlyPayments()
 	}
 
-	ops, txs, err := query.Page(pq).Fetch()
+	ops, txs, err := query.Page(pq).Fetch(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -165,13 +165,13 @@ func (handler GetOperationByIDHandler) GetResource(w HeaderWriter, r *http.Reque
 	if err != nil {
 		return nil, err
 	}
-	op, tx, err := historyQ.OperationByID(qp.IncludeTransactions(), int64(qp.ID))
+	op, tx, err := historyQ.OperationByID(ctx, qp.IncludeTransactions(), int64(qp.ID))
 	if err != nil {
 		return nil, err
 	}
 
 	var ledger history.Ledger
-	err = historyQ.LedgerBySequence(&ledger, op.LedgerSequence())
+	err = historyQ.LedgerBySequence(ctx, &ledger, op.LedgerSequence())
 	if err != nil {
 		return nil, err
 	}
@@ -191,7 +191,7 @@ func buildOperationsPage(ctx context.Context, historyQ *history.Q, operations []
 		ledgerCache.Queue(record.LedgerSequence())
 	}
 
-	if err := ledgerCache.Load(historyQ); err != nil {
+	if err := ledgerCache.Load(ctx, historyQ); err != nil {
 		return nil, errors.Wrap(err, "failed to load ledger batch")
 	}
 

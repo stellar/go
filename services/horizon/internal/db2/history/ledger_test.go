@@ -21,22 +21,22 @@ func TestLedgerQueries(t *testing.T) {
 
 	// Test LedgerBySequence
 	var l Ledger
-	err := q.LedgerBySequence(&l, 3)
+	err := q.LedgerBySequence(tt.Ctx, &l, 3)
 	tt.Assert.NoError(err)
 
-	err = q.LedgerBySequence(&l, 100000)
+	err = q.LedgerBySequence(tt.Ctx, &l, 100000)
 	tt.Assert.Equal(err, sql.ErrNoRows)
 
 	// Test Ledgers()
 	ls := []Ledger{}
-	err = q.Ledgers().Select(&ls)
+	err = q.Ledgers().Select(tt.Ctx, &ls)
 
 	if tt.Assert.NoError(err) {
 		tt.Assert.Len(ls, 3)
 	}
 
 	// LedgersBySequence
-	err = q.LedgersBySequence(&ls, 1, 2, 3)
+	err = q.LedgersBySequence(tt.Ctx, &ls, 1, 2, 3)
 
 	if tt.Assert.NoError(err) {
 		tt.Assert.Len(ls, 3)
@@ -58,7 +58,7 @@ func TestInsertLedger(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
-	ledgerHashStore := ledgerbackend.NewHorizonDBLedgerHashStore(tt.HorizonSession())
+	ledgerHashStore := ledgerbackend.NewHorizonDBLedgerHashStore(tt.Ctx, tt.HorizonSession())
 	_, exists, err := ledgerHashStore.GetLedgerHash(100)
 	tt.Assert.NoError(err)
 	tt.Assert.False(exists)
@@ -116,7 +116,7 @@ func TestInsertLedger(t *testing.T) {
 	tt.Assert.NoError(err)
 	expectedLedger.LedgerHeaderXDR = null.NewString(ledgerHeaderBase64, true)
 
-	rowsAffected, err := q.InsertLedger(
+	rowsAffected, err := q.InsertLedger(tt.Ctx,
 		ledgerEntry,
 		12,
 		3,
@@ -128,7 +128,7 @@ func TestInsertLedger(t *testing.T) {
 	tt.Assert.Equal(rowsAffected, int64(1))
 
 	var ledgerFromDB Ledger
-	err = q.LedgerBySequence(&ledgerFromDB, 69859)
+	err = q.LedgerBySequence(tt.Ctx, &ledgerFromDB, 69859)
 	tt.Assert.NoError(err)
 
 	expectedLedger.CreatedAt = ledgerFromDB.CreatedAt

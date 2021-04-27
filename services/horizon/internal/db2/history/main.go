@@ -3,6 +3,7 @@
 package history
 
 import (
+	"context"
 	"database/sql"
 	"database/sql/driver"
 	"encoding/json"
@@ -96,14 +97,13 @@ const (
 
 	// trading effects
 
+	// unused
 	// EffectOfferCreated occurs when an account offers to trade an asset
-	EffectOfferCreated EffectType = 30 // from manage_offer, creat_passive_offer
-
+	// EffectOfferCreated EffectType = 30 // from manage_offer, creat_passive_offer
 	// EffectOfferRemoved occurs when an account removes an offer
-	EffectOfferRemoved EffectType = 31 // from manage_offer, create_passive_offer, path_payment
-
+	// EffectOfferRemoved EffectType = 31 // from manage_offer, create_passive_offer, path_payment
 	// EffectOfferUpdated occurs when an offer is updated by the offering account.
-	EffectOfferUpdated EffectType = 32 // from manage_offer, creat_passive_offer, path_payment
+	// EffectOfferUpdated EffectType = 32 // from manage_offer, creat_passive_offer, path_payment
 
 	// EffectTrade occurs when a trade is initiated because of a path payment or
 	// offer operation.
@@ -215,8 +215,8 @@ type AccountEntry struct {
 }
 
 type AccountsBatchInsertBuilder interface {
-	Add(entry xdr.LedgerEntry) error
-	Exec() error
+	Add(ctx context.Context, entry xdr.LedgerEntry) error
+	Exec(ctx context.Context) error
 }
 
 type IngestionQ interface {
@@ -237,32 +237,32 @@ type IngestionQ interface {
 	QSigners
 	//QTrades
 	NewTradeBatchInsertBuilder(maxBatchSize int) TradeBatchInsertBuilder
-	CreateAssets(assets []xdr.Asset, batchSize int) (map[string]Asset, error)
+	CreateAssets(ctx context.Context, assets []xdr.Asset, batchSize int) (map[string]Asset, error)
 	QTransactions
 	QTrustLines
 
-	Begin() error
-	BeginTx(*sql.TxOptions) error
-	Commit() error
+	Begin(context.Context) error
+	BeginTx(context.Context, *sql.TxOptions) error
+	Commit(context.Context) error
 	CloneIngestionQ() IngestionQ
-	Rollback() error
+	Rollback(context.Context) error
 	GetTx() *sqlx.Tx
-	GetIngestVersion() (int, error)
-	UpdateExpStateInvalid(bool) error
-	UpdateIngestVersion(int) error
-	GetExpStateInvalid() (bool, error)
-	GetLatestHistoryLedger() (uint32, error)
-	GetOfferCompactionSequence() (uint32, error)
-	TruncateIngestStateTables() error
-	DeleteRangeAll(start, end int64) error
+	GetIngestVersion(context.Context) (int, error)
+	UpdateExpStateInvalid(context.Context, bool) error
+	UpdateIngestVersion(context.Context, int) error
+	GetExpStateInvalid(context.Context) (bool, error)
+	GetLatestHistoryLedger(context.Context) (uint32, error)
+	GetOfferCompactionSequence(context.Context) (uint32, error)
+	TruncateIngestStateTables(context.Context) error
+	DeleteRangeAll(ctx context.Context, start, end int64) error
 }
 
 // QAccounts defines account related queries.
 type QAccounts interface {
 	NewAccountsBatchInsertBuilder(maxBatchSize int) AccountsBatchInsertBuilder
-	GetAccountsByIDs(ids []string) ([]AccountEntry, error)
-	UpsertAccounts(accounts []xdr.LedgerEntry) error
-	RemoveAccount(accountID string) (int64, error)
+	GetAccountsByIDs(ctx context.Context, ids []string) ([]AccountEntry, error)
+	UpsertAccounts(ctx context.Context, accounts []xdr.LedgerEntry) error
+	RemoveAccount(ctx context.Context, accountID string) (int64, error)
 }
 
 // AccountSigner is a row of data from the `accounts_signers` table
@@ -274,8 +274,8 @@ type AccountSigner struct {
 }
 
 type AccountSignersBatchInsertBuilder interface {
-	Add(signer AccountSigner) error
-	Exec() error
+	Add(ctx context.Context, signer AccountSigner) error
+	Exec(ctx context.Context) error
 }
 
 // accountSignersBatchInsertBuilder is a simple wrapper around db.BatchInsertBuilder
@@ -295,8 +295,8 @@ type Data struct {
 type AccountDataValue []byte
 
 type AccountDataBatchInsertBuilder interface {
-	Add(entry xdr.LedgerEntry) error
-	Exec() error
+	Add(ctx context.Context, entry xdr.LedgerEntry) error
+	Exec(ctx context.Context) error
 }
 
 // accountDataBatchInsertBuilder is a simple wrapper around db.BatchInsertBuilder
@@ -307,11 +307,11 @@ type accountDataBatchInsertBuilder struct {
 // QData defines account data related queries.
 type QData interface {
 	NewAccountDataBatchInsertBuilder(maxBatchSize int) AccountDataBatchInsertBuilder
-	CountAccountsData() (int, error)
-	GetAccountDataByKeys(keys []xdr.LedgerKeyData) ([]Data, error)
-	InsertAccountData(entry xdr.LedgerEntry) (int64, error)
-	UpdateAccountData(entry xdr.LedgerEntry) (int64, error)
-	RemoveAccountData(key xdr.LedgerKeyData) (int64, error)
+	CountAccountsData(ctx context.Context) (int, error)
+	GetAccountDataByKeys(ctx context.Context, keys []xdr.LedgerKeyData) ([]Data, error)
+	InsertAccountData(ctx context.Context, entry xdr.LedgerEntry) (int64, error)
+	UpdateAccountData(ctx context.Context, entry xdr.LedgerEntry) (int64, error)
+	RemoveAccountData(ctx context.Context, key xdr.LedgerKeyData) (int64, error)
 }
 
 // Asset is a row of data from the `history_assets` table
@@ -400,17 +400,17 @@ func (e *ExpAssetStatBalances) Scan(src interface{}) error {
 
 // QAssetStats defines exp_asset_stats related queries.
 type QAssetStats interface {
-	InsertAssetStats(stats []ExpAssetStat, batchSize int) error
-	InsertAssetStat(stat ExpAssetStat) (int64, error)
-	UpdateAssetStat(stat ExpAssetStat) (int64, error)
-	GetAssetStat(assetType xdr.AssetType, assetCode, assetIssuer string) (ExpAssetStat, error)
-	RemoveAssetStat(assetType xdr.AssetType, assetCode, assetIssuer string) (int64, error)
-	GetAssetStats(assetCode, assetIssuer string, page db2.PageQuery) ([]ExpAssetStat, error)
-	CountTrustLines() (int, error)
+	InsertAssetStats(ctx context.Context, stats []ExpAssetStat, batchSize int) error
+	InsertAssetStat(ctx context.Context, stat ExpAssetStat) (int64, error)
+	UpdateAssetStat(ctx context.Context, stat ExpAssetStat) (int64, error)
+	GetAssetStat(ctx context.Context, assetType xdr.AssetType, assetCode, assetIssuer string) (ExpAssetStat, error)
+	RemoveAssetStat(ctx context.Context, assetType xdr.AssetType, assetCode, assetIssuer string) (int64, error)
+	GetAssetStats(ctx context.Context, assetCode, assetIssuer string, page db2.PageQuery) ([]ExpAssetStat, error)
+	CountTrustLines(ctx context.Context) (int, error)
 }
 
 type QCreateAccountsHistory interface {
-	CreateAccounts(addresses []string, maxBatchSize int) (map[string]int64, error)
+	CreateAccounts(ctx context.Context, addresses []string, maxBatchSize int) (map[string]int64, error)
 }
 
 // Effect is a row of data from the `history_effects` table
@@ -580,8 +580,8 @@ type Offer struct {
 }
 
 type OffersBatchInsertBuilder interface {
-	Add(offer Offer) error
-	Exec() error
+	Add(ctx context.Context, offer Offer) error
+	Exec(ctx context.Context) error
 }
 
 // offersBatchInsertBuilder is a simple wrapper around db.BatchInsertBuilder
@@ -608,15 +608,15 @@ type Q struct {
 
 // QSigners defines signer related queries.
 type QSigners interface {
-	GetLastLedgerIngestNonBlocking() (uint32, error)
-	GetLastLedgerIngest() (uint32, error)
-	UpdateLastLedgerIngest(ledgerSequence uint32) error
-	AccountsForSigner(signer string, page db2.PageQuery) ([]AccountSigner, error)
+	GetLastLedgerIngestNonBlocking(ctx context.Context) (uint32, error)
+	GetLastLedgerIngest(ctx context.Context) (uint32, error)
+	UpdateLastLedgerIngest(ctx context.Context, ledgerSequence uint32) error
+	AccountsForSigner(ctx context.Context, signer string, page db2.PageQuery) ([]AccountSigner, error)
 	NewAccountSignersBatchInsertBuilder(maxBatchSize int) AccountSignersBatchInsertBuilder
-	CreateAccountSigner(account, signer string, weight int32, sponsor *string) (int64, error)
-	RemoveAccountSigner(account, signer string) (int64, error)
-	SignersForAccounts(accounts []string) ([]AccountSigner, error)
-	CountAccounts() (int, error)
+	CreateAccountSigner(ctx context.Context, account, signer string, weight int32, sponsor *string) (int64, error)
+	RemoveAccountSigner(ctx context.Context, account, signer string) (int64, error)
+	SignersForAccounts(ctx context.Context, accounts []string) ([]AccountSigner, error)
+	CountAccounts(ctx context.Context) (int, error)
 }
 
 // OffersQuery is a helper struct to configure queries to offers
@@ -709,16 +709,16 @@ type TrustLine struct {
 // QTrustLines defines trust lines related queries.
 type QTrustLines interface {
 	NewTrustLinesBatchInsertBuilder(maxBatchSize int) TrustLinesBatchInsertBuilder
-	GetTrustLinesByKeys(keys []xdr.LedgerKeyTrustLine) ([]TrustLine, error)
-	InsertTrustLine(entry xdr.LedgerEntry) (int64, error)
-	UpdateTrustLine(entry xdr.LedgerEntry) (int64, error)
-	UpsertTrustLines(entries []xdr.LedgerEntry) error
-	RemoveTrustLine(key xdr.LedgerKeyTrustLine) (int64, error)
+	GetTrustLinesByKeys(ctx context.Context, keys []xdr.LedgerKeyTrustLine) ([]TrustLine, error)
+	InsertTrustLine(ctx context.Context, entry xdr.LedgerEntry) (int64, error)
+	UpdateTrustLine(ctx context.Context, entry xdr.LedgerEntry) (int64, error)
+	UpsertTrustLines(ctx context.Context, entries []xdr.LedgerEntry) error
+	RemoveTrustLine(ctx context.Context, key xdr.LedgerKeyTrustLine) (int64, error)
 }
 
 type TrustLinesBatchInsertBuilder interface {
-	Add(entry xdr.LedgerEntry) error
-	Exec() error
+	Add(ctx context.Context, entry xdr.LedgerEntry) error
+	Exec(ctx context.Context) error
 }
 
 // trustLinesBatchInsertBuilder is a simple wrapper around db.BatchInsertBuilder
@@ -772,31 +772,31 @@ func (q *Q) NewTrustLinesBatchInsertBuilder(maxBatchSize int) TrustLinesBatchIns
 }
 
 // ElderLedger loads the oldest ledger known to the history database
-func (q *Q) ElderLedger(dest interface{}) error {
-	return q.GetRaw(dest, `SELECT COALESCE(MIN(sequence), 0) FROM history_ledgers`)
+func (q *Q) ElderLedger(ctx context.Context, dest interface{}) error {
+	return q.GetRaw(ctx, dest, `SELECT COALESCE(MIN(sequence), 0) FROM history_ledgers`)
 }
 
 // GetLatestHistoryLedger loads the latest known ledger. Returns 0 if no ledgers in
 // `history_ledgers` table.
-func (q *Q) GetLatestHistoryLedger() (uint32, error) {
+func (q *Q) GetLatestHistoryLedger(ctx context.Context) (uint32, error) {
 	var value uint32
-	err := q.LatestLedger(&value)
+	err := q.LatestLedger(ctx, &value)
 	return value, err
 }
 
 // LatestLedger loads the latest known ledger
-func (q *Q) LatestLedger(dest interface{}) error {
-	return q.GetRaw(dest, `SELECT COALESCE(MAX(sequence), 0) FROM history_ledgers`)
+func (q *Q) LatestLedger(ctx context.Context, dest interface{}) error {
+	return q.GetRaw(ctx, dest, `SELECT COALESCE(MAX(sequence), 0) FROM history_ledgers`)
 }
 
 // LatestLedgerSequenceClosedAt loads the latest known ledger sequence and close time,
 // returns empty values if no ledgers in a DB.
-func (q *Q) LatestLedgerSequenceClosedAt() (int32, time.Time, error) {
+func (q *Q) LatestLedgerSequenceClosedAt(ctx context.Context) (int32, time.Time, error) {
 	ledger := struct {
 		Sequence int32     `db:"sequence"`
 		ClosedAt time.Time `db:"closed_at"`
 	}{}
-	err := q.GetRaw(&ledger, `SELECT sequence, closed_at FROM history_ledgers ORDER BY sequence DESC LIMIT 1`)
+	err := q.GetRaw(ctx, &ledger, `SELECT sequence, closed_at FROM history_ledgers ORDER BY sequence DESC LIMIT 1`)
 	if err == sql.ErrNoRows {
 		// Will return empty values
 		return ledger.Sequence, ledger.ClosedAt, nil
@@ -806,8 +806,8 @@ func (q *Q) LatestLedgerSequenceClosedAt() (int32, time.Time, error) {
 
 // LatestLedgerBaseFeeAndSequence loads the latest known ledger's base fee and
 // sequence number.
-func (q *Q) LatestLedgerBaseFeeAndSequence(dest interface{}) error {
-	return q.GetRaw(dest, `
+func (q *Q) LatestLedgerBaseFeeAndSequence(ctx context.Context, dest interface{}) error {
+	return q.GetRaw(ctx, dest, `
 		SELECT base_fee, sequence
 		FROM history_ledgers
 		WHERE sequence = (SELECT COALESCE(MAX(sequence), 0) FROM history_ledgers)
@@ -821,32 +821,32 @@ func (q *Q) CloneIngestionQ() IngestionQ {
 
 // DeleteRangeAll deletes a range of rows from all history tables between
 // `start` and `end` (exclusive).
-func (q *Q) DeleteRangeAll(start, end int64) error {
-	err := q.DeleteRange(start, end, "history_effects", "history_operation_id")
+func (q *Q) DeleteRangeAll(ctx context.Context, start, end int64) error {
+	err := q.DeleteRange(ctx, start, end, "history_effects", "history_operation_id")
 	if err != nil {
 		return errors.Wrap(err, "Error clearing history_effects")
 	}
-	err = q.DeleteRange(start, end, "history_operation_participants", "history_operation_id")
+	err = q.DeleteRange(ctx, start, end, "history_operation_participants", "history_operation_id")
 	if err != nil {
 		return errors.Wrap(err, "Error clearing history_operation_participants")
 	}
-	err = q.DeleteRange(start, end, "history_operations", "id")
+	err = q.DeleteRange(ctx, start, end, "history_operations", "id")
 	if err != nil {
 		return errors.Wrap(err, "Error clearing history_operations")
 	}
-	err = q.DeleteRange(start, end, "history_transaction_participants", "history_transaction_id")
+	err = q.DeleteRange(ctx, start, end, "history_transaction_participants", "history_transaction_id")
 	if err != nil {
 		return errors.Wrap(err, "Error clearing history_transaction_participants")
 	}
-	err = q.DeleteRange(start, end, "history_transactions", "id")
+	err = q.DeleteRange(ctx, start, end, "history_transactions", "id")
 	if err != nil {
 		return errors.Wrap(err, "Error clearing history_transactions")
 	}
-	err = q.DeleteRange(start, end, "history_ledgers", "id")
+	err = q.DeleteRange(ctx, start, end, "history_ledgers", "id")
 	if err != nil {
 		return errors.Wrap(err, "Error clearing history_ledgers")
 	}
-	err = q.DeleteRange(start, end, "history_trades", "history_operation_id")
+	err = q.DeleteRange(ctx, start, end, "history_trades", "history_operation_id")
 	if err != nil {
 		return errors.Wrap(err, "Error clearing history_trades")
 	}

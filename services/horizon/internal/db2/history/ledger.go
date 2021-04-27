@@ -1,6 +1,7 @@
 package history
 
 import (
+	"context"
 	"encoding/hex"
 	"fmt"
 	"time"
@@ -14,12 +15,12 @@ import (
 )
 
 // LedgerBySequence loads the single ledger at `seq` into `dest`
-func (q *Q) LedgerBySequence(dest interface{}, seq int32) error {
+func (q *Q) LedgerBySequence(ctx context.Context, dest interface{}, seq int32) error {
 	sql := selectLedger.
 		Limit(1).
 		Where("sequence = ?", seq)
 
-	return q.Get(dest, sql)
+	return q.Get(ctx, dest, sql)
 }
 
 // Ledgers provides a helper to filter rows from the `history_ledgers` table
@@ -33,7 +34,7 @@ func (q *Q) Ledgers() *LedgersQ {
 
 // LedgersBySequence loads the a set of ledgers identified by the sequences
 // `seqs` into `dest`.
-func (q *Q) LedgersBySequence(dest interface{}, seqs ...int32) error {
+func (q *Q) LedgersBySequence(ctx context.Context, dest interface{}, seqs ...int32) error {
 	if len(seqs) == 0 {
 		return errors.New("no sequence arguments provided")
 	}
@@ -46,15 +47,15 @@ func (q *Q) LedgersBySequence(dest interface{}, seqs ...int32) error {
 
 	sql := selectLedger.Where(in, whereArgs...)
 
-	return q.Select(dest, sql)
+	return q.Select(ctx, dest, sql)
 }
 
 // LedgerCapacityUsageStats returns ledger capacity stats for the last 5 ledgers.
 // Currently, we hard code the query to return the last 5 ledgers.
 // TODO: make the number of ledgers configurable.
-func (q *Q) LedgerCapacityUsageStats(currentSeq int32, dest *LedgerCapacityUsageStats) error {
+func (q *Q) LedgerCapacityUsageStats(ctx context.Context, currentSeq int32, dest *LedgerCapacityUsageStats) error {
 	const ledgers int32 = 5
-	return q.GetRaw(dest, `
+	return q.GetRaw(ctx, dest, `
 		SELECT ROUND(SUM(CAST(operation_count as decimal))/SUM(max_tx_set_size), 2) as ledger_capacity_usage FROM
 			(SELECT
 			  hl.sequence, COALESCE(SUM(ht.operation_count), 0) as operation_count, hl.max_tx_set_size
@@ -76,18 +77,19 @@ func (q *LedgersQ) Page(page db2.PageQuery) *LedgersQ {
 }
 
 // Select loads the results of the query specified by `q` into `dest`.
-func (q *LedgersQ) Select(dest interface{}) error {
+func (q *LedgersQ) Select(ctx context.Context, dest interface{}) error {
 	if q.Err != nil {
 		return q.Err
 	}
 
-	q.Err = q.parent.Select(dest, q.sql)
+	q.Err = q.parent.Select(ctx, dest, q.sql)
 	return q.Err
 }
 
 // QLedgers defines ingestion ledger related queries.
 type QLedgers interface {
 	InsertLedger(
+		ctx context.Context,
 		ledger xdr.LedgerHeaderHistoryEntry,
 		successTxsCount int,
 		failedTxsCount int,
@@ -99,7 +101,7 @@ type QLedgers interface {
 
 // InsertLedger creates a row in the history_ledgers table.
 // Returns number of rows affected and error.
-func (q *Q) InsertLedger(
+func (q *Q) InsertLedger(ctx context.Context,
 	ledger xdr.LedgerHeaderHistoryEntry,
 	successTxsCount int,
 	failedTxsCount int,
@@ -120,7 +122,7 @@ func (q *Q) InsertLedger(
 	}
 
 	sql := sq.Insert("history_ledgers").SetMap(m)
-	result, err := q.Exec(sql)
+	result, err := q.Exec(ctx, sql)
 	if err != nil {
 		return 0, err
 	}

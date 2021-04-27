@@ -1,6 +1,8 @@
 package processors
 
 import (
+	"context"
+
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"
@@ -23,7 +25,7 @@ func (p *AccountDataProcessor) reset() {
 	p.cache = ingest.NewChangeCompactor()
 }
 
-func (p *AccountDataProcessor) ProcessChange(change ingest.Change) error {
+func (p *AccountDataProcessor) ProcessChange(ctx context.Context, change ingest.Change) error {
 	// We're interested in data only
 	if change.Type != xdr.LedgerEntryTypeData {
 		return nil
@@ -35,7 +37,7 @@ func (p *AccountDataProcessor) ProcessChange(change ingest.Change) error {
 	}
 
 	if p.cache.Size() > maxBatchSize {
-		err = p.Commit()
+		err = p.Commit(ctx)
 		if err != nil {
 			return errors.Wrap(err, "error in Commit")
 		}
@@ -45,7 +47,7 @@ func (p *AccountDataProcessor) ProcessChange(change ingest.Change) error {
 	return nil
 }
 
-func (p *AccountDataProcessor) Commit() error {
+func (p *AccountDataProcessor) Commit(ctx context.Context) error {
 	batch := p.dataQ.NewAccountDataBatchInsertBuilder(maxBatchSize)
 
 	changes := p.cache.GetChanges()
@@ -59,7 +61,7 @@ func (p *AccountDataProcessor) Commit() error {
 		case change.Pre == nil && change.Post != nil:
 			// Created
 			action = "inserting"
-			err = batch.Add(*change.Post)
+			err = batch.Add(ctx, *change.Post)
 			rowsAffected = 1 // We don't track this when batch inserting
 		case change.Pre != nil && change.Post == nil:
 			// Removed
@@ -69,7 +71,7 @@ func (p *AccountDataProcessor) Commit() error {
 			if err != nil {
 				return errors.Wrap(err, "Error creating ledger key")
 			}
-			rowsAffected, err = p.dataQ.RemoveAccountData(*ledgerKey.Data)
+			rowsAffected, err = p.dataQ.RemoveAccountData(ctx, *ledgerKey.Data)
 		default:
 			// Updated
 			action = "updating"
@@ -78,7 +80,7 @@ func (p *AccountDataProcessor) Commit() error {
 			if err != nil {
 				return errors.Wrap(err, "Error creating ledger key")
 			}
-			rowsAffected, err = p.dataQ.UpdateAccountData(*change.Post)
+			rowsAffected, err = p.dataQ.UpdateAccountData(ctx, *change.Post)
 		}
 
 		if err != nil {
@@ -96,7 +98,7 @@ func (p *AccountDataProcessor) Commit() error {
 		}
 	}
 
-	err := batch.Exec()
+	err := batch.Exec(ctx)
 	if err != nil {
 		return errors.Wrap(err, "error executing batch")
 	}

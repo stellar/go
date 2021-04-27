@@ -18,8 +18,8 @@ func TestInsertOrUpdateIssuer(t *testing.T) {
 
 	var session tickerdb.TickerSession
 	session.DB = db.Open()
-	session.Ctx = context.Background()
 	defer session.DB.Close()
+	ctx := context.Background()
 
 	// Run migrations to make sure the tests are run
 	// on the most updated schema version
@@ -37,11 +37,11 @@ func TestInsertOrUpdateIssuer(t *testing.T) {
 		PublicKey: publicKey,
 		Name:      name,
 	}
-	id, err := session.InsertOrUpdateIssuer(&issuer, []string{"public_key"})
+	id, err := session.InsertOrUpdateIssuer(ctx, &issuer, []string{"public_key"})
 
 	require.NoError(t, err)
 	var dbIssuer tickerdb.Issuer
-	err = session.GetRaw(&dbIssuer, `
+	err = session.GetRaw(ctx, &dbIssuer, `
 		SELECT *
 		FROM issuers
 		ORDER BY id DESC
@@ -57,11 +57,11 @@ func TestInsertOrUpdateIssuer(t *testing.T) {
 		PublicKey: "ANOTHERKEY",
 		Name:      "Hello from the other side",
 	}
-	id2, err := session.InsertOrUpdateIssuer(&issuer2, []string{"public_key"})
+	id2, err := session.InsertOrUpdateIssuer(ctx, &issuer2, []string{"public_key"})
 
 	require.NoError(t, err)
 	var dbIssuer2 tickerdb.Issuer
-	err = session.GetRaw(&dbIssuer2, `
+	err = session.GetRaw(ctx, &dbIssuer2, `
 		SELECT *
 		FROM issuers
 		ORDER BY id DESC
@@ -79,11 +79,11 @@ func TestInsertOrUpdateIssuer(t *testing.T) {
 		PublicKey: publicKey,
 		Name:      name3,
 	}
-	id, err = session.InsertOrUpdateIssuer(&issuer3, []string{"public_key"})
+	id, err = session.InsertOrUpdateIssuer(ctx, &issuer3, []string{"public_key"})
 	require.NoError(t, err)
 
 	var dbIssuer3 tickerdb.Issuer
-	err = session.GetRaw(
+	err = session.GetRaw(ctx,
 		&dbIssuer3,
 		"SELECT * FROM issuers WHERE id=?",
 		id,

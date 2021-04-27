@@ -3,6 +3,7 @@
 package processors
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -156,10 +157,11 @@ func (s *TradeProcessorTestSuiteLedger) TearDownTest() {
 }
 
 func (s *TradeProcessorTestSuiteLedger) TestIgnoreFailedTransactions() {
-	err := s.processor.ProcessTransaction(createTransaction(false, 1))
+	ctx := context.Background()
+	err := s.processor.ProcessTransaction(ctx, createTransaction(false, 1))
 	s.Assert().NoError(err)
 
-	err = s.processor.Commit()
+	err = s.processor.Commit(ctx)
 	s.Assert().NoError(err)
 }
 
@@ -438,7 +440,7 @@ func (s *TradeProcessorTestSuiteLedger) mockReadTradeTransactions(
 		},
 		Index:      1,
 		FeeChanges: []xdr.LedgerEntryChange{},
-		Meta: xdr.TransactionMeta{
+		UnsafeMeta: xdr.TransactionMeta{
 			V: 2,
 			V2: &xdr.TransactionMetaV2{
 				Operations: []xdr.OperationMeta{
@@ -451,7 +453,7 @@ func (s *TradeProcessorTestSuiteLedger) mockReadTradeTransactions(
 	}
 
 	for i, trade := range s.allTrades {
-		tx.Meta.V2.Operations = append(tx.Meta.V2.Operations, xdr.OperationMeta{
+		tx.UnsafeMeta.V2.Operations = append(tx.UnsafeMeta.V2.Operations, xdr.OperationMeta{
 			Changes: xdr.LedgerEntryChanges{
 				xdr.LedgerEntryChange{
 					Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
@@ -491,20 +493,21 @@ func (s *TradeProcessorTestSuiteLedger) mockReadTradeTransactions(
 }
 
 func (s *TradeProcessorTestSuiteLedger) TestIngestTradesSucceeds() {
+	ctx := context.Background()
 	inserts := s.mockReadTradeTransactions(s.processor.ledger)
 
-	s.mockQ.On("CreateAccounts", mock.AnythingOfType("[]string"), maxBatchSize).
+	s.mockQ.On("CreateAccounts", ctx, mock.AnythingOfType("[]string"), maxBatchSize).
 		Run(func(args mock.Arguments) {
-			arg := args.Get(0).([]string)
+			arg := args.Get(1).([]string)
 			s.Assert().ElementsMatch(
 				mapKeysToList(s.unmuxedAccountToID),
 				arg,
 			)
 		}).Return(s.unmuxedAccountToID, nil).Once()
 
-	s.mockQ.On("CreateAssets", mock.AnythingOfType("[]xdr.Asset"), maxBatchSize).
+	s.mockQ.On("CreateAssets", ctx, mock.AnythingOfType("[]xdr.Asset"), maxBatchSize).
 		Run(func(args mock.Arguments) {
-			arg := args.Get(0).([]xdr.Asset)
+			arg := args.Get(1).([]xdr.Asset)
 			s.Assert().ElementsMatch(
 				s.assets,
 				arg,
@@ -512,28 +515,29 @@ func (s *TradeProcessorTestSuiteLedger) TestIngestTradesSucceeds() {
 		}).Return(s.assetToID, nil).Once()
 
 	for _, insert := range inserts {
-		s.mockBatchInsertBuilder.On("Add", []history.InsertTrade{
+		s.mockBatchInsertBuilder.On("Add", ctx, []history.InsertTrade{
 			insert,
 		}).Return(nil).Once()
 	}
 
-	s.mockBatchInsertBuilder.On("Exec").Return(nil).Once()
+	s.mockBatchInsertBuilder.On("Exec", ctx).Return(nil).Once()
 
 	for _, tx := range s.txs {
-		err := s.processor.ProcessTransaction(tx)
+		err := s.processor.ProcessTransaction(ctx, tx)
 		s.Assert().NoError(err)
 	}
 
-	err := s.processor.Commit()
+	err := s.processor.Commit(ctx)
 	s.Assert().NoError(err)
 }
 
 func (s *TradeProcessorTestSuiteLedger) TestCreateAccountsError() {
+	ctx := context.Background()
 	s.mockReadTradeTransactions(s.processor.ledger)
 
-	s.mockQ.On("CreateAccounts", mock.AnythingOfType("[]string"), maxBatchSize).
+	s.mockQ.On("CreateAccounts", ctx, mock.AnythingOfType("[]string"), maxBatchSize).
 		Run(func(args mock.Arguments) {
-			arg := args.Get(0).([]string)
+			arg := args.Get(1).([]string)
 			s.Assert().ElementsMatch(
 				mapKeysToList(s.unmuxedAccountToID),
 				arg,
@@ -541,30 +545,31 @@ func (s *TradeProcessorTestSuiteLedger) TestCreateAccountsError() {
 		}).Return(map[string]int64{}, fmt.Errorf("create accounts error")).Once()
 
 	for _, tx := range s.txs {
-		err := s.processor.ProcessTransaction(tx)
+		err := s.processor.ProcessTransaction(ctx, tx)
 		s.Assert().NoError(err)
 	}
 
-	err := s.processor.Commit()
+	err := s.processor.Commit(ctx)
 
 	s.Assert().EqualError(err, "Error creating account ids: create accounts error")
 }
 
 func (s *TradeProcessorTestSuiteLedger) TestCreateAssetsError() {
+	ctx := context.Background()
 	s.mockReadTradeTransactions(s.processor.ledger)
 
-	s.mockQ.On("CreateAccounts", mock.AnythingOfType("[]string"), maxBatchSize).
+	s.mockQ.On("CreateAccounts", ctx, mock.AnythingOfType("[]string"), maxBatchSize).
 		Run(func(args mock.Arguments) {
-			arg := args.Get(0).([]string)
+			arg := args.Get(1).([]string)
 			s.Assert().ElementsMatch(
 				mapKeysToList(s.unmuxedAccountToID),
 				arg,
 			)
 		}).Return(s.unmuxedAccountToID, nil).Once()
 
-	s.mockQ.On("CreateAssets", mock.AnythingOfType("[]xdr.Asset"), maxBatchSize).
+	s.mockQ.On("CreateAssets", ctx, mock.AnythingOfType("[]xdr.Asset"), maxBatchSize).
 		Run(func(args mock.Arguments) {
-			arg := args.Get(0).([]xdr.Asset)
+			arg := args.Get(1).([]xdr.Asset)
 			s.Assert().ElementsMatch(
 				s.assets,
 				arg,
@@ -572,111 +577,114 @@ func (s *TradeProcessorTestSuiteLedger) TestCreateAssetsError() {
 		}).Return(s.assetToID, fmt.Errorf("create assets error")).Once()
 
 	for _, tx := range s.txs {
-		err := s.processor.ProcessTransaction(tx)
+		err := s.processor.ProcessTransaction(ctx, tx)
 		s.Assert().NoError(err)
 	}
 
-	err := s.processor.Commit()
+	err := s.processor.Commit(ctx)
 	s.Assert().EqualError(err, "Error creating asset ids: create assets error")
 }
 
 func (s *TradeProcessorTestSuiteLedger) TestBatchAddError() {
+	ctx := context.Background()
 	s.mockReadTradeTransactions(s.processor.ledger)
 
-	s.mockQ.On("CreateAccounts", mock.AnythingOfType("[]string"), maxBatchSize).
+	s.mockQ.On("CreateAccounts", ctx, mock.AnythingOfType("[]string"), maxBatchSize).
 		Run(func(args mock.Arguments) {
-			arg := args.Get(0).([]string)
+			arg := args.Get(1).([]string)
 			s.Assert().ElementsMatch(
 				mapKeysToList(s.unmuxedAccountToID),
 				arg,
 			)
 		}).Return(s.unmuxedAccountToID, nil).Once()
 
-	s.mockQ.On("CreateAssets", mock.AnythingOfType("[]xdr.Asset"), maxBatchSize).
+	s.mockQ.On("CreateAssets", ctx, mock.AnythingOfType("[]xdr.Asset"), maxBatchSize).
 		Run(func(args mock.Arguments) {
-			arg := args.Get(0).([]xdr.Asset)
+			arg := args.Get(1).([]xdr.Asset)
 			s.Assert().ElementsMatch(
 				s.assets,
 				arg,
 			)
 		}).Return(s.assetToID, nil).Once()
 
-	s.mockBatchInsertBuilder.On("Add", mock.AnythingOfType("[]history.InsertTrade")).
+	s.mockBatchInsertBuilder.On("Add", ctx, mock.AnythingOfType("[]history.InsertTrade")).
 		Return(fmt.Errorf("batch add error")).Once()
 
 	for _, tx := range s.txs {
-		err := s.processor.ProcessTransaction(tx)
+		err := s.processor.ProcessTransaction(ctx, tx)
 		s.Assert().NoError(err)
 	}
 
-	err := s.processor.Commit()
+	err := s.processor.Commit(ctx)
 	s.Assert().EqualError(err, "Error adding trade to batch: batch add error")
 }
 
 func (s *TradeProcessorTestSuiteLedger) TestBatchExecError() {
+	ctx := context.Background()
 	insert := s.mockReadTradeTransactions(s.processor.ledger)
 
-	s.mockQ.On("CreateAccounts", mock.AnythingOfType("[]string"), maxBatchSize).
+	s.mockQ.On("CreateAccounts", ctx, mock.AnythingOfType("[]string"), maxBatchSize).
 		Run(func(args mock.Arguments) {
-			arg := args.Get(0).([]string)
+			arg := args.Get(1).([]string)
 			s.Assert().ElementsMatch(
 				mapKeysToList(s.unmuxedAccountToID),
 				arg,
 			)
 		}).Return(s.unmuxedAccountToID, nil).Once()
 
-	s.mockQ.On("CreateAssets", mock.AnythingOfType("[]xdr.Asset"), maxBatchSize).
+	s.mockQ.On("CreateAssets", ctx, mock.AnythingOfType("[]xdr.Asset"), maxBatchSize).
 		Run(func(args mock.Arguments) {
-			arg := args.Get(0).([]xdr.Asset)
+			arg := args.Get(1).([]xdr.Asset)
 			s.Assert().ElementsMatch(
 				s.assets,
 				arg,
 			)
 		}).Return(s.assetToID, nil).Once()
 
-	s.mockBatchInsertBuilder.On("Add", mock.AnythingOfType("[]history.InsertTrade")).
+	s.mockBatchInsertBuilder.On("Add", ctx, mock.AnythingOfType("[]history.InsertTrade")).
 		Return(nil).Times(len(insert))
-	s.mockBatchInsertBuilder.On("Exec").Return(fmt.Errorf("exec error")).Once()
+	s.mockBatchInsertBuilder.On("Exec", ctx).Return(fmt.Errorf("exec error")).Once()
 	for _, tx := range s.txs {
-		err := s.processor.ProcessTransaction(tx)
+		err := s.processor.ProcessTransaction(ctx, tx)
 		s.Assert().NoError(err)
 	}
 
-	err := s.processor.Commit()
+	err := s.processor.Commit(ctx)
 	s.Assert().EqualError(err, "Error flushing operation batch: exec error")
 }
 
 func (s *TradeProcessorTestSuiteLedger) TestIgnoreCheckIfSmallLedger() {
+	ctx := context.Background()
 	insert := s.mockReadTradeTransactions(s.processor.ledger)
 
-	s.mockQ.On("CreateAccounts", mock.AnythingOfType("[]string"), maxBatchSize).
+	s.mockQ.On("CreateAccounts", ctx, mock.AnythingOfType("[]string"), maxBatchSize).
 		Run(func(args mock.Arguments) {
-			arg := args.Get(0).([]string)
+			arg := args.Get(1).([]string)
 			s.Assert().ElementsMatch(
 				mapKeysToList(s.unmuxedAccountToID),
 				arg,
 			)
 		}).Return(s.unmuxedAccountToID, nil).Once()
 
-	s.mockQ.On("CreateAssets", mock.AnythingOfType("[]xdr.Asset"), maxBatchSize).
+	s.mockQ.On("CreateAssets", ctx, mock.AnythingOfType("[]xdr.Asset"), maxBatchSize).
 		Run(func(args mock.Arguments) {
-			arg := args.Get(0).([]xdr.Asset)
+			arg := args.Get(1).([]xdr.Asset)
 			s.Assert().ElementsMatch(
 				s.assets,
 				arg,
 			)
 		}).Return(s.assetToID, nil).Once()
 
-	s.mockBatchInsertBuilder.On("Add", mock.AnythingOfType("[]history.InsertTrade")).
+	s.mockBatchInsertBuilder.On("Add", ctx, mock.AnythingOfType("[]history.InsertTrade")).
 		Return(nil).Times(len(insert))
-	s.mockBatchInsertBuilder.On("Exec").Return(nil).Once()
+	s.mockBatchInsertBuilder.On("Exec", ctx).Return(nil).Once()
 
 	for _, tx := range s.txs {
-		err := s.processor.ProcessTransaction(tx)
+		err := s.processor.ProcessTransaction(ctx, tx)
 		s.Assert().NoError(err)
 	}
 
-	err := s.processor.Commit()
+	err := s.processor.Commit(ctx)
 	s.Assert().NoError(err)
 }
 

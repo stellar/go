@@ -3,6 +3,7 @@
 package processors
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/suite"
@@ -18,12 +19,14 @@ func TestClaimableBalancesChangeProcessorTestSuiteState(t *testing.T) {
 
 type ClaimableBalancesChangeProcessorTestSuiteState struct {
 	suite.Suite
+	ctx                    context.Context
 	processor              *ClaimableBalancesChangeProcessor
 	mockQ                  *history.MockQClaimableBalances
 	mockBatchInsertBuilder *history.MockClaimableBalancesBatchInsertBuilder
 }
 
 func (s *ClaimableBalancesChangeProcessorTestSuiteState) SetupTest() {
+	s.ctx = context.Background()
 	s.mockQ = &history.MockQClaimableBalances{}
 	s.mockBatchInsertBuilder = &history.MockClaimableBalancesBatchInsertBuilder{}
 
@@ -35,8 +38,8 @@ func (s *ClaimableBalancesChangeProcessorTestSuiteState) SetupTest() {
 }
 
 func (s *ClaimableBalancesChangeProcessorTestSuiteState) TearDownTest() {
-	s.mockBatchInsertBuilder.On("Exec").Return(nil).Once()
-	s.Assert().NoError(s.processor.Commit())
+	s.mockBatchInsertBuilder.On("Exec", s.ctx).Return(nil).Once()
+	s.Assert().NoError(s.processor.Commit(s.ctx))
 	s.mockQ.AssertExpectations(s.T())
 	s.mockBatchInsertBuilder.AssertExpectations(s.T())
 }
@@ -57,7 +60,7 @@ func (s *ClaimableBalancesChangeProcessorTestSuiteState) TestCreatesClaimableBal
 		Amount:    10,
 	}
 
-	s.mockBatchInsertBuilder.On("Add", &xdr.LedgerEntry{
+	s.mockBatchInsertBuilder.On("Add", s.ctx, &xdr.LedgerEntry{
 		LastModifiedLedgerSeq: lastModifiedLedgerSeq,
 		Data: xdr.LedgerEntryData{
 			Type:             xdr.LedgerEntryTypeClaimableBalance,
@@ -65,7 +68,7 @@ func (s *ClaimableBalancesChangeProcessorTestSuiteState) TestCreatesClaimableBal
 		},
 	}).Return(nil).Once()
 
-	err := s.processor.ProcessChange(ingest.Change{
+	err := s.processor.ProcessChange(s.ctx, ingest.Change{
 		Type: xdr.LedgerEntryTypeClaimableBalance,
 		Pre:  nil,
 		Post: &xdr.LedgerEntry{
@@ -85,12 +88,14 @@ func TestClaimableBalancesChangeProcessorTestSuiteLedger(t *testing.T) {
 
 type ClaimableBalancesChangeProcessorTestSuiteLedger struct {
 	suite.Suite
+	ctx                    context.Context
 	processor              *ClaimableBalancesChangeProcessor
 	mockQ                  *history.MockQClaimableBalances
 	mockBatchInsertBuilder *history.MockClaimableBalancesBatchInsertBuilder
 }
 
 func (s *ClaimableBalancesChangeProcessorTestSuiteLedger) SetupTest() {
+	s.ctx = context.Background()
 	s.mockQ = &history.MockQClaimableBalances{}
 	s.mockBatchInsertBuilder = &history.MockClaimableBalancesBatchInsertBuilder{}
 
@@ -102,8 +107,8 @@ func (s *ClaimableBalancesChangeProcessorTestSuiteLedger) SetupTest() {
 }
 
 func (s *ClaimableBalancesChangeProcessorTestSuiteLedger) TearDownTest() {
-	s.mockBatchInsertBuilder.On("Exec").Return(nil).Once()
-	s.Assert().NoError(s.processor.Commit())
+	s.mockBatchInsertBuilder.On("Exec", s.ctx).Return(nil).Once()
+	s.Assert().NoError(s.processor.Commit(s.ctx))
 	s.mockQ.AssertExpectations(s.T())
 }
 
@@ -135,7 +140,7 @@ func (s *ClaimableBalancesChangeProcessorTestSuiteLedger) TestNewClaimableBalanc
 			},
 		},
 	}
-	err := s.processor.ProcessChange(ingest.Change{
+	err := s.processor.ProcessChange(s.ctx, ingest.Change{
 		Type: xdr.LedgerEntryTypeClaimableBalance,
 		Pre:  nil,
 		Post: &entry,
@@ -158,7 +163,7 @@ func (s *ClaimableBalancesChangeProcessorTestSuiteLedger) TestNewClaimableBalanc
 	}
 
 	entry.LastModifiedLedgerSeq = entry.LastModifiedLedgerSeq - 1
-	err = s.processor.ProcessChange(ingest.Change{
+	err = s.processor.ProcessChange(s.ctx, ingest.Change{
 		Type: xdr.LedgerEntryTypeClaimableBalance,
 		Pre:  &entry,
 		Post: &updated,
@@ -168,6 +173,7 @@ func (s *ClaimableBalancesChangeProcessorTestSuiteLedger) TestNewClaimableBalanc
 	// We use LedgerEntryChangesCache so all changes are squashed
 	s.mockBatchInsertBuilder.On(
 		"Add",
+		s.ctx,
 		&updated,
 	).Return(nil).Once()
 }
@@ -213,7 +219,7 @@ func (s *ClaimableBalancesChangeProcessorTestSuiteLedger) TestUpdateClaimableBal
 		},
 	}
 
-	err := s.processor.ProcessChange(ingest.Change{
+	err := s.processor.ProcessChange(s.ctx, ingest.Change{
 		Type: xdr.LedgerEntryTypeClaimableBalance,
 		Pre:  &pre,
 		Post: &updated,
@@ -222,6 +228,7 @@ func (s *ClaimableBalancesChangeProcessorTestSuiteLedger) TestUpdateClaimableBal
 
 	s.mockQ.On(
 		"UpdateClaimableBalance",
+		s.ctx,
 		updated,
 	).Return(int64(1), nil).Once()
 }
@@ -250,7 +257,7 @@ func (s *ClaimableBalancesChangeProcessorTestSuiteLedger) TestRemoveClaimableBal
 			},
 		},
 	}
-	err := s.processor.ProcessChange(ingest.Change{
+	err := s.processor.ProcessChange(s.ctx, ingest.Change{
 		Type: xdr.LedgerEntryTypeClaimableBalance,
 		Pre:  &pre,
 		Post: nil,
@@ -259,6 +266,7 @@ func (s *ClaimableBalancesChangeProcessorTestSuiteLedger) TestRemoveClaimableBal
 
 	s.mockQ.On(
 		"RemoveClaimableBalance",
+		s.ctx,
 		cBalance,
 	).Return(int64(1), nil).Once()
 }

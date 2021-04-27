@@ -23,19 +23,19 @@ const (
 
 type horizonChangeProcessor interface {
 	processors.ChangeProcessor
-	Commit() error
+	Commit(context.Context) error
 }
 
 type horizonTransactionProcessor interface {
 	processors.LedgerTransactionProcessor
-	Commit() error
+	Commit(context.Context) error
 }
 
 type statsChangeProcessor struct {
 	*ingest.StatsChangeProcessor
 }
 
-func (statsChangeProcessor) Commit() error {
+func (statsChangeProcessor) Commit(ctx context.Context) error {
 	return nil
 }
 
@@ -43,7 +43,7 @@ type statsLedgerTransactionProcessor struct {
 	*processors.StatsLedgerTransactionProcessor
 }
 
-func (statsLedgerTransactionProcessor) Commit() error {
+func (statsLedgerTransactionProcessor) Commit(ctx context.Context) error {
 	return nil
 }
 
@@ -189,7 +189,7 @@ func (s *ProcessorRunner) RunHistoryArchiveIngestion(
 	changeProcessor := s.buildChangeProcessor(&changeStats, historyArchiveSource, checkpointLedger)
 
 	if checkpointLedger == 1 {
-		if err := changeProcessor.ProcessChange(ingest.GenesisChange(s.config.NetworkPassphrase)); err != nil {
+		if err := changeProcessor.ProcessChange(s.ctx, ingest.GenesisChange(s.config.NetworkPassphrase)); err != nil {
 			return changeStats.GetResults(), errors.Wrap(err, "Error ingesting genesis ledger")
 		}
 	} else {
@@ -211,7 +211,7 @@ func (s *ProcessorRunner) RunHistoryArchiveIngestion(
 		log.WithField("ledger", checkpointLedger).
 			Info("Processing entries from History Archive Snapshot")
 
-		err = processors.StreamChanges(changeProcessor, newloggingChangeReader(
+		err = processors.StreamChanges(s.ctx, changeProcessor, newloggingChangeReader(
 			changeReader,
 			"historyArchive",
 			checkpointLedger,
@@ -223,7 +223,7 @@ func (s *ProcessorRunner) RunHistoryArchiveIngestion(
 		}
 	}
 
-	if err := changeProcessor.Commit(); err != nil {
+	if err := changeProcessor.Commit(s.ctx); err != nil {
 		return changeStats.GetResults(), errors.Wrap(err, "Error commiting changes from processor")
 	}
 
@@ -246,11 +246,11 @@ func (s *ProcessorRunner) runChangeProcessorOnLedger(
 		logFrequency,
 		s.logMemoryStats,
 	)
-	if err = processors.StreamChanges(changeProcessor, changeReader); err != nil {
+	if err = processors.StreamChanges(s.ctx, changeProcessor, changeReader); err != nil {
 		return errors.Wrap(err, "Error streaming changes from ledger")
 	}
 
-	err = changeProcessor.Commit()
+	err = changeProcessor.Commit(s.ctx)
 	if err != nil {
 		return errors.Wrap(err, "Error commiting changes from processor")
 	}
@@ -280,13 +280,13 @@ func (s *ProcessorRunner) RunTransactionProcessorsOnLedger(ledger xdr.LedgerClos
 	}
 
 	groupTransactionProcessors := s.buildTransactionProcessor(&ledgerTransactionStats, transactionReader.GetHeader())
-	err = processors.StreamLedgerTransactions(groupTransactionProcessors, transactionReader)
+	err = processors.StreamLedgerTransactions(s.ctx, groupTransactionProcessors, transactionReader)
 	if err != nil {
 		err = errors.Wrap(err, "Error streaming changes from ledger")
 		return
 	}
 
-	err = groupTransactionProcessors.Commit()
+	err = groupTransactionProcessors.Commit(s.ctx)
 	if err != nil {
 		err = errors.Wrap(err, "Error commiting changes from processor")
 		return

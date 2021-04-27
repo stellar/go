@@ -1,6 +1,7 @@
 package history
 
 import (
+	"context"
 	"database/sql/driver"
 	"encoding/base64"
 	"encoding/hex"
@@ -24,8 +25,8 @@ import (
 // TransactionBatchInsertBuilder is used to insert transactions into the
 // history_transactions table
 type TransactionBatchInsertBuilder interface {
-	Add(transaction ingest.LedgerTransaction, sequence uint32) error
-	Exec() error
+	Add(ctx context.Context, transaction ingest.LedgerTransaction, sequence uint32) error
+	Exec(ctx context.Context) error
 }
 
 // transactionBatchInsertBuilder is a simple wrapper around db.BatchInsertBuilder
@@ -44,17 +45,17 @@ func (q *Q) NewTransactionBatchInsertBuilder(maxBatchSize int) TransactionBatchI
 }
 
 // Add adds a new transaction to the batch
-func (i *transactionBatchInsertBuilder) Add(transaction ingest.LedgerTransaction, sequence uint32) error {
+func (i *transactionBatchInsertBuilder) Add(ctx context.Context, transaction ingest.LedgerTransaction, sequence uint32) error {
 	row, err := transactionToRow(transaction, sequence)
 	if err != nil {
 		return err
 	}
 
-	return i.builder.RowStruct(row)
+	return i.builder.RowStruct(ctx, row)
 }
 
-func (i *transactionBatchInsertBuilder) Exec() error {
-	return i.builder.Exec()
+func (i *transactionBatchInsertBuilder) Exec(ctx context.Context) error {
+	return i.builder.Exec(ctx)
 }
 
 // TimeBounds represents the time bounds of a Stellar transaction
@@ -235,7 +236,7 @@ func transactionToRow(transaction ingest.LedgerTransaction, sequence uint32) (Tr
 	if err != nil {
 		return TransactionWithoutLedger{}, err
 	}
-	metaBase64, err := xdr.MarshalBase64(transaction.Meta)
+	metaBase64, err := xdr.MarshalBase64(transaction.UnsafeMeta)
 	if err != nil {
 		return TransactionWithoutLedger{}, err
 	}

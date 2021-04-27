@@ -14,7 +14,7 @@ func TestInsertAssetStats(t *testing.T) {
 	defer tt.Finish()
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
-	tt.Assert.NoError(q.InsertAssetStats([]ExpAssetStat{}, 1))
+	tt.Assert.NoError(q.InsertAssetStats(tt.Ctx, []ExpAssetStat{}, 1))
 
 	assetStats := []ExpAssetStat{
 		{
@@ -52,10 +52,10 @@ func TestInsertAssetStats(t *testing.T) {
 			NumAccounts: 1,
 		},
 	}
-	tt.Assert.NoError(q.InsertAssetStats(assetStats, 1))
+	tt.Assert.NoError(q.InsertAssetStats(tt.Ctx, assetStats, 1))
 
 	for _, assetStat := range assetStats {
-		got, err := q.GetAssetStat(assetStat.AssetType, assetStat.AssetCode, assetStat.AssetIssuer)
+		got, err := q.GetAssetStat(tt.Ctx, assetStat.AssetType, assetStat.AssetCode, assetStat.AssetIssuer)
 		tt.Assert.NoError(err)
 		tt.Assert.Equal(got, assetStat)
 	}
@@ -105,11 +105,11 @@ func TestInsertAssetStat(t *testing.T) {
 	}
 
 	for _, assetStat := range assetStats {
-		numChanged, err := q.InsertAssetStat(assetStat)
+		numChanged, err := q.InsertAssetStat(tt.Ctx, assetStat)
 		tt.Assert.NoError(err)
 		tt.Assert.Equal(numChanged, int64(1))
 
-		got, err := q.GetAssetStat(assetStat.AssetType, assetStat.AssetCode, assetStat.AssetIssuer)
+		got, err := q.GetAssetStat(tt.Ctx, assetStat.AssetType, assetStat.AssetCode, assetStat.AssetIssuer)
 		tt.Assert.NoError(err)
 		tt.Assert.Equal(got, assetStat)
 	}
@@ -139,23 +139,23 @@ func TestInsertAssetStatAlreadyExistsError(t *testing.T) {
 		NumAccounts: 2,
 	}
 
-	numChanged, err := q.InsertAssetStat(assetStat)
+	numChanged, err := q.InsertAssetStat(tt.Ctx, assetStat)
 	tt.Assert.NoError(err)
 	tt.Assert.Equal(numChanged, int64(1))
 
-	numChanged, err = q.InsertAssetStat(assetStat)
+	numChanged, err = q.InsertAssetStat(tt.Ctx, assetStat)
 	tt.Assert.Error(err)
 	tt.Assert.Equal(numChanged, int64(0))
 
 	assetStat.NumAccounts = 4
 	assetStat.Amount = "3"
-	numChanged, err = q.InsertAssetStat(assetStat)
+	numChanged, err = q.InsertAssetStat(tt.Ctx, assetStat)
 	tt.Assert.Error(err)
 	tt.Assert.Equal(numChanged, int64(0))
 
 	assetStat.NumAccounts = 2
 	assetStat.Amount = "1"
-	got, err := q.GetAssetStat(assetStat.AssetType, assetStat.AssetCode, assetStat.AssetIssuer)
+	got, err := q.GetAssetStat(tt.Ctx, assetStat.AssetType, assetStat.AssetCode, assetStat.AssetIssuer)
 	tt.Assert.NoError(err)
 	tt.Assert.Equal(got, assetStat)
 }
@@ -184,11 +184,11 @@ func TestUpdateAssetStatDoesNotExistsError(t *testing.T) {
 		NumAccounts: 2,
 	}
 
-	numChanged, err := q.UpdateAssetStat(assetStat)
+	numChanged, err := q.UpdateAssetStat(tt.Ctx, assetStat)
 	tt.Assert.Nil(err)
 	tt.Assert.Equal(numChanged, int64(0))
 
-	_, err = q.GetAssetStat(assetStat.AssetType, assetStat.AssetCode, assetStat.AssetIssuer)
+	_, err = q.GetAssetStat(tt.Ctx, assetStat.AssetType, assetStat.AssetCode, assetStat.AssetIssuer)
 	tt.Assert.Equal(err, sql.ErrNoRows)
 }
 
@@ -217,22 +217,22 @@ func TestUpdateStat(t *testing.T) {
 		NumAccounts: 2,
 	}
 
-	numChanged, err := q.InsertAssetStat(assetStat)
+	numChanged, err := q.InsertAssetStat(tt.Ctx, assetStat)
 	tt.Assert.NoError(err)
 	tt.Assert.Equal(numChanged, int64(1))
 
-	got, err := q.GetAssetStat(assetStat.AssetType, assetStat.AssetCode, assetStat.AssetIssuer)
+	got, err := q.GetAssetStat(tt.Ctx, assetStat.AssetType, assetStat.AssetCode, assetStat.AssetIssuer)
 	tt.Assert.NoError(err)
 	tt.Assert.Equal(got, assetStat)
 
 	assetStat.NumAccounts = 50
 	assetStat.Amount = "23"
 
-	numChanged, err = q.UpdateAssetStat(assetStat)
+	numChanged, err = q.UpdateAssetStat(tt.Ctx, assetStat)
 	tt.Assert.Nil(err)
 	tt.Assert.Equal(numChanged, int64(1))
 
-	got, err = q.GetAssetStat(assetStat.AssetType, assetStat.AssetCode, assetStat.AssetIssuer)
+	got, err = q.GetAssetStat(tt.Ctx, assetStat.AssetType, assetStat.AssetCode, assetStat.AssetIssuer)
 	tt.Assert.NoError(err)
 	tt.Assert.Equal(got, assetStat)
 }
@@ -261,7 +261,7 @@ func TestGetAssetStatDoesNotExist(t *testing.T) {
 		NumAccounts: 2,
 	}
 
-	_, err := q.GetAssetStat(assetStat.AssetType, assetStat.AssetCode, assetStat.AssetIssuer)
+	_, err := q.GetAssetStat(tt.Ctx, assetStat.AssetType, assetStat.AssetCode, assetStat.AssetIssuer)
 	tt.Assert.Equal(err, sql.ErrNoRows)
 }
 
@@ -290,7 +290,7 @@ func TestRemoveAssetStat(t *testing.T) {
 		NumAccounts: 2,
 	}
 
-	numChanged, err := q.RemoveAssetStat(
+	numChanged, err := q.RemoveAssetStat(tt.Ctx,
 		assetStat.AssetType,
 		assetStat.AssetCode,
 		assetStat.AssetIssuer,
@@ -298,15 +298,15 @@ func TestRemoveAssetStat(t *testing.T) {
 	tt.Assert.Nil(err)
 	tt.Assert.Equal(numChanged, int64(0))
 
-	numChanged, err = q.InsertAssetStat(assetStat)
+	numChanged, err = q.InsertAssetStat(tt.Ctx, assetStat)
 	tt.Assert.NoError(err)
 	tt.Assert.Equal(numChanged, int64(1))
 
-	got, err := q.GetAssetStat(assetStat.AssetType, assetStat.AssetCode, assetStat.AssetIssuer)
+	got, err := q.GetAssetStat(tt.Ctx, assetStat.AssetType, assetStat.AssetCode, assetStat.AssetIssuer)
 	tt.Assert.NoError(err)
 	tt.Assert.Equal(got, assetStat)
 
-	numChanged, err = q.RemoveAssetStat(
+	numChanged, err = q.RemoveAssetStat(tt.Ctx,
 		assetStat.AssetType,
 		assetStat.AssetCode,
 		assetStat.AssetIssuer,
@@ -314,7 +314,7 @@ func TestRemoveAssetStat(t *testing.T) {
 	tt.Assert.Nil(err)
 	tt.Assert.Equal(numChanged, int64(1))
 
-	_, err = q.GetAssetStat(assetStat.AssetType, assetStat.AssetCode, assetStat.AssetIssuer)
+	_, err = q.GetAssetStat(tt.Ctx, assetStat.AssetType, assetStat.AssetCode, assetStat.AssetIssuer)
 	tt.Assert.Equal(err, sql.ErrNoRows)
 }
 
@@ -367,7 +367,7 @@ func TestGetAssetStatsCursorValidation(t *testing.T) {
 				Order:  "asc",
 				Limit:  5,
 			}
-			results, err := q.GetAssetStats("", "", page)
+			results, err := q.GetAssetStats(tt.Ctx, "", "", page)
 			tt.Assert.Empty(results)
 			tt.Assert.NotNil(err)
 			tt.Assert.Contains(err.Error(), testCase.expectedError)
@@ -386,7 +386,7 @@ func TestGetAssetStatsOrderValidation(t *testing.T) {
 		Order: "invalid",
 		Limit: 5,
 	}
-	results, err := q.GetAssetStats("", "", page)
+	results, err := q.GetAssetStats(tt.Ctx, "", "", page)
 	tt.Assert.Empty(results)
 	tt.Assert.NotNil(err)
 	tt.Assert.Contains(err.Error(), "invalid page order")
@@ -481,7 +481,7 @@ func TestGetAssetStatsFiltersAndCursor(t *testing.T) {
 		usdAssetStat,
 	}
 	for _, assetStat := range assetStats {
-		numChanged, err := q.InsertAssetStat(assetStat)
+		numChanged, err := q.InsertAssetStat(tt.Ctx, assetStat)
 		tt.Assert.NoError(err)
 		tt.Assert.Equal(numChanged, int64(1))
 	}
@@ -721,12 +721,12 @@ func TestGetAssetStatsFiltersAndCursor(t *testing.T) {
 				Cursor: testCase.cursor,
 				Limit:  5,
 			}
-			results, err := q.GetAssetStats(testCase.assetCode, testCase.assetIssuer, page)
+			results, err := q.GetAssetStats(tt.Ctx, testCase.assetCode, testCase.assetIssuer, page)
 			tt.Assert.NoError(err)
 			tt.Assert.Equal(testCase.expected, results)
 
 			page.Limit = 1
-			results, err = q.GetAssetStats(testCase.assetCode, testCase.assetIssuer, page)
+			results, err = q.GetAssetStats(tt.Ctx, testCase.assetCode, testCase.assetIssuer, page)
 			tt.Assert.NoError(err)
 			if len(testCase.expected) == 0 {
 				tt.Assert.Equal(testCase.expected, results)
@@ -738,7 +738,7 @@ func TestGetAssetStatsFiltersAndCursor(t *testing.T) {
 				page = page.Invert()
 				page.Limit = 5
 
-				results, err = q.GetAssetStats(testCase.assetCode, testCase.assetIssuer, page)
+				results, err = q.GetAssetStats(tt.Ctx, testCase.assetCode, testCase.assetIssuer, page)
 				tt.Assert.NoError(err)
 				reverseAssetStats(results)
 				tt.Assert.Equal(testCase.expected, results)

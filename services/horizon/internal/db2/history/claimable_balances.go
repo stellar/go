@@ -1,6 +1,7 @@
 package history
 
 import (
+	"context"
 	"database/sql/driver"
 	"encoding/json"
 	"strconv"
@@ -116,17 +117,17 @@ type Claimant struct {
 }
 
 type ClaimableBalancesBatchInsertBuilder interface {
-	Add(entry *xdr.LedgerEntry) error
-	Exec() error
+	Add(ctx context.Context, entry *xdr.LedgerEntry) error
+	Exec(ctx context.Context) error
 }
 
 // QClaimableBalances defines account related queries.
 type QClaimableBalances interface {
 	NewClaimableBalancesBatchInsertBuilder(maxBatchSize int) ClaimableBalancesBatchInsertBuilder
-	UpdateClaimableBalance(entry xdr.LedgerEntry) (int64, error)
-	RemoveClaimableBalance(cBalance xdr.ClaimableBalanceEntry) (int64, error)
-	GetClaimableBalancesByID(ids []xdr.ClaimableBalanceId) ([]ClaimableBalance, error)
-	CountClaimableBalances() (int, error)
+	UpdateClaimableBalance(ctx context.Context, entry xdr.LedgerEntry) (int64, error)
+	RemoveClaimableBalance(ctx context.Context, cBalance xdr.ClaimableBalanceEntry) (int64, error)
+	GetClaimableBalancesByID(ctx context.Context, ids []xdr.ClaimableBalanceId) ([]ClaimableBalance, error)
+	CountClaimableBalances(ctx context.Context) (int, error)
 }
 
 // NewClaimableBalancesBatchInsertBuilder constructs a new ClaimableBalancesBatchInsertBuilder instance
@@ -140,11 +141,11 @@ func (q *Q) NewClaimableBalancesBatchInsertBuilder(maxBatchSize int) ClaimableBa
 }
 
 // CountClaimableBalances returns the total number of claimable balances in the DB
-func (q *Q) CountClaimableBalances() (int, error) {
+func (q *Q) CountClaimableBalances(ctx context.Context) (int, error) {
 	sql := sq.Select("count(*)").From("claimable_balances")
 
 	var count int
-	if err := q.Get(&count, sql); err != nil {
+	if err := q.Get(ctx, &count, sql); err != nil {
 		return 0, errors.Wrap(err, "could not run select query")
 	}
 
@@ -152,17 +153,17 @@ func (q *Q) CountClaimableBalances() (int, error) {
 }
 
 // GetClaimableBalancesByID finds all claimable balances by ClaimableBalanceId
-func (q *Q) GetClaimableBalancesByID(ids []xdr.ClaimableBalanceId) ([]ClaimableBalance, error) {
+func (q *Q) GetClaimableBalancesByID(ctx context.Context, ids []xdr.ClaimableBalanceId) ([]ClaimableBalance, error) {
 	var cBalances []ClaimableBalance
 	sql := selectClaimableBalances.Where(map[string]interface{}{"cb.id": ids})
-	err := q.Select(&cBalances, sql)
+	err := q.Select(ctx, &cBalances, sql)
 	return cBalances, err
 }
 
 // UpdateClaimableBalance updates a row in the claimable_balances table.
 // The only updatable value on claimable_balances is sponsor
 // Returns number of rows affected and error.
-func (q *Q) UpdateClaimableBalance(entry xdr.LedgerEntry) (int64, error) {
+func (q *Q) UpdateClaimableBalance(ctx context.Context, entry xdr.LedgerEntry) (int64, error) {
 	cBalance := entry.Data.MustClaimableBalance()
 	cBalanceMap := map[string]interface{}{
 		"last_modified_ledger": entry.LastModifiedLedgerSeq,
@@ -170,7 +171,7 @@ func (q *Q) UpdateClaimableBalance(entry xdr.LedgerEntry) (int64, error) {
 	}
 
 	sql := sq.Update("claimable_balances").SetMap(cBalanceMap).Where("id = ?", cBalance.BalanceId)
-	result, err := q.Exec(sql)
+	result, err := q.Exec(ctx, sql)
 	if err != nil {
 		return 0, err
 	}
@@ -180,10 +181,10 @@ func (q *Q) UpdateClaimableBalance(entry xdr.LedgerEntry) (int64, error) {
 
 // RemoveClaimableBalance deletes a row in the claimable_balances table.
 // Returns number of rows affected and error.
-func (q *Q) RemoveClaimableBalance(cBalance xdr.ClaimableBalanceEntry) (int64, error) {
+func (q *Q) RemoveClaimableBalance(ctx context.Context, cBalance xdr.ClaimableBalanceEntry) (int64, error) {
 	sql := sq.Delete("claimable_balances").
 		Where(sq.Eq{"id": cBalance.BalanceId})
-	result, err := q.Exec(sql)
+	result, err := q.Exec(ctx, sql)
 	if err != nil {
 		return 0, err
 	}
@@ -192,15 +193,15 @@ func (q *Q) RemoveClaimableBalance(cBalance xdr.ClaimableBalanceEntry) (int64, e
 }
 
 // FindClaimableBalanceByID returns a claimable balance.
-func (q *Q) FindClaimableBalanceByID(balanceID xdr.ClaimableBalanceId) (ClaimableBalance, error) {
+func (q *Q) FindClaimableBalanceByID(ctx context.Context, balanceID xdr.ClaimableBalanceId) (ClaimableBalance, error) {
 	var claimableBalance ClaimableBalance
 	sql := selectClaimableBalances.Limit(1).Where("cb.id = ?", balanceID)
-	err := q.Get(&claimableBalance, sql)
+	err := q.Get(ctx, &claimableBalance, sql)
 	return claimableBalance, err
 }
 
 // GetClaimableBalances finds all claimable balances where accountID is one of the claimants
-func (q *Q) GetClaimableBalances(query ClaimableBalancesQuery) ([]ClaimableBalance, error) {
+func (q *Q) GetClaimableBalances(ctx context.Context, query ClaimableBalancesQuery) ([]ClaimableBalance, error) {
 	sql, err := query.ApplyCursor(selectClaimableBalances)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not apply query to page")
@@ -230,7 +231,7 @@ func (q *Q) GetClaimableBalances(query ClaimableBalancesQuery) ([]ClaimableBalan
 		)
 
 	var results []ClaimableBalance
-	if err := q.Select(&results, sql); err != nil {
+	if err := q.Select(ctx, &results, sql); err != nil {
 		return nil, errors.Wrap(err, "could not run select query")
 	}
 
@@ -254,7 +255,7 @@ func buildClaimants(claimants []xdr.Claimant) Claimants {
 	return hClaimants
 }
 
-func (i *claimableBalancesBatchInsertBuilder) Add(entry *xdr.LedgerEntry) error {
+func (i *claimableBalancesBatchInsertBuilder) Add(ctx context.Context, entry *xdr.LedgerEntry) error {
 	cBalance := entry.Data.MustClaimableBalance()
 	row := ClaimableBalance{
 		BalanceID:          cBalance.BalanceId,
@@ -265,11 +266,11 @@ func (i *claimableBalancesBatchInsertBuilder) Add(entry *xdr.LedgerEntry) error 
 		LastModifiedLedger: uint32(entry.LastModifiedLedgerSeq),
 		Flags:              uint32(cBalance.Flags()),
 	}
-	return i.builder.RowStruct(row)
+	return i.builder.RowStruct(ctx, row)
 }
 
-func (i *claimableBalancesBatchInsertBuilder) Exec() error {
-	return i.builder.Exec()
+func (i *claimableBalancesBatchInsertBuilder) Exec(ctx context.Context) error {
+	return i.builder.Exec(ctx)
 }
 
 var claimableBalancesSelectStatement = "cb.id, " +

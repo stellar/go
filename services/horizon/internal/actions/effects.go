@@ -1,9 +1,10 @@
 package actions
 
 import (
+	"context"
 	"net/http"
 
-	"github.com/stellar/go/services/horizon/internal/context"
+	horizonContext "github.com/stellar/go/services/horizon/internal/context"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/ledger"
@@ -64,17 +65,17 @@ func (handler GetEffectsHandler) GetResourcePage(w HeaderWriter, r *http.Request
 		return nil, err
 	}
 
-	historyQ, err := context.HistoryQFromRequest(r)
+	historyQ, err := horizonContext.HistoryQFromRequest(r)
 	if err != nil {
 		return nil, err
 	}
 
-	records, err := loadEffectRecords(historyQ, qp.AccountID, int64(qp.OperationID), qp.TxHash, qp.LedgerID, pq)
+	records, err := loadEffectRecords(r.Context(), historyQ, qp.AccountID, int64(qp.OperationID), qp.TxHash, qp.LedgerID, pq)
 	if err != nil {
 		return nil, errors.Wrap(err, "loading transaction records")
 	}
 
-	ledgers, err := loadEffectLedgers(historyQ, records)
+	ledgers, err := loadEffectLedgers(r.Context(), historyQ, records)
 	if err != nil {
 		return nil, errors.Wrap(err, "loading ledgers")
 	}
@@ -91,35 +92,35 @@ func (handler GetEffectsHandler) GetResourcePage(w HeaderWriter, r *http.Request
 	return result, nil
 }
 
-func loadEffectRecords(hq *history.Q, accountID string, operationID int64, transactionHash string, ledgerID uint32,
+func loadEffectRecords(ctx context.Context, hq *history.Q, accountID string, operationID int64, transactionHash string, ledgerID uint32,
 	pq db2.PageQuery) ([]history.Effect, error) {
 	effects := hq.Effects()
 
 	switch {
 	case accountID != "":
-		effects.ForAccount(accountID)
+		effects.ForAccount(ctx, accountID)
 	case ledgerID > 0:
-		effects.ForLedger(int32(ledgerID))
+		effects.ForLedger(ctx, int32(ledgerID))
 	case operationID > 0:
 		effects.ForOperation(operationID)
 	case transactionHash != "":
-		effects.ForTransaction(transactionHash)
+		effects.ForTransaction(ctx, transactionHash)
 	}
 
 	var result []history.Effect
-	err := effects.Page(pq).Select(&result)
+	err := effects.Page(pq).Select(ctx, &result)
 
 	return result, err
 }
 
-func loadEffectLedgers(hq *history.Q, effects []history.Effect) (map[int32]history.Ledger, error) {
+func loadEffectLedgers(ctx context.Context, hq *history.Q, effects []history.Effect) (map[int32]history.Ledger, error) {
 	ledgers := &history.LedgerCache{}
 
 	for _, e := range effects {
 		ledgers.Queue(e.LedgerSequence())
 	}
 
-	if err := ledgers.Load(hq); err != nil {
+	if err := ledgers.Load(ctx, hq); err != nil {
 		return nil, err
 	}
 	return ledgers.Records, nil

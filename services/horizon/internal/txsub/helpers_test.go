@@ -28,13 +28,13 @@ type mockDBQ struct {
 	mock.Mock
 }
 
-func (m *mockDBQ) BeginTx(txOpts *sql.TxOptions) error {
-	args := m.Called(txOpts)
+func (m *mockDBQ) BeginTx(ctx context.Context, txOpts *sql.TxOptions) error {
+	args := m.Called(ctx, txOpts)
 	return args.Error(0)
 }
 
-func (m *mockDBQ) Rollback() error {
-	args := m.Called()
+func (m *mockDBQ) Rollback(ctx context.Context) error {
+	args := m.Called(ctx)
 	return args.Error(0)
 }
 
@@ -43,12 +43,12 @@ func (m *mockDBQ) NoRows(err error) bool {
 	return args.Bool(0)
 }
 
-func (m *mockDBQ) GetSequenceNumbers(addresses []string) (map[string]uint64, error) {
-	args := m.Called(addresses)
+func (m *mockDBQ) GetSequenceNumbers(ctx context.Context, addresses []string) (map[string]uint64, error) {
+	args := m.Called(ctx, addresses)
 	return args.Get(0).(map[string]uint64), args.Error(1)
 }
 
-func (m *mockDBQ) TransactionByHash(dest interface{}, hash string) error {
-	args := m.Called(dest, hash)
+func (m *mockDBQ) TransactionByHash(ctx context.Context, dest interface{}, hash string) error {
+	args := m.Called(ctx, dest, hash)
 	return args.Error(0)
 }

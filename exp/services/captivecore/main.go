@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"go/types"
 	"strings"
@@ -138,7 +139,7 @@ func main() {
 				if err != nil {
 					logger.WithError(err).Fatal("Could not create db connection instance")
 				}
-				captiveConfig.LedgerHashStore = ledgerbackend.NewHorizonDBLedgerHashStore(dbConn)
+				captiveConfig.LedgerHashStore = ledgerbackend.NewHorizonDBLedgerHashStore(context.Background(), dbConn)
 			}
 
 			core, err := ledgerbackend.NewCaptive(captiveConfig)

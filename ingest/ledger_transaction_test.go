@@ -45,7 +45,7 @@ func TestFeeMetaAndOperationsChangesSeparate(t *testing.T) {
 				},
 			},
 		},
-		Meta: xdr.TransactionMeta{
+		UnsafeMeta: xdr.TransactionMeta{
 			V: 1,
 			V1: &xdr.TransactionMetaV1{
 				Operations: []xdr.OperationMeta{
@@ -146,11 +146,11 @@ func TestFailedTransactionOperationChangesMeta(t *testing.T) {
 						},
 					},
 				},
-				Meta: tc.meta,
+				UnsafeMeta: tc.meta,
 			}
 
 			operationChanges, err := tx.GetOperationChanges(0)
-			if tx.Meta.V == 0 {
+			if tx.UnsafeMeta.V == 0 {
 				assert.Error(t, err)
 				assert.EqualError(t, err, "TransactionMeta.V=0 not supported")
 			} else {
@@ -162,7 +162,7 @@ func TestFailedTransactionOperationChangesMeta(t *testing.T) {
 }
 func TestMetaV2Order(t *testing.T) {
 	tx := LedgerTransaction{
-		Meta: xdr.TransactionMeta{
+		UnsafeMeta: xdr.TransactionMeta{
 			V: 2,
 			V2: &xdr.TransactionMetaV2{
 				TxChangesBefore: xdr.LedgerEntryChanges{
@@ -333,7 +333,7 @@ func TestMetaV2Order(t *testing.T) {
 
 func TestMetaV0(t *testing.T) {
 	tx := LedgerTransaction{
-		Meta: xdr.TransactionMeta{
+		UnsafeMeta: xdr.TransactionMeta{
 			V: 0,
 		}}
 
@@ -449,7 +449,7 @@ func TestChangeAccountChangedExceptSignersSignerChange(t *testing.T) {
 				Account: &xdr.AccountEntry{
 					AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
 					Signers: []xdr.Signer{
-						xdr.Signer{
+						{
 							Key:    xdr.MustSigner("GCCCU34WDY2RATQTOOQKY6SZWU6J5DONY42SWGW2CIXGW4LICAGNRZKX"),
 							Weight: 1,
 						},
@@ -464,7 +464,7 @@ func TestChangeAccountChangedExceptSignersSignerChange(t *testing.T) {
 				Account: &xdr.AccountEntry{
 					AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
 					Signers: []xdr.Signer{
-						xdr.Signer{
+						{
 							Key:    xdr.MustSigner("GCCCU34WDY2RATQTOOQKY6SZWU6J5DONY42SWGW2CIXGW4LICAGNRZKX"),
 							Weight: 2,
 						},
@@ -497,7 +497,7 @@ func TestChangeAccountChangedExceptSignersNoChanges(t *testing.T) {
 					HomeDomain:    "stellar.org",
 					Thresholds:    [4]byte{1, 1, 1, 1},
 					Signers: []xdr.Signer{
-						xdr.Signer{
+						{
 							Key:    xdr.MustSigner("GCCCU34WDY2RATQTOOQKY6SZWU6J5DONY42SWGW2CIXGW4LICAGNRZKX"),
 							Weight: 1,
 						},
@@ -528,7 +528,7 @@ func TestChangeAccountChangedExceptSignersNoChanges(t *testing.T) {
 					HomeDomain:    "stellar.org",
 					Thresholds:    [4]byte{1, 1, 1, 1},
 					Signers: []xdr.Signer{
-						xdr.Signer{
+						{
 							Key:    xdr.MustSigner("GCCCU34WDY2RATQTOOQKY6SZWU6J5DONY42SWGW2CIXGW4LICAGNRZKX"),
 							Weight: 1,
 						},
@@ -708,7 +708,7 @@ func TestChangeAccountSignersChangedSignerAdded(t *testing.T) {
 				Account: &xdr.AccountEntry{
 					AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
 					Signers: []xdr.Signer{
-						xdr.Signer{
+						{
 							Key:    xdr.MustSigner("GCCCU34WDY2RATQTOOQKY6SZWU6J5DONY42SWGW2CIXGW4LICAGNRZKX"),
 							Weight: 1,
 						},
@@ -731,7 +731,7 @@ func TestChangeAccountSignersChangedSignerRemoved(t *testing.T) {
 				Account: &xdr.AccountEntry{
 					AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
 					Signers: []xdr.Signer{
-						xdr.Signer{
+						{
 							Key:    xdr.MustSigner("GCCCU34WDY2RATQTOOQKY6SZWU6J5DONY42SWGW2CIXGW4LICAGNRZKX"),
 							Weight: 1,
 						},
@@ -764,7 +764,7 @@ func TestChangeAccountSignersChangedSignerWeightChanged(t *testing.T) {
 				Account: &xdr.AccountEntry{
 					AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
 					Signers: []xdr.Signer{
-						xdr.Signer{
+						{
 							Key:    xdr.MustSigner("GCCCU34WDY2RATQTOOQKY6SZWU6J5DONY42SWGW2CIXGW4LICAGNRZKX"),
 							Weight: 1,
 						},
@@ -779,7 +779,7 @@ func TestChangeAccountSignersChangedSignerWeightChanged(t *testing.T) {
 				Account: &xdr.AccountEntry{
 					AccountId: xdr.MustAddress("GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML"),
 					Signers: []xdr.Signer{
-						xdr.Signer{
+						{
 							Key:    xdr.MustSigner("GCCCU34WDY2RATQTOOQKY6SZWU6J5DONY42SWGW2CIXGW4LICAGNRZKX"),
 							Weight: 2,
 						},

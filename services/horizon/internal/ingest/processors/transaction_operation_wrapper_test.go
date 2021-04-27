@@ -1042,7 +1042,7 @@ func TestTransactionOperationAllowTrustDetails(t *testing.T) {
 			operation := transactionOperationWrapper{
 				index: 0,
 				transaction: ingest.LedgerTransaction{
-					Meta: xdr.TransactionMeta{
+					UnsafeMeta: xdr.TransactionMeta{
 						V: 2,
 						V2: &xdr.TransactionMetaV2{
 							Operations: make([]xdr.OperationMeta, 1, 1),
@@ -1172,7 +1172,7 @@ func (s *CreateClaimableBalanceOpTestSuite) TestDetails() {
 			operation := transactionOperationWrapper{
 				index: 0,
 				transaction: ingest.LedgerTransaction{
-					Meta: xdr.TransactionMeta{
+					UnsafeMeta: xdr.TransactionMeta{
 						V: 2,
 						V2: &xdr.TransactionMetaV2{
 							Operations: make([]xdr.OperationMeta, 1, 1),
@@ -1218,7 +1218,7 @@ func (s *CreateClaimableBalanceOpTestSuite) TestParticipants() {
 		s.T().Run(tc.desc, func(t *testing.T) {
 			operation := transactionOperationWrapper{
 				index: 0,
-				transaction: ingest.LedgerTransaction{Meta: xdr.TransactionMeta{
+				transaction: ingest.LedgerTransaction{UnsafeMeta: xdr.TransactionMeta{
 					V: 2,
 					V2: &xdr.TransactionMetaV2{
 						Operations: make([]xdr.OperationMeta, 1, 1),
@@ -1269,7 +1269,7 @@ func (s *ClaimClaimableBalanceOpTestSuite) TestDetails() {
 	operation := transactionOperationWrapper{
 		index: 0,
 		transaction: ingest.LedgerTransaction{
-			Meta: xdr.TransactionMeta{
+			UnsafeMeta: xdr.TransactionMeta{
 				V: 2,
 				V2: &xdr.TransactionMetaV2{
 					Operations: make([]xdr.OperationMeta, 1, 1),
@@ -1288,7 +1288,7 @@ func (s *ClaimClaimableBalanceOpTestSuite) TestParticipants() {
 	operation := transactionOperationWrapper{
 		index: 0,
 		transaction: ingest.LedgerTransaction{
-			Meta: xdr.TransactionMeta{
+			UnsafeMeta: xdr.TransactionMeta{
 				V: 2,
 				V2: &xdr.TransactionMetaV2{
 					Operations: make([]xdr.OperationMeta, 1, 1),
@@ -1319,7 +1319,7 @@ func getSponsoredSandwichWrappers() []*transactionOperationWrapper {
 	const ledgerSeq = uint32(12345)
 	tx := createTransaction(true, 3)
 	tx.Index = 1
-	tx.Meta = xdr.TransactionMeta{
+	tx.UnsafeMeta = xdr.TransactionMeta{
 		V: 2,
 		V2: &xdr.TransactionMetaV2{
 			Operations: make([]xdr.OperationMeta, 3, 3),
@@ -1358,7 +1358,7 @@ func getSponsoredSandwichWrappers() []*transactionOperationWrapper {
 	}
 	sponsoreeMuxed := sponsoree.ToMuxedAccount()
 	tx.Envelope.Operations()[1].SourceAccount = &sponsoreeMuxed
-	tx.Meta.V2.Operations[1] = xdr.OperationMeta{Changes: []xdr.LedgerEntryChange{
+	tx.UnsafeMeta.V2.Operations[1] = xdr.OperationMeta{Changes: []xdr.LedgerEntryChange{
 		{
 			Type: xdr.LedgerEntryChangeTypeLedgerEntryCreated,
 			Created: &xdr.LedgerEntry{
@@ -1485,7 +1485,7 @@ func (s *ClawbackTestSuite) TestDetails() {
 	operation := transactionOperationWrapper{
 		index: 0,
 		transaction: ingest.LedgerTransaction{
-			Meta: xdr.TransactionMeta{
+			UnsafeMeta: xdr.TransactionMeta{
 				V: 2,
 				V2: &xdr.TransactionMetaV2{
 					Operations: make([]xdr.OperationMeta, 1, 1),
@@ -1504,7 +1504,7 @@ func (s *ClawbackTestSuite) TestParticipants() {
 	operation := transactionOperationWrapper{
 		index: 0,
 		transaction: ingest.LedgerTransaction{
-			Meta: xdr.TransactionMeta{
+			UnsafeMeta: xdr.TransactionMeta{
 				V: 2,
 				V2: &xdr.TransactionMetaV2{
 					Operations: make([]xdr.OperationMeta, 1, 1),
@@ -1567,7 +1567,7 @@ func (s *SetTrustLineFlagsTestSuite) TestDetails() {
 	operation := transactionOperationWrapper{
 		index: 0,
 		transaction: ingest.LedgerTransaction{
-			Meta: xdr.TransactionMeta{
+			UnsafeMeta: xdr.TransactionMeta{
 				V: 2,
 				V2: &xdr.TransactionMetaV2{
 					Operations: make([]xdr.OperationMeta, 1, 1),
@@ -1586,7 +1586,7 @@ func (s *SetTrustLineFlagsTestSuite) TestParticipants() {
 	operation := transactionOperationWrapper{
 		index: 0,
 		transaction: ingest.LedgerTransaction{
-			Meta: xdr.TransactionMeta{
+			UnsafeMeta: xdr.TransactionMeta{
 				V: 2,
 				V2: &xdr.TransactionMetaV2{
 					Operations: make([]xdr.OperationMeta, 1, 1),
@@ -1607,4 +1607,124 @@ func (s *SetTrustLineFlagsTestSuite) TestParticipants() {
 
 func TestSetTrustLineFlagsTestSuite(t *testing.T) {
 	suite.Run(t, new(SetTrustLineFlagsTestSuite))
+}
+
+func TestParticipantsCoversAllOperationTypes(t *testing.T) {
+	source := xdr.MustMuxedAddress("GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD")
+	for typ, s := range xdr.OperationTypeToStringMap {
+		op := xdr.Operation{
+			SourceAccount: &source,
+			Body: xdr.OperationBody{
+				Type: xdr.OperationType(typ),
+			},
+		}
+		operation := transactionOperationWrapper{
+			index: 0,
+			transaction: ingest.LedgerTransaction{
+				UnsafeMeta: xdr.TransactionMeta{
+					V:  2,
+					V2: &xdr.TransactionMetaV2{},
+				},
+			},
+			operation:      op,
+			ledgerSequence: 1,
+		}
+		// calling Participants should either panic (because the operation field is set to nil)
+		// or not error
+		func() {
+			var err error
+			defer func() {
+				err2 := recover()
+				if err != nil {
+					assert.NotContains(t, err.Error(), "Unknown operation type")
+				}
+				assert.True(t, err2 != nil || err == nil, s)
+			}()
+			_, err = operation.Participants()
+		}()
+	}
+
+	// make sure the check works for an unknown operation type
+	op := xdr.Operation{
+		SourceAccount: &source,
+		Body: xdr.OperationBody{
+			Type: xdr.OperationType(20000),
+		},
+	}
+	operation := transactionOperationWrapper{
+		index: 0,
+		transaction: ingest.LedgerTransaction{
+			UnsafeMeta: xdr.TransactionMeta{
+				V:  2,
+				V2: &xdr.TransactionMetaV2{},
+			},
+		},
+		operation:      op,
+		ledgerSequence: 1,
+	}
+	// calling Participants should error due to the unknown operation
+	_, err := operation.Participants()
+	assert.Contains(t, err.Error(), "Unknown operation type")
+}
+
+func TestDetailsCoversAllOperationTypes(t *testing.T) {
+	source := xdr.MustMuxedAddress("GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD")
+	for typ, s := range xdr.OperationTypeToStringMap {
+		op := xdr.Operation{
+			SourceAccount: &source,
+			Body: xdr.OperationBody{
+				Type: xdr.OperationType(typ),
+			},
+		}
+		operation := transactionOperationWrapper{
+			index: 0,
+			transaction: ingest.LedgerTransaction{
+				UnsafeMeta: xdr.TransactionMeta{
+					V:  2,
+					V2: &xdr.TransactionMetaV2{},
+				},
+			},
+			operation:      op,
+			ledgerSequence: 1,
+		}
+		// calling Details should either panic (because the operation field is set to nil)
+		// or not error
+		func() {
+			var err error
+			defer func() {
+				err2 := recover()
+				if err2 != nil {
+					if err3, ok := err2.(error); ok {
+						assert.NotContains(t, "Unknown operation type", err3.Error())
+					}
+				}
+				assert.True(t, err2 != nil || err == nil, s)
+			}()
+			_, err = operation.Details()
+		}()
+	}
+
+	// make sure the check works for an unknown operation type
+	op := xdr.Operation{
+		SourceAccount: &source,
+		Body: xdr.OperationBody{
+			Type: xdr.OperationType(20000),
+		},
+	}
+	operation := transactionOperationWrapper{
+		index: 0,
+		transaction: ingest.LedgerTransaction{
+			UnsafeMeta: xdr.TransactionMeta{
+				V:  2,
+				V2: &xdr.TransactionMetaV2{},
+			},
+		},
+		operation:      op,
+		ledgerSequence: 1,
+	}
+	// calling Details should panic with unknown operation type
+	f := func() {
+		operation.Details()
+	}
+	assert.PanicsWithError(t, "Unknown operation type: ", f)
 }

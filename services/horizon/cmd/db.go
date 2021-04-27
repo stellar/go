@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"go/types"
@@ -113,8 +114,9 @@ var dbReapCmd = &cobra.Command{
 	Long:  "reap removes any historical data that is earlier than the configured retention cutoff",
 	Run: func(cmd *cobra.Command, args []string) {
 		app := horizon.NewAppFromFlags(config, flags)
-		app.UpdateLedgerState()
-		err := app.DeleteUnretainedHistory()
+		ctx := context.Background()
+		app.UpdateLedgerState(ctx)
+		err := app.DeleteUnretainedHistory(ctx)
 		if err != nil {
 			log.Fatal(err)
 		}

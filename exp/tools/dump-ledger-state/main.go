@@ -78,7 +78,7 @@ func (processor csvProcessor) ProcessChange(change ingest.Change) error {
 	if !ok {
 		return nil
 	}
-	if err := processor.changeStats.ProcessChange(change); err != nil {
+	if err := processor.changeStats.ProcessChange(context.Background(), change); err != nil {
 		return err
 	}
 

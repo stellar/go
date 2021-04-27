@@ -34,8 +34,8 @@ func TestAddOperation(t *testing.T) {
 	)
 
 	sequence := int32(56)
-	tt.Assert.NoError(txBatch.Add(transaction, uint32(sequence)))
-	tt.Assert.NoError(txBatch.Exec())
+	tt.Assert.NoError(txBatch.Add(tt.Ctx, transaction, uint32(sequence)))
+	tt.Assert.NoError(txBatch.Exec(tt.Ctx))
 
 	details, err := json.Marshal(map[string]string{
 		"to":         "GANFZDRBCNTUXIODCJEYMACPMCSZEVE4WZGZ3CZDZ3P2SXK4KH75IK6Y",
@@ -45,7 +45,7 @@ func TestAddOperation(t *testing.T) {
 	})
 	tt.Assert.NoError(err)
 
-	err = builder.Add(
+	err = builder.Add(tt.Ctx,
 		toid.New(sequence, 1, 1).ToInt64(),
 		toid.New(sequence, 1, 0).ToInt64(),
 		1,
@@ -55,11 +55,11 @@ func TestAddOperation(t *testing.T) {
 	)
 	tt.Assert.NoError(err)
 
-	err = builder.Exec()
+	err = builder.Exec(tt.Ctx)
 	tt.Assert.NoError(err)
 
 	ops := []Operation{}
-	err = q.Select(&ops, selectOperation)
+	err = q.Select(tt.Ctx, &ops, selectOperation)
 
 	if tt.Assert.NoError(err) {
 		tt.Assert.Len(ops, 1)

@@ -20,6 +20,7 @@ func TestBuildStateTestSuite(t *testing.T) {
 
 type BuildStateTestSuite struct {
 	suite.Suite
+	ctx               context.Context
 	historyQ          *mockDBQ
 	historyAdapter    *mockHistoryArchiveAdapter
 	ledgerBackend     *ledgerbackend.MockDatabaseBackend
@@ -31,6 +32,7 @@ type BuildStateTestSuite struct {
 }
 
 func (s *BuildStateTestSuite) SetupTest() {
+	s.ctx = context.Background()
 	s.historyQ = &mockDBQ{}
 	s.runner = &mockProcessorsRunner{}
 	s.historyAdapter = &mockHistoryArchiveAdapter{}
@@ -39,7 +41,7 @@ func (s *BuildStateTestSuite) SetupTest() {
 	s.checkpointLedger = uint32(63)
 	s.lastLedger = 0
 	s.system = &system{
-		ctx:               context.Background(),
+		ctx:               s.ctx,
 		historyQ:          s.historyQ,
 		historyAdapter:    s.historyAdapter,
 		ledgerBackend:     s.ledgerBackend,
@@ -48,8 +50,8 @@ func (s *BuildStateTestSuite) SetupTest() {
 	}
 	s.system.initMetrics()
 
-	s.historyQ.On("Begin").Return(nil).Once()
-	s.historyQ.On("Rollback").Return(nil).Once()
+	s.historyQ.On("Begin", s.ctx).Return(nil).Once()
+	s.historyQ.On("Rollback", s.ctx).Return(nil).Once()
 
 	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(63)).Return(false, nil).Once()
 	s.ledgerBackend.On("PrepareRange", ledgerbackend.UnboundedRange(63)).Return(nil).Once()
@@ -76,11 +78,11 @@ func (s *BuildStateTestSuite) TearDownTest() {
 }
 
 func (s *BuildStateTestSuite) mockCommonHistoryQ() {
-	s.historyQ.On("GetLastLedgerIngest").Return(s.lastLedger, nil).Once()
-	s.historyQ.On("GetIngestVersion").Return(CurrentVersion, nil).Once()
-	s.historyQ.On("UpdateLastLedgerIngest", s.lastLedger).Return(nil).Once()
-	s.historyQ.On("UpdateExpStateInvalid", false).Return(nil).Once()
-	s.historyQ.On("TruncateIngestStateTables").Return(nil).Once()
+	s.historyQ.On("GetLastLedgerIngest", s.ctx).Return(s.lastLedger, nil).Once()
+	s.historyQ.On("GetIngestVersion", s.ctx).Return(CurrentVersion, nil).Once()
+	s.historyQ.On("UpdateLastLedgerIngest", s.ctx, s.lastLedger).Return(nil).Once()
+	s.historyQ.On("UpdateExpStateInvalid", s.ctx, false).Return(nil).Once()
+	s.historyQ.On("TruncateIngestStateTables", s.ctx).Return(nil).Once()
 	s.stellarCoreClient.On(
 		"SetCursor",
 		mock.AnythingOfType("*context.timerCtx"),
@@ -134,7 +136,7 @@ func (s *BuildStateTestSuite) TestRangeNotPreparedSuccessPrepareGetLedgerFail() 
 func (s *BuildStateTestSuite) TestBeginReturnsError() {
 	// Recreate mock in this single test to remove assertions.
 	*s.historyQ = mockDBQ{}
-	s.historyQ.On("Begin").Return(errors.New("my error")).Once()
+	s.historyQ.On("Begin", s.ctx).Return(errors.New("my error")).Once()
 
 	next, err := buildState{checkpointLedger: s.checkpointLedger}.run(s.system)
 	s.Assert().Error(err)
@@ -143,7 +145,7 @@ func (s *BuildStateTestSuite) TestBeginReturnsError() {
 }
 
 func (s *BuildStateTestSuite) TestGetLastLedgerIngestReturnsError() {
-	s.historyQ.On("GetLastLedgerIngest").Return(s.lastLedger, errors.New("my error")).Once()
+	s.historyQ.On("GetLastLedgerIngest", s.ctx).Return(s.lastLedger, errors.New("my error")).Once()
 
 	next, err := buildState{checkpointLedger: s.checkpointLedger}.run(s.system)
 	s.Assert().Error(err)
@@ -151,8 +153,8 @@ func (s *BuildStateTestSuite) TestGetLastLedgerIngestReturnsError() {
 	s.Assert().Equal(transition{node: startState{}, sleepDuration: defaultSleep}, next)
 }
 func (s *BuildStateTestSuite) TestGetIngestVersionReturnsError() {
-	s.historyQ.On("GetLastLedgerIngest").Return(s.lastLedger, nil).Once()
-	s.historyQ.On("GetIngestVersion").Return(CurrentVersion, errors.New("my error")).Once()
+	s.historyQ.On("GetLastLedgerIngest", s.ctx).Return(s.lastLedger, nil).Once()
+	s.historyQ.On("GetIngestVersion", s.ctx).Return(CurrentVersion, errors.New("my error")).Once()
 
 	next, err := buildState{checkpointLedger: s.checkpointLedger}.run(s.system)
 	s.Assert().Error(err)
@@ -161,8 +163,8 @@ func (s *BuildStateTestSuite) TestGetIngestVersionReturnsError() {
 }
 
 func (s *BuildStateTestSuite) TestAnotherInstanceHasCompletedBuildState() {
-	s.historyQ.On("GetLastLedgerIngest").Return(s.checkpointLedger, nil).Once()
-	s.historyQ.On("GetIngestVersion").Return(CurrentVersion, nil).Once()
+	s.historyQ.On("GetLastLedgerIngest", s.ctx).Return(s.checkpointLedger, nil).Once()
+	s.historyQ.On("GetIngestVersion", s.ctx).Return(CurrentVersion, nil).Once()
 
 	next, err := buildState{checkpointLedger: s.checkpointLedger}.run(s.system)
 	s.Assert().NoError(err)
@@ -170,9 +172,9 @@ func (s *BuildStateTestSuite) TestAnotherInstanceHasCompletedBuildState() {
 }
 
 func (s *BuildStateTestSuite) TestUpdateLastLedgerIngestReturnsError() {
-	s.historyQ.On("GetLastLedgerIngest").Return(s.lastLedger, nil).Once()
-	s.historyQ.On("GetIngestVersion").Return(CurrentVersion, nil).Once()
-	s.historyQ.On("UpdateLastLedgerIngest", s.lastLedger).Return(errors.New("my error")).Once()
+	s.historyQ.On("GetLastLedgerIngest", s.ctx).Return(s.lastLedger, nil).Once()
+	s.historyQ.On("GetIngestVersion", s.ctx).Return(CurrentVersion, nil).Once()
+	s.historyQ.On("UpdateLastLedgerIngest", s.ctx, s.lastLedger).Return(errors.New("my error")).Once()
 	s.stellarCoreClient.On(
 		"SetCursor",
 		mock.AnythingOfType("*context.timerCtx"),
@@ -188,10 +190,10 @@ func (s *BuildStateTestSuite) TestUpdateLastLedgerIngestReturnsError() {
 }
 
 func (s *BuildStateTestSuite) TestUpdateExpStateInvalidReturnsError() {
-	s.historyQ.On("GetLastLedgerIngest").Return(s.lastLedger, nil).Once()
-	s.historyQ.On("GetIngestVersion").Return(CurrentVersion, nil).Once()
-	s.historyQ.On("UpdateLastLedgerIngest", s.lastLedger).Return(nil).Once()
-	s.historyQ.On("UpdateExpStateInvalid", false).Return(errors.New("my error")).Once()
+	s.historyQ.On("GetLastLedgerIngest", s.ctx).Return(s.lastLedger, nil).Once()
+	s.historyQ.On("GetIngestVersion", s.ctx).Return(CurrentVersion, nil).Once()
+	s.historyQ.On("UpdateLastLedgerIngest", s.ctx, s.lastLedger).Return(nil).Once()
+	s.historyQ.On("UpdateExpStateInvalid", s.ctx, false).Return(errors.New("my error")).Once()
 	s.stellarCoreClient.On(
 		"SetCursor",
 		mock.AnythingOfType("*context.timerCtx"),
@@ -207,11 +209,11 @@ func (s *BuildStateTestSuite) TestUpdateExpStateInvalidReturnsError() {
 }
 
 func (s *BuildStateTestSuite) TestTruncateIngestStateTablesReturnsError() {
-	s.historyQ.On("GetLastLedgerIngest").Return(s.lastLedger, nil).Once()
-	s.historyQ.On("GetIngestVersion").Return(CurrentVersion, nil).Once()
-	s.historyQ.On("UpdateLastLedgerIngest", s.lastLedger).Return(nil).Once()
-	s.historyQ.On("UpdateExpStateInvalid", false).Return(nil).Once()
-	s.historyQ.On("TruncateIngestStateTables").Return(errors.New("my error")).Once()
+	s.historyQ.On("GetLastLedgerIngest", s.ctx).Return(s.lastLedger, nil).Once()
+	s.historyQ.On("GetIngestVersion", s.ctx).Return(CurrentVersion, nil).Once()
+	s.historyQ.On("UpdateLastLedgerIngest", s.ctx, s.lastLedger).Return(nil).Once()
+	s.historyQ.On("UpdateExpStateInvalid", s.ctx, false).Return(nil).Once()
+	s.historyQ.On("TruncateIngestStateTables", s.ctx).Return(errors.New("my error")).Once()
 
 	s.stellarCoreClient.On(
 		"SetCursor",
@@ -244,11 +246,11 @@ func (s *BuildStateTestSuite) TestRunHistoryArchiveIngestionGenesisReturnsError(
 	// Recreate mock in this single test to remove assertions.
 	*s.ledgerBackend = ledgerbackend.MockDatabaseBackend{}
 
-	s.historyQ.On("GetLastLedgerIngest").Return(uint32(0), nil).Once()
-	s.historyQ.On("GetIngestVersion").Return(CurrentVersion, nil).Once()
-	s.historyQ.On("UpdateLastLedgerIngest", uint32(0)).Return(nil).Once()
-	s.historyQ.On("UpdateExpStateInvalid", false).Return(nil).Once()
-	s.historyQ.On("TruncateIngestStateTables").Return(nil).Once()
+	s.historyQ.On("GetLastLedgerIngest", s.ctx).Return(uint32(0), nil).Once()
+	s.historyQ.On("GetIngestVersion", s.ctx).Return(CurrentVersion, nil).Once()
+	s.historyQ.On("UpdateLastLedgerIngest", s.ctx, uint32(0)).Return(nil).Once()
+	s.historyQ.On("UpdateExpStateInvalid", s.ctx, false).Return(nil).Once()
+	s.historyQ.On("TruncateIngestStateTables", s.ctx).Return(nil).Once()
 	s.stellarCoreClient.On(
 		"SetCursor",
 		mock.AnythingOfType("*context.timerCtx"),
@@ -273,10 +275,10 @@ func (s *BuildStateTestSuite) TestUpdateLastLedgerIngestAfterIngestReturnsError(
 		On("RunHistoryArchiveIngestion", s.checkpointLedger, MaxSupportedProtocolVersion, xdr.Hash{1, 2, 3}).
 		Return(ingest.StatsChangeProcessorResults{}, nil).
 		Once()
-	s.historyQ.On("UpdateIngestVersion", CurrentVersion).
+	s.historyQ.On("UpdateIngestVersion", s.ctx, CurrentVersion).
 		Return(nil).
 		Once()
-	s.historyQ.On("UpdateLastLedgerIngest", s.checkpointLedger).
+	s.historyQ.On("UpdateLastLedgerIngest", s.ctx, s.checkpointLedger).
 		Return(errors.New("my error")).
 		Once()
 	next, err := buildState{checkpointLedger: s.checkpointLedger}.run(s.system)
@@ -292,7 +294,7 @@ func (s *BuildStateTestSuite) TestUpdateIngestVersionIngestReturnsError() {
 		On("RunHistoryArchiveIngestion", s.checkpointLedger, MaxSupportedProtocolVersion, xdr.Hash{1, 2, 3}).
 		Return(ingest.StatsChangeProcessorResults{}, nil).
 		Once()
-	s.historyQ.On("UpdateIngestVersion", CurrentVersion).
+	s.historyQ.On("UpdateIngestVersion", s.ctx, CurrentVersion).
 		Return(errors.New("my error")).
 		Once()
 	next, err := buildState{checkpointLedger: s.checkpointLedger}.run(s.system)
@@ -308,13 +310,13 @@ func (s *BuildStateTestSuite) TestUpdateCommitReturnsError() {
 		On("RunHistoryArchiveIngestion", s.checkpointLedger, MaxSupportedProtocolVersion, xdr.Hash{1, 2, 3}).
 		Return(ingest.StatsChangeProcessorResults{}, nil).
 		Once()
-	s.historyQ.On("UpdateLastLedgerIngest", s.checkpointLedger).
+	s.historyQ.On("UpdateLastLedgerIngest", s.ctx, s.checkpointLedger).
 		Return(nil).
 		Once()
-	s.historyQ.On("UpdateIngestVersion", CurrentVersion).
+	s.historyQ.On("UpdateIngestVersion", s.ctx, CurrentVersion).
 		Return(nil).
 		Once()
-	s.historyQ.On("Commit").
+	s.historyQ.On("Commit", s.ctx).
 		Return(errors.New("my error")).
 		Once()
 	next, err := buildState{checkpointLedger: s.checkpointLedger}.run(s.system)
@@ -330,13 +332,13 @@ func (s *BuildStateTestSuite) TestBuildStateSucceeds() {
 		On("RunHistoryArchiveIngestion", s.checkpointLedger, MaxSupportedProtocolVersion, xdr.Hash{1, 2, 3}).
 		Return(ingest.StatsChangeProcessorResults{}, nil).
 		Once()
-	s.historyQ.On("UpdateLastLedgerIngest", s.checkpointLedger).
+	s.historyQ.On("UpdateLastLedgerIngest", s.ctx, s.checkpointLedger).
 		Return(nil).
 		Once()
-	s.historyQ.On("UpdateIngestVersion", CurrentVersion).
+	s.historyQ.On("UpdateIngestVersion", s.ctx, CurrentVersion).
 		Return(nil).
 		Once()
-	s.historyQ.On("Commit").
+	s.historyQ.On("Commit", s.ctx).
 		Return(nil).
 		Once()
 
@@ -358,13 +360,13 @@ func (s *BuildStateTestSuite) TestUpdateCommitReturnsErrorStop() {
 		On("RunHistoryArchiveIngestion", s.checkpointLedger, MaxSupportedProtocolVersion, xdr.Hash{1, 2, 3}).
 		Return(ingest.StatsChangeProcessorResults{}, nil).
 		Once()
-	s.historyQ.On("UpdateLastLedgerIngest", s.checkpointLedger).
+	s.historyQ.On("UpdateLastLedgerIngest", s.ctx, s.checkpointLedger).
 		Return(nil).
 		Once()
-	s.historyQ.On("UpdateIngestVersion", CurrentVersion).
+	s.historyQ.On("UpdateIngestVersion", s.ctx, CurrentVersion).
 		Return(nil).
 		Once()
-	s.historyQ.On("Commit").
+	s.historyQ.On("Commit", s.ctx).
 		Return(errors.New("my error")).
 		Once()
 	next, err := buildState{checkpointLedger: s.checkpointLedger, stop: true}.run(s.system)
@@ -380,13 +382,13 @@ func (s *BuildStateTestSuite) TestBuildStateSucceedStop() {
 		On("RunHistoryArchiveIngestion", s.checkpointLedger, MaxSupportedProtocolVersion, xdr.Hash{1, 2, 3}).
 		Return(ingest.StatsChangeProcessorResults{}, nil).
 		Once()
-	s.historyQ.On("UpdateLastLedgerIngest", s.checkpointLedger).
+	s.historyQ.On("UpdateLastLedgerIngest", s.ctx, s.checkpointLedger).
 		Return(nil).
 		Once()
-	s.historyQ.On("UpdateIngestVersion", CurrentVersion).
+	s.historyQ.On("UpdateIngestVersion", s.ctx, CurrentVersion).
 		Return(nil).
 		Once()
-	s.historyQ.On("Commit").
+	s.historyQ.On("Commit", s.ctx).
 		Return(nil).
 		Once()
 

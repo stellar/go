@@ -224,7 +224,6 @@ func NewHistoryMiddleware(ledgerState *ledger.State, staleThreshold int32, sessi
 			}
 
 			requestSession := session.Clone()
-			requestSession.Ctx = r.Context()
 			h.ServeHTTP(w, r.WithContext(
 				context.WithValue(
 					r.Context(),
@@ -246,15 +245,15 @@ type StateMiddleware struct {
 	NoStateVerification bool
 }
 
-func ingestionStatus(q *history.Q) (uint32, bool, error) {
-	version, err := q.GetIngestVersion()
+func ingestionStatus(ctx context.Context, q *history.Q) (uint32, bool, error) {
+	version, err := q.GetIngestVersion(ctx)
 	if err != nil {
 		return 0, false, supportErrors.Wrap(
 			err, "Error running GetIngestVersion",
 		)
 	}
 
-	lastIngestedLedger, err := q.GetLastLedgerIngestNonBlocking()
+	lastIngestedLedger, err := q.GetLastLedgerIngestNonBlocking(ctx)
 	if err != nil {
 		return 0, false, supportErrors.Wrap(
 			err, "Error running GetLastLedgerIngestNonBlocking",
@@ -262,7 +261,7 @@ func ingestionStatus(q *history.Q) (uint32, bool, error) {
 	}
 
 	var lastHistoryLedger uint32
-	err = q.LatestLedger(&lastHistoryLedger)
+	err = q.LatestLedger(ctx, &lastHistoryLedger)
 	if err != nil {
 		return 0, false, supportErrors.Wrap(err, "Error running LatestLedger")
 	}
@@ -277,6 +276,7 @@ func ingestionStatus(q *history.Q) (uint32, bool, error) {
 // WrapFunc executes the middleware on a given HTTP handler function
 func (m *StateMiddleware) WrapFunc(h http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
 		session := m.HorizonSession.Clone()
 		q := &history.Q{session}
 		sseRequest := render.Negotiate(r) == render.MimeEventStream
@@ -286,8 +286,7 @@ func (m *StateMiddleware) WrapFunc(h http.HandlerFunc) http.HandlerFunc {
 		// Otherwise, because the ingestion system is running concurrently with this request,
 		// it is possible to have one read fetch data from ledger N and another read
 		// fetch data from ledger N+1 .
-		session.Ctx = r.Context()
-		err := session.BeginTx(&sql.TxOptions{
+		err := session.BeginTx(ctx, &sql.TxOptions{
 			Isolation: sql.LevelRepeatableRead,
 			ReadOnly:  true,
 		})
@@ -296,10 +295,10 @@ func (m *StateMiddleware) WrapFunc(h http.HandlerFunc) http.HandlerFunc {
 			problem.Render(r.Context(), w, err)
 			return
 		}
-		defer session.Rollback()
+		defer session.Rollback(ctx)
 
 		if !m.NoStateVerification {
-			stateInvalid, invalidErr := q.GetExpStateInvalid()
+			stateInvalid, invalidErr := q.GetExpStateInvalid(ctx)
 			if invalidErr != nil {
 				invalidErr = supportErrors.Wrap(invalidErr, "Error running GetExpStateInvalid")
 				problem.Render(r.Context(), w, invalidErr)
@@ -311,7 +310,7 @@ func (m *StateMiddleware) WrapFunc(h http.HandlerFunc) http.HandlerFunc {
 			}
 		}
 
-		lastIngestedLedger, ready, err := ingestionStatus(q)
+		lastIngestedLedger, ready, err := ingestionStatus(ctx, q)
 		if err != nil {
 			problem.Render(r.Context(), w, err)
 			return
@@ -325,7 +324,7 @@ func (m *StateMiddleware) WrapFunc(h http.HandlerFunc) http.HandlerFunc {
 		// otherwise, the stream will not pick up updates occurring in future
 		// ledgers
 		if sseRequest {
-			if err = session.Rollback(); err != nil {
+			if err = session.Rollback(ctx); err != nil {
 				problem.Render(
 					r.Context(),
 					w,

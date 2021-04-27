@@ -1,6 +1,7 @@
 package history
 
 import (
+	"context"
 	"encoding/hex"
 	"encoding/json"
 	"testing"
@@ -56,7 +57,7 @@ func buildLedgerTransaction(t *testing.T, tx testTransaction) ingest.LedgerTrans
 		Envelope:   xdr.TransactionEnvelope{},
 		Result:     xdr.TransactionResultPair{},
 		FeeChanges: xdr.LedgerEntryChanges{},
-		Meta:       xdr.TransactionMeta{},
+		UnsafeMeta: xdr.TransactionMeta{},
 	}
 
 	tt := assert.New(t)
@@ -65,7 +66,7 @@ func buildLedgerTransaction(t *testing.T, tx testTransaction) ingest.LedgerTrans
 	tt.NoError(err)
 	err = xdr.SafeUnmarshalBase64(tx.resultXDR, &transaction.Result.Result)
 	tt.NoError(err)
-	err = xdr.SafeUnmarshalBase64(tx.metaXDR, &transaction.Meta)
+	err = xdr.SafeUnmarshalBase64(tx.metaXDR, &transaction.UnsafeMeta)
 	tt.NoError(err)
 	err = xdr.SafeUnmarshalBase64(tx.feeChangesXDR, &transaction.FeeChanges)
 	tt.NoError(err)
@@ -113,7 +114,7 @@ func FeeBumpScenario(tt *test.T, q *Q, successful bool) FeeBumpFixture {
 	}
 	*fixture.Ledger.SuccessfulTransactionCount = 1
 	*fixture.Ledger.FailedTransactionCount = 0
-	_, err := q.Exec(sq.Insert("history_ledgers").SetMap(ledgerToMap(fixture.Ledger)))
+	_, err := q.Exec(context.Background(), sq.Insert("history_ledgers").SetMap(ledgerToMap(fixture.Ledger)))
 	tt.Assert.NoError(err)
 
 	fixture.Envelope = xdr.TransactionEnvelope{
@@ -242,12 +243,13 @@ func FeeBumpScenario(tt *test.T, q *Q, successful bool) FeeBumpFixture {
 		metaXDR:       "AAAAAQAAAAAAAAAA",
 		hash:          "edba3051b2f2d9b713e8a08709d631eccb72c59864ff3c564c68792271bb24a7",
 	})
+	ctx := context.Background()
 	insertBuilder := q.NewTransactionBatchInsertBuilder(2)
 	// include both fee bump and normal transaction in the same batch
 	// to make sure both kinds of transactions can be inserted using a single exec statement
-	tt.Assert.NoError(insertBuilder.Add(feeBumpTransaction, sequence))
-	tt.Assert.NoError(insertBuilder.Add(normalTransaction, sequence))
-	tt.Assert.NoError(insertBuilder.Exec())
+	tt.Assert.NoError(insertBuilder.Add(ctx, feeBumpTransaction, sequence))
+	tt.Assert.NoError(insertBuilder.Add(ctx, normalTransaction, sequence))
+	tt.Assert.NoError(insertBuilder.Exec(ctx))
 
 	account := fixture.Envelope.SourceAccount().ToAccountId()
 	feeBumpAccount := fixture.Envelope.FeeBumpAccount().ToAccountId()
@@ -259,6 +261,7 @@ func FeeBumpScenario(tt *test.T, q *Q, successful bool) FeeBumpFixture {
 	tt.Assert.NoError(err)
 
 	tt.Assert.NoError(opBuilder.Add(
+		ctx,
 		toid.New(fixture.Ledger.Sequence, 1, 1).ToInt64(),
 		toid.New(fixture.Ledger.Sequence, 1, 0).ToInt64(),
 		1,
@@ -266,16 +269,17 @@ func FeeBumpScenario(tt *test.T, q *Q, successful bool) FeeBumpFixture {
 		details,
 		account.Address(),
 	))
-	tt.Assert.NoError(opBuilder.Exec())
+	tt.Assert.NoError(opBuilder.Exec(ctx))
 
 	effectBuilder := q.NewEffectBatchInsertBuilder(2)
 	details, err = json.Marshal(map[string]interface{}{"new_seq": 98})
 	tt.Assert.NoError(err)
 
-	accounIDs, err := q.CreateAccounts([]string{account.Address()}, 1)
+	accounIDs, err := q.CreateAccounts(ctx, []string{account.Address()}, 1)
 	tt.Assert.NoError(err)
 
 	err = effectBuilder.Add(
+		ctx,
 		accounIDs[account.Address()],
 		toid.New(fixture.Ledger.Sequence, 1, 1).ToInt64(),
 		1,
@@ -283,7 +287,7 @@ func FeeBumpScenario(tt *test.T, q *Q, successful bool) FeeBumpFixture {
 		details,
 	)
 	tt.Assert.NoError(err)
-	tt.Assert.NoError(effectBuilder.Exec())
+	tt.Assert.NoError(effectBuilder.Exec(ctx))
 
 	fixture.Transaction = Transaction{
 		TransactionWithoutLedger: TransactionWithoutLedger{
@@ -333,7 +337,7 @@ func FeeBumpScenario(tt *test.T, q *Q, successful bool) FeeBumpFixture {
 		},
 	}
 
-	results, err := q.TransactionsByIDs(fixture.Transaction.ID, fixture.NormalTransaction.ID)
+	results, err := q.TransactionsByIDs(ctx, fixture.Transaction.ID, fixture.NormalTransaction.ID)
 	tt.Assert.NoError(err)
 
 	fixture.Transaction.CreatedAt = results[fixture.Transaction.ID].CreatedAt

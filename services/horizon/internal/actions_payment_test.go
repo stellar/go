@@ -35,9 +35,9 @@ func TestPaymentActions(t *testing.T) {
 	// Makes StateMiddleware happy
 	initializeStateMiddleware := func() {
 		q := history.Q{ht.HorizonSession()}
-		err := q.UpdateLastLedgerIngest(3)
+		err := q.UpdateLastLedgerIngest(ht.Ctx, 3)
 		ht.Assert.NoError(err)
-		err = q.UpdateIngestVersion(ingest.CurrentVersion)
+		err = q.UpdateIngestVersion(ht.Ctx, ingest.CurrentVersion)
 		ht.Assert.NoError(err)
 	}
 	initializeStateMiddleware()
@@ -212,7 +212,7 @@ func TestPaymentActions_Show_Failed(t *testing.T) {
 	}
 
 	// NULL value
-	_, err := ht.HorizonSession().ExecRaw(
+	_, err := ht.HorizonSession().ExecRaw(ht.Ctx,
 		`UPDATE history_transactions SET successful = NULL WHERE transaction_hash = ?`,
 		"56e3216045d579bea40f2d35a09406de3a894ecb5be70dbda5ec9c0427a0d5a1",
 	)
@@ -241,7 +241,7 @@ func TestPayment_CreatedAt(t *testing.T) {
 
 	l := history.Ledger{}
 	hq := history.Q{Session: ht.HorizonSession()}
-	ht.Require.NoError(hq.LedgerBySequence(&l, 3))
+	ht.Require.NoError(hq.LedgerBySequence(ht.Ctx, &l, 3))
 
 	ht.Assert.WithinDuration(l.ClosedAt, records[0].LedgerCloseTime, 1*time.Second)
 }
