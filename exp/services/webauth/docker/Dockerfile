@@ -5,9 +5,9 @@ WORKDIR /src/webauth
 RUN go build -o /bin/webauth ./exp/services/webauth
 
 
-FROM ubuntu:18.04
+FROM ubuntu:20.04
 
-RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends ca-certificates
 COPY --from=build /bin/webauth /app/
 EXPOSE 8000
 ENTRYPOINT ["/app/webauth"]
