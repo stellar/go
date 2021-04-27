@@ -167,34 +167,16 @@ func (c RemoteCaptiveStellarCore) PrepareRange(ctx context.Context, ledgerRange 
 	// TODO: removing createContext call here means we could technically have
 	// multiple prepareRange requests happening at the same time. Do we still
 	// need to enforce that?
-	u := *c.url
-	u.Path = path.Join(u.Path, "prepare-range")
-	rangeBytes, err := json.Marshal(ledgerRange)
-	if err != nil {
-		return errors.Wrap(err, "cannot serialize range")
-	}
 
 	timer := time.NewTimer(c.prepareRangePollInterval)
 	defer timer.Stop()
 
 	for {
-		req, err := http.NewRequestWithContext(ctx, http.MethodPost, u.String(), bytes.NewReader(rangeBytes))
+		ready, err := c.IsPrepared(ctx, ledgerRange)
 		if err != nil {
-			return errors.Wrap(err, "cannot construct http request")
-		}
-
-		var response *http.Response
-		response, err = c.client.Do(req)
-		if err != nil {
-			return errors.Wrap(err, "failed to execute request")
-		}
-
-		var parsed PrepareRangeResponse
-		if err = decodeResponse(response, &parsed); err != nil {
 			return err
 		}
-
-		if parsed.Ready {
+		if ready {
 			return nil
 		}
 
