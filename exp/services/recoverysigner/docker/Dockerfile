@@ -5,7 +5,7 @@ WORKDIR /src/recoverysigner
 RUN go build -o /bin/recoverysigner ./exp/services/recoverysigner
 
 
-FROM ubuntu:18.04
+FROM ubuntu:20.04
 
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
 COPY --from=build /bin/recoverysigner /app/
