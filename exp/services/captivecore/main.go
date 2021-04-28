@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"go/types"
 	"strings"
-	"time"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -149,11 +148,8 @@ func main() {
 			api := internal.NewCaptiveCoreAPI(core, logger.WithField("subservice", "api"))
 
 			supporthttp.Run(supporthttp.Config{
-				ListenAddr:   fmt.Sprintf(":%d", port),
-				Handler:      internal.Handler(api),
-				ReadTimeout:  5 * time.Second,
-				WriteTimeout: 5 * time.Second,
-				IdleTimeout:  5 * time.Second,
+				ListenAddr: fmt.Sprintf(":%d", port),
+				Handler:    internal.Handler(api),
 				OnStarting: func() {
 					logger.Infof("Starting Captive Core server on %v", port)
 				},

@@ -246,7 +246,6 @@ func (c RemoteCaptiveStellarCore) GetLedger(ctx context.Context, sequence uint32
 			return xdr.LedgerCloseMeta{}, errors.Wrap(err, "failed to execute request")
 		}
 
-		// TODO: Check this is the right status code we'll get back.
 		if response.StatusCode == http.StatusRequestTimeout {
 			response.Body.Close()
 			// This request timed out. Retry.

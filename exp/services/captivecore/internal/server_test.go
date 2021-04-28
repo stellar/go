@@ -156,3 +156,27 @@ func (s *ServerTestSuite) TestGetLedgerSucceeds() {
 	s.Assert().NoError(err)
 	s.Assert().Equal(expectedLedger, ledger)
 }
+
+func (s *ServerTestSuite) TestGetLedgerTakesAWhile() {
+	s.api.activeRequest.valid = true
+	s.api.activeRequest.ready = true
+
+	expectedLedger := xdr.LedgerCloseMeta{
+		V0: &xdr.LedgerCloseMetaV0{
+			LedgerHeader: xdr.LedgerHeaderHistoryEntry{
+				Header: xdr.LedgerHeader{
+					LedgerSeq: 64,
+				},
+			},
+		},
+	}
+	s.ledgerBackend.On("GetLedger", mock.Anything, uint32(64)).
+		Run(func(mock.Arguments) { time.Sleep(6 * time.Second) }).
+		Return(xdr.LedgerCloseMeta{}, nil).Once()
+	s.ledgerBackend.On("GetLedger", mock.Anything, uint32(64)).
+		Return(expectedLedger, nil).Once()
+
+	ledger, err := s.client.GetLedger(s.ctx, 64)
+	s.Assert().NoError(err)
+	s.Assert().Equal(expectedLedger, ledger)
+}
