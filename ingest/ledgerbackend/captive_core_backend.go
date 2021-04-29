@@ -85,15 +85,6 @@ type CaptiveStellarCore struct {
 	// For testing
 	stellarCoreRunnerFactory func(mode stellarCoreRunnerMode) (stellarCoreRunnerInterface, error)
 
-	// Defines if the blocking mode (off by default) is on or off. In blocking mode,
-	// calling GetLedger blocks until the requested ledger is available. This is useful
-	// for scenarios when Horizon consumes ledgers faster than Stellar-Core produces them
-	// and using `time.Sleep` when ledger is not available can actually slow entire
-	// ingestion process.
-	// blockingLock locks access to blocking.
-	blockingLock sync.Mutex
-	blocking     bool
-
 	// cachedMeta keeps that ledger data of the last fetched ledger. Updated in GetLedger().
 	cachedMeta *xdr.LedgerCloseMeta
 
@@ -235,7 +226,6 @@ func (c *CaptiveStellarCore) openOfflineReplaySubprocess(from, to uint32) error 
 	// the requested ledger
 	c.nextLedger = c.roundDownToFirstReplayAfterCheckpointStart(from)
 	c.lastLedger = &to
-	c.setBlocking(true)
 	c.previousLedgerHash = nil
 
 	return nil
@@ -293,8 +283,6 @@ func (c *CaptiveStellarCore) openOnlineReplaySubprocess(ctx context.Context, fro
 			c.previousLedgerHash = &ledgerHash
 		}
 	}
-
-	c.setBlocking(false)
 
 	return nil
 }
@@ -613,18 +601,6 @@ func (c *CaptiveStellarCore) GetLatestLedgerSequence(ctx context.Context) (uint3
 
 func (c *CaptiveStellarCore) isClosed() bool {
 	return c.nextLedger == 0 || c.stellarCoreRunner == nil || c.stellarCoreRunner.context().Err() != nil
-}
-
-func (c *CaptiveStellarCore) isBlocking() bool {
-	c.blockingLock.Lock()
-	defer c.blockingLock.Unlock()
-	return c.blocking
-}
-
-func (c *CaptiveStellarCore) setBlocking(val bool) {
-	c.blockingLock.Lock()
-	c.blocking = val
-	c.blockingLock.Unlock()
 }
 
 // Close closes existing Stellar-Core process, streaming sessions and removes all
