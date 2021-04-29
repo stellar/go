@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this
 file. This project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+
+* Refactor `ingest/ledgerbackend/LedgerBackend.GetLedger` method to always block, removing `ingest/ledgerbackend/LedgerBackend.GetLedgerBlocking`. Adds a first `context.Context` param to most `LedgerBackend` methods.
+
 ## v2.2.0
 
 **Upgrading to this version will trigger state rebuild. During this process (which can take up to 20 minutes) it will not ingest new ledgers.**
