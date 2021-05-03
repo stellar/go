@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/stellar/go/ingest/ledgerbackend"
@@ -47,7 +48,7 @@ func (s *APITestSuite) TestGetLedgerActiveRequestInvalid() {
 func (s *APITestSuite) runBeforeReady(prepareRangeErr error, f func()) {
 	waitChan := make(chan time.Time)
 	ledgerRange := ledgerbackend.UnboundedRange(63)
-	s.ledgerBackend.On("PrepareRange", s.ctx, ledgerRange).
+	s.ledgerBackend.On("PrepareRange", mock.Anything, ledgerRange).
 		WaitUntil(waitChan).
 		Return(prepareRangeErr).Once()
 
@@ -77,7 +78,7 @@ func (s *APITestSuite) TestGetLedgerNotReady() {
 }
 
 func (s *APITestSuite) waitUntilReady(ledgerRange ledgerbackend.Range) {
-	s.ledgerBackend.On("PrepareRange", s.ctx, ledgerRange).
+	s.ledgerBackend.On("PrepareRange", mock.Anything, ledgerRange).
 		Return(nil).Once()
 
 	response, err := s.api.PrepareRange(s.ctx, ledgerRange)

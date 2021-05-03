@@ -125,7 +125,7 @@ func (c *CaptiveCoreAPI) PrepareRange(ctx context.Context, ledgerRange ledgerbac
 		c.activeRequest.valid = true
 
 		c.wg.Add(1)
-		go c.startPrepareRange(ctx, ledgerRange)
+		go c.startPrepareRange(c.ctx, ledgerRange)
 
 		return ledgerbackend.PrepareRangeResponse{
 			LedgerRange:   ledgerRange,
