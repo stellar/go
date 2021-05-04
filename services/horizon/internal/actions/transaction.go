@@ -1,10 +1,11 @@
 package actions
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/stellar/go/protocols/horizon"
-	"github.com/stellar/go/services/horizon/internal/context"
+	horizonContext "github.com/stellar/go/services/horizon/internal/context"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/ledger"
@@ -33,7 +34,7 @@ func (handler GetTransactionByHashHandler) GetResource(w HeaderWriter, r *http.R
 		return nil, err
 	}
 
-	historyQ, err := context.HistoryQFromRequest(r)
+	historyQ, err := horizonContext.HistoryQFromRequest(r)
 	if err != nil {
 		return nil, err
 	}
@@ -43,7 +44,7 @@ func (handler GetTransactionByHashHandler) GetResource(w HeaderWriter, r *http.R
 		resource horizon.Transaction
 	)
 
-	err = historyQ.TransactionByHash(&record, qp.TransactionHash)
+	err = historyQ.TransactionByHash(ctx, &record, qp.TransactionHash)
 	if err != nil {
 		return resource, errors.Wrap(err, "loading transaction record")
 	}
@@ -109,7 +110,7 @@ func (handler GetTransactionsHandler) GetResourcePage(w HeaderWriter, r *http.Re
 		return nil, err
 	}
 
-	historyQ, err := context.HistoryQFromRequest(r)
+	historyQ, err := horizonContext.HistoryQFromRequest(r)
 	if err != nil {
 		return nil, err
 	}
@@ -123,7 +124,7 @@ func (handler GetTransactionsHandler) GetResourcePage(w HeaderWriter, r *http.Re
 		}
 		cbID = &cb
 	}
-	records, err := loadTransactionRecords(historyQ, qp.AccountID, cbID, int32(qp.LedgerID), qp.IncludeFailedTransactions, pq)
+	records, err := loadTransactionRecords(ctx, historyQ, qp.AccountID, cbID, int32(qp.LedgerID), qp.IncludeFailedTransactions, pq)
 	if err != nil {
 		return nil, errors.Wrap(err, "loading transaction records")
 	}
@@ -145,7 +146,7 @@ func (handler GetTransactionsHandler) GetResourcePage(w HeaderWriter, r *http.Re
 // loadTransactionRecords returns a slice of transaction records of an
 // account/ledger identified by accountID/ledgerID based on pq and
 // includeFailedTx.
-func loadTransactionRecords(hq *history.Q, accountID string, cbID *xdr.ClaimableBalanceId, ledgerID int32, includeFailedTx bool, pq db2.PageQuery) ([]history.Transaction, error) {
+func loadTransactionRecords(ctx context.Context, hq *history.Q, accountID string, cbID *xdr.ClaimableBalanceId, ledgerID int32, includeFailedTx bool, pq db2.PageQuery) ([]history.Transaction, error) {
 	if accountID != "" && ledgerID != 0 {
 		return nil, errors.New("conflicting exclusive fields are present: account_id and ledger_id")
 	}
@@ -155,18 +156,18 @@ func loadTransactionRecords(hq *history.Q, accountID string, cbID *xdr.Claimable
 	txs := hq.Transactions()
 	switch {
 	case accountID != "":
-		txs.ForAccount(accountID)
+		txs.ForAccount(ctx, accountID)
 	case cbID != nil:
-		txs.ForClaimableBalance(*cbID)
+		txs.ForClaimableBalance(ctx, *cbID)
 	case ledgerID > 0:
-		txs.ForLedger(ledgerID)
+		txs.ForLedger(ctx, ledgerID)
 	}
 
 	if includeFailedTx {
 		txs.IncludeFailed()
 	}
 
-	err := txs.Page(pq).Select(&records)
+	err := txs.Page(pq).Select(ctx, &records)
 	if err != nil {
 		return nil, errors.Wrap(err, "executing transaction records query")
 	}

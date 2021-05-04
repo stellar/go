@@ -18,7 +18,7 @@ func TestCreateAssetsSortedOrder(t *testing.T) {
 		usdAsset, nativeAsset, eurAsset,
 		xdr.MustNewCreditAsset("CNY", issuer.Address()),
 	}
-	assetMap, err := q.CreateAssets(
+	assetMap, err := q.CreateAssets(tt.Ctx,
 		assets,
 		2,
 	)
@@ -61,7 +61,7 @@ func TestCreateAssets(t *testing.T) {
 	assets := []xdr.Asset{
 		nativeAsset, eurAsset,
 	}
-	assetMap, err := q.CreateAssets(assets, 1)
+	assetMap, err := q.CreateAssets(tt.Ctx, assets, 1)
 	tt.Assert.NoError(err)
 	tt.Assert.Len(assetMap, len(assets))
 
@@ -81,7 +81,7 @@ func TestCreateAssets(t *testing.T) {
 	}
 
 	// CreateAssets handles duplicates
-	assetMap, err = q.CreateAssets(
+	assetMap, err = q.CreateAssets(tt.Ctx,
 		[]xdr.Asset{
 			nativeAsset, nativeAsset, eurAsset, eurAsset,
 			nativeAsset, nativeAsset, eurAsset, eurAsset,
@@ -106,7 +106,7 @@ func TestCreateAssets(t *testing.T) {
 
 	// CreateAssets handles duplicates and new rows
 	assets = append(assets, usdAsset)
-	assetMap, err = q.CreateAssets(assets, 2)
+	assetMap, err = q.CreateAssets(tt.Ctx, assets, 2)
 	tt.Assert.NoError(err)
 	tt.Assert.Len(assetMap, len(assets))
 

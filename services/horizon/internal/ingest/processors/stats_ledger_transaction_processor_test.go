@@ -1,6 +1,7 @@
 package processors
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -9,11 +10,44 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
+func TestStatsLedgerTransactionProcessoAllOpTypesCovered(t *testing.T) {
+	txTemplate := ingest.LedgerTransaction{
+		Envelope: xdr.TransactionEnvelope{
+			Type: xdr.EnvelopeTypeEnvelopeTypeTx,
+			V1: &xdr.TransactionV1Envelope{
+				Tx: xdr.Transaction{
+					Operations: []xdr.Operation{
+						{Body: xdr.OperationBody{Type: 0}},
+					},
+				},
+			},
+		},
+	}
+	for typ, s := range xdr.OperationTypeToStringMap {
+		tx := txTemplate
+		txTemplate.Envelope.V1.Tx.Operations[0].Body.Type = xdr.OperationType(typ)
+		f := func() {
+			var p StatsLedgerTransactionProcessor
+			p.ProcessTransaction(context.Background(), tx)
+		}
+		assert.NotPanics(t, f, s)
+	}
+
+	// make sure the check works for an unreasonable operation type
+	tx := txTemplate
+	txTemplate.Envelope.V1.Tx.Operations[0].Body.Type = 20000
+	f := func() {
+		var p StatsLedgerTransactionProcessor
+		p.ProcessTransaction(context.Background(), tx)
+	}
+	assert.Panics(t, f)
+}
+
 func TestStatsLedgerTransactionProcessor(t *testing.T) {
 	processor := &StatsLedgerTransactionProcessor{}
 
 	// Successful
-	assert.NoError(t, processor.ProcessTransaction(ingest.LedgerTransaction{
+	assert.NoError(t, processor.ProcessTransaction(context.Background(), ingest.LedgerTransaction{
 		Result: xdr.TransactionResultPair{
 			Result: xdr.TransactionResult{
 				Result: xdr.TransactionResultResult{
@@ -54,7 +88,7 @@ func TestStatsLedgerTransactionProcessor(t *testing.T) {
 	}))
 
 	// Failed
-	assert.NoError(t, processor.ProcessTransaction(ingest.LedgerTransaction{
+	assert.NoError(t, processor.ProcessTransaction(context.Background(), ingest.LedgerTransaction{
 		Result: xdr.TransactionResultPair{
 			Result: xdr.TransactionResult{
 				Result: xdr.TransactionResultResult{

@@ -21,30 +21,30 @@ func TestDeleteUnretainedHistory(t *testing.T) {
 		prev int
 		cur  int
 	)
-	err := db.GetRaw(&prev, `SELECT COUNT(*) FROM history_ledgers`)
+	err := db.GetRaw(tt.Ctx, &prev, `SELECT COUNT(*) FROM history_ledgers`)
 	tt.Require.NoError(err)
 
-	err = sys.DeleteUnretainedHistory()
+	err = sys.DeleteUnretainedHistory(tt.Ctx)
 	if tt.Assert.NoError(err) {
-		err = db.GetRaw(&cur, `SELECT COUNT(*) FROM history_ledgers`)
+		err = db.GetRaw(tt.Ctx, &cur, `SELECT COUNT(*) FROM history_ledgers`)
 		tt.Require.NoError(err)
 		tt.Assert.Equal(prev, cur, "Ledgers deleted when RetentionCount == 0")
 	}
 
 	ledgerState.SetStatus(tt.LoadLedgerStatus())
 	sys.RetentionCount = 10
-	err = sys.DeleteUnretainedHistory()
+	err = sys.DeleteUnretainedHistory(tt.Ctx)
 	if tt.Assert.NoError(err) {
-		err = db.GetRaw(&cur, `SELECT COUNT(*) FROM history_ledgers`)
+		err = db.GetRaw(tt.Ctx, &cur, `SELECT COUNT(*) FROM history_ledgers`)
 		tt.Require.NoError(err)
 		tt.Assert.Equal(10, cur)
 	}
 
 	ledgerState.SetStatus(tt.LoadLedgerStatus())
 	sys.RetentionCount = 1
-	err = sys.DeleteUnretainedHistory()
+	err = sys.DeleteUnretainedHistory(tt.Ctx)
 	if tt.Assert.NoError(err) {
-		err = db.GetRaw(&cur, `SELECT COUNT(*) FROM history_ledgers`)
+		err = db.GetRaw(tt.Ctx, &cur, `SELECT COUNT(*) FROM history_ledgers`)
 		tt.Require.NoError(err)
 		tt.Assert.Equal(1, cur)
 	}

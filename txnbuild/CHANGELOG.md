@@ -5,13 +5,21 @@ file.  This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+## [v7.0.0](https://github.com/stellar/go/releases/tag/horizonclient-v7.0.0) - 2021-05-15
+
 ### Breaking changes
 
 * `AllowTrustOpAsset` was renamed to `AssetCode`, `{Must}NewAllowTrustAsset` was renamed to `{Must}NewAssetCodeFromString`.
+* Some methods from the `Operation` interface (`BuildXDR()`,`FromXDR()` and `Validate()`) now take an additional `bool` parameter (`withMuxedAccounts`)
+  to indicate whether [SEP23](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0023.md) M-strkeys should be enabled.
 
 ### New features
 
-Add support for Stellar Protocol 16 (CAP35): `Clawback` operations.
+* Add support for Stellar Protocol 17 (CAP35): `Clawback`, `ClawbackClaimableBalance` and `SetTrustlineFlags` operations.
+* Add opt-in support for [SEP23](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0023.md) M-strkeys for `MuxedAccount`s:
+  * Some methods from the `Operation` interface (`BuildXDR()`,`FromXDR()` and `Validate()`) now take an additional `bool` parameter (`withMuxedAccounts`)
+  * The parameters from `NewFeeBumpTransaction()` and `NewTransaction()` now include a new field (`EnableMuxedAccounts`) to enable M-strekeys.
+  * `TransactionFromXDR()` now allows passing a `TransactionFromXDROptionEnableMuxedAccounts` option, to enable M-strkey parsing.
 
 ## [v6.0.0](https://github.com/stellar/go/releases/tag/horizonclient-v6.0.0) - 2021-02-22
 

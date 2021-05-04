@@ -100,7 +100,7 @@ func (handler GetOrderbookHandler) GetResource(w HeaderWriter, r *http.Request) 
 		return nil, err
 	}
 
-	summary, err := historyQ.GetOrderBookSummary(selling, buying, int(limit))
+	summary, err := historyQ.GetOrderBookSummary(r.Context(), selling, buying, int(limit))
 	if err != nil {
 		return nil, err
 	}

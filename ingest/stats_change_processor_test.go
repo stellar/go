@@ -1,6 +1,7 @@
 package ingest
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stellar/go/xdr"
@@ -8,96 +9,97 @@ import (
 )
 
 func TestStatsChangeProcessor(t *testing.T) {
+	ctx := context.Background()
 	processor := &StatsChangeProcessor{}
 
 	// Created
-	assert.NoError(t, processor.ProcessChange(Change{
+	assert.NoError(t, processor.ProcessChange(ctx, Change{
 		Type: xdr.LedgerEntryTypeAccount,
 		Pre:  nil,
 		Post: &xdr.LedgerEntry{},
 	}))
 
-	assert.NoError(t, processor.ProcessChange(Change{
+	assert.NoError(t, processor.ProcessChange(ctx, Change{
 		Type: xdr.LedgerEntryTypeClaimableBalance,
 		Pre:  nil,
 		Post: &xdr.LedgerEntry{},
 	}))
 
-	assert.NoError(t, processor.ProcessChange(Change{
+	assert.NoError(t, processor.ProcessChange(ctx, Change{
 		Type: xdr.LedgerEntryTypeData,
 		Pre:  nil,
 		Post: &xdr.LedgerEntry{},
 	}))
 
-	assert.NoError(t, processor.ProcessChange(Change{
+	assert.NoError(t, processor.ProcessChange(ctx, Change{
 		Type: xdr.LedgerEntryTypeOffer,
 		Pre:  nil,
 		Post: &xdr.LedgerEntry{},
 	}))
 
-	assert.NoError(t, processor.ProcessChange(Change{
+	assert.NoError(t, processor.ProcessChange(ctx, Change{
 		Type: xdr.LedgerEntryTypeTrustline,
 		Pre:  nil,
 		Post: &xdr.LedgerEntry{},
 	}))
 
 	// Updated
-	assert.NoError(t, processor.ProcessChange(Change{
+	assert.NoError(t, processor.ProcessChange(ctx, Change{
 		Type: xdr.LedgerEntryTypeAccount,
 		Pre:  &xdr.LedgerEntry{},
 		Post: &xdr.LedgerEntry{},
 	}))
 
-	assert.NoError(t, processor.ProcessChange(Change{
+	assert.NoError(t, processor.ProcessChange(ctx, Change{
 		Type: xdr.LedgerEntryTypeClaimableBalance,
 		Pre:  &xdr.LedgerEntry{},
 		Post: &xdr.LedgerEntry{},
 	}))
 
-	assert.NoError(t, processor.ProcessChange(Change{
+	assert.NoError(t, processor.ProcessChange(ctx, Change{
 		Type: xdr.LedgerEntryTypeData,
 		Pre:  &xdr.LedgerEntry{},
 		Post: &xdr.LedgerEntry{},
 	}))
 
-	assert.NoError(t, processor.ProcessChange(Change{
+	assert.NoError(t, processor.ProcessChange(ctx, Change{
 		Type: xdr.LedgerEntryTypeOffer,
 		Pre:  &xdr.LedgerEntry{},
 		Post: &xdr.LedgerEntry{},
 	}))
 
-	assert.NoError(t, processor.ProcessChange(Change{
+	assert.NoError(t, processor.ProcessChange(ctx, Change{
 		Type: xdr.LedgerEntryTypeTrustline,
 		Pre:  &xdr.LedgerEntry{},
 		Post: &xdr.LedgerEntry{},
 	}))
 
 	// Removed
-	assert.NoError(t, processor.ProcessChange(Change{
+	assert.NoError(t, processor.ProcessChange(ctx, Change{
 		Type: xdr.LedgerEntryTypeAccount,
 		Pre:  &xdr.LedgerEntry{},
 		Post: nil,
 	}))
 
-	assert.NoError(t, processor.ProcessChange(Change{
+	assert.NoError(t, processor.ProcessChange(ctx, Change{
 		Type: xdr.LedgerEntryTypeClaimableBalance,
 		Pre:  &xdr.LedgerEntry{},
 		Post: nil,
 	}))
 
-	assert.NoError(t, processor.ProcessChange(Change{
+	assert.NoError(t, processor.ProcessChange(ctx, Change{
 		Type: xdr.LedgerEntryTypeData,
 		Pre:  &xdr.LedgerEntry{},
 		Post: nil,
 	}))
 
-	assert.NoError(t, processor.ProcessChange(Change{
+	assert.NoError(t, processor.ProcessChange(ctx, Change{
 		Type: xdr.LedgerEntryTypeOffer,
 		Pre:  &xdr.LedgerEntry{},
 		Post: nil,
 	}))
 
-	assert.NoError(t, processor.ProcessChange(Change{
+	assert.NoError(t, processor.ProcessChange(ctx, Change{
 		Type: xdr.LedgerEntryTypeTrustline,
 		Pre:  &xdr.LedgerEntry{},
 		Post: nil,

@@ -17,6 +17,8 @@ import (
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/http/httptest"
 	"github.com/stellar/go/txnbuild"
+	"github.com/stellar/go/xdr"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -882,6 +884,70 @@ func TestSubmitTransactionRequest(t *testing.T) {
 	hmock.On(
 		"POST",
 		"https://localhost/transactions?tx=AAAAAgAAAAAFNPMlEPLB6oWPI%2FZl1sBEXxwv93ChUnv7KQK9KxrTtgAAAGQAAAAAAAAAAQAAAAEAAAAAAAAAAAAAAAAAAAAKAAAAAAAAAAEAAAAAAAAAAQAAAAAFNPMlEPLB6oWPI%2FZl1sBEXxwv93ChUnv7KQK9KxrTtgAAAAAAAAAABfXhAAAAAAAAAAABKxrTtgAAAECmVMsI0W6JmfJNeLzgH%2BPseZA2AgYGZl8zaHgkOvhZw65Hj9OaCdw6yssG55qu7X2sauJAwfxaoTL4gwbmH94H",
+	).ReturnString(200, txSuccess)
+
+	hmock.On(
+		"GET",
+		"https://localhost/accounts/GACTJ4ZFCDZMD2UFR4R7MZOWYBCF6HBP65YKCUT37MUQFPJLDLJ3N5D2/data/config.memo_required",
+	).ReturnString(404, notFoundResponse)
+
+	_, err = client.SubmitTransaction(tx)
+	assert.NoError(t, err)
+
+	// memo required - does not submit transaction
+	hmock.On(
+		"GET",
+		"https://localhost/accounts/GACTJ4ZFCDZMD2UFR4R7MZOWYBCF6HBP65YKCUT37MUQFPJLDLJ3N5D2/data/config.memo_required",
+	).ReturnJSON(200, memoRequiredResponse)
+
+	_, err = client.SubmitTransaction(tx)
+	assert.Error(t, err)
+	assert.Equal(t, ErrAccountRequiresMemo, errors.Cause(err))
+}
+
+func TestSubmitTransactionRequestMuxedAccounts(t *testing.T) {
+	hmock := httptest.NewClient()
+	client := &Client{
+		HorizonURL: "https://localhost/",
+		HTTP:       hmock,
+	}
+
+	kp := keypair.MustParseFull("SA26PHIKZM6CXDGR472SSGUQQRYXM6S437ZNHZGRM6QA4FOPLLLFRGDX")
+	accountID := xdr.MustAddress(kp.Address())
+	mx := xdr.MuxedAccount{
+		Type: xdr.CryptoKeyTypeKeyTypeMuxedEd25519,
+		Med25519: &xdr.MuxedAccountMed25519{
+			Id:      0xcafebabe,
+			Ed25519: *accountID.Ed25519,
+		},
+	}
+	sourceAccount := txnbuild.NewSimpleAccount(mx.Address(), int64(0))
+
+	payment := txnbuild.Payment{
+		Destination: kp.Address(),
+		Amount:      "10",
+		Asset:       txnbuild.NativeAsset{},
+	}
+
+	tx, err := txnbuild.NewTransaction(
+		txnbuild.TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: true,
+			Operations:           []txnbuild.Operation{&payment},
+			BaseFee:              txnbuild.MinBaseFee,
+			Timebounds:           txnbuild.NewTimebounds(0, 10),
+			EnableMuxedAccounts:  true,
+		},
+	)
+	assert.NoError(t, err)
+
+	tx, err = tx.Sign(network.TestNetworkPassphrase, kp)
+	assert.NoError(t, err)
+
+	// successful tx with config.memo_required not found
+	hmock.On(
+		"POST",
+		"https://localhost/transactions?tx=AAAAAgAAAQAAAAAAyv66vgU08yUQ8sHqhY8j9mXWwERfHC%2F3cKFSe%2FspAr0rGtO2AAAAZAAAAAAAAAABAAAAAQAAAAAAAAAAAAAAAAAAAAoAAAAAAAAAAQAAAAAAAAABAAAAAAU08yUQ8sHqhY8j9mXWwERfHC%2F3cKFSe%2FspAr0rGtO2AAAAAAAAAAAF9eEAAAAAAAAAAAErGtO2AAAAQJvQkE9UVo%2FmfFBl%2F8ZPTzSUyVO4nvW0BYfnbowoBPEdRfLOLQz28v6sBKQc2b86NUfVHN5TQVo3%2BjH4nK9wVgk%3D",
 	).ReturnString(200, txSuccess)
 
 	hmock.On(

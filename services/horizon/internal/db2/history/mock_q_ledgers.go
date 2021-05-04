@@ -1,15 +1,18 @@
 package history
 
 import (
-	"github.com/stellar/go/xdr"
+	"context"
+
 	"github.com/stretchr/testify/mock"
+
+	"github.com/stellar/go/xdr"
 )
 
 type MockQLedgers struct {
 	mock.Mock
 }
 
-func (m *MockQLedgers) InsertLedger(
+func (m *MockQLedgers) InsertLedger(ctx context.Context,
 	ledger xdr.LedgerHeaderHistoryEntry,
 	successTxsCount int,
 	failedTxsCount int,
@@ -17,6 +20,6 @@ func (m *MockQLedgers) InsertLedger(
 	txSetOpCount int,
 	ingestVersion int,
 ) (int64, error) {
-	a := m.Called(ledger, successTxsCount, failedTxsCount, opCount, txSetOpCount, ingestVersion)
+	a := m.Called(ctx, ledger, successTxsCount, failedTxsCount, opCount, txSetOpCount, ingestVersion)
 	return a.Get(0).(int64), a.Error(1)
 }

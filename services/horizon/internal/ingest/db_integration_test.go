@@ -3,6 +3,7 @@
 package ingest
 
 import (
+	"context"
 	"io"
 	"io/ioutil"
 	"path/filepath"
@@ -57,6 +58,7 @@ func TestDBTestSuite(t *testing.T) {
 
 type DBTestSuite struct {
 	suite.Suite
+	ctx            context.Context
 	sampleFile     string
 	sequence       uint32
 	ledgerBackend  *ledgerbackend.MockDatabaseBackend
@@ -87,6 +89,7 @@ func (s *DBTestSuite) SetupTest() {
 	})
 	s.Assert().NoError(err)
 	s.system = sIface.(*system)
+	s.ctx = s.system.ctx
 
 	s.sequence = uint32(28660351)
 	s.setupMocksForBuildState()
@@ -94,13 +97,12 @@ func (s *DBTestSuite) SetupTest() {
 	s.system.historyAdapter = s.historyAdapter
 	s.system.ledgerBackend = s.ledgerBackend
 	s.system.runner.SetHistoryAdapter(s.historyAdapter)
-	s.system.runner.SetLedgerBackend(s.ledgerBackend)
 }
 
 func (s *DBTestSuite) mockChangeReader() {
 	changeReader, err := loadChanges(s.sampleFile)
 	s.Assert().NoError(err)
-	s.historyAdapter.On("GetState", s.system.ctx, s.sequence).
+	s.historyAdapter.On("GetState", s.ctx, s.sequence).
 		Return(ingest.ChangeReader(changeReader), nil).Once()
 }
 func (s *DBTestSuite) setupMocksForBuildState() {
@@ -112,20 +114,20 @@ func (s *DBTestSuite) setupMocksForBuildState() {
 		Return(checkpointHash, nil).Once()
 
 	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(s.sequence)).Return(true, nil).Once()
-	s.ledgerBackend.On("GetLedger", s.sequence).
+	s.ledgerBackend.On("GetLedgerBlocking", s.sequence).
 		Return(
-			true,
 			xdr.LedgerCloseMeta{
 				V0: &xdr.LedgerCloseMetaV0{
 					LedgerHeader: xdr.LedgerHeaderHistoryEntry{
 						Header: xdr.LedgerHeader{
+							LedgerSeq:      xdr.Uint32(s.sequence),
 							BucketListHash: checkpointHash,
 						},
 					},
 				},
 			},
 			nil,
-		).Twice()
+		).Once()
 }
 
 func (s *DBTestSuite) TearDownTest() {
@@ -154,7 +156,7 @@ func (s *DBTestSuite) TestVersionMismatchTriggersRebuild() {
 	s.TestBuildState()
 
 	s.Assert().NoError(
-		s.system.historyQ.UpdateIngestVersion(CurrentVersion - 1),
+		s.system.historyQ.UpdateIngestVersion(context.Background(), CurrentVersion-1),
 	)
 
 	s.setupMocksForBuildState()

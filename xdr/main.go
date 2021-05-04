@@ -23,6 +23,8 @@ type Keyer interface {
 var _ = LedgerEntry{}
 var _ = LedgerKey{}
 
+var OperationTypeToStringMap = operationTypeMap
+
 func Uint32Ptr(val uint32) *Uint32 {
 	pval := Uint32(val)
 	return &pval

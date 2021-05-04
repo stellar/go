@@ -334,5 +334,5 @@ func assetsForAddress(r *http.Request, addy string) ([]xdr.Asset, []xdr.Int64, e
 	if err != nil {
 		return nil, nil, err
 	}
-	return historyQ.AssetsForAddress(addy)
+	return historyQ.AssetsForAddress(r.Context(), addy)
 }

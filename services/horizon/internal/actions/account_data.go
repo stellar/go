@@ -60,7 +60,7 @@ func loadAccountData(r *http.Request) (history.Data, error) {
 	if err != nil {
 		return history.Data{}, err
 	}
-	data, err := historyQ.GetAccountDataByName(qp.AccountID, qp.Key)
+	data, err := historyQ.GetAccountDataByName(r.Context(), qp.AccountID, qp.Key)
 	if err != nil {
 		return history.Data{}, err
 	}

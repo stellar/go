@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/stellar/go/ingest"
-	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/network"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/ingest/processors"
@@ -19,6 +18,7 @@ import (
 )
 
 func TestProcessorRunnerRunHistoryArchiveIngestionGenesis(t *testing.T) {
+	ctx := context.Background()
 	maxBatchSize := 100000
 
 	q := &mockDBQ{}
@@ -26,23 +26,23 @@ func TestProcessorRunnerRunHistoryArchiveIngestionGenesis(t *testing.T) {
 	// Batches
 	mockOffersBatchInsertBuilder := &history.MockOffersBatchInsertBuilder{}
 	defer mock.AssertExpectationsForObjects(t, mockOffersBatchInsertBuilder)
-	mockOffersBatchInsertBuilder.On("Exec").Return(nil).Once()
+	mockOffersBatchInsertBuilder.On("Exec", ctx).Return(nil).Once()
 	q.MockQOffers.On("NewOffersBatchInsertBuilder", maxBatchSize).
 		Return(mockOffersBatchInsertBuilder).Once()
 
 	mockAccountDataBatchInsertBuilder := &history.MockAccountDataBatchInsertBuilder{}
 	defer mock.AssertExpectationsForObjects(t, mockAccountDataBatchInsertBuilder)
-	mockAccountDataBatchInsertBuilder.On("Exec").Return(nil).Once()
+	mockAccountDataBatchInsertBuilder.On("Exec", ctx).Return(nil).Once()
 	q.MockQData.On("NewAccountDataBatchInsertBuilder", maxBatchSize).
 		Return(mockAccountDataBatchInsertBuilder).Once()
 
 	mockClaimableBalancesBatchInsertBuilder := &history.MockClaimableBalancesBatchInsertBuilder{}
 	defer mock.AssertExpectationsForObjects(t, mockClaimableBalancesBatchInsertBuilder)
-	mockClaimableBalancesBatchInsertBuilder.On("Exec").Return(nil).Once()
+	mockClaimableBalancesBatchInsertBuilder.On("Exec", ctx).Return(nil).Once()
 	q.MockQClaimableBalances.On("NewClaimableBalancesBatchInsertBuilder", maxBatchSize).
 		Return(mockClaimableBalancesBatchInsertBuilder).Once()
 
-	q.MockQAccounts.On("UpsertAccounts", []xdr.LedgerEntry{
+	q.MockQAccounts.On("UpsertAccounts", ctx, []xdr.LedgerEntry{
 		{
 			LastModifiedLedgerSeq: 1,
 			Data: xdr.LedgerEntryData{
@@ -59,31 +59,33 @@ func TestProcessorRunnerRunHistoryArchiveIngestionGenesis(t *testing.T) {
 
 	mockAccountSignersBatchInsertBuilder := &history.MockAccountSignersBatchInsertBuilder{}
 	defer mock.AssertExpectationsForObjects(t, mockAccountSignersBatchInsertBuilder)
-	mockAccountSignersBatchInsertBuilder.On("Add", history.AccountSigner{
+	mockAccountSignersBatchInsertBuilder.On("Add", ctx, history.AccountSigner{
 		Account: "GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7",
 		Signer:  "GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7",
 		Weight:  1,
 		Sponsor: null.String{},
 	}).Return(nil).Once()
-	mockAccountSignersBatchInsertBuilder.On("Exec").Return(nil).Once()
+	mockAccountSignersBatchInsertBuilder.On("Exec", ctx).Return(nil).Once()
 	q.MockQSigners.On("NewAccountSignersBatchInsertBuilder", maxBatchSize).
 		Return(mockAccountSignersBatchInsertBuilder).Once()
 
-	q.MockQAssetStats.On("InsertAssetStats", []history.ExpAssetStat{}, 100000).
+	q.MockQAssetStats.On("InsertAssetStats", ctx, []history.ExpAssetStat{}, 100000).
 		Return(nil)
 
 	runner := ProcessorRunner{
+		ctx: ctx,
 		config: Config{
 			NetworkPassphrase: network.PublicNetworkPassphrase,
 		},
 		historyQ: q,
 	}
 
-	_, err := runner.RunHistoryArchiveIngestion(1)
+	_, err := runner.RunGenesisStateIngestion()
 	assert.NoError(t, err)
 }
 
 func TestProcessorRunnerRunHistoryArchiveIngestionHistoryArchive(t *testing.T) {
+	ctx := context.Background()
 	maxBatchSize := 100000
 
 	config := Config{
@@ -94,11 +96,9 @@ func TestProcessorRunnerRunHistoryArchiveIngestionHistoryArchive(t *testing.T) {
 	defer mock.AssertExpectationsForObjects(t, q)
 	historyAdapter := &mockHistoryArchiveAdapter{}
 	defer mock.AssertExpectationsForObjects(t, historyAdapter)
-	ledgerBackend := &ledgerbackend.MockDatabaseBackend{}
-	defer mock.AssertExpectationsForObjects(t, ledgerBackend)
 
-	historyAdapter.On("BucketListHash", uint32(63)).
-		Return(xdr.Hash([32]byte{0, 1, 2}), nil).Once()
+	bucketListHash := xdr.Hash([32]byte{0, 1, 2})
+	historyAdapter.On("BucketListHash", uint32(63)).Return(bucketListHash, nil).Once()
 
 	m := &ingest.MockChangeReader{}
 	m.On("Read").Return(ingest.GenesisChange(network.PublicNetworkPassphrase), nil).Once()
@@ -106,51 +106,32 @@ func TestProcessorRunnerRunHistoryArchiveIngestionHistoryArchive(t *testing.T) {
 	m.On("Close").Return(nil).Once()
 
 	historyAdapter.
-		On(
-			"GetState",
-			mock.AnythingOfType("*context.emptyCtx"),
-			uint32(63),
-		).
+		On("GetState", ctx, uint32(63)).
 		Return(
 			m,
 			nil,
 		).Once()
 
-	ledgerBackend.On("GetLedger", uint32(63)).
-		Return(
-			true,
-			xdr.LedgerCloseMeta{
-				V0: &xdr.LedgerCloseMetaV0{
-					LedgerHeader: xdr.LedgerHeaderHistoryEntry{
-						Header: xdr.LedgerHeader{
-							BucketListHash: xdr.Hash([32]byte{0, 1, 2}),
-						},
-					},
-				},
-			},
-			nil,
-		).Twice() // 2nd time for protocol version check
-
 	// Batches
 	mockOffersBatchInsertBuilder := &history.MockOffersBatchInsertBuilder{}
 	defer mock.AssertExpectationsForObjects(t, mockOffersBatchInsertBuilder)
-	mockOffersBatchInsertBuilder.On("Exec").Return(nil).Once()
+	mockOffersBatchInsertBuilder.On("Exec", ctx).Return(nil).Once()
 	q.MockQOffers.On("NewOffersBatchInsertBuilder", maxBatchSize).
 		Return(mockOffersBatchInsertBuilder).Once()
 
 	mockAccountDataBatchInsertBuilder := &history.MockAccountDataBatchInsertBuilder{}
 	defer mock.AssertExpectationsForObjects(t, mockAccountDataBatchInsertBuilder)
-	mockAccountDataBatchInsertBuilder.On("Exec").Return(nil).Once()
+	mockAccountDataBatchInsertBuilder.On("Exec", ctx).Return(nil).Once()
 	q.MockQData.On("NewAccountDataBatchInsertBuilder", maxBatchSize).
 		Return(mockAccountDataBatchInsertBuilder).Once()
 
 	mockClaimableBalancesBatchInsertBuilder := &history.MockClaimableBalancesBatchInsertBuilder{}
 	defer mock.AssertExpectationsForObjects(t, mockClaimableBalancesBatchInsertBuilder)
-	mockClaimableBalancesBatchInsertBuilder.On("Exec").Return(nil).Once()
+	mockClaimableBalancesBatchInsertBuilder.On("Exec", ctx).Return(nil).Once()
 	q.MockQClaimableBalances.On("NewClaimableBalancesBatchInsertBuilder", maxBatchSize).
 		Return(mockClaimableBalancesBatchInsertBuilder).Once()
 
-	q.MockQAccounts.On("UpsertAccounts", []xdr.LedgerEntry{
+	q.MockQAccounts.On("UpsertAccounts", ctx, []xdr.LedgerEntry{
 		{
 			LastModifiedLedgerSeq: 1,
 			Data: xdr.LedgerEntryData{
@@ -167,31 +148,31 @@ func TestProcessorRunnerRunHistoryArchiveIngestionHistoryArchive(t *testing.T) {
 
 	mockAccountSignersBatchInsertBuilder := &history.MockAccountSignersBatchInsertBuilder{}
 	defer mock.AssertExpectationsForObjects(t, mockAccountSignersBatchInsertBuilder)
-	mockAccountSignersBatchInsertBuilder.On("Add", history.AccountSigner{
+	mockAccountSignersBatchInsertBuilder.On("Add", ctx, history.AccountSigner{
 		Account: "GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7",
 		Signer:  "GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7",
 		Weight:  1,
 	}).Return(nil).Once()
-	mockAccountSignersBatchInsertBuilder.On("Exec").Return(nil).Once()
+	mockAccountSignersBatchInsertBuilder.On("Exec", ctx).Return(nil).Once()
 	q.MockQSigners.On("NewAccountSignersBatchInsertBuilder", maxBatchSize).
 		Return(mockAccountSignersBatchInsertBuilder).Once()
 
-	q.MockQAssetStats.On("InsertAssetStats", []history.ExpAssetStat{}, 100000).
+	q.MockQAssetStats.On("InsertAssetStats", ctx, []history.ExpAssetStat{}, 100000).
 		Return(nil)
 
 	runner := ProcessorRunner{
-		ctx:            context.Background(),
+		ctx:            ctx,
 		config:         config,
 		historyQ:       q,
 		historyAdapter: historyAdapter,
-		ledgerBackend:  ledgerBackend,
 	}
 
-	_, err := runner.RunHistoryArchiveIngestion(63)
+	_, err := runner.RunHistoryArchiveIngestion(63, MaxSupportedProtocolVersion, bucketListHash)
 	assert.NoError(t, err)
 }
 
 func TestProcessorRunnerRunHistoryArchiveIngestionProtocolVersionNotSupported(t *testing.T) {
+	ctx := context.Background()
 	maxBatchSize := 100000
 
 	config := Config{
@@ -202,23 +183,6 @@ func TestProcessorRunnerRunHistoryArchiveIngestionProtocolVersionNotSupported(t 
 	defer mock.AssertExpectationsForObjects(t, q)
 	historyAdapter := &mockHistoryArchiveAdapter{}
 	defer mock.AssertExpectationsForObjects(t, historyAdapter)
-	ledgerBackend := &ledgerbackend.MockDatabaseBackend{}
-	defer mock.AssertExpectationsForObjects(t, ledgerBackend)
-
-	ledgerBackend.On("GetLedger", uint32(100)).
-		Return(
-			true,
-			xdr.LedgerCloseMeta{
-				V0: &xdr.LedgerCloseMetaV0{
-					LedgerHeader: xdr.LedgerHeaderHistoryEntry{
-						Header: xdr.LedgerHeader{
-							LedgerVersion: 200,
-						},
-					},
-				},
-			},
-			nil,
-		).Once()
 
 	// Batches
 	mockOffersBatchInsertBuilder := &history.MockOffersBatchInsertBuilder{}
@@ -241,22 +205,22 @@ func TestProcessorRunnerRunHistoryArchiveIngestionProtocolVersionNotSupported(t 
 	q.MockQSigners.On("NewAccountSignersBatchInsertBuilder", maxBatchSize).
 		Return(mockAccountSignersBatchInsertBuilder).Once()
 
-	q.MockQAssetStats.On("InsertAssetStats", []history.ExpAssetStat{}, 100000).
+	q.MockQAssetStats.On("InsertAssetStats", ctx, []history.ExpAssetStat{}, 100000).
 		Return(nil)
 
 	runner := ProcessorRunner{
-		ctx:            context.Background(),
+		ctx:            ctx,
 		config:         config,
 		historyQ:       q,
 		historyAdapter: historyAdapter,
-		ledgerBackend:  ledgerBackend,
 	}
 
-	_, err := runner.RunHistoryArchiveIngestion(100)
-	assert.EqualError(t, err, "Error while checking for supported protocol version: This Horizon version does not support protocol version 200. The latest supported protocol version is 16. Please upgrade to the latest Horizon version.")
+	_, err := runner.RunHistoryArchiveIngestion(100, 200, xdr.Hash{})
+	assert.EqualError(t, err, "Error while checking for supported protocol version: This Horizon version does not support protocol version 200. The latest supported protocol version is 17. Please upgrade to the latest Horizon version.")
 }
 
 func TestProcessorRunnerBuildChangeProcessor(t *testing.T) {
+	ctx := context.Background()
 	maxBatchSize := 100000
 
 	q := &mockDBQ{}
@@ -271,6 +235,7 @@ func TestProcessorRunnerBuildChangeProcessor(t *testing.T) {
 		Return(&history.MockAccountSignersBatchInsertBuilder{}).Twice()
 
 	runner := ProcessorRunner{
+		ctx:      ctx,
 		historyQ: q,
 	}
 
@@ -291,6 +256,7 @@ func TestProcessorRunnerBuildChangeProcessor(t *testing.T) {
 	assert.IsType(t, &processors.TrustLinesProcessor{}, processor.processors[6])
 
 	runner = ProcessorRunner{
+		ctx:      ctx,
 		historyQ: q,
 	}
 
@@ -311,6 +277,7 @@ func TestProcessorRunnerBuildChangeProcessor(t *testing.T) {
 }
 
 func TestProcessorRunnerBuildTransactionProcessor(t *testing.T) {
+	ctx := context.Background()
 	maxBatchSize := 100000
 
 	q := &mockDBQ{}
@@ -322,6 +289,7 @@ func TestProcessorRunnerBuildTransactionProcessor(t *testing.T) {
 		Return(&history.MockTransactionsBatchInsertBuilder{}).Twice()
 
 	runner := ProcessorRunner{
+		ctx:      ctx,
 		config:   Config{},
 		historyQ: q,
 	}
@@ -341,6 +309,7 @@ func TestProcessorRunnerBuildTransactionProcessor(t *testing.T) {
 }
 
 func TestProcessorRunnerRunAllProcessorsOnLedger(t *testing.T) {
+	ctx := context.Background()
 	maxBatchSize := 100000
 
 	config := Config{
@@ -349,40 +318,27 @@ func TestProcessorRunnerRunAllProcessorsOnLedger(t *testing.T) {
 
 	q := &mockDBQ{}
 	defer mock.AssertExpectationsForObjects(t, q)
-	ledgerBackend := &ledgerbackend.MockDatabaseBackend{}
-	defer mock.AssertExpectationsForObjects(t, ledgerBackend)
 
-	ledger := xdr.LedgerHeaderHistoryEntry{
-		Header: xdr.LedgerHeader{
-			BucketListHash: xdr.Hash([32]byte{0, 1, 2}),
-		},
-	}
-
-	// Method called 4 times:
-	// - Protocol version check,
-	// - Changes reader,
-	// - Transactions reader (includes protocol check again because it's a public method).
-	ledgerBackend.On("GetLedger", uint32(63)).
-		Return(
-			true,
-			xdr.LedgerCloseMeta{
-				V0: &xdr.LedgerCloseMetaV0{
-					LedgerHeader: ledger,
+	ledger := xdr.LedgerCloseMeta{
+		V0: &xdr.LedgerCloseMetaV0{
+			LedgerHeader: xdr.LedgerHeaderHistoryEntry{
+				Header: xdr.LedgerHeader{
+					BucketListHash: xdr.Hash([32]byte{0, 1, 2}),
 				},
 			},
-			nil,
-		).Times(4)
+		},
+	}
 
 	// Batches
 	mockOffersBatchInsertBuilder := &history.MockOffersBatchInsertBuilder{}
 	defer mock.AssertExpectationsForObjects(t, mockOffersBatchInsertBuilder)
-	mockOffersBatchInsertBuilder.On("Exec").Return(nil).Once()
+	mockOffersBatchInsertBuilder.On("Exec", ctx).Return(nil).Once()
 	q.MockQOffers.On("NewOffersBatchInsertBuilder", maxBatchSize).
 		Return(mockOffersBatchInsertBuilder).Once()
 
 	mockAccountDataBatchInsertBuilder := &history.MockAccountDataBatchInsertBuilder{}
 	defer mock.AssertExpectationsForObjects(t, mockAccountDataBatchInsertBuilder)
-	mockAccountDataBatchInsertBuilder.On("Exec").Return(nil).Once()
+	mockAccountDataBatchInsertBuilder.On("Exec", ctx).Return(nil).Once()
 	q.MockQData.On("NewAccountDataBatchInsertBuilder", maxBatchSize).
 		Return(mockAccountDataBatchInsertBuilder).Once()
 
@@ -393,37 +349,37 @@ func TestProcessorRunnerRunAllProcessorsOnLedger(t *testing.T) {
 
 	mockOperationsBatchInsertBuilder := &history.MockOperationsBatchInsertBuilder{}
 	defer mock.AssertExpectationsForObjects(t, mockOperationsBatchInsertBuilder)
-	mockOperationsBatchInsertBuilder.On("Exec").Return(nil).Once()
+	mockOperationsBatchInsertBuilder.On("Exec", ctx).Return(nil).Once()
 	q.MockQOperations.On("NewOperationBatchInsertBuilder", maxBatchSize).
 		Return(mockOperationsBatchInsertBuilder).Twice()
 
 	mockTransactionsBatchInsertBuilder := &history.MockTransactionsBatchInsertBuilder{}
 	defer mock.AssertExpectationsForObjects(t, mockTransactionsBatchInsertBuilder)
-	mockTransactionsBatchInsertBuilder.On("Exec").Return(nil).Once()
+	mockTransactionsBatchInsertBuilder.On("Exec", ctx).Return(nil).Once()
 	q.MockQTransactions.On("NewTransactionBatchInsertBuilder", maxBatchSize).
 		Return(mockTransactionsBatchInsertBuilder).Twice()
 
 	mockClaimableBalancesBatchInsertBuilder := &history.MockClaimableBalancesBatchInsertBuilder{}
 	defer mock.AssertExpectationsForObjects(t, mockClaimableBalancesBatchInsertBuilder)
-	mockClaimableBalancesBatchInsertBuilder.On("Exec").Return(nil).Once()
+	mockClaimableBalancesBatchInsertBuilder.On("Exec", ctx).Return(nil).Once()
 	q.MockQClaimableBalances.On("NewClaimableBalancesBatchInsertBuilder", maxBatchSize).
 		Return(mockClaimableBalancesBatchInsertBuilder).Once()
 
-	q.MockQLedgers.On("InsertLedger", ledger, 0, 0, 0, 0, CurrentVersion).
+	q.MockQLedgers.On("InsertLedger", ctx, ledger.V0.LedgerHeader, 0, 0, 0, 0, CurrentVersion).
 		Return(int64(1), nil).Once()
 
 	runner := ProcessorRunner{
-		ctx:           context.Background(),
-		config:        config,
-		historyQ:      q,
-		ledgerBackend: ledgerBackend,
+		ctx:      ctx,
+		config:   config,
+		historyQ: q,
 	}
 
-	_, _, _, _, err := runner.RunAllProcessorsOnLedger(63)
+	_, _, _, _, err := runner.RunAllProcessorsOnLedger(ledger)
 	assert.NoError(t, err)
 }
 
 func TestProcessorRunnerRunAllProcessorsOnLedgerProtocolVersionNotSupported(t *testing.T) {
+	ctx := context.Background()
 	maxBatchSize := 100000
 
 	config := Config{
@@ -432,25 +388,16 @@ func TestProcessorRunnerRunAllProcessorsOnLedgerProtocolVersionNotSupported(t *t
 
 	q := &mockDBQ{}
 	defer mock.AssertExpectationsForObjects(t, q)
-	ledgerBackend := &ledgerbackend.MockDatabaseBackend{}
-	defer mock.AssertExpectationsForObjects(t, ledgerBackend)
 
-	ledger := xdr.LedgerHeaderHistoryEntry{
-		Header: xdr.LedgerHeader{
-			LedgerVersion: 200,
-		},
-	}
-
-	ledgerBackend.On("GetLedger", uint32(63)).
-		Return(
-			true,
-			xdr.LedgerCloseMeta{
-				V0: &xdr.LedgerCloseMetaV0{
-					LedgerHeader: ledger,
+	ledger := xdr.LedgerCloseMeta{
+		V0: &xdr.LedgerCloseMetaV0{
+			LedgerHeader: xdr.LedgerHeaderHistoryEntry{
+				Header: xdr.LedgerHeader{
+					LedgerVersion: 200,
 				},
 			},
-			nil,
-		).Once()
+		},
+	}
 
 	// Batches
 	mockOffersBatchInsertBuilder := &history.MockOffersBatchInsertBuilder{}
@@ -484,12 +431,11 @@ func TestProcessorRunnerRunAllProcessorsOnLedgerProtocolVersionNotSupported(t *t
 		Return(mockClaimableBalancesBatchInsertBuilder).Once()
 
 	runner := ProcessorRunner{
-		ctx:           context.Background(),
-		config:        config,
-		historyQ:      q,
-		ledgerBackend: ledgerBackend,
+		ctx:      ctx,
+		config:   config,
+		historyQ: q,
 	}
 
-	_, _, _, _, err := runner.RunAllProcessorsOnLedger(63)
-	assert.EqualError(t, err, "Error while checking for supported protocol version: This Horizon version does not support protocol version 200. The latest supported protocol version is 16. Please upgrade to the latest Horizon version.")
+	_, _, _, _, err := runner.RunAllProcessorsOnLedger(ledger)
+	assert.EqualError(t, err, "Error while checking for supported protocol version: This Horizon version does not support protocol version 200. The latest supported protocol version is 17. Please upgrade to the latest Horizon version.")
 }

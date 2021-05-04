@@ -36,7 +36,7 @@ func TestTradeActions_Index(t *testing.T) {
 		// 	ensure created_at is populated correctly
 		l := history.Ledger{}
 		hq := history.Q{Session: ht.HorizonSession()}
-		ht.Require.NoError(hq.LedgerBySequence(&l, 9))
+		ht.Require.NoError(hq.LedgerBySequence(ht.Ctx, &l, 9))
 
 		ht.Assert.WithinDuration(l.ClosedAt, records[0].LedgerCloseTime, 1*time.Second)
 	}

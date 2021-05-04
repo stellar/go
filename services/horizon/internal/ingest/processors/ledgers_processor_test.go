@@ -3,6 +3,7 @@
 package processors
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stellar/go/ingest"
@@ -67,7 +68,7 @@ func createTransaction(successful bool, numOps int) ingest.LedgerTransaction {
 				},
 			},
 		},
-		Meta: xdr.TransactionMeta{
+		UnsafeMeta: xdr.TransactionMeta{
 			V: 2,
 			V2: &xdr.TransactionMetaV2{
 				Operations: make([]xdr.OperationMeta, numOps, numOps),
@@ -107,8 +108,10 @@ func (s *LedgersProcessorTestSuiteLedger) TearDownTest() {
 }
 
 func (s *LedgersProcessorTestSuiteLedger) TestInsertLedgerSucceeds() {
+	ctx := context.Background()
 	s.mockQ.On(
 		"InsertLedger",
+		ctx,
 		s.header,
 		s.successCount,
 		s.failedCount,
@@ -118,17 +121,19 @@ func (s *LedgersProcessorTestSuiteLedger) TestInsertLedgerSucceeds() {
 	).Return(int64(1), nil)
 
 	for _, tx := range s.txs {
-		err := s.processor.ProcessTransaction(tx)
+		err := s.processor.ProcessTransaction(ctx, tx)
 		s.Assert().NoError(err)
 	}
 
-	err := s.processor.Commit()
+	err := s.processor.Commit(ctx)
 	s.Assert().NoError(err)
 }
 
 func (s *LedgersProcessorTestSuiteLedger) TestInsertLedgerReturnsError() {
+	ctx := context.Background()
 	s.mockQ.On(
 		"InsertLedger",
+		ctx,
 		mock.Anything,
 		mock.Anything,
 		mock.Anything,
@@ -137,14 +142,16 @@ func (s *LedgersProcessorTestSuiteLedger) TestInsertLedgerReturnsError() {
 		mock.Anything,
 	).Return(int64(0), errors.New("transient error"))
 
-	err := s.processor.Commit()
+	err := s.processor.Commit(ctx)
 	s.Assert().Error(err)
 	s.Assert().EqualError(err, "Could not insert ledger: transient error")
 }
 
 func (s *LedgersProcessorTestSuiteLedger) TestInsertLedgerNoRowsAffected() {
+	ctx := context.Background()
 	s.mockQ.On(
 		"InsertLedger",
+		ctx,
 		mock.Anything,
 		mock.Anything,
 		mock.Anything,
@@ -153,7 +160,7 @@ func (s *LedgersProcessorTestSuiteLedger) TestInsertLedgerNoRowsAffected() {
 		mock.Anything,
 	).Return(int64(0), nil)
 
-	err := s.processor.Commit()
+	err := s.processor.Commit(ctx)
 	s.Assert().Error(err)
 	s.Assert().EqualError(err, "0 rows affected when ingesting new ledger: 20")
 }

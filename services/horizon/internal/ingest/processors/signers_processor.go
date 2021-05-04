@@ -1,6 +1,8 @@
 package processors
 
 import (
+	"context"
+
 	"github.com/guregu/null"
 
 	"github.com/stellar/go/ingest"
@@ -33,7 +35,7 @@ func (p *SignersProcessor) reset() {
 	p.cache = ingest.NewChangeCompactor()
 }
 
-func (p *SignersProcessor) ProcessChange(change ingest.Change) error {
+func (p *SignersProcessor) ProcessChange(ctx context.Context, change ingest.Change) error {
 	if change.Type != xdr.LedgerEntryTypeAccount {
 		return nil
 	}
@@ -45,7 +47,7 @@ func (p *SignersProcessor) ProcessChange(change ingest.Change) error {
 		}
 
 		if p.cache.Size() > maxBatchSize {
-			err = p.Commit()
+			err = p.Commit(ctx)
 			if err != nil {
 				return errors.Wrap(err, "error in Commit")
 			}
@@ -69,7 +71,7 @@ func (p *SignersProcessor) ProcessChange(change ingest.Change) error {
 			sponsor = null.StringFrom(sponsorDesc.Address())
 		}
 
-		err := p.batch.Add(history.AccountSigner{
+		err := p.batch.Add(ctx, history.AccountSigner{
 			Account: account,
 			Signer:  signer,
 			Weight:  weight,
@@ -83,9 +85,9 @@ func (p *SignersProcessor) ProcessChange(change ingest.Change) error {
 	return nil
 }
 
-func (p *SignersProcessor) Commit() error {
+func (p *SignersProcessor) Commit(ctx context.Context) error {
 	if !p.useLedgerEntryCache {
-		return p.batch.Exec()
+		return p.batch.Exec(ctx)
 	}
 
 	changes := p.cache.GetChanges()
@@ -99,7 +101,7 @@ func (p *SignersProcessor) Commit() error {
 		if change.Pre != nil {
 			preAccountEntry := change.Pre.Data.MustAccount()
 			for signer := range preAccountEntry.SignerSummary() {
-				rowsAffected, err := p.signersQ.RemoveAccountSigner(preAccountEntry.AccountId.Address(), signer)
+				rowsAffected, err := p.signersQ.RemoveAccountSigner(ctx, preAccountEntry.AccountId.Address(), signer)
 				if err != nil {
 					return errors.Wrap(err, "Error removing a signer")
 				}
@@ -129,7 +131,7 @@ func (p *SignersProcessor) Commit() error {
 					}
 				}
 
-				rowsAffected, err := p.signersQ.CreateAccountSigner(
+				rowsAffected, err := p.signersQ.CreateAccountSigner(ctx,
 					postAccountEntry.AccountId.Address(),
 					signer,
 					weight,

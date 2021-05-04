@@ -23,32 +23,33 @@ type invalidHungerRow struct {
 func TestBatchInsertBuilder(t *testing.T) {
 	db := dbtest.Postgres(t).Load(testSchema)
 	defer db.Close()
-	sess := &Session{DB: db.Open(), Ctx: context.Background()}
+	sess := &Session{DB: db.Open()}
 	defer sess.DB.Close()
+	ctx := context.Background()
 
 	insertBuilder := &BatchInsertBuilder{
 		Table: sess.GetTable("people"),
 	}
 
 	// exec on the empty set should produce no errors
-	assert.NoError(t, insertBuilder.Exec())
+	assert.NoError(t, insertBuilder.Exec(ctx))
 
 	var err error
 
-	err = insertBuilder.Row(map[string]interface{}{
+	err = insertBuilder.Row(ctx, map[string]interface{}{
 		"name":         "bubba",
 		"hunger_level": "120",
 	})
 	assert.NoError(t, err)
 
-	err = insertBuilder.RowStruct(hungerRow{
+	err = insertBuilder.RowStruct(ctx, hungerRow{
 		Name:        "bubba2",
 		HungerLevel: "1202",
 	})
 	assert.NoError(t, err)
 
 	// Extra column
-	err = insertBuilder.Row(map[string]interface{}{
+	err = insertBuilder.Row(ctx, map[string]interface{}{
 		"name":         "bubba",
 		"hunger_level": "120",
 		"abc":          "def",
@@ -56,30 +57,30 @@ func TestBatchInsertBuilder(t *testing.T) {
 	assert.EqualError(t, err, "invalid number of columns (expected=2, actual=3)")
 
 	// Not enough columns
-	err = insertBuilder.Row(map[string]interface{}{
+	err = insertBuilder.Row(ctx, map[string]interface{}{
 		"name": "bubba",
 	})
 	assert.EqualError(t, err, "invalid number of columns (expected=2, actual=1)")
 
 	// Invalid column
-	err = insertBuilder.Row(map[string]interface{}{
+	err = insertBuilder.Row(ctx, map[string]interface{}{
 		"name":  "bubba",
 		"hello": "120",
 	})
 	assert.EqualError(t, err, `column "hunger_level" does not exist`)
 
-	err = insertBuilder.RowStruct(invalidHungerRow{
+	err = insertBuilder.RowStruct(ctx, invalidHungerRow{
 		Name:        "Max",
 		HungerLevel: "500",
 	})
 	assert.EqualError(t, err, `expected value of type "db.hungerRow" but got "db.invalidHungerRow" value`)
 
-	err = insertBuilder.Exec()
+	err = insertBuilder.Exec(ctx)
 	assert.NoError(t, err)
 
 	// Check rows
 	var found []person
-	err = sess.SelectRaw(&found, `SELECT * FROM people WHERE name like 'bubba%'`)
+	err = sess.SelectRaw(ctx, &found, `SELECT * FROM people WHERE name like 'bubba%'`)
 
 	require.NoError(t, err)
 	assert.Equal(
@@ -91,13 +92,13 @@ func TestBatchInsertBuilder(t *testing.T) {
 		},
 	)
 
-	err = insertBuilder.Row(map[string]interface{}{
+	err = insertBuilder.Row(ctx, map[string]interface{}{
 		"name":         "bubba",
 		"hunger_level": "1",
 	})
 	assert.NoError(t, err)
 
-	err = insertBuilder.Exec()
+	err = insertBuilder.Exec(ctx)
 	assert.EqualError(
 		t, err, "error adding values while inserting to people: exec failed: pq:"+
 			" duplicate key value violates unique constraint \"people_pkey\"",
@@ -105,16 +106,16 @@ func TestBatchInsertBuilder(t *testing.T) {
 
 	insertBuilder.Suffix = "ON CONFLICT (name) DO NOTHING"
 
-	err = insertBuilder.Row(map[string]interface{}{
+	err = insertBuilder.Row(ctx, map[string]interface{}{
 		"name":         "bubba",
 		"hunger_level": "1",
 	})
 	assert.NoError(t, err)
 
-	err = insertBuilder.Exec()
+	err = insertBuilder.Exec(ctx)
 	assert.NoError(t, err)
 
-	err = sess.SelectRaw(&found, `SELECT * FROM people WHERE name like 'bubba%'`)
+	err = sess.SelectRaw(ctx, &found, `SELECT * FROM people WHERE name like 'bubba%'`)
 
 	require.NoError(t, err)
 	assert.Equal(
@@ -128,16 +129,16 @@ func TestBatchInsertBuilder(t *testing.T) {
 
 	insertBuilder.Suffix = "ON CONFLICT (name) DO UPDATE SET hunger_level = EXCLUDED.hunger_level"
 
-	err = insertBuilder.Row(map[string]interface{}{
+	err = insertBuilder.Row(ctx, map[string]interface{}{
 		"name":         "bubba",
 		"hunger_level": "1",
 	})
 	assert.NoError(t, err)
 
-	err = insertBuilder.Exec()
+	err = insertBuilder.Exec(ctx)
 	assert.NoError(t, err)
 
-	err = sess.SelectRaw(&found, `SELECT * FROM people WHERE name like 'bubba%'`)
+	err = sess.SelectRaw(ctx, &found, `SELECT * FROM people WHERE name like 'bubba%'`)
 
 	require.NoError(t, err)
 	assert.Equal(

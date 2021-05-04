@@ -1,6 +1,7 @@
 package history
 
 import (
+	"context"
 	"github.com/stretchr/testify/mock"
 )
 
@@ -9,8 +10,8 @@ type MockQParticipants struct {
 	mock.Mock
 }
 
-func (m *MockQParticipants) CreateAccounts(addresses []string, maxBatchSize int) (map[string]int64, error) {
-	a := m.Called(addresses, maxBatchSize)
+func (m *MockQParticipants) CreateAccounts(ctx context.Context, addresses []string, maxBatchSize int) (map[string]int64, error) {
+	a := m.Called(ctx, addresses, maxBatchSize)
 	return a.Get(0).(map[string]int64), a.Error(1)
 }
 
@@ -25,13 +26,13 @@ type MockTransactionParticipantsBatchInsertBuilder struct {
 	mock.Mock
 }
 
-func (m *MockTransactionParticipantsBatchInsertBuilder) Add(transactionID, accountID int64) error {
-	a := m.Called(transactionID, accountID)
+func (m *MockTransactionParticipantsBatchInsertBuilder) Add(ctx context.Context, transactionID, accountID int64) error {
+	a := m.Called(ctx, transactionID, accountID)
 	return a.Error(0)
 }
 
-func (m *MockTransactionParticipantsBatchInsertBuilder) Exec() error {
-	a := m.Called()
+func (m *MockTransactionParticipantsBatchInsertBuilder) Exec(ctx context.Context) error {
+	a := m.Called(ctx)
 	return a.Error(0)
 }
 

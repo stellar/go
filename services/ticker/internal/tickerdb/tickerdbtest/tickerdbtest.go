@@ -17,7 +17,7 @@ import (
 func SetupTickerTestSession(t *testing.T, migrationsDir string) (session tickerdb.TickerSession) {
 	db := dbtest.Postgres(t)
 	session.DB = db.Open()
-	session.Ctx = context.Background()
+	ctx := context.Background()
 
 	// Run migrations to make sure the tests are run
 	// on the most updated schema version
@@ -33,11 +33,11 @@ func SetupTickerTestSession(t *testing.T, migrationsDir string) (session tickerd
 	_, err = tbl.Insert(tickerdb.Issuer{
 		PublicKey: issuer1PK,
 		Name:      "FOO BAR",
-	}).IgnoreCols("id").Exec()
+	}).IgnoreCols("id").Exec(ctx)
 	require.NoError(t, err)
 
 	var issuer1 tickerdb.Issuer
-	err = session.GetRaw(&issuer1, `
+	err = session.GetRaw(ctx, &issuer1, `
 		SELECT *
 		FROM issuers
 		WHERE public_key = ?`,
@@ -50,11 +50,11 @@ func SetupTickerTestSession(t *testing.T, migrationsDir string) (session tickerd
 	_, err = tbl.Insert(tickerdb.Issuer{
 		PublicKey: issuer2PK,
 		Name:      "FOO BAR",
-	}).IgnoreCols("id").Exec()
+	}).IgnoreCols("id").Exec(ctx)
 	require.NoError(t, err)
 
 	var issuer2 tickerdb.Issuer
-	err = session.GetRaw(&issuer2, `
+	err = session.GetRaw(ctx, &issuer2, `
 		SELECT *
 		FROM issuers
 		WHERE public_key = ?`,
@@ -63,7 +63,7 @@ func SetupTickerTestSession(t *testing.T, migrationsDir string) (session tickerd
 	require.NoError(t, err)
 
 	// Adding a seed asset to be used later:
-	err = session.InsertOrUpdateAsset(&tickerdb.Asset{
+	err = session.InsertOrUpdateAsset(ctx, &tickerdb.Asset{
 		Code:          "ETH",
 		IssuerAccount: issuer1PK,
 		IssuerID:      issuer1.ID,
@@ -71,7 +71,7 @@ func SetupTickerTestSession(t *testing.T, migrationsDir string) (session tickerd
 	}, []string{"code", "issuer_id"})
 	require.NoError(t, err)
 	var ethAsset1 tickerdb.Asset
-	err = session.GetRaw(&ethAsset1, `
+	err = session.GetRaw(ctx, &ethAsset1, `
 		SELECT *
 		FROM assets
 		WHERE code = ?
@@ -82,7 +82,7 @@ func SetupTickerTestSession(t *testing.T, migrationsDir string) (session tickerd
 	require.NoError(t, err)
 
 	// Adding a seed asset to be used later:
-	err = session.InsertOrUpdateAsset(&tickerdb.Asset{
+	err = session.InsertOrUpdateAsset(ctx, &tickerdb.Asset{
 		Code:          "ETH",
 		IssuerAccount: issuer2PK,
 		IssuerID:      issuer2.ID,
@@ -91,7 +91,7 @@ func SetupTickerTestSession(t *testing.T, migrationsDir string) (session tickerd
 	require.NoError(t, err)
 
 	var ethAsset2 tickerdb.Asset
-	err = session.GetRaw(&ethAsset2, `
+	err = session.GetRaw(ctx, &ethAsset2, `
 		SELECT *
 		FROM assets
 		WHERE code = ?
@@ -102,7 +102,7 @@ func SetupTickerTestSession(t *testing.T, migrationsDir string) (session tickerd
 	require.NoError(t, err)
 
 	// Adding another asset to be used later:
-	err = session.InsertOrUpdateAsset(&tickerdb.Asset{
+	err = session.InsertOrUpdateAsset(ctx, &tickerdb.Asset{
 		Code:          "BTC",
 		IssuerAccount: issuer1PK,
 		IssuerID:      issuer1.ID,
@@ -111,7 +111,7 @@ func SetupTickerTestSession(t *testing.T, migrationsDir string) (session tickerd
 	require.NoError(t, err)
 
 	var btcAsset tickerdb.Asset
-	err = session.GetRaw(&btcAsset, `
+	err = session.GetRaw(ctx, &btcAsset, `
 		SELECT *
 		FROM assets
 		WHERE code = ?
@@ -166,7 +166,7 @@ func SetupTickerTestSession(t *testing.T, migrationsDir string) (session tickerd
 			LedgerCloseTime: threeDaysAgo,
 		},
 	}
-	err = session.BulkInsertTrades(trades)
+	err = session.BulkInsertTrades(ctx, trades)
 	require.NoError(t, err)
 
 	// Adding some orderbook stats:
@@ -184,14 +184,14 @@ func SetupTickerTestSession(t *testing.T, migrationsDir string) (session tickerd
 		SpreadMidPoint: 0.35,
 		UpdatedAt:      obTime,
 	}
-	err = session.InsertOrUpdateOrderbookStats(
+	err = session.InsertOrUpdateOrderbookStats(ctx,
 		&orderbookStats,
 		[]string{"base_asset_id", "counter_asset_id"},
 	)
 	require.NoError(t, err)
 
 	var obBTCETH1 tickerdb.OrderbookStats
-	err = session.GetRaw(&obBTCETH1, `
+	err = session.GetRaw(ctx, &obBTCETH1, `
 		SELECT *
 		FROM orderbook_stats
 		ORDER BY id DESC
@@ -211,14 +211,14 @@ func SetupTickerTestSession(t *testing.T, migrationsDir string) (session tickerd
 		Spread:         0.55,
 		SpreadMidPoint: 0.85,
 	}
-	err = session.InsertOrUpdateOrderbookStats(
+	err = session.InsertOrUpdateOrderbookStats(ctx,
 		&orderbookStats,
 		[]string{"base_asset_id", "counter_asset_id"},
 	)
 	require.NoError(t, err)
 
 	var obETH1BTC tickerdb.OrderbookStats
-	err = session.GetRaw(&obETH1BTC, `
+	err = session.GetRaw(ctx, &obETH1BTC, `
 		SELECT *
 		FROM orderbook_stats
 		ORDER BY id DESC
@@ -239,14 +239,14 @@ func SetupTickerTestSession(t *testing.T, migrationsDir string) (session tickerd
 		SpreadMidPoint: 0.36,
 		UpdatedAt:      obTime,
 	}
-	err = session.InsertOrUpdateOrderbookStats(
+	err = session.InsertOrUpdateOrderbookStats(ctx,
 		&orderbookStats,
 		[]string{"base_asset_id", "counter_asset_id"},
 	)
 	require.NoError(t, err)
 
 	var obBTCETH2 tickerdb.OrderbookStats
-	err = session.GetRaw(&obBTCETH2, `
+	err = session.GetRaw(ctx, &obBTCETH2, `
 		SELECT *
 		FROM orderbook_stats
 		ORDER BY id DESC
@@ -267,14 +267,14 @@ func SetupTickerTestSession(t *testing.T, migrationsDir string) (session tickerd
 		Spread:         150.0,
 		SpreadMidPoint: 200.0,
 	}
-	err = session.InsertOrUpdateOrderbookStats(
+	err = session.InsertOrUpdateOrderbookStats(ctx,
 		&orderbookStats,
 		[]string{"base_asset_id", "counter_asset_id"},
 	)
 	require.NoError(t, err)
 
 	var obETH2BTC tickerdb.OrderbookStats
-	err = session.GetRaw(&obETH2BTC, `
+	err = session.GetRaw(ctx, &obETH2BTC, `
 		SELECT *
 		FROM orderbook_stats
 		ORDER BY id DESC
@@ -283,7 +283,7 @@ func SetupTickerTestSession(t *testing.T, migrationsDir string) (session tickerd
 	require.NoError(t, err)
 
 	// Add an XLM asset.
-	err = session.InsertOrUpdateAsset(&tickerdb.Asset{
+	err = session.InsertOrUpdateAsset(ctx, &tickerdb.Asset{
 		Code:          "XLM",
 		IssuerAccount: issuer1PK,
 		IssuerID:      issuer1.ID,
@@ -292,7 +292,7 @@ func SetupTickerTestSession(t *testing.T, migrationsDir string) (session tickerd
 	require.NoError(t, err)
 
 	var xlmAsset tickerdb.Asset
-	err = session.GetRaw(&xlmAsset, `
+	err = session.GetRaw(ctx, &xlmAsset, `
 		SELECT *
 		FROM assets
 		WHERE code = ?
@@ -323,7 +323,7 @@ func SetupTickerTestSession(t *testing.T, migrationsDir string) (session tickerd
 			LedgerCloseTime: now,
 		},
 	}
-	err = session.BulkInsertTrades(trades)
+	err = session.BulkInsertTrades(ctx, trades)
 	require.NoError(t, err)
 
 	return

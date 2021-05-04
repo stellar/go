@@ -2,6 +2,8 @@
 package trades
 
 import (
+	"context"
+
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/time"
@@ -49,17 +51,18 @@ func IngestTestTrade(
 		D: xdr.Int32(amountSold),
 	}
 
-	accounts, err := q.CreateAccounts([]string{seller.Address(), buyer.Address()}, 2)
+	ctx := context.Background()
+	accounts, err := q.CreateAccounts(ctx, []string{seller.Address(), buyer.Address()}, 2)
 	if err != nil {
 		return err
 	}
-	assets, err := q.CreateAssets([]xdr.Asset{assetBought, assetSold}, 2)
+	assets, err := q.CreateAssets(ctx, []xdr.Asset{assetBought, assetSold}, 2)
 	if err != nil {
 		return err
 	}
 
 	batch := q.NewTradeBatchInsertBuilder(0)
-	batch.Add(history.InsertTrade{
+	batch.Add(ctx, history.InsertTrade{
 		HistoryOperationID: opCounter,
 		Order:              0,
 		BuyOfferExists:     false,
@@ -72,7 +75,7 @@ func IngestTestTrade(
 		BuyerAccountID:     accounts[buyer.Address()],
 		SellerAccountID:    accounts[seller.Address()],
 	})
-	return batch.Exec()
+	return batch.Exec(ctx)
 }
 
 //PopulateTestTrades generates and ingests trades between two assets according to given parameters

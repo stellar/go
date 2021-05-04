@@ -1,6 +1,7 @@
 package horizon
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -41,7 +42,7 @@ func startHTTPTest(t *testing.T, scenario string) *HTTPT {
 	}`)
 
 	ret.App.config.StellarCoreURL = ret.coreServer.URL
-	ret.App.UpdateLedgerState()
+	ret.App.UpdateLedgerState(context.Background())
 
 	return ret
 }
@@ -98,7 +99,7 @@ func (ht *HTTPT) Post(
 // setting the retention count to the provided number.
 func (ht *HTTPT) ReapHistory(retention uint) {
 	ht.App.reaper.RetentionCount = retention
-	err := ht.App.DeleteUnretainedHistory()
+	err := ht.App.DeleteUnretainedHistory(context.Background())
 	ht.Require.NoError(err)
-	ht.App.UpdateLedgerState()
+	ht.App.UpdateLedgerState(context.Background())
 }

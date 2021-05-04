@@ -294,7 +294,7 @@ func TestGetOperationsIncludeFailed(t *testing.T) {
 	}
 
 	// NULL value
-	_, err = tt.HorizonSession().ExecRaw(
+	_, err = tt.HorizonSession().ExecRaw(tt.Ctx,
 		`UPDATE history_transactions SET successful = NULL WHERE transaction_hash = ?`,
 		"56e3216045d579bea40f2d35a09406de3a894ecb5be70dbda5ec9c0427a0d5a1",
 	)
@@ -504,7 +504,7 @@ func TestOperation_CreatedAt(t *testing.T) {
 	tt.Assert.NoError(err)
 
 	l := history.Ledger{}
-	tt.Assert.NoError(q.LedgerBySequence(&l, 3))
+	tt.Assert.NoError(q.LedgerBySequence(tt.Ctx, &l, 3))
 
 	record := records[0].(operations.Payment)
 

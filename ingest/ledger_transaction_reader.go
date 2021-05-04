@@ -19,7 +19,7 @@ type LedgerTransactionReader struct {
 }
 
 // NewLedgerTransactionReader creates a new TransactionReader instance.
-// Note that TransactionReader is not thread safe and should not be shared by multiple goroutines
+// Note that TransactionReader is not thread safe and should not be shared by multiple goroutines.
 func NewLedgerTransactionReader(backend ledgerbackend.LedgerBackend, networkPassphrase string, sequence uint32) (*LedgerTransactionReader, error) {
 	exists, ledgerCloseMeta, err := backend.GetLedger(sequence)
 	if err != nil {
@@ -30,8 +30,14 @@ func NewLedgerTransactionReader(backend ledgerbackend.LedgerBackend, networkPass
 		return nil, ErrNotFound
 	}
 
+	return NewLedgerTransactionReaderFromLedgerCloseMeta(networkPassphrase, ledgerCloseMeta)
+}
+
+// NewLedgerTransactionReaderFromXdr creates a new TransactionReader instance from xdr.LedgerCloseMeta.
+// Note that TransactionReader is not thread safe and should not be shared by multiple goroutines.
+func NewLedgerTransactionReaderFromLedgerCloseMeta(networkPassphrase string, ledgerCloseMeta xdr.LedgerCloseMeta) (*LedgerTransactionReader, error) {
 	reader := &LedgerTransactionReader{ledgerCloseMeta: ledgerCloseMeta}
-	if err = reader.storeTransactions(ledgerCloseMeta, networkPassphrase); err != nil {
+	if err := reader.storeTransactions(ledgerCloseMeta, networkPassphrase); err != nil {
 		return nil, errors.Wrap(err, "error extracting transactions from ledger close meta")
 	}
 	return reader, nil
@@ -96,7 +102,7 @@ func (reader *LedgerTransactionReader) storeTransactions(lcm xdr.LedgerCloseMeta
 			Index:      uint32(i + 1), // Transactions start at '1'
 			Envelope:   envelope,
 			Result:     result,
-			Meta:       lcm.V0.TxProcessing[i].TxApplyProcessing,
+			UnsafeMeta: lcm.V0.TxProcessing[i].TxApplyProcessing,
 			FeeChanges: lcm.V0.TxProcessing[i].FeeProcessing,
 		})
 	}

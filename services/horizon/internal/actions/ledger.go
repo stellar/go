@@ -33,7 +33,7 @@ func (handler GetLedgersHandler) GetResourcePage(w HeaderWriter, r *http.Request
 	}
 
 	var records []history.Ledger
-	if err = historyQ.Ledgers().Page(pq).Select(&records); err != nil {
+	if err = historyQ.Ledgers().Page(pq).Select(r.Context(), &records); err != nil {
 		return nil, err
 	}
 
@@ -73,7 +73,7 @@ func (handler GetLedgerByIDHandler) GetResource(w HeaderWriter, r *http.Request)
 		return nil, err
 	}
 	var ledger history.Ledger
-	err = historyQ.LedgerBySequence(&ledger, int32(qp.LedgerID))
+	err = historyQ.LedgerBySequence(r.Context(), &ledger, int32(qp.LedgerID))
 	if err != nil {
 		return nil, err
 	}

@@ -1,6 +1,7 @@
 package resourceadapter
 
 import (
+	"context"
 	"encoding/json"
 	"testing"
 
@@ -11,6 +12,45 @@ import (
 	"github.com/stellar/go/support/test"
 	"github.com/stretchr/testify/assert"
 )
+
+func TestNewEffectAllEffectsCovered(t *testing.T) {
+	for typ, s := range EffectTypeNames {
+		if typ == history.EffectAccountRemoved || typ == history.EffectAccountInflationDestinationUpdated {
+			// these effects use the base representation
+			continue
+		}
+		e := history.Effect{
+			Type: typ,
+		}
+		result, err := NewEffect(context.TODO(), e, history.Ledger{})
+		assert.NoError(t, err, s)
+		// it shouldn't be a base type
+		_, ok := result.(effects.Base)
+		assert.False(t, ok, s)
+	}
+
+	// verify that the check works for an unknown effect
+	e := history.Effect{
+		Type: 20000,
+	}
+	result, err := NewEffect(context.TODO(), e, history.Ledger{})
+	assert.NoError(t, err)
+	_, ok := result.(effects.Base)
+	assert.True(t, ok)
+}
+
+func TestEffectTypeNamesAreConsistentWithAdapterTypeNames(t *testing.T) {
+	for typ, s := range EffectTypeNames {
+		s2, ok := effects.EffectTypeNames[effects.EffectType(typ)]
+		assert.True(t, ok, s)
+		assert.Equal(t, s, s2)
+	}
+	for typ, s := range effects.EffectTypeNames {
+		s2, ok := EffectTypeNames[history.EffectType(typ)]
+		assert.True(t, ok, s)
+		assert.Equal(t, s, s2)
+	}
+}
 
 func TestNewEffect_EffectTrustlineAuthorizedToMaintainLiabilities(t *testing.T) {
 	tt := assert.New(t)

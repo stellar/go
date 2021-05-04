@@ -111,13 +111,13 @@ func TestInsertAccount(t *testing.T) {
 	q := &Q{tt.HorizonSession()}
 
 	batch := q.NewAccountsBatchInsertBuilder(0)
-	err := batch.Add(account1)
+	err := batch.Add(tt.Ctx, account1)
 	assert.NoError(t, err)
-	err = batch.Add(account2)
+	err = batch.Add(tt.Ctx, account2)
 	assert.NoError(t, err)
-	assert.NoError(t, batch.Exec())
+	assert.NoError(t, batch.Exec(tt.Ctx))
 
-	accounts, err := q.GetAccountsByIDs([]string{
+	accounts, err := q.GetAccountsByIDs(tt.Ctx, []string{
 		"GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB",
 		"GCT2NQM5KJJEF55NPMY444C6M6CA7T33HRNCMA6ZFBIIXKNCRO6J25K7",
 	})
@@ -153,7 +153,7 @@ func TestUpsertAccount(t *testing.T) {
 	q := &Q{tt.HorizonSession()}
 
 	ledgerEntries := []xdr.LedgerEntry{account1, account2}
-	err := q.UpsertAccounts(ledgerEntries)
+	err := q.UpsertAccounts(tt.Ctx, ledgerEntries)
 	assert.NoError(t, err)
 
 	modifiedAccount := xdr.LedgerEntry{
@@ -182,14 +182,14 @@ func TestUpsertAccount(t *testing.T) {
 		},
 	}
 
-	err = q.UpsertAccounts([]xdr.LedgerEntry{modifiedAccount})
+	err = q.UpsertAccounts(tt.Ctx, []xdr.LedgerEntry{modifiedAccount})
 	assert.NoError(t, err)
 
 	keys := []string{
 		account1.Data.Account.AccountId.Address(),
 		account2.Data.Account.AccountId.Address(),
 	}
-	accounts, err := q.GetAccountsByIDs(keys)
+	accounts, err := q.GetAccountsByIDs(tt.Ctx, keys)
 	assert.NoError(t, err)
 	assert.Len(t, accounts, 2)
 
@@ -201,7 +201,7 @@ func TestUpsertAccount(t *testing.T) {
 	assert.Equal(t, uint32(0), accounts[1].NumSponsoring)
 	assert.Equal(t, null.String{}, accounts[1].Sponsor)
 
-	accounts, err = q.GetAccountsByIDs([]string{account1.Data.Account.AccountId.Address()})
+	accounts, err = q.GetAccountsByIDs(tt.Ctx, []string{account1.Data.Account.AccountId.Address()})
 	assert.NoError(t, err)
 	assert.Len(t, accounts, 1)
 
@@ -238,7 +238,7 @@ func TestUpsertAccount(t *testing.T) {
 	assert.Equal(t, expectedBinary, actualBinary)
 	assert.Equal(t, uint32(1234), accounts[0].LastModifiedLedger)
 
-	accounts, err = q.GetAccountsByIDs([]string{account2.Data.Account.AccountId.Address()})
+	accounts, err = q.GetAccountsByIDs(tt.Ctx, []string{account2.Data.Account.AccountId.Address()})
 	assert.NoError(t, err)
 	assert.Len(t, accounts, 1)
 
@@ -283,21 +283,21 @@ func TestRemoveAccount(t *testing.T) {
 	q := &Q{tt.HorizonSession()}
 
 	batch := q.NewAccountsBatchInsertBuilder(0)
-	err := batch.Add(account1)
+	err := batch.Add(tt.Ctx, account1)
 	assert.NoError(t, err)
-	assert.NoError(t, batch.Exec())
+	assert.NoError(t, batch.Exec(tt.Ctx))
 
 	var rows int64
-	rows, err = q.RemoveAccount("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB")
+	rows, err = q.RemoveAccount(tt.Ctx, "GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB")
 	assert.NoError(t, err)
 	assert.Equal(t, int64(1), rows)
 
-	accounts, err := q.GetAccountsByIDs([]string{"GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"})
+	accounts, err := q.GetAccountsByIDs(tt.Ctx, []string{"GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB"})
 	assert.NoError(t, err)
 	assert.Len(t, accounts, 0)
 
 	// Doesn't exist anymore
-	rows, err = q.RemoveAccount("GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB")
+	rows, err = q.RemoveAccount(tt.Ctx, "GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB")
 	assert.NoError(t, err)
 	assert.Equal(t, int64(0), rows)
 }
@@ -312,15 +312,15 @@ func TestAccountsForAsset(t *testing.T) {
 	usdTrustLine.Data.TrustLine.AccountId = account2.Data.Account.AccountId
 
 	batch := q.NewAccountsBatchInsertBuilder(0)
-	err := batch.Add(account1)
+	err := batch.Add(tt.Ctx, account1)
 	assert.NoError(t, err)
-	err = batch.Add(account2)
+	err = batch.Add(tt.Ctx, account2)
 	assert.NoError(t, err)
-	assert.NoError(t, batch.Exec())
+	assert.NoError(t, batch.Exec(tt.Ctx))
 
-	_, err = q.InsertTrustLine(eurTrustLine)
+	_, err = q.InsertTrustLine(tt.Ctx, eurTrustLine)
 	tt.Assert.NoError(err)
-	_, err = q.InsertTrustLine(usdTrustLine)
+	_, err = q.InsertTrustLine(tt.Ctx, usdTrustLine)
 	tt.Assert.NoError(err)
 
 	pq := db2.PageQuery{
@@ -329,18 +329,18 @@ func TestAccountsForAsset(t *testing.T) {
 		Cursor: "",
 	}
 
-	accounts, err := q.AccountsForAsset(eurTrustLine.Data.TrustLine.Asset, pq)
+	accounts, err := q.AccountsForAsset(tt.Ctx, eurTrustLine.Data.TrustLine.Asset, pq)
 	assert.NoError(t, err)
 	tt.Assert.Len(accounts, 1)
 	tt.Assert.Equal(account1.Data.Account.AccountId.Address(), accounts[0].AccountID)
 
-	accounts, err = q.AccountsForAsset(usdTrustLine.Data.TrustLine.Asset, pq)
+	accounts, err = q.AccountsForAsset(tt.Ctx, usdTrustLine.Data.TrustLine.Asset, pq)
 	assert.NoError(t, err)
 	tt.Assert.Len(accounts, 1)
 	tt.Assert.Equal(account2.Data.Account.AccountId.Address(), accounts[0].AccountID)
 
 	pq.Cursor = account2.Data.Account.AccountId.Address()
-	accounts, err = q.AccountsForAsset(usdTrustLine.Data.TrustLine.Asset, pq)
+	accounts, err = q.AccountsForAsset(tt.Ctx, usdTrustLine.Data.TrustLine.Asset, pq)
 	assert.NoError(t, err)
 	tt.Assert.Len(accounts, 0)
 
@@ -350,7 +350,7 @@ func TestAccountsForAsset(t *testing.T) {
 		Cursor: "",
 	}
 
-	accounts, err = q.AccountsForAsset(eurTrustLine.Data.TrustLine.Asset, pq)
+	accounts, err = q.AccountsForAsset(tt.Ctx, eurTrustLine.Data.TrustLine.Asset, pq)
 	assert.NoError(t, err)
 	tt.Assert.Len(accounts, 1)
 }
@@ -365,28 +365,28 @@ func TestAccountsForSponsor(t *testing.T) {
 	usdTrustLine.Data.TrustLine.AccountId = account2.Data.Account.AccountId
 
 	batch := q.NewAccountsBatchInsertBuilder(0)
-	err := batch.Add(account1)
+	err := batch.Add(tt.Ctx, account1)
 	assert.NoError(t, err)
-	err = batch.Add(account2)
+	err = batch.Add(tt.Ctx, account2)
 	assert.NoError(t, err)
-	err = batch.Add(account3)
+	err = batch.Add(tt.Ctx, account3)
 	assert.NoError(t, err)
-	assert.NoError(t, batch.Exec())
+	assert.NoError(t, batch.Exec(tt.Ctx))
 
-	_, err = q.InsertTrustLine(eurTrustLine)
+	_, err = q.InsertTrustLine(tt.Ctx, eurTrustLine)
 	tt.Assert.NoError(err)
-	_, err = q.InsertTrustLine(usdTrustLine)
+	_, err = q.InsertTrustLine(tt.Ctx, usdTrustLine)
 	tt.Assert.NoError(err)
 
-	_, err = q.CreateAccountSigner(account1.Data.Account.AccountId.Address(), account1.Data.Account.AccountId.Address(), 1, nil)
+	_, err = q.CreateAccountSigner(tt.Ctx, account1.Data.Account.AccountId.Address(), account1.Data.Account.AccountId.Address(), 1, nil)
 	tt.Assert.NoError(err)
-	_, err = q.CreateAccountSigner(account2.Data.Account.AccountId.Address(), account2.Data.Account.AccountId.Address(), 1, nil)
+	_, err = q.CreateAccountSigner(tt.Ctx, account2.Data.Account.AccountId.Address(), account2.Data.Account.AccountId.Address(), 1, nil)
 	tt.Assert.NoError(err)
-	_, err = q.CreateAccountSigner(account3.Data.Account.AccountId.Address(), account3.Data.Account.AccountId.Address(), 1, nil)
+	_, err = q.CreateAccountSigner(tt.Ctx, account3.Data.Account.AccountId.Address(), account3.Data.Account.AccountId.Address(), 1, nil)
 	tt.Assert.NoError(err)
-	_, err = q.CreateAccountSigner(account1.Data.Account.AccountId.Address(), account3.Data.Account.AccountId.Address(), 1, nil)
+	_, err = q.CreateAccountSigner(tt.Ctx, account1.Data.Account.AccountId.Address(), account3.Data.Account.AccountId.Address(), 1, nil)
 	tt.Assert.NoError(err)
-	_, err = q.CreateAccountSigner(account2.Data.Account.AccountId.Address(), account3.Data.Account.AccountId.Address(), 1, nil)
+	_, err = q.CreateAccountSigner(tt.Ctx, account2.Data.Account.AccountId.Address(), account3.Data.Account.AccountId.Address(), 1, nil)
 	tt.Assert.NoError(err)
 
 	pq := db2.PageQuery{
@@ -395,7 +395,7 @@ func TestAccountsForSponsor(t *testing.T) {
 		Cursor: "",
 	}
 
-	accounts, err := q.AccountsForSponsor(sponsor.Address(), pq)
+	accounts, err := q.AccountsForSponsor(tt.Ctx, sponsor.Address(), pq)
 	assert.NoError(t, err)
 	tt.Assert.Len(accounts, 2)
 	tt.Assert.Equal(account1.Data.Account.AccountId.Address(), accounts[0].AccountID)
@@ -412,28 +412,28 @@ func TestAccountEntriesForSigner(t *testing.T) {
 	usdTrustLine.Data.TrustLine.AccountId = account2.Data.Account.AccountId
 
 	batch := q.NewAccountsBatchInsertBuilder(0)
-	err := batch.Add(account1)
+	err := batch.Add(tt.Ctx, account1)
 	assert.NoError(t, err)
-	err = batch.Add(account2)
+	err = batch.Add(tt.Ctx, account2)
 	assert.NoError(t, err)
-	err = batch.Add(account3)
+	err = batch.Add(tt.Ctx, account3)
 	assert.NoError(t, err)
-	assert.NoError(t, batch.Exec())
+	assert.NoError(t, batch.Exec(tt.Ctx))
 
-	_, err = q.InsertTrustLine(eurTrustLine)
+	_, err = q.InsertTrustLine(tt.Ctx, eurTrustLine)
 	tt.Assert.NoError(err)
-	_, err = q.InsertTrustLine(usdTrustLine)
+	_, err = q.InsertTrustLine(tt.Ctx, usdTrustLine)
 	tt.Assert.NoError(err)
 
-	_, err = q.CreateAccountSigner(account1.Data.Account.AccountId.Address(), account1.Data.Account.AccountId.Address(), 1, nil)
+	_, err = q.CreateAccountSigner(tt.Ctx, account1.Data.Account.AccountId.Address(), account1.Data.Account.AccountId.Address(), 1, nil)
 	tt.Assert.NoError(err)
-	_, err = q.CreateAccountSigner(account2.Data.Account.AccountId.Address(), account2.Data.Account.AccountId.Address(), 1, nil)
+	_, err = q.CreateAccountSigner(tt.Ctx, account2.Data.Account.AccountId.Address(), account2.Data.Account.AccountId.Address(), 1, nil)
 	tt.Assert.NoError(err)
-	_, err = q.CreateAccountSigner(account3.Data.Account.AccountId.Address(), account3.Data.Account.AccountId.Address(), 1, nil)
+	_, err = q.CreateAccountSigner(tt.Ctx, account3.Data.Account.AccountId.Address(), account3.Data.Account.AccountId.Address(), 1, nil)
 	tt.Assert.NoError(err)
-	_, err = q.CreateAccountSigner(account1.Data.Account.AccountId.Address(), account3.Data.Account.AccountId.Address(), 1, nil)
+	_, err = q.CreateAccountSigner(tt.Ctx, account1.Data.Account.AccountId.Address(), account3.Data.Account.AccountId.Address(), 1, nil)
 	tt.Assert.NoError(err)
-	_, err = q.CreateAccountSigner(account2.Data.Account.AccountId.Address(), account3.Data.Account.AccountId.Address(), 1, nil)
+	_, err = q.CreateAccountSigner(tt.Ctx, account2.Data.Account.AccountId.Address(), account3.Data.Account.AccountId.Address(), 1, nil)
 	tt.Assert.NoError(err)
 
 	pq := db2.PageQuery{
@@ -442,12 +442,12 @@ func TestAccountEntriesForSigner(t *testing.T) {
 		Cursor: "",
 	}
 
-	accounts, err := q.AccountEntriesForSigner(account1.Data.Account.AccountId.Address(), pq)
+	accounts, err := q.AccountEntriesForSigner(tt.Ctx, account1.Data.Account.AccountId.Address(), pq)
 	assert.NoError(t, err)
 	tt.Assert.Len(accounts, 1)
 	tt.Assert.Equal(account1.Data.Account.AccountId.Address(), accounts[0].AccountID)
 
-	accounts, err = q.AccountEntriesForSigner(account2.Data.Account.AccountId.Address(), pq)
+	accounts, err = q.AccountEntriesForSigner(tt.Ctx, account2.Data.Account.AccountId.Address(), pq)
 	assert.NoError(t, err)
 	tt.Assert.Len(accounts, 1)
 	tt.Assert.Equal(account2.Data.Account.AccountId.Address(), accounts[0].AccountID)
@@ -458,7 +458,7 @@ func TestAccountEntriesForSigner(t *testing.T) {
 		account3.Data.Account.AccountId.Address(): true,
 	}
 
-	accounts, err = q.AccountEntriesForSigner(account3.Data.Account.AccountId.Address(), pq)
+	accounts, err = q.AccountEntriesForSigner(tt.Ctx, account3.Data.Account.AccountId.Address(), pq)
 	assert.NoError(t, err)
 	tt.Assert.Len(accounts, 3)
 
@@ -470,12 +470,12 @@ func TestAccountEntriesForSigner(t *testing.T) {
 	tt.Assert.Len(want, 0)
 
 	pq.Cursor = accounts[len(accounts)-1].AccountID
-	accounts, err = q.AccountEntriesForSigner(account3.Data.Account.AccountId.Address(), pq)
+	accounts, err = q.AccountEntriesForSigner(tt.Ctx, account3.Data.Account.AccountId.Address(), pq)
 	assert.NoError(t, err)
 	tt.Assert.Len(accounts, 0)
 
 	pq.Order = "desc"
-	accounts, err = q.AccountEntriesForSigner(account3.Data.Account.AccountId.Address(), pq)
+	accounts, err = q.AccountEntriesForSigner(tt.Ctx, account3.Data.Account.AccountId.Address(), pq)
 	assert.NoError(t, err)
 	tt.Assert.Len(accounts, 2)
 
@@ -485,7 +485,7 @@ func TestAccountEntriesForSigner(t *testing.T) {
 		Cursor: "",
 	}
 
-	accounts, err = q.AccountEntriesForSigner(account1.Data.Account.AccountId.Address(), pq)
+	accounts, err = q.AccountEntriesForSigner(tt.Ctx, account1.Data.Account.AccountId.Address(), pq)
 	assert.NoError(t, err)
 	tt.Assert.Len(accounts, 1)
 }
@@ -497,11 +497,11 @@ func TestGetAccountByID(t *testing.T) {
 	q := &Q{tt.HorizonSession()}
 
 	batch := q.NewAccountsBatchInsertBuilder(0)
-	err := batch.Add(account1)
+	err := batch.Add(tt.Ctx, account1)
 	assert.NoError(t, err)
-	assert.NoError(t, batch.Exec())
+	assert.NoError(t, batch.Exec(tt.Ctx))
 
-	resultAccount, err := q.GetAccountByID(account1.Data.Account.AccountId.Address())
+	resultAccount, err := q.GetAccountByID(tt.Ctx, account1.Data.Account.AccountId.Address())
 	assert.NoError(t, err)
 
 	assert.Equal(t, "GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB", resultAccount.AccountID)

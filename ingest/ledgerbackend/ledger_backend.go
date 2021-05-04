@@ -1,6 +1,8 @@
 package ledgerbackend
 
 import (
+	"context"
+
 	"github.com/stellar/go/xdr"
 )
 
@@ -11,6 +13,8 @@ type LedgerBackend interface {
 	GetLatestLedgerSequence() (sequence uint32, err error)
 	// The first returned value is false when the ledger does not exist in a backend.
 	GetLedger(sequence uint32) (bool, xdr.LedgerCloseMeta, error)
+	// Works like GetLedger but will block until the ledger is available.
+	GetLedgerBlocking(sequence uint32) (xdr.LedgerCloseMeta, error)
 	// PrepareRange prepares the given range (including from and to) to be loaded.
 	// Some backends (like captive stellar-core) need to initalize data to be
 	// able to stream ledgers. Blocks until the first ledger is available.
@@ -23,8 +27,8 @@ type LedgerBackend interface {
 // session is the interface needed to access a persistent database session.
 // TODO can't use this until we add Close() to the existing db.Session object
 type session interface {
-	GetRaw(dest interface{}, query string, args ...interface{}) error
-	SelectRaw(dest interface{}, query string, args ...interface{}) error
+	GetRaw(ctx context.Context, dest interface{}, query string, args ...interface{}) error
+	SelectRaw(ctx context.Context, dest interface{}, query string, args ...interface{}) error
 	Close() error
 }
 

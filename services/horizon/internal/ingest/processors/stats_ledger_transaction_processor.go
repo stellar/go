@@ -1,6 +1,7 @@
 package processors
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/stellar/go/ingest"
@@ -47,7 +48,7 @@ type StatsLedgerTransactionProcessorResults struct {
 	OperationsSetTrustLineFlags             int64
 }
 
-func (p *StatsLedgerTransactionProcessor) ProcessTransaction(transaction ingest.LedgerTransaction) error {
+func (p *StatsLedgerTransactionProcessor) ProcessTransaction(ctx context.Context, transaction ingest.LedgerTransaction) error {
 	p.results.Transactions++
 	ops := int64(len(transaction.Envelope.Operations()))
 	p.results.Operations += ops

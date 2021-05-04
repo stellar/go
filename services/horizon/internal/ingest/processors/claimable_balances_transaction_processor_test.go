@@ -3,6 +3,7 @@
 package processors
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/mock"
@@ -15,6 +16,7 @@ import (
 
 type ClaimableBalancesTransactionProcessorTestSuiteLedger struct {
 	suite.Suite
+	ctx                               context.Context
 	processor                         *ClaimableBalancesTransactionProcessor
 	mockQ                             *history.MockQHistoryClaimableBalances
 	mockTransactionBatchInsertBuilder *history.MockTransactionClaimableBalanceBatchInsertBuilder
@@ -28,6 +30,7 @@ func TestClaimableBalancesTransactionProcessorTestSuiteLedger(t *testing.T) {
 }
 
 func (s *ClaimableBalancesTransactionProcessorTestSuiteLedger) SetupTest() {
+	s.ctx = context.Background()
 	s.mockQ = &history.MockQHistoryClaimableBalances{}
 	s.mockTransactionBatchInsertBuilder = &history.MockTransactionClaimableBalanceBatchInsertBuilder{}
 	s.mockOperationBatchInsertBuilder = &history.MockOperationClaimableBalanceBatchInsertBuilder{}
@@ -46,16 +49,16 @@ func (s *ClaimableBalancesTransactionProcessorTestSuiteLedger) TearDownTest() {
 }
 
 func (s *ClaimableBalancesTransactionProcessorTestSuiteLedger) mockTransactionBatchAdd(transactionID, internalID int64, err error) {
-	s.mockTransactionBatchInsertBuilder.On("Add", transactionID, internalID).Return(err).Once()
+	s.mockTransactionBatchInsertBuilder.On("Add", s.ctx, transactionID, internalID).Return(err).Once()
 }
 
 func (s *ClaimableBalancesTransactionProcessorTestSuiteLedger) mockOperationBatchAdd(operationID, internalID int64, err error) {
-	s.mockOperationBatchInsertBuilder.On("Add", operationID, internalID).Return(err).Once()
+	s.mockOperationBatchInsertBuilder.On("Add", s.ctx, operationID, internalID).Return(err).Once()
 }
 
 func (s *ClaimableBalancesTransactionProcessorTestSuiteLedger) TestEmptyClaimableBalances() {
 	// What is this expecting? Doesn't seem to assert anything meaningful...
-	err := s.processor.Commit()
+	err := s.processor.Commit(context.Background())
 	s.Assert().NoError(err)
 }
 
@@ -64,8 +67,8 @@ func (s *ClaimableBalancesTransactionProcessorTestSuiteLedger) testOperationInse
 	internalID := int64(1234)
 	txn := createTransaction(true, 1)
 	txn.Envelope.Operations()[0].Body = body
-	txn.Meta.V = 2
-	txn.Meta.V2.Operations = []xdr.OperationMeta{
+	txn.UnsafeMeta.V = 2
+	txn.UnsafeMeta.V2.Operations = []xdr.OperationMeta{
 		{Changes: xdr.LedgerEntryChanges{
 			{
 				Type: xdr.LedgerEntryChangeTypeLedgerEntryState,
@@ -109,9 +112,9 @@ func (s *ClaimableBalancesTransactionProcessorTestSuiteLedger) testOperationInse
 	hexID, _ := xdr.MarshalHex(balanceID)
 
 	// Setup a q
-	s.mockQ.On("CreateHistoryClaimableBalances", mock.AnythingOfType("[]xdr.ClaimableBalanceId"), maxBatchSize).
+	s.mockQ.On("CreateHistoryClaimableBalances", s.ctx, mock.AnythingOfType("[]xdr.ClaimableBalanceId"), maxBatchSize).
 		Run(func(args mock.Arguments) {
-			arg := args.Get(0).([]xdr.ClaimableBalanceId)
+			arg := args.Get(1).([]xdr.ClaimableBalanceId)
 			s.Assert().ElementsMatch(
 				[]xdr.ClaimableBalanceId{
 					balanceID,
@@ -126,18 +129,18 @@ func (s *ClaimableBalancesTransactionProcessorTestSuiteLedger) testOperationInse
 	s.mockQ.On("NewTransactionClaimableBalanceBatchInsertBuilder", maxBatchSize).
 		Return(s.mockTransactionBatchInsertBuilder).Once()
 	s.mockTransactionBatchAdd(txnID, internalID, nil)
-	s.mockTransactionBatchInsertBuilder.On("Exec").Return(nil).Once()
+	s.mockTransactionBatchInsertBuilder.On("Exec", s.ctx).Return(nil).Once()
 
 	// Prepare to process operations successfully
 	s.mockQ.On("NewOperationClaimableBalanceBatchInsertBuilder", maxBatchSize).
 		Return(s.mockOperationBatchInsertBuilder).Once()
 	s.mockOperationBatchAdd(opID, internalID, nil)
-	s.mockOperationBatchInsertBuilder.On("Exec").Return(nil).Once()
+	s.mockOperationBatchInsertBuilder.On("Exec", s.ctx).Return(nil).Once()
 
 	// Process the transaction
-	err := s.processor.ProcessTransaction(txn)
+	err := s.processor.ProcessTransaction(s.ctx, txn)
 	s.Assert().NoError(err)
-	err = s.processor.Commit()
+	err = s.processor.Commit(s.ctx)
 	s.Assert().NoError(err)
 }
 

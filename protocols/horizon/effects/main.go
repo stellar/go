@@ -43,6 +43,7 @@ const (
 	// account flags, either clearing or setting.
 	EffectAccountFlagsUpdated EffectType = 6 // from set_options
 
+	// unused
 	// EffectAccountInflationDestinationUpdated effects occur when an account changes its
 	// inflation destination.
 	EffectAccountInflationDestinationUpdated EffectType = 7 // from set_options
@@ -92,14 +93,13 @@ const (
 
 	// trading effects
 
+	// unused
 	// EffectOfferCreated occurs when an account offers to trade an asset
-	EffectOfferCreated EffectType = 30 // from manage_offer, creat_passive_offer
-
+	// EffectOfferCreated EffectType = 30 // from manage_offer, creat_passive_offer
 	// EffectOfferRemoved occurs when an account removes an offer
-	EffectOfferRemoved EffectType = 31 // from manage_offer, creat_passive_offer, path_payment
-
+	// EffectOfferRemoved EffectType = 31 // from manage_offer, creat_passive_offer, path_payment
 	// EffectOfferUpdated occurs when an offer is updated by the offering account.
-	EffectOfferUpdated EffectType = 32 // from manage_offer, creat_passive_offer, path_payment
+	// EffectOfferUpdated EffectType = 32 // from manage_offer, creat_passive_offer, path_payment
 
 	// EffectTrade occurs when a trade is initiated because of a path payment or
 	// offer operation.
@@ -208,33 +208,34 @@ var EffectTypeNames = map[EffectType]string{
 	EffectTrustlineAuthorizedToMaintainLiabilities: "trustline_authorized_to_maintain_liabilities",
 	EffectTrustlineDeauthorized:                    "trustline_deauthorized",
 	EffectTrustlineFlagsUpdated:                    "trustline_flags_updated",
-	EffectOfferCreated:                             "offer_created",
-	EffectOfferRemoved:                             "offer_removed",
-	EffectOfferUpdated:                             "offer_updated",
-	EffectTrade:                                    "trade",
-	EffectDataCreated:                              "data_created",
-	EffectDataRemoved:                              "data_removed",
-	EffectDataUpdated:                              "data_updated",
-	EffectSequenceBumped:                           "sequence_bumped",
-	EffectClaimableBalanceCreated:                  "claimable_balance_created",
-	EffectClaimableBalanceClaimed:                  "claimable_balance_claimed",
-	EffectClaimableBalanceClaimantCreated:          "claimable_balance_claimant_created",
-	EffectAccountSponsorshipCreated:                "account_sponsorship_created",
-	EffectAccountSponsorshipUpdated:                "account_sponsorship_updated",
-	EffectAccountSponsorshipRemoved:                "account_sponsorship_removed",
-	EffectTrustlineSponsorshipCreated:              "trustline_sponsorship_created",
-	EffectTrustlineSponsorshipUpdated:              "trustline_sponsorship_updated",
-	EffectTrustlineSponsorshipRemoved:              "trustline_sponsorship_removed",
-	EffectDataSponsorshipCreated:                   "data_sponsorship_created",
-	EffectDataSponsorshipUpdated:                   "data_sponsorship_updated",
-	EffectDataSponsorshipRemoved:                   "data_sponsorship_removed",
-	EffectClaimableBalanceSponsorshipCreated:       "claimable_balance_sponsorship_created",
-	EffectClaimableBalanceSponsorshipUpdated:       "claimable_balance_sponsorship_updated",
-	EffectClaimableBalanceSponsorshipRemoved:       "claimable_balance_sponsorship_removed",
-	EffectSignerSponsorshipCreated:                 "signer_sponsorship_created",
-	EffectSignerSponsorshipUpdated:                 "signer_sponsorship_updated",
-	EffectSignerSponsorshipRemoved:                 "signer_sponsorship_removed",
-	EffectClaimableBalanceClawedBack:               "claimable_balance_clawed_back",
+	// unused
+	// EffectOfferCreated:                             "offer_created",
+	// EffectOfferRemoved:                             "offer_removed",
+	// EffectOfferUpdated:                             "offer_updated",
+	EffectTrade:                              "trade",
+	EffectDataCreated:                        "data_created",
+	EffectDataRemoved:                        "data_removed",
+	EffectDataUpdated:                        "data_updated",
+	EffectSequenceBumped:                     "sequence_bumped",
+	EffectClaimableBalanceCreated:            "claimable_balance_created",
+	EffectClaimableBalanceClaimed:            "claimable_balance_claimed",
+	EffectClaimableBalanceClaimantCreated:    "claimable_balance_claimant_created",
+	EffectAccountSponsorshipCreated:          "account_sponsorship_created",
+	EffectAccountSponsorshipUpdated:          "account_sponsorship_updated",
+	EffectAccountSponsorshipRemoved:          "account_sponsorship_removed",
+	EffectTrustlineSponsorshipCreated:        "trustline_sponsorship_created",
+	EffectTrustlineSponsorshipUpdated:        "trustline_sponsorship_updated",
+	EffectTrustlineSponsorshipRemoved:        "trustline_sponsorship_removed",
+	EffectDataSponsorshipCreated:             "data_sponsorship_created",
+	EffectDataSponsorshipUpdated:             "data_sponsorship_updated",
+	EffectDataSponsorshipRemoved:             "data_sponsorship_removed",
+	EffectClaimableBalanceSponsorshipCreated: "claimable_balance_sponsorship_created",
+	EffectClaimableBalanceSponsorshipUpdated: "claimable_balance_sponsorship_updated",
+	EffectClaimableBalanceSponsorshipRemoved: "claimable_balance_sponsorship_removed",
+	EffectSignerSponsorshipCreated:           "signer_sponsorship_created",
+	EffectSignerSponsorshipUpdated:           "signer_sponsorship_updated",
+	EffectSignerSponsorshipRemoved:           "signer_sponsorship_removed",
+	EffectClaimableBalanceClawedBack:         "claimable_balance_clawed_back",
 }
 
 // Base provides the common structure for any effect resource effect.

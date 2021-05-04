@@ -50,11 +50,11 @@ func mockPathFindingClient(
 	router.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			s := session.Clone()
-			s.BeginTx(&sql.TxOptions{
+			s.BeginTx(tt.Ctx, &sql.TxOptions{
 				Isolation: sql.LevelRepeatableRead,
 				ReadOnly:  true,
 			})
-			defer s.Rollback()
+			defer s.Rollback(tt.Ctx)
 
 			ctx := context.WithValue(
 				r.Context(),
@@ -168,9 +168,9 @@ func TestPathActionsStrictReceive(t *testing.T) {
 	}
 
 	batch := q.NewAccountsBatchInsertBuilder(0)
-	err := batch.Add(account)
+	err := batch.Add(tt.Ctx, account)
 	assert.NoError(t, err)
-	err = batch.Exec()
+	err = batch.Exec(tt.Ctx)
 	assert.NoError(t, err)
 
 	assetsByKeys := map[string]xdr.Asset{}
@@ -204,7 +204,7 @@ func TestPathActionsStrictReceive(t *testing.T) {
 			},
 		}
 
-		rows, err1 := q.InsertTrustLine(trustline)
+		rows, err1 := q.InsertTrustLine(tt.Ctx, trustline)
 		assert.NoError(t, err1)
 		assert.Equal(t, int64(1), rows)
 	}
@@ -526,9 +526,9 @@ func TestPathActionsStrictSend(t *testing.T) {
 	}
 
 	batch := historyQ.NewAccountsBatchInsertBuilder(0)
-	err := batch.Add(account)
+	err := batch.Add(tt.Ctx, account)
 	assert.NoError(t, err)
-	err = batch.Exec()
+	err = batch.Exec(tt.Ctx)
 	assert.NoError(t, err)
 
 	assetsByKeys := map[string]xdr.Asset{}
@@ -562,7 +562,7 @@ func TestPathActionsStrictSend(t *testing.T) {
 			},
 		}
 
-		rows, err := historyQ.InsertTrustLine(trustline)
+		rows, err := historyQ.InsertTrustLine(tt.Ctx, trustline)
 		assert.NoError(t, err)
 		assert.Equal(t, int64(1), rows)
 	}
