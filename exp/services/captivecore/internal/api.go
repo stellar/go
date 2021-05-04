@@ -181,7 +181,6 @@ func (c *CaptiveCoreAPI) GetLedger(ctx context.Context, sequence uint32) (ledger
 	// TODO: We are always true here now, so this changes the semantics of this
 	// call a bit. We need to change the client to long-poll this endpoint.
 	return ledgerbackend.LedgerResponse{
-		Present: true,
-		Ledger:  ledgerbackend.Base64Ledger(ledger),
+		Ledger: ledgerbackend.Base64Ledger(ledger),
 	}, err
 }

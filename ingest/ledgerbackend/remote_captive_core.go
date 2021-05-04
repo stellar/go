@@ -31,8 +31,7 @@ type LatestLedgerSequenceResponse struct {
 
 // LedgerResponse is the response for the GetLedger command.
 type LedgerResponse struct {
-	Present bool         `json:"present"`
-	Ledger  Base64Ledger `json:"ledger"`
+	Ledger Base64Ledger `json:"ledger"`
 }
 
 // Base64Ledger extends xdr.LedgerCloseMeta with JSON encoding and decoding

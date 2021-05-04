@@ -26,8 +26,7 @@ func TestGetLedgerSucceeds(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		called++
 		json.NewEncoder(w).Encode(LedgerResponse{
-			Present: true,
-			Ledger:  Base64Ledger(expectedLedger),
+			Ledger: Base64Ledger(expectedLedger),
 		})
 	}))
 	defer server.Close()
@@ -60,8 +59,7 @@ func TestGetLedgerTakesAWhile(t *testing.T) {
 			return
 		}
 		json.NewEncoder(w).Encode(LedgerResponse{
-			Present: true,
-			Ledger:  Base64Ledger(expectedLedger),
+			Ledger: Base64Ledger(expectedLedger),
 		})
 	}))
 	defer server.Close()

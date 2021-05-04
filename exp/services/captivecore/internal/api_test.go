@@ -138,8 +138,7 @@ func (s *APITestSuite) TestGetLedgerSucceeds() {
 
 	s.Assert().NoError(err)
 	s.Assert().Equal(seq, ledgerbackend.LedgerResponse{
-		Present: true,
-		Ledger:  ledgerbackend.Base64Ledger(expectedLedger),
+		Ledger: ledgerbackend.Base64Ledger(expectedLedger),
 	})
 }
 
