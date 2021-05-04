@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/stellar/go/ingest/ledgerbackend"
@@ -22,6 +23,7 @@ func TestServerTestSuite(t *testing.T) {
 
 type ServerTestSuite struct {
 	suite.Suite
+	ctx           context.Context
 	ledgerBackend *ledgerbackend.MockDatabaseBackend
 	api           CaptiveCoreAPI
 	handler       http.Handler
@@ -30,13 +32,13 @@ type ServerTestSuite struct {
 }
 
 func (s *ServerTestSuite) SetupTest() {
+	s.ctx = context.Background()
 	s.ledgerBackend = &ledgerbackend.MockDatabaseBackend{}
 	s.api = NewCaptiveCoreAPI(s.ledgerBackend, log.New())
 	s.handler = Handler(s.api)
 	s.server = httptest.NewServer(s.handler)
 	var err error
 	s.client, err = ledgerbackend.NewRemoteCaptive(
-		context.Background(),
 		s.server.URL,
 		ledgerbackend.PrepareRangePollInterval(time.Millisecond),
 	)
@@ -54,9 +56,9 @@ func (s *ServerTestSuite) TestLatestSequence() {
 	s.api.activeRequest.ready = true
 
 	expectedSeq := uint32(100)
-	s.ledgerBackend.On("GetLatestLedgerSequence").Return(expectedSeq, nil).Once()
+	s.ledgerBackend.On("GetLatestLedgerSequence", mock.Anything).Return(expectedSeq, nil).Once()
 
-	seq, err := s.client.GetLatestLedgerSequence()
+	seq, err := s.client.GetLatestLedgerSequence(s.ctx)
 	s.Assert().NoError(err)
 	s.Assert().Equal(expectedSeq, seq)
 }
@@ -65,34 +67,34 @@ func (s *ServerTestSuite) TestLatestSequenceError() {
 	s.api.activeRequest.valid = true
 	s.api.activeRequest.ready = true
 
-	s.ledgerBackend.On("GetLatestLedgerSequence").Return(uint32(100), fmt.Errorf("test error")).Once()
+	s.ledgerBackend.On("GetLatestLedgerSequence", mock.Anything).Return(uint32(100), fmt.Errorf("test error")).Once()
 
-	_, err := s.client.GetLatestLedgerSequence()
+	_, err := s.client.GetLatestLedgerSequence(s.ctx)
 	s.Assert().EqualError(err, "test error")
 }
 
 func (s *ServerTestSuite) TestPrepareBoundedRange() {
 	ledgerRange := ledgerbackend.BoundedRange(10, 30)
-	s.ledgerBackend.On("PrepareRange", ledgerRange).
+	s.ledgerBackend.On("PrepareRange", mock.Anything, ledgerRange).
 		Return(nil).Once()
 
-	s.Assert().NoError(s.client.PrepareRange(ledgerRange))
+	s.Assert().NoError(s.client.PrepareRange(s.ctx, ledgerRange))
 	s.Assert().True(s.api.activeRequest.ready)
 
-	prepared, err := s.client.IsPrepared(ledgerRange)
+	prepared, err := s.client.IsPrepared(s.ctx, ledgerRange)
 	s.Assert().NoError(err)
 	s.Assert().True(prepared)
 }
 
 func (s *ServerTestSuite) TestPrepareUnboundedRange() {
 	ledgerRange := ledgerbackend.UnboundedRange(100)
-	s.ledgerBackend.On("PrepareRange", ledgerRange).
+	s.ledgerBackend.On("PrepareRange", mock.Anything, ledgerRange).
 		Return(nil).Once()
 
-	s.Assert().NoError(s.client.PrepareRange(ledgerRange))
+	s.Assert().NoError(s.client.PrepareRange(s.ctx, ledgerRange))
 	s.Assert().True(s.api.activeRequest.ready)
 
-	prepared, err := s.client.IsPrepared(ledgerRange)
+	prepared, err := s.client.IsPrepared(s.ctx, ledgerRange)
 	s.Assert().NoError(err)
 	s.Assert().True(prepared)
 }
@@ -102,13 +104,14 @@ func (s *ServerTestSuite) TestPrepareError() {
 	s.api.Shutdown()
 
 	s.Assert().EqualError(
-		s.client.PrepareRange(ledgerbackend.UnboundedRange(100)),
+		s.client.PrepareRange(s.ctx, ledgerbackend.UnboundedRange(100)),
 		"Cannot prepare range when shut down",
 	)
 }
 
 func (s *ServerTestSuite) TestGetLedgerInvalidSequence() {
 	req := httptest.NewRequest("GET", "/ledger/abcdef", nil)
+	req = req.WithContext(s.ctx)
 	w := httptest.NewRecorder()
 
 	s.handler.ServeHTTP(w, req)
@@ -126,10 +129,10 @@ func (s *ServerTestSuite) TestGetLedgerError() {
 	s.api.activeRequest.ready = true
 
 	expectedErr := fmt.Errorf("test error")
-	s.ledgerBackend.On("GetLedger", uint32(64)).
-		Return(false, xdr.LedgerCloseMeta{}, expectedErr).Once()
+	s.ledgerBackend.On("GetLedger", mock.Anything, uint32(64)).
+		Return(xdr.LedgerCloseMeta{}, expectedErr).Once()
 
-	_, _, err := s.client.GetLedger(64)
+	_, err := s.client.GetLedger(s.ctx, 64)
 	s.Assert().EqualError(err, "test error")
 }
 
@@ -146,11 +149,34 @@ func (s *ServerTestSuite) TestGetLedgerSucceeds() {
 			},
 		},
 	}
-	s.ledgerBackend.On("GetLedger", uint32(64)).
-		Return(true, expectedLedger, nil).Once()
+	s.ledgerBackend.On("GetLedger", mock.Anything, uint32(64)).
+		Return(expectedLedger, nil).Once()
 
-	present, ledger, err := s.client.GetLedger(64)
+	ledger, err := s.client.GetLedger(s.ctx, 64)
 	s.Assert().NoError(err)
-	s.Assert().True(present)
+	s.Assert().Equal(expectedLedger, ledger)
+}
+
+func (s *ServerTestSuite) TestGetLedgerTakesAWhile() {
+	s.api.activeRequest.valid = true
+	s.api.activeRequest.ready = true
+
+	expectedLedger := xdr.LedgerCloseMeta{
+		V0: &xdr.LedgerCloseMetaV0{
+			LedgerHeader: xdr.LedgerHeaderHistoryEntry{
+				Header: xdr.LedgerHeader{
+					LedgerSeq: 64,
+				},
+			},
+		},
+	}
+	s.ledgerBackend.On("GetLedger", mock.Anything, uint32(64)).
+		Run(func(mock.Arguments) { time.Sleep(6 * time.Second) }).
+		Return(xdr.LedgerCloseMeta{}, nil).Once()
+	s.ledgerBackend.On("GetLedger", mock.Anything, uint32(64)).
+		Return(expectedLedger, nil).Once()
+
+	ledger, err := s.client.GetLedger(s.ctx, 64)
+	s.Assert().NoError(err)
 	s.Assert().Equal(expectedLedger, ledger)
 }

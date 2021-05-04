@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/stellar/go/ingest/ledgerbackend"
@@ -36,20 +37,16 @@ func check(ledger uint32) bool {
 	}
 	defer c.Close()
 
-	err = c.PrepareRange(ledgerbackend.UnboundedRange(ledger))
+	ctx := context.Background()
+	err = c.PrepareRange(ctx, ledgerbackend.UnboundedRange(ledger))
 	if err != nil {
 		fmt.Println(err)
 		return false
 	}
 
-	ok, meta, err := c.GetLedger(ledger)
+	meta, err := c.GetLedger(ctx, ledger)
 	if err != nil {
 		fmt.Println(err)
-		return false
-	}
-
-	if !ok {
-		fmt.Println("no ledger")
 		return false
 	}
 

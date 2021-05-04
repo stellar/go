@@ -53,9 +53,9 @@ func (s *BuildStateTestSuite) SetupTest() {
 	s.historyQ.On("Begin", s.ctx).Return(nil).Once()
 	s.historyQ.On("Rollback", s.ctx).Return(nil).Once()
 
-	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(63)).Return(false, nil).Once()
-	s.ledgerBackend.On("PrepareRange", ledgerbackend.UnboundedRange(63)).Return(nil).Once()
-	s.ledgerBackend.On("GetLedgerBlocking", uint32(63)).Return(xdr.LedgerCloseMeta{
+	s.ledgerBackend.On("IsPrepared", s.ctx, ledgerbackend.UnboundedRange(63)).Return(false, nil).Once()
+	s.ledgerBackend.On("PrepareRange", s.ctx, ledgerbackend.UnboundedRange(63)).Return(nil).Once()
+	s.ledgerBackend.On("GetLedger", s.ctx, uint32(63)).Return(xdr.LedgerCloseMeta{
 		V0: &xdr.LedgerCloseMetaV0{
 			LedgerHeader: xdr.LedgerHeaderHistoryEntry{
 				Header: xdr.LedgerHeader{
@@ -107,8 +107,8 @@ func (s *BuildStateTestSuite) TestRangeNotPreparedFailPrepare() {
 	*s.historyQ = mockDBQ{}
 	*s.ledgerBackend = ledgerbackend.MockDatabaseBackend{}
 
-	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(63)).Return(false, nil).Once()
-	s.ledgerBackend.On("PrepareRange", ledgerbackend.UnboundedRange(63)).Return(errors.New("my error")).Once()
+	s.ledgerBackend.On("IsPrepared", s.ctx, ledgerbackend.UnboundedRange(63)).Return(false, nil).Once()
+	s.ledgerBackend.On("PrepareRange", s.ctx, ledgerbackend.UnboundedRange(63)).Return(errors.New("my error")).Once()
 
 	next, err := buildState{checkpointLedger: s.checkpointLedger}.run(s.system)
 
@@ -122,9 +122,9 @@ func (s *BuildStateTestSuite) TestRangeNotPreparedSuccessPrepareGetLedgerFail() 
 	*s.historyQ = mockDBQ{}
 	*s.ledgerBackend = ledgerbackend.MockDatabaseBackend{}
 
-	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(63)).Return(false, nil).Once()
-	s.ledgerBackend.On("PrepareRange", ledgerbackend.UnboundedRange(63)).Return(nil).Once()
-	s.ledgerBackend.On("GetLedgerBlocking", uint32(63)).Return(xdr.LedgerCloseMeta{}, errors.New("my error")).Once()
+	s.ledgerBackend.On("IsPrepared", s.ctx, ledgerbackend.UnboundedRange(63)).Return(false, nil).Once()
+	s.ledgerBackend.On("PrepareRange", s.ctx, ledgerbackend.UnboundedRange(63)).Return(nil).Once()
+	s.ledgerBackend.On("GetLedger", s.ctx, uint32(63)).Return(xdr.LedgerCloseMeta{}, errors.New("my error")).Once()
 
 	next, err := buildState{checkpointLedger: s.checkpointLedger}.run(s.system)
 

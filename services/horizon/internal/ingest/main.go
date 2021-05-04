@@ -188,7 +188,7 @@ func NewSystem(config Config) (System, error) {
 	var ledgerBackend ledgerbackend.LedgerBackend
 	if config.EnableCaptiveCore {
 		if len(config.RemoteCaptiveCoreURL) > 0 {
-			ledgerBackend, err = ledgerbackend.NewRemoteCaptive(ctx, config.RemoteCaptiveCoreURL)
+			ledgerBackend, err = ledgerbackend.NewRemoteCaptive(config.RemoteCaptiveCoreURL)
 			if err != nil {
 				cancel()
 				return nil, errors.Wrap(err, "error creating captive core backend")
@@ -206,7 +206,7 @@ func NewSystem(config Config) (System, error) {
 					NetworkPassphrase:   config.NetworkPassphrase,
 					HistoryArchiveURLs:  []string{config.HistoryArchiveURL},
 					CheckpointFrequency: config.CheckpointFrequency,
-					LedgerHashStore:     ledgerbackend.NewHorizonDBLedgerHashStore(ctx, config.HistorySession),
+					LedgerHashStore:     ledgerbackend.NewHorizonDBLedgerHashStore(config.HistorySession),
 					Log:                 logger,
 					Context:             ctx,
 				},
@@ -218,7 +218,7 @@ func NewSystem(config Config) (System, error) {
 		}
 	} else {
 		coreSession := config.CoreSession.Clone()
-		ledgerBackend, err = ledgerbackend.NewDatabaseBackendFromSession(ctx, coreSession, config.NetworkPassphrase)
+		ledgerBackend, err = ledgerbackend.NewDatabaseBackendFromSession(coreSession, config.NetworkPassphrase)
 		if err != nil {
 			cancel()
 			return nil, errors.Wrap(err, "error creating ledger backend")

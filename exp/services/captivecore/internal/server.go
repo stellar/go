@@ -1,8 +1,10 @@
 package internal
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
+	"time"
 
 	"github.com/stellar/go/ingest/ledgerbackend"
 	supporthttp "github.com/stellar/go/support/http"
@@ -39,7 +41,7 @@ func Handler(api CaptiveCoreAPI) http.Handler {
 	mux := supporthttp.NewMux(api.log)
 
 	mux.Get("/latest-sequence", func(w http.ResponseWriter, r *http.Request) {
-		response, err := api.GetLatestLedgerSequence()
+		response, err := api.GetLatestLedgerSequence(r.Context())
 		serializeResponse(api.log, w, r, response, err)
 	})
 
@@ -51,8 +53,24 @@ func Handler(api CaptiveCoreAPI) http.Handler {
 			return
 		}
 
-		response, err := api.GetLedger(req.Sequence)
-		serializeResponse(api.log, w, r, response, err)
+		// must be shorter than the RemoteCaptiveCore http client timeout.
+		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+		defer cancel() // release timer
+
+		var response ledgerbackend.LedgerResponse
+		var err error
+		done := make(chan struct{})
+		go func() {
+			response, err = api.GetLedger(ctx, req.Sequence)
+			close(done)
+		}()
+
+		select {
+		case <-ctx.Done():
+			w.WriteHeader(http.StatusRequestTimeout)
+		case <-done:
+			serializeResponse(api.log, w, r, response, err)
+		}
 	})
 
 	mux.Post("/prepare-range", func(w http.ResponseWriter, r *http.Request) {
@@ -63,7 +81,7 @@ func Handler(api CaptiveCoreAPI) http.Handler {
 			return
 		}
 
-		response, err := api.PrepareRange(ledgerRange)
+		response, err := api.PrepareRange(r.Context(), ledgerRange)
 		serializeResponse(api.log, w, r, response, err)
 	})
 
