@@ -218,13 +218,6 @@ commands:
           name: Build release artifacts
           command: go run ./support/scripts/build_release_artifacts/main.go
 
-  # send_coverage_report sends coverage report to codecov.io
-  send_coverage_report:
-    steps:
-      - run:
-          name: Send report to codecov.io
-          command: bash <(curl -s https://codecov.io/bash)
-
 #-----------------------------------------------------------------------------#
 # Jobs use the commands to accomplish a given task, and run through workflows #
 #-----------------------------------------------------------------------------#
@@ -284,7 +277,6 @@ jobs:
     steps:
       - install_go_deps
       - test_packages
-      - send_coverage_report
 
   # test_code_1_16 performs all package tests using Go 1.16.
   test_code_1_16:
@@ -326,7 +318,6 @@ jobs:
     steps:
       - install_go_deps
       - test_packages
-      - send_coverage_report
   # publish_artifacts builds and uploads artifacts to any tagged commit.
   #
   # NOTE: this commands relies on an env var called GITHUB_TOKEN which is a
