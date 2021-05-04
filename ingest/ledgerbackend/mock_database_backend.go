@@ -1,6 +1,8 @@
 package ledgerbackend
 
 import (
+	"context"
+
 	"github.com/stretchr/testify/mock"
 
 	"github.com/stellar/go/xdr"
@@ -12,28 +14,23 @@ type MockDatabaseBackend struct {
 	mock.Mock
 }
 
-func (m *MockDatabaseBackend) GetLatestLedgerSequence() (uint32, error) {
-	args := m.Called()
+func (m *MockDatabaseBackend) GetLatestLedgerSequence(ctx context.Context) (uint32, error) {
+	args := m.Called(ctx)
 	return args.Get(0).(uint32), args.Error(1)
 }
 
-func (m *MockDatabaseBackend) PrepareRange(ledgerRange Range) error {
-	args := m.Called(ledgerRange)
+func (m *MockDatabaseBackend) PrepareRange(ctx context.Context, ledgerRange Range) error {
+	args := m.Called(ctx, ledgerRange)
 	return args.Error(0)
 }
 
-func (m *MockDatabaseBackend) IsPrepared(ledgerRange Range) (bool, error) {
-	args := m.Called(ledgerRange)
+func (m *MockDatabaseBackend) IsPrepared(ctx context.Context, ledgerRange Range) (bool, error) {
+	args := m.Called(ctx, ledgerRange)
 	return args.Bool(0), args.Error(1)
 }
 
-func (m *MockDatabaseBackend) GetLedger(sequence uint32) (bool, xdr.LedgerCloseMeta, error) {
-	args := m.Called(sequence)
-	return args.Bool(0), args.Get(1).(xdr.LedgerCloseMeta), args.Error(2)
-}
-
-func (m *MockDatabaseBackend) GetLedgerBlocking(sequence uint32) (xdr.LedgerCloseMeta, error) {
-	args := m.Called(sequence)
+func (m *MockDatabaseBackend) GetLedger(ctx context.Context, sequence uint32) (xdr.LedgerCloseMeta, error) {
+	args := m.Called(ctx, sequence)
 	return args.Get(0).(xdr.LedgerCloseMeta), args.Error(1)
 }
 

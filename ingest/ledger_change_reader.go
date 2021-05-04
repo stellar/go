@@ -1,6 +1,7 @@
 package ingest
 
 import (
+	"context"
 	"io"
 
 	"github.com/stellar/go/ingest/ledgerbackend"
@@ -46,8 +47,8 @@ var _ ChangeReader = (*LedgerChangeReader)(nil)
 // NewLedgerChangeReader constructs a new LedgerChangeReader instance bound to the given ledger.
 // Note that the returned LedgerChangeReader is not thread safe and should not be shared
 // by multiple goroutines.
-func NewLedgerChangeReader(backend ledgerbackend.LedgerBackend, networkPassphrase string, sequence uint32) (*LedgerChangeReader, error) {
-	transactionReader, err := NewLedgerTransactionReader(backend, networkPassphrase, sequence)
+func NewLedgerChangeReader(ctx context.Context, backend ledgerbackend.LedgerBackend, networkPassphrase string, sequence uint32) (*LedgerChangeReader, error) {
+	transactionReader, err := NewLedgerTransactionReader(ctx, backend, networkPassphrase, sequence)
 	if err != nil {
 		return nil, err
 	}

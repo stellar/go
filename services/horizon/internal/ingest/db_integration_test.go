@@ -113,8 +113,8 @@ func (s *DBTestSuite) setupMocksForBuildState() {
 	s.historyAdapter.On("BucketListHash", s.sequence).
 		Return(checkpointHash, nil).Once()
 
-	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(s.sequence)).Return(true, nil).Once()
-	s.ledgerBackend.On("GetLedgerBlocking", s.sequence).
+	s.ledgerBackend.On("IsPrepared", s.ctx, ledgerbackend.UnboundedRange(s.sequence)).Return(true, nil).Once()
+	s.ledgerBackend.On("GetLedger", s.ctx, s.sequence).
 		Return(
 			xdr.LedgerCloseMeta{
 				V0: &xdr.LedgerCloseMetaV0{

@@ -1,6 +1,8 @@
 package ingest
 
 import (
+	"context"
+
 	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/keypair"
 	logpkg "github.com/stellar/go/support/log"
@@ -12,15 +14,15 @@ type fakeLedgerBackend struct {
 	changesPerTransaction int
 }
 
-func (fakeLedgerBackend) GetLatestLedgerSequence() (uint32, error) {
+func (fakeLedgerBackend) GetLatestLedgerSequence(ctx context.Context) (uint32, error) {
 	return 1, nil
 }
 
-func (fakeLedgerBackend) PrepareRange(r ledgerbackend.Range) error {
+func (fakeLedgerBackend) PrepareRange(ctx context.Context, r ledgerbackend.Range) error {
 	return nil
 }
 
-func (fakeLedgerBackend) IsPrepared(r ledgerbackend.Range) (bool, error) {
+func (fakeLedgerBackend) IsPrepared(ctx context.Context, r ledgerbackend.Range) (bool, error) {
 	return true, nil
 }
 
@@ -98,7 +100,7 @@ func fakeOffer(offerID int64) xdr.LedgerEntryChange {
 	}
 }
 
-func (f fakeLedgerBackend) GetLedger(sequence uint32) (bool, xdr.LedgerCloseMeta, error) {
+func (f fakeLedgerBackend) getLedgerAsync(ctx context.Context, sequence uint32) (bool, xdr.LedgerCloseMeta, error) {
 	ledgerCloseMeta := xdr.LedgerCloseMeta{
 		V0: &xdr.LedgerCloseMetaV0{
 			LedgerHeader: xdr.LedgerHeaderHistoryEntry{
@@ -199,8 +201,8 @@ func (f fakeLedgerBackend) GetLedger(sequence uint32) (bool, xdr.LedgerCloseMeta
 	return true, ledgerCloseMeta, nil
 }
 
-func (f *fakeLedgerBackend) GetLedgerBlocking(sequence uint32) (xdr.LedgerCloseMeta, error) {
-	_, meta, err := f.GetLedger(sequence)
+func (f *fakeLedgerBackend) GetLedger(ctx context.Context, sequence uint32) (xdr.LedgerCloseMeta, error) {
+	_, meta, err := f.getLedgerAsync(ctx, sequence)
 	return meta, err
 }
 

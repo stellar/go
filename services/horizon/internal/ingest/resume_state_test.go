@@ -52,9 +52,9 @@ func (s *ResumeTestTestSuite) SetupTest() {
 
 	s.historyQ.On("Rollback", s.ctx).Return(nil).Once()
 
-	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(101)).Return(false, nil).Once()
-	s.ledgerBackend.On("PrepareRange", ledgerbackend.UnboundedRange(101)).Return(nil).Once()
-	s.ledgerBackend.On("GetLedgerBlocking", uint32(101)).Return(xdr.LedgerCloseMeta{
+	s.ledgerBackend.On("IsPrepared", s.ctx, ledgerbackend.UnboundedRange(101)).Return(false, nil).Once()
+	s.ledgerBackend.On("PrepareRange", s.ctx, ledgerbackend.UnboundedRange(101)).Return(nil).Once()
+	s.ledgerBackend.On("GetLedger", s.ctx, uint32(101)).Return(xdr.LedgerCloseMeta{
 		V0: &xdr.LedgerCloseMetaV0{
 			LedgerHeader: xdr.LedgerHeaderHistoryEntry{
 				Header: xdr.LedgerHeader{
@@ -95,8 +95,8 @@ func (s *ResumeTestTestSuite) TestRangeNotPreparedFailPrepare() {
 	*s.historyQ = mockDBQ{}
 	*s.ledgerBackend = ledgerbackend.MockDatabaseBackend{}
 
-	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(101)).Return(false, nil).Once()
-	s.ledgerBackend.On("PrepareRange", ledgerbackend.UnboundedRange(101)).Return(errors.New("my error")).Once()
+	s.ledgerBackend.On("IsPrepared", s.ctx, ledgerbackend.UnboundedRange(101)).Return(false, nil).Once()
+	s.ledgerBackend.On("PrepareRange", s.ctx, ledgerbackend.UnboundedRange(101)).Return(errors.New("my error")).Once()
 
 	next, err := resumeState{latestSuccessfullyProcessedLedger: 100}.run(s.system)
 	s.Assert().Error(err)
@@ -112,9 +112,9 @@ func (s *ResumeTestTestSuite) TestRangeNotPreparedSuccessPrepareGetLedgerFail() 
 	*s.historyQ = mockDBQ{}
 	*s.ledgerBackend = ledgerbackend.MockDatabaseBackend{}
 
-	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(101)).Return(false, nil).Once()
-	s.ledgerBackend.On("PrepareRange", ledgerbackend.UnboundedRange(101)).Return(nil).Once()
-	s.ledgerBackend.On("GetLedgerBlocking", uint32(101)).Return(xdr.LedgerCloseMeta{}, errors.New("my error")).Once()
+	s.ledgerBackend.On("IsPrepared", s.ctx, ledgerbackend.UnboundedRange(101)).Return(false, nil).Once()
+	s.ledgerBackend.On("PrepareRange", s.ctx, ledgerbackend.UnboundedRange(101)).Return(nil).Once()
+	s.ledgerBackend.On("GetLedger", s.ctx, uint32(101)).Return(xdr.LedgerCloseMeta{}, errors.New("my error")).Once()
 
 	next, err := resumeState{latestSuccessfullyProcessedLedger: 100}.run(s.system)
 	s.Assert().Error(err)
@@ -291,9 +291,9 @@ func (s *ResumeTestTestSuite) mockSuccessfulIngestion() {
 func (s *ResumeTestTestSuite) TestBumpIngestLedger() {
 	*s.ledgerBackend = ledgerbackend.MockDatabaseBackend{}
 
-	s.ledgerBackend.On("IsPrepared", ledgerbackend.UnboundedRange(100)).Return(false, nil).Once()
-	s.ledgerBackend.On("PrepareRange", ledgerbackend.UnboundedRange(100)).Return(nil).Once()
-	s.ledgerBackend.On("GetLedgerBlocking", uint32(100)).Return(xdr.LedgerCloseMeta{
+	s.ledgerBackend.On("IsPrepared", s.ctx, ledgerbackend.UnboundedRange(100)).Return(false, nil).Once()
+	s.ledgerBackend.On("PrepareRange", s.ctx, ledgerbackend.UnboundedRange(100)).Return(nil).Once()
+	s.ledgerBackend.On("GetLedger", s.ctx, uint32(100)).Return(xdr.LedgerCloseMeta{
 		V0: &xdr.LedgerCloseMetaV0{
 			LedgerHeader: xdr.LedgerHeaderHistoryEntry{
 				Header: xdr.LedgerHeader{

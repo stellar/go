@@ -64,6 +64,7 @@ func Example_ledgerentrieshistoryarchive() {
 // for a specific ledger using captive stellar-core. Please note that transaction
 // meta IS available when using this backend.
 func Example_changes() {
+	ctx := context.Background()
 	archiveURL := "http://history.stellar.org/prd/core-live/core_live_001"
 	networkPassphrase := network.PublicNetworkPassphrase
 
@@ -82,12 +83,12 @@ func Example_changes() {
 
 	sequence := uint32(3)
 
-	err = backend.PrepareRange(ledgerbackend.SingleLedgerRange(sequence))
+	err = backend.PrepareRange(ctx, ledgerbackend.SingleLedgerRange(sequence))
 	if err != nil {
 		panic(err)
 	}
 
-	changeReader, err := NewLedgerChangeReader(backend, networkPassphrase, sequence)
+	changeReader, err := NewLedgerChangeReader(ctx, backend, networkPassphrase, sequence)
 	if err != nil {
 		panic(err)
 	}

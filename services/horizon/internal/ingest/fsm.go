@@ -251,7 +251,7 @@ func (b buildState) run(s *system) (transition, error) {
 
 		log.WithField("ledger", b.checkpointLedger).Info("Waiting for ledger to be available in the backend...")
 		startTime := time.Now()
-		ledgerCloseMeta, err = s.ledgerBackend.GetLedgerBlocking(b.checkpointLedger)
+		ledgerCloseMeta, err = s.ledgerBackend.GetLedger(s.ctx, b.checkpointLedger)
 		if err != nil {
 			return nextFailState, errors.Wrap(err, "error getting ledger blocking")
 		}
@@ -379,7 +379,7 @@ func (r resumeState) run(s *system) (transition, error) {
 
 	log.WithField("ledger", ingestLedger).Info("Waiting for ledger to be available in the backend...")
 	startTime := time.Now()
-	ledgerCloseMeta, err := s.ledgerBackend.GetLedgerBlocking(ingestLedger)
+	ledgerCloseMeta, err := s.ledgerBackend.GetLedger(s.ctx, ingestLedger)
 	if err != nil {
 		return start(), errors.Wrap(err, "error getting ledger blocking")
 	}
@@ -565,7 +565,7 @@ func (h historyRangeState) run(s *system) (transition, error) {
 		log.WithField("ledger", cur).Info("Waiting for ledger to be available in the backend...")
 		startTime := time.Now()
 
-		ledgerCloseMeta, err = s.ledgerBackend.GetLedgerBlocking(cur)
+		ledgerCloseMeta, err = s.ledgerBackend.GetLedger(s.ctx, cur)
 		if err != nil {
 			// Commit finished work in case of ledger backend error.
 			commitErr := s.historyQ.Commit(s.ctx)
@@ -656,13 +656,9 @@ func (h reingestHistoryRangeState) ingestRange(s *system, fromLedger, toLedger u
 	}
 
 	for cur := fromLedger; cur <= toLedger; cur++ {
-		exists, ledgerCloseMeta, err := s.ledgerBackend.GetLedger(cur)
+		ledgerCloseMeta, err := s.ledgerBackend.GetLedger(s.ctx, cur)
 		if err != nil {
 			return errors.Wrap(err, "error getting ledger")
-		}
-
-		if !exists {
-			return errors.New("error getting ledger: ledger does not exist")
 		}
 
 		if err = runTransactionProcessorsOnLedger(s, ledgerCloseMeta); err != nil {
@@ -691,7 +687,7 @@ func (h reingestHistoryRangeState) run(s *system) (transition, error) {
 	}).Info("Preparing ledger backend to retrieve range")
 	startTime := time.Now()
 
-	err := s.ledgerBackend.PrepareRange(ledgerbackend.BoundedRange(h.fromLedger, h.toLedger))
+	err := s.ledgerBackend.PrepareRange(s.ctx, ledgerbackend.BoundedRange(h.fromLedger, h.toLedger))
 	if err != nil {
 		return stop(), errors.Wrap(err, "error preparing range")
 	}
@@ -820,7 +816,7 @@ func (v verifyRangeState) run(s *system) (transition, error) {
 	log.WithField("ledger", v.fromLedger).Info("Preparing range")
 	startTime := time.Now()
 
-	err = s.ledgerBackend.PrepareRange(ledgerbackend.BoundedRange(v.fromLedger, v.toLedger))
+	err = s.ledgerBackend.PrepareRange(s.ctx, ledgerbackend.BoundedRange(v.fromLedger, v.toLedger))
 	if err != nil {
 		return stop(), errors.Wrap(err, "Error preparing range")
 	}
@@ -833,13 +829,9 @@ func (v verifyRangeState) run(s *system) (transition, error) {
 	log.WithField("ledger", v.fromLedger).Info("Processing state")
 	startTime = time.Now()
 
-	exists, ledgerCloseMeta, err := s.ledgerBackend.GetLedger(v.fromLedger)
+	ledgerCloseMeta, err := s.ledgerBackend.GetLedger(s.ctx, v.fromLedger)
 	if err != nil {
 		return stop(), errors.Wrap(err, "error getting ledger")
-	}
-
-	if !exists {
-		return stop(), errors.New("error getting ledger: ledger does not exist")
 	}
 
 	stats, err := s.runner.RunHistoryArchiveIngestion(
@@ -878,15 +870,10 @@ func (v verifyRangeState) run(s *system) (transition, error) {
 			return stop(), err
 		}
 
-		var exists bool
 		var ledgerCloseMeta xdr.LedgerCloseMeta
-		exists, ledgerCloseMeta, err = s.ledgerBackend.GetLedger(sequence)
+		ledgerCloseMeta, err = s.ledgerBackend.GetLedger(s.ctx, sequence)
 		if err != nil {
 			return stop(), errors.Wrap(err, "error getting ledger")
-		}
-
-		if !exists {
-			return stop(), errors.New("error getting ledger: ledger does not exist")
 		}
 
 		var changeStats ingest.StatsChangeProcessorResults
@@ -959,13 +946,9 @@ func (stressTestState) run(s *system) (transition, error) {
 	}).Info("Processing ledger")
 	startTime := time.Now()
 
-	exists, ledgerCloseMeta, err := s.ledgerBackend.GetLedger(sequence)
+	ledgerCloseMeta, err := s.ledgerBackend.GetLedger(s.ctx, sequence)
 	if err != nil {
 		return stop(), errors.Wrap(err, "error getting ledger")
-	}
-
-	if !exists {
-		return stop(), errors.New("error getting ledger: ledger does not exist")
 	}
 
 	changeStats, _, ledgerTransactionStats, _, err := s.runner.RunAllProcessorsOnLedger(ledgerCloseMeta)
@@ -1017,7 +1000,7 @@ func (s *system) completeIngestion(ctx context.Context, ledger uint32) error {
 func (s *system) maybePrepareRange(ctx context.Context, from uint32) error {
 	ledgerRange := ledgerbackend.UnboundedRange(from)
 
-	prepared, err := s.ledgerBackend.IsPrepared(ledgerRange)
+	prepared, err := s.ledgerBackend.IsPrepared(ctx, ledgerRange)
 	if err != nil {
 		return errors.Wrap(err, "error checking prepared range")
 	}
@@ -1026,7 +1009,7 @@ func (s *system) maybePrepareRange(ctx context.Context, from uint32) error {
 		log.WithFields(logpkg.F{"from": from}).Info("Preparing range")
 		startTime := time.Now()
 
-		err = s.ledgerBackend.PrepareRange(ledgerRange)
+		err = s.ledgerBackend.PrepareRange(ctx, ledgerRange)
 		if err != nil {
 			return errors.Wrap(err, "error preparing range")
 		}

@@ -58,8 +58,8 @@ func TestInsertLedger(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
-	ledgerHashStore := ledgerbackend.NewHorizonDBLedgerHashStore(tt.Ctx, tt.HorizonSession())
-	_, exists, err := ledgerHashStore.GetLedgerHash(100)
+	ledgerHashStore := ledgerbackend.NewHorizonDBLedgerHashStore(tt.HorizonSession())
+	_, exists, err := ledgerHashStore.GetLedgerHash(tt.Ctx, 100)
 	tt.Assert.NoError(err)
 	tt.Assert.False(exists)
 
@@ -143,7 +143,7 @@ func TestInsertLedger(t *testing.T) {
 
 	tt.Assert.Equal(expectedLedger, ledgerFromDB)
 
-	hash, exists, err := ledgerHashStore.GetLedgerHash(uint32(expectedLedger.Sequence))
+	hash, exists, err := ledgerHashStore.GetLedgerHash(tt.Ctx, uint32(expectedLedger.Sequence))
 	tt.Assert.NoError(err)
 	tt.Assert.True(exists)
 	tt.Assert.Equal(expectedLedger.LedgerHash, hash)

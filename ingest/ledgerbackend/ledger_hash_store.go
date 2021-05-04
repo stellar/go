@@ -14,34 +14,27 @@ import (
 // source like history archives.
 type TrustedLedgerHashStore interface {
 	// GetLedgerHash returns the ledger hash for the given sequence number
-	GetLedgerHash(seq uint32) (string, bool, error)
+	GetLedgerHash(ctx context.Context, seq uint32) (string, bool, error)
 	Close() error
 }
 
 // HorizonDBLedgerHashStore is a TrustedLedgerHashStore which uses horizon's db to look up ledger hashes
 type HorizonDBLedgerHashStore struct {
-	cancel  context.CancelFunc
-	ctx     context.Context
 	session *db.Session
 }
 
 // NewHorizonDBLedgerHashStore constructs a new TrustedLedgerHashStore backed by the horizon db
-func NewHorizonDBLedgerHashStore(ctx context.Context, session *db.Session) TrustedLedgerHashStore {
-	ctx, cancel := context.WithCancel(ctx)
-	return HorizonDBLedgerHashStore{
-		cancel:  cancel,
-		ctx:     ctx,
-		session: session,
-	}
+func NewHorizonDBLedgerHashStore(session *db.Session) TrustedLedgerHashStore {
+	return HorizonDBLedgerHashStore{session: session}
 }
 
 // GetLedgerHash returns the ledger hash for the given sequence number
-func (h HorizonDBLedgerHashStore) GetLedgerHash(seq uint32) (string, bool, error) {
+func (h HorizonDBLedgerHashStore) GetLedgerHash(ctx context.Context, seq uint32) (string, bool, error) {
 	sql := sq.Select("hl.ledger_hash").From("history_ledgers hl").
 		Limit(1).Where("sequence = ?", seq)
 
 	var hash string
-	err := h.session.Get(h.ctx, &hash, sql)
+	err := h.session.Get(ctx, &hash, sql)
 	if h.session.NoRows(err) {
 		return hash, false, nil
 	}
@@ -49,7 +42,6 @@ func (h HorizonDBLedgerHashStore) GetLedgerHash(seq uint32) (string, bool, error
 }
 
 func (h HorizonDBLedgerHashStore) Close() error {
-	h.cancel()
 	return h.session.Close()
 }
 
@@ -59,8 +51,8 @@ type MockLedgerHashStore struct {
 }
 
 // GetLedgerHash returns the ledger hash for the given sequence number
-func (m *MockLedgerHashStore) GetLedgerHash(seq uint32) (string, bool, error) {
-	args := m.Called(seq)
+func (m *MockLedgerHashStore) GetLedgerHash(ctx context.Context, seq uint32) (string, bool, error) {
+	args := m.Called(ctx, seq)
 	return args.Get(0).(string), args.Get(1).(bool), args.Error(2)
 }
 

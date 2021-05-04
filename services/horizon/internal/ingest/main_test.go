@@ -360,28 +360,23 @@ type mockLedgerBackend struct {
 	mock.Mock
 }
 
-func (m *mockLedgerBackend) GetLatestLedgerSequence() (sequence uint32, err error) {
-	args := m.Called()
+func (m *mockLedgerBackend) GetLatestLedgerSequence(ctx context.Context) (sequence uint32, err error) {
+	args := m.Called(ctx)
 	return args.Get(0).(uint32), args.Error(1)
 }
 
-func (m *mockLedgerBackend) GetLedger(sequence uint32) (bool, xdr.LedgerCloseMeta, error) {
-	args := m.Called(sequence)
-	return args.Get(0).(bool), args.Get(1).(xdr.LedgerCloseMeta), args.Error(2)
-}
-
-func (m *mockLedgerBackend) GetLedgerBlocking(sequence uint32) (xdr.LedgerCloseMeta, error) {
-	args := m.Called(sequence)
+func (m *mockLedgerBackend) GetLedger(ctx context.Context, sequence uint32) (xdr.LedgerCloseMeta, error) {
+	args := m.Called(ctx, sequence)
 	return args.Get(0).(xdr.LedgerCloseMeta), args.Error(1)
 }
 
-func (m *mockLedgerBackend) PrepareRange(ledgerRange ledgerbackend.Range) error {
-	args := m.Called(ledgerRange)
+func (m *mockLedgerBackend) PrepareRange(ctx context.Context, ledgerRange ledgerbackend.Range) error {
+	args := m.Called(ctx, ledgerRange)
 	return args.Error(0)
 }
 
-func (m *mockLedgerBackend) IsPrepared(ledgerRange ledgerbackend.Range) (bool, error) {
-	args := m.Called(ledgerRange)
+func (m *mockLedgerBackend) IsPrepared(ctx context.Context, ledgerRange ledgerbackend.Range) (bool, error) {
+	args := m.Called(ctx, ledgerRange)
 	return args.Get(0).(bool), args.Error(1)
 }
 
