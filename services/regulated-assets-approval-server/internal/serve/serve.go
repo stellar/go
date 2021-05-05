@@ -3,6 +3,7 @@ package serve
 import (
 	"fmt"
 	"net/http"
+	"regexp"
 	"time"
 
 	"github.com/go-chi/chi"
@@ -16,12 +17,14 @@ import (
 )
 
 type Options struct {
-	IssuerAccountSecret    string
-	AssetCode              string
-	FriendbotPaymentAmount int
-	HorizonURL             string
-	NetworkPassphrase      string
-	Port                   int
+	IssuerAccountSecret        string
+	AssetCode                  string
+	FriendbotPaymentAmount     int
+	HorizonURL                 string
+	NetworkPassphrase          string
+	Port                       int
+	BaseURL                    string
+	ApprovalServerKYCThreshold int
 }
 
 func Serve(opts Options) {
@@ -62,6 +65,8 @@ func handleHTTP(opts Options) http.Handler {
 		assetCode:         opts.AssetCode,
 		issuerAddress:     issuerKP.Address(),
 		networkPassphrase: opts.NetworkPassphrase,
+		approvalServer:    buildURLString(opts.BaseURL, "/tx_approve"),
+		kycThreshold:      float64(opts.ApprovalServerKYCThreshold),
 	}.ServeHTTP)
 	mux.Get("/friendbot", friendbotHandler{
 		assetCode:           opts.AssetCode,
@@ -83,4 +88,14 @@ func (opts Options) horizonClient() horizonclient.ClientInterface {
 		HorizonURL: opts.HorizonURL,
 		HTTP:       &http.Client{Timeout: 30 * time.Second},
 	}
+}
+
+func buildURLString(baseURL, endpoint string) string {
+	urlRegexp, err := regexp.Compile(`([^:])(//+)`)
+	if err != nil {
+		log.Fatal(errors.Wrap(err, "compiling regex"))
+	}
+
+	fullPath := fmt.Sprintf("%s/%s", baseURL, endpoint)
+	return urlRegexp.ReplaceAllString(fullPath, "$1/")
 }
