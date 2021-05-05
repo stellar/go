@@ -18,6 +18,7 @@ import (
 type Options struct {
 	IssuerAccountSecret    string
 	AssetCode              string
+	DatabaseURL            string
 	FriendbotPaymentAmount int
 	HorizonURL             string
 	NetworkPassphrase      string
