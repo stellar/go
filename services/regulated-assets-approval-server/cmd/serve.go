@@ -69,10 +69,10 @@ func (c *ServeCommand) Command() *cobra.Command {
 			Required:  true,
 		},
 		{
-			Name:        "approval-server-payment-threshold",
+			Name:        "kyc-required-payment-amount-threshold",
 			Usage:       "The amount threshold to require KYC",
 			OptType:     types.Int,
-			ConfigKey:   &opts.ApprovalServerKYCThreshold,
+			ConfigKey:   &opts.KYCPaymentThreshold,
 			FlagDefault: 500,
 			Required:    true,
 		},
