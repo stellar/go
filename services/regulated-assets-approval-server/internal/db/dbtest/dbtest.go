@@ -13,9 +13,9 @@ func Open(t *testing.T) *dbtest.DB {
 	db := dbtest.Postgres(t)
 
 	// Get the folder holding the migrations relative to this file. We cannot
-	// hardcode "../migrations" because Open is called from tests in multiple
-	// packages and tests are executed with the current working directory set
-	// to the package the test lives in.
+	// hardcode "../dbmigrate/migrations" because Open is called from tests in
+	// multiple packages and tests are executed with the current working
+	// directory set to the package the test lives in.
 	_, filename, _, _ := runtime.Caller(0)
 	migrationsDir := path.Join(path.Dir(filename), "..", "dbmigrate", "migrations")
 
