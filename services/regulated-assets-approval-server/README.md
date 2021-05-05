@@ -56,7 +56,7 @@ Usage:
 
 Flags:
       --asset-code string              The code of the regulated asset (ASSET_CODE)
-      --database-url string            Database URL (DATABASE_URL) (default "postgres://localhost:5432/ppdemo?sslmode=disable")
+      --database-url string            Database URL (DATABASE_URL) (default "postgres://localhost:5432/sep8_regulated_assets?sslmode=disable")
       --friendbot-payment-amount int   The amount of regulated assets the friendbot will be distributing (FRIENDBOT_PAYMENT_AMOUNT) (default 10000)
       --horizon-url string             Horizon URL used for looking up account details (HORIZON_URL) (default "https://horizon-testnet.stellar.org/")
       --issuer-account-secret string   Secret key of the asset issuer's stellar account. (ISSUER_ACCOUNT_SECRET)
