@@ -24,9 +24,24 @@ Usage:
   regulated-assets-approval-server [command]
 
 Available Commands:
+  migrate     Run migrations on the database
   serve       Serve the SEP-8 Approval Server
 
 Use "regulated-assets-approval-server [command] --help" for more information about a command.
+```
+
+### Usage: Migrate
+
+```sh
+$ go install
+$ regulated-assets-approval-server migrate --help
+Run migrations on the database
+
+Usage:
+  regulated-assets-approval-server migrate [up|down] [count] [flags]
+
+Flags:
+      --database-url string   Database URL (DATABASE_URL) (default "postgres://localhost:5432/sep8_regulated_assets?sslmode=disable")
 ```
 
 ### Usage: Serve
