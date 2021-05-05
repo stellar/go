@@ -46,6 +46,8 @@ Flags:
       --issuer-account-secret string   Secret key of the asset issuer's stellar account. (ISSUER_ACCOUNT_SECRET)
       --network-passphrase string      Network passphrase of the Stellar network transactions should be signed for (NETWORK_PASSPHRASE) (default "Test SDF Network ; September 2015")
       --port int                       Port to listen and serve on (PORT) (default 8000)
+      --base-url string                The base url address to this server
+      --approval-server-payment-threshold int The amount threshold to require KYC
 ```
 
 ## Account Setup
