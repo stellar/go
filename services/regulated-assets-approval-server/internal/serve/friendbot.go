@@ -7,6 +7,7 @@ import (
 
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
+	"github.com/stellar/go/services/regulated-assets-approval-server/internal/serve/httperror"
 	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/http/httpdecode"
@@ -67,16 +68,16 @@ func (h friendbotHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	err := httpdecode.Decode(r, &in)
 	if err != nil {
 		log.Ctx(ctx).Error(errors.Wrap(err, "decoding input parameters"))
-		httpErr := NewHTTPError(http.StatusBadRequest, "Invalid input parameters")
+		httpErr := httperror.NewHTTPError(http.StatusBadRequest, "Invalid input parameters")
 		httpErr.Render(w)
 		return
 	}
 
 	err = h.topUpAccountWithRegulatedAsset(ctx, in)
 	if err != nil {
-		httpErr, ok := err.(*httpError)
+		httpErr, ok := err.(*httperror.Error)
 		if !ok {
-			httpErr = serverError
+			httpErr = httperror.InternalServerError
 		}
 		httpErr.Render(w)
 		return
@@ -94,17 +95,17 @@ func (h friendbotHandler) topUpAccountWithRegulatedAsset(ctx context.Context, in
 	}
 
 	if in.Address == "" {
-		return NewHTTPError(http.StatusBadRequest, `Missing query paramater "addr".`)
+		return httperror.NewHTTPError(http.StatusBadRequest, `Missing query paramater "addr".`)
 	}
 
 	if !strkey.IsValidEd25519PublicKey(in.Address) {
-		return NewHTTPError(http.StatusBadRequest, `"addr" is not a valid Stellar address.`)
+		return httperror.NewHTTPError(http.StatusBadRequest, `"addr" is not a valid Stellar address.`)
 	}
 
 	account, err := h.horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: in.Address})
 	if err != nil {
 		log.Ctx(ctx).Error(errors.Wrapf(err, "getting detail for account %s", in.Address))
-		return NewHTTPError(http.StatusBadRequest, `Please make sure the provided account address already exists in the network.`)
+		return httperror.NewHTTPError(http.StatusBadRequest, `Please make sure the provided account address already exists in the network.`)
 	}
 
 	kp, err := keypair.ParseFull(h.issuerAccountSecret)
@@ -127,13 +128,13 @@ func (h friendbotHandler) topUpAccountWithRegulatedAsset(ctx context.Context, in
 		}
 	}
 	if !accountHasTrustline {
-		return NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Account with address %s doesn't have a trustline for %s:%s", in.Address, asset.Code, asset.Issuer))
+		return httperror.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Account with address %s doesn't have a trustline for %s:%s", in.Address, asset.Code, asset.Issuer))
 	}
 
 	issuerAcc, err := h.horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: kp.Address()})
 	if err != nil {
 		log.Ctx(ctx).Error(errors.Wrapf(err, "getting detail for issuer account %s", kp.Address()))
-		return serverError
+		return httperror.InternalServerError
 	}
 
 	tx, err := txnbuild.NewTransaction(txnbuild.TransactionParams{
@@ -174,7 +175,7 @@ func (h friendbotHandler) topUpAccountWithRegulatedAsset(ctx context.Context, in
 
 	_, err = h.horizonClient.SubmitTransaction(tx)
 	if err != nil {
-		err = parseHorizonError(err)
+		err = httperror.ParseHorizonError(err)
 		log.Ctx(ctx).Error(err)
 		return err
 	}
