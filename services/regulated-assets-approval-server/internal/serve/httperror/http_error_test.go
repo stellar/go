@@ -1,4 +1,4 @@
-package serve
+package httperror
 
 import (
 	"net/http"
@@ -12,10 +12,10 @@ import (
 )
 
 func TestParseHorizonError(t *testing.T) {
-	err := parseHorizonError(nil)
+	err := ParseHorizonError(nil)
 	require.Nil(t, err)
 
-	err = parseHorizonError(errors.New("some error"))
+	err = ParseHorizonError(errors.New("some error"))
 	require.EqualError(t, err, "error submitting transaction: some error")
 
 	horizonError := horizonclient.Error{
@@ -34,6 +34,6 @@ func TestParseHorizonError(t *testing.T) {
 			},
 		},
 	}
-	err = parseHorizonError(horizonError)
+	err = ParseHorizonError(horizonError)
 	require.EqualError(t, err, "error submitting transaction: problem: bad_request, &{TransactionCode:tx_code_here OperationCodes:[op_success op_bad_auth]}\n: horizon error: \"Bad Request\" - check horizon.Error.Problem for more information")
 }

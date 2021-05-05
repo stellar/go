@@ -1,4 +1,4 @@
-package serve
+package httperror
 
 import (
 	"net/http"
@@ -8,32 +8,32 @@ import (
 	"github.com/stellar/go/support/render/httpjson"
 )
 
-type httpError struct {
+type Error struct {
 	ErrorMessage string `json:"error"`
 	Status       int    `json:"-"`
 }
 
-func (h *httpError) Error() string {
+func (h *Error) Error() string {
 	return h.ErrorMessage
 }
 
-func NewHTTPError(status int, errorMessage string) *httpError {
-	return &httpError{
+func NewHTTPError(status int, errorMessage string) *Error {
+	return &Error{
 		ErrorMessage: errorMessage,
 		Status:       status,
 	}
 }
 
-func (e *httpError) Render(w http.ResponseWriter) {
+func (e *Error) Render(w http.ResponseWriter) {
 	httpjson.RenderStatus(w, e.Status, e, httpjson.JSON)
 }
 
-var serverError = &httpError{
+var InternalServerError = &Error{
 	ErrorMessage: "An error occurred while processing this request.",
 	Status:       http.StatusInternalServerError,
 }
 
-func parseHorizonError(err error) error {
+func ParseHorizonError(err error) error {
 	if err == nil {
 		return nil
 	}

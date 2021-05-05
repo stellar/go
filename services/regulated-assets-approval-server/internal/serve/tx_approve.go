@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/stellar/go/keypair"
+	"github.com/stellar/go/services/regulated-assets-approval-server/internal/serve/httperror"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/http/httpdecode"
 	"github.com/stellar/go/support/log"
@@ -55,15 +56,15 @@ func (h txApproveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	err := httpdecode.Decode(r, &in)
 	if err != nil {
 		log.Ctx(ctx).Error(errors.Wrap(err, "decoding input parameters"))
-		httpErr := NewHTTPError(http.StatusBadRequest, "Invalid input parameters")
+		httpErr := httperror.NewHTTPError(http.StatusBadRequest, "Invalid input parameters")
 		httpErr.Render(w)
 		return
 	}
 	rejectedResponse, err := h.isRejected(ctx, in)
 	if err != nil {
-		httpErr, ok := err.(*httpError)
+		httpErr, ok := err.(*httperror.Error)
 		if !ok {
-			httpErr = serverError
+			httpErr = httperror.InternalServerError
 		}
 		httpErr.Render(w)
 		return
