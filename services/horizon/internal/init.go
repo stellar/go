@@ -65,19 +65,16 @@ func initIngester(app *App) {
 		// TODO:
 		// Use the first archive for now. We don't have a mechanism to
 		// use multiple archives at the same time currently.
-		HistoryArchiveURL:           app.config.HistoryArchiveURLs[0],
-		CheckpointFrequency:         app.config.CheckpointFrequency,
-		StellarCoreURL:              app.config.StellarCoreURL,
-		StellarCoreCursor:           app.config.CursorName,
-		CaptiveCoreBinaryPath:       app.config.CaptiveCoreBinaryPath,
-		CaptiveCoreStoragePath:      app.config.CaptiveCoreStoragePath,
-		CaptiveCoreConfigAppendPath: app.config.CaptiveCoreConfigAppendPath,
-		CaptiveCoreHTTPPort:         app.config.CaptiveCoreHTTPPort,
-		CaptiveCorePeerPort:         app.config.CaptiveCorePeerPort,
-		CaptiveCoreLogPath:          app.config.CaptiveCoreLogPath,
-		RemoteCaptiveCoreURL:        app.config.RemoteCaptiveCoreURL,
-		EnableCaptiveCore:           app.config.EnableCaptiveCoreIngestion,
-		DisableStateVerification:    app.config.IngestDisableStateVerification,
+		HistoryArchiveURL:        app.config.HistoryArchiveURLs[0],
+		CheckpointFrequency:      app.config.CheckpointFrequency,
+		StellarCoreURL:           app.config.StellarCoreURL,
+		StellarCoreCursor:        app.config.CursorName,
+		CaptiveCoreBinaryPath:    app.config.CaptiveCoreBinaryPath,
+		CaptiveCoreStoragePath:   app.config.CaptiveCoreStoragePath,
+		CaptiveCoreToml:          app.config.CaptiveCoreToml,
+		RemoteCaptiveCoreURL:     app.config.RemoteCaptiveCoreURL,
+		EnableCaptiveCore:        app.config.EnableCaptiveCoreIngestion,
+		DisableStateVerification: app.config.IngestDisableStateVerification,
 	})
 
 	if err != nil {

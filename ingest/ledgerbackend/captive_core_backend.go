@@ -97,13 +97,11 @@ type CaptiveStellarCore struct {
 type CaptiveCoreConfig struct {
 	// BinaryPath is the file path to the Stellar Core binary
 	BinaryPath string
-	// ConfigAppendPath is the file path to additional configuration for the Stellar Core configuration file used
-	// by captive core. This field is only required when ingesting in online mode (e.g. UnboundedRange).
-	ConfigAppendPath string
 	// NetworkPassphrase is the Stellar network passphrase used by captive core when connecting to the Stellar network
 	NetworkPassphrase string
 	// HistoryArchiveURLs are a list of history archive urls
 	HistoryArchiveURLs []string
+	Toml               *CaptiveCoreToml
 
 	// Optional fields
 
@@ -112,18 +110,9 @@ type CaptiveCoreConfig struct {
 	CheckpointFrequency uint32
 	// LedgerHashStore is an optional store used to obtain hashes for ledger sequences from a trusted source
 	LedgerHashStore TrustedLedgerHashStore
-	// HTTPPort is the TCP port to listen for requests (defaults to 0, which disables the HTTP server)
-	HTTPPort uint
-	// PeerPort is the TCP port to bind to for connecting to the Stellar network
-	// (defaults to 11625). It may be useful for example when there's >1 Stellar-Core
-	// instance running on a machine.
-	PeerPort uint
 	// Log is an (optional) custom logger which will capture any output from the Stellar Core process.
 	// If Log is omitted then all output will be printed to stdout.
 	Log *log.Entry
-	// LogPath is the (optional) path in which to store Core logs, passed along
-	// to Stellar Core's LOG_FILE_PATH
-	LogPath string
 	// Context is the (optional) context which controls the lifetime of a CaptiveStellarCore instance. Once the context is done
 	// the CaptiveStellarCore instance will not be able to stream ledgers from Stellar Core or spawn new
 	// instances of Stellar Core. If Context is omitted CaptiveStellarCore will default to using context.Background.

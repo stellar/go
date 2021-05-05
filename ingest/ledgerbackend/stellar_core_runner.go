@@ -49,14 +49,7 @@ type pipe struct {
 }
 
 type stellarCoreRunner struct {
-	logPath           string
-	executablePath    string
-	configAppendPath  string
-	networkPassphrase string
-	historyURLs       []string
-	httpPort          uint
-	peerPort          uint
-	mode              stellarCoreRunnerMode
+	executablePath string
 
 	started      bool
 	wg           sync.WaitGroup
@@ -112,17 +105,10 @@ func newStellarCoreRunner(config CaptiveCoreConfig, mode stellarCoreRunnerMode) 
 	ctx, cancel := context.WithCancel(config.Context)
 
 	runner := &stellarCoreRunner{
-		logPath:           config.LogPath,
-		executablePath:    config.BinaryPath,
-		configAppendPath:  config.ConfigAppendPath,
-		networkPassphrase: config.NetworkPassphrase,
-		historyURLs:       config.HistoryArchiveURLs,
-		httpPort:          config.HTTPPort,
-		peerPort:          config.PeerPort,
-		mode:              mode,
-		ctx:               ctx,
-		cancel:            cancel,
-		storagePath:       fullStoragePath,
+		executablePath: config.BinaryPath,
+		ctx:            ctx,
+		cancel:         cancel,
+		storagePath:    fullStoragePath,
 		nonce: fmt.Sprintf(
 			"captive-stellar-core-%x",
 			rand.New(rand.NewSource(time.Now().UnixNano())).Uint64(),
@@ -130,66 +116,42 @@ func newStellarCoreRunner(config CaptiveCoreConfig, mode stellarCoreRunnerMode) 
 		log: config.Log,
 	}
 
-	if err := runner.writeConf(); err != nil {
+	if conf, err := writeConf(config.Toml, mode, runner.getConfFileName()); err != nil {
 		return nil, errors.Wrap(err, "error writing configuration")
+	} else {
+		runner.log.Debugf("captive core config file contents:\n%s", conf)
 	}
 
 	return runner, nil
 }
 
-func (r *stellarCoreRunner) generateConfig() (string, error) {
-	if r.mode == stellarCoreRunnerModeOnline && r.configAppendPath == "" {
-		return "", errors.New("stellar-core append config file path cannot be empty in online mode")
+func writeConf(captiveCoreToml *CaptiveCoreToml, mode stellarCoreRunnerMode, location string) (string, error) {
+	text, err := generateConfig(captiveCoreToml, mode)
+	if err != nil {
+		return "", err
 	}
 
-	lines := []string{
-		"# Generated file -- do not edit",
-		"NODE_IS_VALIDATOR=false",
-		"DISABLE_XDR_FSYNC=true",
-		fmt.Sprintf(`NETWORK_PASSPHRASE="%s"`, r.networkPassphrase),
-		// Note: We don't pass BUCKET_DIR_PATH here because it's created
-		// *relative* to the storage path (i.e. where the config lives).
-		fmt.Sprintf(`HTTP_PORT=%d`, r.httpPort),
-		fmt.Sprintf(`LOG_FILE_PATH="%s"`, r.logPath),
-	}
+	return string(text), ioutil.WriteFile(location, text, 0644)
+}
 
-	if r.peerPort > 0 {
-		lines = append(lines, fmt.Sprintf(`PEER_PORT=%d`, r.peerPort))
-	}
-
-	if r.mode == stellarCoreRunnerModeOffline {
-		// In offline mode, there is no need to connect to peers
-		lines = append(lines, "RUN_STANDALONE=true")
-		// We don't need consensus when catching up
-		lines = append(lines, "UNSAFE_QUORUM=true")
-	}
-
-	if r.mode == stellarCoreRunnerModeOffline && r.configAppendPath == "" {
-		// Add a fictional quorum -- necessary to convince core to start up;
-		// but not used at all for our purposes. Pubkey here is just random.
-		lines = append(lines,
-			"[QUORUM_SET]",
-			"THRESHOLD_PERCENT=100",
-			`VALIDATORS=["GCZBOIAY4HLKAJVNJORXZOZRAY2BJDBZHKPBHZCRAIUR5IHC2UHBGCQR"]`)
-	}
-
-	result := strings.ReplaceAll(strings.Join(lines, "\n"), `\`, `\\`) + "\n\n"
-	if r.configAppendPath != "" {
-		appendConfigContents, err := ioutil.ReadFile(r.configAppendPath)
+func generateConfig(captiveCoreToml *CaptiveCoreToml, mode stellarCoreRunnerMode) ([]byte, error) {
+	if mode == stellarCoreRunnerModeOffline {
+		var err error
+		captiveCoreToml, err = captiveCoreToml.CatchupToml()
 		if err != nil {
-			return "", errors.Wrap(err, "reading quorum config file")
+			return nil, errors.Wrap(err, "could not generate catch up config")
 		}
-		result += string(appendConfigContents) + "\n\n"
 	}
 
-	lines = []string{}
-	for i, val := range r.historyURLs {
-		lines = append(lines, fmt.Sprintf("[HISTORY.h%d]", i))
-		lines = append(lines, fmt.Sprintf(`get="curl -sf %s/{0} -o {1}"`, val))
+	if !captiveCoreToml.QuorumSetIsConfigured() {
+		return nil, errors.New("stellar-core append config file does not define any quorum set")
 	}
-	result += strings.Join(lines, "\n")
 
-	return result, nil
+	text, err := captiveCoreToml.Marshal()
+	if err != nil {
+		return nil, errors.Wrap(err, "could not marshal captive core config")
+	}
+	return text, nil
 }
 
 func (r *stellarCoreRunner) getConfFileName() string {
@@ -253,17 +215,6 @@ func (r *stellarCoreRunner) getLogLineWriter() io.Writer {
 		}
 	}()
 	return wr
-}
-
-// Makes the temp directory and writes the config file to it; called by the
-// platform-specific captiveStellarCore.Start() methods.
-func (r *stellarCoreRunner) writeConf() error {
-	conf, err := r.generateConfig()
-	if err != nil {
-		return err
-	}
-	r.log.Debugf("captive core config file contents:\n%s", conf)
-	return ioutil.WriteFile(r.getConfFileName(), []byte(conf), 0644)
 }
 
 func (r *stellarCoreRunner) createCmd(params ...string) *exec.Cmd {

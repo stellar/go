@@ -1,6 +1,7 @@
 package horizon
 
 import (
+	"github.com/stellar/go/ingest/ledgerbackend"
 	"net/url"
 	"time"
 
@@ -16,14 +17,13 @@ type Config struct {
 	Port               uint
 	AdminPort          uint
 
-	EnableCaptiveCoreIngestion  bool
-	CaptiveCoreBinaryPath       string
-	CaptiveCoreConfigAppendPath string
-	RemoteCaptiveCoreURL        string
-	CaptiveCoreHTTPPort         uint
-	CaptiveCorePeerPort         uint
-	CaptiveCoreLogPath          string
-	CaptiveCoreStoragePath      string
+	EnableCaptiveCoreIngestion bool
+	CaptiveCoreBinaryPath      string
+	RemoteCaptiveCoreURL       string
+	CaptiveCoreConfigPath      string
+	CaptiveCoreTomlParams      ledgerbackend.CaptiveCoreTomlParams
+	CaptiveCoreToml            *ledgerbackend.CaptiveCoreToml
+	CaptiveCoreStoragePath     string
 
 	StellarCoreDatabaseURL string
 	StellarCoreURL         string

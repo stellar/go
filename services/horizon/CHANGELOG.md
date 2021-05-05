@@ -5,6 +5,7 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+* Improve parsing logic for captive core toml configuration ([3558](https://github.com/stellar/go/pull/3558)).
 * Refactor `ingest/ledgerbackend/LedgerBackend.GetLedger` method to always block, removing `ingest/ledgerbackend/LedgerBackend.GetLedgerBlocking`. Adds a first `context.Context` param to most `LedgerBackend` methods.
 
 ## v2.2.0
