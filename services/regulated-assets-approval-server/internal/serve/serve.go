@@ -3,7 +3,7 @@ package serve
 import (
 	"fmt"
 	"net/http"
-	"regexp"
+	"net/url"
 	"time"
 
 	"github.com/go-chi/chi"
@@ -65,7 +65,7 @@ func handleHTTP(opts Options) http.Handler {
 		assetCode:         opts.AssetCode,
 		issuerAddress:     issuerKP.Address(),
 		networkPassphrase: opts.NetworkPassphrase,
-		approvalServer:    buildURLString(opts.BaseURL, "/tx_approve"),
+		approvalServer:    buildURLString(opts.BaseURL, "tx-approve"),
 		kycThreshold:      float64(opts.KYCPaymentThreshold),
 	}.ServeHTTP)
 	mux.Get("/friendbot", friendbotHandler{
@@ -91,11 +91,10 @@ func (opts Options) horizonClient() horizonclient.ClientInterface {
 }
 
 func buildURLString(baseURL, endpoint string) string {
-	urlRegexp, err := regexp.Compile(`([^:])(//+)`)
-	if err != nil {
-		log.Fatal(errors.Wrap(err, "compiling regex"))
-	}
-
 	fullPath := fmt.Sprintf("%s/%s", baseURL, endpoint)
-	return urlRegexp.ReplaceAllString(fullPath, "$1/")
+	URL, err := url.Parse(fullPath)
+	if err != nil {
+		log.Fatal(errors.Wrapf(err, "Unable to parse URL: %s", baseURL))
+	}
+	return URL.String()
 }
