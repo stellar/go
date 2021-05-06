@@ -69,6 +69,21 @@ func (c *ServeCommand) Command() *cobra.Command {
 			FlagDefault: 8000,
 			Required:    true,
 		},
+		{
+			Name:      "base-url",
+			Usage:     "The base url address to this server",
+			OptType:   types.String,
+			ConfigKey: &opts.BaseURL,
+			Required:  true,
+		},
+		{
+			Name:        "kyc-required-payment-amount-threshold",
+			Usage:       "The amount threshold to require KYC",
+			OptType:     types.String,
+			ConfigKey:   &opts.KYCRequiredPaymentAmountThreshold,
+			FlagDefault: "500",
+			Required:    true,
+		},
 	}
 	cmd := &cobra.Command{
 		Use:   "serve",
