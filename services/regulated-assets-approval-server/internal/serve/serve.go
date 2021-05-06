@@ -18,14 +18,14 @@ import (
 )
 
 type Options struct {
-	IssuerAccountSecret    string
-	AssetCode              string
-	FriendbotPaymentAmount int
-	HorizonURL             string
-	NetworkPassphrase      string
-	Port                   int
-	BaseURL                string
-	KYCPaymentThreshold    int
+	IssuerAccountSecret               string
+	AssetCode                         string
+	FriendbotPaymentAmount            int
+	HorizonURL                        string
+	NetworkPassphrase                 string
+	Port                              int
+	BaseURL                           string
+	KYCRequiredPaymentAmountThreshold int
 }
 
 func Serve(opts Options) {
@@ -67,7 +67,7 @@ func handleHTTP(opts Options) http.Handler {
 		issuerAddress:     issuerKP.Address(),
 		networkPassphrase: opts.NetworkPassphrase,
 		approvalServer:    buildURLString(opts.BaseURL, "tx-approve"),
-		kycThreshold:      float64(opts.KYCPaymentThreshold),
+		kycThreshold:      float64(opts.KYCRequiredPaymentAmountThreshold),
 	}.ServeHTTP)
 	mux.Get("/friendbot", friendbotHandler{
 		assetCode:           opts.AssetCode,
