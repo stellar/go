@@ -14,49 +14,61 @@ import (
 )
 
 func TestTomlHandler_validate(t *testing.T) {
-	// empty asset code
+	// empty network passphrase
 	h := stellarTOMLHandler{}
 	err := h.validate()
+	require.EqualError(t, err, "network passphrase cannot be empty")
+
+	// empty asset code
+	h = stellarTOMLHandler{
+		networkPassphrase: network.TestNetworkPassphrase,
+	}
+	err = h.validate()
 	require.EqualError(t, err, "asset code cannot be empty")
 
 	// empty asset issuer address
 	h = stellarTOMLHandler{
-		assetCode: "FOOBAR",
+		networkPassphrase: network.TestNetworkPassphrase,
+		assetCode:         "FOOBAR",
 	}
 	err = h.validate()
 	require.EqualError(t, err, "asset issuer address cannot be empty")
 
 	// invalid asset issuer address
 	h = stellarTOMLHandler{
-		assetCode:     "FOOBAR",
-		issuerAddress: "foobar",
+		networkPassphrase: network.TestNetworkPassphrase,
+		assetCode:         "FOOBAR",
+		issuerAddress:     "foobar",
 	}
 	err = h.validate()
 	require.EqualError(t, err, "asset issuer address is not a valid public key")
 
 	// empty approval server
 	h = stellarTOMLHandler{
-		assetCode:     "FOOBAR",
-		issuerAddress: "GCVDOU4YHHXGM3QYVSDHPQIFMZKXTFSIYO4HJOJZOTR7GURVQO6IQ5HM",
+		networkPassphrase: network.TestNetworkPassphrase,
+		assetCode:         "FOOBAR",
+		issuerAddress:     "GCVDOU4YHHXGM3QYVSDHPQIFMZKXTFSIYO4HJOJZOTR7GURVQO6IQ5HM",
 	}
 	err = h.validate()
 	require.EqualError(t, err, "approval server cannot be empty")
 
 	// empty kyc threshold
 	h = stellarTOMLHandler{
-		assetCode:      "FOOBAR",
-		issuerAddress:  "GCVDOU4YHHXGM3QYVSDHPQIFMZKXTFSIYO4HJOJZOTR7GURVQO6IQ5HM",
-		approvalServer: "localhost:8000/tx_approve",
+		networkPassphrase: network.TestNetworkPassphrase,
+		assetCode:         "FOOBAR",
+		issuerAddress:     "GCVDOU4YHHXGM3QYVSDHPQIFMZKXTFSIYO4HJOJZOTR7GURVQO6IQ5HM",
+		approvalServer:    "localhost:8000/tx_approve",
 	}
 	err = h.validate()
 	require.EqualError(t, err, "kyc threshold cannot be zero")
 
 	// success
 	h = stellarTOMLHandler{
-		assetCode:      "FOOBAR",
-		issuerAddress:  "GCVDOU4YHHXGM3QYVSDHPQIFMZKXTFSIYO4HJOJZOTR7GURVQO6IQ5HM",
-		approvalServer: "localhost:8000/tx_approve",
-		kycThreshold:   500,
+		networkPassphrase: network.TestNetworkPassphrase,
+		assetCode:         "FOOBAR",
+		issuerAddress:     "GCVDOU4YHHXGM3QYVSDHPQIFMZKXTFSIYO4HJOJZOTR7GURVQO6IQ5HM",
+		approvalServer:    "localhost:8000/tx_approve",
+		kycThreshold:      500,
 	}
 	err = h.validate()
 	require.NoError(t, err)

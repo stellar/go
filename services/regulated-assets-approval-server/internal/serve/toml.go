@@ -19,6 +19,10 @@ type stellarTOMLHandler struct {
 }
 
 func (h stellarTOMLHandler) validate() error {
+	if h.networkPassphrase == "" {
+		return errors.New("network passphrase cannot be empty")
+	}
+
 	if h.assetCode == "" {
 		return errors.New("asset code cannot be empty")
 	}
