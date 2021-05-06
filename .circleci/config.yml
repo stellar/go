@@ -383,6 +383,19 @@ jobs:
             docker build -f services/horizon/docker/Dockerfile.dev -t stellar/horizon:$VERSION .
             docker push stellar/horizon:$VERSION
 
+  test_verify_range_docker_image:
+    docker:
+      - image: docker:18.04-git
+    steps:
+      - checkout
+      - setup_remote_docker
+      - run:
+          name: Build and test Verify Range Docker image
+          command: |
+            docker build -f services/horizon/docker/verify-range/Dockerfile -t stellar/horizon-verify-range services/horizon/docker/verify-range/
+            # Any range should do for basic testing, this range was chosen pretty early in history so that it only takes a few mins to run
+            docker run -ti -e BRANCH=${CIRCLE_SHA1} -e FROM=10000063 -e TO=10000127 stellar/horizon-verify-range
+
   publish_latest_horizon_docker_image:
     docker:
       - image: docker:18.04-git
@@ -493,6 +506,7 @@ workflows:
           name: test_horizon_integration_cap35_with_captive_core
           enable-captive-core: true
           enable-cap-35-tests: true
+      - test_verify_range_docker_image
       - publish_state_diff_docker_image:
           filters:
               branches:

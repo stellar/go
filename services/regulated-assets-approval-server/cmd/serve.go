@@ -30,6 +30,14 @@ func (c *ServeCommand) Command() *cobra.Command {
 			Required:  true,
 		},
 		{
+			Name:        "database-url",
+			Usage:       "Database URL",
+			OptType:     types.String,
+			ConfigKey:   &opts.DatabaseURL,
+			FlagDefault: "postgres://localhost:5432/?sslmode=disable",
+			Required:    true,
+		},
+		{
 			Name:        "friendbot-payment-amount",
 			Usage:       "The amount of regulated assets the friendbot will be distributing",
 			OptType:     types.Int,

@@ -19,14 +19,15 @@ import (
 )
 
 type Options struct {
-	IssuerAccountSecret               string
 	AssetCode                         string
+	BaseURL                           string
+	DatabaseURL                       string
 	FriendbotPaymentAmount            int
 	HorizonURL                        string
+	IssuerAccountSecret               string
+	KYCRequiredPaymentAmountThreshold string
 	NetworkPassphrase                 string
 	Port                              int
-	BaseURL                           string
-	KYCRequiredPaymentAmountThreshold string
 }
 
 func Serve(opts Options) {

@@ -24,9 +24,24 @@ Usage:
   regulated-assets-approval-server [command]
 
 Available Commands:
+  migrate     Run migrations on the database
   serve       Serve the SEP-8 Approval Server
 
 Use "regulated-assets-approval-server [command] --help" for more information about a command.
+```
+
+### Usage: Migrate
+
+```sh
+$ go install
+$ regulated-assets-approval-server migrate --help
+Run migrations on the database
+
+Usage:
+  regulated-assets-approval-server migrate [up|down] [count] [flags]
+
+Flags:
+      --database-url string   Database URL (DATABASE_URL) (default "postgres://localhost:5432/?sslmode=disable")
 ```
 
 ### Usage: Serve
@@ -41,6 +56,7 @@ Usage:
 
 Flags:
       --asset-code string              The code of the regulated asset (ASSET_CODE)
+      --database-url string            Database URL (DATABASE_URL) (default "postgres://localhost:5432/?sslmode=disable")
       --friendbot-payment-amount int   The amount of regulated assets the friendbot will be distributing (FRIENDBOT_PAYMENT_AMOUNT) (default 10000)
       --horizon-url string             Horizon URL used for looking up account details (HORIZON_URL) (default "https://horizon-testnet.stellar.org/")
       --issuer-account-secret string   Secret key of the asset issuer's stellar account. (ISSUER_ACCOUNT_SECRET)
