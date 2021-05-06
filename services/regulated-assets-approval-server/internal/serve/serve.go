@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"path"
 	"time"
 
 	"github.com/go-chi/chi"
@@ -91,10 +92,10 @@ func (opts Options) horizonClient() horizonclient.ClientInterface {
 }
 
 func buildURLString(baseURL, endpoint string) string {
-	fullPath := fmt.Sprintf("%s/%s", baseURL, endpoint)
-	URL, err := url.Parse(fullPath)
+	URL, err := url.Parse(baseURL)
 	if err != nil {
 		log.Fatal(errors.Wrapf(err, "Unable to parse URL: %s", baseURL))
 	}
+	URL.Path = path.Join(URL.Path, endpoint)
 	return URL.String()
 }
