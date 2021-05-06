@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
+	"github.com/stellar/go/amount"
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/support/errors"
@@ -25,7 +26,7 @@ type Options struct {
 	NetworkPassphrase                 string
 	Port                              int
 	BaseURL                           string
-	KYCRequiredPaymentAmountThreshold int
+	KYCRequiredPaymentAmountThreshold string
 }
 
 func Serve(opts Options) {
@@ -54,6 +55,10 @@ func handleHTTP(opts Options) http.Handler {
 	if err != nil {
 		log.Fatal(errors.Wrap(err, "parsing secret"))
 	}
+	parsedKYCRequiredPaymentThreshold, err := amount.ParseInt64(opts.KYCRequiredPaymentAmountThreshold)
+	if err != nil {
+		log.Fatal(errors.Wrapf(err, "%s cannot be parsed as a Stellar amount", opts.KYCRequiredPaymentAmountThreshold))
+	}
 	mux := chi.NewMux()
 
 	mux.Use(middleware.RequestID)
@@ -67,7 +72,7 @@ func handleHTTP(opts Options) http.Handler {
 		issuerAddress:     issuerKP.Address(),
 		networkPassphrase: opts.NetworkPassphrase,
 		approvalServer:    buildURLString(opts.BaseURL, "tx-approve"),
-		kycThreshold:      float64(opts.KYCRequiredPaymentAmountThreshold),
+		kycThreshold:      parsedKYCRequiredPaymentThreshold,
 	}.ServeHTTP)
 	mux.Get("/friendbot", friendbotHandler{
 		assetCode:           opts.AssetCode,

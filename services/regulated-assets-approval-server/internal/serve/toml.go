@@ -10,7 +10,7 @@ type stellarTOMLHandler struct {
 	approvalServer    string
 	issuerAddress     string
 	networkPassphrase string
-	kycThreshold      float64
+	kycThreshold      int64
 }
 
 func (h stellarTOMLHandler) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
