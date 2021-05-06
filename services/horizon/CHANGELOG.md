@@ -5,8 +5,24 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
-* Improve parsing logic for captive core toml configuration ([3558](https://github.com/stellar/go/pull/3558)).
-* Refactor `ingest/ledgerbackend/LedgerBackend.GetLedger` method to always block, removing `ingest/ledgerbackend/LedgerBackend.GetLedgerBlocking`. Adds a first `context.Context` param to most `LedgerBackend` methods.
+
+## v2.3.0
+
+**Upgrading to this version from <= v2.1.1 will trigger a state rebuild. During this process (which can take up to 20 minutes), Horizon will not ingest new ledgers.**
+
+### New features
+* Added a flag `--skip-migrations-check` that, when set, will skip
+checking if there are any migrations required to start Horizon ([3557](https://github.com/stellar/go/pull/3557)).
+
+### Code changes
+* Improved test suite coverage and stability ([3560](https://github.com/stellar/go/pull/3560), [3562](https://github.com/stellar/go/pull/3562), [3551](https://github.com/stellar/go/pull/3551), and [3547](https://github.com/stellar/go/pull/3547)).
+
+* Refactored ingestion library to hide `TransactionMeta` field ([3561](https://github.com/stellar/go/pull/3561)).
+
+* Improved session handling and timeouts ([3576](https://github.com/stellar/go/pull/3576), [3545](https://github.com/stellar/go/pull/3545), and [3567](https://github.com/stellar/go/pull/3567)).
+
+* Improved stability of Captive Core's configuration options ([3558](https://github.com/stellar/go/pull/3558)).
+
 
 ## v2.2.0
 
@@ -30,7 +46,7 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 ### Breaking changes
 
 * Add a flag `--captive-core-storage-path/CAPTIVE_CORE_STORAGE_PATH` that allows users to control the storage location for Captive Core bucket data ([3479](https://github.com/stellar/go/pull/3479)).
-  Previously, Horizon created a directory in `/tmp` to store Captive Core bucket data. Now, if the captive core storage path flag is not set, Horizon will default to using the current working directory.
+  - Previously, Horizon created a directory in `/tmp` to store Captive Core bucket data. Now, if the captive core storage path flag is not set, Horizon will default to using the current working directory.
 * Add a flag `--captive-core-log-path`/`CAPTIVE_CORE_LOG_PATH` that allows users to control the location of the logs emitted by Captive Core ([3472](https://github.com/stellar/go/pull/3472)). If you have a `LOG_FILE_PATH` entry in your Captive Core toml file remove that entry and use the horizon flag instead.
 * `--stellar-core-db-url` / `STELLAR_CORE_DATABASE_URL` should only be configured if Horizon ingestion is enabled otherwise Horizon will not start ([3477](https://github.com/stellar/go/pull/3477)).
 
@@ -42,7 +58,7 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
   - The `amount`, and `num_accounts` fields in `/assets` endpoint are deprecated. Fields will be removed in Horizon 3.0. You can find the same data under `balances.authorized`, and `accounts.authorized`, respectively.
 * Add a flag `--captive-core-peer-port`/`CAPTIVE_CORE_PEER_PORT` that allows users to control which port the Captive Core subprocess will bind to for connecting to the Stellar swarm. ([3483](https://github.com/stellar/go/pull/3484)).
 * Add 2 new HTTP endpoints `GET claimable_balances/{id}/transactions` and `GET claimable_balances/{id}/operations`, which respectively return the transactions and operations related to a provided Claimable Balance Identifier `{id}`.
-* Add Stellar Protocol 16 support. This release comes with support for Protocol 16 ([CAP 35](https://github.com/stellar/stellar-protocol/blob/master/core/cap-0035.md): asset clawback). See [the downstream SDK issue template](https://gist.github.com/2opremio/89c4775104635382d51b6f5e41cbf6d5) for details on what changed on Horizon's side. For full details, please read [CAP 35](https://github.com/stellar/stellar-protocol/blob/master/core/cap-0035.md).
+* Add Stellar Protocol 17 support. This release comes with support for Protocol 17 ([CAP 35](https://github.com/stellar/stellar-protocol/blob/master/core/cap-0035.md): asset clawback). See [the downstream SDK issue template](https://gist.github.com/2opremio/89c4775104635382d51b6f5e41cbf6d5) for details on what changed on Horizon's side. For full details, please read [CAP 35](https://github.com/stellar/stellar-protocol/blob/master/core/cap-0035.md).
 
 
 ## v2.0.0
