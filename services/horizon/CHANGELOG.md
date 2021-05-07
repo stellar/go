@@ -6,7 +6,7 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 ## Unreleased
 
 
-## v2.2.1
+## v2.3.0
 
 **Upgrading to this version from <= v2.1.1 will trigger a state rebuild. During this process (which can take up to 20 minutes), Horizon will not ingest new ledgers.**
 
