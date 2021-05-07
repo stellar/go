@@ -6,18 +6,12 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 ## Unreleased
 
 
-## v2.3.0
+## v2.2.1
 
 **Upgrading to this version from <= v2.1.1 will trigger a state rebuild. During this process (which can take up to 20 minutes), Horizon will not ingest new ledgers.**
 
-### New features
-* Added a flag `--skip-migrations-check` that, when set, will skip
-checking if there are any migrations required to start Horizon ([3557](https://github.com/stellar/go/pull/3557)).
-
 ### Code changes
 * Improved test suite coverage and stability ([3560](https://github.com/stellar/go/pull/3560), [3562](https://github.com/stellar/go/pull/3562), [3551](https://github.com/stellar/go/pull/3551), and [3547](https://github.com/stellar/go/pull/3547)).
-
-* Refactored ingestion library to hide `TransactionMeta` field ([3561](https://github.com/stellar/go/pull/3561)).
 
 * Improved session handling and timeouts ([3576](https://github.com/stellar/go/pull/3576), [3545](https://github.com/stellar/go/pull/3545), and [3567](https://github.com/stellar/go/pull/3567)).
 
