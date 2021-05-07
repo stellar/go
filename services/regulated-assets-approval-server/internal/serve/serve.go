@@ -103,7 +103,6 @@ func handleHTTP(opts Options) http.Handler {
 		horizonClient:     horizonClient,
 		kycThreshold:      parsedKYCRequiredPaymentThreshold,
 		networkPassphrase: opts.NetworkPassphrase,
-		paymentAmount:     opts.FriendbotPaymentAmount,
 	}.ServeHTTP)
 	return mux
 }

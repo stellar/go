@@ -23,11 +23,42 @@ type txApproveHandler struct {
 	horizonClient     horizonclient.ClientInterface
 	kycThreshold      int64
 	networkPassphrase string
-	paymentAmount     int
 }
 
 type txApproveRequest struct {
 	Transaction string `json:"tx" form:"tx"`
+}
+
+func (h txApproveHandler) validate() error {
+	if h.issuerKP == nil {
+		return errors.New("issuer keypair cannot be nil")
+	}
+
+	if h.assetCode == "" {
+		return errors.New("asset code cannot be empty")
+	}
+
+	if h.baseURL == "" {
+		return errors.New("base url cannot be empty")
+	}
+
+	if h.db == nil {
+		return errors.New("db cannot be nil")
+	}
+
+	if h.horizonClient == nil {
+		return errors.New("horizon client cannot be nil")
+	}
+
+	if h.kycThreshold <= 0 {
+		return errors.New("kyc threshold cannot be less than or equal to zero")
+	}
+
+	if h.networkPassphrase == "" {
+		return errors.New("network passphrase cannot be empty")
+	}
+
+	return nil
 }
 
 func (h txApproveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {

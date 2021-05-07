@@ -10,11 +10,119 @@ import (
 	"testing"
 
 	"github.com/go-chi/chi"
+	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
+	"github.com/stellar/go/network"
+	"github.com/stellar/go/services/regulated-assets-approval-server/internal/db/dbtest"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func Test_txApproveHandler_validate(t *testing.T) {
+	// empty asset issuer KP
+	issuerAccKeyPair := keypair.MustRandom()
+	h := txApproveHandler{}
+	err := h.validate()
+	require.EqualError(t, err, "issuer keypair cannot be nil")
+
+	// empty asset code
+	h = txApproveHandler{
+		issuerKP: issuerAccKeyPair,
+	}
+	err = h.validate()
+	require.EqualError(t, err, "asset code cannot be empty")
+
+	// empty baseURL
+	h = txApproveHandler{
+		issuerKP:  issuerAccKeyPair,
+		assetCode: "FOOBAR",
+	}
+	err = h.validate()
+	require.EqualError(t, err, "base url cannot be empty")
+
+	// empty db
+	h = txApproveHandler{
+		issuerKP:  issuerAccKeyPair,
+		assetCode: "FOOBAR",
+		baseURL:   "sep-8-reference.com",
+	}
+	err = h.validate()
+	require.EqualError(t, err, "db cannot be nil")
+
+	// empty horizon client
+	db := dbtest.Open(t)
+	defer db.Close()
+	conn := db.Open()
+	defer conn.Close()
+	h = txApproveHandler{
+		issuerKP:  issuerAccKeyPair,
+		assetCode: "FOOBAR",
+		baseURL:   "sep-8-reference.com",
+		db:        conn,
+	}
+	err = h.validate()
+	require.EqualError(t, err, "horizon client cannot be nil")
+
+	// no horizon client
+	h = txApproveHandler{
+		issuerKP:  issuerAccKeyPair,
+		assetCode: "FOOBAR",
+		baseURL:   "sep-8-reference.com",
+		db:        conn,
+	}
+	err = h.validate()
+	require.EqualError(t, err, "horizon client cannot be nil")
+
+	// empty kyc threshold
+	horizonMock := horizonclient.MockClient{}
+	h = txApproveHandler{
+		issuerKP:      issuerAccKeyPair,
+		assetCode:     "FOOBAR",
+		baseURL:       "sep-8-reference.com",
+		db:            conn,
+		horizonClient: &horizonMock,
+	}
+	err = h.validate()
+	require.EqualError(t, err, "kyc threshold cannot be less than or equal to zero")
+
+	// negative kyc threshold
+	h = txApproveHandler{
+		issuerKP:      issuerAccKeyPair,
+		assetCode:     "FOOBAR",
+		baseURL:       "sep-8-reference.com",
+		db:            conn,
+		horizonClient: &horizonMock,
+		kycThreshold:  -500,
+	}
+	err = h.validate()
+	require.EqualError(t, err, "kyc threshold cannot be less than or equal to zero")
+
+	// empty passphase
+	h = txApproveHandler{
+		issuerKP:      issuerAccKeyPair,
+		assetCode:     "FOOBAR",
+		baseURL:       "sep-8-reference.com",
+		db:            conn,
+		horizonClient: &horizonMock,
+		kycThreshold:  500,
+	}
+	err = h.validate()
+	require.EqualError(t, err, "network passphrase cannot be empty")
+
+	// success
+	h = txApproveHandler{
+		issuerKP:          issuerAccKeyPair,
+		assetCode:         "FOOBAR",
+		baseURL:           "postgres://127.0.0.1:0",
+		db:                conn,
+		horizonClient:     &horizonMock,
+		kycThreshold:      500,
+		networkPassphrase: network.TestNetworkPassphrase,
+	}
+	err = h.validate()
+	require.NoError(t, err)
+}
 
 func TestTxApproveHandler_isRejected(t *testing.T) {
 	ctx := context.Background()
