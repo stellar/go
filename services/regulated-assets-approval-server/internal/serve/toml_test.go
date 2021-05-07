@@ -62,6 +62,17 @@ func TestTomlHandler_validate(t *testing.T) {
 	err = h.validate()
 	require.EqualError(t, err, "kyc threshold cannot be less than or equal to zero")
 
+	// negative kyc threshold
+	h = stellarTOMLHandler{
+		networkPassphrase: network.TestNetworkPassphrase,
+		assetCode:         "FOOBAR",
+		issuerAddress:     "GCVDOU4YHHXGM3QYVSDHPQIFMZKXTFSIYO4HJOJZOTR7GURVQO6IQ5HM",
+		approvalServer:    "localhost:8000/tx-approve",
+		kycThreshold:      -500,
+	}
+	err = h.validate()
+	require.EqualError(t, err, "kyc threshold cannot be less than or equal to zero")
+
 	// success
 	h = stellarTOMLHandler{
 		networkPassphrase: network.TestNetworkPassphrase,
