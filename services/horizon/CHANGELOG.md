@@ -52,7 +52,7 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
   - The `amount`, and `num_accounts` fields in `/assets` endpoint are deprecated. Fields will be removed in Horizon 3.0. You can find the same data under `balances.authorized`, and `accounts.authorized`, respectively.
 * Add a flag `--captive-core-peer-port`/`CAPTIVE_CORE_PEER_PORT` that allows users to control which port the Captive Core subprocess will bind to for connecting to the Stellar swarm. ([3483](https://github.com/stellar/go/pull/3484)).
 * Add 2 new HTTP endpoints `GET claimable_balances/{id}/transactions` and `GET claimable_balances/{id}/operations`, which respectively return the transactions and operations related to a provided Claimable Balance Identifier `{id}`.
-* Add Stellar Protocol 17 support. This release comes with support for Protocol 17 ([CAP 35](https://github.com/stellar/stellar-protocol/blob/master/core/cap-0035.md): asset clawback). See [the downstream SDK issue template](https://gist.github.com/2opremio/89c4775104635382d51b6f5e41cbf6d5) for details on what changed on Horizon's side. For full details, please read [CAP 35](https://github.com/stellar/stellar-protocol/blob/master/core/cap-0035.md).
+* Add Stellar Protocol 16 support. This release comes with support for Protocol 16 ([CAP 35](https://github.com/stellar/stellar-protocol/blob/master/core/cap-0035.md): asset clawback). See [the downstream SDK issue template](https://gist.github.com/2opremio/89c4775104635382d51b6f5e41cbf6d5) for details on what changed on Horizon's side. For full details, please read [CAP 35](https://github.com/stellar/stellar-protocol/blob/master/core/cap-0035.md).
 
 
 ## v2.0.0
