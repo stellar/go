@@ -63,7 +63,7 @@ Flags:
       --network-passphrase string      Network passphrase of the Stellar network transactions should be signed for (NETWORK_PASSPHRASE) (default "Test SDF Network ; September 2015")
       --port int                       Port to listen and serve on (PORT) (default 8000)
       --base-url string                The base url address to this server
-      --kyc-required-payment-amount-threshold string The amount threshold when KYC is required, may contain decimals (default 500 units)
+      --kyc-required-payment-amount-threshold string The amount threshold when KYC is required, may contain decimals and is greater than 0 (default 500 units)
 ```
 
 ## Account Setup

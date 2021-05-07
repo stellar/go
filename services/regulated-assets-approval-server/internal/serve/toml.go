@@ -39,8 +39,8 @@ func (h stellarTOMLHandler) validate() error {
 		return errors.New("approval server cannot be empty")
 	}
 
-	if h.kycThreshold == 0 {
-		return errors.New("kyc threshold cannot be zero")
+	if h.kycThreshold <= 0 {
+		return errors.New("kyc threshold cannot be less than or equal to zero")
 	}
 
 	return nil
