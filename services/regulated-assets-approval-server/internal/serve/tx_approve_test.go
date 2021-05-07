@@ -114,7 +114,7 @@ func Test_txApproveHandler_validate(t *testing.T) {
 	h = txApproveHandler{
 		issuerKP:          issuerAccKeyPair,
 		assetCode:         "FOOBAR",
-		baseURL:           "postgres://127.0.0.1:0",
+		baseURL:           "sep-8-reference.com",
 		db:                conn,
 		horizonClient:     &horizonMock,
 		kycThreshold:      500,
