@@ -13,15 +13,6 @@ import (
 	"github.com/stellar/go/txnbuild"
 )
 
-const (
-	missingParamErr   = "Missing parameter \"tx\"."
-	invalidParamErr   = "Invalid parameter \"tx\"."
-	internalErrErr    = "Internal Error."
-	invalidSrcAccErr  = "The source account is invalid."
-	unauthorizedOpErr = "There is one or more unauthorized operations in the provided transaction."
-	notImplementedErr = "Not implemented."
-)
-
 type txApproveHandler struct {
 	issuerKP  *keypair.Full
 	assetCode string
@@ -63,13 +54,13 @@ func (h txApproveHandler) isRejected(ctx context.Context, in txApproveRequest) (
 	parsed, err := txnbuild.TransactionFromXDR(in.Transaction)
 	if err != nil {
 		log.Ctx(ctx).Error(errors.Wrapf(err, "Parsing transaction %s failed", in.Transaction))
-		return NewRejectedTxApprovalResponse(invalidParamErr), nil
+		return NewRejectedTxApprovalResponse("Invalid parameter \"tx\"."), nil
 	}
 
 	tx, ok := parsed.Transaction()
 	if !ok {
 		log.Ctx(ctx).Errorf("Transaction %s is not a simple transaction.", in.Transaction)
-		return NewRejectedTxApprovalResponse(invalidParamErr), nil
+		return NewRejectedTxApprovalResponse("Invalid parameter \"tx\"."), nil
 	}
 
 	// Check if transaction's source account is the same as the server issuer account.
@@ -77,15 +68,15 @@ func (h txApproveHandler) isRejected(ctx context.Context, in txApproveRequest) (
 		log.Ctx(ctx).Errorf("Transaction %s sourceAccount is the same as the server issuer account %s",
 			in.Transaction,
 			h.issuerKP.Address())
-		return NewRejectedTxApprovalResponse(invalidSrcAccErr), nil
+		return NewRejectedTxApprovalResponse("The source account is invalid."), nil
 	}
 
 	// Check if transaction's operation(s)' sourceaccount is the same as the server issuer account.
 	for _, op := range tx.Operations() {
 		if op.GetSourceAccount() == h.issuerKP.Address() {
-			return NewRejectedTxApprovalResponse(unauthorizedOpErr), nil
+			return NewRejectedTxApprovalResponse("There is one or more unauthorized operations in the provided transaction."), nil
 		}
 	}
 
-	return NewRejectedTxApprovalResponse(notImplementedErr), nil
+	return NewRejectedTxApprovalResponse("Not implemented."), nil
 }

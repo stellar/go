@@ -35,7 +35,7 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 	require.NoError(t, err)
 	wantRejectedResponse := txApprovalResponse{
 		Status:     "rejected",
-		Error:      missingParamErr,
+		Error:      "Missing parameter \"tx\".",
 		StatusCode: http.StatusBadRequest,
 	}
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
@@ -48,7 +48,7 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 	require.NoError(t, err)
 	wantRejectedResponse = txApprovalResponse{
 		Status:     "rejected",
-		Error:      invalidParamErr,
+		Error:      "Invalid parameter \"tx\".",
 		StatusCode: http.StatusBadRequest,
 	}
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
@@ -114,7 +114,7 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 	require.NoError(t, err)
 	wantRejectedResponse = txApprovalResponse{
 		Status:     "rejected",
-		Error:      invalidSrcAccErr,
+		Error:      "The source account is invalid.",
 		StatusCode: http.StatusBadRequest,
 	}
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
@@ -145,7 +145,7 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 	require.NoError(t, err)
 	wantRejectedResponse = txApprovalResponse{
 		Status:     "rejected",
-		Error:      unauthorizedOpErr,
+		Error:      "There is one or more unauthorized operations in the provided transaction.",
 		StatusCode: http.StatusBadRequest,
 	}
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
@@ -176,7 +176,7 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 	require.NoError(t, err)
 	wantRejectedResponse = txApprovalResponse{
 		Status:     "rejected",
-		Error:      notImplementedErr,
+		Error:      "Not implemented.",
 		StatusCode: http.StatusBadRequest,
 	}
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
