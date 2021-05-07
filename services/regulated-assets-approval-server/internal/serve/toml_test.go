@@ -60,7 +60,7 @@ func TestTomlHandler_validate(t *testing.T) {
 		approvalServer:    "localhost:8000/tx-approve",
 	}
 	err = h.validate()
-	require.EqualError(t, err, "kyc threshold cannot be zero")
+	require.EqualError(t, err, "kyc threshold cannot be less than or equal to zero")
 
 	// success
 	h = stellarTOMLHandler{
