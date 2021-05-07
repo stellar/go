@@ -33,9 +33,10 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 	}
 	rejectedResponse, err := handler.isRejected(ctx, req)
 	require.NoError(t, err)
-	wantRejectedResponse := txApproveResponse{
-		Status: Sep8StatusRejected,
-		Error:  missingParamErr,
+	wantRejectedResponse := txApprovalResponse{
+		Status:     "rejected",
+		Error:      missingParamErr,
+		StatusCode: http.StatusBadRequest,
 	}
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
 
@@ -45,9 +46,10 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 	}
 	rejectedResponse, err = handler.isRejected(ctx, req)
 	require.NoError(t, err)
-	wantRejectedResponse = txApproveResponse{
-		Status: Sep8StatusRejected,
-		Error:  invalidParamErr,
+	wantRejectedResponse = txApprovalResponse{
+		Status:     "rejected",
+		Error:      invalidParamErr,
+		StatusCode: http.StatusBadRequest,
 	}
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
 
@@ -110,9 +112,10 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 	}
 	rejectedResponse, err = handler.isRejected(ctx, req)
 	require.NoError(t, err)
-	wantRejectedResponse = txApproveResponse{
-		Status: Sep8StatusRejected,
-		Error:  invalidSrcAccErr,
+	wantRejectedResponse = txApprovalResponse{
+		Status:     "rejected",
+		Error:      invalidSrcAccErr,
+		StatusCode: http.StatusBadRequest,
 	}
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
 
@@ -140,9 +143,10 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 	}
 	rejectedResponse, err = handler.isRejected(ctx, req)
 	require.NoError(t, err)
-	wantRejectedResponse = txApproveResponse{
-		Status: Sep8StatusRejected,
-		Error:  unauthorizedOpErr,
+	wantRejectedResponse = txApprovalResponse{
+		Status:     "rejected",
+		Error:      unauthorizedOpErr,
+		StatusCode: http.StatusBadRequest,
 	}
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
 
@@ -170,9 +174,10 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 	}
 	rejectedResponse, err = handler.isRejected(ctx, req)
 	require.NoError(t, err)
-	wantRejectedResponse = txApproveResponse{
-		Status: Sep8StatusRejected,
-		Error:  notImplementedErr,
+	wantRejectedResponse = txApprovalResponse{
+		Status:     "rejected",
+		Error:      notImplementedErr,
+		StatusCode: http.StatusBadRequest,
 	}
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
 }

@@ -13,12 +13,6 @@ import (
 	"github.com/stellar/go/txnbuild"
 )
 
-type sep8Status string
-
-const (
-	Sep8StatusRejected sep8Status = "rejected"
-)
-
 const (
 	missingParamErr   = "Missing parameter \"tx\"."
 	invalidParamErr   = "Invalid parameter \"tx\"."
@@ -35,18 +29,6 @@ type txApproveHandler struct {
 
 type txApproveRequest struct {
 	Transaction string `json:"tx" form:"tx"`
-}
-
-type txApproveResponse struct {
-	Status sep8Status `json:"status"`
-	Error  string     `json:"error"`
-}
-
-func NewRejectedTXApproveResponse(errorMessage string) *txApproveResponse {
-	return &txApproveResponse{
-		Status: Sep8StatusRejected,
-		Error:  errorMessage,
-	}
 }
 
 func (h txApproveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -72,22 +54,22 @@ func (h txApproveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	httpjson.RenderStatus(w, http.StatusBadRequest, rejectedResponse, httpjson.JSON)
 }
 
-func (h txApproveHandler) isRejected(ctx context.Context, in txApproveRequest) (*txApproveResponse, error) {
+func (h txApproveHandler) isRejected(ctx context.Context, in txApproveRequest) (*txApprovalResponse, error) {
 	if in.Transaction == "" {
-		return NewRejectedTXApproveResponse(missingParamErr), nil
+		return NewRejectedTxApprovalResponse("Missing parameter \"tx\"."), nil
 	}
 
 	// Decode the request transaction.
 	parsed, err := txnbuild.TransactionFromXDR(in.Transaction)
 	if err != nil {
 		log.Ctx(ctx).Error(errors.Wrapf(err, "Parsing transaction %s failed", in.Transaction))
-		return NewRejectedTXApproveResponse(invalidParamErr), nil
+		return NewRejectedTxApprovalResponse(invalidParamErr), nil
 	}
 
 	tx, ok := parsed.Transaction()
 	if !ok {
 		log.Ctx(ctx).Errorf("Transaction %s is not a simple transaction.", in.Transaction)
-		return NewRejectedTXApproveResponse(invalidParamErr), nil
+		return NewRejectedTxApprovalResponse(invalidParamErr), nil
 	}
 
 	// Check if transaction's source account is the same as the server issuer account.
@@ -95,15 +77,15 @@ func (h txApproveHandler) isRejected(ctx context.Context, in txApproveRequest) (
 		log.Ctx(ctx).Errorf("Transaction %s sourceAccount is the same as the server issuer account %s",
 			in.Transaction,
 			h.issuerKP.Address())
-		return NewRejectedTXApproveResponse(invalidSrcAccErr), nil
+		return NewRejectedTxApprovalResponse(invalidSrcAccErr), nil
 	}
 
 	// Check if transaction's operation(s)' sourceaccount is the same as the server issuer account.
 	for _, op := range tx.Operations() {
 		if op.GetSourceAccount() == h.issuerKP.Address() {
-			return NewRejectedTXApproveResponse(unauthorizedOpErr), nil
+			return NewRejectedTxApprovalResponse(unauthorizedOpErr), nil
 		}
 	}
 
-	return NewRejectedTXApproveResponse(notImplementedErr), nil
+	return NewRejectedTxApprovalResponse(notImplementedErr), nil
 }
