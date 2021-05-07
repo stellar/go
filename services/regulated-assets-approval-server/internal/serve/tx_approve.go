@@ -4,6 +4,8 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/jmoiron/sqlx"
+	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/services/regulated-assets-approval-server/internal/serve/httperror"
 	"github.com/stellar/go/support/errors"
@@ -14,8 +16,14 @@ import (
 )
 
 type txApproveHandler struct {
-	issuerKP  *keypair.Full
-	assetCode string
+	issuerKP          *keypair.Full
+	assetCode         string
+	baseURL           string
+	db                *sqlx.DB
+	horizonClient     horizonclient.ClientInterface
+	kycThreshold      int64
+	networkPassphrase string
+	paymentAmount     int
 }
 
 type txApproveRequest struct {
