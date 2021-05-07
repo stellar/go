@@ -57,7 +57,7 @@ func TestTomlHandler_validate(t *testing.T) {
 		networkPassphrase: network.TestNetworkPassphrase,
 		assetCode:         "FOOBAR",
 		issuerAddress:     "GCVDOU4YHHXGM3QYVSDHPQIFMZKXTFSIYO4HJOJZOTR7GURVQO6IQ5HM",
-		approvalServer:    "localhost:8000/tx_approve",
+		approvalServer:    "localhost:8000/tx-approve",
 	}
 	err = h.validate()
 	require.EqualError(t, err, "kyc threshold cannot be zero")
@@ -67,7 +67,7 @@ func TestTomlHandler_validate(t *testing.T) {
 		networkPassphrase: network.TestNetworkPassphrase,
 		assetCode:         "FOOBAR",
 		issuerAddress:     "GCVDOU4YHHXGM3QYVSDHPQIFMZKXTFSIYO4HJOJZOTR7GURVQO6IQ5HM",
-		approvalServer:    "localhost:8000/tx_approve",
+		approvalServer:    "localhost:8000/tx-approve",
 		kycThreshold:      500,
 	}
 	err = h.validate()
@@ -80,7 +80,7 @@ func TestTomlHandler_ServeHTTP(t *testing.T) {
 		networkPassphrase: network.TestNetworkPassphrase,
 		assetCode:         "FOO",
 		issuerAddress:     "GCVDOU4YHHXGM3QYVSDHPQIFMZKXTFSIYO4HJOJZOTR7GURVQO6IQ5HM",
-		approvalServer:    "localhost:8000/tx_approve",
+		approvalServer:    "localhost:8000/tx-approve",
 		kycThreshold:      10,
 	}.ServeHTTP)
 
@@ -101,8 +101,8 @@ func TestTomlHandler_ServeHTTP(t *testing.T) {
 code="FOO"
 issuer="GCVDOU4YHHXGM3QYVSDHPQIFMZKXTFSIYO4HJOJZOTR7GURVQO6IQ5HM"
 regulated=true
-approval_server="localhost:8000/tx_approve"
-approval_criteria="Currently localhost:8000/tx_approve is not approving any FOO transactions."
+approval_server="localhost:8000/tx-approve"
+approval_criteria="Currently localhost:8000/tx-approve is not approving any FOO transactions."
 `
 	require.Equal(t, wantBody, string(body))
 }
