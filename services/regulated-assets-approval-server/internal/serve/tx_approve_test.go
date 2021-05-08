@@ -257,6 +257,37 @@ func TestTxApproveHandlerTxApprove(t *testing.T) {
 	}
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
 
+	// Test if operation is not a payment (in this case allowing trust for a random account)
+	kp03 := keypair.MustRandom()
+	tx, err = txnbuild.NewTransaction(
+		txnbuild.TransactionParams{
+			SourceAccount:        &txnbuild.SimpleAccount{AccountID: kp01.Address()},
+			IncrementSequenceNum: true,
+			Operations: []txnbuild.Operation{
+				&txnbuild.AllowTrust{
+					Trustor:   kp03.Address(),
+					Type:      assetGOAT,
+					Authorize: true,
+				},
+			},
+			BaseFee:    txnbuild.MinBaseFee,
+			Timebounds: txnbuild.NewInfiniteTimeout(),
+		},
+	)
+	require.NoError(t, err)
+	txEnc, err = tx.Base64()
+	req = txApproveRequest{
+		Tx: txEnc,
+	}
+	rejectedResponse, err = handler.txApprove(ctx, req)
+	require.NoError(t, err)
+	wantRejectedResponse = txApprovalResponse{
+		Status:     "rejected",
+		Error:      "There is one or more unauthorized operations in the provided transaction.",
+		StatusCode: http.StatusBadRequest,
+	}
+	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
+
 	// Test "not implemented"
 	tx, err = txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
