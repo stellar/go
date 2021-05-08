@@ -520,6 +520,47 @@ func TestAPIRejectedIntegration(t *testing.T) {
 	}`
 	require.JSONEq(t, wantBody, string(body))
 
+	// Test if the transaction's operation is not a payment.
+	kp03 := keypair.MustRandom()
+	tx, err = txnbuild.NewTransaction(
+		txnbuild.TransactionParams{
+			SourceAccount:        &txnbuild.SimpleAccount{AccountID: kp01.Address()},
+			IncrementSequenceNum: true,
+			Operations: []txnbuild.Operation{
+				&txnbuild.AllowTrust{
+					Trustor:   kp03.Address(),
+					Type:      assetGOAT,
+					Authorize: true,
+				},
+			},
+			BaseFee:    txnbuild.MinBaseFee,
+			Timebounds: txnbuild.NewInfiniteTimeout(),
+		},
+	)
+	require.NoError(t, err)
+	txEnc, err = tx.Base64()
+	req = `{
+		"tx": "` + txEnc + `"
+	}`
+	r = httptest.NewRequest("POST", "/tx_approve", strings.NewReader(req))
+	r = r.WithContext(ctx)
+
+	w = httptest.NewRecorder()
+	m = chi.NewMux()
+	m.Post("/tx_approve", handler.ServeHTTP)
+	m.ServeHTTP(w, r)
+	resp = w.Result()
+
+	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
+
+	body, err = ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	wantBody = `{
+		"status":"rejected", "error":"There is one or more unauthorized operations in the provided transaction."
+	}`
+	require.JSONEq(t, wantBody, string(body))
+
 	// Test "not implemented"
 	tx, err = txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
