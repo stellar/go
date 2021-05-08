@@ -122,6 +122,8 @@ func (h txApproveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	txApproveResp.Render(w)
 }
 
+// txApprove is called to validate the input transaction.
+// At the moment valid transactions will be rejected with "Not implemented." until subsequent updates.
 func (h txApproveHandler) txApprove(ctx context.Context, in txApproveRequest) (resp *txApprovalResponse, err error) {
 	defer func() {
 		log.Ctx(ctx).Debug("==== will log responses ====")
