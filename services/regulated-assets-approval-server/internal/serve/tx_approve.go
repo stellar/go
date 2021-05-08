@@ -26,7 +26,7 @@ type txApproveHandler struct {
 }
 
 type txApproveRequest struct {
-	Transaction string `json:"tx" form:"tx"`
+	Tx string `json:"tx" form:"tx"`
 }
 
 func (h txApproveHandler) validate() error {
@@ -61,11 +61,50 @@ func (h txApproveHandler) validate() error {
 	return nil
 }
 
+// validateInput performs some validations on the provided transaction. It can
+// reject the transaction based on general criteria that would be applied in any
+// approval server.
+func (h txApproveHandler) validateInput(ctx context.Context, in txApproveRequest) (*txnbuild.Transaction, *txApprovalResponse, error) {
+	if in.Tx == "" {
+		return nil, NewRejectedTxApprovalResponse(`Missing query paramater "tx".`), nil
+	}
+
+	genericTx, err := txnbuild.TransactionFromXDR(in.Tx)
+	if err != nil {
+		log.Ctx(ctx).Error(errors.Wrap(err, "parsing transaction xdr"))
+		return nil, NewRejectedTxApprovalResponse("The provided transaction XDR is invalid."), nil
+	}
+
+	tx, ok := genericTx.Transaction()
+	if !ok {
+		return nil, NewRejectedTxApprovalResponse("The provided transaction is not a valid standard transaction."), nil
+	}
+
+	if tx.SourceAccount().AccountID == h.issuerKP.Address() {
+		return tx, NewRejectedTxApprovalResponse("The provided transaction source account is invalid."), nil
+	}
+
+	for _, op := range tx.Operations() {
+		if op.GetSourceAccount() == h.issuerKP.Address() {
+			return tx, NewRejectedTxApprovalResponse("The operation source account is invalid."), nil
+		}
+	}
+
+	return tx, nil, nil
+}
+
 func (h txApproveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
+	err := h.validate()
+	if err != nil {
+		log.Ctx(ctx).Error(errors.Wrap(err, "validating txApproveHandler"))
+		httperror.InternalServerError.Render(w)
+		return
+	}
+
 	in := txApproveRequest{}
-	err := httpdecode.Decode(r, &in)
+	err = httpdecode.Decode(r, &in)
 	if err != nil {
 		log.Ctx(ctx).Error(errors.Wrap(err, "decoding input parameters"))
 		httpErr := httperror.NewHTTPError(http.StatusBadRequest, "Invalid input parameters")
@@ -85,27 +124,27 @@ func (h txApproveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h txApproveHandler) isRejected(ctx context.Context, in txApproveRequest) (*txApprovalResponse, error) {
-	if in.Transaction == "" {
+	if in.Tx == "" {
 		return NewRejectedTxApprovalResponse("Missing parameter \"tx\"."), nil
 	}
 
 	// Decode the request transaction.
-	parsed, err := txnbuild.TransactionFromXDR(in.Transaction)
+	parsed, err := txnbuild.TransactionFromXDR(in.Tx)
 	if err != nil {
-		log.Ctx(ctx).Error(errors.Wrapf(err, "Parsing transaction %s failed", in.Transaction))
+		log.Ctx(ctx).Error(errors.Wrapf(err, "Parsing transaction %s failed", in.Tx))
 		return NewRejectedTxApprovalResponse("Invalid parameter \"tx\"."), nil
 	}
 
 	tx, ok := parsed.Transaction()
 	if !ok {
-		log.Ctx(ctx).Errorf("Transaction %s is not a simple transaction.", in.Transaction)
+		log.Ctx(ctx).Errorf("Transaction %s is not a simple transaction.", in.Tx)
 		return NewRejectedTxApprovalResponse("Invalid parameter \"tx\"."), nil
 	}
 
 	// Check if transaction's source account is the same as the server issuer account.
 	if tx.SourceAccount().AccountID == h.issuerKP.Address() {
 		log.Ctx(ctx).Errorf("Transaction %s sourceAccount is the same as the server issuer account %s",
-			in.Transaction,
+			in.Tx,
 			h.issuerKP.Address())
 		return NewRejectedTxApprovalResponse("The source account is invalid."), nil
 	}

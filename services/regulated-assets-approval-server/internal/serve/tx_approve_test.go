@@ -133,7 +133,7 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 	}
 	// Test if no transaction is submitted.
 	req := txApproveRequest{
-		Transaction: "",
+		Tx: "",
 	}
 	handler := txApproveHandler{
 		issuerKP:  issuerAccKeyPair,
@@ -150,7 +150,7 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 
 	// Test if can't parse XDR.
 	req = txApproveRequest{
-		Transaction: "BADXDRTRANSACTIONENVELOPE",
+		Tx: "BADXDRTRANSACTIONENVELOPE",
 	}
 	rejectedResponse, err = handler.isRejected(ctx, req)
 	require.NoError(t, err)
@@ -191,7 +191,7 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 	feeBumpTxEnc, err := feeBumpTx.Base64()
 	require.NoError(t, err)
 	req = txApproveRequest{
-		Transaction: feeBumpTxEnc,
+		Tx: feeBumpTxEnc,
 	}
 	rejectedResponse, err = handler.isRejected(ctx, req)
 	require.NoError(t, err)
@@ -216,7 +216,7 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 	require.NoError(t, err)
 	txEnc, err := tx.Base64()
 	req = txApproveRequest{
-		Transaction: txEnc,
+		Tx: txEnc,
 	}
 	rejectedResponse, err = handler.isRejected(ctx, req)
 	require.NoError(t, err)
@@ -247,7 +247,7 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 	require.NoError(t, err)
 	txEnc, err = tx.Base64()
 	req = txApproveRequest{
-		Transaction: txEnc,
+		Tx: txEnc,
 	}
 	rejectedResponse, err = handler.isRejected(ctx, req)
 	require.NoError(t, err)
@@ -278,7 +278,7 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 	require.NoError(t, err)
 	txEnc, err = tx.Base64()
 	req = txApproveRequest{
-		Transaction: txEnc,
+		Tx: txEnc,
 	}
 	rejectedResponse, err = handler.isRejected(ctx, req)
 	require.NoError(t, err)
@@ -297,9 +297,19 @@ func TestTxApproveHandler_serveHTTPJson(t *testing.T) {
 		Code:   "GOAT",
 		Issuer: issuerAccKeyPair.Address(),
 	}
+	db := dbtest.Open(t)
+	defer db.Close()
+	conn := db.Open()
+	defer conn.Close()
+	horizonMock := horizonclient.MockClient{}
 	handler := txApproveHandler{
-		issuerKP:  issuerAccKeyPair,
-		assetCode: assetGOAT.GetCode(),
+		issuerKP:          issuerAccKeyPair,
+		assetCode:         assetGOAT.GetCode(),
+		baseURL:           "sep-8-reference.com",
+		db:                conn,
+		horizonClient:     &horizonMock,
+		kycThreshold:      500,
+		networkPassphrase: network.TestNetworkPassphrase,
 	}
 
 	// Test if no transaction is submitted.
@@ -529,9 +539,19 @@ func TestTxApproveHandler_serveHTTPForm(t *testing.T) {
 		Code:   "GOAT",
 		Issuer: issuerAccKeyPair.Address(),
 	}
+	db := dbtest.Open(t)
+	defer db.Close()
+	conn := db.Open()
+	defer conn.Close()
+	horizonMock := horizonclient.MockClient{}
 	handler := txApproveHandler{
-		issuerKP:  issuerAccKeyPair,
-		assetCode: assetGOAT.GetCode(),
+		issuerKP:          issuerAccKeyPair,
+		assetCode:         assetGOAT.GetCode(),
+		baseURL:           "sep-8-reference.com",
+		db:                conn,
+		horizonClient:     &horizonMock,
+		kycThreshold:      500,
+		networkPassphrase: network.TestNetworkPassphrase,
 	}
 
 	// Test if no transaction is submitted.
