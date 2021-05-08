@@ -143,7 +143,7 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 	require.NoError(t, err)
 	wantRejectedResponse := txApprovalResponse{
 		Status:     "rejected",
-		Error:      `Missing parameter "tx"`,
+		Error:      `Missing parameter "tx".`,
 		StatusCode: http.StatusBadRequest,
 	}
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
