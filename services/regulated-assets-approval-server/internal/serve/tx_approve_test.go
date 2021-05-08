@@ -20,12 +20,12 @@ import (
 
 func TestTxApproveHandlerValidate(t *testing.T) {
 	// empty asset issuer KP
-	issuerAccKeyPair := keypair.MustRandom()
 	h := txApproveHandler{}
 	err := h.validate()
 	require.EqualError(t, err, "issuer keypair cannot be nil")
 
 	// empty asset code
+	issuerAccKeyPair := keypair.MustRandom()
 	h = txApproveHandler{
 		issuerKP: issuerAccKeyPair,
 	}
