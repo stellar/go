@@ -60,6 +60,33 @@ func (h txApproveHandler) validate() error {
 	return nil
 }
 
+func (h txApproveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	err := h.validate()
+	if err != nil {
+		log.Ctx(ctx).Error(errors.Wrap(err, "validating txApproveHandler"))
+		httperror.InternalServerError.Render(w)
+		return
+	}
+
+	in := txApproveRequest{}
+	err = httpdecode.Decode(r, &in)
+	if err != nil {
+		log.Ctx(ctx).Error(errors.Wrap(err, "decoding input parameters"))
+		httpErr := httperror.NewHTTPError(http.StatusBadRequest, "Invalid input parameters")
+		httpErr.Render(w)
+		return
+	}
+
+	txApproveResp, err := h.txApprove(ctx, in)
+	if err != nil {
+		httperror.InternalServerError.Render(w)
+		return
+	}
+	txApproveResp.Render(w)
+}
+
 // validateInput performs some validations on the provided transaction. It can
 // reject the transaction based on general criteria that would be applied in any
 // approval server.
@@ -93,33 +120,6 @@ func (h txApproveHandler) validateInput(ctx context.Context, in txApproveRequest
 	}
 
 	return tx, nil, nil
-}
-
-func (h txApproveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	err := h.validate()
-	if err != nil {
-		log.Ctx(ctx).Error(errors.Wrap(err, "validating txApproveHandler"))
-		httperror.InternalServerError.Render(w)
-		return
-	}
-
-	in := txApproveRequest{}
-	err = httpdecode.Decode(r, &in)
-	if err != nil {
-		log.Ctx(ctx).Error(errors.Wrap(err, "decoding input parameters"))
-		httpErr := httperror.NewHTTPError(http.StatusBadRequest, "Invalid input parameters")
-		httpErr.Render(w)
-		return
-	}
-
-	txApproveResp, err := h.txApprove(ctx, in)
-	if err != nil {
-		httperror.InternalServerError.Render(w)
-		return
-	}
-	txApproveResp.Render(w)
 }
 
 // txApprove is called to validate the input transaction.
