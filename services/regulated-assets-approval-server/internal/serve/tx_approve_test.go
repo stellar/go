@@ -139,11 +139,11 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 		issuerKP:  issuerAccKeyPair,
 		assetCode: assetGOAT.GetCode(),
 	}
-	rejectedResponse, err := handler.isRejected(ctx, req)
+	rejectedResponse, err := handler.txApprove(ctx, req)
 	require.NoError(t, err)
 	wantRejectedResponse := txApprovalResponse{
 		Status:     "rejected",
-		Error:      "Missing parameter \"tx\".",
+		Error:      `Missing parameter "tx"`,
 		StatusCode: http.StatusBadRequest,
 	}
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
@@ -152,11 +152,11 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 	req = txApproveRequest{
 		Tx: "BADXDRTRANSACTIONENVELOPE",
 	}
-	rejectedResponse, err = handler.isRejected(ctx, req)
+	rejectedResponse, err = handler.txApprove(ctx, req)
 	require.NoError(t, err)
 	wantRejectedResponse = txApprovalResponse{
 		Status:     "rejected",
-		Error:      "Invalid parameter \"tx\".",
+		Error:      `Invalid parameter "tx".`,
 		StatusCode: http.StatusBadRequest,
 	}
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
@@ -193,7 +193,7 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 	req = txApproveRequest{
 		Tx: feeBumpTxEnc,
 	}
-	rejectedResponse, err = handler.isRejected(ctx, req)
+	rejectedResponse, err = handler.txApprove(ctx, req)
 	require.NoError(t, err)
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse) // wantRejectedResponse is identical to "if can't parse XDR".
 
@@ -218,7 +218,7 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 	req = txApproveRequest{
 		Tx: txEnc,
 	}
-	rejectedResponse, err = handler.isRejected(ctx, req)
+	rejectedResponse, err = handler.txApprove(ctx, req)
 	require.NoError(t, err)
 	wantRejectedResponse = txApprovalResponse{
 		Status:     "rejected",
@@ -249,7 +249,7 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 	req = txApproveRequest{
 		Tx: txEnc,
 	}
-	rejectedResponse, err = handler.isRejected(ctx, req)
+	rejectedResponse, err = handler.txApprove(ctx, req)
 	require.NoError(t, err)
 	wantRejectedResponse = txApprovalResponse{
 		Status:     "rejected",
@@ -280,7 +280,7 @@ func TestTxApproveHandler_isRejected(t *testing.T) {
 	req = txApproveRequest{
 		Tx: txEnc,
 	}
-	rejectedResponse, err = handler.isRejected(ctx, req)
+	rejectedResponse, err = handler.txApprove(ctx, req)
 	require.NoError(t, err)
 	wantRejectedResponse = txApprovalResponse{
 		Status:     "rejected",
