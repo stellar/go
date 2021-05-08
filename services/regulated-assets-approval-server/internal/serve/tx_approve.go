@@ -92,6 +92,7 @@ func (h txApproveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // approval server.
 func (h txApproveHandler) validateInput(ctx context.Context, in txApproveRequest) (*txnbuild.Transaction, *txApprovalResponse, error) {
 	if in.Tx == "" {
+		log.Ctx(ctx).Error(`request is missing parameter "tx".`)
 		return nil, NewRejectedTxApprovalResponse(`Missing parameter "tx".`), nil
 	}
 
@@ -103,11 +104,12 @@ func (h txApproveHandler) validateInput(ctx context.Context, in txApproveRequest
 
 	tx, ok := genericTx.Transaction()
 	if !ok {
+		log.Ctx(ctx).Error(`invalid parameter "tx", generic transaction not given.`)
 		return nil, NewRejectedTxApprovalResponse(`Invalid parameter "tx".`), nil
 	}
 
 	if tx.SourceAccount().AccountID == h.issuerKP.Address() {
-		log.Ctx(ctx).Errorf("Transaction %s sourceAccount is the same as the server issuer account %s",
+		log.Ctx(ctx).Errorf("transaction %s sourceAccount is the same as the server issuer account %s",
 			in.Tx,
 			h.issuerKP.Address())
 		return tx, NewRejectedTxApprovalResponse("The source account is invalid."), nil
@@ -115,6 +117,7 @@ func (h txApproveHandler) validateInput(ctx context.Context, in txApproveRequest
 
 	for _, op := range tx.Operations() {
 		if op.GetSourceAccount() == h.issuerKP.Address() {
+			log.Ctx(ctx).Error(`transaction contains one or more operations where sourceAccount is issuer account.`)
 			return tx, NewRejectedTxApprovalResponse("There is one or more unauthorized operations in the provided transaction."), nil
 		}
 	}
