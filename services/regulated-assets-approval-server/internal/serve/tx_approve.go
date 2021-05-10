@@ -46,9 +46,8 @@ func (h txApproveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	in := txApproveRequest{}
 	err = httpdecode.Decode(r, &in)
 	if err != nil {
-		log.Ctx(ctx).Error(errors.Wrap(err, "decoding input parameters"))
-		httpErr := httperror.NewHTTPError(http.StatusBadRequest, "Invalid input parameters")
-		httpErr.Render(w)
+		log.Ctx(ctx).Error(errors.Wrap(err, "validating txApproveHandler"))
+		httperror.InternalServerError.Render(w)
 		return
 	}
 
