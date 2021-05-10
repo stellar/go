@@ -52,11 +52,8 @@ func (h txApproveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	txApproveResp, err := h.txApprove(ctx, in)
-	if err != nil {
-		httperror.InternalServerError.Render(w)
-		return
-	}
+	txApproveResp := h.txApprove(ctx, in)
+
 	txApproveResp.Render(w)
 }
 
@@ -101,24 +98,21 @@ func (h txApproveHandler) validateInput(ctx context.Context, in txApproveRequest
 		}
 	}
 
-	return nil
+	// Temporarily reject all approval attempts(even those that meet the validateInput standards)
+	return NewRejectedTxApprovalResponse("Not implemented.")
 }
 
 // txApprove is called to validate the input transaction.
 // At the moment valid transactions will be rejected with "Not implemented." until subsequent updates.
-func (h txApproveHandler) txApprove(ctx context.Context, in txApproveRequest) (resp *txApprovalResponse, err error) {
+func (h txApproveHandler) txApprove(ctx context.Context, in txApproveRequest) (resp *txApprovalResponse) {
 	defer func() {
 		log.Ctx(ctx).Debug("==== will log responses ====")
 		log.Ctx(ctx).Debugf("req: %+v", in)
 		log.Ctx(ctx).Debugf("resp: %+v", resp)
-		log.Ctx(ctx).Debugf("err: %+v", err)
 		log.Ctx(ctx).Debug("====  did log responses ====")
 	}()
 
 	txRejectedResp := h.validateInput(ctx, in)
-	if txRejectedResp != nil {
-		return txRejectedResp, nil
-	}
-	// Temporarily reject all approval attempts(even those that meet the validateInput standards)
-	return NewRejectedTxApprovalResponse("Not implemented."), nil
+
+	return txRejectedResp
 }
