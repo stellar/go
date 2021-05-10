@@ -122,5 +122,12 @@ func (h txApproveHandler) txApprove(ctx context.Context, in txApproveRequest) (r
 	if paymentSource == "" {
 		paymentSource = tx.SourceAccount().AccountID
 	}
-	return nil, nil
+
+	// TODO: encode the revised transaction currently this is the same transaction given via request
+	txe, err := tx.Base64()
+	if err != nil {
+		log.Ctx(ctx).Error(errors.Wrap(err, "encoding revised transaction"))
+		return nil, err
+	}
+	return NewRevisedTxApprovalResponse(txe), nil
 }

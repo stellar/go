@@ -519,5 +519,61 @@ func TestAPI_RejectedIntegration(t *testing.T) {
 		"status":"rejected", "error":"Please submit a transaction with exactly one operation of type payment."
 	}`
 	require.JSONEq(t, wantBody, string(body))
+}
 
+func TestAPI_RevisedIntegration(t *testing.T) {
+	ctx := context.Background()
+	issuerAccKeyPair := keypair.MustRandom()
+	assetGOAT := txnbuild.CreditAsset{
+		Code:   "GOAT",
+		Issuer: issuerAccKeyPair.Address(),
+	}
+	handler := txApproveHandler{
+		issuerKP:  issuerAccKeyPair,
+		assetCode: assetGOAT.GetCode(),
+	}
+
+	// Test "Successful" request
+	// TODO: replace this test since its not fully backed with a real revised tx
+	kp01 := keypair.MustRandom()
+	kp02 := keypair.MustRandom()
+	tx, err := txnbuild.NewTransaction(
+		txnbuild.TransactionParams{
+			SourceAccount:        &txnbuild.SimpleAccount{AccountID: kp01.Address()},
+			IncrementSequenceNum: true,
+			Operations: []txnbuild.Operation{
+				&txnbuild.Payment{
+					SourceAccount: kp01.Address(),
+					Destination:   kp02.Address(),
+					Amount:        "1",
+					Asset:         assetGOAT,
+				},
+			},
+			BaseFee:    txnbuild.MinBaseFee,
+			Timebounds: txnbuild.NewInfiniteTimeout(),
+		},
+	)
+	require.NoError(t, err)
+	txEnc, err := tx.Base64()
+	req := `{
+		"tx": "` + txEnc + `"
+	}`
+	r := httptest.NewRequest("POST", "/tx_approve", strings.NewReader(req))
+	r = r.WithContext(ctx)
+
+	w := httptest.NewRecorder()
+	m := chi.NewMux()
+	m.Post("/tx_approve", handler.ServeHTTP)
+	m.ServeHTTP(w, r)
+	resp := w.Result()
+
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
+
+	body, err := ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	wantBody := `{
+		"status":"revised", "tx":"` + txEnc + `", "message":"Authorization and deauthorization operations were added."
+	}`
+	require.JSONEq(t, wantBody, string(body))
 }
