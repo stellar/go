@@ -10,7 +10,7 @@ services:
       - "5641:5641"
     command: ["-p", "5641"]
   core:
-    image: ${CORE_IMAGE:-stellar/stellar-core}
+    image: ${CORE_IMAGE:-stellar/stellar-core:v17.0.0}
     depends_on:
       - core-postgres
     restart: on-failure
