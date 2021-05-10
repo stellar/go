@@ -53,8 +53,8 @@ func TestTxApproveHandlerTxApprove(t *testing.T) {
 		issuerKP:  issuerAccKeyPair,
 		assetCode: assetGOAT.GetCode(),
 	}
-	rejectedResponse := handler.txApprove(ctx, req)
-
+	rejectedResponse, err := handler.txApprove(ctx, req)
+	require.NoError(t, err)
 	wantRejectedResponse := txApprovalResponse{
 		Status:     "rejected",
 		Error:      `Missing parameter "tx".`,
@@ -66,8 +66,8 @@ func TestTxApproveHandlerTxApprove(t *testing.T) {
 	req = txApproveRequest{
 		Tx: "BADXDRTRANSACTIONENVELOPE",
 	}
-	rejectedResponse = handler.txApprove(ctx, req)
-
+	rejectedResponse, err = handler.txApprove(ctx, req)
+	require.NoError(t, err)
 	wantRejectedResponse = txApprovalResponse{
 		Status:     "rejected",
 		Error:      `Invalid parameter "tx".`,
@@ -107,7 +107,8 @@ func TestTxApproveHandlerTxApprove(t *testing.T) {
 	req = txApproveRequest{
 		Tx: feeBumpTxEnc,
 	}
-	rejectedResponse = handler.txApprove(ctx, req)
+	rejectedResponse, err = handler.txApprove(ctx, req)
+	require.NoError(t, err)
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse) // wantRejectedResponse is identical to "if can't parse XDR".
 
 	// Test if the transaction sourceAccount the same as the server issuer account
@@ -131,7 +132,8 @@ func TestTxApproveHandlerTxApprove(t *testing.T) {
 	req = txApproveRequest{
 		Tx: txEnc,
 	}
-	rejectedResponse = handler.txApprove(ctx, req)
+	rejectedResponse, err = handler.txApprove(ctx, req)
+	require.NoError(t, err)
 	wantRejectedResponse = txApprovalResponse{
 		Status:     "rejected",
 		Error:      "The source account is invalid.",
@@ -161,7 +163,8 @@ func TestTxApproveHandlerTxApprove(t *testing.T) {
 	req = txApproveRequest{
 		Tx: txEnc,
 	}
-	rejectedResponse = handler.txApprove(ctx, req)
+	rejectedResponse, err = handler.txApprove(ctx, req)
+	require.NoError(t, err)
 	wantRejectedResponse = txApprovalResponse{
 		Status:     "rejected",
 		Error:      "There is one or more unauthorized operations in the provided transaction.",
@@ -191,7 +194,8 @@ func TestTxApproveHandlerTxApprove(t *testing.T) {
 	req = txApproveRequest{
 		Tx: txEnc,
 	}
-	rejectedResponse = handler.txApprove(ctx, req)
+	rejectedResponse, err = handler.txApprove(ctx, req)
+	require.NoError(t, err)
 	wantRejectedResponse = txApprovalResponse{
 		Status:     "rejected",
 		Error:      "There is one or more unauthorized operations in the provided transaction.",

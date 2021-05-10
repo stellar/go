@@ -52,58 +52,57 @@ func (h txApproveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	txApproveResp := h.txApprove(ctx, in)
-
+	txApproveResp, err := h.txApprove(ctx, in)
+	if err != nil {
+		httperror.InternalServerError.Render(w)
+		return
+	}
 	txApproveResp.Render(w)
 }
 
 // validateInput performs some validations on the provided transaction. It can
 // reject the transaction based on general criteria that would be applied in any
 // approval server.
-func (h txApproveHandler) validateInput(ctx context.Context, in txApproveRequest) *txApprovalResponse {
+func (h txApproveHandler) validateInput(ctx context.Context, in txApproveRequest) (*txApprovalResponse, *txnbuild.Transaction) {
 	if in.Tx == "" {
 		log.Ctx(ctx).Error(`request is missing parameter "tx".`)
-		return NewRejectedTxApprovalResponse(`Missing parameter "tx".`)
+		return NewRejectedTxApprovalResponse(`Missing parameter "tx".`), nil
 	}
 
 	genericTx, err := txnbuild.TransactionFromXDR(in.Tx)
 	if err != nil {
 		log.Ctx(ctx).Error(errors.Wrap(err, "parsing transaction xdr"))
-		return NewRejectedTxApprovalResponse(`Invalid parameter "tx".`)
+		return NewRejectedTxApprovalResponse(`Invalid parameter "tx".`), nil
 	}
 
 	tx, ok := genericTx.Transaction()
 	if !ok {
 		log.Ctx(ctx).Error(`invalid parameter "tx", generic transaction not given.`)
-		return NewRejectedTxApprovalResponse(`Invalid parameter "tx".`)
+		return NewRejectedTxApprovalResponse(`Invalid parameter "tx".`), nil
 	}
 
 	if tx.SourceAccount().AccountID == h.issuerKP.Address() {
 		log.Ctx(ctx).Errorf("transaction %s sourceAccount is the same as the server issuer account %s",
 			in.Tx,
 			h.issuerKP.Address())
-		return NewRejectedTxApprovalResponse("The source account is invalid.")
+		return NewRejectedTxApprovalResponse("The source account is invalid."), nil
 	}
 
-	for _, op := range tx.Operations() {
-		if op.GetSourceAccount() == h.issuerKP.Address() {
-			log.Ctx(ctx).Error(`transaction contains one or more operations where sourceAccount is issuer account.`)
-			return NewRejectedTxApprovalResponse("There is one or more unauthorized operations in the provided transaction.")
-		}
-
-		_, ok := op.(*txnbuild.Payment)
-		if !ok {
-			log.Ctx(ctx).Error(`transaction contains one or more operations is not of type payment`)
-			return NewRejectedTxApprovalResponse("There is one or more unauthorized operations in the provided transaction.")
-		}
+	if len(tx.Operations()) != 1 {
+		return NewRejectedTxApprovalResponse("Please submit a transaction with exactly one operation of type payment."), nil
 	}
 
-	return nil
+	if tx.Operations()[0].GetSourceAccount() == h.issuerKP.Address() {
+		log.Ctx(ctx).Error(`transaction contains one or more operations where sourceAccount is issuer account.`)
+		return NewRejectedTxApprovalResponse("There is one or more unauthorized operations in the provided transaction."), nil
+	}
+
+	return nil, tx
 }
 
 // txApprove is called to validate the input transaction.
 // At the moment valid transactions will be rejected with "Not implemented." until subsequent updates.
-func (h txApproveHandler) txApprove(ctx context.Context, in txApproveRequest) (resp *txApprovalResponse) {
+func (h txApproveHandler) txApprove(ctx context.Context, in txApproveRequest) (resp *txApprovalResponse, err error) {
 	defer func() {
 		log.Ctx(ctx).Debug("==== will log responses ====")
 		log.Ctx(ctx).Debugf("req: %+v", in)
@@ -111,9 +110,18 @@ func (h txApproveHandler) txApprove(ctx context.Context, in txApproveRequest) (r
 		log.Ctx(ctx).Debug("====  did log responses ====")
 	}()
 
-	txRejectedResp := h.validateInput(ctx, in)
+	txRejectedResp, tx := h.validateInput(ctx, in)
 	if txRejectedResp != nil {
-		return txRejectedResp
+		return txRejectedResp, nil
 	}
-	return nil
+	paymentOp, ok := tx.Operations()[0].(*txnbuild.Payment)
+	if !ok {
+		log.Ctx(ctx).Error(`transaction contains one or more operations is not of type payment`)
+		return NewRejectedTxApprovalResponse("There is one or more unauthorized operations in the provided transaction."), nil
+	}
+	paymentSource := paymentOp.SourceAccount
+	if paymentSource == "" {
+		paymentSource = tx.SourceAccount().AccountID
+	}
+	return nil, nil
 }
