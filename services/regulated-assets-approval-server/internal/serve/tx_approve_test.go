@@ -29,7 +29,7 @@ func TestTxApproveHandlerValidate(t *testing.T) {
 	err = h.validate()
 	require.EqualError(t, err, "asset code cannot be empty")
 
-	// empty baseURL
+	// Success
 	h = txApproveHandler{
 		issuerKP:  issuerAccKeyPair,
 		assetCode: "FOOBAR",
