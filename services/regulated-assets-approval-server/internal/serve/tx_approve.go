@@ -64,35 +64,35 @@ func (h txApproveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // validateInput performs some validations on the provided transaction. It can
 // reject the transaction based on general criteria that would be applied in any
 // approval server.
-func (h txApproveHandler) validateInput(ctx context.Context, in txApproveRequest) (*txnbuild.Transaction, *txApprovalResponse, error) {
+func (h txApproveHandler) validateInput(ctx context.Context, in txApproveRequest) (*txApprovalResponse, error) {
 	if in.Tx == "" {
 		log.Ctx(ctx).Error(`request is missing parameter "tx".`)
-		return nil, NewRejectedTxApprovalResponse(`Missing parameter "tx".`), nil
+		return NewRejectedTxApprovalResponse(`Missing parameter "tx".`), nil
 	}
 
 	genericTx, err := txnbuild.TransactionFromXDR(in.Tx)
 	if err != nil {
 		log.Ctx(ctx).Error(errors.Wrap(err, "parsing transaction xdr"))
-		return nil, NewRejectedTxApprovalResponse(`Invalid parameter "tx".`), nil
+		return NewRejectedTxApprovalResponse(`Invalid parameter "tx".`), nil
 	}
 
 	tx, ok := genericTx.Transaction()
 	if !ok {
 		log.Ctx(ctx).Error(`invalid parameter "tx", generic transaction not given.`)
-		return nil, NewRejectedTxApprovalResponse(`Invalid parameter "tx".`), nil
+		return NewRejectedTxApprovalResponse(`Invalid parameter "tx".`), nil
 	}
 
 	if tx.SourceAccount().AccountID == h.issuerKP.Address() {
 		log.Ctx(ctx).Errorf("transaction %s sourceAccount is the same as the server issuer account %s",
 			in.Tx,
 			h.issuerKP.Address())
-		return tx, NewRejectedTxApprovalResponse("The source account is invalid."), nil
+		return NewRejectedTxApprovalResponse("The source account is invalid."), nil
 	}
 
 	for _, op := range tx.Operations() {
 		if op.GetSourceAccount() == h.issuerKP.Address() {
 			log.Ctx(ctx).Error(`transaction contains one or more operations where sourceAccount is issuer account.`)
-			return tx, NewRejectedTxApprovalResponse("There is one or more unauthorized operations in the provided transaction."), nil
+			return NewRejectedTxApprovalResponse("There is one or more unauthorized operations in the provided transaction."), nil
 		}
 		opXDR, err := op.BuildXDR(false)
 		if err != nil {
@@ -100,11 +100,11 @@ func (h txApproveHandler) validateInput(ctx context.Context, in txApproveRequest
 		}
 		if opXDR.Body.Type != xdr.OperationTypePayment {
 			log.Ctx(ctx).Error(`transaction contains one or more operations is not of type payment`)
-			return tx, NewRejectedTxApprovalResponse("There is one or more unauthorized operations in the provided transaction."), nil
+			return NewRejectedTxApprovalResponse("There is one or more unauthorized operations in the provided transaction."), nil
 		}
 	}
 
-	return tx, nil, nil
+	return nil, nil
 }
 
 // txApprove is called to validate the input transaction.
@@ -118,7 +118,7 @@ func (h txApproveHandler) txApprove(ctx context.Context, in txApproveRequest) (r
 		log.Ctx(ctx).Debug("====  did log responses ====")
 	}()
 
-	_, txRejectedResp, err := h.validateInput(ctx, in)
+	txRejectedResp, err := h.validateInput(ctx, in)
 	if txRejectedResp != nil || err != nil {
 		return txRejectedResp, err
 	}
