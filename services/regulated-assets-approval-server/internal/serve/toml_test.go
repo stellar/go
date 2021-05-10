@@ -113,7 +113,7 @@ code="FOO"
 issuer="GCVDOU4YHHXGM3QYVSDHPQIFMZKXTFSIYO4HJOJZOTR7GURVQO6IQ5HM"
 regulated=true
 approval_server="localhost:8000/tx-approve"
-approval_criteria="Currently localhost:8000/tx-approve is not approving any FOO transactions."
+approval_criteria="Currently localhost:8000/tx-approve only approves FOO payment transactions."
 `
 	require.Equal(t, wantBody, string(body))
 }
