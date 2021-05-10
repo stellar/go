@@ -9,7 +9,11 @@ import (
 	"testing"
 
 	"github.com/go-chi/chi"
+	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
+	"github.com/stellar/go/network"
+	"github.com/stellar/go/protocols/horizon"
+	"github.com/stellar/go/protocols/horizon/base"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -29,10 +33,30 @@ func TestTxApproveHandlerValidate(t *testing.T) {
 	err = h.validate()
 	require.EqualError(t, err, "asset code cannot be empty")
 
-	// Success
+	// No Horizon client.
 	h = txApproveHandler{
 		issuerKP:  issuerAccKeyPair,
 		assetCode: "FOOBAR",
+	}
+	err = h.validate()
+	require.EqualError(t, err, "horizon client cannot be nil")
+
+	// No network passphrase.
+	horizonMock := horizonclient.MockClient{}
+	h = txApproveHandler{
+		issuerKP:      issuerAccKeyPair,
+		assetCode:     "FOOBAR",
+		horizonClient: &horizonMock,
+	}
+	err = h.validate()
+	require.EqualError(t, err, "network passphrase cannot be empty")
+
+	// Success
+	h = txApproveHandler{
+		issuerKP:          issuerAccKeyPair,
+		assetCode:         "FOOBAR",
+		horizonClient:     &horizonMock,
+		networkPassphrase: network.TestNetworkPassphrase,
 	}
 	err = h.validate()
 	require.NoError(t, err)
