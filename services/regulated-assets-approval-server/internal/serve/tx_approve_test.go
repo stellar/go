@@ -235,7 +235,7 @@ func TestTxApproveHandlerTxApprove(t *testing.T) {
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
 }
 
-func TestAPIRejectedIntegration(t *testing.T) {
+func TestAPI_RejectedIntegration(t *testing.T) {
 	ctx := context.Background()
 	issuerAccKeyPair := keypair.MustRandom()
 	assetGOAT := txnbuild.CreditAsset{
