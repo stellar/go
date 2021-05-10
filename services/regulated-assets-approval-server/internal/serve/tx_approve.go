@@ -98,8 +98,7 @@ func (h txApproveHandler) validateInput(ctx context.Context, in txApproveRequest
 		}
 	}
 
-	// Temporarily reject all approval attempts(even those that meet the validateInput standards)
-	return NewRejectedTxApprovalResponse("Not implemented.")
+	return nil
 }
 
 // txApprove is called to validate the input transaction.
@@ -113,6 +112,8 @@ func (h txApproveHandler) txApprove(ctx context.Context, in txApproveRequest) (r
 	}()
 
 	txRejectedResp := h.validateInput(ctx, in)
-
-	return txRejectedResp
+	if txRejectedResp != nil {
+		return txRejectedResp
+	}
+	return nil
 }
