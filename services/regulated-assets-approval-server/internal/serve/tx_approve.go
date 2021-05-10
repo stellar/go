@@ -94,13 +94,11 @@ func (h txApproveHandler) validateInput(ctx context.Context, in txApproveRequest
 			log.Ctx(ctx).Error(`transaction contains one or more operations where sourceAccount is issuer account.`)
 			return NewRejectedTxApprovalResponse("There is one or more unauthorized operations in the provided transaction."), nil
 		}
-		opXDR, err := op.BuildXDR(false)
-		if err != nil {
-			log.Ctx(ctx).Error(errors.Wrapf(err, "failed to build operation %T", op))
-		}
-		if opXDR.Body.Type != xdr.OperationTypePayment {
+
+		_, ok := op.(*txnbuild.Payment)
+		if !ok {
 			log.Ctx(ctx).Error(`transaction contains one or more operations is not of type payment`)
-			return NewRejectedTxApprovalResponse("There is one or more unauthorized operations in the provided transaction."), nil
+			return NewRejectedTxApprovalResponse("There is one or more unauthorized operations in the provided transaction.")
 		}
 	}
 
