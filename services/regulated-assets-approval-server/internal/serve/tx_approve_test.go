@@ -25,7 +25,6 @@ func TestTxApproveHandlerValidate(t *testing.T) {
 	h := txApproveHandler{}
 	err := h.validate()
 	require.EqualError(t, err, "issuer keypair cannot be nil")
-
 	// empty asset code
 	issuerAccKeyPair := keypair.MustRandom()
 	h = txApproveHandler{
@@ -33,7 +32,6 @@ func TestTxApproveHandlerValidate(t *testing.T) {
 	}
 	err = h.validate()
 	require.EqualError(t, err, "asset code cannot be empty")
-
 	// No Horizon client.
 	h = txApproveHandler{
 		issuerKP:  issuerAccKeyPair,
@@ -41,7 +39,6 @@ func TestTxApproveHandlerValidate(t *testing.T) {
 	}
 	err = h.validate()
 	require.EqualError(t, err, "horizon client cannot be nil")
-
 	// No network passphrase.
 	horizonMock := horizonclient.MockClient{}
 	h = txApproveHandler{
@@ -51,7 +48,6 @@ func TestTxApproveHandlerValidate(t *testing.T) {
 	}
 	err = h.validate()
 	require.EqualError(t, err, "network passphrase cannot be empty")
-
 	// Success
 	h = txApproveHandler{
 		issuerKP:          issuerAccKeyPair,
@@ -115,7 +111,6 @@ func TestTxApproveHandlerTxApprove(t *testing.T) {
 		StatusCode: http.StatusBadRequest,
 	}
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
-
 	// Test if can't parse XDR.
 	req = txApproveRequest{
 		Tx: "BADXDRTRANSACTIONENVELOPE",
@@ -128,7 +123,6 @@ func TestTxApproveHandlerTxApprove(t *testing.T) {
 		StatusCode: http.StatusBadRequest,
 	}
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
-
 	// Test if a non generic transaction fails, same result as malformed XDR.
 	senderAcc, err := handler.horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: senderAccKP.Address()})
 	require.NoError(t, err)
@@ -164,7 +158,6 @@ func TestTxApproveHandlerTxApprove(t *testing.T) {
 	rejectedResponse, err = handler.txApprove(ctx, req)
 	require.NoError(t, err)
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse) // wantRejectedResponse is identical to "if can't parse XDR".
-
 	// Test if the transaction sourceAccount the same as the server issuer account
 	issuerAcc, err := handler.horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: issuerAccKeyPair.Address()})
 	require.NoError(t, err)
@@ -197,7 +190,6 @@ func TestTxApproveHandlerTxApprove(t *testing.T) {
 		StatusCode: http.StatusBadRequest,
 	}
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
-
 	// Test if the transaction's operation sourceAccount the same as the server issuer account
 	tx, err = txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
@@ -229,7 +221,6 @@ func TestTxApproveHandlerTxApprove(t *testing.T) {
 		StatusCode: http.StatusBadRequest,
 	}
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
-
 	// Test if operation is not a payment (in this case allowing trust for a random account)
 	kp03 := keypair.MustRandom()
 	horizonMock.
@@ -266,7 +257,6 @@ func TestTxApproveHandlerTxApprove(t *testing.T) {
 		StatusCode: http.StatusBadRequest,
 	}
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
-
 	// Test if multiple operations in transaction
 	tx, err = txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
@@ -304,7 +294,6 @@ func TestTxApproveHandlerTxApprove(t *testing.T) {
 		StatusCode: http.StatusBadRequest,
 	}
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
-
 	// Test if transaction source account seq num is equal to account sequence+1
 	// This tests the scenario where sequence numbers are too far in the future.
 	tx, err = txnbuild.NewTransaction(
@@ -382,7 +371,6 @@ func TestAPI_RejectedIntegration(t *testing.T) {
 		horizonClient:     &horizonMock,
 		networkPassphrase: network.TestNetworkPassphrase,
 	}
-
 	// Test if no transaction is submitted.
 	m := chi.NewMux()
 	m.Post("/tx-approve", handler.ServeHTTP)
@@ -394,17 +382,14 @@ func TestAPI_RejectedIntegration(t *testing.T) {
 	w := httptest.NewRecorder()
 	m.ServeHTTP(w, r)
 	resp := w.Result()
-
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
-
 	body, err := ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 	wantBody := `{
 		"status":"rejected", "error":"Missing parameter \"tx\"."
 	}`
 	require.JSONEq(t, wantBody, string(body))
-
 	// Test if can't parse XDR.
 	req = `{
 		"tx": "BADXDRTRANSACTIONENVELOPE"
@@ -414,17 +399,14 @@ func TestAPI_RejectedIntegration(t *testing.T) {
 	w = httptest.NewRecorder()
 	m.ServeHTTP(w, r)
 	resp = w.Result()
-
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
-
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 	wantBody = `{
 		"status":"rejected", "error":"Invalid parameter \"tx\"."
 	}`
 	require.JSONEq(t, wantBody, string(body))
-
 	// Test if a non generic transaction fails, same result as malformed XDR.
 	senderAcc, err := handler.horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: senderAccKP.Address()})
 	require.NoError(t, err)
@@ -462,17 +444,14 @@ func TestAPI_RejectedIntegration(t *testing.T) {
 	w = httptest.NewRecorder()
 	m.ServeHTTP(w, r)
 	resp = w.Result()
-
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
-
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 	wantBody = `{
 		"status":"rejected", "error":"Invalid parameter \"tx\"."
 	}`
 	require.JSONEq(t, wantBody, string(body))
-
 	// Test if the transaction sourceAccount the same as the server issuer account
 	issuerAcc, err := handler.horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: issuerAccKeyPair.Address()})
 	require.NoError(t, err)
@@ -502,17 +481,14 @@ func TestAPI_RejectedIntegration(t *testing.T) {
 	w = httptest.NewRecorder()
 	m.ServeHTTP(w, r)
 	resp = w.Result()
-
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
-
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 	wantBody = `{
 		"status":"rejected", "error":"The source account is invalid."
 	}`
 	require.JSONEq(t, wantBody, string(body))
-
 	// Test if the transaction's operation sourceAccount the same as the server issuer account
 	tx, err = txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
@@ -541,17 +517,14 @@ func TestAPI_RejectedIntegration(t *testing.T) {
 	w = httptest.NewRecorder()
 	m.ServeHTTP(w, r)
 	resp = w.Result()
-
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
-
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 	wantBody = `{
 		"status":"rejected", "error":"There is one or more unauthorized operations in the provided transaction."
 	}`
 	require.JSONEq(t, wantBody, string(body))
-
 	// Test if the transaction's operation is not a payment.
 	kp03 := keypair.MustRandom()
 	horizonMock.
@@ -586,17 +559,14 @@ func TestAPI_RejectedIntegration(t *testing.T) {
 	w = httptest.NewRecorder()
 	m.ServeHTTP(w, r)
 	resp = w.Result()
-
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
-
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 	wantBody = `{
 		"status":"rejected", "error":"There is one or more unauthorized operations in the provided transaction."
 	}`
 	require.JSONEq(t, wantBody, string(body))
-
 	// Test if more than one operation in transaction
 	tx, err = txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
@@ -631,17 +601,14 @@ func TestAPI_RejectedIntegration(t *testing.T) {
 	w = httptest.NewRecorder()
 	m.ServeHTTP(w, r)
 	resp = w.Result()
-
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
-
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 	wantBody = `{
 		"status":"rejected", "error":"Please submit a transaction with exactly one operation of type payment."
 	}`
 	require.JSONEq(t, wantBody, string(body))
-
 	// Test when transaction source account seq num is not equal to account sequence+1
 	// This tests the scenario where sequence numbers are too far in the future.
 	tx, err = txnbuild.NewTransaction(
@@ -674,10 +641,8 @@ func TestAPI_RejectedIntegration(t *testing.T) {
 	w = httptest.NewRecorder()
 	m.ServeHTTP(w, r)
 	resp = w.Result()
-
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
-
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 	wantBody = `{
@@ -724,7 +689,6 @@ func TestAPI_RevisedIntegration(t *testing.T) {
 		horizonClient:     &horizonMock,
 		networkPassphrase: network.TestNetworkPassphrase,
 	}
-
 	// Test Successful request, transaction source account set == the payment source account
 	senderAcc, err := handler.horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: senderAccKP.Address()})
 	require.NoError(t, err)
@@ -757,7 +721,6 @@ func TestAPI_RevisedIntegration(t *testing.T) {
 	w := httptest.NewRecorder()
 	m.ServeHTTP(w, r)
 	resp := w.Result()
-
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
@@ -765,7 +728,6 @@ func TestAPI_RevisedIntegration(t *testing.T) {
 	require.NoError(t, err)
 	var response map[string]string
 	err = json.Unmarshal(body, &response)
-
 	_, exists := response["status"]
 	assert.True(t, exists)
 	assert.Equal(t, response["status"], "revised")
@@ -774,51 +736,43 @@ func TestAPI_RevisedIntegration(t *testing.T) {
 	assert.Equal(t, response["message"], "Authorization and deauthorization operations were added.")
 	_, exists = response["tx"]
 	assert.True(t, exists)
-
 	// Decode the request's transaction.
 	parsed, err := txnbuild.TransactionFromXDR(response["tx"])
 	require.NoError(t, err)
 	tx, ok := parsed.Transaction()
 	require.True(t, ok)
-
 	// Check if revised transaction only has 5 operations.
 	require.Len(t, tx.Operations(), 5)
-
 	// Check Operation 1: AllowTrust op where issuer fully authorizes account A, asset X.
 	op1, ok := tx.Operations()[0].(*txnbuild.AllowTrust)
 	require.True(t, ok)
 	assert.Equal(t, op1.Trustor, senderAccKP.Address())
 	assert.Equal(t, op1.Type.GetCode(), assetGOAT.GetCode())
 	require.True(t, op1.Authorize)
-
 	// Check  Operation 2: AllowTrust op where issuer fully authorizes account B, asset X.
 	op2, ok := tx.Operations()[1].(*txnbuild.AllowTrust)
 	require.True(t, ok)
 	assert.Equal(t, op2.Trustor, receiverAccKP.Address())
 	assert.Equal(t, op2.Type.GetCode(), assetGOAT.GetCode())
 	require.True(t, op2.Authorize)
-
 	// Check Operation 3: Payment from A to B.
 	op3, ok := tx.Operations()[2].(*txnbuild.Payment)
 	require.True(t, ok)
 	assert.Equal(t, op3.SourceAccount, senderAccKP.Address())
 	assert.Equal(t, op3.Destination, receiverAccKP.Address())
 	assert.Equal(t, op3.Asset, assetGOAT)
-
 	// Check Operation 4: AllowTrust op where issuer fully deauthorizes account B, asset X.
 	op4, ok := tx.Operations()[3].(*txnbuild.AllowTrust)
 	require.True(t, ok)
 	assert.Equal(t, op4.Trustor, receiverAccKP.Address())
 	assert.Equal(t, op4.Type.GetCode(), assetGOAT.GetCode())
 	require.False(t, op4.Authorize)
-
 	// Check Operation 5: AllowTrust op where issuer fully deauthorizes account A, asset X.
 	op5, ok := tx.Operations()[4].(*txnbuild.AllowTrust)
 	require.True(t, ok)
 	assert.Equal(t, op5.Trustor, senderAccKP.Address())
 	assert.Equal(t, op5.Type.GetCode(), assetGOAT.GetCode())
 	require.False(t, op5.Authorize)
-
 	// Test Successful request, transaction source account set and the no payment source account
 	senderAcc, err = handler.horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: senderAccKP.Address()})
 	require.NoError(t, err)
@@ -848,15 +802,12 @@ func TestAPI_RevisedIntegration(t *testing.T) {
 	w = httptest.NewRecorder()
 	m.ServeHTTP(w, r)
 	resp = w.Result()
-
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
-
 	err = json.Unmarshal(body, &response)
-
 	_, exists = response["status"]
 	assert.True(t, exists)
 	assert.Equal(t, response["status"], "revised")
@@ -865,44 +816,37 @@ func TestAPI_RevisedIntegration(t *testing.T) {
 	assert.Equal(t, response["message"], "Authorization and deauthorization operations were added.")
 	_, exists = response["tx"]
 	assert.True(t, exists)
-
 	// Decode the request's transaction.
 	parsed, err = txnbuild.TransactionFromXDR(response["tx"])
 	require.NoError(t, err)
 	tx, ok = parsed.Transaction()
 	require.True(t, ok)
-
 	// Check if revised transaction only has 5 operations.
 	require.Len(t, tx.Operations(), 5)
-
 	// Check Operation 1: AllowTrust op where issuer fully authorizes account A, asset X.
 	op1, ok = tx.Operations()[0].(*txnbuild.AllowTrust)
 	require.True(t, ok)
 	assert.Equal(t, op1.Trustor, senderAccKP.Address())
 	assert.Equal(t, op1.Type.GetCode(), assetGOAT.GetCode())
 	require.True(t, op1.Authorize)
-
 	// Check Operation 2: AllowTrust op where issuer fully authorizes account B, asset X.
 	op2, ok = tx.Operations()[1].(*txnbuild.AllowTrust)
 	require.True(t, ok)
 	assert.Equal(t, op2.Trustor, receiverAccKP.Address())
 	assert.Equal(t, op2.Type.GetCode(), assetGOAT.GetCode())
 	require.True(t, op2.Authorize)
-
 	// Check Operation 3: Payment to B.
 	op3, ok = tx.Operations()[2].(*txnbuild.Payment)
 	require.True(t, ok)
 	assert.Equal(t, op3.SourceAccount, "")
 	assert.Equal(t, op3.Destination, receiverAccKP.Address())
 	assert.Equal(t, op3.Asset, assetGOAT)
-
 	// Check Operation 4: AllowTrust op where issuer fully deauthorizes account B, asset X.
 	op4, ok = tx.Operations()[3].(*txnbuild.AllowTrust)
 	require.True(t, ok)
 	assert.Equal(t, op4.Trustor, receiverAccKP.Address())
 	assert.Equal(t, op4.Type.GetCode(), assetGOAT.GetCode())
 	require.False(t, op4.Authorize)
-
 	// Check Operation 5: AllowTrust op where issuer fully deauthorizes account A, asset X.
 	op5, ok = tx.Operations()[4].(*txnbuild.AllowTrust)
 	require.True(t, ok)
