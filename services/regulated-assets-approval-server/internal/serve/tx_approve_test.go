@@ -726,18 +726,17 @@ func TestAPI_RevisedIntegration(t *testing.T) {
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	body, err := ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
-	var response map[string]string
-	err = json.Unmarshal(body, &response)
-	_, exists := response["status"]
-	assert.True(t, exists)
-	assert.Equal(t, response["status"], "revised")
-	_, exists = response["message"]
-	assert.True(t, exists)
-	assert.Equal(t, response["message"], "Authorization and deauthorization operations were added.")
-	_, exists = response["tx"]
-	assert.True(t, exists)
+	var txApprovePOSTResponse txApprovalResponse
+	err = json.Unmarshal(body, &txApprovePOSTResponse)
+	require.NoError(t, err)
+	wantTXApprovalResponse := txApprovalResponse{
+		Status:  sep8Status("revised"),
+		Tx:      txApprovePOSTResponse.Tx,
+		Message: `Authorization and deauthorization operations were added.`,
+	}
+	assert.Equal(t, wantTXApprovalResponse, txApprovePOSTResponse)
 	// Decode the request's transaction.
-	parsed, err := txnbuild.TransactionFromXDR(response["tx"])
+	parsed, err := txnbuild.TransactionFromXDR(txApprovePOSTResponse.Tx)
 	require.NoError(t, err)
 	tx, ok := parsed.Transaction()
 	require.True(t, ok)
@@ -807,17 +806,18 @@ func TestAPI_RevisedIntegration(t *testing.T) {
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
-	err = json.Unmarshal(body, &response)
-	_, exists = response["status"]
-	assert.True(t, exists)
-	assert.Equal(t, response["status"], "revised")
-	_, exists = response["message"]
-	assert.True(t, exists)
-	assert.Equal(t, response["message"], "Authorization and deauthorization operations were added.")
-	_, exists = response["tx"]
-	assert.True(t, exists)
+	var txApprovePOSTResponse2 txApprovalResponse
+	err = json.Unmarshal(body, &txApprovePOSTResponse2)
+	require.NoError(t, err)
+	wantTXApprovalResponse2 := txApprovalResponse{
+		Status:  sep8Status("revised"),
+		Tx:      txApprovePOSTResponse2.Tx,
+		Message: `Authorization and deauthorization operations were added.`,
+	}
+	assert.Equal(t, wantTXApprovalResponse2, txApprovePOSTResponse2)
 	// Decode the request's transaction.
-	parsed, err = txnbuild.TransactionFromXDR(response["tx"])
+	parsed, err = txnbuild.TransactionFromXDR(txApprovePOSTResponse2.Tx)
+
 	require.NoError(t, err)
 	tx, ok = parsed.Transaction()
 	require.True(t, ok)
