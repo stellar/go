@@ -273,9 +273,12 @@ func TestAPI_RejectedIntegration(t *testing.T) {
 		Code:   "GOAT",
 		Issuer: issuerAccKeyPair.Address(),
 	}
+	horizonMock := horizonclient.MockClient{}
 	handler := txApproveHandler{
-		issuerKP:  issuerAccKeyPair,
-		assetCode: assetGOAT.GetCode(),
+		issuerKP:          issuerAccKeyPair,
+		assetCode:         assetGOAT.GetCode(),
+		horizonClient:     &horizonMock,
+		networkPassphrase: network.TestNetworkPassphrase,
 	}
 
 	// Test if no transaction is submitted.
