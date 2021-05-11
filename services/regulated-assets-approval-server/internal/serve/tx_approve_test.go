@@ -304,6 +304,42 @@ func TestTxApproveHandlerTxApprove(t *testing.T) {
 		StatusCode: http.StatusBadRequest,
 	}
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
+
+	// Test if transaction source account seq num is equal to account sequence+1
+	// This tests the scenario where sequence numbers are too far in the future.
+	tx, err = txnbuild.NewTransaction(
+		txnbuild.TransactionParams{
+			SourceAccount: &horizon.Account{
+				AccountID: senderAccKP.Address(),
+				Sequence:  "50",
+			},
+			IncrementSequenceNum: true,
+			Operations: []txnbuild.Operation{
+				&txnbuild.Payment{
+					SourceAccount: senderAccKP.Address(),
+					Destination:   receiverAccKP.Address(),
+					Amount:        "1",
+					Asset:         assetGOAT,
+				},
+			},
+			BaseFee:    txnbuild.MinBaseFee,
+			Timebounds: txnbuild.NewInfiniteTimeout(),
+		},
+	)
+	require.NoError(t, err)
+	txEnc, err = tx.Base64()
+	require.NoError(t, err)
+	req = txApproveRequest{
+		Tx: txEnc,
+	}
+	rejectedResponse, err = handler.txApprove(ctx, req)
+	require.NoError(t, err)
+	wantRejectedResponse = txApprovalResponse{
+		Status:     "rejected",
+		Error:      "Invalid transaction sequence number.",
+		StatusCode: http.StatusBadRequest,
+	}
+	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
 }
 
 func TestAPI_RejectedIntegration(t *testing.T) {
@@ -603,6 +639,49 @@ func TestAPI_RejectedIntegration(t *testing.T) {
 	require.NoError(t, err)
 	wantBody = `{
 		"status":"rejected", "error":"Please submit a transaction with exactly one operation of type payment."
+	}`
+	require.JSONEq(t, wantBody, string(body))
+
+	// Test when transaction source account seq num is not equal to account sequence+1
+	// This tests the scenario where sequence numbers are too far in the future.
+	tx, err = txnbuild.NewTransaction(
+		txnbuild.TransactionParams{
+			SourceAccount: &horizon.Account{
+				AccountID: senderAccKP.Address(),
+				Sequence:  "50",
+			},
+			IncrementSequenceNum: true,
+			Operations: []txnbuild.Operation{
+				&txnbuild.Payment{
+					SourceAccount: senderAccKP.Address(),
+					Destination:   receiverAccKP.Address(),
+					Amount:        "1",
+					Asset:         assetGOAT,
+				},
+			},
+			BaseFee:    txnbuild.MinBaseFee,
+			Timebounds: txnbuild.NewInfiniteTimeout(),
+		},
+	)
+	require.NoError(t, err)
+	txEnc, err = tx.Base64()
+	require.NoError(t, err)
+	req = `{
+		"tx": "` + txEnc + `"
+	}`
+	r = httptest.NewRequest("POST", "/tx-approve", strings.NewReader(req))
+	r = r.WithContext(ctx)
+	w = httptest.NewRecorder()
+	m.ServeHTTP(w, r)
+	resp = w.Result()
+
+	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
+
+	body, err = ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	wantBody = `{
+		"status":"rejected", "error":"Invalid transaction sequence number."
 	}`
 	require.JSONEq(t, wantBody, string(body))
 }
