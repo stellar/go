@@ -232,6 +232,12 @@ func TestTxApproveHandlerTxApprove(t *testing.T) {
 
 	// Test if operation is not a payment (in this case allowing trust for a random account)
 	kp03 := keypair.MustRandom()
+	horizonMock.
+		On("AccountDetail", horizonclient.AccountRequest{AccountID: kp03.Address()}).
+		Return(horizon.Account{
+			AccountID: kp02.Address(),
+			Sequence:  "5",
+		}, nil)
 	tx, err = txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount:        &acc,
