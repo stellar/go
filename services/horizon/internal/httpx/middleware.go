@@ -364,13 +364,13 @@ type ReplicaSyncCheckMiddleware struct {
 func (m *ReplicaSyncCheckMiddleware) WrapFunc(h http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		for attempt := 1; attempt <= 4; attempt++ {
-			primaryIngestLedger, err := m.PrimaryHistoryQ.GetLastLedgerIngestNonBlocking()
+			primaryIngestLedger, err := m.PrimaryHistoryQ.GetLastLedgerIngestNonBlocking(r.Context())
 			if err != nil {
 				problem.Render(r.Context(), w, err)
 				return
 			}
 
-			replicaIngestLedger, err := m.ReplicaHistoryQ.GetLastLedgerIngestNonBlocking()
+			replicaIngestLedger, err := m.ReplicaHistoryQ.GetLastLedgerIngestNonBlocking(r.Context())
 			if err != nil {
 				problem.Render(r.Context(), w, err)
 				return
