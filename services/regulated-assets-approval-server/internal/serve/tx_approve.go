@@ -115,6 +115,7 @@ func (h txApproveHandler) txApprove(ctx context.Context, in txApproveRequest) (r
 		log.Ctx(ctx).Debug("==== will log responses ====")
 		log.Ctx(ctx).Debugf("req: %+v", in)
 		log.Ctx(ctx).Debugf("resp: %+v", resp)
+		log.Ctx(ctx).Debugf("err: %+v", err)
 		log.Ctx(ctx).Debug("====  did log responses ====")
 	}()
 
@@ -139,18 +140,17 @@ func (h txApproveHandler) txApprove(ctx context.Context, in txApproveRequest) (r
 
 	acc, err := h.horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: paymentSource})
 	if err != nil {
-		err = errors.Wrapf(err, "getting detail for payment source account %s", issuerAddress)
-		log.Ctx(ctx).Error(err)
+		log.Ctx(ctx).Error(errors.Wrapf(err, "getting detail for payment source account %s", issuerAddress))
 		return nil, err
 	}
 	// validate the sequence number
 	accountSequence, err := strconv.ParseInt(acc.Sequence, 10, 64)
 	if err != nil {
-		err = errors.Wrapf(err, "parsing account sequence number %q from string to int64", acc.Sequence)
-		log.Ctx(ctx).Error(err)
+		log.Ctx(ctx).Error(errors.Wrapf(err, "parsing account sequence number %q from string to int64", acc.Sequence))
 		return nil, err
 	}
 	if tx.SourceAccount().Sequence != accountSequence+1 {
+		log.Ctx(ctx).Errorf(`invalid transaction sequence number tx.SourceAccount().Sequence: %d, accountSequence+1:%d`, tx.SourceAccount().Sequence, accountSequence+1)
 		return NewRejectedTxApprovalResponse("Invalid transaction sequence number."), nil
 	}
 
@@ -190,15 +190,13 @@ func (h txApproveHandler) txApprove(ctx context.Context, in txApproveRequest) (r
 		Timebounds:           txnbuild.NewTimeout(300),
 	})
 	if err != nil {
-		err = errors.Wrap(err, "building transaction")
-		log.Ctx(ctx).Error(err)
+		log.Ctx(ctx).Error(errors.Wrap(err, "building transaction"))
 		return nil, err
 	}
 
 	revisedTx, err = revisedTx.Sign(h.networkPassphrase, h.issuerKP)
 	if err != nil {
-		err = errors.Wrap(err, "signing transaction")
-		log.Ctx(ctx).Error(err)
+		log.Ctx(ctx).Error(errors.Wrap(err, "signing transaction"))
 		return nil, err
 	}
 
