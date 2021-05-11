@@ -10,6 +10,10 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 **Upgrading to this version from <= v2.1.1 will trigger a state rebuild. During this process (which can take up to 20 minutes), Horizon will not ingest new ledgers.**
 
+### New features
+* Introduces a flag (`--ro-database-url` / `RO_DATABASE_URL`) which allows setting a connection to a read-replica database ([3574](https://github.com/stellar/go/pull/3574)).
+
+
 ### Code changes
 * Improved test suite coverage and stability ([3560](https://github.com/stellar/go/pull/3560), [3562](https://github.com/stellar/go/pull/3562), [3551](https://github.com/stellar/go/pull/3551), and [3547](https://github.com/stellar/go/pull/3547)).
 
