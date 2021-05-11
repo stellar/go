@@ -81,7 +81,7 @@ func TestTxApproveHandlerTxApprove(t *testing.T) {
 		On("AccountDetail", horizonclient.AccountRequest{AccountID: issuerAccKeyPair.Address()}).
 		Return(horizon.Account{
 			AccountID: issuerAccKeyPair.Address(),
-			Sequence:  "0",
+			Sequence:  "1",
 			Balances: []horizon.Balance{
 				{
 					Asset:   base.Asset{Code: "ASSET", Issuer: issuerAccKeyPair.Address()},
@@ -93,13 +93,13 @@ func TestTxApproveHandlerTxApprove(t *testing.T) {
 		On("AccountDetail", horizonclient.AccountRequest{AccountID: kp01.Address()}).
 		Return(horizon.Account{
 			AccountID: kp01.Address(),
-			Sequence:  "0",
+			Sequence:  "2",
 		}, nil)
 	horizonMock.
 		On("AccountDetail", horizonclient.AccountRequest{AccountID: kp02.Address()}).
 		Return(horizon.Account{
 			AccountID: kp02.Address(),
-			Sequence:  "0",
+			Sequence:  "3",
 		}, nil)
 	handler := txApproveHandler{
 		issuerKP:          issuerAccKeyPair,
@@ -293,7 +293,6 @@ func TestTxApproveHandlerTxApprove(t *testing.T) {
 		StatusCode: http.StatusBadRequest,
 	}
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
-
 }
 
 func TestAPI_RejectedIntegration(t *testing.T) {
@@ -310,11 +309,11 @@ func TestAPI_RejectedIntegration(t *testing.T) {
 		On("AccountDetail", horizonclient.AccountRequest{AccountID: issuerAccKeyPair.Address()}).
 		Return(horizon.Account{
 			AccountID: issuerAccKeyPair.Address(),
-			Sequence:  "0",
+			Sequence:  "1",
 			Balances: []horizon.Balance{
 				{
 					Asset:   base.Asset{Code: "ASSET", Issuer: issuerAccKeyPair.Address()},
-					Balance: "0",
+					Balance: "1",
 				},
 			},
 		}, nil)
@@ -322,13 +321,13 @@ func TestAPI_RejectedIntegration(t *testing.T) {
 		On("AccountDetail", horizonclient.AccountRequest{AccountID: kp01.Address()}).
 		Return(horizon.Account{
 			AccountID: kp01.Address(),
-			Sequence:  "1",
+			Sequence:  "2",
 		}, nil)
 	horizonMock.
 		On("AccountDetail", horizonclient.AccountRequest{AccountID: kp02.Address()}).
 		Return(horizon.Account{
 			AccountID: kp02.Address(),
-			Sequence:  "0",
+			Sequence:  "3",
 		}, nil)
 	handler := txApproveHandler{
 		issuerKP:          issuerAccKeyPair,
@@ -517,6 +516,12 @@ func TestAPI_RejectedIntegration(t *testing.T) {
 
 	// Test if the transaction's operation is not a payment.
 	kp03 := keypair.MustRandom()
+	horizonMock.
+		On("AccountDetail", horizonclient.AccountRequest{AccountID: kp03.Address()}).
+		Return(horizon.Account{
+			AccountID: kp02.Address(),
+			Sequence:  "6",
+		}, nil)
 	tx, err = txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount:        &acc,
