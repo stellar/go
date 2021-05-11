@@ -21,11 +21,11 @@ import (
 )
 
 func TestTxApproveHandlerValidate(t *testing.T) {
-	// empty asset issuer KP
+	// empty asset issuer KP.
 	h := txApproveHandler{}
 	err := h.validate()
 	require.EqualError(t, err, "issuer keypair cannot be nil")
-	// empty asset code
+	// empty asset code.
 	issuerAccKeyPair := keypair.MustRandom()
 	h = txApproveHandler{
 		issuerKP: issuerAccKeyPair,
@@ -48,7 +48,7 @@ func TestTxApproveHandlerValidate(t *testing.T) {
 	}
 	err = h.validate()
 	require.EqualError(t, err, "network passphrase cannot be empty")
-	// Success
+	// Success.
 	h = txApproveHandler{
 		issuerKP:          issuerAccKeyPair,
 		assetCode:         "FOOBAR",
@@ -158,7 +158,7 @@ func TestTxApproveHandlerTxApprove(t *testing.T) {
 	rejectedResponse, err = handler.txApprove(ctx, req)
 	require.NoError(t, err)
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse) // wantRejectedResponse is identical to "if can't parse XDR".
-	// Test if the transaction sourceAccount the same as the server issuer account
+	// Test if the transaction sourceAccount the same as the server issuer account.
 	issuerAcc, err := handler.horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: issuerAccKeyPair.Address()})
 	require.NoError(t, err)
 	tx, err = txnbuild.NewTransaction(
@@ -190,7 +190,7 @@ func TestTxApproveHandlerTxApprove(t *testing.T) {
 		StatusCode: http.StatusBadRequest,
 	}
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
-	// Test if the transaction's operation sourceAccount the same as the server issuer account
+	// Test if the transaction's operation sourceAccount the same as the server issuer account.
 	tx, err = txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount:        &senderAcc,
@@ -221,7 +221,7 @@ func TestTxApproveHandlerTxApprove(t *testing.T) {
 		StatusCode: http.StatusBadRequest,
 	}
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
-	// Test if operation is not a payment (in this case allowing trust for a random account)
+	// Test if operation is not a payment (in this case allowing trust for a random account).
 	kp03 := keypair.MustRandom()
 	horizonMock.
 		On("AccountDetail", horizonclient.AccountRequest{AccountID: kp03.Address()}).
@@ -257,7 +257,7 @@ func TestTxApproveHandlerTxApprove(t *testing.T) {
 		StatusCode: http.StatusBadRequest,
 	}
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
-	// Test if multiple operations in transaction
+	// Test if multiple operations in transaction.
 	tx, err = txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount:        &senderAcc,
@@ -294,7 +294,7 @@ func TestTxApproveHandlerTxApprove(t *testing.T) {
 		StatusCode: http.StatusBadRequest,
 	}
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
-	// Test if transaction source account seq num is equal to account sequence+1
+	// Test if transaction source account seq num is equal to account sequence+1.
 	// This tests the scenario where sequence numbers are too far in the future.
 	tx, err = txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
@@ -452,7 +452,7 @@ func TestAPI_RejectedIntegration(t *testing.T) {
 		"status":"rejected", "error":"Invalid parameter \"tx\"."
 	}`
 	require.JSONEq(t, wantBody, string(body))
-	// Test if the transaction sourceAccount the same as the server issuer account
+	// Test if the transaction sourceAccount the same as the server issuer account.
 	issuerAcc, err := handler.horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: issuerAccKeyPair.Address()})
 	require.NoError(t, err)
 	tx, err = txnbuild.NewTransaction(
@@ -489,7 +489,7 @@ func TestAPI_RejectedIntegration(t *testing.T) {
 		"status":"rejected", "error":"The source account is invalid."
 	}`
 	require.JSONEq(t, wantBody, string(body))
-	// Test if the transaction's operation sourceAccount the same as the server issuer account
+	// Test if the transaction's operation sourceAccount the same as the server issuer account.
 	tx, err = txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount:        &senderAcc,
@@ -567,7 +567,7 @@ func TestAPI_RejectedIntegration(t *testing.T) {
 		"status":"rejected", "error":"There is one or more unauthorized operations in the provided transaction."
 	}`
 	require.JSONEq(t, wantBody, string(body))
-	// Test if more than one operation in transaction
+	// Test if more than one operation in transaction.
 	tx, err = txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount:        &senderAcc,
@@ -609,7 +609,7 @@ func TestAPI_RejectedIntegration(t *testing.T) {
 		"status":"rejected", "error":"Please submit a transaction with exactly one operation of type payment."
 	}`
 	require.JSONEq(t, wantBody, string(body))
-	// Test when transaction source account seq num is not equal to account sequence+1
+	// Test when transaction source account seq num is not equal to account sequence+1.
 	// This tests the scenario where sequence numbers are too far in the future.
 	tx, err = txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
@@ -689,7 +689,7 @@ func TestAPI_RevisedIntegration(t *testing.T) {
 		horizonClient:     &horizonMock,
 		networkPassphrase: network.TestNetworkPassphrase,
 	}
-	// Test Successful request, transaction source account set == the payment source account
+	// Test Successful request, transaction source account set == the payment source account.
 	senderAcc, err := handler.horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: senderAccKP.Address()})
 	require.NoError(t, err)
 	tx, err := txnbuild.NewTransaction(
@@ -817,7 +817,6 @@ func TestAPI_RevisedIntegration(t *testing.T) {
 	assert.Equal(t, wantTXApprovalResponse2, txApprovePOSTResponse2)
 	// Decode the request's transaction.
 	parsed, err = txnbuild.TransactionFromXDR(txApprovePOSTResponse2.Tx)
-
 	require.NoError(t, err)
 	tx, ok = parsed.Transaction()
 	require.True(t, ok)
