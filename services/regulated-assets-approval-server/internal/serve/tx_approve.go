@@ -135,18 +135,19 @@ func (h txApproveHandler) txApprove(ctx context.Context, in txApproveRequest) (r
 
 	issuerAddress := h.issuerKP.Address()
 	if paymentOp.Asset.GetCode() != h.assetCode || paymentOp.Asset.GetIssuer() != issuerAddress {
+		log.Ctx(ctx).Error(`the payment asset is not supported by this issuer`)
 		return NewRejectedTxApprovalResponse("The payment asset is not supported by this issuer."), nil
 	}
 
 	acc, err := h.horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: paymentSource})
 	if err != nil {
-		log.Ctx(ctx).Error(errors.Wrapf(err, "getting detail for payment source account %s", issuerAddress))
+		err = errors.Wrapf(err, "getting detail for payment source account %s", issuerAddress)
 		return nil, err
 	}
 	// validate the sequence number
 	accountSequence, err := strconv.ParseInt(acc.Sequence, 10, 64)
 	if err != nil {
-		log.Ctx(ctx).Error(errors.Wrapf(err, "parsing account sequence number %q from string to int64", acc.Sequence))
+		err = errors.Wrapf(err, "parsing account sequence number %q from string to int64", acc.Sequence)
 		return nil, err
 	}
 	if tx.SourceAccount().Sequence != accountSequence+1 {
@@ -190,20 +191,19 @@ func (h txApproveHandler) txApprove(ctx context.Context, in txApproveRequest) (r
 		Timebounds:           txnbuild.NewTimeout(300),
 	})
 	if err != nil {
-		log.Ctx(ctx).Error(errors.Wrap(err, "building transaction"))
+		err = errors.Wrap(err, "building transaction")
 		return nil, err
 	}
 
 	revisedTx, err = revisedTx.Sign(h.networkPassphrase, h.issuerKP)
 	if err != nil {
-		log.Ctx(ctx).Error(errors.Wrap(err, "signing transaction"))
+		err = errors.Wrap(err, "signing transaction")
 		return nil, err
 	}
 
 	txe, err := revisedTx.Base64()
-
 	if err != nil {
-		log.Ctx(ctx).Error(errors.Wrap(err, "encoding revised transaction"))
+		err = errors.Wrap(err, "encoding revised transaction")
 		return nil, err
 	}
 	return NewRevisedTxApprovalResponse(txe), nil
