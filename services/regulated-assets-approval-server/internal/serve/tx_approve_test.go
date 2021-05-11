@@ -348,15 +348,14 @@ func TestAPI_RejectedIntegration(t *testing.T) {
 	}
 
 	// Test if no transaction is submitted.
+	m := chi.NewMux()
+	m.Post("/tx-approve", handler.ServeHTTP)
 	req := `{
 		"tx": ""
-	}`
-	r := httptest.NewRequest("POST", "/tx_approve", strings.NewReader(req))
+		}`
+	r := httptest.NewRequest("POST", "/tx-approve", strings.NewReader(req))
 	r = r.WithContext(ctx)
-
 	w := httptest.NewRecorder()
-	m := chi.NewMux()
-	m.Post("/tx_approve", handler.ServeHTTP)
 	m.ServeHTTP(w, r)
 	resp := w.Result()
 
@@ -374,12 +373,9 @@ func TestAPI_RejectedIntegration(t *testing.T) {
 	req = `{
 		"tx": "BADXDRTRANSACTIONENVELOPE"
 	}`
-	r = httptest.NewRequest("POST", "/tx_approve", strings.NewReader(req))
+	r = httptest.NewRequest("POST", "/tx-approve", strings.NewReader(req))
 	r = r.WithContext(ctx)
-
 	w = httptest.NewRecorder()
-	m = chi.NewMux()
-	m.Post("/tx_approve", handler.ServeHTTP)
 	m.ServeHTTP(w, r)
 	resp = w.Result()
 
@@ -425,12 +421,9 @@ func TestAPI_RejectedIntegration(t *testing.T) {
 	req = `{
 		"tx": "` + feeBumpTxEnc + `"
 	}`
-	r = httptest.NewRequest("POST", "/tx_approve", strings.NewReader(req))
+	r = httptest.NewRequest("POST", "/tx-approve", strings.NewReader(req))
 	r = r.WithContext(ctx)
-
 	w = httptest.NewRecorder()
-	m = chi.NewMux()
-	m.Post("/tx_approve", handler.ServeHTTP)
 	m.ServeHTTP(w, r)
 	resp = w.Result()
 
@@ -468,12 +461,9 @@ func TestAPI_RejectedIntegration(t *testing.T) {
 	req = `{
 		"tx": "` + txEnc + `"
 	}`
-	r = httptest.NewRequest("POST", "/tx_approve", strings.NewReader(req))
+	r = httptest.NewRequest("POST", "/tx-approve", strings.NewReader(req))
 	r = r.WithContext(ctx)
-
 	w = httptest.NewRecorder()
-	m = chi.NewMux()
-	m.Post("/tx_approve", handler.ServeHTTP)
 	m.ServeHTTP(w, r)
 	resp = w.Result()
 
@@ -510,12 +500,9 @@ func TestAPI_RejectedIntegration(t *testing.T) {
 	req = `{
 		"tx": "` + txEnc + `"
 	}`
-	r = httptest.NewRequest("POST", "/tx_approve", strings.NewReader(req))
+	r = httptest.NewRequest("POST", "/tx-approve", strings.NewReader(req))
 	r = r.WithContext(ctx)
-
 	w = httptest.NewRecorder()
-	m = chi.NewMux()
-	m.Post("/tx_approve", handler.ServeHTTP)
 	m.ServeHTTP(w, r)
 	resp = w.Result()
 
@@ -558,12 +545,9 @@ func TestAPI_RejectedIntegration(t *testing.T) {
 	req = `{
 		"tx": "` + txEnc + `"
 	}`
-	r = httptest.NewRequest("POST", "/tx_approve", strings.NewReader(req))
+	r = httptest.NewRequest("POST", "/tx-approve", strings.NewReader(req))
 	r = r.WithContext(ctx)
-
 	w = httptest.NewRecorder()
-	m = chi.NewMux()
-	m.Post("/tx_approve", handler.ServeHTTP)
 	m.ServeHTTP(w, r)
 	resp = w.Result()
 
@@ -606,12 +590,9 @@ func TestAPI_RejectedIntegration(t *testing.T) {
 	req = `{
 		"tx": "` + txEnc + `"
 	}`
-	r = httptest.NewRequest("POST", "/tx_approve", strings.NewReader(req))
+	r = httptest.NewRequest("POST", "/tx-approve", strings.NewReader(req))
 	r = r.WithContext(ctx)
-
 	w = httptest.NewRecorder()
-	m = chi.NewMux()
-	m.Post("/tx_approve", handler.ServeHTTP)
 	m.ServeHTTP(w, r)
 	resp = w.Result()
 
@@ -687,15 +668,14 @@ func TestAPI_RevisedIntegration(t *testing.T) {
 	require.NoError(t, err)
 	txEnc, err := tx.Base64()
 	require.NoError(t, err)
+	m := chi.NewMux()
+	m.Post("/tx-approve", handler.ServeHTTP)
 	req := `{
 		"tx": "` + txEnc + `"
 	}`
-	r := httptest.NewRequest("POST", "/tx_approve", strings.NewReader(req))
+	r := httptest.NewRequest("POST", "/tx-approve", strings.NewReader(req))
 	r = r.WithContext(ctx)
-
 	w := httptest.NewRecorder()
-	m := chi.NewMux()
-	m.Post("/tx_approve", handler.ServeHTTP)
 	m.ServeHTTP(w, r)
 	resp := w.Result()
 
@@ -784,12 +764,9 @@ func TestAPI_RevisedIntegration(t *testing.T) {
 	req = `{
 		"tx": "` + txEnc + `"
 	}`
-	r = httptest.NewRequest("POST", "/tx_approve", strings.NewReader(req))
+	r = httptest.NewRequest("POST", "/tx-approve", strings.NewReader(req))
 	r = r.WithContext(ctx)
-
 	w = httptest.NewRecorder()
-	m = chi.NewMux()
-	m.Post("/tx_approve", handler.ServeHTTP)
 	m.ServeHTTP(w, r)
 	resp = w.Result()
 
