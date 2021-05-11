@@ -131,6 +131,7 @@ func TestTxApproveHandlerTxApprove(t *testing.T) {
 
 	// Test if a non generic transaction fails, same result as malformed XDR.
 	acc, err := handler.horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: kp01.Address()})
+	require.NoError(t, err)
 	tx, err := txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount:        &acc,
@@ -166,6 +167,7 @@ func TestTxApproveHandlerTxApprove(t *testing.T) {
 
 	// Test if the transaction sourceAccount the same as the server issuer account
 	issuerAcc, err := handler.horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: issuerAccKeyPair.Address()})
+	require.NoError(t, err)
 	tx, err = txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount:        &issuerAcc,
@@ -183,6 +185,7 @@ func TestTxApproveHandlerTxApprove(t *testing.T) {
 	)
 	require.NoError(t, err)
 	txEnc, err := tx.Base64()
+	require.NoError(t, err)
 	req = txApproveRequest{
 		Tx: txEnc,
 	}
@@ -214,6 +217,7 @@ func TestTxApproveHandlerTxApprove(t *testing.T) {
 	)
 	require.NoError(t, err)
 	txEnc, err = tx.Base64()
+	require.NoError(t, err)
 	req = txApproveRequest{
 		Tx: txEnc,
 	}
@@ -282,6 +286,7 @@ func TestTxApproveHandlerTxApprove(t *testing.T) {
 	)
 	require.NoError(t, err)
 	txEnc, err = tx.Base64()
+	require.NoError(t, err)
 	req = txApproveRequest{
 		Tx: txEnc,
 	}
@@ -384,6 +389,7 @@ func TestAPI_RejectedIntegration(t *testing.T) {
 
 	// Test if a non generic transaction fails, same result as malformed XDR.
 	acc, err := handler.horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: kp01.Address()})
+	require.NoError(t, err)
 	tx, err := txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount:        &acc,
@@ -434,6 +440,7 @@ func TestAPI_RejectedIntegration(t *testing.T) {
 
 	// Test if the transaction sourceAccount the same as the server issuer account
 	issuerAcc, err := handler.horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: issuerAccKeyPair.Address()})
+	require.NoError(t, err)
 	tx, err = txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount:        &issuerAcc,
@@ -451,6 +458,7 @@ func TestAPI_RejectedIntegration(t *testing.T) {
 	)
 	require.NoError(t, err)
 	txEnc, err := tx.Base64()
+	require.NoError(t, err)
 	req = `{
 		"tx": "` + txEnc + `"
 	}`
@@ -492,6 +500,7 @@ func TestAPI_RejectedIntegration(t *testing.T) {
 	)
 	require.NoError(t, err)
 	txEnc, err = tx.Base64()
+	require.NoError(t, err)
 	req = `{
 		"tx": "` + txEnc + `"
 	}`
@@ -539,6 +548,7 @@ func TestAPI_RejectedIntegration(t *testing.T) {
 	)
 	require.NoError(t, err)
 	txEnc, err = tx.Base64()
+	require.NoError(t, err)
 	req = `{
 		"tx": "` + txEnc + `"
 	}`
@@ -586,6 +596,7 @@ func TestAPI_RejectedIntegration(t *testing.T) {
 	)
 	require.NoError(t, err)
 	txEnc, err = tx.Base64()
+	require.NoError(t, err)
 	req = `{
 		"tx": "` + txEnc + `"
 	}`
@@ -650,6 +661,7 @@ func TestAPI_RevisedIntegration(t *testing.T) {
 
 	// Test Successful request, transaction source account set == the payment source account
 	acc, err := handler.horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: kp01.Address()})
+	require.NoError(t, err)
 	tx, err := txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount:        &acc,
@@ -668,6 +680,7 @@ func TestAPI_RevisedIntegration(t *testing.T) {
 	)
 	require.NoError(t, err)
 	txEnc, err := tx.Base64()
+	require.NoError(t, err)
 	req := `{
 		"tx": "` + txEnc + `"
 	}`
@@ -743,6 +756,7 @@ func TestAPI_RevisedIntegration(t *testing.T) {
 
 	// Test Successful request, transaction source account set and the no payment source account
 	acc, err = handler.horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: kp01.Address()})
+	require.NoError(t, err)
 	tx, err = txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount:        &acc,
@@ -760,6 +774,7 @@ func TestAPI_RevisedIntegration(t *testing.T) {
 	)
 	require.NoError(t, err)
 	txEnc, err = tx.Base64()
+	require.NoError(t, err)
 	req = `{
 		"tx": "` + txEnc + `"
 	}`
