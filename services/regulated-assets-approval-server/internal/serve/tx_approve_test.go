@@ -66,6 +66,8 @@ func TestTxApproveHandlerValidate(t *testing.T) {
 func TestTxApproveHandlerTxApprove(t *testing.T) {
 	ctx := context.Background()
 	issuerAccKeyPair := keypair.MustRandom()
+	kp01 := keypair.MustRandom()
+	kp02 := keypair.MustRandom()
 	assetGOAT := txnbuild.CreditAsset{
 		Code:   "GOAT",
 		Issuer: issuerAccKeyPair.Address(),
@@ -74,9 +76,36 @@ func TestTxApproveHandlerTxApprove(t *testing.T) {
 	req := txApproveRequest{
 		Tx: "",
 	}
+	horizonMock := horizonclient.MockClient{}
+	horizonMock.
+		On("AccountDetail", horizonclient.AccountRequest{AccountID: issuerAccKeyPair.Address()}).
+		Return(horizon.Account{
+			AccountID: issuerAccKeyPair.Address(),
+			Sequence:  "0",
+			Balances: []horizon.Balance{
+				{
+					Asset:   base.Asset{Code: "ASSET", Issuer: issuerAccKeyPair.Address()},
+					Balance: "0",
+				},
+			},
+		}, nil)
+	horizonMock.
+		On("AccountDetail", horizonclient.AccountRequest{AccountID: kp01.Address()}).
+		Return(horizon.Account{
+			AccountID: kp01.Address(),
+			Sequence:  "0",
+		}, nil)
+	horizonMock.
+		On("AccountDetail", horizonclient.AccountRequest{AccountID: kp02.Address()}).
+		Return(horizon.Account{
+			AccountID: kp02.Address(),
+			Sequence:  "0",
+		}, nil)
 	handler := txApproveHandler{
-		issuerKP:  issuerAccKeyPair,
-		assetCode: assetGOAT.GetCode(),
+		issuerKP:          issuerAccKeyPair,
+		assetCode:         assetGOAT.GetCode(),
+		horizonClient:     &horizonMock,
+		networkPassphrase: network.TestNetworkPassphrase,
 	}
 	rejectedResponse, err := handler.txApprove(ctx, req)
 	require.NoError(t, err)
@@ -101,11 +130,10 @@ func TestTxApproveHandlerTxApprove(t *testing.T) {
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
 
 	// Test if a non generic transaction fails, same result as malformed XDR.
-	kp01 := keypair.MustRandom()
-	kp02 := keypair.MustRandom()
+	acc, err := handler.horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: kp01.Address()})
 	tx, err := txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
-			SourceAccount:        &txnbuild.SimpleAccount{AccountID: kp01.Address()},
+			SourceAccount:        &acc,
 			IncrementSequenceNum: true,
 			Operations: []txnbuild.Operation{
 				&txnbuild.Payment{
@@ -137,9 +165,10 @@ func TestTxApproveHandlerTxApprove(t *testing.T) {
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse) // wantRejectedResponse is identical to "if can't parse XDR".
 
 	// Test if the transaction sourceAccount the same as the server issuer account
+	issuerAcc, err := handler.horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: issuerAccKeyPair.Address()})
 	tx, err = txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
-			SourceAccount:        &txnbuild.SimpleAccount{AccountID: issuerAccKeyPair.Address()},
+			SourceAccount:        &issuerAcc,
 			IncrementSequenceNum: true,
 			Operations: []txnbuild.Operation{
 				&txnbuild.Payment{
@@ -169,7 +198,7 @@ func TestTxApproveHandlerTxApprove(t *testing.T) {
 	// Test if the transaction's operation sourceAccount the same as the server issuer account
 	tx, err = txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
-			SourceAccount:        &txnbuild.SimpleAccount{AccountID: kp01.Address()},
+			SourceAccount:        &acc,
 			IncrementSequenceNum: true,
 			Operations: []txnbuild.Operation{
 				&txnbuild.Payment{
@@ -201,7 +230,7 @@ func TestTxApproveHandlerTxApprove(t *testing.T) {
 	kp03 := keypair.MustRandom()
 	tx, err = txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
-			SourceAccount:        &txnbuild.SimpleAccount{AccountID: kp01.Address()},
+			SourceAccount:        &acc,
 			IncrementSequenceNum: true,
 			Operations: []txnbuild.Operation{
 				&txnbuild.AllowTrust{
@@ -231,7 +260,7 @@ func TestTxApproveHandlerTxApprove(t *testing.T) {
 	// Test if multiple operations in transaction
 	tx, err = txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
-			SourceAccount:        &txnbuild.SimpleAccount{AccountID: kp01.Address()},
+			SourceAccount:        &acc,
 			IncrementSequenceNum: true,
 			Operations: []txnbuild.Operation{
 				&txnbuild.Payment{
@@ -275,6 +304,32 @@ func TestAPI_RejectedIntegration(t *testing.T) {
 		Issuer: issuerAccKeyPair.Address(),
 	}
 	horizonMock := horizonclient.MockClient{}
+	kp01 := keypair.MustRandom()
+	kp02 := keypair.MustRandom()
+	horizonMock.
+		On("AccountDetail", horizonclient.AccountRequest{AccountID: issuerAccKeyPair.Address()}).
+		Return(horizon.Account{
+			AccountID: issuerAccKeyPair.Address(),
+			Sequence:  "0",
+			Balances: []horizon.Balance{
+				{
+					Asset:   base.Asset{Code: "ASSET", Issuer: issuerAccKeyPair.Address()},
+					Balance: "0",
+				},
+			},
+		}, nil)
+	horizonMock.
+		On("AccountDetail", horizonclient.AccountRequest{AccountID: kp01.Address()}).
+		Return(horizon.Account{
+			AccountID: kp01.Address(),
+			Sequence:  "1",
+		}, nil)
+	horizonMock.
+		On("AccountDetail", horizonclient.AccountRequest{AccountID: kp02.Address()}).
+		Return(horizon.Account{
+			AccountID: kp02.Address(),
+			Sequence:  "0",
+		}, nil)
 	handler := txApproveHandler{
 		issuerKP:          issuerAccKeyPair,
 		assetCode:         assetGOAT.GetCode(),
@@ -329,11 +384,10 @@ func TestAPI_RejectedIntegration(t *testing.T) {
 	require.JSONEq(t, wantBody, string(body))
 
 	// Test if a non generic transaction fails, same result as malformed XDR.
-	kp01 := keypair.MustRandom()
-	kp02 := keypair.MustRandom()
+	acc, err := handler.horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: kp01.Address()})
 	tx, err := txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
-			SourceAccount:        &txnbuild.SimpleAccount{AccountID: kp01.Address()},
+			SourceAccount:        &acc,
 			IncrementSequenceNum: true,
 			Operations: []txnbuild.Operation{
 				&txnbuild.Payment{
@@ -380,9 +434,10 @@ func TestAPI_RejectedIntegration(t *testing.T) {
 	require.JSONEq(t, wantBody, string(body))
 
 	// Test if the transaction sourceAccount the same as the server issuer account
+	issuerAcc, err := handler.horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: issuerAccKeyPair.Address()})
 	tx, err = txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
-			SourceAccount:        &txnbuild.SimpleAccount{AccountID: issuerAccKeyPair.Address()},
+			SourceAccount:        &issuerAcc,
 			IncrementSequenceNum: true,
 			Operations: []txnbuild.Operation{
 				&txnbuild.Payment{
@@ -422,7 +477,7 @@ func TestAPI_RejectedIntegration(t *testing.T) {
 	// Test if the transaction's operation sourceAccount the same as the server issuer account
 	tx, err = txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
-			SourceAccount:        &txnbuild.SimpleAccount{AccountID: kp01.Address()},
+			SourceAccount:        &acc,
 			IncrementSequenceNum: true,
 			Operations: []txnbuild.Operation{
 				&txnbuild.Payment{
@@ -464,7 +519,7 @@ func TestAPI_RejectedIntegration(t *testing.T) {
 	kp03 := keypair.MustRandom()
 	tx, err = txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
-			SourceAccount:        &txnbuild.SimpleAccount{AccountID: kp01.Address()},
+			SourceAccount:        &acc,
 			IncrementSequenceNum: true,
 			Operations: []txnbuild.Operation{
 				&txnbuild.AllowTrust{
@@ -504,7 +559,7 @@ func TestAPI_RejectedIntegration(t *testing.T) {
 	// Test if more than one operation in transaction
 	tx, err = txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
-			SourceAccount:        &txnbuild.SimpleAccount{AccountID: kp01.Address()},
+			SourceAccount:        &acc,
 			IncrementSequenceNum: true,
 			Operations: []txnbuild.Operation{
 				&txnbuild.Payment{
