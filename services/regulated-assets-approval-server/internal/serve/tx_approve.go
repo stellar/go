@@ -48,7 +48,7 @@ func (h txApproveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	err := h.validate()
 	if err != nil {
 		log.Ctx(ctx).Error(errors.Wrap(err, "validating txApproveHandler"))
-		httperror.InternalServerError.Render(w)
+		httperror.InternalServer.Render(w)
 		return
 	}
 
@@ -63,7 +63,7 @@ func (h txApproveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	txApproveResp, err := h.txApprove(ctx, in)
 	if err != nil {
 		log.Ctx(ctx).Error(errors.Wrap(err, "validating the input transaction for approval"))
-		httperror.InternalServerError.Render(w)
+		httperror.InternalServer.Render(w)
 		return
 	}
 	txApproveResp.Render(w)

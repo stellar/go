@@ -52,7 +52,7 @@ func (h stellarTOMLHandler) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	err := h.validate()
 	if err != nil {
 		log.Ctx(ctx).Error(errors.Wrap(err, "validating tomlHandler"))
-		httperror.InternalServerError.Render(rw)
+		httperror.InternalServer.Render(rw)
 		return
 	}
 	approvalCriteria := fmt.Sprintf("Currently %s only approves %s payment transactions.", h.approvalServer, h.assetCode)

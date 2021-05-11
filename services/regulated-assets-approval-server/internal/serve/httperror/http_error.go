@@ -28,7 +28,7 @@ func (e *Error) Render(w http.ResponseWriter) {
 	httpjson.RenderStatus(w, e.Status, e, httpjson.JSON)
 }
 
-var InternalServerError = &Error{
+var InternalServer = &Error{
 	ErrorMessage: "An error occurred while processing this request.",
 	Status:       http.StatusInternalServerError,
 }
