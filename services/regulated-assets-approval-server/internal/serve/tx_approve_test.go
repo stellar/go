@@ -773,7 +773,7 @@ func TestAPI_RevisedIntegration(t *testing.T) {
 	assert.Equal(t, op5.Trustor, senderAccKP.Address())
 	assert.Equal(t, op5.Type.GetCode(), assetGOAT.GetCode())
 	require.False(t, op5.Authorize)
-	// Test Successful request, transaction source account set and the no payment source account
+	// Test Successful request, transaction source account and the payment operation's sourceAccount param remains empty.
 	senderAcc, err = handler.horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: senderAccKP.Address()})
 	require.NoError(t, err)
 	tx, err = txnbuild.NewTransaction(
