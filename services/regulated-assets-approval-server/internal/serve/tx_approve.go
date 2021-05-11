@@ -13,23 +13,30 @@ import (
 )
 
 type txApproveHandler struct {
-	issuerKP  *keypair.Full
-	assetCode string
+	issuerKP          *keypair.Full
+	assetCode         string
+	horizonClient     horizonclient.ClientInterface
+	networkPassphrase string
 }
 
 type txApproveRequest struct {
 	Tx string `json:"tx" form:"tx"`
 }
 
+// validate performs some validations on the provided handler data.
 func (h txApproveHandler) validate() error {
 	if h.issuerKP == nil {
 		return errors.New("issuer keypair cannot be nil")
 	}
-
 	if h.assetCode == "" {
 		return errors.New("asset code cannot be empty")
 	}
-
+	if h.horizonClient == nil {
+		return errors.New("horizon client cannot be nil")
+	}
+	if h.networkPassphrase == "" {
+		return errors.New("network passphrase cannot be empty")
+	}
 	return nil
 }
 
