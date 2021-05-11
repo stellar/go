@@ -3,7 +3,9 @@ package serve
 import (
 	"context"
 	"net/http"
+	"strconv"
 
+	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/services/regulated-assets-approval-server/internal/serve/httperror"
 	"github.com/stellar/go/support/errors"
@@ -60,6 +62,7 @@ func (h txApproveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	txApproveResp, err := h.txApprove(ctx, in)
 	if err != nil {
+		log.Ctx(ctx).Error(errors.Wrap(err, "validating the input transaction for approval."))
 		httperror.InternalServerError.Render(w)
 		return
 	}
@@ -107,7 +110,6 @@ func (h txApproveHandler) validateInput(ctx context.Context, in txApproveRequest
 }
 
 // txApprove is called to validate the input transaction.
-// At the moment valid transactions will be rejected with "Not implemented." until subsequent updates.
 func (h txApproveHandler) txApprove(ctx context.Context, in txApproveRequest) (resp *txApprovalResponse, err error) {
 	defer func() {
 		log.Ctx(ctx).Debug("==== will log responses ====")
@@ -130,8 +132,78 @@ func (h txApproveHandler) txApprove(ctx context.Context, in txApproveRequest) (r
 		paymentSource = tx.SourceAccount().AccountID
 	}
 
-	// TODO: encode the revised transaction currently this is the same transaction given via request
-	txe, err := tx.Base64()
+	issuerAddress := h.issuerKP.Address()
+	if paymentOp.Asset.GetCode() != h.assetCode || paymentOp.Asset.GetIssuer() != issuerAddress {
+		return NewRejectedTxApprovalResponse("The payment asset is not supported by this issuer."), nil
+	}
+
+	acc, err := h.horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: paymentSource})
+	if err != nil {
+		err = errors.Wrapf(err, "getting detail for payment source account %s", issuerAddress)
+		log.Ctx(ctx).Error(err)
+		return nil, err
+	}
+	// validate the sequence number
+	accountSequence, err := strconv.ParseInt(acc.Sequence, 10, 64)
+	if err != nil {
+		err = errors.Wrapf(err, "parsing account sequence number %q from string to int64", acc.Sequence)
+		log.Ctx(ctx).Error(err)
+		return nil, err
+	}
+	if tx.SourceAccount().Sequence != accountSequence+1 {
+		return NewRejectedTxApprovalResponse("Invalid transaction sequence number."), nil
+	}
+
+	// build the transaction
+	revisedOperations := []txnbuild.Operation{
+		&txnbuild.AllowTrust{
+			Trustor:       paymentSource,
+			Type:          paymentOp.Asset,
+			Authorize:     true,
+			SourceAccount: issuerAddress,
+		},
+		&txnbuild.AllowTrust{
+			Trustor:       paymentOp.Destination,
+			Type:          paymentOp.Asset,
+			Authorize:     true,
+			SourceAccount: issuerAddress,
+		},
+		paymentOp,
+		&txnbuild.AllowTrust{
+			Trustor:       paymentOp.Destination,
+			Type:          paymentOp.Asset,
+			Authorize:     false,
+			SourceAccount: issuerAddress,
+		},
+		&txnbuild.AllowTrust{
+			Trustor:       paymentSource,
+			Type:          paymentOp.Asset,
+			Authorize:     false,
+			SourceAccount: issuerAddress,
+		},
+	}
+	revisedTx, err := txnbuild.NewTransaction(txnbuild.TransactionParams{
+		SourceAccount:        &acc,
+		IncrementSequenceNum: true,
+		Operations:           revisedOperations,
+		BaseFee:              300,
+		Timebounds:           txnbuild.NewTimeout(300),
+	})
+	if err != nil {
+		err = errors.Wrap(err, "building transaction")
+		log.Ctx(ctx).Error(err)
+		return nil, err
+	}
+
+	revisedTx, err = revisedTx.Sign(h.networkPassphrase, h.issuerKP)
+	if err != nil {
+		err = errors.Wrap(err, "signing transaction")
+		log.Ctx(ctx).Error(err)
+		return nil, err
+	}
+
+	txe, err := revisedTx.Base64()
+
 	if err != nil {
 		log.Ctx(ctx).Error(errors.Wrap(err, "encoding revised transaction"))
 		return nil, err

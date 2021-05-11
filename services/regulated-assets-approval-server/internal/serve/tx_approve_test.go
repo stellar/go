@@ -2,6 +2,7 @@ package serve
 
 import (
 	"context"
+	"encoding/json"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -551,22 +552,47 @@ func TestAPI_RejectedIntegration(t *testing.T) {
 func TestAPI_RevisedIntegration(t *testing.T) {
 	ctx := context.Background()
 	issuerAccKeyPair := keypair.MustRandom()
+	kp01 := keypair.MustRandom()
+	kp02 := keypair.MustRandom()
 	assetGOAT := txnbuild.CreditAsset{
 		Code:   "GOAT",
 		Issuer: issuerAccKeyPair.Address(),
 	}
+	horizonMock := horizonclient.MockClient{}
+	horizonMock.
+		On("AccountDetail", horizonclient.AccountRequest{AccountID: issuerAccKeyPair.Address()}).
+		Return(horizon.Account{
+			Balances: []horizon.Balance{
+				{
+					Asset:   base.Asset{Code: "ASSET", Issuer: issuerAccKeyPair.Address()},
+					Balance: "0",
+				},
+			},
+		}, nil)
+	horizonMock.
+		On("AccountDetail", horizonclient.AccountRequest{AccountID: kp01.Address()}).
+		Return(horizon.Account{
+			AccountID: kp01.Address(),
+			Sequence:  "5",
+		}, nil)
+	horizonMock.
+		On("AccountDetail", horizonclient.AccountRequest{AccountID: kp02.Address()}).
+		Return(horizon.Account{
+			AccountID: kp02.Address(),
+			Sequence:  "0",
+		}, nil)
 	handler := txApproveHandler{
-		issuerKP:  issuerAccKeyPair,
-		assetCode: assetGOAT.GetCode(),
+		issuerKP:          issuerAccKeyPair,
+		assetCode:         assetGOAT.GetCode(),
+		horizonClient:     &horizonMock,
+		networkPassphrase: network.TestNetworkPassphrase,
 	}
 
-	// Test "Successful" request
-	// TODO: replace this test since its not fully backed with a real revised tx
-	kp01 := keypair.MustRandom()
-	kp02 := keypair.MustRandom()
+	// Test Successful request
+	acc, err := handler.horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: kp01.Address()})
 	tx, err := txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
-			SourceAccount:        &txnbuild.SimpleAccount{AccountID: kp01.Address()},
+			SourceAccount:        &acc,
 			IncrementSequenceNum: true,
 			Operations: []txnbuild.Operation{
 				&txnbuild.Payment{
@@ -596,11 +622,62 @@ func TestAPI_RevisedIntegration(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
-
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	body, err := ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
-	wantBody := `{
-		"status":"revised", "tx":"` + txEnc + `", "message":"Authorization and deauthorization operations were added."
-	}`
-	require.JSONEq(t, wantBody, string(body))
+	var response map[string]string
+	err = json.Unmarshal(body, &response)
+
+	_, exists := response["status"]
+	assert.True(t, exists)
+	assert.Equal(t, response["status"], "revised")
+	_, exists = response["message"]
+	assert.True(t, exists)
+	assert.Equal(t, response["message"], "Authorization and deauthorization operations were added.")
+	_, exists = response["tx"]
+	assert.True(t, exists)
+
+	// Decode the request's transaction.
+	parsed, err := txnbuild.TransactionFromXDR(response["tx"])
+	require.NoError(t, err)
+	tx, ok := parsed.Transaction()
+	require.True(t, ok)
+
+	// Check if revised transaction only has 5 operations.
+	require.Len(t, tx.Operations(), 5)
+
+	// Check Operation 1: AllowTrust op where issuer fully authorizes account A, asset X.
+	op1, ok := tx.Operations()[0].(*txnbuild.AllowTrust)
+	require.True(t, ok)
+	assert.Equal(t, op1.Trustor, kp01.Address())
+	assert.Equal(t, op1.Type.GetCode(), assetGOAT.GetCode())
+	require.True(t, op1.Authorize)
+
+	// Check  Operation 2: AllowTrust op where issuer fully authorizes account B, asset X.
+	op2, ok := tx.Operations()[1].(*txnbuild.AllowTrust)
+	require.True(t, ok)
+	assert.Equal(t, op2.Trustor, kp02.Address())
+	assert.Equal(t, op2.Type.GetCode(), assetGOAT.GetCode())
+	require.True(t, op2.Authorize)
+
+	// Check Operation 3: Payment from A to B.
+	op3, ok := tx.Operations()[2].(*txnbuild.Payment)
+	require.True(t, ok)
+	assert.Equal(t, op3.SourceAccount, kp01.Address())
+	assert.Equal(t, op3.Destination, kp02.Address())
+	assert.Equal(t, op3.Asset, assetGOAT)
+
+	// Check Operation 4: AllowTrust op where issuer fully deauthorizes account B, asset X.
+	op4, ok := tx.Operations()[3].(*txnbuild.AllowTrust)
+	require.True(t, ok)
+	assert.Equal(t, op4.Trustor, kp02.Address())
+	assert.Equal(t, op4.Type.GetCode(), assetGOAT.GetCode())
+	require.False(t, op4.Authorize)
+
+	// Check Operation 5: AllowTrust op where issuer fully deauthorizes account A, asset X.
+	op5, ok := tx.Operations()[4].(*txnbuild.AllowTrust)
+	require.True(t, ok)
+	assert.Equal(t, op5.Trustor, kp01.Address())
+	assert.Equal(t, op5.Type.GetCode(), assetGOAT.GetCode())
+	require.False(t, op5.Authorize)
 }
