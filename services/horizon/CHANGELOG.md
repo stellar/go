@@ -19,7 +19,7 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 * Improved session handling and timeouts ([3576](https://github.com/stellar/go/pull/3576), [3545](https://github.com/stellar/go/pull/3545), and [3567](https://github.com/stellar/go/pull/3567)).
 
-* Improved stability of Captive Core's configuration options ([3558](https://github.com/stellar/go/pull/3558)).
+* Improved stability of Captive Core's configuration options. Specifically, it will now prefer either the command-line parameter (e.g. `--captive-core-peer-port` or its env-var equivalent) or the user-supplied append file (`--captive-core-append-path`) over Horizon's internal defaults. However, if a value is set in *both* the append file and at the command-line, an error will be thrown unless both values are equal ([3558](https://github.com/stellar/go/pull/3558)).
 
 
 ## v2.2.0
