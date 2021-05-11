@@ -33,6 +33,11 @@ var InternalServerError = &Error{
 	Status:       http.StatusInternalServerError,
 }
 
+var BadRequest = &Error{
+	ErrorMessage: "The request was invalid in some way.",
+	Status:       http.StatusBadRequest,
+}
+
 func ParseHorizonError(err error) error {
 	if err == nil {
 		return nil
