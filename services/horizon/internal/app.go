@@ -56,6 +56,7 @@ type App struct {
 	config          Config
 	webServer       *httpx.Server
 	historyQ        *history.Q
+	primaryHistoryQ *history.Q
 	ctx             context.Context
 	cancel          func()
 	horizonVersion  string
@@ -505,6 +506,10 @@ func (a *App) init() error {
 			},
 			cache: newHealthCache(healthCacheTTL),
 		},
+	}
+
+	if a.primaryHistoryQ != nil {
+		routerConfig.PrimaryDBSession = a.primaryHistoryQ.Session
 	}
 
 	var err error

@@ -43,11 +43,26 @@ func mustInitHorizonDB(app *App) {
 		}
 	}
 
-	app.historyQ = &history.Q{mustNewDBSession(
-		app.config.DatabaseURL,
-		maxIdle,
-		maxOpen,
-	)}
+	if app.config.RoDatabaseURL == "" {
+		app.historyQ = &history.Q{mustNewDBSession(
+			app.config.DatabaseURL,
+			maxIdle,
+			maxOpen,
+		)}
+	} else {
+		// If RO set, use it for all DB queries
+		app.historyQ = &history.Q{mustNewDBSession(
+			app.config.RoDatabaseURL,
+			maxIdle,
+			maxOpen,
+		)}
+
+		app.primaryHistoryQ = &history.Q{mustNewDBSession(
+			app.config.DatabaseURL,
+			maxIdle,
+			maxOpen,
+		)}
+	}
 }
 
 func initIngester(app *App) {
@@ -293,6 +308,7 @@ func initTxSubMetrics(app *App) {
 
 func initWebMetrics(app *App) {
 	app.prometheusRegistry.MustRegister(app.webServer.Metrics.RequestDurationSummary)
+	app.prometheusRegistry.MustRegister(app.webServer.Metrics.ReplicaLagErrorsCounter)
 }
 
 func initSubmissionSystem(app *App) {

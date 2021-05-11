@@ -100,8 +100,8 @@ var (
 		Status: http.StatusServiceUnavailable,
 		Detail: "This horizon instance is configured to reject client requests " +
 			"when it can determine that the history database is lagging too far " +
-			"behind the connected instance of stellar-core.  If you operate this " +
-			"server, please ensure that the ingestion system is properly running.",
+			"behind the connected instance of stellar-core or read replica. Please " +
+			"try again later.",
 	}
 
 	// StillIngesting is a well-known problem type.  Use it as a shortcut

@@ -95,6 +95,13 @@ func Flags() (*Config, support.ConfigOptions) {
 			Usage:     "horizon postgres database to connect with",
 		},
 		&support.ConfigOption{
+			Name:      "ro-database-url",
+			ConfigKey: &config.RoDatabaseURL,
+			OptType:   types.String,
+			Required:  false,
+			Usage:     "horizon postgres read-replica to connect with, when set it will return stale history error when replica is behind primary",
+		},
+		&support.ConfigOption{
 			Name:        StellarCoreBinaryPathName,
 			OptType:     types.String,
 			FlagDefault: "",

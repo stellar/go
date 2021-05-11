@@ -13,6 +13,7 @@ import (
 // app's main function and is provided to NewApp.
 type Config struct {
 	DatabaseURL        string
+	RoDatabaseURL      string
 	HistoryArchiveURLs []string
 	Port               uint
 	AdminPort          uint
