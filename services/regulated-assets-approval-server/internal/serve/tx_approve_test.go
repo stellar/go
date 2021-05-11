@@ -588,7 +588,7 @@ func TestAPI_RevisedIntegration(t *testing.T) {
 		networkPassphrase: network.TestNetworkPassphrase,
 	}
 
-	// Test Successful request
+	// Test Successful request, transaction source account set == the payment source account
 	acc, err := handler.horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: kp01.Address()})
 	tx, err := txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
@@ -676,6 +676,98 @@ func TestAPI_RevisedIntegration(t *testing.T) {
 
 	// Check Operation 5: AllowTrust op where issuer fully deauthorizes account A, asset X.
 	op5, ok := tx.Operations()[4].(*txnbuild.AllowTrust)
+	require.True(t, ok)
+	assert.Equal(t, op5.Trustor, kp01.Address())
+	assert.Equal(t, op5.Type.GetCode(), assetGOAT.GetCode())
+	require.False(t, op5.Authorize)
+
+	// Test Successful request, transaction source account set and the no payment source account
+	acc, err = handler.horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: kp01.Address()})
+	tx, err = txnbuild.NewTransaction(
+		txnbuild.TransactionParams{
+			SourceAccount:        &acc,
+			IncrementSequenceNum: true,
+			Operations: []txnbuild.Operation{
+				&txnbuild.Payment{
+					Destination: kp02.Address(),
+					Amount:      "2",
+					Asset:       assetGOAT,
+				},
+			},
+			BaseFee:    txnbuild.MinBaseFee,
+			Timebounds: txnbuild.NewInfiniteTimeout(),
+		},
+	)
+	require.NoError(t, err)
+	txEnc, err = tx.Base64()
+	req = `{
+		"tx": "` + txEnc + `"
+	}`
+	r = httptest.NewRequest("POST", "/tx_approve", strings.NewReader(req))
+	r = r.WithContext(ctx)
+
+	w = httptest.NewRecorder()
+	m = chi.NewMux()
+	m.Post("/tx_approve", handler.ServeHTTP)
+	m.ServeHTTP(w, r)
+	resp = w.Result()
+
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	body, err = ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	err = json.Unmarshal(body, &response)
+
+	_, exists = response["status"]
+	assert.True(t, exists)
+	assert.Equal(t, response["status"], "revised")
+	_, exists = response["message"]
+	assert.True(t, exists)
+	assert.Equal(t, response["message"], "Authorization and deauthorization operations were added.")
+	_, exists = response["tx"]
+	assert.True(t, exists)
+
+	// Decode the request's transaction.
+	parsed, err = txnbuild.TransactionFromXDR(response["tx"])
+	require.NoError(t, err)
+	tx, ok = parsed.Transaction()
+	require.True(t, ok)
+
+	// Check if revised transaction only has 5 operations.
+	require.Len(t, tx.Operations(), 5)
+
+	// Check Operation 1: AllowTrust op where issuer fully authorizes account A, asset X.
+	op1, ok = tx.Operations()[0].(*txnbuild.AllowTrust)
+	require.True(t, ok)
+	assert.Equal(t, op1.Trustor, kp01.Address())
+	assert.Equal(t, op1.Type.GetCode(), assetGOAT.GetCode())
+	require.True(t, op1.Authorize)
+
+	// Check Operation 2: AllowTrust op where issuer fully authorizes account B, asset X.
+	op2, ok = tx.Operations()[1].(*txnbuild.AllowTrust)
+	require.True(t, ok)
+	assert.Equal(t, op2.Trustor, kp02.Address())
+	assert.Equal(t, op2.Type.GetCode(), assetGOAT.GetCode())
+	require.True(t, op2.Authorize)
+
+	// Check Operation 3: Payment to B.
+	op3, ok = tx.Operations()[2].(*txnbuild.Payment)
+	require.True(t, ok)
+	assert.Equal(t, op3.SourceAccount, "")
+	assert.Equal(t, op3.Destination, kp02.Address())
+	assert.Equal(t, op3.Asset, assetGOAT)
+
+	// Check Operation 4: AllowTrust op where issuer fully deauthorizes account B, asset X.
+	op4, ok = tx.Operations()[3].(*txnbuild.AllowTrust)
+	require.True(t, ok)
+	assert.Equal(t, op4.Trustor, kp02.Address())
+	assert.Equal(t, op4.Type.GetCode(), assetGOAT.GetCode())
+	require.False(t, op4.Authorize)
+
+	// Check Operation 5: AllowTrust op where issuer fully deauthorizes account A, asset X.
+	op5, ok = tx.Operations()[4].(*txnbuild.AllowTrust)
 	require.True(t, ok)
 	assert.Equal(t, op5.Trustor, kp01.Address())
 	assert.Equal(t, op5.Type.GetCode(), assetGOAT.GetCode())
