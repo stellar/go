@@ -78,8 +78,12 @@ type App struct {
 	dbMaxOpenConnectionsGauge         prometheus.GaugeFunc
 	dbOpenConnectionsGauge            prometheus.GaugeFunc
 	dbInUseConnectionsGauge           prometheus.GaugeFunc
+	dbIdleConnectionsGauge            prometheus.GaugeFunc
 	dbWaitCountCounter                prometheus.CounterFunc
 	dbWaitDurationCounter             prometheus.CounterFunc
+	dbMaxIdleClosedCounter            prometheus.CounterFunc
+	dbMaxIdleTimeClosedCounter        prometheus.CounterFunc
+	dbMaxLifetimeClosedCounter        prometheus.CounterFunc
 	coreLatestLedgerCounter           prometheus.CounterFunc
 	coreSynced                        prometheus.GaugeFunc
 }

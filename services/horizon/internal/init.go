@@ -225,6 +225,14 @@ func initDbMetrics(app *App) {
 	)
 	app.prometheusRegistry.MustRegister(app.dbInUseConnectionsGauge)
 
+	app.dbIdleConnectionsGauge = prometheus.NewGaugeFunc(
+		prometheus.GaugeOpts{Namespace: "horizon", Subsystem: "db", Name: "idle_connections"},
+		func() float64 {
+			return float64(app.historyQ.Session.DB.Stats().Idle)
+		},
+	)
+	app.prometheusRegistry.MustRegister(app.dbIdleConnectionsGauge)
+
 	app.dbWaitCountCounter = prometheus.NewCounterFunc(
 		prometheus.CounterOpts{
 			Namespace: "horizon", Subsystem: "db", Name: "wait_count_total",
@@ -246,6 +254,39 @@ func initDbMetrics(app *App) {
 		},
 	)
 	app.prometheusRegistry.MustRegister(app.dbWaitDurationCounter)
+
+	app.dbMaxIdleClosedCounter = prometheus.NewCounterFunc(
+		prometheus.CounterOpts{
+			Namespace: "horizon", Subsystem: "db", Name: "max_idle_closed_total",
+			Help: "total number of number of connections closed due to SetMaxIdleConns",
+		},
+		func() float64 {
+			return float64(app.historyQ.Session.DB.Stats().MaxIdleClosed)
+		},
+	)
+	app.prometheusRegistry.MustRegister(app.dbMaxIdleClosedCounter)
+
+	app.dbMaxIdleTimeClosedCounter = prometheus.NewCounterFunc(
+		prometheus.CounterOpts{
+			Namespace: "horizon", Subsystem: "db", Name: "max_idle_time_closed_total",
+			Help: "total number of number of connections closed due to SetConnMaxIdleTime",
+		},
+		func() float64 {
+			return float64(app.historyQ.Session.DB.Stats().MaxIdleTimeClosed)
+		},
+	)
+	app.prometheusRegistry.MustRegister(app.dbMaxIdleTimeClosedCounter)
+
+	app.dbMaxLifetimeClosedCounter = prometheus.NewCounterFunc(
+		prometheus.CounterOpts{
+			Namespace: "horizon", Subsystem: "db", Name: "max_lifetime_closed_total",
+			Help: "total number of number of connections closed due to SetConnMaxLifetime",
+		},
+		func() float64 {
+			return float64(app.historyQ.Session.DB.Stats().MaxLifetimeClosed)
+		},
+	)
+	app.prometheusRegistry.MustRegister(app.dbMaxLifetimeClosedCounter)
 
 	app.prometheusRegistry.MustRegister(app.orderBookStream.LatestLedgerGauge)
 }
