@@ -28,9 +28,14 @@ func (e *Error) Render(w http.ResponseWriter) {
 	httpjson.RenderStatus(w, e.Status, e, httpjson.JSON)
 }
 
-var InternalServerError = &Error{
+var InternalServer = &Error{
 	ErrorMessage: "An error occurred while processing this request.",
 	Status:       http.StatusInternalServerError,
+}
+
+var BadRequest = &Error{
+	ErrorMessage: "The request was invalid in some way.",
+	Status:       http.StatusBadRequest,
 }
 
 func ParseHorizonError(err error) error {

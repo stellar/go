@@ -7,9 +7,11 @@ import (
 )
 
 type txApprovalResponse struct {
-	Status     sep8Status `json:"status"`
 	Error      string     `json:"error,omitempty"`
+	Message    string     `json:"message,omitempty"`
+	Status     sep8Status `json:"status"`
 	StatusCode int        `json:"-"`
+	Tx         string     `json:"tx,omitempty"`
 }
 
 func (t *txApprovalResponse) Render(w http.ResponseWriter) {
@@ -24,8 +26,18 @@ func NewRejectedTxApprovalResponse(errMessage string) *txApprovalResponse {
 	}
 }
 
+func NewRevisedTxApprovalResponse(tx string) *txApprovalResponse {
+	return &txApprovalResponse{
+		Status:     sep8StatusRevised,
+		Tx:         tx,
+		StatusCode: http.StatusOK,
+		Message:    "Authorization and deauthorization operations were added.",
+	}
+}
+
 type sep8Status string
 
 const (
 	sep8StatusRejected sep8Status = "rejected"
+	sep8StatusRevised  sep8Status = "revised"
 )
