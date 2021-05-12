@@ -2,12 +2,14 @@ package serve
 
 import (
 	"context"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/go-chi/chi"
+	"github.com/stellar/go/amount"
 	"github.com/stellar/go/network"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -107,13 +109,18 @@ func TestTomlHandler_ServeHTTP(t *testing.T) {
 
 	body, err := ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
+	amount.StringFromInt64(10)
+	approvalCriteria := fmt.Sprintf(
+		`The approval server currently only accepts payments. The transaction must have exactly one operation of type payment. ` +
+			`If the payment amount exceeds ` + amount.StringFromInt64(10) + ` FOO it will need KYC approval.`)
+
 	wantBody := `NETWORK_PASSPHRASE="` + network.TestNetworkPassphrase + `"
 [[CURRENCIES]]
 code="FOO"
 issuer="GCVDOU4YHHXGM3QYVSDHPQIFMZKXTFSIYO4HJOJZOTR7GURVQO6IQ5HM"
 regulated=true
 approval_server="localhost:8000/tx-approve"
-approval_criteria="Currently localhost:8000/tx-approve only approves FOO payment transactions."
+approval_criteria="` + approvalCriteria + `"
 `
 	require.Equal(t, wantBody, string(body))
 }
