@@ -169,28 +169,14 @@ func (h txApproveHandler) txApprove(ctx context.Context, in txApproveRequest) (r
 		log.Ctx(ctx).Errorf(`invalid transaction sequence number tx.SourceAccount().Sequence: %d, accountSequence+1:%d`, tx.SourceAccount().Sequence, accountSequence+1)
 		return NewRejectedTxApprovalResponse("Invalid transaction sequence number."), nil
 	}
-
-	// Validate the payment amount to see if it requires KYC
-	paymentAmount, err := amount.ParseInt64(paymentOp.Amount)
+	// Validate tx to see if it requires KYC
+	var kycRequiredResponse *txApprovalResponse
+	kycRequiredResponse, err = h.handleKYCRequiredOperationIfNeeded(ctx, tx, paymentSource, paymentOp)
 	if err != nil {
-		return nil, errors.Wrapf(err, "parsing account payment amount %d from string to Int64", paymentAmount)
+		return nil, errors.Wrap(err, "handling KYC required payment")
 	}
-	if paymentAmount > h.kycThreshold {
-		// TODO: Remove debug log
-		log.Ctx(ctx).Debugf(`paymentOp.Amount: %s paymentAmount: %s, h.kycThreshold:%s`,
-			paymentOp.Amount,
-			amount.StringFromInt64(paymentAmount),
-			amount.StringFromInt64(h.kycThreshold),
-		)
-		var kycRequiredResponse *txApprovalResponse
-		kycRequiredResponse, err = h.handleKYCRequiredOperation(ctx, paymentSource)
-		if err != nil {
-			return nil, errors.Wrap(err, "handling KYC required payment")
-		}
-
-		if kycRequiredResponse != nil {
-			return kycRequiredResponse, nil
-		}
+	if kycRequiredResponse != nil {
+		return kycRequiredResponse, nil
 	}
 	// build the transaction
 	revisedOperations := []txnbuild.Operation{
@@ -243,7 +229,14 @@ func (h txApproveHandler) txApprove(ctx context.Context, in txApproveRequest) (r
 	return NewRevisedTxApprovalResponse(txe), nil
 }
 
-func (h txApproveHandler) handleKYCRequiredOperation(ctx context.Context, stellarAddress string) (*txApprovalResponse, error) {
+func (h txApproveHandler) handleKYCRequiredOperationIfNeeded(ctx context.Context, tx *txnbuild.Transaction, stellarAddress string, paymentOp *txnbuild.Payment) (*txApprovalResponse, error) {
+	paymentAmount, err := amount.ParseInt64(paymentOp.Amount)
+	if err != nil {
+		return nil, errors.Wrapf(err, "parsing account payment amount %d from string to Int64", paymentAmount)
+	}
+	if paymentAmount < h.kycThreshold {
+		return nil, nil
+	}
 	intendedCallbackID := uuid.New().String()
 
 	// This query inserts a new row with the intended callbackID or selects the
@@ -265,7 +258,7 @@ func (h txApproveHandler) handleKYCRequiredOperation(ctx context.Context, stella
 		callbackID             string
 		approvedAt, rejectedAt sql.NullTime
 	)
-	err := h.db.QueryRowContext(ctx, q, stellarAddress, intendedCallbackID).Scan(&callbackID, &approvedAt, &rejectedAt)
+	err = h.db.QueryRowContext(ctx, q, stellarAddress, intendedCallbackID).Scan(&callbackID, &approvedAt, &rejectedAt)
 	if err != nil {
 		err = errors.Wrap(err, "getting or creating callback id")
 		log.Ctx(ctx).Error(err)
