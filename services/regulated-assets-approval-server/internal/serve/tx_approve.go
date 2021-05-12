@@ -174,8 +174,11 @@ func (h txApproveHandler) txApprove(ctx context.Context, in txApproveRequest) (r
 		paymentAmountStr := amount.StringFromInt64(paymentAmount)
 		kycThresholdStr := amount.StringFromInt64(h.kycThreshold)
 		log.Ctx(ctx).Errorf(`paymentOp.Amount: %s paymentAmount: %s, h.kycThreshold:%s`, paymentOp.Amount, paymentAmountStr, kycThresholdStr)
-		return NewRejectedTxApprovalResponse(
-			fmt.Sprintf(`Payments exceeding %d %s require your email address for KYC approval.`, h.kycThreshold, h.assetCode)), nil
+		return NewActionRequiredTxApprovalResponse(
+			fmt.Sprintf(`Payments exceeding %s %s require your email address for KYC approval.`, kycThresholdStr, h.assetCode),
+			fmt.Sprintf("/kyc-status/"),
+			[]string{"email_address"},
+		), nil
 	}
 	// build the transaction
 	revisedOperations := []txnbuild.Operation{

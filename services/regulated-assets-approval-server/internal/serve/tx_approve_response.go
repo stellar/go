@@ -7,11 +7,14 @@ import (
 )
 
 type txApprovalResponse struct {
-	Error      string     `json:"error,omitempty"`
-	Message    string     `json:"message,omitempty"`
-	Status     sep8Status `json:"status"`
-	StatusCode int        `json:"-"`
-	Tx         string     `json:"tx,omitempty"`
+	Error        string     `json:"error,omitempty"`
+	Message      string     `json:"message,omitempty"`
+	Status       sep8Status `json:"status"`
+	StatusCode   int        `json:"-"`
+	Tx           string     `json:"tx,omitempty"`
+	ActionURL    string     `json:"action_url,omitempty"`
+	ActionMethod string     `json:"action_method,omitempty"`
+	ActionFields []string   `json:"action_fields,omitempty"`
 }
 
 func (t *txApprovalResponse) Render(w http.ResponseWriter) {
@@ -35,9 +38,21 @@ func NewRevisedTxApprovalResponse(tx string) *txApprovalResponse {
 	}
 }
 
+func NewActionRequiredTxApprovalResponse(message, actionURL string, actionFields []string) *txApprovalResponse {
+	return &txApprovalResponse{
+		Status:       sep8StatusActionRequired,
+		Message:      message,
+		ActionMethod: "POST",
+		StatusCode:   http.StatusOK,
+		ActionURL:    actionURL,
+		ActionFields: actionFields,
+	}
+}
+
 type sep8Status string
 
 const (
-	sep8StatusRejected sep8Status = "rejected"
-	sep8StatusRevised  sep8Status = "revised"
+	sep8StatusRejected       sep8Status = "rejected"
+	sep8StatusRevised        sep8Status = "revised"
+	sep8StatusActionRequired sep8Status = "action_required"
 )
