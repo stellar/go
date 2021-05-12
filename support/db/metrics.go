@@ -26,7 +26,7 @@ type SessionWithMetrics struct {
 	SessionInterface
 	registry                 *prometheus.Registry
 	queryCounter             *prometheus.CounterVec
-	queryDuration            *prometheus.HistogramVec
+	queryDurationSummary     *prometheus.SummaryVec
 	maxOpenConnectionsGauge  prometheus.GaugeFunc
 	openConnectionsGauge     prometheus.GaugeFunc
 	inUseConnectionsGauge    prometheus.GaugeFunc
@@ -51,15 +51,14 @@ func RegisterMetrics(base *Session, namespace, sub string, registry *prometheus.
 	)
 	registry.MustRegister(s.queryCounter)
 
-	s.queryDuration = prometheus.NewHistogramVec(
-		prometheus.HistogramOpts{
+	s.queryDurationSummary = prometheus.NewSummaryVec(
+		prometheus.SummaryOpts{
 			Namespace: namespace, Subsystem: subsystem,
-			Name:    "query_duration_seconds",
-			Buckets: prometheus.ExponentialBuckets(0.1, 2, 5),
+			Name: "query_duration_seconds",
 		},
 		[]string{"query_type", "error", "route"},
 	)
-	registry.MustRegister(s.queryDuration)
+	registry.MustRegister(s.queryDurationSummary)
 
 	// txnCounter: prometheus.NewCounter(
 	// 	prometheus.CounterOpts{Namespace: namespace, Subsystem: subsystem, Name: "transaction_total"},
@@ -169,9 +168,9 @@ func RegisterMetrics(base *Session, namespace, sub string, registry *prometheus.
 
 func (s *SessionWithMetrics) Close() error {
 	s.registry.Unregister(s.queryCounter)
-	s.registry.Unregister(s.queryDuration)
+	s.registry.Unregister(s.queryDurationSummary)
 	// s.registry.Unregister(s.txnCounter)
-	// s.registry.Unregister(s.txnDuration)
+	// s.registry.Unregister(s.txnDurationSummary)
 	s.registry.Unregister(s.maxOpenConnectionsGauge)
 	s.registry.Unregister(s.openConnectionsGauge)
 	s.registry.Unregister(s.inUseConnectionsGauge)
@@ -192,7 +191,7 @@ func (s *SessionWithMetrics) Close() error {
 
 func (s *SessionWithMetrics) TruncateTables(ctx context.Context, tables []string) (err error) {
 	timer := prometheus.NewTimer(prometheus.ObserverFunc(func(v float64) {
-		s.queryDuration.With(prometheus.Labels{
+		s.queryDurationSummary.With(prometheus.Labels{
 			"query_type": "truncate_tables",
 			"error":      fmt.Sprint(err != nil),
 			"route":      contextRoute(ctx),
@@ -216,9 +215,9 @@ func (s *SessionWithMetrics) Clone() SessionInterface {
 		SessionInterface:         s.SessionInterface.Clone(),
 		registry:                 s.registry,
 		queryCounter:             s.queryCounter,
-		queryDuration:            s.queryDuration,
+		queryDurationSummary:     s.queryDurationSummary,
 		// txnCounter:               s.txnCounter,
-		// txnDuration:              s.txnDuration,
+		// txnDurationSummary:       s.txnDurationSummary,
 		maxOpenConnectionsGauge:  s.maxOpenConnectionsGauge,
 		openConnectionsGauge:     s.openConnectionsGauge,
 		inUseConnectionsGauge:    s.inUseConnectionsGauge,
@@ -250,7 +249,7 @@ func getQueryType(query squirrel.Sqlizer) string {
 func (s *SessionWithMetrics) Get(ctx context.Context, dest interface{}, query squirrel.Sqlizer) (err error) {
 	queryType := getQueryType(query)
 	timer := prometheus.NewTimer(prometheus.ObserverFunc(func(v float64) {
-		s.queryDuration.With(prometheus.Labels{
+		s.queryDurationSummary.With(prometheus.Labels{
 			"query_type": queryType,
 			"error":      fmt.Sprint(err != nil),
 			"route":      contextRoute(ctx),
@@ -276,7 +275,7 @@ func (s *SessionWithMetrics) GetRaw(ctx context.Context, dest interface{}, query
 func (s *SessionWithMetrics) Select(ctx context.Context, dest interface{}, query squirrel.Sqlizer) (err error) {
 	queryType := getQueryType(query)
 	timer := prometheus.NewTimer(prometheus.ObserverFunc(func(v float64) {
-		s.queryDuration.With(prometheus.Labels{
+		s.queryDurationSummary.With(prometheus.Labels{
 			"query_type": queryType,
 			"error":      fmt.Sprint(err != nil),
 			"route":      contextRoute(ctx),
@@ -302,7 +301,7 @@ func (s *SessionWithMetrics) SelectRaw(ctx context.Context, dest interface{}, qu
 func (s *SessionWithMetrics) Exec(ctx context.Context, query squirrel.Sqlizer) (result sql.Result, err error) {
 	queryType := getQueryType(query)
 	timer := prometheus.NewTimer(prometheus.ObserverFunc(func(v float64) {
-		s.queryDuration.With(prometheus.Labels{
+		s.queryDurationSummary.With(prometheus.Labels{
 			"query_type": queryType,
 			"error":      fmt.Sprint(err != nil),
 			"route":      contextRoute(ctx),
@@ -328,7 +327,7 @@ func (s *SessionWithMetrics) ExecRaw(ctx context.Context, query string, args ...
 func (s *SessionWithMetrics) Ping(ctx context.Context, timeout time.Duration) (err error) {
 	queryType := "ping"
 	timer := prometheus.NewTimer(prometheus.ObserverFunc(func(v float64) {
-		s.queryDuration.With(prometheus.Labels{
+		s.queryDurationSummary.With(prometheus.Labels{
 			"query_type": queryType,
 			"error":      fmt.Sprint(err != nil),
 			"route":      contextRoute(ctx),
@@ -355,7 +354,7 @@ func (s *SessionWithMetrics) DeleteRange(
 ) (err error) {
 	queryType := "delete"
 	timer := prometheus.NewTimer(prometheus.ObserverFunc(func(v float64) {
-		s.queryDuration.With(prometheus.Labels{
+		s.queryDurationSummary.With(prometheus.Labels{
 			"query_type": queryType,
 			"error":      fmt.Sprint(err != nil),
 			"route":      contextRoute(ctx),
