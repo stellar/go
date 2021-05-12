@@ -835,3 +835,100 @@ func TestAPI_RevisedIntegration(t *testing.T) {
 	assert.Equal(t, op5.Type.GetCode(), assetGOAT.GetCode())
 	require.False(t, op5.Authorize)
 }
+func TestAPI_KYCIntegration(t *testing.T) {
+	ctx := context.Background()
+	db := dbtest.Open(t)
+	defer db.Close()
+	conn := db.Open()
+	defer conn.Close()
+	issuerAccKeyPair := keypair.MustRandom()
+	senderAccKP := keypair.MustRandom()
+	receiverAccKP := keypair.MustRandom()
+	assetGOAT := txnbuild.CreditAsset{
+		Code:   "GOAT",
+		Issuer: issuerAccKeyPair.Address(),
+	}
+	horizonMock := horizonclient.MockClient{}
+	horizonMock.
+		On("AccountDetail", horizonclient.AccountRequest{AccountID: issuerAccKeyPair.Address()}).
+		Return(horizon.Account{
+			Balances: []horizon.Balance{
+				{
+					Asset:   base.Asset{Code: "ASSET", Issuer: issuerAccKeyPair.Address()},
+					Balance: "0",
+				},
+			},
+		}, nil)
+	horizonMock.
+		On("AccountDetail", horizonclient.AccountRequest{AccountID: senderAccKP.Address()}).
+		Return(horizon.Account{
+			AccountID: senderAccKP.Address(),
+			Sequence:  "5",
+		}, nil)
+	horizonMock.
+		On("AccountDetail", horizonclient.AccountRequest{AccountID: receiverAccKP.Address()}).
+		Return(horizon.Account{
+			AccountID: receiverAccKP.Address(),
+			Sequence:  "0",
+		}, nil)
+	kycThresholdAmount, err := amount.ParseInt64("500")
+	require.NoError(t, err)
+	handler := txApproveHandler{
+		issuerKP:          issuerAccKeyPair,
+		assetCode:         assetGOAT.GetCode(),
+		horizonClient:     &horizonMock,
+		networkPassphrase: network.TestNetworkPassphrase,
+		db:                conn,
+		kycThreshold:      kycThresholdAmount,
+		baseURL:           "https://sep8-server.test",
+	}
+	// Submit tx with payment of 501 GOATs to POST /tx_approve.
+	// Server's KYC threshold is <=500 GOATs.
+	senderAcc, err := handler.horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: senderAccKP.Address()})
+	require.NoError(t, err)
+	tx, err := txnbuild.NewTransaction(
+		txnbuild.TransactionParams{
+			SourceAccount:        &senderAcc,
+			IncrementSequenceNum: true,
+			Operations: []txnbuild.Operation{
+				&txnbuild.Payment{
+					SourceAccount: senderAccKP.Address(),
+					Destination:   receiverAccKP.Address(),
+					Amount:        "501",
+					Asset:         assetGOAT,
+				},
+			},
+			BaseFee:    txnbuild.MinBaseFee,
+			Timebounds: txnbuild.NewInfiniteTimeout(),
+		},
+	)
+	require.NoError(t, err)
+	txEnc, err := tx.Base64()
+	require.NoError(t, err)
+	m := chi.NewMux()
+	m.Post("/tx-approve", handler.ServeHTTP)
+	req := `{
+		"tx": "` + txEnc + `"
+	}`
+	r := httptest.NewRequest("POST", "/tx-approve", strings.NewReader(req))
+	r = r.WithContext(ctx)
+	w := httptest.NewRecorder()
+	m.ServeHTTP(w, r)
+	resp := w.Result()
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
+	body, err := ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	var txApprovePOSTResponse txApprovalResponse
+	err = json.Unmarshal(body, &txApprovePOSTResponse)
+	require.NoError(t, err)
+	wantTXApprovalResponse := txApprovalResponse{
+		Status:       sep8Status("action_required"),
+		Tx:           txApprovePOSTResponse.Tx,
+		Message:      `Payments exceeding ` + amount.StringFromInt64(handler.kycThreshold) + ` GOAT require your email address for KYC approval.`,
+		ActionMethod: "POST",
+		ActionFields: []string{"email_address"},
+		ActionURL:    txApprovePOSTResponse.ActionURL,
+	}
+	assert.Equal(t, wantTXApprovalResponse, txApprovePOSTResponse)
+}
