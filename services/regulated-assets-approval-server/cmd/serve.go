@@ -30,6 +30,14 @@ func (c *ServeCommand) Command() *cobra.Command {
 			Required:  true,
 		},
 		{
+			Name:        "database-url",
+			Usage:       "Database URL",
+			OptType:     types.String,
+			ConfigKey:   &opts.DatabaseURL,
+			FlagDefault: "postgres://localhost:5432/?sslmode=disable",
+			Required:    true,
+		},
+		{
 			Name:        "friendbot-payment-amount",
 			Usage:       "The amount of regulated assets the friendbot will be distributing",
 			OptType:     types.Int,
@@ -59,6 +67,21 @@ func (c *ServeCommand) Command() *cobra.Command {
 			OptType:     types.Int,
 			ConfigKey:   &opts.Port,
 			FlagDefault: 8000,
+			Required:    true,
+		},
+		{
+			Name:      "base-url",
+			Usage:     "The base url address to this server",
+			OptType:   types.String,
+			ConfigKey: &opts.BaseURL,
+			Required:  true,
+		},
+		{
+			Name:        "kyc-required-payment-amount-threshold",
+			Usage:       "The amount threshold to require KYC",
+			OptType:     types.String,
+			ConfigKey:   &opts.KYCRequiredPaymentAmountThreshold,
+			FlagDefault: "500",
 			Required:    true,
 		},
 	}
