@@ -7,6 +7,7 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	sq "github.com/Masterminds/squirrel"
+	"github.com/jmoiron/sqlx"
 	"github.com/stretchr/testify/mock"
 )
 
@@ -31,14 +32,29 @@ func (m *MockSession) Rollback(ctx context.Context) error {
 	return args.Error(0)
 }
 
+func (m *MockSession) Commit(ctx context.Context) error {
+	args := m.Called(ctx)
+	return args.Error(0)
+}
+
+func (m *MockSession) GetTx() *sqlx.Tx {
+	args := m.Called()
+	return args.Get(0).(*sqlx.Tx)
+}
+
+func (m *MockSession) GetTxOptions() *sql.TxOptions {
+	args := m.Called()
+	return args.Get(0).(*sql.TxOptions)
+}
+
 func (m *MockSession) TruncateTables(ctx context.Context, tables []string) error {
 	args := m.Called(ctx, tables)
 	return args.Error(0)
 }
 
-func (m *MockSession) Clone() *Session {
+func (m *MockSession) Clone() SessionInterface {
 	args := m.Called()
-	return args.Get(0).(*Session)
+	return args.Get(0).(SessionInterface)
 }
 
 func (m *MockSession) Close() error {
@@ -92,4 +108,13 @@ func (m *MockSession) NoRows(err error) bool {
 
 func (m *MockSession) Ping(ctx context.Context, timeout time.Duration) error {
 	return m.Called(ctx, timeout).Error(0)
+}
+
+func (m *MockSession) DeleteRange(
+	ctx context.Context,
+	start, end int64,
+	table string,
+	idCol string,
+) (err error) {
+	return m.Called(ctx, start, end, table, idCol).Error(0)
 }

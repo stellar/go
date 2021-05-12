@@ -28,7 +28,7 @@ import (
 const maxAssetsForPathFinding = 15
 
 type RouterConfig struct {
-	DBSession   *db.Session
+	DBSession   db.SessionInterface
 	TxSubmitter *txsub.System
 	RateQuota   *throttled.RateQuota
 

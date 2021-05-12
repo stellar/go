@@ -67,7 +67,7 @@ func TestGetClaimableBalanceByID(t *testing.T) {
 		t,
 		map[string]string{},
 		map[string]string{"id": id},
-		q.Session,
+		q,
 	))
 	tt.Assert.NoError(err)
 
@@ -85,7 +85,7 @@ func TestGetClaimableBalanceByID(t *testing.T) {
 		t,
 		map[string]string{},
 		map[string]string{"id": id},
-		q.Session,
+		q,
 	))
 	tt.Assert.Error(err)
 	tt.Assert.True(q.NoRows(errors.Cause(err)))
@@ -95,7 +95,7 @@ func TestGetClaimableBalanceByID(t *testing.T) {
 		t,
 		map[string]string{},
 		map[string]string{"id": "0000001112122"},
-		q.Session,
+		q,
 	))
 	tt.Assert.Error(err)
 	p := err.(*problem.P)
@@ -108,7 +108,7 @@ func TestGetClaimableBalanceByID(t *testing.T) {
 		t,
 		map[string]string{},
 		map[string]string{"id": ""},
-		q.Session,
+		q,
 	))
 	tt.Assert.Error(err)
 	p = err.(*problem.P)
@@ -212,7 +212,7 @@ func TestGetClaimableBalances(t *testing.T) {
 		t,
 		map[string]string{},
 		map[string]string{},
-		q.Session,
+		q,
 	))
 	tt.Assert.NoError(err)
 	tt.Assert.Len(response, 4)
@@ -230,7 +230,7 @@ func TestGetClaimableBalances(t *testing.T) {
 			"cursor": response[3].(protocol.ClaimableBalance).PagingToken(),
 		},
 		map[string]string{},
-		q.Session,
+		q,
 	))
 	tt.Assert.NoError(err)
 	tt.Assert.Len(response, 0)
@@ -240,7 +240,7 @@ func TestGetClaimableBalances(t *testing.T) {
 		t,
 		map[string]string{"limit": "2"},
 		map[string]string{},
-		q.Session,
+		q,
 	))
 	tt.Assert.NoError(err)
 	tt.Assert.Len(response, 2)
@@ -259,7 +259,7 @@ func TestGetClaimableBalances(t *testing.T) {
 			"cursor": response[1].(protocol.ClaimableBalance).PagingToken(),
 		},
 		map[string]string{},
-		q.Session,
+		q,
 	))
 
 	tt.Assert.NoError(err)
@@ -281,7 +281,7 @@ func TestGetClaimableBalances(t *testing.T) {
 			"cursor": lastIngestedCursor,
 		},
 		map[string]string{},
-		q.Session,
+		q,
 	))
 
 	tt.Assert.NoError(err)
@@ -329,7 +329,7 @@ func TestGetClaimableBalances(t *testing.T) {
 		t,
 		map[string]string{},
 		map[string]string{},
-		q.Session,
+		q,
 	))
 
 	tt.Assert.NoError(err)
@@ -342,7 +342,7 @@ func TestGetClaimableBalances(t *testing.T) {
 			"cursor": lastIngestedCursor,
 		},
 		map[string]string{},
-		q.Session,
+		q,
 	))
 
 	tt.Assert.NoError(err)
@@ -361,7 +361,7 @@ func TestGetClaimableBalances(t *testing.T) {
 			"cursor": response[1].(protocol.ClaimableBalance).PagingToken(),
 		},
 		map[string]string{},
-		q.Session,
+		q,
 	))
 
 	tt.Assert.NoError(err)
@@ -378,7 +378,7 @@ func TestGetClaimableBalances(t *testing.T) {
 			"cursor": response[0].(protocol.ClaimableBalance).PagingToken(),
 		},
 		map[string]string{},
-		q.Session,
+		q,
 	))
 
 	tt.Assert.NoError(err)
@@ -392,7 +392,7 @@ func TestGetClaimableBalances(t *testing.T) {
 			"order": "desc",
 		},
 		map[string]string{},
-		q.Session,
+		q,
 	))
 
 	tt.Assert.NoError(err)
@@ -414,7 +414,7 @@ func TestGetClaimableBalances(t *testing.T) {
 			"cursor": response[1].(protocol.ClaimableBalance).PagingToken(),
 		},
 		map[string]string{},
-		q.Session,
+		q,
 	))
 
 	tt.Assert.NoError(err)
@@ -431,7 +431,7 @@ func TestGetClaimableBalances(t *testing.T) {
 			"asset": native.StringCanonical(),
 		},
 		map[string]string{},
-		q.Session,
+		q,
 	))
 
 	tt.Assert.NoError(err)
@@ -450,7 +450,7 @@ func TestGetClaimableBalances(t *testing.T) {
 			"asset": usd.StringCanonical(),
 		},
 		map[string]string{},
-		q.Session,
+		q,
 	))
 
 	tt.Assert.NoError(err)
@@ -469,7 +469,7 @@ func TestGetClaimableBalances(t *testing.T) {
 			"asset": euro.StringCanonical(),
 		},
 		map[string]string{},
-		q.Session,
+		q,
 	))
 
 	tt.Assert.NoError(err)
@@ -488,7 +488,7 @@ func TestGetClaimableBalances(t *testing.T) {
 			"sponsor": "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
 		},
 		map[string]string{},
-		q.Session,
+		q,
 	))
 
 	tt.Assert.NoError(err)
@@ -507,7 +507,7 @@ func TestGetClaimableBalances(t *testing.T) {
 			"claimant": "GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
 		},
 		map[string]string{},
-		q.Session,
+		q,
 	))
 
 	tt.Assert.NoError(err)
@@ -519,7 +519,7 @@ func TestGetClaimableBalances(t *testing.T) {
 			"claimant": "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
 		},
 		map[string]string{},
-		q.Session,
+		q,
 	))
 
 	tt.Assert.NoError(err)
@@ -539,7 +539,7 @@ func TestCursorAndOrderValidation(t *testing.T) {
 			"cursor": "-1-00000043d380c38a2f2cac46ab63674064c56fdce6b977fdef1a278ad50e1a7e6a5e18",
 		},
 		map[string]string{},
-		q.Session,
+		q,
 	))
 	p := err.(*problem.P)
 	tt.Assert.Equal("bad_request", p.Type)
@@ -552,7 +552,7 @@ func TestCursorAndOrderValidation(t *testing.T) {
 			"cursor": "1003529-00000043d380c38a2f2cac46ab63674064c56fdce6b977fdef1a278ad50e1a7e6a5e18",
 		},
 		map[string]string{},
-		q.Session,
+		q,
 	))
 	p = err.(*problem.P)
 	tt.Assert.Equal("bad_request", p.Type)
@@ -566,7 +566,7 @@ func TestCursorAndOrderValidation(t *testing.T) {
 			"cursor": "1003529-00000043d380c38a2f2cac46ab63674064c56fdce6b977fdef1a278ad50e1a7e6a5e18",
 		},
 		map[string]string{},
-		q.Session,
+		q,
 	))
 	p = err.(*problem.P)
 	tt.Assert.Equal("bad_request", p.Type)

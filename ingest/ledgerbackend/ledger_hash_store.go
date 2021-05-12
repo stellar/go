@@ -20,11 +20,11 @@ type TrustedLedgerHashStore interface {
 
 // HorizonDBLedgerHashStore is a TrustedLedgerHashStore which uses horizon's db to look up ledger hashes
 type HorizonDBLedgerHashStore struct {
-	session *db.Session
+	session db.SessionInterface
 }
 
 // NewHorizonDBLedgerHashStore constructs a new TrustedLedgerHashStore backed by the horizon db
-func NewHorizonDBLedgerHashStore(session *db.Session) TrustedLedgerHashStore {
+func NewHorizonDBLedgerHashStore(session db.SessionInterface) TrustedLedgerHashStore {
 	return HorizonDBLedgerHashStore{session: session}
 }
 

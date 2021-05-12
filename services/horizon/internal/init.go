@@ -52,7 +52,7 @@ func mustInitHorizonDB(app *App) {
 
 func initIngester(app *App) {
 	var err error
-	var coreSession *db.Session
+	var coreSession db.SessionInterface
 	if !app.config.EnableCaptiveCoreIngestion {
 		coreSession = mustNewDBSession(app.config.StellarCoreDatabaseURL, ingest.MaxDBConnections, ingest.MaxDBConnections)
 	}
@@ -198,96 +198,6 @@ func initDbMetrics(app *App) {
 	)
 	app.prometheusRegistry.MustRegister(app.coreSynced)
 
-	app.dbMaxOpenConnectionsGauge = prometheus.NewGaugeFunc(
-		prometheus.GaugeOpts{Namespace: "horizon", Subsystem: "db", Name: "max_open_connections"},
-		func() float64 {
-			// Right now MaxOpenConnections in Horizon is static however it's possible that
-			// it will change one day. In such case, using GaugeFunc is very cheap and will
-			// prevent issues with this metric in the future.
-			return float64(app.historyQ.Session.DB.Stats().MaxOpenConnections)
-		},
-	)
-	app.prometheusRegistry.MustRegister(app.dbMaxOpenConnectionsGauge)
-
-	app.dbOpenConnectionsGauge = prometheus.NewGaugeFunc(
-		prometheus.GaugeOpts{Namespace: "horizon", Subsystem: "db", Name: "open_connections"},
-		func() float64 {
-			return float64(app.historyQ.Session.DB.Stats().OpenConnections)
-		},
-	)
-	app.prometheusRegistry.MustRegister(app.dbOpenConnectionsGauge)
-
-	app.dbInUseConnectionsGauge = prometheus.NewGaugeFunc(
-		prometheus.GaugeOpts{Namespace: "horizon", Subsystem: "db", Name: "in_use_connections"},
-		func() float64 {
-			return float64(app.historyQ.Session.DB.Stats().InUse)
-		},
-	)
-	app.prometheusRegistry.MustRegister(app.dbInUseConnectionsGauge)
-
-	app.dbIdleConnectionsGauge = prometheus.NewGaugeFunc(
-		prometheus.GaugeOpts{Namespace: "horizon", Subsystem: "db", Name: "idle_connections"},
-		func() float64 {
-			return float64(app.historyQ.Session.DB.Stats().Idle)
-		},
-	)
-	app.prometheusRegistry.MustRegister(app.dbIdleConnectionsGauge)
-
-	app.dbWaitCountCounter = prometheus.NewCounterFunc(
-		prometheus.CounterOpts{
-			Namespace: "horizon", Subsystem: "db", Name: "wait_count_total",
-			Help: "total number of number of connections waited for",
-		},
-		func() float64 {
-			return float64(app.historyQ.Session.DB.Stats().WaitCount)
-		},
-	)
-	app.prometheusRegistry.MustRegister(app.dbWaitCountCounter)
-
-	app.dbWaitDurationCounter = prometheus.NewCounterFunc(
-		prometheus.CounterOpts{
-			Namespace: "horizon", Subsystem: "db", Name: "wait_duration_seconds_total",
-			Help: "total time blocked waiting for a new connection",
-		},
-		func() float64 {
-			return app.historyQ.Session.DB.Stats().WaitDuration.Seconds()
-		},
-	)
-	app.prometheusRegistry.MustRegister(app.dbWaitDurationCounter)
-
-	app.dbMaxIdleClosedCounter = prometheus.NewCounterFunc(
-		prometheus.CounterOpts{
-			Namespace: "horizon", Subsystem: "db", Name: "max_idle_closed_total",
-			Help: "total number of number of connections closed due to SetMaxIdleConns",
-		},
-		func() float64 {
-			return float64(app.historyQ.Session.DB.Stats().MaxIdleClosed)
-		},
-	)
-	app.prometheusRegistry.MustRegister(app.dbMaxIdleClosedCounter)
-
-	app.dbMaxIdleTimeClosedCounter = prometheus.NewCounterFunc(
-		prometheus.CounterOpts{
-			Namespace: "horizon", Subsystem: "db", Name: "max_idle_time_closed_total",
-			Help: "total number of number of connections closed due to SetConnMaxIdleTime",
-		},
-		func() float64 {
-			return float64(app.historyQ.Session.DB.Stats().MaxIdleTimeClosed)
-		},
-	)
-	app.prometheusRegistry.MustRegister(app.dbMaxIdleTimeClosedCounter)
-
-	app.dbMaxLifetimeClosedCounter = prometheus.NewCounterFunc(
-		prometheus.CounterOpts{
-			Namespace: "horizon", Subsystem: "db", Name: "max_lifetime_closed_total",
-			Help: "total number of number of connections closed due to SetConnMaxLifetime",
-		},
-		func() float64 {
-			return float64(app.historyQ.Session.DB.Stats().MaxLifetimeClosed)
-		},
-	)
-	app.prometheusRegistry.MustRegister(app.dbMaxLifetimeClosedCounter)
-
 	app.prometheusRegistry.MustRegister(app.orderBookStream.LatestLedgerGauge)
 }
 
@@ -345,7 +255,7 @@ func initSubmissionSystem(app *App) {
 		Submitter:       txsub.NewDefaultSubmitter(http.DefaultClient, app.config.StellarCoreURL),
 		SubmissionQueue: sequence.NewManager(),
 		DB: func(ctx context.Context) txsub.HorizonDB {
-			return &history.Q{Session: app.HorizonSession()}
+			return &history.Q{SessionInterface: app.HorizonSession()}
 		},
 	}
 }
