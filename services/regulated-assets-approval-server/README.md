@@ -80,7 +80,7 @@ to set those flags. Just click the link, fulfill the account address, sequence
 number, then the account secret and submit the transaction.
 
 ### API Spec
-#### `POST /tx_approve`
+#### `POST /tx-approve`
 
 This is the core [SEP-8] endpoint used to validate and process approval/revision/rejection of regulated assets transactions.
 
