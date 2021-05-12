@@ -12,6 +12,7 @@ import (
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
+	"github.com/stellar/go/services/regulated-assets-approval-server/internal/db"
 	"github.com/stellar/go/support/errors"
 	supporthttp "github.com/stellar/go/support/http"
 	"github.com/stellar/go/support/log"
@@ -60,6 +61,15 @@ func handleHTTP(opts Options) http.Handler {
 	if err != nil {
 		log.Fatal(errors.Wrapf(err, "%s cannot be parsed as a Stellar amount", opts.KYCRequiredPaymentAmountThreshold))
 	}
+	db, err := db.Open(opts.DatabaseURL)
+	if err != nil {
+		log.Fatal(errors.Wrap(err, "error parsing database url"))
+	}
+	db.SetMaxOpenConns(20)
+	err = db.Ping()
+	if err != nil {
+		log.Warn("Error pinging to Database: ", err)
+	}
 	mux := chi.NewMux()
 
 	mux.Use(middleware.RequestID)
@@ -88,6 +98,8 @@ func handleHTTP(opts Options) http.Handler {
 		issuerKP:          issuerKP,
 		horizonClient:     opts.horizonClient(),
 		networkPassphrase: opts.NetworkPassphrase,
+		db:                db,
+		kycThreshold:      parsedKYCRequiredPaymentThreshold,
 	}.ServeHTTP)
 	return mux
 }

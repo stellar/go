@@ -15,6 +15,7 @@ import (
 	"github.com/stellar/go/network"
 	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/protocols/horizon/base"
+	"github.com/stellar/go/services/regulated-assets-approval-server/internal/db/dbtest"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -48,7 +49,7 @@ func TestTxApproveHandlerValidate(t *testing.T) {
 	}
 	err = h.validate()
 	require.EqualError(t, err, "network passphrase cannot be empty")
-	// Success.
+	// No db.
 	h = txApproveHandler{
 		issuerKP:          issuerAccKeyPair,
 		assetCode:         "FOOBAR",
@@ -56,11 +57,49 @@ func TestTxApproveHandlerValidate(t *testing.T) {
 		networkPassphrase: network.TestNetworkPassphrase,
 	}
 	err = h.validate()
+	require.EqualError(t, err, "db cannot be nil")
+
+	db := dbtest.Open(t)
+	defer db.Close()
+	conn := db.Open()
+	defer conn.Close()
+	h = txApproveHandler{
+		issuerKP:          issuerAccKeyPair,
+		assetCode:         "FOOBAR",
+		horizonClient:     &horizonMock,
+		networkPassphrase: network.TestNetworkPassphrase,
+		db:                conn,
+	}
+	err = h.validate()
+	require.EqualError(t, err, "kyc threshold cannot be less than or equal to zero")
+	h = txApproveHandler{
+		issuerKP:          issuerAccKeyPair,
+		assetCode:         "FOOBAR",
+		horizonClient:     &horizonMock,
+		networkPassphrase: network.TestNetworkPassphrase,
+		db:                conn,
+		kycThreshold:      -1,
+	}
+	err = h.validate()
+	require.EqualError(t, err, "kyc threshold cannot be less than or equal to zero")
+	h = txApproveHandler{
+		issuerKP:          issuerAccKeyPair,
+		assetCode:         "FOOBAR",
+		horizonClient:     &horizonMock,
+		networkPassphrase: network.TestNetworkPassphrase,
+		db:                conn,
+		kycThreshold:      1,
+	}
+	err = h.validate()
 	require.NoError(t, err)
 }
 
 func TestTxApproveHandlerTxApprove(t *testing.T) {
 	ctx := context.Background()
+	db := dbtest.Open(t)
+	defer db.Close()
+	conn := db.Open()
+	defer conn.Close()
 	issuerAccKeyPair := keypair.MustRandom()
 	senderAccKP := keypair.MustRandom()
 	receiverAccKP := keypair.MustRandom()
@@ -102,6 +141,8 @@ func TestTxApproveHandlerTxApprove(t *testing.T) {
 		assetCode:         assetGOAT.GetCode(),
 		horizonClient:     &horizonMock,
 		networkPassphrase: network.TestNetworkPassphrase,
+		db:                conn,
+		kycThreshold:      500,
 	}
 	rejectedResponse, err := handler.txApprove(ctx, req)
 	require.NoError(t, err)
@@ -326,6 +367,10 @@ func TestTxApproveHandlerTxApprove(t *testing.T) {
 
 func TestAPI_RejectedIntegration(t *testing.T) {
 	ctx := context.Background()
+	db := dbtest.Open(t)
+	defer db.Close()
+	conn := db.Open()
+	defer conn.Close()
 	issuerAccKeyPair := keypair.MustRandom()
 	assetGOAT := txnbuild.CreditAsset{
 		Code:   "GOAT",
@@ -363,6 +408,8 @@ func TestAPI_RejectedIntegration(t *testing.T) {
 		assetCode:         assetGOAT.GetCode(),
 		horizonClient:     &horizonMock,
 		networkPassphrase: network.TestNetworkPassphrase,
+		db:                conn,
+		kycThreshold:      500,
 	}
 	// Test if no transaction is submitted.
 	m := chi.NewMux()
@@ -639,6 +686,10 @@ func TestAPI_RejectedIntegration(t *testing.T) {
 
 func TestAPI_RevisedIntegration(t *testing.T) {
 	ctx := context.Background()
+	db := dbtest.Open(t)
+	defer db.Close()
+	conn := db.Open()
+	defer conn.Close()
 	issuerAccKeyPair := keypair.MustRandom()
 	senderAccKP := keypair.MustRandom()
 	receiverAccKP := keypair.MustRandom()
@@ -674,6 +725,8 @@ func TestAPI_RevisedIntegration(t *testing.T) {
 		assetCode:         assetGOAT.GetCode(),
 		horizonClient:     &horizonMock,
 		networkPassphrase: network.TestNetworkPassphrase,
+		db:                conn,
+		kycThreshold:      500,
 	}
 	// Test Successful request.
 	senderAcc, err := handler.horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: senderAccKP.Address()})

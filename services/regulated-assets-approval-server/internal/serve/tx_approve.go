@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/jmoiron/sqlx"
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/services/regulated-assets-approval-server/internal/serve/httperror"
@@ -19,6 +20,8 @@ type txApproveHandler struct {
 	assetCode         string
 	horizonClient     horizonclient.ClientInterface
 	networkPassphrase string
+	db                *sqlx.DB
+	kycThreshold      int64
 }
 
 type txApproveRequest struct {
@@ -38,6 +41,12 @@ func (h txApproveHandler) validate() error {
 	}
 	if h.networkPassphrase == "" {
 		return errors.New("network passphrase cannot be empty")
+	}
+	if h.db == nil {
+		return errors.New("db cannot be nil")
+	}
+	if h.kycThreshold <= 0 {
+		return errors.New("kyc threshold cannot be less than or equal to zero")
 	}
 	return nil
 }
