@@ -2,10 +2,12 @@ package serve
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strconv"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/stellar/go/amount"
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/services/regulated-assets-approval-server/internal/serve/httperror"
@@ -162,6 +164,19 @@ func (h txApproveHandler) txApprove(ctx context.Context, in txApproveRequest) (r
 		return NewRejectedTxApprovalResponse("Invalid transaction sequence number."), nil
 	}
 
+	// Validate the payment amount to see if it requires KYC
+	paymentAmount, err := amount.ParseInt64(paymentOp.Amount)
+	if err != nil {
+		return nil, errors.Wrapf(err, "parsing account payment amount %f from string to float64", paymentAmount)
+	}
+	if paymentAmount > h.kycThreshold {
+		// TODO: Replace with actual kyc logic
+		paymentAmountStr := amount.StringFromInt64(paymentAmount)
+		kycThresholdStr := amount.StringFromInt64(h.kycThreshold)
+		log.Ctx(ctx).Errorf(`paymentOp.Amount: %s paymentAmount: %s, h.kycThreshold:%s`, paymentOp.Amount, paymentAmountStr, kycThresholdStr)
+		return NewRejectedTxApprovalResponse(
+			fmt.Sprintf(`Payments exceeding %d %s require your email address for KYC approval.`, h.kycThreshold, h.assetCode)), nil
+	}
 	// build the transaction
 	revisedOperations := []txnbuild.Operation{
 		&txnbuild.AllowTrust{
