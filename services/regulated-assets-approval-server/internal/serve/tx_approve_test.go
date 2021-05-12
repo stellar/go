@@ -221,21 +221,14 @@ func TestTxApproveHandlerTxApprove(t *testing.T) {
 		StatusCode: http.StatusBadRequest,
 	}
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
-	// Test if operation is not a payment (in this case allowing trust for a random account).
-	kp03 := keypair.MustRandom()
-	horizonMock.
-		On("AccountDetail", horizonclient.AccountRequest{AccountID: kp03.Address()}).
-		Return(horizon.Account{
-			AccountID: receiverAccKP.Address(),
-			Sequence:  "5",
-		}, nil)
+	// Test if operation is not a payment (in this case allowing trust for receiverAccKP).
 	tx, err = txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount:        &senderAcc,
 			IncrementSequenceNum: true,
 			Operations: []txnbuild.Operation{
 				&txnbuild.AllowTrust{
-					Trustor:   kp03.Address(),
+					Trustor:   receiverAccKP.Address(),
 					Type:      assetGOAT,
 					Authorize: true,
 				},
@@ -526,20 +519,13 @@ func TestAPI_RejectedIntegration(t *testing.T) {
 	}`
 	require.JSONEq(t, wantBody, string(body))
 	// Test if the transaction's operation is not a payment.
-	kp03 := keypair.MustRandom()
-	horizonMock.
-		On("AccountDetail", horizonclient.AccountRequest{AccountID: kp03.Address()}).
-		Return(horizon.Account{
-			AccountID: receiverAccKP.Address(),
-			Sequence:  "6",
-		}, nil)
 	tx, err = txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount:        &senderAcc,
 			IncrementSequenceNum: true,
 			Operations: []txnbuild.Operation{
 				&txnbuild.AllowTrust{
-					Trustor:   kp03.Address(),
+					Trustor:   receiverAccKP.Address(),
 					Type:      assetGOAT,
 					Authorize: true,
 				},
@@ -581,7 +567,7 @@ func TestAPI_RejectedIntegration(t *testing.T) {
 				},
 				&txnbuild.Payment{
 					SourceAccount: senderAccKP.Address(),
-					Destination:   kp03.Address(),
+					Destination:   receiverAccKP.Address(),
 					Amount:        "2",
 					Asset:         assetGOAT,
 				},
