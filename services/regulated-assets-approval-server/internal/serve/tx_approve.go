@@ -149,13 +149,11 @@ func (h txApproveHandler) txApprove(ctx context.Context, in txApproveRequest) (r
 	if paymentSource == "" {
 		paymentSource = tx.SourceAccount().AccountID
 	}
-
 	issuerAddress := h.issuerKP.Address()
 	if paymentOp.Asset.GetCode() != h.assetCode || paymentOp.Asset.GetIssuer() != issuerAddress {
 		log.Ctx(ctx).Error(`the payment asset is not supported by this issuer`)
 		return NewRejectedTxApprovalResponse("The payment asset is not supported by this issuer."), nil
 	}
-
 	acc, err := h.horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: paymentSource})
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting detail for payment source account %s", issuerAddress)
@@ -216,12 +214,10 @@ func (h txApproveHandler) txApprove(ctx context.Context, in txApproveRequest) (r
 	if err != nil {
 		return nil, errors.Wrap(err, "building transaction")
 	}
-
 	revisedTx, err = revisedTx.Sign(h.networkPassphrase, h.issuerKP)
 	if err != nil {
 		return nil, errors.Wrap(err, "signing transaction")
 	}
-
 	txe, err := revisedTx.Base64()
 	if err != nil {
 		return nil, errors.Wrap(err, "encoding revised transaction")
@@ -238,7 +234,6 @@ func (h txApproveHandler) handleKYCRequiredOperationIfNeeded(ctx context.Context
 		return nil, nil
 	}
 	intendedCallbackID := uuid.New().String()
-
 	// This query inserts a new row with the intended callbackID or selects the
 	// existing callbackID for that stellar account, if it already exists.
 	const q = `
@@ -264,15 +259,12 @@ func (h txApproveHandler) handleKYCRequiredOperationIfNeeded(ctx context.Context
 		log.Ctx(ctx).Error(err)
 		return nil, err
 	}
-
 	if approvedAt.Valid {
 		return nil, nil
 	}
-
 	if rejectedAt.Valid {
 		return NewRejectedTxApprovalResponse(fmt.Sprintf("Your KYC was rejected and you're not authorized for operations above %s %s", amount.StringFromInt64(h.kycThreshold), h.assetCode)), nil
 	}
-
 	return NewActionRequiredTxApprovalResponse(
 		fmt.Sprintf(`Payments exceeding %s %s require your email address for KYC approval.`, amount.StringFromInt64(h.kycThreshold), h.assetCode),
 		fmt.Sprintf("%s/kyc-status/%s", h.baseURL, callbackID),
