@@ -2,10 +2,12 @@ package serve
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"net/http"
 	"strconv"
 
+	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/clients/horizonclient"
@@ -174,15 +176,21 @@ func (h txApproveHandler) txApprove(ctx context.Context, in txApproveRequest) (r
 		return nil, errors.Wrapf(err, "parsing account payment amount %d from string to Int64", paymentAmount)
 	}
 	if paymentAmount > h.kycThreshold {
-		// TODO: Replace with actual kyc logic
-		paymentAmountStr := amount.StringFromInt64(paymentAmount)
-		kycThresholdStr := amount.StringFromInt64(h.kycThreshold)
-		log.Ctx(ctx).Errorf(`paymentOp.Amount: %s paymentAmount: %s, h.kycThreshold:%s`, paymentOp.Amount, paymentAmountStr, kycThresholdStr)
-		return NewActionRequiredTxApprovalResponse(
-			fmt.Sprintf(`Payments exceeding %s %s require your email address for KYC approval.`, kycThresholdStr, h.assetCode),
-			fmt.Sprintf("/kyc-status/"),
-			[]string{"email_address"},
-		), nil
+		// TODO: Remove debug log
+		log.Ctx(ctx).Debugf(`paymentOp.Amount: %s paymentAmount: %s, h.kycThreshold:%s`,
+			paymentOp.Amount,
+			amount.StringFromInt64(paymentAmount),
+			amount.StringFromInt64(h.kycThreshold),
+		)
+		var kycRequiredResponse *txApprovalResponse
+		kycRequiredResponse, err = h.handleKYCRequiredOperation(ctx, paymentSource)
+		if err != nil {
+			return nil, errors.Wrap(err, "handling KYC required payment")
+		}
+
+		if kycRequiredResponse != nil {
+			return kycRequiredResponse, nil
+		}
 	}
 	// build the transaction
 	revisedOperations := []txnbuild.Operation{
@@ -233,4 +241,48 @@ func (h txApproveHandler) txApprove(ctx context.Context, in txApproveRequest) (r
 		return nil, errors.Wrap(err, "encoding revised transaction")
 	}
 	return NewRevisedTxApprovalResponse(txe), nil
+}
+
+func (h txApproveHandler) handleKYCRequiredOperation(ctx context.Context, stellarAddress string) (*txApprovalResponse, error) {
+	intendedCallbackID := uuid.New().String()
+
+	// This query inserts a new row with the intended callbackID or selects the
+	// existing callbackID for that stellar account, if it already exists.
+	const q = `
+		WITH new_row AS (
+			INSERT INTO accounts_kyc_status (stellar_address, callback_id)
+			VALUES ($1, $2)
+			ON CONFLICT(stellar_address) DO NOTHING
+			RETURNING *
+		)
+		SELECT callback_id, approved_at, rejected_at FROM new_row
+		UNION
+		SELECT callback_id, approved_at, rejected_at
+		FROM accounts_kyc_status
+		WHERE stellar_address = $1
+	`
+	var (
+		callbackID             string
+		approvedAt, rejectedAt sql.NullTime
+	)
+	err := h.db.QueryRowContext(ctx, q, stellarAddress, intendedCallbackID).Scan(&callbackID, &approvedAt, &rejectedAt)
+	if err != nil {
+		err = errors.Wrap(err, "getting or creating callback id")
+		log.Ctx(ctx).Error(err)
+		return nil, err
+	}
+
+	if approvedAt.Valid {
+		return nil, nil
+	}
+
+	if rejectedAt.Valid {
+		return NewRejectedTxApprovalResponse(fmt.Sprintf("Your KYC was rejected and you're not authorized for operations above %s %s", amount.StringFromInt64(h.kycThreshold), h.assetCode)), nil
+	}
+
+	return NewActionRequiredTxApprovalResponse(
+		fmt.Sprintf(`Payments exceeding %s %s require your email address for KYC approval.`, amount.StringFromInt64(h.kycThreshold), h.assetCode),
+		fmt.Sprintf("%s/kyc-status/%s", h.baseURL, callbackID),
+		[]string{"email_address"},
+	), nil
 }
