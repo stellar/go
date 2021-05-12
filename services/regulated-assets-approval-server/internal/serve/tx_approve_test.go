@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/go-chi/chi"
+	"github.com/stellar/go/amount"
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/network"
@@ -150,13 +151,15 @@ func TestTxApproveHandlerTxApprove(t *testing.T) {
 			AccountID: receiverAccKP.Address(),
 			Sequence:  "3",
 		}, nil)
+	kycThresholdAmount, err := amount.ParseInt64("500")
+	require.NoError(t, err)
 	handler := txApproveHandler{
 		issuerKP:          issuerAccKeyPair,
 		assetCode:         assetGOAT.GetCode(),
 		horizonClient:     &horizonMock,
 		networkPassphrase: network.TestNetworkPassphrase,
 		db:                conn,
-		kycThreshold:      500,
+		kycThreshold:      kycThresholdAmount,
 		baseURL:           "https://sep8-server.test",
 	}
 	rejectedResponse, err := handler.txApprove(ctx, req)
@@ -418,13 +421,15 @@ func TestAPI_RejectedIntegration(t *testing.T) {
 			AccountID: receiverAccKP.Address(),
 			Sequence:  "3",
 		}, nil)
+	kycThresholdAmount, err := amount.ParseInt64("500")
+	require.NoError(t, err)
 	handler := txApproveHandler{
 		issuerKP:          issuerAccKeyPair,
 		assetCode:         assetGOAT.GetCode(),
 		horizonClient:     &horizonMock,
 		networkPassphrase: network.TestNetworkPassphrase,
 		db:                conn,
-		kycThreshold:      500,
+		kycThreshold:      kycThresholdAmount,
 		baseURL:           "https://sep8-server.test",
 	}
 	// Test if no transaction is submitted.
@@ -736,13 +741,15 @@ func TestAPI_RevisedIntegration(t *testing.T) {
 			AccountID: receiverAccKP.Address(),
 			Sequence:  "0",
 		}, nil)
+	kycThresholdAmount, err := amount.ParseInt64("500")
+	require.NoError(t, err)
 	handler := txApproveHandler{
 		issuerKP:          issuerAccKeyPair,
 		assetCode:         assetGOAT.GetCode(),
 		horizonClient:     &horizonMock,
 		networkPassphrase: network.TestNetworkPassphrase,
 		db:                conn,
-		kycThreshold:      500,
+		kycThreshold:      kycThresholdAmount,
 		baseURL:           "https://sep8-server.test",
 	}
 	// Test Successful request.
