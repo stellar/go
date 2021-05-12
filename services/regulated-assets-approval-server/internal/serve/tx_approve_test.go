@@ -709,7 +709,6 @@ func TestAPI_RevisedIntegration(t *testing.T) {
 	resp := w.Result()
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	body, err := ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 	var txApprovePOSTResponse txApprovalResponse
@@ -789,7 +788,6 @@ func TestAPI_RevisedIntegration(t *testing.T) {
 	resp = w.Result()
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 	var txApprovePOSTResponse2 txApprovalResponse
