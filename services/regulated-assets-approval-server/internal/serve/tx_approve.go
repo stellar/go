@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
@@ -167,9 +168,9 @@ func (h txApproveHandler) txApprove(ctx context.Context, in txApproveRequest) (r
 		log.Ctx(ctx).Errorf(`invalid transaction sequence number tx.SourceAccount().Sequence: %d, accountSequence+1:%d`, tx.SourceAccount().Sequence, accountSequence+1)
 		return NewRejectedTxApprovalResponse("Invalid transaction sequence number."), nil
 	}
-	// Validate tx to see if it requires KYC
+	// Validate if payment operation requires KYC.
 	var kycRequiredResponse *txApprovalResponse
-	kycRequiredResponse, err = h.handleKYCRequiredOperationIfNeeded(ctx, tx, paymentSource, paymentOp)
+	kycRequiredResponse, err = h.handleKYCRequiredOperationIfNeeded(ctx, paymentSource, paymentOp)
 	if err != nil {
 		return nil, errors.Wrap(err, "handling KYC required payment")
 	}
@@ -225,14 +226,22 @@ func (h txApproveHandler) txApprove(ctx context.Context, in txApproveRequest) (r
 	return NewRevisedTxApprovalResponse(txe), nil
 }
 
-func (h txApproveHandler) handleKYCRequiredOperationIfNeeded(ctx context.Context, tx *txnbuild.Transaction, stellarAddress string, paymentOp *txnbuild.Payment) (*txApprovalResponse, error) {
-	paymentAmount, err := amount.ParseInt64(paymentOp.Amount)
+// handleKYCRequiredOperationIfNeeded validates and returns an "action required"(or rejected) response if the payment requires KYC.
+func (h txApproveHandler) handleKYCRequiredOperationIfNeeded(ctx context.Context, stellarAddress string, paymentOp *txnbuild.Payment) (*txApprovalResponse, error) {
+	// validate payment operation against KYC condition(s).
+	// partialKYCRequiredMessage is used to build "action required" or rejected messages.
+	partialKYCRequiredMessage, err := h.validateKYC(paymentOp)
 	if err != nil {
-		return nil, errors.Wrapf(err, "parsing account payment amount %d from string to Int64", paymentAmount)
+		return nil, errors.Wrap(err, "validating KYC")
 	}
-	if paymentAmount < h.kycThreshold {
+	if partialKYCRequiredMessage == "" {
 		return nil, nil
 	}
+	//Build "Action Required" message.
+	actionFields := []string{"email_address"}
+	actionFieldsMessage := strings.Join(actionFields, ", ")
+	FullKYCRequiredMessage := fmt.Sprintf(`%s requires your %s for KYC approval.`, partialKYCRequiredMessage, actionFieldsMessage)
+	// Create new callBackID used to insert new accounts_kyc_status table entrees.
 	intendedCallbackID := uuid.New().String()
 	// This query inserts a new row with the intended callbackID or selects the
 	// existing callbackID for that stellar account, if it already exists.
@@ -263,11 +272,24 @@ func (h txApproveHandler) handleKYCRequiredOperationIfNeeded(ctx context.Context
 		return nil, nil
 	}
 	if rejectedAt.Valid {
-		return NewRejectedTxApprovalResponse(fmt.Sprintf("Your KYC was rejected and you're not authorized for operations above %s %s", amount.StringFromInt64(h.kycThreshold), h.assetCode)), nil
+		return NewRejectedTxApprovalResponse(fmt.Sprintf(`Your KYC was rejected and you're not authorized for "%s".`, partialKYCRequiredMessage)), nil
 	}
 	return NewActionRequiredTxApprovalResponse(
-		fmt.Sprintf(`Payments exceeding %s %s require your email address for KYC approval.`, amount.StringFromInt64(h.kycThreshold), h.assetCode),
+		FullKYCRequiredMessage,
 		fmt.Sprintf("%s/kyc-status/%s", h.baseURL, callbackID),
-		[]string{"email_address"},
+		actionFields,
 	), nil
+}
+
+// validateKYC returns a partial "action required" message (used in NewActionRequiredTxApprovalResponse) if the payment operation meets KYC conditions
+// Currently rule(s) are, checking if payment amount is > KYCThreshold amount.
+func (h txApproveHandler) validateKYC(paymentOp *txnbuild.Payment) (string, error) {
+	paymentAmount, err := amount.ParseInt64(paymentOp.Amount)
+	if err != nil {
+		return "", errors.Wrapf(err, "parsing account payment amount %d from string to Int64", paymentAmount)
+	}
+	if paymentAmount > h.kycThreshold {
+		return fmt.Sprintf(`Payments exceeding %s %s`, amount.StringFromInt64(h.kycThreshold), h.assetCode), nil
+	}
+	return "", nil
 }
