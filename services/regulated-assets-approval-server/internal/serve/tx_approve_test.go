@@ -58,7 +58,7 @@ func TestTxApproveHandlerValidate(t *testing.T) {
 	}
 	err = h.validate()
 	require.EqualError(t, err, "db cannot be nil")
-
+	// Empty kycThreshold.
 	db := dbtest.Open(t)
 	defer db.Close()
 	conn := db.Open()
@@ -72,6 +72,7 @@ func TestTxApproveHandlerValidate(t *testing.T) {
 	}
 	err = h.validate()
 	require.EqualError(t, err, "kyc threshold cannot be less than or equal to zero")
+	// Negative kycThreshold.
 	h = txApproveHandler{
 		issuerKP:          issuerAccKeyPair,
 		assetCode:         "FOOBAR",
@@ -82,6 +83,7 @@ func TestTxApproveHandlerValidate(t *testing.T) {
 	}
 	err = h.validate()
 	require.EqualError(t, err, "kyc threshold cannot be less than or equal to zero")
+	// Empty baseURL.
 	h = txApproveHandler{
 		issuerKP:          issuerAccKeyPair,
 		assetCode:         "FOOBAR",
@@ -89,6 +91,18 @@ func TestTxApproveHandlerValidate(t *testing.T) {
 		networkPassphrase: network.TestNetworkPassphrase,
 		db:                conn,
 		kycThreshold:      1,
+	}
+	err = h.validate()
+	require.EqualError(t, err, "base url cannot be empty")
+	// Success.
+	h = txApproveHandler{
+		issuerKP:          issuerAccKeyPair,
+		assetCode:         "FOOBAR",
+		horizonClient:     &horizonMock,
+		networkPassphrase: network.TestNetworkPassphrase,
+		db:                conn,
+		kycThreshold:      1,
+		baseURL:           "https://sep8-server.test",
 	}
 	err = h.validate()
 	require.NoError(t, err)
@@ -143,6 +157,7 @@ func TestTxApproveHandlerTxApprove(t *testing.T) {
 		networkPassphrase: network.TestNetworkPassphrase,
 		db:                conn,
 		kycThreshold:      500,
+		baseURL:           "https://sep8-server.test",
 	}
 	rejectedResponse, err := handler.txApprove(ctx, req)
 	require.NoError(t, err)
@@ -410,6 +425,7 @@ func TestAPI_RejectedIntegration(t *testing.T) {
 		networkPassphrase: network.TestNetworkPassphrase,
 		db:                conn,
 		kycThreshold:      500,
+		baseURL:           "https://sep8-server.test",
 	}
 	// Test if no transaction is submitted.
 	m := chi.NewMux()
@@ -727,6 +743,7 @@ func TestAPI_RevisedIntegration(t *testing.T) {
 		networkPassphrase: network.TestNetworkPassphrase,
 		db:                conn,
 		kycThreshold:      500,
+		baseURL:           "https://sep8-server.test",
 	}
 	// Test Successful request.
 	senderAcc, err := handler.horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: senderAccKP.Address()})

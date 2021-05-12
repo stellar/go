@@ -24,6 +24,7 @@ type txApproveHandler struct {
 	networkPassphrase string
 	db                *sqlx.DB
 	kycThreshold      int64
+	baseURL           string
 }
 
 type txApproveRequest struct {
@@ -49,6 +50,9 @@ func (h txApproveHandler) validate() error {
 	}
 	if h.kycThreshold <= 0 {
 		return errors.New("kyc threshold cannot be less than or equal to zero")
+	}
+	if h.baseURL == "" {
+		return errors.New("base url cannot be empty")
 	}
 	return nil
 }
@@ -167,7 +171,7 @@ func (h txApproveHandler) txApprove(ctx context.Context, in txApproveRequest) (r
 	// Validate the payment amount to see if it requires KYC
 	paymentAmount, err := amount.ParseInt64(paymentOp.Amount)
 	if err != nil {
-		return nil, errors.Wrapf(err, "parsing account payment amount %f from string to float64", paymentAmount)
+		return nil, errors.Wrapf(err, "parsing account payment amount %d from string to Int64", paymentAmount)
 	}
 	if paymentAmount > h.kycThreshold {
 		// TODO: Replace with actual kyc logic
