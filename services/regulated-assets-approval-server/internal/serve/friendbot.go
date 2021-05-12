@@ -77,7 +77,7 @@ func (h friendbotHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		httpErr, ok := err.(*httperror.Error)
 		if !ok {
-			httpErr = httperror.InternalServerError
+			httpErr = httperror.InternalServer
 		}
 		httpErr.Render(w)
 		return
@@ -134,7 +134,7 @@ func (h friendbotHandler) topUpAccountWithRegulatedAsset(ctx context.Context, in
 	issuerAcc, err := h.horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: kp.Address()})
 	if err != nil {
 		log.Ctx(ctx).Error(errors.Wrapf(err, "getting detail for issuer account %s", kp.Address()))
-		return httperror.InternalServerError
+		return httperror.InternalServer
 	}
 
 	tx, err := txnbuild.NewTransaction(txnbuild.TransactionParams{

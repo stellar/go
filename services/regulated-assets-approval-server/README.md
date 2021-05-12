@@ -80,7 +80,38 @@ to set those flags. Just click the link, fulfill the account address, sequence
 number, then the account secret and submit the transaction.
 
 ### API Spec
+#### `POST /tx-approve`
 
+This is the core [SEP-8] endpoint used to validate and process approval/revision/rejection of regulated assets transactions.
+
+**Request:**
+
+```json
+{
+  "tx": "AAAAAgAAAAA0Nk3++mfFw4Is6OaUJTKe71XNtxdktcjGrPildK84xAAAJxAAAJ3YAAAABwAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAQAAAAARllVv+K58Rbwzc/2Ti1IsisLC03udNJblQx2sPLfDygAAAAJNWVVTRAAAAAAAAAAAAAAAqjdTmDnuZm4YrIZ3wQVmVXmWSMO4dLk5dOPzUjWDvIgAAAABKp6IgAAAAAAAAAABdK84xAAAAEACHShDhulyTyvFx9lCU2LjAN9P7g6XqZJ6aNKo/NFb+9awp4pE5soK5cTtahhVzx9RsUcH+FSRmOPu4YEqqBsK"
+}
+```
+
+**Responses:**
+
+_Revised:_
+
+```json
+{
+  "status": "revised",
+  "message": "Authorization and deauthorization operations were added.",
+  "tx": "AAAAAgAAAAA0Nk3++mfFw4Is6OaUJTKe71XNtxdktcjGrPildK84xAAABdwAAJ3YAAAABwAAAAEAAAAAAAAAAAAAAABgXdapAAAAAAAAAAUAAAABAAAAAKo3U5g57mZuGKyGd8EFZlV5lkjDuHS5OXTj81I1g7yIAAAABwAAAAA0Nk3++mfFw4Is6OaUJTKe71XNtxdktcjGrPildK84xAAAAAJNWVVTRAAAAAAAAAAAAAABAAAAAQAAAACqN1OYOe5mbhishnfBBWZVeZZIw7h0uTl04/NSNYO8iAAAAAcAAAAAEZZVb/iufEW8M3P9k4tSLIrCwtN7nTSW5UMdrDy3w8oAAAACTVlVU0QAAAAAAAAAAAAAAQAAAAAAAAABAAAAABGWVW/4rnxFvDNz/ZOLUiyKwsLTe500luVDHaw8t8PKAAAAAk1ZVVNEAAAAAAAAAAAAAACqN1OYOe5mbhishnfBBWZVeZZIw7h0uTl04/NSNYO8iAAAAAEqnoiAAAAAAQAAAACqN1OYOe5mbhishnfBBWZVeZZIw7h0uTl04/NSNYO8iAAAAAcAAAAAEZZVb/iufEW8M3P9k4tSLIrCwtN7nTSW5UMdrDy3w8oAAAACTVlVU0QAAAAAAAAAAAAAAAAAAAEAAAAAqjdTmDnuZm4YrIZ3wQVmVXmWSMO4dLk5dOPzUjWDvIgAAAAHAAAAADQ2Tf76Z8XDgizo5pQlMp7vVc23F2S1yMas+KV0rzjEAAAAAk1ZVVNEAAAAAAAAAAAAAAAAAAAAAAAAATWDvIgAAABAxXindTDbKTpw9B+1aUdTOTE6CUF610A0ZL+ofBVSlcvHYadc3LfO/L4/V22h2FyHNt2ALwncmlEq+3hpojZDDQ=="
+}
+```
+
+_Rejected:_
+
+```json
+{
+  "status": "rejected",
+  "error": "There is one or more unauthorized operations in the provided transaction."
+}
+```
 #### `GET /friendbot?addr=GDDIO6SFRD4SJEQFJOSKPIDYTDM7LM4METFBKN4NFGVR5DTGB7H75N5S`
 
 This endpoint sends a payment of 10,000 (this value is configurable) regulated
