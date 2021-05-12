@@ -675,7 +675,7 @@ func TestAPI_RevisedIntegration(t *testing.T) {
 		horizonClient:     &horizonMock,
 		networkPassphrase: network.TestNetworkPassphrase,
 	}
-	// Test Successful request, transaction source account set == the payment source account.
+	// Test Successful request.
 	senderAcc, err := handler.horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: senderAccKP.Address()})
 	require.NoError(t, err)
 	tx, err := txnbuild.NewTransaction(
@@ -753,85 +753,6 @@ func TestAPI_RevisedIntegration(t *testing.T) {
 	require.False(t, op4.Authorize)
 	// Check Operation 5: AllowTrust op where issuer fully deauthorizes account A, asset X.
 	op5, ok := tx.Operations()[4].(*txnbuild.AllowTrust)
-	require.True(t, ok)
-	assert.Equal(t, op5.Trustor, senderAccKP.Address())
-	assert.Equal(t, op5.Type.GetCode(), assetGOAT.GetCode())
-	require.False(t, op5.Authorize)
-	// Test Successful request, transaction source account and the payment operation's sourceAccount param remains empty.
-	senderAcc, err = handler.horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: senderAccKP.Address()})
-	require.NoError(t, err)
-	tx, err = txnbuild.NewTransaction(
-		txnbuild.TransactionParams{
-			SourceAccount:        &senderAcc,
-			IncrementSequenceNum: true,
-			Operations: []txnbuild.Operation{
-				&txnbuild.Payment{
-					Destination: receiverAccKP.Address(),
-					Amount:      "2",
-					Asset:       assetGOAT,
-				},
-			},
-			BaseFee:    txnbuild.MinBaseFee,
-			Timebounds: txnbuild.NewInfiniteTimeout(),
-		},
-	)
-	require.NoError(t, err)
-	txEnc, err = tx.Base64()
-	require.NoError(t, err)
-	req = `{
-		"tx": "` + txEnc + `"
-	}`
-	r = httptest.NewRequest("POST", "/tx-approve", strings.NewReader(req))
-	r = r.WithContext(ctx)
-	w = httptest.NewRecorder()
-	m.ServeHTTP(w, r)
-	resp = w.Result()
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
-	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
-	body, err = ioutil.ReadAll(resp.Body)
-	require.NoError(t, err)
-	var txApprovePOSTResponse2 txApprovalResponse
-	err = json.Unmarshal(body, &txApprovePOSTResponse2)
-	require.NoError(t, err)
-	wantTXApprovalResponse2 := txApprovalResponse{
-		Status:  sep8Status("revised"),
-		Tx:      txApprovePOSTResponse2.Tx,
-		Message: `Authorization and deauthorization operations were added.`,
-	}
-	assert.Equal(t, wantTXApprovalResponse2, txApprovePOSTResponse2)
-	// Decode the request's transaction.
-	parsed, err = txnbuild.TransactionFromXDR(txApprovePOSTResponse2.Tx)
-	require.NoError(t, err)
-	tx, ok = parsed.Transaction()
-	require.True(t, ok)
-	// Check if revised transaction only has 5 operations.
-	require.Len(t, tx.Operations(), 5)
-	// Check Operation 1: AllowTrust op where issuer fully authorizes account A, asset X.
-	op1, ok = tx.Operations()[0].(*txnbuild.AllowTrust)
-	require.True(t, ok)
-	assert.Equal(t, op1.Trustor, senderAccKP.Address())
-	assert.Equal(t, op1.Type.GetCode(), assetGOAT.GetCode())
-	require.True(t, op1.Authorize)
-	// Check Operation 2: AllowTrust op where issuer fully authorizes account B, asset X.
-	op2, ok = tx.Operations()[1].(*txnbuild.AllowTrust)
-	require.True(t, ok)
-	assert.Equal(t, op2.Trustor, receiverAccKP.Address())
-	assert.Equal(t, op2.Type.GetCode(), assetGOAT.GetCode())
-	require.True(t, op2.Authorize)
-	// Check Operation 3: Payment to B.
-	op3, ok = tx.Operations()[2].(*txnbuild.Payment)
-	require.True(t, ok)
-	assert.Equal(t, op3.SourceAccount, "")
-	assert.Equal(t, op3.Destination, receiverAccKP.Address())
-	assert.Equal(t, op3.Asset, assetGOAT)
-	// Check Operation 4: AllowTrust op where issuer fully deauthorizes account B, asset X.
-	op4, ok = tx.Operations()[3].(*txnbuild.AllowTrust)
-	require.True(t, ok)
-	assert.Equal(t, op4.Trustor, receiverAccKP.Address())
-	assert.Equal(t, op4.Type.GetCode(), assetGOAT.GetCode())
-	require.False(t, op4.Authorize)
-	// Check Operation 5: AllowTrust op where issuer fully deauthorizes account A, asset X.
-	op5, ok = tx.Operations()[4].(*txnbuild.AllowTrust)
 	require.True(t, ok)
 	assert.Equal(t, op5.Trustor, senderAccKP.Address())
 	assert.Equal(t, op5.Type.GetCode(), assetGOAT.GetCode())
