@@ -191,7 +191,7 @@ func (q *Q) UpsertAccounts(ctx context.Context, accounts []xdr.LedgerEntry) erro
 		num_sponsoring = excluded.num_sponsoring`
 
 	_, err := q.ExecRaw(
-		context.WithValue(ctx, &db.QueryTypeContextKey, "upsert"),
+		context.WithValue(ctx, &db.QueryTypeContextKey, db.UpsertQueryType),
 		sql,
 		pq.Array(accountID),
 		pq.Array(balance),

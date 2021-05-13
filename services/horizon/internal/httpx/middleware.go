@@ -142,7 +142,7 @@ func sanitizeMetricRoute(routePattern string) string {
 	route = strings.ReplaceAll(route, "\"", "\\\"")
 	route = strings.ReplaceAll(route, "\n", "\\n")
 	if route == "" {
-		// Can be empty when request did not reached the final route (ex. blocked by
+		// Can be empty when request did not reach the final route (ex. blocked by
 		// a middleware). More info: https://github.com/go-chi/chi/issues/270
 		return "undefined"
 	}

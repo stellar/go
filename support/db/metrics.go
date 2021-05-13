@@ -16,6 +16,21 @@ type CtxKey string
 var RouteContextKey = CtxKey("route")
 var QueryTypeContextKey = CtxKey("query_type")
 
+type Subsystem string
+
+var CoreSubsystem = Subsystem("core")
+var HistorySubsystem = Subsystem("history")
+var IngestSubsystem = Subsystem("ingest")
+
+type QueryType string
+
+var DeleteQueryType = QueryType("delete")
+var InsertQueryType = QueryType("insert")
+var SelectQueryType = QueryType("select")
+var UndefinedQueryType = QueryType("undefined")
+var UpdateQueryType = QueryType("update")
+var UpsertQueryType = QueryType("upsert")
+
 // contextRoute returns a string representing the request endpoint, or "undefined" if it wasn't found
 func contextRoute(ctx context.Context) string {
 	if endpoint, ok := ctx.Value(&RouteContextKey).(string); ok {
@@ -40,7 +55,7 @@ type SessionWithMetrics struct {
 	maxLifetimeClosedCounter prometheus.CounterFunc
 }
 
-func RegisterMetrics(base *Session, namespace, sub string, registry *prometheus.Registry) SessionInterface {
+func RegisterMetrics(base *Session, namespace string, sub Subsystem, registry *prometheus.Registry) SessionInterface {
 	subsystem := fmt.Sprintf("db_%s", sub)
 	s := &SessionWithMetrics{
 		SessionInterface: base,
@@ -214,10 +229,10 @@ func (s *SessionWithMetrics) TruncateTables(ctx context.Context, tables []string
 
 func (s *SessionWithMetrics) Clone() SessionInterface {
 	return &SessionWithMetrics{
-		SessionInterface:         s.SessionInterface.Clone(),
-		registry:                 s.registry,
-		queryCounter:             s.queryCounter,
-		queryDurationSummary:     s.queryDurationSummary,
+		SessionInterface:     s.SessionInterface.Clone(),
+		registry:             s.registry,
+		queryCounter:         s.queryCounter,
+		queryDurationSummary: s.queryDurationSummary,
 		// txnCounter:               s.txnCounter,
 		// txnDurationSummary:       s.txnDurationSummary,
 		maxOpenConnectionsGauge:  s.maxOpenConnectionsGauge,
@@ -232,25 +247,25 @@ func (s *SessionWithMetrics) Clone() SessionInterface {
 	}
 }
 
-func getQueryType(ctx context.Context, query squirrel.Sqlizer) string {
+func getQueryType(ctx context.Context, query squirrel.Sqlizer) QueryType {
 	// Do we have an explicit query type set in the context? For raw execs, in
 	// lieu of better detection. e.g. "upsert"
-	if q, ok := ctx.Value(&QueryTypeContextKey).(string); ok {
+	if q, ok := ctx.Value(&QueryTypeContextKey).(QueryType); ok {
 		return q
 	}
 
 	// is it a squirrel builder?
 	if _, ok := query.(squirrel.DeleteBuilder); ok {
-		return "delete"
+		return DeleteQueryType
 	}
 	if _, ok := query.(squirrel.InsertBuilder); ok {
-		return "insert"
+		return InsertQueryType
 	}
 	if _, ok := query.(squirrel.SelectBuilder); ok {
-		return "select"
+		return SelectQueryType
 	}
 	if _, ok := query.(squirrel.UpdateBuilder); ok {
-		return "update"
+		return UpdateQueryType
 	}
 
 	// Try to guess based on the first word of the string.
@@ -262,17 +277,17 @@ func getQueryType(ctx context.Context, query squirrel.Sqlizer) string {
 		// complex query.
 		for _, word := range []string{"delete", "insert", "select", "update"} {
 			if word == words[0] {
-				return word
+				return QueryType(word)
 			}
 		}
 	}
 
 	// Fresh out of ideas.
-	return "undefined"
+	return UndefinedQueryType
 }
 
 func (s *SessionWithMetrics) Get(ctx context.Context, dest interface{}, query squirrel.Sqlizer) (err error) {
-	queryType := getQueryType(ctx, query)
+	queryType := string(getQueryType(ctx, query))
 	timer := prometheus.NewTimer(prometheus.ObserverFunc(func(v float64) {
 		s.queryDurationSummary.With(prometheus.Labels{
 			"query_type": queryType,
@@ -298,7 +313,7 @@ func (s *SessionWithMetrics) GetRaw(ctx context.Context, dest interface{}, query
 }
 
 func (s *SessionWithMetrics) Select(ctx context.Context, dest interface{}, query squirrel.Sqlizer) (err error) {
-	queryType := getQueryType(ctx, query)
+	queryType := string(getQueryType(ctx, query))
 	timer := prometheus.NewTimer(prometheus.ObserverFunc(func(v float64) {
 		s.queryDurationSummary.With(prometheus.Labels{
 			"query_type": queryType,
@@ -324,7 +339,7 @@ func (s *SessionWithMetrics) SelectRaw(ctx context.Context, dest interface{}, qu
 }
 
 func (s *SessionWithMetrics) Exec(ctx context.Context, query squirrel.Sqlizer) (result sql.Result, err error) {
-	queryType := getQueryType(ctx, query)
+	queryType := string(getQueryType(ctx, query))
 	timer := prometheus.NewTimer(prometheus.ObserverFunc(func(v float64) {
 		s.queryDurationSummary.With(prometheus.Labels{
 			"query_type": queryType,

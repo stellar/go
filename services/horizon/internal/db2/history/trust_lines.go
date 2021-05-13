@@ -223,7 +223,7 @@ func (q *Q) UpsertTrustLines(ctx context.Context, trustLines []xdr.LedgerEntry) 
 		sponsor = excluded.sponsor`
 
 	_, err := q.ExecRaw(
-		context.WithValue(ctx, &db.QueryTypeContextKey, "upsert"),
+		context.WithValue(ctx, &db.QueryTypeContextKey, db.UpsertQueryType),
 		sql,
 		pq.Array(ledgerKey),
 		pq.Array(accountID),
