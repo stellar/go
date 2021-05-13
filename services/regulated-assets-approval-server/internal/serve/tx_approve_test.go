@@ -200,9 +200,12 @@ func TestTxApproveHandlerHandleKYCRequiredOperationIfNeeded(t *testing.T) {
 	actionRequiredTxApprovalResponse, err := h.handleKYCRequiredOperationIfNeeded(ctx, sourceKP.Address(), &paymentOP)
 	require.NoError(t, err)
 	wantTXApprovalResponse := txApprovalResponse{
-		Status:     sep8Status("action_required"),
-		Message:    `Payments exceeding ` + amount.StringFromInt64(h.kycThreshold) + ` GOAT requires KYC approval. Action required methods currently not implemented.`,
-		StatusCode: http.StatusOK,
+		Status:       sep8Status("action_required"),
+		Message:      `Payments exceeding ` + amount.StringFromInt64(h.kycThreshold) + ` GOAT requires KYC approval. Action required methods currently not implemented.`,
+		StatusCode:   http.StatusOK,
+		ActionURL:    actionRequiredTxApprovalResponse.ActionURL,
+		ActionMethod: "POST",
+		ActionFields: []string{"email_address"},
 	}
 	assert.Equal(t, &wantTXApprovalResponse, actionRequiredTxApprovalResponse)
 	// Test if the kyc attempt was logged in db's accounts_kyc_status table.
