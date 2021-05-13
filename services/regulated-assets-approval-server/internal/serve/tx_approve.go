@@ -233,7 +233,6 @@ func (h txApproveHandler) handleKYCRequiredOperationIfNeeded(ctx context.Context
 	}
 	//Build the KYC "Action Required" message.
 	FullKYCRequiredMessage := fmt.Sprintf(`%s requires KYC approval. Action required methods currently not implemented.`, partialKYCRequiredMessage)
-	// This query inserts a new row with the intended callbackID.
 	const q = `
 		INSERT INTO accounts_kyc_status (stellar_address)
 		VALUES ($1)
