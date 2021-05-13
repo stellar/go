@@ -926,6 +926,7 @@ func TestAPI_RevisedIntegration(t *testing.T) {
 	assert.Equal(t, op5.Type.GetCode(), assetGOAT.GetCode())
 	require.False(t, op5.Authorize)
 }
+
 func TestAPI_KYCIntegration(t *testing.T) {
 	ctx := context.Background()
 	db := dbtest.Open(t)
