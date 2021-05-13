@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/clients/horizonclient"
@@ -229,12 +230,13 @@ func (h txApproveHandler) handleKYCRequiredOperationIfNeeded(ctx context.Context
 	if KYCRequiredMessage == "" {
 		return nil, nil
 	}
+	intendedCallbackID := uuid.New().String()
 	const q = `
-		INSERT INTO accounts_kyc_status (stellar_address)
-		VALUES ($1)
+		INSERT INTO accounts_kyc_status (stellar_address, callback_id)
+		VALUES ($1, $2)
 		ON CONFLICT(stellar_address) DO NOTHING
 	`
-	_, err = h.db.ExecContext(ctx, q, stellarAddress)
+	_, err = h.db.ExecContext(ctx, q, stellarAddress, intendedCallbackID)
 	if err != nil {
 		return nil, errors.Wrap(err, "inserting new row into accounts_kyc_status table")
 	}
