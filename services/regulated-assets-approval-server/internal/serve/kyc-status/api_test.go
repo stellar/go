@@ -47,15 +47,15 @@ func TestAPI_POSTKYCStatus(t *testing.T) {
 		FROM accounts_kyc_status
 		WHERE stellar_address = $1
 	`
-	sourceKP := keypair.MustRandom()
-	intendedCallbackID := uuid.New().String()
+	approveKP := keypair.MustRandom()
+	intendedCallbackIDApprove := uuid.New().String()
 	var (
 		callbackID string
 	)
-	err := postHandler.DB.QueryRowContext(ctx, q, sourceKP.Address(), intendedCallbackID).Scan(&callbackID)
+	err := postHandler.DB.QueryRowContext(ctx, q, approveKP.Address(), intendedCallbackIDApprove).Scan(&callbackID)
 	require.NoError(t, err)
-	assert.Equal(t, intendedCallbackID, callbackID)
-	// Test POST successful.
+	assert.Equal(t, intendedCallbackIDApprove, callbackID)
+	// Test POST successful APPROVED KYC response.
 	reqBody := `{
 		"email_address": "TestEmail@email.com"
 	}`
@@ -68,12 +68,39 @@ func TestAPI_POSTKYCStatus(t *testing.T) {
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	body, err := ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
-	var kycStatusPOSTResponse postResponse
-	err = json.Unmarshal(body, &kycStatusPOSTResponse)
+	var kycStatusPOSTResponseApprove postResponse
+	err = json.Unmarshal(body, &kycStatusPOSTResponseApprove)
 	require.NoError(t, err)
 	wantPostResponse := postResponse{
 		Result:  "no_further_action_required",
 		Message: "Your KYC has been approved!",
 	}
-	assert.Equal(t, wantPostResponse, kycStatusPOSTResponse)
+	assert.Equal(t, wantPostResponse, kycStatusPOSTResponseApprove)
+
+	// Test POST successful REJECTED KYC response. Based on arbitrary rule where emails begin with "xx"
+	rejectedKP := keypair.MustRandom()
+	intendedCallbackIDRejected := uuid.New().String()
+	err = postHandler.DB.QueryRowContext(ctx, q, rejectedKP.Address(), intendedCallbackIDRejected).Scan(&callbackID)
+	require.NoError(t, err)
+	assert.Equal(t, intendedCallbackIDRejected, callbackID)
+	reqBody = `{
+		"email_address": "xxTestEmail@email.com"
+	}`
+	r = httptest.NewRequest("POST", fmt.Sprintf("/kyc-status/%s", callbackID), strings.NewReader(reqBody))
+	r = r.WithContext(ctx)
+	w = httptest.NewRecorder()
+	m.ServeHTTP(w, r)
+	resp = w.Result()
+
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	body, err = ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	var kycStatusPOSTResponseRejected postResponse
+	err = json.Unmarshal(body, &kycStatusPOSTResponseRejected)
+	require.NoError(t, err)
+	wantPostResponse = postResponse{
+		Message: "Your KYC has been rejected!",
+		Result:  "no_further_action_required",
+	}
+	assert.Equal(t, wantPostResponse, kycStatusPOSTResponseRejected)
 }
