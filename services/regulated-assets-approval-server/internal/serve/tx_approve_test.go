@@ -94,7 +94,7 @@ func TestTxApproveHandlerValidate(t *testing.T) {
 		kycThreshold:      1,
 	}
 	err = h.validate()
-	require.NoError(t, err)
+	require.EqualError(t, err, "base url cannot be empty")
 	// Success.
 	h = txApproveHandler{
 		issuerKP:          issuerAccKeyPair,
