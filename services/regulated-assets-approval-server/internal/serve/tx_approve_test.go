@@ -174,6 +174,7 @@ func TestTxApproveHandlerHandleKYCRequiredOperationIfNeeded(t *testing.T) {
 	}
 	err = h.validate()
 	require.NoError(t, err)
+	// Test successful "Not implemented" action_required response.
 	sourceKP := keypair.MustRandom()
 	destinationKP := keypair.MustRandom()
 	paymentOP := txnbuild.Payment{
@@ -182,7 +183,6 @@ func TestTxApproveHandlerHandleKYCRequiredOperationIfNeeded(t *testing.T) {
 		Amount:        "501",
 		Asset:         assetGOAT,
 	}
-	// Test "Not implemented" action_required response.
 	actionRequiredTxApprovalResponse, err := h.handleKYCRequiredOperationIfNeeded(ctx, sourceKP.Address(), &paymentOP)
 	require.NoError(t, err)
 	wantTXApprovalResponse := txApprovalResponse{
