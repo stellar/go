@@ -112,7 +112,7 @@ func TestTomlHandler_ServeHTTP(t *testing.T) {
 	amount.StringFromInt64(10)
 	approvalCriteria := fmt.Sprintf(
 		`The approval server currently only accepts payments. The transaction must have exactly one operation of type payment. ` +
-			`If the payment amount exceeds ` + amount.StringFromInt64(10) + ` FOO it will need KYC approval.`)
+			`If the payment amount exceeds ` + amount.StringFromInt64(10) + ` FOO it will need KYC approval. KYC actions not yet implemented.`)
 
 	wantBody := `NETWORK_PASSPHRASE="` + network.TestNetworkPassphrase + `"
 [[CURRENCIES]]
