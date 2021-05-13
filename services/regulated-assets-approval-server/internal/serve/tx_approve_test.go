@@ -148,6 +148,58 @@ func TestTxApproveHandlerValidateKYC(t *testing.T) {
 	assert.Equal(t, `Payments exceeding 500.0000000 GOAT requires KYC approval. Action required methods currently not implemented.`, actionRequiredMessage)
 }
 
+func TestTxApproveHandlerHandleKYCRequiredOperationIfNeeded(t *testing.T) {
+	ctx := context.Background()
+	db := dbtest.Open(t)
+	defer db.Close()
+	conn := db.Open()
+	defer conn.Close()
+	issuerAccKeyPair := keypair.MustRandom()
+	horizonMock := horizonclient.MockClient{}
+	kycThresholdAmount, err := amount.ParseInt64("500")
+	assetGOAT := txnbuild.CreditAsset{
+		Code:   "GOAT",
+		Issuer: issuerAccKeyPair.Address(),
+	}
+	h := txApproveHandler{
+		issuerKP:          issuerAccKeyPair,
+		assetCode:         assetGOAT.GetCode(),
+		horizonClient:     &horizonMock,
+		networkPassphrase: network.TestNetworkPassphrase,
+		db:                conn,
+		kycThreshold:      kycThresholdAmount,
+	}
+	err = h.validate()
+	require.NoError(t, err)
+	sourceKP := keypair.MustRandom()
+	destinationKP := keypair.MustRandom()
+	paymentOP := txnbuild.Payment{
+		SourceAccount: sourceKP.Address(),
+		Destination:   destinationKP.Address(),
+		Amount:        "501",
+		Asset:         assetGOAT,
+	}
+	// Test "Not implemented" action_required response.
+	actionRequiredTxApprovalResponse, err := h.handleKYCRequiredOperationIfNeeded(ctx, sourceKP.Address(), &paymentOP)
+	require.NoError(t, err)
+	wantTXApprovalResponse := txApprovalResponse{
+		Status:     sep8Status("action_required"),
+		Message:    `Payments exceeding ` + amount.StringFromInt64(h.kycThreshold) + ` GOAT requires KYC approval. Action required methods currently not implemented.`,
+		StatusCode: http.StatusOK,
+	}
+	assert.Equal(t, &wantTXApprovalResponse, actionRequiredTxApprovalResponse)
+	// Test if the kyc attempt was logged in db's accounts_kyc_status table.
+	const q = `
+	SELECT stellar_address
+	FROM accounts_kyc_status
+	WHERE stellar_address = $1
+	`
+	var stellarAddress string
+	err = h.db.QueryRowContext(ctx, q, sourceKP.Address()).Scan(&stellarAddress)
+	require.NoError(t, err)
+	assert.Equal(t, sourceKP.Address(), stellarAddress)
+}
+
 func TestTxApproveHandlerTxApprove(t *testing.T) {
 	ctx := context.Background()
 	db := dbtest.Open(t)
@@ -960,7 +1012,6 @@ func TestAPI_KYCIntegration(t *testing.T) {
 	require.NoError(t, err)
 	wantTXApprovalResponse := txApprovalResponse{
 		Status:  sep8Status("action_required"),
-		Tx:      txApprovePOSTResponse.Tx,
 		Message: `Payments exceeding ` + amount.StringFromInt64(handler.kycThreshold) + ` GOAT requires KYC approval. Action required methods currently not implemented.`,
 	}
 	assert.Equal(t, wantTXApprovalResponse, txApprovePOSTResponse)
