@@ -25,6 +25,7 @@ type txApproveHandler struct {
 	networkPassphrase string
 	db                *sqlx.DB
 	kycThreshold      int64
+	baseURL           string
 }
 
 type txApproveRequest struct {
@@ -50,6 +51,9 @@ func (h txApproveHandler) validate() error {
 	}
 	if h.kycThreshold <= 0 {
 		return errors.New("kyc threshold cannot be less than or equal to zero")
+	}
+	if h.baseURL == "" {
+		return errors.New("base url cannot be empty")
 	}
 	return nil
 }

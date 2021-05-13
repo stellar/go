@@ -13,6 +13,7 @@ import (
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/services/regulated-assets-approval-server/internal/db"
+	kycstatus "github.com/stellar/go/services/regulated-assets-approval-server/internal/serve/kyc-status"
 	"github.com/stellar/go/support/errors"
 	supporthttp "github.com/stellar/go/support/http"
 	"github.com/stellar/go/support/log"
@@ -100,7 +101,14 @@ func handleHTTP(opts Options) http.Handler {
 		networkPassphrase: opts.NetworkPassphrase,
 		db:                db,
 		kycThreshold:      parsedKYCRequiredPaymentThreshold,
+		baseURL:           opts.BaseURL,
 	}.ServeHTTP)
+	mux.Route("/kyc-status", func(mux chi.Router) {
+		mux.Post("/{callback_id}", kycstatus.PostHandler{
+			DB: db,
+		}.ServeHTTP)
+	})
+
 	return mux
 }
 
