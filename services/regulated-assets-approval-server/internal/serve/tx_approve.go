@@ -221,6 +221,7 @@ func (h txApproveHandler) txApprove(ctx context.Context, in txApproveRequest) (r
 }
 
 // handleKYCRequiredOperationIfNeeded validates and returns an "action required"(or rejected) response if the payment requires KYC.
+// Currently action method and action URL are not implemented. Requests requiring KYC will be given an action_required response with placeholder info.
 func (h txApproveHandler) handleKYCRequiredOperationIfNeeded(ctx context.Context, stellarAddress string, paymentOp *txnbuild.Payment) (*txApprovalResponse, error) {
 	// validate payment operation against KYC condition(s).
 	// partialKYCRequiredMessage is used to build "action required" message.
@@ -232,7 +233,7 @@ func (h txApproveHandler) handleKYCRequiredOperationIfNeeded(ctx context.Context
 		return nil, nil
 	}
 	//Build the KYC "Action Required" message.
-	FullKYCRequiredMessage := fmt.Sprintf(`%s requires KYC approval. Further action required currently not implemented.`, partialKYCRequiredMessage)
+	FullKYCRequiredMessage := fmt.Sprintf(`%s requires KYC approval. Action required methods currently not implemented.`, partialKYCRequiredMessage)
 	// Create new callBackID used to insert new accounts_kyc_status table entrees.
 	intendedCallbackID := uuid.New().String()
 	// This query inserts a new row with the intended callbackID.

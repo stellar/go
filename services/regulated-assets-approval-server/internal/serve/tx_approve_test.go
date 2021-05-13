@@ -909,7 +909,7 @@ func TestAPI_KYCIntegration(t *testing.T) {
 	wantTXApprovalResponse := txApprovalResponse{
 		Status:       sep8Status("action_required"),
 		Tx:           txApprovePOSTResponse.Tx,
-		Message:      `Payments exceeding ` + amount.StringFromInt64(handler.kycThreshold) + ` GOAT requires KYC approval. Further action required currently not implemented.`,
+		Message:      `Payments exceeding ` + amount.StringFromInt64(handler.kycThreshold) + ` GOAT requires KYC approval. Action required methods currently not implemented.`,
 		ActionMethod: "",
 		ActionFields: []string{""},
 		ActionURL:    "Action URL not implemented",
