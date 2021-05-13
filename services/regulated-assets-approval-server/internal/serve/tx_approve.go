@@ -2,11 +2,9 @@ package serve
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
@@ -229,7 +227,7 @@ func (h txApproveHandler) txApprove(ctx context.Context, in txApproveRequest) (r
 // handleKYCRequiredOperationIfNeeded validates and returns an "action required"(or rejected) response if the payment requires KYC.
 func (h txApproveHandler) handleKYCRequiredOperationIfNeeded(ctx context.Context, stellarAddress string, paymentOp *txnbuild.Payment) (*txApprovalResponse, error) {
 	// validate payment operation against KYC condition(s).
-	// partialKYCRequiredMessage is used to build "action required" or rejected messages.
+	// partialKYCRequiredMessage is used to build "action required" message.
 	partialKYCRequiredMessage, err := h.validateKYC(paymentOp)
 	if err != nil {
 		return nil, errors.Wrap(err, "validating KYC")
@@ -237,47 +235,24 @@ func (h txApproveHandler) handleKYCRequiredOperationIfNeeded(ctx context.Context
 	if partialKYCRequiredMessage == "" {
 		return nil, nil
 	}
-	//Build "Action Required" message.
-	actionFields := []string{"email_address"}
-	actionFieldsMessage := strings.Join(actionFields, ", ")
-	FullKYCRequiredMessage := fmt.Sprintf(`%s requires your %s for KYC approval.`, partialKYCRequiredMessage, actionFieldsMessage)
+	//Build the KYC "Action Required" message.
+	FullKYCRequiredMessage := fmt.Sprintf(`%s requires KYC approval. Further action required currently not implemented.`, partialKYCRequiredMessage)
 	// Create new callBackID used to insert new accounts_kyc_status table entrees.
 	intendedCallbackID := uuid.New().String()
-	// This query inserts a new row with the intended callbackID or selects the
-	// existing callbackID for that stellar account, if it already exists.
+	// This query inserts a new row with the intended callbackID.
 	const q = `
-		WITH new_row AS (
-			INSERT INTO accounts_kyc_status (stellar_address, callback_id)
-			VALUES ($1, $2)
-			ON CONFLICT(stellar_address) DO NOTHING
-			RETURNING *
-		)
-		SELECT callback_id, approved_at, rejected_at FROM new_row
-		UNION
-		SELECT callback_id, approved_at, rejected_at
-		FROM accounts_kyc_status
-		WHERE stellar_address = $1
+		INSERT INTO accounts_kyc_status (stellar_address, callback_id)
+		VALUES ($1, $2)
+		ON CONFLICT(stellar_address) DO NOTHING
 	`
-	var (
-		callbackID             string
-		approvedAt, rejectedAt sql.NullTime
-	)
-	err = h.db.QueryRowContext(ctx, q, stellarAddress, intendedCallbackID).Scan(&callbackID, &approvedAt, &rejectedAt)
+	_, err = h.db.ExecContext(ctx, q, stellarAddress, intendedCallbackID)
 	if err != nil {
-		err = errors.Wrap(err, "getting or creating callback id")
-		log.Ctx(ctx).Error(err)
-		return nil, err
-	}
-	if approvedAt.Valid {
-		return nil, nil
-	}
-	if rejectedAt.Valid {
-		return NewRejectedTxApprovalResponse(fmt.Sprintf(`Your KYC was rejected and you're not authorized for "%s".`, partialKYCRequiredMessage)), nil
+		return nil, errors.Wrap(err, "inserting new row into accounts_kyc_status table")
 	}
 	return NewActionRequiredTxApprovalResponse(
 		FullKYCRequiredMessage,
-		fmt.Sprintf("%s/kyc-status/%s", h.baseURL, callbackID),
-		actionFields,
+		"Action URL not implemented",
+		[]string{""},
 	), nil
 }
 

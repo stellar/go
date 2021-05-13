@@ -42,7 +42,7 @@ func NewActionRequiredTxApprovalResponse(message, actionURL string, actionFields
 	return &txApprovalResponse{
 		Status:       sep8StatusActionRequired,
 		Message:      message,
-		ActionMethod: "POST",
+		ActionMethod: "",
 		StatusCode:   http.StatusOK,
 		ActionURL:    actionURL,
 		ActionFields: actionFields,
