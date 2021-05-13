@@ -97,6 +97,57 @@ func TestTxApproveHandlerValidate(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestTxApproveHandlerValidateKYC(t *testing.T) {
+	db := dbtest.Open(t)
+	defer db.Close()
+	conn := db.Open()
+	defer conn.Close()
+	issuerAccKeyPair := keypair.MustRandom()
+	horizonMock := horizonclient.MockClient{}
+	kycThresholdAmount, err := amount.ParseInt64("500")
+	assetGOAT := txnbuild.CreditAsset{
+		Code:   "GOAT",
+		Issuer: issuerAccKeyPair.Address(),
+	}
+	h := txApproveHandler{
+		issuerKP:          issuerAccKeyPair,
+		assetCode:         assetGOAT.GetCode(),
+		horizonClient:     &horizonMock,
+		networkPassphrase: network.TestNetworkPassphrase,
+		db:                conn,
+		kycThreshold:      kycThresholdAmount,
+	}
+	err = h.validate()
+	require.NoError(t, err)
+	destinationKP := keypair.MustRandom()
+	paymentOP := txnbuild.Payment{
+		Destination: destinationKP.Address(),
+		Amount:      "100",
+		Asset:       assetGOAT,
+	}
+	actionRequiredMessage, err := h.validateKYC(&paymentOP)
+	require.NoError(t, err)
+	require.Empty(t, actionRequiredMessage)
+	paymentOP = txnbuild.Payment{
+		Destination: destinationKP.Address(),
+		Amount:      "ten",
+		Asset:       assetGOAT,
+	}
+	_, err = h.validateKYC(&paymentOP)
+	assert.Contains(t,
+		err.Error(),
+		`parsing account payment amount from string to Int64: invalid amount format: ten`,
+	)
+	paymentOP = txnbuild.Payment{
+		Destination: destinationKP.Address(),
+		Amount:      "501",
+		Asset:       assetGOAT,
+	}
+	actionRequiredMessage, err = h.validateKYC(&paymentOP)
+	require.NoError(t, err)
+	assert.Equal(t, `Payments exceeding 500.0000000 GOAT requires KYC approval. Action required methods currently not implemented.`, actionRequiredMessage)
+}
+
 func TestTxApproveHandlerTxApprove(t *testing.T) {
 	ctx := context.Background()
 	db := dbtest.Open(t)

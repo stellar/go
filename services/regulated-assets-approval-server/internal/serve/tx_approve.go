@@ -246,7 +246,7 @@ func (h txApproveHandler) handleKYCRequiredOperationIfNeeded(ctx context.Context
 func (h txApproveHandler) validateKYC(paymentOp *txnbuild.Payment) (string, error) {
 	paymentAmount, err := amount.ParseInt64(paymentOp.Amount)
 	if err != nil {
-		return "", errors.Wrapf(err, "parsing account payment amount %d from string to Int64", paymentAmount)
+		return "", errors.Wrap(err, "parsing account payment amount from string to Int64")
 	}
 	if paymentAmount > h.kycThreshold {
 		return fmt.Sprintf(`Payments exceeding %s %s requires KYC approval. Action required methods currently not implemented.`, amount.StringFromInt64(h.kycThreshold), h.assetCode), nil
