@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/clients/horizonclient"
@@ -234,15 +233,13 @@ func (h txApproveHandler) handleKYCRequiredOperationIfNeeded(ctx context.Context
 	}
 	//Build the KYC "Action Required" message.
 	FullKYCRequiredMessage := fmt.Sprintf(`%s requires KYC approval. Action required methods currently not implemented.`, partialKYCRequiredMessage)
-	// Create new callBackID used to insert new accounts_kyc_status table entrees.
-	intendedCallbackID := uuid.New().String()
 	// This query inserts a new row with the intended callbackID.
 	const q = `
-		INSERT INTO accounts_kyc_status (stellar_address, callback_id)
-		VALUES ($1, $2)
+		INSERT INTO accounts_kyc_status (stellar_address)
+		VALUES ($1)
 		ON CONFLICT(stellar_address) DO NOTHING
 	`
-	_, err = h.db.ExecContext(ctx, q, stellarAddress, intendedCallbackID)
+	_, err = h.db.ExecContext(ctx, q, stellarAddress)
 	if err != nil {
 		return nil, errors.Wrap(err, "inserting new row into accounts_kyc_status table")
 	}
