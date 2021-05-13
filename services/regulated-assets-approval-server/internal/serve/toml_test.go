@@ -109,7 +109,6 @@ func TestTomlHandler_ServeHTTP(t *testing.T) {
 
 	body, err := ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
-	amount.StringFromInt64(10)
 	approvalCriteria := fmt.Sprintf(
 		`The approval server currently only accepts payments. The transaction must have exactly one operation of type payment. ` +
 			`If the payment amount exceeds ` + amount.StringFromInt64(10) + ` FOO it will need KYC approval. KYC actions not yet implemented.`)
