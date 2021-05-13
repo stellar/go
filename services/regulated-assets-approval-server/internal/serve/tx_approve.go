@@ -236,15 +236,29 @@ func (h txApproveHandler) handleKYCRequiredOperationIfNeeded(ctx context.Context
 	}
 	intendedCallbackID := uuid.New().String()
 	const q = `
-		INSERT INTO accounts_kyc_status (stellar_address, callback_id)
-		VALUES ($1, $2)
-		ON CONFLICT(stellar_address) DO NOTHING
+		WITH new_row AS (
+			INSERT INTO accounts_kyc_status (stellar_address, callback_id)
+			VALUES ($1, $2)
+			ON CONFLICT(stellar_address) DO NOTHING
+			RETURNING *
+		)
+		SELECT callback_id FROM new_row
+		UNION
+		SELECT callback_id
+		FROM accounts_kyc_status
+		WHERE stellar_address = $1
 	`
-	_, err = h.db.ExecContext(ctx, q, stellarAddress, intendedCallbackID)
+	var (
+		callbackID string
+	)
+	err = h.db.QueryRowContext(ctx, q, stellarAddress, intendedCallbackID).Scan(&callbackID)
 	if err != nil {
 		return nil, errors.Wrap(err, "inserting new row into accounts_kyc_status table")
 	}
-	return NewActionRequiredTxApprovalResponse(KYCRequiredMessage), nil
+	return NewActionRequiredTxApprovalResponse(KYCRequiredMessage,
+		fmt.Sprintf("%s/kyc-status/%s", h.baseURL, callbackID),
+		[]string{"email_address"},
+	), nil
 }
 
 // validateKYC returns a "action_required" message for the NewActionRequiredTxApprovalResponse if the payment operation meets KYC conditions.

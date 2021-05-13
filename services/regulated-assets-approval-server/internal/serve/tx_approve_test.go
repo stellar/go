@@ -1033,8 +1033,11 @@ func TestAPI_KYCIntegration(t *testing.T) {
 	err = json.Unmarshal(body, &txApprovePOSTResponse)
 	require.NoError(t, err)
 	wantTXApprovalResponse := txApprovalResponse{
-		Status:  sep8Status("action_required"),
-		Message: `Payments exceeding ` + amount.StringFromInt64(handler.kycThreshold) + ` GOAT requires KYC approval. Action required methods currently not implemented.`,
+		Status:       sep8Status("action_required"),
+		Message:      `Payments exceeding ` + amount.StringFromInt64(handler.kycThreshold) + ` GOAT requires KYC approval. Action required methods currently not implemented.`,
+		ActionURL:    txApprovePOSTResponse.ActionURL,
+		ActionMethod: "POST",
+		ActionFields: []string{"email_address"},
 	}
 	assert.Equal(t, wantTXApprovalResponse, txApprovePOSTResponse)
 }
