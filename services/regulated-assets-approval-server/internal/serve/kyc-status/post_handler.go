@@ -24,7 +24,6 @@ func (h PostHandler) validate() error {
 	if h.DB == nil {
 		return errors.New("database cannot be nil")
 	}
-
 	return nil
 }
 
@@ -54,20 +53,25 @@ func NewRejectedKYCStatusPostResponse() *postResponse {
 
 func (h PostHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-
+	err := h.validate()
+	if err != nil {
+		log.Ctx(ctx).Error(errors.Wrap(err, "validating kyc-status PostHandler"))
+		httperror.InternalServer.Render(w)
+		return
+	}
 	in := postRequest{
 		CallbackID: chi.URLParam(r, "callback_id"),
 	}
-	err := httpdecode.Decode(r, &in)
+	err = httpdecode.Decode(r, &in)
 	if err != nil {
-		log.Ctx(ctx).Error(errors.Wrap(err, "decoding input parameters"))
-		httpErr := httperror.NewHTTPError(http.StatusBadRequest, "Invalid input parameters")
-		httpErr.Render(w)
+		log.Ctx(ctx).Error(errors.Wrap(err, "decoding kyc-status POST Request"))
+		httperror.BadRequest.Render(w)
 		return
 	}
 
 	resp, err := h.handle(ctx, in)
 	if err != nil {
+		log.Ctx(ctx).Error(errors.Wrap(err, "validating the input POST request for kyc-status"))
 		httpErr, ok := err.(*httperror.Error)
 		if !ok {
 			httpErr = httperror.InternalServer
@@ -82,23 +86,17 @@ func (h PostHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (h PostHandler) handle(ctx context.Context, in postRequest) (*postResponse, error) {
 	err := h.validate()
 	if err != nil {
-		err = errors.Wrap(err, "validating KYCStatusGetDetailHandler")
-		log.Ctx(ctx).Error(err)
-		return nil, err
+		return nil, errors.Wrap(err, "validating KYCStatusGetDetailHandler")
 	}
-
 	if in.CallbackID == "" {
 		return nil, httperror.NewHTTPError(http.StatusBadRequest, "Missing callback ID.")
 	}
-
 	if in.EmailAddress == "" {
 		return nil, httperror.NewHTTPError(http.StatusBadRequest, "Missing email_address.")
 	}
-
 	if !RxEmail.MatchString(in.EmailAddress) {
 		return nil, httperror.NewHTTPError(http.StatusBadRequest, "The provided email_address is invalid.")
 	}
-
 	var exists bool
 	query, args := buildUpdateKYCQuery(in)
 	err = h.DB.QueryRowContext(ctx, query, args...).Scan(&exists)
@@ -110,7 +108,6 @@ func (h PostHandler) handle(ctx context.Context, in postRequest) (*postResponse,
 	if !exists {
 		return nil, httperror.NewHTTPError(http.StatusNotFound, "Not found.")
 	}
-
 	if in.isKYCRuleRespected() {
 		return NewApprovedKYCStatusPostResponse(), nil
 	}
