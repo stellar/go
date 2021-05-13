@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/Masterminds/squirrel"
@@ -13,6 +14,7 @@ import (
 type CtxKey string
 
 var RouteContextKey = CtxKey("route")
+var QueryTypeContextKey = CtxKey("query_type")
 
 // contextRoute returns a string representing the request endpoint, or "undefined" if it wasn't found
 func contextRoute(ctx context.Context) string {
@@ -230,7 +232,14 @@ func (s *SessionWithMetrics) Clone() SessionInterface {
 	}
 }
 
-func getQueryType(query squirrel.Sqlizer) string {
+func getQueryType(ctx context.Context, query squirrel.Sqlizer) string {
+	// Do we have an explicit query type set in the context? For raw execs, in
+	// lieu of better detection. e.g. "upsert"
+	if q, ok := ctx.Value(&QueryTypeContextKey).(string); ok {
+		return q
+	}
+
+	// is it a squirrel builder?
 	if _, ok := query.(squirrel.DeleteBuilder); ok {
 		return "delete"
 	}
@@ -243,11 +252,27 @@ func getQueryType(query squirrel.Sqlizer) string {
 	if _, ok := query.(squirrel.UpdateBuilder); ok {
 		return "update"
 	}
+
+	// Try to guess based on the first word of the string.
+	// e.g. "SELECT * FROM table"
+	str, _, err := query.ToSql()
+	words := strings.Fields(strings.TrimSpace(strings.ToLower(str)))
+	if err == nil && len(words) > 0 {
+		// Make sure we don't only get known keywords here, incase it's a more
+		// complex query.
+		for _, word := range []string{"delete", "insert", "select", "update"} {
+			if word == words[0] {
+				return word
+			}
+		}
+	}
+
+	// Fresh out of ideas.
 	return "undefined"
 }
 
 func (s *SessionWithMetrics) Get(ctx context.Context, dest interface{}, query squirrel.Sqlizer) (err error) {
-	queryType := getQueryType(query)
+	queryType := getQueryType(ctx, query)
 	timer := prometheus.NewTimer(prometheus.ObserverFunc(func(v float64) {
 		s.queryDurationSummary.With(prometheus.Labels{
 			"query_type": queryType,
@@ -273,7 +298,7 @@ func (s *SessionWithMetrics) GetRaw(ctx context.Context, dest interface{}, query
 }
 
 func (s *SessionWithMetrics) Select(ctx context.Context, dest interface{}, query squirrel.Sqlizer) (err error) {
-	queryType := getQueryType(query)
+	queryType := getQueryType(ctx, query)
 	timer := prometheus.NewTimer(prometheus.ObserverFunc(func(v float64) {
 		s.queryDurationSummary.With(prometheus.Labels{
 			"query_type": queryType,
@@ -299,7 +324,7 @@ func (s *SessionWithMetrics) SelectRaw(ctx context.Context, dest interface{}, qu
 }
 
 func (s *SessionWithMetrics) Exec(ctx context.Context, query squirrel.Sqlizer) (result sql.Result, err error) {
-	queryType := getQueryType(query)
+	queryType := getQueryType(ctx, query)
 	timer := prometheus.NewTimer(prometheus.ObserverFunc(func(v float64) {
 		s.queryDurationSummary.With(prometheus.Labels{
 			"query_type": queryType,
