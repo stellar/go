@@ -119,6 +119,7 @@ func TestTxApproveHandlerValidateKYC(t *testing.T) {
 	}
 	err = h.validate()
 	require.NoError(t, err)
+	// Test no KYC needed flow.
 	destinationKP := keypair.MustRandom()
 	paymentOP := txnbuild.Payment{
 		Destination: destinationKP.Address(),
@@ -128,6 +129,7 @@ func TestTxApproveHandlerValidateKYC(t *testing.T) {
 	actionRequiredMessage, err := h.validateKYC(&paymentOP)
 	require.NoError(t, err)
 	require.Empty(t, actionRequiredMessage)
+	// Test failing malformed payment amount.
 	paymentOP = txnbuild.Payment{
 		Destination: destinationKP.Address(),
 		Amount:      "ten",
@@ -138,6 +140,7 @@ func TestTxApproveHandlerValidateKYC(t *testing.T) {
 		err.Error(),
 		`parsing account payment amount from string to Int64: invalid amount format: ten`,
 	)
+	// Test Successful KYC validation "Not implemented" response.
 	paymentOP = txnbuild.Payment{
 		Destination: destinationKP.Address(),
 		Amount:      "501",
