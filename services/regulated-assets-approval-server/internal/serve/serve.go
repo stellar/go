@@ -100,7 +100,6 @@ func handleHTTP(opts Options) http.Handler {
 		networkPassphrase: opts.NetworkPassphrase,
 		db:                db,
 		kycThreshold:      parsedKYCRequiredPaymentThreshold,
-		baseURL:           opts.BaseURL,
 	}.ServeHTTP)
 	return mux
 }
