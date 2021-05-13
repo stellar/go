@@ -436,6 +436,12 @@ func (a *App) init() error {
 	// loggly
 	initLogglyLog(a)
 
+	// metrics and log.metrics
+	a.prometheusRegistry = prometheus.NewRegistry()
+	for _, meter := range *logmetrics.DefaultMetrics {
+		a.prometheusRegistry.MustRegister(meter)
+	}
+
 	// stellarCoreInfo
 	a.UpdateStellarCoreInfo(a.ctx)
 
@@ -453,12 +459,6 @@ func (a *App) init() error {
 
 	// reaper
 	a.reaper = reap.New(a.config.HistoryRetentionCount, a.HorizonSession(), a.ledgerState)
-
-	// metrics and log.metrics
-	a.prometheusRegistry = prometheus.NewRegistry()
-	for _, meter := range *logmetrics.DefaultMetrics {
-		a.prometheusRegistry.MustRegister(meter)
-	}
 
 	// go metrics
 	initGoMetrics(a)

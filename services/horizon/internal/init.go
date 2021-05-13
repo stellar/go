@@ -18,7 +18,7 @@ import (
 	"github.com/stellar/go/support/log"
 )
 
-func mustNewDBSession(databaseURL string, maxIdle, maxOpen int) *db.Session {
+func mustNewDBSession(subsystem string, databaseURL string, maxIdle, maxOpen int, registry *prometheus.Registry) db.SessionInterface {
 	session, err := db.Open("postgres", databaseURL)
 	if err != nil {
 		log.Fatalf("cannot open Horizon DB: %v", err)
@@ -26,7 +26,7 @@ func mustNewDBSession(databaseURL string, maxIdle, maxOpen int) *db.Session {
 
 	session.DB.SetMaxIdleConns(maxIdle)
 	session.DB.SetMaxOpenConns(maxOpen)
-	return session
+	return db.RegisterMetrics(session, "horizon", subsystem, registry)
 }
 
 func mustInitHorizonDB(app *App) {
@@ -44,9 +44,11 @@ func mustInitHorizonDB(app *App) {
 	}
 
 	app.historyQ = &history.Q{mustNewDBSession(
+		"history",
 		app.config.DatabaseURL,
 		maxIdle,
 		maxOpen,
+		app.prometheusRegistry,
 	)}
 }
 
@@ -54,12 +56,12 @@ func initIngester(app *App) {
 	var err error
 	var coreSession db.SessionInterface
 	if !app.config.EnableCaptiveCoreIngestion {
-		coreSession = mustNewDBSession(app.config.StellarCoreDatabaseURL, ingest.MaxDBConnections, ingest.MaxDBConnections)
+		coreSession = mustNewDBSession("core", app.config.StellarCoreDatabaseURL, ingest.MaxDBConnections, ingest.MaxDBConnections, app.prometheusRegistry)
 	}
 	app.ingester, err = ingest.NewSystem(ingest.Config{
 		CoreSession: coreSession,
 		HistorySession: mustNewDBSession(
-			app.config.DatabaseURL, ingest.MaxDBConnections, ingest.MaxDBConnections,
+			"ingest", app.config.DatabaseURL, ingest.MaxDBConnections, ingest.MaxDBConnections, app.prometheusRegistry,
 		),
 		NetworkPassphrase: app.config.NetworkPassphrase,
 		// TODO:
