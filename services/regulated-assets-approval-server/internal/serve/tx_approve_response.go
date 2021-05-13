@@ -7,14 +7,11 @@ import (
 )
 
 type txApprovalResponse struct {
-	Error        string     `json:"error,omitempty"`
-	Message      string     `json:"message,omitempty"`
-	Status       sep8Status `json:"status"`
-	StatusCode   int        `json:"-"`
-	Tx           string     `json:"tx,omitempty"`
-	ActionURL    string     `json:"action_url,omitempty"`
-	ActionMethod string     `json:"action_method,omitempty"`
-	ActionFields []string   `json:"action_fields,omitempty"`
+	Error      string     `json:"error,omitempty"`
+	Message    string     `json:"message,omitempty"`
+	Status     sep8Status `json:"status"`
+	StatusCode int        `json:"-"`
+	Tx         string     `json:"tx,omitempty"`
 }
 
 func (t *txApprovalResponse) Render(w http.ResponseWriter) {
@@ -38,14 +35,11 @@ func NewRevisedTxApprovalResponse(tx string) *txApprovalResponse {
 	}
 }
 
-func NewActionRequiredTxApprovalResponse(message, actionURL string, actionFields []string) *txApprovalResponse {
+func NewActionRequiredTxApprovalResponse(message string) *txApprovalResponse {
 	return &txApprovalResponse{
-		Status:       sep8StatusActionRequired,
-		Message:      message,
-		ActionMethod: "", // TODO: change to "POST" when kyc-status/ endpoint is implemented.
-		StatusCode:   http.StatusOK,
-		ActionURL:    actionURL,
-		ActionFields: actionFields,
+		Status:     sep8StatusActionRequired,
+		Message:    message,
+		StatusCode: http.StatusOK,
 	}
 }
 

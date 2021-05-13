@@ -219,20 +219,16 @@ func (h txApproveHandler) txApprove(ctx context.Context, in txApproveRequest) (r
 	return NewRevisedTxApprovalResponse(txe), nil
 }
 
-// handleKYCRequiredOperationIfNeeded validates and returns an "action required"(or rejected) response if the payment requires KYC.
-// Currently action method and action URL are not implemented. Requests requiring KYC will be given an action_required response with placeholder info.
+// handleKYCRequiredOperationIfNeeded validates and returns an action_required response if the payment requires KYC.
 func (h txApproveHandler) handleKYCRequiredOperationIfNeeded(ctx context.Context, stellarAddress string, paymentOp *txnbuild.Payment) (*txApprovalResponse, error) {
 	// validate payment operation against KYC condition(s).
-	// partialKYCRequiredMessage is used to build "action required" message.
-	partialKYCRequiredMessage, err := h.validateKYC(paymentOp)
+	KYCRequiredMessage, err := h.validateKYC(paymentOp)
 	if err != nil {
 		return nil, errors.Wrap(err, "validating KYC")
 	}
-	if partialKYCRequiredMessage == "" {
+	if KYCRequiredMessage == "" {
 		return nil, nil
 	}
-	//Build the KYC "Action Required" message.
-	FullKYCRequiredMessage := fmt.Sprintf(`%s requires KYC approval. Action required methods currently not implemented.`, partialKYCRequiredMessage)
 	const q = `
 		INSERT INTO accounts_kyc_status (stellar_address)
 		VALUES ($1)
@@ -242,14 +238,10 @@ func (h txApproveHandler) handleKYCRequiredOperationIfNeeded(ctx context.Context
 	if err != nil {
 		return nil, errors.Wrap(err, "inserting new row into accounts_kyc_status table")
 	}
-	return NewActionRequiredTxApprovalResponse(
-		FullKYCRequiredMessage,
-		"Action URL not implemented",
-		[]string{""},
-	), nil
+	return NewActionRequiredTxApprovalResponse(KYCRequiredMessage), nil
 }
 
-// validateKYC returns a partial "action required" message (used in NewActionRequiredTxApprovalResponse) if the payment operation meets KYC conditions
+// validateKYC returns a "action_required" message for the NewActionRequiredTxApprovalResponse if the payment operation meets KYC conditions.
 // Currently rule(s) are, checking if payment amount is > KYCThreshold amount.
 func (h txApproveHandler) validateKYC(paymentOp *txnbuild.Payment) (string, error) {
 	paymentAmount, err := amount.ParseInt64(paymentOp.Amount)
@@ -257,7 +249,7 @@ func (h txApproveHandler) validateKYC(paymentOp *txnbuild.Payment) (string, erro
 		return "", errors.Wrapf(err, "parsing account payment amount %d from string to Int64", paymentAmount)
 	}
 	if paymentAmount > h.kycThreshold {
-		return fmt.Sprintf(`Payments exceeding %s %s`, amount.StringFromInt64(h.kycThreshold), h.assetCode), nil
+		return fmt.Sprintf(`Payments exceeding %s %s requires KYC approval. Action required methods currently not implemented.`, amount.StringFromInt64(h.kycThreshold), h.assetCode), nil
 	}
 	return "", nil
 }
