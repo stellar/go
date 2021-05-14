@@ -999,7 +999,6 @@ func TestAPI_KYCIntegration(t *testing.T) {
 	}
 	// Submit tx with payment of 501 GOATs to POST /tx_approve.
 	// Server's KYC threshold is <=500 GOATs.
-	// Currently action required response has placeholder messages until kyc-status/ is implemented.
 	senderAcc, err := handler.horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: senderAccKP.Address()})
 	require.NoError(t, err)
 	tx, err := txnbuild.NewTransaction(
