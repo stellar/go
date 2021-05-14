@@ -142,4 +142,21 @@ func TestAPI_POSTKYCStatus(t *testing.T) {
 		"error": "Missing email_address."
 	}`
 	require.JSONEq(t, wantPostResponseMissingEmail, string(body))
+	// Test "Not Found"
+	callbackIDNotFound := uuid.New().String()
+	reqBody = `{
+		"email_address": "notFound@email.com"
+	}`
+	r = httptest.NewRequest("POST", fmt.Sprintf("/kyc-status/%s", callbackIDNotFound), strings.NewReader(reqBody))
+	r = r.WithContext(ctx)
+	w = httptest.NewRecorder()
+	m.ServeHTTP(w, r)
+	resp = w.Result()
+	assert.Equal(t, http.StatusNotFound, resp.StatusCode)
+	body, err = ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	wantPostResponseNotFound := `{
+		"error": "Not found."
+	}`
+	require.JSONEq(t, wantPostResponseNotFound, string(body))
 }
