@@ -2,6 +2,7 @@ package serve
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -242,18 +243,25 @@ func (h txApproveHandler) handleKYCRequiredOperationIfNeeded(ctx context.Context
 			ON CONFLICT(stellar_address) DO NOTHING
 			RETURNING *
 		)
-		SELECT callback_id FROM new_row
+		SELECT callback_id, approved_at, rejected_at FROM new_row
 		UNION
-		SELECT callback_id
+		SELECT callback_id, approved_at, rejected_at
 		FROM accounts_kyc_status
 		WHERE stellar_address = $1
 	`
 	var (
-		callbackID string
+		callbackID             string
+		approvedAt, rejectedAt sql.NullTime
 	)
-	err = h.db.QueryRowContext(ctx, q, stellarAddress, intendedCallbackID).Scan(&callbackID)
+	err = h.db.QueryRowContext(ctx, q, stellarAddress, intendedCallbackID).Scan(&callbackID, &approvedAt, &rejectedAt)
 	if err != nil {
 		return nil, errors.Wrap(err, "inserting new row into accounts_kyc_status table")
+	}
+	if approvedAt.Valid {
+		return nil, nil
+	}
+	if rejectedAt.Valid {
+		return NewRejectedTxApprovalResponse(fmt.Sprintf("Your KYC was rejected and you're not authorized for operations above %s %s.", amount.StringFromInt64(h.kycThreshold), h.assetCode)), nil
 	}
 	return NewActionRequiredTxApprovalResponse(KYCRequiredMessage,
 		fmt.Sprintf("%s/kyc-status/%s", h.baseURL, callbackID),
