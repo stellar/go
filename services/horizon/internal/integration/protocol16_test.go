@@ -1,6 +1,7 @@
 package integration
 
 import (
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -17,7 +18,14 @@ import (
 )
 
 func NewProtocol16Test(t *testing.T) *integration.Test {
-	config := integration.Config{ProtocolVersion: 17}
+	// TODO, this should be removed once a core version with CAP 35 is released
+	if os.Getenv("HORIZON_INTEGRATION_ENABLE_CAP_35") != "true" {
+		t.Skip("skipping CAP35 test, set HORIZON_INTEGRATION_ENABLE_CAP_35=true if you want to run it")
+	}
+	config := integration.Config{
+		ProtocolVersion: 16,
+		CoreDockerImage: "2opremio/stellar-core:cap35",
+	}
 	return integration.NewTest(t, config)
 }
 
@@ -29,8 +37,8 @@ func TestProtocol16Basics(t *testing.T) {
 	t.Run("Sanity", func(t *testing.T) {
 		root, err := itest.Client().Root()
 		tt.NoError(err)
-		tt.LessOrEqual(int32(17), root.CoreSupportedProtocolVersion)
-		tt.Equal(int32(17), root.CurrentProtocolVersion)
+		tt.LessOrEqual(int32(16), root.CoreSupportedProtocolVersion)
+		tt.Equal(int32(16), root.CurrentProtocolVersion)
 
 		// Submit a simple tx
 		op := txnbuild.Payment{
