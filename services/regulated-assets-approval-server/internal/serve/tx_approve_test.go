@@ -3,9 +3,11 @@ package serve
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -17,6 +19,7 @@ import (
 	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/protocols/horizon/base"
 	"github.com/stellar/go/services/regulated-assets-approval-server/internal/db/dbtest"
+	kycstatus "github.com/stellar/go/services/regulated-assets-approval-server/internal/serve/kyc-status"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -1043,4 +1046,138 @@ func TestAPI_KYCIntegration(t *testing.T) {
 		ActionFields: []string{"email_address"},
 	}
 	assert.Equal(t, wantTXApprovalResponse, txApprovePOSTResponse)
+	// Setup /kyc-status route for subsequent integration steps
+	m.Route("/kyc-status", func(mux chi.Router) {
+		mux.Post("/{callback_id}", kycstatus.PostHandler{
+			DB: conn,
+		}.ServeHTTP)
+	})
+	// RxUUID is a regex used to validate correct UUIDs, https://w.wiki/39fK
+	var RxUUID = regexp.MustCompile(
+		`[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}`)
+	// Grab callbackID
+	callbackID := RxUUID.FindAllString(txApprovePOSTResponse.ActionURL, 1)[0]
+	// Verify the KYC entree was inserted in db
+	const q = `
+		SELECT callback_id
+		FROM accounts_kyc_status
+		WHERE stellar_address = $1
+	`
+	var (
+		returnedCallbackID string
+	)
+	err = handler.db.QueryRowContext(ctx, q, senderAccKP.Address()).Scan(&returnedCallbackID)
+	require.NoError(t, err)
+	assert.Equal(t, callbackID, returnedCallbackID)
+	// Submit a request to action_url using the action_method and sending an email_address that doesn't start with "xx"
+	req = `{
+		"email_address": "TestEmail@email.com"
+	}`
+	r = httptest.NewRequest("POST", fmt.Sprintf("/kyc-status/%s", callbackID), strings.NewReader(req))
+	r = r.WithContext(ctx)
+	w = httptest.NewRecorder()
+	m.ServeHTTP(w, r)
+	resp = w.Result()
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	body, err = ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	wantBody := `{
+		"result": "no_further_action_required",
+		"message": "Your KYC has been approved!"
+	  }`
+	require.JSONEq(t, wantBody, string(body))
+	// Revise tx via a new tx-approve/ POST
+	req = `{
+		"tx": "` + txEnc + `"
+	}`
+	r = httptest.NewRequest("POST", "/tx-approve", strings.NewReader(req))
+	r = r.WithContext(ctx)
+	w = httptest.NewRecorder()
+	m.ServeHTTP(w, r)
+	resp = w.Result()
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
+	body, err = ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	txApprovePOSTResponse = txApprovalResponse{}
+	assert.Empty(t, txApprovePOSTResponse)
+	err = json.Unmarshal(body, &txApprovePOSTResponse)
+	require.NoError(t, err)
+	wantTXApprovalResponse = txApprovalResponse{
+		Status:  sep8Status("revised"),
+		Tx:      txApprovePOSTResponse.Tx,
+		Message: `Authorization and deauthorization operations were added.`,
+	}
+	assert.Equal(t, wantTXApprovalResponse, txApprovePOSTResponse)
+	// Decode the request's transaction.
+	parsed, err := txnbuild.TransactionFromXDR(txApprovePOSTResponse.Tx)
+	require.NoError(t, err)
+	tx, ok := parsed.Transaction()
+	require.True(t, ok)
+	// Check if revised transaction only has 5 operations.
+	require.Len(t, tx.Operations(), 5)
+	// Check Operation 1: AllowTrust op where issuer fully authorizes account A, asset X.
+	op1, ok := tx.Operations()[0].(*txnbuild.AllowTrust)
+	require.True(t, ok)
+	assert.Equal(t, op1.Trustor, senderAccKP.Address())
+	assert.Equal(t, op1.Type.GetCode(), assetGOAT.GetCode())
+	require.True(t, op1.Authorize)
+	// Check  Operation 2: AllowTrust op where issuer fully authorizes account B, asset X.
+	op2, ok := tx.Operations()[1].(*txnbuild.AllowTrust)
+	require.True(t, ok)
+	assert.Equal(t, op2.Trustor, receiverAccKP.Address())
+	assert.Equal(t, op2.Type.GetCode(), assetGOAT.GetCode())
+	require.True(t, op2.Authorize)
+	// Check Operation 3: Payment from A to B.
+	op3, ok := tx.Operations()[2].(*txnbuild.Payment)
+	require.True(t, ok)
+	assert.Equal(t, op3.SourceAccount, senderAccKP.Address())
+	assert.Equal(t, op3.Destination, receiverAccKP.Address())
+	assert.Equal(t, op3.Asset, assetGOAT)
+	// Check Operation 4: AllowTrust op where issuer fully deauthorizes account B, asset X.
+	op4, ok := tx.Operations()[3].(*txnbuild.AllowTrust)
+	require.True(t, ok)
+	assert.Equal(t, op4.Trustor, receiverAccKP.Address())
+	assert.Equal(t, op4.Type.GetCode(), assetGOAT.GetCode())
+	require.False(t, op4.Authorize)
+	// Check Operation 5: AllowTrust op where issuer fully deauthorizes account A, asset X.
+	op5, ok := tx.Operations()[4].(*txnbuild.AllowTrust)
+	require.True(t, ok)
+	assert.Equal(t, op5.Trustor, senderAccKP.Address())
+	assert.Equal(t, op5.Type.GetCode(), assetGOAT.GetCode())
+	require.False(t, op5.Authorize)
+	// Test rejected KYC response
+	req = `{
+		"email_address": "xxTestEmail@email.com"
+	}`
+	r = httptest.NewRequest("POST", fmt.Sprintf("/kyc-status/%s", callbackID), strings.NewReader(req))
+	r = r.WithContext(ctx)
+	w = httptest.NewRecorder()
+	m.ServeHTTP(w, r)
+	resp = w.Result()
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	body, err = ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	wantBody = `{
+		"result": "no_further_action_required",
+		"message": "Your KYC has been rejected!"
+	  }`
+	require.JSONEq(t, wantBody, string(body))
+	// Attempt to revise tx via a new tx-approve/ POST after rejection
+	req = `{
+		"tx": "` + txEnc + `"
+	}`
+	r = httptest.NewRequest("POST", "/tx-approve", strings.NewReader(req))
+	r = r.WithContext(ctx)
+	w = httptest.NewRecorder()
+	m.ServeHTTP(w, r)
+	resp = w.Result()
+	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
+	body, err = ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	wantBody = `{
+		"status":"rejected", "error":"Your KYC was rejected and you're not authorized for operations above 500.0000000 GOAT."
+	}`
+	require.JSONEq(t, wantBody, string(body))
 }
