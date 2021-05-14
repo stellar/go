@@ -154,6 +154,9 @@ func logEndOfRequest(ctx context.Context, r *http.Request, requestDurationSummar
 
 	referer := r.Referer()
 	if referer == "" {
+		referer = r.Header.Get("Origin")
+	}
+	if referer == "" {
 		referer = "undefined"
 	}
 
