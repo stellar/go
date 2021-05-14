@@ -103,4 +103,27 @@ func TestAPI_POSTKYCStatus(t *testing.T) {
 		Result:  "no_further_action_required",
 	}
 	assert.Equal(t, wantPostResponse, kycStatusPOSTResponseRejected)
+
+	// Test POST no email in request
+	noEmailKP := keypair.MustRandom()
+	intendedCallbackIDNoEmail := uuid.New().String()
+	err = postHandler.DB.QueryRowContext(ctx, q, noEmailKP.Address(), intendedCallbackIDNoEmail).Scan(&callbackID)
+	require.NoError(t, err)
+	assert.Equal(t, intendedCallbackIDNoEmail, callbackID)
+	reqBody = `{
+		"email_address": ""
+	}`
+	r = httptest.NewRequest("POST", fmt.Sprintf("/kyc-status/%s", callbackID), strings.NewReader(reqBody))
+	r = r.WithContext(ctx)
+	w = httptest.NewRecorder()
+	m.ServeHTTP(w, r)
+	resp = w.Result()
+
+	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	body, err = ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	wantPostResponseMissingEmail := `{
+		"error": "Missing email_address."
+	}`
+	require.JSONEq(t, wantPostResponseMissingEmail, string(body))
 }
