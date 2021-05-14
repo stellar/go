@@ -12,6 +12,20 @@ intended for **testing only**. It is being conceived to:
 2. Serve as a demo server where wallets can test and validate their SEP-8
    implementation.
 
+## Table of Contents
+
+* [regulated\-assets\-approval\-server](#regulated-assets-approval-server)
+  * [Usage](#usage)
+    * [Usage: Migrate](#usage-migrate)
+    * [Usage: Serve](#usage-serve)
+  * [Account Setup](#account-setup)
+    * [API Spec](#api-spec)
+      * [POST /tx\-approve](#post-tx-approve)
+      * [POST /kyc\-status/\{UUID\}](#post-kyc-statusuuid)
+      * [GET /friendbot?addr={stellar_address}](#get-friendbotaddrstellar_address)
+
+Created by [gh-md-toc](https://github.com/ekalinin/github-markdown-toc.go)
+
 ## Usage
 
 ```sh
@@ -163,7 +177,7 @@ Note: Subsequent KYC attempts with new (valid)emails addresses will approve your
 }
 ```
 
-#### `GET /friendbot?addr=GDDIO6SFRD4SJEQFJOSKPIDYTDM7LM4METFBKN4NFGVR5DTGB7H75N5S`
+#### `GET /friendbot?addr={stellar_address}`
 
 This endpoint sends a payment of 10,000 (this value is configurable) regulated
 assets to the provided `addr`. Please be aware the address must first establish
