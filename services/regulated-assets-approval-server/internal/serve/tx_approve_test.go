@@ -161,7 +161,7 @@ func TestTxApproveHandlerValidateKYC(t *testing.T) {
 	}
 	actionRequiredMessage, err = h.validateKYC(&paymentOP)
 	require.NoError(t, err)
-	assert.Equal(t, `Payments exceeding 500.0000000 GOAT requires KYC approval. Action required methods currently not implemented.`, actionRequiredMessage)
+	assert.Equal(t, `Payments exceeding 500.0000000 GOAT requires KYC approval.`, actionRequiredMessage)
 }
 
 func TestTxApproveHandlerHandleKYCRequiredOperationIfNeeded(t *testing.T) {
@@ -201,7 +201,7 @@ func TestTxApproveHandlerHandleKYCRequiredOperationIfNeeded(t *testing.T) {
 	require.NoError(t, err)
 	wantTXApprovalResponse := txApprovalResponse{
 		Status:       sep8Status("action_required"),
-		Message:      `Payments exceeding ` + amount.StringFromInt64(h.kycThreshold) + ` GOAT requires KYC approval. Action required methods currently not implemented.`,
+		Message:      `Payments exceeding ` + amount.StringFromInt64(h.kycThreshold) + ` GOAT requires KYC approval.`,
 		StatusCode:   http.StatusOK,
 		ActionURL:    actionRequiredTxApprovalResponse.ActionURL,
 		ActionMethod: "POST",
@@ -1037,7 +1037,7 @@ func TestAPI_KYCIntegration(t *testing.T) {
 	require.NoError(t, err)
 	wantTXApprovalResponse := txApprovalResponse{
 		Status:       sep8Status("action_required"),
-		Message:      `Payments exceeding ` + amount.StringFromInt64(handler.kycThreshold) + ` GOAT requires KYC approval. Action required methods currently not implemented.`,
+		Message:      `Payments exceeding ` + amount.StringFromInt64(handler.kycThreshold) + ` GOAT requires KYC approval.`,
 		ActionURL:    txApprovePOSTResponse.ActionURL,
 		ActionMethod: "POST",
 		ActionFields: []string{"email_address"},

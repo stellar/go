@@ -269,7 +269,7 @@ func (h txApproveHandler) validateKYC(paymentOp *txnbuild.Payment) (string, erro
 		return "", errors.Wrap(err, "parsing account payment amount from string to Int64")
 	}
 	if paymentAmount > h.kycThreshold {
-		return fmt.Sprintf(`Payments exceeding %s %s requires KYC approval. Action required methods currently not implemented.`, amount.StringFromInt64(h.kycThreshold), h.assetCode), nil
+		return fmt.Sprintf(`Payments exceeding %s %s requires KYC approval.`, amount.StringFromInt64(h.kycThreshold), h.assetCode), nil
 	}
 	return "", nil
 }
