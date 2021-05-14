@@ -156,7 +156,7 @@ func TestTxApproveHandlerValidateKYC(t *testing.T) {
 		err.Error(),
 		`parsing account payment amount from string to Int64: invalid amount format: ten`,
 	)
-	// Test Successful KYC validation "Not implemented" response.
+	// Test Successful KYC validation response.
 	paymentOP = txnbuild.Payment{
 		Destination: destinationKP.Address(),
 		Amount:      "501",
@@ -191,7 +191,7 @@ func TestTxApproveHandlerHandleKYCRequiredOperationIfNeeded(t *testing.T) {
 	}
 	err = h.validate()
 	require.NoError(t, err)
-	// Test successful "Not implemented" action_required response.
+	// Test successful action_required response.
 	sourceKP := keypair.MustRandom()
 	destinationKP := keypair.MustRandom()
 	paymentOP := txnbuild.Payment{
