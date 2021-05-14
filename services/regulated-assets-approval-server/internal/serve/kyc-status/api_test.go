@@ -75,20 +75,6 @@ func TestAPI_POSTKYCStatus(t *testing.T) {
 		Message: "Your KYC has been approved!",
 	}
 	assert.Equal(t, wantPostResponse, kycStatusPOSTResponseApprove)
-	// Test repeated KYC request after approval.
-	// ?: Is this the response we want?
-	r = httptest.NewRequest("POST", fmt.Sprintf("/kyc-status/%s", callbackID), strings.NewReader(reqBody))
-	r = r.WithContext(ctx)
-	w = httptest.NewRecorder()
-	m.ServeHTTP(w, r)
-	resp = w.Result()
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
-	body, err = ioutil.ReadAll(resp.Body)
-	require.NoError(t, err)
-	var kycStatusPOSTResponseApproveRepeatApprove postResponse
-	err = json.Unmarshal(body, &kycStatusPOSTResponseApproveRepeatApprove)
-	require.NoError(t, err)
-	assert.Equal(t, wantPostResponse, kycStatusPOSTResponseApprove)
 	// Test POST successful REJECTED KYC response. Based on arbitrary rule where emails begin with "xx"
 	rejectedKP := keypair.MustRandom()
 	intendedCallbackIDRejected := uuid.New().String()
@@ -114,7 +100,7 @@ func TestAPI_POSTKYCStatus(t *testing.T) {
 		Result:  "no_further_action_required",
 	}
 	assert.Equal(t, wantPostResponse, kycStatusPOSTResponseRejected)
-	// Test repeated KYC request after approval w/ new email.
+	// Test repeated KYC request after REJECTED w/ new email.
 	// Should succeed as approved.
 	reqBody = `{
 		"email_address": "TestEmailxx@email.com"
