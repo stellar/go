@@ -112,6 +112,57 @@ _Rejected:_
   "error": "There is one or more unauthorized operations in the provided transaction."
 }
 ```
+
+_Action Required:_
+
+```json
+{
+  "status": "action_required",
+  "message": "Payments exceeding 500.00 GOAT needs KYC approval. Please provide an email address.",
+  "action_url": "https://sep8-base-url.com/kyc-status/cf4fe081-5b38-48b6-86ed-1bcfb7171c7d",
+  "action_method": "POST",
+  "action_fields": [
+    "email_address"
+  ]
+}
+```
+
+#### `POST /kyc-status/{UUID}`
+
+This endpoint is used for the extra action after `/tx-approve`, as described in
+the SEP-8 [Action Required] section.
+
+Currently an arbitrarily criteria is implemented, email addresses starting with "xx" will have the KYC
+automatically denied while all other emails will be accepted.
+
+Note: Subsequent KYC attempts with new (valid)emails addresses will approve your account for KYC required transactions.
+
+**Request:**
+
+```json
+{
+  "email_address": "foo@bar.com"
+}
+```
+
+**Response (approved for emails not staring with "xx"):**
+
+```json
+{
+  "result": "no_further_action_required",
+  "message": "Your KYC has been approved!"
+}
+```
+
+**Response (rejected for emails staring with "xx"):**
+
+```json
+{
+  "result": "no_further_action_required",
+  "message": "Your KYC has been rejected!"
+}
+```
+
 #### `GET /friendbot?addr=GDDIO6SFRD4SJEQFJOSKPIDYTDM7LM4METFBKN4NFGVR5DTGB7H75N5S`
 
 This endpoint sends a payment of 10,000 (this value is configurable) regulated
