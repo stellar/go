@@ -64,7 +64,6 @@ func TestAPI_POSTKYCStatus(t *testing.T) {
 	w := httptest.NewRecorder()
 	m.ServeHTTP(w, r)
 	resp := w.Result()
-
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	body, err := ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
@@ -83,7 +82,6 @@ func TestAPI_POSTKYCStatus(t *testing.T) {
 	w = httptest.NewRecorder()
 	m.ServeHTTP(w, r)
 	resp = w.Result()
-
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
@@ -117,7 +115,6 @@ func TestAPI_POSTKYCStatus(t *testing.T) {
 		Result:  "no_further_action_required",
 	}
 	assert.Equal(t, wantPostResponse, kycStatusPOSTResponseRejected)
-
 	// Test POST no email in request
 	noEmailKP := keypair.MustRandom()
 	intendedCallbackIDNoEmail := uuid.New().String()
@@ -132,7 +129,6 @@ func TestAPI_POSTKYCStatus(t *testing.T) {
 	w = httptest.NewRecorder()
 	m.ServeHTTP(w, r)
 	resp = w.Result()
-
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
