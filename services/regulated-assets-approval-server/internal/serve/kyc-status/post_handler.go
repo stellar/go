@@ -101,9 +101,7 @@ func (h PostHandler) handle(ctx context.Context, in postRequest) (*postResponse,
 	query, args := buildUpdateKYCQuery(in)
 	err = h.DB.QueryRowContext(ctx, query, args...).Scan(&exists)
 	if err != nil {
-		err = errors.Wrap(err, "querying the database")
-		log.Error(err)
-		return nil, err
+		return nil, errors.Wrap(err, "querying the database")
 	}
 	if !exists {
 		return nil, httperror.NewHTTPError(http.StatusNotFound, "Not found.")
