@@ -147,7 +147,9 @@ commands:
     parameters:
       core-version:
         type: string
-        default: "" # latest version by default
+        # version which works with captive-core by default
+        # TODO: Set this to latest once core is fixed
+        default: "15.3.0-498.7a7f18c.xenial~SetTrustlineFlagsPR~buildtests"
     steps:
       - run:
           name: Install Stellar Core <<#parameters.core-version>> (version <<parameters.core-version>>)<</parameters.core-version>>
