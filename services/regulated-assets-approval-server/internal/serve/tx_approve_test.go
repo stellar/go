@@ -1047,7 +1047,7 @@ func TestAPI_KYCIntegration(t *testing.T) {
 		ActionFields: []string{"email_address"},
 	}
 	assert.Equal(t, wantTXApprovalResponse, txApprovePOSTResponse)
-	// Setup /kyc-status route for subsequent integration steps
+	// Setup /kyc-status route for subsequent integration steps.
 	m.Route("/kyc-status", func(mux chi.Router) {
 		mux.Post("/{callback_id}", kycstatus.PostHandler{
 			DB: conn,
@@ -1058,7 +1058,7 @@ func TestAPI_KYCIntegration(t *testing.T) {
 		`[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}`)
 	// Grab callbackID
 	callbackID := RxUUID.FindAllString(txApprovePOSTResponse.ActionURL, 1)[0]
-	// Verify the KYC entree was inserted in db
+	// Verify the KYC entree was inserted in db.
 	const q = `
 		SELECT callback_id
 		FROM accounts_kyc_status
@@ -1070,7 +1070,7 @@ func TestAPI_KYCIntegration(t *testing.T) {
 	err = handler.db.QueryRowContext(ctx, q, senderAccKP.Address()).Scan(&returnedCallbackID)
 	require.NoError(t, err)
 	assert.Equal(t, callbackID, returnedCallbackID)
-	// Submit a request to action_url using the action_method and sending an email_address that doesn't start with "xx"
+	// Submit a request to action_url using the action_method and sending an email_address that doesn't start with "xx".
 	req = `{
 		"email_address": "TestEmail@email.com"
 	}`
@@ -1087,7 +1087,7 @@ func TestAPI_KYCIntegration(t *testing.T) {
 		"message": "Your KYC has been approved!"
 	  }`
 	require.JSONEq(t, wantBody, string(body))
-	// Revise tx via a new tx-approve/ POST
+	// Revise tx via a new tx-approve/ POST.
 	req = `{
 		"tx": "` + txEnc + `"
 	}`
@@ -1147,7 +1147,7 @@ func TestAPI_KYCIntegration(t *testing.T) {
 	assert.Equal(t, op5.Trustor, senderAccKP.Address())
 	assert.Equal(t, op5.Type.GetCode(), assetGOAT.GetCode())
 	require.False(t, op5.Authorize)
-	// Test rejected KYC response
+	// Test rejected KYC response.
 	req = `{
 		"email_address": "xxTestEmail@email.com"
 	}`
@@ -1164,7 +1164,7 @@ func TestAPI_KYCIntegration(t *testing.T) {
 		"message": "Your KYC has been rejected!"
 	  }`
 	require.JSONEq(t, wantBody, string(body))
-	// Attempt to revise tx via a new tx-approve/ POST after rejection
+	// Attempt to revise tx via a new tx-approve/ POST after rejection.
 	req = `{
 		"tx": "` + txEnc + `"
 	}`
