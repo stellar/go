@@ -35,6 +35,20 @@ func TestValidate(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestIsKYCRuleRespected(t *testing.T) {
+	// Test if email approved.
+	in := kycPostRequest{
+		EmailAddress: "test@email.com",
+	}
+	approved := in.isKYCRuleRespected()
+	assert.True(t, approved)
+	// Test if email approved rejected.
+	in = kycPostRequest{
+		EmailAddress: "xxtest@email.com",
+	}
+	approved = in.isKYCRuleRespected()
+	assert.False(t, approved)
+}
 func TestAPI_POSTKYCStatus(t *testing.T) {
 	ctx := context.Background()
 	db := dbtest.Open(t)
