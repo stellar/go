@@ -21,7 +21,7 @@ intended for **testing only**. It is being conceived to:
   * [Account Setup](#account-setup)
     * [API Spec](#api-spec)
       * [POST /tx\-approve](#post-tx-approve)
-      * [POST /kyc\-status/\{UUID\}](#post-kyc-statusuuid)
+      * [POST /kyc\-status/\{CALLBACK_ID\}](#post-kyc-statuscallback_id)
       * [GET /friendbot?addr={stellar_address}](#get-friendbotaddrstellar_address)
 
 Created by [gh-md-toc](https://github.com/ekalinin/github-markdown-toc.go)
@@ -141,7 +141,7 @@ _Action Required:_
 }
 ```
 
-#### `POST /kyc-status/{UUID}`
+#### `POST /kyc-status/{CALLBACK_ID}`
 
 This endpoint is used for the extra action after `/tx-approve`, as described in
 the SEP-8 [Action Required] section.
