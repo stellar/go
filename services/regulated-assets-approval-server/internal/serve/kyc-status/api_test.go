@@ -82,14 +82,6 @@ func TestAPI_POSTKYCStatus(t *testing.T) {
 	conn := db.Open()
 	defer conn.Close()
 
-	// Setup /kyc-status route.
-	m := chi.NewMux()
-	postHandler := PostHandler{
-		DB: conn,
-	}
-	m.Route("/kyc-status", func(mux chi.Router) {
-		mux.Post("/{callback_id}", postHandler.ServeHTTP)
-	})
 	// INSERT new account in accounts_kyc_status that needs kyc verified.
 	const q = `
 		WITH new_row AS (
@@ -109,10 +101,16 @@ func TestAPI_POSTKYCStatus(t *testing.T) {
 	var (
 		callbackID string
 	)
+	// create kyc-status PostHandler.
+	postHandler := PostHandler{
+		DB: conn,
+	}
 	err := postHandler.DB.QueryRowContext(ctx, q, approveKP.Address(), intendedCallbackIDApprove).Scan(&callbackID)
 	require.NoError(t, err)
 	assert.Equal(t, intendedCallbackIDApprove, callbackID)
 	// Test POST successful APPROVED KYC response.
+	m := chi.NewMux()
+	m.Post("/kyc-status/{callback_id}", postHandler.ServeHTTP)
 	reqBody := `{
 		"email_address": "TestEmail@email.com"
 	}`
@@ -157,8 +155,7 @@ func TestAPI_POSTKYCStatus(t *testing.T) {
 		Result:  "no_further_action_required",
 	}
 	assert.Equal(t, wantPostResponse, kycStatusPOSTResponseRejected)
-	// Test repeated KYC request after REJECTED w/ new email.
-	// Should succeed as approved.
+	// Test repeated KYC request after REJECTED w/ new email. Should succeed as approved.
 	reqBody = `{
 		"email_address": "TestEmailxx@email.com"
 	}`
