@@ -142,7 +142,7 @@ func TestAPI_POSTKYCStatus(t *testing.T) {
 		"error": "Missing email_address."
 	}`
 	require.JSONEq(t, wantPostResponseMissingEmail, string(body))
-	// Test "Not Found"
+	// Test "Not Found" callback_id not registered
 	callbackIDNotFound := uuid.New().String()
 	reqBody = `{
 		"email_address": "notFound@email.com"
