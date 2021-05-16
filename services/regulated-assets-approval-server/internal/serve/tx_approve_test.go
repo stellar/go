@@ -61,7 +61,7 @@ func TestTxApproveHandlerValidate(t *testing.T) {
 		networkPassphrase: network.TestNetworkPassphrase,
 	}
 	err = h.validate()
-	require.EqualError(t, err, "db cannot be nil")
+	require.EqualError(t, err, "database cannot be nil")
 	// Empty kycThreshold.
 	db := dbtest.Open(t)
 	defer db.Close()

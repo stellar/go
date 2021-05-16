@@ -48,7 +48,7 @@ func (h txApproveHandler) validate() error {
 		return errors.New("network passphrase cannot be empty")
 	}
 	if h.db == nil {
-		return errors.New("db cannot be nil")
+		return errors.New("database cannot be nil")
 	}
 	if h.kycThreshold <= 0 {
 		return errors.New("kyc threshold cannot be less than or equal to zero")
