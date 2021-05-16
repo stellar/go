@@ -82,7 +82,7 @@ func TestAPI_POSTKYCStatus(t *testing.T) {
 	conn := db.Open()
 	defer conn.Close()
 
-	// Setup /kyc-status route
+	// Setup /kyc-status route.
 	m := chi.NewMux()
 	postHandler := PostHandler{
 		DB: conn,
@@ -90,7 +90,7 @@ func TestAPI_POSTKYCStatus(t *testing.T) {
 	m.Route("/kyc-status", func(mux chi.Router) {
 		mux.Post("/{callback_id}", postHandler.ServeHTTP)
 	})
-	// INSERT new account in accounts_kyc_status that needs kyc verified
+	// INSERT new account in accounts_kyc_status that needs kyc verified.
 	const q = `
 		WITH new_row AS (
 			INSERT INTO accounts_kyc_status (stellar_address, callback_id)
@@ -132,7 +132,7 @@ func TestAPI_POSTKYCStatus(t *testing.T) {
 		Message: "Your KYC has been approved!",
 	}
 	assert.Equal(t, wantPostResponse, kycStatusPOSTResponseApprove)
-	// Test POST successful REJECTED KYC response. Based on arbitrary rule where emails begin with "xx"
+	// Test POST successful REJECTED KYC response. Based on arbitrary rule where emails begin with "xx".
 	rejectedKP := keypair.MustRandom()
 	intendedCallbackIDRejected := uuid.New().String()
 	err = postHandler.DB.QueryRowContext(ctx, q, rejectedKP.Address(), intendedCallbackIDRejected).Scan(&callbackID)
@@ -178,7 +178,7 @@ func TestAPI_POSTKYCStatus(t *testing.T) {
 		Result:  "no_further_action_required",
 	}
 	assert.Equal(t, wantPostResponse, kycStatusPOSTResponseRejectedNewEmail)
-	// Test POST no email in request
+	// Test POST no email in request.
 	noEmailKP := keypair.MustRandom()
 	intendedCallbackIDNoEmail := uuid.New().String()
 	err = postHandler.DB.QueryRowContext(ctx, q, noEmailKP.Address(), intendedCallbackIDNoEmail).Scan(&callbackID)
@@ -199,7 +199,7 @@ func TestAPI_POSTKYCStatus(t *testing.T) {
 		"error": "Missing email_address."
 	}`
 	require.JSONEq(t, wantPostResponseMissingEmail, string(body))
-	// Test "Not Found" callback_id not registered
+	// Test "Not Found", callback_id not registered.
 	callbackIDNotFound := uuid.New().String()
 	reqBody = `{
 		"email_address": "notFound@email.com"
