@@ -78,7 +78,7 @@ func (h PostHandler) handle(ctx context.Context, in kycPostRequest) (resp *kycPo
 		return nil, httperror.NewHTTPError(http.StatusBadRequest, "The provided email_address is invalid.")
 	}
 	var exists bool
-	query, args := buildUpdateKYCQuery(in)
+	query, args := in.buildUpdateKYCQuery()
 	err = h.DB.QueryRowContext(ctx, query, args...).Scan(&exists)
 	if err != nil {
 		return nil, errors.Wrap(err, "querying the database")
@@ -102,7 +102,7 @@ func (in kycPostRequest) isKYCRuleRespected() bool {
 	return approved
 }
 
-func buildUpdateKYCQuery(in kycPostRequest) (string, []interface{}) {
+func (in kycPostRequest) buildUpdateKYCQuery() (string, []interface{}) {
 	var query strings.Builder
 	var args []interface{}
 	query.WriteString("WITH updated_row AS (")
