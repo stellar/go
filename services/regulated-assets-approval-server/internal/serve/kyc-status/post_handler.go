@@ -13,7 +13,6 @@ import (
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/http/httpdecode"
 	"github.com/stellar/go/support/log"
-	"github.com/stellar/go/support/render/httpjson"
 )
 
 type PostHandler struct {
@@ -35,7 +34,7 @@ func (h PostHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		httperror.InternalServer.Render(w)
 		return
 	}
-	in := postRequest{
+	in := kycPostRequest{
 		CallbackID: chi.URLParam(r, "callback_id"),
 	}
 	err = httpdecode.Decode(r, &in)
@@ -44,8 +43,7 @@ func (h PostHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		httperror.BadRequest.Render(w)
 		return
 	}
-
-	resp, err := h.handle(ctx, in)
+	kycResponse, err := h.handle(ctx, in)
 	if err != nil {
 		log.Ctx(ctx).Error(errors.Wrap(err, "validating the input POST request for kyc-status"))
 		httpErr, ok := err.(*httperror.Error)
@@ -55,11 +53,10 @@ func (h PostHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		httpErr.Render(w)
 		return
 	}
-
-	httpjson.Render(w, resp, httpjson.JSON)
+	kycResponse.Render(w)
 }
 
-func (h PostHandler) handle(ctx context.Context, in postRequest) (*postResponse, error) {
+func (h PostHandler) handle(ctx context.Context, in kycPostRequest) (*kycPostResponse, error) {
 	err := h.validate()
 	if err != nil {
 		return nil, errors.Wrap(err, "validating KYCStatusGetDetailHandler")
@@ -88,41 +85,39 @@ func (h PostHandler) handle(ctx context.Context, in postRequest) (*postResponse,
 	return NewRejectedKYCStatusPostResponse(), nil
 }
 
-// isKYCRuleRespected is an arbitrary rule where emails starting with "x" are
-// rejected and other emails are automatically approved.
-func (in postRequest) isKYCRuleRespected() bool {
-	return !strings.HasPrefix(strings.ToLower(in.EmailAddress), "xx")
+// isKYCRuleRespected validates if KYC data is approved or rejected.
+// Current rule(s) emails starting "xx" are rejected and other emails are automatically approved.
+func (in kycPostRequest) isKYCRuleRespected() bool {
+	approved := false
+	if !strings.HasPrefix(strings.ToLower(in.EmailAddress), "xx") {
+		approved = true
+	}
+	return approved
 }
 
-func buildUpdateKYCQuery(in postRequest) (string, []interface{}) {
+func buildUpdateKYCQuery(in kycPostRequest) (string, []interface{}) {
 	var query strings.Builder
 	var args []interface{}
-
 	query.WriteString("WITH updated_row AS (")
 	query.WriteString("UPDATE accounts_kyc_status ")
 	query.WriteString("SET kyc_submitted_at = NOW(), ")
-
 	args = append(args, in.EmailAddress)
 	query.WriteString(fmt.Sprintf("email_address = $%d, ", len(args)))
-
+	// Check if KYC info is approved or rejected
 	if in.isKYCRuleRespected() {
 		query.WriteString("approved_at = NOW(), rejected_at = NULL ")
 	} else {
 		query.WriteString("rejected_at = NOW(), approved_at = NULL ")
 	}
-
 	args = append(args, in.CallbackID)
 	query.WriteString(fmt.Sprintf("WHERE callback_id = $%d ", len(args)))
-
 	query.WriteString("RETURNING * ")
 	query.WriteString(")")
-
 	query.WriteString(`
 		SELECT EXISTS(
 			SELECT * FROM updated_row
 		)
 	`)
-
 	return query.String(), args
 }
 

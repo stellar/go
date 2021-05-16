@@ -67,10 +67,10 @@ func TestAPI_POSTKYCStatus(t *testing.T) {
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	body, err := ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
-	var kycStatusPOSTResponseApprove postResponse
+	var kycStatusPOSTResponseApprove kycPostResponse
 	err = json.Unmarshal(body, &kycStatusPOSTResponseApprove)
 	require.NoError(t, err)
-	wantPostResponse := postResponse{
+	wantPostResponse := kycPostResponse{
 		Result:  "no_further_action_required",
 		Message: "Your KYC has been approved!",
 	}
@@ -92,10 +92,10 @@ func TestAPI_POSTKYCStatus(t *testing.T) {
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
-	var kycStatusPOSTResponseRejected postResponse
+	var kycStatusPOSTResponseRejected kycPostResponse
 	err = json.Unmarshal(body, &kycStatusPOSTResponseRejected)
 	require.NoError(t, err)
-	wantPostResponse = postResponse{
+	wantPostResponse = kycPostResponse{
 		Message: "Your KYC has been rejected!",
 		Result:  "no_further_action_required",
 	}
@@ -113,10 +113,10 @@ func TestAPI_POSTKYCStatus(t *testing.T) {
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
-	var kycStatusPOSTResponseRejectedNewEmail postResponse
+	var kycStatusPOSTResponseRejectedNewEmail kycPostResponse
 	err = json.Unmarshal(body, &kycStatusPOSTResponseRejectedNewEmail)
 	require.NoError(t, err)
-	wantPostResponse = postResponse{
+	wantPostResponse = kycPostResponse{
 		Message: "Your KYC has been approved!",
 		Result:  "no_further_action_required",
 	}
