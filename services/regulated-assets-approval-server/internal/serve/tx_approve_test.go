@@ -120,6 +120,7 @@ func TestTxApproveHandlerValidateKYC(t *testing.T) {
 	issuerAccKeyPair := keypair.MustRandom()
 	horizonMock := horizonclient.MockClient{}
 	kycThresholdAmount, err := amount.ParseInt64("500")
+	require.NoError(t, err)
 	assetGOAT := txnbuild.CreditAsset{
 		Code:   "GOAT",
 		Issuer: issuerAccKeyPair.Address(),
@@ -176,6 +177,7 @@ func TestTxApproveHandlerHandleKYCRequiredOperationIfNeeded(t *testing.T) {
 	issuerAccKeyPair := keypair.MustRandom()
 	horizonMock := horizonclient.MockClient{}
 	kycThresholdAmount, err := amount.ParseInt64("500")
+	require.NoError(t, err)
 	assetGOAT := txnbuild.CreditAsset{
 		Code:   "GOAT",
 		Issuer: issuerAccKeyPair.Address(),
