@@ -61,14 +61,12 @@ func (h txApproveHandler) validate() error {
 
 func (h txApproveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-
 	err := h.validate()
 	if err != nil {
 		log.Ctx(ctx).Error(errors.Wrap(err, "validating txApproveHandler"))
 		httperror.InternalServer.Render(w)
 		return
 	}
-
 	in := txApproveRequest{}
 	err = httpdecode.Decode(r, &in)
 	if err != nil {
@@ -76,7 +74,6 @@ func (h txApproveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		httperror.BadRequest.Render(w)
 		return
 	}
-
 	txApproveResp, err := h.txApprove(ctx, in)
 	if err != nil {
 		log.Ctx(ctx).Error(errors.Wrap(err, "validating the input transaction for approval"))
