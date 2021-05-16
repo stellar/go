@@ -18,6 +18,23 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestValidate(t *testing.T) {
+	// Test no db.
+	h := PostHandler{}
+	err := h.validate()
+	require.EqualError(t, err, "database cannot be nil")
+	// Success.
+	db := dbtest.Open(t)
+	defer db.Close()
+	conn := db.Open()
+	defer conn.Close()
+	h = PostHandler{
+		DB: conn,
+	}
+	err = h.validate()
+	require.NoError(t, err)
+}
+
 func TestAPI_POSTKYCStatus(t *testing.T) {
 	ctx := context.Background()
 	db := dbtest.Open(t)
