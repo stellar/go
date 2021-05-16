@@ -56,8 +56,15 @@ func (h PostHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	kycResponse.Render(w)
 }
 
-func (h PostHandler) handle(ctx context.Context, in kycPostRequest) (*kycPostResponse, error) {
-	err := h.validate()
+func (h PostHandler) handle(ctx context.Context, in kycPostRequest) (resp *kycPostResponse, err error) {
+	defer func() {
+		log.Ctx(ctx).Debug("==== will log responses ====")
+		log.Ctx(ctx).Debugf("req: %+v", in)
+		log.Ctx(ctx).Debugf("resp: %+v", resp)
+		log.Ctx(ctx).Debugf("err: %+v", err)
+		log.Ctx(ctx).Debug("====  did log responses ====")
+	}()
+	err = h.validate()
 	if err != nil {
 		return nil, errors.Wrap(err, "validating KYCStatusGetDetailHandler")
 	}
