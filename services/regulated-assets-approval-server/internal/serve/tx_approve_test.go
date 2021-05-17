@@ -1082,10 +1082,7 @@ func TestAPI_KYCIntegration(t *testing.T) {
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
-	wantBody := `{
-		"result": "no_further_action_required",
-		"message": "Your KYC has been approved!"
-	  }`
+	wantBody := `{"result": "no_further_action_required"}`
 	require.JSONEq(t, wantBody, string(body))
 	// Revise tx via a new tx-approve/ POST.
 	req = `{
@@ -1159,10 +1156,7 @@ func TestAPI_KYCIntegration(t *testing.T) {
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
-	wantBody = `{
-		"result": "no_further_action_required",
-		"message": "Your KYC has been rejected!"
-	  }`
+	wantBody = `{"result": "no_further_action_required"}`
 	require.JSONEq(t, wantBody, string(body))
 	// Attempt to revise tx via a new tx-approve/ POST after rejection.
 	req = `{
