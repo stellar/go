@@ -66,7 +66,7 @@ const (
 var log = logpkg.DefaultLogger.WithField("service", "ingest")
 
 type Config struct {
-	CoreSession                 *db.Session
+	CoreSession                 db.SessionInterface
 	StellarCoreURL              string
 	StellarCoreCursor           string
 	EnableCaptiveCore           bool
@@ -79,7 +79,7 @@ type Config struct {
 	RemoteCaptiveCoreURL        string
 	NetworkPassphrase           string
 
-	HistorySession           *db.Session
+	HistorySession           db.SessionInterface
 	HistoryArchiveURL        string
 	DisableStateVerification bool
 

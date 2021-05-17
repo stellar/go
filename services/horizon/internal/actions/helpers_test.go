@@ -508,7 +508,7 @@ func makeRequest(
 	t *testing.T,
 	queryParams map[string]string,
 	routeParams map[string]string,
-	session *db.Session,
+	session db.SessionInterface,
 ) *http.Request {
 	request, err := http.NewRequest("GET", "/", nil)
 	if err != nil {

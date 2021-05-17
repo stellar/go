@@ -107,8 +107,11 @@ type SessionInterface interface {
 	BeginTx(ctx context.Context, opts *sql.TxOptions) error
 	Begin(ctx context.Context) error
 	Rollback(ctx context.Context) error
+	Commit(ctx context.Context) error
+	GetTx() *sqlx.Tx
+	GetTxOptions() *sql.TxOptions
 	TruncateTables(ctx context.Context, tables []string) error
-	Clone() *Session
+	Clone() SessionInterface
 	Close() error
 	Get(ctx context.Context, dest interface{}, query squirrel.Sqlizer) error
 	GetRaw(ctx context.Context, dest interface{}, query string, args ...interface{}) error
@@ -119,6 +122,12 @@ type SessionInterface interface {
 	ExecRaw(ctx context.Context, query string, args ...interface{}) (sql.Result, error)
 	NoRows(err error) bool
 	Ping(ctx context.Context, timeout time.Duration) error
+	DeleteRange(
+		ctx context.Context,
+		start, end int64,
+		table string,
+		idCol string,
+	) error
 }
 
 // Table helps to build sql queries against a given table.  It logically

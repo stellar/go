@@ -603,7 +603,7 @@ type OperationsQ struct {
 // Q is a helper struct on which to hang common_trades queries against a history
 // portion of the horizon database.
 type Q struct {
-	*db.Session
+	db.SessionInterface
 }
 
 // QSigners defines signer related queries.

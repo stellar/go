@@ -68,7 +68,7 @@ func (s *Session) GetTxOptions() *sql.TxOptions {
 // Clone clones the receiver, returning a new instance backed by the same
 // context and db. The result will not be bound to any transaction that the
 // source is currently within.
-func (s *Session) Clone() *Session {
+func (s *Session) Clone() SessionInterface {
 	return &Session{
 		DB: s.DB,
 	}

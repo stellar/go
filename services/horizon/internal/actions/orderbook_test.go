@@ -659,7 +659,7 @@ func TestOrderbookGetResource(t *testing.T) {
 					"limit":               strconv.Itoa(testCase.limit),
 				},
 				map[string]string{},
-				q.Session,
+				q,
 			)
 			w := httptest.NewRecorder()
 			response, err := handler.GetResource(w, r)

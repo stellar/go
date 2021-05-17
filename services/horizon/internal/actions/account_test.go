@@ -339,7 +339,7 @@ func TestGetAccountsHandlerPageNoResults(t *testing.T) {
 				"signer": signer,
 			},
 			map[string]string{},
-			q.Session,
+			q,
 		),
 	)
 	tt.Assert.NoError(err)
@@ -375,7 +375,7 @@ func TestGetAccountsHandlerPageResultsBySigner(t *testing.T) {
 				"signer": signer,
 			},
 			map[string]string{},
-			q.Session,
+			q,
 		),
 	)
 
@@ -405,7 +405,7 @@ func TestGetAccountsHandlerPageResultsBySigner(t *testing.T) {
 				"cursor": accountOne,
 			},
 			map[string]string{},
-			q.Session,
+			q,
 		),
 	)
 
@@ -455,7 +455,7 @@ func TestGetAccountsHandlerPageResultsBySponsor(t *testing.T) {
 				"sponsor": sponsor.Address(),
 			},
 			map[string]string{},
-			q.Session,
+			q,
 		),
 	)
 
@@ -511,7 +511,7 @@ func TestGetAccountsHandlerPageResultsByAsset(t *testing.T) {
 			t,
 			params,
 			map[string]string{},
-			q.Session,
+			q,
 		),
 	)
 
@@ -529,7 +529,7 @@ func TestGetAccountsHandlerPageResultsByAsset(t *testing.T) {
 			t,
 			params,
 			map[string]string{},
-			q.Session,
+			q,
 		),
 	)
 
@@ -613,7 +613,7 @@ func TestGetAccountsHandlerInvalidParams(t *testing.T) {
 					t,
 					tc.params,
 					map[string]string{},
-					q.Session,
+					q,
 				),
 			)
 			tt.Assert.Error(err)
