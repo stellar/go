@@ -112,7 +112,7 @@ func TestTxApproveHandlerValidate(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestTxApproveHandlerkycRules(t *testing.T) {
+func TestTxApproveHandlerKYCRules(t *testing.T) {
 	db := dbtest.Open(t)
 	defer db.Close()
 	conn := db.Open()
