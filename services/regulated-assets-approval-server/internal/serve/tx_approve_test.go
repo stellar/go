@@ -1041,6 +1041,7 @@ func TestAPI_KYCIntegration(t *testing.T) {
 		ActionFields: []string{"email_address"},
 	}
 	assert.Equal(t, wantTXApprovalResponse, txApprovePOSTResponse)
+
 	// Setup /kyc-status route for subsequent integration steps.
 	m.Route("/kyc-status", func(mux chi.Router) {
 		mux.Post("/{callback_id}", kycstatus.PostHandler{
@@ -1064,6 +1065,7 @@ func TestAPI_KYCIntegration(t *testing.T) {
 	err = handler.db.QueryRowContext(ctx, q, senderAccKP.Address()).Scan(&returnedCallbackID)
 	require.NoError(t, err)
 	assert.Equal(t, callbackID, returnedCallbackID)
+
 	// Submit a request to action_url using the action_method and sending an email_address that doesn't start with "x".
 	req = `{
 		"email_address": "TestEmail@email.com"
@@ -1078,6 +1080,7 @@ func TestAPI_KYCIntegration(t *testing.T) {
 	require.NoError(t, err)
 	wantBody := `{"result": "no_further_action_required"}`
 	require.JSONEq(t, wantBody, string(body))
+
 	// Revise tx via a new tx-approve/ POST.
 	req = `{
 		"tx": "` + txEnc + `"
@@ -1138,6 +1141,7 @@ func TestAPI_KYCIntegration(t *testing.T) {
 	assert.Equal(t, op5.Trustor, senderAccKP.Address())
 	assert.Equal(t, op5.Type.GetCode(), assetGOAT.GetCode())
 	require.False(t, op5.Authorize)
+
 	// Test rejected KYC response.
 	req = `{
 		"email_address": "xTestEmail@email.com"
