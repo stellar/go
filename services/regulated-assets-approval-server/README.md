@@ -160,7 +160,7 @@ _Action Required:_
 This endpoint is used for the extra action after `/tx-approve`, as described in
 the SEP-8 [Action Required] section.
 
-Currently an arbitrarily criteria is implemented, email addresses starting with "xx" will have the KYC
+Currently an arbitrarily criteria is implemented, email addresses starting with "x" will have the KYC
 automatically denied while all other emails will be accepted.
 
 Note: Subsequent KYC attempts with new (valid)emails addresses will approve your account for KYC required transactions.
@@ -173,7 +173,7 @@ Note: Subsequent KYC attempts with new (valid)emails addresses will approve your
 }
 ```
 
-**Response (approved for emails not staring with "xx"):**
+**Response (approved for emails not staring with "x"):**
 
 ```json
 {
@@ -181,7 +181,7 @@ Note: Subsequent KYC attempts with new (valid)emails addresses will approve your
 }
 ```
 
-**Response (rejected for emails staring with "xx"):**
+**Response (rejected for emails staring with "x"):**
 
 ```json
 {

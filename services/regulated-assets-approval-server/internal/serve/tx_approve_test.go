@@ -1064,7 +1064,7 @@ func TestAPI_KYCIntegration(t *testing.T) {
 	err = handler.db.QueryRowContext(ctx, q, senderAccKP.Address()).Scan(&returnedCallbackID)
 	require.NoError(t, err)
 	assert.Equal(t, callbackID, returnedCallbackID)
-	// Submit a request to action_url using the action_method and sending an email_address that doesn't start with "xx".
+	// Submit a request to action_url using the action_method and sending an email_address that doesn't start with "x".
 	req = `{
 		"email_address": "TestEmail@email.com"
 	}`
@@ -1140,7 +1140,7 @@ func TestAPI_KYCIntegration(t *testing.T) {
 	require.False(t, op5.Authorize)
 	// Test rejected KYC response.
 	req = `{
-		"email_address": "xxTestEmail@email.com"
+		"email_address": "xTestEmail@email.com"
 	}`
 	r = httptest.NewRequest("POST", fmt.Sprintf("/kyc-status/%s", callbackID), strings.NewReader(req))
 	r = r.WithContext(ctx)

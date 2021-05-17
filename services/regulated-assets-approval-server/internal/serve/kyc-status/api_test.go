@@ -44,7 +44,7 @@ func TestIsKYCRuleRespected(t *testing.T) {
 	assert.True(t, approved)
 	// Test if email approved rejected.
 	in = kycPostRequest{
-		EmailAddress: "xxtest@email.com",
+		EmailAddress: "xtest@email.com",
 	}
 	approved = in.isKYCRuleRespected()
 	assert.False(t, approved)
@@ -65,7 +65,7 @@ func TestBuildUpdateKYCQuery(t *testing.T) {
 	// Test query returned if email rejected.
 	in = kycPostRequest{
 		CallbackID:   "9999999999-9999",
-		EmailAddress: "xxtest@email.com",
+		EmailAddress: "xtest@email.com",
 	}
 	query, args = in.buildUpdateKYCQuery()
 	expectedQuery = "WITH updated_row AS (UPDATE accounts_kyc_status SET kyc_submitted_at = NOW(), email_address = $1, rejected_at = NOW(), approved_at = NULL WHERE callback_id = $2 RETURNING * )\n\t\tSELECT EXISTS(\n\t\t\tSELECT * FROM updated_row\n\t\t)\n\t"
@@ -116,13 +116,13 @@ func TestAPI_POSTKYCStatus(t *testing.T) {
 		Result: "no_further_action_required",
 	}
 	assert.Equal(t, wantPostResponse, kycStatusPOSTResponseApprove)
-	// Test POST successful REJECTED KYC response. Based on arbitrary rule where emails begin with "xx".
+	// Test POST successful REJECTED KYC response. Based on arbitrary rule where emails begin with "x".
 	rejectedKP := keypair.MustRandom()
 	callbackIDRejected := uuid.New().String()
 	_, err = postHandler.DB.ExecContext(ctx, q, rejectedKP.Address(), callbackIDRejected)
 	require.NoError(t, err)
 	reqBody = `{
-		"email_address": "xxTestEmail@email.com"
+		"email_address": "xTestEmail@email.com"
 	}`
 	r = httptest.NewRequest("POST", fmt.Sprintf("/kyc-status/%s", callbackIDRejected), strings.NewReader(reqBody))
 	r = r.WithContext(ctx)
@@ -141,7 +141,7 @@ func TestAPI_POSTKYCStatus(t *testing.T) {
 	assert.Equal(t, wantPostResponse, kycStatusPOSTResponseRejected)
 	// Test repeated KYC request after REJECTED w/ new email. Should succeed as approved.
 	reqBody = `{
-		"email_address": "TestEmailxx@email.com"
+		"email_address": "TestEmailx@email.com"
 	}`
 	r = httptest.NewRequest("POST", fmt.Sprintf("/kyc-status/%s", callbackIDRejected), strings.NewReader(reqBody))
 	r = r.WithContext(ctx)
