@@ -6,10 +6,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/go-chi/chi"
 	"github.com/jmoiron/sqlx"
 	"github.com/stellar/go/services/regulated-assets-approval-server/internal/serve/httperror"
 	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/support/http/httpdecode"
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/support/render/httpjson"
 )
@@ -36,15 +36,20 @@ func (h GetDetailHandler) validate() error {
 }
 
 type getDetailRequest struct {
-	StellarAddressOrCallbackID string
+	StellarAddressOrCallbackID string `path:"stellar_address_or_callback_id"`
 }
 
 func (h GetDetailHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-
-	in := getDetailRequest{
-		StellarAddressOrCallbackID: chi.URLParam(r, "stellar_address_or_callback_id"),
+	err := h.validate()
+	if err != nil {
+		log.Ctx(ctx).Error(errors.Wrap(err, "validating kyc-status GetDetailHandler"))
+		httperror.InternalServer.Render(w)
+		return
 	}
+
+	in := getDetailRequest{}
+	err = httpdecode.Decode(r, &in)
 
 	resp, err := h.handle(ctx, in)
 	if err != nil {
@@ -60,12 +65,6 @@ func (h GetDetailHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h GetDetailHandler) handle(ctx context.Context, in getDetailRequest) (*kycRecord, error) {
-	err := h.validate()
-	if err != nil {
-		err = errors.Wrap(err, "validating KYCStatusGetDetailHandler")
-		log.Ctx(ctx).Error(err)
-		return nil, err
-	}
 	if in.StellarAddressOrCallbackID == "" {
 		return nil, httperror.NewHTTPError(http.StatusBadRequest, "Missing stellar address.")
 	}
@@ -80,7 +79,7 @@ func (h GetDetailHandler) handle(ctx context.Context, in getDetailRequest) (*kyc
 		FROM accounts_kyc_status
 		WHERE stellar_address = $1 OR callback_id = $1
 	`
-	err = h.DB.QueryRowContext(ctx, q, in.StellarAddressOrCallbackID).Scan(&stellarAddress, &emailAddress, &createdAt, &kycSubmittedAt, &approvedAt, &rejectedAt, &callbackID)
+	err := h.DB.QueryRowContext(ctx, q, in.StellarAddressOrCallbackID).Scan(&stellarAddress, &emailAddress, &createdAt, &kycSubmittedAt, &approvedAt, &rejectedAt, &callbackID)
 	if err == sql.ErrNoRows {
 		return nil, httperror.NewHTTPError(http.StatusNotFound, "Not found.")
 	}
