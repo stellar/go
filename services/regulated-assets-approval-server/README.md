@@ -186,7 +186,7 @@ Note: Subsequent KYC attempts with new (valid)emails addresses will approve your
 ```json
 {
   "status": "rejected",
-  "error": "Your KYC has been rejected!"
+  "error": "Your KYC was rejected and you're not authorized for operations above 500.0000000 GOAT."
 }
 ```
 
