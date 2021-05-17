@@ -55,7 +55,7 @@ func BaseURL(ctx context.Context) *url.URL {
 
 func HistoryQFromRequest(request *http.Request) (*history.Q, error) {
 	ctx := request.Context()
-	session, ok := ctx.Value(&SessionContextKey).(*db.Session)
+	session, ok := ctx.Value(&SessionContextKey).(db.SessionInterface)
 	if !ok {
 		return nil, errors.New("missing session in request context")
 	}

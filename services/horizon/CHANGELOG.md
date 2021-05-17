@@ -6,6 +6,7 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 ## Unreleased
 
 * Refactor `ingest/ledgerbackend/LedgerBackend.GetLedger` method to always block, removing `ingest/ledgerbackend/LedgerBackend.GetLedgerBlocking`. Adds a first `context.Context` param to most `LedgerBackend` methods.
+* Add more in-depth Prometheus metrics (count & duration) for db queries.
 
 ## v2.2.0
 
