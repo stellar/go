@@ -173,7 +173,7 @@ Note: Subsequent KYC attempts with new (valid)emails addresses will approve your
 }
 ```
 
-**Response (approved for emails not staring with "x"):**
+**Response:**
 
 ```json
 {
@@ -181,6 +181,9 @@ Note: Subsequent KYC attempts with new (valid)emails addresses will approve your
 }
 ```
 
+After the user has been approved or rejected they can POST their transaction to `POST /tx-approve` for revision.
+
+If their KYC was rejected they should see a rejection response.
 **Response (rejected for emails staring with "x"):**
 
 ```json
@@ -189,6 +192,7 @@ Note: Subsequent KYC attempts with new (valid)emails addresses will approve your
   "error": "Your KYC was rejected and you're not authorized for operations above 500.0000000 GOAT."
 }
 ```
+
 
 
 [SEP-8]: https://github.com/stellar/stellar-protocol/blob/7c795bb9abc606cd1e34764c4ba07900d58fe26e/ecosystem/sep-0008.md
