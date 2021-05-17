@@ -112,15 +112,14 @@ func TestTxApproveHandlerValidate(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestTxApproveHandlerValidateKYC(t *testing.T) {
+func TestTxApproveHandlerkycRequiredMessageIfNeeded(t *testing.T) {
 	db := dbtest.Open(t)
 	defer db.Close()
 	conn := db.Open()
 	defer conn.Close()
 	issuerAccKeyPair := keypair.MustRandom()
 	horizonMock := horizonclient.MockClient{}
-	kycThresholdAmount, err := amount.ParseInt64("500")
-	require.NoError(t, err)
+	var kycThresholdAmount int64 = 5000000000 // stellar-core represents asset "amounts" as 64-bit so amounts shown as "500" is represented in stellar-core as 5000000000.
 	assetGOAT := txnbuild.CreditAsset{
 		Code:   "GOAT",
 		Issuer: issuerAccKeyPair.Address(),
@@ -134,7 +133,7 @@ func TestTxApproveHandlerValidateKYC(t *testing.T) {
 		kycThreshold:      kycThresholdAmount,
 		baseURL:           "https://sep8-server.test",
 	}
-	err = h.validate()
+	err := h.validate()
 	require.NoError(t, err)
 	// Test no KYC needed flow.
 	destinationKP := keypair.MustRandom()
@@ -143,7 +142,7 @@ func TestTxApproveHandlerValidateKYC(t *testing.T) {
 		Amount:      "100",
 		Asset:       assetGOAT,
 	}
-	actionRequiredMessage, err := h.validateKYC(&paymentOP)
+	actionRequiredMessage, err := h.kycRequiredMessageIfNeeded(&paymentOP)
 	require.NoError(t, err)
 	require.Empty(t, actionRequiredMessage)
 	// Test failing malformed payment amount.
@@ -152,7 +151,7 @@ func TestTxApproveHandlerValidateKYC(t *testing.T) {
 		Amount:      "ten",
 		Asset:       assetGOAT,
 	}
-	_, err = h.validateKYC(&paymentOP)
+	_, err = h.kycRequiredMessageIfNeeded(&paymentOP)
 	assert.Contains(t,
 		err.Error(),
 		`parsing account payment amount from string to Int64: invalid amount format: ten`,
@@ -163,7 +162,7 @@ func TestTxApproveHandlerValidateKYC(t *testing.T) {
 		Amount:      "501",
 		Asset:       assetGOAT,
 	}
-	actionRequiredMessage, err = h.validateKYC(&paymentOP)
+	actionRequiredMessage, err = h.kycRequiredMessageIfNeeded(&paymentOP)
 	require.NoError(t, err)
 	assert.Equal(t, `Payments exceeding 500.0000000 GOAT requires KYC approval. Please provide an email address.`, actionRequiredMessage)
 }
@@ -176,8 +175,7 @@ func TestTxApproveHandlerHandleKYCRequiredOperationIfNeeded(t *testing.T) {
 	defer conn.Close()
 	issuerAccKeyPair := keypair.MustRandom()
 	horizonMock := horizonclient.MockClient{}
-	kycThresholdAmount, err := amount.ParseInt64("500")
-	require.NoError(t, err)
+	var kycThresholdAmount int64 = 5000000000 // stellar-core represents asset "amounts" as 64-bit so amounts shown as "500" is represented in stellar-core as 5000000000.
 	assetGOAT := txnbuild.CreditAsset{
 		Code:   "GOAT",
 		Issuer: issuerAccKeyPair.Address(),
@@ -191,7 +189,7 @@ func TestTxApproveHandlerHandleKYCRequiredOperationIfNeeded(t *testing.T) {
 		kycThreshold:      kycThresholdAmount,
 		baseURL:           "https://sep8-server.test",
 	}
-	err = h.validate()
+	err := h.validate()
 	require.NoError(t, err)
 	// Test successful action_required response.
 	sourceKP := keypair.MustRandom()
@@ -267,8 +265,7 @@ func TestTxApproveHandlerTxApprove(t *testing.T) {
 			AccountID: receiverAccKP.Address(),
 			Sequence:  "3",
 		}, nil)
-	kycThresholdAmount, err := amount.ParseInt64("500")
-	require.NoError(t, err)
+	var kycThresholdAmount int64 = 5000000000 // stellar-core represents asset "amounts" as 64-bit so amounts shown as "500" is represented in stellar-core as 5000000000.
 	handler := txApproveHandler{
 		issuerKP:          issuerAccKeyPair,
 		assetCode:         assetGOAT.GetCode(),
@@ -537,8 +534,7 @@ func TestAPI_RejectedIntegration(t *testing.T) {
 			AccountID: receiverAccKP.Address(),
 			Sequence:  "3",
 		}, nil)
-	kycThresholdAmount, err := amount.ParseInt64("500")
-	require.NoError(t, err)
+	var kycThresholdAmount int64 = 5000000000 // stellar-core represents asset "amounts" as 64-bit so amounts shown as "500" is represented in stellar-core as 5000000000.
 	handler := txApproveHandler{
 		issuerKP:          issuerAccKeyPair,
 		assetCode:         assetGOAT.GetCode(),
@@ -857,8 +853,7 @@ func TestAPI_RevisedIntegration(t *testing.T) {
 			AccountID: receiverAccKP.Address(),
 			Sequence:  "0",
 		}, nil)
-	kycThresholdAmount, err := amount.ParseInt64("500")
-	require.NoError(t, err)
+	var kycThresholdAmount int64 = 5000000000 // stellar-core represents asset "amounts" as 64-bit so amounts shown as "500" is represented in stellar-core as 5000000000.
 	handler := txApproveHandler{
 		issuerKP:          issuerAccKeyPair,
 		assetCode:         assetGOAT.GetCode(),
@@ -988,8 +983,7 @@ func TestAPI_KYCIntegration(t *testing.T) {
 			AccountID: receiverAccKP.Address(),
 			Sequence:  "0",
 		}, nil)
-	kycThresholdAmount, err := amount.ParseInt64("500")
-	require.NoError(t, err)
+	var kycThresholdAmount int64 = 5000000000 // stellar-core represents asset "amounts" as 64-bit so amounts shown as "500" is represented in stellar-core as 5000000000.
 	handler := txApproveHandler{
 		issuerKP:          issuerAccKeyPair,
 		assetCode:         assetGOAT.GetCode(),
@@ -1047,6 +1041,7 @@ func TestAPI_KYCIntegration(t *testing.T) {
 		ActionFields: []string{"email_address"},
 	}
 	assert.Equal(t, wantTXApprovalResponse, txApprovePOSTResponse)
+
 	// Setup /kyc-status route for subsequent integration steps.
 	m.Route("/kyc-status", func(mux chi.Router) {
 		mux.Post("/{callback_id}", kycstatus.PostHandler{
@@ -1070,7 +1065,8 @@ func TestAPI_KYCIntegration(t *testing.T) {
 	err = handler.db.QueryRowContext(ctx, q, senderAccKP.Address()).Scan(&returnedCallbackID)
 	require.NoError(t, err)
 	assert.Equal(t, callbackID, returnedCallbackID)
-	// Submit a request to action_url using the action_method and sending an email_address that doesn't start with "xx".
+
+	// Submit a request to action_url using the action_method and sending an email_address that doesn't start with "x".
 	req = `{
 		"email_address": "TestEmail@email.com"
 	}`
@@ -1082,11 +1078,9 @@ func TestAPI_KYCIntegration(t *testing.T) {
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
-	wantBody := `{
-		"result": "no_further_action_required",
-		"message": "Your KYC has been approved!"
-	  }`
+	wantBody := `{"result": "no_further_action_required"}`
 	require.JSONEq(t, wantBody, string(body))
+
 	// Revise tx via a new tx-approve/ POST.
 	req = `{
 		"tx": "` + txEnc + `"
@@ -1147,9 +1141,10 @@ func TestAPI_KYCIntegration(t *testing.T) {
 	assert.Equal(t, op5.Trustor, senderAccKP.Address())
 	assert.Equal(t, op5.Type.GetCode(), assetGOAT.GetCode())
 	require.False(t, op5.Authorize)
+
 	// Test rejected KYC response.
 	req = `{
-		"email_address": "xxTestEmail@email.com"
+		"email_address": "xTestEmail@email.com"
 	}`
 	r = httptest.NewRequest("POST", fmt.Sprintf("/kyc-status/%s", callbackID), strings.NewReader(req))
 	r = r.WithContext(ctx)
@@ -1159,10 +1154,7 @@ func TestAPI_KYCIntegration(t *testing.T) {
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
-	wantBody = `{
-		"result": "no_further_action_required",
-		"message": "Your KYC has been rejected!"
-	  }`
+	wantBody = `{"result": "no_further_action_required"}`
 	require.JSONEq(t, wantBody, string(body))
 	// Attempt to revise tx via a new tx-approve/ POST after rejection.
 	req = `{

@@ -56,14 +56,11 @@ func (h stellarTOMLHandler) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 		httperror.InternalServer.Render(rw)
 		return
 	}
-	approvalCriteria := fmt.Sprintf(
-		`The approval server currently only accepts payments. The transaction must have exactly one operation of type payment. `+
-			`If the payment amount exceeds %s %s it will need KYC approval.`, amount.StringFromInt64(h.kycThreshold), h.assetCode)
 	fmt.Fprintf(rw, "NETWORK_PASSPHRASE=%q\n", h.networkPassphrase)
 	fmt.Fprintf(rw, "[[CURRENCIES]]\n")
 	fmt.Fprintf(rw, "code=%q\n", h.assetCode)
 	fmt.Fprintf(rw, "issuer=%q\n", h.issuerAddress)
 	fmt.Fprintf(rw, "regulated=true\n")
 	fmt.Fprintf(rw, "approval_server=%q\n", h.approvalServer)
-	fmt.Fprintf(rw, "approval_criteria=%q\n", approvalCriteria)
+	fmt.Fprintf(rw, "approval_criteria=\"The approval server currently only accepts payments. The transaction must have exactly one operation of type payment. If the payment amount exceeds %s %s it will need KYC approval.\"", amount.StringFromInt64(h.kycThreshold), h.assetCode)
 }

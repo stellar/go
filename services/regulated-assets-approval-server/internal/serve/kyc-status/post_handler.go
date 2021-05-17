@@ -7,13 +7,34 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/go-chi/chi"
 	"github.com/jmoiron/sqlx"
 	"github.com/stellar/go/services/regulated-assets-approval-server/internal/serve/httperror"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/http/httpdecode"
 	"github.com/stellar/go/support/log"
+	"github.com/stellar/go/support/render/httpjson"
 )
+
+type kycPostRequest struct {
+	CallbackID   string `path:"callback_id"`
+	EmailAddress string `json:"email_address"`
+}
+
+type kycPostResponse struct {
+	Result     string `json:"result"`
+	StatusCode int    `json:"-"`
+}
+
+func (k *kycPostResponse) Render(w http.ResponseWriter) {
+	httpjson.RenderStatus(w, k.StatusCode, k, httpjson.JSON)
+}
+
+func NewKYCStatusPostResponse() *kycPostResponse {
+	return &kycPostResponse{
+		Result:     "no_further_action_required",
+		StatusCode: http.StatusOK,
+	}
+}
 
 type PostHandler struct {
 	DB *sqlx.DB
@@ -34,15 +55,15 @@ func (h PostHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		httperror.InternalServer.Render(w)
 		return
 	}
-	in := kycPostRequest{
-		CallbackID: chi.URLParam(r, "callback_id"),
-	}
+
+	in := kycPostRequest{}
 	err = httpdecode.Decode(r, &in)
 	if err != nil {
 		log.Ctx(ctx).Error(errors.Wrap(err, "decoding kyc-status POST Request"))
 		httperror.BadRequest.Render(w)
 		return
 	}
+
 	kycResponse, err := h.handle(ctx, in)
 	if err != nil {
 		log.Ctx(ctx).Error(errors.Wrap(err, "validating the input POST request for kyc-status"))
@@ -53,6 +74,7 @@ func (h PostHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		httpErr.Render(w)
 		return
 	}
+
 	kycResponse.Render(w)
 }
 
@@ -68,6 +90,7 @@ func (h PostHandler) handle(ctx context.Context, in kycPostRequest) (resp *kycPo
 	if err != nil {
 		return nil, errors.Wrap(err, "validating KYCStatusGetDetailHandler")
 	}
+	// Check if kycPostRequest values are present.
 	if in.CallbackID == "" {
 		return nil, httperror.NewHTTPError(http.StatusBadRequest, "Missing callback ID.")
 	}
@@ -77,6 +100,7 @@ func (h PostHandler) handle(ctx context.Context, in kycPostRequest) (resp *kycPo
 	if !RxEmail.MatchString(in.EmailAddress) {
 		return nil, httperror.NewHTTPError(http.StatusBadRequest, "The provided email_address is invalid.")
 	}
+
 	var exists bool
 	query, args := in.buildUpdateKYCQuery()
 	err = h.DB.QueryRowContext(ctx, query, args...).Scan(&exists)
@@ -86,20 +110,14 @@ func (h PostHandler) handle(ctx context.Context, in kycPostRequest) (resp *kycPo
 	if !exists {
 		return nil, httperror.NewHTTPError(http.StatusNotFound, "Not found.")
 	}
-	if in.isKYCRuleRespected() {
-		return NewApprovedKYCStatusPostResponse(), nil
-	}
-	return NewRejectedKYCStatusPostResponse(), nil
+
+	return NewKYCStatusPostResponse(), nil
 }
 
 // isKYCRuleRespected validates if KYC data is approved or rejected.
-// Current rule(s) emails starting "xx" are rejected and other emails are automatically approved.
+// Current rule(s) emails starting "x" are rejected and other emails are automatically approved.
 func (in kycPostRequest) isKYCRuleRespected() bool {
-	approved := false
-	if !strings.HasPrefix(strings.ToLower(in.EmailAddress), "xx") {
-		approved = true
-	}
-	return approved
+	return !strings.HasPrefix(strings.ToLower(in.EmailAddress), "x")
 }
 
 func (in kycPostRequest) buildUpdateKYCQuery() (string, []interface{}) {
