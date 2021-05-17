@@ -55,6 +55,7 @@ func (h PostHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		httperror.InternalServer.Render(w)
 		return
 	}
+
 	in := kycPostRequest{}
 	err = httpdecode.Decode(r, &in)
 	if err != nil {
@@ -62,6 +63,7 @@ func (h PostHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		httperror.BadRequest.Render(w)
 		return
 	}
+
 	kycResponse, err := h.handle(ctx, in)
 	if err != nil {
 		log.Ctx(ctx).Error(errors.Wrap(err, "validating the input POST request for kyc-status"))
@@ -72,6 +74,7 @@ func (h PostHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		httpErr.Render(w)
 		return
 	}
+
 	kycResponse.Render(w)
 }
 
@@ -87,6 +90,7 @@ func (h PostHandler) handle(ctx context.Context, in kycPostRequest) (resp *kycPo
 	if err != nil {
 		return nil, errors.Wrap(err, "validating KYCStatusGetDetailHandler")
 	}
+	// Check if kycPostRequest values are present.
 	if in.CallbackID == "" {
 		return nil, httperror.NewHTTPError(http.StatusBadRequest, "Missing callback ID.")
 	}
@@ -96,6 +100,7 @@ func (h PostHandler) handle(ctx context.Context, in kycPostRequest) (resp *kycPo
 	if !RxEmail.MatchString(in.EmailAddress) {
 		return nil, httperror.NewHTTPError(http.StatusBadRequest, "The provided email_address is invalid.")
 	}
+
 	var exists bool
 	query, args := in.buildUpdateKYCQuery()
 	err = h.DB.QueryRowContext(ctx, query, args...).Scan(&exists)
@@ -105,6 +110,7 @@ func (h PostHandler) handle(ctx context.Context, in kycPostRequest) (resp *kycPo
 	if !exists {
 		return nil, httperror.NewHTTPError(http.StatusNotFound, "Not found.")
 	}
+
 	return NewKYCStatusPostResponse(), nil
 }
 
