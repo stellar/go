@@ -199,4 +199,31 @@ func TestAPI_GETKYCStatus(t *testing.T) {
 	err = json.Unmarshal(body, &kycRecordGETResponse)
 	require.NoError(t, err)
 	assert.Equal(t, wantKYCRecord, kycRecordGETResponse)
+
+	// Test GET Not found, with stellar address.
+	notPresentKP := keypair.MustRandom()
+	r = httptest.NewRequest("GET", fmt.Sprintf("/kyc-status/%s", notPresentKP.Address()), nil)
+	r = r.WithContext(ctx)
+	w = httptest.NewRecorder()
+	m.ServeHTTP(w, r)
+	resp = w.Result()
+	assert.Equal(t, http.StatusNotFound, resp.StatusCode)
+	body, err = ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	wantGetResponseNotFound := `{
+		"error": "Not found."
+	}`
+	require.JSONEq(t, wantGetResponseNotFound, string(body))
+
+	// Test GET Not found, with callbackID.
+	callbackIDNotFound := uuid.New().String()
+	r = httptest.NewRequest("GET", fmt.Sprintf("/kyc-status/%s", callbackIDNotFound), nil)
+	r = r.WithContext(ctx)
+	w = httptest.NewRecorder()
+	m.ServeHTTP(w, r)
+	resp = w.Result()
+	assert.Equal(t, http.StatusNotFound, resp.StatusCode)
+	body, err = ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.JSONEq(t, wantGetResponseNotFound, string(body))
 }
