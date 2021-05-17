@@ -112,7 +112,7 @@ func TestTxApproveHandlerValidate(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestTxApproveHandlerValidateKYC(t *testing.T) {
+func TestTxApproveHandlerkycRules(t *testing.T) {
 	db := dbtest.Open(t)
 	defer db.Close()
 	conn := db.Open()
@@ -143,7 +143,7 @@ func TestTxApproveHandlerValidateKYC(t *testing.T) {
 		Amount:      "100",
 		Asset:       assetGOAT,
 	}
-	actionRequiredMessage, err := h.validateKYC(&paymentOP)
+	actionRequiredMessage, err := h.kycRules(&paymentOP)
 	require.NoError(t, err)
 	require.Empty(t, actionRequiredMessage)
 	// Test failing malformed payment amount.
@@ -152,7 +152,7 @@ func TestTxApproveHandlerValidateKYC(t *testing.T) {
 		Amount:      "ten",
 		Asset:       assetGOAT,
 	}
-	_, err = h.validateKYC(&paymentOP)
+	_, err = h.kycRules(&paymentOP)
 	assert.Contains(t,
 		err.Error(),
 		`parsing account payment amount from string to Int64: invalid amount format: ten`,
@@ -163,7 +163,7 @@ func TestTxApproveHandlerValidateKYC(t *testing.T) {
 		Amount:      "501",
 		Asset:       assetGOAT,
 	}
-	actionRequiredMessage, err = h.validateKYC(&paymentOP)
+	actionRequiredMessage, err = h.kycRules(&paymentOP)
 	require.NoError(t, err)
 	assert.Equal(t, `Payments exceeding 500.0000000 GOAT requires KYC approval. Please provide an email address.`, actionRequiredMessage)
 }

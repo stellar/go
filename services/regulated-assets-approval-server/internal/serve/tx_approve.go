@@ -234,7 +234,7 @@ func (h txApproveHandler) txApprove(ctx context.Context, in txApproveRequest) (r
 // handleKYCRequiredOperationIfNeeded validates and returns an action_required response if the payment requires KYC.
 func (h txApproveHandler) handleKYCRequiredOperationIfNeeded(ctx context.Context, stellarAddress string, paymentOp *txnbuild.Payment) (*txApprovalResponse, error) {
 	// validate payment operation against KYC condition(s).
-	KYCRequiredMessage, err := h.validateKYC(paymentOp)
+	KYCRequiredMessage, err := h.kycRules(paymentOp)
 	if err != nil {
 		return nil, errors.Wrap(err, "validating KYC")
 	}
