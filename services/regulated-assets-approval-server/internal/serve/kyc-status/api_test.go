@@ -126,8 +126,7 @@ func TestAPI_POSTKYCStatus(t *testing.T) {
 	err = json.Unmarshal(body, &kycStatusPOSTResponseApprove)
 	require.NoError(t, err)
 	wantPostResponse := kycPostResponse{
-		Result:  "no_further_action_required",
-		Message: "Your KYC has been approved!",
+		Result: "no_further_action_required",
 	}
 	assert.Equal(t, wantPostResponse, kycStatusPOSTResponseApprove)
 	// Test POST successful REJECTED KYC response. Based on arbitrary rule where emails begin with "xx".
@@ -151,8 +150,7 @@ func TestAPI_POSTKYCStatus(t *testing.T) {
 	err = json.Unmarshal(body, &kycStatusPOSTResponseRejected)
 	require.NoError(t, err)
 	wantPostResponse = kycPostResponse{
-		Message: "Your KYC has been rejected!",
-		Result:  "no_further_action_required",
+		Result: "no_further_action_required",
 	}
 	assert.Equal(t, wantPostResponse, kycStatusPOSTResponseRejected)
 	// Test repeated KYC request after REJECTED w/ new email. Should succeed as approved.
@@ -171,8 +169,7 @@ func TestAPI_POSTKYCStatus(t *testing.T) {
 	err = json.Unmarshal(body, &kycStatusPOSTResponseRejectedNewEmail)
 	require.NoError(t, err)
 	wantPostResponse = kycPostResponse{
-		Message: "Your KYC has been approved!",
-		Result:  "no_further_action_required",
+		Result: "no_further_action_required",
 	}
 	assert.Equal(t, wantPostResponse, kycStatusPOSTResponseRejectedNewEmail)
 	// Test POST no email in request.

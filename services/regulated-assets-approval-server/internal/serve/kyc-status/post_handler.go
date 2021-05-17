@@ -13,7 +13,29 @@ import (
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/http/httpdecode"
 	"github.com/stellar/go/support/log"
+	"github.com/stellar/go/support/render/httpjson"
 )
+
+type kycPostRequest struct {
+	CallbackID   string
+	EmailAddress string `json:"email_address"`
+}
+
+type kycPostResponse struct {
+	Result     string `json:"result"`
+	StatusCode int    `json:"-"`
+}
+
+func (k *kycPostResponse) Render(w http.ResponseWriter) {
+	httpjson.RenderStatus(w, k.StatusCode, k, httpjson.JSON)
+}
+
+func NewKYCStatusPostResponse() *kycPostResponse {
+	return &kycPostResponse{
+		Result:     "no_further_action_required",
+		StatusCode: http.StatusOK,
+	}
+}
 
 type PostHandler struct {
 	DB *sqlx.DB
@@ -86,10 +108,7 @@ func (h PostHandler) handle(ctx context.Context, in kycPostRequest) (resp *kycPo
 	if !exists {
 		return nil, httperror.NewHTTPError(http.StatusNotFound, "Not found.")
 	}
-	if in.isKYCRuleRespected() {
-		return NewApprovedKYCStatusPostResponse(), nil
-	}
-	return NewRejectedKYCStatusPostResponse(), nil
+	return NewKYCStatusPostResponse(), nil
 }
 
 // isKYCRuleRespected validates if KYC data is approved or rejected.
