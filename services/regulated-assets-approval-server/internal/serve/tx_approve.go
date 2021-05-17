@@ -280,9 +280,9 @@ func (h txApproveHandler) handleKYCRequiredOperationIfNeeded(ctx context.Context
 	), nil
 }
 
-// validateKYC returns a "action_required" message for the NewActionRequiredTxApprovalResponse if the payment operation meets KYC conditions.
+// kycRules returns a "action_required" message for the NewActionRequiredTxApprovalResponse if the payment operation meets KYC conditions.
 // Currently rule(s) are, checking if payment amount is > KYCThreshold amount.
-func (h txApproveHandler) validateKYC(paymentOp *txnbuild.Payment) (string, error) {
+func (h txApproveHandler) kycRules(paymentOp *txnbuild.Payment) (string, error) {
 	paymentAmount, err := amount.ParseInt64(paymentOp.Amount)
 	if err != nil {
 		return "", errors.Wrap(err, "parsing account payment amount from string to Int64")
