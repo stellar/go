@@ -111,11 +111,7 @@ func (h PostHandler) handle(ctx context.Context, in kycPostRequest) (resp *kycPo
 // isKYCRuleRespected validates if KYC data is approved or rejected.
 // Current rule(s) emails starting "xx" are rejected and other emails are automatically approved.
 func (in kycPostRequest) isKYCRuleRespected() bool {
-	approved := false
-	if !strings.HasPrefix(strings.ToLower(in.EmailAddress), "xx") {
-		approved = true
-	}
-	return approved
+	return !strings.HasPrefix(strings.ToLower(in.EmailAddress), "xx")
 }
 
 func (in kycPostRequest) buildUpdateKYCQuery() (string, []interface{}) {
