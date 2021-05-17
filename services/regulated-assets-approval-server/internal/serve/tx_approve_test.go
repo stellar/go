@@ -119,8 +119,7 @@ func TestTxApproveHandlerkycRules(t *testing.T) {
 	defer conn.Close()
 	issuerAccKeyPair := keypair.MustRandom()
 	horizonMock := horizonclient.MockClient{}
-	kycThresholdAmount, err := amount.ParseInt64("500")
-	require.NoError(t, err)
+	var kycThresholdAmount int64 = 5000000000 // stellar-core represents asset "amounts" as 64-bit so amounts shown as "500" is represented in stellar-core as 5000000000.
 	assetGOAT := txnbuild.CreditAsset{
 		Code:   "GOAT",
 		Issuer: issuerAccKeyPair.Address(),
@@ -134,7 +133,7 @@ func TestTxApproveHandlerkycRules(t *testing.T) {
 		kycThreshold:      kycThresholdAmount,
 		baseURL:           "https://sep8-server.test",
 	}
-	err = h.validate()
+	err := h.validate()
 	require.NoError(t, err)
 	// Test no KYC needed flow.
 	destinationKP := keypair.MustRandom()
@@ -176,8 +175,7 @@ func TestTxApproveHandlerHandleKYCRequiredOperationIfNeeded(t *testing.T) {
 	defer conn.Close()
 	issuerAccKeyPair := keypair.MustRandom()
 	horizonMock := horizonclient.MockClient{}
-	kycThresholdAmount, err := amount.ParseInt64("500")
-	require.NoError(t, err)
+	var kycThresholdAmount int64 = 5000000000 // stellar-core represents asset "amounts" as 64-bit so amounts shown as "500" is represented in stellar-core as 5000000000.// stellar-core represents asset "amounts" as 64-bit so amounts shown as "500" is represented in stellar-core as 5000000000.
 	assetGOAT := txnbuild.CreditAsset{
 		Code:   "GOAT",
 		Issuer: issuerAccKeyPair.Address(),
@@ -191,7 +189,7 @@ func TestTxApproveHandlerHandleKYCRequiredOperationIfNeeded(t *testing.T) {
 		kycThreshold:      kycThresholdAmount,
 		baseURL:           "https://sep8-server.test",
 	}
-	err = h.validate()
+	err := h.validate()
 	require.NoError(t, err)
 	// Test successful action_required response.
 	sourceKP := keypair.MustRandom()
@@ -267,8 +265,7 @@ func TestTxApproveHandlerTxApprove(t *testing.T) {
 			AccountID: receiverAccKP.Address(),
 			Sequence:  "3",
 		}, nil)
-	kycThresholdAmount, err := amount.ParseInt64("500")
-	require.NoError(t, err)
+	var kycThresholdAmount int64 = 5000000000 // stellar-core represents asset "amounts" as 64-bit so amounts shown as "500" is represented in stellar-core as 5000000000.
 	handler := txApproveHandler{
 		issuerKP:          issuerAccKeyPair,
 		assetCode:         assetGOAT.GetCode(),
@@ -537,8 +534,7 @@ func TestAPI_RejectedIntegration(t *testing.T) {
 			AccountID: receiverAccKP.Address(),
 			Sequence:  "3",
 		}, nil)
-	kycThresholdAmount, err := amount.ParseInt64("500")
-	require.NoError(t, err)
+	var kycThresholdAmount int64 = 5000000000 // stellar-core represents asset "amounts" as 64-bit so amounts shown as "500" is represented in stellar-core as 5000000000.
 	handler := txApproveHandler{
 		issuerKP:          issuerAccKeyPair,
 		assetCode:         assetGOAT.GetCode(),
@@ -857,8 +853,7 @@ func TestAPI_RevisedIntegration(t *testing.T) {
 			AccountID: receiverAccKP.Address(),
 			Sequence:  "0",
 		}, nil)
-	kycThresholdAmount, err := amount.ParseInt64("500")
-	require.NoError(t, err)
+	var kycThresholdAmount int64 = 5000000000 // stellar-core represents asset "amounts" as 64-bit so amounts shown as "500" is represented in stellar-core as 5000000000.
 	handler := txApproveHandler{
 		issuerKP:          issuerAccKeyPair,
 		assetCode:         assetGOAT.GetCode(),
@@ -988,8 +983,7 @@ func TestAPI_KYCIntegration(t *testing.T) {
 			AccountID: receiverAccKP.Address(),
 			Sequence:  "0",
 		}, nil)
-	kycThresholdAmount, err := amount.ParseInt64("500")
-	require.NoError(t, err)
+	var kycThresholdAmount int64 = 5000000000 // stellar-core represents asset "amounts" as 64-bit so amounts shown as "500" is represented in stellar-core as 5000000000.
 	handler := txApproveHandler{
 		issuerKP:          issuerAccKeyPair,
 		assetCode:         assetGOAT.GetCode(),
