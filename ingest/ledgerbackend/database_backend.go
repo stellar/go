@@ -40,7 +40,7 @@ func NewDatabaseBackend(dataSourceName, networkPassphrase string) (*DatabaseBack
 	return NewDatabaseBackendFromSession(session, networkPassphrase)
 }
 
-func NewDatabaseBackendFromSession(session *db.Session, networkPassphrase string) (*DatabaseBackend, error) {
+func NewDatabaseBackendFromSession(session db.SessionInterface, networkPassphrase string) (*DatabaseBackend, error) {
 	return &DatabaseBackend{
 		session:           session,
 		networkPassphrase: networkPassphrase,
