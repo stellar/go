@@ -8,5 +8,6 @@ CREATE TABLE public.accounts_kyc_status (
     approved_at timestamp with time zone,
     rejected_at timestamp with time zone
 );
+
 -- +migrate Down
 DROP TABLE public.accounts_kyc_status;
