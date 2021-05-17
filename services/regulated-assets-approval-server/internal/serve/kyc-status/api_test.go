@@ -18,7 +18,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestValidate(t *testing.T) {
+func TestPostHandlerValidate(t *testing.T) {
 	// Test no db.
 	h := PostHandler{}
 	err := h.validate()
@@ -29,6 +29,23 @@ func TestValidate(t *testing.T) {
 	conn := db.Open()
 	defer conn.Close()
 	h = PostHandler{
+		DB: conn,
+	}
+	err = h.validate()
+	require.NoError(t, err)
+}
+
+func TestGetDetailHandlerValidate(t *testing.T) {
+	// Test no db.
+	h := GetDetailHandler{}
+	err := h.validate()
+	require.EqualError(t, err, "database cannot be nil")
+	// Success.
+	db := dbtest.Open(t)
+	defer db.Close()
+	conn := db.Open()
+	defer conn.Close()
+	h = GetDetailHandler{
 		DB: conn,
 	}
 	err = h.validate()
@@ -213,4 +230,65 @@ func TestAPI_POSTKYCStatus(t *testing.T) {
 		"error": "Not found."
 	}`
 	require.JSONEq(t, wantPostResponseNotFound, string(body))
+}
+
+func TestAPI_GETKYCStatus(t *testing.T) {
+	ctx := context.Background()
+	db := dbtest.Open(t)
+	defer db.Close()
+	conn := db.Open()
+	defer conn.Close()
+
+	// create kyc-status GetDetailHandler.
+	getHandler := GetDetailHandler{
+		DB: conn,
+	}
+	// INSERT new account in accounts_kyc_status.
+	const q = `
+		INSERT INTO accounts_kyc_status (stellar_address, callback_id, email_address, kyc_submitted_at, approved_at, rejected_at)
+		VALUES ($1, $2, $3, NOW(), NOW(), NULL)
+	`
+	approveKP := keypair.MustRandom()
+	intendedCallbackIDApprove := uuid.New().String()
+	email := "test.email.com"
+	_, err := getHandler.DB.ExecContext(ctx, q, approveKP.Address(), intendedCallbackIDApprove, email)
+	require.NoError(t, err)
+	// Test GET successful; Approved KYC record returned.
+	m := chi.NewMux()
+	m.Get("/kyc-status/{stellar_address_or_callback_id}", getHandler.ServeHTTP)
+	r := httptest.NewRequest("GET", fmt.Sprintf("/kyc-status/%s", intendedCallbackIDApprove), nil)
+	r = r.WithContext(ctx)
+	w := httptest.NewRecorder()
+	m.ServeHTTP(w, r)
+	resp := w.Result()
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	body, err := ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	var kycRecordGETResponse kycRecord
+	err = json.Unmarshal(body, &kycRecordGETResponse)
+	require.NoError(t, err)
+	wantKYCRecord := kycRecord{
+		StellarAddress: approveKP.Address(),
+		CallbackID:     intendedCallbackIDApprove,
+		EmailAddress:   email,
+		KYCSubmittedAt: kycRecordGETResponse.KYCSubmittedAt,
+		ApprovedAt:     kycRecordGETResponse.ApprovedAt,
+		RejectedAt:     kycRecordGETResponse.RejectedAt,
+		CreatedAt:      kycRecordGETResponse.CreatedAt,
+	}
+	assert.Equal(t, wantKYCRecord, kycRecordGETResponse)
+
+	// Test GET successful; Approved KYC record returned using stellar address.
+	r = httptest.NewRequest("GET", fmt.Sprintf("/kyc-status/%s", approveKP.Address()), nil)
+	r = r.WithContext(ctx)
+	w = httptest.NewRecorder()
+	m.ServeHTTP(w, r)
+	resp = w.Result()
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	body, err = ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	kycRecordGETResponse = kycRecord{}
+	err = json.Unmarshal(body, &kycRecordGETResponse)
+	require.NoError(t, err)
+	assert.Equal(t, wantKYCRecord, kycRecordGETResponse)
 }
