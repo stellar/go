@@ -15,14 +15,15 @@ intended for **testing only**. It is being conceived to:
 ## Table of Contents
 
 * [regulated\-assets\-approval\-server](#regulated-assets-approval-server)
+  * [Table of Contents](#table-of-contents)
   * [Usage](#usage)
     * [Usage: Migrate](#usage-migrate)
     * [Usage: Serve](#usage-serve)
   * [Account Setup](#account-setup)
+      * [GET /friendbot?addr=\{stellar\_address\}](#get-friendbotaddrstellar_address)
     * [API Spec](#api-spec)
       * [POST /tx\-approve](#post-tx-approve)
-      * [POST /kyc\-status/\{CALLBACK_ID\}](#post-kyc-statuscallback_id)
-      * [GET /friendbot?addr={stellar_address}](#get-friendbotaddrstellar_address)
+      * [POST /kyc\-status/\{CALLBACK\_ID\}](#post-kyc-statuscallback_id)
 
 Created by [gh-md-toc](https://github.com/ekalinin/github-markdown-toc.go)
 
@@ -93,10 +94,23 @@ link](https://laboratory.stellar.org/#txbuilder?params=eyJhdHRyaWJ1dGVzIjp7ImZlZ
 to set those flags. Just click the link, fulfill the account address, sequence
 number, then the account secret and submit the transaction.
 
+After setting up the issuer account you can fund a stellar account with an initial balance of the regulated asset with our internal `friendbot/?addr={stellar_address}` endpoint.
+This endpoint is not part of the official SEP-8 Approval Server spec, it's a debug feature to allow accounts to test sending transactions (payments with teh issuer's regulated asset) to the server.
+
+#### `GET /friendbot?addr={stellar_address}`
+
+This endpoint sends a payment of 10,000 (this value is configurable) regulated
+assets to the provided `addr`. Please be aware the address must first establish
+a trustline to the regulated asset in order to receive that payment. You can use
+[this
+link](https://laboratory.stellar.org/#txbuilder?params=eyJhdHRyaWJ1dGVzIjp7ImZlZSI6IjEwMCIsImJhc2VGZWUiOiIxMDAiLCJtaW5GZWUiOiIxMDAifSwiZmVlQnVtcEF0dHJpYnV0ZXMiOnsibWF4RmVlIjoiMTAwIn0sIm9wZXJhdGlvbnMiOlt7ImlkIjowLCJhdHRyaWJ1dGVzIjp7ImFzc2V0Ijp7InR5cGUiOiJjcmVkaXRfYWxwaGFudW00IiwiY29kZSI6IiIsImlzc3VlciI6IiJ9fSwibmFtZSI6ImNoYW5nZVRydXN0In1dfQ%3D%3D&network=test)
+to do that in Stellar Laboratory.
+
 ### API Spec
 #### `POST /tx-approve`
 
 This is the core [SEP-8] endpoint used to validate and process approval/revision/rejection of regulated assets transactions.
+Note: The example responses below have set their `base-url` env var to `"https://sep8-base-url.com"`.
 
 **Request:**
 
@@ -164,7 +178,6 @@ Note: Subsequent KYC attempts with new (valid)emails addresses will approve your
 ```json
 {
   "result": "no_further_action_required",
-  "message": "Your KYC has been approved!"
 }
 ```
 
@@ -172,19 +185,12 @@ Note: Subsequent KYC attempts with new (valid)emails addresses will approve your
 
 ```json
 {
-  "result": "no_further_action_required",
-  "message": "Your KYC has been rejected!"
+  "status": "rejected",
+  "error": "Your KYC has been rejected!"
 }
 ```
 
-#### `GET /friendbot?addr={stellar_address}`
-
-This endpoint sends a payment of 10,000 (this value is configurable) regulated
-assets to the provided `addr`. Please be aware the address must first establish
-a trustline to the regulated asset in order to receive that payment. You can use
-[this
-link](https://laboratory.stellar.org/#txbuilder?params=eyJhdHRyaWJ1dGVzIjp7ImZlZSI6IjEwMCIsImJhc2VGZWUiOiIxMDAiLCJtaW5GZWUiOiIxMDAifSwiZmVlQnVtcEF0dHJpYnV0ZXMiOnsibWF4RmVlIjoiMTAwIn0sIm9wZXJhdGlvbnMiOlt7ImlkIjowLCJhdHRyaWJ1dGVzIjp7ImFzc2V0Ijp7InR5cGUiOiJjcmVkaXRfYWxwaGFudW00IiwiY29kZSI6IiIsImlzc3VlciI6IiJ9fSwibmFtZSI6ImNoYW5nZVRydXN0In1dfQ%3D%3D&network=test)
-to do that in Stellar Laboratory.
 
 [SEP-8]: https://github.com/stellar/stellar-protocol/blob/7c795bb9abc606cd1e34764c4ba07900d58fe26e/ecosystem/sep-0008.md
 [authorization flags]: https://github.com/stellar/stellar-protocol/blob/7c795bb9abc606cd1e34764c4ba07900d58fe26e/ecosystem/sep-0008.md#authorization-flags
+[Action Required]: https://github.com/stellar/stellar-protocol/blob/7c795bb9abc606cd1e34764c4ba07900d58fe26e/ecosystem/sep-0008.md#action-required
