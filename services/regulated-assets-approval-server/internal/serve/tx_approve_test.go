@@ -175,7 +175,7 @@ func TestTxApproveHandlerHandleKYCRequiredOperationIfNeeded(t *testing.T) {
 	defer conn.Close()
 	issuerAccKeyPair := keypair.MustRandom()
 	horizonMock := horizonclient.MockClient{}
-	var kycThresholdAmount int64 = 5000000000 // stellar-core represents asset "amounts" as 64-bit so amounts shown as "500" is represented in stellar-core as 5000000000.// stellar-core represents asset "amounts" as 64-bit so amounts shown as "500" is represented in stellar-core as 5000000000.
+	var kycThresholdAmount int64 = 5000000000 // stellar-core represents asset "amounts" as 64-bit so amounts shown as "500" is represented in stellar-core as 5000000000.
 	assetGOAT := txnbuild.CreditAsset{
 		Code:   "GOAT",
 		Issuer: issuerAccKeyPair.Address(),
