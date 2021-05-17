@@ -50,6 +50,11 @@ func (h GetDetailHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	in := getDetailRequest{}
 	err = httpdecode.Decode(r, &in)
+	if err != nil {
+		log.Ctx(ctx).Error(errors.Wrap(err, "decoding kyc-status GET Request"))
+		httperror.BadRequest.Render(w)
+		return
+	}
 
 	resp, err := h.handle(ctx, in)
 	if err != nil {
