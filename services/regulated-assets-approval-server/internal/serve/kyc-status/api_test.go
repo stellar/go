@@ -84,30 +84,17 @@ func TestAPI_POSTKYCStatus(t *testing.T) {
 
 	// INSERT new account in accounts_kyc_status that needs kyc verified.
 	const q = `
-		WITH new_row AS (
-			INSERT INTO accounts_kyc_status (stellar_address, callback_id)
-			VALUES ($1, $2)
-			ON CONFLICT(stellar_address) DO NOTHING
-			RETURNING *
-		)
-		SELECT callback_id FROM new_row
-		UNION
-		SELECT callback_id
-		FROM accounts_kyc_status
-		WHERE stellar_address = $1
+		INSERT INTO accounts_kyc_status (stellar_address, callback_id)
+		VALUES ($1, $2)
 	`
 	approveKP := keypair.MustRandom()
-	intendedCallbackIDApprove := uuid.New().String()
-	var (
-		callbackID string
-	)
+	callbackID := uuid.New().String()
 	// create kyc-status PostHandler.
 	postHandler := PostHandler{
 		DB: conn,
 	}
-	err := postHandler.DB.QueryRowContext(ctx, q, approveKP.Address(), intendedCallbackIDApprove).Scan(&callbackID)
+	_, err := postHandler.DB.ExecContext(ctx, q, approveKP.Address(), callbackID)
 	require.NoError(t, err)
-	assert.Equal(t, intendedCallbackIDApprove, callbackID)
 	// Test POST successful APPROVED KYC response.
 	m := chi.NewMux()
 	m.Post("/kyc-status/{callback_id}", postHandler.ServeHTTP)
@@ -131,14 +118,13 @@ func TestAPI_POSTKYCStatus(t *testing.T) {
 	assert.Equal(t, wantPostResponse, kycStatusPOSTResponseApprove)
 	// Test POST successful REJECTED KYC response. Based on arbitrary rule where emails begin with "xx".
 	rejectedKP := keypair.MustRandom()
-	intendedCallbackIDRejected := uuid.New().String()
-	err = postHandler.DB.QueryRowContext(ctx, q, rejectedKP.Address(), intendedCallbackIDRejected).Scan(&callbackID)
+	callbackIDRejected := uuid.New().String()
+	_, err = postHandler.DB.ExecContext(ctx, q, rejectedKP.Address(), callbackIDRejected)
 	require.NoError(t, err)
-	assert.Equal(t, intendedCallbackIDRejected, callbackID)
 	reqBody = `{
 		"email_address": "xxTestEmail@email.com"
 	}`
-	r = httptest.NewRequest("POST", fmt.Sprintf("/kyc-status/%s", callbackID), strings.NewReader(reqBody))
+	r = httptest.NewRequest("POST", fmt.Sprintf("/kyc-status/%s", callbackIDRejected), strings.NewReader(reqBody))
 	r = r.WithContext(ctx)
 	w = httptest.NewRecorder()
 	m.ServeHTTP(w, r)
@@ -157,7 +143,7 @@ func TestAPI_POSTKYCStatus(t *testing.T) {
 	reqBody = `{
 		"email_address": "TestEmailxx@email.com"
 	}`
-	r = httptest.NewRequest("POST", fmt.Sprintf("/kyc-status/%s", callbackID), strings.NewReader(reqBody))
+	r = httptest.NewRequest("POST", fmt.Sprintf("/kyc-status/%s", callbackIDRejected), strings.NewReader(reqBody))
 	r = r.WithContext(ctx)
 	w = httptest.NewRecorder()
 	m.ServeHTTP(w, r)
@@ -174,14 +160,13 @@ func TestAPI_POSTKYCStatus(t *testing.T) {
 	assert.Equal(t, wantPostResponse, kycStatusPOSTResponseRejectedNewEmail)
 	// Test POST no email in request.
 	noEmailKP := keypair.MustRandom()
-	intendedCallbackIDNoEmail := uuid.New().String()
-	err = postHandler.DB.QueryRowContext(ctx, q, noEmailKP.Address(), intendedCallbackIDNoEmail).Scan(&callbackID)
+	callbackIDNoEmail := uuid.New().String()
+	_, err = postHandler.DB.ExecContext(ctx, q, noEmailKP.Address(), callbackIDNoEmail)
 	require.NoError(t, err)
-	assert.Equal(t, intendedCallbackIDNoEmail, callbackID)
 	reqBody = `{
 		"email_address": ""
 	}`
-	r = httptest.NewRequest("POST", fmt.Sprintf("/kyc-status/%s", callbackID), strings.NewReader(reqBody))
+	r = httptest.NewRequest("POST", fmt.Sprintf("/kyc-status/%s", callbackIDNoEmail), strings.NewReader(reqBody))
 	r = r.WithContext(ctx)
 	w = httptest.NewRecorder()
 	m.ServeHTTP(w, r)
