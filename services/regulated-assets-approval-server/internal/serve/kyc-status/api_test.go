@@ -227,3 +227,56 @@ func TestAPI_GETKYCStatus(t *testing.T) {
 	require.NoError(t, err)
 	require.JSONEq(t, wantGetResponseNotFound, string(body))
 }
+
+func TestAPI_DELETEKYCStatus(t *testing.T) {
+	ctx := context.Background()
+	db := dbtest.Open(t)
+	defer db.Close()
+	conn := db.Open()
+	defer conn.Close()
+
+	// create kyc-status DeleteHandler.
+	getHandler := DeleteHandler{
+		DB: conn,
+	}
+	// INSERT new account in accounts_kyc_status.
+	const q = `
+		INSERT INTO accounts_kyc_status (stellar_address, callback_id, email_address, kyc_submitted_at, approved_at, rejected_at)
+		VALUES ($1, $2, $3, NOW(), NOW(), NULL)
+	`
+	deleteKP := keypair.MustRandom()
+	intendedCallbackIDApprove := uuid.New().String()
+	email := "test.email.com"
+	_, err := getHandler.DB.ExecContext(ctx, q, deleteKP.Address(), intendedCallbackIDApprove, email)
+	require.NoError(t, err)
+	// Test DELETE successful.
+	m := chi.NewMux()
+	m.Delete("/kyc-status/{stellar_address}", getHandler.ServeHTTP)
+	r := httptest.NewRequest("DELETE", fmt.Sprintf("/kyc-status/%s", deleteKP.Address()), nil)
+	r = r.WithContext(ctx)
+	w := httptest.NewRecorder()
+	m.ServeHTTP(w, r)
+	resp := w.Result()
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	body, err := ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	wantResponse := `{
+		"message": "ok"
+	}`
+	require.JSONEq(t, wantResponse, string(body))
+
+	// Test "Not Found".
+	notFoundKP := keypair.MustRandom()
+	r = httptest.NewRequest("DELETE", fmt.Sprintf("/kyc-status/%s", notFoundKP.Address()), nil)
+	r = r.WithContext(ctx)
+	w = httptest.NewRecorder()
+	m.ServeHTTP(w, r)
+	resp = w.Result()
+	assert.Equal(t, http.StatusNotFound, resp.StatusCode)
+	body, err = ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	wantResponse = `{
+		"error": "Not found."
+	}`
+	require.JSONEq(t, wantResponse, string(body))
+}

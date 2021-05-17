@@ -25,7 +25,7 @@ intended for **testing only**. It is being conceived to:
       * [POST /tx\-approve](#post-tx-approve)
       * [POST /kyc\-status/\{CALLBACK\_ID\}](#post-kyc-statuscallback_id)
       * [GET /kyc\-status/\{STELLAR\_ADDRESS\_OR\_CALLBACK\_ID\}](#get-kyc-statusstellar_address_or_callback_id)
-      * [DELETE /kyc\-status](#delete-kyc-status)
+      * [DELETE /kyc\-status/\{STELLAR\_ADDRESS\}](#delete-kyc-statusstellar_address)
 
 Created by [gh-md-toc](https://github.com/ekalinin/github-markdown-toc.go)
 
@@ -211,19 +211,11 @@ Note: This is functionality is outside of the [SEP-8] spec.
 }
 ```
 
-#### `DELETE /kyc-status`
+#### `DELETE /kyc-status/{STELLAR_ADDRESS}`
 
 Deletes a stellar account from the list of KYCs. If the stellar address is not
 in the database to be deleted the server will return with a `404 - Not Found`.
 Note: This is functionality is outside of the [SEP-8] spec.
-
-**Request:**
-
-```json
-{
-  "stellar_address": "GA2DMTP67JT4LQ4CFTUONFBFGKPO6VONW4LWJNOIY2WPRJLUV44MJZOK"
-}
-```
 
 **Response:**
 

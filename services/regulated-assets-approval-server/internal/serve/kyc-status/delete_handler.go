@@ -25,7 +25,7 @@ func (h DeleteHandler) validate() error {
 }
 
 type deleteRequest struct {
-	StellarAddress string `json:"stellar_address"`
+	StellarAddress string `path:"stellar_address"`
 }
 
 func (h DeleteHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
