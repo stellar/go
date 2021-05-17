@@ -67,6 +67,7 @@ func (h txApproveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		httperror.InternalServer.Render(w)
 		return
 	}
+
 	in := txApproveRequest{}
 	err = httpdecode.Decode(r, &in)
 	if err != nil {
@@ -74,12 +75,14 @@ func (h txApproveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		httperror.BadRequest.Render(w)
 		return
 	}
+
 	txApproveResp, err := h.txApprove(ctx, in)
 	if err != nil {
 		log.Ctx(ctx).Error(errors.Wrap(err, "validating the input transaction for approval"))
 		httperror.InternalServer.Render(w)
 		return
 	}
+
 	txApproveResp.Render(w)
 }
 
@@ -137,6 +140,7 @@ func (h txApproveHandler) txApprove(ctx context.Context, in txApproveRequest) (r
 	if txRejectedResp != nil {
 		return txRejectedResp, nil
 	}
+
 	paymentOp, ok := tx.Operations()[0].(*txnbuild.Payment)
 	if !ok {
 		log.Ctx(ctx).Error(`transaction contains one or more operations is not of type payment`)
@@ -146,11 +150,13 @@ func (h txApproveHandler) txApprove(ctx context.Context, in txApproveRequest) (r
 	if paymentSource == "" {
 		paymentSource = tx.SourceAccount().AccountID
 	}
+
 	issuerAddress := h.issuerKP.Address()
 	if paymentOp.Asset.GetCode() != h.assetCode || paymentOp.Asset.GetIssuer() != issuerAddress {
 		log.Ctx(ctx).Error(`the payment asset is not supported by this issuer`)
 		return NewRejectedTxApprovalResponse("The payment asset is not supported by this issuer."), nil
 	}
+
 	acc, err := h.horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: paymentSource})
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting detail for payment source account %s", issuerAddress)
@@ -211,14 +217,17 @@ func (h txApproveHandler) txApprove(ctx context.Context, in txApproveRequest) (r
 	if err != nil {
 		return nil, errors.Wrap(err, "building transaction")
 	}
+
 	revisedTx, err = revisedTx.Sign(h.networkPassphrase, h.issuerKP)
 	if err != nil {
 		return nil, errors.Wrap(err, "signing transaction")
 	}
+
 	txe, err := revisedTx.Base64()
 	if err != nil {
 		return nil, errors.Wrap(err, "encoding revised transaction")
 	}
+
 	return NewRevisedTxApprovalResponse(txe), nil
 }
 
@@ -229,9 +238,11 @@ func (h txApproveHandler) handleKYCRequiredOperationIfNeeded(ctx context.Context
 	if err != nil {
 		return nil, errors.Wrap(err, "validating KYC")
 	}
+
 	if KYCRequiredMessage == "" {
 		return nil, nil
 	}
+
 	intendedCallbackID := uuid.New().String()
 	const q = `
 		WITH new_row AS (
@@ -254,13 +265,16 @@ func (h txApproveHandler) handleKYCRequiredOperationIfNeeded(ctx context.Context
 	if err != nil {
 		return nil, errors.Wrap(err, "inserting new row into accounts_kyc_status table")
 	}
+
 	if approvedAt.Valid {
 		return nil, nil
 	}
 	if rejectedAt.Valid {
 		return NewRejectedTxApprovalResponse(fmt.Sprintf("Your KYC was rejected and you're not authorized for operations above %s %s.", amount.StringFromInt64(h.kycThreshold), h.assetCode)), nil
 	}
-	return NewActionRequiredTxApprovalResponse(KYCRequiredMessage,
+
+	return NewActionRequiredTxApprovalResponse(
+		KYCRequiredMessage,
 		fmt.Sprintf("%s/kyc-status/%s", h.baseURL, callbackID),
 		[]string{"email_address"},
 	), nil
