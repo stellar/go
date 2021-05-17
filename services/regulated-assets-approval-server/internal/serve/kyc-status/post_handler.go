@@ -7,7 +7,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/go-chi/chi"
 	"github.com/jmoiron/sqlx"
 	"github.com/stellar/go/services/regulated-assets-approval-server/internal/serve/httperror"
 	"github.com/stellar/go/support/errors"
@@ -17,7 +16,7 @@ import (
 )
 
 type kycPostRequest struct {
-	CallbackID   string
+	CallbackID   string `path:"callback_id"`
 	EmailAddress string `json:"email_address"`
 }
 
@@ -56,9 +55,7 @@ func (h PostHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		httperror.InternalServer.Render(w)
 		return
 	}
-	in := kycPostRequest{
-		CallbackID: chi.URLParam(r, "callback_id"),
-	}
+	in := kycPostRequest{}
 	err = httpdecode.Decode(r, &in)
 	if err != nil {
 		log.Ctx(ctx).Error(errors.Wrap(err, "decoding kyc-status POST Request"))
