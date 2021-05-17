@@ -175,7 +175,7 @@ Note: Subsequent KYC attempts with new (valid)emails addresses will approve your
 }
 ```
 
-**Response (approved for emails not staring with "x"):**
+**Response:**
 
 ```json
 {
@@ -183,6 +183,9 @@ Note: Subsequent KYC attempts with new (valid)emails addresses will approve your
 }
 ```
 
+After the user has been approved or rejected they can POST their transaction to `POST /tx-approve` for revision.
+
+If their KYC was rejected they should see a rejection response.
 **Response (rejected for emails staring with "x"):**
 
 ```json
@@ -224,6 +227,7 @@ Note: This is functionality is outside of the [SEP-8] spec.
   "message": "ok"
 }
 ```
+
 
 [SEP-8]: https://github.com/stellar/stellar-protocol/blob/7c795bb9abc606cd1e34764c4ba07900d58fe26e/ecosystem/sep-0008.md
 [authorization flags]: https://github.com/stellar/stellar-protocol/blob/7c795bb9abc606cd1e34764c4ba07900d58fe26e/ecosystem/sep-0008.md#authorization-flags
