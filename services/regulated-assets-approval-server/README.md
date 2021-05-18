@@ -97,7 +97,7 @@ number, then the account secret and submit the transaction.
 After setting up the issuer account you can fund a stellar account with an initial balance of the regulated asset with our internal `friendbot/?addr={stellar_address}` endpoint.
 This endpoint is not part of the official SEP-8 Approval Server spec, it's a debug feature to allow accounts to test sending transactions (payments with the issuer's regulated asset) to the server.
 
-#### `GET /friendbot?addr={stellar_address}`
+### `GET /friendbot?addr={stellar_address}`
 
 This endpoint sends a payment of 10,000 (this value is configurable) regulated
 assets to the provided `addr`. Please be aware the address must first establish
@@ -106,8 +106,8 @@ a trustline to the regulated asset in order to receive that payment. You can use
 link](https://laboratory.stellar.org/#txbuilder?params=eyJhdHRyaWJ1dGVzIjp7ImZlZSI6IjEwMCIsImJhc2VGZWUiOiIxMDAiLCJtaW5GZWUiOiIxMDAifSwiZmVlQnVtcEF0dHJpYnV0ZXMiOnsibWF4RmVlIjoiMTAwIn0sIm9wZXJhdGlvbnMiOlt7ImlkIjowLCJhdHRyaWJ1dGVzIjp7ImFzc2V0Ijp7InR5cGUiOiJjcmVkaXRfYWxwaGFudW00IiwiY29kZSI6IiIsImlzc3VlciI6IiJ9fSwibmFtZSI6ImNoYW5nZVRydXN0In1dfQ%3D%3D&network=test)
 to do that in Stellar Laboratory.
 
-### API Spec
-#### `POST /tx-approve`
+## API Spec
+### `POST /tx-approve`
 
 This is the core [SEP-8] endpoint used to validate and process approval/revision/rejection of regulated assets transactions.
 Note: The example responses below have set their `base-url` env var to `"https://sep8-base-url.com"`.
@@ -155,7 +155,7 @@ _Action Required:_
 }
 ```
 
-#### `POST /kyc-status/{CALLBACK_ID}`
+### `POST /kyc-status/{CALLBACK_ID}`
 
 This endpoint is used for the extra action after `/tx-approve`, as described in
 the SEP-8 [Action Required] section.
@@ -181,7 +181,7 @@ Note: Subsequent KYC attempts with new (valid)emails addresses will approve your
 }
 ```
 
-After the user has been approved or rejected they can POST their transaction to `POST /tx-approve` for revision.
+After the user has been approved or rejected they can POST their transaction to [`POST /tx-approve`](#post-tx-approve) for revision.
 
 If their KYC was rejected they should see a rejection response.
 **Response (rejected for emails staring with "x"):**
