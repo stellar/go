@@ -1059,9 +1059,7 @@ func TestAPI_KYCIntegration(t *testing.T) {
 		FROM accounts_kyc_status
 		WHERE stellar_address = $1
 	`
-	var (
-		returnedCallbackID string
-	)
+	var returnedCallbackID string
 	err = handler.db.QueryRowContext(ctx, q, senderAccKP.Address()).Scan(&returnedCallbackID)
 	require.NoError(t, err)
 	assert.Equal(t, callbackID, returnedCallbackID)
