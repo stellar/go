@@ -20,10 +20,10 @@ intended for **testing only**. It is being conceived to:
     * [Usage: Migrate](#usage-migrate)
     * [Usage: Serve](#usage-serve)
   * [Account Setup](#account-setup)
-      * [GET /friendbot?addr=\{stellar\_address\}](#get-friendbotaddrstellar_address)
-    * [API Spec](#api-spec)
-      * [POST /tx\-approve](#post-tx-approve)
-      * [POST /kyc\-status/\{CALLBACK\_ID\}](#post-kyc-statuscallback_id)
+    * [GET /friendbot?addr=\{stellar\_address\}](#get-friendbotaddrstellar_address)
+  * [API Spec](#api-spec)
+    * [POST /tx\-approve](#post-tx-approve)
+    * [POST /kyc\-status/\{CALLBACK\_ID\}](#post-kyc-statuscallback_id)
 
 Created by [gh-md-toc](https://github.com/ekalinin/github-markdown-toc.go)
 
@@ -95,7 +95,7 @@ to set those flags. Just click the link, fulfill the account address, sequence
 number, then the account secret and submit the transaction.
 
 After setting up the issuer account you can fund a stellar account with an initial balance of the regulated asset with our internal `friendbot/?addr={stellar_address}` endpoint.
-This endpoint is not part of the official SEP-8 Approval Server spec, it's a debug feature to allow accounts to test sending transactions (payments with teh issuer's regulated asset) to the server.
+This endpoint is not part of the official SEP-8 Approval Server spec, it's a debug feature to allow accounts to test sending transactions (payments with the issuer's regulated asset) to the server.
 
 #### `GET /friendbot?addr={stellar_address}`
 

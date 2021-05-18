@@ -32,7 +32,7 @@ func TestIsKYCRuleRespected(t *testing.T) {
 	}
 	approved := in.isKYCRuleRespected()
 	assert.True(t, approved)
-	// Test if email approved rejected.
+	// Test if email rejected.
 	in = kycPostRequest{
 		EmailAddress: "xtest@email.com",
 	}
@@ -52,6 +52,7 @@ func TestBuildUpdateKYCQuery(t *testing.T) {
 	expectedArgs = append(expectedArgs, in.EmailAddress, in.CallbackID)
 	require.Equal(t, expectedQuery, query)
 	require.Equal(t, expectedArgs, args)
+
 	// Test query returned if email rejected.
 	in = kycPostRequest{
 		CallbackID:   "9999999999-9999",

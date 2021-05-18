@@ -1081,7 +1081,7 @@ func TestAPI_KYCIntegration(t *testing.T) {
 	wantBody := `{"result": "no_further_action_required"}`
 	require.JSONEq(t, wantBody, string(body))
 
-	// Revise tx via a new tx-approve/ POST.
+	// Revise tx via a new /tx-approve POST.
 	req = `{
 		"tx": "` + txEnc + `"
 	}`

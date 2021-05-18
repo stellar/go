@@ -238,7 +238,6 @@ func (h txApproveHandler) handleKYCRequiredOperationIfNeeded(ctx context.Context
 	if err != nil {
 		return nil, errors.Wrap(err, "validating KYC")
 	}
-
 	if KYCRequiredMessage == "" {
 		return nil, nil
 	}
