@@ -296,7 +296,11 @@ func (h txApproveHandler) kycRequiredMessageIfNeeded(paymentOp *txnbuild.Payment
 		return "", errors.Wrap(err, "parsing account payment amount from string to Int64")
 	}
 	if paymentAmount > h.kycThreshold {
-		return fmt.Sprintf(`Payments exceeding %s %s requires KYC approval. Please provide an email address.`, amount.StringFromInt64(h.kycThreshold), h.assetCode), nil
+		kycThreshold, err := convertThresholdToReadableString(h.kycThreshold)
+		if err != nil {
+			return "", errors.Wrap(err, "converting kycThreshold to human readable string")
+		}
+		return fmt.Sprintf(`Payments exceeding %s %s requires KYC approval. Please provide an email address.`, kycThreshold, h.assetCode), nil
 	}
 	return "", nil
 }

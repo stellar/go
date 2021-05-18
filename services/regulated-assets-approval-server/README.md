@@ -189,7 +189,7 @@ If their KYC was rejected they should see a rejection response.
 ```json
 {
   "status": "rejected",
-  "error": "Your KYC was rejected and you're not authorized for operations above 500.0000000 GOAT."
+  "error": "Your KYC was rejected and you're not authorized for operations above 500.00 GOAT."
 }
 ```
 

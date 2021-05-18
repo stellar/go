@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/go-chi/chi"
-	"github.com/stellar/go/amount"
 	"github.com/stellar/go/network"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -93,7 +92,7 @@ func TestTomlHandler_ServeHTTP(t *testing.T) {
 		assetCode:         "FOO",
 		issuerAddress:     "GCVDOU4YHHXGM3QYVSDHPQIFMZKXTFSIYO4HJOJZOTR7GURVQO6IQ5HM",
 		approvalServer:    "localhost:8000/tx-approve",
-		kycThreshold:      10,
+		kycThreshold:      5000000000,
 	}.ServeHTTP)
 
 	ctx := context.Background()
@@ -115,6 +114,6 @@ code="FOO"
 issuer="GCVDOU4YHHXGM3QYVSDHPQIFMZKXTFSIYO4HJOJZOTR7GURVQO6IQ5HM"
 regulated=true
 approval_server="localhost:8000/tx-approve"
-approval_criteria="The approval server currently only accepts payments. The transaction must have exactly one operation of type payment. If the payment amount exceeds ` + amount.StringFromInt64(10) + ` FOO it will need KYC approval."`
+approval_criteria="The approval server currently only accepts payments. The transaction must have exactly one operation of type payment. If the payment amount exceeds 500.00 FOO it will need KYC approval."`
 	require.Equal(t, wantBody, string(body))
 }
