@@ -16,11 +16,11 @@ type CtxKey string
 var RouteContextKey = CtxKey("route")
 var QueryTypeContextKey = CtxKey("query_type")
 
-type Subsystem string
+type Subservice string
 
-var CoreSubsystem = Subsystem("core")
-var HistorySubsystem = Subsystem("history")
-var IngestSubsystem = Subsystem("ingest")
+var CoreSubservice = Subservice("core")
+var HistorySubservice = Subservice("history")
+var IngestSubservice = Subservice("ingest")
 
 type QueryType string
 
@@ -55,7 +55,7 @@ type SessionWithMetrics struct {
 	maxLifetimeClosedCounter prometheus.CounterFunc
 }
 
-func RegisterMetrics(base *Session, namespace string, sub Subsystem, registry *prometheus.Registry) SessionInterface {
+func RegisterMetrics(base *Session, namespace string, sub Subservice, registry *prometheus.Registry) SessionInterface {
 	s := &SessionWithMetrics{
 		SessionInterface: base,
 		registry:         registry,
@@ -66,7 +66,7 @@ func RegisterMetrics(base *Session, namespace string, sub Subsystem, registry *p
 			Namespace:   namespace,
 			Subsystem:   "db",
 			Name:        "query_total",
-			ConstLabels: prometheus.Labels{"subsystem": string(sub)},
+			ConstLabels: prometheus.Labels{"subservice": string(sub)},
 		},
 		[]string{"query_type", "error", "route"},
 	)
@@ -76,7 +76,7 @@ func RegisterMetrics(base *Session, namespace string, sub Subsystem, registry *p
 		prometheus.SummaryOpts{
 			Namespace: namespace, Subsystem: "db",
 			Name:        "query_duration_seconds",
-			ConstLabels: prometheus.Labels{"subsystem": string(sub)},
+			ConstLabels: prometheus.Labels{"subservice": string(sub)},
 		},
 		[]string{"query_type", "error", "route"},
 	)
@@ -100,7 +100,7 @@ func RegisterMetrics(base *Session, namespace string, sub Subsystem, registry *p
 			Namespace:   namespace,
 			Subsystem:   "db",
 			Name:        "max_open_connections",
-			ConstLabels: prometheus.Labels{"subsystem": string(sub)},
+			ConstLabels: prometheus.Labels{"subservice": string(sub)},
 		},
 		func() float64 {
 			// Right now MaxOpenConnections in Horizon is static however it's possible that
@@ -116,7 +116,7 @@ func RegisterMetrics(base *Session, namespace string, sub Subsystem, registry *p
 			Namespace:   namespace,
 			Subsystem:   "db",
 			Name:        "open_connections",
-			ConstLabels: prometheus.Labels{"subsystem": string(sub)},
+			ConstLabels: prometheus.Labels{"subservice": string(sub)},
 		},
 		func() float64 {
 			return float64(base.DB.Stats().OpenConnections)
@@ -129,7 +129,7 @@ func RegisterMetrics(base *Session, namespace string, sub Subsystem, registry *p
 			Namespace:   namespace,
 			Subsystem:   "db",
 			Name:        "in_use_connections",
-			ConstLabels: prometheus.Labels{"subsystem": string(sub)},
+			ConstLabels: prometheus.Labels{"subservice": string(sub)},
 		},
 		func() float64 {
 			return float64(base.DB.Stats().InUse)
@@ -142,7 +142,7 @@ func RegisterMetrics(base *Session, namespace string, sub Subsystem, registry *p
 			Namespace:   namespace,
 			Subsystem:   "db",
 			Name:        "idle_connections",
-			ConstLabels: prometheus.Labels{"subsystem": string(sub)},
+			ConstLabels: prometheus.Labels{"subservice": string(sub)},
 		},
 		func() float64 {
 			return float64(base.DB.Stats().Idle)
@@ -156,7 +156,7 @@ func RegisterMetrics(base *Session, namespace string, sub Subsystem, registry *p
 			Subsystem:   "db",
 			Name:        "wait_count_total",
 			Help:        "total number of number of connections waited for",
-			ConstLabels: prometheus.Labels{"subsystem": string(sub)},
+			ConstLabels: prometheus.Labels{"subservice": string(sub)},
 		},
 		func() float64 {
 			return float64(base.DB.Stats().WaitCount)
@@ -170,7 +170,7 @@ func RegisterMetrics(base *Session, namespace string, sub Subsystem, registry *p
 			Subsystem:   "db",
 			Name:        "wait_duration_seconds_total",
 			Help:        "total time blocked waiting for a new connection",
-			ConstLabels: prometheus.Labels{"subsystem": string(sub)},
+			ConstLabels: prometheus.Labels{"subservice": string(sub)},
 		},
 		func() float64 {
 			return base.DB.Stats().WaitDuration.Seconds()
@@ -184,7 +184,7 @@ func RegisterMetrics(base *Session, namespace string, sub Subsystem, registry *p
 			Subsystem:   "db",
 			Name:        "max_idle_closed_total",
 			Help:        "total number of number of connections closed due to SetMaxIdleConns",
-			ConstLabels: prometheus.Labels{"subsystem": string(sub)},
+			ConstLabels: prometheus.Labels{"subservice": string(sub)},
 		},
 		func() float64 {
 			return float64(base.DB.Stats().MaxIdleClosed)
@@ -198,7 +198,7 @@ func RegisterMetrics(base *Session, namespace string, sub Subsystem, registry *p
 			Subsystem:   "db",
 			Name:        "max_idle_time_closed_total",
 			Help:        "total number of number of connections closed due to SetConnMaxIdleTime",
-			ConstLabels: prometheus.Labels{"subsystem": string(sub)},
+			ConstLabels: prometheus.Labels{"subservice": string(sub)},
 		},
 		func() float64 {
 			return float64(base.DB.Stats().MaxIdleTimeClosed)
@@ -212,7 +212,7 @@ func RegisterMetrics(base *Session, namespace string, sub Subsystem, registry *p
 			Subsystem:   "db",
 			Name:        "max_lifetime_closed_total",
 			Help:        "total number of number of connections closed due to SetConnMaxLifetime",
-			ConstLabels: prometheus.Labels{"subsystem": string(sub)},
+			ConstLabels: prometheus.Labels{"subservice": string(sub)},
 		},
 		func() float64 {
 			return float64(base.DB.Stats().MaxLifetimeClosed)
