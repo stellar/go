@@ -71,9 +71,7 @@ func TestAPI_POSTKYCStatus(t *testing.T) {
 	FROM accounts_kyc_status
 	WHERE callback_id = $1
 	`
-	var (
-		approvedAt, rejectedAt sql.NullTime
-	)
+	var approvedAt, rejectedAt sql.NullTime
 	err = postHandler.DB.QueryRowContext(ctx, selectAccountQuery, callbackID).Scan(&approvedAt, &rejectedAt)
 	require.NoError(t, err)
 
