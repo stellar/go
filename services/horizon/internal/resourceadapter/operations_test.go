@@ -333,7 +333,7 @@ func TestFeeBumpOperation(t *testing.T) {
 	)
 
 	assert.Equal(t, transactionRow.TransactionHash, dest.TransactionHash)
-	assert.Equal(t, transactionRow.TransactionHash, dest.Transaction.Hash)
+	assert.Equal(t, tra	nsactionRow.TransactionHash, dest.Transaction.Hash)
 	assert.Equal(t, transactionRow.TransactionHash, dest.Transaction.ID)
 	assert.Equal(t, transactionRow.FeeAccount.String, dest.Transaction.FeeAccount)
 	assert.Equal(t, transactionRow.Account, dest.Transaction.Account)

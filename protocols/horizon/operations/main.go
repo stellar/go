@@ -88,7 +88,7 @@ type CreateAccount struct {
 	StartingBalance string `json:"starting_balance"`
 	Funder          string `json:"funder"`
 	FunderMuxed     string `json:"funder_muxed,omitempty"`
-	FunerMuxedID    uint64 `json:"funder_muxed_id,omitempty"`
+	FunderMuxedID   uint64 `json:"funder_muxed_id,omitempty"`
 	Account         string `json:"account"`
 }
 
