@@ -117,6 +117,8 @@ func TestTxApproveHandlerKYCRequiredMessageIfNeeded(t *testing.T) {
 	defer db.Close()
 	conn := db.Open()
 	defer conn.Close()
+
+	// Create tx-approve/ txApproveHandler.
 	issuerAccKeyPair := keypair.MustRandom()
 	horizonMock := horizonclient.MockClient{}
 	kycThresholdAmount, err := amount.ParseInt64("500")
@@ -134,35 +136,47 @@ func TestTxApproveHandlerKYCRequiredMessageIfNeeded(t *testing.T) {
 		kycThreshold:      kycThresholdAmount,
 		baseURL:           "https://sep8-server.test",
 	}
+
+	// TEST if txApproveHandler is valid.
 	err = h.validate()
 	require.NoError(t, err)
-	// Test no KYC needed flow.
+
+	// Preparing payment op for kycRequiredMessageIfNeeded; payment amount is below kycThreshold.
 	destinationKP := keypair.MustRandom()
 	paymentOP := txnbuild.Payment{
 		Destination: destinationKP.Address(),
 		Amount:      "100",
 		Asset:       assetGOAT,
 	}
+
+	// TEST No KYC needed response. actionRequiredMessage should be "".
 	actionRequiredMessage, err := h.kycRequiredMessageIfNeeded(&paymentOP)
 	require.NoError(t, err)
 	require.Empty(t, actionRequiredMessage)
-	// Test failing malformed payment amount.
+
+	// Prepare payment op for kycRequiredMessageIfNeeded; payment amount is malformed.
 	paymentOP = txnbuild.Payment{
 		Destination: destinationKP.Address(),
 		Amount:      "ten",
 		Asset:       assetGOAT,
 	}
+
+	// TEST kycRequiredMessageIfNeeded returns error.
 	_, err = h.kycRequiredMessageIfNeeded(&paymentOP)
 	assert.Contains(t,
 		err.Error(),
 		`parsing account payment amount from string to Int64: invalid amount format: ten`,
 	)
-	// Test Successful KYC validation response.
+
+	// Preparing payment op for kycRequiredMessageIfNeeded; payment amount is above kycThreshold.
 	paymentOP = txnbuild.Payment{
 		Destination: destinationKP.Address(),
 		Amount:      "501",
 		Asset:       assetGOAT,
 	}
+
+	// TEST Successful KYC required response.
+	// actionRequiredMessage should return "Payments exceeding [kycThreshold] [assetCode] requires KYC approval..." message.
 	actionRequiredMessage, err = h.kycRequiredMessageIfNeeded(&paymentOP)
 	require.NoError(t, err)
 	assert.Equal(t, `Payments exceeding 500.0000000 GOAT requires KYC approval. Please provide an email address.`, actionRequiredMessage)
@@ -174,6 +188,8 @@ func TestTxApproveHandlerHandleKYCRequiredOperationIfNeeded(t *testing.T) {
 	defer db.Close()
 	conn := db.Open()
 	defer conn.Close()
+
+	// Create tx-approve/ txApproveHandler.
 	issuerAccKeyPair := keypair.MustRandom()
 	horizonMock := horizonclient.MockClient{}
 	kycThresholdAmount, err := amount.ParseInt64("500")
@@ -191,9 +207,12 @@ func TestTxApproveHandlerHandleKYCRequiredOperationIfNeeded(t *testing.T) {
 		kycThreshold:      kycThresholdAmount,
 		baseURL:           "https://sep8-server.test",
 	}
+
+	// TEST if txApproveHandler is valid.
 	err = h.validate()
 	require.NoError(t, err)
-	// Test successful action_required response.
+
+	// Prepare payment op whose amount is greater than 500 GOATs.
 	sourceKP := keypair.MustRandom()
 	destinationKP := keypair.MustRandom()
 	paymentOP := txnbuild.Payment{
@@ -202,6 +221,8 @@ func TestTxApproveHandlerHandleKYCRequiredOperationIfNeeded(t *testing.T) {
 		Amount:        "501",
 		Asset:         assetGOAT,
 	}
+
+	// TEST successful "action_required" response.
 	actionRequiredTxApprovalResponse, err := h.handleKYCRequiredOperationIfNeeded(ctx, sourceKP.Address(), &paymentOP)
 	require.NoError(t, err)
 	wantTXApprovalResponse := txApprovalResponse{
@@ -213,7 +234,8 @@ func TestTxApproveHandlerHandleKYCRequiredOperationIfNeeded(t *testing.T) {
 		ActionFields: []string{"email_address"},
 	}
 	assert.Equal(t, &wantTXApprovalResponse, actionRequiredTxApprovalResponse)
-	// Test if the kyc attempt was logged in db's accounts_kyc_status table.
+
+	// TEST if the kyc attempt was logged in db's accounts_kyc_status table.
 	const q = `
 	SELECT stellar_address
 	FROM accounts_kyc_status
@@ -231,16 +253,14 @@ func TestTxApproveHandlerTxApprove(t *testing.T) {
 	defer db.Close()
 	conn := db.Open()
 	defer conn.Close()
+
+	// Perpare accounts on mock horizon.
 	issuerAccKeyPair := keypair.MustRandom()
 	senderAccKP := keypair.MustRandom()
 	receiverAccKP := keypair.MustRandom()
 	assetGOAT := txnbuild.CreditAsset{
 		Code:   "GOAT",
 		Issuer: issuerAccKeyPair.Address(),
-	}
-	// Test if no transaction is submitted.
-	req := txApproveRequest{
-		Tx: "",
 	}
 	horizonMock := horizonclient.MockClient{}
 	horizonMock.
@@ -267,6 +287,8 @@ func TestTxApproveHandlerTxApprove(t *testing.T) {
 			AccountID: receiverAccKP.Address(),
 			Sequence:  "3",
 		}, nil)
+
+	// Create tx-approve/ txApproveHandler.
 	kycThresholdAmount, err := amount.ParseInt64("500")
 	require.NoError(t, err)
 	handler := txApproveHandler{
@@ -278,6 +300,13 @@ func TestTxApproveHandlerTxApprove(t *testing.T) {
 		kycThreshold:      kycThresholdAmount,
 		baseURL:           "https://sep8-server.test",
 	}
+
+	// Prepare empty "tx" for txApprove.
+	req := txApproveRequest{
+		Tx: "",
+	}
+
+	// TEST "rejected" response if no transaction is submitted.
 	rejectedResponse, err := handler.txApprove(ctx, req)
 	require.NoError(t, err)
 	wantRejectedResponse := txApprovalResponse{
@@ -286,10 +315,13 @@ func TestTxApproveHandlerTxApprove(t *testing.T) {
 		StatusCode: http.StatusBadRequest,
 	}
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
-	// Test if can't parse XDR.
+
+	// Prepare malformed "tx" for txApprove.
 	req = txApproveRequest{
 		Tx: "BADXDRTRANSACTIONENVELOPE",
 	}
+
+	// TEST "rejected" response if can't parse XDR.
 	rejectedResponse, err = handler.txApprove(ctx, req)
 	require.NoError(t, err)
 	wantRejectedResponse = txApprovalResponse{
@@ -298,7 +330,8 @@ func TestTxApproveHandlerTxApprove(t *testing.T) {
 		StatusCode: http.StatusBadRequest,
 	}
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
-	// Test if a non generic transaction fails, same result as malformed XDR.
+
+	// Prepare invalid(non generic transaction) "tx" for txApprove.
 	senderAcc, err := handler.horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: senderAccKP.Address()})
 	require.NoError(t, err)
 	tx, err := txnbuild.NewTransaction(
@@ -330,10 +363,13 @@ func TestTxApproveHandlerTxApprove(t *testing.T) {
 	req = txApproveRequest{
 		Tx: feeBumpTxEnc,
 	}
+
+	// TEST "rejected" response if a non generic transaction fails, same result as malformed XDR.
 	rejectedResponse, err = handler.txApprove(ctx, req)
 	require.NoError(t, err)
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse) // wantRejectedResponse is identical to "if can't parse XDR".
-	// Test if the transaction sourceAccount the same as the server issuer account.
+
+	// Prepare transaction sourceAccount the same as the server issuer account for txApprove.
 	issuerAcc, err := handler.horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: issuerAccKeyPair.Address()})
 	require.NoError(t, err)
 	tx, err = txnbuild.NewTransaction(
@@ -357,6 +393,8 @@ func TestTxApproveHandlerTxApprove(t *testing.T) {
 	req = txApproveRequest{
 		Tx: txEnc,
 	}
+
+	// TEST "rejected" response for sender account; transaction sourceAccount the same as the server issuer account.
 	rejectedResponse, err = handler.txApprove(ctx, req)
 	require.NoError(t, err)
 	wantRejectedResponse = txApprovalResponse{
@@ -365,7 +403,8 @@ func TestTxApproveHandlerTxApprove(t *testing.T) {
 		StatusCode: http.StatusBadRequest,
 	}
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
-	// Test if the transaction's operation sourceAccount the same as the server issuer account.
+
+	// Prepare transaction where transaction's payment operation sourceAccount the same as the server issuer account.
 	tx, err = txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount:        &senderAcc,
@@ -388,6 +427,8 @@ func TestTxApproveHandlerTxApprove(t *testing.T) {
 	req = txApproveRequest{
 		Tx: txEnc,
 	}
+
+	// TEST "rejected" response for sender account; payment operation sourceAccount the same as the server issuer account.
 	rejectedResponse, err = handler.txApprove(ctx, req)
 	require.NoError(t, err)
 	wantRejectedResponse = txApprovalResponse{
@@ -396,7 +437,8 @@ func TestTxApproveHandlerTxApprove(t *testing.T) {
 		StatusCode: http.StatusBadRequest,
 	}
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
-	// Test if operation is not a payment (in this case allowing trust for receiverAccKP).
+
+	// Prepare transaction where operation is not a payment (in this case allowing trust for receiverAccKP).
 	tx, err = txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount:        &senderAcc,
@@ -417,6 +459,8 @@ func TestTxApproveHandlerTxApprove(t *testing.T) {
 	req = txApproveRequest{
 		Tx: txEnc,
 	}
+
+	// TEST "rejected" response if operation is not a payment (in this case allowing trust for receiverAccKP).
 	rejectedResponse, err = handler.txApprove(ctx, req)
 	require.NoError(t, err)
 	wantRejectedResponse = txApprovalResponse{
@@ -425,7 +469,8 @@ func TestTxApproveHandlerTxApprove(t *testing.T) {
 		StatusCode: http.StatusBadRequest,
 	}
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
-	// Test if multiple operations in transaction.
+
+	// Prepare transaction with multiple operations.
 	tx, err = txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount:        &senderAcc,
@@ -454,6 +499,8 @@ func TestTxApproveHandlerTxApprove(t *testing.T) {
 	req = txApproveRequest{
 		Tx: txEnc,
 	}
+
+	// TEST "rejected" response for sender account; transaction with multiple operations.
 	rejectedResponse, err = handler.txApprove(ctx, req)
 	require.NoError(t, err)
 	wantRejectedResponse = txApprovalResponse{
@@ -462,8 +509,8 @@ func TestTxApproveHandlerTxApprove(t *testing.T) {
 		StatusCode: http.StatusBadRequest,
 	}
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
-	// Test if transaction source account seq num is equal to account sequence+1.
-	// This tests the scenario where sequence numbers are too far in the future.
+
+	// Prepare transaction where sourceAccount seq num too far in the future.
 	tx, err = txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount: &horizon.Account{
@@ -489,6 +536,8 @@ func TestTxApproveHandlerTxApprove(t *testing.T) {
 	req = txApproveRequest{
 		Tx: txEnc,
 	}
+
+	// TEST "rejected" response if transaction source account seq num is not equal to account sequence+1.
 	rejectedResponse, err = handler.txApprove(ctx, req)
 	require.NoError(t, err)
 	wantRejectedResponse = txApprovalResponse{
@@ -505,6 +554,8 @@ func TestAPI_RejectedIntegration(t *testing.T) {
 	defer db.Close()
 	conn := db.Open()
 	defer conn.Close()
+
+	// Perpare accounts on mock horizon.
 	issuerAccKeyPair := keypair.MustRandom()
 	assetGOAT := txnbuild.CreditAsset{
 		Code:   "GOAT",
@@ -537,6 +588,8 @@ func TestAPI_RejectedIntegration(t *testing.T) {
 			AccountID: receiverAccKP.Address(),
 			Sequence:  "3",
 		}, nil)
+
+	// Create tx-approve/ txApproveHandler.
 	kycThresholdAmount, err := amount.ParseInt64("500")
 	require.NoError(t, err)
 	handler := txApproveHandler{
@@ -548,7 +601,8 @@ func TestAPI_RejectedIntegration(t *testing.T) {
 		kycThreshold:      kycThresholdAmount,
 		baseURL:           "https://sep8-server.test",
 	}
-	// Test if no transaction is submitted.
+
+	// Prepare and send empty "tx" for "/tx-approve" POST request.
 	m := chi.NewMux()
 	m.Post("/tx-approve", handler.ServeHTTP)
 	req := `{
@@ -563,11 +617,14 @@ func TestAPI_RejectedIntegration(t *testing.T) {
 	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
 	body, err := ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
+
+	// TEST "rejected" response if no transaction is submitted.
 	wantBody := `{
 		"status":"rejected", "error":"Missing parameter \"tx\"."
 	}`
 	require.JSONEq(t, wantBody, string(body))
-	// Test if can't parse XDR.
+
+	// Prepare malformed "tx" for "/tx-approve" POST request.
 	req = `{
 		"tx": "BADXDRTRANSACTIONENVELOPE"
 	}`
@@ -580,11 +637,14 @@ func TestAPI_RejectedIntegration(t *testing.T) {
 	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
+
+	// TEST "rejected" response if can't parse XDR.
 	wantBody = `{
 		"status":"rejected", "error":"Invalid parameter \"tx\"."
 	}`
 	require.JSONEq(t, wantBody, string(body))
-	// Test if a non generic transaction fails, same result as malformed XDR.
+
+	// Prepare and send invalid(non generic transaction) "tx" for "/tx-approve" POST request.
 	senderAcc, err := handler.horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: senderAccKP.Address()})
 	require.NoError(t, err)
 	tx, err := txnbuild.NewTransaction(
@@ -625,11 +685,14 @@ func TestAPI_RejectedIntegration(t *testing.T) {
 	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
+
+	// TEST "rejected" response if  a non generic transaction fails, same result as malformed XDR.
 	wantBody = `{
 		"status":"rejected", "error":"Invalid parameter \"tx\"."
 	}`
 	require.JSONEq(t, wantBody, string(body))
-	// Test if the transaction sourceAccount the same as the server issuer account.
+
+	// Prepare and send "tx" where transaction sourceAccount the same as the server issuer account for "/tx-approve" POST request.
 	issuerAcc, err := handler.horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: issuerAccKeyPair.Address()})
 	require.NoError(t, err)
 	tx, err = txnbuild.NewTransaction(
@@ -662,11 +725,14 @@ func TestAPI_RejectedIntegration(t *testing.T) {
 	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
+
+	// TEST "rejected" response if the transaction sourceAccount the same as the server issuer account.
 	wantBody = `{
 		"status":"rejected", "error":"The source account is invalid."
 	}`
 	require.JSONEq(t, wantBody, string(body))
-	// Test if the transaction's operation sourceAccount the same as the server issuer account.
+
+	// Prepare and send "tx" where transaction's operation sourceAccount the same as the server issuer account for "/tx-approve" POST request.
 	tx, err = txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount:        &senderAcc,
@@ -698,11 +764,14 @@ func TestAPI_RejectedIntegration(t *testing.T) {
 	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
+
+	// TEST "rejected" response if the transaction's operation sourceAccount the same as the server issuer account.
 	wantBody = `{
 		"status":"rejected", "error":"There is one or more unauthorized operations in the provided transaction."
 	}`
 	require.JSONEq(t, wantBody, string(body))
-	// Test if the transaction's operation is not a payment.
+
+	// Prepare and send "tx" where transaction's operation is not a payment for "/tx-approve" POST request.
 	tx, err = txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount:        &senderAcc,
@@ -733,11 +802,14 @@ func TestAPI_RejectedIntegration(t *testing.T) {
 	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
+
+	// TEST "rejected" response if transaction's operation is not a payment.
 	wantBody = `{
 		"status":"rejected", "error":"There is one or more unauthorized operations in the provided transaction."
 	}`
 	require.JSONEq(t, wantBody, string(body))
-	// Test if more than one operation in transaction.
+
+	// Prepare and send "tx" where theres more than one operation in transaction for "/tx-approve" POST request.
 	tx, err = txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount:        &senderAcc,
@@ -775,12 +847,14 @@ func TestAPI_RejectedIntegration(t *testing.T) {
 	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
+
+	// TEST "rejected" response if more than one operation in transaction.
 	wantBody = `{
 		"status":"rejected", "error":"Please submit a transaction with exactly one operation of type payment."
 	}`
 	require.JSONEq(t, wantBody, string(body))
-	// Test when transaction source account seq num is not equal to account sequence+1.
-	// This tests the scenario where sequence numbers are too far in the future.
+
+	// Prepare and send "tx" where transaction's transaction source account seq num is not equal to account sequence+1 for "/tx-approve" POST request.
 	tx, err = txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount: &horizon.Account{
@@ -815,6 +889,8 @@ func TestAPI_RejectedIntegration(t *testing.T) {
 	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
+
+	// TEST "rejected" response if where transaction's transaction source account seq num is not equal to account sequence+1.
 	wantBody = `{
 		"status":"rejected", "error":"Invalid transaction sequence number."
 	}`
@@ -827,6 +903,8 @@ func TestAPI_RevisedIntegration(t *testing.T) {
 	defer db.Close()
 	conn := db.Open()
 	defer conn.Close()
+
+	// Perpare accounts on mock horizon.
 	issuerAccKeyPair := keypair.MustRandom()
 	senderAccKP := keypair.MustRandom()
 	receiverAccKP := keypair.MustRandom()
@@ -857,6 +935,8 @@ func TestAPI_RevisedIntegration(t *testing.T) {
 			AccountID: receiverAccKP.Address(),
 			Sequence:  "0",
 		}, nil)
+
+	// Create tx-approve/ txApproveHandler.
 	kycThresholdAmount, err := amount.ParseInt64("500")
 	require.NoError(t, err)
 	handler := txApproveHandler{
@@ -868,7 +948,8 @@ func TestAPI_RevisedIntegration(t *testing.T) {
 		kycThreshold:      kycThresholdAmount,
 		baseURL:           "https://sep8-server.test",
 	}
-	// Test Successful request.
+
+	// Prepare and send revisable "tx" for "/tx-approve" POST request.
 	senderAcc, err := handler.horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: senderAccKP.Address()})
 	require.NoError(t, err)
 	tx, err := txnbuild.NewTransaction(
@@ -904,6 +985,8 @@ func TestAPI_RevisedIntegration(t *testing.T) {
 	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
 	body, err := ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
+
+	// TEST Successful request.
 	var txApprovePOSTResponse txApprovalResponse
 	err = json.Unmarshal(body, &txApprovePOSTResponse)
 	require.NoError(t, err)
@@ -913,11 +996,13 @@ func TestAPI_RevisedIntegration(t *testing.T) {
 		Message: `Authorization and deauthorization operations were added.`,
 	}
 	assert.Equal(t, wantTXApprovalResponse, txApprovePOSTResponse)
+
 	// Decode the request's transaction.
 	parsed, err := txnbuild.TransactionFromXDR(txApprovePOSTResponse.Tx)
 	require.NoError(t, err)
 	tx, ok := parsed.Transaction()
 	require.True(t, ok)
+
 	// Check if revised transaction only has 5 operations.
 	require.Len(t, tx.Operations(), 5)
 	// Check Operation 1: AllowTrust op where issuer fully authorizes account A, asset X.
@@ -958,6 +1043,8 @@ func TestAPI_KYCIntegration(t *testing.T) {
 	defer db.Close()
 	conn := db.Open()
 	defer conn.Close()
+
+	// Perpare accounts on mock horizon.
 	issuerAccKeyPair := keypair.MustRandom()
 	senderAccKP := keypair.MustRandom()
 	receiverAccKP := keypair.MustRandom()
@@ -988,6 +1075,8 @@ func TestAPI_KYCIntegration(t *testing.T) {
 			AccountID: receiverAccKP.Address(),
 			Sequence:  "0",
 		}, nil)
+
+	// Create tx-approve/ txApproveHandler.
 	kycThresholdAmount, err := amount.ParseInt64("500")
 	require.NoError(t, err)
 	handler := txApproveHandler{
@@ -999,8 +1088,8 @@ func TestAPI_KYCIntegration(t *testing.T) {
 		kycThreshold:      kycThresholdAmount,
 		baseURL:           "https://sep8-server.test",
 	}
-	// Submit tx with payment of 501 GOATs to POST /tx_approve.
-	// Server's KYC threshold is <=500 GOATs.
+
+	// Prepare transaction whose payment amount is <=500 GOATs for /tx-approve POST request.
 	senderAcc, err := handler.horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: senderAccKP.Address()})
 	require.NoError(t, err)
 	tx, err := txnbuild.NewTransaction(
@@ -1022,6 +1111,8 @@ func TestAPI_KYCIntegration(t *testing.T) {
 	require.NoError(t, err)
 	txEnc, err := tx.Base64()
 	require.NoError(t, err)
+
+	// Prepare and send /tx-approve POST request with transaction in request body.
 	m := chi.NewMux()
 	m.Post("/tx-approve", handler.ServeHTTP)
 	req := `{
@@ -1036,6 +1127,8 @@ func TestAPI_KYCIntegration(t *testing.T) {
 	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
 	body, err := ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
+
+	// TEST "action_required" response for sender account.
 	var txApprovePOSTResponse txApprovalResponse
 	err = json.Unmarshal(body, &txApprovePOSTResponse)
 	require.NoError(t, err)
@@ -1059,6 +1152,7 @@ func TestAPI_KYCIntegration(t *testing.T) {
 		`[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}`)
 	// Grab callbackID
 	callbackID := RxUUID.FindAllString(txApprovePOSTResponse.ActionURL, 1)[0]
+
 	// Verify the KYC entree was inserted in db.
 	const q = `
 		SELECT callback_id
@@ -1070,7 +1164,7 @@ func TestAPI_KYCIntegration(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, callbackID, returnedCallbackID)
 
-	// Submit a request to action_url using the action_method and sending an email_address that doesn't start with "x".
+	// Prepare and send /kyc-status/{callback_id} POST request; with an email_address that doesn't start with "x".
 	req = `{
 		"email_address": "TestEmail@email.com"
 	}`
@@ -1082,10 +1176,12 @@ func TestAPI_KYCIntegration(t *testing.T) {
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
+
+	// TEST "no_further_action_required" response for approved account.
 	wantBody := `{"result": "no_further_action_required"}`
 	require.JSONEq(t, wantBody, string(body))
 
-	// Revise tx via a new /tx-approve POST.
+	// Prepare and send /tx-approve POST request to be revised tx via a new /tx-approve POST.
 	req = `{
 		"tx": "` + txEnc + `"
 	}`
@@ -1098,6 +1194,8 @@ func TestAPI_KYCIntegration(t *testing.T) {
 	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
+
+	// TEST "revised" response for approved account.
 	txApprovePOSTResponse = txApprovalResponse{}
 	assert.Empty(t, txApprovePOSTResponse)
 	err = json.Unmarshal(body, &txApprovePOSTResponse)
@@ -1108,11 +1206,13 @@ func TestAPI_KYCIntegration(t *testing.T) {
 		Message: `Authorization and deauthorization operations were added.`,
 	}
 	assert.Equal(t, wantTXApprovalResponse, txApprovePOSTResponse)
+
 	// Decode the request's transaction.
 	parsed, err := txnbuild.TransactionFromXDR(txApprovePOSTResponse.Tx)
 	require.NoError(t, err)
 	tx, ok := parsed.Transaction()
 	require.True(t, ok)
+
 	// Check if revised transaction only has 5 operations.
 	require.Len(t, tx.Operations(), 5)
 	// Check Operation 1: AllowTrust op where issuer fully authorizes account A, asset X.
@@ -1146,7 +1246,7 @@ func TestAPI_KYCIntegration(t *testing.T) {
 	assert.Equal(t, op5.Type.GetCode(), assetGOAT.GetCode())
 	require.False(t, op5.Authorize)
 
-	// Test rejected KYC response.
+	// Prepare and send /kyc-status/{callback_id} POST request; with an email_address that starts with "x".
 	req = `{
 		"email_address": "xTestEmail@email.com"
 	}`
@@ -1158,9 +1258,12 @@ func TestAPI_KYCIntegration(t *testing.T) {
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
+
+	// TEST "no_further_action_required" response for approved account.
 	wantBody = `{"result": "no_further_action_required"}`
 	require.JSONEq(t, wantBody, string(body))
-	// Attempt to revise tx via a new tx-approve/ POST after rejection.
+
+	// Prepare and send /tx-approve POST request to be revised tx via a new /tx-approve POST.
 	req = `{
 		"tx": "` + txEnc + `"
 	}`
@@ -1173,6 +1276,8 @@ func TestAPI_KYCIntegration(t *testing.T) {
 	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
+
+	// TEST "rejected" response for rejected KYC account.
 	wantBody = `{
 		"status":"rejected", "error":"Your KYC was rejected and you're not authorized for operations above 500.0000000 GOAT."
 	}`

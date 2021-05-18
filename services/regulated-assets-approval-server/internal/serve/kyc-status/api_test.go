@@ -56,7 +56,7 @@ func TestAPI_POSTKYCStatus(t *testing.T) {
 	body, err := ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 
-	// Test "no_further_action_required" response for approved account.
+	// TEST "no_further_action_required" response for approved account.
 	var kycStatusPOSTResponseApprove kycPostResponse
 	err = json.Unmarshal(body, &kycStatusPOSTResponseApprove)
 	require.NoError(t, err)
@@ -77,7 +77,7 @@ func TestAPI_POSTKYCStatus(t *testing.T) {
 	err = postHandler.DB.QueryRowContext(ctx, selectAccountQuery, callbackID).Scan(&approvedAt, &rejectedAt)
 	require.NoError(t, err)
 
-	// Test if account in db's accounts_kyc_status table was approved.
+	// TEST if account in db's accounts_kyc_status table was approved.
 	// sql.NullTime.Valid is true if Time is not NULL
 	assert.True(t, approvedAt.Valid)
 	assert.False(t, rejectedAt.Valid)
@@ -101,7 +101,7 @@ func TestAPI_POSTKYCStatus(t *testing.T) {
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 
-	// Test "no_further_action_required" response for rejected account.
+	// TEST "no_further_action_required" response for rejected account.
 	var kycStatusPOSTResponseRejected kycPostResponse
 	err = json.Unmarshal(body, &kycStatusPOSTResponseRejected)
 	require.NoError(t, err)
@@ -114,7 +114,7 @@ func TestAPI_POSTKYCStatus(t *testing.T) {
 	err = postHandler.DB.QueryRowContext(ctx, selectAccountQuery, callbackIDRejected).Scan(&approvedAt, &rejectedAt)
 	require.NoError(t, err)
 
-	// Test if account in db's accounts_kyc_status table was rejected.
+	// TEST if account in db's accounts_kyc_status table was rejected.
 	// Should be rejected based on arbitrary rule where emails begin with "x".
 	// sql.NullTime.Valid is true if Time is not NULL
 	assert.True(t, rejectedAt.Valid)
@@ -133,7 +133,7 @@ func TestAPI_POSTKYCStatus(t *testing.T) {
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 
-	// Test "no_further_action_required" response for repeated KYC request after REJECTED w/ new email.
+	// TEST "no_further_action_required" response for repeated KYC request after REJECTED w/ new email.
 	var kycStatusPOSTResponseRejectedNewEmail kycPostResponse
 	err = json.Unmarshal(body, &kycStatusPOSTResponseRejectedNewEmail)
 	require.NoError(t, err)
@@ -152,7 +152,7 @@ func TestAPI_POSTKYCStatus(t *testing.T) {
 	err = postHandler.DB.QueryRowContext(ctx, selectUpdatedAccountEmailQuery, callbackIDRejected).Scan(&approvedAt, &rejectedAt, &updatedEmail)
 	require.NoError(t, err)
 
-	// Test if account in db's accounts_kyc_status table was approved, and email was overwritten.
+	// TEST if account in db's accounts_kyc_status table was approved, and email was overwritten.
 	// sql.NullTime.Valid is true if Time is not NULL
 	assert.True(t, approvedAt.Valid)
 	assert.False(t, rejectedAt.Valid)
@@ -175,7 +175,7 @@ func TestAPI_POSTKYCStatus(t *testing.T) {
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 
-	// Test "Missing email_address" error response.
+	// TEST "Missing email_address" error response.
 	wantPostResponseMissingEmail := `{
 		"error": "Missing email_address."
 	}`
@@ -195,7 +195,7 @@ func TestAPI_POSTKYCStatus(t *testing.T) {
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 
-	// Test "Not Found" error response.
+	// TEST "Not Found" error response.
 	wantPostResponseNotFound := `{
 			"error": "Not found."
 			}`
