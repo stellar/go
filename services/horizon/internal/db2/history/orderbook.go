@@ -102,6 +102,7 @@ func (q *Q) GetOrderBookSummary(ctx context.Context, sellingAsset, buyingAsset x
 			LIMIT $3
 		)
 	`
+	// Add explicit query type for prometheus metrics, since we use raw sql.
 	ctx = context.WithValue(ctx, &db.QueryTypeContextKey, db.SelectQueryType)
 	err = q.SelectRaw(ctx, &levels, selectPriceLevels, selling, buying, maxPriceLevels)
 	if err != nil {
