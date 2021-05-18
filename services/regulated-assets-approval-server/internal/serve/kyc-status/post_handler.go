@@ -49,6 +49,7 @@ func (h PostHandler) validate() error {
 
 func (h PostHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+
 	err := h.validate()
 	if err != nil {
 		log.Ctx(ctx).Error(errors.Wrap(err, "validating kyc-status PostHandler"))
@@ -86,11 +87,8 @@ func (h PostHandler) handle(ctx context.Context, in kycPostRequest) (resp *kycPo
 		log.Ctx(ctx).Debugf("err: %+v", err)
 		log.Ctx(ctx).Debug("====  did log responses ====")
 	}()
-	err = h.validate()
-	if err != nil {
-		return nil, errors.Wrap(err, "validating KYCStatusGetDetailHandler")
-	}
-	// Check if kycPostRequest values are present.
+
+	// Check if kycPostRequest values are present or not malformed.
 	if in.CallbackID == "" {
 		return nil, httperror.NewHTTPError(http.StatusBadRequest, "Missing callback ID.")
 	}
