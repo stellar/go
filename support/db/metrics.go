@@ -56,34 +56,39 @@ type SessionWithMetrics struct {
 }
 
 func RegisterMetrics(base *Session, namespace string, sub Subsystem, registry *prometheus.Registry) SessionInterface {
-	subsystem := fmt.Sprintf("db_%s", sub)
 	s := &SessionWithMetrics{
 		SessionInterface: base,
 		registry:         registry,
 	}
 
 	s.queryCounter = prometheus.NewCounterVec(
-		prometheus.CounterOpts{Namespace: namespace, Subsystem: subsystem, Name: "query_total"},
+		prometheus.CounterOpts{
+			Namespace:   namespace,
+			Subsystem:   "db",
+			Name:        "query_total",
+			ConstLabels: prometheus.Labels{"subsystem": string(sub)},
+		},
 		[]string{"query_type", "error", "route"},
 	)
 	registry.MustRegister(s.queryCounter)
 
 	s.queryDurationSummary = prometheus.NewSummaryVec(
 		prometheus.SummaryOpts{
-			Namespace: namespace, Subsystem: subsystem,
-			Name: "query_duration_seconds",
+			Namespace: namespace, Subsystem: "db",
+			Name:        "query_duration_seconds",
+			ConstLabels: prometheus.Labels{"subsystem": string(sub)},
 		},
 		[]string{"query_type", "error", "route"},
 	)
 	registry.MustRegister(s.queryDurationSummary)
 
 	// txnCounter: prometheus.NewCounter(
-	// 	prometheus.CounterOpts{Namespace: namespace, Subsystem: subsystem, Name: "transaction_total"},
+	// 	prometheus.CounterOpts{Namespace: namespace, Subsystem: "db", Name: "transaction_total"},
 	// ),
 	// registry.MustRegister(s.txnCounter)
 	// txnDuration: prometheus.NewHistogram(
 	// 	prometheus.HistogramOpts{
-	// 		Namespace: namespace, Subsystem: subsystem,
+	// 		Namespace: namespace, Subsystem: "db",
 	// 		Name:    "transaction_duration_seconds",
 	//		Buckets: prometheus.ExponentialBuckets(0.1, 3, 5),
 	// 	},
@@ -91,7 +96,12 @@ func RegisterMetrics(base *Session, namespace string, sub Subsystem, registry *p
 	// registry.MustRegister(s.txnDuration)
 
 	s.maxOpenConnectionsGauge = prometheus.NewGaugeFunc(
-		prometheus.GaugeOpts{Namespace: namespace, Subsystem: subsystem, Name: "max_open_connections"},
+		prometheus.GaugeOpts{
+			Namespace:   namespace,
+			Subsystem:   "db",
+			Name:        "max_open_connections",
+			ConstLabels: prometheus.Labels{"subsystem": string(sub)},
+		},
 		func() float64 {
 			// Right now MaxOpenConnections in Horizon is static however it's possible that
 			// it will change one day. In such case, using GaugeFunc is very cheap and will
@@ -102,7 +112,12 @@ func RegisterMetrics(base *Session, namespace string, sub Subsystem, registry *p
 	registry.MustRegister(s.maxOpenConnectionsGauge)
 
 	s.openConnectionsGauge = prometheus.NewGaugeFunc(
-		prometheus.GaugeOpts{Namespace: namespace, Subsystem: subsystem, Name: "open_connections"},
+		prometheus.GaugeOpts{
+			Namespace:   namespace,
+			Subsystem:   "db",
+			Name:        "open_connections",
+			ConstLabels: prometheus.Labels{"subsystem": string(sub)},
+		},
 		func() float64 {
 			return float64(base.DB.Stats().OpenConnections)
 		},
@@ -110,7 +125,12 @@ func RegisterMetrics(base *Session, namespace string, sub Subsystem, registry *p
 	registry.MustRegister(s.openConnectionsGauge)
 
 	s.inUseConnectionsGauge = prometheus.NewGaugeFunc(
-		prometheus.GaugeOpts{Namespace: namespace, Subsystem: subsystem, Name: "in_use_connections"},
+		prometheus.GaugeOpts{
+			Namespace:   namespace,
+			Subsystem:   "db",
+			Name:        "in_use_connections",
+			ConstLabels: prometheus.Labels{"subsystem": string(sub)},
+		},
 		func() float64 {
 			return float64(base.DB.Stats().InUse)
 		},
@@ -118,7 +138,12 @@ func RegisterMetrics(base *Session, namespace string, sub Subsystem, registry *p
 	registry.MustRegister(s.inUseConnectionsGauge)
 
 	s.idleConnectionsGauge = prometheus.NewGaugeFunc(
-		prometheus.GaugeOpts{Namespace: namespace, Subsystem: subsystem, Name: "idle_connections"},
+		prometheus.GaugeOpts{
+			Namespace:   namespace,
+			Subsystem:   "db",
+			Name:        "idle_connections",
+			ConstLabels: prometheus.Labels{"subsystem": string(sub)},
+		},
 		func() float64 {
 			return float64(base.DB.Stats().Idle)
 		},
@@ -127,8 +152,11 @@ func RegisterMetrics(base *Session, namespace string, sub Subsystem, registry *p
 
 	s.waitCountCounter = prometheus.NewCounterFunc(
 		prometheus.CounterOpts{
-			Namespace: namespace, Subsystem: subsystem, Name: "wait_count_total",
-			Help: "total number of number of connections waited for",
+			Namespace:   namespace,
+			Subsystem:   "db",
+			Name:        "wait_count_total",
+			Help:        "total number of number of connections waited for",
+			ConstLabels: prometheus.Labels{"subsystem": string(sub)},
 		},
 		func() float64 {
 			return float64(base.DB.Stats().WaitCount)
@@ -138,8 +166,11 @@ func RegisterMetrics(base *Session, namespace string, sub Subsystem, registry *p
 
 	s.waitDurationCounter = prometheus.NewCounterFunc(
 		prometheus.CounterOpts{
-			Namespace: namespace, Subsystem: subsystem, Name: "wait_duration_seconds_total",
-			Help: "total time blocked waiting for a new connection",
+			Namespace:   namespace,
+			Subsystem:   "db",
+			Name:        "wait_duration_seconds_total",
+			Help:        "total time blocked waiting for a new connection",
+			ConstLabels: prometheus.Labels{"subsystem": string(sub)},
 		},
 		func() float64 {
 			return base.DB.Stats().WaitDuration.Seconds()
@@ -149,8 +180,11 @@ func RegisterMetrics(base *Session, namespace string, sub Subsystem, registry *p
 
 	s.maxIdleClosedCounter = prometheus.NewCounterFunc(
 		prometheus.CounterOpts{
-			Namespace: namespace, Subsystem: subsystem, Name: "max_idle_closed_total",
-			Help: "total number of number of connections closed due to SetMaxIdleConns",
+			Namespace:   namespace,
+			Subsystem:   "db",
+			Name:        "max_idle_closed_total",
+			Help:        "total number of number of connections closed due to SetMaxIdleConns",
+			ConstLabels: prometheus.Labels{"subsystem": string(sub)},
 		},
 		func() float64 {
 			return float64(base.DB.Stats().MaxIdleClosed)
@@ -160,8 +194,11 @@ func RegisterMetrics(base *Session, namespace string, sub Subsystem, registry *p
 
 	s.maxIdleTimeClosedCounter = prometheus.NewCounterFunc(
 		prometheus.CounterOpts{
-			Namespace: namespace, Subsystem: subsystem, Name: "max_idle_time_closed_total",
-			Help: "total number of number of connections closed due to SetConnMaxIdleTime",
+			Namespace:   namespace,
+			Subsystem:   "db",
+			Name:        "max_idle_time_closed_total",
+			Help:        "total number of number of connections closed due to SetConnMaxIdleTime",
+			ConstLabels: prometheus.Labels{"subsystem": string(sub)},
 		},
 		func() float64 {
 			return float64(base.DB.Stats().MaxIdleTimeClosed)
@@ -171,8 +208,11 @@ func RegisterMetrics(base *Session, namespace string, sub Subsystem, registry *p
 
 	s.maxLifetimeClosedCounter = prometheus.NewCounterFunc(
 		prometheus.CounterOpts{
-			Namespace: namespace, Subsystem: subsystem, Name: "max_lifetime_closed_total",
-			Help: "total number of number of connections closed due to SetConnMaxLifetime",
+			Namespace:   namespace,
+			Subsystem:   "db",
+			Name:        "max_lifetime_closed_total",
+			Help:        "total number of number of connections closed due to SetConnMaxLifetime",
+			ConstLabels: prometheus.Labels{"subsystem": string(sub)},
 		},
 		func() float64 {
 			return float64(base.DB.Stats().MaxLifetimeClosed)
