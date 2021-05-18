@@ -207,7 +207,7 @@ func (operation *transactionOperationWrapper) findInitatingBeginSponsoringOp() *
 func addMuxedAccountDetails(result map[string]interface{}, a xdr.MuxedAccount, prefix string) {
 	if a.Type == xdr.CryptoKeyTypeKeyTypeMuxedEd25519 {
 		result[prefix+"_muxed"] = a.Address()
-		result[prefix+"_muxed_id"] = a.Med25519.Id
+		result[prefix+"_muxed_id"] = uint64(a.Med25519.Id)
 	}
 }
 
