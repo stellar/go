@@ -12,6 +12,21 @@ intended for **testing only**. It is being conceived to:
 2. Serve as a demo server where wallets can test and validate their SEP-8
    implementation.
 
+## Table of Contents
+
+* [regulated\-assets\-approval\-server](#regulated-assets-approval-server)
+  * [Table of Contents](#table-of-contents)
+  * [Usage](#usage)
+    * [Usage: Migrate](#usage-migrate)
+    * [Usage: Serve](#usage-serve)
+  * [Account Setup](#account-setup)
+    * [GET /friendbot?addr=\{stellar\_address\}](#get-friendbotaddrstellar_address)
+  * [API Spec](#api-spec)
+    * [POST /tx\-approve](#post-tx-approve)
+    * [POST /kyc\-status/\{CALLBACK\_ID\}](#post-kyc-statuscallback_id)
+
+Created by [gh-md-toc](https://github.com/ekalinin/github-markdown-toc.go)
+
 ## Usage
 
 ```sh
@@ -79,10 +94,23 @@ link](https://laboratory.stellar.org/#txbuilder?params=eyJhdHRyaWJ1dGVzIjp7ImZlZ
 to set those flags. Just click the link, fulfill the account address, sequence
 number, then the account secret and submit the transaction.
 
-### API Spec
-#### `POST /tx-approve`
+After setting up the issuer account you can fund a stellar account with an initial balance of the regulated asset with our internal `friendbot/?addr={stellar_address}` endpoint.
+This endpoint is not part of the official SEP-8 Approval Server spec, it's a debug feature to allow accounts to test sending transactions (payments with the issuer's regulated asset) to the server.
+
+### `GET /friendbot?addr={stellar_address}`
+
+This endpoint sends a payment of 10,000 (this value is configurable) regulated
+assets to the provided `addr`. Please be aware the address must first establish
+a trustline to the regulated asset in order to receive that payment. You can use
+[this
+link](https://laboratory.stellar.org/#txbuilder?params=eyJhdHRyaWJ1dGVzIjp7ImZlZSI6IjEwMCIsImJhc2VGZWUiOiIxMDAiLCJtaW5GZWUiOiIxMDAifSwiZmVlQnVtcEF0dHJpYnV0ZXMiOnsibWF4RmVlIjoiMTAwIn0sIm9wZXJhdGlvbnMiOlt7ImlkIjowLCJhdHRyaWJ1dGVzIjp7ImFzc2V0Ijp7InR5cGUiOiJjcmVkaXRfYWxwaGFudW00IiwiY29kZSI6IiIsImlzc3VlciI6IiJ9fSwibmFtZSI6ImNoYW5nZVRydXN0In1dfQ%3D%3D&network=test)
+to do that in Stellar Laboratory.
+
+## API Spec
+### `POST /tx-approve`
 
 This is the core [SEP-8] endpoint used to validate and process approval/revision/rejection of regulated assets transactions.
+Note: The example responses below have set their `base-url` env var to `"https://sep8-base-url.com"`.
 
 **Request:**
 
@@ -112,14 +140,61 @@ _Rejected:_
   "error": "There is one or more unauthorized operations in the provided transaction."
 }
 ```
-#### `GET /friendbot?addr=GDDIO6SFRD4SJEQFJOSKPIDYTDM7LM4METFBKN4NFGVR5DTGB7H75N5S`
 
-This endpoint sends a payment of 10,000 (this value is configurable) regulated
-assets to the provided `addr`. Please be aware the address must first establish
-a trustline to the regulated asset in order to receive that payment. You can use
-[this
-link](https://laboratory.stellar.org/#txbuilder?params=eyJhdHRyaWJ1dGVzIjp7ImZlZSI6IjEwMCIsImJhc2VGZWUiOiIxMDAiLCJtaW5GZWUiOiIxMDAifSwiZmVlQnVtcEF0dHJpYnV0ZXMiOnsibWF4RmVlIjoiMTAwIn0sIm9wZXJhdGlvbnMiOlt7ImlkIjowLCJhdHRyaWJ1dGVzIjp7ImFzc2V0Ijp7InR5cGUiOiJjcmVkaXRfYWxwaGFudW00IiwiY29kZSI6IiIsImlzc3VlciI6IiJ9fSwibmFtZSI6ImNoYW5nZVRydXN0In1dfQ%3D%3D&network=test)
-to do that in Stellar Laboratory.
+_Action Required:_
+
+```json
+{
+  "status": "action_required",
+  "message": "Payments exceeding 500.00 GOAT needs KYC approval. Please provide an email address.",
+  "action_url": "https://sep8-base-url.com/kyc-status/cf4fe081-5b38-48b6-86ed-1bcfb7171c7d",
+  "action_method": "POST",
+  "action_fields": [
+    "email_address"
+  ]
+}
+```
+
+### `POST /kyc-status/{CALLBACK_ID}`
+
+This endpoint is used for the extra action after `/tx-approve`, as described in
+the SEP-8 [Action Required] section.
+
+Currently an arbitrarily criteria is implemented, email addresses starting with "x" will have the KYC
+automatically denied while all other emails will be accepted.
+
+Note: Subsequent KYC attempts with new (valid)emails addresses will approve your account for KYC required transactions.
+
+**Request:**
+
+```json
+{
+  "email_address": "foo@bar.com"
+}
+```
+
+**Response:**
+
+```json
+{
+  "result": "no_further_action_required",
+}
+```
+
+After the user has been approved or rejected they can POST their transaction to [`POST /tx-approve`](#post-tx-approve) for revision.
+
+If their KYC was rejected they should see a rejection response.
+**Response (rejected for emails staring with "x"):**
+
+```json
+{
+  "status": "rejected",
+  "error": "Your KYC was rejected and you're not authorized for operations above 500.00 GOAT."
+}
+```
+
+
 
 [SEP-8]: https://github.com/stellar/stellar-protocol/blob/7c795bb9abc606cd1e34764c4ba07900d58fe26e/ecosystem/sep-0008.md
 [authorization flags]: https://github.com/stellar/stellar-protocol/blob/7c795bb9abc606cd1e34764c4ba07900d58fe26e/ecosystem/sep-0008.md#authorization-flags
+[Action Required]: https://github.com/stellar/stellar-protocol/blob/7c795bb9abc606cd1e34764c4ba07900d58fe26e/ecosystem/sep-0008.md#action-required

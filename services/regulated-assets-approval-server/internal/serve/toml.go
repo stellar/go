@@ -55,13 +55,21 @@ func (h stellarTOMLHandler) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 		httperror.InternalServer.Render(rw)
 		return
 	}
-	approvalCriteria := fmt.Sprintf("Currently %s only approves %s payment transactions.", h.approvalServer, h.assetCode)
 
+	// Convert kycThreshold value to human readable string; from amount package's int64 5000000000 to 500.00.
+	kycThreshold, err := convertThresholdToReadableString(h.kycThreshold)
+	if err != nil {
+		log.Ctx(ctx).Error(errors.Wrap(err, "converting kycThreshold value to human readable string"))
+		httperror.InternalServer.Render(rw)
+		return
+	}
+
+	// Generate toml content.
 	fmt.Fprintf(rw, "NETWORK_PASSPHRASE=%q\n", h.networkPassphrase)
 	fmt.Fprintf(rw, "[[CURRENCIES]]\n")
 	fmt.Fprintf(rw, "code=%q\n", h.assetCode)
 	fmt.Fprintf(rw, "issuer=%q\n", h.issuerAddress)
 	fmt.Fprintf(rw, "regulated=true\n")
 	fmt.Fprintf(rw, "approval_server=%q\n", h.approvalServer)
-	fmt.Fprintf(rw, "approval_criteria=%q\n", approvalCriteria)
+	fmt.Fprintf(rw, "approval_criteria=\"The approval server currently only accepts payments. The transaction must have exactly one operation of type payment. If the payment amount exceeds %s %s it will need KYC approval.\"", kycThreshold, h.assetCode)
 }

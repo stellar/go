@@ -2,9 +2,14 @@ package serve
 
 import (
 	"context"
+	"database/sql"
+	"fmt"
 	"net/http"
 	"strconv"
 
+	"github.com/google/uuid"
+	"github.com/jmoiron/sqlx"
+	"github.com/stellar/go/amount"
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/services/regulated-assets-approval-server/internal/serve/httperror"
@@ -19,6 +24,9 @@ type txApproveHandler struct {
 	assetCode         string
 	horizonClient     horizonclient.ClientInterface
 	networkPassphrase string
+	db                *sqlx.DB
+	kycThreshold      int64
+	baseURL           string
 }
 
 type txApproveRequest struct {
@@ -39,12 +47,29 @@ func (h txApproveHandler) validate() error {
 	if h.networkPassphrase == "" {
 		return errors.New("network passphrase cannot be empty")
 	}
+	if h.db == nil {
+		return errors.New("database cannot be nil")
+	}
+	if h.kycThreshold <= 0 {
+		return errors.New("kyc threshold cannot be less than or equal to zero")
+	}
+	if h.baseURL == "" {
+		return errors.New("base url cannot be empty")
+	}
 	return nil
+}
+
+func convertThresholdToReadableString(threshold int64) (string, error) {
+	thresholdStr := amount.StringFromInt64(threshold)
+	res, err := strconv.ParseFloat(thresholdStr, 1)
+	if err != nil {
+		return "", errors.Wrap(err, "converting threshold amount from string to float")
+	}
+	return fmt.Sprintf("%.2f", res), nil
 }
 
 func (h txApproveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-
 	err := h.validate()
 	if err != nil {
 		log.Ctx(ctx).Error(errors.Wrap(err, "validating txApproveHandler"))
@@ -66,6 +91,7 @@ func (h txApproveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		httperror.InternalServer.Render(w)
 		return
 	}
+
 	txApproveResp.Render(w)
 }
 
@@ -123,6 +149,7 @@ func (h txApproveHandler) txApprove(ctx context.Context, in txApproveRequest) (r
 	if txRejectedResp != nil {
 		return txRejectedResp, nil
 	}
+
 	paymentOp, ok := tx.Operations()[0].(*txnbuild.Payment)
 	if !ok {
 		log.Ctx(ctx).Error(`transaction contains one or more operations is not of type payment`)
@@ -152,7 +179,15 @@ func (h txApproveHandler) txApprove(ctx context.Context, in txApproveRequest) (r
 		log.Ctx(ctx).Errorf(`invalid transaction sequence number tx.SourceAccount().Sequence: %d, accountSequence+1:%d`, tx.SourceAccount().Sequence, accountSequence+1)
 		return NewRejectedTxApprovalResponse("Invalid transaction sequence number."), nil
 	}
-
+	// Validate if payment operation requires KYC.
+	var kycRequiredResponse *txApprovalResponse
+	kycRequiredResponse, err = h.handleKYCRequiredOperationIfNeeded(ctx, paymentSource, paymentOp)
+	if err != nil {
+		return nil, errors.Wrap(err, "handling KYC required payment")
+	}
+	if kycRequiredResponse != nil {
+		return kycRequiredResponse, nil
+	}
 	// build the transaction
 	revisedOperations := []txnbuild.Operation{
 		&txnbuild.AllowTrust{
@@ -201,5 +236,71 @@ func (h txApproveHandler) txApprove(ctx context.Context, in txApproveRequest) (r
 	if err != nil {
 		return nil, errors.Wrap(err, "encoding revised transaction")
 	}
+
 	return NewRevisedTxApprovalResponse(txe), nil
+}
+
+// handleKYCRequiredOperationIfNeeded validates and returns an action_required response if the payment requires KYC.
+func (h txApproveHandler) handleKYCRequiredOperationIfNeeded(ctx context.Context, stellarAddress string, paymentOp *txnbuild.Payment) (*txApprovalResponse, error) {
+	// validate payment operation against KYC condition(s).
+	KYCRequiredMessage, err := h.kycRequiredMessageIfNeeded(paymentOp)
+	if err != nil {
+		return nil, errors.Wrap(err, "validating KYC")
+	}
+	if KYCRequiredMessage == "" {
+		return nil, nil
+	}
+
+	intendedCallbackID := uuid.New().String()
+	const q = `
+		WITH new_row AS (
+			INSERT INTO accounts_kyc_status (stellar_address, callback_id)
+			VALUES ($1, $2)
+			ON CONFLICT(stellar_address) DO NOTHING
+			RETURNING *
+		)
+		SELECT callback_id, approved_at, rejected_at FROM new_row
+		UNION
+		SELECT callback_id, approved_at, rejected_at
+		FROM accounts_kyc_status
+		WHERE stellar_address = $1
+	`
+	var (
+		callbackID             string
+		approvedAt, rejectedAt sql.NullTime
+	)
+	err = h.db.QueryRowContext(ctx, q, stellarAddress, intendedCallbackID).Scan(&callbackID, &approvedAt, &rejectedAt)
+	if err != nil {
+		return nil, errors.Wrap(err, "inserting new row into accounts_kyc_status table")
+	}
+
+	if approvedAt.Valid {
+		return nil, nil
+	}
+	if rejectedAt.Valid {
+		return NewRejectedTxApprovalResponse(fmt.Sprintf("Your KYC was rejected and you're not authorized for operations above %s %s.", amount.StringFromInt64(h.kycThreshold), h.assetCode)), nil
+	}
+
+	return NewActionRequiredTxApprovalResponse(
+		KYCRequiredMessage,
+		fmt.Sprintf("%s/kyc-status/%s", h.baseURL, callbackID),
+		[]string{"email_address"},
+	), nil
+}
+
+// kycRequiredMessageIfNeeded returns a "action_required" message for the NewActionRequiredTxApprovalResponse if the payment operation meets KYC conditions.
+// Currently rule(s) are, checking if payment amount is > KYCThreshold amount.
+func (h txApproveHandler) kycRequiredMessageIfNeeded(paymentOp *txnbuild.Payment) (string, error) {
+	paymentAmount, err := amount.ParseInt64(paymentOp.Amount)
+	if err != nil {
+		return "", errors.Wrap(err, "parsing account payment amount from string to Int64")
+	}
+	if paymentAmount > h.kycThreshold {
+		kycThreshold, err := convertThresholdToReadableString(h.kycThreshold)
+		if err != nil {
+			return "", errors.Wrap(err, "converting kycThreshold to human readable string")
+		}
+		return fmt.Sprintf(`Payments exceeding %s %s requires KYC approval. Please provide an email address.`, kycThreshold, h.assetCode), nil
+	}
+	return "", nil
 }

@@ -92,7 +92,7 @@ func TestTomlHandler_ServeHTTP(t *testing.T) {
 		assetCode:         "FOO",
 		issuerAddress:     "GCVDOU4YHHXGM3QYVSDHPQIFMZKXTFSIYO4HJOJZOTR7GURVQO6IQ5HM",
 		approvalServer:    "localhost:8000/tx-approve",
-		kycThreshold:      10,
+		kycThreshold:      5000000000,
 	}.ServeHTTP)
 
 	ctx := context.Background()
@@ -107,13 +107,13 @@ func TestTomlHandler_ServeHTTP(t *testing.T) {
 
 	body, err := ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
+
 	wantBody := `NETWORK_PASSPHRASE="` + network.TestNetworkPassphrase + `"
 [[CURRENCIES]]
 code="FOO"
 issuer="GCVDOU4YHHXGM3QYVSDHPQIFMZKXTFSIYO4HJOJZOTR7GURVQO6IQ5HM"
 regulated=true
 approval_server="localhost:8000/tx-approve"
-approval_criteria="Currently localhost:8000/tx-approve only approves FOO payment transactions."
-`
+approval_criteria="The approval server currently only accepts payments. The transaction must have exactly one operation of type payment. If the payment amount exceeds 500.00 FOO it will need KYC approval."`
 	require.Equal(t, wantBody, string(body))
 }
