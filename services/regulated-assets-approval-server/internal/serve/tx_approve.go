@@ -59,6 +59,15 @@ func (h txApproveHandler) validate() error {
 	return nil
 }
 
+func convertThresholdToReadableString(threshold int64) (string, error) {
+	thresholdStr := amount.StringFromInt64(threshold)
+	res, err := strconv.ParseFloat(thresholdStr, 1)
+	if err != nil {
+		return "", errors.Wrap(err, "converting threshold amount from string to float")
+	}
+	return fmt.Sprintf("%.2f", res), nil
+}
+
 func (h txApproveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	err := h.validate()

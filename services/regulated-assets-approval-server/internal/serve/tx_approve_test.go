@@ -112,6 +112,27 @@ func TestTxApproveHandlerValidate(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestConvertThresholdToReadableString(t *testing.T) {
+	// Prepare raw int64 amountValue.
+	// Context: stellar-core represents asset "amounts" as 64-bit so amounts shown as "500" is represented in stellar-core as 5000000000.
+	var amountValue int64 = 5000000000
+
+	// TEST if no error and if "500.00" returned
+	amountString, err := convertThresholdToReadableString(amountValue)
+	require.NoError(t, err)
+	assert.Equal(t, "500.00", amountString)
+
+	// Prepare amount parsed Int64 from string
+	// Context: env var KYCRequiredPaymentAmountThreshold is the token's unit quantity represented as string.
+	// This string is converted to int64 and passed to the txApproveHandler for payment evaluation.
+	parsedThresholdResult, err := amount.ParseInt64("500")
+
+	// TEST if no error and if "500.00" returned
+	amountString, err = convertThresholdToReadableString(parsedThresholdResult)
+	require.NoError(t, err)
+	assert.Equal(t, "500.00", amountString)
+}
+
 func TestTxApproveHandlerKYCRequiredMessageIfNeeded(t *testing.T) {
 	db := dbtest.Open(t)
 	defer db.Close()
