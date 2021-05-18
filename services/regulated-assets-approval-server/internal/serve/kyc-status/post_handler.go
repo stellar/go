@@ -119,8 +119,10 @@ func (in kycPostRequest) isKYCRuleRespected() bool {
 }
 
 func (in kycPostRequest) buildUpdateKYCQuery() (string, []interface{}) {
-	var query strings.Builder
-	var args []interface{}
+	var (
+		query strings.Builder
+		args  []interface{}
+	)
 	query.WriteString("WITH updated_row AS (")
 	query.WriteString("UPDATE accounts_kyc_status ")
 	query.WriteString("SET kyc_submitted_at = NOW(), ")
