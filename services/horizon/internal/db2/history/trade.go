@@ -8,6 +8,7 @@ import (
 	sq "github.com/Masterminds/squirrel"
 
 	"github.com/stellar/go/services/horizon/internal/db2"
+	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
@@ -195,6 +196,8 @@ func (q *TradesQ) Select(ctx context.Context, dest interface{}) error {
 		return errors.New("TradesQ.Page call is required before calling Select")
 	}
 
+	// Add explicit query type for prometheus metrics, since we use raw sql.
+	ctx = context.WithValue(ctx, &db.QueryTypeContextKey, db.SelectQueryType)
 	if q.rawSQL != "" {
 		q.Err = q.parent.SelectRaw(ctx, dest, q.rawSQL, q.rawArgs...)
 	} else {
