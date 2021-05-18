@@ -63,3 +63,17 @@ func TestBuildUpdateKYCQuery(t *testing.T) {
 	require.Equal(t, expectedQuery, query)
 	require.Equal(t, expectedArgs, args)
 }
+
+func TestRxEmail(t *testing.T) {
+	// Test empty email string.
+	assert.NotRegexp(t, RxEmail, "")
+
+	// Test empty prefix.
+	assert.NotRegexp(t, RxEmail, "email.com")
+
+	// Test only domain given.
+	assert.NotRegexp(t, RxEmail, "@email.com")
+
+	// Test correct email.
+	assert.Regexp(t, RxEmail, "t@email.com")
+}
