@@ -1,9 +1,13 @@
 package kycstatus
 
 import (
+	"context"
 	"testing"
 
+	"github.com/google/uuid"
+	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/services/regulated-assets-approval-server/internal/db/dbtest"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -22,4 +26,71 @@ func TestDeleteHandlerValidate(t *testing.T) {
 	}
 	err = h.validate()
 	require.NoError(t, err)
+}
+
+func TestDeleteHandlerHandle(t *testing.T) {
+	ctx := context.Background()
+
+	// Prepare and validate DeleteHandler.
+	db := dbtest.Open(t)
+	defer db.Close()
+	conn := db.Open()
+	defer conn.Close()
+	h := DeleteHandler{
+		DB: conn,
+	}
+	err := h.validate()
+	require.NoError(t, err)
+
+	// Prepare and send empty deleteRequest.
+	in := deleteRequest{}
+	err = h.handle(ctx, in)
+
+	// TEST error "Missing stellar address."
+	require.EqualError(t, err, "Missing stellar address.")
+
+	// Prepare and send deleteRequest to an account not in the db.
+	accountKP := keypair.MustRandom()
+	in = deleteRequest{StellarAddress: accountKP.Address()}
+	err = h.handle(ctx, in)
+
+	// TEST error ""Not found.".
+	require.EqualError(t, err, "Not found.")
+
+	// INSERT new account in db's accounts_kyc_status table; new account was approved after submitting kyc.
+	insertNewAccountQuery := `
+	INSERT INTO accounts_kyc_status (stellar_address, callback_id, email_address, kyc_submitted_at, approved_at, rejected_at)
+	VALUES ($1, $2, $3, NOW(), NOW(), NULL)
+	`
+	callbackID := uuid.New().String()
+	emailAddress := "email@approved.com"
+	_, err = h.DB.ExecContext(ctx, insertNewAccountQuery, accountKP.Address(), callbackID, emailAddress)
+	require.NoError(t, err)
+
+	// Prepare and execute SELECT query for account was added.
+	existQuery := `
+		SELECT EXISTS(
+			SELECT stellar_address
+			FROM accounts_kyc_status
+			WHERE stellar_address = $1
+		)`
+	var exists bool
+	err = h.DB.QueryRowContext(ctx, existQuery, accountKP.Address()).Scan(&exists)
+	require.NoError(t, err)
+
+	// TEST to ensure its in db.
+	assert.True(t, exists)
+
+	// Send deleteRequest to an account in the db.
+	err = h.handle(ctx, in)
+
+	// TEST if error returned is nil (success).
+	require.NoError(t, err)
+
+	// Execute SELECT query for account that was deleted.
+	err = h.DB.QueryRowContext(ctx, existQuery, accountKP.Address()).Scan(&exists)
+	require.NoError(t, err)
+
+	// TEST to ensure its no longer in db.
+	assert.False(t, exists)
 }
