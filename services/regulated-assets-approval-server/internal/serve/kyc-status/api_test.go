@@ -308,7 +308,7 @@ func TestAPI_GETKYCStatus(t *testing.T) {
 	_, err = getHandler.DB.ExecContext(ctx, insertNewAccountNoKycQuery, noKycAccountKP.Address(), noKycCallbackID)
 	require.NoError(t, err)
 
-	// Prepare and send /kyc-status/{stellar_address_or_callback_id} GET request; for no KYC account in the "accounts_kyc_status" table; This time using their callbackID.
+	// Prepare and send /kyc-status/{stellar_address_or_callback_id} GET request; for no KYC account in the "accounts_kyc_status" table (this time using their callbackID).
 	r = httptest.NewRequest("GET", fmt.Sprintf("/kyc-status/%s", noKycCallbackID), nil)
 	r = r.WithContext(ctx)
 	w = httptest.NewRecorder()
