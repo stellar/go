@@ -49,7 +49,6 @@ func (h PostHandler) validate() error {
 
 func (h PostHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-
 	err := h.validate()
 	if err != nil {
 		log.Ctx(ctx).Error(errors.Wrap(err, "validating kyc-status PostHandler"))
@@ -152,7 +151,6 @@ func (in kycPostRequest) buildUpdateKYCQuery() (string, []interface{}) {
 			SELECT * FROM updated_row
 		)
 	`)
-
 	return query.String(), args
 }
 
