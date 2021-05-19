@@ -210,16 +210,39 @@ Returns the detail of an account that requested KYC, as well some metadata about
 its status.
 Note: This functionality is for test/debugging purposes and it's not part of the [SEP-8] spec.
 
-**Response:**
+**Response (No KYC Submitted):**
 
 ```json
 {
   "stellar_address": "GA2DMTP67JT4LQ4CFTUONFBFGKPO6VONW4LWJNOIY2WPRJLUV44MJZOK",
+  "callback_id":"e0d9243a-40cf-4baa-9575-913e6c98a12e",
+  "created_at": "2021-03-26T09:35:06.907293-03:00",
+}
+```
+
+**Response (Approved KYC):**
+
+```json
+{
+  "stellar_address": "GA2DMTP67JT4LQ4CFTUONFBFGKPO6VONW4LWJNOIY2WPRJLUV44MJZOK",
+  "callback_id":"e0d9243a-40cf-4baa-9575-913e6c98a12e",
   "email_address": "test@test.com",
   "created_at": "2021-03-26T09:35:06.907293-03:00",
   "kyc_submitted_at": "2021-03-26T14:03:43.314334-03:00",
   "approved_at": "2021-03-26T14:03:43.314334-03:00",
-  "rejected_at": ""
+}
+```
+
+**Response (Rejected KYC):**
+
+```json
+{
+  "stellar_address": "GA2DMTP67JT4LQ4CFTUONFBFGKPO6VONW4LWJNOIY2WPRJLUV44MJZOK",
+  "callback_id":"e0d9243a-40cf-4baa-9575-913e6c98a12e",
+  "email_address": "test@test.com",
+  "created_at": "2021-03-26T09:35:06.907293-03:00",
+  "kyc_submitted_at": "2021-03-26T14:03:43.314334-03:00",
+  "rejected_at": "2021-03-26T14:03:43.314334-03:00",
 }
 ```
 
