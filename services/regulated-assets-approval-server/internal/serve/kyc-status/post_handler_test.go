@@ -32,7 +32,7 @@ func TestIsKYCRuleRespected(t *testing.T) {
 	}
 	approved := in.isKYCRuleRespected()
 	assert.True(t, approved)
-	// Test if email approved rejected.
+	// Test if email rejected.
 	in = kycPostRequest{
 		EmailAddress: "xtest@email.com",
 	}
@@ -48,10 +48,10 @@ func TestBuildUpdateKYCQuery(t *testing.T) {
 	}
 	query, args := in.buildUpdateKYCQuery()
 	expectedQuery := "WITH updated_row AS (UPDATE accounts_kyc_status SET kyc_submitted_at = NOW(), email_address = $1, approved_at = NOW(), rejected_at = NULL WHERE callback_id = $2 RETURNING * )\n\t\tSELECT EXISTS(\n\t\t\tSELECT * FROM updated_row\n\t\t)\n\t"
-	var expectedArgs []interface{}
-	expectedArgs = append(expectedArgs, in.EmailAddress, in.CallbackID)
+	expectedArgs := []interface{}{in.EmailAddress, in.CallbackID}
 	require.Equal(t, expectedQuery, query)
 	require.Equal(t, expectedArgs, args)
+
 	// Test query returned if email rejected.
 	in = kycPostRequest{
 		CallbackID:   "9999999999-9999",
@@ -59,8 +59,21 @@ func TestBuildUpdateKYCQuery(t *testing.T) {
 	}
 	query, args = in.buildUpdateKYCQuery()
 	expectedQuery = "WITH updated_row AS (UPDATE accounts_kyc_status SET kyc_submitted_at = NOW(), email_address = $1, rejected_at = NOW(), approved_at = NULL WHERE callback_id = $2 RETURNING * )\n\t\tSELECT EXISTS(\n\t\t\tSELECT * FROM updated_row\n\t\t)\n\t"
-	expectedArgs[0] = in.EmailAddress
-	expectedArgs[1] = in.CallbackID
+	expectedArgs = []interface{}{in.EmailAddress, in.CallbackID}
 	require.Equal(t, expectedQuery, query)
 	require.Equal(t, expectedArgs, args)
+}
+
+func TestRxEmail(t *testing.T) {
+	// Test empty email string.
+	assert.NotRegexp(t, RxEmail, "")
+
+	// Test empty prefix.
+	assert.NotRegexp(t, RxEmail, "email.com")
+
+	// Test only domain given.
+	assert.NotRegexp(t, RxEmail, "@email.com")
+
+	// Test correct email.
+	assert.Regexp(t, RxEmail, "t@email.com")
 }

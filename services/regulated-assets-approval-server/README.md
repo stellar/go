@@ -21,11 +21,11 @@ intended for **testing only**. It is being conceived to:
     * [Usage: Serve](#usage-serve)
   * [Account Setup](#account-setup)
       * [GET /friendbot?addr=\{stellar\_address\}](#get-friendbotaddrstellar_address)
-    * [API Spec](#api-spec)
-      * [POST /tx\-approve](#post-tx-approve)
-      * [POST /kyc\-status/\{CALLBACK\_ID\}](#post-kyc-statuscallback_id)
-      * [GET /kyc\-status/\{STELLAR\_ADDRESS\_OR\_CALLBACK\_ID\}](#get-kyc-statusstellar_address_or_callback_id)
-      * [DELETE /kyc\-status/\{STELLAR\_ADDRESS\}](#delete-kyc-statusstellar_address)
+  * [API Spec](#api-spec)
+    * [POST /tx\-approve](#post-tx-approve)
+    * [POST /kyc\-status/\{CALLBACK\_ID\}](#post-kyc-statuscallback_id)
+    * [GET /kyc\-status/\{STELLAR\_ADDRESS\_OR\_CALLBACK\_ID\}](#get-kyc-statusstellar_address_or_callback_id)
+    * [DELETE /kyc\-status/\{STELLAR\_ADDRESS\}](#delete-kyc-statusstellar_address)
 
 Created by [gh-md-toc](https://github.com/ekalinin/github-markdown-toc.go)
 
@@ -97,9 +97,9 @@ to set those flags. Just click the link, fulfill the account address, sequence
 number, then the account secret and submit the transaction.
 
 After setting up the issuer account you can fund a stellar account with an initial balance of the regulated asset with our internal `friendbot/?addr={stellar_address}` endpoint.
-This endpoint is not part of the official SEP-8 Approval Server spec, it's a debug feature to allow accounts to test sending transactions (payments with teh issuer's regulated asset) to the server.
+This endpoint is not part of the official SEP-8 Approval Server spec, it's a debug feature to allow accounts to test sending transactions (payments with the issuer's regulated asset) to the server.
 
-#### `GET /friendbot?addr={stellar_address}`
+### `GET /friendbot?addr={stellar_address}`
 
 This endpoint sends a payment of 10,000 (this value is configurable) regulated
 assets to the provided `addr`. Please be aware the address must first establish
@@ -108,8 +108,8 @@ a trustline to the regulated asset in order to receive that payment. You can use
 link](https://laboratory.stellar.org/#txbuilder?params=eyJhdHRyaWJ1dGVzIjp7ImZlZSI6IjEwMCIsImJhc2VGZWUiOiIxMDAiLCJtaW5GZWUiOiIxMDAifSwiZmVlQnVtcEF0dHJpYnV0ZXMiOnsibWF4RmVlIjoiMTAwIn0sIm9wZXJhdGlvbnMiOlt7ImlkIjowLCJhdHRyaWJ1dGVzIjp7ImFzc2V0Ijp7InR5cGUiOiJjcmVkaXRfYWxwaGFudW00IiwiY29kZSI6IiIsImlzc3VlciI6IiJ9fSwibmFtZSI6ImNoYW5nZVRydXN0In1dfQ%3D%3D&network=test)
 to do that in Stellar Laboratory.
 
-### API Spec
-#### `POST /tx-approve`
+## API Spec
+### `POST /tx-approve`
 
 This is the core [SEP-8] endpoint used to validate and process approval/revision/rejection of regulated assets transactions.
 Note: The example responses below have set their `base-url` env var to `"https://sep8-base-url.com"`.
@@ -157,7 +157,7 @@ _Action Required:_
 }
 ```
 
-#### `POST /kyc-status/{CALLBACK_ID}`
+### `POST /kyc-status/{CALLBACK_ID}`
 
 This endpoint is used for the extra action after `/tx-approve`, as described in
 the SEP-8 [Action Required] section.
@@ -183,7 +183,7 @@ Note: Subsequent KYC attempts with new (valid)emails addresses will approve your
 }
 ```
 
-After the user has been approved or rejected they can POST their transaction to `POST /tx-approve` for revision.
+After the user has been approved or rejected they can POST their transaction to [`POST /tx-approve`](#post-tx-approve) for revision.
 
 If their KYC was rejected they should see a rejection response.
 **Response (rejected for emails staring with "x"):**
@@ -191,11 +191,11 @@ If their KYC was rejected they should see a rejection response.
 ```json
 {
   "status": "rejected",
-  "error": "Your KYC was rejected and you're not authorized for operations above 500.0000000 GOAT."
+  "error": "Your KYC was rejected and you're not authorized for operations above 500.00 GOAT."
 }
 ```
 
-#### `GET /kyc-status/{STELLAR_ADDRESS_OR_CALLBACK_ID}`
+### `GET /kyc-status/{STELLAR_ADDRESS_OR_CALLBACK_ID}`
 
 Returns the detail of an account that requested KYC, as well some metadata about
 its status.
@@ -210,11 +210,11 @@ Note: This is functionality is outside of the [SEP-8] spec.
   "created_at": "2021-03-26T09:35:06.907293-03:00",
   "kyc_submitted_at": "2021-03-26T14:03:43.314334-03:00",
   "approved_at": "2021-03-26T14:03:43.314334-03:00",
-  "rejected_at": "2021-03-26T14:03:43.314334-03:00"
+  "rejected_at": ""
 }
 ```
 
-#### `DELETE /kyc-status/{STELLAR_ADDRESS}`
+### `DELETE /kyc-status/{STELLAR_ADDRESS}`
 
 Deletes a stellar account from the list of KYCs. If the stellar address is not
 in the database to be deleted the server will return with a `404 - Not Found`.
@@ -227,7 +227,6 @@ Note: This is functionality is outside of the [SEP-8] spec.
   "message": "ok"
 }
 ```
-
 
 [SEP-8]: https://github.com/stellar/stellar-protocol/blob/7c795bb9abc606cd1e34764c4ba07900d58fe26e/ecosystem/sep-0008.md
 [authorization flags]: https://github.com/stellar/stellar-protocol/blob/7c795bb9abc606cd1e34764c4ba07900d58fe26e/ecosystem/sep-0008.md#authorization-flags

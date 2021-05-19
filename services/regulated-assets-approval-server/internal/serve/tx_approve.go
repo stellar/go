@@ -59,6 +59,15 @@ func (h txApproveHandler) validate() error {
 	return nil
 }
 
+func convertThresholdToReadableString(threshold int64) (string, error) {
+	thresholdStr := amount.StringFromInt64(threshold)
+	res, err := strconv.ParseFloat(thresholdStr, 1)
+	if err != nil {
+		return "", errors.Wrap(err, "converting threshold amount from string to float")
+	}
+	return fmt.Sprintf("%.2f", res), nil
+}
+
 func (h txApproveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	err := h.validate()
@@ -238,7 +247,6 @@ func (h txApproveHandler) handleKYCRequiredOperationIfNeeded(ctx context.Context
 	if err != nil {
 		return nil, errors.Wrap(err, "validating KYC")
 	}
-
 	if KYCRequiredMessage == "" {
 		return nil, nil
 	}
@@ -288,7 +296,11 @@ func (h txApproveHandler) kycRequiredMessageIfNeeded(paymentOp *txnbuild.Payment
 		return "", errors.Wrap(err, "parsing account payment amount from string to Int64")
 	}
 	if paymentAmount > h.kycThreshold {
-		return fmt.Sprintf(`Payments exceeding %s %s requires KYC approval. Please provide an email address.`, amount.StringFromInt64(h.kycThreshold), h.assetCode), nil
+		kycThreshold, err := convertThresholdToReadableString(h.kycThreshold)
+		if err != nil {
+			return "", errors.Wrap(err, "converting kycThreshold to human readable string")
+		}
+		return fmt.Sprintf(`Payments exceeding %s %s requires KYC approval. Please provide an email address.`, kycThreshold, h.assetCode), nil
 	}
 	return "", nil
 }

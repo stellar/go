@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/stellar/go/amount"
 	"github.com/stellar/go/services/regulated-assets-approval-server/internal/serve/httperror"
 	"github.com/stellar/go/strkey"
 	"github.com/stellar/go/support/errors"
@@ -56,11 +55,21 @@ func (h stellarTOMLHandler) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 		httperror.InternalServer.Render(rw)
 		return
 	}
+
+	// Convert kycThreshold value to human readable string; from amount package's int64 5000000000 to 500.00.
+	kycThreshold, err := convertThresholdToReadableString(h.kycThreshold)
+	if err != nil {
+		log.Ctx(ctx).Error(errors.Wrap(err, "converting kycThreshold value to human readable string"))
+		httperror.InternalServer.Render(rw)
+		return
+	}
+
+	// Generate toml content.
 	fmt.Fprintf(rw, "NETWORK_PASSPHRASE=%q\n", h.networkPassphrase)
 	fmt.Fprintf(rw, "[[CURRENCIES]]\n")
 	fmt.Fprintf(rw, "code=%q\n", h.assetCode)
 	fmt.Fprintf(rw, "issuer=%q\n", h.issuerAddress)
 	fmt.Fprintf(rw, "regulated=true\n")
 	fmt.Fprintf(rw, "approval_server=%q\n", h.approvalServer)
-	fmt.Fprintf(rw, "approval_criteria=\"The approval server currently only accepts payments. The transaction must have exactly one operation of type payment. If the payment amount exceeds %s %s it will need KYC approval.\"", amount.StringFromInt64(h.kycThreshold), h.assetCode)
+	fmt.Fprintf(rw, "approval_criteria=\"The approval server currently only accepts payments. The transaction must have exactly one operation of type payment. If the payment amount exceeds %s %s it will need KYC approval.\"", kycThreshold, h.assetCode)
 }
