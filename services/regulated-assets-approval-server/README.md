@@ -65,7 +65,7 @@ Flags:
 regulated-assets-approval-server builds the migrations into the binary. If there are any changes to the db(adding, removing or updating tables) generate a new `internal/db/dbmigrate/dbmigrate_generated.go` using the `gogenerate.sh` script located at the root of the repo.
 
 ```sh
-$ ./gogenerate.sh internal/db/dbmigrate/migrations/
+$ ./gogenerate.sh
 ```
 
 ### Usage: Serve
