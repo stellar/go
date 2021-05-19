@@ -18,6 +18,7 @@ intended for **testing only**. It is being conceived to:
   * [Table of Contents](#table-of-contents)
   * [Usage](#usage)
     * [Usage: Migrate](#usage-migrate)
+      * [Migration files](#migration-files)
     * [Usage: Serve](#usage-serve)
   * [Account Setup](#account-setup)
     * [GET /friendbot?addr=\{stellar\_address\}](#get-friendbotaddrstellar_address)
@@ -57,6 +58,14 @@ Usage:
 
 Flags:
       --database-url string   Database URL (DATABASE_URL) (default "postgres://localhost:5432/?sslmode=disable")
+```
+
+#### Migration files
+
+regulated-assets-approval-server builds the migrations into the binary. If there are any changes to the db(adding, removing or updating tables) generate a new `internal/db/dbmigrate/dbmigrate_generated.go` using the `gogenerate.sh` script located at the root of the repo.
+
+```sh
+$ ./gogenerate.sh
 ```
 
 ### Usage: Serve
