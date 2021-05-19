@@ -193,6 +193,28 @@ func TestPopulateOperation_ClaimClaimableBalance(t *testing.T) {
 	tt.Equal("GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD", resp["claimant"])
 }
 
+func TestPopulateOperation_ClaimClaimableBalance_Muxed(t *testing.T) {
+	tt := assert.New(t)
+
+	details := `{
+		"claimant":                "GAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSTVY",
+		"claimant_muxed":          "MAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSAAAAAAAAAAE2LP26",
+		"claimant_muxed_id":       1234,
+		"balance_id":              "abc",
+		"source_account_muxed":    "MAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSAAAAAAAAAAE2LP26",
+		"source_account_muxed_id": 1234
+	}`
+
+	resp, err := getJSONResponse(xdr.OperationTypeClaimClaimableBalance, details)
+	tt.NoError(err)
+	tt.Equal("abc", resp["balance_id"])
+	tt.Equal("GAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSTVY", resp["claimant"])
+	tt.Equal("MAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSAAAAAAAAAAE2LP26", resp["claimant_muxed"])
+	tt.Equal(1234, int(resp["claimant_muxed_id"].(float64)))
+	tt.Equal("MAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSAAAAAAAAAAE2LP26", resp["source_account_muxed"])
+	tt.Equal(1234, int(resp["source_account_muxed_id"].(float64)))
+}
+
 func TestPopulateOperation_BeginSponsoringFutureReserves(t *testing.T) {
 	tt := assert.New(t)
 
