@@ -356,3 +356,75 @@ func TestAPI_GETKYCStatus(t *testing.T) {
 		}`
 	require.JSONEq(t, wantGetResponseNotFound, string(body))
 }
+
+func TestAPI_DELETEKYCStatus(t *testing.T) {
+	ctx := context.Background()
+	db := dbtest.Open(t)
+	defer db.Close()
+	conn := db.Open()
+	defer conn.Close()
+
+	// Create kyc-status DeleteHandler.
+	deleteHandler := DeleteHandler{
+		DB: conn,
+	}
+
+	// INSERT new account in db's accounts_kyc_status table; new account was approved after submitting kyc.
+	insertNewApprovedAccountQuery := `
+	INSERT INTO accounts_kyc_status (stellar_address, callback_id, email_address, kyc_submitted_at, approved_at, rejected_at)
+	VALUES ($1, $2, $3, NOW(), NOW(), NULL)
+	`
+	approveKP := keypair.MustRandom()
+	approveCallbackID := uuid.New().String()
+	approveEmailAddress := "email@approved.com"
+	_, err := deleteHandler.DB.ExecContext(ctx, insertNewApprovedAccountQuery, approveKP.Address(), approveCallbackID, approveEmailAddress)
+	require.NoError(t, err)
+
+	// Prepare and send /kyc-status/{stellar_address} DELETE request; for approved account in the "accounts_kyc_status" table.
+	m := chi.NewMux()
+	m.Delete("/kyc-status/{stellar_address}", deleteHandler.ServeHTTP)
+	r := httptest.NewRequest("DELETE", fmt.Sprintf("/kyc-status/%s", approveKP.Address()), nil)
+	r = r.WithContext(ctx)
+	w := httptest.NewRecorder()
+	m.ServeHTTP(w, r)
+	resp := w.Result()
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	body, err := ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	// TEST ok response for deleteing account's kyc record from db's "accounts_kyc_status" table.
+	wantBody := `{
+		"message":"ok"
+	}`
+	require.JSONEq(t, wantBody, string(body))
+
+	// Prepare and execute SELECT query for account that was deleted.
+	existQuery := `
+	SELECT EXISTS(
+		SELECT stellar_address
+		FROM accounts_kyc_status
+		WHERE stellar_address = $1
+	)`
+	var exists bool
+	err = deleteHandler.DB.QueryRowContext(ctx, existQuery, approveKP.Address()).Scan(&exists)
+	require.NoError(t, err)
+
+	// TEST if the the account doesn't exist in the db.
+	assert.False(t, exists)
+
+	// Prepare and send /kyc-status/{stellar_address} DELETE request; for account that isn't in the "accounts_kyc_status" table.
+	r = httptest.NewRequest("DELETE", fmt.Sprintf("/kyc-status/%s", approveKP.Address()), nil)
+	r = r.WithContext(ctx)
+	w = httptest.NewRecorder()
+	m.ServeHTTP(w, r)
+	resp = w.Result()
+	assert.Equal(t, http.StatusNotFound, resp.StatusCode)
+	body, err = ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	// TEST ok response for deleteing account's kyc record from db's "accounts_kyc_status" table.
+	wantDeleteResponseNotFound := `{
+		"error": "Not found."
+		}`
+	require.JSONEq(t, wantDeleteResponseNotFound, string(body))
+}
