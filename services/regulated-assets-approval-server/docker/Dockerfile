@@ -9,6 +9,7 @@ FROM ubuntu:20.04
 
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
 COPY --from=build /bin/regulated-assets-approval-server /app/
+COPY --from=build /bin/regulated-assets-approval-server/internal/db/dbmigrate/migrations /app/internal/db/dbmigrate/migrations/
 EXPOSE 8000
 ENTRYPOINT ["/app/regulated-assets-approval-server"]
 CMD ["serve"]
