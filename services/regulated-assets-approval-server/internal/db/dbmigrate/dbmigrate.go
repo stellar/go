@@ -5,8 +5,12 @@ import (
 	migrate "github.com/rubenv/sql-migrate"
 )
 
-var migrationSource = &migrate.FileMigrationSource{
-	Dir: "internal/db/dbmigrate/migrations",
+//go:generate go-bindata -nometadata -ignore .+\.(go|swp)$ -pkg dbmigrate -o dbmigrate_generated.go ./migrations
+
+var migrationSource = &migrate.AssetMigrationSource{
+	Asset:    Asset,
+	AssetDir: AssetDir,
+	Dir:      "migrations",
 }
 
 // PlanMigration finds the migrations that would be applied if Migrate was to

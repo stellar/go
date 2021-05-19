@@ -9,8 +9,13 @@ import (
 	"github.com/stellar/go/support/db/dbtest"
 )
 
-func Open(t *testing.T) *dbtest.DB {
+func OpenWithoutMigrations(t *testing.T) *dbtest.DB {
 	db := dbtest.Postgres(t)
+	return db
+}
+
+func Open(t *testing.T) *dbtest.DB {
+	db := OpenWithoutMigrations(t)
 
 	// Get the folder holding the migrations relative to this file. We cannot
 	// hardcode "../dbmigrate/migrations" because Open is called from tests in
