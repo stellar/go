@@ -48,7 +48,7 @@ func TestPlanMigration_upApplyAll(t *testing.T) {
 	require.GreaterOrEqual(t, len(migrations), 2)
 	wantAtLeastMigrations := []string{
 		"2021-05-05.0.initial.sql",
-		"accounts-kyc-status.sql",
+		"2021-05-18.0.accounts-kyc-status.sql",
 	}
 	assert.Equal(t, wantAtLeastMigrations, migrations[:2])
 }
@@ -78,7 +78,7 @@ func TestPlanMigration_downApplyOne(t *testing.T) {
 
 	migrations, err := PlanMigration(session, migrate.Down, 1)
 	require.NoError(t, err)
-	wantMigrations := []string{"accounts-kyc-status.sql"}
+	wantMigrations := []string{"2021-05-18.0.accounts-kyc-status.sql"}
 	assert.Equal(t, wantMigrations, migrations)
 }
 
@@ -94,7 +94,7 @@ func TestPlanMigration_downApplyAll(t *testing.T) {
 	migrations, err := PlanMigration(session, migrate.Down, 0)
 	require.NoError(t, err)
 	wantMigrations := []string{
-		"accounts-kyc-status.sql",
+		"2021-05-18.0.accounts-kyc-status.sql",
 		"2021-05-05.0.initial.sql",
 	}
 	assert.Equal(t, wantMigrations, migrations)
@@ -150,7 +150,7 @@ func TestMigrate_upApplyAll(t *testing.T) {
 	require.NoError(t, err)
 	wantIDs := []string{
 		"2021-05-05.0.initial.sql",
-		"accounts-kyc-status.sql",
+		"2021-05-18.0.accounts-kyc-status.sql",
 	}
 	assert.Equal(t, wantIDs, ids)
 }
@@ -173,7 +173,7 @@ func TestMigrate_upApplyNone(t *testing.T) {
 	require.NoError(t, err)
 	wantIDs := []string{
 		"2021-05-05.0.initial.sql",
-		"accounts-kyc-status.sql",
+		"2021-05-18.0.accounts-kyc-status.sql",
 	}
 	assert.Equal(t, wantIDs, ids)
 }
