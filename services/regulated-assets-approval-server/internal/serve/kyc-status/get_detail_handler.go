@@ -14,7 +14,7 @@ import (
 	"github.com/stellar/go/support/render/httpjson"
 )
 
-type kycRecord struct {
+type kycGetResponse struct {
 	StellarAddress string     `json:"stellar_address"`
 	CallbackID     string     `json:"callback_id"`
 	EmailAddress   string     `json:"email_address,omitempty"`
@@ -22,6 +22,11 @@ type kycRecord struct {
 	KYCSubmittedAt *time.Time `json:"kyc_submitted_at,omitempty"`
 	ApprovedAt     *time.Time `json:"approved_at,omitempty"`
 	RejectedAt     *time.Time `json:"rejected_at,omitempty"`
+	StatusCode     int        `json:"-"`
+}
+
+func (g *kycGetResponse) Render(w http.ResponseWriter) {
+	httpjson.RenderStatus(w, g.StatusCode, g, httpjson.JSON)
 }
 
 type GetDetailHandler struct {
@@ -56,7 +61,7 @@ func (h GetDetailHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := h.handle(ctx, in)
+	kycGetResponse, err := h.handle(ctx, in)
 	if err != nil {
 		httpErr, ok := err.(*httperror.Error)
 		if !ok {
@@ -66,10 +71,10 @@ func (h GetDetailHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	httpjson.Render(w, resp, httpjson.JSON)
+	kycGetResponse.Render(w)
 }
 
-func (h GetDetailHandler) handle(ctx context.Context, in getDetailRequest) (resp *kycRecord, err error) {
+func (h GetDetailHandler) handle(ctx context.Context, in getDetailRequest) (resp *kycGetResponse, err error) {
 	defer func() {
 		log.Ctx(ctx).Debug("==== will log responses ====")
 		log.Ctx(ctx).Debugf("req: %+v", in)
@@ -103,7 +108,7 @@ func (h GetDetailHandler) handle(ctx context.Context, in getDetailRequest) (resp
 		return nil, errors.Wrap(err, "querying the database")
 	}
 
-	return &kycRecord{
+	return &kycGetResponse{
 		StellarAddress: stellarAddress,
 		CallbackID:     callbackID,
 		EmailAddress:   emailAddress.String,
