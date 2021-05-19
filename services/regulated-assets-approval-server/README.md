@@ -208,7 +208,7 @@ If their KYC was rejected they should see a rejection response.
 
 Returns the detail of an account that requested KYC, as well some metadata about
 its status.
-Note: This is functionality is outside of the [SEP-8] spec.
+Note: This functionality is for test/debugging purposes and it's not part of the [SEP-8] spec.
 
 **Response:**
 
