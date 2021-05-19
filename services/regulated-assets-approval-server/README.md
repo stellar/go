@@ -62,10 +62,10 @@ Flags:
 
 #### Migration files
 
-regulated-assets-approval-server builds the migrations into the binary. If there are any changes to the db(adding, removing or updating tables) generate a new `internal/db/dbmigrate/dbmigrate_generated.go` using the [bindata](https://github.com/jteeuwen/go-bindata) package.
+regulated-assets-approval-server builds the migrations into the binary. If there are any changes to the db(adding, removing or updating tables) generate a new `internal/db/dbmigrate/dbmigrate_generated.go` using the `gogenerate.sh` script located at the root of the repo.
 
 ```sh
-$ go-bindata -o dbmigrate_generated.go internal/db/dbmigrate/migrations/
+$ ./gogenerate.sh internal/db/dbmigrate/migrations/
 ```
 
 ### Usage: Serve
