@@ -504,7 +504,7 @@ func (a *App) init() error {
 	}
 
 	if a.primaryHistoryQ != nil {
-		routerConfig.PrimaryDBSession = a.primaryHistoryQ.Session
+		routerConfig.PrimaryDBSession = a.primaryHistoryQ.SessionInterface
 	}
 
 	var err error
