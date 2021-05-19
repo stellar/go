@@ -8,6 +8,7 @@ import (
 	"github.com/lib/pq"
 
 	"github.com/stellar/go/services/horizon/internal/db2"
+	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
@@ -190,7 +191,7 @@ func (q *Q) UpsertAccounts(ctx context.Context, accounts []xdr.LedgerEntry) erro
 		num_sponsoring = excluded.num_sponsoring`
 
 	_, err := q.ExecRaw(
-		ctx,
+		context.WithValue(ctx, &db.QueryTypeContextKey, db.UpsertQueryType),
 		sql,
 		pq.Array(accountID),
 		pq.Array(balance),

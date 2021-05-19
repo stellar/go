@@ -5,6 +5,10 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+* Refactor `ingest/ledgerbackend/LedgerBackend.GetLedger` method to always block, removing `ingest/ledgerbackend/LedgerBackend.GetLedgerBlocking`. Adds a first `context.Context` param to most `LedgerBackend` methods.
+
+* Add more in-depth Prometheus metrics (count & duration) for db queries.
+
 
 ## v2.3.0
 
@@ -12,7 +16,6 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 ### New features
 * Introduces a flag (`--ro-database-url` / `RO_DATABASE_URL`) which allows setting a connection to a read-replica database. This flag makes Horizon take into account data propagation lag to the replica instance, adding retries if the data is out of sync ([3574](https://github.com/stellar/go/pull/3574)).
-
 
 ### Code changes
 * Improved test suite coverage and stability ([3560](https://github.com/stellar/go/pull/3560), [3562](https://github.com/stellar/go/pull/3562), [3551](https://github.com/stellar/go/pull/3551), and [3547](https://github.com/stellar/go/pull/3547)).

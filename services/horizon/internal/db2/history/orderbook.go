@@ -6,6 +6,7 @@ import (
 	"math/big"
 
 	"github.com/stellar/go/amount"
+	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
@@ -101,6 +102,8 @@ func (q *Q) GetOrderBookSummary(ctx context.Context, sellingAsset, buyingAsset x
 			LIMIT $3
 		)
 	`
+	// Add explicit query type for prometheus metrics, since we use raw sql.
+	ctx = context.WithValue(ctx, &db.QueryTypeContextKey, db.SelectQueryType)
 	err = q.SelectRaw(ctx, &levels, selectPriceLevels, selling, buying, maxPriceLevels)
 	if err != nil {
 		return result, errors.Wrap(err, "cannot select price levels")

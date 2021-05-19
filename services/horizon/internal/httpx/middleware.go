@@ -141,18 +141,21 @@ func sanitizeMetricRoute(routePattern string) string {
 	route = strings.ReplaceAll(route, "\\", "\\\\")
 	route = strings.ReplaceAll(route, "\"", "\\\"")
 	route = strings.ReplaceAll(route, "\n", "\\n")
+	if route == "" {
+		// Can be empty when request did not reach the final route (ex. blocked by
+		// a middleware). More info: https://github.com/go-chi/chi/issues/270
+		return "undefined"
+	}
 	return route
 }
 
 func logEndOfRequest(ctx context.Context, r *http.Request, requestDurationSummary *prometheus.SummaryVec, duration time.Duration, mw middleware.WrapResponseWriter, streaming bool) {
 	route := sanitizeMetricRoute(chi.RouteContext(r.Context()).RoutePattern())
-	// Can be empty when request did not reached the final route (ex. blocked by
-	// a middleware). More info: https://github.com/go-chi/chi/issues/270
-	if route == "" {
-		route = "undefined"
-	}
 
 	referer := r.Referer()
+	if referer == "" {
+		referer = r.Header.Get("Origin")
+	}
 	if referer == "" {
 		referer = "undefined"
 	}
@@ -205,10 +208,15 @@ func recoverMiddleware(h http.Handler) http.Handler {
 // NewHistoryMiddleware adds session to the request context and ensures Horizon
 // is not in a stale state, which is when the difference between latest core
 // ledger and latest history ledger is higher than the given threshold
-func NewHistoryMiddleware(ledgerState *ledger.State, staleThreshold int32, session *db.Session) func(http.Handler) http.Handler {
+func NewHistoryMiddleware(ledgerState *ledger.State, staleThreshold int32, session db.SessionInterface) func(http.Handler) http.Handler {
 	return func(h http.Handler) http.Handler {
 
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx := r.Context()
+			chiRoute := chi.RouteContext(ctx)
+			if chiRoute != nil {
+				ctx = context.WithValue(ctx, &db.RouteContextKey, sanitizeMetricRoute(chiRoute.RoutePattern()))
+			}
 			if staleThreshold > 0 {
 				ls := ledgerState.CurrentStatus()
 				isStale := (ls.CoreLatest - ls.HistoryLatest) > int32(staleThreshold)
@@ -218,7 +226,7 @@ func NewHistoryMiddleware(ledgerState *ledger.State, staleThreshold int32, sessi
 						"history_latest_ledger": ls.HistoryLatest,
 						"core_latest_ledger":    ls.CoreLatest,
 					}
-					problem.Render(r.Context(), w, err)
+					problem.Render(ctx, w, err)
 					return
 				}
 			}
@@ -226,7 +234,7 @@ func NewHistoryMiddleware(ledgerState *ledger.State, staleThreshold int32, sessi
 			requestSession := session.Clone()
 			h.ServeHTTP(w, r.WithContext(
 				context.WithValue(
-					r.Context(),
+					ctx,
 					&horizonContext.SessionContextKey,
 					requestSession,
 				),
@@ -241,7 +249,7 @@ func NewHistoryMiddleware(ledgerState *ledger.State, staleThreshold int32, sessi
 // has been verified and is correct (Otherwise returns `500 Internal Server Error` to prevent
 // returning invalid data to the user)
 type StateMiddleware struct {
-	HorizonSession      *db.Session
+	HorizonSession      db.SessionInterface
 	NoStateVerification bool
 }
 
@@ -277,6 +285,10 @@ func ingestionStatus(ctx context.Context, q *history.Q) (uint32, bool, error) {
 func (m *StateMiddleware) WrapFunc(h http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
+		chiRoute := chi.RouteContext(ctx)
+		if chiRoute != nil {
+			ctx = context.WithValue(ctx, &db.RouteContextKey, sanitizeMetricRoute(chiRoute.RoutePattern()))
+		}
 		session := m.HorizonSession.Clone()
 		q := &history.Q{session}
 		sseRequest := render.Negotiate(r) == render.MimeEventStream
@@ -292,7 +304,7 @@ func (m *StateMiddleware) WrapFunc(h http.HandlerFunc) http.HandlerFunc {
 		})
 		if err != nil {
 			err = supportErrors.Wrap(err, "Error starting ingestion read transaction")
-			problem.Render(r.Context(), w, err)
+			problem.Render(ctx, w, err)
 			return
 		}
 		defer session.Rollback(ctx)
@@ -301,22 +313,22 @@ func (m *StateMiddleware) WrapFunc(h http.HandlerFunc) http.HandlerFunc {
 			stateInvalid, invalidErr := q.GetExpStateInvalid(ctx)
 			if invalidErr != nil {
 				invalidErr = supportErrors.Wrap(invalidErr, "Error running GetExpStateInvalid")
-				problem.Render(r.Context(), w, invalidErr)
+				problem.Render(ctx, w, invalidErr)
 				return
 			}
 			if stateInvalid {
-				problem.Render(r.Context(), w, problem.ServerError)
+				problem.Render(ctx, w, problem.ServerError)
 				return
 			}
 		}
 
 		lastIngestedLedger, ready, err := ingestionStatus(ctx, q)
 		if err != nil {
-			problem.Render(r.Context(), w, err)
+			problem.Render(ctx, w, err)
 			return
 		}
 		if !m.NoStateVerification && !ready {
-			problem.Render(r.Context(), w, hProblem.StillIngesting)
+			problem.Render(ctx, w, hProblem.StillIngesting)
 			return
 		}
 
@@ -326,7 +338,7 @@ func (m *StateMiddleware) WrapFunc(h http.HandlerFunc) http.HandlerFunc {
 		if sseRequest {
 			if err = session.Rollback(ctx); err != nil {
 				problem.Render(
-					r.Context(),
+					ctx,
 					w,
 					supportErrors.Wrap(
 						err,
@@ -340,11 +352,7 @@ func (m *StateMiddleware) WrapFunc(h http.HandlerFunc) http.HandlerFunc {
 		}
 
 		h.ServeHTTP(w, r.WithContext(
-			context.WithValue(
-				r.Context(),
-				&horizonContext.SessionContextKey,
-				session,
-			),
+			context.WithValue(ctx, &horizonContext.SessionContextKey, session),
 		))
 	}
 }

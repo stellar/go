@@ -105,7 +105,7 @@ func TestGetOfferByIDHandler(t *testing.T) {
 		{
 			"offer id is invalid",
 			makeRequest(
-				t, map[string]string{}, map[string]string{"offer_id": "invalid"}, q.Session,
+				t, map[string]string{}, map[string]string{"offer_id": "invalid"}, q,
 			),
 			func(err error) {
 				tt.Assert.Error(err)
@@ -121,7 +121,7 @@ func TestGetOfferByIDHandler(t *testing.T) {
 		{
 			"offer does not exist",
 			makeRequest(
-				t, map[string]string{}, map[string]string{"offer_id": "1234567"}, q.Session,
+				t, map[string]string{}, map[string]string{"offer_id": "1234567"}, q,
 			),
 			func(err error) {
 				tt.Assert.Equal(err, sql.ErrNoRows)
@@ -133,7 +133,7 @@ func TestGetOfferByIDHandler(t *testing.T) {
 		{
 			"offer with ledger close time",
 			makeRequest(
-				t, map[string]string{}, map[string]string{"offer_id": "4"}, q.Session,
+				t, map[string]string{}, map[string]string{"offer_id": "4"}, q,
 			),
 			func(err error) {
 				tt.Assert.NoError(err)
@@ -153,7 +153,7 @@ func TestGetOfferByIDHandler(t *testing.T) {
 		{
 			"offer without ledger close time",
 			makeRequest(
-				t, map[string]string{}, map[string]string{"offer_id": "6"}, q.Session,
+				t, map[string]string{}, map[string]string{"offer_id": "6"}, q,
 			),
 			func(err error) {
 				tt.Assert.NoError(err)
@@ -213,7 +213,7 @@ func TestGetOffersHandler(t *testing.T) {
 		records, err := handler.GetResourcePage(
 			httptest.NewRecorder(),
 			makeRequest(
-				t, map[string]string{}, map[string]string{}, q.Session,
+				t, map[string]string{}, map[string]string{}, q,
 			),
 		)
 		tt.Assert.NoError(err)
@@ -239,7 +239,7 @@ func TestGetOffersHandler(t *testing.T) {
 					"seller": issuer.Address(),
 				},
 				map[string]string{},
-				q.Session,
+				q,
 			),
 		)
 		tt.Assert.NoError(err)
@@ -258,7 +258,7 @@ func TestGetOffersHandler(t *testing.T) {
 					"seller": "GCXEWJ6U4KPGTNTBY5HX4WQ2EEVPWV2QKXEYIQ32IDYIX",
 				},
 				map[string]string{},
-				q.Session,
+				q,
 			),
 		)
 		tt.Assert.Error(err)
@@ -281,7 +281,7 @@ func TestGetOffersHandler(t *testing.T) {
 					"sponsor": sponsor.Address(),
 				},
 				map[string]string{},
-				q.Session,
+				q,
 			),
 		)
 		tt.Assert.NoError(err)
@@ -298,7 +298,7 @@ func TestGetOffersHandler(t *testing.T) {
 					"sponsor": "GCXEWJ6U4KPGTNTBY5HX4WQ2EEVPWV2QKXEYIQ32IDYIX",
 				},
 				map[string]string{},
-				q.Session,
+				q,
 			),
 		)
 		tt.Assert.Error(err)
@@ -323,7 +323,7 @@ func TestGetOffersHandler(t *testing.T) {
 					"selling_asset_type": asset.Type,
 				},
 				map[string]string{},
-				q.Session,
+				q,
 			),
 		)
 		tt.Assert.NoError(err)
@@ -347,7 +347,7 @@ func TestGetOffersHandler(t *testing.T) {
 					"selling_asset_issuer": asset.Issuer,
 				},
 				map[string]string{},
-				q.Session,
+				q,
 			),
 		)
 		tt.Assert.NoError(err)
@@ -364,7 +364,7 @@ func TestGetOffersHandler(t *testing.T) {
 					"selling": asset.Code + ":" + asset.Issuer,
 				},
 				map[string]string{},
-				q.Session,
+				q,
 			),
 		)
 		tt.Assert.NoError(err)
@@ -388,7 +388,7 @@ func TestGetOffersHandler(t *testing.T) {
 					"buying_asset_issuer": asset.Issuer,
 				},
 				map[string]string{},
-				q.Session,
+				q,
 			),
 		)
 		tt.Assert.NoError(err)
@@ -412,7 +412,7 @@ func TestGetOffersHandler(t *testing.T) {
 					"buying_asset_issuer": asset.Issuer,
 				},
 				map[string]string{},
-				q.Session,
+				q,
 			),
 		)
 		tt.Assert.NoError(err)
@@ -431,7 +431,7 @@ func TestGetOffersHandler(t *testing.T) {
 					"buying": asset.Code + ":" + asset.Issuer,
 				},
 				map[string]string{},
-				q.Session,
+				q,
 			),
 		)
 		tt.Assert.NoError(err)
@@ -455,7 +455,7 @@ func TestGetOffersHandler(t *testing.T) {
 					"buying": `native\\u0026cursor=\\u0026limit=10\\u0026order=asc\\u0026selling=BTC:GAEDZ7BHMDYEMU6IJT3CTTGDUSLZWS5CQWZHGP4XUOIDG5ISH3AFAEK2`,
 				},
 				map[string]string{},
-				q.Session,
+				q,
 			),
 		)
 		tt.Assert.Error(err)
@@ -491,7 +491,7 @@ func TestGetAccountOffersHandler(t *testing.T) {
 			t,
 			map[string]string{},
 			map[string]string{"account_id": issuer.Address()},
-			q.Session,
+			q,
 		),
 	)
 	tt.Assert.NoError(err)
@@ -509,7 +509,7 @@ func TestGetAccountOffersHandler(t *testing.T) {
 			t,
 			map[string]string{},
 			map[string]string{},
-			q.Session,
+			q,
 		),
 	)
 	tt.Assert.Error(err)

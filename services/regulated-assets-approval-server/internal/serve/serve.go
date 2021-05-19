@@ -3,12 +3,17 @@ package serve
 import (
 	"fmt"
 	"net/http"
+	"net/url"
+	"path"
 	"time"
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
+	"github.com/stellar/go/amount"
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
+	"github.com/stellar/go/services/regulated-assets-approval-server/internal/db"
+	kycstatus "github.com/stellar/go/services/regulated-assets-approval-server/internal/serve/kyc-status"
 	"github.com/stellar/go/support/errors"
 	supporthttp "github.com/stellar/go/support/http"
 	"github.com/stellar/go/support/log"
@@ -16,12 +21,15 @@ import (
 )
 
 type Options struct {
-	IssuerAccountSecret    string
-	AssetCode              string
-	FriendbotPaymentAmount int
-	HorizonURL             string
-	NetworkPassphrase      string
-	Port                   int
+	AssetCode                         string
+	BaseURL                           string
+	DatabaseURL                       string
+	FriendbotPaymentAmount            int
+	HorizonURL                        string
+	IssuerAccountSecret               string
+	KYCRequiredPaymentAmountThreshold string
+	NetworkPassphrase                 string
+	Port                              int
 }
 
 func Serve(opts Options) {
@@ -50,6 +58,19 @@ func handleHTTP(opts Options) http.Handler {
 	if err != nil {
 		log.Fatal(errors.Wrap(err, "parsing secret"))
 	}
+	parsedKYCRequiredPaymentThreshold, err := amount.ParseInt64(opts.KYCRequiredPaymentAmountThreshold)
+	if err != nil {
+		log.Fatal(errors.Wrapf(err, "%s cannot be parsed as a Stellar amount", opts.KYCRequiredPaymentAmountThreshold))
+	}
+	db, err := db.Open(opts.DatabaseURL)
+	if err != nil {
+		log.Fatal(errors.Wrap(err, "error parsing database url"))
+	}
+	db.SetMaxOpenConns(20)
+	err = db.Ping()
+	if err != nil {
+		log.Warn("Error pinging to Database: ", err)
+	}
 	mux := chi.NewMux()
 
 	mux.Use(middleware.RequestID)
@@ -62,6 +83,8 @@ func handleHTTP(opts Options) http.Handler {
 		assetCode:         opts.AssetCode,
 		issuerAddress:     issuerKP.Address(),
 		networkPassphrase: opts.NetworkPassphrase,
+		approvalServer:    buildURLString(opts.BaseURL, "tx-approve"),
+		kycThreshold:      parsedKYCRequiredPaymentThreshold,
 	}.ServeHTTP)
 	mux.Get("/friendbot", friendbotHandler{
 		assetCode:           opts.AssetCode,
@@ -71,10 +94,21 @@ func handleHTTP(opts Options) http.Handler {
 		networkPassphrase:   opts.NetworkPassphrase,
 		paymentAmount:       opts.FriendbotPaymentAmount,
 	}.ServeHTTP)
-	mux.Post("/tx_approve", txApproveHandler{
-		assetCode: opts.AssetCode,
-		issuerKP:  issuerKP,
+	mux.Post("/tx-approve", txApproveHandler{
+		assetCode:         opts.AssetCode,
+		issuerKP:          issuerKP,
+		horizonClient:     opts.horizonClient(),
+		networkPassphrase: opts.NetworkPassphrase,
+		db:                db,
+		kycThreshold:      parsedKYCRequiredPaymentThreshold,
+		baseURL:           opts.BaseURL,
 	}.ServeHTTP)
+	mux.Route("/kyc-status", func(mux chi.Router) {
+		mux.Post("/{callback_id}", kycstatus.PostHandler{
+			DB: db,
+		}.ServeHTTP)
+	})
+
 	return mux
 }
 
@@ -83,4 +117,13 @@ func (opts Options) horizonClient() horizonclient.ClientInterface {
 		HorizonURL: opts.HorizonURL,
 		HTTP:       &http.Client{Timeout: 30 * time.Second},
 	}
+}
+
+func buildURLString(baseURL, endpoint string) string {
+	URL, err := url.Parse(baseURL)
+	if err != nil {
+		log.Fatal(errors.Wrapf(err, "Unable to parse URL: %s", baseURL))
+	}
+	URL.Path = path.Join(URL.Path, endpoint)
+	return URL.String()
 }

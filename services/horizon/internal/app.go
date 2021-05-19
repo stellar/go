@@ -76,11 +76,6 @@ type App struct {
 	historyLatestLedgerCounter        prometheus.CounterFunc
 	historyLatestLedgerClosedAgoGauge prometheus.GaugeFunc
 	historyElderLedgerCounter         prometheus.CounterFunc
-	dbMaxOpenConnectionsGauge         prometheus.GaugeFunc
-	dbOpenConnectionsGauge            prometheus.GaugeFunc
-	dbInUseConnectionsGauge           prometheus.GaugeFunc
-	dbWaitCountCounter                prometheus.CounterFunc
-	dbWaitDurationCounter             prometheus.CounterFunc
 	coreLatestLedgerCounter           prometheus.CounterFunc
 	coreSynced                        prometheus.GaugeFunc
 }
@@ -183,7 +178,7 @@ func (a *App) waitForDone() {
 // sure all requests are first properly finished to avoid "sql: database is
 // closed" errors.
 func (a *App) CloseDB() {
-	a.historyQ.Session.DB.Close()
+	a.historyQ.SessionInterface.Close()
 }
 
 // HistoryQ returns a helper object for performing sql queries against the
@@ -199,8 +194,8 @@ func (a *App) Ingestion() ingest.System {
 
 // HorizonSession returns a new session that loads data from the horizon
 // database.
-func (a *App) HorizonSession() *db.Session {
-	return &db.Session{DB: a.historyQ.Session.DB}
+func (a *App) HorizonSession() db.SessionInterface {
+	return a.historyQ.SessionInterface.Clone()
 }
 
 // UpdateLedgerState triggers a refresh of several metrics gauges, such as open
@@ -442,6 +437,12 @@ func (a *App) init() error {
 	// loggly
 	initLogglyLog(a)
 
+	// metrics and log.metrics
+	a.prometheusRegistry = prometheus.NewRegistry()
+	for _, meter := range *logmetrics.DefaultMetrics {
+		a.prometheusRegistry.MustRegister(meter)
+	}
+
 	// stellarCoreInfo
 	a.UpdateStellarCoreInfo(a.ctx)
 
@@ -460,12 +461,6 @@ func (a *App) init() error {
 	// reaper
 	a.reaper = reap.New(a.config.HistoryRetentionCount, a.HorizonSession(), a.ledgerState)
 
-	// metrics and log.metrics
-	a.prometheusRegistry = prometheus.NewRegistry()
-	for _, meter := range *logmetrics.DefaultMetrics {
-		a.prometheusRegistry.MustRegister(meter)
-	}
-
 	// go metrics
 	initGoMetrics(a)
 
@@ -482,7 +477,7 @@ func (a *App) init() error {
 	initTxSubMetrics(a)
 
 	routerConfig := httpx.RouterConfig{
-		DBSession:             a.historyQ.Session,
+		DBSession:             a.historyQ.SessionInterface,
 		TxSubmitter:           a.submitter,
 		RateQuota:             a.config.RateQuota,
 		BehindCloudflare:      a.config.BehindCloudflare,
@@ -498,7 +493,7 @@ func (a *App) init() error {
 		HorizonVersion:        a.horizonVersion,
 		FriendbotURL:          a.config.FriendbotURL,
 		HealthCheck: healthCheck{
-			session: a.historyQ.Session,
+			session: a.historyQ.SessionInterface,
 			ctx:     a.ctx,
 			core: &stellarcore.Client{
 				HTTP: &http.Client{Timeout: infoRequestTimeout},

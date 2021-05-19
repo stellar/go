@@ -18,7 +18,7 @@ import (
 	"github.com/stellar/go/support/log"
 )
 
-func mustNewDBSession(databaseURL string, maxIdle, maxOpen int) *db.Session {
+func mustNewDBSession(subservice db.Subservice, databaseURL string, maxIdle, maxOpen int, registry *prometheus.Registry) db.SessionInterface {
 	session, err := db.Open("postgres", databaseURL)
 	if err != nil {
 		log.Fatalf("cannot open Horizon DB: %v", err)
@@ -26,7 +26,7 @@ func mustNewDBSession(databaseURL string, maxIdle, maxOpen int) *db.Session {
 
 	session.DB.SetMaxIdleConns(maxIdle)
 	session.DB.SetMaxOpenConns(maxOpen)
-	return session
+	return db.RegisterMetrics(session, "horizon", subservice, registry)
 }
 
 func mustInitHorizonDB(app *App) {
@@ -45,36 +45,43 @@ func mustInitHorizonDB(app *App) {
 
 	if app.config.RoDatabaseURL == "" {
 		app.historyQ = &history.Q{mustNewDBSession(
+			db.HistorySubservice,
 			app.config.DatabaseURL,
 			maxIdle,
 			maxOpen,
+			app.prometheusRegistry,
 		)}
 	} else {
 		// If RO set, use it for all DB queries
 		app.historyQ = &history.Q{mustNewDBSession(
+			db.HistorySubservice,
 			app.config.RoDatabaseURL,
 			maxIdle,
 			maxOpen,
+			app.prometheusRegistry,
 		)}
 
 		app.primaryHistoryQ = &history.Q{mustNewDBSession(
+			db.HistorySubservice,
 			app.config.DatabaseURL,
 			maxIdle,
 			maxOpen,
+			app.prometheusRegistry,
 		)}
 	}
 }
 
 func initIngester(app *App) {
 	var err error
-	var coreSession *db.Session
+	var coreSession db.SessionInterface
 	if !app.config.EnableCaptiveCoreIngestion {
-		coreSession = mustNewDBSession(app.config.StellarCoreDatabaseURL, ingest.MaxDBConnections, ingest.MaxDBConnections)
+		coreSession = mustNewDBSession(
+			db.CoreSubservice, app.config.StellarCoreDatabaseURL, ingest.MaxDBConnections, ingest.MaxDBConnections, app.prometheusRegistry)
 	}
 	app.ingester, err = ingest.NewSystem(ingest.Config{
 		CoreSession: coreSession,
 		HistorySession: mustNewDBSession(
-			app.config.DatabaseURL, ingest.MaxDBConnections, ingest.MaxDBConnections,
+			db.IngestSubservice, app.config.DatabaseURL, ingest.MaxDBConnections, ingest.MaxDBConnections, app.prometheusRegistry,
 		),
 		NetworkPassphrase: app.config.NetworkPassphrase,
 		// TODO:
@@ -210,55 +217,6 @@ func initDbMetrics(app *App) {
 	)
 	app.prometheusRegistry.MustRegister(app.coreSynced)
 
-	app.dbMaxOpenConnectionsGauge = prometheus.NewGaugeFunc(
-		prometheus.GaugeOpts{Namespace: "horizon", Subsystem: "db", Name: "max_open_connections"},
-		func() float64 {
-			// Right now MaxOpenConnections in Horizon is static however it's possible that
-			// it will change one day. In such case, using GaugeFunc is very cheap and will
-			// prevent issues with this metric in the future.
-			return float64(app.historyQ.Session.DB.Stats().MaxOpenConnections)
-		},
-	)
-	app.prometheusRegistry.MustRegister(app.dbMaxOpenConnectionsGauge)
-
-	app.dbOpenConnectionsGauge = prometheus.NewGaugeFunc(
-		prometheus.GaugeOpts{Namespace: "horizon", Subsystem: "db", Name: "open_connections"},
-		func() float64 {
-			return float64(app.historyQ.Session.DB.Stats().OpenConnections)
-		},
-	)
-	app.prometheusRegistry.MustRegister(app.dbOpenConnectionsGauge)
-
-	app.dbInUseConnectionsGauge = prometheus.NewGaugeFunc(
-		prometheus.GaugeOpts{Namespace: "horizon", Subsystem: "db", Name: "in_use_connections"},
-		func() float64 {
-			return float64(app.historyQ.Session.DB.Stats().InUse)
-		},
-	)
-	app.prometheusRegistry.MustRegister(app.dbInUseConnectionsGauge)
-
-	app.dbWaitCountCounter = prometheus.NewCounterFunc(
-		prometheus.CounterOpts{
-			Namespace: "horizon", Subsystem: "db", Name: "wait_count_total",
-			Help: "total number of number of connections waited for",
-		},
-		func() float64 {
-			return float64(app.historyQ.Session.DB.Stats().WaitCount)
-		},
-	)
-	app.prometheusRegistry.MustRegister(app.dbWaitCountCounter)
-
-	app.dbWaitDurationCounter = prometheus.NewCounterFunc(
-		prometheus.CounterOpts{
-			Namespace: "horizon", Subsystem: "db", Name: "wait_duration_seconds_total",
-			Help: "total time blocked waiting for a new connection",
-		},
-		func() float64 {
-			return app.historyQ.Session.DB.Stats().WaitDuration.Seconds()
-		},
-	)
-	app.prometheusRegistry.MustRegister(app.dbWaitDurationCounter)
-
 	app.prometheusRegistry.MustRegister(app.orderBookStream.LatestLedgerGauge)
 }
 
@@ -317,7 +275,7 @@ func initSubmissionSystem(app *App) {
 		Submitter:       txsub.NewDefaultSubmitter(http.DefaultClient, app.config.StellarCoreURL),
 		SubmissionQueue: sequence.NewManager(),
 		DB: func(ctx context.Context) txsub.HorizonDB {
-			return &history.Q{Session: app.HorizonSession()}
+			return &history.Q{SessionInterface: app.HorizonSession()}
 		},
 	}
 }

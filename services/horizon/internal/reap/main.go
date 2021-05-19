@@ -23,7 +23,7 @@ type System struct {
 
 // New initializes the reaper, causing it to begin polling the stellar-core
 // database for now ledgers and ingesting data into the horizon database.
-func New(retention uint, dbSession *db.Session, ledgerState *ledger.State) *System {
+func New(retention uint, dbSession db.SessionInterface, ledgerState *ledger.State) *System {
 	r := &System{
 		HistoryQ:       &history.Q{dbSession},
 		RetentionCount: retention,
