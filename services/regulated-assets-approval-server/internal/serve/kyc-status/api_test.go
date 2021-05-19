@@ -250,7 +250,7 @@ func TestAPI_GETKYCStatus(t *testing.T) {
 	}
 	assert.Equal(t, wantPostResponse, kycStatusGETResponseApprove)
 
-	// Test if response timestamps are valid or null; Expected results created_at==NOT NULL, kyc_submitted_at==NOT NULL, approved_at==NOT NULL, rejected_at==NULL.
+	// Test if response timestamps are present or null.
 	require.NotNil(t, kycStatusGETResponseApprove.CreatedAt)
 	require.NotNil(t, kycStatusGETResponseApprove.KYCSubmittedAt)
 	require.NotNil(t, kycStatusGETResponseApprove.ApprovedAt)
@@ -292,7 +292,7 @@ func TestAPI_GETKYCStatus(t *testing.T) {
 	}
 	assert.Equal(t, wantPostResponse, kycStatusGETResponseReject)
 
-	// Test if response timestamps are valid or null; Expected results created_at==NOT NULL, kyc_submitted_at==NOT NULL, rejected_at==NOT NULL, approved_at==NULL.
+	// Test if response timestamps are present or null.
 	require.NotNil(t, kycStatusGETResponseReject.CreatedAt)
 	require.NotNil(t, kycStatusGETResponseReject.KYCSubmittedAt)
 	require.NotNil(t, kycStatusGETResponseReject.RejectedAt)
@@ -318,7 +318,7 @@ func TestAPI_GETKYCStatus(t *testing.T) {
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 
-	// TEST "kycGetResponse" response for rejected account.
+	// TEST "kycGetResponse" response for account that hasn't submitted kyc.
 	var kycStatusGETResponseNoKyc kycGetResponse
 	err = json.Unmarshal(body, &kycStatusGETResponseNoKyc)
 	require.NoError(t, err)
@@ -333,7 +333,7 @@ func TestAPI_GETKYCStatus(t *testing.T) {
 	}
 	assert.Equal(t, wantPostResponse, kycStatusGETResponseNoKyc)
 
-	// Test if response timestamps are valid or null; Expected results created_at==NOT NULL, kyc_submitted_at==NULL, rejected_at==NULL, approved_at==NULL.
+	// Test if response timestamps are present or null.
 	require.NotNil(t, kycStatusGETResponseNoKyc.CreatedAt)
 	require.Nil(t, kycStatusGETResponseNoKyc.KYCSubmittedAt)
 	require.Nil(t, kycStatusGETResponseNoKyc.RejectedAt)
