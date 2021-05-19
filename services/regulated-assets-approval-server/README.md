@@ -227,7 +227,7 @@ Note: This functionality is for test/debugging purposes and it's not part of the
 
 Deletes a stellar account from the list of KYCs. If the stellar address is not
 in the database to be deleted the server will return with a `404 - Not Found`.
-Note: This is functionality is outside of the [SEP-8] spec.
+Note: This functionality is for test/debugging purposes and it's not part of the [SEP-8] spec.
 
 **Response:**
 
