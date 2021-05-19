@@ -7,9 +7,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestDeleteHandlerValidate(t *testing.T) {
+func TestGetDetailHandlerValidate(t *testing.T) {
 	// Test no db.
-	h := DeleteHandler{}
+	h := GetDetailHandler{}
 	err := h.validate()
 	require.EqualError(t, err, "database cannot be nil")
 	// Success.
@@ -17,7 +17,7 @@ func TestDeleteHandlerValidate(t *testing.T) {
 	defer db.Close()
 	conn := db.Open()
 	defer conn.Close()
-	h = DeleteHandler{
+	h = GetDetailHandler{
 		DB: conn,
 	}
 	err = h.validate()
