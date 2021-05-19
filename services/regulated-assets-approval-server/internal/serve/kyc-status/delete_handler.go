@@ -20,7 +20,6 @@ func (h DeleteHandler) validate() error {
 	if h.DB == nil {
 		return errors.New("database cannot be nil")
 	}
-
 	return nil
 }
 
