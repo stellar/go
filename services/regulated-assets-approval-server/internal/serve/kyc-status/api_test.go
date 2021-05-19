@@ -422,7 +422,7 @@ func TestAPI_DELETEKYCStatus(t *testing.T) {
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 
-	// TEST ok response for deleteing account's kyc record from db's "accounts_kyc_status" table.
+	// TEST error "Not found." response for attempting to delete an account that isn't in the "accounts_kyc_status" table.
 	wantDeleteResponseNotFound := `{
 		"error": "Not found."
 		}`
