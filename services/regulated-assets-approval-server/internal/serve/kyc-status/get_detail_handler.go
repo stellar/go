@@ -69,10 +69,21 @@ func (h GetDetailHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	httpjson.Render(w, resp, httpjson.JSON)
 }
 
-func (h GetDetailHandler) handle(ctx context.Context, in getDetailRequest) (*kycRecord, error) {
+func (h GetDetailHandler) handle(ctx context.Context, in getDetailRequest) (resp *kycRecord, err error) {
+	defer func() {
+		log.Ctx(ctx).Debug("==== will log responses ====")
+		log.Ctx(ctx).Debugf("req: %+v", in)
+		log.Ctx(ctx).Debugf("resp: %+v", resp)
+		log.Ctx(ctx).Debugf("err: %+v", err)
+		log.Ctx(ctx).Debug("====  did log responses ====")
+	}()
+
+	// Check if getDetailRequest StellarAddressOrCallbackID value is present.
 	if in.StellarAddressOrCallbackID == "" {
 		return nil, httperror.NewHTTPError(http.StatusBadRequest, "Missing stellar address.")
 	}
+
+	// Prepare SELECT query return values.
 	var (
 		stellarAddress, callbackID             string
 		emailAddress                           sql.NullString
@@ -84,13 +95,14 @@ func (h GetDetailHandler) handle(ctx context.Context, in getDetailRequest) (*kyc
 		FROM accounts_kyc_status
 		WHERE stellar_address = $1 OR callback_id = $1
 	`
-	err := h.DB.QueryRowContext(ctx, q, in.StellarAddressOrCallbackID).Scan(&stellarAddress, &emailAddress, &createdAt, &kycSubmittedAt, &approvedAt, &rejectedAt, &callbackID)
+	err = h.DB.QueryRowContext(ctx, q, in.StellarAddressOrCallbackID).Scan(&stellarAddress, &emailAddress, &createdAt, &kycSubmittedAt, &approvedAt, &rejectedAt, &callbackID)
 	if err == sql.ErrNoRows {
 		return nil, httperror.NewHTTPError(http.StatusNotFound, "Not found.")
 	}
 	if err != nil {
 		return nil, errors.Wrap(err, "querying the database")
 	}
+
 	return &kycRecord{
 		StellarAddress: stellarAddress,
 		CallbackID:     callbackID,
