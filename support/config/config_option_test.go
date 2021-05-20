@@ -25,6 +25,52 @@ type testOptions struct {
 	Uint32 uint32
 }
 
+// Test that optional flags are set to nil if they are not configured explicitly.
+func TestConfigOption_optionalFlags_defaults(t *testing.T) {
+	var optUint *uint
+	var optString *string
+	configOpts := ConfigOptions{
+		{Name: "uint", OptType: types.Uint, ConfigKey: &optUint, CustomSetValue: SetOptionalUint, FlagDefault: uint(0)},
+		{Name: "string", OptType: types.String, ConfigKey: &optString, CustomSetValue: SetOptionalString},
+	}
+	cmd := &cobra.Command{
+		Use: "doathing",
+		Run: func(_ *cobra.Command, _ []string) {
+			configOpts.Require()
+			configOpts.SetValues()
+		},
+	}
+	configOpts.Init(cmd)
+
+	cmd.SetArgs([]string{})
+	cmd.Execute()
+	assert.Equal(t, (*string)(nil), optString)
+	assert.Equal(t, (*uint)(nil), optUint)
+}
+
+// Test that optional flags are set to non nil values when they are configured explicitly.
+func TestConfigOption_optionalFlags_set(t *testing.T) {
+	var optUint *uint
+	var optString *string
+	configOpts := ConfigOptions{
+		{Name: "uint", OptType: types.Uint, ConfigKey: &optUint, CustomSetValue: SetOptionalUint, FlagDefault: uint(0)},
+		{Name: "string", OptType: types.String, ConfigKey: &optString, CustomSetValue: SetOptionalString},
+	}
+	cmd := &cobra.Command{
+		Use: "doathing",
+		Run: func(_ *cobra.Command, _ []string) {
+			configOpts.Require()
+			configOpts.SetValues()
+		},
+	}
+	configOpts.Init(cmd)
+
+	cmd.SetArgs([]string{"--uint", "6", "--string", "test-string"})
+	cmd.Execute()
+	assert.Equal(t, "test-string", *optString)
+	assert.Equal(t, uint(6), *optUint)
+}
+
 // Test that when there are no args the defaults in the config options are
 // used.
 func TestConfigOption_getSimpleValue_defaults(t *testing.T) {
@@ -52,6 +98,9 @@ func TestConfigOption_getSimpleValue_defaults(t *testing.T) {
 	assert.Equal(t, true, opts.Bool)
 	assert.Equal(t, uint(2), opts.Uint)
 	assert.Equal(t, uint32(3), opts.Uint32)
+	for _, opt := range configOpts {
+		assert.False(t, opt.flag.Changed)
+	}
 }
 
 // Test that when args are given, their values are used.
@@ -86,6 +135,9 @@ func TestConfigOption_getSimpleValue_setFlag(t *testing.T) {
 	assert.Equal(t, true, opts.Bool)
 	assert.Equal(t, uint(20), opts.Uint)
 	assert.Equal(t, uint32(30), opts.Uint32)
+	for _, opt := range configOpts {
+		assert.True(t, opt.flag.Changed)
+	}
 }
 
 // Test that when args are not given but env vars are, their values are used.

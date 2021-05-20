@@ -1,6 +1,7 @@
 package horizon
 
 import (
+	"github.com/stellar/go/ingest/ledgerbackend"
 	"net/url"
 	"time"
 
@@ -12,18 +13,18 @@ import (
 // app's main function and is provided to NewApp.
 type Config struct {
 	DatabaseURL        string
+	RoDatabaseURL      string
 	HistoryArchiveURLs []string
 	Port               uint
 	AdminPort          uint
 
-	EnableCaptiveCoreIngestion  bool
-	CaptiveCoreBinaryPath       string
-	CaptiveCoreConfigAppendPath string
-	RemoteCaptiveCoreURL        string
-	CaptiveCoreHTTPPort         uint
-	CaptiveCorePeerPort         uint
-	CaptiveCoreLogPath          string
-	CaptiveCoreStoragePath      string
+	EnableCaptiveCoreIngestion bool
+	CaptiveCoreBinaryPath      string
+	RemoteCaptiveCoreURL       string
+	CaptiveCoreConfigPath      string
+	CaptiveCoreTomlParams      ledgerbackend.CaptiveCoreTomlParams
+	CaptiveCoreToml            *ledgerbackend.CaptiveCoreToml
+	CaptiveCoreStoragePath     string
 
 	StellarCoreDatabaseURL string
 	StellarCoreURL         string
@@ -74,9 +75,6 @@ type Config struct {
 	// ApplyMigrations will apply pending migrations to the horizon database
 	// before starting the horizon service
 	ApplyMigrations bool
-	// SkipMigrationsCheck will skip checking if there are any migrations
-	// required
-	SkipMigrationsCheck bool
 	// CheckpointFrequency establishes how many ledgers exist between checkpoints
 	CheckpointFrequency uint32
 	// BehindCloudflare determines if Horizon instance is behind Cloudflare. In

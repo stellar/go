@@ -81,8 +81,8 @@ func TestReingestDB(t *testing.T) {
 		toLedger = latestCheckpoint
 	}
 
-	horizonConfig.CaptiveCoreConfigAppendPath = filepath.Join(
-		filepath.Dir(horizonConfig.CaptiveCoreConfigAppendPath),
+	horizonConfig.CaptiveCoreConfigPath = filepath.Join(
+		filepath.Dir(horizonConfig.CaptiveCoreConfigPath),
 		"captive-core-reingest-range-integration-tests.cfg",
 	)
 

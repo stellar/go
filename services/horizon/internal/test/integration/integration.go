@@ -142,7 +142,7 @@ func (i *Test) RestartHorizon() {
 
 	i.startHorizon(
 		i.horizonConfig.CaptiveCoreBinaryPath,
-		i.horizonConfig.CaptiveCoreConfigAppendPath,
+		i.horizonConfig.CaptiveCoreConfigPath,
 		i.horizonConfig.DatabaseURL,
 		false,
 	)
