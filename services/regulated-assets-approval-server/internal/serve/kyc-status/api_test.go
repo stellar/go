@@ -250,7 +250,7 @@ func TestAPI_GETKYCStatus(t *testing.T) {
 	}
 	assert.Equal(t, wantPostResponse, kycStatusGETResponseApprove)
 
-	// Test if response timestamps are present or null.
+	// TEST if response timestamps are present or null.
 	require.NotNil(t, kycStatusGETResponseApprove.CreatedAt)
 	require.NotNil(t, kycStatusGETResponseApprove.KYCSubmittedAt)
 	require.NotNil(t, kycStatusGETResponseApprove.ApprovedAt)
@@ -292,7 +292,7 @@ func TestAPI_GETKYCStatus(t *testing.T) {
 	}
 	assert.Equal(t, wantPostResponse, kycStatusGETResponseReject)
 
-	// Test if response timestamps are present or null.
+	// TEST if response timestamps are present or null.
 	require.NotNil(t, kycStatusGETResponseReject.CreatedAt)
 	require.NotNil(t, kycStatusGETResponseReject.KYCSubmittedAt)
 	require.NotNil(t, kycStatusGETResponseReject.RejectedAt)
@@ -333,7 +333,7 @@ func TestAPI_GETKYCStatus(t *testing.T) {
 	}
 	assert.Equal(t, wantPostResponse, kycStatusGETResponseNoKyc)
 
-	// Test if response timestamps are present or null.
+	// TEST if response timestamps are present or null.
 	require.NotNil(t, kycStatusGETResponseNoKyc.CreatedAt)
 	require.Nil(t, kycStatusGETResponseNoKyc.KYCSubmittedAt)
 	require.Nil(t, kycStatusGETResponseNoKyc.RejectedAt)
