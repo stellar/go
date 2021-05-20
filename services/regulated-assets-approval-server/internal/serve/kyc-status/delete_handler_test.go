@@ -67,7 +67,7 @@ func TestDeleteHandlerHandle(t *testing.T) {
 	_, err = h.DB.ExecContext(ctx, insertNewAccountQuery, accountKP.Address(), callbackID, emailAddress)
 	require.NoError(t, err)
 
-	// Prepare and execute SELECT query for account was added.
+	// Prepare and execute SELECT query for account was added, ensures its in db.
 	existQuery := `
 		SELECT EXISTS(
 			SELECT stellar_address
@@ -77,8 +77,6 @@ func TestDeleteHandlerHandle(t *testing.T) {
 	var exists bool
 	err = h.DB.QueryRowContext(ctx, existQuery, accountKP.Address()).Scan(&exists)
 	require.NoError(t, err)
-
-	// TEST to ensure its in db.
 	assert.True(t, exists)
 
 	// Send deleteRequest to an account in the db.
@@ -87,10 +85,8 @@ func TestDeleteHandlerHandle(t *testing.T) {
 	// TEST if error returned is nil (success).
 	require.NoError(t, err)
 
-	// Execute SELECT query for account that was deleted.
+	// Execute SELECT query for account that was deleted; ensure its no longer in db
 	err = h.DB.QueryRowContext(ctx, existQuery, accountKP.Address()).Scan(&exists)
 	require.NoError(t, err)
-
-	// TEST to ensure its no longer in db.
 	assert.False(t, exists)
 }
