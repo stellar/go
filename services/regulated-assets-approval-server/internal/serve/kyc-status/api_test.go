@@ -233,7 +233,7 @@ func TestAPI_GETKYCStatus(t *testing.T) {
 	body, err := ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 
-	// TEST "kycGetResponse" response for approved account.
+	// TEST kycGetResponse response for approved account.
 	var kycStatusGETResponseApprove kycGetResponse
 	err = json.Unmarshal(body, &kycStatusGETResponseApprove)
 	require.NoError(t, err)
@@ -275,7 +275,7 @@ func TestAPI_GETKYCStatus(t *testing.T) {
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 
-	// TEST "kycGetResponse" response for rejected account.
+	// TEST kycGetResponse response for rejected account.
 	var kycStatusGETResponseReject kycGetResponse
 	err = json.Unmarshal(body, &kycStatusGETResponseReject)
 	require.NoError(t, err)
@@ -316,7 +316,7 @@ func TestAPI_GETKYCStatus(t *testing.T) {
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 
-	// TEST "kycGetResponse" response for account that hasn't submitted kyc.
+	// TEST kycGetResponse response for account that hasn't submitted kyc.
 	var kycStatusGETResponseNoKyc kycGetResponse
 	err = json.Unmarshal(body, &kycStatusGETResponseNoKyc)
 	require.NoError(t, err)
