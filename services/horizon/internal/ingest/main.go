@@ -66,18 +66,15 @@ const (
 var log = logpkg.DefaultLogger.WithField("service", "ingest")
 
 type Config struct {
-	CoreSession                 db.SessionInterface
-	StellarCoreURL              string
-	StellarCoreCursor           string
-	EnableCaptiveCore           bool
-	CaptiveCoreBinaryPath       string
-	CaptiveCoreStoragePath      string
-	CaptiveCoreConfigAppendPath string
-	CaptiveCoreHTTPPort         uint
-	CaptiveCorePeerPort         uint
-	CaptiveCoreLogPath          string
-	RemoteCaptiveCoreURL        string
-	NetworkPassphrase           string
+	CoreSession            db.SessionInterface
+	StellarCoreURL         string
+	StellarCoreCursor      string
+	EnableCaptiveCore      bool
+	CaptiveCoreBinaryPath  string
+	CaptiveCoreStoragePath string
+	CaptiveCoreToml        *ledgerbackend.CaptiveCoreToml
+	RemoteCaptiveCoreURL   string
+	NetworkPassphrase      string
 
 	HistorySession           db.SessionInterface
 	HistoryArchiveURL        string
@@ -197,12 +194,9 @@ func NewSystem(config Config) (System, error) {
 			logger := log.WithField("subservice", "stellar-core")
 			ledgerBackend, err = ledgerbackend.NewCaptive(
 				ledgerbackend.CaptiveCoreConfig{
-					LogPath:             config.CaptiveCoreLogPath,
 					BinaryPath:          config.CaptiveCoreBinaryPath,
 					StoragePath:         config.CaptiveCoreStoragePath,
-					ConfigAppendPath:    config.CaptiveCoreConfigAppendPath,
-					HTTPPort:            config.CaptiveCoreHTTPPort,
-					PeerPort:            config.CaptiveCorePeerPort,
+					Toml:                config.CaptiveCoreToml,
 					NetworkPassphrase:   config.NetworkPassphrase,
 					HistoryArchiveURLs:  []string{config.HistoryArchiveURL},
 					CheckpointFrequency: config.CheckpointFrequency,
@@ -312,7 +306,7 @@ func (s *system) initMetrics() {
 			Help: "1 if sync, 0 if not synced, -1 if unable to connect or HTTP server disabled.",
 		},
 		func() float64 {
-			if !s.config.EnableCaptiveCore || s.config.CaptiveCoreHTTPPort == 0 {
+			if !s.config.EnableCaptiveCore || (s.config.CaptiveCoreToml.HTTPPort == 0) {
 				return -1
 			}
 
@@ -320,7 +314,7 @@ func (s *system) initMetrics() {
 				HTTP: &http.Client{
 					Timeout: 2 * time.Second,
 				},
-				URL: fmt.Sprintf("http://localhost:%d", s.config.CaptiveCoreHTTPPort),
+				URL: fmt.Sprintf("http://localhost:%d", s.config.CaptiveCoreToml.HTTPPort),
 			}
 
 			info, err := client.Info(s.ctx)

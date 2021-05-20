@@ -2,6 +2,7 @@ package horizon
 
 import (
 	"fmt"
+	"github.com/stellar/go/ingest/ledgerbackend"
 	"go/types"
 	stdLog "log"
 	"os"
@@ -23,7 +24,7 @@ const (
 	DatabaseURLFlagName = "db-url"
 	// StellarCoreDBURLFlagName is the command line flag for configuring the postgres Stellar Core URL
 	StellarCoreDBURLFlagName = "stellar-core-db-url"
-	// StellarCoreDBURLFlagName is the command line flag for configuring the URL fore Stellar Core HTTP endpoint
+	// StellarCoreURLFlagName is the command line flag for configuring the URL fore Stellar Core HTTP endpoint
 	StellarCoreURLFlagName = "stellar-core-url"
 	// StellarCoreBinaryPathName is the command line flag for configuring the path to the stellar core binary
 	StellarCoreBinaryPathName = "stellar-core-binary-path"
@@ -94,6 +95,13 @@ func Flags() (*Config, support.ConfigOptions) {
 			Usage:     "horizon postgres database to connect with",
 		},
 		&support.ConfigOption{
+			Name:      "ro-database-url",
+			ConfigKey: &config.RoDatabaseURL,
+			OptType:   types.String,
+			Required:  false,
+			Usage:     "horizon postgres read-replica to connect with, when set it will return stale history error when replica is behind primary",
+		},
+		&support.ConfigOption{
 			Name:        StellarCoreBinaryPathName,
 			OptType:     types.String,
 			FlagDefault: "",
@@ -115,7 +123,7 @@ func Flags() (*Config, support.ConfigOptions) {
 			FlagDefault: "",
 			Required:    false,
 			Usage:       "path to additional configuration for the Stellar Core configuration file used by captive core. It must, at least, include enough details to define a quorum set",
-			ConfigKey:   &config.CaptiveCoreConfigAppendPath,
+			ConfigKey:   &config.CaptiveCoreConfigPath,
 		},
 		&support.ConfigOption{
 			Name:        "enable-captive-core-ingestion",
@@ -126,17 +134,17 @@ func Flags() (*Config, support.ConfigOptions) {
 			ConfigKey:   &config.EnableCaptiveCoreIngestion,
 		},
 		&support.ConfigOption{
-			Name:        "captive-core-http-port",
-			OptType:     types.Uint,
-			FlagDefault: uint(11626),
-			Required:    false,
-			Usage:       "HTTP port for Captive Core to listen on (0 disables the HTTP server)",
-			ConfigKey:   &config.CaptiveCoreHTTPPort,
+			Name:           "captive-core-http-port",
+			OptType:        types.Uint,
+			CustomSetValue: support.SetOptionalUint,
+			Required:       false,
+			FlagDefault:    uint(0),
+			Usage:          "HTTP port for Captive Core to listen on (0 disables the HTTP server)",
+			ConfigKey:      &config.CaptiveCoreTomlParams.HTTPPort,
 		},
 		&support.ConfigOption{
-			Name:        "captive-core-storage-path",
-			OptType:     types.String,
-			FlagDefault: "",
+			Name:    "captive-core-storage-path",
+			OptType: types.String,
 			CustomSetValue: func(opt *support.ConfigOption) {
 				existingValue := viper.GetString(opt.Name)
 				if existingValue == "" || existingValue == "." {
@@ -153,12 +161,13 @@ func Flags() (*Config, support.ConfigOptions) {
 			ConfigKey: &config.CaptiveCoreStoragePath,
 		},
 		&support.ConfigOption{
-			Name:        "captive-core-peer-port",
-			OptType:     types.Uint,
-			FlagDefault: uint(0),
-			Required:    false,
-			Usage:       "port for Captive Core to bind to for connecting to the Stellar swarm (0 uses Stellar Core's default)",
-			ConfigKey:   &config.CaptiveCorePeerPort,
+			Name:           "captive-core-peer-port",
+			OptType:        types.Uint,
+			FlagDefault:    uint(0),
+			CustomSetValue: support.SetOptionalUint,
+			Required:       false,
+			Usage:          "port for Captive Core to bind to for connecting to the Stellar swarm (0 uses Stellar Core's default)",
+			ConfigKey:      &config.CaptiveCoreTomlParams.PeerPort,
 		},
 		&support.ConfigOption{
 			Name:      StellarCoreDBURLFlagName,
@@ -285,10 +294,12 @@ func Flags() (*Config, support.ConfigOptions) {
 			Usage:     "name of the file where logs will be saved (leave empty to send logs to stdout)",
 		},
 		&support.ConfigOption{
-			Name:      "captive-core-log-path",
-			ConfigKey: &config.CaptiveCoreLogPath,
-			OptType:   types.String,
-			Usage:     "name of the path for Core logs (leave empty to log w/ Horizon only)",
+			Name:           "captive-core-log-path",
+			ConfigKey:      &config.CaptiveCoreTomlParams.LogPath,
+			OptType:        types.String,
+			CustomSetValue: support.SetOptionalString,
+			Required:       false,
+			Usage:          "name of the path for Core logs (leave empty to log w/ Horizon only)",
 		},
 		&support.ConfigOption{
 			Name:        "max-path-length",
@@ -387,14 +398,6 @@ func Flags() (*Config, support.ConfigOptions) {
 			Usage:       "applies pending migrations before starting horizon",
 		},
 		&support.ConfigOption{
-			Name:        "skip-migrations-check",
-			ConfigKey:   &config.SkipMigrationsCheck,
-			OptType:     types.Bool,
-			FlagDefault: false,
-			Required:    false,
-			Usage:       "skips checking if there are migrations required",
-		},
-		&support.ConfigOption{
 			Name:        "checkpoint-frequency",
 			ConfigKey:   &config.CheckpointFrequency,
 			OptType:     types.Uint32,
@@ -446,19 +449,17 @@ func ApplyFlags(config *Config, flags support.ConfigOptions) {
 	flags.Require()
 	flags.SetValues()
 
-	if config.ApplyMigrations {
-		applyMigrations(*config)
-	}
-
-	// Migrations should be checked as early as possible
-	if !config.SkipMigrationsCheck {
-		checkMigrations(*config)
-	}
-
 	// Validate options that should be provided together
 	validateBothOrNeither("tls-cert", "tls-key")
 
 	if config.Ingest {
+		// Migrations should be checked as early as possible. Apply and check
+		// only on ingesting instances which are required to have write-access
+		// to the DB.
+		if config.ApplyMigrations {
+			applyMigrations(*config)
+		}
+		checkMigrations(*config)
 
 		// config.HistoryArchiveURLs contains a single empty value when empty so using
 		// viper.GetString is easier.
@@ -490,20 +491,30 @@ func ApplyFlags(config *Config, flags support.ConfigOptions) {
 					StellarCoreBinaryPathName, captiveCoreMigrationHint)
 			}
 
-			if binaryPath == "" || config.CaptiveCoreConfigAppendPath == "" {
+			if config.RemoteCaptiveCoreURL == "" && (binaryPath == "" || config.CaptiveCoreConfigPath == "") {
 				stdLog.Fatalf("Invalid config: captive core requires that both --%s and --%s are set. %s",
 					StellarCoreBinaryPathName, CaptiveCoreConfigAppendPathName, captiveCoreMigrationHint)
 			}
 
+			if config.RemoteCaptiveCoreURL == "" {
+				var err error
+				config.CaptiveCoreTomlParams.HistoryArchiveURLs = config.HistoryArchiveURLs
+				config.CaptiveCoreTomlParams.NetworkPassphrase = config.NetworkPassphrase
+				config.CaptiveCoreToml, err = ledgerbackend.NewCaptiveCoreTomlFromFile(config.CaptiveCoreConfigPath, config.CaptiveCoreTomlParams)
+				if err != nil {
+					stdLog.Fatalf("Invalid captive core toml file %v", err)
+				}
+			}
+
 			// If we don't supply an explicit core URL and we are running a local
 			// captive core process with the http port enabled, point to it.
-			if config.StellarCoreURL == "" && config.RemoteCaptiveCoreURL == "" && config.CaptiveCoreHTTPPort != 0 {
-				config.StellarCoreURL = fmt.Sprintf("http://localhost:%d", config.CaptiveCoreHTTPPort)
+			if config.StellarCoreURL == "" && config.RemoteCaptiveCoreURL == "" && config.CaptiveCoreToml.HTTPPort != 0 {
+				config.StellarCoreURL = fmt.Sprintf("http://localhost:%d", config.CaptiveCoreToml.HTTPPort)
 				viper.Set(StellarCoreURLFlagName, config.StellarCoreURL)
 			}
 		}
 	} else {
-		if config.EnableCaptiveCoreIngestion && (config.CaptiveCoreBinaryPath != "" || config.CaptiveCoreConfigAppendPath != "") {
+		if config.EnableCaptiveCoreIngestion && (config.CaptiveCoreBinaryPath != "" || config.CaptiveCoreConfigPath != "") {
 			stdLog.Fatalf("Invalid config: one or more captive core params passed (--%s or --%s) but --ingest not set. "+captiveCoreMigrationHint,
 				StellarCoreBinaryPathName, CaptiveCoreConfigAppendPathName)
 		}

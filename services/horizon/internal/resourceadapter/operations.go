@@ -12,6 +12,11 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
+type sourceMuxedAccount struct {
+	SourceAccountMuxed   string `json:"source_account_muxed"`
+	SourceAccountMuxedID uint64 `json:"source_account_muxed_id"`
+}
+
 // NewOperation creates a new operation resource, finding the appropriate type to use
 // based upon the row's type.
 func NewOperation(
@@ -23,8 +28,13 @@ func NewOperation(
 ) (result hal.Pageable, err error) {
 
 	base := operations.Base{}
+	var sourceMuxed sourceMuxedAccount
+	// We abuse the details to inject muxed-account information without changing the DB schema
+	if err = operationRow.UnmarshalDetails(&sourceMuxed); err != nil {
+		return
+	}
 	err = PopulateBaseOperation(
-		ctx, &base, operationRow, transactionHash, transactionRow, ledger,
+		ctx, &base, sourceMuxed, operationRow, transactionHash, transactionRow, ledger,
 	)
 	if err != nil {
 		return
@@ -148,18 +158,13 @@ func NewOperation(
 }
 
 // Populate fills out this resource using `row` as the source.
-func PopulateBaseOperation(
-	ctx context.Context,
-	dest *operations.Base,
-	operationRow history.Operation,
-	transactionHash string,
-	transactionRow *history.Transaction,
-	ledger history.Ledger,
-) error {
+func PopulateBaseOperation(ctx context.Context, dest *operations.Base, muxed sourceMuxedAccount, operationRow history.Operation, transactionHash string, transactionRow *history.Transaction, ledger history.Ledger) error {
 	dest.ID = fmt.Sprintf("%d", operationRow.ID)
 	dest.PT = operationRow.PagingToken()
 	dest.TransactionSuccessful = operationRow.TransactionSuccessful
 	dest.SourceAccount = operationRow.SourceAccount
+	dest.SourceAccountMuxed = muxed.SourceAccountMuxed
+	dest.SourceAccountMuxedID = muxed.SourceAccountMuxedID
 	populateOperationType(dest, operationRow)
 	dest.LedgerCloseTime = ledger.ClosedAt
 	dest.TransactionHash = transactionHash

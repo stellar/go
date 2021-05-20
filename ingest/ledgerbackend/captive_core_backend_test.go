@@ -132,14 +132,12 @@ type testLedgerHeader struct {
 
 func TestCaptiveNew(t *testing.T) {
 	executablePath := "/etc/stellar-core"
-	configPath := "/etc/stellar-core.cfg"
 	networkPassphrase := network.PublicNetworkPassphrase
 	historyURLs := []string{"http://history.stellar.org/prd/core-live/core_live_001"}
 
 	captiveStellarCore, err := NewCaptive(
 		CaptiveCoreConfig{
 			BinaryPath:         executablePath,
-			ConfigAppendPath:   configPath,
 			NetworkPassphrase:  networkPassphrase,
 			HistoryArchiveURLs: historyURLs,
 		},
@@ -735,11 +733,15 @@ func TestCaptiveStellarCore_PrepareRangeAfterClose(t *testing.T) {
 	networkPassphrase := network.PublicNetworkPassphrase
 	historyURLs := []string{"http://localhost"}
 
+	captiveCoreToml, err := NewCaptiveCoreToml(CaptiveCoreTomlParams{})
+	assert.NoError(t, err)
+
 	captiveStellarCore, err := NewCaptive(
 		CaptiveCoreConfig{
 			BinaryPath:         executablePath,
 			NetworkPassphrase:  networkPassphrase,
 			HistoryArchiveURLs: historyURLs,
+			Toml:               captiveCoreToml,
 		},
 	)
 	assert.NoError(t, err)
