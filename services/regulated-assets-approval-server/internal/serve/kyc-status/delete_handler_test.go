@@ -50,7 +50,7 @@ func TestDeleteHandlerHandle(t *testing.T) {
 	in = deleteRequest{StellarAddress: accountKP.Address()}
 	err = h.handle(ctx, in)
 
-	// TEST error ""not found".
+	// TEST error "not found".
 	require.EqualError(t, err, "not found")
 
 	// INSERT new account in db's accounts_kyc_status table; new account was approved after submitting kyc.
@@ -78,7 +78,7 @@ func TestDeleteHandlerHandle(t *testing.T) {
 	// Send deleteRequest to an account in the db.
 	err = h.handle(ctx, in)
 
-	// TEST if error returned is nil (success).
+	// TEST if nil error returned (success).
 	require.NoError(t, err)
 
 	// Execute SELECT query for account that was deleted; ensure its no longer in db

@@ -65,9 +65,9 @@ func TestGetDetailHandlerHandle(t *testing.T) {
 	in := getDetailRequest{}
 	kycGetResp, err := h.handle(ctx, in)
 
-	// TEST error "missing stellar address or callback_id"
+	// TEST error "missing stellar address or callbackID"
 	require.Nil(t, kycGetResp)
-	require.EqualError(t, err, "missing stellar address or callback_id")
+	require.EqualError(t, err, "missing stellar address or callbackID")
 
 	// Prepare and send getDetailRequest to an account not in the db.
 	accountKP := keypair.MustRandom()

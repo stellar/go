@@ -193,7 +193,7 @@ func TestAPI_POSTKYCStatus(t *testing.T) {
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 
-	// TEST "Not Found" error response.
+	// TEST "not found" error response.
 	wantPostResponseNotFound := `{
 			"error": "not found"
 			}`
@@ -348,7 +348,7 @@ func TestAPI_GETKYCStatus(t *testing.T) {
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 
-	// TEST "Not Found" error response.
+	// TEST "not found" error response.
 	wantGetResponseNotFound := `{
 		"error": "not found"
 		}`

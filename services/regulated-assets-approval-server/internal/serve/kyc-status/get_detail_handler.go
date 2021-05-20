@@ -85,7 +85,7 @@ func (h GetDetailHandler) handle(ctx context.Context, in getDetailRequest) (resp
 
 	// Check if getDetailRequest StellarAddressOrCallbackID value is present.
 	if in.StellarAddressOrCallbackID == "" {
-		return nil, httperror.NewHTTPError(http.StatusBadRequest, "missing stellar address or callback_id")
+		return nil, httperror.NewHTTPError(http.StatusBadRequest, "missing stellar address or callbackID")
 	}
 
 	// Prepare SELECT query return values.
