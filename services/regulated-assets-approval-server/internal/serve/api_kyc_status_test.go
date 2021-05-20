@@ -16,7 +16,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/services/regulated-assets-approval-server/internal/db/dbtest"
-	"github.com/stellar/go/services/regulated-assets-approval-server/internal/serve/kyc-status"
+	kycstatus "github.com/stellar/go/services/regulated-assets-approval-server/internal/serve/kyc-status"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -48,7 +48,7 @@ func TestAPI_POSTKYCStatus(t *testing.T) {
 	m.Post("/kyc-status/{callback_id}", postHandler.ServeHTTP)
 	reqBody := `{
 		"email_address": "TestEmail@email.com"
-		}`
+	}`
 	r := httptest.NewRequest("POST", fmt.Sprintf("/kyc-status/%s", callbackID), strings.NewReader(reqBody))
 	r = r.WithContext(ctx)
 	w := httptest.NewRecorder()
@@ -59,10 +59,6 @@ func TestAPI_POSTKYCStatus(t *testing.T) {
 	require.NoError(t, err)
 
 	// TEST "no_further_action_required" response for approved account.
-	// validate the body response is in the format:
-	// {
-	//   "result": "no_further_action_required"
-	// }
 	type kycStatusPOSTResponseDecoded struct {
 		Result string `json:"result"`
 	}
@@ -98,7 +94,7 @@ func TestAPI_POSTKYCStatus(t *testing.T) {
 	// Preparing and send /kyc-status/{callback_id} POST request.
 	reqBody = `{
 		"email_address": "xTestEmail@email.com"
-		}`
+	}`
 	r = httptest.NewRequest("POST", fmt.Sprintf("/kyc-status/%s", callbackIDRejected), strings.NewReader(reqBody))
 	r = r.WithContext(ctx)
 	w = httptest.NewRecorder()
@@ -130,7 +126,7 @@ func TestAPI_POSTKYCStatus(t *testing.T) {
 	// Preparing and send /kyc-status/{callback_id} POST request; using the rejected account's callback_ID.
 	reqBody = `{
 		"email_address": "TestEmailx@email.com"
-		}`
+	}`
 	r = httptest.NewRequest("POST", fmt.Sprintf("/kyc-status/%s", callbackIDRejected), strings.NewReader(reqBody))
 	r = r.WithContext(ctx)
 	w = httptest.NewRecorder()
@@ -172,7 +168,7 @@ func TestAPI_POSTKYCStatus(t *testing.T) {
 	require.NoError(t, err)
 	reqBody = `{
 		"email_address": ""
-		}`
+	}`
 	r = httptest.NewRequest("POST", fmt.Sprintf("/kyc-status/%s", callbackIDNoEmail), strings.NewReader(reqBody))
 	r = r.WithContext(ctx)
 	w = httptest.NewRecorder()
@@ -192,7 +188,7 @@ func TestAPI_POSTKYCStatus(t *testing.T) {
 	callbackIDNotFound := uuid.New().String()
 	reqBody = `{
 		"email_address": "notFound@email.com"
-		}`
+	}`
 	r = httptest.NewRequest("POST", fmt.Sprintf("/kyc-status/%s", callbackIDNotFound), strings.NewReader(reqBody))
 	r = r.WithContext(ctx)
 	w = httptest.NewRecorder()
@@ -204,8 +200,8 @@ func TestAPI_POSTKYCStatus(t *testing.T) {
 
 	// TEST "Not found." error response.
 	wantPostResponseNotFound := `{
-			"error": "Not found."
-			}`
+		"error": "Not found."
+	}`
 	require.JSONEq(t, wantPostResponseNotFound, string(body))
 }
 
@@ -369,7 +365,7 @@ func TestAPI_GETKYCStatus(t *testing.T) {
 	// TEST "Not found." error response.
 	wantGetResponseNotFound := `{
 		"error": "Not found."
-		}`
+	}`
 	require.JSONEq(t, wantGetResponseNotFound, string(body))
 }
 
@@ -414,7 +410,7 @@ func TestAPI_DELETEKYCStatus(t *testing.T) {
 	}`
 	require.JSONEq(t, wantBody, string(body))
 
-	// Prepare and execute SELECT query for account that was deleted.
+	// Prepare and execute SELECT query for account that was deleted, TEST if the the account doesn't exist in the db.
 	existQuery := `
 	SELECT EXISTS(
 		SELECT stellar_address
@@ -424,8 +420,6 @@ func TestAPI_DELETEKYCStatus(t *testing.T) {
 	var exists bool
 	err = deleteHandler.DB.QueryRowContext(ctx, existQuery, approveKP.Address()).Scan(&exists)
 	require.NoError(t, err)
-
-	// TEST if the the account doesn't exist in the db.
 	assert.False(t, exists)
 
 	// Prepare and send /kyc-status/{stellar_address} DELETE request; for account that isn't in the accounts_kyc_status table.
@@ -441,6 +435,6 @@ func TestAPI_DELETEKYCStatus(t *testing.T) {
 	// TEST error "Not found." response for attempting to delete an account that isn't in the accounts_kyc_status table.
 	wantDeleteResponseNotFound := `{
 		"error": "Not found."
-		}`
+	}`
 	require.JSONEq(t, wantDeleteResponseNotFound, string(body))
 }
