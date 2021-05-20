@@ -78,7 +78,7 @@ func TestGetDetailHandlerHandle(t *testing.T) {
 	require.Nil(t, kycGetResp)
 	require.EqualError(t, err, "Not found.")
 
-	// Prepare and send getDetailRequest to an callbackID not in the db.
+	// Prepare and send getDetailRequest to a callbackID not in the db.
 	callbackID := uuid.New().String()
 	in = getDetailRequest{StellarAddressOrCallbackID: callbackID}
 	kycGetResp, err = h.handle(ctx, in)
@@ -96,23 +96,12 @@ func TestGetDetailHandlerHandle(t *testing.T) {
 	_, err = h.DB.ExecContext(ctx, insertNewAccountQuery, accountKP.Address(), callbackID, emailAddress)
 	require.NoError(t, err)
 
-	// Prepare and execute SELECT query for account was added. Ensures account been added.
-	existQuery := `
-		SELECT EXISTS(
-			SELECT stellar_address
-			FROM accounts_kyc_status
-			WHERE stellar_address = $1
-		)`
-	var exists bool
-	err = h.DB.QueryRowContext(ctx, existQuery, accountKP.Address()).Scan(&exists)
-	require.NoError(t, err)
-	assert.True(t, exists)
-
-	// Send getDetailRequest to an account in the db.
+	// Prepare and send getDetailRequest to an account in the db; using stellar address.
+	in = getDetailRequest{StellarAddressOrCallbackID: accountKP.Address()}
 	kycGetResp, err = h.handle(ctx, in)
-
-	// TEST if response returns with account that was inserted in db.
 	require.NoError(t, err)
+
+	// TEST if response returns with account that was inserted in db; using stellar address.
 	wantKycGetResponse := kycGetResponse{
 		StellarAddress: accountKP.Address(),
 		CallbackID:     callbackID,
@@ -122,6 +111,20 @@ func TestGetDetailHandlerHandle(t *testing.T) {
 		ApprovedAt:     kycGetResp.ApprovedAt,
 		RejectedAt:     kycGetResp.RejectedAt,
 	}
+	assert.Equal(t, &wantKycGetResponse, kycGetResp)
+
+	// TEST if response timestamps are present or null.
+	require.NotNil(t, kycGetResp.CreatedAt)
+	require.NotNil(t, kycGetResp.KYCSubmittedAt)
+	require.NotNil(t, kycGetResp.ApprovedAt)
+	require.Nil(t, kycGetResp.RejectedAt)
+
+	/// Prepare and send getDetailRequest to an account in the db; using stellar address.
+	in = getDetailRequest{StellarAddressOrCallbackID: callbackID}
+	kycGetResp, err = h.handle(ctx, in)
+	require.NoError(t, err)
+
+	// TEST if response returns with account that was inserted in db; using callbackID.
 	assert.Equal(t, &wantKycGetResponse, kycGetResp)
 
 	// TEST if response timestamps are present or null.
