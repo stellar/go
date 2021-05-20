@@ -65,27 +65,27 @@ func TestGetDetailHandlerHandle(t *testing.T) {
 	in := getDetailRequest{}
 	kycGetResp, err := h.handle(ctx, in)
 
-	// TEST error "missing stellar address or callbackID"
+	// TEST error "Missing stellar address or callbackID"
 	require.Nil(t, kycGetResp)
-	require.EqualError(t, err, "missing stellar address or callbackID")
+	require.EqualError(t, err, "Missing stellar address or callbackID")
 
 	// Prepare and send getDetailRequest to an account not in the db.
 	accountKP := keypair.MustRandom()
 	in = getDetailRequest{StellarAddressOrCallbackID: accountKP.Address()}
 	kycGetResp, err = h.handle(ctx, in)
 
-	// TEST error "not found".
+	// TEST error "Not found.".
 	require.Nil(t, kycGetResp)
-	require.EqualError(t, err, "not found")
+	require.EqualError(t, err, "Not found.")
 
 	// Prepare and send getDetailRequest to an callbackID not in the db.
 	callbackID := uuid.New().String()
 	in = getDetailRequest{StellarAddressOrCallbackID: callbackID}
 	kycGetResp, err = h.handle(ctx, in)
 
-	// TEST error "not found".
+	// TEST error "Not found.".
 	require.Nil(t, kycGetResp)
-	require.EqualError(t, err, "not found")
+	require.EqualError(t, err, "Not found.")
 
 	// INSERT new account in db's accounts_kyc_status table; new account was approved after submitting kyc.
 	insertNewAccountQuery := `

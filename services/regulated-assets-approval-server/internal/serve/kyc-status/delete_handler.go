@@ -67,7 +67,7 @@ func (h DeleteHandler) handle(ctx context.Context, in deleteRequest) (err error)
 
 	// Check if deleteRequest StellarAddress value is present.
 	if in.StellarAddress == "" {
-		return httperror.NewHTTPError(http.StatusBadRequest, "missing stellar address")
+		return httperror.NewHTTPError(http.StatusBadRequest, "Missing stellar address.")
 	}
 
 	var existed bool
@@ -85,7 +85,7 @@ func (h DeleteHandler) handle(ctx context.Context, in deleteRequest) (err error)
 		return errors.Wrap(err, "querying the database")
 	}
 	if !existed {
-		return httperror.NewHTTPError(http.StatusNotFound, "not found")
+		return httperror.NewHTTPError(http.StatusNotFound, "Not found.")
 	}
 
 	return nil

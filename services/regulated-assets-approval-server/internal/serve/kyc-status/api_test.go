@@ -175,7 +175,7 @@ func TestAPI_POSTKYCStatus(t *testing.T) {
 
 	// TEST "Missing email_address" error response.
 	wantPostResponseMissingEmail := `{
-		"error": "missing email_address"
+		"error": "Missing email_address."
 	}`
 	require.JSONEq(t, wantPostResponseMissingEmail, string(body))
 
@@ -193,9 +193,9 @@ func TestAPI_POSTKYCStatus(t *testing.T) {
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 
-	// TEST "not found" error response.
+	// TEST "Not found." error response.
 	wantPostResponseNotFound := `{
-			"error": "not found"
+			"error": "Not found."
 			}`
 	require.JSONEq(t, wantPostResponseNotFound, string(body))
 }
@@ -348,9 +348,9 @@ func TestAPI_GETKYCStatus(t *testing.T) {
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 
-	// TEST "not found" error response.
+	// TEST "Not found." error response.
 	wantGetResponseNotFound := `{
-		"error": "not found"
+		"error": "Not found."
 		}`
 	require.JSONEq(t, wantGetResponseNotFound, string(body))
 }
@@ -420,9 +420,9 @@ func TestAPI_DELETEKYCStatus(t *testing.T) {
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 
-	// TEST error "not found" response for attempting to delete an account that isn't in the accounts_kyc_status table.
+	// TEST error "Not found." response for attempting to delete an account that isn't in the accounts_kyc_status table.
 	wantDeleteResponseNotFound := `{
-		"error": "not found"
+		"error": "Not found."
 		}`
 	require.JSONEq(t, wantDeleteResponseNotFound, string(body))
 }

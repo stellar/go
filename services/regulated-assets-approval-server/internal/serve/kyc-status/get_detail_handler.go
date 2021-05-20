@@ -85,7 +85,7 @@ func (h GetDetailHandler) handle(ctx context.Context, in getDetailRequest) (resp
 
 	// Check if getDetailRequest StellarAddressOrCallbackID value is present.
 	if in.StellarAddressOrCallbackID == "" {
-		return nil, httperror.NewHTTPError(http.StatusBadRequest, "missing stellar address or callbackID")
+		return nil, httperror.NewHTTPError(http.StatusBadRequest, "Missing stellar address or callbackID")
 	}
 
 	// Prepare SELECT query return values.
@@ -102,7 +102,7 @@ func (h GetDetailHandler) handle(ctx context.Context, in getDetailRequest) (resp
 	`
 	err = h.DB.QueryRowContext(ctx, q, in.StellarAddressOrCallbackID).Scan(&stellarAddress, &emailAddress, &createdAt, &kycSubmittedAt, &approvedAt, &rejectedAt, &callbackID)
 	if err == sql.ErrNoRows {
-		return nil, httperror.NewHTTPError(http.StatusNotFound, "not found")
+		return nil, httperror.NewHTTPError(http.StatusNotFound, "Not found.")
 	}
 	if err != nil {
 		return nil, errors.Wrap(err, "querying the database")
