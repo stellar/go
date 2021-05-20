@@ -259,6 +259,17 @@ func initDbMetrics(app *App) {
 	)
 	app.prometheusRegistry.MustRegister(app.dbWaitDurationCounter)
 
+	app.idleClosedCounter = prometheus.NewCounterFunc(
+		prometheus.CounterOpts{
+			Namespace: "horizon", Subsystem: "db", Name: "idle_closed_total",
+			Help: "total number of connections closed due to SetMaxIdleConns",
+		},
+		func() float64 {
+			return float64(app.historyQ.Session.DB.Stats().MaxIdleClosed)
+		},
+	)
+	app.prometheusRegistry.MustRegister(app.idleClosedCounter)
+
 	app.prometheusRegistry.MustRegister(app.orderBookStream.LatestLedgerGauge)
 }
 

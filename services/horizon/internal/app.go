@@ -81,6 +81,7 @@ type App struct {
 	dbInUseConnectionsGauge           prometheus.GaugeFunc
 	dbWaitCountCounter                prometheus.CounterFunc
 	dbWaitDurationCounter             prometheus.CounterFunc
+	idleClosedCounter                 prometheus.CounterFunc
 	coreLatestLedgerCounter           prometheus.CounterFunc
 	coreSynced                        prometheus.GaugeFunc
 }
