@@ -107,6 +107,12 @@ func handleHTTP(opts Options) http.Handler {
 		mux.Post("/{callback_id}", kycstatus.PostHandler{
 			DB: db,
 		}.ServeHTTP)
+		mux.Get("/{stellar_address_or_callback_id}", kycstatus.GetDetailHandler{
+			DB: db,
+		}.ServeHTTP)
+		mux.Delete("/{stellar_address}", kycstatus.DeleteHandler{
+			DB: db,
+		}.ServeHTTP)
 	})
 
 	return mux

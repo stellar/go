@@ -25,6 +25,8 @@ intended for **testing only**. It is being conceived to:
   * [API Spec](#api-spec)
     * [POST /tx\-approve](#post-tx-approve)
     * [POST /kyc\-status/\{CALLBACK\_ID\}](#post-kyc-statuscallback_id)
+    * [GET /kyc\-status/\{STELLAR\_ADDRESS\_OR\_CALLBACK\_ID\}](#get-kyc-statusstellar_address_or_callback_id)
+    * [DELETE /kyc\-status/\{STELLAR\_ADDRESS\}](#delete-kyc-statusstellar_address)
 
 Created by [gh-md-toc](https://github.com/ekalinin/github-markdown-toc.go)
 
@@ -202,7 +204,61 @@ If their KYC was rejected they should see a rejection response.
 }
 ```
 
+### `GET /kyc-status/{STELLAR_ADDRESS_OR_CALLBACK_ID}`
 
+Returns the detail of an account that requested KYC, as well some metadata about
+its status.
+Note: This functionality is for test/debugging purposes and it's not part of the [SEP-8] spec.
+
+**Response (No KYC Submitted):**
+
+```json
+{
+  "stellar_address": "GA2DMTP67JT4LQ4CFTUONFBFGKPO6VONW4LWJNOIY2WPRJLUV44MJZOK",
+  "callback_id":"e0d9243a-40cf-4baa-9575-913e6c98a12e",
+  "created_at": "2021-03-26T09:35:06.907293-03:00",
+}
+```
+
+**Response (Approved KYC):**
+
+```json
+{
+  "stellar_address": "GA2DMTP67JT4LQ4CFTUONFBFGKPO6VONW4LWJNOIY2WPRJLUV44MJZOK",
+  "callback_id":"e0d9243a-40cf-4baa-9575-913e6c98a12e",
+  "email_address": "test@test.com",
+  "created_at": "2021-03-26T09:35:06.907293-03:00",
+  "kyc_submitted_at": "2021-03-26T14:03:43.314334-03:00",
+  "approved_at": "2021-03-26T14:03:43.314334-03:00",
+}
+```
+
+**Response (Rejected KYC):**
+
+```json
+{
+  "stellar_address": "GA2DMTP67JT4LQ4CFTUONFBFGKPO6VONW4LWJNOIY2WPRJLUV44MJZOK",
+  "callback_id":"e0d9243a-40cf-4baa-9575-913e6c98a12e",
+  "email_address": "xtest@test.com",
+  "created_at": "2021-03-26T09:35:06.907293-03:00",
+  "kyc_submitted_at": "2021-03-26T14:03:43.314334-03:00",
+  "rejected_at": "2021-03-26T14:03:43.314334-03:00",
+}
+```
+
+### `DELETE /kyc-status/{STELLAR_ADDRESS}`
+
+Deletes a stellar account from the list of KYCs. If the stellar address is not
+in the database to be deleted the server will return with a `404 - Not Found`.
+Note: This functionality is for test/debugging purposes and it's not part of the [SEP-8] spec.
+
+**Response:**
+
+```json
+{
+  "message": "ok"
+}
+```
 
 [SEP-8]: https://github.com/stellar/stellar-protocol/blob/7c795bb9abc606cd1e34764c4ba07900d58fe26e/ecosystem/sep-0008.md
 [authorization flags]: https://github.com/stellar/stellar-protocol/blob/7c795bb9abc606cd1e34764c4ba07900d58fe26e/ecosystem/sep-0008.md#authorization-flags
