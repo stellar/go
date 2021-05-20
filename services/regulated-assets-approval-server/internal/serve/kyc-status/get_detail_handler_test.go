@@ -1,10 +1,13 @@
 package kycstatus
 
 import (
+	"context"
 	"database/sql"
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
+	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/services/regulated-assets-approval-server/internal/db/dbtest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -27,7 +30,7 @@ func TestGetDetailHandlerValidate(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestGetDetailHandlerTimePointerIfValid(t *testing.T) {
+func TestTimePointerIfValid(t *testing.T) {
 	// Prepare NULL nullTimePtr.
 	var nullTimePtr sql.NullTime
 
@@ -46,4 +49,88 @@ func TestGetDetailHandlerTimePointerIfValid(t *testing.T) {
 	timePointer = timePointerIfValid(nullTimePtr)
 	require.NotNil(t, timePointer)
 	assert.Equal(t, &timeNow, timePointer)
+}
+
+func TestGetDetailHandlerHandle(t *testing.T) {
+	ctx := context.Background()
+
+	// Prepare and validate GetDetailHandler.
+	db := dbtest.Open(t)
+	defer db.Close()
+	conn := db.Open()
+	defer conn.Close()
+	h := GetDetailHandler{
+		DB: conn,
+	}
+	err := h.validate()
+	require.NoError(t, err)
+
+	// Prepare and send empty getDetailRequest.
+	in := getDetailRequest{}
+	kycGetResp, err := h.handle(ctx, in)
+
+	// TEST error "Missing stellar address or CallbackID."
+	require.Nil(t, kycGetResp)
+	require.EqualError(t, err, "Missing stellar address or CallbackID.")
+
+	// Prepare and send getDetailRequest to an account not in the db.
+	accountKP := keypair.MustRandom()
+	in = getDetailRequest{StellarAddressOrCallbackID: accountKP.Address()}
+	kycGetResp, err = h.handle(ctx, in)
+
+	// TEST error "Not found.".
+	require.Nil(t, kycGetResp)
+	require.EqualError(t, err, "Not found.")
+
+	// Prepare and send getDetailRequest to an callbackID not in the db.
+	callbackID := uuid.New().String()
+	in = getDetailRequest{StellarAddressOrCallbackID: callbackID}
+	kycGetResp, err = h.handle(ctx, in)
+
+	// TEST error "Not found.".
+	require.Nil(t, kycGetResp)
+	require.EqualError(t, err, "Not found.")
+
+	// INSERT new account in db's accounts_kyc_status table; new account was approved after submitting kyc.
+	insertNewAccountQuery := `
+	INSERT INTO accounts_kyc_status (stellar_address, callback_id, email_address, kyc_submitted_at, approved_at, rejected_at)
+	VALUES ($1, $2, $3, NOW(), NOW(), NULL)
+	`
+	emailAddress := "email@approved.com"
+	_, err = h.DB.ExecContext(ctx, insertNewAccountQuery, accountKP.Address(), callbackID, emailAddress)
+	require.NoError(t, err)
+
+	// Prepare and execute SELECT query for account was added. Ensures account been added.
+	existQuery := `
+		SELECT EXISTS(
+			SELECT stellar_address
+			FROM accounts_kyc_status
+			WHERE stellar_address = $1
+		)`
+	var exists bool
+	err = h.DB.QueryRowContext(ctx, existQuery, accountKP.Address()).Scan(&exists)
+	require.NoError(t, err)
+	assert.True(t, exists)
+
+	// Send getDetailRequest to an account in the db.
+	kycGetResp, err = h.handle(ctx, in)
+
+	// TEST if response returns with account that was inserted in db.
+	require.NoError(t, err)
+	wantKycGetResponse := kycGetResponse{
+		StellarAddress: accountKP.Address(),
+		CallbackID:     callbackID,
+		EmailAddress:   emailAddress,
+		CreatedAt:      kycGetResp.CreatedAt,
+		KYCSubmittedAt: kycGetResp.KYCSubmittedAt,
+		ApprovedAt:     kycGetResp.ApprovedAt,
+		RejectedAt:     kycGetResp.RejectedAt,
+	}
+	assert.Equal(t, &wantKycGetResponse, kycGetResp)
+
+	// TEST if response timestamps are present or null.
+	require.NotNil(t, kycGetResp.CreatedAt)
+	require.NotNil(t, kycGetResp.KYCSubmittedAt)
+	require.NotNil(t, kycGetResp.ApprovedAt)
+	require.Nil(t, kycGetResp.RejectedAt)
 }
