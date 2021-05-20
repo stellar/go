@@ -22,11 +22,10 @@ type kycGetResponse struct {
 	KYCSubmittedAt *time.Time `json:"kyc_submitted_at,omitempty"`
 	ApprovedAt     *time.Time `json:"approved_at,omitempty"`
 	RejectedAt     *time.Time `json:"rejected_at,omitempty"`
-	StatusCode     int        `json:"-"`
 }
 
 func (k *kycGetResponse) Render(w http.ResponseWriter) {
-	httpjson.RenderStatus(w, k.StatusCode, k, httpjson.JSON)
+	httpjson.Render(w, k, httpjson.JSON)
 }
 
 type GetDetailHandler struct {
