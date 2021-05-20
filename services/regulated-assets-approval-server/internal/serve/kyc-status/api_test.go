@@ -31,7 +31,7 @@ func TestAPI_POSTKYCStatus(t *testing.T) {
 		DB: conn,
 	}
 
-	// INSERT new unverified account in db's accounts_kyc_status table.
+	// INSERT new unverified account in db's "accounts_kyc_status" table.
 	const insertNewAccountQuery = `
 	INSERT INTO accounts_kyc_status (stellar_address, callback_id)
 	VALUES ($1, $2)
@@ -65,7 +65,7 @@ func TestAPI_POSTKYCStatus(t *testing.T) {
 	}
 	assert.Equal(t, wantPostResponse, kycStatusPOSTResponseApprove)
 
-	// Query db's accounts_kyc_status table account after /kyc-status/{callback_id} POST request.
+	// Query db's "accounts_kyc_status" table account after /kyc-status/{callback_id} POST request.
 	const selectAccountQuery = `
 	SELECT approved_at, rejected_at
 	FROM accounts_kyc_status
@@ -75,12 +75,12 @@ func TestAPI_POSTKYCStatus(t *testing.T) {
 	err = postHandler.DB.QueryRowContext(ctx, selectAccountQuery, callbackID).Scan(&approvedAt, &rejectedAt)
 	require.NoError(t, err)
 
-	// TEST if account in db's accounts_kyc_status table was approved.
+	// TEST if account in db's "accounts_kyc_status" table was approved.
 	// sql.NullTime.Valid is true if Time is not NULL
 	assert.True(t, approvedAt.Valid)
 	assert.False(t, rejectedAt.Valid)
 
-	// INSERT new unverified account in db's accounts_kyc_status table.
+	// INSERT new unverified account in db's "accounts_kyc_status" table.
 	rejectedKP := keypair.MustRandom()
 	callbackIDRejected := uuid.New().String()
 	_, err = postHandler.DB.ExecContext(ctx, insertNewAccountQuery, rejectedKP.Address(), callbackIDRejected)
@@ -108,11 +108,11 @@ func TestAPI_POSTKYCStatus(t *testing.T) {
 	}
 	assert.Equal(t, wantPostResponse, kycStatusPOSTResponseRejected)
 
-	// Query db's accounts_kyc_status table account after /kyc-status/{callback_id} POST request.
+	// Query db's "accounts_kyc_status" table account after /kyc-status/{callback_id} POST request.
 	err = postHandler.DB.QueryRowContext(ctx, selectAccountQuery, callbackIDRejected).Scan(&approvedAt, &rejectedAt)
 	require.NoError(t, err)
 
-	// TEST if account in db's accounts_kyc_status table was rejected.
+	// TEST if account in db's "accounts_kyc_status" table was rejected.
 	// Should be rejected based on arbitrary rule where emails begin with "x".
 	// sql.NullTime.Valid is true if Time is not NULL
 	assert.True(t, rejectedAt.Valid)
@@ -140,7 +140,7 @@ func TestAPI_POSTKYCStatus(t *testing.T) {
 	}
 	assert.Equal(t, wantPostResponse, kycStatusPOSTResponseRejectedNewEmail)
 
-	// Query db's accounts_kyc_status table account after /kyc-status/{callback_id} POST request.
+	// Query db's "accounts_kyc_status" table account after /kyc-status/{callback_id} POST request.
 	selectUpdatedAccountEmailQuery := `
 	SELECT approved_at, rejected_at, email_address
 	FROM accounts_kyc_status
@@ -150,7 +150,7 @@ func TestAPI_POSTKYCStatus(t *testing.T) {
 	err = postHandler.DB.QueryRowContext(ctx, selectUpdatedAccountEmailQuery, callbackIDRejected).Scan(&approvedAt, &rejectedAt, &updatedEmail)
 	require.NoError(t, err)
 
-	// TEST if account in db's accounts_kyc_status table was approved, and email was overwritten.
+	// TEST if account in db's "accounts_kyc_status" table was approved, and email was overwritten.
 	// sql.NullTime.Valid is true if Time is not NULL
 	assert.True(t, approvedAt.Valid)
 	assert.False(t, rejectedAt.Valid)
@@ -175,7 +175,7 @@ func TestAPI_POSTKYCStatus(t *testing.T) {
 
 	// TEST "Missing email_address" error response.
 	wantPostResponseMissingEmail := `{
-		"error": "Missing email_address."
+		"error": "missing email_address"
 	}`
 	require.JSONEq(t, wantPostResponseMissingEmail, string(body))
 
@@ -195,7 +195,7 @@ func TestAPI_POSTKYCStatus(t *testing.T) {
 
 	// TEST "Not Found" error response.
 	wantPostResponseNotFound := `{
-			"error": "Not found."
+			"error": "not found"
 			}`
 	require.JSONEq(t, wantPostResponseNotFound, string(body))
 }
@@ -208,11 +208,9 @@ func TestAPI_GETKYCStatus(t *testing.T) {
 	defer conn.Close()
 
 	// Create kyc-status GetDetailHandler.
-	getHandler := GetDetailHandler{
-		DB: conn,
-	}
+	getHandler := GetDetailHandler{DB: conn}
 
-	// INSERT new account in db's accounts_kyc_status table; new account was approved after submitting kyc.
+	// INSERT new account in db's "accounts_kyc_status" table; new account was approved after submitting kyc.
 	insertNewApprovedAccountQuery := `
 	INSERT INTO accounts_kyc_status (stellar_address, callback_id, email_address, kyc_submitted_at, approved_at, rejected_at)
 	VALUES ($1, $2, $3, NOW(), NOW(), NULL)
@@ -256,7 +254,7 @@ func TestAPI_GETKYCStatus(t *testing.T) {
 	require.NotNil(t, kycStatusGETResponseApprove.ApprovedAt)
 	require.Nil(t, kycStatusGETResponseApprove.RejectedAt)
 
-	// INSERT new account in db's accounts_kyc_status table; new account was rejected after submiting kyc.
+	// INSERT new account in db's "accounts_kyc_status" table; new account was rejected after submiting kyc.
 	insertNewRejectedAccountQuery := `
 	INSERT INTO accounts_kyc_status (stellar_address, callback_id, email_address, kyc_submitted_at, approved_at, rejected_at)
 	VALUES ($1, $2, $3, NOW(), NULL, NOW())
@@ -298,7 +296,7 @@ func TestAPI_GETKYCStatus(t *testing.T) {
 	require.NotNil(t, kycStatusGETResponseReject.RejectedAt)
 	require.Nil(t, kycStatusGETResponseReject.ApprovedAt)
 
-	// INSERT new account in db's accounts_kyc_status table; new account hasn't submitted kyc.
+	// INSERT new account in db's "accounts_kyc_status" table; new account hasn't submitted kyc.
 	insertNewAccountNoKycQuery := `
 		INSERT INTO accounts_kyc_status (stellar_address, callback_id, email_address, kyc_submitted_at, approved_at, rejected_at)
 		VALUES ($1, $2, NULL, NULL, NULL, NULL)
@@ -352,7 +350,7 @@ func TestAPI_GETKYCStatus(t *testing.T) {
 
 	// TEST "Not Found" error response.
 	wantGetResponseNotFound := `{
-		"error": "Not found."
+		"error": "not found"
 		}`
 	require.JSONEq(t, wantGetResponseNotFound, string(body))
 }
@@ -369,7 +367,7 @@ func TestAPI_DELETEKYCStatus(t *testing.T) {
 		DB: conn,
 	}
 
-	// INSERT new account in db's accounts_kyc_status table; new account was approved after submitting kyc.
+	// INSERT new account in db's "accounts_kyc_status" table; new account was approved after submitting kyc.
 	insertNewApprovedAccountQuery := `
 	INSERT INTO accounts_kyc_status (stellar_address, callback_id, email_address, kyc_submitted_at, approved_at, rejected_at)
 	VALUES ($1, $2, $3, NOW(), NOW(), NULL)
@@ -422,9 +420,9 @@ func TestAPI_DELETEKYCStatus(t *testing.T) {
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 
-	// TEST error "Not found." response for attempting to delete an account that isn't in the "accounts_kyc_status" table.
+	// TEST error "not found" response for attempting to delete an account that isn't in the "accounts_kyc_status" table.
 	wantDeleteResponseNotFound := `{
-		"error": "Not found."
+		"error": "not found"
 		}`
 	require.JSONEq(t, wantDeleteResponseNotFound, string(body))
 }

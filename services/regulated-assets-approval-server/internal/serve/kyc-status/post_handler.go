@@ -90,13 +90,13 @@ func (h PostHandler) handle(ctx context.Context, in kycPostRequest) (resp *kycPo
 
 	// Check if kycPostRequest values are present or not malformed.
 	if in.CallbackID == "" {
-		return nil, httperror.NewHTTPError(http.StatusBadRequest, "Missing callback ID.")
+		return nil, httperror.NewHTTPError(http.StatusBadRequest, "missing callbackID")
 	}
 	if in.EmailAddress == "" {
-		return nil, httperror.NewHTTPError(http.StatusBadRequest, "Missing email_address.")
+		return nil, httperror.NewHTTPError(http.StatusBadRequest, "missing email_address")
 	}
 	if !RxEmail.MatchString(in.EmailAddress) {
-		return nil, httperror.NewHTTPError(http.StatusBadRequest, "The provided email_address is invalid.")
+		return nil, httperror.NewHTTPError(http.StatusBadRequest, "the provided email_address is invalid")
 	}
 
 	var exists bool
@@ -106,7 +106,7 @@ func (h PostHandler) handle(ctx context.Context, in kycPostRequest) (resp *kycPo
 		return nil, errors.Wrap(err, "querying the database")
 	}
 	if !exists {
-		return nil, httperror.NewHTTPError(http.StatusNotFound, "Not found.")
+		return nil, httperror.NewHTTPError(http.StatusNotFound, "not found")
 	}
 
 	return NewKYCStatusPostResponse(), nil

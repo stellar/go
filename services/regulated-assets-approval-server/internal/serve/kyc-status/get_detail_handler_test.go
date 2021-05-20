@@ -23,9 +23,7 @@ func TestGetDetailHandlerValidate(t *testing.T) {
 	defer db.Close()
 	conn := db.Open()
 	defer conn.Close()
-	h = GetDetailHandler{
-		DB: conn,
-	}
+	h = GetDetailHandler{DB: conn}
 	err = h.validate()
 	require.NoError(t, err)
 }
@@ -45,7 +43,7 @@ func TestTimePointerIfValid(t *testing.T) {
 	nullTimePtr.Time = timeNow
 
 	// Send a valid Pointer to timePointerIfValid.
-	// TEST if timePointer is valid; timePointerIfValid will return the time.Time ptr.
+	// TEST if timePointer is valid and if return a time.Time pointer equals the time.Now().
 	timePointer = timePointerIfValid(nullTimePtr)
 	require.NotNil(t, timePointer)
 	assert.Equal(t, &timeNow, timePointer)
@@ -59,9 +57,7 @@ func TestGetDetailHandlerHandle(t *testing.T) {
 	defer db.Close()
 	conn := db.Open()
 	defer conn.Close()
-	h := GetDetailHandler{
-		DB: conn,
-	}
+	h := GetDetailHandler{DB: conn}
 	err := h.validate()
 	require.NoError(t, err)
 
@@ -69,27 +65,27 @@ func TestGetDetailHandlerHandle(t *testing.T) {
 	in := getDetailRequest{}
 	kycGetResp, err := h.handle(ctx, in)
 
-	// TEST error "Missing stellar address or CallbackID."
+	// TEST error "missing stellar address or callback_id"
 	require.Nil(t, kycGetResp)
-	require.EqualError(t, err, "Missing stellar address or CallbackID.")
+	require.EqualError(t, err, "missing stellar address or callback_id")
 
 	// Prepare and send getDetailRequest to an account not in the db.
 	accountKP := keypair.MustRandom()
 	in = getDetailRequest{StellarAddressOrCallbackID: accountKP.Address()}
 	kycGetResp, err = h.handle(ctx, in)
 
-	// TEST error "Not found.".
+	// TEST error "not found".
 	require.Nil(t, kycGetResp)
-	require.EqualError(t, err, "Not found.")
+	require.EqualError(t, err, "not found")
 
 	// Prepare and send getDetailRequest to an callbackID not in the db.
 	callbackID := uuid.New().String()
 	in = getDetailRequest{StellarAddressOrCallbackID: callbackID}
 	kycGetResp, err = h.handle(ctx, in)
 
-	// TEST error "Not found.".
+	// TEST error "not found".
 	require.Nil(t, kycGetResp)
-	require.EqualError(t, err, "Not found.")
+	require.EqualError(t, err, "not found")
 
 	// INSERT new account in db's accounts_kyc_status table; new account was approved after submitting kyc.
 	insertNewAccountQuery := `

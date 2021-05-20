@@ -25,8 +25,8 @@ type kycGetResponse struct {
 	StatusCode     int        `json:"-"`
 }
 
-func (g *kycGetResponse) Render(w http.ResponseWriter) {
-	httpjson.RenderStatus(w, g.StatusCode, g, httpjson.JSON)
+func (k *kycGetResponse) Render(w http.ResponseWriter) {
+	httpjson.RenderStatus(w, k.StatusCode, k, httpjson.JSON)
 }
 
 type GetDetailHandler struct {
@@ -85,7 +85,7 @@ func (h GetDetailHandler) handle(ctx context.Context, in getDetailRequest) (resp
 
 	// Check if getDetailRequest StellarAddressOrCallbackID value is present.
 	if in.StellarAddressOrCallbackID == "" {
-		return nil, httperror.NewHTTPError(http.StatusBadRequest, "Missing stellar address or CallbackID.")
+		return nil, httperror.NewHTTPError(http.StatusBadRequest, "missing stellar address or callback_id")
 	}
 
 	// Prepare SELECT query return values.
@@ -102,7 +102,7 @@ func (h GetDetailHandler) handle(ctx context.Context, in getDetailRequest) (resp
 	`
 	err = h.DB.QueryRowContext(ctx, q, in.StellarAddressOrCallbackID).Scan(&stellarAddress, &emailAddress, &createdAt, &kycSubmittedAt, &approvedAt, &rejectedAt, &callbackID)
 	if err == sql.ErrNoRows {
-		return nil, httperror.NewHTTPError(http.StatusNotFound, "Not found.")
+		return nil, httperror.NewHTTPError(http.StatusNotFound, "not found")
 	}
 	if err != nil {
 		return nil, errors.Wrap(err, "querying the database")

@@ -21,9 +21,7 @@ func TestDeleteHandlerValidate(t *testing.T) {
 	defer db.Close()
 	conn := db.Open()
 	defer conn.Close()
-	h = DeleteHandler{
-		DB: conn,
-	}
+	h = DeleteHandler{DB: conn}
 	err = h.validate()
 	require.NoError(t, err)
 }
@@ -36,9 +34,7 @@ func TestDeleteHandlerHandle(t *testing.T) {
 	defer db.Close()
 	conn := db.Open()
 	defer conn.Close()
-	h := DeleteHandler{
-		DB: conn,
-	}
+	h := DeleteHandler{DB: conn}
 	err := h.validate()
 	require.NoError(t, err)
 
@@ -46,16 +42,16 @@ func TestDeleteHandlerHandle(t *testing.T) {
 	in := deleteRequest{}
 	err = h.handle(ctx, in)
 
-	// TEST error "Missing stellar address."
-	require.EqualError(t, err, "Missing stellar address.")
+	// TEST error "missing stellar address"
+	require.EqualError(t, err, "missing stellar address")
 
 	// Prepare and send deleteRequest to an account not in the db.
 	accountKP := keypair.MustRandom()
 	in = deleteRequest{StellarAddress: accountKP.Address()}
 	err = h.handle(ctx, in)
 
-	// TEST error ""Not found.".
-	require.EqualError(t, err, "Not found.")
+	// TEST error ""not found".
+	require.EqualError(t, err, "not found")
 
 	// INSERT new account in db's accounts_kyc_status table; new account was approved after submitting kyc.
 	insertNewAccountQuery := `
