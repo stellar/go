@@ -49,13 +49,14 @@ func (p *OperationProcessor) ProcessTransaction(ctx context.Context, transaction
 			return errors.Wrapf(err, "Error marshaling details for operation %v", operation.ID())
 		}
 
+		source := operation.SourceAccount()
 		if err := p.batch.Add(ctx,
 			operation.ID(),
 			operation.TransactionID(),
 			operation.Order(),
 			operation.OperationType(),
 			detailsJSON,
-			operation.SourceAccount().Address(),
+			source.Address(),
 		); err != nil {
 			return errors.Wrap(err, "Error batch inserting operation rows")
 		}
@@ -96,16 +97,14 @@ func (operation *transactionOperationWrapper) TransactionID() int64 {
 }
 
 // SourceAccount returns the operation's source account.
-func (operation *transactionOperationWrapper) SourceAccount() *xdr.AccountId {
+func (operation *transactionOperationWrapper) SourceAccount() *xdr.MuxedAccount {
 	sourceAccount := operation.operation.SourceAccount
-	var sa xdr.AccountId
 	if sourceAccount != nil {
-		sa = sourceAccount.ToAccountId()
+		return sourceAccount
 	} else {
-		sa = operation.transaction.Envelope.SourceAccount().ToAccountId()
+		ret := operation.transaction.Envelope.SourceAccount()
+		return &ret
 	}
-
-	return &sa
 }
 
 // OperationType returns the operation type.
@@ -191,7 +190,7 @@ func (operation *transactionOperationWrapper) findInitatingBeginSponsoringOp() *
 		// and thus we bail out since we could return incorrect information.
 		return nil
 	}
-	sponsoree := operation.SourceAccount()
+	sponsoree := operation.SourceAccount().ToAccountId()
 	operations := operation.transaction.Envelope.Operations()
 	for i := int(operation.index) - 1; i >= 0; i-- {
 		if beginOp, ok := operations[i].Body.GetBeginSponsoringFutureReservesOp(); ok &&
@@ -205,6 +204,19 @@ func (operation *transactionOperationWrapper) findInitatingBeginSponsoringOp() *
 	return nil
 }
 
+func addMuxedAccountDetails(result map[string]interface{}, a xdr.MuxedAccount, prefix string) {
+	if a.Type == xdr.CryptoKeyTypeKeyTypeMuxedEd25519 {
+		result[prefix+"_muxed"] = a.Address()
+		result[prefix+"_muxed_id"] = uint64(a.Med25519.Id)
+	}
+}
+
+func addAccountAndMuxedAccountDetails(result map[string]interface{}, a xdr.MuxedAccount, prefix string) {
+	accid := a.ToAccountId()
+	result[prefix] = accid.Address()
+	addMuxedAccountDetails(result, a, prefix)
+}
+
 // Details returns the operation details as a map which can be stored as JSON.
 func (operation *transactionOperationWrapper) Details() (map[string]interface{}, error) {
 	details := map[string]interface{}{}
@@ -212,21 +224,19 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 	switch operation.OperationType() {
 	case xdr.OperationTypeCreateAccount:
 		op := operation.operation.Body.MustCreateAccountOp()
-		details["funder"] = source.Address()
+		addAccountAndMuxedAccountDetails(details, *source, "funder")
 		details["account"] = op.Destination.Address()
 		details["starting_balance"] = amount.String(op.StartingBalance)
 	case xdr.OperationTypePayment:
 		op := operation.operation.Body.MustPaymentOp()
-		details["from"] = source.Address()
-		accid := op.Destination.ToAccountId()
-		details["to"] = accid.Address()
+		addAccountAndMuxedAccountDetails(details, *source, "from")
+		addAccountAndMuxedAccountDetails(details, op.Destination, "to")
 		details["amount"] = amount.String(op.Amount)
 		addAssetDetails(details, op.Asset, "")
 	case xdr.OperationTypePathPaymentStrictReceive:
 		op := operation.operation.Body.MustPathPaymentStrictReceiveOp()
-		details["from"] = source.Address()
-		accid := op.Destination.ToAccountId()
-		details["to"] = accid.Address()
+		addAccountAndMuxedAccountDetails(details, *source, "from")
+		addAccountAndMuxedAccountDetails(details, op.Destination, "to")
 
 		details["amount"] = amount.String(op.DestAmount)
 		details["source_amount"] = amount.String(0)
@@ -248,9 +258,8 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 
 	case xdr.OperationTypePathPaymentStrictSend:
 		op := operation.operation.Body.MustPathPaymentStrictSendOp()
-		details["from"] = source.Address()
-		accid := op.Destination.ToAccountId()
-		details["to"] = accid.Address()
+		addAccountAndMuxedAccountDetails(details, *source, "from")
+		addAccountAndMuxedAccountDetails(details, op.Destination, "to")
 
 		details["amount"] = amount.String(0)
 		details["source_amount"] = amount.String(op.SendAmount)
@@ -343,13 +352,13 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 	case xdr.OperationTypeChangeTrust:
 		op := operation.operation.Body.MustChangeTrustOp()
 		addAssetDetails(details, op.Line, "")
-		details["trustor"] = source.Address()
+		addAccountAndMuxedAccountDetails(details, *source, "trustor")
 		details["trustee"] = details["asset_issuer"]
 		details["limit"] = amount.String(op.Limit)
 	case xdr.OperationTypeAllowTrust:
 		op := operation.operation.Body.MustAllowTrustOp()
-		addAssetDetails(details, op.Asset.ToAsset(*source), "")
-		details["trustee"] = source.Address()
+		addAssetDetails(details, op.Asset.ToAsset(source.ToAccountId()), "")
+		addAccountAndMuxedAccountDetails(details, *source, "trustee")
 		details["trustor"] = op.Trustor.Address()
 		details["authorize"] = xdr.TrustLineFlags(op.Authorize).IsAuthorized()
 		authLiabilities := xdr.TrustLineFlags(op.Authorize).IsAuthorizedToMaintainLiabilitiesFlag()
@@ -361,9 +370,8 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 			details["clawback_enabled"] = clawbackEnabled
 		}
 	case xdr.OperationTypeAccountMerge:
-		aid := operation.operation.Body.MustDestination().ToAccountId()
-		details["account"] = source.Address()
-		details["into"] = aid.Address()
+		addAccountAndMuxedAccountDetails(details, *source, "account")
+		addAccountAndMuxedAccountDetails(details, operation.operation.Body.MustDestination(), "into")
 	case xdr.OperationTypeInflation:
 		// no inflation details, presently
 	case xdr.OperationTypeManageData:
@@ -397,14 +405,15 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 			panic(fmt.Errorf("Invalid balanceId in op: %d", operation.index))
 		}
 		details["balance_id"] = balanceID
-		details["claimant"] = source.Address()
+		addAccountAndMuxedAccountDetails(details, *source, "claimant")
 	case xdr.OperationTypeBeginSponsoringFutureReserves:
 		op := operation.operation.Body.MustBeginSponsoringFutureReservesOp()
 		details["sponsored_id"] = op.SponsoredId.Address()
 	case xdr.OperationTypeEndSponsoringFutureReserves:
 		beginSponsorshipOp := operation.findInitatingBeginSponsoringOp()
 		if beginSponsorshipOp != nil {
-			details["begin_sponsor"] = beginSponsorshipOp.SourceAccount().Address()
+			beginSponsorshipSource := beginSponsorshipOp.SourceAccount()
+			addAccountAndMuxedAccountDetails(details, *beginSponsorshipSource, "begin_sponsor")
 		}
 	case xdr.OperationTypeRevokeSponsorship:
 		op := operation.operation.Body.MustRevokeSponsorshipOp()
@@ -420,8 +429,7 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 	case xdr.OperationTypeClawback:
 		op := operation.operation.Body.MustClawbackOp()
 		addAssetDetails(details, op.Asset, "")
-		from := op.From.ToAccountId()
-		details["from"] = from.Address()
+		addAccountAndMuxedAccountDetails(details, op.From, "from")
 		details["amount"] = amount.String(op.Amount)
 	case xdr.OperationTypeClawbackClaimableBalance:
 		op := operation.operation.Body.MustClawbackClaimableBalanceOp()
@@ -452,6 +460,8 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 	if sponsor != nil {
 		details["sponsor"] = sponsor.Address()
 	}
+	// We abuse the details to inject muxed-account information without changing the DB schema
+	addMuxedAccountDetails(details, *source, "source_account")
 
 	return details, nil
 }
@@ -578,7 +588,7 @@ func getLedgerKeyParticipants(ledgerKey xdr.LedgerKey) []xdr.AccountId {
 // Participants returns the accounts taking part in the operation.
 func (operation *transactionOperationWrapper) Participants() ([]xdr.AccountId, error) {
 	participants := []xdr.AccountId{}
-	participants = append(participants, *operation.SourceAccount())
+	participants = append(participants, operation.SourceAccount().ToAccountId())
 	op := operation.operation
 
 	switch operation.OperationType() {
@@ -621,7 +631,7 @@ func (operation *transactionOperationWrapper) Participants() ([]xdr.AccountId, e
 	case xdr.OperationTypeEndSponsoringFutureReserves:
 		beginSponsorshipOp := operation.findInitatingBeginSponsoringOp()
 		if beginSponsorshipOp != nil {
-			participants = append(participants, *beginSponsorshipOp.SourceAccount())
+			participants = append(participants, beginSponsorshipOp.SourceAccount().ToAccountId())
 		}
 	case xdr.OperationTypeRevokeSponsorship:
 		op := operation.operation.Body.MustRevokeSponsorshipOp()

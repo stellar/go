@@ -54,6 +54,8 @@ type Base struct {
 	// successful transaction.
 	TransactionSuccessful bool      `json:"transaction_successful"`
 	SourceAccount         string    `json:"source_account"`
+	SourceAccountMuxed    string    `json:"source_account_muxed,omitempty"`
+	SourceAccountMuxedID  uint64    `json:"source_account_muxed_id,omitempty"`
 	Type                  string    `json:"type"`
 	TypeI                 int32     `json:"type_i"`
 	LedgerCloseTime       time.Time `json:"created_at"`
@@ -85,6 +87,8 @@ type CreateAccount struct {
 	Base
 	StartingBalance string `json:"starting_balance"`
 	Funder          string `json:"funder"`
+	FunderMuxed     string `json:"funder_muxed,omitempty"`
+	FunderMuxedID   uint64 `json:"funder_muxed_id,omitempty"`
 	Account         string `json:"account"`
 }
 
@@ -93,9 +97,13 @@ type CreateAccount struct {
 type Payment struct {
 	Base
 	base.Asset
-	From   string `json:"from"`
-	To     string `json:"to"`
-	Amount string `json:"amount"`
+	From        string `json:"from"`
+	FromMuxed   string `json:"from_muxed,omitempty"`
+	FromMuxedID uint64 `json:"from_muxed_id,omitempty"`
+	To          string `json:"to"`
+	ToMuxed     string `json:"to_muxed,omitempty"`
+	ToMuxedID   uint64 `json:"to_muxed_id,omitempty"`
+	Amount      string `json:"amount"`
 }
 
 // PathPayment is the json resource representing a single operation whose type
@@ -190,9 +198,11 @@ type SetOptions struct {
 type ChangeTrust struct {
 	Base
 	base.Asset
-	Limit   string `json:"limit"`
-	Trustee string `json:"trustee"`
-	Trustor string `json:"trustor"`
+	Limit          string `json:"limit"`
+	Trustee        string `json:"trustee"`
+	Trustor        string `json:"trustor"`
+	TrustorMuxed   string `json:"trustor_muxed,omitempty"`
+	TrustorMuxedID uint64 `json:"trustor_muxed_id,omitempty"`
 }
 
 // Deprecated: use TrustlineFlagsUpdated instead.
@@ -202,6 +212,8 @@ type AllowTrust struct {
 	Base
 	base.Asset
 	Trustee                        string `json:"trustee"`
+	TrusteeMuxed                   string `json:"trustee_muxed,omitempty"`
+	TrusteeMuxedID                 uint64 `json:"trustee_muxed_id,omitempty"`
 	Trustor                        string `json:"trustor"`
 	Authorize                      bool   `json:"authorize"`
 	AuthorizeToMaintainLiabilities bool   `json:"authorize_to_maintain_liabilities"`
@@ -211,8 +223,12 @@ type AllowTrust struct {
 // is AccountMerge.
 type AccountMerge struct {
 	Base
-	Account string `json:"account"`
-	Into    string `json:"into"`
+	Account        string `json:"account"`
+	AccountMuxed   string `json:"account_muxed,omitempty"`
+	AccountMuxedID uint64 `json:"account_muxed_id,omitempty"`
+	Into           string `json:"into"`
+	IntoMuxed      string `json:"into_muxed,omitempty"`
+	IntoMuxedID    uint64 `json:"into_muxed_id,omitempty"`
 }
 
 // Inflation is the json resource representing a single operation whose type is
@@ -234,8 +250,10 @@ type CreateClaimableBalance struct {
 // ClaimClaimableBalance.
 type ClaimClaimableBalance struct {
 	Base
-	BalanceID string `json:"balance_id"`
-	Claimant  string `json:"claimant"`
+	BalanceID       string `json:"balance_id"`
+	Claimant        string `json:"claimant"`
+	ClaimantMuxed   string `json:"claimant_muxed,omitempty"`
+	ClaimantMuxedID uint64 `json:"claimant_muxed_id,omitempty"`
 }
 
 // BeginSponsoringFutureReserves is the json resource representing a single operation whose type is
@@ -249,7 +267,9 @@ type BeginSponsoringFutureReserves struct {
 // EndSponsoringFutureReserves.
 type EndSponsoringFutureReserves struct {
 	Base
-	BeginSponsor string `json:"begin_sponsor,omitempty"`
+	BeginSponsor        string `json:"begin_sponsor,omitempty"`
+	BeginSponsorMuxed   string `json:"begin_sponsor_muxed,omitempty"`
+	BeginSponsorMuxedID uint64 `json:"begin_sponsor_muxed_id,omitempty"`
 }
 
 // RevokeSponsorship is the json resource representing a single operation whose type is
@@ -272,8 +292,10 @@ type RevokeSponsorship struct {
 type Clawback struct {
 	Base
 	base.Asset
-	From   string `json:"from"`
-	Amount string `json:"amount"`
+	From        string `json:"from"`
+	FromMuxed   string `json:"from_muxed,omitempty"`
+	FromMuxedID uint64 `json:"from_muxed_id,omitempty"`
+	Amount      string `json:"amount"`
 }
 
 // ClawbackClaimableBalance is the json resource representing a single operation whose type is
