@@ -111,7 +111,7 @@ func TestGetDetailHandlerHandle(t *testing.T) {
 	require.NotNil(t, kycGetResp.ApprovedAt)
 	require.Nil(t, kycGetResp.RejectedAt)
 
-	/// Prepare and send getDetailRequest to an account in the db; using stellar address. TEST if response returns with account that was inserted in db; using callbackID.
+	/// Prepare and send getDetailRequest to an account in the db; using callbackID. TEST if response returns with account that was inserted in db; using callbackID.
 	in = getDetailRequest{StellarAddressOrCallbackID: callbackID}
 	kycGetResp, err = h.handle(ctx, in)
 	require.NoError(t, err)
