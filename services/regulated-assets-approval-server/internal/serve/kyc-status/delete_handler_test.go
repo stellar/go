@@ -38,19 +38,15 @@ func TestDeleteHandlerHandle(t *testing.T) {
 	err := h.validate()
 	require.NoError(t, err)
 
-	// Prepare and send empty deleteRequest.
+	// Prepare and send empty deleteRequest. TEST error "Missing stellar address."
 	in := deleteRequest{}
 	err = h.handle(ctx, in)
-
-	// TEST error "Missing stellar address."
 	require.EqualError(t, err, "Missing stellar address.")
 
-	// Prepare and send deleteRequest to an account not in the db.
+	// Prepare and send deleteRequest to an account not in the db. TEST error "Not found.".
 	accountKP := keypair.MustRandom()
 	in = deleteRequest{StellarAddress: accountKP.Address()}
 	err = h.handle(ctx, in)
-
-	// TEST error "Not found.".
 	require.EqualError(t, err, "Not found.")
 
 	// INSERT new account in db's accounts_kyc_status table; new account was approved after submitting kyc.
@@ -63,10 +59,8 @@ func TestDeleteHandlerHandle(t *testing.T) {
 	_, err = h.DB.ExecContext(ctx, insertNewAccountQuery, accountKP.Address(), callbackID, emailAddress)
 	require.NoError(t, err)
 
-	// Send deleteRequest to an account in the db.
+	// Send deleteRequest to an account in the db. TEST if nil error returned (success).
 	err = h.handle(ctx, in)
-
-	// TEST if nil error returned (success).
 	require.NoError(t, err)
 
 	// Prepare and execute SELECT query for account that was deleted; ensure its no longer in db

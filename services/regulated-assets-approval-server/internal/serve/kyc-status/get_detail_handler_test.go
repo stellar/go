@@ -61,29 +61,23 @@ func TestGetDetailHandlerHandle(t *testing.T) {
 	err := h.validate()
 	require.NoError(t, err)
 
-	// Prepare and send empty getDetailRequest.
+	// Prepare and send empty getDetailRequest. TEST error "Missing stellar address or callbackID"
 	in := getDetailRequest{}
 	kycGetResp, err := h.handle(ctx, in)
-
-	// TEST error "Missing stellar address or callbackID"
 	require.Nil(t, kycGetResp)
 	require.EqualError(t, err, "Missing stellar address or callbackID")
 
-	// Prepare and send getDetailRequest to an account not in the db.
+	// Prepare and send getDetailRequest to an account not in the db. TEST error "Not found.".
 	accountKP := keypair.MustRandom()
 	in = getDetailRequest{StellarAddressOrCallbackID: accountKP.Address()}
 	kycGetResp, err = h.handle(ctx, in)
-
-	// TEST error "Not found.".
 	require.Nil(t, kycGetResp)
 	require.EqualError(t, err, "Not found.")
 
-	// Prepare and send getDetailRequest to a callbackID not in the db.
+	// Prepare and send getDetailRequest to a callbackID not in the db. TEST error "Not found.".
 	callbackID := uuid.New().String()
 	in = getDetailRequest{StellarAddressOrCallbackID: callbackID}
 	kycGetResp, err = h.handle(ctx, in)
-
-	// TEST error "Not found.".
 	require.Nil(t, kycGetResp)
 	require.EqualError(t, err, "Not found.")
 
@@ -96,12 +90,10 @@ func TestGetDetailHandlerHandle(t *testing.T) {
 	_, err = h.DB.ExecContext(ctx, insertNewAccountQuery, accountKP.Address(), callbackID, emailAddress)
 	require.NoError(t, err)
 
-	// Prepare and send getDetailRequest to an account in the db; using stellar address.
+	// Prepare and send getDetailRequest to an account in the db; using stellar address. TEST if response returns with account that was inserted in db; using stellar address.
 	in = getDetailRequest{StellarAddressOrCallbackID: accountKP.Address()}
 	kycGetResp, err = h.handle(ctx, in)
 	require.NoError(t, err)
-
-	// TEST if response returns with account that was inserted in db; using stellar address.
 	wantKycGetResponse := kycGetResponse{
 		StellarAddress: accountKP.Address(),
 		CallbackID:     callbackID,
@@ -119,12 +111,10 @@ func TestGetDetailHandlerHandle(t *testing.T) {
 	require.NotNil(t, kycGetResp.ApprovedAt)
 	require.Nil(t, kycGetResp.RejectedAt)
 
-	/// Prepare and send getDetailRequest to an account in the db; using stellar address.
+	/// Prepare and send getDetailRequest to an account in the db; using stellar address. TEST if response returns with account that was inserted in db; using callbackID.
 	in = getDetailRequest{StellarAddressOrCallbackID: callbackID}
 	kycGetResp, err = h.handle(ctx, in)
 	require.NoError(t, err)
-
-	// TEST if response returns with account that was inserted in db; using callbackID.
 	assert.Equal(t, &wantKycGetResponse, kycGetResp)
 
 	// TEST if response timestamps are present or null.
