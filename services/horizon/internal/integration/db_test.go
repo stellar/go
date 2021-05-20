@@ -18,18 +18,18 @@ import (
 
 func initializeDBIntegrationTest(t *testing.T) (itest *integration.Test, reachedLedger int32) {
 	itest = integration.NewTest(t, protocol15Config)
-	rootKP := itest.RootKP()
+	master := itest.Master()
 	tt := assert.New(t)
 
 	// Initialize the database with some ledgers including some transactions we submit
 	op := txnbuild.Payment{
-		Destination: rootKP.Address(),
+		Destination: master.Address(),
 		Amount:      "10",
 		Asset:       txnbuild.NativeAsset{},
 	}
 	// TODO: should we enforce certain number of ledgers to be ingested?
 	for i := 0; i < 8; i++ {
-		txResp := itest.MustSubmitOperations(itest.RootAccount(), rootKP, &op)
+		txResp := itest.MustSubmitOperations(itest.MasterAccount(), master, &op)
 		reachedLedger = txResp.Ledger
 	}
 

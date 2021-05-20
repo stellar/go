@@ -16,18 +16,18 @@ import (
 func TestClaimableBalanceCreationOperationsAndEffects(t *testing.T) {
 	tt := assert.New(t)
 	itest := integration.NewTest(t, protocol15Config)
-	rootKP := itest.RootKP()
+	master := itest.Master()
 
 	t.Run("Successful", func(t *testing.T) {
 		op := txnbuild.CreateClaimableBalance{
 			Destinations: []txnbuild.Claimant{
-				txnbuild.NewClaimant(rootKP.Address(), nil),
+				txnbuild.NewClaimant(master.Address(), nil),
 			},
 			Amount: "10",
 			Asset:  txnbuild.NativeAsset{},
 		}
 
-		txResp, err := itest.SubmitOperations(itest.RootAccount(), rootKP, &op)
+		txResp, err := itest.SubmitOperations(itest.MasterAccount(), master, &op)
 		tt.NoError(err)
 
 		var txResult xdr.TransactionResult
@@ -49,11 +49,11 @@ func TestClaimableBalanceCreationOperationsAndEffects(t *testing.T) {
 		cb := ops[0].(operations.CreateClaimableBalance)
 		tt.Equal("native", cb.Asset)
 		tt.Equal("10.0000000", cb.Amount)
-		tt.Equal(rootKP.Address(), cb.SourceAccount)
+		tt.Equal(master.Address(), cb.SourceAccount)
 		tt.Len(cb.Claimants, 1)
 
 		claimant := cb.Claimants[0]
-		tt.Equal(rootKP.Address(), claimant.Destination)
+		tt.Equal(master.Address(), claimant.Destination)
 		tt.Equal(xdr.ClaimPredicateTypeClaimPredicateUnconditional, claimant.Predicate.Type)
 
 		eResponse, err := itest.Client().Effects(sdk.EffectRequest{ForOperation: cb.ID})
@@ -65,11 +65,11 @@ func TestClaimableBalanceCreationOperationsAndEffects(t *testing.T) {
 		tt.Equal("10.0000000", claimableBalanceCreatedEffect.Amount)
 		tt.Equal("native", claimableBalanceCreatedEffect.Asset)
 		tt.Equal(expectedBalanceID, claimableBalanceCreatedEffect.BalanceID)
-		tt.Equal(rootKP.Address(), claimableBalanceCreatedEffect.Account)
+		tt.Equal(master.Address(), claimableBalanceCreatedEffect.Account)
 
 		claimableBalanceClaimantCreatedEffect := effects[1].(hEffects.ClaimableBalanceClaimantCreated)
 		tt.Equal("claimable_balance_claimant_created", claimableBalanceClaimantCreatedEffect.Type)
-		tt.Equal(rootKP.Address(), claimableBalanceClaimantCreatedEffect.Account)
+		tt.Equal(master.Address(), claimableBalanceClaimantCreatedEffect.Account)
 		tt.Equal(expectedBalanceID, claimableBalanceClaimantCreatedEffect.BalanceID)
 		tt.Equal("10.0000000", claimableBalanceClaimantCreatedEffect.Amount)
 		tt.Equal("native", claimableBalanceClaimantCreatedEffect.Asset)
@@ -81,12 +81,12 @@ func TestClaimableBalanceCreationOperationsAndEffects(t *testing.T) {
 		accountDebitedEffect := effects[2].(hEffects.AccountDebited)
 		tt.Equal("10.0000000", accountDebitedEffect.Amount)
 		tt.Equal("native", accountDebitedEffect.Asset.Type)
-		tt.Equal(rootKP.Address(), accountDebitedEffect.Account)
+		tt.Equal(master.Address(), accountDebitedEffect.Account)
 
 		claimableBalanceSponsorshipCreated := effects[3].(hEffects.ClaimableBalanceSponsorshipCreated)
 		tt.Equal("claimable_balance_sponsorship_created", claimableBalanceSponsorshipCreated.Type)
-		tt.Equal(rootKP.Address(), claimableBalanceSponsorshipCreated.Sponsor)
-		tt.Equal(rootKP.Address(), claimableBalanceSponsorshipCreated.Account)
+		tt.Equal(master.Address(), claimableBalanceSponsorshipCreated.Sponsor)
+		tt.Equal(master.Address(), claimableBalanceSponsorshipCreated.Account)
 		tt.Equal(expectedBalanceID, claimableBalanceSponsorshipCreated.BalanceID)
 	})
 
@@ -94,7 +94,7 @@ func TestClaimableBalanceCreationOperationsAndEffects(t *testing.T) {
 		keys, accounts := itest.CreateAccounts(2, "50")
 		op := txnbuild.CreateClaimableBalance{
 			Destinations: []txnbuild.Claimant{
-				txnbuild.NewClaimant(rootKP.Address(), nil),
+				txnbuild.NewClaimant(master.Address(), nil),
 				txnbuild.NewClaimant(keys[1].Address(), nil),
 			},
 			Amount: "100",
