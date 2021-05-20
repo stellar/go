@@ -51,7 +51,7 @@ func TestPopulateOperation_Successful(t *testing.T) {
 
 	assert.NoError(
 		t,
-		PopulateBaseOperation(ctx, &dest, row, "", nil, ledger),
+		PopulateBaseOperation(ctx, &dest, sourceMuxedAccount{}, row, "", nil, ledger),
 	)
 	assert.True(t, dest.TransactionSuccessful)
 	assert.Nil(t, dest.Transaction)
@@ -61,7 +61,7 @@ func TestPopulateOperation_Successful(t *testing.T) {
 
 	assert.NoError(
 		t,
-		PopulateBaseOperation(ctx, &dest, row, "", nil, ledger),
+		PopulateBaseOperation(ctx, &dest, sourceMuxedAccount{}, row, "", nil, ledger),
 	)
 	assert.False(t, dest.TransactionSuccessful)
 	assert.Nil(t, dest.Transaction)
@@ -90,14 +90,7 @@ func TestPopulateOperation_WithTransaction(t *testing.T) {
 
 	assert.NoError(
 		t,
-		PopulateBaseOperation(
-			ctx,
-			&dest,
-			operationsRow,
-			transactionRow.TransactionHash,
-			&transactionRow,
-			ledger,
-		),
+		PopulateBaseOperation(ctx, &dest, sourceMuxedAccount{}, operationsRow, transactionRow.TransactionHash, &transactionRow, ledger),
 	)
 	assert.True(t, dest.TransactionSuccessful)
 	assert.True(t, dest.Transaction.Successful)
@@ -198,6 +191,28 @@ func TestPopulateOperation_ClaimClaimableBalance(t *testing.T) {
 	tt.NoError(err)
 	tt.Equal("abc", resp["balance_id"])
 	tt.Equal("GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD", resp["claimant"])
+}
+
+func TestPopulateOperation_ClaimClaimableBalance_Muxed(t *testing.T) {
+	tt := assert.New(t)
+
+	details := `{
+		"claimant":                "GAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSTVY",
+		"claimant_muxed":          "MAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSAAAAAAAAAAE2LP26",
+		"claimant_muxed_id":       1234,
+		"balance_id":              "abc",
+		"source_account_muxed":    "MAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSAAAAAAAAAAE2LP26",
+		"source_account_muxed_id": 1234
+	}`
+
+	resp, err := getJSONResponse(xdr.OperationTypeClaimClaimableBalance, details)
+	tt.NoError(err)
+	tt.Equal("abc", resp["balance_id"])
+	tt.Equal("GAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSTVY", resp["claimant"])
+	tt.Equal("MAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSAAAAAAAAAAE2LP26", resp["claimant_muxed"])
+	tt.Equal(1234, int(resp["claimant_muxed_id"].(float64)))
+	tt.Equal("MAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSAAAAAAAAAAE2LP26", resp["source_account_muxed"])
+	tt.Equal(1234, int(resp["source_account_muxed_id"].(float64)))
 }
 
 func TestPopulateOperation_BeginSponsoringFutureReserves(t *testing.T) {
@@ -324,40 +339,19 @@ func TestFeeBumpOperation(t *testing.T) {
 
 	assert.NoError(
 		t,
-		PopulateBaseOperation(
-			ctx,
-			&dest,
-			operationsRow,
-			transactionRow.TransactionHash,
-			nil,
-			history.Ledger{},
-		),
+		PopulateBaseOperation(ctx, &dest, sourceMuxedAccount{}, operationsRow, transactionRow.TransactionHash, nil, history.Ledger{}),
 	)
 	assert.Equal(t, transactionRow.TransactionHash, dest.TransactionHash)
 
 	assert.NoError(
 		t,
-		PopulateBaseOperation(
-			ctx,
-			&dest,
-			operationsRow,
-			transactionRow.InnerTransactionHash.String,
-			nil,
-			history.Ledger{},
-		),
+		PopulateBaseOperation(ctx, &dest, sourceMuxedAccount{}, operationsRow, transactionRow.InnerTransactionHash.String, nil, history.Ledger{}),
 	)
 	assert.Equal(t, transactionRow.InnerTransactionHash.String, dest.TransactionHash)
 
 	assert.NoError(
 		t,
-		PopulateBaseOperation(
-			ctx,
-			&dest,
-			operationsRow,
-			transactionRow.TransactionHash,
-			&transactionRow,
-			history.Ledger{},
-		),
+		PopulateBaseOperation(ctx, &dest, sourceMuxedAccount{}, operationsRow, transactionRow.TransactionHash, &transactionRow, history.Ledger{}),
 	)
 
 	assert.Equal(t, transactionRow.TransactionHash, dest.TransactionHash)
@@ -376,14 +370,7 @@ func TestFeeBumpOperation(t *testing.T) {
 
 	assert.NoError(
 		t,
-		PopulateBaseOperation(
-			ctx,
-			&dest,
-			operationsRow,
-			transactionRow.InnerTransactionHash.String,
-			&transactionRow,
-			history.Ledger{},
-		),
+		PopulateBaseOperation(ctx, &dest, sourceMuxedAccount{}, operationsRow, transactionRow.InnerTransactionHash.String, &transactionRow, history.Ledger{}),
 	)
 	assert.Equal(t, transactionRow.InnerTransactionHash.String, dest.TransactionHash)
 	assert.Equal(t, transactionRow.InnerTransactionHash.String, dest.Transaction.Hash)

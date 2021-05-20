@@ -6,7 +6,24 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 ## Unreleased
 
 * Refactor `ingest/ledgerbackend/LedgerBackend.GetLedger` method to always block, removing `ingest/ledgerbackend/LedgerBackend.GetLedgerBlocking`. Adds a first `context.Context` param to most `LedgerBackend` methods.
+
 * Add more in-depth Prometheus metrics (count & duration) for db queries.
+
+
+## v2.3.0
+
+**Upgrading to this version from <= v2.1.1 will trigger a state rebuild. During this process (which can take up to 20 minutes), Horizon will not ingest new ledgers.**
+
+### New features
+* Introduces a flag (`--ro-database-url` / `RO_DATABASE_URL`) which allows setting a connection to a read-replica database. This flag makes Horizon take into account data propagation lag to the replica instance, adding retries if the data is out of sync ([3574](https://github.com/stellar/go/pull/3574)).
+
+### Code changes
+* Improved test suite coverage and stability ([3560](https://github.com/stellar/go/pull/3560), [3562](https://github.com/stellar/go/pull/3562), [3551](https://github.com/stellar/go/pull/3551), and [3547](https://github.com/stellar/go/pull/3547)).
+
+* Improved session handling and timeouts ([3576](https://github.com/stellar/go/pull/3576), [3545](https://github.com/stellar/go/pull/3545), and [3567](https://github.com/stellar/go/pull/3567)).
+
+* Improved stability of Captive Core's configuration options. Specifically, it will now prefer either the command-line parameter (e.g. `--captive-core-peer-port` or its env-var equivalent) or the user-supplied append file (`--captive-core-append-path`) over Horizon's internal defaults. However, if a value is set in *both* the append file and at the command-line, an error will be thrown unless both values are equal ([3558](https://github.com/stellar/go/pull/3558)).
+
 
 ## v2.2.0
 
@@ -30,7 +47,7 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 ### Breaking changes
 
 * Add a flag `--captive-core-storage-path/CAPTIVE_CORE_STORAGE_PATH` that allows users to control the storage location for Captive Core bucket data ([3479](https://github.com/stellar/go/pull/3479)).
-  Previously, Horizon created a directory in `/tmp` to store Captive Core bucket data. Now, if the captive core storage path flag is not set, Horizon will default to using the current working directory.
+  - Previously, Horizon created a directory in `/tmp` to store Captive Core bucket data. Now, if the captive core storage path flag is not set, Horizon will default to using the current working directory.
 * Add a flag `--captive-core-log-path`/`CAPTIVE_CORE_LOG_PATH` that allows users to control the location of the logs emitted by Captive Core ([3472](https://github.com/stellar/go/pull/3472)). If you have a `LOG_FILE_PATH` entry in your Captive Core toml file remove that entry and use the horizon flag instead.
 * `--stellar-core-db-url` / `STELLAR_CORE_DATABASE_URL` should only be configured if Horizon ingestion is enabled otherwise Horizon will not start ([3477](https://github.com/stellar/go/pull/3477)).
 
