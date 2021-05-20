@@ -5,6 +5,10 @@ file.  This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+### New features
+
+* Add `SequenceNumber` function to `Transaction`.
+
 ## [v7.0.0](https://github.com/stellar/go/releases/tag/horizonclient-v7.0.0) - 2021-05-15
 
 ### Breaking changes

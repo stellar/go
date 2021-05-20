@@ -212,6 +212,11 @@ func (t *Transaction) SourceAccount() SimpleAccount {
 	return t.sourceAccount
 }
 
+// SequenceNumber returns the sequence number of the transaction.
+func (t *Transaction) SequenceNumber() int64 {
+	return t.sourceAccount.Sequence
+}
+
 // Memo returns the memo configured for this transaction.
 func (t *Transaction) Memo() Memo {
 	return t.memo
