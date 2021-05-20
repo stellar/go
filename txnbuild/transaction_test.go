@@ -1364,7 +1364,7 @@ func TestFromXDR(t *testing.T) {
 	assert.Equal(t, "GBUKBCG5VLRKAVYAIREJRUJHOKLIADZJOICRW43WVJCLES52BDOTCQZU", newTx2.SourceAccount().AccountID, "source accounts should match")
 	assert.Equal(t, int64(200), newTx2.BaseFee(), "Base fee should match")
 	assert.Equal(t, int64(14800457302017), newTx2.SourceAccount().Sequence, "Sequence number should match")
-	assert.Equal(t, int64(14800457302017), newTx2.SequenceNumber, "Sequence number should match")
+	assert.Equal(t, int64(14800457302017), newTx2.SequenceNumber(), "Sequence number should match")
 
 	memo, ok := newTx2.Memo().(MemoText)
 	assert.Equal(t, true, ok)
