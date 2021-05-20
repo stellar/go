@@ -342,14 +342,14 @@ func (i *Test) MetricsURL() string {
 	return fmt.Sprintf("http://localhost:%d/metrics", i.AdminPort())
 }
 
-// Master returns a keypair of the network master account.
-func (i *Test) Master() *keypair.Full {
-	return keypair.Master(NetworkPassphrase).(*keypair.Full)
+// RootKP returns a keypair of the network root account.
+func (i *Test) RootKP() *keypair.Full {
+	return keypair.Root(NetworkPassphrase)
 }
 
-func (i *Test) MasterAccount() txnbuild.Account {
-	master, client := i.Master(), i.Client()
-	request := sdk.AccountRequest{AccountID: master.Address()}
+func (i *Test) RootAccount() txnbuild.Account {
+	rootKP, client := i.RootKP(), i.Client()
+	request := sdk.AccountRequest{AccountID: rootKP.Address()}
 	account, err := client.AccountDetail(request)
 	panicIf(err)
 	return &account
@@ -361,7 +361,7 @@ func (i *Test) CurrentTest() *testing.T {
 
 /* Utility functions for easier test case creation. */
 
-// Creates new accounts via the master account.
+// Creates new accounts via the root account.
 //
 // It funds each account with the given balance and then queries the API to
 // find the randomized sequence number for future operations.
@@ -372,24 +372,24 @@ func (i *Test) CurrentTest() *testing.T {
 // this method succeeding.
 func (i *Test) CreateAccounts(count int, initialBalance string) ([]*keypair.Full, []txnbuild.Account) {
 	client := i.Client()
-	master := i.Master()
+	rootKP := i.RootKP()
 
 	pairs := make([]*keypair.Full, count)
 	ops := make([]txnbuild.Operation, count)
 
-	// Two paths here: either caller already did some stuff with the master
+	// Two paths here: either caller already did some stuff with the root
 	// account so we should retrieve the sequence number, or caller hasn't and
 	// we start from scratch.
 	seq := int64(0)
-	request := sdk.AccountRequest{AccountID: master.Address()}
+	request := sdk.AccountRequest{AccountID: rootKP.Address()}
 	account, err := client.AccountDetail(request)
 	if err == nil {
 		seq, err = strconv.ParseInt(account.Sequence, 10, 8) // why is this a string?
 		panicIf(err)
 	}
 
-	masterAccount := txnbuild.SimpleAccount{
-		AccountID: master.Address(),
+	rootAccount := txnbuild.SimpleAccount{
+		AccountID: rootKP.Address(),
 		Sequence:  seq,
 	}
 
@@ -398,14 +398,14 @@ func (i *Test) CreateAccounts(count int, initialBalance string) ([]*keypair.Full
 		pairs[i] = pair
 
 		ops[i] = &txnbuild.CreateAccount{
-			SourceAccount: masterAccount.AccountID,
+			SourceAccount: rootAccount.AccountID,
 			Destination:   pair.Address(),
 			Amount:        initialBalance,
 		}
 	}
 
 	// Submit transaction, then retrieve new account details.
-	_ = i.MustSubmitOperations(&masterAccount, master, ops...)
+	_ = i.MustSubmitOperations(&rootAccount, rootKP, ops...)
 
 	accounts := make([]txnbuild.Account, count)
 	for i, kp := range pairs {

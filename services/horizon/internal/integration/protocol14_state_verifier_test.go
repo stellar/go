@@ -29,7 +29,7 @@ func TestProtocol14StateVerifier(t *testing.T) {
 	// The operations below create a sponsorship sandwich, sponsoring an
 	// account, its trustlines, offers, data, and claimable balances.
 	// Then 3 signers are created with the middle one sponsored.
-	master := itest.Master()
+	rootKP := itest.RootKP()
 	ops := []txnbuild.Operation{
 		&txnbuild.BeginSponsoringFutureReserves{
 			SponsoredID: sponsored.Address(),
@@ -40,13 +40,13 @@ func TestProtocol14StateVerifier(t *testing.T) {
 		},
 		&txnbuild.ChangeTrust{
 			SourceAccount: sponsoredSource.AccountID,
-			Line:          txnbuild.CreditAsset{"ABCD", master.Address()},
+			Line:          txnbuild.CreditAsset{"ABCD", rootKP.Address()},
 			Limit:         txnbuild.MaxTrustlineLimit,
 		},
 		&txnbuild.ManageSellOffer{
 			SourceAccount: sponsoredSource.AccountID,
 			Selling:       txnbuild.NativeAsset{},
-			Buying:        txnbuild.CreditAsset{"ABCD", master.Address()},
+			Buying:        txnbuild.CreditAsset{"ABCD", rootKP.Address()},
 			Amount:        "3",
 			Price:         "1",
 		},
@@ -94,7 +94,7 @@ func TestProtocol14StateVerifier(t *testing.T) {
 			},
 		},
 	}
-	txResp, err := itest.SubmitMultiSigOperations(itest.MasterAccount(), []*keypair.Full{master, sponsored}, ops...)
+	txResp, err := itest.SubmitMultiSigOperations(itest.RootAccount(), []*keypair.Full{rootKP, sponsored}, ops...)
 	assert.NoError(t, err)
 	assert.True(t, txResp.Successful)
 

@@ -61,7 +61,13 @@ func Random() (*Full, error) {
 }
 
 // Master returns the master keypair for a given network passphrase
+// Deprecated: Use keypair.Root instead.
 func Master(networkPassphrase string) KP {
+	return Root(networkPassphrase)
+}
+
+// Root returns the root account keypair for a given network passphrase.
+func Root(networkPassphrase string) *Full {
 	kp, err := FromRawSeed(network.ID(networkPassphrase))
 
 	if err != nil {

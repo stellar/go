@@ -8,14 +8,14 @@ import (
 
 // GenesisChange returns the Change occurring at the genesis ledger (ledgerseq = 1)..
 func GenesisChange(networkPassPhrase string) Change {
-	masterKeyPair := keypair.Master(networkPassPhrase)
+	rootKeyPair := keypair.Root(networkPassPhrase)
 
-	masterAccountEntry := xdr.LedgerEntry{
+	rootAccountEntry := xdr.LedgerEntry{
 		LastModifiedLedgerSeq: 1,
 		Data: xdr.LedgerEntryData{
 			Type: xdr.LedgerEntryTypeAccount,
 			Account: &xdr.AccountEntry{
-				AccountId: xdr.MustAddress(masterKeyPair.Address()),
+				AccountId: xdr.MustAddress(rootKeyPair.Address()),
 				// 100B
 				Balance:    amount.MustParse("100000000000"),
 				SeqNum:     0,
@@ -25,7 +25,7 @@ func GenesisChange(networkPassPhrase string) Change {
 	}
 
 	return Change{
-		Type: masterAccountEntry.Data.Type,
-		Post: &masterAccountEntry,
+		Type: rootAccountEntry.Data.Type,
+		Post: &rootAccountEntry,
 	}
 }

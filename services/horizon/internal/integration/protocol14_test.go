@@ -22,7 +22,7 @@ var protocol15Config = integration.Config{ProtocolVersion: 15}
 func TestProtocol15Basics(t *testing.T) {
 	tt := assert.New(t)
 	itest := integration.NewTest(t, protocol15Config)
-	master := itest.Master()
+	rootKP := itest.RootKP()
 
 	t.Run("Sanity", func(t *testing.T) {
 		root, err := itest.Client().Root()
@@ -32,31 +32,31 @@ func TestProtocol15Basics(t *testing.T) {
 
 		// Submit a simple tx
 		op := txnbuild.Payment{
-			Destination: master.Address(),
+			Destination: rootKP.Address(),
 			Amount:      "10",
 			Asset:       txnbuild.NativeAsset{},
 		}
 
-		txResp := itest.MustSubmitOperations(itest.MasterAccount(), master, &op)
-		tt.Equal(master.Address(), txResp.Account)
+		txResp := itest.MustSubmitOperations(itest.RootAccount(), rootKP, &op)
+		tt.Equal(rootKP.Address(), txResp.Account)
 		tt.Equal("1", txResp.AccountSequence)
 	})
 
 	// Ensure predicting claimable balances works.
 	t.Run("BalanceIDs", func(t *testing.T) {
 		tx, err := itest.CreateSignedTransaction(
-			itest.MasterAccount(),
-			[]*keypair.Full{master},
+			itest.RootAccount(),
+			[]*keypair.Full{rootKP},
 			&txnbuild.CreateClaimableBalance{
 				Destinations: []txnbuild.Claimant{
-					txnbuild.NewClaimant(master.Address(), nil),
+					txnbuild.NewClaimant(rootKP.Address(), nil),
 				},
 				Asset:  txnbuild.NativeAsset{},
 				Amount: "42",
 			},
 			&txnbuild.CreateClaimableBalance{
 				Destinations: []txnbuild.Claimant{
-					txnbuild.NewClaimant(master.Address(), nil),
+					txnbuild.NewClaimant(rootKP.Address(), nil),
 				},
 				Asset:  txnbuild.NativeAsset{},
 				Amount: "24",
@@ -92,7 +92,7 @@ func TestProtocol15Basics(t *testing.T) {
 
 func TestHappyClaimableBalances(t *testing.T) {
 	itest := integration.NewTest(t, protocol15Config)
-	master, client := itest.Master(), itest.Client()
+	rootKP, client := itest.RootKP(), itest.Client()
 
 	keys, accounts := itest.CreateAccounts(3, "1000")
 	a, b, c := keys[0], keys[1], keys[2]
@@ -275,7 +275,7 @@ func TestHappyClaimableBalances(t *testing.T) {
 			// Even if the native asset filter doesn't match, we need to ensure
 			// that a different credit asset also doesn't match.
 			t.Logf("  by random asset")
-			xdrAsset, err = txnbuild.CreditAsset{Code: "RAND", Issuer: master.Address()}.ToXDR()
+			xdrAsset, err = txnbuild.CreditAsset{Code: "RAND", Issuer: rootKP.Address()}.ToXDR()
 			balances, err = client.ClaimableBalances(sdk.ClaimableBalanceRequest{Asset: xdrAsset.StringCanonical()})
 			assert.NoError(t, err)
 			assert.Len(t, balances.Embedded.Records, 0)
@@ -375,7 +375,7 @@ func TestDoubleClaim(t *testing.T) {
 
 func TestClaimableBalancePredicates(t *testing.T) {
 	itest := integration.NewTest(t, protocol15Config)
-	_, client := itest.Master(), itest.Client()
+	_, client := itest.RootKP(), itest.Client()
 
 	// Create a couple of accounts to test the interactions.
 	keys, accounts := itest.CreateAccounts(3, "1000")
