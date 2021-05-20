@@ -97,11 +97,13 @@ type CreateAccount struct {
 type Payment struct {
 	Base
 	base.Asset
-	From      string `json:"from"`
-	To        string `json:"to"`
-	ToMuxed   string `json:"to_muxed,omitempty"`
-	ToMuxedID uint64 `json:"to_muxed_id,omitempty"`
-	Amount    string `json:"amount"`
+	From        string `json:"from"`
+	FromMuxed   string `json:"from_muxed,omitempty"`
+	FromMuxedID uint64 `json:"from_muxed_id,omitempty"`
+	To          string `json:"to"`
+	ToMuxed     string `json:"to_muxed,omitempty"`
+	ToMuxedID   uint64 `json:"to_muxed_id,omitempty"`
+	Amount      string `json:"amount"`
 }
 
 // PathPayment is the json resource representing a single operation whose type
