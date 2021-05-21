@@ -486,7 +486,7 @@ func TestAPI_RevisedIntegration(t *testing.T) {
 	body, err := ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 
-	// TEST Successful request.
+	// TEST successful "revised" response.
 	var txApprovePOSTResponse txApprovalResponse
 	err = json.Unmarshal(body, &txApprovePOSTResponse)
 	require.NoError(t, err)
