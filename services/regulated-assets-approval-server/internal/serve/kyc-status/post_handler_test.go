@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestValidate(t *testing.T) {
+func TestPostHandlerValidate(t *testing.T) {
 	// Test no db.
 	h := PostHandler{}
 	err := h.validate()
