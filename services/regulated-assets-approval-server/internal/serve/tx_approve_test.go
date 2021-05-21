@@ -22,6 +22,7 @@ func TestTxApproveHandlerValidate(t *testing.T) {
 	h := txApproveHandler{}
 	err := h.validate()
 	require.EqualError(t, err, "issuer keypair cannot be nil")
+
 	// empty asset code.
 	issuerAccKeyPair := keypair.MustRandom()
 	h = txApproveHandler{
@@ -29,6 +30,7 @@ func TestTxApproveHandlerValidate(t *testing.T) {
 	}
 	err = h.validate()
 	require.EqualError(t, err, "asset code cannot be empty")
+
 	// No Horizon client.
 	h = txApproveHandler{
 		issuerKP:  issuerAccKeyPair,
@@ -36,6 +38,7 @@ func TestTxApproveHandlerValidate(t *testing.T) {
 	}
 	err = h.validate()
 	require.EqualError(t, err, "horizon client cannot be nil")
+
 	// No network passphrase.
 	horizonMock := horizonclient.MockClient{}
 	h = txApproveHandler{
@@ -45,6 +48,7 @@ func TestTxApproveHandlerValidate(t *testing.T) {
 	}
 	err = h.validate()
 	require.EqualError(t, err, "network passphrase cannot be empty")
+
 	// No db.
 	h = txApproveHandler{
 		issuerKP:          issuerAccKeyPair,
@@ -54,6 +58,7 @@ func TestTxApproveHandlerValidate(t *testing.T) {
 	}
 	err = h.validate()
 	require.EqualError(t, err, "database cannot be nil")
+
 	// Empty kycThreshold.
 	db := dbtest.Open(t)
 	defer db.Close()
@@ -68,6 +73,7 @@ func TestTxApproveHandlerValidate(t *testing.T) {
 	}
 	err = h.validate()
 	require.EqualError(t, err, "kyc threshold cannot be less than or equal to zero")
+
 	// Negative kycThreshold.
 	h = txApproveHandler{
 		issuerKP:          issuerAccKeyPair,
@@ -79,6 +85,7 @@ func TestTxApproveHandlerValidate(t *testing.T) {
 	}
 	err = h.validate()
 	require.EqualError(t, err, "kyc threshold cannot be less than or equal to zero")
+
 	// no baseURL.
 	h = txApproveHandler{
 		issuerKP:          issuerAccKeyPair,
@@ -90,6 +97,7 @@ func TestTxApproveHandlerValidate(t *testing.T) {
 	}
 	err = h.validate()
 	require.EqualError(t, err, "base url cannot be empty")
+
 	// Success.
 	h = txApproveHandler{
 		issuerKP:          issuerAccKeyPair,
@@ -314,12 +322,10 @@ func TestTxApproveHandlerTxApprove(t *testing.T) {
 		baseURL:           "https://sep8-server.test",
 	}
 
-	// Prepare empty "tx" for txApprove.
+	// TEST "rejected" response if no transaction is submitted; with empty "tx" for txApprove.
 	req := txApproveRequest{
 		Tx: "",
 	}
-
-	// TEST "rejected" response if no transaction is submitted.
 	rejectedResponse, err := handler.txApprove(ctx, req)
 	require.NoError(t, err)
 	wantRejectedResponse := txApprovalResponse{
@@ -329,12 +335,10 @@ func TestTxApproveHandlerTxApprove(t *testing.T) {
 	}
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
 
-	// Prepare malformed "tx" for txApprove.
+	// TEST "rejected" response if can't parse XDR; with malformed "tx" for txApprove.
 	req = txApproveRequest{
 		Tx: "BADXDRTRANSACTIONENVELOPE",
 	}
-
-	// TEST "rejected" response if can't parse XDR.
 	rejectedResponse, err = handler.txApprove(ctx, req)
 	require.NoError(t, err)
 	wantRejectedResponse = txApprovalResponse{
@@ -373,11 +377,11 @@ func TestTxApproveHandlerTxApprove(t *testing.T) {
 	require.NoError(t, err)
 	feeBumpTxEnc, err := feeBumpTx.Base64()
 	require.NoError(t, err)
+
+	// TEST "rejected" response if a non generic transaction fails, same result as malformed XDR.
 	req = txApproveRequest{
 		Tx: feeBumpTxEnc,
 	}
-
-	// TEST "rejected" response if a non generic transaction fails, same result as malformed XDR.
 	rejectedResponse, err = handler.txApprove(ctx, req)
 	require.NoError(t, err)
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse) // wantRejectedResponse is identical to "if can't parse XDR".
@@ -403,11 +407,11 @@ func TestTxApproveHandlerTxApprove(t *testing.T) {
 	require.NoError(t, err)
 	txEnc, err := tx.Base64()
 	require.NoError(t, err)
+
+	// TEST "rejected" response for sender account; transaction sourceAccount the same as the server issuer account.
 	req = txApproveRequest{
 		Tx: txEnc,
 	}
-
-	// TEST "rejected" response for sender account; transaction sourceAccount the same as the server issuer account.
 	rejectedResponse, err = handler.txApprove(ctx, req)
 	require.NoError(t, err)
 	wantRejectedResponse = txApprovalResponse{
@@ -437,11 +441,11 @@ func TestTxApproveHandlerTxApprove(t *testing.T) {
 	require.NoError(t, err)
 	txEnc, err = tx.Base64()
 	require.NoError(t, err)
+
+	// TEST "rejected" response for sender account; payment operation sourceAccount the same as the server issuer account.
 	req = txApproveRequest{
 		Tx: txEnc,
 	}
-
-	// TEST "rejected" response for sender account; payment operation sourceAccount the same as the server issuer account.
 	rejectedResponse, err = handler.txApprove(ctx, req)
 	require.NoError(t, err)
 	wantRejectedResponse = txApprovalResponse{
@@ -469,11 +473,11 @@ func TestTxApproveHandlerTxApprove(t *testing.T) {
 	)
 	require.NoError(t, err)
 	txEnc, err = tx.Base64()
+
+	// TEST "rejected" response if operation is not a payment (in this case allowing trust for receiverAccKP).
 	req = txApproveRequest{
 		Tx: txEnc,
 	}
-
-	// TEST "rejected" response if operation is not a payment (in this case allowing trust for receiverAccKP).
 	rejectedResponse, err = handler.txApprove(ctx, req)
 	require.NoError(t, err)
 	wantRejectedResponse = txApprovalResponse{
@@ -509,11 +513,11 @@ func TestTxApproveHandlerTxApprove(t *testing.T) {
 	require.NoError(t, err)
 	txEnc, err = tx.Base64()
 	require.NoError(t, err)
+
+	// TEST "rejected" response for sender account; transaction with multiple operations.
 	req = txApproveRequest{
 		Tx: txEnc,
 	}
-
-	// TEST "rejected" response for sender account; transaction with multiple operations.
 	rejectedResponse, err = handler.txApprove(ctx, req)
 	require.NoError(t, err)
 	wantRejectedResponse = txApprovalResponse{
@@ -546,11 +550,11 @@ func TestTxApproveHandlerTxApprove(t *testing.T) {
 	require.NoError(t, err)
 	txEnc, err = tx.Base64()
 	require.NoError(t, err)
+
+	// TEST "rejected" response if transaction source account seq num is not equal to account sequence+1.
 	req = txApproveRequest{
 		Tx: txEnc,
 	}
-
-	// TEST "rejected" response if transaction source account seq num is not equal to account sequence+1.
 	rejectedResponse, err = handler.txApprove(ctx, req)
 	require.NoError(t, err)
 	wantRejectedResponse = txApprovalResponse{

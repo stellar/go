@@ -29,9 +29,7 @@ func TestAPI_POSTKYCStatus(t *testing.T) {
 	defer conn.Close()
 
 	// Create kyc-status PostHandler.
-	postHandler := kycstatus.PostHandler{
-		DB: conn,
-	}
+	postHandler := kycstatus.PostHandler{DB: conn}
 
 	// INSERT new unverified account in db's accounts_kyc_status table.
 	const insertNewAccountQuery = `
@@ -250,7 +248,7 @@ func TestAPI_GETKYCStatus(t *testing.T) {
 	body, err := ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 
-	// TEST kycstatus.KycGetResponse response for approved account.
+	// TEST kycGetResponse response for approved account.
 	type kycGetResponseDecoded struct {
 		StellarAddress string     `json:"stellar_address"`
 		CallbackID     string     `json:"callback_id"`
@@ -303,7 +301,7 @@ func TestAPI_GETKYCStatus(t *testing.T) {
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 
-	// TEST kycstatus.KycGetResponse response for rejected account.
+	// TEST kycGetResponse response for rejected account.
 	var kycStatusGETResponseReject kycGetResponseDecoded
 	err = json.Unmarshal(body, &kycStatusGETResponseReject)
 	require.NoError(t, err)
@@ -346,7 +344,7 @@ func TestAPI_GETKYCStatus(t *testing.T) {
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 
-	// TEST kycstatus.KycGetResponse response for account that hasn't submitted kyc.
+	// TEST kycGetResponse response for account that hasn't submitted kyc.
 	var kycStatusGETResponseNoKyc kycGetResponseDecoded
 	err = json.Unmarshal(body, &kycStatusGETResponseNoKyc)
 	require.NoError(t, err)
@@ -394,9 +392,7 @@ func TestAPI_DELETEKYCStatus(t *testing.T) {
 	defer conn.Close()
 
 	// Create kyc-status DeleteHandler.
-	deleteHandler := kycstatus.DeleteHandler{
-		DB: conn,
-	}
+	deleteHandler := kycstatus.DeleteHandler{DB: conn}
 
 	// INSERT new account in db's accounts_kyc_status table; new account was approved after submitting kyc.
 	insertNewApprovedAccountQuery := `

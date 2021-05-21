@@ -84,7 +84,7 @@ func TestAPI_RejectedIntegration(t *testing.T) {
 	m.Post("/tx-approve", handler.ServeHTTP)
 	req := `{
 		"tx": ""
-		}`
+	}`
 	r := httptest.NewRequest("POST", "/tx-approve", strings.NewReader(req))
 	r = r.WithContext(ctx)
 	w := httptest.NewRecorder()
