@@ -1,4 +1,4 @@
-package kycstatus
+package serve
 
 import (
 	"context"
@@ -10,11 +10,13 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/go-chi/chi"
 	"github.com/google/uuid"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/services/regulated-assets-approval-server/internal/db/dbtest"
+	kycstatus "github.com/stellar/go/services/regulated-assets-approval-server/internal/serve/kyc-status"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -27,9 +29,7 @@ func TestAPI_POSTKYCStatus(t *testing.T) {
 	defer conn.Close()
 
 	// Create kyc-status PostHandler.
-	postHandler := PostHandler{
-		DB: conn,
-	}
+	postHandler := kycstatus.PostHandler{DB: conn}
 
 	// INSERT new unverified account in db's accounts_kyc_status table.
 	const insertNewAccountQuery = `
@@ -46,21 +46,26 @@ func TestAPI_POSTKYCStatus(t *testing.T) {
 	m.Post("/kyc-status/{callback_id}", postHandler.ServeHTTP)
 	reqBody := `{
 		"email_address": "TestEmail@email.com"
-		}`
+	}`
 	r := httptest.NewRequest("POST", fmt.Sprintf("/kyc-status/%s", callbackID), strings.NewReader(reqBody))
 	r = r.WithContext(ctx)
 	w := httptest.NewRecorder()
 	m.ServeHTTP(w, r)
 	resp := w.Result()
+	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
 	body, err := ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 
 	// TEST "no_further_action_required" response for approved account.
-	var kycStatusPOSTResponseApprove kycPostResponse
+	type kycStatusPOSTResponse struct {
+		Result string `json:"result"`
+	}
+	var kycStatusPOSTResponseApprove kycStatusPOSTResponse
 	err = json.Unmarshal(body, &kycStatusPOSTResponseApprove)
 	require.NoError(t, err)
-	wantPostResponse := kycPostResponse{
+	wantPostResponse := kycStatusPOSTResponse{
 		Result: "no_further_action_required",
 	}
 	assert.Equal(t, wantPostResponse, kycStatusPOSTResponseApprove)
@@ -89,21 +94,23 @@ func TestAPI_POSTKYCStatus(t *testing.T) {
 	// Preparing and send /kyc-status/{callback_id} POST request.
 	reqBody = `{
 		"email_address": "xTestEmail@email.com"
-		}`
+	}`
 	r = httptest.NewRequest("POST", fmt.Sprintf("/kyc-status/%s", callbackIDRejected), strings.NewReader(reqBody))
 	r = r.WithContext(ctx)
 	w = httptest.NewRecorder()
 	m.ServeHTTP(w, r)
 	resp = w.Result()
+	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 
 	// TEST "no_further_action_required" response for rejected account.
-	var kycStatusPOSTResponseRejected kycPostResponse
+	var kycStatusPOSTResponseRejected kycStatusPOSTResponse
 	err = json.Unmarshal(body, &kycStatusPOSTResponseRejected)
 	require.NoError(t, err)
-	wantPostResponse = kycPostResponse{
+	wantPostResponse = kycStatusPOSTResponse{
 		Result: "no_further_action_required",
 	}
 	assert.Equal(t, wantPostResponse, kycStatusPOSTResponseRejected)
@@ -121,21 +128,23 @@ func TestAPI_POSTKYCStatus(t *testing.T) {
 	// Preparing and send /kyc-status/{callback_id} POST request; using the rejected account's callback_ID.
 	reqBody = `{
 		"email_address": "TestEmailx@email.com"
-		}`
+	}`
 	r = httptest.NewRequest("POST", fmt.Sprintf("/kyc-status/%s", callbackIDRejected), strings.NewReader(reqBody))
 	r = r.WithContext(ctx)
 	w = httptest.NewRecorder()
 	m.ServeHTTP(w, r)
 	resp = w.Result()
+	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 
 	// TEST "no_further_action_required" response for repeated KYC request after REJECTED w/ new email.
-	var kycStatusPOSTResponseRejectedNewEmail kycPostResponse
+	var kycStatusPOSTResponseRejectedNewEmail kycStatusPOSTResponse
 	err = json.Unmarshal(body, &kycStatusPOSTResponseRejectedNewEmail)
 	require.NoError(t, err)
-	wantPostResponse = kycPostResponse{
+	wantPostResponse = kycStatusPOSTResponse{
 		Result: "no_further_action_required",
 	}
 	assert.Equal(t, wantPostResponse, kycStatusPOSTResponseRejectedNewEmail)
@@ -163,13 +172,15 @@ func TestAPI_POSTKYCStatus(t *testing.T) {
 	require.NoError(t, err)
 	reqBody = `{
 		"email_address": ""
-		}`
+	}`
 	r = httptest.NewRequest("POST", fmt.Sprintf("/kyc-status/%s", callbackIDNoEmail), strings.NewReader(reqBody))
 	r = r.WithContext(ctx)
 	w = httptest.NewRecorder()
 	m.ServeHTTP(w, r)
 	resp = w.Result()
+	assert.Equal(t, http.StatusBadRequest, w.Code)
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 
@@ -183,20 +194,22 @@ func TestAPI_POSTKYCStatus(t *testing.T) {
 	callbackIDNotFound := uuid.New().String()
 	reqBody = `{
 		"email_address": "notFound@email.com"
-		}`
+	}`
 	r = httptest.NewRequest("POST", fmt.Sprintf("/kyc-status/%s", callbackIDNotFound), strings.NewReader(reqBody))
 	r = r.WithContext(ctx)
 	w = httptest.NewRecorder()
 	m.ServeHTTP(w, r)
 	resp = w.Result()
+	assert.Equal(t, http.StatusNotFound, w.Code)
 	assert.Equal(t, http.StatusNotFound, resp.StatusCode)
+	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 
 	// TEST "Not found." error response.
 	wantPostResponseNotFound := `{
-			"error": "Not found."
-			}`
+		"error": "Not found."
+	}`
 	require.JSONEq(t, wantPostResponseNotFound, string(body))
 }
 
@@ -208,7 +221,7 @@ func TestAPI_GETKYCStatus(t *testing.T) {
 	defer conn.Close()
 
 	// Create kyc-status GetDetailHandler.
-	getHandler := GetDetailHandler{DB: conn}
+	getHandler := kycstatus.GetDetailHandler{DB: conn}
 
 	// INSERT new account in db's accounts_kyc_status table; new account was approved after submitting kyc.
 	insertNewApprovedAccountQuery := `
@@ -229,15 +242,26 @@ func TestAPI_GETKYCStatus(t *testing.T) {
 	w := httptest.NewRecorder()
 	m.ServeHTTP(w, r)
 	resp := w.Result()
+	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
 	body, err := ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 
 	// TEST kycGetResponse response for approved account.
-	var kycStatusGETResponseApprove kycGetResponse
+	type kycGETResponse struct {
+		StellarAddress string     `json:"stellar_address"`
+		CallbackID     string     `json:"callback_id"`
+		EmailAddress   string     `json:"email_address,omitempty"`
+		CreatedAt      *time.Time `json:"created_at"`
+		KYCSubmittedAt *time.Time `json:"kyc_submitted_at,omitempty"`
+		ApprovedAt     *time.Time `json:"approved_at,omitempty"`
+		RejectedAt     *time.Time `json:"rejected_at,omitempty"`
+	}
+	var kycStatusGETResponseApprove kycGETResponse
 	err = json.Unmarshal(body, &kycStatusGETResponseApprove)
 	require.NoError(t, err)
-	wantPostResponse := kycGetResponse{
+	wantPostResponse := kycGETResponse{
 		StellarAddress: approveKP.Address(),
 		CallbackID:     approveCallbackID,
 		EmailAddress:   approveEmailAddress,
@@ -271,15 +295,17 @@ func TestAPI_GETKYCStatus(t *testing.T) {
 	w = httptest.NewRecorder()
 	m.ServeHTTP(w, r)
 	resp = w.Result()
+	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 
 	// TEST kycGetResponse response for rejected account.
-	var kycStatusGETResponseReject kycGetResponse
+	var kycStatusGETResponseReject kycGETResponse
 	err = json.Unmarshal(body, &kycStatusGETResponseReject)
 	require.NoError(t, err)
-	wantPostResponse = kycGetResponse{
+	wantPostResponse = kycGETResponse{
 		StellarAddress: rejectKP.Address(),
 		CallbackID:     rejectCallbackID,
 		EmailAddress:   rejectEmailAddress,
@@ -312,15 +338,17 @@ func TestAPI_GETKYCStatus(t *testing.T) {
 	w = httptest.NewRecorder()
 	m.ServeHTTP(w, r)
 	resp = w.Result()
+	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 
 	// TEST kycGetResponse response for account that hasn't submitted kyc.
-	var kycStatusGETResponseNoKyc kycGetResponse
+	var kycStatusGETResponseNoKyc kycGETResponse
 	err = json.Unmarshal(body, &kycStatusGETResponseNoKyc)
 	require.NoError(t, err)
-	wantPostResponse = kycGetResponse{
+	wantPostResponse = kycGETResponse{
 		StellarAddress: noKycAccountKP.Address(),
 		CallbackID:     noKycCallbackID,
 		EmailAddress:   "",
@@ -344,6 +372,7 @@ func TestAPI_GETKYCStatus(t *testing.T) {
 	w = httptest.NewRecorder()
 	m.ServeHTTP(w, r)
 	resp = w.Result()
+	assert.Equal(t, http.StatusNotFound, w.Code)
 	assert.Equal(t, http.StatusNotFound, resp.StatusCode)
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
@@ -351,7 +380,7 @@ func TestAPI_GETKYCStatus(t *testing.T) {
 	// TEST "Not found." error response.
 	wantGetResponseNotFound := `{
 		"error": "Not found."
-		}`
+	}`
 	require.JSONEq(t, wantGetResponseNotFound, string(body))
 }
 
@@ -363,9 +392,7 @@ func TestAPI_DELETEKYCStatus(t *testing.T) {
 	defer conn.Close()
 
 	// Create kyc-status DeleteHandler.
-	deleteHandler := DeleteHandler{
-		DB: conn,
-	}
+	deleteHandler := kycstatus.DeleteHandler{DB: conn}
 
 	// INSERT new account in db's accounts_kyc_status table; new account was approved after submitting kyc.
 	insertNewApprovedAccountQuery := `
@@ -386,7 +413,9 @@ func TestAPI_DELETEKYCStatus(t *testing.T) {
 	w := httptest.NewRecorder()
 	m.ServeHTTP(w, r)
 	resp := w.Result()
+	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
 	body, err := ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 
@@ -396,7 +425,7 @@ func TestAPI_DELETEKYCStatus(t *testing.T) {
 	}`
 	require.JSONEq(t, wantBody, string(body))
 
-	// Prepare and execute SELECT query for account that was deleted.
+	// Prepare and execute SELECT query for account that was deleted, TEST if the the account doesn't exist in the db.
 	existQuery := `
 	SELECT EXISTS(
 		SELECT stellar_address
@@ -406,8 +435,6 @@ func TestAPI_DELETEKYCStatus(t *testing.T) {
 	var exists bool
 	err = deleteHandler.DB.QueryRowContext(ctx, existQuery, approveKP.Address()).Scan(&exists)
 	require.NoError(t, err)
-
-	// TEST if the the account doesn't exist in the db.
 	assert.False(t, exists)
 
 	// Prepare and send /kyc-status/{stellar_address} DELETE request; for account that isn't in the accounts_kyc_status table.
@@ -416,13 +443,15 @@ func TestAPI_DELETEKYCStatus(t *testing.T) {
 	w = httptest.NewRecorder()
 	m.ServeHTTP(w, r)
 	resp = w.Result()
+	assert.Equal(t, http.StatusNotFound, w.Code)
 	assert.Equal(t, http.StatusNotFound, resp.StatusCode)
+	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 
 	// TEST error "Not found." response for attempting to delete an account that isn't in the accounts_kyc_status table.
 	wantDeleteResponseNotFound := `{
 		"error": "Not found."
-		}`
+	}`
 	require.JSONEq(t, wantDeleteResponseNotFound, string(body))
 }
