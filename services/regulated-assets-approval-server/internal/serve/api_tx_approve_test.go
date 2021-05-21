@@ -102,7 +102,7 @@ func TestAPI_RejectedIntegration(t *testing.T) {
 	}`
 	require.JSONEq(t, wantBody, string(body))
 
-	// Prepare malformed "tx" for "/tx-approve" POST request.
+	// Prepare and send malformed "tx" for "/tx-approve" POST request.
 	req = `{
 		"tx": "BADXDRTRANSACTIONENVELOPE"
 	}`
@@ -372,7 +372,7 @@ func TestAPI_RejectedIntegration(t *testing.T) {
 	txEnc, err = tx.Base64()
 	require.NoError(t, err)
 
-	// Prepare and send "tx" where transaction's transaction source account seq num is not equal to account sequence+1 for "/tx-approve" POST request.
+	// Send "tx" where transaction's transaction source account seq num is not equal to account sequence+1 for "/tx-approve" POST request.
 	req = `{
 		"tx": "` + txEnc + `"
 	}`
