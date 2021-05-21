@@ -54,7 +54,9 @@ func TestAPI_POSTKYCStatus(t *testing.T) {
 	w := httptest.NewRecorder()
 	m.ServeHTTP(w, r)
 	resp := w.Result()
+	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
 	body, err := ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 
@@ -100,7 +102,9 @@ func TestAPI_POSTKYCStatus(t *testing.T) {
 	w = httptest.NewRecorder()
 	m.ServeHTTP(w, r)
 	resp = w.Result()
+	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 
@@ -132,7 +136,9 @@ func TestAPI_POSTKYCStatus(t *testing.T) {
 	w = httptest.NewRecorder()
 	m.ServeHTTP(w, r)
 	resp = w.Result()
+	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 
@@ -174,7 +180,9 @@ func TestAPI_POSTKYCStatus(t *testing.T) {
 	w = httptest.NewRecorder()
 	m.ServeHTTP(w, r)
 	resp = w.Result()
+	assert.Equal(t, http.StatusBadRequest, w.Code)
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 
@@ -194,7 +202,9 @@ func TestAPI_POSTKYCStatus(t *testing.T) {
 	w = httptest.NewRecorder()
 	m.ServeHTTP(w, r)
 	resp = w.Result()
+	assert.Equal(t, http.StatusNotFound, w.Code)
 	assert.Equal(t, http.StatusNotFound, resp.StatusCode)
+	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 
@@ -234,7 +244,9 @@ func TestAPI_GETKYCStatus(t *testing.T) {
 	w := httptest.NewRecorder()
 	m.ServeHTTP(w, r)
 	resp := w.Result()
+	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
 	body, err := ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 
@@ -285,7 +297,9 @@ func TestAPI_GETKYCStatus(t *testing.T) {
 	w = httptest.NewRecorder()
 	m.ServeHTTP(w, r)
 	resp = w.Result()
+	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 
@@ -326,7 +340,9 @@ func TestAPI_GETKYCStatus(t *testing.T) {
 	w = httptest.NewRecorder()
 	m.ServeHTTP(w, r)
 	resp = w.Result()
+	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 
@@ -358,6 +374,7 @@ func TestAPI_GETKYCStatus(t *testing.T) {
 	w = httptest.NewRecorder()
 	m.ServeHTTP(w, r)
 	resp = w.Result()
+	assert.Equal(t, http.StatusNotFound, w.Code)
 	assert.Equal(t, http.StatusNotFound, resp.StatusCode)
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
@@ -400,7 +417,9 @@ func TestAPI_DELETEKYCStatus(t *testing.T) {
 	w := httptest.NewRecorder()
 	m.ServeHTTP(w, r)
 	resp := w.Result()
+	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
 	body, err := ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 
@@ -428,7 +447,9 @@ func TestAPI_DELETEKYCStatus(t *testing.T) {
 	w = httptest.NewRecorder()
 	m.ServeHTTP(w, r)
 	resp = w.Result()
+	assert.Equal(t, http.StatusNotFound, w.Code)
 	assert.Equal(t, http.StatusNotFound, resp.StatusCode)
+	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 
