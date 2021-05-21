@@ -784,7 +784,7 @@ func TestAPI_KYCIntegration(t *testing.T) {
 
 	// TEST "rejected" response for rejected KYC account.
 	wantBody = `{
-		"status":"rejected", "error":"Your KYC was rejected and you're not authorized for operations above 500.0000000 GOAT."
+		"status":"rejected", "error":"Your KYC was rejected and you're not authorized for operations above 500.00 GOAT."
 	}`
 	require.JSONEq(t, wantBody, string(body))
 }
