@@ -80,11 +80,11 @@ func TestAPI_RejectedIntegration(t *testing.T) {
 	}
 
 	// Prepare and send empty "tx" for "/tx-approve" POST request.
-	m := chi.NewMux()
-	m.Post("/tx-approve", handler.ServeHTTP)
 	req := `{
 		"tx": ""
 	}`
+	m := chi.NewMux()
+	m.Post("/tx-approve", handler.ServeHTTP)
 	r := httptest.NewRequest("POST", "/tx-approve", strings.NewReader(req))
 	r = r.WithContext(ctx)
 	w := httptest.NewRecorder()
@@ -123,7 +123,7 @@ func TestAPI_RejectedIntegration(t *testing.T) {
 	}`
 	require.JSONEq(t, wantBody, string(body))
 
-	// Prepare and send invalid(non generic transaction) "tx" for "/tx-approve" POST request.
+	// Prepare non generic transaction "tx".
 	senderAcc, err := handler.horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: senderAccKP.Address()})
 	require.NoError(t, err)
 	tx, err := txnbuild.NewTransaction(
@@ -152,6 +152,8 @@ func TestAPI_RejectedIntegration(t *testing.T) {
 	require.NoError(t, err)
 	feeBumpTxEnc, err := feeBumpTx.Base64()
 	require.NoError(t, err)
+
+	// Send invalid "tx" for "/tx-approve" POST request.
 	req = `{
 		"tx": "` + feeBumpTxEnc + `"
 	}`
@@ -172,7 +174,7 @@ func TestAPI_RejectedIntegration(t *testing.T) {
 	}`
 	require.JSONEq(t, wantBody, string(body))
 
-	// Prepare and send "tx" where transaction sourceAccount the same as the server issuer account for "/tx-approve" POST request.
+	// Prepare "tx" where transaction sourceAccount the same as the server issuer account.
 	issuerAcc, err := handler.horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: issuerAccKeyPair.Address()})
 	require.NoError(t, err)
 	tx, err = txnbuild.NewTransaction(
@@ -193,6 +195,8 @@ func TestAPI_RejectedIntegration(t *testing.T) {
 	require.NoError(t, err)
 	txEnc, err := tx.Base64()
 	require.NoError(t, err)
+
+	// Send "tx" where transaction sourceAccount the same as the server issuer account for "/tx-approve" POST request.
 	req = `{
 		"tx": "` + txEnc + `"
 	}`
@@ -213,7 +217,7 @@ func TestAPI_RejectedIntegration(t *testing.T) {
 	}`
 	require.JSONEq(t, wantBody, string(body))
 
-	// Prepare and send "tx" where transaction's operation sourceAccount the same as the server issuer account for "/tx-approve" POST request.
+	// Prepare "tx" where transaction's operation sourceAccount the same as the server issuer account.
 	tx, err = txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount:        &senderAcc,
@@ -233,6 +237,8 @@ func TestAPI_RejectedIntegration(t *testing.T) {
 	require.NoError(t, err)
 	txEnc, err = tx.Base64()
 	require.NoError(t, err)
+
+	// Send "tx" where transaction's operation sourceAccount the same as the server issuer account for "/tx-approve" POST request.
 	req = `{
 		"tx": "` + txEnc + `"
 	}`
@@ -253,7 +259,7 @@ func TestAPI_RejectedIntegration(t *testing.T) {
 	}`
 	require.JSONEq(t, wantBody, string(body))
 
-	// Prepare and send "tx" where transaction's operation is not a payment for "/tx-approve" POST request.
+	// Prepare "tx" where transaction's operation is not a payment.
 	tx, err = txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount:        &senderAcc,
@@ -272,6 +278,8 @@ func TestAPI_RejectedIntegration(t *testing.T) {
 	require.NoError(t, err)
 	txEnc, err = tx.Base64()
 	require.NoError(t, err)
+
+	// Send "tx" where transaction's operation is not a payment for "/tx-approve" POST request.
 	req = `{
 		"tx": "` + txEnc + `"
 	}`
@@ -292,7 +300,7 @@ func TestAPI_RejectedIntegration(t *testing.T) {
 	}`
 	require.JSONEq(t, wantBody, string(body))
 
-	// Prepare and send "tx" where theres more than one operation in transaction for "/tx-approve" POST request.
+	// Prepare "tx" where theres more than one operation in transaction.
 	tx, err = txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount:        &senderAcc,
@@ -318,6 +326,8 @@ func TestAPI_RejectedIntegration(t *testing.T) {
 	require.NoError(t, err)
 	txEnc, err = tx.Base64()
 	require.NoError(t, err)
+
+	// Send "tx" where theres more than one operation in transaction for "/tx-approve" POST request.
 	req = `{
 		"tx": "` + txEnc + `"
 	}`
@@ -338,7 +348,7 @@ func TestAPI_RejectedIntegration(t *testing.T) {
 	}`
 	require.JSONEq(t, wantBody, string(body))
 
-	// Prepare and send "tx" where transaction's transaction source account seq num is not equal to account sequence+1 for "/tx-approve" POST request.
+	// Prepare "tx" where transaction's transaction source account seq num is not equal to account sequence+1.
 	tx, err = txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount: &horizon.Account{
@@ -361,6 +371,8 @@ func TestAPI_RejectedIntegration(t *testing.T) {
 	require.NoError(t, err)
 	txEnc, err = tx.Base64()
 	require.NoError(t, err)
+
+	// Prepare and send "tx" where transaction's transaction source account seq num is not equal to account sequence+1 for "/tx-approve" POST request.
 	req = `{
 		"tx": "` + txEnc + `"
 	}`
