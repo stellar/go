@@ -59,13 +59,13 @@ func TestAPI_POSTKYCStatus(t *testing.T) {
 	require.NoError(t, err)
 
 	// TEST "no_further_action_required" response for approved account.
-	type kycStatusPOSTResponseDecoded struct {
+	type kycStatusPOSTResponse struct {
 		Result string `json:"result"`
 	}
-	var kycStatusPOSTResponseApprove kycStatusPOSTResponseDecoded
+	var kycStatusPOSTResponseApprove kycStatusPOSTResponse
 	err = json.Unmarshal(body, &kycStatusPOSTResponseApprove)
 	require.NoError(t, err)
-	wantPostResponse := kycStatusPOSTResponseDecoded{
+	wantPostResponse := kycStatusPOSTResponse{
 		Result: "no_further_action_required",
 	}
 	assert.Equal(t, wantPostResponse, kycStatusPOSTResponseApprove)
@@ -107,10 +107,10 @@ func TestAPI_POSTKYCStatus(t *testing.T) {
 	require.NoError(t, err)
 
 	// TEST "no_further_action_required" response for rejected account.
-	var kycStatusPOSTResponseRejected kycStatusPOSTResponseDecoded
+	var kycStatusPOSTResponseRejected kycStatusPOSTResponse
 	err = json.Unmarshal(body, &kycStatusPOSTResponseRejected)
 	require.NoError(t, err)
-	wantPostResponse = kycStatusPOSTResponseDecoded{
+	wantPostResponse = kycStatusPOSTResponse{
 		Result: "no_further_action_required",
 	}
 	assert.Equal(t, wantPostResponse, kycStatusPOSTResponseRejected)
@@ -141,10 +141,10 @@ func TestAPI_POSTKYCStatus(t *testing.T) {
 	require.NoError(t, err)
 
 	// TEST "no_further_action_required" response for repeated KYC request after REJECTED w/ new email.
-	var kycStatusPOSTResponseRejectedNewEmail kycStatusPOSTResponseDecoded
+	var kycStatusPOSTResponseRejectedNewEmail kycStatusPOSTResponse
 	err = json.Unmarshal(body, &kycStatusPOSTResponseRejectedNewEmail)
 	require.NoError(t, err)
-	wantPostResponse = kycStatusPOSTResponseDecoded{
+	wantPostResponse = kycStatusPOSTResponse{
 		Result: "no_further_action_required",
 	}
 	assert.Equal(t, wantPostResponse, kycStatusPOSTResponseRejectedNewEmail)
@@ -249,7 +249,7 @@ func TestAPI_GETKYCStatus(t *testing.T) {
 	require.NoError(t, err)
 
 	// TEST kycGetResponse response for approved account.
-	type kycGetResponseDecoded struct {
+	type kycGETResponse struct {
 		StellarAddress string     `json:"stellar_address"`
 		CallbackID     string     `json:"callback_id"`
 		EmailAddress   string     `json:"email_address,omitempty"`
@@ -258,10 +258,10 @@ func TestAPI_GETKYCStatus(t *testing.T) {
 		ApprovedAt     *time.Time `json:"approved_at,omitempty"`
 		RejectedAt     *time.Time `json:"rejected_at,omitempty"`
 	}
-	var kycStatusGETResponseApprove kycGetResponseDecoded
+	var kycStatusGETResponseApprove kycGETResponse
 	err = json.Unmarshal(body, &kycStatusGETResponseApprove)
 	require.NoError(t, err)
-	wantPostResponse := kycGetResponseDecoded{
+	wantPostResponse := kycGETResponse{
 		StellarAddress: approveKP.Address(),
 		CallbackID:     approveCallbackID,
 		EmailAddress:   approveEmailAddress,
@@ -302,10 +302,10 @@ func TestAPI_GETKYCStatus(t *testing.T) {
 	require.NoError(t, err)
 
 	// TEST kycGetResponse response for rejected account.
-	var kycStatusGETResponseReject kycGetResponseDecoded
+	var kycStatusGETResponseReject kycGETResponse
 	err = json.Unmarshal(body, &kycStatusGETResponseReject)
 	require.NoError(t, err)
-	wantPostResponse = kycGetResponseDecoded{
+	wantPostResponse = kycGETResponse{
 		StellarAddress: rejectKP.Address(),
 		CallbackID:     rejectCallbackID,
 		EmailAddress:   rejectEmailAddress,
@@ -345,10 +345,10 @@ func TestAPI_GETKYCStatus(t *testing.T) {
 	require.NoError(t, err)
 
 	// TEST kycGetResponse response for account that hasn't submitted kyc.
-	var kycStatusGETResponseNoKyc kycGetResponseDecoded
+	var kycStatusGETResponseNoKyc kycGETResponse
 	err = json.Unmarshal(body, &kycStatusGETResponseNoKyc)
 	require.NoError(t, err)
-	wantPostResponse = kycGetResponseDecoded{
+	wantPostResponse = kycGETResponse{
 		StellarAddress: noKycAccountKP.Address(),
 		CallbackID:     noKycCallbackID,
 		EmailAddress:   "",
