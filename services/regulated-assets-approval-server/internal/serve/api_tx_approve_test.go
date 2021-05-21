@@ -434,7 +434,7 @@ func TestAPI_RevisedIntegration(t *testing.T) {
 		baseURL:           "https://sep8-server.test",
 	}
 
-	// Prepare and send revisable "tx" for "/tx-approve" POST request.
+	// Prepare revisable "tx".
 	senderAcc, err := handler.horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: senderAccKP.Address()})
 	require.NoError(t, err)
 	tx, err := txnbuild.NewTransaction(
@@ -456,11 +456,13 @@ func TestAPI_RevisedIntegration(t *testing.T) {
 	require.NoError(t, err)
 	txEnc, err := tx.Base64()
 	require.NoError(t, err)
-	m := chi.NewMux()
-	m.Post("/tx-approve", handler.ServeHTTP)
+
+	// Send revisable "tx" for "/tx-approve" POST request.
 	req := `{
 		"tx": "` + txEnc + `"
-	}`
+		}`
+	m := chi.NewMux()
+	m.Post("/tx-approve", handler.ServeHTTP)
 	r := httptest.NewRequest("POST", "/tx-approve", strings.NewReader(req))
 	r = r.WithContext(ctx)
 	w := httptest.NewRecorder()
@@ -598,12 +600,12 @@ func TestAPI_KYCIntegration(t *testing.T) {
 	txEnc, err := tx.Base64()
 	require.NoError(t, err)
 
-	// Prepare and send /tx-approve POST request with transaction in request body.
-	m := chi.NewMux()
-	m.Post("/tx-approve", handler.ServeHTTP)
+	// Send /tx-approve POST request with transaction in request body.
 	req := `{
 		"tx": "` + txEnc + `"
 	}`
+	m := chi.NewMux()
+	m.Post("/tx-approve", handler.ServeHTTP)
 	r := httptest.NewRequest("POST", "/tx-approve", strings.NewReader(req))
 	r = r.WithContext(ctx)
 	w := httptest.NewRecorder()
