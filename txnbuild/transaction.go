@@ -678,10 +678,8 @@ func NewTransaction(params TransactionParams) (*Transaction, error) {
 		sourceAccount = accountID.ToMuxedAccount()
 	}
 
-	if tx.baseFee < MinBaseFee {
-		return nil, errors.Errorf(
-			"base fee cannot be lower than network minimum of %d", MinBaseFee,
-		)
+	if tx.baseFee < 0 {
+		return nil, errors.Errorf("base fee cannot be negative")
 	}
 
 	if len(tx.operations) == 0 {
