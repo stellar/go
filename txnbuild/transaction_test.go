@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestTimeboundsNotProvided(t *testing.T) {
+func TestMissingTimebounds(t *testing.T) {
 	kp0 := newKeypair0()
 
 	_, err := NewTransaction(
@@ -28,7 +28,7 @@ func TestTimeboundsNotProvided(t *testing.T) {
 	assert.EqualError(t, err, "invalid time bounds: timebounds must be constructed using NewTimebounds(), NewTimeout(), or NewInfiniteTimeout()")
 }
 
-func TestTimeboundsProvided(t *testing.T) {
+func TestTimebounds(t *testing.T) {
 	kp0 := newKeypair0()
 
 	tb := NewTimeout(300)
