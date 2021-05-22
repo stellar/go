@@ -15,6 +15,37 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestMissingTimebounds(t *testing.T) {
+	kp0 := newKeypair0()
+
+	_, err := NewTransaction(
+		TransactionParams{
+			SourceAccount: &SimpleAccount{AccountID: kp0.Address(), Sequence: 1},
+			Operations:    []Operation{&BumpSequence{BumpTo: 0}},
+			BaseFee:       MinBaseFee,
+		},
+	)
+	assert.EqualError(t, err, "invalid time bounds: timebounds must be constructed using NewTimebounds(), NewTimeout(), or NewInfiniteTimeout()")
+}
+
+func TestTimebounds(t *testing.T) {
+	kp0 := newKeypair0()
+
+	tb := NewTimeout(300)
+	tx, err := NewTransaction(
+		TransactionParams{
+			SourceAccount: &SimpleAccount{AccountID: kp0.Address(), Sequence: 1},
+			Operations:    []Operation{&BumpSequence{BumpTo: 0}},
+			BaseFee:       MinBaseFee,
+			Timebounds:    tb,
+		},
+	)
+	assert.NoError(t, err)
+	assert.Equal(t, tb, tx.timebounds)
+	assert.Equal(t, xdr.TimePoint(tb.MinTime), tx.envelope.V1.Tx.TimeBounds.MinTime)
+	assert.Equal(t, xdr.TimePoint(tb.MaxTime), tx.envelope.V1.Tx.TimeBounds.MaxTime)
+}
+
 func TestMissingSourceAccount(t *testing.T) {
 	_, err := NewTransaction(TransactionParams{})
 	assert.EqualError(t, err, "transaction has no source account")
