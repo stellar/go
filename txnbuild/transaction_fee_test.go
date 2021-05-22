@@ -4,56 +4,35 @@ import (
 	"math"
 	"testing"
 
+	"github.com/stellar/go/keypair"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestBaseFeeCanBeZero(t *testing.T) {
-	kp0 := newKeypair0()
-	sourceAccount := NewSimpleAccount(kp0.Address(), 1)
-
-	tx, err := NewTransaction(
-		TransactionParams{
-			SourceAccount: &sourceAccount,
-			Operations:    []Operation{&Inflation{}},
-			BaseFee:       0,
-			Timebounds:    NewInfiniteTimeout(),
-		},
-	)
-
-	assert.NoError(t, err)
-	assert.Equal(t, int64(0), tx.baseFee)
+func TestBaseFeeCanBeZeroOrPositive(t *testing.T) {
+	validBaseFees := []int64{0, MinBaseFee}
+	for _, bf := range validBaseFees {
+		tx, err := NewTransaction(
+			TransactionParams{
+				SourceAccount: &SimpleAccount{keypair.MustRandom().Address(), 1},
+				Operations:    []Operation{&Inflation{}},
+				BaseFee:       bf,
+				Timebounds:    NewInfiniteTimeout(),
+			},
+		)
+		assert.NoError(t, err)
+		assert.Equal(t, bf, tx.baseFee)
+	}
 }
 
-func TestBaseFeeCanBePositive(t *testing.T) {
-	kp0 := newKeypair0()
-	sourceAccount := NewSimpleAccount(kp0.Address(), 1)
-
-	tx, err := NewTransaction(
-		TransactionParams{
-			SourceAccount: &sourceAccount,
-			Operations:    []Operation{&Inflation{}},
-			BaseFee:       MinBaseFee,
-			Timebounds:    NewInfiniteTimeout(),
-		},
-	)
-
-	assert.NoError(t, err)
-	assert.Equal(t, int64(MinBaseFee), tx.baseFee)
-}
-
-func TestBaseFeeCannotBeNegative(t *testing.T) {
-	kp0 := newKeypair0()
-	sourceAccount := NewSimpleAccount(kp0.Address(), 1)
-
+func TestBaseFeeErrorWhenNegative(t *testing.T) {
 	_, err := NewTransaction(
 		TransactionParams{
-			SourceAccount: &sourceAccount,
+			SourceAccount: &SimpleAccount{keypair.MustRandom().Address(), 1},
 			Operations:    []Operation{&Inflation{}},
 			BaseFee:       -1,
 			Timebounds:    NewInfiniteTimeout(),
 		},
 	)
-
 	assert.EqualError(t, err, "base fee cannot be negative")
 }
 
@@ -80,7 +59,6 @@ func TestFeeBumpMinBaseFee(t *testing.T) {
 		},
 	)
 	assert.EqualError(t, err, "base fee cannot be lower than network minimum of 100")
-
 }
 
 func TestFeeOverflow(t *testing.T) {
