@@ -946,10 +946,12 @@ func TestOperationEffects(t *testing.T) {
 				{
 					address: "GDEOVUDLCYTO46D6GD6WH7BFESPBV5RACC6F6NUFCIRU7PL2XONQHVGJ",
 					details: map[string]interface{}{
-						"amount":       "1.0000000",
-						"asset_code":   "ARS",
-						"asset_type":   "credit_alphanum4",
-						"asset_issuer": "GCXI6Q73J7F6EUSBZTPW4G4OUGVDHABPYF2U4KO7MVEX52OH5VMVUCRF",
+						"account_muxed":    "MDEOVUDLCYTO46D6GD6WH7BFESPBV5RACC6F6NUFCIRU7PL2XONQGAAAAAAMV7V2X24II",
+						"account_muxed_id": uint64(0xcafebabe),
+						"amount":           "1.0000000",
+						"asset_code":       "ARS",
+						"asset_type":       "credit_alphanum4",
+						"asset_issuer":     "GCXI6Q73J7F6EUSBZTPW4G4OUGVDHABPYF2U4KO7MVEX52OH5VMVUCRF",
 					},
 					effectType:  history.EffectAccountCredited,
 					operationID: int64(85899350017),
@@ -958,10 +960,12 @@ func TestOperationEffects(t *testing.T) {
 				{
 					address: "GD3MMHD2YZWL5RAUWG6O3RMA5HTZYM7S3JLSZ2Z35JNJAWTDIKXY737V",
 					details: map[string]interface{}{
-						"amount":       "0.0300000",
-						"asset_code":   "BRL",
-						"asset_type":   "credit_alphanum4",
-						"asset_issuer": "GCXI6Q73J7F6EUSBZTPW4G4OUGVDHABPYF2U4KO7MVEX52OH5VMVUCRF",
+						"account_muxed":    "MD3MMHD2YZWL5RAUWG6O3RMA5HTZYM7S3JLSZ2Z35JNJAWTDIKXY6AAAAAAMV7V2XZY4C",
+						"account_muxed_id": uint64(0xcafebabe),
+						"amount":           "0.0300000",
+						"asset_code":       "BRL",
+						"asset_type":       "credit_alphanum4",
+						"asset_issuer":     "GCXI6Q73J7F6EUSBZTPW4G4OUGVDHABPYF2U4KO7MVEX52OH5VMVUCRF",
 					},
 					effectType:  history.EffectAccountDebited,
 					operationID: int64(85899350017),
@@ -970,6 +974,8 @@ func TestOperationEffects(t *testing.T) {
 				{
 					address: "GD3MMHD2YZWL5RAUWG6O3RMA5HTZYM7S3JLSZ2Z35JNJAWTDIKXY737V",
 					details: map[string]interface{}{
+						"account_muxed":       "MD3MMHD2YZWL5RAUWG6O3RMA5HTZYM7S3JLSZ2Z35JNJAWTDIKXY6AAAAAAMV7V2XZY4C",
+						"account_muxed_id":    uint64(0xcafebabe),
 						"seller":              "GDEOVUDLCYTO46D6GD6WH7BFESPBV5RACC6F6NUFCIRU7PL2XONQHVGJ",
 						"offer_id":            xdr.Int64(10072128),
 						"sold_amount":         "0.0300000",
@@ -989,6 +995,8 @@ func TestOperationEffects(t *testing.T) {
 					address: "GDEOVUDLCYTO46D6GD6WH7BFESPBV5RACC6F6NUFCIRU7PL2XONQHVGJ",
 					details: map[string]interface{}{
 						"seller":              "GD3MMHD2YZWL5RAUWG6O3RMA5HTZYM7S3JLSZ2Z35JNJAWTDIKXY737V",
+						"seller_muxed":        "MD3MMHD2YZWL5RAUWG6O3RMA5HTZYM7S3JLSZ2Z35JNJAWTDIKXY6AAAAAAMV7V2XZY4C",
+						"seller_muxed_id":     uint64(0xcafebabe),
 						"offer_id":            xdr.Int64(10072128),
 						"sold_amount":         "1.0000000",
 						"bought_amount":       "0.0300000",
