@@ -9,6 +9,7 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 * Add more in-depth Prometheus metrics (count & duration) for db queries.
 
+* Fix bug in `horizon db reingest range` command which required the `--ingest` flag to be set [3625](https://github.com/stellar/go/pull/3625)).
 
 ## v2.3.0
 

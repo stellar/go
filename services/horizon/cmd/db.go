@@ -202,16 +202,18 @@ var dbReingestRangeCmd = &cobra.Command{
 
 		argsUInt32 := make([]uint32, 2)
 		for i, arg := range args {
-			seq, err := strconv.Atoi(arg)
-			if err != nil {
+			if seq, err := strconv.Atoi(arg); err != nil {
 				cmd.Usage()
 				log.Fatalf(`Invalid sequence number "%s"`, arg)
+			} else if seq < 0 {
+				log.Fatalf("sequence number %s cannot be negative", arg)
+			} else {
+				argsUInt32[i] = uint32(seq)
 			}
-			argsUInt32[i] = uint32(seq)
 		}
 
-		horizon.ApplyFlags(config, flags)
-		err := RunDBReingestRange(argsUInt32[0], argsUInt32[1], reingestForce, parallelWorkers, *config)
+		horizon.ApplyFlags(config, flags, horizon.ApplyOptions{RequireCaptiveCoreConfig: false, AlwaysIngest: true})
+		err := runDBReingestRange(argsUInt32[0], argsUInt32[1], reingestForce, parallelWorkers, *config)
 		if err != nil {
 			if errors.Cause(err) == ingest.ErrReingestRangeConflict {
 				message := `
@@ -232,7 +234,7 @@ var dbReingestRangeCmd = &cobra.Command{
 	},
 }
 
-func RunDBReingestRange(from, to uint32, reingestForce bool, parallelWorkers uint, config horizon.Config) error {
+func runDBReingestRange(from, to uint32, reingestForce bool, parallelWorkers uint, config horizon.Config) error {
 	if reingestForce && parallelWorkers > 1 {
 		return errors.New("--force is incompatible with --parallel-workers > 1")
 	}
@@ -303,7 +305,7 @@ func init() {
 
 	viper.BindPFlags(dbReingestRangeCmd.PersistentFlags())
 
-	rootCmd.AddCommand(dbCmd)
+	RootCmd.AddCommand(dbCmd)
 	dbCmd.AddCommand(
 		dbInitCmd,
 		dbMigrateCmd,
