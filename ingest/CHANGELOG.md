@@ -8,7 +8,7 @@ All notable changes to this project will be documented in this file. This projec
 
 ## v2.0.0
 
-This release is tightly coupled to [Horizon v2.3.0](https://github.com/stellar/go/releases/tag/horizon-v2.3.0) and introduces some breaking changes to the `ingest` package for those building their own tools.
+This release is related to the release of [Horizon v2.3.0](https://github.com/stellar/go/releases/tag/horizon-v2.3.0) and introduces some breaking changes to the `ingest` package for those building their own tools.
 
 ### Breaking Changes
 - Many APIs now require a `context.Context` parameter, allowing you to interact with the backends and control calls in a more finely-controlled manner. This includes the readers (`ChangeReader` et al.) as well as the backends themselves (`CaptiveStellarCore` et al.).
