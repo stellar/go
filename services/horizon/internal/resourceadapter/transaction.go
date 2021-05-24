@@ -30,6 +30,11 @@ func PopulateTransaction(
 	dest.Ledger = row.LedgerSequence
 	dest.LedgerCloseTime = row.LedgerCloseTime
 	dest.Account = row.Account
+	if row.AccountMuxed.Valid {
+		dest.AccountMuxed = row.AccountMuxed.String
+		muxedAccount := xdr.MustMuxedAddress(dest.AccountMuxed)
+		dest.AccountMuxedID = uint64(muxedAccount.Med25519.Id)
+	}
 	dest.AccountSequence = row.AccountSequence
 
 	dest.FeeCharged = row.FeeCharged
@@ -56,6 +61,11 @@ func PopulateTransaction(
 
 	if row.InnerTransactionHash.Valid {
 		dest.FeeAccount = row.FeeAccount.String
+		if row.FeeAccountMuxed.Valid {
+			dest.FeeAccountMuxed = row.FeeAccountMuxed.String
+			muxedAccount := xdr.MustMuxedAddress(dest.FeeAccountMuxed)
+			dest.FeeAccountMuxedID = uint64(muxedAccount.Med25519.Id)
+		}
 		dest.MaxFee = row.NewMaxFee.Int64
 		dest.FeeBumpTransaction = &protocol.FeeBumpTransaction{
 			Hash:       row.TransactionHash,
@@ -70,7 +80,9 @@ func PopulateTransaction(
 			dest.Signatures = dest.InnerTransaction.Signatures
 		}
 	} else {
-		dest.FeeAccount = row.Account
+		dest.FeeAccount = dest.Account
+		dest.FeeAccountMuxed = dest.AccountMuxed
+		dest.FeeAccountMuxedID = dest.AccountMuxedID
 		dest.MaxFee = row.MaxFee
 	}
 

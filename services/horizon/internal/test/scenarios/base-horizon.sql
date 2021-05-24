@@ -713,6 +713,7 @@ INSERT INTO gorp_migrations VALUES ('35_drop_participant_id.sql', '2019-11-30 14
 INSERT INTO gorp_migrations VALUES ('37_add_tx_set_operation_count_to_ledgers.sql', '2019-11-30 12:19:49.163728+01');
 INSERT INTO gorp_migrations VALUES ('41_add_sponsor_to_state_tables.sql', '2019-11-30 13:19:49.163718+01');
 INSERT INTO gorp_migrations VALUES ('45_add_claimable_balances_history.sql', '2019-11-30 14:19:49.163718+01');
+INSERT INTO gorp_migrations VALUES ('46_add_muxed_accounts.sql', '2019-12-30 14:19:49.163718+01');
 
 
 --
@@ -1357,11 +1358,6 @@ ALTER TABLE ONLY history_trades
     ADD CONSTRAINT history_trades_counter_asset_id_fkey FOREIGN KEY (counter_asset_id) REFERENCES history_assets(id);
 
 
---
--- PostgreSQL database dump complete
---
-
-
 -- needed for migrations to work
 ALTER TABLE accounts ADD sponsor TEXT;
 CREATE INDEX accounts_by_sponsor ON accounts USING BTREE(sponsor);
@@ -1390,3 +1386,12 @@ DROP INDEX index_history_transactions_on_id;
 DROP INDEX index_history_ledgers_on_id;
 
 DROP INDEX asset_by_code;
+
+ALTER TABLE history_transactions ADD account_muxed varchar(69) NULL, ADD fee_account_muxed varchar(69) NULL;
+ALTER TABLE history_operations ADD source_account_muxed varchar(69) NULL;
+ALTER TABLE history_effects ADD address_muxed varchar(69) NULL;
+
+
+--
+-- PostgreSQL database dump complete
+--

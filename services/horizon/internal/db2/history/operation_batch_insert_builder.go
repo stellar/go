@@ -3,6 +3,7 @@ package history
 import (
 	"context"
 
+	"github.com/guregu/null"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/xdr"
 )
@@ -18,6 +19,7 @@ type OperationBatchInsertBuilder interface {
 		operationType xdr.OperationType,
 		details []byte,
 		sourceAccount string,
+		sourceAcccountMuxed null.String,
 	) error
 	Exec(ctx context.Context) error
 }
@@ -46,14 +48,16 @@ func (i *operationBatchInsertBuilder) Add(
 	operationType xdr.OperationType,
 	details []byte,
 	sourceAccount string,
+	sourceAccountMuxed null.String,
 ) error {
 	return i.builder.Row(ctx, map[string]interface{}{
-		"id":                id,
-		"transaction_id":    transactionID,
-		"application_order": applicationOrder,
-		"type":              operationType,
-		"details":           details,
-		"source_account":    sourceAccount,
+		"id":                   id,
+		"transaction_id":       transactionID,
+		"application_order":    applicationOrder,
+		"type":                 operationType,
+		"details":              details,
+		"source_account":       sourceAccount,
+		"source_account_muxed": sourceAccountMuxed,
 	})
 
 }

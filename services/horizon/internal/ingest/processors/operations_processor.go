@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/guregu/null"
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
@@ -50,13 +51,19 @@ func (p *OperationProcessor) ProcessTransaction(ctx context.Context, transaction
 		}
 
 		source := operation.SourceAccount()
+		acID := source.ToAccountId()
+		var sourceAccountMuxed null.String
+		if source.Type == xdr.CryptoKeyTypeKeyTypeMuxedEd25519 {
+			sourceAccountMuxed = null.StringFrom(source.Address())
+		}
 		if err := p.batch.Add(ctx,
 			operation.ID(),
 			operation.TransactionID(),
 			operation.Order(),
 			operation.OperationType(),
 			detailsJSON,
-			source.Address(),
+			acID.Address(),
+			sourceAccountMuxed,
 		); err != nil {
 			return errors.Wrap(err, "Error batch inserting operation rows")
 		}
@@ -204,17 +211,13 @@ func (operation *transactionOperationWrapper) findInitatingBeginSponsoringOp() *
 	return nil
 }
 
-func addMuxedAccountDetails(result map[string]interface{}, a xdr.MuxedAccount, prefix string) {
+func addAccountAndMuxedAccountDetails(result map[string]interface{}, a xdr.MuxedAccount, prefix string) {
+	accid := a.ToAccountId()
+	result[prefix] = accid.Address()
 	if a.Type == xdr.CryptoKeyTypeKeyTypeMuxedEd25519 {
 		result[prefix+"_muxed"] = a.Address()
 		result[prefix+"_muxed_id"] = uint64(a.Med25519.Id)
 	}
-}
-
-func addAccountAndMuxedAccountDetails(result map[string]interface{}, a xdr.MuxedAccount, prefix string) {
-	accid := a.ToAccountId()
-	result[prefix] = accid.Address()
-	addMuxedAccountDetails(result, a, prefix)
 }
 
 // Details returns the operation details as a map which can be stored as JSON.
@@ -460,8 +463,6 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 	if sponsor != nil {
 		details["sponsor"] = sponsor.Address()
 	}
-	// We abuse the details to inject muxed-account information without changing the DB schema
-	addMuxedAccountDetails(details, *source, "source_account")
 
 	return details, nil
 }
