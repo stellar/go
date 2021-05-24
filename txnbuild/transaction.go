@@ -28,7 +28,7 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-// MinBaseFee is the minimum transaction fee for the Stellar network.
+// MinBaseFee is the minimum transaction fee for the Stellar network of 100 stroops (0.00001 XLM).
 const MinBaseFee = 100
 
 // Account represents the aspects of a Stellar account necessary to construct transactions. See
