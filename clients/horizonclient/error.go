@@ -2,6 +2,7 @@ package horizonclient
 
 import (
 	"encoding/json"
+	"strings"
 
 	hProtocol "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/support/errors"
@@ -9,7 +10,18 @@ import (
 )
 
 func (herr Error) Error() string {
-	return `horizon error: "` + herr.Problem.Title + `" - check horizon.Error.Problem for more information`
+	s := strings.Builder{}
+	s.WriteString(`horizon error: "`)
+	s.WriteString(herr.Problem.Title)
+	s.WriteString(`" `)
+	if rc, err := herr.ResultCodes(); err == nil {
+		s.WriteString(`(`)
+		resultCodes := append([]string{rc.TransactionCode}, rc.OperationCodes...)
+		s.WriteString(strings.Join(resultCodes, `, `))
+		s.WriteString(`) `)
+	}
+	s.WriteString(`- check horizon.Error.Problem for more information`)
+	return s.String()
 }
 
 // Envelope extracts the transaction envelope that triggered this error from the
