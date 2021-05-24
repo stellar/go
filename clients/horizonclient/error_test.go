@@ -23,7 +23,7 @@ func TestError_Error(t *testing.T) {
 			},
 		},
 	}
-	assert.Equal(t, `horizon error: "Transaction Failed" - check horizon.Error.Problem for more information`, herr.Error())
+	assert.Equal(t, `horizon error: "Transaction Failed" (tx_failed, op_underfunded, op_already_exists) - check horizon.Error.Problem for more information`, herr.Error())
 
 	// transaction failed sad path: missing result_codes extra
 	herr = Error{
