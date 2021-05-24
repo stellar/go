@@ -15,6 +15,37 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestMissingTimebounds(t *testing.T) {
+	kp0 := newKeypair0()
+
+	_, err := NewTransaction(
+		TransactionParams{
+			SourceAccount: &SimpleAccount{AccountID: kp0.Address(), Sequence: 1},
+			Operations:    []Operation{&BumpSequence{BumpTo: 0}},
+			BaseFee:       MinBaseFee,
+		},
+	)
+	assert.EqualError(t, err, "invalid time bounds: timebounds must be constructed using NewTimebounds(), NewTimeout(), or NewInfiniteTimeout()")
+}
+
+func TestTimebounds(t *testing.T) {
+	kp0 := newKeypair0()
+
+	tb := NewTimeout(300)
+	tx, err := NewTransaction(
+		TransactionParams{
+			SourceAccount: &SimpleAccount{AccountID: kp0.Address(), Sequence: 1},
+			Operations:    []Operation{&BumpSequence{BumpTo: 0}},
+			BaseFee:       MinBaseFee,
+			Timebounds:    tb,
+		},
+	)
+	assert.NoError(t, err)
+	assert.Equal(t, tb, tx.timebounds)
+	assert.Equal(t, xdr.TimePoint(tb.MinTime), tx.envelope.V1.Tx.TimeBounds.MinTime)
+	assert.Equal(t, xdr.TimePoint(tb.MaxTime), tx.envelope.V1.Tx.TimeBounds.MaxTime)
+}
+
 func TestMissingSourceAccount(t *testing.T) {
 	_, err := NewTransaction(TransactionParams{})
 	assert.EqualError(t, err, "transaction has no source account")
@@ -1343,6 +1374,7 @@ func TestFromXDR(t *testing.T) {
 	assert.Equal(t, int64(100), newTx.BaseFee(), "Base fee should match")
 	sa := newTx.SourceAccount()
 	assert.Equal(t, int64(6606179392290817), sa.Sequence, "Sequence number should match")
+	assert.Equal(t, int64(6606179392290817), newTx.SequenceNumber(), "Sequence number should match")
 	assert.Equal(t, 1, len(newTx.Operations()), "Operations length should match")
 	assert.IsType(t, newTx.Operations()[0], &Payment{}, "Operation types should match")
 	paymentOp, ok1 := newTx.Operations()[0].(*Payment)
@@ -1363,6 +1395,7 @@ func TestFromXDR(t *testing.T) {
 	assert.Equal(t, "GBUKBCG5VLRKAVYAIREJRUJHOKLIADZJOICRW43WVJCLES52BDOTCQZU", newTx2.SourceAccount().AccountID, "source accounts should match")
 	assert.Equal(t, int64(200), newTx2.BaseFee(), "Base fee should match")
 	assert.Equal(t, int64(14800457302017), newTx2.SourceAccount().Sequence, "Sequence number should match")
+	assert.Equal(t, int64(14800457302017), newTx2.SequenceNumber(), "Sequence number should match")
 
 	memo, ok := newTx2.Memo().(MemoText)
 	assert.Equal(t, true, ok)

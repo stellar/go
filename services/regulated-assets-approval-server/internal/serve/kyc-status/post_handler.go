@@ -90,7 +90,7 @@ func (h PostHandler) handle(ctx context.Context, in kycPostRequest) (resp *kycPo
 
 	// Check if kycPostRequest values are present or not malformed.
 	if in.CallbackID == "" {
-		return nil, httperror.NewHTTPError(http.StatusBadRequest, "Missing callback ID.")
+		return nil, httperror.NewHTTPError(http.StatusBadRequest, "Missing callbackID.")
 	}
 	if in.EmailAddress == "" {
 		return nil, httperror.NewHTTPError(http.StatusBadRequest, "Missing email_address.")

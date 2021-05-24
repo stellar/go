@@ -278,7 +278,11 @@ func (h txApproveHandler) handleKYCRequiredOperationIfNeeded(ctx context.Context
 		return nil, nil
 	}
 	if rejectedAt.Valid {
-		return NewRejectedTxApprovalResponse(fmt.Sprintf("Your KYC was rejected and you're not authorized for operations above %s %s.", amount.StringFromInt64(h.kycThreshold), h.assetCode)), nil
+		kycThreshold, err := convertThresholdToReadableString(h.kycThreshold)
+		if err != nil {
+			return nil, errors.Wrap(err, "converting kycThreshold to human readable string")
+		}
+		return NewRejectedTxApprovalResponse(fmt.Sprintf("Your KYC was rejected and you're not authorized for operations above %s %s.", kycThreshold, h.assetCode)), nil
 	}
 
 	return NewActionRequiredTxApprovalResponse(

@@ -71,7 +71,7 @@ var ingestVerifyRangeCmd = &cobra.Command{
 			co.SetValue()
 		}
 
-		horizon.ApplyFlags(config, flags)
+		horizon.ApplyFlags(config, flags, horizon.ApplyOptions{RequireCaptiveCoreConfig: false, AlwaysIngest: true})
 
 		if ingestVerifyDebugServerPort != 0 {
 			go func() {
@@ -170,7 +170,7 @@ var ingestStressTestCmd = &cobra.Command{
 			co.SetValue()
 		}
 
-		horizon.ApplyFlags(config, flags)
+		horizon.ApplyFlags(config, flags, horizon.ApplyOptions{RequireCaptiveCoreConfig: false, AlwaysIngest: true})
 
 		horizonSession, err := db.Open("postgres", config.DatabaseURL)
 		if err != nil {
@@ -229,7 +229,7 @@ var ingestTriggerStateRebuildCmd = &cobra.Command{
 	Short: "updates a database to trigger state rebuild, state will be rebuilt by a running Horizon instance, DO NOT RUN production DB, some endpoints will be unavailable until state is rebuilt",
 	Run: func(cmd *cobra.Command, args []string) {
 		ctx := context.Background()
-		horizon.ApplyFlags(config, flags)
+		horizon.ApplyFlags(config, flags, horizon.ApplyOptions{RequireCaptiveCoreConfig: false, AlwaysIngest: true})
 
 		horizonSession, err := db.Open("postgres", config.DatabaseURL)
 		if err != nil {
@@ -251,7 +251,7 @@ var ingestInitGenesisStateCmd = &cobra.Command{
 	Short: "ingests genesis state (ledger 1)",
 	Run: func(cmd *cobra.Command, args []string) {
 		ctx := context.Background()
-		horizon.ApplyFlags(config, flags)
+		horizon.ApplyFlags(config, flags, horizon.ApplyOptions{RequireCaptiveCoreConfig: false, AlwaysIngest: true})
 
 		horizonSession, err := db.Open("postgres", config.DatabaseURL)
 		if err != nil {
@@ -322,7 +322,7 @@ func init() {
 
 	viper.BindPFlags(ingestVerifyRangeCmd.PersistentFlags())
 
-	rootCmd.AddCommand(ingestCmd)
+	RootCmd.AddCommand(ingestCmd)
 	ingestCmd.AddCommand(
 		ingestVerifyRangeCmd,
 		ingestStressTestCmd,

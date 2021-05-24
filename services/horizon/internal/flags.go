@@ -428,7 +428,7 @@ func Flags() (*Config, support.ConfigOptions) {
 
 // NewAppFromFlags constructs a new Horizon App from the given command line flags
 func NewAppFromFlags(config *Config, flags support.ConfigOptions) *App {
-	ApplyFlags(config, flags)
+	ApplyFlags(config, flags, ApplyOptions{RequireCaptiveCoreConfig: true, AlwaysIngest: false})
 	// Validate app-specific arguments
 	if config.StellarCoreURL == "" {
 		log.Fatalf("flag --%s cannot be empty", StellarCoreURLFlagName)
@@ -443,14 +443,23 @@ func NewAppFromFlags(config *Config, flags support.ConfigOptions) *App {
 	return app
 }
 
+type ApplyOptions struct {
+	AlwaysIngest             bool
+	RequireCaptiveCoreConfig bool
+}
+
 // ApplyFlags applies the command line flags on the given Config instance
-func ApplyFlags(config *Config, flags support.ConfigOptions) {
+func ApplyFlags(config *Config, flags support.ConfigOptions, options ApplyOptions) {
 	// Verify required options and load the config struct
 	flags.Require()
 	flags.SetValues()
 
 	// Validate options that should be provided together
 	validateBothOrNeither("tls-cert", "tls-key")
+
+	if options.AlwaysIngest {
+		config.Ingest = true
+	}
 
 	if config.Ingest {
 		// Migrations should be checked as early as possible. Apply and check
@@ -492,11 +501,19 @@ func ApplyFlags(config *Config, flags support.ConfigOptions) {
 			}
 
 			if config.RemoteCaptiveCoreURL == "" && (binaryPath == "" || config.CaptiveCoreConfigPath == "") {
-				stdLog.Fatalf("Invalid config: captive core requires that both --%s and --%s are set. %s",
-					StellarCoreBinaryPathName, CaptiveCoreConfigAppendPathName, captiveCoreMigrationHint)
-			}
-
-			if config.RemoteCaptiveCoreURL == "" {
+				if options.RequireCaptiveCoreConfig {
+					stdLog.Fatalf("Invalid config: captive core requires that both --%s and --%s are set. %s",
+						StellarCoreBinaryPathName, CaptiveCoreConfigAppendPathName, captiveCoreMigrationHint)
+				} else {
+					var err error
+					config.CaptiveCoreTomlParams.HistoryArchiveURLs = config.HistoryArchiveURLs
+					config.CaptiveCoreTomlParams.NetworkPassphrase = config.NetworkPassphrase
+					config.CaptiveCoreToml, err = ledgerbackend.NewCaptiveCoreToml(config.CaptiveCoreTomlParams)
+					if err != nil {
+						stdLog.Fatalf("Invalid captive core toml file %v", err)
+					}
+				}
+			} else if config.RemoteCaptiveCoreURL == "" {
 				var err error
 				config.CaptiveCoreTomlParams.HistoryArchiveURLs = config.HistoryArchiveURLs
 				config.CaptiveCoreTomlParams.NetworkPassphrase = config.NetworkPassphrase
