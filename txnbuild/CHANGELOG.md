@@ -5,6 +5,10 @@ file.  This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+### New features
+
+* Add `SequenceNumber` function to `Transaction`.
+
 ### Bug Fix
 
 * `BaseFee` in `TransactionParams` when calling `NewTransaction` is allowed to be zero because the fee can be paid by wrapping a `Transaction` in a `FeeBumpTransaction`. ([#3622](https://github.com/stellar/go/pull/3622))

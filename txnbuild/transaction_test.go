@@ -1374,6 +1374,7 @@ func TestFromXDR(t *testing.T) {
 	assert.Equal(t, int64(100), newTx.BaseFee(), "Base fee should match")
 	sa := newTx.SourceAccount()
 	assert.Equal(t, int64(6606179392290817), sa.Sequence, "Sequence number should match")
+	assert.Equal(t, int64(6606179392290817), newTx.SequenceNumber(), "Sequence number should match")
 	assert.Equal(t, 1, len(newTx.Operations()), "Operations length should match")
 	assert.IsType(t, newTx.Operations()[0], &Payment{}, "Operation types should match")
 	paymentOp, ok1 := newTx.Operations()[0].(*Payment)
@@ -1394,6 +1395,7 @@ func TestFromXDR(t *testing.T) {
 	assert.Equal(t, "GBUKBCG5VLRKAVYAIREJRUJHOKLIADZJOICRW43WVJCLES52BDOTCQZU", newTx2.SourceAccount().AccountID, "source accounts should match")
 	assert.Equal(t, int64(200), newTx2.BaseFee(), "Base fee should match")
 	assert.Equal(t, int64(14800457302017), newTx2.SourceAccount().Sequence, "Sequence number should match")
+	assert.Equal(t, int64(14800457302017), newTx2.SequenceNumber(), "Sequence number should match")
 
 	memo, ok := newTx2.Memo().(MemoText)
 	assert.Equal(t, true, ok)
