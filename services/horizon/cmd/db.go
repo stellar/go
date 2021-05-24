@@ -202,12 +202,14 @@ var dbReingestRangeCmd = &cobra.Command{
 
 		argsUInt32 := make([]uint32, 2)
 		for i, arg := range args {
-			seq, err := strconv.Atoi(arg)
-			if err != nil {
+			if seq, err := strconv.Atoi(arg); err != nil {
 				cmd.Usage()
 				log.Fatalf(`Invalid sequence number "%s"`, arg)
+			} else if seq < 0 {
+				log.Fatalf("sequence number %s cannot be negative", arg)
+			} else {
+				argsUInt32[i] = uint32(seq)
 			}
-			argsUInt32[i] = uint32(seq)
 		}
 
 		horizon.ApplyFlags(config, flags, horizon.ApplyOptions{RequireCaptiveCoreConfig: false, AlwaysIngest: true})
