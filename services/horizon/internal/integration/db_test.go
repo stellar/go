@@ -1,7 +1,9 @@
 package integration
 
 import (
+	"fmt"
 	"path/filepath"
+	"strconv"
 	"testing"
 	"time"
 
@@ -85,9 +87,34 @@ func TestReingestDB(t *testing.T) {
 		filepath.Dir(horizonConfig.CaptiveCoreConfigPath),
 		"captive-core-reingest-range-integration-tests.cfg",
 	)
+	horizoncmd.RootCmd.SetArgs([]string{
+		"--stellar-core-url",
+		horizonConfig.StellarCoreURL,
+		"--history-archive-urls",
+		horizonConfig.HistoryArchiveURLs[0],
+		"--db-url",
+		horizonConfig.DatabaseURL,
+		"--stellar-core-db-url",
+		horizonConfig.StellarCoreDatabaseURL,
+		"--stellar-core-binary-path",
+		horizonConfig.CaptiveCoreBinaryPath,
+		"--captive-core-config-append-path",
+		horizonConfig.CaptiveCoreConfigPath,
+		"--enable-captive-core-ingestion=" + strconv.FormatBool(horizonConfig.EnableCaptiveCoreIngestion),
+		"--network-passphrase",
+		horizonConfig.NetworkPassphrase,
+		// due to ARTIFICIALLY_ACCELERATE_TIME_FOR_TESTING
+		"--checkpoint-frequency",
+		"8",
+		"db",
+		"reingest",
+		"range",
+		"1",
+		fmt.Sprintf("%d", toLedger),
+	})
 
+	err = horizoncmd.RootCmd.Execute()
 	// Reingest into the DB
-	err = horizoncmd.RunDBReingestRange(1, toLedger, false, 1, horizonConfig)
 	tt.NoError(err)
 }
 
