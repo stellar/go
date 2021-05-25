@@ -96,12 +96,12 @@ func TestNewEffect_EffectTrade_Muxed(t *testing.T) {
 	details := `{
 	"seller": "GAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSTVY",
 	"seller_muxed": "MAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSAAAAAAAAAAE2LP26",
-    "seller_muxed_id": 1234,
-	"account_muxed": "MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJUAAAAAAAAAAAACJUQ"
+    "seller_muxed_id": 1234
 	}`
 
 	hEffect := history.Effect{
-		Account:            "GA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVSGZ",
+		Account:            "GAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSTVY",
+		AccountMuxed:       null.StringFrom("MAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSAAAAAAAAAAE2LP26"),
 		HistoryOperationID: 1,
 		Order:              1,
 		Type:               history.EffectTrade,
@@ -124,9 +124,9 @@ func TestNewEffect_EffectTrade_Muxed(t *testing.T) {
 	tt.NoError(json.Unmarshal(binary, &page))
 	tt.Len(page.Embedded.Records, 1)
 	tt.Equal(effect, page.Embedded.Records[0].(effects.Trade))
-	tt.Equal("GA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVSGZ", effect.Account)
-	tt.Equal("MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJUAAAAAAAAAAAACJUQ", effect.AccountMuxed)
-	tt.Equal(uint64(0), effect.AccountMuxedID)
+	tt.Equal("GAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSTVY", effect.Account)
+	tt.Equal("MAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSAAAAAAAAAAE2LP26", effect.AccountMuxed)
+	tt.Equal(uint64(1234), effect.AccountMuxedID)
 	tt.Equal("GAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSTVY", effect.Seller)
 	tt.Equal("MAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSAAAAAAAAAAE2LP26", effect.SellerMuxed)
 	tt.Equal(uint64(1234), effect.SellerMuxedID)

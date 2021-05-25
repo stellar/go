@@ -51,7 +51,7 @@ func TestPopulateOperation_Successful(t *testing.T) {
 
 	assert.NoError(
 		t,
-		PopulateBaseOperation(ctx, &dest, sourceMuxedAccount{}, row, "", nil, ledger),
+		PopulateBaseOperation(ctx, &dest, row, "", nil, ledger),
 	)
 	assert.True(t, dest.TransactionSuccessful)
 	assert.Nil(t, dest.Transaction)
@@ -61,7 +61,7 @@ func TestPopulateOperation_Successful(t *testing.T) {
 
 	assert.NoError(
 		t,
-		PopulateBaseOperation(ctx, &dest, sourceMuxedAccount{}, row, "", nil, ledger),
+		PopulateBaseOperation(ctx, &dest, row, "", nil, ledger),
 	)
 	assert.False(t, dest.TransactionSuccessful)
 	assert.Nil(t, dest.Transaction)
@@ -90,7 +90,7 @@ func TestPopulateOperation_WithTransaction(t *testing.T) {
 
 	assert.NoError(
 		t,
-		PopulateBaseOperation(ctx, &dest, sourceMuxedAccount{}, operationsRow, transactionRow.TransactionHash, &transactionRow, ledger),
+		PopulateBaseOperation(ctx, &dest, operationsRow, transactionRow.TransactionHash, &transactionRow, ledger),
 	)
 	assert.True(t, dest.TransactionSuccessful)
 	assert.True(t, dest.Transaction.Successful)
@@ -339,19 +339,19 @@ func TestFeeBumpOperation(t *testing.T) {
 
 	assert.NoError(
 		t,
-		PopulateBaseOperation(ctx, &dest, sourceMuxedAccount{}, operationsRow, transactionRow.TransactionHash, nil, history.Ledger{}),
+		PopulateBaseOperation(ctx, &dest, operationsRow, transactionRow.TransactionHash, nil, history.Ledger{}),
 	)
 	assert.Equal(t, transactionRow.TransactionHash, dest.TransactionHash)
 
 	assert.NoError(
 		t,
-		PopulateBaseOperation(ctx, &dest, sourceMuxedAccount{}, operationsRow, transactionRow.InnerTransactionHash.String, nil, history.Ledger{}),
+		PopulateBaseOperation(ctx, &dest, operationsRow, transactionRow.InnerTransactionHash.String, nil, history.Ledger{}),
 	)
 	assert.Equal(t, transactionRow.InnerTransactionHash.String, dest.TransactionHash)
 
 	assert.NoError(
 		t,
-		PopulateBaseOperation(ctx, &dest, sourceMuxedAccount{}, operationsRow, transactionRow.TransactionHash, &transactionRow, history.Ledger{}),
+		PopulateBaseOperation(ctx, &dest, operationsRow, transactionRow.TransactionHash, &transactionRow, history.Ledger{}),
 	)
 
 	assert.Equal(t, transactionRow.TransactionHash, dest.TransactionHash)
@@ -370,7 +370,7 @@ func TestFeeBumpOperation(t *testing.T) {
 
 	assert.NoError(
 		t,
-		PopulateBaseOperation(ctx, &dest, sourceMuxedAccount{}, operationsRow, transactionRow.InnerTransactionHash.String, &transactionRow, history.Ledger{}),
+		PopulateBaseOperation(ctx, &dest, operationsRow, transactionRow.InnerTransactionHash.String, &transactionRow, history.Ledger{}),
 	)
 	assert.Equal(t, transactionRow.InnerTransactionHash.String, dest.TransactionHash)
 	assert.Equal(t, transactionRow.InnerTransactionHash.String, dest.Transaction.Hash)

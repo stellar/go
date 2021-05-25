@@ -1082,6 +1082,9 @@ CREATE TABLE accounts_signers (
     -- we will query by signer so that is why signer is the first item in the composite key
                                   PRIMARY KEY (signer, account)
 );
+ALTER TABLE history_transactions ADD account_muxed varchar(69) NULL, ADD fee_account_muxed varchar(69) NULL;
+ALTER TABLE history_operations ADD source_account_muxed varchar(69) NULL;
+ALTER TABLE history_effects ADD address_muxed varchar(69) NULL;
 
 --
 -- PostgreSQL database dump complete

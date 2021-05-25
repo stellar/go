@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"sort"
 
+	"github.com/guregu/null"
 	"github.com/stellar/go/amount"
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/keypair"
@@ -93,6 +94,7 @@ func (p *EffectProcessor) insertDBOperationsEffects(ctx context.Context, effects
 
 		if err := batch.Add(ctx,
 			accountID,
+			effect.addressMuxed,
 			effect.operationID,
 			effect.order,
 			effect.effectType,
@@ -145,11 +147,12 @@ func (p *EffectProcessor) Commit(ctx context.Context) (err error) {
 }
 
 type effect struct {
-	address     string
-	operationID int64
-	details     map[string]interface{}
-	effectType  history.EffectType
-	order       uint32
+	address      string
+	addressMuxed null.String
+	operationID  int64
+	details      map[string]interface{}
+	effectType   history.EffectType
+	order        uint32
 }
 
 // Effects returns the operation effects
@@ -234,24 +237,28 @@ type effectsWrapper struct {
 	operation *transactionOperationWrapper
 }
 
-func (e *effectsWrapper) add(address *xdr.AccountId, effectType history.EffectType, details map[string]interface{}) {
+func (e *effectsWrapper) add(address string, addressMuxed null.String, effectType history.EffectType, details map[string]interface{}) {
 	e.effects = append(e.effects, effect{
-		address:     address.Address(),
-		operationID: e.operation.ID(),
-		effectType:  effectType,
-		order:       uint32(len(e.effects) + 1),
-		details:     details,
+		address:      address,
+		addressMuxed: addressMuxed,
+		operationID:  e.operation.ID(),
+		effectType:   effectType,
+		order:        uint32(len(e.effects) + 1),
+		details:      details,
 	})
 }
 
+func (e *effectsWrapper) addUnmuxed(address *xdr.AccountId, effectType history.EffectType, details map[string]interface{}) {
+	e.add(address.Address(), null.String{}, effectType, details)
+}
+
 func (e *effectsWrapper) addMuxed(address *xdr.MuxedAccount, effectType history.EffectType, details map[string]interface{}) {
+	var addressMuxed null.String
 	if address.Type == xdr.CryptoKeyTypeKeyTypeMuxedEd25519 {
-		// We abuse the details to inject muxed-account information without changing the DB schema
-		details["account_muxed"] = address.Address()
-		details["account_muxed_id"] = uint64(address.Med25519.Id)
+		addressMuxed = null.StringFrom(address.Address())
 	}
 	accID := address.ToAccountId()
-	e.add(&accID, effectType, details)
+	e.add(accID.Address(), addressMuxed, effectType, details)
 }
 
 var sponsoringEffectsTable = map[xdr.LedgerEntryType]struct {
@@ -322,12 +329,12 @@ func (e *effectsWrapper) addSignerSponsorshipEffects(change ingest.Change) {
 			details["sponsor"] = post.Address()
 			details["signer"] = signer
 			srcAccount := change.Post.Data.MustAccount().AccountId
-			e.add(&srcAccount, history.EffectSignerSponsorshipCreated, details)
+			e.addUnmuxed(&srcAccount, history.EffectSignerSponsorshipCreated, details)
 		case !foundPost && foundPre:
 			details["former_sponsor"] = pre.Address()
 			details["signer"] = signer
 			srcAccount := change.Pre.Data.MustAccount().AccountId
-			e.add(&srcAccount, history.EffectSignerSponsorshipRemoved, details)
+			e.addUnmuxed(&srcAccount, history.EffectSignerSponsorshipRemoved, details)
 		case foundPre && foundPost:
 			formerSponsor := pre.Address()
 			newSponsor := post.Address()
@@ -339,7 +346,7 @@ func (e *effectsWrapper) addSignerSponsorshipEffects(change ingest.Change) {
 			details["new_sponsor"] = newSponsor
 			details["signer"] = signer
 			srcAccount := change.Post.Data.MustAccount().AccountId
-			e.add(&srcAccount, history.EffectSignerSponsorshipUpdated, details)
+			e.addUnmuxed(&srcAccount, history.EffectSignerSponsorshipUpdated, details)
 		}
 	}
 }
@@ -411,7 +418,7 @@ func (e *effectsWrapper) addLedgerEntrySponsorshipEffects(change ingest.Change) 
 	}
 
 	if accountID != nil {
-		e.add(accountID, effectType, details)
+		e.addUnmuxed(accountID, effectType, details)
 	} else {
 		e.addMuxed(muxedAccount, effectType, details)
 	}
@@ -422,7 +429,7 @@ func (e *effectsWrapper) addLedgerEntrySponsorshipEffects(change ingest.Change) 
 func (e *effectsWrapper) addAccountCreatedEffects() {
 	op := e.operation.operation.Body.MustCreateAccountOp()
 
-	e.add(
+	e.addUnmuxed(
 		&op.Destination,
 		history.EffectAccountCreated,
 		map[string]interface{}{
@@ -437,7 +444,7 @@ func (e *effectsWrapper) addAccountCreatedEffects() {
 			"amount":     amount.String(op.StartingBalance),
 		},
 	)
-	e.add(
+	e.addUnmuxed(
 		&op.Destination,
 		history.EffectSignerCreated,
 		map[string]interface{}{
@@ -745,7 +752,7 @@ func (e *effectsWrapper) addAccountMergeEffects() {
 func (e *effectsWrapper) addInflationEffects() {
 	payouts := e.operation.OperationResult().MustInflationResult().MustPayouts()
 	for _, payout := range payouts {
-		e.add(&payout.Destination, history.EffectAccountCredited,
+		e.addUnmuxed(&payout.Destination, history.EffectAccountCredited,
 			map[string]interface{}{
 				"amount":     amount.String(payout.Amount),
 				"asset_type": "native",
@@ -860,7 +867,7 @@ func (e *effectsWrapper) addCreateClaimableBalanceEffects(changes []ingest.Chang
 
 	for _, c := range op.Claimants {
 		cv0 := c.MustV0()
-		e.add(
+		e.addUnmuxed(
 			&cv0.Destination,
 			history.EffectClaimableBalanceClaimantCreated,
 			map[string]interface{}{
@@ -959,7 +966,7 @@ func (e *effectsWrapper) addIngestTradeEffects(buyer xdr.MuxedAccount, claims []
 			bd,
 		)
 
-		e.add(
+		e.addUnmuxed(
 			&seller,
 			history.EffectTrade,
 			sd,

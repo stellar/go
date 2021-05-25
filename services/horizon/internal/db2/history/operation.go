@@ -344,6 +344,7 @@ var selectOperation = sq.Select(
 		"hop.type, " +
 		"hop.details, " +
 		"hop.source_account, " +
+		"hop.source_account_muxed, " +
 		"ht.transaction_hash, " +
 		"ht.tx_result, " +
 		"COALESCE(ht.successful, true) as transaction_successful").

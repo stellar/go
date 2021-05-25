@@ -192,6 +192,7 @@ var selectTransaction = sq.Select(
 		"ht.ledger_sequence, " +
 		"ht.application_order, " +
 		"ht.account, " +
+		"ht.account_muxed, " +
 		"ht.account_sequence, " +
 		"ht.max_fee, " +
 		// `fee_charged` is NULL by default, DB needs to be reingested
@@ -212,6 +213,7 @@ var selectTransaction = sq.Select(
 		"hl.closed_at AS ledger_close_time, " +
 		"ht.inner_transaction_hash, " +
 		"ht.fee_account, " +
+		"ht.fee_account_muxed, " +
 		"ht.new_max_fee, " +
 		"ht.inner_signatures").
 	From("history_transactions ht").

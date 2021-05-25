@@ -90,7 +90,7 @@ func TestTransactionIncludeFailed(t *testing.T) {
 
 	sql, _, err := query.sql.ToSql()
 	tt.Assert.NoError(err)
-	tt.Assert.Equal("SELECT ht.id, ht.transaction_hash, ht.ledger_sequence, ht.application_order, ht.account, ht.account_sequence, ht.max_fee, COALESCE(ht.fee_charged, ht.max_fee) as fee_charged, ht.operation_count, ht.tx_envelope, ht.tx_result, ht.tx_meta, ht.tx_fee_meta, ht.created_at, ht.updated_at, COALESCE(ht.successful, true) as successful, ht.signatures, ht.memo_type, ht.memo, time_bounds, hl.closed_at AS ledger_close_time, ht.inner_transaction_hash, ht.fee_account, ht.new_max_fee, ht.inner_signatures FROM history_transactions ht LEFT JOIN history_ledgers hl ON ht.ledger_sequence = hl.sequence JOIN history_transaction_participants htp ON htp.history_transaction_id = ht.id WHERE htp.history_account_id = ?", sql)
+	tt.Assert.Equal("SELECT ht.id, ht.transaction_hash, ht.ledger_sequence, ht.application_order, ht.account, ht.account_muxed, ht.account_sequence, ht.max_fee, COALESCE(ht.fee_charged, ht.max_fee) as fee_charged, ht.operation_count, ht.tx_envelope, ht.tx_result, ht.tx_meta, ht.tx_fee_meta, ht.created_at, ht.updated_at, COALESCE(ht.successful, true) as successful, ht.signatures, ht.memo_type, ht.memo, time_bounds, hl.closed_at AS ledger_close_time, ht.inner_transaction_hash, ht.fee_account, ht.fee_account_muxed, ht.new_max_fee, ht.inner_signatures FROM history_transactions ht LEFT JOIN history_ledgers hl ON ht.ledger_sequence = hl.sequence JOIN history_transaction_participants htp ON htp.history_transaction_id = ht.id WHERE htp.history_account_id = ?", sql)
 }
 
 func TestExtraChecksTransactionSuccessfulTrueResultFalse(t *testing.T) {

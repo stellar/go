@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/guregu/null"
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/services/horizon/internal/toid"
 )
@@ -14,7 +15,8 @@ func TestAddEffect(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
-	address := "GBXGQJWVLWOYHFLVTKWV5FGHA3LNYY2JQKM7OAJAUEQFU6LPCSEFVXON"
+	address := "GAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSTVY"
+	muxedAddres := "MAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSAAAAAAAAAAE2LP26"
 	accounIDs, err := q.CreateAccounts(tt.Ctx, []string{address}, 1)
 	tt.Assert.NoError(err)
 
@@ -27,6 +29,7 @@ func TestAddEffect(t *testing.T) {
 
 	err = builder.Add(tt.Ctx,
 		accounIDs[address],
+		null.StringFrom(muxedAddres),
 		toid.New(sequence, 1, 1).ToInt64(),
 		1,
 		3,
@@ -43,6 +46,7 @@ func TestAddEffect(t *testing.T) {
 
 	effect := effects[0]
 	tt.Assert.Equal(address, effect.Account)
+	tt.Assert.Equal(muxedAddres, effect.AccountMuxed.String)
 	tt.Assert.Equal(int64(240518172673), effect.HistoryOperationID)
 	tt.Assert.Equal(int32(1), effect.Order)
 	tt.Assert.Equal(EffectType(3), effect.Type)
