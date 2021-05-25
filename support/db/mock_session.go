@@ -37,11 +37,6 @@ func (m *MockSession) Commit() error {
 	return args.Error(0)
 }
 
-func (m *MockSession) Commit(ctx context.Context) error {
-	args := m.Called(ctx)
-	return args.Error(0)
-}
-
 func (m *MockSession) GetTx() *sqlx.Tx {
 	args := m.Called()
 	return args.Get(0).(*sqlx.Tx)
