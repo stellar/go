@@ -241,11 +241,11 @@ type IngestionQ interface {
 	QTransactions
 	QTrustLines
 
-	Begin(context.Context) error
-	BeginTx(context.Context, *sql.TxOptions) error
-	Commit(context.Context) error
+	Begin() error
+	BeginTx(*sql.TxOptions) error
+	Commit() error
 	CloneIngestionQ() IngestionQ
-	Rollback(context.Context) error
+	Rollback() error
 	GetTx() *sqlx.Tx
 	GetIngestVersion(context.Context) (int, error)
 	UpdateExpStateInvalid(context.Context, bool) error

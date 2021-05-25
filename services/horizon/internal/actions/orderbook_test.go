@@ -582,11 +582,11 @@ func TestOrderbookGetResource(t *testing.T) {
 	}
 	assert.NoError(t, batch.Exec(tt.Ctx))
 
-	assert.NoError(t, q.BeginTx(tt.Ctx, &sql.TxOptions{
+	assert.NoError(t, q.BeginTx(&sql.TxOptions{
 		Isolation: sql.LevelRepeatableRead,
 		ReadOnly:  true,
 	}))
-	defer q.Rollback(tt.Ctx)
+	defer q.Rollback()
 
 	fullResponse := empty
 	fullResponse.Asks = []protocol.PriceLevel{
