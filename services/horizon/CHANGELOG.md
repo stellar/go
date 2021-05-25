@@ -9,8 +9,9 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 * Add more in-depth Prometheus metrics (count & duration) for db queries.
 
-* Fix bug in `horizon db reingest range` command which required the `--ingest` flag to be set [3625](https://github.com/stellar/go/pull/3625)).
+* Fix bug in `horizon db reingest range` command which required the `--ingest` flag to be set ([3625](https://github.com/stellar/go/pull/3625)).
 
+* Deprecate `--captive-core-config-append-path` in favor of `--captive-core-config-path`. The difference between the two flags is that `--captive-core-config-path` will validate the configuration file to reject any fields which are not supported by captive core ([3629](https://github.com/stellar/go/pull/3629)).
 ## v2.3.0
 
 **Upgrading to this version from <= v2.1.1 will trigger a state rebuild. During this process (which can take up to 20 minutes), Horizon will not ingest new ledgers.**

@@ -98,7 +98,7 @@ func TestReingestDB(t *testing.T) {
 		horizonConfig.StellarCoreDatabaseURL,
 		"--stellar-core-binary-path",
 		horizonConfig.CaptiveCoreBinaryPath,
-		"--captive-core-config-append-path",
+		"--captive-core-config-path",
 		horizonConfig.CaptiveCoreConfigPath,
 		"--enable-captive-core-ingestion=" + strconv.FormatBool(horizonConfig.EnableCaptiveCoreIngestion),
 		"--network-passphrase",

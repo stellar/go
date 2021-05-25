@@ -213,7 +213,7 @@ of accounts, subscribe to event streams, and more.`,
 
 		"--stellar-core-binary-path",
 		captiveCoreBinaryPath,
-		"--captive-core-config-append-path",
+		"--captive-core-config-path",
 		captiveCoreConfigPath,
 
 		"--captive-core-http-port",
