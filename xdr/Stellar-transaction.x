@@ -179,7 +179,7 @@ struct CreatePassiveSellOfferOp
 {
     Asset selling; // A
     Asset buying;  // B
-    int64 amount;  // amount taker gets
+    int64 amount;  // amount taker gets. if set to 0, delete the offer
     Price price;   // cost of A in terms of B
 };
 
@@ -241,7 +241,7 @@ struct AllowTrustOp
     AccountID trustor;
     AssetCode asset;
 
-    // One of 0, AUTHORIZED_FLAG, or AUTHORIZED_TO_MAINTAIN_LIABILITIES_FLAG
+    // 0, or any bitwise combination of the AUTHORIZED_* flags of TrustLineFlags
     uint32 authorize;
 };
 
@@ -364,7 +364,8 @@ case REVOKE_SPONSORSHIP_SIGNER:
     {
         AccountID accountID;
         SignerKey signerKey;
-    } signer;
+    }
+    signer;
 };
 
 /* Claws back an amount of an asset from an account
@@ -679,7 +680,7 @@ default:
 enum PaymentResultCode
 {
     // codes considered as "success" for the operation
-    PAYMENT_SUCCESS = 0, // payment successfully completed
+    PAYMENT_SUCCESS = 0, // payment successfuly completed
 
     // codes considered as "failure" for the operation
     PAYMENT_MALFORMED = -1,          // bad input
@@ -739,8 +740,7 @@ struct SimplePaymentResult
     int64 amount;
 };
 
-union PathPaymentStrictReceiveResult switch (
-    PathPaymentStrictReceiveResultCode code)
+union PathPaymentStrictReceiveResult switch (PathPaymentStrictReceiveResultCode code)
 {
 case PATH_PAYMENT_STRICT_RECEIVE_SUCCESS:
     struct
@@ -908,8 +908,7 @@ enum SetOptionsResultCode
     SET_OPTIONS_THRESHOLD_OUT_OF_RANGE = -7, // bad value for weight/threshold
     SET_OPTIONS_BAD_SIGNER = -8,             // signer cannot be masterkey
     SET_OPTIONS_INVALID_HOME_DOMAIN = -9,     // malformed home domain
-    SET_OPTIONS_AUTH_REVOCABLE_REQUIRED =
-        -10 // auth revocable is required for clawback
+    SET_OPTIONS_AUTH_REVOCABLE_REQUIRED = -10 // auth revocable is required for clawback
 };
 
 union SetOptionsResult switch (SetOptionsResultCode code)
@@ -987,7 +986,7 @@ enum AccountMergeResultCode
 union AccountMergeResult switch (AccountMergeResultCode code)
 {
 case ACCOUNT_MERGE_SUCCESS:
-    int64 sourceAccountBalance; // how much got transferred from source account
+    int64 sourceAccountBalance; // how much got transfered from source account
 default:
     void;
 };
@@ -1069,8 +1068,7 @@ enum CreateClaimableBalanceResultCode
     CREATE_CLAIMABLE_BALANCE_UNDERFUNDED = -5
 };
 
-union CreateClaimableBalanceResult switch (
-    CreateClaimableBalanceResultCode code)
+union CreateClaimableBalanceResult switch (CreateClaimableBalanceResultCode code)
 {
 case CREATE_CLAIMABLE_BALANCE_SUCCESS:
     ClaimableBalanceID balanceID;
@@ -1112,8 +1110,7 @@ enum BeginSponsoringFutureReservesResultCode
     BEGIN_SPONSORING_FUTURE_RESERVES_RECURSIVE = -3
 };
 
-union BeginSponsoringFutureReservesResult switch (
-    BeginSponsoringFutureReservesResultCode code)
+union BeginSponsoringFutureReservesResult switch (BeginSponsoringFutureReservesResultCode code)
 {
 case BEGIN_SPONSORING_FUTURE_RESERVES_SUCCESS:
     void;
@@ -1132,8 +1129,7 @@ enum EndSponsoringFutureReservesResultCode
     END_SPONSORING_FUTURE_RESERVES_NOT_SPONSORED = -1
 };
 
-union EndSponsoringFutureReservesResult switch (
-    EndSponsoringFutureReservesResultCode code)
+union EndSponsoringFutureReservesResult switch (EndSponsoringFutureReservesResultCode code)
 {
 case END_SPONSORING_FUTURE_RESERVES_SUCCESS:
     void;
@@ -1198,8 +1194,7 @@ enum ClawbackClaimableBalanceResultCode
     CLAWBACK_CLAIMABLE_BALANCE_NOT_CLAWBACK_ENABLED = -3
 };
 
-union ClawbackClaimableBalanceResult switch (
-    ClawbackClaimableBalanceResultCode code)
+union ClawbackClaimableBalanceResult switch (ClawbackClaimableBalanceResultCode code)
 {
 case CLAWBACK_CLAIMABLE_BALANCE_SUCCESS:
     void;
@@ -1314,7 +1309,7 @@ enum TransactionResultCode
     txNO_ACCOUNT = -8,           // source account not found
     txINSUFFICIENT_FEE = -9,     // fee is too small
     txBAD_AUTH_EXTRA = -10,      // unused signatures attached to transaction
-    txINTERNAL_ERROR = -11,      // an unknown error occurred
+    txINTERNAL_ERROR = -11,      // an unknown error occured
 
     txNOT_SUPPORTED = -12,         // transaction type not supported
     txFEE_BUMP_INNER_FAILED = -13, // fee bump inner transaction failed
