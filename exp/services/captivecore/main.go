@@ -53,7 +53,7 @@ func main() {
 			ConfigKey:   &binaryPath,
 		},
 		&config.ConfigOption{
-			Name:        "captive-core-config-append-path",
+			Name:        "captive-core-config-path",
 			OptType:     types.String,
 			FlagDefault: "",
 			Required:    true,
@@ -124,6 +124,7 @@ func main() {
 
 			captiveCoreTomlParams.HistoryArchiveURLs = historyArchiveURLs
 			captiveCoreTomlParams.NetworkPassphrase = networkPassphrase
+			captiveCoreTomlParams.Strict = true
 			captiveCoreToml, err := ledgerbackend.NewCaptiveCoreTomlFromFile(configPath, captiveCoreTomlParams)
 			if err != nil {
 				logger.WithError(err).Fatal("Invalid captive core toml")

@@ -176,6 +176,15 @@ func TestCaptiveCoreTomlValidation(t *testing.T) {
 			expectedError: "invalid captive core toml: found invalid validator entry which is missing " +
 				"a QUALITY value: sdf_testnet_2",
 		},
+		{
+			name:              "field not supported by captive core",
+			networkPassphrase: "Public Global Stellar Network ; September 2015",
+			appendPath:        filepath.Join("testdata", "invalid-captive-core-field.cfg"),
+			httpPort:          nil,
+			peerPort:          nil,
+			logPath:           nil,
+			expectedError:     "could not unmarshal captive core toml: these fields are not supported by captive core: [\"CATCHUP_RECENT\"]",
+		},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			params := CaptiveCoreTomlParams{
@@ -184,6 +193,7 @@ func TestCaptiveCoreTomlValidation(t *testing.T) {
 				HTTPPort:           testCase.httpPort,
 				PeerPort:           testCase.peerPort,
 				LogPath:            testCase.logPath,
+				Strict:             true,
 			}
 			_, err := NewCaptiveCoreTomlFromFile(testCase.appendPath, params)
 			assert.EqualError(t, err, testCase.expectedError)
@@ -223,6 +233,15 @@ func TestGenerateConfig(t *testing.T) {
 			name:         "online config with appendix",
 			mode:         stellarCoreRunnerModeOnline,
 			appendPath:   filepath.Join("testdata", "sample-appendix.cfg"),
+			expectedPath: filepath.Join("testdata", "expected-online-core.cfg"),
+			httpPort:     newUint(6789),
+			peerPort:     newUint(12345),
+			logPath:      nil,
+		},
+		{
+			name:         "online config with unsupported field in appendix",
+			mode:         stellarCoreRunnerModeOnline,
+			appendPath:   filepath.Join("testdata", "invalid-captive-core-field.cfg"),
 			expectedPath: filepath.Join("testdata", "expected-online-core.cfg"),
 			httpPort:     newUint(6789),
 			peerPort:     newUint(12345),
@@ -274,6 +293,7 @@ func TestGenerateConfig(t *testing.T) {
 				HTTPPort:           testCase.httpPort,
 				PeerPort:           testCase.peerPort,
 				LogPath:            testCase.logPath,
+				Strict:             false,
 			}
 			if testCase.appendPath != "" {
 				captiveCoreToml, err = NewCaptiveCoreTomlFromFile(testCase.appendPath, params)
