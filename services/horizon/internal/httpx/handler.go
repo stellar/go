@@ -104,14 +104,14 @@ func repeatableReadStream(
 
 	return func() ([]sse.Event, error) {
 		if session != nil {
-			err := session.BeginTx(r.Context(), &sql.TxOptions{
+			err := session.BeginTx(&sql.TxOptions{
 				Isolation: sql.LevelRepeatableRead,
 				ReadOnly:  true,
 			})
 			if err != nil {
 				return nil, errors.Wrap(err, "Error starting repeatable read transaction")
 			}
-			defer session.Rollback(r.Context())
+			defer session.Rollback()
 		}
 
 		return generateEvents()

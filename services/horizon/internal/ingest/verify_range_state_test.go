@@ -54,7 +54,7 @@ func (s *VerifyRangeStateTestSuite) SetupTest() {
 	}
 	s.system.initMetrics()
 
-	s.historyQ.On("Rollback", s.ctx).Return(nil).Once()
+	s.historyQ.On("Rollback").Return(nil).Once()
 }
 
 func (s *VerifyRangeStateTestSuite) TearDownTest() {
@@ -104,7 +104,7 @@ func (s *VerifyRangeStateTestSuite) TestInvalidRange() {
 func (s *VerifyRangeStateTestSuite) TestBeginReturnsError() {
 	// Recreate mock in this single test to remove Rollback assertion.
 	*s.historyQ = mockDBQ{}
-	s.historyQ.On("Begin", s.ctx).Return(errors.New("my error")).Once()
+	s.historyQ.On("Begin").Return(errors.New("my error")).Once()
 
 	next, err := verifyRangeState{fromLedger: 100, toLedger: 200}.run(s.system)
 	s.Assert().Error(err)
@@ -116,7 +116,7 @@ func (s *VerifyRangeStateTestSuite) TestBeginReturnsError() {
 }
 
 func (s *VerifyRangeStateTestSuite) TestGetLastLedgerIngestReturnsError() {
-	s.historyQ.On("Begin", s.ctx).Return(nil).Once()
+	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerIngest", s.ctx).Return(uint32(0), errors.New("my error")).Once()
 
 	next, err := verifyRangeState{fromLedger: 100, toLedger: 200}.run(s.system)
@@ -129,7 +129,7 @@ func (s *VerifyRangeStateTestSuite) TestGetLastLedgerIngestReturnsError() {
 }
 
 func (s *VerifyRangeStateTestSuite) TestGetLastLedgerIngestNonEmpty() {
-	s.historyQ.On("Begin", s.ctx).Return(nil).Once()
+	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerIngest", s.ctx).Return(uint32(100), nil).Once()
 
 	next, err := verifyRangeState{fromLedger: 100, toLedger: 200}.run(s.system)
@@ -142,7 +142,7 @@ func (s *VerifyRangeStateTestSuite) TestGetLastLedgerIngestNonEmpty() {
 }
 
 func (s *VerifyRangeStateTestSuite) TestRunHistoryArchiveIngestionReturnsError() {
-	s.historyQ.On("Begin", s.ctx).Return(nil).Once()
+	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerIngest", s.ctx).Return(uint32(0), nil).Once()
 	s.ledgerBackend.On("PrepareRange", s.ctx, ledgerbackend.BoundedRange(100, 200)).Return(nil).Once()
 
@@ -170,7 +170,7 @@ func (s *VerifyRangeStateTestSuite) TestRunHistoryArchiveIngestionReturnsError()
 }
 
 func (s *VerifyRangeStateTestSuite) TestSuccess() {
-	s.historyQ.On("Begin", s.ctx).Return(nil).Once()
+	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerIngest", s.ctx).Return(uint32(0), nil).Once()
 	s.ledgerBackend.On("PrepareRange", s.ctx, ledgerbackend.BoundedRange(100, 200)).Return(nil).Once()
 
@@ -189,10 +189,10 @@ func (s *VerifyRangeStateTestSuite) TestSuccess() {
 	s.runner.On("RunHistoryArchiveIngestion", uint32(100), MaxSupportedProtocolVersion, xdr.Hash{1, 2, 3}).Return(ingest.StatsChangeProcessorResults{}, nil).Once()
 
 	s.historyQ.On("UpdateLastLedgerIngest", s.ctx, uint32(100)).Return(nil).Once()
-	s.historyQ.On("Commit", s.ctx).Return(nil).Once()
+	s.historyQ.On("Commit").Return(nil).Once()
 
 	for i := uint32(101); i <= 200; i++ {
-		s.historyQ.On("Begin", s.ctx).Return(nil).Once()
+		s.historyQ.On("Begin").Return(nil).Once()
 
 		meta := xdr.LedgerCloseMeta{
 			V0: &xdr.LedgerCloseMetaV0{
@@ -213,7 +213,7 @@ func (s *VerifyRangeStateTestSuite) TestSuccess() {
 			nil,
 		).Once()
 		s.historyQ.On("UpdateLastLedgerIngest", s.ctx, i).Return(nil).Once()
-		s.historyQ.On("Commit", s.ctx).Return(nil).Once()
+		s.historyQ.On("Commit").Return(nil).Once()
 	}
 
 	next, err := verifyRangeState{fromLedger: 100, toLedger: 200}.run(s.system)
@@ -225,7 +225,7 @@ func (s *VerifyRangeStateTestSuite) TestSuccess() {
 }
 
 func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
-	s.historyQ.On("Begin", s.ctx).Return(nil).Once()
+	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerIngest", s.ctx).Return(uint32(0), nil).Once()
 	s.ledgerBackend.On("PrepareRange", s.ctx, ledgerbackend.BoundedRange(100, 110)).Return(nil).Once()
 
@@ -244,10 +244,10 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 	s.runner.On("RunHistoryArchiveIngestion", uint32(100), MaxSupportedProtocolVersion, xdr.Hash{1, 2, 3}).Return(ingest.StatsChangeProcessorResults{}, nil).Once()
 
 	s.historyQ.On("UpdateLastLedgerIngest", s.ctx, uint32(100)).Return(nil).Once()
-	s.historyQ.On("Commit", s.ctx).Return(nil).Once()
+	s.historyQ.On("Commit").Return(nil).Once()
 
 	for i := uint32(101); i <= 110; i++ {
-		s.historyQ.On("Begin", s.ctx).Return(nil).Once()
+		s.historyQ.On("Begin").Return(nil).Once()
 
 		meta := xdr.LedgerCloseMeta{
 			V0: &xdr.LedgerCloseMetaV0{
@@ -268,18 +268,18 @@ func (s *VerifyRangeStateTestSuite) TestSuccessWithVerify() {
 			nil,
 		).Once()
 		s.historyQ.On("UpdateLastLedgerIngest", s.ctx, i).Return(nil).Once()
-		s.historyQ.On("Commit", s.ctx).Return(nil).Once()
+		s.historyQ.On("Commit").Return(nil).Once()
 	}
 
 	clonedQ := &mockDBQ{}
 	s.historyQ.On("CloneIngestionQ").Return(clonedQ).Once()
 
-	clonedQ.On("BeginTx", s.ctx, mock.AnythingOfType("*sql.TxOptions")).Run(func(args mock.Arguments) {
-		arg := args.Get(1).(*sql.TxOptions)
+	clonedQ.On("BeginTx", mock.AnythingOfType("*sql.TxOptions")).Run(func(args mock.Arguments) {
+		arg := args.Get(0).(*sql.TxOptions)
 		s.Assert().Equal(sql.LevelRepeatableRead, arg.Isolation)
 		s.Assert().True(arg.ReadOnly)
 	}).Return(nil).Once()
-	clonedQ.On("Rollback", s.ctx).Return(nil).Once()
+	clonedQ.On("Rollback").Return(nil).Once()
 	clonedQ.On("GetLastLedgerIngestNonBlocking", s.ctx).Return(uint32(63), nil).Once()
 	mockChangeReader := &ingest.MockChangeReader{}
 	mockChangeReader.On("Close").Return(nil).Once()
@@ -551,5 +551,5 @@ func (s *VerifyRangeStateTestSuite) TestVerifyFailsWhenAssetStatsMismatch() {
 	s.Assert().EqualError(err, fmt.Sprintf("db asset stat with code EUR issuer %s does not match asset stat from HAS", trustLineIssuer.Address()))
 
 	// Satisfy the mock
-	s.historyQ.Rollback(s.ctx)
+	s.historyQ.Rollback()
 }

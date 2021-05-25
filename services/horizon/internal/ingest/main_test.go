@@ -119,7 +119,7 @@ func TestStateMachineTransition(t *testing.T) {
 	}
 
 	historyQ.On("GetTx").Return(nil).Once()
-	historyQ.On("Begin", system.ctx).Return(errors.New("my error")).Once()
+	historyQ.On("Begin").Return(errors.New("my error")).Once()
 	historyQ.On("GetTx").Return(&sqlx.Tx{}).Once()
 
 	assert.PanicsWithValue(t, "unexpected transaction", func() {
@@ -136,7 +136,7 @@ func TestContextCancel(t *testing.T) {
 	}
 
 	historyQ.On("GetTx").Return(nil).Once()
-	historyQ.On("Begin", system.ctx).Return(errors.New("my error")).Once()
+	historyQ.On("Begin").Return(errors.New("my error")).Once()
 
 	cancel()
 	assert.NoError(t, system.runStateMachine(startState{}))
@@ -205,14 +205,14 @@ func TestMaybeVerifyInternalDBErrCancelOrContextCanceled(t *testing.T) {
 	defer func() { log = oldLogger }()
 
 	historyQ.On("GetExpStateInvalid", system.ctx, mock.Anything).Return(false, nil).Twice()
-	historyQ.On("Rollback", system.ctx, mock.Anything).Return(nil).Twice()
+	historyQ.On("Rollback").Return(nil).Twice()
 	historyQ.On("CloneIngestionQ").Return(historyQ).Twice()
 
-	historyQ.On("BeginTx", system.ctx, mock.Anything).Return(db.ErrCancelled).Once()
+	historyQ.On("BeginTx", mock.Anything).Return(db.ErrCancelled).Once()
 	system.maybeVerifyState(63)
 	system.wg.Wait()
 
-	historyQ.On("BeginTx", system.ctx, mock.Anything).Return(context.Canceled).Once()
+	historyQ.On("BeginTx", mock.Anything).Return(context.Canceled).Once()
 	system.maybeVerifyState(63)
 	system.wg.Wait()
 
@@ -241,13 +241,13 @@ type mockDBQ struct {
 	history.MockQTrustLines
 }
 
-func (m *mockDBQ) Begin(ctx context.Context) error {
-	args := m.Called(ctx)
+func (m *mockDBQ) Begin() error {
+	args := m.Called()
 	return args.Error(0)
 }
 
-func (m *mockDBQ) BeginTx(ctx context.Context, txOpts *sql.TxOptions) error {
-	args := m.Called(ctx, txOpts)
+func (m *mockDBQ) BeginTx(txOpts *sql.TxOptions) error {
+	args := m.Called(txOpts)
 	return args.Error(0)
 }
 
@@ -256,13 +256,13 @@ func (m *mockDBQ) CloneIngestionQ() history.IngestionQ {
 	return args.Get(0).(history.IngestionQ)
 }
 
-func (m *mockDBQ) Commit(ctx context.Context) error {
-	args := m.Called(ctx)
+func (m *mockDBQ) Commit() error {
+	args := m.Called()
 	return args.Error(0)
 }
 
-func (m *mockDBQ) Rollback(ctx context.Context) error {
-	args := m.Called(ctx)
+func (m *mockDBQ) Rollback() error {
+	args := m.Called()
 	return args.Error(0)
 }
 

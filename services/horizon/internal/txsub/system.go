@@ -16,8 +16,8 @@ import (
 type HorizonDB interface {
 	TransactionByHash(ctx context.Context, dest interface{}, hash string) error
 	GetSequenceNumbers(ctx context.Context, addresses []string) (map[string]uint64, error)
-	BeginTx(context.Context, *sql.TxOptions) error
-	Rollback(context.Context) error
+	BeginTx(*sql.TxOptions) error
+	Rollback() error
 	NoRows(error) bool
 }
 
@@ -287,11 +287,11 @@ func (sys *System) Tick(ctx context.Context) {
 		Isolation: sql.LevelRepeatableRead,
 		ReadOnly:  true,
 	}
-	if err := db.BeginTx(ctx, options); err != nil {
+	if err := db.BeginTx(options); err != nil {
 		logger.WithError(err).Error("could not start repeatable read transaction for txsub tick")
 		return
 	}
-	defer db.Rollback(ctx)
+	defer db.Rollback()
 
 	addys := sys.SubmissionQueue.Addresses()
 	if len(addys) > 0 {

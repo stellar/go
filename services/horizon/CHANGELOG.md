@@ -12,6 +12,11 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 ### DB State Migration
 
 * This release comes with a small DB schema change (new multiplexed-account-related columns are incororated). It should not take more than five minutes to run due to new columns being NULL-able. 
+
+### Deprecations
+
+* Deprecate `--captive-core-config-append-path` in favor of `--captive-core-config-path`. The difference between the two flags is that `--captive-core-config-path` will validate the configuration file to reject any fields which are not supported by captive core ([3629](https://github.com/stellar/go/pull/3629)).
+
 ### Deprecations
 
 * Deprecate `--captive-core-config-append-path` in favor of `--captive-core-config-path`. The difference between the two flags is that `--captive-core-config-path` will validate the configuration file to reject any fields which are not supported by captive core ([3629](https://github.com/stellar/go/pull/3629)).

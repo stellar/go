@@ -404,8 +404,8 @@ func TestAssetsForAddressRequiresTransaction(t *testing.T) {
 	_, _, err := q.AssetsForAddress(tt.Ctx, eurTrustLine.Data.TrustLine.AccountId.Address())
 	assert.EqualError(t, err, "cannot be called outside of a transaction")
 
-	assert.NoError(t, q.Begin(tt.Ctx))
-	defer q.Rollback(tt.Ctx)
+	assert.NoError(t, q.Begin())
+	defer q.Rollback()
 
 	_, _, err = q.AssetsForAddress(tt.Ctx, eurTrustLine.Data.TrustLine.AccountId.Address())
 	assert.EqualError(t, err, "should only be called in a repeatable read transaction")
@@ -451,12 +451,12 @@ func TestAssetsForAddress(t *testing.T) {
 	_, err = q.InsertTrustLine(tt.Ctx, brlTrustLine)
 	tt.Assert.NoError(err)
 
-	err = q.BeginTx(tt.Ctx, &sql.TxOptions{
+	err = q.BeginTx(&sql.TxOptions{
 		Isolation: sql.LevelRepeatableRead,
 		ReadOnly:  true,
 	})
 	assert.NoError(t, err)
-	defer q.Rollback(tt.Ctx)
+	defer q.Rollback()
 
 	assets, balances, err := q.AssetsForAddress(tt.Ctx, usdTrustLine.Data.TrustLine.AccountId.Address())
 	tt.Assert.NoError(err)
