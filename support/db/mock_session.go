@@ -26,6 +26,11 @@ func (m *MockSession) BeginTx(ctx context.Context, opts *sql.TxOptions) error {
 	return args.Error(0)
 }
 
+func (m *MockSession) BeginTxNoCtx(opts *sql.TxOptions) error {
+	args := m.Called(opts)
+	return args.Error(0)
+}
+
 func (m *MockSession) Rollback(ctx context.Context) error {
 	args := m.Called(ctx)
 	return args.Error(0)

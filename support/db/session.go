@@ -57,6 +57,26 @@ func (s *Session) BeginTx(ctx context.Context, opts *sql.TxOptions) error {
 	return nil
 }
 
+func (s *Session) BeginTxNoCtx(opts *sql.TxOptions) error {
+	if s.tx != nil {
+		return errors.New("already in transaction")
+	}
+
+	tx, err := s.DB.BeginTxx(context.Background(), opts)
+	if err != nil {
+		if s.cancelled(err) {
+			return ErrCancelled
+		}
+
+		return errors.Wrap(err, "beginTx failed")
+	}
+	log.Debug("sql: begin")
+
+	s.tx = tx
+	s.txOptions = opts
+	return nil
+}
+
 func (s *Session) GetTx() *sqlx.Tx {
 	return s.tx
 }

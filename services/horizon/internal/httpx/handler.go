@@ -104,7 +104,7 @@ func repeatableReadStream(
 
 	return func() ([]sse.Event, error) {
 		if session != nil {
-			err := session.BeginTx(r.Context(), &sql.TxOptions{
+			err := session.BeginTxNoCtx(&sql.TxOptions{
 				Isolation: sql.LevelRepeatableRead,
 				ReadOnly:  true,
 			})

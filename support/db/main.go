@@ -105,6 +105,7 @@ type Session struct {
 
 type SessionInterface interface {
 	BeginTx(ctx context.Context, opts *sql.TxOptions) error
+	BeginTxNoCtx(opts *sql.TxOptions) error
 	Begin(ctx context.Context) error
 	Rollback(ctx context.Context) error
 	TruncateTables(ctx context.Context, tables []string) error
