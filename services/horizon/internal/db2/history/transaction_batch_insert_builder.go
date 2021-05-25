@@ -206,6 +206,7 @@ type TransactionWithoutLedger struct {
 	LedgerSequence       int32          `db:"ledger_sequence"`
 	ApplicationOrder     int32          `db:"application_order"`
 	Account              string         `db:"account"`
+	AccountMuxed         null.String    `db:"account_muxed"`
 	AccountSequence      string         `db:"account_sequence"`
 	MaxFee               int64          `db:"max_fee"`
 	FeeCharged           int64          `db:"fee_charged"`
@@ -222,6 +223,7 @@ type TransactionWithoutLedger struct {
 	UpdatedAt            time.Time      `db:"updated_at"`
 	Successful           bool           `db:"successful"`
 	FeeAccount           null.String    `db:"fee_account"`
+	FeeAccountMuxed      null.String    `db:"fee_account_muxed"`
 	InnerTransactionHash null.String    `db:"inner_transaction_hash"`
 	NewMaxFee            null.Int       `db:"new_max_fee"`
 	InnerSignatures      pq.StringArray `db:"inner_signatures"`
@@ -245,12 +247,18 @@ func transactionToRow(transaction ingest.LedgerTransaction, sequence uint32) (Tr
 		return TransactionWithoutLedger{}, err
 	}
 
-	sourceAccount := transaction.Envelope.SourceAccount().ToAccountId()
+	source := transaction.Envelope.SourceAccount()
+	account := source.ToAccountId()
+	var accountMuxed null.String
+	if source.Type == xdr.CryptoKeyTypeKeyTypeMuxedEd25519 {
+		accountMuxed = null.StringFrom(source.Address())
+	}
 	t := TransactionWithoutLedger{
 		TransactionHash:  hex.EncodeToString(transaction.Result.TransactionHash[:]),
 		LedgerSequence:   int32(sequence),
 		ApplicationOrder: int32(transaction.Index),
-		Account:          sourceAccount.Address(),
+		Account:          account.Address(),
+		AccountMuxed:     accountMuxed,
 		AccountSequence:  strconv.FormatInt(transaction.Envelope.SeqNum(), 10),
 		MaxFee:           int64(transaction.Envelope.Fee()),
 		FeeCharged:       int64(transaction.Result.Result.FeeCharged),
@@ -271,14 +279,21 @@ func transactionToRow(transaction ingest.LedgerTransaction, sequence uint32) (Tr
 	if transaction.Envelope.IsFeeBump() {
 		innerHash := transaction.Result.InnerHash()
 		t.InnerTransactionHash = null.StringFrom(hex.EncodeToString(innerHash[:]))
-		feeAccount := transaction.Envelope.FeeBumpAccount().ToAccountId()
+		feeBumpAccount := transaction.Envelope.FeeBumpAccount()
+		feeAccount := feeBumpAccount.ToAccountId()
+		var feeAccountMuxed null.String
+		if source.Type == xdr.CryptoKeyTypeKeyTypeMuxedEd25519 {
+			feeAccountMuxed = null.StringFrom(source.Address())
+		}
 		t.FeeAccount = null.StringFrom(feeAccount.Address())
+		t.FeeAccountMuxed = feeAccountMuxed
 		t.NewMaxFee = null.IntFrom(transaction.Envelope.FeeBumpFee())
 		t.InnerSignatures = signatures(transaction.Envelope.Signatures())
 		t.Signatures = signatures(transaction.Envelope.FeeBumpSignatures())
 	} else {
 		t.InnerTransactionHash = null.StringFromPtr(nil)
 		t.FeeAccount = null.StringFromPtr(nil)
+		t.FeeAccountMuxed = null.StringFromPtr(nil)
 		t.NewMaxFee = null.IntFromPtr(nil)
 		t.InnerSignatures = nil
 		t.Signatures = signatures(transaction.Envelope.Signatures())
