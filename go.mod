@@ -21,6 +21,7 @@ require (
 	github.com/gobuffalo/packr v1.12.1 // indirect
 	github.com/google/go-querystring v0.0.0-20160401233042-9235644dd9e5 // indirect
 	github.com/google/martian v2.1.0+incompatible // indirect
+	github.com/google/uuid v1.2.0
 	github.com/googleapis/gax-go v2.0.2+incompatible // indirect
 	github.com/gorilla/schema v1.1.0
 	github.com/graph-gophers/graphql-go v0.0.0-20190225005345-3e8838d4614c

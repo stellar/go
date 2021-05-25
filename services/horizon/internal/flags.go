@@ -28,8 +28,11 @@ const (
 	StellarCoreURLFlagName = "stellar-core-url"
 	// StellarCoreBinaryPathName is the command line flag for configuring the path to the stellar core binary
 	StellarCoreBinaryPathName = "stellar-core-binary-path"
-	// CaptiveCoreConfigAppendPathName is the command line flag for configuring the path to the captive core additional configuration
-	CaptiveCoreConfigAppendPathName = "captive-core-config-append-path"
+	// captiveCoreConfigAppendPathName is the command line flag for configuring the path to the captive core additional configuration
+	// Note captiveCoreConfigAppendPathName is deprecated in favor of CaptiveCoreConfigPathName
+	captiveCoreConfigAppendPathName = "captive-core-config-append-path"
+	// CaptiveCoreConfigPathName is the command line flag for configuring the path to the captive core configuration file
+	CaptiveCoreConfigPathName = "captive-core-config-path"
 
 	captiveCoreMigrationHint = "If you are migrating from Horizon 1.x.y read the Migration Guide here: https://github.com/stellar/go/blob/master/services/horizon/internal/docs/captive_core.md"
 )
@@ -118,12 +121,39 @@ func Flags() (*Config, support.ConfigOptions) {
 			ConfigKey:   &config.RemoteCaptiveCoreURL,
 		},
 		&support.ConfigOption{
-			Name:        CaptiveCoreConfigAppendPathName,
+			Name:        captiveCoreConfigAppendPathName,
 			OptType:     types.String,
 			FlagDefault: "",
 			Required:    false,
-			Usage:       "path to additional configuration for the Stellar Core configuration file used by captive core. It must, at least, include enough details to define a quorum set",
-			ConfigKey:   &config.CaptiveCoreConfigPath,
+			Usage:       "DEPRECATED in favor of " + CaptiveCoreConfigPathName,
+			CustomSetValue: func(opt *support.ConfigOption) {
+				if val := viper.GetString(opt.Name); val != "" {
+					if viper.GetString(CaptiveCoreConfigPathName) != "" {
+						stdLog.Printf(
+							"both --%s and --%s are set. %s is deprecated so %s will be used instead",
+							captiveCoreConfigAppendPathName,
+							CaptiveCoreConfigPathName,
+							captiveCoreConfigAppendPathName,
+							CaptiveCoreConfigPathName,
+						)
+					} else {
+						config.CaptiveCoreConfigPath = val
+					}
+				}
+			},
+		},
+		&support.ConfigOption{
+			Name:        CaptiveCoreConfigPathName,
+			OptType:     types.String,
+			FlagDefault: "",
+			Required:    false,
+			Usage:       "path to the configuration file used by captive core. It must, at least, include enough details to define a quorum set. Any fields in the configuration file which are not supported by captive core will be rejected.",
+			CustomSetValue: func(opt *support.ConfigOption) {
+				if val := viper.GetString(opt.Name); val != "" {
+					config.CaptiveCoreConfigPath = val
+					config.CaptiveCoreTomlParams.Strict = true
+				}
+			},
 		},
 		&support.ConfigOption{
 			Name:        "enable-captive-core-ingestion",
@@ -428,7 +458,7 @@ func Flags() (*Config, support.ConfigOptions) {
 
 // NewAppFromFlags constructs a new Horizon App from the given command line flags
 func NewAppFromFlags(config *Config, flags support.ConfigOptions) *App {
-	ApplyFlags(config, flags)
+	ApplyFlags(config, flags, ApplyOptions{RequireCaptiveCoreConfig: true, AlwaysIngest: false})
 	// Validate app-specific arguments
 	if config.StellarCoreURL == "" {
 		log.Fatalf("flag --%s cannot be empty", StellarCoreURLFlagName)
@@ -443,14 +473,23 @@ func NewAppFromFlags(config *Config, flags support.ConfigOptions) *App {
 	return app
 }
 
+type ApplyOptions struct {
+	AlwaysIngest             bool
+	RequireCaptiveCoreConfig bool
+}
+
 // ApplyFlags applies the command line flags on the given Config instance
-func ApplyFlags(config *Config, flags support.ConfigOptions) {
+func ApplyFlags(config *Config, flags support.ConfigOptions, options ApplyOptions) {
 	// Verify required options and load the config struct
 	flags.Require()
 	flags.SetValues()
 
 	// Validate options that should be provided together
 	validateBothOrNeither("tls-cert", "tls-key")
+
+	if options.AlwaysIngest {
+		config.Ingest = true
+	}
 
 	if config.Ingest {
 		// Migrations should be checked as early as possible. Apply and check
@@ -480,9 +519,6 @@ func ApplyFlags(config *Config, flags support.ConfigOptions) {
 				}
 			}
 
-			// When running live ingestion a config file is required too
-			validateBothOrNeither(StellarCoreBinaryPathName, CaptiveCoreConfigAppendPathName)
-
 			// NOTE: If both of these are set (regardless of user- or PATH-supplied
 			//       defaults for the binary path), the Remote Captive Core URL
 			//       takes precedence.
@@ -492,11 +528,19 @@ func ApplyFlags(config *Config, flags support.ConfigOptions) {
 			}
 
 			if config.RemoteCaptiveCoreURL == "" && (binaryPath == "" || config.CaptiveCoreConfigPath == "") {
-				stdLog.Fatalf("Invalid config: captive core requires that both --%s and --%s are set. %s",
-					StellarCoreBinaryPathName, CaptiveCoreConfigAppendPathName, captiveCoreMigrationHint)
-			}
-
-			if config.RemoteCaptiveCoreURL == "" {
+				if options.RequireCaptiveCoreConfig {
+					stdLog.Fatalf("Invalid config: captive core requires that both --%s and --%s are set. %s",
+						StellarCoreBinaryPathName, CaptiveCoreConfigPathName, captiveCoreMigrationHint)
+				} else {
+					var err error
+					config.CaptiveCoreTomlParams.HistoryArchiveURLs = config.HistoryArchiveURLs
+					config.CaptiveCoreTomlParams.NetworkPassphrase = config.NetworkPassphrase
+					config.CaptiveCoreToml, err = ledgerbackend.NewCaptiveCoreToml(config.CaptiveCoreTomlParams)
+					if err != nil {
+						stdLog.Fatalf("Invalid captive core toml file %v", err)
+					}
+				}
+			} else if config.RemoteCaptiveCoreURL == "" {
 				var err error
 				config.CaptiveCoreTomlParams.HistoryArchiveURLs = config.HistoryArchiveURLs
 				config.CaptiveCoreTomlParams.NetworkPassphrase = config.NetworkPassphrase
@@ -515,8 +559,12 @@ func ApplyFlags(config *Config, flags support.ConfigOptions) {
 		}
 	} else {
 		if config.EnableCaptiveCoreIngestion && (config.CaptiveCoreBinaryPath != "" || config.CaptiveCoreConfigPath != "") {
+			captiveCoreConfigFlag := captiveCoreConfigAppendPathName
+			if viper.GetString(CaptiveCoreConfigPathName) != "" {
+				captiveCoreConfigFlag = CaptiveCoreConfigPathName
+			}
 			stdLog.Fatalf("Invalid config: one or more captive core params passed (--%s or --%s) but --ingest not set. "+captiveCoreMigrationHint,
-				StellarCoreBinaryPathName, CaptiveCoreConfigAppendPathName)
+				StellarCoreBinaryPathName, captiveCoreConfigFlag)
 		}
 		if config.StellarCoreDatabaseURL != "" {
 			stdLog.Fatalf("Invalid config: --%s passed but --ingest not set. ", StellarCoreDBURLFlagName)

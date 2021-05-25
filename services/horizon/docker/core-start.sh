@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 set -e
+set -x
 
 source /etc/profile
 
@@ -23,4 +24,4 @@ if [ "$1" = "standalone" ]; then
   popd
 fi
 
-exec /init -- stellar-core run
+exec stellar-core run

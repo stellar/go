@@ -28,7 +28,7 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-// MinBaseFee is the minimum transaction fee for the Stellar network.
+// MinBaseFee is the minimum transaction fee for the Stellar network of 100 stroops (0.00001 XLM).
 const MinBaseFee = 100
 
 // Account represents the aspects of a Stellar account necessary to construct transactions. See
@@ -210,6 +210,11 @@ func (t *Transaction) MaxFee() int64 {
 // SourceAccount returns the account which is originating this account.
 func (t *Transaction) SourceAccount() SimpleAccount {
 	return t.sourceAccount
+}
+
+// SequenceNumber returns the sequence number of the transaction.
+func (t *Transaction) SequenceNumber() int64 {
+	return t.sourceAccount.Sequence
 }
 
 // Memo returns the memo configured for this transaction.
@@ -678,10 +683,8 @@ func NewTransaction(params TransactionParams) (*Transaction, error) {
 		sourceAccount = accountID.ToMuxedAccount()
 	}
 
-	if tx.baseFee < MinBaseFee {
-		return nil, errors.Errorf(
-			"base fee cannot be lower than network minimum of %d", MinBaseFee,
-		)
+	if tx.baseFee < 0 {
+		return nil, errors.Errorf("base fee cannot be negative")
 	}
 
 	if len(tx.operations) == 0 {

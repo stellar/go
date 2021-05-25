@@ -6,6 +6,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/guregu/null"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
@@ -136,6 +137,7 @@ func (s *EffectsProcessorTestSuiteLedger) mockSuccessfulEffectBatchAdds() {
 		"Add",
 		s.ctx,
 		s.addressToID[s.addresses[2]],
+		null.String{},
 		toid.New(int32(s.sequence), 1, 1).ToInt64(),
 		uint32(1),
 		history.EffectSequenceBumped,
@@ -145,6 +147,7 @@ func (s *EffectsProcessorTestSuiteLedger) mockSuccessfulEffectBatchAdds() {
 		"Add",
 		s.ctx,
 		s.addressToID[s.addresses[2]],
+		null.String{},
 		toid.New(int32(s.sequence), 2, 1).ToInt64(),
 		uint32(1),
 		history.EffectAccountCreated,
@@ -154,6 +157,7 @@ func (s *EffectsProcessorTestSuiteLedger) mockSuccessfulEffectBatchAdds() {
 		"Add",
 		s.ctx,
 		s.addressToID[s.addresses[1]],
+		null.String{},
 		toid.New(int32(s.sequence), 2, 1).ToInt64(),
 		uint32(2),
 		history.EffectAccountDebited,
@@ -163,6 +167,7 @@ func (s *EffectsProcessorTestSuiteLedger) mockSuccessfulEffectBatchAdds() {
 		"Add",
 		s.ctx,
 		s.addressToID[s.addresses[2]],
+		null.String{},
 		toid.New(int32(s.sequence), 2, 1).ToInt64(),
 		uint32(3),
 		history.EffectSignerCreated,
@@ -173,6 +178,7 @@ func (s *EffectsProcessorTestSuiteLedger) mockSuccessfulEffectBatchAdds() {
 		"Add",
 		s.ctx,
 		s.addressToID[s.addresses[0]],
+		null.String{},
 		toid.New(int32(s.sequence), 3, 1).ToInt64(),
 		uint32(1),
 		history.EffectAccountCredited,
@@ -183,6 +189,7 @@ func (s *EffectsProcessorTestSuiteLedger) mockSuccessfulEffectBatchAdds() {
 		"Add",
 		s.ctx,
 		s.addressToID[s.addresses[0]],
+		null.String{},
 		toid.New(int32(s.sequence), 3, 1).ToInt64(),
 		uint32(2),
 		history.EffectAccountDebited,
@@ -244,6 +251,7 @@ func (s *EffectsProcessorTestSuiteLedger) TestBatchAddFails() {
 	s.mockBatchInsertBuilder.On(
 		"Add", s.ctx,
 		s.addressToID[s.addresses[2]],
+		null.String{},
 		toid.New(int32(s.sequence), 1, 1).ToInt64(),
 		uint32(1),
 		history.EffectSequenceBumped,
@@ -944,7 +952,8 @@ func TestOperationEffects(t *testing.T) {
 			sequence:      20,
 			expected: []effect{
 				{
-					address: "GDEOVUDLCYTO46D6GD6WH7BFESPBV5RACC6F6NUFCIRU7PL2XONQHVGJ",
+					address:      "GDEOVUDLCYTO46D6GD6WH7BFESPBV5RACC6F6NUFCIRU7PL2XONQHVGJ",
+					addressMuxed: null.StringFrom("MDEOVUDLCYTO46D6GD6WH7BFESPBV5RACC6F6NUFCIRU7PL2XONQGAAAAAAMV7V2X24II"),
 					details: map[string]interface{}{
 						"amount":       "1.0000000",
 						"asset_code":   "ARS",
@@ -956,7 +965,8 @@ func TestOperationEffects(t *testing.T) {
 					order:       uint32(1),
 				},
 				{
-					address: "GD3MMHD2YZWL5RAUWG6O3RMA5HTZYM7S3JLSZ2Z35JNJAWTDIKXY737V",
+					address:      "GD3MMHD2YZWL5RAUWG6O3RMA5HTZYM7S3JLSZ2Z35JNJAWTDIKXY737V",
+					addressMuxed: null.StringFrom("MD3MMHD2YZWL5RAUWG6O3RMA5HTZYM7S3JLSZ2Z35JNJAWTDIKXY6AAAAAAMV7V2XZY4C"),
 					details: map[string]interface{}{
 						"amount":       "0.0300000",
 						"asset_code":   "BRL",
@@ -968,7 +978,8 @@ func TestOperationEffects(t *testing.T) {
 					order:       uint32(2),
 				},
 				{
-					address: "GD3MMHD2YZWL5RAUWG6O3RMA5HTZYM7S3JLSZ2Z35JNJAWTDIKXY737V",
+					address:      "GD3MMHD2YZWL5RAUWG6O3RMA5HTZYM7S3JLSZ2Z35JNJAWTDIKXY737V",
+					addressMuxed: null.StringFrom("MD3MMHD2YZWL5RAUWG6O3RMA5HTZYM7S3JLSZ2Z35JNJAWTDIKXY6AAAAAAMV7V2XZY4C"),
 					details: map[string]interface{}{
 						"seller":              "GDEOVUDLCYTO46D6GD6WH7BFESPBV5RACC6F6NUFCIRU7PL2XONQHVGJ",
 						"offer_id":            xdr.Int64(10072128),
@@ -989,6 +1000,8 @@ func TestOperationEffects(t *testing.T) {
 					address: "GDEOVUDLCYTO46D6GD6WH7BFESPBV5RACC6F6NUFCIRU7PL2XONQHVGJ",
 					details: map[string]interface{}{
 						"seller":              "GD3MMHD2YZWL5RAUWG6O3RMA5HTZYM7S3JLSZ2Z35JNJAWTDIKXY737V",
+						"seller_muxed":        "MD3MMHD2YZWL5RAUWG6O3RMA5HTZYM7S3JLSZ2Z35JNJAWTDIKXY6AAAAAAMV7V2XZY4C",
+						"seller_muxed_id":     uint64(0xcafebabe),
 						"offer_id":            xdr.Int64(10072128),
 						"sold_amount":         "1.0000000",
 						"bought_amount":       "0.0300000",

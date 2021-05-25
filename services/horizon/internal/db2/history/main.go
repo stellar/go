@@ -417,6 +417,7 @@ type QCreateAccountsHistory interface {
 type Effect struct {
 	HistoryAccountID   int64       `db:"history_account_id"`
 	Account            string      `db:"address"`
+	AccountMuxed       null.String `db:"address_muxed"`
 	HistoryOperationID int64       `db:"history_operation_id"`
 	Order              int32       `db:"order"`
 	Type               EffectType  `db:"type"`
@@ -427,6 +428,8 @@ type Effect struct {
 // when the effect type is trade
 type TradeEffectDetails struct {
 	Seller            string `json:"seller"`
+	SellerMuxed       string `json:"seller_muxed,omitempty"`
+	SellerMuxedID     uint64 `json:"seller_muxed_id,omitempty"`
 	OfferID           int64  `json:"offer_id"`
 	SoldAmount        string `json:"sold_amount"`
 	SoldAssetType     string `json:"sold_asset_type"`
@@ -552,6 +555,7 @@ type Operation struct {
 	Type                  xdr.OperationType `db:"type"`
 	DetailsString         null.String       `db:"details"`
 	SourceAccount         string            `db:"source_account"`
+	SourceAccountMuxed    null.String       `db:"source_account_muxed"`
 	TransactionSuccessful bool              `db:"transaction_successful"`
 }
 
@@ -603,7 +607,7 @@ type OperationsQ struct {
 // Q is a helper struct on which to hang common_trades queries against a history
 // portion of the horizon database.
 type Q struct {
-	*db.Session
+	db.SessionInterface
 }
 
 // QSigners defines signer related queries.

@@ -25,7 +25,7 @@ func TestGetTransactionsHandler(t *testing.T) {
 			t, map[string]string{
 				"account_id":     "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
 				"include_failed": "true",
-			}, map[string]string{}, q.Session,
+			}, map[string]string{}, q,
 		),
 	)
 	tt.Assert.NoError(err)
@@ -37,7 +37,7 @@ func TestGetTransactionsHandler(t *testing.T) {
 			t, map[string]string{
 				"account_id":     "GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2",
 				"include_failed": "true",
-			}, map[string]string{}, q.Session,
+			}, map[string]string{}, q,
 		),
 	)
 	tt.Assert.NoError(err)
@@ -49,7 +49,7 @@ func TestGetTransactionsHandler(t *testing.T) {
 			t, map[string]string{
 				"account_id":     "GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU",
 				"include_failed": "true",
-			}, map[string]string{}, q.Session,
+			}, map[string]string{}, q,
 		),
 	)
 	tt.Assert.NoError(err)
@@ -62,7 +62,7 @@ func TestGetTransactionsHandler(t *testing.T) {
 			t, map[string]string{
 				"ledger_id":      "1",
 				"include_failed": "true",
-			}, map[string]string{}, q.Session,
+			}, map[string]string{}, q,
 		),
 	)
 	tt.Assert.NoError(err)
@@ -74,7 +74,7 @@ func TestGetTransactionsHandler(t *testing.T) {
 			t, map[string]string{
 				"ledger_id":      "2",
 				"include_failed": "true",
-			}, map[string]string{}, q.Session,
+			}, map[string]string{}, q,
 		),
 	)
 	tt.Assert.NoError(err)
@@ -86,7 +86,7 @@ func TestGetTransactionsHandler(t *testing.T) {
 			t, map[string]string{
 				"ledger_id":      "3",
 				"include_failed": "true",
-			}, map[string]string{}, q.Session,
+			}, map[string]string{}, q,
 		),
 	)
 	tt.Assert.NoError(err)
@@ -99,7 +99,7 @@ func TestGetTransactionsHandler(t *testing.T) {
 				"account_id":     "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
 				"ledger_id":      "3",
 				"include_failed": "true",
-			}, map[string]string{}, q.Session,
+			}, map[string]string{}, q,
 		),
 	)
 	tt.Assert.IsType(&supportProblem.P{}, err)
@@ -159,7 +159,7 @@ func TestFeeBumpTransactionPage(t *testing.T) {
 	records, err := handler.GetResourcePage(
 		httptest.NewRecorder(),
 		makeRequest(
-			t, map[string]string{}, map[string]string{}, q.Session,
+			t, map[string]string{}, map[string]string{}, q,
 		),
 	)
 	tt.Assert.NoError(err)
@@ -185,7 +185,7 @@ func TestFeeBumpTransactionResource(t *testing.T) {
 		makeRequest(
 			t, map[string]string{}, map[string]string{
 				"tx_id": fixture.OuterHash,
-			}, q.Session,
+			}, q,
 		),
 	)
 	tt.Assert.NoError(err)
@@ -197,7 +197,7 @@ func TestFeeBumpTransactionResource(t *testing.T) {
 		makeRequest(
 			t, map[string]string{}, map[string]string{
 				"tx_id": fixture.InnerHash,
-			}, q.Session,
+			}, q,
 		),
 	)
 	tt.Assert.NoError(err)

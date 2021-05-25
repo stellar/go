@@ -5,6 +5,30 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+## v2.4.0
+
+### DB State Migration
+
+* This release comes with a small DB schema change (new multiplexed-account-related columns are incororated). It should not take more than five minutes to run due to new columns being NULL-able. 
+
+### Deprecations
+
+* Deprecate `--captive-core-config-append-path` in favor of `--captive-core-config-path`. The difference between the two flags is that `--captive-core-config-path` will validate the configuration file to reject any fields which are not supported by captive core ([3629](https://github.com/stellar/go/pull/3629)).
+
+### New features 
+
+* Refactor `ingest/ledgerbackend/LedgerBackend.GetLedger` method to always block, removing `ingest/ledgerbackend/LedgerBackend.GetLedgerBlocking`. Adds a first `context.Context` param to most `LedgerBackend` methods.
+
+* Add more in-depth Prometheus metrics (count & duration) for db queries. ([#3597](https://github.com/stellar/go/pull/3597), [#3605](https://github.com/stellar/go/pull/3605))
+
+* HTTP request logs will now print the Origin header if Referer is not set. ([#3599](https://github.com/stellar/go/pull/3599))
+
+* Fix bug in `horizon db reingest range` command which required the `--ingest` flag to be set ([3625](https://github.com/stellar/go/pull/3625)).
+
+* Add Multiplexed Account details to API responses (additional `_muxed` and `_muxed_id` optional fields following what's described in [SEP 23](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0023.md#horizon-api-changes)):
+  * Transactions: `account_muxed`, `account_muxed_id`, `fee_account` and `fee_account_muxed`.
+  * Operations: `source_account_muxed`, `source_account_muxed_id` and additional fields depending on the operation (e.g. `from_muxed`, `from_muxed_id`, `to_muxed` and `to_muxed_id` for Payment operations)
+  * Effects: `account_muxed`, `account_muxed_id` and additional fields depending on the effect (e.g. `seller_muxed` and `seller_muxed_id`  for the Trade effect).
 
 ## v2.3.0
 
@@ -12,7 +36,6 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 ### New features
 * Introduces a flag (`--ro-database-url` / `RO_DATABASE_URL`) which allows setting a connection to a read-replica database. This flag makes Horizon take into account data propagation lag to the replica instance, adding retries if the data is out of sync ([3574](https://github.com/stellar/go/pull/3574)).
-
 
 ### Code changes
 * Improved test suite coverage and stability ([3560](https://github.com/stellar/go/pull/3560), [3562](https://github.com/stellar/go/pull/3562), [3551](https://github.com/stellar/go/pull/3551), and [3547](https://github.com/stellar/go/pull/3547)).

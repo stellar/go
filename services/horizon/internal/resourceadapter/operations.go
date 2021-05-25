@@ -23,9 +23,7 @@ func NewOperation(
 ) (result hal.Pageable, err error) {
 
 	base := operations.Base{}
-	err = PopulateBaseOperation(
-		ctx, &base, operationRow, transactionHash, transactionRow, ledger,
-	)
+	err = PopulateBaseOperation(ctx, &base, operationRow, transactionHash, transactionRow, ledger)
 	if err != nil {
 		return
 	}
@@ -148,18 +146,16 @@ func NewOperation(
 }
 
 // Populate fills out this resource using `row` as the source.
-func PopulateBaseOperation(
-	ctx context.Context,
-	dest *operations.Base,
-	operationRow history.Operation,
-	transactionHash string,
-	transactionRow *history.Transaction,
-	ledger history.Ledger,
-) error {
+func PopulateBaseOperation(ctx context.Context, dest *operations.Base, operationRow history.Operation, transactionHash string, transactionRow *history.Transaction, ledger history.Ledger) error {
 	dest.ID = fmt.Sprintf("%d", operationRow.ID)
 	dest.PT = operationRow.PagingToken()
 	dest.TransactionSuccessful = operationRow.TransactionSuccessful
 	dest.SourceAccount = operationRow.SourceAccount
+	if operationRow.SourceAccountMuxed.Valid {
+		dest.SourceAccountMuxed = operationRow.SourceAccountMuxed.String
+		muxedAccount := xdr.MustMuxedAddress(dest.SourceAccountMuxed)
+		dest.SourceAccountMuxedID = uint64(muxedAccount.Med25519.Id)
+	}
 	populateOperationType(dest, operationRow)
 	dest.LedgerCloseTime = ledger.ClosedAt
 	dest.TransactionHash = transactionHash

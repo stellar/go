@@ -407,7 +407,7 @@ func TestAssetStats(t *testing.T) {
 		},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
-			r := makeRequest(t, testCase.queryParams, map[string]string{}, q.Session)
+			r := makeRequest(t, testCase.queryParams, map[string]string{}, q)
 			results, err := handler.GetResourcePage(httptest.NewRecorder(), r)
 			assert.NoError(t, err)
 
@@ -450,7 +450,7 @@ func TestAssetStatsIssuerDoesNotExist(t *testing.T) {
 	tt.Assert.NoError(err)
 	tt.Assert.Equal(numChanged, int64(1))
 
-	r := makeRequest(t, map[string]string{}, map[string]string{}, q.Session)
+	r := makeRequest(t, map[string]string{}, map[string]string{}, q)
 	results, err := handler.GetResourcePage(httptest.NewRecorder(), r)
 	tt.Assert.NoError(err)
 

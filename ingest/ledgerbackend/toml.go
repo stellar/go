@@ -212,8 +212,7 @@ func unmarshalTreeNode(t *toml.Tree, key string, dest interface{}) error {
 	return tree.Unmarshal(dest)
 }
 
-func (c *CaptiveCoreToml) unmarshal(data []byte) error {
-	var body captiveCoreTomlValues
+func (c *CaptiveCoreToml) unmarshal(data []byte, strict bool) error {
 	quorumSetEntries := map[string]QuorumSet{}
 	historyEntries := map[string]History{}
 	// The toml library has trouble with nested tables so we need to flatten all nested
@@ -221,13 +220,7 @@ func (c *CaptiveCoreToml) unmarshal(data []byte) error {
 	// In Marshal() we apply the inverse process to unflatten the nested tables.
 	flattened, tablePlaceholders := flattenTables(string(data), []string{"QUORUM_SET", "HISTORY"})
 
-	data = []byte(flattened)
 	tree, err := toml.Load(flattened)
-	if err != nil {
-		return err
-	}
-
-	err = toml.NewDecoder(bytes.NewReader(data)).Decode(&body)
 	if err != nil {
 		return err
 	}
@@ -252,6 +245,24 @@ func (c *CaptiveCoreToml) unmarshal(data []byte) error {
 			}
 			historyEntries[key] = h
 		}
+		if err = tree.Delete(key); err != nil {
+			return err
+		}
+	}
+
+	var body captiveCoreTomlValues
+	if withoutPlaceHolders, err := tree.Marshal(); err != nil {
+		return err
+	} else if err = toml.NewDecoder(bytes.NewReader(withoutPlaceHolders)).Strict(strict).Decode(&body); err != nil {
+		if message := err.Error(); strings.HasPrefix(message, "undecoded keys") {
+			return fmt.Errorf(strings.Replace(
+				message,
+				"undecoded keys",
+				"these fields are not supported by captive core",
+				1,
+			))
+		}
+		return err
 	}
 
 	c.tree = tree
@@ -277,6 +288,8 @@ type CaptiveCoreTomlParams struct {
 	// LogPath is the (optional) path in which to store Core logs, passed along
 	// to Stellar Core's LOG_FILE_PATH.
 	LogPath *string
+	// Strict is a flag which, if enabled, rejects Stellar Core toml fields which are not supported by captive core.
+	Strict bool
 }
 
 // NewCaptiveCoreTomlFromFile constructs a new CaptiveCoreToml instance by merging configuration
@@ -288,7 +301,7 @@ func NewCaptiveCoreTomlFromFile(configPath string, params CaptiveCoreTomlParams)
 		return nil, errors.Wrap(err, "could not load toml path")
 	}
 
-	if err = captiveCoreToml.unmarshal(data); err != nil {
+	if err = captiveCoreToml.unmarshal(data, params.Strict); err != nil {
 		return nil, errors.Wrap(err, "could not unmarshal captive core toml")
 	}
 
@@ -330,7 +343,7 @@ func (c *CaptiveCoreToml) clone() (*CaptiveCoreToml, error) {
 		return nil, errors.Wrap(err, "could not marshal toml")
 	}
 	var cloned CaptiveCoreToml
-	if err = cloned.unmarshal(data); err != nil {
+	if err = cloned.unmarshal(data, false); err != nil {
 		return nil, errors.Wrap(err, "could not unmarshal captive core toml")
 	}
 	return &cloned, nil

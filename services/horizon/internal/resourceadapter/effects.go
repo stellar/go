@@ -8,6 +8,7 @@ import (
 	horizonContext "github.com/stellar/go/services/horizon/internal/context"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/render/hal"
+	"github.com/stellar/go/xdr"
 )
 
 var EffectTypeNames = map[history.EffectType]string{
@@ -141,6 +142,8 @@ func NewEffect(
 		err = row.UnmarshalDetails(&tradeDetails)
 		if err == nil {
 			e.Seller = tradeDetails.Seller
+			e.SellerMuxed = tradeDetails.SellerMuxed
+			e.SellerMuxedID = tradeDetails.SellerMuxedID
 			e.OfferID = tradeDetails.OfferID
 			e.SoldAmount = tradeDetails.SoldAmount
 			e.SoldAssetType = tradeDetails.SoldAssetType
@@ -273,6 +276,11 @@ func PopulateBaseEffect(ctx context.Context, this *effects.Base, row history.Eff
 	this.ID = row.ID()
 	this.PT = row.PagingToken()
 	this.Account = row.Account
+	if row.AccountMuxed.Valid {
+		this.AccountMuxed = row.AccountMuxed.String
+		muxedAccount := xdr.MustMuxedAddress(row.AccountMuxed.String)
+		this.AccountMuxedID = uint64(muxedAccount.Med25519.Id)
+	}
 	populateEffectType(this, row)
 	this.LedgerCloseTime = ledger.ClosedAt
 

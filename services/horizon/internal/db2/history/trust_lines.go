@@ -8,6 +8,7 @@ import (
 	sq "github.com/Masterminds/squirrel"
 	"github.com/guregu/null"
 	"github.com/lib/pq"
+	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
@@ -221,7 +222,9 @@ func (q *Q) UpsertTrustLines(ctx context.Context, trustLines []xdr.LedgerEntry) 
 		last_modified_ledger = excluded.last_modified_ledger,
 		sponsor = excluded.sponsor`
 
-	_, err := q.ExecRaw(ctx, sql,
+	_, err := q.ExecRaw(
+		context.WithValue(ctx, &db.QueryTypeContextKey, db.UpsertQueryType),
+		sql,
 		pq.Array(ledgerKey),
 		pq.Array(accountID),
 		pq.Array(assetType),
