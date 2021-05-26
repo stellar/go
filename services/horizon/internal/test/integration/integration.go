@@ -213,7 +213,7 @@ of accounts, subscribe to event streams, and more.`,
 
 		"--stellar-core-binary-path",
 		captiveCoreBinaryPath,
-		"--captive-core-config-append-path",
+		"--captive-core-config-path",
 		captiveCoreConfigPath,
 
 		"--captive-core-http-port",
@@ -526,6 +526,7 @@ func (i *Test) CreateSignedTransaction(
 		BaseFee:              txnbuild.MinBaseFee,
 		Timebounds:           txnbuild.NewInfiniteTimeout(),
 		IncrementSequenceNum: true,
+		EnableMuxedAccounts:  true,
 	}
 
 	tx, err := txnbuild.NewTransaction(txParams)

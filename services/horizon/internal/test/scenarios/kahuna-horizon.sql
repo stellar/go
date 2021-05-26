@@ -1619,6 +1619,10 @@ ALTER TABLE ONLY history_trades
 ALTER TABLE ONLY history_trades
     ADD CONSTRAINT history_trades_counter_asset_id_fkey FOREIGN KEY (counter_asset_id) REFERENCES history_assets(id);
 
+-- Added manually
+ALTER TABLE history_transactions ADD account_muxed varchar(69) NULL, ADD fee_account_muxed varchar(69) NULL;
+ALTER TABLE history_operations ADD source_account_muxed varchar(69) NULL;
+ALTER TABLE history_effects ADD address_muxed varchar(69) NULL;
 
 --
 -- PostgreSQL database dump complete

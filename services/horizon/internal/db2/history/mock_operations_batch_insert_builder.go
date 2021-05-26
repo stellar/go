@@ -2,6 +2,8 @@ package history
 
 import (
 	"context"
+
+	"github.com/guregu/null"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/mock"
 )
@@ -19,6 +21,7 @@ func (m *MockOperationsBatchInsertBuilder) Add(ctx context.Context,
 	operationType xdr.OperationType,
 	details []byte,
 	sourceAccount string,
+	sourceAccountMuxed null.String,
 ) error {
 	a := m.Called(ctx,
 		id,
@@ -27,6 +30,7 @@ func (m *MockOperationsBatchInsertBuilder) Add(ctx context.Context,
 		operationType,
 		details,
 		sourceAccount,
+		sourceAccountMuxed,
 	)
 	return a.Error(0)
 }

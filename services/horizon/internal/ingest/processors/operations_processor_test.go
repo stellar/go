@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/guregu/null"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
@@ -65,6 +66,12 @@ func (s *OperationsProcessorTestSuiteLedger) mockBatchInsertAdds(txs []ingest.Le
 				return err
 			}
 
+			source := expected.SourceAccount()
+			acID := source.ToAccountId()
+			var muxedAccount null.String
+			if source.Type == xdr.CryptoKeyTypeKeyTypeMuxedEd25519 {
+				muxedAccount = null.StringFrom(source.Address())
+			}
 			s.mockBatchInsertBuilder.On(
 				"Add",
 				s.ctx,
@@ -73,7 +80,8 @@ func (s *OperationsProcessorTestSuiteLedger) mockBatchInsertAdds(txs []ingest.Le
 				expected.Order(),
 				expected.OperationType(),
 				detailsJSON,
-				expected.SourceAccount().Address(),
+				acID.Address(),
+				muxedAccount,
 			).Return(nil).Once()
 		}
 	}
@@ -129,6 +137,7 @@ func (s *OperationsProcessorTestSuiteLedger) TestAddOperationFails() {
 	s.mockBatchInsertBuilder.
 		On(
 			"Add", s.ctx,
+			mock.Anything,
 			mock.Anything,
 			mock.Anything,
 			mock.Anything,

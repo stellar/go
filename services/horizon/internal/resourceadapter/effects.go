@@ -8,6 +8,7 @@ import (
 	horizonContext "github.com/stellar/go/services/horizon/internal/context"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/render/hal"
+	"github.com/stellar/go/xdr"
 )
 
 var EffectTypeNames = map[history.EffectType]string{
@@ -59,11 +60,6 @@ var EffectTypeNames = map[history.EffectType]string{
 	history.EffectClaimableBalanceClawedBack:         "claimable_balance_clawed_back",
 }
 
-type muxedAccount struct {
-	AccountMuxed   string `json:"account_muxed"`
-	AccountMuxedID uint64 `json:"account_muxed_id"`
-}
-
 // NewEffect creates a new effect resource from the provided database representation
 // of the effect.
 func NewEffect(
@@ -73,12 +69,7 @@ func NewEffect(
 ) (result hal.Pageable, err error) {
 
 	basev := effects.Base{}
-	var mAccount muxedAccount
-	// We abuse the details to inject muxed-account information without changing the DB schema
-	if err = row.UnmarshalDetails(&mAccount); err != nil {
-		return
-	}
-	PopulateBaseEffect(ctx, &basev, mAccount, row, ledger)
+	PopulateBaseEffect(ctx, &basev, row, ledger)
 
 	switch row.Type {
 	case history.EffectAccountCreated:
@@ -281,12 +272,15 @@ func NewEffect(
 }
 
 // Populate loads this resource from `row`
-func PopulateBaseEffect(ctx context.Context, this *effects.Base, account muxedAccount, row history.Effect, ledger history.Ledger) {
+func PopulateBaseEffect(ctx context.Context, this *effects.Base, row history.Effect, ledger history.Ledger) {
 	this.ID = row.ID()
 	this.PT = row.PagingToken()
 	this.Account = row.Account
-	this.AccountMuxed = account.AccountMuxed
-	this.AccountMuxedID = account.AccountMuxedID
+	if row.AccountMuxed.Valid {
+		this.AccountMuxed = row.AccountMuxed.String
+		muxedAccount := xdr.MustMuxedAddress(row.AccountMuxed.String)
+		this.AccountMuxedID = uint64(muxedAccount.Med25519.Id)
+	}
 	populateEffectType(this, row)
 	this.LedgerCloseTime = ledger.ClosedAt
 

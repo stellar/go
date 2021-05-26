@@ -40,6 +40,7 @@
 // migrations/43_add_claimable_balances_flags.sql (145B)
 // migrations/44_asset_stat_accounts_and_balances.sql (439B)
 // migrations/45_add_claimable_balances_history.sql (2.163kB)
+// migrations/46_add_muxed_accounts.sql (465B)
 // migrations/4_add_protocol_version.sql (188B)
 // migrations/5_create_trades_table.sql (1.1kB)
 // migrations/6_create_assets_table.sql (366B)
@@ -915,6 +916,26 @@ func migrations45_add_claimable_balances_historySql() (*asset, error) {
 	return a, nil
 }
 
+var _migrations46_add_muxed_accountsSql = []byte("\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff\x9c\x90\xbf\xce\x82\x40\x10\xc4\xfb\x7b\x8a\x2d\xbf\x2f\x42\x6b\x62\xa8\x30\x47\x77\x51\x43\xa0\x26\x9b\x63\x11\x0a\xee\xc8\xde\xe1\x9f\xb7\x37\x01\x13\x31\x22\x1a\xdb\xcd\xcc\xce\xfc\x26\x0c\x61\xd5\x36\x47\x46\x4f\x90\x77\x42\xc4\x2a\x4b\x52\xc8\xe2\xad\x4a\xa0\x6e\x9c\xb7\x7c\x2d\x3c\xa3\x71\xa8\x7d\x63\x8d\x83\x58\x4a\x40\xad\x6d\x6f\x7c\xd1\xf6\x17\x2a\xe1\x84\xac\x6b\xe4\xbf\xf5\xe6\x1f\x76\xb9\x52\xc1\xa0\xa9\x88\x8a\x65\x5d\x34\x1b\x66\x3b\x62\x7c\x44\x39\xdb\xb3\xfe\xed\x13\x55\x15\x69\x7f\x6f\x5c\x96\x4c\xce\xbd\xf5\x8b\xe9\x0e\xd2\x9e\xcd\x17\x4b\xc8\x74\x7f\x78\x9e\x22\x18\x6f\x2f\xe8\x1f\x49\x07\xdb\x1c\xea\x32\xd9\xd8\x60\x8a\x16\x89\x5b\x00\x00\x00\xff\xff\x1e\x83\x01\x2a\xd1\x01\x00\x00")
+
+func migrations46_add_muxed_accountsSqlBytes() ([]byte, error) {
+	return bindataRead(
+		_migrations46_add_muxed_accountsSql,
+		"migrations/46_add_muxed_accounts.sql",
+	)
+}
+
+func migrations46_add_muxed_accountsSql() (*asset, error) {
+	bytes, err := migrations46_add_muxed_accountsSqlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "migrations/46_add_muxed_accounts.sql", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0xf2, 0x2e, 0xec, 0xdc, 0x13, 0x2a, 0x94, 0xfa, 0xba, 0x5c, 0xe7, 0x2d, 0x10, 0x39, 0x2b, 0xf3, 0x28, 0xd, 0x46, 0x7f, 0xf, 0xc3, 0x4c, 0xd1, 0x43, 0xff, 0x81, 0xe1, 0x68, 0xa, 0xef, 0xd1}}
+	return a, nil
+}
+
 var _migrations4_add_protocol_versionSql = []byte("\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff\x84\xcd\xb1\x0a\xc2\x30\x10\x06\xe0\x3d\x4f\xf1\xef\x52\x70\xef\x14\x4d\x9d\xce\x44\x4a\x32\x38\x15\xd1\xa3\x06\x6a\xae\x5c\x82\xe2\xdb\xbb\xba\x88\x4f\xf0\x75\x1d\x36\x8f\x3c\xeb\xa5\x31\xd2\x6a\x2c\xc5\x61\x44\xb4\x3b\x1a\x10\x3c\x9d\x71\xcf\xb5\x89\xbe\xa7\x85\x6f\x33\x6b\x85\x01\xac\x73\xd8\x07\x4a\x47\x8f\x55\xa5\xc9\x55\x96\xe9\xc9\x5a\xb3\x14\xe4\xd2\x78\x66\x85\x1b\x0e\x36\x51\xc4\x16\x3e\x44\xf8\x44\xd4\x1b\xf3\x6d\x39\x79\x95\xff\x9a\x1b\xc3\xe9\x97\xd5\x9b\x4f\x00\x00\x00\xff\xff\x83\xbb\x30\x2e\xbc\x00\x00\x00")
 
 func migrations4_add_protocol_versionSqlBytes() ([]byte, error) {
@@ -1186,6 +1207,7 @@ var _bindata = map[string]func() (*asset, error){
 	"migrations/43_add_claimable_balances_flags.sql":                     migrations43_add_claimable_balances_flagsSql,
 	"migrations/44_asset_stat_accounts_and_balances.sql":                 migrations44_asset_stat_accounts_and_balancesSql,
 	"migrations/45_add_claimable_balances_history.sql":                   migrations45_add_claimable_balances_historySql,
+	"migrations/46_add_muxed_accounts.sql":                               migrations46_add_muxed_accountsSql,
 	"migrations/4_add_protocol_version.sql":                              migrations4_add_protocol_versionSql,
 	"migrations/5_create_trades_table.sql":                               migrations5_create_trades_tableSql,
 	"migrations/6_create_assets_table.sql":                               migrations6_create_assets_tableSql,
@@ -1277,6 +1299,7 @@ var _bintree = &bintree{nil, map[string]*bintree{
 		"43_add_claimable_balances_flags.sql":                     &bintree{migrations43_add_claimable_balances_flagsSql, map[string]*bintree{}},
 		"44_asset_stat_accounts_and_balances.sql":                 &bintree{migrations44_asset_stat_accounts_and_balancesSql, map[string]*bintree{}},
 		"45_add_claimable_balances_history.sql":                   &bintree{migrations45_add_claimable_balances_historySql, map[string]*bintree{}},
+		"46_add_muxed_accounts.sql":                               &bintree{migrations46_add_muxed_accountsSql, map[string]*bintree{}},
 		"4_add_protocol_version.sql":                              &bintree{migrations4_add_protocol_versionSql, map[string]*bintree{}},
 		"5_create_trades_table.sql":                               &bintree{migrations5_create_trades_tableSql, map[string]*bintree{}},
 		"6_create_assets_table.sql":                               &bintree{migrations6_create_assets_tableSql, map[string]*bintree{}},
