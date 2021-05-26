@@ -78,6 +78,7 @@ type App struct {
 	historyElderLedgerCounter         prometheus.CounterFunc
 	coreLatestLedgerCounter           prometheus.CounterFunc
 	coreSynced                        prometheus.GaugeFunc
+	coreSupportedProtocolVersion      prometheus.GaugeFunc
 }
 
 func (a *App) GetCoreSettings() actions.CoreSettings {
