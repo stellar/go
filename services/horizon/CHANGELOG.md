@@ -19,8 +19,6 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 ### New features 
 
-* Refactor `ingest/ledgerbackend/LedgerBackend.GetLedger` method to always block, removing `ingest/ledgerbackend/LedgerBackend.GetLedgerBlocking`. Adds a first `context.Context` param to most `LedgerBackend` methods.
-
 * Add more in-depth Prometheus metrics (count & duration) for db queries. ([#3597](https://github.com/stellar/go/pull/3597), [#3605](https://github.com/stellar/go/pull/3605))
 
 * HTTP request logs will now print the Origin header if Referer is not set. ([#3599](https://github.com/stellar/go/pull/3599))
