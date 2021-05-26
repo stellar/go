@@ -99,7 +99,7 @@ func TestDecoderIncludesIssuer(t *testing.T) {
 		{
 			"",
 			"GA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVSGZ",
-			"GB7BDSZU2Y27LYNLALKKALB52WS2IZWYBDGY6EQBLEED3TJOCVMZRH7H",
+			"",
 		},
 	}
 	for _, testCase := range testCases {
