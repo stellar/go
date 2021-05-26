@@ -695,7 +695,7 @@ func TestAllowTrust(t *testing.T) {
 	kp1 := newKeypair1()
 	sourceAccount := NewSimpleAccount(kp0.Address(), int64(40385577484366))
 
-	issuedAsset := CreditAsset{"ABCD", kp1.Address()}
+	issuedAsset := CreditAsset{"ABCD", kp0.Address()}
 	allowTrust := AllowTrust{
 		Trustor:   kp1.Address(),
 		Type:      issuedAsset,
@@ -724,7 +724,7 @@ func TestAllowTrustNoIssuer(t *testing.T) {
 	kp1 := newKeypair1()
 	sourceAccount := NewSimpleAccount(kp0.Address(), int64(40385577484366))
 
-	issuedAsset := CreditAsset{Code: "XYZ"}
+	issuedAsset := CreditAsset{Code: "XYZ", Issuer: kp0.Address()}
 	allowTrust := AllowTrust{
 		Trustor:   kp1.Address(),
 		Type:      issuedAsset,
