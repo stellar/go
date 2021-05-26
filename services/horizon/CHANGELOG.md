@@ -19,9 +19,9 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 ### New features 
 
-* Add more in-depth Prometheus metrics (count & duration) for db queries. ([#3597](https://github.com/stellar/go/pull/3597), [#3605](https://github.com/stellar/go/pull/3605))
+* Add more in-depth Prometheus metrics (count & duration) for db queries. ([3597](https://github.com/stellar/go/pull/3597), [3605](https://github.com/stellar/go/pull/3605))
 
-* HTTP request logs will now print the Origin header if Referer is not set. ([#3599](https://github.com/stellar/go/pull/3599))
+* HTTP request logs will now print the Origin header if Referer is not set. ([3599](https://github.com/stellar/go/pull/3599))
 
 * Fix bug in `horizon db reingest range` command which required the `--ingest` flag to be set ([3625](https://github.com/stellar/go/pull/3625)).
 
