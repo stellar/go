@@ -13,7 +13,7 @@ file.  This project adheres to [Semantic Versioning](http://semver.org/).
 
 * `BaseFee` in `TransactionParams` when calling `NewTransaction` is allowed to be zero because the fee can be paid by wrapping a `Transaction` in a `FeeBumpTransaction`. ([#3622](https://github.com/stellar/go/pull/3622))
 
-* `AllowTrustOp` now fills in the asset issuer from the source account when parsing from the XDR ([#3635](https://github.com/stellar/go/pull/3635)).
+* `AllowTrustOp` now fills in the asset issuer from the source account when parsing from the XDR ([#3636](https://github.com/stellar/go/pull/3636)).
 
 ## [v7.0.0](https://github.com/stellar/go/releases/tag/horizonclient-v7.0.0) - 2021-05-15
 

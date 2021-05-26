@@ -94,7 +94,11 @@ func (at *AllowTrust) FromXDR(xdrOp xdr.Operation, withMuxedAccounts bool) error
 	if err != nil {
 		return errors.Wrap(err, "error parsing allow_trust operation from xdr")
 	}
-	t.Issuer = at.SourceAccount // asset issuer is *always* source account
+	// The asset issuer is *always* the source account, but muxed accounts are a
+	// high-level representation, so we ensure here that we use the underlying
+	// address that would represent the "true" issuer on the Stellar network.
+	issuerAccount := xdrOp.SourceAccount.ToAccountId()
+	t.Issuer = issuerAccount.Address()
 	at.Type = t
 
 	return nil
