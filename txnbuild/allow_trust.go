@@ -37,7 +37,6 @@ func (at *AllowTrust) BuildXDR(withMuxedAccounts bool) (xdr.Operation, error) {
 
 	// AllowTrust has a special asset type - map to it
 	xdrAsset := xdr.Asset{}
-
 	xdrOp.Asset, err = xdrAsset.ToAssetCode(at.Type.GetCode())
 	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "can't convert asset for trustline to allow trust asset type")
@@ -94,11 +93,14 @@ func (at *AllowTrust) FromXDR(xdrOp xdr.Operation, withMuxedAccounts bool) error
 	if err != nil {
 		return errors.Wrap(err, "error parsing allow_trust operation from xdr")
 	}
+
 	// The asset issuer is *always* the source account, but muxed accounts are a
 	// high-level representation, so we ensure here that we use the underlying
 	// address that would represent the "true" issuer on the Stellar network.
-	issuerAccount := xdrOp.SourceAccount.ToAccountId()
-	t.Issuer = issuerAccount.Address()
+	//
+	// Unfortunately, we should backfill from the transaction if there's no
+	// source account, but there's no access to that here.
+	t.Issuer = accountFromXDR(xdrOp.SourceAccount, false)
 	at.Type = t
 
 	return nil
