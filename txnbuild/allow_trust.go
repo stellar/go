@@ -94,6 +94,7 @@ func (at *AllowTrust) FromXDR(xdrOp xdr.Operation, withMuxedAccounts bool) error
 	if err != nil {
 		return errors.Wrap(err, "error parsing allow_trust operation from xdr")
 	}
+	t.Issuer = at.SourceAccount // asset issuer is *always* source account
 	at.Type = t
 
 	return nil
