@@ -5,11 +5,24 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+### DB Schema change
+
+* This release comes with a small DB schema change (new multiplexed-account-related columns are incororated). It should not take more than five minutes to run due to new columns being NULL-able. 
+
+### New features 
+
 * Refactor `ingest/ledgerbackend/LedgerBackend.GetLedger` method to always block, removing `ingest/ledgerbackend/LedgerBackend.GetLedgerBlocking`. Adds a first `context.Context` param to most `LedgerBackend` methods.
 
 * Add more in-depth Prometheus metrics (count & duration) for db queries.
 
-* Fix bug in `horizon db reingest range` command which required the `--ingest` flag to be set [3625](https://github.com/stellar/go/pull/3625)).
+* Fix bug in `horizon db reingest range` command which required the `--ingest` flag to be set ([3625](https://github.com/stellar/go/pull/3625)).
+
+* Deprecate `--captive-core-config-append-path` in favor of `--captive-core-config-path`. The difference between the two flags is that `--captive-core-config-path` will validate the configuration file to reject any fields which are not supported by captive core ([3629](https://github.com/stellar/go/pull/3629)).
+
+* Add Multiplexed Account details to API responses (additional `_muxed` and `_muxed_id` optional fields following what's described in [SEP 23](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0023.md#horizon-api-changes)):
+  * Transactions: `account_muxed`, `account_muxed_id`, `fee_account` and `fee_account_muxed`.
+  * Operations: `source_account_muxed`, `source_account_muxed_id` and additional fields depending on the operation (e.g. `from_muxed`, `from_muxed_id`, `to_muxed` and `to_muxed_id` for Payment operations)
+  * Effects: `account_muxed`, `account_muxed_id` and additional fields depending on the effect (e.g. `seller_muxed` and `seller_muxed_id`  for the Trade effect).
 
 ## v2.3.0
 
