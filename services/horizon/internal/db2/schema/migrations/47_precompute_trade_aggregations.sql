@@ -42,8 +42,7 @@ CREATE TABLE history_trades_60000 (
 -- TODO: This should probably handle updates, not just inserts.
 -- TODO: This shouldn't assume we are always inserting in order.
 CREATE OR REPLACE FUNCTION update_history_trades_compute_1m()
-  RETURNS trigger
-  language plpgsql AS $$
+  RETURNS trigger AS $$
   DECLARE
     timestamp bigint;
     key text;
@@ -90,7 +89,8 @@ CREATE OR REPLACE FUNCTION update_history_trades_compute_1m()
           AND h.counter_asset_id = new.counter_asset_id;
 
     RETURN NULL;
-  END $$;
+  END;
+$$ LANGUAGE plpgsql;
 
 -- Wire up the trigger on inserts.
 CREATE TRIGGER htrd_compute_1m
