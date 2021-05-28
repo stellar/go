@@ -1619,7 +1619,8 @@ func TestAddSignatureDecorated(t *testing.T) {
 			xdr.DecoratedSignature{
 				Hint: kp0.Hint(),
 				Signature: func() xdr.Signature {
-					sigBytes, err := base64.StdEncoding.DecodeString("TVogR6tbrWLnOc1BsP/j+Qrxpja2NWNgeRIwujECYscRdMG7AMtnb3dkCT7sqlbSM0TTzlRh7G+BcVocYBtqBw==")
+					var sigBytes []byte
+					sigBytes, err = base64.StdEncoding.DecodeString("TVogR6tbrWLnOc1BsP/j+Qrxpja2NWNgeRIwujECYscRdMG7AMtnb3dkCT7sqlbSM0TTzlRh7G+BcVocYBtqBw==")
 					if err != nil {
 						require.NoError(t, err)
 					}
@@ -1632,7 +1633,8 @@ func TestAddSignatureDecorated(t *testing.T) {
 			xdr.DecoratedSignature{
 				Hint: kp1.Hint(),
 				Signature: func() xdr.Signature {
-					sigBytes, err := base64.StdEncoding.DecodeString("Iy77JteoW/FbeiuViZpgTyvrHP4BnBOeyVOjrdb5O/MpEMwcSlYXAkCBqPt4tBDil4jIcDDLhm7TsN6aUBkIBg==")
+					var sigBytes []byte
+					sigBytes, err = base64.StdEncoding.DecodeString("Iy77JteoW/FbeiuViZpgTyvrHP4BnBOeyVOjrdb5O/MpEMwcSlYXAkCBqPt4tBDil4jIcDDLhm7TsN6aUBkIBg==")
 					if err != nil {
 						require.NoError(t, err)
 					}
@@ -1641,7 +1643,8 @@ func TestAddSignatureDecorated(t *testing.T) {
 			},
 		)
 		assert.NoError(t, err)
-		actual, err := tx1sigs1.Base64()
+		var actual string
+		actual, err = tx1sigs1.Base64()
 		assert.NoError(t, err)
 		assert.Equal(t, expected, actual, "base64 xdr should match")
 	}
@@ -1653,7 +1656,8 @@ func TestAddSignatureDecorated(t *testing.T) {
 			xdr.DecoratedSignature{
 				Hint: kp0.Hint(),
 				Signature: func() xdr.Signature {
-					sigBytes, err := base64.StdEncoding.DecodeString("TVogR6tbrWLnOc1BsP/j+Qrxpja2NWNgeRIwujECYscRdMG7AMtnb3dkCT7sqlbSM0TTzlRh7G+BcVocYBtqBw==")
+					var sigBytes []byte
+					sigBytes, err = base64.StdEncoding.DecodeString("TVogR6tbrWLnOc1BsP/j+Qrxpja2NWNgeRIwujECYscRdMG7AMtnb3dkCT7sqlbSM0TTzlRh7G+BcVocYBtqBw==")
 					if err != nil {
 						require.NoError(t, err)
 					}
@@ -1663,7 +1667,8 @@ func TestAddSignatureDecorated(t *testing.T) {
 			xdr.DecoratedSignature{
 				Hint: kp1.Hint(),
 				Signature: func() xdr.Signature {
-					sigBytes, err := base64.StdEncoding.DecodeString("Iy77JteoW/FbeiuViZpgTyvrHP4BnBOeyVOjrdb5O/MpEMwcSlYXAkCBqPt4tBDil4jIcDDLhm7TsN6aUBkIBg==")
+					var sigBytes []byte
+					sigBytes, err = base64.StdEncoding.DecodeString("Iy77JteoW/FbeiuViZpgTyvrHP4BnBOeyVOjrdb5O/MpEMwcSlYXAkCBqPt4tBDil4jIcDDLhm7TsN6aUBkIBg==")
 					if err != nil {
 						require.NoError(t, err)
 					}
@@ -1672,7 +1677,8 @@ func TestAddSignatureDecorated(t *testing.T) {
 			},
 		)
 		assert.NoError(t, err)
-		actual, err := tx1sigs2.Base64()
+		var actual string
+		actual, err = tx1sigs2.Base64()
 		assert.NoError(t, err)
 		assert.Equal(t, expected, actual, "base64 xdr should match")
 	}
