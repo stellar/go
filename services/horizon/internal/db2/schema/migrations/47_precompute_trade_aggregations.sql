@@ -62,6 +62,7 @@ CREATE OR REPLACE FUNCTION update_history_trades_compute_1m()
       )
       ON CONFLICT (year, month, base_asset_id, counter_asset_id) DO NOTHING;
 
+    -- incremental update the minute bucket, and merge the new result into values.
     UPDATE history_trades_60000 h
         SET values = values || jsonb_build_object(
             key,
@@ -91,12 +92,15 @@ CREATE OR REPLACE FUNCTION update_history_trades_compute_1m()
     RETURN NULL;
   END $$;
 
+-- Wire up the trigger on inserts.
 CREATE TRIGGER htrd_compute_1m
   AFTER INSERT ON history_trades
   FOR EACH ROW
   EXECUTE FUNCTION update_history_trades_compute_1m();
 
--- Backfill it with existing data.
+-- Backfill the table with existing data. This takes like ~10-15 minutes,
+-- maybe.
+-- TODO: Confirm how long this takes.
 WITH htrd AS (
   SELECT
     div((cast((extract(epoch from h.ledger_closed_at) * 1000 ) as bigint) - 0), 60000)*60000 + 0 as timestamp,
