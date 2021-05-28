@@ -1614,7 +1614,7 @@ func TestAddSignatureDecorated(t *testing.T) {
 
 	// Same if signatures added separately.
 	{
-		var tx1sigs1 *txnbuild.Transaction
+		var tx1sigs1 *Transaction
 		tx1sigs1, err = tx1.AddSignatureDecorated(
 			xdr.DecoratedSignature{
 				Hint: kp0.Hint(),
@@ -1648,7 +1648,7 @@ func TestAddSignatureDecorated(t *testing.T) {
 
 	// Same if signatures added together.
 	{
-		var tx1sigs2 *txnbuild.Transaction
+		var tx1sigs2 *Transaction
 		tx1sigs2, err = tx1.AddSignatureDecorated(
 			xdr.DecoratedSignature{
 				Hint: kp0.Hint(),
