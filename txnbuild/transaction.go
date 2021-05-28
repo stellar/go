@@ -76,6 +76,13 @@ func concatSignatures(
 	return extended, nil
 }
 
+func concatSignatureDecorated(e xdr.TransactionEnvelope, signatures []xdr.DecoratedSignature, newSignatures []xdr.DecoratedSignature) ([]xdr.DecoratedSignature, error) {
+	extended := make([]xdr.DecoratedSignature, len(signatures)+len(newSignatures))
+	copy(extended, signatures)
+	copy(extended[len(signatures):], newSignatures)
+	return extended, nil
+}
+
 func concatSignatureBase64(e xdr.TransactionEnvelope, signatures []xdr.DecoratedSignature, networkStr, publicKey, signature string) ([]xdr.DecoratedSignature, error) {
 	if signature == "" {
 		return nil, errors.New("signature not presented")
@@ -298,6 +305,17 @@ func (t *Transaction) SignWithKeyString(network string, keys ...string) (*Transa
 // See description here: https://www.stellar.org/developers/guides/concepts/multi-sig.html#hashx.
 func (t *Transaction) SignHashX(preimage []byte) (*Transaction, error) {
 	extendedSignatures, err := concatHashX(t.Signatures(), preimage)
+	if err != nil {
+		return nil, err
+	}
+
+	return t.clone(extendedSignatures), nil
+}
+
+// AddSignatureDecorated returns a new Transaction instance which extends the current instance
+// with an additional decorated signature(s).
+func (t *Transaction) AddSignatureDecorated(signature ...xdr.DecoratedSignature) (*Transaction, error) {
+	extendedSignatures, err := concatSignatureDecorated(t.envelope, t.Signatures(), signature)
 	if err != nil {
 		return nil, err
 	}
