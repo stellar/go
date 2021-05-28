@@ -23,12 +23,16 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 * HTTP request logs will now print the Origin header if Referer is not set. ([3599](https://github.com/stellar/go/pull/3599))
 
-* Fix bug in `horizon db reingest range` command which required the `--ingest` flag to be set ([3625](https://github.com/stellar/go/pull/3625)).
-
 * Add Multiplexed Account details to API responses (additional `_muxed` and `_muxed_id` optional fields following what's described in [SEP 23](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0023.md#horizon-api-changes)):
   * Transactions: `account_muxed`, `account_muxed_id`, `fee_account` and `fee_account_muxed`.
   * Operations: `source_account_muxed`, `source_account_muxed_id` and additional fields depending on the operation (e.g. `from_muxed`, `from_muxed_id`, `to_muxed` and `to_muxed_id` for Payment operations)
   * Effects: `account_muxed`, `account_muxed_id` and additional fields depending on the effect (e.g. `seller_muxed` and `seller_muxed_id`  for the Trade effect).
+
+### Code Changes
+
+* Fix bug in `horizon db reingest range` command which required the `--ingest` flag to be set ([3625](https://github.com/stellar/go/pull/3625)).
+
+* Fix bug in causing database connections to be closed when the HTTP request was cancelled. ([3630](https://github.com/stellar/go/pull/3630))
 
 ## v2.3.0
 
