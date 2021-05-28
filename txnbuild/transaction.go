@@ -313,7 +313,7 @@ func (t *Transaction) SignHashX(preimage []byte) (*Transaction, error) {
 }
 
 // AddSignatureDecorated returns a new Transaction instance which extends the current instance
-// with an additional signature(s).
+// with an additional decorated signature(s).
 func (t *Transaction) AddSignatureDecorated(signature ...xdr.DecoratedSignature) (*Transaction, error) {
 	extendedSignatures, err := concatSignatureDecorated(t.envelope, t.Signatures(), signature)
 	if err != nil {
