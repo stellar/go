@@ -1,26 +1,32 @@
 package horizonclient
 
-import "github.com/stellar/go/support/errors"
+import (
+	"net/http"
+
+	"github.com/stellar/go/support/errors"
+)
 
 // IsNotFoundError returns true if the error is a horizonclient.Error with
 // a not_found problem indicating that the resource is not found on
 // Horizon.
 func IsNotFoundError(err error) bool {
-	var hErr *Error
-
-	err = errors.Cause(err)
-	switch err := err.(type) {
-	case *Error:
-		hErr = err
-	case Error:
-		hErr = &err
-	}
-
+	hErr := GetError(err)
 	if hErr == nil {
 		return false
 	}
 
 	return hErr.Problem.Type == "https://stellar.org/horizon-errors/not_found"
+}
+
+// IsHorizonAPITimeoutError returns true if the error is a horizonclient.Error with
+// a timeout problem indicating that Horizon timed out.
+func IsHorizonAPITimeoutError(err error) bool {
+	hErr := GetError(err)
+	if hErr == nil {
+		return false
+	}
+
+	return hErr.Problem.Status == http.StatusGatewayTimeout
 }
 
 // GetError returns an error that can be interpreted as a horizon-specific

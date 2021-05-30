@@ -127,6 +127,125 @@ func TestIsNotFoundError(t *testing.T) {
 	}
 }
 
+func TestIsHorizonAPITimeoutError(t *testing.T) {
+	testCases := []struct {
+		desc string
+		err  error
+		is   bool
+	}{
+		{
+			desc: "nil error",
+			err:  nil,
+			is:   false,
+		},
+		{
+			desc: "another Go type of error",
+			err:  errors.New("error"),
+			is:   false,
+		},
+		{
+			desc: "timeout problem (pointer)",
+			err: &Error{
+				Problem: problem.P{
+					Type:   "https://stellar.org/horizon-errors/timeout",
+					Title:  "Timeout",
+					Status: 504,
+				},
+			},
+			is: true,
+		},
+		{
+			desc: "wrapped timeout problem (pointer)",
+			err: errors.Wrap(&Error{
+				Problem: problem.P{
+					Type:   "https://stellar.org/horizon-errors/timeout",
+					Title:  "Timeout",
+					Status: 504,
+				},
+			}, "wrap message"),
+			is: true,
+		},
+		{
+			desc: "timeout problem (not a pointer)",
+			err: Error{
+				Problem: problem.P{
+					Type:   "https://stellar.org/horizon-errors/timeout",
+					Title:  "Timeout",
+					Status: 504,
+				},
+			},
+			is: true,
+		},
+		{
+			desc: "wrapped timout problem (not a pointer)",
+			err: errors.Wrap(Error{
+				Problem: problem.P{
+					Type:   "https://stellar.org/horizon-errors/timeout",
+					Title:  "Timeout",
+					Status: 504,
+				},
+			}, "wrap message"),
+			is: true,
+		},
+		{
+			desc: "some other problem (pointer)",
+			err: &Error{
+				Problem: problem.P{
+					Type:   "https://stellar.org/horizon-errors/server_error",
+					Title:  "Server Error",
+					Status: 500,
+				},
+			},
+			is: false,
+		},
+		{
+			desc: "wrapped some other problem (pointer)",
+			err: errors.Wrap(&Error{
+				Problem: problem.P{
+					Type:   "https://stellar.org/horizon-errors/server_error",
+					Title:  "Server Error",
+					Status: 500,
+				},
+			}, "wrap message"),
+			is: false,
+		},
+		{
+			desc: "some other problem (not a pointer)",
+			err: Error{
+				Problem: problem.P{
+					Type:   "https://stellar.org/horizon-errors/server_error",
+					Title:  "Server Error",
+					Status: 500,
+				},
+			},
+			is: false,
+		},
+		{
+			desc: "wrapped some other problem (not a pointer)",
+			err: errors.Wrap(Error{
+				Problem: problem.P{
+					Type:   "https://stellar.org/horizon-errors/server_error",
+					Title:  "Server Error",
+					Status: 500,
+				},
+			}, "wrap message"),
+			is: false,
+		},
+		{
+			desc: "a nil *horizonclient.Error",
+			err:  (*Error)(nil),
+			is:   false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.desc, func(t *testing.T) {
+			is := IsHorizonAPITimeoutError(tc.err)
+			assert.Equal(t, tc.is, is)
+		})
+	}
+}
+
 func TestGetError(t *testing.T) {
 	testCases := []struct {
 		desc    string
