@@ -41,7 +41,7 @@ func TestAPI_txApprove_rejected(t *testing.T) {
 		networkPassphrase: network.TestNetworkPassphrase,
 		db:                conn,
 		kycThreshold:      kycThresholdAmount,
-		baseURL:           "https://sep8-server.test",
+		baseURL:           "https://example.com",
 	}
 
 	// rejected if no transaction "tx"is submitted
@@ -97,7 +97,7 @@ func TestAPI_txApprove_revised(t *testing.T) {
 		networkPassphrase: network.TestNetworkPassphrase,
 		db:                conn,
 		kycThreshold:      kycThresholdAmount,
-		baseURL:           "https://sep8-server.test",
+		baseURL:           "https://example.com",
 	}
 
 	tx, err := txnbuild.NewTransaction(
@@ -214,7 +214,7 @@ func TestAPI_txAprove_actionRequired(t *testing.T) {
 		networkPassphrase: network.TestNetworkPassphrase,
 		db:                conn,
 		kycThreshold:      kycThresholdAmount,
-		baseURL:           "https://sep8-server.test",
+		baseURL:           "https://example.com",
 	}
 
 	// setup route handlers
@@ -267,7 +267,7 @@ func TestAPI_txAprove_actionRequired(t *testing.T) {
 	wantTXApprovalResponse := txApprovalResponse{
 		Status:       sep8Status("action_required"),
 		Message:      "Payments exceeding 500.00 GOAT require KYC approval. Please provide an email address.",
-		ActionURL:    "https://sep8-server.test/kyc-status/" + callbackID,
+		ActionURL:    "https://example.com/kyc-status/" + callbackID,
 		ActionMethod: "POST",
 		ActionFields: []string{"email_address"},
 	}
@@ -306,7 +306,7 @@ func TestAPI_txAprove_actionRequiredFlow(t *testing.T) {
 		networkPassphrase: network.TestNetworkPassphrase,
 		db:                conn,
 		kycThreshold:      kycThresholdAmount,
-		baseURL:           "https://sep8-server.test",
+		baseURL:           "https://example.com",
 	}
 
 	// setup route handlers
@@ -359,7 +359,7 @@ func TestAPI_txAprove_actionRequiredFlow(t *testing.T) {
 	wantTXApprovalResponse := txApprovalResponse{
 		Status:       sep8Status("action_required"),
 		Message:      "Payments exceeding 500.00 GOAT require KYC approval. Please provide an email address.",
-		ActionURL:    "https://sep8-server.test/kyc-status/" + callbackID,
+		ActionURL:    "https://example.com/kyc-status/" + callbackID,
 		ActionMethod: "POST",
 		ActionFields: []string{"email_address"},
 	}

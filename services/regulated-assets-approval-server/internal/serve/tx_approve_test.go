@@ -105,7 +105,7 @@ func TestTxApproveHandlerValidate(t *testing.T) {
 		networkPassphrase: network.TestNetworkPassphrase,
 		db:                conn,
 		kycThreshold:      1,
-		baseURL:           "https://sep8-server.test",
+		baseURL:           "https://example.com",
 	}
 	err = h.validate()
 	require.NoError(t, err)
@@ -227,7 +227,7 @@ func TestTxApproveHandler_handleActionRequiredResponseIfNeeded(t *testing.T) {
 	require.NoError(t, err)
 	h := txApproveHandler{
 		assetCode:    "FOO",
-		baseURL:      "https://sep8-server.test",
+		baseURL:      "https://example.com",
 		kycThreshold: kycThreshold,
 		db:           conn,
 	}
@@ -258,7 +258,7 @@ func TestTxApproveHandler_handleActionRequiredResponseIfNeeded(t *testing.T) {
 		Message:      "Payments exceeding 500.00 FOO require KYC approval. Please provide an email address.",
 		ActionMethod: "POST",
 		StatusCode:   http.StatusOK,
-		ActionURL:    "https://sep8-server.test/kyc-status/" + callbackID,
+		ActionURL:    "https://example.com/kyc-status/" + callbackID,
 		ActionFields: []string{"email_address"},
 	}
 	require.Equal(t, wantResp, txApprovalResp)
@@ -325,7 +325,7 @@ func TestTxApproveHandlerTxApprove_rejected(t *testing.T) {
 		networkPassphrase: network.TestNetworkPassphrase,
 		db:                conn,
 		kycThreshold:      kycThresholdAmount,
-		baseURL:           "https://sep8-server.test",
+		baseURL:           "https://example.com",
 	}
 
 	// "rejected" if tx is empty
@@ -467,7 +467,7 @@ func TestTxApproveHandlerTxApprove_actionRequired(t *testing.T) {
 		networkPassphrase: network.TestNetworkPassphrase,
 		db:                conn,
 		kycThreshold:      kycThresholdAmount,
-		baseURL:           "https://sep8-server.test",
+		baseURL:           "https://example.com",
 	}
 
 	// rejected if sequence number is not incremental
@@ -506,7 +506,7 @@ func TestTxApproveHandlerTxApprove_actionRequired(t *testing.T) {
 		Message:      "Payments exceeding 500.00 GOAT require KYC approval. Please provide an email address.",
 		ActionMethod: "POST",
 		StatusCode:   http.StatusOK,
-		ActionURL:    "https://sep8-server.test/kyc-status/" + callbackID,
+		ActionURL:    "https://example.com/kyc-status/" + callbackID,
 		ActionFields: []string{"email_address"},
 	}
 	require.Equal(t, wantResp, txApprovalResp)
@@ -545,7 +545,7 @@ func TestTxApproveHandlerTxApprove_revised(t *testing.T) {
 		networkPassphrase: network.TestNetworkPassphrase,
 		db:                conn,
 		kycThreshold:      kycThresholdAmount,
-		baseURL:           "https://sep8-server.test",
+		baseURL:           "https://example.com",
 	}
 
 	// rejected if sequence number is not incremental
