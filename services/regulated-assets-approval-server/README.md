@@ -1,10 +1,12 @@
 # regulated-assets-approval-server
 
 ```sh
-Status: supporting SEP-8 transactions revision with a simplified rule:
-- only revises payment type operations
-- payments with amount lower than or equal the configured threshold are revised successfully
-- payments with amount exceeding the threshold need further action
+Status: supports SEP-8 transactions revision with a simplified rule:
+- only revises transactions containing a single operation of type payment.
+- payments whose amount does not meet the configured threshold are considered compliant and revised according to the SEP-8 specification.
+- payments with an amount exceeding the threshold need further action.
+
+It is important to notice the SEP-8 "success" response has not been implemented yet so even if the submitted transaction is compliant to be marked as successful according with SEP-8, the service will reject it.
 ```
 
 This is a [SEP-8] Approval Server reference implementation based on SEP-8 v1.7.1
@@ -216,7 +218,7 @@ After the user has been approved or rejected they can POST their transaction to
 [`POST /tx-approve`](#post-tx-approve) for revision.
 
 If their KYC was rejected they should see a rejection response.
-**Response (rejected for emails staring with "x"):**
+**Response (rejected for emails starting with "x"):**
 
 ```json
 {
