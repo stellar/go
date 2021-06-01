@@ -5,8 +5,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-
-	"github.com/lib/pq"
 )
 
 // This file contains implementations of the sql.Scanner interface for stellar xdr types
@@ -73,24 +71,6 @@ func (t *Int64) Scan(src interface{}) error {
 	}
 
 	*t = Int64(val)
-	return nil
-}
-
-// Scan reads from a src into an xdr.Price
-func (t *Price) Scan(src interface{}) error {
-	// assuming the price is represented as a two-element array [n,d]
-	arr := pq.Int64Array{}
-	err := arr.Scan(src)
-
-	if err != nil {
-		return err
-	}
-
-	if len(arr) != 2 {
-		return errors.New("price array should have exactly 2 elements")
-	}
-
-	*t = Price{Int32(arr[0]), Int32(arr[1])}
 	return nil
 }
 
