@@ -134,7 +134,7 @@ to do that in Stellar Laboratory.
 This is the core [SEP-8] endpoint used to validate and process
 approval/revision/rejection of regulated assets transactions. Note: The example
 responses below have set their `base-url` env var configured to
-`"https://sep8-base-url.com"`.
+`"https://example.com"`.
 
 **Request:**
 
@@ -176,7 +176,7 @@ SEP-8 [Action Required] section.
 {
   "status": "action_required",
   "message": "Payments exceeding 500.00 GOAT needs KYC approval. Please provide an email address.",
-  "action_url": "https://sep8-base-url.com/kyc-status/cf4fe081-5b38-48b6-86ed-1bcfb7171c7d",
+  "action_url": "https://example.com/kyc-status/cf4fe081-5b38-48b6-86ed-1bcfb7171c7d",
   "action_method": "POST",
   "action_fields": [
     "email_address"
