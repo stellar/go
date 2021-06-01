@@ -225,6 +225,7 @@ var DefaultPublicNetClient = &Client{
 }
 
 // HorizonRequest contains methods implemented by request structs for horizon endpoints.
+// Action needed in release: horizonclient-v8.0.0: remove BuildURL()
 type HorizonRequest interface {
 	BuildURL() (string, error)
 	HTTPRequest(horizonURL string) (*http.Request, error)
