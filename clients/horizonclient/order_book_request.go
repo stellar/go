@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"net/url"
 
 	hProtocol "github.com/stellar/go/protocols/horizon"
@@ -35,6 +36,16 @@ func (obr OrderBookRequest) BuildURL() (endpoint string, err error) {
 	}
 
 	return endpoint, err
+}
+
+// HTTPRequest returns the http request for the order book endpoint
+func (obr OrderBookRequest) HTTPRequest(horizonURL string) (*http.Request, error) {
+	endpoint, err := obr.BuildURL()
+	if err != nil {
+		return nil, err
+	}
+
+	return http.NewRequest("GET", horizonURL+endpoint, nil)
 }
 
 // OrderBookHandler is a function that is called when a new order summary is received
