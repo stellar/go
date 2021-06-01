@@ -67,7 +67,7 @@ Flags:
 
 #### Migration files
 
-This project builds the migrations into a binary and embeds it into the built
+This project builds the migrations into the binary and embeds it into the built
 project. If there are any changes to the db schema, generate a new version of
 `internal/db/dbmigrate/dbmigrate_generated.go` using the `gogenerate.sh` script
 located at the root of the repo.
@@ -108,15 +108,15 @@ issuer to grant and revoke authorization to transact the asset at will.
 
 You can use [this
 link](https://laboratory.stellar.org/#txbuilder?params=eyJhdHRyaWJ1dGVzIjp7ImZlZSI6IjEwMCIsImJhc2VGZWUiOiIxMDAiLCJtaW5GZWUiOiIxMDAifSwiZmVlQnVtcEF0dHJpYnV0ZXMiOnsibWF4RmVlIjoiMTAwIn0sIm9wZXJhdGlvbnMiOlt7ImlkIjowLCJhdHRyaWJ1dGVzIjp7InNldEZsYWdzIjozfSwibmFtZSI6InNldE9wdGlvbnMifV19)
-to set those flags in Stellar Laboratory. Just click the link, fill the account
+to set those flags in Stellar Laboratory. Click the link, fill the account
 address and sequence number, then the account secret and submit the transaction.
 
-After setting up the issuer account you can send some unities of the regulkated
-asset to a stellar account using our internal
-`friendbot/?addr={stellar_address}` endpoint. This endpoint is not part of the
-official SEP-8 Approval Server spec, it's a debug feature to allow accounts to
-test sending transactions (payments with the issuer's regulated asset) to the
-server.
+After setting up the issuer account you can send some amount of the regulated
+asset to a stellar account using the servers friendbot
+`friendbot/?addr={stellar_address}` endpoint. The friendbot endpoint is not part
+of the SEP-8 Approval Server specification, it's a debug feature that allows
+accounts to test sending transactions containing payments with the issuer's
+regulated asset, to the server.
 
 ### `GET /friendbot?addr={stellar_address}`
 
@@ -189,7 +189,7 @@ SEP-8 [Action Required] section.
 This endpoint is used for the extra action after `/tx-approve`, as described in
 the SEP-8 [Action Required] section.
 
-Currently an arbitrarily criteria is implemented: email addresses starting with
+Currently an arbitrary criteria is implemented: email addresses starting with
 "x" will have the KYC automatically denied while all other emails will be
 accepted.
 
