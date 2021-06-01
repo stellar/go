@@ -112,13 +112,13 @@ func TestTxApproveHandlerValidate(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestConvertThresholdToReadableString(t *testing.T) {
+func TestConvertAmountToReadableString(t *testing.T) {
 	// Prepare raw int64 amountValue.
 	// Context: stellar-core represents asset "amounts" as 64-bit so amounts shown as "500" is represented in stellar-core as 5000000000.
 	var amountValue int64 = 5000000000
 
 	// TEST if no error and if "500.00" returned
-	amountString, err := convertThresholdToReadableString(amountValue)
+	amountString, err := convertAmountToReadableString(amountValue)
 	require.NoError(t, err)
 	assert.Equal(t, "500.00", amountString)
 
@@ -128,82 +128,12 @@ func TestConvertThresholdToReadableString(t *testing.T) {
 	parsedThresholdResult, err := amount.ParseInt64("500")
 
 	// TEST if no error and if "500.00" returned
-	amountString, err = convertThresholdToReadableString(parsedThresholdResult)
+	amountString, err = convertAmountToReadableString(parsedThresholdResult)
 	require.NoError(t, err)
 	assert.Equal(t, "500.00", amountString)
 }
 
-func TestTxApproveHandlerKYCRequiredMessageIfNeeded(t *testing.T) {
-	db := dbtest.Open(t)
-	defer db.Close()
-	conn := db.Open()
-	defer conn.Close()
-
-	// Create tx-approve/ txApproveHandler.
-	issuerAccKeyPair := keypair.MustRandom()
-	horizonMock := horizonclient.MockClient{}
-	kycThresholdAmount, err := amount.ParseInt64("500")
-	require.NoError(t, err)
-	assetGOAT := txnbuild.CreditAsset{
-		Code:   "GOAT",
-		Issuer: issuerAccKeyPair.Address(),
-	}
-	h := txApproveHandler{
-		issuerKP:          issuerAccKeyPair,
-		assetCode:         assetGOAT.GetCode(),
-		horizonClient:     &horizonMock,
-		networkPassphrase: network.TestNetworkPassphrase,
-		db:                conn,
-		kycThreshold:      kycThresholdAmount,
-		baseURL:           "https://sep8-server.test",
-	}
-
-	// TEST if txApproveHandler is valid.
-	err = h.validate()
-	require.NoError(t, err)
-
-	// Preparing payment op for kycRequiredMessageIfNeeded; payment amount is below kycThreshold.
-	destinationKP := keypair.MustRandom()
-	paymentOP := txnbuild.Payment{
-		Destination: destinationKP.Address(),
-		Amount:      "100",
-		Asset:       assetGOAT,
-	}
-
-	// TEST No KYC needed response. actionRequiredMessage should be "".
-	actionRequiredMessage, err := h.kycRequiredMessageIfNeeded(&paymentOP)
-	require.NoError(t, err)
-	require.Empty(t, actionRequiredMessage)
-
-	// Prepare payment op for kycRequiredMessageIfNeeded; payment amount is malformed.
-	paymentOP = txnbuild.Payment{
-		Destination: destinationKP.Address(),
-		Amount:      "ten",
-		Asset:       assetGOAT,
-	}
-
-	// TEST kycRequiredMessageIfNeeded returns error.
-	_, err = h.kycRequiredMessageIfNeeded(&paymentOP)
-	assert.Contains(t,
-		err.Error(),
-		`parsing account payment amount from string to Int64: invalid amount format: ten`,
-	)
-
-	// Preparing payment op for kycRequiredMessageIfNeeded; payment amount is above kycThreshold.
-	paymentOP = txnbuild.Payment{
-		Destination: destinationKP.Address(),
-		Amount:      "501",
-		Asset:       assetGOAT,
-	}
-
-	// TEST Successful KYC required response.
-	// actionRequiredMessage should return "Payments exceeding [kycThreshold] [assetCode] requires KYC approval..." message.
-	actionRequiredMessage, err = h.kycRequiredMessageIfNeeded(&paymentOP)
-	require.NoError(t, err)
-	assert.Equal(t, `Payments exceeding 500.00 GOAT requires KYC approval. Please provide an email address.`, actionRequiredMessage)
-}
-
-func TestTxApproveHandlerHandleKYCRequiredOperationIfNeeded(t *testing.T) {
+func TestTxApproveHandler_handleActionRequiredResponseIfNeeded(t *testing.T) {
 	ctx := context.Background()
 	db := dbtest.Open(t)
 	defer db.Close()
@@ -244,11 +174,11 @@ func TestTxApproveHandlerHandleKYCRequiredOperationIfNeeded(t *testing.T) {
 	}
 
 	// TEST successful "action_required" response.
-	actionRequiredTxApprovalResponse, err := h.handleKYCRequiredOperationIfNeeded(ctx, sourceKP.Address(), &paymentOP)
+	actionRequiredTxApprovalResponse, err := h.handleActionRequiredResponseIfNeeded(ctx, sourceKP.Address(), &paymentOP)
 	require.NoError(t, err)
 	wantTXApprovalResponse := txApprovalResponse{
 		Status:       sep8Status("action_required"),
-		Message:      `Payments exceeding 500.00 GOAT requires KYC approval. Please provide an email address.`,
+		Message:      `Payments exceeding 500.00 GOAT require KYC approval. Please provide an email address.`,
 		StatusCode:   http.StatusOK,
 		ActionURL:    actionRequiredTxApprovalResponse.ActionURL,
 		ActionMethod: "POST",
@@ -416,7 +346,7 @@ func TestTxApproveHandlerTxApprove(t *testing.T) {
 	require.NoError(t, err)
 	wantRejectedResponse = txApprovalResponse{
 		Status:     "rejected",
-		Error:      "The source account is invalid.",
+		Error:      "Transaction source account is invalid.",
 		StatusCode: http.StatusBadRequest,
 	}
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse)

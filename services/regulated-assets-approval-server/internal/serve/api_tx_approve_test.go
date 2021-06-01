@@ -213,7 +213,7 @@ func TestAPI_RejectedIntegration(t *testing.T) {
 
 	// TEST "rejected" response if the transaction sourceAccount the same as the server issuer account.
 	wantBody = `{
-		"status":"rejected", "error":"The source account is invalid."
+		"status":"rejected", "error":"Transaction source account is invalid."
 	}`
 	require.JSONEq(t, wantBody, string(body))
 
@@ -635,7 +635,7 @@ func TestAPI_KYCIntegration(t *testing.T) {
 	require.NoError(t, err)
 	wantTXApprovalResponse := txApprovalResponse{
 		Status:       sep8Status("action_required"),
-		Message:      `Payments exceeding 500.00 GOAT requires KYC approval. Please provide an email address.`,
+		Message:      `Payments exceeding 500.00 GOAT require KYC approval. Please provide an email address.`,
 		ActionURL:    txApprovePOSTResponse.ActionURL,
 		ActionMethod: "POST",
 		ActionFields: []string{"email_address"},
