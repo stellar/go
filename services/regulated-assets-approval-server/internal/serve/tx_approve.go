@@ -107,7 +107,7 @@ func (h txApproveHandler) validateInput(ctx context.Context, in txApproveRequest
 	}
 
 	if tx.SourceAccount().AccountID == h.issuerKP.Address() {
-		log.Ctx(ctx).Errorf("transaction %s sourceAccount is the same as the server issuer account %s", in.Tx, h.issuerKP.Address())
+		log.Ctx(ctx).Errorf("transaction sourceAccount is the same as the server issuer account %s", h.issuerKP.Address())
 		return NewRejectedTxApprovalResponse("Transaction source account is invalid."), nil
 	}
 
@@ -229,7 +229,8 @@ func (h txApproveHandler) txApprove(ctx context.Context, in txApproveRequest) (r
 	return NewRevisedTxApprovalResponse(txe), nil
 }
 
-// handleActionRequiredResponseIfNeeded validates and returns an action_required response if the payment requires KYC.
+// handleActionRequiredResponseIfNeeded validates and returns an action_required
+// response if the payment requires KYC.
 func (h txApproveHandler) handleActionRequiredResponseIfNeeded(ctx context.Context, stellarAddress string, paymentOp *txnbuild.Payment) (*txApprovalResponse, error) {
 	paymentAmount, err := amount.ParseInt64(paymentOp.Amount)
 	if err != nil {
@@ -280,6 +281,77 @@ func (h txApproveHandler) handleActionRequiredResponseIfNeeded(ctx context.Conte
 		fmt.Sprintf("%s/kyc-status/%s", h.baseURL, callbackID),
 		[]string{"email_address"},
 	), nil
+}
+
+// validateTransactionOperationsForSuccess checks if the incoming transaction
+// operations are compliant with the anchor's SEP-8 policy.
+func validateTransactionOperationsForSuccess(ctx context.Context, tx *txnbuild.Transaction, issuerAddress string) (resp *txApprovalResponse, paymentOp *txnbuild.Payment, paymentSource string) {
+	if len(tx.Operations()) != 5 {
+		return NewRejectedTxApprovalResponse("Unsupported number of operations."), nil, ""
+	}
+
+	// extract the payment operation and payment source account.
+	paymentOp, ok := tx.Operations()[2].(*txnbuild.Payment)
+	if !ok {
+		log.Ctx(ctx).Error(`third operation is not of type payment`)
+		return NewRejectedTxApprovalResponse("There are one or more unexpected operations in the provided transaction."), nil, ""
+	}
+	paymentSource = paymentOp.SourceAccount
+	if paymentSource == "" {
+		paymentSource = tx.SourceAccount().AccountID
+	}
+
+	assetCode := paymentOp.Asset.GetCode()
+
+	operationsValid := func() bool {
+		op0, ok := tx.Operations()[0].(*txnbuild.AllowTrust)
+		if !ok ||
+			op0.Trustor != paymentSource ||
+			op0.Type.GetCode() != assetCode ||
+			!op0.Authorize ||
+			op0.SourceAccount != issuerAddress {
+			return false
+		}
+
+		op1, ok := tx.Operations()[1].(*txnbuild.AllowTrust)
+		if !ok ||
+			op1.Trustor != paymentOp.Destination ||
+			op1.Type.GetCode() != assetCode ||
+			!op1.Authorize ||
+			op1.SourceAccount != issuerAddress {
+			return false
+		}
+
+		op2, ok := tx.Operations()[2].(*txnbuild.Payment)
+		if !ok || op2 != paymentOp {
+			return false
+		}
+
+		op3, ok := tx.Operations()[3].(*txnbuild.AllowTrust)
+		if !ok ||
+			op3.Trustor != paymentOp.Destination ||
+			op3.Type.GetCode() != assetCode ||
+			op3.Authorize ||
+			op3.SourceAccount != issuerAddress {
+			return false
+		}
+
+		op4, ok := tx.Operations()[4].(*txnbuild.AllowTrust)
+		if !ok ||
+			op4.Trustor != paymentSource ||
+			op4.Type.GetCode() != assetCode ||
+			op4.Authorize ||
+			op4.SourceAccount != issuerAddress {
+			return false
+		}
+
+		return true
+	}()
+	if !operationsValid {
+		return NewRejectedTxApprovalResponse("There are one or more unexpected operations in the provided transaction."), nil, ""
+	}
+
+	return nil, paymentOp, paymentSource
 }
 
 func convertAmountToReadableString(threshold int64) (string, error) {
