@@ -2,6 +2,7 @@ package horizonclient
 
 import (
 	"fmt"
+	"net/http"
 	"net/url"
 
 	"github.com/stellar/go/support/errors"
@@ -39,4 +40,14 @@ func (cbr ClaimableBalanceRequest) BuildURL() (endpoint string, err error) {
 	}
 
 	return endpoint, err
+}
+
+// HTTPRequest returns the http request for the claimable balances endpoint
+func (cbr ClaimableBalanceRequest) HTTPRequest(horizonURL string) (*http.Request, error) {
+	endpoint, err := cbr.BuildURL()
+	if err != nil {
+		return nil, err
+	}
+
+	return http.NewRequest("GET", horizonURL+endpoint, nil)
 }
