@@ -189,7 +189,7 @@ func TestTxApproveHandler_validateInput(t *testing.T) {
 	require.Equal(t, NewRejectedTxApprovalResponse("Please submit a transaction with exactly one operation of type payment."), txApprovalResp)
 	require.Nil(t, gotTx)
 
-	// success
+	// validation success
 	tx, err = txnbuild.NewTransaction(txnbuild.TransactionParams{
 		SourceAccount: &horizon.Account{
 			AccountID: clientKP.Address(),
@@ -232,7 +232,7 @@ func TestTxApproveHandler_handleActionRequiredResponseIfNeeded(t *testing.T) {
 		db:           conn,
 	}
 
-	// payments smaller than or equal the threshold are not "action_required"
+	// payments up to the the threshold won't trigger "action_required"
 	clientKP := keypair.MustRandom()
 	paymentOp := &txnbuild.Payment{
 		Amount: amount.StringFromInt64(kycThreshold),
@@ -241,7 +241,7 @@ func TestTxApproveHandler_handleActionRequiredResponseIfNeeded(t *testing.T) {
 	require.NoError(t, err)
 	require.Nil(t, txApprovalResp)
 
-	// payments greater than the threshold are "action_required"
+	// payments greater than the threshold will trigger "action_required"
 	paymentOp = &txnbuild.Payment{
 		Amount: amount.StringFromInt64(kycThreshold + 1),
 	}
@@ -263,7 +263,7 @@ func TestTxApproveHandler_handleActionRequiredResponseIfNeeded(t *testing.T) {
 	}
 	require.Equal(t, wantResp, txApprovalResp)
 
-	// test addresses with approved KYC
+	// if KYC was previously approved, handleActionRequiredResponseIfNeeded will return nil
 	q = `
 		UPDATE accounts_kyc_status
 		SET 
@@ -277,7 +277,7 @@ func TestTxApproveHandler_handleActionRequiredResponseIfNeeded(t *testing.T) {
 	require.NoError(t, err)
 	require.Nil(t, txApprovalResp)
 
-	// test addresses with rejected KYC
+	// if KYC was previously rejected, handleActionRequiredResponseIfNeeded will return a "rejected" response
 	q = `
 		UPDATE accounts_kyc_status
 		SET 
@@ -292,17 +292,23 @@ func TestTxApproveHandler_handleActionRequiredResponseIfNeeded(t *testing.T) {
 	require.Equal(t, NewRejectedTxApprovalResponse("Your KYC was rejected and you're not authorized for operations above 500.00 FOO."), txApprovalResp)
 }
 
-func TestTxApproveHandlerTxApprove_rejected(t *testing.T) {
+func TestTxApproveHandler_txApprove_rejected(t *testing.T) {
 	ctx := context.Background()
 	db := dbtest.Open(t)
 	defer db.Close()
 	conn := db.Open()
 	defer conn.Close()
 
-	// prepare accounts on mock horizon
-	issuerKP := keypair.MustRandom()
 	senderKP := keypair.MustRandom()
 	receiverKP := keypair.MustRandom()
+	issuerKP := keypair.MustRandom()
+	assetGOAT := txnbuild.CreditAsset{
+		Code:   "GOAT",
+		Issuer: issuerKP.Address(),
+	}
+	kycThresholdAmount, err := amount.ParseInt64("500")
+	require.NoError(t, err)
+
 	horizonMock := horizonclient.MockClient{}
 	horizonMock.
 		On("AccountDetail", horizonclient.AccountRequest{AccountID: senderKP.Address()}).
@@ -311,13 +317,6 @@ func TestTxApproveHandlerTxApprove_rejected(t *testing.T) {
 			Sequence:  "2",
 		}, nil)
 
-	// prepare txApproveHandler
-	kycThresholdAmount, err := amount.ParseInt64("500")
-	require.NoError(t, err)
-	assetGOAT := txnbuild.CreditAsset{
-		Code:   "GOAT",
-		Issuer: issuerKP.Address(),
-	}
 	handler := txApproveHandler{
 		issuerKP:          issuerKP,
 		assetCode:         assetGOAT.GetCode(),
@@ -434,17 +433,23 @@ func TestTxApproveHandlerTxApprove_rejected(t *testing.T) {
 	assert.Equal(t, wantTxApprovalResp, txApprovalResp)
 }
 
-func TestTxApproveHandlerTxApprove_actionRequired(t *testing.T) {
+func TestTxApproveHandler_txApprove_actionRequired(t *testing.T) {
 	ctx := context.Background()
 	db := dbtest.Open(t)
 	defer db.Close()
 	conn := db.Open()
 	defer conn.Close()
 
-	// prepare accounts on mock horizon
-	issuerKP := keypair.MustRandom()
 	senderKP := keypair.MustRandom()
 	receiverKP := keypair.MustRandom()
+	issuerKP := keypair.MustRandom()
+	assetGOAT := txnbuild.CreditAsset{
+		Code:   "GOAT",
+		Issuer: issuerKP.Address(),
+	}
+	kycThresholdAmount, err := amount.ParseInt64("500")
+	require.NoError(t, err)
+
 	horizonMock := horizonclient.MockClient{}
 	horizonMock.
 		On("AccountDetail", horizonclient.AccountRequest{AccountID: senderKP.Address()}).
@@ -453,13 +458,6 @@ func TestTxApproveHandlerTxApprove_actionRequired(t *testing.T) {
 			Sequence:  "2",
 		}, nil)
 
-	// prepare txApproveHandler
-	kycThresholdAmount, err := amount.ParseInt64("500")
-	require.NoError(t, err)
-	assetGOAT := txnbuild.CreditAsset{
-		Code:   "GOAT",
-		Issuer: issuerKP.Address(),
-	}
 	handler := txApproveHandler{
 		issuerKP:          issuerKP,
 		assetCode:         assetGOAT.GetCode(),
@@ -470,7 +468,6 @@ func TestTxApproveHandlerTxApprove_actionRequired(t *testing.T) {
 		baseURL:           "https://example.com",
 	}
 
-	// rejected if sequence number is not incremental
 	tx, err := txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount: &horizon.Account{
@@ -512,17 +509,23 @@ func TestTxApproveHandlerTxApprove_actionRequired(t *testing.T) {
 	require.Equal(t, wantResp, txApprovalResp)
 }
 
-func TestTxApproveHandlerTxApprove_revised(t *testing.T) {
+func TestTxApproveHandler_txApprove_revised(t *testing.T) {
 	ctx := context.Background()
 	db := dbtest.Open(t)
 	defer db.Close()
 	conn := db.Open()
 	defer conn.Close()
 
-	// prepare accounts on mock horizon
-	issuerKP := keypair.MustRandom()
 	senderKP := keypair.MustRandom()
 	receiverKP := keypair.MustRandom()
+	issuerKP := keypair.MustRandom()
+	assetGOAT := txnbuild.CreditAsset{
+		Code:   "GOAT",
+		Issuer: issuerKP.Address(),
+	}
+	kycThresholdAmount, err := amount.ParseInt64("500")
+	require.NoError(t, err)
+
 	horizonMock := horizonclient.MockClient{}
 	horizonMock.
 		On("AccountDetail", horizonclient.AccountRequest{AccountID: senderKP.Address()}).
@@ -531,13 +534,6 @@ func TestTxApproveHandlerTxApprove_revised(t *testing.T) {
 			Sequence:  "2",
 		}, nil)
 
-	// prepare txApproveHandler
-	kycThresholdAmount, err := amount.ParseInt64("500")
-	require.NoError(t, err)
-	assetGOAT := txnbuild.CreditAsset{
-		Code:   "GOAT",
-		Issuer: issuerKP.Address(),
-	}
 	handler := txApproveHandler{
 		issuerKP:          issuerKP,
 		assetCode:         assetGOAT.GetCode(),
@@ -548,7 +544,6 @@ func TestTxApproveHandlerTxApprove_revised(t *testing.T) {
 		baseURL:           "https://example.com",
 	}
 
-	// rejected if sequence number is not incremental
 	tx, err := txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount: &horizon.Account{
@@ -585,30 +580,30 @@ func TestTxApproveHandlerTxApprove_revised(t *testing.T) {
 	require.Equal(t, int64(3), gotTx.SourceAccount().Sequence)
 
 	require.Len(t, gotTx.Operations(), 5)
-	// AllowTrust op where issuer fully authorizes account A, asset X
+	// AllowTrust op where issuer fully authorizes sender, asset GOAT
 	op0, ok := gotTx.Operations()[0].(*txnbuild.AllowTrust)
 	require.True(t, ok)
 	assert.Equal(t, op0.Trustor, senderKP.Address())
 	assert.Equal(t, op0.Type.GetCode(), assetGOAT.GetCode())
 	require.True(t, op0.Authorize)
-	// AllowTrust op where issuer fully authorizes account B, asset X
+	// AllowTrust op where issuer fully authorizes receiver, asset GOAT
 	op1, ok := gotTx.Operations()[1].(*txnbuild.AllowTrust)
 	require.True(t, ok)
 	assert.Equal(t, op1.Trustor, receiverKP.Address())
 	assert.Equal(t, op1.Type.GetCode(), assetGOAT.GetCode())
 	require.True(t, op1.Authorize)
-	// Payment from A to B
+	// Payment from sender to receiver
 	op2, ok := gotTx.Operations()[2].(*txnbuild.Payment)
 	require.True(t, ok)
 	assert.Equal(t, op2.Destination, receiverKP.Address())
 	assert.Equal(t, op2.Asset, assetGOAT)
-	// AllowTrust op where issuer fully deauthorizes account B, asset X
+	// AllowTrust op where issuer fully deauthorizes receiver, asset GOAT
 	op3, ok := gotTx.Operations()[3].(*txnbuild.AllowTrust)
 	require.True(t, ok)
 	assert.Equal(t, op3.Trustor, receiverKP.Address())
 	assert.Equal(t, op3.Type.GetCode(), assetGOAT.GetCode())
 	require.False(t, op3.Authorize)
-	// AllowTrust op where issuer fully deauthorizes account A, asset X
+	// AllowTrust op where issuer fully deauthorizes sender, asset GOAT
 	op4, ok := gotTx.Operations()[4].(*txnbuild.AllowTrust)
 	require.True(t, ok)
 	assert.Equal(t, op4.Trustor, senderKP.Address())

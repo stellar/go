@@ -30,21 +30,20 @@ func TestAPI_txApprove_rejected(t *testing.T) {
 	defer conn.Close()
 
 	issuerKP := keypair.MustRandom()
-	horizonMock := horizonclient.MockClient{}
 	kycThresholdAmount, err := amount.ParseInt64("500")
 	require.NoError(t, err)
 
 	handler := txApproveHandler{
 		issuerKP:          issuerKP,
 		assetCode:         "FOO",
-		horizonClient:     &horizonMock,
+		horizonClient:     &horizonclient.MockClient{},
 		networkPassphrase: network.TestNetworkPassphrase,
 		db:                conn,
 		kycThreshold:      kycThresholdAmount,
 		baseURL:           "https://example.com",
 	}
 
-	// rejected if no transaction "tx"is submitted
+	// rejected if no transaction "tx" is submitted
 	m := chi.NewMux()
 	m.Post("/tx-approve", handler.ServeHTTP)
 	r := httptest.NewRequest("POST", "/tx-approve", nil)
@@ -72,7 +71,6 @@ func TestAPI_txApprove_revised(t *testing.T) {
 	conn := db.Open()
 	defer conn.Close()
 
-	// Perpare accounts on mock horizon.
 	senderKP := keypair.MustRandom()
 	receiverKP := keypair.MustRandom()
 	issuerKP := keypair.MustRandom()
@@ -80,6 +78,9 @@ func TestAPI_txApprove_revised(t *testing.T) {
 		Code:   "GOAT",
 		Issuer: issuerKP.Address(),
 	}
+	kycThresholdAmount, err := amount.ParseInt64("500")
+	require.NoError(t, err)
+
 	horizonMock := horizonclient.MockClient{}
 	horizonMock.
 		On("AccountDetail", horizonclient.AccountRequest{AccountID: senderKP.Address()}).
@@ -88,8 +89,6 @@ func TestAPI_txApprove_revised(t *testing.T) {
 			Sequence:  "5",
 		}, nil)
 
-	kycThresholdAmount, err := amount.ParseInt64("500")
-	require.NoError(t, err)
 	handler := txApproveHandler{
 		issuerKP:          issuerKP,
 		assetCode:         assetGOAT.GetCode(),
@@ -125,10 +124,7 @@ func TestAPI_txApprove_revised(t *testing.T) {
 
 	m := chi.NewMux()
 	m.Post("/tx-approve", handler.ServeHTTP)
-	req := `{
-		"tx": "` + txe + `"
-	}`
-	r := httptest.NewRequest("POST", "/tx-approve", strings.NewReader(req))
+	r := httptest.NewRequest("POST", "/tx-approve", strings.NewReader(`{"tx": "`+txe+`"}`))
 	r = r.WithContext(ctx)
 	w := httptest.NewRecorder()
 	m.ServeHTTP(w, r)
@@ -151,30 +147,30 @@ func TestAPI_txApprove_revised(t *testing.T) {
 	require.True(t, ok)
 
 	require.Len(t, gotTx.Operations(), 5)
-	// AllowTrust op where issuer fully authorizes account A, asset X
+	// AllowTrust op where issuer fully authorizes sender, asset GOAT
 	op0, ok := gotTx.Operations()[0].(*txnbuild.AllowTrust)
 	require.True(t, ok)
 	assert.Equal(t, op0.Trustor, senderKP.Address())
 	assert.Equal(t, op0.Type.GetCode(), assetGOAT.GetCode())
 	require.True(t, op0.Authorize)
-	// AllowTrust op where issuer fully authorizes account B, asset X
+	// AllowTrust op where issuer fully authorizes receiver, asset GOAT
 	op1, ok := gotTx.Operations()[1].(*txnbuild.AllowTrust)
 	require.True(t, ok)
 	assert.Equal(t, op1.Trustor, receiverKP.Address())
 	assert.Equal(t, op1.Type.GetCode(), assetGOAT.GetCode())
 	require.True(t, op1.Authorize)
-	// Payment from A to B
+	// Payment from sender to receiver
 	op2, ok := gotTx.Operations()[2].(*txnbuild.Payment)
 	require.True(t, ok)
 	assert.Equal(t, op2.Destination, receiverKP.Address())
 	assert.Equal(t, op2.Asset, assetGOAT)
-	// AllowTrust op where issuer fully deauthorizes account B, asset X
+	// AllowTrust op where issuer fully deauthorizes receiver, asset GOAT
 	op3, ok := gotTx.Operations()[3].(*txnbuild.AllowTrust)
 	require.True(t, ok)
 	assert.Equal(t, op3.Trustor, receiverKP.Address())
 	assert.Equal(t, op3.Type.GetCode(), assetGOAT.GetCode())
 	require.False(t, op3.Authorize)
-	// AllowTrust op where issuer fully deauthorizes account A, asset X
+	// AllowTrust op where issuer fully deauthorizes sender, asset GOAT
 	op4, ok := gotTx.Operations()[4].(*txnbuild.AllowTrust)
 	require.True(t, ok)
 	assert.Equal(t, op4.Trustor, senderKP.Address())
@@ -199,6 +195,7 @@ func TestAPI_txAprove_actionRequired(t *testing.T) {
 	}
 	kycThresholdAmount, err := amount.ParseInt64("500")
 	require.NoError(t, err)
+
 	horizonMock := horizonclient.MockClient{}
 	horizonMock.
 		On("AccountDetail", horizonclient.AccountRequest{AccountID: senderKP.Address()}).
@@ -222,7 +219,6 @@ func TestAPI_txAprove_actionRequired(t *testing.T) {
 	m.Post("/tx-approve", handler.ServeHTTP)
 	m.Post("/kyc-status/{callback_id}", kycstatus.PostHandler{DB: conn}.ServeHTTP)
 
-	// Step 1: Client sends payment with 500+ GOAT
 	tx, err := txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount: &horizon.Account{
@@ -261,17 +257,17 @@ func TestAPI_txAprove_actionRequired(t *testing.T) {
 	err = conn.QueryRowContext(ctx, q, senderKP.Address()).Scan(&callbackID)
 	require.NoError(t, err)
 
-	var txApprovePOSTResponse txApprovalResponse
-	err = json.Unmarshal(body, &txApprovePOSTResponse)
+	var gotTxApprovalResponse txApprovalResponse
+	err = json.Unmarshal(body, &gotTxApprovalResponse)
 	require.NoError(t, err)
-	wantTXApprovalResponse := txApprovalResponse{
+	wantTxApprovalResponse := txApprovalResponse{
 		Status:       sep8Status("action_required"),
 		Message:      "Payments exceeding 500.00 GOAT require KYC approval. Please provide an email address.",
 		ActionURL:    "https://example.com/kyc-status/" + callbackID,
 		ActionMethod: "POST",
 		ActionFields: []string{"email_address"},
 	}
-	assert.Equal(t, wantTXApprovalResponse, txApprovePOSTResponse)
+	assert.Equal(t, wantTxApprovalResponse, gotTxApprovalResponse)
 }
 
 func TestAPI_txAprove_actionRequiredFlow(t *testing.T) {
@@ -291,6 +287,7 @@ func TestAPI_txAprove_actionRequiredFlow(t *testing.T) {
 	}
 	kycThresholdAmount, err := amount.ParseInt64("500")
 	require.NoError(t, err)
+
 	horizonMock := horizonclient.MockClient{}
 	horizonMock.
 		On("AccountDetail", horizonclient.AccountRequest{AccountID: senderKP.Address()}).
@@ -353,21 +350,21 @@ func TestAPI_txAprove_actionRequiredFlow(t *testing.T) {
 	err = conn.QueryRowContext(ctx, q, senderKP.Address()).Scan(&callbackID)
 	require.NoError(t, err)
 
-	var gotResponse txApprovalResponse
-	err = json.Unmarshal(body, &gotResponse)
+	var gotTxApprovalResponse txApprovalResponse
+	err = json.Unmarshal(body, &gotTxApprovalResponse)
 	require.NoError(t, err)
-	wantTXApprovalResponse := txApprovalResponse{
+	wantTxApprovalResponse := txApprovalResponse{
 		Status:       sep8Status("action_required"),
 		Message:      "Payments exceeding 500.00 GOAT require KYC approval. Please provide an email address.",
 		ActionURL:    "https://example.com/kyc-status/" + callbackID,
 		ActionMethod: "POST",
 		ActionFields: []string{"email_address"},
 	}
-	assert.Equal(t, wantTXApprovalResponse, gotResponse)
+	assert.Equal(t, wantTxApprovalResponse, gotTxApprovalResponse)
 
 	// Step 2: client follows up with action required. KYC should get approved for emails not starting with "x"
-	actionMethod := gotResponse.ActionMethod
-	actionURL := gotResponse.ActionURL
+	actionMethod := gotTxApprovalResponse.ActionMethod
+	actionURL := gotTxApprovalResponse.ActionURL
 	actionFields := strings.NewReader(`{"email_address": "test@email.com"}`)
 	r = httptest.NewRequest(actionMethod, actionURL, actionFields)
 	r = r.WithContext(ctx)
@@ -393,14 +390,14 @@ func TestAPI_txAprove_actionRequiredFlow(t *testing.T) {
 	body, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 
-	gotResponse = txApprovalResponse{}
-	err = json.Unmarshal(body, &gotResponse)
+	gotTxApprovalResponse = txApprovalResponse{}
+	err = json.Unmarshal(body, &gotTxApprovalResponse)
 	require.NoError(t, err)
-	assert.Equal(t, sep8StatusRevised, gotResponse.Status)
-	assert.Equal(t, "Authorization and deauthorization operations were added.", gotResponse.Message)
-	require.NotEmpty(t, gotResponse.Tx)
+	assert.Equal(t, sep8StatusRevised, gotTxApprovalResponse.Status)
+	assert.Equal(t, "Authorization and deauthorization operations were added.", gotTxApprovalResponse.Message)
+	require.NotEmpty(t, gotTxApprovalResponse.Tx)
 
-	// Step 4: client follows up with action required. KYC should get rejected for emails starting with "x"
+	// Step 4: client follows up with action required again. This time KYC will get rejected as the email starts with "x"
 	actionFields = strings.NewReader(`{"email_address": "xtest@email.com"}`)
 	r = httptest.NewRequest(actionMethod, actionURL, actionFields)
 	r = r.WithContext(ctx)
