@@ -1,6 +1,8 @@
 package processors
 
 import (
+	"context"
+
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"
@@ -29,7 +31,7 @@ func NewLedgerProcessor(
 	}
 }
 
-func (p *LedgersProcessor) ProcessTransaction(transaction ingest.LedgerTransaction) (err error) {
+func (p *LedgersProcessor) ProcessTransaction(ctx context.Context, transaction ingest.LedgerTransaction) (err error) {
 	opCount := len(transaction.Envelope.Operations())
 	p.txSetOpCount += opCount
 	if transaction.Result.Successful() {
@@ -42,8 +44,8 @@ func (p *LedgersProcessor) ProcessTransaction(transaction ingest.LedgerTransacti
 	return nil
 }
 
-func (p *LedgersProcessor) Commit() error {
-	rowsAffected, err := p.ledgersQ.InsertLedger(
+func (p *LedgersProcessor) Commit(ctx context.Context) error {
+	rowsAffected, err := p.ledgersQ.InsertLedger(ctx,
 		p.ledger,
 		p.successTxCount,
 		p.failedTxCount,

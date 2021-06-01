@@ -303,7 +303,7 @@ func TestAssetStats(t *testing.T) {
 		otherUSDAssetStat,
 		usdAssetStat,
 	} {
-		numChanged, err := q.InsertAssetStat(assetStat)
+		numChanged, err := q.InsertAssetStat(tt.Ctx, assetStat)
 		tt.Assert.NoError(err)
 		tt.Assert.Equal(numChanged, int64(1))
 	}
@@ -326,9 +326,9 @@ func TestAssetStats(t *testing.T) {
 			t.Fatalf("unexpected error %v", err)
 		}
 		batch := q.NewAccountsBatchInsertBuilder(0)
-		err := batch.Add(accountEntry)
+		err := batch.Add(tt.Ctx, accountEntry)
 		tt.Assert.NoError(err)
-		tt.Assert.NoError(batch.Exec())
+		tt.Assert.NoError(batch.Exec(tt.Ctx))
 	}
 
 	for _, testCase := range []struct {
@@ -407,7 +407,7 @@ func TestAssetStats(t *testing.T) {
 		},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
-			r := makeRequest(t, testCase.queryParams, map[string]string{}, q.Session)
+			r := makeRequest(t, testCase.queryParams, map[string]string{}, q)
 			results, err := handler.GetResourcePage(httptest.NewRecorder(), r)
 			assert.NoError(t, err)
 
@@ -446,11 +446,11 @@ func TestAssetStatsIssuerDoesNotExist(t *testing.T) {
 		Amount:      "1",
 		NumAccounts: 2,
 	}
-	numChanged, err := q.InsertAssetStat(usdAssetStat)
+	numChanged, err := q.InsertAssetStat(tt.Ctx, usdAssetStat)
 	tt.Assert.NoError(err)
 	tt.Assert.Equal(numChanged, int64(1))
 
-	r := makeRequest(t, map[string]string{}, map[string]string{}, q.Session)
+	r := makeRequest(t, map[string]string{}, map[string]string{}, q)
 	results, err := handler.GetResourcePage(httptest.NewRecorder(), r)
 	tt.Assert.NoError(err)
 

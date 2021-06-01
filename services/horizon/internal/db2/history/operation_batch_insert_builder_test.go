@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/guregu/null"
 	"github.com/stellar/go/services/horizon/internal/test"
 	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/xdr"
@@ -34,32 +35,35 @@ func TestAddOperation(t *testing.T) {
 	)
 
 	sequence := int32(56)
-	tt.Assert.NoError(txBatch.Add(transaction, uint32(sequence)))
-	tt.Assert.NoError(txBatch.Exec())
+	tt.Assert.NoError(txBatch.Add(tt.Ctx, transaction, uint32(sequence)))
+	tt.Assert.NoError(txBatch.Exec(tt.Ctx))
 
 	details, err := json.Marshal(map[string]string{
 		"to":         "GANFZDRBCNTUXIODCJEYMACPMCSZEVE4WZGZ3CZDZ3P2SXK4KH75IK6Y",
-		"from":       "GANFZDRBCNTUXIODCJEYMACPMCSZEVE4WZGZ3CZDZ3P2SXK4KH75IK6Y",
+		"from":       "GAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSTVY",
 		"amount":     "10.0000000",
 		"asset_type": "native",
 	})
 	tt.Assert.NoError(err)
 
-	err = builder.Add(
+	sourceAccount := "GAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSTVY"
+	sourceAccountMuxed := "MAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSAAAAAAAAAAE2LP26"
+	err = builder.Add(tt.Ctx,
 		toid.New(sequence, 1, 1).ToInt64(),
 		toid.New(sequence, 1, 0).ToInt64(),
 		1,
 		xdr.OperationTypePayment,
 		details,
-		"GANFZDRBCNTUXIODCJEYMACPMCSZEVE4WZGZ3CZDZ3P2SXK4KH75IK6Y",
+		sourceAccount,
+		null.StringFrom(sourceAccountMuxed),
 	)
 	tt.Assert.NoError(err)
 
-	err = builder.Exec()
+	err = builder.Exec(tt.Ctx)
 	tt.Assert.NoError(err)
 
 	ops := []Operation{}
-	err = q.Select(&ops, selectOperation)
+	err = q.Select(tt.Ctx, &ops, selectOperation)
 
 	if tt.Assert.NoError(err) {
 		tt.Assert.Len(ops, 1)
@@ -72,10 +76,11 @@ func TestAddOperation(t *testing.T) {
 		tt.Assert.Equal(int32(1), op.ApplicationOrder)
 		tt.Assert.Equal(xdr.OperationTypePayment, op.Type)
 		tt.Assert.Equal(
-			"{\"to\": \"GANFZDRBCNTUXIODCJEYMACPMCSZEVE4WZGZ3CZDZ3P2SXK4KH75IK6Y\", \"from\": \"GANFZDRBCNTUXIODCJEYMACPMCSZEVE4WZGZ3CZDZ3P2SXK4KH75IK6Y\", \"amount\": \"10.0000000\", \"asset_type\": \"native\"}",
+			"{\"to\": \"GANFZDRBCNTUXIODCJEYMACPMCSZEVE4WZGZ3CZDZ3P2SXK4KH75IK6Y\", \"from\": \"GAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSTVY\", \"amount\": \"10.0000000\", \"asset_type\": \"native\"}",
 			op.DetailsString.String,
 		)
-		tt.Assert.Equal("GANFZDRBCNTUXIODCJEYMACPMCSZEVE4WZGZ3CZDZ3P2SXK4KH75IK6Y", op.SourceAccount)
+		tt.Assert.Equal(sourceAccount, op.SourceAccount)
+		tt.Assert.Equal(sourceAccountMuxed, op.SourceAccountMuxed.String)
 		tt.Assert.Equal(true, op.TransactionSuccessful)
 	}
 }

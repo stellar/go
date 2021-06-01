@@ -77,6 +77,13 @@ To prepare a database for Horizon's use, first you must ensure the database is b
 
 It is recommended to set `random_page_cost=1` in Postgres configuration if you are using SSD storage. With this setting Query Planner will make a better use of indexes, especially for `JOIN` queries. We have noticed a huge speed improvement for some queries.
 
+To improve availability of both ingestion and frontend servers it's recommended to set the following values:
+* `tcp_keepalives_idle`: 10 seconds,
+* `tcp_keepalives_interval`: 1 second,
+* `tcp_keepalives_count`: 5.
+
+With the config above, if there are no queries from a given client for 10 seconds, Postgres should start sending TCP keepalive packets. It will retry 5 times every second. If there is no response from the client after that time it will drop the connection.
+
 ## Running
 
 Once your Horizon database is configured, you're ready to run Horizon.  To run Horizon you simply run `horizon` or `horizon serve`, both of which start the HTTP server and start logging to standard out.  When run, you should see some output that similar to:

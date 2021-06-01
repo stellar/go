@@ -14,11 +14,11 @@ func TestAccountActions_InvalidID(t *testing.T) {
 
 	// Makes StateMiddleware happy
 	q := history.Q{ht.HorizonSession()}
-	err := q.UpdateLastLedgerIngest(100)
+	err := q.UpdateLastLedgerIngest(ht.Ctx, 100)
 	ht.Assert.NoError(err)
-	err = q.UpdateIngestVersion(ingest.CurrentVersion)
+	err = q.UpdateIngestVersion(ht.Ctx, ingest.CurrentVersion)
 	ht.Assert.NoError(err)
-	_, err = q.InsertLedger(xdr.LedgerHeaderHistoryEntry{
+	_, err = q.InsertLedger(ht.Ctx, xdr.LedgerHeaderHistoryEntry{
 		Header: xdr.LedgerHeader{
 			LedgerSeq: 100,
 		},

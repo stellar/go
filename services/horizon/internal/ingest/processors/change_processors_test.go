@@ -1,6 +1,7 @@
 package processors
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -11,6 +12,7 @@ import (
 
 func TestStreamReaderError(t *testing.T) {
 	tt := assert.New(t)
+	ctx := context.Background()
 
 	mockChangeReader := &ingest.MockChangeReader{}
 	mockChangeReader.
@@ -18,12 +20,13 @@ func TestStreamReaderError(t *testing.T) {
 		Return(ingest.Change{}, errors.New("transient error")).Once()
 	mockChangeProcessor := &MockChangeProcessor{}
 
-	err := StreamChanges(mockChangeProcessor, mockChangeReader)
+	err := StreamChanges(ctx, mockChangeProcessor, mockChangeReader)
 	tt.EqualError(err, "could not read transaction: transient error")
 }
 
 func TestStreamChangeProcessorError(t *testing.T) {
 	tt := assert.New(t)
+	ctx := context.Background()
 
 	change := ingest.Change{}
 	mockChangeReader := &ingest.MockChangeReader{}
@@ -34,11 +37,11 @@ func TestStreamChangeProcessorError(t *testing.T) {
 	mockChangeProcessor := &MockChangeProcessor{}
 	mockChangeProcessor.
 		On(
-			"ProcessChange",
+			"ProcessChange", ctx,
 			change,
 		).
 		Return(errors.New("transient error")).Once()
 
-	err := StreamChanges(mockChangeProcessor, mockChangeReader)
+	err := StreamChanges(ctx, mockChangeProcessor, mockChangeReader)
 	tt.EqualError(err, "could not process change: transient error")
 }

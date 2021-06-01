@@ -1,6 +1,8 @@
 package processors
 
 import (
+	"context"
+
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"
@@ -32,7 +34,7 @@ func (p *OffersProcessor) reset() {
 	p.removeBatch = []int64{}
 }
 
-func (p *OffersProcessor) ProcessChange(change ingest.Change) error {
+func (p *OffersProcessor) ProcessChange(ctx context.Context, change ingest.Change) error {
 	if change.Type != xdr.LedgerEntryTypeOffer {
 		return nil
 	}
@@ -42,7 +44,7 @@ func (p *OffersProcessor) ProcessChange(change ingest.Change) error {
 	}
 
 	if p.cache.Size() > maxBatchSize {
-		if err := p.flushCache(); err != nil {
+		if err := p.flushCache(ctx); err != nil {
 			return errors.Wrap(err, "error in Commit")
 		}
 		p.reset()
@@ -68,7 +70,7 @@ func (p *OffersProcessor) ledgerEntryToRow(entry *xdr.LedgerEntry) history.Offer
 	}
 }
 
-func (p *OffersProcessor) flushCache() error {
+func (p *OffersProcessor) flushCache(ctx context.Context) error {
 	changes := p.cache.GetChanges()
 	for _, change := range changes {
 		var rowsAffected int64
@@ -81,7 +83,7 @@ func (p *OffersProcessor) flushCache() error {
 			// Created
 			action = "inserting"
 			row := p.ledgerEntryToRow(change.Post)
-			err = p.insertBatch.Add(row)
+			err = p.insertBatch.Add(ctx, row)
 			rowsAffected = 1 // We don't track this when batch inserting
 		case change.Pre != nil && change.Post == nil:
 			// Removed
@@ -95,7 +97,7 @@ func (p *OffersProcessor) flushCache() error {
 			offer := change.Post.Data.MustOffer()
 			offerID = offer.OfferId
 			row := p.ledgerEntryToRow(change.Post)
-			rowsAffected, err = p.offersQ.UpdateOffer(row)
+			rowsAffected, err = p.offersQ.UpdateOffer(ctx, row)
 		}
 
 		if err != nil {
@@ -112,13 +114,13 @@ func (p *OffersProcessor) flushCache() error {
 		}
 	}
 
-	err := p.insertBatch.Exec()
+	err := p.insertBatch.Exec(ctx)
 	if err != nil {
 		return errors.Wrap(err, "error executing batch")
 	}
 
 	if len(p.removeBatch) > 0 {
-		_, err = p.offersQ.RemoveOffers(p.removeBatch, p.sequence)
+		_, err = p.offersQ.RemoveOffers(ctx, p.removeBatch, p.sequence)
 		if err != nil {
 			return errors.Wrap(err, "error in RemoveOffers")
 		}
@@ -127,14 +129,14 @@ func (p *OffersProcessor) flushCache() error {
 	return nil
 }
 
-func (p *OffersProcessor) Commit() error {
-	if err := p.flushCache(); err != nil {
+func (p *OffersProcessor) Commit(ctx context.Context) error {
+	if err := p.flushCache(ctx); err != nil {
 		return errors.Wrap(err, "error flushing cache")
 	}
 
 	if p.sequence > offerCompactionWindow {
 		// trim offers table by removing offers which were deleted before the cutoff ledger
-		if offerRowsRemoved, err := p.offersQ.CompactOffers(p.sequence - offerCompactionWindow); err != nil {
+		if offerRowsRemoved, err := p.offersQ.CompactOffers(ctx, p.sequence-offerCompactionWindow); err != nil {
 			return errors.Wrap(err, "could not compact offers")
 		} else {
 			log.WithField("offer_rows_removed", offerRowsRemoved).Info("Trimmed offers table")

@@ -1,6 +1,8 @@
 package processors
 
 import (
+	"context"
+
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"
@@ -23,7 +25,7 @@ func (p *TrustLinesProcessor) reset() {
 	p.cache = ingest.NewChangeCompactor()
 }
 
-func (p *TrustLinesProcessor) ProcessChange(change ingest.Change) error {
+func (p *TrustLinesProcessor) ProcessChange(ctx context.Context, change ingest.Change) error {
 	if change.Type != xdr.LedgerEntryTypeTrustline {
 		return nil
 	}
@@ -34,7 +36,7 @@ func (p *TrustLinesProcessor) ProcessChange(change ingest.Change) error {
 	}
 
 	if p.cache.Size() > maxBatchSize {
-		err = p.Commit()
+		err = p.Commit(ctx)
 		if err != nil {
 			return errors.Wrap(err, "error in Commit")
 		}
@@ -44,7 +46,7 @@ func (p *TrustLinesProcessor) ProcessChange(change ingest.Change) error {
 	return nil
 }
 
-func (p *TrustLinesProcessor) Commit() error {
+func (p *TrustLinesProcessor) Commit(ctx context.Context) error {
 	batchUpsertTrustLines := []xdr.LedgerEntry{}
 
 	changes := p.cache.GetChanges()
@@ -66,7 +68,7 @@ func (p *TrustLinesProcessor) Commit() error {
 			if err != nil {
 				return errors.Wrap(err, "Error creating ledger key")
 			}
-			rowsAffected, err = p.trustLinesQ.RemoveTrustLine(*ledgerKey.TrustLine)
+			rowsAffected, err = p.trustLinesQ.RemoveTrustLine(ctx, *ledgerKey.TrustLine)
 			if err != nil {
 				return err
 			}
@@ -87,7 +89,7 @@ func (p *TrustLinesProcessor) Commit() error {
 
 	// Upsert accounts
 	if len(batchUpsertTrustLines) > 0 {
-		err := p.trustLinesQ.UpsertTrustLines(batchUpsertTrustLines)
+		err := p.trustLinesQ.UpsertTrustLines(ctx, batchUpsertTrustLines)
 		if err != nil {
 			return errors.Wrap(err, "errors in UpsertTrustLines")
 		}

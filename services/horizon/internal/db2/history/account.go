@@ -1,6 +1,7 @@
 package history
 
 import (
+	"context"
 	"sort"
 
 	sq "github.com/Masterminds/squirrel"
@@ -10,22 +11,22 @@ import (
 )
 
 // AccountByAddress loads a row from `history_accounts`, by address
-func (q *Q) AccountByAddress(dest interface{}, addy string) error {
+func (q *Q) AccountByAddress(ctx context.Context, dest interface{}, addy string) error {
 	sql := selectAccount.Limit(1).Where("ha.address = ?", addy)
-	return q.Get(dest, sql)
+	return q.Get(ctx, dest, sql)
 }
 
 // AccountsByAddresses loads a rows from `history_accounts`, by addresses
-func (q *Q) AccountsByAddresses(dest interface{}, addresses []string) error {
+func (q *Q) AccountsByAddresses(ctx context.Context, dest interface{}, addresses []string) error {
 	sql := selectAccount.Where(map[string]interface{}{
 		"ha.address": addresses, // ha.address IN (...)
 	})
-	return q.Select(dest, sql)
+	return q.Select(ctx, dest, sql)
 }
 
 // CreateAccounts creates rows in the history_accounts table for a given list of addresses.
 // CreateAccounts returns a mapping of account address to its corresponding id in the history_accounts table
-func (q *Q) CreateAccounts(addresses []string, batchSize int) (map[string]int64, error) {
+func (q *Q) CreateAccounts(ctx context.Context, addresses []string, batchSize int) (map[string]int64, error) {
 	builder := &db.BatchInsertBuilder{
 		Table:        q.GetTable("history_accounts"),
 		MaxBatchSize: batchSize,
@@ -36,7 +37,7 @@ func (q *Q) CreateAccounts(addresses []string, batchSize int) (map[string]int64,
 	// https://github.com/stellar/go/issues/2370
 	sort.Strings(addresses)
 	for _, address := range addresses {
-		err := builder.Row(map[string]interface{}{
+		err := builder.Row(ctx, map[string]interface{}{
 			"address": address,
 		})
 		if err != nil {
@@ -44,7 +45,7 @@ func (q *Q) CreateAccounts(addresses []string, batchSize int) (map[string]int64,
 		}
 	}
 
-	err := builder.Exec()
+	err := builder.Exec(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not exec asset insert builder")
 	}
@@ -60,7 +61,7 @@ func (q *Q) CreateAccounts(addresses []string, batchSize int) (map[string]int64,
 		}
 		subset := addresses[i:end]
 
-		if err := q.AccountsByAddresses(&accounts, subset); err != nil {
+		if err := q.AccountsByAddresses(ctx, &accounts, subset); err != nil {
 			return nil, errors.Wrap(err, "could not select accounts")
 		}
 

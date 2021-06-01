@@ -1,6 +1,8 @@
 package history
 
 import (
+	"context"
+
 	"github.com/stellar/go/support/db"
 )
 
@@ -14,8 +16,8 @@ type QParticipants interface {
 // TransactionParticipantsBatchInsertBuilder is used to insert transaction participants into the
 // history_transaction_participants table
 type TransactionParticipantsBatchInsertBuilder interface {
-	Add(transactionID, accountID int64) error
-	Exec() error
+	Add(ctx context.Context, transactionID, accountID int64) error
+	Exec(ctx context.Context) error
 }
 
 type transactionParticipantsBatchInsertBuilder struct {
@@ -33,14 +35,14 @@ func (q *Q) NewTransactionParticipantsBatchInsertBuilder(maxBatchSize int) Trans
 }
 
 // Add adds a new transaction participant to the batch
-func (i *transactionParticipantsBatchInsertBuilder) Add(transactionID, accountID int64) error {
-	return i.builder.Row(map[string]interface{}{
+func (i *transactionParticipantsBatchInsertBuilder) Add(ctx context.Context, transactionID, accountID int64) error {
+	return i.builder.Row(ctx, map[string]interface{}{
 		"history_transaction_id": transactionID,
 		"history_account_id":     accountID,
 	})
 }
 
 // Exec flushes all pending transaction participants to the db
-func (i *transactionParticipantsBatchInsertBuilder) Exec() error {
-	return i.builder.Exec()
+func (i *transactionParticipantsBatchInsertBuilder) Exec(ctx context.Context) error {
+	return i.builder.Exec(ctx)
 }

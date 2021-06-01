@@ -3,6 +3,11 @@
 All notable changes to this project will be documented in this
 file.  This project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+
+* Added transaction and operation result codes to the horizonclient.Error string for easy glancing at string only errors for underlying cause.
+* Fix bug in the transaction submission where requests with large transaction payloads fail with an HTTP 414 URI Too Long error ([#3643](https://github.com/stellar/go/pull/3643)).
+
 ## [v7.0.0](https://github.com/stellar/go/releases/tag/horizonclient-v7.0.0) - 2021-05-15
 
 None

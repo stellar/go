@@ -75,7 +75,7 @@ func TestTransactionToMap_muxed(t *testing.T) {
 				},
 			},
 		},
-		Meta: xdr.TransactionMeta{
+		UnsafeMeta: xdr.TransactionMeta{
 			V:          1,
 			Operations: &[]xdr.OperationMeta{},
 			V1: &xdr.TransactionMetaV1{

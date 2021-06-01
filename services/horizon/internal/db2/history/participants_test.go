@@ -18,7 +18,7 @@ func getTransactionParticipants(tt *test.T, q *Q) []transactionParticipant {
 		From("history_transaction_participants").
 		OrderBy("(history_transaction_id, history_account_id) asc")
 
-	err := q.Select(&participants, sql)
+	err := q.Select(tt.Ctx, &participants, sql)
 	if err != nil {
 		tt.T.Fatal(err)
 	}
@@ -39,11 +39,11 @@ func TestTransactionParticipantsBatch(t *testing.T) {
 	accountID := int64(100)
 
 	for i := int64(0); i < 3; i++ {
-		tt.Assert.NoError(batch.Add(transactionID, accountID+i))
+		tt.Assert.NoError(batch.Add(tt.Ctx, transactionID, accountID+i))
 	}
 
-	tt.Assert.NoError(batch.Add(otherTransactionID, accountID))
-	tt.Assert.NoError(batch.Exec())
+	tt.Assert.NoError(batch.Add(tt.Ctx, otherTransactionID, accountID))
+	tt.Assert.NoError(batch.Exec(tt.Ctx))
 
 	participants := getTransactionParticipants(tt, q)
 	tt.Assert.Equal(

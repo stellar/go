@@ -145,7 +145,7 @@ func TestTransactionActions_Show_Failed(t *testing.T) {
 	}
 
 	// NULL value
-	_, err := ht.HorizonSession().ExecRaw(
+	_, err := ht.HorizonSession().ExecRaw(ht.Ctx,
 		`UPDATE history_transactions SET successful = NULL WHERE transaction_hash = ?`,
 		"56e3216045d579bea40f2d35a09406de3a894ecb5be70dbda5ec9c0427a0d5a1",
 	)
@@ -193,9 +193,9 @@ func TestTransactionActions_Index(t *testing.T) {
 
 	// Makes StateMiddleware happy
 	q := history.Q{ht.HorizonSession()}
-	err := q.UpdateLastLedgerIngest(100)
+	err := q.UpdateLastLedgerIngest(ht.Ctx, 100)
 	ht.Assert.NoError(err)
-	err = q.UpdateIngestVersion(ingest.CurrentVersion)
+	err = q.UpdateIngestVersion(ht.Ctx, ingest.CurrentVersion)
 	ht.Assert.NoError(err)
 
 	// checks if empty param returns 404 instead of all payments

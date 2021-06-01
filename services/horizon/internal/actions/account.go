@@ -26,27 +26,27 @@ func AccountInfo(ctx context.Context, hq *history.Q, addr string) (*protocol.Acc
 		resouce    protocol.Account
 	)
 
-	record, err := hq.GetAccountByID(addr)
+	record, err := hq.GetAccountByID(ctx, addr)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting history account record")
 	}
 
-	data, err = hq.GetAccountDataByAccountID(addr)
+	data, err = hq.GetAccountDataByAccountID(ctx, addr)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting history account data")
 	}
 
-	signers, err = hq.GetAccountSignersByAccountID(addr)
+	signers, err = hq.GetAccountSignersByAccountID(ctx, addr)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting history signers")
 	}
 
-	trustlines, err = hq.GetSortedTrustLinesByAccountID(addr)
+	trustlines, err = hq.GetSortedTrustLinesByAccountID(ctx, addr)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting history trustlines")
 	}
 
-	ledger, err := getLedgerBySequence(hq, int32(record.LastModifiedLedger))
+	ledger, err := getLedgerBySequence(ctx, hq, int32(record.LastModifiedLedger))
 	if err != nil {
 		return nil, err
 	}
@@ -149,17 +149,17 @@ func (handler GetAccountsHandler) GetResourcePage(
 	var records []history.AccountEntry
 
 	if len(qp.Sponsor) > 0 {
-		records, err = historyQ.AccountsForSponsor(qp.Sponsor, pq)
+		records, err = historyQ.AccountsForSponsor(ctx, qp.Sponsor, pq)
 		if err != nil {
 			return nil, errors.Wrap(err, "loading account records")
 		}
 	} else if len(qp.Signer) > 0 {
-		records, err = historyQ.AccountEntriesForSigner(qp.Signer, pq)
+		records, err = historyQ.AccountEntriesForSigner(ctx, qp.Signer, pq)
 		if err != nil {
 			return nil, errors.Wrap(err, "loading account records")
 		}
 	} else {
-		records, err = historyQ.AccountsForAsset(*qp.Asset(), pq)
+		records, err = historyQ.AccountsForAsset(ctx, *qp.Asset(), pq)
 		if err != nil {
 			return nil, errors.Wrap(err, "loading account records")
 		}
@@ -177,17 +177,17 @@ func (handler GetAccountsHandler) GetResourcePage(
 		accountIDs = append(accountIDs, record.AccountID)
 	}
 
-	signers, err := handler.loadSigners(historyQ, accountIDs)
+	signers, err := handler.loadSigners(ctx, historyQ, accountIDs)
 	if err != nil {
 		return nil, err
 	}
 
-	trustlines, err := handler.loadTrustlines(historyQ, accountIDs)
+	trustlines, err := handler.loadTrustlines(ctx, historyQ, accountIDs)
 	if err != nil {
 		return nil, err
 	}
 
-	data, err := handler.loadData(historyQ, accountIDs)
+	data, err := handler.loadData(ctx, historyQ, accountIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -197,7 +197,7 @@ func (handler GetAccountsHandler) GetResourcePage(
 		ledgerCache.Queue(int32(record.LastModifiedLedger))
 	}
 
-	if err := ledgerCache.Load(historyQ); err != nil {
+	if err := ledgerCache.Load(ctx, historyQ); err != nil {
 		return nil, errors.Wrap(err, "failed to load ledger batch")
 	}
 
@@ -218,10 +218,10 @@ func (handler GetAccountsHandler) GetResourcePage(
 	return accounts, nil
 }
 
-func (handler GetAccountsHandler) loadData(historyQ *history.Q, accounts []string) (map[string][]history.Data, error) {
+func (handler GetAccountsHandler) loadData(ctx context.Context, historyQ *history.Q, accounts []string) (map[string][]history.Data, error) {
 	data := make(map[string][]history.Data)
 
-	records, err := historyQ.GetAccountDataByAccountsID(accounts)
+	records, err := historyQ.GetAccountDataByAccountsID(ctx, accounts)
 	if err != nil {
 		return data, errors.Wrap(err, "loading account data records by accounts id")
 	}
@@ -233,10 +233,10 @@ func (handler GetAccountsHandler) loadData(historyQ *history.Q, accounts []strin
 	return data, nil
 }
 
-func (handler GetAccountsHandler) loadTrustlines(historyQ *history.Q, accounts []string) (map[string][]history.TrustLine, error) {
+func (handler GetAccountsHandler) loadTrustlines(ctx context.Context, historyQ *history.Q, accounts []string) (map[string][]history.TrustLine, error) {
 	trustLines := make(map[string][]history.TrustLine)
 
-	records, err := historyQ.GetSortedTrustLinesByAccountIDs(accounts)
+	records, err := historyQ.GetSortedTrustLinesByAccountIDs(ctx, accounts)
 	if err != nil {
 		return trustLines, errors.Wrap(err, "loading trustline records by accounts")
 	}
@@ -248,10 +248,10 @@ func (handler GetAccountsHandler) loadTrustlines(historyQ *history.Q, accounts [
 	return trustLines, nil
 }
 
-func (handler GetAccountsHandler) loadSigners(historyQ *history.Q, accounts []string) (map[string][]history.AccountSigner, error) {
+func (handler GetAccountsHandler) loadSigners(ctx context.Context, historyQ *history.Q, accounts []string) (map[string][]history.AccountSigner, error) {
 	signers := make(map[string][]history.AccountSigner)
 
-	records, err := historyQ.SignersForAccounts(accounts)
+	records, err := historyQ.SignersForAccounts(ctx, accounts)
 	if err != nil {
 		return signers, errors.Wrap(err, "loading account signers by account")
 	}
@@ -263,9 +263,9 @@ func (handler GetAccountsHandler) loadSigners(historyQ *history.Q, accounts []st
 	return signers, nil
 }
 
-func getLedgerBySequence(hq *history.Q, sequence int32) (*history.Ledger, error) {
+func getLedgerBySequence(ctx context.Context, hq *history.Q, sequence int32) (*history.Ledger, error) {
 	ledger := &history.Ledger{}
-	err := hq.LedgerBySequence(ledger, sequence)
+	err := hq.LedgerBySequence(ctx, ledger, sequence)
 	switch {
 	case hq.NoRows(err):
 		return nil, nil

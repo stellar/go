@@ -21,8 +21,8 @@ func TestRetrieveMarketData(t *testing.T) {
 
 	var session tickerdb.TickerSession
 	session.DB = db.Open()
-	session.Ctx = context.Background()
 	defer session.DB.Close()
+	ctx := context.Background()
 
 	// Run migrations to make sure the tests are run
 	// on the most updated schema version
@@ -37,10 +37,10 @@ func TestRetrieveMarketData(t *testing.T) {
 	_, err = tbl.Insert(tickerdb.Issuer{
 		PublicKey: "GCF3TQXKZJNFJK7HCMNE2O2CUNKCJH2Y2ROISTBPLC7C5EIA5NNG2XZB",
 		Name:      "FOO BAR",
-	}).IgnoreCols("id").Exec()
+	}).IgnoreCols("id").Exec(ctx)
 	require.NoError(t, err)
 	var issuer tickerdb.Issuer
-	err = session.GetRaw(&issuer, `
+	err = session.GetRaw(ctx, &issuer, `
 		SELECT *
 		FROM issuers
 		ORDER BY id DESC
@@ -49,14 +49,14 @@ func TestRetrieveMarketData(t *testing.T) {
 	require.NoError(t, err)
 
 	// Adding a seed asset to be used later:
-	err = session.InsertOrUpdateAsset(&tickerdb.Asset{
+	err = session.InsertOrUpdateAsset(ctx, &tickerdb.Asset{
 		Code:     "XLM",
 		IssuerID: issuer.ID,
 		IsValid:  true,
 	}, []string{"code", "issuer_id"})
 	require.NoError(t, err)
 	var xlmAsset tickerdb.Asset
-	err = session.GetRaw(&xlmAsset, `
+	err = session.GetRaw(ctx, &xlmAsset, `
 		SELECT *
 		FROM assets
 		ORDER BY id DESC
@@ -65,14 +65,14 @@ func TestRetrieveMarketData(t *testing.T) {
 	require.NoError(t, err)
 
 	// Adding another asset to be used later:
-	err = session.InsertOrUpdateAsset(&tickerdb.Asset{
+	err = session.InsertOrUpdateAsset(ctx, &tickerdb.Asset{
 		Code:     "BTC",
 		IssuerID: issuer.ID,
 		IsValid:  true,
 	}, []string{"code", "issuer_id"})
 	require.NoError(t, err)
 	var btcAsset tickerdb.Asset
-	err = session.GetRaw(&btcAsset, `
+	err = session.GetRaw(ctx, &btcAsset, `
 		SELECT *
 		FROM assets
 		ORDER BY id DESC
@@ -81,14 +81,14 @@ func TestRetrieveMarketData(t *testing.T) {
 	require.NoError(t, err)
 
 	// Adding a third asset:
-	err = session.InsertOrUpdateAsset(&tickerdb.Asset{
+	err = session.InsertOrUpdateAsset(ctx, &tickerdb.Asset{
 		Code:     "ETH",
 		IssuerID: issuer.ID,
 		IsValid:  true,
 	}, []string{"code", "issuer_id"})
 	require.NoError(t, err)
 	var ethAsset tickerdb.Asset
-	err = session.GetRaw(&ethAsset, `
+	err = session.GetRaw(ctx, &ethAsset, `
 		SELECT *
 		FROM assets
 		ORDER BY id DESC
@@ -155,7 +155,7 @@ func TestRetrieveMarketData(t *testing.T) {
 			LedgerCloseTime: oneMonthAgo,
 		},
 	}
-	err = session.BulkInsertTrades(trades)
+	err = session.BulkInsertTrades(ctx, trades)
 	require.NoError(t, err)
 
 	// Adding some orderbook stats:
@@ -173,14 +173,14 @@ func TestRetrieveMarketData(t *testing.T) {
 		SpreadMidPoint: 0.35,
 		UpdatedAt:      obTime,
 	}
-	err = session.InsertOrUpdateOrderbookStats(
+	err = session.InsertOrUpdateOrderbookStats(ctx,
 		&orderbookStats,
 		[]string{"base_asset_id", "counter_asset_id"},
 	)
 	require.NoError(t, err)
 
 	var obBTCETH1 tickerdb.OrderbookStats
-	err = session.GetRaw(&obBTCETH1, `
+	err = session.GetRaw(ctx, &obBTCETH1, `
 		SELECT *
 		FROM orderbook_stats
 		ORDER BY id DESC
@@ -201,14 +201,14 @@ func TestRetrieveMarketData(t *testing.T) {
 		SpreadMidPoint: 0.36,
 		UpdatedAt:      obTime,
 	}
-	err = session.InsertOrUpdateOrderbookStats(
+	err = session.InsertOrUpdateOrderbookStats(ctx,
 		&orderbookStats,
 		[]string{"base_asset_id", "counter_asset_id"},
 	)
 	require.NoError(t, err)
 
 	var obBTCETH2 tickerdb.OrderbookStats
-	err = session.GetRaw(&obBTCETH2, `
+	err = session.GetRaw(ctx, &obBTCETH2, `
 		SELECT *
 		FROM orderbook_stats
 		ORDER BY id DESC
@@ -217,7 +217,7 @@ func TestRetrieveMarketData(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotEqual(t, obBTCETH1.ID, obBTCETH2.ID)
 
-	markets, err := session.RetrieveMarketData()
+	markets, err := session.RetrieveMarketData(ctx)
 	require.NoError(t, err)
 	assert.Equal(t, 2, len(markets))
 
@@ -307,6 +307,7 @@ func TestRetrieveMarketData(t *testing.T) {
 func TestRetrievePartialMarkets(t *testing.T) {
 	session := tickerdbtest.SetupTickerTestSession(t, "../migrations")
 	defer session.DB.Close()
+	ctx := context.Background()
 
 	issuer1PK := "GCF3TQXKZJNFJK7HCMNE2O2CUNKCJH2Y2ROISTBPLC7C5EIA5NNG2XZB"
 	issuer2PK := "ABF3TQXKZJNFJK7HCMNE2O2CUNKCJH2Y2ROISTBPLC7C5EIA5NNG2XZB"
@@ -314,7 +315,7 @@ func TestRetrievePartialMarkets(t *testing.T) {
 	tenMinutesAgo := now.Add(-10 * time.Minute)
 	oneHourAgo := now.Add(-1 * time.Hour)
 
-	partialMkts, err := session.RetrievePartialMarkets(
+	partialMkts, err := session.RetrievePartialMarkets(ctx,
 		nil, nil, nil, nil, 12,
 	)
 	require.NoError(t, err)
@@ -385,7 +386,7 @@ func TestRetrievePartialMarkets(t *testing.T) {
 	assert.Equal(t, 0.70, btceth2Mkt.LowestAskReverse)
 
 	// Now let's use the same data, but aggregating by asset pair
-	partialAggMkts, err := session.RetrievePartialAggMarkets(nil, nil, 12)
+	partialAggMkts, err := session.RetrievePartialAggMarkets(ctx, nil, nil, 12)
 	require.NoError(t, err)
 	assert.Equal(t, 2, len(partialAggMkts))
 
@@ -411,7 +412,7 @@ func TestRetrievePartialMarkets(t *testing.T) {
 
 	// Validate the pair name parsing:
 	pairNames := []*string{&btcEthStr}
-	partialAggMkts, err = session.RetrievePartialAggMarkets(nil, &pairNames, 12)
+	partialAggMkts, err = session.RetrievePartialAggMarkets(ctx, nil, &pairNames, 12)
 	require.NoError(t, err)
 	assert.Equal(t, 1, len(partialAggMkts))
 	assert.Equal(t, int32(3), partialAggMkts[0].TradeCount)
@@ -433,7 +434,7 @@ func TestRetrievePartialMarkets(t *testing.T) {
 	// Validate that both markets are parsed.
 	btcXlmStr := "BTC_XLM"
 	pairNames = []*string{&btcEthStr, &btcXlmStr}
-	partialAggMkts, err = session.RetrievePartialAggMarkets(nil, &pairNames, 12)
+	partialAggMkts, err = session.RetrievePartialAggMarkets(ctx, nil, &pairNames, 12)
 	require.NoError(t, err)
 	assert.Equal(t, 2, len(partialAggMkts))
 	assert.Equal(t, int32(3), partialAggMkts[0].TradeCount)
@@ -441,12 +442,12 @@ func TestRetrievePartialMarkets(t *testing.T) {
 
 	// Validate that passing a code works.
 	btcStr := "BTC"
-	partialAggMkts, err = session.RetrievePartialAggMarkets(&btcStr, nil, 12)
+	partialAggMkts, err = session.RetrievePartialAggMarkets(ctx, &btcStr, nil, 12)
 	require.NoError(t, err)
 	assert.Equal(t, 2, len(partialAggMkts))
 
 	// Make sure there's an error with a non-nil code and non-nil pair names.
-	partialAggMkts, err = session.RetrievePartialAggMarkets(&btcStr, &pairNames, 12)
+	partialAggMkts, err = session.RetrievePartialAggMarkets(ctx, &btcStr, &pairNames, 12)
 	require.Error(t, err)
 }
 
@@ -456,8 +457,8 @@ func Test24hStatsFallback(t *testing.T) {
 
 	var session tickerdb.TickerSession
 	session.DB = db.Open()
-	session.Ctx = context.Background()
 	defer session.DB.Close()
+	ctx := context.Background()
 
 	// Run migrations to make sure the tests are run
 	// on the most updated schema version
@@ -472,10 +473,10 @@ func Test24hStatsFallback(t *testing.T) {
 	_, err = tbl.Insert(tickerdb.Issuer{
 		PublicKey: "GCF3TQXKZJNFJK7HCMNE2O2CUNKCJH2Y2ROISTBPLC7C5EIA5NNG2XZB",
 		Name:      "FOO BAR",
-	}).IgnoreCols("id").Exec()
+	}).IgnoreCols("id").Exec(ctx)
 	require.NoError(t, err)
 	var issuer tickerdb.Issuer
-	err = session.GetRaw(&issuer, `
+	err = session.GetRaw(ctx, &issuer, `
 		SELECT *
 		FROM issuers
 		ORDER BY id DESC
@@ -484,14 +485,14 @@ func Test24hStatsFallback(t *testing.T) {
 	require.NoError(t, err)
 
 	// Adding a seed asset to be used later:
-	err = session.InsertOrUpdateAsset(&tickerdb.Asset{
+	err = session.InsertOrUpdateAsset(ctx, &tickerdb.Asset{
 		Code:     "XLM",
 		IssuerID: issuer.ID,
 		IsValid:  true,
 	}, []string{"code", "issuer_id"})
 	require.NoError(t, err)
 	var xlmAsset tickerdb.Asset
-	err = session.GetRaw(&xlmAsset, `
+	err = session.GetRaw(ctx, &xlmAsset, `
 		SELECT *
 		FROM assets
 		ORDER BY id DESC
@@ -500,14 +501,14 @@ func Test24hStatsFallback(t *testing.T) {
 	require.NoError(t, err)
 
 	// Adding another asset to be used later:
-	err = session.InsertOrUpdateAsset(&tickerdb.Asset{
+	err = session.InsertOrUpdateAsset(ctx, &tickerdb.Asset{
 		Code:     "BTC",
 		IssuerID: issuer.ID,
 		IsValid:  true,
 	}, []string{"code", "issuer_id"})
 	require.NoError(t, err)
 	var btcAsset tickerdb.Asset
-	err = session.GetRaw(&btcAsset, `
+	err = session.GetRaw(ctx, &btcAsset, `
 		SELECT *
 		FROM assets
 		ORDER BY id DESC
@@ -541,10 +542,10 @@ func Test24hStatsFallback(t *testing.T) {
 			LedgerCloseTime: threeDaysAgo,
 		},
 	}
-	err = session.BulkInsertTrades(trades)
+	err = session.BulkInsertTrades(ctx, trades)
 	require.NoError(t, err)
 
-	markets, err := session.RetrieveMarketData()
+	markets, err := session.RetrieveMarketData(ctx)
 	require.NoError(t, err)
 	assert.Equal(t, 1, len(markets))
 	mkt := markets[0]
@@ -562,8 +563,8 @@ func TestPreferAnchorAssetCode(t *testing.T) {
 
 	var session tickerdb.TickerSession
 	session.DB = db.Open()
-	session.Ctx = context.Background()
 	defer session.DB.Close()
+	ctx := context.Background()
 
 	// Run migrations to make sure the tests are run
 	// on the most updated schema version
@@ -578,10 +579,10 @@ func TestPreferAnchorAssetCode(t *testing.T) {
 	_, err = tbl.Insert(tickerdb.Issuer{
 		PublicKey: "GCF3TQXKZJNFJK7HCMNE2O2CUNKCJH2Y2ROISTBPLC7C5EIA5NNG2XZB",
 		Name:      "FOO BAR",
-	}).IgnoreCols("id").Exec()
+	}).IgnoreCols("id").Exec(ctx)
 	require.NoError(t, err)
 	var issuer tickerdb.Issuer
-	err = session.GetRaw(&issuer, `
+	err = session.GetRaw(ctx, &issuer, `
 		SELECT *
 		FROM issuers
 		ORDER BY id DESC
@@ -590,14 +591,14 @@ func TestPreferAnchorAssetCode(t *testing.T) {
 	require.NoError(t, err)
 
 	// Adding a seed asset to be used later:
-	err = session.InsertOrUpdateAsset(&tickerdb.Asset{
+	err = session.InsertOrUpdateAsset(ctx, &tickerdb.Asset{
 		Code:     "XLM",
 		IssuerID: issuer.ID,
 		IsValid:  true,
 	}, []string{"code", "issuer_id"})
 	require.NoError(t, err)
 	var xlmAsset tickerdb.Asset
-	err = session.GetRaw(&xlmAsset, `
+	err = session.GetRaw(ctx, &xlmAsset, `
 		SELECT *
 		FROM assets
 		ORDER BY id DESC
@@ -606,7 +607,7 @@ func TestPreferAnchorAssetCode(t *testing.T) {
 	require.NoError(t, err)
 
 	// Adding another asset to be used later:
-	err = session.InsertOrUpdateAsset(&tickerdb.Asset{
+	err = session.InsertOrUpdateAsset(ctx, &tickerdb.Asset{
 		Code:            "EURT",
 		IssuerID:        issuer.ID,
 		IsValid:         true,
@@ -614,7 +615,7 @@ func TestPreferAnchorAssetCode(t *testing.T) {
 	}, []string{"code", "issuer_id"})
 	require.NoError(t, err)
 	var btcAsset tickerdb.Asset
-	err = session.GetRaw(&btcAsset, `
+	err = session.GetRaw(ctx, &btcAsset, `
 		SELECT *
 		FROM assets
 		ORDER BY id DESC
@@ -648,17 +649,17 @@ func TestPreferAnchorAssetCode(t *testing.T) {
 			LedgerCloseTime: threeDaysAgo,
 		},
 	}
-	err = session.BulkInsertTrades(trades)
+	err = session.BulkInsertTrades(ctx, trades)
 	require.NoError(t, err)
 
-	markets, err := session.RetrieveMarketData()
+	markets, err := session.RetrieveMarketData(ctx)
 	require.NoError(t, err)
 	require.Equal(t, 1, len(markets))
 	for _, mkt := range markets {
 		require.Equal(t, "XLM_EUR", mkt.TradePair)
 	}
 
-	partialAggMkts, err := session.RetrievePartialAggMarkets(nil, nil, 168)
+	partialAggMkts, err := session.RetrievePartialAggMarkets(ctx, nil, nil, 168)
 	require.NoError(t, err)
 	assert.Equal(t, 1, len(partialAggMkts))
 	for _, aggMkt := range partialAggMkts {

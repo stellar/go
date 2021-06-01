@@ -151,10 +151,10 @@ func TestOperationFeeTestsActions_Show(t *testing.T) {
 			defer ht.Finish()
 
 			// Update max_tx_set_size on ledgers
-			_, err := ht.HorizonSession().ExecRaw("UPDATE history_ledgers SET max_tx_set_size = 50")
+			_, err := ht.HorizonSession().ExecRaw(ht.Ctx, "UPDATE history_ledgers SET max_tx_set_size = 50")
 			ht.Require.NoError(err)
 
-			ht.App.UpdateFeeStatsState()
+			ht.App.UpdateFeeStatsState(ht.Ctx)
 
 			w := ht.Get("/fee_stats")
 
@@ -205,14 +205,14 @@ func TestOperationFeeTestsActions_ShowMultiOp(t *testing.T) {
 	defer ht.Finish()
 
 	// Update max_tx_set_size on ledgers
-	_, err := ht.HorizonSession().ExecRaw("UPDATE history_ledgers SET max_tx_set_size = 50")
+	_, err := ht.HorizonSession().ExecRaw(ht.Ctx, "UPDATE history_ledgers SET max_tx_set_size = 50")
 	ht.Require.NoError(err)
 
 	// Update number of ops on each transaction
-	_, err = ht.HorizonSession().ExecRaw("UPDATE history_transactions SET operation_count = operation_count * 2")
+	_, err = ht.HorizonSession().ExecRaw(ht.Ctx, "UPDATE history_transactions SET operation_count = operation_count * 2")
 	ht.Require.NoError(err)
 
-	ht.App.UpdateFeeStatsState()
+	ht.App.UpdateFeeStatsState(ht.Ctx)
 
 	w := ht.Get("/fee_stats")
 
@@ -271,14 +271,14 @@ func TestOperationFeeTestsActions_NotInterpolating(t *testing.T) {
 	defer ht.Finish()
 
 	// Update max_tx_set_size on ledgers
-	_, err := ht.HorizonSession().ExecRaw("UPDATE history_ledgers SET max_tx_set_size = 50")
+	_, err := ht.HorizonSession().ExecRaw(ht.Ctx, "UPDATE history_ledgers SET max_tx_set_size = 50")
 	ht.Require.NoError(err)
 
 	// Update one tx to a huge fee
-	_, err = ht.HorizonSession().ExecRaw("UPDATE history_transactions SET max_fee = 256000, operation_count = 16 WHERE transaction_hash = '6a349e7331e93a251367287e274fb1699abaf723bde37aebe96248c76fd3071a'")
+	_, err = ht.HorizonSession().ExecRaw(ht.Ctx, "UPDATE history_transactions SET max_fee = 256000, operation_count = 16 WHERE transaction_hash = '6a349e7331e93a251367287e274fb1699abaf723bde37aebe96248c76fd3071a'")
 	ht.Require.NoError(err)
 
-	ht.App.UpdateFeeStatsState()
+	ht.App.UpdateFeeStatsState(ht.Ctx)
 
 	w := ht.Get("/fee_stats")
 
@@ -326,13 +326,13 @@ func TestOperationFeeTestsActions_FeeBump(t *testing.T) {
 	defer ht.Finish()
 
 	// Update one tx to be a fee bump
-	result, err := ht.HorizonSession().ExecRaw("UPDATE history_transactions SET max_fee = 10, new_max_fee = 1000, fee_charged = 200 WHERE transaction_hash = '6a349e7331e93a251367287e274fb1699abaf723bde37aebe96248c76fd3071a'")
+	result, err := ht.HorizonSession().ExecRaw(ht.Ctx, "UPDATE history_transactions SET max_fee = 10, new_max_fee = 1000, fee_charged = 200 WHERE transaction_hash = '6a349e7331e93a251367287e274fb1699abaf723bde37aebe96248c76fd3071a'")
 	ht.Require.NoError(err)
 	rowsAffected, err := result.RowsAffected()
 	ht.Require.NoError(err)
 	ht.Require.Equal(int64(1), rowsAffected)
 
-	ht.App.UpdateFeeStatsState()
+	ht.App.UpdateFeeStatsState(ht.Ctx)
 
 	w := ht.Get("/fee_stats")
 

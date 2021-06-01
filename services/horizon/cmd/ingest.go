@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"go/types"
 	"net/http"
@@ -70,7 +71,7 @@ var ingestVerifyRangeCmd = &cobra.Command{
 			co.SetValue()
 		}
 
-		horizon.ApplyFlags(config, flags)
+		horizon.ApplyFlags(config, flags, horizon.ApplyOptions{RequireCaptiveCoreConfig: false, AlwaysIngest: true})
 
 		if ingestVerifyDebugServerPort != 0 {
 			go func() {
@@ -169,7 +170,7 @@ var ingestStressTestCmd = &cobra.Command{
 			co.SetValue()
 		}
 
-		horizon.ApplyFlags(config, flags)
+		horizon.ApplyFlags(config, flags, horizon.ApplyOptions{RequireCaptiveCoreConfig: false, AlwaysIngest: true})
 
 		horizonSession, err := db.Open("postgres", config.DatabaseURL)
 		if err != nil {
@@ -227,7 +228,8 @@ var ingestTriggerStateRebuildCmd = &cobra.Command{
 	Use:   "trigger-state-rebuild",
 	Short: "updates a database to trigger state rebuild, state will be rebuilt by a running Horizon instance, DO NOT RUN production DB, some endpoints will be unavailable until state is rebuilt",
 	Run: func(cmd *cobra.Command, args []string) {
-		horizon.ApplyFlags(config, flags)
+		ctx := context.Background()
+		horizon.ApplyFlags(config, flags, horizon.ApplyOptions{RequireCaptiveCoreConfig: false, AlwaysIngest: true})
 
 		horizonSession, err := db.Open("postgres", config.DatabaseURL)
 		if err != nil {
@@ -235,7 +237,7 @@ var ingestTriggerStateRebuildCmd = &cobra.Command{
 		}
 
 		historyQ := &history.Q{horizonSession}
-		err = historyQ.UpdateIngestVersion(0)
+		err = historyQ.UpdateIngestVersion(ctx, 0)
 		if err != nil {
 			log.Fatalf("cannot trigger state rebuild: %v", err)
 		}
@@ -248,7 +250,8 @@ var ingestInitGenesisStateCmd = &cobra.Command{
 	Use:   "init-genesis-state",
 	Short: "ingests genesis state (ledger 1)",
 	Run: func(cmd *cobra.Command, args []string) {
-		horizon.ApplyFlags(config, flags)
+		ctx := context.Background()
+		horizon.ApplyFlags(config, flags, horizon.ApplyOptions{RequireCaptiveCoreConfig: false, AlwaysIngest: true})
 
 		horizonSession, err := db.Open("postgres", config.DatabaseURL)
 		if err != nil {
@@ -257,7 +260,7 @@ var ingestInitGenesisStateCmd = &cobra.Command{
 
 		historyQ := &history.Q{horizonSession}
 
-		lastIngestedLedger, err := historyQ.GetLastLedgerIngestNonBlocking()
+		lastIngestedLedger, err := historyQ.GetLastLedgerIngestNonBlocking(ctx)
 		if err != nil {
 			log.Fatalf("cannot get last ledger value: %v", err)
 		}
@@ -319,7 +322,7 @@ func init() {
 
 	viper.BindPFlags(ingestVerifyRangeCmd.PersistentFlags())
 
-	rootCmd.AddCommand(ingestCmd)
+	RootCmd.AddCommand(ingestCmd)
 	ingestCmd.AddCommand(
 		ingestVerifyRangeCmd,
 		ingestStressTestCmd,

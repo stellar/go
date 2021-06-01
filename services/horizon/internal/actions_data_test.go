@@ -53,22 +53,22 @@ func TestDataActions_Show(t *testing.T) {
 	q := &history.Q{ht.HorizonSession()}
 
 	// Makes StateMiddleware happy
-	err := q.UpdateLastLedgerIngest(100)
+	err := q.UpdateLastLedgerIngest(ht.Ctx, 100)
 	ht.Assert.NoError(err)
-	err = q.UpdateIngestVersion(ingest.CurrentVersion)
+	err = q.UpdateIngestVersion(ht.Ctx, ingest.CurrentVersion)
 	ht.Assert.NoError(err)
-	_, err = q.InsertLedger(xdr.LedgerHeaderHistoryEntry{
+	_, err = q.InsertLedger(ht.Ctx, xdr.LedgerHeaderHistoryEntry{
 		Header: xdr.LedgerHeader{
 			LedgerSeq: 100,
 		},
 	}, 0, 0, 0, 0, 0)
 	ht.Assert.NoError(err)
 
-	rows, err := q.InsertAccountData(data1)
+	rows, err := q.InsertAccountData(ht.Ctx, data1)
 	assert.NoError(t, err)
 	ht.Assert.Equal(int64(1), rows)
 
-	rows, err = q.InsertAccountData(data2)
+	rows, err = q.InsertAccountData(ht.Ctx, data2)
 	assert.NoError(t, err)
 	ht.Assert.Equal(int64(1), rows)
 

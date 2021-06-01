@@ -66,20 +66,17 @@ const (
 var log = logpkg.DefaultLogger.WithField("service", "ingest")
 
 type Config struct {
-	CoreSession                 *db.Session
-	StellarCoreURL              string
-	StellarCoreCursor           string
-	EnableCaptiveCore           bool
-	CaptiveCoreBinaryPath       string
-	CaptiveCoreStoragePath      string
-	CaptiveCoreConfigAppendPath string
-	CaptiveCoreHTTPPort         uint
-	CaptiveCorePeerPort         uint
-	CaptiveCoreLogPath          string
-	RemoteCaptiveCoreURL        string
-	NetworkPassphrase           string
+	CoreSession            db.SessionInterface
+	StellarCoreURL         string
+	StellarCoreCursor      string
+	EnableCaptiveCore      bool
+	CaptiveCoreBinaryPath  string
+	CaptiveCoreStoragePath string
+	CaptiveCoreToml        *ledgerbackend.CaptiveCoreToml
+	RemoteCaptiveCoreURL   string
+	NetworkPassphrase      string
 
-	HistorySession           *db.Session
+	HistorySession           db.SessionInterface
 	HistoryArchiveURL        string
 	DisableStateVerification bool
 
@@ -197,12 +194,9 @@ func NewSystem(config Config) (System, error) {
 			logger := log.WithField("subservice", "stellar-core")
 			ledgerBackend, err = ledgerbackend.NewCaptive(
 				ledgerbackend.CaptiveCoreConfig{
-					LogPath:             config.CaptiveCoreLogPath,
 					BinaryPath:          config.CaptiveCoreBinaryPath,
 					StoragePath:         config.CaptiveCoreStoragePath,
-					ConfigAppendPath:    config.CaptiveCoreConfigAppendPath,
-					HTTPPort:            config.CaptiveCoreHTTPPort,
-					PeerPort:            config.CaptiveCorePeerPort,
+					Toml:                config.CaptiveCoreToml,
 					NetworkPassphrase:   config.NetworkPassphrase,
 					HistoryArchiveURLs:  []string{config.HistoryArchiveURL},
 					CheckpointFrequency: config.CheckpointFrequency,
@@ -218,7 +212,6 @@ func NewSystem(config Config) (System, error) {
 		}
 	} else {
 		coreSession := config.CoreSession.Clone()
-		coreSession.Ctx = ctx
 		ledgerBackend, err = ledgerbackend.NewDatabaseBackendFromSession(coreSession, config.NetworkPassphrase)
 		if err != nil {
 			cancel()
@@ -227,7 +220,6 @@ func NewSystem(config Config) (System, error) {
 	}
 
 	historyQ := &history.Q{config.HistorySession.Clone()}
-	historyQ.Ctx = ctx
 
 	historyAdapter := newHistoryArchiveAdapter(archive)
 
@@ -279,7 +271,7 @@ func (s *system) initMetrics() {
 			Help: "equals 1 if state invalid, 0 otherwise",
 		},
 		func() float64 {
-			invalid, err := s.historyQ.CloneIngestionQ().GetExpStateInvalid()
+			invalid, err := s.historyQ.CloneIngestionQ().GetExpStateInvalid(s.ctx)
 			if err != nil {
 				log.WithError(err).Error("Error in initMetrics/GetExpStateInvalid")
 				return 0
@@ -314,7 +306,7 @@ func (s *system) initMetrics() {
 			Help: "1 if sync, 0 if not synced, -1 if unable to connect or HTTP server disabled.",
 		},
 		func() float64 {
-			if !s.config.EnableCaptiveCore || s.config.CaptiveCoreHTTPPort == 0 {
+			if !s.config.EnableCaptiveCore || (s.config.CaptiveCoreToml.HTTPPort == 0) {
 				return -1
 			}
 
@@ -322,7 +314,7 @@ func (s *system) initMetrics() {
 				HTTP: &http.Client{
 					Timeout: 2 * time.Second,
 				},
-				URL: fmt.Sprintf("http://localhost:%d", s.config.CaptiveCoreHTTPPort),
+				URL: fmt.Sprintf("http://localhost:%d", s.config.CaptiveCoreToml.HTTPPort),
 			}
 
 			info, err := client.Info(s.ctx)
@@ -487,7 +479,7 @@ func (s *system) runStateMachine(cur stateMachineNode) error {
 }
 
 func (s *system) maybeVerifyState(lastIngestedLedger uint32) {
-	stateInvalid, err := s.historyQ.GetExpStateInvalid()
+	stateInvalid, err := s.historyQ.GetExpStateInvalid(s.ctx)
 	if err != nil && !isCancelledError(err) {
 		log.WithField("err", err).Error("Error getting state invalid value")
 	}
@@ -509,7 +501,7 @@ func (s *system) maybeVerifyState(lastIngestedLedger uint32) {
 				errorCount := s.incrementStateVerificationErrors()
 				switch errors.Cause(err).(type) {
 				case ingest.StateError:
-					markStateInvalid(s.historyQ, err)
+					markStateInvalid(s.ctx, s.historyQ, err)
 				default:
 					logger := log.WithField("err", err).Warn
 					if errorCount >= stateVerificationErrorThreshold {
@@ -572,10 +564,10 @@ func (s *system) Shutdown() {
 	}
 }
 
-func markStateInvalid(historyQ history.IngestionQ, err error) {
+func markStateInvalid(ctx context.Context, historyQ history.IngestionQ, err error) {
 	log.WithField("err", err).Error("STATE IS INVALID!")
 	q := historyQ.CloneIngestionQ()
-	if err := q.UpdateExpStateInvalid(true); err != nil {
+	if err := q.UpdateExpStateInvalid(ctx, true); err != nil {
 		log.WithField("err", err).Error(updateExpStateInvalidErrMsg)
 	}
 }

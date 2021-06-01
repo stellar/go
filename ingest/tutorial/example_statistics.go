@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io"
 
@@ -11,6 +12,7 @@ import (
 )
 
 func statistics() {
+	ctx := context.Background()
 	// Only log errors from the backend to keep output cleaner.
 	lg := log.New()
 	lg.SetLevel(logrus.ErrorLevel)
@@ -26,7 +28,7 @@ func statistics() {
 
 	fmt.Printf("Preparing range (%d ledgers)...\n", ledgersToRead)
 	ledgerRange := backends.BoundedRange(startingSeq, startingSeq+ledgersToRead)
-	err = backend.PrepareRange(ledgerRange)
+	err = backend.PrepareRange(ctx, ledgerRange)
 	panicIf(err)
 
 	// These are the statistics that we're tracking.
@@ -37,7 +39,8 @@ func statistics() {
 		fmt.Printf("Processed ledger %d...\r", seq)
 
 		txReader, err := ingest.NewLedgerTransactionReader(
-			backend, config.NetworkPassphrase, seq)
+			ctx, backend, config.NetworkPassphrase, seq,
+		)
 		panicIf(err)
 		defer txReader.Close()
 

@@ -19,8 +19,8 @@ func TestInsertOrUpdateAsset(t *testing.T) {
 
 	var session tickerdb.TickerSession
 	session.DB = db.Open()
-	session.Ctx = context.Background()
 	defer session.DB.Close()
+	ctx := context.Background()
 
 	// Run migrations to make sure the tests are run
 	// on the most updated schema version
@@ -41,10 +41,10 @@ func TestInsertOrUpdateAsset(t *testing.T) {
 		Name:      name,
 	}
 	tbl := session.GetTable("issuers")
-	_, err = tbl.Insert(issuer).IgnoreCols("id").Exec()
+	_, err = tbl.Insert(issuer).IgnoreCols("id").Exec(ctx)
 	require.NoError(t, err)
 	var dbIssuer tickerdb.Issuer
-	err = session.GetRaw(&dbIssuer, `
+	err = session.GetRaw(ctx, &dbIssuer, `
 		SELECT *
 		FROM issuers
 		ORDER BY id DESC
@@ -62,11 +62,11 @@ func TestInsertOrUpdateAsset(t *testing.T) {
 		LastValid:     firstTime,
 		LastChecked:   firstTime,
 	}
-	err = session.InsertOrUpdateAsset(&a, []string{"code", "issuer_account", "issuer_id"})
+	err = session.InsertOrUpdateAsset(ctx, &a, []string{"code", "issuer_account", "issuer_id"})
 	require.NoError(t, err)
 
 	var dbAsset1 tickerdb.Asset
-	err = session.GetRaw(&dbAsset1, `
+	err = session.GetRaw(ctx, &dbAsset1, `
 		SELECT *
 		FROM assets
 		ORDER BY id DESC
@@ -93,11 +93,11 @@ func TestInsertOrUpdateAsset(t *testing.T) {
 	t.Log("secondTime:", secondTime)
 	a.LastValid = secondTime
 	a.LastChecked = secondTime
-	err = session.InsertOrUpdateAsset(&a, []string{"code", "issuer_account", "issuer_id"})
+	err = session.InsertOrUpdateAsset(ctx, &a, []string{"code", "issuer_account", "issuer_id"})
 	require.NoError(t, err)
 
 	var dbAsset2 tickerdb.Asset
-	err = session.GetRaw(&dbAsset2, `
+	err = session.GetRaw(ctx, &dbAsset2, `
 		SELECT *
 		FROM assets
 		ORDER BY id DESC
@@ -128,10 +128,10 @@ func TestInsertOrUpdateAsset(t *testing.T) {
 	t.Log("thirdTime:", thirdTime)
 	a.LastValid = thirdTime
 	a.LastChecked = thirdTime
-	err = session.InsertOrUpdateAsset(&a, []string{"code", "issuer_id", "last_valid", "last_checked", "issuer_account"})
+	err = session.InsertOrUpdateAsset(ctx, &a, []string{"code", "issuer_id", "last_valid", "last_checked", "issuer_account"})
 	require.NoError(t, err)
 	var dbAsset3 tickerdb.Asset
-	err = session.GetRaw(&dbAsset3, `
+	err = session.GetRaw(ctx, &dbAsset3, `
 		SELECT *
 		FROM assets
 		ORDER BY id DESC
@@ -163,8 +163,8 @@ func TestGetAssetByCodeAndIssuerAccount(t *testing.T) {
 
 	var session tickerdb.TickerSession
 	session.DB = db.Open()
-	session.Ctx = context.Background()
 	defer session.DB.Close()
+	ctx := context.Background()
 
 	// Run migrations to make sure the tests are run
 	// on the most updated schema version
@@ -185,10 +185,10 @@ func TestGetAssetByCodeAndIssuerAccount(t *testing.T) {
 		Name:      name,
 	}
 	tbl := session.GetTable("issuers")
-	_, err = tbl.Insert(issuer).IgnoreCols("id").Exec()
+	_, err = tbl.Insert(issuer).IgnoreCols("id").Exec(ctx)
 	require.NoError(t, err)
 	var dbIssuer tickerdb.Issuer
-	err = session.GetRaw(&dbIssuer, `
+	err = session.GetRaw(ctx, &dbIssuer, `
 		SELECT *
 		FROM issuers
 		ORDER BY id DESC
@@ -205,11 +205,11 @@ func TestGetAssetByCodeAndIssuerAccount(t *testing.T) {
 		LastValid:     firstTime,
 		LastChecked:   firstTime,
 	}
-	err = session.InsertOrUpdateAsset(&a, []string{"code", "issuer_account", "issuer_id"})
+	err = session.InsertOrUpdateAsset(ctx, &a, []string{"code", "issuer_account", "issuer_id"})
 	require.NoError(t, err)
 
 	var dbAsset tickerdb.Asset
-	err = session.GetRaw(&dbAsset, `
+	err = session.GetRaw(ctx, &dbAsset, `
 		SELECT *
 		FROM assets
 		ORDER BY id DESC
@@ -218,13 +218,13 @@ func TestGetAssetByCodeAndIssuerAccount(t *testing.T) {
 	require.NoError(t, err)
 
 	// Searching for an asset that exists:
-	found, id, err := session.GetAssetByCodeAndIssuerAccount(code, issuerAccount)
+	found, id, err := session.GetAssetByCodeAndIssuerAccount(ctx, code, issuerAccount)
 	require.NoError(t, err)
 	assert.Equal(t, dbAsset.ID, id)
 	assert.True(t, found)
 
 	// Now searching for an asset that does not exist:
-	found, _, err = session.GetAssetByCodeAndIssuerAccount(
+	found, _, err = session.GetAssetByCodeAndIssuerAccount(ctx,
 		"NONEXISTENT CODE",
 		issuerAccount,
 	)

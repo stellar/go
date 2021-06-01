@@ -1,6 +1,7 @@
 package history
 
 import (
+	"context"
 	"github.com/stretchr/testify/mock"
 )
 
@@ -10,13 +11,13 @@ type MockOperationParticipantBatchInsertBuilder struct {
 }
 
 // Add mock
-func (m *MockOperationParticipantBatchInsertBuilder) Add(operationID int64, accountID int64) error {
-	a := m.Called(operationID, accountID)
+func (m *MockOperationParticipantBatchInsertBuilder) Add(ctx context.Context, operationID int64, accountID int64) error {
+	a := m.Called(ctx, operationID, accountID)
 	return a.Error(0)
 }
 
 // Exec mock
-func (m *MockOperationParticipantBatchInsertBuilder) Exec() error {
-	a := m.Called()
+func (m *MockOperationParticipantBatchInsertBuilder) Exec(ctx context.Context) error {
+	a := m.Called(ctx)
 	return a.Error(0)
 }

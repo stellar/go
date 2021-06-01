@@ -60,7 +60,7 @@ func TestCreateAccountsSortedOrder(t *testing.T) {
 		"GBYSBDAJZMHL5AMD7QXQ3JEP3Q4GLKADWIJURAAHQALNAWD6Z5XF2RAC",
 		"GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB",
 	}
-	accounts, err := q.CreateAccounts(addresses, 1)
+	accounts, err := q.CreateAccounts(tt.Ctx, addresses, 1)
 	tt.Assert.NoError(err)
 
 	idToAddress := map[int64]string{}
@@ -93,12 +93,12 @@ func TestCreateAccounts(t *testing.T) {
 		"GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB",
 		"GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
 	}
-	accounts, err := q.CreateAccounts(addresses, 1)
+	accounts, err := q.CreateAccounts(tt.Ctx, addresses, 1)
 	tt.Assert.NoError(err)
 	tt.Assert.Len(accounts, 2)
 	assertAccountsContainAddresses(tt, accounts, addresses)
 
-	dupAccounts, err := q.CreateAccounts([]string{
+	dupAccounts, err := q.CreateAccounts(tt.Ctx, []string{
 		"GAOQJGUAB7NI7K7I62ORBXMN3J4SSWQUQ7FOEPSDJ322W2HMCNWPHXFB",
 		"GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
 	}, 2)
@@ -111,7 +111,7 @@ func TestCreateAccounts(t *testing.T) {
 		"GCYVFGI3SEQJGBNQQG7YCMFWEYOHK3XPVOVPA6C566PXWN4SN7LILZSM",
 		"GBYSBDAJZMHL5AMD7QXQ3JEP3Q4GLKADWIJURAAHQALNAWD6Z5XF2RAC",
 	}
-	accounts, err = q.CreateAccounts(addresses, 1)
+	accounts, err = q.CreateAccounts(tt.Ctx, addresses, 1)
 	tt.Assert.NoError(err)
 	assertAccountsContainAddresses(tt, accounts, addresses)
 	for address, accountID := range dupAccounts {

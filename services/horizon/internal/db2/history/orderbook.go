@@ -1,10 +1,12 @@
 package history
 
 import (
+	"context"
 	"database/sql"
-	"github.com/stellar/go/amount"
 	"math/big"
 
+	"github.com/stellar/go/amount"
+	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/xdr"
 )
@@ -40,7 +42,7 @@ type OrderBookSummary struct {
 
 // GetOrderBookSummary returns an OrderBookSummary for a given trading pair.
 // GetOrderBookSummary should only be called in a repeatable read transaction.
-func (q *Q) GetOrderBookSummary(sellingAsset, buyingAsset xdr.Asset, maxPriceLevels int) (OrderBookSummary, error) {
+func (q *Q) GetOrderBookSummary(ctx context.Context, sellingAsset, buyingAsset xdr.Asset, maxPriceLevels int) (OrderBookSummary, error) {
 	var result OrderBookSummary
 
 	if tx := q.GetTx(); tx == nil {
@@ -100,12 +102,14 @@ func (q *Q) GetOrderBookSummary(sellingAsset, buyingAsset xdr.Asset, maxPriceLev
 			LIMIT $3
 		)
 	`
-	err = q.SelectRaw(&levels, selectPriceLevels, selling, buying, maxPriceLevels)
+	// Add explicit query type for prometheus metrics, since we use raw sql.
+	ctx = context.WithValue(ctx, &db.QueryTypeContextKey, db.SelectQueryType)
+	err = q.SelectRaw(ctx, &levels, selectPriceLevels, selling, buying, maxPriceLevels)
 	if err != nil {
 		return result, errors.Wrap(err, "cannot select price levels")
 	}
 
-	err = q.SelectRaw(&offers, selectOfferSummaries, selling, buying, maxPriceLevels)
+	err = q.SelectRaw(ctx, &offers, selectOfferSummaries, selling, buying, maxPriceLevels)
 	if err != nil {
 		return result, errors.Wrap(err, "cannot select offer summaries")
 	}

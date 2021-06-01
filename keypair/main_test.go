@@ -328,3 +328,12 @@ var _ = Describe("keypair.MustRandom()", func() {
 		})
 	})
 })
+
+var _ = Describe("keypair.Root()", func() {
+	It("returns the root key pair for the passphrase", func() {
+		networkPassphrase := "Standalone Network ; February 2017"
+		kp := Root(networkPassphrase)
+		seed := kp.Seed()
+		Expect(seed).To(Equal("SC5O7VZUXDJ6JBDSZ74DSERXL7W3Y5LTOAMRF7RQRL3TAGAPS7LUVG3L"))
+	})
+})

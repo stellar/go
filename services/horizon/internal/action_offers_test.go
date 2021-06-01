@@ -1,6 +1,7 @@
 package horizon
 
 import (
+	"context"
 	"encoding/json"
 	"testing"
 	"time"
@@ -15,14 +16,15 @@ func TestOfferActions_Show(t *testing.T) {
 	ht := StartHTTPTestWithoutScenario(t)
 	defer ht.Finish()
 	q := &history.Q{ht.HorizonSession()}
+	ctx := context.Background()
 
-	err := q.UpdateLastLedgerIngest(100)
+	err := q.UpdateLastLedgerIngest(ctx, 100)
 	ht.Assert.NoError(err)
-	err = q.UpdateIngestVersion(ingest.CurrentVersion)
+	err = q.UpdateIngestVersion(ctx, ingest.CurrentVersion)
 	ht.Assert.NoError(err)
 
 	ledgerCloseTime := time.Now().Unix()
-	_, err = q.InsertLedger(xdr.LedgerHeaderHistoryEntry{
+	_, err = q.InsertLedger(ctx, xdr.LedgerHeaderHistoryEntry{
 		Header: xdr.LedgerHeader{
 			LedgerSeq: 100,
 			ScpValue: xdr.StellarValue{
@@ -67,11 +69,11 @@ func TestOfferActions_Show(t *testing.T) {
 	}
 
 	batch := q.NewOffersBatchInsertBuilder(3)
-	err = batch.Add(eurOffer)
+	err = batch.Add(ctx, eurOffer)
 	ht.Assert.NoError(err)
-	err = batch.Add(usdOffer)
+	err = batch.Add(ctx, usdOffer)
 	ht.Assert.NoError(err)
-	ht.Assert.NoError(batch.Exec())
+	ht.Assert.NoError(batch.Exec(ctx))
 
 	w := ht.Get("/offers")
 	if ht.Assert.Equal(200, w.Code) {

@@ -1,6 +1,7 @@
 package history
 
 import (
+	"context"
 	"database/sql"
 	"strconv"
 
@@ -22,8 +23,8 @@ const (
 // it does not block the value and does not return error if the value
 // has not been previously set.
 // This is used in status reporting (ex. in root resource of Horizon).
-func (q *Q) GetLastLedgerIngestNonBlocking() (uint32, error) {
-	lastIngestedLedger, err := q.getValueFromStore(lastLedgerKey, false)
+func (q *Q) GetLastLedgerIngestNonBlocking(ctx context.Context) (uint32, error) {
+	lastIngestedLedger, err := q.getValueFromStore(ctx, lastLedgerKey, false)
 	if err != nil {
 		return 0, err
 	}
@@ -46,8 +47,8 @@ func (q *Q) GetLastLedgerIngestNonBlocking() (uint32, error) {
 // transactions.This behaviour is critical in distributed ingestion so do not change
 // it unless you know what you are doing.
 // The value can be set using UpdateLastLedgerIngest.
-func (q *Q) GetLastLedgerIngest() (uint32, error) {
-	lastIngestedLedger, err := q.getValueFromStore(lastLedgerKey, true)
+func (q *Q) GetLastLedgerIngest(ctx context.Context) (uint32, error) {
+	lastIngestedLedger, err := q.getValueFromStore(ctx, lastLedgerKey, true)
 	if err != nil {
 		return 0, err
 	}
@@ -68,8 +69,9 @@ func (q *Q) GetLastLedgerIngest() (uint32, error) {
 
 // UpdateLastLedgerIngest updates the last ledger ingested by ingest system.
 // Can be read using GetLastLedgerExpIngest.
-func (q *Q) UpdateLastLedgerIngest(ledgerSequence uint32) error {
+func (q *Q) UpdateLastLedgerIngest(ctx context.Context, ledgerSequence uint32) error {
 	return q.updateValueInStore(
+		ctx,
 		lastLedgerKey,
 		strconv.FormatUint(uint64(ledgerSequence), 10),
 	)
@@ -77,8 +79,8 @@ func (q *Q) UpdateLastLedgerIngest(ledgerSequence uint32) error {
 
 // GetIngestVersion returns the ingestion version. Returns zero
 // if there is no value.
-func (q *Q) GetIngestVersion() (int, error) {
-	expVersion, err := q.getValueFromStore(ingestVersion, false)
+func (q *Q) GetIngestVersion(ctx context.Context) (int, error) {
+	expVersion, err := q.getValueFromStore(ctx, ingestVersion, false)
 	if err != nil {
 		return 0, err
 	}
@@ -96,8 +98,9 @@ func (q *Q) GetIngestVersion() (int, error) {
 }
 
 // UpdateIngestVersion updates the ingestion version.
-func (q *Q) UpdateIngestVersion(version int) error {
+func (q *Q) UpdateIngestVersion(ctx context.Context, version int) error {
 	return q.updateValueInStore(
+		ctx,
 		ingestVersion,
 		strconv.FormatUint(uint64(version), 10),
 	)
@@ -105,8 +108,8 @@ func (q *Q) UpdateIngestVersion(version int) error {
 
 // GetExpStateInvalid returns true if the state was found to be invalid.
 // Returns false otherwise.
-func (q *Q) GetExpStateInvalid() (bool, error) {
-	invalid, err := q.getValueFromStore(stateInvalid, false)
+func (q *Q) GetExpStateInvalid(ctx context.Context) (bool, error) {
+	invalid, err := q.getValueFromStore(ctx, stateInvalid, false)
 	if err != nil {
 		return false, err
 	}
@@ -124,8 +127,9 @@ func (q *Q) GetExpStateInvalid() (bool, error) {
 }
 
 // UpdateExpStateInvalid updates the state invalid value.
-func (q *Q) UpdateExpStateInvalid(val bool) error {
+func (q *Q) UpdateExpStateInvalid(ctx context.Context, val bool) error {
 	return q.updateValueInStore(
+		ctx,
 		stateInvalid,
 		strconv.FormatBool(val),
 	)
@@ -133,8 +137,8 @@ func (q *Q) UpdateExpStateInvalid(val bool) error {
 
 // GetOfferCompactionSequence returns the sequence number corresponding to the
 // last time the offers table was compacted.
-func (q *Q) GetOfferCompactionSequence() (uint32, error) {
-	sequence, err := q.getValueFromStore(offerCompactionSequence, false)
+func (q *Q) GetOfferCompactionSequence(ctx context.Context) (uint32, error) {
+	sequence, err := q.getValueFromStore(ctx, offerCompactionSequence, false)
 	if err != nil {
 		return 0, err
 	}
@@ -152,8 +156,9 @@ func (q *Q) GetOfferCompactionSequence() (uint32, error) {
 
 // UpdateOfferCompactionSequence sets the sequence number corresponding to the
 // last time the offers table was compacted.
-func (q *Q) UpdateOfferCompactionSequence(sequence uint32) error {
+func (q *Q) UpdateOfferCompactionSequence(ctx context.Context, sequence uint32) error {
 	return q.updateValueInStore(
+		ctx,
 		offerCompactionSequence,
 		strconv.FormatUint(uint64(sequence), 10),
 	)
@@ -161,7 +166,7 @@ func (q *Q) UpdateOfferCompactionSequence(sequence uint32) error {
 
 // getValueFromStore returns a value for a given key from KV store. If value
 // is not present in the key value store "" will be returned.
-func (q *Q) getValueFromStore(key string, forUpdate bool) (string, error) {
+func (q *Q) getValueFromStore(ctx context.Context, key string, forUpdate bool) (string, error) {
 	query := sq.Select("key_value_store.value").
 		From("key_value_store").
 		Where("key_value_store.key = ?", key)
@@ -171,7 +176,7 @@ func (q *Q) getValueFromStore(key string, forUpdate bool) (string, error) {
 	}
 
 	var value string
-	if err := q.Get(&value, query); err != nil {
+	if err := q.Get(ctx, &value, query); err != nil {
 		if errors.Cause(err) == sql.ErrNoRows {
 			return "", nil
 		}
@@ -182,12 +187,12 @@ func (q *Q) getValueFromStore(key string, forUpdate bool) (string, error) {
 }
 
 // updateValueInStore updates a value for a given key in KV store
-func (q *Q) updateValueInStore(key, value string) error {
+func (q *Q) updateValueInStore(ctx context.Context, key, value string) error {
 	query := sq.Insert("key_value_store").
 		Columns("key", "value").
 		Values(key, value).
 		Suffix("ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value")
 
-	_, err := q.Exec(query)
+	_, err := q.Exec(ctx, query)
 	return err
 }

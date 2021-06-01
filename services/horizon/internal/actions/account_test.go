@@ -240,13 +240,13 @@ func TestAccountInfo(t *testing.T) {
 		},
 	}
 	batch := q.NewAccountsBatchInsertBuilder(0)
-	err := batch.Add(accountEntry)
+	err := batch.Add(tt.Ctx, accountEntry)
 	assert.NoError(t, err)
-	assert.NoError(t, batch.Exec())
+	assert.NoError(t, batch.Exec(tt.Ctx))
 
 	tt.Assert.NoError(err)
 
-	_, err = q.InsertTrustLine(xdr.LedgerEntry{
+	_, err = q.InsertTrustLine(tt.Ctx, xdr.LedgerEntry{
 		LastModifiedLedgerSeq: 6,
 		Data: xdr.LedgerEntryData{
 			Type: xdr.LedgerEntryTypeTrustline,
@@ -264,7 +264,7 @@ func TestAccountInfo(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	_, err = q.InsertTrustLine(xdr.LedgerEntry{
+	_, err = q.InsertTrustLine(tt.Ctx, xdr.LedgerEntry{
 		LastModifiedLedgerSeq: 1234,
 		Data: xdr.LedgerEntryData{
 			Type: xdr.LedgerEntryTypeTrustline,
@@ -283,7 +283,7 @@ func TestAccountInfo(t *testing.T) {
 	assert.NoError(t, err)
 
 	ledgerFourCloseTime := time.Now().Unix()
-	_, err = q.InsertLedger(xdr.LedgerHeaderHistoryEntry{
+	_, err = q.InsertLedger(tt.Ctx, xdr.LedgerHeaderHistoryEntry{
 		Header: xdr.LedgerHeader{
 			LedgerSeq: 4,
 			ScpValue: xdr.StellarValue{
@@ -339,7 +339,7 @@ func TestGetAccountsHandlerPageNoResults(t *testing.T) {
 				"signer": signer,
 			},
 			map[string]string{},
-			q.Session,
+			q,
 		),
 	)
 	tt.Assert.NoError(err)
@@ -355,16 +355,16 @@ func TestGetAccountsHandlerPageResultsBySigner(t *testing.T) {
 	handler := &GetAccountsHandler{}
 
 	batch := q.NewAccountsBatchInsertBuilder(0)
-	err := batch.Add(account1)
+	err := batch.Add(tt.Ctx, account1)
 	assert.NoError(t, err)
-	err = batch.Add(account2)
+	err = batch.Add(tt.Ctx, account2)
 	assert.NoError(t, err)
-	err = batch.Add(account3)
+	err = batch.Add(tt.Ctx, account3)
 	assert.NoError(t, err)
-	assert.NoError(t, batch.Exec())
+	assert.NoError(t, batch.Exec(tt.Ctx))
 
 	for _, row := range accountSigners {
-		q.CreateAccountSigner(row.Account, row.Signer, row.Weight, nil)
+		q.CreateAccountSigner(tt.Ctx, row.Account, row.Signer, row.Weight, nil)
 	}
 
 	records, err := handler.GetResourcePage(
@@ -375,7 +375,7 @@ func TestGetAccountsHandlerPageResultsBySigner(t *testing.T) {
 				"signer": signer,
 			},
 			map[string]string{},
-			q.Session,
+			q,
 		),
 	)
 
@@ -405,7 +405,7 @@ func TestGetAccountsHandlerPageResultsBySigner(t *testing.T) {
 				"cursor": accountOne,
 			},
 			map[string]string{},
-			q.Session,
+			q,
 		),
 	)
 
@@ -435,16 +435,16 @@ func TestGetAccountsHandlerPageResultsBySponsor(t *testing.T) {
 	handler := &GetAccountsHandler{}
 
 	batch := q.NewAccountsBatchInsertBuilder(0)
-	err := batch.Add(account1)
+	err := batch.Add(tt.Ctx, account1)
 	assert.NoError(t, err)
-	err = batch.Add(account2)
+	err = batch.Add(tt.Ctx, account2)
 	assert.NoError(t, err)
-	err = batch.Add(account3)
+	err = batch.Add(tt.Ctx, account3)
 	assert.NoError(t, err)
-	assert.NoError(t, batch.Exec())
+	assert.NoError(t, batch.Exec(tt.Ctx))
 
 	for _, row := range accountSigners {
-		q.CreateAccountSigner(row.Account, row.Signer, row.Weight, nil)
+		q.CreateAccountSigner(tt.Ctx, row.Account, row.Signer, row.Weight, nil)
 	}
 
 	records, err := handler.GetResourcePage(
@@ -455,7 +455,7 @@ func TestGetAccountsHandlerPageResultsBySponsor(t *testing.T) {
 				"sponsor": sponsor.Address(),
 			},
 			map[string]string{},
-			q.Session,
+			q,
 		),
 	)
 
@@ -473,13 +473,13 @@ func TestGetAccountsHandlerPageResultsByAsset(t *testing.T) {
 	handler := &GetAccountsHandler{}
 
 	batch := q.NewAccountsBatchInsertBuilder(0)
-	err := batch.Add(account1)
+	err := batch.Add(tt.Ctx, account1)
 	assert.NoError(t, err)
-	err = batch.Add(account2)
+	err = batch.Add(tt.Ctx, account2)
 	assert.NoError(t, err)
-	assert.NoError(t, batch.Exec())
+	assert.NoError(t, batch.Exec(tt.Ctx))
 	ledgerCloseTime := time.Now().Unix()
-	_, err = q.InsertLedger(xdr.LedgerHeaderHistoryEntry{
+	_, err = q.InsertLedger(tt.Ctx, xdr.LedgerHeaderHistoryEntry{
 		Header: xdr.LedgerHeader{
 			LedgerSeq: 1234,
 			ScpValue: xdr.StellarValue{
@@ -490,13 +490,13 @@ func TestGetAccountsHandlerPageResultsByAsset(t *testing.T) {
 	assert.NoError(t, err)
 
 	for _, row := range accountSigners {
-		_, err = q.CreateAccountSigner(row.Account, row.Signer, row.Weight, nil)
+		_, err = q.CreateAccountSigner(tt.Ctx, row.Account, row.Signer, row.Weight, nil)
 		tt.Assert.NoError(err)
 	}
 
-	_, err = q.InsertAccountData(data1)
+	_, err = q.InsertAccountData(tt.Ctx, data1)
 	assert.NoError(t, err)
-	_, err = q.InsertAccountData(data2)
+	_, err = q.InsertAccountData(tt.Ctx, data2)
 	assert.NoError(t, err)
 
 	var assetType, code, issuer string
@@ -511,16 +511,16 @@ func TestGetAccountsHandlerPageResultsByAsset(t *testing.T) {
 			t,
 			params,
 			map[string]string{},
-			q.Session,
+			q,
 		),
 	)
 
 	tt.Assert.NoError(err)
 	tt.Assert.Equal(0, len(records))
 
-	_, err = q.InsertTrustLine(eurTrustLine)
+	_, err = q.InsertTrustLine(tt.Ctx, eurTrustLine)
 	assert.NoError(t, err)
-	_, err = q.InsertTrustLine(usdTrustLine)
+	_, err = q.InsertTrustLine(tt.Ctx, usdTrustLine)
 	assert.NoError(t, err)
 
 	records, err = handler.GetResourcePage(
@@ -529,7 +529,7 @@ func TestGetAccountsHandlerPageResultsByAsset(t *testing.T) {
 			t,
 			params,
 			map[string]string{},
-			q.Session,
+			q,
 		),
 	)
 
@@ -613,7 +613,7 @@ func TestGetAccountsHandlerInvalidParams(t *testing.T) {
 					t,
 					tc.params,
 					map[string]string{},
-					q.Session,
+					q,
 				),
 			)
 			tt.Assert.Error(err)

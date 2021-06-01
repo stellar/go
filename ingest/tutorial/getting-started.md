@@ -49,6 +49,7 @@ With that in mind, here's a minimalist example of the ingestion library:
 package main
 
 import (
+  "context"
   "fmt"
 
   "github.com/stellar/go/ingest/ledgerbackend"
@@ -64,11 +65,8 @@ func main() {
   panicIf(err)
 
   // then retrieve it:
-  ok, ledger, err := ledgerbackend.GetLedger(123456)
-  if !ok {
-    err = fmt.Errorf("The ledger doesn't exist on the backend.")
-  }
-
+  ctx := context.Background()
+  ledger, err := ledgerbackend.GetLedger(ctx, 123456)
   panicIf(err)
 
   // Now `ledger` is a raw `xdr.LedgerCloseMeta` object containing the

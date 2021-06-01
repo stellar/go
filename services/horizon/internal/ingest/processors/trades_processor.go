@@ -1,6 +1,7 @@
 package processors
 
 import (
+	"context"
 	"time"
 
 	"github.com/stellar/go/ingest"
@@ -29,7 +30,7 @@ func NewTradeProcessor(tradesQ history.QTrades, ledger xdr.LedgerHeaderHistoryEn
 }
 
 // ProcessTransaction process the given transaction
-func (p *TradeProcessor) ProcessTransaction(transaction ingest.LedgerTransaction) (err error) {
+func (p *TradeProcessor) ProcessTransaction(ctx context.Context, transaction ingest.LedgerTransaction) (err error) {
 	if !transaction.Result.Successful() {
 		return nil
 	}
@@ -54,16 +55,16 @@ func (p *TradeProcessor) ProcessTransaction(transaction ingest.LedgerTransaction
 	return nil
 }
 
-func (p *TradeProcessor) Commit() error {
+func (p *TradeProcessor) Commit(ctx context.Context) error {
 	if len(p.inserts) > 0 {
 		batch := p.tradesQ.NewTradeBatchInsertBuilder(maxBatchSize)
-		accountSet, err := p.tradesQ.CreateAccounts(mapKeysToList(p.accountSet), maxBatchSize)
+		accountSet, err := p.tradesQ.CreateAccounts(ctx, mapKeysToList(p.accountSet), maxBatchSize)
 		if err != nil {
 			return errors.Wrap(err, "Error creating account ids")
 		}
 
 		var assetMap map[string]history.Asset
-		assetMap, err = p.tradesQ.CreateAssets(p.assets, maxBatchSize)
+		assetMap, err = p.tradesQ.CreateAssets(ctx, p.assets, maxBatchSize)
 		if err != nil {
 			return errors.Wrap(err, "Error creating asset ids")
 		}
@@ -73,12 +74,12 @@ func (p *TradeProcessor) Commit() error {
 			insert.SellerAccountID = accountSet[insert.Trade.SellerId.Address()]
 			insert.SoldAssetID = assetMap[insert.Trade.AssetSold.String()].ID
 			insert.BoughtAssetID = assetMap[insert.Trade.AssetBought.String()].ID
-			if err = batch.Add(insert); err != nil {
+			if err = batch.Add(ctx, insert); err != nil {
 				return errors.Wrap(err, "Error adding trade to batch")
 			}
 		}
 
-		if err = batch.Exec(); err != nil {
+		if err = batch.Exec(ctx); err != nil {
 			return errors.Wrap(err, "Error flushing operation batch")
 		}
 	}

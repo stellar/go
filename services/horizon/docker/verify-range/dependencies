@@ -10,8 +10,8 @@ echo "deb https://apt.stellar.org/public stable/" | tee -a /etc/apt/sources.list
 apt-get update
 apt-get install -y stellar-core
 
-wget https://dl.google.com/go/go1.16.2.linux-amd64.tar.gz
-tar -C /usr/local -xzf go1.16.2.linux-amd64.tar.gz
+wget https://dl.google.com/go/go1.16.3.linux-amd64.tar.gz
+tar -C /usr/local -xzf go1.16.3.linux-amd64.tar.gz
 
 # configure postgres
 service postgresql start
@@ -22,4 +22,8 @@ sudo -u postgres psql -c "ALTER USER postgres PASSWORD 'postgres';"
 
 git clone https://github.com/stellar/go.git stellar-go
 cd stellar-go
+# By default "git fetch" only fetches refs/<branchname>
+# Below ensures we also fetch PR refs
+git config --add remote.origin.fetch "+refs/pull/*/head:refs/remotes/origin/pull/*"
+git fetch --force --quiet origin
 /usr/local/go/bin/go build -v ./services/horizon

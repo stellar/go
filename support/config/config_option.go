@@ -161,3 +161,27 @@ func SetURL(co *ConfigOption) {
 		*(co.ConfigKey.(**url.URL)) = urlType
 	}
 }
+
+// SetOptionalUint converts a command line uint to a *uint where the nil
+// value indicates the flag was not explicitly set
+func SetOptionalUint(co *ConfigOption) {
+	key := co.ConfigKey.(**uint)
+	if co.flag.Changed {
+		*key = new(uint)
+		**key = uint(viper.GetInt(co.Name))
+	} else {
+		*key = nil
+	}
+}
+
+// SetOptionalString converts a command line uint to a *string where the nil
+// value indicates the flag was not explicitly set
+func SetOptionalString(co *ConfigOption) {
+	key := co.ConfigKey.(**string)
+	if co.flag.Changed {
+		*key = new(string)
+		**key = viper.GetString(co.Name)
+	} else {
+		*key = nil
+	}
+}

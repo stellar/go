@@ -63,14 +63,18 @@ func (c *CaptiveCoreAPI) Shutdown() {
 	c.core.Close()
 }
 
-func (c *CaptiveCoreAPI) startPrepareRange(ledgerRange ledgerbackend.Range) {
+func (c *CaptiveCoreAPI) isShutdown() bool {
+	return c.ctx.Err() != nil
+}
+
+func (c *CaptiveCoreAPI) startPrepareRange(ctx context.Context, ledgerRange ledgerbackend.Range) {
 	defer c.wg.Done()
 
-	err := c.core.PrepareRange(ledgerRange)
+	err := c.core.PrepareRange(ctx, ledgerRange)
 
 	c.activeRequest.Lock()
 	defer c.activeRequest.Unlock()
-	if c.ctx.Err() != nil {
+	if c.isShutdown() {
 		return
 	}
 
@@ -100,10 +104,10 @@ func (c *CaptiveCoreAPI) startPrepareRange(ledgerRange ledgerbackend.Range) {
 }
 
 // PrepareRange executes the PrepareRange operation on the captive core instance.
-func (c *CaptiveCoreAPI) PrepareRange(ledgerRange ledgerbackend.Range) (ledgerbackend.PrepareRangeResponse, error) {
+func (c *CaptiveCoreAPI) PrepareRange(ctx context.Context, ledgerRange ledgerbackend.Range) (ledgerbackend.PrepareRangeResponse, error) {
 	c.activeRequest.Lock()
 	defer c.activeRequest.Unlock()
-	if c.ctx.Err() != nil {
+	if c.isShutdown() {
 		return ledgerbackend.PrepareRangeResponse{}, errors.New("Cannot prepare range when shut down")
 	}
 
@@ -121,7 +125,7 @@ func (c *CaptiveCoreAPI) PrepareRange(ledgerRange ledgerbackend.Range) (ledgerba
 		c.activeRequest.valid = true
 
 		c.wg.Add(1)
-		go c.startPrepareRange(ledgerRange)
+		go c.startPrepareRange(c.ctx, ledgerRange)
 
 		return ledgerbackend.PrepareRangeResponse{
 			LedgerRange:   ledgerRange,
@@ -140,7 +144,7 @@ func (c *CaptiveCoreAPI) PrepareRange(ledgerRange ledgerbackend.Range) (ledgerba
 }
 
 // GetLatestLedgerSequence determines the latest ledger sequence available on the captive core instance.
-func (c *CaptiveCoreAPI) GetLatestLedgerSequence() (ledgerbackend.LatestLedgerSequenceResponse, error) {
+func (c *CaptiveCoreAPI) GetLatestLedgerSequence(ctx context.Context) (ledgerbackend.LatestLedgerSequenceResponse, error) {
 	c.activeRequest.Lock()
 	defer c.activeRequest.Unlock()
 
@@ -151,7 +155,7 @@ func (c *CaptiveCoreAPI) GetLatestLedgerSequence() (ledgerbackend.LatestLedgerSe
 		return ledgerbackend.LatestLedgerSequenceResponse{}, ErrPrepareRangeNotReady
 	}
 
-	seq, err := c.core.GetLatestLedgerSequence()
+	seq, err := c.core.GetLatestLedgerSequence(ctx)
 	if err != nil {
 		c.activeRequest.valid = false
 	}
@@ -159,7 +163,7 @@ func (c *CaptiveCoreAPI) GetLatestLedgerSequence() (ledgerbackend.LatestLedgerSe
 }
 
 // GetLedger fetches the ledger with the given sequence number from the captive core instance.
-func (c *CaptiveCoreAPI) GetLedger(sequence uint32) (ledgerbackend.LedgerResponse, error) {
+func (c *CaptiveCoreAPI) GetLedger(ctx context.Context, sequence uint32) (ledgerbackend.LedgerResponse, error) {
 	c.activeRequest.Lock()
 	defer c.activeRequest.Unlock()
 
@@ -170,12 +174,13 @@ func (c *CaptiveCoreAPI) GetLedger(sequence uint32) (ledgerbackend.LedgerRespons
 		return ledgerbackend.LedgerResponse{}, ErrPrepareRangeNotReady
 	}
 
-	present, ledger, err := c.core.GetLedger(sequence)
+	ledger, err := c.core.GetLedger(ctx, sequence)
 	if err != nil {
 		c.activeRequest.valid = false
 	}
+	// TODO: We are always true here now, so this changes the semantics of this
+	// call a bit. We need to change the client to long-poll this endpoint.
 	return ledgerbackend.LedgerResponse{
-		Present: present,
-		Ledger:  ledgerbackend.Base64Ledger(ledger),
+		Ledger: ledgerbackend.Base64Ledger(ledger),
 	}, err
 }

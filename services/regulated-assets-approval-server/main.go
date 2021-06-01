@@ -19,6 +19,7 @@ func main() {
 		},
 	}
 
+	rootCmd.AddCommand((&cmd.MigrateCommand{}).Command())
 	rootCmd.AddCommand((&cmd.ServeCommand{}).Command())
 
 	err := rootCmd.Execute()
