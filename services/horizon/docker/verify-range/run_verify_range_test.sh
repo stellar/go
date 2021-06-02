@@ -7,7 +7,7 @@ set -e
 : ${ARRAY_SIZE:=2}
 ARRAY_PROPERTIES="size=$ARRAY_SIZE"
 : ${JOB_DEFINITION:=verify-range-c5-large-job:4}
-: ${BRANCH:=release-horizon-v2.4.0}
+: ${BRANCH:=master}
 : ${BASE_BRANCH:=horizon-v2.0.0}
 : ${BATCH_START_LEDGER:=1}
 : ${BATCH_SIZE:=30016}
