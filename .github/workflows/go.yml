@@ -16,7 +16,7 @@ jobs:
       matrix:
         os: [ubuntu-latest]
         go:
-          - ${{ env.GO_VERSION_LATEST }}
+          - ${{ GO_VERSION_LATEST }}
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v2
@@ -35,8 +35,8 @@ jobs:
       matrix:
         os: [ubuntu-latest]
         go:
-          - ${{ env.GO_VERSION_LATEST }}
-          - ${{ env.GO_VERSION_PREV }}
+          - ${{ GO_VERSION_LATEST }}
+          - ${{ GO_VERSION_PREV }}
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v2
@@ -51,8 +51,8 @@ jobs:
       matrix:
         os: [ubuntu-latest]
         go:
-          - ${{ env.GO_VERSION_LATEST }}
-          - ${{ env.GO_VERSION_PREV }}
+          - ${{ GO_VERSION_LATEST }}
+          - ${{ GO_VERSION_PREV }}
         pg: [9.6.5, 10]
     services:
       postgres:
