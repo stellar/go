@@ -9,6 +9,7 @@ package txsub
 import (
 	"context"
 	"database/sql"
+
 	"github.com/stretchr/testify/mock"
 )
 
@@ -28,13 +29,13 @@ type mockDBQ struct {
 	mock.Mock
 }
 
-func (m *mockDBQ) BeginTx(ctx context.Context, txOpts *sql.TxOptions) error {
-	args := m.Called(ctx, txOpts)
+func (m *mockDBQ) BeginTx(txOpts *sql.TxOptions) error {
+	args := m.Called(txOpts)
 	return args.Error(0)
 }
 
-func (m *mockDBQ) Rollback(ctx context.Context) error {
-	args := m.Called(ctx)
+func (m *mockDBQ) Rollback() error {
+	args := m.Called()
 	return args.Error(0)
 }
 

@@ -298,7 +298,7 @@ func (m *StateMiddleware) WrapFunc(h http.HandlerFunc) http.HandlerFunc {
 		// Otherwise, because the ingestion system is running concurrently with this request,
 		// it is possible to have one read fetch data from ledger N and another read
 		// fetch data from ledger N+1 .
-		err := session.BeginTx(ctx, &sql.TxOptions{
+		err := session.BeginTx(&sql.TxOptions{
 			Isolation: sql.LevelRepeatableRead,
 			ReadOnly:  true,
 		})
@@ -307,7 +307,7 @@ func (m *StateMiddleware) WrapFunc(h http.HandlerFunc) http.HandlerFunc {
 			problem.Render(ctx, w, err)
 			return
 		}
-		defer session.Rollback(ctx)
+		defer session.Rollback()
 
 		if !m.NoStateVerification {
 			stateInvalid, invalidErr := q.GetExpStateInvalid(ctx)
@@ -336,7 +336,7 @@ func (m *StateMiddleware) WrapFunc(h http.HandlerFunc) http.HandlerFunc {
 		// otherwise, the stream will not pick up updates occurring in future
 		// ledgers
 		if sseRequest {
-			if err = session.Rollback(ctx); err != nil {
+			if err = session.Rollback(); err != nil {
 				problem.Render(
 					ctx,
 					w,

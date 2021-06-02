@@ -104,10 +104,10 @@ type Session struct {
 }
 
 type SessionInterface interface {
-	BeginTx(ctx context.Context, opts *sql.TxOptions) error
-	Begin(ctx context.Context) error
-	Rollback(ctx context.Context) error
-	Commit(ctx context.Context) error
+	BeginTx(opts *sql.TxOptions) error
+	Begin() error
+	Rollback() error
+	Commit() error
 	GetTx() *sqlx.Tx
 	GetTxOptions() *sql.TxOptions
 	TruncateTables(ctx context.Context, tables []string) error
