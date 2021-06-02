@@ -447,6 +447,93 @@ func TestTxApproveHandler_txApprove_rejected(t *testing.T) {
 	assert.Equal(t, NewRejectedTxApprovalResponse("Invalid transaction sequence number."), txApprovalResp)
 }
 
+func TestTxApproveHandler_txApprove_success(t *testing.T) {
+	ctx := context.Background()
+	db := dbtest.Open(t)
+	defer db.Close()
+	conn := db.Open()
+	defer conn.Close()
+
+	senderKP := keypair.MustRandom()
+	receiverKP := keypair.MustRandom()
+	issuerKP := keypair.MustRandom()
+	assetGOAT := txnbuild.CreditAsset{
+		Code:   "GOAT",
+		Issuer: issuerKP.Address(),
+	}
+	kycThresholdAmount, err := amount.ParseInt64("500")
+	require.NoError(t, err)
+
+	horizonMock := horizonclient.MockClient{}
+	horizonMock.
+		On("AccountDetail", horizonclient.AccountRequest{AccountID: senderKP.Address()}).
+		Return(horizon.Account{
+			AccountID: senderKP.Address(),
+			Sequence:  "2",
+		}, nil)
+
+	handler := txApproveHandler{
+		issuerKP:          issuerKP,
+		assetCode:         assetGOAT.GetCode(),
+		horizonClient:     &horizonMock,
+		networkPassphrase: network.TestNetworkPassphrase,
+		db:                conn,
+		kycThreshold:      kycThresholdAmount,
+		baseURL:           "https://example.com",
+	}
+
+	tx, err := txnbuild.NewTransaction(
+		txnbuild.TransactionParams{
+			SourceAccount: &horizon.Account{
+				AccountID: senderKP.Address(),
+				Sequence:  "2",
+			},
+			IncrementSequenceNum: true,
+			Operations: []txnbuild.Operation{
+				&txnbuild.AllowTrust{
+					Trustor:       senderKP.Address(),
+					Type:          assetGOAT,
+					Authorize:     true,
+					SourceAccount: issuerKP.Address(),
+				},
+				&txnbuild.AllowTrust{
+					Trustor:       receiverKP.Address(),
+					Type:          assetGOAT,
+					Authorize:     true,
+					SourceAccount: issuerKP.Address(),
+				},
+				&txnbuild.Payment{
+					SourceAccount: senderKP.Address(),
+					Destination:   receiverKP.Address(),
+					Amount:        "1",
+					Asset:         assetGOAT,
+				},
+				&txnbuild.AllowTrust{
+					Trustor:       receiverKP.Address(),
+					Type:          assetGOAT,
+					Authorize:     false,
+					SourceAccount: issuerKP.Address(),
+				},
+				&txnbuild.AllowTrust{
+					Trustor:       senderKP.Address(),
+					Type:          assetGOAT,
+					Authorize:     false,
+					SourceAccount: issuerKP.Address(),
+				},
+			},
+			BaseFee:    txnbuild.MinBaseFee,
+			Timebounds: txnbuild.NewInfiniteTimeout(),
+		},
+	)
+	require.NoError(t, err)
+	txe, err := tx.Base64()
+	require.NoError(t, err)
+
+	txApprovalResp, err := handler.txApprove(ctx, txApproveRequest{Tx: txe})
+	require.NoError(t, err)
+	require.Equal(t, NewSuccessTxApprovalResponse(txApprovalResp.Tx, "Transaction is compliant and signed by the issuer."), txApprovalResp)
+}
+
 func TestTxApproveHandler_txApprove_actionRequired(t *testing.T) {
 	ctx := context.Background()
 	db := dbtest.Open(t)
