@@ -488,10 +488,9 @@ func TestAPI_txApprove_success(t *testing.T) {
 				SourceAccount: issuerKP.Address(),
 			},
 			&txnbuild.Payment{
-				SourceAccount: senderKP.Address(),
-				Destination:   receiverKP.Address(),
-				Amount:        "1",
-				Asset:         assetGOAT,
+				Destination: receiverKP.Address(),
+				Amount:      "1",
+				Asset:       assetGOAT,
 			},
 			&txnbuild.AllowTrust{
 				Trustor:       receiverKP.Address(),
@@ -510,10 +509,10 @@ func TestAPI_txApprove_success(t *testing.T) {
 		Timebounds: txnbuild.NewTimeout(300),
 	})
 	require.NoError(t, err)
-	txEnc, err := tx.Base64()
+	txe, err := tx.Base64()
 	require.NoError(t, err)
 
-	r := httptest.NewRequest("POST", "/tx-approve", strings.NewReader(`{"tx": "`+txEnc+`"}`))
+	r := httptest.NewRequest("POST", "/tx-approve", strings.NewReader(`{"tx": "`+txe+`"}`))
 	r = r.WithContext(ctx)
 	w := httptest.NewRecorder()
 	m.ServeHTTP(w, r)
@@ -538,41 +537,40 @@ func TestAPI_txApprove_success(t *testing.T) {
 	require.NoError(t, err)
 	tx, ok := genericTx.Transaction()
 	require.True(t, ok)
+	require.Equal(t, senderKP.Address(), tx.SourceAccount().AccountID)
 
-	// Check if revised transaction only has 5 operations.
 	require.Len(t, tx.Operations(), 5)
 	// AllowTrust op where issuer fully authorizes sender, asset GOAT
-	op1, ok := tx.Operations()[0].(*txnbuild.AllowTrust)
+	op0, ok := tx.Operations()[0].(*txnbuild.AllowTrust)
 	require.True(t, ok)
-	assert.Equal(t, op1.Trustor, senderKP.Address())
+	assert.Equal(t, op0.Trustor, senderKP.Address())
+	assert.Equal(t, op0.Type.GetCode(), assetGOAT.GetCode())
+	require.True(t, op0.Authorize)
+	// AllowTrust op where issuer fully authorizes receiver, asset GOAT
+	op1, ok := tx.Operations()[1].(*txnbuild.AllowTrust)
+	require.True(t, ok)
+	assert.Equal(t, op1.Trustor, receiverKP.Address())
 	assert.Equal(t, op1.Type.GetCode(), assetGOAT.GetCode())
 	require.True(t, op1.Authorize)
-	// AllowTrust op where issuer fully authorizes receiver, asset GOAT
-	op2, ok := tx.Operations()[1].(*txnbuild.AllowTrust)
-	require.True(t, ok)
-	assert.Equal(t, op2.Trustor, receiverKP.Address())
-	assert.Equal(t, op2.Type.GetCode(), assetGOAT.GetCode())
-	require.True(t, op2.Authorize)
 	// Payment from sender to receiver
-	op3, ok := tx.Operations()[2].(*txnbuild.Payment)
+	op2, ok := tx.Operations()[2].(*txnbuild.Payment)
 	require.True(t, ok)
-	assert.Equal(t, op3.SourceAccount, senderKP.Address())
-	assert.Equal(t, op3.Destination, receiverKP.Address())
-	assert.Equal(t, op3.Asset, assetGOAT)
+	assert.Equal(t, op2.Destination, receiverKP.Address())
+	assert.Equal(t, op2.Asset, assetGOAT)
 	// AllowTrust op where issuer fully deauthorizes receiver, asset GOAT
-	op4, ok := tx.Operations()[3].(*txnbuild.AllowTrust)
+	op3, ok := tx.Operations()[3].(*txnbuild.AllowTrust)
 	require.True(t, ok)
-	assert.Equal(t, op4.Trustor, receiverKP.Address())
+	assert.Equal(t, op3.Trustor, receiverKP.Address())
+	assert.Equal(t, op3.Type.GetCode(), assetGOAT.GetCode())
+	require.False(t, op3.Authorize)
+	// AllowTrust op where issuer fully deauthorizes sender, asset GOAT
+	op4, ok := tx.Operations()[4].(*txnbuild.AllowTrust)
+	require.True(t, ok)
+	assert.Equal(t, op4.Trustor, senderKP.Address())
 	assert.Equal(t, op4.Type.GetCode(), assetGOAT.GetCode())
 	require.False(t, op4.Authorize)
-	// AllowTrust op where issuer fully deauthorizes sender, asset GOAT
-	op5, ok := tx.Operations()[4].(*txnbuild.AllowTrust)
-	require.True(t, ok)
-	assert.Equal(t, op5.Trustor, senderKP.Address())
-	assert.Equal(t, op5.Type.GetCode(), assetGOAT.GetCode())
-	require.False(t, op5.Authorize)
 
-	// check if issuer's signature is present
+	// check if the transaction contains the issuer's signature
 	txHash, err := tx.Hash(handler.networkPassphrase)
 	require.NoError(t, err)
 	err = handler.issuerKP.Verify(txHash[:], tx.Signatures()[0].Signature)

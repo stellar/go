@@ -5,8 +5,7 @@ Status: supports SEP-8 transactions revision with a simplified rule:
 - only revises transactions containing a single operation of type payment.
 - payments whose amount does not meet the configured threshold are considered compliant and revised according to the SEP-8 specification.
 - payments with an amount exceeding the threshold need further action.
-
-It is important to notice the SEP-8 "success" response has not been implemented yet so even if the submitted transaction is compliant to be marked as successful according with SEP-8, this service will reject it.
+- transactions already compliant with SEP-8 that don't need to be revised will be signed and returned with the "success" SEP-8 status.
 ```
 
 This is a [SEP-8] Approval Server reference implementation based on SEP-8 v1.7.1
@@ -134,8 +133,8 @@ to do that in Stellar Laboratory.
 ### `POST /tx-approve`
 
 This is the core [SEP-8] endpoint used to validate and process regulated assets
-transactions. Responds with one of the following statuses: [Success], [Revised],
-[Action Required], or [Rejected].
+transactions. Its response will contain one of the following statuses:
+[Success], [Revised], [Action Required], or [Rejected].
 
 Note: The example responses below have set their `base-url` env var configured
 to `"https://example.com"`.

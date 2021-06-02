@@ -111,6 +111,7 @@ func (h txApproveHandler) validateInput(ctx context.Context, in txApproveRequest
 		return NewRejectedTxApprovalResponse("Transaction source account is invalid."), nil
 	}
 
+	// only AllowTrust operations can have the issuer as their source account
 	for _, op := range tx.Operations() {
 		if _, ok := op.(*txnbuild.AllowTrust); ok {
 			continue
@@ -148,7 +149,7 @@ func (h txApproveHandler) txApprove(ctx context.Context, in txApproveRequest) (r
 		return txSuccessResp, nil
 	}
 
-	// Validate the revisable transaction has one operation.
+	// validate the revisable transaction has one operation.
 	if len(tx.Operations()) != 1 {
 		return NewRejectedTxApprovalResponse("Please submit a transaction with exactly one operation of type payment."), nil
 	}
@@ -342,7 +343,7 @@ func (h txApproveHandler) handleSuccessResponseIfNeeded(ctx context.Context, tx 
 		return nil, errors.Wrap(err, "encoding revised transaction")
 	}
 
-	return NewSuccessTxApprovalResponse(txe, "Transaction is compliant and signed by the issuer."), err
+	return NewSuccessTxApprovalResponse(txe, "Transaction is compliant and signed by the issuer."), nil
 }
 
 // validateTransactionOperationsForSuccess checks if the incoming transaction

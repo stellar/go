@@ -771,7 +771,7 @@ func TestValidateTransactionOperationsForSuccess(t *testing.T) {
 	assert.Nil(t, paymentOp)
 	assert.Empty(t, paymentSource)
 
-	// rejected if the operations don't match the expected format of AllowTrust, AllowTrust, Payment, AllowTrust, AllowTrust
+	// rejected if the operations list don't match the expected format [AllowTrust, AllowTrust, Payment, AllowTrust, AllowTrust]
 	tx, err = txnbuild.NewTransaction(txnbuild.TransactionParams{
 		SourceAccount: &horizon.Account{
 			AccountID: senderKP.Address(),
@@ -1297,7 +1297,7 @@ func TestTxApproveHandler_handleSuccessResponseIfNeeded_success(t *testing.T) {
 	resp, _, _ := validateTransactionOperationsForSuccess(ctx, gotTx, issuerKP.Address())
 	assert.Nil(t, resp)
 
-	// check if issuer's signature is present
+	// check if the transaction contains the issuer's signature
 	gotTxHash, err := gotTx.Hash(handler.networkPassphrase)
 	require.NoError(t, err)
 	err = handler.issuerKP.Verify(gotTxHash[:], gotTx.Signatures()[0].Signature)
