@@ -162,7 +162,7 @@ func TestTxApproveHandler_validateInput(t *testing.T) {
 	require.Equal(t, NewRejectedTxApprovalResponse("Transaction source account is invalid."), txApprovalResp)
 	require.Nil(t, gotTx)
 
-	// rejects if tx contains more than one operation
+	// rejects if there are any operations other than Allowtrust where the source account is the issuer
 	tx, err = txnbuild.NewTransaction(txnbuild.TransactionParams{
 		SourceAccount: &horizon.Account{
 			AccountID: clientKP.Address(),
@@ -174,9 +174,10 @@ func TestTxApproveHandler_validateInput(t *testing.T) {
 		Operations: []txnbuild.Operation{
 			&txnbuild.BumpSequence{},
 			&txnbuild.Payment{
-				Destination: clientKP.Address(),
-				Amount:      "1.0000000",
-				Asset:       txnbuild.NativeAsset{},
+				Destination:   clientKP.Address(),
+				Amount:        "1.0000000",
+				Asset:         txnbuild.NativeAsset{},
+				SourceAccount: h.issuerKP.Address(),
 			},
 		},
 	})
@@ -186,7 +187,7 @@ func TestTxApproveHandler_validateInput(t *testing.T) {
 
 	in.Tx = txe
 	txApprovalResp, gotTx = h.validateInput(ctx, in)
-	require.Equal(t, NewRejectedTxApprovalResponse("Please submit a transaction with exactly one operation of type payment."), txApprovalResp)
+	require.Equal(t, NewRejectedTxApprovalResponse("There are one or more unauthorized operations in the provided transaction."), txApprovalResp)
 	require.Nil(t, gotTx)
 
 	// validation success
@@ -337,8 +338,36 @@ func TestTxApproveHandler_txApprove_rejected(t *testing.T) {
 	}
 	assert.Equal(t, &wantRejectedResponse, rejectedResponse)
 
-	// rejected if the single operation is not a payment
+	// rejected if contains more than one operation
 	tx, err := txnbuild.NewTransaction(
+		txnbuild.TransactionParams{
+			SourceAccount: &horizon.Account{
+				AccountID: senderKP.Address(),
+				Sequence:  "2",
+			},
+			IncrementSequenceNum: true,
+			Operations: []txnbuild.Operation{
+				&txnbuild.BumpSequence{},
+				&txnbuild.Payment{
+					Destination: receiverKP.Address(),
+					Amount:      "1",
+					Asset:       assetGOAT,
+				},
+			},
+			BaseFee:    txnbuild.MinBaseFee,
+			Timebounds: txnbuild.NewInfiniteTimeout(),
+		},
+	)
+	require.NoError(t, err)
+	txe, err := tx.Base64()
+	require.NoError(t, err)
+
+	txApprovalResp, err := handler.txApprove(ctx, txApproveRequest{Tx: txe})
+	require.NoError(t, err)
+	assert.Equal(t, NewRejectedTxApprovalResponse("Please submit a transaction with exactly one operation of type payment."), txApprovalResp)
+
+	// rejected if the single operation is not a payment
+	tx, err = txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount: &horizon.Account{
 				AccountID: senderKP.Address(),
@@ -353,17 +382,12 @@ func TestTxApproveHandler_txApprove_rejected(t *testing.T) {
 		},
 	)
 	require.NoError(t, err)
-	txe, err := tx.Base64()
+	txe, err = tx.Base64()
 	require.NoError(t, err)
 
-	txApprovalResp, err := handler.txApprove(ctx, txApproveRequest{Tx: txe})
+	txApprovalResp, err = handler.txApprove(ctx, txApproveRequest{Tx: txe})
 	require.NoError(t, err)
-	wantTxApprovalResp := &txApprovalResponse{
-		Status:     "rejected",
-		Error:      "There is one or more unauthorized operations in the provided transaction.",
-		StatusCode: http.StatusBadRequest,
-	}
-	assert.Equal(t, wantTxApprovalResp, txApprovalResp)
+	assert.Equal(t, NewRejectedTxApprovalResponse("There is one or more unauthorized operations in the provided transaction."), txApprovalResp)
 
 	// rejected if payment asset is not supported
 	tx, err = txnbuild.NewTransaction(
@@ -393,12 +417,7 @@ func TestTxApproveHandler_txApprove_rejected(t *testing.T) {
 
 	txApprovalResp, err = handler.txApprove(ctx, txApproveRequest{Tx: txe})
 	require.NoError(t, err)
-	wantTxApprovalResp = &txApprovalResponse{
-		Status:     "rejected",
-		Error:      "The payment asset is not supported by this issuer.",
-		StatusCode: http.StatusBadRequest,
-	}
-	assert.Equal(t, wantTxApprovalResp, txApprovalResp)
+	assert.Equal(t, NewRejectedTxApprovalResponse("The payment asset is not supported by this issuer."), txApprovalResp)
 
 	// rejected if sequence number is not incremental
 	tx, err = txnbuild.NewTransaction(
@@ -425,12 +444,7 @@ func TestTxApproveHandler_txApprove_rejected(t *testing.T) {
 
 	txApprovalResp, err = handler.txApprove(ctx, txApproveRequest{Tx: txe})
 	require.NoError(t, err)
-	wantTxApprovalResp = &txApprovalResponse{
-		Status:     "rejected",
-		Error:      "Invalid transaction sequence number.",
-		StatusCode: http.StatusBadRequest,
-	}
-	assert.Equal(t, wantTxApprovalResp, txApprovalResp)
+	assert.Equal(t, NewRejectedTxApprovalResponse("Invalid transaction sequence number."), txApprovalResp)
 }
 
 func TestTxApproveHandler_txApprove_actionRequired(t *testing.T) {

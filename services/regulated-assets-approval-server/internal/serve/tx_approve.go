@@ -111,13 +111,15 @@ func (h txApproveHandler) validateInput(ctx context.Context, in txApproveRequest
 		return NewRejectedTxApprovalResponse("Transaction source account is invalid."), nil
 	}
 
-	if len(tx.Operations()) != 1 {
-		return NewRejectedTxApprovalResponse("Please submit a transaction with exactly one operation of type payment."), nil
-	}
+	for _, op := range tx.Operations() {
+		if _, ok := op.(*txnbuild.AllowTrust); ok {
+			continue
+		}
 
-	if tx.Operations()[0].GetSourceAccount() == h.issuerKP.Address() {
-		log.Ctx(ctx).Error(`transaction contains one or more operations where sourceAccount is issuer account.`)
-		return NewRejectedTxApprovalResponse("There is one or more unauthorized operations in the provided transaction."), nil
+		if op.GetSourceAccount() == h.issuerKP.Address() {
+			log.Ctx(ctx).Error("transaction contains one or more unauthorized operations where source account is the issuer account")
+			return NewRejectedTxApprovalResponse("There are one or more unauthorized operations in the provided transaction."), nil
+		}
 	}
 
 	return nil, tx
@@ -138,9 +140,22 @@ func (h txApproveHandler) txApprove(ctx context.Context, in txApproveRequest) (r
 		return rejectedResponse, nil
 	}
 
+	txSuccessResp, err := h.handleSuccessResponseIfNeeded(ctx, tx)
+	if err != nil {
+		return nil, errors.Wrap(err, "checking if transaction in request was compliant")
+	}
+	if txSuccessResp != nil {
+		return txSuccessResp, nil
+	}
+
+	// Validate the revisable transaction has one operation.
+	if len(tx.Operations()) != 1 {
+		return NewRejectedTxApprovalResponse("Please submit a transaction with exactly one operation of type payment."), nil
+	}
+
 	paymentOp, ok := tx.Operations()[0].(*txnbuild.Payment)
 	if !ok {
-		log.Ctx(ctx).Error(`transaction contains one or more operations is not of type payment`)
+		log.Ctx(ctx).Error("transaction does not contain a payment operation")
 		return NewRejectedTxApprovalResponse("There is one or more unauthorized operations in the provided transaction."), nil
 	}
 	paymentSource := paymentOp.SourceAccount
@@ -157,7 +172,7 @@ func (h txApproveHandler) txApprove(ctx context.Context, in txApproveRequest) (r
 
 	acc, err := h.horizonClient.AccountDetail(horizonclient.AccountRequest{AccountID: paymentSource})
 	if err != nil {
-		return nil, errors.Wrapf(err, "getting detail for payment source account %s", issuerAddress)
+		return nil, errors.Wrapf(err, "getting detail for payment source account %s", paymentSource)
 	}
 
 	// validate the sequence number
