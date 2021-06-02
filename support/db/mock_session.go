@@ -17,23 +17,23 @@ type MockSession struct {
 	mock.Mock
 }
 
-func (m *MockSession) Begin(ctx context.Context) error {
-	args := m.Called(ctx)
+func (m *MockSession) Begin() error {
+	args := m.Called()
 	return args.Error(0)
 }
 
-func (m *MockSession) BeginTx(ctx context.Context, opts *sql.TxOptions) error {
-	args := m.Called(ctx, opts)
+func (m *MockSession) BeginTx(opts *sql.TxOptions) error {
+	args := m.Called(opts)
 	return args.Error(0)
 }
 
-func (m *MockSession) Rollback(ctx context.Context) error {
-	args := m.Called(ctx)
+func (m *MockSession) Rollback() error {
+	args := m.Called()
 	return args.Error(0)
 }
 
-func (m *MockSession) Commit(ctx context.Context) error {
-	args := m.Called(ctx)
+func (m *MockSession) Commit() error {
+	args := m.Called()
 	return args.Error(0)
 }
 

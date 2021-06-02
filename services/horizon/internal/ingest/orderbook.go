@@ -232,10 +232,10 @@ func (o *OrderBookStream) verifyAllOffers(ctx context.Context) {
 // After calling this function, the the in memory order book graph should be consistent with the
 // Horizon DB (assuming no error is returned).
 func (o *OrderBookStream) Update(ctx context.Context) error {
-	if err := o.historyQ.BeginTx(ctx, &sql.TxOptions{ReadOnly: true, Isolation: sql.LevelRepeatableRead}); err != nil {
+	if err := o.historyQ.BeginTx(&sql.TxOptions{ReadOnly: true, Isolation: sql.LevelRepeatableRead}); err != nil {
 		return errors.Wrap(err, "Error starting repeatable read transaction")
 	}
-	defer o.historyQ.Rollback(ctx)
+	defer o.historyQ.Rollback()
 
 	status, err := o.getIngestionStatus(ctx)
 	if err != nil {
