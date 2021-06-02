@@ -6,14 +6,44 @@ on:
 
 jobs:
 
+  check:
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        go: [1.16.4]
+    runs-on: ${{ matrix.os }}
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: ${{ matrix.go }}
+    - run: ./gomod.sh
+    - run: ./gofmt.sh
+    - run: ./gogenerate.sh
+    - run: ./govet.sh
+    - run: ./staticcheck.sh
+
   build:
-  
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        go: [1.16.4, 1.15.11]
+    runs-on: ${{ matrix.os }}
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: ${{ matrix.go }}
+    - run: go build ./...
+
+  test:
     strategy:
       matrix:
         os: [ubuntu-latest]
         go: [1.16.4, 1.15.11]
         pg: [9.6.5, 10]
-    
     services:
       postgres:
         image: postgres:${{ matrix.pg }}
@@ -37,23 +67,13 @@ jobs:
           --health-retries 5
         ports:
         - 6379:6379
-    
     runs-on: ${{ matrix.os }}
-    
     steps:
     - uses: actions/checkout@v2
-
     - name: Set up Go
       uses: actions/setup-go@v2
       with:
         go-version: ${{ matrix.go }}
-        
-    - run: ./gomod.sh
-    - run: ./gofmt.sh
-    - run: ./gogenerate.sh
-    - run: ./govet.sh
-    - run: ./staticcheck.sh
-    - run: go build ./...
     - run: go test -race -cover ./...
       env: 
         PGHOST: localhost
