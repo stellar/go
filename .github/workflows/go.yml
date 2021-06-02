@@ -45,6 +45,7 @@ jobs:
         os: [ubuntu-latest]
         go: [1.16.4, 1.15.11]
         pg: [9.6.5, 10]
+    runs-on: ${{ matrix.os }}
     services:
       postgres:
         image: postgres:${{ matrix.pg }}
@@ -68,7 +69,14 @@ jobs:
           --health-retries 5
         ports:
         - 6379:6379
-    runs-on: ${{ matrix.os }}
+    env: 
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: postgres
+      REDIS_HOST: localhost
+      REDIS_PORT: 6379
     steps:
     - uses: actions/checkout@v2
     - name: Set up Go
@@ -76,11 +84,3 @@ jobs:
       with:
         go-version: ${{ matrix.go }}
     - run: go test -race -cover ./...
-      env: 
-        PGHOST: localhost
-        PGPORT: 5432
-        PGUSER: postgres
-        PGPASSWORD: postgres
-        PGDATABASE: postgres
-        REDIS_HOST: localhost
-        REDIS_PORT: 6379
