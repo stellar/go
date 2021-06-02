@@ -248,6 +248,9 @@ func TestTransactionActions_Post(t *testing.T) {
 	ht := StartHTTPTest(t, "base")
 	defer ht.Finish()
 
+	// Pass Synced check
+	ht.App.coreState.Synced = true
+
 	tx := xdr.TransactionEnvelope{
 		Type: xdr.EnvelopeTypeEnvelopeTypeTxV0,
 		V0: &xdr.TransactionV0Envelope{
@@ -288,6 +291,9 @@ func TestTransactionActions_Post(t *testing.T) {
 func TestTransactionActions_PostSuccessful(t *testing.T) {
 	ht := StartHTTPTest(t, "failed_transactions")
 	defer ht.Finish()
+
+	// Pass Synced check
+	ht.App.coreState.Synced = true
 
 	destAID := xdr.MustAddress("GBXGQJWVLWOYHFLVTKWV5FGHA3LNYY2JQKM7OAJAUEQFU6LPCSEFVXON")
 	tx2 := xdr.TransactionEnvelope{
@@ -340,6 +346,9 @@ func TestTransactionActions_PostFailed(t *testing.T) {
 	ht := StartHTTPTest(t, "failed_transactions")
 	defer ht.Finish()
 
+	// Pass Synced check
+	ht.App.coreState.Synced = true
+
 	// aa168f12124b7c196c0adaee7c73a64d37f99428cacb59a91ff389626845e7cf
 	form := url.Values{"tx": []string{"AAAAAG5oJtVdnYOVdZqtXpTHBtbcY0mCmfcBIKEgWnlvFIhaAAAAZAAAAAIAAAACAAAAAAAAAAAAAAABAAAAAAAAAAEAAAAAO2C/AO45YBD3tHVFO1R3A0MekP8JR6nN1A9eWidyItUAAAABVVNEAAAAAACuo3ot45qCPExpQ/3oHN+z17Ryis1lfMFYmQWgruS+TAAAAAB3NZQAAAAAAAAAAAFvFIhaAAAAQKcGS9OsVnVHCVIH04C9ZKzzKYBRdCmy+Jwmzld7QcALOxZUcAgkuGfoSdvXpH38mNvrqQiaMsSNmTJWYRzHvgo="}}
 
@@ -352,6 +361,10 @@ func TestTransactionActions_PostFailed(t *testing.T) {
 func TestPostFeeBumpTransaction(t *testing.T) {
 	ht := StartHTTPTestWithoutScenario(t)
 	defer ht.Finish()
+
+	// Pass Synced check
+	ht.App.coreState.Synced = true
+
 	test.ResetHorizonDB(t, ht.HorizonDB)
 	q := &history.Q{ht.HorizonSession()}
 	fixture := history.FeeBumpScenario(ht.T, q, true)
@@ -387,6 +400,10 @@ func TestPostFeeBumpTransaction(t *testing.T) {
 func TestPostFailedFeeBumpTransaction(t *testing.T) {
 	ht := StartHTTPTestWithoutScenario(t)
 	defer ht.Finish()
+
+	// Pass Synced check
+	ht.App.coreState.Synced = true
+
 	test.ResetHorizonDB(t, ht.HorizonDB)
 	q := &history.Q{ht.HorizonSession()}
 	fixture := history.FeeBumpScenario(ht.T, q, false)
