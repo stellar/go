@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"net/url"
 
 	"github.com/stellar/go/protocols/horizon/operations"
@@ -52,6 +53,16 @@ func (op OperationRequest) BuildURL() (endpoint string, err error) {
 	}
 
 	return endpoint, err
+}
+
+// HTTPRequest returns the http request for the operations endpoint
+func (op OperationRequest) HTTPRequest(horizonURL string) (*http.Request, error) {
+	endpoint, err := op.BuildURL()
+	if err != nil {
+		return nil, err
+	}
+
+	return http.NewRequest("GET", horizonURL+endpoint, nil)
 }
 
 // setEndpoint sets the endpoint for the OperationRequest

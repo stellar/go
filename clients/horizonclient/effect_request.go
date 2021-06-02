@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"net/url"
 
 	"github.com/stellar/go/protocols/horizon/effects"
@@ -79,4 +80,14 @@ func (er EffectRequest) StreamEffects(ctx context.Context, client *Client, handl
 		handler(effs)
 		return nil
 	})
+}
+
+// HTTPRequest returns the http request for the effects endpoint
+func (er EffectRequest) HTTPRequest(horizonURL string) (*http.Request, error) {
+	endpoint, err := er.BuildURL()
+	if err != nil {
+		return nil, err
+	}
+
+	return http.NewRequest("GET", horizonURL+endpoint, nil)
 }

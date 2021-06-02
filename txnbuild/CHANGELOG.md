@@ -8,6 +8,7 @@ file.  This project adheres to [Semantic Versioning](http://semver.org/).
 ### New features
 
 * Add `SequenceNumber` function to `Transaction`.
+* Add `AddSignatureDecorated` function to `Transaction`.
 
 ### Bug Fix
 
