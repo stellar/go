@@ -5,13 +5,18 @@ on:
     branches: [master]
   pull_request:
 
+env:
+  GO_VERSION_LATEST: 1.16.4
+  GO_VERSION_PREV: 1.15.11
+
 jobs:
 
   check:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        go: [1.16.4]
+        go:
+          - ${{ env.GO_VERSION_LATEST }}
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v2
@@ -29,7 +34,9 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        go: [1.16.4, 1.15.11]
+        go:
+          - ${{ env.GO_VERSION_LATEST }}
+          - ${{ env.GO_VERSION_PREV }}
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v2
@@ -43,7 +50,9 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        go: [1.16.4, 1.15.11]
+        go:
+          - ${{ env.GO_VERSION_LATEST }}
+          - ${{ env.GO_VERSION_PREV }}
         pg: [9.6.5, 10]
     services:
       postgres:
