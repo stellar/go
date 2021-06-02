@@ -6,6 +6,8 @@ Status: supports SEP-8 transactions revision with a simplified rule:
 - payments whose amount does not meet the configured threshold are considered compliant and revised according to the SEP-8 specification.
 - payments with an amount exceeding the threshold need further action.
 - transactions already compliant with SEP-8 that don't need to be revised will be signed and returned with the "success" SEP-8 status.
+
+Note: SEP-8 states the service should be able to handle offers in addition to payments, but we're not supporting that at the moment.
 ```
 
 This is a [SEP-8] Approval Server reference implementation based on SEP-8 v1.7.1
