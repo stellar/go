@@ -223,7 +223,7 @@ func initDbMetrics(app *App) {
 			Help: "determines the supported version of the protocol by Stellar-Core defined by --stellar-core-url",
 		},
 		func() float64 {
-			return float64(app.coreSettings.get().CoreSupportedProtocolVersion)
+			return float64(app.coreState.Get().CoreSupportedProtocolVersion)
 		},
 	)
 	app.prometheusRegistry.MustRegister(app.coreSupportedProtocolVersion)
