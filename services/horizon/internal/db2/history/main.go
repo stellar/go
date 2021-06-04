@@ -828,8 +828,10 @@ func (q *Q) CloneIngestionQ() IngestionQ {
 func (q *Q) DeleteRangeAll(ctx context.Context, start, end int64) error {
 	for _, pair := range [][2]string{
 		{"history_effects", "history_operation_id"},
+		{"history_operation_claimable_balances", "history_operation_id"},
 		{"history_operation_participants", "history_operation_id"},
 		{"history_operations", "id"},
+		{"history_transaction_claimable_balances", "history_transaction_id"},
 		{"history_transaction_participants", "history_transaction_id"},
 		{"history_transactions", "id"},
 		{"history_ledgers", "id"},
