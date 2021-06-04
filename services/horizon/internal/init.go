@@ -208,7 +208,7 @@ func initDbMetrics(app *App) {
 			Help: "determines if Stellar-Core defined by --stellar-core-url is synced with the network",
 		},
 		func() float64 {
-			if app.coreSettings.Synced {
+			if app.coreSettings.get().Synced {
 				return 1
 			} else {
 				return 0
@@ -223,7 +223,7 @@ func initDbMetrics(app *App) {
 			Help: "determines the supported version of the protocol by Stellar-Core defined by --stellar-core-url",
 		},
 		func() float64 {
-			return float64(app.coreSettings.CoreSupportedProtocolVersion)
+			return float64(app.coreSettings.get().CoreSupportedProtocolVersion)
 		},
 	)
 	app.prometheusRegistry.MustRegister(app.coreSupportedProtocolVersion)
