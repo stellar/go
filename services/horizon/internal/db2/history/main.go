@@ -826,18 +826,17 @@ func (q *Q) CloneIngestionQ() IngestionQ {
 // DeleteRangeAll deletes a range of rows from all history tables between
 // `start` and `end` (exclusive).
 func (q *Q) DeleteRangeAll(ctx context.Context, start, end int64) error {
-	for _, pair := range [][2]string{
-		{"history_effects", "history_operation_id"},
-		{"history_operation_claimable_balances", "history_operation_id"},
-		{"history_operation_participants", "history_operation_id"},
-		{"history_operations", "id"},
-		{"history_transaction_claimable_balances", "history_transaction_id"},
-		{"history_transaction_participants", "history_transaction_id"},
-		{"history_transactions", "id"},
-		{"history_ledgers", "id"},
-		{"history_trades", "history_operation_id"},
+	for table, column := range map[string]string{
+		"history_effects":                        "history_operation_id",
+		"history_ledgers":                        "id",
+		"history_operation_claimable_balances":   "history_operation_id",
+		"history_operation_participants":         "history_operation_id",
+		"history_operations":                     "id",
+		"history_trades":                         "history_operation_id",
+		"history_transaction_claimable_balances": "history_transaction_id",
+		"history_transaction_participants":       "history_transaction_id",
+		"history_transactions":                   "id",
 	} {
-		table, column := pair[0], pair[1]
 		err := q.DeleteRange(ctx, start, end, table, column)
 		if err != nil {
 			return errors.Wrapf(err, "Error clearing %s", table)
