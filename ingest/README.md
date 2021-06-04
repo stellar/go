@@ -322,7 +322,6 @@ By default, checkpoints occur every 64 ledgers (see `historyarchive.ConnectOptio
 Since history archives store global cumulative state, our `ChangeReader` will report every entry as being "new", reading out a list of *all* ledger entries. We can then process them and establish how many claimable balances have been created in the testnet's lifetime:
 
 ```go
-
 	entries, newCBs := 0, 0
 	for {
 		entry, err := reader.Read()
