@@ -208,7 +208,7 @@ func initDbMetrics(app *App) {
 			Help: "determines if Stellar-Core defined by --stellar-core-url is synced with the network",
 		},
 		func() float64 {
-			if app.coreState.Synced {
+			if app.coreState.Get().Synced {
 				return 1
 			} else {
 				return 0

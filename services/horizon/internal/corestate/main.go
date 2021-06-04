@@ -15,20 +15,20 @@ type State struct {
 
 type Store struct {
 	sync.RWMutex
-	State
+	state State
 }
 
 func (c *Store) Set(resp *stellarcore.InfoResponse) {
 	c.Lock()
 	defer c.Unlock()
-	c.Synced = resp.IsSynced()
-	c.CoreVersion = resp.Info.Build
-	c.CurrentProtocolVersion = int32(resp.Info.Ledger.Version)
-	c.CoreSupportedProtocolVersion = int32(resp.Info.ProtocolVersion)
+	c.state.Synced = resp.IsSynced()
+	c.state.CoreVersion = resp.Info.Build
+	c.state.CurrentProtocolVersion = int32(resp.Info.Ledger.Version)
+	c.state.CoreSupportedProtocolVersion = int32(resp.Info.ProtocolVersion)
 }
 
 func (c *Store) Get() State {
 	c.RLock()
 	defer c.RUnlock()
-	return c.State
+	return c.state
 }
