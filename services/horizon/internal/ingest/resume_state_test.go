@@ -50,7 +50,7 @@ func (s *ResumeTestTestSuite) SetupTest() {
 	}
 	s.system.initMetrics()
 
-	s.historyQ.On("Rollback", s.ctx).Return(nil).Once()
+	s.historyQ.On("Rollback").Return(nil).Once()
 
 	s.ledgerBackend.On("IsPrepared", s.ctx, ledgerbackend.UnboundedRange(101)).Return(false, nil).Once()
 	s.ledgerBackend.On("PrepareRange", s.ctx, ledgerbackend.UnboundedRange(101)).Return(nil).Once()
@@ -126,7 +126,7 @@ func (s *ResumeTestTestSuite) TestBeginReturnsError() {
 	// Recreate mock in this single test to remove Rollback assertion.
 	*s.historyQ = mockDBQ{}
 
-	s.historyQ.On("Begin", s.ctx).Return(errors.New("my error")).Once()
+	s.historyQ.On("Begin").Return(errors.New("my error")).Once()
 
 	next, err := resumeState{latestSuccessfullyProcessedLedger: 100}.run(s.system)
 	s.Assert().Error(err)
@@ -141,7 +141,7 @@ func (s *ResumeTestTestSuite) TestBeginReturnsError() {
 }
 
 func (s *ResumeTestTestSuite) TestGetLastLedgerIngestReturnsError() {
-	s.historyQ.On("Begin", s.ctx).Return(nil).Once()
+	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerIngest", s.ctx).Return(uint32(0), errors.New("my error")).Once()
 
 	next, err := resumeState{latestSuccessfullyProcessedLedger: 100}.run(s.system)
@@ -157,7 +157,7 @@ func (s *ResumeTestTestSuite) TestGetLastLedgerIngestReturnsError() {
 }
 
 func (s *ResumeTestTestSuite) TestGetLatestLedgerLessThanCurrent() {
-	s.historyQ.On("Begin", s.ctx).Return(nil).Once()
+	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerIngest", s.ctx).Return(uint32(99), nil).Once()
 
 	next, err := resumeState{latestSuccessfullyProcessedLedger: 100}.run(s.system)
@@ -170,7 +170,7 @@ func (s *ResumeTestTestSuite) TestGetLatestLedgerLessThanCurrent() {
 }
 
 func (s *ResumeTestTestSuite) TestGetIngestionVersionError() {
-	s.historyQ.On("Begin", s.ctx).Return(nil).Once()
+	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerIngest", s.ctx).Return(uint32(100), nil).Once()
 	s.historyQ.On("GetIngestVersion", s.ctx).Return(0, errors.New("my error")).Once()
 
@@ -187,7 +187,7 @@ func (s *ResumeTestTestSuite) TestGetIngestionVersionError() {
 }
 
 func (s *ResumeTestTestSuite) TestIngestionVersionLessThanCurrentVersion() {
-	s.historyQ.On("Begin", s.ctx).Return(nil).Once()
+	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerIngest", s.ctx).Return(uint32(100), nil).Once()
 	s.historyQ.On("GetIngestVersion", s.ctx).Return(CurrentVersion-1, nil).Once()
 
@@ -200,7 +200,7 @@ func (s *ResumeTestTestSuite) TestIngestionVersionLessThanCurrentVersion() {
 }
 
 func (s *ResumeTestTestSuite) TestIngestionVersionGreaterThanCurrentVersion() {
-	s.historyQ.On("Begin", s.ctx).Return(nil).Once()
+	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerIngest", s.ctx).Return(uint32(100), nil).Once()
 	s.historyQ.On("GetIngestVersion", s.ctx).Return(CurrentVersion+1, nil).Once()
 
@@ -213,7 +213,7 @@ func (s *ResumeTestTestSuite) TestIngestionVersionGreaterThanCurrentVersion() {
 }
 
 func (s *ResumeTestTestSuite) TestGetLatestLedgerError() {
-	s.historyQ.On("Begin", s.ctx).Return(nil).Once()
+	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerIngest", s.ctx).Return(uint32(100), nil).Once()
 	s.historyQ.On("GetIngestVersion", s.ctx).Return(CurrentVersion, nil).Once()
 	s.historyQ.On("GetLatestHistoryLedger", s.ctx).Return(uint32(0), errors.New("my error"))
@@ -231,7 +231,7 @@ func (s *ResumeTestTestSuite) TestGetLatestLedgerError() {
 }
 
 func (s *ResumeTestTestSuite) TestLatestHistoryLedgerLessThanIngestLedger() {
-	s.historyQ.On("Begin", s.ctx).Return(nil).Once()
+	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerIngest", s.ctx).Return(uint32(100), nil).Once()
 	s.historyQ.On("GetIngestVersion", s.ctx).Return(CurrentVersion, nil).Once()
 	s.historyQ.On("GetLatestHistoryLedger", s.ctx).Return(uint32(99), nil)
@@ -245,7 +245,7 @@ func (s *ResumeTestTestSuite) TestLatestHistoryLedgerLessThanIngestLedger() {
 }
 
 func (s *ResumeTestTestSuite) TestLatestHistoryLedgerGreaterThanIngestLedger() {
-	s.historyQ.On("Begin", s.ctx).Return(nil).Once()
+	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerIngest", s.ctx).Return(uint32(100), nil).Once()
 	s.historyQ.On("GetIngestVersion", s.ctx).Return(CurrentVersion, nil).Once()
 	s.historyQ.On("GetLatestHistoryLedger", s.ctx).Return(uint32(101), nil)
@@ -259,7 +259,7 @@ func (s *ResumeTestTestSuite) TestLatestHistoryLedgerGreaterThanIngestLedger() {
 }
 
 func (s *ResumeTestTestSuite) mockSuccessfulIngestion() {
-	s.historyQ.On("Begin", s.ctx).Return(nil).Once()
+	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerIngest", s.ctx).Return(uint32(100), nil).Once()
 	s.historyQ.On("GetIngestVersion", s.ctx).Return(CurrentVersion, nil).Once()
 	s.historyQ.On("GetLatestHistoryLedger", s.ctx).Return(uint32(100), nil)
@@ -277,7 +277,7 @@ func (s *ResumeTestTestSuite) mockSuccessfulIngestion() {
 			nil,
 		).Once()
 	s.historyQ.On("UpdateLastLedgerIngest", s.ctx, uint32(101)).Return(nil).Once()
-	s.historyQ.On("Commit", s.ctx).Return(nil).Once()
+	s.historyQ.On("Commit").Return(nil).Once()
 
 	s.stellarCoreClient.On(
 		"SetCursor",
@@ -305,7 +305,7 @@ func (s *ResumeTestTestSuite) TestBumpIngestLedger() {
 		},
 	}, nil).Once()
 
-	s.historyQ.On("Begin", s.ctx).Return(nil).Once()
+	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerIngest", s.ctx).Return(uint32(101), nil).Once()
 
 	next, err := resumeState{latestSuccessfullyProcessedLedger: 99}.run(s.system)
@@ -334,7 +334,7 @@ func (s *ResumeTestTestSuite) TestIngestAllMasterNode() {
 }
 
 func (s *ResumeTestTestSuite) TestErrorSettingCursorIgnored() {
-	s.historyQ.On("Begin", s.ctx).Return(nil).Once()
+	s.historyQ.On("Begin").Return(nil).Once()
 	s.historyQ.On("GetLastLedgerIngest", s.ctx).Return(uint32(100), nil).Once()
 	s.historyQ.On("GetIngestVersion", s.ctx).Return(CurrentVersion, nil).Once()
 	s.historyQ.On("GetLatestHistoryLedger", s.ctx).Return(uint32(100), nil)
@@ -352,7 +352,7 @@ func (s *ResumeTestTestSuite) TestErrorSettingCursorIgnored() {
 			nil,
 		).Once()
 	s.historyQ.On("UpdateLastLedgerIngest", s.ctx, uint32(101)).Return(nil).Once()
-	s.historyQ.On("Commit", s.ctx).Return(nil).Once()
+	s.historyQ.On("Commit").Return(nil).Once()
 
 	s.stellarCoreClient.On(
 		"SetCursor",

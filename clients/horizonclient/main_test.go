@@ -2,8 +2,8 @@ package horizonclient
 
 import (
 	"fmt"
+	"github.com/jarcoal/httpmock"
 	"net/http"
-	"net/url"
 	"testing"
 	"time"
 
@@ -835,8 +835,12 @@ func TestSubmitTransactionXDRRequest(t *testing.T) {
 	// successful tx
 	hmock.On(
 		"POST",
-		"https://localhost/transactions?tx=AAAAABB90WssODNIgi6BHveqzxTRmIpvAFRyVNM%2BHm2GVuCcAAAAZAAABD0AAuV%2FAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAyTBGxOgfSApppsTnb%2FYRr6gOR8WT0LZNrhLh4y3FCgoAAAAXSHboAAAAAAAAAAABhlbgnAAAAEAivKe977CQCxMOKTuj%2BcWTFqc2OOJU8qGr9afrgu2zDmQaX5Q0cNshc3PiBwe0qw%2F%2BD%2FqJk5QqM5dYeSUGeDQP",
-	).ReturnString(200, txSuccess)
+		"https://localhost/transactions",
+	).Return(func(request *http.Request) (*http.Response, error) {
+		val := request.FormValue("tx")
+		assert.Equal(t, val, txXdr)
+		return httpmock.NewStringResponse(http.StatusOK, txSuccess), nil
+	})
 
 	resp, err := client.SubmitTransactionXDR(txXdr)
 	if assert.NoError(t, err) {
@@ -844,7 +848,7 @@ func TestSubmitTransactionXDRRequest(t *testing.T) {
 		assert.Equal(t, resp.Links.Transaction.Href, "https://horizon-testnet.stellar.org/transactions/bcc7a97264dca0a51a63f7ea971b5e7458e334489673078bb2a34eb0cce910ca")
 		assert.Equal(t, resp.Hash, "bcc7a97264dca0a51a63f7ea971b5e7458e334489673078bb2a34eb0cce910ca")
 		assert.Equal(t, resp.Ledger, int32(354811))
-		assert.Equal(t, resp.EnvelopeXdr, `AAAAABB90WssODNIgi6BHveqzxTRmIpvAFRyVNM+Hm2GVuCcAAAAZAAABD0AAuV/AAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAyTBGxOgfSApppsTnb/YRr6gOR8WT0LZNrhLh4y3FCgoAAAAXSHboAAAAAAAAAAABhlbgnAAAAEAivKe977CQCxMOKTuj+cWTFqc2OOJU8qGr9afrgu2zDmQaX5Q0cNshc3PiBwe0qw/+D/qJk5QqM5dYeSUGeDQP`)
+		assert.Equal(t, resp.EnvelopeXdr, txXdr)
 		assert.Equal(t, resp.ResultXdr, "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAA=")
 		assert.Equal(t, resp.ResultMetaXdr, `AAAAAQAAAAIAAAADAAVp+wAAAAAAAAAAEH3Rayw4M0iCLoEe96rPFNGYim8AVHJU0z4ebYZW4JwACBP/TuycHAAABD0AAuV+AAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAVp+wAAAAAAAAAAEH3Rayw4M0iCLoEe96rPFNGYim8AVHJU0z4ebYZW4JwACBP/TuycHAAABD0AAuV/AAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAAwAAAAMABWn7AAAAAAAAAAAQfdFrLDgzSIIugR73qs8U0ZiKbwBUclTTPh5thlbgnAAIE/9O7JwcAAAEPQAC5X8AAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEABWn7AAAAAAAAAAAQfdFrLDgzSIIugR73qs8U0ZiKbwBUclTTPh5thlbgnAAIE+gGdbQcAAAEPQAC5X8AAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAABWn7AAAAAAAAAADJMEbE6B9ICmmmxOdv9hGvqA5HxZPQtk2uEuHjLcUKCgAAABdIdugAAAVp+wAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA==`)
 	}
@@ -880,11 +884,16 @@ func TestSubmitTransactionRequest(t *testing.T) {
 	tx, err = tx.Sign(network.TestNetworkPassphrase, kp)
 	assert.NoError(t, err)
 
+	txXdr := "AAAAAgAAAAAFNPMlEPLB6oWPI/Zl1sBEXxwv93ChUnv7KQK9KxrTtgAAAGQAAAAAAAAAAQAAAAEAAAAAAAAAAAAAAAAAAAAKAAAAAAAAAAEAAAAAAAAAAQAAAAAFNPMlEPLB6oWPI/Zl1sBEXxwv93ChUnv7KQK9KxrTtgAAAAAAAAAABfXhAAAAAAAAAAABKxrTtgAAAECmVMsI0W6JmfJNeLzgH+PseZA2AgYGZl8zaHgkOvhZw65Hj9OaCdw6yssG55qu7X2sauJAwfxaoTL4gwbmH94H"
 	// successful tx with config.memo_required not found
 	hmock.On(
 		"POST",
-		"https://localhost/transactions?tx=AAAAAgAAAAAFNPMlEPLB6oWPI%2FZl1sBEXxwv93ChUnv7KQK9KxrTtgAAAGQAAAAAAAAAAQAAAAEAAAAAAAAAAAAAAAAAAAAKAAAAAAAAAAEAAAAAAAAAAQAAAAAFNPMlEPLB6oWPI%2FZl1sBEXxwv93ChUnv7KQK9KxrTtgAAAAAAAAAABfXhAAAAAAAAAAABKxrTtgAAAECmVMsI0W6JmfJNeLzgH%2BPseZA2AgYGZl8zaHgkOvhZw65Hj9OaCdw6yssG55qu7X2sauJAwfxaoTL4gwbmH94H",
-	).ReturnString(200, txSuccess)
+		"https://localhost/transactions",
+	).Return(func(request *http.Request) (*http.Response, error) {
+		val := request.FormValue("tx")
+		assert.Equal(t, val, txXdr)
+		return httpmock.NewStringResponse(http.StatusOK, txSuccess), nil
+	})
 
 	hmock.On(
 		"GET",
@@ -944,11 +953,16 @@ func TestSubmitTransactionRequestMuxedAccounts(t *testing.T) {
 	tx, err = tx.Sign(network.TestNetworkPassphrase, kp)
 	assert.NoError(t, err)
 
+	txXdr := "AAAAAgAAAQAAAAAAyv66vgU08yUQ8sHqhY8j9mXWwERfHC/3cKFSe/spAr0rGtO2AAAAZAAAAAAAAAABAAAAAQAAAAAAAAAAAAAAAAAAAAoAAAAAAAAAAQAAAAAAAAABAAAAAAU08yUQ8sHqhY8j9mXWwERfHC/3cKFSe/spAr0rGtO2AAAAAAAAAAAF9eEAAAAAAAAAAAErGtO2AAAAQJvQkE9UVo/mfFBl/8ZPTzSUyVO4nvW0BYfnbowoBPEdRfLOLQz28v6sBKQc2b86NUfVHN5TQVo3+jH4nK9wVgk="
 	// successful tx with config.memo_required not found
 	hmock.On(
 		"POST",
-		"https://localhost/transactions?tx=AAAAAgAAAQAAAAAAyv66vgU08yUQ8sHqhY8j9mXWwERfHC%2F3cKFSe%2FspAr0rGtO2AAAAZAAAAAAAAAABAAAAAQAAAAAAAAAAAAAAAAAAAAoAAAAAAAAAAQAAAAAAAAABAAAAAAU08yUQ8sHqhY8j9mXWwERfHC%2F3cKFSe%2FspAr0rGtO2AAAAAAAAAAAF9eEAAAAAAAAAAAErGtO2AAAAQJvQkE9UVo%2FmfFBl%2F8ZPTzSUyVO4nvW0BYfnbowoBPEdRfLOLQz28v6sBKQc2b86NUfVHN5TQVo3%2BjH4nK9wVgk%3D",
-	).ReturnString(200, txSuccess)
+		"https://localhost/transactions",
+	).Return(func(request *http.Request) (*http.Response, error) {
+		val := request.FormValue("tx")
+		assert.Equal(t, val, txXdr)
+		return httpmock.NewStringResponse(http.StatusOK, txSuccess), nil
+	})
 
 	hmock.On(
 		"GET",
@@ -1012,8 +1026,12 @@ func TestSubmitFeeBumpTransaction(t *testing.T) {
 	// successful tx with config.memo_required not found
 	hmock.On(
 		"POST",
-		"https://localhost/transactions?tx="+url.QueryEscape(feeBumpTxB64),
-	).ReturnString(200, txSuccess)
+		"https://localhost/transactions",
+	).Return(func(request *http.Request) (*http.Response, error) {
+		val := request.FormValue("tx")
+		assert.Equal(t, val, feeBumpTxB64)
+		return httpmock.NewStringResponse(http.StatusOK, txSuccess), nil
+	})
 
 	hmock.On(
 		"GET",
@@ -1089,11 +1107,16 @@ func TestSubmitTransactionWithOptionsRequest(t *testing.T) {
 		assert.Equal(t, ok, false)
 	}
 
+	txXdr := "AAAAAgAAAAAFNPMlEPLB6oWPI/Zl1sBEXxwv93ChUnv7KQK9KxrTtgAAAGQAAAAAAAAAAQAAAAEAAAAAAAAAAAAAAAAAAAAKAAAAAAAAAAEAAAAAAAAAAQAAAAAFNPMlEPLB6oWPI/Zl1sBEXxwv93ChUnv7KQK9KxrTtgAAAAAAAAAABfXhAAAAAAAAAAABKxrTtgAAAECmVMsI0W6JmfJNeLzgH+PseZA2AgYGZl8zaHgkOvhZw65Hj9OaCdw6yssG55qu7X2sauJAwfxaoTL4gwbmH94H"
 	// successful tx
 	hmock.On(
 		"POST",
-		"https://localhost/transactions?tx=AAAAAgAAAAAFNPMlEPLB6oWPI%2FZl1sBEXxwv93ChUnv7KQK9KxrTtgAAAGQAAAAAAAAAAQAAAAEAAAAAAAAAAAAAAAAAAAAKAAAAAAAAAAEAAAAAAAAAAQAAAAAFNPMlEPLB6oWPI%2FZl1sBEXxwv93ChUnv7KQK9KxrTtgAAAAAAAAAABfXhAAAAAAAAAAABKxrTtgAAAECmVMsI0W6JmfJNeLzgH%2BPseZA2AgYGZl8zaHgkOvhZw65Hj9OaCdw6yssG55qu7X2sauJAwfxaoTL4gwbmH94H",
-	).ReturnString(200, txSuccess)
+		"https://localhost/transactions",
+	).Return(func(request *http.Request) (*http.Response, error) {
+		val := request.FormValue("tx")
+		assert.Equal(t, val, txXdr)
+		return httpmock.NewStringResponse(http.StatusOK, txSuccess), nil
+	})
 
 	_, err = client.SubmitTransactionWithOptions(tx, SubmitTxOpts{SkipMemoRequiredCheck: true})
 	assert.NoError(t, err)
@@ -1101,8 +1124,12 @@ func TestSubmitTransactionWithOptionsRequest(t *testing.T) {
 	// successful tx with config.memo_required not found
 	hmock.On(
 		"POST",
-		"https://localhost/transactions?tx=AAAAAgAAAAAFNPMlEPLB6oWPI%2FZl1sBEXxwv93ChUnv7KQK9KxrTtgAAAGQAAAAAAAAAAQAAAAEAAAAAAAAAAAAAAAAAAAAKAAAAAAAAAAEAAAAAAAAAAQAAAAAFNPMlEPLB6oWPI%2FZl1sBEXxwv93ChUnv7KQK9KxrTtgAAAAAAAAAABfXhAAAAAAAAAAABKxrTtgAAAECmVMsI0W6JmfJNeLzgH%2BPseZA2AgYGZl8zaHgkOvhZw65Hj9OaCdw6yssG55qu7X2sauJAwfxaoTL4gwbmH94H",
-	).ReturnString(200, txSuccess)
+		"https://localhost/transactions",
+	).Return(func(request *http.Request) (*http.Response, error) {
+		val := request.FormValue("tx")
+		assert.Equal(t, val, txXdr)
+		return httpmock.NewStringResponse(http.StatusOK, txSuccess), nil
+	})
 
 	hmock.On(
 		"GET",
@@ -1123,10 +1150,15 @@ func TestSubmitTransactionWithOptionsRequest(t *testing.T) {
 	assert.Equal(t, ErrAccountRequiresMemo, errors.Cause(err))
 
 	// skips memo check if tx includes a memo
+	txXdr = "AAAAAgAAAAAFNPMlEPLB6oWPI/Zl1sBEXxwv93ChUnv7KQK9KxrTtgAAAGQAAAAAAAAAAgAAAAEAAAAAAAAAAAAAAAAAAAAKAAAAAQAAAApIZWxsb1dvcmxkAAAAAAABAAAAAAAAAAEAAAAABTTzJRDyweqFjyP2ZdbARF8cL/dwoVJ7+ykCvSsa07YAAAAAAAAAAAX14QAAAAAAAAAAASsa07YAAABA7rDHZ+HcBIQbWByMZL3aT231WuwjOhxvb0c1i3vPzArUCE+HdCIJXq6Mk/xdhJj6QEEJrg15uAxke3P3k2vWCw=="
 	hmock.On(
 		"POST",
-		"https://localhost/transactions?tx=AAAAAgAAAAAFNPMlEPLB6oWPI%2FZl1sBEXxwv93ChUnv7KQK9KxrTtgAAAGQAAAAAAAAAAgAAAAEAAAAAAAAAAAAAAAAAAAAKAAAAAQAAAApIZWxsb1dvcmxkAAAAAAABAAAAAAAAAAEAAAAABTTzJRDyweqFjyP2ZdbARF8cL%2FdwoVJ7%2BykCvSsa07YAAAAAAAAAAAX14QAAAAAAAAAAASsa07YAAABA7rDHZ%2BHcBIQbWByMZL3aT231WuwjOhxvb0c1i3vPzArUCE%2BHdCIJXq6Mk%2FxdhJj6QEEJrg15uAxke3P3k2vWCw%3D%3D",
-	).ReturnString(200, txSuccess)
+		"https://localhost/transactions",
+	).Return(func(request *http.Request) (*http.Response, error) {
+		val := request.FormValue("tx")
+		assert.Equal(t, val, txXdr)
+		return httpmock.NewStringResponse(http.StatusOK, txSuccess), nil
+	})
 
 	tx, err = txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
@@ -1215,8 +1247,12 @@ func TestSubmitFeeBumpTransactionWithOptions(t *testing.T) {
 	// successful tx
 	hmock.On(
 		"POST",
-		"https://localhost/transactions?tx="+url.QueryEscape(feeBumpTxB64),
-	).ReturnString(200, txSuccess)
+		"https://localhost/transactions",
+	).Return(func(request *http.Request) (*http.Response, error) {
+		val := request.FormValue("tx")
+		assert.Equal(t, val, feeBumpTxB64)
+		return httpmock.NewStringResponse(http.StatusOK, txSuccess), nil
+	})
 
 	_, err = client.SubmitFeeBumpTransactionWithOptions(feeBumpTx, SubmitTxOpts{SkipMemoRequiredCheck: true})
 	assert.NoError(t, err)
@@ -1224,8 +1260,12 @@ func TestSubmitFeeBumpTransactionWithOptions(t *testing.T) {
 	// successful tx with config.memo_required not found
 	hmock.On(
 		"POST",
-		"https://localhost/transactions?tx="+url.QueryEscape(feeBumpTxB64),
-	).ReturnString(200, txSuccess)
+		"https://localhost/transactions",
+	).Return(func(request *http.Request) (*http.Response, error) {
+		val := request.FormValue("tx")
+		assert.Equal(t, val, feeBumpTxB64)
+		return httpmock.NewStringResponse(http.StatusOK, txSuccess), nil
+	})
 
 	hmock.On(
 		"GET",
@@ -1270,8 +1310,12 @@ func TestSubmitFeeBumpTransactionWithOptions(t *testing.T) {
 	// skips memo check if tx includes a memo
 	hmock.On(
 		"POST",
-		"https://localhost/transactions?tx="+url.QueryEscape(feeBumpTxB64),
-	).ReturnString(200, txSuccess)
+		"https://localhost/transactions",
+	).Return(func(request *http.Request) (*http.Response, error) {
+		val := request.FormValue("tx")
+		assert.Equal(t, val, feeBumpTxB64)
+		return httpmock.NewStringResponse(http.StatusOK, txSuccess), nil
+	})
 
 	tx, err = tx.Sign(network.TestNetworkPassphrase, kp)
 	assert.NoError(t, err)

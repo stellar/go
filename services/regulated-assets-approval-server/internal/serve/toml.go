@@ -57,7 +57,7 @@ func (h stellarTOMLHandler) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	// Convert kycThreshold value to human readable string; from amount package's int64 5000000000 to 500.00.
-	kycThreshold, err := convertThresholdToReadableString(h.kycThreshold)
+	kycThreshold, err := convertAmountToReadableString(h.kycThreshold)
 	if err != nil {
 		log.Ctx(ctx).Error(errors.Wrap(err, "converting kycThreshold value to human readable string"))
 		httperror.InternalServer.Render(rw)

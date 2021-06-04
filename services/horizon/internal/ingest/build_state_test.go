@@ -50,8 +50,8 @@ func (s *BuildStateTestSuite) SetupTest() {
 	}
 	s.system.initMetrics()
 
-	s.historyQ.On("Begin", s.ctx).Return(nil).Once()
-	s.historyQ.On("Rollback", s.ctx).Return(nil).Once()
+	s.historyQ.On("Begin").Return(nil).Once()
+	s.historyQ.On("Rollback").Return(nil).Once()
 
 	s.ledgerBackend.On("IsPrepared", s.ctx, ledgerbackend.UnboundedRange(63)).Return(false, nil).Once()
 	s.ledgerBackend.On("PrepareRange", s.ctx, ledgerbackend.UnboundedRange(63)).Return(nil).Once()
@@ -136,7 +136,7 @@ func (s *BuildStateTestSuite) TestRangeNotPreparedSuccessPrepareGetLedgerFail() 
 func (s *BuildStateTestSuite) TestBeginReturnsError() {
 	// Recreate mock in this single test to remove assertions.
 	*s.historyQ = mockDBQ{}
-	s.historyQ.On("Begin", s.ctx).Return(errors.New("my error")).Once()
+	s.historyQ.On("Begin").Return(errors.New("my error")).Once()
 
 	next, err := buildState{checkpointLedger: s.checkpointLedger}.run(s.system)
 	s.Assert().Error(err)
@@ -316,7 +316,7 @@ func (s *BuildStateTestSuite) TestUpdateCommitReturnsError() {
 	s.historyQ.On("UpdateIngestVersion", s.ctx, CurrentVersion).
 		Return(nil).
 		Once()
-	s.historyQ.On("Commit", s.ctx).
+	s.historyQ.On("Commit").
 		Return(errors.New("my error")).
 		Once()
 	next, err := buildState{checkpointLedger: s.checkpointLedger}.run(s.system)
@@ -338,7 +338,7 @@ func (s *BuildStateTestSuite) TestBuildStateSucceeds() {
 	s.historyQ.On("UpdateIngestVersion", s.ctx, CurrentVersion).
 		Return(nil).
 		Once()
-	s.historyQ.On("Commit", s.ctx).
+	s.historyQ.On("Commit").
 		Return(nil).
 		Once()
 
@@ -366,7 +366,7 @@ func (s *BuildStateTestSuite) TestUpdateCommitReturnsErrorStop() {
 	s.historyQ.On("UpdateIngestVersion", s.ctx, CurrentVersion).
 		Return(nil).
 		Once()
-	s.historyQ.On("Commit", s.ctx).
+	s.historyQ.On("Commit").
 		Return(errors.New("my error")).
 		Once()
 	next, err := buildState{checkpointLedger: s.checkpointLedger, stop: true}.run(s.system)
@@ -388,7 +388,7 @@ func (s *BuildStateTestSuite) TestBuildStateSucceedStop() {
 	s.historyQ.On("UpdateIngestVersion", s.ctx, CurrentVersion).
 		Return(nil).
 		Once()
-	s.historyQ.On("Commit", s.ctx).
+	s.historyQ.On("Commit").
 		Return(nil).
 		Once()
 
