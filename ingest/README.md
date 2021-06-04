@@ -90,7 +90,7 @@ captiveCoreToml, err := ledgerbackend.NewCaptiveCoreToml(
 	})
 panicIf(err)
 
-return ledgerbackend.CaptiveCoreConfig{
+config := ledgerbackend.CaptiveCoreConfig{
 	// Change these based on your environment:
 	BinaryPath:         "/usr/bin/stellar-core",
 	NetworkPassphrase:  networkPassphrase,
@@ -189,7 +189,6 @@ func statistics() {
 	defer backend.Close()
 
 	// ...
-}
 ```
 
 ## Reading Transactions
