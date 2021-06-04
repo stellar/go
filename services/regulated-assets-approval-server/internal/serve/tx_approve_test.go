@@ -389,6 +389,36 @@ func TestTxApproveHandler_txApprove_rejected(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, NewRejectedTxApprovalResponse("There is one or more unauthorized operations in the provided transaction."), txApprovalResp)
 
+	// rejected if attempting to transfer an asset to its own issuer
+	tx, err = txnbuild.NewTransaction(
+		txnbuild.TransactionParams{
+			SourceAccount: &horizon.Account{
+				AccountID: senderKP.Address(),
+				Sequence:  "2",
+			},
+			IncrementSequenceNum: true,
+			Operations: []txnbuild.Operation{
+				&txnbuild.Payment{
+					Destination: issuerKP.Address(), // <--- this will trigger the rejection
+					Amount:      "1",
+					Asset: txnbuild.CreditAsset{
+						Code:   "FOO",
+						Issuer: keypair.MustRandom().Address(),
+					},
+				},
+			},
+			BaseFee:    txnbuild.MinBaseFee,
+			Timebounds: txnbuild.NewInfiniteTimeout(),
+		},
+	)
+	require.NoError(t, err)
+	txe, err = tx.Base64()
+	require.NoError(t, err)
+
+	txApprovalResp, err = handler.txApprove(ctx, txApproveRequest{Tx: txe})
+	require.NoError(t, err)
+	assert.Equal(t, NewRejectedTxApprovalResponse("Can't transfer asset to its issuer."), txApprovalResp)
+
 	// rejected if payment asset is not supported
 	tx, err = txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
@@ -1026,6 +1056,54 @@ func TestTxApproveHandler_handleSuccessResponseIfNeeded_rejected(t *testing.T) {
 	txApprovalResp, err := handler.handleSuccessResponseIfNeeded(ctx, tx)
 	require.NoError(t, err)
 	assert.Equal(t, NewRejectedTxApprovalResponse("There are one or more unexpected operations in the provided transaction."), txApprovalResp)
+
+	// rejected if attempting to transfer an asset to its own issuer
+	tx, err = txnbuild.NewTransaction(txnbuild.TransactionParams{
+		SourceAccount: &horizon.Account{
+			AccountID: senderKP.Address(),
+			Sequence:  "2",
+		},
+		IncrementSequenceNum: true,
+		Operations: []txnbuild.Operation{
+			&txnbuild.AllowTrust{
+				Trustor:       senderKP.Address(),
+				Type:          assetGOAT,
+				Authorize:     true,
+				SourceAccount: issuerKP.Address(),
+			},
+			&txnbuild.AllowTrust{
+				Trustor:       issuerKP.Address(),
+				Type:          assetGOAT,
+				Authorize:     true,
+				SourceAccount: issuerKP.Address(),
+			},
+			&txnbuild.Payment{
+				SourceAccount: senderKP.Address(),
+				Destination:   issuerKP.Address(), // <--- this will trigger the rejection
+				Amount:        "1",
+				Asset:         assetGOAT,
+			},
+			&txnbuild.AllowTrust{
+				Trustor:       issuerKP.Address(),
+				Type:          assetGOAT,
+				Authorize:     false,
+				SourceAccount: issuerKP.Address(),
+			},
+			&txnbuild.AllowTrust{
+				Trustor:       senderKP.Address(),
+				Type:          assetGOAT,
+				Authorize:     false,
+				SourceAccount: issuerKP.Address(),
+			},
+		},
+		BaseFee:    300,
+		Timebounds: txnbuild.NewTimeout(300),
+	})
+	require.NoError(t, err)
+
+	txApprovalResp, err = handler.handleSuccessResponseIfNeeded(ctx, tx)
+	require.NoError(t, err)
+	assert.Equal(t, NewRejectedTxApprovalResponse("Can't transfer asset to its issuer."), txApprovalResp)
 
 	// rejected if sequence number is not incremental
 	compliantOps := []txnbuild.Operation{
