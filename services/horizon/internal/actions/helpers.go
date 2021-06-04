@@ -345,6 +345,10 @@ func getAsset(r *http.Request, prefix string) (xdr.Asset, error) {
 func getURLParam(r *http.Request, key string) (string, bool) {
 	rctx := chi.RouteContext(r.Context())
 
+	if rctx == nil {
+		return "", false
+	}
+
 	// Return immediately if keys does not match Values
 	// This can happen when a named param is not specified.
 	// This is a bug in chi: https://github.com/go-chi/chi/issues/426
