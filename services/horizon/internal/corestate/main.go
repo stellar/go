@@ -27,6 +27,12 @@ func (c *Store) Set(resp *stellarcore.InfoResponse) {
 	c.state.CoreSupportedProtocolVersion = int32(resp.Info.ProtocolVersion)
 }
 
+func (c *Store) SetState(state State) {
+	c.Lock()
+	defer c.Unlock()
+	c.state = state
+}
+
 func (c *Store) Get() State {
 	c.RLock()
 	defer c.RUnlock()

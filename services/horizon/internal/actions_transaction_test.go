@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/stellar/go/protocols/horizon"
+	"github.com/stellar/go/services/horizon/internal/corestate"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/ingest"
 	"github.com/stellar/go/services/horizon/internal/test"
@@ -249,7 +250,7 @@ func TestTransactionActions_Post(t *testing.T) {
 	defer ht.Finish()
 
 	// Pass Synced check
-	ht.App.coreState.Synced = true
+	ht.App.coreState.SetState(corestate.State{Synced: true})
 
 	tx := xdr.TransactionEnvelope{
 		Type: xdr.EnvelopeTypeEnvelopeTypeTxV0,
@@ -293,7 +294,7 @@ func TestTransactionActions_PostSuccessful(t *testing.T) {
 	defer ht.Finish()
 
 	// Pass Synced check
-	ht.App.coreState.Synced = true
+	ht.App.coreState.SetState(corestate.State{Synced: true})
 
 	destAID := xdr.MustAddress("GBXGQJWVLWOYHFLVTKWV5FGHA3LNYY2JQKM7OAJAUEQFU6LPCSEFVXON")
 	tx2 := xdr.TransactionEnvelope{
@@ -347,7 +348,7 @@ func TestTransactionActions_PostFailed(t *testing.T) {
 	defer ht.Finish()
 
 	// Pass Synced check
-	ht.App.coreState.Synced = true
+	ht.App.coreState.SetState(corestate.State{Synced: true})
 
 	// aa168f12124b7c196c0adaee7c73a64d37f99428cacb59a91ff389626845e7cf
 	form := url.Values{"tx": []string{"AAAAAG5oJtVdnYOVdZqtXpTHBtbcY0mCmfcBIKEgWnlvFIhaAAAAZAAAAAIAAAACAAAAAAAAAAAAAAABAAAAAAAAAAEAAAAAO2C/AO45YBD3tHVFO1R3A0MekP8JR6nN1A9eWidyItUAAAABVVNEAAAAAACuo3ot45qCPExpQ/3oHN+z17Ryis1lfMFYmQWgruS+TAAAAAB3NZQAAAAAAAAAAAFvFIhaAAAAQKcGS9OsVnVHCVIH04C9ZKzzKYBRdCmy+Jwmzld7QcALOxZUcAgkuGfoSdvXpH38mNvrqQiaMsSNmTJWYRzHvgo="}}
@@ -363,7 +364,7 @@ func TestPostFeeBumpTransaction(t *testing.T) {
 	defer ht.Finish()
 
 	// Pass Synced check
-	ht.App.coreState.Synced = true
+	ht.App.coreState.SetState(corestate.State{Synced: true})
 
 	test.ResetHorizonDB(t, ht.HorizonDB)
 	q := &history.Q{ht.HorizonSession()}
@@ -402,7 +403,7 @@ func TestPostFailedFeeBumpTransaction(t *testing.T) {
 	defer ht.Finish()
 
 	// Pass Synced check
-	ht.App.coreState.Synced = true
+	ht.App.coreState.SetState(corestate.State{Synced: true})
 
 	test.ResetHorizonDB(t, ht.HorizonDB)
 	q := &history.Q{ht.HorizonSession()}
