@@ -399,7 +399,7 @@ func TestTxApproveHandler_txApprove_rejected(t *testing.T) {
 			IncrementSequenceNum: true,
 			Operations: []txnbuild.Operation{
 				&txnbuild.Payment{
-					Destination: issuerKP.Address(),
+					Destination: issuerKP.Address(), // <--- this will trigger the rejection
 					Amount:      "1",
 					Asset: txnbuild.CreditAsset{
 						Code:   "FOO",
@@ -1079,7 +1079,7 @@ func TestTxApproveHandler_handleSuccessResponseIfNeeded_rejected(t *testing.T) {
 			},
 			&txnbuild.Payment{
 				SourceAccount: senderKP.Address(),
-				Destination:   issuerKP.Address(),
+				Destination:   issuerKP.Address(), // <--- this will trigger the rejection
 				Amount:        "1",
 				Asset:         assetGOAT,
 			},
