@@ -174,9 +174,6 @@ func getRoutePattern(r *http.Request) string {
 
 func logEndOfRequest(ctx context.Context, r *http.Request, requestDurationSummary *prometheus.SummaryVec, duration time.Duration, mw middleware.WrapResponseWriter, streaming bool) {
 	route := sanitizeMetricRoute(getRoutePattern(r))
-	if route == "" {
-		route = "undefined"
-	}
 
 	referer := r.Referer()
 	if referer == "" {
