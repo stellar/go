@@ -164,6 +164,10 @@ func (h txApproveHandler) txApprove(ctx context.Context, in txApproveRequest) (r
 		paymentSource = tx.SourceAccount().AccountID
 	}
 
+	if paymentOp.Destination == h.issuerKP.Address() {
+		return NewRejectedTxApprovalResponse("Can't transfer asset to its issuer."), nil
+	}
+
 	// validate payment asset is the one supported by the issuer
 	issuerAddress := h.issuerKP.Address()
 	if paymentOp.Asset.GetCode() != h.assetCode || paymentOp.Asset.GetIssuer() != issuerAddress {
@@ -309,6 +313,10 @@ func (h txApproveHandler) handleSuccessResponseIfNeeded(ctx context.Context, tx 
 	rejectedResp, paymentOp, paymentSource := validateTransactionOperationsForSuccess(ctx, tx, h.issuerKP.Address())
 	if rejectedResp != nil {
 		return rejectedResp, nil
+	}
+
+	if paymentOp.Destination == h.issuerKP.Address() {
+		return NewRejectedTxApprovalResponse("Can't transfer asset to its issuer."), nil
 	}
 
 	// pull current account details from the network then validate the tx sequence number
