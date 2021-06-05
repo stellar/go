@@ -19,6 +19,7 @@ var QueryTypeContextKey = CtxKey("query_type")
 type Subservice string
 
 var CoreSubservice = Subservice("core")
+var HistoryPrimarySubservice = Subservice("history_primary")
 var HistorySubservice = Subservice("history")
 var IngestSubservice = Subservice("ingest")
 
