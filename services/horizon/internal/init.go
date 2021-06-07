@@ -62,7 +62,7 @@ func mustInitHorizonDB(app *App) {
 		)}
 
 		app.primaryHistoryQ = &history.Q{mustNewDBSession(
-			db.HistorySubservice,
+			db.HistoryPrimarySubservice,
 			app.config.DatabaseURL,
 			maxIdle,
 			maxOpen,
