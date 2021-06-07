@@ -5,8 +5,9 @@ Status: supports SEP-8 transactions revision with a simplified rule:
 - only revises transactions containing a single operation of type payment.
 - payments whose amount does not meet the configured threshold are considered compliant and revised according to the SEP-8 specification.
 - payments with an amount exceeding the threshold need further action.
+- transactions already compliant with SEP-8 that don't need to be revised will be signed and returned with the "success" SEP-8 status.
 
-It is important to notice the SEP-8 "success" response has not been implemented yet so even if the submitted transaction is compliant to be marked as successful according with SEP-8, this service will reject it.
+Note: SEP-8 states the service should be able to handle offers in addition to payments, but we're not supporting that at the moment.
 ```
 
 This is a [SEP-8] Approval Server reference implementation based on SEP-8 v1.7.1
@@ -133,10 +134,12 @@ to do that in Stellar Laboratory.
 
 ### `POST /tx-approve`
 
-This is the core [SEP-8] endpoint used to validate and process
-approval/revision/rejection of regulated assets transactions. Note: The example
-responses below have set their `base-url` env var configured to
-`"https://example.com"`.
+This is the core [SEP-8] endpoint used to validate and process regulated assets
+transactions. Its response will contain one of the following statuses:
+[Success], [Revised], [Action Required], or [Rejected].
+
+Note: The example responses below have set their `base-url` env var configured
+to `"https://example.com"`.
 
 **Request:**
 
@@ -147,6 +150,17 @@ responses below have set their `base-url` env var configured to
 ```
 
 **Responses:**
+
+_Success:_ means the transaction has been approved and signed by the issuer
+without being revised. For more info read the SEP-8 [Success] section.
+
+```json
+{
+  "status": "success",
+  "message": "Transaction is compliant and signed by the issuer.",
+  "tx": "AAAAAgAAAAA0Nk3++mfFw4Is6OaUJTKe71XNtxdktcjGrPildK84xAAABdwAAJ3YAAAABwAAAAEAAAAAAAAAAAAAAABgXdapAAAAAAAAAAUAAAABAAAAAKo3U5g57mZuGKyGd8EFZlV5lkjDuHS5OXTj81I1g7yIAAAABwAAAAA0Nk3++mfFw4Is6OaUJTKe71XNtxdktcjGrPildK84xAAAAAJNWVVTRAAAAAAAAAAAAAABAAAAAQAAAACqN1OYOe5mbhishnfBBWZVeZZIw7h0uTl04/NSNYO8iAAAAAcAAAAAEZZVb/iufEW8M3P9k4tSLIrCwtN7nTSW5UMdrDy3w8oAAAACTVlVU0QAAAAAAAAAAAAAAQAAAAAAAAABAAAAABGWVW/4rnxFvDNz/ZOLUiyKwsLTe500luVDHaw8t8PKAAAAAk1ZVVNEAAAAAAAAAAAAAACqN1OYOe5mbhishnfBBWZVeZZIw7h0uTl04/NSNYO8iAAAAAEqnoiAAAAAAQAAAACqN1OYOe5mbhishnfBBWZVeZZIw7h0uTl04/NSNYO8iAAAAAcAAAAAEZZVb/iufEW8M3P9k4tSLIrCwtN7nTSW5UMdrDy3w8oAAAACTVlVU0QAAAAAAAAAAAAAAAAAAAEAAAAAqjdTmDnuZm4YrIZ3wQVmVXmWSMO4dLk5dOPzUjWDvIgAAAAHAAAAADQ2Tf76Z8XDgizo5pQlMp7vVc23F2S1yMas+KV0rzjEAAAAAk1ZVVNEAAAAAAAAAAAAAAAAAAAAAAAAATWDvIgAAABAxXindTDbKTpw9B+1aUdTOTE6CUF610A0ZL+ofBVSlcvHYadc3LfO/L4/V22h2FyHNt2ALwncmlEq+3hpojZDDQ=="
+}
+```
 
 _Revised:_ this response means the transaction was revised to be made compliant,
 and signed by the issuer. For more info read the SEP-8 [Revised] section.
@@ -292,3 +306,4 @@ the [SEP-8] spec._
 [Action Required]: https://github.com/stellar/stellar-protocol/blob/7c795bb9abc606cd1e34764c4ba07900d58fe26e/ecosystem/sep-0008.md#action-required
 [Rejected]: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0008.md#rejected
 [Revised]:https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0008.md#revised
+[Success]: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0008.md#success

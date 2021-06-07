@@ -100,6 +100,10 @@ type stellarCoreClient interface {
 }
 
 type Metrics struct {
+	// MaxSupportedProtocolVersion exposes the maximum protocol version
+	// supported by this version.
+	MaxSupportedProtocolVersion prometheus.Gauge
+
 	// LocalLedger exposes the last ingested ledger by this ingesting instance.
 	LocalLatestLedger prometheus.Gauge
 
@@ -124,6 +128,10 @@ type Metrics struct {
 	// CaptiveStellarCoreSynced exposes synced status of Captive Stellar-Core.
 	// 1 if sync, 0 if not synced, -1 if unable to connect or HTTP server disabled.
 	CaptiveStellarCoreSynced prometheus.GaugeFunc
+
+	// CaptiveCoreSupportedProtocolVersion exposes the maximum protocol version
+	// supported by the running Captive-Core.
+	CaptiveCoreSupportedProtocolVersion prometheus.GaugeFunc
 }
 
 type System interface {
@@ -250,6 +258,13 @@ func NewSystem(config Config) (System, error) {
 }
 
 func (s *system) initMetrics() {
+	s.metrics.MaxSupportedProtocolVersion = prometheus.NewGauge(prometheus.GaugeOpts{
+		Namespace: "horizon", Subsystem: "ingest", Name: "max_supported_protocol_version",
+		Help: "the maximum protocol version supported by this version.",
+	})
+
+	s.metrics.MaxSupportedProtocolVersion.Set(float64(MaxSupportedProtocolVersion))
+
 	s.metrics.LocalLatestLedger = prometheus.NewGauge(prometheus.GaugeOpts{
 		Namespace: "horizon", Subsystem: "ingest", Name: "local_latest_ledger",
 		Help: "sequence number of the latest ledger ingested by this ingesting instance",
@@ -328,6 +343,33 @@ func (s *system) initMetrics() {
 			} else {
 				return 0
 			}
+		},
+	)
+
+	s.metrics.CaptiveCoreSupportedProtocolVersion = prometheus.NewGaugeFunc(
+		prometheus.GaugeOpts{
+			Namespace: "horizon", Subsystem: "ingest", Name: "captive_stellar_core_supported_protocol_version",
+			Help: "determines the supported version of the protocol by Captive-Core",
+		},
+		func() float64 {
+			if !s.config.EnableCaptiveCore || (s.config.CaptiveCoreToml.HTTPPort == 0) {
+				return -1
+			}
+
+			client := stellarcore.Client{
+				HTTP: &http.Client{
+					Timeout: 2 * time.Second,
+				},
+				URL: fmt.Sprintf("http://localhost:%d", s.config.CaptiveCoreToml.HTTPPort),
+			}
+
+			info, err := client.Info(s.ctx)
+			if err != nil {
+				log.WithError(err).Error("Cannot connect to Captive Stellar-Core HTTP server")
+				return -1
+			}
+
+			return float64(info.Info.ProtocolVersion)
 		},
 	)
 }
