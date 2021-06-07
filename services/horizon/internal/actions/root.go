@@ -5,24 +5,18 @@ import (
 	"net/url"
 
 	"github.com/stellar/go/protocols/horizon"
+	"github.com/stellar/go/services/horizon/internal/corestate"
 	"github.com/stellar/go/services/horizon/internal/ledger"
 	"github.com/stellar/go/services/horizon/internal/resourceadapter"
 )
 
-type CoreSettings struct {
-	Synced                       bool
-	CurrentProtocolVersion       int32
-	CoreSupportedProtocolVersion int32
-	CoreVersion                  string
-}
-
-type CoreSettingsGetter interface {
-	GetCoreSettings() CoreSettings
+type CoreStateGetter interface {
+	GetCoreState() corestate.State
 }
 
 type GetRootHandler struct {
 	LedgerState *ledger.State
-	CoreSettingsGetter
+	CoreStateGetter
 	NetworkPassphrase string
 	FriendbotURL      *url.URL
 	HorizonVersion    string
@@ -37,16 +31,16 @@ func (handler GetRootHandler) GetResource(w HeaderWriter, r *http.Request) (inte
 		"strictReceivePaths": StrictReceivePathsQuery{}.URITemplate(),
 		"strictSendPaths":    FindFixedPathsQuery{}.URITemplate(),
 	}
-	coreSettings := handler.GetCoreSettings()
+	coreState := handler.GetCoreState()
 	resourceadapter.PopulateRoot(
 		r.Context(),
 		&res,
 		handler.LedgerState.CurrentStatus(),
 		handler.HorizonVersion,
-		coreSettings.CoreVersion,
+		coreState.CoreVersion,
 		handler.NetworkPassphrase,
-		coreSettings.CurrentProtocolVersion,
-		coreSettings.CoreSupportedProtocolVersion,
+		coreState.CurrentProtocolVersion,
+		coreState.CoreSupportedProtocolVersion,
 		handler.FriendbotURL,
 		templates,
 	)

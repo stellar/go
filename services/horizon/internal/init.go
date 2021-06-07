@@ -208,7 +208,7 @@ func initDbMetrics(app *App) {
 			Help: "determines if Stellar-Core defined by --stellar-core-url is synced with the network",
 		},
 		func() float64 {
-			if app.coreSettings.Synced {
+			if app.coreState.Get().Synced {
 				return 1
 			} else {
 				return 0
@@ -216,6 +216,17 @@ func initDbMetrics(app *App) {
 		},
 	)
 	app.prometheusRegistry.MustRegister(app.coreSynced)
+
+	app.coreSupportedProtocolVersion = prometheus.NewGaugeFunc(
+		prometheus.GaugeOpts{
+			Namespace: "horizon", Subsystem: "stellar_core", Name: "supported_protocol_version",
+			Help: "determines the supported version of the protocol by Stellar-Core defined by --stellar-core-url",
+		},
+		func() float64 {
+			return float64(app.coreState.Get().CoreSupportedProtocolVersion)
+		},
+	)
+	app.prometheusRegistry.MustRegister(app.coreSupportedProtocolVersion)
 
 	app.prometheusRegistry.MustRegister(app.orderBookStream.LatestLedgerGauge)
 }
@@ -243,6 +254,7 @@ func initIngestMetrics(app *App) {
 	}
 
 	app.ingestingGauge.Inc()
+	app.prometheusRegistry.MustRegister(app.ingester.Metrics().MaxSupportedProtocolVersion)
 	app.prometheusRegistry.MustRegister(app.ingester.Metrics().LocalLatestLedger)
 	app.prometheusRegistry.MustRegister(app.ingester.Metrics().LedgerIngestionDuration)
 	app.prometheusRegistry.MustRegister(app.ingester.Metrics().StateVerifyDuration)
@@ -250,6 +262,7 @@ func initIngestMetrics(app *App) {
 	app.prometheusRegistry.MustRegister(app.ingester.Metrics().LedgerStatsCounter)
 	app.prometheusRegistry.MustRegister(app.ingester.Metrics().ProcessorsRunDuration)
 	app.prometheusRegistry.MustRegister(app.ingester.Metrics().CaptiveStellarCoreSynced)
+	app.prometheusRegistry.MustRegister(app.ingester.Metrics().CaptiveCoreSupportedProtocolVersion)
 }
 
 func initTxSubMetrics(app *App) {

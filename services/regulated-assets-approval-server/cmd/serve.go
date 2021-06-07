@@ -17,7 +17,7 @@ func (c *ServeCommand) Command() *cobra.Command {
 	configOpts := config.ConfigOptions{
 		{
 			Name:      "issuer-account-secret",
-			Usage:     "Secret key of the asset issuer's stellar account.",
+			Usage:     "Secret key of the issuer account.",
 			OptType:   types.String,
 			ConfigKey: &opts.IssuerAccountSecret,
 			Required:  true,

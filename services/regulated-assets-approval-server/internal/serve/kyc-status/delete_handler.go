@@ -57,14 +57,7 @@ func (h DeleteHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	httpjson.Render(w, httpjson.DefaultResponse, httpjson.JSON)
 }
 
-func (h DeleteHandler) handle(ctx context.Context, in deleteRequest) (err error) {
-	defer func() {
-		log.Ctx(ctx).Debug("==== will log responses ====")
-		log.Ctx(ctx).Debugf("req: %+v", in)
-		log.Ctx(ctx).Debugf("err: %+v", err)
-		log.Ctx(ctx).Debug("====  did log responses ====")
-	}()
-
+func (h DeleteHandler) handle(ctx context.Context, in deleteRequest) error {
 	// Check if deleteRequest StellarAddress value is present.
 	if in.StellarAddress == "" {
 		return httperror.NewHTTPError(http.StatusBadRequest, "Missing stellar address.")
@@ -80,7 +73,7 @@ func (h DeleteHandler) handle(ctx context.Context, in deleteRequest) (err error)
 			SELECT * FROM deleted_rows
 		)
 	`
-	err = h.DB.QueryRowContext(ctx, q, in.StellarAddress).Scan(&existed)
+	err := h.DB.QueryRowContext(ctx, q, in.StellarAddress).Scan(&existed)
 	if err != nil {
 		return errors.Wrap(err, "querying the database")
 	}

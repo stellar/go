@@ -2,6 +2,7 @@ package horizonclient
 
 import (
 	"fmt"
+	"net/http"
 	"net/url"
 
 	"github.com/stellar/go/support/errors"
@@ -45,4 +46,14 @@ func (ar AccountRequest) BuildURL() (endpoint string, err error) {
 	}
 
 	return endpoint, err
+}
+
+// HTTPRequest returns the http request for the account endpoint
+func (ar AccountRequest) HTTPRequest(horizonURL string) (*http.Request, error) {
+	endpoint, err := ar.BuildURL()
+	if err != nil {
+		return nil, err
+	}
+
+	return http.NewRequest("GET", horizonURL+endpoint, nil)
 }
