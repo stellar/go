@@ -151,6 +151,7 @@ func sanitizeMetricRoute(routePattern string) string {
 
 // Author: https://github.com/rliebz
 // From: https://github.com/go-chi/chi/issues/270#issuecomment-479184559
+// https://github.com/go-chi/chi/blob/master/LICENSE
 func getRoutePattern(r *http.Request) string {
 	rctx := chi.RouteContext(r.Context())
 	if pattern := rctx.RoutePattern(); pattern != "" {
