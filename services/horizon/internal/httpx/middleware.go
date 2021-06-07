@@ -149,8 +149,32 @@ func sanitizeMetricRoute(routePattern string) string {
 	return route
 }
 
+// Author: https://github.com/rliebz
+// From: https://github.com/go-chi/chi/issues/270#issuecomment-479184559
+// https://github.com/go-chi/chi/blob/master/LICENSE
+func getRoutePattern(r *http.Request) string {
+	rctx := chi.RouteContext(r.Context())
+	if pattern := rctx.RoutePattern(); pattern != "" {
+		// Pattern is already available
+		return pattern
+	}
+
+	routePath := r.URL.Path
+	if r.URL.RawPath != "" {
+		routePath = r.URL.RawPath
+	}
+
+	tctx := chi.NewRouteContext()
+	if !rctx.Routes.Match(tctx, r.Method, routePath) {
+		return ""
+	}
+
+	// tctx has the updated pattern, since Match mutates it
+	return tctx.RoutePattern()
+}
+
 func logEndOfRequest(ctx context.Context, r *http.Request, requestDurationSummary *prometheus.SummaryVec, duration time.Duration, mw middleware.WrapResponseWriter, streaming bool) {
-	route := sanitizeMetricRoute(chi.RouteContext(r.Context()).RoutePattern())
+	route := sanitizeMetricRoute(getRoutePattern(r))
 
 	referer := r.Referer()
 	if referer == "" {

@@ -826,34 +826,21 @@ func (q *Q) CloneIngestionQ() IngestionQ {
 // DeleteRangeAll deletes a range of rows from all history tables between
 // `start` and `end` (exclusive).
 func (q *Q) DeleteRangeAll(ctx context.Context, start, end int64) error {
-	err := q.DeleteRange(ctx, start, end, "history_effects", "history_operation_id")
-	if err != nil {
-		return errors.Wrap(err, "Error clearing history_effects")
+	for table, column := range map[string]string{
+		"history_effects":                        "history_operation_id",
+		"history_ledgers":                        "id",
+		"history_operation_claimable_balances":   "history_operation_id",
+		"history_operation_participants":         "history_operation_id",
+		"history_operations":                     "id",
+		"history_trades":                         "history_operation_id",
+		"history_transaction_claimable_balances": "history_transaction_id",
+		"history_transaction_participants":       "history_transaction_id",
+		"history_transactions":                   "id",
+	} {
+		err := q.DeleteRange(ctx, start, end, table, column)
+		if err != nil {
+			return errors.Wrapf(err, "Error clearing %s", table)
+		}
 	}
-	err = q.DeleteRange(ctx, start, end, "history_operation_participants", "history_operation_id")
-	if err != nil {
-		return errors.Wrap(err, "Error clearing history_operation_participants")
-	}
-	err = q.DeleteRange(ctx, start, end, "history_operations", "id")
-	if err != nil {
-		return errors.Wrap(err, "Error clearing history_operations")
-	}
-	err = q.DeleteRange(ctx, start, end, "history_transaction_participants", "history_transaction_id")
-	if err != nil {
-		return errors.Wrap(err, "Error clearing history_transaction_participants")
-	}
-	err = q.DeleteRange(ctx, start, end, "history_transactions", "id")
-	if err != nil {
-		return errors.Wrap(err, "Error clearing history_transactions")
-	}
-	err = q.DeleteRange(ctx, start, end, "history_ledgers", "id")
-	if err != nil {
-		return errors.Wrap(err, "Error clearing history_ledgers")
-	}
-	err = q.DeleteRange(ctx, start, end, "history_trades", "history_operation_id")
-	if err != nil {
-		return errors.Wrap(err, "Error clearing history_trades")
-	}
-
 	return nil
 }
