@@ -19,7 +19,15 @@ ALTER TABLE IF EXISTS ONLY public.history_trades DROP CONSTRAINT IF EXISTS histo
 ALTER TABLE IF EXISTS ONLY public.history_trades DROP CONSTRAINT IF EXISTS history_trades_base_asset_id_fkey;
 ALTER TABLE IF EXISTS ONLY public.history_trades DROP CONSTRAINT IF EXISTS history_trades_base_account_id_fkey;
 ALTER TABLE IF EXISTS ONLY public.asset_stats DROP CONSTRAINT IF EXISTS asset_stats_id_fkey;
+DROP INDEX IF EXISTS public.trust_lines_by_type_code_issuer;
+DROP INDEX IF EXISTS public.trust_lines_by_issuer;
+DROP INDEX IF EXISTS public.trust_lines_by_account_id;
 DROP INDEX IF EXISTS public.trade_effects_by_order_book;
+DROP INDEX IF EXISTS public.signers_by_account;
+DROP INDEX IF EXISTS public.offers_by_selling_asset;
+DROP INDEX IF EXISTS public.offers_by_seller;
+DROP INDEX IF EXISTS public.offers_by_last_modified_ledger;
+DROP INDEX IF EXISTS public.offers_by_buying_asset;
 DROP INDEX IF EXISTS public.index_history_transactions_on_id;
 DROP INDEX IF EXISTS public.index_history_operations_on_type;
 DROP INDEX IF EXISTS public.index_history_operations_on_transaction_id;
@@ -50,20 +58,35 @@ DROP INDEX IF EXISTS public.hist_tx_p_id;
 DROP INDEX IF EXISTS public.hist_op_p_id;
 DROP INDEX IF EXISTS public.hist_e_id;
 DROP INDEX IF EXISTS public.hist_e_by_order;
+DROP INDEX IF EXISTS public.exp_asset_stats_by_issuer;
+DROP INDEX IF EXISTS public.exp_asset_stats_by_code;
 DROP INDEX IF EXISTS public.by_ledger;
 DROP INDEX IF EXISTS public.by_hash;
 DROP INDEX IF EXISTS public.by_account;
 DROP INDEX IF EXISTS public.asset_by_issuer;
 DROP INDEX IF EXISTS public.asset_by_code;
+DROP INDEX IF EXISTS public.accounts_inflation_destination;
+DROP INDEX IF EXISTS public.accounts_home_domain;
+DROP INDEX IF EXISTS public.accounts_data_account_id_name;
+ALTER TABLE IF EXISTS ONLY public.trust_lines DROP CONSTRAINT IF EXISTS trust_lines_pkey;
+ALTER TABLE IF EXISTS ONLY public.offers DROP CONSTRAINT IF EXISTS offers_pkey;
+ALTER TABLE IF EXISTS ONLY public.key_value_store DROP CONSTRAINT IF EXISTS key_value_store_pkey;
 ALTER TABLE IF EXISTS ONLY public.history_transaction_participants DROP CONSTRAINT IF EXISTS history_transaction_participants_pkey;
 ALTER TABLE IF EXISTS ONLY public.history_operation_participants DROP CONSTRAINT IF EXISTS history_operation_participants_pkey;
 ALTER TABLE IF EXISTS ONLY public.history_assets DROP CONSTRAINT IF EXISTS history_assets_pkey;
 ALTER TABLE IF EXISTS ONLY public.history_assets DROP CONSTRAINT IF EXISTS history_assets_asset_code_asset_type_asset_issuer_key;
 ALTER TABLE IF EXISTS ONLY public.gorp_migrations DROP CONSTRAINT IF EXISTS gorp_migrations_pkey;
+ALTER TABLE IF EXISTS ONLY public.exp_asset_stats DROP CONSTRAINT IF EXISTS exp_asset_stats_pkey;
 ALTER TABLE IF EXISTS ONLY public.asset_stats DROP CONSTRAINT IF EXISTS asset_stats_pkey;
+ALTER TABLE IF EXISTS ONLY public.accounts_signers DROP CONSTRAINT IF EXISTS accounts_signers_pkey;
+ALTER TABLE IF EXISTS ONLY public.accounts DROP CONSTRAINT IF EXISTS accounts_pkey;
+ALTER TABLE IF EXISTS ONLY public.accounts_data DROP CONSTRAINT IF EXISTS accounts_data_pkey;
 ALTER TABLE IF EXISTS public.history_transaction_participants ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.history_operation_participants ALTER COLUMN id DROP DEFAULT;
 ALTER TABLE IF EXISTS public.history_assets ALTER COLUMN id DROP DEFAULT;
+DROP TABLE IF EXISTS public.trust_lines;
+DROP TABLE IF EXISTS public.offers;
+DROP TABLE IF EXISTS public.key_value_store;
 DROP TABLE IF EXISTS public.history_transactions;
 DROP SEQUENCE IF EXISTS public.history_transaction_participants_id_seq;
 DROP TABLE IF EXISTS public.history_transaction_participants;
@@ -78,7 +101,11 @@ DROP TABLE IF EXISTS public.history_assets;
 DROP TABLE IF EXISTS public.history_accounts;
 DROP SEQUENCE IF EXISTS public.history_accounts_id_seq;
 DROP TABLE IF EXISTS public.gorp_migrations;
+DROP TABLE IF EXISTS public.exp_asset_stats;
 DROP TABLE IF EXISTS public.asset_stats;
+DROP TABLE IF EXISTS public.accounts_signers;
+DROP TABLE IF EXISTS public.accounts_data;
+DROP TABLE IF EXISTS public.accounts;
 DROP AGGREGATE IF EXISTS public.min_price(numeric[]);
 DROP AGGREGATE IF EXISTS public.max_price(numeric[]);
 DROP AGGREGATE IF EXISTS public.last(anyelement);
@@ -202,6 +229,55 @@ SET default_tablespace = '';
 SET default_with_oids = false;
 
 --
+-- Name: accounts; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE accounts (
+    account_id character varying(56) NOT NULL,
+    balance bigint NOT NULL,
+    buying_liabilities bigint NOT NULL,
+    selling_liabilities bigint NOT NULL,
+    sequence_number bigint NOT NULL,
+    num_subentries integer NOT NULL,
+    inflation_destination character varying(56) NOT NULL,
+    flags integer NOT NULL,
+    home_domain character varying(32) NOT NULL,
+    master_weight smallint NOT NULL,
+    threshold_low smallint NOT NULL,
+    threshold_medium smallint NOT NULL,
+    threshold_high smallint NOT NULL,
+    last_modified_ledger integer NOT NULL
+);
+
+
+--
+-- Name: accounts_data; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE accounts_data (
+    ledger_key character varying(150) NOT NULL,
+    account_id character varying(56) NOT NULL,
+    name character varying(64) NOT NULL,
+    value character varying(90) NOT NULL,
+    last_modified_ledger integer NOT NULL
+);
+
+
+--
+-- Name: accounts_signers; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE accounts_signers (
+    account_id character varying(64) NOT NULL,
+    signer character varying(64) NOT NULL,
+    weight integer NOT NULL,
+    sponsor character varying(56)
+);
+
+CREATE INDEX accounts_signers_by_sponsor ON accounts_signers USING BTREE(sponsor);
+
+
+--
 -- Name: asset_stats; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -211,6 +287,19 @@ CREATE TABLE asset_stats (
     num_accounts integer NOT NULL,
     flags smallint NOT NULL,
     toml character varying(255) NOT NULL
+);
+
+
+--
+-- Name: exp_asset_stats; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE exp_asset_stats (
+    asset_type integer NOT NULL,
+    asset_code character varying(12) NOT NULL,
+    asset_issuer character varying(56) NOT NULL,
+    amount text NOT NULL,
+    num_accounts integer NOT NULL
 );
 
 
@@ -245,6 +334,47 @@ CREATE TABLE history_accounts (
     address character varying(64)
 );
 
+
+-- history_claimable_balances (manually added)
+CREATE SEQUENCE history_claimable_balances_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+CREATE TABLE history_claimable_balances (
+    id bigint NOT NULL DEFAULT nextval('history_claimable_balances_id_seq'::regclass),
+    claimable_balance_id text NOT NULL
+);
+
+CREATE UNIQUE INDEX "index_history_claimable_balances_on_id" ON history_claimable_balances USING btree (id);
+CREATE UNIQUE INDEX "index_history_claimable_balances_on_claimable_balance_id" ON history_claimable_balances USING btree (claimable_balance_id);
+
+CREATE TABLE history_operation_claimable_balances (
+    history_operation_id bigint NOT NULL,
+    history_claimable_balance_id bigint NOT NULL
+);
+
+CREATE UNIQUE INDEX "index_history_operation_claimable_balances_on_ids" ON history_operation_claimable_balances USING btree (history_operation_id , history_claimable_balance_id);
+CREATE INDEX "index_history_operation_claimable_balances_on_operation_id" ON history_operation_claimable_balances USING btree (history_operation_id);
+
+CREATE TABLE history_transaction_claimable_balances (
+    history_transaction_id bigint NOT NULL,
+    history_claimable_balance_id bigint NOT NULL
+);
+
+CREATE UNIQUE INDEX "index_history_transaction_claimable_balances_on_ids" ON history_transaction_claimable_balances USING btree (history_transaction_id , history_claimable_balance_id);
+CREATE INDEX "index_history_transaction_claimable_balances_on_transaction_id" ON history_transaction_claimable_balances USING btree (history_transaction_id);
+
+
+INSERT INTO history_claimable_balances VALUES (1, '00000000178826fbfe339e1f5c53417c6fedfe2c05e8bec14303143ec46b38981b09c3f9');
+SELECT pg_catalog.setval('history_claimable_balances_id_seq', 1, true);
+-- The operations/transactions are going to be unrelated to claimable balances, but it doesn't matter for testing
+INSERT INTO history_operation_claimable_balances VALUES (12884905985, 1);
+INSERT INTO history_operation_claimable_balances VALUES (8589938689, 1);
+INSERT INTO history_transaction_claimable_balances VALUES (12884905984, 1);
+INSERT INTO history_transaction_claimable_balances VALUES (8589938688, 1);
 
 --
 -- Name: history_assets; Type: TABLE; Schema: public; Owner: -
@@ -382,9 +512,9 @@ CREATE TABLE history_trades (
     price_d bigint,
     base_offer_id bigint,
     counter_offer_id bigint,
-    CONSTRAINT history_trades_base_amount_check CHECK ((base_amount > 0)),
+    CONSTRAINT history_trades_base_amount_check CHECK ((base_amount >= 0)),
     CONSTRAINT history_trades_check CHECK ((base_asset_id < counter_asset_id)),
-    CONSTRAINT history_trades_counter_amount_check CHECK ((counter_amount > 0))
+    CONSTRAINT history_trades_counter_amount_check CHECK ((counter_amount >= 0))
 );
 
 
@@ -422,7 +552,7 @@ ALTER SEQUENCE history_transaction_participants_id_seq OWNED BY history_transact
 -- Name: history_transactions; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE history_transactions (
+CREATE TABLE public.history_transactions (
     transaction_hash character varying(64) NOT NULL,
     ledger_sequence integer NOT NULL,
     application_order integer NOT NULL,
@@ -449,6 +579,52 @@ CREATE TABLE history_transactions (
     new_max_fee bigint
 );
 
+--
+-- Name: key_value_store; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE key_value_store (
+    key character varying(255) NOT NULL,
+    value character varying(255) NOT NULL
+);
+
+
+--
+-- Name: offers; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE offers (
+    seller_id character varying(56) NOT NULL,
+    offer_id bigint NOT NULL,
+    selling_asset text NOT NULL,
+    buying_asset text NOT NULL,
+    amount bigint NOT NULL,
+    pricen integer NOT NULL,
+    priced integer NOT NULL,
+    price double precision NOT NULL,
+    flags integer NOT NULL,
+    last_modified_ledger integer NOT NULL
+);
+
+
+--
+-- Name: trust_lines; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE trust_lines (
+    ledger_key character varying(150) NOT NULL,
+    account_id character varying(56) NOT NULL,
+    asset_type integer NOT NULL,
+    asset_issuer character varying(56) NOT NULL,
+    asset_code character varying(12) NOT NULL,
+    balance bigint NOT NULL,
+    trust_line_limit bigint NOT NULL,
+    buying_liabilities bigint NOT NULL,
+    selling_liabilities bigint NOT NULL,
+    flags integer NOT NULL,
+    last_modified_ledger integer NOT NULL
+);
+
 
 --
 -- Name: history_assets id; Type: DEFAULT; Schema: public; Owner: -
@@ -472,6 +648,24 @@ ALTER TABLE ONLY history_transaction_participants ALTER COLUMN id SET DEFAULT ne
 
 
 --
+-- Data for Name: accounts; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+
+
+--
+-- Data for Name: accounts_data; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+
+
+--
+-- Data for Name: accounts_signers; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+
+
+--
 -- Data for Name: asset_stats; Type: TABLE DATA; Schema: public; Owner: -
 --
 
@@ -487,24 +681,39 @@ INSERT INTO asset_stats VALUES (6, '100000000', 1, 0, '');
 -- Data for Name: gorp_migrations; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-INSERT INTO gorp_migrations VALUES ('1_initial_schema.sql', '2019-06-03 18:28:47.032496+02');
-INSERT INTO gorp_migrations VALUES ('2_index_participants_by_toid.sql', '2019-06-03 18:28:47.039657+02');
-INSERT INTO gorp_migrations VALUES ('3_use_sequence_in_history_accounts.sql', '2019-06-03 18:28:47.044048+02');
-INSERT INTO gorp_migrations VALUES ('4_add_protocol_version.sql', '2019-06-03 18:28:47.054532+02');
-INSERT INTO gorp_migrations VALUES ('5_create_trades_table.sql', '2019-06-03 18:28:47.063028+02');
-INSERT INTO gorp_migrations VALUES ('6_create_assets_table.sql', '2019-06-03 18:28:47.068415+02');
-INSERT INTO gorp_migrations VALUES ('7_modify_trades_table.sql', '2019-06-03 18:28:47.081625+02');
-INSERT INTO gorp_migrations VALUES ('8_create_asset_stats_table.sql', '2019-06-03 18:28:47.087463+02');
-INSERT INTO gorp_migrations VALUES ('8_add_aggregators.sql', '2019-06-03 18:28:47.090109+02');
-INSERT INTO gorp_migrations VALUES ('9_add_header_xdr.sql', '2019-06-03 18:28:47.092718+02');
-INSERT INTO gorp_migrations VALUES ('10_add_trades_price.sql', '2019-06-03 18:28:47.095973+02');
-INSERT INTO gorp_migrations VALUES ('11_add_trades_account_index.sql', '2019-06-03 18:28:47.099698+02');
-INSERT INTO gorp_migrations VALUES ('12_asset_stats_amount_string.sql', '2019-06-03 18:28:47.107549+02');
-INSERT INTO gorp_migrations VALUES ('13_trade_offer_ids.sql', '2019-06-03 18:28:47.112768+02');
-INSERT INTO gorp_migrations VALUES ('14_fix_asset_toml_field.sql', '2019-06-03 18:28:47.115116+02');
-INSERT INTO gorp_migrations VALUES ('15_ledger_failed_txs.sql', '2019-06-03 18:28:47.116796+02');
-INSERT INTO gorp_migrations VALUES ('16_ingest_failed_transactions.sql', '2019-06-03 18:28:47.117989+02');
-INSERT INTO gorp_migrations VALUES ('17_transaction_fee_paid.sql', '2019-06-03 18:28:47.120034+02');
+INSERT INTO gorp_migrations VALUES ('1_initial_schema.sql', '2019-10-31 14:19:49.03833+01');
+INSERT INTO gorp_migrations VALUES ('2_index_participants_by_toid.sql', '2019-10-31 14:19:49.04267+01');
+INSERT INTO gorp_migrations VALUES ('3_use_sequence_in_history_accounts.sql', '2019-10-31 14:19:49.045926+01');
+INSERT INTO gorp_migrations VALUES ('4_add_protocol_version.sql', '2019-10-31 14:19:49.054147+01');
+INSERT INTO gorp_migrations VALUES ('5_create_trades_table.sql', '2019-10-31 14:19:49.061804+01');
+INSERT INTO gorp_migrations VALUES ('6_create_assets_table.sql', '2019-10-31 14:19:49.067093+01');
+INSERT INTO gorp_migrations VALUES ('7_modify_trades_table.sql', '2019-10-31 14:19:49.081047+01');
+INSERT INTO gorp_migrations VALUES ('8_add_aggregators.sql', '2019-10-31 14:19:49.085128+01');
+INSERT INTO gorp_migrations VALUES ('8_create_asset_stats_table.sql', '2019-10-31 14:19:49.089574+01');
+INSERT INTO gorp_migrations VALUES ('9_add_header_xdr.sql', '2019-10-31 14:19:49.092366+01');
+INSERT INTO gorp_migrations VALUES ('10_add_trades_price.sql', '2019-10-31 14:19:49.095671+01');
+INSERT INTO gorp_migrations VALUES ('11_add_trades_account_index.sql', '2019-10-31 14:19:49.099289+01');
+INSERT INTO gorp_migrations VALUES ('12_asset_stats_amount_string.sql', '2019-10-31 14:19:49.105961+01');
+INSERT INTO gorp_migrations VALUES ('13_trade_offer_ids.sql', '2019-10-31 14:19:49.111757+01');
+INSERT INTO gorp_migrations VALUES ('14_fix_asset_toml_field.sql', '2019-10-31 14:19:49.113736+01');
+INSERT INTO gorp_migrations VALUES ('15_ledger_failed_txs.sql', '2019-10-31 14:19:49.115578+01');
+INSERT INTO gorp_migrations VALUES ('16_ingest_failed_transactions.sql', '2019-10-31 14:19:49.116928+01');
+INSERT INTO gorp_migrations VALUES ('17_transaction_fee_paid.sql', '2019-10-31 14:19:49.118562+01');
+INSERT INTO gorp_migrations VALUES ('18_account_for_signers.sql', '2019-10-31 14:19:49.123835+01');
+INSERT INTO gorp_migrations VALUES ('19_offers.sql', '2019-10-31 14:19:49.133107+01');
+INSERT INTO gorp_migrations VALUES ('20_account_for_signer_index.sql', '2019-10-31 14:19:49.135499+01');
+INSERT INTO gorp_migrations VALUES ('21_trades_remove_zero_amount_constraints.sql', '2019-10-31 14:19:49.138031+01');
+INSERT INTO gorp_migrations VALUES ('22_trust_lines.sql', '2019-10-31 14:19:49.144708+01');
+INSERT INTO gorp_migrations VALUES ('23_exp_asset_stats.sql', '2019-10-31 14:19:49.15222+01');
+INSERT INTO gorp_migrations VALUES ('24_accounts.sql', '2019-10-31 14:19:49.160844+01');
+INSERT INTO gorp_migrations VALUES ('25_expingest_rename_columns.sql', '2019-10-31 14:19:49.163717+01');
+INSERT INTO gorp_migrations VALUES ('33_remove_unused.sql', '2019-11-30 10:19:49.163718+01');
+INSERT INTO gorp_migrations VALUES ('34_fee_bump_transactions.sql', '2019-11-30 11:19:49.163718+01');
+INSERT INTO gorp_migrations VALUES ('35_drop_participant_id.sql', '2019-11-30 14:19:49.163728+01');
+INSERT INTO gorp_migrations VALUES ('37_add_tx_set_operation_count_to_ledgers.sql', '2019-11-30 12:19:49.163728+01');
+INSERT INTO gorp_migrations VALUES ('41_add_sponsor_to_state_tables.sql', '2019-11-30 13:19:49.163718+01');
+INSERT INTO gorp_migrations VALUES ('45_add_claimable_balances_history.sql', '2019-11-30 14:19:49.163718+01');
+INSERT INTO gorp_migrations VALUES ('46_add_muxed_accounts.sql', '2019-12-30 14:19:49.163718+01');
 
 
 --
@@ -1277,6 +1486,14 @@ ALTER TABLE ONLY asset_stats
 
 
 --
+-- Name: exp_asset_stats exp_asset_stats_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY exp_asset_stats
+    ADD CONSTRAINT exp_asset_stats_pkey PRIMARY KEY (asset_code, asset_issuer, asset_type);
+
+
+--
 -- Name: gorp_migrations gorp_migrations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1317,6 +1534,51 @@ ALTER TABLE ONLY history_transaction_participants
 
 
 --
+-- Name: key_value_store key_value_store_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY key_value_store
+    ADD CONSTRAINT key_value_store_pkey PRIMARY KEY (key);
+
+
+--
+-- Name: offers offers_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY offers
+    ADD CONSTRAINT offers_pkey PRIMARY KEY (offer_id);
+
+
+--
+-- Name: trust_lines trust_lines_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY trust_lines
+    ADD CONSTRAINT trust_lines_pkey PRIMARY KEY (ledger_key);
+
+
+--
+-- Name: accounts_data_account_id_name; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX accounts_data_account_id_name ON accounts_data USING btree (account_id, name);
+
+
+--
+-- Name: accounts_home_domain; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX accounts_home_domain ON accounts USING btree (home_domain);
+
+
+--
+-- Name: accounts_inflation_destination; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX accounts_inflation_destination ON accounts USING btree (inflation_destination);
+
+
+--
 -- Name: asset_by_code; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1347,7 +1609,7 @@ CREATE INDEX by_fee_account ON history_transactions USING btree (fee_account) WH
 -- Name: by_hash; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX by_hash ON history_transactions USING btree (transaction_hash);
+CREATE INDEX by_hash ON public.history_transactions USING btree (transaction_hash);
 
 
 --
@@ -1361,6 +1623,20 @@ CREATE INDEX by_inner_hash ON history_transactions USING btree (inner_transactio
 --
 
 CREATE INDEX by_ledger ON history_transactions USING btree (ledger_sequence, application_order);
+
+
+--
+-- Name: exp_asset_stats_by_code; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX exp_asset_stats_by_code ON exp_asset_stats USING btree (asset_code);
+
+
+--
+-- Name: exp_asset_stats_by_issuer; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX exp_asset_stats_by_issuer ON exp_asset_stats USING btree (asset_issuer);
 
 
 --
@@ -1574,10 +1850,66 @@ CREATE UNIQUE INDEX index_history_transactions_on_id ON history_transactions USI
 
 
 --
+-- Name: offers_by_buying_asset; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX offers_by_buying_asset ON offers USING btree (buying_asset);
+
+
+--
+-- Name: offers_by_last_modified_ledger; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX offers_by_last_modified_ledger ON offers USING btree (last_modified_ledger);
+
+
+--
+-- Name: offers_by_seller; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX offers_by_seller ON offers USING btree (seller_id);
+
+
+--
+-- Name: offers_by_selling_asset; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX offers_by_selling_asset ON offers USING btree (selling_asset);
+
+
+--
+-- Name: signers_by_account; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX signers_by_account ON accounts_signers USING btree (account_id);
+
+
+--
 -- Name: trade_effects_by_order_book; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX trade_effects_by_order_book ON history_effects USING btree (((details ->> 'sold_asset_type'::text)), ((details ->> 'sold_asset_code'::text)), ((details ->> 'sold_asset_issuer'::text)), ((details ->> 'bought_asset_type'::text)), ((details ->> 'bought_asset_code'::text)), ((details ->> 'bought_asset_issuer'::text))) WHERE (type = 33);
+
+
+--
+-- Name: trust_lines_by_account_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX trust_lines_by_account_id ON trust_lines USING btree (account_id);
+
+
+--
+-- Name: trust_lines_by_issuer; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX trust_lines_by_issuer ON trust_lines USING btree (asset_issuer);
+
+
+--
+-- Name: trust_lines_by_type_code_issuer; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX trust_lines_by_type_code_issuer ON trust_lines USING btree (asset_type, asset_code, asset_issuer);
 
 
 --
@@ -1619,12 +1951,41 @@ ALTER TABLE ONLY history_trades
 ALTER TABLE ONLY history_trades
     ADD CONSTRAINT history_trades_counter_asset_id_fkey FOREIGN KEY (counter_asset_id) REFERENCES history_assets(id);
 
--- Added manually
+
+-- needed for migrations to work
+ALTER TABLE accounts ADD sponsor TEXT;
+CREATE INDEX accounts_by_sponsor ON accounts USING BTREE(sponsor);
+
+ALTER TABLE accounts_data ADD sponsor TEXT;
+CREATE INDEX accounts_data_by_sponsor ON accounts_data USING BTREE(sponsor);
+
+ALTER TABLE trust_lines ADD sponsor TEXT;
+CREATE INDEX trust_lines_by_sponsor ON trust_lines USING BTREE(sponsor);
+
+ALTER TABLE offers ADD sponsor TEXT;
+CREATE INDEX offers_by_sponsor ON offers USING BTREE(sponsor);
+
+ALTER TABLE history_operation_participants
+    DROP COLUMN id;
+
+ALTER TABLE history_transaction_participants
+    DROP COLUMN id;
+
+DROP TABLE asset_stats cascade;
+
+DROP INDEX exp_asset_stats_by_code;
+
+DROP INDEX index_history_transactions_on_id;
+
+DROP INDEX index_history_ledgers_on_id;
+
+DROP INDEX asset_by_code;
+
 ALTER TABLE history_transactions ADD account_muxed varchar(69) NULL, ADD fee_account_muxed varchar(69) NULL;
 ALTER TABLE history_operations ADD source_account_muxed varchar(69) NULL;
 ALTER TABLE history_effects ADD address_muxed varchar(69) NULL;
 
+
 --
 -- PostgreSQL database dump complete
 --
-
