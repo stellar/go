@@ -16,7 +16,7 @@ From a high level, the ingestion library is broken down into a few modular compo
                      /     \
               [Change]      [Transaction]
                  |               |
-            |---+---|            |
+             |---+---|           |
        Checkpoint Ledger      Ledger
          Change   Change    Transaction
          Reader   Reader      Reader
@@ -32,7 +32,7 @@ From a high level, the ingestion library is broken down into a few modular compo
                              Core 
 ```
 
-This is described in a little more detail in [`doc.go`](../doc.go), its accompanying examples, the documentation within this package, and the rest of this tutorial.
+This is described in a little more detail in [`doc.go`](./doc.go), its accompanying examples, the documentation within this package, and the rest of this tutorial.
 
 
 
@@ -49,45 +49,54 @@ With that in mind, here's a minimalist example of the ingestion library:
 package main
 
 import (
-  "context"
-  "fmt"
+	"context"
+	"fmt"
 
-  "github.com/stellar/go/ingest/ledgerbackend"
+	backends "github.com/stellar/go/ingest/ledgerbackend"
 )
 
 func main() {
-  backend, err := ledgerbackend.NewCaptive(config)
-  panicIf(err)
-  defer backend.Close()
+	ctx := context.Background()
+	backend, err := backends.NewCaptive(config)
+	panicIf(err)
+	defer backend.Close()
 
-  // Prepare a single ledger to be ingested,
-  err = backend.PrepareRange(ledgerbackend.BoundedRange(123456, 123456))
-  panicIf(err)
+	// Prepare a single ledger to be ingested,
+	err = backend.PrepareRange(ctx, backends.BoundedRange(123456, 123456))
+	panicIf(err)
 
-  // then retrieve it:
-  ctx := context.Background()
-  ledger, err := ledgerbackend.GetLedger(ctx, 123456)
-  panicIf(err)
+	// then retrieve it:
+	ledger, err := backend.GetLedger(ctx, 123456)
+	panicIf(err)
 
-  // Now `ledger` is a raw `xdr.LedgerCloseMeta` object containing the
-  // transactions included within this ledger.
-  fmt.Printf("\nHello, Ledger #%d.\n", ledger.LedgerSequence())
+	// Now `ledger` is a raw `xdr.LedgerCloseMeta` object containing the
+	// transactions contained within this ledger.
+	fmt.Printf("\nHello, Sequence %d.\n", ledger.LedgerSequence())
 }
 ```
 
 _(The `panicIf` function is defined in the [footnotes](#footnotes); it's used here for error-checking brevity.)_
 
-Notice that the mysterious `config` variable above isn't defined. This will be environment-specific and users should consult both the [Captive Core documentation](../../services/horizon/internal/docs/captive_core.md) and the [config docs](./ledgerbackend/captive_core_backend.go#L104-L131) directly for more details if they want to use this backend in production. For now, though, we'll have some hardcoded values for the SDF testnet:
+Notice that the mysterious `config` variable above isn't defined. This will be environment-specific and users should consult both the [Captive Core documentation](../../services/horizon/internal/docs/captive_core.md) and the [config docs](./ledgerbackend/captive_core_backend.go#L96-L125) directly for more details if they want to use this backend in production. For now, though, we'll have some hardcoded values for the SDF testnet:
 
 ```go
+networkPassphrase := "Test SDF Network ; September 2015"
+captiveCoreToml, err := ledgerbackend.NewCaptiveCoreToml(
+	ledgerbackend.CaptiveCoreTomlParams{
+		NetworkPassphrase:  networkPassphrase,
+		HistoryArchiveURLs: []string{
+			"https://history.stellar.org/prd/core-testnet/core_testnet_001",
+		},
+	})
+panicIf(err)
+
 config := ledgerbackend.CaptiveCoreConfig{
-    BinaryPath:        "/usr/bin/stellar-core",
-    ConfigAppendPath:  "/etc/default/stellar-captive-core-stub.toml",
-    NetworkPassphrase: "Test SDF Network ; September 2015",
-    HistoryArchiveURLs: []string{
-      "https://history.stellar.org/prd/core-testnet/core_testnet_001",
-    },
-  }
+	// Change these based on your environment:
+	BinaryPath:         "/usr/bin/stellar-core",
+	NetworkPassphrase:  networkPassphrase,
+	HistoryArchiveURLs: archiveURLs,
+	Toml:               captiveCoreToml,
+}
 ```
 
 (Again, see the format of the stub file, etc. in the linked docs.)
@@ -158,17 +167,24 @@ Let's get the boilerplate out of the way first. Again, we presume `config` is so
 package main
 
 import (
+	"context"
 	"fmt"
 	"io"
 
 	"github.com/sirupsen/logrus"
 	"github.com/stellar/go/ingest"
-	"github.com/stellar/go/ingest/ledgerbackend"
+	backends "github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/support/log"
 )
 
-func main() {
-	backend, err := ledgerbackend.NewCaptive(config)
+func statistics() {
+	ctx := context.Background()
+	// Only log errors from the backend to keep output cleaner.
+	lg := log.New()
+	lg.SetLevel(logrus.ErrorLevel)
+	config.Log = lg
+
+	backend, err := backends.NewCaptive(config)
 	panicIf(err)
 	defer backend.Close()
 
@@ -183,8 +199,9 @@ Now, let's identify a range of ledgers we wish to process. For simplicity, let's
 	var startingSeq uint32 = 2 // can't start with genesis ledger
 	var ledgersToRead uint32 = 10000
 
-	ledgerRange := ledgerbackend.BoundedRange(startingSeq, startingSeq+ledgersToRead)
-	err = backend.PrepareRange(ledgerRange)
+	fmt.Printf("Preparing range (%d ledgers)...\n", ledgersToRead)
+	ledgerRange := backends.BoundedRange(startingSeq, startingSeq+ledgersToRead)
+	err = backend.PrepareRange(ctx, ledgerRange)
 	panicIf(err)
 ```
 
@@ -201,7 +218,8 @@ Now, we'll actually use a `LedgerTransactionReader` object to use the backend an
 		fmt.Printf("Processed ledger %d...\r", seq)
 
 		txReader, err := ingest.NewLedgerTransactionReader(
-			backend, config.NetworkPassphrase, seq)
+			ctx, backend, config.NetworkPassphrase, seq,
+		)
 		panicIf(err)
 		defer txReader.Close()
 ```
@@ -271,9 +289,11 @@ First thing's first: we need to establish a connection to a history archive.
 ```go
 	// Open a history archive using our existing configuration details.
 	historyArchive, err := historyarchive.Connect(
-		config.HistoryArchiveURLs[0],   // assumes a CaptiveCoreConfig
+		config.HistoryArchiveURLs[0],	// assumes a CaptiveCoreConfig
 		historyarchive.ConnectOptions{
 			NetworkPassphrase: config.NetworkPassphrase,
+			S3Region:          "us-west-1",
+			UnsignedRequests:  false,
 		},
 	)
 	panicIf(err)
@@ -286,7 +306,8 @@ Now we can use the history archive to actually read in all of the changes that h
 
 ```go
 	// First, we need to establish a safe fallback in case of any problems
-	// during history archive processing, so we'll set a 30-second timeout.
+	// during the history archive download+processing, so we'll set a 30-second
+	// timeout.
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
@@ -365,12 +386,9 @@ lg.Entry.Logger.Out = ioutil.Discard
 ```
 
 
-### Ingesting a genesis ledger
-
-
 #### Footnotes
 
-  1. The minimalist error handler (if `panic`king counts as "handling" an error)  `panicIf` used throughout this tutorial is defined simply as:
+  1. The minimalist error handler (if `panic`king counts as "handling" an error) `panicIf` used throughout this tutorial is defined simply as:
 
 ```go
 func panicIf(err error) {
@@ -382,6 +400,6 @@ func panicIf(err error) {
 
   **Please don't use it in production code**; it's provided here for completeness, convenience, and brevity of examples.
 
-  2. Since the Stellar testnet undergoes periodic resets, the example outputs from various sections (especially regarding networking statistics) may not always be accurate.
+  2. Since the Stellar testnet undergoes periodic resets, the example outputs from various sections (especially regarding network statistics) will not always be accurate.
 
   3. It's worth noting that even though the [second example](example-tracking-feature-popularity) could *also* be done by using the `LedgerTransactionReader` and inspecting the individual operations, that'd be bit redundant as far as examples go.
