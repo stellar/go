@@ -384,5 +384,5 @@ func (r *stellarCoreRunner) close() error {
 		r.pipe.Reader.Close()
 	}
 
-	return os.RemoveAll(storagePath)
+	return nil
 }
