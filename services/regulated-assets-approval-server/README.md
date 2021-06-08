@@ -200,14 +200,28 @@ SEP-8 [Action Required] section.
 }
 ```
 
+_Pending:_ this response means the user KYC could not be verified as approved
+nor rejected and was marked as "pending". As an arbitrary rule, this server is
+marking as "pending" all accounts whose email starts with "y". For more info
+read the SEP-8 [Pending] section.
+
+```json
+{
+  "status": "pending",
+  "error": "Your could not be verified as approved nor rejected and was marked as pending. You will need staff authorization for operations above 500.00 GOAT."
+}
+```
+
 ### `POST /kyc-status/{CALLBACK_ID}`
 
 This endpoint is used for the extra action after `/tx-approve`, as described in
 the SEP-8 [Action Required] section.
 
-Currently an arbitrary criteria is implemented: email addresses starting with
-"x" will have the KYC automatically denied while all other emails will be
-accepted.
+Currently an arbitrary criteria is implemented:
+
+* email addresses starting with "x" will have the KYC automatically denied.
+* email addresses starting with "y" will have their KYC marked as pending.
+* all other emails will be accepted.
 
 _Note: you'll need to resubmit your transaction to
 [`/tx_approve`](#post-tx-approve) in order to verify if your KYC was approved._
@@ -238,6 +252,16 @@ If their KYC was rejected they should see a rejection response.
 {
   "status": "rejected",
   "error": "Your KYC was rejected and you're not authorized for operations above 500.00 GOAT."
+}
+```
+
+If their KYC was marked as pending they should see a rejection response.
+**Response (pending for emails starting with "y"):**
+
+```json
+{
+  "status": "pending",
+  "error": "Your could not be verified as approved nor rejected and was marked as pending. You will need staff authorization for operations above 500.00 GOAT."
 }
 ```
 
@@ -307,3 +331,4 @@ the [SEP-8] spec._
 [Rejected]: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0008.md#rejected
 [Revised]:https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0008.md#revised
 [Success]: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0008.md#success
+[Pending]: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0008.md#pending

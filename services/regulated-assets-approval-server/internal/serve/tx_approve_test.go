@@ -269,7 +269,8 @@ func TestTxApproveHandler_handleActionRequiredResponseIfNeeded(t *testing.T) {
 		UPDATE accounts_kyc_status
 		SET 
 			approved_at = NOW(),
-			rejected_at = NULL
+			rejected_at = NULL,
+			pending_at = NULL
 		WHERE stellar_address = $1
 	`
 	_, err = conn.ExecContext(ctx, q, clientKP.Address())
@@ -283,7 +284,8 @@ func TestTxApproveHandler_handleActionRequiredResponseIfNeeded(t *testing.T) {
 		UPDATE accounts_kyc_status
 		SET 
 			approved_at = NULL,
-			rejected_at = NOW()
+			rejected_at = NOW(),
+			pending_at = NULL
 		WHERE stellar_address = $1
 	`
 	_, err = conn.ExecContext(ctx, q, clientKP.Address())
@@ -291,6 +293,21 @@ func TestTxApproveHandler_handleActionRequiredResponseIfNeeded(t *testing.T) {
 	txApprovalResp, err = h.handleActionRequiredResponseIfNeeded(ctx, clientKP.Address(), paymentOp)
 	require.NoError(t, err)
 	require.Equal(t, NewRejectedTxApprovalResponse("Your KYC was rejected and you're not authorized for operations above 500.00 FOO."), txApprovalResp)
+
+	// if KYC was previously marked as pending, handleActionRequiredResponseIfNeeded will return a "pending" response
+	q = `
+		UPDATE accounts_kyc_status
+		SET 
+			approved_at = NULL,
+			rejected_at = NULL,
+			pending_at = NOW()
+		WHERE stellar_address = $1
+	`
+	_, err = conn.ExecContext(ctx, q, clientKP.Address())
+	require.NoError(t, err)
+	txApprovalResp, err = h.handleActionRequiredResponseIfNeeded(ctx, clientKP.Address(), paymentOp)
+	require.NoError(t, err)
+	require.Equal(t, NewPendingTxApprovalResponse("Your could not be verified as approved nor rejected and was marked as pending. You will need staff authorization for operations above 500.00 FOO."), txApprovalResp)
 }
 
 func TestTxApproveHandler_txApprove_rejected(t *testing.T) {
