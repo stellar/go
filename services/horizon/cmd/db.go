@@ -314,6 +314,7 @@ var dbDetectGapsCmd = &cobra.Command{
 			hlog.Info("No gaps found")
 			return
 		}
+		fmt.Println("Horizon commands to run in order to fill in the gaps:")
 		cmdname := os.Args[0]
 		for _, g := range gaps {
 			fmt.Printf("%s db reingest %d %d\n", cmdname, g.StartSequence, g.EndSequence)
