@@ -295,6 +295,67 @@ func runDBReingestRange(from, to uint32, reingestForce bool, parallelWorkers uin
 	)
 }
 
+var dbDetectGapsCmd = &cobra.Command{
+	Use:   "detect-gaps",
+	Short: "detects ingestion gaps in Horizon's database",
+	Long:  "detects ingestion gaps in Horizon's database and prints a list of reingest commands needed to fill the gaps",
+	Run: func(cmd *cobra.Command, args []string) {
+		requireAndSetFlag(horizon.DatabaseURLFlagName)
+		if len(args) != 0 {
+			cmd.Usage()
+			os.Exit(1)
+		}
+		gaps, err := runDBDetectGaps(*config)
+		if err != nil {
+			log.Fatal(err)
+		}
+		if len(gaps) == 0 {
+			hlog.Info("No gaps found")
+			return
+		}
+		cmdname := os.Args[0]
+		for _, g := range gaps {
+			fmt.Printf("%s db reingest %d %d\n", cmdname, g.GapStartSequence, g.GapEndSequence)
+		}
+	},
+}
+
+type gap struct {
+	GapStartSequence uint32
+	GapEndSequence   uint32
+}
+
+func runDBDetectGaps(config horizon.Config) ([]gap, error) {
+	fmt.Println(config.DatabaseURL)
+	db, err := sql.Open("postgres", config.DatabaseURL)
+	if err != nil {
+		return nil, err
+	}
+	query := `SELECT sequence + 1 AS gap_start,
+		next_number - 1 AS gap_end
+	FROM (
+		SELECT sequence,
+		LEAD(sequence) OVER (ORDER BY sequence) AS next_number
+	FROM history_ledgers
+	) number
+	WHERE sequence + 1 <> next_number;`
+	var result []gap
+	rows, err := db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var g gap
+		err := rows.Scan(&g.GapStartSequence, &g.GapEndSequence)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, g)
+	}
+	return result, nil
+}
+
 func init() {
 	for _, co := range reingestRangeCmdOpts {
 		err := co.Init(dbReingestRangeCmd)
@@ -311,6 +372,7 @@ func init() {
 		dbMigrateCmd,
 		dbReapCmd,
 		dbReingestCmd,
+		dbDetectGapsCmd,
 	)
 	dbReingestCmd.AddCommand(dbReingestRangeCmd)
 }
