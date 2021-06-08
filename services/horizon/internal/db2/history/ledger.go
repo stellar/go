@@ -130,6 +130,22 @@ func (q *Q) InsertLedger(ctx context.Context,
 	return result.RowsAffected()
 }
 
+// GetLedgerGaps, obtains ingestion gaps in the history_ledgers table.
+// Returns the gaps and error.
+func (q *Q) GetLedgerGaps(ctx context.Context) ([]LedgerGap, error) {
+	var result []LedgerGap
+	err := q.SelectRaw(ctx, &result, `
+    SELECT sequence + 1 AS gap_start,
+		next_number - 1 AS gap_end
+	FROM (
+		SELECT sequence,
+		LEAD(sequence) OVER (ORDER BY sequence) AS next_number
+	FROM history_ledgers
+	) number
+	WHERE sequence + 1 <> next_number;`)
+	return result, err
+}
+
 func ledgerHeaderToMap(
 	ledger xdr.LedgerHeaderHistoryEntry,
 	successTxsCount int,

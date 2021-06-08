@@ -11,6 +11,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"github.com/stellar/go/services/horizon/internal/db2/history"
 
 	horizon "github.com/stellar/go/services/horizon/internal"
 	"github.com/stellar/go/services/horizon/internal/db2/schema"
@@ -315,45 +316,19 @@ var dbDetectGapsCmd = &cobra.Command{
 		}
 		cmdname := os.Args[0]
 		for _, g := range gaps {
-			fmt.Printf("%s db reingest %d %d\n", cmdname, g.GapStartSequence, g.GapEndSequence)
+			fmt.Printf("%s db reingest %d %d\n", cmdname, g.StartSequence, g.EndSequence)
 		}
 	},
 }
 
-type gap struct {
-	GapStartSequence uint32
-	GapEndSequence   uint32
-}
-
-func runDBDetectGaps(config horizon.Config) ([]gap, error) {
+func runDBDetectGaps(config horizon.Config) ([]history.LedgerGap, error) {
 	fmt.Println(config.DatabaseURL)
-	db, err := sql.Open("postgres", config.DatabaseURL)
+	horizonSession, err := db.Open("postgres", config.DatabaseURL)
 	if err != nil {
 		return nil, err
 	}
-	query := `SELECT sequence + 1 AS gap_start,
-		next_number - 1 AS gap_end
-	FROM (
-		SELECT sequence,
-		LEAD(sequence) OVER (ORDER BY sequence) AS next_number
-	FROM history_ledgers
-	) number
-	WHERE sequence + 1 <> next_number;`
-	var result []gap
-	rows, err := db.Query(query)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var g gap
-		err := rows.Scan(&g.GapStartSequence, &g.GapEndSequence)
-		if err != nil {
-			return nil, err
-		}
-		result = append(result, g)
-	}
-	return result, nil
+	q := &history.Q{horizonSession}
+	return q.GetLedgerGaps(context.Background())
 }
 
 func init() {
