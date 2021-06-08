@@ -25,40 +25,66 @@ func TestPostHandlerValidate(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestIsKYCRuleRespected(t *testing.T) {
-	// Test if email approved.
+func TestIsKYCRejected(t *testing.T) {
 	in := kycPostRequest{
 		EmailAddress: "test@email.com",
 	}
-	approved := in.isKYCRuleRespected()
-	assert.True(t, approved)
-	// Test if email rejected.
+	isRejected := in.isKYCRejected()
+	assert.False(t, isRejected)
+
+	// emails starting with "x" should be rejected
 	in = kycPostRequest{
 		EmailAddress: "xtest@email.com",
 	}
-	approved = in.isKYCRuleRespected()
-	assert.False(t, approved)
+	isRejected = in.isKYCRejected()
+	assert.True(t, isRejected)
+}
+
+func TestIsKYCPending(t *testing.T) {
+	in := kycPostRequest{
+		EmailAddress: "test@email.com",
+	}
+	isPending := in.isKYCPending()
+	assert.False(t, isPending)
+
+	// emails starting with "y" should be marked as pending
+	in = kycPostRequest{
+		EmailAddress: "ytest@email.com",
+	}
+	isPending = in.isKYCPending()
+	assert.True(t, isPending)
 }
 
 func TestBuildUpdateKYCQuery(t *testing.T) {
-	// Test query returned if email approved.
+	// test rejected query
 	in := kycPostRequest{
-		CallbackID:   "1234567890-12345",
-		EmailAddress: "test@email.com",
+		CallbackID:   "9999999999-9999",
+		EmailAddress: "xtest@email.com",
 	}
 	query, args := in.buildUpdateKYCQuery()
-	expectedQuery := "WITH updated_row AS (UPDATE accounts_kyc_status SET kyc_submitted_at = NOW(), email_address = $1, approved_at = NOW(), rejected_at = NULL WHERE callback_id = $2 RETURNING * )\n\t\tSELECT EXISTS(\n\t\t\tSELECT * FROM updated_row\n\t\t)\n\t"
+	expectedQuery := "WITH updated_row AS (UPDATE accounts_kyc_status SET kyc_submitted_at = NOW(), email_address = $1, rejected_at = NOW(), pending_at = NULL, approved_at = NULL WHERE callback_id = $2 RETURNING * )\n\t\tSELECT EXISTS(\n\t\t\tSELECT * FROM updated_row\n\t\t)\n\t"
 	expectedArgs := []interface{}{in.EmailAddress, in.CallbackID}
 	require.Equal(t, expectedQuery, query)
 	require.Equal(t, expectedArgs, args)
 
-	// Test query returned if email rejected.
+	// test pending query
 	in = kycPostRequest{
-		CallbackID:   "9999999999-9999",
-		EmailAddress: "xtest@email.com",
+		CallbackID:   "1234567890-12345",
+		EmailAddress: "ytest@email.com",
 	}
 	query, args = in.buildUpdateKYCQuery()
-	expectedQuery = "WITH updated_row AS (UPDATE accounts_kyc_status SET kyc_submitted_at = NOW(), email_address = $1, rejected_at = NOW(), approved_at = NULL WHERE callback_id = $2 RETURNING * )\n\t\tSELECT EXISTS(\n\t\t\tSELECT * FROM updated_row\n\t\t)\n\t"
+	expectedQuery = "WITH updated_row AS (UPDATE accounts_kyc_status SET kyc_submitted_at = NOW(), email_address = $1, rejected_at = NULL, pending_at = NOW(), approved_at = NULL WHERE callback_id = $2 RETURNING * )\n\t\tSELECT EXISTS(\n\t\t\tSELECT * FROM updated_row\n\t\t)\n\t"
+	expectedArgs = []interface{}{in.EmailAddress, in.CallbackID}
+	require.Equal(t, expectedQuery, query)
+	require.Equal(t, expectedArgs, args)
+
+	// test approved query
+	in = kycPostRequest{
+		CallbackID:   "1234567890-12345",
+		EmailAddress: "test@email.com",
+	}
+	query, args = in.buildUpdateKYCQuery()
+	expectedQuery = "WITH updated_row AS (UPDATE accounts_kyc_status SET kyc_submitted_at = NOW(), email_address = $1, rejected_at = NULL, pending_at = NULL, approved_at = NOW() WHERE callback_id = $2 RETURNING * )\n\t\tSELECT EXISTS(\n\t\t\tSELECT * FROM updated_row\n\t\t)\n\t"
 	expectedArgs = []interface{}{in.EmailAddress, in.CallbackID}
 	require.Equal(t, expectedQuery, query)
 	require.Equal(t, expectedArgs, args)
