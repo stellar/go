@@ -43,9 +43,9 @@ func TestEffectActions_Index(t *testing.T) {
 
 		// Makes StateMiddleware happy
 		q := history.Q{ht.HorizonSession()}
-		err := q.UpdateLastLedgerIngest(3)
+		err := q.UpdateLastLedgerIngest(ht.Ctx, 3)
 		ht.Assert.NoError(err)
-		err = q.UpdateIngestVersion(ingest.CurrentVersion)
+		err = q.UpdateIngestVersion(ht.Ctx, ingest.CurrentVersion)
 		ht.Assert.NoError(err)
 
 		// checks if empty param returns 404 instead of all payments

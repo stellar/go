@@ -1,7 +1,6 @@
 package tickerdb
 
 import (
-	"context"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -175,7 +174,6 @@ func CreateSession(driverName, dataSourceName string) (session TickerSession, er
 	}
 
 	session.DB = dbconn
-	session.Ctx = context.Background()
 	return
 }
 

@@ -1,12 +1,13 @@
 package actions
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"strings"
 
 	"github.com/stellar/go/protocols/horizon"
-	"github.com/stellar/go/services/horizon/internal/context"
+	horizonContext "github.com/stellar/go/services/horizon/internal/context"
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/ledger"
@@ -78,6 +79,7 @@ func (handler AssetStatsHandler) validateAssetParams(code, issuer string, pq db2
 }
 
 func (handler AssetStatsHandler) findIssuersForAssets(
+	ctx context.Context,
 	historyQ *history.Q,
 	assetStats []history.ExpAssetStat,
 ) (map[string]history.AccountEntry, error) {
@@ -92,7 +94,7 @@ func (handler AssetStatsHandler) findIssuersForAssets(
 	}
 
 	accountsByID := map[string]history.AccountEntry{}
-	accounts, err := historyQ.GetAccountsByIDs(issuers)
+	accounts, err := historyQ.GetAccountsByIDs(ctx, issuers)
 	if err != nil {
 		return nil, err
 	}
@@ -134,17 +136,17 @@ func (handler AssetStatsHandler) GetResourcePage(
 		return nil, err
 	}
 
-	historyQ, err := context.HistoryQFromRequest(r)
+	historyQ, err := horizonContext.HistoryQFromRequest(r)
 	if err != nil {
 		return nil, err
 	}
 
-	assetStats, err := historyQ.GetAssetStats(code, issuer, pq)
+	assetStats, err := historyQ.GetAssetStats(ctx, code, issuer, pq)
 	if err != nil {
 		return nil, err
 	}
 
-	issuerAccounts, err := handler.findIssuersForAssets(historyQ, assetStats)
+	issuerAccounts, err := handler.findIssuersForAssets(ctx, historyQ, assetStats)
 	if err != nil {
 		return nil, err
 	}

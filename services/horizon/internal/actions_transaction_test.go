@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/stellar/go/protocols/horizon"
+	"github.com/stellar/go/services/horizon/internal/corestate"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/ingest"
 	"github.com/stellar/go/services/horizon/internal/test"
@@ -145,7 +146,7 @@ func TestTransactionActions_Show_Failed(t *testing.T) {
 	}
 
 	// NULL value
-	_, err := ht.HorizonSession().ExecRaw(
+	_, err := ht.HorizonSession().ExecRaw(ht.Ctx,
 		`UPDATE history_transactions SET successful = NULL WHERE transaction_hash = ?`,
 		"56e3216045d579bea40f2d35a09406de3a894ecb5be70dbda5ec9c0427a0d5a1",
 	)
@@ -193,9 +194,9 @@ func TestTransactionActions_Index(t *testing.T) {
 
 	// Makes StateMiddleware happy
 	q := history.Q{ht.HorizonSession()}
-	err := q.UpdateLastLedgerIngest(100)
+	err := q.UpdateLastLedgerIngest(ht.Ctx, 100)
 	ht.Assert.NoError(err)
-	err = q.UpdateIngestVersion(ingest.CurrentVersion)
+	err = q.UpdateIngestVersion(ht.Ctx, ingest.CurrentVersion)
 	ht.Assert.NoError(err)
 
 	// checks if empty param returns 404 instead of all payments
@@ -248,6 +249,9 @@ func TestTransactionActions_Post(t *testing.T) {
 	ht := StartHTTPTest(t, "base")
 	defer ht.Finish()
 
+	// Pass Synced check
+	ht.App.coreState.SetState(corestate.State{Synced: true})
+
 	tx := xdr.TransactionEnvelope{
 		Type: xdr.EnvelopeTypeEnvelopeTypeTxV0,
 		V0: &xdr.TransactionV0Envelope{
@@ -288,6 +292,9 @@ func TestTransactionActions_Post(t *testing.T) {
 func TestTransactionActions_PostSuccessful(t *testing.T) {
 	ht := StartHTTPTest(t, "failed_transactions")
 	defer ht.Finish()
+
+	// Pass Synced check
+	ht.App.coreState.SetState(corestate.State{Synced: true})
 
 	destAID := xdr.MustAddress("GBXGQJWVLWOYHFLVTKWV5FGHA3LNYY2JQKM7OAJAUEQFU6LPCSEFVXON")
 	tx2 := xdr.TransactionEnvelope{
@@ -340,6 +347,9 @@ func TestTransactionActions_PostFailed(t *testing.T) {
 	ht := StartHTTPTest(t, "failed_transactions")
 	defer ht.Finish()
 
+	// Pass Synced check
+	ht.App.coreState.SetState(corestate.State{Synced: true})
+
 	// aa168f12124b7c196c0adaee7c73a64d37f99428cacb59a91ff389626845e7cf
 	form := url.Values{"tx": []string{"AAAAAG5oJtVdnYOVdZqtXpTHBtbcY0mCmfcBIKEgWnlvFIhaAAAAZAAAAAIAAAACAAAAAAAAAAAAAAABAAAAAAAAAAEAAAAAO2C/AO45YBD3tHVFO1R3A0MekP8JR6nN1A9eWidyItUAAAABVVNEAAAAAACuo3ot45qCPExpQ/3oHN+z17Ryis1lfMFYmQWgruS+TAAAAAB3NZQAAAAAAAAAAAFvFIhaAAAAQKcGS9OsVnVHCVIH04C9ZKzzKYBRdCmy+Jwmzld7QcALOxZUcAgkuGfoSdvXpH38mNvrqQiaMsSNmTJWYRzHvgo="}}
 
@@ -352,6 +362,10 @@ func TestTransactionActions_PostFailed(t *testing.T) {
 func TestPostFeeBumpTransaction(t *testing.T) {
 	ht := StartHTTPTestWithoutScenario(t)
 	defer ht.Finish()
+
+	// Pass Synced check
+	ht.App.coreState.SetState(corestate.State{Synced: true})
+
 	test.ResetHorizonDB(t, ht.HorizonDB)
 	q := &history.Q{ht.HorizonSession()}
 	fixture := history.FeeBumpScenario(ht.T, q, true)
@@ -387,6 +401,10 @@ func TestPostFeeBumpTransaction(t *testing.T) {
 func TestPostFailedFeeBumpTransaction(t *testing.T) {
 	ht := StartHTTPTestWithoutScenario(t)
 	defer ht.Finish()
+
+	// Pass Synced check
+	ht.App.coreState.SetState(corestate.State{Synced: true})
+
 	test.ResetHorizonDB(t, ht.HorizonDB)
 	q := &history.Q{ht.HorizonSession()}
 	fixture := history.FeeBumpScenario(ht.T, q, false)

@@ -118,9 +118,9 @@ func TestHealthCheck(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			session := &db.MockSession{}
-			session.On("Ping", dbPingTimeout).Return(tc.pingErr).Once()
 			ctx := context.Background()
+			session := &db.MockSession{}
+			session.On("Ping", ctx, dbPingTimeout).Return(tc.pingErr).Once()
 			core := &mockStellarCore{}
 			core.On("Info", ctx).Return(tc.coreResponse, tc.coreErr).Once()
 
@@ -180,8 +180,9 @@ func TestHealthCheckCache(t *testing.T) {
 		assert.True(t, h.cache.lastUpdate.Equal(time.Unix(0, 0)))
 	}
 
+	ctx := context.Background()
 	session := &db.MockSession{}
-	session.On("Ping", dbPingTimeout).Return(nil).Once()
+	session.On("Ping", ctx, dbPingTimeout).Return(nil).Once()
 	core := &mockStellarCore{}
 	core.On("Info", h.ctx).Return(&stellarcore.InfoResponse{}, fmt.Errorf("core err")).Once()
 	h.session = session

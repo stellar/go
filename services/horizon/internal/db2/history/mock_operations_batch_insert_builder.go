@@ -1,6 +1,9 @@
 package history
 
 import (
+	"context"
+
+	"github.com/guregu/null"
 	"github.com/stellar/go/xdr"
 	"github.com/stretchr/testify/mock"
 )
@@ -11,27 +14,29 @@ type MockOperationsBatchInsertBuilder struct {
 }
 
 // Add mock
-func (m *MockOperationsBatchInsertBuilder) Add(
+func (m *MockOperationsBatchInsertBuilder) Add(ctx context.Context,
 	id int64,
 	transactionID int64,
 	applicationOrder uint32,
 	operationType xdr.OperationType,
 	details []byte,
 	sourceAccount string,
+	sourceAccountMuxed null.String,
 ) error {
-	a := m.Called(
+	a := m.Called(ctx,
 		id,
 		transactionID,
 		applicationOrder,
 		operationType,
 		details,
 		sourceAccount,
+		sourceAccountMuxed,
 	)
 	return a.Error(0)
 }
 
 // Exec mock
-func (m *MockOperationsBatchInsertBuilder) Exec() error {
-	a := m.Called()
+func (m *MockOperationsBatchInsertBuilder) Exec(ctx context.Context) error {
+	a := m.Called(ctx)
 	return a.Error(0)
 }

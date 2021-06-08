@@ -27,7 +27,7 @@ func TestGetOperationsWithoutFilter(t *testing.T) {
 	records, err := handler.GetResourcePage(
 		httptest.NewRecorder(),
 		makeRequest(
-			t, map[string]string{}, map[string]string{}, q.Session,
+			t, map[string]string{}, map[string]string{}, q,
 		),
 	)
 	tt.Assert.NoError(err)
@@ -73,7 +73,7 @@ func TestGetOperationsExclusiveFilters(t *testing.T) {
 			_, err := handler.GetResourcePage(
 				httptest.NewRecorder(),
 				makeRequest(
-					t, tc.query, map[string]string{}, q.Session,
+					t, tc.query, map[string]string{}, q,
 				),
 			)
 			tt.Assert.IsType(&supportProblem.P{}, err)
@@ -121,7 +121,7 @@ func TestGetOperationsFilterByAccountID(t *testing.T) {
 				makeRequest(
 					t, map[string]string{
 						"account_id": tc.accountID,
-					}, map[string]string{}, q.Session,
+					}, map[string]string{}, q,
 				),
 			)
 			tt.Assert.NoError(err)
@@ -179,7 +179,7 @@ func TestGetOperationsFilterByTxID(t *testing.T) {
 				makeRequest(
 					t, map[string]string{
 						"tx_id": tc.transactionID,
-					}, map[string]string{}, q.Session,
+					}, map[string]string{}, q,
 				),
 			)
 
@@ -217,7 +217,7 @@ func TestGetOperationsIncludeFailed(t *testing.T) {
 		makeRequest(
 			t, map[string]string{
 				"limit": "200",
-			}, map[string]string{}, q.Session,
+			}, map[string]string{}, q,
 		),
 	)
 	tt.Assert.NoError(err)
@@ -243,7 +243,7 @@ func TestGetOperationsIncludeFailed(t *testing.T) {
 			t, map[string]string{
 				"include_failed": "true",
 				"limit":          "200",
-			}, map[string]string{}, q.Session,
+			}, map[string]string{}, q,
 		),
 	)
 	tt.Assert.NoError(err)
@@ -268,7 +268,7 @@ func TestGetOperationsIncludeFailed(t *testing.T) {
 		makeRequest(
 			t, map[string]string{
 				"tx_id": "aa168f12124b7c196c0adaee7c73a64d37f99428cacb59a91ff389626845e7cf",
-			}, map[string]string{}, q.Session,
+			}, map[string]string{}, q,
 		),
 	)
 	tt.Assert.NoError(err)
@@ -283,7 +283,7 @@ func TestGetOperationsIncludeFailed(t *testing.T) {
 		makeRequest(
 			t, map[string]string{
 				"tx_id": "56e3216045d579bea40f2d35a09406de3a894ecb5be70dbda5ec9c0427a0d5a1",
-			}, map[string]string{}, q.Session,
+			}, map[string]string{}, q,
 		),
 	)
 	tt.Assert.NoError(err)
@@ -294,7 +294,7 @@ func TestGetOperationsIncludeFailed(t *testing.T) {
 	}
 
 	// NULL value
-	_, err = tt.HorizonSession().ExecRaw(
+	_, err = tt.HorizonSession().ExecRaw(tt.Ctx,
 		`UPDATE history_transactions SET successful = NULL WHERE transaction_hash = ?`,
 		"56e3216045d579bea40f2d35a09406de3a894ecb5be70dbda5ec9c0427a0d5a1",
 	)
@@ -305,7 +305,7 @@ func TestGetOperationsIncludeFailed(t *testing.T) {
 		makeRequest(
 			t, map[string]string{
 				"tx_id": "56e3216045d579bea40f2d35a09406de3a894ecb5be70dbda5ec9c0427a0d5a1",
-			}, map[string]string{}, q.Session,
+			}, map[string]string{}, q,
 		),
 	)
 	tt.Assert.NoError(err)
@@ -320,7 +320,7 @@ func TestGetOperationsIncludeFailed(t *testing.T) {
 		makeRequest(
 			t, map[string]string{
 				"include_failed": "foo",
-			}, map[string]string{}, q.Session,
+			}, map[string]string{}, q,
 		),
 	)
 	tt.Assert.Error(err)
@@ -381,7 +381,7 @@ func TestGetOperationsFilterByLedgerID(t *testing.T) {
 				makeRequest(
 					t, map[string]string{
 						"ledger_id": tc.ledgerID,
-					}, map[string]string{}, q.Session,
+					}, map[string]string{}, q,
 				),
 			)
 			if tc.expectedErr == "" {
@@ -418,7 +418,7 @@ func TestGetOperationsOnlyPayments(t *testing.T) {
 	records, err := handler.GetResourcePage(
 		httptest.NewRecorder(),
 		makeRequest(
-			t, map[string]string{}, map[string]string{}, q.Session,
+			t, map[string]string{}, map[string]string{}, q,
 		),
 	)
 	tt.Assert.NoError(err)
@@ -429,7 +429,7 @@ func TestGetOperationsOnlyPayments(t *testing.T) {
 		makeRequest(
 			t, map[string]string{
 				"ledger_id": "1",
-			}, map[string]string{}, q.Session,
+			}, map[string]string{}, q,
 		),
 	)
 	tt.Assert.NoError(err)
@@ -440,7 +440,7 @@ func TestGetOperationsOnlyPayments(t *testing.T) {
 		makeRequest(
 			t, map[string]string{
 				"ledger_id": "3",
-			}, map[string]string{}, q.Session,
+			}, map[string]string{}, q,
 		),
 	)
 	tt.Assert.NoError(err)
@@ -451,7 +451,7 @@ func TestGetOperationsOnlyPayments(t *testing.T) {
 		makeRequest(
 			t, map[string]string{
 				"account_id": "GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2",
-			}, map[string]string{}, q.Session,
+			}, map[string]string{}, q,
 		),
 	)
 	tt.Assert.NoError(err)
@@ -464,7 +464,7 @@ func TestGetOperationsOnlyPayments(t *testing.T) {
 		makeRequest(
 			t, map[string]string{
 				"tx_id": "b52f16ffb98c047e33b9c2ec30880330cde71f85b3443dae2c5cb86c7d4d8452",
-			}, map[string]string{}, q.Session,
+			}, map[string]string{}, q,
 		),
 	)
 	tt.Assert.NoError(err)
@@ -475,7 +475,7 @@ func TestGetOperationsOnlyPayments(t *testing.T) {
 		makeRequest(
 			t, map[string]string{
 				"tx_id": "1d2a4be72470658f68db50eef29ea0af3f985ce18b5c218f03461d40c47dc292",
-			}, map[string]string{}, q.Session,
+			}, map[string]string{}, q,
 		),
 	)
 	tt.Assert.NoError(err)
@@ -498,13 +498,13 @@ func TestOperation_CreatedAt(t *testing.T) {
 		makeRequest(
 			t, map[string]string{
 				"ledger_id": "3",
-			}, map[string]string{}, q.Session,
+			}, map[string]string{}, q,
 		),
 	)
 	tt.Assert.NoError(err)
 
 	l := history.Ledger{}
-	tt.Assert.NoError(q.LedgerBySequence(&l, 3))
+	tt.Assert.NoError(q.LedgerBySequence(tt.Ctx, &l, 3))
 
 	record := records[0].(operations.Payment)
 
@@ -526,7 +526,7 @@ func TestGetOperationsPagination(t *testing.T) {
 			t, map[string]string{
 				"order": "asc",
 				"limit": "1",
-			}, map[string]string{}, q.Session,
+			}, map[string]string{}, q,
 		),
 	)
 	tt.Assert.NoError(err)
@@ -538,7 +538,7 @@ func TestGetOperationsPagination(t *testing.T) {
 			t, map[string]string{
 				"limit": "1",
 				"order": "desc",
-			}, map[string]string{}, q.Session,
+			}, map[string]string{}, q,
 		),
 	)
 	tt.Assert.NoError(err)
@@ -550,7 +550,7 @@ func TestGetOperationsPagination(t *testing.T) {
 			t, map[string]string{
 				"order":  "desc",
 				"cursor": "12884905985",
-			}, map[string]string{}, q.Session,
+			}, map[string]string{}, q,
 		),
 	)
 	tt.Assert.NoError(err)
@@ -562,7 +562,7 @@ func TestGetOperationsPagination(t *testing.T) {
 			t, map[string]string{
 				"order":  "desc",
 				"cursor": "0",
-			}, map[string]string{}, q.Session,
+			}, map[string]string{}, q,
 		),
 	)
 	tt.Assert.Error(err)
@@ -582,7 +582,7 @@ func TestGetOperations_IncludeTransactions(t *testing.T) {
 		makeRequest(
 			t, map[string]string{
 				"join": "accounts",
-			}, map[string]string{}, q.Session,
+			}, map[string]string{}, q,
 		),
 	)
 	tt.Assert.Error(err)
@@ -601,7 +601,7 @@ func TestGetOperations_IncludeTransactions(t *testing.T) {
 			t, map[string]string{
 				"join":  "transactions",
 				"limit": "1",
-			}, map[string]string{}, q.Session,
+			}, map[string]string{}, q,
 		),
 	)
 	tt.Assert.NoError(err)
@@ -615,7 +615,7 @@ func TestGetOperations_IncludeTransactions(t *testing.T) {
 		makeRequest(
 			t, map[string]string{
 				"limit": "1",
-			}, map[string]string{}, q.Session,
+			}, map[string]string{}, q,
 		),
 	)
 	tt.Assert.NoError(err)

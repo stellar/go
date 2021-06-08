@@ -6,7 +6,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/network"
-	"github.com/stellar/go/services/regulated-assets-approval-server/serve"
+	"github.com/stellar/go/services/regulated-assets-approval-server/internal/serve"
 	"github.com/stellar/go/support/config"
 )
 
@@ -17,7 +17,7 @@ func (c *ServeCommand) Command() *cobra.Command {
 	configOpts := config.ConfigOptions{
 		{
 			Name:      "issuer-account-secret",
-			Usage:     "Secret key of the asset issuer's stellar account.",
+			Usage:     "Secret key of the issuer account.",
 			OptType:   types.String,
 			ConfigKey: &opts.IssuerAccountSecret,
 			Required:  true,
@@ -28,6 +28,14 @@ func (c *ServeCommand) Command() *cobra.Command {
 			OptType:   types.String,
 			ConfigKey: &opts.AssetCode,
 			Required:  true,
+		},
+		{
+			Name:        "database-url",
+			Usage:       "Database URL",
+			OptType:     types.String,
+			ConfigKey:   &opts.DatabaseURL,
+			FlagDefault: "postgres://localhost:5432/?sslmode=disable",
+			Required:    true,
 		},
 		{
 			Name:        "friendbot-payment-amount",
@@ -59,6 +67,21 @@ func (c *ServeCommand) Command() *cobra.Command {
 			OptType:     types.Int,
 			ConfigKey:   &opts.Port,
 			FlagDefault: 8000,
+			Required:    true,
+		},
+		{
+			Name:      "base-url",
+			Usage:     "The base url address to this server",
+			OptType:   types.String,
+			ConfigKey: &opts.BaseURL,
+			Required:  true,
+		},
+		{
+			Name:        "kyc-required-payment-amount-threshold",
+			Usage:       "The amount threshold when KYC is required, may contain decimals and is greater than 0",
+			OptType:     types.String,
+			ConfigKey:   &opts.KYCRequiredPaymentAmountThreshold,
+			FlagDefault: "500",
 			Required:    true,
 		},
 	}

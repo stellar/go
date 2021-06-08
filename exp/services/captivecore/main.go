@@ -20,9 +20,9 @@ import (
 
 func main() {
 	var port int
-	var networkPassphrase, binaryPath, configAppendPath, dbURL string
+	var networkPassphrase, binaryPath, configPath, dbURL string
+	var captiveCoreTomlParams ledgerbackend.CaptiveCoreTomlParams
 	var historyArchiveURLs []string
-	var stellarCoreHTTPPort uint
 	var checkpointFrequency uint32
 	var logLevel logrus.Level
 	logger := supportlog.New()
@@ -53,12 +53,12 @@ func main() {
 			ConfigKey:   &binaryPath,
 		},
 		&config.ConfigOption{
-			Name:        "captive-core-config-append-path",
+			Name:        "captive-core-config-path",
 			OptType:     types.String,
 			FlagDefault: "",
-			Required:    false,
+			Required:    true,
 			Usage:       "path to additional configuration for the Stellar Core configuration file used by captive core. It must, at least, include enough details to define a quorum set",
-			ConfigKey:   &configAppendPath,
+			ConfigKey:   &configPath,
 		},
 		&config.ConfigOption{
 			Name:        "history-archive-urls",
@@ -97,12 +97,13 @@ func main() {
 			Usage:     "horizon postgres database to connect with",
 		},
 		&config.ConfigOption{
-			Name:        "stellar-captive-core-http-port",
-			ConfigKey:   &stellarCoreHTTPPort,
-			OptType:     types.Uint,
-			FlagDefault: uint(11626),
-			Required:    false,
-			Usage:       "HTTP port for captive core to listen on (0 disables the HTTP server)",
+			Name:           "stellar-captive-core-http-port",
+			ConfigKey:      &captiveCoreTomlParams.HTTPPort,
+			OptType:        types.Uint,
+			CustomSetValue: config.SetOptionalUint,
+			Required:       false,
+			FlagDefault:    uint(11626),
+			Usage:          "HTTP port for Captive Core to listen on (0 disables the HTTP server)",
 		},
 		&config.ConfigOption{
 			Name:        "checkpoint-frequency",
@@ -121,19 +122,25 @@ func main() {
 			configOpts.SetValues()
 			logger.SetLevel(logLevel)
 
+			captiveCoreTomlParams.HistoryArchiveURLs = historyArchiveURLs
+			captiveCoreTomlParams.NetworkPassphrase = networkPassphrase
+			captiveCoreTomlParams.Strict = true
+			captiveCoreToml, err := ledgerbackend.NewCaptiveCoreTomlFromFile(configPath, captiveCoreTomlParams)
+			if err != nil {
+				logger.WithError(err).Fatal("Invalid captive core toml")
+			}
+
 			captiveConfig := ledgerbackend.CaptiveCoreConfig{
 				BinaryPath:          binaryPath,
-				ConfigAppendPath:    configAppendPath,
 				NetworkPassphrase:   networkPassphrase,
 				HistoryArchiveURLs:  historyArchiveURLs,
 				CheckpointFrequency: checkpointFrequency,
-				HTTPPort:            stellarCoreHTTPPort,
 				Log:                 logger.WithField("subservice", "stellar-core"),
+				Toml:                captiveCoreToml,
 			}
 
 			var dbConn *db.Session
 			if len(dbURL) > 0 {
-				var err error
 				dbConn, err = db.Open("postgres", dbURL)
 				if err != nil {
 					logger.WithError(err).Fatal("Could not create db connection instance")
@@ -154,6 +161,8 @@ func main() {
 					logger.Infof("Starting Captive Core server on %v", port)
 				},
 				OnStopping: func() {
+					// TODO: Check this aborts in-progress requests instead of letting
+					// them finish, to preserve existing behaviour.
 					api.Shutdown()
 					if dbConn != nil {
 						dbConn.Close()

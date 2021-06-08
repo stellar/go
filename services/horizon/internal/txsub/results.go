@@ -1,6 +1,7 @@
 package txsub
 
 import (
+	"context"
 	"database/sql"
 
 	"github.com/stellar/go/services/horizon/internal/db2/history"
@@ -8,10 +9,10 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-func txResultByHash(db HorizonDB, hash string) (history.Transaction, error) {
+func txResultByHash(ctx context.Context, db HorizonDB, hash string) (history.Transaction, error) {
 	// query history database
 	var hr history.Transaction
-	err := db.TransactionByHash(&hr, hash)
+	err := db.TransactionByHash(ctx, &hr, hash)
 	if err == nil {
 		return txResultFromHistory(hr)
 	}
@@ -45,7 +46,7 @@ func txResultFromHistory(tx history.Transaction) (history.Transaction, error) {
 // queries execute on different ledgers. In this case, txsub can mistakenly respond with a bad_seq error
 // because the first query occurs when the tx is not yet ingested and the second query occurs when the tx
 // is ingested.
-func checkTxAlreadyExists(db HorizonDB, hash, sourceAddress string) (history.Transaction, uint64, error) {
+func checkTxAlreadyExists(ctx context.Context, db HorizonDB, hash, sourceAddress string) (history.Transaction, uint64, error) {
 	err := db.BeginTx(&sql.TxOptions{
 		Isolation: sql.LevelRepeatableRead,
 		ReadOnly:  true,
@@ -55,10 +56,10 @@ func checkTxAlreadyExists(db HorizonDB, hash, sourceAddress string) (history.Tra
 	}
 	defer db.Rollback()
 
-	tx, err := txResultByHash(db, hash)
+	tx, err := txResultByHash(ctx, db, hash)
 	if err == ErrNoResults {
 		var sequenceNumbers map[string]uint64
-		sequenceNumbers, err = db.GetSequenceNumbers([]string{sourceAddress})
+		sequenceNumbers, err = db.GetSequenceNumbers(ctx, []string{sourceAddress})
 		if err != nil {
 			return tx, 0, errors.Wrapf(err, "cannot fetch sequence number for %v", sourceAddress)
 		}

@@ -15,10 +15,10 @@ import (
 )
 
 type HorizonDB interface {
-	GetLatestHistoryLedger() (uint32, error)
-	TransactionByHash(dest interface{}, hash string) error
-	TransactionsByHashesSinceLedger(dest interface{}, hashes []string, sinceLedgerSeq uint32) error
-	GetSequenceNumbers(addresses []string) (map[string]uint64, error)
+	GetLatestHistoryLedger(ctx context.Context) (uint32, error)
+	TransactionByHash(ctx context.Context, dest interface{}, hash string) error
+	TransactionsByHashesSinceLedger(ctx context.Context, dest interface{}, hashes []string, sinceLedgerSeq uint32) error
+	GetSequenceNumbers(ctx context.Context, addresses []string) (map[string]uint64, error)
 	BeginTx(*sql.TxOptions) error
 	Rollback() error
 	NoRows(error) bool
@@ -101,7 +101,7 @@ func (sys *System) Submit(
 		"tx":      rawTx,
 	}).Info("Processing transaction")
 
-	tx, sequenceNumber, err := checkTxAlreadyExists(db, hash, sourceAddress)
+	tx, sequenceNumber, err := checkTxAlreadyExists(ctx, db, hash, sourceAddress)
 	if err == nil {
 		sys.Log.Ctx(ctx).WithField("hash", hash).Info("Found submission result in a DB")
 		sys.finish(ctx, hash, response, Result{Transaction: tx})
@@ -167,7 +167,7 @@ func (sys *System) Submit(
 		}
 
 		// If error is txBAD_SEQ, check for the result again
-		tx, err = txResultByHash(db, hash)
+		tx, err = txResultByHash(ctx, db, hash)
 		if err == nil {
 			// If the found use it as the result
 			sys.finish(ctx, hash, response, Result{Transaction: tx})
@@ -190,7 +190,7 @@ func (sys *System) waitUntilAccountSequence(ctx context.Context, db HorizonDB, s
 	defer timer.Stop()
 
 	for {
-		sequenceNumbers, err := db.GetSequenceNumbers([]string{sourceAddress})
+		sequenceNumbers, err := db.GetSequenceNumbers(ctx, []string{sourceAddress})
 		if err != nil {
 			sys.Log.Ctx(ctx).
 				WithError(err).
@@ -298,7 +298,7 @@ func (sys *System) Tick(ctx context.Context) {
 
 	addys := sys.SubmissionQueue.Addresses()
 	if len(addys) > 0 {
-		curSeq, err := db.GetSequenceNumbers(addys)
+		curSeq, err := db.GetSequenceNumbers(ctx, addys)
 		if err != nil {
 			logger.WithStack(err).Error(err)
 			return
@@ -310,7 +310,7 @@ func (sys *System) Tick(ctx context.Context) {
 	pending := sys.Pending.Pending(ctx)
 
 	if len(pending) > 0 {
-		latestLedger, err := db.GetLatestHistoryLedger()
+		latestLedger, err := db.GetLatestHistoryLedger(ctx)
 		if err != nil {
 			logger.WithError(err).Error("error getting latest history ledger")
 			return
@@ -323,7 +323,7 @@ func (sys *System) Tick(ctx context.Context) {
 		}
 
 		var txs []history.Transaction
-		err = db.TransactionsByHashesSinceLedger(&txs, pending, uint32(sinceLedgerSeq))
+		err = db.TransactionsByHashesSinceLedger(ctx, &txs, pending, uint32(sinceLedgerSeq))
 		if err != nil && !db.NoRows(err) {
 			logger.WithError(err).Error("error getting transactions by hashes")
 			return

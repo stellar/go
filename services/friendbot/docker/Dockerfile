@@ -1,12 +1,12 @@
-FROM golang:1.16.2 as build
+FROM golang:1.16.3 as build
 
 ADD . /src/friendbot
 WORKDIR /src/friendbot
 RUN go build -o /bin/friendbot ./services/friendbot
 
-FROM ubuntu:18.04
+FROM ubuntu:20.04
 
-RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends ca-certificates
 COPY --from=build /bin/friendbot /app/
 EXPOSE 8004
 ENTRYPOINT ["/app/friendbot"]

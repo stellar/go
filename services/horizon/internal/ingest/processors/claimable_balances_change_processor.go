@@ -1,6 +1,8 @@
 package processors
 
 import (
+	"context"
+
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"
@@ -24,7 +26,7 @@ func (p *ClaimableBalancesChangeProcessor) reset() {
 	p.cache = ingest.NewChangeCompactor()
 }
 
-func (p *ClaimableBalancesChangeProcessor) ProcessChange(change ingest.Change) error {
+func (p *ClaimableBalancesChangeProcessor) ProcessChange(ctx context.Context, change ingest.Change) error {
 	if change.Type != xdr.LedgerEntryTypeClaimableBalance {
 		return nil
 	}
@@ -35,7 +37,7 @@ func (p *ClaimableBalancesChangeProcessor) ProcessChange(change ingest.Change) e
 	}
 
 	if p.cache.Size() > maxBatchSize {
-		err = p.Commit()
+		err = p.Commit(ctx)
 		if err != nil {
 			return errors.Wrap(err, "error in Commit")
 		}
@@ -45,7 +47,7 @@ func (p *ClaimableBalancesChangeProcessor) ProcessChange(change ingest.Change) e
 	return nil
 }
 
-func (p *ClaimableBalancesChangeProcessor) Commit() error {
+func (p *ClaimableBalancesChangeProcessor) Commit(ctx context.Context) error {
 	batch := p.qClaimableBalances.NewClaimableBalancesBatchInsertBuilder(maxBatchSize)
 
 	changes := p.cache.GetChanges()
@@ -59,7 +61,7 @@ func (p *ClaimableBalancesChangeProcessor) Commit() error {
 		case change.Pre == nil && change.Post != nil:
 			// Created
 			action = "inserting"
-			err = batch.Add(change.Post)
+			err = batch.Add(ctx, change.Post)
 			rowsAffected = 1
 		case change.Pre != nil && change.Post == nil:
 			// Removed
@@ -69,7 +71,7 @@ func (p *ClaimableBalancesChangeProcessor) Commit() error {
 			if err != nil {
 				return errors.Wrap(err, "Error creating ledger key")
 			}
-			rowsAffected, err = p.qClaimableBalances.RemoveClaimableBalance(cBalance)
+			rowsAffected, err = p.qClaimableBalances.RemoveClaimableBalance(ctx, cBalance)
 		default:
 			// Updated
 			action = "updating"
@@ -78,7 +80,7 @@ func (p *ClaimableBalancesChangeProcessor) Commit() error {
 			if err != nil {
 				return errors.Wrap(err, "Error creating ledger key")
 			}
-			rowsAffected, err = p.qClaimableBalances.UpdateClaimableBalance(*change.Post)
+			rowsAffected, err = p.qClaimableBalances.UpdateClaimableBalance(ctx, *change.Post)
 		}
 
 		if err != nil {
@@ -99,7 +101,7 @@ func (p *ClaimableBalancesChangeProcessor) Commit() error {
 		}
 	}
 
-	err := batch.Exec()
+	err := batch.Exec(ctx)
 	if err != nil {
 		return errors.Wrap(err, "error executing batch")
 	}

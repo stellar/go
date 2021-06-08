@@ -18,18 +18,20 @@ func TestAccountsProcessorTestSuiteState(t *testing.T) {
 
 type AccountsProcessorTestSuiteState struct {
 	suite.Suite
+	ctx       context.Context
 	processor *AccountsProcessor
 	mockQ     *history.MockQAccounts
 }
 
 func (s *AccountsProcessorTestSuiteState) SetupTest() {
+	s.ctx = context.Background()
 	s.mockQ = &history.MockQAccounts{}
 
 	s.processor = NewAccountsProcessor(s.mockQ)
 }
 
 func (s *AccountsProcessorTestSuiteState) TearDownTest() {
-	s.Assert().NoError(s.processor.Commit())
+	s.Assert().NoError(s.processor.Commit(s.ctx))
 	s.mockQ.AssertExpectations(s.T())
 }
 
@@ -46,7 +48,7 @@ func (s *AccountsProcessorTestSuiteState) TestCreatesAccounts() {
 
 	// We use LedgerEntryChangesCache so all changes are squashed
 	s.mockQ.On(
-		"UpsertAccounts",
+		"UpsertAccounts", s.ctx,
 		[]xdr.LedgerEntry{
 			{
 				LastModifiedLedgerSeq: lastModifiedLedgerSeq,
@@ -58,7 +60,7 @@ func (s *AccountsProcessorTestSuiteState) TestCreatesAccounts() {
 		},
 	).Return(nil).Once()
 
-	err := s.processor.ProcessChange(ingest.Change{
+	err := s.processor.ProcessChange(s.ctx, ingest.Change{
 		Type: xdr.LedgerEntryTypeAccount,
 		Pre:  nil,
 		Post: &xdr.LedgerEntry{
@@ -78,19 +80,20 @@ func TestAccountsProcessorTestSuiteLedger(t *testing.T) {
 
 type AccountsProcessorTestSuiteLedger struct {
 	suite.Suite
-	context   context.Context
+	ctx       context.Context
 	processor *AccountsProcessor
 	mockQ     *history.MockQAccounts
 }
 
 func (s *AccountsProcessorTestSuiteLedger) SetupTest() {
+	s.ctx = context.Background()
 	s.mockQ = &history.MockQAccounts{}
 
 	s.processor = NewAccountsProcessor(s.mockQ)
 }
 
 func (s *AccountsProcessorTestSuiteLedger) TearDownTest() {
-	s.Assert().NoError(s.processor.Commit())
+	s.Assert().NoError(s.processor.Commit(s.ctx))
 	s.mockQ.AssertExpectations(s.T())
 }
 
@@ -105,7 +108,7 @@ func (s *AccountsProcessorTestSuiteLedger) TestNewAccount() {
 	}
 	lastModifiedLedgerSeq := xdr.Uint32(123)
 
-	err := s.processor.ProcessChange(ingest.Change{
+	err := s.processor.ProcessChange(s.ctx, ingest.Change{
 		Type: xdr.LedgerEntryTypeAccount,
 		Pre:  nil,
 		Post: &xdr.LedgerEntry{
@@ -124,7 +127,7 @@ func (s *AccountsProcessorTestSuiteLedger) TestNewAccount() {
 		HomeDomain: "stellar.org",
 	}
 
-	err = s.processor.ProcessChange(ingest.Change{
+	err = s.processor.ProcessChange(s.ctx, ingest.Change{
 		Type: xdr.LedgerEntryTypeAccount,
 		Pre: &xdr.LedgerEntry{
 			LastModifiedLedgerSeq: lastModifiedLedgerSeq - 1,
@@ -146,6 +149,7 @@ func (s *AccountsProcessorTestSuiteLedger) TestNewAccount() {
 	// We use LedgerEntryChangesCache so all changes are squashed
 	s.mockQ.On(
 		"UpsertAccounts",
+		s.ctx,
 		[]xdr.LedgerEntry{
 			{
 				LastModifiedLedgerSeq: lastModifiedLedgerSeq,
@@ -161,10 +165,11 @@ func (s *AccountsProcessorTestSuiteLedger) TestNewAccount() {
 func (s *AccountsProcessorTestSuiteLedger) TestRemoveAccount() {
 	s.mockQ.On(
 		"RemoveAccount",
+		s.ctx,
 		"GC3C4AKRBQLHOJ45U4XG35ESVWRDECWO5XLDGYADO6DPR3L7KIDVUMML",
 	).Return(int64(1), nil).Once()
 
-	err := s.processor.ProcessChange(ingest.Change{
+	err := s.processor.ProcessChange(s.ctx, ingest.Change{
 		Type: xdr.LedgerEntryTypeAccount,
 		Pre: &xdr.LedgerEntry{
 			Data: xdr.LedgerEntryData{
@@ -187,7 +192,7 @@ func (s *AccountsProcessorTestSuiteLedger) TestProcessUpgradeChange() {
 	}
 	lastModifiedLedgerSeq := xdr.Uint32(123)
 
-	err := s.processor.ProcessChange(ingest.Change{
+	err := s.processor.ProcessChange(s.ctx, ingest.Change{
 		Type: xdr.LedgerEntryTypeAccount,
 		Pre:  nil,
 		Post: &xdr.LedgerEntry{
@@ -206,7 +211,7 @@ func (s *AccountsProcessorTestSuiteLedger) TestProcessUpgradeChange() {
 		HomeDomain: "stellar.org",
 	}
 
-	err = s.processor.ProcessChange(ingest.Change{
+	err = s.processor.ProcessChange(s.ctx, ingest.Change{
 		Type: xdr.LedgerEntryTypeAccount,
 		Pre: &xdr.LedgerEntry{
 			LastModifiedLedgerSeq: lastModifiedLedgerSeq,
@@ -227,6 +232,7 @@ func (s *AccountsProcessorTestSuiteLedger) TestProcessUpgradeChange() {
 
 	s.mockQ.On(
 		"UpsertAccounts",
+		s.ctx,
 		[]xdr.LedgerEntry{
 			{
 				LastModifiedLedgerSeq: lastModifiedLedgerSeq + 1,
@@ -240,7 +246,7 @@ func (s *AccountsProcessorTestSuiteLedger) TestProcessUpgradeChange() {
 }
 
 func (s *AccountsProcessorTestSuiteLedger) TestFeeProcessedBeforeEverythingElse() {
-	err := s.processor.ProcessChange(ingest.Change{
+	err := s.processor.ProcessChange(s.ctx, ingest.Change{
 		Type: xdr.LedgerEntryTypeAccount,
 		Pre: &xdr.LedgerEntry{
 			Data: xdr.LedgerEntryData{
@@ -263,7 +269,7 @@ func (s *AccountsProcessorTestSuiteLedger) TestFeeProcessedBeforeEverythingElse(
 	})
 	s.Assert().NoError(err)
 
-	err = s.processor.ProcessChange(ingest.Change{
+	err = s.processor.ProcessChange(s.ctx, ingest.Change{
 		Type: xdr.LedgerEntryTypeAccount,
 		Pre: &xdr.LedgerEntry{
 			Data: xdr.LedgerEntryData{
@@ -293,6 +299,7 @@ func (s *AccountsProcessorTestSuiteLedger) TestFeeProcessedBeforeEverythingElse(
 
 	s.mockQ.On(
 		"UpsertAccounts",
+		s.ctx,
 		[]xdr.LedgerEntry{
 			{
 				LastModifiedLedgerSeq: 0,

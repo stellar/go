@@ -67,7 +67,7 @@ type SetOptions struct {
 }
 
 // BuildXDR for SetOptions returns a fully configured XDR Operation.
-func (so *SetOptions) BuildXDR() (xdr.Operation, error) {
+func (so *SetOptions) BuildXDR(withMuxedAccounts bool) (xdr.Operation, error) {
 	err := so.handleInflation()
 	if err != nil {
 		return xdr.Operation{}, errors.Wrap(err, "failed to set inflation destination address")
@@ -95,7 +95,11 @@ func (so *SetOptions) BuildXDR() (xdr.Operation, error) {
 	}
 
 	op := xdr.Operation{Body: body}
-	SetOpSourceAccount(&op, so.SourceAccount)
+	if withMuxedAccounts {
+		SetOpSourceMuxedAccount(&op, so.SourceAccount)
+	} else {
+		SetOpSourceAccount(&op, so.SourceAccount)
+	}
 	return op, nil
 }
 
@@ -293,13 +297,13 @@ func (so *SetOptions) handleSignerXDR(xSigner *xdr.Signer) {
 }
 
 // FromXDR for SetOptions initialises the txnbuild struct from the corresponding xdr Operation.
-func (so *SetOptions) FromXDR(xdrOp xdr.Operation) error {
+func (so *SetOptions) FromXDR(xdrOp xdr.Operation, withMuxedAccounts bool) error {
 	result, ok := xdrOp.Body.GetSetOptionsOp()
 	if !ok {
 		return errors.New("error parsing set_options operation from xdr")
 	}
 
-	so.SourceAccount = accountFromXDR(xdrOp.SourceAccount)
+	so.SourceAccount = accountFromXDR(xdrOp.SourceAccount, withMuxedAccounts)
 	so.handleInflationXDR(result.InflationDest)
 	so.handleClearFlagsXDR(result.ClearFlags)
 	so.handleSetFlagsXDR(result.SetFlags)
@@ -315,7 +319,7 @@ func (so *SetOptions) FromXDR(xdrOp xdr.Operation) error {
 
 // Validate for SetOptions validates the required struct fields. It returns an error if any
 // of the fields are invalid. Otherwise, it returns nil.
-func (so *SetOptions) Validate() error {
+func (so *SetOptions) Validate(withMuxedAccounts bool) error {
 	// skipping checks here because the individual methods above already check for required fields.
 	// Refactoring is out of the scope of this issue(https://github.com/stellar/go/issues/1041) so will leave as is for now.
 	return nil

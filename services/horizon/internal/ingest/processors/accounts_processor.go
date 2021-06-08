@@ -1,6 +1,8 @@
 package processors
 
 import (
+	"context"
+
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/support/errors"
@@ -23,7 +25,7 @@ func (p *AccountsProcessor) reset() {
 	p.cache = ingest.NewChangeCompactor()
 }
 
-func (p *AccountsProcessor) ProcessChange(change ingest.Change) error {
+func (p *AccountsProcessor) ProcessChange(ctx context.Context, change ingest.Change) error {
 	if change.Type != xdr.LedgerEntryTypeAccount {
 		return nil
 	}
@@ -34,7 +36,7 @@ func (p *AccountsProcessor) ProcessChange(change ingest.Change) error {
 	}
 
 	if p.cache.Size() > maxBatchSize {
-		err = p.Commit()
+		err = p.Commit(ctx)
 		if err != nil {
 			return errors.Wrap(err, "error in Commit")
 		}
@@ -44,7 +46,7 @@ func (p *AccountsProcessor) ProcessChange(change ingest.Change) error {
 	return nil
 }
 
-func (p *AccountsProcessor) Commit() error {
+func (p *AccountsProcessor) Commit(ctx context.Context) error {
 	batchUpsertAccounts := []xdr.LedgerEntry{}
 
 	changes := p.cache.GetChanges()
@@ -66,7 +68,7 @@ func (p *AccountsProcessor) Commit() error {
 			// Removed
 			account := change.Pre.Data.MustAccount()
 			accountID := account.AccountId.Address()
-			rowsAffected, err := p.accountsQ.RemoveAccount(accountID)
+			rowsAffected, err := p.accountsQ.RemoveAccount(ctx, accountID)
 
 			if err != nil {
 				return err
@@ -86,7 +88,7 @@ func (p *AccountsProcessor) Commit() error {
 
 	// Upsert accounts
 	if len(batchUpsertAccounts) > 0 {
-		err := p.accountsQ.UpsertAccounts(batchUpsertAccounts)
+		err := p.accountsQ.UpsertAccounts(ctx, batchUpsertAccounts)
 		if err != nil {
 			return errors.Wrap(err, "errors in UpsertAccounts")
 		}

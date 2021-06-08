@@ -1,6 +1,7 @@
 package processors
 
 import (
+	"context"
 	"io"
 
 	"github.com/stellar/go/ingest"
@@ -8,14 +9,15 @@ import (
 )
 
 type ChangeProcessor interface {
-	ProcessChange(change ingest.Change) error
+	ProcessChange(ctx context.Context, change ingest.Change) error
 }
 
 type LedgerTransactionProcessor interface {
-	ProcessTransaction(transaction ingest.LedgerTransaction) error
+	ProcessTransaction(ctx context.Context, transaction ingest.LedgerTransaction) error
 }
 
 func StreamLedgerTransactions(
+	ctx context.Context,
 	txProcessor LedgerTransactionProcessor,
 	reader *ingest.LedgerTransactionReader,
 ) error {
@@ -27,7 +29,7 @@ func StreamLedgerTransactions(
 		if err != nil {
 			return errors.Wrap(err, "could not read transaction")
 		}
-		if err = txProcessor.ProcessTransaction(tx); err != nil {
+		if err = txProcessor.ProcessTransaction(ctx, tx); err != nil {
 			return errors.Wrapf(
 				err,
 				"could not process transaction %v",
@@ -38,6 +40,7 @@ func StreamLedgerTransactions(
 }
 
 func StreamChanges(
+	ctx context.Context,
 	changeProcessor ChangeProcessor,
 	reader ingest.ChangeReader,
 ) error {
@@ -50,7 +53,7 @@ func StreamChanges(
 			return errors.Wrap(err, "could not read transaction")
 		}
 
-		if err = changeProcessor.ProcessChange(change); err != nil {
+		if err = changeProcessor.ProcessChange(ctx, change); err != nil {
 			return errors.Wrap(
 				err,
 				"could not process change",

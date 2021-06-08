@@ -31,8 +31,7 @@ type LatestLedgerSequenceResponse struct {
 
 // LedgerResponse is the response for the GetLedger command.
 type LedgerResponse struct {
-	Present bool         `json:"present"`
-	Ledger  Base64Ledger `json:"ledger"`
+	Ledger Base64Ledger `json:"ledger"`
 }
 
 // Base64Ledger extends xdr.LedgerCloseMeta with JSON encoding and decoding
@@ -66,7 +65,6 @@ type RemoteCaptiveStellarCore struct {
 	url                      *url.URL
 	client                   *http.Client
 	lock                     *sync.Mutex
-	cancel                   context.CancelFunc
 	prepareRangePollInterval time.Duration
 }
 
@@ -93,7 +91,7 @@ func NewRemoteCaptive(captiveCoreURL string, options ...RemoteCaptiveOption) (Re
 	client := RemoteCaptiveStellarCore{
 		prepareRangePollInterval: time.Second,
 		url:                      u,
-		client:                   &http.Client{Timeout: 5 * time.Second},
+		client:                   &http.Client{Timeout: 10 * time.Second},
 		lock:                     &sync.Mutex{},
 	}
 	for _, option := range options {
@@ -127,11 +125,17 @@ func decodeResponse(response *http.Response, payload interface{}) error {
 // Note that for UnboundedRange the returned sequence number is not necessarily
 // the latest sequence closed by the network. It's always the last value available
 // in the backend.
-func (c RemoteCaptiveStellarCore) GetLatestLedgerSequence() (sequence uint32, err error) {
+func (c RemoteCaptiveStellarCore) GetLatestLedgerSequence(ctx context.Context) (sequence uint32, err error) {
+	// TODO: Have a context on this request so we can cancel all outstanding
+	// requests, not just PrepareRange.
 	u := *c.url
 	u.Path = path.Join(u.Path, "latest-sequence")
+	request, err := http.NewRequestWithContext(ctx, "GET", u.String(), nil)
+	if err != nil {
+		return 0, errors.Wrap(err, "cannot construct http request")
+	}
 
-	response, err := c.client.Get(u.String())
+	response, err := c.client.Do(request)
 	if err != nil {
 		return 0, errors.Wrap(err, "failed to execute request")
 	}
@@ -146,25 +150,7 @@ func (c RemoteCaptiveStellarCore) GetLatestLedgerSequence() (sequence uint32, er
 
 // Close cancels any pending PrepareRange requests.
 func (c RemoteCaptiveStellarCore) Close() error {
-	c.lock.Lock()
-	defer c.lock.Unlock()
-	if c.cancel != nil {
-		c.cancel()
-	}
 	return nil
-}
-
-func (c RemoteCaptiveStellarCore) createContext() context.Context {
-	c.lock.Lock()
-	defer c.lock.Unlock()
-
-	if c.cancel != nil {
-		c.cancel()
-	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	c.cancel = cancel
-	return ctx
 }
 
 // PrepareRange prepares the given range (including from and to) to be loaded.
@@ -176,36 +162,20 @@ func (c RemoteCaptiveStellarCore) createContext() context.Context {
 //     it normally (including connecting to the Stellar network).
 // Please note that using a BoundedRange, currently, requires a full-trust on
 // history archive. This issue is being fixed in Stellar-Core.
-func (c RemoteCaptiveStellarCore) PrepareRange(ledgerRange Range) error {
-	ctx := c.createContext()
-	u := *c.url
-	u.Path = path.Join(u.Path, "prepare-range")
-	rangeBytes, err := json.Marshal(ledgerRange)
-	if err != nil {
-		return errors.Wrap(err, "cannot serialize range")
-	}
+func (c RemoteCaptiveStellarCore) PrepareRange(ctx context.Context, ledgerRange Range) error {
+	// TODO: removing createContext call here means we could technically have
+	// multiple prepareRange requests happening at the same time. Do we still
+	// need to enforce that?
 
 	timer := time.NewTimer(c.prepareRangePollInterval)
 	defer timer.Stop()
 
 	for {
-		req, err := http.NewRequestWithContext(ctx, http.MethodPost, u.String(), bytes.NewReader(rangeBytes))
+		ready, err := c.IsPrepared(ctx, ledgerRange)
 		if err != nil {
-			return errors.Wrap(err, "cannot construct http request")
-		}
-
-		var response *http.Response
-		response, err = c.client.Do(req)
-		if err != nil {
-			return errors.Wrap(err, "failed to execute request")
-		}
-
-		var parsed PrepareRangeResponse
-		if err = decodeResponse(response, &parsed); err != nil {
 			return err
 		}
-
-		if parsed.Ready {
+		if ready {
 			return nil
 		}
 
@@ -219,7 +189,9 @@ func (c RemoteCaptiveStellarCore) PrepareRange(ledgerRange Range) error {
 }
 
 // IsPrepared returns true if a given ledgerRange is prepared.
-func (c RemoteCaptiveStellarCore) IsPrepared(ledgerRange Range) (bool, error) {
+func (c RemoteCaptiveStellarCore) IsPrepared(ctx context.Context, ledgerRange Range) (bool, error) {
+	// TODO: Have some way to cancel all outstanding requests, not just
+	// PrepareRange.
 	u := *c.url
 	u.Path = path.Join(u.Path, "prepare-range")
 	rangeBytes, err := json.Marshal(ledgerRange)
@@ -227,9 +199,14 @@ func (c RemoteCaptiveStellarCore) IsPrepared(ledgerRange Range) (bool, error) {
 		return false, errors.Wrap(err, "cannot serialize range")
 	}
 	body := bytes.NewReader(rangeBytes)
+	request, err := http.NewRequestWithContext(ctx, "POST", u.String(), body)
+	if err != nil {
+		return false, errors.Wrap(err, "cannot construct http request")
+	}
+	request.Header.Add("Content-Type", "application/json; charset=utf-8")
 
 	var response *http.Response
-	response, err = c.client.Post(u.String(), "application/json; charset=utf-8", body)
+	response, err = c.client.Do(request)
 	if err != nil {
 		return false, errors.Wrap(err, "failed to execute request")
 	}
@@ -242,51 +219,43 @@ func (c RemoteCaptiveStellarCore) IsPrepared(ledgerRange Range) (bool, error) {
 	return parsed.Ready, nil
 }
 
-// GetLedger returns true when ledger is found and it's LedgerCloseMeta.
+// GetLedger long-polls a remote stellar core backend, until the requested
+// ledger is ready.
+
 // Call PrepareRange first to instruct the backend which ledgers to fetch.
 //
-// CaptiveStellarCore requires PrepareRange call first to initialize Stellar-Core.
 // Requesting a ledger on non-prepared backend will return an error.
 //
 // Because data is streamed from Stellar-Core ledger after ledger user should
 // request sequences in a non-decreasing order. If the requested sequence number
 // is less than the last requested sequence number, an error will be returned.
-//
-// This function behaves differently for bounded and unbounded ranges:
-//   * BoundedRange makes GetLedger blocking if the requested ledger is not yet
-//     available in the ledger. After getting the last ledger in a range this
-//     method will also Close() the backend.
-//   * UnboundedRange makes GetLedger non-blocking. The method will return with
-//     the first argument equal false.
-// This is done to provide maximum performance when streaming old ledgers.
-func (c RemoteCaptiveStellarCore) GetLedger(sequence uint32) (bool, xdr.LedgerCloseMeta, error) {
-	u := *c.url
-	u.Path = path.Join(u.Path, "ledger", strconv.FormatUint(uint64(sequence), 10))
-
-	response, err := c.client.Get(u.String())
-	if err != nil {
-		return false, xdr.LedgerCloseMeta{}, errors.Wrap(err, "failed to execute request")
-	}
-
-	var parsed LedgerResponse
-	if err = decodeResponse(response, &parsed); err != nil {
-		return false, xdr.LedgerCloseMeta{}, err
-	}
-
-	return parsed.Present, xdr.LedgerCloseMeta(parsed.Ledger), nil
-}
-
-func (c RemoteCaptiveStellarCore) GetLedgerBlocking(sequence uint32) (xdr.LedgerCloseMeta, error) {
+func (c RemoteCaptiveStellarCore) GetLedger(ctx context.Context, sequence uint32) (xdr.LedgerCloseMeta, error) {
 	for {
-		exists, meta, err := c.GetLedger(sequence)
+		// TODO: Have some way to cancel all outstanding requests, not just
+		// PrepareRange.
+		u := *c.url
+		u.Path = path.Join(u.Path, "ledger", strconv.FormatUint(uint64(sequence), 10))
+		request, err := http.NewRequestWithContext(ctx, "GET", u.String(), nil)
 		if err != nil {
+			return xdr.LedgerCloseMeta{}, errors.Wrap(err, "cannot construct http request")
+		}
+
+		response, err := c.client.Do(request)
+		if err != nil {
+			return xdr.LedgerCloseMeta{}, errors.Wrap(err, "failed to execute request")
+		}
+
+		if response.StatusCode == http.StatusRequestTimeout {
+			response.Body.Close()
+			// This request timed out. Retry.
+			continue
+		}
+
+		var parsed LedgerResponse
+		if err = decodeResponse(response, &parsed); err != nil {
 			return xdr.LedgerCloseMeta{}, err
 		}
 
-		if exists {
-			return meta, nil
-		} else {
-			time.Sleep(time.Second)
-		}
+		return xdr.LedgerCloseMeta(parsed.Ledger), nil
 	}
 }

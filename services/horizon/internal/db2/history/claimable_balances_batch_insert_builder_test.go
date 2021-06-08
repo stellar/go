@@ -59,14 +59,14 @@ func TestAddClaimableBalance(t *testing.T) {
 
 	builder := q.NewClaimableBalancesBatchInsertBuilder(2)
 
-	err := builder.Add(&entry)
+	err := builder.Add(tt.Ctx, &entry)
 	tt.Assert.NoError(err)
 
-	err = builder.Exec()
+	err = builder.Exec(tt.Ctx)
 	tt.Assert.NoError(err)
 
 	cbs := []ClaimableBalance{}
-	err = q.Select(&cbs, selectClaimableBalances)
+	err = q.Select(tt.Ctx, &cbs, selectClaimableBalances)
 
 	if tt.Assert.NoError(err) {
 		tt.Assert.Len(cbs, 1)

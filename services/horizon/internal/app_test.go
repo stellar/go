@@ -1,6 +1,7 @@
 package horizon
 
 import (
+	"context"
 	"net/http"
 	"testing"
 
@@ -36,6 +37,7 @@ func TestGenericHTTPFeatures(t *testing.T) {
 	w = ht.Get("/ledgers/")
 	ht.Assert.Equal(200, w.Code)
 }
+
 func TestMetrics(t *testing.T) {
 	ht := StartHTTPTest(t, "base")
 	defer ht.Finish()
@@ -53,6 +55,17 @@ func TestMetrics(t *testing.T) {
 	ht.Require.Less(float64(1000), getMetricValue(hlc).GetGauge().GetValue())
 	ht.Require.EqualValues(1, getMetricValue(he).GetCounter().GetValue())
 	ht.Require.EqualValues(64, getMetricValue(cl).GetCounter().GetValue())
+}
+
+func TestTick(t *testing.T) {
+	ht := StartHTTPTest(t, "base")
+	defer ht.Finish()
+
+	// Just sanity-check that we return the context error...
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	err := ht.App.Tick(ctx)
+	ht.Assert.EqualError(err, context.Canceled.Error())
 }
 
 func getMetricValue(metric prometheus.Metric) *dto.Metric {

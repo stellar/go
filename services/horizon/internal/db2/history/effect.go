@@ -1,6 +1,7 @@
 package history
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -48,9 +49,9 @@ func (q *Q) Effects() *EffectsQ {
 }
 
 // ForAccount filters the operations collection to a specific account
-func (q *EffectsQ) ForAccount(aid string) *EffectsQ {
+func (q *EffectsQ) ForAccount(ctx context.Context, aid string) *EffectsQ {
 	var account Account
-	q.Err = q.parent.AccountByAddress(&account, aid)
+	q.Err = q.parent.AccountByAddress(ctx, &account, aid)
 	if q.Err != nil {
 		return q
 	}
@@ -62,9 +63,9 @@ func (q *EffectsQ) ForAccount(aid string) *EffectsQ {
 
 // ForLedger filters the query to only effects in a specific ledger,
 // specified by its sequence.
-func (q *EffectsQ) ForLedger(seq int32) *EffectsQ {
+func (q *EffectsQ) ForLedger(ctx context.Context, seq int32) *EffectsQ {
 	var ledger Ledger
-	q.Err = q.parent.LedgerBySequence(&ledger, seq)
+	q.Err = q.parent.LedgerBySequence(ctx, &ledger, seq)
 	if q.Err != nil {
 		return q
 	}
@@ -97,9 +98,9 @@ func (q *EffectsQ) ForOperation(id int64) *EffectsQ {
 
 // ForTransaction filters the query to only effects in a specific
 // transaction, specified by the transactions's hex-encoded hash.
-func (q *EffectsQ) ForTransaction(hash string) *EffectsQ {
+func (q *EffectsQ) ForTransaction(ctx context.Context, hash string) *EffectsQ {
 	var tx Transaction
-	q.Err = q.parent.TransactionByHash(&tx, hash)
+	q.Err = q.parent.TransactionByHash(ctx, &tx, hash)
 	if q.Err != nil {
 		return q
 	}
@@ -162,12 +163,12 @@ func (q *EffectsQ) Page(page db2.PageQuery) *EffectsQ {
 }
 
 // Select loads the results of the query specified by `q` into `dest`.
-func (q *EffectsQ) Select(dest interface{}) error {
+func (q *EffectsQ) Select(ctx context.Context, dest interface{}) error {
 	if q.Err != nil {
 		return q.Err
 	}
 
-	q.Err = q.parent.Select(dest, q.sql)
+	q.Err = q.parent.Select(ctx, dest, q.sql)
 	return q.Err
 }
 

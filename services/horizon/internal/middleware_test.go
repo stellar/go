@@ -3,11 +3,13 @@
 package horizon
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
 	"testing"
 
+	"github.com/go-chi/chi"
 	"github.com/stellar/throttled"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -147,12 +149,12 @@ func TestStateMiddleware(t *testing.T) {
 
 	q := &history.Q{tt.HorizonSession()}
 
-	request, err := http.NewRequest("GET", "http://localhost", nil)
+	request, err := http.NewRequest("GET", "http://localhost/", nil)
 	tt.Assert.NoError(err)
 
 	expectTransaction := true
 	endpoint := func(w http.ResponseWriter, r *http.Request) {
-		session := r.Context().Value(&horizonContext.SessionContextKey).(*db.Session)
+		session := r.Context().Value(&horizonContext.SessionContextKey).(db.SessionInterface)
 		if (session.GetTx() == nil) == expectTransaction {
 			t.Fatalf("expected transaction to be in session: %v", expectTransaction)
 		}
@@ -162,7 +164,8 @@ func TestStateMiddleware(t *testing.T) {
 	stateMiddleware := &httpx.StateMiddleware{
 		HorizonSession: tt.HorizonSession(),
 	}
-	handler := stateMiddleware.Wrap(http.HandlerFunc(endpoint))
+	handler := chi.NewRouter()
+	handler.With(stateMiddleware.Wrap).MethodFunc("GET", "/", endpoint)
 
 	for i, testCase := range []struct {
 		name                string
@@ -270,8 +273,8 @@ func TestStateMiddleware(t *testing.T) {
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			stateMiddleware.NoStateVerification = testCase.noStateVerification
-			tt.Assert.NoError(q.UpdateExpStateInvalid(testCase.stateInvalid))
-			_, err = q.InsertLedger(xdr.LedgerHeaderHistoryEntry{
+			tt.Assert.NoError(q.UpdateExpStateInvalid(context.Background(), testCase.stateInvalid))
+			_, err = q.InsertLedger(context.Background(), xdr.LedgerHeaderHistoryEntry{
 				Hash: xdr.Hash{byte(i)},
 				Header: xdr.LedgerHeader{
 					LedgerSeq:          testCase.latestHistoryLedger,
@@ -279,8 +282,8 @@ func TestStateMiddleware(t *testing.T) {
 				},
 			}, 0, 0, 0, 0, 0)
 			tt.Assert.NoError(err)
-			tt.Assert.NoError(q.UpdateLastLedgerIngest(testCase.lastIngestedLedger))
-			tt.Assert.NoError(q.UpdateIngestVersion(testCase.ingestionVersion))
+			tt.Assert.NoError(q.UpdateLastLedgerIngest(context.Background(), testCase.lastIngestedLedger))
+			tt.Assert.NoError(q.UpdateIngestVersion(context.Background(), testCase.ingestionVersion))
 
 			if testCase.sseRequest {
 				request.Header.Set("Accept", "text/event-stream")
@@ -306,7 +309,7 @@ func TestStateMiddleware(t *testing.T) {
 func TestCheckHistoryStaleMiddleware(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
-	request, err := http.NewRequest("GET", "http://localhost", nil)
+	request, err := http.NewRequest("GET", "http://localhost/", nil)
 	tt.Assert.NoError(err)
 
 	endpoint := func(w http.ResponseWriter, r *http.Request) {
@@ -350,7 +353,8 @@ func TestCheckHistoryStaleMiddleware(t *testing.T) {
 			ledgerState := &ledger.State{}
 			ledgerState.SetStatus(state)
 			historyMiddleware := httpx.NewHistoryMiddleware(ledgerState, testCase.staleThreshold, tt.HorizonSession())
-			handler := historyMiddleware(http.HandlerFunc(endpoint))
+			handler := chi.NewRouter()
+			handler.With(historyMiddleware).MethodFunc("GET", "/", endpoint)
 			w := httptest.NewRecorder()
 			handler.ServeHTTP(w, request)
 			tt.Assert.Equal(testCase.expectedStatus, w.Code)

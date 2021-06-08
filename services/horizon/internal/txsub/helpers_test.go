@@ -44,22 +44,22 @@ func (m *mockDBQ) NoRows(err error) bool {
 	return args.Bool(0)
 }
 
-func (m *mockDBQ) GetLatestHistoryLedger() (uint32, error) {
+func (m *mockDBQ) GetLatestHistoryLedger(ctx context.Context) (uint32, error) {
 	args := m.Called()
 	return args.Get(0).(uint32), args.Error(1)
 }
 
-func (m *mockDBQ) GetSequenceNumbers(addresses []string) (map[string]uint64, error) {
-	args := m.Called(addresses)
+func (m *mockDBQ) GetSequenceNumbers(ctx context.Context, addresses []string) (map[string]uint64, error) {
+	args := m.Called(ctx, addresses)
 	return args.Get(0).(map[string]uint64), args.Error(1)
 }
 
-func (m *mockDBQ) TransactionsByHashesSinceLedger(dest interface{}, hashes []string, sinceLedgerSeq uint32) error {
-	args := m.Called(dest, hashes, sinceLedgerSeq)
+func (m *mockDBQ) TransactionsByHashesSinceLedger(ctx context.Context, dest interface{}, hashes []string, sinceLedgerSeq uint32) error {
+	args := m.Called(ctx, dest, hashes, sinceLedgerSeq)
 	return args.Error(0)
 }
 
-func (m *mockDBQ) TransactionByHash(dest interface{}, hash string) error {
-	args := m.Called(dest, hash)
+func (m *mockDBQ) TransactionByHash(ctx context.Context, dest interface{}, hash string) error {
+	args := m.Called(ctx, dest, hash)
 	return args.Error(0)
 }

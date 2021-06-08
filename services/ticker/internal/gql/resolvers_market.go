@@ -1,6 +1,7 @@
 package gql
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -11,7 +12,7 @@ import (
 )
 
 // Markets resolves the markets() GraphQL query.
-func (r *resolver) Markets(args struct {
+func (r *resolver) Markets(ctx context.Context, args struct {
 	BaseAssetCode      *string
 	BaseAssetIssuer    *string
 	CounterAssetCode   *string
@@ -28,7 +29,7 @@ func (r *resolver) Markets(args struct {
 		pairName = fmt.Sprintf("%s:%s / %s:%s", *args.BaseAssetCode, *args.BaseAssetIssuer, *args.CounterAssetCode, *args.CounterAssetIssuer)
 	}
 
-	dbMarkets, err := r.db.RetrievePartialMarkets(
+	dbMarkets, err := r.db.RetrievePartialMarkets(ctx,
 		args.BaseAssetCode,
 		args.BaseAssetIssuer,
 		args.CounterAssetCode,
@@ -57,7 +58,7 @@ func (r *resolver) Markets(args struct {
 }
 
 // Ticker resolves the ticker() GraphQL query (TODO)
-func (r *resolver) Ticker(
+func (r *resolver) Ticker(ctx context.Context,
 	args struct {
 		Code        *string
 		PairNames   *[]*string
@@ -74,7 +75,7 @@ func (r *resolver) Ticker(
 		return
 	}
 
-	dbMarkets, err := r.db.RetrievePartialAggMarkets(args.Code, args.PairNames, numHours)
+	dbMarkets, err := r.db.RetrievePartialAggMarkets(ctx, args.Code, args.PairNames, numHours)
 	if err != nil {
 		// obfuscating sql errors to avoid exposing underlying
 		// implementation

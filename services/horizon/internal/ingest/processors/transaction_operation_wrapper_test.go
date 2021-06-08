@@ -3,6 +3,7 @@
 package processors
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -101,6 +102,16 @@ func TestOperationTransactionSourceAccount(t *testing.T) {
 			sourceAccount: "GDMQUXK7ZUCWM5472ZU3YLDP4BMJLQQ76DEMNYDEY2ODEEGGRKLEWGW2",
 			expected:      "GDMQUXK7ZUCWM5472ZU3YLDP4BMJLQQ76DEMNYDEY2ODEEGGRKLEWGW2",
 		},
+		{
+			desc:          "Operation with source account",
+			sourceAccount: "GDMQUXK7ZUCWM5472ZU3YLDP4BMJLQQ76DEMNYDEY2ODEEGGRKLEWGW2",
+			expected:      "GDMQUXK7ZUCWM5472ZU3YLDP4BMJLQQ76DEMNYDEY2ODEEGGRKLEWGW2",
+		},
+		{
+			desc:          "Operation with muxed source account",
+			sourceAccount: "MAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSAAAAAAAAAAE2LP26",
+			expected:      "MAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSAAAAAAAAAAE2LP26",
+		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.desc, func(t *testing.T) {
@@ -118,8 +129,7 @@ func TestOperationTransactionSourceAccount(t *testing.T) {
 			)
 			op := transaction.Envelope.Operations()[0]
 			if len(tc.sourceAccount) > 0 {
-				aid := xdr.MustAddress(tc.sourceAccount)
-				sourceAccount := aid.ToMuxedAccount()
+				sourceAccount := xdr.MustMuxedAddress(tc.sourceAccount)
 				op.SourceAccount = &sourceAccount
 			}
 
@@ -216,6 +226,21 @@ func TestTransactionOperationDetails(t *testing.T) {
 			},
 		},
 		{
+			desc:          "createAccount with muxed accounts",
+			envelopeXDR:   "AAAAAgAAAQAAAAAAAAAE0iAAdX7q5YP8UN1mn5dnOswl7HJYI6xz+vbH3zGtMeUJAAAAAAAAAAAAAAAaAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAoZftFP3p4ifbTm6hQdieotu3Zw9E05GtoSh5MBytEpQAAAACVAvkAAAAAAAAAAAA",
+			resultXDR:     "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAA=",
+			metaXDR:       "AAAAAQAAAAIAAAADAAAAOQAAAAAAAAAAYvwdC9CRsrYcDdZWNGsqaNfTR8bywsjubQRHAlb8BfcLGrZY9dZxbAAAAAAAAAAZAAAAAAAAAAEAAAAAYvwdC9CRsrYcDdZWNGsqaNfTR8bywsjubQRHAlb8BfcAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAOQAAAAAAAAAAYvwdC9CRsrYcDdZWNGsqaNfTR8bywsjubQRHAlb8BfcLGrZY9dZxbAAAAAAAAAAaAAAAAAAAAAEAAAAAYvwdC9CRsrYcDdZWNGsqaNfTR8bywsjubQRHAlb8BfcAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAAwAAAAMAAAA5AAAAAAAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9wsatlj11nFsAAAAAAAAABoAAAAAAAAAAQAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9wAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAAAA5AAAAAAAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9wsatlahyo1sAAAAAAAAABoAAAAAAAAAAQAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9wAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAA5AAAAAAAAAAChl+0U/eniJ9tObqFB2J6i27dnD0TTka2hKHkwHK0SlAAAAAJUC+QAAAAAOQAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA==",
+			feeChangesXDR: "AAAAAgAAAAMAAAA3AAAAAAAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9wsatlj11nHQAAAAAAAAABkAAAAAAAAAAQAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9wAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAAAA5AAAAAAAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9wsatlj11nFsAAAAAAAAABkAAAAAAAAAAQAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9wAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA==",
+			index:         0,
+			expected: map[string]interface{}{
+				"account":          "GCQZP3IU7XU6EJ63JZXKCQOYT2RNXN3HB5CNHENNUEUHSMA4VUJJJSEN",
+				"funder":           "GAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSTVY",
+				"funder_muxed":     "MAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSAAAAAAAAAAE2LP26",
+				"funder_muxed_id":  uint64(1234),
+				"starting_balance": "1000.0000000",
+			},
+		},
+		{
 			desc:          "payment",
 			envelopeXDR:   "AAAAABpcjiETZ0uhwxJJhgBPYKWSVJy2TZ2LI87fqV1cUf/UAAAAZAAAADcAAAABAAAAAAAAAAAAAAABAAAAAAAAAAEAAAAAGlyOIRNnS6HDEkmGAE9gpZJUnLZNnYsjzt+pXVxR/9QAAAAAAAAAAAX14QAAAAAAAAAAAVxR/9QAAABAK6pcXYMzAEmH08CZ1LWmvtNDKauhx+OImtP/Lk4hVTMJRVBOebVs5WEPj9iSrgGT0EswuDCZ2i5AEzwgGof9Ag==",
 			resultXDR:     "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAA=",
@@ -231,6 +256,24 @@ func TestTransactionOperationDetails(t *testing.T) {
 			},
 		},
 		{
+			desc:          "payment with muxed accounts",
+			envelopeXDR:   "AAAAAgAAAQAAAAAAAAAE0iAAdX7q5YP8UN1mn5dnOswl7HJYI6xz+vbH3zGtMeUJAAAAAAAAAAAAAAAaAAAAAAAAAAAAAAABAAAAAAAAAAEAAAEAAAAAAAAAAAA/DDS/k60NmXHQTMyQ9wVRHIOKrZc0pKL7DXoD/H/omgAAAAAAAAAABfXhAAAAAAAAAAAA",
+			resultXDR:     "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAA=",
+			metaXDR:       "AAAAAQAAAAIAAAADAAAAOAAAAAAAAAAAGlyOIRNnS6HDEkmGAE9gpZJUnLZNnYsjzt+pXVxR/9QAAAACVAvjnAAAADcAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAOAAAAAAAAAAAGlyOIRNnS6HDEkmGAE9gpZJUnLZNnYsjzt+pXVxR/9QAAAACVAvjnAAAADcAAAABAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAAA==",
+			feeChangesXDR: "AAAAAgAAAAMAAAA3AAAAAAAAAAAaXI4hE2dLocMSSYYAT2ClklSctk2diyPO36ldXFH/1AAAAAJUC+QAAAAANwAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAAAA4AAAAAAAAAAAaXI4hE2dLocMSSYYAT2ClklSctk2diyPO36ldXFH/1AAAAAJUC+OcAAAANwAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA==",
+			index:         0,
+			expected: map[string]interface{}{
+				"amount":        "10.0000000",
+				"asset_type":    "native",
+				"from":          "GAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSTVY",
+				"from_muxed":    "MAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSAAAAAAAAAAE2LP26",
+				"from_muxed_id": uint64(1234),
+				"to":            "GA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVSGZ",
+				"to_muxed":      "MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJUAAAAAAAAAAAACJUQ",
+				"to_muxed_id":   uint64(0),
+			},
+		},
+		{
 			desc:          "pathPaymentStrictReceive",
 			envelopeXDR:   "AAAAAONt/6wGI884Zi6sYDYC1GOV/drnh4OcRrTrqJPoOTUKAAAAZAAAABAAAAADAAAAAAAAAAAAAAABAAAAAAAAAAIAAAAAAAAAADuaygAAAAAABAjoBMEUiZNLUjsWXL1iK59D90Li4w56076b8HKxZfIAAAABRVVSAAAAAAAuwvNzNk9twbuJHUBqnX26GYI3MbCdpQU9t4n6EVRXsQAAAAA7msoAAAAAAAAAAAAAAAAB6Dk1CgAAAEB+7jxesBKKrF343onyycjp2tiQLZiGH2ETl+9fuOqotveY2rIgvt9ng+QJ2aDP3+PnDsYEa9ZUaA+Zne2nIGgE",
 			resultXDR:     "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAACAAAAAAAAAAEAAAAALsLzczZPbcG7iR1Aap19uhmCNzGwnaUFPbeJ+hFUV7EAAAAAAAAAAgAAAAFFVVIAAAAAAC7C83M2T23Bu4kdQGqdfboZgjcxsJ2lBT23ifoRVFexAAAAADuaygAAAAAAAAAAADuaygAAAAAABAjoBMEUiZNLUjsWXL1iK59D90Li4w56076b8HKxZfIAAAABRVVSAAAAAAAuwvNzNk9twbuJHUBqnX26GYI3MbCdpQU9t4n6EVRXsQAAAAA7msoAAAAAAA==",
@@ -241,6 +284,30 @@ func TestTransactionOperationDetails(t *testing.T) {
 			expected: map[string]interface{}{
 				"to":                "GACAR2AEYEKITE2LKI5RMXF5MIVZ6Q7XILROGDT22O7JX4DSWFS7FDDP",
 				"from":              "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
+				"path":              []map[string]interface{}{},
+				"amount":            "100.0000000",
+				"asset_code":        "EUR",
+				"asset_type":        "credit_alphanum4",
+				"source_max":        "100.0000000",
+				"asset_issuer":      "GAXMF43TGZHW3QN3REOUA2U5PW5BTARXGGYJ3JIFHW3YT6QRKRL3CPPU",
+				"source_amount":     "100.0000000",
+				"source_asset_type": "native",
+			},
+		},
+		{
+			desc:          "pathPaymentStrictReceive with muxed accounts",
+			envelopeXDR:   "AAAAAgAAAQAAAAAAAAAE0iAAdX7q5YP8UN1mn5dnOswl7HJYI6xz+vbH3zGtMeUJAAAAAAAAAAAAAAAaAAAAAAAAAAAAAAABAAAAAAAAAAIAAAAAAAAAADuaygAAAAEAAAAAAAAAAAA/DDS/k60NmXHQTMyQ9wVRHIOKrZc0pKL7DXoD/H/omgAAAAFFVVIAAAAAAC7C83M2T23Bu4kdQGqdfboZgjcxsJ2lBT23ifoRVFexAAAAADuaygAAAAAAAAAAAAAAAAA=",
+			resultXDR:     "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAACAAAAAAAAAAEAAAAALsLzczZPbcG7iR1Aap19uhmCNzGwnaUFPbeJ+hFUV7EAAAAAAAAAAgAAAAFFVVIAAAAAAC7C83M2T23Bu4kdQGqdfboZgjcxsJ2lBT23ifoRVFexAAAAADuaygAAAAAAAAAAADuaygAAAAAABAjoBMEUiZNLUjsWXL1iK59D90Li4w56076b8HKxZfIAAAABRVVSAAAAAAAuwvNzNk9twbuJHUBqnX26GYI3MbCdpQU9t4n6EVRXsQAAAAA7msoAAAAAAA==",
+			metaXDR:       "AAAAAQAAAAIAAAADAAAAFAAAAAAAAAAA423/rAYjzzhmLqxgNgLUY5X92ueHg5xGtOuok+g5NQoAAAACVAvi1AAAABAAAAACAAAAAQAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAFAAAAAAAAAAA423/rAYjzzhmLqxgNgLUY5X92ueHg5xGtOuok+g5NQoAAAACVAvi1AAAABAAAAADAAAAAQAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAACAAAAAMAAAATAAAAAQAAAAAECOgEwRSJk0tSOxZcvWIrn0P3QuLjDnrTvpvwcrFl8gAAAAFFVVIAAAAAAC7C83M2T23Bu4kdQGqdfboZgjcxsJ2lBT23ifoRVFexAAAAAHc1lAB//////////wAAAAEAAAAAAAAAAAAAAAEAAAAUAAAAAQAAAAAECOgEwRSJk0tSOxZcvWIrn0P3QuLjDnrTvpvwcrFl8gAAAAFFVVIAAAAAAC7C83M2T23Bu4kdQGqdfboZgjcxsJ2lBT23ifoRVFexAAAAALLQXgB//////////wAAAAEAAAAAAAAAAAAAAAMAAAATAAAAAgAAAAAuwvNzNk9twbuJHUBqnX26GYI3MbCdpQU9t4n6EVRXsQAAAAAAAAACAAAAAUVVUgAAAAAALsLzczZPbcG7iR1Aap19uhmCNzGwnaUFPbeJ+hFUV7EAAAAAAAAAADuaygAAAAABAAAAAQAAAAAAAAAAAAAAAAAAAAIAAAACAAAAAC7C83M2T23Bu4kdQGqdfboZgjcxsJ2lBT23ifoRVFexAAAAAAAAAAIAAAADAAAAFAAAAAAAAAAA423/rAYjzzhmLqxgNgLUY5X92ueHg5xGtOuok+g5NQoAAAACVAvi1AAAABAAAAADAAAAAQAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAFAAAAAAAAAAA423/rAYjzzhmLqxgNgLUY5X92ueHg5xGtOuok+g5NQoAAAACGHEY1AAAABAAAAADAAAAAQAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAADAAAAEwAAAAAAAAAALsLzczZPbcG7iR1Aap19uhmCNzGwnaUFPbeJ+hFUV7EAAAACVAvi1AAAABAAAAADAAAAAgAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAQAAAAA7msoAAAAAAHc1lAAAAAAAAAAAAAAAAAEAAAAUAAAAAAAAAAAuwvNzNk9twbuJHUBqnX26GYI3MbCdpQU9t4n6EVRXsQAAAAKPpqzUAAAAEAAAAAMAAAABAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAABAAAAAAAAAAAAAAAAdzWUAAAAAAAAAAAA",
+			feeChangesXDR: "AAAAAgAAAAMAAAATAAAAAAAAAADjbf+sBiPPOGYurGA2AtRjlf3a54eDnEa066iT6Dk1CgAAAAJUC+M4AAAAEAAAAAIAAAABAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAAAAUAAAAAAAAAADjbf+sBiPPOGYurGA2AtRjlf3a54eDnEa066iT6Dk1CgAAAAJUC+LUAAAAEAAAAAIAAAABAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA==",
+			index:         0,
+			expected: map[string]interface{}{
+				"to":                "GA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVSGZ",
+				"to_muxed":          "MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJUAAAAAAAAAAAACJUQ",
+				"to_muxed_id":       uint64(0),
+				"from":              "GAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSTVY",
+				"from_muxed":        "MAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSAAAAAAAAAAE2LP26",
+				"from_muxed_id":     uint64(1234),
 				"path":              []map[string]interface{}{},
 				"amount":            "100.0000000",
 				"asset_code":        "EUR",
@@ -467,6 +534,24 @@ func TestTransactionOperationDetails(t *testing.T) {
 			},
 		},
 		{
+			desc:          "changeTrust with muxed accounts",
+			envelopeXDR:   "AAAAAgAAAQAAAAAAAAAE0iAAdX7q5YP8UN1mn5dnOswl7HJYI6xz+vbH3zGtMeUJAAAAAAAAAAAAAAAaAAAAAAAAAAAAAAABAAAAAAAAAAYAAAABVVNEAAAAAAD5Jjibq+Rf5jsUyQ2/tGzCwiRg0Zd5nj9jARA1Skjz+H//////////AAAAAAAAAAA=",
+			resultXDR:     "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAA=",
+			metaXDR:       "AAAAAQAAAAIAAAADAAAAKAAAAAAAAAAAq26sUclf95G3mAzqohcAxtpe+UiaovKwDpCv20t6bF8AAAACVAvjOAAAACYAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAKAAAAAAAAAAAq26sUclf95G3mAzqohcAxtpe+UiaovKwDpCv20t6bF8AAAACVAvjOAAAACYAAAABAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAAwAAAAMAAAAoAAAAAAAAAACrbqxRyV/3kbeYDOqiFwDG2l75SJqi8rAOkK/bS3psXwAAAAJUC+M4AAAAJgAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAAAAoAAAAAAAAAACrbqxRyV/3kbeYDOqiFwDG2l75SJqi8rAOkK/bS3psXwAAAAJUC+M4AAAAJgAAAAEAAAABAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAoAAAAAQAAAACrbqxRyV/3kbeYDOqiFwDG2l75SJqi8rAOkK/bS3psXwAAAAFVU0QAAAAAAPkmOJur5F/mOxTJDb+0bMLCJGDRl3meP2MBEDVKSPP4AAAAAAAAAAB//////////wAAAAAAAAAAAAAAAA==",
+			feeChangesXDR: "AAAAAgAAAAMAAAAmAAAAAAAAAACrbqxRyV/3kbeYDOqiFwDG2l75SJqi8rAOkK/bS3psXwAAAAJUC+QAAAAAJgAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAAAAoAAAAAAAAAACrbqxRyV/3kbeYDOqiFwDG2l75SJqi8rAOkK/bS3psXwAAAAJUC+OcAAAAJgAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA==",
+			index:         0,
+			expected: map[string]interface{}{
+				"asset_code":       "USD",
+				"asset_issuer":     "GD4SMOE3VPSF7ZR3CTEQ3P5UNTBMEJDA2GLXTHR7MMARANKKJDZ7RPGF",
+				"asset_type":       "credit_alphanum4",
+				"limit":            "922337203685.4775807",
+				"trustee":          "GD4SMOE3VPSF7ZR3CTEQ3P5UNTBMEJDA2GLXTHR7MMARANKKJDZ7RPGF",
+				"trustor":          "GAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSTVY",
+				"trustor_muxed":    "MAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSAAAAAAAAAAE2LP26",
+				"trustor_muxed_id": uint64(1234),
+			},
+		},
+		{
 			desc:          "allowTrust",
 			envelopeXDR:   "AAAAAPkmOJur5F/mOxTJDb+0bMLCJGDRl3meP2MBEDVKSPP4AAAAZAAAACYAAAACAAAAAAAAAAAAAAABAAAAAAAAAAcAAAAAq26sUclf95G3mAzqohcAxtpe+UiaovKwDpCv20t6bF8AAAABVVNEAAAAAAEAAAAAAAAAAUpI8/gAAABA6O2fe1gQBwoO0fMNNEUKH0QdVXVjEWbN5VL51DmRUedYMMXtbX5JKVSzla2kIGvWgls1dXuXHZY/IOlaK01rBQ==",
 			resultXDR:     "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAA=",
@@ -484,6 +569,24 @@ func TestTransactionOperationDetails(t *testing.T) {
 			},
 		},
 		{
+			desc:          "allowTrust with muxed accounts",
+			envelopeXDR:   "AAAAAgAAAQAAAAAAAAAE0iAAdX7q5YP8UN1mn5dnOswl7HJYI6xz+vbH3zGtMeUJAAAAAAAAAAAAAAAaAAAAAAAAAAAAAAABAAAAAAAAAAcAAAAAq26sUclf95G3mAzqohcAxtpe+UiaovKwDpCv20t6bF8AAAABVVNEAAAAAAEAAAAAAAAAAA==",
+			resultXDR:     "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAA=",
+			metaXDR:       "AAAAAQAAAAIAAAADAAAAKQAAAAAAAAAA+SY4m6vkX+Y7FMkNv7RswsIkYNGXeZ4/YwEQNUpI8/gAAAACVAvi1AAAACYAAAABAAAAAAAAAAAAAAADAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAKQAAAAAAAAAA+SY4m6vkX+Y7FMkNv7RswsIkYNGXeZ4/YwEQNUpI8/gAAAACVAvi1AAAACYAAAACAAAAAAAAAAAAAAADAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAAgAAAAMAAAAoAAAAAQAAAACrbqxRyV/3kbeYDOqiFwDG2l75SJqi8rAOkK/bS3psXwAAAAFVU0QAAAAAAPkmOJur5F/mOxTJDb+0bMLCJGDRl3meP2MBEDVKSPP4AAAAAAAAAAB//////////wAAAAAAAAAAAAAAAAAAAAEAAAApAAAAAQAAAACrbqxRyV/3kbeYDOqiFwDG2l75SJqi8rAOkK/bS3psXwAAAAFVU0QAAAAAAPkmOJur5F/mOxTJDb+0bMLCJGDRl3meP2MBEDVKSPP4AAAAAAAAAAB//////////wAAAAEAAAAAAAAAAA==",
+			feeChangesXDR: "AAAAAgAAAAMAAAAnAAAAAAAAAAD5Jjibq+Rf5jsUyQ2/tGzCwiRg0Zd5nj9jARA1Skjz+AAAAAJUC+OcAAAAJgAAAAEAAAAAAAAAAAAAAAMAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAAAApAAAAAAAAAAD5Jjibq+Rf5jsUyQ2/tGzCwiRg0Zd5nj9jARA1Skjz+AAAAAJUC+M4AAAAJgAAAAEAAAAAAAAAAAAAAAMAAAAAAQAAAAAAAAAAAAAAAAAAAA==",
+			index:         0,
+			expected: map[string]interface{}{
+				"asset_code":       "USD",
+				"asset_issuer":     "GAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSTVY",
+				"asset_type":       "credit_alphanum4",
+				"authorize":        true,
+				"trustee":          "GAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSTVY",
+				"trustee_muxed":    "MAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSAAAAAAAAAAE2LP26",
+				"trustee_muxed_id": uint64(1234),
+				"trustor":          "GCVW5LCRZFP7PENXTAGOVIQXADDNUXXZJCNKF4VQB2IK7W2LPJWF73UG",
+			},
+		},
+		{
 			desc:          "accountMerge (Destination)",
 			envelopeXDR:   "AAAAAI77mqNTy9VPgmgn+//uvjP8VJxJ1FHQ4jCrYS+K4+HvAAAAZAAAACsAAAABAAAAAAAAAAAAAAABAAAAAAAAAAgAAAAAYvwdC9CRsrYcDdZWNGsqaNfTR8bywsjubQRHAlb8BfcAAAAAAAAAAYrj4e8AAABA3jJ7wBrRpsrcnqBQWjyzwvVz2v5UJ56G60IhgsaWQFSf+7om462KToc+HJ27aLVOQ83dGh1ivp+VIuREJq/SBw==",
 			resultXDR:     "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAA=",
@@ -494,6 +597,22 @@ func TestTransactionOperationDetails(t *testing.T) {
 			expected: map[string]interface{}{
 				"into":    "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
 				"account": "GCHPXGVDKPF5KT4CNAT7X77OXYZ7YVE4JHKFDUHCGCVWCL4K4PQ67KKZ",
+			},
+		},
+		{
+			desc:          "accountMerge (Destination) with muxed accounts",
+			envelopeXDR:   "AAAAAgAAAQAAAAAAAAAE0iAAdX7q5YP8UN1mn5dnOswl7HJYI6xz+vbH3zGtMeUJAAAAAAAAAAAAAAAaAAAAAAAAAAAAAAABAAAAAAAAAAgAAAEAAAAAAAAAAAA/DDS/k60NmXHQTMyQ9wVRHIOKrZc0pKL7DXoD/H/omgAAAAAAAAAA",
+			resultXDR:     "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAA=",
+			metaXDR:       "AAAAAQAAAAIAAAADAAAALAAAAAAAAAAAjvuao1PL1U+CaCf7/+6+M/xUnEnUUdDiMKthL4rj4e8AAAACVAvjnAAAACsAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAALAAAAAAAAAAAjvuao1PL1U+CaCf7/+6+M/xUnEnUUdDiMKthL4rj4e8AAAACVAvjnAAAACsAAAABAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAABAAAAAMAAAArAAAAAAAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9w3gtonM3Az4AAAAAAAAABIAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAAAAsAAAAAAAAAABi/B0L0JGythwN1lY0aypo19NHxvLCyO5tBEcCVvwF9w3gtowg5/CUAAAAAAAAABIAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAMAAAAsAAAAAAAAAACO+5qjU8vVT4JoJ/v/7r4z/FScSdRR0OIwq2EviuPh7wAAAAJUC+OcAAAAKwAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAI77mqNTy9VPgmgn+//uvjP8VJxJ1FHQ4jCrYS+K4+Hv",
+			feeChangesXDR: "AAAAAgAAAAMAAAArAAAAAAAAAACO+5qjU8vVT4JoJ/v/7r4z/FScSdRR0OIwq2EviuPh7wAAAAJUC+QAAAAAKwAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAAAAsAAAAAAAAAACO+5qjU8vVT4JoJ/v/7r4z/FScSdRR0OIwq2EviuPh7wAAAAJUC+OcAAAAKwAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA==",
+			index:         0,
+			expected: map[string]interface{}{
+				"into":             "GA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVSGZ",
+				"into_muxed":       "MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJUAAAAAAAAAAAACJUQ",
+				"into_muxed_id":    uint64(0),
+				"account":          "GAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSTVY",
+				"account_muxed":    "MAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSAAAAAAAAAAE2LP26",
+				"account_muxed_id": uint64(1234),
 			},
 		},
 		{
@@ -575,6 +694,28 @@ func TestTransactionOperationDetails(t *testing.T) {
 			},
 		},
 		{
+			desc:          "pathPaymentStrictSend with muxed accounts",
+			envelopeXDR:   "AAAAAgAAAQAAAAAAAAAE0iAAdX7q5YP8UN1mn5dnOswl7HJYI6xz+vbH3zGtMeUJAAAAAAAAAAAAAAAaAAAAAAAAAAAAAAABAAAAAAAAAA0AAAAAAAAAAAX14QAAAAEAAAAAAAAAAAA/DDS/k60NmXHQTMyQ9wVRHIOKrZc0pKL7DXoD/H/omgAAAAAAAAAABfXhAAAAAAEAAAAAAAAAAAAAAAA=",
+			resultXDR:     "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAANAAAAAAAAAAAAAAAA4VWYSXp7+QFjS8+8WzU2KJTONKIIk2FHXORcby4KqbgAAAAAAAAAAAX14QAAAAAA",
+			metaXDR:       "AAAAAQAAAAIAAAADAApOFQAAAAAAAAAA6wLdS5Ald4laXujZD1Z/ZG9mIeIcp9Ju0M2xeSfc0yIAAAAXSHbnnAAKTgQAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAApOFQAAAAAAAAAA6wLdS5Ald4laXujZD1Z/ZG9mIeIcp9Ju0M2xeSfc0yIAAAAXSHbnnAAKTgQAAAABAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAABAAAAAMACk4VAAAAAAAAAADrAt1LkCV3iVpe6NkPVn9kb2Yh4hyn0m7QzbF5J9zTIgAAABdIduecAApOBAAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEACk4VAAAAAAAAAADrAt1LkCV3iVpe6NkPVn9kb2Yh4hyn0m7QzbF5J9zTIgAAABdCgQacAApOBAAAAAEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAMABZwuAAAAAAAAAADhVZhJenv5AWNLz7xbNTYolM40ogiTYUdc5FxvLgqpuAAAAAAAmJaAAAWcLgAAAAAAAAAAAAAAAAAAAAQAAAARdHN0LnRlc3Rhc3NldC5jb20AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAKThUAAAAAAAAAAOFVmEl6e/kBY0vPvFs1NiiUzjSiCJNhR1zkXG8uCqm4AAAAAAaOd4AABZwuAAAAAAAAAAAAAAAAAAAABAAAABF0c3QudGVzdGFzc2V0LmNvbQAAAAAAAAAAAAAAAAAAAAAAAAA=",
+			feeChangesXDR: "AAAAAgAAAAMACk4EAAAAAAAAAADrAt1LkCV3iVpe6NkPVn9kb2Yh4hyn0m7QzbF5J9zTIgAAABdIdugAAApOBAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEACk4VAAAAAAAAAADrAt1LkCV3iVpe6NkPVn9kb2Yh4hyn0m7QzbF5J9zTIgAAABdIduecAApOBAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA==",
+			index:         0,
+			expected: map[string]interface{}{
+				"amount":            "10.0000000",
+				"asset_type":        "native",
+				"destination_min":   "10.0000000",
+				"from":              "GAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSTVY",
+				"from_muxed":        "MAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSAAAAAAAAAAE2LP26",
+				"from_muxed_id":     uint64(1234),
+				"path":              []map[string]interface{}{{"asset_type": "native"}},
+				"source_amount":     "10.0000000",
+				"source_asset_type": "native",
+				"to":                "GA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVSGZ",
+				"to_muxed":          "MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJUAAAAAAAAAAAACJUQ",
+				"to_muxed_id":       uint64(0),
+			},
+		},
+		{
 			desc:          "revokeSponsorship (signer)",
 			envelopeXDR:   getRevokeSponsorshipEnvelopeXDR(t),
 			resultXDR:     "AAAAAAAAAAAAAAAAAAAAAAAAAAA=",
@@ -613,6 +754,28 @@ func TestTransactionOperationDetails(t *testing.T) {
 		},
 	}
 
+	var tx1 xdr.TransactionEnvelope
+	err := xdr.SafeUnmarshalBase64("AAAAAI77mqNTy9VPgmgn+//uvjP8VJxJ1FHQ4jCrYS+K4+HvAAAAZAAAACsAAAABAAAAAAAAAAAAAAABAAAAAAAAAAgAAAAAYvwdC9CRsrYcDdZWNGsqaNfTR8bywsjubQRHAlb8BfcAAAAAAAAAAYrj4e8AAABA3jJ7wBrRpsrcnqBQWjyzwvVz2v5UJ56G60IhgsaWQFSf+7om462KToc+HJ27aLVOQ83dGh1ivp+VIuREJq/SBw==", &tx1)
+	assert.NoError(t, err)
+	fmt.Printf("%#v\n", tx1)
+	destination := xdr.MustMuxedAddress("MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJUAAAAAAAAAAAACJUQ")
+	tx2 := xdr.TransactionEnvelope{
+		Type: xdr.EnvelopeTypeEnvelopeTypeTx,
+		V1: &xdr.TransactionV1Envelope{
+			Tx: xdr.Transaction{
+				SourceAccount: xdr.MustMuxedAddress("MAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSAAAAAAAAAAE2LP26"),
+				Fee:           0,
+				SeqNum:        26,
+				TimeBounds:    nil,
+				Memo:          xdr.Memo{Type: xdr.MemoTypeMemoNone},
+				Operations:    []xdr.Operation{{Body: xdr.OperationBody{Type: xdr.OperationTypeAccountMerge, Destination: &destination}}},
+				Ext:           xdr.TransactionExt{},
+			},
+		},
+	}
+	str, err := xdr.MarshalBase64(&tx2)
+	assert.NoError(t, err)
+	fmt.Println(str)
 	for _, tc := range testCases {
 		t.Run(tc.desc, func(t *testing.T) {
 			tt := assert.New(t)
@@ -1042,7 +1205,7 @@ func TestTransactionOperationAllowTrustDetails(t *testing.T) {
 			operation := transactionOperationWrapper{
 				index: 0,
 				transaction: ingest.LedgerTransaction{
-					Meta: xdr.TransactionMeta{
+					UnsafeMeta: xdr.TransactionMeta{
 						V: 2,
 						V2: &xdr.TransactionMetaV2{
 							Operations: make([]xdr.OperationMeta, 1, 1),
@@ -1172,7 +1335,7 @@ func (s *CreateClaimableBalanceOpTestSuite) TestDetails() {
 			operation := transactionOperationWrapper{
 				index: 0,
 				transaction: ingest.LedgerTransaction{
-					Meta: xdr.TransactionMeta{
+					UnsafeMeta: xdr.TransactionMeta{
 						V: 2,
 						V2: &xdr.TransactionMetaV2{
 							Operations: make([]xdr.OperationMeta, 1, 1),
@@ -1218,7 +1381,7 @@ func (s *CreateClaimableBalanceOpTestSuite) TestParticipants() {
 		s.T().Run(tc.desc, func(t *testing.T) {
 			operation := transactionOperationWrapper{
 				index: 0,
-				transaction: ingest.LedgerTransaction{Meta: xdr.TransactionMeta{
+				transaction: ingest.LedgerTransaction{UnsafeMeta: xdr.TransactionMeta{
 					V: 2,
 					V2: &xdr.TransactionMetaV2{
 						Operations: make([]xdr.OperationMeta, 1, 1),
@@ -1246,8 +1409,7 @@ type ClaimClaimableBalanceOpTestSuite struct {
 
 func (s *ClaimClaimableBalanceOpTestSuite) SetupTest() {
 	s.balanceID = "00000000da0d57da7d4850e7fc10d2a9d0ebc731f7afb40574c03395b17d49149b91f5be"
-	aid := xdr.MustAddress("GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD")
-	source := aid.ToMuxedAccount()
+	source := xdr.MustMuxedAddress("MAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSAAAAAAAAAAE2LP26")
 	var balanceID xdr.ClaimableBalanceId
 	xdr.SafeUnmarshalHex(s.balanceID, &balanceID)
 	s.op = xdr.Operation{
@@ -1262,14 +1424,16 @@ func (s *ClaimClaimableBalanceOpTestSuite) SetupTest() {
 }
 func (s *ClaimClaimableBalanceOpTestSuite) TestDetails() {
 	expected := map[string]interface{}{
-		"claimant":   "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
-		"balance_id": s.balanceID,
+		"claimant":          "GAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSTVY",
+		"claimant_muxed":    "MAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSAAAAAAAAAAE2LP26",
+		"claimant_muxed_id": uint64(1234),
+		"balance_id":        s.balanceID,
 	}
 
 	operation := transactionOperationWrapper{
 		index: 0,
 		transaction: ingest.LedgerTransaction{
-			Meta: xdr.TransactionMeta{
+			UnsafeMeta: xdr.TransactionMeta{
 				V: 2,
 				V2: &xdr.TransactionMetaV2{
 					Operations: make([]xdr.OperationMeta, 1, 1),
@@ -1288,7 +1452,7 @@ func (s *ClaimClaimableBalanceOpTestSuite) TestParticipants() {
 	operation := transactionOperationWrapper{
 		index: 0,
 		transaction: ingest.LedgerTransaction{
-			Meta: xdr.TransactionMeta{
+			UnsafeMeta: xdr.TransactionMeta{
 				V: 2,
 				V2: &xdr.TransactionMetaV2{
 					Operations: make([]xdr.OperationMeta, 1, 1),
@@ -1302,7 +1466,7 @@ func (s *ClaimClaimableBalanceOpTestSuite) TestParticipants() {
 	participants, err := operation.Participants()
 	s.Assert().NoError(err)
 	s.Assert().ElementsMatch([]xdr.AccountId{
-		xdr.MustAddress("GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD"),
+		xdr.MustAddress("GAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSTVY"),
 	}, participants)
 }
 
@@ -1311,15 +1475,16 @@ func TestClaimClaimableBalanceOpTestSuite(t *testing.T) {
 }
 
 var (
-	sponsor   = xdr.MustAddress("GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY")
-	sponsoree = xdr.MustAddress("GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2")
+	sponsor    = xdr.MustMuxedAddress("MAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSAAAAAAAAAAE2LP26")
+	sponsorAID = sponsor.ToAccountId()
+	sponsoree  = xdr.MustAddress("GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2")
 )
 
 func getSponsoredSandwichWrappers() []*transactionOperationWrapper {
 	const ledgerSeq = uint32(12345)
 	tx := createTransaction(true, 3)
 	tx.Index = 1
-	tx.Meta = xdr.TransactionMeta{
+	tx.UnsafeMeta = xdr.TransactionMeta{
 		V: 2,
 		V2: &xdr.TransactionMetaV2{
 			Operations: make([]xdr.OperationMeta, 3, 3),
@@ -1342,7 +1507,7 @@ func getSponsoredSandwichWrappers() []*transactionOperationWrapper {
 		},
 	}
 
-	sponsorMuxed := sponsor.ToMuxedAccount()
+	sponsorMuxed := sponsor
 	// Do not provide the source explicitly so that the transaction source is used
 	// It tests https://github.com/stellar/go/issues/2982 .
 	// tx.Envelope.Operations()[0].SourceAccount = &sponsorMuxed
@@ -1358,7 +1523,7 @@ func getSponsoredSandwichWrappers() []*transactionOperationWrapper {
 	}
 	sponsoreeMuxed := sponsoree.ToMuxedAccount()
 	tx.Envelope.Operations()[1].SourceAccount = &sponsoreeMuxed
-	tx.Meta.V2.Operations[1] = xdr.OperationMeta{Changes: []xdr.LedgerEntryChange{
+	tx.UnsafeMeta.V2.Operations[1] = xdr.OperationMeta{Changes: []xdr.LedgerEntryChange{
 		{
 			Type: xdr.LedgerEntryChangeTypeLedgerEntryCreated,
 			Created: &xdr.LedgerEntry{
@@ -1366,7 +1531,7 @@ func getSponsoredSandwichWrappers() []*transactionOperationWrapper {
 				Ext: xdr.LedgerEntryExt{
 					V: 1,
 					V1: &xdr.LedgerEntryExtensionV1{
-						SponsoringId: &sponsor,
+						SponsoringId: &sponsorAID,
 					},
 				},
 			},
@@ -1406,14 +1571,16 @@ func TestSponsoredSandwichTransaction_Details(t *testing.T) {
 	assert.Equal(t, map[string]interface{}{
 		"account":          "GC6VKA3RC3CVU7POEKFORVMHWJNQIRZS6AEH3KIIHCVO3YRGWUV7MSUC",
 		"funder":           "GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2",
-		"sponsor":          "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+		"sponsor":          "GAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSTVY",
 		"starting_balance": "0.0000000",
 	}, details)
 
 	details, err = wrappers[2].Details()
 	assert.NoError(t, err)
 	assert.Equal(t, map[string]interface{}{
-		"begin_sponsor": "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+		"begin_sponsor":          "GAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSTVY",
+		"begin_sponsor_muxed":    "MAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSAAAAAAAAAAE2LP26",
+		"begin_sponsor_muxed_id": uint64(1234),
 	}, details)
 }
 
@@ -1424,7 +1591,7 @@ func TestSponsoredSandwichTransaction_Participants(t *testing.T) {
 	assert.NoError(t, err)
 	assert.ElementsMatch(t,
 		[]xdr.AccountId{
-			xdr.MustAddress("GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY"),
+			xdr.MustAddress("GAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSTVY"),
 			xdr.MustAddress("GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2"),
 		},
 		participants,
@@ -1436,7 +1603,7 @@ func TestSponsoredSandwichTransaction_Participants(t *testing.T) {
 		[]xdr.AccountId{
 			xdr.MustAddress("GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2"),
 			xdr.MustAddress("GC6VKA3RC3CVU7POEKFORVMHWJNQIRZS6AEH3KIIHCVO3YRGWUV7MSUC"),
-			xdr.MustAddress("GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY"),
+			xdr.MustAddress("GAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSTVY"),
 		},
 		participants,
 	)
@@ -1446,7 +1613,7 @@ func TestSponsoredSandwichTransaction_Participants(t *testing.T) {
 	assert.ElementsMatch(t,
 		[]xdr.AccountId{
 			xdr.MustAddress("GA5WBPYA5Y4WAEHXWR2UKO2UO4BUGHUQ74EUPKON2QHV4WRHOIRNKKH2"),
-			xdr.MustAddress("GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY"),
+			xdr.MustAddress("GAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSTVY"),
 		},
 		participants,
 	)
@@ -1459,15 +1626,14 @@ type ClawbackTestSuite struct {
 }
 
 func (s *ClawbackTestSuite) SetupTest() {
-	aid := xdr.MustAddress("GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD")
-	source := aid.ToMuxedAccount()
+	source := xdr.MustMuxedAddress("MAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSAAAAAAAAAAE2LP26")
 	s.op = xdr.Operation{
 		SourceAccount: &source,
 		Body: xdr.OperationBody{
 			Type: xdr.OperationTypeClawback,
 			ClawbackOp: &xdr.ClawbackOp{
 				Asset:  xdr.MustNewCreditAsset("USD", "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD"),
-				From:   xdr.MustMuxedAddress("GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY"),
+				From:   xdr.MustMuxedAddress("MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJUAAAAAAAAAAAACJUQ"),
 				Amount: 20,
 			},
 		},
@@ -1475,17 +1641,19 @@ func (s *ClawbackTestSuite) SetupTest() {
 }
 func (s *ClawbackTestSuite) TestDetails() {
 	expected := map[string]interface{}{
-		"asset_code":   "USD",
-		"asset_issuer": "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
-		"asset_type":   "credit_alphanum4",
-		"amount":       "0.0000020",
-		"from":         "GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY",
+		"asset_code":    "USD",
+		"asset_issuer":  "GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD",
+		"asset_type":    "credit_alphanum4",
+		"amount":        "0.0000020",
+		"from":          "GA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVSGZ",
+		"from_muxed":    "MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJUAAAAAAAAAAAACJUQ",
+		"from_muxed_id": uint64(0),
 	}
 
 	operation := transactionOperationWrapper{
 		index: 0,
 		transaction: ingest.LedgerTransaction{
-			Meta: xdr.TransactionMeta{
+			UnsafeMeta: xdr.TransactionMeta{
 				V: 2,
 				V2: &xdr.TransactionMetaV2{
 					Operations: make([]xdr.OperationMeta, 1, 1),
@@ -1504,7 +1672,7 @@ func (s *ClawbackTestSuite) TestParticipants() {
 	operation := transactionOperationWrapper{
 		index: 0,
 		transaction: ingest.LedgerTransaction{
-			Meta: xdr.TransactionMeta{
+			UnsafeMeta: xdr.TransactionMeta{
 				V: 2,
 				V2: &xdr.TransactionMetaV2{
 					Operations: make([]xdr.OperationMeta, 1, 1),
@@ -1518,8 +1686,8 @@ func (s *ClawbackTestSuite) TestParticipants() {
 	participants, err := operation.Participants()
 	s.Assert().NoError(err)
 	s.Assert().ElementsMatch([]xdr.AccountId{
-		xdr.MustAddress("GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD"),
-		xdr.MustAddress("GAUJETIZVEP2NRYLUESJ3LS66NVCEGMON4UDCBCSBEVPIID773P2W6AY"),
+		xdr.MustAddress("GAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSTVY"),
+		xdr.MustAddress("GA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVSGZ"),
 	}, participants)
 }
 
@@ -1567,7 +1735,7 @@ func (s *SetTrustLineFlagsTestSuite) TestDetails() {
 	operation := transactionOperationWrapper{
 		index: 0,
 		transaction: ingest.LedgerTransaction{
-			Meta: xdr.TransactionMeta{
+			UnsafeMeta: xdr.TransactionMeta{
 				V: 2,
 				V2: &xdr.TransactionMetaV2{
 					Operations: make([]xdr.OperationMeta, 1, 1),
@@ -1586,7 +1754,7 @@ func (s *SetTrustLineFlagsTestSuite) TestParticipants() {
 	operation := transactionOperationWrapper{
 		index: 0,
 		transaction: ingest.LedgerTransaction{
-			Meta: xdr.TransactionMeta{
+			UnsafeMeta: xdr.TransactionMeta{
 				V: 2,
 				V2: &xdr.TransactionMetaV2{
 					Operations: make([]xdr.OperationMeta, 1, 1),
@@ -1607,4 +1775,124 @@ func (s *SetTrustLineFlagsTestSuite) TestParticipants() {
 
 func TestSetTrustLineFlagsTestSuite(t *testing.T) {
 	suite.Run(t, new(SetTrustLineFlagsTestSuite))
+}
+
+func TestParticipantsCoversAllOperationTypes(t *testing.T) {
+	source := xdr.MustMuxedAddress("GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD")
+	for typ, s := range xdr.OperationTypeToStringMap {
+		op := xdr.Operation{
+			SourceAccount: &source,
+			Body: xdr.OperationBody{
+				Type: xdr.OperationType(typ),
+			},
+		}
+		operation := transactionOperationWrapper{
+			index: 0,
+			transaction: ingest.LedgerTransaction{
+				UnsafeMeta: xdr.TransactionMeta{
+					V:  2,
+					V2: &xdr.TransactionMetaV2{},
+				},
+			},
+			operation:      op,
+			ledgerSequence: 1,
+		}
+		// calling Participants should either panic (because the operation field is set to nil)
+		// or not error
+		func() {
+			var err error
+			defer func() {
+				err2 := recover()
+				if err != nil {
+					assert.NotContains(t, err.Error(), "Unknown operation type")
+				}
+				assert.True(t, err2 != nil || err == nil, s)
+			}()
+			_, err = operation.Participants()
+		}()
+	}
+
+	// make sure the check works for an unknown operation type
+	op := xdr.Operation{
+		SourceAccount: &source,
+		Body: xdr.OperationBody{
+			Type: xdr.OperationType(20000),
+		},
+	}
+	operation := transactionOperationWrapper{
+		index: 0,
+		transaction: ingest.LedgerTransaction{
+			UnsafeMeta: xdr.TransactionMeta{
+				V:  2,
+				V2: &xdr.TransactionMetaV2{},
+			},
+		},
+		operation:      op,
+		ledgerSequence: 1,
+	}
+	// calling Participants should error due to the unknown operation
+	_, err := operation.Participants()
+	assert.Contains(t, err.Error(), "Unknown operation type")
+}
+
+func TestDetailsCoversAllOperationTypes(t *testing.T) {
+	source := xdr.MustMuxedAddress("GDRW375MAYR46ODGF2WGANQC2RRZL7O246DYHHCGWTV2RE7IHE2QUQLD")
+	for typ, s := range xdr.OperationTypeToStringMap {
+		op := xdr.Operation{
+			SourceAccount: &source,
+			Body: xdr.OperationBody{
+				Type: xdr.OperationType(typ),
+			},
+		}
+		operation := transactionOperationWrapper{
+			index: 0,
+			transaction: ingest.LedgerTransaction{
+				UnsafeMeta: xdr.TransactionMeta{
+					V:  2,
+					V2: &xdr.TransactionMetaV2{},
+				},
+			},
+			operation:      op,
+			ledgerSequence: 1,
+		}
+		// calling Details should either panic (because the operation field is set to nil)
+		// or not error
+		func() {
+			var err error
+			defer func() {
+				err2 := recover()
+				if err2 != nil {
+					if err3, ok := err2.(error); ok {
+						assert.NotContains(t, "Unknown operation type", err3.Error())
+					}
+				}
+				assert.True(t, err2 != nil || err == nil, s)
+			}()
+			_, err = operation.Details()
+		}()
+	}
+
+	// make sure the check works for an unknown operation type
+	op := xdr.Operation{
+		SourceAccount: &source,
+		Body: xdr.OperationBody{
+			Type: xdr.OperationType(20000),
+		},
+	}
+	operation := transactionOperationWrapper{
+		index: 0,
+		transaction: ingest.LedgerTransaction{
+			UnsafeMeta: xdr.TransactionMeta{
+				V:  2,
+				V2: &xdr.TransactionMetaV2{},
+			},
+		},
+		operation:      op,
+		ledgerSequence: 1,
+	}
+	// calling Details should panic with unknown operation type
+	f := func() {
+		operation.Details()
+	}
+	assert.PanicsWithError(t, "Unknown operation type: ", f)
 }

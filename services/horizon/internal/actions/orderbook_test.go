@@ -574,13 +574,13 @@ func TestOrderbookGetResource(t *testing.T) {
 		otherSellEurOffer,
 	}
 
-	assert.NoError(t, q.TruncateTables([]string{"offers"}))
+	assert.NoError(t, q.TruncateTables(tt.Ctx, []string{"offers"}))
 
 	batch := q.NewOffersBatchInsertBuilder(0)
 	for _, offer := range offers {
-		assert.NoError(t, batch.Add(offer))
+		assert.NoError(t, batch.Add(tt.Ctx, offer))
 	}
-	assert.NoError(t, batch.Exec())
+	assert.NoError(t, batch.Exec(tt.Ctx))
 
 	assert.NoError(t, q.BeginTx(&sql.TxOptions{
 		Isolation: sql.LevelRepeatableRead,
@@ -659,7 +659,7 @@ func TestOrderbookGetResource(t *testing.T) {
 					"limit":               strconv.Itoa(testCase.limit),
 				},
 				map[string]string{},
-				q.Session,
+				q,
 			)
 			w := httptest.NewRecorder()
 			response, err := handler.GetResource(w, r)

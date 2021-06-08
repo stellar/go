@@ -1,6 +1,7 @@
 package history
 
 import (
+	"context"
 	"github.com/stretchr/testify/mock"
 
 	"github.com/stellar/go/xdr"
@@ -11,8 +12,8 @@ type MockQAccounts struct {
 	mock.Mock
 }
 
-func (m *MockQAccounts) GetAccountsByIDs(ids []string) ([]AccountEntry, error) {
-	a := m.Called(ids)
+func (m *MockQAccounts) GetAccountsByIDs(ctx context.Context, ids []string) ([]AccountEntry, error) {
+	a := m.Called(ctx, ids)
 	return a.Get(0).([]AccountEntry), a.Error(1)
 }
 
@@ -21,12 +22,12 @@ func (m *MockQAccounts) NewAccountsBatchInsertBuilder(maxBatchSize int) Accounts
 	return a.Get(0).(AccountsBatchInsertBuilder)
 }
 
-func (m *MockQAccounts) UpsertAccounts(accounts []xdr.LedgerEntry) error {
-	a := m.Called(accounts)
+func (m *MockQAccounts) UpsertAccounts(ctx context.Context, accounts []xdr.LedgerEntry) error {
+	a := m.Called(ctx, accounts)
 	return a.Error(0)
 }
 
-func (m *MockQAccounts) RemoveAccount(accountID string) (int64, error) {
-	a := m.Called(accountID)
+func (m *MockQAccounts) RemoveAccount(ctx context.Context, accountID string) (int64, error) {
+	a := m.Called(ctx, accountID)
 	return a.Get(0).(int64), a.Error(1)
 }

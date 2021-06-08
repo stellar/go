@@ -14,10 +14,10 @@ func TestAddOperationParticipants(t *testing.T) {
 	q := &Q{tt.HorizonSession()}
 
 	builder := q.NewOperationParticipantBatchInsertBuilder(1)
-	err := builder.Add(240518172673, 1)
+	err := builder.Add(tt.Ctx, 240518172673, 1)
 	tt.Assert.NoError(err)
 
-	err = builder.Exec()
+	err = builder.Exec(tt.Ctx)
 	tt.Assert.NoError(err)
 
 	type hop struct {
@@ -26,7 +26,7 @@ func TestAddOperationParticipants(t *testing.T) {
 	}
 
 	ops := []hop{}
-	err = q.Select(&ops, sq.Select(
+	err = q.Select(tt.Ctx, &ops, sq.Select(
 		"hopp.history_operation_id, "+
 			"hopp.history_account_id").
 		From("history_operation_participants hopp"),

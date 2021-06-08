@@ -79,14 +79,8 @@ func TestCheckVerifyStateVersion(t *testing.T) {
 
 func TestNewSystem(t *testing.T) {
 	config := Config{
-		CoreSession: &db.Session{
-			DB:  &sqlx.DB{},
-			Ctx: context.Background(),
-		},
-		HistorySession: &db.Session{
-			DB:  &sqlx.DB{},
-			Ctx: context.Background(),
-		},
+		CoreSession:              &db.Session{DB: &sqlx.DB{}},
+		HistorySession:           &db.Session{DB: &sqlx.DB{}},
 		DisableStateVerification: true,
 		HistoryArchiveURL:        "https://history.stellar.org/prd/core-live/core_live_001",
 		CheckpointFrequency:      64,
@@ -183,10 +177,10 @@ func TestMaybeVerifyStateGetExpStateInvalidDBErrCancelOrContextCanceled(t *testi
 	log = logger
 	defer func() { log = oldLogger }()
 
-	historyQ.On("GetExpStateInvalid").Return(false, db.ErrCancelled).Once()
+	historyQ.On("GetExpStateInvalid", system.ctx).Return(false, db.ErrCancelled).Once()
 	system.maybeVerifyState(0)
 
-	historyQ.On("GetExpStateInvalid").Return(false, context.Canceled).Once()
+	historyQ.On("GetExpStateInvalid", system.ctx).Return(false, context.Canceled).Once()
 	system.maybeVerifyState(0)
 
 	logged := done()
@@ -210,7 +204,7 @@ func TestMaybeVerifyInternalDBErrCancelOrContextCanceled(t *testing.T) {
 	log = logger
 	defer func() { log = oldLogger }()
 
-	historyQ.On("GetExpStateInvalid").Return(false, nil).Twice()
+	historyQ.On("GetExpStateInvalid", system.ctx, mock.Anything).Return(false, nil).Twice()
 	historyQ.On("Rollback").Return(nil).Twice()
 	historyQ.On("CloneIngestionQ").Return(historyQ).Twice()
 
@@ -280,63 +274,63 @@ func (m *mockDBQ) GetTx() *sqlx.Tx {
 	return args.Get(0).(*sqlx.Tx)
 }
 
-func (m *mockDBQ) GetLastLedgerIngest() (uint32, error) {
-	args := m.Called()
+func (m *mockDBQ) GetLastLedgerIngest(ctx context.Context) (uint32, error) {
+	args := m.Called(ctx)
 	return args.Get(0).(uint32), args.Error(1)
 }
 
-func (m *mockDBQ) GetOfferCompactionSequence() (uint32, error) {
-	args := m.Called()
+func (m *mockDBQ) GetOfferCompactionSequence(ctx context.Context) (uint32, error) {
+	args := m.Called(ctx)
 	return args.Get(0).(uint32), args.Error(1)
 }
 
-func (m *mockDBQ) GetLastLedgerIngestNonBlocking() (uint32, error) {
-	args := m.Called()
+func (m *mockDBQ) GetLastLedgerIngestNonBlocking(ctx context.Context) (uint32, error) {
+	args := m.Called(ctx)
 	return args.Get(0).(uint32), args.Error(1)
 }
 
-func (m *mockDBQ) GetIngestVersion() (int, error) {
-	args := m.Called()
+func (m *mockDBQ) GetIngestVersion(ctx context.Context) (int, error) {
+	args := m.Called(ctx)
 	return args.Get(0).(int), args.Error(1)
 }
 
-func (m *mockDBQ) UpdateLastLedgerIngest(sequence uint32) error {
-	args := m.Called(sequence)
+func (m *mockDBQ) UpdateLastLedgerIngest(ctx context.Context, sequence uint32) error {
+	args := m.Called(ctx, sequence)
 	return args.Error(0)
 }
 
-func (m *mockDBQ) UpdateExpStateInvalid(invalid bool) error {
-	args := m.Called(invalid)
+func (m *mockDBQ) UpdateExpStateInvalid(ctx context.Context, invalid bool) error {
+	args := m.Called(ctx, invalid)
 	return args.Error(0)
 }
 
-func (m *mockDBQ) UpdateIngestVersion(version int) error {
-	args := m.Called(version)
+func (m *mockDBQ) UpdateIngestVersion(ctx context.Context, version int) error {
+	args := m.Called(ctx, version)
 	return args.Error(0)
 }
 
-func (m *mockDBQ) GetExpStateInvalid() (bool, error) {
-	args := m.Called()
+func (m *mockDBQ) GetExpStateInvalid(ctx context.Context) (bool, error) {
+	args := m.Called(ctx)
 	return args.Get(0).(bool), args.Error(1)
 }
 
-func (m *mockDBQ) GetAllOffers() ([]history.Offer, error) {
-	args := m.Called()
+func (m *mockDBQ) GetAllOffers(ctx context.Context) ([]history.Offer, error) {
+	args := m.Called(ctx)
 	return args.Get(0).([]history.Offer), args.Error(1)
 }
 
-func (m *mockDBQ) GetLatestHistoryLedger() (uint32, error) {
-	args := m.Called()
+func (m *mockDBQ) GetLatestHistoryLedger(ctx context.Context) (uint32, error) {
+	args := m.Called(ctx)
 	return args.Get(0).(uint32), args.Error(1)
 }
 
-func (m *mockDBQ) TruncateIngestStateTables() error {
-	args := m.Called()
+func (m *mockDBQ) TruncateIngestStateTables(ctx context.Context) error {
+	args := m.Called(ctx)
 	return args.Error(0)
 }
 
-func (m *mockDBQ) DeleteRangeAll(start, end int64) error {
-	args := m.Called(start, end)
+func (m *mockDBQ) DeleteRangeAll(ctx context.Context, start, end int64) error {
+	args := m.Called(ctx, start, end)
 	return args.Error(0)
 }
 
@@ -357,8 +351,8 @@ func (m *mockDBQ) NewTradeBatchInsertBuilder(maxBatchSize int) history.TradeBatc
 	return args.Get(0).(history.TradeBatchInsertBuilder)
 }
 
-func (m *mockDBQ) CreateAssets(assets []xdr.Asset, batchSize int) (map[string]history.Asset, error) {
-	args := m.Called(assets)
+func (m *mockDBQ) CreateAssets(ctx context.Context, assets []xdr.Asset, batchSize int) (map[string]history.Asset, error) {
+	args := m.Called(ctx, assets)
 	return args.Get(0).(map[string]history.Asset), args.Error(1)
 }
 
@@ -366,28 +360,23 @@ type mockLedgerBackend struct {
 	mock.Mock
 }
 
-func (m *mockLedgerBackend) GetLatestLedgerSequence() (sequence uint32, err error) {
-	args := m.Called()
+func (m *mockLedgerBackend) GetLatestLedgerSequence(ctx context.Context) (sequence uint32, err error) {
+	args := m.Called(ctx)
 	return args.Get(0).(uint32), args.Error(1)
 }
 
-func (m *mockLedgerBackend) GetLedger(sequence uint32) (bool, xdr.LedgerCloseMeta, error) {
-	args := m.Called(sequence)
-	return args.Get(0).(bool), args.Get(1).(xdr.LedgerCloseMeta), args.Error(2)
-}
-
-func (m *mockLedgerBackend) GetLedgerBlocking(sequence uint32) (xdr.LedgerCloseMeta, error) {
-	args := m.Called(sequence)
+func (m *mockLedgerBackend) GetLedger(ctx context.Context, sequence uint32) (xdr.LedgerCloseMeta, error) {
+	args := m.Called(ctx, sequence)
 	return args.Get(0).(xdr.LedgerCloseMeta), args.Error(1)
 }
 
-func (m *mockLedgerBackend) PrepareRange(ledgerRange ledgerbackend.Range) error {
-	args := m.Called(ledgerRange)
+func (m *mockLedgerBackend) PrepareRange(ctx context.Context, ledgerRange ledgerbackend.Range) error {
+	args := m.Called(ctx, ledgerRange)
 	return args.Error(0)
 }
 
-func (m *mockLedgerBackend) IsPrepared(ledgerRange ledgerbackend.Range) (bool, error) {
-	args := m.Called(ledgerRange)
+func (m *mockLedgerBackend) IsPrepared(ctx context.Context, ledgerRange ledgerbackend.Range) (bool, error) {
+	args := m.Called(ctx, ledgerRange)
 	return args.Get(0).(bool), args.Error(1)
 }
 

@@ -78,17 +78,27 @@ func TestSetTrustLineFlags(t *testing.T) {
 	} {
 		t.Run(testcase.name, func(t *testing.T) {
 			op := testcase.op
-			assert.NoError(t, op.Validate())
-			xdrOp, err := op.BuildXDR()
+			assert.NoError(t, op.Validate(false))
+			xdrOp, err := op.BuildXDR(false)
 			assert.NoError(t, err)
 			xdrBin, err := xdrOp.MarshalBinary()
 			assert.NoError(t, err)
 			var xdrOp2 xdr.Operation
 			assert.NoError(t, xdr.SafeUnmarshal(xdrBin, &xdrOp2))
 			var op2 SetTrustLineFlags
-			assert.NoError(t, op2.FromXDR(xdrOp2))
+			assert.NoError(t, op2.FromXDR(xdrOp2, false))
 			assert.Equal(t, op, op2)
-			testOperationsMarshallingRoundtrip(t, []Operation{&testcase.op})
+			testOperationsMarshallingRoundtrip(t, []Operation{&testcase.op}, false)
 		})
 	}
+
+	// with muxed accounts
+	setTrustLineFlags := SetTrustLineFlags{
+		Trustor:       trustor,
+		Asset:         asset,
+		SetFlags:      []TrustLineFlag{TrustLineClawbackEnabled},
+		ClearFlags:    []TrustLineFlag{TrustLineAuthorized, TrustLineAuthorizedToMaintainLiabilities},
+		SourceAccount: "MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVAAAAAAAAAAAAAJLK",
+	}
+	testOperationsMarshallingRoundtrip(t, []Operation{&setTrustLineFlags}, true)
 }

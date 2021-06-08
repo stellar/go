@@ -19,6 +19,7 @@ import (
 type SubmitTransactionHandler struct {
 	Submitter         *txsub.System
 	NetworkPassphrase string
+	CoreStateGetter
 }
 
 type envelopeInfo struct {
@@ -134,6 +135,11 @@ func (handler SubmitTransactionHandler) GetResource(w HeaderWriter, r *http.Requ
 				"envelope_xdr": raw,
 			},
 		}
+	}
+
+	coreState := handler.GetCoreState()
+	if !coreState.Synced {
+		return nil, hProblem.StaleHistory
 	}
 
 	submission := handler.Submitter.Submit(

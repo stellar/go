@@ -15,13 +15,13 @@ func TestGetOrderBookSummaryRequiresTransaction(t *testing.T) {
 	test.ResetHorizonDB(t, tt.HorizonDB)
 	q := &Q{tt.HorizonSession()}
 
-	_, err := q.GetOrderBookSummary(nativeAsset, eurAsset, 10)
+	_, err := q.GetOrderBookSummary(tt.Ctx, nativeAsset, eurAsset, 10)
 	assert.EqualError(t, err, "cannot be called outside of a transaction")
 
 	assert.NoError(t, q.Begin())
 	defer q.Rollback()
 
-	_, err = q.GetOrderBookSummary(nativeAsset, eurAsset, 10)
+	_, err = q.GetOrderBookSummary(tt.Ctx, nativeAsset, eurAsset, 10)
 	assert.EqualError(t, err, "should only be called in a repeatable read transaction")
 }
 
@@ -212,13 +212,13 @@ func TestGetOrderBookSummary(t *testing.T) {
 		},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
-			assert.NoError(t, q.TruncateTables([]string{"offers"}))
+			assert.NoError(t, q.TruncateTables(tt.Ctx, []string{"offers"}))
 
 			batch := q.NewOffersBatchInsertBuilder(0)
 			for _, offer := range testCase.offers {
-				assert.NoError(t, batch.Add(offer))
+				assert.NoError(t, batch.Add(tt.Ctx, offer))
 			}
-			assert.NoError(t, batch.Exec())
+			assert.NoError(t, batch.Exec(tt.Ctx))
 
 			assert.NoError(t, q.BeginTx(&sql.TxOptions{
 				Isolation: sql.LevelRepeatableRead,
@@ -226,7 +226,7 @@ func TestGetOrderBookSummary(t *testing.T) {
 			}))
 			defer q.Rollback()
 
-			result, err := q.GetOrderBookSummary(nativeAsset, eurAsset, testCase.limit)
+			result, err := q.GetOrderBookSummary(tt.Ctx, nativeAsset, eurAsset, testCase.limit)
 			assert.NoError(t, err)
 			assert.Equal(t, testCase.expected, result)
 		})
@@ -262,16 +262,16 @@ func TestGetOrderBookSummaryExcludesRemovedOffers(t *testing.T) {
 
 	batch := q.NewOffersBatchInsertBuilder(0)
 	for _, offer := range offers {
-		assert.NoError(t, batch.Add(offer))
+		assert.NoError(t, batch.Add(tt.Ctx, offer))
 	}
-	assert.NoError(t, batch.Exec())
+	assert.NoError(t, batch.Exec(tt.Ctx))
 
 	assert.NoError(t, q.BeginTx(&sql.TxOptions{
 		Isolation: sql.LevelRepeatableRead,
 		ReadOnly:  true,
 	}))
 
-	result, err := q.GetOrderBookSummary(nativeAsset, eurAsset, 100)
+	result, err := q.GetOrderBookSummary(tt.Ctx, nativeAsset, eurAsset, 100)
 	assert.NoError(t, err)
 	assert.Len(t, result.Asks, 2)
 	assert.Len(t, result.Bids, 1)
@@ -280,7 +280,7 @@ func TestGetOrderBookSummaryExcludesRemovedOffers(t *testing.T) {
 
 	for i, offer := range offers {
 		var count int64
-		count, err = q.RemoveOffers([]int64{offer.OfferID}, uint32(i+2))
+		count, err = q.RemoveOffers(tt.Ctx, []int64{offer.OfferID}, uint32(i+2))
 		assert.NoError(t, err)
 		assert.Equal(t, int64(1), count)
 	}
@@ -290,14 +290,14 @@ func TestGetOrderBookSummaryExcludesRemovedOffers(t *testing.T) {
 		ReadOnly:  true,
 	}))
 
-	result, err = q.GetOrderBookSummary(nativeAsset, eurAsset, 100)
+	result, err = q.GetOrderBookSummary(tt.Ctx, nativeAsset, eurAsset, 100)
 	assert.NoError(t, err)
 	assert.Len(t, result.Asks, 0)
 	assert.Len(t, result.Bids, 0)
 
 	assert.NoError(t, q.Rollback())
 
-	count, err := q.CompactOffers(1000)
+	count, err := q.CompactOffers(tt.Ctx, 1000)
 	assert.NoError(t, err)
 	assert.Equal(t, int64(len(offers)), count)
 
@@ -306,7 +306,7 @@ func TestGetOrderBookSummaryExcludesRemovedOffers(t *testing.T) {
 		ReadOnly:  true,
 	}))
 
-	result, err = q.GetOrderBookSummary(nativeAsset, eurAsset, 100)
+	result, err = q.GetOrderBookSummary(tt.Ctx, nativeAsset, eurAsset, 100)
 	assert.NoError(t, err)
 	assert.Len(t, result.Asks, 0)
 	assert.Len(t, result.Bids, 0)

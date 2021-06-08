@@ -1,6 +1,9 @@
 package history
 
 import (
+	"context"
+
+	"github.com/guregu/null"
 	"github.com/stellar/go/support/db"
 )
 
@@ -8,13 +11,15 @@ import (
 // history_effects table
 type EffectBatchInsertBuilder interface {
 	Add(
+		ctx context.Context,
 		accountID int64,
+		muxedAccount null.String,
 		operationID int64,
 		order uint32,
 		effectType EffectType,
 		details []byte,
 	) error
-	Exec() error
+	Exec(ctx context.Context) error
 }
 
 // effectBatchInsertBuilder is a simple wrapper around db.BatchInsertBuilder
@@ -34,14 +39,17 @@ func (q *Q) NewEffectBatchInsertBuilder(maxBatchSize int) EffectBatchInsertBuild
 
 // Add adds a effect to the batch
 func (i *effectBatchInsertBuilder) Add(
+	ctx context.Context,
 	accountID int64,
+	muxedAccount null.String,
 	operationID int64,
 	order uint32,
 	effectType EffectType,
 	details []byte,
 ) error {
-	return i.builder.Row(map[string]interface{}{
+	return i.builder.Row(ctx, map[string]interface{}{
 		"history_account_id":   accountID,
+		"address_muxed":        muxedAccount,
 		"history_operation_id": operationID,
 		"\"order\"":            order,
 		"type":                 effectType,
@@ -49,6 +57,6 @@ func (i *effectBatchInsertBuilder) Add(
 	})
 }
 
-func (i *effectBatchInsertBuilder) Exec() error {
-	return i.builder.Exec()
+func (i *effectBatchInsertBuilder) Exec(ctx context.Context) error {
+	return i.builder.Exec(ctx)
 }

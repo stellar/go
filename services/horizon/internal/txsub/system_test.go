@@ -129,9 +129,9 @@ func (suite *SystemTestSuite) TestSubmit_Basic() {
 		ReadOnly:  true,
 	}).Return(nil).Once()
 	suite.db.On("Rollback").Return(nil).Once()
-	suite.db.On("TransactionByHash", mock.Anything, suite.successTx.Transaction.TransactionHash).
+	suite.db.On("TransactionByHash", suite.ctx, mock.Anything, suite.successTx.Transaction.TransactionHash).
 		Run(func(args mock.Arguments) {
-			ptr := args.Get(0).(*history.Transaction)
+			ptr := args.Get(1).(*history.Transaction)
 			*ptr = suite.successTx.Transaction
 		}).
 		Return(nil).Once()
@@ -164,10 +164,10 @@ func (suite *SystemTestSuite) TestSubmit_NotFoundError() {
 		ReadOnly:  true,
 	}).Return(nil).Once()
 	suite.db.On("Rollback").Return(nil).Once()
-	suite.db.On("TransactionByHash", mock.Anything, suite.successTx.Transaction.TransactionHash).
+	suite.db.On("TransactionByHash", suite.ctx, mock.Anything, suite.successTx.Transaction.TransactionHash).
 		Return(sql.ErrNoRows).Once()
 	suite.db.On("NoRows", sql.ErrNoRows).Return(true).Once()
-	suite.db.On("GetSequenceNumbers", []string{suite.unmuxedSource.Address()}).
+	suite.db.On("GetSequenceNumbers", suite.ctx, []string{suite.unmuxedSource.Address()}).
 		Return(map[string]uint64{suite.unmuxedSource.Address(): 0}, nil).
 		Once()
 
@@ -194,18 +194,18 @@ func (suite *SystemTestSuite) TestSubmit_BadSeq() {
 		ReadOnly:  true,
 	}).Return(nil).Once()
 	suite.db.On("Rollback").Return(nil).Once()
-	suite.db.On("TransactionByHash", mock.Anything, suite.successTx.Transaction.TransactionHash).
+	suite.db.On("TransactionByHash", suite.ctx, mock.Anything, suite.successTx.Transaction.TransactionHash).
 		Return(sql.ErrNoRows).Once()
 	suite.db.On("NoRows", sql.ErrNoRows).Return(true).Once()
-	suite.db.On("GetSequenceNumbers", []string{suite.unmuxedSource.Address()}).
+	suite.db.On("GetSequenceNumbers", suite.ctx, []string{suite.unmuxedSource.Address()}).
 		Return(map[string]uint64{suite.unmuxedSource.Address(): 0}, nil).
 		Once()
-	suite.db.On("GetSequenceNumbers", []string{suite.unmuxedSource.Address()}).
+	suite.db.On("GetSequenceNumbers", suite.ctx, []string{suite.unmuxedSource.Address()}).
 		Return(map[string]uint64{suite.unmuxedSource.Address(): 1}, nil).
 		Once()
-	suite.db.On("TransactionByHash", mock.Anything, suite.successTx.Transaction.TransactionHash).
+	suite.db.On("TransactionByHash", suite.ctx, mock.Anything, suite.successTx.Transaction.TransactionHash).
 		Run(func(args mock.Arguments) {
-			ptr := args.Get(0).(*history.Transaction)
+			ptr := args.Get(1).(*history.Transaction)
 			*ptr = suite.successTx.Transaction
 		}).
 		Return(nil).Once()
@@ -230,13 +230,13 @@ func (suite *SystemTestSuite) TestSubmit_BadSeqNotFound() {
 		ReadOnly:  true,
 	}).Return(nil).Once()
 	suite.db.On("Rollback").Return(nil).Once()
-	suite.db.On("TransactionByHash", mock.Anything, suite.successTx.Transaction.TransactionHash).
+	suite.db.On("TransactionByHash", suite.ctx, mock.Anything, suite.successTx.Transaction.TransactionHash).
 		Return(sql.ErrNoRows).Twice()
 	suite.db.On("NoRows", sql.ErrNoRows).Return(true).Twice()
-	suite.db.On("GetSequenceNumbers", []string{suite.unmuxedSource.Address()}).
+	suite.db.On("GetSequenceNumbers", suite.ctx, []string{suite.unmuxedSource.Address()}).
 		Return(map[string]uint64{suite.unmuxedSource.Address(): 0}, nil).
 		Times(3)
-	suite.db.On("GetSequenceNumbers", []string{suite.unmuxedSource.Address()}).
+	suite.db.On("GetSequenceNumbers", suite.ctx, []string{suite.unmuxedSource.Address()}).
 		Return(map[string]uint64{suite.unmuxedSource.Address(): 1}, nil).
 		Once()
 
@@ -262,10 +262,10 @@ func (suite *SystemTestSuite) TestSubmit_OpenTransactionList() {
 		ReadOnly:  true,
 	}).Return(nil).Once()
 	suite.db.On("Rollback").Return(nil).Once()
-	suite.db.On("TransactionByHash", mock.Anything, suite.successTx.Transaction.TransactionHash).
+	suite.db.On("TransactionByHash", suite.ctx, mock.Anything, suite.successTx.Transaction.TransactionHash).
 		Return(sql.ErrNoRows).Once()
 	suite.db.On("NoRows", sql.ErrNoRows).Return(true).Once()
-	suite.db.On("GetSequenceNumbers", []string{suite.unmuxedSource.Address()}).
+	suite.db.On("GetSequenceNumbers", suite.ctx, []string{suite.unmuxedSource.Address()}).
 		Return(map[string]uint64{suite.unmuxedSource.Address(): 0}, nil).
 		Once()
 
@@ -308,7 +308,7 @@ func (suite *SystemTestSuite) TestTick_Deadlock() {
 
 	// Start first Tick
 	suite.system.SubmissionQueue.Push("address", 0)
-	suite.db.On("GetSequenceNumbers", []string{"address"}).
+	suite.db.On("GetSequenceNumbers", suite.ctx, []string{"address"}).
 		Return(map[string]uint64{}, nil).
 		Run(func(args mock.Arguments) {
 			// Start second tick
@@ -329,7 +329,7 @@ func (suite *SystemTestSuite) TestTick_FinishesTransactions() {
 		ReadOnly:  true,
 	}).Return(nil).Once()
 	suite.db.On("Rollback").Return(nil).Once()
-	suite.db.On("TransactionsByHashesSinceLedger", mock.Anything, []string{suite.successTx.Transaction.TransactionHash}, uint32(900)).
+	suite.db.On("TransactionsByHashesSinceLedger", suite.ctx, mock.Anything, []string{suite.successTx.Transaction.TransactionHash}, uint32(900)).
 		Return(sql.ErrNoRows).Once()
 	suite.db.On("NoRows", sql.ErrNoRows).Return(true).Once()
 
@@ -343,9 +343,9 @@ func (suite *SystemTestSuite) TestTick_FinishesTransactions() {
 		ReadOnly:  true,
 	}).Return(nil).Once()
 	suite.db.On("Rollback").Return(nil).Once()
-	suite.db.On("TransactionsByHashesSinceLedger", mock.Anything, []string{suite.successTx.Transaction.TransactionHash}, uint32(900)).
+	suite.db.On("TransactionsByHashesSinceLedger", suite.ctx, mock.Anything, []string{suite.successTx.Transaction.TransactionHash}, uint32(900)).
 		Run(func(args mock.Arguments) {
-			ptr := args.Get(0).(*[]history.Transaction)
+			ptr := args.Get(1).(*[]history.Transaction)
 			*ptr = []history.Transaction{suite.successTx.Transaction}
 		}).
 		Return(nil).Once()
@@ -383,10 +383,10 @@ func (suite *SystemTestSuite) TestTickFinishFeeBumpTransaction() {
 		ReadOnly:  true,
 	}).Return(nil).Once()
 	suite.db.On("Rollback").Return(nil).Once()
-	suite.db.On("TransactionByHash", mock.Anything, innerHash).
+	suite.db.On("TransactionByHash", suite.ctx, mock.Anything, innerHash).
 		Return(sql.ErrNoRows).Once()
 	suite.db.On("NoRows", sql.ErrNoRows).Return(true).Once()
-	suite.db.On("GetSequenceNumbers", []string{"GABQGAYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB2MX"}).
+	suite.db.On("GetSequenceNumbers", suite.ctx, []string{"GABQGAYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB2MX"}).
 		Return(map[string]uint64{"GABQGAYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB2MX": 96}, nil).
 		Once()
 
@@ -399,7 +399,7 @@ func (suite *SystemTestSuite) TestTickFinishFeeBumpTransaction() {
 		ReadOnly:  true,
 	}).Return(nil).Once()
 	suite.db.On("Rollback").Return(nil).Once()
-	suite.db.On("TransactionsByHashes", mock.Anything, []string{innerHash}).
+	suite.db.On("TransactionsByHashes", suite.ctx, mock.Anything, []string{innerHash}).
 		Run(func(args mock.Arguments) {
 			ptr := args.Get(0).(*[]history.Transaction)
 			*ptr = []history.Transaction{feeBumpTx.Transaction}
@@ -427,7 +427,7 @@ func (suite *SystemTestSuite) TestTick_RemovesStaleSubmissions() {
 		ReadOnly:  true,
 	}).Return(nil).Once()
 	suite.db.On("Rollback").Return(nil).Once()
-	suite.db.On("TransactionsByHashesSinceLedger", mock.Anything, []string{suite.successTx.Transaction.TransactionHash}, uint32(900)).
+	suite.db.On("TransactionsByHashesSinceLedger", suite.ctx, mock.Anything, []string{suite.successTx.Transaction.TransactionHash}, uint32(900)).
 		Return(sql.ErrNoRows).Once()
 	suite.db.On("NoRows", sql.ErrNoRows).Return(true).Once()
 

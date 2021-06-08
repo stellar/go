@@ -1,6 +1,7 @@
 package history
 
 import (
+	"context"
 	"encoding/base64"
 
 	sq "github.com/Masterminds/squirrel"
@@ -8,11 +9,11 @@ import (
 	"github.com/stellar/go/xdr"
 )
 
-func (q *Q) CountAccountsData() (int, error) {
+func (q *Q) CountAccountsData(ctx context.Context) (int, error) {
 	sql := sq.Select("count(*)").From("accounts_data")
 
 	var count int
-	if err := q.Get(&count, sql); err != nil {
+	if err := q.Get(ctx, &count, sql); err != nil {
 		return 0, errors.Wrap(err, "could not run select query")
 	}
 
@@ -20,26 +21,26 @@ func (q *Q) CountAccountsData() (int, error) {
 }
 
 // GetAccountDataByName loads account data for a given account ID and data name
-func (q *Q) GetAccountDataByName(id, name string) (Data, error) {
+func (q *Q) GetAccountDataByName(ctx context.Context, id, name string) (Data, error) {
 	var data Data
 	sql := selectAccountData.Where(sq.Eq{
 		"account_id": id,
 		"name":       name,
 	}).Limit(1)
-	err := q.Get(&data, sql)
+	err := q.Get(ctx, &data, sql)
 	return data, err
 }
 
 // GetAccountDataByAccountID loads account data for a given account ID
-func (q *Q) GetAccountDataByAccountID(id string) ([]Data, error) {
+func (q *Q) GetAccountDataByAccountID(ctx context.Context, id string) ([]Data, error) {
 	var data []Data
 	sql := selectAccountData.Where(sq.Eq{"account_id": id})
-	err := q.Select(&data, sql)
+	err := q.Select(ctx, &data, sql)
 	return data, err
 }
 
 // GetAccountDataByKeys loads a row from the `accounts_data` table, selected by multiple keys.
-func (q *Q) GetAccountDataByKeys(keys []xdr.LedgerKeyData) ([]Data, error) {
+func (q *Q) GetAccountDataByKeys(ctx context.Context, keys []xdr.LedgerKeyData) ([]Data, error) {
 	var data []Data
 	lkeys := make([]string, 0, len(keys))
 	for _, key := range keys {
@@ -50,7 +51,7 @@ func (q *Q) GetAccountDataByKeys(keys []xdr.LedgerKeyData) ([]Data, error) {
 		lkeys = append(lkeys, lkey)
 	}
 	sql := selectAccountData.Where(map[string]interface{}{"accounts_data.ledger_key": lkeys})
-	err := q.Select(&data, sql)
+	err := q.Select(ctx, &data, sql)
 	return data, err
 }
 
@@ -80,7 +81,7 @@ func dataEntryToLedgerKeyString(entry xdr.LedgerEntry) (string, error) {
 
 // InsertAccountData creates a row in the accounts_data table.
 // Returns number of rows affected and error.
-func (q *Q) InsertAccountData(entry xdr.LedgerEntry) (int64, error) {
+func (q *Q) InsertAccountData(ctx context.Context, entry xdr.LedgerEntry) (int64, error) {
 	data := entry.Data.MustData()
 
 	// Add lkey only when inserting rows
@@ -100,7 +101,7 @@ func (q *Q) InsertAccountData(entry xdr.LedgerEntry) (int64, error) {
 			ledgerEntrySponsorToNullString(entry),
 		)
 
-	result, err := q.Exec(sql)
+	result, err := q.Exec(ctx, sql)
 	if err != nil {
 		return 0, err
 	}
@@ -110,7 +111,7 @@ func (q *Q) InsertAccountData(entry xdr.LedgerEntry) (int64, error) {
 
 // UpdateAccountData updates a row in the accounts_data table.
 // Returns number of rows affected and error.
-func (q *Q) UpdateAccountData(entry xdr.LedgerEntry) (int64, error) {
+func (q *Q) UpdateAccountData(ctx context.Context, entry xdr.LedgerEntry) (int64, error) {
 	data := entry.Data.MustData()
 
 	key, err := dataEntryToLedgerKeyString(entry)
@@ -124,7 +125,7 @@ func (q *Q) UpdateAccountData(entry xdr.LedgerEntry) (int64, error) {
 			"sponsor":              ledgerEntrySponsorToNullString(entry),
 		}).
 		Where(sq.Eq{"ledger_key": key})
-	result, err := q.Exec(sql)
+	result, err := q.Exec(ctx, sql)
 	if err != nil {
 		return 0, err
 	}
@@ -134,7 +135,7 @@ func (q *Q) UpdateAccountData(entry xdr.LedgerEntry) (int64, error) {
 
 // RemoveAccountData deletes a row in the accounts_data table.
 // Returns number of rows affected and error.
-func (q *Q) RemoveAccountData(key xdr.LedgerKeyData) (int64, error) {
+func (q *Q) RemoveAccountData(ctx context.Context, key xdr.LedgerKeyData) (int64, error) {
 	lkey, err := ledgerKeyDataToString(key)
 	if err != nil {
 		return 0, errors.Wrap(err, "Error running ledgerKeyDataToString")
@@ -142,7 +143,7 @@ func (q *Q) RemoveAccountData(key xdr.LedgerKeyData) (int64, error) {
 
 	sql := sq.Delete("accounts_data").
 		Where(sq.Eq{"ledger_key": lkey})
-	result, err := q.Exec(sql)
+	result, err := q.Exec(ctx, sql)
 	if err != nil {
 		return 0, err
 	}
@@ -151,10 +152,10 @@ func (q *Q) RemoveAccountData(key xdr.LedgerKeyData) (int64, error) {
 }
 
 // GetAccountDataByAccountsID loads account data for a list of account ID
-func (q *Q) GetAccountDataByAccountsID(id []string) ([]Data, error) {
+func (q *Q) GetAccountDataByAccountsID(ctx context.Context, id []string) ([]Data, error) {
 	var data []Data
 	sql := selectAccountData.Where(sq.Eq{"account_id": id})
-	err := q.Select(&data, sql)
+	err := q.Select(ctx, &data, sql)
 	return data, err
 }
 

@@ -11,6 +11,7 @@
 package federation
 
 import (
+	"context"
 	"database/sql"
 	"net/url"
 	"sync"
@@ -25,7 +26,7 @@ type Driver interface {
 	// federation request to lookup a `Record` using the provided stellar address.
 	// An implementation should return a nil `*Record` value if the lookup
 	// successfully executed but no result was found.
-	LookupRecord(name string, domain string) (*Record, error)
+	LookupRecord(ctx context.Context, name, domain string) (*Record, error)
 }
 
 // ErrorResponse represents the JSON response sent to a client when the request
@@ -65,7 +66,7 @@ type ReverseDriver interface {
 	// federation request to lookup a `ReverseRecord` using the provided strkey
 	// encoded accountID. An implementation should return a nil `*ReverseRecord`
 	// value if the lookup successfully executed but no result was found.
-	LookupReverseRecord(accountID string) (*ReverseRecord, error)
+	LookupReverseRecord(ctx context.Context, accountID string) (*ReverseRecord, error)
 }
 
 // ForwardDriver represents a data source against which forward queries can

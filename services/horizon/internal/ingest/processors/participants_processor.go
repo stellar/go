@@ -3,6 +3,7 @@
 package processors
 
 import (
+	"context"
 	"github.com/stellar/go/ingest"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/toid"
@@ -46,13 +47,13 @@ func (p *participant) addOperationID(id int64) {
 	p.operationSet[id] = struct{}{}
 }
 
-func (p *ParticipantsProcessor) loadAccountIDs(participantSet map[string]participant) error {
+func (p *ParticipantsProcessor) loadAccountIDs(ctx context.Context, participantSet map[string]participant) error {
 	addresses := make([]string, 0, len(participantSet))
 	for address := range participantSet {
 		addresses = append(addresses, address)
 	}
 
-	addressToID, err := p.participantsQ.CreateAccounts(addresses, maxBatchSize)
+	addressToID, err := p.participantsQ.CreateAccounts(ctx, addresses, maxBatchSize)
 	if err != nil {
 		return errors.Wrap(err, "Could not create account ids")
 	}
@@ -148,7 +149,7 @@ func participantsForTransaction(
 		participants = append(participants, transaction.Envelope.FeeBumpAccount().ToAccountId())
 	}
 
-	p, err := participantsForMeta(transaction.Meta)
+	p, err := participantsForMeta(transaction.UnsafeMeta)
 	if err != nil {
 		return nil, err
 	}
@@ -226,41 +227,41 @@ func (p *ParticipantsProcessor) addOperationsParticipants(
 	return nil
 }
 
-func (p *ParticipantsProcessor) insertDBTransactionParticipants(participantSet map[string]participant) error {
+func (p *ParticipantsProcessor) insertDBTransactionParticipants(ctx context.Context, participantSet map[string]participant) error {
 	batch := p.participantsQ.NewTransactionParticipantsBatchInsertBuilder(maxBatchSize)
 
 	for _, entry := range participantSet {
 		for transactionID := range entry.transactionSet {
-			if err := batch.Add(transactionID, entry.accountID); err != nil {
+			if err := batch.Add(ctx, transactionID, entry.accountID); err != nil {
 				return errors.Wrap(err, "Could not insert transaction participant in db")
 			}
 		}
 	}
 
-	if err := batch.Exec(); err != nil {
+	if err := batch.Exec(ctx); err != nil {
 		return errors.Wrap(err, "Could not flush transaction participants to db")
 	}
 	return nil
 }
 
-func (p *ParticipantsProcessor) insertDBOperationsParticipants(participantSet map[string]participant) error {
+func (p *ParticipantsProcessor) insertDBOperationsParticipants(ctx context.Context, participantSet map[string]participant) error {
 	batch := p.participantsQ.NewOperationParticipantBatchInsertBuilder(maxBatchSize)
 
 	for _, entry := range participantSet {
 		for operationID := range entry.operationSet {
-			if err := batch.Add(operationID, entry.accountID); err != nil {
+			if err := batch.Add(ctx, operationID, entry.accountID); err != nil {
 				return errors.Wrap(err, "could not insert operation participant in db")
 			}
 		}
 	}
 
-	if err := batch.Exec(); err != nil {
+	if err := batch.Exec(ctx); err != nil {
 		return errors.Wrap(err, "could not flush operation participants to db")
 	}
 	return nil
 }
 
-func (p *ParticipantsProcessor) ProcessTransaction(transaction ingest.LedgerTransaction) (err error) {
+func (p *ParticipantsProcessor) ProcessTransaction(ctx context.Context, transaction ingest.LedgerTransaction) (err error) {
 	err = p.addTransactionParticipants(p.participantSet, p.sequence, transaction)
 	if err != nil {
 		return err
@@ -274,17 +275,17 @@ func (p *ParticipantsProcessor) ProcessTransaction(transaction ingest.LedgerTran
 	return nil
 }
 
-func (p *ParticipantsProcessor) Commit() (err error) {
+func (p *ParticipantsProcessor) Commit(ctx context.Context) (err error) {
 	if len(p.participantSet) > 0 {
-		if err = p.loadAccountIDs(p.participantSet); err != nil {
+		if err = p.loadAccountIDs(ctx, p.participantSet); err != nil {
 			return err
 		}
 
-		if err = p.insertDBTransactionParticipants(p.participantSet); err != nil {
+		if err = p.insertDBTransactionParticipants(ctx, p.participantSet); err != nil {
 			return err
 		}
 
-		if err = p.insertDBOperationsParticipants(p.participantSet); err != nil {
+		if err = p.insertDBOperationsParticipants(ctx, p.participantSet); err != nil {
 			return err
 		}
 	}

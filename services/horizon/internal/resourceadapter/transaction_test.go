@@ -2,9 +2,10 @@ package resourceadapter
 
 import (
 	"encoding/base64"
+	"testing"
+
 	"github.com/guregu/null"
 	"github.com/stellar/go/xdr"
-	"testing"
 
 	. "github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
@@ -158,8 +159,10 @@ func TestFeeBumpTransaction(t *testing.T) {
 			MaxFee:               123,
 			FeeCharged:           100,
 			TransactionHash:      "cebb875a00ff6e1383aef0fd251a76f22c1f9ab2a2dffcb077855736ade2659a",
-			FeeAccount:           null.StringFrom("GCXKG6RN4ONIEPCMNFB732A436Z5PNDSRLGWK7GBLCMQLIFO4S7EYWVU"),
-			Account:              "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H",
+			FeeAccount:           null.StringFrom("GA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVSGZ"),
+			FeeAccountMuxed:      null.StringFrom("MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJUAAAAAAAAAAAACJUQ"),
+			Account:              "GAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSTVY",
+			AccountMuxed:         null.StringFrom("MAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSAAAAAAAAAAE2LP26"),
 			NewMaxFee:            null.IntFrom(10000),
 			InnerTransactionHash: null.StringFrom("2374e99349b9ef7dba9a5db3339b78fda8f34777b1af33ba468ad5c0df946d4d"),
 			Signatures:           []string{"a", "b", "c"},
@@ -171,7 +174,11 @@ func TestFeeBumpTransaction(t *testing.T) {
 	assert.Equal(t, row.TransactionHash, dest.Hash)
 	assert.Equal(t, row.TransactionHash, dest.ID)
 	assert.Equal(t, row.FeeAccount.String, dest.FeeAccount)
+	assert.Equal(t, row.FeeAccountMuxed.String, dest.FeeAccountMuxed)
+	assert.Equal(t, uint64(0), dest.FeeAccountMuxedID)
 	assert.Equal(t, row.Account, dest.Account)
+	assert.Equal(t, row.AccountMuxed.String, dest.AccountMuxed)
+	assert.Equal(t, uint64(1234), dest.AccountMuxedID)
 	assert.Equal(t, row.FeeCharged, dest.FeeCharged)
 	assert.Equal(t, row.NewMaxFee.Int64, dest.MaxFee)
 	assert.Equal(t, []string{"a", "b", "c"}, dest.Signatures)
@@ -186,7 +193,11 @@ func TestFeeBumpTransaction(t *testing.T) {
 	assert.Equal(t, row.InnerTransactionHash.String, dest.Hash)
 	assert.Equal(t, row.InnerTransactionHash.String, dest.ID)
 	assert.Equal(t, row.FeeAccount.String, dest.FeeAccount)
+	assert.Equal(t, row.FeeAccountMuxed.String, dest.FeeAccountMuxed)
+	assert.Equal(t, uint64(0), dest.FeeAccountMuxedID)
 	assert.Equal(t, row.Account, dest.Account)
+	assert.Equal(t, row.AccountMuxed.String, dest.AccountMuxed)
+	assert.Equal(t, uint64(1234), dest.AccountMuxedID)
 	assert.Equal(t, row.FeeCharged, dest.FeeCharged)
 	assert.Equal(t, row.NewMaxFee.Int64, dest.MaxFee)
 	assert.Equal(t, []string{"d", "e", "f"}, dest.Signatures)

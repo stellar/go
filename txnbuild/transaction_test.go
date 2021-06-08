@@ -15,6 +15,37 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestMissingTimebounds(t *testing.T) {
+	kp0 := newKeypair0()
+
+	_, err := NewTransaction(
+		TransactionParams{
+			SourceAccount: &SimpleAccount{AccountID: kp0.Address(), Sequence: 1},
+			Operations:    []Operation{&BumpSequence{BumpTo: 0}},
+			BaseFee:       MinBaseFee,
+		},
+	)
+	assert.EqualError(t, err, "invalid time bounds: timebounds must be constructed using NewTimebounds(), NewTimeout(), or NewInfiniteTimeout()")
+}
+
+func TestTimebounds(t *testing.T) {
+	kp0 := newKeypair0()
+
+	tb := NewTimeout(300)
+	tx, err := NewTransaction(
+		TransactionParams{
+			SourceAccount: &SimpleAccount{AccountID: kp0.Address(), Sequence: 1},
+			Operations:    []Operation{&BumpSequence{BumpTo: 0}},
+			BaseFee:       MinBaseFee,
+			Timebounds:    tb,
+		},
+	)
+	assert.NoError(t, err)
+	assert.Equal(t, tb, tx.timebounds)
+	assert.Equal(t, xdr.TimePoint(tb.MinTime), tx.envelope.V1.Tx.TimeBounds.MinTime)
+	assert.Equal(t, xdr.TimePoint(tb.MaxTime), tx.envelope.V1.Tx.TimeBounds.MaxTime)
+}
+
 func TestMissingSourceAccount(t *testing.T) {
 	_, err := NewTransaction(TransactionParams{})
 	assert.EqualError(t, err, "transaction has no source account")
@@ -163,6 +194,76 @@ func TestPayment(t *testing.T) {
 
 	expected := "AAAAAgAAAADg3G3hclysZlFitS+s5zWyiiJD5B0STWy5LXCj6i5yxQAAAGQAIiCNAAAAGwAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAQAAAAB+Ecs01jX14asC1KAsPdWlpGbYCM2PEgFZCD3NLhVZmAAAAAAAAAAABfXhAAAAAAAAAAAB6i5yxQAAAEDXBkKYzThQi3/XhJqGzfh/EjaAx/4zK3xBT1/JDNtdkk/kxn4qxHVx++xiV72lqZXxiphNwflA8C7mC8Dvim0E"
 	assert.Equal(t, expected, received, "Base 64 XDR should match")
+}
+
+func TestPaymentMuxedAccounts(t *testing.T) {
+	kp0 := newKeypair0()
+	accountID := xdr.MustAddress(kp0.Address())
+	mx := xdr.MuxedAccount{
+		Type: xdr.CryptoKeyTypeKeyTypeMuxedEd25519,
+		Med25519: &xdr.MuxedAccountMed25519{
+			Id:      0xcafebabe,
+			Ed25519: *accountID.Ed25519,
+		},
+	}
+	sourceAccount := NewSimpleAccount(mx.Address(), int64(9605939170639898))
+
+	payment := Payment{
+		Destination:   "MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVAAAAAAAAAAAAAJLK",
+		Amount:        "10",
+		Asset:         NativeAsset{},
+		SourceAccount: sourceAccount.AccountID,
+	}
+
+	received, err := newSignedTransaction(
+		TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&payment},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(),
+			EnableMuxedAccounts:  true,
+		},
+		network.TestNetworkPassphrase,
+		kp0,
+	)
+	assert.NoError(t, err)
+
+	expected := "AAAAAgAAAQAAAAAAyv66vuDcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAiII0AAAAbAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAEAAAEAAAAAAMr+ur7g3G3hclysZlFitS+s5zWyiiJD5B0STWy5LXCj6i5yxQAAAAEAAAEAgAAAAAAAAAA/DDS/k60NmXHQTMyQ9wVRHIOKrZc0pKL7DXoD/H/omgAAAAAAAAAABfXhAAAAAAAAAAAB6i5yxQAAAED4Wkvwf/BJV+fqa6Kvi+T/7ZL82pOinN68GlvEi9qK4klH+qITyvN3jRj5Nfz0+VrE2xBJPVc8sS/qN9LlznoC"
+	assert.Equal(t, expected, received, "Base 64 XDR should match")
+}
+
+func TestPaymentFailsMuxedAccountsIfNotEnabled(t *testing.T) {
+	kp0 := newKeypair0()
+	accountID := xdr.MustAddress(kp0.Address())
+	mx := xdr.MuxedAccount{
+		Type: xdr.CryptoKeyTypeKeyTypeMuxedEd25519,
+		Med25519: &xdr.MuxedAccountMed25519{
+			Id:      0xcafebabe,
+			Ed25519: *accountID.Ed25519,
+		},
+	}
+	sourceAccount := NewSimpleAccount(mx.Address(), int64(9605939170639898))
+
+	payment := Payment{
+		Destination: "MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVAAAAAAAAAAAAAJLK",
+		Amount:      "10",
+		Asset:       NativeAsset{},
+	}
+
+	_, err := newSignedTransaction(
+		TransactionParams{
+			SourceAccount:        &sourceAccount,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&payment},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(),
+			EnableMuxedAccounts:  false,
+		},
+		network.TestNetworkPassphrase,
+		kp0,
+	)
+	assert.Error(t, err)
 }
 
 func TestPaymentFailsIfNoAssetSpecified(t *testing.T) {
@@ -1273,6 +1374,7 @@ func TestFromXDR(t *testing.T) {
 	assert.Equal(t, int64(100), newTx.BaseFee(), "Base fee should match")
 	sa := newTx.SourceAccount()
 	assert.Equal(t, int64(6606179392290817), sa.Sequence, "Sequence number should match")
+	assert.Equal(t, int64(6606179392290817), newTx.SequenceNumber(), "Sequence number should match")
 	assert.Equal(t, 1, len(newTx.Operations()), "Operations length should match")
 	assert.IsType(t, newTx.Operations()[0], &Payment{}, "Operation types should match")
 	paymentOp, ok1 := newTx.Operations()[0].(*Payment)
@@ -1293,6 +1395,7 @@ func TestFromXDR(t *testing.T) {
 	assert.Equal(t, "GBUKBCG5VLRKAVYAIREJRUJHOKLIADZJOICRW43WVJCLES52BDOTCQZU", newTx2.SourceAccount().AccountID, "source accounts should match")
 	assert.Equal(t, int64(200), newTx2.BaseFee(), "Base fee should match")
 	assert.Equal(t, int64(14800457302017), newTx2.SourceAccount().Sequence, "Sequence number should match")
+	assert.Equal(t, int64(14800457302017), newTx2.SequenceNumber(), "Sequence number should match")
 
 	memo, ok := newTx2.Memo().(MemoText)
 	assert.Equal(t, true, ok)
@@ -1316,6 +1419,32 @@ func TestFromXDR(t *testing.T) {
 	assert.Equal(t, "", op2.SourceAccount, "Operation source should match")
 	assert.Equal(t, "test", op2.Name, "Name should match")
 	assert.Equal(t, "value", string(op2.Value), "Value should match")
+
+	// Muxed accounts
+	txB64WithMuxedAccounts := "AAAAAgAAAQAAAAAAyv66vuDcbeFyXKxmUWK1L6znNbKKIkPkHRJNbLktcKPqLnLFAAAAZAAiII0AAAAbAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAEAAAEAAAAAAMr+ur7g3G3hclysZlFitS+s5zWyiiJD5B0STWy5LXCj6i5yxQAAAAEAAAEAgAAAAAAAAAA/DDS/k60NmXHQTMyQ9wVRHIOKrZc0pKL7DXoD/H/omgAAAAAAAAAABfXhAAAAAAAAAAAB6i5yxQAAAED4Wkvwf/BJV+fqa6Kvi+T/7ZL82pOinN68GlvEi9qK4klH+qITyvN3jRj5Nfz0+VrE2xBJPVc8sS/qN9LlznoC"
+
+	// It provides M-addreses when enabling muxed accounts
+	tx3, err := TransactionFromXDR(txB64WithMuxedAccounts, TransactionFromXDROptionEnableMuxedAccounts)
+	assert.NoError(t, err)
+	newTx3, ok := tx3.Transaction()
+	assert.True(t, ok)
+	assert.Equal(t, "MDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKAAAAAAMV7V2XYGQO", newTx3.sourceAccount.AccountID)
+	op3, ok3 := newTx3.Operations()[0].(*Payment)
+	assert.True(t, ok3)
+	assert.Equal(t, "MDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKAAAAAAMV7V2XYGQO", op3.SourceAccount)
+	assert.Equal(t, "MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVAAAAAAAAAAAAAJLK", op3.Destination)
+
+	// It does provide G-addreses when not enabling muxed accounts
+	tx3, err = TransactionFromXDR(txB64WithMuxedAccounts)
+	assert.NoError(t, err)
+	newTx3, ok = tx3.Transaction()
+	assert.True(t, ok)
+	assert.Equal(t, "GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3", newTx3.sourceAccount.AccountID)
+	op3, ok3 = newTx3.Operations()[0].(*Payment)
+	assert.True(t, ok3)
+	assert.Equal(t, "GDQNY3PBOJOKYZSRMK2S7LHHGWZIUISD4QORETLMXEWXBI7KFZZMKTL3", op3.SourceAccount)
+	assert.Equal(t, "GA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVSGZ", op3.Destination)
+
 }
 
 func TestBuild(t *testing.T) {
@@ -1446,6 +1575,113 @@ func TestSignWithSecretKey(t *testing.T) {
 	actual, err := tx1.Base64()
 	assert.NoError(t, err)
 	assert.Equal(t, expected, actual, "base64 xdr should match")
+}
+
+func TestAddSignatureDecorated(t *testing.T) {
+	kp0 := newKeypair0()
+	kp1 := newKeypair1()
+	txSource := NewSimpleAccount(kp0.Address(), int64(9605939170639897))
+	tx1Source := NewSimpleAccount(kp0.Address(), int64(9605939170639897))
+	createAccount := CreateAccount{
+		Destination:   "GCCOBXW2XQNUSL467IEILE6MMCNRR66SSVL4YQADUNYYNUVREF3FIV2Z",
+		Amount:        "10",
+		SourceAccount: kp1.Address(),
+	}
+
+	expected, err := newSignedTransaction(
+		TransactionParams{
+			SourceAccount:        &txSource,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&createAccount},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(),
+		},
+		network.TestNetworkPassphrase,
+		kp0, kp1,
+	)
+	assert.NoError(t, err)
+
+	tx1, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &tx1Source,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&createAccount},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(),
+		},
+	)
+	assert.NoError(t, err)
+
+	// Same if signatures added separately.
+	{
+		var tx1sigs1 *Transaction
+		tx1sigs1, err = tx1.AddSignatureDecorated(
+			xdr.DecoratedSignature{
+				Hint: kp0.Hint(),
+				Signature: func() xdr.Signature {
+					var sigBytes []byte
+					sigBytes, err = base64.StdEncoding.DecodeString("TVogR6tbrWLnOc1BsP/j+Qrxpja2NWNgeRIwujECYscRdMG7AMtnb3dkCT7sqlbSM0TTzlRh7G+BcVocYBtqBw==")
+					if err != nil {
+						require.NoError(t, err)
+					}
+					return xdr.Signature(sigBytes)
+				}(),
+			},
+		)
+		assert.NoError(t, err)
+		tx1sigs1, err = tx1sigs1.AddSignatureDecorated(
+			xdr.DecoratedSignature{
+				Hint: kp1.Hint(),
+				Signature: func() xdr.Signature {
+					var sigBytes []byte
+					sigBytes, err = base64.StdEncoding.DecodeString("Iy77JteoW/FbeiuViZpgTyvrHP4BnBOeyVOjrdb5O/MpEMwcSlYXAkCBqPt4tBDil4jIcDDLhm7TsN6aUBkIBg==")
+					if err != nil {
+						require.NoError(t, err)
+					}
+					return xdr.Signature(sigBytes)
+				}(),
+			},
+		)
+		assert.NoError(t, err)
+		var actual string
+		actual, err = tx1sigs1.Base64()
+		assert.NoError(t, err)
+		assert.Equal(t, expected, actual, "base64 xdr should match")
+	}
+
+	// Same if signatures added together.
+	{
+		var tx1sigs2 *Transaction
+		tx1sigs2, err = tx1.AddSignatureDecorated(
+			xdr.DecoratedSignature{
+				Hint: kp0.Hint(),
+				Signature: func() xdr.Signature {
+					var sigBytes []byte
+					sigBytes, err = base64.StdEncoding.DecodeString("TVogR6tbrWLnOc1BsP/j+Qrxpja2NWNgeRIwujECYscRdMG7AMtnb3dkCT7sqlbSM0TTzlRh7G+BcVocYBtqBw==")
+					if err != nil {
+						require.NoError(t, err)
+					}
+					return xdr.Signature(sigBytes)
+				}(),
+			},
+			xdr.DecoratedSignature{
+				Hint: kp1.Hint(),
+				Signature: func() xdr.Signature {
+					var sigBytes []byte
+					sigBytes, err = base64.StdEncoding.DecodeString("Iy77JteoW/FbeiuViZpgTyvrHP4BnBOeyVOjrdb5O/MpEMwcSlYXAkCBqPt4tBDil4jIcDDLhm7TsN6aUBkIBg==")
+					if err != nil {
+						require.NoError(t, err)
+					}
+					return xdr.Signature(sigBytes)
+				}(),
+			},
+		)
+		assert.NoError(t, err)
+		var actual string
+		actual, err = tx1sigs2.Base64()
+		assert.NoError(t, err)
+		assert.Equal(t, expected, actual, "base64 xdr should match")
+	}
 }
 
 func TestAddSignatureBase64(t *testing.T) {

@@ -3,6 +3,7 @@
 package ingest
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -14,6 +15,7 @@ import (
 
 type IngestionStatusTestSuite struct {
 	suite.Suite
+	ctx      context.Context
 	historyQ *mockDBQ
 	stream   *OrderBookStream
 }
@@ -23,6 +25,7 @@ func TestIngestionStatus(t *testing.T) {
 }
 
 func (t *IngestionStatusTestSuite) SetupTest() {
+	t.ctx = context.Background()
 	t.historyQ = &mockDBQ{}
 	t.stream = NewOrderBookStream(t.historyQ, &mockOrderBookGraph{})
 }
@@ -32,81 +35,81 @@ func (t *IngestionStatusTestSuite) TearDownTest() {
 }
 
 func (t *IngestionStatusTestSuite) TestGetExpStateInvalidError() {
-	t.historyQ.On("GetExpStateInvalid").
+	t.historyQ.On("GetExpStateInvalid", t.ctx).
 		Return(false, fmt.Errorf("state invalid error")).
 		Once()
-	_, err := t.stream.getIngestionStatus()
+	_, err := t.stream.getIngestionStatus(t.ctx)
 	t.Assert().EqualError(err, "Error from GetExpStateInvalid: state invalid error")
 }
 
 func (t *IngestionStatusTestSuite) TestGetLatestLedgerError() {
-	t.historyQ.On("GetExpStateInvalid").
+	t.historyQ.On("GetExpStateInvalid", t.ctx).
 		Return(false, nil).
 		Once()
 
-	t.historyQ.On("GetLatestHistoryLedger").
+	t.historyQ.On("GetLatestHistoryLedger", t.ctx).
 		Return(uint32(0), fmt.Errorf("latest ledger error")).
 		Once()
-	_, err := t.stream.getIngestionStatus()
+	_, err := t.stream.getIngestionStatus(t.ctx)
 	t.Assert().EqualError(err, "Error from GetLatestHistoryLedger: latest ledger error")
 }
 
 func (t *IngestionStatusTestSuite) TestGetLastLedgerIngestNonBlockingError() {
-	t.historyQ.On("GetExpStateInvalid").
+	t.historyQ.On("GetExpStateInvalid", t.ctx).
 		Return(false, nil).
 		Once()
 
-	t.historyQ.On("GetLatestHistoryLedger").
+	t.historyQ.On("GetLatestHistoryLedger", t.ctx).
 		Return(uint32(200), nil).
 		Once()
 
-	t.historyQ.On("GetLastLedgerIngestNonBlocking").
+	t.historyQ.On("GetLastLedgerIngestNonBlocking", t.ctx).
 		Return(uint32(0), fmt.Errorf("ingest error")).
 		Once()
 
-	_, err := t.stream.getIngestionStatus()
+	_, err := t.stream.getIngestionStatus(t.ctx)
 	t.Assert().EqualError(err, "Error from GetLastLedgerIngestNonBlocking: ingest error")
 }
 
 func (t *IngestionStatusTestSuite) TestGetOfferCompactionSequenceError() {
-	t.historyQ.On("GetExpStateInvalid").
+	t.historyQ.On("GetExpStateInvalid", t.ctx).
 		Return(false, nil).
 		Once()
 
-	t.historyQ.On("GetLatestHistoryLedger").
+	t.historyQ.On("GetLatestHistoryLedger", t.ctx).
 		Return(uint32(200), nil).
 		Once()
 
-	t.historyQ.On("GetLastLedgerIngestNonBlocking").
+	t.historyQ.On("GetLastLedgerIngestNonBlocking", t.ctx).
 		Return(uint32(200), nil).
 		Once()
 
-	t.historyQ.On("GetOfferCompactionSequence").
+	t.historyQ.On("GetOfferCompactionSequence", t.ctx).
 		Return(uint32(0), fmt.Errorf("compaction error")).
 		Once()
 
-	_, err := t.stream.getIngestionStatus()
+	_, err := t.stream.getIngestionStatus(t.ctx)
 	t.Assert().EqualError(err, "Error from GetOfferCompactionSequence: compaction error")
 }
 
 func (t *IngestionStatusTestSuite) TestStateInvalid() {
-	t.historyQ.On("GetExpStateInvalid").
+	t.historyQ.On("GetExpStateInvalid", t.ctx).
 		Return(true, nil).
 		Once()
 
-	t.historyQ.On("GetLatestHistoryLedger").
+	t.historyQ.On("GetLatestHistoryLedger", t.ctx).
 		Return(uint32(200), nil).
 		Once()
 
-	t.historyQ.On("GetLastLedgerIngestNonBlocking").
+	t.historyQ.On("GetLastLedgerIngestNonBlocking", t.ctx).
 		Return(uint32(200), nil).
 		Once()
 
-	t.historyQ.On("GetOfferCompactionSequence").
+	t.historyQ.On("GetOfferCompactionSequence", t.ctx).
 		Return(uint32(100), nil).
 		Once()
 
-	status, err := t.stream.getIngestionStatus()
+	status, err := t.stream.getIngestionStatus(t.ctx)
 	t.Assert().NoError(err)
 	t.Assert().Equal(ingestionStatus{
 		HistoryConsistentWithState: true,
@@ -117,23 +120,23 @@ func (t *IngestionStatusTestSuite) TestStateInvalid() {
 }
 
 func (t *IngestionStatusTestSuite) TestHistoryInconsistentWithState() {
-	t.historyQ.On("GetExpStateInvalid").
+	t.historyQ.On("GetExpStateInvalid", t.ctx).
 		Return(true, nil).
 		Once()
 
-	t.historyQ.On("GetLatestHistoryLedger").
+	t.historyQ.On("GetLatestHistoryLedger", t.ctx).
 		Return(uint32(200), nil).
 		Once()
 
-	t.historyQ.On("GetLastLedgerIngestNonBlocking").
+	t.historyQ.On("GetLastLedgerIngestNonBlocking", t.ctx).
 		Return(uint32(201), nil).
 		Once()
 
-	t.historyQ.On("GetOfferCompactionSequence").
+	t.historyQ.On("GetOfferCompactionSequence", t.ctx).
 		Return(uint32(100), nil).
 		Once()
 
-	status, err := t.stream.getIngestionStatus()
+	status, err := t.stream.getIngestionStatus(t.ctx)
 	t.Assert().NoError(err)
 	t.Assert().Equal(ingestionStatus{
 		HistoryConsistentWithState: false,
@@ -144,23 +147,23 @@ func (t *IngestionStatusTestSuite) TestHistoryInconsistentWithState() {
 }
 
 func (t *IngestionStatusTestSuite) TestHistoryLatestLedgerZero() {
-	t.historyQ.On("GetExpStateInvalid").
+	t.historyQ.On("GetExpStateInvalid", t.ctx).
 		Return(false, nil).
 		Once()
 
-	t.historyQ.On("GetLatestHistoryLedger").
+	t.historyQ.On("GetLatestHistoryLedger", t.ctx).
 		Return(uint32(0), nil).
 		Once()
 
-	t.historyQ.On("GetLastLedgerIngestNonBlocking").
+	t.historyQ.On("GetLastLedgerIngestNonBlocking", t.ctx).
 		Return(uint32(201), nil).
 		Once()
 
-	t.historyQ.On("GetOfferCompactionSequence").
+	t.historyQ.On("GetOfferCompactionSequence", t.ctx).
 		Return(uint32(100), nil).
 		Once()
 
-	status, err := t.stream.getIngestionStatus()
+	status, err := t.stream.getIngestionStatus(t.ctx)
 	t.Assert().NoError(err)
 	t.Assert().Equal(ingestionStatus{
 		HistoryConsistentWithState: true,
@@ -172,6 +175,7 @@ func (t *IngestionStatusTestSuite) TestHistoryLatestLedgerZero() {
 
 type UpdateOrderBookStreamTestSuite struct {
 	suite.Suite
+	ctx      context.Context
 	historyQ *mockDBQ
 	graph    *mockOrderBookGraph
 	stream   *OrderBookStream
@@ -182,6 +186,7 @@ func TestUpdateOrderBookStream(t *testing.T) {
 }
 
 func (t *UpdateOrderBookStreamTestSuite) SetupTest() {
+	t.ctx = context.Background()
 	t.historyQ = &mockDBQ{}
 	t.graph = &mockOrderBookGraph{}
 	t.stream = NewOrderBookStream(t.historyQ, t.graph)
@@ -201,12 +206,12 @@ func (t *UpdateOrderBookStreamTestSuite) TestGetAllOffersError() {
 	}
 	t.graph.On("Clear").Return().Once()
 	t.graph.On("Discard").Return().Once()
-	t.historyQ.On("GetAllOffers").
+	t.historyQ.On("GetAllOffers", t.ctx).
 		Return([]history.Offer{}, fmt.Errorf("offers error")).
 		Once()
 
 	t.stream.lastLedger = 300
-	_, err := t.stream.update(status)
+	_, err := t.stream.update(t.ctx, status)
 	t.Assert().EqualError(err, "Error from GetAllOffers: offers error")
 	t.Assert().Equal(uint32(0), t.stream.lastLedger)
 }
@@ -232,7 +237,7 @@ func (t *UpdateOrderBookStreamTestSuite) TestResetApplyError() {
 		SellerId: xdr.MustAddress(sellerID),
 		OfferId:  20,
 	}
-	t.historyQ.On("GetAllOffers").
+	t.historyQ.On("GetAllOffers", t.ctx).
 		Return([]history.Offer{offer, otherOffer}, nil).
 		Once()
 
@@ -244,7 +249,7 @@ func (t *UpdateOrderBookStreamTestSuite) TestResetApplyError() {
 		Once()
 
 	t.stream.lastLedger = 300
-	_, err := t.stream.update(status)
+	_, err := t.stream.update(t.ctx, status)
 	t.Assert().EqualError(err, "Error applying changes to order book: apply error")
 	t.Assert().Equal(uint32(0), t.stream.lastLedger)
 }
@@ -265,7 +270,7 @@ func (t *UpdateOrderBookStreamTestSuite) mockReset(status ingestionStatus) {
 		OfferId:  20,
 	}
 	offers := []history.Offer{offer, otherOffer}
-	t.historyQ.On("GetAllOffers").
+	t.historyQ.On("GetAllOffers", t.ctx).
 		Return(offers, nil).
 		Once()
 
@@ -286,7 +291,7 @@ func (t *UpdateOrderBookStreamTestSuite) TestFirstUpdateSucceeds() {
 	}
 	t.mockReset(status)
 
-	reset, err := t.stream.update(status)
+	reset, err := t.stream.update(t.ctx, status)
 	t.Assert().NoError(err)
 	t.Assert().Equal(uint32(201), t.stream.lastLedger)
 	t.Assert().True(reset)
@@ -301,7 +306,7 @@ func (t *UpdateOrderBookStreamTestSuite) TestInvalidState() {
 	}
 	t.graph.On("Clear").Return().Once()
 
-	reset, err := t.stream.update(status)
+	reset, err := t.stream.update(t.ctx, status)
 	t.Assert().NoError(err)
 	t.Assert().Equal(uint32(0), t.stream.lastLedger)
 	t.Assert().True(reset)
@@ -310,7 +315,7 @@ func (t *UpdateOrderBookStreamTestSuite) TestInvalidState() {
 
 	t.graph.On("Clear").Return().Once()
 
-	reset, err = t.stream.update(status)
+	reset, err = t.stream.update(t.ctx, status)
 	t.Assert().NoError(err)
 	t.Assert().Equal(uint32(0), t.stream.lastLedger)
 	t.Assert().True(reset)
@@ -325,7 +330,7 @@ func (t *UpdateOrderBookStreamTestSuite) TestHistoryInconsistentWithState() {
 	}
 	t.graph.On("Clear").Return().Once()
 
-	reset, err := t.stream.update(status)
+	reset, err := t.stream.update(t.ctx, status)
 	t.Assert().NoError(err)
 	t.Assert().Equal(uint32(0), t.stream.lastLedger)
 	t.Assert().True(reset)
@@ -334,7 +339,7 @@ func (t *UpdateOrderBookStreamTestSuite) TestHistoryInconsistentWithState() {
 
 	t.graph.On("Clear").Return().Once()
 
-	reset, err = t.stream.update(status)
+	reset, err = t.stream.update(t.ctx, status)
 	t.Assert().NoError(err)
 	t.Assert().Equal(uint32(0), t.stream.lastLedger)
 	t.Assert().True(reset)
@@ -350,7 +355,7 @@ func (t *UpdateOrderBookStreamTestSuite) TestLastIngestedLedgerBehindStream() {
 	t.mockReset(status)
 
 	t.stream.lastLedger = 300
-	reset, err := t.stream.update(status)
+	reset, err := t.stream.update(t.ctx, status)
 	t.Assert().NoError(err)
 	t.Assert().Equal(uint32(201), t.stream.lastLedger)
 	t.Assert().True(reset)
@@ -366,7 +371,7 @@ func (t *UpdateOrderBookStreamTestSuite) TestStreamBehindLastCompactionLedger() 
 	t.mockReset(status)
 
 	t.stream.lastLedger = 99
-	reset, err := t.stream.update(status)
+	reset, err := t.stream.update(t.ctx, status)
 	t.Assert().NoError(err)
 	t.Assert().Equal(uint32(201), t.stream.lastLedger)
 	t.Assert().True(reset)
@@ -381,7 +386,7 @@ func (t *UpdateOrderBookStreamTestSuite) TestStreamLedgerEqualsLastIngestedLedge
 	}
 
 	t.stream.lastLedger = 201
-	reset, err := t.stream.update(status)
+	reset, err := t.stream.update(t.ctx, status)
 	t.Assert().NoError(err)
 	t.Assert().Equal(uint32(201), t.stream.lastLedger)
 	t.Assert().False(reset)
@@ -397,11 +402,11 @@ func (t *UpdateOrderBookStreamTestSuite) TestGetUpdatedOffersError() {
 	t.graph.On("Discard").Return().Once()
 
 	t.stream.lastLedger = 100
-	t.historyQ.MockQOffers.On("GetUpdatedOffers", uint32(100)).
+	t.historyQ.MockQOffers.On("GetUpdatedOffers", t.ctx, uint32(100)).
 		Return([]history.Offer{}, fmt.Errorf("updated offers error")).
 		Once()
 
-	_, err := t.stream.update(status)
+	_, err := t.stream.update(t.ctx, status)
 	t.Assert().EqualError(err, "Error from GetUpdatedOffers: updated offers error")
 	t.Assert().Equal(uint32(100), t.stream.lastLedger)
 }
@@ -423,7 +428,7 @@ func (t *UpdateOrderBookStreamTestSuite) mockUpdate() {
 	}
 	deletedOffer := history.Offer{OfferID: 30, SellerID: sellerID, LastModifiedLedger: 103, Deleted: true}
 	offers := []history.Offer{offer, otherOffer, deletedOffer}
-	t.historyQ.MockQOffers.On("GetUpdatedOffers", t.stream.lastLedger).
+	t.historyQ.MockQOffers.On("GetUpdatedOffers", t.ctx, t.stream.lastLedger).
 		Return(offers, nil).
 		Once()
 
@@ -446,7 +451,7 @@ func (t *UpdateOrderBookStreamTestSuite) TestApplyUpdatesError() {
 		Return(fmt.Errorf("apply error")).
 		Once()
 
-	_, err := t.stream.update(status)
+	_, err := t.stream.update(t.ctx, status)
 	t.Assert().EqualError(err, "Error applying changes to order book: apply error")
 	t.Assert().Equal(uint32(100), t.stream.lastLedger)
 }
@@ -465,7 +470,7 @@ func (t *UpdateOrderBookStreamTestSuite) TestApplyUpdatesSucceeds() {
 		Return(nil).
 		Once()
 
-	reset, err := t.stream.update(status)
+	reset, err := t.stream.update(t.ctx, status)
 	t.Assert().NoError(err)
 	t.Assert().Equal(status.LastIngestedLedger, t.stream.lastLedger)
 	t.Assert().False(reset)
@@ -473,6 +478,7 @@ func (t *UpdateOrderBookStreamTestSuite) TestApplyUpdatesSucceeds() {
 
 type VerifyOrderBookStreamTestSuite struct {
 	suite.Suite
+	ctx         context.Context
 	historyQ    *mockDBQ
 	graph       *mockOrderBookGraph
 	stream      *OrderBookStream
@@ -484,6 +490,7 @@ func TestVerifyOrderBookStream(t *testing.T) {
 }
 
 func (t *VerifyOrderBookStreamTestSuite) SetupTest() {
+	t.ctx = context.Background()
 	t.historyQ = &mockDBQ{}
 	t.graph = &mockOrderBookGraph{}
 	t.stream = NewOrderBookStream(t.historyQ, t.graph)
@@ -527,22 +534,22 @@ func (t *VerifyOrderBookStreamTestSuite) TearDownTest() {
 }
 
 func (t *VerifyOrderBookStreamTestSuite) TestGetAllOffersError() {
-	t.historyQ.On("GetAllOffers").
+	t.historyQ.On("GetAllOffers", t.ctx).
 		Return([]history.Offer{}, fmt.Errorf("offers error")).
 		Once()
 
 	t.stream.lastLedger = 300
-	t.stream.verifyAllOffers()
+	t.stream.verifyAllOffers(t.ctx)
 	t.Assert().Equal(uint32(300), t.stream.lastLedger)
 	t.Assert().True(t.stream.lastVerification.Equal(t.initialTime))
 }
 
 func (t *VerifyOrderBookStreamTestSuite) TestEmptyDBOffers() {
 	var offers []history.Offer
-	t.historyQ.On("GetAllOffers").Return(offers, nil).Once()
+	t.historyQ.On("GetAllOffers", t.ctx).Return(offers, nil).Once()
 
 	t.stream.lastLedger = 300
-	t.stream.verifyAllOffers()
+	t.stream.verifyAllOffers(t.ctx)
 	t.Assert().Equal(uint32(0), t.stream.lastLedger)
 	t.Assert().False(t.stream.lastVerification.Equal(t.initialTime))
 }
@@ -563,10 +570,10 @@ func (t *VerifyOrderBookStreamTestSuite) TestLengthMismatch() {
 			LastModifiedLedger: 1,
 		},
 	}
-	t.historyQ.On("GetAllOffers").Return(offers, nil).Once()
+	t.historyQ.On("GetAllOffers", t.ctx).Return(offers, nil).Once()
 
 	t.stream.lastLedger = 300
-	t.stream.verifyAllOffers()
+	t.stream.verifyAllOffers(t.ctx)
 	t.Assert().Equal(uint32(0), t.stream.lastLedger)
 	t.Assert().False(t.stream.lastVerification.Equal(t.initialTime))
 }
@@ -600,10 +607,10 @@ func (t *VerifyOrderBookStreamTestSuite) TestContentMismatch() {
 			LastModifiedLedger: 1,
 		},
 	}
-	t.historyQ.On("GetAllOffers").Return(offers, nil).Once()
+	t.historyQ.On("GetAllOffers", t.ctx).Return(offers, nil).Once()
 
 	t.stream.lastLedger = 300
-	t.stream.verifyAllOffers()
+	t.stream.verifyAllOffers(t.ctx)
 	t.Assert().Equal(uint32(0), t.stream.lastLedger)
 	t.Assert().False(t.stream.lastVerification.Equal(t.initialTime))
 }
@@ -637,10 +644,10 @@ func (t *VerifyOrderBookStreamTestSuite) TestSuccess() {
 			LastModifiedLedger: 1,
 		},
 	}
-	t.historyQ.On("GetAllOffers").Return(offers, nil).Once()
+	t.historyQ.On("GetAllOffers", t.ctx).Return(offers, nil).Once()
 
 	t.stream.lastLedger = 300
-	t.stream.verifyAllOffers()
+	t.stream.verifyAllOffers(t.ctx)
 	t.Assert().Equal(uint32(300), t.stream.lastLedger)
 	t.Assert().False(t.stream.lastVerification.Equal(t.initialTime))
 }

@@ -1,6 +1,7 @@
 package db
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"sort"
@@ -32,7 +33,7 @@ type BatchInsertBuilder struct {
 // (map keys). Otherwise, error will be returned. Please note that rows are not
 // added one by one but in batches when `Exec` is called (or `MaxBatchSize` is
 // reached).
-func (b *BatchInsertBuilder) Row(row map[string]interface{}) error {
+func (b *BatchInsertBuilder) Row(ctx context.Context, row map[string]interface{}) error {
 	if b.columns == nil {
 		b.columns = make([]string, 0, len(row))
 		b.rows = make([][]interface{}, 0)
@@ -61,13 +62,13 @@ func (b *BatchInsertBuilder) Row(row map[string]interface{}) error {
 
 	// Call Exec when MaxBatchSize is reached.
 	if len(b.rows) == b.MaxBatchSize {
-		return b.Exec()
+		return b.Exec(ctx)
 	}
 
 	return nil
 }
 
-func (b *BatchInsertBuilder) RowStruct(row interface{}) error {
+func (b *BatchInsertBuilder) RowStruct(ctx context.Context, row interface{}) error {
 	if b.columns == nil {
 		b.columns = columnsForStruct(row)
 		b.rows = make([][]interface{}, 0)
@@ -93,7 +94,7 @@ func (b *BatchInsertBuilder) RowStruct(row interface{}) error {
 
 	// Call Exec when MaxBatchSize is reached.
 	if len(b.rows) == b.MaxBatchSize {
-		return b.Exec()
+		return b.Exec(ctx)
 	}
 
 	return nil
@@ -109,7 +110,7 @@ func (b *BatchInsertBuilder) insertSQL() sq.InsertBuilder {
 
 // Exec inserts rows in batches. In case of errors it's possible that some batches
 // were added so this should be run in a DB transaction for easy rollbacks.
-func (b *BatchInsertBuilder) Exec() error {
+func (b *BatchInsertBuilder) Exec(ctx context.Context) error {
 	sql := b.insertSQL()
 	paramsCount := 0
 
@@ -118,7 +119,7 @@ func (b *BatchInsertBuilder) Exec() error {
 		paramsCount += len(row)
 
 		if paramsCount > postgresQueryMaxParams-2*len(b.columns) {
-			_, err := b.Table.Session.Exec(sql)
+			_, err := b.Table.Session.Exec(ctx, sql)
 			if err != nil {
 				return errors.Wrap(err, fmt.Sprintf("error adding values while inserting to %s", b.Table.Name))
 			}
@@ -129,7 +130,7 @@ func (b *BatchInsertBuilder) Exec() error {
 
 	// Insert last batch
 	if paramsCount > 0 {
-		_, err := b.Table.Session.Exec(sql)
+		_, err := b.Table.Session.Exec(ctx, sql)
 		if err != nil {
 			return errors.Wrap(err, fmt.Sprintf("error adding values while inserting to %s", b.Table.Name))
 		}
