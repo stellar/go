@@ -310,6 +310,42 @@ func TestAPI_GETKYCStatus(t *testing.T) {
 	require.Nil(t, kycStatusGETResponseApprove.RejectedAt)
 
 	// INSERT new account in db's accounts_kyc_status table; new account was rejected after submiting kyc.
+	insertNewPendingAccountQuery := `
+	INSERT INTO accounts_kyc_status (stellar_address, callback_id, email_address, kyc_submitted_at, approved_at, rejected_at, pending_at)
+	VALUES ($1, $2, $3, NOW(), NULL, NULL, NOW())
+	`
+	pendingKP := keypair.MustRandom()
+	pendingCallbackID := uuid.New().String()
+	pendingEmailAddress := "yemail@rejected.com"
+	_, err = getHandler.DB.ExecContext(ctx, insertNewPendingAccountQuery, pendingKP.Address(), pendingCallbackID, pendingEmailAddress)
+	require.NoError(t, err)
+
+	// Prepare and send /kyc-status/{stellar_address_or_callback_id} GET request; for rejected account in the accounts_kyc_status table.
+	r = httptest.NewRequest("GET", "/kyc-status/"+pendingKP.Address(), nil)
+	r = r.WithContext(ctx)
+	w = httptest.NewRecorder()
+	m.ServeHTTP(w, r)
+	resp = w.Result()
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
+	body, err = ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	var kycStatusGETResponsePending kycGETResponse
+	err = json.Unmarshal(body, &kycStatusGETResponsePending)
+	require.NoError(t, err)
+	wantPostResponse = kycGETResponse{
+		StellarAddress: pendingKP.Address(),
+		CallbackID:     pendingCallbackID,
+		EmailAddress:   pendingEmailAddress,
+		CreatedAt:      kycStatusGETResponsePending.CreatedAt,
+		KYCSubmittedAt: kycStatusGETResponsePending.KYCSubmittedAt,
+		ApprovedAt:     kycStatusGETResponsePending.ApprovedAt,
+		RejectedAt:     kycStatusGETResponsePending.RejectedAt,
+	}
+	assert.Equal(t, wantPostResponse, kycStatusGETResponsePending)
+
+	// INSERT new account in db's accounts_kyc_status table; new account was rejected after submiting kyc.
 	insertNewRejectedAccountQuery := `
 	INSERT INTO accounts_kyc_status (stellar_address, callback_id, email_address, kyc_submitted_at, approved_at, rejected_at)
 	VALUES ($1, $2, $3, NOW(), NULL, NOW())

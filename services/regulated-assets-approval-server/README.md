@@ -309,6 +309,19 @@ part of the [SEP-8] spec._
 }
 ```
 
+**Response (pending KYC):**
+
+```json
+{
+  "stellar_address": "GA2DMTP67JT4LQ4CFTUONFBFGKPO6VONW4LWJNOIY2WPRJLUV44MJZOK",
+  "callback_id":"e0d9243a-40cf-4baa-9575-913e6c98a12e",
+  "email_address": "ytest@test.com",
+  "created_at": "2021-03-26T09:35:06.907293-03:00",
+  "kyc_submitted_at": "2021-03-26T14:03:43.314334-03:00",
+  "pending_at": "2021-03-26T14:03:43.314334-03:00",
+}
+```
+
 ### `DELETE /kyc-status/{STELLAR_ADDRESS}`
 
 Deletes a stellar account from the list of KYCs. If the stellar address is not
