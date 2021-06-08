@@ -307,7 +307,7 @@ func TestTxApproveHandler_handleActionRequiredResponseIfNeeded(t *testing.T) {
 	require.NoError(t, err)
 	txApprovalResp, err = h.handleActionRequiredResponseIfNeeded(ctx, clientKP.Address(), paymentOp)
 	require.NoError(t, err)
-	require.Equal(t, NewPendingTxApprovalResponse("Your could not be verified as approved nor rejected and was marked as pending. You will need staff authorization for operations above 500.00 FOO."), txApprovalResp)
+	require.Equal(t, NewPendingTxApprovalResponse("Your account could not be verified as approved nor rejected and was marked as pending. You will need staff authorization for operations above 500.00 FOO."), txApprovalResp)
 }
 
 func TestTxApproveHandler_txApprove_rejected(t *testing.T) {

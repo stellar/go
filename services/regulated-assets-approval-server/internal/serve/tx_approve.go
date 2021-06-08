@@ -297,7 +297,7 @@ func (h txApproveHandler) handleActionRequiredResponseIfNeeded(ctx context.Conte
 	}
 
 	if pendingAt.Valid {
-		return NewPendingTxApprovalResponse(fmt.Sprintf("Your could not be verified as approved nor rejected and was marked as pending. You will need staff authorization for operations above %s %s.", kycThreshold, h.assetCode)), nil
+		return NewPendingTxApprovalResponse(fmt.Sprintf("Your account could not be verified as approved nor rejected and was marked as pending. You will need staff authorization for operations above %s %s.", kycThreshold, h.assetCode)), nil
 	}
 
 	return NewActionRequiredTxApprovalResponse(

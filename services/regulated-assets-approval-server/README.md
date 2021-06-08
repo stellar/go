@@ -208,7 +208,7 @@ read the SEP-8 [Pending] section.
 ```json
 {
   "status": "pending",
-  "error": "Your could not be verified as approved nor rejected and was marked as pending. You will need staff authorization for operations above 500.00 GOAT."
+  "error": "Your account could not be verified as approved nor rejected and was marked as pending. You will need staff authorization for operations above 500.00 GOAT."
 }
 ```
 
@@ -261,7 +261,7 @@ If their KYC was marked as pending they should see a rejection response.
 ```json
 {
   "status": "pending",
-  "error": "Your could not be verified as approved nor rejected and was marked as pending. You will need staff authorization for operations above 500.00 GOAT."
+  "error": "Your account could not be verified as approved nor rejected and was marked as pending. You will need staff authorization for operations above 500.00 GOAT."
 }
 ```
 
