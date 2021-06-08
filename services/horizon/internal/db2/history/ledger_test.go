@@ -1,8 +1,11 @@
 package history
 
 import (
+	"context"
 	"database/sql"
 	"encoding/hex"
+	"fmt"
+	"math/rand"
 	"testing"
 	"time"
 
@@ -147,4 +150,127 @@ func TestInsertLedger(t *testing.T) {
 	tt.Assert.NoError(err)
 	tt.Assert.True(exists)
 	tt.Assert.Equal(expectedLedger.LedgerHash, hash)
+}
+
+func insertLedgerWithSequence(tt *test.T, q *Q, seq uint32) {
+	// generate random hashes to avoid insert clashes due to UNIQUE constraints
+	var rnd = rand.New(rand.NewSource(time.Now().UnixNano()))
+	ledgerHashHex := fmt.Sprintf("%064x", rnd.Uint32())
+	previousLedgerHashHex := fmt.Sprintf("%064x", rnd.Uint32())
+
+	expectedLedger := Ledger{
+		Sequence:                   int32(seq),
+		LedgerHash:                 ledgerHashHex,
+		PreviousLedgerHash:         null.NewString(previousLedgerHashHex, true),
+		TotalOrderID:               TotalOrderID{toid.New(int32(69859), 0, 0).ToInt64()},
+		ImporterVersion:            123,
+		TransactionCount:           12,
+		SuccessfulTransactionCount: new(int32),
+		FailedTransactionCount:     new(int32),
+		TxSetOperationCount:        new(int32),
+		OperationCount:             23,
+		TotalCoins:                 23451,
+		FeePool:                    213,
+		BaseReserve:                687,
+		MaxTxSetSize:               345,
+		ProtocolVersion:            12,
+		BaseFee:                    100,
+		ClosedAt:                   time.Now().UTC().Truncate(time.Second),
+	}
+	*expectedLedger.SuccessfulTransactionCount = 12
+	*expectedLedger.FailedTransactionCount = 3
+	*expectedLedger.TxSetOperationCount = 26
+
+	var ledgerHash, previousLedgerHash xdr.Hash
+
+	written, err := hex.Decode(ledgerHash[:], []byte(expectedLedger.LedgerHash))
+	tt.Assert.NoError(err)
+	tt.Assert.Equal(len(ledgerHash), written)
+
+	written, err = hex.Decode(previousLedgerHash[:], []byte(expectedLedger.PreviousLedgerHash.String))
+	tt.Assert.NoError(err)
+	tt.Assert.Equal(len(previousLedgerHash), written)
+
+	ledgerEntry := xdr.LedgerHeaderHistoryEntry{
+		Hash: ledgerHash,
+		Header: xdr.LedgerHeader{
+			LedgerVersion:      12,
+			PreviousLedgerHash: previousLedgerHash,
+			LedgerSeq:          xdr.Uint32(expectedLedger.Sequence),
+			TotalCoins:         xdr.Int64(expectedLedger.TotalCoins),
+			FeePool:            xdr.Int64(expectedLedger.FeePool),
+			BaseFee:            xdr.Uint32(expectedLedger.BaseFee),
+			BaseReserve:        xdr.Uint32(expectedLedger.BaseReserve),
+			MaxTxSetSize:       xdr.Uint32(expectedLedger.MaxTxSetSize),
+			ScpValue: xdr.StellarValue{
+				CloseTime: xdr.TimePoint(expectedLedger.ClosedAt.Unix()),
+			},
+		},
+	}
+	ledgerHeaderBase64, err := xdr.MarshalBase64(ledgerEntry.Header)
+	tt.Assert.NoError(err)
+	expectedLedger.LedgerHeaderXDR = null.NewString(ledgerHeaderBase64, true)
+	rowsAffected, err := q.InsertLedger(tt.Ctx,
+		ledgerEntry,
+		12,
+		3,
+		23,
+		26,
+		int(expectedLedger.ImporterVersion),
+	)
+	tt.Assert.NoError(err)
+	tt.Assert.Equal(rowsAffected, int64(1))
+}
+
+func TestGetLedgerGaps(t *testing.T) {
+	tt := test.Start(t)
+	defer tt.Finish()
+	test.ResetHorizonDB(t, tt.HorizonDB)
+
+	q := &Q{tt.HorizonSession()}
+
+	// The DB is empty, so there shouldn't be any gaps
+	gaps, err := q.GetLedgerGaps(context.Background())
+	tt.Assert.NoError(err)
+	tt.Assert.Len(gaps, 0)
+
+	// Lets insert a few gaps and make sure they are detected incrementally
+	insertLedgerWithSequence(tt, q, 4)
+	insertLedgerWithSequence(tt, q, 5)
+	insertLedgerWithSequence(tt, q, 6)
+	insertLedgerWithSequence(tt, q, 7)
+
+	// since there is a single ledger cluster, there should still be no gaps
+	// (we don't start from ledger 0)
+	gaps, err = q.GetLedgerGaps(context.Background())
+	tt.Assert.NoError(err)
+	tt.Assert.Len(gaps, 0)
+
+	var expectedGaps []LedgerGap
+
+	insertLedgerWithSequence(tt, q, 99)
+	insertLedgerWithSequence(tt, q, 100)
+	insertLedgerWithSequence(tt, q, 101)
+	insertLedgerWithSequence(tt, q, 102)
+
+	gaps, err = q.GetLedgerGaps(context.Background())
+	tt.Assert.NoError(err)
+	expectedGaps = append(expectedGaps, LedgerGap{8, 98})
+	tt.Assert.Equal(expectedGaps, gaps)
+
+	// Yet another gap, this time to a single-ledger cluster
+	insertLedgerWithSequence(tt, q, 1000)
+
+	gaps, err = q.GetLedgerGaps(context.Background())
+	tt.Assert.NoError(err)
+	expectedGaps = append(expectedGaps, LedgerGap{103, 999})
+	tt.Assert.Equal(expectedGaps, gaps)
+
+	// Yet another gap, this time the gap only contains a ledger
+	insertLedgerWithSequence(tt, q, 1002)
+	gaps, err = q.GetLedgerGaps(context.Background())
+	tt.Assert.NoError(err)
+	expectedGaps = append(expectedGaps, LedgerGap{1001, 1001})
+	tt.Assert.Equal(expectedGaps, gaps)
+
 }
