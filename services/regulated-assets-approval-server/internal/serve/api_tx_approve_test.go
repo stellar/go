@@ -16,7 +16,7 @@ import (
 	"github.com/stellar/go/network"
 	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/regulated-assets-approval-server/internal/db/dbtest"
-	kycstatus "github.com/stellar/go/services/regulated-assets-approval-server/internal/serve/kyc-status"
+	"github.com/stellar/go/services/regulated-assets-approval-server/internal/serve/kycstatus"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
