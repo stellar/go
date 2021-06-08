@@ -323,7 +323,6 @@ var dbDetectGapsCmd = &cobra.Command{
 }
 
 func runDBDetectGaps(config horizon.Config) ([]history.LedgerGap, error) {
-	fmt.Println(config.DatabaseURL)
 	horizonSession, err := db.Open("postgres", config.DatabaseURL)
 	if err != nil {
 		return nil, err
