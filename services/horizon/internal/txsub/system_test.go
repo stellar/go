@@ -357,8 +357,6 @@ func (suite *SystemTestSuite) TestTick_FinishesTransactions() {
 }
 
 func (suite *SystemTestSuite) TestTickFinishFeeBumpTransaction() {
-	// Temporarily skip this test
-	return
 	innerTxEnvelope := "AAAAAAMDAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAYwAAAAAAAABhAAAAAQAAAAAAAAACAAAAAAAAAAQAAAAAAAAAAQAAAAAAAAALAAAAAAAAAGIAAAAAAAAAAQICAgIAAAADFBQUAA=="
 	innerHash := "e98869bba8bce08c10b78406202127f3888c25454cd37b02600862452751f526"
 	var parsedInnerTx xdr.TransactionEnvelope
@@ -399,9 +397,9 @@ func (suite *SystemTestSuite) TestTickFinishFeeBumpTransaction() {
 		ReadOnly:  true,
 	}).Return(nil).Once()
 	suite.db.On("Rollback").Return(nil).Once()
-	suite.db.On("TransactionsByHashes", suite.ctx, mock.Anything, []string{innerHash}).
+	suite.db.On("TransactionsByHashesSinceLedger", suite.ctx, mock.Anything, []string{innerHash}, uint32(900)).
 		Run(func(args mock.Arguments) {
-			ptr := args.Get(0).(*[]history.Transaction)
+			ptr := args.Get(1).(*[]history.Transaction)
 			*ptr = []history.Transaction{feeBumpTx.Transaction}
 		}).
 		Return(nil).Once()

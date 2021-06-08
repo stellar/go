@@ -332,6 +332,9 @@ func (sys *System) Tick(ctx context.Context) {
 		txMap := make(map[string]history.Transaction, len(txs))
 		for _, tx := range txs {
 			txMap[tx.TransactionHash] = tx
+			if tx.InnerTransactionHash.Valid {
+				txMap[tx.InnerTransactionHash.String] = tx
+			}
 		}
 
 		for _, hash := range pending {
