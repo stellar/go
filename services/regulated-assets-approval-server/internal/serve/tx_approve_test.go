@@ -1271,7 +1271,8 @@ func TestTxApproveHandler_handleSuccessResponseIfNeeded_actionRequired(t *testin
 		UPDATE accounts_kyc_status
 		SET
 			approved_at = NULL,
-			rejected_at = NOW()
+			rejected_at = NOW(),
+			pending_at = NULL
 		WHERE stellar_address = $1
 	`
 	_, err = handler.db.ExecContext(ctx, query, senderKP.Address())
@@ -1280,12 +1281,28 @@ func TestTxApproveHandler_handleSuccessResponseIfNeeded_actionRequired(t *testin
 	require.NoError(t, err)
 	assert.Equal(t, NewRejectedTxApprovalResponse("Your KYC was rejected and you're not authorized for operations above 500.00 GOAT."), txApprovalResponse)
 
+	// compliant operations with a payment above threshold will return "pending" if the user's KYC was marked as pending
+	query = `
+		UPDATE accounts_kyc_status
+		SET
+			approved_at = NULL,
+			rejected_at = NULL,
+			pending_at = NOW()
+		WHERE stellar_address = $1
+	`
+	_, err = handler.db.ExecContext(ctx, query, senderKP.Address())
+	require.NoError(t, err)
+	txApprovalResponse, err = handler.handleSuccessResponseIfNeeded(ctx, tx)
+	require.NoError(t, err)
+	assert.Equal(t, NewPendingTxApprovalResponse("Your account could not be verified as approved nor rejected and was marked as pending. You will need staff authorization for operations above 500.00 GOAT."), txApprovalResponse)
+
 	// compliant operations with a payment above threshold will return "success" if the user's KYC was approved
 	query = `
 		UPDATE accounts_kyc_status
 		SET
 			approved_at = NOW(),
-			rejected_at = NULL
+			rejected_at = NULL,
+			pending_at = NULL
 		WHERE stellar_address = $1
 	`
 	_, err = handler.db.ExecContext(ctx, query, senderKP.Address())
