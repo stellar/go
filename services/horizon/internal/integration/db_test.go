@@ -2,7 +2,6 @@ package integration
 
 import (
 	"fmt"
-	"math/rand"
 	"path/filepath"
 	"strconv"
 	"testing"
@@ -18,15 +17,6 @@ import (
 	"github.com/stellar/go/support/db/dbtest"
 	"github.com/stellar/go/txnbuild"
 )
-
-func createRandomHexString(n int) string {
-	hex := []rune("abcdef1234567890")
-	b := make([]rune, n)
-	for i := range b {
-		b[i] = hex[rand.Intn(len(hex))]
-	}
-	return string(b)
-}
 
 func initializeDBIntegrationTest(t *testing.T) (itest *integration.Test, reachedLedger int32) {
 	itest = integration.NewTest(t, protocol15Config)
@@ -103,11 +93,6 @@ func TestReingestDB(t *testing.T) {
 		"captive-core-reingest-range-integration-tests.cfg",
 	)
 
-	randomSubfolder := filepath.Join(
-		horizonConfig.CaptiveCoreStoragePath,
-		"instance-"+createRandomHexString(8),
-	)
-
 	horizoncmd.RootCmd.SetArgs([]string{
 		"--stellar-core-url",
 		horizonConfig.StellarCoreURL,
@@ -121,8 +106,6 @@ func TestReingestDB(t *testing.T) {
 		horizonConfig.CaptiveCoreBinaryPath,
 		"--captive-core-config-path",
 		horizonConfig.CaptiveCoreConfigPath,
-		"--captive-core-storage-path",
-		randomSubfolder,
 		"--enable-captive-core-ingestion=" + strconv.FormatBool(horizonConfig.EnableCaptiveCoreIngestion),
 		"--network-passphrase",
 		horizonConfig.NetworkPassphrase,
