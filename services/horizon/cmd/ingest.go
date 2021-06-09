@@ -100,13 +100,15 @@ var ingestVerifyRangeCmd = &cobra.Command{
 		}
 
 		ingestConfig := ingest.Config{
-			NetworkPassphrase:     config.NetworkPassphrase,
-			HistorySession:        horizonSession,
-			HistoryArchiveURL:     config.HistoryArchiveURLs[0],
-			EnableCaptiveCore:     config.EnableCaptiveCoreIngestion,
-			CaptiveCoreBinaryPath: config.CaptiveCoreBinaryPath,
-			RemoteCaptiveCoreURL:  config.RemoteCaptiveCoreURL,
-			CheckpointFrequency:   config.CheckpointFrequency,
+			NetworkPassphrase:      config.NetworkPassphrase,
+			HistorySession:         horizonSession,
+			HistoryArchiveURL:      config.HistoryArchiveURLs[0],
+			EnableCaptiveCore:      config.EnableCaptiveCoreIngestion,
+			CaptiveCoreBinaryPath:  config.CaptiveCoreBinaryPath,
+			RemoteCaptiveCoreURL:   config.RemoteCaptiveCoreURL,
+			CheckpointFrequency:    config.CheckpointFrequency,
+			CaptiveCoreToml:        config.CaptiveCoreToml,
+			CaptiveCoreStoragePath: config.CaptiveCoreStoragePath,
 		}
 
 		if !ingestConfig.EnableCaptiveCore {
