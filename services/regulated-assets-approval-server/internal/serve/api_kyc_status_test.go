@@ -87,19 +87,23 @@ func TestAPI_getKYCStatus(t *testing.T) {
 	m := chi.NewMux()
 	m.Get("/kyc-status/{stellar_address_or_callback_id}", handler.ServeHTTP)
 
+	// step 1: insert data into database
 	const q = `
-		INSERT INTO accounts_kyc_status (stellar_address, callback_id, email_address, kyc_submitted_at, approved_at, rejected_at, pending_at, created_at)
-		VALUES ($1, $2, $3, $4::timestamptz, $4::timestamptz, NULL, NULL, $5::timestamptz)
+		INSERT INTO accounts_kyc_status (stellar_address, callback_id, email_address, created_at, kyc_submitted_at, rejected_at, pending_at, approved_at)
+		VALUES
+			('rejected-stellar-address', 'rejected-callback-id', 'xrejected@test.com', $1::timestamptz, $2::timestamptz, $2::timestamptz, NULL, NULL),
+			('pending-stellar-address', 'pending-callback-id', 'ypending@test.com', $1::timestamptz, $3::timestamptz, NULL, $3::timestamptz, NULL),
+			('approved-stellar-address', 'approved-callback-id', 'approved@test.com', $1::timestamptz, $4::timestamptz, NULL, NULL, $4::timestamptz)
 	`
-	clientKP := keypair.MustRandom()
-	callbackID := uuid.New().String()
-	emailAddress := "email@test.com"
+	rejectedAt := time.Now().Add(-2 * time.Hour).UTC().Truncate(time.Second).Format(time.RFC3339)
+	pendingAt := time.Now().Add(-1 * time.Hour).UTC().Truncate(time.Second).Format(time.RFC3339)
 	approvedAt := time.Now().UTC().Truncate(time.Second).Format(time.RFC3339)
 	createdAt := time.Now().Add(-1 * time.Hour).UTC().Truncate(time.Second).Format(time.RFC3339)
-	_, err := handler.DB.ExecContext(ctx, q, clientKP.Address(), callbackID, emailAddress, approvedAt, createdAt)
+	_, err := handler.DB.ExecContext(ctx, q, createdAt, rejectedAt, pendingAt, approvedAt)
 	require.NoError(t, err)
 
-	r := httptest.NewRequest("GET", fmt.Sprintf("/kyc-status/%s", clientKP.Address()), nil)
+	// step 2: GET "rejected" response
+	r := httptest.NewRequest("GET", "/kyc-status/rejected-stellar-address", nil)
 	r = r.WithContext(ctx)
 	w := httptest.NewRecorder()
 	m.ServeHTTP(w, r)
@@ -110,13 +114,55 @@ func TestAPI_getKYCStatus(t *testing.T) {
 	body, err := ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 	wantBody := fmt.Sprintf(`{
-		"stellar_address": "%s",
-		"callback_id": "%s",
-		"email_address": "%s",
+		"stellar_address": "rejected-stellar-address",
+		"callback_id": "rejected-callback-id",
+		"email_address": "xrejected@test.com",
+		"created_at": "%s",
+		"kyc_submitted_at": "%s",
+		"rejected_at": "%s"
+	}`, createdAt, rejectedAt, rejectedAt)
+	require.JSONEq(t, wantBody, string(body))
+
+	// step 2: GET "pending" response
+	r = httptest.NewRequest("GET", "/kyc-status/pending-stellar-address", nil)
+	r = r.WithContext(ctx)
+	w = httptest.NewRecorder()
+	m.ServeHTTP(w, r)
+	resp = w.Result()
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
+
+	body, err = ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	wantBody = fmt.Sprintf(`{
+		"stellar_address": "pending-stellar-address",
+		"callback_id": "pending-callback-id",
+		"email_address": "ypending@test.com",
+		"created_at": "%s",
+		"kyc_submitted_at": "%s",
+		"pending_at": "%s"
+	}`, createdAt, pendingAt, pendingAt)
+	require.JSONEq(t, wantBody, string(body))
+
+	// step 3: GET "approved" response
+	r = httptest.NewRequest("GET", "/kyc-status/approved-stellar-address", nil)
+	r = r.WithContext(ctx)
+	w = httptest.NewRecorder()
+	m.ServeHTTP(w, r)
+	resp = w.Result()
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
+
+	body, err = ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	wantBody = fmt.Sprintf(`{
+		"stellar_address": "approved-stellar-address",
+		"callback_id": "approved-callback-id",
+		"email_address": "approved@test.com",
 		"created_at": "%s",
 		"kyc_submitted_at": "%s",
 		"approved_at": "%s"
-	}`, clientKP.Address(), callbackID, emailAddress, createdAt, approvedAt, approvedAt)
+	}`, createdAt, approvedAt, approvedAt)
 	require.JSONEq(t, wantBody, string(body))
 }
 
