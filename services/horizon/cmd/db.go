@@ -11,6 +11,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"github.com/stellar/go/services/horizon/internal/db2/history"
 
 	horizon "github.com/stellar/go/services/horizon/internal"
 	"github.com/stellar/go/services/horizon/internal/db2/schema"
@@ -295,6 +296,41 @@ func runDBReingestRange(from, to uint32, reingestForce bool, parallelWorkers uin
 	)
 }
 
+var dbDetectGapsCmd = &cobra.Command{
+	Use:   "detect-gaps",
+	Short: "detects ingestion gaps in Horizon's database",
+	Long:  "detects ingestion gaps in Horizon's database and prints a list of reingest commands needed to fill the gaps",
+	Run: func(cmd *cobra.Command, args []string) {
+		requireAndSetFlag(horizon.DatabaseURLFlagName)
+		if len(args) != 0 {
+			cmd.Usage()
+			os.Exit(1)
+		}
+		gaps, err := runDBDetectGaps(*config)
+		if err != nil {
+			log.Fatal(err)
+		}
+		if len(gaps) == 0 {
+			hlog.Info("No gaps found")
+			return
+		}
+		fmt.Println("Horizon commands to run in order to fill in the gaps:")
+		cmdname := os.Args[0]
+		for _, g := range gaps {
+			fmt.Printf("%s db reingest %d %d\n", cmdname, g.StartSequence, g.EndSequence)
+		}
+	},
+}
+
+func runDBDetectGaps(config horizon.Config) ([]history.LedgerGap, error) {
+	horizonSession, err := db.Open("postgres", config.DatabaseURL)
+	if err != nil {
+		return nil, err
+	}
+	q := &history.Q{horizonSession}
+	return q.GetLedgerGaps(context.Background())
+}
+
 func init() {
 	for _, co := range reingestRangeCmdOpts {
 		err := co.Init(dbReingestRangeCmd)
@@ -311,6 +347,7 @@ func init() {
 		dbMigrateCmd,
 		dbReapCmd,
 		dbReingestCmd,
+		dbDetectGapsCmd,
 	)
 	dbReingestCmd.AddCommand(dbReingestRangeCmd)
 }

@@ -1577,6 +1577,113 @@ func TestSignWithSecretKey(t *testing.T) {
 	assert.Equal(t, expected, actual, "base64 xdr should match")
 }
 
+func TestAddSignatureDecorated(t *testing.T) {
+	kp0 := newKeypair0()
+	kp1 := newKeypair1()
+	txSource := NewSimpleAccount(kp0.Address(), int64(9605939170639897))
+	tx1Source := NewSimpleAccount(kp0.Address(), int64(9605939170639897))
+	createAccount := CreateAccount{
+		Destination:   "GCCOBXW2XQNUSL467IEILE6MMCNRR66SSVL4YQADUNYYNUVREF3FIV2Z",
+		Amount:        "10",
+		SourceAccount: kp1.Address(),
+	}
+
+	expected, err := newSignedTransaction(
+		TransactionParams{
+			SourceAccount:        &txSource,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&createAccount},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(),
+		},
+		network.TestNetworkPassphrase,
+		kp0, kp1,
+	)
+	assert.NoError(t, err)
+
+	tx1, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &tx1Source,
+			IncrementSequenceNum: true,
+			Operations:           []Operation{&createAccount},
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(),
+		},
+	)
+	assert.NoError(t, err)
+
+	// Same if signatures added separately.
+	{
+		var tx1sigs1 *Transaction
+		tx1sigs1, err = tx1.AddSignatureDecorated(
+			xdr.DecoratedSignature{
+				Hint: kp0.Hint(),
+				Signature: func() xdr.Signature {
+					var sigBytes []byte
+					sigBytes, err = base64.StdEncoding.DecodeString("TVogR6tbrWLnOc1BsP/j+Qrxpja2NWNgeRIwujECYscRdMG7AMtnb3dkCT7sqlbSM0TTzlRh7G+BcVocYBtqBw==")
+					if err != nil {
+						require.NoError(t, err)
+					}
+					return xdr.Signature(sigBytes)
+				}(),
+			},
+		)
+		assert.NoError(t, err)
+		tx1sigs1, err = tx1sigs1.AddSignatureDecorated(
+			xdr.DecoratedSignature{
+				Hint: kp1.Hint(),
+				Signature: func() xdr.Signature {
+					var sigBytes []byte
+					sigBytes, err = base64.StdEncoding.DecodeString("Iy77JteoW/FbeiuViZpgTyvrHP4BnBOeyVOjrdb5O/MpEMwcSlYXAkCBqPt4tBDil4jIcDDLhm7TsN6aUBkIBg==")
+					if err != nil {
+						require.NoError(t, err)
+					}
+					return xdr.Signature(sigBytes)
+				}(),
+			},
+		)
+		assert.NoError(t, err)
+		var actual string
+		actual, err = tx1sigs1.Base64()
+		assert.NoError(t, err)
+		assert.Equal(t, expected, actual, "base64 xdr should match")
+	}
+
+	// Same if signatures added together.
+	{
+		var tx1sigs2 *Transaction
+		tx1sigs2, err = tx1.AddSignatureDecorated(
+			xdr.DecoratedSignature{
+				Hint: kp0.Hint(),
+				Signature: func() xdr.Signature {
+					var sigBytes []byte
+					sigBytes, err = base64.StdEncoding.DecodeString("TVogR6tbrWLnOc1BsP/j+Qrxpja2NWNgeRIwujECYscRdMG7AMtnb3dkCT7sqlbSM0TTzlRh7G+BcVocYBtqBw==")
+					if err != nil {
+						require.NoError(t, err)
+					}
+					return xdr.Signature(sigBytes)
+				}(),
+			},
+			xdr.DecoratedSignature{
+				Hint: kp1.Hint(),
+				Signature: func() xdr.Signature {
+					var sigBytes []byte
+					sigBytes, err = base64.StdEncoding.DecodeString("Iy77JteoW/FbeiuViZpgTyvrHP4BnBOeyVOjrdb5O/MpEMwcSlYXAkCBqPt4tBDil4jIcDDLhm7TsN6aUBkIBg==")
+					if err != nil {
+						require.NoError(t, err)
+					}
+					return xdr.Signature(sigBytes)
+				}(),
+			},
+		)
+		assert.NoError(t, err)
+		var actual string
+		actual, err = tx1sigs2.Base64()
+		assert.NoError(t, err)
+		assert.Equal(t, expected, actual, "base64 xdr should match")
+	}
+}
+
 func TestAddSignatureBase64(t *testing.T) {
 	kp0 := newKeypair0()
 	kp1 := newKeypair1()
@@ -4260,4 +4367,56 @@ func TestVerifyTxSignatureInvalid(t *testing.T) {
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "transaction not signed by GATBMIXTHXYKSUZSZUEJKACZ2OS2IYUWP2AIF3CA32PIDLJ67CH6Y5UY")
 	}
+}
+
+func TestClaimableBalanceIds(t *testing.T) {
+	aKeys := keypair.MustParseFull("SC4REDCJNPFAYW4SMH44KNGO5JRDQ72G4HE6GILRBSICI3M2IUOC7AAL")
+	// TODO: Replace with
+	// xdr.MuxedAccountFromAccountId(aKeys.Address(), uint64(1234)).Address()
+	// once https://github.com/stellar/go/pull/3677 gets in
+	aMuxed := "MDUJNO4HVE4YCQHV7LINPWVDQJFSAPHHUNSTT64YRBCCRZ5UYUXAWAAAAAAAAAAE2IUOE"
+	aMuxedAccount := NewSimpleAccount(aMuxed, int64(5894915628204034))
+	B := "GCACCFMIWJAHUUASSE2WC7V6VVDLYRLSJYZ3DJEXCG523FSHTNII6KOG"
+
+	// Create the operation and submit it in a transaction.
+	claimableBalanceEntry := CreateClaimableBalance{
+		Destinations: []Claimant{
+			NewClaimant(B, &UnconditionalPredicate),
+		},
+		Asset:  NativeAsset{},
+		Amount: "420",
+	}
+
+	// Build, sign, and submit the transaction
+	tx, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &aMuxedAccount,
+			IncrementSequenceNum: true,
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(),
+			Operations:           []Operation{&claimableBalanceEntry},
+			EnableMuxedAccounts:  true,
+		},
+	)
+	assert.NoError(t, err)
+	tx, err = tx.Sign(network.TestNetworkPassphrase, aKeys)
+	assert.NoError(t, err)
+	calculatedBalanceId, err := tx.ClaimableBalanceID(0)
+	assert.NoError(t, err)
+
+	var txResult xdr.TransactionResult
+	resultXdr := "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAAOAAAAAAAAAABw2JZZYIt4n/WXKcnDow3mbTBMPrOnldetgvGUlpTSEQAAAAA="
+	err = xdr.SafeUnmarshalBase64(resultXdr, &txResult)
+	assert.NoError(t, err)
+
+	results, ok := txResult.OperationResults()
+	assert.True(t, ok)
+
+	// We look at the first result since our first (and only) operation in the
+	// transaction was the CreateClaimableBalanceOp.
+	operationResult := results[0].MustTr().CreateClaimableBalanceResult
+	actualBalanceId, err := xdr.MarshalHex(operationResult.BalanceId)
+	assert.NoError(t, err)
+
+	assert.Equal(t, actualBalanceId, calculatedBalanceId)
 }

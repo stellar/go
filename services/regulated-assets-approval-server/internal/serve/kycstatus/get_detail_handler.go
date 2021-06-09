@@ -22,6 +22,7 @@ type kycGetResponse struct {
 	KYCSubmittedAt *time.Time `json:"kyc_submitted_at,omitempty"`
 	ApprovedAt     *time.Time `json:"approved_at,omitempty"`
 	RejectedAt     *time.Time `json:"rejected_at,omitempty"`
+	PendingAt      *time.Time `json:"pending_at,omitempty"`
 }
 
 func (k *kycGetResponse) Render(w http.ResponseWriter) {
@@ -73,15 +74,7 @@ func (h GetDetailHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	kycGetResponse.Render(w)
 }
 
-func (h GetDetailHandler) handle(ctx context.Context, in getDetailRequest) (resp *kycGetResponse, err error) {
-	defer func() {
-		log.Ctx(ctx).Debug("==== will log responses ====")
-		log.Ctx(ctx).Debugf("req: %+v", in)
-		log.Ctx(ctx).Debugf("resp: %+v", resp)
-		log.Ctx(ctx).Debugf("err: %+v", err)
-		log.Ctx(ctx).Debug("====  did log responses ====")
-	}()
-
+func (h GetDetailHandler) handle(ctx context.Context, in getDetailRequest) (*kycGetResponse, error) {
 	// Check if getDetailRequest StellarAddressOrCallbackID value is present.
 	if in.StellarAddressOrCallbackID == "" {
 		return nil, httperror.NewHTTPError(http.StatusBadRequest, "Missing stellar address or callbackID")
@@ -89,17 +82,17 @@ func (h GetDetailHandler) handle(ctx context.Context, in getDetailRequest) (resp
 
 	// Prepare SELECT query return values.
 	var (
-		stellarAddress, callbackID             string
-		emailAddress                           sql.NullString
-		createdAt                              time.Time
-		kycSubmittedAt, approvedAt, rejectedAt sql.NullTime
+		stellarAddress, callbackID                        string
+		emailAddress                                      sql.NullString
+		createdAt                                         time.Time
+		kycSubmittedAt, approvedAt, rejectedAt, pendingAt sql.NullTime
 	)
 	const q = `
-		SELECT stellar_address, email_address, created_at, kyc_submitted_at, approved_at, rejected_at, callback_id
+		SELECT stellar_address, email_address, created_at, kyc_submitted_at, approved_at, rejected_at, pending_at, callback_id
 		FROM accounts_kyc_status
 		WHERE stellar_address = $1 OR callback_id = $1
 	`
-	err = h.DB.QueryRowContext(ctx, q, in.StellarAddressOrCallbackID).Scan(&stellarAddress, &emailAddress, &createdAt, &kycSubmittedAt, &approvedAt, &rejectedAt, &callbackID)
+	err := h.DB.QueryRowContext(ctx, q, in.StellarAddressOrCallbackID).Scan(&stellarAddress, &emailAddress, &createdAt, &kycSubmittedAt, &approvedAt, &rejectedAt, &pendingAt, &callbackID)
 	if err == sql.ErrNoRows {
 		return nil, httperror.NewHTTPError(http.StatusNotFound, "Not found.")
 	}
@@ -115,6 +108,7 @@ func (h GetDetailHandler) handle(ctx context.Context, in getDetailRequest) (resp
 		KYCSubmittedAt: timePointerIfValid(kycSubmittedAt),
 		ApprovedAt:     timePointerIfValid(approvedAt),
 		RejectedAt:     timePointerIfValid(rejectedAt),
+		PendingAt:      timePointerIfValid(pendingAt),
 	}, nil
 }
 

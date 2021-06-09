@@ -24,14 +24,21 @@ Readers are objects that wrap ledger backend and provide higher level, developer
 friendly APIs for reading ledger data.
 
 Currently there are three types of readers:
-  * CheckpointChangeReader reads ledger entries from history buckets for a
-    given checkpoint ledger. Allow building state (all accounts, trust lines
-    etc.) at any checkpoint ledger.
-  * LedgerTransactionReader reads transactions for a given ledger sequence.
-  * LedgerChangeReader reads all changes to ledger entries created as a result
-    of transactions (fees and meta) and protocol upgrades in a given ledger.
+ * CheckpointChangeReader reads ledger entries from history buckets for a given
+   checkpoint ledger. Allow building state (all accounts, trust lines etc.) at
+   any checkpoint ledger.
+ * LedgerTransactionReader reads transactions for a given ledger sequence.
+ * LedgerChangeReader reads all changes to ledger entries created as a result of
+   transactions (fees and meta) and protocol upgrades in a given ledger.
 
 Warning: Readers stream BOTH successful and failed transactions; check
-         transactions status in your application if required.
+transactions status in your application if required.
+
+Tutorial
+
+Refer to the examples below for simple use cases, or check out the README (and
+its corresponding tutorial/ subfolder) in the repository for a Getting Started
+guide: https://github.com/stellar/go/blob/master/ingest/README.md
+
 */
 package ingest

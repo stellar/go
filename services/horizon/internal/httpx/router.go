@@ -43,7 +43,7 @@ type RouterConfig struct {
 	MaxPathLength         uint
 	PathFinder            paths.Finder
 	PrometheusRegistry    *prometheus.Registry
-	CoreGetter            actions.CoreSettingsGetter
+	CoreGetter            actions.CoreStateGetter
 	HorizonVersion        string
 	FriendbotURL          *url.URL
 	HealthCheck           http.Handler
@@ -124,11 +124,11 @@ func (r *Router) addRoutes(config *RouterConfig, rateLimiter *throttled.HTTPRate
 	r.Method(http.MethodGet, "/health", config.HealthCheck)
 
 	r.Method(http.MethodGet, "/", ObjectActionHandler{Action: actions.GetRootHandler{
-		LedgerState:        ledgerState,
-		CoreSettingsGetter: config.CoreGetter,
-		NetworkPassphrase:  config.NetworkPassphrase,
-		FriendbotURL:       config.FriendbotURL,
-		HorizonVersion:     config.HorizonVersion,
+		LedgerState:       ledgerState,
+		CoreStateGetter:   config.CoreGetter,
+		NetworkPassphrase: config.NetworkPassphrase,
+		FriendbotURL:      config.FriendbotURL,
+		HorizonVersion:    config.HorizonVersion,
 	}})
 
 	streamHandler := sse.StreamHandler{
@@ -292,6 +292,7 @@ func (r *Router) addRoutes(config *RouterConfig, rateLimiter *throttled.HTTPRate
 	r.Method(http.MethodPost, "/transactions", ObjectActionHandler{actions.SubmitTransactionHandler{
 		Submitter:         config.TxSubmitter,
 		NetworkPassphrase: config.NetworkPassphrase,
+		CoreStateGetter:   config.CoreGetter,
 	}})
 
 	// Network state related endpoints

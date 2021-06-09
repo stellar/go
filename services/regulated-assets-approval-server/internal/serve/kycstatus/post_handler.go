@@ -79,15 +79,7 @@ func (h PostHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	kycResponse.Render(w)
 }
 
-func (h PostHandler) handle(ctx context.Context, in kycPostRequest) (resp *kycPostResponse, err error) {
-	defer func() {
-		log.Ctx(ctx).Debug("==== will log responses ====")
-		log.Ctx(ctx).Debugf("req: %+v", in)
-		log.Ctx(ctx).Debugf("resp: %+v", resp)
-		log.Ctx(ctx).Debugf("err: %+v", err)
-		log.Ctx(ctx).Debug("====  did log responses ====")
-	}()
-
+func (h PostHandler) handle(ctx context.Context, in kycPostRequest) (*kycPostResponse, error) {
 	// Check if kycPostRequest values are present or not malformed.
 	if in.CallbackID == "" {
 		return nil, httperror.NewHTTPError(http.StatusBadRequest, "Missing callbackID.")
@@ -101,7 +93,7 @@ func (h PostHandler) handle(ctx context.Context, in kycPostRequest) (resp *kycPo
 
 	var exists bool
 	query, args := in.buildUpdateKYCQuery()
-	err = h.DB.QueryRowContext(ctx, query, args...).Scan(&exists)
+	err := h.DB.QueryRowContext(ctx, query, args...).Scan(&exists)
 	if err != nil {
 		return nil, errors.Wrap(err, "querying the database")
 	}
@@ -112,10 +104,16 @@ func (h PostHandler) handle(ctx context.Context, in kycPostRequest) (resp *kycPo
 	return NewKYCStatusPostResponse(), nil
 }
 
-// isKYCRuleRespected validates if KYC data is approved or rejected.
-// Current rule(s) emails starting "x" are rejected and other emails are automatically approved.
-func (in kycPostRequest) isKYCRuleRespected() bool {
-	return !strings.HasPrefix(strings.ToLower(in.EmailAddress), "x")
+// isKYCRuleRespected validates if KYC data is rejected. As an arbitrary rule,
+// emails starting with "x" are rejected.
+func (in kycPostRequest) isKYCRejected() bool {
+	return strings.HasPrefix(strings.ToLower(in.EmailAddress), "x")
+}
+
+// isKYCRuleRespected validates if KYC data is pending. As an arbitrary rule,
+// emails starting with "y" are marked as pending.
+func (in kycPostRequest) isKYCPending() bool {
+	return strings.HasPrefix(strings.ToLower(in.EmailAddress), "y")
 }
 
 // buildUpdateKYCQuery builds a query that will approve or reject stellar account from accounts_kyc_status table.
@@ -129,22 +127,21 @@ func (in kycPostRequest) buildUpdateKYCQuery() (string, []interface{}) {
 	query.WriteString("UPDATE accounts_kyc_status ")
 	query.WriteString("SET kyc_submitted_at = NOW(), ")
 
-	// Append email address for query built.
 	args = append(args, in.EmailAddress)
 	query.WriteString(fmt.Sprintf("email_address = $%d, ", len(args)))
 
-	// Check if KYC info is approved or rejected
-	if in.isKYCRuleRespected() {
-		query.WriteString("approved_at = NOW(), rejected_at = NULL ")
+	// update KYC status to rejected, pending or approved
+	if in.isKYCRejected() {
+		query.WriteString("rejected_at = NOW(), pending_at = NULL, approved_at = NULL ")
+	} else if in.isKYCPending() {
+		query.WriteString("rejected_at = NULL, pending_at = NOW(), approved_at = NULL ")
 	} else {
-		query.WriteString("rejected_at = NOW(), approved_at = NULL ")
+		query.WriteString("rejected_at = NULL, pending_at = NULL, approved_at = NOW() ")
 	}
 
-	// Append CallbackID for query built.
 	args = append(args, in.CallbackID)
 	query.WriteString(fmt.Sprintf("WHERE callback_id = $%d ", len(args)))
 
-	// Build remaining query.
 	query.WriteString("RETURNING * ")
 	query.WriteString(")")
 	query.WriteString(`

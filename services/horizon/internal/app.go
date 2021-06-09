@@ -13,8 +13,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/stellar/go/clients/stellarcore"
-	proto "github.com/stellar/go/protocols/stellarcore"
-	"github.com/stellar/go/services/horizon/internal/actions"
+	"github.com/stellar/go/services/horizon/internal/corestate"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/httpx"
 	"github.com/stellar/go/services/horizon/internal/ingest"
@@ -30,26 +29,6 @@ import (
 	"github.com/stellar/go/support/log"
 )
 
-type coreSettingsStore struct {
-	sync.RWMutex
-	actions.CoreSettings
-}
-
-func (c *coreSettingsStore) set(resp *proto.InfoResponse) {
-	c.Lock()
-	defer c.Unlock()
-	c.Synced = resp.IsSynced()
-	c.CoreVersion = resp.Info.Build
-	c.CurrentProtocolVersion = int32(resp.Info.Ledger.Version)
-	c.CoreSupportedProtocolVersion = int32(resp.Info.ProtocolVersion)
-}
-
-func (c *coreSettingsStore) get() actions.CoreSettings {
-	c.RLock()
-	defer c.RUnlock()
-	return c.CoreSettings
-}
-
 // App represents the root of the state of a horizon instance.
 type App struct {
 	done            chan struct{}
@@ -60,7 +39,7 @@ type App struct {
 	ctx             context.Context
 	cancel          func()
 	horizonVersion  string
-	coreSettings    coreSettingsStore
+	coreState       corestate.Store
 	orderBookStream *ingest.OrderBookStream
 	submitter       *txsub.System
 	paths           paths.Finder
@@ -78,10 +57,11 @@ type App struct {
 	historyElderLedgerCounter         prometheus.CounterFunc
 	coreLatestLedgerCounter           prometheus.CounterFunc
 	coreSynced                        prometheus.GaugeFunc
+	coreSupportedProtocolVersion      prometheus.GaugeFunc
 }
 
-func (a *App) GetCoreSettings() actions.CoreSettings {
-	return a.coreSettings.get()
+func (a *App) GetCoreState() corestate.State {
+	return a.coreState.Get()
 }
 
 const tickerMaxFrequency = 1 * time.Second
@@ -390,7 +370,7 @@ func (a *App) UpdateStellarCoreInfo(ctx context.Context) {
 		os.Exit(1)
 	}
 
-	a.coreSettings.set(resp)
+	a.coreState.Set(resp)
 }
 
 // DeleteUnretainedHistory forwards to the app's reaper.  See

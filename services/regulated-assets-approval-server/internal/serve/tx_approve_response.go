@@ -49,10 +49,29 @@ func NewActionRequiredTxApprovalResponse(message, actionURL string, actionFields
 	}
 }
 
+func NewSuccessTxApprovalResponse(tx, message string) *txApprovalResponse {
+	return &txApprovalResponse{
+		Status:     sep8StatusSuccess,
+		Tx:         tx,
+		Message:    message,
+		StatusCode: http.StatusOK,
+	}
+}
+
+func NewPendingTxApprovalResponse(message string) *txApprovalResponse {
+	return &txApprovalResponse{
+		Status:     sep8StatusPending,
+		Message:    message,
+		StatusCode: http.StatusOK,
+	}
+}
+
 type sep8Status string
 
 const (
 	sep8StatusRejected       sep8Status = "rejected"
 	sep8StatusRevised        sep8Status = "revised"
 	sep8StatusActionRequired sep8Status = "action_required"
+	sep8StatusSuccess        sep8Status = "success"
+	sep8StatusPending        sep8Status = "pending"
 )
