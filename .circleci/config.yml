@@ -147,7 +147,7 @@ commands:
     parameters:
       core-version:
         type: string
-        default: "17.0.0-568.ea5878e.xenial~buildtests"
+        default: "17.1.0-600.a5e7028.xenial"
     steps:
       - run:
           name: Install Stellar Core <<#parameters.core-version>> (version <<parameters.core-version>>)<</parameters.core-version>>
