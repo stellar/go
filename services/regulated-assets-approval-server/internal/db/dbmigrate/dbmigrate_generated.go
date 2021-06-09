@@ -2,6 +2,7 @@
 // sources:
 // migrations/2021-05-05.0.initial.sql (162B)
 // migrations/2021-05-18.0.accounts-kyc-status.sql (414B)
+// migrations/2021-06-08.0.pending-kyc-status.sql (193B)
 
 package dbmigrate
 
@@ -110,6 +111,26 @@ func migrations202105180AccountsKycStatusSql() (*asset, error) {
 	return a, nil
 }
 
+var _migrations202106080PendingKycStatusSql = []byte("\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff\x94\xcd\x31\x0a\xc2\x30\x14\x06\xe0\xfd\x9d\xe2\xdf\xa5\x5e\xa0\x53\x35\xdd\xa2\x95\xd2\xce\x21\xc6\x50\x83\xe6\x25\x98\x17\x8a\x9e\x5e\x70\x12\x9c\x1c\xbf\xe9\x6b\x1a\x6c\x62\x58\x1e\x56\x3c\xe6\x4c\xd4\xe9\xa9\x1f\x31\x75\x3b\xdd\x23\xd7\xf3\x3d\xb8\xad\x75\x2e\x55\x96\x62\x6e\x4f\x67\x8a\x58\xa9\x85\x00\xa0\x53\x0a\xfb\x41\xcf\x87\x23\xb2\xe7\x4b\xe0\xc5\x58\x81\x84\xe8\x8b\xd8\x98\xb1\x06\xb9\x7e\x88\x57\x62\xdf\x12\x7d\x5f\x2a\xad\xfc\xd7\xa6\xc6\xe1\xf4\xdb\xb5\xf4\x0e\x00\x00\xff\xff\x0b\x35\xb1\x8a\xc1\x00\x00\x00")
+
+func migrations202106080PendingKycStatusSqlBytes() ([]byte, error) {
+	return bindataRead(
+		_migrations202106080PendingKycStatusSql,
+		"migrations/2021-06-08.0.pending-kyc-status.sql",
+	)
+}
+
+func migrations202106080PendingKycStatusSql() (*asset, error) {
+	bytes, err := migrations202106080PendingKycStatusSqlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "migrations/2021-06-08.0.pending-kyc-status.sql", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0x10, 0x1c, 0x6f, 0xa9, 0x5e, 0x89, 0xfa, 0x5b, 0x1f, 0x1e, 0xf2, 0xc6, 0xe0, 0xeb, 0x6f, 0xe5, 0xa5, 0x63, 0x50, 0x6b, 0xd5, 0xdb, 0x54, 0xac, 0xc2, 0x1, 0x82, 0x27, 0xc4, 0x70, 0xcf, 0x9c}}
+	return a, nil
+}
+
 // Asset loads and returns the asset for the given name.
 // It returns an error if the asset could not be found or
 // could not be loaded.
@@ -203,6 +224,7 @@ func AssetNames() []string {
 var _bindata = map[string]func() (*asset, error){
 	"migrations/2021-05-05.0.initial.sql":             migrations202105050InitialSql,
 	"migrations/2021-05-18.0.accounts-kyc-status.sql": migrations202105180AccountsKycStatusSql,
+	"migrations/2021-06-08.0.pending-kyc-status.sql":  migrations202106080PendingKycStatusSql,
 }
 
 // AssetDir returns the file names below a certain
@@ -249,6 +271,7 @@ var _bintree = &bintree{nil, map[string]*bintree{
 	"migrations": &bintree{nil, map[string]*bintree{
 		"2021-05-05.0.initial.sql":             &bintree{migrations202105050InitialSql, map[string]*bintree{}},
 		"2021-05-18.0.accounts-kyc-status.sql": &bintree{migrations202105180AccountsKycStatusSql, map[string]*bintree{}},
+		"2021-06-08.0.pending-kyc-status.sql":  &bintree{migrations202106080PendingKycStatusSql, map[string]*bintree{}},
 	}},
 }}
 

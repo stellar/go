@@ -362,7 +362,7 @@ func TestAPI_txAprove_actionRequiredFlow(t *testing.T) {
 	}
 	assert.Equal(t, wantTxApprovalResponse, gotTxApprovalResponse)
 
-	// Step 2: client follows up with action required. KYC should get approved for emails not starting with "x"
+	// Step 2: client follows up with action required. KYC should get approved for emails not starting with "x" nor "y"
 	actionMethod := gotTxApprovalResponse.ActionMethod
 	actionURL := gotTxApprovalResponse.ActionURL
 	actionFields := strings.NewReader(`{"email_address": "test@email.com"}`)
@@ -426,6 +426,38 @@ func TestAPI_txAprove_actionRequiredFlow(t *testing.T) {
 	wantBody = `{
 		"status": "rejected",
 		"error": "Your KYC was rejected and you're not authorized for operations above 500.00 GOAT."
+	}`
+	require.JSONEq(t, wantBody, string(body))
+
+	// Step 6: client follows up with action required again. This time KYC will be marked as pending as the email starts with "y"
+	actionFields = strings.NewReader(`{"email_address": "ytest@email.com"}`)
+	r = httptest.NewRequest(actionMethod, actionURL, actionFields)
+	r = r.WithContext(ctx)
+	w = httptest.NewRecorder()
+	m.ServeHTTP(w, r)
+	resp = w.Result()
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
+
+	body, err = ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	wantBody = `{"result": "no_further_action_required"}`
+	require.JSONEq(t, wantBody, string(body))
+
+	// Step 7: verify transactions with 500+ GOAT are pending
+	r = httptest.NewRequest("POST", "/tx-approve", strings.NewReader(`{"tx": "`+txe+`"}`))
+	r = r.WithContext(ctx)
+	w = httptest.NewRecorder()
+	m.ServeHTTP(w, r)
+	resp = w.Result()
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
+
+	body, err = ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	wantBody = `{
+		"status": "pending",
+		"message": "Your account could not be verified as approved nor rejected and was marked as pending. You will need staff authorization for operations above 500.00 GOAT."
 	}`
 	require.JSONEq(t, wantBody, string(body))
 }

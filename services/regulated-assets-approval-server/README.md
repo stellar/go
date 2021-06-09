@@ -200,14 +200,28 @@ SEP-8 [Action Required] section.
 }
 ```
 
+_Pending:_ this response means the user KYC could not be verified as approved
+nor rejected and was marked as "pending". As an arbitrary rule, this server is
+marking as "pending" all accounts whose email starts with "y". For more info
+read the SEP-8 [Pending] section.
+
+```json
+{
+  "status": "pending",
+  "error": "Your account could not be verified as approved nor rejected and was marked as pending. You will need staff authorization for operations above 500.00 GOAT."
+}
+```
+
 ### `POST /kyc-status/{CALLBACK_ID}`
 
 This endpoint is used for the extra action after `/tx-approve`, as described in
 the SEP-8 [Action Required] section.
 
-Currently an arbitrary criteria is implemented: email addresses starting with
-"x" will have the KYC automatically denied while all other emails will be
-accepted.
+Currently an arbitrary criteria is implemented:
+
+* email addresses starting with "x" will have the KYC automatically denied.
+* email addresses starting with "y" will have their KYC marked as pending.
+* all other emails will be accepted.
 
 _Note: you'll need to resubmit your transaction to
 [`/tx_approve`](#post-tx-approve) in order to verify if your KYC was approved._
@@ -238,6 +252,16 @@ If their KYC was rejected they should see a rejection response.
 {
   "status": "rejected",
   "error": "Your KYC was rejected and you're not authorized for operations above 500.00 GOAT."
+}
+```
+
+If their KYC was marked as pending they should see a pending response.
+**Response (pending for emails starting with "y"):**
+
+```json
+{
+  "status": "pending",
+  "error": "Your account could not be verified as approved nor rejected and was marked as pending. You will need staff authorization for operations above 500.00 GOAT."
 }
 ```
 
@@ -285,6 +309,19 @@ part of the [SEP-8] spec._
 }
 ```
 
+**Response (pending KYC):**
+
+```json
+{
+  "stellar_address": "GA2DMTP67JT4LQ4CFTUONFBFGKPO6VONW4LWJNOIY2WPRJLUV44MJZOK",
+  "callback_id":"e0d9243a-40cf-4baa-9575-913e6c98a12e",
+  "email_address": "ytest@test.com",
+  "created_at": "2021-03-26T09:35:06.907293-03:00",
+  "kyc_submitted_at": "2021-03-26T14:03:43.314334-03:00",
+  "pending_at": "2021-03-26T14:03:43.314334-03:00",
+}
+```
+
 ### `DELETE /kyc-status/{STELLAR_ADDRESS}`
 
 Deletes a stellar account from the list of KYCs. If the stellar address is not
@@ -307,3 +344,4 @@ the [SEP-8] spec._
 [Rejected]: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0008.md#rejected
 [Revised]:https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0008.md#revised
 [Success]: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0008.md#success
+[Pending]: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0008.md#pending

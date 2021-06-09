@@ -58,6 +58,14 @@ func NewSuccessTxApprovalResponse(tx, message string) *txApprovalResponse {
 	}
 }
 
+func NewPendingTxApprovalResponse(message string) *txApprovalResponse {
+	return &txApprovalResponse{
+		Status:     sep8StatusPending,
+		Message:    message,
+		StatusCode: http.StatusOK,
+	}
+}
+
 type sep8Status string
 
 const (
@@ -65,4 +73,5 @@ const (
 	sep8StatusRevised        sep8Status = "revised"
 	sep8StatusActionRequired sep8Status = "action_required"
 	sep8StatusSuccess        sep8Status = "success"
+	sep8StatusPending        sep8Status = "pending"
 )

@@ -72,18 +72,19 @@ func TestAPI_POSTKYCStatus(t *testing.T) {
 
 	// Query db's accounts_kyc_status table account after /kyc-status/{callback_id} POST request.
 	const selectAccountQuery = `
-	SELECT approved_at, rejected_at
+	SELECT approved_at, rejected_at, pending_at
 	FROM accounts_kyc_status
 	WHERE callback_id = $1
 	`
-	var approvedAt, rejectedAt sql.NullTime
-	err = postHandler.DB.QueryRowContext(ctx, selectAccountQuery, callbackID).Scan(&approvedAt, &rejectedAt)
+	var approvedAt, rejectedAt, pendingAt sql.NullTime
+	err = postHandler.DB.QueryRowContext(ctx, selectAccountQuery, callbackID).Scan(&approvedAt, &rejectedAt, &pendingAt)
 	require.NoError(t, err)
 
 	// TEST if account in db's accounts_kyc_status table was approved.
 	// sql.NullTime.Valid is true if Time is not NULL
 	assert.True(t, approvedAt.Valid)
 	assert.False(t, rejectedAt.Valid)
+	assert.False(t, pendingAt.Valid)
 
 	// INSERT new unverified account in db's accounts_kyc_status table.
 	rejectedKP := keypair.MustRandom()
@@ -116,7 +117,7 @@ func TestAPI_POSTKYCStatus(t *testing.T) {
 	assert.Equal(t, wantPostResponse, kycStatusPOSTResponseRejected)
 
 	// Query db's accounts_kyc_status table account after /kyc-status/{callback_id} POST request.
-	err = postHandler.DB.QueryRowContext(ctx, selectAccountQuery, callbackIDRejected).Scan(&approvedAt, &rejectedAt)
+	err = postHandler.DB.QueryRowContext(ctx, selectAccountQuery, callbackIDRejected).Scan(&approvedAt, &rejectedAt, &pendingAt)
 	require.NoError(t, err)
 
 	// TEST if account in db's accounts_kyc_status table was rejected.
@@ -124,6 +125,35 @@ func TestAPI_POSTKYCStatus(t *testing.T) {
 	// sql.NullTime.Valid is true if Time is not NULL
 	assert.True(t, rejectedAt.Valid)
 	assert.False(t, approvedAt.Valid)
+	assert.False(t, pendingAt.Valid)
+
+	// emails starting with "y" will be marked as "pending"
+	reqBody = `{
+		"email_address": "yTestEmailx@email.com"
+	}`
+	r = httptest.NewRequest("POST", "/kyc-status/"+callbackIDRejected, strings.NewReader(reqBody))
+	r = r.WithContext(ctx)
+	w = httptest.NewRecorder()
+	m.ServeHTTP(w, r)
+	resp = w.Result()
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
+	body, err = ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	var kycStatusResponse kycStatusPOSTResponse
+	err = json.Unmarshal(body, &kycStatusResponse)
+	require.NoError(t, err)
+	wantPostResponse = kycStatusPOSTResponse{
+		Result: "no_further_action_required",
+	}
+	assert.Equal(t, wantPostResponse, kycStatusResponse)
+
+	err = postHandler.DB.QueryRowContext(ctx, selectAccountQuery, callbackIDRejected).Scan(&approvedAt, &rejectedAt, &pendingAt)
+	require.NoError(t, err)
+	assert.False(t, approvedAt.Valid)
+	assert.False(t, rejectedAt.Valid)
+	assert.True(t, pendingAt.Valid)
 
 	// Preparing and send /kyc-status/{callback_id} POST request; using the rejected account's callback_ID.
 	reqBody = `{
@@ -151,18 +181,19 @@ func TestAPI_POSTKYCStatus(t *testing.T) {
 
 	// Query db's accounts_kyc_status table account after /kyc-status/{callback_id} POST request.
 	selectUpdatedAccountEmailQuery := `
-	SELECT approved_at, rejected_at, email_address
+	SELECT approved_at, rejected_at, pending_at, email_address
 	FROM accounts_kyc_status
 	WHERE callback_id = $1
 	`
 	var updatedEmail string
-	err = postHandler.DB.QueryRowContext(ctx, selectUpdatedAccountEmailQuery, callbackIDRejected).Scan(&approvedAt, &rejectedAt, &updatedEmail)
+	err = postHandler.DB.QueryRowContext(ctx, selectUpdatedAccountEmailQuery, callbackIDRejected).Scan(&approvedAt, &rejectedAt, &pendingAt, &updatedEmail)
 	require.NoError(t, err)
 
 	// TEST if account in db's accounts_kyc_status table was approved, and email was overwritten.
 	// sql.NullTime.Valid is true if Time is not NULL
 	assert.True(t, approvedAt.Valid)
 	assert.False(t, rejectedAt.Valid)
+	assert.False(t, pendingAt.Valid)
 	assert.NotEqual(t, "xTestEmail@email.com", updatedEmail)
 
 	// Preparing and send /kyc-status/{callback_id} POST request; w/ empty email value.
@@ -277,6 +308,42 @@ func TestAPI_GETKYCStatus(t *testing.T) {
 	require.NotNil(t, kycStatusGETResponseApprove.KYCSubmittedAt)
 	require.NotNil(t, kycStatusGETResponseApprove.ApprovedAt)
 	require.Nil(t, kycStatusGETResponseApprove.RejectedAt)
+
+	// INSERT new account in db's accounts_kyc_status table; new account was pending after submiting kyc.
+	insertNewPendingAccountQuery := `
+	INSERT INTO accounts_kyc_status (stellar_address, callback_id, email_address, kyc_submitted_at, approved_at, rejected_at, pending_at)
+	VALUES ($1, $2, $3, NOW(), NULL, NULL, NOW())
+	`
+	pendingKP := keypair.MustRandom()
+	pendingCallbackID := uuid.New().String()
+	pendingEmailAddress := "yemail@rejected.com"
+	_, err = getHandler.DB.ExecContext(ctx, insertNewPendingAccountQuery, pendingKP.Address(), pendingCallbackID, pendingEmailAddress)
+	require.NoError(t, err)
+
+	// Prepare and send /kyc-status/{stellar_address_or_callback_id} GET request; for rejected account in the accounts_kyc_status table.
+	r = httptest.NewRequest("GET", "/kyc-status/"+pendingKP.Address(), nil)
+	r = r.WithContext(ctx)
+	w = httptest.NewRecorder()
+	m.ServeHTTP(w, r)
+	resp = w.Result()
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
+	body, err = ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	var kycStatusGETResponsePending kycGETResponse
+	err = json.Unmarshal(body, &kycStatusGETResponsePending)
+	require.NoError(t, err)
+	wantPostResponse = kycGETResponse{
+		StellarAddress: pendingKP.Address(),
+		CallbackID:     pendingCallbackID,
+		EmailAddress:   pendingEmailAddress,
+		CreatedAt:      kycStatusGETResponsePending.CreatedAt,
+		KYCSubmittedAt: kycStatusGETResponsePending.KYCSubmittedAt,
+		ApprovedAt:     kycStatusGETResponsePending.ApprovedAt,
+		RejectedAt:     kycStatusGETResponsePending.RejectedAt,
+	}
+	assert.Equal(t, wantPostResponse, kycStatusGETResponsePending)
 
 	// INSERT new account in db's accounts_kyc_status table; new account was rejected after submiting kyc.
 	insertNewRejectedAccountQuery := `
