@@ -12,7 +12,9 @@ file.  This project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Bug Fix
 
-* `BaseFee` in `TransactionParams` when calling `NewTransaction` is allowed to be zero because the fee can be paid by wrapping a `Transaction` in a `FeeBumpTransaction`. ([#3622](https://github.com/stellar/go/pull/3622))
+* `BaseFee` in `TransactionParams` when calling `NewTransaction` is allowed to be zero because the fee can be paid by wrapping a `Transaction` in a `FeeBumpTransaction` ([#3622](https://github.com/stellar/go/pull/3622))
+
+* Claimable balance IDs are now precomputed correctly (``Transaction.ClaimableBalanceID(int)`) even when the transaction's source account is a fully-muxed account ([#3678](https://github.com/stellar/go/pull/3678)).
 
 ## [v7.0.0](https://github.com/stellar/go/releases/tag/horizonclient-v7.0.0) - 2021-05-15
 
