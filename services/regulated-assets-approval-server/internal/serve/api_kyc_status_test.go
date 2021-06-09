@@ -16,7 +16,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/services/regulated-assets-approval-server/internal/db/dbtest"
-	kycstatus "github.com/stellar/go/services/regulated-assets-approval-server/internal/serve/kyc-status"
+	"github.com/stellar/go/services/regulated-assets-approval-server/internal/serve/kycstatus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

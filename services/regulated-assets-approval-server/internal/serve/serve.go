@@ -13,7 +13,7 @@ import (
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/services/regulated-assets-approval-server/internal/db"
-	kycstatus "github.com/stellar/go/services/regulated-assets-approval-server/internal/serve/kyc-status"
+	"github.com/stellar/go/services/regulated-assets-approval-server/internal/serve/kycstatus"
 	"github.com/stellar/go/support/errors"
 	supporthttp "github.com/stellar/go/support/http"
 	"github.com/stellar/go/support/log"
