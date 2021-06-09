@@ -83,8 +83,8 @@ func TestGetDetailHandlerHandle(t *testing.T) {
 
 	// INSERT new account in db's accounts_kyc_status table; new account was approved after submitting kyc.
 	insertNewAccountQuery := `
-	INSERT INTO accounts_kyc_status (stellar_address, callback_id, email_address, kyc_submitted_at, approved_at, rejected_at)
-	VALUES ($1, $2, $3, NOW(), NOW(), NULL)
+	INSERT INTO accounts_kyc_status (stellar_address, callback_id, email_address, kyc_submitted_at, approved_at, pending_at, rejected_at)
+	VALUES ($1, $2, $3, NOW(), NOW(), NOW(), NULL)
 	`
 	emailAddress := "email@approved.com"
 	_, err = h.DB.ExecContext(ctx, insertNewAccountQuery, accountKP.Address(), callbackID, emailAddress)
@@ -102,6 +102,7 @@ func TestGetDetailHandlerHandle(t *testing.T) {
 		KYCSubmittedAt: kycGetResp.KYCSubmittedAt,
 		ApprovedAt:     kycGetResp.ApprovedAt,
 		RejectedAt:     kycGetResp.RejectedAt,
+		PendingAt:      kycGetResp.PendingAt,
 	}
 	assert.Equal(t, &wantKycGetResponse, kycGetResp)
 

@@ -268,17 +268,17 @@ func (h txApproveHandler) handleActionRequiredResponseIfNeeded(ctx context.Conte
 			ON CONFLICT(stellar_address) DO NOTHING
 			RETURNING *
 		)
-		SELECT callback_id, approved_at, rejected_at FROM new_row
+		SELECT callback_id, approved_at, rejected_at, pending_at FROM new_row
 		UNION
-		SELECT callback_id, approved_at, rejected_at
+		SELECT callback_id, approved_at, rejected_at, pending_at
 		FROM accounts_kyc_status
 		WHERE stellar_address = $1
 	`
 	var (
-		callbackID             string
-		approvedAt, rejectedAt sql.NullTime
+		callbackID                        string
+		approvedAt, rejectedAt, pendingAt sql.NullTime
 	)
-	err = h.db.QueryRowContext(ctx, q, stellarAddress, intendedCallbackID).Scan(&callbackID, &approvedAt, &rejectedAt)
+	err = h.db.QueryRowContext(ctx, q, stellarAddress, intendedCallbackID).Scan(&callbackID, &approvedAt, &rejectedAt, &pendingAt)
 	if err != nil {
 		return nil, errors.Wrap(err, "inserting new row into accounts_kyc_status table")
 	}
@@ -294,6 +294,10 @@ func (h txApproveHandler) handleActionRequiredResponseIfNeeded(ctx context.Conte
 
 	if rejectedAt.Valid {
 		return NewRejectedTxApprovalResponse(fmt.Sprintf("Your KYC was rejected and you're not authorized for operations above %s %s.", kycThreshold, h.assetCode)), nil
+	}
+
+	if pendingAt.Valid {
+		return NewPendingTxApprovalResponse(fmt.Sprintf("Your account could not be verified as approved nor rejected and was marked as pending. You will need staff authorization for operations above %s %s.", kycThreshold, h.assetCode)), nil
 	}
 
 	return NewActionRequiredTxApprovalResponse(
