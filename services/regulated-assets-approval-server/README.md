@@ -255,7 +255,7 @@ If their KYC was rejected they should see a rejection response.
 }
 ```
 
-If their KYC was marked as pending they should see a rejection response.
+If their KYC was marked as pending they should see a pending response.
 **Response (pending for emails starting with "y"):**
 
 ```json

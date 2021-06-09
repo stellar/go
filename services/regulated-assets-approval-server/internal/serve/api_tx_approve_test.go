@@ -444,7 +444,7 @@ func TestAPI_txAprove_actionRequiredFlow(t *testing.T) {
 	wantBody = `{"result": "no_further_action_required"}`
 	require.JSONEq(t, wantBody, string(body))
 
-	// Step 7: verify transactions with 500+ GOAT are rejected
+	// Step 7: verify transactions with 500+ GOAT are pending
 	r = httptest.NewRequest("POST", "/tx-approve", strings.NewReader(`{"tx": "`+txe+`"}`))
 	r = r.WithContext(ctx)
 	w = httptest.NewRecorder()

@@ -309,7 +309,7 @@ func TestAPI_GETKYCStatus(t *testing.T) {
 	require.NotNil(t, kycStatusGETResponseApprove.ApprovedAt)
 	require.Nil(t, kycStatusGETResponseApprove.RejectedAt)
 
-	// INSERT new account in db's accounts_kyc_status table; new account was rejected after submiting kyc.
+	// INSERT new account in db's accounts_kyc_status table; new account was pending after submiting kyc.
 	insertNewPendingAccountQuery := `
 	INSERT INTO accounts_kyc_status (stellar_address, callback_id, email_address, kyc_submitted_at, approved_at, rejected_at, pending_at)
 	VALUES ($1, $2, $3, NOW(), NULL, NULL, NOW())
