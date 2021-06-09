@@ -127,7 +127,7 @@ func TestPostHandler_handle_error(t *testing.T) {
 	require.Nil(t, kycPostResp)
 	require.Equal(t, httperror.NewHTTPError(http.StatusBadRequest, "The provided email_address is invalid."), err)
 
-	// callbackID not found
+	// no entry found for the given callbackID
 	in = kycPostRequest{
 		CallbackID:   "random-callback-id",
 		EmailAddress: "email@test.com",
@@ -178,9 +178,9 @@ func TestPostHandler_handle_success(t *testing.T) {
 	err = conn.DB.QueryRowContext(ctx, q, rejectedCallbackID).Scan(&rejectedAt, &pendingAt, &approvedAt)
 	require.NoError(t, err)
 
+	assert.False(t, pendingAt.Valid)
+	assert.False(t, approvedAt.Valid)
 	require.True(t, rejectedAt.Valid)
-	require.False(t, pendingAt.Valid)
-	require.False(t, approvedAt.Valid)
 
 	// should be marked as pending as email starts with "y"
 	in = kycPostRequest{
@@ -193,9 +193,10 @@ func TestPostHandler_handle_success(t *testing.T) {
 
 	err = conn.DB.QueryRowContext(ctx, q, pendingCallbackID).Scan(&rejectedAt, &pendingAt, &approvedAt)
 	require.NoError(t, err)
-	require.False(t, rejectedAt.Valid)
+
+	assert.False(t, rejectedAt.Valid)
+	assert.False(t, approvedAt.Valid)
 	require.True(t, pendingAt.Valid)
-	require.False(t, approvedAt.Valid)
 
 	// should be approved as email doesn't start with "x" nor "y"
 	in = kycPostRequest{
@@ -208,8 +209,9 @@ func TestPostHandler_handle_success(t *testing.T) {
 
 	err = conn.DB.QueryRowContext(ctx, q, pendingCallbackID).Scan(&rejectedAt, &pendingAt, &approvedAt)
 	require.NoError(t, err)
-	require.False(t, rejectedAt.Valid)
-	require.False(t, pendingAt.Valid)
+
+	assert.False(t, rejectedAt.Valid)
+	assert.False(t, pendingAt.Valid)
 	require.True(t, approvedAt.Valid)
 }
 

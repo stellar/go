@@ -9,7 +9,6 @@ import (
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/services/regulated-assets-approval-server/internal/db/dbtest"
 	"github.com/stellar/go/services/regulated-assets-approval-server/internal/serve/httperror"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -84,5 +83,5 @@ func TestDeleteHandler_handle_success(t *testing.T) {
 	var exists bool
 	err = h.DB.QueryRowContext(ctx, q, accountKP.Address()).Scan(&exists)
 	require.NoError(t, err)
-	assert.False(t, exists)
+	require.False(t, exists)
 }

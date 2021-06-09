@@ -60,11 +60,11 @@ func TestGetDetailHandler_handle_error(t *testing.T) {
 	assert.Nil(t, kycGetResp)
 	require.Equal(t, httperror.NewHTTPError(http.StatusBadRequest, "Missing stellar address or callbackID."), err)
 
-	// unexistent row will trigger a "404 - Not found.".
-	in = getDetailRequest{StellarAddressOrCallbackID: "unexistent"}
+	// nonexistent row will trigger a "404 - Not found.".
+	in = getDetailRequest{StellarAddressOrCallbackID: "nonexistent"}
 	kycGetResp, err = handler.handle(ctx, in)
 	assert.Nil(t, kycGetResp)
-	require.EqualError(t, err, "Not found.")
+	require.Equal(t, httperror.NewHTTPError(http.StatusNotFound, "Not found."), err)
 }
 
 func TestGetDetailHandler_handle_success(t *testing.T) {
@@ -95,7 +95,7 @@ func TestGetDetailHandler_handle_success(t *testing.T) {
 	in := getDetailRequest{StellarAddressOrCallbackID: "rejected-address"}
 	kycGetResp, err := handler.handle(ctx, in)
 	require.NoError(t, err)
-	wantKycGetResponse := kycGetResponse{
+	wantKYCGetResponse := kycGetResponse{
 		StellarAddress: "rejected-address",
 		CallbackID:     "rejected-callback-id",
 		EmailAddress:   "xrejected@test.com",
@@ -105,19 +105,19 @@ func TestGetDetailHandler_handle_success(t *testing.T) {
 		PendingAt:      nil,
 		ApprovedAt:     nil,
 	}
-	assert.Equal(t, &wantKycGetResponse, kycGetResp)
+	assert.Equal(t, &wantKYCGetResponse, kycGetResp)
 
 	// step 2.2: retrieve "rejected" entry with callbackID
 	in = getDetailRequest{StellarAddressOrCallbackID: "rejected-callback-id"}
 	kycGetResp, err = handler.handle(ctx, in)
 	require.NoError(t, err)
-	assert.Equal(t, &wantKycGetResponse, kycGetResp)
+	assert.Equal(t, &wantKYCGetResponse, kycGetResp)
 
 	// step 3.1: retrieve "pending" entry with stellar address
 	in = getDetailRequest{StellarAddressOrCallbackID: "pending-address"}
 	kycGetResp, err = handler.handle(ctx, in)
 	require.NoError(t, err)
-	wantKycGetResponse = kycGetResponse{
+	wantKYCGetResponse = kycGetResponse{
 		StellarAddress: "pending-address",
 		CallbackID:     "pending-callback-id",
 		EmailAddress:   "ypending@test.com",
@@ -127,19 +127,19 @@ func TestGetDetailHandler_handle_success(t *testing.T) {
 		PendingAt:      &pendingAt,
 		ApprovedAt:     nil,
 	}
-	assert.Equal(t, &wantKycGetResponse, kycGetResp)
+	assert.Equal(t, &wantKYCGetResponse, kycGetResp)
 
 	// step 3.2: retrieve "pending" entry with callbackID
 	in = getDetailRequest{StellarAddressOrCallbackID: "pending-callback-id"}
 	kycGetResp, err = handler.handle(ctx, in)
 	require.NoError(t, err)
-	assert.Equal(t, &wantKycGetResponse, kycGetResp)
+	assert.Equal(t, &wantKYCGetResponse, kycGetResp)
 
 	// step 4.1: retrieve "approved" entry with stellar address
 	in = getDetailRequest{StellarAddressOrCallbackID: "approved-address"}
 	kycGetResp, err = handler.handle(ctx, in)
 	require.NoError(t, err)
-	wantKycGetResponse = kycGetResponse{
+	wantKYCGetResponse = kycGetResponse{
 		StellarAddress: "approved-address",
 		CallbackID:     "approved-callback-id",
 		EmailAddress:   "approved@test.com",
@@ -149,11 +149,11 @@ func TestGetDetailHandler_handle_success(t *testing.T) {
 		PendingAt:      nil,
 		ApprovedAt:     &approvedAt,
 	}
-	assert.Equal(t, &wantKycGetResponse, kycGetResp)
+	assert.Equal(t, &wantKYCGetResponse, kycGetResp)
 
 	// step 4.2: retrieve "approved" entry with callbackID
 	in = getDetailRequest{StellarAddressOrCallbackID: "approved-callback-id"}
 	kycGetResp, err = handler.handle(ctx, in)
 	require.NoError(t, err)
-	assert.Equal(t, &wantKycGetResponse, kycGetResp)
+	assert.Equal(t, &wantKYCGetResponse, kycGetResp)
 }

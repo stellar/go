@@ -60,7 +60,7 @@ func TestAPI_postKYCStatus(t *testing.T) {
 	wantPostResponse := kycStatusPOSTResponse{
 		Result: "no_further_action_required",
 	}
-	assert.Equal(t, wantPostResponse, kycStatusPOSTResponseApprove)
+	require.Equal(t, wantPostResponse, kycStatusPOSTResponseApprove)
 
 	q = `
 		SELECT rejected_at, pending_at, approved_at
@@ -94,12 +94,11 @@ func TestAPI_getKYCStatus(t *testing.T) {
 	clientKP := keypair.MustRandom()
 	callbackID := uuid.New().String()
 	emailAddress := "email@test.com"
-	approvedAt := time.Now().UTC().Truncate(time.Second)
-	createdAt := time.Now().Add(-1 * time.Hour).UTC().Truncate(time.Second)
-	_, err := handler.DB.ExecContext(ctx, q, clientKP.Address(), callbackID, emailAddress, approvedAt.Format(time.RFC3339), createdAt.Format(time.RFC3339))
+	approvedAt := time.Now().UTC().Truncate(time.Second).Format(time.RFC3339)
+	createdAt := time.Now().Add(-1 * time.Hour).UTC().Truncate(time.Second).Format(time.RFC3339)
+	_, err := handler.DB.ExecContext(ctx, q, clientKP.Address(), callbackID, emailAddress, approvedAt, createdAt)
 	require.NoError(t, err)
 
-	// Prepare and send /kyc-status/{stellar_address_or_callback_id} GET request; for approved account in the accounts_kyc_status table.
 	r := httptest.NewRequest("GET", fmt.Sprintf("/kyc-status/%s", clientKP.Address()), nil)
 	r = r.WithContext(ctx)
 	w := httptest.NewRecorder()
@@ -117,7 +116,7 @@ func TestAPI_getKYCStatus(t *testing.T) {
 		"created_at": "%s",
 		"kyc_submitted_at": "%s",
 		"approved_at": "%s"
-	}`, clientKP.Address(), callbackID, emailAddress, createdAt.Format(time.RFC3339), approvedAt.Format(time.RFC3339), approvedAt.Format(time.RFC3339))
+	}`, clientKP.Address(), callbackID, emailAddress, createdAt, approvedAt, approvedAt)
 	require.JSONEq(t, wantBody, string(body))
 }
 
