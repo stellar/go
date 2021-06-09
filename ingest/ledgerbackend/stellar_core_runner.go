@@ -253,7 +253,7 @@ func (r *stellarCoreRunner) catchup(from, to uint32) error {
 	cmd := r.createCmd(
 		"catchup", rangeArg,
 		"--metadata-output-stream", r.getPipeName(),
-		"--replay-in-memory",
+		"--in-memory",
 	)
 
 	var err error
