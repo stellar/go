@@ -3,22 +3,23 @@ package kycstatus
 import (
 	"context"
 	"database/sql"
+	"net/http"
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
-	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/services/regulated-assets-approval-server/internal/db/dbtest"
+	"github.com/stellar/go/services/regulated-assets-approval-server/internal/serve/httperror"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestGetDetailHandlerValidate(t *testing.T) {
-	// Test no db.
+func TestGetDetailHandler_validate(t *testing.T) {
+	// database is nil
 	h := GetDetailHandler{}
 	err := h.validate()
 	require.EqualError(t, err, "database cannot be nil")
-	// Success.
+
+	// success
 	db := dbtest.Open(t)
 	defer db.Close()
 	conn := db.Open()
@@ -29,98 +30,130 @@ func TestGetDetailHandlerValidate(t *testing.T) {
 }
 
 func TestTimePointerIfValid(t *testing.T) {
-	// Prepare NULL nullTimePtr.
-	var nullTimePtr sql.NullTime
-
-	// Send a NullTime Pointer to timePointerIfValid.
-	// TEST if timePointer is null; timePointerIfValid will return nil in this case.
-	timePointer := timePointerIfValid(nullTimePtr)
+	// invalid sql.NullTime should return nil
+	sqlNullTime := sql.NullTime{}
+	timePointer := timePointerIfValid(sqlNullTime)
 	require.Nil(t, timePointer)
 
-	// Prepare a valid nullTimePtr with a time set.
-	nullTimePtr.Valid = true
-	timeNow := time.Now()
-	nullTimePtr.Time = timeNow
-
-	// Send a valid Pointer to timePointerIfValid.
-	// TEST if timePointer is valid and if return a time.Time pointer equals the time.Now().
-	timePointer = timePointerIfValid(nullTimePtr)
-	require.NotNil(t, timePointer)
-	assert.Equal(t, &timeNow, timePointer)
+	// a valid sql.NullTime should return a time.Time pointer
+	desiredTime := time.Now()
+	sqlNullTime = sql.NullTime{
+		Valid: true,
+		Time:  desiredTime,
+	}
+	timePointer = timePointerIfValid(sqlNullTime)
+	require.Equal(t, &desiredTime, timePointer)
 }
 
-func TestGetDetailHandlerHandle(t *testing.T) {
-	ctx := context.Background()
-
-	// Prepare and validate GetDetailHandler.
+func TestGetDetailHandler_handle_error(t *testing.T) {
 	db := dbtest.Open(t)
 	defer db.Close()
 	conn := db.Open()
 	defer conn.Close()
-	h := GetDetailHandler{DB: conn}
-	err := h.validate()
-	require.NoError(t, err)
+	ctx := context.Background()
 
-	// Prepare and send empty getDetailRequest. TEST error "Missing stellar address or callbackID"
+	handler := GetDetailHandler{DB: conn}
+
+	// empty parameter will trigger a "400 - Missing stellar address or callbackID."
 	in := getDetailRequest{}
-	kycGetResp, err := h.handle(ctx, in)
-	require.Nil(t, kycGetResp)
-	require.EqualError(t, err, "Missing stellar address or callbackID")
+	kycGetResp, err := handler.handle(ctx, in)
+	assert.Nil(t, kycGetResp)
+	require.Equal(t, httperror.NewHTTPError(http.StatusBadRequest, "Missing stellar address or callbackID."), err)
 
-	// Prepare and send getDetailRequest to an account not in the db. TEST error "Not found.".
-	accountKP := keypair.MustRandom()
-	in = getDetailRequest{StellarAddressOrCallbackID: accountKP.Address()}
-	kycGetResp, err = h.handle(ctx, in)
-	require.Nil(t, kycGetResp)
-	require.EqualError(t, err, "Not found.")
+	// nonexistent row will trigger a "404 - Not found.".
+	in = getDetailRequest{StellarAddressOrCallbackID: "nonexistent"}
+	kycGetResp, err = handler.handle(ctx, in)
+	assert.Nil(t, kycGetResp)
+	require.Equal(t, httperror.NewHTTPError(http.StatusNotFound, "Not found."), err)
+}
 
-	// Prepare and send getDetailRequest to a callbackID not in the db. TEST error "Not found.".
-	callbackID := uuid.New().String()
-	in = getDetailRequest{StellarAddressOrCallbackID: callbackID}
-	kycGetResp, err = h.handle(ctx, in)
-	require.Nil(t, kycGetResp)
-	require.EqualError(t, err, "Not found.")
+func TestGetDetailHandler_handle_success(t *testing.T) {
+	db := dbtest.Open(t)
+	defer db.Close()
+	conn := db.Open()
+	defer conn.Close()
+	ctx := context.Background()
 
-	// INSERT new account in db's accounts_kyc_status table; new account was approved after submitting kyc.
-	insertNewAccountQuery := `
-	INSERT INTO accounts_kyc_status (stellar_address, callback_id, email_address, kyc_submitted_at, approved_at, pending_at, rejected_at)
-	VALUES ($1, $2, $3, NOW(), NOW(), NOW(), NULL)
+	handler := GetDetailHandler{DB: conn}
+
+	// step 1: insert test data into database
+	const q = `
+		INSERT INTO accounts_kyc_status (stellar_address, callback_id, email_address, kyc_submitted_at, approved_at, pending_at, rejected_at, created_at)
+		VALUES
+			('rejected-address', 'rejected-callback-id', 'xrejected@test.com', $1::timestamptz, NULL, NULL, $1::timestamptz, $4::timestamptz),
+			('pending-address', 'pending-callback-id', 'ypending@test.com', $2::timestamptz, NULL, $2::timestamptz, NULL, $4::timestamptz),
+			('approved-address', 'approved-callback-id', 'approved@test.com', $3::timestamptz, $3::timestamptz, NULL, NULL, $4::timestamptz)
 	`
-	emailAddress := "email@approved.com"
-	_, err = h.DB.ExecContext(ctx, insertNewAccountQuery, accountKP.Address(), callbackID, emailAddress)
+	rejectedAt := time.Now().Add(-2 * time.Hour).UTC().Truncate(time.Second)
+	pendingAt := time.Now().Add(-1 * time.Hour).UTC().Truncate(time.Second)
+	approvedAt := time.Now().UTC().Truncate(time.Second)
+	createdAt := time.Now().UTC().Truncate(time.Second)
+	_, err := handler.DB.ExecContext(ctx, q, rejectedAt.Format(time.RFC3339), pendingAt.Format(time.RFC3339), approvedAt.Format(time.RFC3339), createdAt.Format(time.RFC3339))
 	require.NoError(t, err)
 
-	// Prepare and send getDetailRequest to an account in the db; using stellar address. TEST if response returns with account that was inserted in db; using stellar address.
-	in = getDetailRequest{StellarAddressOrCallbackID: accountKP.Address()}
-	kycGetResp, err = h.handle(ctx, in)
+	// step 2.1: retrieve "rejected" entry with stellar address
+	in := getDetailRequest{StellarAddressOrCallbackID: "rejected-address"}
+	kycGetResp, err := handler.handle(ctx, in)
 	require.NoError(t, err)
-	wantKycGetResponse := kycGetResponse{
-		StellarAddress: accountKP.Address(),
-		CallbackID:     callbackID,
-		EmailAddress:   emailAddress,
-		CreatedAt:      kycGetResp.CreatedAt,
-		KYCSubmittedAt: kycGetResp.KYCSubmittedAt,
-		ApprovedAt:     kycGetResp.ApprovedAt,
-		RejectedAt:     kycGetResp.RejectedAt,
-		PendingAt:      kycGetResp.PendingAt,
+	wantKYCGetResponse := kycGetResponse{
+		StellarAddress: "rejected-address",
+		CallbackID:     "rejected-callback-id",
+		EmailAddress:   "xrejected@test.com",
+		CreatedAt:      &createdAt,
+		KYCSubmittedAt: &rejectedAt,
+		RejectedAt:     &rejectedAt,
+		PendingAt:      nil,
+		ApprovedAt:     nil,
 	}
-	assert.Equal(t, &wantKycGetResponse, kycGetResp)
+	assert.Equal(t, &wantKYCGetResponse, kycGetResp)
 
-	// TEST if response timestamps are present or null.
-	require.NotNil(t, kycGetResp.CreatedAt)
-	require.NotNil(t, kycGetResp.KYCSubmittedAt)
-	require.NotNil(t, kycGetResp.ApprovedAt)
-	require.Nil(t, kycGetResp.RejectedAt)
-
-	/// Prepare and send getDetailRequest to an account in the db; using callbackID. TEST if response returns with account that was inserted in db; using callbackID.
-	in = getDetailRequest{StellarAddressOrCallbackID: callbackID}
-	kycGetResp, err = h.handle(ctx, in)
+	// step 2.2: retrieve "rejected" entry with callbackID
+	in = getDetailRequest{StellarAddressOrCallbackID: "rejected-callback-id"}
+	kycGetResp, err = handler.handle(ctx, in)
 	require.NoError(t, err)
-	assert.Equal(t, &wantKycGetResponse, kycGetResp)
+	assert.Equal(t, &wantKYCGetResponse, kycGetResp)
 
-	// TEST if response timestamps are present or null.
-	require.NotNil(t, kycGetResp.CreatedAt)
-	require.NotNil(t, kycGetResp.KYCSubmittedAt)
-	require.NotNil(t, kycGetResp.ApprovedAt)
-	require.Nil(t, kycGetResp.RejectedAt)
+	// step 3.1: retrieve "pending" entry with stellar address
+	in = getDetailRequest{StellarAddressOrCallbackID: "pending-address"}
+	kycGetResp, err = handler.handle(ctx, in)
+	require.NoError(t, err)
+	wantKYCGetResponse = kycGetResponse{
+		StellarAddress: "pending-address",
+		CallbackID:     "pending-callback-id",
+		EmailAddress:   "ypending@test.com",
+		CreatedAt:      &createdAt,
+		KYCSubmittedAt: &pendingAt,
+		RejectedAt:     nil,
+		PendingAt:      &pendingAt,
+		ApprovedAt:     nil,
+	}
+	assert.Equal(t, &wantKYCGetResponse, kycGetResp)
+
+	// step 3.2: retrieve "pending" entry with callbackID
+	in = getDetailRequest{StellarAddressOrCallbackID: "pending-callback-id"}
+	kycGetResp, err = handler.handle(ctx, in)
+	require.NoError(t, err)
+	assert.Equal(t, &wantKYCGetResponse, kycGetResp)
+
+	// step 4.1: retrieve "approved" entry with stellar address
+	in = getDetailRequest{StellarAddressOrCallbackID: "approved-address"}
+	kycGetResp, err = handler.handle(ctx, in)
+	require.NoError(t, err)
+	wantKYCGetResponse = kycGetResponse{
+		StellarAddress: "approved-address",
+		CallbackID:     "approved-callback-id",
+		EmailAddress:   "approved@test.com",
+		CreatedAt:      &createdAt,
+		KYCSubmittedAt: &approvedAt,
+		RejectedAt:     nil,
+		PendingAt:      nil,
+		ApprovedAt:     &approvedAt,
+	}
+	assert.Equal(t, &wantKYCGetResponse, kycGetResp)
+
+	// step 4.2: retrieve "approved" entry with callbackID
+	in = getDetailRequest{StellarAddressOrCallbackID: "approved-callback-id"}
+	kycGetResp, err = handler.handle(ctx, in)
+	require.NoError(t, err)
+	assert.Equal(t, &wantKYCGetResponse, kycGetResp)
 }
