@@ -135,11 +135,7 @@ func NewTest(t *testing.T, config Config) *Test {
 }
 
 func (i *Test) RestartHorizon() {
-	i.app.Close()
-
-	// wait for horizon to shut down completely
-	<-i.appStopped
-
+	i.StopHorizon()
 	i.startHorizon(
 		i.horizonConfig.CaptiveCoreBinaryPath,
 		i.horizonConfig.CaptiveCoreConfigPath,
@@ -330,6 +326,17 @@ func (i *Test) Client() *sdk.Client {
 // Horizon returns the horizon.App instance for the current integration test
 func (i *Test) Horizon() *horizon.App {
 	return i.app
+}
+
+// StopHorizon shuts down the running Horizon process
+func (i *Test) StopHorizon() {
+	i.app.CloseDB()
+	i.app.Close()
+
+	// Wait for Horizon to shut down completely.
+	<-i.appStopped
+
+	i.app = nil
 }
 
 // AdminPort returns Horizon admin port.

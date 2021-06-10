@@ -29,7 +29,7 @@ func TestCloseBeforeStart(t *testing.T) {
 
 	assert.NoError(t, runner.close())
 
+	// Directory no longer cleaned up on shutdown (perf. bump in v2.5.0)
 	_, err = os.Stat(tempDir)
-	assert.Error(t, err)
-	assert.True(t, os.IsNotExist(err))
+	assert.NoError(t, err)
 }
