@@ -3,18 +3,26 @@
 All notable changes to this project will be documented in this
 file.  This project adheres to [Semantic Versioning](http://semver.org/).
 
+
 ## Unreleased
-
-### New features
-
-* Add `SequenceNumber` function to `Transaction`.
-* Add `AddSignatureDecorated` function to `Transaction`.
 
 ### Bug Fix
 
-* `BaseFee` in `TransactionParams` when calling `NewTransaction` is allowed to be zero because the fee can be paid by wrapping a `Transaction` in a `FeeBumpTransaction` ([#3622](https://github.com/stellar/go/pull/3622))
+* Claimable balance IDs are now precomputed correctly (`Transaction.ClaimableBalanceID(int)`) even when the transaction's source account is a fully-muxed account ([#3678](https://github.com/stellar/go/pull/3678)).
 
-* Claimable balance IDs are now precomputed correctly (``Transaction.ClaimableBalanceID(int)`) even when the transaction's source account is a fully-muxed account ([#3678](https://github.com/stellar/go/pull/3678)).
+
+## [v7.1.0](https://github.com/stellar/go/releases/tag/horizonclient-v7.1.0) - 2021-06-01
+
+### New features
+
+* Add `Transaction.SequenceNumber()` helper function to make retrieving the underlying sequence number easier ([#3616](https://github.com/stellar/go/pull/3616)).
+
+* Add `Transaction.AddSignatureDecorated()` helper function to make attaching decorated signatures to existing transactions easier ([#3640](https://github.com/stellar/go/pull/3640)).
+
+### Bug Fix
+
+* `BaseFee` in `TransactionParams` when calling `NewTransaction` is allowed to be zero because the fee can be paid by wrapping a `Transaction` in a `FeeBumpTransaction` ([#3622](https://github.com/stellar/go/pull/3622)).
+
 
 ## [v7.0.0](https://github.com/stellar/go/releases/tag/horizonclient-v7.0.0) - 2021-05-15
 
