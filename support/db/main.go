@@ -34,6 +34,10 @@ var (
 	// ErrCancelled is an error returned by Session methods when request has
 	// been cancelled (ex. context cancelled).
 	ErrCancelled = errors.New("canceling statement due to user request")
+	// ErrConflictWithRecovery is an error returned by Session methods when
+	// read replica cancels the query due to conflict with about-to-be-applied
+	// WAL entries (https://www.postgresql.org/docs/current/hot-standby.html).
+	ErrConflictWithRecovery = errors.New("canceling statement due to conflict with recovery")
 )
 
 // Conn represents a connection to a single database.
