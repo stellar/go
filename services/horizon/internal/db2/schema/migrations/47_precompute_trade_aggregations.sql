@@ -71,10 +71,10 @@ CREATE OR REPLACE FUNCTION update_history_trades_compute_1m()
                 'base_volume', coalesce((h.values->key->>'base_volume')::bigint, 0)+new.base_amount,
                 'counter_volume', coalesce((h.values->key->>'counter_volume')::bigint, 0)+new.counter_amount,
                 'avg', (coalesce((h.values->key->>'counter_volume')::numeric, 0)+new.counter_amount)/(coalesce((h.values->key->>'base_volume')::numeric, 0)+new.base_amount),
-                'high_n', greatest((h.values->key->>'high_n')::bigint, new.price_n),
-                'high_d', greatest((h.values->key->>'high_d')::bigint, new.price_d),
-                'low_n', least((h.values->key->>'low_n')::bigint, new.price_n),
-                'low_d', least((h.values->key->>'low_d')::bigint, new.price_d),
+                'high_n', (max_price_agg(ARRAY[(h.values->key->>'high_n')::bigint, (h.values->key->>'high_d')::bigint], ARRAY[new.price_n, new.price_d]))[1],
+                'high_d', (max_price_agg(ARRAY[(h.values->key->>'high_n')::bigint, (h.values->key->>'high_d')::bigint], ARRAY[new.price_n, new.price_d]))[2],
+                'low_n', (min_price_agg(ARRAY[(h.values->key->>'low_n')::bigint, (h.values->key->>'low_d')::bigint], ARRAY[new.price_n, new.price_d]))[1],
+                'low_d', (min_price_agg(ARRAY[(h.values->key->>'low_n')::bigint, (h.values->key->>'low_d')::bigint], ARRAY[new.price_n, new.price_d]))[2],
                 -- TODO: How do we calculate these?
                 -- For now, assume we're always inserting in order.
                 'open_n', coalesce((h.values->key->>'open_n')::bigint, new.price_n),
