@@ -60,12 +60,12 @@ func NewSuccessTxApprovalResponse(tx, message string) *txApprovalResponse {
 }
 
 func NewPendingTxApprovalResponse(message string) *txApprovalResponse {
-	timestamp := int64(0)
+	timeout := int64(0)
 	return &txApprovalResponse{
 		Status:     sep8StatusPending,
 		Message:    message,
 		StatusCode: http.StatusOK,
-		Timeout:    &timestamp,
+		Timeout:    &timeout,
 	}
 }
 
