@@ -68,24 +68,12 @@ type stellarCoreRunner struct {
 	log *log.Entry
 }
 
-func createRandomHexString(n int) string {
-	hex := []rune("abcdef1234567890")
-	b := make([]rune, n)
-	for i := range b {
-		b[i] = hex[rand.Intn(len(hex))]
-	}
-	return string(b)
-}
-
 func newStellarCoreRunner(config CaptiveCoreConfig, mode stellarCoreRunnerMode) (*stellarCoreRunner, error) {
 	// Use the specified directory to store Captive Core's data:
 	//    https://github.com/stellar/go/issues/3437
-	//
-	// However, first we ALWAYS append something to the base storage path,
-	// because we will delete the directory entirely when Horizon stops. We also
-	// add a random suffix in order to ensure that there aren't naming
-	// conflicts.
-	fullStoragePath := path.Join(config.StoragePath, "captive-core-"+createRandomHexString(8))
+	// but be sure to re-use rather than replace it:
+	//    https://github.com/stellar/go/issues/3631
+	fullStoragePath := path.Join(config.StoragePath, "captive-core")
 
 	info, err := os.Stat(fullStoragePath)
 	if os.IsNotExist(err) {
@@ -95,8 +83,7 @@ func newStellarCoreRunner(config CaptiveCoreConfig, mode stellarCoreRunnerMode) 
 				"failed to create storage directory (%s)", fullStoragePath))
 		}
 	} else if !info.IsDir() {
-		return nil, errors.New(fmt.Sprintf(
-			"%s is not a directory", fullStoragePath))
+		return nil, errors.New(fmt.Sprintf("%s is not a directory", fullStoragePath))
 	} else if err != nil {
 		return nil, errors.Wrap(err, fmt.Sprintf(
 			"error accessing storage directory: %s", fullStoragePath))
@@ -266,7 +253,7 @@ func (r *stellarCoreRunner) catchup(from, to uint32) error {
 	cmd := r.createCmd(
 		"catchup", rangeArg,
 		"--metadata-output-stream", r.getPipeName(),
-		"--replay-in-memory",
+		"--in-memory",
 	)
 
 	var err error
@@ -397,5 +384,5 @@ func (r *stellarCoreRunner) close() error {
 		r.pipe.Reader.Close()
 	}
 
-	return os.RemoveAll(storagePath)
+	return nil
 }
