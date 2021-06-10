@@ -15,7 +15,7 @@ type txApprovalResponse struct {
 	ActionURL    string     `json:"action_url,omitempty"`
 	ActionMethod string     `json:"action_method,omitempty"`
 	ActionFields []string   `json:"action_fields,omitempty"`
-	Timestamp    *int64     `json:"timestamp,omitempty"`
+	Timeout      *int64     `json:"timeout,omitempty"`
 }
 
 func (t *txApprovalResponse) Render(w http.ResponseWriter) {
@@ -65,7 +65,7 @@ func NewPendingTxApprovalResponse(message string) *txApprovalResponse {
 		Status:     sep8StatusPending,
 		Message:    message,
 		StatusCode: http.StatusOK,
-		Timestamp:  &timestamp,
+		Timeout:    &timestamp,
 	}
 }
 

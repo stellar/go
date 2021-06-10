@@ -458,7 +458,7 @@ func TestAPI_txAprove_actionRequiredFlow(t *testing.T) {
 	wantBody = `{
 		"status": "pending",
 		"message": "Your account could not be verified as approved nor rejected and was marked as pending. You will need staff authorization for operations above 500.00 GOAT.",
-		"timestamp": 0
+		"timeout": 0
 	}`
 	require.JSONEq(t, wantBody, string(body))
 }
