@@ -77,7 +77,7 @@ func (h GetDetailHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (h GetDetailHandler) handle(ctx context.Context, in getDetailRequest) (*kycGetResponse, error) {
 	// Check if getDetailRequest StellarAddressOrCallbackID value is present.
 	if in.StellarAddressOrCallbackID == "" {
-		return nil, httperror.NewHTTPError(http.StatusBadRequest, "Missing stellar address or callbackID")
+		return nil, httperror.NewHTTPError(http.StatusBadRequest, "Missing stellar address or callbackID.")
 	}
 
 	// Prepare SELECT query return values.
