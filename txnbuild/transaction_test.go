@@ -4368,3 +4368,55 @@ func TestVerifyTxSignatureInvalid(t *testing.T) {
 		assert.Contains(t, err.Error(), "transaction not signed by GATBMIXTHXYKSUZSZUEJKACZ2OS2IYUWP2AIF3CA32PIDLJ67CH6Y5UY")
 	}
 }
+
+func TestClaimableBalanceIds(t *testing.T) {
+	aKeys := keypair.MustParseFull("SC4REDCJNPFAYW4SMH44KNGO5JRDQ72G4HE6GILRBSICI3M2IUOC7AAL")
+	// TODO: Replace with
+	// xdr.MuxedAccountFromAccountId(aKeys.Address(), uint64(1234)).Address()
+	// once https://github.com/stellar/go/pull/3677 gets in
+	aMuxed := "MDUJNO4HVE4YCQHV7LINPWVDQJFSAPHHUNSTT64YRBCCRZ5UYUXAWAAAAAAAAAAE2IUOE"
+	aMuxedAccount := NewSimpleAccount(aMuxed, int64(5894915628204034))
+	B := "GCACCFMIWJAHUUASSE2WC7V6VVDLYRLSJYZ3DJEXCG523FSHTNII6KOG"
+
+	// Create the operation and submit it in a transaction.
+	claimableBalanceEntry := CreateClaimableBalance{
+		Destinations: []Claimant{
+			NewClaimant(B, &UnconditionalPredicate),
+		},
+		Asset:  NativeAsset{},
+		Amount: "420",
+	}
+
+	// Build, sign, and submit the transaction
+	tx, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &aMuxedAccount,
+			IncrementSequenceNum: true,
+			BaseFee:              MinBaseFee,
+			Timebounds:           NewInfiniteTimeout(),
+			Operations:           []Operation{&claimableBalanceEntry},
+			EnableMuxedAccounts:  true,
+		},
+	)
+	assert.NoError(t, err)
+	tx, err = tx.Sign(network.TestNetworkPassphrase, aKeys)
+	assert.NoError(t, err)
+	calculatedBalanceId, err := tx.ClaimableBalanceID(0)
+	assert.NoError(t, err)
+
+	var txResult xdr.TransactionResult
+	resultXdr := "AAAAAAAAAGQAAAAAAAAAAQAAAAAAAAAOAAAAAAAAAABw2JZZYIt4n/WXKcnDow3mbTBMPrOnldetgvGUlpTSEQAAAAA="
+	err = xdr.SafeUnmarshalBase64(resultXdr, &txResult)
+	assert.NoError(t, err)
+
+	results, ok := txResult.OperationResults()
+	assert.True(t, ok)
+
+	// We look at the first result since our first (and only) operation in the
+	// transaction was the CreateClaimableBalanceOp.
+	operationResult := results[0].MustTr().CreateClaimableBalanceResult
+	actualBalanceId, err := xdr.MarshalHex(operationResult.BalanceId)
+	assert.NoError(t, err)
+
+	assert.Equal(t, actualBalanceId, calculatedBalanceId)
+}

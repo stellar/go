@@ -364,10 +364,14 @@ func (t *Transaction) ClaimableBalanceID(operationIndex int) (string, error) {
 
 	// We mimic the relevant code from Stellar Core
 	// https://github.com/stellar/stellar-core/blob/9f3cc04e6ec02c38974c42545a86cdc79809252b/src/test/TestAccount.cpp#L285
+	//
+	// Note that the source account must be *unmuxed* for this to work.
+	muxedAccountId := xdr.MustMuxedAddress(t.sourceAccount.AccountID).ToAccountId()
+	gAddress := muxedAccountId.Address()
 	operationId := xdr.OperationId{
 		Type: xdr.EnvelopeTypeEnvelopeTypeOpId,
 		Id: &xdr.OperationIdId{
-			SourceAccount: xdr.MustMuxedAddress(t.sourceAccount.AccountID),
+			SourceAccount: xdr.MustMuxedAddress(gAddress),
 			SeqNum:        xdr.SequenceNumber(t.sourceAccount.Sequence),
 			OpNum:         xdr.Uint32(operationIndex),
 		},
