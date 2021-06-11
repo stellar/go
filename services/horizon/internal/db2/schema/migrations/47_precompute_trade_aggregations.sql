@@ -38,17 +38,127 @@ CREATE TABLE public.history_trades_60000 (
   UNIQUE(year, month, base_asset_id, counter_asset_id)
 );
 
+CREATE OR REPLACE FUNCTION to_millis(t timestamp without time zone, trun numeric DEFAULT 1)
+  RETURNS bigint AS $$
+  BEGIN
+    RETURN div(cast((extract(epoch from t) * 1000 ) as bigint), trun)*trun;
+  END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION to_millis(t timestamp with time zone, trun numeric DEFAULT 1)
+  RETURNS bigint AS $$
+  BEGIN
+    RETURN to_millis(t::timestamp, trun);
+  END;
+$$ LANGUAGE plpgsql;
+
+
+-- +migrate StatementBegin
+CREATE OR REPLACE FUNCTION history_trades_60000_rebuild_buckets(base bigint, counter bigint, start_time timestamp without time zone, end_time timestamp without time zone)
+  RETURNS boolean AS $$
+  DECLARE
+    tstart bigint := to_millis(start_time, 60000);
+    tend bigint := to_millis(end_time, 60000)+60000;
+  BEGIN
+    WITH results as (
+      SELECT
+          timestamp::text as key,
+          to_timestamp(timestamp/1000) as timestamp,
+          jsonb_build_object(
+            'timestamp', timestamp,
+            'count', count(*),
+            'base_volume', sum(base_amount),
+            'counter_volume', sum(counter_amount),
+            'avg', sum(counter_amount)/sum(base_amount),
+            'high_n', (max_price(price))[1],
+            'high_d', (max_price(price))[2],
+            'low_n', (min_price(price))[1],
+            'low_d', (min_price(price))[2],
+            'open_ledger_seq', first(history_operation_id),
+            'open_n', (first(price))[1],
+            'open_d', (first(price))[2],
+            'closed_ledger_seq', last(history_operation_id),
+            'close_n', (last(price))[1],
+            'close_d', (last(price))[2]
+          ) as value
+        FROM
+          (SELECT
+              to_millis(ledger_closed_at, 60000) as timestamp,
+              history_operation_id,
+              "order",
+              base_asset_id,
+              base_amount,
+              counter_asset_id,
+              counter_amount,
+              ARRAY[price_n, price_d] as price
+            FROM history_trades
+            WHERE base_asset_id = base
+              AND counter_asset_id = counter
+            ORDER BY history_operation_id , "order"
+          ) AS htrd
+          WHERE timestamp >= tstart
+            AND timestamp < tend
+        GROUP BY timestamp
+    )
+    INSERT INTO public.history_trades_60000 as h
+      (year, month, base_asset_id, counter_asset_id, values)
+      (SELECT 
+         extract(year from timestamp) as year,
+         extract(month from timestamp) as month,
+         base as base_asset_id,
+         counter as counter_asset_id,
+         jsonb_object_agg(r.key, r.value) as values
+         FROM results r
+         GROUP BY year, month, base_asset_id, counter_asset_id
+      )
+      ON CONFLICT (year, month, base_asset_id, counter_asset_id)
+        DO UPDATE SET values = h.values || EXCLUDED.values;
+    RETURN true;
+  END;
+$$ LANGUAGE plpgsql;
+-- +migrate StatementEnd
+
+-- +migrate StatementBegin
+CREATE OR REPLACE FUNCTION history_trades_60000_rebuild_buckets(base bigint, counter bigint, start_time timestamp with time zone, end_time timestamp with time zone)
+  RETURNS boolean AS $$
+  BEGIN
+    RETURN history_trades_60000_rebuild_buckets(base, counter, start_time::timestamp, end_time::timestamp);
+  END;
+$$ LANGUAGE plpgsql;
+-- +migrate StatementEnd
+
+-- +migrate StatementBegin
+CREATE OR REPLACE FUNCTION history_trades_60000_rebuild_buckets(base bigint, counter bigint, t timestamp with time zone)
+  RETURNS boolean AS $$
+  BEGIN
+    RETURN history_trades_60000_rebuild_buckets(base, counter, t::timestamp, t::timestamp);
+  END;
+$$ LANGUAGE plpgsql;
+-- +migrate StatementEnd
+
+-- +migrate StatementBegin
+CREATE OR REPLACE FUNCTION history_trades_60000_rebuild_buckets(base bigint, counter bigint, t timestamp without time zone)
+  RETURNS boolean AS $$
+  BEGIN
+    RETURN history_trades_60000_rebuild_buckets(base, counter, t, t);
+  END;
+$$ LANGUAGE plpgsql;
+-- +migrate StatementEnd
+
+
+
+
 -- Add the trigger to keep it up to date
 -- TODO: This should probably handle updates, not just inserts.
 -- TODO: This shouldn't assume we are always inserting in order.
 -- +migrate StatementBegin
-CREATE OR REPLACE FUNCTION update_history_trades_compute_1m()
+CREATE OR REPLACE FUNCTION history_trades_60000_insert()
   RETURNS trigger AS $$
   DECLARE
     timestamp bigint;
     key text;
   BEGIN
-    timestamp = div(cast((extract(epoch from NEW.ledger_closed_at) * 1000 ) as bigint), 60000)*60000;
+    timestamp = to_millis(NEW.ledger_closed_at, 60000);
     key = cast(timestamp as text);
     -- make sure we have the row. Means we can just update later. simpler..
     INSERT INTO public.history_trades_60000
@@ -118,18 +228,35 @@ CREATE OR REPLACE FUNCTION update_history_trades_compute_1m()
 $$ LANGUAGE plpgsql;
 -- +migrate StatementEnd
 
+-- +migrate StatementBegin
+CREATE OR REPLACE FUNCTION history_trades_60000_truncate()
+  RETURNS trigger AS $$
+  BEGIN
+    TRUNCATE TABLE history_trades_60000;
+  END;
+$$ LANGUAGE plpgsql;
+-- +migrate StatementEnd
+
 -- Wire up the trigger on inserts.
-CREATE TRIGGER htrd_compute_1m
+CREATE TRIGGER htrd_60000_insert
   AFTER INSERT ON history_trades
   FOR EACH ROW
-  EXECUTE FUNCTION update_history_trades_compute_1m();
+  EXECUTE FUNCTION history_trades_60000_insert();
+
+CREATE TRIGGER htrd_60000_truncate
+  AFTER TRUNCATE ON history_trades
+  FOR EACH STATEMENT
+  EXECUTE FUNCTION history_trades_60000_truncate();
+
+
+-- TODO: Handle truncate
 
 -- Backfill the table with existing data. This takes like ~10-15 minutes,
 -- maybe.
 -- TODO: Confirm how long this takes.
 WITH htrd AS (
   SELECT
-    div((cast((extract(epoch from h.ledger_closed_at) * 1000 ) as bigint) - 0), 60000)*60000 + 0 as timestamp,
+    to_millis(h.ledger_closed_at, 60000) as timestamp
     h.history_operation_id,
     h."order",
     h.base_asset_id,
@@ -195,6 +322,10 @@ WITH htrd AS (
 
 -- +migrate Down
 
-DROP TRIGGER htrd_compute_1m on history_trades;
-DROP FUNCTION update_history_trades_compute_1m;
+DROP TRIGGER htrd_60000_insert on history_trades;
+DROP FUNCTION history_trades_60000_insert;
+DROP TRIGGER htrd_60000_truncate on history_trades;
+DROP FUNCTION history_trades_60000_truncate;
+DROP FUNCTION history_trades_60000_rebuild_buckets(bigint, bigint, timestamp without time zone, timestamp without time zone);
+DROP FUNCTION history_trades_60000_rebuild_buckets(bigint, bigint, timestamp with time zone, timestamp with time zone);
 DROP TABLE history_trades_60000;
