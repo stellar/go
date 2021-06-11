@@ -249,6 +249,11 @@ func (r *stellarCoreRunner) catchup(from, to uint32) error {
 		return errors.Wrap(err, "error waiting for `stellar-core new-db` subprocess")
 	}
 
+	binaryWatcher, err := newFileWatcher(r)
+	if err != nil {
+		return errors.Wrap(err, "could not create captive core binary watcher")
+	}
+
 	rangeArg := fmt.Sprintf("%d/%d", to, to-from+1)
 	cmd := r.createCmd(
 		"catchup", rangeArg,
@@ -256,7 +261,6 @@ func (r *stellarCoreRunner) catchup(from, to uint32) error {
 		"--in-memory",
 	)
 
-	var err error
 	r.pipe, err = r.start(cmd)
 	if err != nil {
 		r.closeLogLineWriters(cmd)
@@ -266,6 +270,7 @@ func (r *stellarCoreRunner) catchup(from, to uint32) error {
 	r.started = true
 	r.ledgerBuffer = newBufferedLedgerMetaReader(r.pipe.Reader)
 	go r.ledgerBuffer.start()
+	go binaryWatcher.loop()
 	r.wg.Add(1)
 	go r.handleExit(cmd)
 
@@ -286,6 +291,11 @@ func (r *stellarCoreRunner) runFrom(from uint32, hash string) error {
 		return errors.New("runner already started")
 	}
 
+	binaryWatcher, err := newFileWatcher(r)
+	if err != nil {
+		return errors.Wrap(err, "could not create captive core binary watcher")
+	}
+
 	cmd := r.createCmd(
 		"run",
 		"--in-memory",
@@ -294,7 +304,6 @@ func (r *stellarCoreRunner) runFrom(from uint32, hash string) error {
 		"--metadata-output-stream", r.getPipeName(),
 	)
 
-	var err error
 	r.pipe, err = r.start(cmd)
 	if err != nil {
 		r.closeLogLineWriters(cmd)
@@ -304,6 +313,7 @@ func (r *stellarCoreRunner) runFrom(from uint32, hash string) error {
 	r.started = true
 	r.ledgerBuffer = newBufferedLedgerMetaReader(r.pipe.Reader)
 	go r.ledgerBuffer.start()
+	go binaryWatcher.loop()
 	r.wg.Add(1)
 	go r.handleExit(cmd)
 

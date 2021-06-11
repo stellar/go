@@ -11,6 +11,7 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 * Performance improvement: Captive Core now reuses bucket files whenever it finds existing ones in the corresponding `--captive-core-storage-path` (introduced in [v2.1.0](#v2.1.0) rather than generating a one-time temporary sub-directory ([](https://github.com/stellar/go/pull/XXXX)). **This feature requires Stellar-Core version 17.1 or later.**
 
+* Horizon monitors captive-core on disk, and restarts captive-core if it detects a change (e.g. a more recent file timestamp for the captive-core binary). ([3687](https://github.com/stellar/go/pull/3687)).
 
 ## v2.4.1
 
