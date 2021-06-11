@@ -142,15 +142,30 @@ func (q *TradeAggregationsQ) GetSql() sq.SelectBuilder {
 	var orderPreserved bool
 	orderPreserved, q.baseAssetID, q.counterAssetID = getCanonicalAssetOrder(q.baseAssetID, q.counterAssetID)
 
-	var query sq.SelectBuilder
+	var bucketSQL sq.SelectBuilder
 	if orderPreserved {
-		query = bucketTrades(q.resolution, q.offset, q.startTime, q.endTime)
+		bucketSQL = bucketTrades(q.resolution, q.offset)
 	} else {
-		query = reverseBucketTrades(q.resolution, q.offset, q.startTime, q.endTime)
+		bucketSQL = reverseBucketTrades(q.resolution, q.offset)
 	}
 
-	return query.
-		Where(sq.Eq{"base_asset_id": q.baseAssetID, "counter_asset_id": q.counterAssetID}).
+	bucketSQL = bucketSQL.From("history_trades_60000").
+		Where(sq.Eq{"base_asset_id": q.baseAssetID, "counter_asset_id": q.counterAssetID})
+
+	//adjust time range and apply time filters
+	bucketSQL = bucketSQL.Where(sq.GtOrEq{"timestamp": q.startTime})
+	if !q.endTime.IsNil() {
+		bucketSQL = bucketSQL.Where(sq.Lt{"timestamp": q.endTime})
+	}
+
+	if q.resolution != 60000 {
+		//ensure open/close order for cases when multiple trades occur in the same ledger
+		bucketSQL = bucketSQL.OrderBy("timestamp ASC", "open_ledger_seq ASC")
+		// Do on-the-fly aggregation for higher resolutions.
+		bucketSQL = aggregate(bucketSQL)
+	}
+
+	return bucketSQL.
 		Limit(q.pagingParams.Limit).
 		OrderBy("timestamp " + q.pagingParams.Order)
 }
@@ -159,90 +174,54 @@ func (q *TradeAggregationsQ) GetSql() sq.SelectBuilder {
 // and the offset. Given a time t, it gives it a timestamp defined by
 // f(t) = ((t - offset)/resolution)*resolution + offset.
 func formatBucketTimestampSelect(resolution int64, offset int64) string {
-	return fmt.Sprintf("div((j.value->>'timestamp'::bigint - %d), %d)*%d + %d as bucket", offset, resolution, resolution, offset)
+	return fmt.Sprintf("((timestamp - %d) / %d) * %d + %d as timestamp", offset, resolution, resolution, offset)
 }
 
 // bucketTrades generates a select statement to filter rows from the `history_trades` table in
 // a compact form, with a timestamp rounded to resolution and reversed base/counter.
-func bucketTrades(resolution int64, offset int64, startTime, endTime strtime.Millis) sq.SelectBuilder {
-	// TODO: Handle offsets here for year and month
-	query := sq.Select(
+func bucketTrades(resolution int64, offset int64) sq.SelectBuilder {
+	return sq.Select(
+		formatBucketTimestampSelect(resolution, offset),
 		"base_asset_id",
 		"counter_asset_id",
-		formatBucketTimestampSelect(resolution, offset),
-		"(j.value->>'timestamp')::bigint as timestamp",
-		"(j.value->>'count')::integer as count",
-		"(j.value->>'base_volume')::bigint as base_volume",
-		"(j.value->>'counter_volume')::bigint as counter_volume",
-		"(j.value->>'high_n')::bigint as high_n",
-		"(j.value->>'high_d')::bigint as high_d",
-		"(j.value->>'low_n')::bigint as low_n",
-		"(j.value->>'low_d')::bigint as low_d",
-		"(j.value->>'open_n')::bigint as open_n",
-		"(j.value->>'open_d')::bigint as open_d",
-		"(j.value->>'close_n')::bigint as close_n",
-		"(j.value->>'close_d')::bigint as close_d",
-	).From("history_trades_60000 h, jsonb_each(h.values) j").OrderBy("timestamp ASC")
-
-	//adjust time range and apply time filters
-	query = query.Where(sq.GtOrEq{"h.year": startTime.ToTime().Year(), "h.month": startTime.ToTime().Month()})
-	query = query.Where(sq.GtOrEq{"j.bucket": startTime})
-	if !endTime.IsNil() {
-		query = query.Where(sq.LtOrEq{"h.year": endTime.ToTime().Year(), "h.month": endTime.ToTime().Month()})
-		query = query.Where(sq.Lt{"j.bucket": endTime})
-	}
-
-	if resolution == 60000 {
-		return query
-	}
-
-	// Do on-the-fly aggregation for higher resolutions.
-	// TODO: Handle offset stuff here.
-	return aggregate(query)
+		"count",
+		"base_volume",
+		"counter_volume",
+		"high_n",
+		"high_d",
+		"low_n",
+		"low_d",
+		"open_n",
+		"open_d",
+		"close_n",
+		"close_d",
+	)
 }
 
 // reverseBucketTrades generates a select statement to filter rows from the `history_trades` table in
 // a compact form, with a timestamp rounded to resolution and reversed base/counter.
-func reverseBucketTrades(resolution int64, offset int64, startTime, endTime strtime.Millis) sq.SelectBuilder {
-	// TODO: Handle offsets here for year and month
-	query := sq.Select(
+func reverseBucketTrades(resolution int64, offset int64) sq.SelectBuilder {
+	return sq.Select(
+		formatBucketTimestampSelect(resolution, offset),
 		"base_asset_id as counter_asset_id",
 		"counter_asset_id as base_asset_id",
-		formatBucketTimestampSelect(resolution, offset),
-		"(j.value->>'timestamp')::bigint as timestamp",
-		"(j.value->>'count')::integer as count",
-		"(j.value->>'base_volume')::bigint as counter_volume",
-		"(j.value->>'counter_volume')::bigint as base_volume",
-		"(j.value->>'high_n')::bigint as high_d",
-		"(j.value->>'high_d')::bigint as high_n",
-		"(j.value->>'low_n')::bigint as low_d",
-		"(j.value->>'low_d')::bigint as low_n",
-		"(j.value->>'open_n')::bigint as open_d",
-		"(j.value->>'open_d')::bigint as open_n",
-		"(j.value->>'close_n')::bigint as close_d",
-		"(j.value->>'close_d')::bigint as close_n",
-	).From("history_trades_60000 h, jsonb_each(h.values) j").OrderBy("timestamp ASC")
-
-	//adjust time range and apply time filters
-	query = query.Where(sq.GtOrEq{"h.year": startTime.ToTime().Year(), "h.month": startTime.ToTime().Month()})
-	query = query.Where(sq.GtOrEq{"j.bucket": startTime})
-	if !endTime.IsNil() {
-		query = query.Where(sq.LtOrEq{"h.year": endTime.ToTime().Year(), "h.month": endTime.ToTime().Month()})
-		query = query.Where(sq.Lt{"j.bucket": endTime})
-	}
-
-	if resolution == 60000 {
-		return query
-	}
-
-	// Do on-the-fly aggregation for higher resolutions.
-	// TODO: Handle offset stuff here.
-	return aggregate(query)
+		"count",
+		"base_volume as counter_volume",
+		"counter_volume as base_volume",
+		"high_n as high_d",
+		"high_d as high_n",
+		"low_n as low_d",
+		"low_d as low_n",
+		"open_n as open_d",
+		"open_d as open_n",
+		"close_n as close_d",
+		"close_d as close_n",
+	)
 }
 
 func aggregate(query sq.SelectBuilder) sq.SelectBuilder {
 	return sq.Select(
-		"bucket as timestamp",
+		"timestamp",
 		"sum(\"count\") as count",
 		"sum(base_volume) as base_volume",
 		"sum(counter_volume) as counter_volume",
@@ -255,5 +234,5 @@ func aggregate(query sq.SelectBuilder) sq.SelectBuilder {
 		"(first(ARRAY[open_n, open_d]))[2] as open_d",
 		"(last(ARRAY[close_n, close_d]))[1] as close_n",
 		"(last(ARRAY[close_n, close_d]))[2] as close_d",
-	).FromSelect(query, "htrd").GroupBy("bucket")
+	).FromSelect(query, "htrd").GroupBy("timestamp")
 }
