@@ -147,7 +147,7 @@ commands:
     parameters:
       core-version:
         type: string
-        default: "17.0.0-568.ea5878e.xenial~buildtests"
+        default: "17.1.0-584.fbc0325.xenial"
     steps:
       - run:
           name: Install Stellar Core <<#parameters.core-version>> (version <<parameters.core-version>>)<</parameters.core-version>>
@@ -446,7 +446,6 @@ jobs:
       - run:
           name: Run Horizon integration tests <<#parameters.enable-captive-core>>(With captive core)<</parameters.enable-captive-core>>
           # Currently all integration tests are in a single directory.
-          # Pulling the image helps with test running time
           command: |
             cd ~/go/src/github.com/stellar/go
             go test -timeout 25m -v ./services/horizon/internal/integration/...
