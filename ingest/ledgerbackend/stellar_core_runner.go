@@ -266,6 +266,13 @@ func (r *stellarCoreRunner) catchup(from, to uint32) error {
 	r.started = true
 	r.ledgerBuffer = newBufferedLedgerMetaReader(r.pipe.Reader)
 	go r.ledgerBuffer.start()
+
+	if binaryWatcher, err := newFileWatcher(r); err != nil {
+		r.log.Warnf("could not create captive core binary watcher: %v", err)
+	} else {
+		go binaryWatcher.loop()
+	}
+
 	r.wg.Add(1)
 	go r.handleExit(cmd)
 
@@ -304,6 +311,13 @@ func (r *stellarCoreRunner) runFrom(from uint32, hash string) error {
 	r.started = true
 	r.ledgerBuffer = newBufferedLedgerMetaReader(r.pipe.Reader)
 	go r.ledgerBuffer.start()
+
+	if binaryWatcher, err := newFileWatcher(r); err != nil {
+		r.log.Warnf("could not create captive core binary watcher: %v", err)
+	} else {
+		go binaryWatcher.loop()
+	}
+
 	r.wg.Add(1)
 	go r.handleExit(cmd)
 
