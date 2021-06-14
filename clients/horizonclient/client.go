@@ -26,8 +26,8 @@ import (
 
 // sendRequest builds the URL for the given horizon request and sends the url to a horizon server
 func (c *Client) sendRequest(hr HorizonRequest, resp interface{}) (err error) {
-	c.HorizonURL = c.fixHorizonURL()
-	req, err := hr.HTTPRequest(c.HorizonURL)
+	horizonURL := c.fixHorizonURL()
+	req, err := hr.HTTPRequest(horizonURL)
 	if err != nil {
 		return err
 	}
