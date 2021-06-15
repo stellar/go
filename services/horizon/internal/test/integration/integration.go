@@ -226,6 +226,10 @@ of accounts, subscribe to event streams, and more.`,
 		// due to ARTIFICIALLY_ACCELERATE_TIME_FOR_TESTING
 		"--checkpoint-frequency",
 		"8",
+
+		// disable rate limiting
+		"--per-hour-rate-limit",
+		"0",
 	}
 
 	// initialize core arguments
