@@ -12,6 +12,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -80,7 +81,7 @@ func createRandomHexString(n int) string {
 
 func newStellarCoreRunner(config CaptiveCoreConfig, mode stellarCoreRunnerMode) (*stellarCoreRunner, error) {
 	var fullStoragePath string
-	if !isWindows {
+	if runtime.GOOS != "windows" {
 		// Use the specified directory to store Captive Core's data:
 		//    https://github.com/stellar/go/issues/3437
 		// but be sure to re-use rather than replace it:
@@ -295,7 +296,7 @@ func (r *stellarCoreRunner) catchup(from, to uint32) error {
 	}
 
 	r.wg.Add(1)
-	go r.handleExit(cmd)
+	go r.handleExit()
 
 	return nil
 }
@@ -340,18 +341,13 @@ func (r *stellarCoreRunner) runFrom(from uint32, hash string) error {
 	}
 
 	r.wg.Add(1)
-	go r.handleExit(r.cmd)
+	go r.handleExit()
 
 	return nil
 }
 
-func (r *stellarCoreRunner) handleExit(cmd *exec.Cmd) {
+func (r *stellarCoreRunner) handleExit() {
 	defer r.wg.Done()
-	exitErr := cmd.Wait()
-	r.closeLogLineWriters(cmd)
-
-	r.lock.Lock()
-	defer r.lock.Unlock()
 
 	// By closing the pipe file we will send an EOF to the pipe reader used by ledgerBuffer.
 	// We need to do this operation with the lock to ensure that the processExitError is available
@@ -360,8 +356,63 @@ func (r *stellarCoreRunner) handleExit(cmd *exec.Cmd) {
 		r.log.WithError(closeErr).Warn("could not close captive core write pipe")
 	}
 
+	/////////////////////////////
+	// Pattern recommended in:
+	// https://github.com/golang/go/blob/cacac8bdc5c93e7bc71df71981fdf32dded017bf/src/cmd/go/script_test.go#L1091-L1098
+	var interrupt os.Signal = os.Interrupt
+	if runtime.GOOS == "windows" {
+		// Per https://golang.org/pkg/os/#Signal, “Interrupt is not implemented on
+		// Windows; using it with os.Process.Signal will return an error.”
+		// Fall back to Kill instead.
+		interrupt = os.Kill
+	}
+
+	errc := make(chan error)
+	go func() {
+		select {
+		case errc <- nil:
+			return
+		case <-r.ctx.Done():
+		}
+
+		err := r.cmd.Process.Signal(interrupt)
+		if err == nil {
+			err = r.ctx.Err() // Report ctx.Err() as the reason we interrupted.
+		} else if err.Error() == "os: process already finished" {
+			errc <- nil
+			return
+		}
+
+		timer := time.NewTimer(10 * time.Second)
+		select {
+		// Report ctx.Err() as the reason we interrupted the process...
+		case errc <- r.ctx.Err():
+			timer.Stop()
+			return
+		// ...but after killDelay has elapsed, fall back to a stronger signal.
+		case <-timer.C:
+		}
+
+		// Wait still hasn't returned.
+		// Kill the process harder to make sure that it exits.
+		//
+		// Ignore any error: if cmd.Process has already terminated, we still
+		// want to send ctx.Err() (or the error from the Interrupt call)
+		// to properly attribute the signal that may have terminated it.
+		_ = r.cmd.Process.Kill()
+
+		errc <- err
+	}()
+
+	waitErr := r.cmd.Wait()
+	r.closeLogLineWriters(r.cmd)
+	r.lock.Lock()
+	defer r.lock.Unlock()
 	r.processExited = true
-	r.processExitError = exitErr
+	if interruptErr := <-errc; interruptErr != nil {
+		r.processExitError = interruptErr
+	}
+	r.processExitError = waitErr
 }
 
 // closeLogLineWriters closes the go routines created by getLogLineWriter()
@@ -406,18 +457,6 @@ func (r *stellarCoreRunner) close() error {
 	// only reap captive core sub process and related go routines if we've started
 	// otherwise, just cleanup the temp dir
 	if started {
-		err := r.cmd.Process.Signal(os.Interrupt)
-		if err != nil {
-			// On Windows sending os.Interrupt will result in an error, docs:
-			//
-			// > On Windows, sending os.Interrupt to a process with
-			// > os.Process.Signal is not implemented; it will return an error
-			// > instead of sending a signal.
-			//
-			// In such case we Kill() the process.
-			r.cmd.Process.Kill()
-		}
-
 		// wait for the stellar core process to terminate
 		r.wg.Wait()
 
@@ -431,7 +470,7 @@ func (r *stellarCoreRunner) close() error {
 		r.pipe.Reader.Close()
 	}
 
-	if !isWindows {
+	if runtime.GOOS != "windows" {
 		return nil
 	} else {
 		// It's impossible to send SIGINT on Windows so buckets can become

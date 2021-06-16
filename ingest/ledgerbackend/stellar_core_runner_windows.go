@@ -9,8 +9,6 @@ import (
 	"github.com/Microsoft/go-winio"
 )
 
-const isWindows = true
-
 // Windows-specific methods for the stellarCoreRunner type.
 
 func (c *stellarCoreRunner) getPipeName() string {
