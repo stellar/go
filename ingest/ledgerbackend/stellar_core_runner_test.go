@@ -10,7 +10,7 @@ import (
 	"github.com/stellar/go/support/log"
 )
 
-func TestCloseBeforeStart(t *testing.T) {
+func TestCloseBeforeStartOffline(t *testing.T) {
 	captiveCoreToml, err := NewCaptiveCoreToml(CaptiveCoreTomlParams{})
 	assert.NoError(t, err)
 
@@ -20,6 +20,33 @@ func TestCloseBeforeStart(t *testing.T) {
 		Context:            context.Background(),
 		Toml:               captiveCoreToml,
 	}, stellarCoreRunnerModeOffline)
+	assert.NoError(t, err)
+
+	tempDir := runner.storagePath
+	info, err := os.Stat(tempDir)
+	assert.NoError(t, err)
+	assert.True(t, info.IsDir())
+
+	assert.NoError(t, runner.close())
+
+	// Directory no longer cleaned up on shutdown (perf. bump in v2.5.0)
+	_, err = os.Stat(tempDir)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "no such file or directory")
+}
+
+func TestCloseBeforeStartOnline(t *testing.T) {
+	captiveCoreToml, err := NewCaptiveCoreToml(CaptiveCoreTomlParams{})
+	assert.NoError(t, err)
+
+	captiveCoreToml.addTestQuorum()
+
+	runner, err := newStellarCoreRunner(CaptiveCoreConfig{
+		HistoryArchiveURLs: []string{"http://localhost"},
+		Log:                log.New(),
+		Context:            context.Background(),
+		Toml:               captiveCoreToml,
+	}, stellarCoreRunnerModeOnline)
 	assert.NoError(t, err)
 
 	tempDir := runner.storagePath

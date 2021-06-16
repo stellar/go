@@ -1,10 +1,11 @@
 package ledgerbackend
 
 import (
-	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"path/filepath"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func newUint(v uint) *uint {

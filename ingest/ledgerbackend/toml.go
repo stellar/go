@@ -175,6 +175,17 @@ func unflattenTables(text string, tablePlaceHolders *placeholders) string {
 	})
 }
 
+// addTestQuorum adds test quorum sets to pass QuorumSetIsConfigured() check
+// in tests.
+func (c *CaptiveCoreToml) addTestQuorum() {
+	c.captiveCoreTomlValues.QuorumSetEntries = map[string]QuorumSet{
+		"a": {
+			ThresholdPercent: 100,
+			Validators:       []string{"ABC"},
+		},
+	}
+}
+
 // Marshal serializes the CaptiveCoreToml into a toml document.
 func (c *CaptiveCoreToml) Marshal() ([]byte, error) {
 	var sb strings.Builder
