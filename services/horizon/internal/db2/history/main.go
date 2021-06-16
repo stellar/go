@@ -237,7 +237,6 @@ type IngestionQ interface {
 	QSigners
 	//QTrades
 	NewTradeBatchInsertBuilder(maxBatchSize int) TradeBatchInsertBuilder
-	RebuildTradeAggregationBucket(ctx context.Context, ledger uint32) error
 	CreateAssets(ctx context.Context, assets []xdr.Asset, batchSize int) (map[string]Asset, error)
 	QTransactions
 	QTrustLines

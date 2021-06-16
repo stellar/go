@@ -27,11 +27,6 @@ func (m *MockQTrades) NewTradeBatchInsertBuilder(maxBatchSize int) TradeBatchIns
 	return a.Get(0).(TradeBatchInsertBuilder)
 }
 
-func (m *MockQTrades) RebuildTradeAggregationBucket(ctx context.Context, ledger uint32) error {
-	a := m.Called(ctx, ledger)
-	return a.Error(0)
-}
-
 type MockTradeBatchInsertBuilder struct {
 	mock.Mock
 }
