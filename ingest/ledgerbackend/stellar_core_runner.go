@@ -59,6 +59,7 @@ type stellarCoreRunner struct {
 	cancel       context.CancelFunc
 	ledgerBuffer *bufferedLedgerMetaReader
 	pipe         pipe
+	mode         stellarCoreRunnerMode
 
 	lock             sync.Mutex
 	processExited    bool
@@ -81,7 +82,7 @@ func createRandomHexString(n int) string {
 
 func newStellarCoreRunner(config CaptiveCoreConfig, mode stellarCoreRunnerMode) (*stellarCoreRunner, error) {
 	var fullStoragePath string
-	if runtime.GOOS != "windows" {
+	if runtime.GOOS != "windows" && mode != stellarCoreRunnerModeOffline {
 		// Use the specified directory to store Captive Core's data:
 		//    https://github.com/stellar/go/issues/3437
 		// but be sure to re-use rather than replace it:
@@ -94,6 +95,9 @@ func newStellarCoreRunner(config CaptiveCoreConfig, mode stellarCoreRunnerMode) 
 		// conflicts.
 		// This is done because it's impossible to send SIGINT on Windows so
 		// buckets can become corrupted.
+		// We also want to use random directories in offline mode (reingestion)
+		// because it's possible it's running multiple Stellar-Cores on a single
+		// machine.
 		fullStoragePath = path.Join(config.StoragePath, "captive-core-"+createRandomHexString(8))
 	}
 
@@ -118,6 +122,7 @@ func newStellarCoreRunner(config CaptiveCoreConfig, mode stellarCoreRunnerMode) 
 		ctx:            ctx,
 		cancel:         cancel,
 		storagePath:    fullStoragePath,
+		mode:           mode,
 		nonce: fmt.Sprintf(
 			"captive-stellar-core-%x",
 			rand.New(rand.NewSource(time.Now().UnixNano())).Uint64(),
@@ -473,11 +478,13 @@ func (r *stellarCoreRunner) close() error {
 	}
 
 	if runtime.GOOS == "windows" ||
-		(r.processExitError != nil && r.processExitError != context.Canceled) {
+		(r.processExitError != nil && r.processExitError != context.Canceled) ||
+		r.mode == stellarCoreRunnerModeOffline {
 		// It's impossible to send SIGINT on Windows so buckets can become
 		// corrupted. If we can't reuse it, then remove it.
 		// We also remove the storage path if there was an error terminating the
 		// process (files can be corrupted).
+		// We remove all files when reingesting to save disk space.
 		return os.RemoveAll(storagePath)
 	}
 
