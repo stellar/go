@@ -182,8 +182,6 @@ func formatBucketTimestampSelect(resolution int64, offset int64) string {
 func bucketTrades(resolution int64, offset int64) sq.SelectBuilder {
 	return sq.Select(
 		formatBucketTimestampSelect(resolution, offset),
-		"base_asset_id",
-		"counter_asset_id",
 		"count",
 		"base_volume",
 		"counter_volume",
@@ -203,11 +201,10 @@ func bucketTrades(resolution int64, offset int64) sq.SelectBuilder {
 func reverseBucketTrades(resolution int64, offset int64) sq.SelectBuilder {
 	return sq.Select(
 		formatBucketTimestampSelect(resolution, offset),
-		"base_asset_id as counter_asset_id",
-		"counter_asset_id as base_asset_id",
 		"count",
 		"base_volume as counter_volume",
 		"counter_volume as base_volume",
+		"(counter_volume::numeric/base_volume::numeric) as avg",
 		"high_n as high_d",
 		"high_d as high_n",
 		"low_n as low_d",
