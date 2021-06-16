@@ -43,17 +43,14 @@ $$ LANGUAGE plpgsql;
 
 
 -- +migrate StatementBegin
-CREATE OR REPLACE FUNCTION public.history_trades_60000_rebuild_buckets(base bigint, counter bigint, start_time timestamp without time zone, end_time timestamp without time zone)
+CREATE OR REPLACE FUNCTION public.history_trades_60000_rebuild_bucket(ledger bigint)
   RETURNS boolean AS $$
   DECLARE
-    tstart bigint := public.to_millis(start_time, 60000);
-    tend bigint := public.to_millis(end_time, 60000)+60000;
+    target_closed_at timestamp := SELECT closed_at FROM history_ledgers WHERE id = ledger;
+    bucket bigint := public.to_millis(target_closed_at, 60000);
   BEGIN
     DELETE FROM public.history_trades_60000
-      WHERE base_asset_id = base
-        AND counter_asset_id = counter
-        AND timestamp >= tstart
-        AND timestamp < tend;
+      WHERE timestamp = bucket;
     WITH htrd AS (
       SELECT
         public.to_millis(ledger_closed_at, 60000) as timestamp,
@@ -64,68 +61,41 @@ CREATE OR REPLACE FUNCTION public.history_trades_60000_rebuild_buckets(base bigi
         counter_asset_id,
         counter_amount,
         ARRAY[price_n, price_d] as price
-      FROM history_trades
-      WHERE base_asset_id = base
-        AND counter_asset_id = counter
+      FROM history_trades h
+      WHERE ledger_closed_at >= to_timestamp(bucket/1000)
+        AND ledger_closed_at < to_timestamp((bucket+60000)/1000)
       ORDER BY history_operation_id , "order"
+    ),
+    buckets as (
+      SELECT
+        timestamp,
+        base_asset_id,
+        counter_asset_id,
+        count(*) as count,
+        sum(base_amount) as base_volume,
+        sum(counter_amount) as counter_volume,
+        sum(counter_amount::numeric)/sum(base_amount::numeric) as avg,
+        (max_price(price))[1] as high_n,
+        (max_price(price))[2] as high_d,
+        (min_price(price))[1] as low_n,
+        (min_price(price))[2] as low_d,
+        first(history_operation_id) as open_ledger_seq, 
+        (first(price))[1] as open_n,
+        (first(price))[2] as open_d,
+        last(history_operation_id) as close_ledger_seq,
+        (last(price))[1] as close_n,
+        (last(price))[2] as close_d
+      FROM htrd
+      WHERE timestamp >= bucket
+        AND timestamp < bucket+60000
+      GROUP BY timestamp, base_asset_id, counter_asset_id
     )
-    INSERT INTO public.history_trades_60000
-      (
-        SELECT
-          timestamp,
-          base_asset_id,
-          counter_asset_id,
-          count(*) as count,
-          sum(base_amount) as base_volume,
-          sum(counter_amount) as counter_volume,
-          sum(counter_amount)/sum(base_amount) as avg,
-          (max_price(price))[1] as high_n,
-          (max_price(price))[2] as high_d,
-          (min_price(price))[1] as low_n,
-          (min_price(price))[2] as low_d,
-          first(history_operation_id) as open_ledger_seq, 
-          (first(price))[1] as open_n,
-          (first(price))[2] as open_d,
-          last(history_operation_id) as close_ledger_seq,
-          (last(price))[1] as close_n,
-          (last(price))[2] as close_d
-        FROM htrd
-        WHERE timestamp >= tstart
-          AND timestamp < tend
-        GROUP BY timestamp
-      );
+    INSERT INTO public.history_trades_60000 (SELECT * FROM buckets);
+
     RETURN true;
   END;
 $$ LANGUAGE plpgsql;
 -- +migrate StatementEnd
-
--- +migrate StatementBegin
-CREATE OR REPLACE FUNCTION public.history_trades_60000_rebuild_buckets(base bigint, counter bigint, start_time timestamp with time zone, end_time timestamp with time zone)
-  RETURNS boolean AS $$
-  BEGIN
-    RETURN public.history_trades_60000_rebuild_buckets(base, counter, start_time::timestamp, end_time::timestamp);
-  END;
-$$ LANGUAGE plpgsql;
--- +migrate StatementEnd
-
--- +migrate StatementBegin
-CREATE OR REPLACE FUNCTION public.history_trades_60000_rebuild_buckets(base bigint, counter bigint, t timestamp with time zone)
-  RETURNS boolean AS $$
-  BEGIN
-    RETURN public.history_trades_60000_rebuild_buckets(base, counter, t::timestamp, t::timestamp);
-  END;
-$$ LANGUAGE plpgsql;
--- +migrate StatementEnd
-
--- +migrate StatementBegin
-CREATE OR REPLACE FUNCTION public.history_trades_60000_rebuild_buckets(base bigint, counter bigint, t timestamp without time zone)
-  RETURNS boolean AS $$
-  BEGIN
-    RETURN public.history_trades_60000_rebuild_buckets(base, counter, t, t);
-  END;
-$$ LANGUAGE plpgsql;
--- +migrate StatementEnd
-
 
 -- Add the trigger to keep it up to date
 -- TODO: This should probably handle updates, not just inserts.
@@ -144,7 +114,7 @@ CREATE OR REPLACE FUNCTION public.history_trades_60000_insert()
         new.base_amount,
         new.counter_amount,
         -- TODO: Is this the right thing when base_amount is 0?
-        CASE WHEN new.base_amount = 0 THEN 0 ELSE (new.counter_amount/new.base_amount) END,
+        CASE WHEN new.base_amount = 0 THEN 0 ELSE (new.counter_amount::numeric/new.base_amount::numeric) END,
         new.price_n,
         new.price_d,
         new.price_n,
@@ -166,12 +136,12 @@ CREATE OR REPLACE FUNCTION public.history_trades_60000_insert()
           high_d = (public.max_price_agg(ARRAY[h.high_n, h.high_d], ARRAY[excluded.high_n::numeric, excluded.high_d::numeric]))[2],
           low_n = (public.min_price_agg(ARRAY[h.low_n, h.low_d], ARRAY[excluded.low_n::numeric, excluded.low_d::numeric]))[1],
           low_d = (public.min_price_agg(ARRAY[h.low_n, h.low_d], ARRAY[excluded.low_n::numeric, excluded.low_d::numeric]))[2],
-          open_ledger_seq = CASE WHEN h.open_ledger_seq < excluded.open_ledger_seq THEN h.open_ledger_seq ELSE excluded.open_ledger_seq END,
-          open_n = CASE WHEN h.open_ledger_seq < excluded.open_ledger_seq THEN h.open_n ELSE excluded.open_n END,
-          open_d = CASE WHEN h.open_ledger_seq < excluded.open_ledger_seq THEN h.open_d ELSE excluded.open_d END,
-          close_ledger_seq = CASE WHEN h.close_ledger_seq > excluded.close_ledger_seq THEN h.close_ledger_seq ELSE excluded.close_ledger_seq END,
-          close_n = CASE WHEN h.close_ledger_seq > excluded.close_ledger_seq THEN h.close_n ELSE excluded.close_n END,
-          close_d = CASE WHEN h.close_ledger_seq > excluded.close_ledger_seq THEN h.close_d ELSE excluded.close_d END;
+          open_ledger_seq = CASE WHEN h.open_ledger_seq <= excluded.open_ledger_seq THEN h.open_ledger_seq ELSE excluded.open_ledger_seq END,
+          open_n = CASE WHEN h.open_ledger_seq <= excluded.open_ledger_seq THEN h.open_n ELSE excluded.open_n END,
+          open_d = CASE WHEN h.open_ledger_seq <= excluded.open_ledger_seq THEN h.open_d ELSE excluded.open_d END,
+          close_ledger_seq = CASE WHEN h.close_ledger_seq >= excluded.close_ledger_seq THEN h.close_ledger_seq ELSE excluded.close_ledger_seq END,
+          close_n = CASE WHEN h.close_ledger_seq >= excluded.close_ledger_seq THEN h.close_n ELSE excluded.close_n END,
+          close_d = CASE WHEN h.close_ledger_seq >= excluded.close_ledger_seq THEN h.close_d ELSE excluded.close_d END;
 
     RETURN NULL;
   END;
@@ -221,7 +191,7 @@ WITH htrd AS (
         count(*) as count,
         sum(base_amount) as base_volume,
         sum(counter_amount) as counter_volume,
-        sum(counter_amount)/sum(base_amount) as avg,
+        sum(counter_amount::numeric)/sum(base_amount::numeric) as avg,
         (max_price(price))[1] as high_n,
         (max_price(price))[2] as high_d,
         (min_price(price))[1] as low_n,
@@ -244,6 +214,5 @@ DROP TRIGGER htrd_60000_insert on history_trades;
 DROP FUNCTION history_trades_60000_insert;
 DROP TRIGGER htrd_60000_truncate on history_trades;
 DROP FUNCTION history_trades_60000_truncate;
-DROP FUNCTION history_trades_60000_rebuild_buckets(bigint, bigint, timestamp without time zone, timestamp without time zone);
-DROP FUNCTION history_trades_60000_rebuild_buckets(bigint, bigint, timestamp with time zone, timestamp with time zone);
+DROP FUNCTION history_trades_60000_rebuild_bucket(bigint);
 DROP TABLE history_trades_60000;

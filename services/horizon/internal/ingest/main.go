@@ -453,6 +453,15 @@ func (s *system) ReingestRange(fromLedger, toLedger uint32, force bool) error {
 		time.Sleep(time.Second * time.Duration(s.reingestRetryBackoffSeconds))
 		err = run()
 	}
+
+	// Rebuild the first and last ledger to ensure complete data.
+	if err == nil {
+		err = s.historyQ.RebuildTradeAggregationBucket(s.ctx, fromLedger)
+	}
+	if err == nil {
+		err = s.historyQ.RebuildTradeAggregationBucket(s.ctx, toLedger)
+	}
+
 	return err
 }
 

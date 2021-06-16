@@ -273,5 +273,19 @@ func getCanonicalAssetOrder(assetId1 int64, assetId2 int64) (orderPreserved bool
 type QTrades interface {
 	QCreateAccountsHistory
 	NewTradeBatchInsertBuilder(maxBatchSize int) TradeBatchInsertBuilder
+	RebuildTradeAggregationBucket(ctx context.Context, ledger uint32) error
 	CreateAssets(ctx context.Context, assets []xdr.Asset, maxBatchSize int) (map[string]Asset, error)
+}
+
+// RebuildTradeAggregationBucket rebuilds a specific trade aggregation bucket
+// to ensure complete data in case of partial reingestion.
+func (q *Q) RebuildTradeAggregationBucket(ctx context.Context, ledger uint32) error {
+	_, err := q.ExecRaw(
+		ctx,
+		fmt.Sprintf("SELECT history_trades_60000_rebuild_bucket(%d)", ledger),
+	)
+	if err != nil {
+		return errors.Wrap(err, "could rebuild trade aggregation bucket")
+	}
+	return nil
 }
