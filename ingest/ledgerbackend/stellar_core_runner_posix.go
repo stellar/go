@@ -9,6 +9,8 @@ import (
 	"github.com/pkg/errors"
 )
 
+const isWindows = false
+
 // Posix-specific methods for the StellarCoreRunner type.
 
 func (c *stellarCoreRunner) getPipeName() string {

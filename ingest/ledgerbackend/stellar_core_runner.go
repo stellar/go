@@ -52,6 +52,7 @@ type stellarCoreRunner struct {
 	executablePath string
 
 	started      bool
+	cmd          *exec.Cmd
 	wg           sync.WaitGroup
 	ctx          context.Context
 	cancel       context.CancelFunc
@@ -68,12 +69,32 @@ type stellarCoreRunner struct {
 	log *log.Entry
 }
 
+func createRandomHexString(n int) string {
+	hex := []rune("abcdef1234567890")
+	b := make([]rune, n)
+	for i := range b {
+		b[i] = hex[rand.Intn(len(hex))]
+	}
+	return string(b)
+}
+
 func newStellarCoreRunner(config CaptiveCoreConfig, mode stellarCoreRunnerMode) (*stellarCoreRunner, error) {
-	// Use the specified directory to store Captive Core's data:
-	//    https://github.com/stellar/go/issues/3437
-	// but be sure to re-use rather than replace it:
-	//    https://github.com/stellar/go/issues/3631
-	fullStoragePath := path.Join(config.StoragePath, "captive-core")
+	var fullStoragePath string
+	if !isWindows {
+		// Use the specified directory to store Captive Core's data:
+		//    https://github.com/stellar/go/issues/3437
+		// but be sure to re-use rather than replace it:
+		//    https://github.com/stellar/go/issues/3631
+		fullStoragePath = path.Join(config.StoragePath, "captive-core")
+	} else {
+		// On Windows, first we ALWAYS append something to the base storage path,
+		// because we will delete the directory entirely when Horizon stops. We also
+		// add a random suffix in order to ensure that there aren't naming
+		// conflicts.
+		// This is done because it's impossible to send SIGINT on Windows so
+		// buckets can become corrupted.
+		fullStoragePath = path.Join(config.StoragePath, "captive-core-"+createRandomHexString(8))
+	}
 
 	info, err := os.Stat(fullStoragePath)
 	if os.IsNotExist(err) {
@@ -206,7 +227,7 @@ func (r *stellarCoreRunner) getLogLineWriter() io.Writer {
 
 func (r *stellarCoreRunner) createCmd(params ...string) *exec.Cmd {
 	allParams := append([]string{"--conf", r.getConfFileName()}, params...)
-	cmd := exec.CommandContext(r.ctx, r.executablePath, allParams...)
+	cmd := exec.Command(r.executablePath, allParams...)
 	cmd.Dir = r.storagePath
 	cmd.Stdout = r.getLogLineWriter()
 	cmd.Stderr = r.getLogLineWriter()
@@ -293,7 +314,7 @@ func (r *stellarCoreRunner) runFrom(from uint32, hash string) error {
 		return errors.New("runner already started")
 	}
 
-	cmd := r.createCmd(
+	r.cmd = r.createCmd(
 		"run",
 		"--in-memory",
 		"--start-at-ledger", fmt.Sprintf("%d", from),
@@ -302,9 +323,9 @@ func (r *stellarCoreRunner) runFrom(from uint32, hash string) error {
 	)
 
 	var err error
-	r.pipe, err = r.start(cmd)
+	r.pipe, err = r.start(r.cmd)
 	if err != nil {
-		r.closeLogLineWriters(cmd)
+		r.closeLogLineWriters(r.cmd)
 		return errors.Wrap(err, "error starting `stellar-core run` subprocess")
 	}
 
@@ -319,7 +340,7 @@ func (r *stellarCoreRunner) runFrom(from uint32, hash string) error {
 	}
 
 	r.wg.Add(1)
-	go r.handleExit(cmd)
+	go r.handleExit(r.cmd)
 
 	return nil
 }
@@ -385,6 +406,18 @@ func (r *stellarCoreRunner) close() error {
 	// only reap captive core sub process and related go routines if we've started
 	// otherwise, just cleanup the temp dir
 	if started {
+		err := r.cmd.Process.Signal(os.Interrupt)
+		if err != nil {
+			// On Windows sending os.Interrupt will result in an error, docs:
+			//
+			// > On Windows, sending os.Interrupt to a process with
+			// > os.Process.Signal is not implemented; it will return an error
+			// > instead of sending a signal.
+			//
+			// In such case we Kill() the process.
+			r.cmd.Process.Kill()
+		}
+
 		// wait for the stellar core process to terminate
 		r.wg.Wait()
 
@@ -398,5 +431,11 @@ func (r *stellarCoreRunner) close() error {
 		r.pipe.Reader.Close()
 	}
 
-	return nil
+	if !isWindows {
+		return nil
+	} else {
+		// It's impossible to send SIGINT on Windows so buckets can become
+		// corrupted. If we can't reuse it, then remove it.
+		return os.RemoveAll(storagePath)
+	}
 }

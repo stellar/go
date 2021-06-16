@@ -21,10 +21,6 @@ const (
 	// if LOG_FILE_PATH is omitted stellar core actually defaults to "stellar-core.log"
 	// however, we are overriding this default for captive core
 	defaultLogFilePath = "" // by default we disable logging to a file
-
-	// if DISABLE_XDR_FSYNC is omitted stellar core actually defaults to false
-	// however, we are overriding this default for captive core
-	defaultDisableXDRFsync = true
 )
 
 var validQuality = map[string]bool{
@@ -82,7 +78,6 @@ type captiveCoreTomlValues struct {
 	UnsafeQuorum                         bool                 `toml:"UNSAFE_QUORUM,omitempty"`
 	RunStandalone                        bool                 `toml:"RUN_STANDALONE,omitempty"`
 	ArtificiallyAccelerateTimeForTesting bool                 `toml:"ARTIFICIALLY_ACCELERATE_TIME_FOR_TESTING,omitempty"`
-	DisableXDRFsync                      bool                 `toml:"DISABLE_XDR_FSYNC,omitempty"`
 	HomeDomains                          []HomeDomain         `toml:"HOME_DOMAINS,omitempty"`
 	Validators                           []Validator          `toml:"VALIDATORS,omitempty"`
 	HistoryEntries                       map[string]History   `toml:"-"`
@@ -401,10 +396,6 @@ func (c *CaptiveCoreToml) setDefaults(params CaptiveCoreTomlParams) {
 	if !c.tree.Has("FAILURE_SAFETY") {
 		c.FailureSafety = defaultFailureSafety
 	}
-	if !c.tree.Has("DISABLE_XDR_FSYNC") {
-		c.DisableXDRFsync = defaultDisableXDRFsync
-	}
-
 	if !c.HistoryIsConfigured() {
 		c.HistoryEntries = map[string]History{}
 		for i, val := range params.HistoryArchiveURLs {
