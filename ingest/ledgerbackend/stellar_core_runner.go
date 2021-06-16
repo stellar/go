@@ -412,8 +412,9 @@ func (r *stellarCoreRunner) handleExit() {
 	r.processExited = true
 	if interruptErr := <-errc; interruptErr != nil {
 		r.processExitError = interruptErr
+	} else {
+		r.processExitError = waitErr
 	}
-	r.processExitError = waitErr
 }
 
 // closeLogLineWriters closes the go routines created by getLogLineWriter()
