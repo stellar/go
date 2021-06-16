@@ -349,14 +349,6 @@ func (r *stellarCoreRunner) runFrom(from uint32, hash string) error {
 func (r *stellarCoreRunner) handleExit() {
 	defer r.wg.Done()
 
-	// By closing the pipe file we will send an EOF to the pipe reader used by ledgerBuffer.
-	// We need to do this operation with the lock to ensure that the processExitError is available
-	// when the ledgerBuffer channel is closed
-	if closeErr := r.pipe.File.Close(); closeErr != nil {
-		r.log.WithError(closeErr).Warn("could not close captive core write pipe")
-	}
-
-	/////////////////////////////
 	// Pattern recommended in:
 	// https://github.com/golang/go/blob/cacac8bdc5c93e7bc71df71981fdf32dded017bf/src/cmd/go/script_test.go#L1091-L1098
 	var interrupt os.Signal = os.Interrupt
@@ -406,8 +398,17 @@ func (r *stellarCoreRunner) handleExit() {
 
 	waitErr := r.cmd.Wait()
 	r.closeLogLineWriters(r.cmd)
+
 	r.lock.Lock()
 	defer r.lock.Unlock()
+
+	// By closing the pipe file we will send an EOF to the pipe reader used by ledgerBuffer.
+	// We need to do this operation with the lock to ensure that the processExitError is available
+	// when the ledgerBuffer channel is closed
+	if closeErr := r.pipe.File.Close(); closeErr != nil {
+		r.log.WithError(closeErr).Warn("could not close captive core write pipe")
+	}
+
 	r.processExited = true
 	if interruptErr := <-errc; interruptErr != nil {
 		r.processExitError = interruptErr
