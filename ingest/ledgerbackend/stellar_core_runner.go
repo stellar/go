@@ -472,7 +472,8 @@ func (r *stellarCoreRunner) close() error {
 		r.pipe.Reader.Close()
 	}
 
-	if runtime.GOOS == "windows" || r.processExitError != nil {
+	if runtime.GOOS == "windows" ||
+		(r.processExitError != nil && r.processExitError != context.Canceled) {
 		// It's impossible to send SIGINT on Windows so buckets can become
 		// corrupted. If we can't reuse it, then remove it.
 		// We also remove the storage path if there was an error terminating the
