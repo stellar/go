@@ -241,7 +241,7 @@ jobs:
   test_code_1_15:
     working_directory: /go/src/github.com/stellar/go
     docker:
-      - image: golang:1.15.13
+      - image: golang:1.15
         environment:
           GO111MODULE: "on"
           PGHOST: localhost
@@ -261,7 +261,7 @@ jobs:
   test_code_1_15_postgres10:
     working_directory: /go/src/github.com/stellar/go
     docker:
-      - image: golang:1.15.13
+      - image: golang:1.15
         environment:
           GO111MODULE: "on"
           PGHOST: localhost
