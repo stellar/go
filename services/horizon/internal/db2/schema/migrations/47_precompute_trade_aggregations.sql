@@ -161,12 +161,12 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER htrd_60000_insert
   AFTER INSERT ON history_trades
   FOR EACH ROW
-  EXECUTE FUNCTION public.history_trades_60000_insert();
+  EXECUTE PROCEDURE public.history_trades_60000_insert();
 
 CREATE TRIGGER htrd_60000_truncate
   AFTER TRUNCATE ON history_trades
   FOR EACH STATEMENT
-  EXECUTE FUNCTION public.history_trades_60000_truncate();
+  EXECUTE PROCEDURE public.history_trades_60000_truncate();
 
 -- Backfill the table with existing data. This takes about 4 minutes.
 WITH htrd AS (
