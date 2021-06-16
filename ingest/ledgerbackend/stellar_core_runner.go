@@ -272,16 +272,16 @@ func (r *stellarCoreRunner) catchup(from, to uint32) error {
 	}
 
 	rangeArg := fmt.Sprintf("%d/%d", to, to-from+1)
-	cmd := r.createCmd(
+	r.cmd = r.createCmd(
 		"catchup", rangeArg,
 		"--metadata-output-stream", r.getPipeName(),
 		"--in-memory",
 	)
 
 	var err error
-	r.pipe, err = r.start(cmd)
+	r.pipe, err = r.start(r.cmd)
 	if err != nil {
-		r.closeLogLineWriters(cmd)
+		r.closeLogLineWriters(r.cmd)
 		return errors.Wrap(err, "error starting `stellar-core catchup` subprocess")
 	}
 
