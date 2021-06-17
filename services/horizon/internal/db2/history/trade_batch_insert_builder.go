@@ -118,7 +118,6 @@ func (i *tradeBatchInsertBuilder) rebuildTradeAggregationBuckets(ctx context.Con
 	}).GroupBy("timestamp", "base_asset_id", "counter_asset_id")
 
 	// Insert the new bucket values.
-	// TODO: Upgrade squirrel to do this? or figure out another way...
 	_, err = i.q.Exec(ctx, sq.Insert("history_trades_60000").Select(rebuilt))
 	if err != nil {
 		return errors.Wrap(err, "could rebuild trade aggregation bucket")
