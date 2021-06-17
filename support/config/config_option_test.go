@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -89,9 +88,14 @@ func TestConfigOption_optionalFlags_env_set_empty(t *testing.T) {
 	}
 	configOpts.Init(cmd)
 
+	prev := envVars
 	envVars = map[string]bool{
 		"STRING": true,
 	}
+	defer func() {
+		envVars = prev
+	}()
+
 	cmd.Execute()
 	assert.Equal(t, "", *optString)
 	assert.Equal(t, (*uint)(nil), optUint)
@@ -114,12 +118,20 @@ func TestConfigOption_optionalFlags_env_set(t *testing.T) {
 	}
 	configOpts.Init(cmd)
 
+	prev := envVars
 	envVars = map[string]bool{
 		"STRING": true,
 		"UINT":   true,
 	}
-	viper.Set("STRING", "str")
-	viper.Set("UINT", 6)
+	defer func() {
+		envVars = prev
+	}()
+
+	defer os.Setenv("STRING", os.Getenv("STRING"))
+	defer os.Setenv("UINT", os.Getenv("UINT"))
+	os.Setenv("STRING", "str")
+	os.Setenv("UINT", "6")
+
 	cmd.Execute()
 	assert.Equal(t, "str", *optString)
 	assert.Equal(t, uint(6), *optUint)
