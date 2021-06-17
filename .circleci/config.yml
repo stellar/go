@@ -448,7 +448,7 @@ jobs:
           # Currently all integration tests are in a single directory.
           command: |
             cd ~/go/src/github.com/stellar/go
-            go test -timeout 25m -v ./services/horizon/internal/integration/...
+            go test -race -timeout 25m -v ./services/horizon/internal/integration/...
 
 #-------------------------------------------------------------------------#
 # Workflows orchestrate jobs and make sure they run in the right sequence #
