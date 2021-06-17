@@ -6,8 +6,6 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
-## v2.5.0
-
 **Upgrading to this version from <= v2.1.1 will trigger a state rebuild. During this process (which can take up to 20 minutes), Horizon will not ingest new ledgers.**
 
 * Add new command `horizon db detect-gaps`, which detects ingestion gaps in the database. The command prints out the `db reingest` commands to run in order to fill the gaps found ([3672](https://github.com/stellar/go/pull/3672)). 
@@ -18,6 +16,7 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 * Fixed crash in `horizon ingest verify-range` command ([3682](https://github.com/stellar/go/pull/3682)).
 * Handle replica conflict errors gracefully ([3674](https://github.com/stellar/go/pull/3674)).
 * Fix data race in request parameters handling ([3690](https://github.com/stellar/go/pull/3690)).
+* Fix bug where the configuration for `CAPTIVE_CORE_LOG_PATH`, `CAPTIVE_CORE_PEER_PORT`, and `CAPTIVE_CORE_HTTP_PORT` were ignored if they were configured via environment variables instead of command line arguments. ([3702](https://github.com/stellar/go/pull/3702)).
 
 ## v2.4.1
 
@@ -27,7 +26,6 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 * Fix bug in `horizon db reingest range` command, which would throw a duplicate entry conflict error from the DB. ([3661](https://github.com/stellar/go/pull/3661)).
 * Fix bug in DB metrics preventing Horizon from starting when read-only replica middleware is enabled. ([3668](https://github.com/stellar/go/pull/3668)).
 * Fix bug in the value of `route` in the logs for rate-limited requests (previously it was set to `undefined`). ([3658](https://github.com/stellar/go/pull/3658)).
-
 
 ## v2.4.0
 

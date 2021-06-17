@@ -71,6 +71,72 @@ func TestConfigOption_optionalFlags_set(t *testing.T) {
 	assert.Equal(t, uint(6), *optUint)
 }
 
+// Test that optional flags are set to non nil values when they are configured explicitly.
+func TestConfigOption_optionalFlags_env_set_empty(t *testing.T) {
+	var optUint *uint
+	var optString *string
+	configOpts := ConfigOptions{
+		{Name: "uint", OptType: types.Uint, ConfigKey: &optUint, CustomSetValue: SetOptionalUint, FlagDefault: uint(0)},
+		{Name: "string", OptType: types.String, ConfigKey: &optString, CustomSetValue: SetOptionalString},
+	}
+	cmd := &cobra.Command{
+		Use: "doathing",
+		Run: func(_ *cobra.Command, _ []string) {
+			configOpts.Require()
+			configOpts.SetValues()
+		},
+	}
+	configOpts.Init(cmd)
+
+	prev := envVars
+	envVars = map[string]bool{
+		"STRING": true,
+	}
+	defer func() {
+		envVars = prev
+	}()
+
+	cmd.Execute()
+	assert.Equal(t, "", *optString)
+	assert.Equal(t, (*uint)(nil), optUint)
+}
+
+// Test that optional flags are set to non nil values when they are configured explicitly.
+func TestConfigOption_optionalFlags_env_set(t *testing.T) {
+	var optUint *uint
+	var optString *string
+	configOpts := ConfigOptions{
+		{Name: "uint", OptType: types.Uint, ConfigKey: &optUint, CustomSetValue: SetOptionalUint, FlagDefault: uint(0)},
+		{Name: "string", OptType: types.String, ConfigKey: &optString, CustomSetValue: SetOptionalString},
+	}
+	cmd := &cobra.Command{
+		Use: "doathing",
+		Run: func(_ *cobra.Command, _ []string) {
+			configOpts.Require()
+			configOpts.SetValues()
+		},
+	}
+	configOpts.Init(cmd)
+
+	prev := envVars
+	envVars = map[string]bool{
+		"STRING": true,
+		"UINT":   true,
+	}
+	defer func() {
+		envVars = prev
+	}()
+
+	defer os.Setenv("STRING", os.Getenv("STRING"))
+	defer os.Setenv("UINT", os.Getenv("UINT"))
+	os.Setenv("STRING", "str")
+	os.Setenv("UINT", "6")
+
+	cmd.Execute()
+	assert.Equal(t, "str", *optString)
+	assert.Equal(t, uint(6), *optUint)
+}
+
 // Test that when there are no args the defaults in the config options are
 // used.
 func TestConfigOption_getSimpleValue_defaults(t *testing.T) {
