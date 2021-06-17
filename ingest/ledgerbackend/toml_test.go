@@ -186,6 +186,11 @@ func TestCaptiveCoreTomlValidation(t *testing.T) {
 			logPath:           nil,
 			expectedError:     "could not unmarshal captive core toml: these fields are not supported by captive core: [\"CATCHUP_RECENT\"]",
 		},
+		{
+			name:          "unexpected BUCKET_DIR_PATH",
+			appendPath:    filepath.Join("testdata", "appendix-with-bucket-dir-path.cfg"),
+			expectedError: "could not unmarshal captive core toml: setting BUCKET_DIR_PATH is disallowed, it can cause clashes between instances",
+		},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			params := CaptiveCoreTomlParams{
