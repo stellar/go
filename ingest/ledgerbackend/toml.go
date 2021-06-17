@@ -175,13 +175,29 @@ func unflattenTables(text string, tablePlaceHolders *placeholders) string {
 	})
 }
 
-// addTestQuorum adds test quorum sets to pass QuorumSetIsConfigured() check
-// in tests.
-func (c *CaptiveCoreToml) addTestQuorum() {
-	c.captiveCoreTomlValues.QuorumSetEntries = map[string]QuorumSet{
-		"a": {
-			ThresholdPercent: 100,
-			Validators:       []string{"ABC"},
+// AddExamplePubnetQuorum adds example pubnet validators to toml file
+func (c *CaptiveCoreToml) AddExamplePubnetValidators() {
+	c.captiveCoreTomlValues.Validators = []Validator{
+		{
+			Name:       "sdf_1",
+			HomeDomain: "stellar.org",
+			PublicKey:  "GCGB2S2KGYARPVIA37HYZXVRM2YZUEXA6S33ZU5BUDC6THSB62LZSTYH",
+			Address:    "core-live-a.stellar.org:11625",
+			History:    "curl -sf https://history.stellar.org/prd/core-live/core_live_001/{0} -o {1}",
+		},
+		{
+			Name:       "sdf_2",
+			HomeDomain: "stellar.org",
+			PublicKey:  "GCM6QMP3DLRPTAZW2UZPCPX2LF3SXWXKPMP3GKFZBDSF3QZGV2G5QSTK",
+			Address:    "core-live-b.stellar.org:11625",
+			History:    "curl -sf https://history.stellar.org/prd/core-live/core_live_002/{0} -o {1}",
+		},
+		{
+			Name:       "sdf_3",
+			HomeDomain: "stellar.org",
+			PublicKey:  "GABMKJM6I25XI4K7U6XWMULOUQIQ27BCTMLS6BYYSOWKTBUXVRJSXHYQ",
+			Address:    "core-live-c.stellar.org:11625",
+			History:    "curl -sf https://history.stellar.org/prd/core-live/core_live_003/{0} -o {1}",
 		},
 	}
 }

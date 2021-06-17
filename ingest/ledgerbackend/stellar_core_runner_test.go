@@ -39,7 +39,7 @@ func TestCloseBeforeStartOnline(t *testing.T) {
 	captiveCoreToml, err := NewCaptiveCoreToml(CaptiveCoreTomlParams{})
 	assert.NoError(t, err)
 
-	captiveCoreToml.addTestQuorum()
+	captiveCoreToml.AddExamplePubnetValidators()
 
 	runner, err := newStellarCoreRunner(CaptiveCoreConfig{
 		HistoryArchiveURLs: []string{"http://localhost"},
