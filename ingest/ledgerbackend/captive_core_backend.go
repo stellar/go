@@ -488,12 +488,20 @@ func (c *CaptiveStellarCore) handleMetaPipeResult(sequence uint32, result metaRe
 	}
 
 	seq := result.LedgerCloseMeta.LedgerSequence()
+	// If we got something unexpected; close and reset
 	if c.nextLedger != 0 && seq != c.nextLedger {
-		// We got something unexpected; close and reset
 		c.stellarCoreRunner.close()
 		return false, xdr.LedgerCloseMeta{}, errors.Errorf(
 			"unexpected ledger sequence (expected=%d actual=%d)",
 			c.nextLedger,
+			seq,
+		)
+	} else if c.nextLedger == 0 && seq > c.prepared.from {
+		// First stream ledger is greater than prepared.from
+		c.stellarCoreRunner.close()
+		return false, xdr.LedgerCloseMeta{}, errors.Errorf(
+			"unexpected ledger sequence (expected=<=%d actual=%d)",
+			c.prepared.from,
 			seq,
 		)
 	}

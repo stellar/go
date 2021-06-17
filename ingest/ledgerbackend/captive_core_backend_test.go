@@ -722,6 +722,58 @@ func TestCaptiveGetLedger_NextLedgerIsDifferentToLedgerFromBuffer(t *testing.T) 
 	_, err = captiveBackend.GetLedger(ctx, 66)
 	assert.EqualError(t, err, "unexpected ledger sequence (expected=66 actual=68)")
 
+	// TODO assertions should work - to be fixed in a separate PR.
+	// _, err = captiveBackend.GetLedger(ctx, 66)
+	// assert.EqualError(t, err, "session is closed, call PrepareRange first")
+
+	mockArchive.AssertExpectations(t)
+	mockRunner.AssertExpectations(t)
+}
+
+func TestCaptiveGetLedger_NextLedger0RangeFromIsSmallerThanLedgerFromBuffer(t *testing.T) {
+	metaChan := make(chan metaResult, 100)
+
+	for i := 66; i <= 66; i++ {
+		meta := buildLedgerCloseMeta(testLedgerHeader{sequence: uint32(i)})
+		metaChan <- metaResult{
+			LedgerCloseMeta: &meta,
+		}
+	}
+
+	ctx := context.Background()
+	mockRunner := &stellarCoreRunnerMock{}
+	mockRunner.On("runFrom", uint32(64), mock.Anything).Return(nil)
+	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(metaChan))
+	mockRunner.On("context").Return(ctx)
+	mockRunner.On("close").Return(nil)
+
+	mockArchive := &historyarchive.MockArchive{}
+	mockArchive.
+		On("GetRootHAS").
+		Return(historyarchive.HistoryArchiveState{
+			CurrentLedger: uint32(200),
+		}, nil)
+
+	mockArchive.
+		On("GetLedgerHeader", uint32(65)).
+		Return(xdr.LedgerHeaderHistoryEntry{}, nil)
+
+	captiveBackend := CaptiveStellarCore{
+		archive: mockArchive,
+		stellarCoreRunnerFactory: func(_ stellarCoreRunnerMode) (stellarCoreRunnerInterface, error) {
+			return mockRunner, nil
+		},
+		checkpointManager: historyarchive.NewCheckpointManager(64),
+	}
+
+	err := captiveBackend.PrepareRange(ctx, UnboundedRange(65))
+	assert.EqualError(t, err, "Error fast-forwarding to 65: unexpected ledger sequence (expected=<=65 actual=66)")
+
+	// TODO assertions should work - to be fixed in a separate PR.
+	// prepared, err := captiveBackend.IsPrepared(ctx, UnboundedRange(65))
+	// assert.NoError(t, err)
+	// assert.False(t, prepared)
+
 	mockArchive.AssertExpectations(t)
 	mockRunner.AssertExpectations(t)
 }
