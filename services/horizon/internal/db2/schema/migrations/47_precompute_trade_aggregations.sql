@@ -29,7 +29,7 @@ CREATE OR REPLACE FUNCTION to_millis(t timestamp without time zone, trun numeric
   BEGIN
     RETURN div(cast((extract(epoch from t) * 1000 ) as bigint), trun)*trun;
   END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql IMMUTABLE;
 -- +migrate StatementEnd
 
 -- +migrate StatementBegin
@@ -38,8 +38,13 @@ CREATE OR REPLACE FUNCTION to_millis(t timestamp with time zone, trun numeric DE
   BEGIN
     RETURN to_millis(t::timestamp, trun);
   END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql IMMUTABLE;
 -- +migrate StatementEnd
+
+CREATE INDEX CONCURRENTLY
+  htrd_agg_bucket_lookup
+  ON history_trades
+  USING btree (to_millis(ledger_closed_at, '60000'::numeric));
 
 -- Backfill the table with existing data. This takes about 4 minutes.
 WITH htrd AS (
