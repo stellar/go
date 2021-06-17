@@ -84,7 +84,7 @@ func (i *tradeBatchInsertBuilder) rebuildTradeAggregationBuckets(ctx context.Con
 	trades := sq.Select(
 		"public.to_millis(ledger_closed_at, 60000) as timestamp",
 		"history_operation_id",
-		"order",
+		"\"order\"",
 		"base_asset_id",
 		"base_amount",
 		"counter_asset_id",
@@ -92,7 +92,7 @@ func (i *tradeBatchInsertBuilder) rebuildTradeAggregationBuckets(ctx context.Con
 		"ARRAY[price_n, price_d] as price",
 	).From("history_trades").Where(sq.Eq{
 		"to_millis(ledger_closed_at, 60000)": buckets,
-	}).OrderBy("history_operation_id", "order")
+	}).OrderBy("history_operation_id", "\"order\"")
 
 	// figure out the new bucket values
 	rebuilt := sq.Select(
