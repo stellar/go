@@ -12,6 +12,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -52,11 +53,13 @@ type stellarCoreRunner struct {
 	executablePath string
 
 	started      bool
+	cmd          *exec.Cmd
 	wg           sync.WaitGroup
 	ctx          context.Context
 	cancel       context.CancelFunc
 	ledgerBuffer *bufferedLedgerMetaReader
 	pipe         pipe
+	mode         stellarCoreRunnerMode
 
 	lock             sync.Mutex
 	processExited    bool
@@ -68,12 +71,35 @@ type stellarCoreRunner struct {
 	log *log.Entry
 }
 
+func createRandomHexString(n int) string {
+	hex := []rune("abcdef1234567890")
+	b := make([]rune, n)
+	for i := range b {
+		b[i] = hex[rand.Intn(len(hex))]
+	}
+	return string(b)
+}
+
 func newStellarCoreRunner(config CaptiveCoreConfig, mode stellarCoreRunnerMode) (*stellarCoreRunner, error) {
-	// Use the specified directory to store Captive Core's data:
-	//    https://github.com/stellar/go/issues/3437
-	// but be sure to re-use rather than replace it:
-	//    https://github.com/stellar/go/issues/3631
-	fullStoragePath := path.Join(config.StoragePath, "captive-core")
+	var fullStoragePath string
+	if runtime.GOOS != "windows" && mode != stellarCoreRunnerModeOffline {
+		// Use the specified directory to store Captive Core's data:
+		//    https://github.com/stellar/go/issues/3437
+		// but be sure to re-use rather than replace it:
+		//    https://github.com/stellar/go/issues/3631
+		fullStoragePath = path.Join(config.StoragePath, "captive-core")
+	} else {
+		// On Windows, first we ALWAYS append something to the base storage path,
+		// because we will delete the directory entirely when Horizon stops. We also
+		// add a random suffix in order to ensure that there aren't naming
+		// conflicts.
+		// This is done because it's impossible to send SIGINT on Windows so
+		// buckets can become corrupted.
+		// We also want to use random directories in offline mode (reingestion)
+		// because it's possible it's running multiple Stellar-Cores on a single
+		// machine.
+		fullStoragePath = path.Join(config.StoragePath, "captive-core-"+createRandomHexString(8))
+	}
 
 	info, err := os.Stat(fullStoragePath)
 	if os.IsNotExist(err) {
@@ -96,6 +122,7 @@ func newStellarCoreRunner(config CaptiveCoreConfig, mode stellarCoreRunnerMode) 
 		ctx:            ctx,
 		cancel:         cancel,
 		storagePath:    fullStoragePath,
+		mode:           mode,
 		nonce: fmt.Sprintf(
 			"captive-stellar-core-%x",
 			rand.New(rand.NewSource(time.Now().UnixNano())).Uint64(),
@@ -206,7 +233,7 @@ func (r *stellarCoreRunner) getLogLineWriter() io.Writer {
 
 func (r *stellarCoreRunner) createCmd(params ...string) *exec.Cmd {
 	allParams := append([]string{"--conf", r.getConfFileName()}, params...)
-	cmd := exec.CommandContext(r.ctx, r.executablePath, allParams...)
+	cmd := exec.Command(r.executablePath, allParams...)
 	cmd.Dir = r.storagePath
 	cmd.Stdout = r.getLogLineWriter()
 	cmd.Stderr = r.getLogLineWriter()
@@ -250,16 +277,16 @@ func (r *stellarCoreRunner) catchup(from, to uint32) error {
 	}
 
 	rangeArg := fmt.Sprintf("%d/%d", to, to-from+1)
-	cmd := r.createCmd(
+	r.cmd = r.createCmd(
 		"catchup", rangeArg,
 		"--metadata-output-stream", r.getPipeName(),
 		"--in-memory",
 	)
 
 	var err error
-	r.pipe, err = r.start(cmd)
+	r.pipe, err = r.start(r.cmd)
 	if err != nil {
-		r.closeLogLineWriters(cmd)
+		r.closeLogLineWriters(r.cmd)
 		return errors.Wrap(err, "error starting `stellar-core catchup` subprocess")
 	}
 
@@ -274,7 +301,7 @@ func (r *stellarCoreRunner) catchup(from, to uint32) error {
 	}
 
 	r.wg.Add(1)
-	go r.handleExit(cmd)
+	go r.handleExit()
 
 	return nil
 }
@@ -293,7 +320,7 @@ func (r *stellarCoreRunner) runFrom(from uint32, hash string) error {
 		return errors.New("runner already started")
 	}
 
-	cmd := r.createCmd(
+	r.cmd = r.createCmd(
 		"run",
 		"--in-memory",
 		"--start-at-ledger", fmt.Sprintf("%d", from),
@@ -302,9 +329,9 @@ func (r *stellarCoreRunner) runFrom(from uint32, hash string) error {
 	)
 
 	var err error
-	r.pipe, err = r.start(cmd)
+	r.pipe, err = r.start(r.cmd)
 	if err != nil {
-		r.closeLogLineWriters(cmd)
+		r.closeLogLineWriters(r.cmd)
 		return errors.Wrap(err, "error starting `stellar-core run` subprocess")
 	}
 
@@ -319,15 +346,63 @@ func (r *stellarCoreRunner) runFrom(from uint32, hash string) error {
 	}
 
 	r.wg.Add(1)
-	go r.handleExit(cmd)
+	go r.handleExit()
 
 	return nil
 }
 
-func (r *stellarCoreRunner) handleExit(cmd *exec.Cmd) {
+func (r *stellarCoreRunner) handleExit() {
 	defer r.wg.Done()
-	exitErr := cmd.Wait()
-	r.closeLogLineWriters(cmd)
+
+	// Pattern recommended in:
+	// https://github.com/golang/go/blob/cacac8bdc5c93e7bc71df71981fdf32dded017bf/src/cmd/go/script_test.go#L1091-L1098
+	var interrupt os.Signal = os.Interrupt
+	if runtime.GOOS == "windows" {
+		// Per https://golang.org/pkg/os/#Signal, “Interrupt is not implemented on
+		// Windows; using it with os.Process.Signal will return an error.”
+		// Fall back to Kill instead.
+		interrupt = os.Kill
+	}
+
+	errc := make(chan error)
+	go func() {
+		select {
+		case errc <- nil:
+			return
+		case <-r.ctx.Done():
+		}
+
+		err := r.cmd.Process.Signal(interrupt)
+		if err == nil {
+			err = r.ctx.Err() // Report ctx.Err() as the reason we interrupted.
+		} else if err.Error() == "os: process already finished" {
+			errc <- nil
+			return
+		}
+
+		timer := time.NewTimer(10 * time.Second)
+		select {
+		// Report ctx.Err() as the reason we interrupted the process...
+		case errc <- r.ctx.Err():
+			timer.Stop()
+			return
+		// ...but after killDelay has elapsed, fall back to a stronger signal.
+		case <-timer.C:
+		}
+
+		// Wait still hasn't returned.
+		// Kill the process harder to make sure that it exits.
+		//
+		// Ignore any error: if cmd.Process has already terminated, we still
+		// want to send ctx.Err() (or the error from the Interrupt call)
+		// to properly attribute the signal that may have terminated it.
+		_ = r.cmd.Process.Kill()
+
+		errc <- err
+	}()
+
+	waitErr := r.cmd.Wait()
+	r.closeLogLineWriters(r.cmd)
 
 	r.lock.Lock()
 	defer r.lock.Unlock()
@@ -340,7 +415,11 @@ func (r *stellarCoreRunner) handleExit(cmd *exec.Cmd) {
 	}
 
 	r.processExited = true
-	r.processExitError = exitErr
+	if interruptErr := <-errc; interruptErr != nil {
+		r.processExitError = interruptErr
+	} else {
+		r.processExitError = waitErr
+	}
 }
 
 // closeLogLineWriters closes the go routines created by getLogLineWriter()
@@ -396,6 +475,17 @@ func (r *stellarCoreRunner) close() error {
 		// now it's safe to close the pipe reader
 		// because the ledger buffer is no longer reading from it
 		r.pipe.Reader.Close()
+	}
+
+	if runtime.GOOS == "windows" ||
+		(r.processExitError != nil && r.processExitError != context.Canceled) ||
+		r.mode == stellarCoreRunnerModeOffline {
+		// It's impossible to send SIGINT on Windows so buckets can become
+		// corrupted. If we can't reuse it, then remove it.
+		// We also remove the storage path if there was an error terminating the
+		// process (files can be corrupted).
+		// We remove all files when reingesting to save disk space.
+		return os.RemoveAll(storagePath)
 	}
 
 	return nil
