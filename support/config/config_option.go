@@ -5,6 +5,8 @@ import (
 	"go/types"
 	stdLog "log"
 	"net/url"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -166,7 +168,7 @@ func SetURL(co *ConfigOption) {
 // value indicates the flag was not explicitly set
 func SetOptionalUint(co *ConfigOption) {
 	key := co.ConfigKey.(**uint)
-	if co.flag.Changed {
+	if isExplicitlySet(co) {
 		*key = new(uint)
 		**key = uint(viper.GetInt(co.Name))
 	} else {
@@ -174,11 +176,28 @@ func SetOptionalUint(co *ConfigOption) {
 	}
 }
 
+func parseEnvVars(entries []string) map[string]bool {
+	set := map[string]bool{}
+	for _, entry := range entries {
+		key := strings.Split(entry, "=")[0]
+		set[key] = true
+	}
+	return set
+}
+
+var envVars = parseEnvVars(os.Environ())
+
+func isExplicitlySet(co *ConfigOption) bool {
+	// co.flag.Changed is only set to true when the configuration is set via command line parameter.
+	// In the case where a variable is configured via environment variable we need to check envVars.
+	return co.flag.Changed || envVars[co.EnvVar]
+}
+
 // SetOptionalString converts a command line uint to a *string where the nil
 // value indicates the flag was not explicitly set
 func SetOptionalString(co *ConfigOption) {
 	key := co.ConfigKey.(**string)
-	if co.flag.Changed {
+	if isExplicitlySet(co) {
 		*key = new(string)
 		**key = viper.GetString(co.Name)
 	} else {

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -68,6 +69,59 @@ func TestConfigOption_optionalFlags_set(t *testing.T) {
 	cmd.SetArgs([]string{"--uint", "6", "--string", "test-string"})
 	cmd.Execute()
 	assert.Equal(t, "test-string", *optString)
+	assert.Equal(t, uint(6), *optUint)
+}
+
+// Test that optional flags are set to non nil values when they are configured explicitly.
+func TestConfigOption_optionalFlags_env_set_empty(t *testing.T) {
+	var optUint *uint
+	var optString *string
+	configOpts := ConfigOptions{
+		{Name: "uint", OptType: types.Uint, ConfigKey: &optUint, CustomSetValue: SetOptionalUint, FlagDefault: uint(0)},
+		{Name: "string", OptType: types.String, ConfigKey: &optString, CustomSetValue: SetOptionalString},
+	}
+	cmd := &cobra.Command{
+		Use: "doathing",
+		Run: func(_ *cobra.Command, _ []string) {
+			configOpts.Require()
+			configOpts.SetValues()
+		},
+	}
+	configOpts.Init(cmd)
+
+	envVars = map[string]bool{
+		"STRING": true,
+	}
+	cmd.Execute()
+	assert.Equal(t, "", *optString)
+	assert.Equal(t, (*uint)(nil), optUint)
+}
+
+// Test that optional flags are set to non nil values when they are configured explicitly.
+func TestConfigOption_optionalFlags_env_set(t *testing.T) {
+	var optUint *uint
+	var optString *string
+	configOpts := ConfigOptions{
+		{Name: "uint", OptType: types.Uint, ConfigKey: &optUint, CustomSetValue: SetOptionalUint, FlagDefault: uint(0)},
+		{Name: "string", OptType: types.String, ConfigKey: &optString, CustomSetValue: SetOptionalString},
+	}
+	cmd := &cobra.Command{
+		Use: "doathing",
+		Run: func(_ *cobra.Command, _ []string) {
+			configOpts.Require()
+			configOpts.SetValues()
+		},
+	}
+	configOpts.Init(cmd)
+
+	envVars = map[string]bool{
+		"STRING": true,
+		"UINT":   true,
+	}
+	viper.Set("STRING", "str")
+	viper.Set("UINT", 6)
+	cmd.Execute()
+	assert.Equal(t, "str", *optString)
 	assert.Equal(t, uint(6), *optUint)
 }
 
