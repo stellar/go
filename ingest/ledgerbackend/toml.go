@@ -326,6 +326,11 @@ func NewCaptiveCoreTomlFromFile(configPath string, params CaptiveCoreTomlParams)
 	if err = captiveCoreToml.unmarshal(data, params.Strict); err != nil {
 		return nil, errors.Wrap(err, "could not unmarshal captive core toml")
 	}
+	// disallow setting BUCKET_DIR_PATH through a file since it can cause multiple
+	// running captive-core instances to clash
+	if params.Strict && captiveCoreToml.BucketDirPath != "" {
+		return nil, errors.New("could not unmarshal captive core toml: setting BUCKET_DIR_PATH is disallowed, it can cause clashes between instances")
+	}
 
 	if err = captiveCoreToml.validate(params); err != nil {
 		return nil, errors.Wrap(err, "invalid captive core toml")
@@ -390,7 +395,7 @@ func (c *CaptiveCoreToml) CatchupToml() (*CaptiveCoreToml, error) {
 		// Add a fictional quorum -- necessary to convince core to start up;
 		// but not used at all for our purposes. Pubkey here is just random.
 		offline.QuorumSetEntries = map[string]QuorumSet{
-			"QUORUM_SET": QuorumSet{
+			"QUORUM_SET": {
 				ThresholdPercent: 100,
 				Validators:       []string{"GCZBOIAY4HLKAJVNJORXZOZRAY2BJDBZHKPBHZCRAIUR5IHC2UHBGCQR"},
 			},

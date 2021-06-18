@@ -19,6 +19,7 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 * Handle replica conflict errors gracefully ([3674](https://github.com/stellar/go/pull/3674)).
 * Fix data race in request parameters handling ([3690](https://github.com/stellar/go/pull/3690)).
 * Fix bug where the configuration for `CAPTIVE_CORE_LOG_PATH`, `CAPTIVE_CORE_PEER_PORT`, and `CAPTIVE_CORE_HTTP_PORT` were ignored if they were configured via environment variables instead of command line arguments. ([3702](https://github.com/stellar/go/pull/3702)).
+* Error when setting `BUCKET_DIR_PATH` through `--captive-core-config-path` ([3707](https://github.com/stellar/go/pull/3707)).
 
 ## v2.4.1
 
