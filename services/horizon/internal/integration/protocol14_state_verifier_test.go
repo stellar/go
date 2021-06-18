@@ -106,7 +106,8 @@ func TestProtocol14StateVerifier(t *testing.T) {
 	}
 
 	// Trigger state rebuild to check if ingesting from history archive works
-	q := itest.Horizon().HistoryQ().Clone().(*history.Q)
+	session := itest.Horizon().HistoryQ().Clone()
+	q := &history.Q{session}
 	err = q.Begin()
 	assert.NoError(t, err)
 	_, err = q.GetLastLedgerIngest(context.Background())
