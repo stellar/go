@@ -10,8 +10,8 @@ echo "deb https://apt.stellar.org $(lsb_release -cs) stable" | sudo tee -a /etc/
 apt-get update
 apt-get install -y stellar-core=${STELLAR_CORE_VERSION}
 
-wget https://dl.google.com/go/go1.16.3.linux-amd64.tar.gz
-tar -C /usr/local -xzf go1.16.3.linux-amd64.tar.gz
+wget https://dl.google.com/go/go1.16.5.linux-amd64.tar.gz
+tar -C /usr/local -xzf go1.16.5.linux-amd64.tar.gz
 
 # configure postgres
 service postgresql start
