@@ -91,6 +91,9 @@ DROP TABLE IF EXISTS public.history_transactions;
 DROP SEQUENCE IF EXISTS public.history_transaction_participants_id_seq;
 DROP TABLE IF EXISTS public.history_transaction_participants;
 DROP TABLE IF EXISTS public.history_trades;
+DROP TABLE public.history_trades_60000;
+DROP FUNCTION public.to_millis(timestamp without time zone, numeric);
+DROP FUNCTION public.to_millis(timestamp with time zone, numeric);
 DROP TABLE IF EXISTS public.history_operations;
 DROP SEQUENCE IF EXISTS public.history_operation_participants_id_seq;
 DROP TABLE IF EXISTS public.history_operation_participants;
@@ -517,6 +520,49 @@ CREATE TABLE history_trades (
     CONSTRAINT history_trades_counter_amount_check CHECK ((counter_amount >= 0))
 );
 
+--
+-- Name: history_trades; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE history_trades_60000 (
+  timestamp bigint not null,
+  base_asset_id bigint not null,
+  counter_asset_id bigint not null,
+  count integer not null,
+  base_volume numeric not null,
+  counter_volume numeric not null,
+  avg numeric not null,
+  high_n numeric not null,
+  high_d numeric not null,
+  low_n numeric not null,
+  low_d numeric not null,
+  open_ledger_seq bigint not null,
+  open_n numeric not null,
+  open_d numeric not null,
+  close_ledger_seq bigint not null,
+  close_n numeric not null,
+  close_d numeric not null,
+
+  PRIMARY KEY(base_asset_id, counter_asset_id, timestamp)
+);
+
+CREATE OR REPLACE FUNCTION to_millis(t timestamp without time zone, trun numeric DEFAULT 1)
+  RETURNS bigint AS $$
+  BEGIN
+    RETURN div(cast((extract(epoch from t) * 1000 ) as bigint), trun)*trun;
+  END;
+$$ LANGUAGE plpgsql IMMUTABLE;
+
+CREATE OR REPLACE FUNCTION to_millis(t timestamp with time zone, trun numeric DEFAULT 1)
+  RETURNS bigint AS $$
+  BEGIN
+    RETURN to_millis(t::timestamp, trun);
+  END;
+$$ LANGUAGE plpgsql IMMUTABLE;
+
+CREATE INDEX htrd_agg_bucket_lookup ON history_trades
+  USING btree (to_millis(ledger_closed_at, '60000'::numeric));
+
 
 --
 -- Name: history_transaction_participants; Type: TABLE; Schema: public; Owner: -
@@ -714,6 +760,7 @@ INSERT INTO gorp_migrations VALUES ('37_add_tx_set_operation_count_to_ledgers.sq
 INSERT INTO gorp_migrations VALUES ('41_add_sponsor_to_state_tables.sql', '2019-11-30 13:19:49.163718+01');
 INSERT INTO gorp_migrations VALUES ('45_add_claimable_balances_history.sql', '2019-11-30 14:19:49.163718+01');
 INSERT INTO gorp_migrations VALUES ('46_add_muxed_accounts.sql', '2019-12-30 14:19:49.163718+01');
+INSERT INTO gorp_migrations VALUES ('47_precompute_trade_aggregations.sql', '2019-12-30 14:19:49.163719+01');
 
 
 --
