@@ -483,23 +483,20 @@ func (c *CaptiveCoreToml) validate(params CaptiveCoreTomlParams) error {
 				hd.HomeDomain,
 			)
 		}
+
+		errorSubstring := ""
 		if hd.HomeDomain == "" {
-			return fmt.Errorf(
-				"found invalid home domain entry which is missing a HOME_DOMAIN value",
-			)
+			errorSubstring = "missing HOME_DOMAIN value"
+		} else if hd.Quality == "" {
+			errorSubstring = "missing QUALITY value"
+		} else if !validQuality[hd.Quality] {
+			errorSubstring = "invalid QUALITY value: " + hd.Quality
 		}
-		if hd.Quality == "" {
-			return fmt.Errorf(
-				"found invalid home domain entry which is missing a QUALITY value: %s",
-				hd.HomeDomain,
-			)
+
+		if errorSubstring != "" {
+			return fmt.Errorf("found invalid home domain entry: %s", errorSubstring)
 		}
-		if !validQuality[hd.Quality] {
-			return fmt.Errorf(
-				"found invalid home domain entry which has an invalid QUALITY value: %s",
-				hd.HomeDomain,
-			)
-		}
+
 		homeDomainSet[hd.HomeDomain] = hd
 	}
 
@@ -511,42 +508,26 @@ func (c *CaptiveCoreToml) validate(params CaptiveCoreTomlParams) error {
 				v.Name,
 			)
 		}
+
+		errorSubstring := ""
 		if v.Name == "" {
-			return fmt.Errorf(
-				"found invalid validator entry which is missing a NAME value: %s",
-				v.Name,
-			)
-		}
-		if v.HomeDomain == "" {
-			return fmt.Errorf(
-				"found invalid validator entry which is missing a HOME_DOMAIN value: %s",
-				v.Name,
-			)
-		}
-		if v.PublicKey == "" {
-			return fmt.Errorf(
-				"found invalid validator entry which is missing a PUBLIC_KEY value: %s",
-				v.Name,
-			)
-		}
-		if _, err := xdr.AddressToAccountId(v.PublicKey); err != nil {
-			return fmt.Errorf(
-				"found invalid validator entry which has an invalid PUBLIC_KEY : %s",
-				v.Name,
-			)
-		}
-		if v.Quality == "" {
+			errorSubstring = "missing a NAME value: " + v.Name
+		} else if v.HomeDomain == "" {
+			errorSubstring = "missing a HOME_DOMAIN value: " + v.Name
+		} else if v.PublicKey == "" {
+			errorSubstring = "missing a PUBLIC_KEY value: " + v.Name
+		} else if _, err := xdr.AddressToAccountId(v.PublicKey); err != nil {
+			errorSubstring = "invalid PUBLIC_KEY:" + v.PublicKey
+		} else if v.Quality == "" {
 			if _, ok := homeDomainSet[v.HomeDomain]; !ok {
-				return fmt.Errorf(
-					"found invalid validator entry which is missing a QUALITY value: %s",
-					v.Name,
-				)
+				errorSubstring = "missing a QUALITY value: " + v.Quality
 			}
 		} else if !validQuality[v.Quality] {
-			return fmt.Errorf(
-				"found invalid validator entry which has an invalid QUALITY value: %s",
-				v.Name,
-			)
+			errorSubstring = "invalid QUALITY value: " + v.Name
+		}
+
+		if errorSubstring != "" {
+			return fmt.Errorf("found invalid validator entry: %s", errorSubstring)
 		}
 
 		names[v.Name] = true
