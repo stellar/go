@@ -326,11 +326,6 @@ func NewCaptiveCoreTomlFromFile(configPath string, params CaptiveCoreTomlParams)
 	if err = captiveCoreToml.unmarshal(data, params.Strict); err != nil {
 		return nil, errors.Wrap(err, "could not unmarshal captive core toml")
 	}
-	// disallow setting BUCKET_DIR_PATH through a file since it can cause multiple
-	// running captive-core instances to clash
-	if params.Strict && captiveCoreToml.BucketDirPath != "" {
-		return nil, errors.New("could not unmarshal captive core toml: setting BUCKET_DIR_PATH is disallowed, it can cause clashes between instances")
-	}
 
 	if err = captiveCoreToml.validate(params); err != nil {
 		return nil, errors.Wrap(err, "invalid captive core toml")
@@ -469,6 +464,14 @@ func (c *CaptiveCoreToml) validate(params CaptiveCoreTomlParams) error {
 			"LOG_FILE_PATH in captive core config file: %s does not match Horizon captive-core-log-path flag: %s",
 			c.LogFilePath,
 			*params.LogPath,
+		)
+	}
+
+	// disallow setting BUCKET_DIR_PATH through a file since it can cause
+	// multiple running captive-core instances to clash
+	if params.Strict && params.BucketDirPath != "" {
+		return errors.New(
+			"could not unmarshal captive core toml: setting BUCKET_DIR_PATH is disallowed, it can cause clashes between instances"
 		)
 	}
 
