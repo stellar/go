@@ -42,6 +42,11 @@ type Config struct {
 	ProtocolVersion       int32
 	SkipContainerCreation bool
 	CoreDockerImage       string
+
+	// If you want to override the default parameters passed to Horizon, you can
+	// set this map accordingly. Note that for non-KV parameters (like
+	// --ingest), you should just set the values to be empty.
+	HorizonParameters map[string]string
 }
 
 type Test struct {
@@ -100,6 +105,8 @@ func NewTest(t *testing.T, config Config) *Test {
 		fatalIf(t, innerErr)
 	}
 
+	// We either test Captive Core through environment variables, or through
+	// custom Horizon parameters.
 	var captiveCoreBinaryPath, captiveCoreConfigPath string
 	if os.Getenv("HORIZON_INTEGRATION_ENABLE_CAPTIVE_CORE") != "" {
 		captiveCoreBinaryPath = os.Getenv("CAPTIVE_CORE_BIN")
@@ -107,6 +114,18 @@ func NewTest(t *testing.T, config Config) *Test {
 			t.Fatal("CAPTIVE_CORE_BIN is not set")
 		}
 		captiveCoreConfigPath = filepath.Join(composeDir, "captive-core-integration-tests.cfg")
+	} else {
+		if value, ok := config.HorizonParameters["--stellar-core-binary-path"]; ok {
+			captiveCoreBinaryPath = value
+		}
+		if value, ok := config.HorizonParameters["--captive-core-config-path"]; ok {
+			captiveCoreConfigPath = value
+		}
+	}
+
+	if (captiveCoreBinaryPath != "" && captiveCoreConfigPath == "") ||
+		(captiveCoreBinaryPath == "" && captiveCoreConfigPath != "") {
+		t.Fatal("Both the Stellar Core binary and Captive Core configuration needs to be set.")
 	}
 
 	// Only run Stellar Core container and its dependencies
@@ -172,6 +191,21 @@ func (i *Test) Shutdown() {
 	})
 }
 
+// mergeMaps returns a new map which contains the keys and values of both input
+// maps, preferring the latter newValues map if there are duplicate entries.
+func mergeMaps(defaults map[string]string, newValues map[string]string) map[string]string {
+	merged := make(map[string]string)
+	for key, value := range defaults {
+		merged[key] = value
+	}
+
+	for key, value := range newValues {
+		merged[key] = value
+	}
+
+	return merged
+}
+
 func (i *Test) startHorizon(
 	captiveCoreBinaryPath, captiveCoreConfigPath, horizonPostgresURL string, buildGenesisState bool,
 ) {
@@ -199,48 +233,45 @@ of accounts, subscribe to event streams, and more.`,
 		},
 	}
 
-	// Ideally, we'd be pulling host/port information from the Docker Compose
-	// YAML file itself rather than hardcoding it.
+	// TODO: Ideally, we'd be pulling host/port information from the Docker
+	//       Compose YAML file itself rather than hardcoding it.
+
+	// To facilitate custom runs of Horizon, we merge a default set of
+	// parameters with the tester-supplied ones (if any).
 	hostname := "localhost"
-	args := []string{
-		"--stellar-core-url",
-		fmt.Sprintf("http://%s:%d", hostname, stellarCorePort),
-		"--history-archive-urls",
-		fmt.Sprintf("http://%s:%d", hostname, historyArchivePort),
-		"--ingest",
-		"--db-url",
-		horizonPostgresURL,
-		"--stellar-core-db-url",
-		fmt.Sprintf(
+	var DEFAULT_ARGS = map[string]string{
+		"--stellar-core-url":     fmt.Sprintf("http://%s:%d", hostname, stellarCorePort),
+		"--history-archive-urls": fmt.Sprintf("http://%s:%d", hostname, historyArchivePort),
+		"--ingest":               "",
+		"--db-url":               horizonPostgresURL,
+		"--stellar-core-db-url": fmt.Sprintf(
 			"postgres://postgres:%s@%s:%d/stellar?sslmode=disable",
 			stellarCorePostgresPassword,
 			hostname,
 			stellarCorePostgresPort,
 		),
-
-		"--stellar-core-binary-path",
-		captiveCoreBinaryPath,
-		"--captive-core-config-path",
-		captiveCoreConfigPath,
-
-		"--captive-core-http-port",
-		"21626",
-
-		"--enable-captive-core-ingestion=" + strconv.FormatBool(len(captiveCoreBinaryPath) > 0),
-
-		"--network-passphrase",
-		i.passPhrase,
-		"--apply-migrations",
-		"--admin-port",
-		strconv.Itoa(i.AdminPort()),
-
+		"--stellar-core-binary-path": captiveCoreBinaryPath,
+		"--captive-core-config-path": captiveCoreConfigPath,
+		"--captive-core-http-port":   "21626",
+		"--enable-captive-core-ingestion=" +
+			strconv.FormatBool(len(captiveCoreBinaryPath) > 0): "",
+		"--network-passphrase": i.passPhrase,
+		"--apply-migrations":   "",
+		"--admin-port":         strconv.Itoa(i.AdminPort()),
 		// due to ARTIFICIALLY_ACCELERATE_TIME_FOR_TESTING
-		"--checkpoint-frequency",
-		"8",
+		"--checkpoint-frequency": "8",
+		"--per-hour-rate-limit":  "0", // disable rate limiting
+	}
 
-		// disable rate limiting
-		"--per-hour-rate-limit",
-		"0",
+	merged := mergeMaps(DEFAULT_ARGS, i.config.HorizonParameters)
+
+	// Turn the merged mapping into an array of strings for SetArgs
+	args := make([]string, 0, len(merged))
+	for key, value := range merged {
+		args = append(args, key, value)
+		if value != "" {
+			args = append(args, value)
+		}
 	}
 
 	// initialize core arguments
@@ -639,7 +670,7 @@ func findDockerComposePath() string {
 	//
 
 	if gopath := os.Getenv("GOPATH"); gopath != "" {
-		monorepo := filepath.Join(gopath, "stellar", "go")
+		monorepo := filepath.Join(gopath, "src", "github.com", "stellar", "go")
 		if _, err = os.Stat(monorepo); !os.IsNotExist(err) {
 			current = monorepo
 		}
