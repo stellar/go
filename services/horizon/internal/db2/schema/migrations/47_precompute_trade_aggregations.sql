@@ -1,7 +1,7 @@
--- +migrate Up
+-- +migrate Up notransaction
 
 -- Create the new table
-CREATE TABLE public.history_trades_60000 (
+CREATE TABLE history_trades_60000 (
   timestamp bigint not null,
   base_asset_id bigint not null,
   counter_asset_id bigint not null,
@@ -41,9 +41,7 @@ CREATE OR REPLACE FUNCTION to_millis(t timestamp with time zone, trun numeric DE
 $$ LANGUAGE plpgsql IMMUTABLE;
 -- +migrate StatementEnd
 
-CREATE INDEX CONCURRENTLY
-  htrd_agg_bucket_lookup
-  ON history_trades
+CREATE INDEX CONCURRENTLY htrd_agg_bucket_lookup ON history_trades
   USING btree (to_millis(ledger_closed_at, '60000'::numeric));
 
 -- Backfill the table with existing data. This takes about 4 minutes.
