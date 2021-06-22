@@ -469,9 +469,9 @@ func (c *CaptiveCoreToml) validate(params CaptiveCoreTomlParams) error {
 
 	// disallow setting BUCKET_DIR_PATH through a file since it can cause
 	// multiple running captive-core instances to clash
-	if params.Strict && params.BucketDirPath != "" {
+	if params.Strict && c.tree.Has("BUCKET_DIR_PATH") {
 		return errors.New(
-			"could not unmarshal captive core toml: setting BUCKET_DIR_PATH is disallowed, it can cause clashes between instances"
+			"could not unmarshal captive core toml: setting BUCKET_DIR_PATH is disallowed, it can cause clashes between instances",
 		)
 	}
 
