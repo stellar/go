@@ -86,6 +86,7 @@ WITH htrd AS (
 
 -- +migrate Down
 
+DROP INDEX htrd_agg_bucket_lookup;
 DROP TABLE history_trades_60000;
-DROP FUNCTION to_millis(timestamp without time zone, numeric);
 DROP FUNCTION to_millis(timestamp with time zone, numeric);
+DROP FUNCTION to_millis(timestamp without time zone, numeric);
