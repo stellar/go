@@ -6,15 +6,20 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
-### Bug Fixes
-** Fix bug where the configuration for `CAPTIVE_CORE_LOG_PATH`, `CAPTIVE_CORE_PEER_PORT`, and `CAPTIVE_CORE_HTTP_PORT` were ignored if they were configured via environment variables instead of command line arguments. ([3702](https://github.com/stellar/go/pull/3702)).
+## v2.5.0
 
-### New Features
-* Add new command `horizon db detect-gaps`, which detects ingestion gaps in the database. The command prints out the `db reingest` commands to run in order to fill the gaps found. 
+**Upgrading to this version from <= v2.1.1 will trigger a state rebuild. During this process (which can take up to 20 minutes), Horizon will not ingest new ledgers.**
 
+* Add new command `horizon db detect-gaps`, which detects ingestion gaps in the database. The command prints out the `db reingest` commands to run in order to fill the gaps found ([3672](https://github.com/stellar/go/pull/3672)). 
 * Performance improvement: Captive Core now reuses bucket files whenever it finds existing ones in the corresponding `--captive-core-storage-path` (introduced in [v2.1.0](#v2.1.0) rather than generating a one-time temporary sub-directory ([3670](https://github.com/stellar/go/pull/3670)). **This feature requires Stellar-Core version 17.1 or later.**
-
 * Horizon now monitors the Stellar Core binary on disk (pointed to by `--stellar-core-binary-path`/`STELLAR_CORE_BINARY_PATH`) and restarts its Captive Core subprocess if it detects changes (i.e a more recent file timestamp for the Stellar Core binary) ([3687](https://github.com/stellar/go/pull/3687)).
+* `POST /transactions` return `503 Service Unavailable` instead of `504 Gateway Timeout` if connected Stellar-Core is out of sync ([3653](https://github.com/stellar/go/pull/3653)).
+* Add protocol version metrics: `horizon_ingest_max_supported_protocol_version`, `horizon_ingest_captive_stellar_core_supported_protocol_version`, `horizon_stellar_core_supported_protocol_version` ([3634](https://github.com/stellar/go/pull/3634)).
+* Fixed crash in `horizon ingest verify-range` command ([3682](https://github.com/stellar/go/pull/3682)).
+* Handle replica conflict errors gracefully ([3674](https://github.com/stellar/go/pull/3674)).
+* Fix data race in request parameters handling ([3690](https://github.com/stellar/go/pull/3690)).
+* Fix bug where the configuration for `CAPTIVE_CORE_LOG_PATH`, `CAPTIVE_CORE_PEER_PORT`, and `CAPTIVE_CORE_HTTP_PORT` were ignored if they were configured via environment variables instead of command line arguments. ([3702](https://github.com/stellar/go/pull/3702)).
+* Error when setting `BUCKET_DIR_PATH` through `--captive-core-config-path` ([3707](https://github.com/stellar/go/pull/3707)).
 
 ## v2.4.1
 

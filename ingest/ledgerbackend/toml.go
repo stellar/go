@@ -21,10 +21,6 @@ const (
 	// if LOG_FILE_PATH is omitted stellar core actually defaults to "stellar-core.log"
 	// however, we are overriding this default for captive core
 	defaultLogFilePath = "" // by default we disable logging to a file
-
-	// if DISABLE_XDR_FSYNC is omitted stellar core actually defaults to false
-	// however, we are overriding this default for captive core
-	defaultDisableXDRFsync = true
 )
 
 var validQuality = map[string]bool{
@@ -82,7 +78,6 @@ type captiveCoreTomlValues struct {
 	UnsafeQuorum                         bool                 `toml:"UNSAFE_QUORUM,omitempty"`
 	RunStandalone                        bool                 `toml:"RUN_STANDALONE,omitempty"`
 	ArtificiallyAccelerateTimeForTesting bool                 `toml:"ARTIFICIALLY_ACCELERATE_TIME_FOR_TESTING,omitempty"`
-	DisableXDRFsync                      bool                 `toml:"DISABLE_XDR_FSYNC,omitempty"`
 	HomeDomains                          []HomeDomain         `toml:"HOME_DOMAINS,omitempty"`
 	Validators                           []Validator          `toml:"VALIDATORS,omitempty"`
 	HistoryEntries                       map[string]History   `toml:"-"`
@@ -178,6 +173,33 @@ func unflattenTables(text string, tablePlaceHolders *placeholders) string {
 		}
 		return "[" + original + "]"
 	})
+}
+
+// AddExamplePubnetQuorum adds example pubnet validators to toml file
+func (c *CaptiveCoreToml) AddExamplePubnetValidators() {
+	c.captiveCoreTomlValues.Validators = []Validator{
+		{
+			Name:       "sdf_1",
+			HomeDomain: "stellar.org",
+			PublicKey:  "GCGB2S2KGYARPVIA37HYZXVRM2YZUEXA6S33ZU5BUDC6THSB62LZSTYH",
+			Address:    "core-live-a.stellar.org:11625",
+			History:    "curl -sf https://history.stellar.org/prd/core-live/core_live_001/{0} -o {1}",
+		},
+		{
+			Name:       "sdf_2",
+			HomeDomain: "stellar.org",
+			PublicKey:  "GCM6QMP3DLRPTAZW2UZPCPX2LF3SXWXKPMP3GKFZBDSF3QZGV2G5QSTK",
+			Address:    "core-live-b.stellar.org:11625",
+			History:    "curl -sf https://history.stellar.org/prd/core-live/core_live_002/{0} -o {1}",
+		},
+		{
+			Name:       "sdf_3",
+			HomeDomain: "stellar.org",
+			PublicKey:  "GABMKJM6I25XI4K7U6XWMULOUQIQ27BCTMLS6BYYSOWKTBUXVRJSXHYQ",
+			Address:    "core-live-c.stellar.org:11625",
+			History:    "curl -sf https://history.stellar.org/prd/core-live/core_live_003/{0} -o {1}",
+		},
+	}
 }
 
 // Marshal serializes the CaptiveCoreToml into a toml document.
@@ -304,6 +326,11 @@ func NewCaptiveCoreTomlFromFile(configPath string, params CaptiveCoreTomlParams)
 	if err = captiveCoreToml.unmarshal(data, params.Strict); err != nil {
 		return nil, errors.Wrap(err, "could not unmarshal captive core toml")
 	}
+	// disallow setting BUCKET_DIR_PATH through a file since it can cause multiple
+	// running captive-core instances to clash
+	if params.Strict && captiveCoreToml.BucketDirPath != "" {
+		return nil, errors.New("could not unmarshal captive core toml: setting BUCKET_DIR_PATH is disallowed, it can cause clashes between instances")
+	}
 
 	if err = captiveCoreToml.validate(params); err != nil {
 		return nil, errors.Wrap(err, "invalid captive core toml")
@@ -368,7 +395,7 @@ func (c *CaptiveCoreToml) CatchupToml() (*CaptiveCoreToml, error) {
 		// Add a fictional quorum -- necessary to convince core to start up;
 		// but not used at all for our purposes. Pubkey here is just random.
 		offline.QuorumSetEntries = map[string]QuorumSet{
-			"QUORUM_SET": QuorumSet{
+			"QUORUM_SET": {
 				ThresholdPercent: 100,
 				Validators:       []string{"GCZBOIAY4HLKAJVNJORXZOZRAY2BJDBZHKPBHZCRAIUR5IHC2UHBGCQR"},
 			},
@@ -401,10 +428,6 @@ func (c *CaptiveCoreToml) setDefaults(params CaptiveCoreTomlParams) {
 	if !c.tree.Has("FAILURE_SAFETY") {
 		c.FailureSafety = defaultFailureSafety
 	}
-	if !c.tree.Has("DISABLE_XDR_FSYNC") {
-		c.DisableXDRFsync = defaultDisableXDRFsync
-	}
-
 	if !c.HistoryIsConfigured() {
 		c.HistoryEntries = map[string]History{}
 		for i, val := range params.HistoryArchiveURLs {
