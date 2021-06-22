@@ -26,8 +26,7 @@ import (
 
 // sendRequest builds the URL for the given horizon request and sends the url to a horizon server
 func (c *Client) sendRequest(hr HorizonRequest, resp interface{}) (err error) {
-	c.HorizonURL = c.fixHorizonURL()
-	req, err := hr.HTTPRequest(c.HorizonURL)
+	req, err := hr.HTTPRequest(c.fixHorizonURL())
 	if err != nil {
 		return err
 	}
@@ -270,7 +269,10 @@ func (c *Client) setDefaultClient() {
 
 // fixHorizonURL strips all slashes(/) at the end of HorizonURL if any, then adds a single slash
 func (c *Client) fixHorizonURL() string {
-	return strings.TrimRight(c.HorizonURL, "/") + "/"
+	c.fixHorizonURLOnce.Do(func() {
+		c.HorizonURL = strings.TrimRight(c.HorizonURL, "/") + "/"
+	})
+	return c.HorizonURL
 }
 
 // SetHorizonTimeout allows users to set the timeout before a horizon request is cancelled.
