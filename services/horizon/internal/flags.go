@@ -197,7 +197,7 @@ func Flags() (*Config, support.ConfigOptions) {
 			Required:    false,
 			FlagDefault: false,
 			Usage:       "determines if storage-dir should be reused, disabled by default because of Stellar-Core 17.1.0 issue",
-			ConfigKey:   &config.CaptiveCoreStoragePath,
+			ConfigKey:   &config.CaptiveCoreReuseStorageDir,
 		},
 		&support.ConfigOption{
 			Name:           "captive-core-peer-port",
