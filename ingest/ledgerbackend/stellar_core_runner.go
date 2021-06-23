@@ -65,8 +65,9 @@ type stellarCoreRunner struct {
 	processExited    bool
 	processExitError error
 
-	storagePath string
-	nonce       string
+	storagePath     string
+	reuseStorageDir bool
+	nonce           string
 
 	log *log.Entry
 }
@@ -82,13 +83,7 @@ func createRandomHexString(n int) string {
 
 func newStellarCoreRunner(config CaptiveCoreConfig, mode stellarCoreRunnerMode) (*stellarCoreRunner, error) {
 	var fullStoragePath string
-	if runtime.GOOS != "windows" && mode != stellarCoreRunnerModeOffline {
-		// Use the specified directory to store Captive Core's data:
-		//    https://github.com/stellar/go/issues/3437
-		// but be sure to re-use rather than replace it:
-		//    https://github.com/stellar/go/issues/3631
-		fullStoragePath = path.Join(config.StoragePath, "captive-core")
-	} else {
+	if runtime.GOOS == "windows" || mode == stellarCoreRunnerModeOffline || !config.ReuseStorageDir {
 		// On Windows, first we ALWAYS append something to the base storage path,
 		// because we will delete the directory entirely when Horizon stops. We also
 		// add a random suffix in order to ensure that there aren't naming
@@ -99,6 +94,12 @@ func newStellarCoreRunner(config CaptiveCoreConfig, mode stellarCoreRunnerMode) 
 		// because it's possible it's running multiple Stellar-Cores on a single
 		// machine.
 		fullStoragePath = path.Join(config.StoragePath, "captive-core-"+createRandomHexString(8))
+	} else {
+		// Use the specified directory to store Captive Core's data:
+		//    https://github.com/stellar/go/issues/3437
+		// but be sure to re-use rather than replace it:
+		//    https://github.com/stellar/go/issues/3631
+		fullStoragePath = path.Join(config.StoragePath, "captive-core")
 	}
 
 	info, err := os.Stat(fullStoragePath)
@@ -118,11 +119,12 @@ func newStellarCoreRunner(config CaptiveCoreConfig, mode stellarCoreRunnerMode) 
 	ctx, cancel := context.WithCancel(config.Context)
 
 	runner := &stellarCoreRunner{
-		executablePath: config.BinaryPath,
-		ctx:            ctx,
-		cancel:         cancel,
-		storagePath:    fullStoragePath,
-		mode:           mode,
+		executablePath:  config.BinaryPath,
+		ctx:             ctx,
+		cancel:          cancel,
+		storagePath:     fullStoragePath,
+		reuseStorageDir: config.ReuseStorageDir,
+		mode:            mode,
 		nonce: fmt.Sprintf(
 			"captive-stellar-core-%x",
 			rand.New(rand.NewSource(time.Now().UnixNano())).Uint64(),
@@ -479,7 +481,8 @@ func (r *stellarCoreRunner) close() error {
 
 	if runtime.GOOS == "windows" ||
 		(r.processExitError != nil && r.processExitError != context.Canceled) ||
-		r.mode == stellarCoreRunnerModeOffline {
+		r.mode == stellarCoreRunnerModeOffline ||
+		!r.reuseStorageDir {
 		// It's impossible to send SIGINT on Windows so buckets can become
 		// corrupted. If we can't reuse it, then remove it.
 		// We also remove the storage path if there was an error terminating the
