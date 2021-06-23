@@ -11,6 +11,7 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 **Upgrading to this version from <= v2.1.1 will trigger a state rebuild. During this process (which can take up to 20 minutes), Horizon will not ingest new ledgers.**
 
 * Fix for Stellar-Core 17.1.0 bug that can potentially corrupt Captive-Core storage dir.
+* All muxed ID fields are now represented as strings. This is to support JS that may not handle uint64 values in JSON responses properly.
 
 ## v2.5.0
 
