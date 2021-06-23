@@ -44,7 +44,7 @@ $$ LANGUAGE plpgsql IMMUTABLE;
 CREATE INDEX CONCURRENTLY htrd_agg_bucket_lookup ON history_trades
   USING btree (to_millis(ledger_closed_at, '60000'::numeric));
 
--- Backfill the table with existing data. This takes about 4 minutes.
+-- Backfill the table with existing data. This takes about 9 minutes.
 WITH htrd AS (
   SELECT
     to_millis(h.ledger_closed_at, 60000) as timestamp,
