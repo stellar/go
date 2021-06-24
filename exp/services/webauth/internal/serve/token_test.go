@@ -126,6 +126,136 @@ func TestToken_formInputSuccess(t *testing.T) {
 	assert.Equal(t, float64(iat.Add(h.JWTExpiresIn).Unix()), claims["exp"])
 }
 
+func TestToken_formInputSuccess_jwtClaimsAreDeterministic(t *testing.T) {
+	serverKey := keypair.MustRandom()
+	t.Logf("Server signing key: %s", serverKey.Address())
+
+	jwtPrivateKey, err := jwtkey.GenerateKey()
+	require.NoError(t, err)
+	jwk := jose.JSONWebKey{Key: jwtPrivateKey, Algorithm: string(jose.ES256)}
+
+	account := keypair.MustRandom()
+	t.Logf("Client account: %s", account.Address())
+
+	domain := "webauth.example.com"
+	homeDomain := "example.com"
+	tx, err := txnbuild.BuildChallengeTx(
+		serverKey.Seed(),
+		account.Address(),
+		domain,
+		homeDomain,
+		network.TestNetworkPassphrase,
+		time.Minute,
+	)
+	require.NoError(t, err)
+
+	chTx, err := tx.Base64()
+	require.NoError(t, err)
+	t.Logf("Tx: %s", chTx)
+
+	tx, err = tx.Sign(network.TestNetworkPassphrase, account)
+	require.NoError(t, err)
+	txSigned, err := tx.Base64()
+	require.NoError(t, err)
+	t.Logf("Signed: %s", txSigned)
+
+	horizonClient := &horizonclient.MockClient{}
+	horizonClient.
+		On("AccountDetail", horizonclient.AccountRequest{AccountID: account.Address()}).
+		Return(
+			horizon.Account{
+				Thresholds: horizon.AccountThresholds{
+					LowThreshold:  1,
+					MedThreshold:  10,
+					HighThreshold: 100,
+				},
+				Signers: []horizon.Signer{
+					{
+						Key:    account.Address(),
+						Weight: 100,
+					},
+				}},
+			nil,
+		)
+
+	h := tokenHandler{
+		Logger:            supportlog.DefaultLogger,
+		HorizonClient:     horizonClient,
+		NetworkPassphrase: network.TestNetworkPassphrase,
+		SigningAddresses:  []*keypair.FromAddress{serverKey.FromAddress()},
+		JWK:               jwk,
+		JWTIssuer:         "https://example.com",
+		JWTExpiresIn:      time.Minute,
+		Domain:            domain,
+		HomeDomains:       []string{homeDomain},
+	}
+
+	body := url.Values{}
+	body.Set("transaction", txSigned)
+	r := httptest.NewRequest("POST", "/", strings.NewReader(body.Encode()))
+	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, r)
+	resp := w.Result()
+
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
+
+	res := struct {
+		Token string `json:"token"`
+	}{}
+	err = json.NewDecoder(resp.Body).Decode(&res)
+	require.NoError(t, err)
+
+	t.Logf("JWT: %s", res.Token)
+
+	token, err := jwt.Parse(res.Token, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodECDSA); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return &jwtPrivateKey.PublicKey, nil
+	})
+	require.NoError(t, err)
+
+	claims := token.Claims.(jwt.MapClaims)
+	assert.Equal(t, "https://example.com", claims["iss"])
+	assert.Equal(t, account.Address(), claims["sub"])
+	assert.Equal(t, account.Address(), claims["sub"])
+	assert.Equal(t, float64(tx.Timebounds().MinTime), claims["iat"])
+	iat := time.Unix(int64(claims["iat"].(float64)), 0)
+	assert.Equal(t, float64(iat.Add(h.JWTExpiresIn).Unix()), claims["exp"])
+
+	// let's replay the transaction to make sure the returned JWT remains the same
+	time.Sleep(time.Second)
+	r = httptest.NewRequest("POST", "/", strings.NewReader(body.Encode()))
+	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	w = httptest.NewRecorder()
+	h.ServeHTTP(w, r)
+	resp = w.Result()
+
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
+
+	res2 := struct {
+		Token string `json:"token"`
+	}{}
+	err = json.NewDecoder(resp.Body).Decode(&res2)
+	require.NoError(t, err)
+
+	token2, err := jwt.Parse(res2.Token, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodECDSA); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return &jwtPrivateKey.PublicKey, nil
+	})
+	require.NoError(t, err)
+
+	claims2 := token2.Claims.(jwt.MapClaims)
+	require.Equal(t, claims, claims2)
+
+	t.Log(claims2)
+}
+
 func TestToken_jsonInputSuccess(t *testing.T) {
 	serverKey := keypair.MustRandom()
 	t.Logf("Server signing key: %s", serverKey.Address())
