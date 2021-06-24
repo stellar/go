@@ -1028,6 +1028,8 @@ func TestToken_jsonInputNoWebAuthDomainSuccess(t *testing.T) {
 
 	domain := "webauth.example.com"
 	homeDomain := "example.com"
+	currentTime := time.Now().UTC()
+	maxTime := currentTime.Add(time.Second * 60)
 	tx, err := txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount:        &txnbuild.SimpleAccount{AccountID: serverKey.Address()},
@@ -1041,7 +1043,7 @@ func TestToken_jsonInputNoWebAuthDomainSuccess(t *testing.T) {
 			},
 			BaseFee:    txnbuild.MinBaseFee,
 			Memo:       nil,
-			Timebounds: txnbuild.NewTimeout(300),
+			Timebounds: txnbuild.NewTimebounds(currentTime.Unix(), maxTime.Unix()),
 		},
 	)
 	require.NoError(t, err)
