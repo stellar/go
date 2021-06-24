@@ -121,12 +121,9 @@ func TestToken_formInputSuccess(t *testing.T) {
 	assert.Equal(t, "https://example.com", claims["iss"])
 	assert.Equal(t, account.Address(), claims["sub"])
 	assert.Equal(t, account.Address(), claims["sub"])
+	assert.Equal(t, float64(tx.Timebounds().MinTime), claims["iat"])
 	iat := time.Unix(int64(claims["iat"].(float64)), 0)
-	exp := time.Unix(int64(claims["exp"].(float64)), 0)
-	assert.True(t, iat.Before(time.Now()))
-	assert.True(t, exp.After(time.Now()))
-	assert.True(t, time.Now().Add(time.Minute).After(exp))
-	assert.Equal(t, exp.Sub(iat), time.Minute)
+	assert.Equal(t, float64(iat.Add(h.JWTExpiresIn).Unix()), claims["exp"])
 }
 
 func TestToken_jsonInputSuccess(t *testing.T) {
@@ -229,12 +226,9 @@ func TestToken_jsonInputSuccess(t *testing.T) {
 	assert.Equal(t, "https://example.com", claims["iss"])
 	assert.Equal(t, account.Address(), claims["sub"])
 	assert.Equal(t, account.Address(), claims["sub"])
+	assert.Equal(t, float64(tx.Timebounds().MinTime), claims["iat"])
 	iat := time.Unix(int64(claims["iat"].(float64)), 0)
-	exp := time.Unix(int64(claims["exp"].(float64)), 0)
-	assert.True(t, iat.Before(time.Now()))
-	assert.True(t, exp.After(time.Now()))
-	assert.True(t, time.Now().Add(time.Minute).After(exp))
-	assert.Equal(t, exp.Sub(iat), time.Minute)
+	assert.Equal(t, float64(iat.Add(h.JWTExpiresIn).Unix()), claims["exp"])
 }
 
 // This test ensures that when multiple server keys are configured on the
@@ -361,12 +355,9 @@ func TestToken_jsonInputValidRotatingServerSigners(t *testing.T) {
 			claims := token.Claims.(jwt.MapClaims)
 			assert.Equal(t, "https://example.com", claims["iss"])
 			assert.Equal(t, account.Address(), claims["sub"])
+			assert.Equal(t, float64(tx.Timebounds().MinTime), claims["iat"])
 			iat := time.Unix(int64(claims["iat"].(float64)), 0)
-			exp := time.Unix(int64(claims["exp"].(float64)), 0)
-			assert.True(t, iat.Before(time.Now()))
-			assert.True(t, exp.After(time.Now()))
-			assert.True(t, time.Now().Add(time.Minute).After(exp))
-			assert.Equal(t, exp.Sub(iat), time.Minute)
+			assert.Equal(t, float64(iat.Add(h.JWTExpiresIn).Unix()), claims["exp"])
 		})
 	}
 }
@@ -480,12 +471,9 @@ func TestToken_jsonInputValidMultipleSigners(t *testing.T) {
 	claims := token.Claims.(jwt.MapClaims)
 	assert.Equal(t, "https://example.com", claims["iss"])
 	assert.Equal(t, account.Address(), claims["sub"])
+	assert.Equal(t, float64(tx.Timebounds().MinTime), claims["iat"])
 	iat := time.Unix(int64(claims["iat"].(float64)), 0)
-	exp := time.Unix(int64(claims["exp"].(float64)), 0)
-	assert.True(t, iat.Before(time.Now()))
-	assert.True(t, exp.After(time.Now()))
-	assert.True(t, time.Now().Add(time.Minute).After(exp))
-	assert.Equal(t, exp.Sub(iat), time.Minute)
+	assert.Equal(t, float64(iat.Add(h.JWTExpiresIn).Unix()), claims["exp"])
 }
 
 func TestToken_jsonInputNotEnoughWeight(t *testing.T) {
@@ -756,12 +744,9 @@ func TestToken_jsonInputAccountNotExistSuccess(t *testing.T) {
 	assert.Equal(t, "https://example.com", claims["iss"])
 	assert.Equal(t, account.Address(), claims["sub"])
 	assert.Equal(t, account.Address(), claims["sub"])
+	assert.Equal(t, float64(tx.Timebounds().MinTime), claims["iat"])
 	iat := time.Unix(int64(claims["iat"].(float64)), 0)
-	exp := time.Unix(int64(claims["exp"].(float64)), 0)
-	assert.True(t, iat.Before(time.Now()))
-	assert.True(t, exp.After(time.Now()))
-	assert.True(t, time.Now().Add(time.Minute).After(exp))
-	assert.Equal(t, exp.Sub(iat), time.Minute)
+	assert.Equal(t, float64(iat.Add(h.JWTExpiresIn).Unix()), claims["exp"])
 }
 
 func TestToken_jsonInputAccountNotExistFail(t *testing.T) {
