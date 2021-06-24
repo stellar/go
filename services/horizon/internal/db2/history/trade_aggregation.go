@@ -240,7 +240,8 @@ func aggregate(query sq.SelectBuilder) sq.SelectBuilder {
 // RebuildTradeAggregationBuckets rebuilds a specific set of trade aggregation buckets.
 // to ensure complete data in case of partial reingestion.
 func (q Q) RebuildTradeAggregationBuckets(ctx context.Context, fromLedger, toLedger uint32) error {
-	// TODO: Check if toLedger should be exclusive here.
+	// toLedger should be inclusive here.
+	toLedger = toLedger + 1
 
 	// Clear out the old bucket values.
 	_, err := q.Exec(ctx, sq.Delete("history_trades_60000").Where(
