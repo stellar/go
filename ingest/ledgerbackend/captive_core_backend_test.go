@@ -270,7 +270,6 @@ func TestCaptivePrepareRange_ErrClosingSession(t *testing.T) {
 	ctx := context.Background()
 	mockRunner := &stellarCoreRunnerMock{}
 	mockRunner.On("close").Return(fmt.Errorf("transient error"))
-	mockRunner.On("context").Return(ctx)
 
 	captiveBackend := CaptiveStellarCore{
 		nextLedger:        300,
@@ -405,7 +404,7 @@ func TestCaptivePrepareRange_ErrCatchup(t *testing.T) {
 
 func TestCaptivePrepareRangeUnboundedRange_ErrRunFrom(t *testing.T) {
 	mockRunner := &stellarCoreRunnerMock{}
-	mockRunner.On("runFrom", uint32(126), "0000000000000000000000000000000000000000000000000000000000000000").Return(errors.New("transient error")).Once()
+	mockRunner.On("runFrom", uint32(127), "0000000000000000000000000000000000000000000000000000000000000000").Return(errors.New("transient error")).Once()
 	mockRunner.On("close").Return(nil).Once()
 
 	mockArchive := &historyarchive.MockArchive{}
@@ -416,7 +415,7 @@ func TestCaptivePrepareRangeUnboundedRange_ErrRunFrom(t *testing.T) {
 		}, nil)
 
 	mockArchive.
-		On("GetLedgerHeader", uint32(127)).
+		On("GetLedgerHeader", uint32(128)).
 		Return(xdr.LedgerHeaderHistoryEntry{}, nil)
 
 	ctx := context.Background()
@@ -457,7 +456,7 @@ func TestCaptivePrepareRangeUnboundedRange_ReuseSession(t *testing.T) {
 
 	ctx := context.Background()
 	mockRunner := &stellarCoreRunnerMock{}
-	mockRunner.On("runFrom", uint32(62), "0000000000000000000000000000000000000000000000000000000000000000").Return(nil).Once()
+	mockRunner.On("runFrom", uint32(64), "0000000000000000000000000000000000000000000000000000000000000000").Return(nil).Once()
 	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(metaChan))
 	mockRunner.On("context").Return(ctx)
 
@@ -468,7 +467,7 @@ func TestCaptivePrepareRangeUnboundedRange_ReuseSession(t *testing.T) {
 			CurrentLedger: uint32(129),
 		}, nil)
 	mockArchive.
-		On("GetLedgerHeader", uint32(63)).
+		On("GetLedgerHeader", uint32(65)).
 		Return(xdr.LedgerHeaderHistoryEntry{}, nil)
 
 	captiveBackend := CaptiveStellarCore{
@@ -504,7 +503,7 @@ func TestGetLatestLedgerSequence(t *testing.T) {
 
 	ctx := context.Background()
 	mockRunner := &stellarCoreRunnerMock{}
-	mockRunner.On("runFrom", uint32(62), "0000000000000000000000000000000000000000000000000000000000000000").Return(nil).Once()
+	mockRunner.On("runFrom", uint32(63), "0000000000000000000000000000000000000000000000000000000000000000").Return(nil).Once()
 	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(metaChan))
 	mockRunner.On("context").Return(ctx)
 
@@ -516,7 +515,7 @@ func TestGetLatestLedgerSequence(t *testing.T) {
 		}, nil)
 
 	mockArchive.
-		On("GetLedgerHeader", uint32(63)).
+		On("GetLedgerHeader", uint32(64)).
 		Return(xdr.LedgerHeaderHistoryEntry{}, nil)
 
 	captiveBackend := CaptiveStellarCore{
@@ -635,7 +634,7 @@ func TestCaptiveGetLedgerCacheLatestLedger(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	mockRunner := &stellarCoreRunnerMock{}
-	mockRunner.On("runFrom", uint32(62), "0101010100000000000000000000000000000000000000000000000000000000").Return(nil).Once()
+	mockRunner.On("runFrom", uint32(65), "0101010100000000000000000000000000000000000000000000000000000000").Return(nil).Once()
 	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(metaChan))
 	mockRunner.On("context").Return(ctx)
 
@@ -647,7 +646,7 @@ func TestCaptiveGetLedgerCacheLatestLedger(t *testing.T) {
 		}, nil)
 
 	mockArchive.
-		On("GetLedgerHeader", uint32(63)).
+		On("GetLedgerHeader", uint32(66)).
 		Return(xdr.LedgerHeaderHistoryEntry{
 			Header: xdr.LedgerHeader{
 				PreviousLedgerHash: xdr.Hash{1, 1, 1, 1},
@@ -722,6 +721,58 @@ func TestCaptiveGetLedger_NextLedgerIsDifferentToLedgerFromBuffer(t *testing.T) 
 
 	_, err = captiveBackend.GetLedger(ctx, 66)
 	assert.EqualError(t, err, "unexpected ledger sequence (expected=66 actual=68)")
+
+	// TODO assertions should work - to be fixed in a separate PR.
+	// _, err = captiveBackend.GetLedger(ctx, 66)
+	// assert.EqualError(t, err, "session is closed, call PrepareRange first")
+
+	mockArchive.AssertExpectations(t)
+	mockRunner.AssertExpectations(t)
+}
+
+func TestCaptiveGetLedger_NextLedger0RangeFromIsSmallerThanLedgerFromBuffer(t *testing.T) {
+	metaChan := make(chan metaResult, 100)
+
+	for i := 66; i <= 66; i++ {
+		meta := buildLedgerCloseMeta(testLedgerHeader{sequence: uint32(i)})
+		metaChan <- metaResult{
+			LedgerCloseMeta: &meta,
+		}
+	}
+
+	ctx := context.Background()
+	mockRunner := &stellarCoreRunnerMock{}
+	mockRunner.On("runFrom", uint32(64), mock.Anything).Return(nil)
+	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(metaChan))
+	mockRunner.On("context").Return(ctx)
+	mockRunner.On("close").Return(nil)
+
+	mockArchive := &historyarchive.MockArchive{}
+	mockArchive.
+		On("GetRootHAS").
+		Return(historyarchive.HistoryArchiveState{
+			CurrentLedger: uint32(200),
+		}, nil)
+
+	mockArchive.
+		On("GetLedgerHeader", uint32(65)).
+		Return(xdr.LedgerHeaderHistoryEntry{}, nil)
+
+	captiveBackend := CaptiveStellarCore{
+		archive: mockArchive,
+		stellarCoreRunnerFactory: func(_ stellarCoreRunnerMode) (stellarCoreRunnerInterface, error) {
+			return mockRunner, nil
+		},
+		checkpointManager: historyarchive.NewCheckpointManager(64),
+	}
+
+	err := captiveBackend.PrepareRange(ctx, UnboundedRange(65))
+	assert.EqualError(t, err, "Error fast-forwarding to 65: unexpected ledger sequence (expected=<=65 actual=66)")
+
+	// TODO assertions should work - to be fixed in a separate PR.
+	// prepared, err := captiveBackend.IsPrepared(ctx, UnboundedRange(65))
+	// assert.NoError(t, err)
+	// assert.False(t, prepared)
 
 	mockArchive.AssertExpectations(t)
 	mockRunner.AssertExpectations(t)
@@ -1080,7 +1131,7 @@ func TestCaptiveUseOfLedgerHashStore(t *testing.T) {
 	ctx := context.Background()
 	mockArchive := &historyarchive.MockArchive{}
 	mockArchive.
-		On("GetLedgerHeader", uint32(255)).
+		On("GetLedgerHeader", uint32(300)).
 		Return(xdr.LedgerHeaderHistoryEntry{
 			Header: xdr.LedgerHeader{
 				PreviousLedgerHash: xdr.Hash{1, 1, 1, 1},
@@ -1088,13 +1139,13 @@ func TestCaptiveUseOfLedgerHashStore(t *testing.T) {
 		}, nil)
 
 	mockLedgerHashStore := &MockLedgerHashStore{}
-	mockLedgerHashStore.On("GetLedgerHash", ctx, uint32(1022)).
+	mockLedgerHashStore.On("GetLedgerHash", ctx, uint32(1049)).
 		Return("", false, fmt.Errorf("transient error")).Once()
-	mockLedgerHashStore.On("GetLedgerHash", ctx, uint32(254)).
+	mockLedgerHashStore.On("GetLedgerHash", ctx, uint32(299)).
 		Return("", false, nil).Once()
-	mockLedgerHashStore.On("GetLedgerHash", ctx, uint32(62)).
+	mockLedgerHashStore.On("GetLedgerHash", ctx, uint32(85)).
 		Return("cde", true, nil).Once()
-	mockLedgerHashStore.On("GetLedgerHash", ctx, uint32(126)).
+	mockLedgerHashStore.On("GetLedgerHash", ctx, uint32(127)).
 		Return("ghi", true, nil).Once()
 	mockLedgerHashStore.On("GetLedgerHash", ctx, uint32(2)).
 		Return("mnb", true, nil).Once()
@@ -1109,32 +1160,28 @@ func TestCaptiveUseOfLedgerHashStore(t *testing.T) {
 		}),
 	}
 
-	runFrom, ledgerHash, nextLedger, err := captiveBackend.runFromParams(ctx, 24)
+	runFrom, ledgerHash, err := captiveBackend.runFromParams(ctx, 24)
 	assert.NoError(t, err)
 	assert.Equal(t, uint32(2), runFrom)
 	assert.Equal(t, "mnb", ledgerHash)
-	assert.Equal(t, uint32(2), nextLedger)
 
-	runFrom, ledgerHash, nextLedger, err = captiveBackend.runFromParams(ctx, 86)
+	runFrom, ledgerHash, err = captiveBackend.runFromParams(ctx, 86)
 	assert.NoError(t, err)
-	assert.Equal(t, uint32(62), runFrom)
+	assert.Equal(t, uint32(85), runFrom)
 	assert.Equal(t, "cde", ledgerHash)
-	assert.Equal(t, uint32(2), nextLedger)
 
-	runFrom, ledgerHash, nextLedger, err = captiveBackend.runFromParams(ctx, 128)
+	runFrom, ledgerHash, err = captiveBackend.runFromParams(ctx, 128)
 	assert.NoError(t, err)
-	assert.Equal(t, uint32(126), runFrom)
+	assert.Equal(t, uint32(127), runFrom)
 	assert.Equal(t, "ghi", ledgerHash)
-	assert.Equal(t, uint32(64), nextLedger)
 
-	runFrom, ledgerHash, nextLedger, err = captiveBackend.runFromParams(ctx, 1050)
-	assert.EqualError(t, err, "error trying to read ledger hash 1022: transient error")
+	_, _, err = captiveBackend.runFromParams(ctx, 1050)
+	assert.EqualError(t, err, "error trying to read ledger hash 1049: transient error")
 
-	runFrom, ledgerHash, nextLedger, err = captiveBackend.runFromParams(ctx, 300)
+	runFrom, ledgerHash, err = captiveBackend.runFromParams(ctx, 300)
 	assert.NoError(t, err)
-	assert.Equal(t, uint32(254), runFrom, "runFrom")
+	assert.Equal(t, uint32(299), runFrom, "runFrom")
 	assert.Equal(t, "0101010100000000000000000000000000000000000000000000000000000000", ledgerHash)
-	assert.Equal(t, uint32(192), nextLedger, "nextLedger")
 
 	mockLedgerHashStore.On("Close").Return(nil).Once()
 	err = captiveBackend.Close()
@@ -1149,26 +1196,25 @@ func TestCaptiveRunFromParams(t *testing.T) {
 		from           uint32
 		runFrom        uint32
 		ledgerArchives uint32
-		nextLedger     uint32
 	}{
 		// Before and including 1st checkpoint:
-		{2, 2, 3, 2},
-		{3, 2, 3, 2},
-		{3, 2, 3, 2},
-		{4, 2, 3, 2},
-		{62, 2, 3, 2},
-		{63, 2, 3, 2},
+		{2, 2, 3},
+		{3, 2, 3},
+		{3, 2, 3},
+		{4, 2, 3},
+		{62, 2, 3},
+		{63, 2, 3},
 
 		// Starting from 64 we go normal path: between 1st and 2nd checkpoint:
-		{64, 62, 63, 2},
-		{65, 62, 63, 2},
-		{66, 62, 63, 2},
-		{126, 62, 63, 2},
+		{64, 63, 64},
+		{65, 64, 65},
+		{66, 65, 66},
+		{126, 125, 126},
 
 		// between 2nd and 3rd checkpoint... and so on.
-		{127, 126, 127, 64},
-		{128, 126, 127, 64},
-		{129, 126, 127, 64},
+		{127, 126, 127},
+		{128, 127, 128},
+		{129, 128, 129},
 	}
 
 	for _, tc := range tests {
@@ -1189,11 +1235,10 @@ func TestCaptiveRunFromParams(t *testing.T) {
 			}
 
 			ctx := context.Background()
-			runFrom, ledgerHash, nextLedger, err := captiveBackend.runFromParams(ctx, tc.from)
+			runFrom, ledgerHash, err := captiveBackend.runFromParams(ctx, tc.from)
 			tt.NoError(err)
 			tt.Equal(tc.runFrom, runFrom, "runFrom")
 			tt.Equal("0101010100000000000000000000000000000000000000000000000000000000", ledgerHash)
-			tt.Equal(tc.nextLedger, nextLedger, "nextLedger")
 
 			mockArchive.AssertExpectations(t)
 		})
@@ -1201,32 +1246,47 @@ func TestCaptiveRunFromParams(t *testing.T) {
 }
 
 func TestCaptiveIsPrepared(t *testing.T) {
-	var tests = []struct {
-		nextLedger   uint32
-		lastLedger   uint32
-		cachedLedger uint32
-		ledgerRange  Range
-		result       bool
-	}{
-		{0, 0, 0, UnboundedRange(100), false},
-		{100, 0, 0, UnboundedRange(101), true},
-		{101, 0, 100, UnboundedRange(100), true},
-		{100, 200, 0, UnboundedRange(100), false},
+	mockRunner := &stellarCoreRunnerMock{}
+	mockRunner.On("context").Return(context.Background()).Maybe()
 
-		{100, 200, 0, BoundedRange(100, 200), true},
-		{100, 200, 0, BoundedRange(100, 201), false},
-		{100, 201, 0, BoundedRange(100, 200), true},
-		{101, 200, 100, BoundedRange(100, 200), true},
+	// c.prepared == nil
+	captiveBackend := CaptiveStellarCore{
+		nextLedger: 0,
+	}
+
+	result := captiveBackend.isPrepared(UnboundedRange(100))
+	assert.False(t, result)
+
+	// c.prepared != nil:
+	var tests = []struct {
+		nextLedger    uint32
+		lastLedger    uint32
+		cachedLedger  uint32
+		preparedRange Range
+		ledgerRange   Range
+		result        bool
+	}{
+		// If nextLedger == 0, prepared range is checked
+		{0, 0, 0, UnboundedRange(100), UnboundedRange(100), true},
+		{0, 0, 0, UnboundedRange(100), UnboundedRange(99), false},
+		{0, 0, 0, UnboundedRange(100), BoundedRange(100, 200), true},
+
+		{100, 0, 0, UnboundedRange(99), UnboundedRange(101), true},
+		{101, 0, 100, UnboundedRange(99), UnboundedRange(100), true},
+		{100, 200, 0, BoundedRange(99, 200), UnboundedRange(100), false},
+
+		{100, 200, 0, BoundedRange(99, 200), BoundedRange(100, 200), true},
+		{100, 200, 0, BoundedRange(99, 200), BoundedRange(100, 201), false},
+		{100, 201, 0, BoundedRange(99, 201), BoundedRange(100, 200), true},
+		{101, 200, 100, BoundedRange(99, 200), BoundedRange(100, 200), true},
 	}
 
 	for _, tc := range tests {
 		t.Run(fmt.Sprintf("next_%d_last_%d_cached_%d_range_%v", tc.nextLedger, tc.lastLedger, tc.cachedLedger, tc.ledgerRange), func(t *testing.T) {
-			mockRunner := &stellarCoreRunnerMock{}
-			mockRunner.On("context").Return(context.Background()).Maybe()
-
 			captiveBackend := CaptiveStellarCore{
 				stellarCoreRunner: mockRunner,
 				nextLedger:        tc.nextLedger,
+				prepared:          &tc.preparedRange,
 			}
 			if tc.lastLedger > 0 {
 				captiveBackend.lastLedger = &tc.lastLedger
@@ -1277,7 +1337,7 @@ func TestCaptivePreviousLedgerCheck(t *testing.T) {
 
 	ctx := context.Background()
 	mockRunner := &stellarCoreRunnerMock{}
-	mockRunner.On("runFrom", uint32(254), "0101010100000000000000000000000000000000000000000000000000000000").Return(nil).Once()
+	mockRunner.On("runFrom", uint32(299), "0101010100000000000000000000000000000000000000000000000000000000").Return(nil).Once()
 	mockRunner.On("getMetaPipe").Return((<-chan metaResult)(metaChan))
 	mockRunner.On("context").Return(ctx)
 	mockRunner.On("close").Return(nil).Once()
@@ -1289,7 +1349,7 @@ func TestCaptivePreviousLedgerCheck(t *testing.T) {
 			CurrentLedger: uint32(255),
 		}, nil)
 	mockArchive.
-		On("GetLedgerHeader", uint32(255)).
+		On("GetLedgerHeader", uint32(300)).
 		Return(xdr.LedgerHeaderHistoryEntry{
 			Header: xdr.LedgerHeader{
 				PreviousLedgerHash: xdr.Hash{1, 1, 1, 1},
@@ -1297,10 +1357,8 @@ func TestCaptivePreviousLedgerCheck(t *testing.T) {
 		}, nil).Once()
 
 	mockLedgerHashStore := &MockLedgerHashStore{}
-	mockLedgerHashStore.On("GetLedgerHash", ctx, uint32(254)).
+	mockLedgerHashStore.On("GetLedgerHash", ctx, uint32(299)).
 		Return("", false, nil).Once()
-	mockLedgerHashStore.On("GetLedgerHash", ctx, uint32(191)).
-		Return("0200000000000000000000000000000000000000000000000000000000000000", true, nil).Once()
 
 	captiveBackend := CaptiveStellarCore{
 		archive: mockArchive,
