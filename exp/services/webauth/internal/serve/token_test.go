@@ -201,15 +201,15 @@ func TestToken_formInputSuccess_jwtClaimsAreDeterministic(t *testing.T) {
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
 
-	res := struct {
+	res1 := struct {
 		Token string `json:"token"`
 	}{}
-	err = json.NewDecoder(resp.Body).Decode(&res)
+	err = json.NewDecoder(resp.Body).Decode(&res1)
 	require.NoError(t, err)
 
-	t.Logf("JWT: %s", res.Token)
+	t.Logf("JWT 1: %s", res1.Token)
 
-	token, err := jwt.Parse(res.Token, func(token *jwt.Token) (interface{}, error) {
+	token1, err := jwt.Parse(res1.Token, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodECDSA); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
@@ -217,13 +217,13 @@ func TestToken_formInputSuccess_jwtClaimsAreDeterministic(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	claims := token.Claims.(jwt.MapClaims)
-	assert.Equal(t, "https://example.com", claims["iss"])
-	assert.Equal(t, account.Address(), claims["sub"])
-	assert.Equal(t, account.Address(), claims["sub"])
-	assert.Equal(t, float64(tx.Timebounds().MinTime), claims["iat"])
-	iat := time.Unix(int64(claims["iat"].(float64)), 0)
-	assert.Equal(t, float64(iat.Add(h.JWTExpiresIn).Unix()), claims["exp"])
+	claims1 := token1.Claims.(jwt.MapClaims)
+	assert.Equal(t, "https://example.com", claims1["iss"])
+	assert.Equal(t, account.Address(), claims1["sub"])
+	assert.Equal(t, account.Address(), claims1["sub"])
+	assert.Equal(t, float64(tx.Timebounds().MinTime), claims1["iat"])
+	iat := time.Unix(int64(claims1["iat"].(float64)), 0)
+	assert.Equal(t, float64(iat.Add(h.JWTExpiresIn).Unix()), claims1["exp"])
 
 	// let's replay the transaction to make sure the returned JWT remains the same
 	time.Sleep(time.Second)
@@ -242,6 +242,8 @@ func TestToken_formInputSuccess_jwtClaimsAreDeterministic(t *testing.T) {
 	err = json.NewDecoder(resp.Body).Decode(&res2)
 	require.NoError(t, err)
 
+	t.Logf("JWT 2: %s", res2.Token)
+
 	token2, err := jwt.Parse(res2.Token, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodECDSA); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
@@ -251,7 +253,7 @@ func TestToken_formInputSuccess_jwtClaimsAreDeterministic(t *testing.T) {
 	require.NoError(t, err)
 
 	claims2 := token2.Claims.(jwt.MapClaims)
-	require.Equal(t, claims, claims2)
+	require.Equal(t, claims1, claims2)
 
 	t.Log(claims2)
 }
