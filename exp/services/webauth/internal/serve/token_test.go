@@ -1028,8 +1028,9 @@ func TestToken_jsonInputNoWebAuthDomainSuccess(t *testing.T) {
 
 	domain := "webauth.example.com"
 	homeDomain := "example.com"
-	currentTime := time.Now().UTC()
-	maxTime := currentTime.Add(time.Second * 60)
+	now := time.Now().UTC()
+	txMinTimebounds := now.Unix()
+	txMaxTimebounds := now.Add(time.Second * 60).Unix()
 	tx, err := txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount:        &txnbuild.SimpleAccount{AccountID: serverKey.Address()},
@@ -1043,7 +1044,7 @@ func TestToken_jsonInputNoWebAuthDomainSuccess(t *testing.T) {
 			},
 			BaseFee:    txnbuild.MinBaseFee,
 			Memo:       nil,
-			Timebounds: txnbuild.NewTimebounds(currentTime.Unix(), maxTime.Unix()),
+			Timebounds: txnbuild.NewTimebounds(txMinTimebounds, txMaxTimebounds),
 		},
 	)
 	require.NoError(t, err)
@@ -1123,12 +1124,9 @@ func TestToken_jsonInputNoWebAuthDomainSuccess(t *testing.T) {
 	assert.Equal(t, "https://example.com", claims["iss"])
 	assert.Equal(t, account.Address(), claims["sub"])
 	assert.Equal(t, account.Address(), claims["sub"])
+	assert.Equal(t, float64(txMinTimebounds), claims["iat"])
 	iat := time.Unix(int64(claims["iat"].(float64)), 0)
-	exp := time.Unix(int64(claims["exp"].(float64)), 0)
-	assert.True(t, iat.Before(time.Now()))
-	assert.True(t, exp.After(time.Now()))
-	assert.True(t, time.Now().Add(time.Minute).After(exp))
-	assert.Equal(t, exp.Sub(iat), time.Minute)
+	assert.Equal(t, float64(iat.Add(h.JWTExpiresIn).Unix()), claims["exp"])
 }
 
 func TestToken_jsonInputInvalidWebAuthDomainFail(t *testing.T) {
