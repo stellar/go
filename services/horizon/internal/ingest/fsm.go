@@ -456,6 +456,11 @@ func (r resumeState) run(s *system) (transition, error) {
 		return retryResume(r), errors.Wrap(err, "Error running processors on ledger")
 	}
 
+	err = s.historyQ.RebuildTradeAggregationBuckets(s.ctx, ingestLedger, ingestLedger)
+	if err != nil {
+		return stop(), errors.Wrap(err, "error rebuilding trade aggregations")
+	}
+
 	if err = s.completeIngestion(s.ctx, ingestLedger); err != nil {
 		return retryResume(r), err
 	}
@@ -664,6 +669,11 @@ func (h reingestHistoryRangeState) ingestRange(s *system, fromLedger, toLedger u
 		if err = runTransactionProcessorsOnLedger(s, ledgerCloseMeta); err != nil {
 			return err
 		}
+	}
+
+	err = s.historyQ.RebuildTradeAggregationBuckets(s.ctx, fromLedger, toLedger)
+	if err != nil {
+		return errors.Wrap(err, "error rebuilding trade aggregations")
 	}
 
 	return nil
@@ -900,6 +910,11 @@ func (v verifyRangeState) run(s *system) (transition, error) {
 				"commit":   true,
 			}).
 			Info("Processed ledger")
+	}
+
+	err = s.historyQ.RebuildTradeAggregationBuckets(s.ctx, v.fromLedger, v.toLedger)
+	if err != nil {
+		return stop(), errors.Wrap(err, "error rebuilding trade aggregations")
 	}
 
 	if v.verifyState {

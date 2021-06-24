@@ -1,10 +1,12 @@
 package history
 
 import (
+	"context"
 	"fmt"
 	"time"
 
 	sq "github.com/Masterminds/squirrel"
+
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/support/errors"
 	strtime "github.com/stellar/go/support/time"
@@ -233,4 +235,87 @@ func aggregate(query sq.SelectBuilder) sq.SelectBuilder {
 		"(last(ARRAY[close_n, close_d]))[1] as close_n",
 		"(last(ARRAY[close_n, close_d]))[2] as close_d",
 	).FromSelect(query, "htrd").GroupBy("timestamp")
+}
+
+// RebuildTradeAggregationBuckets rebuilds a specific set of trade aggregation buckets.
+// to ensure complete data in case of partial reingestion.
+func (q Q) RebuildTradeAggregationBuckets(ctx context.Context, fromLedger, toLedger uint32) error {
+	// Convert the ledger range to the timestamp range.
+	var ledgers []Ledger
+	err := q.LedgersBySequence(
+		ctx,
+		&ledgers,
+		int32(fromLedger),
+		int32(toLedger),
+	)
+	if err != nil {
+		return errors.Wrap(err, "could not get ledger timestamps")
+	}
+	if len(ledgers) == 0 {
+		return errors.New("could not get ledger timestamps")
+	}
+
+	// Add a minute to the end to be inclusive of all data.
+	fromTime := strtime.MillisFromTime(ledgers[0].ClosedAt).RoundDown(60_000)
+	toTime := strtime.MillisFromTime(ledgers[0].ClosedAt.Add(1 * time.Minute)).RoundDown(60_000)
+	if len(ledgers) == 2 {
+		// If start/end are different
+		toTime = strtime.MillisFromTime(ledgers[1].ClosedAt.Add(1 * time.Minute)).RoundDown(60_000)
+	}
+
+	// Clear out the old bucket values.
+	_, err = q.Exec(ctx, sq.Delete("history_trades_60000").Where(
+		sq.GtOrEq{"timestamp": fromTime},
+		sq.Lt{"timestamp": toTime},
+	))
+	if err != nil {
+		return errors.Wrap(err, "could not rebuild trade aggregation bucket")
+	}
+
+	// find all related trades
+	trades := sq.Select(
+		"public.to_millis(ledger_closed_at, 60000) as timestamp",
+		"history_operation_id",
+		"\"order\"",
+		"base_asset_id",
+		"base_amount",
+		"counter_asset_id",
+		"counter_amount",
+		"ARRAY[price_n, price_d] as price",
+	).From("history_trades").Where(
+		sq.GtOrEq{"to_millis(ledger_closed_at, 60000)": fromTime},
+		sq.Lt{"to_millis(ledger_closed_at, 60000)": toTime},
+	).OrderBy("history_operation_id", "\"order\"")
+
+	// figure out the new bucket values
+	rebuilt := sq.Select(
+		"timestamp",
+		"base_asset_id",
+		"counter_asset_id",
+		"count(*) as count",
+		"sum(base_amount) as base_volume",
+		"sum(counter_amount) as counter_volume",
+		"sum(counter_amount::numeric)/sum(base_amount::numeric) as avg",
+		"(max_price(price))[1] as high_n",
+		"(max_price(price))[2] as high_d",
+		"(min_price(price))[1] as low_n",
+		"(min_price(price))[2] as low_d",
+		"first(history_operation_id) as open_ledger_seq",
+		"(first(price))[1] as open_n",
+		"(first(price))[2] as open_d",
+		"last(history_operation_id) as close_ledger_seq",
+		"(last(price))[1] as close_n",
+		"(last(price))[2] as close_d",
+	).FromSelect(trades, "trades").Where(
+		// TODO: Dunno if we need these, as we filter above as well.
+		sq.GtOrEq{"timestamp": fromTime},
+		sq.Lt{"timestamp": toTime},
+	).GroupBy("timestamp", "base_asset_id", "counter_asset_id")
+
+	// Insert the new bucket values.
+	_, err = q.Exec(ctx, sq.Insert("history_trades_60000").Select(rebuilt))
+	if err != nil {
+		return errors.Wrap(err, "could not rebuild trade aggregation bucket")
+	}
+	return nil
 }

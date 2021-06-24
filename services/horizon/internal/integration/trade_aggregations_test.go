@@ -221,6 +221,23 @@ func TestTradeAggregations(t *testing.T) {
 			batch.Add(ctx, scenario.trades...)
 			assert.NoError(t, batch.Exec(ctx))
 
+			// Rebuild the aggregates.
+			if len(scenario.trades) == 0 {
+				assert.NoError(t, historyQ.RebuildTradeAggregationBuckets(ctx, 0, 0))
+			} else {
+				fromLedger := scenario.trades[0].HistoryOperationID
+				toLedger := scenario.trades[0].HistoryOperationID
+				for _, trade := range scenario.trades {
+					if trade.HistoryOperationID < fromLedger {
+						fromLedger = trade.HistoryOperationID
+					}
+					if trade.HistoryOperationID > toLedger {
+						toLedger = trade.HistoryOperationID
+					}
+				}
+				assert.NoError(t, historyQ.RebuildTradeAggregationBuckets(ctx, uint32(fromLedger), uint32(toLedger)))
+			}
+
 			// Check the result is what we expect
 			query, err := historyQ.GetTradeAggregationsQ(
 				baseAssetId,
