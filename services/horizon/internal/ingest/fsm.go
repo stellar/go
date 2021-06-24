@@ -661,7 +661,8 @@ func (h reingestHistoryRangeState) ingestRange(s *system, fromLedger, toLedger u
 	}
 
 	for cur := fromLedger; cur <= toLedger; cur++ {
-		ledgerCloseMeta, err := s.ledgerBackend.GetLedger(s.ctx, cur)
+		var ledgerCloseMeta xdr.LedgerCloseMeta
+		ledgerCloseMeta, err = s.ledgerBackend.GetLedger(s.ctx, cur)
 		if err != nil {
 			return errors.Wrap(err, "error getting ledger")
 		}
