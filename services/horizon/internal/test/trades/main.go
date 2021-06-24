@@ -99,5 +99,6 @@ func PopulateTestTrades(
 			return
 		}
 	}
+	err = q.RebuildTradeAggregationBuckets(context.Background(), uint32(opStart), uint32(opStart+int64(numOfTrades)))
 	return
 }
