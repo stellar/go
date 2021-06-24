@@ -297,6 +297,7 @@ func (s *ReingestHistoryRangeStateTestSuite) SetupTest() {
 	s.historyQ.On("Begin").Return(nil).Once()
 
 	s.ledgerBackend.On("PrepareRange", s.ctx, ledgerbackend.BoundedRange(100, 200)).Return(nil).Once()
+	s.historyQ.On("RebuildTradeAggregationBuckets", s.ctx, 100, 200).Return(nil).Once()
 }
 
 func (s *ReingestHistoryRangeStateTestSuite) TearDownTest() {

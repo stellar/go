@@ -65,6 +65,7 @@ func (s *ResumeTestTestSuite) SetupTest() {
 			},
 		},
 	}, nil).Once()
+	s.historyQ.On("RebuildTradeAggregationBuckets", s.ctx, uint32(101), uint32(101)).Return(nil).Once()
 }
 
 func (s *ResumeTestTestSuite) TearDownTest() {

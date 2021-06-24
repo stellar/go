@@ -75,7 +75,17 @@ func IngestTestTrade(
 		BuyerAccountID:     accounts[buyer.Address()],
 		SellerAccountID:    accounts[seller.Address()],
 	})
-	return batch.Exec(ctx)
+	err = batch.Exec(ctx)
+	if err != nil {
+		return err
+	}
+
+	err = q.RebuildTradeAggregationBuckets(context.Background(), uint32(opCounter), uint32(opCounter))
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 //PopulateTestTrades generates and ingests trades between two assets according to given parameters
@@ -99,6 +109,5 @@ func PopulateTestTrades(
 			return
 		}
 	}
-	err = q.RebuildTradeAggregationBuckets(context.Background(), uint32(opStart), uint32(opStart+int64(numOfTrades)))
 	return
 }
