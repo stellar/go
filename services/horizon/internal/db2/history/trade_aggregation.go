@@ -240,33 +240,12 @@ func aggregate(query sq.SelectBuilder) sq.SelectBuilder {
 // RebuildTradeAggregationBuckets rebuilds a specific set of trade aggregation buckets.
 // to ensure complete data in case of partial reingestion.
 func (q Q) RebuildTradeAggregationBuckets(ctx context.Context, fromLedger, toLedger uint32) error {
-	// Convert the ledger range to the timestamp range.
-	var ledgers []Ledger
-	err := q.LedgersBySequence(
-		ctx,
-		&ledgers,
-		int32(fromLedger),
-		int32(toLedger),
-	)
-	if err != nil {
-		return errors.Wrap(err, "could not get ledger timestamps")
-	}
-	if len(ledgers) == 0 {
-		return errors.New("could not get ledger timestamps")
-	}
-
-	// Add a minute to the end to be inclusive of all data.
-	fromTime := strtime.MillisFromTime(ledgers[0].ClosedAt).RoundDown(60_000)
-	toTime := strtime.MillisFromTime(ledgers[0].ClosedAt.Add(1 * time.Minute)).RoundDown(60_000)
-	if len(ledgers) == 2 {
-		// If start/end are different
-		toTime = strtime.MillisFromTime(ledgers[1].ClosedAt.Add(1 * time.Minute)).RoundDown(60_000)
-	}
+	// TODO: Check if toLedger should be exclusive here.
 
 	// Clear out the old bucket values.
-	_, err = q.Exec(ctx, sq.Delete("history_trades_60000").Where(
-		sq.GtOrEq{"timestamp": fromTime},
-		sq.Lt{"timestamp": toTime},
+	_, err := q.Exec(ctx, sq.Delete("history_trades_60000").Where(
+		sq.GtOrEq{"open_ledger_seq": fromLedger},
+		sq.Lt{"open_ledger_seq": toLedger},
 	))
 	if err != nil {
 		return errors.Wrap(err, "could not rebuild trade aggregation bucket")
@@ -283,8 +262,9 @@ func (q Q) RebuildTradeAggregationBuckets(ctx context.Context, fromLedger, toLed
 		"counter_amount",
 		"ARRAY[price_n, price_d] as price",
 	).From("history_trades").Where(
-		sq.GtOrEq{"to_millis(ledger_closed_at, 60000)": fromTime},
-		sq.Lt{"to_millis(ledger_closed_at, 60000)": toTime},
+		// TODO: Check if this is the right thing
+		sq.GtOrEq{"history_operation_id": fromLedger},
+		sq.Lt{"history_operation_id": toLedger},
 	).OrderBy("history_operation_id", "\"order\"")
 
 	// figure out the new bucket values
@@ -306,11 +286,7 @@ func (q Q) RebuildTradeAggregationBuckets(ctx context.Context, fromLedger, toLed
 		"last(history_operation_id) as close_ledger_seq",
 		"(last(price))[1] as close_n",
 		"(last(price))[2] as close_d",
-	).FromSelect(trades, "trades").Where(
-		// TODO: Dunno if we need these, as we filter above as well.
-		sq.GtOrEq{"timestamp": fromTime},
-		sq.Lt{"timestamp": toTime},
-	).GroupBy("timestamp", "base_asset_id", "counter_asset_id")
+	).FromSelect(trades, "trades").GroupBy("timestamp", "base_asset_id", "counter_asset_id")
 
 	// Insert the new bucket values.
 	_, err = q.Exec(ctx, sq.Insert("history_trades_60000").Select(rebuilt))
