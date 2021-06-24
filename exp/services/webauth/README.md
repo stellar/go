@@ -1,6 +1,6 @@
 # webauth
 
-This is a [SEP-10] Web Authentication implementation based on SEP-10 v3.1.0
+This is a [SEP-10] Web Authentication implementation based on SEP-10 v3.2.1
 that requires a user to prove they possess a signing key(s) that meets the high
 threshold for an account, i.e. they have the ability to perform any high
 threshold operation on the given account. If an account does not exist it may
