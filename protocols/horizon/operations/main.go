@@ -88,7 +88,7 @@ type CreateAccount struct {
 	StartingBalance string `json:"starting_balance"`
 	Funder          string `json:"funder"`
 	FunderMuxed     string `json:"funder_muxed,omitempty"`
-	FunderMuxedID   uint64 `json:"funder_muxed_id,omitempty"`
+	FunderMuxedID   uint64 `json:"funder_muxed_id,omitempty,string"`
 	Account         string `json:"account"`
 }
 
@@ -99,10 +99,10 @@ type Payment struct {
 	base.Asset
 	From        string `json:"from"`
 	FromMuxed   string `json:"from_muxed,omitempty"`
-	FromMuxedID uint64 `json:"from_muxed_id,omitempty"`
+	FromMuxedID uint64 `json:"from_muxed_id,omitempty,string"`
 	To          string `json:"to"`
 	ToMuxed     string `json:"to_muxed,omitempty"`
-	ToMuxedID   uint64 `json:"to_muxed_id,omitempty"`
+	ToMuxedID   uint64 `json:"to_muxed_id,omitempty,string"`
 	Amount      string `json:"amount"`
 }
 
