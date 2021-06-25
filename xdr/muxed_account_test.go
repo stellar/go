@@ -19,6 +19,8 @@ var _ = Describe("xdr.MuxedAccount#Get/SetAddress()", func() {
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(unmuxed.Type).To(Equal(CryptoKeyTypeKeyTypeEd25519))
 		Expect(*unmuxed.Ed25519).To(Equal(Uint256{63, 12, 52, 191, 147, 173, 13, 153, 113, 208, 76, 204, 144, 247, 5, 81, 28, 131, 138, 173, 151, 52, 164, 162, 251, 13, 122, 3, 252, 127, 232, 154}))
+		_, err = unmuxed.GetId()
+		Expect(err).Should(HaveOccurred())
 		muxedy := unmuxed.Address()
 		Expect(muxedy).To(Equal("GA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVSGZ"))
 
@@ -29,6 +31,8 @@ var _ = Describe("xdr.MuxedAccount#Get/SetAddress()", func() {
 		Expect(muxed.Med25519.Id).To(Equal(Uint64(9223372036854775808)))
 		Expect(muxed.Med25519.Ed25519).To(Equal(*unmuxed.Ed25519))
 		muxedy = muxed.Address()
+		id, err := muxed.GetId()
+		Expect(id).To(Equal(uint64(9223372036854775808)))
 		Expect(muxedy).To(Equal("MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVAAAAAAAAAAAAAJLK"))
 
 		err = muxed.SetAddress("MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJUAAAAAAAAAAAACJUQ")
@@ -36,8 +40,20 @@ var _ = Describe("xdr.MuxedAccount#Get/SetAddress()", func() {
 		Expect(muxed.Type).To(Equal(CryptoKeyTypeKeyTypeMuxedEd25519))
 		Expect(muxed.Med25519.Id).To(Equal(Uint64(0)))
 		Expect(muxed.Med25519.Ed25519).To(Equal(*unmuxed.Ed25519))
+		id, err = muxed.GetId()
+		Expect(id).To(Equal(uint64(0)))
 		muxedy = muxed.Address()
 		Expect(muxedy).To(Equal("MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJUAAAAAAAAAAAACJUQ"))
+	})
+
+	It("returns a muxed account from an account ID and memo", func() {
+		accountId := "GA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVSGZ"
+		expectedMuxedId := "MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJUAAAAAAAAAABUTGI4"
+
+		muxedAccount, err := MuxedAccountFromAccountId(accountId, uint64(420))
+		Expect(err).ShouldNot(HaveOccurred())
+		Expect(muxedAccount.GetAddress()).To(Equal(expectedMuxedId))
+		Expect(muxedAccount.GetId()).To(Equal(uint64(420)))
 	})
 
 	It("returns an error when the strkey is invalid", func() {

@@ -4371,12 +4371,9 @@ func TestVerifyTxSignatureInvalid(t *testing.T) {
 
 func TestClaimableBalanceIds(t *testing.T) {
 	aKeys := keypair.MustParseFull("SC4REDCJNPFAYW4SMH44KNGO5JRDQ72G4HE6GILRBSICI3M2IUOC7AAL")
-	// TODO: Replace with
-	// xdr.MuxedAccountFromAccountId(aKeys.Address(), uint64(1234)).Address()
-	// once https://github.com/stellar/go/pull/3677 gets in
-	aMuxed := "MDUJNO4HVE4YCQHV7LINPWVDQJFSAPHHUNSTT64YRBCCRZ5UYUXAWAAAAAAAAAAE2IUOE"
-	aMuxedAccount := NewSimpleAccount(aMuxed, int64(5894915628204034))
+	A := "MDUJNO4HVE4YCQHV7LINPWVDQJFSAPHHUNSTT64YRBCCRZ5UYUXAWAAAAAAAAAAE2IUOE"
 	B := "GCACCFMIWJAHUUASSE2WC7V6VVDLYRLSJYZ3DJEXCG523FSHTNII6KOG"
+	aMuxedAccount := NewSimpleAccount(A, int64(5894915628204034))
 
 	// Create the operation and submit it in a transaction.
 	claimableBalanceEntry := CreateClaimableBalance{
