@@ -672,11 +672,6 @@ func (h reingestHistoryRangeState) ingestRange(s *system, fromLedger, toLedger u
 		}
 	}
 
-	err = s.historyQ.RebuildTradeAggregationBuckets(s.ctx, fromLedger, toLedger)
-	if err != nil {
-		return errors.Wrap(err, "error rebuilding trade aggregations")
-	}
-
 	return nil
 }
 
@@ -762,6 +757,11 @@ func (h reingestHistoryRangeState) run(s *system) (transition, error) {
 				return stop(), err
 			}
 		}
+	}
+
+	err = s.historyQ.RebuildTradeAggregationBuckets(s.ctx, h.fromLedger, h.toLedger)
+	if err != nil {
+		return stop(), errors.Wrap(err, "Error rebuilding trade aggregations")
 	}
 
 	log.WithFields(logpkg.F{
