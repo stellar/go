@@ -47,6 +47,7 @@ func TestCloseBeforeStartOnline(t *testing.T) {
 		Log:                log.New(),
 		Context:            context.Background(),
 		Toml:               captiveCoreToml,
+		ReuseStorageDir:    true,
 	}, stellarCoreRunnerModeOnline)
 	assert.NoError(t, err)
 
@@ -60,6 +61,32 @@ func TestCloseBeforeStartOnline(t *testing.T) {
 	// Directory no longer cleaned up on shutdown (perf. bump in v2.5.0)
 	_, err = os.Stat(tempDir)
 	assert.NoError(t, err)
+}
+
+func TestCloseBeforeStartOnlineReuseFlagFalse(t *testing.T) {
+	captiveCoreToml, err := NewCaptiveCoreToml(CaptiveCoreTomlParams{})
+	assert.NoError(t, err)
+
+	captiveCoreToml.AddExamplePubnetValidators()
+
+	runner, err := newStellarCoreRunner(CaptiveCoreConfig{
+		HistoryArchiveURLs: []string{"http://localhost"},
+		Log:                log.New(),
+		Context:            context.Background(),
+		Toml:               captiveCoreToml,
+		ReuseStorageDir:    false,
+	}, stellarCoreRunnerModeOnline)
+	assert.NoError(t, err)
+
+	tempDir := runner.storagePath
+	info, err := os.Stat(tempDir)
+	assert.NoError(t, err)
+	assert.True(t, info.IsDir())
+
+	assert.NoError(t, runner.close())
+
+	_, err = os.Stat(tempDir)
+	assert.Error(t, err)
 }
 
 func TestCloseBeforeStartOnlineWithError(t *testing.T) {
