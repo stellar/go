@@ -1,6 +1,7 @@
 package integration
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -9,6 +10,7 @@ import (
 	"time"
 
 	"github.com/stellar/go/keypair"
+	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/test/integration"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stretchr/testify/assert"
@@ -103,15 +105,22 @@ func TestProtocol14StateVerifier(t *testing.T) {
 		t.Fatal("State verification not run...")
 	}
 
-	// Temporary remove the flaky part of the test (stellar/go#3371)
 	// Trigger state rebuild to check if ingesting from history archive works
-	// err = itest.Horizon().HistoryQ().UpdateIngestVersion(0)
-	// assert.NoError(t, err)
+	session := itest.Horizon().HistoryQ().Clone()
+	q := &history.Q{session}
+	err = q.Begin()
+	assert.NoError(t, err)
+	_, err = q.GetLastLedgerIngest(context.Background())
+	assert.NoError(t, err)
+	err = q.UpdateIngestVersion(context.Background(), 0)
+	assert.NoError(t, err)
+	err = q.Commit()
+	assert.NoError(t, err)
 
-	// verified = waitForStateVerifications(itest, 2)
-	// if !verified {
-	// 	t.Fatal("State verification not run...")
-	// }
+	verified = waitForStateVerifications(itest, 2)
+	if !verified {
+		t.Fatal("State verification not run...")
+	}
 }
 
 func waitForStateVerifications(itest *integration.Test, count int) bool {
