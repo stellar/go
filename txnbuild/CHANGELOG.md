@@ -6,10 +6,12 @@ file.  This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
-### Bug Fix
+## [v7.1.1](https://github.com/stellar/go/releases/tag/horizonclient-v7.1.1) - 2021-06-25
+
+### Bug Fixes
 
 * Claimable balance IDs are now precomputed correctly (`Transaction.ClaimableBalanceID(int)`) even when the transaction's source account is a fully-muxed account ([#3678](https://github.com/stellar/go/pull/3678)).
-
+* Fix muxed account address parsing for account merge operation ([#3722](https://github.com/stellar/go/pull/3722)).
 
 ## [v7.1.0](https://github.com/stellar/go/releases/tag/horizonclient-v7.1.0) - 2021-06-01
 
