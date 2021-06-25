@@ -707,25 +707,26 @@ func (h reingestHistoryRangeState) run(s *system) (transition, error) {
 	startTime = time.Now()
 
 	if h.force {
-		if err := s.historyQ.Begin(); err != nil {
+		if err = s.historyQ.Begin(); err != nil {
 			return stop(), errors.Wrap(err, "Error starting a transaction")
 		}
 		defer s.historyQ.Rollback()
 
 		// acquire distributed lock so no one else can perform ingestion operations.
-		if _, err := s.historyQ.GetLastLedgerIngest(s.ctx); err != nil {
+		if _, err = s.historyQ.GetLastLedgerIngest(s.ctx); err != nil {
 			return stop(), errors.Wrap(err, getLastIngestedErrMsg)
 		}
 
-		if err := h.ingestRange(s, h.fromLedger, h.toLedger); err != nil {
+		if err = h.ingestRange(s, h.fromLedger, h.toLedger); err != nil {
 			return stop(), err
 		}
 
-		if err := s.historyQ.Commit(); err != nil {
+		if err = s.historyQ.Commit(); err != nil {
 			return stop(), errors.Wrap(err, commitErrMsg)
 		}
 	} else {
-		lastIngestedLedger, err := s.historyQ.GetLastLedgerIngestNonBlocking(s.ctx)
+		var lastIngestedLedger uint32
+		lastIngestedLedger, err = s.historyQ.GetLastLedgerIngestNonBlocking(s.ctx)
 		if err != nil {
 			return stop(), errors.Wrap(err, getLastIngestedErrMsg)
 		}
@@ -735,20 +736,20 @@ func (h reingestHistoryRangeState) run(s *system) (transition, error) {
 		}
 
 		for cur := h.fromLedger; cur <= h.toLedger; cur++ {
-			err := func(ledger uint32) error {
-				if err := s.historyQ.Begin(); err != nil {
-					return errors.Wrap(err, "Error starting a transaction")
+			err = func(ledger uint32) error {
+				if e := s.historyQ.Begin(); e != nil {
+					return errors.Wrap(e, "Error starting a transaction")
 				}
 				defer s.historyQ.Rollback()
 
 				// ingest each ledger in a separate transaction to prevent deadlocks
 				// when acquiring ShareLocks from multiple parallel reingest range processes
-				if err := h.ingestRange(s, ledger, ledger); err != nil {
-					return err
+				if e := h.ingestRange(s, ledger, ledger); e != nil {
+					return e
 				}
 
-				if err := s.historyQ.Commit(); err != nil {
-					return errors.Wrap(err, commitErrMsg)
+				if e := s.historyQ.Commit(); e != nil {
+					return errors.Wrap(e, commitErrMsg)
 				}
 
 				return nil
