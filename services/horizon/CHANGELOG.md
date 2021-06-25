@@ -6,6 +6,12 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+## v2.5.2
+
+**Upgrading to this version from <= v2.1.1 will trigger a state rebuild. During this process (which can take up to 20 minutes), Horizon will not ingest new ledgers.**
+
+* Fix a bug in the method unmarshaling payment operation details. ([#3722](https://github.com/stellar/go/pull/3722))
+
 ## v2.5.1
 
 **Upgrading to this version from <= v2.1.1 will trigger a state rebuild. During this process (which can take up to 20 minutes), Horizon will not ingest new ledgers.**

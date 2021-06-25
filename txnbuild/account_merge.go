@@ -63,9 +63,9 @@ func (am *AccountMerge) FromXDR(xdrOp xdr.Operation, withMuxedAccounts bool) err
 func (am *AccountMerge) Validate(withMuxedAccounts bool) error {
 	var err error
 	if withMuxedAccounts {
-		_, err = xdr.AddressToAccountId(am.Destination)
-	} else {
 		_, err = xdr.AddressToMuxedAccount(am.Destination)
+	} else {
+		_, err = xdr.AddressToAccountId(am.Destination)
 	}
 	if err != nil {
 		return NewValidationError("Destination", err.Error())
