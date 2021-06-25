@@ -537,10 +537,10 @@ CREATE TABLE history_trades_60000 (
   high_d numeric not null,
   low_n numeric not null,
   low_d numeric not null,
-  open_ledger_seq bigint not null,
+  open_ledger bigint not null,
   open_n numeric not null,
   open_d numeric not null,
-  close_ledger_seq bigint not null,
+  close_ledger bigint not null,
   close_n numeric not null,
   close_d numeric not null,
 

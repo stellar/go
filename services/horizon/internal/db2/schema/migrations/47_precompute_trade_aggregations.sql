@@ -13,10 +13,10 @@ CREATE TABLE history_trades_60000 (
   high_d numeric not null,
   low_n numeric not null,
   low_d numeric not null,
-  open_ledger_seq bigint not null,
+  open_ledger bigint not null,
   open_n numeric not null,
   open_d numeric not null,
-  close_ledger_seq bigint not null,
+  close_ledger bigint not null,
   close_n numeric not null,
   close_d numeric not null,
 
@@ -72,10 +72,10 @@ WITH htrd AS (
         (max_price(price))[2] as high_d,
         (min_price(price))[1] as low_n,
         (min_price(price))[2] as low_d,
-        first(history_operation_id) as open_ledger_seq,
+        first(history_operation_id) as open_ledger,
         (first(price))[1] as open_n,
         (first(price))[2] as open_d,
-        last(history_operation_id) as close_ledger_seq,
+        last(history_operation_id) as close_ledger,
         (last(price))[1] as close_n,
         (last(price))[2] as close_d
       FROM htrd
