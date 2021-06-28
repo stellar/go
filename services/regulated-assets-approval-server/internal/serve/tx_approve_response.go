@@ -15,6 +15,7 @@ type txApprovalResponse struct {
 	ActionURL    string     `json:"action_url,omitempty"`
 	ActionMethod string     `json:"action_method,omitempty"`
 	ActionFields []string   `json:"action_fields,omitempty"`
+	Timeout      *int64     `json:"timeout,omitempty"`
 }
 
 func (t *txApprovalResponse) Render(w http.ResponseWriter) {
@@ -58,6 +59,16 @@ func NewSuccessTxApprovalResponse(tx, message string) *txApprovalResponse {
 	}
 }
 
+func NewPendingTxApprovalResponse(message string) *txApprovalResponse {
+	timeout := int64(0)
+	return &txApprovalResponse{
+		Status:     sep8StatusPending,
+		Message:    message,
+		StatusCode: http.StatusOK,
+		Timeout:    &timeout,
+	}
+}
+
 type sep8Status string
 
 const (
@@ -65,4 +76,5 @@ const (
 	sep8StatusRevised        sep8Status = "revised"
 	sep8StatusActionRequired sep8Status = "action_required"
 	sep8StatusSuccess        sep8Status = "success"
+	sep8StatusPending        sep8Status = "pending"
 )

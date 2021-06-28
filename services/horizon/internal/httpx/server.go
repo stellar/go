@@ -57,6 +57,7 @@ func init() {
 	problem.RegisterError(context.DeadlineExceeded, hProblem.Timeout)
 	problem.RegisterError(context.Canceled, hProblem.ServiceUnavailable)
 	problem.RegisterError(db.ErrCancelled, hProblem.ServiceUnavailable)
+	problem.RegisterError(db.ErrConflictWithRecovery, hProblem.ServiceUnavailable)
 }
 
 func NewServer(serverConfig ServerConfig, routerConfig RouterConfig, ledgerState *ledger.State) (*Server, error) {

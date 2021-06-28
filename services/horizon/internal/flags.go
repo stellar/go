@@ -2,12 +2,13 @@ package horizon
 
 import (
 	"fmt"
-	"github.com/stellar/go/ingest/ledgerbackend"
 	"go/types"
 	stdLog "log"
 	"os"
 	"os/exec"
 	"strings"
+
+	"github.com/stellar/go/ingest/ledgerbackend"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
@@ -189,6 +190,14 @@ func Flags() (*Config, support.ConfigOptions) {
 			Required:  false,
 			Usage:     "Storage location for Captive Core bucket data",
 			ConfigKey: &config.CaptiveCoreStoragePath,
+		},
+		&support.ConfigOption{
+			Name:        "captive-core-reuse-storage-dir",
+			OptType:     types.Bool,
+			Required:    false,
+			FlagDefault: false,
+			Usage:       "determines if storage-dir should be reused, disabled by default because of Stellar-Core 17.1.0 issue",
+			ConfigKey:   &config.CaptiveCoreReuseStorageDir,
 		},
 		&support.ConfigOption{
 			Name:           "captive-core-peer-port",

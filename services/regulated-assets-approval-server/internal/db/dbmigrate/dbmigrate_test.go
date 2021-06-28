@@ -45,12 +45,13 @@ func TestPlanMigration_upApplyAll(t *testing.T) {
 
 	migrations, err := PlanMigration(session, migrate.Up, 0)
 	require.NoError(t, err)
-	require.GreaterOrEqual(t, len(migrations), 2)
+	require.GreaterOrEqual(t, len(migrations), 3)
 	wantAtLeastMigrations := []string{
 		"2021-05-05.0.initial.sql",
 		"2021-05-18.0.accounts-kyc-status.sql",
+		"2021-06-08.0.pending-kyc-status.sql",
 	}
-	assert.Equal(t, wantAtLeastMigrations, migrations[:2])
+	assert.Equal(t, wantAtLeastMigrations, migrations)
 }
 
 func TestPlanMigration_upApplyNone(t *testing.T) {
@@ -82,18 +83,19 @@ func TestPlanMigration_downApplyOne(t *testing.T) {
 	assert.Equal(t, wantMigrations, migrations)
 }
 
-func TestPlanMigration_downApplyAll(t *testing.T) {
+func TestPlanMigration_downApplyTwo(t *testing.T) {
 	db := dbtest.OpenWithoutMigrations(t)
 	session, err := dbpkg.Open(db.DSN)
 	require.NoError(t, err)
 
-	n, err := Migrate(session, migrate.Up, 2)
+	n, err := Migrate(session, migrate.Up, 3)
 	require.NoError(t, err)
-	require.Equal(t, 2, n)
+	require.Equal(t, 3, n)
 
 	migrations, err := PlanMigration(session, migrate.Down, 0)
 	require.NoError(t, err)
 	wantMigrations := []string{
+		"2021-06-08.0.pending-kyc-status.sql",
 		"2021-05-18.0.accounts-kyc-status.sql",
 		"2021-05-05.0.initial.sql",
 	}
@@ -151,6 +153,7 @@ func TestMigrate_upApplyAll(t *testing.T) {
 	wantIDs := []string{
 		"2021-05-05.0.initial.sql",
 		"2021-05-18.0.accounts-kyc-status.sql",
+		"2021-06-08.0.pending-kyc-status.sql",
 	}
 	assert.Equal(t, wantIDs, ids)
 }
@@ -174,6 +177,7 @@ func TestMigrate_upApplyNone(t *testing.T) {
 	wantIDs := []string{
 		"2021-05-05.0.initial.sql",
 		"2021-05-18.0.accounts-kyc-status.sql",
+		"2021-06-08.0.pending-kyc-status.sql",
 	}
 	assert.Equal(t, wantIDs, ids)
 }
