@@ -399,7 +399,6 @@ func getParams(dst interface{}, r *http.Request) error {
 		}
 	}
 
-	decoder.IgnoreUnknownKeys(true)
 	if err := decoder.Decode(dst, query); err != nil {
 		for k, e := range err.(schema.MultiError) {
 			return problem.NewProblemWithInvalidField(
@@ -608,4 +607,8 @@ func countNonEmpty(params ...interface{}) (int, error) {
 	}
 
 	return count, nil
+}
+
+func init() {
+	decoder.IgnoreUnknownKeys(true)
 }

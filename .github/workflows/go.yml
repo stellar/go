@@ -11,7 +11,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        go: [1.16.4]
+        go: [1.16.5]
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v2
@@ -29,7 +29,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        go: [1.16.4, 1.15.11]
+        go: [1.16.5, 1.15.13]
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v2
@@ -43,7 +43,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        go: [1.16.4, 1.15.11]
+        go: [1.16.5, 1.15.13]
         pg: [9.6.5, 10]
     runs-on: ${{ matrix.os }}
     services:

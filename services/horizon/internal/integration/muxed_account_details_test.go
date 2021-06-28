@@ -1,6 +1,7 @@
 package integration
 
 import (
+	"math"
 	"testing"
 
 	"github.com/stellar/go/clients/horizonclient"
@@ -27,7 +28,7 @@ func TestMuxedAccountDetails(t *testing.T) {
 	source := xdr.MuxedAccount{
 		Type: xdr.CryptoKeyTypeKeyTypeMuxedEd25519,
 		Med25519: &xdr.MuxedAccountMed25519{
-			Id:      0xcafebabe,
+			Id:      0xcafebabecafebabe,
 			Ed25519: *masterAcID.Ed25519,
 		},
 	}
@@ -35,7 +36,8 @@ func TestMuxedAccountDetails(t *testing.T) {
 	destination := xdr.MuxedAccount{
 		Type: xdr.CryptoKeyTypeKeyTypeMuxedEd25519,
 		Med25519: &xdr.MuxedAccountMed25519{
-			Id:      0xdeadbeef,
+			// Make sure we cover the full uint64 range
+			Id:      math.MaxUint64,
 			Ed25519: *destinationAcID.Ed25519,
 		},
 	}

@@ -23,8 +23,8 @@ func (s *Session) Begin() error {
 
 	tx, err := s.DB.BeginTxx(context.Background(), nil)
 	if err != nil {
-		if s.cancelled(err) {
-			return ErrCancelled
+		if knownErr := s.replaceWithKnownError(err); knownErr != nil {
+			return knownErr
 		}
 
 		return errors.Wrap(err, "beginx failed")
@@ -44,8 +44,8 @@ func (s *Session) BeginTx(opts *sql.TxOptions) error {
 
 	tx, err := s.DB.BeginTxx(context.Background(), opts)
 	if err != nil {
-		if s.cancelled(err) {
-			return ErrCancelled
+		if knownErr := s.replaceWithKnownError(err); knownErr != nil {
+			return knownErr
 		}
 
 		return errors.Wrap(err, "beginTx failed")
@@ -142,8 +142,8 @@ func (s *Session) GetRaw(ctx context.Context, dest interface{}, query string, ar
 		return nil
 	}
 
-	if s.cancelled(err) {
-		return ErrCancelled
+	if knownErr := s.replaceWithKnownError(err); knownErr != nil {
+		return knownErr
 	}
 
 	if s.NoRows(err) {
@@ -211,8 +211,8 @@ func (s *Session) ExecRaw(ctx context.Context, query string, args ...interface{}
 		return result, nil
 	}
 
-	if s.cancelled(err) {
-		return nil, ErrCancelled
+	if knownErr := s.replaceWithKnownError(err); knownErr != nil {
+		return nil, knownErr
 	}
 
 	if s.NoRows(err) {
@@ -228,9 +228,17 @@ func (s *Session) NoRows(err error) bool {
 	return err == sql.ErrNoRows
 }
 
-// Cancelled returns true if the provided error resulted from a cancel.
-func (s *Session) cancelled(err error) bool {
-	return strings.Contains(err.Error(), "pq: canceling statement due to user request")
+// replaceWithKnownError tries to replace Postgres error with package error.
+// Returns a new error if the err is known.
+func (s *Session) replaceWithKnownError(err error) error {
+	switch {
+	case strings.Contains(err.Error(), "pq: canceling statement due to user request"):
+		return ErrCancelled
+	case strings.Contains(err.Error(), "pq: canceling statement due to conflict with recovery"):
+		return ErrConflictWithRecovery
+	default:
+		return nil
+	}
 }
 
 // Query runs `query`, returns a *sqlx.Rows instance
@@ -257,8 +265,8 @@ func (s *Session) QueryRaw(ctx context.Context, query string, args ...interface{
 		return result, nil
 	}
 
-	if s.cancelled(err) {
-		return nil, ErrCancelled
+	if knownErr := s.replaceWithKnownError(err); knownErr != nil {
+		return nil, knownErr
 	}
 
 	if s.NoRows(err) {
@@ -331,8 +339,8 @@ func (s *Session) SelectRaw(
 		return nil
 	}
 
-	if s.cancelled(err) {
-		return ErrCancelled
+	if knownErr := s.replaceWithKnownError(err); knownErr != nil {
+		return knownErr
 	}
 
 	if s.NoRows(err) {
