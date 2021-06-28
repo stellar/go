@@ -21,6 +21,21 @@ func MustMuxedAddressPtr(address string) *MuxedAccount {
 	return &muxed
 }
 
+func MuxedAccountFromAccountId(gAddress string, id uint64) (MuxedAccount, error) {
+	accountId, err := AddressToAccountId(gAddress)
+	if err != nil {
+		return MuxedAccount{}, err
+	}
+
+	return NewMuxedAccount(
+		CryptoKeyTypeKeyTypeMuxedEd25519,
+		MuxedAccountMed25519{
+			Id:      Uint64(id),
+			Ed25519: accountId.MustEd25519(),
+		},
+	)
+}
+
 // SetEd25519Address modifies the receiver, setting it's value to the MuxedAccount form
 // of the provided G-address. Unlike SetAddress(), it only supports G-addresses.
 func (m *MuxedAccount) SetEd25519Address(address string) error {
@@ -133,7 +148,30 @@ func (m *MuxedAccount) GetAddress() (string, error) {
 	default:
 		return "", fmt.Errorf("Unknown muxed account type: %v", m.Type)
 	}
+}
 
+// GetId retrieves the underlying memo ID if this is a fully muxed account. It
+// will return an error if the muxed account does not have a memo ID (i.e it's
+// of the key type Ed25519).
+func (m *MuxedAccount) GetId() (uint64, error) {
+	if m == nil {
+		return 0, nil
+	}
+
+	switch m.Type {
+	case CryptoKeyTypeKeyTypeEd25519:
+		return 0, errors.New("muxed account has no ID")
+
+	case CryptoKeyTypeKeyTypeMuxedEd25519:
+		ed, ok := m.GetMed25519()
+		if !ok {
+			return 0, errors.New("could not get Med25519")
+		}
+		return uint64(ed.Id), nil
+
+	default:
+		return 0, fmt.Errorf("Unknown muxed account type: %v", m.Type)
+	}
 }
 
 // ToAccountId transforms a MuxedAccount to an AccountId, dropping the
