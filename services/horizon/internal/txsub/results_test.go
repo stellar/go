@@ -24,8 +24,7 @@ func TestGetIngestedTxHashes(t *testing.T) {
 	defer tt.Finish()
 	q := &history.Q{SessionInterface: tt.HorizonSession()}
 	hashes := []string{"2374e99349b9ef7dba9a5db3339b78fda8f34777b1af33ba468ad5c0df946d4d"}
-	var txs []history.Transaction
-	err := q.TransactionsByHashesSinceLedger(tt.Ctx, &txs, hashes, 0)
+	txs, err := q.TransactionsByHashesSinceLedger(tt.Ctx, hashes, 0)
 	tt.Assert.NoError(err)
 	tt.Assert.Equal(hashes[0], txs[0].TransactionHash)
 }

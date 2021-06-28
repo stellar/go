@@ -329,8 +329,8 @@ func (suite *SystemTestSuite) TestTick_FinishesTransactions() {
 		ReadOnly:  true,
 	}).Return(nil).Once()
 	suite.db.On("Rollback").Return(nil).Once()
-	suite.db.On("TransactionsByHashesSinceLedger", suite.ctx, mock.Anything, []string{suite.successTx.Transaction.TransactionHash}, uint32(900)).
-		Return(sql.ErrNoRows).Once()
+	suite.db.On("TransactionsByHashesSinceLedger", suite.ctx, []string{suite.successTx.Transaction.TransactionHash}, uint32(940)).
+		Return(nil, sql.ErrNoRows).Once()
 	suite.db.On("NoRows", sql.ErrNoRows).Return(true).Once()
 
 	suite.system.Tick(suite.ctx)
@@ -343,12 +343,8 @@ func (suite *SystemTestSuite) TestTick_FinishesTransactions() {
 		ReadOnly:  true,
 	}).Return(nil).Once()
 	suite.db.On("Rollback").Return(nil).Once()
-	suite.db.On("TransactionsByHashesSinceLedger", suite.ctx, mock.Anything, []string{suite.successTx.Transaction.TransactionHash}, uint32(900)).
-		Run(func(args mock.Arguments) {
-			ptr := args.Get(1).(*[]history.Transaction)
-			*ptr = []history.Transaction{suite.successTx.Transaction}
-		}).
-		Return(nil).Once()
+	suite.db.On("TransactionsByHashesSinceLedger", suite.ctx, []string{suite.successTx.Transaction.TransactionHash}, uint32(940)).
+		Return([]history.Transaction{suite.successTx.Transaction}, nil).Once()
 
 	suite.system.Tick(suite.ctx)
 
@@ -397,12 +393,8 @@ func (suite *SystemTestSuite) TestTickFinishFeeBumpTransaction() {
 		ReadOnly:  true,
 	}).Return(nil).Once()
 	suite.db.On("Rollback").Return(nil).Once()
-	suite.db.On("TransactionsByHashesSinceLedger", suite.ctx, mock.Anything, []string{innerHash}, uint32(900)).
-		Run(func(args mock.Arguments) {
-			ptr := args.Get(1).(*[]history.Transaction)
-			*ptr = []history.Transaction{feeBumpTx.Transaction}
-		}).
-		Return(nil).Once()
+	suite.db.On("TransactionsByHashesSinceLedger", suite.ctx, []string{innerHash}, uint32(940)).
+		Return([]history.Transaction{feeBumpTx.Transaction}, nil).Once()
 
 	suite.system.Tick(suite.ctx)
 
@@ -425,8 +417,8 @@ func (suite *SystemTestSuite) TestTick_RemovesStaleSubmissions() {
 		ReadOnly:  true,
 	}).Return(nil).Once()
 	suite.db.On("Rollback").Return(nil).Once()
-	suite.db.On("TransactionsByHashesSinceLedger", suite.ctx, mock.Anything, []string{suite.successTx.Transaction.TransactionHash}, uint32(900)).
-		Return(sql.ErrNoRows).Once()
+	suite.db.On("TransactionsByHashesSinceLedger", suite.ctx, []string{suite.successTx.Transaction.TransactionHash}, uint32(940)).
+		Return(nil, sql.ErrNoRows).Once()
 	suite.db.On("NoRows", sql.ErrNoRows).Return(true).Once()
 
 	suite.system.Tick(suite.ctx)

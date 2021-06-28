@@ -30,7 +30,8 @@ func (q *Q) TransactionByHash(ctx context.Context, dest interface{}, hash string
 
 // TransactionsByHashesSinceLedger fetches transactions from the `history_transactions`
 // table which match the given hash since the given ledger sequence (for perf reasons).
-func (q *Q) TransactionsByHashesSinceLedger(ctx context.Context, dest interface{}, hashes []string, sinceLedgerSeq uint32) error {
+func (q *Q) TransactionsByHashesSinceLedger(ctx context.Context, hashes []string, sinceLedgerSeq uint32) ([]Transaction, error) {
+	var dest []Transaction
 	byHash := selectTransaction.
 		Where(map[string]interface{}{"ht.transaction_hash": hashes}).
 		Where(sq.GtOrEq{"ht.ledger_sequence": sinceLedgerSeq})
@@ -40,11 +41,16 @@ func (q *Q) TransactionsByHashesSinceLedger(ctx context.Context, dest interface{
 
 	byInnerHashString, args, err := byInnerHash.ToSql()
 	if err != nil {
-		return errors.Wrap(err, "could not get string for inner hash sql query")
+		return nil, errors.Wrap(err, "could not get string for inner hash sql query")
 	}
 	union := byHash.Suffix("UNION ALL "+byInnerHashString, args...)
 
-	return q.Select(ctx, dest, union)
+	err = q.Select(ctx, &dest, union)
+	if err != nil {
+		return nil, err
+	}
+
+	return dest, nil
 }
 
 // TransactionsByIDs fetches transactions from the `history_transactions` table
