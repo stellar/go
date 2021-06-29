@@ -27,6 +27,11 @@ var dbCmd = &cobra.Command{
 	Short: "commands to manage horizon's postgres db",
 }
 
+var dbMigrateCmd = &cobra.Command{
+	Use:   "migrate [command]",
+	Short: "commands to run schema migrations on horizon's postgres db",
+}
+
 func requireAndSetFlag(name string) {
 	for _, flag := range flags {
 		if flag.Name == name {
@@ -63,27 +68,89 @@ var dbInitCmd = &cobra.Command{
 	},
 }
 
-var dbMigrateCmd = &cobra.Command{
-	Use:   "migrate [up|down|redo] [COUNT]",
-	Short: "migrate schema",
-	Long:  "performs a schema migration command",
+func migrate(dir schema.MigrateDir, count int) {
+	dbConn, err := db.Open("postgres", config.DatabaseURL)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	numMigrationsRun, err := schema.Migrate(dbConn.DB.DB, schema.MigrateRedo, count)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if numMigrationsRun == 0 {
+		log.Println("No migrations applied.")
+	} else {
+		log.Printf("Successfully applied %d migrations.\n", numMigrationsRun)
+	}
+}
+
+var dbMigrateDownCmd = &cobra.Command{
+	Use:   "down COUNT",
+	Short: "run upwards db schema migrations",
+	Long:  "performs a downards schema migration command",
 	Run: func(cmd *cobra.Command, args []string) {
 		requireAndSetFlag(horizon.DatabaseURLFlagName)
 
-		// Allow invokations with 1 or 2 args.  All other args counts are erroneous.
-		if len(args) < 1 || len(args) > 2 {
+		// Only allow invokations with 1 args.
+		if len(args) != 1 {
 			cmd.Usage()
 			os.Exit(1)
 		}
 
-		dir := schema.MigrateDir(args[0])
-		count := 0
+		count, err := strconv.Atoi(args[1])
+		if err != nil {
+			log.Println(err)
+			cmd.Usage()
+			os.Exit(1)
+		}
 
-		// If a second arg is present, parse it to an int and use it as the count
-		// argument to the migration call.
-		if len(args) == 2 {
+		migrate(schema.MigrateDown, count)
+	},
+}
+
+var dbMigrateRedoCmd = &cobra.Command{
+	Use:   "redo COUNT",
+	Short: "redo db schema migrations",
+	Long:  "performs a redo schema migration command",
+	Run: func(cmd *cobra.Command, args []string) {
+		requireAndSetFlag(horizon.DatabaseURLFlagName)
+
+		// Only allow invokations with 1 args.
+		if len(args) != 1 {
+			cmd.Usage()
+			os.Exit(1)
+		}
+
+		count, err := strconv.Atoi(args[1])
+		if err != nil {
+			log.Println(err)
+			cmd.Usage()
+			os.Exit(1)
+		}
+
+		migrate(schema.MigrateRedo, count)
+	},
+}
+
+var dbMigrateUpCmd = &cobra.Command{
+	Use:   "up [COUNT]",
+	Short: "run upwards db schema migrations",
+	Long:  "performs an upwards schema migration command",
+	Run: func(cmd *cobra.Command, args []string) {
+		requireAndSetFlag(horizon.DatabaseURLFlagName)
+
+		// Only allow invokations with 0-1 args.
+		if len(args) > 1 {
+			cmd.Usage()
+			os.Exit(1)
+		}
+
+		count := 0
+		if len(args) == 1 {
 			var err error
-			count, err = strconv.Atoi(args[1])
+			count, err = strconv.Atoi(args[0])
 			if err != nil {
 				log.Println(err)
 				cmd.Usage()
@@ -91,21 +158,7 @@ var dbMigrateCmd = &cobra.Command{
 			}
 		}
 
-		dbConn, err := db.Open("postgres", config.DatabaseURL)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		numMigrationsRun, err := schema.Migrate(dbConn.DB.DB, dir, count)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		if numMigrationsRun == 0 {
-			log.Println("No migrations applied.")
-		} else {
-			log.Printf("Successfully applied %d migrations.\n", numMigrationsRun)
-		}
+		migrate(schema.MigrateUp, count)
 	},
 }
 
@@ -348,6 +401,11 @@ func init() {
 		dbReapCmd,
 		dbReingestCmd,
 		dbDetectGapsCmd,
+	)
+	dbMigrateCmd.AddCommand(
+		dbMigrateDownCmd,
+		dbMigrateRedoCmd,
+		dbMigrateUpCmd,
 	)
 	dbReingestCmd.AddCommand(dbReingestRangeCmd)
 }
