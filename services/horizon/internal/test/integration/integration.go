@@ -29,7 +29,7 @@ import (
 )
 
 const (
-	NetworkPassphrase           = "Standalone Network ; February 2017"
+	StandaloneNetworkPassphrase = "Standalone Network ; February 2017"
 	stellarCorePostgresPassword = "mysecretpassword"
 	adminPort                   = 6060
 	stellarCorePort             = 11626
@@ -54,6 +54,17 @@ type Test struct {
 	appStopped    chan struct{}
 	shutdownOnce  sync.Once
 	shutdownCalls []func()
+	masterKey     *keypair.Full
+	passPhrase    string
+}
+
+func NewTestForRemoteHorizon(t *testing.T, horizonURL string, passPhrase string, masterKey *keypair.Full) *Test {
+	return &Test{
+		t:          t,
+		hclient:    &sdk.Client{HorizonURL: horizonURL},
+		masterKey:  masterKey,
+		passPhrase: passPhrase,
+	}
 }
 
 // NewTest starts a new environment for integration test at a given
@@ -67,7 +78,7 @@ func NewTest(t *testing.T, config Config) *Test {
 		t.Skip("skipping integration test")
 	}
 
-	i := &Test{t: t, config: config}
+	i := &Test{t: t, passPhrase: StandaloneNetworkPassphrase, config: config}
 
 	composeDir := findDockerComposePath()
 	integrationYaml := filepath.Join(composeDir, "docker-compose.integration-tests.yml")
@@ -218,7 +229,7 @@ of accounts, subscribe to event streams, and more.`,
 		"--enable-captive-core-ingestion=" + strconv.FormatBool(len(captiveCoreBinaryPath) > 0),
 
 		"--network-passphrase",
-		NetworkPassphrase,
+		i.passPhrase,
 		"--apply-migrations",
 		"--admin-port",
 		strconv.Itoa(i.AdminPort()),
@@ -353,9 +364,12 @@ func (i *Test) MetricsURL() string {
 	return fmt.Sprintf("http://localhost:%d/metrics", i.AdminPort())
 }
 
-// Master returns a keypair of the network master account.
+// Master returns a keypair of the network masterKey account.
 func (i *Test) Master() *keypair.Full {
-	return keypair.Master(NetworkPassphrase).(*keypair.Full)
+	if i.masterKey != nil {
+		return i.masterKey
+	}
+	return keypair.Master(i.passPhrase).(*keypair.Full)
 }
 
 func (i *Test) MasterAccount() txnbuild.Account {
@@ -395,7 +409,7 @@ func (i *Test) CreateAccounts(count int, initialBalance string) ([]*keypair.Full
 	request := sdk.AccountRequest{AccountID: master.Address()}
 	account, err := client.AccountDetail(request)
 	if err == nil {
-		seq, err = strconv.ParseInt(account.Sequence, 10, 8) // why is this a string?
+		seq, err = strconv.ParseInt(account.Sequence, 10, 64) // why is this a string?
 		panicIf(err)
 	}
 
@@ -546,7 +560,7 @@ func (i *Test) CreateSignedTransaction(
 	}
 
 	for _, signer := range signers {
-		tx, err = tx.Sign(NetworkPassphrase, signer)
+		tx, err = tx.Sign(i.passPhrase, signer)
 		if err != nil {
 			return nil, err
 		}
@@ -581,6 +595,10 @@ func (i *Test) LogFailedTx(txResponse proto.Transaction, horizonResult error) {
 	assert.NoErrorf(t, err, "Unmarshalling transaction failed.")
 	assert.Equalf(t, xdr.TransactionResultCodeTxSuccess, txResult.Result.Code,
 		"Transaction doesn't have success code.")
+}
+
+func (i *Test) GetPassPhrase() string {
+	return i.passPhrase
 }
 
 // Cluttering code with if err != nil is absolute nonsense.

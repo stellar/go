@@ -316,7 +316,7 @@ func TestSponsorships(t *testing.T) {
 		}
 		preaAuthTx, err := txnbuild.NewTransaction(txParams)
 		tt.NoError(err)
-		preAuthHash, err := preaAuthTx.Hash(integration.NetworkPassphrase)
+		preAuthHash, err := preaAuthTx.Hash(itest.GetPassPhrase())
 		tt.NoError(err)
 		preAuthTxB64, err := preaAuthTx.Base64()
 		tt.NoError(err)
