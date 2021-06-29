@@ -91,6 +91,7 @@ DROP TABLE IF EXISTS public.history_transactions;
 DROP SEQUENCE IF EXISTS public.history_transaction_participants_id_seq;
 DROP TABLE IF EXISTS public.history_transaction_participants;
 DROP TABLE IF EXISTS public.history_trades;
+DROP INDEX IF EXISTS public.htrd_agg_open_ledger;
 DROP INDEX IF EXISTS public.htrd_agg_bucket_lookup;
 DROP TABLE IF EXISTS public.history_trades_60000;
 DROP FUNCTION IF EXISTS public.to_millis(timestamp with time zone, numeric);
@@ -563,6 +564,8 @@ $$ LANGUAGE plpgsql IMMUTABLE;
 
 CREATE INDEX htrd_agg_bucket_lookup ON history_trades
   USING btree (to_millis(ledger_closed_at, '60000'::numeric));
+
+CREATE INDEX htrd_agg_open_ledger ON history_trades_60000 USING btree (open_ledger);
 
 
 --
