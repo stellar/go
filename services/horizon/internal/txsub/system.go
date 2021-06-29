@@ -320,7 +320,10 @@ func (sys *System) Tick(ctx context.Context) {
 		}
 
 		if err != ErrNoResults {
+			// Error in a DB transaction will likely not recover. If that happens/
+			// we return and Tick will try again in next run.
 			logger.WithStack(err).Error(err)
+			return
 		}
 	}
 

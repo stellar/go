@@ -236,6 +236,8 @@ func (s *Session) replaceWithKnownError(err error) error {
 		return ErrCancelled
 	case strings.Contains(err.Error(), "pq: canceling statement due to conflict with recovery"):
 		return ErrConflictWithRecovery
+	case strings.Contains(err.Error(), "driver: bad connection"):
+		return ErrBadConnection
 	default:
 		return nil
 	}
