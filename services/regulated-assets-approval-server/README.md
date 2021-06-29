@@ -23,6 +23,7 @@ intended for **testing only**. It is being conceived to:
 * [regulated\-assets\-approval\-server](#regulated-assets-approval-server)
   * [Table of Contents](#table-of-contents)
   * [Usage](#usage)
+    * [Usage: Configure Issuer](#usage-configure-issuer)
     * [Usage: Migrate](#usage-migrate)
       * [Migration files](#migration-files)
     * [Usage: Serve](#usage-serve)
@@ -38,7 +39,7 @@ Created by [gh-md-toc](https://github.com/ekalinin/github-markdown-toc.go)
 
 ## Usage
 
-```sh
+```
 $ go install
 $ regulated-assets-approval-server --help
 SEP-8 Approval Server
@@ -48,15 +49,34 @@ Usage:
   regulated-assets-approval-server [command]
 
 Available Commands:
-  migrate     Run migrations on the database
-  serve       Serve the SEP-8 Approval Server
+  configure-issuer Configure the Asset Issuer Account for SEP-8 Regulated Assets
+  migrate          Run migrations on the database
+  serve            Serve the SEP-8 Approval Server
 
 Use "regulated-assets-approval-server [command] --help" for more information about a command.
 ```
 
+### Usage: Configure Issuer
+
+```
+$ go install
+$ regulated-assets-approval-server configure-issuer --help
+Configure the Asset Issuer Account for SEP-8 Regulated Assets
+
+Usage:
+  regulated-assets-approval-server configure-issuer [flags]
+
+Flags:
+      --asset-code string              The code of the regulated asset (ASSET_CODE)
+      --base-url string                The base url to the server where the asset home domain should be. For instance, "https://test.example.com/" if your desired asset home domain is "test.example.com". (BASE_URL)
+      --horizon-url string             Horizon URL used for looking up account details (HORIZON_URL) (default "https://horizon-testnet.stellar.org/")
+      --issuer-account-secret string   Secret key of the issuer account. (ISSUER_ACCOUNT_SECRET)
+      --network-passphrase string      Network passphrase of the Stellar network transactions should be signed for (NETWORK_PASSPHRASE) (default "Test SDF Network ; September 2015")
+```
+
 ### Usage: Migrate
 
-```sh
+```
 $ go install
 $ regulated-assets-approval-server migrate --help
 Run migrations on the database
@@ -81,7 +101,7 @@ $ ./gogenerate.sh
 
 ### Usage: Serve
 
-```sh
+```
 $ go install
 $ regulated-assets-approval-server serve --help
 Serve the SEP-8 Approval Server
@@ -109,10 +129,10 @@ be configured according with SEP-8 [authorization flags] by setting both
 `Authorization Required` and `Authorization Revocable` flags. This allows the
 issuer to grant and revoke authorization to transact the asset at will.
 
-You can use [this
+You can use the command [`$ regulated-assets-approval-server
+configure-issuer`](#usage-configure-issuer) or [this Stellar Laboratory
 link](https://laboratory.stellar.org/#txbuilder?params=eyJhdHRyaWJ1dGVzIjp7ImZlZSI6IjEwMCIsImJhc2VGZWUiOiIxMDAiLCJtaW5GZWUiOiIxMDAifSwiZmVlQnVtcEF0dHJpYnV0ZXMiOnsibWF4RmVlIjoiMTAwIn0sIm9wZXJhdGlvbnMiOlt7ImlkIjowLCJhdHRyaWJ1dGVzIjp7InNldEZsYWdzIjozfSwibmFtZSI6InNldE9wdGlvbnMifV19)
-to set those flags in Stellar Laboratory. Click the link, fill the account
-address and sequence number, then the account secret and submit the transaction.
+to set those flags.
 
 After setting up the issuer account you can send some amount of the regulated
 asset to a stellar account using the servers friendbot
