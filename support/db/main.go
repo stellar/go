@@ -38,6 +38,9 @@ var (
 	// read replica cancels the query due to conflict with about-to-be-applied
 	// WAL entries (https://www.postgresql.org/docs/current/hot-standby.html).
 	ErrConflictWithRecovery = errors.New("canceling statement due to conflict with recovery")
+	// ErrBadConnection is an error returned when driver returns `bad connection`
+	// error.
+	ErrBadConnection = errors.New("bad connection")
 )
 
 // Conn represents a connection to a single database.
