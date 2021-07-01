@@ -134,6 +134,34 @@ var dbMigrateRedoCmd = &cobra.Command{
 	},
 }
 
+var dbMigrateStatusCmd = &cobra.Command{
+	Use:   "status",
+	Short: "print current database migration status",
+	Long:  "print current database migration status",
+	Run: func(cmd *cobra.Command, args []string) {
+		requireAndSetFlag(horizon.DatabaseURLFlagName)
+
+		// Only allow invokations with 0 args.
+		if len(args) != 0 {
+			fmt.Println(args)
+			cmd.Usage()
+			os.Exit(1)
+		}
+
+		dbConn, err := db.Open("postgres", config.DatabaseURL)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		status, err := schema.Status(dbConn.DB.DB)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		fmt.Println(status)
+	},
+}
+
 var dbMigrateUpCmd = &cobra.Command{
 	Use:   "up [COUNT]",
 	Short: "run upwards db schema migrations",
@@ -405,6 +433,7 @@ func init() {
 	dbMigrateCmd.AddCommand(
 		dbMigrateDownCmd,
 		dbMigrateRedoCmd,
+		dbMigrateStatusCmd,
 		dbMigrateUpCmd,
 	)
 	dbReingestCmd.AddCommand(dbReingestRangeCmd)
