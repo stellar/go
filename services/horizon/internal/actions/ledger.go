@@ -2,6 +2,7 @@ package actions
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/services/horizon/internal/context"
@@ -9,6 +10,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/ledger"
 	"github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/resourceadapter"
+	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/support/render/hal"
 )
 
@@ -77,6 +79,10 @@ func (handler GetLedgerByIDHandler) GetResource(w HeaderWriter, r *http.Request)
 	if err != nil {
 		return nil, err
 	}
+
+	resourceAge := time.Since(ledger.ClosedAt)
+	log.Ctx(r.Context()).WithFields(log.F{"age_hours": resourceAge.Hours(), "route": "/ledgers/{ledger_id}/"}).Info("Resource age")
+
 	var result horizon.Ledger
 	resourceadapter.PopulateLedger(r.Context(), &result, ledger)
 	return result, nil

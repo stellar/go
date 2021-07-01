@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"time"
 
 	horizonContext "github.com/stellar/go/services/horizon/internal/context"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
@@ -12,6 +13,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/resourceadapter"
 	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/support/render/hal"
 	supportProblem "github.com/stellar/go/support/render/problem"
 )
@@ -175,6 +177,9 @@ func (handler GetOperationByIDHandler) GetResource(w HeaderWriter, r *http.Reque
 	if err != nil {
 		return nil, err
 	}
+
+	resourceAge := time.Since(ledger.ClosedAt)
+	log.Ctx(r.Context()).WithFields(log.F{"age_hours": resourceAge.Hours(), "route": "/operations/{id}/"}).Info("Resource age")
 
 	return resourceadapter.NewOperation(
 		ctx,

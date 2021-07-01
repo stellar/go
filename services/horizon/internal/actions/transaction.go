@@ -3,6 +3,7 @@ package actions
 import (
 	"context"
 	"net/http"
+	"time"
 
 	"github.com/stellar/go/protocols/horizon"
 	horizonContext "github.com/stellar/go/services/horizon/internal/context"
@@ -11,6 +12,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/ledger"
 	"github.com/stellar/go/services/horizon/internal/resourceadapter"
 	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/support/render/hal"
 	supportProblem "github.com/stellar/go/support/render/problem"
 	"github.com/stellar/go/xdr"
@@ -52,6 +54,10 @@ func (handler GetTransactionByHashHandler) GetResource(w HeaderWriter, r *http.R
 	if err = resourceadapter.PopulateTransaction(ctx, qp.TransactionHash, &resource, record); err != nil {
 		return resource, errors.Wrap(err, "could not populate transaction")
 	}
+
+	resourceAge := time.Since(record.LedgerCloseTime)
+	log.Ctx(r.Context()).WithFields(log.F{"age_hours": resourceAge.Hours(), "route": "/transactions/{tx_id}"}).Info("Resource age")
+
 	return resource, nil
 }
 
