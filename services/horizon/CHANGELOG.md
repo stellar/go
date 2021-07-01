@@ -6,6 +6,8 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+* Require `COUNT` param when running `horizon db migrate down COUNT` to prevent accidentally running all downwards migrations. Add `horizon db migrate status` command. ([#3737](https://github.com/stellar/go/pull/3737))
+
 ## v2.5.2
 
 **Upgrading to this version from <= v2.1.1 will trigger a state rebuild. During this process (which can take up to 20 minutes), Horizon will not ingest new ledgers.**
