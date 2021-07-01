@@ -192,14 +192,18 @@ func (c *CaptiveStellarCore) openOfflineReplaySubprocess(from, to uint32) error 
 
 	if from > latestCheckpointSequence {
 		return errors.Errorf(
-			"sequence: %d is greater than max available in history archives: %d",
+			"from sequence: %d is greater than max available in history archives: %d",
 			from,
 			latestCheckpointSequence,
 		)
 	}
 
 	if to > latestCheckpointSequence {
-		to = latestCheckpointSequence
+		return errors.Errorf(
+			"to sequence: %d is greater than max available in history archives: %d",
+			to,
+			latestCheckpointSequence,
+		)
 	}
 
 	var runner stellarCoreRunnerInterface
