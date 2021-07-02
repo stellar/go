@@ -245,10 +245,41 @@ func (q Q) RebuildTradeAggregationBuckets(ctx context.Context, fromSeq, toSeq ui
 	// toLedger should be inclusive here.
 	toLedgerToid := toid.New(int32(toSeq+1), 0, 0).ToInt64()
 
+	timestamps := sq.Select(
+		"to_millis(ledger_closed_at, 60000)",
+	).From("history_trades").Where(
+		sq.GtOrEq{"history_operation_id": fromLedgerToid},
+	).Where(
+		sq.Lt{"history_operation_id": toLedgerToid},
+	)
+
+	// Get first bucket timestamp in the ledger range
+	var first strtime.Millis
+	err := q.Get(
+		ctx,
+		&first,
+		timestamps.OrderBy("history_operation_id", "\"order\"").Limit(1),
+	)
+	if err != nil {
+		return errors.Wrap(err, "could not rebuild trade aggregation bucket")
+	}
+
+	// Get last bucket timestamp in the ledger range
+	var last strtime.Millis
+	err = q.Get(
+		ctx,
+		&last,
+		timestamps.OrderBy("history_operation_id DESC", "\"order\" DESC").Limit(1),
+	)
+	if err != nil {
+		return errors.Wrap(err, "could not rebuild trade aggregation bucket")
+	}
+
 	// Clear out the old bucket values.
-	_, err := q.Exec(ctx, sq.Delete("history_trades_60000").Where(
-		sq.GtOrEq{"open_ledger_toid": fromLedgerToid},
-		sq.Lt{"open_ledger_toid": toLedgerToid},
+	_, err = q.Exec(ctx, sq.Delete("history_trades_60000").Where(
+		sq.GtOrEq{"timestamp": first},
+	).Where(
+		sq.LtOrEq{"timestamp": last},
 	))
 	if err != nil {
 		return errors.Wrap(err, "could not rebuild trade aggregation bucket")
@@ -256,7 +287,7 @@ func (q Q) RebuildTradeAggregationBuckets(ctx context.Context, fromSeq, toSeq ui
 
 	// find all related trades
 	trades := sq.Select(
-		"public.to_millis(ledger_closed_at, 60000) as timestamp",
+		"to_millis(ledger_closed_at, 60000) as timestamp",
 		"history_operation_id",
 		"\"order\"",
 		"base_asset_id",
@@ -265,9 +296,9 @@ func (q Q) RebuildTradeAggregationBuckets(ctx context.Context, fromSeq, toSeq ui
 		"counter_amount",
 		"ARRAY[price_n, price_d] as price",
 	).From("history_trades").Where(
-		// TODO: Check if this is the right thing
-		sq.GtOrEq{"history_operation_id": fromLedgerToid},
-		sq.Lt{"history_operation_id": toLedgerToid},
+		sq.GtOrEq{"to_millis(ledger_closed_at, 60000)": first},
+	).Where(
+		sq.LtOrEq{"to_millis(ledger_closed_at, 60000)": last},
 	).OrderBy("history_operation_id", "\"order\"")
 
 	// figure out the new bucket values
