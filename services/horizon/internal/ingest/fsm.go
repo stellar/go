@@ -456,10 +456,13 @@ func (r resumeState) run(s *system) (transition, error) {
 		return retryResume(r), errors.Wrap(err, "Error running processors on ledger")
 	}
 
+	rebuildStart := time.Now()
 	err = s.historyQ.RebuildTradeAggregationBuckets(s.ctx, ingestLedger, ingestLedger)
 	if err != nil {
 		return stop(), errors.Wrap(err, "error rebuilding trade aggregations")
 	}
+	rebuildDuration := time.Since(rebuildStart).Seconds()
+	s.Metrics().LedgerIngestionTradeAggregationDuration.Observe(float64(rebuildDuration))
 
 	if err = s.completeIngestion(s.ctx, ingestLedger); err != nil {
 		return retryResume(r), err
