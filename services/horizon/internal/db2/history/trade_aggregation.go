@@ -2,6 +2,7 @@ package history
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"time"
 
@@ -245,6 +246,16 @@ func (q Q) RebuildTradeAggregationBuckets(ctx context.Context, fromSeq, toSeq ui
 	// toLedger should be inclusive here.
 	toLedgerToid := toid.New(int32(toSeq+1), 0, 0).ToInt64()
 
+	// Clear out the old bucket values.
+	_, err := q.Exec(ctx, sq.Delete("history_trades_60000").Where(
+		sq.GtOrEq{"close_ledger_toid": fromLedgerToid},
+	).Where(
+		sq.Lt{"open_ledger_toid": toLedgerToid},
+	))
+	if err != nil {
+		return errors.Wrap(err, "could not rebuild trade aggregation bucket")
+	}
+
 	timestamps := sq.Select(
 		"to_millis(ledger_closed_at, 60000)",
 	).From("history_trades").Where(
@@ -255,12 +266,15 @@ func (q Q) RebuildTradeAggregationBuckets(ctx context.Context, fromSeq, toSeq ui
 
 	// Get first bucket timestamp in the ledger range
 	var first strtime.Millis
-	err := q.Get(
+	err = q.Get(
 		ctx,
 		&first,
 		timestamps.OrderBy("history_operation_id", "\"order\"").Limit(1),
 	)
-	if err != nil {
+	if err == sql.ErrNoRows {
+		// no trades in these ledgers
+		return nil
+	} else if err != nil {
 		return errors.Wrap(err, "could not rebuild trade aggregation bucket")
 	}
 
@@ -271,16 +285,6 @@ func (q Q) RebuildTradeAggregationBuckets(ctx context.Context, fromSeq, toSeq ui
 		&last,
 		timestamps.OrderBy("history_operation_id DESC", "\"order\" DESC").Limit(1),
 	)
-	if err != nil {
-		return errors.Wrap(err, "could not rebuild trade aggregation bucket")
-	}
-
-	// Clear out the old bucket values.
-	_, err = q.Exec(ctx, sq.Delete("history_trades_60000").Where(
-		sq.GtOrEq{"timestamp": first},
-	).Where(
-		sq.LtOrEq{"timestamp": last},
-	))
 	if err != nil {
 		return errors.Wrap(err, "could not rebuild trade aggregation bucket")
 	}
