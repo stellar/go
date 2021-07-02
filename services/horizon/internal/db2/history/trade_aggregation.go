@@ -163,7 +163,7 @@ func (q *TradeAggregationsQ) GetSql() sq.SelectBuilder {
 
 	if q.resolution != 60000 {
 		//ensure open/close order for cases when multiple trades occur in the same ledger
-		bucketSQL = bucketSQL.OrderBy("timestamp ASC", "open_ledger ASC")
+		bucketSQL = bucketSQL.OrderBy("timestamp ASC", "open_ledger_toid ASC")
 		// Do on-the-fly aggregation for higher resolutions.
 		bucketSQL = aggregate(bucketSQL)
 	}
@@ -247,8 +247,8 @@ func (q Q) RebuildTradeAggregationBuckets(ctx context.Context, fromSeq, toSeq ui
 
 	// Clear out the old bucket values.
 	_, err := q.Exec(ctx, sq.Delete("history_trades_60000").Where(
-		sq.GtOrEq{"open_ledger": fromLedger},
-		sq.Lt{"open_ledger": toLedger},
+		sq.GtOrEq{"open_ledger_toid": fromLedgerToid},
+		sq.Lt{"open_ledger_toid": toLedgerToid},
 	))
 	if err != nil {
 		return errors.Wrap(err, "could not rebuild trade aggregation bucket")
@@ -266,8 +266,8 @@ func (q Q) RebuildTradeAggregationBuckets(ctx context.Context, fromSeq, toSeq ui
 		"ARRAY[price_n, price_d] as price",
 	).From("history_trades").Where(
 		// TODO: Check if this is the right thing
-		sq.GtOrEq{"history_operation_id": fromLedger},
-		sq.Lt{"history_operation_id": toLedger},
+		sq.GtOrEq{"history_operation_id": fromLedgerToid},
+		sq.Lt{"history_operation_id": toLedgerToid},
 	).OrderBy("history_operation_id", "\"order\"")
 
 	// figure out the new bucket values
@@ -283,10 +283,10 @@ func (q Q) RebuildTradeAggregationBuckets(ctx context.Context, fromSeq, toSeq ui
 		"(max_price(price))[2] as high_d",
 		"(min_price(price))[1] as low_n",
 		"(min_price(price))[2] as low_d",
-		"first(history_operation_id) as open_ledger",
+		"first(history_operation_id) as open_ledger_toid",
 		"(first(price))[1] as open_n",
 		"(first(price))[2] as open_d",
-		"last(history_operation_id) as close_ledger",
+		"last(history_operation_id) as close_ledger_toid",
 		"(last(price))[1] as close_n",
 		"(last(price))[2] as close_d",
 	).FromSelect(trades, "trades").GroupBy("timestamp", "base_asset_id", "counter_asset_id")

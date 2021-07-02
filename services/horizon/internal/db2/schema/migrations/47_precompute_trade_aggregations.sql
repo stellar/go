@@ -13,10 +13,10 @@ CREATE TABLE history_trades_60000 (
   high_d numeric not null,
   low_n numeric not null,
   low_d numeric not null,
-  open_ledger bigint not null,
+  open_ledger_toid bigint not null,
   open_n numeric not null,
   open_d numeric not null,
-  close_ledger bigint not null,
+  close_ledger_toid bigint not null,
   close_n numeric not null,
   close_d numeric not null,
 
@@ -44,7 +44,7 @@ $$ LANGUAGE plpgsql IMMUTABLE;
 CREATE INDEX CONCURRENTLY htrd_agg_bucket_lookup ON history_trades
   USING btree (to_millis(ledger_closed_at, '60000'::numeric));
 
-CREATE INDEX CONCURRENTLY htrd_agg_open_ledger ON history_trades_60000 USING btree (open_ledger);
+CREATE INDEX CONCURRENTLY htrd_agg_open_ledger_toid ON history_trades_60000 USING btree (open_ledger_toid);
 
 -- Backfill the table with existing data. This takes about 9 minutes.
 WITH htrd AS (
@@ -74,10 +74,10 @@ WITH htrd AS (
         (max_price(price))[2] as high_d,
         (min_price(price))[1] as low_n,
         (min_price(price))[2] as low_d,
-        first(history_operation_id) as open_ledger,
+        first(history_operation_id) as open_ledger_toid,
         (first(price))[1] as open_n,
         (first(price))[2] as open_d,
-        last(history_operation_id) as close_ledger,
+        last(history_operation_id) as close_ledger_toid,
         (last(price))[1] as close_n,
         (last(price))[2] as close_d
       FROM htrd
@@ -88,7 +88,7 @@ WITH htrd AS (
 
 -- +migrate Down
 
-DROP INDEX htrd_agg_open_ledger;
+DROP INDEX htrd_agg_open_ledger_toid;
 DROP INDEX htrd_agg_bucket_lookup;
 DROP TABLE history_trades_60000;
 DROP FUNCTION to_millis(timestamp with time zone, numeric);
