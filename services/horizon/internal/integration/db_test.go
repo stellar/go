@@ -133,7 +133,8 @@ func TestResumeFromInitializedDB(t *testing.T) {
 	itestConfig := protocol15Config
 	itestConfig.PostgresURL = oldDBURL
 
-	itest.RestartHorizon()
+	err := itest.RestartHorizon()
+	tt.NoError(err)
 
 	successfullyResumed := func() bool {
 		root, err := itest.Client().Root()
