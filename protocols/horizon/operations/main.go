@@ -55,7 +55,7 @@ type Base struct {
 	TransactionSuccessful bool      `json:"transaction_successful"`
 	SourceAccount         string    `json:"source_account"`
 	SourceAccountMuxed    string    `json:"source_account_muxed,omitempty"`
-	SourceAccountMuxedID  uint64    `json:"source_account_muxed_id,omitempty"`
+	SourceAccountMuxedID  uint64    `json:"source_account_muxed_id,omitempty,string"`
 	Type                  string    `json:"type"`
 	TypeI                 int32     `json:"type_i"`
 	LedgerCloseTime       time.Time `json:"created_at"`
@@ -88,7 +88,7 @@ type CreateAccount struct {
 	StartingBalance string `json:"starting_balance"`
 	Funder          string `json:"funder"`
 	FunderMuxed     string `json:"funder_muxed,omitempty"`
-	FunderMuxedID   uint64 `json:"funder_muxed_id,omitempty"`
+	FunderMuxedID   uint64 `json:"funder_muxed_id,omitempty,string"`
 	Account         string `json:"account"`
 }
 
@@ -99,10 +99,10 @@ type Payment struct {
 	base.Asset
 	From        string `json:"from"`
 	FromMuxed   string `json:"from_muxed,omitempty"`
-	FromMuxedID uint64 `json:"from_muxed_id,omitempty"`
+	FromMuxedID uint64 `json:"from_muxed_id,omitempty,string"`
 	To          string `json:"to"`
 	ToMuxed     string `json:"to_muxed,omitempty"`
-	ToMuxedID   uint64 `json:"to_muxed_id,omitempty"`
+	ToMuxedID   uint64 `json:"to_muxed_id,omitempty,string"`
 	Amount      string `json:"amount"`
 }
 
@@ -202,7 +202,7 @@ type ChangeTrust struct {
 	Trustee        string `json:"trustee"`
 	Trustor        string `json:"trustor"`
 	TrustorMuxed   string `json:"trustor_muxed,omitempty"`
-	TrustorMuxedID uint64 `json:"trustor_muxed_id,omitempty"`
+	TrustorMuxedID uint64 `json:"trustor_muxed_id,omitempty,string"`
 }
 
 // Deprecated: use TrustlineFlagsUpdated instead.
@@ -213,7 +213,7 @@ type AllowTrust struct {
 	base.Asset
 	Trustee                        string `json:"trustee"`
 	TrusteeMuxed                   string `json:"trustee_muxed,omitempty"`
-	TrusteeMuxedID                 uint64 `json:"trustee_muxed_id,omitempty"`
+	TrusteeMuxedID                 uint64 `json:"trustee_muxed_id,omitempty,string"`
 	Trustor                        string `json:"trustor"`
 	Authorize                      bool   `json:"authorize"`
 	AuthorizeToMaintainLiabilities bool   `json:"authorize_to_maintain_liabilities"`
@@ -225,10 +225,10 @@ type AccountMerge struct {
 	Base
 	Account        string `json:"account"`
 	AccountMuxed   string `json:"account_muxed,omitempty"`
-	AccountMuxedID uint64 `json:"account_muxed_id,omitempty"`
+	AccountMuxedID uint64 `json:"account_muxed_id,omitempty,string"`
 	Into           string `json:"into"`
 	IntoMuxed      string `json:"into_muxed,omitempty"`
-	IntoMuxedID    uint64 `json:"into_muxed_id,omitempty"`
+	IntoMuxedID    uint64 `json:"into_muxed_id,omitempty,string"`
 }
 
 // Inflation is the json resource representing a single operation whose type is
@@ -253,7 +253,7 @@ type ClaimClaimableBalance struct {
 	BalanceID       string `json:"balance_id"`
 	Claimant        string `json:"claimant"`
 	ClaimantMuxed   string `json:"claimant_muxed,omitempty"`
-	ClaimantMuxedID uint64 `json:"claimant_muxed_id,omitempty"`
+	ClaimantMuxedID uint64 `json:"claimant_muxed_id,omitempty,string"`
 }
 
 // BeginSponsoringFutureReserves is the json resource representing a single operation whose type is
@@ -269,7 +269,7 @@ type EndSponsoringFutureReserves struct {
 	Base
 	BeginSponsor        string `json:"begin_sponsor,omitempty"`
 	BeginSponsorMuxed   string `json:"begin_sponsor_muxed,omitempty"`
-	BeginSponsorMuxedID uint64 `json:"begin_sponsor_muxed_id,omitempty"`
+	BeginSponsorMuxedID uint64 `json:"begin_sponsor_muxed_id,omitempty,string"`
 }
 
 // RevokeSponsorship is the json resource representing a single operation whose type is
@@ -294,7 +294,7 @@ type Clawback struct {
 	base.Asset
 	From        string `json:"from"`
 	FromMuxed   string `json:"from_muxed,omitempty"`
-	FromMuxedID uint64 `json:"from_muxed_id,omitempty"`
+	FromMuxedID uint64 `json:"from_muxed_id,omitempty,string"`
 	Amount      string `json:"amount"`
 }
 

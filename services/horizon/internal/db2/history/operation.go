@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"strings"
 	"text/template"
 
 	sq "github.com/Masterminds/squirrel"
@@ -24,13 +25,37 @@ func (r *Operation) UnmarshalDetails(dest interface{}) error {
 	if !r.DetailsString.Valid {
 		return nil
 	}
-
-	err := json.Unmarshal([]byte(r.DetailsString.String), &dest)
+	preprocessedDetails, err := preprocessDetails(r.DetailsString.String)
 	if err != nil {
-		err = errors.Wrap(err, "error in unmarshal")
+		return errors.Wrap(err, "error in unmarshal")
+	}
+	err = json.Unmarshal(preprocessedDetails, &dest)
+	if err != nil {
+		return errors.Wrap(err, "error in unmarshal")
 	}
 
-	return err
+	return nil
+}
+
+func preprocessDetails(details string) ([]byte, error) {
+	var dest map[string]interface{}
+	// Create a decoder using Number instead of float64 when decoding
+	// (so that decoding covers the full uint64 range)
+	decoder := json.NewDecoder(strings.NewReader(details))
+	decoder.UseNumber()
+	if err := decoder.Decode(&dest); err != nil {
+		return nil, err
+	}
+	for k, v := range dest {
+		if strings.HasSuffix(k, "_muxed_id") {
+			if vNumber, ok := v.(json.Number); ok {
+				// transform it into a string so that _muxed_id unmarshalling works with `,string` tags
+				// see https://github.com/stellar/go/pull/3716#issuecomment-867057436
+				dest[k] = vNumber.String()
+			}
+		}
+	}
+	return json.Marshal(dest)
 }
 
 var feeStatsQueryTemplate = template.Must(template.New("trade_aggregations_query").Parse(`

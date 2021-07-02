@@ -129,7 +129,8 @@ type UniversalTimeHandler func() int64
 // Client struct contains data for creating a horizon client that connects to the stellar network.
 type Client struct {
 	// URL of Horizon server to connect
-	HorizonURL string
+	HorizonURL        string
+	fixHorizonURLOnce sync.Once
 
 	// HTTP client to make requests with
 	HTTP HTTP
