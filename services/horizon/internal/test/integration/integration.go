@@ -24,6 +24,7 @@ import (
 	proto "github.com/stellar/go/protocols/horizon"
 	horizon "github.com/stellar/go/services/horizon/internal"
 	"github.com/stellar/go/support/db/dbtest"
+	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/txnbuild"
 	"github.com/stellar/go/xdr"
 )
@@ -43,18 +44,33 @@ type Config struct {
 	SkipContainerCreation bool
 	CoreDockerImage       string
 
+	// Weird naming here because bools default to false, but we want to start
+	// Horizon by default.
+	DontStartHorizon bool
+
 	// If you want to override the default parameters passed to Horizon, you can
-	// set this map accordingly. Note that for non-KV parameters (like
-	// --ingest), you should just set the values to be empty.
+	// set this map accordingly. All of them are passed along as k=v, but if you
+	// pass an empty value, the parameter will be dropped.
 	HorizonParameters map[string]string
 }
 
+type CaptiveCoreConfig struct {
+	binaryPath string
+	configPath string
+}
+
 type Test struct {
-	t             *testing.T
+	t *testing.T
+
+	composePath string
+
 	config        Config
+	coreConfig    CaptiveCoreConfig
 	horizonConfig horizon.Config
-	hclient       *sdk.Client
-	cclient       *stellarcore.Client
+
+	hclient *sdk.Client
+	cclient *stellarcore.Client
+
 	app           *horizon.App
 	appStopped    chan struct{}
 	shutdownOnce  sync.Once
@@ -75,78 +91,92 @@ func NewTestForRemoteHorizon(t *testing.T, horizonURL string, passPhrase string,
 // NewTest starts a new environment for integration test at a given
 // protocol version and blocks until Horizon starts ingesting.
 //
-// Warning: this requires Docker Compose installed
-//
 // Skips the test if HORIZON_INTEGRATION_TESTS env variable is not set.
+//
+// WARNING: This requires Docker Compose installed.
 func NewTest(t *testing.T, config Config) *Test {
 	if os.Getenv("HORIZON_INTEGRATION_TESTS") == "" {
-		t.Skip("skipping integration test")
+		t.Skip("skipping integration test: HORIZON_INTEGRATION_TESTS not set")
 	}
 
-	i := &Test{t: t, passPhrase: StandaloneNetworkPassphrase, config: config}
-
-	composeDir := findDockerComposePath()
-	integrationYaml := filepath.Join(composeDir, "docker-compose.integration-tests.yml")
-
-	// Runs a docker-compose command applied to the above configs
-	runComposeCommand := func(args ...string) {
-		cmdline := append([]string{"-f", integrationYaml}, args...)
-		cmd := exec.Command("docker-compose", cmdline...)
-		if config.CoreDockerImage != "" {
-			cmd.Env = os.Environ()
-			cmd.Env = append(cmd.Env, fmt.Sprintf("CORE_IMAGE=%s", config.CoreDockerImage))
-		}
-		t.Log("Running", cmd.Env, cmd.Args)
-		out, innerErr := cmd.Output()
-		if exitErr, ok := innerErr.(*exec.ExitError); ok {
-			fmt.Printf("stdout:\n%s\n", string(out))
-			fmt.Printf("stderr:\n%s\n", string(exitErr.Stderr))
-		}
-		fatalIf(t, innerErr)
+	composePath := findDockerComposePath()
+	i := &Test{
+		t:           t,
+		config:      config,
+		composePath: composePath,
+		passPhrase:  StandaloneNetworkPassphrase,
 	}
 
 	// We either test Captive Core through environment variables, or through
 	// custom Horizon parameters.
-	var captiveCoreBinaryPath, captiveCoreConfigPath string
 	if os.Getenv("HORIZON_INTEGRATION_ENABLE_CAPTIVE_CORE") != "" {
-		captiveCoreBinaryPath = os.Getenv("CAPTIVE_CORE_BIN")
-		if len(captiveCoreBinaryPath) == 0 {
-			t.Fatal("CAPTIVE_CORE_BIN is not set")
-		}
-		captiveCoreConfigPath = filepath.Join(composeDir, "captive-core-integration-tests.cfg")
-	} else {
-		if value, ok := config.HorizonParameters["--stellar-core-binary-path"]; ok {
-			captiveCoreBinaryPath = value
-		}
-		if value, ok := config.HorizonParameters["--captive-core-config-path"]; ok {
-			captiveCoreConfigPath = value
-		}
+		i.coreConfig.binaryPath = os.Getenv("CAPTIVE_CORE_BIN")
+		i.coreConfig.configPath = filepath.Join(composePath, "captive-core-integration-tests.cfg")
 	}
 
-	if (captiveCoreBinaryPath != "" && captiveCoreConfigPath == "") ||
-		(captiveCoreBinaryPath == "" && captiveCoreConfigPath != "") {
-		t.Fatal("Both the Stellar Core binary and Captive Core configuration needs to be set.")
+	if value, ok := config.HorizonParameters["--stellar-core-binary-path"]; ok {
+		i.coreConfig.binaryPath = value
+	}
+	if value, ok := config.HorizonParameters["--captive-core-config-path"]; ok {
+		i.coreConfig.configPath = value
 	}
 
-	// Only run Stellar Core container and its dependencies
-	runComposeCommand("up", "--detach", "--quiet-pull", "--no-color", "core")
+	if !bothOrNeitherString(i.coreConfig.binaryPath, i.coreConfig.configPath) {
+		t.Fatal(`Both the Stellar Core binary and Captive Core configuration
+needs to be set. Try setting CAPTIVE_CORE_BIN in your environment or filling in
+Config.HorizonParameters with the appropriate parameter(s).`)
+	}
 
+	// Only run Stellar Core container and its dependencies.
+	i.runComposeCommand("up", "--detach", "--quiet-pull", "--no-color", "core")
 	i.cclient = &stellarcore.Client{URL: "http://localhost:" + strconv.Itoa(stellarCorePort)}
 	i.waitForCore()
 
+	i.prepareShutdownHandlers()
+
+	if !config.DontStartHorizon {
+		if innerErr := i.StartHorizon(); innerErr != nil {
+			t.Fatalf("Failed to start Horizon: %v", innerErr)
+		}
+
+		i.waitForHorizon()
+	}
+
+	return i
+}
+
+// Runs a docker-compose command applied to the above configs
+func (i *Test) runComposeCommand(args ...string) {
+	integrationYaml := filepath.Join(i.composePath, "docker-compose.integration-tests.yml")
+
+	cmdline := append([]string{"-f", integrationYaml}, args...)
+	cmd := exec.Command("docker-compose", cmdline...)
+	if i.config.CoreDockerImage != "" {
+		cmd.Env = append(
+			os.Environ(),
+			fmt.Sprintf("CORE_IMAGE=%s", i.config.CoreDockerImage),
+		)
+	}
+
+	i.t.Log("Running", cmd.Env, cmd.Args)
+	out, innerErr := cmd.Output()
+	if exitErr, ok := innerErr.(*exec.ExitError); ok {
+		fmt.Printf("stdout:\n%s\n", string(out))
+		fmt.Printf("stderr:\n%s\n", string(exitErr.Stderr))
+	}
+
+	if innerErr != nil {
+		i.t.Fatalf("Compose command failed: %v", innerErr)
+	}
+}
+
+func (i *Test) prepareShutdownHandlers() {
 	i.shutdownCalls = append(i.shutdownCalls, func() {
 		if i.app != nil {
 			i.app.Close()
 		}
-		runComposeCommand("down", "-v", "--remove-orphans")
+		i.runComposeCommand("down", "-v", "--remove-orphans")
 	})
-	i.startHorizon(
-		captiveCoreBinaryPath,
-		captiveCoreConfigPath,
-		i.config.PostgresURL,
-		true,
-	)
-	i.hclient = &sdk.Client{HorizonURL: "http://localhost:8000"}
 
 	// Register cleanup handlers (on panic and ctrl+c) so the containers are
 	// stopped even if ingestion or testing fails.
@@ -159,29 +189,27 @@ func NewTest(t *testing.T, config Config) *Test {
 		i.Shutdown()
 		os.Exit(int(syscall.SIGTERM))
 	}()
-
-	i.waitForHorizon()
-	return i
 }
 
-func (i *Test) RestartHorizon() {
+func (i *Test) RestartHorizon() error {
 	i.StopHorizon()
-	i.startHorizon(
-		i.horizonConfig.CaptiveCoreBinaryPath,
-		i.horizonConfig.CaptiveCoreConfigPath,
-		i.horizonConfig.DatabaseURL,
-		false,
-	)
+
+	if err := i.StartHorizon(); err != nil {
+		return err
+	}
+
 	i.waitForHorizon()
+	return nil
 }
 
 func (i *Test) GetHorizonConfig() horizon.Config {
 	return i.horizonConfig
 }
 
-// Shutdown stops the integration tests and destroys all its associated resources.
-// Shutdown() will be implicitly called when the calling test (i.e. the `testing.Test` passed
-// to `New()`) is finished if it hasn't been explicitly called before.
+// Shutdown stops the integration tests and destroys all its associated
+// resources. It will be implicitly called when the calling test (i.e. the
+// `testing.Test` passed to `New()`) is finished if it hasn't been explicitly
+// called before.
 func (i *Test) Shutdown() {
 	i.shutdownOnce.Do(func() {
 		// run them in the opposite order in which they where added
@@ -191,30 +219,14 @@ func (i *Test) Shutdown() {
 	})
 }
 
-// mergeMaps returns a new map which contains the keys and values of both input
-// maps, preferring the latter newValues map if there are duplicate entries.
-func mergeMaps(defaults map[string]string, newValues map[string]string) map[string]string {
-	merged := make(map[string]string)
-	for key, value := range defaults {
-		merged[key] = value
-	}
-
-	for key, value := range newValues {
-		merged[key] = value
-	}
-
-	return merged
-}
-
-func (i *Test) startHorizon(
-	captiveCoreBinaryPath, captiveCoreConfigPath, horizonPostgresURL string, buildGenesisState bool,
-) {
+func (i *Test) StartHorizon() error {
+	horizonPostgresURL := i.config.PostgresURL
 	if horizonPostgresURL == "" {
 		postgres := dbtest.Postgres(i.t)
 		i.shutdownCalls = append(i.shutdownCalls, func() {
-			// TODO: Unfortunately Horizon leaves open sessions behind leading to
-			//       a "database  is being accessed by other users"
-			//       error when trying to drop it
+			// FIXME: Unfortunately, Horizon leaves open sessions behind,
+			//        leading to a "database is being accessed by other users"
+			//        error when trying to drop it.
 			// postgres.Close()
 		})
 		horizonPostgresURL = postgres.DSN
@@ -223,41 +235,43 @@ func (i *Test) startHorizon(
 	config, configOpts := horizon.Flags()
 	cmd := &cobra.Command{
 		Use:   "horizon",
-		Short: "client-facing api server for the Stellar network",
-		Long: `Client-facing API server for the Stellar network. It acts as the
-interface between Stellar Core and applications that want to access the Stellar
-network. It allows you to submit transactions to the network, check the status
-of accounts, subscribe to event streams, and more.`,
+		Short: "Client-facing API server for the Stellar network",
+		Long:  "Client-facing API server for the Stellar network.",
 		Run: func(cmd *cobra.Command, args []string) {
 			i.app = horizon.NewAppFromFlags(config, configOpts)
 		},
 	}
 
-	// TODO: Ideally, we'd be pulling host/port information from the Docker
-	//       Compose YAML file itself rather than hardcoding it.
-
 	// To facilitate custom runs of Horizon, we merge a default set of
 	// parameters with the tester-supplied ones (if any).
+	//
+	// TODO: Ideally, we'd be pulling host/port information from the Docker
+	//       Compose YAML file itself rather than hardcoding it.
 	hostname := "localhost"
+	coreBinaryPath := i.coreConfig.binaryPath
+	captiveCoreConfigPath := i.coreConfig.configPath
+
+	i.t.Logf("config: %+v", i.coreConfig)
+
 	var DEFAULT_ARGS = map[string]string{
-		"--stellar-core-url":     fmt.Sprintf("http://%s:%d", hostname, stellarCorePort),
-		"--history-archive-urls": fmt.Sprintf("http://%s:%d", hostname, historyArchivePort),
-		"--ingest":               "",
-		"--db-url":               horizonPostgresURL,
+		"--stellar-core-url": i.cclient.URL,
 		"--stellar-core-db-url": fmt.Sprintf(
 			"postgres://postgres:%s@%s:%d/stellar?sslmode=disable",
 			stellarCorePostgresPassword,
 			hostname,
 			stellarCorePostgresPort,
 		),
-		"--stellar-core-binary-path": captiveCoreBinaryPath,
-		"--captive-core-config-path": captiveCoreConfigPath,
-		"--captive-core-http-port":   "21626",
-		"--enable-captive-core-ingestion=" +
-			strconv.FormatBool(len(captiveCoreBinaryPath) > 0): "",
-		"--network-passphrase": i.passPhrase,
-		"--apply-migrations":   "",
-		"--admin-port":         strconv.Itoa(i.AdminPort()),
+		"--stellar-core-binary-path":      coreBinaryPath,
+		"--captive-core-config-path":      captiveCoreConfigPath,
+		"--captive-core-http-port":        "21626",
+		"--enable-captive-core-ingestion": strconv.FormatBool(len(coreBinaryPath) > 0),
+		"--ingest":                        "true",
+		"--history-archive-urls":          fmt.Sprintf("http://%s:%d", hostname, historyArchivePort),
+		"--db-url":                        horizonPostgresURL,
+		"--network-passphrase":            i.passPhrase,
+		"--apply-migrations":              "true",
+		"--admin-port":                    strconv.Itoa(i.AdminPort()),
+		"--port":                          "8000",
 		// due to ARTIFICIALLY_ACCELERATE_TIME_FOR_TESTING
 		"--checkpoint-frequency": "8",
 		"--per-hour-rate-limit":  "0", // disable rate limiting
@@ -265,31 +279,35 @@ of accounts, subscribe to event streams, and more.`,
 
 	merged := mergeMaps(DEFAULT_ARGS, i.config.HorizonParameters)
 
-	// Turn the merged mapping into an array of strings for SetArgs
+	// Turn the merged mapping into an array of strings for SetArgs. Note that
+	// empty values means drop the parameter.
 	args := make([]string, 0, len(merged))
 	for key, value := range merged {
-		args = append(args, key, value)
 		if value != "" {
-			args = append(args, value)
+			args = append(args, fmt.Sprintf("%s=%s", key, value))
 		}
 	}
 
 	// initialize core arguments
+	i.t.Log("Horizon command line:", args)
 	cmd.SetArgs(args)
 	var err error
+
 	if err = configOpts.Init(cmd); err != nil {
-		i.t.Fatalf("Cannot initialize params: %s", err)
+		return errors.Wrap(err, "cannot initialize params")
 	}
 
 	if err = cmd.Execute(); err != nil {
-		i.t.Fatalf("cannot initialize horizon: %s", err)
+		return errors.Wrap(err, "cannot initialize Horizon")
 	}
-	i.horizonConfig = *config
 
-	if buildGenesisState {
-		if err = i.app.Ingestion().BuildGenesisState(); err != nil {
-			i.t.Fatalf("cannot build genesis state: %s", err)
-		}
+	i.horizonConfig = *config
+	i.hclient = &sdk.Client{
+		HorizonURL: fmt.Sprintf("http://%s:%s", hostname, merged["--port"]),
+	}
+
+	if err = i.app.Ingestion().BuildGenesisState(); err != nil {
+		return errors.Wrap(err, "cannot build genesis state")
 	}
 
 	done := make(chan struct{})
@@ -298,12 +316,13 @@ of accounts, subscribe to event streams, and more.`,
 		close(done)
 	}()
 	i.appStopped = done
+	return nil
 }
 
 // Wait for core to be up and manually close the first ledger
 func (i *Test) waitForCore() {
+	i.t.Log("Waiting for core to be up...")
 	for t := 30 * time.Second; t >= 0; t -= time.Second {
-		i.t.Log("Waiting for core to be up...")
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		_, err := i.cclient.Info(ctx)
 		cancel()
@@ -333,6 +352,7 @@ func (i *Test) waitForCore() {
 			time.Sleep(time.Second)
 			continue
 		}
+		i.t.Log("Core is up.")
 		return
 	}
 	i.t.Fatal("Core could not sync after several attempts")
@@ -489,7 +509,7 @@ func (i *Test) MustEstablishTrustline(
 	return txResp
 }
 
-// Establishes a trustline for a given asset for a particular account.
+// EstablishTrustline works on a given asset for a particular account.
 func (i *Test) EstablishTrustline(
 	truster *keypair.Full, account txnbuild.Account, asset txnbuild.Asset,
 ) (proto.Transaction, error) {
@@ -502,7 +522,7 @@ func (i *Test) EstablishTrustline(
 	})
 }
 
-// Panics on any error creating a claimable balance.
+// MustCreateClaimableBalance panics on any error creating a claimable balance.
 func (i *Test) MustCreateClaimableBalance(
 	source *keypair.Full, asset txnbuild.Asset, amount string,
 	claimants ...txnbuild.Claimant,
@@ -530,8 +550,8 @@ func (i *Test) MustCreateClaimableBalance(
 	return
 }
 
-// Panics on any error retrieves an account's details from its key.
-// This means it must have previously been funded.
+// MustGetAccount panics on any error retrieves an account's details from its
+// key. This means it must have previously been funded.
 func (i *Test) MustGetAccount(source *keypair.Full) proto.Account {
 	client := i.Client()
 	account, err := client.AccountDetail(sdk.AccountRequest{AccountID: source.Address()})
@@ -539,7 +559,8 @@ func (i *Test) MustGetAccount(source *keypair.Full) proto.Account {
 	return account
 }
 
-// Submits a signed transaction from an account with standard options.
+// MustSubmitOperations submits a signed transaction from an account with
+// standard options.
 //
 // Namely, we set the standard fee, time bounds, etc. to "non-production"
 // defaults that work well for tests.
@@ -610,8 +631,8 @@ func (i *Test) GetCurrentCoreLedgerSequence() (int, error) {
 	return info.Info.Ledger.Num, nil
 }
 
-// A convenience function to provide verbose information about a failing
-// transaction to the test output log, if it's expected to succeed.
+// LogFailedTx is a convenience function to provide verbose information about a
+// failing transaction to the test output log, if it's expected to succeed.
 func (i *Test) LogFailedTx(txResponse proto.Transaction, horizonResult error) {
 	t := i.CurrentTest()
 	assert.NoErrorf(t, horizonResult, "Submitting the transaction failed")
@@ -639,13 +660,8 @@ func panicIf(err error) {
 	}
 }
 
-func fatalIf(t *testing.T, err error) {
-	if err != nil {
-		t.Fatalf("error: %s", err)
-	}
-}
-
-// Performs a best-effort attempt to find the project's Docker Compose files.
+// findDockerComposePath performs a best-effort attempt to find the project's
+// Docker Compose files.
 func findDockerComposePath() string {
 	// Lets you check if a particular directory contains a file.
 	directoryContainsFilename := func(dir string, filename string) bool {
@@ -690,4 +706,25 @@ func findDockerComposePath() string {
 
 	// Directly jump down to the folder that should contain the configs
 	return filepath.Join(current, "services", "horizon", "docker")
+}
+
+// mergeMaps returns a new map which contains the keys and values of both input
+// maps, preferring the latter newValues map if there are duplicate entries.
+func mergeMaps(defaults map[string]string, newValues map[string]string) map[string]string {
+	merged := make(map[string]string)
+	for key, value := range defaults {
+		merged[key] = value
+	}
+
+	for key, value := range newValues {
+		merged[key] = value
+	}
+
+	return merged
+}
+
+// bothOrNeitherString tells you if the two given parameters are either both
+// *set* or both *unset*.
+func bothOrNeitherString(a, b string) bool {
+	return (a != "" && b != "") || (a == "" && b == "")
 }
