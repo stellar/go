@@ -546,7 +546,7 @@ func ApplyFlags(config *Config, flags support.ConfigOptions, options ApplyOption
 					config.CaptiveCoreTomlParams.NetworkPassphrase = config.NetworkPassphrase
 					config.CaptiveCoreToml, err = ledgerbackend.NewCaptiveCoreToml(config.CaptiveCoreTomlParams)
 					if err != nil {
-						stdLog.Fatalf("Invalid captive core toml: %v", err)
+						stdLog.Fatalf("Invalid captive core toml file %v", err)
 					}
 				}
 			} else if config.RemoteCaptiveCoreURL == "" {
@@ -555,7 +555,7 @@ func ApplyFlags(config *Config, flags support.ConfigOptions, options ApplyOption
 				config.CaptiveCoreTomlParams.NetworkPassphrase = config.NetworkPassphrase
 				config.CaptiveCoreToml, err = ledgerbackend.NewCaptiveCoreTomlFromFile(config.CaptiveCoreConfigPath, config.CaptiveCoreTomlParams)
 				if err != nil {
-					stdLog.Fatalf("Invalid captive core toml file: %v", err)
+					stdLog.Fatalf("Invalid captive core toml file %v", err)
 				}
 			}
 
