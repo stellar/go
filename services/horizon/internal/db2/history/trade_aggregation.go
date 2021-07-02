@@ -241,7 +241,7 @@ func aggregate(query sq.SelectBuilder) sq.SelectBuilder {
 // RebuildTradeAggregationBuckets rebuilds a specific set of trade aggregation buckets.
 // to ensure complete data in case of partial reingestion.
 func (q Q) RebuildTradeAggregationBuckets(ctx context.Context, fromSeq, toSeq uint32) error {
-	fromLedger := toid.New(int32(fromSeq), 0, 0).ToInt64()
+	fromLedgerToid := toid.New(int32(fromSeq), 0, 0).ToInt64()
 	// toLedger should be inclusive here.
 	toLedgerToid := toid.New(int32(toSeq+1), 0, 0).ToInt64()
 
