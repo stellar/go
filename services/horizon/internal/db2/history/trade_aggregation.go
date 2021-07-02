@@ -243,7 +243,7 @@ func aggregate(query sq.SelectBuilder) sq.SelectBuilder {
 func (q Q) RebuildTradeAggregationBuckets(ctx context.Context, fromSeq, toSeq uint32) error {
 	fromLedger := toid.New(int32(fromSeq), 0, 0).ToInt64()
 	// toLedger should be inclusive here.
-	toLedger := toid.New(int32(toSeq+1), 0, 0).ToInt64()
+	toLedgerToid := toid.New(int32(toSeq+1), 0, 0).ToInt64()
 
 	// Clear out the old bucket values.
 	_, err := q.Exec(ctx, sq.Delete("history_trades_60000").Where(
