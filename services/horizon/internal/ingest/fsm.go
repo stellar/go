@@ -19,10 +19,17 @@ import (
 
 var (
 	defaultSleep = time.Second
-	// ErrReingestRangeConflict indicates that the reingest range overlaps with
-	// horizon's most recently ingested ledger
-	ErrReingestRangeConflict = errors.New("reingest range overlaps with horizon ingestion")
 )
+
+// ErrReingestRangeConflict indicates that the reingest range overlaps with
+// horizon's most recently ingested ledger
+type ErrReingestRangeConflict struct {
+	maximumLedgerSequence uint32
+}
+
+func (e ErrReingestRangeConflict) Error() string {
+	return fmt.Sprintf("reingest range overlaps with horizon ingestion, supplied range shouldn't contain ledger %d", e.maximumLedgerSequence)
+}
 
 type stateMachineNode interface {
 	run(*system) (transition, error)
@@ -690,24 +697,29 @@ func (h reingestHistoryRangeState) run(s *system) (transition, error) {
 		h.fromLedger = 2
 	}
 
-	log.WithFields(logpkg.F{
-		"from": h.fromLedger,
-		"to":   h.toLedger,
-	}).Info("Preparing ledger backend to retrieve range")
-	startTime := time.Now()
+	var startTime time.Time
+	prepareRange := func() (transition, error) {
+		log.WithFields(logpkg.F{
+			"from": h.fromLedger,
+			"to":   h.toLedger,
+		}).Info("Preparing ledger backend to retrieve range")
+		startTime = time.Now()
 
-	err := s.ledgerBackend.PrepareRange(s.ctx, ledgerbackend.BoundedRange(h.fromLedger, h.toLedger))
-	if err != nil {
-		return stop(), errors.Wrap(err, "error preparing range")
+		err := s.ledgerBackend.PrepareRange(s.ctx, ledgerbackend.BoundedRange(h.fromLedger, h.toLedger))
+		if err != nil {
+			return stop(), errors.Wrap(err, "error preparing range")
+		}
+
+		log.WithFields(logpkg.F{
+			"from":     h.fromLedger,
+			"to":       h.toLedger,
+			"duration": time.Since(startTime).Seconds(),
+		}).Info("Range ready")
+
+		startTime = time.Now()
+
+		return transition{}, nil
 	}
-
-	log.WithFields(logpkg.F{
-		"from":     h.fromLedger,
-		"to":       h.toLedger,
-		"duration": time.Since(startTime).Seconds(),
-	}).Info("Range ready")
-
-	startTime = time.Now()
 
 	if h.force {
 		if err = s.historyQ.Begin(); err != nil {
@@ -735,7 +747,12 @@ func (h reingestHistoryRangeState) run(s *system) (transition, error) {
 		}
 
 		if lastIngestedLedger > 0 && h.toLedger >= lastIngestedLedger {
-			return stop(), ErrReingestRangeConflict
+			return stop(), ErrReingestRangeConflict{lastIngestedLedger}
+		}
+
+		// Only prepare the range after checking the bounds to enable an early error return
+		if t, err := prepareRange(); err != nil {
+			return t, err
 		}
 
 		for cur := h.fromLedger; cur <= h.toLedger; cur++ {

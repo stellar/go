@@ -297,7 +297,7 @@ var dbReingestRangeCmd = &cobra.Command{
 		horizon.ApplyFlags(config, flags, horizon.ApplyOptions{RequireCaptiveCoreConfig: false, AlwaysIngest: true})
 		err := runDBReingestRange(argsUInt32[0], argsUInt32[1], reingestForce, parallelWorkers, *config)
 		if err != nil {
-			if errors.Cause(err) == ingest.ErrReingestRangeConflict {
+			if _, ok := errors.Cause(err).(ingest.ErrReingestRangeConflict); ok {
 				message := `
 			The range you have provided overlaps with Horizon's most recently ingested ledger.
 			It is not possible to run the reingest command on this range in parallel with
