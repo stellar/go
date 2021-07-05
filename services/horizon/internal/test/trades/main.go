@@ -6,7 +6,6 @@ import (
 
 	"github.com/stellar/go/keypair"
 	"github.com/stellar/go/services/horizon/internal/db2/history"
-	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/support/time"
 	"github.com/stellar/go/xdr"
 )
@@ -81,8 +80,7 @@ func IngestTestTrade(
 		return err
 	}
 
-	ledgerSequence := uint32(toid.Parse(opCounter).LedgerSequence)
-	err = q.RebuildTradeAggregationBuckets(context.Background(), ledgerSequence, ledgerSequence)
+	err = q.RebuildTradeAggregationTimes(context.Background(), timestamp, timestamp)
 	if err != nil {
 		return err
 	}

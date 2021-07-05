@@ -18,6 +18,7 @@ import (
 	"github.com/stellar/go/services/horizon/internal/db2"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
+	strtime "github.com/stellar/go/support/time"
 	"github.com/stellar/go/xdr"
 )
 
@@ -237,6 +238,7 @@ type IngestionQ interface {
 	QSigners
 	//QTrades
 	NewTradeBatchInsertBuilder(maxBatchSize int) TradeBatchInsertBuilder
+	RebuildTradeAggregationTimes(ctx context.Context, from, to strtime.Millis) error
 	RebuildTradeAggregationBuckets(ctx context.Context, fromLedger, toLedger uint32) error
 	CreateAssets(ctx context.Context, assets []xdr.Asset, batchSize int) (map[string]Asset, error)
 	QTransactions

@@ -238,49 +238,17 @@ func aggregate(query sq.SelectBuilder) sq.SelectBuilder {
 	).FromSelect(query, "htrd").GroupBy("timestamp")
 }
 
-// RebuildTradeAggregationBuckets rebuilds a specific set of trade aggregation buckets.
-// to ensure complete data in case of partial reingestion.
-func (q Q) RebuildTradeAggregationBuckets(ctx context.Context, fromSeq, toSeq uint32) error {
-	fromLedgerToid := toid.New(int32(fromSeq), 0, 0).ToInt64()
-	// toLedger should be inclusive here.
-	toLedgerToid := toid.New(int32(toSeq+1), 0, 0).ToInt64()
-
-	// Get the affected timestamp buckets
-	timestamps := sq.Select(
-		"to_millis(closed_at, 60000)",
-	).From("history_ledgers").Where(
-		sq.GtOrEq{"id": fromLedgerToid},
-	).Where(
-		sq.Lt{"id": toLedgerToid},
-	)
-
-	// Get first bucket timestamp in the ledger range
-	var first strtime.Millis
-	err := q.Get(
-		ctx,
-		&first,
-		timestamps.OrderBy("id").Limit(1),
-	)
-	if err != nil {
-		return errors.Wrap(err, "could not rebuild trade aggregation bucket")
-	}
-
-	// Get last bucket timestamp in the ledger range
-	var last strtime.Millis
-	err = q.Get(
-		ctx,
-		&last,
-		timestamps.OrderBy("id DESC").Limit(1),
-	)
-	if err != nil {
-		return errors.Wrap(err, "could not rebuild trade aggregation bucket")
-	}
-
+// RebuildTradeAggregationTimes rebuilds a specific set of trade aggregation
+// buckets, (specified by start and end times) to ensure complete data in case
+// of partial reingestion.
+func (q Q) RebuildTradeAggregationTimes(ctx context.Context, from, to strtime.Millis) error {
+	from = from.RoundDown(60_000)
+	to = to.RoundDown(60_000)
 	// Clear out the old bucket values.
-	_, err = q.Exec(ctx, sq.Delete("history_trades_60000").Where(
-		sq.GtOrEq{"timestamp": first},
+	_, err := q.Exec(ctx, sq.Delete("history_trades_60000").Where(
+		sq.GtOrEq{"timestamp": from},
 	).Where(
-		sq.LtOrEq{"timestamp": last},
+		sq.LtOrEq{"timestamp": to},
 	))
 	if err != nil {
 		return errors.Wrap(err, "could not rebuild trade aggregation bucket")
@@ -297,9 +265,9 @@ func (q Q) RebuildTradeAggregationBuckets(ctx context.Context, fromSeq, toSeq ui
 		"counter_amount",
 		"ARRAY[price_n, price_d] as price",
 	).From("history_trades").Where(
-		sq.GtOrEq{"to_millis(ledger_closed_at, 60000)": first},
+		sq.GtOrEq{"to_millis(ledger_closed_at, 60000)": from},
 	).Where(
-		sq.LtOrEq{"to_millis(ledger_closed_at, 60000)": last},
+		sq.LtOrEq{"to_millis(ledger_closed_at, 60000)": to},
 	).OrderBy("base_asset_id", "counter_asset_id", "history_operation_id", "\"order\"")
 
 	// figure out the new bucket values
@@ -329,4 +297,38 @@ func (q Q) RebuildTradeAggregationBuckets(ctx context.Context, fromSeq, toSeq ui
 		return errors.Wrap(err, "could not rebuild trade aggregation bucket")
 	}
 	return nil
+}
+
+// RebuildTradeAggregationBuckets rebuilds a specific set of trade aggregation
+// buckets, (specified by start and end ledger seq) to ensure complete data in
+// case of partial reingestion.
+func (q Q) RebuildTradeAggregationBuckets(ctx context.Context, fromSeq, toSeq uint32) error {
+	fromLedgerToid := toid.New(int32(fromSeq), 0, 0).ToInt64()
+	// toLedger should be inclusive here.
+	toLedgerToid := toid.New(int32(toSeq+1), 0, 0).ToInt64()
+
+	// Get the affected timestamp buckets
+	timestamps := sq.Select(
+		"to_millis(closed_at, 60000)",
+	).From("history_ledgers").Where(
+		sq.GtOrEq{"id": fromLedgerToid},
+	).Where(
+		sq.Lt{"id": toLedgerToid},
+	)
+
+	// Get first bucket timestamp in the ledger range
+	var from strtime.Millis
+	err := q.Get(ctx, &from, timestamps.OrderBy("id").Limit(1))
+	if err != nil {
+		return errors.Wrap(err, "could not rebuild trade aggregation bucket")
+	}
+
+	// Get last bucket timestamp in the ledger range
+	var to strtime.Millis
+	err = q.Get(ctx, &to, timestamps.OrderBy("id DESC").Limit(1))
+	if err != nil {
+		return errors.Wrap(err, "could not rebuild trade aggregation bucket")
+	}
+
+	return q.RebuildTradeAggregationTimes(ctx, from, to)
 }
