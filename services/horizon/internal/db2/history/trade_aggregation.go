@@ -300,7 +300,7 @@ func (q Q) RebuildTradeAggregationBuckets(ctx context.Context, fromSeq, toSeq ui
 		sq.GtOrEq{"to_millis(ledger_closed_at, 60000)": first},
 	).Where(
 		sq.LtOrEq{"to_millis(ledger_closed_at, 60000)": last},
-	).OrderBy("history_operation_id", "\"order\"")
+	).OrderBy("base_asset_id", "counter_asset_id", "history_operation_id", "\"order\"")
 
 	// figure out the new bucket values
 	rebuilt := sq.Select(
@@ -321,7 +321,7 @@ func (q Q) RebuildTradeAggregationBuckets(ctx context.Context, fromSeq, toSeq ui
 		"last(history_operation_id) as close_ledger_toid",
 		"(last(price))[1] as close_n",
 		"(last(price))[2] as close_d",
-	).FromSelect(trades, "trades").GroupBy("timestamp", "base_asset_id", "counter_asset_id")
+	).FromSelect(trades, "trades").GroupBy("base_asset_id", "counter_asset_id", "timestamp")
 
 	// Insert the new bucket values.
 	_, err = q.Exec(ctx, sq.Insert("history_trades_60000").Select(rebuilt))
