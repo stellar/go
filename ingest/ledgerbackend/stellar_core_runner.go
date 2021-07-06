@@ -221,11 +221,11 @@ func (r *stellarCoreRunner) getLogLineWriter() io.Writer {
 					"DEBUG":   r.log.Debugf,
 				}
 
-				if writer, ok := levelMapping[strings.ToUpper(level)]; ok {
-					writer("%s: %s", category, line)
-				} else {
-					r.log.Infof("%s: %s", category, line)
+				writer := r.log.Infof
+				if f, ok := levelMapping[strings.ToUpper(level)]; ok {
+					writer = f
 				}
+				writer("%s: %s", category, line)
 			} else {
 				r.log.Info(line)
 			}
