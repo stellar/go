@@ -1,9 +1,13 @@
 package schema
 
 import (
+	"bytes"
 	"database/sql"
 	"errors"
+	"fmt"
 	stdLog "log"
+	"text/tabwriter"
+	"time"
 
 	migrate "github.com/rubenv/sql-migrate"
 )
@@ -114,4 +118,62 @@ func GetNumMigrationsDown(dbUrl string) (nMigrations int) {
 
 	// Return the size difference between the two sets of migrations
 	return len(migrationRecords) - len(allNeededMigrations)
+}
+
+// Status returns information about the current status of db migrations. Which
+// ones are pending, and when past ones were applied.
+//
+// From: https://github.com/rubenv/sql-migrate/blob/master/sql-migrate/command_status.go
+func Status(db *sql.DB) (string, error) {
+	buffer := &bytes.Buffer{}
+	migrations, err := Migrations.FindMigrations()
+	if err != nil {
+		return "", err
+	}
+
+	records, err := migrate.GetMigrationRecords(db, "postgres")
+	if err != nil {
+		return "", err
+	}
+
+	table := tabwriter.NewWriter(buffer, 60, 8, 0, '\t', 0)
+	fmt.Fprintln(table, "Migration\tApplied")
+
+	rows := make(map[string]*statusRow)
+
+	for _, m := range migrations {
+		rows[m.Id] = &statusRow{
+			Id:       m.Id,
+			Migrated: false,
+		}
+	}
+
+	for _, r := range records {
+		if rows[r.Id] == nil {
+			return "", fmt.Errorf("Could not find migration file: %v", r.Id)
+		}
+
+		rows[r.Id].Migrated = true
+		rows[r.Id].AppliedAt = r.AppliedAt
+	}
+
+	for _, m := range migrations {
+		if rows[m.Id] != nil && rows[m.Id].Migrated {
+			fmt.Fprintf(table, "%s\t%s\n", m.Id, rows[m.Id].AppliedAt.String())
+		} else {
+			fmt.Fprintf(table, "%s\tno\n", m.Id)
+		}
+	}
+
+	if err := table.Flush(); err != nil {
+		return "", err
+	}
+
+	return buffer.String(), nil
+}
+
+type statusRow struct {
+	Id        string
+	Migrated  bool
+	AppliedAt time.Time
 }
