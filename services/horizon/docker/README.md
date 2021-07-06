@@ -1,3 +1,9 @@
+# Overview
+
+Files related to docker and docker-compose
+* `Dockerfile` and `Makefile` - used to build the official, package-based docker image for stellar-horizon
+* `Dockerfile.dev` - used with docker-compose
+
 # Running Stellar with Docker Compose
 
 ## Dependencies

@@ -90,4 +90,6 @@ func TestTransactionToMap_muxed(t *testing.T) {
 	assert.Equal(t, innerAccountID.Address(), row.Account)
 
 	assert.Equal(t, feeSourceAccountID.Address(), row.FeeAccount.String)
+
+	assert.Equal(t, feeSource.Address(), row.FeeAccountMuxed.String)
 }
