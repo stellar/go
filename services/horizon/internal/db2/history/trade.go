@@ -273,5 +273,6 @@ func getCanonicalAssetOrder(assetId1 int64, assetId2 int64) (orderPreserved bool
 type QTrades interface {
 	QCreateAccountsHistory
 	NewTradeBatchInsertBuilder(maxBatchSize int) TradeBatchInsertBuilder
+	RebuildTradeAggregationBuckets(ctx context.Context, fromledger, toLedger uint32) error
 	CreateAssets(ctx context.Context, assets []xdr.Asset, maxBatchSize int) (map[string]Asset, error)
 }
