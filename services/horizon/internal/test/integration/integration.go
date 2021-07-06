@@ -54,7 +54,7 @@ type Config struct {
 	HorizonParameters map[string]string
 }
 
-type CaptiveCoreConfig struct {
+type CaptiveConfig struct {
 	binaryPath string
 	configPath string
 }
@@ -65,7 +65,7 @@ type Test struct {
 	composePath string
 
 	config        Config
-	coreConfig    CaptiveCoreConfig
+	coreConfig    CaptiveConfig
 	horizonConfig horizon.Config
 
 	hclient *sdk.Client

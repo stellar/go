@@ -26,10 +26,11 @@ func NewParameterTest(t *testing.T, params map[string]string) *integration.Test 
 func TestHorizonWorksWithoutCaptiveCore(t *testing.T) {
 	// This is a regression test, sourced from
 	// https://github.com/stellar/go/issues/3507
-	test := NewParameterTest(t(), map[string]string{
+	test := NewParameterTest(t, map[string]string{
 		"--enable-captive-core-ingestion": "false",
 		"--ingest-failed-transactions":    "true",
 		"--ingest":                        "true",
+		"--stellar-core-url":              "http://localhost:11626",
 	})
 
 	err := test.StartHorizon()
@@ -40,6 +41,7 @@ func TestFatalScenarios(t *testing.T) {
 	suite.Run(t, new(FatalTestCase))
 }
 
+// Ensures that BUCKET_DIR_PATH is not an allowed value for Captive Core.
 func (suite *FatalTestCase) TestBucketDirDisallowed() {
 	defer createCaptiveCoreConfig(
 		"./captive-core.toml", `
@@ -64,19 +66,49 @@ QUALITY="MEDIUM"`)()
 		"--captive-core-storage-path": STORAGE_PATH,
 		"--stellar-core-binary-path":  "/usr/local/bin/stellar-core",
 		"--captive-core-config-path":  "./captive-core.toml",
-		// "--stellar-core-db-url":       "",
-		// "--stellar-core-url":          "",
 	})
 	defer os.RemoveAll(STORAGE_PATH)
 
 	suite.Exits(func() {
 		test.StartHorizon()
 	})
+}
 
-	// runParameterMatrix(test, []ValidatorFunc{
-	// 	func() { validateCaptiveCoreDiskState(test, STORAGE_PATH) },
-	// 	func() { validateNoBucketDirPath(test, STORAGE_PATH) },
-	// })
+// Ensures that the filesystem ends up in the correct state with Captive Core.
+func (suite *FatalTestCase) TestCaptiveCoreConfigFilesystemState() {
+	t := suite.T()
+
+	defer createCaptiveCoreConfig(
+		"./captive-core.toml", `
+PEER_PORT=11725
+ARTIFICIALLY_ACCELERATE_TIME_FOR_TESTING=true
+
+UNSAFE_QUORUM=true
+FAILURE_SAFETY=0
+
+[[VALIDATORS]]
+NAME="local_core"
+HOME_DOMAIN="core.local"
+PUBLIC_KEY="GD5KD2KEZJIGTC63IGW6UMUSMVUVG5IHG64HUTFWCHVZH2N2IBOQN7PS"
+ADDRESS="localhost"
+QUALITY="MEDIUM"`)()
+
+	const STORAGE_PATH string = "./test_captive-core-works"
+
+	test := NewParameterTest(suite.T(), map[string]string{
+		"--captive-core-storage-path": STORAGE_PATH,
+		"--stellar-core-binary-path":  "/usr/local/bin/stellar-core",
+		"--captive-core-config-path":  "./captive-core.toml",
+	})
+	defer os.RemoveAll(STORAGE_PATH)
+
+	err := test.StartHorizon()
+	assert.NoError(t, err)
+
+	runParameterMatrix(test, []ValidatorFunc{
+		func() { validateCaptiveCoreDiskState(test, STORAGE_PATH) },
+		func() { validateNoBucketDirPath(test, STORAGE_PATH) },
+	})
 }
 
 // Pattern taken from testify issue:
@@ -88,13 +120,14 @@ type FatalTestCase struct {
 }
 
 func (t *FatalTestCase) Exits(subprocess func()) {
-	if os.Getenv("ASSERT_EXISTS_"+t.T().Name()) == "1" {
+	testName := t.T().Name()
+	if os.Getenv("ASSERT_EXISTS_"+testName) == "1" {
 		subprocess()
 		return
 	}
 
-	cmd := exec.Command(os.Args[0], "-test.run="+t.T().Name())
-	cmd.Env = append(os.Environ(), "ASSERT_EXISTS_"+t.T().Name()+"=1")
+	cmd := exec.Command(os.Args[0], "-test.run="+testName)
+	cmd.Env = append(os.Environ(), "ASSERT_EXISTS_"+testName+"=1")
 	err := cmd.Run()
 
 	if e, ok := err.(*exec.ExitError); ok && !e.Success() {
