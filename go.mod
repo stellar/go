@@ -5,7 +5,7 @@ go 1.15
 require (
 	firebase.google.com/go v3.12.0+incompatible
 	github.com/BurntSushi/toml v0.3.1
-	github.com/Masterminds/squirrel v0.0.0-20161115235646-20f192218cf5
+	github.com/Masterminds/squirrel v1.5.0
 	github.com/Microsoft/go-winio v0.4.14
 	github.com/adjust/goautoneg v0.0.0-20150426214442-d788f35a0315
 	github.com/ajg/form v0.0.0-20160822230020-523a5da1a92f // indirect
@@ -37,14 +37,12 @@ require (
 	github.com/klauspost/crc32 v0.0.0-20161016154125-cb6bfca970f6 // indirect
 	github.com/kr/pretty v0.0.0-20150520163514-e6ac2fc51e89 // indirect
 	github.com/kr/text v0.0.0-20150520163712-e373e137fafd // indirect
-	github.com/lann/builder v0.0.0-20140829050551-c603884a2c1f // indirect
 	github.com/lib/pq v1.2.0
 	github.com/magiconair/properties v1.5.4 // indirect
 	github.com/manucorporat/sse v0.0.0-20160126180136-ee05b128a739
 	github.com/mattn/go-colorable v0.1.2 // indirect
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/mitchellh/mapstructure v0.0.0-20150613213606-2caf8efc9366 // indirect
-	github.com/mndrix/ps v0.0.0-20131111202200-33ddf69629c1 // indirect
 	github.com/moul/http2curl v0.0.0-20161031194548-4e24498b31db // indirect
 	github.com/onsi/ginkgo v1.7.0
 	github.com/onsi/gomega v1.4.3
