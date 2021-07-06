@@ -35,6 +35,7 @@ type TradeBatchInsertBuilder interface {
 // tradeBatchInsertBuilder is a simple wrapper around db.BatchInsertBuilder
 type tradeBatchInsertBuilder struct {
 	builder db.BatchInsertBuilder
+	q       *Q
 }
 
 // NewTradeBatchInsertBuilder constructs a new TradeBatchInsertBuilder instance
@@ -44,6 +45,7 @@ func (q *Q) NewTradeBatchInsertBuilder(maxBatchSize int) TradeBatchInsertBuilder
 			Table:        q.GetTable("history_trades"),
 			MaxBatchSize: maxBatchSize,
 		},
+		q: q,
 	}
 }
 
