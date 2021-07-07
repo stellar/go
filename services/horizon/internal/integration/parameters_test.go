@@ -29,7 +29,6 @@ func TestHorizonWorksWithoutCaptiveCore(t *testing.T) {
 	// https://github.com/stellar/go/issues/3507
 	test := NewParameterTest(t, map[string]string{
 		"--enable-captive-core-ingestion": "false",
-		"--ingest-failed-transactions":    "true",
 		"--ingest":                        "true",
 		"--stellar-core-url":              "http://localhost:11626",
 	})
