@@ -4,11 +4,15 @@ All notable changes to this project will be documented in this
 file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 
-## Unreleased
+## v2.6.0
 
+**Upgrading to this version from <= v2.1.1 will trigger a state rebuild. During this process (which can take up to 20 minutes), Horizon will not ingest new ledgers.**
+
+* Precompute trade aggregations during ingestion to improve performance. Requires a reingestion ([3641](https://github.com/stellar/go/pull/3641)).
 * Require `COUNT` param when running `horizon db migrate down COUNT` to prevent accidentally running all downwards migrations. Add `horizon db migrate status` command. ([#3737](https://github.com/stellar/go/pull/3737))
 * Fix a bug in `fee_account_muxed` and `fee_account_muxed_id` fields (the fields were incorrectly populated with the source account details). ([3735](https://github.com/stellar/go/pull/3735))
 * Validate ledger range when calling `horizon db reingest range` so that we respond with an error when attempting to ingest ledgers which are not available in the history archives. ([3738](https://github.com/stellar/go/pull/3738))
+* Improve performance of transaction submission. ([3563](https://github.com/stellar/go/pull/3563))
 
 ## v2.5.2
 
