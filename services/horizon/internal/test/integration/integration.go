@@ -130,9 +130,10 @@ func NewTest(t *testing.T, config Config) *Test {
 	}
 
 	if !bothOrNeitherString(i.coreConfig.binaryPath, i.coreConfig.configPath) {
-		t.Fatal(`Both the Stellar Core binary and Captive Core configuration
-needs to be set. Try setting CAPTIVE_CORE_BIN in your environment or filling in
-Config.HorizonParameters with the appropriate parameter(s).`)
+		t.Fatalf(`Both the Stellar Core binary and Captive Core configuration
+needs to be set (or neither). Try setting CAPTIVE_CORE_BIN in your environment
+or filling in Config.HorizonParameters/HorizonEnvironment with the appropriate
+parameter(s): binPath=%s, configPath=%s`, i.coreConfig.binaryPath, i.coreConfig.configPath)
 	}
 
 	// Only run Stellar Core container and its dependencies.

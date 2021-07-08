@@ -27,18 +27,6 @@ func NewParameterTest(t *testing.T, params map[string]string) *integration.Test 
 	return integration.NewTest(t, config)
 }
 
-func TestHorizonWorksWithoutCaptiveCore(t *testing.T) {
-	// This is a regression test sourced from https://github.com/stellar/go/issues/3507
-	test := NewParameterTest(t, map[string]string{
-		"enable-captive-core-ingestion": "false",
-		"ingest":                        "true",
-		"stellar-core-url":              "http://localhost:11626",
-	})
-
-	err := test.StartHorizon()
-	assert.NoError(t, err)
-}
-
 func TestFatalScenarios(t *testing.T) {
 	suite.Run(t, new(FatalTestCase))
 }
@@ -76,6 +64,15 @@ const (
 )
 
 func (suite *FatalTestCase) TestBucketDirDisallowed() {
+	// This is a bit of a hacky workaround.
+	//
+	// In CI, we run our integration tests twice: once with Captive Core
+	// enabled, and once without. *These* tests only run with Captive Core
+	// configured properly (specifically, w/ the CAPTIVE_CORE_BIN envvar set).
+	if _, ok := os.LookupEnv("HORIZON_INTEGRATION_ENABLE_CAPTIVE_CORE"); !ok {
+		t.Skip()
+	}
+
 	defer createCaptiveCoreConfig(
 		"./captive-core.toml", BUCKET_DIR_DISALLOWED_TOML)()
 
@@ -87,13 +84,15 @@ func (suite *FatalTestCase) TestBucketDirDisallowed() {
 	})
 	defer os.RemoveAll(STORAGE_PATH)
 
-	suite.Exits(func() {
-		test.StartHorizon()
-	})
+	suite.Exits(test.StartHorizon)
 }
 
 // Ensures that the filesystem ends up in the correct state with Captive Core.
 func TestCaptiveCoreConfigFilesystemState(t *testing.T) {
+	if _, ok := os.LookupEnv("HORIZON_INTEGRATION_ENABLE_CAPTIVE_CORE"); !ok {
+		t.Skip() // explained above
+	}
+
 	defer createCaptiveCoreConfig(
 		"./captive-core.toml", CAPTIVE_CORE_CONFIG_STATE_TOML)()
 
