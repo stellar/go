@@ -117,8 +117,8 @@ func NewTest(t *testing.T, config Config) *Test {
 
 	// We either test Captive Core through environment variables, or through
 	// custom Horizon parameters.
-	i.coreConfig.binaryPath = os.Getenv("CAPTIVE_CORE_BIN")
 	if os.Getenv("HORIZON_INTEGRATION_ENABLE_CAPTIVE_CORE") != "" {
+		i.coreConfig.binaryPath = os.Getenv("CAPTIVE_CORE_BIN")
 		i.coreConfig.configPath = filepath.Join(composePath, "captive-core-integration-tests.cfg")
 	}
 
@@ -318,9 +318,13 @@ func (i *Test) StartHorizon() error {
 		return errors.Wrap(err, "cannot initialize Horizon")
 	}
 
+	horizonPort := "8000"
+	if port, ok := merged["--port"]; ok {
+		horizonPort = port
+	}
 	i.horizonConfig = *config
 	i.hclient = &sdk.Client{
-		HorizonURL: fmt.Sprintf("http://%s:%s", hostname, merged["--port"]),
+		HorizonURL: fmt.Sprintf("http://%s:%s", hostname, horizonPort),
 	}
 
 	if err = i.app.Ingestion().BuildGenesisState(); err != nil {
