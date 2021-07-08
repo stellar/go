@@ -19,14 +19,14 @@ type Config struct {
 	Port               uint
 	AdminPort          uint
 
-	EnableCaptiveCoreIngestion bool
-	CaptiveCoreBinaryPath      string
-	RemoteCaptiveCoreURL       string
-	CaptiveCoreConfigPath      string
-	CaptiveCoreTomlParams      ledgerbackend.CaptiveCoreTomlParams
-	CaptiveCoreToml            *ledgerbackend.CaptiveCoreToml
-	CaptiveCoreStoragePath     string
-	CaptiveCoreReuseStorageDir bool
+	EnableCaptiveCoreIngestion  bool
+	CaptiveCoreBinaryPath       string
+	RemoteCaptiveCoreURL        string
+	CaptiveCoreConfigPath       string
+	CaptiveCoreTomlParams       ledgerbackend.CaptiveCoreTomlParams
+	CaptiveCoreToml             *ledgerbackend.CaptiveCoreToml
+	CaptiveCoreStoragePath      string
+	CaptiveCoreReuseStoragePath bool
 
 	StellarCoreDatabaseURL string
 	StellarCoreURL         string
