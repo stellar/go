@@ -123,10 +123,10 @@ type CaptiveCoreConfig struct {
 	// stored. We always append /captive-core to this directory, since we clean
 	// it up entirely on shutdown.
 	StoragePath string
-	// ReuseStorageDir determines if the storage dir in StoragePath should
+	// ReuseStoragePath determines if the storage dir in StoragePath should
 	// be reused between Stellar-Core executions. Defaults to false because of
 	// Stellar-Core 17.1.0 issue.
-	ReuseStorageDir bool
+	ReuseStoragePath bool
 }
 
 // NewCaptive returns a new CaptiveStellarCore instance.

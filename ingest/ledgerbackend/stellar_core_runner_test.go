@@ -47,7 +47,7 @@ func TestCloseBeforeStartOnline(t *testing.T) {
 		Log:                log.New(),
 		Context:            context.Background(),
 		Toml:               captiveCoreToml,
-		ReuseStorageDir:    true,
+		ReuseStoragePath:   true,
 	}, stellarCoreRunnerModeOnline)
 	assert.NoError(t, err)
 
@@ -74,7 +74,7 @@ func TestCloseBeforeStartOnlineReuseFlagFalse(t *testing.T) {
 		Log:                log.New(),
 		Context:            context.Background(),
 		Toml:               captiveCoreToml,
-		ReuseStorageDir:    false,
+		ReuseStoragePath:   false,
 	}, stellarCoreRunnerModeOnline)
 	assert.NoError(t, err)
 
