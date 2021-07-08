@@ -619,7 +619,7 @@ func runTransactionProcessorsOnLedger(s *system, ledger xdr.LedgerCloseMeta) err
 	log.
 		WithFields(ledgerTransactionStats.Map()).
 		WithFields(logpkg.F{
-			"sequence": ledger,
+			"sequence": ledger.LedgerSequence(),
 			"duration": time.Since(startTime).Seconds(),
 			"state":    false,
 			"ledger":   true,
