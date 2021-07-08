@@ -209,6 +209,7 @@ func NewSystem(config Config) (System, error) {
 				ledgerbackend.CaptiveCoreConfig{
 					BinaryPath:          config.CaptiveCoreBinaryPath,
 					StoragePath:         config.CaptiveCoreStoragePath,
+					ReuseStorageDir:     config.CaptiveCoreReuseStorageDir,
 					Toml:                config.CaptiveCoreToml,
 					NetworkPassphrase:   config.NetworkPassphrase,
 					HistoryArchiveURLs:  []string{config.HistoryArchiveURL},
