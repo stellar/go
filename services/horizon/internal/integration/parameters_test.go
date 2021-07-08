@@ -30,9 +30,9 @@ func NewParameterTest(t *testing.T, params map[string]string) *integration.Test 
 func TestHorizonWorksWithoutCaptiveCore(t *testing.T) {
 	// This is a regression test sourced from https://github.com/stellar/go/issues/3507
 	test := NewParameterTest(t, map[string]string{
-		"--enable-captive-core-ingestion": "false",
-		"--ingest":                        "true",
-		"--stellar-core-url":              "http://localhost:11626",
+		"enable-captive-core-ingestion": "false",
+		"ingest":                        "true",
+		"stellar-core-url":              "http://localhost:11626",
 	})
 
 	err := test.StartHorizon()
@@ -81,7 +81,7 @@ func (suite *FatalTestCase) TestBucketDirDisallowed() {
 
 	const STORAGE_PATH string = "./test_no-bucket-dir"
 	test := NewParameterTest(suite.T(), map[string]string{
-		"--captive-core-storage-path":     STORAGE_PATH,
+		"captive-core-storage-path":       STORAGE_PATH,
 		horizon.CaptiveCoreConfigPathName: "./captive-core.toml",
 	})
 	defer os.RemoveAll(STORAGE_PATH)
@@ -188,8 +188,8 @@ func validateCaptiveCoreDiskState(itest *integration.Test, rootDir string) {
 	tt.FileExists(coreConf)
 }
 
-func createCaptiveCoreConfig(path, contents string) func() {
-	tomlFile, err := os.Create(path)
+func createCaptiveCoreConfig(filename, contents string) func() {
+	tomlFile, err := os.Create(filename)
 	defer tomlFile.Close()
 	if err != nil {
 		panic(err)
@@ -200,5 +200,5 @@ func createCaptiveCoreConfig(path, contents string) func() {
 		panic(err)
 	}
 
-	return func() { os.Remove(path) }
+	return func() { os.Remove(filename) }
 }
