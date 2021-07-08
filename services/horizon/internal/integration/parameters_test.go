@@ -83,6 +83,7 @@ func (suite *FatalTestCase) TestBucketDirDisallowed() {
 	test := NewParameterTest(suite.T(), map[string]string{
 		"captive-core-storage-path":       STORAGE_PATH,
 		horizon.CaptiveCoreConfigPathName: "./captive-core.toml",
+		horizon.StellarCoreBinaryPathName: os.Getenv("CAPTIVE_CORE_BIN"),
 	})
 	defer os.RemoveAll(STORAGE_PATH)
 
@@ -100,6 +101,7 @@ func TestCaptiveCoreConfigFilesystemState(t *testing.T) {
 	test := NewParameterTest(t, map[string]string{
 		"captive-core-storage-path":       STORAGE_PATH,
 		"captive-core-reuse-storage-path": "true",
+		horizon.StellarCoreBinaryPathName: os.Getenv("CAPTIVE_CORE_BIN"),
 		horizon.CaptiveCoreConfigPathName: "./captive-core.toml",
 		horizon.StellarCoreURLFlagName:    "",
 		horizon.StellarCoreDBURLFlagName:  "",
