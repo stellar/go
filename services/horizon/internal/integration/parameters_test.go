@@ -70,7 +70,7 @@ func (suite *FatalTestCase) TestBucketDirDisallowed() {
 	// enabled, and once without. *These* tests only run with Captive Core
 	// configured properly (specifically, w/ the CAPTIVE_CORE_BIN envvar set).
 	if _, ok := os.LookupEnv("HORIZON_INTEGRATION_ENABLE_CAPTIVE_CORE"); !ok {
-		t.Skip()
+		suite.T().Skip()
 	}
 
 	defer createCaptiveCoreConfig(
@@ -84,7 +84,7 @@ func (suite *FatalTestCase) TestBucketDirDisallowed() {
 	})
 	defer os.RemoveAll(STORAGE_PATH)
 
-	suite.Exits(test.StartHorizon)
+	suite.Exits(func() { test.StartHorizon() })
 }
 
 // Ensures that the filesystem ends up in the correct state with Captive Core.
