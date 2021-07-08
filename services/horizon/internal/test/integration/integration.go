@@ -10,6 +10,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"sync"
 	"syscall"
 	"testing"
@@ -49,9 +50,16 @@ type Config struct {
 	DontStartHorizon bool
 
 	// If you want to override the default parameters passed to Horizon, you can
-	// set this map accordingly. All of them are passed along as k=v, but if you
-	// pass an empty value, the parameter will be dropped.
-	HorizonParameters map[string]string
+	// set this map accordingly. All of them are passed along as --k=v, but if
+	// you pass an empty value, the parameter will be dropped. (Note that you
+	// should exclude the prepending `--` from keys; this is for compatibility
+	// with the constant names in flags.go)
+	//
+	// You can also control the environmental variables in a similar way, but
+	// note that CLI args take precedence over envvars, so set the corresponding
+	// CLI arg empty.
+	HorizonParameters  map[string]string
+	HorizonEnvironment map[string]string
 }
 
 type CaptiveConfig struct {
@@ -109,15 +117,15 @@ func NewTest(t *testing.T, config Config) *Test {
 
 	// We either test Captive Core through environment variables, or through
 	// custom Horizon parameters.
+	i.coreConfig.binaryPath = os.Getenv("CAPTIVE_CORE_BIN")
 	if os.Getenv("HORIZON_INTEGRATION_ENABLE_CAPTIVE_CORE") != "" {
-		i.coreConfig.binaryPath = os.Getenv("CAPTIVE_CORE_BIN")
 		i.coreConfig.configPath = filepath.Join(composePath, "captive-core-integration-tests.cfg")
 	}
 
-	if value, ok := config.HorizonParameters["--stellar-core-binary-path"]; ok {
+	if value, ok := config.HorizonParameters[horizon.StellarCoreBinaryPathName]; ok {
 		i.coreConfig.binaryPath = value
 	}
-	if value, ok := config.HorizonParameters["--captive-core-config-path"]; ok {
+	if value, ok := config.HorizonParameters[horizon.CaptiveCoreConfigPathName]; ok {
 		i.coreConfig.configPath = value
 	}
 
@@ -131,7 +139,6 @@ Config.HorizonParameters with the appropriate parameter(s).`)
 	i.runComposeCommand("up", "--detach", "--quiet-pull", "--no-color", "core")
 	i.cclient = &stellarcore.Client{URL: "http://localhost:" + strconv.Itoa(stellarCorePort)}
 	i.waitForCore()
-
 	i.prepareShutdownHandlers()
 
 	if !config.DontStartHorizon {
@@ -251,30 +258,28 @@ func (i *Test) StartHorizon() error {
 	coreBinaryPath := i.coreConfig.binaryPath
 	captiveCoreConfigPath := i.coreConfig.configPath
 
-	i.t.Logf("config: %+v", i.coreConfig)
-
 	var DEFAULT_ARGS = map[string]string{
-		"--stellar-core-url": i.cclient.URL,
-		"--stellar-core-db-url": fmt.Sprintf(
+		"stellar-core-url": i.cclient.URL,
+		"stellar-core-db-url": fmt.Sprintf(
 			"postgres://postgres:%s@%s:%d/stellar?sslmode=disable",
 			stellarCorePostgresPassword,
 			hostname,
 			stellarCorePostgresPort,
 		),
-		"--stellar-core-binary-path":      coreBinaryPath,
-		"--captive-core-config-path":      captiveCoreConfigPath,
-		"--captive-core-http-port":        "21626",
-		"--enable-captive-core-ingestion": strconv.FormatBool(len(coreBinaryPath) > 0),
-		"--ingest":                        "true",
-		"--history-archive-urls":          fmt.Sprintf("http://%s:%d", hostname, historyArchivePort),
-		"--db-url":                        horizonPostgresURL,
-		"--network-passphrase":            i.passPhrase,
-		"--apply-migrations":              "true",
-		"--admin-port":                    strconv.Itoa(i.AdminPort()),
-		"--port":                          "8000",
+		"stellar-core-binary-path":      coreBinaryPath,
+		"captive-core-config-path":      captiveCoreConfigPath,
+		"captive-core-http-port":        "21626",
+		"enable-captive-core-ingestion": strconv.FormatBool(len(coreBinaryPath) > 0),
+		"ingest":                        "true",
+		"history-archive-urls":          fmt.Sprintf("http://%s:%d", hostname, historyArchivePort),
+		"db-url":                        horizonPostgresURL,
+		"network-passphrase":            i.passPhrase,
+		"apply-migrations":              "true",
+		"admin-port":                    strconv.Itoa(i.AdminPort()),
+		"port":                          "8000",
 		// due to ARTIFICIALLY_ACCELERATE_TIME_FOR_TESTING
-		"--checkpoint-frequency": "8",
-		"--per-hour-rate-limit":  "0", // disable rate limiting
+		"checkpoint-frequency": "8",
+		"per-hour-rate-limit":  "0", // disable rate limiting
 	}
 
 	merged := mergeMaps(DEFAULT_ARGS, i.config.HorizonParameters)
@@ -283,16 +288,28 @@ func (i *Test) StartHorizon() error {
 	// empty values means drop the parameter.
 	args := make([]string, 0, len(merged))
 	for key, value := range merged {
-		if value != "" {
-			args = append(args, fmt.Sprintf("%s=%s", key, value))
+		if value == "" {
+			continue
 		}
+
+		args = append(args, fmt.Sprintf("--%s=%s", key, value))
 	}
 
 	// initialize core arguments
 	i.t.Log("Horizon command line:", args)
-	cmd.SetArgs(args)
-	var err error
+	var env strings.Builder
+	for key, value := range i.config.HorizonEnvironment {
+		env.WriteString(fmt.Sprintf("%s=%s", key, value))
+	}
+	i.t.Logf("Horizon environmental variables: %s\n", env.String())
 
+	// prepare env
+	cmd.SetArgs(args)
+	for key, value := range i.config.HorizonEnvironment {
+		os.Setenv(key, value)
+	}
+
+	var err error
 	if err = configOpts.Init(cmd); err != nil {
 		return errors.Wrap(err, "cannot initialize params")
 	}
@@ -316,6 +333,7 @@ func (i *Test) StartHorizon() error {
 		close(done)
 	}()
 	i.appStopped = done
+
 	return nil
 }
 

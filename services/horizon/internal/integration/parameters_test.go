@@ -8,7 +8,9 @@ import (
 	"path"
 	"strings"
 	"testing"
+	"time"
 
+	horizon "github.com/stellar/go/services/horizon/internal"
 	"github.com/stellar/go/services/horizon/internal/test/integration"
 
 	"github.com/stretchr/testify/assert"
@@ -17,16 +19,16 @@ import (
 
 func NewParameterTest(t *testing.T, params map[string]string) *integration.Test {
 	config := integration.Config{
-		ProtocolVersion:   17,
-		DontStartHorizon:  true,
-		HorizonParameters: params,
+		ProtocolVersion:    17,
+		DontStartHorizon:   true,
+		HorizonParameters:  params,
+		HorizonEnvironment: map[string]string{}, // TODO: test these too
 	}
 	return integration.NewTest(t, config)
 }
 
 func TestHorizonWorksWithoutCaptiveCore(t *testing.T) {
-	// This is a regression test, sourced from
-	// https://github.com/stellar/go/issues/3507
+	// This is a regression test sourced from https://github.com/stellar/go/issues/3507
 	test := NewParameterTest(t, map[string]string{
 		"--enable-captive-core-ingestion": "false",
 		"--ingest":                        "true",
@@ -42,30 +44,45 @@ func TestFatalScenarios(t *testing.T) {
 }
 
 // Ensures that BUCKET_DIR_PATH is not an allowed value for Captive Core.
+const (
+	BUCKET_DIR_DISALLOWED_TOML = `
+		PEER_PORT=11725
+		ARTIFICIALLY_ACCELERATE_TIME_FOR_TESTING=true
+
+		UNSAFE_QUORUM=true
+		FAILURE_SAFETY=0
+		BUCKET_DIR_PATH="/tmp"
+
+		[[VALIDATORS]]
+		NAME="local_core"
+		HOME_DOMAIN="core.local"
+		# From SACJC372QBSSKJYTV5A7LWT4NXWHTQO6GHG4QDAVC2XDPX6CNNXFZ4JK
+		PUBLIC_KEY="GD5KD2KEZJIGTC63IGW6UMUSMVUVG5IHG64HUTFWCHVZH2N2IBOQN7PS"
+		ADDRESS="localhost"
+		QUALITY="MEDIUM"`
+	CAPTIVE_CORE_CONFIG_STATE_TOML = `
+		PEER_PORT=11725
+		ARTIFICIALLY_ACCELERATE_TIME_FOR_TESTING=true
+
+		UNSAFE_QUORUM=true
+		FAILURE_SAFETY=0
+
+		[[VALIDATORS]]
+		NAME="local_core"
+		HOME_DOMAIN="core.local"
+		PUBLIC_KEY="GD5KD2KEZJIGTC63IGW6UMUSMVUVG5IHG64HUTFWCHVZH2N2IBOQN7PS"
+		ADDRESS="localhost"
+		QUALITY="MEDIUM"`
+)
+
 func (suite *FatalTestCase) TestBucketDirDisallowed() {
 	defer createCaptiveCoreConfig(
-		"./captive-core.toml", `
-PEER_PORT=11725
-ARTIFICIALLY_ACCELERATE_TIME_FOR_TESTING=true
-
-UNSAFE_QUORUM=true
-FAILURE_SAFETY=0
-BUCKET_DIR_PATH="/tmp"
-
-[[VALIDATORS]]
-NAME="local_core"
-HOME_DOMAIN="core.local"
-# From SACJC372QBSSKJYTV5A7LWT4NXWHTQO6GHG4QDAVC2XDPX6CNNXFZ4JK
-PUBLIC_KEY="GD5KD2KEZJIGTC63IGW6UMUSMVUVG5IHG64HUTFWCHVZH2N2IBOQN7PS"
-ADDRESS="localhost"
-QUALITY="MEDIUM"`)()
+		"./captive-core.toml", BUCKET_DIR_DISALLOWED_TOML)()
 
 	const STORAGE_PATH string = "./test_no-bucket-dir"
-
 	test := NewParameterTest(suite.T(), map[string]string{
-		"--captive-core-storage-path": STORAGE_PATH,
-		"--stellar-core-binary-path":  "/usr/local/bin/stellar-core",
-		"--captive-core-config-path":  "./captive-core.toml",
+		"--captive-core-storage-path":     STORAGE_PATH,
+		horizon.CaptiveCoreConfigPathName: "./captive-core.toml",
 	})
 	defer os.RemoveAll(STORAGE_PATH)
 
@@ -75,35 +92,24 @@ QUALITY="MEDIUM"`)()
 }
 
 // Ensures that the filesystem ends up in the correct state with Captive Core.
-func (suite *FatalTestCase) TestCaptiveCoreConfigFilesystemState() {
-	t := suite.T()
-
+func TestCaptiveCoreConfigFilesystemState(t *testing.T) {
 	defer createCaptiveCoreConfig(
-		"./captive-core.toml", `
-PEER_PORT=11725
-ARTIFICIALLY_ACCELERATE_TIME_FOR_TESTING=true
-
-UNSAFE_QUORUM=true
-FAILURE_SAFETY=0
-
-[[VALIDATORS]]
-NAME="local_core"
-HOME_DOMAIN="core.local"
-PUBLIC_KEY="GD5KD2KEZJIGTC63IGW6UMUSMVUVG5IHG64HUTFWCHVZH2N2IBOQN7PS"
-ADDRESS="localhost"
-QUALITY="MEDIUM"`)()
+		"./captive-core.toml", CAPTIVE_CORE_CONFIG_STATE_TOML)()
 
 	const STORAGE_PATH string = "./test_captive-core-works"
-
-	test := NewParameterTest(suite.T(), map[string]string{
-		"--captive-core-storage-path": STORAGE_PATH,
-		"--stellar-core-binary-path":  "/usr/local/bin/stellar-core",
-		"--captive-core-config-path":  "./captive-core.toml",
+	test := NewParameterTest(t, map[string]string{
+		"captive-core-storage-path":       STORAGE_PATH,
+		"captive-core-reuse-storage-dir":  "true",
+		horizon.CaptiveCoreConfigPathName: "./captive-core.toml",
+		horizon.StellarCoreURLFlagName:    "",
+		horizon.StellarCoreDBURLFlagName:  "",
 	})
 	defer os.RemoveAll(STORAGE_PATH)
 
 	err := test.StartHorizon()
 	assert.NoError(t, err)
+	// FIXME: IntegrationTest needs a big refactor so we can
+	time.Sleep(10 * time.Second)
 
 	runParameterMatrix(test, []ValidatorFunc{
 		func() { validateCaptiveCoreDiskState(test, STORAGE_PATH) },

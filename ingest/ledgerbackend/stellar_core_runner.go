@@ -113,7 +113,7 @@ func newStellarCoreRunner(config CaptiveCoreConfig, mode stellarCoreRunnerMode) 
 		return nil, errors.New(fmt.Sprintf("%s is not a directory", fullStoragePath))
 	} else if err != nil {
 		return nil, errors.Wrap(err, fmt.Sprintf(
-			"error accessing storage directory: %s", fullStoragePath))
+			"error accessing storage directory (%s)", fullStoragePath))
 	}
 
 	ctx, cancel := context.WithCancel(config.Context)
