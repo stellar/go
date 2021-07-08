@@ -99,7 +99,7 @@ func TestCaptiveCoreConfigFilesystemState(t *testing.T) {
 	const STORAGE_PATH string = "./test_captive-core-works"
 	test := NewParameterTest(t, map[string]string{
 		"captive-core-storage-path":       STORAGE_PATH,
-		"captive-core-reuse-storage-dir":  "true",
+		"captive-core-reuse-storage-path": "true",
 		horizon.CaptiveCoreConfigPathName: "./captive-core.toml",
 		horizon.StellarCoreURLFlagName:    "",
 		horizon.StellarCoreDBURLFlagName:  "",
@@ -108,7 +108,9 @@ func TestCaptiveCoreConfigFilesystemState(t *testing.T) {
 
 	err := test.StartHorizon()
 	assert.NoError(t, err)
-	// FIXME: IntegrationTest needs a big refactor so we can
+	// FIXME: IntegrationTest needs a big refactor so we can properly wait for
+	//        Captive Core. This needs a lot more thought so this workaround is
+	//        an unfortunate temporary necessity...
 	time.Sleep(10 * time.Second)
 
 	runParameterMatrix(test, []ValidatorFunc{
