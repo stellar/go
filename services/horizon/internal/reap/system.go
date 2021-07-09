@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/stellar/go/services/horizon/internal/errors"
 	"github.com/stellar/go/services/horizon/internal/toid"
+	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
 )
 
@@ -71,9 +71,15 @@ func (r *System) clearBefore(ctx context.Context, seq int32) error {
 		return err
 	}
 
+	err = r.HistoryQ.Begin()
+	if err != nil {
+		return errors.Wrap(err, "Error in begin")
+	}
+	defer r.HistoryQ.Rollback()
+
 	err = r.HistoryQ.DeleteRangeAll(ctx, start, end)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "Error in DeleteRangeAll")
 	}
 
 	return nil
