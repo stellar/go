@@ -126,7 +126,7 @@ func TestToken_formInputSuccess(t *testing.T) {
 	assert.Equal(t, float64(iat.Add(h.JWTExpiresIn).Unix()), claims["exp"])
 }
 
-func TestToken_formInputSuccess_jwtClaimsAreDeterministic(t *testing.T) {
+func TestToken_formInputSuccess_jwtHeaderAndPayloadAreDeterministic(t *testing.T) {
 	serverKey := keypair.MustRandom()
 	t.Logf("Server signing key: %s", serverKey.Address())
 
@@ -209,22 +209,6 @@ func TestToken_formInputSuccess_jwtClaimsAreDeterministic(t *testing.T) {
 
 	t.Logf("JWT 1: %s", res1.Token)
 
-	token1, err := jwt.Parse(res1.Token, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodECDSA); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-		}
-		return &jwtPrivateKey.PublicKey, nil
-	})
-	require.NoError(t, err)
-
-	claims1 := token1.Claims.(jwt.MapClaims)
-	assert.Equal(t, "https://example.com", claims1["iss"])
-	assert.Equal(t, account.Address(), claims1["sub"])
-	assert.Equal(t, account.Address(), claims1["sub"])
-	assert.Equal(t, float64(tx.Timebounds().MinTime), claims1["iat"])
-	iat := time.Unix(int64(claims1["iat"].(float64)), 0)
-	assert.Equal(t, float64(iat.Add(h.JWTExpiresIn).Unix()), claims1["exp"])
-
 	// let's replay the transaction to make sure the returned JWT remains the same
 	time.Sleep(time.Second)
 	r = httptest.NewRequest("POST", "/", strings.NewReader(body.Encode()))
@@ -244,18 +228,11 @@ func TestToken_formInputSuccess_jwtClaimsAreDeterministic(t *testing.T) {
 
 	t.Logf("JWT 2: %s", res2.Token)
 
-	token2, err := jwt.Parse(res2.Token, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodECDSA); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-		}
-		return &jwtPrivateKey.PublicKey, nil
-	})
-	require.NoError(t, err)
-
-	claims2 := token2.Claims.(jwt.MapClaims)
-	require.Equal(t, claims1, claims2)
-
-	t.Log(claims2)
+	jwtParts1 := strings.Split(res1.Token, ".")
+	require.Len(t, jwtParts1, 3)
+	jwtParts2 := strings.Split(res2.Token, ".")
+	require.Len(t, jwtParts2, 3)
+	require.Equal(t, jwtParts1[:2], jwtParts2[:2])
 }
 
 func TestToken_jsonInputSuccess(t *testing.T) {
