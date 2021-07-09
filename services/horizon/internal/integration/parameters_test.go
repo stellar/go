@@ -189,8 +189,8 @@ func validateCaptiveCoreDiskState(itest *integration.Test, rootDir string) {
 	tt.FileExists(coreConf)
 }
 
-func createCaptiveCoreConfig(filename, contents string) func() {
-	tomlFile, err := os.Create(filename)
+func createCaptiveCoreConfig(contents string) (string, func()) {
+	tomlFile, err := ioutil.TempFile("", "captive-core-test-*.toml")
 	defer tomlFile.Close()
 	if err != nil {
 		panic(err)
@@ -201,5 +201,6 @@ func createCaptiveCoreConfig(filename, contents string) func() {
 		panic(err)
 	}
 
-	return func() { os.Remove(filename) }
+	filename := tomlFile.Name()
+	return filename, func() { os.Remove(filename) }
 }
