@@ -75,6 +75,7 @@ type Test struct {
 	config        Config
 	coreConfig    CaptiveConfig
 	horizonConfig horizon.Config
+	environment   EnvironmentManager
 
 	hclient *sdk.Client
 	cclient *stellarcore.Client
@@ -179,15 +180,19 @@ func (i *Test) runComposeCommand(args ...string) {
 }
 
 func (i *Test) prepareShutdownHandlers() {
-	i.shutdownCalls = append(i.shutdownCalls, func() {
-		if i.app != nil {
-			i.app.Close()
-		}
-		i.runComposeCommand("down", "-v", "--remove-orphans")
-	})
+	i.shutdownCalls = append(i.shutdownCalls,
+		i.environment.Restore,
+		func() {
+			if i.app != nil {
+				i.app.Close()
+			}
+			i.runComposeCommand("down", "-v", "--remove-orphans")
+		},
+	)
 
 	// Register cleanup handlers (on panic and ctrl+c) so the containers are
 	// stopped even if ingestion or testing fails.
+	i.t.Cleanup(i.environment.Restore)
 	i.t.Cleanup(i.Shutdown)
 
 	c := make(chan os.Signal)
@@ -297,7 +302,7 @@ func (i *Test) StartHorizon() error {
 	// prepare env
 	cmd.SetArgs(args)
 	for key, value := range i.config.HorizonEnvironment {
-		os.Setenv(key, value)
+		i.environment.Add(key, value)
 	}
 
 	var err error
