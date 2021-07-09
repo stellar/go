@@ -14,8 +14,8 @@ func (envmgr *EnvironmentManager) Add(key, value string) error {
 	// If someone pushes an environmental variable more than once, we don't want
 	// to lose the *original* value, so we're being careful here.
 	if _, ok := envmgr.newEnvironment[key]; !ok {
-		if value, ok := os.LookupEnv(key); ok {
-			envmgr.oldEnvironment[key] = value
+		if oldValue, ok := os.LookupEnv(key); ok {
+			envmgr.oldEnvironment[key] = oldValue
 		}
 	}
 
