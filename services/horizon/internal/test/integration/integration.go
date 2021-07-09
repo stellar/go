@@ -39,6 +39,10 @@ const (
 	historyArchivePort          = 1570
 )
 
+var (
+	RunWithCaptiveCore = os.Getenv("HORIZON_INTEGRATION_ENABLE_CAPTIVE_CORE") != ""
+)
+
 type Config struct {
 	PostgresURL           string
 	ProtocolVersion       int32
@@ -47,7 +51,7 @@ type Config struct {
 
 	// Weird naming here because bools default to false, but we want to start
 	// Horizon by default.
-	DontStartHorizon bool
+	SkipHorizonStart bool
 
 	// If you want to override the default parameters passed to Horizon, you can
 	// set this map accordingly. All of them are passed along as --k=v, but if
@@ -118,7 +122,7 @@ func NewTest(t *testing.T, config Config) *Test {
 
 	// We either test Captive Core through environment variables, or through
 	// custom Horizon parameters.
-	if os.Getenv("HORIZON_INTEGRATION_ENABLE_CAPTIVE_CORE") != "" {
+	if RunWithCaptiveCore {
 		i.coreConfig.binaryPath = os.Getenv("CAPTIVE_CORE_BIN")
 		i.coreConfig.configPath = filepath.Join(composePath, "captive-core-integration-tests.cfg")
 	}
@@ -130,25 +134,18 @@ func NewTest(t *testing.T, config Config) *Test {
 		i.coreConfig.configPath = value
 	}
 
-	if !bothOrNeitherString(i.coreConfig.binaryPath, i.coreConfig.configPath) {
-		t.Fatalf(`Both the Stellar Core binary and Captive Core configuration
-needs to be set (or neither). Try setting CAPTIVE_CORE_BIN in your environment
-or filling in Config.HorizonParameters/HorizonEnvironment with the appropriate
-parameter(s): binPath=%s, configPath=%s`, i.coreConfig.binaryPath, i.coreConfig.configPath)
-	}
-
 	// Only run Stellar Core container and its dependencies.
 	i.runComposeCommand("up", "--detach", "--quiet-pull", "--no-color", "core")
 	i.cclient = &stellarcore.Client{URL: "http://localhost:" + strconv.Itoa(stellarCorePort)}
 	i.waitForCore()
 	i.prepareShutdownHandlers()
 
-	if !config.DontStartHorizon {
+	if !config.SkipHorizonStart {
 		if innerErr := i.StartHorizon(); innerErr != nil {
 			t.Fatalf("Failed to start Horizon: %v", innerErr)
 		}
 
-		i.waitForHorizon()
+		i.WaitForHorizon()
 	}
 
 	return i
@@ -211,7 +208,7 @@ func (i *Test) RestartHorizon() error {
 		return err
 	}
 
-	i.waitForHorizon()
+	i.WaitForHorizon()
 	return nil
 }
 
@@ -264,7 +261,7 @@ func (i *Test) StartHorizon() error {
 	coreBinaryPath := i.coreConfig.binaryPath
 	captiveCoreConfigPath := i.coreConfig.configPath
 
-	var DEFAULT_ARGS = map[string]string{
+	defaultArgs := map[string]string{
 		"stellar-core-url": i.cclient.URL,
 		"stellar-core-db-url": fmt.Sprintf(
 			"postgres://postgres:%s@%s:%d/stellar?sslmode=disable",
@@ -376,7 +373,7 @@ func (i *Test) waitForCore() {
 	i.t.Fatal("Core could not sync after several attempts")
 }
 
-func (i *Test) waitForHorizon() {
+func (i *Test) WaitForHorizon() {
 	for t := 200; t >= 0; t -= 1 {
 		i.t.Log("Waiting for ingestion and protocol upgrade...")
 		root, err := i.hclient.Root()

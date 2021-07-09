@@ -8,7 +8,6 @@ import (
 	"path"
 	"strings"
 	"testing"
-	"time"
 
 	horizon "github.com/stellar/go/services/horizon/internal"
 	"github.com/stellar/go/services/horizon/internal/test/integration"
@@ -17,12 +16,12 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-func NewParameterTest(t *testing.T, params map[string]string) *integration.Test {
+func NewParameterTest(t *testing.T, params, envvars map[string]string) *integration.Test {
 	config := integration.Config{
 		ProtocolVersion:    17,
-		DontStartHorizon:   true,
+		SkipHorizonStart:   true,
 		HorizonParameters:  params,
-		HorizonEnvironment: map[string]string{}, // TODO: test these too
+		HorizonEnvironment: envvars,
 	}
 	return integration.NewTest(t, config)
 }
@@ -69,50 +68,80 @@ func (suite *FatalTestCase) TestBucketDirDisallowed() {
 	// In CI, we run our integration tests twice: once with Captive Core
 	// enabled, and once without. *These* tests only run with Captive Core
 	// configured properly (specifically, w/ the CAPTIVE_CORE_BIN envvar set).
-	if _, ok := os.LookupEnv("HORIZON_INTEGRATION_ENABLE_CAPTIVE_CORE"); !ok {
+	if !integration.RunWithCaptiveCore {
 		suite.T().Skip()
 	}
 
-	defer createCaptiveCoreConfig(
-		"./captive-core.toml", BUCKET_DIR_DISALLOWED_TOML)()
+	confName, cleanup := createCaptiveCoreConfig(BUCKET_DIR_DISALLOWED_TOML)
+	defer cleanup()
 
 	const STORAGE_PATH string = "./test_no-bucket-dir"
 	test := NewParameterTest(suite.T(), map[string]string{
 		"captive-core-storage-path":       STORAGE_PATH,
-		horizon.CaptiveCoreConfigPathName: "./captive-core.toml",
+		horizon.CaptiveCoreConfigPathName: confName,
 		horizon.StellarCoreBinaryPathName: os.Getenv("CAPTIVE_CORE_BIN"),
-	})
+	}, map[string]string{})
 	defer os.RemoveAll(STORAGE_PATH)
 
 	suite.Exits(func() { test.StartHorizon() })
 }
 
+func (suite *FatalTestCase) TestEnvironmentPreserved() {
+	// Who tests the tests? This test.
+	//
+	// It ensures that the global OS environmental variables are preserved after
+	// running an integration test.
+	t := suite.T()
+
+	// Note that we ALSO need to make sure we don't modify parent env state.
+	if value, isSet := os.LookupEnv("STELLAR_CORE_BINARY_PATH"); isSet {
+		defer func() {
+			os.Setenv("STELLAR_CORE_BINARY_PATH", value)
+		}()
+	}
+
+	err := os.Setenv("STELLAR_CORE_BINARY_PATH", "dummy value")
+	assert.NoError(t, err)
+
+	test := NewParameterTest(t,
+		map[string]string{},
+		map[string]string{
+			// intentionally invalid parameter combination
+			"CAPTIVE_CORE_CONFIG_PATH": "",
+			"STELLAR_CORE_BINARY_PATH": "/nonsense",
+		},
+	)
+
+	suite.Exits(func() { test.StartHorizon() })
+	test.Shutdown()
+
+	envValue := os.Getenv("STELLAR_CORE_BINARY_PATH")
+	assert.Equal(t, "dummy value", envValue)
+}
+
 // Ensures that the filesystem ends up in the correct state with Captive Core.
 func TestCaptiveCoreConfigFilesystemState(t *testing.T) {
-	if _, ok := os.LookupEnv("HORIZON_INTEGRATION_ENABLE_CAPTIVE_CORE"); !ok {
+	if !integration.RunWithCaptiveCore {
 		t.Skip() // explained above
 	}
 
-	defer createCaptiveCoreConfig(
-		"./captive-core.toml", CAPTIVE_CORE_CONFIG_STATE_TOML)()
+	confName, cleanup := createCaptiveCoreConfig(CAPTIVE_CORE_CONFIG_STATE_TOML)
+	defer cleanup()
 
 	const STORAGE_PATH string = "./test_captive-core-works"
 	test := NewParameterTest(t, map[string]string{
 		"captive-core-storage-path":       STORAGE_PATH,
 		"captive-core-reuse-storage-path": "true",
 		horizon.StellarCoreBinaryPathName: os.Getenv("CAPTIVE_CORE_BIN"),
-		horizon.CaptiveCoreConfigPathName: "./captive-core.toml",
+		horizon.CaptiveCoreConfigPathName: confName,
 		horizon.StellarCoreURLFlagName:    "",
 		horizon.StellarCoreDBURLFlagName:  "",
-	})
+	}, map[string]string{})
 	defer os.RemoveAll(STORAGE_PATH)
 
 	err := test.StartHorizon()
 	assert.NoError(t, err)
-	// FIXME: IntegrationTest needs a big refactor so we can properly wait for
-	//        Captive Core. This needs a lot more thought so this workaround is
-	//        an unfortunate temporary necessity...
-	time.Sleep(10 * time.Second)
+	test.WaitForHorizon()
 
 	runParameterMatrix(test, []ValidatorFunc{
 		func() { validateCaptiveCoreDiskState(test, STORAGE_PATH) },
