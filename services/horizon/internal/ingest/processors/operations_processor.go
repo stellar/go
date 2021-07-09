@@ -216,6 +216,10 @@ func addAccountAndMuxedAccountDetails(result map[string]interface{}, a xdr.Muxed
 	result[prefix] = accid.Address()
 	if a.Type == xdr.CryptoKeyTypeKeyTypeMuxedEd25519 {
 		result[prefix+"_muxed"] = a.Address()
+		// _muxed_id fields should had ideally been stored in the DB as a string instead of uint64
+		// due to Javascript not being able to handle them, see https://github.com/stellar/go/issues/3714
+		// However, we released this code in the wild before correcting it. Thus, what we do is
+		// work around it (by preprocessing it into a string) in Operation.UnmarshalDetails()
 		result[prefix+"_muxed_id"] = uint64(a.Med25519.Id)
 	}
 }

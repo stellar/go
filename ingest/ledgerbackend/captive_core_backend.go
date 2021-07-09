@@ -123,10 +123,10 @@ type CaptiveCoreConfig struct {
 	// stored. We always append /captive-core to this directory, since we clean
 	// it up entirely on shutdown.
 	StoragePath string
-	// ReuseStorageDir determines if the storage dir in StoragePath should
+	// ReuseStoragePath determines if the storage dir in StoragePath should
 	// be reused between Stellar-Core executions. Defaults to false because of
 	// Stellar-Core 17.1.0 issue.
-	ReuseStorageDir bool
+	ReuseStoragePath bool
 }
 
 // NewCaptive returns a new CaptiveStellarCore instance.
@@ -192,14 +192,18 @@ func (c *CaptiveStellarCore) openOfflineReplaySubprocess(from, to uint32) error 
 
 	if from > latestCheckpointSequence {
 		return errors.Errorf(
-			"sequence: %d is greater than max available in history archives: %d",
+			"from sequence: %d is greater than max available in history archives: %d",
 			from,
 			latestCheckpointSequence,
 		)
 	}
 
 	if to > latestCheckpointSequence {
-		to = latestCheckpointSequence
+		return errors.Errorf(
+			"to sequence: %d is greater than max available in history archives: %d",
+			to,
+			latestCheckpointSequence,
+		)
 	}
 
 	var runner stellarCoreRunnerInterface

@@ -65,9 +65,9 @@ type stellarCoreRunner struct {
 	processExited    bool
 	processExitError error
 
-	storagePath     string
-	reuseStorageDir bool
-	nonce           string
+	storagePath      string
+	reuseStoragePath bool
+	nonce            string
 
 	log *log.Entry
 }
@@ -83,7 +83,7 @@ func createRandomHexString(n int) string {
 
 func newStellarCoreRunner(config CaptiveCoreConfig, mode stellarCoreRunnerMode) (*stellarCoreRunner, error) {
 	var fullStoragePath string
-	if runtime.GOOS == "windows" || mode == stellarCoreRunnerModeOffline || !config.ReuseStorageDir {
+	if runtime.GOOS == "windows" || mode == stellarCoreRunnerModeOffline || !config.ReuseStoragePath {
 		// On Windows, first we ALWAYS append something to the base storage path,
 		// because we will delete the directory entirely when Horizon stops. We also
 		// add a random suffix in order to ensure that there aren't naming
@@ -119,12 +119,12 @@ func newStellarCoreRunner(config CaptiveCoreConfig, mode stellarCoreRunnerMode) 
 	ctx, cancel := context.WithCancel(config.Context)
 
 	runner := &stellarCoreRunner{
-		executablePath:  config.BinaryPath,
-		ctx:             ctx,
-		cancel:          cancel,
-		storagePath:     fullStoragePath,
-		reuseStorageDir: config.ReuseStorageDir,
-		mode:            mode,
+		executablePath:   config.BinaryPath,
+		ctx:              ctx,
+		cancel:           cancel,
+		storagePath:      fullStoragePath,
+		reuseStoragePath: config.ReuseStoragePath,
+		mode:             mode,
 		nonce: fmt.Sprintf(
 			"captive-stellar-core-%x",
 			rand.New(rand.NewSource(time.Now().UnixNano())).Uint64(),
@@ -218,13 +218,14 @@ func (r *stellarCoreRunner) getLogLineWriter() io.Writer {
 					"ERROR":   r.log.Errorf,
 					"WARNING": r.log.Warnf,
 					"INFO":    r.log.Infof,
+					"DEBUG":   r.log.Debugf,
 				}
 
-				if writer, ok := levelMapping[strings.ToUpper(level)]; ok {
-					writer("%s: %s", category, line)
-				} else {
-					r.log.Info(line)
+				writer := r.log.Infof
+				if f, ok := levelMapping[strings.ToUpper(level)]; ok {
+					writer = f
 				}
+				writer("%s: %s", category, line)
 			} else {
 				r.log.Info(line)
 			}
@@ -482,7 +483,7 @@ func (r *stellarCoreRunner) close() error {
 	if runtime.GOOS == "windows" ||
 		(r.processExitError != nil && r.processExitError != context.Canceled) ||
 		r.mode == stellarCoreRunnerModeOffline ||
-		!r.reuseStorageDir {
+		!r.reuseStoragePath {
 		// It's impossible to send SIGINT on Windows so buckets can become
 		// corrupted. If we can't reuse it, then remove it.
 		// We also remove the storage path if there was an error terminating the

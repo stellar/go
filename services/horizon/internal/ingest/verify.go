@@ -76,7 +76,7 @@ func (s *system) verifyState(verifyAgainstLatestCheckpoint bool) error {
 
 	localLog := log.WithFields(logpkg.F{
 		"subservice": "state_verify",
-		"ledger":     ledgerSequence,
+		"sequence":   ledgerSequence,
 	})
 
 	if !s.checkpointManager.IsCheckpoint(ledgerSequence) {

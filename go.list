@@ -2,7 +2,7 @@ github.com/stellar/go
 cloud.google.com/go v0.34.0
 firebase.google.com/go v3.12.0+incompatible
 github.com/BurntSushi/toml v0.3.1
-github.com/Masterminds/squirrel v0.0.0-20161115235646-20f192218cf5
+github.com/Masterminds/squirrel v1.5.0
 github.com/Microsoft/go-winio v0.4.14
 github.com/Shopify/sarama v1.19.0
 github.com/Shopify/toxiproxy v2.1.4+incompatible
@@ -67,7 +67,8 @@ github.com/konsorten/go-windows-terminal-sequences v1.0.1
 github.com/kr/logfmt v0.0.0-20140226030751-b84e30acd515
 github.com/kr/pretty v0.0.0-20150520163514-e6ac2fc51e89
 github.com/kr/text v0.0.0-20150520163712-e373e137fafd
-github.com/lann/builder v0.0.0-20140829050551-c603884a2c1f
+github.com/lann/builder v0.0.0-20180802200727-47ae307949d0
+github.com/lann/ps v0.0.0-20150810152359-62de8c46ede0
 github.com/lib/pq v1.2.0
 github.com/magiconair/properties v1.5.4
 github.com/manucorporat/sse v0.0.0-20160126180136-ee05b128a739
@@ -77,7 +78,6 @@ github.com/mattn/go-sqlite3 v1.9.0
 github.com/matttproud/golang_protobuf_extensions v1.0.1
 github.com/mitchellh/go-homedir v1.1.0
 github.com/mitchellh/mapstructure v0.0.0-20150613213606-2caf8efc9366
-github.com/mndrix/ps v0.0.0-20131111202200-33ddf69629c1
 github.com/moul/http2curl v0.0.0-20161031194548-4e24498b31db
 github.com/mwitkow/go-conntrack v0.0.0-20161129095857-cc309e4a2223
 github.com/onsi/ginkgo v1.7.0

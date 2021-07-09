@@ -66,16 +66,16 @@ const (
 var log = logpkg.DefaultLogger.WithField("service", "ingest")
 
 type Config struct {
-	CoreSession                db.SessionInterface
-	StellarCoreURL             string
-	StellarCoreCursor          string
-	EnableCaptiveCore          bool
-	CaptiveCoreBinaryPath      string
-	CaptiveCoreStoragePath     string
-	CaptiveCoreReuseStorageDir bool
-	CaptiveCoreToml            *ledgerbackend.CaptiveCoreToml
-	RemoteCaptiveCoreURL       string
-	NetworkPassphrase          string
+	CoreSession                 db.SessionInterface
+	StellarCoreURL              string
+	StellarCoreCursor           string
+	EnableCaptiveCore           bool
+	CaptiveCoreBinaryPath       string
+	CaptiveCoreStoragePath      string
+	CaptiveCoreReuseStoragePath bool
+	CaptiveCoreToml             *ledgerbackend.CaptiveCoreToml
+	RemoteCaptiveCoreURL        string
+	NetworkPassphrase           string
 
 	HistorySession           db.SessionInterface
 	HistoryArchiveURL        string
@@ -111,6 +111,10 @@ type Metrics struct {
 	// LedgerIngestionDuration exposes timing metrics about the rate and
 	// duration of ledger ingestion (including updating DB and graph).
 	LedgerIngestionDuration prometheus.Summary
+
+	// LedgerIngestionTradeAggregationDuration exposes timing metrics about the rate and
+	// duration of rebuilding trade aggregation buckets.
+	LedgerIngestionTradeAggregationDuration prometheus.Summary
 
 	// StateVerifyDuration exposes timing metrics about the rate and
 	// duration of state verification.
@@ -205,6 +209,7 @@ func NewSystem(config Config) (System, error) {
 				ledgerbackend.CaptiveCoreConfig{
 					BinaryPath:          config.CaptiveCoreBinaryPath,
 					StoragePath:         config.CaptiveCoreStoragePath,
+					ReuseStoragePath:    config.CaptiveCoreReuseStoragePath,
 					Toml:                config.CaptiveCoreToml,
 					NetworkPassphrase:   config.NetworkPassphrase,
 					HistoryArchiveURLs:  []string{config.HistoryArchiveURL},
@@ -274,6 +279,11 @@ func (s *system) initMetrics() {
 	s.metrics.LedgerIngestionDuration = prometheus.NewSummary(prometheus.SummaryOpts{
 		Namespace: "horizon", Subsystem: "ingest", Name: "ledger_ingestion_duration_seconds",
 		Help: "ledger ingestion durations, sliding window = 10m",
+	})
+
+	s.metrics.LedgerIngestionTradeAggregationDuration = prometheus.NewSummary(prometheus.SummaryOpts{
+		Namespace: "horizon", Subsystem: "ingest", Name: "ledger_ingestion_trade_aggregation_duration_seconds",
+		Help: "ledger ingestion trade aggregation rebuild durations, sliding window = 10m",
 	})
 
 	s.metrics.StateVerifyDuration = prometheus.NewSummary(prometheus.SummaryOpts{

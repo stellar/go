@@ -283,7 +283,7 @@ func transactionToRow(transaction ingest.LedgerTransaction, sequence uint32) (Tr
 		feeAccount := feeBumpAccount.ToAccountId()
 		var feeAccountMuxed null.String
 		if source.Type == xdr.CryptoKeyTypeKeyTypeMuxedEd25519 {
-			feeAccountMuxed = null.StringFrom(source.Address())
+			feeAccountMuxed = null.StringFrom(feeBumpAccount.Address())
 		}
 		t.FeeAccount = null.StringFrom(feeAccount.Address())
 		t.FeeAccountMuxed = feeAccountMuxed
