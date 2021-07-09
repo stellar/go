@@ -83,5 +83,10 @@ func (r *System) clearBefore(ctx context.Context, seq int32) error {
 		return errors.Wrap(err, "Error in DeleteRangeAll")
 	}
 
+	err = r.HistoryQ.Commit()
+	if err != nil {
+		return errors.Wrap(err, "Error in commit")
+	}
+
 	return nil
 }
