@@ -283,18 +283,8 @@ func (i *Test) StartHorizon() error {
 		"per-hour-rate-limit":  "0", // disable rate limiting
 	}
 
-	merged := mergeMaps(DEFAULT_ARGS, i.config.HorizonParameters)
-
-	// Turn the merged mapping into an array of strings for SetArgs. Note that
-	// empty values means drop the parameter.
-	args := make([]string, 0, len(merged))
-	for key, value := range merged {
-		if value == "" {
-			continue
-		}
-
-		args = append(args, fmt.Sprintf("--%s=%s", key, value))
-	}
+	merged := mergeMaps(defaultArgs, i.config.HorizonParameters)
+	args := mapToFlags(merged)
 
 	// initialize core arguments
 	i.t.Log("Horizon command line:", args)
@@ -731,23 +721,29 @@ func findDockerComposePath() string {
 	return filepath.Join(current, "services", "horizon", "docker")
 }
 
-// mergeMaps returns a new map which contains the keys and values of both input
-// maps, preferring the latter newValues map if there are duplicate entries.
-func mergeMaps(defaults map[string]string, newValues map[string]string) map[string]string {
-	merged := make(map[string]string)
-	for key, value := range defaults {
-		merged[key] = value
+// mergeMaps returns a new map which contains the keys and values of *all* input
+// maps, overwriting earlier values with later values on duplicate keys.
+func mergeMaps(maps ...map[string]string) map[string]string {
+	merged := map[string]string{}
+	for _, m := range maps {
+		for k, v := range m {
+			merged[k] = v
+		}
 	}
-
-	for key, value := range newValues {
-		merged[key] = value
-	}
-
 	return merged
 }
 
-// bothOrNeitherString tells you if the two given parameters are either both
-// *set* or both *unset*.
-func bothOrNeitherString(a, b string) bool {
-	return (a != "" && b != "") || (a == "" && b == "")
+// mapToFlags will convert a map of parameters into an array of CLI args (i.e.
+// in the form --key=value). Note that an empty value for a key means to drop
+// the parameter.
+func mapToFlags(params map[string]string) []string {
+	args := make([]string, 0, len(params))
+	for key, value := range params {
+		if value == "" {
+			continue
+		}
+
+		args = append(args, fmt.Sprintf("--%s=%s", key, value))
+	}
+	return args
 }
