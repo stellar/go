@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	herrors "github.com/stellar/go/services/horizon/internal/errors"
 	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
@@ -51,9 +52,9 @@ func (r *System) Tick(ctx context.Context) {
 func (r *System) runOnce(ctx context.Context) {
 	defer func() {
 		if rec := recover(); rec != nil {
-			err := errors.FromPanic(rec)
+			err := herrors.FromPanic(rec)
 			log.Errorf("reaper panicked: %s", err)
-			errors.ReportToSentry(err, nil)
+			herrors.ReportToSentry(err, nil)
 		}
 	}()
 
