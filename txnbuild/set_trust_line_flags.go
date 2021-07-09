@@ -28,7 +28,7 @@ type SetTrustLineFlags struct {
 	SourceAccount string
 }
 
-// BuildXDR for ASetTrustLineFlags  returns a fully configured XDR Operation.
+// BuildXDR for SetTrustLineFlags  returns a fully configured XDR Operation.
 func (stf *SetTrustLineFlags) BuildXDR(withMuxedAccounts bool) (xdr.Operation, error) {
 	var xdrOp xdr.SetTrustLineFlagsOp
 
