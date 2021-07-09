@@ -370,7 +370,7 @@ func (i *Test) waitForCore() {
 		i.t.Log("Core is up.")
 		return
 	}
-	i.t.Fatal("Core could not sync after several attempts")
+	i.t.Fatal("Core could not sync after 30s")
 }
 
 func (i *Test) WaitForHorizon() {
