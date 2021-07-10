@@ -79,7 +79,7 @@ type Test struct {
 	config        Config
 	coreConfig    CaptiveConfig
 	horizonConfig horizon.Config
-	environment   EnvironmentManager
+	environment   *EnvironmentManager
 
 	hclient *sdk.Client
 	cclient *stellarcore.Client
@@ -118,21 +118,10 @@ func NewTest(t *testing.T, config Config) *Test {
 		config:      config,
 		composePath: composePath,
 		passPhrase:  StandaloneNetworkPassphrase,
+		environment: NewEnvironmentManager(),
 	}
 
-	// We either test Captive Core through environment variables, or through
-	// custom Horizon parameters.
-	if RunWithCaptiveCore {
-		i.coreConfig.binaryPath = os.Getenv("CAPTIVE_CORE_BIN")
-		i.coreConfig.configPath = filepath.Join(composePath, "captive-core-integration-tests.cfg")
-	}
-
-	if value, ok := config.HorizonParameters[horizon.StellarCoreBinaryPathName]; ok {
-		i.coreConfig.binaryPath = value
-	}
-	if value, ok := config.HorizonParameters[horizon.CaptiveCoreConfigPathName]; ok {
-		i.coreConfig.configPath = value
-	}
+	i.configureCaptiveCore()
 
 	// Only run Stellar Core container and its dependencies.
 	i.runComposeCommand("up", "--detach", "--quiet-pull", "--no-color", "core")
@@ -149,6 +138,39 @@ func NewTest(t *testing.T, config Config) *Test {
 	}
 
 	return i
+}
+
+func (i *Test) configureCaptiveCore() {
+	// We either test Captive Core through environment variables or through
+	// custom Horizon parameters.
+	if RunWithCaptiveCore {
+		composePath := findDockerComposePath()
+		i.coreConfig.binaryPath = os.Getenv("CAPTIVE_CORE_BIN")
+		i.coreConfig.configPath = filepath.Join(composePath, "captive-core-integration-tests.cfg")
+	}
+
+	if value := i.getParameter(
+		horizon.StellarCoreBinaryPathName,
+		"STELLAR_CORE_BINARY_PATH",
+	); value != "" {
+		i.coreConfig.binaryPath = value
+	}
+	if value := i.getParameter(
+		horizon.CaptiveCoreConfigPathName,
+		"CAPTIVE_CORE_CONFIG_PATH",
+	); value != "" {
+		i.coreConfig.configPath = value
+	}
+}
+
+func (i *Test) getParameter(argName, envName string) string {
+	if value, ok := i.config.HorizonEnvironment[envName]; ok {
+		return value
+	}
+	if value, ok := i.config.HorizonParameters[argName]; ok {
+		return value
+	}
+	return ""
 }
 
 // Runs a docker-compose command applied to the above configs
@@ -189,7 +211,6 @@ func (i *Test) prepareShutdownHandlers() {
 
 	// Register cleanup handlers (on panic and ctrl+c) so the containers are
 	// stopped even if ingestion or testing fails.
-	i.t.Cleanup(i.environment.Restore)
 	i.t.Cleanup(i.Shutdown)
 
 	c := make(chan os.Signal)
@@ -292,14 +313,18 @@ func (i *Test) StartHorizon() error {
 	i.t.Log("Horizon command line:", args)
 	var env strings.Builder
 	for key, value := range i.config.HorizonEnvironment {
-		env.WriteString(fmt.Sprintf("%s=%s", key, value))
+		env.WriteString(fmt.Sprintf("%s=%s ", key, value))
 	}
 	i.t.Logf("Horizon environmental variables: %s\n", env.String())
 
 	// prepare env
 	cmd.SetArgs(args)
 	for key, value := range i.config.HorizonEnvironment {
-		i.environment.Add(key, value)
+		innerErr := i.environment.Add(key, value)
+		if innerErr != nil {
+			return errors.Wrap(innerErr, fmt.Sprintf(
+				"failed to set envvar (%s=%s)", key, value))
+		}
 	}
 
 	var err error

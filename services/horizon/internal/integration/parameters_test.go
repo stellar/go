@@ -30,23 +30,7 @@ func TestFatalScenarios(t *testing.T) {
 	suite.Run(t, new(FatalTestCase))
 }
 
-// Ensures that BUCKET_DIR_PATH is not an allowed value for Captive Core.
 const (
-	BUCKET_DIR_DISALLOWED_TOML = `
-		PEER_PORT=11725
-		ARTIFICIALLY_ACCELERATE_TIME_FOR_TESTING=true
-
-		UNSAFE_QUORUM=true
-		FAILURE_SAFETY=0
-		BUCKET_DIR_PATH="/tmp"
-
-		[[VALIDATORS]]
-		NAME="local_core"
-		HOME_DOMAIN="core.local"
-		# From SACJC372QBSSKJYTV5A7LWT4NXWHTQO6GHG4QDAVC2XDPX6CNNXFZ4JK
-		PUBLIC_KEY="GD5KD2KEZJIGTC63IGW6UMUSMVUVG5IHG64HUTFWCHVZH2N2IBOQN7PS"
-		ADDRESS="localhost"
-		QUALITY="MEDIUM"`
 	CAPTIVE_CORE_CONFIG_STATE_TOML = `
 		PEER_PORT=11725
 		ARTIFICIALLY_ACCELERATE_TIME_FOR_TESTING=true
@@ -62,6 +46,7 @@ const (
 		QUALITY="MEDIUM"`
 )
 
+// Ensures that BUCKET_DIR_PATH is not an allowed value for Captive Core.
 func (suite *FatalTestCase) TestBucketDirDisallowed() {
 	// This is a bit of a hacky workaround.
 	//
@@ -72,16 +57,28 @@ func (suite *FatalTestCase) TestBucketDirDisallowed() {
 		suite.T().Skip()
 	}
 
-	confName, cleanup := createCaptiveCoreConfig(BUCKET_DIR_DISALLOWED_TOML)
+	config := `PEER_PORT=11725
+		ARTIFICIALLY_ACCELERATE_TIME_FOR_TESTING=true
+
+		UNSAFE_QUORUM=true
+		FAILURE_SAFETY=0
+		BUCKET_DIR_PATH="/tmp"
+
+		[[VALIDATORS]]
+		NAME="local_core"
+		HOME_DOMAIN="core.local"
+		# From SACJC372QBSSKJYTV5A7LWT4NXWHTQO6GHG4QDAVC2XDPX6CNNXFZ4JK
+		PUBLIC_KEY="GD5KD2KEZJIGTC63IGW6UMUSMVUVG5IHG64HUTFWCHVZH2N2IBOQN7PS"
+		ADDRESS="localhost"
+		QUALITY="MEDIUM"`
+
+	confName, _, cleanup := createCaptiveCoreConfig(config)
 	defer cleanup()
 
-	const STORAGE_PATH string = "./test_no-bucket-dir"
 	test := NewParameterTest(suite.T(), map[string]string{
-		"captive-core-storage-path":       STORAGE_PATH,
 		horizon.CaptiveCoreConfigPathName: confName,
 		horizon.StellarCoreBinaryPathName: os.Getenv("CAPTIVE_CORE_BIN"),
 	}, map[string]string{})
-	defer os.RemoveAll(STORAGE_PATH)
 
 	suite.Exits(func() { test.StartHorizon() })
 }
@@ -94,29 +91,34 @@ func (suite *FatalTestCase) TestEnvironmentPreserved() {
 	t := suite.T()
 
 	// Note that we ALSO need to make sure we don't modify parent env state.
-	if value, isSet := os.LookupEnv("STELLAR_CORE_BINARY_PATH"); isSet {
+	if value, isSet := os.LookupEnv("CAPTIVE_CORE_CONFIG_PATH"); isSet {
 		defer func() {
-			os.Setenv("STELLAR_CORE_BINARY_PATH", value)
+			os.Setenv("CAPTIVE_CORE_CONFIG_PATH", value)
 		}()
 	}
 
-	err := os.Setenv("STELLAR_CORE_BINARY_PATH", "dummy value")
+	err := os.Setenv("CAPTIVE_CORE_CONFIG_PATH", "original value")
 	assert.NoError(t, err)
 
+	confName, _, cleanup := createCaptiveCoreConfig(CAPTIVE_CORE_CONFIG_STATE_TOML)
+	defer cleanup()
 	test := NewParameterTest(t,
 		map[string]string{},
 		map[string]string{
-			// intentionally invalid parameter combination
-			"CAPTIVE_CORE_CONFIG_PATH": "",
-			"STELLAR_CORE_BINARY_PATH": "/nonsense",
+			"CAPTIVE_CORE_CONFIG_PATH": confName,
 		},
 	)
 
-	suite.Exits(func() { test.StartHorizon() })
+	test.StartHorizon()
+	test.WaitForHorizon()
+
+	envValue := os.Getenv("CAPTIVE_CORE_CONFIG_PATH")
+	assert.Equal(t, confName, envValue)
+
 	test.Shutdown()
 
-	envValue := os.Getenv("STELLAR_CORE_BINARY_PATH")
-	assert.Equal(t, "dummy value", envValue)
+	envValue = os.Getenv("CAPTIVE_CORE_CONFIG_PATH")
+	assert.Equal(t, "original value", envValue)
 }
 
 // Ensures that the filesystem ends up in the correct state with Captive Core.
@@ -125,27 +127,25 @@ func TestCaptiveCoreConfigFilesystemState(t *testing.T) {
 		t.Skip() // explained above
 	}
 
-	confName, cleanup := createCaptiveCoreConfig(CAPTIVE_CORE_CONFIG_STATE_TOML)
+	confName, storagePath, cleanup := createCaptiveCoreConfig(CAPTIVE_CORE_CONFIG_STATE_TOML)
 	defer cleanup()
 
-	const STORAGE_PATH string = "./test_captive-core-works"
 	test := NewParameterTest(t, map[string]string{
-		"captive-core-storage-path":       STORAGE_PATH,
+		"captive-core-storage-path":       storagePath,
 		"captive-core-reuse-storage-path": "true",
 		horizon.StellarCoreBinaryPathName: os.Getenv("CAPTIVE_CORE_BIN"),
 		horizon.CaptiveCoreConfigPathName: confName,
 		horizon.StellarCoreURLFlagName:    "",
 		horizon.StellarCoreDBURLFlagName:  "",
 	}, map[string]string{})
-	defer os.RemoveAll(STORAGE_PATH)
 
 	err := test.StartHorizon()
 	assert.NoError(t, err)
 	test.WaitForHorizon()
 
 	runParameterMatrix(test, []ValidatorFunc{
-		func() { validateCaptiveCoreDiskState(test, STORAGE_PATH) },
-		func() { validateNoBucketDirPath(test, STORAGE_PATH) },
+		func() { validateCaptiveCoreDiskState(test, storagePath) },
+		func() { validateNoBucketDirPath(test, storagePath) },
 	})
 }
 
@@ -164,15 +164,17 @@ func (t *FatalTestCase) Exits(subprocess func()) {
 		return
 	}
 
+	t.T().Log("Hello there! From Exits()")
 	cmd := exec.Command(os.Args[0], "-test.run="+testName)
 	cmd.Env = append(os.Environ(), "ASSERT_EXISTS_"+testName+"=1")
 	err := cmd.Run()
 
+	t.T().Log("Result:", err)
 	if e, ok := err.(*exec.ExitError); ok && !e.Success() {
 		return
 	}
 
-	t.Fail("expecting unsuccessful exit")
+	t.Fail("expecting unsuccessful exit, got", err)
 }
 
 type ValidatorFunc func()
@@ -218,7 +220,10 @@ func validateCaptiveCoreDiskState(itest *integration.Test, rootDir string) {
 	tt.FileExists(coreConf)
 }
 
-func createCaptiveCoreConfig(contents string) (string, func()) {
+// createCaptiveCoreConfig will create a temporary TOML config with the
+// specified contents as well as a temporary storage directory. You should
+// `defer` the returned function to clean these up when you're done.
+func createCaptiveCoreConfig(contents string) (string, string, func()) {
 	tomlFile, err := ioutil.TempFile("", "captive-core-test-*.toml")
 	defer tomlFile.Close()
 	if err != nil {
@@ -230,6 +235,14 @@ func createCaptiveCoreConfig(contents string) (string, func()) {
 		panic(err)
 	}
 
+	storagePath, err := ioutil.TempDir("", "captive-core-test-*-storage")
+	if err != nil {
+		panic(err)
+	}
+
 	filename := tomlFile.Name()
-	return filename, func() { os.Remove(filename) }
+	return filename, storagePath, func() {
+		os.Remove(filename)
+		os.RemoveAll(storagePath)
+	}
 }

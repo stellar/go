@@ -9,6 +9,13 @@ type EnvironmentManager struct {
 	oldEnvironment, newEnvironment map[string]string
 }
 
+func NewEnvironmentManager() *EnvironmentManager {
+	env := &EnvironmentManager{}
+	env.oldEnvironment = make(map[string]string)
+	env.newEnvironment = make(map[string]string)
+	return env
+}
+
 // Add sets a new environment variable, saving the original value (if any).
 func (envmgr *EnvironmentManager) Add(key, value string) error {
 	// If someone pushes an environmental variable more than once, we don't want
