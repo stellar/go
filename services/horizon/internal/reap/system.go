@@ -4,8 +4,9 @@ import (
 	"context"
 	"time"
 
-	"github.com/stellar/go/services/horizon/internal/errors"
+	herrors "github.com/stellar/go/services/horizon/internal/errors"
 	"github.com/stellar/go/services/horizon/internal/toid"
+	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
 )
 
@@ -51,9 +52,9 @@ func (r *System) Tick(ctx context.Context) {
 func (r *System) runOnce(ctx context.Context) {
 	defer func() {
 		if rec := recover(); rec != nil {
-			err := errors.FromPanic(rec)
+			err := herrors.FromPanic(rec)
 			log.Errorf("reaper panicked: %s", err)
-			errors.ReportToSentry(err, nil)
+			herrors.ReportToSentry(err, nil)
 		}
 	}()
 
@@ -71,9 +72,20 @@ func (r *System) clearBefore(ctx context.Context, seq int32) error {
 		return err
 	}
 
+	err = r.HistoryQ.Begin()
+	if err != nil {
+		return errors.Wrap(err, "Error in begin")
+	}
+	defer r.HistoryQ.Rollback()
+
 	err = r.HistoryQ.DeleteRangeAll(ctx, start, end)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "Error in DeleteRangeAll")
+	}
+
+	err = r.HistoryQ.Commit()
+	if err != nil {
+		return errors.Wrap(err, "Error in commit")
 	}
 
 	return nil

@@ -140,12 +140,12 @@ func (h tokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	now := time.Now().UTC()
+	issuedAt := time.Unix(tx.Timebounds().MinTime, 0)
 	claims := jwt.Claims{
 		Issuer:   h.JWTIssuer,
 		Subject:  clientAccountID,
-		IssuedAt: jwt.NewNumericDate(now),
-		Expiry:   jwt.NewNumericDate(now.Add(h.JWTExpiresIn)),
+		IssuedAt: jwt.NewNumericDate(issuedAt),
+		Expiry:   jwt.NewNumericDate(issuedAt.Add(h.JWTExpiresIn)),
 	}
 	tokenStr, err := jwt.Signed(jws).Claims(claims).CompactSerialize()
 	if err != nil {
