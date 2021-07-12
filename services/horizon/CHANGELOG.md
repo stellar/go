@@ -3,6 +3,11 @@
 All notable changes to this project will be documented in this
 file. This project adheres to [Semantic Versioning](http://semver.org/).
 
+## v2.6.1
+
+**Upgrading to this version from <= v2.5.2 will trigger a state rebuild. During this process (which will take at least 10 minutes), Horizon will not ingest new ledgers.**
+
+* Fix bug introduced in v2.6.0 ([#3737](https://github.com/stellar/go/pull/3737)), preventing usage of `horizon db migrate up/down/redo` commands. ([#3762](https://github.com/stellar/go/pull/3762))
 
 ## v2.6.0
 
