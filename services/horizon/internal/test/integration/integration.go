@@ -81,8 +81,8 @@ type Test struct {
 	horizonConfig horizon.Config
 	environment   *EnvironmentManager
 
-	hclient *sdk.Client
-	cclient *stellarcore.Client
+	horizonClient *sdk.Client
+	coreClient    *stellarcore.Client
 
 	app           *horizon.App
 	appStopped    chan struct{}
@@ -94,10 +94,10 @@ type Test struct {
 
 func NewTestForRemoteHorizon(t *testing.T, horizonURL string, passPhrase string, masterKey *keypair.Full) *Test {
 	return &Test{
-		t:          t,
-		hclient:    &sdk.Client{HorizonURL: horizonURL},
-		masterKey:  masterKey,
-		passPhrase: passPhrase,
+		t:             t,
+		horizonClient: &sdk.Client{HorizonURL: horizonURL},
+		masterKey:     masterKey,
+		passPhrase:    passPhrase,
 	}
 }
 
@@ -125,7 +125,7 @@ func NewTest(t *testing.T, config Config) *Test {
 
 	// Only run Stellar Core container and its dependencies.
 	i.runComposeCommand("up", "--detach", "--quiet-pull", "--no-color", "core")
-	i.cclient = &stellarcore.Client{URL: "http://localhost:" + strconv.Itoa(stellarCorePort)}
+	i.coreClient = &stellarcore.Client{URL: "http://localhost:" + strconv.Itoa(stellarCorePort)}
 	i.waitForCore()
 	i.prepareShutdownHandlers()
 
@@ -283,7 +283,7 @@ func (i *Test) StartHorizon() error {
 	captiveCoreConfigPath := i.coreConfig.configPath
 
 	defaultArgs := map[string]string{
-		"stellar-core-url": i.cclient.URL,
+		"stellar-core-url": i.coreClient.URL,
 		"stellar-core-db-url": fmt.Sprintf(
 			"postgres://postgres:%s@%s:%d/stellar?sslmode=disable",
 			stellarCorePostgresPassword,
@@ -341,7 +341,7 @@ func (i *Test) StartHorizon() error {
 		horizonPort = port
 	}
 	i.horizonConfig = *config
-	i.hclient = &sdk.Client{
+	i.horizonClient = &sdk.Client{
 		HorizonURL: fmt.Sprintf("http://%s:%s", hostname, horizonPort),
 	}
 
@@ -364,7 +364,7 @@ func (i *Test) waitForCore() {
 	i.t.Log("Waiting for core to be up...")
 	for t := 30 * time.Second; t >= 0; t -= time.Second {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-		_, err := i.cclient.Info(ctx)
+		_, err := i.coreClient.Info(ctx)
 		cancel()
 		if err != nil {
 			i.t.Logf("could not obtain info response: %v", err)
@@ -376,7 +376,7 @@ func (i *Test) waitForCore() {
 
 	{
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-		err := i.cclient.Upgrade(ctx, int(i.config.ProtocolVersion))
+		err := i.coreClient.Upgrade(ctx, int(i.config.ProtocolVersion))
 		cancel()
 		if err != nil {
 			i.t.Fatalf("could not upgrade protocol: %v", err)
@@ -385,7 +385,7 @@ func (i *Test) waitForCore() {
 
 	for t := 0; t < 5; t++ {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-		info, err := i.cclient.Info(ctx)
+		info, err := i.coreClient.Info(ctx)
 		cancel()
 		if err != nil || !info.IsSynced() {
 			i.t.Logf("Core is still not synced: %v %v", err, info)
@@ -401,7 +401,7 @@ func (i *Test) waitForCore() {
 func (i *Test) WaitForHorizon() {
 	for t := 200; t >= 0; t -= 1 {
 		i.t.Log("Waiting for ingestion and protocol upgrade...")
-		root, err := i.hclient.Root()
+		root, err := i.horizonClient.Root()
 		if err != nil {
 			i.t.Logf("could not obtain root response %v", err)
 			time.Sleep(time.Second)
@@ -426,7 +426,7 @@ func (i *Test) WaitForHorizon() {
 
 // Client returns horizon.Client connected to started Horizon instance.
 func (i *Test) Client() *sdk.Client {
-	return i.hclient
+	return i.horizonClient
 }
 
 // Horizon returns the horizon.App instance for the current integration test
@@ -500,7 +500,7 @@ func (i *Test) CreateAccounts(count int, initialBalance string) ([]*keypair.Full
 	request := sdk.AccountRequest{AccountID: master.Address()}
 	account, err := client.AccountDetail(request)
 	if err == nil {
-		seq, err = strconv.ParseInt(account.Sequence, 10, 64) // why is this a string?
+		seq, err = strconv.ParseInt(account.Sequence, 10, 64) // str -> bigint
 		panicIf(err)
 	}
 
@@ -664,7 +664,7 @@ func (i *Test) CreateSignedTransaction(
 func (i *Test) GetCurrentCoreLedgerSequence() (int, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	info, err := i.cclient.Info(ctx)
+	info, err := i.coreClient.Info(ctx)
 	if err != nil {
 		return 0, err
 	}
