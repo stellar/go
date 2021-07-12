@@ -74,7 +74,7 @@ func migrate(dir schema.MigrateDir, count int) {
 		log.Fatal(err)
 	}
 
-	numMigrationsRun, err := schema.Migrate(dbConn.DB.DB, schema.MigrateRedo, count)
+	numMigrationsRun, err := schema.Migrate(dbConn.DB.DB, dir, count)
 	if err != nil {
 		log.Fatal(err)
 	}
