@@ -306,7 +306,7 @@ func (i *Test) StartHorizon() error {
 		"per-hour-rate-limit":  "0", // disable rate limiting
 	}
 
-	merged := mergeMaps(defaultArgs, i.config.HorizonParameters)
+	merged := MergeMaps(defaultArgs, i.config.HorizonParameters)
 	args := mapToFlags(merged)
 
 	// initialize core arguments
@@ -748,9 +748,9 @@ func findDockerComposePath() string {
 	return filepath.Join(current, "services", "horizon", "docker")
 }
 
-// mergeMaps returns a new map which contains the keys and values of *all* input
+// MergeMaps returns a new map which contains the keys and values of *all* input
 // maps, overwriting earlier values with later values on duplicate keys.
-func mergeMaps(maps ...map[string]string) map[string]string {
+func MergeMaps(maps ...map[string]string) map[string]string {
 	merged := map[string]string{}
 	for _, m := range maps {
 		for k, v := range m {
