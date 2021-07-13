@@ -208,7 +208,7 @@ func (s *ProcessorRunner) RunHistoryArchiveIngestion(
 
 		defer changeReader.Close()
 
-		log.WithField("ledger", checkpointLedger).
+		log.WithField("sequence", checkpointLedger).
 			Info("Processing entries from History Archive Snapshot")
 
 		err = processors.StreamChanges(s.ctx, changeProcessor, newloggingChangeReader(

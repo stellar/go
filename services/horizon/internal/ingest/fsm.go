@@ -249,14 +249,14 @@ func (b buildState) run(s *system) (transition, error) {
 			return nextFailState, err
 		}
 
-		log.WithField("ledger", b.checkpointLedger).Info("Waiting for ledger to be available in the backend...")
+		log.WithField("sequence", b.checkpointLedger).Info("Waiting for ledger to be available in the backend...")
 		startTime := time.Now()
 		ledgerCloseMeta, err = s.ledgerBackend.GetLedger(s.ctx, b.checkpointLedger)
 		if err != nil {
 			return nextFailState, errors.Wrap(err, "error getting ledger blocking")
 		}
 		log.WithFields(logpkg.F{
-			"ledger":   b.checkpointLedger,
+			"sequence": b.checkpointLedger,
 			"duration": time.Since(startTime).Seconds(),
 		}).Info("Ledger returned from the backend")
 	}
@@ -313,7 +313,7 @@ func (b buildState) run(s *system) (transition, error) {
 	}
 
 	log.WithFields(logpkg.F{
-		"ledger": b.checkpointLedger,
+		"sequence": b.checkpointLedger,
 	}).Info("Processing state")
 	startTime := time.Now()
 
@@ -343,7 +343,7 @@ func (b buildState) run(s *system) (transition, error) {
 	log.
 		WithFields(stats.Map()).
 		WithFields(logpkg.F{
-			"ledger":   b.checkpointLedger,
+			"sequence": b.checkpointLedger,
 			"duration": time.Since(startTime).Seconds(),
 		}).
 		Info("Processed state")
@@ -377,14 +377,14 @@ func (r resumeState) run(s *system) (transition, error) {
 		return start(), err
 	}
 
-	log.WithField("ledger", ingestLedger).Info("Waiting for ledger to be available in the backend...")
+	log.WithField("sequence", ingestLedger).Info("Waiting for ledger to be available in the backend...")
 	startTime := time.Now()
 	ledgerCloseMeta, err := s.ledgerBackend.GetLedger(s.ctx, ingestLedger)
 	if err != nil {
 		return start(), errors.Wrap(err, "error getting ledger blocking")
 	}
 	log.WithFields(logpkg.F{
-		"ledger":   ingestLedger,
+		"sequence": ingestLedger,
 		"duration": time.Since(startTime).Seconds(),
 	}).Info("Ledger returned from the backend")
 
@@ -570,7 +570,7 @@ func (h historyRangeState) run(s *system) (transition, error) {
 	for cur := h.fromLedger; cur <= h.toLedger; cur++ {
 		var ledgerCloseMeta xdr.LedgerCloseMeta
 
-		log.WithField("ledger", cur).Info("Waiting for ledger to be available in the backend...")
+		log.WithField("sequence", cur).Info("Waiting for ledger to be available in the backend...")
 		startTime := time.Now()
 
 		ledgerCloseMeta, err = s.ledgerBackend.GetLedger(s.ctx, cur)
@@ -586,7 +586,7 @@ func (h historyRangeState) run(s *system) (transition, error) {
 		}
 
 		log.WithFields(logpkg.F{
-			"ledger":   cur,
+			"sequence": cur,
 			"duration": time.Since(startTime).Seconds(),
 		}).Info("Ledger returned from the backend")
 
@@ -619,7 +619,7 @@ func runTransactionProcessorsOnLedger(s *system, ledger xdr.LedgerCloseMeta) err
 	log.
 		WithFields(ledgerTransactionStats.Map()).
 		WithFields(logpkg.F{
-			"sequence": ledger,
+			"sequence": ledger.LedgerSequence(),
 			"duration": time.Since(startTime).Seconds(),
 			"state":    false,
 			"ledger":   true,
@@ -828,7 +828,7 @@ func (v verifyRangeState) run(s *system) (transition, error) {
 		return stop(), err
 	}
 
-	log.WithField("ledger", v.fromLedger).Info("Preparing range")
+	log.WithField("sequence", v.fromLedger).Info("Preparing range")
 	startTime := time.Now()
 
 	err = s.ledgerBackend.PrepareRange(s.ctx, ledgerbackend.BoundedRange(v.fromLedger, v.toLedger))
@@ -837,11 +837,11 @@ func (v verifyRangeState) run(s *system) (transition, error) {
 	}
 
 	log.WithFields(logpkg.F{
-		"ledger":   v.fromLedger,
+		"sequence": v.fromLedger,
 		"duration": time.Since(startTime).Seconds(),
 	}).Info("Range prepared")
 
-	log.WithField("ledger", v.fromLedger).Info("Processing state")
+	log.WithField("sequence", v.fromLedger).Info("Processing state")
 	startTime = time.Now()
 
 	ledgerCloseMeta, err := s.ledgerBackend.GetLedger(s.ctx, v.fromLedger)
@@ -866,7 +866,7 @@ func (v verifyRangeState) run(s *system) (transition, error) {
 	log.
 		WithFields(stats.Map()).
 		WithFields(logpkg.F{
-			"ledger":   v.fromLedger,
+			"sequence": v.fromLedger,
 			"duration": time.Since(startTime).Seconds(),
 		}).
 		Info("Processed state")

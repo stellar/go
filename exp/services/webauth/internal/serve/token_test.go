@@ -121,12 +121,118 @@ func TestToken_formInputSuccess(t *testing.T) {
 	assert.Equal(t, "https://example.com", claims["iss"])
 	assert.Equal(t, account.Address(), claims["sub"])
 	assert.Equal(t, account.Address(), claims["sub"])
+	assert.Equal(t, float64(tx.Timebounds().MinTime), claims["iat"])
 	iat := time.Unix(int64(claims["iat"].(float64)), 0)
-	exp := time.Unix(int64(claims["exp"].(float64)), 0)
-	assert.True(t, iat.Before(time.Now()))
-	assert.True(t, exp.After(time.Now()))
-	assert.True(t, time.Now().Add(time.Minute).After(exp))
-	assert.Equal(t, exp.Sub(iat), time.Minute)
+	assert.Equal(t, float64(iat.Add(h.JWTExpiresIn).Unix()), claims["exp"])
+}
+
+func TestToken_formInputSuccess_jwtHeaderAndPayloadAreDeterministic(t *testing.T) {
+	serverKey := keypair.MustRandom()
+	t.Logf("Server signing key: %s", serverKey.Address())
+
+	jwtPrivateKey, err := jwtkey.GenerateKey()
+	require.NoError(t, err)
+	jwk := jose.JSONWebKey{Key: jwtPrivateKey, Algorithm: string(jose.ES256)}
+
+	account := keypair.MustRandom()
+	t.Logf("Client account: %s", account.Address())
+
+	domain := "webauth.example.com"
+	homeDomain := "example.com"
+	tx, err := txnbuild.BuildChallengeTx(
+		serverKey.Seed(),
+		account.Address(),
+		domain,
+		homeDomain,
+		network.TestNetworkPassphrase,
+		time.Minute,
+	)
+	require.NoError(t, err)
+
+	chTx, err := tx.Base64()
+	require.NoError(t, err)
+	t.Logf("Tx: %s", chTx)
+
+	tx, err = tx.Sign(network.TestNetworkPassphrase, account)
+	require.NoError(t, err)
+	txSigned, err := tx.Base64()
+	require.NoError(t, err)
+	t.Logf("Signed: %s", txSigned)
+
+	horizonClient := &horizonclient.MockClient{}
+	horizonClient.
+		On("AccountDetail", horizonclient.AccountRequest{AccountID: account.Address()}).
+		Return(
+			horizon.Account{
+				Thresholds: horizon.AccountThresholds{
+					LowThreshold:  1,
+					MedThreshold:  10,
+					HighThreshold: 100,
+				},
+				Signers: []horizon.Signer{
+					{
+						Key:    account.Address(),
+						Weight: 100,
+					},
+				}},
+			nil,
+		)
+
+	h := tokenHandler{
+		Logger:            supportlog.DefaultLogger,
+		HorizonClient:     horizonClient,
+		NetworkPassphrase: network.TestNetworkPassphrase,
+		SigningAddresses:  []*keypair.FromAddress{serverKey.FromAddress()},
+		JWK:               jwk,
+		JWTIssuer:         "https://example.com",
+		JWTExpiresIn:      time.Minute,
+		Domain:            domain,
+		HomeDomains:       []string{homeDomain},
+	}
+
+	body := url.Values{}
+	body.Set("transaction", txSigned)
+	r := httptest.NewRequest("POST", "/", strings.NewReader(body.Encode()))
+	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, r)
+	resp := w.Result()
+
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
+
+	res1 := struct {
+		Token string `json:"token"`
+	}{}
+	err = json.NewDecoder(resp.Body).Decode(&res1)
+	require.NoError(t, err)
+
+	t.Logf("JWT 1: %s", res1.Token)
+
+	// let's replay the transaction to make sure the returned JWT remains the same
+	time.Sleep(time.Second)
+	r = httptest.NewRequest("POST", "/", strings.NewReader(body.Encode()))
+	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	w = httptest.NewRecorder()
+	h.ServeHTTP(w, r)
+	resp = w.Result()
+
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
+
+	res2 := struct {
+		Token string `json:"token"`
+	}{}
+	err = json.NewDecoder(resp.Body).Decode(&res2)
+	require.NoError(t, err)
+
+	t.Logf("JWT 2: %s", res2.Token)
+
+	jwtParts1 := strings.Split(res1.Token, ".")
+	require.Len(t, jwtParts1, 3)
+	jwtParts2 := strings.Split(res2.Token, ".")
+	require.Len(t, jwtParts2, 3)
+	require.Equal(t, jwtParts1[:2], jwtParts2[:2])
 }
 
 func TestToken_jsonInputSuccess(t *testing.T) {
@@ -229,12 +335,9 @@ func TestToken_jsonInputSuccess(t *testing.T) {
 	assert.Equal(t, "https://example.com", claims["iss"])
 	assert.Equal(t, account.Address(), claims["sub"])
 	assert.Equal(t, account.Address(), claims["sub"])
+	assert.Equal(t, float64(tx.Timebounds().MinTime), claims["iat"])
 	iat := time.Unix(int64(claims["iat"].(float64)), 0)
-	exp := time.Unix(int64(claims["exp"].(float64)), 0)
-	assert.True(t, iat.Before(time.Now()))
-	assert.True(t, exp.After(time.Now()))
-	assert.True(t, time.Now().Add(time.Minute).After(exp))
-	assert.Equal(t, exp.Sub(iat), time.Minute)
+	assert.Equal(t, float64(iat.Add(h.JWTExpiresIn).Unix()), claims["exp"])
 }
 
 // This test ensures that when multiple server keys are configured on the
@@ -361,12 +464,9 @@ func TestToken_jsonInputValidRotatingServerSigners(t *testing.T) {
 			claims := token.Claims.(jwt.MapClaims)
 			assert.Equal(t, "https://example.com", claims["iss"])
 			assert.Equal(t, account.Address(), claims["sub"])
+			assert.Equal(t, float64(tx.Timebounds().MinTime), claims["iat"])
 			iat := time.Unix(int64(claims["iat"].(float64)), 0)
-			exp := time.Unix(int64(claims["exp"].(float64)), 0)
-			assert.True(t, iat.Before(time.Now()))
-			assert.True(t, exp.After(time.Now()))
-			assert.True(t, time.Now().Add(time.Minute).After(exp))
-			assert.Equal(t, exp.Sub(iat), time.Minute)
+			assert.Equal(t, float64(iat.Add(h.JWTExpiresIn).Unix()), claims["exp"])
 		})
 	}
 }
@@ -480,12 +580,9 @@ func TestToken_jsonInputValidMultipleSigners(t *testing.T) {
 	claims := token.Claims.(jwt.MapClaims)
 	assert.Equal(t, "https://example.com", claims["iss"])
 	assert.Equal(t, account.Address(), claims["sub"])
+	assert.Equal(t, float64(tx.Timebounds().MinTime), claims["iat"])
 	iat := time.Unix(int64(claims["iat"].(float64)), 0)
-	exp := time.Unix(int64(claims["exp"].(float64)), 0)
-	assert.True(t, iat.Before(time.Now()))
-	assert.True(t, exp.After(time.Now()))
-	assert.True(t, time.Now().Add(time.Minute).After(exp))
-	assert.Equal(t, exp.Sub(iat), time.Minute)
+	assert.Equal(t, float64(iat.Add(h.JWTExpiresIn).Unix()), claims["exp"])
 }
 
 func TestToken_jsonInputNotEnoughWeight(t *testing.T) {
@@ -756,12 +853,9 @@ func TestToken_jsonInputAccountNotExistSuccess(t *testing.T) {
 	assert.Equal(t, "https://example.com", claims["iss"])
 	assert.Equal(t, account.Address(), claims["sub"])
 	assert.Equal(t, account.Address(), claims["sub"])
+	assert.Equal(t, float64(tx.Timebounds().MinTime), claims["iat"])
 	iat := time.Unix(int64(claims["iat"].(float64)), 0)
-	exp := time.Unix(int64(claims["exp"].(float64)), 0)
-	assert.True(t, iat.Before(time.Now()))
-	assert.True(t, exp.After(time.Now()))
-	assert.True(t, time.Now().Add(time.Minute).After(exp))
-	assert.Equal(t, exp.Sub(iat), time.Minute)
+	assert.Equal(t, float64(iat.Add(h.JWTExpiresIn).Unix()), claims["exp"])
 }
 
 func TestToken_jsonInputAccountNotExistFail(t *testing.T) {
@@ -1028,6 +1122,9 @@ func TestToken_jsonInputNoWebAuthDomainSuccess(t *testing.T) {
 
 	domain := "webauth.example.com"
 	homeDomain := "example.com"
+	now := time.Now().UTC()
+	txMinTimebounds := now.Unix()
+	txMaxTimebounds := now.Add(time.Second * 60).Unix()
 	tx, err := txnbuild.NewTransaction(
 		txnbuild.TransactionParams{
 			SourceAccount:        &txnbuild.SimpleAccount{AccountID: serverKey.Address()},
@@ -1041,7 +1138,7 @@ func TestToken_jsonInputNoWebAuthDomainSuccess(t *testing.T) {
 			},
 			BaseFee:    txnbuild.MinBaseFee,
 			Memo:       nil,
-			Timebounds: txnbuild.NewTimeout(300),
+			Timebounds: txnbuild.NewTimebounds(txMinTimebounds, txMaxTimebounds),
 		},
 	)
 	require.NoError(t, err)
@@ -1121,12 +1218,9 @@ func TestToken_jsonInputNoWebAuthDomainSuccess(t *testing.T) {
 	assert.Equal(t, "https://example.com", claims["iss"])
 	assert.Equal(t, account.Address(), claims["sub"])
 	assert.Equal(t, account.Address(), claims["sub"])
+	assert.Equal(t, float64(txMinTimebounds), claims["iat"])
 	iat := time.Unix(int64(claims["iat"].(float64)), 0)
-	exp := time.Unix(int64(claims["exp"].(float64)), 0)
-	assert.True(t, iat.Before(time.Now()))
-	assert.True(t, exp.After(time.Now()))
-	assert.True(t, time.Now().Add(time.Minute).After(exp))
-	assert.Equal(t, exp.Sub(iat), time.Minute)
+	assert.Equal(t, float64(iat.Add(h.JWTExpiresIn).Unix()), claims["exp"])
 }
 
 func TestToken_jsonInputInvalidWebAuthDomainFail(t *testing.T) {

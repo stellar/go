@@ -25,7 +25,7 @@ type System struct {
 // database for now ledgers and ingesting data into the horizon database.
 func New(retention uint, dbSession db.SessionInterface, ledgerState *ledger.State) *System {
 	r := &System{
-		HistoryQ:       &history.Q{dbSession},
+		HistoryQ:       &history.Q{dbSession.Clone()},
 		RetentionCount: retention,
 		ledgerState:    ledgerState,
 	}

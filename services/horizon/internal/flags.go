@@ -8,10 +8,10 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/stellar/go/ingest/ledgerbackend"
-
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
+
+	"github.com/stellar/go/ingest/ledgerbackend"
 	"github.com/stellar/go/services/horizon/internal/db2/schema"
 	apkg "github.com/stellar/go/support/app"
 	support "github.com/stellar/go/support/config"
@@ -35,7 +35,7 @@ const (
 	// CaptiveCoreConfigPathName is the command line flag for configuring the path to the captive core configuration file
 	CaptiveCoreConfigPathName = "captive-core-config-path"
 
-	captiveCoreMigrationHint = "If you are migrating from Horizon 1.x.y read the Migration Guide here: https://github.com/stellar/go/blob/master/services/horizon/internal/docs/captive_core.md"
+	captiveCoreMigrationHint = "If you are migrating from Horizon 1.x.y, start with the Migration Guide here: https://developers.stellar.org/docs/run-api-server/migrating/"
 )
 
 // validateBothOrNeither ensures that both options are provided, if either is provided.
@@ -192,12 +192,12 @@ func Flags() (*Config, support.ConfigOptions) {
 			ConfigKey: &config.CaptiveCoreStoragePath,
 		},
 		&support.ConfigOption{
-			Name:        "captive-core-reuse-storage-dir",
+			Name:        "captive-core-reuse-storage-path",
 			OptType:     types.Bool,
 			Required:    false,
 			FlagDefault: false,
-			Usage:       "determines if storage-dir should be reused, disabled by default because of Stellar-Core 17.1.0 issue",
-			ConfigKey:   &config.CaptiveCoreReuseStorageDir,
+			Usage:       "determines if storage-path should be reused, disabled by default because of Stellar-Core 17.1.0 issue",
+			ConfigKey:   &config.CaptiveCoreReuseStoragePath,
 		},
 		&support.ConfigOption{
 			Name:           "captive-core-peer-port",

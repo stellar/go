@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this
 file. This project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+
+* Add a feature flag `--captive-core-reuse-storage-path`/`CAPTIVE_CORE_REUSE_STORAGE_PATH` that will reuse Captive Core's storage path for bucket files when applicable for better performance ([3750](https://github.com/stellar/go/pull/3750)).
+
 ## v2.6.1
 
 **Upgrading to this version from <= v2.5.2 will trigger a state rebuild. During this process (which will take at least 10 minutes), Horizon will not ingest new ledgers.**
@@ -18,6 +22,7 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 * Fix a bug in `fee_account_muxed` and `fee_account_muxed_id` fields (the fields were incorrectly populated with the source account details). ([3735](https://github.com/stellar/go/pull/3735))
 * Validate ledger range when calling `horizon db reingest range` so that we respond with an error when attempting to ingest ledgers which are not available in the history archives. ([3738](https://github.com/stellar/go/pull/3738))
 * Improve performance of transaction submission. ([3563](https://github.com/stellar/go/pull/3563))
+
 
 ## v2.5.2
 
