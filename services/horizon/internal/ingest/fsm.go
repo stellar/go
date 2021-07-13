@@ -754,7 +754,8 @@ func (h reingestHistoryRangeState) run(s *system) (transition, error) {
 		}
 
 		// Only prepare the range after checking the bounds to enable an early error return
-		if t, err := prepareRange(); err != nil {
+		var t transition
+		if t, err = prepareRange(); err != nil {
 			return t, err
 		}
 
