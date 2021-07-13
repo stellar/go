@@ -66,11 +66,12 @@ func main() {
 			OptType:     types.String,
 			Required:    true,
 			FlagDefault: "",
-			CustomSetValue: func(co *config.ConfigOption) {
+			CustomSetValue: func(co *config.ConfigOption) error {
 				stringOfUrls := viper.GetString(co.Name)
 				urlStrings := strings.Split(stringOfUrls, ",")
 
 				*(co.ConfigKey.(*[]string)) = urlStrings
+				return nil
 			},
 			Usage: "comma-separated list of stellar history archives to connect with",
 		},
@@ -79,12 +80,13 @@ func main() {
 			ConfigKey:   &logLevel,
 			OptType:     types.String,
 			FlagDefault: "info",
-			CustomSetValue: func(co *config.ConfigOption) {
+			CustomSetValue: func(co *config.ConfigOption) error {
 				ll, err := logrus.ParseLevel(viper.GetString(co.Name))
 				if err != nil {
-					logger.Fatalf("Could not parse log-level: %v", viper.GetString(co.Name))
+					return fmt.Errorf("Could not parse log-level: %v", viper.GetString(co.Name))
 				}
 				*(co.ConfigKey.(*logrus.Level)) = ll
+				return nil
 			},
 			Usage: "minimum log severity (debug, info, warn, error) to log",
 		},

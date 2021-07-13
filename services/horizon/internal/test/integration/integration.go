@@ -268,8 +268,10 @@ func (i *Test) StartHorizon() error {
 		Use:   "horizon",
 		Short: "Client-facing API server for the Stellar network",
 		Long:  "Client-facing API server for the Stellar network.",
-		Run: func(cmd *cobra.Command, args []string) {
-			i.app = horizon.NewAppFromFlags(config, configOpts)
+		RunE: func(cmd *cobra.Command, args []string) error {
+			var err error
+			i.app, err = horizon.NewAppFromFlags(config, configOpts)
+			return err
 		},
 	}
 
