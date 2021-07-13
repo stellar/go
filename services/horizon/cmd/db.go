@@ -74,7 +74,7 @@ func migrate(dir schema.MigrateDir, count int) {
 		log.Fatal(err)
 	}
 
-	numMigrationsRun, err := schema.Migrate(dbConn.DB.DB, schema.MigrateRedo, count)
+	numMigrationsRun, err := schema.Migrate(dbConn.DB.DB, dir, count)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -99,7 +99,7 @@ var dbMigrateDownCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		count, err := strconv.Atoi(args[1])
+		count, err := strconv.Atoi(args[0])
 		if err != nil {
 			log.Println(err)
 			cmd.Usage()
@@ -123,7 +123,7 @@ var dbMigrateRedoCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		count, err := strconv.Atoi(args[1])
+		count, err := strconv.Atoi(args[0])
 		if err != nil {
 			log.Println(err)
 			cmd.Usage()
