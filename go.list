@@ -1,11 +1,5 @@
-github.com/stellar/go
 cloud.google.com/go v0.34.0
 firebase.google.com/go v3.12.0+incompatible
-github.com/BurntSushi/toml v0.3.1
-github.com/Masterminds/squirrel v1.5.0
-github.com/Microsoft/go-winio v0.4.14
-github.com/Shopify/sarama v1.19.0
-github.com/Shopify/toxiproxy v2.1.4+incompatible
 github.com/adjust/goautoneg v0.0.0-20150426214442-d788f35a0315
 github.com/ajg/form v0.0.0-20160822230020-523a5da1a92f
 github.com/alecthomas/template v0.0.0-20160405071501-a0175ee3bccc
@@ -14,6 +8,7 @@ github.com/apache/thrift v0.12.0
 github.com/asaskevich/govalidator v0.0.0-20180319081651-7d2e70ef918f
 github.com/aws/aws-sdk-go v1.25.25
 github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973
+github.com/BurntSushi/toml v0.3.1
 github.com/client9/misspell v0.3.4
 github.com/davecgh/go-spew v1.1.1
 github.com/dgrijalva/jwt-go v3.2.0+incompatible
@@ -25,27 +20,27 @@ github.com/fatih/structs v1.0.0
 github.com/fsnotify/fsnotify v1.4.7
 github.com/gavv/monotime v0.0.0-20161010190848-47d58efa6955
 github.com/getsentry/raven-go v0.0.0-20160805001729-c9d3cc542ad1
+github.com/gobuffalo/packr v1.12.1
 github.com/go-chi/chi v4.0.3+incompatible
 github.com/go-errors/errors v0.0.0-20150906023321-a41850380601
-github.com/go-kit/kit v0.8.0
-github.com/go-logfmt/logfmt v0.3.0
-github.com/go-sql-driver/mysql v1.4.0
-github.com/go-stack/stack v1.8.0
-github.com/gobuffalo/packr v1.12.1
 github.com/gogo/protobuf v1.2.0
+github.com/go-kit/kit v0.8.0
 github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
 github.com/golang/mock v1.1.1
 github.com/golang/protobuf v1.3.1
 github.com/golang/snappy v0.0.0-20180518054509-2e65f85255db
+github.com/go-logfmt/logfmt v0.3.0
+github.com/googleapis/gax-go v2.0.2+incompatible
 github.com/google/go-cmp v0.2.0
 github.com/google/go-querystring v0.0.0-20160401233042-9235644dd9e5
 github.com/google/martian v2.1.0+incompatible
 github.com/google/uuid v1.2.0
-github.com/googleapis/gax-go v2.0.2+incompatible
 github.com/gopherjs/gopherjs v0.0.0-20181017120253-0766667cb4d1
 github.com/gorilla/context v1.1.1
 github.com/gorilla/mux v1.6.2
 github.com/gorilla/schema v1.1.0
+github.com/go-sql-driver/mysql v1.4.0
+github.com/go-stack/stack v1.8.0
 github.com/graph-gophers/graphql-go v0.0.0-20190225005345-3e8838d4614c
 github.com/guregu/null v2.1.3-0.20151024101046-79c5bd36b615+incompatible
 github.com/hashicorp/golang-lru v0.5.0
@@ -72,10 +67,12 @@ github.com/lann/ps v0.0.0-20150810152359-62de8c46ede0
 github.com/lib/pq v1.2.0
 github.com/magiconair/properties v1.5.4
 github.com/manucorporat/sse v0.0.0-20160126180136-ee05b128a739
+github.com/Masterminds/squirrel v1.5.0
 github.com/mattn/go-colorable v0.1.2
 github.com/mattn/go-isatty v0.0.8
 github.com/mattn/go-sqlite3 v1.9.0
 github.com/matttproud/golang_protobuf_extensions v1.0.1
+github.com/Microsoft/go-winio v0.4.14
 github.com/mitchellh/go-homedir v1.1.0
 github.com/mitchellh/mapstructure v0.0.0-20150613213606-2caf8efc9366
 github.com/moul/http2curl v0.0.0-20161031194548-4e24498b31db
@@ -98,6 +95,8 @@ github.com/rs/xhandler v0.0.0-20160618193221-ed27b6fd6521
 github.com/rubenv/sql-migrate v0.0.0-20190717103323-87ce952f7079
 github.com/segmentio/go-loggly v0.5.1-0.20171222203950-eb91657e62b2
 github.com/sergi/go-diff v0.0.0-20161205080420-83532ca1c1ca
+github.com/Shopify/sarama v1.19.0
+github.com/Shopify/toxiproxy v2.1.4+incompatible
 github.com/shurcooL/httpfs v0.0.0-20190707220628-8d4bc4ba7749
 github.com/sirupsen/logrus v1.4.1
 github.com/smartystreets/assertions v0.0.0-20180927180507-b2de0cb4f26d
@@ -107,6 +106,7 @@ github.com/spf13/cobra v0.0.0-20160830174925-9c28e4bbd74e
 github.com/spf13/jwalterweatherman v0.0.0-20141219030609-3d60171a6431
 github.com/spf13/pflag v0.0.0-20161005214240-4bd69631f475
 github.com/spf13/viper v0.0.0-20150621231900-db7ff930a189
+github.com/stellar/go
 github.com/stellar/go-xdr v0.0.0-20201028102745-f80a23dac78a
 github.com/stellar/throttled v2.2.3-0.20190823235211-89d75816f59d+incompatible
 github.com/stretchr/objx v0.1.1
@@ -123,7 +123,6 @@ github.com/yudai/gojsondiff v0.0.0-20170107030110-7b1b7adf999d
 github.com/yudai/golcs v0.0.0-20150405163532-d1c525dea8ce
 github.com/yudai/pp v2.0.1+incompatible
 github.com/ziutek/mymysql v1.5.4
-go.opencensus.io v0.20.1
 golang.org/x/crypto v0.0.0-20191112222119-e1110fd1c708
 golang.org/x/exp v0.0.0-20190121172915-509febef88a4
 golang.org/x/lint v0.0.0-20190301231843-5614ed5bae6f
@@ -137,6 +136,7 @@ google.golang.org/api v0.3.1
 google.golang.org/appengine v1.6.1
 google.golang.org/genproto v0.0.0-20190307195333-5fe7a883aa19
 google.golang.org/grpc v1.19.0
+go.opencensus.io v0.20.1
 gopkg.in/alecthomas/kingpin.v2 v2.2.6
 gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127
 gopkg.in/fsnotify.v1 v1.4.7
