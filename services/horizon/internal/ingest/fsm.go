@@ -685,6 +685,27 @@ func (h reingestHistoryRangeState) ingestRange(s *system, fromLedger, toLedger u
 	return nil
 }
 
+func (h reingestHistoryRangeState) prepareRange(s *system) (transition, error) {
+	log.WithFields(logpkg.F{
+		"from": h.fromLedger,
+		"to":   h.toLedger,
+	}).Info("Preparing ledger backend to retrieve range")
+	startTime := time.Now()
+
+	err := s.ledgerBackend.PrepareRange(s.ctx, ledgerbackend.BoundedRange(h.fromLedger, h.toLedger))
+	if err != nil {
+		return stop(), errors.Wrap(err, "error preparing range")
+	}
+
+	log.WithFields(logpkg.F{
+		"from":     h.fromLedger,
+		"to":       h.toLedger,
+		"duration": time.Since(startTime).Seconds(),
+	}).Info("Range ready")
+
+	return transition{}, nil
+}
+
 // reingestHistoryRangeState is used as a command to reingest historical data
 func (h reingestHistoryRangeState) run(s *system) (transition, error) {
 	if h.fromLedger == 0 || h.toLedger == 0 ||
@@ -698,33 +719,12 @@ func (h reingestHistoryRangeState) run(s *system) (transition, error) {
 	}
 
 	var startTime time.Time
-	prepareRange := func() (transition, error) {
-		log.WithFields(logpkg.F{
-			"from": h.fromLedger,
-			"to":   h.toLedger,
-		}).Info("Preparing ledger backend to retrieve range")
-		startTime = time.Now()
-
-		err := s.ledgerBackend.PrepareRange(s.ctx, ledgerbackend.BoundedRange(h.fromLedger, h.toLedger))
-		if err != nil {
-			return stop(), errors.Wrap(err, "error preparing range")
-		}
-
-		log.WithFields(logpkg.F{
-			"from":     h.fromLedger,
-			"to":       h.toLedger,
-			"duration": time.Since(startTime).Seconds(),
-		}).Info("Range ready")
-
-		startTime = time.Now()
-
-		return transition{}, nil
-	}
 
 	if h.force {
-		if t, err := prepareRange(); err != nil {
+		if t, err := h.prepareRange(s); err != nil {
 			return t, err
 		}
+		startTime = time.Now()
 
 		if err := s.historyQ.Begin(); err != nil {
 			return stop(), errors.Wrap(err, "Error starting a transaction")
@@ -755,9 +755,10 @@ func (h reingestHistoryRangeState) run(s *system) (transition, error) {
 
 		// Only prepare the range after checking the bounds to enable an early error return
 		var t transition
-		if t, err = prepareRange(); err != nil {
+		if t, err = h.prepareRange(s); err != nil {
 			return t, err
 		}
+		startTime = time.Now()
 
 		for cur := h.fromLedger; cur <= h.toLedger; cur++ {
 			err = func(ledger uint32) error {
