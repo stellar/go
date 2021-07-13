@@ -722,26 +722,29 @@ func (h reingestHistoryRangeState) run(s *system) (transition, error) {
 	}
 
 	if h.force {
-		if err = s.historyQ.Begin(); err != nil {
+		if t, err := prepareRange(); err != nil {
+			return t, err
+		}
+
+		if err := s.historyQ.Begin(); err != nil {
 			return stop(), errors.Wrap(err, "Error starting a transaction")
 		}
 		defer s.historyQ.Rollback()
 
 		// acquire distributed lock so no one else can perform ingestion operations.
-		if _, err = s.historyQ.GetLastLedgerIngest(s.ctx); err != nil {
+		if _, err := s.historyQ.GetLastLedgerIngest(s.ctx); err != nil {
 			return stop(), errors.Wrap(err, getLastIngestedErrMsg)
 		}
 
-		if err = h.ingestRange(s, h.fromLedger, h.toLedger); err != nil {
+		if err := h.ingestRange(s, h.fromLedger, h.toLedger); err != nil {
 			return stop(), err
 		}
 
-		if err = s.historyQ.Commit(); err != nil {
+		if err := s.historyQ.Commit(); err != nil {
 			return stop(), errors.Wrap(err, commitErrMsg)
 		}
 	} else {
-		var lastIngestedLedger uint32
-		lastIngestedLedger, err = s.historyQ.GetLastLedgerIngestNonBlocking(s.ctx)
+		lastIngestedLedger, err := s.historyQ.GetLastLedgerIngestNonBlocking(s.ctx)
 		if err != nil {
 			return stop(), errors.Wrap(err, getLastIngestedErrMsg)
 		}
@@ -780,7 +783,7 @@ func (h reingestHistoryRangeState) run(s *system) (transition, error) {
 		}
 	}
 
-	err = s.historyQ.RebuildTradeAggregationBuckets(s.ctx, h.fromLedger, h.toLedger)
+	err := s.historyQ.RebuildTradeAggregationBuckets(s.ctx, h.fromLedger, h.toLedger)
 	if err != nil {
 		return stop(), errors.Wrap(err, "Error rebuilding trade aggregations")
 	}
