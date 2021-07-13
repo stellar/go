@@ -9,13 +9,13 @@ file. This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## v2.6.1
 
-**Upgrading to this version from <= v2.5.2 will trigger a state rebuild. During this process (which will take at least 10 minutes), Horizon will not ingest new ledgers.**
+**Upgrading to this version from <= v2.1.1 will trigger a state rebuild. During this process (which will take at least 10 minutes), Horizon will not ingest new ledgers.**
 
 * Fix bug introduced in v2.6.0 ([#3737](https://github.com/stellar/go/pull/3737)), preventing usage of `horizon db migrate up/down/redo` commands. ([#3762](https://github.com/stellar/go/pull/3762))
 
 ## v2.6.0
 
-**Upgrading to this version from <= v2.5.2 will trigger a state rebuild. During this process (which will take at least 10 minutes), Horizon will not ingest new ledgers.**
+**Upgrading to this version from <= v2.1.1 will trigger a state rebuild. During this process (which will take at least 10 minutes), Horizon will not ingest new ledgers.**
 
 * Precompute trade aggregations during ingestion to improve performance. Will rebuild the aggregations as part of the database migrations. ([3641](https://github.com/stellar/go/pull/3641) & [3760](https://github.com/stellar/go/pull/3760)).
 * Require `COUNT` param when running `horizon db migrate down COUNT` to prevent accidentally running all downwards migrations. Add `horizon db migrate status` command. ([#3737](https://github.com/stellar/go/pull/3737))
