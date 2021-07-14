@@ -3,6 +3,7 @@ package horizon
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
@@ -11,6 +12,7 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/stellar/go/clients/stellarcore"
 	"github.com/stellar/go/services/horizon/internal/corestate"
@@ -85,7 +87,7 @@ func NewApp(config Config) (*App, error) {
 
 // Serve starts the horizon web server, binding it to a socket, setting up
 // the shutdown signals.
-func (a *App) Serve() {
+func (a *App) Serve() error {
 
 	log.Infof("Starting horizon on :%d (ingest: %v)", a.config.Port, a.config.Ingest)
 
@@ -128,13 +130,14 @@ func (a *App) Serve() {
 
 	err := a.webServer.Serve()
 	if err != nil && err != http.ErrServerClosed {
-		log.Fatal(err)
+		return err
 	}
 
 	wg.Wait()
 	a.CloseDB()
 
 	log.Info("stopped")
+	return nil
 }
 
 // Close cancels the app. It does not close DB connections - use App.CloseDB().
@@ -344,9 +347,9 @@ func (a *App) UpdateFeeStatsState(ctx context.Context) {
 // UpdateStellarCoreInfo updates the value of CoreVersion,
 // CurrentProtocolVersion, and CoreSupportedProtocolVersion from the Stellar
 // core API.
-func (a *App) UpdateStellarCoreInfo(ctx context.Context) {
+func (a *App) UpdateStellarCoreInfo(ctx context.Context) error {
 	if a.config.StellarCoreURL == "" {
-		return
+		return nil
 	}
 
 	core := &stellarcore.Client{
@@ -356,21 +359,21 @@ func (a *App) UpdateStellarCoreInfo(ctx context.Context) {
 	resp, err := core.Info(ctx)
 	if err != nil {
 		log.Warnf("could not load stellar-core info: %s", err)
-		return
+		return nil
 	}
 
 	// Check if NetworkPassphrase is different, if so exit Horizon as it can break the
 	// state of the application.
 	if resp.Info.Network != a.config.NetworkPassphrase {
-		log.Errorf(
+		return fmt.Errorf(
 			"Network passphrase of stellar-core (%s) does not match Horizon configuration (%s). Exiting...",
 			resp.Info.Network,
 			a.config.NetworkPassphrase,
 		)
-		os.Exit(1)
 	}
 
 	a.coreState.Set(resp)
+	return nil
 }
 
 // DeleteUnretainedHistory forwards to the app's reaper.  See
@@ -382,19 +385,22 @@ func (a *App) DeleteUnretainedHistory(ctx context.Context) error {
 // Tick triggers horizon to update all of it's background processes such as
 // transaction submission, metrics, ingestion and reaping.
 func (a *App) Tick(ctx context.Context) error {
-	var wg sync.WaitGroup
+	wg, ctx := errgroup.WithContext(ctx)
 	log.Debug("ticking app")
 
 	// update ledger state, operation fee state, and stellar-core info in parallel
-	wg.Add(3)
-	go func() { a.UpdateLedgerState(ctx); wg.Done() }()
-	go func() { a.UpdateFeeStatsState(ctx); wg.Done() }()
-	go func() { a.UpdateStellarCoreInfo(ctx); wg.Done() }()
+	wg.Go(func() error { a.UpdateLedgerState(ctx); return nil })
+	wg.Go(func() error { a.UpdateFeeStatsState(ctx); return nil })
+	wg.Go(func() error { return a.UpdateStellarCoreInfo(ctx) })
 	wg.Wait()
+	if ctx.Err() != nil {
+		// Failure to launch
+		return ctx.Err()
+	}
 
-	wg.Add(2)
-	go func() { a.reaper.Tick(ctx); wg.Done() }()
-	go func() { a.submitter.Tick(ctx); wg.Done() }()
+	wg, ctx = errgroup.WithContext(ctx)
+	wg.Go(func() error { a.reaper.Tick(ctx); return nil })
+	wg.Go(func() error { a.submitter.Tick(ctx); return nil })
 	wg.Wait()
 
 	log.Debug("finished ticking app")
