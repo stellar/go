@@ -19,10 +19,17 @@ import (
 
 var (
 	defaultSleep = time.Second
-	// ErrReingestRangeConflict indicates that the reingest range overlaps with
-	// horizon's most recently ingested ledger
-	ErrReingestRangeConflict = errors.New("reingest range overlaps with horizon ingestion")
 )
+
+// ErrReingestRangeConflict indicates that the reingest range overlaps with
+// horizon's most recently ingested ledger
+type ErrReingestRangeConflict struct {
+	maximumLedgerSequence uint32
+}
+
+func (e ErrReingestRangeConflict) Error() string {
+	return fmt.Sprintf("reingest range overlaps with horizon ingestion, supplied range shouldn't contain ledger %d", e.maximumLedgerSequence)
+}
 
 type stateMachineNode interface {
 	run(*system) (transition, error)
@@ -678,18 +685,7 @@ func (h reingestHistoryRangeState) ingestRange(s *system, fromLedger, toLedger u
 	return nil
 }
 
-// reingestHistoryRangeState is used as a command to reingest historical data
-func (h reingestHistoryRangeState) run(s *system) (transition, error) {
-	if h.fromLedger == 0 || h.toLedger == 0 ||
-		h.fromLedger > h.toLedger {
-		return stop(), errors.Errorf("invalid range: [%d, %d]", h.fromLedger, h.toLedger)
-	}
-
-	if h.fromLedger == 1 {
-		log.Warn("Ledger 1 is pregenerated and not available, starting from ledger 2.")
-		h.fromLedger = 2
-	}
-
+func (h reingestHistoryRangeState) prepareRange(s *system) (transition, error) {
 	log.WithFields(logpkg.F{
 		"from": h.fromLedger,
 		"to":   h.toLedger,
@@ -707,36 +703,62 @@ func (h reingestHistoryRangeState) run(s *system) (transition, error) {
 		"duration": time.Since(startTime).Seconds(),
 	}).Info("Range ready")
 
-	startTime = time.Now()
+	return transition{}, nil
+}
+
+// reingestHistoryRangeState is used as a command to reingest historical data
+func (h reingestHistoryRangeState) run(s *system) (transition, error) {
+	if h.fromLedger == 0 || h.toLedger == 0 ||
+		h.fromLedger > h.toLedger {
+		return stop(), errors.Errorf("invalid range: [%d, %d]", h.fromLedger, h.toLedger)
+	}
+
+	if h.fromLedger == 1 {
+		log.Warn("Ledger 1 is pregenerated and not available, starting from ledger 2.")
+		h.fromLedger = 2
+	}
+
+	var startTime time.Time
 
 	if h.force {
-		if err = s.historyQ.Begin(); err != nil {
+		if t, err := h.prepareRange(s); err != nil {
+			return t, err
+		}
+		startTime = time.Now()
+
+		if err := s.historyQ.Begin(); err != nil {
 			return stop(), errors.Wrap(err, "Error starting a transaction")
 		}
 		defer s.historyQ.Rollback()
 
 		// acquire distributed lock so no one else can perform ingestion operations.
-		if _, err = s.historyQ.GetLastLedgerIngest(s.ctx); err != nil {
+		if _, err := s.historyQ.GetLastLedgerIngest(s.ctx); err != nil {
 			return stop(), errors.Wrap(err, getLastIngestedErrMsg)
 		}
 
-		if err = h.ingestRange(s, h.fromLedger, h.toLedger); err != nil {
+		if err := h.ingestRange(s, h.fromLedger, h.toLedger); err != nil {
 			return stop(), err
 		}
 
-		if err = s.historyQ.Commit(); err != nil {
+		if err := s.historyQ.Commit(); err != nil {
 			return stop(), errors.Wrap(err, commitErrMsg)
 		}
 	} else {
-		var lastIngestedLedger uint32
-		lastIngestedLedger, err = s.historyQ.GetLastLedgerIngestNonBlocking(s.ctx)
+		lastIngestedLedger, err := s.historyQ.GetLastLedgerIngestNonBlocking(s.ctx)
 		if err != nil {
 			return stop(), errors.Wrap(err, getLastIngestedErrMsg)
 		}
 
 		if lastIngestedLedger > 0 && h.toLedger >= lastIngestedLedger {
-			return stop(), ErrReingestRangeConflict
+			return stop(), ErrReingestRangeConflict{lastIngestedLedger}
 		}
+
+		// Only prepare the range after checking the bounds to enable an early error return
+		var t transition
+		if t, err = h.prepareRange(s); err != nil {
+			return t, err
+		}
+		startTime = time.Now()
 
 		for cur := h.fromLedger; cur <= h.toLedger; cur++ {
 			err = func(ledger uint32) error {
@@ -763,7 +785,7 @@ func (h reingestHistoryRangeState) run(s *system) (transition, error) {
 		}
 	}
 
-	err = s.historyQ.RebuildTradeAggregationBuckets(s.ctx, h.fromLedger, h.toLedger)
+	err := s.historyQ.RebuildTradeAggregationBuckets(s.ctx, h.fromLedger, h.toLedger)
 	if err != nil {
 		return stop(), errors.Wrap(err, "Error rebuilding trade aggregations")
 	}

@@ -353,7 +353,7 @@ func (s *ReingestHistoryRangeStateTestSuite) TestReingestRangeOverlaps() {
 	s.historyQ.On("GetLastLedgerIngestNonBlocking", s.ctx).Return(uint32(190), nil).Once()
 
 	err := s.system.ReingestRange(100, 200, false)
-	s.Assert().Equal(err, ErrReingestRangeConflict)
+	s.Assert().Equal(ErrReingestRangeConflict{190}, err)
 }
 
 func (s *ReingestHistoryRangeStateTestSuite) TestReingestRangeOverlapsAtEnd() {
@@ -363,7 +363,7 @@ func (s *ReingestHistoryRangeStateTestSuite) TestReingestRangeOverlapsAtEnd() {
 	s.historyQ.On("GetLastLedgerIngestNonBlocking", s.ctx).Return(uint32(200), nil).Once()
 
 	err := s.system.ReingestRange(100, 200, false)
-	s.Assert().Equal(err, ErrReingestRangeConflict)
+	s.Assert().Equal(ErrReingestRangeConflict{200}, err)
 }
 
 func (s *ReingestHistoryRangeStateTestSuite) TestClearHistoryFails() {
