@@ -12,6 +12,9 @@ cat stellar-core.cfg
 stellar-core new-db
 
 if [ "$1" = "standalone" ]; then
+  # start a network from scratch
+  FLAGS="--wait-for-consensus"
+
   # initialize history archive for standalone network
   stellar-core new-hist vs
 
@@ -21,5 +24,4 @@ if [ "$1" = "standalone" ]; then
   popd
 fi
 
-# start a network from scratch
-exec stellar-core run --wait-for-consensus
+exec stellar-core run $FLAGS
