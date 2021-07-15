@@ -12,9 +12,6 @@ cat stellar-core.cfg
 stellar-core new-db
 
 if [ "$1" = "standalone" ]; then
-  # start a network from scratch
-  stellar-core force-scp
-
   # initialize history archive for standalone network
   stellar-core new-hist vs
 
@@ -24,4 +21,5 @@ if [ "$1" = "standalone" ]; then
   popd
 fi
 
-exec stellar-core run
+# start a network from scratch
+exec stellar-core run --wait-for-consensus
