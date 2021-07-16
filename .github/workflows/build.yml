@@ -13,7 +13,6 @@ jobs:
       matrix:
         goos: [linux, windows, darwin]
         goarch: ["386", amd64]
-        service: ["federation", "friendbot", "frontier", "keystored", "loadtest"]
         exclude:  
           - goarch: "386"
             goos: darwin 
