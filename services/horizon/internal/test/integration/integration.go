@@ -125,9 +125,9 @@ func NewTest(t *testing.T, config Config) *Test {
 
 	// Only run Stellar Core container and its dependencies.
 	i.runComposeCommand("up", "--detach", "--quiet-pull", "--no-color", "core")
+	i.prepareShutdownHandlers()
 	i.coreClient = &stellarcore.Client{URL: "http://localhost:" + strconv.Itoa(stellarCorePort)}
 	i.waitForCore()
-	i.prepareShutdownHandlers()
 
 	if !config.SkipHorizonStart {
 		if innerErr := i.StartHorizon(); innerErr != nil {
@@ -200,13 +200,13 @@ func (i *Test) runComposeCommand(args ...string) {
 
 func (i *Test) prepareShutdownHandlers() {
 	i.shutdownCalls = append(i.shutdownCalls,
-		i.environment.Restore,
 		func() {
 			if i.app != nil {
 				i.app.Close()
 			}
 			i.runComposeCommand("down", "-v", "--remove-orphans")
 		},
+		i.environment.Restore,
 	)
 
 	// Register cleanup handlers (on panic and ctrl+c) so the containers are
