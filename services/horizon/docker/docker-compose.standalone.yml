@@ -13,9 +13,7 @@ services:
       - "core-db-data:/var/lib/postgresql/data"
 
   core:
-    # to use a specific version of stellar core
-    # image: stellar/stellar-core:$VERSION
-    image: stellar/stellar-core:v17.1.0
+    image: ${CORE_IMAGE:-stellar/stellar-core:v17.1.0}
     depends_on:
       - core-postgres
       - core-upgrade
