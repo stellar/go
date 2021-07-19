@@ -13,9 +13,7 @@ services:
       - "core-db-data:/var/lib/postgresql/data"
 
   core:
-    # to use a specific version of stellar core
-    # image: stellar/stellar-core:$VERSION
-    image: stellar/stellar-core
+    image: ${CORE_IMAGE:-stellar/stellar-core:v17.1.0}
     depends_on:
       - core-postgres
       - core-upgrade
@@ -40,11 +38,11 @@ services:
     volumes:
       - ./captive-core-standalone.cfg:/captive-core-standalone.cfg
 
-  # this container will invoke a request to upgrade stellar core to protocol 15 (by default)
+  # this container will invoke a request to upgrade stellar core to protocol 17 (by default)
   core-upgrade:
     restart: on-failure
     image: curlimages/curl:7.69.1
-    command: ["-v", "-f", "http://host.docker.internal:11626/upgrades?mode=set&upgradetime=1970-01-01T00:00:00Z&protocolversion=${PROTOCOL_VERSION:-15}"]
+    command: ["-v", "-f", "http://host.docker.internal:11626/upgrades?mode=set&upgradetime=1970-01-01T00:00:00Z&protocolversion=${PROTOCOL_VERSION:-17}"]
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
