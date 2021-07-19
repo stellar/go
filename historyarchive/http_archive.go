@@ -25,8 +25,8 @@ func checkResp(r *http.Response) error {
 	if r.StatusCode >= 200 && r.StatusCode < 400 {
 		return nil
 	} else {
-		return fmt.Errorf("Bad HTTP response '%s' for GET '%s'",
-			r.Status, r.Request.URL.String())
+		return fmt.Errorf("Bad HTTP response '%s' for %s '%s'",
+			r.Status, r.Request.Method, r.Request.URL.String())
 	}
 }
 
@@ -38,7 +38,9 @@ func (b *HttpArchiveBackend) GetFile(pth string) (io.ReadCloser, error) {
 		return nil, err
 	}
 	req = req.WithContext(b.ctx)
+	logReq(req)
 	resp, err := b.client.Do(req)
+	logResp(resp)
 	if err != nil {
 		if resp != nil && resp.Body != nil {
 			resp.Body.Close()
@@ -63,7 +65,9 @@ func (b *HttpArchiveBackend) Head(pth string) (*http.Response, error) {
 		return nil, err
 	}
 	req = req.WithContext(b.ctx)
+	logReq(req)
 	resp, err := b.client.Do(req)
+	logResp(resp)
 	if err != nil {
 		return nil, err
 	}

@@ -7,7 +7,7 @@ package historyarchive
 import (
 	"errors"
 	"fmt"
-	"log"
+	log "github.com/sirupsen/logrus"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -385,7 +385,7 @@ func (arch *Archive) CheckBucketsMissing() map[Hash]bool {
 	return missing
 }
 
-func (arch *Archive) ReportMissing(opts *CommandOptions) error {
+func (arch *Archive) ReportMissing(opts *CommandOptions) (bool, error) {
 
 	log.Printf("Examining checkpoint files for gaps")
 	missingCheckpointFiles := arch.CheckCheckpointFilesMissing(opts)
@@ -395,12 +395,16 @@ func (arch *Archive) ReportMissing(opts *CommandOptions) error {
 	missingCheckpoints := false
 	for cat, missing := range missingCheckpointFiles {
 		if !categoryRequired(cat) {
+			if len(missing) > 0 {
+				s := fmtRangeList(missing, arch.checkpointManager)
+				log.Warnf("Missing non-required %s (%d): %s", cat, len(missing), s)
+			}
 			continue
 		}
 		if len(missing) != 0 {
 			s := fmtRangeList(missing, arch.checkpointManager)
 			missingCheckpoints = true
-			log.Printf("Missing %s (%d): %s", cat, len(missing), s)
+			log.Errorf("Missing %s (%d): %s", cat, len(missing), s)
 		}
 	}
 
@@ -409,12 +413,12 @@ func (arch *Archive) ReportMissing(opts *CommandOptions) error {
 	}
 
 	for bucket := range missingBuckets {
-		log.Printf("Missing bucket: %s", bucket)
+		log.Errorf("Missing bucket: %s", bucket)
 	}
 
 	if len(missingBuckets) == 0 {
 		log.Printf("No missing buckets referenced in range %s", opts.Range)
 	}
 
-	return nil
+	return missingCheckpoints || len(missingBuckets) != 0, nil
 }

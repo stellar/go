@@ -9,9 +9,9 @@ import (
 	"compress/gzip"
 	"crypto/sha256"
 	"fmt"
+	log "github.com/sirupsen/logrus"
 	"hash"
 	"io"
-	"log"
 	"sort"
 
 	"github.com/stellar/go/xdr"
@@ -246,7 +246,7 @@ func reportValidity(ty string, nbad int, total int) {
 	if nbad == 0 {
 		log.Printf("Verified %d %ss have expected hashes", total, ty)
 	} else {
-		log.Printf("Error: %d %ss (of %d checked) have unexpected hashes", nbad, ty, total)
+		log.Errorf("Error: %d %ss (of %d checked) have unexpected hashes", nbad, ty, total)
 	}
 }
 
@@ -260,7 +260,7 @@ func compareHashMaps(expect map[uint32]Hash, actual map[uint32]Hash, ty string,
 		}
 		if ahash != ehash {
 			n++
-			log.Printf("Error: mismatched hash on %s 0x%8.8x: expected %s, got %s",
+			log.Errorf("Error: mismatched hash on %s 0x%8.8x: expected %s, got %s",
 				ty, eledger, ehash, ahash)
 		}
 	}
@@ -268,9 +268,9 @@ func compareHashMaps(expect map[uint32]Hash, actual map[uint32]Hash, ty string,
 	return n
 }
 
-func (arch *Archive) ReportInvalid(opts *CommandOptions) error {
+func (arch *Archive) ReportInvalid(opts *CommandOptions) (bool, error) {
 	if !opts.Verify {
-		return nil
+		return false, nil
 	}
 
 	arch.mutex.Lock()
@@ -316,7 +316,7 @@ func (arch *Archive) ReportInvalid(opts *CommandOptions) error {
 	totalInvalid += arch.invalidTxResultSets
 
 	if totalInvalid != 0 {
-		return fmt.Errorf("Detected %d objects with unexpected hashes", totalInvalid)
+		return true, fmt.Errorf("Detected %d objects with unexpected hashes", totalInvalid)
 	}
-	return nil
+	return false, nil
 }

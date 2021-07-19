@@ -6,7 +6,7 @@ package historyarchive
 
 import (
 	"fmt"
-	"log"
+	log "github.com/sirupsen/logrus"
 )
 
 // Repair repairs a destination archive based on a source archive, it assumes that the source and destination have the
@@ -34,7 +34,7 @@ func Repair(src *Archive, dst *Archive, opts *CommandOptions) error {
 				return err
 			}
 			if !categoryRequired(cat) && !exists {
-				log.Printf("Skipping nonexistent, optional %s file %s", cat, pth)
+				log.Warnf("Skipping nonexistent, optional %s file %s", cat, pth)
 				continue
 			}
 			log.Printf("Repairing %s", pth)

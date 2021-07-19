@@ -7,8 +7,9 @@ package historyarchive
 import (
 	"bufio"
 	"fmt"
+	log "github.com/sirupsen/logrus"
 	"io"
-	"log"
+	"net/http"
 	"path"
 )
 
@@ -123,7 +124,7 @@ func makeErrorPump(in chan error) chan error {
 
 func noteError(e error) uint32 {
 	if e != nil {
-		log.Printf("Error: " + e.Error())
+		log.Errorf("Error: " + e.Error())
 		return 1
 	}
 	return 0
@@ -135,4 +136,24 @@ func drainErrors(errs chan error) uint32 {
 		count += noteError(e)
 	}
 	return count
+}
+
+func logReq(r *http.Request) {
+	if r == nil {
+		return
+	}
+	logFields := log.Fields{"method": r.Method, "url": r.URL.String()}
+	log.WithFields(logFields).Trace("http: Req")
+}
+
+func logResp(r *http.Response) {
+	if r == nil || r.Request == nil {
+		return
+	}
+	logFields := log.Fields{"method": r.Request.Method, "status": r.Status, "url": r.Request.URL.String()}
+	if r.StatusCode >= 200 && r.StatusCode < 400 {
+		log.WithFields(logFields).Trace("http: OK")
+	} else {
+		log.WithFields(logFields).Warn("http: Bad")
+	}
 }

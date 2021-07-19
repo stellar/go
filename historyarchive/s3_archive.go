@@ -7,6 +7,7 @@ package historyarchive
 import (
 	"bytes"
 	"context"
+	log "github.com/sirupsen/logrus"
 	"io"
 	"net/http"
 	"path"
@@ -26,9 +27,10 @@ type S3ArchiveBackend struct {
 }
 
 func (b *S3ArchiveBackend) GetFile(pth string) (io.ReadCloser, error) {
+	key := path.Join(b.prefix, pth)
 	params := &s3.GetObjectInput{
 		Bucket: aws.String(b.bucket),
-		Key:    aws.String(path.Join(b.prefix, pth)),
+		Key:    aws.String(key),
 	}
 
 	req, resp := b.svc.GetObjectRequest(params)
@@ -36,7 +38,9 @@ func (b *S3ArchiveBackend) GetFile(pth string) (io.ReadCloser, error) {
 		req.Handlers.Sign.Clear() // makes this request unsigned
 	}
 	req.SetContext(b.ctx)
+	logReq(req.HTTPRequest)
 	err := req.Send()
+	logResp(req.HTTPResponse)
 	if err != nil {
 		return nil, err
 	}
@@ -45,9 +49,10 @@ func (b *S3ArchiveBackend) GetFile(pth string) (io.ReadCloser, error) {
 }
 
 func (b *S3ArchiveBackend) Head(pth string) (*http.Response, error) {
+	key := path.Join(b.prefix, pth)
 	params := &s3.HeadObjectInput{
 		Bucket: aws.String(b.bucket),
-		Key:    aws.String(path.Join(b.prefix, pth)),
+		Key:    aws.String(key),
 	}
 
 	req, _ := b.svc.HeadObjectRequest(params)
@@ -55,9 +60,11 @@ func (b *S3ArchiveBackend) Head(pth string) (*http.Response, error) {
 		req.Handlers.Sign.Clear() // makes this request unsigned
 	}
 	req.SetContext(b.ctx)
+	logReq(req.HTTPRequest)
 	err := req.Send()
+	logResp(req.HTTPResponse)
 
-	if req != nil && req.HTTPResponse.StatusCode == http.StatusNotFound {
+	if req.HTTPResponse != nil && req.HTTPResponse.StatusCode == http.StatusNotFound {
 		// Lately the S3 SDK has started treating a 404 as generating a non-nil
 		// 'err', so we have to test for this _before_ we test 'err' for
 		// nil-ness. This is undocumented, as is the err.Code returned in that
@@ -109,9 +116,10 @@ func (b *S3ArchiveBackend) PutFile(pth string, in io.ReadCloser) error {
 	if err != nil {
 		return err
 	}
+	key := path.Join(b.prefix, pth)
 	params := &s3.PutObjectInput{
 		Bucket: aws.String(b.bucket),
-		Key:    aws.String(path.Join(b.prefix, pth)),
+		Key:    aws.String(key),
 		ACL:    aws.String(s3.ObjectCannedACLPublicRead),
 		Body:   bytes.NewReader(buf.Bytes()),
 	}
@@ -120,7 +128,9 @@ func (b *S3ArchiveBackend) PutFile(pth string, in io.ReadCloser) error {
 		req.Handlers.Sign.Clear() // makes this request unsigned
 	}
 	req.SetContext(b.ctx)
+	logReq(req.HTTPRequest)
 	err = req.Send()
+	logResp(req.HTTPResponse)
 
 	in.Close()
 	return err
@@ -141,7 +151,9 @@ func (b *S3ArchiveBackend) ListFiles(pth string) (chan string, chan error) {
 		req.Handlers.Sign.Clear() // makes this request unsigned
 	}
 	req.SetContext(b.ctx)
+	logReq(req.HTTPRequest)
 	err := req.Send()
+	logResp(req.HTTPResponse)
 	if err != nil {
 		errs <- err
 		close(ch)
@@ -152,6 +164,7 @@ func (b *S3ArchiveBackend) ListFiles(pth string) (chan string, chan error) {
 		for {
 			for _, c := range resp.Contents {
 				params.Marker = c.Key
+				log.WithField("key", *c.Key).Trace("s3: ListFiles")
 				ch <- *c.Key
 			}
 			if *resp.IsTruncated {
@@ -160,7 +173,9 @@ func (b *S3ArchiveBackend) ListFiles(pth string) (chan string, chan error) {
 					req.Handlers.Sign.Clear() // makes this request unsigned
 				}
 				req.SetContext(b.ctx)
+				logReq(req.HTTPRequest)
 				err := req.Send()
+				logResp(req.HTTPResponse)
 				if err != nil {
 					errs <- err
 				}
@@ -179,6 +194,10 @@ func (b *S3ArchiveBackend) CanListFiles() bool {
 }
 
 func makeS3Backend(bucket string, prefix string, opts ConnectOptions) (ArchiveBackend, error) {
+	log.WithFields(log.Fields{"bucket": bucket,
+		"prefix":   prefix,
+		"region":   opts.S3Region,
+		"endpoint": opts.S3Endpoint}).Debug("s3: making backend")
 	cfg := &aws.Config{
 		Region:   aws.String(opts.S3Region),
 		Endpoint: aws.String(opts.S3Endpoint),
