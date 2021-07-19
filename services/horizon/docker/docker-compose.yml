@@ -10,7 +10,6 @@ services:
       - "5432:5432"
     volumes:
       - "horizon-db-data:/var/lib/postgresql/data"
-    network_mode: '${NETWORK_MODE:-bridge}'
 
   horizon:
     depends_on:
@@ -32,8 +31,9 @@ services:
       - PER_HOUR_RATE_LIMIT=0
     volumes:
       - ./captive-core-testnet.cfg:/captive-core-testnet.cfg
-    network_mode: '${NETWORK_MODE:-bridge}'
     command: ["--apply-migrations"]
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
 volumes:
   horizon-db-data:

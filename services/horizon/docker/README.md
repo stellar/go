@@ -20,21 +20,6 @@ The script takes one optional parameter which configures the Stellar network use
 
 `./start.sh standalone` will run the containers on a private standalone Stellar network.
 
-## Set up a .env file
-
-Mac OS X and Windows users should create an [`.env`](https://docs.docker.com/compose/environment-variables/#the-env_file-configuration-option) file which consists of:
-
-`NETWORK_MODE=bridge`
-
-Linux users should also create an `.env` file. However, the contents of the file should look like:
-
-`NETWORK_MODE=host`
-
-Additionally, you will need to add `127.0.0.1 host.docker.internal` to the `/etc/hosts` file on your linux machine.
-
-If https://github.com/docker/for-linux/issues/264 is ever fixed then it won't be necessary to alias `host.docker.internal` to localhost and there won't be any differences between the Linux and Mac OS X / Windows configurations.
-
-
 ## Run docker-compose
 
 Run the following command to start all the Stellar docker containers:

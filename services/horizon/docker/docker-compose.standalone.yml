@@ -11,7 +11,6 @@ services:
     command: ["-p", "5641"]
     volumes:
       - "core-db-data:/var/lib/postgresql/data"
-    network_mode: '${NETWORK_MODE:-bridge}'
 
   core:
     # to use a specific version of stellar core
@@ -30,7 +29,8 @@ services:
     volumes:
       - ./stellar-core-standalone.cfg:/stellar-core.cfg
       - ./core-start.sh:/start
-    network_mode: '${NETWORK_MODE:-bridge}'
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
   horizon:
     environment:
@@ -45,7 +45,8 @@ services:
     restart: on-failure
     image: curlimages/curl:7.69.1
     command: ["-v", "-f", "http://host.docker.internal:11626/upgrades?mode=set&upgradetime=1970-01-01T00:00:00Z&protocolversion=${PROTOCOL_VERSION:-15}"]
-    network_mode: '${NETWORK_MODE:-bridge}'
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
 volumes:
   core-db-data:
