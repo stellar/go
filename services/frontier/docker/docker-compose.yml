@@ -56,7 +56,7 @@ services:
       - DATABASE_URL=postgres://postgres@host.docker.internal:5432/frontier?sslmode=disable
       - DIGITALBITS_CORE_DATABASE_URL=postgres://postgres:mysecretpassword@host.docker.internal:5641/digitalbits?sslmode=disable
       - HISTORY_ARCHIVE_URLS=https://history.digitalbits.org/prd/core-testnet/core_testnet_001
-      - NETWORK_PASSPHRASE=Test SDF Network ; September 2015
+      - NETWORK_PASSPHRASE=TestNet Global DigitalBits Network ; December 2020
       - DIGITALBITS_CORE_URL=http://host.docker.internal:11626
       - INGEST=true
       - PER_HOUR_RATE_LIMIT=0

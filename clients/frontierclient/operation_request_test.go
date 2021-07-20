@@ -4,10 +4,10 @@ import (
 	"context"
 	"testing"
 
-	"github.com/xdbfoundation/go/protocols/frontier/operations"
-	"github.com/xdbfoundation/go/support/http/httptest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/xdbfoundation/go/protocols/frontier/operations"
+	"github.com/xdbfoundation/go/support/http/httptest"
 )
 
 func TestOperationRequestBuildUrl(t *testing.T) {
@@ -83,7 +83,7 @@ func TestNextOperationsPage(t *testing.T) {
 	hmock := httptest.NewClient()
 	client := &Client{
 		FrontierURL: "https://localhost/",
-		HTTP:       hmock,
+		HTTP:        hmock,
 	}
 
 	operationRequest := OperationRequest{Limit: 2}
@@ -101,7 +101,7 @@ func TestNextOperationsPage(t *testing.T) {
 
 	hmock.On(
 		"GET",
-		"https://frontier-testnet.digitalbits.org/operations?cursor=661424967682&limit=2&order=asc",
+		"https://frontier.testnet.digitalbits.io/operations?cursor=661424967682&limit=2&order=asc",
 	).ReturnString(200, emptyOperationsPage)
 
 	nextPage, err := client.NextOperationsPage(ops)
@@ -114,7 +114,7 @@ func TestOperationRequestStreamOperations(t *testing.T) {
 	hmock := httptest.NewClient()
 	client := &Client{
 		FrontierURL: "https://localhost/",
-		HTTP:       hmock,
+		HTTP:        hmock,
 	}
 
 	// All operations
@@ -179,7 +179,7 @@ func TestManageSellManageBuyOfferOfferID(t *testing.T) {
 	hmock := httptest.NewClient()
 	client := &Client{
 		FrontierURL: "https://localhost/",
-		HTTP:       hmock,
+		HTTP:        hmock,
 	}
 
 	testCases := []struct {
@@ -215,19 +215,19 @@ func TestManageSellManageBuyOfferOfferID(t *testing.T) {
 	}
 }
 
-var operationStreamResponse = `data: {"_links":{"self":{"href":"https://frontier-testnet.digitalbits.org/operations/4934917427201"},"transaction":{"href":"https://frontier-testnet.digitalbits.org/transactions/1c1449106a54cccd8a2ec2094815ad9db30ae54c69c3309dd08d13fdb8c749de"},"effects":{"href":"https://frontier-testnet.digitalbits.org/operations/4934917427201/effects"},"succeeds":{"href":"https://frontier-testnet.digitalbits.org/effects?order=desc\u0026cursor=4934917427201"},"precedes":{"href":"https://frontier-testnet.digitalbits.org/effects?order=asc\u0026cursor=4934917427201"}},"id":"4934917427201","paging_token":"4934917427201","transaction_successful":true,"source_account":"GAIH3ULLFQ4DGSECF2AR555KZ4KNDGEKN4AFI4SU2M7B43MGK3QJZNSR","type":"create_account","type_i":0,"created_at":"2019-02-27T11:32:39Z","transaction_hash":"1c1449106a54cccd8a2ec2094815ad9db30ae54c69c3309dd08d13fdb8c749de","starting_balance":"10000.0000000","funder":"GAIH3ULLFQ4DGSECF2AR555KZ4KNDGEKN4AFI4SU2M7B43MGK3QJZNSR","account":"GDBLBBDIUULY3HGIKXNK6WVBISY7DCNCDA45EL7NTXWX5R4UZ26HGMGS"}
+var operationStreamResponse = `data: {"_links":{"self":{"href":"https://frontier.testnet.digitalbits.io/operations/4934917427201"},"transaction":{"href":"https://frontier.testnet.digitalbits.io/transactions/1c1449106a54cccd8a2ec2094815ad9db30ae54c69c3309dd08d13fdb8c749de"},"effects":{"href":"https://frontier.testnet.digitalbits.io/operations/4934917427201/effects"},"succeeds":{"href":"https://frontier.testnet.digitalbits.io/effects?order=desc\u0026cursor=4934917427201"},"precedes":{"href":"https://frontier.testnet.digitalbits.io/effects?order=asc\u0026cursor=4934917427201"}},"id":"4934917427201","paging_token":"4934917427201","transaction_successful":true,"source_account":"GAIH3ULLFQ4DGSECF2AR555KZ4KNDGEKN4AFI4SU2M7B43MGK3QJZNSR","type":"create_account","type_i":0,"created_at":"2019-02-27T11:32:39Z","transaction_hash":"1c1449106a54cccd8a2ec2094815ad9db30ae54c69c3309dd08d13fdb8c749de","starting_balance":"10000.0000000","funder":"GAIH3ULLFQ4DGSECF2AR555KZ4KNDGEKN4AFI4SU2M7B43MGK3QJZNSR","account":"GDBLBBDIUULY3HGIKXNK6WVBISY7DCNCDA45EL7NTXWX5R4UZ26HGMGS"}
 `
 
 var firstOperationsPage = `{
   "_links": {
     "self": {
-      "href": "https://frontier-testnet.digitalbits.org/operations?cursor=&limit=2&order=asc"
+      "href": "https://frontier.testnet.digitalbits.io/operations?cursor=&limit=2&order=asc"
     },
     "next": {
-      "href": "https://frontier-testnet.digitalbits.org/operations?cursor=661424967682&limit=2&order=asc"
+      "href": "https://frontier.testnet.digitalbits.io/operations?cursor=661424967682&limit=2&order=asc"
     },
     "prev": {
-      "href": "https://frontier-testnet.digitalbits.org/operations?cursor=661424967681&limit=2&order=desc"
+      "href": "https://frontier.testnet.digitalbits.io/operations?cursor=661424967681&limit=2&order=desc"
     }
   },
   "_embedded": {
@@ -235,19 +235,19 @@ var firstOperationsPage = `{
       {	
         "_links": {
           "self": {
-            "href": "https://frontier-testnet.digitalbits.org/operations/661424967681"
+            "href": "https://frontier.testnet.digitalbits.io/operations/661424967681"
           },
           "transaction": {
-            "href": "https://frontier-testnet.digitalbits.org/transactions/749e4f8933221b9942ef38a02856803f379789ec8d971f1f60535db70135673e"
+            "href": "https://frontier.testnet.digitalbits.io/transactions/749e4f8933221b9942ef38a02856803f379789ec8d971f1f60535db70135673e"
           },
           "effects": {
-            "href": "https://frontier-testnet.digitalbits.org/operations/661424967681/effects"
+            "href": "https://frontier.testnet.digitalbits.io/operations/661424967681/effects"
           },
           "succeeds": {
-            "href": "https://frontier-testnet.digitalbits.org/effects?order=desc&cursor=661424967681"
+            "href": "https://frontier.testnet.digitalbits.io/effects?order=desc&cursor=661424967681"
           },
           "precedes": {
-            "href": "https://frontier-testnet.digitalbits.org/effects?order=asc&cursor=661424967681"
+            "href": "https://frontier.testnet.digitalbits.io/effects?order=asc&cursor=661424967681"
           }
         },
         "id": "661424967681",
@@ -265,19 +265,19 @@ var firstOperationsPage = `{
       {
         "_links": {
           "self": {
-            "href": "https://frontier-testnet.digitalbits.org/operations/661424967682"
+            "href": "https://frontier.testnet.digitalbits.io/operations/661424967682"
           },
           "transaction": {
-            "href": "https://frontier-testnet.digitalbits.org/transactions/749e4f8933221b9942ef38a02856803f379789ec8d971f1f60535db70135673e"
+            "href": "https://frontier.testnet.digitalbits.io/transactions/749e4f8933221b9942ef38a02856803f379789ec8d971f1f60535db70135673e"
           },
           "effects": {
-            "href": "https://frontier-testnet.digitalbits.org/operations/661424967682/effects"
+            "href": "https://frontier.testnet.digitalbits.io/operations/661424967682/effects"
           },
           "succeeds": {
-            "href": "https://frontier-testnet.digitalbits.org/effects?order=desc&cursor=661424967682"
+            "href": "https://frontier.testnet.digitalbits.io/effects?order=desc&cursor=661424967682"
           },
           "precedes": {
-            "href": "https://frontier-testnet.digitalbits.org/effects?order=asc&cursor=661424967682"
+            "href": "https://frontier.testnet.digitalbits.io/effects?order=asc&cursor=661424967682"
           }
         },
         "id": "661424967682",
@@ -299,13 +299,13 @@ var firstOperationsPage = `{
 var emptyOperationsPage = `{
   "_links": {
     "self": {
-      "href": "https://frontier-testnet.digitalbits.org/operations?cursor=661424967682&limit=2&order=asc"
+      "href": "https://frontier.testnet.digitalbits.io/operations?cursor=661424967682&limit=2&order=asc"
     },
     "next": {
-      "href": "https://frontier-testnet.digitalbits.org/operations?cursor=661424967684&limit=2&order=asc"
+      "href": "https://frontier.testnet.digitalbits.io/operations?cursor=661424967684&limit=2&order=asc"
     },
     "prev": {
-      "href": "https://frontier-testnet.digitalbits.org/operations?cursor=661424967683&limit=2&order=desc"
+      "href": "https://frontier.testnet.digitalbits.io/operations?cursor=661424967683&limit=2&order=desc"
     }
   },
   "_embedded": {
@@ -316,13 +316,13 @@ var emptyOperationsPage = `{
 var numberManageSellBuyOfferOperations = `{
 	"_links": {
 	  "self": {
-		"href": "https://frontier-testnet.digitalbits.org/operations?cursor=661424967682&limit=2&order=asc"
+		"href": "https://frontier.testnet.digitalbits.io/operations?cursor=661424967682&limit=2&order=asc"
 	  },
 	  "next": {
-		"href": "https://frontier-testnet.digitalbits.org/operations?cursor=661424967684&limit=2&order=asc"
+		"href": "https://frontier.testnet.digitalbits.io/operations?cursor=661424967684&limit=2&order=asc"
 	  },
 	  "prev": {
-		"href": "https://frontier-testnet.digitalbits.org/operations?cursor=661424967683&limit=2&order=desc"
+		"href": "https://frontier.testnet.digitalbits.io/operations?cursor=661424967683&limit=2&order=desc"
 	  }
 	},
 	"_embedded": {
@@ -330,19 +330,19 @@ var numberManageSellBuyOfferOperations = `{
 		{
 			"_links": {
 			  "self": {
-				"href": "https://frontier-testnet.digitalbits.org/operations/972702718365697"
+				"href": "https://frontier.testnet.digitalbits.io/operations/972702718365697"
 			  },
 			  "transaction": {
-				"href": "https://frontier-testnet.digitalbits.org/transactions/cfe9eba317025dd0cff111967a3709358153e9ee97472e67c17e42837dd50a52"
+				"href": "https://frontier.testnet.digitalbits.io/transactions/cfe9eba317025dd0cff111967a3709358153e9ee97472e67c17e42837dd50a52"
 			  },
 			  "effects": {
-				"href": "https://frontier-testnet.digitalbits.org/operations/972702718365697/effects"
+				"href": "https://frontier.testnet.digitalbits.io/operations/972702718365697/effects"
 			  },
 			  "succeeds": {
-				"href": "https://frontier-testnet.digitalbits.org/effects?order=desc\u0026cursor=972702718365697"
+				"href": "https://frontier.testnet.digitalbits.io/effects?order=desc\u0026cursor=972702718365697"
 			  },
 			  "precedes": {
-				"href": "https://frontier-testnet.digitalbits.org/effects?order=asc\u0026cursor=972702718365697"
+				"href": "https://frontier.testnet.digitalbits.io/effects?order=asc\u0026cursor=972702718365697"
 			  }
 			},
 			"id": "972702718365697",
@@ -368,19 +368,19 @@ var numberManageSellBuyOfferOperations = `{
 		  {
 			"_links": {
 			  "self": {
-				"href": "https://frontier-testnet.digitalbits.org/operations/158041911595009"
+				"href": "https://frontier.testnet.digitalbits.io/operations/158041911595009"
 			  },
 			  "transaction": {
-				"href": "https://frontier-testnet.digitalbits.org/transactions/8a4db87e4749130ba32924943c2f219de497fe2d4f3e074187c5d2159ca2d134"
+				"href": "https://frontier.testnet.digitalbits.io/transactions/8a4db87e4749130ba32924943c2f219de497fe2d4f3e074187c5d2159ca2d134"
 			  },
 			  "effects": {
-				"href": "https://frontier-testnet.digitalbits.org/operations/158041911595009/effects"
+				"href": "https://frontier.testnet.digitalbits.io/operations/158041911595009/effects"
 			  },
 			  "succeeds": {
-				"href": "https://frontier-testnet.digitalbits.org/effects?order=desc&cursor=158041911595009"
+				"href": "https://frontier.testnet.digitalbits.io/effects?order=desc&cursor=158041911595009"
 			  },
 			  "precedes": {
-				"href": "https://frontier-testnet.digitalbits.org/effects?order=asc&cursor=158041911595009"
+				"href": "https://frontier.testnet.digitalbits.io/effects?order=asc&cursor=158041911595009"
 			  }
 			},
 			"id": "158041911595009",
@@ -410,13 +410,13 @@ var numberManageSellBuyOfferOperations = `{
 var manageSellBuyOfferOperationsPage = `{
 	"_links": {
 	  "self": {
-		"href": "https://frontier-testnet.digitalbits.org/operations?cursor=661424967682&limit=2&order=asc"
+		"href": "https://frontier.testnet.digitalbits.io/operations?cursor=661424967682&limit=2&order=asc"
 	  },
 	  "next": {
-		"href": "https://frontier-testnet.digitalbits.org/operations?cursor=661424967684&limit=2&order=asc"
+		"href": "https://frontier.testnet.digitalbits.io/operations?cursor=661424967684&limit=2&order=asc"
 	  },
 	  "prev": {
-		"href": "https://frontier-testnet.digitalbits.org/operations?cursor=661424967683&limit=2&order=desc"
+		"href": "https://frontier.testnet.digitalbits.io/operations?cursor=661424967683&limit=2&order=desc"
 	  }
 	},
 	"_embedded": {
@@ -424,19 +424,19 @@ var manageSellBuyOfferOperationsPage = `{
 		{
 			"_links": {
 			  "self": {
-				"href": "https://frontier-testnet.digitalbits.org/operations/972702718365697"
+				"href": "https://frontier.testnet.digitalbits.io/operations/972702718365697"
 			  },
 			  "transaction": {
-				"href": "https://frontier-testnet.digitalbits.org/transactions/cfe9eba317025dd0cff111967a3709358153e9ee97472e67c17e42837dd50a52"
+				"href": "https://frontier.testnet.digitalbits.io/transactions/cfe9eba317025dd0cff111967a3709358153e9ee97472e67c17e42837dd50a52"
 			  },
 			  "effects": {
-				"href": "https://frontier-testnet.digitalbits.org/operations/972702718365697/effects"
+				"href": "https://frontier.testnet.digitalbits.io/operations/972702718365697/effects"
 			  },
 			  "succeeds": {
-				"href": "https://frontier-testnet.digitalbits.org/effects?order=desc\u0026cursor=972702718365697"
+				"href": "https://frontier.testnet.digitalbits.io/effects?order=desc\u0026cursor=972702718365697"
 			  },
 			  "precedes": {
-				"href": "https://frontier-testnet.digitalbits.org/effects?order=asc\u0026cursor=972702718365697"
+				"href": "https://frontier.testnet.digitalbits.io/effects?order=asc\u0026cursor=972702718365697"
 			  }
 			},
 			"id": "972702718365697",
@@ -462,19 +462,19 @@ var manageSellBuyOfferOperationsPage = `{
 		  {
 			"_links": {
 			  "self": {
-				"href": "https://frontier-testnet.digitalbits.org/operations/158041911595009"
+				"href": "https://frontier.testnet.digitalbits.io/operations/158041911595009"
 			  },
 			  "transaction": {
-				"href": "https://frontier-testnet.digitalbits.org/transactions/8a4db87e4749130ba32924943c2f219de497fe2d4f3e074187c5d2159ca2d134"
+				"href": "https://frontier.testnet.digitalbits.io/transactions/8a4db87e4749130ba32924943c2f219de497fe2d4f3e074187c5d2159ca2d134"
 			  },
 			  "effects": {
-				"href": "https://frontier-testnet.digitalbits.org/operations/158041911595009/effects"
+				"href": "https://frontier.testnet.digitalbits.io/operations/158041911595009/effects"
 			  },
 			  "succeeds": {
-				"href": "https://frontier-testnet.digitalbits.org/effects?order=desc&cursor=158041911595009"
+				"href": "https://frontier.testnet.digitalbits.io/effects?order=desc&cursor=158041911595009"
 			  },
 			  "precedes": {
-				"href": "https://frontier-testnet.digitalbits.org/effects?order=asc&cursor=158041911595009"
+				"href": "https://frontier.testnet.digitalbits.io/effects?order=asc&cursor=158041911595009"
 			  }
 			},
 			"id": "158041911595009",

@@ -13,7 +13,7 @@ createdb hayashi_scenarios
 
 export DIGITALBITS_CORE_DATABASE_URL="postgres://localhost/hayashi_scenarios?sslmode=disable"
 export DATABASE_URL="postgres://localhost/frontier_scenarios?sslmode=disable"
-export NETWORK_PASSPHRASE="Test SDF Network ; September 2015"
+export NETWORK_PASSPHRASE="TestNet Global DigitalBits Network ; December 2020"
 export DIGITALBITS_CORE_URL="http://localhost:8080"
 export SKIP_CURSOR_UPDATE="true"
 export INGEST_FAILED_TRANSACTIONS=true

@@ -48,7 +48,7 @@ func TestUnmarshalState(t *testing.T) {
 
 func TestHashValidation(t *testing.T) {
 	// This is real bucket hash list for pubnet's ledger: 24088895
-	// https://frontier.digitalbits.org/ledgers/24088895
+	// https://frontier.livenet.digitalbits.io/ledgers/24088895
 	// http://history.digitalbits.org/prd/core-live/core_live_001/history/01/6f/91/history-016f913f.json
 	var jsonBlob = []byte(`{
     "version": 1,

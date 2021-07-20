@@ -16,8 +16,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/xdbfoundation/go/xdr"
 	"github.com/stretchr/testify/assert"
+	"github.com/xdbfoundation/go/xdr"
 )
 
 func GetTestS3Archive() *Archive {
@@ -302,7 +302,7 @@ func TestNetworkPassphrase(t *testing.T) {
 	"version": 1,
 	"server": "v14.1.0rc2",
 	"currentLedger": 31883135,
-	"networkPassphrase": "Public Global DigitalBits Network ; September 2015"
+	"networkPassphrase": "LiveNet Global DigitalBits Network ; February 2021"
 }`))
 	}
 
@@ -324,7 +324,7 @@ func TestNetworkPassphrase(t *testing.T) {
 
 	// No network passphrase set in HAS
 	archive = MustConnect("mock://test", ConnectOptions{
-		NetworkPassphrase:   "Public Global DigitalBits Network ; September 2015",
+		NetworkPassphrase:   "LiveNet Global DigitalBits Network ; February 2021",
 		CheckpointFrequency: 64,
 	})
 	err = archive.backend.PutFile("has.json", makeHASReaderNoNetwork())
@@ -334,7 +334,7 @@ func TestNetworkPassphrase(t *testing.T) {
 
 	// Correct network passphrase set in options
 	archive = MustConnect("mock://test", ConnectOptions{
-		NetworkPassphrase:   "Public Global DigitalBits Network ; September 2015",
+		NetworkPassphrase:   "LiveNet Global DigitalBits Network ; February 2021",
 		CheckpointFrequency: 64,
 	})
 	err = archive.backend.PutFile("has.json", makeHASReader())
@@ -344,13 +344,13 @@ func TestNetworkPassphrase(t *testing.T) {
 
 	// Incorrect network passphrase set in options
 	archive = MustConnect("mock://test", ConnectOptions{
-		NetworkPassphrase:   "Test SDF Network ; September 2015",
+		NetworkPassphrase:   "TestNet Global DigitalBits Network ; December 2020",
 		CheckpointFrequency: 64,
 	})
 	err = archive.backend.PutFile("has.json", makeHASReader())
 	assert.NoError(t, err)
 	_, err = archive.GetPathHAS("has.json")
-	assert.EqualError(t, err, "Network passphrase does not match! expected=Test SDF Network ; September 2015 actual=Public Global DigitalBits Network ; September 2015")
+	assert.EqualError(t, err, "Network passphrase does not match! expected=TestNet Global DigitalBits Network ; December 2020 actual=LiveNet Global DigitalBits Network ; February 2021")
 }
 
 func TestXdrDecode(t *testing.T) {

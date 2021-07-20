@@ -122,7 +122,7 @@ In order to run the reingestion, first set the following environment variables:
 export DATABASE_URL=postgres://postgres:<password>@<frontier_db_hostanme>:5432/frontier
 export APPLY_MIGRATIONS=true
 export HISTORY_ARCHIVE_URLS=https://s3-eu-west-1.amazonaws.com/history.digitalbits.org/prd/core-live/core_live_001
-export NETWORK_PASSPHRASE="Public Global DigitalBits Network ; September 2015"
+export NETWORK_PASSPHRASE="LiveNet Global DigitalBits Network ; February 2021"
 export DIGITALBITS_CORE_BINARY_PATH=/usr/bin/digitalbits-core
 export ENABLE_CAPTIVE_CORE_INGESTION=true
 # Number of ledgers per job sent to the workers

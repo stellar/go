@@ -73,7 +73,7 @@ func TestTransactionUnmarshalsFriendbotFund(t *testing.T) {
 	friendbotFundResponse := `{
   "_links": {
     "transaction": {
-      "href": "https://frontier-testnet.digitalbits.org/transactions/94e42f65d3ff5f30669b6109c2ce3e82c0e592c52004e3b41bb30e24df33954e"
+      "href": "https://frontier.testnet.digitalbits.io/transactions/94e42f65d3ff5f30669b6109c2ce3e82c0e592c52004e3b41bb30e24df33954e"
     }
   },
   "hash": "94e42f65d3ff5f30669b6109c2ce3e82c0e592c52004e3b41bb30e24df33954e",
@@ -122,30 +122,30 @@ func TestTransactionUnmarshalJSON(t *testing.T) {
         "memo": "MzUyODFmNThmZjkxMGNiMTVhYWQ1NjM2ZGIyNzUzZTA=",
         "_links": {
           "self": {
-            "href": "https://frontier.digitalbits.org/transactions/998605ace4a0b89293cf729cf216405f29c1ce5d44d6a40232982a4bdccda033"
+            "href": "https://frontier.livenet.digitalbits.io/transactions/998605ace4a0b89293cf729cf216405f29c1ce5d44d6a40232982a4bdccda033"
           },
           "account": {
-            "href": "https://frontier.digitalbits.org/accounts/GBUYDJH3AOPFFND3L54DUDWIHOMYKUONDV4RAHOHDBNN2D5N4BPPWDQ3"
+            "href": "https://frontier.livenet.digitalbits.io/accounts/GBUYDJH3AOPFFND3L54DUDWIHOMYKUONDV4RAHOHDBNN2D5N4BPPWDQ3"
           },
           "ledger": {
-            "href": "https://frontier.digitalbits.org/ledgers/29113108"
+            "href": "https://frontier.livenet.digitalbits.io/ledgers/29113108"
           },
           "operations": {
-            "href": "https://frontier.digitalbits.org/transactions/998605ace4a0b89293cf729cf216405f29c1ce5d44d6a40232982a4bdccda033/operations{?cursor,limit,order}",
+            "href": "https://frontier.livenet.digitalbits.io/transactions/998605ace4a0b89293cf729cf216405f29c1ce5d44d6a40232982a4bdccda033/operations{?cursor,limit,order}",
             "templated": true
           },
           "effects": {
-            "href": "https://frontier.digitalbits.org/transactions/998605ace4a0b89293cf729cf216405f29c1ce5d44d6a40232982a4bdccda033/effects{?cursor,limit,order}",
+            "href": "https://frontier.livenet.digitalbits.io/transactions/998605ace4a0b89293cf729cf216405f29c1ce5d44d6a40232982a4bdccda033/effects{?cursor,limit,order}",
             "templated": true
           },
           "precedes": {
-            "href": "https://frontier.digitalbits.org/transactions?order=asc\u0026cursor=125039846745419776"
+            "href": "https://frontier.livenet.digitalbits.io/transactions?order=asc\u0026cursor=125039846745419776"
           },
           "succeeds": {
-            "href": "https://frontier.digitalbits.org/transactions?order=desc\u0026cursor=125039846745419776"
+            "href": "https://frontier.livenet.digitalbits.io/transactions?order=desc\u0026cursor=125039846745419776"
           },
           "transaction": {
-            "href": "https://frontier.digitalbits.org/transactions/998605ace4a0b89293cf729cf216405f29c1ce5d44d6a40232982a4bdccda033"
+            "href": "https://frontier.livenet.digitalbits.io/transactions/998605ace4a0b89293cf729cf216405f29c1ce5d44d6a40232982a4bdccda033"
           }
         },
         "id": "998605ace4a0b89293cf729cf216405f29c1ce5d44d6a40232982a4bdccda033",
@@ -176,30 +176,30 @@ func TestTransactionUnmarshalJSON(t *testing.T) {
         "memo": "MzUyODFmNThmZjkxMGNiMTVhYWQ1NjM2ZGIyNzUzZTA=",
         "_links": {
           "self": {
-            "href": "https://frontier.digitalbits.org/transactions/998605ace4a0b89293cf729cf216405f29c1ce5d44d6a40232982a4bdccda033"
+            "href": "https://frontier.livenet.digitalbits.io/transactions/998605ace4a0b89293cf729cf216405f29c1ce5d44d6a40232982a4bdccda033"
           },
           "account": {
-            "href": "https://frontier.digitalbits.org/accounts/GBUYDJH3AOPFFND3L54DUDWIHOMYKUONDV4RAHOHDBNN2D5N4BPPWDQ3"
+            "href": "https://frontier.livenet.digitalbits.io/accounts/GBUYDJH3AOPFFND3L54DUDWIHOMYKUONDV4RAHOHDBNN2D5N4BPPWDQ3"
           },
           "ledger": {
-            "href": "https://frontier.digitalbits.org/ledgers/29113108"
+            "href": "https://frontier.livenet.digitalbits.io/ledgers/29113108"
           },
           "operations": {
-            "href": "https://frontier.digitalbits.org/transactions/998605ace4a0b89293cf729cf216405f29c1ce5d44d6a40232982a4bdccda033/operations{?cursor,limit,order}",
+            "href": "https://frontier.livenet.digitalbits.io/transactions/998605ace4a0b89293cf729cf216405f29c1ce5d44d6a40232982a4bdccda033/operations{?cursor,limit,order}",
             "templated": true
           },
           "effects": {
-            "href": "https://frontier.digitalbits.org/transactions/998605ace4a0b89293cf729cf216405f29c1ce5d44d6a40232982a4bdccda033/effects{?cursor,limit,order}",
+            "href": "https://frontier.livenet.digitalbits.io/transactions/998605ace4a0b89293cf729cf216405f29c1ce5d44d6a40232982a4bdccda033/effects{?cursor,limit,order}",
             "templated": true
           },
           "precedes": {
-            "href": "https://frontier.digitalbits.org/transactions?order=asc\u0026cursor=125039846745419776"
+            "href": "https://frontier.livenet.digitalbits.io/transactions?order=asc\u0026cursor=125039846745419776"
           },
           "succeeds": {
-            "href": "https://frontier.digitalbits.org/transactions?order=desc\u0026cursor=125039846745419776"
+            "href": "https://frontier.livenet.digitalbits.io/transactions?order=desc\u0026cursor=125039846745419776"
           },
           "transaction": {
-            "href": "https://frontier.digitalbits.org/transactions/998605ace4a0b89293cf729cf216405f29c1ce5d44d6a40232982a4bdccda033"
+            "href": "https://frontier.livenet.digitalbits.io/transactions/998605ace4a0b89293cf729cf216405f29c1ce5d44d6a40232982a4bdccda033"
           }
         },
         "id": "998605ace4a0b89293cf729cf216405f29c1ce5d44d6a40232982a4bdccda033",

@@ -6,9 +6,9 @@ import (
 
 	"net/http"
 
-	"github.com/xdbfoundation/go/support/http/httptest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/xdbfoundation/go/support/http/httptest"
 )
 
 func TestClientURL(t *testing.T) {
@@ -16,10 +16,10 @@ func TestClientURL(t *testing.T) {
 	//mock.
 
 	c := &Client{UseHTTP: false}
-	assert.Equal(t, "https://digitalbits.org/.well-known/digitalbits.toml", c.url("digitalbits.org"))
+	assert.Equal(t, "https://livenet.digitalbits.io/.well-known/digitalbits.toml", c.url("digitalbits.org"))
 
 	c = &Client{UseHTTP: true}
-	assert.Equal(t, "http://digitalbits.org/.well-known/digitalbits.toml", c.url("digitalbits.org"))
+	assert.Equal(t, "http://livenet.digitalbits.io/.well-known/digitalbits.toml", c.url("digitalbits.org"))
 }
 
 func TestClient(t *testing.T) {
@@ -28,7 +28,7 @@ func TestClient(t *testing.T) {
 
 	// happy path
 	h.
-		On("GET", "https://digitalbits.org/.well-known/digitalbits.toml").
+		On("GET", "https://livenet.digitalbits.io/.well-known/digitalbits.toml").
 		ReturnString(http.StatusOK,
 			`FEDERATION_SERVER="https://localhost/federation"`,
 		)

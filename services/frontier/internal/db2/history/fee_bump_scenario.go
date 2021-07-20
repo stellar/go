@@ -8,12 +8,12 @@ import (
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/guregu/null"
+	"github.com/stretchr/testify/assert"
 	"github.com/xdbfoundation/go/ingest/io"
 	"github.com/xdbfoundation/go/network"
 	"github.com/xdbfoundation/go/services/frontier/internal/test"
 	"github.com/xdbfoundation/go/services/frontier/internal/toid"
 	"github.com/xdbfoundation/go/xdr"
-	"github.com/stretchr/testify/assert"
 )
 
 func ledgerToMap(ledger Ledger) map[string]interface{} {
@@ -176,14 +176,14 @@ func FeeBumpScenario(tt *test.T, q *Q, successful bool) FeeBumpFixture {
 
 	innerHash, err := network.HashTransaction(
 		fixture.Envelope.FeeBump.Tx.InnerTx.V1.Tx,
-		"Test SDF Network ; September 2015",
+		"TestNet Global DigitalBits Network ; December 2020",
 	)
 	tt.Assert.NoError(err)
 	fixture.InnerHash = hex.EncodeToString(innerHash[:])
 
 	outerHash, err := network.HashFeeBumpTransaction(
 		fixture.Envelope.FeeBump.Tx,
-		"Test SDF Network ; September 2015",
+		"TestNet Global DigitalBits Network ; December 2020",
 	)
 	tt.Assert.NoError(err)
 	fixture.OuterHash = hex.EncodeToString(outerHash[:])

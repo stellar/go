@@ -55,7 +55,7 @@ digitalbits-core new-db
 digitalbits-core catchup $TO/$LEDGER_COUNT
 
 # pubnet frontier config
-export NETWORK_PASSPHRASE="Public Global DigitalBits Network ; September 2015"
+export NETWORK_PASSPHRASE="LiveNet Global DigitalBits Network ; February 2021"
 export HISTORY_ARCHIVE_URLS="https://s3-eu-west-1.amazonaws.com/history.digitalbits.org/prd/core-live/core_live_001"
 export DATABASE_URL="postgres://postgres:postgres@localhost:5432/frontier?sslmode=disable"
 export INGEST="false"

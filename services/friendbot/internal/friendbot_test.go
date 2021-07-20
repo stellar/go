@@ -6,10 +6,10 @@ import (
 
 	"github.com/xdbfoundation/go/txnbuild"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/xdbfoundation/go/clients/frontierclient"
 	"github.com/xdbfoundation/go/keypair"
 	hProtocol "github.com/xdbfoundation/go/protocols/frontier"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestFriendbot_Pay(t *testing.T) {
@@ -42,7 +42,7 @@ func TestFriendbot_Pay(t *testing.T) {
 		Keypair:              minionKeypair.(*keypair.Full),
 		BotAccount:           botAccount,
 		BotKeypair:           botKeypair.(*keypair.Full),
-		Network:              "Test SDF Network ; September 2015",
+		Network:              "TestNet Global DigitalBits Network ; December 2020",
 		StartingBalance:      "10000.00",
 		SubmitTransaction:    mockSubmitTransaction,
 		CheckSequenceRefresh: CheckSequenceRefresh,

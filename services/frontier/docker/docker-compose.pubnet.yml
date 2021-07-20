@@ -6,4 +6,4 @@ services:
   frontier:
     environment:
       - HISTORY_ARCHIVE_URLS=https://history.digitalbits.org/prd/core-live/core_live_001
-      - NETWORK_PASSPHRASE=Public Global DigitalBits Network ; September 2015
+      - NETWORK_PASSPHRASE=LiveNet Global DigitalBits Network ; February 2021

@@ -44,11 +44,11 @@ Flags:
       --allow-accounts-that-do-not-exist   Allow accounts that do not exist (ALLOW_ACCOUNTS_THAT_DO_NOT_EXIST)
       --auth-home-domain string            Home domain(s) of the service(s) requiring SEP-10 authentication comma separated (first domain is the default domain) (AUTH_HOME_DOMAIN)
       --challenge-expires-in int           The time period in seconds after which the challenge transaction expires (CHALLENGE_EXPIRES_IN) (default 300)
-      --frontier-url string                 Frontier URL used for looking up account details (FRONTIER_URL) (default "https://frontier-testnet.digitalbits.org/")
+      --frontier-url string                 Frontier URL used for looking up account details (FRONTIER_URL) (default "https://frontier.testnet.digitalbits.io/")
       --jwk string                         JSON Web Key (JWK) used for signing JWTs (if the key is an asymmetric key that has separate public and private key, the JWK must contain the private key) (JWK)
       --jwt-expires-in int                 The time period in seconds after which the JWT expires (JWT_EXPIRES_IN) (default 300)
       --jwt-issuer string                  The issuer to set in the JWT iss claim (JWT_ISSUER)
-      --network-passphrase string          Network passphrase of the DigitalBits network transactions should be signed for (NETWORK_PASSPHRASE) (default "Test SDF Network ; September 2015")
+      --network-passphrase string          Network passphrase of the DigitalBits network transactions should be signed for (NETWORK_PASSPHRASE) (default "TestNet Global DigitalBits Network ; December 2020")
       --port int                           Port to listen and serve on (PORT) (default 8000)
       --signing-key string                 DigitalBits signing key(s) used for signing transactions comma separated (first key is used for signing, others used for verifying challenges) (SIGNING_KEY)
 ```

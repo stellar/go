@@ -4,10 +4,10 @@ import (
 	"net/url"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	hProtocol "github.com/xdbfoundation/go/protocols/frontier"
 	"github.com/xdbfoundation/go/support/errors"
 	"github.com/xdbfoundation/go/support/render/hal"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestShouldDiscardAsset(t *testing.T) {
@@ -53,7 +53,7 @@ func TestShouldDiscardAsset(t *testing.T) {
 		NumAccounts: 40,
 	}
 	testAsset.Code = "SOMETHINGVALID"
-	testAsset.Links.Toml.Href = "http://www.digitalbits.org/.well-known/digitalbits.toml"
+	testAsset.Links.Toml.Href = "http://www.livenet.digitalbits.io/.well-known/digitalbits.toml"
 	assert.Equal(t, shouldDiscardAsset(testAsset, true), true)
 
 	testAsset = hProtocol.AssetStat{
@@ -69,7 +69,7 @@ func TestShouldDiscardAsset(t *testing.T) {
 		NumAccounts: 40,
 	}
 	testAsset.Code = "SOMETHINGVALID"
-	testAsset.Links.Toml.Href = "https://www.digitalbits.org/.well-known/digitalbits.toml"
+	testAsset.Links.Toml.Href = "https://www.livenet.digitalbits.io/.well-known/digitalbits.toml"
 	assert.Equal(t, shouldDiscardAsset(testAsset, true), false)
 }
 
