@@ -401,7 +401,7 @@ INSERT INTO scpquorums VALUES ('2848b3ae9e9885822cb3b6b19c6d6f16efd5768d7ada2d88
 
 INSERT INTO storestate VALUES ('lastclosedledger                ', 'a9769933d6fe5907b5b883df11c175e31a7c7c19d4024862b2c7c39845f62a2a');
 INSERT INTO storestate VALUES ('databaseschema                  ', '10');
-INSERT INTO storestate VALUES ('networkpassphrase               ', 'Test SDF Network ; September 2015');
+INSERT INTO storestate VALUES ('networkpassphrase               ', 'TestNet Global DigitalBits Network ; December 2020');
 INSERT INTO storestate VALUES ('forcescponnextlaunch            ', 'false');
 INSERT INTO storestate VALUES ('ledgerupgrades                  ', '{
     "time": 0,

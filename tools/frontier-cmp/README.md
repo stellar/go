@@ -23,7 +23,7 @@ go install ./tools/frontier-cmp
 To run in crawling mode specify a `base` and `test` URL, where `base` is the current version of Frontier and `test` is the version you want to test.
 
 ```bash
-frontier-cmp -t https://new-frontier.host.org -b https://frontier.digitalbits.org
+frontier-cmp -t https://new-frontier.host.org -b https://frontier.livenet.digitalbits.io
 ```
 
 The paths to be tested can be found in [init_paths.go](https://github.com/xdbfoundation/go/blob/master/tools/frontier-cmp/init_paths.go).
@@ -33,7 +33,7 @@ The paths to be tested can be found in [init_paths.go](https://github.com/xdbfou
 To run using an ELB access log, use the flag `-a`.
 
 ```bash
-frontier-cmp -t https://new-frontier.host.org -b https://frontier.digitalbits.org -a ./elb_access.log
+frontier-cmp -t https://new-frontier.host.org -b https://frontier.livenet.digitalbits.io -a ./elb_access.log
 ```
 
 Additionally you can specify which line to start in by using the flag `-s`.
@@ -64,5 +64,5 @@ frontier-cmp history -t https://new-frontier.domain.org -b https://base-frontier
 By default `frontier-cmp` will send 1 request per second, however, you can change this value using the `--rps` flag.  The following will run `10` request per second. Please note that sending too many requests to a production server can result in rate limiting of requests.
 
 ```bash
-frontier-cmp -t https://new-frontier.host.org -b https://frontier.digitalbits.org --rps 10
+frontier-cmp -t https://new-frontier.host.org -b https://frontier.livenet.digitalbits.io --rps 10
 ```

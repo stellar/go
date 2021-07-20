@@ -4,12 +4,12 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/xdbfoundation/go/clients/frontierclient"
 	"github.com/xdbfoundation/go/keypair"
 	hProtocol "github.com/xdbfoundation/go/protocols/frontier"
 	"github.com/xdbfoundation/go/support/errors"
 	"github.com/xdbfoundation/go/txnbuild"
-	"github.com/stretchr/testify/assert"
 )
 
 // This test aims to reproduce the issue found on https://github.com/xdbfoundation/go/issues/2271
@@ -47,7 +47,7 @@ func TestMinion_NoChannelErrors(t *testing.T) {
 		Keypair:              minionKeypair.(*keypair.Full),
 		BotAccount:           botAccount,
 		BotKeypair:           botKeypair.(*keypair.Full),
-		Network:              "Test SDF Network ; September 2015",
+		Network:              "TestNet Global DigitalBits Network ; December 2020",
 		StartingBalance:      "10000.00",
 		SubmitTransaction:    mockSubmitTransaction,
 		CheckSequenceRefresh: mockCheckSequenceRefresh,
@@ -112,7 +112,7 @@ func TestMinion_CorrectNumberOfTxSubmissions(t *testing.T) {
 		Keypair:              minionKeypair.(*keypair.Full),
 		BotAccount:           botAccount,
 		BotKeypair:           botKeypair.(*keypair.Full),
-		Network:              "Test SDF Network ; September 2015",
+		Network:              "TestNet Global DigitalBits Network ; December 2020",
 		StartingBalance:      "10000.00",
 		SubmitTransaction:    mockSubmitTransaction,
 		CheckSequenceRefresh: mockCheckSequenceRefresh,

@@ -14,9 +14,9 @@ import (
 
 const (
 	// PublicNetworkPassphrase is the pass phrase used for every transaction intended for the public digitalbits network
-	PublicNetworkPassphrase = "Public Global DigitalBits Network ; September 2015"
+	PublicNetworkPassphrase = "LiveNet Global DigitalBits Network ; February 2021"
 	// TestNetworkPassphrase is the pass phrase used for every transaction intended for the SDF-run test network
-	TestNetworkPassphrase = "Test SDF Network ; September 2015"
+	TestNetworkPassphrase = "TestNet Global DigitalBits Network ; December 2020"
 )
 
 // ID returns the network ID derived from the provided passphrase.  This value

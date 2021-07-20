@@ -65,7 +65,7 @@ Now you can run frontier locally in vscode using the following configuration:
         "env": {
             "DATABASE_URL": "postgres://postgres@localhost:5432/frontier?sslmode=disable",
             "DIGITALBITS_CORE_DATABASE_URL": "postgres://postgres:mysecretpassword@localhost:5641/digitalbits?sslmode=disable",
-            "NETWORK_PASSPHRASE": "Test SDF Network ; September 2015",
+            "NETWORK_PASSPHRASE": "TestNet Global DigitalBits Network ; December 2020",
             "DIGITALBITS_CORE_URL": "http://localhost:11626",
             "INGEST": "true",
         },

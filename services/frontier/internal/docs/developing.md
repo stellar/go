@@ -89,7 +89,7 @@ You can connect Frontier to `digitalbits-core` at any time, but Frontier will no
 Now run your development version of Frontier (which is outside of the container), pointing it at the `digitalbits-core` running inside the container:
 
 ```bash
-frontier --db-url="postgres://localhost/frontier_dev" --digitalbits-core-db-url="postgres://digitalbits:postgres@localhost:8002/core" --digitalbits-core-url="http://localhost:11626" --port 8001 --network-passphrase "Test SDF Network ; September 2015" --ingest
+frontier --db-url="postgres://localhost/frontier_dev" --digitalbits-core-db-url="postgres://digitalbits:postgres@localhost:8002/core" --digitalbits-core-url="http://localhost:11626" --port 8001 --network-passphrase "TestNet Global DigitalBits Network ; December 2020" --ingest
 ```
 
 If all is well, you should see ingest logs written to standard out. You can test your Frontier instance with a query like: http://localhost:8001/transactions?limit=10&order=asc. Use the [DigitalBits Laboratory](https://developers.digitalbits.io/lab/) to craft other queries to try out,

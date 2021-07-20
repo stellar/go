@@ -92,6 +92,6 @@ Flags:
       --digitalbits-core-config-path           Path to digitalbits core config file
       --history-archive-urls               Comma-separated list of digitalbits history archives to connect with
       --log-level                          Minimum log severity (debug, info, warn, error) to log (default info)
-      --network-passphrase string          Network passphrase of the DigitalBits network transactions should be signed for (NETWORK_PASSPHRASE) (default "Test SDF Network ; September 2015")
+      --network-passphrase string          Network passphrase of the DigitalBits network transactions should be signed for (NETWORK_PASSPHRASE) (default "TestNet Global DigitalBits Network ; December 2020")
       --port int                           Port to listen and serve on (PORT) (default 8000)
 ```

@@ -3,15 +3,15 @@ package frontierclient
 import (
 	"testing"
 
-	"github.com/xdbfoundation/go/support/http/httptest"
 	"github.com/stretchr/testify/assert"
+	"github.com/xdbfoundation/go/support/http/httptest"
 )
 
 func TestFund(t *testing.T) {
 	friendbotFundResponse := `{
   "_links": {
     "transaction": {
-      "href": "https://frontier-testnet.digitalbits.org/transactions/94e42f65d3ff5f30669b6109c2ce3e82c0e592c52004e3b41bb30e24df33954e"
+      "href": "https://frontier.testnet.digitalbits.io/transactions/94e42f65d3ff5f30669b6109c2ce3e82c0e592c52004e3b41bb30e24df33954e"
     }
   },
   "hash": "94e42f65d3ff5f30669b6109c2ce3e82c0e592c52004e3b41bb30e24df33954e",
@@ -24,8 +24,8 @@ func TestFund(t *testing.T) {
 	hmock := httptest.NewClient()
 	client := &Client{
 		FrontierURL: "https://localhost/",
-		HTTP:       hmock,
-		isTestNet:  true,
+		HTTP:        hmock,
+		isTestNet:   true,
 	}
 
 	hmock.On(

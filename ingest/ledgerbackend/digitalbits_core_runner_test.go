@@ -45,7 +45,7 @@ func TestGenerateConfig(t *testing.T) {
 				Log:                log.New(),
 				ConfigAppendPath:   testCase.appendPath,
 				Context:            context.Background(),
-				NetworkPassphrase:  "Public Global DigitalBits Network ; September 2015",
+				NetworkPassphrase:  "LiveNet Global DigitalBits Network ; February 2021",
 			}, testCase.mode)
 			assert.NoError(t, err)
 

@@ -4,10 +4,10 @@ import (
 	"context"
 	"testing"
 
-	hProtocol "github.com/xdbfoundation/go/protocols/frontier"
-	"github.com/xdbfoundation/go/support/http/httptest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	hProtocol "github.com/xdbfoundation/go/protocols/frontier"
+	"github.com/xdbfoundation/go/support/http/httptest"
 )
 
 func TestOfferRequestBuildUrl(t *testing.T) {
@@ -37,7 +37,7 @@ func TestNextOffersPage(t *testing.T) {
 	hmock := httptest.NewClient()
 	client := &Client{
 		FrontierURL: "https://localhost/",
-		HTTP:       hmock,
+		HTTP:        hmock,
 	}
 
 	offerRequest := OfferRequest{ForAccount: "GBZ5OD56VRTRQKMNADD6VUZUG3FCILMAMYQY5ZSC3AW3GBXNEPIK76IG", Limit: 2}
@@ -57,7 +57,7 @@ func TestNextOffersPage(t *testing.T) {
 
 	hmock.On(
 		"GET",
-		"https://frontier-testnet.digitalbits.org/accounts/GBZ5OD56VRTRQKMNADD6VUZUG3FCILMAMYQY5ZSC3AW3GBXNEPIK76IG/offers?cursor=2946581&limit=2&order=asc",
+		"https://frontier.testnet.digitalbits.io/accounts/GBZ5OD56VRTRQKMNADD6VUZUG3FCILMAMYQY5ZSC3AW3GBXNEPIK76IG/offers?cursor=2946581&limit=2&order=asc",
 	).ReturnString(200, emptyOffersPage)
 
 	nextPage, err := client.NextOffersPage(offers)
@@ -71,7 +71,7 @@ func TestOfferRequestStreamOffers(t *testing.T) {
 	hmock := httptest.NewClient()
 	client := &Client{
 		FrontierURL: "https://localhost/",
-		HTTP:       hmock,
+		HTTP:        hmock,
 	}
 
 	// offers for account
@@ -117,7 +117,7 @@ func TestStringOfferID(t *testing.T) {
 	hmock := httptest.NewClient()
 	client := &Client{
 		FrontierURL: "https://localhost/",
-		HTTP:       hmock,
+		HTTP:        hmock,
 	}
 
 	offerRequest := OfferRequest{ForAccount: "GBZ5OD56VRTRQKMNADD6VUZUG3FCILMAMYQY5ZSC3AW3GBXNEPIK76IG", Limit: 1}
@@ -136,18 +136,18 @@ func TestStringOfferID(t *testing.T) {
 	assert.Equal(t, int64(2946580), offers.Embedded.Records[0].ID)
 }
 
-var offerStreamResponse = `data: {"_links":{"self":{"href":"https://frontier-testnet.digitalbits.org/offers/5269100"},"offer_maker":{"href":"https://frontier-testnet.digitalbits.org/accounts/GAQHWQYBBW272OOXNQMMLCA5WY2XAZPODGB7Q3S5OKKIXVESKO55ZQ7C"}},"id":"5269100","paging_token":"5269100","seller":"GAQHWQYBBW272OOXNQMMLCA5WY2XAZPODGB7Q3S5OKKIXVESKO55ZQ7C","selling":{"asset_type":"credit_alphanum4","asset_code":"DSQ","asset_issuer":"GBDQPTQJDATT7Z7EO4COS4IMYXH44RDLLI6N6WIL5BZABGMUOVMLWMQF"},"buying":{"asset_type":"credit_alphanum4","asset_code":"XCS6","asset_issuer":"GBH2V47NOZRC56QAYCPV5JUBG5NVFJQF5AQTUNFNWNDHSWWTKH2MWR2L"},"amount":"20.4266087","price_r":{"n":24819,"d":10000000},"price":"0.0024819","last_modified_ledger":674449,"last_modified_time":"2019-04-08T11:56:41Z"}
+var offerStreamResponse = `data: {"_links":{"self":{"href":"https://frontier.testnet.digitalbits.io/offers/5269100"},"offer_maker":{"href":"https://frontier.testnet.digitalbits.io/accounts/GAQHWQYBBW272OOXNQMMLCA5WY2XAZPODGB7Q3S5OKKIXVESKO55ZQ7C"}},"id":"5269100","paging_token":"5269100","seller":"GAQHWQYBBW272OOXNQMMLCA5WY2XAZPODGB7Q3S5OKKIXVESKO55ZQ7C","selling":{"asset_type":"credit_alphanum4","asset_code":"DSQ","asset_issuer":"GBDQPTQJDATT7Z7EO4COS4IMYXH44RDLLI6N6WIL5BZABGMUOVMLWMQF"},"buying":{"asset_type":"credit_alphanum4","asset_code":"XCS6","asset_issuer":"GBH2V47NOZRC56QAYCPV5JUBG5NVFJQF5AQTUNFNWNDHSWWTKH2MWR2L"},"amount":"20.4266087","price_r":{"n":24819,"d":10000000},"price":"0.0024819","last_modified_ledger":674449,"last_modified_time":"2019-04-08T11:56:41Z"}
 `
 var emptyOffersPage = `{
   "_links": {
     "self": {
-      "href": "https://frontier-testnet.digitalbits.org/accounts/GBZ5OD56VRTRQKMNADD6VUZUG3FCILMAMYQY5ZSC3AW3GBXNEPIK76IG/offers?cursor=2946581&limit=2&order=asc"
+      "href": "https://frontier.testnet.digitalbits.io/accounts/GBZ5OD56VRTRQKMNADD6VUZUG3FCILMAMYQY5ZSC3AW3GBXNEPIK76IG/offers?cursor=2946581&limit=2&order=asc"
     },
     "next": {
-      "href": "https://frontier-testnet.digitalbits.org/accounts/GBZ5OD56VRTRQKMNADD6VUZUG3FCILMAMYQY5ZSC3AW3GBXNEPIK76IG/offers?cursor=2946583&limit=2&order=asc"
+      "href": "https://frontier.testnet.digitalbits.io/accounts/GBZ5OD56VRTRQKMNADD6VUZUG3FCILMAMYQY5ZSC3AW3GBXNEPIK76IG/offers?cursor=2946583&limit=2&order=asc"
     },
     "prev": {
-      "href": "https://frontier-testnet.digitalbits.org/accounts/GBZ5OD56VRTRQKMNADD6VUZUG3FCILMAMYQY5ZSC3AW3GBXNEPIK76IG/offers?cursor=2946582&limit=2&order=desc"
+      "href": "https://frontier.testnet.digitalbits.io/accounts/GBZ5OD56VRTRQKMNADD6VUZUG3FCILMAMYQY5ZSC3AW3GBXNEPIK76IG/offers?cursor=2946582&limit=2&order=desc"
     }
   },
   "_embedded": {
@@ -158,13 +158,13 @@ var emptyOffersPage = `{
 var firstOffersPage = `{
   "_links": {
     "self": {
-      "href": "https://frontier-testnet.digitalbits.org/accounts/GBZ5OD56VRTRQKMNADD6VUZUG3FCILMAMYQY5ZSC3AW3GBXNEPIK76IG/offers?cursor=&limit=2&order=asc"
+      "href": "https://frontier.testnet.digitalbits.io/accounts/GBZ5OD56VRTRQKMNADD6VUZUG3FCILMAMYQY5ZSC3AW3GBXNEPIK76IG/offers?cursor=&limit=2&order=asc"
     },
     "next": {
-      "href": "https://frontier-testnet.digitalbits.org/accounts/GBZ5OD56VRTRQKMNADD6VUZUG3FCILMAMYQY5ZSC3AW3GBXNEPIK76IG/offers?cursor=2946581&limit=2&order=asc"
+      "href": "https://frontier.testnet.digitalbits.io/accounts/GBZ5OD56VRTRQKMNADD6VUZUG3FCILMAMYQY5ZSC3AW3GBXNEPIK76IG/offers?cursor=2946581&limit=2&order=asc"
     },
     "prev": {
-      "href": "https://frontier-testnet.digitalbits.org/accounts/GBZ5OD56VRTRQKMNADD6VUZUG3FCILMAMYQY5ZSC3AW3GBXNEPIK76IG/offers?cursor=2946580&limit=2&order=desc"
+      "href": "https://frontier.testnet.digitalbits.io/accounts/GBZ5OD56VRTRQKMNADD6VUZUG3FCILMAMYQY5ZSC3AW3GBXNEPIK76IG/offers?cursor=2946580&limit=2&order=desc"
     }
   },
   "_embedded": {
@@ -172,10 +172,10 @@ var firstOffersPage = `{
       {
         "_links": {
           "self": {
-            "href": "https://frontier-testnet.digitalbits.org/offers/2946580"
+            "href": "https://frontier.testnet.digitalbits.io/offers/2946580"
           },
           "offer_maker": {
-            "href": "https://frontier-testnet.digitalbits.org/accounts/GBZ5OD56VRTRQKMNADD6VUZUG3FCILMAMYQY5ZSC3AW3GBXNEPIK76IG"
+            "href": "https://frontier.testnet.digitalbits.io/accounts/GBZ5OD56VRTRQKMNADD6VUZUG3FCILMAMYQY5ZSC3AW3GBXNEPIK76IG"
           }
         },
         "id": "2946580",
@@ -203,10 +203,10 @@ var firstOffersPage = `{
       {
         "_links": {
           "self": {
-            "href": "https://frontier-testnet.digitalbits.org/offers/2946581"
+            "href": "https://frontier.testnet.digitalbits.io/offers/2946581"
           },
           "offer_maker": {
-            "href": "https://frontier-testnet.digitalbits.org/accounts/GBZ5OD56VRTRQKMNADD6VUZUG3FCILMAMYQY5ZSC3AW3GBXNEPIK76IG"
+            "href": "https://frontier.testnet.digitalbits.io/accounts/GBZ5OD56VRTRQKMNADD6VUZUG3FCILMAMYQY5ZSC3AW3GBXNEPIK76IG"
           }
         },
         "id": "2946581",
@@ -241,10 +241,10 @@ var stringOffersPage = `{
       {
         "_links": {
           "self": {
-            "href": "https://frontier-testnet.digitalbits.org/offers/2946580"
+            "href": "https://frontier.testnet.digitalbits.io/offers/2946580"
           },
           "offer_maker": {
-            "href": "https://frontier-testnet.digitalbits.org/accounts/GBZ5OD56VRTRQKMNADD6VUZUG3FCILMAMYQY5ZSC3AW3GBXNEPIK76IG"
+            "href": "https://frontier.testnet.digitalbits.io/accounts/GBZ5OD56VRTRQKMNADD6VUZUG3FCILMAMYQY5ZSC3AW3GBXNEPIK76IG"
           }
         },
         "id": "2946580",
