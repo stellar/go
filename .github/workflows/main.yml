@@ -2,6 +2,8 @@ name: Release Binaries and Packages
 on:
   # Triggers the workflow on push or pull request events but only for the master branch
   push:
+    branches:
+      - master
   # release:
   #   types: [created]
   # Allows you to run this workflow manually from the Actions tab
