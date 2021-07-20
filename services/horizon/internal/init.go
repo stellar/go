@@ -282,6 +282,7 @@ func initTxSubMetrics(app *App) {
 func initWebMetrics(app *App) {
 	app.prometheusRegistry.MustRegister(app.webServer.Metrics.RequestDurationSummary)
 	app.prometheusRegistry.MustRegister(app.webServer.Metrics.ReplicaLagErrorsCounter)
+	app.prometheusRegistry.MustRegister(app.webServer.Metrics.HistoryResponseAge)
 }
 
 func initSubmissionSystem(app *App) {

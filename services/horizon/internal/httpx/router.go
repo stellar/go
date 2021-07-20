@@ -68,7 +68,7 @@ func NewRouter(config *RouterConfig, serverMetrics *ServerMetrics, ledgerState *
 		}
 	}
 	result.addMiddleware(config, rateLimiter, serverMetrics)
-	result.addRoutes(config, rateLimiter, ledgerState)
+	result.addRoutes(config, rateLimiter, serverMetrics, ledgerState)
 	return &result, nil
 }
 
@@ -116,11 +116,15 @@ func (r *Router) addMiddleware(config *RouterConfig,
 	r.Internal.Use(loggerMiddleware(serverMetrics))
 }
 
-func (r *Router) addRoutes(config *RouterConfig, rateLimiter *throttled.HTTPRateLimiter, ledgerState *ledger.State) {
+func (r *Router) addRoutes(config *RouterConfig, rateLimiter *throttled.HTTPRateLimiter, serverMetrics *ServerMetrics, ledgerState *ledger.State) {
 	stateMiddleware := StateMiddleware{
 		HorizonSession: config.DBSession,
 	}
 
+	responseAgeObserver := responseAgeMetric{
+		ledgerState:        ledgerState,
+		ledgerAgeHistogram: serverMetrics.HistoryResponseAge,
+	}
 	r.Method(http.MethodGet, "/health", config.HealthCheck)
 
 	r.Method(http.MethodGet, "/", ObjectActionHandler{Action: actions.GetRootHandler{
@@ -203,31 +207,31 @@ func (r *Router) addRoutes(config *RouterConfig, rateLimiter *throttled.HTTPRate
 	// need to use absolute routes here. Make sure we use regexp check here for
 	// emptiness. Without it, requesting `/accounts//payments` return all payments!
 	r.Group(func(r chi.Router) {
-		r.With(historyMiddleware).Method(http.MethodGet, "/accounts/{account_id:\\w+}/effects", streamableHistoryPageHandler(ledgerState, actions.GetEffectsHandler{LedgerState: ledgerState}, streamHandler))
-		r.With(historyMiddleware).Method(http.MethodGet, "/accounts/{account_id:\\w+}/operations", streamableHistoryPageHandler(ledgerState, actions.GetOperationsHandler{
+		r.With(historyMiddleware).Method(http.MethodGet, "/accounts/{account_id:\\w+}/effects", streamableHistoryPageHandler(ledgerState, responseAgeObserver, actions.GetEffectsHandler{LedgerState: ledgerState}, streamHandler))
+		r.With(historyMiddleware).Method(http.MethodGet, "/accounts/{account_id:\\w+}/operations", streamableHistoryPageHandler(ledgerState, responseAgeObserver, actions.GetOperationsHandler{
 			LedgerState:  ledgerState,
 			OnlyPayments: false,
 		}, streamHandler))
-		r.With(historyMiddleware).Method(http.MethodGet, "/accounts/{account_id:\\w+}/payments", streamableHistoryPageHandler(ledgerState, actions.GetOperationsHandler{
+		r.With(historyMiddleware).Method(http.MethodGet, "/accounts/{account_id:\\w+}/payments", streamableHistoryPageHandler(ledgerState, responseAgeObserver, actions.GetOperationsHandler{
 			LedgerState:  ledgerState,
 			OnlyPayments: true,
 		}, streamHandler))
-		r.With(historyMiddleware).Method(http.MethodGet, "/accounts/{account_id:\\w+}/trades", streamableHistoryPageHandler(ledgerState, actions.GetTradesHandler{LedgerState: ledgerState}, streamHandler))
-		r.With(historyMiddleware).Method(http.MethodGet, "/accounts/{account_id:\\w+}/transactions", streamableHistoryPageHandler(ledgerState, actions.GetTransactionsHandler{LedgerState: ledgerState}, streamHandler))
+		r.With(historyMiddleware).Method(http.MethodGet, "/accounts/{account_id:\\w+}/trades", streamableHistoryPageHandler(ledgerState, responseAgeObserver, actions.GetTradesHandler{LedgerState: ledgerState}, streamHandler))
+		r.With(historyMiddleware).Method(http.MethodGet, "/accounts/{account_id:\\w+}/transactions", streamableHistoryPageHandler(ledgerState, responseAgeObserver, actions.GetTransactionsHandler{LedgerState: ledgerState}, streamHandler))
 	})
 	// ledger actions
 	r.Route("/ledgers", func(r chi.Router) {
-		r.With(historyMiddleware).Method(http.MethodGet, "/", streamableHistoryPageHandler(ledgerState, actions.GetLedgersHandler{LedgerState: ledgerState}, streamHandler))
+		r.With(historyMiddleware).Method(http.MethodGet, "/", streamableHistoryPageHandler(ledgerState, responseAgeObserver, actions.GetLedgersHandler{LedgerState: ledgerState}, streamHandler))
 		r.Route("/{ledger_id}", func(r chi.Router) {
-			r.With(historyMiddleware).Method(http.MethodGet, "/", ObjectActionHandler{actions.GetLedgerByIDHandler{LedgerState: ledgerState}})
-			r.With(historyMiddleware).Method(http.MethodGet, "/transactions", streamableHistoryPageHandler(ledgerState, actions.GetTransactionsHandler{LedgerState: ledgerState}, streamHandler))
+			r.With(historyMiddleware).Method(http.MethodGet, "/", ObjectActionHandler{actions.GetLedgerByIDHandler{LedgerState: ledgerState, ResponseAgeMetric: responseAgeObserver}})
+			r.With(historyMiddleware).Method(http.MethodGet, "/transactions", streamableHistoryPageHandler(ledgerState, responseAgeObserver, actions.GetTransactionsHandler{LedgerState: ledgerState}, streamHandler))
 			r.Group(func(r chi.Router) {
-				r.With(historyMiddleware).Method(http.MethodGet, "/effects", streamableHistoryPageHandler(ledgerState, actions.GetEffectsHandler{LedgerState: ledgerState}, streamHandler))
-				r.With(historyMiddleware).Method(http.MethodGet, "/operations", streamableHistoryPageHandler(ledgerState, actions.GetOperationsHandler{
+				r.With(historyMiddleware).Method(http.MethodGet, "/effects", streamableHistoryPageHandler(ledgerState, responseAgeObserver, actions.GetEffectsHandler{LedgerState: ledgerState}, streamHandler))
+				r.With(historyMiddleware).Method(http.MethodGet, "/operations", streamableHistoryPageHandler(ledgerState, responseAgeObserver, actions.GetOperationsHandler{
 					LedgerState:  ledgerState,
 					OnlyPayments: false,
 				}, streamHandler))
-				r.With(historyMiddleware).Method(http.MethodGet, "/payments", streamableHistoryPageHandler(ledgerState, actions.GetOperationsHandler{
+				r.With(historyMiddleware).Method(http.MethodGet, "/payments", streamableHistoryPageHandler(ledgerState, responseAgeObserver, actions.GetOperationsHandler{
 					LedgerState:  ledgerState,
 					OnlyPayments: true,
 				}, streamHandler))
@@ -236,24 +240,27 @@ func (r *Router) addRoutes(config *RouterConfig, rateLimiter *throttled.HTTPRate
 	})
 	// claimable balance actions
 	r.Group(func(r chi.Router) {
-		r.With(historyMiddleware).Method(http.MethodGet, "/claimable_balances/{claimable_balance_id:\\w+}/operations", streamableHistoryPageHandler(ledgerState, actions.GetOperationsHandler{
+		r.With(historyMiddleware).Method(http.MethodGet, "/claimable_balances/{claimable_balance_id:\\w+}/operations", streamableHistoryPageHandler(ledgerState, responseAgeObserver, actions.GetOperationsHandler{
 			LedgerState:  ledgerState,
 			OnlyPayments: false,
 		}, streamHandler))
-		r.With(historyMiddleware).Method(http.MethodGet, "/claimable_balances/{claimable_balance_id:\\w+}/transactions", streamableHistoryPageHandler(ledgerState, actions.GetTransactionsHandler{LedgerState: ledgerState}, streamHandler))
+		r.With(historyMiddleware).Method(http.MethodGet, "/claimable_balances/{claimable_balance_id:\\w+}/transactions", streamableHistoryPageHandler(ledgerState, responseAgeObserver, actions.GetTransactionsHandler{LedgerState: ledgerState}, streamHandler))
 	})
 
 	// transaction history actions
 	r.Route("/transactions", func(r chi.Router) {
-		r.With(historyMiddleware).Method(http.MethodGet, "/", streamableHistoryPageHandler(ledgerState, actions.GetTransactionsHandler{LedgerState: ledgerState}, streamHandler))
+		r.With(historyMiddleware).Method(http.MethodGet, "/", streamableHistoryPageHandler(ledgerState, responseAgeObserver, actions.GetTransactionsHandler{LedgerState: ledgerState}, streamHandler))
 		r.Route("/{tx_id}", func(r chi.Router) {
-			r.With(historyMiddleware).Method(http.MethodGet, "/", ObjectActionHandler{actions.GetTransactionByHashHandler{}})
-			r.With(historyMiddleware).Method(http.MethodGet, "/effects", streamableHistoryPageHandler(ledgerState, actions.GetEffectsHandler{LedgerState: ledgerState}, streamHandler))
-			r.With(historyMiddleware).Method(http.MethodGet, "/operations", streamableHistoryPageHandler(ledgerState, actions.GetOperationsHandler{
+			r.With(historyMiddleware).Method(http.MethodGet, "/", ObjectActionHandler{actions.GetTransactionByHashHandler{
+				LedgerState:       ledgerState,
+				ResponseAgeMetric: responseAgeObserver,
+			}})
+			r.With(historyMiddleware).Method(http.MethodGet, "/effects", streamableHistoryPageHandler(ledgerState, responseAgeObserver, actions.GetEffectsHandler{LedgerState: ledgerState}, streamHandler))
+			r.With(historyMiddleware).Method(http.MethodGet, "/operations", streamableHistoryPageHandler(ledgerState, responseAgeObserver, actions.GetOperationsHandler{
 				LedgerState:  ledgerState,
 				OnlyPayments: false,
 			}, streamHandler))
-			r.With(historyMiddleware).Method(http.MethodGet, "/payments", streamableHistoryPageHandler(ledgerState, actions.GetOperationsHandler{
+			r.With(historyMiddleware).Method(http.MethodGet, "/payments", streamableHistoryPageHandler(ledgerState, responseAgeObserver, actions.GetOperationsHandler{
 				LedgerState:  ledgerState,
 				OnlyPayments: true,
 			}, streamHandler))
@@ -262,30 +269,30 @@ func (r *Router) addRoutes(config *RouterConfig, rateLimiter *throttled.HTTPRate
 
 	// operation actions
 	r.Route("/operations", func(r chi.Router) {
-		r.With(historyMiddleware).Method(http.MethodGet, "/", streamableHistoryPageHandler(ledgerState, actions.GetOperationsHandler{
+		r.With(historyMiddleware).Method(http.MethodGet, "/", streamableHistoryPageHandler(ledgerState, responseAgeObserver, actions.GetOperationsHandler{
 			LedgerState:  ledgerState,
 			OnlyPayments: false,
 		}, streamHandler))
-		r.With(historyMiddleware).Method(http.MethodGet, "/{id}", ObjectActionHandler{actions.GetOperationByIDHandler{LedgerState: ledgerState}})
-		r.With(historyMiddleware).Method(http.MethodGet, "/{op_id}/effects", streamableHistoryPageHandler(ledgerState, actions.GetEffectsHandler{LedgerState: ledgerState}, streamHandler))
+		r.With(historyMiddleware).Method(http.MethodGet, "/{id}", ObjectActionHandler{actions.GetOperationByIDHandler{LedgerState: ledgerState, ResponseAgeMetric: responseAgeObserver}})
+		r.With(historyMiddleware).Method(http.MethodGet, "/{op_id}/effects", streamableHistoryPageHandler(ledgerState, responseAgeObserver, actions.GetEffectsHandler{LedgerState: ledgerState}, streamHandler))
 	})
 
 	r.Group(func(r chi.Router) {
 		// payment actions
-		r.With(historyMiddleware).Method(http.MethodGet, "/payments", streamableHistoryPageHandler(ledgerState, actions.GetOperationsHandler{
+		r.With(historyMiddleware).Method(http.MethodGet, "/payments", streamableHistoryPageHandler(ledgerState, responseAgeObserver, actions.GetOperationsHandler{
 			LedgerState:  ledgerState,
 			OnlyPayments: true,
 		}, streamHandler))
 
 		// effect actions
-		r.With(historyMiddleware).Method(http.MethodGet, "/effects", streamableHistoryPageHandler(ledgerState, actions.GetEffectsHandler{LedgerState: ledgerState}, streamHandler))
+		r.With(historyMiddleware).Method(http.MethodGet, "/effects", streamableHistoryPageHandler(ledgerState, responseAgeObserver, actions.GetEffectsHandler{LedgerState: ledgerState}, streamHandler))
 
 		// trading related endpoints
-		r.With(historyMiddleware).Method(http.MethodGet, "/trades", streamableHistoryPageHandler(ledgerState, actions.GetTradesHandler{LedgerState: ledgerState}, streamHandler))
+		r.With(historyMiddleware).Method(http.MethodGet, "/trades", streamableHistoryPageHandler(ledgerState, responseAgeObserver, actions.GetTradesHandler{LedgerState: ledgerState}, streamHandler))
 		r.With(historyMiddleware).Method(http.MethodGet, "/trade_aggregations", ObjectActionHandler{actions.GetTradeAggregationsHandler{LedgerState: ledgerState}})
 		// /offers/{offer_id} has been created above so we need to use absolute
 		// routes here.
-		r.With(historyMiddleware).Method(http.MethodGet, "/offers/{offer_id}/trades", streamableHistoryPageHandler(ledgerState, actions.GetTradesHandler{LedgerState: ledgerState}, streamHandler))
+		r.With(historyMiddleware).Method(http.MethodGet, "/offers/{offer_id}/trades", streamableHistoryPageHandler(ledgerState, responseAgeObserver, actions.GetTradesHandler{LedgerState: ledgerState}, streamHandler))
 	})
 
 	// Transaction submission API

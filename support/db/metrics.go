@@ -32,8 +32,8 @@ var UndefinedQueryType = QueryType("undefined")
 var UpdateQueryType = QueryType("update")
 var UpsertQueryType = QueryType("upsert")
 
-// contextRoute returns a string representing the request endpoint, or "undefined" if it wasn't found
-func contextRoute(ctx context.Context) string {
+// Route returns a string representing the request endpoint, or "undefined" if it wasn't found
+func Route(ctx context.Context) string {
 	if endpoint, ok := ctx.Value(&RouteContextKey).(string); ok {
 		return endpoint
 	}
@@ -252,7 +252,7 @@ func (s *SessionWithMetrics) TruncateTables(ctx context.Context, tables []string
 		s.queryDurationSummary.With(prometheus.Labels{
 			"query_type": "truncate_tables",
 			"error":      fmt.Sprint(err != nil),
-			"route":      contextRoute(ctx),
+			"route":      Route(ctx),
 		}).Observe(v)
 	}))
 	defer func() {
@@ -260,7 +260,7 @@ func (s *SessionWithMetrics) TruncateTables(ctx context.Context, tables []string
 		s.queryCounter.With(prometheus.Labels{
 			"query_type": "truncate_tables",
 			"error":      fmt.Sprint(err != nil),
-			"route":      contextRoute(ctx),
+			"route":      Route(ctx),
 		}).Inc()
 	}()
 
@@ -333,7 +333,7 @@ func (s *SessionWithMetrics) Get(ctx context.Context, dest interface{}, query sq
 		s.queryDurationSummary.With(prometheus.Labels{
 			"query_type": queryType,
 			"error":      fmt.Sprint(err != nil),
-			"route":      contextRoute(ctx),
+			"route":      Route(ctx),
 		}).Observe(v)
 	}))
 	defer func() {
@@ -341,7 +341,7 @@ func (s *SessionWithMetrics) Get(ctx context.Context, dest interface{}, query sq
 		s.queryCounter.With(prometheus.Labels{
 			"query_type": queryType,
 			"error":      fmt.Sprint(err != nil),
-			"route":      contextRoute(ctx),
+			"route":      Route(ctx),
 		}).Inc()
 	}()
 
@@ -359,7 +359,7 @@ func (s *SessionWithMetrics) Select(ctx context.Context, dest interface{}, query
 		s.queryDurationSummary.With(prometheus.Labels{
 			"query_type": queryType,
 			"error":      fmt.Sprint(err != nil),
-			"route":      contextRoute(ctx),
+			"route":      Route(ctx),
 		}).Observe(v)
 	}))
 	defer func() {
@@ -367,7 +367,7 @@ func (s *SessionWithMetrics) Select(ctx context.Context, dest interface{}, query
 		s.queryCounter.With(prometheus.Labels{
 			"query_type": queryType,
 			"error":      fmt.Sprint(err != nil),
-			"route":      contextRoute(ctx),
+			"route":      Route(ctx),
 		}).Inc()
 	}()
 
@@ -385,7 +385,7 @@ func (s *SessionWithMetrics) Exec(ctx context.Context, query squirrel.Sqlizer) (
 		s.queryDurationSummary.With(prometheus.Labels{
 			"query_type": queryType,
 			"error":      fmt.Sprint(err != nil),
-			"route":      contextRoute(ctx),
+			"route":      Route(ctx),
 		}).Observe(v)
 	}))
 	defer func() {
@@ -393,7 +393,7 @@ func (s *SessionWithMetrics) Exec(ctx context.Context, query squirrel.Sqlizer) (
 		s.queryCounter.With(prometheus.Labels{
 			"query_type": queryType,
 			"error":      fmt.Sprint(err != nil),
-			"route":      contextRoute(ctx),
+			"route":      Route(ctx),
 		}).Inc()
 	}()
 
@@ -411,7 +411,7 @@ func (s *SessionWithMetrics) Ping(ctx context.Context, timeout time.Duration) (e
 		s.queryDurationSummary.With(prometheus.Labels{
 			"query_type": queryType,
 			"error":      fmt.Sprint(err != nil),
-			"route":      contextRoute(ctx),
+			"route":      Route(ctx),
 		}).Observe(v)
 	}))
 	defer func() {
@@ -419,7 +419,7 @@ func (s *SessionWithMetrics) Ping(ctx context.Context, timeout time.Duration) (e
 		s.queryCounter.With(prometheus.Labels{
 			"query_type": queryType,
 			"error":      fmt.Sprint(err != nil),
-			"route":      contextRoute(ctx),
+			"route":      Route(ctx),
 		}).Inc()
 	}()
 
@@ -438,7 +438,7 @@ func (s *SessionWithMetrics) DeleteRange(
 		s.queryDurationSummary.With(prometheus.Labels{
 			"query_type": queryType,
 			"error":      fmt.Sprint(err != nil),
-			"route":      contextRoute(ctx),
+			"route":      Route(ctx),
 		}).Observe(v)
 	}))
 	defer func() {
@@ -446,7 +446,7 @@ func (s *SessionWithMetrics) DeleteRange(
 		s.queryCounter.With(prometheus.Labels{
 			"query_type": queryType,
 			"error":      fmt.Sprint(err != nil),
-			"route":      contextRoute(ctx),
+			"route":      Route(ctx),
 		}).Inc()
 	}()
 

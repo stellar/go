@@ -629,7 +629,8 @@ func TestGetOperation(t *testing.T) {
 	defer tt.Finish()
 
 	handler := GetOperationByIDHandler{
-		LedgerState: &ledger.State{},
+		LedgerState:       &ledger.State{},
+		ResponseAgeMetric: mockResponseAgeMetric{},
 	}
 	handler.LedgerState.SetStatus(tt.Scenario("base"))
 
@@ -668,7 +669,8 @@ func TestOperation_IncludeTransaction(t *testing.T) {
 	tt.Scenario("kahuna")
 
 	handler := GetOperationByIDHandler{
-		LedgerState: &ledger.State{},
+		LedgerState:       &ledger.State{},
+		ResponseAgeMetric: mockResponseAgeMetric{},
 	}
 	record, err := handler.GetResource(
 		httptest.NewRecorder(),

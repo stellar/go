@@ -23,6 +23,8 @@ type TransactionQuery struct {
 
 // GetTransactionByHashHandler is the action handler for the end-point returning a transaction.
 type GetTransactionByHashHandler struct {
+	LedgerState       *ledger.State
+	ResponseAgeMetric ResponseAgeMetric
 }
 
 // GetResource returns a transaction page.
@@ -49,6 +51,7 @@ func (handler GetTransactionByHashHandler) GetResource(w HeaderWriter, r *http.R
 		return resource, errors.Wrap(err, "loading transaction record")
 	}
 
+	handler.ResponseAgeMetric.ObserveLedgerAge(r, int(resource.Ledger))
 	if err = resourceadapter.PopulateTransaction(ctx, qp.TransactionHash, &resource, record); err != nil {
 		return resource, errors.Wrap(err, "could not populate transaction")
 	}

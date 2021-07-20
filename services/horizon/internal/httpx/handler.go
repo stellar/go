@@ -4,6 +4,10 @@ import (
 	"database/sql"
 	"io"
 	"net/http"
+	"strconv"
+	"strings"
+
+	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/stellar/go/services/horizon/internal/actions"
 	horizonContext "github.com/stellar/go/services/horizon/internal/context"
@@ -11,8 +15,10 @@ import (
 	"github.com/stellar/go/services/horizon/internal/render"
 	hProblem "github.com/stellar/go/services/horizon/internal/render/problem"
 	"github.com/stellar/go/services/horizon/internal/render/sse"
+	"github.com/stellar/go/services/horizon/internal/toid"
 	"github.com/stellar/go/support/db"
 	"github.com/stellar/go/support/errors"
+	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/support/render/hal"
 	"github.com/stellar/go/support/render/httpjson"
 	"github.com/stellar/go/support/render/problem"
@@ -152,11 +158,12 @@ type pageAction interface {
 }
 
 type pageActionHandler struct {
-	action         pageAction
-	streamable     bool
-	streamHandler  sse.StreamHandler
-	repeatableRead bool
-	ledgerState    *ledger.State
+	action              pageAction
+	streamable          bool
+	streamHandler       sse.StreamHandler
+	repeatableRead      bool
+	ledgerState         *ledger.State
+	responseAgeObserver *responseAgeMetric
 }
 
 func restPageHandler(ledgerState *ledger.State, action pageAction) pageActionHandler {
@@ -183,15 +190,17 @@ func streamableStatePageHandler(
 // events without starting a REPEATABLE READ transaction.
 func streamableHistoryPageHandler(
 	ledgerState *ledger.State,
+	responseAgeObserver responseAgeMetric,
 	action pageAction,
 	streamHandler sse.StreamHandler,
 ) pageActionHandler {
 	return pageActionHandler{
-		action:         action,
-		ledgerState:    ledgerState,
-		streamable:     true,
-		streamHandler:  streamHandler,
-		repeatableRead: false,
+		action:              action,
+		ledgerState:         ledgerState,
+		streamable:          true,
+		streamHandler:       streamHandler,
+		repeatableRead:      false,
+		responseAgeObserver: &responseAgeObserver,
 	}
 }
 
@@ -201,9 +210,11 @@ func (handler pageActionHandler) renderPage(w http.ResponseWriter, r *http.Reque
 		problem.Render(r.Context(), w, err)
 		return
 	}
+	if handler.responseAgeObserver != nil {
+		handler.responseAgeObserver.ObserveLedgerAgePage(r, records)
+	}
 
 	page, err := buildPage(handler.ledgerState, r, records)
-
 	if err != nil {
 		problem.Render(r.Context(), w, err)
 		return
@@ -214,6 +225,58 @@ func (handler pageActionHandler) renderPage(w http.ResponseWriter, r *http.Reque
 		page,
 		httpjson.HALJSON,
 	)
+}
+
+type responseAgeMetric struct {
+	ledgerState        *ledger.State
+	ledgerAgeHistogram *prometheus.HistogramVec
+}
+
+func (m responseAgeMetric) ObserveLedgerAge(r *http.Request, ledger int) {
+	latestLedger := int(m.ledgerState.CurrentStatus().ExpHistoryLatest)
+	var ledgersAgo float64
+
+	if ledger < latestLedger {
+		ledgersAgo = float64(latestLedger) - float64(ledger)
+	}
+
+	m.ledgerAgeHistogram.With(prometheus.Labels{
+		"route":     db.Route(r.Context()),
+		"streaming": strconv.FormatBool(render.Negotiate(r) == render.MimeEventStream),
+	}).Observe(ledgersAgo)
+}
+
+func (m responseAgeMetric) ObserveLedgerAgePage(r *http.Request, records []hal.Pageable) {
+	latestLedger := int(m.ledgerState.CurrentStatus().ExpHistoryLatest)
+	route := db.Route(r.Context())
+	for _, record := range records {
+		var ledgersAgo float64
+		ledger, err := ledgerFromPagingToken(record.PagingToken())
+		if err != nil {
+			log.Warnf("invalid paging token %v", record.PagingToken())
+		}
+
+		if ledger < latestLedger {
+			ledgersAgo = float64(latestLedger) - float64(ledger)
+		}
+		m.ledgerAgeHistogram.With(prometheus.Labels{
+			"route":     route,
+			"streaming": strconv.FormatBool(render.Negotiate(r) == render.MimeEventStream),
+		}).Observe(ledgersAgo)
+	}
+}
+
+func ledgerFromPagingToken(token string) (int, error) {
+	if strings.Contains(token, "-") {
+		token = strings.Split(token, "-")[0]
+	}
+
+	cursorInt, err := strconv.Atoi(token)
+	if err != nil {
+		return 0, err
+	}
+	tid := toid.Parse(int64(cursorInt))
+	return int(tid.LedgerSequence), nil
 }
 
 func (handler pageActionHandler) renderStream(w http.ResponseWriter, r *http.Request) {
@@ -230,6 +293,9 @@ func (handler pageActionHandler) renderStream(w http.ResponseWriter, r *http.Req
 			return nil, err
 		}
 
+		if handler.responseAgeObserver != nil {
+			handler.responseAgeObserver.ObserveLedgerAgePage(r, records)
+		}
 		events := make([]sse.Event, 0, len(records))
 		for _, record := range records {
 			events = append(events, sse.Event{ID: record.PagingToken(), Data: record})

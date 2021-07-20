@@ -21,9 +21,15 @@ import (
 	"github.com/stellar/go/support/render/problem"
 )
 
+const (
+	maxHistoryResponseAge      = 36000000
+	historyResponseBucketWidth = 100000 // about 5.7 days assuming a 5 second ledger close time
+)
+
 type ServerMetrics struct {
 	RequestDurationSummary  *prometheus.SummaryVec
 	ReplicaLagErrorsCounter prometheus.Counter
+	HistoryResponseAge      *prometheus.HistogramVec
 }
 
 type TLSConfig struct {
@@ -75,6 +81,19 @@ func NewServer(serverConfig ServerConfig, routerConfig RouterConfig, ledgerState
 				Namespace: "horizon", Subsystem: "http", Name: "replica_lag_errors_count",
 				Help: "Count of HTTP errors returned due to replica lag",
 			},
+		),
+		HistoryResponseAge: prometheus.NewHistogramVec(
+			prometheus.HistogramOpts{
+				Namespace: "horizon",
+				Subsystem: "http",
+				Name:      "history_response_ledger_age",
+				Buckets: prometheus.LinearBuckets(
+					historyResponseBucketWidth,                       // start
+					historyResponseBucketWidth,                       // width
+					maxHistoryResponseAge/historyResponseBucketWidth, // number of buckets
+				),
+			},
+			[]string{"route", "streaming"},
 		),
 	}
 	router, err := NewRouter(&routerConfig, sm, ledgerState)

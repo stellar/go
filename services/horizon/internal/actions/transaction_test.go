@@ -1,6 +1,7 @@
 package actions
 
 import (
+	"net/http"
 	"net/http/httptest"
 	"testing"
 
@@ -172,6 +173,13 @@ func TestFeeBumpTransactionPage(t *testing.T) {
 	tt.Assert.Equal(fixture.NormalTransaction.TransactionHash, normalTxResponse.ID)
 }
 
+type mockResponseAgeMetric struct {
+}
+
+func (m mockResponseAgeMetric) ObserveLedgerAge(r *http.Request, ledger int) {
+
+}
+
 func TestFeeBumpTransactionResource(t *testing.T) {
 	tt := test.Start(t)
 	defer tt.Finish()
@@ -179,7 +187,7 @@ func TestFeeBumpTransactionResource(t *testing.T) {
 	q := &history.Q{tt.HorizonSession()}
 	fixture := history.FeeBumpScenario(tt, q, true)
 
-	handler := GetTransactionByHashHandler{}
+	handler := GetTransactionByHashHandler{ResponseAgeMetric: mockResponseAgeMetric{}}
 	resource, err := handler.GetResource(
 		httptest.NewRecorder(),
 		makeRequest(
