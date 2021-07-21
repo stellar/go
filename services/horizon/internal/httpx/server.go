@@ -21,6 +21,11 @@ import (
 	"github.com/stellar/go/support/render/problem"
 )
 
+const (
+	maxHistoryResponseAge      = 36000000
+	historyResponseBucketWidth = 100000 // about 5.7 days assuming a 5 second ledger close time
+)
+
 type ServerMetrics struct {
 	RequestDurationSummary  *prometheus.SummaryVec
 	ReplicaLagErrorsCounter prometheus.Counter

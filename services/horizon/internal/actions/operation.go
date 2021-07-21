@@ -133,7 +133,8 @@ func (handler GetOperationsHandler) GetResourcePage(w HeaderWriter, r *http.Requ
 
 // GetOperationByIDHandler is the action handler for all end-points returning a list of operations.
 type GetOperationByIDHandler struct {
-	LedgerState *ledger.State
+	LedgerState       *ledger.State
+	ResponseAgeMetric ResponseAgeMetric
 }
 
 // OperationQuery query struct for operation/id end-point
@@ -181,6 +182,7 @@ func (handler GetOperationByIDHandler) GetResource(w HeaderWriter, r *http.Reque
 	resourceAge := time.Since(ledger.ClosedAt)
 	log.Ctx(r.Context()).WithFields(log.F{"age_hours": resourceAge.Hours(), "route": "/operations/{id}/"}).Info("Resource age")
 
+	handler.ResponseAgeMetric.ObserveLedgerAge(r, int(op.LedgerSequence()))
 	return resourceadapter.NewOperation(
 		ctx,
 		op,
