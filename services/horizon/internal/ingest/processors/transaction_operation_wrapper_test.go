@@ -766,7 +766,7 @@ func TestTransactionOperationDetails(t *testing.T) {
 				SourceAccount: xdr.MustMuxedAddress("MAQAA5L65LSYH7CQ3VTJ7F3HHLGCL3DSLAR2Y47263D56MNNGHSQSAAAAAAAAAAE2LP26"),
 				Fee:           0,
 				SeqNum:        26,
-				TimeBounds:    nil,
+				Cond:          xdr.Preconditions{Type: xdr.PreconditionTypePrecondNone},
 				Memo:          xdr.Memo{Type: xdr.MemoTypeMemoNone},
 				Operations:    []xdr.Operation{{Body: xdr.OperationBody{Type: xdr.OperationTypeAccountMerge, Destination: &destination}}},
 				Ext:           xdr.TransactionExt{},

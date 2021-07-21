@@ -93,9 +93,29 @@ func (e TransactionEnvelope) SeqNum() int64 {
 func (e TransactionEnvelope) TimeBounds() *TimeBounds {
 	switch e.Type {
 	case EnvelopeTypeEnvelopeTypeTxFeeBump:
-		return e.FeeBump.Tx.InnerTx.V1.Tx.TimeBounds
+		tx := e.FeeBump.Tx.InnerTx.V1.Tx
+		switch tx.Cond.Type {
+		case PreconditionTypePrecondNone:
+			return nil
+		case PreconditionTypePrecondTime:
+			return tx.Cond.TimeBounds
+		case PreconditionTypePrecondGeneral:
+			return tx.Cond.General.TimeBounds
+		default:
+			panic("unsupported precondition type: " + e.Type.String())
+		}
 	case EnvelopeTypeEnvelopeTypeTx:
-		return e.V1.Tx.TimeBounds
+		tx := e.V1.Tx
+		switch tx.Cond.Type {
+		case PreconditionTypePrecondNone:
+			return nil
+		case PreconditionTypePrecondTime:
+			return tx.Cond.TimeBounds
+		case PreconditionTypePrecondGeneral:
+			return tx.Cond.General.TimeBounds
+		default:
+			panic("unsupported precondition type: " + e.Type.String())
+		}
 	case EnvelopeTypeEnvelopeTypeTxV0:
 		return e.V0.Tx.TimeBounds
 	default:

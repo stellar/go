@@ -40,6 +40,7 @@
 // migrations/43_add_claimable_balances_flags.sql (145B)
 // migrations/44_asset_stat_accounts_and_balances.sql (439B)
 // migrations/45_add_claimable_balances_history.sql (2.163kB)
+// migrations/46_add_account_extv3_fields.sql (198B)
 // migrations/46_add_muxed_accounts.sql (465B)
 // migrations/47_precompute_trade_aggregations.sql (1.687kB)
 // migrations/48_rebuild_trade_aggregations.sql (1.243kB)
@@ -918,6 +919,26 @@ func migrations45_add_claimable_balances_historySql() (*asset, error) {
 	return a, nil
 }
 
+var _migrations46_add_account_extv3_fieldsSql = []byte("\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff\xd2\xd5\x55\xd0\xce\xcd\x4c\x2f\x4a\x2c\x49\x55\x08\x2d\xe0\xe2\x72\xf4\x09\x71\x0d\x52\x08\x71\x74\xf2\x71\x55\x48\x4c\x4e\xce\x2f\xcd\x2b\x29\xe6\x72\x74\x71\x51\x70\xf6\xf7\x09\xf5\xf5\x53\x28\x4e\x2d\x2c\x4d\xcd\x4b\x4e\x8d\x2f\xc9\xcc\x4d\x55\x48\xca\x4c\xcf\xcc\x2b\xd1\xc1\xaa\x20\x27\x35\x25\x3d\xb5\x48\x21\x33\xaf\xc4\x9a\x8b\x0b\xd9\x1a\x97\xfc\xf2\x3c\x1c\x16\xb9\x04\xf9\x07\x60\xb5\x49\x07\xbb\x14\xc4\x0e\x6b\x2e\x40\x00\x00\x00\xff\xff\xf1\x0d\x58\x84\xc6\x00\x00\x00")
+
+func migrations46_add_account_extv3_fieldsSqlBytes() ([]byte, error) {
+	return bindataRead(
+		_migrations46_add_account_extv3_fieldsSql,
+		"migrations/46_add_account_extv3_fields.sql",
+	)
+}
+
+func migrations46_add_account_extv3_fieldsSql() (*asset, error) {
+	bytes, err := migrations46_add_account_extv3_fieldsSqlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "migrations/46_add_account_extv3_fields.sql", size: 0, mode: os.FileMode(0), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0xfa, 0xed, 0xa3, 0x32, 0x74, 0x4a, 0xac, 0xbf, 0x29, 0xa7, 0x30, 0x78, 0xa0, 0xa6, 0x81, 0xc5, 0x96, 0xb7, 0x90, 0x2a, 0x69, 0x3f, 0x81, 0x8c, 0x55, 0x2b, 0x3, 0x49, 0x67, 0xca, 0x62, 0x7f}}
+	return a, nil
+}
+
 var _migrations46_add_muxed_accountsSql = []byte("\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff\x9c\x90\xbf\xce\x82\x40\x10\xc4\xfb\x7b\x8a\x2d\xbf\x2f\x42\x6b\x62\xa8\x30\x47\x77\x51\x43\xa0\x26\x9b\x63\x11\x0a\xee\xc8\xde\xe1\x9f\xb7\x37\x01\x13\x31\x22\x1a\xdb\xcd\xcc\xce\xfc\x26\x0c\x61\xd5\x36\x47\x46\x4f\x90\x77\x42\xc4\x2a\x4b\x52\xc8\xe2\xad\x4a\xa0\x6e\x9c\xb7\x7c\x2d\x3c\xa3\x71\xa8\x7d\x63\x8d\x83\x58\x4a\x40\xad\x6d\x6f\x7c\xd1\xf6\x17\x2a\xe1\x84\xac\x6b\xe4\xbf\xf5\xe6\x1f\x76\xb9\x52\xc1\xa0\xa9\x88\x8a\x65\x5d\x34\x1b\x66\x3b\x62\x7c\x44\x39\xdb\xb3\xfe\xed\x13\x55\x15\x69\x7f\x6f\x5c\x96\x4c\xce\xbd\xf5\x8b\xe9\x0e\xd2\x9e\xcd\x17\x4b\xc8\x74\x7f\x78\x9e\x22\x18\x6f\x2f\xe8\x1f\x49\x07\xdb\x1c\xea\x32\xd9\xd8\x60\x8a\x16\x89\x5b\x00\x00\x00\xff\xff\x1e\x83\x01\x2a\xd1\x01\x00\x00")
 
 func migrations46_add_muxed_accountsSqlBytes() ([]byte, error) {
@@ -1249,6 +1270,7 @@ var _bindata = map[string]func() (*asset, error){
 	"migrations/43_add_claimable_balances_flags.sql":                     migrations43_add_claimable_balances_flagsSql,
 	"migrations/44_asset_stat_accounts_and_balances.sql":                 migrations44_asset_stat_accounts_and_balancesSql,
 	"migrations/45_add_claimable_balances_history.sql":                   migrations45_add_claimable_balances_historySql,
+	"migrations/46_add_account_extv3_fields.sql":                         migrations46_add_account_extv3_fieldsSql,
 	"migrations/46_add_muxed_accounts.sql":                               migrations46_add_muxed_accountsSql,
 	"migrations/47_precompute_trade_aggregations.sql":                    migrations47_precompute_trade_aggregationsSql,
 	"migrations/48_rebuild_trade_aggregations.sql":                       migrations48_rebuild_trade_aggregationsSql,
@@ -1343,6 +1365,7 @@ var _bintree = &bintree{nil, map[string]*bintree{
 		"43_add_claimable_balances_flags.sql":                     &bintree{migrations43_add_claimable_balances_flagsSql, map[string]*bintree{}},
 		"44_asset_stat_accounts_and_balances.sql":                 &bintree{migrations44_asset_stat_accounts_and_balancesSql, map[string]*bintree{}},
 		"45_add_claimable_balances_history.sql":                   &bintree{migrations45_add_claimable_balances_historySql, map[string]*bintree{}},
+		"46_add_account_extv3_fields.sql":                         &bintree{migrations46_add_account_extv3_fieldsSql, map[string]*bintree{}},
 		"46_add_muxed_accounts.sql":                               &bintree{migrations46_add_muxed_accountsSql, map[string]*bintree{}},
 		"47_precompute_trade_aggregations.sql":                    &bintree{migrations47_precompute_trade_aggregationsSql, map[string]*bintree{}},
 		"48_rebuild_trade_aggregations.sql":                       &bintree{migrations48_rebuild_trade_aggregationsSql, map[string]*bintree{}},

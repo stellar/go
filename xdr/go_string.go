@@ -229,3 +229,22 @@ func (t *TimeBounds) GoString() string {
 	}
 	return fmt.Sprintf("&xdr.TimeBounds{MinTime: xdr.TimePoint(%d), MaxTime: xdr.TimePoint(%d)}", t.MinTime, t.MaxTime)
 }
+
+// GoString implements fmt.GoStringer.
+func (pt PreconditionType) GoString() string {
+	return "xdr." + preconditionTypeMap[int32(pt)]
+}
+
+// GoString implements fmt.GoStringer.
+func (p Preconditions) GoString() string {
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("xdr.Preconditions{Type: xdr.%s,", p.Type))
+	switch {
+	case p.TimeBounds != nil:
+		sb.WriteString(fmt.Sprintf("TimeBounds: %#v", p.TimeBounds))
+	default:
+		panic("Unknown type")
+	}
+	sb.WriteString("}")
+	return sb.String()
+}

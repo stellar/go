@@ -85,3 +85,19 @@ func (account *AccountEntry) SponsorPerSigner() map[string]AccountId {
 
 	return signerToSponsor
 }
+
+func (account *AccountEntry) SeqTime() *TimePoint {
+	if account.Ext.V1 != nil && account.Ext.V1.Ext.V2 != nil && account.Ext.V1.Ext.V2.Ext.V3 != nil {
+		seqTime := account.Ext.V1.Ext.V2.Ext.V3.SeqTime
+		return &seqTime
+	}
+	return nil
+}
+
+func (account *AccountEntry) SeqLedger() *Uint32 {
+	if account.Ext.V1 != nil && account.Ext.V1.Ext.V2 != nil && account.Ext.V1.Ext.V2.Ext.V3 != nil {
+		seqLedger := account.Ext.V1.Ext.V2.Ext.V3.SeqLedger
+		return &seqLedger
+	}
+	return nil
+}

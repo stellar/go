@@ -77,9 +77,9 @@ func (q *Queue) Update(sequence uint64) {
 		ch, hseq := q.head()
 		// if the next queued transaction has a sequence higher than the account's
 		// current sequence, stop removing entries
-		if hseq > q.nextSequence {
-			break
-		}
+		// if hseq > q.nextSequence {
+		// 	break
+		// }
 
 		// since this entry is unlocked (i.e. it's sequence is the next available
 		// or in the past we can remove it an mark the queue as changed
@@ -89,7 +89,7 @@ func (q *Queue) Update(sequence uint64) {
 		if hseq < q.nextSequence {
 			ch <- ErrBadSequence
 			close(ch)
-		} else if hseq == q.nextSequence {
+		} else /*if hseq == q.nextSequence*/ {
 			ch <- nil
 			close(ch)
 		}

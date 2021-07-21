@@ -1,13 +1,11 @@
-//lint:file-ignore S1005 The issue should be fixed in xdrgen. Unfortunately, there's no way to ignore a single file in staticcheck.
-//lint:file-ignore U1000 fmtTest is not needed anywhere, should be removed in xdrgen.
 // Package xdr is generated from:
 //
-//  Stellar-SCP.x
-//  Stellar-ledger-entries.x
-//  Stellar-ledger.x
-//  Stellar-overlay.x
-//  Stellar-transaction.x
-//  Stellar-types.x
+//  xdr/Stellar-SCP.x
+//  xdr/Stellar-ledger-entries.x
+//  xdr/Stellar-ledger.x
+//  xdr/Stellar-overlay.x
+//  xdr/Stellar-transaction.x
+//  xdr/Stellar-types.x
 //
 // DO NOT EDIT or your changes may be overwritten
 package xdr
@@ -18,7 +16,7 @@ import (
 	"fmt"
 	"io"
 
-	xdr "github.com/stellar/go-xdr/xdr3"
+	"github.com/stellar/go-xdr/xdr3"
 )
 
 // Unmarshal reads an xdr element from `r` into `v`.
@@ -824,6 +822,30 @@ var (
 	_ encoding.BinaryUnmarshaler = (*TimePoint)(nil)
 )
 
+// Duration is an XDR Typedef defines as:
+//
+//   typedef uint64 Duration;
+//
+type Duration Uint64
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s Duration) MarshalBinary() ([]byte, error) {
+	b := new(bytes.Buffer)
+	_, err := Marshal(b, s)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *Duration) UnmarshalBinary(inp []byte) error {
+	_, err := Unmarshal(bytes.NewReader(inp), s)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*Duration)(nil)
+	_ encoding.BinaryUnmarshaler = (*Duration)(nil)
+)
+
 // DataValue is an XDR Typedef defines as:
 //
 //   typedef opaque DataValue<64>;
@@ -1615,16 +1637,53 @@ type SponsorshipDescriptor *AccountId
 // 	_ encoding.BinaryUnmarshaler = (*SponsorshipDescriptor)(nil)
 // )
 
+// AccountEntryExtensionV3 is an XDR Struct defines as:
+//
+//   struct AccountEntryExtensionV3
+//    {
+//        // Ledger number at which `seqNum` took on its present value.
+//        uint32 seqLedger;
+//
+//        // Time at which `seqNum` took on its present value.
+//        TimePoint seqTime;
+//    };
+//
+type AccountEntryExtensionV3 struct {
+	SeqLedger Uint32
+	SeqTime   TimePoint
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s AccountEntryExtensionV3) MarshalBinary() ([]byte, error) {
+	b := new(bytes.Buffer)
+	_, err := Marshal(b, s)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *AccountEntryExtensionV3) UnmarshalBinary(inp []byte) error {
+	_, err := Unmarshal(bytes.NewReader(inp), s)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*AccountEntryExtensionV3)(nil)
+	_ encoding.BinaryUnmarshaler = (*AccountEntryExtensionV3)(nil)
+)
+
 // AccountEntryExtensionV2Ext is an XDR NestedUnion defines as:
 //
 //   union switch (int v)
 //        {
 //        case 0:
 //            void;
+//        case 3:
+//            AccountEntryExtensionV3 v3;
 //        }
 //
 type AccountEntryExtensionV2Ext struct {
-	V int32
+	V  int32
+	V3 *AccountEntryExtensionV3
 }
 
 // SwitchFieldName returns the field name in which this union's
@@ -1639,6 +1698,8 @@ func (u AccountEntryExtensionV2Ext) ArmForSwitch(sw int32) (string, bool) {
 	switch int32(sw) {
 	case 0:
 		return "", true
+	case 3:
+		return "V3", true
 	}
 	return "-", false
 }
@@ -1649,7 +1710,39 @@ func NewAccountEntryExtensionV2Ext(v int32, value interface{}) (result AccountEn
 	switch int32(v) {
 	case 0:
 		// void
+	case 3:
+		tv, ok := value.(AccountEntryExtensionV3)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be AccountEntryExtensionV3")
+			return
+		}
+		result.V3 = &tv
 	}
+	return
+}
+
+// MustV3 retrieves the V3 value from the union,
+// panicing if the value is not set.
+func (u AccountEntryExtensionV2Ext) MustV3() AccountEntryExtensionV3 {
+	val, ok := u.GetV3()
+
+	if !ok {
+		panic("arm V3 is not set")
+	}
+
+	return val
+}
+
+// GetV3 retrieves the V3 value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u AccountEntryExtensionV2Ext) GetV3() (result AccountEntryExtensionV3, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.V))
+
+	if armName == "V3" {
+		result = *u.V3
+		ok = true
+	}
+
 	return
 }
 
@@ -1683,6 +1776,8 @@ var (
 //        {
 //        case 0:
 //            void;
+//        case 3:
+//            AccountEntryExtensionV3 v3;
 //        }
 //        ext;
 //    };
@@ -2673,10 +2768,10 @@ var (
 //    case CLAIM_PREDICATE_NOT:
 //        ClaimPredicate* notPredicate;
 //    case CLAIM_PREDICATE_BEFORE_ABSOLUTE_TIME:
-//        int64 absBefore; // Predicate will be true if closeTime < absBefore
+//        TimePoint absBefore; // Predicate will be true if closeTime < absBefore
 //    case CLAIM_PREDICATE_BEFORE_RELATIVE_TIME:
-//        int64 relBefore; // Seconds since closeTime of the ledger in which the
-//                         // ClaimableBalanceEntry was created
+//        Duration relBefore; // Seconds since closeTime of the ledger in which the
+//                            // ClaimableBalanceEntry was created
 //    };
 //
 type ClaimPredicate struct {
@@ -2684,8 +2779,8 @@ type ClaimPredicate struct {
 	AndPredicates *[]ClaimPredicate `xdrmaxsize:"2"`
 	OrPredicates  *[]ClaimPredicate `xdrmaxsize:"2"`
 	NotPredicate  **ClaimPredicate
-	AbsBefore     *Int64
-	RelBefore     *Int64
+	AbsBefore     *TimePoint
+	RelBefore     *Duration
 }
 
 // SwitchFieldName returns the field name in which this union's
@@ -2742,16 +2837,16 @@ func NewClaimPredicate(aType ClaimPredicateType, value interface{}) (result Clai
 		}
 		result.NotPredicate = &tv
 	case ClaimPredicateTypeClaimPredicateBeforeAbsoluteTime:
-		tv, ok := value.(Int64)
+		tv, ok := value.(TimePoint)
 		if !ok {
-			err = fmt.Errorf("invalid value, must be Int64")
+			err = fmt.Errorf("invalid value, must be TimePoint")
 			return
 		}
 		result.AbsBefore = &tv
 	case ClaimPredicateTypeClaimPredicateBeforeRelativeTime:
-		tv, ok := value.(Int64)
+		tv, ok := value.(Duration)
 		if !ok {
-			err = fmt.Errorf("invalid value, must be Int64")
+			err = fmt.Errorf("invalid value, must be Duration")
 			return
 		}
 		result.RelBefore = &tv
@@ -2836,7 +2931,7 @@ func (u ClaimPredicate) GetNotPredicate() (result *ClaimPredicate, ok bool) {
 
 // MustAbsBefore retrieves the AbsBefore value from the union,
 // panicing if the value is not set.
-func (u ClaimPredicate) MustAbsBefore() Int64 {
+func (u ClaimPredicate) MustAbsBefore() TimePoint {
 	val, ok := u.GetAbsBefore()
 
 	if !ok {
@@ -2848,7 +2943,7 @@ func (u ClaimPredicate) MustAbsBefore() Int64 {
 
 // GetAbsBefore retrieves the AbsBefore value from the union,
 // returning ok if the union's switch indicated the value is valid.
-func (u ClaimPredicate) GetAbsBefore() (result Int64, ok bool) {
+func (u ClaimPredicate) GetAbsBefore() (result TimePoint, ok bool) {
 	armName, _ := u.ArmForSwitch(int32(u.Type))
 
 	if armName == "AbsBefore" {
@@ -2861,7 +2956,7 @@ func (u ClaimPredicate) GetAbsBefore() (result Int64, ok bool) {
 
 // MustRelBefore retrieves the RelBefore value from the union,
 // panicing if the value is not set.
-func (u ClaimPredicate) MustRelBefore() Int64 {
+func (u ClaimPredicate) MustRelBefore() Duration {
 	val, ok := u.GetRelBefore()
 
 	if !ok {
@@ -2873,7 +2968,7 @@ func (u ClaimPredicate) MustRelBefore() Int64 {
 
 // GetRelBefore retrieves the RelBefore value from the union,
 // returning ok if the union's switch indicated the value is valid.
-func (u ClaimPredicate) GetRelBefore() (result Int64, ok bool) {
+func (u ClaimPredicate) GetRelBefore() (result Duration, ok bool) {
 	armName, _ := u.ArmForSwitch(int32(u.Type))
 
 	if armName == "RelBefore" {
@@ -8574,14 +8669,13 @@ var (
 type OperationType int32
 
 const (
-	OperationTypeCreateAccount            OperationType = 0
-	OperationTypePayment                  OperationType = 1
-	OperationTypePathPaymentStrictReceive OperationType = 2
-	OperationTypeManageSellOffer          OperationType = 3
-	OperationTypeCreatePassiveSellOffer   OperationType = 4
-	OperationTypeSetOptions               OperationType = 5
-	OperationTypeChangeTrust              OperationType = 6
-	// Deprecated: use OperationTypeSetTrustLineFlags
+	OperationTypeCreateAccount                 OperationType = 0
+	OperationTypePayment                       OperationType = 1
+	OperationTypePathPaymentStrictReceive      OperationType = 2
+	OperationTypeManageSellOffer               OperationType = 3
+	OperationTypeCreatePassiveSellOffer        OperationType = 4
+	OperationTypeSetOptions                    OperationType = 5
+	OperationTypeChangeTrust                   OperationType = 6
 	OperationTypeAllowTrust                    OperationType = 7
 	OperationTypeAccountMerge                  OperationType = 8
 	OperationTypeInflation                     OperationType = 9
@@ -8890,7 +8984,7 @@ var (
 //    {
 //        Asset selling; // A
 //        Asset buying;  // B
-//        int64 amount;  // amount taker gets. if set to 0, delete the offer
+//        int64 amount;  // amount taker gets
 //        Price price;   // cost of A in terms of B
 //    };
 //
@@ -9004,7 +9098,6 @@ var (
 	_ encoding.BinaryUnmarshaler = (*ChangeTrustOp)(nil)
 )
 
-// Deprecated: use OperationTypeSetTrustLineFlags.
 // AllowTrustOp is an XDR Struct defines as:
 //
 //   struct AllowTrustOp
@@ -9012,7 +9105,7 @@ var (
 //        AccountID trustor;
 //        AssetCode asset;
 //
-//        // 0, or any bitwise combination of the AUTHORIZED_* flags of TrustLineFlags
+//        // One of 0, AUTHORIZED_FLAG, or AUTHORIZED_TO_MAINTAIN_LIABILITIES_FLAG
 //        uint32 authorize;
 //    };
 //
@@ -9284,8 +9377,7 @@ var (
 //        {
 //            AccountID accountID;
 //            SignerKey signerKey;
-//        }
-//        signer;
+//        } signer;
 //    };
 //
 type RevokeSponsorshipOp struct {
@@ -10804,6 +10896,279 @@ var (
 	_ encoding.BinaryUnmarshaler = (*TimeBounds)(nil)
 )
 
+// LedgerBounds is an XDR Struct defines as:
+//
+//   struct LedgerBounds
+//    {
+//        uint32 minLedger;
+//        uint32 maxLedger;
+//    };
+//
+type LedgerBounds struct {
+	MinLedger Uint32
+	MaxLedger Uint32
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s LedgerBounds) MarshalBinary() ([]byte, error) {
+	b := new(bytes.Buffer)
+	_, err := Marshal(b, s)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *LedgerBounds) UnmarshalBinary(inp []byte) error {
+	_, err := Unmarshal(bytes.NewReader(inp), s)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*LedgerBounds)(nil)
+	_ encoding.BinaryUnmarshaler = (*LedgerBounds)(nil)
+)
+
+// GeneralPreconditions is an XDR Struct defines as:
+//
+//   struct GeneralPreconditions {
+//        TimeBounds *timeBounds;
+//
+//        // Transaciton only valid for ledger numbers n such that
+//        // minLedger <= n < maxLedger
+//        LedgerBounds *ledgerBounds;
+//
+//        // If NULL, only valid when sourceAccount's sequence number
+//        // is seqNum - 1.  Otherwise, valid when sourceAccount's
+//        // sequence number n satisfies minSeqNum <= n < tx.seqNum.
+//        // Note that after execution the account's sequence number
+//        // is always raised to tx.seqNum, and a transaction is not
+//        // valid if tx.seqNum is too high to ensure replay protection.
+//        SequenceNumber *minSeqNum;
+//
+//        // For the transaction to be valid, the current ledger time must
+//        // be at least minSeqAge greater than sourceAccount's seqTime.
+//        Duration minSeqAge;
+//
+//        // For the transaction to be valid, the current ledger number
+//        // must be at least minSeqLedgerGap greater than sourceAccount's
+//        // seqLedger.
+//        uint32 minSeqLedgerGap;
+//
+//        // For the transaction to be valid, there must be a signature
+//        // corresponding to every Signer in this array, even if the
+//        // signature is not otherwise required by the sourceAccount or
+//        // operations.
+//        SignerKey extraSigners<2>;
+//    };
+//
+type GeneralPreconditions struct {
+	TimeBounds      *TimeBounds
+	LedgerBounds    *LedgerBounds
+	MinSeqNum       *SequenceNumber
+	MinSeqAge       Duration
+	MinSeqLedgerGap Uint32
+	ExtraSigners    []SignerKey `xdrmaxsize:"2"`
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s GeneralPreconditions) MarshalBinary() ([]byte, error) {
+	b := new(bytes.Buffer)
+	_, err := Marshal(b, s)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *GeneralPreconditions) UnmarshalBinary(inp []byte) error {
+	_, err := Unmarshal(bytes.NewReader(inp), s)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*GeneralPreconditions)(nil)
+	_ encoding.BinaryUnmarshaler = (*GeneralPreconditions)(nil)
+)
+
+// PreconditionType is an XDR Enum defines as:
+//
+//   enum PreconditionType {
+//        PRECOND_NONE = 0,
+//        PRECOND_TIME = 1,
+//        PRECOND_GENERAL = 2
+//    };
+//
+type PreconditionType int32
+
+const (
+	PreconditionTypePrecondNone    PreconditionType = 0
+	PreconditionTypePrecondTime    PreconditionType = 1
+	PreconditionTypePrecondGeneral PreconditionType = 2
+)
+
+var preconditionTypeMap = map[int32]string{
+	0: "PreconditionTypePrecondNone",
+	1: "PreconditionTypePrecondTime",
+	2: "PreconditionTypePrecondGeneral",
+}
+
+// ValidEnum validates a proposed value for this enum.  Implements
+// the Enum interface for PreconditionType
+func (e PreconditionType) ValidEnum(v int32) bool {
+	_, ok := preconditionTypeMap[v]
+	return ok
+}
+
+// String returns the name of `e`
+func (e PreconditionType) String() string {
+	name, _ := preconditionTypeMap[int32(e)]
+	return name
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s PreconditionType) MarshalBinary() ([]byte, error) {
+	b := new(bytes.Buffer)
+	_, err := Marshal(b, s)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *PreconditionType) UnmarshalBinary(inp []byte) error {
+	_, err := Unmarshal(bytes.NewReader(inp), s)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*PreconditionType)(nil)
+	_ encoding.BinaryUnmarshaler = (*PreconditionType)(nil)
+)
+
+// Preconditions is an XDR Union defines as:
+//
+//   union Preconditions switch (PreconditionType type) {
+//        case PRECOND_NONE:
+//            void;
+//        case PRECOND_TIME:
+//            TimeBounds timeBounds;
+//        case PRECOND_GENERAL:
+//            GeneralPreconditions general;
+//    };
+//
+type Preconditions struct {
+	Type       PreconditionType
+	TimeBounds *TimeBounds
+	General    *GeneralPreconditions
+}
+
+// SwitchFieldName returns the field name in which this union's
+// discriminant is stored
+func (u Preconditions) SwitchFieldName() string {
+	return "Type"
+}
+
+// ArmForSwitch returns which field name should be used for storing
+// the value for an instance of Preconditions
+func (u Preconditions) ArmForSwitch(sw int32) (string, bool) {
+	switch PreconditionType(sw) {
+	case PreconditionTypePrecondNone:
+		return "", true
+	case PreconditionTypePrecondTime:
+		return "TimeBounds", true
+	case PreconditionTypePrecondGeneral:
+		return "General", true
+	}
+	return "-", false
+}
+
+// NewPreconditions creates a new  Preconditions.
+func NewPreconditions(aType PreconditionType, value interface{}) (result Preconditions, err error) {
+	result.Type = aType
+	switch PreconditionType(aType) {
+	case PreconditionTypePrecondNone:
+		// void
+	case PreconditionTypePrecondTime:
+		tv, ok := value.(TimeBounds)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be TimeBounds")
+			return
+		}
+		result.TimeBounds = &tv
+	case PreconditionTypePrecondGeneral:
+		tv, ok := value.(GeneralPreconditions)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be GeneralPreconditions")
+			return
+		}
+		result.General = &tv
+	}
+	return
+}
+
+// MustTimeBounds retrieves the TimeBounds value from the union,
+// panicing if the value is not set.
+func (u Preconditions) MustTimeBounds() TimeBounds {
+	val, ok := u.GetTimeBounds()
+
+	if !ok {
+		panic("arm TimeBounds is not set")
+	}
+
+	return val
+}
+
+// GetTimeBounds retrieves the TimeBounds value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u Preconditions) GetTimeBounds() (result TimeBounds, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "TimeBounds" {
+		result = *u.TimeBounds
+		ok = true
+	}
+
+	return
+}
+
+// MustGeneral retrieves the General value from the union,
+// panicing if the value is not set.
+func (u Preconditions) MustGeneral() GeneralPreconditions {
+	val, ok := u.GetGeneral()
+
+	if !ok {
+		panic("arm General is not set")
+	}
+
+	return val
+}
+
+// GetGeneral retrieves the General value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u Preconditions) GetGeneral() (result GeneralPreconditions, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "General" {
+		result = *u.General
+		ok = true
+	}
+
+	return
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s Preconditions) MarshalBinary() ([]byte, error) {
+	b := new(bytes.Buffer)
+	_, err := Marshal(b, s)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *Preconditions) UnmarshalBinary(inp []byte) error {
+	_, err := Unmarshal(bytes.NewReader(inp), s)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*Preconditions)(nil)
+	_ encoding.BinaryUnmarshaler = (*Preconditions)(nil)
+)
+
 // MaxOpsPerTx is an XDR Const defines as:
 //
 //   const MAX_OPS_PER_TX = 100;
@@ -11014,8 +11379,8 @@ var (
 //        // sequence number to consume in the account
 //        SequenceNumber seqNum;
 //
-//        // validity range (inclusive) for the last ledger close time
-//        TimeBounds* timeBounds;
+//        // validity conditions
+//        Preconditions cond;
 //
 //        Memo memo;
 //
@@ -11034,7 +11399,7 @@ type Transaction struct {
 	SourceAccount MuxedAccount
 	Fee           Uint32
 	SeqNum        SequenceNumber
-	TimeBounds    *TimeBounds
+	Cond          Preconditions
 	Memo          Memo
 	Operations    []Operation `xdrmaxsize:"100"`
 	Ext           TransactionExt
@@ -12107,7 +12472,8 @@ var (
 
 // PathPaymentStrictReceiveResult is an XDR Union defines as:
 //
-//   union PathPaymentStrictReceiveResult switch (PathPaymentStrictReceiveResultCode code)
+//   union PathPaymentStrictReceiveResult switch (
+//        PathPaymentStrictReceiveResultCode code)
 //    {
 //    case PATH_PAYMENT_STRICT_RECEIVE_SUCCESS:
 //        struct
@@ -13078,8 +13444,9 @@ var (
 //        SET_OPTIONS_UNKNOWN_FLAG = -6,           // can't set an unknown flag
 //        SET_OPTIONS_THRESHOLD_OUT_OF_RANGE = -7, // bad value for weight/threshold
 //        SET_OPTIONS_BAD_SIGNER = -8,             // signer cannot be masterkey
-//        SET_OPTIONS_INVALID_HOME_DOMAIN = -9,     // malformed home domain
-//        SET_OPTIONS_AUTH_REVOCABLE_REQUIRED = -10 // auth revocable is required for clawback
+//        SET_OPTIONS_INVALID_HOME_DOMAIN = -9,    // malformed home domain
+//        SET_OPTIONS_AUTH_REVOCABLE_REQUIRED =
+//            -10 // auth revocable is required for clawback
 //    };
 //
 type SetOptionsResultCode int32
@@ -14103,7 +14470,8 @@ var (
 
 // CreateClaimableBalanceResult is an XDR Union defines as:
 //
-//   union CreateClaimableBalanceResult switch (CreateClaimableBalanceResultCode code)
+//   union CreateClaimableBalanceResult switch (
+//        CreateClaimableBalanceResultCode code)
 //    {
 //    case CREATE_CLAIMABLE_BALANCE_SUCCESS:
 //        ClaimableBalanceID balanceID;
@@ -14380,7 +14748,8 @@ var (
 
 // BeginSponsoringFutureReservesResult is an XDR Union defines as:
 //
-//   union BeginSponsoringFutureReservesResult switch (BeginSponsoringFutureReservesResultCode code)
+//   union BeginSponsoringFutureReservesResult switch (
+//        BeginSponsoringFutureReservesResultCode code)
 //    {
 //    case BEGIN_SPONSORING_FUTURE_RESERVES_SUCCESS:
 //        void;
@@ -14495,7 +14864,8 @@ var (
 
 // EndSponsoringFutureReservesResult is an XDR Union defines as:
 //
-//   union EndSponsoringFutureReservesResult switch (EndSponsoringFutureReservesResultCode code)
+//   union EndSponsoringFutureReservesResult switch (
+//        EndSponsoringFutureReservesResultCode code)
 //    {
 //    case END_SPONSORING_FUTURE_RESERVES_SUCCESS:
 //        void;
@@ -14864,7 +15234,8 @@ var (
 
 // ClawbackClaimableBalanceResult is an XDR Union defines as:
 //
-//   union ClawbackClaimableBalanceResult switch (ClawbackClaimableBalanceResultCode code)
+//   union ClawbackClaimableBalanceResult switch (
+//        ClawbackClaimableBalanceResultCode code)
 //    {
 //    case CLAWBACK_CLAIMABLE_BALANCE_SUCCESS:
 //        void;
@@ -16942,6 +17313,7 @@ var (
 //        KEY_TYPE_ED25519 = 0,
 //        KEY_TYPE_PRE_AUTH_TX = 1,
 //        KEY_TYPE_HASH_X = 2,
+//        KEY_TYPE_ED25519_SIGNED_PAYLOAD = 3,
 //        // MUXED enum values for supported type are derived from the enum values
 //        // above by ORing them with 0x100
 //        KEY_TYPE_MUXED_ED25519 = 0x100
@@ -16950,16 +17322,18 @@ var (
 type CryptoKeyType int32
 
 const (
-	CryptoKeyTypeKeyTypeEd25519      CryptoKeyType = 0
-	CryptoKeyTypeKeyTypePreAuthTx    CryptoKeyType = 1
-	CryptoKeyTypeKeyTypeHashX        CryptoKeyType = 2
-	CryptoKeyTypeKeyTypeMuxedEd25519 CryptoKeyType = 256
+	CryptoKeyTypeKeyTypeEd25519              CryptoKeyType = 0
+	CryptoKeyTypeKeyTypePreAuthTx            CryptoKeyType = 1
+	CryptoKeyTypeKeyTypeHashX                CryptoKeyType = 2
+	CryptoKeyTypeKeyTypeEd25519SignedPayload CryptoKeyType = 3
+	CryptoKeyTypeKeyTypeMuxedEd25519         CryptoKeyType = 256
 )
 
 var cryptoKeyTypeMap = map[int32]string{
 	0:   "CryptoKeyTypeKeyTypeEd25519",
 	1:   "CryptoKeyTypeKeyTypePreAuthTx",
 	2:   "CryptoKeyTypeKeyTypeHashX",
+	3:   "CryptoKeyTypeKeyTypeEd25519SignedPayload",
 	256: "CryptoKeyTypeKeyTypeMuxedEd25519",
 }
 
@@ -17048,21 +17422,24 @@ var (
 //    {
 //        SIGNER_KEY_TYPE_ED25519 = KEY_TYPE_ED25519,
 //        SIGNER_KEY_TYPE_PRE_AUTH_TX = KEY_TYPE_PRE_AUTH_TX,
-//        SIGNER_KEY_TYPE_HASH_X = KEY_TYPE_HASH_X
+//        SIGNER_KEY_TYPE_HASH_X = KEY_TYPE_HASH_X,
+//        SIGNER_KEY_TYPE_ED25519_SIGNED_PAYLOAD = KEY_TYPE_ED25519_SIGNED_PAYLOAD
 //    };
 //
 type SignerKeyType int32
 
 const (
-	SignerKeyTypeSignerKeyTypeEd25519   SignerKeyType = 0
-	SignerKeyTypeSignerKeyTypePreAuthTx SignerKeyType = 1
-	SignerKeyTypeSignerKeyTypeHashX     SignerKeyType = 2
+	SignerKeyTypeSignerKeyTypeEd25519              SignerKeyType = 0
+	SignerKeyTypeSignerKeyTypePreAuthTx            SignerKeyType = 1
+	SignerKeyTypeSignerKeyTypeHashX                SignerKeyType = 2
+	SignerKeyTypeSignerKeyTypeEd25519SignedPayload SignerKeyType = 3
 )
 
 var signerKeyTypeMap = map[int32]string{
 	0: "SignerKeyTypeSignerKeyTypeEd25519",
 	1: "SignerKeyTypeSignerKeyTypePreAuthTx",
 	2: "SignerKeyTypeSignerKeyTypeHashX",
+	3: "SignerKeyTypeSignerKeyTypeEd25519SignedPayload",
 }
 
 // ValidEnum validates a proposed value for this enum.  Implements
@@ -17183,6 +17560,38 @@ var (
 	_ encoding.BinaryUnmarshaler = (*PublicKey)(nil)
 )
 
+// SignerKeyEd25519SignedPayload is an XDR NestedStruct defines as:
+//
+//   struct {
+//            /* Public key that must sign the payload. */
+//            uint256 ed25519;
+//            /* Payload to be raw signed by ed25519. */
+//            opaque payload<32>;
+//        }
+//
+type SignerKeyEd25519SignedPayload struct {
+	Ed25519 Uint256
+	Payload []byte `xdrmaxsize:"32"`
+}
+
+// MarshalBinary implements encoding.BinaryMarshaler.
+func (s SignerKeyEd25519SignedPayload) MarshalBinary() ([]byte, error) {
+	b := new(bytes.Buffer)
+	_, err := Marshal(b, s)
+	return b.Bytes(), err
+}
+
+// UnmarshalBinary implements encoding.BinaryUnmarshaler.
+func (s *SignerKeyEd25519SignedPayload) UnmarshalBinary(inp []byte) error {
+	_, err := Unmarshal(bytes.NewReader(inp), s)
+	return err
+}
+
+var (
+	_ encoding.BinaryMarshaler   = (*SignerKeyEd25519SignedPayload)(nil)
+	_ encoding.BinaryUnmarshaler = (*SignerKeyEd25519SignedPayload)(nil)
+)
+
 // SignerKey is an XDR Union defines as:
 //
 //   union SignerKey switch (SignerKeyType type)
@@ -17195,13 +17604,21 @@ var (
 //    case SIGNER_KEY_TYPE_HASH_X:
 //        /* Hash of random 256 bit preimage X */
 //        uint256 hashX;
+//    case SIGNER_KEY_TYPE_ED25519_SIGNED_PAYLOAD:
+//        struct {
+//            /* Public key that must sign the payload. */
+//            uint256 ed25519;
+//            /* Payload to be raw signed by ed25519. */
+//            opaque payload<32>;
+//        } ed25519SignedPayload;
 //    };
 //
 type SignerKey struct {
-	Type      SignerKeyType
-	Ed25519   *Uint256
-	PreAuthTx *Uint256
-	HashX     *Uint256
+	Type                 SignerKeyType
+	Ed25519              *Uint256
+	PreAuthTx            *Uint256
+	HashX                *Uint256
+	Ed25519SignedPayload *SignerKeyEd25519SignedPayload
 }
 
 // SwitchFieldName returns the field name in which this union's
@@ -17220,6 +17637,8 @@ func (u SignerKey) ArmForSwitch(sw int32) (string, bool) {
 		return "PreAuthTx", true
 	case SignerKeyTypeSignerKeyTypeHashX:
 		return "HashX", true
+	case SignerKeyTypeSignerKeyTypeEd25519SignedPayload:
+		return "Ed25519SignedPayload", true
 	}
 	return "-", false
 }
@@ -17249,6 +17668,13 @@ func NewSignerKey(aType SignerKeyType, value interface{}) (result SignerKey, err
 			return
 		}
 		result.HashX = &tv
+	case SignerKeyTypeSignerKeyTypeEd25519SignedPayload:
+		tv, ok := value.(SignerKeyEd25519SignedPayload)
+		if !ok {
+			err = fmt.Errorf("invalid value, must be SignerKeyEd25519SignedPayload")
+			return
+		}
+		result.Ed25519SignedPayload = &tv
 	}
 	return
 }
@@ -17322,6 +17748,31 @@ func (u SignerKey) GetHashX() (result Uint256, ok bool) {
 
 	if armName == "HashX" {
 		result = *u.HashX
+		ok = true
+	}
+
+	return
+}
+
+// MustEd25519SignedPayload retrieves the Ed25519SignedPayload value from the union,
+// panicing if the value is not set.
+func (u SignerKey) MustEd25519SignedPayload() SignerKeyEd25519SignedPayload {
+	val, ok := u.GetEd25519SignedPayload()
+
+	if !ok {
+		panic("arm Ed25519SignedPayload is not set")
+	}
+
+	return val
+}
+
+// GetEd25519SignedPayload retrieves the Ed25519SignedPayload value from the union,
+// returning ok if the union's switch indicated the value is valid.
+func (u SignerKey) GetEd25519SignedPayload() (result SignerKeyEd25519SignedPayload, ok bool) {
+	armName, _ := u.ArmForSwitch(int32(u.Type))
+
+	if armName == "Ed25519SignedPayload" {
+		result = *u.Ed25519SignedPayload
 		ok = true
 	}
 

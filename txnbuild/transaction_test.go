@@ -28,7 +28,7 @@ func TestMissingTimebounds(t *testing.T) {
 	assert.EqualError(t, err, "invalid time bounds: timebounds must be constructed using NewTimebounds(), NewTimeout(), or NewInfiniteTimeout()")
 }
 
-func TestTimebounds(t *testing.T) {
+func TestTimeboundsOnly(t *testing.T) {
 	kp0 := newKeypair0()
 
 	tb := NewTimeout(300)
@@ -42,8 +42,79 @@ func TestTimebounds(t *testing.T) {
 	)
 	assert.NoError(t, err)
 	assert.Equal(t, tb, tx.timebounds)
-	assert.Equal(t, xdr.TimePoint(tb.MinTime), tx.envelope.V1.Tx.TimeBounds.MinTime)
-	assert.Equal(t, xdr.TimePoint(tb.MaxTime), tx.envelope.V1.Tx.TimeBounds.MaxTime)
+	assert.Equal(t, xdr.PreconditionTypePrecondTime, tx.envelope.V1.Tx.Cond.Type)
+	assert.Equal(t, xdr.TimePoint(tb.MinTime), tx.envelope.V1.Tx.Cond.TimeBounds.MinTime)
+	assert.Equal(t, xdr.TimePoint(tb.MaxTime), tx.envelope.V1.Tx.Cond.TimeBounds.MaxTime)
+}
+
+func TestTimeboundsAndMinSequenceNumber(t *testing.T) {
+	kp0 := newKeypair0()
+
+	tb := NewTimeout(300)
+	msn := int64(1)
+	tx, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:     &SimpleAccount{AccountID: kp0.Address(), Sequence: 1},
+			Operations:        []Operation{&BumpSequence{BumpTo: 0}},
+			BaseFee:           MinBaseFee,
+			Timebounds:        tb,
+			MinSequenceNumber: &msn,
+		},
+	)
+	assert.NoError(t, err)
+	assert.Equal(t, tb, tx.timebounds)
+	assert.NotNil(t, tx.minSequenceNumber)
+	assert.Equal(t, msn, *tx.minSequenceNumber)
+	assert.Equal(t, xdr.PreconditionTypePrecondGeneral, tx.envelope.V1.Tx.Cond.Type)
+	assert.Equal(t, xdr.TimePoint(tb.MinTime), tx.envelope.V1.Tx.Cond.General.TimeBounds.MinTime)
+	assert.Equal(t, xdr.TimePoint(tb.MaxTime), tx.envelope.V1.Tx.Cond.General.TimeBounds.MaxTime)
+	assert.Equal(t, (*xdr.SequenceNumber)(&msn), tx.envelope.V1.Tx.Cond.General.MinSeqNum)
+}
+
+func TestTimeboundsAndMinSequenceAge(t *testing.T) {
+	kp0 := newKeypair0()
+
+	tb := NewTimeout(300)
+	msa := int64(1)
+	tx, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:  &SimpleAccount{AccountID: kp0.Address(), Sequence: 1},
+			Operations:     []Operation{&BumpSequence{BumpTo: 0}},
+			BaseFee:        MinBaseFee,
+			Timebounds:     tb,
+			MinSequenceAge: msa,
+		},
+	)
+	assert.NoError(t, err)
+	assert.Equal(t, tb, tx.timebounds)
+	assert.Equal(t, msa, tx.minSequenceAge)
+	assert.Equal(t, xdr.PreconditionTypePrecondGeneral, tx.envelope.V1.Tx.Cond.Type)
+	assert.Equal(t, xdr.TimePoint(tb.MinTime), tx.envelope.V1.Tx.Cond.General.TimeBounds.MinTime)
+	assert.Equal(t, xdr.TimePoint(tb.MaxTime), tx.envelope.V1.Tx.Cond.General.TimeBounds.MaxTime)
+	assert.Equal(t, (xdr.Duration)(msa), tx.envelope.V1.Tx.Cond.General.MinSeqAge)
+}
+
+func TestTimeboundsAndMinSequenceLedgerGap(t *testing.T) {
+	kp0 := newKeypair0()
+
+	tb := NewTimeout(300)
+	mslg := int64(1)
+	tx, err := NewTransaction(
+		TransactionParams{
+			SourceAccount:        &SimpleAccount{AccountID: kp0.Address(), Sequence: 1},
+			Operations:           []Operation{&BumpSequence{BumpTo: 0}},
+			BaseFee:              MinBaseFee,
+			Timebounds:           tb,
+			MinSequenceLedgerGap: mslg,
+		},
+	)
+	assert.NoError(t, err)
+	assert.Equal(t, tb, tx.timebounds)
+	assert.Equal(t, mslg, tx.minSequenceLedgerGap)
+	assert.Equal(t, xdr.PreconditionTypePrecondGeneral, tx.envelope.V1.Tx.Cond.Type)
+	assert.Equal(t, xdr.TimePoint(tb.MinTime), tx.envelope.V1.Tx.Cond.General.TimeBounds.MinTime)
+	assert.Equal(t, xdr.TimePoint(tb.MaxTime), tx.envelope.V1.Tx.Cond.General.TimeBounds.MaxTime)
+	assert.Equal(t, xdr.Uint32(mslg), tx.envelope.V1.Tx.Cond.General.MinSeqLedgerGap)
 }
 
 func TestMissingSourceAccount(t *testing.T) {

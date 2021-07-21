@@ -121,6 +121,8 @@ type SequenceNumber = Int64
 
 type TimePoint = Uint64
 
+type Duration = Uint64
+
 type DataValue = []byte // bound 64
 
 // 1-4 alphanumeric characters right-padded with 0 bytes
@@ -235,6 +237,13 @@ const MAX_SIGNERS = 20
 
 type SponsorshipDescriptor = *AccountID
 
+type AccountEntryExtensionV3 struct {
+	// Ledger number at which `seqNum` took on its present value.
+	SeqLedger Uint32
+	// Time at which `seqNum` took on its present value.
+	SeqTime TimePoint
+}
+
 type AccountEntryExtensionV2 struct {
 	NumSponsored        Uint32
 	NumSponsoring       Uint32
@@ -245,6 +254,8 @@ type XdrAnon_AccountEntryExtensionV2_Ext struct {
 	// The union discriminant V selects among the following arms:
 	//   0:
 	//      void
+	//   3:
+	//      V3() *AccountEntryExtensionV3
 	V  int32
 	_u interface{}
 }
@@ -449,9 +460,9 @@ type ClaimPredicate struct {
 	//   CLAIM_PREDICATE_NOT:
 	//      NotPredicate() **ClaimPredicate
 	//   CLAIM_PREDICATE_BEFORE_ABSOLUTE_TIME:
-	//      AbsBefore() *Int64
+	//      AbsBefore() *TimePoint
 	//   CLAIM_PREDICATE_BEFORE_RELATIVE_TIME:
-	//      RelBefore() *Int64
+	//      RelBefore() *Duration
 	Type ClaimPredicateType
 	_u   interface{}
 }
@@ -1367,7 +1378,7 @@ type CreatePassiveSellOfferOp struct {
 	Selling Asset
 	// B
 	Buying Asset
-	// amount taker gets. if set to 0, delete the offer
+	// amount taker gets
 	Amount Int64
 	// cost of A in terms of B
 	Price Price
@@ -1426,7 +1437,7 @@ type ChangeTrustOp struct {
 type AllowTrustOp struct {
 	Trustor AccountID
 	Asset   AssetCode
-	// 0, or any bitwise combination of the AUTHORIZED_* flags of TrustLineFlags
+	// One of 0, AUTHORIZED_FLAG, or AUTHORIZED_TO_MAINTAIN_LIABILITIES_FLAG
 	Authorize Uint32
 }
 
@@ -1666,6 +1677,52 @@ type TimeBounds struct {
 	MaxTime TimePoint
 }
 
+type LedgerBounds struct {
+	MinLedger Uint32
+	MaxLedger Uint32
+}
+
+type GeneralPreconditions struct {
+	TimeBounds *TimeBounds
+	// Transaciton only valid for ledger numbers n such that
+	// minLedger <= n < maxLedger
+	LedgerBounds *LedgerBounds
+	// If NULL, only valid when sourceAccount's sequence number
+	// is seqNum - 1.  Otherwise, valid when sourceAccount's
+	// sequence number n satisfies minSeqNum <= n < tx.seqNum.
+	// Note that after execution the account's sequence number
+	// is always raised to tx.seqNum, and a transaction is not
+	// valid if tx.seqNum is too high to ensure replay protection.
+	MinSeqNum *SequenceNumber
+	// For the transaction to be valid, the current ledger time must
+	// be at least minSeqAge greater than sourceAccount's seqTime.
+	MinSeqAge Duration
+	// For the transaction to be valid, the current ledger number
+	// must be at least minSeqLedgerGap greater than sourceAccount's
+	// seqLedger.
+	MinSeqLedgerGap Uint32
+}
+
+type PreconditionType int32
+
+const (
+	PRECOND_NONE    PreconditionType = 0
+	PRECOND_TIME    PreconditionType = 1
+	PRECOND_GENERAL PreconditionType = 2
+)
+
+type Preconditions struct {
+	// The union discriminant Type selects among the following arms:
+	//   PRECOND_NONE:
+	//      void
+	//   PRECOND_TIME:
+	//      TimeBounds() *TimeBounds
+	//   PRECOND_GENERAL:
+	//      General() *GeneralPreconditions
+	Type PreconditionType
+	_u   interface{}
+}
+
 // maximum number of operations per transaction
 const MAX_OPS_PER_TX = 100
 
@@ -1713,8 +1770,8 @@ type Transaction struct {
 	Fee Uint32
 	// sequence number to consume in the account
 	SeqNum SequenceNumber
-	// validity range (inclusive) for the last ledger close time
-	TimeBounds *TimeBounds
+	// validity conditions
+	Cond       Preconditions
 	Memo       Memo
 	Operations []Operation // bound MAX_OPS_PER_TX
 	Ext        XdrAnon_Transaction_Ext
@@ -3352,6 +3409,16 @@ func XDR_TimePoint(v *TimePoint) XdrType_TimePoint {
 func (XdrType_TimePoint) XdrTypeName() string  { return "TimePoint" }
 func (v XdrType_TimePoint) XdrUnwrap() XdrType { return v.XdrType_Uint64 }
 
+type XdrType_Duration struct {
+	XdrType_Uint64
+}
+
+func XDR_Duration(v *Duration) XdrType_Duration {
+	return XdrType_Duration{XDR_Uint64(v)}
+}
+func (XdrType_Duration) XdrTypeName() string  { return "Duration" }
+func (v XdrType_Duration) XdrUnwrap() XdrType { return v.XdrType_Uint64 }
+
 type XdrType_DataValue struct {
 	XdrVecOpaque
 }
@@ -3975,16 +4042,47 @@ func XDR_SponsorshipDescriptor(v *SponsorshipDescriptor) XdrType_SponsorshipDesc
 func (XdrType_SponsorshipDescriptor) XdrTypeName() string  { return "SponsorshipDescriptor" }
 func (v XdrType_SponsorshipDescriptor) XdrUnwrap() XdrType { return v._XdrPtr_AccountID }
 
+type XdrType_AccountEntryExtensionV3 = *AccountEntryExtensionV3
+
+func (v *AccountEntryExtensionV3) XdrPointer() interface{}       { return v }
+func (AccountEntryExtensionV3) XdrTypeName() string              { return "AccountEntryExtensionV3" }
+func (v AccountEntryExtensionV3) XdrValue() interface{}          { return v }
+func (v *AccountEntryExtensionV3) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *AccountEntryExtensionV3) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	x.Marshal(x.Sprintf("%sseqLedger", name), XDR_Uint32(&v.SeqLedger))
+	x.Marshal(x.Sprintf("%sseqTime", name), XDR_TimePoint(&v.SeqTime))
+}
+func XDR_AccountEntryExtensionV3(v *AccountEntryExtensionV3) *AccountEntryExtensionV3 { return v }
+
 var _XdrTags_XdrAnon_AccountEntryExtensionV2_Ext = map[int32]bool{
 	XdrToI32(0): true,
+	XdrToI32(3): true,
 }
 
 func (_ XdrAnon_AccountEntryExtensionV2_Ext) XdrValidTags() map[int32]bool {
 	return _XdrTags_XdrAnon_AccountEntryExtensionV2_Ext
 }
+func (u *XdrAnon_AccountEntryExtensionV2_Ext) V3() *AccountEntryExtensionV3 {
+	switch u.V {
+	case 3:
+		if v, ok := u._u.(*AccountEntryExtensionV3); ok {
+			return v
+		} else {
+			var zero AccountEntryExtensionV3
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("XdrAnon_AccountEntryExtensionV2_Ext.V3 accessed when V == %v", u.V)
+		return nil
+	}
+}
 func (u XdrAnon_AccountEntryExtensionV2_Ext) XdrValid() bool {
 	switch u.V {
-	case 0:
+	case 0, 3:
 		return true
 	}
 	return false
@@ -3999,6 +4097,8 @@ func (u *XdrAnon_AccountEntryExtensionV2_Ext) XdrUnionBody() XdrType {
 	switch u.V {
 	case 0:
 		return nil
+	case 3:
+		return XDR_AccountEntryExtensionV3(u.V3())
 	}
 	return nil
 }
@@ -4006,6 +4106,8 @@ func (u *XdrAnon_AccountEntryExtensionV2_Ext) XdrUnionBodyName() string {
 	switch u.V {
 	case 0:
 		return ""
+	case 3:
+		return "V3"
 	}
 	return ""
 }
@@ -4025,6 +4127,9 @@ func (u *XdrAnon_AccountEntryExtensionV2_Ext) XdrRecurse(x XDR, name string) {
 	XDR_int32(&u.V).XdrMarshal(x, x.Sprintf("%sv", name))
 	switch u.V {
 	case 0:
+		return
+	case 3:
+		x.Marshal(x.Sprintf("%sv3", name), XDR_AccountEntryExtensionV3(u.V3()))
 		return
 	}
 	XdrPanic("invalid V (%v) in XdrAnon_AccountEntryExtensionV2_Ext", u.V)
@@ -5049,13 +5154,13 @@ func (u *ClaimPredicate) NotPredicate() **ClaimPredicate {
 }
 
 // Predicate will be true if closeTime < absBefore
-func (u *ClaimPredicate) AbsBefore() *Int64 {
+func (u *ClaimPredicate) AbsBefore() *TimePoint {
 	switch u.Type {
 	case CLAIM_PREDICATE_BEFORE_ABSOLUTE_TIME:
-		if v, ok := u._u.(*Int64); ok {
+		if v, ok := u._u.(*TimePoint); ok {
 			return v
 		} else {
-			var zero Int64
+			var zero TimePoint
 			u._u = &zero
 			return &zero
 		}
@@ -5066,13 +5171,13 @@ func (u *ClaimPredicate) AbsBefore() *Int64 {
 }
 
 // Seconds since closeTime of the ledger in which the
-func (u *ClaimPredicate) RelBefore() *Int64 {
+func (u *ClaimPredicate) RelBefore() *Duration {
 	switch u.Type {
 	case CLAIM_PREDICATE_BEFORE_RELATIVE_TIME:
-		if v, ok := u._u.(*Int64); ok {
+		if v, ok := u._u.(*Duration); ok {
 			return v
 		} else {
-			var zero Int64
+			var zero Duration
 			u._u = &zero
 			return &zero
 		}
@@ -5105,9 +5210,9 @@ func (u *ClaimPredicate) XdrUnionBody() XdrType {
 	case CLAIM_PREDICATE_NOT:
 		return _XdrPtr_ClaimPredicate{u.NotPredicate()}
 	case CLAIM_PREDICATE_BEFORE_ABSOLUTE_TIME:
-		return XDR_Int64(u.AbsBefore())
+		return XDR_TimePoint(u.AbsBefore())
 	case CLAIM_PREDICATE_BEFORE_RELATIVE_TIME:
-		return XDR_Int64(u.RelBefore())
+		return XDR_Duration(u.RelBefore())
 	}
 	return nil
 }
@@ -5153,10 +5258,10 @@ func (u *ClaimPredicate) XdrRecurse(x XDR, name string) {
 		x.Marshal(x.Sprintf("%snotPredicate", name), _XdrPtr_ClaimPredicate{u.NotPredicate()})
 		return
 	case CLAIM_PREDICATE_BEFORE_ABSOLUTE_TIME:
-		x.Marshal(x.Sprintf("%sabsBefore", name), XDR_Int64(u.AbsBefore()))
+		x.Marshal(x.Sprintf("%sabsBefore", name), XDR_TimePoint(u.AbsBefore()))
 		return
 	case CLAIM_PREDICATE_BEFORE_RELATIVE_TIME:
-		x.Marshal(x.Sprintf("%srelBefore", name), XDR_Int64(u.RelBefore()))
+		x.Marshal(x.Sprintf("%srelBefore", name), XDR_Duration(u.RelBefore()))
 		return
 	}
 	XdrPanic("invalid Type (%v) in ClaimPredicate", u.Type)
@@ -11600,59 +11705,20 @@ func (v *TimeBounds) XdrRecurse(x XDR, name string) {
 }
 func XDR_TimeBounds(v *TimeBounds) *TimeBounds { return v }
 
-var _XdrTags_XdrAnon_TransactionV0_Ext = map[int32]bool{
-	XdrToI32(0): true,
-}
+type XdrType_LedgerBounds = *LedgerBounds
 
-func (_ XdrAnon_TransactionV0_Ext) XdrValidTags() map[int32]bool {
-	return _XdrTags_XdrAnon_TransactionV0_Ext
-}
-func (u XdrAnon_TransactionV0_Ext) XdrValid() bool {
-	switch u.V {
-	case 0:
-		return true
-	}
-	return false
-}
-func (u *XdrAnon_TransactionV0_Ext) XdrUnionTag() XdrNum32 {
-	return XDR_int32(&u.V)
-}
-func (u *XdrAnon_TransactionV0_Ext) XdrUnionTagName() string {
-	return "V"
-}
-func (u *XdrAnon_TransactionV0_Ext) XdrUnionBody() XdrType {
-	switch u.V {
-	case 0:
-		return nil
-	}
-	return nil
-}
-func (u *XdrAnon_TransactionV0_Ext) XdrUnionBodyName() string {
-	switch u.V {
-	case 0:
-		return ""
-	}
-	return ""
-}
-
-type XdrType_XdrAnon_TransactionV0_Ext = *XdrAnon_TransactionV0_Ext
-
-func (v *XdrAnon_TransactionV0_Ext) XdrPointer() interface{}       { return v }
-func (XdrAnon_TransactionV0_Ext) XdrTypeName() string              { return "XdrAnon_TransactionV0_Ext" }
-func (v XdrAnon_TransactionV0_Ext) XdrValue() interface{}          { return v }
-func (v *XdrAnon_TransactionV0_Ext) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
-func (u *XdrAnon_TransactionV0_Ext) XdrRecurse(x XDR, name string) {
+func (v *LedgerBounds) XdrPointer() interface{}       { return v }
+func (LedgerBounds) XdrTypeName() string              { return "LedgerBounds" }
+func (v LedgerBounds) XdrValue() interface{}          { return v }
+func (v *LedgerBounds) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *LedgerBounds) XdrRecurse(x XDR, name string) {
 	if name != "" {
 		name = x.Sprintf("%s.", name)
 	}
-	XDR_int32(&u.V).XdrMarshal(x, x.Sprintf("%sv", name))
-	switch u.V {
-	case 0:
-		return
-	}
-	XdrPanic("invalid V (%v) in XdrAnon_TransactionV0_Ext", u.V)
+	x.Marshal(x.Sprintf("%sminLedger", name), XDR_Uint32(&v.MinLedger))
+	x.Marshal(x.Sprintf("%smaxLedger", name), XDR_Uint32(&v.MaxLedger))
 }
-func XDR_XdrAnon_TransactionV0_Ext(v *XdrAnon_TransactionV0_Ext) *XdrAnon_TransactionV0_Ext { return v }
+func XDR_LedgerBounds(v *LedgerBounds) *LedgerBounds { return v }
 
 type _XdrPtr_TimeBounds struct {
 	p **TimeBounds
@@ -11726,6 +11792,371 @@ func (v _XdrPtr_TimeBounds) XdrRecurse(x XDR, name string) {
 func (_XdrPtr_TimeBounds) XdrTypeName() string       { return "TimeBounds*" }
 func (v _XdrPtr_TimeBounds) XdrPointer() interface{} { return v.p }
 func (v _XdrPtr_TimeBounds) XdrValue() interface{}   { return *v.p }
+
+type _XdrPtr_LedgerBounds struct {
+	p **LedgerBounds
+}
+type _ptrflag_LedgerBounds _XdrPtr_LedgerBounds
+
+func (v _ptrflag_LedgerBounds) String() string {
+	if *v.p == nil {
+		return "nil"
+	}
+	return "non-nil"
+}
+func (v _ptrflag_LedgerBounds) Scan(ss fmt.ScanState, r rune) error {
+	tok, err := ss.Token(true, func(c rune) bool {
+		return c == '-' || (c >= 'a' && c <= 'z')
+	})
+	if err != nil {
+		return err
+	}
+	switch string(tok) {
+	case "nil":
+		v.SetU32(0)
+	case "non-nil":
+		v.SetU32(1)
+	default:
+		return XdrError("LedgerBounds flag should be \"nil\" or \"non-nil\"")
+	}
+	return nil
+}
+func (v _ptrflag_LedgerBounds) GetU32() uint32 {
+	if *v.p == nil {
+		return 0
+	}
+	return 1
+}
+func (v _ptrflag_LedgerBounds) SetU32(nv uint32) {
+	switch nv {
+	case 0:
+		*v.p = nil
+	case 1:
+		if *v.p == nil {
+			*v.p = new(LedgerBounds)
+		}
+	default:
+		XdrPanic("*LedgerBounds present flag value %d should be 0 or 1", nv)
+	}
+}
+func (_ptrflag_LedgerBounds) XdrTypeName() string             { return "LedgerBounds?" }
+func (v _ptrflag_LedgerBounds) XdrPointer() interface{}       { return nil }
+func (v _ptrflag_LedgerBounds) XdrValue() interface{}         { return v.GetU32() != 0 }
+func (v _ptrflag_LedgerBounds) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v _ptrflag_LedgerBounds) XdrBound() uint32              { return 1 }
+func (v _XdrPtr_LedgerBounds) GetPresent() bool               { return *v.p != nil }
+func (v _XdrPtr_LedgerBounds) SetPresent(present bool) {
+	if !present {
+		*v.p = nil
+	} else if *v.p == nil {
+		*v.p = new(LedgerBounds)
+	}
+}
+func (v _XdrPtr_LedgerBounds) XdrMarshalValue(x XDR, name string) {
+	if *v.p != nil {
+		XDR_LedgerBounds(*v.p).XdrMarshal(x, name)
+	}
+}
+func (v _XdrPtr_LedgerBounds) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v _XdrPtr_LedgerBounds) XdrRecurse(x XDR, name string) {
+	x.Marshal(name, _ptrflag_LedgerBounds(v))
+	v.XdrMarshalValue(x, name)
+}
+func (_XdrPtr_LedgerBounds) XdrTypeName() string       { return "LedgerBounds*" }
+func (v _XdrPtr_LedgerBounds) XdrPointer() interface{} { return v.p }
+func (v _XdrPtr_LedgerBounds) XdrValue() interface{}   { return *v.p }
+
+type _XdrPtr_SequenceNumber struct {
+	p **SequenceNumber
+}
+type _ptrflag_SequenceNumber _XdrPtr_SequenceNumber
+
+func (v _ptrflag_SequenceNumber) String() string {
+	if *v.p == nil {
+		return "nil"
+	}
+	return "non-nil"
+}
+func (v _ptrflag_SequenceNumber) Scan(ss fmt.ScanState, r rune) error {
+	tok, err := ss.Token(true, func(c rune) bool {
+		return c == '-' || (c >= 'a' && c <= 'z')
+	})
+	if err != nil {
+		return err
+	}
+	switch string(tok) {
+	case "nil":
+		v.SetU32(0)
+	case "non-nil":
+		v.SetU32(1)
+	default:
+		return XdrError("SequenceNumber flag should be \"nil\" or \"non-nil\"")
+	}
+	return nil
+}
+func (v _ptrflag_SequenceNumber) GetU32() uint32 {
+	if *v.p == nil {
+		return 0
+	}
+	return 1
+}
+func (v _ptrflag_SequenceNumber) SetU32(nv uint32) {
+	switch nv {
+	case 0:
+		*v.p = nil
+	case 1:
+		if *v.p == nil {
+			*v.p = new(SequenceNumber)
+		}
+	default:
+		XdrPanic("*SequenceNumber present flag value %d should be 0 or 1", nv)
+	}
+}
+func (_ptrflag_SequenceNumber) XdrTypeName() string             { return "SequenceNumber?" }
+func (v _ptrflag_SequenceNumber) XdrPointer() interface{}       { return nil }
+func (v _ptrflag_SequenceNumber) XdrValue() interface{}         { return v.GetU32() != 0 }
+func (v _ptrflag_SequenceNumber) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v _ptrflag_SequenceNumber) XdrBound() uint32              { return 1 }
+func (v _XdrPtr_SequenceNumber) GetPresent() bool               { return *v.p != nil }
+func (v _XdrPtr_SequenceNumber) SetPresent(present bool) {
+	if !present {
+		*v.p = nil
+	} else if *v.p == nil {
+		*v.p = new(SequenceNumber)
+	}
+}
+func (v _XdrPtr_SequenceNumber) XdrMarshalValue(x XDR, name string) {
+	if *v.p != nil {
+		XDR_SequenceNumber(*v.p).XdrMarshal(x, name)
+	}
+}
+func (v _XdrPtr_SequenceNumber) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v _XdrPtr_SequenceNumber) XdrRecurse(x XDR, name string) {
+	x.Marshal(name, _ptrflag_SequenceNumber(v))
+	v.XdrMarshalValue(x, name)
+}
+func (_XdrPtr_SequenceNumber) XdrTypeName() string       { return "SequenceNumber*" }
+func (v _XdrPtr_SequenceNumber) XdrPointer() interface{} { return v.p }
+func (v _XdrPtr_SequenceNumber) XdrValue() interface{}   { return *v.p }
+
+type XdrType_GeneralPreconditions = *GeneralPreconditions
+
+func (v *GeneralPreconditions) XdrPointer() interface{}       { return v }
+func (GeneralPreconditions) XdrTypeName() string              { return "GeneralPreconditions" }
+func (v GeneralPreconditions) XdrValue() interface{}          { return v }
+func (v *GeneralPreconditions) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (v *GeneralPreconditions) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	x.Marshal(x.Sprintf("%stimeBounds", name), _XdrPtr_TimeBounds{&v.TimeBounds})
+	x.Marshal(x.Sprintf("%sledgerBounds", name), _XdrPtr_LedgerBounds{&v.LedgerBounds})
+	x.Marshal(x.Sprintf("%sminSeqNum", name), _XdrPtr_SequenceNumber{&v.MinSeqNum})
+	x.Marshal(x.Sprintf("%sminSeqAge", name), XDR_Duration(&v.MinSeqAge))
+	x.Marshal(x.Sprintf("%sminSeqLedgerGap", name), XDR_Uint32(&v.MinSeqLedgerGap))
+}
+func XDR_GeneralPreconditions(v *GeneralPreconditions) *GeneralPreconditions { return v }
+
+var _XdrNames_PreconditionType = map[int32]string{
+	int32(PRECOND_NONE):    "PRECOND_NONE",
+	int32(PRECOND_TIME):    "PRECOND_TIME",
+	int32(PRECOND_GENERAL): "PRECOND_GENERAL",
+}
+var _XdrValues_PreconditionType = map[string]int32{
+	"PRECOND_NONE":    int32(PRECOND_NONE),
+	"PRECOND_TIME":    int32(PRECOND_TIME),
+	"PRECOND_GENERAL": int32(PRECOND_GENERAL),
+}
+
+func (PreconditionType) XdrEnumNames() map[int32]string {
+	return _XdrNames_PreconditionType
+}
+func (v PreconditionType) String() string {
+	if s, ok := _XdrNames_PreconditionType[int32(v)]; ok {
+		return s
+	}
+	return fmt.Sprintf("PreconditionType#%d", v)
+}
+func (v *PreconditionType) Scan(ss fmt.ScanState, _ rune) error {
+	if tok, err := ss.Token(true, XdrSymChar); err != nil {
+		return err
+	} else {
+		stok := string(tok)
+		if val, ok := _XdrValues_PreconditionType[stok]; ok {
+			*v = PreconditionType(val)
+			return nil
+		} else if stok == "PreconditionType" {
+			if n, err := fmt.Fscanf(ss, "#%d", (*int32)(v)); n == 1 && err == nil {
+				return nil
+			}
+		}
+		return XdrError(fmt.Sprintf("%s is not a valid PreconditionType.", stok))
+	}
+}
+func (v PreconditionType) GetU32() uint32                 { return uint32(v) }
+func (v *PreconditionType) SetU32(n uint32)               { *v = PreconditionType(n) }
+func (v *PreconditionType) XdrPointer() interface{}       { return v }
+func (PreconditionType) XdrTypeName() string              { return "PreconditionType" }
+func (v PreconditionType) XdrValue() interface{}          { return v }
+func (v *PreconditionType) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+
+type XdrType_PreconditionType = *PreconditionType
+
+func XDR_PreconditionType(v *PreconditionType) *PreconditionType { return v }
+
+var _XdrTags_Preconditions = map[int32]bool{
+	XdrToI32(PRECOND_NONE):    true,
+	XdrToI32(PRECOND_TIME):    true,
+	XdrToI32(PRECOND_GENERAL): true,
+}
+
+func (_ Preconditions) XdrValidTags() map[int32]bool {
+	return _XdrTags_Preconditions
+}
+func (u *Preconditions) TimeBounds() *TimeBounds {
+	switch u.Type {
+	case PRECOND_TIME:
+		if v, ok := u._u.(*TimeBounds); ok {
+			return v
+		} else {
+			var zero TimeBounds
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("Preconditions.TimeBounds accessed when Type == %v", u.Type)
+		return nil
+	}
+}
+func (u *Preconditions) General() *GeneralPreconditions {
+	switch u.Type {
+	case PRECOND_GENERAL:
+		if v, ok := u._u.(*GeneralPreconditions); ok {
+			return v
+		} else {
+			var zero GeneralPreconditions
+			u._u = &zero
+			return &zero
+		}
+	default:
+		XdrPanic("Preconditions.General accessed when Type == %v", u.Type)
+		return nil
+	}
+}
+func (u Preconditions) XdrValid() bool {
+	switch u.Type {
+	case PRECOND_NONE, PRECOND_TIME, PRECOND_GENERAL:
+		return true
+	}
+	return false
+}
+func (u *Preconditions) XdrUnionTag() XdrNum32 {
+	return XDR_PreconditionType(&u.Type)
+}
+func (u *Preconditions) XdrUnionTagName() string {
+	return "Type"
+}
+func (u *Preconditions) XdrUnionBody() XdrType {
+	switch u.Type {
+	case PRECOND_NONE:
+		return nil
+	case PRECOND_TIME:
+		return XDR_TimeBounds(u.TimeBounds())
+	case PRECOND_GENERAL:
+		return XDR_GeneralPreconditions(u.General())
+	}
+	return nil
+}
+func (u *Preconditions) XdrUnionBodyName() string {
+	switch u.Type {
+	case PRECOND_NONE:
+		return ""
+	case PRECOND_TIME:
+		return "TimeBounds"
+	case PRECOND_GENERAL:
+		return "General"
+	}
+	return ""
+}
+
+type XdrType_Preconditions = *Preconditions
+
+func (v *Preconditions) XdrPointer() interface{}       { return v }
+func (Preconditions) XdrTypeName() string              { return "Preconditions" }
+func (v Preconditions) XdrValue() interface{}          { return v }
+func (v *Preconditions) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (u *Preconditions) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	XDR_PreconditionType(&u.Type).XdrMarshal(x, x.Sprintf("%stype", name))
+	switch u.Type {
+	case PRECOND_NONE:
+		return
+	case PRECOND_TIME:
+		x.Marshal(x.Sprintf("%stimeBounds", name), XDR_TimeBounds(u.TimeBounds()))
+		return
+	case PRECOND_GENERAL:
+		x.Marshal(x.Sprintf("%sgeneral", name), XDR_GeneralPreconditions(u.General()))
+		return
+	}
+	XdrPanic("invalid Type (%v) in Preconditions", u.Type)
+}
+func XDR_Preconditions(v *Preconditions) *Preconditions { return v }
+
+var _XdrTags_XdrAnon_TransactionV0_Ext = map[int32]bool{
+	XdrToI32(0): true,
+}
+
+func (_ XdrAnon_TransactionV0_Ext) XdrValidTags() map[int32]bool {
+	return _XdrTags_XdrAnon_TransactionV0_Ext
+}
+func (u XdrAnon_TransactionV0_Ext) XdrValid() bool {
+	switch u.V {
+	case 0:
+		return true
+	}
+	return false
+}
+func (u *XdrAnon_TransactionV0_Ext) XdrUnionTag() XdrNum32 {
+	return XDR_int32(&u.V)
+}
+func (u *XdrAnon_TransactionV0_Ext) XdrUnionTagName() string {
+	return "V"
+}
+func (u *XdrAnon_TransactionV0_Ext) XdrUnionBody() XdrType {
+	switch u.V {
+	case 0:
+		return nil
+	}
+	return nil
+}
+func (u *XdrAnon_TransactionV0_Ext) XdrUnionBodyName() string {
+	switch u.V {
+	case 0:
+		return ""
+	}
+	return ""
+}
+
+type XdrType_XdrAnon_TransactionV0_Ext = *XdrAnon_TransactionV0_Ext
+
+func (v *XdrAnon_TransactionV0_Ext) XdrPointer() interface{}       { return v }
+func (XdrAnon_TransactionV0_Ext) XdrTypeName() string              { return "XdrAnon_TransactionV0_Ext" }
+func (v XdrAnon_TransactionV0_Ext) XdrValue() interface{}          { return v }
+func (v *XdrAnon_TransactionV0_Ext) XdrMarshal(x XDR, name string) { x.Marshal(name, v) }
+func (u *XdrAnon_TransactionV0_Ext) XdrRecurse(x XDR, name string) {
+	if name != "" {
+		name = x.Sprintf("%s.", name)
+	}
+	XDR_int32(&u.V).XdrMarshal(x, x.Sprintf("%sv", name))
+	switch u.V {
+	case 0:
+		return
+	}
+	XdrPanic("invalid V (%v) in XdrAnon_TransactionV0_Ext", u.V)
+}
+func XDR_XdrAnon_TransactionV0_Ext(v *XdrAnon_TransactionV0_Ext) *XdrAnon_TransactionV0_Ext { return v }
 
 type _XdrVec_100_Operation []Operation
 
@@ -11943,7 +12374,7 @@ func (v *Transaction) XdrRecurse(x XDR, name string) {
 	x.Marshal(x.Sprintf("%ssourceAccount", name), XDR_MuxedAccount(&v.SourceAccount))
 	x.Marshal(x.Sprintf("%sfee", name), XDR_Uint32(&v.Fee))
 	x.Marshal(x.Sprintf("%sseqNum", name), XDR_SequenceNumber(&v.SeqNum))
-	x.Marshal(x.Sprintf("%stimeBounds", name), _XdrPtr_TimeBounds{&v.TimeBounds})
+	x.Marshal(x.Sprintf("%scond", name), XDR_Preconditions(&v.Cond))
 	x.Marshal(x.Sprintf("%smemo", name), XDR_Memo(&v.Memo))
 	x.Marshal(x.Sprintf("%soperations", name), (*_XdrVec_100_Operation)(&v.Operations))
 	x.Marshal(x.Sprintf("%sext", name), XDR_XdrAnon_Transaction_Ext(&v.Ext))

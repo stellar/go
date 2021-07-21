@@ -4,7 +4,6 @@ package network
 
 import (
 	"bytes"
-
 	"strings"
 
 	"github.com/stellar/go/hash"
@@ -79,13 +78,23 @@ func HashTransactionV0(tx xdr.TransactionV0, passphrase string) ([32]byte, error
 	if err != nil {
 		return [32]byte{}, err
 	}
+
+	cond := xdr.Preconditions{}
+	if tx.TimeBounds == nil {
+		cond, err = xdr.NewPreconditions(xdr.PreconditionTypePrecondNone, nil)
+	} else {
+		cond, err = xdr.NewPreconditions(xdr.PreconditionTypePrecondTime, *tx.TimeBounds)
+	}
+	if err != nil {
+		return [32]byte{}, err
+	}
 	v1Tx := xdr.Transaction{
 		SourceAccount: sa,
 		Fee:           tx.Fee,
 		Memo:          tx.Memo,
 		Operations:    tx.Operations,
 		SeqNum:        tx.SeqNum,
-		TimeBounds:    tx.TimeBounds,
+		Cond:          cond,
 	}
 	return HashTransaction(v1Tx, passphrase)
 }

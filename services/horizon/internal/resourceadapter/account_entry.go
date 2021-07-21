@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"time"
 
 	protocol "github.com/stellar/go/protocols/horizon"
 	horizonContext "github.com/stellar/go/services/horizon/internal/context"
@@ -27,6 +28,15 @@ func PopulateAccountEntry(
 	dest.PT = account.AccountID
 	dest.AccountID = account.AccountID
 	dest.Sequence = strconv.FormatInt(account.SequenceNumber, 10)
+	dest.SequenceTime = func() *time.Time {
+		seqTime := account.SequenceTime
+		if seqTime == nil {
+			return nil
+		}
+		t := time.Unix(int64(*seqTime), 0)
+		return &t
+	}()
+	dest.SequenceLedger = account.SequenceLedger
 	dest.SubentryCount = int32(account.NumSubEntries)
 	dest.InflationDestination = account.InflationDestination
 	dest.HomeDomain = account.HomeDomain

@@ -195,13 +195,16 @@ func marshallBase64(e xdr.TransactionEnvelope, signatures []xdr.DecoratedSignatu
 // the account authorizing the FeeBumpTransaction will pay for the transaction fees
 // instead of the Transaction's source account.
 type Transaction struct {
-	envelope      xdr.TransactionEnvelope
-	baseFee       int64
-	maxFee        int64
-	sourceAccount SimpleAccount
-	operations    []Operation
-	memo          Memo
-	timebounds    Timebounds
+	envelope             xdr.TransactionEnvelope
+	baseFee              int64
+	maxFee               int64
+	sourceAccount        SimpleAccount
+	operations           []Operation
+	memo                 Memo
+	timebounds           Timebounds
+	minSequenceNumber    *int64
+	minSequenceAge       int64
+	minSequenceLedgerGap int64
 }
 
 // BaseFee returns the per operation fee for this transaction.
@@ -381,7 +384,6 @@ func (t *Transaction) ClaimableBalanceID(operationIndex int) (string, error) {
 	if err != nil {
 		return "", errors.Wrap(err, "invalid claimable balance operation")
 	}
-
 	hash := sha256.Sum256(binaryDump)
 	balanceIdXdr, err := xdr.NewClaimableBalanceId(
 		// TODO: look into whether this be determined programmatically from the operation structure.
@@ -661,6 +663,9 @@ type TransactionParams struct {
 	BaseFee              int64
 	Memo                 Memo
 	Timebounds           Timebounds
+	MinSequenceNumber    *int64
+	MinSequenceAge       int64
+	MinSequenceLedgerGap int64
 	EnableMuxedAccounts  bool
 }
 
@@ -688,9 +693,12 @@ func NewTransaction(params TransactionParams) (*Transaction, error) {
 			AccountID: params.SourceAccount.GetAccountID(),
 			Sequence:  sequence,
 		},
-		operations: params.Operations,
-		memo:       params.Memo,
-		timebounds: params.Timebounds,
+		operations:           params.Operations,
+		memo:                 params.Memo,
+		timebounds:           params.Timebounds,
+		minSequenceNumber:    params.MinSequenceNumber,
+		minSequenceAge:       params.MinSequenceAge,
+		minSequenceLedgerGap: params.MinSequenceLedgerGap,
 	}
 	var sourceAccount xdr.MuxedAccount
 	if params.EnableMuxedAccounts {
@@ -722,10 +730,37 @@ func NewTransaction(params TransactionParams) (*Transaction, error) {
 	}
 	tx.maxFee = int64(lo)
 
-	// Check and set the timebounds
+	// Build preconditions
 	err = tx.timebounds.Validate()
 	if err != nil {
 		return nil, errors.Wrap(err, "invalid time bounds")
+	}
+	if tx.minSequenceNumber != nil && *tx.minSequenceNumber < 0 {
+		return nil, errors.Wrap(err, "invalid min sequence number")
+	}
+	if tx.minSequenceAge < 0 {
+		return nil, errors.Wrap(err, "invalid min sequence age")
+	}
+	if tx.minSequenceLedgerGap < 0 {
+		return nil, errors.Wrap(err, "invalid min sequence ledger gap")
+	}
+	var cond xdr.Preconditions
+	timeBounds := xdr.TimeBounds{
+		MinTime: xdr.TimePoint(tx.timebounds.MinTime),
+		MaxTime: xdr.TimePoint(tx.timebounds.MaxTime),
+	}
+	if tx.minSequenceNumber != nil || tx.minSequenceAge > 0 || tx.minSequenceLedgerGap > 0 {
+		cond, err = xdr.NewPreconditions(xdr.PreconditionTypePrecondGeneral, xdr.GeneralPreconditions{
+			TimeBounds:      &timeBounds,
+			MinSeqNum:       (*xdr.SequenceNumber)(tx.minSequenceNumber),
+			MinSeqAge:       xdr.Duration(tx.minSequenceAge),
+			MinSeqLedgerGap: xdr.Uint32(tx.minSequenceLedgerGap),
+		})
+	} else {
+		cond, err = xdr.NewPreconditions(xdr.PreconditionTypePrecondTime, timeBounds)
+	}
+	if err != nil {
+		return nil, errors.Wrap(err, "invalid preconditions")
 	}
 
 	envelope := xdr.TransactionEnvelope{
@@ -735,10 +770,7 @@ func NewTransaction(params TransactionParams) (*Transaction, error) {
 				SourceAccount: sourceAccount,
 				Fee:           xdr.Uint32(tx.maxFee),
 				SeqNum:        xdr.SequenceNumber(sequence),
-				TimeBounds: &xdr.TimeBounds{
-					MinTime: xdr.TimePoint(tx.timebounds.MinTime),
-					MaxTime: xdr.TimePoint(tx.timebounds.MaxTime),
-				},
+				Cond:          cond,
 			},
 			Signatures: nil,
 		},
@@ -949,7 +981,6 @@ func BuildChallengeTx(serverSignerSecret, clientAccountID, webAuthDomain, homeDo
 func generateRandomNonce(n int) ([]byte, error) {
 	binary := make([]byte, n)
 	_, err := rand.Read(binary)
-
 	if err != nil {
 		return []byte{}, err
 	}

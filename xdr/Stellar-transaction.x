@@ -179,7 +179,7 @@ struct CreatePassiveSellOfferOp
 {
     Asset selling; // A
     Asset buying;  // B
-    int64 amount;  // amount taker gets. if set to 0, delete the offer
+    int64 amount;  // amount taker gets
     Price price;   // cost of A in terms of B
 };
 
@@ -241,7 +241,7 @@ struct AllowTrustOp
     AccountID trustor;
     AssetCode asset;
 
-    // 0, or any bitwise combination of the AUTHORIZED_* flags of TrustLineFlags
+    // One of 0, AUTHORIZED_FLAG, or AUTHORIZED_TO_MAINTAIN_LIABILITIES_FLAG
     uint32 authorize;
 };
 
@@ -364,8 +364,7 @@ case REVOKE_SPONSORSHIP_SIGNER:
     {
         AccountID accountID;
         SignerKey signerKey;
-    }
-    signer;
+    } signer;
 };
 
 /* Claws back an amount of an asset from an account
@@ -508,6 +507,58 @@ struct TimeBounds
     TimePoint maxTime; // 0 here means no maxTime
 };
 
+struct LedgerBounds
+{
+    uint32 minLedger;
+    uint32 maxLedger;
+};
+
+struct GeneralPreconditions {
+    TimeBounds *timeBounds;
+
+    // Transaciton only valid for ledger numbers n such that
+    // minLedger <= n < maxLedger
+    LedgerBounds *ledgerBounds;
+
+    // If NULL, only valid when sourceAccount's sequence number
+    // is seqNum - 1.  Otherwise, valid when sourceAccount's
+    // sequence number n satisfies minSeqNum <= n < tx.seqNum.
+    // Note that after execution the account's sequence number
+    // is always raised to tx.seqNum, and a transaction is not
+    // valid if tx.seqNum is too high to ensure replay protection.
+    SequenceNumber *minSeqNum;
+
+    // For the transaction to be valid, the current ledger time must
+    // be at least minSeqAge greater than sourceAccount's seqTime.
+    Duration minSeqAge;
+
+    // For the transaction to be valid, the current ledger number
+    // must be at least minSeqLedgerGap greater than sourceAccount's
+    // seqLedger.
+    uint32 minSeqLedgerGap;
+
+    // For the transaction to be valid, there must be a signature
+    // corresponding to every Signer in this array, even if the
+    // signature is not otherwise required by the sourceAccount or
+    // operations.
+    SignerKey extraSigners<2>;
+};
+
+enum PreconditionType {
+    PRECOND_NONE = 0,
+    PRECOND_TIME = 1,
+    PRECOND_GENERAL = 2
+};
+
+union Preconditions switch (PreconditionType type) {
+    case PRECOND_NONE:
+        void;
+    case PRECOND_TIME:
+        TimeBounds timeBounds;
+    case PRECOND_GENERAL:
+        GeneralPreconditions general;
+};
+
 // maximum number of operations per transaction
 const MAX_OPS_PER_TX = 100;
 
@@ -559,8 +610,8 @@ struct Transaction
     // sequence number to consume in the account
     SequenceNumber seqNum;
 
-    // validity range (inclusive) for the last ledger close time
-    TimeBounds* timeBounds;
+    // validity conditions
+    Preconditions cond;
 
     Memo memo;
 
@@ -740,7 +791,8 @@ struct SimplePaymentResult
     int64 amount;
 };
 
-union PathPaymentStrictReceiveResult switch (PathPaymentStrictReceiveResultCode code)
+union PathPaymentStrictReceiveResult switch (
+    PathPaymentStrictReceiveResultCode code)
 {
 case PATH_PAYMENT_STRICT_RECEIVE_SUCCESS:
     struct
@@ -907,8 +959,9 @@ enum SetOptionsResultCode
     SET_OPTIONS_UNKNOWN_FLAG = -6,           // can't set an unknown flag
     SET_OPTIONS_THRESHOLD_OUT_OF_RANGE = -7, // bad value for weight/threshold
     SET_OPTIONS_BAD_SIGNER = -8,             // signer cannot be masterkey
-    SET_OPTIONS_INVALID_HOME_DOMAIN = -9,     // malformed home domain
-    SET_OPTIONS_AUTH_REVOCABLE_REQUIRED = -10 // auth revocable is required for clawback
+    SET_OPTIONS_INVALID_HOME_DOMAIN = -9,    // malformed home domain
+    SET_OPTIONS_AUTH_REVOCABLE_REQUIRED =
+        -10 // auth revocable is required for clawback
 };
 
 union SetOptionsResult switch (SetOptionsResultCode code)
@@ -1068,7 +1121,8 @@ enum CreateClaimableBalanceResultCode
     CREATE_CLAIMABLE_BALANCE_UNDERFUNDED = -5
 };
 
-union CreateClaimableBalanceResult switch (CreateClaimableBalanceResultCode code)
+union CreateClaimableBalanceResult switch (
+    CreateClaimableBalanceResultCode code)
 {
 case CREATE_CLAIMABLE_BALANCE_SUCCESS:
     ClaimableBalanceID balanceID;
@@ -1110,7 +1164,8 @@ enum BeginSponsoringFutureReservesResultCode
     BEGIN_SPONSORING_FUTURE_RESERVES_RECURSIVE = -3
 };
 
-union BeginSponsoringFutureReservesResult switch (BeginSponsoringFutureReservesResultCode code)
+union BeginSponsoringFutureReservesResult switch (
+    BeginSponsoringFutureReservesResultCode code)
 {
 case BEGIN_SPONSORING_FUTURE_RESERVES_SUCCESS:
     void;
@@ -1129,7 +1184,8 @@ enum EndSponsoringFutureReservesResultCode
     END_SPONSORING_FUTURE_RESERVES_NOT_SPONSORED = -1
 };
 
-union EndSponsoringFutureReservesResult switch (EndSponsoringFutureReservesResultCode code)
+union EndSponsoringFutureReservesResult switch (
+    EndSponsoringFutureReservesResultCode code)
 {
 case END_SPONSORING_FUTURE_RESERVES_SUCCESS:
     void;
@@ -1194,7 +1250,8 @@ enum ClawbackClaimableBalanceResultCode
     CLAWBACK_CLAIMABLE_BALANCE_NOT_CLAWBACK_ENABLED = -3
 };
 
-union ClawbackClaimableBalanceResult switch (ClawbackClaimableBalanceResultCode code)
+union ClawbackClaimableBalanceResult switch (
+    ClawbackClaimableBalanceResultCode code)
 {
 case CLAWBACK_CLAIMABLE_BALANCE_SUCCESS:
     void;
