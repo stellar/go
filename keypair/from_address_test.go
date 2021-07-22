@@ -1,11 +1,52 @@
 package keypair
 
 import (
+	"testing"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/types"
+	"github.com/stretchr/testify/assert"
 )
+
+func TestFromAddress_Equal(t *testing.T) {
+	// A nil FromAddress.
+	var kp0 *FromAddress
+
+	// A FromAddress with a value.
+	kp1 := MustParseAddress("GAYUB4KATGTUZEGUMJEOZDPPWM4MQLHCIKC4T55YSXHN234WI6BJMIY2")
+
+	// A FromAddress and its corresponding Full.
+	kp2 := MustParseAddress("GD5II5W6KQTJPES32LL6VJK6PLOHMEKYUXJPLERXUKR3MCLM3TNFSIPW")
+	kp3 := MustParseFull("SBPBTSQAIEA5HLWLVWA4TJ7RBKHCEERE2W2DZLB6AUUCEUIYWLJF2EUS")
+
+	// A nil KP interface is not a From Address, so should not be equal to a
+	// From Address, even a nil From Address.
+	assert.False(t, kp0.Equal(nil))
+
+	// A nil FromAddress should be equal to a nil FromAddress.
+	assert.True(t, kp0.Equal((*FromAddress)(nil)))
+
+	// A non-nil FromAddress is not equal to a nil KP with no type.
+	assert.False(t, kp1.Equal(nil))
+
+	// A non-nil FromAddress is not equal to a nil FromAddress.
+	assert.False(t, kp1.Equal((*FromAddress)(nil)))
+
+	// A non-nil FromAddress is equal to itself.
+	assert.True(t, kp1.Equal(kp1))
+
+	// A non-nil FromAddress is equal to another FromAddress containing the same address.
+	assert.True(t, kp1.Equal(MustParseAddress(kp1.address)))
+
+	// A non-nil FromAddress is not equal a non-nil FromAddress of different value.
+	assert.False(t, kp1.Equal(kp2))
+	assert.False(t, kp2.Equal(kp1))
+
+	// A non-nil FromAddress should not equal its corresponding Full.
+	assert.False(t, kp2.Equal(kp3))
+}
 
 var _ = Describe("keypair.FromAddress", func() {
 	var subject KP

@@ -2,11 +2,51 @@ package keypair
 
 import (
 	"encoding/hex"
+	"testing"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
+	"github.com/stretchr/testify/assert"
 )
+
+func TestFull_Equal(t *testing.T) {
+	// A nil Full.
+	var kp0 *Full
+
+	// A Full with a value.
+	kp1 := MustParseFull("SBFGFF27Y64ZUGFAIG5AMJGQODZZKV2YQKAVUUN4HNE24XZXD2OEUVUP")
+
+	// A Full and its corresponding Full.
+	kp2 := MustParseFull("SBPBTSQAIEA5HLWLVWA4TJ7RBKHCEERE2W2DZLB6AUUCEUIYWLJF2EUS")
+	kp3 := MustParseAddress("GD5II5W6KQTJPES32LL6VJK6PLOHMEKYUXJPLERXUKR3MCLM3TNFSIPW")
+
+	// A nil KP interface is not a From Address, so should not be equal to a
+	// From Address, even a nil From Address.
+	assert.False(t, kp0.Equal(nil))
+
+	// A nil Full should be equal to a nil Full.
+	assert.True(t, kp0.Equal((*Full)(nil)))
+
+	// A non-nil Full is not equal to a nil KP with no type.
+	assert.False(t, kp1.Equal(nil))
+
+	// A non-nil Full is not equal to a nil Full.
+	assert.False(t, kp1.Equal((*Full)(nil)))
+
+	// A non-nil Full is equal to itself.
+	assert.True(t, kp1.Equal(kp1))
+
+	// A non-nil Full is equal to another Full containing the same address.
+	assert.True(t, kp1.Equal(MustParseFull(kp1.seed)))
+
+	// A non-nil Full is not equal a non-nil Full of different value.
+	assert.False(t, kp1.Equal(kp2))
+	assert.False(t, kp2.Equal(kp1))
+
+	// A non-nil Full should not equal its corresponding FromAddress.
+	assert.False(t, kp2.Equal(kp3))
+}
 
 var _ = Describe("keypair.Full", func() {
 	var subject KP

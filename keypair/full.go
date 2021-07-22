@@ -69,6 +69,19 @@ func (kp *Full) SignDecorated(input []byte) (xdr.DecoratedSignature, error) {
 	}, nil
 }
 
+func (kp *Full) Equal(o KP) bool {
+	if f, ok := o.(*Full); ok {
+		if kp == nil && f == nil {
+			return true
+		}
+		if kp == nil || f == nil {
+			return false
+		}
+		return kp.seed == f.seed
+	}
+	return false
+}
+
 func (kp *Full) publicKey() ed25519.PublicKey {
 	pub, _ := kp.keys()
 	return pub
