@@ -108,6 +108,14 @@ func (a *App) Serve() {
 		}()
 	}
 
+	if a.reaper != nil {
+		wg.Add(1)
+		go func() {
+			a.reaper.Run()
+			wg.Done()
+		}()
+	}
+
 	// configure shutdown signal handler
 	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
@@ -150,6 +158,9 @@ func (a *App) waitForDone() {
 	a.cancel()
 	if a.ingester != nil {
 		a.ingester.Shutdown()
+	}
+	if a.reaper != nil {
+		a.reaper.Shutdown()
 	}
 	a.ticks.Stop()
 }
@@ -392,8 +403,7 @@ func (a *App) Tick(ctx context.Context) error {
 	go func() { a.UpdateStellarCoreInfo(ctx); wg.Done() }()
 	wg.Wait()
 
-	wg.Add(2)
-	go func() { a.reaper.Tick(ctx); wg.Done() }()
+	wg.Add(1)
 	go func() { a.submitter.Tick(ctx); wg.Done() }()
 	wg.Wait()
 
