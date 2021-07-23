@@ -38,15 +38,21 @@ func (r *System) DeleteUnretainedHistory(ctx context.Context) error {
 	return nil
 }
 
-// Tick triggers the reaper system to update itself, deleted unretained history
+// Run triggers the reaper system to update itself, deleted unretained history
 // if it is the appropriate time.
-func (r *System) Tick(ctx context.Context) {
-	if time.Now().Before(r.nextRun) {
-		return
+func (r *System) Run() {
+	for {
+		select {
+		case <-time.After(1 * time.Hour):
+			r.runOnce(r.ctx)
+		case <-r.ctx.Done():
+			return
+		}
 	}
+}
 
-	r.runOnce(ctx)
-	r.nextRun = time.Now().Add(1 * time.Hour)
+func (r *System) Shutdown() {
+	r.cancel()
 }
 
 func (r *System) runOnce(ctx context.Context) {

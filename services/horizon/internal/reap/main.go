@@ -5,7 +5,7 @@
 package reap
 
 import (
-	"time"
+	"context"
 
 	"github.com/stellar/go/services/horizon/internal/db2/history"
 	"github.com/stellar/go/services/horizon/internal/ledger"
@@ -17,19 +17,22 @@ type System struct {
 	HistoryQ       *history.Q
 	RetentionCount uint
 	ledgerState    *ledger.State
-
-	nextRun time.Time
+	ctx            context.Context
+	cancel         context.CancelFunc
 }
 
 // New initializes the reaper, causing it to begin polling the stellar-core
 // database for now ledgers and ingesting data into the horizon database.
 func New(retention uint, dbSession db.SessionInterface, ledgerState *ledger.State) *System {
+	ctx, cancel := context.WithCancel(context.Background())
+
 	r := &System{
 		HistoryQ:       &history.Q{dbSession.Clone()},
 		RetentionCount: retention,
 		ledgerState:    ledgerState,
+		ctx:            ctx,
+		cancel:         cancel,
 	}
 
-	r.nextRun = time.Now().Add(1 * time.Hour)
 	return r
 }
