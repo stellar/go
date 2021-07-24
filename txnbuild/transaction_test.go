@@ -1615,7 +1615,7 @@ func TestAddSignatureDecorated(t *testing.T) {
 	// Same if signatures added separately.
 	{
 		var tx1sigs1 *Transaction
-		tx1sigs1, err = tx1.AddSignatureDecorated(
+		tx1sigs1 = tx1.AddSignatureDecorated(
 			xdr.DecoratedSignature{
 				Hint: kp0.Hint(),
 				Signature: func() xdr.Signature {
@@ -1628,8 +1628,7 @@ func TestAddSignatureDecorated(t *testing.T) {
 				}(),
 			},
 		)
-		assert.NoError(t, err)
-		tx1sigs1, err = tx1sigs1.AddSignatureDecorated(
+		tx1sigs1 = tx1sigs1.AddSignatureDecorated(
 			xdr.DecoratedSignature{
 				Hint: kp1.Hint(),
 				Signature: func() xdr.Signature {
@@ -1642,7 +1641,6 @@ func TestAddSignatureDecorated(t *testing.T) {
 				}(),
 			},
 		)
-		assert.NoError(t, err)
 		var actual string
 		actual, err = tx1sigs1.Base64()
 		assert.NoError(t, err)
@@ -1652,7 +1650,7 @@ func TestAddSignatureDecorated(t *testing.T) {
 	// Same if signatures added together.
 	{
 		var tx1sigs2 *Transaction
-		tx1sigs2, err = tx1.AddSignatureDecorated(
+		tx1sigs2 = tx1.AddSignatureDecorated(
 			xdr.DecoratedSignature{
 				Hint: kp0.Hint(),
 				Signature: func() xdr.Signature {
@@ -1676,7 +1674,6 @@ func TestAddSignatureDecorated(t *testing.T) {
 				}(),
 			},
 		)
-		assert.NoError(t, err)
 		var actual string
 		actual, err = tx1sigs2.Base64()
 		assert.NoError(t, err)

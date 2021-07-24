@@ -76,11 +76,11 @@ func concatSignatures(
 	return extended, nil
 }
 
-func concatSignatureDecorated(e xdr.TransactionEnvelope, signatures []xdr.DecoratedSignature, newSignatures []xdr.DecoratedSignature) ([]xdr.DecoratedSignature, error) {
+func concatSignatureDecorated(e xdr.TransactionEnvelope, signatures []xdr.DecoratedSignature, newSignatures []xdr.DecoratedSignature) []xdr.DecoratedSignature {
 	extended := make([]xdr.DecoratedSignature, len(signatures)+len(newSignatures))
 	copy(extended, signatures)
 	copy(extended[len(signatures):], newSignatures)
-	return extended, nil
+	return extended
 }
 
 func concatSignatureBase64(e xdr.TransactionEnvelope, signatures []xdr.DecoratedSignature, networkStr, publicKey, signature string) ([]xdr.DecoratedSignature, error) {
@@ -314,13 +314,9 @@ func (t *Transaction) SignHashX(preimage []byte) (*Transaction, error) {
 
 // AddSignatureDecorated returns a new Transaction instance which extends the current instance
 // with an additional decorated signature(s).
-func (t *Transaction) AddSignatureDecorated(signature ...xdr.DecoratedSignature) (*Transaction, error) {
-	extendedSignatures, err := concatSignatureDecorated(t.envelope, t.Signatures(), signature)
-	if err != nil {
-		return nil, err
-	}
-
-	return t.clone(extendedSignatures), nil
+func (t *Transaction) AddSignatureDecorated(signature ...xdr.DecoratedSignature) *Transaction {
+	extendedSignatures := concatSignatureDecorated(t.envelope, t.Signatures(), signature)
+	return t.clone(extendedSignatures)
 }
 
 // AddSignatureBase64 returns a new Transaction instance which extends the current instance
