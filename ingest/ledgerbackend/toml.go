@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/stellar/go/network"
 	"github.com/stellar/go/support/errors"
 	"github.com/stellar/go/support/log"
 	"github.com/stellar/go/xdr"
@@ -346,6 +347,54 @@ func NewCaptiveCoreTomlFromFile(configPath string, params CaptiveCoreTomlParams)
 
 	captiveCoreToml.setDefaults(params)
 	return &captiveCoreToml, nil
+}
+
+// NewDefaultTestnetCaptiveCoreToml constructs a new CaptiveCoreToml instance
+// based off the default testnet configuration.
+func NewDefaultTestnetCaptiveCoreToml() *CaptiveCoreToml {
+	var captiveCoreToml CaptiveCoreToml
+
+	captiveCoreToml.tablePlaceholders = &placeholders{}
+
+	captiveCoreToml.PublicHTTPPort = true
+	captiveCoreToml.HTTPPort = 11626
+
+	captiveCoreToml.FailureSafety = -1
+	captiveCoreToml.NetworkPassphrase = network.TestNetworkPassphrase
+
+	captiveCoreToml.HomeDomains = append(
+		captiveCoreToml.HomeDomains,
+		HomeDomain{
+			HomeDomain: "testnet.stellar.org",
+			Quality:    "LOW",
+		})
+
+	captiveCoreToml.Validators = append(
+		captiveCoreToml.Validators,
+		Validator{
+			Name:       "sdf_testnet_1",
+			HomeDomain: "testnet.stellar.org",
+			PublicKey:  "GDKXE2OZMJIPOSLNA6N6F2BVCI3O777I2OOC4BV7VOYUEHYX7RTRYA7Y",
+			Address:    "core-testnet1.stellar.org",
+			History:    "curl -sf http://history.stellar.org/prd/core-testnet/core_testnet_001/{0} -o {1}",
+		},
+		Validator{
+			Name:       "sdf_testnet_2",
+			HomeDomain: "testnet.stellar.org",
+			PublicKey:  "GCUCJTIYXSOXKBSNFGNFWW5MUQ54HKRPGJUTQFJ5RQXZXNOLNXYDHRAP",
+			Address:    "core-testnet2.stellar.org",
+			History:    "curl -sf http://history.stellar.org/prd/core-testnet/core_testnet_002/{0} -o {1}",
+		},
+		Validator{
+			Name:       "sdf_testnet_3",
+			HomeDomain: "testnet.stellar.org",
+			PublicKey:  "GC2V2EFSXN6SQTWVYA5EPJPBWWIMSD2XQNKUOHGEKB535AQE2I6IXV2Z",
+			Address:    "core-testnet3.stellar.org",
+			History:    "curl -sf http://history.stellar.org/prd/core-testnet/core_testnet_003/{0} -o {1}",
+		},
+	)
+
+	return &captiveCoreToml
 }
 
 // NewCaptiveCoreToml constructs a new CaptiveCoreToml instance based off

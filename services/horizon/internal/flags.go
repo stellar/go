@@ -389,7 +389,7 @@ func Flags() (*Config, support.ConfigOptions) {
 			Name:        "ingest",
 			ConfigKey:   &config.Ingest,
 			OptType:     types.Bool,
-			FlagDefault: false,
+			FlagDefault: true,
 			Usage:       "causes this horizon process to ingest data from stellar-core into horizon's db",
 		},
 		&support.ConfigOption{
@@ -538,8 +538,14 @@ func ApplyFlags(config *Config, flags support.ConfigOptions, options ApplyOption
 
 			if config.RemoteCaptiveCoreURL == "" && (binaryPath == "" || config.CaptiveCoreConfigPath == "") {
 				if options.RequireCaptiveCoreConfig {
-					stdLog.Fatalf("Invalid config: captive core requires that both --%s and --%s are set. %s",
-						StellarCoreBinaryPathName, CaptiveCoreConfigPathName, captiveCoreMigrationHint)
+					switch config.NetworkPassphrase {
+					case "Test SDF Network ; September 2015":
+						config.CaptiveCoreToml = ledgerbackend.NewDefaultTestnetCaptiveCoreToml()
+						config.HistoryArchiveURLs = []string{"https://history.stellar.org/prd/core-testnet/core_testnet_001/"}
+					default:
+						stdLog.Fatalf("Invalid config: captive core requires that both --%s and --%s are set. %s",
+							StellarCoreBinaryPathName, CaptiveCoreConfigPathName, captiveCoreMigrationHint)
+					}
 				} else {
 					var err error
 					config.CaptiveCoreTomlParams.HistoryArchiveURLs = config.HistoryArchiveURLs
