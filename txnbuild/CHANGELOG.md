@@ -6,7 +6,7 @@ file.  This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
-* Removed error return value from AddDecoratedSignature. ([#3779](https://github.com/stellar/go/pull/3779))
+* Removed error return value from AddSignatureDecorated. ([#3779](https://github.com/stellar/go/pull/3779))
 
 ## [v7.1.1](https://github.com/stellar/go/releases/tag/horizonclient-v7.1.1) - 2021-06-25
 
