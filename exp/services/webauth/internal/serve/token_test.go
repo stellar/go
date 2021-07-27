@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dgrijalva/jwt-go"
+	"github.com/golang-jwt/jwt"
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/exp/support/jwtkey"
 	"github.com/stellar/go/keypair"
