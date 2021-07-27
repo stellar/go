@@ -362,37 +362,247 @@ func NewDefaultTestnetCaptiveCoreToml() *CaptiveCoreToml {
 	captiveCoreToml.FailureSafety = -1
 	captiveCoreToml.NetworkPassphrase = network.TestNetworkPassphrase
 
-	captiveCoreToml.HomeDomains = append(
-		captiveCoreToml.HomeDomains,
-		HomeDomain{
+	captiveCoreToml.HomeDomains = []HomeDomain{
+		{
 			HomeDomain: "testnet.stellar.org",
 			Quality:    "LOW",
-		})
+		},
+	}
 
-	captiveCoreToml.Validators = append(
-		captiveCoreToml.Validators,
-		Validator{
+	captiveCoreToml.Validators = []Validator{
+		{
 			Name:       "sdf_testnet_1",
 			HomeDomain: "testnet.stellar.org",
 			PublicKey:  "GDKXE2OZMJIPOSLNA6N6F2BVCI3O777I2OOC4BV7VOYUEHYX7RTRYA7Y",
 			Address:    "core-testnet1.stellar.org",
 			History:    "curl -sf http://history.stellar.org/prd/core-testnet/core_testnet_001/{0} -o {1}",
 		},
-		Validator{
+		{
 			Name:       "sdf_testnet_2",
 			HomeDomain: "testnet.stellar.org",
 			PublicKey:  "GCUCJTIYXSOXKBSNFGNFWW5MUQ54HKRPGJUTQFJ5RQXZXNOLNXYDHRAP",
 			Address:    "core-testnet2.stellar.org",
 			History:    "curl -sf http://history.stellar.org/prd/core-testnet/core_testnet_002/{0} -o {1}",
 		},
-		Validator{
+		{
 			Name:       "sdf_testnet_3",
 			HomeDomain: "testnet.stellar.org",
 			PublicKey:  "GC2V2EFSXN6SQTWVYA5EPJPBWWIMSD2XQNKUOHGEKB535AQE2I6IXV2Z",
 			Address:    "core-testnet3.stellar.org",
 			History:    "curl -sf http://history.stellar.org/prd/core-testnet/core_testnet_003/{0} -o {1}",
 		},
-	)
+	}
+
+	return &captiveCoreToml
+}
+
+// NewDefaultPubnetCaptiveCoreToml constructs a new CaptiveCoreToml instance
+// based off the default pubnet configuration.
+func NewDefaultPubnetCaptiveCoreToml() *CaptiveCoreToml {
+	var captiveCoreToml CaptiveCoreToml
+
+	captiveCoreToml.tablePlaceholders = &placeholders{}
+
+	captiveCoreToml.PublicHTTPPort = true
+	captiveCoreToml.HTTPPort = 11626
+
+	captiveCoreToml.FailureSafety = -1
+	captiveCoreToml.NetworkPassphrase = network.PublicNetworkPassphrase
+
+	captiveCoreToml.HomeDomains = []HomeDomain{
+		{
+			HomeDomain: "stellar.org",
+			Quality:    "HIGH",
+		},
+		{
+			HomeDomain: "satoshipay.io",
+			Quality:    "HIGH",
+		},
+		{
+			HomeDomain: "lobstr.co",
+			Quality:    "HIGH",
+		},
+		{
+			HomeDomain: "www.coinqvest.com",
+			Quality:    "HIGH",
+		},
+		{
+			HomeDomain: "keybase.io",
+			Quality:    "HIGH",
+		},
+		{
+			HomeDomain: "stellar.blockdaemon.com",
+			Quality:    "HIGH",
+		},
+		{
+			HomeDomain: "wirexapp.com",
+			Quality:    "HIGH",
+		},
+	}
+
+	captiveCoreToml.Validators = []Validator{
+		{
+			Name:       "sdf_1",
+			HomeDomain: "stellar.org",
+			PublicKey:  "GCGB2S2KGYARPVIA37HYZXVRM2YZUEXA6S33ZU5BUDC6THSB62LZSTYH",
+			Address:    "core-live-a.stellar.org:11625",
+			History:    "curl -sf https://history.stellar.org/prd/core-live/core_live_001/{0} -o {1}",
+		},
+		{
+			Name:       "sdf_2",
+			HomeDomain: "stellar.org",
+			PublicKey:  "GCM6QMP3DLRPTAZW2UZPCPX2LF3SXWXKPMP3GKFZBDSF3QZGV2G5QSTK",
+			Address:    "core-live-b.stellar.org:11625",
+			History:    "curl -sf https://history.stellar.org/prd/core-live/core_live_002/{0} -o {1}",
+		},
+		{
+			Name:       "sdf_3",
+			HomeDomain: "stellar.org",
+			PublicKey:  "GABMKJM6I25XI4K7U6XWMULOUQIQ27BCTMLS6BYYSOWKTBUXVRJSXHYQ",
+			Address:    "core-live-c.stellar.org:11625",
+			History:    "curl -sf https://history.stellar.org/prd/core-live/core_live_003/{0} -o {1}",
+		},
+		{
+			Name:       "satoshipay_singapore",
+			HomeDomain: "satoshipay.io",
+			PublicKey:  "GBJQUIXUO4XSNPAUT6ODLZUJRV2NPXYASKUBY4G5MYP3M47PCVI55MNT",
+			Address:    "stellar-sg-sin.satoshipay.io:11625",
+			History:    "curl -sf https://stellar-history-sg-sin.satoshipay.io/{0} -o {1}",
+		},
+		{
+			Name:       "satoshipay_iowa",
+			HomeDomain: "satoshipay.io",
+			PublicKey:  "GAK6Z5UVGUVSEK6PEOCAYJISTT5EJBB34PN3NOLEQG2SUKXRVV2F6HZY",
+			Address:    "stellar-us-iowa.satoshipay.io:11625",
+			History:    "curl -sf https://stellar-history-us-iowa.satoshipay.io/{0} -o {1}",
+		},
+		{
+			Name:       "satoshipay_frankfurt",
+			HomeDomain: "satoshipay.io",
+			PublicKey:  "GC5SXLNAM3C4NMGK2PXK4R34B5GNZ47FYQ24ZIBFDFOCU6D4KBN4POAE",
+			Address:    "stellar-de-fra.satoshipay.io:11625",
+			History:    "curl -sf https://stellar-history-de-fra.satoshipay.io/{0} -o {1}",
+		},
+		{
+			Name:       "lobstr_1_europe",
+			HomeDomain: "lobstr.co",
+			PublicKey:  "GCFONE23AB7Y6C5YZOMKUKGETPIAJA4QOYLS5VNS4JHBGKRZCPYHDLW7",
+			Address:    "v1.stellar.lobstr.co:11625",
+			History:    "curl -sf https://stellar-archive-1-lobstr.s3.amazonaws.com/{0} -o {1}",
+		},
+		{
+			Name:       "lobstr_2_europe",
+			HomeDomain: "lobstr.co",
+			PublicKey:  "GDXQB3OMMQ6MGG43PWFBZWBFKBBDUZIVSUDAZZTRAWQZKES2CDSE5HKJ",
+			Address:    "v2.stellar.lobstr.co:11625",
+			History:    "curl -sf https://stellar-archive-2-lobstr.s3.amazonaws.com/{0} -o {1}",
+		},
+		{
+			Name:       "lobstr_3_north_america",
+			HomeDomain: "lobstr.co",
+			PublicKey:  "GD5QWEVV4GZZTQP46BRXV5CUMMMLP4JTGFD7FWYJJWRL54CELY6JGQ63",
+			Address:    "v3.stellar.lobstr.co:11625",
+			History:    "curl -sf https://stellar-archive-3-lobstr.s3.amazonaws.com/{0} -o {1}",
+		},
+		{
+			Name:       "lobstr_4_asia",
+			HomeDomain: "lobstr.co",
+			PublicKey:  "GA7TEPCBDQKI7JQLQ34ZURRMK44DVYCIGVXQQWNSWAEQR6KB4FMCBT7J",
+			Address:    "v4.stellar.lobstr.co:11625",
+			History:    "curl -sf https://stellar-archive-4-lobstr.s3.amazonaws.com/{0} -o {1}",
+		},
+		{
+			Name:       "lobstr_5_australia",
+			HomeDomain: "lobstr.co",
+			PublicKey:  "GA5STBMV6QDXFDGD62MEHLLHZTPDI77U3PFOD2SELU5RJDHQWBR5NNK7",
+			Address:    "v5.stellar.lobstr.co:11625",
+			History:    "curl -sf https://stellar-archive-5-lobstr.s3.amazonaws.com/{0} -o {1}",
+		},
+		{
+			Name:       "coinqvest_hong_kong",
+			HomeDomain: "www.coinqvest.com",
+			PublicKey:  "GAZ437J46SCFPZEDLVGDMKZPLFO77XJ4QVAURSJVRZK2T5S7XUFHXI2Z",
+			Address:    "hongkong.stellar.coinqvest.com:11625",
+			History:    "curl -sf https://hongkong.stellar.coinqvest.com/history/{0} -o {1}",
+		},
+		{
+			Name:       "coinqvest_germany",
+			HomeDomain: "www.coinqvest.com",
+			PublicKey:  "GD6SZQV3WEJUH352NTVLKEV2JM2RH266VPEM7EH5QLLI7ZZAALMLNUVN",
+			Address:    "germany.stellar.coinqvest.com:11625",
+			History:    "curl -sf https://germany.stellar.coinqvest.com/history/{0} -o {1}",
+		},
+		{
+			Name:       "coinqvest_finland",
+			HomeDomain: "www.coinqvest.com",
+			PublicKey:  "GADLA6BJK6VK33EM2IDQM37L5KGVCY5MSHSHVJA4SCNGNUIEOTCR6J5T",
+			Address:    "finland.stellar.coinqvest.com:11625",
+			History:    "curl -sf https://finland.stellar.coinqvest.com/history/{0} -o {1}",
+		},
+		{
+			Name:       "keybase_io",
+			HomeDomain: "keybase.io",
+			PublicKey:  "GCWJKM4EGTGJUVSWUJDPCQEOEP5LHSOFKSA4HALBTOO4T4H3HCHOM6UX",
+			Address:    "stellar0.keybase.io:11625",
+			History:    "curl -sf https://stellarhistory.keybase.io/{0} -o {1}",
+		},
+		{
+			Name:       "keybase_1",
+			HomeDomain: "keybase.io",
+			PublicKey:  "GDKWELGJURRKXECG3HHFHXMRX64YWQPUHKCVRESOX3E5PM6DM4YXLZJM",
+			Address:    "stellar1.keybase.io:11625",
+			History:    "curl -sf https://stellarhistory1.keybase.io/{0} -o {1}",
+		},
+		{
+			Name:       "keybase_2",
+			HomeDomain: "keybase.io",
+			PublicKey:  "GA35T3723UP2XJLC2H7MNL6VMKZZIFL2VW7XHMFFJKKIA2FJCYTLKFBW",
+			Address:    "stellar2.keybase.io:11625",
+			History:    "curl -sf https://stellarhistory2.keybase.io/{0} -o {1}",
+		},
+		{
+			Name:       "Blockdaemon_Validator_1",
+			HomeDomain: "stellar.blockdaemon.com",
+			PublicKey:  "GAAV2GCVFLNN522ORUYFV33E76VPC22E72S75AQ6MBR5V45Z5DWVPWEU",
+			Address:    "stellar-full-validator1.bdnodes.net",
+			History:    "curl -sf https://stellar-full-history1.bdnodes.net/{0} -o {1}",
+		},
+		{
+			Name:       "Blockdaemon_Validator_2",
+			HomeDomain: "stellar.blockdaemon.com",
+			PublicKey:  "GAVXB7SBJRYHSG6KSQHY74N7JAFRL4PFVZCNWW2ARI6ZEKNBJSMSKW7C",
+			Address:    "stellar-full-validator2.bdnodes.net",
+			History:    "curl -sf https://stellar-full-history2.bdnodes.net/{0} -o {1}",
+		},
+		{
+			Name:       "Blockdaemon_Validator_3",
+			HomeDomain: "stellar.blockdaemon.com",
+			PublicKey:  "GAYXZ4PZ7P6QOX7EBHPIZXNWY4KCOBYWJCA4WKWRKC7XIUS3UJPT6EZ4",
+			Address:    "stellar-full-validator3.bdnodes.net",
+			History:    "curl -sf https://stellar-full-history3.bdnodes.net/{0} -o {1}",
+		},
+		{
+			Name:       "wirexUS",
+			HomeDomain: "wirexapp.com",
+			PublicKey:  "GDXUKFGG76WJC7ACEH3JUPLKM5N5S76QSMNDBONREUXPCZYVPOLFWXUS",
+			Address:    "us.stellar.wirexapp.com",
+			History:    "curl -sf http://wxhorizonusstga1.blob.core.windows.net/history/{0} -o {1}",
+		},
+		{
+			Name:       "wirexUK",
+			HomeDomain: "wirexapp.com",
+			PublicKey:  "GBBQQT3EIUSXRJC6TGUCGVA3FVPXVZLGG3OJYACWBEWYBHU46WJLWXEU",
+			Address:    "uk.stellar.wirexapp.com",
+			History:    "curl -sf http://wxhorizonukstga1.blob.core.windows.net/history/{0} -o {1}",
+		},
+		{
+			Name:       "wirexSG",
+			HomeDomain: "wirexapp.com",
+			PublicKey:  "GAB3GZIE6XAYWXGZUDM4GMFFLJBFMLE2JDPUCWUZXMOMT3NHXDHEWXAS",
+			Address:    "sg.stellar.wirexapp.com",
+			History:    "curl -sf http://wxhorizonasiastga1.blob.core.windows.net/history/{0} -o {1}",
+		},
+	}
 
 	return &captiveCoreToml
 }

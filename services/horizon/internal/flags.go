@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/stellar/go/ingest/ledgerbackend"
+	"github.com/stellar/go/network"
 	"github.com/stellar/go/services/horizon/internal/db2/schema"
 	apkg "github.com/stellar/go/support/app"
 	support "github.com/stellar/go/support/config"
@@ -539,9 +540,13 @@ func ApplyFlags(config *Config, flags support.ConfigOptions, options ApplyOption
 			if config.RemoteCaptiveCoreURL == "" && (binaryPath == "" || config.CaptiveCoreConfigPath == "") {
 				if options.RequireCaptiveCoreConfig {
 					switch config.NetworkPassphrase {
-					case "Test SDF Network ; September 2015":
+					case network.TestNetworkPassphrase:
 						config.CaptiveCoreToml = ledgerbackend.NewDefaultTestnetCaptiveCoreToml()
 						config.HistoryArchiveURLs = []string{"https://history.stellar.org/prd/core-testnet/core_testnet_001/"}
+					case network.PublicNetworkPassphrase:
+						config.CaptiveCoreToml = ledgerbackend.NewDefaultPubnetCaptiveCoreToml()
+						config.HistoryArchiveURLs = []string{"https://history.stellar.org/prd/core-live/core_live_001/"}
+						config.UsingDefaultPubnetConfig = true
 					default:
 						stdLog.Fatalf("Invalid config: captive core requires that both --%s and --%s are set. %s",
 							StellarCoreBinaryPathName, CaptiveCoreConfigPathName, captiveCoreMigrationHint)
