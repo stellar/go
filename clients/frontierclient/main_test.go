@@ -896,7 +896,7 @@ func TestSubmitTransactionRequest(t *testing.T) {
 	hmock.On(
 		"GET",
 		"https://frontier.testnet.digitalbits.io/accounts/GACTJ4ZFCDZMD2UFR4R7MZOWYBCF6HBP65YKCUT37MUQFPJLDLJ3N5D2/data/config.memo_required",
-	).ReturnJSON(200, memoRequiredResponse)
+	).ReturnJSON(500, memoRequiredResponse)
 
 	_, err = client.SubmitTransaction(tx)
 	assert.Error(t, err)
