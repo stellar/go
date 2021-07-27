@@ -82,7 +82,7 @@ func TestOperationRequestBuildUrl(t *testing.T) {
 func TestNextOperationsPage(t *testing.T) {
 	hmock := httptest.NewClient()
 	client := &Client{
-		FrontierURL: "https://localhost/",
+		FrontierURL: "https://frontier.testnet.digitalbits.io/",
 		HTTP:        hmock,
 	}
 
@@ -90,7 +90,7 @@ func TestNextOperationsPage(t *testing.T) {
 
 	hmock.On(
 		"GET",
-		"https://localhost/operations?limit=2",
+		"https://frontier.testnet.digitalbits.io/operations?limit=2",
 	).ReturnString(200, firstOperationsPage)
 
 	ops, err := client.Operations(operationRequest)
@@ -113,7 +113,7 @@ func TestNextOperationsPage(t *testing.T) {
 func TestOperationRequestStreamOperations(t *testing.T) {
 	hmock := httptest.NewClient()
 	client := &Client{
-		FrontierURL: "https://localhost/",
+		FrontierURL: "https://frontier.testnet.digitalbits.io/",
 		HTTP:        hmock,
 	}
 
@@ -123,7 +123,7 @@ func TestOperationRequestStreamOperations(t *testing.T) {
 
 	hmock.On(
 		"GET",
-		"https://localhost/operations?cursor=now",
+		"https://frontier.testnet.digitalbits.io/operations?cursor=now",
 	).ReturnString(200, operationStreamResponse)
 
 	operationStream := make([]operations.Operation, 1)
@@ -142,7 +142,7 @@ func TestOperationRequestStreamOperations(t *testing.T) {
 
 	hmock.On(
 		"GET",
-		"https://localhost/accounts/GAIH3ULLFQ4DGSECF2AR555KZ4KNDGEKN4AFI4SU2M7B43MGK3QJZNSR/payments?cursor=now",
+		"https://frontier.testnet.digitalbits.io/accounts/GAIH3ULLFQ4DGSECF2AR555KZ4KNDGEKN4AFI4SU2M7B43MGK3QJZNSR/payments?cursor=now",
 	).ReturnString(200, operationStreamResponse)
 
 	err = client.StreamPayments(ctx, operationRequest, func(op operations.Operation) {
@@ -162,7 +162,7 @@ func TestOperationRequestStreamOperations(t *testing.T) {
 
 	hmock.On(
 		"GET",
-		"https://localhost/operations?cursor=now",
+		"https://frontier.testnet.digitalbits.io/operations?cursor=now",
 	).ReturnString(500, operationStreamResponse)
 
 	err = client.StreamOperations(ctx, operationRequest, func(op operations.Operation) {
@@ -178,7 +178,7 @@ func TestOperationRequestStreamOperations(t *testing.T) {
 func TestManageSellManageBuyOfferOfferID(t *testing.T) {
 	hmock := httptest.NewClient()
 	client := &Client{
-		FrontierURL: "https://localhost/",
+		FrontierURL: "https://frontier.testnet.digitalbits.io/",
 		HTTP:        hmock,
 	}
 
@@ -195,7 +195,7 @@ func TestManageSellManageBuyOfferOfferID(t *testing.T) {
 		t.Run(tc.desc, func(t *testing.T) {
 			hmock.On(
 				"GET",
-				"https://localhost/operations",
+				"https://frontier.testnet.digitalbits.io/operations",
 			).ReturnString(200, tc.payload)
 			operationRequest := OperationRequest{}
 			ops, err := client.Operations(operationRequest)

@@ -33,7 +33,7 @@ func TestTradeAggregationRequestBuildUrl(t *testing.T) {
 func TestTradeAggregationsRequest(t *testing.T) {
 	hmock := httptest.NewClient()
 	client := &Client{
-		FrontierURL: "https://localhost/",
+		FrontierURL: "https://frontier.testnet.digitalbits.io/",
 		HTTP:        hmock,
 	}
 
@@ -50,7 +50,7 @@ func TestTradeAggregationsRequest(t *testing.T) {
 
 	hmock.On(
 		"GET",
-		"https://localhost/trade_aggregations?base_asset_type=native&counter_asset_code=SLT&counter_asset_issuer=GCKA6K5PCQ6PNF5RQBF7PQDJWRHO6UOGFMRLK3DYHDOI244V47XKQ4GP&counter_asset_type=credit_alphanum4&end_time=1517521726000&offset=0&order=desc&resolution=86400000&start_time=1517521726000",
+		"https://frontier.testnet.digitalbits.io/trade_aggregations?base_asset_type=native&counter_asset_code=SLT&counter_asset_issuer=GCKA6K5PCQ6PNF5RQBF7PQDJWRHO6UOGFMRLK3DYHDOI244V47XKQ4GP&counter_asset_type=credit_alphanum4&end_time=1517521726000&offset=0&order=desc&resolution=86400000&start_time=1517521726000",
 	).ReturnString(200, tradeAggsResponse)
 
 	tradeAggs, err := client.TradeAggregations(taRequest)
@@ -82,7 +82,7 @@ func TestTradeAggregationsRequest(t *testing.T) {
 
 	hmock.On(
 		"GET",
-		"https://localhost/trade_aggregations?base_asset_type=native&counter_asset_code=SLT&counter_asset_issuer=GCKA6K5PCQ6PNF5RQBF7PQDJWRHO6UOGFMRLK3DYHDOI244V47XKQ4GP&counter_asset_type=credit_alphanum4&end_time=1517521726000&offset=0&order=desc&resolution=0&start_time=1517521726000",
+		"https://frontier.testnet.digitalbits.io/trade_aggregations?base_asset_type=native&counter_asset_code=SLT&counter_asset_issuer=GCKA6K5PCQ6PNF5RQBF7PQDJWRHO6UOGFMRLK3DYHDOI244V47XKQ4GP&counter_asset_type=credit_alphanum4&end_time=1517521726000&offset=0&order=desc&resolution=0&start_time=1517521726000",
 	).ReturnString(400, badRequestResponse)
 
 	_, err = client.TradeAggregations(taRequest)
@@ -97,7 +97,7 @@ func TestTradeAggregationsRequest(t *testing.T) {
 func TestNextTradeAggregationsPage(t *testing.T) {
 	hmock := httptest.NewClient()
 	client := &Client{
-		FrontierURL: "https://localhost/",
+		FrontierURL: "https://frontier.testnet.digitalbits.io/",
 		HTTP:        hmock,
 	}
 
@@ -114,7 +114,7 @@ func TestNextTradeAggregationsPage(t *testing.T) {
 
 	hmock.On(
 		"GET",
-		"https://localhost/trade_aggregations?base_asset_type=native&counter_asset_code=SLT&counter_asset_issuer=GCKA6K5PCQ6PNF5RQBF7PQDJWRHO6UOGFMRLK3DYHDOI244V47XKQ4GP&counter_asset_type=credit_alphanum4&end_time=1517521726000&offset=0&order=desc&resolution=86400000&start_time=1517521726000",
+		"https://frontier.testnet.digitalbits.io/trade_aggregations?base_asset_type=native&counter_asset_code=SLT&counter_asset_issuer=GCKA6K5PCQ6PNF5RQBF7PQDJWRHO6UOGFMRLK3DYHDOI244V47XKQ4GP&counter_asset_type=credit_alphanum4&end_time=1517521726000&offset=0&order=desc&resolution=86400000&start_time=1517521726000",
 	).ReturnString(200, firstTradeAggsPage)
 	tradeAggs, err := client.TradeAggregations(taRequest)
 
@@ -139,7 +139,7 @@ func TestNextTradeAggregationsPage(t *testing.T) {
 func TestPrevTradeAggregationsPage(t *testing.T) {
 	hmock := httptest.NewClient()
 	client := &Client{
-		FrontierURL: "https://localhost/",
+		FrontierURL: "https://frontier.testnet.digitalbits.io/",
 		HTTP:        hmock,
 	}
 
@@ -156,7 +156,7 @@ func TestPrevTradeAggregationsPage(t *testing.T) {
 
 	hmock.On(
 		"GET",
-		"https://localhost/trade_aggregations?base_asset_type=native&counter_asset_code=SLT&counter_asset_issuer=GCKA6K5PCQ6PNF5RQBF7PQDJWRHO6UOGFMRLK3DYHDOI244V47XKQ4GP&counter_asset_type=credit_alphanum4&end_time=1517521726000&offset=0&order=desc&resolution=86400000&start_time=1517521726000",
+		"https://frontier.testnet.digitalbits.io/trade_aggregations?base_asset_type=native&counter_asset_code=SLT&counter_asset_issuer=GCKA6K5PCQ6PNF5RQBF7PQDJWRHO6UOGFMRLK3DYHDOI244V47XKQ4GP&counter_asset_type=credit_alphanum4&end_time=1517521726000&offset=0&order=desc&resolution=86400000&start_time=1517521726000",
 	).ReturnString(200, emptyTradeAggsPage)
 	tradeAggs, err := client.TradeAggregations(taRequest)
 
@@ -178,7 +178,7 @@ func TestPrevTradeAggregationsPage(t *testing.T) {
 func TestTradeAggregationsPageStringPayload(t *testing.T) {
 	hmock := httptest.NewClient()
 	client := &Client{
-		FrontierURL: "https://localhost/",
+		FrontierURL: "https://frontier.testnet.digitalbits.io/",
 		HTTP:        hmock,
 	}
 
@@ -195,7 +195,7 @@ func TestTradeAggregationsPageStringPayload(t *testing.T) {
 
 	hmock.On(
 		"GET",
-		"https://localhost/trade_aggregations?base_asset_type=native&counter_asset_code=SLT&counter_asset_issuer=GCKA6K5PCQ6PNF5RQBF7PQDJWRHO6UOGFMRLK3DYHDOI244V47XKQ4GP&counter_asset_type=credit_alphanum4&end_time=1517521726000&offset=0&order=desc&resolution=86400000&start_time=1517521726000",
+		"https://frontier.testnet.digitalbits.io/trade_aggregations?base_asset_type=native&counter_asset_code=SLT&counter_asset_issuer=GCKA6K5PCQ6PNF5RQBF7PQDJWRHO6UOGFMRLK3DYHDOI244V47XKQ4GP&counter_asset_type=credit_alphanum4&end_time=1517521726000&offset=0&order=desc&resolution=86400000&start_time=1517521726000",
 	).ReturnString(200, stringTradeAggsPage)
 	tradeAggs, err := client.TradeAggregations(taRequest)
 

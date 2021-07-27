@@ -22,7 +22,7 @@ import (
 
 func TestFixHTTP(t *testing.T) {
 	client := &Client{
-		FrontierURL: "https://localhost/",
+		FrontierURL: "https://frontier.testnet.digitalbits.io/",
 	}
 	// No HTTP client is provided
 	assert.Nil(t, client.HTTP, "client HTTP is nil")
@@ -36,7 +36,7 @@ func TestCheckMemoRequired(t *testing.T) {
 
 	hmock := httptest.NewClient()
 	client := &Client{
-		FrontierURL: "https://localhost/",
+		FrontierURL: "https://frontier.testnet.digitalbits.io/",
 		HTTP:        hmock,
 	}
 
@@ -151,14 +151,14 @@ func TestCheckMemoRequired(t *testing.T) {
 			if len(tc.destination) > 0 {
 				hmock.On(
 					"GET",
-					fmt.Sprintf("https://localhost/accounts/%s/data/config.memo_required", tc.destination),
+					fmt.Sprintf("https://frontier.testnet.digitalbits.io/accounts/%s/data/config.memo_required", tc.destination),
 				).ReturnJSON(200, memoRequiredResponse)
 			}
 
 			if tc.mockNotFound {
 				hmock.On(
 					"GET",
-					"https://localhost/accounts/GDWIRURRED6SQSZVQVVMK46PE2MOZEKHV6ZU54JG3NPVRDIF4XCXYYW4/data/config.memo_required",
+					"https://frontier.testnet.digitalbits.io/accounts/GDWIRURRED6SQSZVQVVMK46PE2MOZEKHV6ZU54JG3NPVRDIF4XCXYYW4/data/config.memo_required",
 				).ReturnString(404, notFoundResponse)
 			}
 
@@ -179,7 +179,7 @@ func TestAccounts(t *testing.T) {
 	tt := assert.New(t)
 	hmock := httptest.NewClient()
 	client := &Client{
-		FrontierURL: "https://localhost/",
+		FrontierURL: "https://frontier.testnet.digitalbits.io/",
 		HTTP:        hmock,
 	}
 
@@ -202,7 +202,7 @@ func TestAccounts(t *testing.T) {
 
 	hmock.On(
 		"GET",
-		"https://localhost/accounts?signer=GAI3SO3S4E67HAUZPZ2D3VBFXY4AT6N7WQI7K5WFGRXWENTZJG2B6CYP",
+		"https://frontier.testnet.digitalbits.io/accounts?signer=GAI3SO3S4E67HAUZPZ2D3VBFXY4AT6N7WQI7K5WFGRXWENTZJG2B6CYP",
 	).ReturnString(200, accountsResponse)
 
 	accountRequest = AccountsRequest{
@@ -214,7 +214,7 @@ func TestAccounts(t *testing.T) {
 
 	hmock.On(
 		"GET",
-		"https://localhost/accounts?asset=COP%3AGAI3SO3S4E67HAUZPZ2D3VBFXY4AT6N7WQI7K5WFGRXWENTZJG2B6CYP",
+		"https://frontier.testnet.digitalbits.io/accounts?asset=COP%3AGAI3SO3S4E67HAUZPZ2D3VBFXY4AT6N7WQI7K5WFGRXWENTZJG2B6CYP",
 	).ReturnString(200, accountsResponse)
 
 	accountRequest = AccountsRequest{
@@ -226,7 +226,7 @@ func TestAccounts(t *testing.T) {
 
 	hmock.On(
 		"GET",
-		"https://localhost/accounts?signer=GAI3SO3S4E67HAUZPZ2D3VBFXY4AT6N7WQI7K5WFGRXWENTZJG2B6CYP&cursor=GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H&limit=200&order=desc",
+		"https://frontier.testnet.digitalbits.io/accounts?signer=GAI3SO3S4E67HAUZPZ2D3VBFXY4AT6N7WQI7K5WFGRXWENTZJG2B6CYP&cursor=GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H&limit=200&order=desc",
 	).ReturnString(200, accountsResponse)
 
 	accountRequest = AccountsRequest{
@@ -242,7 +242,7 @@ func TestAccounts(t *testing.T) {
 	// connection error
 	hmock.On(
 		"GET",
-		"https://localhost/accounts?signer=GAI3SO3S4E67HAUZPZ2D3VBFXY4AT6N7WQI7K5WFGRXWENTZJG2B6CYP",
+		"https://frontier.testnet.digitalbits.io/accounts?signer=GAI3SO3S4E67HAUZPZ2D3VBFXY4AT6N7WQI7K5WFGRXWENTZJG2B6CYP",
 	).ReturnError("http.Client error")
 
 	accountRequest = AccountsRequest{
@@ -258,7 +258,7 @@ func TestAccounts(t *testing.T) {
 func TestAccountDetail(t *testing.T) {
 	hmock := httptest.NewClient()
 	client := &Client{
-		FrontierURL: "https://localhost/",
+		FrontierURL: "https://frontier.testnet.digitalbits.io/",
 		HTTP:        hmock,
 	}
 
@@ -266,7 +266,7 @@ func TestAccountDetail(t *testing.T) {
 	accountRequest := AccountRequest{}
 	hmock.On(
 		"GET",
-		"https://localhost/accounts/GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU",
+		"https://frontier.testnet.digitalbits.io/accounts/GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU",
 	).ReturnString(200, accountResponse)
 
 	_, err := client.AccountDetail(accountRequest)
@@ -279,7 +279,7 @@ func TestAccountDetail(t *testing.T) {
 	accountRequest = AccountRequest{DataKey: "test"}
 	hmock.On(
 		"GET",
-		"https://localhost/accounts/GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU",
+		"https://frontier.testnet.digitalbits.io/accounts/GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU",
 	).ReturnString(200, accountResponse)
 
 	_, err = client.AccountDetail(accountRequest)
@@ -293,7 +293,7 @@ func TestAccountDetail(t *testing.T) {
 	// happy path
 	hmock.On(
 		"GET",
-		"https://localhost/accounts/GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU",
+		"https://frontier.testnet.digitalbits.io/accounts/GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU",
 	).ReturnString(200, accountResponse)
 
 	account, err := client.AccountDetail(accountRequest)
@@ -314,7 +314,7 @@ func TestAccountDetail(t *testing.T) {
 	// failure response
 	hmock.On(
 		"GET",
-		"https://localhost/accounts/GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU",
+		"https://frontier.testnet.digitalbits.io/accounts/GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU",
 	).ReturnString(404, notFoundResponse)
 
 	account, err = client.AccountDetail(accountRequest)
@@ -328,7 +328,7 @@ func TestAccountDetail(t *testing.T) {
 	// connection error
 	hmock.On(
 		"GET",
-		"https://localhost/accounts/GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU",
+		"https://frontier.testnet.digitalbits.io/accounts/GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU",
 	).ReturnError("http.Client error")
 
 	_, err = client.AccountDetail(accountRequest)
@@ -342,7 +342,7 @@ func TestAccountDetail(t *testing.T) {
 func TestAccountData(t *testing.T) {
 	hmock := httptest.NewClient()
 	client := &Client{
-		FrontierURL: "https://localhost/",
+		FrontierURL: "https://frontier.testnet.digitalbits.io/",
 		HTTP:        hmock,
 	}
 
@@ -350,7 +350,7 @@ func TestAccountData(t *testing.T) {
 	accountRequest := AccountRequest{}
 	hmock.On(
 		"GET",
-		"https://localhost/accounts/GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU/data/test",
+		"https://frontier.testnet.digitalbits.io/accounts/GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU/data/test",
 	).ReturnString(200, accountResponse)
 
 	_, err := client.AccountData(accountRequest)
@@ -363,7 +363,7 @@ func TestAccountData(t *testing.T) {
 	accountRequest = AccountRequest{AccountID: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"}
 	hmock.On(
 		"GET",
-		"https://localhost/accounts/GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU/data/test",
+		"https://frontier.testnet.digitalbits.io/accounts/GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU/data/test",
 	).ReturnString(200, accountResponse)
 
 	_, err = client.AccountData(accountRequest)
@@ -377,7 +377,7 @@ func TestAccountData(t *testing.T) {
 	// happy path
 	hmock.On(
 		"GET",
-		"https://localhost/accounts/GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU/data/test",
+		"https://frontier.testnet.digitalbits.io/accounts/GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU/data/test",
 	).ReturnString(200, accountData)
 
 	data, err := client.AccountData(accountRequest)
@@ -390,7 +390,7 @@ func TestAccountData(t *testing.T) {
 func TestEffectsRequest(t *testing.T) {
 	hmock := httptest.NewClient()
 	client := &Client{
-		FrontierURL: "https://localhost/",
+		FrontierURL: "https://frontier.testnet.digitalbits.io/",
 		HTTP:        hmock,
 	}
 
@@ -399,7 +399,7 @@ func TestEffectsRequest(t *testing.T) {
 	// all effects
 	hmock.On(
 		"GET",
-		"https://localhost/effects",
+		"https://frontier.testnet.digitalbits.io/effects",
 	).ReturnString(200, effectsResponse)
 
 	effs, err := client.Effects(effectRequest)
@@ -431,7 +431,7 @@ func TestEffectsRequest(t *testing.T) {
 	effectRequest = EffectRequest{ForAccount: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"}
 	hmock.On(
 		"GET",
-		"https://localhost/accounts/GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU/effects",
+		"https://frontier.testnet.digitalbits.io/accounts/GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU/effects",
 	).ReturnString(200, effectsResponse)
 
 	effs, err = client.Effects(effectRequest)
@@ -443,7 +443,7 @@ func TestEffectsRequest(t *testing.T) {
 	effectRequest = EffectRequest{ForAccount: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU", ForLedger: "123"}
 	hmock.On(
 		"GET",
-		"https://localhost/effects",
+		"https://frontier.testnet.digitalbits.io/effects",
 	).ReturnString(200, effectsResponse)
 
 	_, err = client.Effects(effectRequest)
@@ -456,7 +456,7 @@ func TestEffectsRequest(t *testing.T) {
 func TestAssetsRequest(t *testing.T) {
 	hmock := httptest.NewClient()
 	client := &Client{
-		FrontierURL: "https://localhost/",
+		FrontierURL: "https://frontier.testnet.digitalbits.io/",
 		HTTP:        hmock,
 	}
 
@@ -465,7 +465,7 @@ func TestAssetsRequest(t *testing.T) {
 	// all assets
 	hmock.On(
 		"GET",
-		"https://localhost/assets",
+		"https://frontier.testnet.digitalbits.io/assets",
 	).ReturnString(200, assetsResponse)
 
 	assets, err := client.Assets(assetRequest)
@@ -487,14 +487,14 @@ func TestAssetsRequest(t *testing.T) {
 func TestFeeStats(t *testing.T) {
 	hmock := httptest.NewClient()
 	client := &Client{
-		FrontierURL: "https://localhost/",
+		FrontierURL: "https://frontier.testnet.digitalbits.io/",
 		HTTP:        hmock,
 	}
 
 	// happy path
 	hmock.On(
 		"GET",
-		"https://localhost/fee_stats",
+		"https://frontier.testnet.digitalbits.io/fee_stats",
 	).ReturnString(200, feesResponse)
 
 	fees, err := client.FeeStats()
@@ -538,7 +538,7 @@ func TestFeeStats(t *testing.T) {
 func TestOfferRequest(t *testing.T) {
 	hmock := httptest.NewClient()
 	client := &Client{
-		FrontierURL: "https://localhost/",
+		FrontierURL: "https://frontier.testnet.digitalbits.io/",
 		HTTP:        hmock,
 	}
 
@@ -547,7 +547,7 @@ func TestOfferRequest(t *testing.T) {
 	// account offers
 	hmock.On(
 		"GET",
-		"https://localhost/accounts/GDOJCPYIB66RY4XNDLRRHQQXB27YLNNAGAYV5HMHEYNYY4KUNV5FDV2F/offers",
+		"https://frontier.testnet.digitalbits.io/accounts/GDOJCPYIB66RY4XNDLRRHQQXB27YLNNAGAYV5HMHEYNYY4KUNV5FDV2F/offers",
 	).ReturnString(200, offersResponse)
 
 	offers, err := client.Offers(offersRequest)
@@ -564,7 +564,7 @@ func TestOfferRequest(t *testing.T) {
 
 	hmock.On(
 		"GET",
-		"https://localhost/offers?seller=GDOJCPYIB66RY4XNDLRRHQQXB27YLNNAGAYV5HMHEYNYY4KUNV5FDV2F",
+		"https://frontier.testnet.digitalbits.io/offers?seller=GDOJCPYIB66RY4XNDLRRHQQXB27YLNNAGAYV5HMHEYNYY4KUNV5FDV2F",
 	).ReturnString(200, offersResponse)
 
 	offersRequest = OfferRequest{
@@ -578,7 +578,7 @@ func TestOfferRequest(t *testing.T) {
 
 	hmock.On(
 		"GET",
-		"https://localhost/offers?buying=COP%3AGDOJCPYIB66RY4XNDLRRHQQXB27YLNNAGAYV5HMHEYNYY4KUNV5FDV2F",
+		"https://frontier.testnet.digitalbits.io/offers?buying=COP%3AGDOJCPYIB66RY4XNDLRRHQQXB27YLNNAGAYV5HMHEYNYY4KUNV5FDV2F",
 	).ReturnString(200, offersResponse)
 
 	offersRequest = OfferRequest{
@@ -592,7 +592,7 @@ func TestOfferRequest(t *testing.T) {
 
 	hmock.On(
 		"GET",
-		"https://localhost/offers?selling=EUR%3AGDOJCPYIB66RY4XNDLRRHQQXB27YLNNAGAYV5HMHEYNYY4KUNV5FDV2F",
+		"https://frontier.testnet.digitalbits.io/offers?selling=EUR%3AGDOJCPYIB66RY4XNDLRRHQQXB27YLNNAGAYV5HMHEYNYY4KUNV5FDV2F",
 	).ReturnString(200, offersResponse)
 
 	offersRequest = OfferRequest{
@@ -606,7 +606,7 @@ func TestOfferRequest(t *testing.T) {
 
 	hmock.On(
 		"GET",
-		"https://localhost/offers?selling=EUR%3AGDOJCPYIB66RY4XNDLRRHQQXB27YLNNAGAYV5HMHEYNYY4KUNV5FDV2F",
+		"https://frontier.testnet.digitalbits.io/offers?selling=EUR%3AGDOJCPYIB66RY4XNDLRRHQQXB27YLNNAGAYV5HMHEYNYY4KUNV5FDV2F",
 	).ReturnString(200, offersResponse)
 
 	offersRequest = OfferRequest{
@@ -620,7 +620,7 @@ func TestOfferRequest(t *testing.T) {
 
 	hmock.On(
 		"GET",
-		"https://localhost/offers?buying=EUR%3AGDOJCPYIB66RY4XNDLRRHQQXB27YLNNAGAYV5HMHEYNYY4KUNV5FDV2F&seller=GDOJCPYIB66RY4XNDLRRHQQXB27YLNNAGAYV5HMHEYNYY4KUNV5FDV2F&selling=EUR%3AGDOJCPYIB66RY4XNDLRRHQQXB27YLNNAGAYV5HMHEYNYY4KUNV5FDV2F&cursor=30&limit=20&order=desc",
+		"https://frontier.testnet.digitalbits.io/offers?buying=EUR%3AGDOJCPYIB66RY4XNDLRRHQQXB27YLNNAGAYV5HMHEYNYY4KUNV5FDV2F&seller=GDOJCPYIB66RY4XNDLRRHQQXB27YLNNAGAYV5HMHEYNYY4KUNV5FDV2F&selling=EUR%3AGDOJCPYIB66RY4XNDLRRHQQXB27YLNNAGAYV5HMHEYNYY4KUNV5FDV2F&cursor=30&limit=20&order=desc",
 	).ReturnString(200, offersResponse)
 
 	offersRequest = OfferRequest{
@@ -640,14 +640,14 @@ func TestOfferRequest(t *testing.T) {
 func TestOfferDetailsRequest(t *testing.T) {
 	hmock := httptest.NewClient()
 	client := &Client{
-		FrontierURL: "https://localhost/",
+		FrontierURL: "https://frontier.testnet.digitalbits.io/",
 		HTTP:        hmock,
 	}
 
 	// account offers
 	hmock.On(
 		"GET",
-		"https://localhost/offers/5635",
+		"https://frontier.testnet.digitalbits.io/offers/5635",
 	).ReturnString(200, offerResponse)
 
 	record, err := client.OfferDetails("5635")
@@ -675,7 +675,7 @@ func TestOfferDetailsRequest(t *testing.T) {
 func TestOperationsRequest(t *testing.T) {
 	hmock := httptest.NewClient()
 	client := &Client{
-		FrontierURL: "https://localhost/",
+		FrontierURL: "https://frontier.testnet.digitalbits.io/",
 		HTTP:        hmock,
 	}
 
@@ -684,7 +684,7 @@ func TestOperationsRequest(t *testing.T) {
 	// all operations
 	hmock.On(
 		"GET",
-		"https://localhost/operations?join=transactions",
+		"https://frontier.testnet.digitalbits.io/operations?join=transactions",
 	).ReturnString(200, multipleOpsResponse)
 
 	ops, err := client.Operations(operationRequest)
@@ -714,7 +714,7 @@ func TestOperationsRequest(t *testing.T) {
 	// all payments
 	hmock.On(
 		"GET",
-		"https://localhost/payments?join=transactions",
+		"https://frontier.testnet.digitalbits.io/payments?join=transactions",
 	).ReturnString(200, paymentsResponse)
 
 	ops, err = client.Payments(operationRequest)
@@ -744,7 +744,7 @@ func TestOperationsRequest(t *testing.T) {
 	operationRequest = OperationRequest{ForAccount: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"}
 	hmock.On(
 		"GET",
-		"https://localhost/accounts/GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU/operations",
+		"https://frontier.testnet.digitalbits.io/accounts/GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU/operations",
 	).ReturnString(200, multipleOpsResponse)
 
 	ops, err = client.Operations(operationRequest)
@@ -756,7 +756,7 @@ func TestOperationsRequest(t *testing.T) {
 	operationRequest = OperationRequest{ForAccount: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU", ForLedger: 123}
 	hmock.On(
 		"GET",
-		"https://localhost/operations",
+		"https://frontier.testnet.digitalbits.io/operations",
 	).ReturnString(200, multipleOpsResponse)
 
 	_, err = client.Operations(operationRequest)
@@ -769,7 +769,7 @@ func TestOperationsRequest(t *testing.T) {
 	opID := "1103965508866049"
 	hmock.On(
 		"GET",
-		"https://localhost/operations/1103965508866049",
+		"https://frontier.testnet.digitalbits.io/operations/1103965508866049",
 	).ReturnString(200, opsResponse)
 
 	record, err := client.OperationDetail(opID)
@@ -799,7 +799,7 @@ func TestOperationsRequest(t *testing.T) {
 func TestSubmitTransactionXDRRequest(t *testing.T) {
 	hmock := httptest.NewClient()
 	client := &Client{
-		FrontierURL: "https://localhost/",
+		FrontierURL: "https://frontier.testnet.digitalbits.io/",
 		HTTP:        hmock,
 	}
 
@@ -807,7 +807,7 @@ func TestSubmitTransactionXDRRequest(t *testing.T) {
 
 	// failure response
 	hmock.
-		On("POST", "https://localhost/transactions").
+		On("POST", "https://frontier.testnet.digitalbits.io/transactions").
 		ReturnString(400, transactionFailure)
 
 	_, err := client.SubmitTransactionXDR(txXdr)
@@ -820,7 +820,7 @@ func TestSubmitTransactionXDRRequest(t *testing.T) {
 
 	// connection error
 	hmock.
-		On("POST", "https://localhost/transactions").
+		On("POST", "https://frontier.testnet.digitalbits.io/transactions").
 		ReturnError("http.Client error")
 
 	_, err = client.SubmitTransactionXDR(txXdr)
@@ -833,7 +833,7 @@ func TestSubmitTransactionXDRRequest(t *testing.T) {
 	// successful tx
 	hmock.On(
 		"POST",
-		"https://localhost/transactions?tx=AAAAABB90WssODNIgi6BHveqzxTRmIpvAFRyVNM%2BHm2GVuCcAAAAZAAABD0AAuV%2FAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAyTBGxOgfSApppsTnb%2FYRr6gOR8WT0LZNrhLh4y3FCgoAAAAXSHboAAAAAAAAAAABhlbgnAAAAEAivKe977CQCxMOKTuj%2BcWTFqc2OOJU8qGr9afrgu2zDmQaX5Q0cNshc3PiBwe0qw%2F%2BD%2FqJk5QqM5dYeSUGeDQP",
+		"https://frontier.testnet.digitalbits.io/transactions?tx=AAAAABB90WssODNIgi6BHveqzxTRmIpvAFRyVNM%2BHm2GVuCcAAAAZAAABD0AAuV%2FAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAyTBGxOgfSApppsTnb%2FYRr6gOR8WT0LZNrhLh4y3FCgoAAAAXSHboAAAAAAAAAAABhlbgnAAAAEAivKe977CQCxMOKTuj%2BcWTFqc2OOJU8qGr9afrgu2zDmQaX5Q0cNshc3PiBwe0qw%2F%2BD%2FqJk5QqM5dYeSUGeDQP",
 	).ReturnString(200, txSuccess)
 
 	resp, err := client.SubmitTransactionXDR(txXdr)
@@ -851,7 +851,7 @@ func TestSubmitTransactionXDRRequest(t *testing.T) {
 func TestSubmitTransactionRequest(t *testing.T) {
 	hmock := httptest.NewClient()
 	client := &Client{
-		FrontierURL: "https://localhost/",
+		FrontierURL: "https://frontier.testnet.digitalbits.io/",
 		HTTP:        hmock,
 	}
 
@@ -881,12 +881,12 @@ func TestSubmitTransactionRequest(t *testing.T) {
 	// successful tx with config.memo_required not found
 	hmock.On(
 		"POST",
-		"https://localhost/transactions?tx=AAAAAgAAAAAFNPMlEPLB6oWPI%2FZl1sBEXxwv93ChUnv7KQK9KxrTtgAAAGQAAAAAAAAAAQAAAAEAAAAAAAAAAAAAAAAAAAAKAAAAAAAAAAEAAAAAAAAAAQAAAAAFNPMlEPLB6oWPI%2FZl1sBEXxwv93ChUnv7KQK9KxrTtgAAAAAAAAAABfXhAAAAAAAAAAABKxrTtgAAAECmVMsI0W6JmfJNeLzgH%2BPseZA2AgYGZl8zaHgkOvhZw65Hj9OaCdw6yssG55qu7X2sauJAwfxaoTL4gwbmH94H",
+		"https://frontier.testnet.digitalbits.io/transactions?tx=AAAAAgAAAAAFNPMlEPLB6oWPI%2FZl1sBEXxwv93ChUnv7KQK9KxrTtgAAAGQAAAAAAAAAAQAAAAEAAAAAAAAAAAAAAAAAAAAKAAAAAAAAAAEAAAAAAAAAAQAAAAAFNPMlEPLB6oWPI%2FZl1sBEXxwv93ChUnv7KQK9KxrTtgAAAAAAAAAABfXhAAAAAAAAAAABKxrTtgAAAECmVMsI0W6JmfJNeLzgH%2BPseZA2AgYGZl8zaHgkOvhZw65Hj9OaCdw6yssG55qu7X2sauJAwfxaoTL4gwbmH94H",
 	).ReturnString(200, txSuccess)
 
 	hmock.On(
 		"GET",
-		"https://localhost/accounts/GACTJ4ZFCDZMD2UFR4R7MZOWYBCF6HBP65YKCUT37MUQFPJLDLJ3N5D2/data/config.memo_required",
+		"https://frontier.testnet.digitalbits.io/accounts/GACTJ4ZFCDZMD2UFR4R7MZOWYBCF6HBP65YKCUT37MUQFPJLDLJ3N5D2/data/config.memo_required",
 	).ReturnString(404, notFoundResponse)
 
 	_, err = client.SubmitTransaction(tx)
@@ -895,7 +895,7 @@ func TestSubmitTransactionRequest(t *testing.T) {
 	// memo required - does not submit transaction
 	hmock.On(
 		"GET",
-		"https://localhost/accounts/GACTJ4ZFCDZMD2UFR4R7MZOWYBCF6HBP65YKCUT37MUQFPJLDLJ3N5D2/data/config.memo_required",
+		"https://frontier.testnet.digitalbits.io/accounts/GACTJ4ZFCDZMD2UFR4R7MZOWYBCF6HBP65YKCUT37MUQFPJLDLJ3N5D2/data/config.memo_required",
 	).ReturnJSON(200, memoRequiredResponse)
 
 	_, err = client.SubmitTransaction(tx)
@@ -906,7 +906,7 @@ func TestSubmitTransactionRequest(t *testing.T) {
 func TestSubmitFeeBumpTransaction(t *testing.T) {
 	hmock := httptest.NewClient()
 	client := &Client{
-		FrontierURL: "https://localhost/",
+		FrontierURL: "https://frontier.testnet.digitalbits.io/",
 		HTTP:        hmock,
 	}
 
@@ -946,12 +946,12 @@ func TestSubmitFeeBumpTransaction(t *testing.T) {
 	// successful tx with config.memo_required not found
 	hmock.On(
 		"POST",
-		"https://localhost/transactions?tx="+url.QueryEscape(feeBumpTxB64),
+		"https://frontier.testnet.digitalbits.io/transactions?tx="+url.QueryEscape(feeBumpTxB64),
 	).ReturnString(200, txSuccess)
 
 	hmock.On(
 		"GET",
-		"https://localhost/accounts/GACTJ4ZFCDZMD2UFR4R7MZOWYBCF6HBP65YKCUT37MUQFPJLDLJ3N5D2/data/config.memo_required",
+		"https://frontier.testnet.digitalbits.io/accounts/GACTJ4ZFCDZMD2UFR4R7MZOWYBCF6HBP65YKCUT37MUQFPJLDLJ3N5D2/data/config.memo_required",
 	).ReturnString(404, notFoundResponse)
 
 	_, err = client.SubmitFeeBumpTransaction(feeBumpTx)
@@ -960,7 +960,7 @@ func TestSubmitFeeBumpTransaction(t *testing.T) {
 	// memo required - does not submit transaction
 	hmock.On(
 		"GET",
-		"https://localhost/accounts/GACTJ4ZFCDZMD2UFR4R7MZOWYBCF6HBP65YKCUT37MUQFPJLDLJ3N5D2/data/config.memo_required",
+		"https://frontier.testnet.digitalbits.io/accounts/GACTJ4ZFCDZMD2UFR4R7MZOWYBCF6HBP65YKCUT37MUQFPJLDLJ3N5D2/data/config.memo_required",
 	).ReturnJSON(200, memoRequiredResponse)
 
 	_, err = client.SubmitFeeBumpTransaction(feeBumpTx)
@@ -971,7 +971,7 @@ func TestSubmitFeeBumpTransaction(t *testing.T) {
 func TestSubmitTransactionWithOptionsRequest(t *testing.T) {
 	hmock := httptest.NewClient()
 	client := &Client{
-		FrontierURL: "https://localhost/",
+		FrontierURL: "https://frontier.testnet.digitalbits.io/",
 		HTTP:        hmock,
 	}
 
@@ -999,7 +999,7 @@ func TestSubmitTransactionWithOptionsRequest(t *testing.T) {
 	assert.NoError(t, err)
 
 	hmock.
-		On("POST", "https://localhost/transactions").
+		On("POST", "https://frontier.testnet.digitalbits.io/transactions").
 		ReturnString(400, transactionFailure)
 
 	_, err = client.SubmitTransactionWithOptions(tx, SubmitTxOpts{SkipMemoRequiredCheck: true})
@@ -1013,7 +1013,7 @@ func TestSubmitTransactionWithOptionsRequest(t *testing.T) {
 
 	// connection error
 	hmock.
-		On("POST", "https://localhost/transactions").
+		On("POST", "https://frontier.testnet.digitalbits.io/transactions").
 		ReturnError("http.Client error")
 
 	_, err = client.SubmitTransactionWithOptions(tx, SubmitTxOpts{SkipMemoRequiredCheck: true})
@@ -1026,7 +1026,7 @@ func TestSubmitTransactionWithOptionsRequest(t *testing.T) {
 	// successful tx
 	hmock.On(
 		"POST",
-		"https://localhost/transactions?tx=AAAAAgAAAAAFNPMlEPLB6oWPI%2FZl1sBEXxwv93ChUnv7KQK9KxrTtgAAAGQAAAAAAAAAAQAAAAEAAAAAAAAAAAAAAAAAAAAKAAAAAAAAAAEAAAAAAAAAAQAAAAAFNPMlEPLB6oWPI%2FZl1sBEXxwv93ChUnv7KQK9KxrTtgAAAAAAAAAABfXhAAAAAAAAAAABKxrTtgAAAECmVMsI0W6JmfJNeLzgH%2BPseZA2AgYGZl8zaHgkOvhZw65Hj9OaCdw6yssG55qu7X2sauJAwfxaoTL4gwbmH94H",
+		"https://frontier.testnet.digitalbits.io/transactions?tx=AAAAAgAAAAAFNPMlEPLB6oWPI%2FZl1sBEXxwv93ChUnv7KQK9KxrTtgAAAGQAAAAAAAAAAQAAAAEAAAAAAAAAAAAAAAAAAAAKAAAAAAAAAAEAAAAAAAAAAQAAAAAFNPMlEPLB6oWPI%2FZl1sBEXxwv93ChUnv7KQK9KxrTtgAAAAAAAAAABfXhAAAAAAAAAAABKxrTtgAAAECmVMsI0W6JmfJNeLzgH%2BPseZA2AgYGZl8zaHgkOvhZw65Hj9OaCdw6yssG55qu7X2sauJAwfxaoTL4gwbmH94H",
 	).ReturnString(200, txSuccess)
 
 	_, err = client.SubmitTransactionWithOptions(tx, SubmitTxOpts{SkipMemoRequiredCheck: true})
@@ -1035,12 +1035,12 @@ func TestSubmitTransactionWithOptionsRequest(t *testing.T) {
 	// successful tx with config.memo_required not found
 	hmock.On(
 		"POST",
-		"https://localhost/transactions?tx=AAAAAgAAAAAFNPMlEPLB6oWPI%2FZl1sBEXxwv93ChUnv7KQK9KxrTtgAAAGQAAAAAAAAAAQAAAAEAAAAAAAAAAAAAAAAAAAAKAAAAAAAAAAEAAAAAAAAAAQAAAAAFNPMlEPLB6oWPI%2FZl1sBEXxwv93ChUnv7KQK9KxrTtgAAAAAAAAAABfXhAAAAAAAAAAABKxrTtgAAAECmVMsI0W6JmfJNeLzgH%2BPseZA2AgYGZl8zaHgkOvhZw65Hj9OaCdw6yssG55qu7X2sauJAwfxaoTL4gwbmH94H",
+		"https://frontier.testnet.digitalbits.io/transactions?tx=AAAAAgAAAAAFNPMlEPLB6oWPI%2FZl1sBEXxwv93ChUnv7KQK9KxrTtgAAAGQAAAAAAAAAAQAAAAEAAAAAAAAAAAAAAAAAAAAKAAAAAAAAAAEAAAAAAAAAAQAAAAAFNPMlEPLB6oWPI%2FZl1sBEXxwv93ChUnv7KQK9KxrTtgAAAAAAAAAABfXhAAAAAAAAAAABKxrTtgAAAECmVMsI0W6JmfJNeLzgH%2BPseZA2AgYGZl8zaHgkOvhZw65Hj9OaCdw6yssG55qu7X2sauJAwfxaoTL4gwbmH94H",
 	).ReturnString(200, txSuccess)
 
 	hmock.On(
 		"GET",
-		"https://localhost/accounts/GACTJ4ZFCDZMD2UFR4R7MZOWYBCF6HBP65YKCUT37MUQFPJLDLJ3N5D2/data/config.memo_required",
+		"https://frontier.testnet.digitalbits.io/accounts/GACTJ4ZFCDZMD2UFR4R7MZOWYBCF6HBP65YKCUT37MUQFPJLDLJ3N5D2/data/config.memo_required",
 	).ReturnString(404, notFoundResponse)
 
 	_, err = client.SubmitTransactionWithOptions(tx, SubmitTxOpts{SkipMemoRequiredCheck: false})
@@ -1049,7 +1049,7 @@ func TestSubmitTransactionWithOptionsRequest(t *testing.T) {
 	// memo required - does not submit transaction
 	hmock.On(
 		"GET",
-		"https://localhost/accounts/GACTJ4ZFCDZMD2UFR4R7MZOWYBCF6HBP65YKCUT37MUQFPJLDLJ3N5D2/data/config.memo_required",
+		"https://frontier.testnet.digitalbits.io/accounts/GACTJ4ZFCDZMD2UFR4R7MZOWYBCF6HBP65YKCUT37MUQFPJLDLJ3N5D2/data/config.memo_required",
 	).ReturnJSON(200, memoRequiredResponse)
 
 	_, err = client.SubmitTransactionWithOptions(tx, SubmitTxOpts{SkipMemoRequiredCheck: false})
@@ -1059,7 +1059,7 @@ func TestSubmitTransactionWithOptionsRequest(t *testing.T) {
 	// skips memo check if tx includes a memo
 	hmock.On(
 		"POST",
-		"https://localhost/transactions?tx=AAAAAgAAAAAFNPMlEPLB6oWPI%2FZl1sBEXxwv93ChUnv7KQK9KxrTtgAAAGQAAAAAAAAAAgAAAAEAAAAAAAAAAAAAAAAAAAAKAAAAAQAAAApIZWxsb1dvcmxkAAAAAAABAAAAAAAAAAEAAAAABTTzJRDyweqFjyP2ZdbARF8cL%2FdwoVJ7%2BykCvSsa07YAAAAAAAAAAAX14QAAAAAAAAAAASsa07YAAABA7rDHZ%2BHcBIQbWByMZL3aT231WuwjOhxvb0c1i3vPzArUCE%2BHdCIJXq6Mk%2FxdhJj6QEEJrg15uAxke3P3k2vWCw%3D%3D",
+		"https://frontier.testnet.digitalbits.io/transactions?tx=AAAAAgAAAAAFNPMlEPLB6oWPI%2FZl1sBEXxwv93ChUnv7KQK9KxrTtgAAAGQAAAAAAAAAAgAAAAEAAAAAAAAAAAAAAAAAAAAKAAAAAQAAAApIZWxsb1dvcmxkAAAAAAABAAAAAAAAAAEAAAAABTTzJRDyweqFjyP2ZdbARF8cL%2FdwoVJ7%2BykCvSsa07YAAAAAAAAAAAX14QAAAAAAAAAAASsa07YAAABA7rDHZ%2BHcBIQbWByMZL3aT231WuwjOhxvb0c1i3vPzArUCE%2BHdCIJXq6Mk%2FxdhJj6QEEJrg15uAxke3P3k2vWCw%3D%3D",
 	).ReturnString(200, txSuccess)
 
 	tx, err = txnbuild.NewTransaction(
@@ -1084,7 +1084,7 @@ func TestSubmitTransactionWithOptionsRequest(t *testing.T) {
 func TestSubmitFeeBumpTransactionWithOptions(t *testing.T) {
 	hmock := httptest.NewClient()
 	client := &Client{
-		FrontierURL: "https://localhost/",
+		FrontierURL: "https://frontier.testnet.digitalbits.io/",
 		HTTP:        hmock,
 	}
 
@@ -1122,7 +1122,7 @@ func TestSubmitFeeBumpTransactionWithOptions(t *testing.T) {
 	assert.NoError(t, err)
 
 	hmock.
-		On("POST", "https://localhost/transactions").
+		On("POST", "https://frontier.testnet.digitalbits.io/transactions").
 		ReturnString(400, transactionFailure)
 
 	_, err = client.SubmitFeeBumpTransactionWithOptions(feeBumpTx, SubmitTxOpts{SkipMemoRequiredCheck: true})
@@ -1136,7 +1136,7 @@ func TestSubmitFeeBumpTransactionWithOptions(t *testing.T) {
 
 	// connection error
 	hmock.
-		On("POST", "https://localhost/transactions").
+		On("POST", "https://frontier.testnet.digitalbits.io/transactions").
 		ReturnError("http.Client error")
 
 	_, err = client.SubmitFeeBumpTransactionWithOptions(feeBumpTx, SubmitTxOpts{SkipMemoRequiredCheck: true})
@@ -1149,7 +1149,7 @@ func TestSubmitFeeBumpTransactionWithOptions(t *testing.T) {
 	// successful tx
 	hmock.On(
 		"POST",
-		"https://localhost/transactions?tx="+url.QueryEscape(feeBumpTxB64),
+		"https://frontier.testnet.digitalbits.io/transactions?tx="+url.QueryEscape(feeBumpTxB64),
 	).ReturnString(200, txSuccess)
 
 	_, err = client.SubmitFeeBumpTransactionWithOptions(feeBumpTx, SubmitTxOpts{SkipMemoRequiredCheck: true})
@@ -1158,12 +1158,12 @@ func TestSubmitFeeBumpTransactionWithOptions(t *testing.T) {
 	// successful tx with config.memo_required not found
 	hmock.On(
 		"POST",
-		"https://localhost/transactions?tx="+url.QueryEscape(feeBumpTxB64),
+		"https://frontier.testnet.digitalbits.io/transactions?tx="+url.QueryEscape(feeBumpTxB64),
 	).ReturnString(200, txSuccess)
 
 	hmock.On(
 		"GET",
-		"https://localhost/accounts/GACTJ4ZFCDZMD2UFR4R7MZOWYBCF6HBP65YKCUT37MUQFPJLDLJ3N5D2/data/config.memo_required",
+		"https://frontier.testnet.digitalbits.io/accounts/GACTJ4ZFCDZMD2UFR4R7MZOWYBCF6HBP65YKCUT37MUQFPJLDLJ3N5D2/data/config.memo_required",
 	).ReturnString(404, notFoundResponse)
 
 	_, err = client.SubmitFeeBumpTransactionWithOptions(feeBumpTx, SubmitTxOpts{SkipMemoRequiredCheck: false})
@@ -1172,7 +1172,7 @@ func TestSubmitFeeBumpTransactionWithOptions(t *testing.T) {
 	// memo required - does not submit transaction
 	hmock.On(
 		"GET",
-		"https://localhost/accounts/GACTJ4ZFCDZMD2UFR4R7MZOWYBCF6HBP65YKCUT37MUQFPJLDLJ3N5D2/data/config.memo_required",
+		"https://frontier.testnet.digitalbits.io/accounts/GACTJ4ZFCDZMD2UFR4R7MZOWYBCF6HBP65YKCUT37MUQFPJLDLJ3N5D2/data/config.memo_required",
 	).ReturnJSON(200, memoRequiredResponse)
 
 	_, err = client.SubmitFeeBumpTransactionWithOptions(feeBumpTx, SubmitTxOpts{SkipMemoRequiredCheck: false})
@@ -1204,7 +1204,7 @@ func TestSubmitFeeBumpTransactionWithOptions(t *testing.T) {
 	// skips memo check if tx includes a memo
 	hmock.On(
 		"POST",
-		"https://localhost/transactions?tx="+url.QueryEscape(feeBumpTxB64),
+		"https://frontier.testnet.digitalbits.io/transactions?tx="+url.QueryEscape(feeBumpTxB64),
 	).ReturnString(200, txSuccess)
 
 	tx, err = tx.Sign(network.TestNetworkPassphrase, kp)
@@ -1217,7 +1217,7 @@ func TestSubmitFeeBumpTransactionWithOptions(t *testing.T) {
 func TestTransactionsRequest(t *testing.T) {
 	hmock := httptest.NewClient()
 	client := &Client{
-		FrontierURL: "https://localhost/",
+		FrontierURL: "https://frontier.testnet.digitalbits.io/",
 		HTTP:        hmock,
 	}
 
@@ -1226,7 +1226,7 @@ func TestTransactionsRequest(t *testing.T) {
 	// all transactions
 	hmock.On(
 		"GET",
-		"https://localhost/transactions",
+		"https://frontier.testnet.digitalbits.io/transactions",
 	).ReturnString(200, txPageResponse)
 
 	txs, err := client.Transactions(transactionRequest)
@@ -1251,7 +1251,7 @@ func TestTransactionsRequest(t *testing.T) {
 	transactionRequest = TransactionRequest{ForAccount: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"}
 	hmock.On(
 		"GET",
-		"https://localhost/accounts/GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU/transactions",
+		"https://frontier.testnet.digitalbits.io/accounts/GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU/transactions",
 	).ReturnString(200, txPageResponse)
 
 	txs, err = client.Transactions(transactionRequest)
@@ -1263,7 +1263,7 @@ func TestTransactionsRequest(t *testing.T) {
 	transactionRequest = TransactionRequest{ForAccount: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU", ForLedger: 123}
 	hmock.On(
 		"GET",
-		"https://localhost/transactions",
+		"https://frontier.testnet.digitalbits.io/transactions",
 	).ReturnString(200, txPageResponse)
 
 	_, err = client.Transactions(transactionRequest)
@@ -1276,7 +1276,7 @@ func TestTransactionsRequest(t *testing.T) {
 	txHash := "5131aed266a639a6eb4802a92fba310454e711ded830ed899745b9e777d7110c"
 	hmock.On(
 		"GET",
-		"https://localhost/transactions/5131aed266a639a6eb4802a92fba310454e711ded830ed899745b9e777d7110c",
+		"https://frontier.testnet.digitalbits.io/transactions/5131aed266a639a6eb4802a92fba310454e711ded830ed899745b9e777d7110c",
 	).ReturnString(200, txDetailResponse)
 
 	record, err := client.TransactionDetail(txHash)
@@ -1291,7 +1291,7 @@ func TestTransactionsRequest(t *testing.T) {
 func TestOrderBookRequest(t *testing.T) {
 	hmock := httptest.NewClient()
 	client := &Client{
-		FrontierURL: "https://localhost/",
+		FrontierURL: "https://frontier.testnet.digitalbits.io/",
 		HTTP:        hmock,
 	}
 
@@ -1300,7 +1300,7 @@ func TestOrderBookRequest(t *testing.T) {
 	// orderbook for XDB/USD
 	hmock.On(
 		"GET",
-		"https://localhost/order_book?buying_asset_type=native&selling_asset_code=USD&selling_asset_issuer=GBVOL67TMUQBGL4TZYNMY3ZQ5WGQYFPFD5VJRWXR72VA33VFNL225PL5&selling_asset_type=credit_alphanum4",
+		"https://frontier.testnet.digitalbits.io/order_book?buying_asset_type=native&selling_asset_code=USD&selling_asset_issuer=GBVOL67TMUQBGL4TZYNMY3ZQ5WGQYFPFD5VJRWXR72VA33VFNL225PL5&selling_asset_type=credit_alphanum4",
 	).ReturnString(200, orderbookResponse)
 
 	obs, err := client.OrderBook(orderBookRequest)
@@ -1318,7 +1318,7 @@ func TestOrderBookRequest(t *testing.T) {
 	orderBookRequest = OrderBookRequest{}
 	hmock.On(
 		"GET",
-		"https://localhost/order_book",
+		"https://frontier.testnet.digitalbits.io/order_book",
 	).ReturnString(400, orderBookNotFound)
 
 	_, err = client.OrderBook(orderBookRequest)
@@ -1334,7 +1334,7 @@ func TestOrderBookRequest(t *testing.T) {
 func TestFetchTimebounds(t *testing.T) {
 	hmock := httptest.NewClient()
 	client := &Client{
-		FrontierURL: "https://localhost/",
+		FrontierURL: "https://frontier.testnet.digitalbits.io/",
 		HTTP:        hmock,
 		clock: &clock.Clock{
 			Source: clocktest.FixedSource(time.Unix(1560947096, 0)),
@@ -1353,7 +1353,7 @@ func TestFetchTimebounds(t *testing.T) {
 	header.Add("Date", "Wed, 19 Jun 2019 12:24:56 GMT") //unix time: 1560947096
 	hmock.On(
 		"GET",
-		"https://localhost/",
+		"https://frontier.testnet.digitalbits.io/",
 	).ReturnStringWithHeader(200, metricsResponse, header)
 	_, err = client.Root()
 	assert.NoError(t, err)
@@ -1381,7 +1381,7 @@ func TestFetchTimebounds(t *testing.T) {
 func TestVersion(t *testing.T) {
 	hmock := httptest.NewClient()
 	client := &Client{
-		FrontierURL: "https://localhost/",
+		FrontierURL: "https://frontier.testnet.digitalbits.io/",
 		HTTP:        hmock,
 	}
 

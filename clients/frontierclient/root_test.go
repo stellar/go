@@ -10,14 +10,14 @@ import (
 func TestRoot(t *testing.T) {
 	hmock := httptest.NewClient()
 	client := &Client{
-		FrontierURL: "https://localhost/",
+		FrontierURL: "https://frontier.testnet.digitalbits.io/",
 		HTTP:        hmock,
 	}
 
 	// happy path
 	hmock.On(
 		"GET",
-		"https://localhost/",
+		"https://frontier.testnet.digitalbits.io/",
 	).ReturnString(200, rootResponse)
 
 	root, err := client.Root()
@@ -31,7 +31,7 @@ func TestRoot(t *testing.T) {
 	// failure response
 	hmock.On(
 		"GET",
-		"https://localhost/",
+		"https://frontier.testnet.digitalbits.io/",
 	).ReturnString(404, notFoundResponse)
 
 	_, err = client.Root()
@@ -45,7 +45,7 @@ func TestRoot(t *testing.T) {
 	// connection error
 	hmock.On(
 		"GET",
-		"https://localhost/",
+		"https://frontier.testnet.digitalbits.io/",
 	).ReturnError("http.Client error")
 
 	_, err = client.Root()

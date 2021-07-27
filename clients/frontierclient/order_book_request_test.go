@@ -37,7 +37,7 @@ func TestOrderBookRequestBuildUrl(t *testing.T) {
 func TestOrderBookRequestStreamOrderBooks(t *testing.T) {
 	hmock := httptest.NewClient()
 	client := &Client{
-		FrontierURL: "https://localhost/",
+		FrontierURL: "https://frontier.testnet.digitalbits.io/",
 		HTTP:       hmock,
 	}
 	orderbookRequest := OrderBookRequest{SellingAssetType: AssetTypeNative, BuyingAssetType: AssetType4, BuyingAssetCode: "ABC", BuyingAssetIssuer: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"}
@@ -45,7 +45,7 @@ func TestOrderBookRequestStreamOrderBooks(t *testing.T) {
 
 	hmock.On(
 		"GET",
-		"https://localhost/order_book?buying_asset_code=ABC&buying_asset_issuer=GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU&buying_asset_type=credit_alphanum4&cursor=now&selling_asset_type=native",
+		"https://frontier.testnet.digitalbits.io/order_book?buying_asset_code=ABC&buying_asset_issuer=GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU&buying_asset_type=credit_alphanum4&cursor=now&selling_asset_type=native",
 	).ReturnString(200, orderbookStreamResponse)
 
 	orderbooks := make([]hProtocol.OrderBookSummary, 1)
@@ -67,7 +67,7 @@ func TestOrderBookRequestStreamOrderBooks(t *testing.T) {
 
 	hmock.On(
 		"GET",
-		"https://localhost/order_book?cursor=now",
+		"https://frontier.testnet.digitalbits.io/order_book?cursor=now",
 	).ReturnString(500, orderbookStreamResponse)
 
 	err = client.StreamOrderBooks(ctx, orderbookRequest, func(orderbook hProtocol.OrderBookSummary) {
