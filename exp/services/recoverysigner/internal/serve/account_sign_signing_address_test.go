@@ -441,7 +441,7 @@ func TestAccountSign_signingAddressAccountAuthenticatedOtherSignerSelected(t *te
 	require.NoError(t, err)
 
 	wantBody := `{
-	"signature": "8Tew6rTol9me8H9u7ezJXg6SEqzOr7cwSf1y9+Vri275XEDH9xWtZ2klTX2uUSPy56otUoIySPqsV3dUFs2kDA==",
+	"signature": "aDpzapSnhJbNOwyqOxT/cnVYXKmvQVHUdbDuq3YBaOOT3ehBdO1jabzEgpM1tERuzOrtIRu77dzG5A3L37a9CQ==",
 	"network_passphrase": "TestNet Global DigitalBits Network ; December 2020"
 }`
 	assert.JSONEq(t, wantBody, string(body))
@@ -507,7 +507,7 @@ func TestAccountSign_signingAddressAccountAuthenticatedTxSourceAccountValid(t *t
 	require.NoError(t, err)
 
 	wantBody := `{
-	"signature": "okp0ISR/hjU6ItsfXie6ArlQ3YWkBBqEAM5TJrthALdawV5DzcpuwBKi0QE/iBgoU7eY0hY3RPdxm8mXGNYfCQ==",
+	"signature": "Z+McCvxB4562r9YrsEkhqL2WdphjyJRyNwHZh78gG1dvKZWX79L8esefjSLKSOxyuYRMrilj/78d58XmvnI2Ag==",
 	"network_passphrase": "TestNet Global DigitalBits Network ; December 2020"
 }`
 	assert.JSONEq(t, wantBody, string(body))
@@ -574,7 +574,7 @@ func TestAccountSign_signingAddressAccountAuthenticatedTxAndOpSourceAccountValid
 	require.NoError(t, err)
 
 	wantBody := `{
-	"signature": "MKAkl+R3VT5DJw6Qed8jO8ERD4RcQ4dJlN+UR2n7nT6AVBXnKBk0zqBZnDuB153zfTYmuA5kmsRiNr5terHVBg==",
+	"signature": "gk0c7N3l0ID53k41c+VV6Y/CRP4L58NL0MJ3hcaf4DNYWtoTaec7k41Xu5YerdGPbphxojBmXH0nQMwO5zdDDw==",
 	"network_passphrase": "TestNet Global DigitalBits Network ; December 2020"
 }`
 	assert.JSONEq(t, wantBody, string(body))
@@ -836,7 +836,7 @@ func TestAccountSign_signingAddressPhoneNumberOwnerAuthenticated(t *testing.T) {
 	require.NoError(t, err)
 
 	wantBody := `{
-	"signature": "okp0ISR/hjU6ItsfXie6ArlQ3YWkBBqEAM5TJrthALdawV5DzcpuwBKi0QE/iBgoU7eY0hY3RPdxm8mXGNYfCQ==",
+	"signature": "Z+McCvxB4562r9YrsEkhqL2WdphjyJRyNwHZh78gG1dvKZWX79L8esefjSLKSOxyuYRMrilj/78d58XmvnI2Ag==",
 	"network_passphrase": "TestNet Global DigitalBits Network ; December 2020"
 }`
 	assert.JSONEq(t, wantBody, string(body))
@@ -908,7 +908,7 @@ func TestAccountSign_signingAddressPhoneNumberOtherAuthenticated(t *testing.T) {
 	require.NoError(t, err)
 
 	wantBody := `{
-	"signature": "okp0ISR/hjU6ItsfXie6ArlQ3YWkBBqEAM5TJrthALdawV5DzcpuwBKi0QE/iBgoU7eY0hY3RPdxm8mXGNYfCQ==",
+	"signature": "Z+McCvxB4562r9YrsEkhqL2WdphjyJRyNwHZh78gG1dvKZWX79L8esefjSLKSOxyuYRMrilj/78d58XmvnI2Ag==",
 	"network_passphrase": "TestNet Global DigitalBits Network ; December 2020"
 }`
 	assert.JSONEq(t, wantBody, string(body))
@@ -980,7 +980,7 @@ func TestAccountSign_signingAddressEmailOwnerAuthenticated(t *testing.T) {
 	require.NoError(t, err)
 
 	wantBody := `{
-	"signature": "okp0ISR/hjU6ItsfXie6ArlQ3YWkBBqEAM5TJrthALdawV5DzcpuwBKi0QE/iBgoU7eY0hY3RPdxm8mXGNYfCQ==",
+	"signature": "Z+McCvxB4562r9YrsEkhqL2WdphjyJRyNwHZh78gG1dvKZWX79L8esefjSLKSOxyuYRMrilj/78d58XmvnI2Ag==",
 	"network_passphrase": "TestNet Global DigitalBits Network ; December 2020"
 }`
 	assert.JSONEq(t, wantBody, string(body))
@@ -1059,7 +1059,7 @@ func TestAccountSign_signingAddressEmailOwnerAuthenticatedOpSourceAccountIsAllow
 	require.NoError(t, err)
 
 	wantBody := `{
-		"signature": "Tpl/yZoKkahakaX4fSrdIeBLL2oi4uKegs5bLXFj5fG6Rcfe2D4EeSHcjJmmO2ZscuY8pX8+YPo70AvCtfw9Ag==",
+		"signature": "1S/6n6gFFiDZZLiIs3X+AnXtC88WB1Z1isiBbnY1Ls6WbNDZLkTRPHd4a/7eM13RYozxJufU64vkMgk18w55DQ==",
 		"network_passphrase": "TestNet Global DigitalBits Network ; December 2020"
 	}`
 	assert.JSONEq(t, wantBody, string(body))
@@ -1205,7 +1205,7 @@ func TestAccountSign_signingAddressEmailOtherAuthenticated(t *testing.T) {
 	require.NoError(t, err)
 
 	wantBody := `{
-	"signature": "okp0ISR/hjU6ItsfXie6ArlQ3YWkBBqEAM5TJrthALdawV5DzcpuwBKi0QE/iBgoU7eY0hY3RPdxm8mXGNYfCQ==",
+	"signature": "Z+McCvxB4562r9YrsEkhqL2WdphjyJRyNwHZh78gG1dvKZWX79L8esefjSLKSOxyuYRMrilj/78d58XmvnI2Ag==",
 	"network_passphrase": "TestNet Global DigitalBits Network ; December 2020"
 }`
 	assert.JSONEq(t, wantBody, string(body))
@@ -1383,7 +1383,7 @@ func TestAccountSign_signingAddressValidContentTypeForm(t *testing.T) {
 	require.NoError(t, err)
 
 	wantBody := `{
-	"signature": "okp0ISR/hjU6ItsfXie6ArlQ3YWkBBqEAM5TJrthALdawV5DzcpuwBKi0QE/iBgoU7eY0hY3RPdxm8mXGNYfCQ==",
+	"signature": "Z+McCvxB4562r9YrsEkhqL2WdphjyJRyNwHZh78gG1dvKZWX79L8esefjSLKSOxyuYRMrilj/78d58XmvnI2Ag==",
 	"network_passphrase": "TestNet Global DigitalBits Network ; December 2020"
 }`
 	assert.JSONEq(t, wantBody, string(body))
