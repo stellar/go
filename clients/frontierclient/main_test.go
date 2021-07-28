@@ -1364,7 +1364,7 @@ func TestFetchTimebounds(t *testing.T) {
 		assert.IsType(t, ServerTimeMap["localhost"], ServerTimeRecord{})
 		assert.Equal(t, st.MinTime, int64(0))
 		// serverTime + 100seconds
-		assert.Equal(t, st.MaxTime, int64(200))
+		assert.Equal(t, st.MaxTime, int64(1560947196))
 	}
 
 	// mock server time
@@ -1375,7 +1375,7 @@ func TestFetchTimebounds(t *testing.T) {
 	assert.IsType(t, st, txnbuild.Timebounds{})
 	assert.Equal(t, st.MinTime, int64(0))
 	// time should be 200, serverTime + 100seconds
-	assert.Equal(t, st.MaxTime, int64(200))
+	assert.Equal(t, st.MaxTime, int64(1560947196))
 }
 
 func TestVersion(t *testing.T) {
