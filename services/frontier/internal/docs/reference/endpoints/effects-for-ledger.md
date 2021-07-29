@@ -32,7 +32,7 @@ curl "https://frontier.testnet.digitalbits.io/ledgers/957773/effects?limit=1"
 ### JavaScript Example Request
 
 ```javascript
-var DigitalBitsSdk = require('digitalbits-sdk');
+var DigitalBitsSdk = require('xdb-digitalbits-sdk');
 var server = new DigitalBitsSdk.Server('https://frontier.testnet.digitalbits.io');
 
 server.effects()

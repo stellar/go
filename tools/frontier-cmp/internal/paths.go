@@ -20,7 +20,7 @@ func (p Path) ID() string {
 }
 
 // removeRandomC removes random `c` param that is part of many requests
-// and originates in js-digitalbits-sdk
+// and originates in xdb-digitalbits-sdk
 func removeRandomC(path string) string {
 	urlObj, err := url.Parse(path)
 	if err != nil {

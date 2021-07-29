@@ -38,7 +38,7 @@ curl "https://frontier.testnet.digitalbits.io/accounts/GCHQ6AOZST6YPMROCQWPE3SVF
 ### JavaScript Example Request
 
 ```javascript
-var DigitalBitsSdk = require('digitalbits-sdk');
+var DigitalBitsSdk = require('xdb-digitalbits-sdk');
 var server = new DigitalBitsSdk.Server('https://frontier.testnet.digitalbits.io');
 
 server.transactions()
@@ -55,7 +55,7 @@ server.transactions()
 ### JavaScript Streaming Example
 
 ```javascript
-var DigitalBitsSdk = require('digitalbits-sdk')
+var DigitalBitsSdk = require('xdb-digitalbits-sdk')
 var server = new DigitalBitsSdk.Server('https://frontier.testnet.digitalbits.io');
 
 var txHandler = function (txResponse) {

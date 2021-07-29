@@ -44,7 +44,7 @@ curl "https://frontier.testnet.digitalbits.io/order_book?selling_asset_type=cred
 ### JavaScript Example Request
 
 ```javascript
-var DigitalBitsSdk = require('digitalbits-sdk');
+var DigitalBitsSdk = require('xdb-digitalbits-sdk');
 var server = new DigitalBitsSdk.Server('https://frontier.testnet.digitalbits.io');
 
 server.orderbook(new DigitalBitsSdk.Asset('EUR', 'GDCIQQY2UKVNLLWGIX74DMTEAFCMQKAKYUWPBO7PLTHIHRKSFZN7V2FC'), new DigitalBitsSdk.Asset('USD', 'GB4RZUSF3HZGCAKB3VBM2S7QOHHC5KTV3LLZXGBYR5ZO4B26CKHFZTSZ'))
@@ -60,7 +60,7 @@ server.orderbook(new DigitalBitsSdk.Asset('EUR', 'GDCIQQY2UKVNLLWGIX74DMTEAFCMQK
 ### JavaScript Streaming Example
 
 ```javascript
-var DigitalBitsSdk = require('digitalbits-sdk')
+var DigitalBitsSdk = require('xdb-digitalbits-sdk')
 var server = new DigitalBitsSdk.Server('https://frontier.testnet.digitalbits.io');
 
 var orderbookHandler = function (orderbookResponse) {

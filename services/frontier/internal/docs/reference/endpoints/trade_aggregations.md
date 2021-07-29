@@ -46,7 +46,7 @@ curl https://frontier.testnet.digitalbits.io/trade_aggregations?base_asset_type=
 ### JavaScript Example Request
 
 ```javascript
-var DigitalBitsSdk = require('digitalbits-sdk');
+var DigitalBitsSdk = require('xdb-digitalbits-sdk');
 var server = new DigitalBitsSdk.Server('https://frontier.testnet.digitalbits.io');
 
 var base = new DigitalBitsSdk.Asset.native();

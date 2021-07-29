@@ -3,7 +3,7 @@ title: Follow Received Payments
 ---
 
 This tutorial shows how easy it is to use Frontier to watch for incoming payments on an [account](../resources/account.md)
-using JavaScript and `EventSource`.  We will eschew using [`js-digitalbits-sdk`](https://github.com/xdbfoundation/js-digitalbits-sdk), the
+using JavaScript and `EventSource`.  We will eschew using [`xdb-digitalbits-sdk`](https://github.com/xdbfoundation/xdb-digitalbits-sdk), the
 high-level helper library, to show that it is possible for you to perform this
 task on your own, with whatever programming language you would like to use.
 
@@ -26,15 +26,14 @@ In this tutorial we will learn:
 Let's get started by building our project skeleton:
 
 ```bash
-$ git clone git@github.com:xdbfoundation/js-digitalbits-base.git && cd js-digitalbits-base && yarn && gulp build && yarn link && cd ../
-$ git clone git@github.com:xdbfoundation/js-digitalbits-sdk.git && cd js-digitalbits-sdk && yarn link "digitalbits-base" && yarn &&  yarn link && cd ../
-$ mkdir follow_tutorial && cd follow_tutorial && yarn link digitalbits-sdk digitalbits-base
+$ npm init
+$ npm install xdb-digitalbits-base --save
 ```
 
 You can check that everything went well by running the following command:
 
 ```bash
-$ node -e "require('digitalbits-base')"
+$ node -e "require('xdb-digitalbits-base')"
 ```
 
 Everything was successful if no output it generated from the above command.  Now
@@ -45,7 +44,7 @@ let's write a script to create a new account.
 Create a new file named `make_account.js` and paste the following text into it:
 
 ```javascript
-var Keypair = require("digitalbits-base").Keypair;
+var Keypair = require("xdb-digitalbits-base").Keypair;
 
 var newAccount = Keypair.random();
 
@@ -193,7 +192,7 @@ Every time you receive a new payment you will get a new row of data. Payments is
 ## Following payments using `EventStream`
 
 > **Warning!** `EventSource` object does not reconnect for certain error types so it can stop working.
-> If you need a reliable streaming connection please use our [SDK](https://github.com/xdbfoundation/js-digitalbits-sdk).
+> If you need a reliable streaming connection please use our [SDK](https://github.com/xdbfoundation/xdb-digitalbits-sdk).
 
 Another way to follow payments is writing a simple JS script that will stream payments and print them to console. Create `stream_payments.js` file and paste the following code into it:
 
@@ -261,7 +260,7 @@ Sequence number can be found under the `sequence` field. The current sequence nu
 Now, create `make_payment.js` file and paste the following code into it:
 
 ```js
-var DigitalBitsBase = require("digitalbits-base");
+var DigitalBitsBase = require("xdb-digitalbits-base");
 
 var keypair = DigitalBitsBase.Keypair.fromSecret('SBODKDHUKBCXEPDZZBANAPKV2BNH32RWL2PY6OYIUH7FQZ3L2XYVPUJU');
 var account = new DigitalBitsBase.Account(keypair.publicKey(), "4007749948014592");

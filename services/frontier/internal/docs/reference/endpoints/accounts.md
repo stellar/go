@@ -32,7 +32,7 @@ curl "https://frontier.testnet.digitalbits.io/accounts?signer=GDFOHLMYCXVZD2CDXZ
 ```
 
 ```javascript
-var DigitalBitsSdk = require('digitalbits-sdk'); 
+var DigitalBitsSdk = require('xdb-digitalbits-sdk'); 
 var server = new DigitalBitsSdk.Server('https://frontier.testnet.digitalbits.io'); 
 server.accounts().forAsset("USD:GB4RZUSF3HZGCAKB3VBM2S7QOHHC5KTV3LLZXGBYR5ZO4B26CKHFZTSZ")
    .call() 
