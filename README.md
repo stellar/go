@@ -79,4 +79,4 @@ Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for more detai
 
 See [DEVELOPING.md](DEVELOPING.md) for helpful instructions for getting started developing code in this repository.
 
-[DigitalBits Development Foundation]: https://digitalbits.org
+[DigitalBits Development Foundation]: https://digitalbits.io

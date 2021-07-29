@@ -55,7 +55,7 @@ func TestStrictSendPathsRequestBuildUrl(t *testing.T) {
 func TestStrictSendPathsRequest(t *testing.T) {
 	hmock := httptest.NewClient()
 	client := &Client{
-		FrontierURL: "https://localhost/",
+		FrontierURL: "https://frontier.testnet.digitalbits.io/",
 		HTTP:       hmock,
 	}
 
@@ -69,7 +69,7 @@ func TestStrictSendPathsRequest(t *testing.T) {
 
 	hmock.On(
 		"GET",
-		"https://localhost/paths/strict-send?destination_account=GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU&source_amount=20&source_asset_code=USD&source_asset_issuer=GDSBCQO34HWPGUGQSP3QBFEXVTSR2PW46UIGTHVWGWJGQKH3AFNHXHXN&source_asset_type=credit_alphanum4",
+		"https://frontier.testnet.digitalbits.io/paths/strict-send?destination_account=GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU&source_amount=20&source_asset_code=USD&source_asset_issuer=GDSBCQO34HWPGUGQSP3QBFEXVTSR2PW46UIGTHVWGWJGQKH3AFNHXHXN&source_asset_type=credit_alphanum4",
 	).ReturnString(200, pathsResponse)
 
 	paths, err := client.StrictSendPaths(pr)
@@ -86,7 +86,7 @@ func TestStrictSendPathsRequest(t *testing.T) {
 
 	hmock.On(
 		"GET",
-		"https://localhost/paths/strict-send?destination_assets=EUR%3AGDSBCQO34HWPGUGQSP3QBFEXVTSR2PW46UIGTHVWGWJGQKH3AFNHXHXN&source_amount=20&source_asset_code=USD&source_asset_issuer=GDSBCQO34HWPGUGQSP3QBFEXVTSR2PW46UIGTHVWGWJGQKH3AFNHXHXN&source_asset_type=credit_alphanum4",
+		"https://frontier.testnet.digitalbits.io/paths/strict-send?destination_assets=EUR%3AGDSBCQO34HWPGUGQSP3QBFEXVTSR2PW46UIGTHVWGWJGQKH3AFNHXHXN&source_amount=20&source_asset_code=USD&source_asset_issuer=GDSBCQO34HWPGUGQSP3QBFEXVTSR2PW46UIGTHVWGWJGQKH3AFNHXHXN&source_asset_type=credit_alphanum4",
 	).ReturnString(200, pathsResponse)
 
 	paths, err = client.StrictSendPaths(pr)
@@ -104,7 +104,7 @@ func TestStrictSendPathsRequest(t *testing.T) {
 
 	hmock.On(
 		"GET",
-		"https://localhost/paths/strict-send?destination_account=GDSBCQO34HWPGUGQSP3QBFEXVTSR2PW46UIGTHVWGWJGQKH3AFNHXHXN&destination_assets=EUR%3AGDSBCQO34HWPGUGQSP3QBFEXVTSR2PW46UIGTHVWGWJGQKH3AFNHXHXN&source_amount=20&source_asset_code=USD&source_asset_issuer=GDSBCQO34HWPGUGQSP3QBFEXVTSR2PW46UIGTHVWGWJGQKH3AFNHXHXN&source_asset_type=credit_alphanum4",
+		"https://frontier.testnet.digitalbits.io/paths/strict-send?destination_account=GDSBCQO34HWPGUGQSP3QBFEXVTSR2PW46UIGTHVWGWJGQKH3AFNHXHXN&destination_assets=EUR%3AGDSBCQO34HWPGUGQSP3QBFEXVTSR2PW46UIGTHVWGWJGQKH3AFNHXHXN&source_amount=20&source_asset_code=USD&source_asset_issuer=GDSBCQO34HWPGUGQSP3QBFEXVTSR2PW46UIGTHVWGWJGQKH3AFNHXHXN&source_asset_type=credit_alphanum4",
 	).ReturnString(400, badRequestResponse)
 
 	_, err = client.StrictSendPaths(pr)

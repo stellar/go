@@ -36,7 +36,7 @@ func TestOfferRequestBuildUrl(t *testing.T) {
 func TestNextOffersPage(t *testing.T) {
 	hmock := httptest.NewClient()
 	client := &Client{
-		FrontierURL: "https://localhost/",
+		FrontierURL: "https://frontier.testnet.digitalbits.io/",
 		HTTP:        hmock,
 	}
 
@@ -44,7 +44,7 @@ func TestNextOffersPage(t *testing.T) {
 
 	hmock.On(
 		"GET",
-		"https://localhost/accounts/GBZ5OD56VRTRQKMNADD6VUZUG3FCILMAMYQY5ZSC3AW3GBXNEPIK76IG/offers?limit=2",
+		"https://frontier.testnet.digitalbits.io/accounts/GBZ5OD56VRTRQKMNADD6VUZUG3FCILMAMYQY5ZSC3AW3GBXNEPIK76IG/offers?limit=2",
 	).ReturnString(200, firstOffersPage)
 
 	offers, err := client.Offers(offerRequest)
@@ -70,7 +70,7 @@ func TestOfferRequestStreamOffers(t *testing.T) {
 
 	hmock := httptest.NewClient()
 	client := &Client{
-		FrontierURL: "https://localhost/",
+		FrontierURL: "https://frontier.testnet.digitalbits.io/",
 		HTTP:        hmock,
 	}
 
@@ -80,7 +80,7 @@ func TestOfferRequestStreamOffers(t *testing.T) {
 
 	hmock.On(
 		"GET",
-		"https://localhost/accounts/GAQHWQYBBW272OOXNQMMLCA5WY2XAZPODGB7Q3S5OKKIXVESKO55ZQ7C/offers?cursor=now",
+		"https://frontier.testnet.digitalbits.io/accounts/GAQHWQYBBW272OOXNQMMLCA5WY2XAZPODGB7Q3S5OKKIXVESKO55ZQ7C/offers?cursor=now",
 	).ReturnString(200, offerStreamResponse)
 
 	offers := make([]hProtocol.Offer, 1)
@@ -100,7 +100,7 @@ func TestOfferRequestStreamOffers(t *testing.T) {
 
 	hmock.On(
 		"GET",
-		"https://localhost/accounts/GAQHWQYBBW272OOXNQMMLCA5WY2XAZPODGB7Q3S5OKKIXVESKO55ZQ7C/offers?cursor=now",
+		"https://frontier.testnet.digitalbits.io/accounts/GAQHWQYBBW272OOXNQMMLCA5WY2XAZPODGB7Q3S5OKKIXVESKO55ZQ7C/offers?cursor=now",
 	).ReturnString(500, offerStreamResponse)
 
 	offers = make([]hProtocol.Offer, 1)
@@ -116,7 +116,7 @@ func TestOfferRequestStreamOffers(t *testing.T) {
 func TestStringOfferID(t *testing.T) {
 	hmock := httptest.NewClient()
 	client := &Client{
-		FrontierURL: "https://localhost/",
+		FrontierURL: "https://frontier.testnet.digitalbits.io/",
 		HTTP:        hmock,
 	}
 
@@ -124,7 +124,7 @@ func TestStringOfferID(t *testing.T) {
 
 	hmock.On(
 		"GET",
-		"https://localhost/accounts/GBZ5OD56VRTRQKMNADD6VUZUG3FCILMAMYQY5ZSC3AW3GBXNEPIK76IG/offers?limit=1",
+		"https://frontier.testnet.digitalbits.io/accounts/GBZ5OD56VRTRQKMNADD6VUZUG3FCILMAMYQY5ZSC3AW3GBXNEPIK76IG/offers?limit=1",
 	).ReturnString(200, stringOffersPage)
 
 	offers, err := client.Offers(offerRequest)

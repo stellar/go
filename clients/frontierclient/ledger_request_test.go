@@ -43,7 +43,7 @@ func TestLedgerRequestBuildUrl(t *testing.T) {
 func TestLedgerDetail(t *testing.T) {
 	hmock := httptest.NewClient()
 	client := &Client{
-		FrontierURL: "https://localhost/",
+		FrontierURL: "https://frontier.testnet.digitalbits.io/",
 		HTTP:        hmock,
 	}
 
@@ -51,7 +51,7 @@ func TestLedgerDetail(t *testing.T) {
 	var sequence uint32
 	hmock.On(
 		"GET",
-		"https://localhost/ledgers/",
+		"https://frontier.testnet.digitalbits.io/ledgers/",
 	).ReturnString(200, ledgerResponse)
 
 	_, err := client.LedgerDetail(sequence)
@@ -63,7 +63,7 @@ func TestLedgerDetail(t *testing.T) {
 	// happy path
 	hmock.On(
 		"GET",
-		"https://localhost/ledgers/69859",
+		"https://frontier.testnet.digitalbits.io/ledgers/69859",
 	).ReturnString(200, ledgerResponse)
 
 	sequence = 69859
@@ -80,7 +80,7 @@ func TestLedgerDetail(t *testing.T) {
 	// failure response
 	hmock.On(
 		"GET",
-		"https://localhost/ledgers/69859",
+		"https://frontier.testnet.digitalbits.io/ledgers/69859",
 	).ReturnString(404, notFoundResponse)
 
 	_, err = client.LedgerDetail(sequence)
@@ -94,7 +94,7 @@ func TestLedgerDetail(t *testing.T) {
 	// connection error
 	hmock.On(
 		"GET",
-		"https://localhost/ledgers/69859",
+		"https://frontier.testnet.digitalbits.io/ledgers/69859",
 	).ReturnError("http.Client error")
 
 	_, err = client.LedgerDetail(sequence)
@@ -108,7 +108,7 @@ func TestLedgerDetail(t *testing.T) {
 func TestLedgerRequestStreamLedgers(t *testing.T) {
 	hmock := httptest.NewClient()
 	client := &Client{
-		FrontierURL: "https://localhost/",
+		FrontierURL: "https://frontier.testnet.digitalbits.io/",
 		HTTP:        hmock,
 	}
 	ledgerRequest := LedgerRequest{Cursor: "1"}
@@ -116,7 +116,7 @@ func TestLedgerRequestStreamLedgers(t *testing.T) {
 
 	hmock.On(
 		"GET",
-		"https://localhost/ledgers?cursor=1",
+		"https://frontier.testnet.digitalbits.io/ledgers?cursor=1",
 	).ReturnString(200, ledgerStreamResponse)
 
 	ledgers := make([]hProtocol.Ledger, 1)
@@ -136,7 +136,7 @@ func TestLedgerRequestStreamLedgers(t *testing.T) {
 
 	hmock.On(
 		"GET",
-		"https://localhost/ledgers?cursor=now",
+		"https://frontier.testnet.digitalbits.io/ledgers?cursor=now",
 	).ReturnString(500, ledgerStreamResponse)
 
 	err = client.StreamLedgers(ctx, ledgerRequest, func(ledger hProtocol.Ledger) {
@@ -154,7 +154,7 @@ func TestLedgerRequestStreamLedgers(t *testing.T) {
 func TestNextLedgersPage(t *testing.T) {
 	hmock := httptest.NewClient()
 	client := &Client{
-		FrontierURL: "https://localhost/",
+		FrontierURL: "https://frontier.testnet.digitalbits.io/",
 		HTTP:        hmock,
 	}
 
@@ -162,7 +162,7 @@ func TestNextLedgersPage(t *testing.T) {
 
 	hmock.On(
 		"GET",
-		"https://localhost/ledgers?limit=2",
+		"https://frontier.testnet.digitalbits.io/ledgers?limit=2",
 	).ReturnString(200, firstLedgersPage)
 
 	ledgers, err := client.Ledgers(ledgerRequest)

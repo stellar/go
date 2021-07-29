@@ -58,7 +58,7 @@ func TestTransactionRequestBuildUrl(t *testing.T) {
 func TestNextTransactionsPage(t *testing.T) {
 	hmock := httptest.NewClient()
 	client := &Client{
-		FrontierURL: "https://localhost/",
+		FrontierURL: "https://frontier.testnet.digitalbits.io/",
 		HTTP:        hmock,
 	}
 
@@ -66,7 +66,7 @@ func TestNextTransactionsPage(t *testing.T) {
 
 	hmock.On(
 		"GET",
-		"https://localhost/transactions?limit=2",
+		"https://frontier.testnet.digitalbits.io/transactions?limit=2",
 	).ReturnString(200, firstTransactionsPage)
 
 	transactions, err := client.Transactions(transactionRequest)
@@ -89,7 +89,7 @@ func TestNextTransactionsPage(t *testing.T) {
 func TestTransactionRequestStreamTransactions(t *testing.T) {
 	hmock := httptest.NewClient()
 	client := &Client{
-		FrontierURL: "https://localhost/",
+		FrontierURL: "https://frontier.testnet.digitalbits.io/",
 		HTTP:        hmock,
 	}
 
@@ -99,7 +99,7 @@ func TestTransactionRequestStreamTransactions(t *testing.T) {
 
 	hmock.On(
 		"GET",
-		"https://localhost/transactions?cursor=now",
+		"https://frontier.testnet.digitalbits.io/transactions?cursor=now",
 	).ReturnString(200, txStreamResponse)
 
 	transactions := make([]hProtocol.Transaction, 1)
@@ -119,7 +119,7 @@ func TestTransactionRequestStreamTransactions(t *testing.T) {
 
 	hmock.On(
 		"GET",
-		"https://localhost/accounts/GAIH3ULLFQ4DGSECF2AR555KZ4KNDGEKN4AFI4SU2M7B43MGK3QJZNSR/transactions?cursor=now",
+		"https://frontier.testnet.digitalbits.io/accounts/GAIH3ULLFQ4DGSECF2AR555KZ4KNDGEKN4AFI4SU2M7B43MGK3QJZNSR/transactions?cursor=now",
 	).ReturnString(200, txStreamResponse)
 
 	transactions = make([]hProtocol.Transaction, 1)
@@ -139,7 +139,7 @@ func TestTransactionRequestStreamTransactions(t *testing.T) {
 
 	hmock.On(
 		"GET",
-		"https://localhost/transactions?cursor=now",
+		"https://frontier.testnet.digitalbits.io/transactions?cursor=now",
 	).ReturnString(500, txStreamResponse)
 
 	transactions = make([]hProtocol.Transaction, 1)

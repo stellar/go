@@ -9,7 +9,7 @@ const DigitalBitsTomlMaxSize = 100 * 1024
 // exist to conform to the federation protocol.
 const WellKnownPath = "/.well-known/digitalbits.toml"
 
-// HTTP represents the http client that a stellertoml resolver uses to make http
+// HTTP represents the http client that a digitalbits resolver uses to make http
 // requests.
 type HTTP interface {
 	Get(url string) (*http.Response, error)

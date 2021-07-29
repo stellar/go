@@ -58,7 +58,7 @@ func TestTradeRequestBuildUrl(t *testing.T) {
 func TestTradesRequest(t *testing.T) {
 	hmock := httptest.NewClient()
 	client := &Client{
-		FrontierURL: "https://localhost/",
+		FrontierURL: "https://frontier.testnet.digitalbits.io/",
 		HTTP:        hmock,
 	}
 
@@ -67,7 +67,7 @@ func TestTradesRequest(t *testing.T) {
 	// all trades
 	hmock.On(
 		"GET",
-		"https://localhost/trades",
+		"https://frontier.testnet.digitalbits.io/trades",
 	).ReturnString(200, tradesResponse)
 
 	trades, err := client.Trades(tradeRequest)
@@ -92,7 +92,7 @@ func TestTradesRequest(t *testing.T) {
 	tradeRequest = TradeRequest{ForAccount: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU"}
 	hmock.On(
 		"GET",
-		"https://localhost/accounts/GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU/trades",
+		"https://frontier.testnet.digitalbits.io/accounts/GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU/trades",
 	).ReturnString(200, tradesResponse)
 
 	trades, err = client.Trades(tradeRequest)
@@ -104,7 +104,7 @@ func TestTradesRequest(t *testing.T) {
 	tradeRequest = TradeRequest{ForAccount: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU", ForOfferID: "123"}
 	hmock.On(
 		"GET",
-		"https://localhost/trades",
+		"https://frontier.testnet.digitalbits.io/trades",
 	).ReturnString(200, "")
 
 	_, err = client.Trades(tradeRequest)
@@ -117,7 +117,7 @@ func TestTradesRequest(t *testing.T) {
 func TestNextTradesPage(t *testing.T) {
 	hmock := httptest.NewClient()
 	client := &Client{
-		FrontierURL: "https://localhost/",
+		FrontierURL: "https://frontier.testnet.digitalbits.io/",
 		HTTP:        hmock,
 	}
 
@@ -125,7 +125,7 @@ func TestNextTradesPage(t *testing.T) {
 
 	hmock.On(
 		"GET",
-		"https://localhost/accounts/GBZ5OD56VRTRQKMNADD6VUZUG3FCILMAMYQY5ZSC3AW3GBXNEPIK76IG/trades?limit=2",
+		"https://frontier.testnet.digitalbits.io/accounts/GBZ5OD56VRTRQKMNADD6VUZUG3FCILMAMYQY5ZSC3AW3GBXNEPIK76IG/trades?limit=2",
 	).ReturnString(200, firstTradesPage)
 
 	trades, err := client.Trades(tradeRequest)
@@ -149,7 +149,7 @@ func TestTradeRequestStreamTrades(t *testing.T) {
 
 	hmock := httptest.NewClient()
 	client := &Client{
-		FrontierURL: "https://localhost/",
+		FrontierURL: "https://frontier.testnet.digitalbits.io/",
 		HTTP:        hmock,
 	}
 
@@ -159,7 +159,7 @@ func TestTradeRequestStreamTrades(t *testing.T) {
 
 	hmock.On(
 		"GET",
-		"https://localhost/trades?cursor=now",
+		"https://frontier.testnet.digitalbits.io/trades?cursor=now",
 	).ReturnString(200, tradeStreamResponse)
 
 	trades := make([]hProtocol.Trade, 1)
@@ -179,7 +179,7 @@ func TestTradeRequestStreamTrades(t *testing.T) {
 
 	hmock.On(
 		"GET",
-		"https://localhost/accounts/GCRHQBHX7JNBZE4HHPLNOAAYDRDVAGBJKJ4KPGHIID3CBGVALXBD6TVQ/trades?cursor=now",
+		"https://frontier.testnet.digitalbits.io/accounts/GCRHQBHX7JNBZE4HHPLNOAAYDRDVAGBJKJ4KPGHIID3CBGVALXBD6TVQ/trades?cursor=now",
 	).ReturnString(200, tradeStreamResponse)
 
 	trades = make([]hProtocol.Trade, 1)
@@ -199,7 +199,7 @@ func TestTradeRequestStreamTrades(t *testing.T) {
 
 	hmock.On(
 		"GET",
-		"https://localhost/offers/494/trades?cursor=now",
+		"https://frontier.testnet.digitalbits.io/offers/494/trades?cursor=now",
 	).ReturnString(200, tradeStreamResponse)
 
 	trades = make([]hProtocol.Trade, 1)
@@ -219,7 +219,7 @@ func TestTradeRequestStreamTrades(t *testing.T) {
 
 	hmock.On(
 		"GET",
-		"https://localhost/trades?cursor=now",
+		"https://frontier.testnet.digitalbits.io/trades?cursor=now",
 	).ReturnString(500, tradeStreamResponse)
 
 	trades = make([]hProtocol.Trade, 1)

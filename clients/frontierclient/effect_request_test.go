@@ -65,7 +65,7 @@ func TestEffectRequestBuildUrl(t *testing.T) {
 func TestEffectRequestStreamEffects(t *testing.T) {
 	hmock := httptest.NewClient()
 	client := &Client{
-		FrontierURL: "https://localhost/",
+		FrontierURL: "https://frontier.testnet.digitalbits.io/",
 		HTTP:        hmock,
 	}
 
@@ -75,7 +75,7 @@ func TestEffectRequestStreamEffects(t *testing.T) {
 
 	hmock.On(
 		"GET",
-		"https://localhost/effects?cursor=now",
+		"https://frontier.testnet.digitalbits.io/effects?cursor=now",
 	).ReturnString(200, effectStreamResponse)
 
 	effectStream := make([]effects.Effect, 1)
@@ -94,7 +94,7 @@ func TestEffectRequestStreamEffects(t *testing.T) {
 
 	hmock.On(
 		"GET",
-		"https://localhost/accounts/GBNZN27NAOHRJRCMHQF2ZN2F6TAPVEWKJIGZIRNKIADWIS2HDENIS6CI/effects?cursor=now",
+		"https://frontier.testnet.digitalbits.io/accounts/GBNZN27NAOHRJRCMHQF2ZN2F6TAPVEWKJIGZIRNKIADWIS2HDENIS6CI/effects?cursor=now",
 	).ReturnString(200, effectStreamResponse)
 
 	err = client.StreamEffects(ctx, effectRequest, func(effect effects.Effect) {
@@ -112,7 +112,7 @@ func TestEffectRequestStreamEffects(t *testing.T) {
 
 	hmock.On(
 		"GET",
-		"https://localhost/effects?cursor=now",
+		"https://frontier.testnet.digitalbits.io/effects?cursor=now",
 	).ReturnString(500, effectStreamResponse)
 
 	err = client.StreamEffects(ctx, effectRequest, func(effect effects.Effect) {
@@ -128,7 +128,7 @@ func TestEffectRequestStreamEffects(t *testing.T) {
 func TestNextEffectsPage(t *testing.T) {
 	hmock := httptest.NewClient()
 	client := &Client{
-		FrontierURL: "https://localhost/",
+		FrontierURL: "https://frontier.testnet.digitalbits.io/",
 		HTTP:        hmock,
 	}
 
@@ -137,7 +137,7 @@ func TestNextEffectsPage(t *testing.T) {
 
 	hmock.On(
 		"GET",
-		"https://localhost/accounts/GCDIZFWLOTBWHTPODXCBH6XNXPFMSQFRVIDRP3JLEKQZN66G7NF3ANOD/effects",
+		"https://frontier.testnet.digitalbits.io/accounts/GCDIZFWLOTBWHTPODXCBH6XNXPFMSQFRVIDRP3JLEKQZN66G7NF3ANOD/effects",
 	).ReturnString(200, firstEffectsPage)
 
 	efp, err := client.Effects(effectRequest)
@@ -160,7 +160,7 @@ func TestNextEffectsPage(t *testing.T) {
 func TestSequenceBumpedNewSeq(t *testing.T) {
 	hmock := httptest.NewClient()
 	client := &Client{
-		FrontierURL: "https://localhost/",
+		FrontierURL: "https://frontier.testnet.digitalbits.io/",
 		HTTP:        hmock,
 	}
 	effectRequest := EffectRequest{ForAccount: "GCDIZFWLOTBWHTPODXCBH6XNXPFMSQFRVIDRP3JLEKQZN66G7NF3ANOD"}
@@ -177,7 +177,7 @@ func TestSequenceBumpedNewSeq(t *testing.T) {
 		t.Run(tc.desc, func(t *testing.T) {
 			hmock.On(
 				"GET",
-				"https://localhost/accounts/GCDIZFWLOTBWHTPODXCBH6XNXPFMSQFRVIDRP3JLEKQZN66G7NF3ANOD/effects",
+				"https://frontier.testnet.digitalbits.io/accounts/GCDIZFWLOTBWHTPODXCBH6XNXPFMSQFRVIDRP3JLEKQZN66G7NF3ANOD/effects",
 			).ReturnString(200, tc.payload)
 
 			efp, err := client.Effects(effectRequest)
@@ -197,7 +197,7 @@ func TestSequenceBumpedNewSeq(t *testing.T) {
 func TestTradeEffectOfferID(t *testing.T) {
 	hmock := httptest.NewClient()
 	client := &Client{
-		FrontierURL: "https://localhost/",
+		FrontierURL: "https://frontier.testnet.digitalbits.io/",
 		HTTP:        hmock,
 	}
 	effectRequest := EffectRequest{ForAccount: "GCDIZFWLOTBWHTPODXCBH6XNXPFMSQFRVIDRP3JLEKQZN66G7NF3ANOD"}
@@ -214,7 +214,7 @@ func TestTradeEffectOfferID(t *testing.T) {
 		t.Run(tc.desc, func(t *testing.T) {
 			hmock.On(
 				"GET",
-				"https://localhost/accounts/GCDIZFWLOTBWHTPODXCBH6XNXPFMSQFRVIDRP3JLEKQZN66G7NF3ANOD/effects",
+				"https://frontier.testnet.digitalbits.io/accounts/GCDIZFWLOTBWHTPODXCBH6XNXPFMSQFRVIDRP3JLEKQZN66G7NF3ANOD/effects",
 			).ReturnString(200, tc.payload)
 
 			efp, err := client.Effects(effectRequest)

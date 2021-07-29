@@ -23,14 +23,14 @@ func TestFund(t *testing.T) {
 
 	hmock := httptest.NewClient()
 	client := &Client{
-		FrontierURL: "https://localhost/",
+		FrontierURL: "https://frontier.testnet.digitalbits.io/",
 		HTTP:        hmock,
 		isTestNet:   true,
 	}
 
 	hmock.On(
 		"GET",
-		"https://localhost/friendbot?addr=GBLPP2W3X3PJQXYMC7EFWM5G2QCZL7HTCTFNMONS4ITGAYJ3GNNZIQ4V",
+		"https://frontier.testnet.digitalbits.io/friendbot?addr=GBLPP2W3X3PJQXYMC7EFWM5G2QCZL7HTCTFNMONS4ITGAYJ3GNNZIQ4V",
 	).ReturnString(200, friendbotFundResponse)
 
 	tx, err := client.Fund("GBLPP2W3X3PJQXYMC7EFWM5G2QCZL7HTCTFNMONS4ITGAYJ3GNNZIQ4V")

@@ -43,7 +43,7 @@ func TestPathsRequestBuildUrl(t *testing.T) {
 func TestPathsRequest(t *testing.T) {
 	hmock := httptest.NewClient()
 	client := &Client{
-		FrontierURL: "https://localhost/",
+		FrontierURL: "https://frontier.testnet.digitalbits.io/",
 		HTTP:       hmock,
 	}
 
@@ -59,7 +59,7 @@ func TestPathsRequest(t *testing.T) {
 	// orderbook for XDB/USD
 	hmock.On(
 		"GET",
-		"https://localhost/paths?destination_account=GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU&destination_amount=100&destination_asset_code=NGN&destination_asset_issuer=GDZST3XVCDTUJ76ZAV2HA72KYQODXXZ5PTMAPZGDHZ6CS7RO7MGG3DBM&destination_asset_type=credit_alphanum4&source_account=GDZST3XVCDTUJ76ZAV2HA72KYQODXXZ5PTMAPZGDHZ6CS7RO7MGG3DBM",
+		"https://frontier.testnet.digitalbits.io/paths?destination_account=GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU&destination_amount=100&destination_asset_code=NGN&destination_asset_issuer=GDZST3XVCDTUJ76ZAV2HA72KYQODXXZ5PTMAPZGDHZ6CS7RO7MGG3DBM&destination_asset_type=credit_alphanum4&source_account=GDZST3XVCDTUJ76ZAV2HA72KYQODXXZ5PTMAPZGDHZ6CS7RO7MGG3DBM",
 	).ReturnString(200, pathsResponse)
 
 	paths, err := client.StrictReceivePaths(pr)
@@ -75,7 +75,7 @@ func TestPathsRequest(t *testing.T) {
 	pr = PathsRequest{}
 	hmock.On(
 		"GET",
-		"https://localhost/paths",
+		"https://frontier.testnet.digitalbits.io/paths",
 	).ReturnString(400, badRequestResponse)
 
 	_, err = client.StrictReceivePaths(pr)
@@ -91,7 +91,7 @@ func TestPathsRequest(t *testing.T) {
 func TestStrictReceivePathsRequest(t *testing.T) {
 	hmock := httptest.NewClient()
 	client := &Client{
-		FrontierURL: "https://localhost/",
+		FrontierURL: "https://frontier.testnet.digitalbits.io/",
 		HTTP:       hmock,
 	}
 
@@ -107,7 +107,7 @@ func TestStrictReceivePathsRequest(t *testing.T) {
 	// orderbook for XDB/USD
 	hmock.On(
 		"GET",
-		"https://localhost/paths?destination_account=GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU&destination_amount=100&destination_asset_code=NGN&destination_asset_issuer=GDZST3XVCDTUJ76ZAV2HA72KYQODXXZ5PTMAPZGDHZ6CS7RO7MGG3DBM&destination_asset_type=credit_alphanum4&source_account=GDZST3XVCDTUJ76ZAV2HA72KYQODXXZ5PTMAPZGDHZ6CS7RO7MGG3DBM",
+		"https://frontier.testnet.digitalbits.io/paths?destination_account=GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU&destination_amount=100&destination_asset_code=NGN&destination_asset_issuer=GDZST3XVCDTUJ76ZAV2HA72KYQODXXZ5PTMAPZGDHZ6CS7RO7MGG3DBM&destination_asset_type=credit_alphanum4&source_account=GDZST3XVCDTUJ76ZAV2HA72KYQODXXZ5PTMAPZGDHZ6CS7RO7MGG3DBM",
 	).ReturnString(200, pathsResponse)
 
 	paths, err := client.StrictReceivePaths(pr)
@@ -123,7 +123,7 @@ func TestStrictReceivePathsRequest(t *testing.T) {
 	pr = PathsRequest{}
 	hmock.On(
 		"GET",
-		"https://localhost/paths",
+		"https://frontier.testnet.digitalbits.io/paths",
 	).ReturnString(400, badRequestResponse)
 
 	_, err = client.StrictReceivePaths(pr)

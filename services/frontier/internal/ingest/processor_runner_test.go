@@ -47,7 +47,7 @@ func TestProcessorRunnerRunHistoryArchiveIngestionGenesis(t *testing.T) {
 			Data: xdr.LedgerEntryData{
 				Type: xdr.LedgerEntryTypeAccount,
 				Account: &xdr.AccountEntry{
-					AccountId:  xdr.MustAddress("GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7"),
+					AccountId:  xdr.MustAddress("GBNFX7WGJNIIB56JCLAYWKPLOGO77DMNFJZIA5RVHDGSRBBGT5JRKYWB"),
 					Balance:    xdr.Int64(1000000000000000000),
 					SeqNum:     xdr.SequenceNumber(0),
 					Thresholds: [4]byte{1, 0, 0, 0},
@@ -59,8 +59,8 @@ func TestProcessorRunnerRunHistoryArchiveIngestionGenesis(t *testing.T) {
 	mockAccountSignersBatchInsertBuilder := &history.MockAccountSignersBatchInsertBuilder{}
 	defer mock.AssertExpectationsForObjects(t, mockAccountSignersBatchInsertBuilder)
 	mockAccountSignersBatchInsertBuilder.On("Add", history.AccountSigner{
-		Account: "GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7",
-		Signer:  "GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7",
+		Account: "GBNFX7WGJNIIB56JCLAYWKPLOGO77DMNFJZIA5RVHDGSRBBGT5JRKYWB",
+		Signer:  "GBNFX7WGJNIIB56JCLAYWKPLOGO77DMNFJZIA5RVHDGSRBBGT5JRKYWB",
 		Weight:  1,
 		Sponsor: null.String{},
 	}).Return(nil).Once()
@@ -152,7 +152,7 @@ func TestProcessorRunnerRunHistoryArchiveIngestionHistoryArchive(t *testing.T) {
 			Data: xdr.LedgerEntryData{
 				Type: xdr.LedgerEntryTypeAccount,
 				Account: &xdr.AccountEntry{
-					AccountId:  xdr.MustAddress("GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7"),
+					AccountId:  xdr.MustAddress("GBNFX7WGJNIIB56JCLAYWKPLOGO77DMNFJZIA5RVHDGSRBBGT5JRKYWB"),
 					Balance:    xdr.Int64(1000000000000000000),
 					SeqNum:     xdr.SequenceNumber(0),
 					Thresholds: [4]byte{1, 0, 0, 0},
@@ -164,8 +164,8 @@ func TestProcessorRunnerRunHistoryArchiveIngestionHistoryArchive(t *testing.T) {
 	mockAccountSignersBatchInsertBuilder := &history.MockAccountSignersBatchInsertBuilder{}
 	defer mock.AssertExpectationsForObjects(t, mockAccountSignersBatchInsertBuilder)
 	mockAccountSignersBatchInsertBuilder.On("Add", history.AccountSigner{
-		Account: "GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7",
-		Signer:  "GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7",
+		Account: "GBNFX7WGJNIIB56JCLAYWKPLOGO77DMNFJZIA5RVHDGSRBBGT5JRKYWB",
+		Signer:  "GBNFX7WGJNIIB56JCLAYWKPLOGO77DMNFJZIA5RVHDGSRBBGT5JRKYWB",
 		Weight:  1,
 	}).Return(nil).Once()
 	mockAccountSignersBatchInsertBuilder.On("Exec").Return(nil).Once()

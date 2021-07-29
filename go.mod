@@ -3,8 +3,6 @@ module github.com/xdbfoundation/go
 go 1.13
 
 require (
-	github.com/stellar/go-xdr v0.0.0-20201028102745-f80a23dac78a
-	github.com/stellar/throttled v2.2.3-0.20190823235211-89d75816f59d+incompatible
 	firebase.google.com/go v3.12.0+incompatible
 	github.com/BurntSushi/toml v0.3.1
 	github.com/Masterminds/squirrel v0.0.0-20161115235646-20f192218cf5
@@ -27,6 +25,7 @@ require (
 	github.com/gorilla/schema v1.1.0
 	github.com/graph-gophers/graphql-go v0.0.0-20190225005345-3e8838d4614c
 	github.com/guregu/null v2.1.3-0.20151024101046-79c5bd36b615+incompatible
+	github.com/hashicorp/golang-lru v0.5.0
 	github.com/howeyc/gopass v0.0.0-20170109162249-bf9dde6d0d2c
 	github.com/imkira/go-interpol v1.1.0 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
@@ -59,6 +58,7 @@ require (
 	github.com/sebest/xff v0.0.0-20150611211316-7a36e3a787b5
 	github.com/segmentio/go-loggly v0.5.1-0.20171222203950-eb91657e62b2
 	github.com/sergi/go-diff v0.0.0-20161205080420-83532ca1c1ca // indirect
+	github.com/shuLhan/go-bindata v4.0.0+incompatible // indirect
 	github.com/shurcooL/httpfs v0.0.0-20190707220628-8d4bc4ba7749
 	github.com/sirupsen/logrus v1.4.1
 	github.com/smartystreets/goconvey v0.0.0-20190731233626-505e41936337 // indirect
@@ -67,6 +67,8 @@ require (
 	github.com/spf13/jwalterweatherman v0.0.0-20141219030609-3d60171a6431 // indirect
 	github.com/spf13/pflag v0.0.0-20161005214240-4bd69631f475
 	github.com/spf13/viper v0.0.0-20150621231900-db7ff930a189
+	github.com/stellar/go-xdr v0.0.0-20201028102745-f80a23dac78a
+	github.com/stellar/throttled v2.2.3-0.20190823235211-89d75816f59d+incompatible
 	github.com/stretchr/testify v1.5.1
 	github.com/tyler-smith/go-bip39 v0.0.0-20180618194314-52158e4697b8
 	github.com/valyala/bytebufferpool v1.0.0 // indirect

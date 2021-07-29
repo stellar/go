@@ -16,10 +16,10 @@ func TestClientURL(t *testing.T) {
 	//mock.
 
 	c := &Client{UseHTTP: false}
-	assert.Equal(t, "https://livenet.digitalbits.io/.well-known/digitalbits.toml", c.url("digitalbits.org"))
+	assert.Equal(t, "https://livenet.digitalbits.io/.well-known/digitalbits.toml", c.url("livenet.digitalbits.io"))
 
 	c = &Client{UseHTTP: true}
-	assert.Equal(t, "http://livenet.digitalbits.io/.well-known/digitalbits.toml", c.url("digitalbits.org"))
+	assert.Equal(t, "http://livenet.digitalbits.io/.well-known/digitalbits.toml", c.url("livenet.digitalbits.io"))
 }
 
 func TestClient(t *testing.T) {
@@ -30,17 +30,17 @@ func TestClient(t *testing.T) {
 	h.
 		On("GET", "https://livenet.digitalbits.io/.well-known/digitalbits.toml").
 		ReturnString(http.StatusOK,
-			`FEDERATION_SERVER="https://localhost/federation"`,
+			`FEDERATION_SERVER="https://api.testnet.digitalbits.io/federation"`,
 		)
-	stoml, err := c.GetDigitalBitsToml("digitalbits.org")
+	stoml, err := c.GetDigitalBitsToml("livenet.digitalbits.io")
 	require.NoError(t, err)
-	assert.Equal(t, "https://localhost/federation", stoml.FederationServer)
+	assert.Equal(t, "https://api.testnet.digitalbits.io/federation", stoml.FederationServer)
 
 	// digitalbits.toml exceeds limit
 	h.
 		On("GET", "https://toobig.org/.well-known/digitalbits.toml").
 		ReturnString(http.StatusOK,
-			`FEDERATION_SERVER="https://localhost/federation`+strings.Repeat("0", DigitalBitsTomlMaxSize)+`"`,
+			`FEDERATION_SERVER="https://api.testnet.digitalbits.io/federation`+strings.Repeat("0", DigitalBitsTomlMaxSize)+`"`,
 		)
 	stoml, err = c.GetDigitalBitsToml("toobig.org")
 	if assert.Error(t, err) {
