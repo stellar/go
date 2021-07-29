@@ -20,7 +20,7 @@ var (
 			Type: xdr.LedgerEntryTypeTrustline,
 			TrustLine: &xdr.TrustLineEntry{
 				AccountId: account1.Data.Account.AccountId,
-				Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()),
+				Asset:     xdr.MustNewCreditAsset("EUR", trustLineIssuer.Address()).ToTrustLineAsset(),
 				Balance:   30000,
 				Limit:     223456789,
 				Flags:     1,
@@ -49,7 +49,7 @@ var (
 			Type: xdr.LedgerEntryTypeTrustline,
 			TrustLine: &xdr.TrustLineEntry{
 				AccountId: xdr.MustAddress("GCYVFGI3SEQJGBNQQG7YCMFWEYOHK3XPVOVPA6C566PXWN4SN7LILZSM"),
-				Asset:     xdr.MustNewCreditAsset("USDUSD", trustLineIssuer.Address()),
+				Asset:     xdr.MustNewCreditAsset("USDUSD", trustLineIssuer.Address()).ToTrustLineAsset(),
 				Balance:   10000,
 				Limit:     123456789,
 				Flags:     0,
@@ -72,7 +72,7 @@ var (
 			Type: xdr.LedgerEntryTypeTrustline,
 			TrustLine: &xdr.TrustLineEntry{
 				AccountId: xdr.MustAddress("GBYSBDAJZMHL5AMD7QXQ3JEP3Q4GLKADWIJURAAHQALNAWD6Z5XF2RAC"),
-				Asset:     xdr.MustNewCreditAsset("USDUSD", trustLineIssuer.Address()),
+				Asset:     xdr.MustNewCreditAsset("USDUSD", trustLineIssuer.Address()).ToTrustLineAsset(),
 				Balance:   10000,
 				Limit:     123456789,
 				Flags:     0,
@@ -161,7 +161,7 @@ func TestUpdateTrustLine(t *testing.T) {
 
 	dbEntry := xdr.TrustLineEntry{
 		AccountId: xdr.MustAddress(lines[0].AccountID),
-		Asset:     xdr.MustNewCreditAsset(lines[0].AssetCode, lines[0].AssetIssuer),
+		Asset:     xdr.MustNewCreditAsset(lines[0].AssetCode, lines[0].AssetIssuer).ToTrustLineAsset(),
 		Balance:   xdr.Int64(lines[0].Balance),
 		Limit:     xdr.Int64(lines[0].Limit),
 		Flags:     xdr.Uint32(lines[0].Flags),
@@ -235,7 +235,7 @@ func TestUpsertTrustLines(t *testing.T) {
 			Type: xdr.LedgerEntryTypeTrustline,
 			TrustLine: &xdr.TrustLineEntry{
 				AccountId: xdr.MustAddress(lines[0].AccountID),
-				Asset:     xdr.MustNewCreditAsset(lines[0].AssetCode, lines[0].AssetIssuer),
+				Asset:     xdr.MustNewCreditAsset(lines[0].AssetCode, lines[0].AssetIssuer).ToTrustLineAsset(),
 				Balance:   xdr.Int64(lines[0].Balance),
 				Limit:     xdr.Int64(lines[0].Limit),
 				Flags:     xdr.Uint32(lines[0].Flags),
@@ -280,7 +280,7 @@ func TestUpsertTrustLines(t *testing.T) {
 			Type: xdr.LedgerEntryTypeTrustline,
 			TrustLine: &xdr.TrustLineEntry{
 				AccountId: xdr.MustAddress(lines[0].AccountID),
-				Asset:     xdr.MustNewCreditAsset(lines[0].AssetCode, lines[0].AssetIssuer),
+				Asset:     xdr.MustNewCreditAsset(lines[0].AssetCode, lines[0].AssetIssuer).ToTrustLineAsset(),
 				Balance:   xdr.Int64(lines[0].Balance),
 				Limit:     xdr.Int64(lines[0].Limit),
 				Flags:     xdr.Uint32(lines[0].Flags),
@@ -431,7 +431,7 @@ func TestAssetsForAddress(t *testing.T) {
 			Type: xdr.LedgerEntryTypeTrustline,
 			TrustLine: &xdr.TrustLineEntry{
 				AccountId: account1.Data.Account.AccountId,
-				Asset:     xdr.MustNewCreditAsset("BRL", trustLineIssuer.Address()),
+				Asset:     xdr.MustNewCreditAsset("BRL", trustLineIssuer.Address()).ToTrustLineAsset(),
 				Balance:   1000,
 				Limit:     20000,
 				Flags:     1,
