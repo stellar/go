@@ -73,8 +73,7 @@ const (
 	// LogNoErrors indicates that the Problem instance should not log any errors
 	LogNoErrors = LogFilter(iota)
 	// LogUnknownErrors indicates that the Problem instance should only log errors
-	// which are not registered with level=error but will also log known errors with
-	// level=warn.
+	// which are not registered
 	LogUnknownErrors = LogFilter(iota)
 	// LogAllErrors indicates that the Problem instance should log all errors
 	LogAllErrors = LogFilter(iota)
@@ -188,8 +187,6 @@ func (ps *Problem) Render(ctx context.Context, w http.ResponseWriter, err error)
 				ps.reportFn(ctx, err)
 			}
 			problem = ServerError
-		} else if ps.filter == LogUnknownErrors {
-			ps.log.Ctx(ctx).WithStack(err).Warn(err)
 		}
 	}
 
