@@ -358,7 +358,8 @@ func (operation *transactionOperationWrapper) Details() (map[string]interface{},
 		}
 	case xdr.OperationTypeChangeTrust:
 		op := operation.operation.Body.MustChangeTrustOp()
-		addAssetDetails(details, op.Line, "")
+		// TODO fix before Protocol 18
+		addAssetDetails(details, op.Line.ToAsset(), "")
 		addAccountAndMuxedAccountDetails(details, *source, "trustor")
 		details["trustee"] = details["asset_issuer"]
 		details["limit"] = amount.String(op.Limit)
@@ -568,7 +569,8 @@ func addLedgerKeyDetails(result map[string]interface{}, ledgerKey xdr.LedgerKey)
 		result["offer_id"] = fmt.Sprintf("%d", ledgerKey.Offer.OfferId)
 	case xdr.LedgerEntryTypeTrustline:
 		result["trustline_account_id"] = ledgerKey.TrustLine.AccountId.Address()
-		result["trustline_asset"] = ledgerKey.TrustLine.Asset.StringCanonical()
+		// TODO fix before Protocol 18
+		result["trustline_asset"] = ledgerKey.TrustLine.Asset.ToAsset().StringCanonical()
 	}
 	return nil
 }
