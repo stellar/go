@@ -53,7 +53,7 @@ curl "https://frontier.testnet.digitalbits.io/paths/strict-receive?destination_a
 ### JavaScript Example Request
 
 ```javascript
-var DigitalBitsSdk = require('digitalbits-sdk');
+var DigitalBitsSdk = require('xdb-digitalbits-sdk');
 var server = new DigitalBitsSdk.Server('https://frontier.testnet.digitalbits.io');
 
 var destination_asset = new DigitalBitsSdk.Asset('USD', 'GB4RZUSF3HZGCAKB3VBM2S7QOHHC5KTV3LLZXGBYR5ZO4B26CKHFZTSZ');

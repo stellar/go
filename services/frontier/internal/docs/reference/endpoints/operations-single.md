@@ -35,7 +35,7 @@ curl https://frontier.testnet.digitalbits.io/operations/1099511631873
 ### JavaScript Example Request
 
 ```javascript
-var DigitalBitsSdk = require('digitalbits-sdk');
+var DigitalBitsSdk = require('xdb-digitalbits-sdk');
 var server = new DigitalBitsSdk.Server('https://frontier.testnet.digitalbits.io');
 
 server.operations()

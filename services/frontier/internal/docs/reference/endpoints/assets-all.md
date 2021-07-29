@@ -34,7 +34,7 @@ curl "https://frontier.testnet.digitalbits.io/assets?limit=200"
 ### JavaScript Example Request
 
 ```javascript
-var DigitalBitsSdk = require('digitalbits-sdk');
+var DigitalBitsSdk = require('xdb-digitalbits-sdk');
 var server = new DigitalBitsSdk.Server('https://frontier.testnet.digitalbits.io');
 
 server.assets()

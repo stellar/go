@@ -25,7 +25,7 @@ curl "https://frontier.testnet.digitalbits.io/offers/1"
 ### JavaScript Example Request
 
 ```javascript
-var DigitalBitsSdk = require('digitalbits-sdk');
+var DigitalBitsSdk = require('xdb-digitalbits-sdk');
 var server = new DigitalBitsSdk.Server('https://frontier.testnet.digitalbits.io');
 
 server.offers('accounts', 'GDFOHLMYCXVZD2CDXZLMW6W6TMU4YO27XFF2IBAFAV66MSTPDDSK2LAY')

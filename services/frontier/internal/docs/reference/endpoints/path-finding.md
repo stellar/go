@@ -56,7 +56,7 @@ curl "https://frontier.testnet.digitalbits.io/paths/strict-receive?destination_a
 
 ```javascript
 // DEPRECATED
-// var DigitalBitsSdk = require('digitalbits-sdk');
+// var DigitalBitsSdk = require('xdb-digitalbits-sdk');
 // var server = new DigitalBitsSdk.Server('https://frontier.testnet.digitalbits.io');
 
 // var source_account = "GDFOHLMYCXVZD2CDXZLMW6W6TMU4YO27XFF2IBAFAV66MSTPDDSK2LAY";

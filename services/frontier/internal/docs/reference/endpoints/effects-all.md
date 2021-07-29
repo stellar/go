@@ -32,7 +32,7 @@ curl "https://frontier.testnet.digitalbits.io/effects"
 ### JavaScript Example Request
 
 ```javascript
-var DigitalBitsSdk = require('digitalbits-sdk');
+var DigitalBitsSdk = require('xdb-digitalbits-sdk');
 var server = new DigitalBitsSdk.Server('https://frontier.testnet.digitalbits.io');
 
 server.effects()
@@ -49,7 +49,7 @@ server.effects()
 ### JavaScript Streaming Example
 
 ```javascript
-var DigitalBitsSdk = require('digitalbits-sdk')
+var DigitalBitsSdk = require('xdb-digitalbits-sdk')
 var server = new DigitalBitsSdk.Server('https://frontier.testnet.digitalbits.io');
 
 var effectHandler = function (effectResponse) {

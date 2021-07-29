@@ -52,7 +52,7 @@ curl "https://frontier.testnet.digitalbits.io/payments?cursor=1234&order=desc"
 ### JavaScript Example Request
 
 ```javascript
-var DigitalBitsSdk = require('digitalbits-sdk');
+var DigitalBitsSdk = require('xdb-digitalbits-sdk');
 var server = new DigitalBitsSdk.Server('https://frontier.testnet.digitalbits.io');
 
 server.payments()
@@ -68,7 +68,7 @@ server.payments()
 ### JavaScript Streaming Example
 
 ```javascript
-var DigitalBitsSdk = require('digitalbits-sdk')
+var DigitalBitsSdk = require('xdb-digitalbits-sdk')
 var server = new DigitalBitsSdk.Server('https://frontier.testnet.digitalbits.io');
 
 var paymentHandler = function (paymentResponse) {
