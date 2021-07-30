@@ -566,7 +566,7 @@ func ApplyFlags(config *Config, flags support.ConfigOptions, options ApplyOption
 					}
 
 					config.CaptiveCoreConfigPath = filepath.Join(filepath.Dir(executablePath), configFileName)
-					if _, err := os.Stat(config.CaptiveCoreConfigPath); os.IsNotExist(err) {
+					if _, err = os.Stat(config.CaptiveCoreConfigPath); os.IsNotExist(err) {
 						stdLog.Fatal(errorMessage)
 					}
 
